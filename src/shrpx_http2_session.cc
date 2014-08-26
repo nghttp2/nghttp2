@@ -774,11 +774,6 @@ int on_stream_close_callback
     auto downstream = dconn->get_downstream();
     if(downstream && downstream->get_downstream_stream_id() == stream_id) {
 
-      http2session->consume(downstream->get_downstream_stream_id(),
-                            downstream->get_response_datalen());
-
-      downstream->reset_response_datalen();
-
       if(downstream->get_upgraded() &&
          downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
         // For tunneled connection, we have to submit RST_STREAM to
