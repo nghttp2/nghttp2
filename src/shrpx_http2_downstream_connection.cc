@@ -466,7 +466,6 @@ int Http2DownstreamConnection::push_request_headers()
     return -1;
   }
 
-  downstream_->clear_request_headers();
   downstream_->reset_downstream_wtimer();
 
   http2session_->notify();

@@ -297,8 +297,6 @@ int HttpDownstreamConnection::push_request_headers()
                            &get_config()->downstream_read_timeout,
                            &get_config()->downstream_write_timeout);
 
-  downstream_->clear_request_headers();
-
   return 0;
 }
 

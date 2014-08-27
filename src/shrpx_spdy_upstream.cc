@@ -1013,6 +1013,7 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream)
   }
 
   downstream->clear_response_headers();
+  downstream->clear_request_headers();
 
   return 0;
 }
