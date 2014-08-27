@@ -876,6 +876,21 @@ Connections:
       << get_config()->backlog << R"(
   --backend-ipv4     Resolve backend hostname to IPv4 address only.
   --backend-ipv6     Resolve backend hostname to IPv6 address only.
+  --backend-http-proxy-uri=<URI>
+                     Specify     proxy     URI     in     the     form
+                     http://[<USER>:<PASS>@]<PROXY>:<PORT>.     If   a
+                     proxy requires authentication, specify <USER> and
+                     <PASS>.    Note  that   they  must   be  properly
+                     percent-encoded.   This proxy  is  used when  the
+                     backend  connection  is  HTTP/2.  First,  make  a
+                     CONNECT request  to the proxy and  it connects to
+                     the  backend on  behalf of  nghttpx.  This  forms
+                     tunnel.   After  that, nghttpx  performs  SSL/TLS
+                     handshake with the downstream through the tunnel.
+                     The timeouts  when connecting and  making CONNECT
+                     request       can      be       specified      by
+                     --backend-read-timeout                        and
+                     --backend-write-timeout options.
 
 Performance:
   -n, --workers=<CORES>
@@ -989,21 +1004,6 @@ Timeout:
                      Specifying 0 disables this feature.
                      Default: )"
       << get_config()->listener_disable_timeout.tv_sec << R"(
-  --backend-http-proxy-uri=<URI>
-                     Specify     proxy     URI     in     the     form
-                     http://[<USER>:<PASS>@]<PROXY>:<PORT>.     If   a
-                     proxy requires authentication, specify <USER> and
-                     <PASS>.    Note  that   they  must   be  properly
-                     percent-encoded.   This proxy  is  used when  the
-                     backend  connection  is  HTTP/2.  First,  make  a
-                     CONNECT request  to the proxy and  it connects to
-                     the  backend on  behalf of  nghttpx.  This  forms
-                     tunnel.   After  that, nghttpx  performs  SSL/TLS
-                     handshake with the downstream through the tunnel.
-                     The timeouts  when connecting and  making CONNECT
-                     request       can      be       specified      by
-                     --backend-read-timeout                        and
-                     --backend-write-timeout options.
 
 SSL/TLS:
   --ciphers=<SUITE>  Set  allowed  cipher  list.  The  format  of  the
