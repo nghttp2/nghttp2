@@ -45,6 +45,21 @@ using namespace nghttp2;
 
 namespace shrpx {
 
+namespace {
+void evlistener_disable_cb(evutil_socket_t fd, short events, void *arg)
+{
+  auto listener_handler = static_cast<ListenHandler*>(arg);
+
+  // If we are in graceful shutdown period, we must not enable
+  // evlisteners again.
+  if(worker_config->graceful_shutdown) {
+    return;
+  }
+
+  listener_handler->enable_evlistener();
+}
+} // namespace
+
 ListenHandler::ListenHandler(event_base *evbase, SSL_CTX *sv_ssl_ctx,
                              SSL_CTX *cl_ssl_ctx)
   : evbase_(evbase),
@@ -54,6 +69,8 @@ ListenHandler::ListenHandler(event_base *evbase, SSL_CTX *sv_ssl_ctx,
                       (evbase, get_config()->worker_rate_limit_cfg)),
     evlistener4_(nullptr),
     evlistener6_(nullptr),
+    evlistener_disable_timerev_(evtimer_new(evbase,
+                                            evlistener_disable_cb, this)),
     worker_stat_(util::make_unique<WorkerStat>()),
     num_worker_shutdown_(0),
     worker_round_robin_cnt_(0)
@@ -295,6 +312,17 @@ evconnlistener* ListenHandler::get_evlistener6() const
   return evlistener6_;
 }
 
+void ListenHandler::enable_evlistener()
+{
+  if(evlistener4_) {
+    evconnlistener_enable(evlistener4_);
+  }
+
+  if(evlistener6_) {
+    evconnlistener_enable(evlistener6_);
+  }
+}
+
 void ListenHandler::disable_evlistener()
 {
   if(evlistener4_) {
@@ -303,6 +331,24 @@ void ListenHandler::disable_evlistener()
 
   if(evlistener6_) {
     evconnlistener_disable(evlistener6_);
+  }
+}
+
+void ListenHandler::disable_evlistener_temporary(const timeval *timeout)
+{
+  int rv;
+
+  if(timeout->tv_sec == 0 ||
+     evtimer_pending(evlistener_disable_timerev_, nullptr)) {
+    return;
+  }
+
+  disable_evlistener();
+
+  rv = evtimer_add(evlistener_disable_timerev_, timeout);
+
+  if(rv < 0) {
+    LOG(ERROR) << "evtimer_add for evlistener_disable_timerev_ failed";
   }
 }
 

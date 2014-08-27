@@ -131,6 +131,7 @@ const char SHRPX_OPT_WORKER_FRONTEND_CONNECTIONS[] =
 const char SHRPX_OPT_NO_LOCATION_REWRITE[] = "no-location-rewrite";
 const char SHRPX_OPT_BACKEND_CONNECTIONS_PER_FRONTEND[] =
   "backend-connections-per-frontend";
+const char SHRPX_OPT_LISTENER_DISABLE_TIMEOUT[] = "listener-disable-timeout";
 
 namespace {
 Config *config = nullptr;
@@ -893,6 +894,13 @@ int parse_config(const char *opt, const char *optarg)
     }
 
     mod_config()->max_downstream_connections = n;
+
+    return 0;
+  }
+
+  if(util::strieq(opt, SHRPX_OPT_LISTENER_DISABLE_TIMEOUT)) {
+    timeval tv = {strtol(optarg, nullptr, 10), 0};
+    mod_config()->listener_disable_timeout = tv;
 
     return 0;
   }

@@ -73,7 +73,9 @@ public:
   evconnlistener* get_evlistener4() const;
   void set_evlistener6(evconnlistener *evlistener6);
   evconnlistener* get_evlistener6() const;
+  void enable_evlistener();
   void disable_evlistener();
+  void disable_evlistener_temporary(const timeval *timeout);
   void accept_pending_connection();
   void graceful_shutdown_worker();
   void join_worker();
@@ -92,6 +94,7 @@ private:
   bufferevent_rate_limit_group *rate_limit_group_;
   evconnlistener *evlistener4_;
   evconnlistener *evlistener6_;
+  event *evlistener_disable_timerev_;
   std::unique_ptr<WorkerStat> worker_stat_;
   size_t num_worker_shutdown_;
   unsigned int worker_round_robin_cnt_;

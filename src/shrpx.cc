@@ -151,6 +151,11 @@ namespace {
 void evlistener_errorcb(evconnlistener *listener, void *ptr)
 {
   LOG(ERROR) << "Accepting incoming connection failed";
+
+  auto listener_handler = static_cast<ListenHandler*>(ptr);
+
+  listener_handler->disable_evlistener_temporary
+    (&get_config()->listener_disable_timeout);
 }
 } // namespace
 
@@ -449,14 +454,14 @@ void graceful_shutdown_signal_cb(evutil_socket_t sig, short events, void *arg)
     LOG(INFO) << "Graceful shutdown signal received";
   }
 
+  worker_config->graceful_shutdown = true;
+
   listener_handler->disable_evlistener();
 
   // After disabling accepting new connection, disptach incoming
   // connection in backlog.
 
   listener_handler->accept_pending_connection();
-
-  worker_config->graceful_shutdown = true;
 
   listener_handler->graceful_shutdown_worker();
 }
@@ -809,6 +814,7 @@ void fill_default_config()
   mod_config()->argc = 0;
   mod_config()->argv = nullptr;
   mod_config()->max_downstream_connections = 100;
+  mod_config()->listener_disable_timeout = {0, 0};
 }
 } // namespace
 
@@ -977,6 +983,12 @@ Timeout:
                      connection.
                      Default: )"
       << get_config()->downstream_idle_read_timeout.tv_sec << R"(
+  --listener-disable-timeout=<SEC>
+                     After  accepting  connection  failed,  connection
+                     listener is disabled for a given time in seconds.
+                     Specifying 0 disables this feature.
+                     Default: )"
+      << get_config()->listener_disable_timeout.tv_sec << R"(
   --backend-http-proxy-uri=<URI>
                      Specify     proxy     URI     in     the     form
                      http://[<USER>:<PASS>@]<PROXY>:<PORT>.     If   a
@@ -1297,6 +1309,7 @@ int main(int argc, char **argv)
       {"stream-write-timeout", required_argument, &flag, 61},
       {"no-location-rewrite", no_argument, &flag, 62},
       {"backend-connections-per-frontend", required_argument, &flag, 63},
+      {"listener-disable-timeout", required_argument, &flag, 64},
       {nullptr, 0, nullptr, 0 }
     };
 
@@ -1589,6 +1602,10 @@ int main(int argc, char **argv)
         // --backend-connections-per-frontend
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_CONNECTIONS_PER_FRONTEND,
                              optarg);
+        break;
+      case 64:
+        // --listener-disable-timeout
+        cmdcfgs.emplace_back(SHRPX_OPT_LISTENER_DISABLE_TIMEOUT, optarg);
         break;
       default:
         break;

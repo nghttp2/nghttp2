@@ -120,6 +120,7 @@ extern const char SHRPX_OPT_ADD_RESPONSE_HEADER[];
 extern const char SHRPX_OPT_WORKER_FRONTEND_CONNECTIONS[];
 extern const char SHRPX_OPT_NO_LOCATION_REWRITE[];
 extern const char SHRPX_OPT_BACKEND_CONNECTIONS_PER_FRONTEND[];
+extern const char SHRPX_OPT_LISTENER_DISABLE_TIMEOUT[];
 
 union sockaddr_union {
   sockaddr sa;
@@ -173,6 +174,7 @@ struct Config {
   timeval stream_read_timeout;
   timeval stream_write_timeout;
   timeval downstream_idle_read_timeout;
+  timeval listener_disable_timeout;
   std::unique_ptr<char[]> host;
   std::unique_ptr<char[]> private_key_file;
   std::unique_ptr<char[]> private_key_passwd;
