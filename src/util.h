@@ -45,6 +45,12 @@ namespace nghttp2 {
 
 namespace util {
 
+template<typename T, size_t N>
+constexpr size_t array_size(T (&)[N])
+{
+  return N;
+}
+
 template<typename T>
 class auto_delete {
 private:

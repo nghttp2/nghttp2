@@ -196,7 +196,7 @@ int alpn_select_proto_cb(SSL *ssl,
 
 namespace {
 const char *tls_names[] = { "TLSv1.2", "TLSv1.1", "TLSv1.0", "SSLv3" };
-const size_t tls_namelen = sizeof(tls_names)/sizeof(tls_names[0]);
+const size_t tls_namelen = util::array_size(tls_names);
 const long int tls_masks[] = { SSL_OP_NO_TLSv1_2, SSL_OP_NO_TLSv1_1,
                                SSL_OP_NO_TLSv1, SSL_OP_NO_SSLv3 };
 } // namespace

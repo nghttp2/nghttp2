@@ -969,8 +969,7 @@ int main(int argc, char **argv)
     worker.stats.bytes_head += stats.bytes_head;
     worker.stats.bytes_body += stats.bytes_body;
 
-    for(size_t i = 0; i < sizeof(stats.status) / sizeof(stats.status[0]);
-        ++i) {
+    for(size_t i = 0; i < util::array_size(stats.status); ++i) {
       worker.stats.status[i] += stats.status[i];
     }
   }

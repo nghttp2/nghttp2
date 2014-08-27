@@ -27,6 +27,9 @@
 #include <cassert>
 
 #include "h2load.h"
+#include "util.h"
+
+using namespace nghttp2;
 
 namespace h2load {
 
@@ -138,7 +141,7 @@ void SpdySession::on_connect()
   iv[0].flags = SPDYLAY_ID_FLAG_SETTINGS_NONE;
   iv[0].value = (1 << client_->worker->config->window_bits);
   spdylay_submit_settings(session_, SPDYLAY_FLAG_SETTINGS_NONE, iv,
-                          sizeof(iv) / sizeof(iv[0]));
+                          util::array_size(iv));
 
   auto config = client_->worker->config;
 

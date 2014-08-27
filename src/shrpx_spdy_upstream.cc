@@ -480,8 +480,7 @@ SpdyUpstream::SpdyUpstream(uint16_t version, ClientHandler *handler)
   entry[1].flags = SPDYLAY_ID_FLAG_SETTINGS_NONE;
 
   rv = spdylay_submit_settings
-    (session_, SPDYLAY_FLAG_SETTINGS_NONE,
-     entry, sizeof(entry)/sizeof(spdylay_settings_entry));
+    (session_, SPDYLAY_FLAG_SETTINGS_NONE, entry, util::array_size(entry));
   assert(rv == 0);
 
   if(version >= SPDYLAY_PROTO_SPDY3_1 &&

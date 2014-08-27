@@ -130,7 +130,7 @@ void Http2Session::on_connect()
   iv[1].value = (1 << client_->worker->config->window_bits) - 1;
 
   rv = nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE, iv,
-                               sizeof(iv) / sizeof(iv[0]));
+                               util::array_size(iv));
 
   assert(rv == 0);
 

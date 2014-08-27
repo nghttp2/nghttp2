@@ -682,8 +682,7 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
   entry[1].value = (1 << get_config()->http2_upstream_window_bits) - 1;
 
   rv = nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE,
-                               entry,
-                               sizeof(entry)/sizeof(nghttp2_settings_entry));
+                               entry, util::array_size(entry));
   if(rv != 0) {
     ULOG(ERROR, this) << "nghttp2_submit_settings() returned error: "
                       << nghttp2_strerror(rv);

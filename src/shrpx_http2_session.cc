@@ -1425,7 +1425,7 @@ int Http2Session::on_connect()
   entry[2].value = (1 << get_config()->http2_downstream_window_bits) - 1;
 
   rv = nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE, entry,
-                               sizeof(entry)/sizeof(nghttp2_settings_entry));
+                               util::array_size(entry));
   if(rv != 0) {
     return -1;
   }

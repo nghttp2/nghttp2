@@ -160,7 +160,7 @@ const char *DISALLOWED_HD[] = {
 } // namespace
 
 namespace {
-size_t DISALLOWED_HDLEN = sizeof(DISALLOWED_HD)/sizeof(DISALLOWED_HD[0]);
+auto DISALLOWED_HDLEN = util::array_size(DISALLOWED_HD);
 } // namespace
 
 namespace {
@@ -173,8 +173,7 @@ const char *REQUEST_PSEUDO_HD[] = {
 } // namespace
 
 namespace {
-size_t REQUEST_PSEUDO_HDLEN =
-  sizeof(REQUEST_PSEUDO_HD) / sizeof(REQUEST_PSEUDO_HD[0]);
+auto REQUEST_PSEUDO_HDLEN = util::array_size(REQUEST_PSEUDO_HD);
 } // namespace
 
 namespace {
@@ -184,8 +183,7 @@ const char *RESPONSE_PSEUDO_HD[] = {
 } // namespace
 
 namespace {
-size_t RESPONSE_PSEUDO_HDLEN =
-  sizeof(RESPONSE_PSEUDO_HD) / sizeof(RESPONSE_PSEUDO_HD[0]);
+auto RESPONSE_PSEUDO_HDLEN = util::array_size(RESPONSE_PSEUDO_HD);
 } // namespace
 
 namespace {
@@ -205,7 +203,7 @@ const char *IGN_HD[] = {
 } // namespace
 
 namespace {
-size_t IGN_HDLEN = sizeof(IGN_HD)/sizeof(IGN_HD[0]);
+auto IGN_HDLEN = util::array_size(IGN_HD);
 } // namespace
 
 namespace {
@@ -224,7 +222,7 @@ const char *HTTP1_IGN_HD[] = {
 } // namespace
 
 namespace {
-size_t HTTP1_IGN_HDLEN = sizeof(HTTP1_IGN_HD)/sizeof(HTTP1_IGN_HD[0]);
+auto HTTP1_IGN_HDLEN = util::array_size(HTTP1_IGN_HD);
 } // namespace
 
 bool name_less(const Headers::value_type& lhs,

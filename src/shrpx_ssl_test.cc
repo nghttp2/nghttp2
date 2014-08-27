@@ -27,6 +27,9 @@
 #include <CUnit/CUnit.h>
 
 #include "shrpx_ssl.h"
+#include "util.h"
+
+using namespace nghttp2;
 
 namespace shrpx {
 
@@ -55,7 +58,7 @@ void test_shrpx_ssl_create_lookup_tree(void)
                               "*.foo.bar", // oo.bar is suffix of *.foo.bar
                               "oo.bar"
   };
-  int num = sizeof(ctxs)/sizeof(ctxs[0]);
+  int num = util::array_size(ctxs);
   for(int i = 0; i < num; ++i) {
     ssl::cert_lookup_tree_add_cert(tree, ctxs[i], hostnames[i],
                                    strlen(hostnames[i]));
@@ -100,7 +103,7 @@ void test_shrpx_ssl_create_lookup_tree(void)
                       SSL_CTX_new(SSLv23_method()),
                       SSL_CTX_new(SSLv23_method())};
   const char *names[] = { "rab", "zab", "zzub", "ab" };
-  num = sizeof(ctxs2)/sizeof(ctxs2[0]);
+  num = util::array_size(ctxs2);
   tree = ssl::cert_lookup_tree_new();
   for(int i = 0; i < num; ++i) {
     ssl::cert_lookup_tree_add_cert(tree, ctxs2[i], names[i], strlen(names[i]));
