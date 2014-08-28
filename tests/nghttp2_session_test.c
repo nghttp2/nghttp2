@@ -3251,8 +3251,6 @@ void test_nghttp2_submit_data_twice(void)
 
   CU_ASSERT(0 == nghttp2_session_send(session));
 
-  fprintf(stderr, "acc.length=%zu\n", acc.length);
-
   /* We should have sent 2 DATA frame with 16 bytes payload each */
   CU_ASSERT(NGHTTP2_FRAME_HDLEN * 2 + 16 * 2 == acc.length);
 
