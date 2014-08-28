@@ -5736,10 +5736,8 @@ int nghttp2_session_pack_data(nghttp2_session *session,
   }
 
   /* The primary reason of data_frame is pass to the user callback */
-  data_frame.hd.length = payloadlen;
-  data_frame.hd.stream_id = frame->hd.stream_id;
-  data_frame.hd.type = NGHTTP2_DATA;
-  data_frame.hd.flags = flags;
+  nghttp2_frame_hd_init(&data_frame.hd, payloadlen, NGHTTP2_DATA, flags,
+                        frame->hd.stream_id);
   data_frame.data.padlen = 0;
 
   max_payloadlen = nghttp2_min(datamax,

@@ -605,6 +605,11 @@ typedef struct {
    * The flags.
    */
   uint8_t flags;
+  /**
+   * Reserved bit in frame header.  Currently, this is always set to 0
+   * and application should not expect something useful in here.
+   */
+  uint8_t reserved;
 } nghttp2_frame_hd;
 
 
@@ -887,6 +892,11 @@ typedef struct {
    * The promised stream ID
    */
   int32_t promised_stream_id;
+  /**
+   * Reserved bit.  Currently this is always set to 0 and application
+   * should not expect something useful in here.
+   */
+  uint8_t reserved;
 } nghttp2_push_promise;
 
 /**
@@ -931,6 +941,11 @@ typedef struct {
    * The length of |opaque_data| member.
    */
   size_t opaque_data_len;
+  /**
+   * Reserved bit.  Currently this is always set to 0 and application
+   * should not expect something useful in here.
+   */
+  uint8_t reserved;
 } nghttp2_goaway;
 
 /**
@@ -947,6 +962,11 @@ typedef struct {
    * The window size increment.
    */
   int32_t window_size_increment;
+  /**
+   * Reserved bit.  Currently this is always set to 0 and application
+   * should not expect something useful in here.
+   */
+  uint8_t reserved;
 } nghttp2_window_update;
 
 /**

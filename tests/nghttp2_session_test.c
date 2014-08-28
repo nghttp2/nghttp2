@@ -830,10 +830,8 @@ void test_nghttp2_session_recv_continuation(void)
   nghttp2_put_uint32be(data, (1 << 8) + data[3]);
 
   /* First CONTINUATION, 2 bytes */
-  cont_hd.length = 2;
-  cont_hd.type = NGHTTP2_CONTINUATION;
-  cont_hd.flags = NGHTTP2_FLAG_NONE;
-  cont_hd.stream_id = 1;
+  nghttp2_frame_hd_init(&cont_hd, 2, NGHTTP2_CONTINUATION,
+                        NGHTTP2_FLAG_NONE, 1);
 
   nghttp2_frame_pack_frame_hd(data + datalen, &cont_hd);
   datalen += NGHTTP2_FRAME_HDLEN;
@@ -843,9 +841,8 @@ void test_nghttp2_session_recv_continuation(void)
   buf->pos += cont_hd.length;
 
   /* Second CONTINUATION, rest of the bytes */
-  cont_hd.length = nghttp2_buf_len(buf);
-  cont_hd.flags = NGHTTP2_FLAG_END_HEADERS;
-  cont_hd.stream_id = 1;
+  nghttp2_frame_hd_init(&cont_hd, nghttp2_buf_len(buf), NGHTTP2_CONTINUATION,
+                        NGHTTP2_FLAG_END_HEADERS, 1);
 
   nghttp2_frame_pack_frame_hd(data + datalen, &cont_hd);
   datalen += NGHTTP2_FRAME_HDLEN;
@@ -1239,10 +1236,7 @@ void test_nghttp2_session_recv_unknown_frame(void)
   nghttp2_frame_hd hd;
   ssize_t rv;
 
-  hd.length = 16000;
-  hd.stream_id = 0;
-  hd.type = 99;
-  hd.flags = NGHTTP2_FLAG_NONE;
+  nghttp2_frame_hd_init(&hd, 16000, 99, NGHTTP2_FLAG_NONE, 0);
 
   nghttp2_frame_pack_frame_hd(data, &hd);
   datalen = NGHTTP2_FRAME_HDLEN + hd.length;
@@ -1275,10 +1269,8 @@ void test_nghttp2_session_recv_unexpected_continuation(void)
   ssize_t rv;
   nghttp2_outbound_item *item;
 
-  hd.length = 16000;
-  hd.stream_id = 1;
-  hd.type = NGHTTP2_CONTINUATION;
-  hd.flags = NGHTTP2_FLAG_END_HEADERS;
+  nghttp2_frame_hd_init(&hd, 16000, NGHTTP2_CONTINUATION,
+                        NGHTTP2_FLAG_END_HEADERS, 1);
 
   nghttp2_frame_pack_frame_hd(data, &hd);
   datalen = NGHTTP2_FRAME_HDLEN + hd.length;
@@ -1487,13 +1479,12 @@ void test_nghttp2_session_recv_too_large_frame_length(void)
   nghttp2_session_callbacks callbacks;
   uint8_t buf[NGHTTP2_FRAME_HDLEN];
   nghttp2_outbound_item *item;
-  nghttp2_frame_hd hd = {
-    /* Initial max frame size is NGHTTP2_MAX_FRAME_SIZE_MIN */
-    NGHTTP2_MAX_FRAME_SIZE_MIN + 1,
-    1,
-    NGHTTP2_HEADERS,
-    NGHTTP2_FLAG_NONE
-  };
+  nghttp2_frame_hd hd;
+
+  /* Initial max frame size is NGHTTP2_MAX_FRAME_SIZE_MIN */
+  nghttp2_frame_hd_init(&hd, NGHTTP2_MAX_FRAME_SIZE_MIN + 1,
+                        NGHTTP2_HEADERS, NGHTTP2_FLAG_NONE, 1);
+
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
 
   nghttp2_session_server_new(&session, &callbacks, NULL);
@@ -1665,10 +1656,7 @@ void test_nghttp2_session_continue(void)
   CU_ASSERT(1 == user_data.frame_recv_cb_called);
 
   /* Receive DATA */
-  data_hd.length = 16;
-  data_hd.type = NGHTTP2_DATA;
-  data_hd.flags = NGHTTP2_FLAG_NONE;
-  data_hd.stream_id = 1;
+  nghttp2_frame_hd_init(&data_hd, 16, NGHTTP2_DATA, NGHTTP2_FLAG_NONE, 1);
 
   nghttp2_buf_reset(&databuf);
   nghttp2_frame_pack_frame_hd(databuf.pos, &data_hd);
@@ -2630,9 +2618,7 @@ void test_nghttp2_session_on_data_received(void)
                                        &pri_spec_default,
                                        NGHTTP2_STREAM_OPENING, NULL);
 
-  frame.hd.length = 4096;
-  frame.hd.flags = NGHTTP2_FLAG_NONE;
-  frame.hd.stream_id = 2;
+  nghttp2_frame_hd_init(&frame.hd, 4096, NGHTTP2_DATA, NGHTTP2_FLAG_NONE, 2);
 
   CU_ASSERT(0 == nghttp2_session_on_data_received(session, &frame));
   CU_ASSERT(0 == stream->shut_flags);
@@ -4725,10 +4711,9 @@ void test_nghttp2_session_flow_control_data_recv(void)
 
   /* Create DATA frame */
   memset(data, 0, sizeof(data));
-  hd.length = NGHTTP2_MAX_PAYLOADLEN;
-  hd.type = NGHTTP2_DATA;
-  hd.flags = NGHTTP2_FLAG_END_STREAM;
-  hd.stream_id = 1;
+  nghttp2_frame_hd_init(&hd, NGHTTP2_MAX_PAYLOADLEN, NGHTTP2_DATA,
+                        NGHTTP2_FLAG_END_STREAM, 1);
+
   nghttp2_frame_pack_frame_hd(data, &hd);
   CU_ASSERT(NGHTTP2_MAX_PAYLOADLEN+NGHTTP2_FRAME_HDLEN ==
             nghttp2_session_mem_recv(session, data,
@@ -4792,10 +4777,9 @@ void test_nghttp2_session_flow_control_data_with_padding_recv(void)
 
   /* Create DATA frame */
   memset(data, 0, sizeof(data));
-  hd.length = 357;
-  hd.type = NGHTTP2_DATA;
-  hd.flags = NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_PADDED;
-  hd.stream_id = 1;
+  nghttp2_frame_hd_init(&hd, 357, NGHTTP2_DATA,
+                        NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_PADDED, 1);
+
   nghttp2_frame_pack_frame_hd(data, &hd);
   /* Set Pad Length field, which itself is padding */
   data[NGHTTP2_FRAME_HDLEN] = 255;
@@ -6396,10 +6380,9 @@ void test_nghttp2_session_on_header_temporal_failure(void)
 
   nghttp2_hd_deflate_hd_bufs(&deflater, &bufs, &nv[1], 1);
 
-  hd.length = nghttp2_bufs_len(&bufs) - hdpos - NGHTTP2_FRAME_HDLEN;
-  hd.type = NGHTTP2_CONTINUATION;
-  hd.flags = NGHTTP2_FLAG_END_HEADERS;
-  hd.stream_id = 1;
+  nghttp2_frame_hd_init(&hd,
+                        nghttp2_bufs_len(&bufs) - hdpos - NGHTTP2_FRAME_HDLEN,
+                        NGHTTP2_CONTINUATION, NGHTTP2_FLAG_END_HEADERS, 1);
 
   nghttp2_frame_pack_frame_hd(&buf->pos[hdpos], &hd);
 

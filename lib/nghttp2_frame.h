@@ -128,6 +128,14 @@ void nghttp2_frame_pack_frame_hd(uint8_t *buf, const nghttp2_frame_hd *hd);
 void nghttp2_frame_unpack_frame_hd(nghttp2_frame_hd *hd, const uint8_t* buf);
 
 /**
+ * Initializes frame header |hd| with given parameters.  Reserved bit
+ * is set to 0.
+ */
+void nghttp2_frame_hd_init(nghttp2_frame_hd *hd, size_t length,
+                           uint8_t type, uint8_t flags,
+                           int32_t stream_id);
+
+/**
  * Returns the number of priority field depending on the |flags|.  If
  * |flags| has neither NGHTTP2_FLAG_PRIORITY_GROUP nor
  * NGHTTP2_FLAG_PRIORITY_DEPENDENCY set, return 0.

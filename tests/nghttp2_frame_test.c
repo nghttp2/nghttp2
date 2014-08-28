@@ -68,6 +68,7 @@ static void check_frame_header(size_t length, uint8_t type, uint8_t flags,
   CU_ASSERT(type == hd->type);
   CU_ASSERT(flags == hd->flags);
   CU_ASSERT(stream_id == hd->stream_id);
+  CU_ASSERT(0 == hd->reserved);
 }
 
 void test_nghttp2_frame_pack_headers()
