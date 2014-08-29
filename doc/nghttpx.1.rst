@@ -66,6 +66,24 @@ Connections
     
     Resolve backend hostname to IPv6 address only.
 
+.. option:: --backend-http-proxy-uri=<URI>
+
+    
+    Specify     proxy     URI     in     the     form
+    http://[<USER>:<PASS>@]<PROXY>:<PORT>.     If   a
+    proxy requires authentication, specify <USER> and
+    <PASS>.    Note  that   they  must   be  properly
+    percent-encoded.   This proxy  is  used when  the
+    backend  connection  is  HTTP/2.  First,  make  a
+    CONNECT request  to the proxy and  it connects to
+    the  backend on  behalf of  nghttpx.  This  forms
+    tunnel.   After  that, nghttpx  performs  SSL/TLS
+    handshake with the downstream through the tunnel.
+    The timeouts  when connecting and  making CONNECT
+    request       can      be       specified      by
+    :option:`--backend-read-timeout`                        and
+    :option:`--backend-write-timeout` options.
+
 Performance
 ^^^^^^^^^^^
 
@@ -74,6 +92,40 @@ Performance
     
     Set the number of worker threads.
     Default: 1
+
+.. option:: --read-rate=<RATE>
+
+    
+    Set  maximum   average  read  rate   on  frontend
+    connection.  Setting 0 to  this option means read
+    rate is unlimited.
+    Default: 0
+
+.. option:: --read-burst=<SIZE>
+
+    
+    Set   maximum  read   burst   size  on   frontend
+    connection.  Setting  0 does not work,  but it is
+    not  a problem  because  --read-rate=0 will  give
+    unlimited  read rate  regardless  of this  option
+    value.
+    Default: 1073741824
+
+.. option:: --write-rate=<RATE>
+
+    
+    Set  maximum  average   write  rate  on  frontend
+    connection.  Setting 0 to this option means write
+    rate is unlimited.
+    Default: 0
+
+.. option:: --write-burst=<SIZE>
+
+    
+    Set   maximum  write   burst  size   on  frontend
+    connection.  Setting 0 to this option means write
+    burst size is unlimited.
+    Default: 0
 
 .. option:: --worker-read-rate=<RATE>
 
@@ -180,23 +232,13 @@ Timeout
     connection.
     Default: 60
 
-.. option:: --backend-http-proxy-uri=<URI>
+.. option:: --listener-disable-timeout=<SEC>
 
     
-    Specify     proxy     URI     in     the     form
-    http://[<USER>:<PASS>@]<PROXY>:<PORT>.     If   a
-    proxy requires authentication, specify <USER> and
-    <PASS>.    Note  that   they  must   be  properly
-    percent-encoded.   This proxy  is  used when  the
-    backend  connection  is  HTTP/2.  First,  make  a
-    CONNECT request  to the proxy and  it connects to
-    the  backend on  behalf of  nghttpx.  This  forms
-    tunnel.   After  that, nghttpx  performs  SSL/TLS
-    handshake with the downstream through the tunnel.
-    The timeouts  when connecting and  making CONNECT
-    request       can      be       specified      by
-    :option:`--backend-read-timeout`                        and
-    :option:`--backend-write-timeout` options.
+    After  accepting  connection  failed,  connection
+    listener is disabled for a given time in seconds.
+    Specifying 0 disables this feature.
+    Default: 0
 
 SSL/TLS
 ^^^^^^^
