@@ -23,7 +23,7 @@
   {% endif %}
 
   {# CSS #}
-  <link href='https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
 
   {# OPENSEARCH #}
   {% if not embedded %}
@@ -82,7 +82,9 @@
     {# SIDE NAV, TOGGLES ON MOBILE #}
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-nav-search">
-        <a href="{{ pathto(master_doc) }}" class="fa fa-home"> {{ project }}</a>
+        {% block sidebartitle %}
+          <a href="{{ pathto(master_doc) }}" class="fa fa-home"> {{ project }}</a>
+        {% endblock %}
         {% include "searchbox.html" %}
       </div>
 
@@ -111,7 +113,7 @@
       <div class="wy-nav-content">
         <div class="rst-content">
           {% include "breadcrumbs.html" %}
-          <div role="main">
+          <div role="main" class="document">
             {% block body %}{% endblock %}
           </div>
           {% include "footer.html" %}
