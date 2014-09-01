@@ -374,7 +374,9 @@ void perform_accept_pending_connection(ListenHandler *listener_handler,
          errno == EPROTO ||
          errno == ENOPROTOOPT ||
          errno == EHOSTDOWN ||
+#ifdef ENONET
          errno == ENONET ||
+#endif // ENONET
          errno == EHOSTUNREACH ||
          errno == EOPNOTSUPP ||
          errno == ENETUNREACH) {
