@@ -7,14 +7,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>API Reference &mdash; nghttp2 0.6.0-DEV documentation</title>
+  <title>API Reference &mdash; nghttp2 0.6.2-DEV documentation</title>
   
 
   
   
 
   
-  <link href='https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
 
   
   
@@ -28,7 +28,7 @@
   
 
   
-    <link rel="top" title="nghttp2 0.6.0-DEV documentation" href="index.html"/>
+    <link rel="top" title="nghttp2 0.6.2-DEV documentation" href="index.html"/>
         <link rel="next" title="Python API Reference" href="python-apiref.html"/>
         <link rel="prev" title="h2load - HTTP/2 benchmarking tool - HOW-TO" href="h2load-howto.html"/> 
 
@@ -44,7 +44,9 @@
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-nav-search">
-        <a href="index.html" class="fa fa-home"> nghttp2</a>
+        
+          <a href="index.html" class="fa fa-home"> nghttp2</a>
+        
         <div role="search">
   <form id ="rtd-search-form" class="wy-form" action="search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" />
@@ -188,7 +190,7 @@
   </ul>
   <hr/>
 </div>
-          <div role="main">
+          <div role="main" class="document">
             
   <div class="section" id="api-reference">
 <h1>API Reference<a class="headerlink" href="#api-reference" title="Permalink to this headline">¶</a></h1>
@@ -585,6 +587,14 @@ Out of memory.  This is a fatal error.</p>
 <tt class="descname">NGHTTP2_ERR_CALLBACK_FAILURE</tt><a class="headerlink" href="#c.NGHTTP2_ERR_CALLBACK_FAILURE" title="Permalink to this definition">¶</a></dt>
 <dd><p>(<tt class="docutils literal"><span class="pre">-902</span></tt>)
 The user callback function failed.  This is a fatal error.</p>
+</dd></dl>
+
+<dl class="macro">
+<dt id="c.NGHTTP2_ERR_BAD_PREFACE">
+<tt class="descname">NGHTTP2_ERR_BAD_PREFACE</tt><a class="headerlink" href="#c.NGHTTP2_ERR_BAD_PREFACE" title="Permalink to this definition">¶</a></dt>
+<dd><p>(<tt class="docutils literal"><span class="pre">-903</span></tt>)
+Invalid connection preface was received and further processing is
+not possible.</p>
 </dd></dl>
 
 </dd></dl>
@@ -1097,6 +1107,13 @@ uint8_t <tt class="descname">flags</tt><a class="headerlink" href="#c.nghttp2_fr
 <dd><p>The flags.</p>
 </dd></dl>
 
+<dl class="member">
+<dt id="c.nghttp2_frame_hd.reserved">
+uint8_t <tt class="descname">reserved</tt><a class="headerlink" href="#c.nghttp2_frame_hd.reserved" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reserved bit in frame header.  Currently, this is always set to 0
+and application should not expect something useful in here.</p>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="type">
@@ -1357,6 +1374,13 @@ int32_t <tt class="descname">promised_stream_id</tt><a class="headerlink" href="
 <dd><p>The promised stream ID</p>
 </dd></dl>
 
+<dl class="member">
+<dt id="c.nghttp2_push_promise.reserved">
+uint8_t <tt class="descname">reserved</tt><a class="headerlink" href="#c.nghttp2_push_promise.reserved" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reserved bit.  Currently this is always set to 0 and application
+should not expect something useful in here.</p>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="type">
@@ -1411,6 +1435,13 @@ size_t <tt class="descname">opaque_data_len</tt><a class="headerlink" href="#c.n
 <dd><p>The length of <em>opaque_data</em> member.</p>
 </dd></dl>
 
+<dl class="member">
+<dt id="c.nghttp2_goaway.reserved">
+uint8_t <tt class="descname">reserved</tt><a class="headerlink" href="#c.nghttp2_goaway.reserved" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reserved bit.  Currently this is always set to 0 and application
+should not expect something useful in here.</p>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="type">
@@ -1427,6 +1458,13 @@ size_t <tt class="descname">opaque_data_len</tt><a class="headerlink" href="#c.n
 <dt id="c.nghttp2_window_update.window_size_increment">
 int32_t <tt class="descname">window_size_increment</tt><a class="headerlink" href="#c.nghttp2_window_update.window_size_increment" title="Permalink to this definition">¶</a></dt>
 <dd><p>The window size increment.</p>
+</dd></dl>
+
+<dl class="member">
+<dt id="c.nghttp2_window_update.reserved">
+uint8_t <tt class="descname">reserved</tt><a class="headerlink" href="#c.nghttp2_window_update.reserved" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reserved bit.  Currently this is always set to 0 and application
+should not expect something useful in here.</p>
 </dd></dl>
 
 </dd></dl>
@@ -2103,6 +2141,22 @@ SETTINGS_MAX_CONCURRENT_STREAMS from the remote endpoint.</p>
 </dd></dl>
 
 <dl class="function">
+<dt id="c.nghttp2_option_set_recv_client_preface">
+void <tt class="descname">nghttp2_option_set_recv_client_preface</tt><big>(</big><a class="reference internal" href="#c.nghttp2_option" title="nghttp2_option">nghttp2_option</a><em>&nbsp;*option</em>, int<em>&nbsp;val</em><big>)</big><a class="headerlink" href="#c.nghttp2_option_set_recv_client_preface" title="Permalink to this definition">¶</a></dt>
+<dd><p>By default, nghttp2 library only handles HTTP/2 frames and does not
+recognize first 24 bytes of client connection preface.  This design
+choice is done due to the fact that server may want to detect the
+application protocol based on first few bytes on clear text
+communication.  But for simple servers which only speak HTTP/2, it
+is easier for developers if nghttp2 library takes care of client
+connection preface.</p>
+<p>If this option is used with nonzero <em>val</em>, nghttp2 library checks
+first 24 bytes client connection preface.  If it is not a valid
+one, <a class="reference internal" href="#c.nghttp2_session_recv" title="nghttp2_session_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_recv()</span></tt></a> and <a class="reference internal" href="#c.nghttp2_session_mem_recv" title="nghttp2_session_mem_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_mem_recv()</span></tt></a> will
+return error <a class="reference internal" href="#c.NGHTTP2_ERR_BAD_PREFACE" title="NGHTTP2_ERR_BAD_PREFACE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_BAD_PREFACE</span></tt></a>, which is fatal error.</p>
+</dd></dl>
+
+<dl class="function">
 <dt id="c.nghttp2_session_client_new">
 int <tt class="descname">nghttp2_session_client_new</tt><big>(</big><a class="reference internal" href="#c.nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;**session_ptr</em>, const <a class="reference internal" href="#c.nghttp2_session_callbacks" title="nghttp2_session_callbacks">nghttp2_session_callbacks</a><em>&nbsp;*callbacks</em>, void<em>&nbsp;*user_data</em><big>)</big><a class="headerlink" href="#c.nghttp2_session_client_new" title="Permalink to this definition">¶</a></dt>
 <dd><p>Initializes <em>*session_ptr</em> for client use.  The all members of
@@ -2306,6 +2360,10 @@ negative error codes:</p>
 <dd>Out of memory.</dd>
 <dt><a class="reference internal" href="#c.NGHTTP2_ERR_CALLBACK_FAILURE" title="NGHTTP2_ERR_CALLBACK_FAILURE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_CALLBACK_FAILURE</span></tt></a></dt>
 <dd>The callback function failed.</dd>
+<dt><a class="reference internal" href="#c.NGHTTP2_ERR_BAD_PREFACE" title="NGHTTP2_ERR_BAD_PREFACE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_BAD_PREFACE</span></tt></a></dt>
+<dd>Invalid client preface was detected.  This error only returns
+when <em>session</em> was configured as server and
+<a class="reference internal" href="#c.nghttp2_option_set_recv_client_preface" title="nghttp2_option_set_recv_client_preface"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_option_set_recv_client_preface()</span></tt></a> is used.</dd>
 </dl>
 </dd></dl>
 
@@ -2334,6 +2392,10 @@ following negative error codes:</p>
 <dd>Out of memory.</dd>
 <dt><a class="reference internal" href="#c.NGHTTP2_ERR_CALLBACK_FAILURE" title="NGHTTP2_ERR_CALLBACK_FAILURE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_CALLBACK_FAILURE</span></tt></a></dt>
 <dd>The callback function failed.</dd>
+<dt><a class="reference internal" href="#c.NGHTTP2_ERR_BAD_PREFACE" title="NGHTTP2_ERR_BAD_PREFACE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_BAD_PREFACE</span></tt></a></dt>
+<dd>Invalid client preface was detected.  This error only returns
+when <em>session</em> was configured as server and
+<a class="reference internal" href="#c.nghttp2_option_set_recv_client_preface" title="nghttp2_option_set_recv_client_preface"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_option_set_recv_client_preface()</span></tt></a> is used.</dd>
 </dl>
 </dd></dl>
 
@@ -3376,7 +3438,7 @@ always succeeds.</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.6.0-DEV',
+            VERSION:'0.6.2-DEV',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  false

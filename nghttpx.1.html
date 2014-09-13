@@ -7,14 +7,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>nghttpx(1) &mdash; nghttp2 0.6.0-DEV documentation</title>
+  <title>nghttpx(1) &mdash; nghttp2 0.6.2-DEV documentation</title>
   
 
   
   
 
   
-  <link href='https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
 
   
   
@@ -28,7 +28,7 @@
   
 
   
-    <link rel="top" title="nghttp2 0.6.0-DEV documentation" href="index.html"/>
+    <link rel="top" title="nghttp2 0.6.2-DEV documentation" href="index.html"/>
         <link rel="next" title="h2load(1)" href="h2load.1.html"/>
         <link rel="prev" title="nghttpd(1)" href="nghttpd.1.html"/> 
 
@@ -44,7 +44,9 @@
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-nav-search">
-        <a href="index.html" class="fa fa-home"> nghttp2</a>
+        
+          <a href="index.html" class="fa fa-home"> nghttp2</a>
+        
         <div role="search">
   <form id ="rtd-search-form" class="wy-form" action="search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" />
@@ -188,7 +190,7 @@
   </ul>
   <hr/>
 </div>
-          <div role="main">
+          <div role="main" class="document">
             
   <div class="section" id="nghttpx-1">
 <h1>nghttpx(1)<a class="headerlink" href="#nghttpx-1" title="Permalink to this headline">¶</a></h1>
@@ -261,6 +263,25 @@ Default: -1</p>
 <dd><p>Resolve backend hostname to IPv6 address only.</p>
 </dd></dl>
 
+<dl class="option">
+<dt id="cmdoption-nghttpx--backend-http-proxy-uri">
+<tt class="descname">--backend-http-proxy-uri</tt><tt class="descclassname">=&lt;URI&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--backend-http-proxy-uri" title="Permalink to this definition">¶</a></dt>
+<dd><p>Specify     proxy     URI     in     the     form
+<a class="reference external" href="http:/">http:/</a>/[&lt;USER&gt;:&lt;PASS&gt;&#64;]&lt;PROXY&gt;:&lt;PORT&gt;.     If   a
+proxy requires authentication, specify &lt;USER&gt; and
+&lt;PASS&gt;.    Note  that   they  must   be  properly
+percent-encoded.   This proxy  is  used when  the
+backend  connection  is  HTTP/2.  First,  make  a
+CONNECT request  to the proxy and  it connects to
+the  backend on  behalf of  nghttpx.  This  forms
+tunnel.   After  that, nghttpx  performs  SSL/TLS
+handshake with the downstream through the tunnel.
+The timeouts  when connecting and  making CONNECT
+request       can      be       specified      by
+<a class="reference internal" href="#cmdoption-nghttpx--backend-read-timeout"><em class="xref std std-option">--backend-read-timeout</em></a>                        and
+<a class="reference internal" href="#cmdoption-nghttpx--backend-write-timeout"><em class="xref std std-option">--backend-write-timeout</em></a> options.</p>
+</dd></dl>
+
 </div>
 <div class="section" id="performance">
 <h3>Performance<a class="headerlink" href="#performance" title="Permalink to this headline">¶</a></h3>
@@ -269,6 +290,44 @@ Default: -1</p>
 <span id="cmdoption-nghttpx--workers"></span><tt class="descname">-n</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--workers</tt><tt class="descclassname">=&lt;CORES&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx-n" title="Permalink to this definition">¶</a></dt>
 <dd><p>Set the number of worker threads.
 Default: 1</p>
+</dd></dl>
+
+<dl class="option">
+<dt id="cmdoption-nghttpx--read-rate">
+<tt class="descname">--read-rate</tt><tt class="descclassname">=&lt;RATE&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--read-rate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set  maximum   average  read  rate   on  frontend
+connection.  Setting 0 to  this option means read
+rate is unlimited.
+Default: 0</p>
+</dd></dl>
+
+<dl class="option">
+<dt id="cmdoption-nghttpx--read-burst">
+<tt class="descname">--read-burst</tt><tt class="descclassname">=&lt;SIZE&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--read-burst" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set   maximum  read   burst   size  on   frontend
+connection.  Setting  0 does not work,  but it is
+not  a problem  because  &#8211;read-rate=0 will  give
+unlimited  read rate  regardless  of this  option
+value.
+Default: 1073741824</p>
+</dd></dl>
+
+<dl class="option">
+<dt id="cmdoption-nghttpx--write-rate">
+<tt class="descname">--write-rate</tt><tt class="descclassname">=&lt;RATE&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--write-rate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set  maximum  average   write  rate  on  frontend
+connection.  Setting 0 to this option means write
+rate is unlimited.
+Default: 0</p>
+</dd></dl>
+
+<dl class="option">
+<dt id="cmdoption-nghttpx--write-burst">
+<tt class="descname">--write-burst</tt><tt class="descclassname">=&lt;SIZE&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--write-burst" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set   maximum  write   burst  size   on  frontend
+connection.  Setting 0 to this option means write
+burst size is unlimited.
+Default: 0</p>
 </dd></dl>
 
 <dl class="option">
@@ -391,22 +450,12 @@ Default: 60</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--backend-http-proxy-uri">
-<tt class="descname">--backend-http-proxy-uri</tt><tt class="descclassname">=&lt;URI&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--backend-http-proxy-uri" title="Permalink to this definition">¶</a></dt>
-<dd><p>Specify     proxy     URI     in     the     form
-<a class="reference external" href="http:/">http:/</a>/[&lt;USER&gt;:&lt;PASS&gt;&#64;]&lt;PROXY&gt;:&lt;PORT&gt;.     If   a
-proxy requires authentication, specify &lt;USER&gt; and
-&lt;PASS&gt;.    Note  that   they  must   be  properly
-percent-encoded.   This proxy  is  used when  the
-backend  connection  is  HTTP/2.  First,  make  a
-CONNECT request  to the proxy and  it connects to
-the  backend on  behalf of  nghttpx.  This  forms
-tunnel.   After  that, nghttpx  performs  SSL/TLS
-handshake with the downstream through the tunnel.
-The timeouts  when connecting and  making CONNECT
-request       can      be       specified      by
-<a class="reference internal" href="#cmdoption-nghttpx--backend-read-timeout"><em class="xref std std-option">--backend-read-timeout</em></a>                        and
-<a class="reference internal" href="#cmdoption-nghttpx--backend-write-timeout"><em class="xref std std-option">--backend-write-timeout</em></a> options.</p>
+<dt id="cmdoption-nghttpx--listener-disable-timeout">
+<tt class="descname">--listener-disable-timeout</tt><tt class="descclassname">=&lt;SEC&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--listener-disable-timeout" title="Permalink to this definition">¶</a></dt>
+<dd><p>After  accepting  connection  failed,  connection
+listener is disabled for a given time in seconds.
+Specifying 0 disables this feature.
+Default: 0</p>
 </dd></dl>
 
 </div>
@@ -861,7 +910,7 @@ Default: /etc/nghttpx/nghttpx.conf</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.6.0-DEV',
+            VERSION:'0.6.2-DEV',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  false

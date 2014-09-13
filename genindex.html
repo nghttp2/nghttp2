@@ -8,14 +8,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Index &mdash; nghttp2 0.6.0-DEV documentation</title>
+  <title>Index &mdash; nghttp2 0.6.2-DEV documentation</title>
   
 
   
   
 
   
-  <link href='https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
 
   
   
@@ -29,7 +29,7 @@
   
 
   
-    <link rel="top" title="nghttp2 0.6.0-DEV documentation" href="index.html"/> 
+    <link rel="top" title="nghttp2 0.6.2-DEV documentation" href="index.html"/> 
 
   
   <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
@@ -43,7 +43,9 @@
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-nav-search">
-        <a href="index.html" class="fa fa-home"> nghttp2</a>
+        
+          <a href="index.html" class="fa fa-home"> nghttp2</a>
+        
         <div role="search">
   <form id ="rtd-search-form" class="wy-form" action="search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" />
@@ -187,7 +189,7 @@
   </ul>
   <hr/>
 </div>
-          <div role="main">
+          <div role="main" class="document">
             
 
 <h1 id="index">Index</h1>
@@ -672,6 +674,17 @@
       </dl></dd>
       
   <dt>
+    --listener-disable-timeout=&lt;SEC&gt;
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="nghttpx.1.html#cmdoption-nghttpx--listener-disable-timeout">nghttpx command line option</a>
+  </dt>
+
+      </dl></dd>
+      
+  <dt>
     --no-content-length
   </dt>
 
@@ -760,6 +773,28 @@
       </dl></dd>
       
   <dt>
+    --read-burst=&lt;SIZE&gt;
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="nghttpx.1.html#cmdoption-nghttpx--read-burst">nghttpx command line option</a>
+  </dt>
+
+      </dl></dd>
+      
+  <dt>
+    --read-rate=&lt;RATE&gt;
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="nghttpx.1.html#cmdoption-nghttpx--read-rate">nghttpx command line option</a>
+  </dt>
+
+      </dl></dd>
+      
+  <dt>
     --stream-read-timeout=&lt;SEC&gt;
   </dt>
 
@@ -769,6 +804,8 @@
   </dt>
 
       </dl></dd>
+  </dl></td>
+  <td style="width: 33%" valign="top"><dl>
       
   <dt>
     --stream-write-timeout=&lt;SEC&gt;
@@ -780,8 +817,6 @@
   </dt>
 
       </dl></dd>
-  </dl></td>
-  <td style="width: 33%" valign="top"><dl>
       
   <dt>
     --subcert=&lt;KEYPATH&gt;:&lt;CERTPATH&gt;
@@ -919,6 +954,28 @@
       <dd><dl>
         
   <dt><a href="nghttpx.1.html#cmdoption-nghttpx--worker-write-rate">nghttpx command line option</a>
+  </dt>
+
+      </dl></dd>
+      
+  <dt>
+    --write-burst=&lt;SIZE&gt;
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="nghttpx.1.html#cmdoption-nghttpx--write-burst">nghttpx command line option</a>
+  </dt>
+
+      </dl></dd>
+      
+  <dt>
+    --write-rate=&lt;RATE&gt;
+  </dt>
+
+      <dd><dl>
+        
+  <dt><a href="nghttpx.1.html#cmdoption-nghttpx--write-rate">nghttpx command line option</a>
   </dt>
 
       </dl></dd>
@@ -1792,6 +1849,10 @@
   </dt>
 
       
+  <dt><a href="apiref.html#c.NGHTTP2_ERR_BAD_PREFACE">NGHTTP2_ERR_BAD_PREFACE (C macro)</a>
+  </dt>
+
+      
   <dt><a href="apiref.html#c.NGHTTP2_ERR_BUFFER_ERROR">NGHTTP2_ERR_BUFFER_ERROR (C macro)</a>
   </dt>
 
@@ -2072,6 +2133,10 @@
   </dt>
 
       
+  <dt><a href="apiref.html#c.nghttp2_frame_hd.reserved">nghttp2_frame_hd.reserved (C member)</a>
+  </dt>
+
+      
   <dt><a href="apiref.html#c.nghttp2_frame_hd.stream_id">nghttp2_frame_hd.stream_id (C member)</a>
   </dt>
 
@@ -2113,6 +2178,10 @@
 
       
   <dt><a href="apiref.html#c.nghttp2_goaway.opaque_data_len">nghttp2_goaway.opaque_data_len (C member)</a>
+  </dt>
+
+      
+  <dt><a href="apiref.html#c.nghttp2_goaway.reserved">nghttp2_goaway.reserved (C member)</a>
   </dt>
 
       
@@ -2390,6 +2459,10 @@
   </dt>
 
       
+  <dt><a href="apiref.html#c.nghttp2_option_set_recv_client_preface">nghttp2_option_set_recv_client_preface (C function)</a>
+  </dt>
+
+      
   <dt><a href="apiref.html#c.nghttp2_pack_settings_payload">nghttp2_pack_settings_payload (C function)</a>
   </dt>
 
@@ -2487,6 +2560,10 @@
 
       
   <dt><a href="apiref.html#c.nghttp2_push_promise.promised_stream_id">nghttp2_push_promise.promised_stream_id (C member)</a>
+  </dt>
+
+      
+  <dt><a href="apiref.html#c.nghttp2_push_promise.reserved">nghttp2_push_promise.reserved (C member)</a>
   </dt>
 
       
@@ -2858,6 +2935,10 @@
   </dt>
 
       
+  <dt><a href="apiref.html#c.nghttp2_window_update.reserved">nghttp2_window_update.reserved (C member)</a>
+  </dt>
+
+      
   <dt><a href="apiref.html#c.nghttp2_window_update.window_size_increment">nghttp2_window_update.window_size_increment (C member)</a>
   </dt>
 
@@ -3091,6 +3172,10 @@
   </dt>
 
         
+  <dt><a href="nghttpx.1.html#cmdoption-nghttpx--listener-disable-timeout">--listener-disable-timeout=&lt;SEC&gt;</a>
+  </dt>
+
+        
   <dt><a href="nghttpx.1.html#cmdoption-nghttpx--no-location-rewrite">--no-location-rewrite</a>
   </dt>
 
@@ -3112,6 +3197,14 @@
 
         
   <dt><a href="nghttpx.1.html#cmdoption-nghttpx--private-key-passwd-file">--private-key-passwd-file=&lt;FILEPATH&gt;</a>
+  </dt>
+
+        
+  <dt><a href="nghttpx.1.html#cmdoption-nghttpx--read-burst">--read-burst=&lt;SIZE&gt;</a>
+  </dt>
+
+        
+  <dt><a href="nghttpx.1.html#cmdoption-nghttpx--read-rate">--read-rate=&lt;RATE&gt;</a>
   </dt>
 
         
@@ -3164,6 +3257,14 @@
 
         
   <dt><a href="nghttpx.1.html#cmdoption-nghttpx--worker-write-rate">--worker-write-rate=&lt;RATE&gt;</a>
+  </dt>
+
+        
+  <dt><a href="nghttpx.1.html#cmdoption-nghttpx--write-burst">--write-burst=&lt;SIZE&gt;</a>
+  </dt>
+
+        
+  <dt><a href="nghttpx.1.html#cmdoption-nghttpx--write-rate">--write-rate=&lt;RATE&gt;</a>
   </dt>
 
         
@@ -3375,7 +3476,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.6.0-DEV',
+            VERSION:'0.6.2-DEV',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  false

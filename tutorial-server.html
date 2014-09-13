@@ -7,14 +7,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Tutorial: HTTP/2 server &mdash; nghttp2 0.6.0-DEV documentation</title>
+  <title>Tutorial: HTTP/2 server &mdash; nghttp2 0.6.2-DEV documentation</title>
   
 
   
   
 
   
-  <link href='https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
 
   
   
@@ -28,7 +28,7 @@
   
 
   
-    <link rel="top" title="nghttp2 0.6.0-DEV documentation" href="index.html"/>
+    <link rel="top" title="nghttp2 0.6.2-DEV documentation" href="index.html"/>
         <link rel="next" title="Tutorial: HPACK API" href="tutorial-hpack.html"/>
         <link rel="prev" title="Tutorial: HTTP/2 client" href="tutorial-client.html"/> 
 
@@ -44,7 +44,9 @@
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-nav-search">
-        <a href="index.html" class="fa fa-home"> nghttp2</a>
+        
+          <a href="index.html" class="fa fa-home"> nghttp2</a>
+        
         <div role="search">
   <form id ="rtd-search-form" class="wy-form" action="search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" />
@@ -188,7 +190,7 @@
   </ul>
   <hr/>
 </div>
-          <div role="main">
+          <div role="main" class="document">
             
   <div class="section" id="tutorial-http-2-server">
 <h1>Tutorial: HTTP/2 server<a class="headerlink" href="#tutorial-http-2-server" title="Permalink to this headline">¶</a></h1>
@@ -266,7 +268,6 @@ set to the <tt class="docutils literal"><span class="pre">SSL_CTX</span></tt> ob
   <span class="n">app_context</span> <span class="o">*</span><span class="n">app_ctx</span><span class="p">;</span>
   <span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">;</span>
   <span class="kt">char</span> <span class="o">*</span><span class="n">client_addr</span><span class="p">;</span>
-  <span class="kt">size_t</span> <span class="n">handshake_leftlen</span><span class="p">;</span>
 <span class="p">}</span> <span class="n">http2_session_data</span><span class="p">;</span>
 </pre></div>
 </div>
@@ -279,17 +280,15 @@ set to the <tt class="docutils literal"><span class="pre">SSL_CTX</span></tt> ob
 <span class="p">}</span> <span class="n">http2_stream_data</span><span class="p">;</span>
 </pre></div>
 </div>
-<p>A single HTTP/2 session can have multiple streams.  We manage these multiple
-streams with a doubly linked list. The first element of this list is pointed
-to by the <tt class="docutils literal"><span class="pre">root-&gt;next</span></tt> in <tt class="docutils literal"><span class="pre">http2_session_data</span></tt>.  Initially, <tt class="docutils literal"><span class="pre">root-&gt;next</span></tt>
-is <tt class="docutils literal"><span class="pre">NULL</span></tt>.  The <tt class="docutils literal"><span class="pre">handshake_leftlen</span></tt> member of <tt class="docutils literal"><span class="pre">http2_session_data</span></tt> is
-used to track the number of bytes remaining when receiving the first client
-connection preface (<a class="reference internal" href="apiref.html#c.NGHTTP2_CLIENT_CONNECTION_PREFACE" title="NGHTTP2_CLIENT_CONNECTION_PREFACE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_CLIENT_CONNECTION_PREFACE</span></tt></a>), which is a 24
-bytes long magic string from the client.  We use libevent&#8217;s bufferevent
-structure to perform network I/O. Note that the bufferevent object is kept in
-<tt class="docutils literal"><span class="pre">http2_session_data</span></tt> and not in <tt class="docutils literal"><span class="pre">http2_stream_data</span></tt>. This is because
-<tt class="docutils literal"><span class="pre">http2_stream_data</span></tt> is just a logical stream multiplexed over the single
-connection managed by bufferevent in <tt class="docutils literal"><span class="pre">http2_session_data</span></tt>.</p>
+<p>A single HTTP/2 session can have multiple streams.  We manage these
+multiple streams with a doubly linked list.  The first element of this
+list is pointed to by the <tt class="docutils literal"><span class="pre">root-&gt;next</span></tt> in <tt class="docutils literal"><span class="pre">http2_session_data</span></tt>.
+Initially, <tt class="docutils literal"><span class="pre">root-&gt;next</span></tt> is <tt class="docutils literal"><span class="pre">NULL</span></tt>.  We use libevent&#8217;s bufferevent
+structure to perform network I/O.  Note that the bufferevent object is
+kept in <tt class="docutils literal"><span class="pre">http2_session_data</span></tt> and not in <tt class="docutils literal"><span class="pre">http2_stream_data</span></tt>.  This
+is because <tt class="docutils literal"><span class="pre">http2_stream_data</span></tt> is just a logical stream multiplexed
+over the single connection managed by bufferevent in
+<tt class="docutils literal"><span class="pre">http2_session_data</span></tt>.</p>
 <p>We first create a listener object to accept incoming connections.  We use
 libevent&#8217;s <tt class="docutils literal"><span class="pre">struct</span> <span class="pre">evconnlistener</span></tt> for this purpose:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="k">static</span> <span class="kt">void</span> <span class="nf">start_listen</span><span class="p">(</span><span class="k">struct</span> <span class="n">event_base</span> <span class="o">*</span><span class="n">evbase</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">service</span><span class="p">,</span>
@@ -334,14 +333,15 @@ accepted:</p>
   <span class="n">http2_session_data</span> <span class="o">*</span><span class="n">session_data</span><span class="p">;</span>
 
   <span class="n">session_data</span> <span class="o">=</span> <span class="n">create_http2_session_data</span><span class="p">(</span><span class="n">app_ctx</span><span class="p">,</span> <span class="n">fd</span><span class="p">,</span> <span class="n">addr</span><span class="p">,</span> <span class="n">addrlen</span><span class="p">);</span>
-  <span class="n">bufferevent_setcb</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">bev</span><span class="p">,</span> <span class="n">handshake_readcb</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="n">eventcb</span><span class="p">,</span>
-                    <span class="n">session_data</span><span class="p">);</span>
+
+  <span class="n">bufferevent_setcb</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">bev</span><span class="p">,</span> <span class="n">readcb</span><span class="p">,</span> <span class="n">writecb</span><span class="p">,</span> <span class="n">eventcb</span><span class="p">,</span> <span class="n">session_data</span><span class="p">);</span>
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>Here we create the <tt class="docutils literal"><span class="pre">http2_session_data</span></tt> object. The bufferevent for this
-connection is also initialized at this time. We specify two callbacks for the
-bufferevent: <tt class="docutils literal"><span class="pre">handshake_readcb</span></tt> and <tt class="docutils literal"><span class="pre">eventcb</span></tt>.</p>
+<p>Here we create the <tt class="docutils literal"><span class="pre">http2_session_data</span></tt> object. The bufferevent for
+this connection is also initialized at this time. We specify three
+callbacks for the bufferevent: <tt class="docutils literal"><span class="pre">readcb</span></tt>, <tt class="docutils literal"><span class="pre">writecb</span></tt> and
+<tt class="docutils literal"><span class="pre">eventcb</span></tt>.</p>
 <p>The <tt class="docutils literal"><span class="pre">eventcb()</span></tt> callback is invoked by the libevent event loop when an event
 (e.g., connection has been established, timeout, etc) happens on the
 underlying network socket:</p>
@@ -350,6 +350,14 @@ underlying network socket:</p>
   <span class="n">http2_session_data</span> <span class="o">*</span><span class="n">session_data</span> <span class="o">=</span> <span class="p">(</span><span class="n">http2_session_data</span><span class="o">*</span><span class="p">)</span><span class="n">ptr</span><span class="p">;</span>
   <span class="k">if</span><span class="p">(</span><span class="n">events</span> <span class="o">&amp;</span> <span class="n">BEV_EVENT_CONNECTED</span><span class="p">)</span> <span class="p">{</span>
     <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">&quot;%s connected</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">session_data</span><span class="o">-&gt;</span><span class="n">client_addr</span><span class="p">);</span>
+
+    <span class="n">initialize_nghttp2_session</span><span class="p">(</span><span class="n">session_data</span><span class="p">);</span>
+
+    <span class="k">if</span><span class="p">(</span><span class="n">send_server_connection_header</span><span class="p">(</span><span class="n">session_data</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">delete_http2_session_data</span><span class="p">(</span><span class="n">session_data</span><span class="p">);</span>
+      <span class="k">return</span><span class="p">;</span>
+    <span class="p">}</span>
+
     <span class="k">return</span><span class="p">;</span>
   <span class="p">}</span>
   <span class="k">if</span><span class="p">(</span><span class="n">events</span> <span class="o">&amp;</span> <span class="n">BEV_EVENT_EOF</span><span class="p">)</span> <span class="p">{</span>
@@ -363,56 +371,26 @@ underlying network socket:</p>
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>For the <tt class="docutils literal"><span class="pre">BEV_EVENT_EOF</span></tt>, <tt class="docutils literal"><span class="pre">BEV_EVENT_ERROR</span></tt> and <tt class="docutils literal"><span class="pre">BEV_EVENT_TIMEOUT</span></tt>
-events, we just simply tear down the connection. The
-<tt class="docutils literal"><span class="pre">delete_http2_session_data()</span></tt> function destroys the <tt class="docutils literal"><span class="pre">http2_session_data</span></tt>
-object and thus also its bufferevent member. As a result, the underlying
-connection is closed.  The <tt class="docutils literal"><span class="pre">BEV_EVENT_CONNECTED</span></tt> event is invoked when
-SSL/TLS handshake is finished successfully.</p>
-<p><tt class="docutils literal"><span class="pre">handshake_readcb()</span></tt> is a callback function to handle a 24 bytes magic byte
-string coming from a client, since the nghttp2 library does not handle it:</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="k">static</span> <span class="kt">void</span> <span class="nf">handshake_readcb</span><span class="p">(</span><span class="k">struct</span> <span class="n">bufferevent</span> <span class="o">*</span><span class="n">bev</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span><span class="p">)</span>
-<span class="p">{</span>
-  <span class="n">http2_session_data</span> <span class="o">*</span><span class="n">session_data</span> <span class="o">=</span> <span class="p">(</span><span class="n">http2_session_data</span><span class="o">*</span><span class="p">)</span><span class="n">ptr</span><span class="p">;</span>
-  <span class="kt">uint8_t</span> <span class="n">data</span><span class="p">[</span><span class="mi">24</span><span class="p">];</span>
-  <span class="k">struct</span> <span class="n">evbuffer</span> <span class="o">*</span><span class="n">input</span> <span class="o">=</span> <span class="n">bufferevent_get_input</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">bev</span><span class="p">);</span>
-  <span class="kt">int</span> <span class="n">readlen</span> <span class="o">=</span> <span class="n">evbuffer_remove</span><span class="p">(</span><span class="n">input</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">session_data</span><span class="o">-&gt;</span><span class="n">handshake_leftlen</span><span class="p">);</span>
-  <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">conhead</span> <span class="o">=</span> <span class="n">NGHTTP2_CLIENT_CONNECTION_PREFACE</span><span class="p">;</span>
-
-  <span class="k">if</span><span class="p">(</span><span class="n">memcmp</span><span class="p">(</span><span class="n">conhead</span> <span class="o">+</span> <span class="n">NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN</span>
-            <span class="o">-</span> <span class="n">session_data</span><span class="o">-&gt;</span><span class="n">handshake_leftlen</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">readlen</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
-    <span class="n">delete_http2_session_data</span><span class="p">(</span><span class="n">session_data</span><span class="p">);</span>
-    <span class="k">return</span><span class="p">;</span>
-  <span class="p">}</span>
-  <span class="n">session_data</span><span class="o">-&gt;</span><span class="n">handshake_leftlen</span> <span class="o">-=</span> <span class="n">readlen</span><span class="p">;</span>
-  <span class="k">if</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">handshake_leftlen</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
-    <span class="n">bufferevent_setcb</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">bev</span><span class="p">,</span> <span class="n">readcb</span><span class="p">,</span> <span class="n">writecb</span><span class="p">,</span> <span class="n">eventcb</span><span class="p">,</span> <span class="n">ptr</span><span class="p">);</span>
-    <span class="cm">/* Process pending data in buffer since they are not notified</span>
-<span class="cm">       further */</span>
-    <span class="n">initialize_nghttp2_session</span><span class="p">(</span><span class="n">session_data</span><span class="p">);</span>
-    <span class="k">if</span><span class="p">(</span><span class="n">send_server_connection_header</span><span class="p">(</span><span class="n">session_data</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
-      <span class="n">delete_http2_session_data</span><span class="p">(</span><span class="n">session_data</span><span class="p">);</span>
-      <span class="k">return</span><span class="p">;</span>
-    <span class="p">}</span>
-    <span class="k">if</span><span class="p">(</span><span class="n">session_recv</span><span class="p">(</span><span class="n">session_data</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
-      <span class="n">delete_http2_session_data</span><span class="p">(</span><span class="n">session_data</span><span class="p">);</span>
-      <span class="k">return</span><span class="p">;</span>
-    <span class="p">}</span>
-  <span class="p">}</span>
-<span class="p">}</span>
-</pre></div>
-</div>
-<p>We check that the received byte string matches
-<a class="reference internal" href="apiref.html#c.NGHTTP2_CLIENT_CONNECTION_PREFACE" title="NGHTTP2_CLIENT_CONNECTION_PREFACE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_CLIENT_CONNECTION_PREFACE</span></tt></a>.  When they match, the connection
-state is ready to start the HTTP/2 communication. First we change the callback
-functions for the bufferevent object. We use the same <tt class="docutils literal"><span class="pre">eventcb</span></tt> callback as
-before, but we specify new <tt class="docutils literal"><span class="pre">readcb</span></tt> and <tt class="docutils literal"><span class="pre">writecb</span></tt> functions to handle the
-HTTP/2 communication. These two functions are described later.</p>
+<p>For the <tt class="docutils literal"><span class="pre">BEV_EVENT_EOF</span></tt>, <tt class="docutils literal"><span class="pre">BEV_EVENT_ERROR</span></tt> and
+<tt class="docutils literal"><span class="pre">BEV_EVENT_TIMEOUT</span></tt> events, we just simply tear down the connection.
+The <tt class="docutils literal"><span class="pre">delete_http2_session_data()</span></tt> function destroys the
+<tt class="docutils literal"><span class="pre">http2_session_data</span></tt> object and thus also its bufferevent member.
+As a result, the underlying connection is closed.  The
+<tt class="docutils literal"><span class="pre">BEV_EVENT_CONNECTED</span></tt> event is invoked when SSL/TLS handshake is
+finished successfully.  Now we are ready to start the HTTP/2
+communication.</p>
 <p>We initialize a nghttp2 session object which is done in
 <tt class="docutils literal"><span class="pre">initialize_nghttp2_session()</span></tt>:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="k">static</span> <span class="kt">void</span> <span class="nf">initialize_nghttp2_session</span><span class="p">(</span><span class="n">http2_session_data</span> <span class="o">*</span><span class="n">session_data</span><span class="p">)</span>
 <span class="p">{</span>
+  <span class="n">nghttp2_option</span> <span class="o">*</span><span class="n">option</span><span class="p">;</span>
   <span class="n">nghttp2_session_callbacks</span> <span class="o">*</span><span class="n">callbacks</span><span class="p">;</span>
+
+  <span class="n">nghttp2_option_new</span><span class="p">(</span><span class="o">&amp;</span><span class="n">option</span><span class="p">);</span>
+
+  <span class="cm">/* Tells nghttp2_session object that it handles client connection</span>
+<span class="cm">     preface */</span>
+  <span class="n">nghttp2_option_set_recv_client_preface</span><span class="p">(</span><span class="n">option</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
 
   <span class="n">nghttp2_session_callbacks_new</span><span class="p">(</span><span class="o">&amp;</span><span class="n">callbacks</span><span class="p">);</span>
 
@@ -430,15 +408,23 @@ HTTP/2 communication. These two functions are described later.</p>
   <span class="n">nghttp2_session_callbacks_set_on_begin_headers_callback</span>
     <span class="p">(</span><span class="n">callbacks</span><span class="p">,</span> <span class="n">on_begin_headers_callback</span><span class="p">);</span>
 
-  <span class="n">nghttp2_session_server_new</span><span class="p">(</span><span class="o">&amp;</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">session</span><span class="p">,</span> <span class="n">callbacks</span><span class="p">,</span> <span class="n">session_data</span><span class="p">);</span>
+
+
+  <span class="n">nghttp2_session_server_new2</span><span class="p">(</span><span class="o">&amp;</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">session</span><span class="p">,</span> <span class="n">callbacks</span><span class="p">,</span> <span class="n">session_data</span><span class="p">,</span>
+                              <span class="n">option</span><span class="p">);</span>
 
   <span class="n">nghttp2_session_callbacks_del</span><span class="p">(</span><span class="n">callbacks</span><span class="p">);</span>
+  <span class="n">nghttp2_option_del</span><span class="p">(</span><span class="n">option</span><span class="p">);</span>
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>Since we are creating a server, the nghttp2 session object is created using
-<a class="reference internal" href="apiref.html#c.nghttp2_session_server_new" title="nghttp2_session_server_new"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_server_new()</span></tt></a> function. We registers five callbacks for
-nghttp2 session object. We&#8217;ll talk about these callbacks later.</p>
+<p>Since we are creating a server and uses options, the nghttp2 session
+object is created using <a class="reference internal" href="apiref.html#c.nghttp2_session_server_new2" title="nghttp2_session_server_new2"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_server_new2()</span></tt></a> function.  We
+registers five callbacks for nghttp2 session object.  We&#8217;ll talk about
+these callbacks later.  Our server only speaks HTTP/2.  In this case,
+we use <a class="reference internal" href="apiref.html#c.nghttp2_option_set_recv_client_preface" title="nghttp2_option_set_recv_client_preface"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_option_set_recv_client_preface()</span></tt></a> to make
+<a class="reference internal" href="apiref.html#c.nghttp2_session" title="nghttp2_session"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_session</span></tt></a> object handle client connection preface, which
+saves some lines of application code.</p>
 <p>After initialization of the nghttp2 session object, we are going to send
 a server connection header in <tt class="docutils literal"><span class="pre">send_server_connection_header()</span></tt>:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="k">static</span> <span class="kt">int</span> <span class="nf">send_server_connection_header</span><span class="p">(</span><span class="n">http2_session_data</span> <span class="o">*</span><span class="n">session_data</span><span class="p">)</span>
@@ -840,7 +826,6 @@ is about to close and we no longer use that object.</p>
   <span class="n">app_context</span> <span class="o">*</span><span class="n">app_ctx</span><span class="p">;</span>
   <span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">;</span>
   <span class="kt">char</span> <span class="o">*</span><span class="n">client_addr</span><span class="p">;</span>
-  <span class="kt">size_t</span> <span class="n">handshake_leftlen</span><span class="p">;</span>
 <span class="p">}</span> <span class="n">http2_session_data</span><span class="p">;</span>
 
 <span class="k">struct</span> <span class="n">app_context</span> <span class="p">{</span>
@@ -963,7 +948,6 @@ is about to close and we no longer use that object.</p>
     <span class="p">(</span><span class="n">app_ctx</span><span class="o">-&gt;</span><span class="n">evbase</span><span class="p">,</span> <span class="n">fd</span><span class="p">,</span> <span class="n">ssl</span><span class="p">,</span>
      <span class="n">BUFFEREVENT_SSL_ACCEPTING</span><span class="p">,</span>
      <span class="n">BEV_OPT_CLOSE_ON_FREE</span> <span class="o">|</span> <span class="n">BEV_OPT_DEFER_CALLBACKS</span><span class="p">);</span>
-  <span class="n">session_data</span><span class="o">-&gt;</span><span class="n">handshake_leftlen</span> <span class="o">=</span> <span class="n">NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN</span><span class="p">;</span>
   <span class="n">rv</span> <span class="o">=</span> <span class="n">getnameinfo</span><span class="p">(</span><span class="n">addr</span><span class="p">,</span> <span class="n">addrlen</span><span class="p">,</span> <span class="n">host</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">host</span><span class="p">),</span> <span class="nb">NULL</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">NI_NUMERICHOST</span><span class="p">);</span>
   <span class="k">if</span><span class="p">(</span><span class="n">rv</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
     <span class="n">session_data</span><span class="o">-&gt;</span><span class="n">client_addr</span> <span class="o">=</span> <span class="n">strdup</span><span class="p">(</span><span class="s">&quot;(unknown)&quot;</span><span class="p">);</span>
@@ -1326,7 +1310,14 @@ is about to close and we no longer use that object.</p>
 
 <span class="k">static</span> <span class="kt">void</span> <span class="nf">initialize_nghttp2_session</span><span class="p">(</span><span class="n">http2_session_data</span> <span class="o">*</span><span class="n">session_data</span><span class="p">)</span>
 <span class="p">{</span>
+  <span class="n">nghttp2_option</span> <span class="o">*</span><span class="n">option</span><span class="p">;</span>
   <span class="n">nghttp2_session_callbacks</span> <span class="o">*</span><span class="n">callbacks</span><span class="p">;</span>
+
+  <span class="n">nghttp2_option_new</span><span class="p">(</span><span class="o">&amp;</span><span class="n">option</span><span class="p">);</span>
+
+  <span class="cm">/* Tells nghttp2_session object that it handles client connection</span>
+<span class="cm">     preface */</span>
+  <span class="n">nghttp2_option_set_recv_client_preface</span><span class="p">(</span><span class="n">option</span><span class="p">,</span> <span class="mi">1</span><span class="p">);</span>
 
   <span class="n">nghttp2_session_callbacks_new</span><span class="p">(</span><span class="o">&amp;</span><span class="n">callbacks</span><span class="p">);</span>
 
@@ -1344,9 +1335,13 @@ is about to close and we no longer use that object.</p>
   <span class="n">nghttp2_session_callbacks_set_on_begin_headers_callback</span>
     <span class="p">(</span><span class="n">callbacks</span><span class="p">,</span> <span class="n">on_begin_headers_callback</span><span class="p">);</span>
 
-  <span class="n">nghttp2_session_server_new</span><span class="p">(</span><span class="o">&amp;</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">session</span><span class="p">,</span> <span class="n">callbacks</span><span class="p">,</span> <span class="n">session_data</span><span class="p">);</span>
+
+
+  <span class="n">nghttp2_session_server_new2</span><span class="p">(</span><span class="o">&amp;</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">session</span><span class="p">,</span> <span class="n">callbacks</span><span class="p">,</span> <span class="n">session_data</span><span class="p">,</span>
+                              <span class="n">option</span><span class="p">);</span>
 
   <span class="n">nghttp2_session_callbacks_del</span><span class="p">(</span><span class="n">callbacks</span><span class="p">);</span>
+  <span class="n">nghttp2_option_del</span><span class="p">(</span><span class="n">option</span><span class="p">);</span>
 <span class="p">}</span>
 
 <span class="cm">/* Send HTTP/2 client connection header, which includes 24 bytes</span>
@@ -1409,6 +1404,14 @@ is about to close and we no longer use that object.</p>
   <span class="n">http2_session_data</span> <span class="o">*</span><span class="n">session_data</span> <span class="o">=</span> <span class="p">(</span><span class="n">http2_session_data</span><span class="o">*</span><span class="p">)</span><span class="n">ptr</span><span class="p">;</span>
   <span class="k">if</span><span class="p">(</span><span class="n">events</span> <span class="o">&amp;</span> <span class="n">BEV_EVENT_CONNECTED</span><span class="p">)</span> <span class="p">{</span>
     <span class="n">fprintf</span><span class="p">(</span><span class="n">stderr</span><span class="p">,</span> <span class="s">&quot;%s connected</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">,</span> <span class="n">session_data</span><span class="o">-&gt;</span><span class="n">client_addr</span><span class="p">);</span>
+
+    <span class="n">initialize_nghttp2_session</span><span class="p">(</span><span class="n">session_data</span><span class="p">);</span>
+
+    <span class="k">if</span><span class="p">(</span><span class="n">send_server_connection_header</span><span class="p">(</span><span class="n">session_data</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">delete_http2_session_data</span><span class="p">(</span><span class="n">session_data</span><span class="p">);</span>
+      <span class="k">return</span><span class="p">;</span>
+    <span class="p">}</span>
+
     <span class="k">return</span><span class="p">;</span>
   <span class="p">}</span>
   <span class="k">if</span><span class="p">(</span><span class="n">events</span> <span class="o">&amp;</span> <span class="n">BEV_EVENT_EOF</span><span class="p">)</span> <span class="p">{</span>
@@ -1421,38 +1424,6 @@ is about to close and we no longer use that object.</p>
   <span class="n">delete_http2_session_data</span><span class="p">(</span><span class="n">session_data</span><span class="p">);</span>
 <span class="p">}</span>
 
-<span class="cm">/* readcb for bufferevent to check first 24 bytes client connection</span>
-<span class="cm">   header. */</span>
-<span class="k">static</span> <span class="kt">void</span> <span class="nf">handshake_readcb</span><span class="p">(</span><span class="k">struct</span> <span class="n">bufferevent</span> <span class="o">*</span><span class="n">bev</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span><span class="p">)</span>
-<span class="p">{</span>
-  <span class="n">http2_session_data</span> <span class="o">*</span><span class="n">session_data</span> <span class="o">=</span> <span class="p">(</span><span class="n">http2_session_data</span><span class="o">*</span><span class="p">)</span><span class="n">ptr</span><span class="p">;</span>
-  <span class="kt">uint8_t</span> <span class="n">data</span><span class="p">[</span><span class="mi">24</span><span class="p">];</span>
-  <span class="k">struct</span> <span class="n">evbuffer</span> <span class="o">*</span><span class="n">input</span> <span class="o">=</span> <span class="n">bufferevent_get_input</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">bev</span><span class="p">);</span>
-  <span class="kt">int</span> <span class="n">readlen</span> <span class="o">=</span> <span class="n">evbuffer_remove</span><span class="p">(</span><span class="n">input</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">session_data</span><span class="o">-&gt;</span><span class="n">handshake_leftlen</span><span class="p">);</span>
-  <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">conhead</span> <span class="o">=</span> <span class="n">NGHTTP2_CLIENT_CONNECTION_PREFACE</span><span class="p">;</span>
-
-  <span class="k">if</span><span class="p">(</span><span class="n">memcmp</span><span class="p">(</span><span class="n">conhead</span> <span class="o">+</span> <span class="n">NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN</span>
-            <span class="o">-</span> <span class="n">session_data</span><span class="o">-&gt;</span><span class="n">handshake_leftlen</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">readlen</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
-    <span class="n">delete_http2_session_data</span><span class="p">(</span><span class="n">session_data</span><span class="p">);</span>
-    <span class="k">return</span><span class="p">;</span>
-  <span class="p">}</span>
-  <span class="n">session_data</span><span class="o">-&gt;</span><span class="n">handshake_leftlen</span> <span class="o">-=</span> <span class="n">readlen</span><span class="p">;</span>
-  <span class="k">if</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">handshake_leftlen</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
-    <span class="n">bufferevent_setcb</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">bev</span><span class="p">,</span> <span class="n">readcb</span><span class="p">,</span> <span class="n">writecb</span><span class="p">,</span> <span class="n">eventcb</span><span class="p">,</span> <span class="n">ptr</span><span class="p">);</span>
-    <span class="cm">/* Process pending data in buffer since they are not notified</span>
-<span class="cm">       further */</span>
-    <span class="n">initialize_nghttp2_session</span><span class="p">(</span><span class="n">session_data</span><span class="p">);</span>
-    <span class="k">if</span><span class="p">(</span><span class="n">send_server_connection_header</span><span class="p">(</span><span class="n">session_data</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
-      <span class="n">delete_http2_session_data</span><span class="p">(</span><span class="n">session_data</span><span class="p">);</span>
-      <span class="k">return</span><span class="p">;</span>
-    <span class="p">}</span>
-    <span class="k">if</span><span class="p">(</span><span class="n">session_recv</span><span class="p">(</span><span class="n">session_data</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
-      <span class="n">delete_http2_session_data</span><span class="p">(</span><span class="n">session_data</span><span class="p">);</span>
-      <span class="k">return</span><span class="p">;</span>
-    <span class="p">}</span>
-  <span class="p">}</span>
-<span class="p">}</span>
-
 <span class="cm">/* callback for evconnlistener */</span>
 <span class="k">static</span> <span class="kt">void</span> <span class="nf">acceptcb</span><span class="p">(</span><span class="k">struct</span> <span class="n">evconnlistener</span> <span class="o">*</span><span class="n">listener</span><span class="p">,</span> <span class="kt">int</span> <span class="n">fd</span><span class="p">,</span>
                      <span class="k">struct</span> <span class="n">sockaddr</span> <span class="o">*</span><span class="n">addr</span><span class="p">,</span> <span class="kt">int</span> <span class="n">addrlen</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">arg</span><span class="p">)</span>
@@ -1461,8 +1432,8 @@ is about to close and we no longer use that object.</p>
   <span class="n">http2_session_data</span> <span class="o">*</span><span class="n">session_data</span><span class="p">;</span>
 
   <span class="n">session_data</span> <span class="o">=</span> <span class="n">create_http2_session_data</span><span class="p">(</span><span class="n">app_ctx</span><span class="p">,</span> <span class="n">fd</span><span class="p">,</span> <span class="n">addr</span><span class="p">,</span> <span class="n">addrlen</span><span class="p">);</span>
-  <span class="n">bufferevent_setcb</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">bev</span><span class="p">,</span> <span class="n">handshake_readcb</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">,</span> <span class="n">eventcb</span><span class="p">,</span>
-                    <span class="n">session_data</span><span class="p">);</span>
+
+  <span class="n">bufferevent_setcb</span><span class="p">(</span><span class="n">session_data</span><span class="o">-&gt;</span><span class="n">bev</span><span class="p">,</span> <span class="n">readcb</span><span class="p">,</span> <span class="n">writecb</span><span class="p">,</span> <span class="n">eventcb</span><span class="p">,</span> <span class="n">session_data</span><span class="p">);</span>
 <span class="p">}</span>
 
 <span class="k">static</span> <span class="kt">void</span> <span class="nf">start_listen</span><span class="p">(</span><span class="k">struct</span> <span class="n">event_base</span> <span class="o">*</span><span class="n">evbase</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">service</span><span class="p">,</span>
@@ -1589,7 +1560,7 @@ is about to close and we no longer use that object.</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.6.0-DEV',
+            VERSION:'0.6.2-DEV',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  false
