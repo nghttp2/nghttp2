@@ -69,7 +69,6 @@ typedef struct http2_session_data {
   app_context *app_ctx;
   nghttp2_session *session;
   char *client_addr;
-  size_t handshake_leftlen;
 } http2_session_data;
 
 struct app_context {
@@ -192,7 +191,6 @@ static http2_session_data* create_http2_session_data(app_context *app_ctx,
     (app_ctx->evbase, fd, ssl,
      BUFFEREVENT_SSL_ACCEPTING,
      BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
-  session_data->handshake_leftlen = NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN;
   rv = getnameinfo(addr, addrlen, host, sizeof(host), NULL, 0, NI_NUMERICHOST);
   if(rv != 0) {
     session_data->client_addr = strdup("(unknown)");
@@ -555,7 +553,14 @@ static int on_stream_close_callback(nghttp2_session *session,
 
 static void initialize_nghttp2_session(http2_session_data *session_data)
 {
+  nghttp2_option *option;
   nghttp2_session_callbacks *callbacks;
+
+  nghttp2_option_new(&option);
+
+  /* Tells nghttp2_session object that it handles client connection
+     preface */
+  nghttp2_option_set_recv_client_preface(option, 1);
 
   nghttp2_session_callbacks_new(&callbacks);
 
@@ -573,9 +578,13 @@ static void initialize_nghttp2_session(http2_session_data *session_data)
   nghttp2_session_callbacks_set_on_begin_headers_callback
     (callbacks, on_begin_headers_callback);
 
-  nghttp2_session_server_new(&session_data->session, callbacks, session_data);
+
+
+  nghttp2_session_server_new2(&session_data->session, callbacks, session_data,
+                              option);
 
   nghttp2_session_callbacks_del(callbacks);
+  nghttp2_option_del(option);
 }
 
 /* Send HTTP/2 client connection header, which includes 24 bytes
@@ -638,6 +647,14 @@ static void eventcb(struct bufferevent *bev, short events, void *ptr)
   http2_session_data *session_data = (http2_session_data*)ptr;
   if(events & BEV_EVENT_CONNECTED) {
     fprintf(stderr, "%s connected\n", session_data->client_addr);
+
+    initialize_nghttp2_session(session_data);
+
+    if(send_server_connection_header(session_data) != 0) {
+      delete_http2_session_data(session_data);
+      return;
+    }
+
     return;
   }
   if(events & BEV_EVENT_EOF) {
@@ -650,38 +667,6 @@ static void eventcb(struct bufferevent *bev, short events, void *ptr)
   delete_http2_session_data(session_data);
 }
 
-/* readcb for bufferevent to check first 24 bytes client connection
-   header. */
-static void handshake_readcb(struct bufferevent *bev, void *ptr)
-{
-  http2_session_data *session_data = (http2_session_data*)ptr;
-  uint8_t data[24];
-  struct evbuffer *input = bufferevent_get_input(session_data->bev);
-  int readlen = evbuffer_remove(input, data, session_data->handshake_leftlen);
-  const char *conhead = NGHTTP2_CLIENT_CONNECTION_PREFACE;
-
-  if(memcmp(conhead + NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN
-            - session_data->handshake_leftlen, data, readlen) != 0) {
-    delete_http2_session_data(session_data);
-    return;
-  }
-  session_data->handshake_leftlen -= readlen;
-  if(session_data->handshake_leftlen == 0) {
-    bufferevent_setcb(session_data->bev, readcb, writecb, eventcb, ptr);
-    /* Process pending data in buffer since they are not notified
-       further */
-    initialize_nghttp2_session(session_data);
-    if(send_server_connection_header(session_data) != 0) {
-      delete_http2_session_data(session_data);
-      return;
-    }
-    if(session_recv(session_data) != 0) {
-      delete_http2_session_data(session_data);
-      return;
-    }
-  }
-}
-
 /* callback for evconnlistener */
 static void acceptcb(struct evconnlistener *listener, int fd,
                      struct sockaddr *addr, int addrlen, void *arg)
@@ -690,8 +675,8 @@ static void acceptcb(struct evconnlistener *listener, int fd,
   http2_session_data *session_data;
 
   session_data = create_http2_session_data(app_ctx, fd, addr, addrlen);
-  bufferevent_setcb(session_data->bev, handshake_readcb, NULL, eventcb,
-                    session_data);
+
+  bufferevent_setcb(session_data->bev, readcb, writecb, eventcb, session_data);
 }
 
 static void start_listen(struct event_base *evbase, const char *service,

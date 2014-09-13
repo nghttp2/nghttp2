@@ -79,7 +79,6 @@ We use the ``http2_session_data`` structure to store session-level
       app_context *app_ctx;
       nghttp2_session *session;
       char *client_addr;
-      size_t handshake_leftlen;
     } http2_session_data;
 
 We use the ``http2_stream_data`` structure to store stream-level data::
@@ -91,17 +90,15 @@ We use the ``http2_stream_data`` structure to store stream-level data::
       int fd;
     } http2_stream_data;
 
-A single HTTP/2 session can have multiple streams.  We manage these multiple
-streams with a doubly linked list. The first element of this list is pointed
-to by the ``root->next`` in ``http2_session_data``.  Initially, ``root->next``
-is ``NULL``.  The ``handshake_leftlen`` member of ``http2_session_data`` is
-used to track the number of bytes remaining when receiving the first client
-connection preface (:macro:`NGHTTP2_CLIENT_CONNECTION_PREFACE`), which is a 24
-bytes long magic string from the client.  We use libevent's bufferevent
-structure to perform network I/O. Note that the bufferevent object is kept in
-``http2_session_data`` and not in ``http2_stream_data``. This is because
-``http2_stream_data`` is just a logical stream multiplexed over the single
-connection managed by bufferevent in ``http2_session_data``.
+A single HTTP/2 session can have multiple streams.  We manage these
+multiple streams with a doubly linked list.  The first element of this
+list is pointed to by the ``root->next`` in ``http2_session_data``.
+Initially, ``root->next`` is ``NULL``.  We use libevent's bufferevent
+structure to perform network I/O.  Note that the bufferevent object is
+kept in ``http2_session_data`` and not in ``http2_stream_data``.  This
+is because ``http2_stream_data`` is just a logical stream multiplexed
+over the single connection managed by bufferevent in
+``http2_session_data``.
 
 We first create a listener object to accept incoming connections.  We use
 libevent's ``struct evconnlistener`` for this purpose::
@@ -148,13 +145,14 @@ accepted::
       http2_session_data *session_data;
 
       session_data = create_http2_session_data(app_ctx, fd, addr, addrlen);
-      bufferevent_setcb(session_data->bev, handshake_readcb, NULL, eventcb,
-                        session_data);
+
+      bufferevent_setcb(session_data->bev, readcb, writecb, eventcb, session_data);
     }
 
-Here we create the ``http2_session_data`` object. The bufferevent for this
-connection is also initialized at this time. We specify two callbacks for the
-bufferevent: ``handshake_readcb`` and ``eventcb``.
+Here we create the ``http2_session_data`` object. The bufferevent for
+this connection is also initialized at this time. We specify three
+callbacks for the bufferevent: ``readcb``, ``writecb`` and
+``eventcb``.
 
 The ``eventcb()`` callback is invoked by the libevent event loop when an event
 (e.g., connection has been established, timeout, etc) happens on the
@@ -165,6 +163,14 @@ underlying network socket::
       http2_session_data *session_data = (http2_session_data*)ptr;
       if(events & BEV_EVENT_CONNECTED) {
         fprintf(stderr, "%s connected\n", session_data->client_addr);
+
+        initialize_nghttp2_session(session_data);
+
+        if(send_server_connection_header(session_data) != 0) {
+          delete_http2_session_data(session_data);
+          return;
+        }
+
         return;
       }
       if(events & BEV_EVENT_EOF) {
@@ -177,59 +183,28 @@ underlying network socket::
       delete_http2_session_data(session_data);
     }
 
-For the ``BEV_EVENT_EOF``, ``BEV_EVENT_ERROR`` and ``BEV_EVENT_TIMEOUT``
-events, we just simply tear down the connection. The
-``delete_http2_session_data()`` function destroys the ``http2_session_data``
-object and thus also its bufferevent member. As a result, the underlying
-connection is closed.  The ``BEV_EVENT_CONNECTED`` event is invoked when
-SSL/TLS handshake is finished successfully.
-
-``handshake_readcb()`` is a callback function to handle a 24 bytes magic byte
-string coming from a client, since the nghttp2 library does not handle it::
-
-    static void handshake_readcb(struct bufferevent *bev, void *ptr)
-    {
-      http2_session_data *session_data = (http2_session_data*)ptr;
-      uint8_t data[24];
-      struct evbuffer *input = bufferevent_get_input(session_data->bev);
-      int readlen = evbuffer_remove(input, data, session_data->handshake_leftlen);
-      const char *conhead = NGHTTP2_CLIENT_CONNECTION_PREFACE;
-
-      if(memcmp(conhead + NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN
-                - session_data->handshake_leftlen, data, readlen) != 0) {
-        delete_http2_session_data(session_data);
-        return;
-      }
-      session_data->handshake_leftlen -= readlen;
-      if(session_data->handshake_leftlen == 0) {
-        bufferevent_setcb(session_data->bev, readcb, writecb, eventcb, ptr);
-        /* Process pending data in buffer since they are not notified
-           further */
-        initialize_nghttp2_session(session_data);
-        if(send_server_connection_header(session_data) != 0) {
-          delete_http2_session_data(session_data);
-          return;
-        }
-        if(session_recv(session_data) != 0) {
-          delete_http2_session_data(session_data);
-          return;
-        }
-      }
-    }
-
-We check that the received byte string matches
-:macro:`NGHTTP2_CLIENT_CONNECTION_PREFACE`.  When they match, the connection
-state is ready to start the HTTP/2 communication. First we change the callback
-functions for the bufferevent object. We use the same ``eventcb`` callback as
-before, but we specify new ``readcb`` and ``writecb`` functions to handle the
-HTTP/2 communication. These two functions are described later.
+For the ``BEV_EVENT_EOF``, ``BEV_EVENT_ERROR`` and
+``BEV_EVENT_TIMEOUT`` events, we just simply tear down the connection.
+The ``delete_http2_session_data()`` function destroys the
+``http2_session_data`` object and thus also its bufferevent member.
+As a result, the underlying connection is closed.  The
+``BEV_EVENT_CONNECTED`` event is invoked when SSL/TLS handshake is
+finished successfully.  Now we are ready to start the HTTP/2
+communication.
 
 We initialize a nghttp2 session object which is done in
 ``initialize_nghttp2_session()``::
 
     static void initialize_nghttp2_session(http2_session_data *session_data)
     {
+      nghttp2_option *option;
       nghttp2_session_callbacks *callbacks;
+
+      nghttp2_option_new(&option);
+
+      /* Tells nghttp2_session object that it handles client connection
+         preface */
+      nghttp2_option_set_recv_client_preface(option, 1);
 
       nghttp2_session_callbacks_new(&callbacks);
 
@@ -247,14 +222,22 @@ We initialize a nghttp2 session object which is done in
       nghttp2_session_callbacks_set_on_begin_headers_callback
         (callbacks, on_begin_headers_callback);
 
-      nghttp2_session_server_new(&session_data->session, callbacks, session_data);
+
+
+      nghttp2_session_server_new2(&session_data->session, callbacks, session_data,
+                                  option);
 
       nghttp2_session_callbacks_del(callbacks);
+      nghttp2_option_del(option);
     }
 
-Since we are creating a server, the nghttp2 session object is created using
-`nghttp2_session_server_new()` function. We registers five callbacks for
-nghttp2 session object. We'll talk about these callbacks later.
+Since we are creating a server and uses options, the nghttp2 session
+object is created using `nghttp2_session_server_new2()` function.  We
+registers five callbacks for nghttp2 session object.  We'll talk about
+these callbacks later.  Our server only speaks HTTP/2.  In this case,
+we use `nghttp2_option_set_recv_client_preface()` to make
+:type:`nghttp2_session` object handle client connection preface, which
+saves some lines of application code.
 
 After initialization of the nghttp2 session object, we are going to send
 a server connection header in ``send_server_connection_header()``::
