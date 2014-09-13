@@ -398,12 +398,27 @@ static int session_new(nghttp2_session **session_ptr,
         option->peer_max_concurrent_streams;
 
     }
+
+    if(option->opt_set_mask & NGHTTP2_OPT_RECV_CLIENT_PREFACE) {
+
+      (*session_ptr)->opt_flags |= NGHTTP2_OPTMASK_RECV_CLIENT_PREFACE;
+
+    }
   }
 
   (*session_ptr)->callbacks = *callbacks;
   (*session_ptr)->user_data = user_data;
 
   session_inbound_frame_reset(*session_ptr);
+
+  if(server &&
+     ((*session_ptr)->opt_flags & NGHTTP2_OPTMASK_RECV_CLIENT_PREFACE)) {
+
+    nghttp2_inbound_frame *iframe = &(*session_ptr)->iframe;
+
+    iframe->state = NGHTTP2_IB_READ_CLIENT_PREFACE;
+    iframe->payloadleft = NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN;
+  }
 
   return 0;
 
@@ -4338,6 +4353,23 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
 
   for(;;) {
     switch(iframe->state) {
+    case NGHTTP2_IB_READ_CLIENT_PREFACE:
+      readlen = nghttp2_min(inlen, iframe->payloadleft);
+
+      if(memcmp(NGHTTP2_CLIENT_CONNECTION_PREFACE +
+                NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN - iframe->payloadleft,
+                in, readlen) != 0) {
+        return NGHTTP2_ERR_BAD_PREFACE;
+      }
+
+      iframe->payloadleft -= readlen;
+      in += readlen;
+
+      if(iframe->payloadleft == 0) {
+        session_inbound_frame_reset(session);
+      }
+
+      break;
     case NGHTTP2_IB_READ_HEAD: {
       int on_begin_frame_called = 0;
 

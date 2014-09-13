@@ -66,6 +66,7 @@ struct Config {
   std::string dh_param_file;
   timeval stream_read_timeout;
   timeval stream_write_timeout;
+  nghttp2_option *session_option;
   void *data_ptr;
   size_t padding;
   size_t num_worker;
@@ -138,8 +139,6 @@ public:
   int64_t session_id() const;
   Sessions* get_sessions() const;
   const Config* get_config() const;
-  size_t get_left_connhd_len() const;
-  void set_left_connhd_len(size_t left);
   void remove_settings_timer();
   void terminate_session(uint32_t error_code);
   int tls_handshake();
@@ -159,7 +158,6 @@ private:
   event *settings_timerev_;
   const uint8_t *pending_data_;
   size_t pending_datalen_;
-  size_t left_connhd_len_;
   int fd_;
   uint8_t sendbufarray_[65536];
 };

@@ -341,7 +341,12 @@ typedef enum {
   /**
    * The user callback function failed.  This is a fatal error.
    */
-  NGHTTP2_ERR_CALLBACK_FAILURE = -902
+  NGHTTP2_ERR_CALLBACK_FAILURE = -902,
+  /**
+   * Invalid connection preface was received and further processing is
+   * not possible.
+   */
+  NGHTTP2_ERR_BAD_PREFACE = -903
 } nghttp2_error;
 
 /**
@@ -1739,6 +1744,24 @@ void nghttp2_option_set_peer_max_concurrent_streams(nghttp2_option *option,
 /**
  * @function
  *
+ * By default, nghttp2 library only handles HTTP/2 frames and does not
+ * recognize first 24 bytes of client connection preface.  This design
+ * choice is done due to the fact that server may want to detect the
+ * application protocol based on first few bytes on clear text
+ * communication.  But for simple servers which only speak HTTP/2, it
+ * is easier for developers if nghttp2 library takes care of client
+ * connection preface.
+ *
+ * If this option is used with nonzero |val|, nghttp2 library checks
+ * first 24 bytes client connection preface.  If it is not a valid
+ * one, `nghttp2_session_recv()` and `nghttp2_session_mem_recv()` will
+ * return error :enum:`NGHTTP2_ERR_BAD_PREFACE`, which is fatal error.
+ */
+void nghttp2_option_set_recv_client_preface(nghttp2_option *option, int val);
+
+/**
+ * @function
+ *
  * Initializes |*session_ptr| for client use.  The all members of
  * |callbacks| are copied to |*session_ptr|.  Therefore |*session_ptr|
  * does not store |callbacks|.  The |user_data| is an arbitrary user
@@ -1986,6 +2009,10 @@ ssize_t nghttp2_session_mem_send(nghttp2_session *session,
  *     Out of memory.
  * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`
  *     The callback function failed.
+ * :enum:`NGHTTP2_ERR_BAD_PREFACE`
+ *     Invalid client preface was detected.  This error only returns
+ *     when |session| was configured as server and
+ *     `nghttp2_option_set_recv_client_preface()` is used.
  */
 int nghttp2_session_recv(nghttp2_session *session);
 
@@ -2017,6 +2044,10 @@ int nghttp2_session_recv(nghttp2_session *session);
  *     Out of memory.
  * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`
  *     The callback function failed.
+ * :enum:`NGHTTP2_ERR_BAD_PREFACE`
+ *     Invalid client preface was detected.  This error only returns
+ *     when |session| was configured as server and
+ *     `nghttp2_option_set_recv_client_preface()` is used.
  */
 ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
                                  const uint8_t *in, size_t inlen);

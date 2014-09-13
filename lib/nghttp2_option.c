@@ -52,3 +52,10 @@ void nghttp2_option_set_peer_max_concurrent_streams(nghttp2_option *option,
   option->opt_set_mask |= NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS;
   option->peer_max_concurrent_streams = val;
 }
+
+void nghttp2_option_set_recv_client_preface
+(nghttp2_option *option, int val)
+{
+  option->opt_set_mask |= NGHTTP2_OPT_RECV_CLIENT_PREFACE;
+  option->recv_client_preface = val;
+}

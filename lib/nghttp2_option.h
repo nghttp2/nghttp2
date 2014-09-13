@@ -56,7 +56,8 @@ typedef enum {
    * will be overwritten if the local endpoint receives
    * SETTINGS_MAX_CONCURRENT_STREAMS from the remote endpoint.
    */
-  NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS = 1 << 1
+  NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS = 1 << 1,
+  NGHTTP2_OPT_RECV_CLIENT_PREFACE = 1 << 2,
 } nghttp2_option_flag;
 
 /**
@@ -76,6 +77,10 @@ struct nghttp2_option {
    * NGHTTP2_OPT_NO_AUTO_WINDOW_UPDATE
    */
   uint8_t no_auto_window_update;
+  /**
+   * NGHTTP2_OPT_RECV_CLIENT_PREFACE
+   */
+  uint8_t recv_client_preface;
 };
 
 #endif /* NGHTTP2_OPTION_H */

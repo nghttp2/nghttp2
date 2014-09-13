@@ -6400,3 +6400,52 @@ void test_nghttp2_session_on_header_temporal_failure(void)
   nghttp2_hd_deflate_free(&deflater);
   nghttp2_session_del(session);
 }
+
+void test_nghttp2_session_recv_client_preface(void)
+{
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  nghttp2_option *option;
+  ssize_t rv;
+
+  memset(&callbacks, 0, sizeof(callbacks));
+
+  nghttp2_option_new(&option);
+  nghttp2_option_set_recv_client_preface(option, 1);
+
+  /* Check success case */
+  nghttp2_session_server_new2(&session, &callbacks, NULL, option);
+
+  CU_ASSERT(session->opt_flags & NGHTTP2_OPTMASK_RECV_CLIENT_PREFACE);
+
+  rv = nghttp2_session_mem_recv
+    (session,
+     (const uint8_t*)NGHTTP2_CLIENT_CONNECTION_PREFACE,
+     NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN);
+
+  CU_ASSERT(rv == NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN);
+  CU_ASSERT(NGHTTP2_IB_READ_HEAD == session->iframe.state);
+
+  nghttp2_session_del(session);
+
+  /* Check bad case */
+  nghttp2_session_server_new2(&session, &callbacks, NULL, option);
+
+  /* Feed preface with one byte less */
+  rv = nghttp2_session_mem_recv
+    (session,
+     (const uint8_t*)NGHTTP2_CLIENT_CONNECTION_PREFACE,
+     NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN - 1);
+
+  CU_ASSERT(rv == NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN - 1);
+  CU_ASSERT(NGHTTP2_IB_READ_CLIENT_PREFACE == session->iframe.state);
+  CU_ASSERT(1 == session->iframe.payloadleft);
+
+  rv = nghttp2_session_mem_recv(session, (const uint8_t*)"\0", 1);
+
+  CU_ASSERT(NGHTTP2_ERR_BAD_PREFACE == rv);
+
+  nghttp2_session_del(session);
+
+  nghttp2_option_del(option);
+}

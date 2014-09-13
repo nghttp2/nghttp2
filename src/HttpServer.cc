@@ -104,6 +104,7 @@ void append_nv(Stream *stream, const std::vector<nghttp2_nv>& nva)
 Config::Config()
   : stream_read_timeout{60, 0},
     stream_write_timeout{60, 0},
+    session_option(nullptr),
     data_ptr(nullptr),
     padding(0),
     num_worker(1),
@@ -115,7 +116,10 @@ Config::Config()
     no_tls(false),
     error_gzip(false),
     early_response(false)
-{}
+{
+  nghttp2_option_new(&session_option);
+  nghttp2_option_set_recv_client_preface(session_option, 1);
+}
 
 Stream::Stream(Http2Handler *handler, int32_t stream_id)
   : handler(handler),
@@ -337,7 +341,6 @@ Http2Handler::Http2Handler(Sessions *sessions,
     settings_timerev_(nullptr),
     pending_data_(nullptr),
     pending_datalen_(0),
-    left_connhd_len_(NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN),
     fd_(fd)
 {
   nghttp2_buf_wrap_init(&sendbuf_, sendbufarray_, sizeof(sendbufarray_));
@@ -651,27 +654,6 @@ int Http2Handler::on_read()
   nread = rv;
   bufp = buf;
 
-  if(left_connhd_len_ > 0) {
-    auto len = std::min(left_connhd_len_, nread);
-    const char *conhead = NGHTTP2_CLIENT_CONNECTION_PREFACE;
-
-    if(memcmp(conhead + NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN -
-              left_connhd_len_, bufp, len) != 0) {
-      return -1;
-    }
-
-    left_connhd_len_ -= len;
-    nread -= len;
-
-    if(nread == 0) {
-      wait_events();
-
-      return 0;
-    }
-
-    bufp += len;
-  }
-
   rv = nghttp2_session_mem_recv(session_, bufp, nread);
   if(rv < 0) {
     std::cerr << "nghttp2_session_mem_recv() returned error: "
@@ -736,7 +718,8 @@ int Http2Handler::on_connect()
 {
   int r;
 
-  r = nghttp2_session_server_new(&session_, sessions_->get_callbacks(), this);
+  r = nghttp2_session_server_new2(&session_, sessions_->get_callbacks(), this,
+                                  sessions_->get_config()->session_option);
   if(r != 0) {
     return r;
   }
@@ -945,16 +928,6 @@ Sessions* Http2Handler::get_sessions() const
 const Config* Http2Handler::get_config() const
 {
   return sessions_->get_config();
-}
-
-size_t Http2Handler::get_left_connhd_len() const
-{
-  return left_connhd_len_;
-}
-
-void Http2Handler::set_left_connhd_len(size_t left)
-{
-  left_connhd_len_ = left;
 }
 
 void Http2Handler::remove_settings_timer()
