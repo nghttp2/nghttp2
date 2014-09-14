@@ -40,8 +40,6 @@ PATH=$TOOLCHAIN/bin:$PATH
     --disable-python-bindings \
     --disable-examples \
     --disable-threads \
-    CC=arm-linux-androideabi-clang \
-    CXX=arm-linux-androideabi-clang++ \
     CPPFLAGS="-I$PREFIX/include" \
     PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig" \
     LDFLAGS="-L$PREFIX/lib"

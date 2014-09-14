@@ -437,6 +437,7 @@ if test "x$cross_compiling" != "xyes"; then
   AC_FUNC_MALLOC
 fi
 AC_CHECK_FUNCS([ \
+  _Exit \
   getpwnam \
   memmove \
   memset \

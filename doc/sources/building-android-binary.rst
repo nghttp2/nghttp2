@@ -16,8 +16,7 @@ unpacked::
 
     $ build/tools/make-standalone-toolchain.sh \
       --install-dir=$ANDROID_HOME/toolchain \
-      --toolchain=arm-linux-androideabi-4.8 \
-      --llvm-version=3.4
+      --toolchain=arm-linux-androideabi-4.8
 
 The additional flag ``--system=linux-x86_64`` may be required if you
 are using x86_64 system.
