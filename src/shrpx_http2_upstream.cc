@@ -637,8 +637,8 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
 
   assert(rv == 0);
 
-  util::auto_delete<nghttp2_session_callbacks*> callbacks_deleter
-    (callbacks, nghttp2_session_callbacks_del);
+  auto callbacks_deleter =
+    util::defer(callbacks, nghttp2_session_callbacks_del);
 
   nghttp2_session_callbacks_set_on_stream_close_callback
     (callbacks, on_stream_close_callback);

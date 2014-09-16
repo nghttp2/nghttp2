@@ -602,8 +602,7 @@ void get_altnames(X509 *cert,
     static_cast<GENERAL_NAMES*>
     (X509_get_ext_d2i(cert, NID_subject_alt_name, nullptr, nullptr));
   if(altnames) {
-    util::auto_delete<GENERAL_NAMES*> altnames_deleter(altnames,
-                                                       GENERAL_NAMES_free);
+    auto altnames_deleter = util::defer(altnames, GENERAL_NAMES_free);
     size_t n = sk_GENERAL_NAME_num(altnames);
     for(size_t i = 0; i < n; ++i) {
       const GENERAL_NAME *altname = sk_GENERAL_NAME_value(altnames, i);
@@ -665,7 +664,7 @@ int check_cert(SSL *ssl)
     LOG(ERROR) << "No certificate found";
     return -1;
   }
-  util::auto_delete<X509*> cert_deleter(cert, X509_free);
+  auto cert_deleter = util::defer(cert, X509_free);
   long verify_res = SSL_get_verify_result(ssl);
   if(verify_res != X509_V_OK) {
     LOG(ERROR) << "Certificate verification failed: "
@@ -864,7 +863,7 @@ int cert_lookup_tree_add_cert_from_file(CertLookupTree *lt, SSL_CTX *ssl_ctx,
     LOG(ERROR) << "BIO_new failed";
     return -1;
   }
-  util::auto_delete<BIO*> bio_deleter(bio, BIO_vfree);
+  auto bio_deleter = util::defer(bio, BIO_vfree);
   if(!BIO_read_filename(bio, certfile)) {
     LOG(ERROR) << "Could not read certificate file '" << certfile << "'";
     return -1;
@@ -875,7 +874,7 @@ int cert_lookup_tree_add_cert_from_file(CertLookupTree *lt, SSL_CTX *ssl_ctx,
                << certfile << "'";
     return -1;
   }
-  util::auto_delete<X509*> cert_deleter(cert, X509_free);
+  auto cert_deleter = util::defer(cert, X509_free);
   std::string common_name;
   std::vector<std::string> dns_names;
   std::vector<std::string> ip_addrs;

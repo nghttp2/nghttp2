@@ -51,46 +51,26 @@ constexpr size_t array_size(T (&)[N])
   return N;
 }
 
-template<typename T>
-class auto_delete {
-private:
-  T obj_;
-  void (*deleter_)(T);
-public:
-  auto_delete(T obj, void (*deleter)(T)):obj_(obj), deleter_(deleter) {}
+template<typename T, typename F>
+struct Defer {
+  Defer(T t, F f)
+    : t(t), f(std::move(f))
+  {}
 
-  ~auto_delete()
+  ~Defer()
   {
-    deleter_(obj_);
+    f(t);
   }
+
+  T t;
+  F f;
 };
 
-template<typename T>
-class auto_delete_d {
-private:
-  T obj_;
-public:
-  auto_delete_d(T obj):obj_(obj) {}
-
-  ~auto_delete_d()
-  {
-    delete obj_;
-  }
-};
-
-template<typename T, typename R>
-class auto_delete_r {
-private:
-  T obj_;
-  R (*deleter_)(T);
-public:
-  auto_delete_r(T obj, R (*deleter)(T)):obj_(obj), deleter_(deleter) {}
-
-  ~auto_delete_r()
-  {
-    (void)deleter_(obj_);
-  }
-};
+template<typename T, typename F>
+Defer<T, F> defer(T&& t, F f)
+{
+  return Defer<T, F>(std::forward<T>(t), std::forward<F>(f));
+}
 
 extern const char DEFAULT_STRIP_CHARSET[];
 

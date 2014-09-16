@@ -1377,8 +1377,8 @@ int Http2Session::on_connect()
     return -1;
   }
 
-  util::auto_delete<nghttp2_session_callbacks*> callbacks_deleter
-    (callbacks, nghttp2_session_callbacks_del);
+  auto callbacks_deleter =
+    util::defer(callbacks, nghttp2_session_callbacks_del);
 
   nghttp2_session_callbacks_set_on_stream_close_callback
     (callbacks, on_stream_close_callback);

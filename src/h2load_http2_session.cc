@@ -106,8 +106,8 @@ void Http2Session::on_connect()
 
   nghttp2_session_callbacks_new(&callbacks);
 
-  util::auto_delete<nghttp2_session_callbacks*> callbacks_deleter
-    (callbacks, nghttp2_session_callbacks_del);
+  auto callbacks_deleter =
+    util::defer(callbacks, nghttp2_session_callbacks_del);
 
   nghttp2_session_callbacks_set_on_frame_recv_callback
     (callbacks, on_frame_recv_callback);
