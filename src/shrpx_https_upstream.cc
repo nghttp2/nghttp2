@@ -420,6 +420,11 @@ int HttpsUpstream::on_write()
         // Keep-alive
         downstream->detach_downstream_connection();
       }
+      // We need this if response ends before request.
+      if(downstream->get_request_state() == Downstream::MSG_COMPLETE) {
+        delete_downstream();
+        return resume_read(SHRPX_MSG_BLOCK, nullptr, 0);
+      }
     }
 
     rv = downstream->resume_read(SHRPX_NO_BUFFER,
@@ -567,6 +572,12 @@ void https_downstream_readcb(bufferevent *bev, void *ptr)
     }
 
     return;
+  }
+
+  // Delete handler here if we have no pending write.
+  if(handler->get_should_close_after_write() &&
+     handler->get_outbuf_length() == 0) {
+    delete handler;
   }
 }
 } // namespace
