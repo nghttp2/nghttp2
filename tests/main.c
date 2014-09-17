@@ -245,6 +245,8 @@ int main(int argc, char* argv[])
                    test_nghttp2_session_on_header_temporal_failure) ||
       !CU_add_test(pSuite, "session_recv_client_preface",
                    test_nghttp2_session_recv_client_preface) ||
+      !CU_add_test(pSuite, "session_delete_data_item",
+                   test_nghttp2_session_delete_data_item) ||
       !CU_add_test(pSuite, "frame_pack_headers",
                    test_nghttp2_frame_pack_headers) ||
       !CU_add_test(pSuite, "frame_pack_headers_frame_too_large",

@@ -73,12 +73,10 @@ void nghttp2_stream_init(nghttp2_stream *stream, int32_t stream_id,
 
 void nghttp2_stream_free(nghttp2_stream *stream)
 {
-  if(stream->flags & NGHTTP2_STREAM_FLAG_DEFERRED_ALL) {
-    nghttp2_outbound_item_free(stream->data_item);
-    free(stream->data_item);
-  }
-
-  /* We don't free stream->data_item otherwise. */
+  /* We don't free stream->data_item.  If it is assigned to aob, then
+     active_outbound_item_reset() will delete it.  If it is queued,
+     then it is deleted when pq is deleted in nghttp2_session_del().
+     Otherwise, nghttp2_session_del() will delete it. */
 }
 
 void nghttp2_stream_shutdown(nghttp2_stream *stream, nghttp2_shut_flag flag)

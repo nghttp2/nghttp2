@@ -496,8 +496,21 @@ int nghttp2_session_server_new2(nghttp2_session **session_ptr,
 
 static int free_streams(nghttp2_map_entry *entry, void *ptr)
 {
-  nghttp2_stream_free((nghttp2_stream*)entry);
-  free(entry);
+  nghttp2_session *session;
+  nghttp2_stream *stream;
+  nghttp2_outbound_item *item;
+
+  session = (nghttp2_session*)ptr;
+  stream = (nghttp2_stream*)entry;
+  item = stream->data_item;
+
+  if(item && !item->queued && item != session->aob.item) {
+    nghttp2_outbound_item_free(item);
+    free(item);
+  }
+
+  nghttp2_stream_free(stream);
+  free(stream);
 
   return 0;
 }
@@ -524,7 +537,7 @@ void nghttp2_session_del(nghttp2_session *session)
 
   /* Have to free streams first, so that we can check
      stream->data_item->queued */
-  nghttp2_map_each_free(&session->streams, free_streams, NULL);
+  nghttp2_map_each_free(&session->streams, free_streams, session);
   nghttp2_map_free(&session->streams);
 
   ob_pq_free(&session->ob_pq);
@@ -878,6 +891,7 @@ int nghttp2_session_close_stream(nghttp2_session *session, int32_t stream_id,
        points to this item, let active_outbound_item_reset()
        free the item. */
     if(!item->queued && item != session->aob.item) {
+      nghttp2_outbound_item_free(item);
       free(item);
     }
   }

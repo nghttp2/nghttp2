@@ -6449,3 +6449,29 @@ void test_nghttp2_session_recv_client_preface(void)
 
   nghttp2_option_del(option);
 }
+
+void test_nghttp2_session_delete_data_item(void)
+{
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  nghttp2_stream *a, *b;
+  nghttp2_data_provider prd;
+
+  memset(&callbacks, 0, sizeof(callbacks));
+
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  a = open_stream(session, 1);
+  b = open_stream_with_dep(session, 3, a);
+
+  /* We don't care about these members, since we won't send data */
+  prd.source.ptr = NULL;
+  prd.read_callback = fail_data_source_read_callback;
+
+  /* This data item will be marked as TOP */
+  CU_ASSERT(0 == nghttp2_submit_data(session, NGHTTP2_FLAG_NONE, 1, &prd));
+  /* This data item will be marked as REST */
+  CU_ASSERT(0 == nghttp2_submit_data(session, NGHTTP2_FLAG_NONE, 3, &prd));
+
+  nghttp2_session_del(session);
+}
