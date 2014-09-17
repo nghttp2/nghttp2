@@ -583,7 +583,7 @@ StreamData* Http2DownstreamConnection::detach_stream_data()
 bool Http2DownstreamConnection::get_output_buffer_full()
 {
   if(request_body_buf_) {
-    return http2session_->get_outbuf_length() +
+    return
       evbuffer_get_length(request_body_buf_) >= Http2Session::OUTBUF_MAX_THRES;
   } else {
     return false;

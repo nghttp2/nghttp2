@@ -1471,6 +1471,9 @@ int Http2Session::on_connect()
   // submit pending request
   for(auto dconn : dconns_) {
     if(dconn->push_request_headers() == 0) {
+      auto downstream = dconn->get_downstream();
+      auto upstream = downstream->get_upstream();
+      upstream->resume_read(SHRPX_NO_BUFFER, downstream, 0);
       continue;
     }
 
