@@ -59,6 +59,8 @@ public:
   virtual void pause_read(IOCtrlReason reason) = 0;
   virtual int resume_read(IOCtrlReason reason, Downstream *downstream,
                           size_t consumed) = 0;
+
+  virtual void reset_timeouts() = 0;
 };
 
 } // namespace shrpx

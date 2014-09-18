@@ -437,8 +437,7 @@ SpdyUpstream::SpdyUpstream(uint16_t version, ClientHandler *handler)
     session_(nullptr)
 {
   //handler->set_bev_cb(spdy_readcb, 0, spdy_eventcb);
-  handler->set_upstream_timeouts(&get_config()->http2_upstream_read_timeout,
-                                 &get_config()->upstream_write_timeout);
+  reset_timeouts();
 
   spdylay_session_callbacks callbacks;
   memset(&callbacks, 0, sizeof(callbacks));
@@ -1127,6 +1126,12 @@ int SpdyUpstream::on_timeout(Downstream *downstream)
   rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
 
   return 0;
+}
+
+void SpdyUpstream::reset_timeouts()
+{
+  handler_->set_upstream_timeouts(&get_config()->http2_upstream_read_timeout,
+                                  &get_config()->upstream_write_timeout);
 }
 
 } // namespace shrpx

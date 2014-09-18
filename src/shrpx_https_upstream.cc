@@ -973,4 +973,10 @@ void HttpsUpstream::log_response_headers(const std::string& hdrs) const
   ULOG(INFO, this) << "HTTP response headers\n" << hdrp;
 }
 
+void HttpsUpstream::reset_timeouts()
+{
+  handler_->set_upstream_timeouts(&get_config()->upstream_read_timeout,
+                                  &get_config()->upstream_write_timeout);
+}
+
 } // namespace shrpx

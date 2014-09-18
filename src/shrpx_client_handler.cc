@@ -49,6 +49,10 @@ namespace {
 void upstream_readcb(bufferevent *bev, void *arg)
 {
   auto handler = static_cast<ClientHandler*>(arg);
+  auto upstream = handler->get_upstream();
+  if(upstream) {
+    upstream->reset_timeouts();
+  }
   int rv = handler->on_read();
   if(rv != 0) {
     delete handler;
@@ -60,6 +64,10 @@ namespace {
 void upstream_writecb(bufferevent *bev, void *arg)
 {
   auto handler = static_cast<ClientHandler*>(arg);
+  auto upstream = handler->get_upstream();
+  if(upstream) {
+    upstream->reset_timeouts();
+  }
 
   // We actually depend on write low-water mark == 0.
   if(handler->get_outbuf_length() > 0) {
@@ -71,7 +79,7 @@ void upstream_writecb(bufferevent *bev, void *arg)
     delete handler;
     return;
   }
-  auto upstream = handler->get_upstream();
+
   if(!upstream) {
     return;
   }

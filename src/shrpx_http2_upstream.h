@@ -73,6 +73,8 @@ public:
                                  const uint8_t *data, size_t len, bool flush);
   virtual int on_downstream_body_complete(Downstream *downstream);
 
+  virtual void reset_timeouts();
+
   bool get_flow_control() const;
   // Perform HTTP/2 upgrade from |upstream|. On success, this object
   // takes ownership of the |upstream|. This function returns 0 if it
