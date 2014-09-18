@@ -229,6 +229,7 @@ void readcb(bufferevent *bev, void *ptr)
 {
   int rv;
   auto http2session = static_cast<Http2Session*>(ptr);
+  http2session->reset_timeouts();
   rv = http2session->on_read();
   if(rv != 0) {
     http2session->disconnect();
@@ -239,11 +240,12 @@ void readcb(bufferevent *bev, void *ptr)
 namespace {
 void writecb(bufferevent *bev, void *ptr)
 {
+  auto http2session = static_cast<Http2Session*>(ptr);
+  http2session->reset_timeouts();
   if(evbuffer_get_length(bufferevent_get_output(bev)) > 0) {
     return;
   }
   int rv;
-  auto http2session = static_cast<Http2Session*>(ptr);
   rv = http2session->on_write();
   if(rv != 0) {
     http2session->disconnect();
@@ -535,8 +537,7 @@ int Http2Session::initiate_connection()
     bufferevent_enable(bev_, EV_READ);
     bufferevent_setcb(bev_, readcb, writecb, eventcb, this);
     // Set timeout for HTTP2 session
-    bufferevent_set_timeouts(bev_, &get_config()->downstream_read_timeout,
-                             &get_config()->downstream_write_timeout);
+    reset_timeouts();
 
     // We have been already connected when no TLS and proxy is used.
     if(state_ != CONNECTED) {
@@ -1654,6 +1655,12 @@ int Http2Session::consume(int32_t stream_id, size_t len)
   }
 
   return 0;
+}
+
+void Http2Session::reset_timeouts()
+{
+  bufferevent_set_timeouts(bev_, &get_config()->downstream_read_timeout,
+                           &get_config()->downstream_write_timeout);
 }
 
 } // namespace shrpx

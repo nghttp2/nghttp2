@@ -64,6 +64,8 @@ public:
   }
 
   bufferevent* get_bev();
+
+  void reset_timeouts();
 private:
   bufferevent *bev_;
   IOControl ioctrl_;

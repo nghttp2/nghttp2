@@ -106,6 +106,8 @@ public:
 
   int consume(int32_t stream_id, size_t len);
 
+  void reset_timeouts();
+
   enum {
     // Disconnected
     DISCONNECTED,

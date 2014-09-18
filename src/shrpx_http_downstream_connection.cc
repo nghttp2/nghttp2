@@ -43,12 +43,6 @@ namespace {
 const size_t OUTBUF_MAX_THRES = 64*1024;
 } // namespace
 
-// Workaround for the inability for Bufferevent to remove timeout from
-// bufferevent. Specify this long timeout instead of removing.
-namespace {
-timeval max_timeout = { 86400, 0 };
-} // namespace
-
 HttpDownstreamConnection::HttpDownstreamConnection
 (ClientHandler *client_handler)
   : DownstreamConnection(client_handler),
@@ -138,11 +132,9 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream)
                     upstream->get_downstream_readcb(),
                     upstream->get_downstream_writecb(),
                     upstream->get_downstream_eventcb(), this);
-  // HTTP request/response model, we first issue request to downstream
-  // server, so just enable write timeout here.
-  bufferevent_set_timeouts(bev_,
-                           &max_timeout,
-                           &get_config()->downstream_write_timeout);
+
+  reset_timeouts();
+
   return 0;
 }
 
@@ -286,16 +278,6 @@ int HttpDownstreamConnection::push_request_headers()
   if(rv != 0) {
     return -1;
   }
-
-  // When downstream request is issued, set read timeout. We don't
-  // know when the request is completely received by the downstream
-  // server. This function may be called before that happens. Overall
-  // it does not cause problem for most of the time.  If the
-  // downstream server is too slow to recv/send, the connection will
-  // be dropped by read timeout.
-  bufferevent_set_timeouts(bev_,
-                           &get_config()->downstream_read_timeout,
-                           &get_config()->downstream_write_timeout);
 
   return 0;
 }
@@ -586,6 +568,8 @@ http_parser_settings htp_hooks = {
 
 int HttpDownstreamConnection::on_read()
 {
+  reset_timeouts();
+
   auto input = bufferevent_get_input(bev_);
 
   if(downstream_->get_upgraded()) {
@@ -650,6 +634,8 @@ int HttpDownstreamConnection::on_read()
 
 int HttpDownstreamConnection::on_write()
 {
+  reset_timeouts();
+
   auto upstream = downstream_->get_upstream();
   upstream->resume_read(SHRPX_NO_BUFFER, downstream_,
                         downstream_->get_request_datalen());
@@ -662,6 +648,13 @@ void HttpDownstreamConnection::on_upstream_change(Upstream *upstream)
                     upstream->get_downstream_readcb(),
                     upstream->get_downstream_writecb(),
                     upstream->get_downstream_eventcb(), this);
+}
+
+void HttpDownstreamConnection::reset_timeouts()
+{
+  bufferevent_set_timeouts(bev_,
+                           &get_config()->downstream_read_timeout,
+                           &get_config()->downstream_write_timeout);
 }
 
 } // namespace shrpx
