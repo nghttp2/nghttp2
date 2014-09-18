@@ -112,7 +112,7 @@ void worker_writecb(bufferevent *bev, void *ptr)
 
   // Disable bev so that this won' be called accidentally in the
   // future.
-  bufferevent_disable(bev, EV_READ | EV_WRITE);
+  util::bev_disable_unless(bev, EV_READ | EV_WRITE);
 }
 } // namespace
 #endif // NOTHREADS

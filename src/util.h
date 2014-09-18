@@ -38,6 +38,7 @@
 #include <memory>
 
 #include <event2/buffer.h>
+#include <event2/bufferevent.h>
 
 #include "http-parser/http_parser.h"
 
@@ -480,6 +481,12 @@ std::string ascii_dump(const uint8_t *data, size_t len);
 // dynamically allocated by malloc.  The caller is responsible to free
 // it.
 char* get_exec_path(int argc, char **const argv, const char *cwd);
+
+// These functions are provided to reduce epoll_ctl syscall.  Avoid
+// calling bufferevent_enable/disable() unless it is required by
+// sniffing current enabled events.
+void bev_enable_unless(bufferevent *bev, int events);
+void bev_disable_unless(bufferevent *bev, int events);
 
 } // namespace util
 

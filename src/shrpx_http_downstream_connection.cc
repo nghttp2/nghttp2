@@ -54,7 +54,7 @@ HttpDownstreamConnection::HttpDownstreamConnection
 HttpDownstreamConnection::~HttpDownstreamConnection()
 {
   if(bev_) {
-    bufferevent_disable(bev_, EV_READ | EV_WRITE);
+    util::bev_disable_unless(bev_, EV_READ | EV_WRITE);
     bufferevent_free(bev_);
   }
   // Downstream and DownstreamConnection may be deleted
@@ -127,7 +127,7 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream)
   response_htp_.data = downstream_;
 
   bufferevent_setwatermark(bev_, EV_READ, 0, SHRPX_READ_WATERMARK);
-  bufferevent_enable(bev_, EV_READ);
+  util::bev_enable_unless(bev_, EV_READ);
   bufferevent_setcb(bev_,
                     upstream->get_downstream_readcb(),
                     upstream->get_downstream_writecb(),
@@ -369,7 +369,7 @@ void HttpDownstreamConnection::detach_downstream(Downstream *downstream)
   }
   downstream_ = nullptr;
   ioctrl_.force_resume_read();
-  bufferevent_enable(bev_, EV_READ);
+  util::bev_enable_unless(bev_, EV_READ);
   bufferevent_setcb(bev_, 0, 0, idle_eventcb, this);
   // On idle state, just enable read timeout. Normally idle downstream
   // connection will get EOF from the downstream server and closed.

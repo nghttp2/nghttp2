@@ -256,7 +256,7 @@ ClientHandler::ClientHandler(bufferevent *bev,
     CLOG(FATAL, this) << "bufferevent_add_to_rate_limit_group() failed";
   }
 
-  bufferevent_enable(bev_, EV_READ | EV_WRITE);
+  util::bev_enable_unless(bev_, EV_READ | EV_WRITE);
   bufferevent_setwatermark(bev_, EV_READ, 0, SHRPX_READ_WATERMARK);
   set_upstream_timeouts(&get_config()->upstream_read_timeout,
                         &get_config()->upstream_write_timeout);
@@ -298,7 +298,7 @@ ClientHandler::~ClientHandler()
 
   bufferevent_remove_from_rate_limit_group(bev_);
 
-  bufferevent_disable(bev_, EV_READ | EV_WRITE);
+  util::bev_disable_unless(bev_, EV_READ | EV_WRITE);
   bufferevent_free(bev_);
 
   if(ssl_) {

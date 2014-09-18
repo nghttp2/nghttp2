@@ -26,6 +26,10 @@
 
 #include <algorithm>
 
+#include "util.h"
+
+using namespace nghttp2;
+
 namespace shrpx {
 
 IOControl::IOControl(bufferevent *bev)
@@ -45,7 +49,7 @@ void IOControl::pause_read(IOCtrlReason reason)
 {
   rdbits_ |= reason;
   if(bev_) {
-    bufferevent_disable(bev_, EV_READ);
+    util::bev_disable_unless(bev_, EV_READ);
   }
 }
 
@@ -54,7 +58,7 @@ bool IOControl::resume_read(IOCtrlReason reason)
   rdbits_ &= ~reason;
   if(rdbits_ == 0) {
     if(bev_) {
-      bufferevent_enable(bev_, EV_READ);
+      util::bev_enable_unless(bev_, EV_READ);
     }
     return true;
   } else {
@@ -66,7 +70,7 @@ void IOControl::force_resume_read()
 {
   rdbits_ = 0;
   if(bev_) {
-    bufferevent_enable(bev_, EV_READ);
+    util::bev_enable_unless(bev_, EV_READ);
   }
 }
 

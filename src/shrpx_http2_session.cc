@@ -89,7 +89,7 @@ int Http2Session::disconnect()
   }
   if(bev_) {
     int fd = bufferevent_getfd(bev_);
-    bufferevent_disable(bev_, EV_READ | EV_WRITE);
+    util::bev_disable_unless(bev_, EV_READ | EV_WRITE);
     bufferevent_free(bev_);
     bev_ = nullptr;
     if(fd != -1) {
@@ -219,7 +219,7 @@ int Http2Session::init_notification()
     close(sockpair[1]);
     return -1;
   }
-  bufferevent_enable(rdbev_, EV_READ);
+  util::bev_enable_unless(rdbev_, EV_READ);
   bufferevent_setcb(rdbev_, notify_readcb, nullptr, notify_eventcb, this);
   return 0;
 }
@@ -417,7 +417,7 @@ int Http2Session::initiate_connection()
       close(fd);
       return SHRPX_ERR_NETWORK;
     }
-    bufferevent_enable(bev_, EV_READ);
+    util::bev_enable_unless(bev_, EV_READ);
     bufferevent_set_timeouts(bev_, &get_config()->downstream_read_timeout,
                              &get_config()->downstream_write_timeout);
 
@@ -534,7 +534,7 @@ int Http2Session::initiate_connection()
     }
 
     bufferevent_setwatermark(bev_, EV_READ, 0, SHRPX_READ_WATERMARK);
-    bufferevent_enable(bev_, EV_READ);
+    util::bev_enable_unless(bev_, EV_READ);
     bufferevent_setcb(bev_, readcb, writecb, eventcb, this);
     // Set timeout for HTTP2 session
     reset_timeouts();

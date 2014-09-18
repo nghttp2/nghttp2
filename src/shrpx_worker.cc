@@ -113,7 +113,7 @@ void Worker::run()
      http2session.get(),
      http1_connect_blocker.get());
 
-  bufferevent_enable(bev.get(), EV_READ);
+  util::bev_enable_unless(bev.get(), EV_READ);
   bufferevent_setcb(bev.get(), readcb, nullptr, eventcb, receiver.get());
 
   event_base_loop(evbase.get(), 0);

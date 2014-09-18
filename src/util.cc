@@ -657,6 +657,24 @@ char* get_exec_path(int argc, char **const argv, const char *cwd)
   return path;
 }
 
+void bev_enable_unless(bufferevent *bev, int events)
+{
+  if((bufferevent_get_enabled(bev) & events) == events) {
+    return;
+  }
+
+  bufferevent_enable(bev, events);
+}
+
+void bev_disable_unless(bufferevent *bev, int events)
+{
+  if((bufferevent_get_enabled(bev) & events) == 0) {
+    return;
+  }
+
+  bufferevent_disable(bev, events);
+}
+
 } // namespace util
 
 } // namespace nghttp2
