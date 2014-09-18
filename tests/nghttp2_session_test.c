@@ -6454,7 +6454,7 @@ void test_nghttp2_session_delete_data_item(void)
 {
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;
-  nghttp2_stream *a, *b;
+  nghttp2_stream *a;
   nghttp2_data_provider prd;
 
   memset(&callbacks, 0, sizeof(callbacks));
@@ -6462,7 +6462,7 @@ void test_nghttp2_session_delete_data_item(void)
   nghttp2_session_server_new(&session, &callbacks, NULL);
 
   a = open_stream(session, 1);
-  b = open_stream_with_dep(session, 3, a);
+  open_stream_with_dep(session, 3, a);
 
   /* We don't care about these members, since we won't send data */
   prd.source.ptr = NULL;
