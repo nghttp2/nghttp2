@@ -40,6 +40,7 @@
 #include <openssl/ssl.h>
 
 #include <event2/event.h>
+#include <event2/bufferevent.h>
 
 #include <nghttp2/nghttp2.h>
 
@@ -104,12 +105,11 @@ public:
 
   void remove_self();
   int setup_bev();
+  int send();
   int on_read();
   int on_write();
   int on_connect();
   int verify_npn_result();
-  int sendcb(const uint8_t *data, size_t len);
-  int recvcb(uint8_t *buf, size_t len);
 
   int submit_file_response(const std::string& status,
                            Stream *stream,
@@ -141,25 +141,15 @@ public:
   const Config* get_config() const;
   void remove_settings_timer();
   void terminate_session(uint32_t error_code);
-  int tls_handshake();
 private:
-  int handle_ssl_temporal_error(int err);
-  int tls_write(const uint8_t *data, size_t datalen);
-  int tls_write_pending();
-  int wait_events();
-
   std::map<int32_t, std::unique_ptr<Stream>> id2stream_;
-  nghttp2_buf sendbuf_;
   int64_t session_id_;
   nghttp2_session *session_;
   Sessions *sessions_;
-  SSL* ssl_;
-  event *rev_, *wev_;
+  SSL *ssl_;
+  bufferevent *bev_;
   event *settings_timerev_;
-  const uint8_t *pending_data_;
-  size_t pending_datalen_;
   int fd_;
-  uint8_t sendbufarray_[65536];
 };
 
 class HttpServer {
