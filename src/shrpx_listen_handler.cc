@@ -40,6 +40,7 @@
 #include "shrpx_http2_session.h"
 #include "shrpx_connect_blocker.h"
 #include "util.h"
+#include "libevent_util.h"
 
 using namespace nghttp2;
 

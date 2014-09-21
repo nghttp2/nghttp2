@@ -28,6 +28,7 @@
 
 #include "h2load.h"
 #include "util.h"
+#include "libevent_util.h"
 
 using namespace nghttp2;
 

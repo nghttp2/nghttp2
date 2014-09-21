@@ -30,6 +30,7 @@
 #include <spdylay/spdylay.h>
 
 #include "util.h"
+#include "libevent_util.h"
 
 namespace h2load {
 

@@ -40,6 +40,7 @@
 #include "shrpx_spdy_upstream.h"
 #endif // HAVE_SPDYLAY
 #include "util.h"
+#include "libevent_util.h"
 
 using namespace nghttp2;
 

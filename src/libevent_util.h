@@ -1,7 +1,7 @@
 /*
  * nghttp2 - HTTP/2 C Library
  *
- * Copyright (c) 2012 Tatsuhiro Tsujikawa
+ * Copyright (c) 2014 Tatsuhiro Tsujikawa
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -22,57 +22,41 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#include "shrpx_io_control.h"
+#ifndef LIBEVENT_UTIL_H
+#define LIBEVENT_UTIL_H
 
-#include <algorithm>
+#include "nghttp2_config.h"
 
-#include "util.h"
-#include "libevent_util.h"
+#include <event2/buffer.h>
+#include <event2/bufferevent.h>
 
-using namespace nghttp2;
+namespace nghttp2 {
 
-namespace shrpx {
+namespace util {
 
-IOControl::IOControl(bufferevent *bev)
-  : bev_(bev),
-    rdbits_(0)
-{}
+class EvbufferBuffer {
+public:
+  EvbufferBuffer();
+  EvbufferBuffer(evbuffer *evbuffer, uint8_t *buf, size_t bufmax);
+  void reset(evbuffer *evbuffer, uint8_t *buf, size_t bufmax);
+  int flush();
+  int add(const uint8_t *data, size_t datalen);
+  size_t get_buflen() const;
+private:
+  evbuffer *evbuffer_;
+  uint8_t *buf_;
+  size_t bufmax_;
+  size_t buflen_;
+};
 
-IOControl::~IOControl()
-{}
+// These functions are provided to reduce epoll_ctl syscall.  Avoid
+// calling bufferevent_enable/disable() unless it is required by
+// sniffing current enabled events.
+void bev_enable_unless(bufferevent *bev, int events);
+void bev_disable_unless(bufferevent *bev, int events);
 
-void IOControl::set_bev(bufferevent *bev)
-{
-  bev_ = bev;
-}
+} // namespace util
 
-void IOControl::pause_read(IOCtrlReason reason)
-{
-  rdbits_ |= reason;
-  if(bev_) {
-    util::bev_disable_unless(bev_, EV_READ);
-  }
-}
+} // namespace nghttp2
 
-bool IOControl::resume_read(IOCtrlReason reason)
-{
-  rdbits_ &= ~reason;
-  if(rdbits_ == 0) {
-    if(bev_) {
-      util::bev_enable_unless(bev_, EV_READ);
-    }
-    return true;
-  } else {
-    return false;
-  }
-}
-
-void IOControl::force_resume_read()
-{
-  rdbits_ = 0;
-  if(bev_) {
-    util::bev_enable_unless(bev_, EV_READ);
-  }
-}
-
-} // namespace shrpx
+#endif // LIBEVENT_UTIL_H

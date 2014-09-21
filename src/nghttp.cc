@@ -67,6 +67,7 @@
 #include "app_helper.h"
 #include "HtmlParser.h"
 #include "util.h"
+#include "libevent_util.h"
 #include "base64.h"
 #include "http2.h"
 #include "nghttp2_gzip.h"

@@ -56,8 +56,10 @@ if ENABLE_APP
 
 bin_PROGRAMS += nghttp nghttpd nghttpx
 
-HELPER_OBJECTS = util.cc http2.cc timegm.c app_helper.cc nghttp2_gzip.c
-HELPER_HFILES = util.h http2.h timegm.h app_helper.h nghttp2_config.h \
+HELPER_OBJECTS = util.cc libevent_util.cc \
+	http2.cc timegm.c app_helper.cc nghttp2_gzip.c
+HELPER_HFILES = util.h libevent_util.h \
+	http2.h timegm.h app_helper.h nghttp2_config.h \
 	nghttp2_gzip.h
 
 HTML_PARSER_OBJECTS =
@@ -78,7 +80,8 @@ if ENABLE_H2LOAD
 
 bin_PROGRAMS += h2load
 
-h2load_SOURCES = util.cc util.h http2.cc http2.h h2load.cc h2load.h \
+h2load_SOURCES = util.cc util.h libevent_util.cc libevent_util.h \
+	http2.cc http2.h h2load.cc h2load.h \
 	timegm.c timegm.h \
 	ssl.cc ssl.h \
 	h2load_session.h \
@@ -92,6 +95,7 @@ endif # ENABLE_H2LOAD
 
 NGHTTPX_SRCS = \
 	util.cc util.h http2.cc http2.h timegm.c timegm.h base64.h \
+	libevent_util.cc libevent_util.h \
 	app_helper.cc app_helper.h \
 	ssl.cc ssl.h \
 	shrpx_config.cc shrpx_config.h \

@@ -34,6 +34,7 @@
 #include "shrpx_connect_blocker.h"
 #include "http2.h"
 #include "util.h"
+#include "libevent_util.h"
 
 using namespace nghttp2;
 

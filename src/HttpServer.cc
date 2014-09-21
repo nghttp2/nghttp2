@@ -58,6 +58,7 @@ extern "C" {
 #include "app_helper.h"
 #include "http2.h"
 #include "util.h"
+#include "libevent_util.h"
 #include "ssl.h"
 
 #ifndef O_BINARY

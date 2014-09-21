@@ -38,6 +38,7 @@
 #include "shrpx_worker_config.h"
 #include "http2.h"
 #include "util.h"
+#include "libevent_util.h"
 #include "base64.h"
 #include "app_helper.h"
 

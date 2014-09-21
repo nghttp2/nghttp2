@@ -34,6 +34,7 @@
 #include "shrpx_upstream.h"
 #include "shrpx_downstream_queue.h"
 #include "util.h"
+#include "libevent_util.h"
 
 namespace shrpx {
 
