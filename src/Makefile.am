@@ -20,6 +20,7 @@
 # LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+SUBDIRS = includes
 
 bin_PROGRAMS =
 check_PROGRAMS =
@@ -30,6 +31,7 @@ AM_CPPFLAGS = \
 	-I$(top_srcdir)/lib/includes \
 	-I$(top_builddir)/lib/includes \
 	-I$(top_srcdir)/lib \
+	-I$(top_srcdir)/src/includes \
 	-I$(top_srcdir)/third-party \
 	@LIBSPDYLAY_CFLAGS@ \
 	@XML_CPPFLAGS@	\
@@ -163,3 +165,33 @@ inflatehd_SOURCES = inflatehd.cc $(HPACK_TOOLS_COMMON_SRCS)
 deflatehd_SOURCES = deflatehd.cc $(HPACK_TOOLS_COMMON_SRCS)
 
 endif # ENABLE_HPACK_TOOLS
+
+if ENABLE_ASIO_LIB
+
+pkgconfigdir = $(libdir)/pkgconfig
+pkgconfig_DATA = libnghttp2_asio.pc
+DISTCLEANFILES = $(pkgconfig_DATA)
+
+lib_LTLIBRARIES = libnghttp2_asio.la
+
+libnghttp2_asio_la_SOURCES = \
+	asio_connection.h \
+	asio_server.cc asio_server.h \
+	asio_io_service_pool.cc asio_io_service_pool.h \
+	asio_http2_handler.cc asio_http2_handler.h \
+	asio_http2_impl.cc asio_http2_impl.h \
+	util.cc util.h http2.cc http2.h \
+	ssl.cc ssl.h
+
+libnghttp2_asio_la_CPPFLAGS= ${BOOST_CPPFLAGS} ${AM_CPPFLAGS}
+libnghttp2_asio_la_LDFLAGS = \
+	${BOOST_LDFLAGS} \
+	${BOOST_ASIO_LIB} \
+	${BOOST_THREAD_LIB} \
+	${BOOST_SYSTEM_LIB} \
+	@OPENSSL_LIBS@ \
+	-no-undefined \
+	-version-info 0:0:0
+libnghttp2_asio_la_LIBADD = $(top_builddir)/lib/libnghttp2.la
+
+endif # ENABLE_ASIO_LIB

@@ -76,6 +76,11 @@ AC_ARG_ENABLE([hpack-tools],
                     [Build HPACK tools [default=check]])],
     [request_hpack_tools=$enableval], [request_hpack_tools=check])
 
+AC_ARG_ENABLE([asio-lib],
+    [AS_HELP_STRING([--enable-asio-lib],
+                    [Build C++ libnghttp2_asio library [default=no]])],
+    [request_asio_lib=$enableval], [request_asio_lib=no])
+
 AC_ARG_ENABLE([examples],
     [AS_HELP_STRING([--enable-examples],
                     [Build examples [default=check]])],
@@ -329,6 +334,23 @@ fi
 
 AM_CONDITIONAL([HAVE_SPDYLAY], [ test "x${have_spdylay}" = "xyes" ])
 
+# Check Boost Asio library
+have_asio_lib=no
+
+AX_BOOST_BASE([1.55.0], [have_boost_base=yes], [have_boost_base=no])
+
+if test "x${have_boost_base}" = "xyes"; then
+  AX_BOOST_ASIO()
+  AX_BOOST_SYSTEM()
+  AX_BOOST_THREAD()
+
+  if test "x${ax_cv_boost_asio}" = "xyes" &&
+     test "x${ax_cv_boost_system}" = "xyes" &&
+     test "x${ax_cv_boost_thread}" = "xyes"; then
+    have_asio_lib=yes
+  fi
+fi
+
 # The nghttp, nghttpd and nghttpx under src depend on zlib, OpenSSL
 # and libevent_openssl
 enable_app=no
@@ -360,6 +382,16 @@ if test "x${request_hpack_tools}" = "xyes" &&
 fi
 
 AM_CONDITIONAL([ENABLE_HPACK_TOOLS], [ test "x${enable_hpack_tools}" = "xyes" ])
+
+# C++ library libnghttp2_asio
+
+enable_asio_lib=no
+if test "x${request_asio_lib}" != "xno" &&
+   test "x${have_asio_lib}" = "xyes"; then
+  enable_asio_lib=yes
+fi
+
+AM_CONDITIONAL([ENABLE_ASIO_LIB], [ test "x${enable_asio_lib}" = "xyes" ])
 
 # The example programs depend on OpenSSL and libevent_openssl
 enable_examples=no
@@ -505,6 +537,8 @@ AC_CONFIG_FILES([
   tests/testdata/Makefile
   third-party/Makefile
   src/Makefile
+  src/includes/Makefile
+  src/libnghttp2_asio.pc
   examples/Makefile
   python/Makefile
   python/setup.py
@@ -553,8 +587,14 @@ AC_MSG_NOTICE([summary of build options:
     Spdylay:        ${have_spdylay}
     Jansson:        ${have_jansson}
     Jemalloc:       ${have_jemalloc}
+    Boost CPPFLAGS: ${BOOST_CPPFLAGS}
+    Boost LDFLAGS:  ${BOOST_LDFLAGS}
+    Boost::ASIO:    ${BOOST_ASIO_LIB}
+    Boost::System:  ${BOOST_SYSTEM_LIB}
+    Boost::Thread:  ${BOOST_THREAD_LIB}
     Applications:   ${enable_app}
     HPACK tools:    ${enable_hpack_tools}
+    Libnghttp2_asio:${enable_asio_lib}
     Examples:       ${enable_examples}
     Python bindings:${enable_python_bindings}
     Failmalloc:     ${request_failmalloc}
