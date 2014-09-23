@@ -157,3 +157,17 @@ When client requested "/", we push "/my.css".  To push resource, call
 ``nghttp2::asio_http2::server::request::push`` function with desired
 method and path.  Later, the callback will be called with the pushed
 resource "/my.css".
+
+Enable multi-threading
+++++++++++++++++++++++
+
+Enabling multi-threading is very easy.  Just call
+``nghttp2::asio_http2::server::http2::num_threads`` function with the
+desired number of threads:
+
+.. code-block:: cpp
+
+    http2 server;
+
+    // Use 4 native threads
+    server.num_threads(4);
