@@ -165,6 +165,8 @@ public:
                    std::string path,
                    std::vector<header> headers);
 
+  boost::asio::io_service& io_service();
+
   template<size_t N>
   int on_read(const boost::array<uint8_t, N>& buffer, std::size_t len)
   {

@@ -827,6 +827,11 @@ int http2_handler::push_promise(http2_stream& stream, std::string method,
   return 0;
 }
 
+boost::asio::io_service& http2_handler::io_service()
+{
+  return io_service_;
+}
+
 callback_guard::callback_guard(http2_handler& h)
   : handler(h)
 {
