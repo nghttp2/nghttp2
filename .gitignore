@@ -40,3 +40,5 @@ doc/h2load-howto.rst
 doc/tutorial-hpack.rst
 doc/python-apiref.rst
 doc/building-android-binary.rst
+doc/asio_http2.h.rst
+doc/libnghttp2_asio.rst

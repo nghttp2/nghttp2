@@ -37,6 +37,7 @@ EXTRA_DIST = \
 	sources/tutorial-hpack.rst \
 	sources/nghttpx-howto.rst \
 	sources/h2load-howto.rst \
+	sources/libnghttp2_asio.rst \
 	sources/python-apiref.rst \
 	sources/building-android-binary.rst \
 	_themes/sphinx_rtd_theme/footer.html \

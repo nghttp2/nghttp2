@@ -11,6 +11,8 @@ HTTP/2 and SPDY.
 
 HPACK encoding and decoding are available as public API.
 
+The experimental high level C++ library is also available.
+
 We have Python binding of this libary, but we have not covered
 everything yet.
 
@@ -99,6 +101,11 @@ To mitigate heap fragmentation in long running server programs
 (``nghttpd`` and ``nghttpx``), jemalloc is recommended:
 
 * jemalloc
+
+libnghttp2_asio C++ library requires the following packages:
+
+* libboost-dev >= 1.55.0
+* libboost-thread-dev >= 1.55.0
 
 The Python bindings require the following packages:
 
@@ -960,6 +967,48 @@ With ``-d`` option, the extra ``header_table`` key is added and its
 associated value includes the state of dynamic header table after the
 corresponding header set was processed.  The format is the same as
 ``deflatehd``.
+
+libnghttp2_asio: High level HTTP/2 C++ library
+----------------------------------------------
+
+libnghttp2_asio is C++ library built on top of libnghttp2 and provides
+high level abstraction API to build HTTP/2 applications.  It depends
+on Boost::ASIO library and OpenSSL.  Currently libnghttp2_asio
+provides server side API.
+
+libnghttp2_asio is not built by default.  Use ``--enable-asio-lib``
+configure flag to build libnghttp2_asio.  The required Boost libraries
+are:
+
+* Boost::Asio
+* Boost::System
+* Boost::Thread
+
+Server API is designed to build HTTP/2 server very easily to utilize
+C++11 anonymous function and closure.  The bare minimum example of
+HTTP/2 server looks like this:
+
+.. code-block:: cpp
+
+    #include <nghttp2/asio_http2.h>
+
+    using namespace nghttp2::asio_http2;
+    using namespace nghttp2::asio_http2::server;
+
+    int main(int argc, char* argv[])
+    {
+      http2 server;
+
+      server.listen
+        ("*", 3000,
+         [](std::shared_ptr<request> req, std::shared_ptr<response> res)
+         {
+           res->write_head(200);
+           res->end("hello, world");
+         });
+    }
+
+For more details, see the documentation of libnghttp2_asio.
 
 Python bindings
 ---------------

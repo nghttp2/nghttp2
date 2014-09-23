@@ -551,10 +551,12 @@ AC_CONFIG_FILES([
   doc/tutorial-hpack.rst
   doc/nghttpx-howto.rst
   doc/h2load-howto.rst
+  doc/libnghttp2_asio.rst
   doc/python-apiref.rst
   doc/building-android-binary.rst
   doc/nghttp2.h.rst
   doc/nghttp2ver.h.rst
+  doc/asio_http2.h.rst
 ])
 AC_OUTPUT
 

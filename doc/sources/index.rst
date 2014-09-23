@@ -28,9 +28,11 @@ Contents:
    nghttpx-howto
    h2load-howto
    apiref
+   libnghttp2_asio
    python-apiref
    nghttp2.h
    nghttp2ver.h
+   asio_http2.h
    Source <https://github.com/tatsuhiro-t/nghttp2>
    Issues <https://github.com/tatsuhiro-t/nghttp2/issues>
 
