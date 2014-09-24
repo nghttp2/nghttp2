@@ -51,15 +51,24 @@ deflate_SOURCES = deflate.c
 
 if ENABLE_ASIO_LIB
 
-noinst_PROGRAMS += asio-sv
+noinst_PROGRAMS += asio-sv asio-sv2
 
-asio_sv_SOURCES = asio-sv.cc
-asio_sv_CPPFLAGS = ${BOOST_CPPFLAGS} ${AM_CPPFLAGS}
-asio_sv_LDFLAGS = \
+ASIOCPPFLAGS = ${BOOST_CPPFLAGS} ${AM_CPPFLAGS}
+ASIOLDFLAGS = \
 	@JEMALLOC_LIBS@ \
 	${BOOST_LDFLAGS} \
 	${BOOST_SYSTEM_LIB}
-asio_sv_LDADD = $(top_builddir)/src/libnghttp2_asio.la
+ASIOLDADD = $(top_builddir)/src/libnghttp2_asio.la
+
+asio_sv_SOURCES = asio-sv.cc
+asio_sv_CPPFLAGS = ${ASIOCPPFLAGS}
+asio_sv_LDFLAGS = ${ASIOLDFLAGS}
+asio_sv_LDADD = ${ASIOLDADD}
+
+asio_sv2_SOURCES = asio-sv2.cc
+asio_sv2_CPPFLAGS = ${ASIOCPPFLAGS}
+asio_sv2_LDFLAGS = ${ASIOLDFLAGS}
+asio_sv2_LDADD = ${ASIOLDADD}
 
 endif # ENABLE_ASIO_LIB
 

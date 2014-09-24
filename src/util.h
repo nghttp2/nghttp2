@@ -464,6 +464,12 @@ std::string ascii_dump(const uint8_t *data, size_t len);
 // it.
 char* get_exec_path(int argc, char **const argv, const char *cwd);
 
+// Validates path so that it does not contain directory traversal
+// vector.  Returns true if path is safe.  The |path| must start with
+// "/" otherwise returns false.  This function should be called after
+// percent-decode was performed.
+bool check_path(const std::string& path);
+
 } // namespace util
 
 } // namespace nghttp2

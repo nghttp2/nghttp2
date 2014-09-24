@@ -797,18 +797,6 @@ ssize_t file_read_callback
 }
 
 namespace {
-bool check_url(const std::string& url)
-{
-  // We don't like '\' in url.
-  return !url.empty() && url[0] == '/' &&
-    url.find('\\') == std::string::npos &&
-    url.find("/../") == std::string::npos &&
-    url.find("/./") == std::string::npos &&
-    !util::endsWith(url, "/..") && !util::endsWith(url, "/.");
-}
-} // namespace
-
-namespace {
 void prepare_status_response(Stream *stream, Http2Handler *hd,
                              const std::string& status)
 {
@@ -885,7 +873,7 @@ void prepare_response(Stream *stream, Http2Handler *hd, bool allow_push = true)
     url = url.substr(0, query_pos);
   }
   url = util::percentDecode(url.begin(), url.end());
-  if(!check_url(url)) {
+  if(!util::check_path(url)) {
     prepare_status_response(stream, hd, STATUS_404);
     return;
   }

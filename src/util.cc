@@ -593,6 +593,16 @@ char* get_exec_path(int argc, char **const argv, const char *cwd)
   return path;
 }
 
+bool check_path(const std::string& path)
+{
+  // We don't like '\' in path.
+  return !path.empty() && path[0] == '/' &&
+    path.find('\\') == std::string::npos &&
+    path.find("/../") == std::string::npos &&
+    path.find("/./") == std::string::npos &&
+    !util::endsWith(path, "/..") && !util::endsWith(path, "/.");
+}
+
 } // namespace util
 
 } // namespace nghttp2

@@ -168,6 +168,23 @@ private:
 // |path|.  This can be passed to response::end().
 read_cb file_reader(const std::string& path);
 
+// Like file_reader(const std::string&), but it takes opened file
+// descriptor.  The passed descriptor will be closed when returned
+// function object is destroyed.
+read_cb file_reader_from_fd(int fd);
+
+// Validates path so that it does not contain directory traversal
+// vector.  Returns true if path is safe.  The |path| must start with
+// "/" otherwise returns false.  This function should be called after
+// percent-decode was performed.
+bool check_path(const std::string& path);
+
+// Performs percent-decode against string |s|.
+std::string percent_decode(const std::string& s);
+
+// Returns HTTP date representation of current posix time |t|.
+std::string http_date(time_t t);
+
 } // namespace server
 
 } // namespace asio_http2

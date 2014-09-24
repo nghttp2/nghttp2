@@ -155,6 +155,11 @@ read_cb file_reader(const std::string& path)
     return read_cb();
   }
 
+  return file_reader_from_fd(fd);
+}
+
+read_cb file_reader_from_fd(int fd)
+{
   auto d = defer_shared(static_cast<int>(fd), close);
 
   return [fd, d](uint8_t *buf, size_t len) -> read_cb::result_type
@@ -172,6 +177,21 @@ read_cb file_reader(const std::string& path)
 
       return std::make_pair(rv, false);
     };
+}
+
+bool check_path(const std::string& path)
+{
+  return util::check_path(path);
+}
+
+std::string percent_decode(const std::string& s)
+{
+  return util::percentDecode(std::begin(s), std::end(s));
+}
+
+std::string http_date(time_t t)
+{
+  return util::http_date(t);
 }
 
 } // namespace server
