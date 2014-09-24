@@ -221,7 +221,8 @@ int HttpDownstreamConnection::push_request_headers()
     http2::sanitize_header_value(hdrs, hdrs.size() - (*xff).value.size());
     hdrs += "\r\n";
   }
-  if(downstream_->get_request_method() != "CONNECT") {
+  if(!get_config()->http2_proxy && !get_config()->client_proxy &&
+     downstream_->get_request_method() != "CONNECT") {
     hdrs += "X-Forwarded-Proto: ";
     if(!downstream_->get_request_http2_scheme().empty()) {
       hdrs += downstream_->get_request_http2_scheme();

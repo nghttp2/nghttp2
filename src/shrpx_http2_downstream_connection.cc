@@ -405,7 +405,8 @@ int Http2DownstreamConnection::push_request_headers()
     nva.push_back(http2::make_nv_ls("x-forwarded-for", (*xff).value));
   }
 
-  if(downstream_->get_request_method() != "CONNECT") {
+  if(!get_config()->http2_proxy && !get_config()->client_proxy &&
+     downstream_->get_request_method() != "CONNECT") {
     // We use same protocol with :scheme header field
     if(scheme.empty()) {
       if(client_handler_->get_ssl()) {
