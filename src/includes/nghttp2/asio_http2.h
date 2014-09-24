@@ -101,6 +101,9 @@ public:
   // Returns true if this is pushed request.
   bool pushed() const;
 
+  // Returns true if stream has been closed.
+  bool closed() const;
+
   // Application must not call this directly.
   request_impl& impl();
 private:

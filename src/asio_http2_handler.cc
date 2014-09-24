@@ -82,6 +82,11 @@ bool request::pushed() const
   return impl_->pushed();
 }
 
+bool request::closed() const
+{
+  return impl_->closed();
+}
+
 void request::on_data(data_cb cb)
 {
   return impl_->on_data(std::move(cb));
@@ -223,6 +228,11 @@ bool request_impl::pushed() const
 void request_impl::pushed(bool f)
 {
   pushed_ = f;
+}
+
+bool request_impl::closed() const
+{
+  return handler_.expired() || stream_.expired();
 }
 
 void request_impl::on_data(data_cb cb)

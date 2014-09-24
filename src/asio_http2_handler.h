@@ -60,6 +60,7 @@ public:
             std::vector<header> headers = {});
 
   bool pushed() const;
+  bool closed() const;
 
   void on_data(data_cb cb);
   void on_end(void_cb cb);
