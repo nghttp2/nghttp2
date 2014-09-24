@@ -104,8 +104,8 @@ To mitigate heap fragmentation in long running server programs
 
 libnghttp2_asio C++ library requires the following packages:
 
-* libboost-dev >= 1.55.0
-* libboost-thread-dev >= 1.55.0
+* libboost-dev >= 1.54.0
+* libboost-thread-dev >= 1.54.0
 
 The Python bindings require the following packages:
 
