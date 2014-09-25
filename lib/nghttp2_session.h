@@ -136,10 +136,13 @@ typedef enum {
 struct nghttp2_session {
   nghttp2_map /* <nghttp2_stream*> */ streams;
   nghttp2_stream_roots roots;
-  /* Queue for outbound frames other than stream-creating HEADERS */
+  /* Queue for outbound frames other than stream-creating HEADERS and
+     DATA */
   nghttp2_pq /* <nghttp2_outbound_item*> */ ob_pq;
   /* Queue for outbound stream-creating HEADERS frame */
   nghttp2_pq /* <nghttp2_outbound_item*> */ ob_ss_pq;
+  /* QUeue for DATA frame */
+  nghttp2_pq /* <nghttp2_outbound_item*> */ ob_da_pq;
   nghttp2_active_outbound_item aob;
   nghttp2_inbound_frame iframe;
   nghttp2_hd_deflater hd_deflater;
