@@ -145,6 +145,8 @@ Server push is also supported.
            if(req->path() == "/my.css") {
              res->write_head(200);
              res->end(file_reader("my.css"));
+
+             return;
            }
 
            res->write_head(404);
