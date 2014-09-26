@@ -54,10 +54,7 @@ if ENABLE_ASIO_LIB
 noinst_PROGRAMS += asio-sv asio-sv2
 
 ASIOCPPFLAGS = ${BOOST_CPPFLAGS} ${AM_CPPFLAGS}
-ASIOLDFLAGS = \
-	@JEMALLOC_LIBS@ \
-	${BOOST_LDFLAGS} \
-	${BOOST_SYSTEM_LIB}
+ASIOLDFLAGS = @JEMALLOC_LIBS@
 ASIOLDADD = $(top_builddir)/src/libnghttp2_asio.la
 
 asio_sv_SOURCES = asio-sv.cc
