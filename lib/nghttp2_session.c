@@ -3275,12 +3275,12 @@ static int update_remote_initial_window_size_func
 
   /* If window size gets positive, push deferred DATA frame to
      outbound queue. */
-  if(nghttp2_stream_check_deferred_by_flow_control(stream) &&
-     stream->remote_window_size > 0 &&
-     arg->session->remote_window_size > 0) {
+  if(stream->remote_window_size > 0 &&
+     nghttp2_stream_check_deferred_by_flow_control(stream)) {
 
-    rv = nghttp2_stream_resume_deferred_data(stream, &arg->session->ob_da_pq,
-                                             arg->session->last_cycle);
+    rv = nghttp2_stream_resume_deferred_data
+      (stream, NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL,
+       &arg->session->ob_da_pq, arg->session->last_cycle);
 
     if(nghttp2_is_fatal(rv)) {
       return rv;
@@ -3899,8 +3899,9 @@ static int session_on_stream_window_update_received
   if(stream->remote_window_size > 0 &&
      nghttp2_stream_check_deferred_by_flow_control(stream)) {
 
-    rv = nghttp2_stream_resume_deferred_data(stream, &session->ob_da_pq,
-                                             session->last_cycle);
+    rv = nghttp2_stream_resume_deferred_data
+      (stream, NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL, &session->ob_da_pq,
+       session->last_cycle);
 
     if(nghttp2_is_fatal(rv)) {
       return rv;
@@ -5863,14 +5864,13 @@ int nghttp2_session_resume_data(nghttp2_session *session, int32_t stream_id)
   int rv;
   nghttp2_stream *stream;
   stream = nghttp2_session_get_stream(session, stream_id);
-  if(stream == NULL ||
-     nghttp2_stream_check_deferred_by_flow_control(stream) ||
-     !nghttp2_stream_check_deferred_data(stream)) {
+  if(stream == NULL || !nghttp2_stream_check_deferred_data(stream)) {
     return NGHTTP2_ERR_INVALID_ARGUMENT;
   }
 
-  rv = nghttp2_stream_resume_deferred_data(stream, &session->ob_da_pq,
-                                           session->last_cycle);
+  rv = nghttp2_stream_resume_deferred_data
+    (stream, NGHTTP2_STREAM_FLAG_DEFERRED_USER, &session->ob_da_pq,
+     session->last_cycle);
 
   if(nghttp2_is_fatal(rv)) {
     return rv;

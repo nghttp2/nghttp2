@@ -383,15 +383,19 @@ int nghttp2_stream_defer_data(nghttp2_stream *stream, uint8_t flags,
   return stream_update_dep_on_detach_data(stream, pq, cycle);
 }
 
-int nghttp2_stream_resume_deferred_data(nghttp2_stream *stream,
+int nghttp2_stream_resume_deferred_data(nghttp2_stream *stream, uint8_t flags,
                                         nghttp2_pq *pq, uint64_t cycle)
 {
   assert(stream->data_item);
 
-  DEBUGF(fprintf(stderr, "stream: stream=%d resume data=%p\n",
-                 stream->stream_id, stream->data_item));
+  DEBUGF(fprintf(stderr, "stream: stream=%d resume data=%p flags=%02x\n",
+                 stream->stream_id, stream->data_item, flags));
 
-  stream->flags &= ~NGHTTP2_STREAM_FLAG_DEFERRED_ALL;
+  stream->flags &= ~flags;
+
+  if(stream->flags & NGHTTP2_STREAM_FLAG_DEFERRED_ALL) {
+    return 0;
+  }
 
   return stream_update_dep_on_attach_data(stream, pq, cycle);
 }

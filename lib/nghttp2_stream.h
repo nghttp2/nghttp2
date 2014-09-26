@@ -216,12 +216,14 @@ int nghttp2_stream_defer_data(nghttp2_stream *stream, uint8_t flags,
                               nghttp2_pq *pq, uint64_t cycle);
 
 /*
- * Detaches deferred data in this stream and it is back to active
- * state.  The flags NGHTTP2_STREAM_FLAG_DEFERRED_USER and
- * NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL are cleared if they are
- * set.
+ * Put back deferred data in this stream to active state.  The |flags|
+ * are one or more of bitwise OR of the following values:
+ * NGHTTP2_STREAM_FLAG_DEFERRED_USER and
+ * NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL and given masks are
+ * cleared if they are set.  So even if this function is called, if
+ * one of flag is still set, data does not become active.
  */
-int nghttp2_stream_resume_deferred_data(nghttp2_stream *stream,
+int nghttp2_stream_resume_deferred_data(nghttp2_stream *stream, uint8_t flags,
                                         nghttp2_pq *pq, uint64_t cycle);
 
 /*
