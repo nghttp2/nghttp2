@@ -337,17 +337,19 @@ AM_CONDITIONAL([HAVE_SPDYLAY], [ test "x${have_spdylay}" = "xyes" ])
 # Check Boost Asio library
 have_asio_lib=no
 
-AX_BOOST_BASE([1.54.0], [have_boost_base=yes], [have_boost_base=no])
+if test "x${request_asio_lib}" = "xyes"; then
+  AX_BOOST_BASE([1.54.0], [have_boost_base=yes], [have_boost_base=no])
 
-if test "x${have_boost_base}" = "xyes"; then
-  AX_BOOST_ASIO()
-  AX_BOOST_SYSTEM()
-  AX_BOOST_THREAD()
+  if test "x${have_boost_base}" = "xyes"; then
+    AX_BOOST_ASIO()
+    AX_BOOST_SYSTEM()
+    AX_BOOST_THREAD()
 
-  if test "x${ax_cv_boost_asio}" = "xyes" &&
-     test "x${ax_cv_boost_system}" = "xyes" &&
-     test "x${ax_cv_boost_thread}" = "xyes"; then
-    have_asio_lib=yes
+    if test "x${ax_cv_boost_asio}" = "xyes" &&
+       test "x${ax_cv_boost_system}" = "xyes" &&
+       test "x${ax_cv_boost_thread}" = "xyes"; then
+      have_asio_lib=yes
+    fi
   fi
 fi
 
