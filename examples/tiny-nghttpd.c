@@ -538,8 +538,6 @@ static int io_loop_run(io_loop *loop, server *serv)
       evhn->handler(loop, ev->events, ev->data.ptr);
     }
   }
-
-  return 0;
 }
 
 static int handle_timer(io_loop *loop, uint32_t events, void *ptr)
@@ -602,8 +600,6 @@ static int handle_accept(io_loop *loop, uint32_t events, void *ptr)
       connection_del(conn);
     }
   }
-
-  return 0;
 }
 
 static void stream_error
@@ -1118,8 +1114,6 @@ static int do_read(connection *conn)
       return -1;
     }
   }
-
-  return 0;
 }
 
 static int do_write(connection *conn)
@@ -1177,8 +1171,6 @@ static int do_write(connection *conn)
       io_buf_add(&conn->buf, b, n);
     }
   }
-
-  return 0;
 }
 
 static int handle_connection(io_loop *loop, uint32_t events, void *ptr)
