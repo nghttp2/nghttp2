@@ -476,6 +476,11 @@ AC_CHECK_FUNCS([ \
   timegm \
 ])
 
+# Checks for epoll availability, primarily for examples/tiny-nghttpd
+AX_HAVE_EPOLL([have_epoll=yes], [have_epoll=no])
+
+AM_CONDITIONAL([HAVE_EPOLL], [ test "x${have_epoll}" = "xyes" ])
+
 dnl Windows library for winsock2
 case "${host}" in
   *mingw*)

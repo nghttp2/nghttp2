@@ -49,9 +49,13 @@ libevent_server_SOURCES = libevent-server.c
 
 deflate_SOURCES = deflate.c
 
+if HAVE_EPOLL
+
 noinst_PROGRAMS += tiny-nghttpd
 
 tiny_nghttpd_SOURCES = tiny-nghttpd.c
+
+endif # HAVE_EPOLL
 
 if ENABLE_ASIO_LIB
 
