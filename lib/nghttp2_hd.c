@@ -842,6 +842,27 @@ static search_result search_hd_table(nghttp2_hd_context *context,
   size_t i;
   int use_index = (nv->flags & NGHTTP2_NV_FLAG_NO_INDEX) == 0;
 
+  /* Search dynamic table first, so that we can find recently used
+     entry first */
+  if(use_index) {
+    for(i = 0; i < context->hd_table.len; ++i) {
+      nghttp2_hd_entry *ent = hd_ringbuf_get(&context->hd_table, i);
+      if(ent->name_hash != name_hash || !name_eq(&ent->nv, nv)) {
+        continue;
+      }
+
+      if(res.index == -1) {
+        res.index = (ssize_t)(i + NGHTTP2_STATIC_TABLE_LENGTH);
+      }
+
+      if(ent->value_hash == value_hash && value_eq(&ent->nv, nv)) {
+        res.index = (ssize_t)(i + NGHTTP2_STATIC_TABLE_LENGTH);
+        res.name_value_match = 1;
+        return res;
+      }
+    }
+  }
+
   for(i = 0; i < NGHTTP2_STATIC_TABLE_LENGTH; ++i) {
     nghttp2_hd_entry *ent = &static_table[i];
     if(ent->name_hash != name_hash || !name_eq(&ent->nv, nv)) {
@@ -857,24 +878,6 @@ static search_result search_hd_table(nghttp2_hd_context *context,
       res.index = (ssize_t)i;
       res.name_value_match = 1;
       return res;
-    }
-  }
-
-  if(!use_index) {
-    return res;
-  }
-
-  for(i = 0; i < context->hd_table.len; ++i) {
-    nghttp2_hd_entry *ent = hd_ringbuf_get(&context->hd_table, i);
-    if(ent->name_hash == name_hash && name_eq(&ent->nv, nv)) {
-      if(res.index == -1) {
-        res.index = (ssize_t)(i + NGHTTP2_STATIC_TABLE_LENGTH);
-      }
-      if(ent->value_hash == value_hash && value_eq(&ent->nv, nv)) {
-        res.index = (ssize_t)(i + NGHTTP2_STATIC_TABLE_LENGTH);
-        res.name_value_match = 1;
-        return res;
-      }
     }
   }
 
