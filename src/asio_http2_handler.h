@@ -40,6 +40,16 @@
 
 namespace nghttp2 {
 namespace asio_http2 {
+
+class channel_impl {
+public:
+  channel_impl();
+  void post(void_cb cb);
+  void strand(boost::asio::io_service::strand *strand);
+private:
+  boost::asio::io_service::strand *strand_;
+};
+
 namespace server {
 
 class http2_handler;
@@ -115,15 +125,6 @@ private:
   std::weak_ptr<http2_stream> stream_;
   unsigned int status_code_;
   bool started_;
-};
-
-class channel_impl {
-public:
-  channel_impl();
-  void post(void_cb cb);
-  void strand(boost::asio::io_service::strand *strand);
-private:
-  boost::asio::io_service::strand *strand_;
 };
 
 class http2_stream {

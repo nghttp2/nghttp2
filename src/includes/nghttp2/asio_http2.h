@@ -40,11 +40,6 @@ struct header {
   std::string value;
 };
 
-namespace server {
-
-class request_impl;
-class response_impl;
-
 typedef std::function<void(const uint8_t*, std::size_t)> data_cb;
 typedef std::function<void(void)> void_cb;
 
@@ -82,6 +77,11 @@ private:
 };
 
 typedef std::function<void(channel&)> thread_cb;
+
+namespace server {
+
+class request_impl;
+class response_impl;
 
 class request {
 public:
@@ -212,6 +212,8 @@ private:
   std::unique_ptr<http2_impl> impl_;
 };
 
+} // namespace server
+
 // Convenient function to create function to read file denoted by
 // |path|.  This can be passed to response::end().
 read_cb file_reader(const std::string& path);
@@ -232,8 +234,6 @@ std::string percent_decode(const std::string& s);
 
 // Returns HTTP date representation of current posix time |t|.
 std::string http_date(time_t t);
-
-} // namespace server
 
 } // namespace asio_http2
 

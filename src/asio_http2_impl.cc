@@ -153,6 +153,8 @@ void http2_impl::num_concurrent_tasks(size_t num_concurrent_tasks)
   num_concurrent_tasks_ = num_concurrent_tasks;
 }
 
+} // namespace server
+
 template<typename T, typename F>
 std::shared_ptr<util::Defer<T, F>> defer_shared(T&& t, F f)
 {
@@ -205,8 +207,6 @@ std::string http_date(time_t t)
 {
   return util::http_date(t);
 }
-
-} // namespace server
 
 } // namespace asio_http2
 

@@ -33,6 +33,34 @@ namespace nghttp2 {
 
 namespace asio_http2 {
 
+channel::channel()
+  : impl_(util::make_unique<channel_impl>())
+{}
+
+void channel::post(void_cb cb)
+{
+  impl_->post(std::move(cb));
+}
+
+channel_impl& channel::impl()
+{
+  return *impl_;
+}
+
+channel_impl::channel_impl()
+  : strand_(nullptr)
+{}
+
+void channel_impl::post(void_cb cb)
+{
+  strand_->post(std::move(cb));
+}
+
+void channel_impl::strand(boost::asio::io_service::strand *strand)
+{
+  strand_ = strand;
+}
+
 namespace server {
 
 extern std::shared_ptr<std::string> cached_date;
@@ -400,34 +428,6 @@ std::pair<ssize_t, bool> response_impl::call_read
   }
 
   return std::make_pair(0, true);
-}
-
-channel::channel()
-  : impl_(util::make_unique<channel_impl>())
-{}
-
-void channel::post(void_cb cb)
-{
-  impl_->post(std::move(cb));
-}
-
-channel_impl& channel::impl()
-{
-  return *impl_;
-}
-
-channel_impl::channel_impl()
-  : strand_(nullptr)
-{}
-
-void channel_impl::post(void_cb cb)
-{
-  strand_->post(std::move(cb));
-}
-
-void channel_impl::strand(boost::asio::io_service::strand *strand)
-{
-  strand_ = strand;
 }
 
 http2_stream::http2_stream(int32_t stream_id)
