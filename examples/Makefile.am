@@ -59,7 +59,7 @@ endif # HAVE_EPOLL
 
 if ENABLE_ASIO_LIB
 
-noinst_PROGRAMS += asio-sv asio-sv2
+noinst_PROGRAMS += asio-sv asio-sv2 asio-sv3
 
 ASIOCPPFLAGS = ${BOOST_CPPFLAGS} ${AM_CPPFLAGS}
 ASIOLDFLAGS = @JEMALLOC_LIBS@
@@ -74,6 +74,11 @@ asio_sv2_SOURCES = asio-sv2.cc
 asio_sv2_CPPFLAGS = ${ASIOCPPFLAGS}
 asio_sv2_LDFLAGS = ${ASIOLDFLAGS}
 asio_sv2_LDADD = ${ASIOLDADD}
+
+asio_sv3_SOURCES = asio-sv3.cc
+asio_sv3_CPPFLAGS = ${ASIOCPPFLAGS}
+asio_sv3_LDFLAGS = ${ASIOLDFLAGS}
+asio_sv3_LDADD = ${ASIOLDADD}
 
 endif # ENABLE_ASIO_LIB
 

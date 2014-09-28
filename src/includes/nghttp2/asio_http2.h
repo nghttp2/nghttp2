@@ -53,10 +53,35 @@ typedef std::function<void(void)> void_cb;
 // return value is pair of written bytes and bool value indicating
 // that this is the end of the body.  If the end of the body was
 // reached, return true.  If there is error and application wants to
-// terminate stream, return std::make_pair(-1, false).  Currently,
-// returning std::make_pair(0, false) is reserved for future use.
+// terminate stream, return std::make_pair(-1, false).  Returning
+// std::make_pair(0, false) tells the library that don't call this
+// callback until application calls response::resume().  This is
+// useful when there is no data to send at the moment but there will
+// be more to come in near future.
 typedef std::function<std::pair<ssize_t, bool>
                       (uint8_t *buf, std::size_t len)> read_cb;
+
+class channel_impl;
+
+class channel {
+public:
+  // Application must not call this directly.
+  channel();
+
+  // Schedules the execution of callback |cb| in the same thread where
+  // request callback is called.  Therefore, it is same to use request
+  // or response object in |cb|.  The callbacks are executed in the
+  // same order they are posted though same channel object if they are
+  // posted from the same thread.
+  void post(void_cb cb);
+
+  // Application must not call this directly.
+  channel_impl& impl();
+private:
+  std::unique_ptr<channel_impl> impl_;
+};
+
+typedef std::function<void(channel&)> thread_cb;
 
 class request {
 public:
@@ -104,6 +129,17 @@ public:
   // Returns true if stream has been closed.
   bool closed() const;
 
+  // Runs function |start| in one of background threads.  Returns true
+  // if scheduling task was done successfully.
+  //
+  // Since |start| is called in different thread, calling any method
+  // of request or response object in the callback may cause undefined
+  // behavior.  To safely use them, use channel::post().  A callback
+  // passed to channel::post() is executed in the same thread where
+  // request callback is called, so it is safe to use request or
+  // response object.  Example::
+  bool run_task(thread_cb start);
+
   // Application must not call this directly.
   request_impl& impl();
 private:
@@ -127,7 +163,7 @@ public:
   // further call of end() is allowed.
   void end(read_cb cb);
 
-  // Resumes deferred response.  Not implemented yet.
+  // Resumes deferred response.
   void resume();
 
   // Returns status code.
@@ -142,6 +178,8 @@ private:
   std::unique_ptr<response_impl> impl_;
 };
 
+// This is so called request callback.  Called every time request is
+// received.
 typedef std::function<void(std::shared_ptr<request>,
                            std::shared_ptr<response>)> request_cb;
 
@@ -157,12 +195,19 @@ public:
   void listen(const std::string& address, uint16_t port,
               request_cb cb);
 
-  // Sets number of native threads.
+  // Sets number of native threads to handle incoming HTTP request.
+  // It defaults to 1.
   void num_threads(size_t num_threads);
 
   // Sets TLS private key file and certificate file.  Both files must
   // be in PEM format.
   void tls(std::string private_key_file, std::string certificate_file);
+
+  // Sets number of background threads to run concurrent tasks (see
+  // request::run_task()).  It defaults to 1.  This is not the number
+  // of thread to handle incoming HTTP request.  For this purpose, see
+  // num_threads().
+  void num_concurrent_tasks(size_t num_concurrent_tasks);
 private:
   std::unique_ptr<http2_impl> impl_;
 };

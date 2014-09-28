@@ -64,9 +64,12 @@ class connection
 public:
   /// Construct a connection with the given io_service.
   template<typename... SocketArgs>
-  explicit connection(request_cb cb, SocketArgs&&... args)
+  explicit connection(request_cb cb,
+                      boost::asio::io_service& task_io_service,
+                      SocketArgs&&... args)
     : socket_(std::forward<SocketArgs>(args)...),
       request_cb_(std::move(cb)),
+      task_io_service_(task_io_service),
       writing_(false)
   {}
 
@@ -75,6 +78,7 @@ public:
   {
     handler_ = std::make_shared<http2_handler>
       (socket_.get_io_service(),
+       task_io_service_,
        [this]()
        {
          do_write();
@@ -167,6 +171,8 @@ private:
   socket_type socket_;
 
   request_cb request_cb_;
+
+  boost::asio::io_service& task_io_service_;
 
   std::shared_ptr<http2_handler> handler_;
 

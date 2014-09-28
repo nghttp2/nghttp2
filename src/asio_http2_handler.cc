@@ -97,6 +97,11 @@ void request::on_end(void_cb cb)
   return impl_->on_end(std::move(cb));
 }
 
+bool request::run_task(thread_cb start)
+{
+  return impl_->run_task(std::move(start));
+}
+
 request_impl& request::impl()
 {
   return *impl_;
@@ -120,6 +125,11 @@ void response::end(std::string data)
 void response::end(read_cb cb)
 {
   impl_->end(std::move(cb));
+}
+
+void response::resume()
+{
+  impl_->resume();
 }
 
 unsigned int response::status_code() const
@@ -209,7 +219,7 @@ void request_impl::path(std::string arg)
 bool request_impl::push(std::string method, std::string path,
                         std::vector<header> headers)
 {
-  if(handler_.expired() || stream_.expired()) {
+  if(closed()) {
     return false;
   }
 
@@ -243,6 +253,17 @@ void request_impl::on_data(data_cb cb)
 void request_impl::on_end(void_cb cb)
 {
   on_end_cb_ = std::move(cb);
+}
+
+bool request_impl::run_task(thread_cb start)
+{
+  if(closed()) {
+    return false;
+  }
+
+  auto handler = handler_.lock();
+
+  return handler->run_task(std::move(start));
 }
 
 void request_impl::handler(std::weak_ptr<http2_handler> h)
@@ -311,7 +332,7 @@ void response_impl::end(std::string data)
 
 void response_impl::end(read_cb cb)
 {
-  if(started_ || handler_.expired() || stream_.expired()) {
+  if(started_ || closed()) {
     return;
   }
 
@@ -325,6 +346,26 @@ void response_impl::end(read_cb cb)
     handler->stream_error(stream->get_stream_id(), NGHTTP2_INTERNAL_ERROR);
     return;
   }
+
+  if(!handler->inside_callback()) {
+    handler->initiate_write();
+  }
+}
+
+bool response_impl::closed() const
+{
+  return handler_.expired() || stream_.expired();
+}
+
+void response_impl::resume()
+{
+  if(closed()) {
+    return;
+  }
+
+  auto handler = handler_.lock();
+  auto stream = stream_.lock();
+  handler->resume(*stream);
 
   if(!handler->inside_callback()) {
     handler->initiate_write();
@@ -359,6 +400,34 @@ std::pair<ssize_t, bool> response_impl::call_read
   }
 
   return std::make_pair(0, true);
+}
+
+channel::channel()
+  : impl_(util::make_unique<channel_impl>())
+{}
+
+void channel::post(void_cb cb)
+{
+  impl_->post(std::move(cb));
+}
+
+channel_impl& channel::impl()
+{
+  return *impl_;
+}
+
+channel_impl::channel_impl()
+  : strand_(nullptr)
+{}
+
+void channel_impl::post(void_cb cb)
+{
+  strand_->post(std::move(cb));
+}
+
+void channel_impl::strand(boost::asio::io_service::strand *strand)
+{
+  strand_ = strand;
 }
 
 http2_stream::http2_stream(int32_t stream_id)
@@ -608,10 +677,14 @@ int on_frame_not_send_callback
 } // namespace
 
 http2_handler::http2_handler
-(boost::asio::io_service& io_service, connection_write writefun, request_cb cb)
+(boost::asio::io_service& io_service,
+ boost::asio::io_service& task_io_service_,
+ connection_write writefun, request_cb cb)
   : writefun_(writefun),
     request_cb_(std::move(cb)),
     io_service_(io_service),
+    task_io_service_(task_io_service_),
+    strand_(std::make_shared<boost::asio::io_service::strand>(io_service_)),
     session_(nullptr),
     buf_(nullptr),
     buflen_(0),
@@ -789,6 +862,11 @@ void http2_handler::initiate_write()
   writefun_();
 }
 
+void http2_handler::resume(http2_stream& stream)
+{
+  nghttp2_session_resume_data(session_, stream.get_stream_id());
+}
+
 int http2_handler::push_promise(http2_stream& stream, std::string method,
                                 std::string path,
                                 std::vector<header> headers)
@@ -835,6 +913,26 @@ int http2_handler::push_promise(http2_stream& stream, std::string method,
   }
 
   return 0;
+}
+
+bool http2_handler::run_task(thread_cb start)
+{
+  auto strand = strand_;
+
+  try {
+    task_io_service_.post
+      ([start, strand]()
+       {
+         channel chan;
+         chan.impl().strand(strand.get());
+
+         start(chan);
+       });
+
+    return true;
+  } catch(std::exception& ex) {
+    return false;
+  }
 }
 
 boost::asio::io_service& http2_handler::io_service()

@@ -65,6 +65,8 @@ public:
   void on_data(data_cb cb);
   void on_end(void_cb cb);
 
+  bool run_task(thread_cb start);
+
   void set_header(std::vector<header> headers);
   void add_header(std::string name, std::string value);
   void method(std::string method);
@@ -97,6 +99,8 @@ public:
   void write_head(unsigned int status_code, std::vector<header> headers = {});
   void end(std::string data = "");
   void end(read_cb cb);
+  void resume();
+  bool closed() const;
 
   unsigned int status_code() const;
   const std::vector<header>& headers() const;
@@ -111,6 +115,15 @@ private:
   std::weak_ptr<http2_stream> stream_;
   unsigned int status_code_;
   bool started_;
+};
+
+class channel_impl {
+public:
+  channel_impl();
+  void post(void_cb cb);
+  void strand(boost::asio::io_service::strand *strand);
+private:
+  boost::asio::io_service::strand *strand_;
 };
 
 class http2_stream {
@@ -137,6 +150,7 @@ typedef std::function<void(void)> connection_write;
 class http2_handler : public std::enable_shared_from_this<http2_handler> {
 public:
   http2_handler(boost::asio::io_service& io_service,
+                boost::asio::io_service& task_io_service,
                 connection_write writefun,
                 request_cb cb);
 
@@ -162,9 +176,13 @@ public:
   void leave_callback();
   bool inside_callback() const;
 
+  void resume(http2_stream& stream);
+
   int push_promise(http2_stream& stream, std::string method,
                    std::string path,
                    std::vector<header> headers);
+
+  bool run_task(thread_cb start);
 
   boost::asio::io_service& io_service();
 
@@ -231,6 +249,8 @@ private:
   connection_write writefun_;
   request_cb request_cb_;
   boost::asio::io_service& io_service_;
+  boost::asio::io_service& task_io_service_;
+  std::shared_ptr<boost::asio::io_service::strand> strand_;
   nghttp2_session *session_;
   const uint8_t *buf_;
   std::size_t buflen_;

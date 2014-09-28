@@ -66,6 +66,7 @@ public:
   /// serve up files from the given directory.
   explicit server(const std::string& address, uint16_t port,
                   std::size_t io_service_pool_size,
+                  std::size_t thread_pool_size,
                   request_cb cb,
                   std::unique_ptr<boost::asio::ssl::context> ssl_ctx);
 

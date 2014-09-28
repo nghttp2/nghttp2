@@ -44,9 +44,10 @@ namespace server {
 
 server::server(const std::string& address, uint16_t port,
                std::size_t io_service_pool_size,
+               std::size_t thread_pool_size,
                request_cb cb,
                std::unique_ptr<boost::asio::ssl::context> ssl_ctx)
-  : io_service_pool_(io_service_pool_size),
+  : io_service_pool_(io_service_pool_size, thread_pool_size),
     signals_(io_service_pool_.get_io_service()),
     tick_timer_(io_service_pool_.get_io_service(),
                 boost::posix_time::seconds(1)),
@@ -116,7 +117,8 @@ void server::start_accept()
   if(ssl_ctx_) {
     auto new_connection =
       std::make_shared<connection<ssl_socket>>
-      (request_cb_, io_service_pool_.get_io_service(), *ssl_ctx_);
+      (request_cb_, io_service_pool_.get_task_io_service(),
+       io_service_pool_.get_io_service(), *ssl_ctx_);
 
     acceptor_.async_accept
       (new_connection->socket().lowest_layer(),
@@ -140,7 +142,8 @@ void server::start_accept()
   } else {
     auto new_connection =
       std::make_shared<connection<boost::asio::ip::tcp::socket>>
-      (request_cb_, io_service_pool_.get_io_service());
+      (request_cb_, io_service_pool_.get_task_io_service(),
+       io_service_pool_.get_io_service());
 
     acceptor_.async_accept
       (new_connection->socket(),

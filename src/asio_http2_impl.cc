@@ -63,8 +63,14 @@ void http2::tls(std::string private_key_file,
   impl_->tls(std::move(private_key_file), std::move(certificate_file));
 }
 
+void http2::num_concurrent_tasks(size_t num_concurrent_tasks)
+{
+  impl_->num_concurrent_tasks(num_concurrent_tasks);
+}
+
 http2_impl::http2_impl()
-  : num_threads_(1)
+  : num_threads_(1),
+    num_concurrent_tasks_(1)
 {}
 
 namespace {
@@ -126,7 +132,8 @@ void http2_impl::listen(const std::string& address, uint16_t port,
       }, nullptr);
   }
 
-  server(address, port, num_threads_, std::move(cb), std::move(ssl_ctx)).run();
+  server(address, port, num_threads_, num_concurrent_tasks_,
+         std::move(cb), std::move(ssl_ctx)).run();
 }
 
 void http2_impl::num_threads(size_t num_threads)
@@ -139,6 +146,11 @@ void http2_impl::tls(std::string private_key_file,
 {
   private_key_file_ = std::move(private_key_file);
   certificate_file_ = std::move(certificate_file);
+}
+
+void http2_impl::num_concurrent_tasks(size_t num_concurrent_tasks)
+{
+  num_concurrent_tasks_ = num_concurrent_tasks;
 }
 
 template<typename T, typename F>
