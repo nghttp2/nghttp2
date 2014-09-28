@@ -22,6 +22,8 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 SUBDIRS = includes
 
+EXTRA_DIST = Makefile.msvc
+
 AM_CFLAGS = -Wall
 AM_CPPFLAGS = -I$(srcdir)/includes -I$(builddir)/includes @DEFS@
 
