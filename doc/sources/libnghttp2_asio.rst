@@ -51,8 +51,8 @@ HTTP/2 server looks like this:
 
 First we instantiate ``nghttp2::asio_http2::server::http2`` object.
 Then call ``nghttp2::asio_http2::server::http2::listen`` function with
-address and port to listen to and callback function invoked when
-request arrives.
+address and port to listen to and callback function, namely "request
+callback", invoked when request arrives.
 
 The ``req`` and ``res`` represent HTTP request and response
 respectively.  ``nghttp2::asio_http2_::server::response::write_head``
@@ -105,11 +105,10 @@ files must be in PEM format.
 In the above example, if request path is either "/" or "/index.html",
 we serve index.html file in the current working directory.
 ``nghttp2::asio_http2::server::response::end`` has overload to take
-function of type ``nghttp2::asio_http2::server::read_cb`` and
-application pass its implementation to generate response body.  For
-the convenience, libnghttp2_asio library provides
-``nghttp2::asio_http2::server::file_reader`` function to generate
-function to server static file.
+function of type ``nghttp2::asio_http2::read_cb`` and application pass
+its implementation to generate response body.  For the convenience,
+libnghttp2_asio library provides ``nghttp2::asio_http2::file_reader``
+function to generate function to server static file.
 
 Server push
 +++++++++++
@@ -173,3 +172,72 @@ desired number of threads:
 
     // Use 4 native threads
     server.num_threads(4);
+
+Run blocking tasks in background thread
++++++++++++++++++++++++++++++++++++++++
+
+The request callback is called in the same thread where HTTP request
+is handled.  And many connections shares the same thread, we cannot
+directly run blocking tasks in request callback.
+
+To run blocking tasks, use
+``nghttp2::asio_http2::server::request::run_task``.  The passed
+callback will be executed in the different thread from the thread
+where request callback was executed.  So application can perform
+blocking task there.  The example follows:
+
+.. code-block:: cpp
+
+    #include <unistd.h>
+    #include <nghttp2/asio_http2.h>
+
+    using namespace nghttp2::asio_http2;
+    using namespace nghttp2::asio_http2::server;
+
+    int main(int argc, char* argv[])
+    {
+      http2 server;
+
+      server.num_concurrent_tasks(16);
+
+      server.listen
+        ("*", 3000,
+         [](std::shared_ptr<request> req, std::shared_ptr<response> res)
+         {
+           req->run_task
+             ([res](channel& channel)
+              {
+                // executed in different thread than the thread where
+                // request callback was executed.
+
+                // using res directly here is not safe.  Capturing it by
+                // value is safe because it is std::shared_ptr.
+
+                sleep(1);
+
+                channel.post
+                  ([res]()
+                   {
+                     // executed in the same thread where request callback
+                     // was executed.
+                     res->write_head(200);
+                     res->end("hello, world");
+                   });
+              });
+         });
+    }
+
+First we set the number of background threads which run tasks.  By
+default it is set to 1.  In this example, we set it to 16, so 16 tasks
+can be executed in parallel.
+
+We call ``req->run_task()`` to execute task in background thread.  In
+the passed callback, we just simply sleeps 1 second.  After sleep is
+over, we schedule another callback to send response to the client.
+Since the callback passed to ``req->run_task()`` is executed in the
+different thread from the thread where request callback is called,
+using ``req`` or ``res`` object directly there may cause undefined
+behaviour.  To avoid this issue, we can use
+``nghttp2::asio_http2::channel::post`` by supplying a callback which
+in turn get called in the same thread where request callback was
+called.
