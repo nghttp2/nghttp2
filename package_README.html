@@ -7,7 +7,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>nghttp2 - HTTP/2 C Library &mdash; nghttp2 0.6.2-DEV documentation</title>
+  <title>nghttp2 - HTTP/2 C Library &mdash; nghttp2 0.6.2 documentation</title>
   
 
   
@@ -28,7 +28,7 @@
   
 
   
-    <link rel="top" title="nghttp2 0.6.2-DEV documentation" href="index.html"/>
+    <link rel="top" title="nghttp2 0.6.2 documentation" href="index.html"/>
         <link rel="next" title="Building Android binary" href="building-android-binary.html"/>
         <link rel="prev" title="nghttp2 - HTTP/2 C Library" href="index.html"/> 
 
@@ -69,6 +69,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#client-server-and-proxy-programs">Client, Server and Proxy programs</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#benchmarking-tool">Benchmarking tool</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#hpack-tools">HPACK tools</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#libnghttp2-asio-high-level-http-2-c-library">libnghttp2_asio: High level HTTP/2 C++ library</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#python-bindings">Python bindings</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#contribution">Contribution</a></li>
 </ul>
@@ -151,6 +152,10 @@
 <li class="toctree-l2"><a class="reference internal" href="apiref.html#functions">Functions</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="libnghttp2_asio.html">libnghttp2_asio: High level HTTP/2 C++ library</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="libnghttp2_asio.html#server-api">Server API</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="python-apiref.html">Python API Reference</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="python-apiref.html#hpack-api">HPACK API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="python-apiref.html#http-2-servers">HTTP/2 servers</a></li>
@@ -158,6 +163,7 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="nghttp2.h.html">nghttp2.h</a></li>
 <li class="toctree-l1"><a class="reference internal" href="nghttp2ver.h.html">nghttp2ver.h</a></li>
+<li class="toctree-l1"><a class="reference internal" href="asio_http2.h.html">asio_http2.h</a></li>
 <li class="toctree-l1"><a class="reference external" href="https://github.com/tatsuhiro-t/nghttp2">Source</a></li>
 <li class="toctree-l1"><a class="reference external" href="https://github.com/tatsuhiro-t/nghttp2/issues">Issues</a></li>
 </ul>
@@ -201,6 +207,7 @@ library.  On top of that, we have implemented HTTP/2 client, server
 and proxy.  Also we have developed load test/benchmarking tool for
 HTTP/2 and SPDY.</p>
 <p>HPACK encoding and decoding are available as public API.</p>
+<p>The experimental high level C++ library is also available.</p>
 <p>We have Python binding of this libary, but we have not covered
 everything yet.</p>
 <div class="section" id="development-status">
@@ -297,6 +304,11 @@ resource) in <tt class="docutils literal"><span class="pre">nghttp</span></tt>, 
 (<tt class="docutils literal"><span class="pre">nghttpd</span></tt> and <tt class="docutils literal"><span class="pre">nghttpx</span></tt>), jemalloc is recommended:</p>
 <ul class="simple">
 <li>jemalloc</li>
+</ul>
+<p>libnghttp2_asio C++ library requires the following packages:</p>
+<ul class="simple">
+<li>libboost-dev &gt;= 1.54.0</li>
+<li>libboost-thread-dev &gt;= 1.54.0</li>
 </ul>
 <p>The Python bindings require the following packages:</p>
 <ul class="simple">
@@ -1134,6 +1146,44 @@ corresponding header set was processed.  The format is the same as
 <tt class="docutils literal"><span class="pre">deflatehd</span></tt>.</p>
 </div>
 </div>
+<div class="section" id="libnghttp2-asio-high-level-http-2-c-library">
+<h2>libnghttp2_asio: High level HTTP/2 C++ library<a class="headerlink" href="#libnghttp2-asio-high-level-http-2-c-library" title="Permalink to this headline">¶</a></h2>
+<p>libnghttp2_asio is C++ library built on top of libnghttp2 and provides
+high level abstraction API to build HTTP/2 applications.  It depends
+on Boost::ASIO library and OpenSSL.  Currently libnghttp2_asio
+provides server side API.</p>
+<p>libnghttp2_asio is not built by default.  Use <tt class="docutils literal"><span class="pre">--enable-asio-lib</span></tt>
+configure flag to build libnghttp2_asio.  The required Boost libraries
+are:</p>
+<ul class="simple">
+<li>Boost::Asio</li>
+<li>Boost::System</li>
+<li>Boost::Thread</li>
+</ul>
+<p>Server API is designed to build HTTP/2 server very easily to utilize
+C++11 anonymous function and closure.  The bare minimum example of
+HTTP/2 server looks like this:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="cp">#include &lt;nghttp2/asio_http2.h&gt;</span>
+
+<span class="k">using</span> <span class="k">namespace</span> <span class="n">nghttp2</span><span class="o">::</span><span class="n">asio_http2</span><span class="p">;</span>
+<span class="k">using</span> <span class="k">namespace</span> <span class="n">nghttp2</span><span class="o">::</span><span class="n">asio_http2</span><span class="o">::</span><span class="n">server</span><span class="p">;</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span><span class="o">*</span> <span class="n">argv</span><span class="p">[])</span>
+<span class="p">{</span>
+  <span class="n">http2</span> <span class="n">server</span><span class="p">;</span>
+
+  <span class="n">server</span><span class="p">.</span><span class="n">listen</span>
+    <span class="p">(</span><span class="s">&quot;*&quot;</span><span class="p">,</span> <span class="mi">3000</span><span class="p">,</span>
+     <span class="p">[](</span><span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">request</span><span class="o">&gt;</span> <span class="n">req</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">response</span><span class="o">&gt;</span> <span class="n">res</span><span class="p">)</span>
+     <span class="p">{</span>
+       <span class="n">res</span><span class="o">-&gt;</span><span class="n">write_head</span><span class="p">(</span><span class="mi">200</span><span class="p">);</span>
+       <span class="n">res</span><span class="o">-&gt;</span><span class="n">end</span><span class="p">(</span><span class="s">&quot;hello, world&quot;</span><span class="p">);</span>
+     <span class="p">});</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>For more details, see the documentation of libnghttp2_asio.</p>
+</div>
 <div class="section" id="python-bindings">
 <h2>Python bindings<a class="headerlink" href="#python-bindings" title="Permalink to this headline">¶</a></h2>
 <p>This <tt class="docutils literal"><span class="pre">python</span></tt> directory contains nghttp2 Python bindings.  The
@@ -1288,7 +1338,7 @@ full real name when contributing!</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.6.2-DEV',
+            VERSION:'0.6.2',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  false

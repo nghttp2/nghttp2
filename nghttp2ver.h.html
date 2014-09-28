@@ -7,7 +7,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>nghttp2ver.h &mdash; nghttp2 0.6.2-DEV documentation</title>
+  <title>nghttp2ver.h &mdash; nghttp2 0.6.2 documentation</title>
   
 
   
@@ -28,7 +28,8 @@
   
 
   
-    <link rel="top" title="nghttp2 0.6.2-DEV documentation" href="index.html"/>
+    <link rel="top" title="nghttp2 0.6.2 documentation" href="index.html"/>
+        <link rel="next" title="asio_http2.h" href="asio_http2.h.html"/>
         <link rel="prev" title="nghttp2.h" href="nghttp2.h.html"/> 
 
   
@@ -68,6 +69,7 @@
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#client-server-and-proxy-programs">Client, Server and Proxy programs</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#benchmarking-tool">Benchmarking tool</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#hpack-tools">HPACK tools</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#libnghttp2-asio-high-level-http-2-c-library">libnghttp2_asio: High level HTTP/2 C++ library</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#python-bindings">Python bindings</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#contribution">Contribution</a></li>
 </ul>
@@ -150,6 +152,10 @@
 <li class="toctree-l2"><a class="reference internal" href="apiref.html#functions">Functions</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="libnghttp2_asio.html">libnghttp2_asio: High level HTTP/2 C++ library</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="libnghttp2_asio.html#server-api">Server API</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="python-apiref.html">Python API Reference</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="python-apiref.html#hpack-api">HPACK API</a></li>
 <li class="toctree-l2"><a class="reference internal" href="python-apiref.html#http-2-servers">HTTP/2 servers</a></li>
@@ -157,6 +163,7 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="nghttp2.h.html">nghttp2.h</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="">nghttp2ver.h</a></li>
+<li class="toctree-l1"><a class="reference internal" href="asio_http2.h.html">asio_http2.h</a></li>
 <li class="toctree-l1"><a class="reference external" href="https://github.com/tatsuhiro-t/nghttp2">Source</a></li>
 <li class="toctree-l1"><a class="reference external" href="https://github.com/tatsuhiro-t/nghttp2/issues">Issues</a></li>
 </ul>
@@ -224,7 +231,7 @@
 <span class="cm"> * @macro</span>
 <span class="cm"> * Version number of the nghttp2 library release</span>
 <span class="cm"> */</span>
-<span class="cp">#define NGHTTP2_VERSION &quot;0.6.2-DEV&quot;</span>
+<span class="cp">#define NGHTTP2_VERSION &quot;0.6.2&quot;</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @macro</span>
@@ -244,6 +251,8 @@
           <footer>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="asio_http2.h.html" class="btn btn-neutral float-right" title="asio_http2.h">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="nghttp2.h.html" class="btn btn-neutral" title="nghttp2.h"><span class="fa fa-arrow-circle-left"></span> Previous</a>
@@ -275,7 +284,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.6.2-DEV',
+            VERSION:'0.6.2',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  false
