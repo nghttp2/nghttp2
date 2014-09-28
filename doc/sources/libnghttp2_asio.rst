@@ -228,8 +228,9 @@ blocking task there.  The example follows:
     }
 
 First we set the number of background threads which run tasks.  By
-default it is set to 1.  In this example, we set it to 16, so 16 tasks
-can be executed in parallel.
+default it is set to 1.  In this example, we set it to 16, so at most
+16 tasks can be executed concurrently without blocking handling new
+requests.
 
 We call ``req->run_task()`` to execute task in background thread.  In
 the passed callback, we just simply sleeps 1 second.  After sleep is
