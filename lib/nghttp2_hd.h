@@ -74,6 +74,11 @@ typedef struct {
 } nghttp2_hd_entry;
 
 typedef struct {
+  nghttp2_hd_entry ent;
+  size_t index;
+} nghttp2_hd_static_entry;
+
+typedef struct {
   nghttp2_hd_entry **buffer;
   size_t mask;
   size_t first;
