@@ -92,6 +92,7 @@ typedef struct stream {
   uint8_t *res_begin, *res_end;
   /* io_buf wrapping rawscrbuf */
   io_buf scrbuf;
+  int64_t fileleft;
   /* length of mandatory header fields */
   size_t methodlen;
   size_t schemelen;
@@ -321,6 +322,7 @@ static stream* stream_new(int32_t stream_id, connection *conn)
   strm->hostlen = 0;
   strm->stream_id = stream_id;
   strm->filefd = -1;
+  strm->fileleft = 0;
 
   list_insert(&conn->strm_head, strm);
 
@@ -614,14 +616,18 @@ static ssize_t fd_read_callback
  uint8_t *buf, size_t length, uint32_t *data_flags,
  nghttp2_data_source *source, void *user_data)
 {
-  int fd = source->fd;
+  stream *strm = source->ptr;
   ssize_t nread;
 
-  while((nread = read(fd, buf, length)) == -1 && errno == EINTR);
+  while((nread = read(strm->filefd, buf, length)) == -1 && errno == EINTR);
   if(nread == -1) {
     return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
   }
-  if(nread == 0) {
+  strm->fileleft -= nread;
+  if(nread == 0 || strm->fileleft == 0) {
+    if(strm->fileleft != 0) {
+      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+    }
     *data_flags |= NGHTTP2_DATA_FLAG_EOF;
   }
   return nread;
@@ -871,8 +877,10 @@ static int process_request(stream *strm, connection *conn)
     return redirect_response(strm, conn);
   }
 
-  prd.source.fd = fd;
+  prd.source.ptr = strm;
   prd.read_callback = fd_read_callback;
+
+  strm->fileleft = stbuf.st_size;
 
   lastmodlen = http_date(lastmod, stbuf.st_mtim.tv_sec);
   contentlengthlen = utos(contentlength, sizeof(contentlength), stbuf.st_size);
