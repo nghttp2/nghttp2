@@ -26,7 +26,7 @@
 
 #include <string.h>
 
-#define INITIAL_TABLE_LENGTH 16
+#define INITIAL_TABLE_LENGTH 256
 
 int nghttp2_map_init(nghttp2_map *map)
 {
@@ -138,6 +138,7 @@ static int resize(nghttp2_map *map, size_t new_tablelen)
   free(map->table);
   map->tablelen = new_tablelen;
   map->table = new_table;
+
   return 0;
 }
 
