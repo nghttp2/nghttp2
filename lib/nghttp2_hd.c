@@ -1351,25 +1351,52 @@ static int hd_inflate_remove_bufs(nghttp2_hd_inflater *inflater,
   ssize_t rv;
   size_t buflen;
   uint8_t *buf;
+  nghttp2_buf *pbuf;
 
-  rv = nghttp2_bufs_remove(&inflater->nvbufs, &buf);
+  if(inflater->index_required ||
+     inflater->nvbufs.head != inflater->nvbufs.cur) {
 
-  if(rv < 0) {
-    return NGHTTP2_ERR_NOMEM;
+    rv = nghttp2_bufs_remove(&inflater->nvbufs, &buf);
+
+    if(rv < 0) {
+      return NGHTTP2_ERR_NOMEM;
+    }
+
+    buflen = rv;
+
+    if(value_only) {
+      nv->name = NULL;
+      nv->namelen = 0;
+    } else {
+      nv->name = buf;
+      nv->namelen = inflater->newnamelen;
+    }
+
+    nv->value = buf + nv->namelen;
+    nv->valuelen = buflen - nv->namelen;
+
+    return 0;
   }
 
-  buflen = rv;
+  /* If we are not going to store header in header table and
+     name/value are in first chunk, we just refer them from nv,
+     instead of mallocing another memory. */
+
+  pbuf = &inflater->nvbufs.head->buf;
 
   if(value_only) {
     nv->name = NULL;
     nv->namelen = 0;
   } else {
-    nv->name = buf;
+    nv->name = pbuf->pos;
     nv->namelen = inflater->newnamelen;
   }
 
-  nv->value = buf + nv->namelen;
-  nv->valuelen = buflen - nv->namelen;
+  nv->value = pbuf->pos + nv->namelen;
+  nv->valuelen = nghttp2_buf_len(pbuf) - nv->namelen;
+
+  /* Resetting does not change the content of first buffer */
+  nghttp2_bufs_reset(&inflater->nvbufs);
 
   return 0;
 }
@@ -1430,7 +1457,9 @@ static int hd_inflate_commit_newname(nghttp2_hd_inflater *inflater,
 
   emit_literal_header(nv_out, &nv);
 
-  inflater->nv_keep = nv.name;
+  if(nv.name != inflater->nvbufs.head->buf.pos) {
+    inflater->nv_keep = nv.name;
+  }
 
   return 0;
 }
@@ -1509,7 +1538,9 @@ static int hd_inflate_commit_indname(nghttp2_hd_inflater *inflater,
 
   emit_literal_header(nv_out, &nv);
 
-  inflater->nv_keep = nv.value;
+  if(nv.value != inflater->nvbufs.head->buf.pos) {
+    inflater->nv_keep = nv.value;
+  }
 
   return 0;
 }
