@@ -1225,9 +1225,7 @@ int main(int argc, char **argv)
     mod_config()->argv[i] = strdup(argv[i]);
   }
 
-  char cwd[PATH_MAX];
-
-  mod_config()->cwd = getcwd(cwd, sizeof(cwd));
+  mod_config()->cwd = getcwd(nullptr, 0);
   if(mod_config()->cwd == nullptr) {
     auto error = errno;
     LOG(FATAL) << "failed to get current working directory: errno=" << error;
