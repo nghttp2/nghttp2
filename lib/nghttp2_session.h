@@ -263,10 +263,12 @@ int nghttp2_session_is_my_stream_id(nghttp2_session *session,
  * |frame_cat| must be either NGHTTP2_CTRL or NGHTTP2_DATA. If the
  * |frame_cat| is NGHTTP2_CTRL, the |frame| must be a pointer to
  * nghttp2_frame. If the |frame_cat| is NGHTTP2_DATA, it must be a
- * pointer to nghttp2_private_data. |aux_data| is a pointer to the arbitrary
- * data. Its interpretation is defined per the type of the frame. When
- * this function succeeds, it takes ownership of |frame| and
- * |aux_data|, so caller must not free them on success.
+ * pointer to nghttp2_private_data. |aux_data| specifies additional
+ * data. Which union member is filled depends on the type of the
+ * frame.  Currently, HEADERS and PUSH_PROMISE frames use headers
+ * member.  When this function succeeds, it takes ownership of
+ * |frame|. So caller must not free it on success.  The content of
+ * |aux_data| is just copied.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -276,7 +278,7 @@ int nghttp2_session_is_my_stream_id(nghttp2_session *session,
  */
 int nghttp2_session_add_frame(nghttp2_session *session,
                               nghttp2_frame_category frame_cat,
-                              void *abs_frame, void *aux_data);
+                              void *abs_frame, nghttp2_aux_data *aux_data);
 
 /*
  * Adds RST_STREAM frame for the stream |stream_id| with the error

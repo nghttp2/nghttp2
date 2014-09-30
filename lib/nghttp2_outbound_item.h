@@ -39,18 +39,24 @@
 /* Highest weight for PING */
 #define NGHTTP2_OB_PING_WEIGHT 302
 
+/* struct used for HEADERS and PUSH_PROMISE frame */
 typedef struct {
-  nghttp2_data_provider *data_prd;
+  nghttp2_data_provider data_prd;
   void *stream_user_data;
 } nghttp2_headers_aux_data;
 
+/* Additional data which cannot be stored in nghttp2_frame struct */
+typedef union {
+  nghttp2_headers_aux_data headers;
+} nghttp2_aux_data;
+
 typedef struct {
+  nghttp2_aux_data aux_data;
   int64_t seq;
   /* Reset count of weight. See comment for last_cycle in
      nghttp2_session.h */
   uint64_t cycle;
   void *frame;
-  void *aux_data;
   /* Type of |frame|. NGHTTP2_CTRL: nghttp2_frame*, NGHTTP2_DATA:
      nghttp2_private_data* */
   nghttp2_frame_category frame_cat;

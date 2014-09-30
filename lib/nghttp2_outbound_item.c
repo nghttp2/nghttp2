@@ -37,9 +37,6 @@ void nghttp2_outbound_item_free(nghttp2_outbound_item *item)
     switch(frame->hd.type) {
     case NGHTTP2_HEADERS:
       nghttp2_frame_headers_free(&frame->headers);
-      if(item->aux_data) {
-        free(((nghttp2_headers_aux_data*)item->aux_data)->data_prd);
-      }
       break;
     case NGHTTP2_PRIORITY:
       nghttp2_frame_priority_free(&frame->priority);
@@ -76,5 +73,4 @@ void nghttp2_outbound_item_free(nghttp2_outbound_item *item)
     assert(0);
   }
   free(item->frame);
-  free(item->aux_data);
 }

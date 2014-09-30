@@ -640,7 +640,7 @@ int nghttp2_session_reprioritize_stream
 int nghttp2_session_add_frame(nghttp2_session *session,
                               nghttp2_frame_category frame_cat,
                               void *abs_frame,
-                              void *aux_data)
+                              nghttp2_aux_data *aux_data)
 {
   /* TODO Return error if stream is not found for the frame requiring
      stream presence. */
@@ -654,7 +654,13 @@ int nghttp2_session_add_frame(nghttp2_session *session,
 
   item->frame_cat = frame_cat;
   item->frame = abs_frame;
-  item->aux_data = aux_data;
+
+  if(aux_data) {
+    item->aux_data = *aux_data;
+  } else {
+    memset(&item->aux_data, 0, sizeof(item->aux_data));
+  }
+
   item->seq = session->next_seq++;
   /* We use cycle for DATA only */
   item->cycle = 0;
@@ -1546,7 +1552,7 @@ static int session_prep_frame(nghttp2_session *session,
       nghttp2_headers_aux_data *aux_data;
       size_t estimated_payloadlen;
 
-      aux_data = (nghttp2_headers_aux_data*)item->aux_data;
+      aux_data = &item->aux_data.headers;
 
       estimated_payloadlen = session_estimate_headers_payload
         (session, frame->headers.nva, frame->headers.nvlen,
@@ -1570,7 +1576,7 @@ static int session_prep_frame(nghttp2_session *session,
            NGHTTP2_STREAM_FLAG_NONE,
            &frame->headers.pri_spec,
            NGHTTP2_STREAM_INITIAL,
-           aux_data ? aux_data->stream_user_data : NULL);
+           aux_data->stream_user_data);
 
         if(stream == NULL) {
           return NGHTTP2_ERR_NOMEM;
@@ -1580,7 +1586,7 @@ static int session_prep_frame(nghttp2_session *session,
                 (session, frame->hd.stream_id) == 0) {
         frame->headers.cat = NGHTTP2_HCAT_PUSH_RESPONSE;
 
-        if(aux_data && aux_data->stream_user_data) {
+        if(aux_data->stream_user_data) {
           nghttp2_stream *stream;
 
           stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
@@ -1671,7 +1677,7 @@ static int session_prep_frame(nghttp2_session *session,
       nghttp2_priority_spec pri_spec;
       size_t estimated_payloadlen;
 
-      aux_data = (nghttp2_headers_aux_data*)item->aux_data;
+      aux_data = &item->aux_data.headers;
 
       estimated_payloadlen = session_estimate_headers_payload
         (session, frame->push_promise.nva, frame->push_promise.nvlen, 0);
@@ -1709,8 +1715,7 @@ static int session_prep_frame(nghttp2_session *session,
           NGHTTP2_STREAM_FLAG_PUSH,
           &pri_spec,
           NGHTTP2_STREAM_RESERVED,
-          aux_data ?
-          aux_data->stream_user_data : NULL)) {
+          aux_data->stream_user_data)) {
         return NGHTTP2_ERR_NOMEM;
       }
       break;
@@ -2094,11 +2099,11 @@ static int session_after_frame_sent(nghttp2_session *session)
           return rv;
         }
         /* We assume aux_data is a pointer to nghttp2_headers_aux_data */
-        aux_data = (nghttp2_headers_aux_data*)item->aux_data;
-        if(aux_data && aux_data->data_prd) {
+        aux_data = &item->aux_data.headers;
+        if(aux_data->data_prd.read_callback) {
           /* nghttp2_submit_data() makes a copy of aux_data->data_prd */
           rv = nghttp2_submit_data(session, NGHTTP2_FLAG_END_STREAM,
-                                   frame->hd.stream_id, aux_data->data_prd);
+                                   frame->hd.stream_id, &aux_data->data_prd);
           if(nghttp2_is_fatal(rv)) {
             return rv;
           }
@@ -2122,10 +2127,10 @@ static int session_after_frame_sent(nghttp2_session *session)
           return rv;
         }
         /* We assume aux_data is a pointer to nghttp2_headers_aux_data */
-        aux_data = (nghttp2_headers_aux_data*)item->aux_data;
-        if(aux_data && aux_data->data_prd) {
+        aux_data = &item->aux_data.headers;
+        if(aux_data->data_prd.read_callback) {
           rv = nghttp2_submit_data(session, NGHTTP2_FLAG_END_STREAM,
-                                   frame->hd.stream_id, aux_data->data_prd);
+                                   frame->hd.stream_id, &aux_data->data_prd);
           if(nghttp2_is_fatal(rv)) {
             return rv;
           }

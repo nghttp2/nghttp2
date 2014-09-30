@@ -1705,15 +1705,14 @@ void test_nghttp2_session_add_frame(void)
     MAKE_NV("version", "HTTP/1.1")
   };
   nghttp2_frame *frame;
-  nghttp2_headers_aux_data *aux_data =
-    malloc(sizeof(nghttp2_headers_aux_data));
+  nghttp2_aux_data aux_data;
   nghttp2_nv *nva;
   ssize_t nvlen;
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks.send_callback = accumulator_send_callback;
 
-  memset(aux_data, 0, sizeof(nghttp2_headers_aux_data));
+  memset(&aux_data, 0, sizeof(aux_data));
   acc.length = 0;
   user_data.acc = &acc;
 
@@ -1731,7 +1730,7 @@ void test_nghttp2_session_add_frame(void)
   session->next_stream_id += 2;
 
   CU_ASSERT(0 == nghttp2_session_add_frame(session, NGHTTP2_CAT_CTRL, frame,
-                                           aux_data));
+                                           &aux_data));
   CU_ASSERT(0 == nghttp2_pq_empty(&session->ob_ss_pq));
   CU_ASSERT(0 == nghttp2_session_send(session));
   CU_ASSERT(NGHTTP2_HEADERS == acc.buf[3]);
@@ -2660,10 +2659,9 @@ void test_nghttp2_session_send_headers_start_stream(void)
   nghttp2_session_callbacks callbacks;
   nghttp2_frame *frame = malloc(sizeof(nghttp2_frame));
   nghttp2_stream *stream;
-  nghttp2_headers_aux_data *aux_data =
-    malloc(sizeof(nghttp2_headers_aux_data));
+  nghttp2_aux_data aux_data;
 
-  memset(aux_data, 0, sizeof(nghttp2_headers_aux_data));
+  memset(&aux_data, 0, sizeof(aux_data));
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks.send_callback = null_send_callback;
 
@@ -2674,7 +2672,7 @@ void test_nghttp2_session_send_headers_start_stream(void)
                              NGHTTP2_HCAT_REQUEST, NULL, NULL, 0);
   session->next_stream_id += 2;
 
-  nghttp2_session_add_frame(session, NGHTTP2_CAT_CTRL, frame, aux_data);
+  nghttp2_session_add_frame(session, NGHTTP2_CAT_CTRL, frame, &aux_data);
   CU_ASSERT(0 == nghttp2_session_send(session));
   stream = nghttp2_session_get_stream(session, 1);
   CU_ASSERT(NGHTTP2_STREAM_OPENING == stream->state);

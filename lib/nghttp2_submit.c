@@ -48,8 +48,7 @@ static int32_t submit_headers_shared
   int rv;
   uint8_t flags_copy;
   nghttp2_frame *frame = NULL;
-  nghttp2_data_provider *data_prd_copy = NULL;
-  nghttp2_headers_aux_data *aux_data = NULL;
+  nghttp2_aux_data aux_data = {{{{0}, 0}, 0}};
   nghttp2_headers_category hcat;
 
   if(stream_id == 0) {
@@ -58,22 +57,11 @@ static int32_t submit_headers_shared
   }
 
   if(data_prd != NULL && data_prd->read_callback != NULL) {
-    data_prd_copy = malloc(sizeof(nghttp2_data_provider));
-    if(data_prd_copy == NULL) {
-      rv = NGHTTP2_ERR_NOMEM;
-      goto fail;
-    }
-    *data_prd_copy = *data_prd;
+    aux_data.headers.data_prd = *data_prd;
   }
-  if(data_prd || stream_user_data) {
-    aux_data = malloc(sizeof(nghttp2_headers_aux_data));
-    if(aux_data == NULL) {
-      rv = NGHTTP2_ERR_NOMEM;
-      goto fail;
-    }
-    aux_data->data_prd = data_prd_copy;
-    aux_data->stream_user_data = stream_user_data;
-  }
+
+  aux_data.headers.stream_user_data = stream_user_data;
+
   frame = malloc(sizeof(nghttp2_frame));
   if(frame == NULL) {
     rv = NGHTTP2_ERR_NOMEM;
@@ -103,8 +91,7 @@ static int32_t submit_headers_shared
                              hcat, pri_spec, nva_copy, nvlen);
 
 
-  rv = nghttp2_session_add_frame(session, NGHTTP2_CAT_CTRL, frame,
-                                 aux_data);
+  rv = nghttp2_session_add_frame(session, NGHTTP2_CAT_CTRL, frame, &aux_data);
 
   if(rv != 0) {
     nghttp2_frame_headers_free(&frame->headers);
@@ -122,8 +109,7 @@ static int32_t submit_headers_shared
   nghttp2_nv_array_del(nva_copy);
  fail2:
   free(frame);
-  free(aux_data);
-  free(data_prd_copy);
+
   return rv;
 }
 
@@ -266,7 +252,7 @@ int32_t nghttp2_submit_push_promise(nghttp2_session *session, uint8_t flags,
   nghttp2_frame *frame;
   nghttp2_nv *nva_copy;
   uint8_t flags_copy;
-  nghttp2_headers_aux_data *aux_data = NULL;
+  nghttp2_aux_data aux_data = {{{{0}, 0}, 0}};
   int32_t promised_stream_id;
   int rv;
 
@@ -282,18 +268,11 @@ int32_t nghttp2_submit_push_promise(nghttp2_session *session, uint8_t flags,
   if(frame == NULL) {
     return NGHTTP2_ERR_NOMEM;
   }
-  if(promised_stream_user_data) {
-    aux_data = malloc(sizeof(nghttp2_headers_aux_data));
-    if(aux_data == NULL) {
-      free(frame);
-      return NGHTTP2_ERR_NOMEM;
-    }
-    aux_data->data_prd = NULL;
-    aux_data->stream_user_data = promised_stream_user_data;
-  }
+
+  aux_data.headers.stream_user_data = promised_stream_user_data;
+
   rv = nghttp2_nv_array_copy(&nva_copy, nva, nvlen);
   if(rv < 0) {
-    free(aux_data);
     free(frame);
     return rv;
   }
@@ -302,7 +281,6 @@ int32_t nghttp2_submit_push_promise(nghttp2_session *session, uint8_t flags,
 
   /* All 32bit signed stream IDs are spent. */
   if(session->next_stream_id > INT32_MAX) {
-    free(aux_data);
     free(frame);
 
     return NGHTTP2_ERR_STREAM_ID_NOT_AVAILABLE;
@@ -315,11 +293,10 @@ int32_t nghttp2_submit_push_promise(nghttp2_session *session, uint8_t flags,
                                   stream_id, promised_stream_id,
                                   nva_copy, nvlen);
 
-  rv = nghttp2_session_add_frame(session, NGHTTP2_CAT_CTRL, frame, aux_data);
+  rv = nghttp2_session_add_frame(session, NGHTTP2_CAT_CTRL, frame, &aux_data);
 
   if(rv != 0) {
     nghttp2_frame_push_promise_free(&frame->push_promise);
-    free(aux_data);
     free(frame);
 
     return rv;
