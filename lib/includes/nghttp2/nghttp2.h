@@ -2636,6 +2636,8 @@ int32_t nghttp2_submit_headers(nghttp2_session *session, uint8_t flags,
  *     DATA has been already submitted and not fully processed yet.
  * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
  *     The |stream_id| is 0.
+ * :enum:`NGHTTP2_ERR_STREAM_CLOSED`
+ *     The stream was alreay closed; or the |stream_id| is invalid.
  */
 int nghttp2_submit_data(nghttp2_session *session, uint8_t flags,
                         int32_t stream_id,

@@ -28,49 +28,45 @@
 
 void nghttp2_outbound_item_free(nghttp2_outbound_item *item)
 {
+  nghttp2_frame *frame;
+
   if(item == NULL) {
     return;
   }
-  if(item->frame_cat == NGHTTP2_CAT_CTRL) {
-    nghttp2_frame *frame;
-    frame = nghttp2_outbound_item_get_ctrl_frame(item);
-    switch(frame->hd.type) {
-    case NGHTTP2_HEADERS:
-      nghttp2_frame_headers_free(&frame->headers);
-      break;
-    case NGHTTP2_PRIORITY:
-      nghttp2_frame_priority_free(&frame->priority);
-      break;
-    case NGHTTP2_RST_STREAM:
-      nghttp2_frame_rst_stream_free(&frame->rst_stream);
-      break;
-    case NGHTTP2_SETTINGS:
-      nghttp2_frame_settings_free(&frame->settings);
-      break;
-    case NGHTTP2_PUSH_PROMISE:
-      nghttp2_frame_push_promise_free(&frame->push_promise);
-      break;
-    case NGHTTP2_PING:
-      nghttp2_frame_ping_free(&frame->ping);
-      break;
-    case NGHTTP2_GOAWAY:
-      nghttp2_frame_goaway_free(&frame->goaway);
-      break;
-    case NGHTTP2_WINDOW_UPDATE:
-      nghttp2_frame_window_update_free(&frame->window_update);
-      break;
-    case NGHTTP2_EXT_ALTSVC:
-      nghttp2_frame_altsvc_free(&frame->ext);
-      free(frame->ext.payload);
-      break;
-    }
-  } else if(item->frame_cat == NGHTTP2_CAT_DATA) {
-    nghttp2_private_data *data_frame;
-    data_frame = nghttp2_outbound_item_get_data_frame(item);
-    nghttp2_frame_private_data_free(data_frame);
-  } else {
-    /* Unreachable */
-    assert(0);
+
+  frame = &item->frame;
+
+  switch(frame->hd.type) {
+  case NGHTTP2_DATA:
+    nghttp2_frame_data_free(&frame->data);
+    break;
+  case NGHTTP2_HEADERS:
+    nghttp2_frame_headers_free(&frame->headers);
+    break;
+  case NGHTTP2_PRIORITY:
+    nghttp2_frame_priority_free(&frame->priority);
+    break;
+  case NGHTTP2_RST_STREAM:
+    nghttp2_frame_rst_stream_free(&frame->rst_stream);
+    break;
+  case NGHTTP2_SETTINGS:
+    nghttp2_frame_settings_free(&frame->settings);
+    break;
+  case NGHTTP2_PUSH_PROMISE:
+    nghttp2_frame_push_promise_free(&frame->push_promise);
+    break;
+  case NGHTTP2_PING:
+    nghttp2_frame_ping_free(&frame->ping);
+    break;
+  case NGHTTP2_GOAWAY:
+    nghttp2_frame_goaway_free(&frame->goaway);
+    break;
+  case NGHTTP2_WINDOW_UPDATE:
+    nghttp2_frame_window_update_free(&frame->window_update);
+    break;
+  case NGHTTP2_EXT_ALTSVC:
+    nghttp2_frame_altsvc_free(&frame->ext);
+    free(frame->ext.payload);
+    break;
   }
-  free(item->frame);
 }

@@ -295,7 +295,6 @@ nghttp2_outbound_item* create_data_ob_item(void)
 
   item = malloc(sizeof(nghttp2_outbound_item));
   memset(item, 0, sizeof(nghttp2_outbound_item));
-  item->frame_cat = NGHTTP2_CAT_DATA;
 
   return item;
 }

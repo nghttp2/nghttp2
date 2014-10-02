@@ -259,26 +259,28 @@ int nghttp2_session_is_my_stream_id(nghttp2_session *session,
                                     int32_t stream_id);
 
 /*
- * Adds frame |frame| to the outbound queue in |session|. The
- * |frame_cat| must be either NGHTTP2_CTRL or NGHTTP2_DATA. If the
- * |frame_cat| is NGHTTP2_CTRL, the |frame| must be a pointer to
- * nghttp2_frame. If the |frame_cat| is NGHTTP2_DATA, it must be a
- * pointer to nghttp2_private_data. |aux_data| specifies additional
- * data. Which union member is filled depends on the type of the
- * frame.  Currently, HEADERS and PUSH_PROMISE frames use headers
- * member.  When this function succeeds, it takes ownership of
- * |frame|. So caller must not free it on success.  The content of
- * |aux_data| is just copied.
+ * Initializes |item|.  No memory allocation is done in this function.
+ * Don't call nghttp2_outbound_item_free() until frame member is
+ * initialized.
+ */
+void nghttp2_session_outbound_item_init(nghttp2_session* session,
+                                        nghttp2_outbound_item *item);
+
+/*
+ * Adds |item| to the outbound queue in |session|.  When this function
+ * succeeds, it takes ownership of |item|. So caller must not free it
+ * on success.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
+ * NGHTTP2_ERR_STREAM_CLOSED
+ *     Stream already closed (DATA frame only)
  */
-int nghttp2_session_add_frame(nghttp2_session *session,
-                              nghttp2_frame_category frame_cat,
-                              void *abs_frame, nghttp2_aux_data *aux_data);
+int nghttp2_session_add_item(nghttp2_session *session,
+                             nghttp2_outbound_item *item);
 
 /*
  * Adds RST_STREAM frame for the stream |stream_id| with the error
@@ -648,13 +650,8 @@ nghttp2_stream* nghttp2_session_get_stream_raw(nghttp2_session *session,
 
 /*
  * Packs DATA frame |frame| in wire frame format and stores it in
- * |*buf_ptr|.  The capacity of |*buf_ptr| is |*buflen_ptr|
- * length. This function expands |*buf_ptr| as necessary to store
- * given |frame|. It packs header in first 8 bytes starting
- * |*bufoff_ptr| offset. The |*bufoff_ptr| is calculated based on
- * usage of padding. Remaining bytes are the DATA apyload and are
- * filled using |frame->data_prd|. The length of payload is at most
- * |datamax| bytes.
+ * |bufs|.  Payload will be read using |aux_data->data_prd|.  The
+ * length of payload is at most |datamax| bytes.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -671,7 +668,8 @@ nghttp2_stream* nghttp2_session_get_stream_raw(nghttp2_session *session,
 int nghttp2_session_pack_data(nghttp2_session *session,
                               nghttp2_bufs *bufs,
                               size_t datamax,
-                              nghttp2_private_data *frame);
+                              nghttp2_frame *frame,
+                              nghttp2_data_aux_data *aux_data);
 
 /*
  * Returns top of outbound frame queue. This function returns NULL if

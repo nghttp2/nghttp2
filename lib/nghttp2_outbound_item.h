@@ -45,21 +45,40 @@ typedef struct {
   void *stream_user_data;
 } nghttp2_headers_aux_data;
 
+/* struct used for DATA frame */
+typedef struct {
+  /**
+   * The data to be sent for this DATA frame.
+   */
+  nghttp2_data_provider data_prd;
+  /**
+   * The flags of DATA frame.  We use separate flags here and
+   * nghttp2_data frame.  The latter contains flags actually sent to
+   * peer.  This |flags| may contain NGHTTP2_FLAG_END_STREAM and only
+   * when |eof| becomes nonzero, flags in nghttp2_data has
+   * NGHTTP2_FLAG_END_STREAM set.
+   */
+  uint8_t flags;
+  /**
+   * The flag to indicate whether EOF was reached or not. Initially
+   * |eof| is 0. It becomes 1 after all data were read.
+   */
+  uint8_t eof;
+} nghttp2_data_aux_data;
+
 /* Additional data which cannot be stored in nghttp2_frame struct */
 typedef union {
+  nghttp2_data_aux_data data;
   nghttp2_headers_aux_data headers;
 } nghttp2_aux_data;
 
 typedef struct {
+  nghttp2_frame frame;
   nghttp2_aux_data aux_data;
   int64_t seq;
   /* Reset count of weight. See comment for last_cycle in
      nghttp2_session.h */
   uint64_t cycle;
-  void *frame;
-  /* Type of |frame|. NGHTTP2_CTRL: nghttp2_frame*, NGHTTP2_DATA:
-     nghttp2_private_data* */
-  nghttp2_frame_category frame_cat;
   /* The priority used in priority comparion.  Larger is served
      ealier. */
   int32_t weight;
@@ -72,12 +91,5 @@ typedef struct {
  * does nothing.
  */
 void nghttp2_outbound_item_free(nghttp2_outbound_item *item);
-
-/* Macros to cast nghttp2_outbound_item.frame to the proper type. */
-#define nghttp2_outbound_item_get_ctrl_frame(ITEM) ((nghttp2_frame*)ITEM->frame)
-#define nghttp2_outbound_item_get_ctrl_frame_type(ITEM) \
-  (((nghttp2_frame*)ITEM->frame)->hd.type)
-#define nghttp2_outbound_item_get_data_frame(ITEM) \
-  ((nghttp2_private_data*)ITEM->frame)
 
 #endif /* NGHTTP2_OUTBOUND_ITEM_H */

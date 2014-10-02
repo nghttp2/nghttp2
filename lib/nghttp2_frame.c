@@ -33,11 +33,6 @@
 #include "nghttp2_net.h"
 #include "nghttp2_priority_spec.h"
 
-int nghttp2_frame_is_data_frame(uint8_t *head)
-{
-  return head[2] == 0;
-}
-
 void nghttp2_frame_pack_frame_hd(uint8_t* buf, const nghttp2_frame_hd *hd)
 {
   nghttp2_put_uint32be(&buf[0], (uint32_t)(hd->length << 8));
@@ -234,35 +229,20 @@ void nghttp2_frame_altsvc_free(nghttp2_extension *frame)
   free(altsvc->protocol_id);
 }
 
-void nghttp2_frame_data_init(nghttp2_data *frame, nghttp2_private_data *pdata)
-{
-  frame->hd = pdata->hd;
-  frame->padlen = pdata->padlen;
-  /* flags may have NGHTTP2_FLAG_END_STREAM even if the sent chunk is
-     not the end of the stream */
-  if(!pdata->eof) {
-    frame->hd.flags &= ~NGHTTP2_FLAG_END_STREAM;
-  }
-}
-
 size_t nghttp2_frame_trail_padlen(nghttp2_frame *frame, size_t padlen)
 {
   return padlen - ((frame->hd.flags & NGHTTP2_FLAG_PADDED) > 0);
 }
 
-void nghttp2_frame_private_data_init(nghttp2_private_data *frame,
-                                     uint8_t flags,
-                                     int32_t stream_id,
-                                     const nghttp2_data_provider *data_prd)
+void nghttp2_frame_data_init(nghttp2_data *frame, uint8_t flags,
+                             int32_t stream_id)
 {
   /* At this moment, the length of DATA frame is unknown */
   nghttp2_frame_hd_init(&frame->hd, 0, NGHTTP2_DATA, flags, stream_id);
-  frame->data_prd = *data_prd;
   frame->padlen = 0;
-  frame->eof = 0;
 }
 
-void nghttp2_frame_private_data_free(nghttp2_private_data *frame)
+void nghttp2_frame_data_free(nghttp2_data *frame)
 {}
 
 size_t nghttp2_frame_priority_len(uint8_t flags)

@@ -83,45 +83,10 @@
 /* Maximum length of padding in bytes. */
 #define NGHTTP2_MAX_PADLEN 256
 
-/* Category of frames. */
-typedef enum {
-  /* non-DATA frame */
-  NGHTTP2_CAT_CTRL,
-  /* DATA frame */
-  NGHTTP2_CAT_DATA
-} nghttp2_frame_category;
-
 /* Union of extension frame payload */
 typedef union {
   nghttp2_ext_altsvc altsvc;
 } nghttp2_ext_frame_payload;
-
-/**
- * @struct
- *
- * The DATA frame used in the library privately. It has the following
- * members:
- */
-typedef struct {
-  nghttp2_frame_hd hd;
-  /**
-   * The data to be sent for this DATA frame.
-   */
-  nghttp2_data_provider data_prd;
-  /**
-   * The number of bytes added as padding.  This includes Pad Length
-   * field (1 byte).
-   */
-  size_t padlen;
-  /**
-   * The flag to indicate whether EOF was reached or not. Initially
-   * |eof| is 0. It becomes 1 after all data were read. This is used
-   * exclusively by nghttp2 library and not in the spec.
-   */
-  uint8_t eof;
-} nghttp2_private_data;
-
-int nghttp2_frame_is_data_frame(uint8_t *head);
 
 void nghttp2_frame_pack_frame_hd(uint8_t *buf, const nghttp2_frame_hd *hd);
 
@@ -559,8 +524,6 @@ void nghttp2_frame_altsvc_init(nghttp2_extension *frame, int32_t stream_id,
  */
 void nghttp2_frame_altsvc_free(nghttp2_extension *frame);
 
-void nghttp2_frame_data_init(nghttp2_data *frame, nghttp2_private_data *pdata);
-
 /*
  * Returns the number of padding bytes after payload.  The total
  * padding length is given in the |padlen|.  The returned value does
@@ -568,12 +531,10 @@ void nghttp2_frame_data_init(nghttp2_data *frame, nghttp2_private_data *pdata);
  */
 size_t nghttp2_frame_trail_padlen(nghttp2_frame *frame, size_t padlen);
 
-void nghttp2_frame_private_data_init(nghttp2_private_data *frame,
-                                     uint8_t flags,
-                                     int32_t stream_id,
-                                     const nghttp2_data_provider *data_prd);
+void nghttp2_frame_data_init(nghttp2_data *frame, uint8_t flags,
+                             int32_t stream_id);
 
-void nghttp2_frame_private_data_free(nghttp2_private_data *frame);
+void nghttp2_frame_data_free(nghttp2_data *frame);
 
 /*
  * Makes copy of |iv| and return the copy. The |niv| is the number of
