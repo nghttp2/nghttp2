@@ -578,15 +578,6 @@ std::string get_reqline(const char *uri, const http_parser_url& u)
 } // namespace
 
 namespace {
-Stats run(std::unique_ptr<Worker> worker)
-{
-  worker->run();
-
-  return worker->stats;
-}
-} // namespace
-
-namespace {
 int client_select_next_proto_cb(SSL* ssl,
                                 unsigned char **out, unsigned char *outlen,
                                 const unsigned char *in, unsigned int inlen,
@@ -931,10 +922,10 @@ int main(int argc, char **argv)
 
   std::cout << "starting benchmark..." << std::endl;
 
-  std::vector<std::future<Stats>> futures;
   auto start = std::chrono::steady_clock::now();
 
-  std::vector<std::unique_ptr<Worker>> workers;
+#ifndef NOTHREADS
+  std::vector<std::future<Stats>> futures;
   for(size_t i = 0; i < config.nthreads - 1; ++i) {
     auto nreqs = nreqs_per_thread + (nreqs_rem-- > 0);
     auto nclients = nclients_per_thread + (nclients_rem-- > 0);
@@ -944,8 +935,17 @@ int main(int argc, char **argv)
               << std::endl;
     auto worker = util::make_unique<Worker>(i, ssl_ctx, nreqs, nclients,
                                             &config);
-    futures.push_back(std::async(std::launch::async, run, std::move(worker)));
+    futures.push_back
+      (std::async(std::launch::async,
+                  [](std::unique_ptr<Worker> worker)
+                  {
+                    worker->run();
+
+                    return worker->stats;
+                  }, std::move(worker)));
   }
+#endif // NOTHREADS
+
   auto nreqs_last = nreqs_per_thread + (nreqs_rem-- > 0);
   auto nclients_last = nclients_per_thread + (nclients_rem-- > 0);
   std::cout << "spawning thread #" << (config.nthreads - 1) << ": "
@@ -956,6 +956,7 @@ int main(int argc, char **argv)
                 &config);
   worker.run();
 
+#ifndef NOTHREADS
   for(auto& fut : futures) {
     auto stats = fut.get();
 
@@ -973,6 +974,7 @@ int main(int argc, char **argv)
       worker.stats.status[i] += stats.status[i];
     }
   }
+#endif // NOTHREADS
 
   auto end = std::chrono::steady_clock::now();
   auto duration =

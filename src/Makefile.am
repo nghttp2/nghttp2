@@ -78,8 +78,6 @@ nghttpd_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} nghttpd.cc \
 	ssl.cc ssl.h \
 	HttpServer.cc HttpServer.h
 
-if ENABLE_H2LOAD
-
 bin_PROGRAMS += h2load
 
 h2load_SOURCES = util.cc util.h libevent_util.cc libevent_util.h \
@@ -92,8 +90,6 @@ h2load_SOURCES = util.cc util.h libevent_util.cc libevent_util.h \
 if HAVE_SPDYLAY
 h2load_SOURCES += h2load_spdy_session.cc h2load_spdy_session.h
 endif # HAVE_SPDYLAY
-
-endif # ENABLE_H2LOAD
 
 NGHTTPX_SRCS = \
 	util.cc util.h http2.cc http2.h timegm.c timegm.h base64.h \
