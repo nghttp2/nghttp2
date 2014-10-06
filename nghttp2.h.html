@@ -7,7 +7,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>nghttp2.h &mdash; nghttp2 0.6.2 documentation</title>
+  <title>nghttp2.h &mdash; nghttp2 0.6.3-DEV documentation</title>
   
 
   
@@ -28,7 +28,7 @@
   
 
   
-    <link rel="top" title="nghttp2 0.6.2 documentation" href="index.html"/>
+    <link rel="top" title="nghttp2 0.6.3-DEV documentation" href="index.html"/>
         <link rel="next" title="nghttp2ver.h" href="nghttp2ver.h.html"/>
         <link rel="prev" title="Python API Reference" href="python-apiref.html"/> 
 
@@ -2838,6 +2838,19 @@
 <span class="cm"> *     DATA has been already submitted and not fully processed yet.</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`</span>
 <span class="cm"> *     The |stream_id| is 0.</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_STREAM_CLOSED`</span>
+<span class="cm"> *     The stream was alreay closed; or the |stream_id| is invalid.</span>
+<span class="cm"> *</span>
+<span class="cm"> * .. note::</span>
+<span class="cm"> *</span>
+<span class="cm"> *   Currently, only one data is allowed for a stream at a time.</span>
+<span class="cm"> *   Submitting data more than once before first data is finished</span>
+<span class="cm"> *   results in :enum:`NGHTTP2_ERR_DATA_EXIST` error code.  The</span>
+<span class="cm"> *   earliest callback which tells that previous data is done is</span>
+<span class="cm"> *   :type:`nghttp2_on_frame_send_callback`.  In side that callback,</span>
+<span class="cm"> *   new data can be submitted using `nghttp2_submit_data()`.  Of</span>
+<span class="cm"> *   course, all data except for last one must not have</span>
+<span class="cm"> *   :enum:`NGHTTP2_FLAG_END_STREAM` flag set in |flags|.</span>
 <span class="cm"> */</span>
 <span class="kt">int</span> <span class="nf">nghttp2_submit_data</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span>
                         <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
@@ -3548,7 +3561,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.6.2',
+            VERSION:'0.6.3-DEV',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  false

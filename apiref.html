@@ -7,7 +7,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>API Reference &mdash; nghttp2 0.6.2 documentation</title>
+  <title>API Reference &mdash; nghttp2 0.6.3-DEV documentation</title>
   
 
   
@@ -28,7 +28,7 @@
   
 
   
-    <link rel="top" title="nghttp2 0.6.2 documentation" href="index.html"/>
+    <link rel="top" title="nghttp2 0.6.3-DEV documentation" href="index.html"/>
         <link rel="next" title="libnghttp2_asio: High level HTTP/2 C++ library" href="libnghttp2_asio.html"/>
         <link rel="prev" title="h2load - HTTP/2 benchmarking tool - HOW-TO" href="h2load-howto.html"/> 
 
@@ -2885,7 +2885,20 @@ negative error codes:</p>
 <dd>DATA has been already submitted and not fully processed yet.</dd>
 <dt><a class="reference internal" href="#c.NGHTTP2_ERR_INVALID_ARGUMENT" title="NGHTTP2_ERR_INVALID_ARGUMENT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_INVALID_ARGUMENT</span></tt></a></dt>
 <dd>The <em>stream_id</em> is 0.</dd>
+<dt><a class="reference internal" href="#c.NGHTTP2_ERR_STREAM_CLOSED" title="NGHTTP2_ERR_STREAM_CLOSED"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_STREAM_CLOSED</span></tt></a></dt>
+<dd>The stream was alreay closed; or the <em>stream_id</em> is invalid.</dd>
 </dl>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Currently, only one data is allowed for a stream at a time.
+Submitting data more than once before first data is finished
+results in <a class="reference internal" href="#c.NGHTTP2_ERR_DATA_EXIST" title="NGHTTP2_ERR_DATA_EXIST"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_DATA_EXIST</span></tt></a> error code.  The
+earliest callback which tells that previous data is done is
+<a class="reference internal" href="#c.nghttp2_on_frame_send_callback" title="nghttp2_on_frame_send_callback"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_on_frame_send_callback</span></tt></a>.  In side that callback,
+new data can be submitted using <a class="reference internal" href="#c.nghttp2_submit_data" title="nghttp2_submit_data"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_data()</span></tt></a>.  Of
+course, all data except for last one must not have
+<a class="reference internal" href="#c.NGHTTP2_FLAG_END_STREAM" title="NGHTTP2_FLAG_END_STREAM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_FLAG_END_STREAM</span></tt></a> flag set in <em>flags</em>.</p>
+</div>
 </dd></dl>
 
 <dl class="function">
@@ -3443,7 +3456,7 @@ always succeeds.</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.6.2',
+            VERSION:'0.6.3-DEV',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  false
