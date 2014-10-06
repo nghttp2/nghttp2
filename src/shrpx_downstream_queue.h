@@ -58,6 +58,9 @@ public:
   // Pops first Downstream object in pending_downstreams_ and returns
   // it.
   std::unique_ptr<Downstream> pop_pending();
+  // Returns first Downstream object in pending_downstreams_.  This
+  // does not pop the first one.  If queue is empty, returns nullptr.
+  Downstream* pending_top() const;
 private:
   // Downstream objects, not processed yet
   std::map<int32_t, std::unique_ptr<Downstream>> pending_downstreams_;

@@ -121,6 +121,17 @@ std::unique_ptr<Downstream> DownstreamQueue::pop_pending()
   return downstream;
 }
 
+Downstream* DownstreamQueue::pending_top() const
+{
+  auto i = std::begin(pending_downstreams_);
+
+  if(i == std::end(pending_downstreams_)) {
+    return nullptr;
+  }
+
+  return (*i).second.get();
+}
+
 size_t DownstreamQueue::num_active() const
 {
   return active_downstreams_.size();
