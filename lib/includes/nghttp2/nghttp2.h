@@ -2638,6 +2638,17 @@ int32_t nghttp2_submit_headers(nghttp2_session *session, uint8_t flags,
  *     The |stream_id| is 0.
  * :enum:`NGHTTP2_ERR_STREAM_CLOSED`
  *     The stream was alreay closed; or the |stream_id| is invalid.
+ *
+ * .. note::
+ *
+ *   Currently, only one data is allowed for a stream at a time.
+ *   Submitting data more than once before first data is finished
+ *   results in :enum:`NGHTTP2_ERR_DATA_EXIST` error code.  The
+ *   earliest callback which tells that previous data is done is
+ *   :type:`nghttp2_on_frame_send_callback`.  In side that callback,
+ *   new data can be submitted using `nghttp2_submit_data()`.  Of
+ *   course, all data except for last one must not have
+ *   :enum:`NGHTTP2_FLAG_END_STREAM` flag set in |flags|.
  */
 int nghttp2_submit_data(nghttp2_session *session, uint8_t flags,
                         int32_t stream_id,
