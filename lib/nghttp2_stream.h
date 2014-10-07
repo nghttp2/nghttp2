@@ -172,6 +172,9 @@ struct nghttp2_stream {
      descendant with dpri == NGHTTP2_STREAM_DPRI_TOP.  We use this
      value to calculate effective weight. */
   int32_t sum_norest_weight;
+  /* sum of weight of direct descendants whose dpri value is
+     NGHTTP2_STREAM_DPRI_TOP */
+  int32_t sum_top_weight;
   nghttp2_stream_state state;
   /* This is bitwise-OR of 0 or more of nghttp2_stream_flag. */
   uint8_t flags;
