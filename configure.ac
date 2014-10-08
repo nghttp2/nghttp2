@@ -162,6 +162,23 @@ auto tp = std::chrono::steady_clock::now();
      AC_MSG_RESULT([yes])],
     [AC_MSG_RESULT([no])])
 
+# Check that std::future is available.
+AC_MSG_CHECKING([whether std::future is available])
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM(
+[[
+#include <vector>
+#include <future>
+]],
+[[
+std::vector<std::future<int>> v;
+]])],
+    [AC_DEFINE([HAVE_STD_FUTURE], [1],
+               [Define to 1 if you have the `std::future`.])
+     have_std_future=yes
+     AC_MSG_RESULT([yes])],
+    [have_std_future=no
+     AC_MSG_RESULT([no])])
+
 AC_LANG_POP()
 
 # Checks for libraries.
@@ -509,7 +526,9 @@ if test "x$debug" != "xno"; then
     AC_DEFINE([DEBUGBUILD], [1], [Define to 1 to enable debug output.])
 fi
 
-if test "x$threads" != "xyes"; then
+# Some platform does not have working std::future.  We disable
+# threading for those platforms to exclude std::future use.
+if test "x$threads" != "xyes" || test "x$have_std_future" != "xyes"; then
     AC_DEFINE([NOTHREADS], [1], [Define to 1 if you want to disable threads.])
 fi
 
