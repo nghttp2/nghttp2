@@ -539,10 +539,21 @@ int reopen_log_file(const char *path)
     fd = open(path, O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC,
               S_IRUSR | S_IWUSR | S_IRGRP);
   }
-#else // !__ANDROID__ && !ANDROID
+#elif defined O_CLOEXEC
+
   auto fd = open(path, O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC,
                  S_IRUSR | S_IWUSR | S_IRGRP);
-#endif // !__ANDROID__ && !ANDROID
+#else // !O_CLOEXEC
+
+  auto fd = open(path, O_WRONLY | O_APPEND | O_CREAT,
+                 S_IRUSR | S_IWUSR | S_IRGRP);
+
+  // We get race condition if execve is called at the same time.
+  if(fd != -1) {
+    fcntl(fd, F_SETFD, FD_CLOEXEC);
+  }
+
+#endif // !O_CLOEXEC
 
   if(fd == -1) {
     return -1;
