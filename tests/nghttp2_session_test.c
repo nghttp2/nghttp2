@@ -6084,6 +6084,17 @@ void test_nghttp2_session_stream_attach_data(void)
 
   CU_ASSERT(16 * 16 / 16 == b->effective_weight);
 
+  CU_ASSERT(0 == dd->queued);
+
+  nghttp2_stream_detach_data(b, &session->ob_da_pq, session->last_cycle);
+
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == a->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == b->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == c->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == d->dpri);
+
+  CU_ASSERT(16 * 16 / 16 == d->effective_weight);
+
   CU_ASSERT(1 == dd->queued);
 
   nghttp2_session_del(session);
