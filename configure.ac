@@ -477,10 +477,18 @@ AC_CHECK_FUNCS([ \
   timegm \
 ])
 
+# timerfd_create was added in linux kernel 2.6.25
+
+AC_CHECK_FUNC([timerfd_create],
+              [have_timerfd_create=yes], [have_timerfd_create=no])
+
+
 # Checks for epoll availability, primarily for examples/tiny-nghttpd
 AX_HAVE_EPOLL([have_epoll=yes], [have_epoll=no])
 
-AM_CONDITIONAL([HAVE_EPOLL], [ test "x${have_epoll}" = "xyes" ])
+AM_CONDITIONAL([ENABLE_TINY_NGHTTPD],
+               [ test "x${have_epoll}" = "xyes" &&
+                 test "x${have_timerfd_create}" = "xyes"])
 
 dnl Windows library for winsock2
 case "${host}" in
