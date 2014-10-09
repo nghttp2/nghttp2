@@ -6494,7 +6494,7 @@ void test_nghttp2_session_recv_client_preface(void)
      NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN);
 
   CU_ASSERT(rv == NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN);
-  CU_ASSERT(NGHTTP2_IB_READ_HEAD == session->iframe.state);
+  CU_ASSERT(NGHTTP2_IB_READ_FIRST_SETTINGS == session->iframe.state);
 
   nghttp2_session_del(session);
 

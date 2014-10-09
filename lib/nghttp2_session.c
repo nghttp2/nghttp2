@@ -307,6 +307,10 @@ static void active_outbound_item_reset(nghttp2_active_outbound_item *aob)
   aob->state = NGHTTP2_OB_POP_ITEM;
 }
 
+/* This global variable exists for tests where we want to disable this
+   check. */
+int nghttp2_enable_strict_first_settings_check = 1;
+
 static int session_new(nghttp2_session **session_ptr,
                        const nghttp2_session_callbacks *callbacks,
                        void *user_data,
@@ -422,6 +426,10 @@ static int session_new(nghttp2_session **session_ptr,
 
     iframe->state = NGHTTP2_IB_READ_CLIENT_PREFACE;
     iframe->payloadleft = NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN;
+  } else if(nghttp2_enable_strict_first_settings_check) {
+    nghttp2_inbound_frame *iframe = &(*session_ptr)->iframe;
+
+    iframe->state = NGHTTP2_IB_READ_FIRST_SETTINGS;
   }
 
   return 0;
@@ -4390,9 +4398,38 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
 
       if(iframe->payloadleft == 0) {
         session_inbound_frame_reset(session);
+        iframe->state = NGHTTP2_IB_READ_FIRST_SETTINGS;
       }
 
       break;
+    case NGHTTP2_IB_READ_FIRST_SETTINGS:
+      DEBUGF(fprintf(stderr, "recv: [IB_READ_FIRST_SETTINGS]\n"));
+
+      readlen = inbound_frame_buf_read(iframe, in, last);
+      in += readlen;
+
+      if(nghttp2_buf_mark_avail(&iframe->sbuf)) {
+        return in - first;
+      }
+
+      if(iframe->sbuf.pos[3] != NGHTTP2_SETTINGS) {
+        busy = 1;
+
+        iframe->state = NGHTTP2_IB_IGN_PAYLOAD;
+
+        rv = nghttp2_session_terminate_session_with_reason
+          (session, NGHTTP2_PROTOCOL_ERROR, "SETTINGS expected");
+
+        if(nghttp2_is_fatal(rv)) {
+          return rv;
+        }
+
+        break;
+      }
+
+      iframe->state = NGHTTP2_IB_READ_HEAD;
+
+      /* Fall through */
     case NGHTTP2_IB_READ_HEAD: {
       int on_begin_frame_called = 0;
 

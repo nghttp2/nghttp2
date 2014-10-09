@@ -67,6 +67,7 @@ typedef struct {
 typedef enum {
   /* Receiving frame header */
   NGHTTP2_IB_READ_CLIENT_PREFACE,
+  NGHTTP2_IB_READ_FIRST_SETTINGS,
   NGHTTP2_IB_READ_HEAD,
   NGHTTP2_IB_READ_NBYTE,
   NGHTTP2_IB_READ_HEADER_BLOCK,
