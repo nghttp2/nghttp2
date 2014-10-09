@@ -26,6 +26,8 @@ do not send client connection preface
 responsible to send it before sending any HTTP/2 frames using these
 functions if :type:`nghttp2_session` is configured as client.
 Similarly, `nghttp2_session_recv()` and `nghttp2_session_mem_recv()`
-do not consume client connection preface.  The applications are
-responsible to receive it before calling these functions if
-:type:`nghttp2_session` is configured as server.
+do not consume client connection preface unless
+`nghttp2_option_set_recv_client_preface()` is used with nonzero option
+value.  The applications are responsible to receive it before calling
+these functions if :type:`nghttp2_session` is configured as server and
+`nghttp2_option_set_recv_client_preface()` is not used.
