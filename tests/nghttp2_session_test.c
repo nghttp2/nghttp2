@@ -6477,6 +6477,8 @@ void test_nghttp2_session_recv_client_preface(void)
   nghttp2_session_callbacks callbacks;
   nghttp2_option *option;
   ssize_t rv;
+  nghttp2_frame ping_frame;
+  uint8_t buf[16];
 
   memset(&callbacks, 0, sizeof(callbacks));
 
@@ -6495,6 +6497,18 @@ void test_nghttp2_session_recv_client_preface(void)
 
   CU_ASSERT(rv == NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN);
   CU_ASSERT(NGHTTP2_IB_READ_FIRST_SETTINGS == session->iframe.state);
+
+  /* Receiving PING is error */
+  nghttp2_frame_ping_init(&ping_frame.ping, NGHTTP2_FLAG_NONE, NULL);
+
+  nghttp2_frame_pack_frame_hd(buf, &ping_frame.ping.hd);
+
+  rv = nghttp2_session_mem_recv(session, buf, NGHTTP2_FRAME_HDLEN);
+  CU_ASSERT(NGHTTP2_FRAME_HDLEN == rv);
+  CU_ASSERT(NGHTTP2_IB_IGN_PAYLOAD == session->iframe.state);
+  CU_ASSERT(8 == session->iframe.payloadleft);
+
+  nghttp2_frame_ping_free(&ping_frame.ping);
 
   nghttp2_session_del(session);
 
