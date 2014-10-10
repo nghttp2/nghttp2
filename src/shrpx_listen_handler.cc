@@ -370,17 +370,18 @@ void perform_accept_pending_connection(ListenHandler *listener_handler,
     auto fd = accept(server_fd, &sockaddr.sa, &addrlen);
 
     if(fd == -1) {
-      if(errno == EINTR ||
-         errno == ENETDOWN ||
-         errno == EPROTO ||
-         errno == ENOPROTOOPT ||
-         errno == EHOSTDOWN ||
+      switch(errno) {
+      case EINTR:
+      case ENETDOWN:
+      case EPROTO:
+      case ENOPROTOOPT:
+      case EHOSTDOWN:
 #ifdef ENONET
-         errno == ENONET ||
+      case ENONET:
 #endif // ENONET
-         errno == EHOSTUNREACH ||
-         errno == EOPNOTSUPP ||
-         errno == ENETUNREACH) {
+      case EHOSTUNREACH:
+      case EOPNOTSUPP:
+      case ENETUNREACH:
         continue;
       }
 
