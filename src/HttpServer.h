@@ -80,6 +80,7 @@ struct Config {
   bool error_gzip;
   bool early_response;
   Config();
+  ~Config();
 };
 
 class Http2Handler;

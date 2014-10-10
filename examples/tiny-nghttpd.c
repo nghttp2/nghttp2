@@ -422,7 +422,11 @@ static int server_init(server *serv, const char *node, const char *service)
       continue;
     }
 
-    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &on, optlen);
+    rv = setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &on, optlen);
+
+    if(rv == -1) {
+      print_errno("setsockopt", errno);
+    }
 
     if(bind(fd, rp->ai_addr, rp->ai_addrlen) != 0) {
       close(fd);
@@ -552,7 +556,10 @@ static int handle_timer(io_loop *loop, uint32_t events, void *ptr)
     ssize_t nread;
 
     while((nread = read(tmr->fd, buf, sizeof(buf))) == -1 && errno == EINTR);
-    break;
+
+    if(nread == -1) {
+      break;
+    }
   }
 
   update_date();
@@ -566,6 +573,7 @@ static int handle_accept(io_loop *loop, uint32_t events, void *ptr)
   server *serv = ptr;
   int on = 1;
   socklen_t optlen = sizeof(on);
+  int rv;
 
   for(;;) {
     connection *conn;
@@ -574,7 +582,7 @@ static int handle_accept(io_loop *loop, uint32_t events, void *ptr)
           errno == EINTR);
 
     if(acfd == -1) {
-      switch(acfd) {
+      switch(errno) {
       case ENETDOWN:
       case EPROTO:
       case ENOPROTOOPT:
@@ -588,7 +596,11 @@ static int handle_accept(io_loop *loop, uint32_t events, void *ptr)
       return 0;
     }
 
-    setsockopt(acfd, IPPROTO_TCP, TCP_NODELAY, &on, optlen);
+    rv = setsockopt(acfd, IPPROTO_TCP, TCP_NODELAY, &on, optlen);
+
+    if(rv == -1) {
+      print_errno("setsockopt", errno);
+    }
 
     conn = connection_new(acfd);
 

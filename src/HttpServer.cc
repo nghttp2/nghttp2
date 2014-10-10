@@ -122,6 +122,11 @@ Config::Config()
   nghttp2_option_set_recv_client_preface(session_option, 1);
 }
 
+Config::~Config()
+{
+  nghttp2_option_del(session_option);
+}
+
 Stream::Stream(Http2Handler *handler, int32_t stream_id)
   : handler(handler),
     rtimer(nullptr),
@@ -512,7 +517,9 @@ int Http2Handler::on_read()
       return -1;
     }
 
-    evbuffer_drain(input, len);
+    if(evbuffer_drain(input, len) == -1) {
+      std::cerr << "evbuffer_drain() failed" << std::endl;
+    }
   }
 
   return send();
@@ -1268,7 +1275,9 @@ void worker_readcb(bufferevent *bev, void *arg)
   auto input = bufferevent_get_input(bev);
   while(evbuffer_get_length(input) >= sizeof(ClientInfo)) {
     ClientInfo client;
-    evbuffer_remove(input, &client, sizeof(client));
+    if(evbuffer_remove(input, &client, sizeof(client)) == -1) {
+      std::cerr << "evbuffer_remove() failed" << std::endl;
+    }
     sessions->accept_connection(client.fd);
   }
 }
