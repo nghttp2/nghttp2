@@ -254,6 +254,18 @@ void SpdyUpstream::maintain_downstream_concurrency()
 {
   while(get_config()->max_downstream_connections >
         downstream_queue_.num_active()) {
+    if(downstream_queue_.pending_empty()) {
+      break;
+    }
+
+    {
+      auto downstream = downstream_queue_.pending_top();
+      if(downstream->get_request_state() != Downstream::HEADER_COMPLETE &&
+         downstream->get_request_state() != Downstream::MSG_COMPLETE) {
+        break;
+      }
+    }
+
     auto downstream = downstream_queue_.pop_pending();
 
     if(!downstream) {
