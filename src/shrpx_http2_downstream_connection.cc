@@ -48,9 +48,9 @@ using namespace nghttp2;
 namespace shrpx {
 
 Http2DownstreamConnection::Http2DownstreamConnection
-(ClientHandler *client_handler)
-  : DownstreamConnection(client_handler),
-    http2session_(client_handler->get_http2_session()),
+(DownstreamConnectionPool *dconn_pool, Http2Session *http2session)
+  : DownstreamConnection(dconn_pool),
+    http2session_(http2session),
     request_body_buf_(nullptr),
     sd_(nullptr)
 {}

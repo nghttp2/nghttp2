@@ -34,10 +34,11 @@ namespace shrpx {
 class ClientHandler;
 class Upstream;
 class Downstream;
+class DownstreamConnectionPool;
 
 class DownstreamConnection {
 public:
-  DownstreamConnection(ClientHandler *client_handler);
+  DownstreamConnection(DownstreamConnectionPool *dconn_pool);
   virtual ~DownstreamConnection();
   virtual int attach_downstream(Downstream *downstream) = 0;
   virtual void detach_downstream(Downstream *downstream) = 0;
@@ -59,9 +60,12 @@ public:
   virtual void on_upstream_change(Upstream *uptream) = 0;
   virtual int on_priority_change(int32_t pri) = 0;
 
+  void set_client_handler(ClientHandler *client_handler);
   ClientHandler* get_client_handler();
   Downstream* get_downstream();
+  DownstreamConnectionPool* get_dconn_pool() const;
 protected:
+  DownstreamConnectionPool *dconn_pool_;
   ClientHandler *client_handler_;
   Downstream *downstream_;
 };

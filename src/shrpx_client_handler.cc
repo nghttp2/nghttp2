@@ -36,6 +36,7 @@
 #include "shrpx_ssl.h"
 #include "shrpx_worker.h"
 #include "shrpx_worker_config.h"
+#include "shrpx_downstream_connection_pool.h"
 #ifdef HAVE_SPDYLAY
 #include "shrpx_spdy_upstream.h"
 #endif // HAVE_SPDYLAY
@@ -230,8 +231,10 @@ ClientHandler::ClientHandler(bufferevent *bev,
                              bufferevent_rate_limit_group *rate_limit_group,
                              int fd, SSL *ssl,
                              const char *ipaddr,
-                             WorkerStat *worker_stat)
+                             WorkerStat *worker_stat,
+                             DownstreamConnectionPool *dconn_pool)
   : ipaddr_(ipaddr),
+    dconn_pool_(dconn_pool),
     bev_(bev),
     http2session_(nullptr),
     ssl_(ssl),
@@ -308,9 +311,6 @@ ClientHandler::~ClientHandler()
 
   shutdown(fd_, SHUT_WR);
   close(fd_);
-  for(auto dconn : dconn_pool_) {
-    delete dconn;
-  }
   if(LOG_ENABLED(INFO)) {
     CLOG(INFO, this) << "Deleted";
   }
@@ -477,7 +477,8 @@ void ClientHandler::pool_downstream_connection
   if(LOG_ENABLED(INFO)) {
     CLOG(INFO, this) << "Pooling downstream connection DCONN:" << dconn.get();
   }
-  dconn_pool_.insert(dconn.release());
+  dconn->set_client_handler(nullptr);
+  dconn_pool_->add_downstream_connection(std::move(dconn));
 }
 
 void ClientHandler::remove_downstream_connection(DownstreamConnection *dconn)
@@ -486,27 +487,32 @@ void ClientHandler::remove_downstream_connection(DownstreamConnection *dconn)
     CLOG(INFO, this) << "Removing downstream connection DCONN:" << dconn
                      << " from pool";
   }
-  dconn_pool_.erase(dconn);
-  delete dconn;
+  dconn_pool_->remove_downstream_connection(dconn);
 }
 
 std::unique_ptr<DownstreamConnection>
 ClientHandler::get_downstream_connection()
 {
-  if(dconn_pool_.empty()) {
+  auto dconn = dconn_pool_->pop_downstream_connection();
+
+  if(!dconn) {
     if(LOG_ENABLED(INFO)) {
       CLOG(INFO, this) << "Downstream connection pool is empty."
                        << " Create new one";
     }
+
     if(http2session_) {
-      return util::make_unique<Http2DownstreamConnection>(this);
+      dconn = util::make_unique<Http2DownstreamConnection>
+        (dconn_pool_, http2session_);
     } else {
-      return util::make_unique<HttpDownstreamConnection>(this);
+      dconn = util::make_unique<HttpDownstreamConnection>(dconn_pool_);
     }
+    dconn->set_client_handler(this);
+    return dconn;
   }
 
-  auto dconn = std::unique_ptr<DownstreamConnection>(*std::begin(dconn_pool_));
-  dconn_pool_.erase(dconn.get());
+  dconn->set_client_handler(this);
+
   if(LOG_ENABLED(INFO)) {
     CLOG(INFO, this) << "Reuse downstream connection DCONN:" << dconn.get()
                      << " from pool";

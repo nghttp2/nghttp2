@@ -42,6 +42,8 @@
 #include <event2/bufferevent.h>
 #include <event2/listener.h>
 
+#include "shrpx_downstream_connection_pool.h"
+
 namespace shrpx {
 
 struct WorkerInfo {
@@ -81,6 +83,7 @@ public:
   void join_worker();
   void notify_worker_shutdown();
 private:
+  DownstreamConnectionPool dconn_pool_;
   std::vector<std::unique_ptr<WorkerInfo>> workers_;
   event_base *evbase_;
   // The frontend server SSL_CTX

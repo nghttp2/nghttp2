@@ -34,6 +34,7 @@
 #include <event2/bufferevent.h>
 
 #include "shrpx_config.h"
+#include "shrpx_downstream_connection_pool.h"
 
 namespace shrpx {
 
@@ -66,6 +67,7 @@ public:
   ~ThreadEventReceiver();
   void on_read(bufferevent *bev);
 private:
+  DownstreamConnectionPool dconn_pool_;
   event_base *evbase_;
   SSL_CTX *ssl_ctx_;
   // Shared HTTP2 session for each thread. NULL if not client

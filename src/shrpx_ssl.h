@@ -38,6 +38,7 @@ namespace shrpx {
 
 class ClientHandler;
 struct WorkerStat;
+class DownstreamConnectionPool;
 
 namespace ssl {
 
@@ -52,7 +53,8 @@ ClientHandler* accept_connection
  SSL_CTX *ssl_ctx,
  evutil_socket_t fd,
  sockaddr *addr, int addrlen,
- WorkerStat *worker_stat);
+ WorkerStat *worker_stat,
+ DownstreamConnectionPool *dconn_pool);
 
 int check_cert(SSL *ssl);
 

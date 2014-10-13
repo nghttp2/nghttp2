@@ -39,6 +39,7 @@
 #include "shrpx_config.h"
 #include "shrpx_http2_session.h"
 #include "shrpx_connect_blocker.h"
+#include "shrpx_downstream_connection.h"
 #include "util.h"
 #include "libevent_util.h"
 
@@ -230,7 +231,8 @@ int ListenHandler::accept_connection(evutil_socket_t fd,
 
     auto client = ssl::accept_connection(evbase_, rate_limit_group_,
                                          sv_ssl_ctx_, fd, addr, addrlen,
-                                         worker_stat_.get());
+                                         worker_stat_.get(),
+                                         &dconn_pool_);
     if(!client) {
       LLOG(ERROR, this) << "ClientHandler creation failed";
 

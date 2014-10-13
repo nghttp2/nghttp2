@@ -123,7 +123,8 @@ void ThreadEventReceiver::on_read(bufferevent *bev)
                                                  wev.client_fd,
                                                  &wev.client_addr.sa,
                                                  wev.client_addrlen,
-                                                 worker_stat_.get());
+                                                 worker_stat_.get(),
+                                                 &dconn_pool_);
     if(client_handler) {
       client_handler->set_http2_session(http2session_);
       client_handler->set_http1_connect_blocker(http1_connect_blocker_);

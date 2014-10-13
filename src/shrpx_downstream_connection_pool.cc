@@ -1,7 +1,7 @@
 /*
  * nghttp2 - HTTP/2 C Library
  *
- * Copyright (c) 2012 Tatsuhiro Tsujikawa
+ * Copyright (c) 2014 Tatsuhiro Tsujikawa
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -22,42 +22,44 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#include "shrpx_downstream_connection.h"
-
-#include "shrpx_client_handler.h"
-#include "shrpx_downstream.h"
 #include "shrpx_downstream_connection_pool.h"
+#include "shrpx_downstream_connection.h"
 
 namespace shrpx {
 
-DownstreamConnection::DownstreamConnection
-(DownstreamConnectionPool *dconn_pool)
-  : dconn_pool_(dconn_pool),
-    client_handler_(nullptr),
-    downstream_(nullptr)
+DownstreamConnectionPool::DownstreamConnectionPool()
 {}
 
-DownstreamConnection::~DownstreamConnection()
-{}
-
-void DownstreamConnection::set_client_handler(ClientHandler *handler)
+DownstreamConnectionPool::~DownstreamConnectionPool()
 {
-  client_handler_ = handler;
+  for(auto dconn : pool_) {
+    delete dconn;
+  }
 }
 
-ClientHandler* DownstreamConnection::get_client_handler()
+void DownstreamConnectionPool::add_downstream_connection
+(std::unique_ptr<DownstreamConnection> dconn)
 {
-  return client_handler_;
+  pool_.insert(dconn.release());
 }
 
-Downstream* DownstreamConnection::get_downstream()
+std::unique_ptr<DownstreamConnection>
+DownstreamConnectionPool::pop_downstream_connection()
 {
-  return downstream_;
+  if(pool_.empty()) {
+    return nullptr;
+  }
+
+  auto dconn = std::unique_ptr<DownstreamConnection>(*std::begin(pool_));
+  pool_.erase(std::begin(pool_));
+  return dconn;
 }
 
-DownstreamConnectionPool* DownstreamConnection::get_dconn_pool() const
+void DownstreamConnectionPool::remove_downstream_connection
+(DownstreamConnection *dconn)
 {
-  return dconn_pool_;
+  pool_.erase(dconn);
+  delete dconn;
 }
 
 } // namespace shrpx

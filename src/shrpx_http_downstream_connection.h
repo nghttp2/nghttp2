@@ -37,9 +37,11 @@
 
 namespace shrpx {
 
+class DownstreamConnectionPool;
+
 class HttpDownstreamConnection : public DownstreamConnection {
 public:
-  HttpDownstreamConnection(ClientHandler *client_handler);
+  HttpDownstreamConnection(DownstreamConnectionPool *dconn_pool);
   virtual ~HttpDownstreamConnection();
   virtual int attach_downstream(Downstream *downstream);
   virtual void detach_downstream(Downstream *downstream);

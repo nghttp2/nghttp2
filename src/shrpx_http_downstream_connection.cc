@@ -32,6 +32,7 @@
 #include "shrpx_http.h"
 #include "shrpx_worker_config.h"
 #include "shrpx_connect_blocker.h"
+#include "shrpx_downstream_connection_pool.h"
 #include "http2.h"
 #include "util.h"
 #include "libevent_util.h"
@@ -45,8 +46,8 @@ const size_t OUTBUF_MAX_THRES = 64*1024;
 } // namespace
 
 HttpDownstreamConnection::HttpDownstreamConnection
-(ClientHandler *client_handler)
-  : DownstreamConnection(client_handler),
+(DownstreamConnectionPool *dconn_pool)
+  : DownstreamConnection(dconn_pool),
     bev_(nullptr),
     ioctrl_(nullptr),
     response_htp_{0}
@@ -333,19 +334,26 @@ int HttpDownstreamConnection::end_upload_data()
 }
 
 namespace {
+void idle_readcb(bufferevent *bev, void *arg)
+{
+  auto dconn = static_cast<HttpDownstreamConnection*>(arg);
+  auto dconn_pool = dconn->get_dconn_pool();
+  dconn_pool->remove_downstream_connection(dconn);
+  // dconn was deleted
+}
+} // namespace
+
+namespace {
 // Gets called when DownstreamConnection is pooled in ClientHandler.
 void idle_eventcb(bufferevent *bev, short events, void *arg)
 {
   auto dconn = static_cast<HttpDownstreamConnection*>(arg);
   if(events & BEV_EVENT_CONNECTED) {
     // Downstream was detached before connection established?
-    // This may be safe to be left.
     if(LOG_ENABLED(INFO)) {
       DCLOG(INFO, dconn) << "Idle connection connected?";
     }
-    return;
-  }
-  if(events & BEV_EVENT_EOF) {
+  } else if(events & BEV_EVENT_EOF) {
     if(LOG_ENABLED(INFO)) {
       DCLOG(INFO, dconn) << "Idle connection EOF";
     }
@@ -358,8 +366,8 @@ void idle_eventcb(bufferevent *bev, short events, void *arg)
       DCLOG(INFO, dconn) << "Idle connection network error";
     }
   }
-  auto client_handler = dconn->get_client_handler();
-  client_handler->remove_downstream_connection(dconn);
+  auto dconn_pool = dconn->get_dconn_pool();
+  dconn_pool->remove_downstream_connection(dconn);
   // dconn was deleted
 }
 } // namespace
@@ -372,7 +380,7 @@ void HttpDownstreamConnection::detach_downstream(Downstream *downstream)
   downstream_ = nullptr;
   ioctrl_.force_resume_read();
   util::bev_enable_unless(bev_, EV_READ);
-  bufferevent_setcb(bev_, 0, 0, idle_eventcb, this);
+  bufferevent_setcb(bev_, idle_readcb, nullptr, idle_eventcb, this);
   // On idle state, just enable read timeout. Normally idle downstream
   // connection will get EOF from the downstream server and closed.
   bufferevent_set_timeouts(bev_,

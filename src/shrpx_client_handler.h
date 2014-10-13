@@ -27,7 +27,6 @@
 
 #include "shrpx.h"
 
-#include <set>
 #include <memory>
 
 #include <event.h>
@@ -42,6 +41,7 @@ class DownstreamConnection;
 class Http2Session;
 class HttpsUpstream;
 class ConnectBlocker;
+class DownstreamConnectionPool;
 struct WorkerStat;
 
 class ClientHandler {
@@ -49,7 +49,8 @@ public:
   ClientHandler(bufferevent *bev,
                 bufferevent_rate_limit_group *rate_limit_group,
                 int fd, SSL *ssl, const char *ipaddr,
-                WorkerStat *worker_stat);
+                WorkerStat *worker_stat,
+                DownstreamConnectionPool *dconn_pool);
   ~ClientHandler();
   int on_read();
   int on_event();
@@ -91,9 +92,9 @@ public:
   void set_tls_renegotiation(bool f);
   bool get_tls_renegotiation() const;
 private:
-  std::set<DownstreamConnection*> dconn_pool_;
   std::unique_ptr<Upstream> upstream_;
   std::string ipaddr_;
+  DownstreamConnectionPool *dconn_pool_;
   bufferevent *bev_;
   // Shared HTTP2 session for each thread. NULL if backend is not
   // HTTP2. Not deleted by this object.

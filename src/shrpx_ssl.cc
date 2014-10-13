@@ -49,6 +49,7 @@
 #include "shrpx_client_handler.h"
 #include "shrpx_config.h"
 #include "shrpx_worker.h"
+#include "shrpx_downstream_connection_pool.h"
 #include "util.h"
 #include "ssl.h"
 
@@ -463,7 +464,8 @@ ClientHandler* accept_connection
  SSL_CTX *ssl_ctx,
  evutil_socket_t fd,
  sockaddr *addr, int addrlen,
- WorkerStat *worker_stat)
+ WorkerStat *worker_stat,
+ DownstreamConnectionPool *dconn_pool)
 {
   char host[NI_MAXHOST];
   int rv;
@@ -513,7 +515,8 @@ ClientHandler* accept_connection
     return nullptr;
   }
 
-  return new ClientHandler(bev, rate_limit_group, fd, ssl, host, worker_stat);
+  return new ClientHandler(bev, rate_limit_group, fd, ssl, host, worker_stat,
+                           dconn_pool);
 }
 
 namespace {

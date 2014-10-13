@@ -37,10 +37,12 @@ namespace shrpx {
 
 struct StreamData;
 class Http2Session;
+class DownstreamConnectionPool;
 
 class Http2DownstreamConnection : public DownstreamConnection {
 public:
-  Http2DownstreamConnection(ClientHandler *client_handler);
+  Http2DownstreamConnection(DownstreamConnectionPool *dconn_pool,
+                            Http2Session *http2session);
   virtual ~Http2DownstreamConnection();
   virtual int attach_downstream(Downstream *downstream);
   virtual void detach_downstream(Downstream *downstream);
