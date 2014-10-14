@@ -549,18 +549,12 @@ static int io_loop_run(io_loop *loop, server *serv)
 static int handle_timer(io_loop *loop, uint32_t events, void *ptr)
 {
   timer *tmr = ptr;
-  char buf[256];
+  int64_t buf;
+  ssize_t nread;
 
-  /* We may get more than 8 bytes here? */
-  for(;;) {
-    ssize_t nread;
+  while((nread = read(tmr->fd, &buf, sizeof(buf))) == -1 && errno == EINTR);
 
-    while((nread = read(tmr->fd, buf, sizeof(buf))) == -1 && errno == EINTR);
-
-    if(nread == -1) {
-      break;
-    }
-  }
+  assert(nread == sizeof(buf));
 
   update_date();
 
