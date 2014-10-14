@@ -812,7 +812,7 @@ int main(int argc, char **argv)
   SSL_library_init();
 
 #ifndef NOTHREADS
-  ssl::LibsslGlobalLock();
+  ssl::LibsslGlobalLock lock;
 #endif // NOTHREADS
 
   auto ssl_ctx = SSL_CTX_new(SSLv23_client_method());

@@ -296,7 +296,7 @@ int main(int argc, char **argv)
   SSL_load_error_strings();
   SSL_library_init();
 #ifndef NOTHREADS
-  ssl::LibsslGlobalLock();
+  ssl::LibsslGlobalLock lock;
 #endif // NOTHREADS
 
   reset_timer();

@@ -1621,7 +1621,7 @@ int main(int argc, char **argv)
   SSL_load_error_strings();
   SSL_library_init();
 #ifndef NOTHREADS
-  nghttp2::ssl::LibsslGlobalLock();
+  nghttp2::ssl::LibsslGlobalLock lock;
 #endif // NOTHREADS
 
   if(conf_exists(get_config()->conf_path.get())) {
