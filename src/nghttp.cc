@@ -1964,7 +1964,11 @@ Options:
   -a, --get-assets   Download assets  such as stylesheets,  images and
                      script files linked from the downloaded resource.
                      Only links  whose origins  are the same  with the
-                     linking resource will be downloaded.
+                     linking  resource  will  be  downloaded.   nghttp
+                     prioritizes  resources  using  HTTP/2  dependency
+                     based priority.  The priority order, from highest
+                     to lowest,  is html  itself, css,  javascript and
+                     images.
   -s, --stat         Print statistics.
   -H, --header       Add a header to the requests.
   --cert=<CERT>      Use the  specified client certificate  file.  The
