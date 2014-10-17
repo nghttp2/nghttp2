@@ -115,6 +115,8 @@ The Python bindings require the following packages:
 If you are using Ubuntu 14.04 LTS, you need the following packages
 installed:
 
+* make
+* binutils
 * autoconf
 * automake
 * autotools-dev
