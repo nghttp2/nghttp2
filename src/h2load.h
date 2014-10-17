@@ -50,6 +50,7 @@ class Session;
 struct Config {
   std::vector<std::vector<nghttp2_nv>> nva;
   std::vector<std::vector<const char*>> nv;
+  std::vector<std::pair<std::string, std::string>> custom_headers;
   std::string scheme;
   std::string host;
   addrinfo *addrs;

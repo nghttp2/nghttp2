@@ -642,6 +642,8 @@ Options:
                      (2**<N>)-1.  For  SPDY, if  <N> is  strictly less
                      than  16,  this  option  is  ignored.   Otherwise
                      2**<N> is used for SPDY.
+  -H, --header
+                     Add/Override a header to the requests.
   -p, --no-tls-proto=<PROTOID>
                      Specify  ALPN identifier  of the  protocol to  be
                      used  when accessing  http  URI without  SSL/TLS.)";
@@ -674,6 +676,7 @@ int main(int argc, char **argv)
       {"max-concurrent-streams", required_argument, nullptr, 'm'},
       {"window-bits", required_argument, nullptr, 'w'},
       {"connection-window-bits", required_argument, nullptr, 'W'},
+      {"header", no_argument, nullptr, 'H'},
       {"no-tls-proto", required_argument, nullptr, 'p'},
       {"verbose", no_argument, nullptr, 'v'},
       {"help", no_argument, nullptr, 'h'},
@@ -681,7 +684,7 @@ int main(int argc, char **argv)
       {nullptr, 0, nullptr, 0 }
     };
     int option_index = 0;
-    auto c = getopt_long(argc, argv, "hvW:c:m:n:p:t:w:", long_options,
+    auto c = getopt_long(argc, argv, "hvW:c:m:n:p:t:w:H:", long_options,
                          &option_index);
     if(c == -1) {
       break;
@@ -725,6 +728,31 @@ int main(int argc, char **argv)
                   << std::endl;
         exit(EXIT_FAILURE);
       }
+      break;
+    }
+    case 'H': {
+      char *header = optarg;
+      // Skip first possible ':' in the header name
+      char *value = strchr( optarg + 1, ':' );
+      if ( ! value || (header[0] == ':' && header + 1 == value)) {
+        std::cerr << "-H: invalid header: " << optarg
+                  << std::endl;
+        exit(EXIT_FAILURE);
+      }
+      *value = 0;
+      value++;
+      while( isspace( *value ) ) { value++; }
+      if ( *value == 0 ) {
+        // This could also be a valid case for suppressing a header
+        // similar to curl
+        std::cerr << "-H: invalid header - value missing: " << optarg
+                  << std::endl;
+        exit(EXIT_FAILURE);
+      }
+      // Note that there is no processing currently to handle multiple
+      // message-header fields with the same field name
+      config.custom_headers.emplace_back(header, value);
+      util::inp_strlower(config.custom_headers.back().first);
       break;
     }
     case 'p':
@@ -874,6 +902,20 @@ int main(int argc, char **argv)
     shared_nva.emplace_back(":authority", config.host);
   }
   shared_nva.emplace_back(":method", "GET");
+
+  for(auto& kv : config.custom_headers) {
+    if(util::strieq(":host", kv.first.c_str())) {
+      // replace :authority as :host header
+      for(auto& nv : shared_nva) {
+        if(nv.name == ":authority") {
+          nv.value = kv.second;
+        }
+      }
+    } else {
+      // add additional headers
+      shared_nva.emplace_back(kv.first.c_str(), kv.second.c_str());
+    }
+  }
 
   for(auto& req : reqlines) {
     // For nghttp2
