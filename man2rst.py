@@ -106,6 +106,7 @@ def process_text(text):
     text = re.sub(r'\\fB(.*?)\\fR', '\\1', text)
     text = re.sub(r'\\-', '-', text)
     text = re.sub(r'\*', '\\*', text)
+    text = re.sub(r'\\&', '', text)
 
     return text
 
