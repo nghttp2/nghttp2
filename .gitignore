@@ -43,3 +43,6 @@ doc/python-apiref.rst
 doc/building-android-binary.rst
 doc/asio_http2.h.rst
 doc/libnghttp2_asio.rst
+python/setup.py
+python/dist
+python/MANIFEST
