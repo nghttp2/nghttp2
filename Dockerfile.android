@@ -1,0 +1,100 @@
+# Dockerfile to build nghttp2 android binary
+#
+# $ sudo docker build -t nghttp2-android - < Dockerfile.android
+#
+# After successful build, android binaries are located under
+# /root/build/nghttp2.  You can copy the binary using docker cp.  For
+# example, to copy nghttpx binary to host file system location
+# /path/to/dest, do this:
+#
+# $ sudo docker run -v /path/to/dest:/out nghttp2-android cp /root/build/nghttp2/src/nghttpx /out
+
+FROM ubuntu
+
+MAINTAINER Tatsuhiro Tsujikawa
+
+ENV ANDROID_HOME /root/android
+ENV PREFIX $ANDROID_HOME/usr/local
+ENV TOOLCHAIN $ANDROID_HOME/toolchain
+ENV PATH $TOOLCHAIN/bin:$PATH
+
+# It would be better to use nearest ubuntu archive mirror for faster
+# downloads.
+# RUN sed -ie 's/archive\.ubuntu/jp.archive.ubuntu/g' /etc/apt/sources.list
+
+RUN apt-get update
+# genisoimage, libc6-i386 and lib32stdc++6 are required to decompress ndk.
+RUN apt-get install -y make binutils autoconf automake autotools-dev libtool \
+    pkg-config git curl dpkg-dev libxml2-dev \
+    genisoimage libc6-i386 lib32stdc++6
+
+WORKDIR /root/build
+RUN curl -L -O http://dl.google.com/android/ndk/android-ndk-r10c-linux-x86_64.bin
+RUN chmod a+x android-ndk-r10c-linux-x86_64.bin
+RUN ./android-ndk-r10c-linux-x86_64.bin
+
+WORKDIR /root/build/android-ndk-r10c
+RUN /bin/bash build/tools/make-standalone-toolchain.sh \
+    --install-dir=$ANDROID_HOME/toolchain \
+    --toolchain=arm-linux-androideabi-4.9 --llvm-version=3.5 \
+    --system=linux-x86_64
+
+WORKDIR /root/build
+RUN git clone https://github.com/tatsuhiro-t/spdylay
+WORKDIR /root/build/spdylay
+RUN autoreconf -i && \
+    ./configure \
+    --disable-shared \
+    --host=arm-linux-androideabi \
+    --build=`dpkg-architecture -qDEB_BUILD_GNU_TYPE` \
+    --prefix=$PREFIX \
+    --without-libxml2 \
+    --disable-src \
+    --disable-examples \
+    CPPFLAGS="-I$PREFIX/include" \
+    PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig" \
+    LDFLAGS="-L$PREFIX/lib" && \
+    make install
+
+WORKDIR /root/build
+RUN curl -L -O https://www.openssl.org/source/openssl-1.0.1j.tar.gz
+RUN tar xf openssl-1.0.1j.tar.gz
+WORKDIR /root/build/openssl-1.0.1j
+RUN export CROSS_COMPILE=$TOOLCHAIN/bin/arm-linux-androideabi- && \
+    ./Configure --prefix=$PREFIX android && \
+    make && make install_sw
+
+WORKDIR /root/build
+RUN curl -L -O https://github.com/downloads/libevent/libevent/libevent-2.0.21-stable.tar.gz
+RUN tar xf libevent-2.0.21-stable.tar.gz
+WORKDIR /root/build/libevent-2.0.21-stable
+RUN ./configure \
+    --host=arm-linux-androideabi \
+    --build=`dpkg-architecture -qDEB_BUILD_GNU_TYPE` \
+    --prefix=$PREFIX \
+    --disable-shared \
+    --enable-static \
+    CPPFLAGS=-I$PREFIX/include \
+    LDFLAGS=-L$PREFIX/lib && \
+    make install
+
+WORKDIR /root/build
+RUN git clone https://github.com/tatsuhiro-t/nghttp2
+WORKDIR /root/build/nghttp2
+RUN autoreconf -i && \
+    ./configure \
+    --disable-shared \
+    --host=arm-linux-androideabi \
+    --build=`dpkg-architecture -qDEB_BUILD_GNU_TYPE` \
+    --with-xml-prefix="$PREFIX" \
+    --without-libxml2 \
+    --disable-python-bindings \
+    --disable-examples \
+    --disable-threads \
+    LIBSPDYLAY_CFLAGS=-I$PREFIX/usr/local/include \
+    LIBSPDYLAY_LIBS="-L$PREFIX/usr/local/lib -lspdylay" \
+    CPPFLAGS="-I$PREFIX/include" \
+    PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig" \
+    LDFLAGS="-L$PREFIX/lib" && \
+    make && \
+    arm-linux-androideabi-strip src/nghttpx src/nghttpd src/nghttp

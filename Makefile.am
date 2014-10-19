@@ -26,4 +26,5 @@ ACLOCAL_AMFLAGS = -I m4
 
 dist_doc_DATA = README.rst
 
-EXTRA_DIST = nghttpx.conf.sample proxy.pac.sample android-config android-make
+EXTRA_DIST = nghttpx.conf.sample proxy.pac.sample android-config android-make \
+	Dockerfile.android
