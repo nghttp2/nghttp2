@@ -21,7 +21,7 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-EXTRA_DIST = nghttpx-init.in
+EXTRA_DIST = nghttpx-init.in nghttpx-logrotate
 
 edit = sed -e 's|@bindir[@]|$(bindir)|g'
 
