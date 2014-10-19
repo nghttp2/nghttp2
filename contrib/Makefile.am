@@ -1,6 +1,6 @@
 # nghttp2 - HTTP/2 C Library
 
-# Copyright (c) 2012 Tatsuhiro Tsujikawa
+# Copyright (c) 2014 Tatsuhiro Tsujikawa
 
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -20,10 +20,20 @@
 # LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-SUBDIRS = lib third-party src examples python tests doc contrib
 
-ACLOCAL_AMFLAGS = -I m4
+EXTRA_DIST = nghttpx-init.in
 
-dist_doc_DATA = README.rst
+edit = sed -e 's|@bindir[@]|$(bindir)|g'
 
-EXTRA_DIST = nghttpx.conf.sample proxy.pac.sample android-config android-make
+nghttpx-init: Makefile
+	rm -f $@ $@.tmp
+	$(edit) $(srcdir)/$@.in > $@.tmp
+	chmod +x $@.tmp
+	mv $@.tmp $@
+
+nghttpx-init: $(srcdir)/nghttpx-init.in
+
+all-local: nghttpx-init
+
+clean-local:
+	-rm -f nghttpx-init nghttpx-init.tmp
