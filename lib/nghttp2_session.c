@@ -1384,7 +1384,7 @@ static ssize_t nghttp2_session_enforce_flow_control_limits
   return nghttp2_min(nghttp2_min(nghttp2_min(requested_window_size,
                                              stream->remote_window_size),
                                  session->remote_window_size),
-                     session->remote_settings.max_frame_size);
+                     (int32_t)session->remote_settings.max_frame_size);
 }
 
 /*
