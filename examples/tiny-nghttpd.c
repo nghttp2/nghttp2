@@ -27,6 +27,7 @@
  * overhead of underlying I/O library (e.g., libevent, Boost ASIO).
  */
 #define _GNU_SOURCE
+#include <config.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
@@ -532,7 +533,7 @@ static int io_loop_mod(io_loop *loop, int fd, uint32_t events, void *ptr)
   return io_loop_ctl(loop, EPOLL_CTL_MOD, fd, events, ptr);
 }
 
-static int io_loop_run(io_loop *loop, server *serv)
+static int io_loop_run(io_loop *loop, server *serv _U_)
 {
 #define NUM_EVENTS 1024
   struct epoll_event events[NUM_EVENTS];
@@ -557,7 +558,7 @@ static int io_loop_run(io_loop *loop, server *serv)
   }
 }
 
-static int handle_timer(io_loop *loop, uint32_t events, void *ptr)
+static int handle_timer(io_loop *loop _U_, uint32_t events _U_, void *ptr)
 {
   timer *tmr = ptr;
   int64_t buf;
@@ -572,7 +573,7 @@ static int handle_timer(io_loop *loop, uint32_t events, void *ptr)
   return 0;
 }
 
-static int handle_accept(io_loop *loop, uint32_t events, void *ptr)
+static int handle_accept(io_loop *loop, uint32_t events _U_, void *ptr)
 {
   int acfd;
   server *serv = ptr;
@@ -629,9 +630,9 @@ static void stream_error
 }
 
 static ssize_t fd_read_callback
-(nghttp2_session *session, int32_t stream_id,
+(nghttp2_session *session _U_, int32_t stream_id _U_,
  uint8_t *buf, size_t length, uint32_t *data_flags,
- nghttp2_data_source *source, void *user_data)
+ nghttp2_data_source *source, void *user_data _U_)
 {
   stream *strm = source->ptr;
   ssize_t nread;
@@ -651,9 +652,9 @@ static ssize_t fd_read_callback
 }
 
 static ssize_t resbuf_read_callback
-(nghttp2_session *session, int32_t stream_id,
+(nghttp2_session *session _U_, int32_t stream_id _U_,
  uint8_t *buf, size_t length, uint32_t *data_flags,
- nghttp2_data_source *source, void *user_data)
+ nghttp2_data_source *source, void *user_data _U_)
 {
   stream *strm = source->ptr;
   size_t left = strm->res_end - strm->res_begin;
@@ -715,7 +716,7 @@ static int check_path(const char *path, size_t len)
     (len < 2 || memcmp(path + len - 2, "/.", 2) != 0);
 }
 
-static int make_path(io_buf *pathbuf, const char *req, size_t reqlen)
+static int make_path(io_buf *pathbuf, const char *req, size_t reqlen _U_)
 {
   uint8_t *p;
 
@@ -953,7 +954,7 @@ static int on_begin_headers_callback
 static int on_header_callback
 (nghttp2_session *session, const nghttp2_frame *frame,
  const uint8_t *name, size_t namelen, const uint8_t *value, size_t valuelen,
- uint8_t flags, void *user_data)
+ uint8_t flags _U_, void *user_data)
 {
   connection *conn = user_data;
   stream *strm;
@@ -1079,8 +1080,8 @@ static int on_frame_recv_callback
 }
 
 static int on_stream_close_callback
-(nghttp2_session *session, int32_t stream_id, uint32_t error_code,
- void *user_data)
+(nghttp2_session *session, int32_t stream_id, uint32_t error_code _U_,
+ void *user_data _U_)
 {
   stream *strm;
 
@@ -1096,7 +1097,7 @@ static int on_stream_close_callback
 }
 
 static int on_frame_not_send_callback
-(nghttp2_session *session, const nghttp2_frame *frame, int lib_error_code,
+(nghttp2_session *session _U_, const nghttp2_frame *frame, int lib_error_code _U_,
  void *user_data)
 {
   connection *conn = user_data;
