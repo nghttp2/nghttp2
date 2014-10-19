@@ -140,6 +140,20 @@ else
   AC_SUBST([CYTHON])
 fi
 
+#
+# If we're running GCC or clang define _U_ to be "__attribute__((unused))"
+# so we can use _U_ to flag unused function parameters and not get warnings
+# about them. Otherwise, define _U_ to be an empty string so that _U_ used
+# to flag an unused function parameters will compile with other compilers.
+#
+# XXX - similar hints for other compilers?
+#
+if test "x$GCC" = "xyes" -o "x$CC" = "xclang" ; then
+  AC_DEFINE([_U_], [__attribute__((unused))], [Hint to the compiler that a function parameters is not used])
+else
+  AC_DEFINE([_U_], , [Hint to the compiler that a function parameters is not used])
+fi
+
 AX_CXX_COMPILE_STDCXX_11([noext], [optional])
 
 AC_LANG_PUSH(C++)
@@ -529,7 +543,6 @@ if test "x$werror" != "xno"; then
     AX_CHECK_COMPILE_FLAG([-Wcast-align], [CFLAGS="$CFLAGS -Wcast-align"])
     AX_CHECK_COMPILE_FLAG([-Wclobbered], [CFLAGS="$CFLAGS -Wclobbered"])
     AX_CHECK_COMPILE_FLAG([-Wvla], [CFLAGS="$CFLAGS -Wvla"])
-    AX_CHECK_COMPILE_FLAG([-Wno-unused-parameter], [CFLAGS="$CFLAGS -Wno-unused-parameter"])
     AX_CHECK_COMPILE_FLAG([-Wpragmas], [CFLAGS="$CFLAGS -Wpragmas"])
     AX_CHECK_COMPILE_FLAG([-Wunreachable-code], [CFLAGS="$CFLAGS -Wunreachable-code"])
     AX_CHECK_COMPILE_FLAG([-Waddress], [CFLAGS="$CFLAGS -Waddress"])
