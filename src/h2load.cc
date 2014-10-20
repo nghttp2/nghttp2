@@ -33,6 +33,7 @@
 #include <cassert>
 #include <cstdlib>
 #include <iostream>
+#include <fstream>
 #include <chrono>
 #include <thread>
 #include <future>
@@ -605,7 +606,9 @@ void print_version(std::ostream& out)
 namespace {
 void print_usage(std::ostream& out)
 {
-  out << R"(Usage: h2load [OPTIONS]... <URI>...
+  out << R"(
+Usage: h2load [OPTIONS]... <URI>...
+       h2load [OPTIONS]... <URI_LIST_FILE>
 benchmarking tool for HTTP/2 and SPDY server)" << std::endl;
 }
 } // namespace
@@ -618,6 +621,13 @@ void print_help(std::ostream& out)
   out << R"(
   <URI>              Specify  URI to  access.   Multiple  URIs can  be
                      specified.  URIs are used  in this order for each
+                     client.   All URIs  are used,  then first  URI is
+                     used and  then 2nd URI,  and so on.   The scheme,
+                     host and port in the subsequent URIs, if present,
+                     are  ignored.  Those  in the  first URI  are used
+                     solely.
+  <URI_LIST_FILE>    Path of a file with multiple URIs  are  seperated
+                     by EOLs.    URIs are used  in this order for each
                      client.   All URIs  are used,  then first  URI is
                      used and  then 2nd URI,  and so on.   The scheme,
                      host and port in the subsequent URIs, if present,
@@ -857,9 +867,20 @@ int main(int argc, char **argv)
   http_parser_url u;
   memset(&u, 0, sizeof(u));
   auto uri = argv[optind];
+
+  std::cout << uri << std::endl;
+
+  std::ifstream uri_file;
+  std::string line_uri;
+  if (std::ifstream(uri)) {
+    uri_file.open(uri, std::ifstream::in);
+    std::getline (uri_file, line_uri);
+    uri = (char *)line_uri.c_str();
+  }
+
   if(http_parser_parse_url(uri, strlen(uri), 0, &u) != 0 ||
      !util::has_uri_field(u, UF_SCHEMA) || !util::has_uri_field(u, UF_HOST)) {
-    std::cerr << "invalid URI: " << uri << std::endl;
+    std::cerr << "invalid URI/URI_LIST_FILE: " << uri << std::endl;
     exit(EXIT_FAILURE);
   }
 
@@ -887,6 +908,21 @@ int main(int argc, char **argv)
     }
 
     reqlines.push_back(get_reqline(uri, u));
+  }
+
+  if (uri_file.is_open()) {
+    //load rest uris from URI_LIST_FILE
+    while(std::getline (uri_file, line_uri)) {
+      auto uri = (char *)line_uri.c_str();
+
+      if(http_parser_parse_url(uri, strlen(uri), 0, &u) != 0) {
+        std::cerr << "invalid URI in URI_LIST_FILE: " << uri << std::endl;
+        exit(EXIT_FAILURE);
+      }
+
+      reqlines.push_back(get_reqline(uri, u));
+    }
+    uri_file.close();
   }
 
   if(config.max_concurrent_streams == -1) {
