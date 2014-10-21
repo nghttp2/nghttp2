@@ -534,7 +534,7 @@ struct HttpClient {
                             std::end(config.headers),
                             [](const std::pair<std::string, std::string>& nv)
                             {
-                              return util::strieq("host", nv.first.c_str());
+                              return "host" == nv.first;
                             });
       if ( i != std::end(config.headers) ) {
         host_string = (*i).second.c_str();
@@ -1042,7 +1042,7 @@ int submit_request
   for(auto& kv : headers) {
     size_t i;
     for(i = 0; i < num_initial_headers; ++i) {
-      if(util::strieq(kv.first, build_headers[i].name)) {
+      if(kv.first == build_headers[i].name) {
         build_headers[i].value = kv.second;
         break;
       }
@@ -1053,7 +1053,7 @@ int submit_request
 
     // To test "never index" repr, don't index authorization header
     // field unconditionally.
-    auto no_index = util::strieq(kv.first, "authorization");
+    auto no_index = kv.first == "authorization";
     build_headers.emplace_back(kv.first, kv.second, no_index);
   }
   std::stable_sort(std::begin(build_headers), std::end(build_headers),
