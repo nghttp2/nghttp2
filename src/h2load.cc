@@ -607,8 +607,7 @@ namespace {
 void print_usage(std::ostream& out)
 {
   out << R"(
-Usage: h2load [OPTIONS]... <URI>...
-       h2load [OPTIONS]... <URI_LIST_FILE>
+Usage: h2load [OPTIONS]... [URI]...
 benchmarking tool for HTTP/2 and SPDY server)" << std::endl;
 }
 } // namespace
@@ -626,13 +625,6 @@ void print_help(std::ostream& out)
                      host and port in the subsequent URIs, if present,
                      are  ignored.  Those  in the  first URI  are used
                      solely.
-  <URI_LIST_FILE>    Path of a file with multiple URIs  are  seperated
-                     by EOLs.    URIs are used  in this order for each
-                     client.   All URIs  are used,  then first  URI is
-                     used and  then 2nd URI,  and so on.   The scheme,
-                     host and port in the subsequent URIs, if present,
-                     are  ignored.  Those  in the  first URI  are used
-                     solely.
 Options:
   -n, --requests=<N> Number of requests. Default: )"
       << config.nreqs << R"(
@@ -640,6 +632,15 @@ Options:
       << config.nclients << R"(
   -t, --threads=<N>  Number of native threads. Default: )"
       << config.nthreads << R"(
+  -i, --input-file=<FILE>
+                     Path of a file with multiple URIs  are  seperated
+                     by EOLs.    This option will disable URIs getting    
+                     from stdin. URIs are used  in this order for each
+                     client.   All URIs  are used,  then first  URI is
+                     used and  then 2nd URI,  and so on.   The scheme,
+                     host and port in the subsequent URIs, if present,
+                     are  ignored.  Those  in the  first URI  are used
+                     solely.
   -m, --max-concurrent-streams=(auto|<N>)
                      Max concurrent streams to  issue per session.  If
                      "auto"  is given,  the  number of  given URIs  is
@@ -686,6 +687,7 @@ int main(int argc, char **argv)
       {"max-concurrent-streams", required_argument, nullptr, 'm'},
       {"window-bits", required_argument, nullptr, 'w'},
       {"connection-window-bits", required_argument, nullptr, 'W'},
+      {"input-file", required_argument, nullptr, 'i'},
       {"header", required_argument, nullptr, 'H'},
       {"no-tls-proto", required_argument, nullptr, 'p'},
       {"verbose", no_argument, nullptr, 'v'},
@@ -694,7 +696,7 @@ int main(int argc, char **argv)
       {nullptr, 0, nullptr, 0 }
     };
     int option_index = 0;
-    auto c = getopt_long(argc, argv, "hvW:c:m:n:p:t:w:H:", long_options,
+    auto c = getopt_long(argc, argv, "hvW:c:m:n:p:t:w:H:i:", long_options,
                          &option_index);
     if(c == -1) {
       break;
@@ -765,6 +767,10 @@ int main(int argc, char **argv)
       util::inp_strlower(config.custom_headers.back().first);
       break;
     }
+    case 'i': {
+      config.ifile = std::string(optarg);
+      break;
+    }
     case 'p':
       if(util::strieq(NGHTTP2_CLEARTEXT_PROTO_VERSION_ID, optarg)) {
         config.no_tls_proto = Config::PROTO_HTTP2;
@@ -804,8 +810,10 @@ int main(int argc, char **argv)
   }
 
   if(argc == optind) {
-    std::cerr << "no URI given" << std::endl;
-    exit(EXIT_FAILURE);
+    if(config.ifile.empty()){
+      std::cerr << "no URI or input file given" << std::endl;
+      exit(EXIT_FAILURE);
+    }
   }
 
   if(config.nreqs == 0) {
@@ -866,14 +874,23 @@ int main(int argc, char **argv)
   // this URI and ignore those in the remaining URIs if present.
   http_parser_url u;
   memset(&u, 0, sizeof(u));
-  auto uri = argv[optind];
+  auto uri = "";
 
   std::ifstream uri_file;
   std::string line_uri;
-  if (std::ifstream(uri)) {
-    uri_file.open(uri, std::ifstream::in);
-    std::getline (uri_file, line_uri);
-    uri = (char *)line_uri.c_str();
+
+  if (config.ifile.empty()) {
+    uri = argv[optind];
+  } else {
+    if (std::ifstream(config.ifile)) {
+      uri_file.open(config.ifile, std::ifstream::in);
+      // get first line as first uri
+      std::getline (uri_file, line_uri);
+      uri = (char *)line_uri.c_str();
+    } else {
+      std::cerr << "cannot read input file: " << config.ifile << std::endl;
+      exit(EXIT_FAILURE);
+    }
   }
 
   if(http_parser_parse_url(uri, strlen(uri), 0, &u) != 0 ||
@@ -894,33 +911,35 @@ int main(int argc, char **argv)
 
   reqlines.push_back(get_reqline(uri, u));
 
-  ++optind;
-  for(int i = optind; i < argc; ++i) {
-    memset(&u, 0, sizeof(u));
+  if (config.ifile.empty()) {
+    ++optind;
+    for(int i = optind; i < argc; ++i) {
+      memset(&u, 0, sizeof(u));
 
-    auto uri = argv[i];
-
-    if(http_parser_parse_url(uri, strlen(uri), 0, &u) != 0) {
-      std::cerr << "invalid URI: " << uri << std::endl;
-      exit(EXIT_FAILURE);
-    }
-
-    reqlines.push_back(get_reqline(uri, u));
-  }
-
-  if(uri_file.is_open()) {
-    //load rest uris from URI_LIST_FILE
-    while(std::getline (uri_file, line_uri)) {
-      auto uri = (char *)line_uri.c_str();
+      auto uri = argv[i];
 
       if(http_parser_parse_url(uri, strlen(uri), 0, &u) != 0) {
-        std::cerr << "invalid URI in URI_LIST_FILE: " << uri << std::endl;
+        std::cerr << "invalid URI: " << uri << std::endl;
         exit(EXIT_FAILURE);
       }
 
       reqlines.push_back(get_reqline(uri, u));
     }
-    uri_file.close();
+  } else {
+    if(uri_file.is_open()) {
+      //load rest uris from URI_LIST_FILE
+      while(std::getline (uri_file, line_uri)) {
+        auto uri = (char *)line_uri.c_str();
+
+        if(http_parser_parse_url(uri, strlen(uri), 0, &u) != 0) {
+          std::cerr << "invalid URI in URI_LIST_FILE: " << uri << std::endl;
+          exit(EXIT_FAILURE);
+        }
+
+        reqlines.push_back(get_reqline(uri, u));
+      }
+      uri_file.close();
+    }
   }
 
   if(config.max_concurrent_streams == -1) {
