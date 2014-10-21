@@ -1970,7 +1970,9 @@ Options:
                      to lowest,  is html  itself, css,  javascript and
                      images.
   -s, --stat         Print statistics.
-  -H, --header       Add a header to the requests.
+  -H, --header=<HEADER>
+                     Add   a  header   to   the  requests.    Example:
+                     -H':method: PUT'
   --cert=<CERT>      Use the  specified client certificate  file.  The
                      file must be in PEM format.
   --key=<KEY>        Use the  client private key file.   The file must
