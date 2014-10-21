@@ -80,7 +80,7 @@ namespace nghttp2 {
 
 namespace {
 struct Config {
-  std::vector<std::pair<std::string, std::string>> headers;
+  Headers headers;
   std::string certfile;
   std::string keyfile;
   std::string datafile;
@@ -410,9 +410,7 @@ struct HttpClient;
 
 namespace {
 int submit_request
-(HttpClient *client,
- const std::vector<std::pair<std::string, std::string>>& headers,
- Request *req);
+(HttpClient *client, const Headers& headers, Request *req);
 } // namespace
 
 namespace {
@@ -532,12 +530,12 @@ struct HttpClient {
       const char *host_string = nullptr;
       auto i = std::find_if(std::begin(config.headers),
                             std::end(config.headers),
-                            [](const std::pair<std::string, std::string>& nv)
+                            [](const Header& nv)
                             {
-                              return "host" == nv.first;
+                              return "host" == nv.name;
                             });
       if ( i != std::end(config.headers) ) {
-        host_string = (*i).second.c_str();
+        host_string = (*i).value.c_str();
       } else {
         host_string = host.c_str();
       }
@@ -1015,9 +1013,7 @@ http_parser_settings htp_hooks = {
 
 namespace {
 int submit_request
-(HttpClient *client,
- const std::vector<std::pair<std::string, std::string>>& headers,
- Request *req)
+(HttpClient *client, const Headers& headers, Request *req)
 {
   auto path = req->make_reqpath();
   auto scheme = util::get_uri_field(req->uri.c_str(), req->u, UF_SCHEMA);
@@ -1042,8 +1038,8 @@ int submit_request
   for(auto& kv : headers) {
     size_t i;
     for(i = 0; i < num_initial_headers; ++i) {
-      if(kv.first == build_headers[i].name) {
-        build_headers[i].value = kv.second;
+      if(kv.name == build_headers[i].name) {
+        build_headers[i].value = kv.value;
         break;
       }
     }
@@ -1051,10 +1047,7 @@ int submit_request
       continue;
     }
 
-    // To test "never index" repr, don't index authorization header
-    // field unconditionally.
-    auto no_index = kv.first == "authorization";
-    build_headers.emplace_back(kv.first, kv.second, no_index);
+    build_headers.emplace_back(kv.name, kv.value, kv.no_index);
   }
   std::stable_sort(std::begin(build_headers), std::end(build_headers),
                    http2::name_less);
@@ -2127,10 +2120,11 @@ int main(int argc, char **argv)
                   << std::endl;
         exit(EXIT_FAILURE);
       }
-      // Note that there is no processing currently to handle multiple
-      // message-header fields with the same field name
-      config.headers.emplace_back(header, value);
-      util::inp_strlower(config.headers.back().first);
+      // To test "never index" repr, don't index authorization header
+      // field unconditionally.
+      auto no_index = util::strieq("authorization", header);
+      config.headers.emplace_back(header, value, no_index);
+      util::inp_strlower(config.headers.back().name);
       break;
     }
     case 'a':
