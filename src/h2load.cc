@@ -652,7 +652,7 @@ Options:
                      (2**<N>)-1.  For  SPDY, if  <N> is  strictly less
                      than  16,  this  option  is  ignored.   Otherwise
                      2**<N> is used for SPDY.
-  -H, --header
+  -H, --header=<HEADER>
                      Add/Override a header to the requests.
   -p, --no-tls-proto=<PROTOID>
                      Specify  ALPN identifier  of the  protocol to  be
@@ -686,7 +686,7 @@ int main(int argc, char **argv)
       {"max-concurrent-streams", required_argument, nullptr, 'm'},
       {"window-bits", required_argument, nullptr, 'w'},
       {"connection-window-bits", required_argument, nullptr, 'W'},
-      {"header", no_argument, nullptr, 'H'},
+      {"header", required_argument, nullptr, 'H'},
       {"no-tls-proto", required_argument, nullptr, 'p'},
       {"verbose", no_argument, nullptr, 'v'},
       {"help", no_argument, nullptr, 'h'},
@@ -868,8 +868,6 @@ int main(int argc, char **argv)
   memset(&u, 0, sizeof(u));
   auto uri = argv[optind];
 
-  std::cout << uri << std::endl;
-
   std::ifstream uri_file;
   std::string line_uri;
   if (std::ifstream(uri)) {
@@ -910,7 +908,7 @@ int main(int argc, char **argv)
     reqlines.push_back(get_reqline(uri, u));
   }
 
-  if (uri_file.is_open()) {
+  if(uri_file.is_open()) {
     //load rest uris from URI_LIST_FILE
     while(std::getline (uri_file, line_uri)) {
       auto uri = (char *)line_uri.c_str();
@@ -939,11 +937,15 @@ int main(int argc, char **argv)
   }
   shared_nva.emplace_back(":method", "GET");
 
+  //list overridalbe headers
+  std::vector<std::string> override_hdrs = {":host", ":scheme", ":method"};
+
   for(auto& kv : config.custom_headers) {
-    if(util::strieq(":host", kv.first.c_str())) {
-      // replace :authority as :host header
+    if(std::find(override_hdrs.begin(), override_hdrs.end(), kv.first) != override_hdrs.end()) {
+      // override header
       for(auto& nv : shared_nva) {
-        if(nv.name == ":authority") {
+        if( (nv.name == ":authority" && kv.first == ":host") 
+           || (nv.name == kv.first) ) {
           nv.value = kv.second;
         }
       }
