@@ -895,7 +895,7 @@ int main(int argc, char **argv)
 
   if(http_parser_parse_url(uri, strlen(uri), 0, &u) != 0 ||
      !util::has_uri_field(u, UF_SCHEMA) || !util::has_uri_field(u, UF_HOST)) {
-    std::cerr << "invalid URI/URI_LIST_FILE: " << uri << std::endl;
+    std::cerr << "invalid URI: " << uri << std::endl;
     exit(EXIT_FAILURE);
   }
 
@@ -927,12 +927,12 @@ int main(int argc, char **argv)
     }
   } else {
     if(uri_file.is_open()) {
-      //load rest uris from URI_LIST_FILE
+      //load rest uris from file 
       while(std::getline (uri_file, line_uri)) {
         auto uri = (char *)line_uri.c_str();
 
         if(http_parser_parse_url(uri, strlen(uri), 0, &u) != 0) {
-          std::cerr << "invalid URI in URI_LIST_FILE: " << uri << std::endl;
+          std::cerr << "invalid URI in input file: " << uri << std::endl;
           exit(EXIT_FAILURE);
         }
 
