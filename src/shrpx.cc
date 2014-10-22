@@ -1060,8 +1060,8 @@ SSL/TLS:
   --tls-proto-list=<LIST>
                      Comma delimited  list of  SSL/TLS protocol  to be
                      enabled.  The following  protocols are available:
-                     TLSv1.2,  TLSv1.1, TLSv1.0  and SSLv3.   The name
-                     matching is done in case-insensitive manner.  The
+                     TLSv1.2, TLSv1.1 and  TLSv1.0.  The name matching
+                     is   done   in  case-insensitive   manner.    The
                      parameter  must be  delimited by  a single  comma
                      only and any  white spaces are treated  as a part
                      of protocol string.

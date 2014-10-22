@@ -196,10 +196,10 @@ int alpn_select_proto_cb(SSL *ssl,
 #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
 namespace {
-const char *tls_names[] = { "TLSv1.2", "TLSv1.1", "TLSv1.0", "SSLv3" };
+const char *tls_names[] = { "TLSv1.2", "TLSv1.1", "TLSv1.0" };
 const size_t tls_namelen = util::array_size(tls_names);
 const long int tls_masks[] = { SSL_OP_NO_TLSv1_2, SSL_OP_NO_TLSv1_1,
-                               SSL_OP_NO_TLSv1, SSL_OP_NO_SSLv3 };
+                               SSL_OP_NO_TLSv1 };
 } // namespace
 
 long int create_tls_proto_mask(const std::vector<char*>& tls_proto_list)
@@ -231,7 +231,8 @@ SSL_CTX* create_ssl_context(const char *private_key_file,
   }
 
   SSL_CTX_set_options(ssl_ctx,
-                      SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_COMPRESSION |
+                      SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 |
+                      SSL_OP_NO_COMPRESSION |
                       SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION |
                       SSL_OP_SINGLE_ECDH_USE | SSL_OP_SINGLE_DH_USE |
                       SSL_OP_NO_TICKET |
@@ -384,7 +385,8 @@ SSL_CTX* create_ssl_client_context()
     DIE();
   }
   SSL_CTX_set_options(ssl_ctx,
-                      SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_COMPRESSION |
+                      SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 |
+                      SSL_OP_NO_COMPRESSION |
                       SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION |
                       get_config()->tls_proto_mask);
 

@@ -103,7 +103,8 @@ void http2_impl::listen(const std::string& address, uint16_t port,
     auto ctx = ssl_ctx->native_handle();
 
     SSL_CTX_set_options(ctx,
-                        SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_COMPRESSION |
+                        SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 |
+                        SSL_OP_NO_COMPRESSION |
                         SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION |
                         SSL_OP_SINGLE_ECDH_USE |
                         SSL_OP_NO_TICKET |
