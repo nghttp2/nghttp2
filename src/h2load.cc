@@ -71,6 +71,7 @@ Config::Config()
     connection_window_bits(16),
     no_tls_proto(PROTO_HTTP2),
     port(0),
+    default_port(0),
     verbose(false)
 {}
 
@@ -597,6 +598,60 @@ int client_select_next_proto_cb(SSL* ssl,
 } // namespace
 
 namespace {
+template<typename Iterator>
+std::vector<std::string> parse_uris(Iterator first, Iterator last)
+{
+  std::vector<std::string> reqlines;
+
+  // First URI is treated specially.  We use scheme, host and port of
+  // this URI and ignore those in the remaining URIs if present.
+  http_parser_url u;
+  memset(&u, 0, sizeof(u));
+
+  if(first == last) {
+    std::cerr << "no URI available" << std::endl;
+    exit(EXIT_FAILURE);
+  }
+
+  auto uri = (*first).c_str();
+  ++first;
+
+  if(http_parser_parse_url(uri, strlen(uri), 0, &u) != 0 ||
+     !util::has_uri_field(u, UF_SCHEMA) || !util::has_uri_field(u, UF_HOST)) {
+    std::cerr << "invalid URI: " << uri << std::endl;
+    exit(EXIT_FAILURE);
+  }
+
+  config.scheme = util::get_uri_field(uri, u, UF_SCHEMA);
+  config.host = util::get_uri_field(uri, u, UF_HOST);
+  config.default_port = util::get_default_port(uri, u);
+  if(util::has_uri_field(u, UF_PORT)) {
+    config.port = u.port;
+  } else {
+    config.port = config.default_port;
+  }
+
+  reqlines.push_back(get_reqline(uri, u));
+
+  for(; first != last; ++first) {
+    http_parser_url u;
+    memset(&u, 0, sizeof(u));
+
+    auto uri = (*first).c_str();
+
+    if(http_parser_parse_url(uri, strlen(uri), 0, &u) != 0) {
+      std::cerr << "invalid URI: " << uri << std::endl;
+      exit(EXIT_FAILURE);
+    }
+
+    reqlines.push_back(get_reqline(uri, u));
+  }
+
+  return reqlines;
+}
+} // namespace
+
+namespace {
 void print_version(std::ostream& out)
 {
   out << "h2load nghttp2/" NGHTTP2_VERSION << std::endl;
@@ -870,14 +925,12 @@ int main(int argc, char **argv)
   SSL_CTX_set_next_proto_select_cb(ssl_ctx,
                                    client_select_next_proto_cb, nullptr);
 
-  // First URI is treated specially.  We use scheme, host and port of
-  // this URI and ignore those in the remaining URIs if present.
-  http_parser_url u;
-  memset(&u, 0, sizeof(u));
-  std::vector<std::string> uris;
+  std::vector<std::string> reqlines;
 
   if(config.ifile.empty()) {
+    std::vector<std::string> uris;
     std::copy(&argv[optind], &argv[argc], std::back_inserter(uris));
+    reqlines = parse_uris(std::begin(uris), std::end(uris));
   } else {
     std::ifstream uri_file(config.ifile);
 
@@ -886,48 +939,13 @@ int main(int argc, char **argv)
       exit(EXIT_FAILURE);
     }
 
+    std::vector<std::string> uris;
     std::string line_uri;
     while(std::getline(uri_file, line_uri)) {
       uris.push_back(line_uri);
     }
-  }
 
-  if(uris.empty()) {
-    std::cerr << "no URI available" << std::endl;
-    exit(EXIT_FAILURE);
-  }
-
-  auto uri = uris[0].c_str();
-
-  if(http_parser_parse_url(uri, strlen(uri), 0, &u) != 0 ||
-     !util::has_uri_field(u, UF_SCHEMA) || !util::has_uri_field(u, UF_HOST)) {
-    std::cerr << "invalid URI: " << uri << std::endl;
-    exit(EXIT_FAILURE);
-  }
-
-  config.scheme = util::get_uri_field(uri, u, UF_SCHEMA);
-  config.host = util::get_uri_field(uri, u, UF_HOST);
-  if(util::has_uri_field(u, UF_PORT)) {
-    config.port = u.port;
-  } else {
-    config.port = util::get_default_port(uri, u);
-  }
-
-  std::vector<std::string> reqlines;
-
-  reqlines.push_back(get_reqline(uri, u));
-
-  for(auto& s : uris) {
-    memset(&u, 0, sizeof(u));
-
-    auto uri = s.c_str();
-
-    if(http_parser_parse_url(uri, strlen(uri), 0, &u) != 0) {
-      std::cerr << "invalid URI: " << uri << std::endl;
-      exit(EXIT_FAILURE);
-    }
-
-    reqlines.push_back(get_reqline(uri, u));
+    reqlines = parse_uris(std::begin(uris), std::end(uris));
   }
 
   if(config.max_concurrent_streams == -1) {
@@ -936,9 +954,9 @@ int main(int argc, char **argv)
 
   Headers shared_nva;
   shared_nva.emplace_back(":scheme", config.scheme);
-  if(config.port != util::get_default_port(uri, u)) {
+  if(config.port != config.default_port) {
     shared_nva.emplace_back(":authority",
-                     config.host + ":" + util::utos(config.port));
+                            config.host + ":" + util::utos(config.port));
   } else {
     shared_nva.emplace_back(":authority", config.host);
   }

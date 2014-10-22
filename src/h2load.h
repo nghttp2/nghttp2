@@ -69,6 +69,7 @@ struct Config {
     PROTO_SPDY3_1
   } no_tls_proto;
   uint16_t port;
+  uint16_t default_port;
   bool verbose;
 
   Config();
