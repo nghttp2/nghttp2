@@ -833,7 +833,7 @@ int main(int argc, char **argv)
       // Note that there is no processing currently to handle multiple
       // message-header fields with the same field name
       config.custom_headers.emplace_back(header, value);
-      util::inp_strlower(config.custom_headers.back().first);
+      util::inp_strlower(config.custom_headers.back().name);
       break;
     }
     case 'i': {
@@ -982,18 +982,18 @@ int main(int argc, char **argv)
   };
 
   for(auto& kv : config.custom_headers) {
-    if(std::find(std::begin(override_hdrs), std::end(override_hdrs), kv.first)
+    if(std::find(std::begin(override_hdrs), std::end(override_hdrs), kv.name)
        != std::end(override_hdrs)) {
       // override header
       for(auto& nv : shared_nva) {
-        if((nv.name == ":authority" && kv.first == ":host")
-           || (nv.name == kv.first) ) {
-          nv.value = kv.second;
+        if((nv.name == ":authority" && kv.name == ":host")
+           || (nv.name == kv.name) ) {
+          nv.value = kv.value;
         }
       }
     } else {
       // add additional headers
-      shared_nva.emplace_back(kv.first, kv.second);
+      shared_nva.push_back(kv);
     }
   }
 

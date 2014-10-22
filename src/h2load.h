@@ -43,6 +43,8 @@
 
 #include <openssl/ssl.h>
 
+#include "http2.h"
+
 namespace h2load {
 
 class Session;
@@ -50,7 +52,7 @@ class Session;
 struct Config {
   std::vector<std::vector<nghttp2_nv>> nva;
   std::vector<std::vector<const char*>> nv;
-  std::vector<std::pair<std::string, std::string>> custom_headers;
+  nghttp2::Headers custom_headers;
   std::string scheme;
   std::string host;
   std::string ifile;
