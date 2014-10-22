@@ -874,24 +874,30 @@ int main(int argc, char **argv)
   // this URI and ignore those in the remaining URIs if present.
   http_parser_url u;
   memset(&u, 0, sizeof(u));
-  auto uri = "";
+  std::vector<std::string> uris;
 
-  std::ifstream uri_file;
-  std::string line_uri;
-
-  if (config.ifile.empty()) {
-    uri = argv[optind];
+  if(config.ifile.empty()) {
+    std::copy(&argv[optind], &argv[argc], std::back_inserter(uris));
   } else {
-    if (std::ifstream(config.ifile)) {
-      uri_file.open(config.ifile, std::ifstream::in);
-      // get first line as first uri
-      std::getline (uri_file, line_uri);
-      uri = (char *)line_uri.c_str();
-    } else {
+    std::ifstream uri_file(config.ifile);
+
+    if(!uri_file) {
       std::cerr << "cannot read input file: " << config.ifile << std::endl;
       exit(EXIT_FAILURE);
     }
+
+    std::string line_uri;
+    while(std::getline(uri_file, line_uri)) {
+      uris.push_back(line_uri);
+    }
   }
+
+  if(uris.empty()) {
+    std::cerr << "no URI available" << std::endl;
+    exit(EXIT_FAILURE);
+  }
+
+  auto uri = uris[0].c_str();
 
   if(http_parser_parse_url(uri, strlen(uri), 0, &u) != 0 ||
      !util::has_uri_field(u, UF_SCHEMA) || !util::has_uri_field(u, UF_HOST)) {
@@ -911,35 +917,17 @@ int main(int argc, char **argv)
 
   reqlines.push_back(get_reqline(uri, u));
 
-  if (config.ifile.empty()) {
-    ++optind;
-    for(int i = optind; i < argc; ++i) {
-      memset(&u, 0, sizeof(u));
+  for(auto& s : uris) {
+    memset(&u, 0, sizeof(u));
 
-      auto uri = argv[i];
+    auto uri = s.c_str();
 
-      if(http_parser_parse_url(uri, strlen(uri), 0, &u) != 0) {
-        std::cerr << "invalid URI: " << uri << std::endl;
-        exit(EXIT_FAILURE);
-      }
-
-      reqlines.push_back(get_reqline(uri, u));
+    if(http_parser_parse_url(uri, strlen(uri), 0, &u) != 0) {
+      std::cerr << "invalid URI: " << uri << std::endl;
+      exit(EXIT_FAILURE);
     }
-  } else {
-    if(uri_file.is_open()) {
-      // load rest uris from file
-      while(std::getline (uri_file, line_uri)) {
-        auto uri = (char *)line_uri.c_str();
 
-        if(http_parser_parse_url(uri, strlen(uri), 0, &u) != 0) {
-          std::cerr << "invalid URI in input file: " << uri << std::endl;
-          exit(EXIT_FAILURE);
-        }
-
-        reqlines.push_back(get_reqline(uri, u));
-      }
-      uri_file.close();
-    }
+    reqlines.push_back(get_reqline(uri, u));
   }
 
   if(config.max_concurrent_streams == -1) {
@@ -957,20 +945,23 @@ int main(int argc, char **argv)
   shared_nva.emplace_back(":method", "GET");
 
   //list overridalbe headers
-  std::vector<std::string> override_hdrs = {":host", ":scheme", ":method"};
+  auto override_hdrs = std::vector<std::string>{
+    ":authority", ":host", ":method", ":scheme"
+  };
 
   for(auto& kv : config.custom_headers) {
-    if(std::find(override_hdrs.begin(), override_hdrs.end(), kv.first) != override_hdrs.end()) {
+    if(std::find(std::begin(override_hdrs), std::end(override_hdrs), kv.first)
+       != std::end(override_hdrs)) {
       // override header
       for(auto& nv : shared_nva) {
-        if( (nv.name == ":authority" && kv.first == ":host")
-            || (nv.name == kv.first) ) {
+        if((nv.name == ":authority" && kv.first == ":host")
+           || (nv.name == kv.first) ) {
           nv.value = kv.second;
         }
       }
     } else {
       // add additional headers
-      shared_nva.emplace_back(kv.first.c_str(), kv.second.c_str());
+      shared_nva.emplace_back(kv.first, kv.second);
     }
   }
 
