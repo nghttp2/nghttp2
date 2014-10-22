@@ -652,6 +652,19 @@ std::vector<std::string> parse_uris(Iterator first, Iterator last)
 } // namespace
 
 namespace {
+std::vector<std::string> read_uri_from_file(std::istream& infile)
+{
+  std::vector<std::string> uris;
+  std::string line_uri;
+  while(std::getline(infile, line_uri)) {
+    uris.push_back(line_uri);
+  }
+
+  return uris;
+}
+} // namespace
+
+namespace {
 void print_version(std::ostream& out)
 {
   out << "h2load nghttp2/" NGHTTP2_VERSION << std::endl;
@@ -690,12 +703,13 @@ Options:
   -i, --input-file=<FILE>
                      Path of  a file with multiple  URIs are seperated
                      by EOLs.   This option will disable  URIs getting
-                     from command-line.   URIs are used in  this order
-                     for each  client.  All URIs are  used, then first
-                     URI is  used and  then 2nd URI,  and so  on.  The
-                     scheme, host and port  in the subsequent URIs, if
-                     present, are ignored.  Those in the first URI are
-                     used solely.
+                     from command-line.   If '-'  is given  as <FILE>,
+                     URIs will be  read from stdin.  URIs  are used in
+                     this order  for each client.  All  URIs are used,
+                     then first URI  is used and then 2nd  URI, and so
+                     on.  The scheme, host  and port in the subsequent
+                     URIs,  if present,  are  ignored.   Those in  the
+                     first URI are used solely.
   -m, --max-concurrent-streams=(auto|<N>)
                      Max concurrent streams to  issue per session.  If
                      "auto"  is given,  the  number of  given URIs  is
@@ -932,17 +946,17 @@ int main(int argc, char **argv)
     std::copy(&argv[optind], &argv[argc], std::back_inserter(uris));
     reqlines = parse_uris(std::begin(uris), std::end(uris));
   } else {
-    std::ifstream uri_file(config.ifile);
-
-    if(!uri_file) {
-      std::cerr << "cannot read input file: " << config.ifile << std::endl;
-      exit(EXIT_FAILURE);
-    }
-
     std::vector<std::string> uris;
-    std::string line_uri;
-    while(std::getline(uri_file, line_uri)) {
-      uris.push_back(line_uri);
+    if(config.ifile == "-") {
+      uris = read_uri_from_file(std::cin);
+    } else {
+      std::ifstream infile(config.ifile);
+      if(!infile) {
+        std::cerr << "cannot read input file: " << config.ifile << std::endl;
+        exit(EXIT_FAILURE);
+      }
+
+      uris = read_uri_from_file(infile);
     }
 
     reqlines = parse_uris(std::begin(uris), std::end(uris));
