@@ -633,14 +633,14 @@ Options:
   -t, --threads=<N>  Number of native threads. Default: )"
       << config.nthreads << R"(
   -i, --input-file=<FILE>
-                     Path of a file with multiple URIs  are  seperated
-                     by EOLs.    This option will disable URIs getting    
-                     from stdin. URIs are used  in this order for each
-                     client.   All URIs  are used,  then first  URI is
-                     used and  then 2nd URI,  and so on.   The scheme,
-                     host and port in the subsequent URIs, if present,
-                     are  ignored.  Those  in the  first URI  are used
-                     solely.
+                     Path of  a file with multiple  URIs are seperated
+                     by EOLs.   This option will disable  URIs getting
+                     from command-line.   URIs are used in  this order
+                     for each  client.  All URIs are  used, then first
+                     URI is  used and  then 2nd URI,  and so  on.  The
+                     scheme, host and port  in the subsequent URIs, if
+                     present, are ignored.  Those in the first URI are
+                     used solely.
   -m, --max-concurrent-streams=(auto|<N>)
                      Max concurrent streams to  issue per session.  If
                      "auto"  is given,  the  number of  given URIs  is
@@ -927,7 +927,7 @@ int main(int argc, char **argv)
     }
   } else {
     if(uri_file.is_open()) {
-      //load rest uris from file 
+      // load rest uris from file
       while(std::getline (uri_file, line_uri)) {
         auto uri = (char *)line_uri.c_str();
 
@@ -963,8 +963,8 @@ int main(int argc, char **argv)
     if(std::find(override_hdrs.begin(), override_hdrs.end(), kv.first) != override_hdrs.end()) {
       // override header
       for(auto& nv : shared_nva) {
-        if( (nv.name == ":authority" && kv.first == ":host") 
-           || (nv.name == kv.first) ) {
+        if( (nv.name == ":authority" && kv.first == ":host")
+            || (nv.name == kv.first) ) {
           nv.value = kv.second;
         }
       }
