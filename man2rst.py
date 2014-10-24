@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+
+# This script reads man page from stdin and converts it to rst
+# document and outputs to stdout.
+
 from __future__ import unicode_literals
 import sys
 import re
