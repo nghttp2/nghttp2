@@ -394,14 +394,16 @@ int Http2DownstreamConnection::push_request_headers()
 
   auto xff = downstream_->get_norm_request_header("x-forwarded-for");
   if(get_config()->add_x_forwarded_for) {
-    if(xff != end_headers) {
+    if(xff != end_headers &&
+       !get_config()->strip_incoming_x_forwarded_for) {
       xff_value = (*xff).value;
       xff_value += ", ";
     }
     xff_value += downstream_->get_upstream()->get_client_handler()->
       get_ipaddr();
     nva.push_back(http2::make_nv_ls("x-forwarded-for", xff_value));
-  } else if(xff != end_headers) {
+  } else if(xff != end_headers &&
+            !get_config()->strip_incoming_x_forwarded_for) {
     nva.push_back(http2::make_nv_ls("x-forwarded-for", (*xff).value));
   }
 
