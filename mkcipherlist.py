@@ -1,4 +1,14 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+# This script read cipher suite list csv file [1] and prints out ECDHE
+# or DHE with AEAD ciphers only.  The output is used by
+# src/shrpx_ssl.cc.
+#
+# [1] http://www.iana.org/assignments/tls-parameters/tls-parameters-4.csv
+# [2] http://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml
+
+from __future__ import unicode_literals
 import re
 import sys
 import csv
