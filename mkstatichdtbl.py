@@ -1,4 +1,13 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+# This scripts reads static table entries [1] and generates
+# nghttp2_hd_static_entry table.  This table is used in
+# lib/nghttp2_hd.c.
+#
+# [1] http://http2.github.io/http2-spec/compression.html
+
+from __future__ import unicode_literals
 import re, sys
 
 def hash(s):
