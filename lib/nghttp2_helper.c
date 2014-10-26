@@ -163,6 +163,32 @@ void nghttp2_downcase(uint8_t *s, size_t len)
   }
 }
 
+/*
+ *   local_window_size
+ *   ^  *
+ *   |  *    recv_window_size
+ *   |  *  * ^
+ *   |  *  * |
+ *  0+++++++++
+ *   |  *  *   \
+ *   |  *  *   | This rage is hidden in flow control.  But it must be
+ *   v  *  *   / kept in order to restore it when window size is enlarged.
+ *   recv_reduction
+ *   (+ for negative direction)
+ *
+ *   recv_window_size could be negative if we decrease
+ *   local_window_size more than recv_window_size:
+ *
+ *   local_window_size
+ *   ^  *
+ *   |  *
+ *   |  *
+ *   0++++++++
+ *   |  *    ^ recv_window_size (negative)
+ *   |  *    |
+ *   v  *  *
+ *   recv_reduction
+ */
 int nghttp2_adjust_local_window_size(int32_t *local_window_size_ptr,
                                      int32_t *recv_window_size_ptr,
                                      int32_t *recv_reduction_ptr,
@@ -188,10 +214,11 @@ int nghttp2_adjust_local_window_size(int32_t *local_window_size_ptr,
       if(*recv_window_size_ptr < 0) {
         *recv_window_size_ptr += recv_reduction_diff;
       } else {
-        /* If *recv_window_size_ptr > 0, then those bytes are
-           considered to be backed to the remote peer (by
-           WINDOW_UPDATE with the adjusted *delta_ptr), so it is
-           effectively 0 now. */
+        /* If *recv_window_size_ptr > 0, then those bytes are going to
+           be backed to the remote peer (by WINDOW_UPDATE with the
+           adjusted *delta_ptr), so it is effectively 0 now.  We set
+           to *recv_reduction_diff, because caller does not take into
+           account it in *delta_ptr. */
         *recv_window_size_ptr = recv_reduction_diff;
       }
       /* recv_reduction_diff must be paied from *delta_ptr, since it
