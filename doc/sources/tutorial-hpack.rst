@@ -66,18 +66,6 @@ size of buffer.
 To delete :type:`nghttp2_hd_deflater` object, use `nghttp2_hd_deflate_del()`
 function.
 
-.. note::
-
-   Generally, the order of header fields passed to
-   `nghttp2_hd_deflate_hd()` function is not preserved.  It is known
-   that the relative ordering of header fields which do not share the
-   same name is insignificant.  But some header fields sharing the
-   same name require the explicit ordering.  To preserve this
-   ordering, those header values are concatenated into single header
-   field value using NULL (0x00) as delimiter.  This is transparent to
-   HPACK API.  Therefore, the application should examine the inflated
-   header values and split into multiple header field values by NULL.
-
 Inflating (decoding) headers
 ----------------------------
 
