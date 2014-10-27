@@ -42,7 +42,8 @@ HTTP/2 server looks like this:
 
       server.listen
         ("*", 3000,
-         [](std::shared_ptr<request> req, std::shared_ptr<response> res)
+         [](const std::shared_ptr<request>& req,
+            const std::shared_ptr<response>& res)
          {
            res->write_head(200);
            res->end("hello, world");
@@ -85,7 +86,8 @@ SSL/TLS.
 
       server.listen
         ("*", 3000,
-         [](std::shared_ptr<request> req, std::shared_ptr<response> res)
+         [](const std::shared_ptr<request>& req,
+            const std::shared_ptr<response>& res)
          {
            if(req->path() == "/" || req->path() == "/index.html") {
              res->write_head(200);
@@ -130,7 +132,8 @@ Server push is also supported.
 
       server.listen
         ("*", 3000,
-         [](std::shared_ptr<request> req, std::shared_ptr<response> res)
+         [](const std::shared_ptr<request>& req,
+            const std::shared_ptr<response>& res)
          {
            if(req->path() == "/") {
              req->push("GET", "/my.css");
@@ -202,7 +205,8 @@ blocking task there.  The example follows:
 
       server.listen
         ("*", 3000,
-         [](std::shared_ptr<request> req, std::shared_ptr<response> res)
+         [](const std::shared_ptr<request>& req,
+            const std::shared_ptr<response>& res)
          {
            req->run_task
              ([res](channel& channel)

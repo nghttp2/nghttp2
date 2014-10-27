@@ -65,7 +65,8 @@ int main(int argc, char* argv[])
 
     server.listen
       ("*", port,
-       [](std::shared_ptr<request> req, std::shared_ptr<response> res)
+       [](const std::shared_ptr<request>& req,
+          const std::shared_ptr<response>& res)
        {
          res->write_head(200, { header{ "foo", "bar" } });
          res->end("hello, world");

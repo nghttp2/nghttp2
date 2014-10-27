@@ -204,7 +204,7 @@ std::string percent_decode(const std::string& s)
   return util::percentDecode(std::begin(s), std::end(s));
 }
 
-std::string http_date(time_t t)
+std::string http_date(int64_t t)
 {
   return util::http_date(t);
 }

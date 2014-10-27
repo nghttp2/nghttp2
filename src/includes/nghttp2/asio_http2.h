@@ -180,8 +180,8 @@ private:
 
 // This is so called request callback.  Called every time request is
 // received.
-typedef std::function<void(std::shared_ptr<request>,
-                           std::shared_ptr<response>)> request_cb;
+typedef std::function<void(const std::shared_ptr<request>&,
+                           const std::shared_ptr<response>&)> request_cb;
 
 class http2_impl;
 
@@ -233,7 +233,7 @@ bool check_path(const std::string& path);
 std::string percent_decode(const std::string& s);
 
 // Returns HTTP date representation of current posix time |t|.
-std::string http_date(time_t t);
+std::string http_date(int64_t t);
 
 } // namespace asio_http2
 

@@ -69,7 +69,8 @@ int main(int argc, char* argv[])
 
     server.listen
       ("*", port,
-       [&docroot](std::shared_ptr<request> req, std::shared_ptr<response> res)
+       [&docroot](const std::shared_ptr<request>& req,
+                  const std::shared_ptr<response>& res)
        {
          auto path = percent_decode(req->path());
          if(!check_path(path)) {
