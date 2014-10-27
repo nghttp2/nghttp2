@@ -24,7 +24,7 @@ We started to implement h2-14
 compression
 (http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-09)
 and HTTP Alternative Services
-(http://tools.ietf.org/html/draft-ietf-httpbis-alt-svc-02).
+(http://tools.ietf.org/html/draft-ietf-httpbis-alt-svc-04).
 
 The nghttp2 code base was forked from spdylay project.
 
