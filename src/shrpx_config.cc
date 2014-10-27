@@ -67,6 +67,7 @@ const char SHRPX_OPT_HTTP2_PROXY[] = "http2-proxy";
 const char SHRPX_OPT_HTTP2_BRIDGE[] = "http2-bridge";
 const char SHRPX_OPT_CLIENT_PROXY[] = "client-proxy";
 const char SHRPX_OPT_ADD_X_FORWARDED_FOR[] = "add-x-forwarded-for";
+const char SHRPX_OPT_STRIP_INCOMING_X_FORWARDED_FOR[] = "strip-incoming-x-forwarded-for";
 const char SHRPX_OPT_NO_VIA[] = "no-via";
 const char
 SHRPX_OPT_FRONTEND_HTTP2_READ_TIMEOUT[] = "frontend-http2-read-timeout";
@@ -421,6 +422,12 @@ int parse_config(const char *opt, const char *optarg)
 
   if(util::strieq(opt, SHRPX_OPT_ADD_X_FORWARDED_FOR)) {
     mod_config()->add_x_forwarded_for = util::strieq(optarg, "yes");
+
+    return 0;
+  }
+
+  if(util::strieq(opt, SHRPX_OPT_STRIP_INCOMING_X_FORWARDED_FOR)) {
+    mod_config()->strip_incoming_x_forwarded_for = util::strieq(optarg, "yes");
 
     return 0;
   }

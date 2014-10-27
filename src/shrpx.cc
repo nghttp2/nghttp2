@@ -750,6 +750,7 @@ void fill_default_config()
   mod_config()->num_worker = 1;
   mod_config()->http2_max_concurrent_streams = 100;
   mod_config()->add_x_forwarded_for = false;
+  mod_config()->strip_incoming_x_forwarded_for = false;
   mod_config()->no_via = false;
   mod_config()->accesslog_file = nullptr;
   mod_config()->accesslog_syslog = false;
@@ -1156,6 +1157,9 @@ Misc:
   --add-x-forwarded-for
                      Append  X-Forwarded-For   header  field   to  the
                      downstream request.
+  --strip-incoming-x-forwarded-for
+                     Strip  X-Forwarded-For  header field from inbound
+                     client requests.
   --no-via           Don't append to Via  header field.  If Via header
                      field is received, it is left unaltered.
   --no-location-rewrite
@@ -1308,6 +1312,7 @@ int main(int argc, char **argv)
       {"no-location-rewrite", no_argument, &flag, 62},
       {"backend-connections-per-frontend", required_argument, &flag, 63},
       {"listener-disable-timeout", required_argument, &flag, 64},
+      {"strip-incoming-x-forwarded-for", no_argument, &flag, 65},
       {nullptr, 0, nullptr, 0 }
     };
 
@@ -1604,6 +1609,10 @@ int main(int argc, char **argv)
       case 64:
         // --listener-disable-timeout
         cmdcfgs.emplace_back(SHRPX_OPT_LISTENER_DISABLE_TIMEOUT, optarg);
+        break;
+      case 65:
+        // --strip-incoming-x-forwarded-for
+        cmdcfgs.emplace_back(SHRPX_OPT_STRIP_INCOMING_X_FORWARDED_FOR, "yes");
         break;
       default:
         break;

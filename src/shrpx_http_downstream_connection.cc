@@ -209,14 +209,16 @@ int HttpDownstreamConnection::push_request_headers()
   auto xff = downstream_->get_norm_request_header("x-forwarded-for");
   if(get_config()->add_x_forwarded_for) {
     hdrs += "X-Forwarded-For: ";
-    if(xff != end_headers) {
+    if(xff != end_headers &&
+       !get_config()->strip_incoming_x_forwarded_for) {
       hdrs += (*xff).value;
       http2::sanitize_header_value(hdrs, hdrs.size() - (*xff).value.size());
       hdrs += ", ";
     }
     hdrs += client_handler_->get_ipaddr();
     hdrs += "\r\n";
-  } else if(xff != end_headers) {
+  } else if(xff != end_headers &&
+            !get_config()->strip_incoming_x_forwarded_for) {
     hdrs += "X-Forwarded-For: ";
     hdrs += (*xff).value;
     http2::sanitize_header_value(hdrs, hdrs.size() - (*xff).value.size());

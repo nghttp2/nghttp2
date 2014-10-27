@@ -65,6 +65,7 @@ extern const char SHRPX_OPT_HTTP2_PROXY[];
 extern const char SHRPX_OPT_HTTP2_BRIDGE[];
 extern const char SHRPX_OPT_CLIENT_PROXY[];
 extern const char SHRPX_OPT_ADD_X_FORWARDED_FOR[];
+extern const char SHRPX_OPT_STRIP_INCOMING_X_FORWARDED_FOR[];
 extern const char SHRPX_OPT_NO_VIA[];
 extern const char SHRPX_OPT_FRONTEND_HTTP2_READ_TIMEOUT[];
 extern const char SHRPX_OPT_FRONTEND_READ_TIMEOUT[];
@@ -260,6 +261,7 @@ struct Config {
   bool http2_bridge;
   bool client_proxy;
   bool add_x_forwarded_for;
+  bool strip_incoming_x_forwarded_for;
   bool no_via;
   bool upstream_no_tls;
   bool downstream_no_tls;
