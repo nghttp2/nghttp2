@@ -32,6 +32,7 @@ void test_util_strieq(void);
 void test_util_inp_strlower(void);
 void test_util_to_base64(void);
 void test_util_percent_encode_token(void);
+void test_util_quote_string(void);
 void test_util_utox(void);
 
 } // namespace shrpx

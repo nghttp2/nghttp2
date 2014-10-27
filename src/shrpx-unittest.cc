@@ -120,6 +120,8 @@ int main(int argc, char* argv[])
                    shrpx::test_util_to_base64) ||
       !CU_add_test(pSuite, "util_percent_encode_token",
                    shrpx::test_util_percent_encode_token) ||
+      !CU_add_test(pSuite, "util_quote_string",
+                   shrpx::test_util_quote_string) ||
       !CU_add_test(pSuite, "util_utox", shrpx::test_util_utox) ||
       !CU_add_test(pSuite, "gzip_inflate", test_nghttp2_gzip_inflate)) {
      CU_cleanup_registry();

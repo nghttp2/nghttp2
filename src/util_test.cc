@@ -101,6 +101,13 @@ void test_util_percent_encode_token(void)
   CU_ASSERT("http%202" == util::percent_encode_token("http 2"));
 }
 
+void test_util_quote_string(void)
+{
+  CU_ASSERT("alpha" == util::quote_string("alpha"));
+  CU_ASSERT("" == util::quote_string(""));
+  CU_ASSERT("\\\"alpha\\\"" == util::quote_string("\"alpha\""));
+}
+
 void test_util_utox(void)
 {
   CU_ASSERT("0" == util::utox(0));

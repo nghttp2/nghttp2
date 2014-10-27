@@ -141,6 +141,28 @@ std::string percentDecode
   return result;
 }
 
+std::string quote_string(const std::string& target)
+{
+  auto cnt = std::count(std::begin(target), std::end(target), '"');
+
+  if(cnt == 0) {
+    return target;
+  }
+
+  std::string res;
+  res.reserve(target.size() + cnt);
+
+  for(auto c : target) {
+    if(c == '"') {
+      res += "\\\"";
+    } else {
+      res += c;
+    }
+  }
+
+  return res;
+}
+
 std::string http_date(time_t t)
 {
   char buf[32];

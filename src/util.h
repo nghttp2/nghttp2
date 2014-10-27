@@ -202,6 +202,10 @@ std::string percentDecode
 // Percent encode |target| if character is not in token or '%'.
 std::string percent_encode_token(const std::string& target);
 
+// Returns quotedString version of |target|.  Currently, this function
+// just replace '"' with '\"'.
+std::string quote_string(const std::string& target);
+
 std::string format_hex(const unsigned char *s, size_t len);
 
 std::string http_date(time_t t);
