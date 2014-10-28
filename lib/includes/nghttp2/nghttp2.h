@@ -586,7 +586,11 @@ typedef enum {
   /**
    * INADEQUATE_SECURITY
    */
-  NGHTTP2_INADEQUATE_SECURITY = 0x0c
+  NGHTTP2_INADEQUATE_SECURITY = 0x0c,
+  /**
+   * HTTP_1_1_REQUIRED
+   */
+  NGHTTP2_HTTP_1_1_REQUIRED = 0x0d
 } nghttp2_error_code;
 
 /**

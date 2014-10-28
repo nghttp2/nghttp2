@@ -81,6 +81,8 @@ const char* strstatus(uint32_t error_code)
     return "ENHANCE_YOUR_CALM";
   case NGHTTP2_INADEQUATE_SECURITY:
     return "INADEQUATE_SECURITY";
+  case NGHTTP2_HTTP_1_1_REQUIRED:
+    return "HTTP_1_1_REQUIRED";
   default:
     return "UNKNOWN";
   }

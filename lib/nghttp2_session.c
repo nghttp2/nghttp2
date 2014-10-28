@@ -1314,7 +1314,7 @@ static int session_predicate_window_update_send
   if(stream->state == NGHTTP2_STREAM_CLOSING) {
     return NGHTTP2_ERR_STREAM_CLOSING;
   }
-  if(stream->state == NGHTTP2_STREAM_RESERVED) {
+  if(state_reserved_local(session, stream)) {
     return NGHTTP2_ERR_INVALID_STREAM_STATE;
   }
   return 0;
@@ -3884,7 +3884,7 @@ static int session_on_stream_window_update_received
     }
     return 0;
   }
-  if(stream->state == NGHTTP2_STREAM_RESERVED) {
+  if(state_reserved_remote(session, stream)) {
     return session_handle_invalid_connection
       (session, frame, NGHTTP2_PROTOCOL_ERROR,
        "WINDOW_UPADATE to reserved stream");
@@ -4467,7 +4467,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
         iframe->state = NGHTTP2_IB_IGN_PAYLOAD;
 
         rv = nghttp2_session_terminate_session_with_reason
-          (session, NGHTTP2_PROTOCOL_ERROR, "too large frame size");
+          (session, NGHTTP2_FRAME_SIZE_ERROR, "too large frame size");
 
         if(nghttp2_is_fatal(rv)) {
           return rv;

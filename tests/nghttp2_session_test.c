@@ -2585,7 +2585,8 @@ void test_nghttp2_session_on_window_update_received(void)
 
   nghttp2_frame_window_update_free(&frame.window_update);
 
-  /* WINDOW_UPDATE against reserved stream is a connection error */
+  /* Receiving WINDOW_UPDATE on reserved (remote) stream is a
+     connection error */
   stream = nghttp2_session_open_stream(session, 2, NGHTTP2_STREAM_FLAG_NONE,
                                        &pri_spec_default,
                                        NGHTTP2_STREAM_RESERVED, NULL);
@@ -2596,6 +2597,25 @@ void test_nghttp2_session_on_window_update_received(void)
   CU_ASSERT(!(session->goaway_flags & NGHTTP2_GOAWAY_FAIL_ON_SEND));
   CU_ASSERT(0 == nghttp2_session_on_window_update_received(session, &frame));
   CU_ASSERT(session->goaway_flags & NGHTTP2_GOAWAY_FAIL_ON_SEND);
+
+  nghttp2_frame_window_update_free(&frame.window_update);
+
+  nghttp2_session_del(session);
+
+  /* Receiving WINDOW_UPDATE on reserved (local) stream is allowed */
+  nghttp2_session_server_new(&session, &callbacks, &user_data);
+
+  stream = nghttp2_session_open_stream(session, 2, NGHTTP2_STREAM_FLAG_NONE,
+                                       &pri_spec_default,
+                                       NGHTTP2_STREAM_RESERVED, NULL);
+
+  nghttp2_frame_window_update_init(&frame.window_update, NGHTTP2_FLAG_NONE,
+                                   2, 4096);
+
+  CU_ASSERT(0 == nghttp2_session_on_window_update_received(session, &frame));
+  CU_ASSERT(!(session->goaway_flags & NGHTTP2_GOAWAY_FAIL_ON_SEND));
+
+  CU_ASSERT(NGHTTP2_INITIAL_WINDOW_SIZE + 4096 == stream->remote_window_size);
 
   nghttp2_frame_window_update_free(&frame.window_update);
 

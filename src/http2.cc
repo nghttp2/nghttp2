@@ -69,6 +69,7 @@ std::string get_status_string(unsigned int status_code)
   case 415: return "415 Unsupported Media Type";
   case 416: return "416 Requested Range Not Satisfiable";
   case 417: return "417 Expectation Failed";
+  case 421: return "421 Misdirected Request";
   case 426: return "426 Upgrade Required";
   case 428: return "428 Precondition Required";
   case 429: return "429 Too Many Requests";
