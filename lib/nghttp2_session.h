@@ -121,7 +121,7 @@ typedef struct {
   uint32_t max_concurrent_streams;
   uint32_t initial_window_size;
   uint32_t max_frame_size;
-  uint32_t max_header_set_size;
+  uint32_t max_header_list_size;
 } nghttp2_settings_storage;
 
 typedef enum {

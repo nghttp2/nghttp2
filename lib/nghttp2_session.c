@@ -293,7 +293,7 @@ static void init_settings(nghttp2_settings_storage *settings)
   settings->max_concurrent_streams = NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS;
   settings->initial_window_size = NGHTTP2_INITIAL_WINDOW_SIZE;
   settings->max_frame_size = NGHTTP2_MAX_FRAME_SIZE_MIN;
-  settings->max_header_set_size = UINT32_MAX;
+  settings->max_header_list_size = UINT32_MAX;
 }
 
 static void active_outbound_item_reset(nghttp2_active_outbound_item *aob)
@@ -3441,7 +3441,7 @@ int nghttp2_session_update_local_settings(nghttp2_session *session,
       session->local_settings.max_frame_size = iv[i].value;
       break;
     case NGHTTP2_SETTINGS_MAX_HEADER_LIST_SIZE:
-      session->local_settings.max_header_set_size = iv[i].value;
+      session->local_settings.max_header_list_size = iv[i].value;
       break;
     }
   }
@@ -3578,7 +3578,7 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
       break;
     case NGHTTP2_SETTINGS_MAX_HEADER_LIST_SIZE:
 
-      session->remote_settings.max_header_set_size = entry->value;
+      session->remote_settings.max_header_list_size = entry->value;
 
       break;
     }
@@ -6005,7 +6005,7 @@ uint32_t nghttp2_session_get_remote_settings(nghttp2_session *session,
   case NGHTTP2_SETTINGS_MAX_FRAME_SIZE:
     return session->remote_settings.max_frame_size;
   case NGHTTP2_SETTINGS_MAX_HEADER_LIST_SIZE:
-    return session->remote_settings.max_header_set_size;
+    return session->remote_settings.max_header_list_size;
   }
 
   assert(0);
