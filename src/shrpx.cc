@@ -381,8 +381,7 @@ void exec_binary_signal_cb(evutil_socket_t sig, short events, void *arg)
     return;
   }
 
-  auto argv =
-    static_cast<char**>(malloc(sizeof(char*) * (get_config()->argc + 1)));
+  auto argv = util::make_unique<char*[]>(get_config()->argc + 1);
 
   argv[0] = exec_path;
   for(int i = 1; i < get_config()->argc; ++i) {
@@ -393,7 +392,7 @@ void exec_binary_signal_cb(evutil_socket_t sig, short events, void *arg)
   size_t envlen = 0;
   for(char **p = environ; *p; ++p, ++envlen);
   // 3 for missing fd4, fd6 and port.
-  auto envp = static_cast<char**>(malloc(sizeof(char*) * (envlen + 3 + 1)));
+  auto envp = util::make_unique<char*[]>(envlen + 3 + 1);
   size_t envidx = 0;
 
   auto evlistener4 = listener_handler->get_evlistener4();
@@ -437,7 +436,7 @@ void exec_binary_signal_cb(evutil_socket_t sig, short events, void *arg)
     }
   }
 
-  if(execve(argv[0], argv, envp) == -1) {
+  if(execve(argv[0], argv.get(), envp.get()) == -1) {
     auto error = errno;
     LOG(ERROR) << "execve failed: errno=" << error;
     _Exit(EXIT_FAILURE);
