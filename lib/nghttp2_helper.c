@@ -55,23 +55,6 @@ uint32_t nghttp2_get_uint32(const uint8_t *data)
   return ntohl(n);
 }
 
-int nghttp2_reserve_buffer(uint8_t **buf_ptr, size_t *buflen_ptr,
-                           size_t min_length)
-{
-  if(min_length > *buflen_ptr) {
-    uint8_t *temp;
-    min_length = (min_length+4095)/4096*4096;
-    temp = realloc(*buf_ptr, min_length);
-    if(temp == NULL) {
-      return NGHTTP2_ERR_NOMEM;
-    } else {
-      *buf_ptr = temp;
-      *buflen_ptr = min_length;
-    }
-  }
-  return 0;
-}
-
 void* nghttp2_memdup(const void* src, size_t n)
 {
   void* dest;

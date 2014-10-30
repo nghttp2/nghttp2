@@ -80,16 +80,6 @@ int nghttp2_buf_reserve(nghttp2_buf *buf, size_t new_cap)
   return 0;
 }
 
-int nghttp2_buf_pos_reserve(nghttp2_buf *buf, size_t new_rel_cap)
-{
-  return nghttp2_buf_reserve(buf, nghttp2_buf_pos_offset(buf) + new_rel_cap);
-}
-
-int nghttp2_buf_last_reserve(nghttp2_buf *buf, size_t new_rel_cap)
-{
-  return nghttp2_buf_reserve(buf, nghttp2_buf_last_offset(buf) + new_rel_cap);
-}
-
 void nghttp2_buf_reset(nghttp2_buf *buf)
 {
   buf->pos = buf->last = buf->mark = buf->begin;

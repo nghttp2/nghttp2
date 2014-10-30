@@ -31,7 +31,6 @@ void test_nghttp2_bufs_orb(void);
 void test_nghttp2_bufs_remove(void);
 void test_nghttp2_bufs_reset(void);
 void test_nghttp2_bufs_advance(void);
-void test_nghttp2_bufs_seek_last_present(void);
 void test_nghttp2_bufs_next_present(void);
 void test_nghttp2_bufs_realloc(void);
 

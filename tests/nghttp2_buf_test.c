@@ -253,42 +253,6 @@ void test_nghttp2_bufs_advance(void)
   nghttp2_bufs_free(&bufs);
 }
 
-void test_nghttp2_bufs_seek_last_present(void)
-{
-  int rv;
-  nghttp2_bufs bufs;
-
-  rv = nghttp2_bufs_init(&bufs, 250, 3);
-  CU_ASSERT(0 == rv);
-
-  rv = nghttp2_bufs_advance(&bufs);
-  CU_ASSERT(0 == rv);
-
-  rv = nghttp2_bufs_addb(&bufs, 5);
-  CU_ASSERT(0 == rv);
-
-  bufs.cur = bufs.head;
-
-  /* cur is unchanged because cur is empty */
-  nghttp2_bufs_seek_last_present(&bufs);
-
-  CU_ASSERT(bufs.cur == bufs.head);
-
-  rv = nghttp2_bufs_addb(&bufs, 1);
-  CU_ASSERT(0 == rv);
-
-  nghttp2_bufs_seek_last_present(&bufs);
-
-  CU_ASSERT(bufs.cur == bufs.head->next);
-
-  /* cur is unchanged */
-  nghttp2_bufs_seek_last_present(&bufs);
-
-  CU_ASSERT(bufs.cur == bufs.head->next);
-
-  nghttp2_bufs_free(&bufs);
-}
-
 void test_nghttp2_bufs_next_present(void)
 {
   int rv;

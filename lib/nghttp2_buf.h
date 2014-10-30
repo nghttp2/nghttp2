@@ -108,22 +108,6 @@ void nghttp2_buf_free(nghttp2_buf *buf);
 int nghttp2_buf_reserve(nghttp2_buf *buf, size_t new_cap);
 
 /*
- * This function behaves like nghttp2_buf_reserve(), but new capacity
- * is calculated as nghttp2_buf_pos_offset(buf) + new_rel_cap. In
- * other words, this function reserves memory at least |new_rel_cap|
- * bytes from buf->pos.
- */
-int nghttp2_buf_pos_reserve(nghttp2_buf *buf, size_t new_rel_cap);
-
-/*
- * This function behaves like nghttp2_buf_reserve(), but new capacity
- * is calculated as nghttp2_buf_last_offset(buf) + new_rel_cap. In
- * other words, this function reserves memory at least |new_rel_cap|
- * bytes from buf->last.
- */
-int nghttp2_buf_last_reserve(nghttp2_buf *buf, size_t new_rel_cap);
-
-/*
  * Resets pos, last, mark member of |buf| to buf->begin.
  */
 void nghttp2_buf_reset(nghttp2_buf *buf);
