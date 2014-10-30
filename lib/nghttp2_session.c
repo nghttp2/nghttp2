@@ -1511,7 +1511,7 @@ static int session_headers_add_pad(nghttp2_session *session,
   padlen = padded_payloadlen - frame->hd.length;
 
   DEBUGF(fprintf(stderr,
-                 "send: padding selected: payloadlen=%zu, padlen=%zu\n",
+                 "send: padding selected: payloadlen=%zd, padlen=%zu\n",
                  padded_payloadlen, padlen));
 
   rv = nghttp2_frame_add_pad(framebufs, &frame->hd, padlen);
@@ -1784,9 +1784,9 @@ static int session_prep_frame(nghttp2_session *session,
 
     rv = nghttp2_session_predicate_data_send(session, frame->hd.stream_id);
     if(rv != 0) {
-      int rv2;
-
       if(stream) {
+        int rv2;
+
         rv2 = nghttp2_stream_detach_data(stream, &session->ob_da_pq,
                                          session->last_cycle);
 
@@ -5389,7 +5389,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
           }
         }
 
-        DEBUGF(fprintf(stderr, "recv: data_readlen=%zu\n", data_readlen));
+        DEBUGF(fprintf(stderr, "recv: data_readlen=%zd\n", data_readlen));
 
         if(stream && data_readlen > 0 &&
            session->callbacks.on_data_chunk_recv_callback) {
@@ -5815,7 +5815,7 @@ int nghttp2_session_pack_data(nghttp2_session *session,
            use safe limit. */
         payloadlen = datamax;
 
-        DEBUGF(fprintf(stderr, "send: use safe limit payloadlen=%zu",
+        DEBUGF(fprintf(stderr, "send: use safe limit payloadlen=%zd",
                        payloadlen));
       } else {
         assert(&session->aob.framebufs == bufs);

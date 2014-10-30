@@ -1122,8 +1122,8 @@ int on_data_chunk_recv_callback
  const uint8_t *data, size_t len, void *user_data)
 {
   auto client = get_session(user_data);
-  auto req =
-    (Request*)nghttp2_session_get_stream_user_data(session, stream_id);
+  auto req = static_cast<Request*>
+    (nghttp2_session_get_stream_user_data(session, stream_id));
 
   if(!req) {
     return 0;
@@ -1301,8 +1301,8 @@ int on_header_callback(nghttp2_session *session,
 
   switch(frame->hd.type) {
   case NGHTTP2_HEADERS: {
-    auto req = (Request*)nghttp2_session_get_stream_user_data
-      (session, frame->hd.stream_id);
+    auto req = static_cast<Request*>
+      (nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
 
     if(!req) {
       break;
@@ -1330,8 +1330,9 @@ int on_header_callback(nghttp2_session *session,
     break;
   }
   case NGHTTP2_PUSH_PROMISE: {
-    auto req = (Request*)nghttp2_session_get_stream_user_data
-      (session, frame->push_promise.promised_stream_id);
+    auto req = static_cast<Request*>
+      (nghttp2_session_get_stream_user_data
+       (session, frame->push_promise.promised_stream_id));
 
     if(!req) {
       break;
@@ -1369,8 +1370,8 @@ int on_frame_recv_callback2
   auto client = get_session(user_data);
   switch(frame->hd.type) {
   case NGHTTP2_HEADERS: {
-    auto req = (Request*)nghttp2_session_get_stream_user_data
-      (session, frame->hd.stream_id);
+    auto req = static_cast<Request*>
+      (nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
     // If this is the HTTP Upgrade with OPTIONS method to avoid POST,
     // req is nullptr.
     if(!req) {
@@ -1414,8 +1415,9 @@ int on_frame_recv_callback2
     }
     break;
   case NGHTTP2_PUSH_PROMISE: {
-    auto req = (Request*)nghttp2_session_get_stream_user_data
-      (session, frame->push_promise.promised_stream_id);
+    auto req = static_cast<Request*>
+      (nghttp2_session_get_stream_user_data
+       (session, frame->push_promise.promised_stream_id));
     if(!req) {
       break;
     }
@@ -1472,8 +1474,8 @@ int on_stream_close_callback
  void *user_data)
 {
   auto client = get_session(user_data);
-  auto req =
-    (Request*)nghttp2_session_get_stream_user_data(session, stream_id);
+  auto req = static_cast<Request*>
+    (nghttp2_session_get_stream_user_data(session, stream_id));
 
   if(!req) {
     return 0;
@@ -1798,8 +1800,8 @@ ssize_t file_read_callback
  uint8_t *buf, size_t length, uint32_t *data_flags,
  nghttp2_data_source *source, void *user_data)
 {
-  auto req = (Request*)nghttp2_session_get_stream_user_data
-    (session, stream_id);
+  auto req = static_cast<Request*>
+    (nghttp2_session_get_stream_user_data(session, stream_id));
   assert(req);
   int fd = source->fd;
   ssize_t nread;

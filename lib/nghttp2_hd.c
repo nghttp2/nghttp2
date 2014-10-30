@@ -999,7 +999,7 @@ static int deflate_nv(nghttp2_hd_deflater *deflater,
 {
   int rv;
   search_result res;
-  ssize_t idx = -1;
+  ssize_t idx;
   int incidx = 0;
   uint32_t name_hash = hash(nv->name, nv->namelen);
   uint32_t value_hash = hash(nv->value, nv->valuelen);

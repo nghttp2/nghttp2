@@ -79,7 +79,7 @@ static void to_hex(char *dest, const uint8_t *src, size_t len)
 
 static void output_to_json(nghttp2_hd_deflater *deflater,
                            nghttp2_bufs *bufs, size_t inputlen,
-                           const std::vector<nghttp2_nv> nva,
+                           const std::vector<nghttp2_nv>& nva,
                            int seq)
 {
   auto len = nghttp2_bufs_len(bufs);

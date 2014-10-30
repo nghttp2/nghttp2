@@ -674,7 +674,6 @@ int Http2Handler::submit_non_final_response(const std::string& status,
 int Http2Handler::submit_push_promise(Stream *stream,
                                       const std::string& push_path)
 {
-  std::string authority;
   auto itr = std::lower_bound(std::begin(stream->headers),
                               std::end(stream->headers),
                               Header(":authority", ""));
