@@ -75,8 +75,6 @@ public:
   Http2Session* get_http2_session() const;
   void set_http1_connect_blocker(ConnectBlocker *http1_connect_blocker);
   ConnectBlocker* get_http1_connect_blocker() const;
-  size_t get_left_connhd_len() const;
-  void set_left_connhd_len(size_t left);
   // Call this function when HTTP/2 connection header is received at
   // the start of the connection.
   void direct_http2_upgrade();
@@ -91,6 +89,8 @@ public:
   bool get_tls_handshake() const;
   void set_tls_renegotiation(bool f);
   bool get_tls_renegotiation() const;
+  int on_http2_connhd_read();
+  int on_http1_connhd_read();
 private:
   std::unique_ptr<Upstream> upstream_;
   std::string ipaddr_;

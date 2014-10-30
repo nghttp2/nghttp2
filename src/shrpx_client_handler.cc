@@ -143,35 +143,9 @@ namespace {
 void upstream_http2_connhd_readcb(bufferevent *bev, void *arg)
 {
   // This callback assumes upstream is Http2Upstream.
-  uint8_t data[NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN];
   auto handler = static_cast<ClientHandler*>(arg);
-  auto leftlen = handler->get_left_connhd_len();
-  auto input = bufferevent_get_input(bev);
-  auto readlen = evbuffer_remove(input, data, leftlen);
-  if(readlen == -1) {
+  if(handler->on_http2_connhd_read() != 0) {
     delete handler;
-    return;
-  }
-  if(memcmp(NGHTTP2_CLIENT_CONNECTION_PREFACE +
-            NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN - leftlen,
-            data, readlen) != 0) {
-    // There is no downgrade path here. Just drop the connection.
-    if(LOG_ENABLED(INFO)) {
-      CLOG(INFO, handler) << "invalid client connection header";
-    }
-    delete handler;
-    return;
-  }
-  leftlen -= readlen;
-  handler->set_left_connhd_len(leftlen);
-  if(leftlen == 0) {
-    handler->set_bev_cb(upstream_readcb, upstream_writecb, upstream_eventcb);
-    // Run on_read to process data left in buffer since they are not
-    // notified further
-    if(handler->on_read() != 0) {
-      delete handler;
-      return;
-    }
   }
 }
 } // namespace
@@ -180,49 +154,9 @@ namespace {
 void upstream_http1_connhd_readcb(bufferevent *bev, void *arg)
 {
   // This callback assumes upstream is HttpsUpstream.
-  uint8_t data[NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN];
   auto handler = static_cast<ClientHandler*>(arg);
-  auto leftlen = handler->get_left_connhd_len();
-  auto input = bufferevent_get_input(bev);
-  auto readlen = evbuffer_copyout(input, data, leftlen);
-  if(readlen == -1) {
+  if(handler->on_http1_connhd_read() != 0) {
     delete handler;
-    return;
-  }
-  if(memcmp(NGHTTP2_CLIENT_CONNECTION_PREFACE +
-            NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN - leftlen,
-            data, readlen) != 0) {
-    if(LOG_ENABLED(INFO)) {
-      CLOG(INFO, handler) << "This is HTTP/1.1 connection, "
-                          << "but may be upgraded to HTTP/2 later.";
-    }
-    // Reset header length for later HTTP/2 upgrade
-    handler->set_left_connhd_len(NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN);
-    handler->set_bev_cb(upstream_readcb, upstream_writecb, upstream_eventcb);
-    if(handler->on_read() != 0) {
-      delete handler;
-      return;
-    }
-    return;
-  }
-  if(evbuffer_drain(input, readlen) == -1) {
-    delete handler;
-    return;
-  }
-  leftlen -= readlen;
-  handler->set_left_connhd_len(leftlen);
-  if(leftlen == 0) {
-    if(LOG_ENABLED(INFO)) {
-      CLOG(INFO, handler) << "direct HTTP/2 connection";
-    }
-    handler->direct_http2_upgrade();
-    handler->set_bev_cb(upstream_readcb, upstream_writecb, upstream_eventcb);
-    // Run on_read to process data left in buffer since they are not
-    // notified further
-    if(handler->on_read() != 0) {
-      delete handler;
-      return;
-    }
   }
 }
 } // namespace
@@ -385,7 +319,9 @@ int ClientHandler::validate_next_proto()
         // At this point, input buffer is already filled with some
         // bytes.  The read callback is not called until new data
         // come. So consume input buffer here.
-        upstream_http2_connhd_readcb(bev_, this);
+        if(on_http2_connhd_read() != 0) {
+          return -1;
+        }
 
         return 0;
       } else {
@@ -454,6 +390,100 @@ int ClientHandler::on_read()
 int ClientHandler::on_event()
 {
   return upstream_->on_event();
+}
+
+int ClientHandler::on_http2_connhd_read()
+{
+  // This callback assumes upstream is Http2Upstream.
+  uint8_t data[NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN];
+  auto input = bufferevent_get_input(bev_);
+  auto readlen = evbuffer_remove(input, data, left_connhd_len_);
+
+  if(readlen == -1) {
+    return -1;
+  }
+
+  if(memcmp(NGHTTP2_CLIENT_CONNECTION_PREFACE +
+            NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN - left_connhd_len_,
+            data, readlen) != 0) {
+    // There is no downgrade path here. Just drop the connection.
+    if(LOG_ENABLED(INFO)) {
+      CLOG(INFO, this) << "invalid client connection header";
+    }
+
+    return -1;
+  }
+
+  left_connhd_len_ -= readlen;
+
+  if(left_connhd_len_ > 0) {
+    return 0;
+  }
+
+  set_bev_cb(upstream_readcb, upstream_writecb, upstream_eventcb);
+
+  // Run on_read to process data left in buffer since they are not
+  // notified further
+  if(on_read() != 0) {
+    return -1;
+  }
+
+  return 0;
+}
+
+int ClientHandler::on_http1_connhd_read()
+{
+  uint8_t data[NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN];
+  auto input = bufferevent_get_input(bev_);
+  auto readlen = evbuffer_copyout(input, data, left_connhd_len_);
+
+  if(readlen == -1) {
+    return -1;
+  }
+
+  if(memcmp(NGHTTP2_CLIENT_CONNECTION_PREFACE +
+            NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN - left_connhd_len_,
+            data, readlen) != 0) {
+    if(LOG_ENABLED(INFO)) {
+      CLOG(INFO, this) << "This is HTTP/1.1 connection, "
+                       << "but may be upgraded to HTTP/2 later.";
+    }
+
+    // Reset header length for later HTTP/2 upgrade
+    left_connhd_len_ = NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN;
+    set_bev_cb(upstream_readcb, upstream_writecb, upstream_eventcb);
+
+    if(on_read() != 0) {
+      return -1;
+    }
+
+    return 0;
+  }
+
+  if(evbuffer_drain(input, readlen) == -1) {
+    return -1;
+  }
+
+  left_connhd_len_ -= readlen;
+
+  if(left_connhd_len_ > 0) {
+    return 0;
+  }
+
+  if(LOG_ENABLED(INFO)) {
+    CLOG(INFO, this) << "direct HTTP/2 connection";
+  }
+
+  direct_http2_upgrade();
+  set_bev_cb(upstream_readcb, upstream_writecb, upstream_eventcb);
+
+  // Run on_read to process data left in buffer since they are not
+  // notified further
+  if(on_read() != 0) {
+    return -1;
+  }
+
+  return 0;
 }
 
 const std::string& ClientHandler::get_ipaddr() const
@@ -550,16 +580,6 @@ void ClientHandler::set_http1_connect_blocker
 ConnectBlocker* ClientHandler::get_http1_connect_blocker() const
 {
   return http1_connect_blocker_;
-}
-
-size_t ClientHandler::get_left_connhd_len() const
-{
-  return left_connhd_len_;
-}
-
-void ClientHandler::set_left_connhd_len(size_t left)
-{
-  left_connhd_len_ = left;
 }
 
 void ClientHandler::direct_http2_upgrade()
