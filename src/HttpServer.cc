@@ -69,6 +69,7 @@ namespace nghttp2 {
 
 namespace {
 const std::string STATUS_200 = "200";
+const std::string STATUS_301 = "301";
 const std::string STATUS_304 = "304";
 const std::string STATUS_400 = "400";
 const std::string STATUS_404 = "404";
@@ -852,12 +853,35 @@ void prepare_status_response(Stream *stream, Http2Handler *hd,
 } // namespace
 
 namespace {
+void prepare_redirect_response(Stream *stream, Http2Handler *hd,
+                               const std::string& path,
+                               const std::string& status)
+{
+  auto scheme = http2::get_unique_header(stream->headers, ":scheme");
+  auto authority = http2::get_unique_header(stream->headers, ":authority");
+  if(!authority) {
+    authority = http2::get_unique_header(stream->headers, ":host");
+  }
+
+  auto redirect_url = scheme->value;
+  redirect_url += "://";
+  redirect_url += authority->value;
+  redirect_url += path;
+
+  std::vector<std::pair<std::string, std::string>> headers
+    {{"location", redirect_url}};
+
+  hd->submit_response(status, stream->stream_id, headers, nullptr);
+}
+} // namespace
+
+namespace {
 void prepare_response(Stream *stream, Http2Handler *hd, bool allow_push = true)
 {
   int rv;
-  auto url = (*std::lower_bound(std::begin(stream->headers),
-                                std::end(stream->headers),
-                                Header(":path", ""))).value;
+  auto reqpath = (*std::lower_bound(std::begin(stream->headers),
+                                    std::end(stream->headers),
+                                    Header(":path", ""))).value;
   auto ims = std::lower_bound(std::begin(stream->headers),
                               std::end(stream->headers),
                               Header("if-modified-since", ""));
@@ -869,15 +893,19 @@ void prepare_response(Stream *stream, Http2Handler *hd, bool allow_push = true)
       last_mod_found = true;
       last_mod = util::parse_http_date((*ims).value);
   }
-  auto query_pos = url.find("?");
+  auto query_pos = reqpath.find("?");
+  std::string url;
   if(query_pos != std::string::npos) {
     // Do not response to this request to allow clients to test timeouts.
-    if(url.find("nghttpd_do_not_respond_to_req=yes",
-                query_pos) != std::string::npos) {
+    if(reqpath.find("nghttpd_do_not_respond_to_req=yes",
+                    query_pos) != std::string::npos) {
       return;
     }
-    url = url.substr(0, query_pos);
+    url = reqpath.substr(0, query_pos);
+  } else {
+    url = reqpath;
   }
+
   url = util::percentDecode(url.begin(), url.end());
   if(!util::check_path(url)) {
     prepare_status_response(stream, hd, STATUS_404);
@@ -909,6 +937,18 @@ void prepare_response(Stream *stream, Http2Handler *hd, bool allow_push = true)
   if(fstat(file, &buf) == -1) {
     close(file);
     prepare_status_response(stream, hd, STATUS_404);
+
+    return;
+  }
+
+  if(buf.st_mode & S_IFDIR) {
+    if(query_pos == std::string::npos) {
+      reqpath += "/";
+    } else {
+      reqpath.insert(query_pos, "/");
+    }
+
+    prepare_redirect_response(stream, hd, reqpath, STATUS_301);
 
     return;
   }
