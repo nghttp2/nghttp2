@@ -633,7 +633,7 @@ int Http2Handler::submit_file_response(const std::string& status,
 int Http2Handler::submit_response
 (const std::string& status,
  int32_t stream_id,
- const std::vector<std::pair<std::string, std::string>>& headers,
+ const Headers& headers,
  nghttp2_data_provider *data_prd)
 {
   std::string date_str = util::http_date(time(0));
@@ -642,8 +642,8 @@ int Http2Handler::submit_response
     http2::make_nv_ls("server", NGHTTPD_SERVER),
     http2::make_nv_ls("date", date_str)
   };
-  for(size_t i = 0; i < headers.size(); ++i) {
-    nva.push_back(http2::make_nv(headers[i].first, headers[i].second, false));
+  for(auto& nv : headers) {
+    nva.push_back(http2::make_nv(nv.name, nv.value, nv.no_index));
   }
   int r = nghttp2_submit_response(session_, stream_id, nva.data(), nva.size(),
                                   data_prd);
@@ -825,7 +825,7 @@ void prepare_status_response(Stream *stream, Http2Handler *hd,
   body += "</address>";
   body += "</body></html>";
 
-  std::vector<std::pair<std::string, std::string>> headers;
+  Headers headers;
   if(hd->get_config()->error_gzip) {
     gzFile write_fd = gzdopen(pipefd[1], "w");
     gzwrite(write_fd, body.c_str(), body.size());
@@ -868,8 +868,7 @@ void prepare_redirect_response(Stream *stream, Http2Handler *hd,
   redirect_url += authority->value;
   redirect_url += path;
 
-  std::vector<std::pair<std::string, std::string>> headers
-    {{"location", redirect_url}};
+  auto headers = Headers{{"location", redirect_url}};
 
   hd->submit_response(status, stream->stream_id, headers, nullptr);
 }

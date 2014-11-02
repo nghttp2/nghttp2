@@ -125,7 +125,7 @@ public:
   int submit_response
   (const std::string& status,
    int32_t stream_id,
-   const std::vector<std::pair<std::string, std::string>>& headers,
+   const Headers& headers,
    nghttp2_data_provider *data_prd);
 
   int submit_non_final_response(const std::string& status, int32_t stream_id);
