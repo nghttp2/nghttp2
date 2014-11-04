@@ -243,6 +243,8 @@ int main(int argc, char* argv[])
                    test_nghttp2_session_stream_attach_data_subtree) ||
       !CU_add_test(pSuite, "session_stream_keep_closed_stream",
                    test_nghttp2_session_keep_closed_stream) ||
+      !CU_add_test(pSuite, "session_large_dep_tree",
+                   test_nghttp2_session_large_dep_tree) ||
       !CU_add_test(pSuite, "session_graceful_shutdown",
                    test_nghttp2_session_graceful_shutdown) ||
       !CU_add_test(pSuite, "session_on_header_temporal_failure",

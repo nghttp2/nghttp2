@@ -6386,6 +6386,41 @@ void test_nghttp2_session_keep_closed_stream(void)
   nghttp2_session_del(session);
 }
 
+void test_nghttp2_session_large_dep_tree(void)
+{
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  size_t i;
+  nghttp2_stream *dep_stream = NULL;
+  nghttp2_stream *root_stream;
+  int32_t stream_id;
+
+  memset(&callbacks, 0, sizeof(callbacks));
+  callbacks.send_callback = null_send_callback;
+
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  stream_id = 1;
+  for(i = 0; i < NGHTTP2_MAX_DEP_TREE_LENGTH; ++i) {
+    dep_stream = open_stream_with_dep(session, stream_id, dep_stream);
+    stream_id += 2;
+  }
+
+  root_stream = nghttp2_session_get_stream(session, 1);
+
+  /* Check that last dep_stream must be part of tree */
+  CU_ASSERT(nghttp2_stream_dep_subtree_find(root_stream, dep_stream));
+
+  dep_stream = open_stream_with_dep(session, stream_id, dep_stream);
+
+  /* We exceeded NGHTTP2_MAX_DEP_TREE_LENGTH limit.  dep_stream is now
+     root node and has no descendants. */
+  CU_ASSERT(!nghttp2_stream_dep_subtree_find(root_stream, dep_stream));
+  CU_ASSERT(nghttp2_stream_in_dep_tree(dep_stream));
+
+  nghttp2_session_del(session);
+}
+
 void test_nghttp2_session_graceful_shutdown(void)
 {
   nghttp2_session *session;

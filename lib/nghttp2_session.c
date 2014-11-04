@@ -868,6 +868,8 @@ nghttp2_stream* nghttp2_session_open_stream(nghttp2_session *session,
     } else {
       nghttp2_stream_dep_add(dep_stream, stream);
     }
+  } else {
+    nghttp2_stream_roots_add(&session->roots, stream);
   }
 
   return stream;
