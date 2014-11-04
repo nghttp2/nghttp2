@@ -298,7 +298,6 @@ SSL_CTX* create_ssl_context(const char *private_key_file,
     BIO_free(bio);
   }
 
-  SSL_CTX_set_mode(ssl_ctx, SSL_MODE_ENABLE_PARTIAL_WRITE);
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_AUTO_RETRY);
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_RELEASE_BUFFERS);
   if (get_config()->private_key_passwd) {
@@ -402,7 +401,6 @@ SSL_CTX* create_ssl_client_context()
     DIE();
   }
 
-  SSL_CTX_set_mode(ssl_ctx, SSL_MODE_ENABLE_PARTIAL_WRITE);
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_AUTO_RETRY);
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_RELEASE_BUFFERS);
 

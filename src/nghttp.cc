@@ -1715,7 +1715,6 @@ int communicate(const std::string& scheme, const std::string& host,
                         SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 |
                         SSL_OP_NO_COMPRESSION |
                         SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
-    SSL_CTX_set_mode(ssl_ctx, SSL_MODE_ENABLE_PARTIAL_WRITE);
     SSL_CTX_set_mode(ssl_ctx, SSL_MODE_AUTO_RETRY);
     SSL_CTX_set_mode(ssl_ctx, SSL_MODE_RELEASE_BUFFERS);
     if(!config.keyfile.empty()) {
