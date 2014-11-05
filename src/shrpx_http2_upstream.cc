@@ -38,7 +38,6 @@
 #include "shrpx_worker_config.h"
 #include "http2.h"
 #include "util.h"
-#include "libevent_util.h"
 #include "base64.h"
 #include "app_helper.h"
 
@@ -785,10 +784,11 @@ int Http2Upstream::send()
   uint8_t buf[16384];
   auto bev = handler_->get_bev();
   auto output = bufferevent_get_output(bev);
-  util::EvbufferBuffer evbbuf(output, buf, sizeof(buf));
+
+  sendbuf.reset(output, buf, sizeof(buf), handler_->get_write_limit());
   for(;;) {
     // Check buffer length and break if it is large enough.
-    if(handler_->get_outbuf_length() + evbbuf.get_buflen() >=
+    if(handler_->get_outbuf_length() + sendbuf.get_buflen() >=
        OUTBUF_MAX_THRES) {
       break;
     }
@@ -804,18 +804,20 @@ int Http2Upstream::send()
     if(datalen == 0) {
       break;
     }
-    rv = evbbuf.add(data, datalen);
+    rv = sendbuf.add(data, datalen);
     if(rv != 0) {
       ULOG(FATAL, this) << "evbuffer_add() failed";
       return -1;
     }
   }
 
-  rv = evbbuf.flush();
+  rv = sendbuf.flush();
   if(rv != 0) {
     ULOG(FATAL, this) << "evbuffer_add() failed";
     return -1;
   }
+
+  handler_->update_warmup_writelen(sendbuf.get_writelen());
 
   if(nghttp2_session_want_read(session_) == 0 &&
      nghttp2_session_want_write(session_) == 0 &&

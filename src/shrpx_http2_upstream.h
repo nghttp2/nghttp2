@@ -33,6 +33,7 @@
 
 #include "shrpx_upstream.h"
 #include "shrpx_downstream_queue.h"
+#include "libevent_util.h"
 
 namespace shrpx {
 
@@ -87,6 +88,8 @@ public:
                             const std::vector<nghttp2_nv>& nva) const;
   void maintain_downstream_concurrency();
   void initiate_downstream(std::unique_ptr<Downstream> downstream);
+
+  nghttp2::util::EvbufferBuffer sendbuf;
 private:
   DownstreamQueue downstream_queue_;
   std::unique_ptr<HttpsUpstream> pre_upstream_;

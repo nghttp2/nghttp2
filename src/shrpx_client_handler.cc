@@ -71,6 +71,8 @@ void upstream_writecb(bufferevent *bev, void *arg)
     upstream->reset_timeouts();
   }
 
+  handler->update_last_write_time();
+
   // We actually depend on write low-water mark == 0.
   if(handler->get_outbuf_length() > 0) {
     // Possibly because of deferred callback, we may get this callback
@@ -174,6 +176,8 @@ ClientHandler::ClientHandler(bufferevent *bev,
     ssl_(ssl),
     reneg_shutdown_timerev_(nullptr),
     worker_stat_(worker_stat),
+    last_write_time_(0),
+    warmup_writelen_(0),
     left_connhd_len_(NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN),
     fd_(fd),
     should_close_after_write_(false),
@@ -670,6 +674,52 @@ void ClientHandler::set_tls_renegotiation(bool f)
 bool ClientHandler::get_tls_renegotiation() const
 {
   return tls_renegotiation_;
+}
+
+namespace {
+const size_t SHRPX_SMALL_WRITE_LIMIT = 1300;
+const size_t SHRPX_WARMUP_THRESHOLD = 1 << 20;
+} // namespace
+
+ssize_t ClientHandler::get_write_limit()
+{
+  if(!ssl_) {
+    return -1;
+  }
+
+  timeval tv;
+  if(event_base_gettimeofday_cached(get_evbase(), &tv) == 0) {
+    auto now = util::to_time64(tv);
+    if(now - last_write_time_ > 1000000) {
+      // Time out, use small record size
+      warmup_writelen_ = 0;
+      return SHRPX_SMALL_WRITE_LIMIT;
+    }
+  }
+
+  // If event_base_gettimeofday_cached() failed, we just skip timer
+  // checking.  Don't know how to treat this.
+
+  if(warmup_writelen_ >= SHRPX_WARMUP_THRESHOLD) {
+    return -1;
+  }
+
+  return SHRPX_SMALL_WRITE_LIMIT;
+}
+
+void ClientHandler::update_warmup_writelen(size_t n)
+{
+  if(warmup_writelen_ < SHRPX_WARMUP_THRESHOLD) {
+    warmup_writelen_ += n;
+  }
+}
+
+void ClientHandler::update_last_write_time()
+{
+  timeval tv;
+  if(event_base_gettimeofday_cached(get_evbase(), &tv) == 0) {
+    last_write_time_ = util::to_time64(tv);
+  }
 }
 
 } // namespace shrpx

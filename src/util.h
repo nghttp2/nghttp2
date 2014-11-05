@@ -474,6 +474,10 @@ char* get_exec_path(int argc, char **const argv, const char *cwd);
 // percent-decode was performed.
 bool check_path(const std::string& path);
 
+// Returns the |tv| value as 64 bit integer using a microsecond as an
+// unit.
+int64_t to_time64(const timeval& tv);
+
 } // namespace util
 
 } // namespace nghttp2

@@ -537,7 +537,8 @@ int SpdyUpstream::send()
   int rv = 0;
   uint8_t buf[16384];
 
-  sendbuf.reset(bufferevent_get_output(handler_->get_bev()), buf, sizeof(buf));
+  sendbuf.reset(bufferevent_get_output(handler_->get_bev()), buf, sizeof(buf),
+                handler_->get_write_limit());
 
   rv = spdylay_session_send(session_);
   if(rv != 0) {
@@ -551,6 +552,8 @@ int SpdyUpstream::send()
     ULOG(FATAL, this) << "evbuffer_add() failed";
     return -1;
   }
+
+  handler_->update_warmup_writelen(sendbuf.get_writelen());
 
   if(spdylay_session_want_read(session_) == 0 &&
      spdylay_session_want_write(session_) == 0 &&

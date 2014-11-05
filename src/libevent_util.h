@@ -37,16 +37,28 @@ namespace util {
 class EvbufferBuffer {
 public:
   EvbufferBuffer();
-  EvbufferBuffer(evbuffer *evbuffer, uint8_t *buf, size_t bufmax);
-  void reset(evbuffer *evbuffer, uint8_t *buf, size_t bufmax);
+  // If |limit| is not -1, at most min(limit, bufmax) size bytes are
+  // added to evbuffer_.
+  EvbufferBuffer(evbuffer *evbuffer, uint8_t *buf, size_t bufmax,
+                 ssize_t limit = -1);
+  ~EvbufferBuffer();
+  void reset(evbuffer *evbuffer, uint8_t *buf, size_t bufmax,
+             ssize_t limit = -1);
   int flush();
   int add(const uint8_t *data, size_t datalen);
   size_t get_buflen() const;
+  int write_buffer();
+  // Returns the number of written bytes to evbuffer_ so far.  reset()
+  // resets this value to 0.
+  size_t get_writelen() const;
 private:
   evbuffer *evbuffer_;
+  evbuffer *bucket_;
   uint8_t *buf_;
   size_t bufmax_;
   size_t buflen_;
+  ssize_t limit_;
+  size_t writelen_;
 };
 
 // These functions are provided to reduce epoll_ctl syscall.  Avoid

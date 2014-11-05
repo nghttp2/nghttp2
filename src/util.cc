@@ -636,6 +636,11 @@ bool check_path(const std::string& path)
     !util::endsWith(path, "/..") && !util::endsWith(path, "/.");
 }
 
+int64_t to_time64(const timeval& tv)
+{
+  return tv.tv_sec * 1000000 + tv.tv_usec;
+}
+
 } // namespace util
 
 } // namespace nghttp2

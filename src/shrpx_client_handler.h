@@ -91,6 +91,20 @@ public:
   bool get_tls_renegotiation() const;
   int on_http2_connhd_read();
   int on_http1_connhd_read();
+  // Returns maximum chunk size for one evbuffer_add().  The intention
+  // of this chunk size is control the TLS record size.  The actual
+  // SSL_write() call is done under libevent control.  In
+  // libevent-2.0.21, libevent calls SSL_write() for each chunk inside
+  // evbuffer.  This means that we can control TLS record size by
+  // adjusting the chunk size to evbuffer_add().
+  //
+  // This function returns -1, if TLS is not enabled or no limitation
+  // is required.
+  ssize_t get_write_limit();
+  // Updates the number of bytes written in warm up period.
+  void update_warmup_writelen(size_t n);
+  // Updates the time when last write was done.
+  void update_last_write_time();
 private:
   std::unique_ptr<Upstream> upstream_;
   std::string ipaddr_;
@@ -103,6 +117,8 @@ private:
   SSL *ssl_;
   event *reneg_shutdown_timerev_;
   WorkerStat *worker_stat_;
+  int64_t last_write_time_;
+  size_t warmup_writelen_;
   // The number of bytes of HTTP/2 client connection header to read
   size_t left_connhd_len_;
   int fd_;
