@@ -1080,7 +1080,18 @@ ssize_t downstream_data_read_callback(nghttp2_session *session,
   auto downstream = static_cast<Downstream*>(source->ptr);
   auto upstream = static_cast<Http2Upstream*>(downstream->get_upstream());
   auto body = downstream->get_response_body_buf();
+  auto handler = upstream->get_client_handler();
   assert(body);
+
+  auto limit = handler->get_write_limit();
+
+  if(limit != -1) {
+    // 9 is HTTP/2 frame header length.  Make DATA frame also under
+    // certain limit, so that application layer can flush at DATA
+    // frame boundary, instead of buffering large frame.
+    assert(limit > 9);
+    length = std::min(length, static_cast<size_t>(limit - 9));
+  }
 
   int nread = evbuffer_remove(body, buf, length);
   if(nread == -1) {
