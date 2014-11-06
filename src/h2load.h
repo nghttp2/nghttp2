@@ -118,7 +118,6 @@ struct Worker {
   event_base *evbase;
   SSL_CTX *ssl_ctx;
   Config *config;
-  event *term_timer;
   size_t progress_interval;
   uint32_t id;
 
@@ -126,8 +125,6 @@ struct Worker {
          Config *config);
   ~Worker();
   void run();
-  void schedule_terminate();
-  void terminate_session();
 };
 
 struct Stream {
@@ -148,8 +145,7 @@ struct Client {
   size_t req_todo;
   // The number of requests this client has issued so far.
   size_t req_started;
-  // The number of requests this client has issued and got response so
-  // far.
+  // The number of requests this client has done so far.
   size_t req_done;
 
   Client(Worker *worker, size_t req_todo);

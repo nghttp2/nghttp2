@@ -168,10 +168,6 @@ void Client::fail()
 {
   process_abandoned_streams();
 
-  if(worker->stats.req_done == worker->stats.req_todo) {
-    worker->schedule_terminate();
-  }
-
   disconnect();
 }
 
@@ -215,6 +211,8 @@ void Client::process_abandoned_streams()
   worker->stats.req_failed += req_abandoned;
   worker->stats.req_error += req_abandoned;
   worker->stats.req_done += req_abandoned;
+
+  req_done = req_todo;
 }
 
 void Client::report_progress()
@@ -289,8 +287,8 @@ void Client::on_stream_close(int32_t stream_id, bool success)
   }
   report_progress();
   streams.erase(stream_id);
-  if(worker->stats.req_done == worker->stats.req_todo) {
-    worker->schedule_terminate();
+  if(req_done == req_todo) {
+    terminate_session();
     return;
   }
 
@@ -332,7 +330,7 @@ int Client::on_write()
 Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
                Config *config)
   : stats{0}, evbase(event_base_new()), ssl_ctx(ssl_ctx), config(config),
-    term_timer(nullptr), id(id)
+    id(id)
 {
   stats.req_todo = req_todo;
   progress_interval = std::max((size_t)1, req_todo / 10);
@@ -352,9 +350,6 @@ Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
 
 Worker::~Worker()
 {
-  if(term_timer) {
-    event_free(term_timer);
-  }
   event_base_free(evbase);
 }
 
@@ -367,39 +362,6 @@ void Worker::run()
     }
   }
   event_base_loop(evbase, 0);
-}
-
-namespace {
-void term_timeout_cb(evutil_socket_t fd, short what, void *arg)
-{
-  auto worker = static_cast<Worker*>(arg);
-  worker->terminate_session();
-}
-} // namespace
-
-void Worker::schedule_terminate()
-{
-  if(term_timer) {
-    return;
-  }
-
-  term_timer = evtimer_new(evbase, term_timeout_cb, this);
-  timeval timeout = { 0, 0 };
-  evtimer_add(term_timer, &timeout);
-}
-
-void Worker::terminate_session()
-{
-  for(auto& client : clients) {
-    if(client->session == nullptr) {
-      client->disconnect();
-      continue;
-    }
-    client->terminate_session();
-    if(client->on_write() != 0) {
-      client->disconnect();
-    }
-  }
 }
 
 namespace {
