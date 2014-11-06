@@ -86,12 +86,18 @@ void nghttp2_stream_shutdown(nghttp2_stream *stream, nghttp2_shut_flag flag)
 }
 
 static int stream_push_data(nghttp2_stream *stream, nghttp2_pq *pq,
-                            uint64_t cycle)
+                            uint64_t cycle, nghttp2_outbound_item *active_item)
 {
   int rv;
 
   assert(stream->data_item);
   assert(stream->data_item->queued == 0);
+
+  /* If stream->data_item is now sent, don't push it to the queue.
+     Otherwise, we may push same item twice. */
+  if(active_item == stream->data_item) {
+    return 0;
+  }
 
   if(stream->data_item->weight > stream->effective_weight) {
     stream->data_item->weight = stream->effective_weight;
@@ -297,7 +303,8 @@ static void stream_update_dep_set_top(nghttp2_stream *stream)
  *     Out of memory.
  */
 static int stream_update_dep_queue_top(nghttp2_stream *stream, nghttp2_pq *pq,
-                                       uint64_t cycle)
+                                       uint64_t cycle,
+                                       nghttp2_outbound_item *active_item)
 {
   int rv;
   nghttp2_stream *si;
@@ -310,7 +317,7 @@ static int stream_update_dep_queue_top(nghttp2_stream *stream, nghttp2_pq *pq,
     if(!stream->data_item->queued) {
       DEBUGF(fprintf(stderr, "stream: stream=%d enqueue\n",
                      stream->stream_id));
-      rv = stream_push_data(stream, pq, cycle);
+      rv = stream_push_data(stream, pq, cycle, active_item);
 
       if(rv != 0) {
         return rv;
@@ -321,7 +328,7 @@ static int stream_update_dep_queue_top(nghttp2_stream *stream, nghttp2_pq *pq,
   }
 
   for(si = stream->dep_next; si; si = si->sib_next) {
-    rv = stream_update_dep_queue_top(si, pq, cycle);
+    rv = stream_update_dep_queue_top(si, pq, cycle, active_item);
 
     if(rv != 0) {
       return rv;
@@ -379,7 +386,8 @@ static int stream_update_dep_sum_norest_weight(nghttp2_stream *stream)
 }
 
 static int stream_update_dep_on_attach_data(nghttp2_stream *stream,
-                                            nghttp2_pq *pq, uint64_t cycle)
+                                            nghttp2_pq *pq, uint64_t cycle,
+                                            nghttp2_outbound_item *active_item)
 {
   nghttp2_stream *root_stream;
 
@@ -396,11 +404,12 @@ static int stream_update_dep_on_attach_data(nghttp2_stream *stream,
   stream_update_dep_sum_norest_weight(root_stream);
   stream_update_dep_effective_weight(root_stream);
 
-  return stream_update_dep_queue_top(root_stream, pq, cycle);
+  return stream_update_dep_queue_top(root_stream, pq, cycle, active_item);
 }
 
 static int stream_update_dep_on_detach_data(nghttp2_stream *stream,
-                                            nghttp2_pq *pq, uint64_t cycle)
+                                            nghttp2_pq *pq, uint64_t cycle,
+                                            nghttp2_outbound_item *active_item)
 {
   nghttp2_stream *root_stream;
 
@@ -413,13 +422,14 @@ static int stream_update_dep_on_detach_data(nghttp2_stream *stream,
   stream_update_dep_sum_norest_weight(root_stream);
   stream_update_dep_effective_weight(root_stream);
 
-  return stream_update_dep_queue_top(root_stream, pq, cycle);
+  return stream_update_dep_queue_top(root_stream, pq, cycle, active_item);
 }
 
 int nghttp2_stream_attach_data(nghttp2_stream *stream,
                                nghttp2_outbound_item *data_item,
                                nghttp2_pq *pq,
-                               uint64_t cycle)
+                               uint64_t cycle,
+                               nghttp2_outbound_item *active_item)
 {
   assert((stream->flags & NGHTTP2_STREAM_FLAG_DEFERRED_ALL) == 0);
   assert(stream->data_item == NULL);
@@ -429,11 +439,12 @@ int nghttp2_stream_attach_data(nghttp2_stream *stream,
 
   stream->data_item = data_item;
 
-  return stream_update_dep_on_attach_data(stream, pq, cycle);
+  return stream_update_dep_on_attach_data(stream, pq, cycle, active_item);
 }
 
 int nghttp2_stream_detach_data(nghttp2_stream *stream, nghttp2_pq *pq,
-                               uint64_t cycle)
+                               uint64_t cycle,
+                               nghttp2_outbound_item *active_item)
 {
   DEBUGF(fprintf(stderr, "stream: stream=%d detach data=%p\n",
                  stream->stream_id, stream->data_item));
@@ -441,11 +452,12 @@ int nghttp2_stream_detach_data(nghttp2_stream *stream, nghttp2_pq *pq,
   stream->data_item = NULL;
   stream->flags &= ~NGHTTP2_STREAM_FLAG_DEFERRED_ALL;
 
-  return stream_update_dep_on_detach_data(stream, pq, cycle);
+  return stream_update_dep_on_detach_data(stream, pq, cycle, active_item);
 }
 
 int nghttp2_stream_defer_data(nghttp2_stream *stream, uint8_t flags,
-                              nghttp2_pq *pq, uint64_t cycle)
+                              nghttp2_pq *pq, uint64_t cycle,
+                              nghttp2_outbound_item *active_item)
 {
   assert(stream->data_item);
 
@@ -454,11 +466,12 @@ int nghttp2_stream_defer_data(nghttp2_stream *stream, uint8_t flags,
 
   stream->flags |= flags;
 
-  return stream_update_dep_on_detach_data(stream, pq, cycle);
+  return stream_update_dep_on_detach_data(stream, pq, cycle, active_item);
 }
 
 int nghttp2_stream_resume_deferred_data(nghttp2_stream *stream, uint8_t flags,
-                                        nghttp2_pq *pq, uint64_t cycle)
+                                        nghttp2_pq *pq, uint64_t cycle,
+                                        nghttp2_outbound_item *active_item)
 {
   assert(stream->data_item);
 
@@ -471,7 +484,7 @@ int nghttp2_stream_resume_deferred_data(nghttp2_stream *stream, uint8_t flags,
     return 0;
   }
 
-  return stream_update_dep_on_attach_data(stream, pq, cycle);
+  return stream_update_dep_on_attach_data(stream, pq, cycle, active_item);
 }
 
 int nghttp2_stream_check_deferred_data(nghttp2_stream *stream)
@@ -805,7 +818,8 @@ void nghttp2_stream_dep_remove(nghttp2_stream *stream)
 int nghttp2_stream_dep_insert_subtree(nghttp2_stream *dep_stream,
                                       nghttp2_stream *stream,
                                       nghttp2_pq *pq,
-                                      uint64_t cycle)
+                                      uint64_t cycle,
+                                      nghttp2_outbound_item *active_item)
 {
   nghttp2_stream *last_sib;
   nghttp2_stream *dep_next;
@@ -857,13 +871,14 @@ int nghttp2_stream_dep_insert_subtree(nghttp2_stream *dep_stream,
   stream_update_dep_sum_norest_weight(root_stream);
   stream_update_dep_effective_weight(root_stream);
 
-  return stream_update_dep_queue_top(root_stream, pq, cycle);
+  return stream_update_dep_queue_top(root_stream, pq, cycle, active_item);
 }
 
 int nghttp2_stream_dep_add_subtree(nghttp2_stream *dep_stream,
                                    nghttp2_stream *stream,
                                    nghttp2_pq *pq,
-                                   uint64_t cycle)
+                                   uint64_t cycle,
+                                   nghttp2_outbound_item *active_item)
 {
   nghttp2_stream *root_stream;
 
@@ -892,7 +907,7 @@ int nghttp2_stream_dep_add_subtree(nghttp2_stream *dep_stream,
   stream_update_dep_sum_norest_weight(root_stream);
   stream_update_dep_effective_weight(root_stream);
 
-  return stream_update_dep_queue_top(root_stream, pq, cycle);
+  return stream_update_dep_queue_top(root_stream, pq, cycle, active_item);
 }
 
 void nghttp2_stream_dep_remove_subtree(nghttp2_stream *stream)
@@ -947,7 +962,8 @@ void nghttp2_stream_dep_remove_subtree(nghttp2_stream *stream)
 }
 
 int nghttp2_stream_dep_make_root(nghttp2_stream *stream, nghttp2_pq *pq,
-                                 uint64_t cycle)
+                                 uint64_t cycle,
+                                 nghttp2_outbound_item *active_item)
 {
   DEBUGF(fprintf(stderr, "stream: dep_make_root stream(%p)=%d\n",
                  stream, stream->stream_id));
@@ -963,11 +979,12 @@ int nghttp2_stream_dep_make_root(nghttp2_stream *stream, nghttp2_pq *pq,
   stream_update_dep_sum_norest_weight(stream);
   stream_update_dep_effective_weight(stream);
 
-  return stream_update_dep_queue_top(stream, pq, cycle);
+  return stream_update_dep_queue_top(stream, pq, cycle, active_item);
 }
 
 int nghttp2_stream_dep_all_your_stream_are_belong_to_us
-(nghttp2_stream *stream, nghttp2_pq *pq, uint64_t cycle)
+(nghttp2_stream *stream, nghttp2_pq *pq, uint64_t cycle,
+ nghttp2_outbound_item *active_item)
 {
   nghttp2_stream *first, *si;
 
@@ -1022,7 +1039,7 @@ int nghttp2_stream_dep_all_your_stream_are_belong_to_us
 
   nghttp2_stream_roots_remove_all(stream->roots);
 
-  return nghttp2_stream_dep_make_root(stream, pq, cycle);
+  return nghttp2_stream_dep_make_root(stream, pq, cycle, active_item);
 }
 
 int nghttp2_stream_in_dep_tree(nghttp2_stream *stream)
