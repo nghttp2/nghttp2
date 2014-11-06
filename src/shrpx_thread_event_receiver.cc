@@ -84,9 +84,7 @@ void ThreadEventReceiver::on_read(bufferevent *bev)
     }
 
     if(wev.type == GRACEFUL_SHUTDOWN) {
-      if(LOG_ENABLED(INFO)) {
-        LOG(INFO) << "Graceful shutdown commencing";
-      }
+      LOG(NOTICE) << "Graceful shutdown commencing";
 
       worker_config->graceful_shutdown = true;
 

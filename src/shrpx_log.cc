@@ -45,20 +45,21 @@ namespace shrpx {
 
 namespace {
 const char *SEVERITY_STR[] = {
-  "INFO", "WARN", "ERROR", "FATAL"
+  "INFO", "NOTICE", "WARN", "ERROR", "FATAL"
 };
 } // namespace
 
 namespace {
 const char *SEVERITY_COLOR[] = {
   "\033[1;32m", // INFO
+  "\033[1;36m", // NOTICE
   "\033[1;33m", // WARN
   "\033[1;31m", // ERROR
   "\033[1;35m", // FATAL
 };
 } // namespace
 
-int Log::severity_thres_ = WARNING;
+int Log::severity_thres_ = NOTICE;
 
 void Log::set_severity_level(int severity)
 {
@@ -81,6 +82,8 @@ int severity_to_syslog_level(int severity)
   switch(severity) {
   case(INFO):
     return LOG_INFO;
+  case(NOTICE):
+    return LOG_NOTICE;
   case(WARNING):
     return LOG_WARNING;
   case(ERROR):
@@ -110,9 +113,14 @@ Log::~Log()
   }
 
   if(get_config()->errorlog_syslog) {
-    syslog(severity_to_syslog_level(severity_), "[%s] %s (%s:%d)",
-           SEVERITY_STR[severity_], stream_.str().c_str(),
-           filename_, linenum_);
+    if (severity_ == NOTICE) {
+      syslog(severity_to_syslog_level(severity_), "[%s] %s",
+             SEVERITY_STR[severity_], stream_.str().c_str());
+    } else {
+      syslog(severity_to_syslog_level(severity_), "[%s] %s (%s:%d)",
+             SEVERITY_STR[severity_], stream_.str().c_str(),
+             filename_, linenum_);
+    }
 
     return;
   }
@@ -122,17 +130,28 @@ Log::~Log()
 
   auto cached_time = get_config()->cached_time;
 
-  rv = snprintf(buf, sizeof(buf),
-                "%s PID%d [%s%s%s] %s%s:%d%s %s\n",
-                cached_time->c_str(),
-                getpid(),
-                tty ? SEVERITY_COLOR[severity_] : "",
-                SEVERITY_STR[severity_],
-                tty ? "\033[0m" : "",
-                tty ? "\033[1;30m" : "",
-                filename_, linenum_,
-                tty ? "\033[0m" : "",
-                stream_.str().c_str());
+  if (severity_ == NOTICE) {
+    rv = snprintf(buf, sizeof(buf),
+                  "%s PID%d [%s%s%s] %s\n",
+                  cached_time->c_str(),
+                  getpid(),
+                  tty ? SEVERITY_COLOR[severity_] : "",
+                  SEVERITY_STR[severity_],
+                  tty ? "\033[0m" : "",
+                  stream_.str().c_str());
+  } else {
+    rv = snprintf(buf, sizeof(buf),
+                  "%s PID%d [%s%s%s] %s%s:%d%s %s\n",
+                  cached_time->c_str(),
+                  getpid(),
+                  tty ? SEVERITY_COLOR[severity_] : "",
+                  SEVERITY_STR[severity_],
+                  tty ? "\033[0m" : "",
+                  tty ? "\033[1;30m" : "",
+                  filename_, linenum_,
+                  tty ? "\033[0m" : "",
+                  stream_.str().c_str());
+  }
 
   if(rv < 0) {
     return;
