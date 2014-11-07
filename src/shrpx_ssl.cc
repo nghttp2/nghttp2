@@ -943,8 +943,10 @@ bool check_http2_requirement(SSL *ssl)
   case TLS1_2_VERSION:
     break;
   default:
-    LOG(INFO) << "TLSv1.2 was not negotiated. "
-              << "HTTP/2 must not be negotiated.";
+    if(LOG_ENABLED(INFO)) {
+      LOG(INFO) << "TLSv1.2 was not negotiated. "
+                << "HTTP/2 must not be negotiated.";
+    }
     return false;
   }
 
