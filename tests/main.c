@@ -243,6 +243,8 @@ int main(int argc, char* argv[])
                    test_nghttp2_session_stream_attach_data_subtree) ||
       !CU_add_test(pSuite, "session_stream_keep_closed_stream",
                    test_nghttp2_session_keep_closed_stream) ||
+      !CU_add_test(pSuite, "session_detach_closed_stream",
+                   test_nghttp2_session_detach_closed_stream) ||
       !CU_add_test(pSuite, "session_large_dep_tree",
                    test_nghttp2_session_large_dep_tree) ||
       !CU_add_test(pSuite, "session_graceful_shutdown",
@@ -253,6 +255,8 @@ int main(int argc, char* argv[])
                    test_nghttp2_session_recv_client_preface) ||
       !CU_add_test(pSuite, "session_delete_data_item",
                    test_nghttp2_session_delete_data_item) ||
+      !CU_add_test(pSuite, "session_open_idle_stream",
+                   test_nghttp2_session_open_idle_stream) ||
       !CU_add_test(pSuite, "frame_pack_headers",
                    test_nghttp2_frame_pack_headers) ||
       !CU_add_test(pSuite, "frame_pack_headers_frame_too_large",

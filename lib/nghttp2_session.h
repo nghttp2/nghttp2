@@ -426,6 +426,12 @@ void nghttp2_session_keep_closed_stream(nghttp2_session *session,
                                         nghttp2_stream *stream);
 
 /*
+ * Detaches |stream| from closed streams linked list.
+ */
+void nghttp2_session_detach_closed_stream(nghttp2_session *session,
+                                          nghttp2_stream *stream);
+
+/*
  * Deletes closed stream to ensure that number of incoming streams
  * including active and closed is in the maximum number of allowed
  * stream.  If |offset| is nonzero, it is decreased from the maximum
@@ -644,7 +650,8 @@ nghttp2_stream* nghttp2_session_get_stream(nghttp2_session *session,
 
 /*
  * This function behaves like nghttp2_session_get_stream(), but it
- * returns stream object even if it is marked as closed.
+ * returns stream object even if it is marked as closed or in
+ * NGHTTP2_STREAM_IDLE state.
  */
 nghttp2_stream* nghttp2_session_get_stream_raw(nghttp2_session *session,
                                                int32_t stream_id);

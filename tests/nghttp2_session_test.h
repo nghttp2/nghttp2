@@ -111,10 +111,12 @@ void test_nghttp2_session_stream_dep_all_your_stream_are_belong_to_us(void);
 void test_nghttp2_session_stream_attach_data(void);
 void test_nghttp2_session_stream_attach_data_subtree(void);
 void test_nghttp2_session_keep_closed_stream(void);
+void test_nghttp2_session_detach_closed_stream(void);
 void test_nghttp2_session_large_dep_tree(void);
 void test_nghttp2_session_graceful_shutdown(void);
 void test_nghttp2_session_on_header_temporal_failure(void);
 void test_nghttp2_session_recv_client_preface(void);
 void test_nghttp2_session_delete_data_item(void);
+void test_nghttp2_session_open_idle_stream(void);
 
 #endif /* NGHTTP2_SESSION_TEST_H */

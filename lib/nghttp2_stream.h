@@ -65,7 +65,10 @@ typedef enum {
      memory. */
   NGHTTP2_STREAM_CLOSING,
   /* PUSH_PROMISE is received or sent */
-  NGHTTP2_STREAM_RESERVED
+  NGHTTP2_STREAM_RESERVED,
+  /* Stream is created in this state if it is used as anchor in
+     dependency tree. */
+  NGHTTP2_STREAM_IDLE
 } nghttp2_stream_state;
 
 typedef enum {
@@ -126,11 +129,11 @@ struct nghttp2_stream {
      doubly-linked list and first element is pointed by
      roots->head. */
   nghttp2_stream *root_prev, *root_next;
-  /* When stream is kept after closure, it may be kept in single
+  /* When stream is kept after closure, it may be kept in doubly
      linked list pointed by nghttp2_session closed_stream_head.
      closed_next points to the next stream object if it is the element
      of the list. */
-  nghttp2_stream *closed_next;
+  nghttp2_stream *closed_prev, *closed_next;
   /* pointer to roots, which tracks dependency tree roots */
   nghttp2_stream_roots *roots;
   /* The arbitrary data provided by user for this stream. */

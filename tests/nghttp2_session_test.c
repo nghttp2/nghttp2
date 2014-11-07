@@ -2030,16 +2030,7 @@ void test_nghttp2_session_on_priority_received(void)
 
   nghttp2_frame_priority_init(&frame.priority, 1, &pri_spec);
 
-  /* non-push and initiated by remote peer */
-  CU_ASSERT(0 == nghttp2_session_on_priority_received(session, &frame));
-
-  CU_ASSERT(2 == stream->weight);
-
-  /* push and initiated by remote peer: no update */
-  stream->flags = NGHTTP2_STREAM_FLAG_PUSH;
-
-  frame.priority.pri_spec.weight = 3;
-
+  /* depend on stream 0 */
   CU_ASSERT(0 == nghttp2_session_on_priority_received(session, &frame));
 
   CU_ASSERT(2 == stream->weight);
@@ -2054,35 +2045,23 @@ void test_nghttp2_session_on_priority_received(void)
                                            NGHTTP2_STREAM_OPENING, NULL);
 
   frame.hd.stream_id = 2;
-  /* non-push and initiated by local peer: no update */
-  CU_ASSERT(0 == nghttp2_session_on_priority_received(session, &frame));
 
-  CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == stream->weight);
-
-  /* push and initiated by local peer */
-  stream->flags = NGHTTP2_STREAM_FLAG_PUSH;
-
+  /* using dependency stream */
   nghttp2_priority_spec_init(&frame.priority.pri_spec, 3, 1, 0);
 
   CU_ASSERT(0 == nghttp2_session_on_priority_received(session, &frame));
   CU_ASSERT(dep_stream == stream->dep_prev);
 
-  nghttp2_frame_priority_free(&frame.priority);
-  nghttp2_session_del(session);
+  /* PRIORITY against idle stream */
 
-  /* Check that receiving PRIORITY in reserved(remote) is error */
-  nghttp2_session_server_new(&session, &callbacks, &user_data);
-  nghttp2_session_open_stream(session, 3, NGHTTP2_STREAM_FLAG_NONE,
-                              &pri_spec_default,
-                              NGHTTP2_STREAM_RESERVED, NULL);
+  frame.hd.stream_id = 100;
 
-  nghttp2_frame_priority_init(&frame.priority, 3, &pri_spec_default);
-
-  user_data.frame_recv_cb_called = 0;
-  user_data.invalid_frame_recv_cb_called = 0;
   CU_ASSERT(0 == nghttp2_session_on_priority_received(session, &frame));
-  CU_ASSERT(0 == user_data.frame_recv_cb_called);
-  CU_ASSERT(1 == user_data.invalid_frame_recv_cb_called);
+
+  stream = nghttp2_session_get_stream_raw(session, frame.hd.stream_id);
+
+  CU_ASSERT(NGHTTP2_STREAM_IDLE == stream->state);
+  CU_ASSERT(dep_stream == stream->dep_prev);
 
   nghttp2_frame_priority_free(&frame.priority);
   nghttp2_session_del(session);
@@ -3743,7 +3722,6 @@ void test_nghttp2_submit_priority(void)
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks.send_callback = null_send_callback;
   callbacks.on_frame_send_callback = on_frame_send_callback;
-  callbacks.on_frame_not_send_callback = on_frame_not_send_callback;
 
   nghttp2_session_client_new(&session, &callbacks, &ud);
   stream = nghttp2_session_open_stream(session, 1, NGHTTP2_STREAM_FLAG_NONE,
@@ -3752,56 +3730,19 @@ void test_nghttp2_submit_priority(void)
 
   nghttp2_priority_spec_init(&pri_spec, 0, 3, 0);
 
-  /* non-push stream and initiated by local peer */
+  /* depends on stream 0 */
   CU_ASSERT(0 == nghttp2_submit_priority(session, NGHTTP2_FLAG_NONE, 1,
                                          &pri_spec));
   CU_ASSERT(0 == nghttp2_session_send(session));
   CU_ASSERT(3 == stream->weight);
 
-  /* push stream and initiated by local peer: no update */
-  stream->flags = NGHTTP2_STREAM_FLAG_PUSH;
-
-  nghttp2_priority_spec_init(&pri_spec, 0, 2, 0);
-
-  CU_ASSERT(0 == nghttp2_submit_priority(session, NGHTTP2_FLAG_NONE, 1,
-                                         &pri_spec));
-  CU_ASSERT(0 == nghttp2_session_send(session));
-
-  CU_ASSERT(3 == stream->weight);
-
-  /* non-push stream and initiated by remote peer: no update */
-  stream = nghttp2_session_open_stream(session, 2, NGHTTP2_STREAM_FLAG_NONE,
-                                       &pri_spec_default,
-                                       NGHTTP2_STREAM_OPENING, NULL);
-  CU_ASSERT(0 == nghttp2_submit_priority(session, NGHTTP2_FLAG_NONE, 2,
-                                         &pri_spec));
-  CU_ASSERT(0 == nghttp2_session_send(session));
-  CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == stream->weight);
-
-  /* push stream and initiated by remote peer */
-  stream->flags = NGHTTP2_STREAM_FLAG_PUSH;
-  CU_ASSERT(0 == nghttp2_submit_priority(session, NGHTTP2_FLAG_NONE, 2,
-                                         &pri_spec));
-  CU_ASSERT(0 == nghttp2_session_send(session));
-  CU_ASSERT(2 == stream->weight);
-
-  nghttp2_session_del(session);
-
-  /* Check that transmission of PRIORITY in reserved(local) is
-     error */
-  nghttp2_session_server_new(&session, &callbacks, &ud);
-  stream = nghttp2_session_open_stream(session, 2, NGHTTP2_STREAM_FLAG_NONE,
-                                       &pri_spec_default,
-                                       NGHTTP2_STREAM_RESERVED, NULL);
-
-  CU_ASSERT(0 == nghttp2_submit_priority(session, NGHTTP2_FLAG_NONE, 2,
+  /* submit against idle stream */
+  CU_ASSERT(0 == nghttp2_submit_priority(session, NGHTTP2_FLAG_NONE, 3,
                                          &pri_spec));
 
   ud.frame_send_cb_called = 0;
-  ud.frame_not_send_cb_called = 0;
   CU_ASSERT(0 == nghttp2_session_send(session));
-  CU_ASSERT(0 == ud.frame_send_cb_called);
-  CU_ASSERT(1 == ud.frame_not_send_cb_called);
+  CU_ASSERT(1 == ud.frame_send_cb_called);
 
   nghttp2_session_del(session);
 }
@@ -6359,7 +6300,6 @@ void test_nghttp2_session_keep_closed_stream(void)
 {
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;
-  /* nghttp2_stream *stream; */
   const size_t max_concurrent_streams = 5;
   nghttp2_settings_entry iv = {
     NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS,
@@ -6391,18 +6331,108 @@ void test_nghttp2_session_keep_closed_stream(void)
   CU_ASSERT(2 == session->num_closed_streams);
   CU_ASSERT(5 == session->closed_stream_tail->stream_id);
   CU_ASSERT(1 == session->closed_stream_head->stream_id);
+  CU_ASSERT(session->closed_stream_head ==
+            session->closed_stream_tail->closed_prev);
+  CU_ASSERT(NULL == session->closed_stream_tail->closed_next);
+  CU_ASSERT(session->closed_stream_tail ==
+            session->closed_stream_head->closed_next);
+  CU_ASSERT(NULL == session->closed_stream_head->closed_prev);
 
   open_stream(session, 11);
 
   CU_ASSERT(1 == session->num_closed_streams);
   CU_ASSERT(5 == session->closed_stream_tail->stream_id);
   CU_ASSERT(session->closed_stream_tail == session->closed_stream_head);
+  CU_ASSERT(NULL == session->closed_stream_head->closed_prev);
+  CU_ASSERT(NULL == session->closed_stream_head->closed_next);
 
   open_stream(session, 13);
 
   CU_ASSERT(0 == session->num_closed_streams);
   CU_ASSERT(NULL == session->closed_stream_tail);
   CU_ASSERT(NULL == session->closed_stream_head);
+
+  nghttp2_session_del(session);
+}
+
+void test_nghttp2_session_detach_closed_stream(void)
+{
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  int i;
+  nghttp2_stream *stream;
+
+  memset(&callbacks, 0, sizeof(callbacks));
+  callbacks.send_callback = null_send_callback;
+
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  for(i = 0; i < 3; ++i) {
+    open_stream(session, i);
+    nghttp2_session_close_stream(session, i, NGHTTP2_NO_ERROR);
+  }
+
+  CU_ASSERT(3 == session->num_closed_streams);
+
+  stream = nghttp2_session_get_stream_raw(session, 1);
+
+  CU_ASSERT(session->closed_stream_head == stream->closed_prev);
+  CU_ASSERT(session->closed_stream_tail == stream->closed_next);
+  CU_ASSERT(stream == session->closed_stream_head->closed_next);
+  CU_ASSERT(stream == session->closed_stream_tail->closed_prev);
+
+  nghttp2_session_detach_closed_stream(session, stream);
+
+  CU_ASSERT(2 == session->num_closed_streams);
+
+  CU_ASSERT(NULL == stream->closed_prev);
+  CU_ASSERT(NULL == stream->closed_next);
+
+  CU_ASSERT(session->closed_stream_head ==
+            session->closed_stream_tail->closed_prev);
+  CU_ASSERT(session->closed_stream_tail ==
+            session->closed_stream_head->closed_next);
+
+  /* Close head stream */
+  stream = session->closed_stream_head;
+
+  nghttp2_session_detach_closed_stream(session, stream);
+
+  CU_ASSERT(1 == session->num_closed_streams);
+
+  CU_ASSERT(session->closed_stream_head == session->closed_stream_tail);
+  CU_ASSERT(NULL == session->closed_stream_head->closed_prev);
+  CU_ASSERT(NULL == session->closed_stream_head->closed_next);
+
+  /* Close last stream */
+
+  stream = session->closed_stream_head;
+
+  nghttp2_session_detach_closed_stream(session, stream);
+
+  CU_ASSERT(0 == session->num_closed_streams);
+
+  CU_ASSERT(NULL == session->closed_stream_head);
+  CU_ASSERT(NULL == session->closed_stream_tail);
+
+  for(i = 3; i < 5; ++i) {
+    open_stream(session, i);
+    nghttp2_session_close_stream(session, i, NGHTTP2_NO_ERROR);
+  }
+
+  CU_ASSERT(2 == session->num_closed_streams);
+
+  /* Close tail stream */
+
+  stream = session->closed_stream_tail;
+
+  nghttp2_session_detach_closed_stream(session, stream);
+
+  CU_ASSERT(1 == session->num_closed_streams);
+
+  CU_ASSERT(session->closed_stream_head == session->closed_stream_tail);
+  CU_ASSERT(NULL == session->closed_stream_head->closed_prev);
+  CU_ASSERT(NULL == session->closed_stream_head->closed_next);
 
   nghttp2_session_del(session);
 }
@@ -6632,6 +6662,50 @@ void test_nghttp2_session_delete_data_item(void)
   CU_ASSERT(0 == nghttp2_submit_data(session, NGHTTP2_FLAG_NONE, 1, &prd));
   /* This data item will be marked as REST */
   CU_ASSERT(0 == nghttp2_submit_data(session, NGHTTP2_FLAG_NONE, 3, &prd));
+
+  nghttp2_session_del(session);
+}
+
+void test_nghttp2_session_open_idle_stream(void)
+{
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  nghttp2_stream *stream;
+  nghttp2_stream *opened_stream;
+  nghttp2_priority_spec pri_spec;
+  nghttp2_frame frame;
+
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  nghttp2_priority_spec_init(&pri_spec, 0, 3, 0);
+
+  nghttp2_frame_priority_init(&frame.priority, 1, &pri_spec);
+
+  CU_ASSERT(0 == nghttp2_session_on_priority_received(session, &frame));
+
+  stream = nghttp2_session_get_stream_raw(session, 1);
+
+  CU_ASSERT(NGHTTP2_STREAM_IDLE == stream->state);
+  CU_ASSERT(NULL == stream->closed_prev);
+  CU_ASSERT(NULL == stream->closed_next);
+  CU_ASSERT(1 == session->num_closed_streams);
+  CU_ASSERT(session->closed_stream_head == stream);
+  CU_ASSERT(session->closed_stream_tail == stream);
+
+  opened_stream = nghttp2_session_open_stream(session, 1,
+                                              NGHTTP2_STREAM_FLAG_NONE,
+                                              &pri_spec_default,
+                                              NGHTTP2_STREAM_OPENING, NULL);
+
+  CU_ASSERT(stream == opened_stream);
+  CU_ASSERT(NGHTTP2_STREAM_OPENING == stream->state);
+  CU_ASSERT(0 == session->num_closed_streams);
+  CU_ASSERT(NULL == session->closed_stream_head);
+  CU_ASSERT(NULL == session->closed_stream_tail);
+
+  nghttp2_frame_priority_free(&frame.priority);
 
   nghttp2_session_del(session);
 }

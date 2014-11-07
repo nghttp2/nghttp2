@@ -57,6 +57,7 @@ void nghttp2_stream_init(nghttp2_stream *stream, int32_t stream_id,
   stream->sib_prev = NULL;
   stream->sib_next = NULL;
 
+  stream->closed_prev = NULL;
   stream->closed_next = NULL;
 
   stream->dpri = NGHTTP2_STREAM_DPRI_NO_DATA;
