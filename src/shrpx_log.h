@@ -71,7 +71,7 @@ class Downstream;
   (Log(SEVERITY, __FILE__, __LINE__) << "[DHTTP2:" << HTTP2 << "] ")
 
 enum SeverityLevel {
-  INFO, WARNING, ERROR, FATAL
+  INFO, NOTICE, WARNING, ERROR, FATAL
 };
 
 class Log {

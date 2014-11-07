@@ -190,9 +190,7 @@ evconnlistener* create_evlistener(ListenHandler *handler, int family)
       // Otherwise, close fd, and create server socket as usual.
 
       if(port == get_config()->port) {
-        if(LOG_ENABLED(INFO)) {
-          LOG(INFO) << "Listening on port " << get_config()->port;
-        }
+        LOG(NOTICE) << "Listening on port " << get_config()->port;
 
         return new_evlistener(handler, fd);
       }
@@ -279,9 +277,7 @@ evconnlistener* create_evlistener(ListenHandler *handler, int family)
     return nullptr;
   }
 
-  if(LOG_ENABLED(INFO)) {
-    LOG(INFO) << "Listening on " << host << ", port " << get_config()->port;
-  }
+  LOG(NOTICE) << "Listening on " << host << ", port " << get_config()->port;
 
   return new_evlistener(handler, fd);
 }
@@ -356,9 +352,7 @@ void exec_binary_signal_cb(evutil_socket_t sig, short events, void *arg)
 {
   auto listener_handler = static_cast<ListenHandler*>(arg);
 
-  if(LOG_ENABLED(INFO)) {
-    LOG(INFO) << "Executing new binary";
-  }
+  LOG(NOTICE) << "Executing new binary";
 
   auto pid = fork();
 
@@ -449,9 +443,7 @@ void graceful_shutdown_signal_cb(evutil_socket_t sig, short events, void *arg)
 {
   auto listener_handler = static_cast<ListenHandler*>(arg);
 
-  if(LOG_ENABLED(INFO)) {
-    LOG(INFO) << "Graceful shutdown signal received";
-  }
+  LOG(NOTICE) << "Graceful shutdown signal received";
 
   worker_config->graceful_shutdown = true;
 
@@ -1132,8 +1124,8 @@ Mode:
 Logging:
   -L, --log-level=<LEVEL>
                      Set the  severity level  of log  output.  <LEVEL>
-                     must be one of INFO, WARNING, ERROR and FATAL.
-                     Default: WARNING
+                     must be one of INFO, NOTICE, WARNING, ERROR and FATAL.
+                     Default: NOTICE
   --accesslog-file=<PATH>
                      Set path  to write  access log.  To  reopen file,
                      send USR1 signal to nghttpx.
@@ -1216,7 +1208,7 @@ Misc:
 
 int main(int argc, char **argv)
 {
-  Log::set_severity_level(WARNING);
+  Log::set_severity_level(NOTICE);
   create_config();
   fill_default_config();
 
@@ -1887,9 +1879,7 @@ int main(int argc, char **argv)
 
   event_loop();
 
-  if(LOG_ENABLED(INFO)) {
-    LOG(INFO) << "Shutdown momentarily";
-  }
+  LOG(NOTICE) << "Shutdown momentarily";
 
   return 0;
 }
