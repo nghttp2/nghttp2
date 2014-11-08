@@ -567,11 +567,13 @@ void nghttp2_session_del(nghttp2_session *session)
 
 int nghttp2_session_reprioritize_stream
 (nghttp2_session *session, nghttp2_stream *stream,
- const nghttp2_priority_spec *pri_spec)
+ const nghttp2_priority_spec *pri_spec_in)
 {
   int rv;
   nghttp2_stream *dep_stream;
   nghttp2_stream *root_stream;
+  nghttp2_priority_spec pri_spec_default;
+  const nghttp2_priority_spec *pri_spec = pri_spec_in;
 
   if(!nghttp2_stream_in_dep_tree(stream)) {
     return 0;
@@ -580,6 +582,15 @@ int nghttp2_session_reprioritize_stream
   if(pri_spec->stream_id == stream->stream_id) {
     return nghttp2_session_terminate_session_with_reason
       (session, NGHTTP2_PROTOCOL_ERROR, "depend on itself");
+  }
+
+  if(pri_spec->stream_id != 0) {
+    dep_stream = nghttp2_session_get_stream_raw(session, pri_spec->stream_id);
+
+    if(!dep_stream || !nghttp2_stream_in_dep_tree(dep_stream)) {
+      nghttp2_priority_spec_default_init(&pri_spec_default);
+      pri_spec = &pri_spec_default;
+    }
   }
 
   if(pri_spec->stream_id == 0) {
@@ -600,12 +611,6 @@ int nghttp2_session_reprioritize_stream
     }
 
     return rv;
-  }
-
-  dep_stream = nghttp2_session_get_stream_raw(session, pri_spec->stream_id);
-
-  if(!dep_stream || !nghttp2_stream_in_dep_tree(dep_stream)) {
-    return 0;
   }
 
   if(nghttp2_stream_dep_subtree_find(stream, dep_stream)) {

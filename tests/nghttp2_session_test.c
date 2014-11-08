@@ -3074,13 +3074,13 @@ void test_nghttp2_session_reprioritize_stream(void)
   CU_ASSERT(10 == stream->weight);
   CU_ASSERT(NULL == stream->dep_prev);
 
-  /* dep_stream does not exist */
+  /* If dep_stream does not exist, default priority is assigned. */
 
   nghttp2_priority_spec_init(&pri_spec, 3, 99, 0);
 
   nghttp2_session_reprioritize_stream(session, stream, &pri_spec);
 
-  CU_ASSERT(10 == stream->weight);
+  CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == stream->weight);
   CU_ASSERT(NULL == stream->dep_prev);
 
   dep_stream = open_stream(session, 3);
