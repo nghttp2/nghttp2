@@ -48,8 +48,7 @@
 #define _Exit(status) _exit(status)
 #endif // !HAVE__EXIT
 
-#define DIE()                                   \
-  assert(0);
+#define DIE() exit(EXIT_FAILURE)
 
 #define SHRPX_READ_WATERMARK (16 * 1024)
 
