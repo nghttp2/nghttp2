@@ -120,6 +120,7 @@ struct Worker {
   Config *config;
   size_t progress_interval;
   uint32_t id;
+  bool tls_info_report_done;
 
   Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t nreq_todo, size_t nclients,
          Config *config);
@@ -156,6 +157,7 @@ struct Client {
   void submit_request();
   void process_abandoned_streams();
   void report_progress();
+  void report_tls_info();
   void terminate_session();
   int on_connect();
   int on_read();

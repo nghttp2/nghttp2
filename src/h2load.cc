@@ -226,6 +226,78 @@ void Client::report_progress()
   }
 }
 
+namespace {
+const char* get_tls_protocol(SSL *ssl)
+{
+  auto session = SSL_get_session(ssl);
+
+  switch(session->ssl_version) {
+  case SSL2_VERSION:
+    return "SSLv2";
+  case SSL3_VERSION:
+    return "SSLv3";
+  case TLS1_2_VERSION:
+    return "TLSv1.2";
+  case TLS1_1_VERSION:
+    return "TLSv1.1";
+  case TLS1_VERSION:
+    return "TLSv1";
+  default:
+    return "unknown";
+  }
+}
+} // namespace
+
+namespace {
+void print_server_tmp_key(SSL *ssl)
+{
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+  EVP_PKEY *key;
+
+  if(!SSL_get_server_tmp_key(ssl, &key)) {
+    return;
+  }
+
+  auto key_del = util::defer(key, EVP_PKEY_free);
+
+  std::cout << "Server Temp Key: ";
+
+  switch(EVP_PKEY_id(key)) {
+  case EVP_PKEY_RSA:
+    std::cout << "RSA " << EVP_PKEY_bits(key) << " bits" << std::endl;
+    break;
+  case EVP_PKEY_DH:
+    std::cout << "DH " << EVP_PKEY_bits(key) << " bits" << std::endl;
+    break;
+  case EVP_PKEY_EC: {
+    auto ec = EVP_PKEY_get1_EC_KEY(key);
+    auto ec_del = util::defer(ec, EC_KEY_free);
+    auto nid = EC_GROUP_get_curve_name(EC_KEY_get0_group(ec));
+    auto cname = EC_curve_nid2nist(nid);
+    if(!cname) {
+      cname = OBJ_nid2sn(nid);
+    }
+
+    std::cout << "ECDH " << cname << " " << EVP_PKEY_bits(key)
+              << " bits" << std::endl;
+    break;
+  }
+  }
+#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
+}
+} // namespace
+
+void Client::report_tls_info()
+{
+  if(worker->id == 0 && !worker->tls_info_report_done) {
+    worker->tls_info_report_done = true;
+    auto cipher = SSL_get_current_cipher(ssl);
+    std::cout << "Protocol: " << get_tls_protocol(ssl) << "\n"
+              << "Cipher: " << SSL_CIPHER_get_name(cipher) << std::endl;
+    print_server_tmp_key(ssl);
+  }
+}
+
 void Client::terminate_session()
 {
   session->terminate();
@@ -330,7 +402,7 @@ int Client::on_write()
 Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
                Config *config)
   : stats{0}, evbase(event_base_new()), ssl_ctx(ssl_ctx), config(config),
-    id(id)
+    id(id), tls_info_report_done(false)
 {
   stats.req_todo = req_todo;
   progress_interval = std::max((size_t)1, req_todo / 10);
@@ -384,6 +456,8 @@ void eventcb(bufferevent *bev, short events, void *ptr)
   auto client = static_cast<Client*>(ptr);
   if(events & BEV_EVENT_CONNECTED) {
     if(client->ssl) {
+      client->report_tls_info();
+
       const unsigned char *next_proto = nullptr;
       unsigned int next_proto_len;
       SSL_get0_next_proto_negotiated(client->ssl,
