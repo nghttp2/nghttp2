@@ -613,6 +613,8 @@ int nghttp2_session_reprioritize_stream
     return rv;
   }
 
+  assert(dep_stream);
+
   if(nghttp2_stream_dep_subtree_find(stream, dep_stream)) {
     DEBUGF(fprintf(stderr,
                    "stream: cycle detected, dep_stream(%p)=%d "
@@ -878,6 +880,8 @@ nghttp2_stream* nghttp2_session_open_stream(nghttp2_session *session,
   /* TODO Client does not have to track dependencies of streams except
      for those which have upload data.  Currently, we just track
      everything. */
+
+  assert(dep_stream);
 
   root_stream = nghttp2_stream_get_dep_root(dep_stream);
 
