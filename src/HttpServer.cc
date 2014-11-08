@@ -941,6 +941,8 @@ void prepare_response(Stream *stream, Http2Handler *hd, bool allow_push = true)
   }
 
   if(buf.st_mode & S_IFDIR) {
+    close(file);
+
     if(query_pos == std::string::npos) {
       reqpath += "/";
     } else {
