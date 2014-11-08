@@ -384,9 +384,9 @@ void on_ctrl_not_send_callback(spdylay_session *session,
                                int error_code, void *user_data)
 {
   auto upstream = static_cast<SpdyUpstream*>(user_data);
-  ULOG(WARNING, upstream) << "Failed to send control frame type=" << type
-                          << ", error_code=" << error_code << ":"
-                          << spdylay_strerror(error_code);
+  ULOG(WARN, upstream) << "Failed to send control frame type=" << type
+                       << ", error_code=" << error_code << ":"
+                       << spdylay_strerror(error_code);
   if(type == SPDYLAY_SYN_REPLY) {
     // To avoid stream hanging around, issue RST_STREAM.
     auto stream_id = frame->syn_reply.stream_id;
@@ -658,8 +658,8 @@ void spdy_downstream_eventcb(bufferevent *bev, short events, void *ptr)
     int val = 1;
     if(setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,
                   reinterpret_cast<char *>(&val), sizeof(val)) == -1) {
-      DCLOG(WARNING, dconn) << "Setting option TCP_NODELAY failed: errno="
-                            << errno;
+      DCLOG(WARN, dconn) << "Setting option TCP_NODELAY failed: errno="
+                         << errno;
     }
     return;
   }
@@ -1134,8 +1134,8 @@ int SpdyUpstream::consume(int32_t stream_id, size_t len)
   rv = spdylay_session_consume(session_, stream_id, len);
 
   if(rv != 0) {
-    ULOG(WARNING, this) << "spdylay_session_consume() returned error: "
-                        << spdylay_strerror(rv);
+    ULOG(WARN, this) << "spdylay_session_consume() returned error: "
+                     << spdylay_strerror(rv);
     return -1;
   }
 

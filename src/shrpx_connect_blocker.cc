@@ -78,7 +78,7 @@ void ConnectBlocker::on_failure()
 
   sleep_ = std::min(128, sleep_ * 2);
 
-  LOG(WARNING) << "connect failure, start sleeping " << sleep_;
+  LOG(WARN) << "connect failure, start sleeping " << sleep_;
 
   timeval t = {sleep_, 0};
 

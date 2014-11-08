@@ -97,7 +97,7 @@ int Http2Session::disconnect()
       if(fd_ == -1) {
         fd_ = fd;
       } else if(fd != fd_) {
-        SSLOG(WARNING, this) << "fd in bev_ != fd_";
+        SSLOG(WARN, this) << "fd in bev_ != fd_";
         shutdown(fd, SHUT_WR);
         close(fd);
       }
@@ -282,7 +282,7 @@ void eventcb(bufferevent *bev, short events, void *ptr)
     if(setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,
                   reinterpret_cast<char*>(&val), sizeof(val)) == -1) {
       auto error = errno;
-      SSLOG(WARNING, http2session)
+      SSLOG(WARN, http2session)
         << "Setting option TCP_NODELAY failed: errno=" << error;
     }
     return;
@@ -575,7 +575,7 @@ int htp_hdrs_completecb(http_parser *htp)
     return 0;
   }
 
-  SSLOG(WARNING, http2session) << "Tunneling failed";
+  SSLOG(WARN, http2session) << "Tunneling failed";
   http2session->set_state(Http2Session::PROXY_FAILED);
 
   return 0;
@@ -1314,10 +1314,10 @@ int on_frame_not_send_callback(nghttp2_session *session,
                                int lib_error_code, void *user_data)
 {
   auto http2session = static_cast<Http2Session*>(user_data);
-  SSLOG(WARNING, http2session) << "Failed to send control frame type="
-                               << static_cast<uint32_t>(frame->hd.type)
-                               << "lib_error_code=" << lib_error_code << ":"
-                               << nghttp2_strerror(lib_error_code);
+  SSLOG(WARN, http2session) << "Failed to send control frame type="
+                            << static_cast<uint32_t>(frame->hd.type)
+                            << "lib_error_code=" << lib_error_code << ":"
+                            << nghttp2_strerror(lib_error_code);
   if(frame->hd.type == NGHTTP2_HEADERS &&
      frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
     // To avoid stream hanging around, flag Downstream::MSG_RESET and
@@ -1649,8 +1649,8 @@ int Http2Session::consume(int32_t stream_id, size_t len)
   rv = nghttp2_session_consume(session_, stream_id, len);
 
   if(rv != 0) {
-    SSLOG(WARNING, this) << "nghttp2_session_consume() returned error: "
-                         << nghttp2_strerror(rv);
+    SSLOG(WARN, this) << "nghttp2_session_consume() returned error: "
+                      << nghttp2_strerror(rv);
 
     return -1;
   }

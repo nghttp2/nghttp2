@@ -84,7 +84,7 @@ int severity_to_syslog_level(int severity)
     return LOG_INFO;
   case(NOTICE):
     return LOG_NOTICE;
-  case(WARNING):
+  case(WARN):
     return LOG_WARNING;
   case(ERROR):
     return LOG_ERR;

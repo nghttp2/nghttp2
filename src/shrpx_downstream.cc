@@ -975,7 +975,7 @@ event* init_timer(event_base *evbase, event_callback_fn cb, void *arg)
   auto timerev = evtimer_new(evbase, cb, arg);
 
   if(timerev == nullptr) {
-    LOG(WARNING) << "timer initialization failed";
+    LOG(WARN) << "timer initialization failed";
     return nullptr;
   }
 

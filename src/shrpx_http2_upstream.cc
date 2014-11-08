@@ -125,8 +125,8 @@ int Http2Upstream::upgrade_upstream(HttpsUpstream *http)
      settings_payload.size(),
      nullptr);
   if(rv != 0) {
-    ULOG(WARNING, this) << "nghttp2_session_upgrade() returned error: "
-                        << nghttp2_strerror(rv);
+    ULOG(WARN, this) << "nghttp2_session_upgrade() returned error: "
+                     << nghttp2_strerror(rv);
     return -1;
   }
   pre_upstream_.reset(http);
@@ -603,10 +603,10 @@ int on_frame_not_send_callback(nghttp2_session *session,
                                int lib_error_code, void *user_data)
 {
   auto upstream = static_cast<Http2Upstream*>(user_data);
-  ULOG(WARNING, upstream) << "Failed to send control frame type="
-                          << static_cast<uint32_t>(frame->hd.type)
-                          << ", lib_error_code=" << lib_error_code << ":"
-                          << nghttp2_strerror(lib_error_code);
+  ULOG(WARN, upstream) << "Failed to send control frame type="
+                       << static_cast<uint32_t>(frame->hd.type)
+                       << ", lib_error_code=" << lib_error_code << ":"
+                       << nghttp2_strerror(lib_error_code);
   if(frame->hd.type == NGHTTP2_HEADERS &&
      frame->headers.cat == NGHTTP2_HCAT_RESPONSE) {
     // To avoid stream hanging around, issue RST_STREAM.
@@ -924,8 +924,8 @@ void downstream_eventcb(bufferevent *bev, short events, void *ptr)
     int val = 1;
     if(setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,
                   reinterpret_cast<char*>(&val), sizeof(val)) == -1) {
-      DCLOG(WARNING, dconn) << "Setting option TCP_NODELAY failed: errno="
-                            << errno;
+      DCLOG(WARN, dconn) << "Setting option TCP_NODELAY failed: errno="
+                         << errno;
     }
 
     return;
@@ -1425,8 +1425,8 @@ int Http2Upstream::consume(int32_t stream_id, size_t len)
   rv = nghttp2_session_consume(session_, stream_id, len);
 
   if(rv != 0) {
-    ULOG(WARNING, this) << "nghttp2_session_consume() returned error: "
-                        << nghttp2_strerror(rv);
+    ULOG(WARN, this) << "nghttp2_session_consume() returned error: "
+                     << nghttp2_strerror(rv);
     return -1;
   }
 

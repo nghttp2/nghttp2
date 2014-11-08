@@ -943,7 +943,7 @@ int parse_config(const char *opt, const char *optarg)
   }
 
   if(util::strieq(opt, "conf")) {
-    LOG(WARNING) << "conf: ignored";
+    LOG(WARN) << "conf: ignored";
 
     return 0;
   }
