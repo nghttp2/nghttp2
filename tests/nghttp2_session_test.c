@@ -4296,6 +4296,15 @@ void test_nghttp2_session_open_stream(void)
   CU_ASSERT(17 == stream->weight);
   CU_ASSERT(1 == stream->dep_prev->stream_id);
 
+  /* Dependency to non-existent stream will become default priority */
+  nghttp2_priority_spec_init(&pri_spec, 1000000007, 240, 1);
+
+  stream = nghttp2_session_open_stream(session, 5, NGHTTP2_STREAM_FLAG_NONE,
+                                       &pri_spec, NGHTTP2_STREAM_OPENED,
+                                       NULL);
+  CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == stream->weight);
+  CU_ASSERT(NULL != stream->root_next);
+
   nghttp2_session_del(session);
 
   nghttp2_session_client_new(&session, &callbacks, NULL);
