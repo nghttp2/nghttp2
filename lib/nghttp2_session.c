@@ -785,7 +785,7 @@ int nghttp2_session_add_rst_stream(nghttp2_session *session,
 nghttp2_stream* nghttp2_session_open_stream(nghttp2_session *session,
                                             int32_t stream_id,
                                             uint8_t flags,
-                                            nghttp2_priority_spec *pri_spec,
+                                            nghttp2_priority_spec *pri_spec_in,
                                             nghttp2_stream_state initial_state,
                                             void *stream_user_data)
 {
@@ -793,7 +793,8 @@ nghttp2_stream* nghttp2_session_open_stream(nghttp2_session *session,
   nghttp2_stream *stream;
   nghttp2_stream *dep_stream = NULL;
   nghttp2_stream *root_stream;
-  int32_t dep_stream_id = 0;
+  nghttp2_priority_spec pri_spec_default;
+  nghttp2_priority_spec *pri_spec = pri_spec_in;
 
   if(session->server && !nghttp2_session_is_my_stream_id(session, stream_id)) {
     nghttp2_session_adjust_closed_stream(session, 1);
@@ -802,6 +803,17 @@ nghttp2_stream* nghttp2_session_open_stream(nghttp2_session *session,
   stream = malloc(sizeof(nghttp2_stream));
   if(stream == NULL) {
     return NULL;
+  }
+
+  if(pri_spec->stream_id != 0) {
+    dep_stream = nghttp2_session_get_stream_raw(session, pri_spec->stream_id);
+
+    /* If dep_stream is not part of dependency tree, stream will get
+       default priority. */
+    if(!dep_stream || !nghttp2_stream_in_dep_tree(dep_stream)) {
+      nghttp2_priority_spec_default_init(&pri_spec_default);
+      pri_spec = &pri_spec_default;
+    }
   }
 
   nghttp2_stream_init(stream, stream_id, flags, initial_state,
@@ -839,21 +851,11 @@ nghttp2_stream* nghttp2_session_open_stream(nghttp2_session *session,
     return stream;
   }
 
-  if(pri_spec->stream_id != 0) {
-    dep_stream = nghttp2_session_get_stream_raw(session, pri_spec->stream_id);
-
-    /* If dep_stream is not part of dependency tree, stream becomes
-       root. */
-    if(dep_stream && nghttp2_stream_in_dep_tree(dep_stream)) {
-      dep_stream_id = pri_spec->stream_id;
-    }
-  }
-
-  if(dep_stream_id == 0) {
+  if(pri_spec->stream_id == 0) {
 
     ++session->roots.num_streams;
 
-    if(pri_spec->stream_id == 0 && pri_spec->exclusive &&
+    if(pri_spec->exclusive &&
        session->roots.num_streams <= NGHTTP2_MAX_DEP_TREE_LENGTH) {
       rv = nghttp2_stream_dep_all_your_stream_are_belong_to_us
         (stream, &session->ob_da_pq, session->last_cycle, session->aob.item);
