@@ -1124,7 +1124,8 @@ Mode:
 Logging:
   -L, --log-level=<LEVEL>
                      Set the  severity level  of log  output.  <LEVEL>
-                     must be one of INFO, NOTICE, WARNING, ERROR and FATAL.
+                     must  be one  of  INFO, NOTICE,  WARN, ERROR  and
+                     FATAL.
                      Default: NOTICE
   --accesslog-file=<PATH>
                      Set path  to write  access log.  To  reopen file,
