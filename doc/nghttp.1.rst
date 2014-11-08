@@ -28,7 +28,9 @@ OPTIONS
 
     
     Print  debug information  such  as reception  and
-    transmission of frames and name/value pairs.
+    transmission  of  frames  and  name/value  pairs.
+    Specifying this  option multiple  times increases
+    verbosity.
 
 .. option:: -n, --null-out
 

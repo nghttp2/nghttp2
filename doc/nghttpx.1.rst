@@ -462,8 +462,9 @@ Logging
 
     
     Set the  severity level  of log  output.  <LEVEL>
-    must be one of INFO, WARNING, ERROR and FATAL.
-    Default: WARNING
+    must  be one  of  INFO, NOTICE,  WARN, ERROR  and
+    FATAL.
+    Default: NOTICE
 
 .. option:: --accesslog-file=<PATH>
 
