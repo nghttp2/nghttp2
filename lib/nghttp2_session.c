@@ -787,8 +787,9 @@ nghttp2_stream* nghttp2_session_open_stream(nghttp2_session *session,
 {
   int rv;
   nghttp2_stream *stream;
-  nghttp2_stream *dep_stream;
+  nghttp2_stream *dep_stream = NULL;
   nghttp2_stream *root_stream;
+  int32_t dep_stream_id = 0;
 
   if(session->server && !nghttp2_session_is_my_stream_id(session, stream_id)) {
     nghttp2_session_adjust_closed_stream(session, 1);
@@ -834,11 +835,21 @@ nghttp2_stream* nghttp2_session_open_stream(nghttp2_session *session,
     return stream;
   }
 
-  if(pri_spec->stream_id == 0) {
+  if(pri_spec->stream_id != 0) {
+    dep_stream = nghttp2_session_get_stream_raw(session, pri_spec->stream_id);
+
+    /* If dep_stream is not part of dependency tree, stream becomes
+       root. */
+    if(dep_stream && nghttp2_stream_in_dep_tree(dep_stream)) {
+      dep_stream_id = pri_spec->stream_id;
+    }
+  }
+
+  if(dep_stream_id == 0) {
 
     ++session->roots.num_streams;
 
-    if(pri_spec->exclusive &&
+    if(pri_spec->stream_id == 0 && pri_spec->exclusive &&
        session->roots.num_streams <= NGHTTP2_MAX_DEP_TREE_LENGTH) {
       rv = nghttp2_stream_dep_all_your_stream_are_belong_to_us
         (stream, &session->ob_da_pq, session->last_cycle, session->aob.item);
@@ -850,13 +861,6 @@ nghttp2_stream* nghttp2_session_open_stream(nghttp2_session *session,
       nghttp2_stream_roots_add(&session->roots, stream);
     }
 
-    return stream;
-  }
-
-  dep_stream = nghttp2_session_get_stream_raw(session, pri_spec->stream_id);
-
-  /* If dep_stream is not part of dependency tree, we don't use it. */
-  if(!dep_stream || !nghttp2_stream_in_dep_tree(dep_stream)) {
     return stream;
   }
 
