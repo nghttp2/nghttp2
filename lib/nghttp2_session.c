@@ -637,6 +637,8 @@ int nghttp2_session_reprioritize_stream
 
   if(root_stream->num_substreams + stream->num_substreams >
      NGHTTP2_MAX_DEP_TREE_LENGTH) {
+    stream->weight = NGHTTP2_DEFAULT_WEIGHT;
+
     rv = nghttp2_stream_dep_make_root(stream, &session->ob_da_pq,
                                       session->last_cycle, session->aob.item);
   } else {
@@ -931,6 +933,8 @@ nghttp2_stream* nghttp2_session_open_stream(nghttp2_session *session,
       nghttp2_stream_dep_add(dep_stream, stream);
     }
   } else {
+    stream->weight = NGHTTP2_DEFAULT_WEIGHT;
+
     nghttp2_stream_roots_add(&session->roots, stream);
   }
 
