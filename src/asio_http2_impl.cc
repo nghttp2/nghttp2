@@ -68,9 +68,15 @@ void http2::num_concurrent_tasks(size_t num_concurrent_tasks)
   impl_->num_concurrent_tasks(num_concurrent_tasks);
 }
 
+void http2::backlog(int backlog)
+{
+  impl_->backlog(backlog);
+}
+
 http2_impl::http2_impl()
   : num_threads_(1),
-    num_concurrent_tasks_(1)
+    num_concurrent_tasks_(1),
+    backlog_(-1)
 {}
 
 namespace {
@@ -134,7 +140,7 @@ void http2_impl::listen(const std::string& address, uint16_t port,
   }
 
   server(address, port, num_threads_, num_concurrent_tasks_,
-         std::move(cb), std::move(ssl_ctx)).run();
+         std::move(cb), std::move(ssl_ctx), backlog_).run();
 }
 
 void http2_impl::num_threads(size_t num_threads)
@@ -152,6 +158,11 @@ void http2_impl::tls(std::string private_key_file,
 void http2_impl::num_concurrent_tasks(size_t num_concurrent_tasks)
 {
   num_concurrent_tasks_ = num_concurrent_tasks;
+}
+
+void http2_impl::backlog(int backlog)
+{
+  backlog_ = backlog;
 }
 
 } // namespace server

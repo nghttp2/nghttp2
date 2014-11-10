@@ -208,6 +208,10 @@ public:
   // of thread to handle incoming HTTP request.  For this purpose, see
   // num_threads().
   void num_concurrent_tasks(size_t num_concurrent_tasks);
+
+  // Sets the maximum length to which the queue of pending
+  // connections.
+  void backlog(int backlog);
 private:
   std::unique_ptr<http2_impl> impl_;
 };

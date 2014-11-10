@@ -68,7 +68,8 @@ public:
                   std::size_t io_service_pool_size,
                   std::size_t thread_pool_size,
                   request_cb cb,
-                  std::unique_ptr<boost::asio::ssl::context> ssl_ctx);
+                  std::unique_ptr<boost::asio::ssl::context> ssl_ctx,
+                  int backlog = -1);
 
   /// Run the server's io_service loop.
   void run();

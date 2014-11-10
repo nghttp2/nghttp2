@@ -46,7 +46,8 @@ server::server(const std::string& address, uint16_t port,
                std::size_t io_service_pool_size,
                std::size_t thread_pool_size,
                request_cb cb,
-               std::unique_ptr<boost::asio::ssl::context> ssl_ctx)
+               std::unique_ptr<boost::asio::ssl::context> ssl_ctx,
+               int backlog)
   : io_service_pool_(io_service_pool_size, thread_pool_size),
     signals_(io_service_pool_.get_io_service()),
     tick_timer_(io_service_pool_.get_io_service(),
@@ -76,7 +77,11 @@ server::server(const std::string& address, uint16_t port,
   acceptor_.open(endpoint.protocol());
   acceptor_.set_option(boost::asio::ip::tcp::acceptor::reuse_address(true));
   acceptor_.bind(endpoint);
-  acceptor_.listen();
+  if(backlog == -1) {
+    acceptor_.listen();
+  } else {
+    acceptor_.listen(backlog);
+  }
 
   start_accept();
 
