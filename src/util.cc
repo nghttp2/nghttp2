@@ -163,17 +163,62 @@ std::string quote_string(const std::string& target)
   return res;
 }
 
+namespace {
+template<typename Iterator>
+Iterator cpydig(Iterator d, int n, size_t len)
+{
+  auto p = d + len - 1;
+
+  do {
+    *p-- = (n % 10) + '0';
+    n /= 10;
+  } while(p >= d);
+
+  return d + len;
+}
+} // namespace
+
+namespace {
+const char *MONTH[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+const char *DAY_OF_WEEK[] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri",
+                              "Sat" };
+} // namespace
+
 std::string http_date(time_t t)
 {
-  char buf[32];
-  tm tms;
+  struct tm tms;
+  std::string res;
 
   if(gmtime_r(&t, &tms) == nullptr) {
-    return "";
+    return res;
   }
 
-  auto rv = strftime(buf, sizeof(buf), "%a, %d %b %Y %H:%M:%S GMT", &tms);
-  return std::string(&buf[0], &buf[rv]);
+  /* Sat, 27 Sep 2014 06:31:15 GMT */
+  res.resize(29);
+
+  auto p = std::begin(res);
+
+  auto s = DAY_OF_WEEK[tms.tm_wday];
+  p = std::copy(s, s + 3, p);
+  *p++ = ',';
+  *p++ = ' ';
+  p = cpydig(p, tms.tm_mday, 2);
+  *p++ = ' ';
+  s = MONTH[tms.tm_mon];
+  p = std::copy(s, s + 3, p);
+  *p++ = ' ';
+  p = cpydig(p, tms.tm_year + 1900, 4);
+  *p++ = ' ';
+  p = cpydig(p, tms.tm_hour, 2);
+  *p++ = ':';
+  p = cpydig(p, tms.tm_min, 2);
+  *p++ = ':';
+  p = cpydig(p, tms.tm_sec, 2);
+  s = " GMT";
+  p = std::copy(s, s + 4, p);
+
+  return res;
 }
 
 time_t parse_http_date(const std::string& s)

@@ -118,4 +118,10 @@ void test_util_utox(void)
   CU_ASSERT("100000000" == util::utox(1LL << 32));
 }
 
+void test_util_http_date(void)
+{
+  CU_ASSERT("Thu, 01 Jan 1970 00:00:00 GMT" == util::http_date(0));
+  CU_ASSERT("Wed, 29 Feb 2012 09:15:16 GMT" == util::http_date(1330506916));
+}
+
 } // namespace shrpx

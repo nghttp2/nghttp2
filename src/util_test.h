@@ -34,6 +34,7 @@ void test_util_to_base64(void);
 void test_util_percent_encode_token(void);
 void test_util_quote_string(void);
 void test_util_utox(void);
+void test_util_http_date(void);
 
 } // namespace shrpx
 

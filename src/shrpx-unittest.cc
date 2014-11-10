@@ -123,6 +123,7 @@ int main(int argc, char* argv[])
       !CU_add_test(pSuite, "util_quote_string",
                    shrpx::test_util_quote_string) ||
       !CU_add_test(pSuite, "util_utox", shrpx::test_util_utox) ||
+      !CU_add_test(pSuite, "util_http_date", shrpx::test_util_http_date) ||
       !CU_add_test(pSuite, "gzip_inflate", test_nghttp2_gzip_inflate)) {
      CU_cleanup_registry();
      return CU_get_error();
