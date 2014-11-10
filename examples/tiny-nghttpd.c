@@ -372,9 +372,20 @@ static connection* connection_new(int fd)
 
 static void connection_del(connection *conn)
 {
+  stream *strm;
+
   nghttp2_session_del(conn->session);
   shutdown(conn->fd, SHUT_WR);
   close(conn->fd);
+
+  strm = conn->strm_head.next;
+  while(strm) {
+    stream *next_strm = strm->next;
+
+    stream_del(strm);
+    strm = next_strm;
+  }
+
   free(conn);
 }
 
