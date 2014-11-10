@@ -225,6 +225,17 @@ void remove_stream_write_timeout(Stream *stream)
 } // namespace
 
 namespace {
+std::shared_ptr<std::string> cached_date;
+} // namespace
+
+namespace {
+void refresh_cb(evutil_socket_t sig, short events, void *arg)
+{
+  cached_date = std::make_shared<std::string>(util::http_date(time(nullptr)));
+}
+} // namespace
+
+namespace {
 void fill_callback(nghttp2_session_callbacks *callbacks, const Config *config);
 } // namespace
 
@@ -612,7 +623,7 @@ int Http2Handler::submit_file_response(const std::string& status,
                                        off_t file_length,
                                        nghttp2_data_provider *data_prd)
 {
-  std::string date_str = util::http_date(time(0));
+  auto date_str = cached_date;
   std::string content_length = util::utos(file_length);
   std::string last_modified_str;
   auto nva = std::vector<nghttp2_nv>{
@@ -620,7 +631,7 @@ int Http2Handler::submit_file_response(const std::string& status,
     http2::make_nv_ls("server", NGHTTPD_SERVER),
     http2::make_nv_ls("content-length", content_length),
     http2::make_nv_ll("cache-control", "max-age=3600"),
-    http2::make_nv_ls("date", date_str),
+    http2::make_nv_ls("date", *date_str),
   };
   if(last_modified != 0) {
     last_modified_str = util::http_date(last_modified);
@@ -636,11 +647,11 @@ int Http2Handler::submit_response
  const Headers& headers,
  nghttp2_data_provider *data_prd)
 {
-  std::string date_str = util::http_date(time(0));
+  auto date_str = cached_date;
   auto nva = std::vector<nghttp2_nv>{
     http2::make_nv_ls(":status", status),
     http2::make_nv_ls("server", NGHTTPD_SERVER),
-    http2::make_nv_ls("date", date_str)
+    http2::make_nv_ls("date", *date_str)
   };
   for(auto& nv : headers) {
     nva.push_back(http2::make_nv(nv.name, nv.value, nv.no_index));
@@ -1658,6 +1669,21 @@ int HttpServer::run()
     std::cerr << "Could not listen" << std::endl;
     return -1;
   }
+
+  auto refresh_ev = event_new(evbase, -1, EV_PERSIST, refresh_cb, nullptr);
+  if(!refresh_ev) {
+    std::cerr << "Could not add refresh timer" << std::endl;
+    return -1;
+  }
+
+  timeval refresh_timeout = { 1, 0 };
+  if(event_add(refresh_ev, &refresh_timeout) == -1) {
+    std::cerr << "Adding refresh event failed" << std::endl;
+    return -1;
+  }
+
+  cached_date = std::make_shared<std::string>(util::http_date(time(nullptr)));
+
   event_base_loop(evbase, 0);
   return 0;
 }
