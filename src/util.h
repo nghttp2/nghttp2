@@ -212,14 +212,6 @@ std::string http_date(time_t t);
 
 time_t parse_http_date(const std::string& s);
 
-template<typename T>
-std::string to_str(T value)
-{
-  std::stringstream ss;
-  ss << value;
-  return ss.str();
-}
-
 template<typename InputIterator1, typename InputIterator2>
 bool startsWith
 (InputIterator1 first1,

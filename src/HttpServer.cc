@@ -613,7 +613,7 @@ int Http2Handler::submit_file_response(const std::string& status,
                                        nghttp2_data_provider *data_prd)
 {
   std::string date_str = util::http_date(time(0));
-  std::string content_length = util::to_str(file_length);
+  std::string content_length = util::utos(file_length);
   std::string last_modified_str;
   auto nva = std::vector<nghttp2_nv>{
     http2::make_nv_ls(":status", status),
