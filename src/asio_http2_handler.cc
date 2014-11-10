@@ -795,7 +795,7 @@ int http2_handler::start_response(http2_stream& stream)
   auto& headers = res.headers();
   auto nva = std::vector<nghttp2_nv>();
   nva.reserve(2 + headers.size());
-  auto status = std::to_string(res.status_code());
+  auto status = util::utos(res.status_code());
   auto date = cached_date;
   nva.push_back(nghttp2::http2::make_nv_ls(":status", status));
   nva.push_back(nghttp2::http2::make_nv_ls("date", *date));
