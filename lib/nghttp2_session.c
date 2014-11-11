@@ -604,11 +604,9 @@ int nghttp2_session_reprioritize_stream
        session->roots.num_streams <= NGHTTP2_MAX_DEP_TREE_LENGTH) {
 
       rv = nghttp2_stream_dep_all_your_stream_are_belong_to_us
-        (stream, &session->ob_da_pq, session->last_cycle, session->aob.item);
+        (stream, session);
     } else {
-      rv = nghttp2_stream_dep_make_root(stream, &session->ob_da_pq,
-                                        session->last_cycle,
-                                        session->aob.item);
+      rv = nghttp2_stream_dep_make_root(stream, session);
     }
 
     return rv;
@@ -624,8 +622,7 @@ int nghttp2_session_reprioritize_stream
                    stream, stream->stream_id));
 
     nghttp2_stream_dep_remove_subtree(dep_stream);
-    nghttp2_stream_dep_make_root(dep_stream, &session->ob_da_pq,
-                                 session->last_cycle, session->aob.item);
+    nghttp2_stream_dep_make_root(dep_stream, session);
   }
 
   nghttp2_stream_dep_remove_subtree(stream);
@@ -639,19 +636,12 @@ int nghttp2_session_reprioritize_stream
      NGHTTP2_MAX_DEP_TREE_LENGTH) {
     stream->weight = NGHTTP2_DEFAULT_WEIGHT;
 
-    rv = nghttp2_stream_dep_make_root(stream, &session->ob_da_pq,
-                                      session->last_cycle, session->aob.item);
+    rv = nghttp2_stream_dep_make_root(stream, session);
   } else {
     if(pri_spec->exclusive) {
-      rv = nghttp2_stream_dep_insert_subtree(dep_stream, stream,
-                                             &session->ob_da_pq,
-                                             session->last_cycle,
-                                             session->aob.item);
+      rv = nghttp2_stream_dep_insert_subtree(dep_stream, stream, session);
     } else {
-      rv = nghttp2_stream_dep_add_subtree(dep_stream, stream,
-                                          &session->ob_da_pq,
-                                          session->last_cycle,
-                                          session->aob.item);
+      rv = nghttp2_stream_dep_add_subtree(dep_stream, stream, session);
     }
   }
 
@@ -717,25 +707,50 @@ int nghttp2_session_add_item(nghttp2_session *session,
       break;
     }
 
-    if(frame->hd.type == NGHTTP2_HEADERS &&
-       (frame->headers.cat == NGHTTP2_HCAT_REQUEST ||
-        (stream && stream->state == NGHTTP2_STREAM_RESERVED))) {
+    if(frame->hd.type == NGHTTP2_HEADERS) {
       /* We push request HEADERS and push response HEADERS to
          dedicated queue because their transmission is affected by
          SETTINGS_MAX_CONCURRENT_STREAMS */
       /* TODO If 2 HEADERS are submitted for reserved stream, then
          both of them are queued into ob_ss_pq, which is not
          desirable. */
-      rv = nghttp2_pq_push(&session->ob_ss_pq, item);
+      if(frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
+        rv = nghttp2_pq_push(&session->ob_ss_pq, item);
+
+        if(rv != 0) {
+          return rv;
+        }
+
+        item->queued = 1;
+      } else if(stream && (stream->state == NGHTTP2_STREAM_RESERVED ||
+                           item->aux_data.headers.attach_stream)) {
+        item->weight = stream->effective_weight;
+        item->cycle = session->last_cycle;
+
+        rv = nghttp2_stream_attach_data(stream, item, session);
+
+        if(rv != 0) {
+          return rv;
+        }
+      } else {
+        rv = nghttp2_pq_push(&session->ob_pq, item);
+
+        if(rv != 0) {
+          return rv;
+        }
+
+        item->queued = 1;
+      }
     } else {
       rv = nghttp2_pq_push(&session->ob_pq, item);
+
+      if(rv != 0) {
+        return rv;
+      }
+
+      item->queued = 1;
     }
 
-    if(rv != 0) {
-      return rv;
-    }
-
-    item->queued = 1;
 
     return 0;
   }
@@ -751,9 +766,7 @@ int nghttp2_session_add_item(nghttp2_session *session,
   item->weight = stream->effective_weight;
   item->cycle = session->last_cycle;
 
-  rv = nghttp2_stream_attach_data(stream, item, &session->ob_da_pq,
-                                  session->last_cycle,
-                                  session->aob.item);
+  rv = nghttp2_stream_attach_data(stream, item, session);
 
   if(rv != 0) {
     return rv;
@@ -906,7 +919,7 @@ nghttp2_stream* nghttp2_session_open_stream(nghttp2_session *session,
     if(pri_spec->exclusive &&
        session->roots.num_streams <= NGHTTP2_MAX_DEP_TREE_LENGTH) {
       rv = nghttp2_stream_dep_all_your_stream_are_belong_to_us
-        (stream, &session->ob_da_pq, session->last_cycle, session->aob.item);
+        (stream, session);
 
       /* Since no dpri is changed in dependency tree, the above
          function call never fail. */
@@ -961,8 +974,7 @@ int nghttp2_session_close_stream(nghttp2_session *session, int32_t stream_id,
 
     item = stream->data_item;
 
-    rv = nghttp2_stream_detach_data(stream, &session->ob_da_pq,
-                                    session->last_cycle, session->aob.item);
+    rv = nghttp2_stream_detach_data(stream, session);
 
     if(rv != 0) {
       return rv;
@@ -1692,8 +1704,24 @@ static int session_prep_frame(nghttp2_session *session,
         frame->headers.cat = NGHTTP2_HCAT_RESPONSE;
       } else {
         frame->headers.cat = NGHTTP2_HCAT_HEADERS;
+
         rv = session_predicate_headers_send(session, frame->hd.stream_id);
+
         if(rv != 0) {
+          nghttp2_stream *stream;
+
+          stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
+
+          if(stream && stream->data_item == item) {
+            int rv2;
+
+            rv2 = nghttp2_stream_detach_data(stream, session);
+
+            if(nghttp2_is_fatal(rv2)) {
+              return rv2;
+            }
+          }
+
           return rv;
         }
       }
@@ -1883,9 +1911,7 @@ static int session_prep_frame(nghttp2_session *session,
       if(stream) {
         int rv2;
 
-        rv2 = nghttp2_stream_detach_data(stream, &session->ob_da_pq,
-                                         session->last_cycle,
-                                         session->aob.item);
+        rv2 = nghttp2_stream_detach_data(stream, session);
 
         if(nghttp2_is_fatal(rv2)) {
           return rv2;
@@ -1905,8 +1931,7 @@ static int session_prep_frame(nghttp2_session *session,
       assert(session->remote_window_size > 0);
 
       rv = nghttp2_stream_defer_data
-        (stream, NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL,
-         &session->ob_da_pq, session->last_cycle, session->aob.item);
+        (stream, NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL, session);
 
       if(nghttp2_is_fatal(rv)) {
         return rv;
@@ -1924,8 +1949,7 @@ static int session_prep_frame(nghttp2_session *session,
                                         &item->aux_data.data);
     if(framerv == NGHTTP2_ERR_DEFERRED) {
       rv = nghttp2_stream_defer_data(stream, NGHTTP2_STREAM_FLAG_DEFERRED_USER,
-                                     &session->ob_da_pq, session->last_cycle,
-                                     session->aob.item);
+                                     session);
 
       if(nghttp2_is_fatal(rv)) {
         return rv;
@@ -1936,9 +1960,7 @@ static int session_prep_frame(nghttp2_session *session,
       return NGHTTP2_ERR_DEFERRED;
     }
     if(framerv == NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE) {
-      rv = nghttp2_stream_detach_data(stream, &session->ob_da_pq,
-                                      session->last_cycle,
-                                      session->aob.item);
+      rv = nghttp2_stream_detach_data(stream, session);
 
       if(nghttp2_is_fatal(rv)) {
         return rv;
@@ -1952,9 +1974,7 @@ static int session_prep_frame(nghttp2_session *session,
       return framerv;
     }
     if(framerv < 0) {
-      rv = nghttp2_stream_detach_data(stream, &session->ob_da_pq,
-                                      session->last_cycle,
-                                      session->aob.item);
+      rv = nghttp2_stream_detach_data(stream, session);
 
       if(nghttp2_is_fatal(rv)) {
         return rv;
@@ -2186,6 +2206,15 @@ static int session_after_frame_sent(nghttp2_session *session)
       if(!stream) {
         break;
       }
+
+      if(stream->data_item == item) {
+        rv = nghttp2_stream_detach_data(stream, session);
+
+        if(nghttp2_is_fatal(rv)) {
+          return rv;
+        }
+      }
+
       switch(frame->headers.cat) {
       case NGHTTP2_HCAT_REQUEST: {
         stream->state = NGHTTP2_STREAM_OPENING;
@@ -2293,8 +2322,7 @@ static int session_after_frame_sent(nghttp2_session *session)
     }
 
     if(stream && aux_data->eof) {
-      rv = nghttp2_stream_detach_data(stream, &session->ob_da_pq,
-                                      session->last_cycle, aob->item);
+      rv = nghttp2_stream_detach_data(stream, session);
 
       if(nghttp2_is_fatal(rv)) {
         return rv;
@@ -2352,8 +2380,7 @@ static int session_after_frame_sent(nghttp2_session *session)
     if(nghttp2_session_predicate_data_send(session,
                                            frame->hd.stream_id) != 0) {
       if(stream) {
-        rv = nghttp2_stream_detach_data(stream, &session->ob_da_pq,
-                                        session->last_cycle, aob->item);
+        rv = nghttp2_stream_detach_data(stream, session);
 
         if(nghttp2_is_fatal(rv)) {
           return rv;
@@ -2398,8 +2425,7 @@ static int session_after_frame_sent(nghttp2_session *session)
           aob->item->queued = 1;
         } else {
           rv = nghttp2_stream_defer_data
-            (stream, NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL,
-             &session->ob_da_pq, session->last_cycle, aob->item);
+            (stream, NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL, session);
 
           if(nghttp2_is_fatal(rv)) {
             return rv;
@@ -2421,8 +2447,7 @@ static int session_after_frame_sent(nghttp2_session *session)
       }
       if(rv == NGHTTP2_ERR_DEFERRED) {
         rv = nghttp2_stream_defer_data
-          (stream, NGHTTP2_STREAM_FLAG_DEFERRED_USER,
-           &session->ob_da_pq, session->last_cycle, aob->item);
+          (stream, NGHTTP2_STREAM_FLAG_DEFERRED_USER, session);
 
         if(nghttp2_is_fatal(rv)) {
           return rv;
@@ -2445,8 +2470,7 @@ static int session_after_frame_sent(nghttp2_session *session)
           return rv;
         }
 
-        rv = nghttp2_stream_detach_data(stream, &session->ob_da_pq,
-                                        session->last_cycle, aob->item);
+        rv = nghttp2_stream_detach_data(stream, session);
 
         if(nghttp2_is_fatal(rv)) {
           return rv;
@@ -2501,14 +2525,16 @@ ssize_t nghttp2_session_mem_send(nghttp2_session *session,
         return 0;
       }
 
-      if(item->frame.hd.type == NGHTTP2_DATA) {
+      if(item->frame.hd.type == NGHTTP2_DATA ||
+         item->frame.hd.type == NGHTTP2_HEADERS) {
         nghttp2_frame *frame;
         nghttp2_stream *stream;
 
         frame = &item->frame;
         stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
 
-        if(stream && stream->dpri != NGHTTP2_STREAM_DPRI_TOP) {
+        if(stream && item == stream->data_item &&
+           stream->dpri != NGHTTP2_STREAM_DPRI_TOP) {
           /* We have DATA with higher priority in queue within the
              same dependency tree. */
           break;
@@ -3387,9 +3413,7 @@ static int update_remote_initial_window_size_func
      nghttp2_stream_check_deferred_by_flow_control(stream)) {
 
     rv = nghttp2_stream_resume_deferred_data
-      (stream, NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL,
-       &arg->session->ob_da_pq, arg->session->last_cycle,
-       arg->session->aob.item);
+      (stream, NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL, arg->session);
 
     if(nghttp2_is_fatal(rv)) {
       return rv;
@@ -4009,8 +4033,7 @@ static int session_on_stream_window_update_received
      nghttp2_stream_check_deferred_by_flow_control(stream)) {
 
     rv = nghttp2_stream_resume_deferred_data
-      (stream, NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL, &session->ob_da_pq,
-       session->last_cycle, session->aob.item);
+      (stream, NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL, session);
 
     if(nghttp2_is_fatal(rv)) {
       return rv;
@@ -6028,8 +6051,7 @@ int nghttp2_session_resume_data(nghttp2_session *session, int32_t stream_id)
   }
 
   rv = nghttp2_stream_resume_deferred_data
-    (stream, NGHTTP2_STREAM_FLAG_DEFERRED_USER, &session->ob_da_pq,
-     session->last_cycle, session->aob.item);
+    (stream, NGHTTP2_STREAM_FLAG_DEFERRED_USER, session);
 
   if(nghttp2_is_fatal(rv)) {
     return rv;

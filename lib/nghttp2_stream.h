@@ -219,8 +219,7 @@ void nghttp2_stream_shutdown(nghttp2_stream *stream, nghttp2_shut_flag flag);
  *     Out of memory
  */
 int nghttp2_stream_defer_data(nghttp2_stream *stream, uint8_t flags,
-                              nghttp2_pq *pq, uint64_t cycle,
-                              nghttp2_outbound_item *active_item);
+                              nghttp2_session *session);
 
 /*
  * Put back deferred data in this stream to active state.  The |flags|
@@ -231,8 +230,7 @@ int nghttp2_stream_defer_data(nghttp2_stream *stream, uint8_t flags,
  * one of flag is still set, data does not become active.
  */
 int nghttp2_stream_resume_deferred_data(nghttp2_stream *stream, uint8_t flags,
-                                        nghttp2_pq *pq, uint64_t cycle,
-                                        nghttp2_outbound_item *active_item);
+                                        nghttp2_session *session);
 
 /*
  * Returns nonzero if data item is deferred by whatever reason.
@@ -343,9 +341,7 @@ void nghttp2_stream_dep_remove(nghttp2_stream *stream);
  */
 int nghttp2_stream_attach_data(nghttp2_stream *stream,
                                nghttp2_outbound_item *data_item,
-                               nghttp2_pq *pq,
-                               uint64_t cycle,
-                               nghttp2_outbound_item *active_item);
+                               nghttp2_session *session);
 
 /*
  * Detaches |stream->data_item|.  Updates dpri members in this
@@ -358,10 +354,8 @@ int nghttp2_stream_attach_data(nghttp2_stream *stream,
  * NGHTTP2_ERR_NOMEM
  *     Out of memory
  */
-int nghttp2_stream_detach_data(nghttp2_stream *stream, nghttp2_pq *pq,
-                               uint64_t cycle,
-                               nghttp2_outbound_item *active_item);
-
+int nghttp2_stream_detach_data(nghttp2_stream *stream,
+                               nghttp2_session *session);
 
 /*
  * Makes the |stream| depend on the |dep_stream|.  This dependency is
@@ -375,9 +369,7 @@ int nghttp2_stream_detach_data(nghttp2_stream *stream, nghttp2_pq *pq,
  */
 int nghttp2_stream_dep_insert_subtree(nghttp2_stream *dep_stream,
                                       nghttp2_stream *stream,
-                                      nghttp2_pq *pq,
-                                      uint64_t cycle,
-                                      nghttp2_outbound_item *active_item);
+                                      nghttp2_session *session);
 
 /*
  * Makes the |stream| depend on the |dep_stream|.  This dependency is
@@ -391,9 +383,7 @@ int nghttp2_stream_dep_insert_subtree(nghttp2_stream *dep_stream,
  */
 int nghttp2_stream_dep_add_subtree(nghttp2_stream *dep_stream,
                                    nghttp2_stream *stream,
-                                   nghttp2_pq *pq,
-                                   uint64_t cycle,
-                                   nghttp2_outbound_item *active_item);
+                                   nghttp2_session *session);
 
 /*
  * Removes subtree whose root stream is |stream|.  Removing subtree
@@ -418,9 +408,8 @@ void nghttp2_stream_dep_remove_subtree(nghttp2_stream *stream);
  * NGHTTP2_ERR_NOMEM
  *     Out of memory
  */
-int nghttp2_stream_dep_make_root(nghttp2_stream *stream, nghttp2_pq *pq,
-                                 uint64_t cycle,
-                                 nghttp2_outbound_item *active_item);
+int nghttp2_stream_dep_make_root(nghttp2_stream *stream,
+                                 nghttp2_session *session);
 
 /*
  * Makes the |stream| as root and all existing root streams become
@@ -433,8 +422,7 @@ int nghttp2_stream_dep_make_root(nghttp2_stream *stream, nghttp2_pq *pq,
  *     Out of memory
  */
 int nghttp2_stream_dep_all_your_stream_are_belong_to_us
-(nghttp2_stream *stream, nghttp2_pq *pq, uint64_t cycle,
- nghttp2_outbound_item *active_item);
+(nghttp2_stream *stream, nghttp2_session *session);
 
 /*
  * Returns nonzero if |stream| is in any dependency tree.

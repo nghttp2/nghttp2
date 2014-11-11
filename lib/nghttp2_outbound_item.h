@@ -43,6 +43,9 @@
 typedef struct {
   nghttp2_data_provider data_prd;
   void *stream_user_data;
+  /* nonzero if this item should be attached to stream object to make
+     it under priority control */
+  uint8_t attach_stream;
 } nghttp2_headers_aux_data;
 
 /* struct used for DATA frame */
