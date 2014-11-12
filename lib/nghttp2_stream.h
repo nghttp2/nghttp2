@@ -88,9 +88,9 @@ typedef enum {
   NGHTTP2_STREAM_FLAG_PUSH = 0x01,
   /* Indicates that this stream was closed */
   NGHTTP2_STREAM_FLAG_CLOSED = 0x02,
-  /* Indicates the DATA is deferred due to flow control. */
+  /* Indicates the item is deferred due to flow control. */
   NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL = 0x04,
-  /* Indicates the DATA is deferred by user callback */
+  /* Indicates the item is deferred by user callback */
   NGHTTP2_STREAM_FLAG_DEFERRED_USER = 0x08,
   /* bitwise OR of NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL and
      NGHTTP2_STREAM_FLAG_DEFERRED_USER. */
@@ -138,12 +138,12 @@ struct nghttp2_stream {
   nghttp2_stream_roots *roots;
   /* The arbitrary data provided by user for this stream. */
   void *stream_user_data;
-  /* DATA frame item */
+  /* Item to send */
   nghttp2_outbound_item *data_item;
   /* stream ID */
   int32_t stream_id;
   /* categorized priority of this stream.  Only stream bearing
-     NGHTTP2_STREAM_DPRI_TOP can send DATA frame. */
+     NGHTTP2_STREAM_DPRI_TOP can send item. */
   nghttp2_stream_dpri dpri;
   /* the number of streams in subtree */
   size_t num_substreams;
@@ -206,9 +206,9 @@ void nghttp2_stream_free(nghttp2_stream *stream);
 void nghttp2_stream_shutdown(nghttp2_stream *stream, nghttp2_shut_flag flag);
 
 /*
- * Defer DATA frame |stream->data_item|.  We won't call this function
- * in the situation where |stream->data_item| == NULL.  If |flags| is
- * bitwise OR of zero or more of NGHTTP2_STREAM_FLAG_DEFERRED_USER and
+ * Defer |stream->data_item|.  We won't call this function in the
+ * situation where |stream->data_item| == NULL.  If |flags| is bitwise
+ * OR of zero or more of NGHTTP2_STREAM_FLAG_DEFERRED_USER and
  * NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL.  The |flags| indicates
  * the reason of this action.
  *
