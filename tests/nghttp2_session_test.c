@@ -3049,20 +3049,27 @@ void test_nghttp2_session_reprioritize_stream(void)
   CU_ASSERT(10 == stream->weight);
   CU_ASSERT(NULL == stream->dep_prev);
 
-  /* If dep_stream does not exist, default priority is assigned. */
+  /* If depenency to idle stream which is not in depdenency tree yet */
 
   nghttp2_priority_spec_init(&pri_spec, 3, 99, 0);
 
   nghttp2_session_reprioritize_stream(session, stream, &pri_spec);
 
-  CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == stream->weight);
-  CU_ASSERT(NULL == stream->dep_prev);
+  CU_ASSERT(99 == stream->weight);
+  CU_ASSERT(3 == stream->dep_prev->stream_id);
+
+  dep_stream = nghttp2_session_get_stream_raw(session, 3);
+
+  CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == dep_stream->weight);
 
   dep_stream = open_stream(session, 3);
 
+  /* Change weight */
+  pri_spec.weight = 128;
+
   nghttp2_session_reprioritize_stream(session, stream, &pri_spec);
 
-  CU_ASSERT(99 == stream->weight);
+  CU_ASSERT(128 == stream->weight);
   CU_ASSERT(dep_stream == stream->dep_prev);
 
   /* Test circular dependency; stream 1 is first removed and becomes
@@ -3073,6 +3080,59 @@ void test_nghttp2_session_reprioritize_stream(void)
 
   CU_ASSERT(1 == dep_stream->weight);
   CU_ASSERT(stream == dep_stream->dep_prev);
+
+  /* Making priority to closed stream will result in default
+     priority */
+  session->last_recv_stream_id = 9;
+
+  nghttp2_priority_spec_init(&pri_spec, 5, 5, 0);
+
+  nghttp2_session_reprioritize_stream(session, stream, &pri_spec);
+
+  CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == stream->weight);
+
+  nghttp2_session_del(session);
+}
+
+void test_nghttp2_session_reprioritize_stream_with_closed_stream_limit(void)
+{
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  nghttp2_stream *stream;
+  nghttp2_priority_spec pri_spec;
+
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+  callbacks.send_callback = block_count_send_callback;
+
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  stream = nghttp2_session_open_stream(session, 1, NGHTTP2_STREAM_FLAG_NONE,
+                                       &pri_spec_default,
+                                       NGHTTP2_STREAM_OPENING, NULL);
+
+  session->pending_local_max_concurrent_stream = 1;
+
+  nghttp2_priority_spec_init(&pri_spec, 101, 10, 0);
+
+  nghttp2_session_reprioritize_stream(session, stream, &pri_spec);
+
+  /* No room to create idle stream, so default priority was applied. */
+
+  CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == stream->weight);
+  CU_ASSERT(NULL == stream->dep_prev);
+
+  session->pending_local_max_concurrent_stream = 2;
+
+  /* Now idle stream can be created */
+
+  nghttp2_session_reprioritize_stream(session, stream, &pri_spec);
+
+  CU_ASSERT(10 == stream->weight);
+  CU_ASSERT(101 == stream->dep_prev->stream_id);
+
+  stream = nghttp2_session_get_stream_raw(session, 101);
+
+  CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == stream->weight);
 
   nghttp2_session_del(session);
 }
@@ -4233,14 +4293,30 @@ void test_nghttp2_session_open_stream(void)
   CU_ASSERT(17 == stream->weight);
   CU_ASSERT(1 == stream->dep_prev->stream_id);
 
-  /* Dependency to non-existent stream will become default priority */
+  /* Dependency to idle stream */
   nghttp2_priority_spec_init(&pri_spec, 1000000007, 240, 1);
 
   stream = nghttp2_session_open_stream(session, 5, NGHTTP2_STREAM_FLAG_NONE,
                                        &pri_spec, NGHTTP2_STREAM_OPENED,
                                        NULL);
+  CU_ASSERT(240 == stream->weight);
+  CU_ASSERT(1000000007 == stream->dep_prev->stream_id);
+
+  stream = nghttp2_session_get_stream_raw(session, 1000000007);
+
   CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == stream->weight);
   CU_ASSERT(NULL != stream->root_next);
+
+  /* Dependency to closed stream which is not in dependency tree */
+  session->last_recv_stream_id = 7;
+
+  nghttp2_priority_spec_init(&pri_spec, 7, 10, 0);
+
+  stream = nghttp2_session_open_stream(session, 9, NGHTTP2_FLAG_NONE,
+                                       &pri_spec, NGHTTP2_STREAM_OPENED,
+                                       NULL);
+
+  CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == stream->weight);
 
   nghttp2_session_del(session);
 
@@ -4254,6 +4330,65 @@ void test_nghttp2_session_open_stream(void)
   CU_ASSERT(NULL == stream->dep_prev);
   CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == stream->weight);
   CU_ASSERT(NGHTTP2_SHUT_WR == stream->shut_flags);
+
+  nghttp2_session_del(session);
+}
+
+void test_nghttp2_session_open_stream_with_closed_stream_limit(void)
+{
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  nghttp2_stream *stream;
+  nghttp2_priority_spec pri_spec;
+
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  session->pending_local_max_concurrent_stream = 1;
+
+  /* Dependency to idle stream */
+  nghttp2_priority_spec_init(&pri_spec, 101, 245, 0);
+
+  stream = nghttp2_session_open_stream(session, 1, NGHTTP2_STREAM_FLAG_NONE,
+                                       &pri_spec, NGHTTP2_STREAM_OPENED,
+                                       NULL);
+
+  CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == stream->weight);
+
+  session->pending_local_max_concurrent_stream = 3;
+
+  /* Now another 2 streams can be added */
+  stream = nghttp2_session_open_stream(session, 3, NGHTTP2_STREAM_FLAG_NONE,
+                                       &pri_spec, NGHTTP2_STREAM_OPENED,
+                                       NULL);
+
+  CU_ASSERT(245 == stream->weight);
+  CU_ASSERT(101 == stream->dep_prev->stream_id);
+
+  stream = nghttp2_session_get_stream_raw(session, 101);
+
+  CU_ASSERT(NGHTTP2_STREAM_IDLE == stream->state);
+  CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == stream->weight);
+
+  session->pending_local_max_concurrent_stream = 4;
+
+  /* Now another 1 stream can be added */
+
+  nghttp2_priority_spec_init(&pri_spec, 211, 1, 0);
+
+  /* stream 101 was already created and does not consume another
+     limit. */
+  stream = nghttp2_session_open_stream(session, 101, NGHTTP2_STREAM_FLAG_NONE,
+                                       &pri_spec, NGHTTP2_STREAM_OPENED,
+                                       NULL);
+
+  CU_ASSERT(1 == stream->weight);
+  CU_ASSERT(211 == stream->dep_prev->stream_id);
+
+  stream = nghttp2_session_get_stream_raw(session, 211);
+
+  CU_ASSERT(NGHTTP2_STREAM_IDLE == stream->state);
+  CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == stream->weight);
 
   nghttp2_session_del(session);
 }

@@ -588,7 +588,28 @@ int nghttp2_session_reprioritize_stream
   if(pri_spec->stream_id != 0) {
     dep_stream = nghttp2_session_get_stream_raw(session, pri_spec->stream_id);
 
-    if(!dep_stream || !nghttp2_stream_in_dep_tree(dep_stream)) {
+    if(session->server && !dep_stream &&
+       session_detect_idle_stream(session, pri_spec->stream_id)) {
+      nghttp2_session_adjust_closed_stream(session, 1);
+
+      nghttp2_priority_spec_default_init(&pri_spec_default);
+
+      if(nghttp2_session_can_add_closed_stream(session, 1)) {
+
+        dep_stream = nghttp2_session_open_stream(session,
+                                                 pri_spec->stream_id,
+                                                 NGHTTP2_FLAG_NONE,
+                                                 &pri_spec_default,
+                                                 NGHTTP2_STREAM_IDLE,
+                                                 NULL);
+
+        if(dep_stream == NULL) {
+          return NGHTTP2_ERR_NOMEM;
+        }
+      } else {
+        pri_spec = &pri_spec_default;
+      }
+    } else if(!dep_stream || !nghttp2_stream_in_dep_tree(dep_stream)) {
       nghttp2_priority_spec_default_init(&pri_spec_default);
       pri_spec = &pri_spec_default;
     }
@@ -822,6 +843,7 @@ nghttp2_stream* nghttp2_session_open_stream(nghttp2_session *session,
   int stream_alloc = 0;
   nghttp2_priority_spec pri_spec_default;
   nghttp2_priority_spec *pri_spec = pri_spec_in;
+  ssize_t num_adjust_closed = 0;
 
   stream = nghttp2_session_get_stream_raw(session, stream_id);
 
@@ -834,6 +856,7 @@ nghttp2_stream* nghttp2_session_open_stream(nghttp2_session *session,
     if(session->server &&
        (!nghttp2_session_is_my_stream_id(session, stream_id) ||
         initial_state == NGHTTP2_STREAM_IDLE)) {
+      num_adjust_closed = 1;
       nghttp2_session_adjust_closed_stream(session, 1);
     }
 
@@ -848,9 +871,35 @@ nghttp2_stream* nghttp2_session_open_stream(nghttp2_session *session,
   if(pri_spec->stream_id != 0) {
     dep_stream = nghttp2_session_get_stream_raw(session, pri_spec->stream_id);
 
-    /* If dep_stream is not part of dependency tree, stream will get
-       default priority. */
-    if(!dep_stream || !nghttp2_stream_in_dep_tree(dep_stream)) {
+    if(session->server && !dep_stream &&
+       session_detect_idle_stream(session, pri_spec->stream_id)) {
+      ++num_adjust_closed;
+      nghttp2_session_adjust_closed_stream(session, num_adjust_closed);
+
+      nghttp2_priority_spec_default_init(&pri_spec_default);
+
+      if(nghttp2_session_can_add_closed_stream(session, num_adjust_closed)) {
+
+        dep_stream = nghttp2_session_open_stream(session,
+                                                 pri_spec->stream_id,
+                                                 NGHTTP2_FLAG_NONE,
+                                                 &pri_spec_default,
+                                                 NGHTTP2_STREAM_IDLE,
+                                                 NULL);
+
+        if(dep_stream == NULL) {
+          if(stream_alloc) {
+            free(stream);
+          }
+
+          return NULL;
+        }
+      } else {
+        pri_spec = &pri_spec_default;
+      }
+    } else if(!dep_stream || !nghttp2_stream_in_dep_tree(dep_stream)) {
+      /* If dep_stream is not part of dependency tree, stream will get
+         default priority. */
       nghttp2_priority_spec_default_init(&pri_spec_default);
       pri_spec = &pri_spec_default;
     }
@@ -1082,17 +1131,15 @@ void nghttp2_session_detach_closed_stream(nghttp2_session *session,
   --session->num_closed_streams;
 }
 
-/* Returns nonzero if closed stream can not be added to linked list
-   now. */
-static int session_closed_stream_full(nghttp2_session *session)
+int nghttp2_session_can_add_closed_stream(nghttp2_session *session,
+                                          ssize_t offset)
 {
   size_t num_stream_max;
 
   num_stream_max = nghttp2_min(session->local_settings.max_concurrent_streams,
                                session->pending_local_max_concurrent_stream);
 
-  return (size_t)nghttp2_max(0, (ssize_t)session->num_closed_streams - 1) +
-    session->num_incoming_streams >= num_stream_max;
+  return offset + session->num_incoming_streams <= num_stream_max;
 }
 
 void nghttp2_session_adjust_closed_stream(nghttp2_session *session,
@@ -3304,7 +3351,7 @@ int nghttp2_session_on_priority_received(nghttp2_session *session,
     /* PRIORITY against idle stream can create anchor node in
        dependency tree. */
     if(!session_detect_idle_stream(session, frame->hd.stream_id) ||
-       session_closed_stream_full(session)) {
+       !nghttp2_session_can_add_closed_stream(session, 1)) {
       return 0;
     }
 

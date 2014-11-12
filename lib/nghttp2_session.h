@@ -432,6 +432,13 @@ void nghttp2_session_detach_closed_stream(nghttp2_session *session,
                                           nghttp2_stream *stream);
 
 /*
+ * Returns nonzero if |offset| closed stream(s) can be added to closed
+ * linked list now.
+ */
+int nghttp2_session_can_add_closed_stream(nghttp2_session *session,
+                                          ssize_t offset);
+
+/*
  * Deletes closed stream to ensure that number of incoming streams
  * including active and closed is in the maximum number of allowed
  * stream.  If |offset| is nonzero, it is decreased from the maximum

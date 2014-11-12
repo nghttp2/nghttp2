@@ -149,6 +149,8 @@ int main(int argc, char* argv[])
       !CU_add_test(pSuite, "session_upgrade", test_nghttp2_session_upgrade) ||
       !CU_add_test(pSuite, "session_reprioritize_stream",
                    test_nghttp2_session_reprioritize_stream) ||
+      !CU_add_test(pSuite, "session_reprioritize_stream_with_closed_stream_limit",
+                   test_nghttp2_session_reprioritize_stream_with_closed_stream_limit) ||
       !CU_add_test(pSuite, "submit_data", test_nghttp2_submit_data) ||
       !CU_add_test(pSuite, "submit_data_read_length_too_large",
                    test_nghttp2_submit_data_read_length_too_large) ||
@@ -187,6 +189,8 @@ int main(int argc, char* argv[])
                    test_nghttp2_submit_invalid_nv) ||
       !CU_add_test(pSuite, "session_open_stream",
                    test_nghttp2_session_open_stream) ||
+      !CU_add_test(pSuite, "session_open_stream_with_closed_stream_limit",
+                   test_nghttp2_session_open_stream_with_closed_stream_limit) ||
       !CU_add_test(pSuite, "session_get_next_ob_item",
                    test_nghttp2_session_get_next_ob_item) ||
       !CU_add_test(pSuite, "session_pop_next_ob_item",
