@@ -856,17 +856,6 @@ nghttp2_stream* nghttp2_session_open_stream(nghttp2_session *session,
     }
   }
 
-  if(pri_spec->stream_id != 0) {
-    dep_stream = nghttp2_session_get_stream_raw(session, pri_spec->stream_id);
-
-    /* If dep_stream is not part of dependency tree, stream will get
-       default priority. */
-    if(!dep_stream || !nghttp2_stream_in_dep_tree(dep_stream)) {
-      nghttp2_priority_spec_default_init(&pri_spec_default);
-      pri_spec = &pri_spec_default;
-    }
-  }
-
   nghttp2_stream_init(stream, stream_id, flags, initial_state,
                       pri_spec->weight, &session->roots,
                       session->remote_settings.initial_window_size,
