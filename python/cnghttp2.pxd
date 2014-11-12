@@ -245,7 +245,12 @@ cdef extern from 'nghttp2/nghttp2.h':
         nghttp2_data_source source
         nghttp2_data_source_read_callback read_callback
 
-    int nghttp2_submit_request(nghttp2_session *session, int32_t pri,
+    ctypedef struct nghttp2_priority_spec:
+        int32_t stream_id
+        int32_t weight
+        uint8_t exclusive
+        
+    int nghttp2_submit_request(nghttp2_session *session, const nghttp2_priority_spec *pri_spec,
                                const nghttp2_nv *nva, size_t nvlen,
                                const nghttp2_data_provider *data_prd,
                                void *stream_user_data)
