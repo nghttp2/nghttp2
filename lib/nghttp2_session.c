@@ -1209,7 +1209,8 @@ static int session_predicate_request_headers_send
 
 /*
  * This function checks HEADERS, which is the first frame from the
- * server, with the stream ID |stream_id| can be sent at this time.
+ * server, with the |stream| can be sent at this time.  The |stream|
+ * can be NULL.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -1227,15 +1228,15 @@ static int session_predicate_request_headers_send
  *     The state of the stream is not valid.
  */
 static int session_predicate_response_headers_send
-(nghttp2_session *session, int32_t stream_id)
+(nghttp2_session *session, nghttp2_stream *stream)
 {
-  nghttp2_stream *stream = nghttp2_session_get_stream(session, stream_id);
   int rv;
   rv = stream_predicate_for_send(stream);
   if(rv != 0) {
     return rv;
   }
-  if(nghttp2_session_is_my_stream_id(session, stream_id)) {
+  assert(stream);
+  if(nghttp2_session_is_my_stream_id(session, stream->stream_id)) {
     return NGHTTP2_ERR_INVALID_STREAM_ID;
   }
   if(stream->state == NGHTTP2_STREAM_OPENING) {
@@ -1249,8 +1250,8 @@ static int session_predicate_response_headers_send
 
 /*
  * This function checks HEADERS for reserved stream can be sent. The
- * stream |stream_id| must be reserved state and the |session| is
- * server side.
+ * |stream| must be reserved state and the |session| is server side.
+ * The |stream| can be NULL.
  *
  * This function returns 0 if it succeeds, or one of the following
  * error codes:
@@ -1265,15 +1266,15 @@ static int session_predicate_response_headers_send
  *   RST_STREAM was queued for this stream.
  */
 static int session_predicate_push_response_headers_send
-(nghttp2_session *session, int32_t stream_id)
+(nghttp2_session *session, nghttp2_stream *stream)
 {
-  nghttp2_stream *stream = nghttp2_session_get_stream(session, stream_id);
   int rv;
   /* TODO Should disallow HEADERS if GOAWAY has already been issued? */
   rv = stream_predicate_for_send(stream);
   if(rv != 0) {
     return rv;
   }
+  assert(stream);
   if(stream->state != NGHTTP2_STREAM_RESERVED) {
     return NGHTTP2_ERR_PROTO;
   }
@@ -1284,8 +1285,8 @@ static int session_predicate_push_response_headers_send
 }
 
 /*
- * This function checks frames belongs to the stream |stream_id| can
- * be sent.
+ * This function checks frames belongs to the |stream| can be sent.
+ * The |stream| can be NULL.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -1301,15 +1302,15 @@ static int session_predicate_push_response_headers_send
  *     The state of the stream is not valid.
  */
 static int session_predicate_stream_frame_send
-(nghttp2_session* session, int32_t stream_id)
+(nghttp2_session* session, nghttp2_stream *stream)
 {
-  nghttp2_stream *stream = nghttp2_session_get_stream(session, stream_id);
   int rv;
   rv = stream_predicate_for_send(stream);
   if(rv != 0) {
     return rv;
   }
-  if(nghttp2_session_is_my_stream_id(session, stream_id)) {
+  assert(stream);
+  if(nghttp2_session_is_my_stream_id(session, stream->stream_id)) {
     if(stream->state == NGHTTP2_STREAM_CLOSING) {
       return NGHTTP2_ERR_STREAM_CLOSING;
     }
@@ -1326,18 +1327,18 @@ static int session_predicate_stream_frame_send
 
 /*
  * This function checks HEADERS, which is neither stream-opening nor
- * first response header, with the stream ID |stream_id| can be sent
- * at this time.
+ * first response header, with the |stream| can be sent at this time.
+ * The |stream| can be NULL.
  */
 static int session_predicate_headers_send(nghttp2_session *session,
-                                          int32_t stream_id)
+                                          nghttp2_stream *stream)
 {
-  return session_predicate_stream_frame_send(session, stream_id);
+  return session_predicate_stream_frame_send(session, stream);
 }
 
 /*
- * This function checks PUSH_PROMISE frame |frame| with stream ID
- * |stream_id| can be sent at this time.
+ * This function checks PUSH_PROMISE frame |frame| with the |stream|
+ * can be sent at this time.  The |stream| can be NULL.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -1359,22 +1360,26 @@ static int session_predicate_headers_send(nghttp2_session *session,
  *     The remote peer disabled reception of PUSH_PROMISE.
  */
 static int session_predicate_push_promise_send
-(nghttp2_session *session, int32_t stream_id)
+(nghttp2_session *session, nghttp2_stream *stream)
 {
   int rv;
-  nghttp2_stream *stream;
+
   if(!session->server) {
     return NGHTTP2_ERR_PROTO;
   }
-  if(nghttp2_session_is_my_stream_id(session, stream_id)) {
-    /* The associated stream must be initiated by the remote peer */
-    return NGHTTP2_ERR_PROTO;
-  }
-  stream = nghttp2_session_get_stream(session, stream_id);
+
   rv = stream_predicate_for_send(stream);
   if(rv != 0) {
     return rv;
   }
+
+  assert(stream);
+
+  if(nghttp2_session_is_my_stream_id(session, stream->stream_id)) {
+    /* The associated stream must be initiated by the remote peer */
+    return NGHTTP2_ERR_PROTO;
+  }
+
   if(session->remote_settings.enable_push == 0) {
     return NGHTTP2_ERR_PUSH_DISABLED;
   }
@@ -1512,8 +1517,8 @@ static size_t nghttp2_session_next_data_read(nghttp2_session *session,
 }
 
 /*
- * This function checks DATA with the stream ID |stream_id| can be
- * sent at this time.
+ * This function checks DATA with the |stream| can be sent at this
+ * time.  The |stream| can be NULL.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -1529,15 +1534,15 @@ static size_t nghttp2_session_next_data_read(nghttp2_session *session,
  *     The state of the stream is not valid.
  */
 static int nghttp2_session_predicate_data_send(nghttp2_session *session,
-                                               int32_t stream_id)
+                                               nghttp2_stream *stream)
 {
-  nghttp2_stream *stream = nghttp2_session_get_stream(session, stream_id);
   int rv;
   rv = stream_predicate_for_send(stream);
   if(rv != 0) {
     return rv;
   }
-  if(nghttp2_session_is_my_stream_id(session, stream_id)) {
+  assert(stream);
+  if(nghttp2_session_is_my_stream_id(session, stream->stream_id)) {
     /* Request body data */
     /* If stream->state is NGHTTP2_STREAM_CLOSING, RST_STREAM was
        queued but not yet sent. In this case, we won't send DATA
@@ -1689,40 +1694,39 @@ static int session_prep_frame(nghttp2_session *session,
           return NGHTTP2_ERR_NOMEM;
         }
 
-      } else if(session_predicate_push_response_headers_send
-                (session, frame->hd.stream_id) == 0) {
-        frame->headers.cat = NGHTTP2_HCAT_PUSH_RESPONSE;
-
-        if(aux_data->stream_user_data) {
-          nghttp2_stream *stream;
-
-          stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
-          stream->stream_user_data = aux_data->stream_user_data;
-        }
-      } else if(session_predicate_response_headers_send
-                (session, frame->hd.stream_id) == 0) {
-        frame->headers.cat = NGHTTP2_HCAT_RESPONSE;
       } else {
-        frame->headers.cat = NGHTTP2_HCAT_HEADERS;
+        nghttp2_stream *stream;
 
-        rv = session_predicate_headers_send(session, frame->hd.stream_id);
+        stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
 
-        if(rv != 0) {
-          nghttp2_stream *stream;
+        if(session_predicate_push_response_headers_send
+           (session, stream) == 0) {
+          frame->headers.cat = NGHTTP2_HCAT_PUSH_RESPONSE;
 
-          stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
-
-          if(stream && stream->data_item == item) {
-            int rv2;
-
-            rv2 = nghttp2_stream_detach_data(stream, session);
-
-            if(nghttp2_is_fatal(rv2)) {
-              return rv2;
-            }
+          if(aux_data->stream_user_data) {
+            stream->stream_user_data = aux_data->stream_user_data;
           }
+        } else if(session_predicate_response_headers_send
+                  (session, stream) == 0) {
+          frame->headers.cat = NGHTTP2_HCAT_RESPONSE;
+        } else {
+          frame->headers.cat = NGHTTP2_HCAT_HEADERS;
 
-          return rv;
+          rv = session_predicate_headers_send(session, stream);
+
+          if(rv != 0) {
+            if(stream && stream->data_item == item) {
+              int rv2;
+
+              rv2 = nghttp2_stream_detach_data(stream, session);
+
+              if(nghttp2_is_fatal(rv2)) {
+                return rv2;
+              }
+            }
+
+            return rv;
+          }
         }
       }
 
@@ -1812,10 +1816,14 @@ static int session_prep_frame(nghttp2_session *session,
         return NGHTTP2_ERR_FRAME_SIZE_ERROR;
       }
 
-      rv = session_predicate_push_promise_send(session, frame->hd.stream_id);
+      stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
+
+      rv = session_predicate_push_promise_send(session, stream);
       if(rv != 0) {
         return rv;
       }
+
+      assert(stream);
 
       framerv = nghttp2_frame_pack_push_promise(&session->aob.framebufs,
                                                 &frame->push_promise,
@@ -1827,9 +1835,6 @@ static int session_prep_frame(nghttp2_session *session,
       if(framerv < 0) {
         return framerv;
       }
-
-      stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
-      assert(stream);
 
       /* TODO It is unclear reserved stream dpeneds on associated
          stream with or without exclusive flag set */
@@ -1906,7 +1911,7 @@ static int session_prep_frame(nghttp2_session *session,
       assert(stream->data_item == item);
     }
 
-    rv = nghttp2_session_predicate_data_send(session, frame->hd.stream_id);
+    rv = nghttp2_session_predicate_data_send(session, stream);
     if(rv != 0) {
       if(stream) {
         int rv2;
@@ -2377,8 +2382,7 @@ static int session_after_frame_sent(nghttp2_session *session)
 
     /* If session is closed or RST_STREAM was queued, we won't send
        further data. */
-    if(nghttp2_session_predicate_data_send(session,
-                                           frame->hd.stream_id) != 0) {
+    if(nghttp2_session_predicate_data_send(session, stream) != 0) {
       if(stream) {
         rv = nghttp2_stream_detach_data(stream, session);
 
