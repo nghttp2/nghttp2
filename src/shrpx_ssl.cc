@@ -99,6 +99,11 @@ std::vector<unsigned char> set_alpn_prefs(const std::vector<char*>& protos)
     len += 1 + n;
   }
 
+  if(len > (1 << 16) - 1) {
+      LOG(FATAL) << "Too long ALPN identifier list: " << len;
+      DIE();
+  }
+
   auto out = std::vector<unsigned char>(len);
   auto ptr = out.data();
 
