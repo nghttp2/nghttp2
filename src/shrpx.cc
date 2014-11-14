@@ -673,7 +673,7 @@ bool conf_exists(const char *path)
 namespace {
 const char *DEFAULT_NPN_LIST = NGHTTP2_PROTO_VERSION_ID ","
 #ifdef HAVE_SPDYLAY
-  "spdy/3.1,spdy/3,spdy/2,"
+  "spdy/3.1,"
 #endif // HAVE_SPDYLAY
   "http/1.1";
 } // namespace
