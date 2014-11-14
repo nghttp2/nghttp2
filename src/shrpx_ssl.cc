@@ -86,23 +86,31 @@ int verify_callback(int preverify_ok, X509_STORE_CTX *ctx)
 
 std::vector<unsigned char> set_alpn_prefs(const std::vector<char*>& protos)
 {
-  unsigned char out[256];
-  auto ptr = out;
-  auto end = ptr + sizeof(out);
+  size_t len = 0;
 
   for(auto proto : protos) {
-    auto plen = strlen(proto);
+    auto n = strlen(proto);
 
-    if(ptr + plen + 1 > end) {
-      LOG(FATAL) << "Too long alpn list";
+    if(n > 255) {
+      LOG(FATAL) << "Too long ALPN identifier: " << n;
       DIE();
     }
 
-    *ptr = plen;
-    memcpy(ptr + 1, proto, plen);
-    ptr += plen + 1;
+    len += 1 + n;
   }
-  return std::vector<unsigned char>(out, ptr);
+
+  auto out = std::vector<unsigned char>(len);
+  auto ptr = out.data();
+
+  for(auto proto : protos) {
+    auto proto_len = strlen(proto);
+
+    *ptr++ = proto_len;
+    memcpy(ptr, proto, proto_len);
+    ptr += proto_len;
+  }
+
+  return out;
 }
 
 namespace {
@@ -445,14 +453,9 @@ SSL_CTX* create_ssl_client_context()
 
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L
   // ALPN advertisement; We only advertise HTTP/2
-  unsigned char proto_list[256];
+  auto proto_list = util::get_default_alpn();
 
-  proto_list[0] = NGHTTP2_PROTO_VERSION_ID_LEN;
-  memcpy(proto_list + 1, NGHTTP2_PROTO_VERSION_ID,
-         NGHTTP2_PROTO_VERSION_ID_LEN);
-  auto proto_list_len = 1 + NGHTTP2_PROTO_VERSION_ID_LEN;
-
-  SSL_CTX_set_alpn_protos(ssl_ctx, proto_list, proto_list_len);
+  SSL_CTX_set_alpn_protos(ssl_ctx, proto_list.data(), proto_list.size());
 #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
   return ssl_ctx;

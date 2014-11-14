@@ -1632,9 +1632,7 @@ void eventcb(bufferevent *bev, short events, void *ptr)
                               next_proto_len);
               std::cout << std::endl;
             }
-            if(NGHTTP2_PROTO_VERSION_ID_LEN != next_proto_len ||
-               memcmp(NGHTTP2_PROTO_VERSION_ID, next_proto,
-                      NGHTTP2_PROTO_VERSION_ID_LEN) != 0) {
+            if(!util::check_h2_is_selected(next_proto, next_proto_len)) {
               next_proto = nullptr;
             }
             break;
@@ -1739,11 +1737,9 @@ int communicate(const std::string& scheme, const std::string& host,
                                      client_select_next_proto_cb, nullptr);
 
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L
-    unsigned char proto_list[255];
-    proto_list[0] = NGHTTP2_PROTO_VERSION_ID_LEN;
-    memcpy(&proto_list[1], NGHTTP2_PROTO_VERSION_ID,
-           NGHTTP2_PROTO_VERSION_ID_LEN);
-    SSL_CTX_set_alpn_protos(ssl_ctx, proto_list, proto_list[0] + 1);
+    auto proto_list = util::get_default_alpn();
+
+    SSL_CTX_set_alpn_protos(ssl_ctx, proto_list.data(), proto_list.size());
 #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
   }
   {

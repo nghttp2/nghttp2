@@ -301,9 +301,7 @@ int ClientHandler::validate_next_proto()
                              next_proto, next_proto_len)) {
         break;
       }
-      if(next_proto_len == NGHTTP2_PROTO_VERSION_ID_LEN &&
-         memcmp(NGHTTP2_PROTO_VERSION_ID, next_proto,
-                NGHTTP2_PROTO_VERSION_ID_LEN) == 0) {
+      if(util::check_h2_is_selected(next_proto, next_proto_len)) {
 
         set_bev_cb(upstream_http2_connhd_readcb, upstream_writecb,
                    upstream_eventcb);

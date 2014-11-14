@@ -31,6 +31,7 @@
 #include <getopt.h>
 
 #include <cstring>
+#include <cassert>
 #include <vector>
 #include <string>
 #include <algorithm>
@@ -469,6 +470,14 @@ bool check_path(const std::string& path);
 // Returns the |tv| value as 64 bit integer using a microsecond as an
 // unit.
 int64_t to_time64(const timeval& tv);
+
+// Returns true if ALPN ID |proto| of length |len| is supported HTTP/2
+// protocol identifier.
+bool check_h2_is_selected(const unsigned char *alpn, size_t len);
+
+// Returns default ALPN protocol list, which only contains supported
+// HTTP/2 protocol identifier.
+std::vector<unsigned char> get_default_alpn();
 
 } // namespace util
 

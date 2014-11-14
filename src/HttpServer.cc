@@ -593,11 +593,11 @@ int Http2Handler::verify_npn_result()
   SSL_get0_next_proto_negotiated(ssl_, &next_proto, &next_proto_len);
   for(int i = 0; i < 2; ++i) {
     if(next_proto) {
-      std::string proto(next_proto, next_proto+next_proto_len);
       if(sessions_->get_config()->verbose) {
+        std::string proto(next_proto, next_proto+next_proto_len);
         std::cout << "The negotiated protocol: " << proto << std::endl;
       }
-      if(proto == NGHTTP2_PROTO_VERSION_ID) {
+      if(util::check_h2_is_selected(next_proto, next_proto_len)) {
         return 0;
       }
       break;
@@ -1555,7 +1555,7 @@ int HttpServer::run()
 {
   SSL_CTX *ssl_ctx = nullptr;
   std::pair<unsigned char*, size_t> next_proto;
-  unsigned char proto_list[255];
+
   if(!config_->no_tls) {
     ssl_ctx = SSL_CTX_new(SSLv23_server_method());
     if(!ssl_ctx) {
@@ -1646,11 +1646,13 @@ int HttpServer::run()
                          verify_callback);
     }
 
-    proto_list[0] = NGHTTP2_PROTO_VERSION_ID_LEN;
-    memcpy(&proto_list[1], NGHTTP2_PROTO_VERSION_ID,
-           NGHTTP2_PROTO_VERSION_ID_LEN);
-    next_proto.first = proto_list;
-    next_proto.second = proto_list[0] + 1;
+    auto proto_list = util::get_default_alpn();
+
+    std::pair<unsigned char*, size_t> next_proto(proto_list.data(),
+                                                 proto_list.size());
+
+    next_proto.first = proto_list.data();
+    next_proto.second = proto_list.size();
 
     SSL_CTX_set_next_protos_advertised_cb(ssl_ctx, next_proto_cb, &next_proto);
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L

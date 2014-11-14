@@ -80,16 +80,11 @@ http2_impl::http2_impl()
 {}
 
 namespace {
-std::array<unsigned char, NGHTTP2_PROTO_VERSION_ID_LEN + 1>&
+std::vector<unsigned char>&
 get_alpn_token()
 {
-  static std::array<unsigned char, NGHTTP2_PROTO_VERSION_ID_LEN + 1> token;
-
-  token[0] = NGHTTP2_PROTO_VERSION_ID_LEN;
-  std::copy(NGHTTP2_PROTO_VERSION_ID,
-            NGHTTP2_PROTO_VERSION_ID + NGHTTP2_PROTO_VERSION_ID_LEN,
-            std::begin(token) + 1);
-  return token;
+  static auto alpn_token = util::get_default_alpn();
+  return alpn_token;
 }
 } // namespace
 

@@ -36,6 +36,8 @@
 #include <cstring>
 #include <iostream>
 
+#include <nghttp2/nghttp2.h>
+
 #include "timegm.h"
 
 namespace nghttp2 {
@@ -684,6 +686,23 @@ bool check_path(const std::string& path)
 int64_t to_time64(const timeval& tv)
 {
   return tv.tv_sec * 1000000 + tv.tv_usec;
+}
+
+bool check_h2_is_selected(const unsigned char *proto, size_t len)
+{
+  return streq(NGHTTP2_PROTO_VERSION_ID, NGHTTP2_PROTO_VERSION_ID_LEN,
+               proto, len);
+}
+
+std::vector<unsigned char> get_default_alpn()
+{
+  auto res = std::vector<unsigned char>(1 + NGHTTP2_PROTO_VERSION_ID_LEN);
+  auto p = res.data();
+
+  *p++ = NGHTTP2_PROTO_VERSION_ID_LEN;
+  memcpy(p, NGHTTP2_PROTO_VERSION_ID, NGHTTP2_PROTO_VERSION_ID_LEN);
+
+  return res;
 }
 
 } // namespace util
