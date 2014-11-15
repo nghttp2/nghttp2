@@ -6067,7 +6067,8 @@ int nghttp2_session_upgrade(nghttp2_session *session,
   }
 
   if(session->server) {
-    memset(&frame.hd, 0, sizeof(frame.hd));
+    nghttp2_frame_hd_init(&frame.hd, settings_payloadlen, NGHTTP2_SETTINGS,
+                          NGHTTP2_FLAG_NONE, 0);
     frame.settings.iv = iv;
     frame.settings.niv = niv;
     rv = nghttp2_session_on_settings_received(session, &frame, 1 /* No ACK */);
