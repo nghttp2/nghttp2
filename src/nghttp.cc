@@ -62,6 +62,8 @@
 
 #include <nghttp2/nghttp2.h>
 
+#include <jansson.h>
+
 #include "http-parser/http_parser.h"
 
 #include "app_helper.h"
@@ -84,6 +86,7 @@ struct Config {
   std::string certfile;
   std::string keyfile;
   std::string datafile;
+  std::string harfile;
   nghttp2_option *http2_option;
   size_t output_upper_thres;
   size_t padding;
@@ -176,7 +179,7 @@ struct Dependency {
 namespace {
 struct Request {
   Headers res_nva;
-  Headers push_req_nva;
+  Headers req_nva;
   // URI without fragment
   std::string uri;
   http_parser_url u;
@@ -185,6 +188,8 @@ struct Request {
   RequestStat stat;
   int64_t data_length;
   int64_t data_offset;
+  // Number of bytes received from server
+  int64_t response_len;
   nghttp2_gzip *inflater;
   HtmlParser *html_parser;
   const nghttp2_data_provider *data_prd;
@@ -207,6 +212,7 @@ struct Request {
       pri_spec(pri_spec),
       data_length(data_length),
       data_offset(0),
+      response_len(0),
       inflater(nullptr),
       html_parser(nullptr),
       data_prd(data_prd),
@@ -327,7 +333,7 @@ struct Request {
 
   bool push_request_pseudo_header_allowed() const
   {
-    return res_nva.empty() || push_req_nva.back().name.c_str()[0] == ':';
+    return res_nva.empty() || req_nva.back().name.c_str()[0] == ':';
   }
 
   void record_request_time()
@@ -352,6 +358,16 @@ struct Request {
 
 namespace {
 struct SessionStat {
+  // The point in time when download was started.
+  std::chrono::system_clock::time_point started_system_time;
+  // The point of time when download was started.
+  std::chrono::steady_clock::time_point on_started_time;
+  // The point of time when DNS resolution was completed.
+  std::chrono::steady_clock::time_point on_dns_complete_time;
+  // The point of time when connection was established or SSL/TLS
+  // handshake was completed.
+  std::chrono::steady_clock::time_point on_connect_time;
+  // The point of time when HTTP/2 commnucation was started.
   std::chrono::steady_clock::time_point on_handshake_time;
 };
 } // namespace
@@ -925,9 +941,26 @@ struct HttpClient {
                                                 pri, level));
     return true;
   }
+
   void record_handshake_time()
   {
     stat.on_handshake_time = get_time();
+  }
+
+  void record_started_time()
+  {
+    stat.started_system_time = std::chrono::system_clock::now();
+    stat.on_started_time = get_time();
+  }
+
+  void record_dns_complete_time()
+  {
+    stat.on_dns_complete_time = get_time();
+  }
+
+  void record_connect_time()
+  {
+    stat.on_connect_time = get_time();
   }
 
   void on_request(Request *req)
@@ -966,6 +999,170 @@ struct HttpClient {
       req->dep->deps.push_back(std::vector<Request*>{req});
     }
   }
+
+#ifdef HAVE_JANSSON
+  void output_har(FILE *outfile)
+  {
+    static auto PAGE_ID = "page_0";
+
+    auto root = json_object();
+    auto log = json_object();
+    json_object_set_new(root, "log", log);
+    json_object_set_new(log, "version", json_string("1.2"));
+
+    auto creator = json_object();
+    json_object_set_new(log, "creator", creator);
+
+    json_object_set_new(creator, "name", json_string("nghttp"));
+    json_object_set_new(creator, "version", json_string(NGHTTP2_VERSION));
+
+    auto pages = json_array();
+    json_object_set_new(log, "pages", pages);
+
+    auto page = json_object();
+    json_array_append_new(pages, page);
+
+    json_object_set_new
+      (page, "startedDateTime",
+       json_string(util::format_iso8601(stat.started_system_time).c_str()));
+    json_object_set_new(page, "id", json_string(PAGE_ID));
+    json_object_set_new(page, "title", json_string(""));
+
+    json_object_set_new(page, "pageTimings", json_object());
+
+    auto entries = json_array();
+    json_object_set_new(log, "entries", entries);
+
+    auto dns_delta = std::chrono::duration_cast
+      <std::chrono::microseconds>
+      (stat.on_dns_complete_time - stat.on_started_time).count() / 1000.0;
+    auto connect_delta = std::chrono::duration_cast
+      <std::chrono::microseconds>
+      (stat.on_connect_time - stat.on_dns_complete_time).count() / 1000.0;
+
+    for(size_t i = 0; i < reqvec.size(); ++i) {
+      auto& req = reqvec[i];
+
+      if(req->stat.stage != STAT_ON_COMPLETE) {
+        continue;
+      }
+
+      auto entry = json_object();
+      json_array_append_new(entries, entry);
+
+      auto& req_stat = req->stat;
+      auto request_time = (i == 0) ? stat.started_system_time :
+        stat.started_system_time +
+        (req_stat.on_request_time - stat.on_started_time);
+
+      auto wait_delta = std::chrono::duration_cast
+        <std::chrono::microseconds>
+        (req_stat.on_response_time - req_stat.on_request_time)
+        .count() / 1000.0;
+      auto receive_delta = std::chrono::duration_cast
+        <std::chrono::microseconds>
+        (req_stat.on_complete_time - req_stat.on_response_time)
+        .count() / 1000.0;
+
+      auto time_sum = std::chrono::duration_cast<std::chrono::microseconds>
+        ((i == 0) ? (req_stat.on_complete_time - stat.on_started_time) :
+         (req_stat.on_complete_time - req_stat.on_request_time))
+        .count() / 1000.0;
+
+      json_object_set_new(entry, "startedDateTime",
+                          json_string
+                          (util::format_iso8601(request_time).c_str()));
+      json_object_set_new(entry, "time", json_real(time_sum));
+
+      auto request = json_object();
+      json_object_set_new(entry, "request", request);
+
+      auto method_ptr = http2::get_header(req->req_nva, ":method");
+
+      const char *method = "GET";
+      if(method_ptr) {
+        method = (*method_ptr).value.c_str();
+      }
+
+      auto req_headers = json_array();
+      json_object_set_new(request, "headers", req_headers);
+
+      for(auto& nv : req->req_nva) {
+        auto hd = json_object();
+        json_array_append_new(req_headers, hd);
+
+        json_object_set_new(hd, "name", json_string(nv.name.c_str()));
+        json_object_set_new(hd, "value", json_string(nv.value.c_str()));
+      }
+
+      json_object_set_new(request, "method", json_string(method));
+      json_object_set_new(request, "url", json_string(req->uri.c_str()));
+      json_object_set_new(request, "httpVersion", json_string("HTTP/2.0"));
+      json_object_set_new(request, "cookies", json_array());
+      json_object_set_new(request, "queryString", json_array());
+      json_object_set_new(request, "headersSize", json_integer(-1));
+      json_object_set_new(request, "bodySize", json_integer(-1));
+
+      auto response = json_object();
+      json_object_set_new(entry, "response", response);
+
+      auto res_headers = json_array();
+      json_object_set_new(response, "headers", res_headers);
+
+      for(auto& nv : req->res_nva) {
+        auto hd = json_object();
+        json_array_append_new(res_headers, hd);
+
+        json_object_set_new(hd, "name", json_string(nv.name.c_str()));
+        json_object_set_new(hd, "value", json_string(nv.value.c_str()));
+      }
+
+      json_object_set_new(response, "status", json_integer(req->status));
+      json_object_set_new(response, "statusText", json_string(""));
+      json_object_set_new(response, "httpVersion", json_string("HTTP/2.0"));
+      json_object_set_new(response, "cookies", json_array());
+
+      auto content = json_object();
+      json_object_set_new(response, "content", content);
+
+      json_object_set_new(content, "size", json_integer(req->response_len));
+
+      auto content_type_ptr = http2::get_header(req->res_nva, "content-type");
+
+      const char *content_type = "";
+      if(content_type_ptr) {
+        content_type = content_type_ptr->value.c_str();
+      }
+
+      json_object_set_new(content, "mimeType", json_string(content_type));
+
+      json_object_set_new(response, "redirectURL", json_string(""));
+      json_object_set_new(response, "headersSize", json_integer(-1));
+      json_object_set_new(response, "bodySize", json_integer(-1));
+
+      json_object_set_new(entry, "cache", json_object());
+
+      auto timings = json_object();
+      json_object_set_new(entry, "timings", timings);
+
+      auto dns_timing = (i == 0) ? dns_delta : 0;
+      auto connect_timing = (i == 0) ? connect_delta : 0;
+
+      json_object_set_new(timings, "dns", json_real(dns_timing));
+      json_object_set_new(timings, "connect", json_real(connect_timing));
+
+      json_object_set_new(timings, "blocked", json_real(0.0));
+      json_object_set_new(timings, "send", json_real(0.0));
+      json_object_set_new(timings, "wait", json_real(wait_delta));
+      json_object_set_new(timings, "receive", json_real(receive_delta));
+
+      json_object_set_new(entry, "pageref", json_string(PAGE_ID));
+    }
+
+    json_dumpf(root, outfile, JSON_PRESERVE_ORDER | JSON_INDENT(2));
+    json_decref(root);
+  }
+#endif // HAVE_JANSSON
 };
 } // namespace
 
@@ -1071,6 +1268,8 @@ int submit_request
   req->stream_id = stream_id;
   client->on_request(req);
 
+  req->req_nva = std::move(build_headers);
+
   return 0;
 }
 } // namespace
@@ -1152,9 +1351,13 @@ int on_data_chunk_recv_callback
                                   NGHTTP2_INTERNAL_ERROR);
         break;
       }
+
+      req->response_len += outlen;
+
       if(!config.null_out) {
         std::cout.write(reinterpret_cast<const char*>(out), outlen);
       }
+
       update_html_parser(client, req, out, outlen, 0);
       data += tlen;
       len -= tlen;
@@ -1162,6 +1365,8 @@ int on_data_chunk_recv_callback
 
     return 0;
   }
+
+  req->response_len += len;
 
   if(!config.null_out) {
     std::cout.write(reinterpret_cast<const char*>(data), len);
@@ -1348,7 +1553,7 @@ int on_header_callback(nghttp2_session *session,
       }
     }
 
-    http2::add_header(req->push_req_nva, name, namelen, value, valuelen,
+    http2::add_header(req->req_nva, name, namelen, value, valuelen,
                       flags & NGHTTP2_NV_FLAG_NO_INDEX);
     break;
   }
@@ -1422,7 +1627,7 @@ int on_frame_recv_callback2
       break;
     }
     std::string scheme, authority, method, path;
-    for(auto& nv : req->push_req_nva) {
+    for(auto& nv : req->req_nva) {
       if(nv.name == ":scheme") {
         scheme = nv.value;
         continue;
@@ -1607,6 +1812,7 @@ void eventcb(bufferevent *bev, short events, void *ptr)
   int rv;
   auto client = static_cast<HttpClient*>(ptr);
   if(events & BEV_EVENT_CONNECTED) {
+    client->record_connect_time();
     client->state = STATE_CONNECTED;
     int fd = bufferevent_getfd(bev);
     int val = 1;
@@ -1761,13 +1967,42 @@ int communicate(const std::string& scheme, const std::string& host,
       }
     }
     client.update_hostport();
+
+    client.record_started_time();
+
     if(client.resolve_host(host, port) != 0) {
       goto fin;
     }
+
+    client.record_dns_complete_time();
+
     if(client.initiate_connection() != 0) {
       goto fin;
     }
     event_base_loop(evbase, 0);
+
+#ifdef HAVE_JANSSON
+    if(!config.harfile.empty()) {
+      FILE *outfile;
+      if(config.harfile == "-") {
+        outfile = stdout;
+      } else {
+        outfile = fopen(config.harfile.c_str(), "wb");
+      }
+
+      if(outfile) {
+        client.output_har(outfile);
+
+        if(outfile != stdout) {
+          fclose(outfile);
+        }
+      } else {
+        std::cerr << "Cannot open file " << config.harfile << ". "
+                  << "har file could not be created."
+                  << std::endl;
+      }
+    }
+#endif // HAVE_JANSSON
 
     if(!client.all_requests_processed()) {
       std::cerr << "Some requests were not processed. total="
@@ -1994,6 +2229,8 @@ Options:
                      Specify decoder header table size.
   -b, --padding=<N>  Add  at most  <N>  bytes to  a  frame payload  as
                      padding.  Specify 0 to disable padding.
+  -r, --har=<FILE>   Output  HTTP transactions  <FILE> in  HAR format.
+                     If '-' is given, data is written to stdout.
   --color            Force colored log output.
   --continuation     Send large header to test CONTINUATION.
   --no-content-length
@@ -2027,6 +2264,7 @@ int main(int argc, char **argv)
       {"peer-max-concurrent-streams", required_argument, nullptr, 'M'},
       {"header-table-size", required_argument, nullptr, 'c'},
       {"padding", required_argument, nullptr, 'b'},
+      {"har", required_argument, nullptr, 'r'},
       {"cert", required_argument, &flag, 1},
       {"key", required_argument, &flag, 2},
       {"color", no_argument, &flag, 3},
@@ -2036,7 +2274,7 @@ int main(int argc, char **argv)
       {nullptr, 0, nullptr, 0 }
     };
     int option_index = 0;
-    int c = getopt_long(argc, argv, "M:Oab:c:d:gm:np:hH:vst:uw:W:",
+    int c = getopt_long(argc, argv, "M:Oab:c:d:gm:np:r:hH:vst:uw:W:",
                         long_options, &option_index);
     char *end;
     if(c == -1) {
@@ -2073,6 +2311,15 @@ int main(int argc, char **argv)
       }
       break;
     }
+    case 'r':
+#ifdef HAVE_JANSSON
+      config.harfile = optarg;
+#else // !HAVE_JANSSON
+      std::cerr << "[WARNING]: -r, --har option is ignored because\n"
+                << "the binary was not compiled with libjansson."
+                << std::endl;
+#endif // !HAVE_JANSSON
+      break;
     case 'v':
       ++config.verbose;
       break;

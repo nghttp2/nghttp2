@@ -37,6 +37,7 @@
 #include <algorithm>
 #include <sstream>
 #include <memory>
+#include <chrono>
 
 #include "http-parser/http_parser.h"
 
@@ -478,6 +479,10 @@ bool check_h2_is_selected(const unsigned char *alpn, size_t len);
 // Returns default ALPN protocol list, which only contains supported
 // HTTP/2 protocol identifier.
 std::vector<unsigned char> get_default_alpn();
+
+// Returns given time |tp| in ISO 8601 format (e.g.,
+// 2014-11-15T12:58:24.741Z)
+std::string format_iso8601(const std::chrono::system_clock::time_point& tp);
 
 } // namespace util
 

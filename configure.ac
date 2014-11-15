@@ -272,10 +272,13 @@ if test "x${have_libevent_openssl}" = "xno"; then
   AC_MSG_NOTICE($LIBEVENT_OPENSSL_PKG_ERRORS)
 fi
 
-# jansson (for hdtest/deflatehd and hdtest/inflatehd)
+# jansson (for src/nghttp, src/deflatehd and src/inflatehd)
 PKG_CHECK_MODULES([JANSSON], [jansson >= 2.5],
                   [have_jansson=yes], [have_jansson=no])
-if test "x${have_jansson}" == "xno"; then
+if test "x${have_jansson}" == "xyes"; then
+  AC_DEFINE([HAVE_JANSSON], [1],
+            [Define to 1 if you have `libjansson` library.])
+else
   AC_MSG_NOTICE($JANSSON_PKG_ERRORS)
 fi
 
