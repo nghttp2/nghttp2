@@ -106,6 +106,7 @@ struct Config {
   bool upgrade;
   bool continuation;
   bool no_content_length;
+  bool no_dep;
 
   Config()
     : output_upper_thres(1024*1024),
@@ -124,7 +125,8 @@ struct Config {
       stat(false),
       upgrade(false),
       continuation(false),
-      no_content_length(false)
+      no_content_length(false),
+      no_dep(false)
   {
     nghttp2_option_new(&http2_option);
     nghttp2_option_set_peer_max_concurrent_streams
@@ -137,6 +139,10 @@ struct Config {
     nghttp2_option_del(http2_option);
   }
 };
+} // namespace
+
+namespace {
+Config config;
 } // namespace
 
 enum StatStage {
@@ -282,7 +288,7 @@ struct Request {
 
     nghttp2_priority_spec_default_init(&pri_spec);
 
-    if(pri == 0) {
+    if(config.no_dep || pri == 0) {
       return pri_spec;
     }
 
@@ -370,10 +376,6 @@ struct SessionStat {
   // The point of time when HTTP/2 commnucation was started.
   std::chrono::steady_clock::time_point on_handshake_time;
 };
-} // namespace
-
-namespace {
-Config config;
 } // namespace
 
 namespace {
@@ -2235,6 +2237,8 @@ Options:
   --continuation     Send large header to test CONTINUATION.
   --no-content-length
                      Don't send content-length header field.
+  --no-dep           Don't  send  dependency  based priority  hint  to
+                     server.
   --version          Display version information and exit.
   -h, --help         Display this help and exit.)"
       << std::endl;
@@ -2271,6 +2275,7 @@ int main(int argc, char **argv)
       {"continuation", no_argument, &flag, 4},
       {"version", no_argument, &flag, 5},
       {"no-content-length", no_argument, &flag, 6},
+      {"no-dep", no_argument, &flag, 7},
       {nullptr, 0, nullptr, 0 }
     };
     int option_index = 0;
@@ -2428,6 +2433,10 @@ int main(int argc, char **argv)
       case 6:
         // no-content-length option
         config.no_content_length = true;
+        break;
+      case 7:
+        // no-dep option
+        config.no_dep = true;
         break;
       }
       break;
