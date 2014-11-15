@@ -2378,7 +2378,7 @@ int main(int argc, char **argv)
 #ifdef HAVE_LIBXML2
       config.get_assets = true;
 #else // !HAVE_LIBXML2
-      std::cerr << "[WARNING]: -a, --get-assets option cannot be used because\n"
+      std::cerr << "[WARNING]: -a, --get-assets option is ignored because\n"
                 << "the binary was not compiled with libxml2."
                 << std::endl;
 #endif // !HAVE_LIBXML2
