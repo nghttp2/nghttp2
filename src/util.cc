@@ -719,7 +719,7 @@ std::string format_iso8601(const std::chrono::system_clock::time_point& tp)
   char buf[128];
 
   auto nwrite = strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%S", &tms);
-  snprintf(&buf[nwrite], sizeof(buf) - nwrite, ".%ldZ", t.count() % 1000);
+  snprintf(&buf[nwrite], sizeof(buf) - nwrite, ".%03ldZ", t.count() % 1000);
 
   return buf;
 }
