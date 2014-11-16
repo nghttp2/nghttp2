@@ -456,7 +456,7 @@ cdef int server_on_frame_send(cnghttp2.nghttp2_session *session,
 
         http2.send_response(handler)
     elif frame.hd.type == cnghttp2.NGHTTP2_SETTINGS:
-        if (frame.hd.flags & cnghttp2.NGHTTP2_FLAG_ACK) == 0:
+        if (frame.hd.flags & cnghttp2.NGHTTP2_FLAG_ACK) != 0:
             return 0
         http2._start_settings_timer()
 
@@ -606,7 +606,7 @@ cdef int client_on_frame_send(cnghttp2.nghttp2_session *session,
     logging.debug('client_on_frame_send, type:%s, stream_id:%s', frame.hd.type, frame.hd.stream_id)
 
     if frame.hd.type == cnghttp2.NGHTTP2_SETTINGS:
-        if (frame.hd.flags & cnghttp2.NGHTTP2_FLAG_ACK) == 0:
+        if (frame.hd.flags & cnghttp2.NGHTTP2_FLAG_ACK) != 0:
             return 0
         http2._start_settings_timer()
 
