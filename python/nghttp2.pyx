@@ -1471,7 +1471,7 @@ if asyncio:
             for method,scheme,host,path,headers,body,handler in send_pending:
                 self.send_request(method=method, scheme=scheme, host=host, path=path,\
                                   headers=headers, body=body, handler=handler)
-
+            self.http2.send_data()
 
         def connection_lost(self, exc):
             logging.info('connection_lost')
@@ -1504,6 +1504,7 @@ if asyncio:
 
                 self.http2.send_request(method=method, scheme=scheme, host=host, path=path,\
                                         headers=headers, body=body, handler=handler)
+                self.http2.send_data()
             except Exception as err:
                 sys.stderr.write(traceback.format_exc())
                 self.transport.close()
