@@ -1420,9 +1420,9 @@ namespace {
 int next_proto_cb(SSL *s, const unsigned char **data, unsigned int *len,
                   void *arg)
 {
-  auto next_proto = static_cast<std::pair<unsigned char*, size_t>* >(arg);
-  *data = next_proto->first;
-  *len = next_proto->second;
+  auto next_proto = static_cast<std::vector<unsigned char>*>(arg);
+  *data = next_proto->data();
+  *len = next_proto->size();
   return SSL_TLSEXT_ERR_OK;
 }
 } // namespace
@@ -1554,7 +1554,7 @@ int alpn_select_proto_cb(SSL* ssl,
 int HttpServer::run()
 {
   SSL_CTX *ssl_ctx = nullptr;
-  std::pair<unsigned char*, size_t> next_proto;
+  std::vector<unsigned char> next_proto;
 
   if(!config_->no_tls) {
     ssl_ctx = SSL_CTX_new(SSLv23_server_method());
@@ -1646,13 +1646,7 @@ int HttpServer::run()
                          verify_callback);
     }
 
-    auto proto_list = util::get_default_alpn();
-
-    std::pair<unsigned char*, size_t> next_proto(proto_list.data(),
-                                                 proto_list.size());
-
-    next_proto.first = proto_list.data();
-    next_proto.second = proto_list.size();
+    next_proto = util::get_default_alpn();
 
     SSL_CTX_set_next_protos_advertised_cb(ssl_ctx, next_proto_cb, &next_proto);
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L
