@@ -1015,7 +1015,11 @@ void downstream_eventcb(bufferevent *bev, short events, void *ptr)
       }
     } else {
       if(downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
-        upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+        if(downstream->get_upgraded()) {
+          upstream->on_downstream_body_complete(downstream);
+        } else {
+          upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+        }
       } else {
         unsigned int status;
         if(events & BEV_EVENT_TIMEOUT) {
@@ -1102,8 +1106,9 @@ ssize_t downstream_data_read_callback(nghttp2_session *session,
   if(nread == 0 &&
      downstream->get_response_state() == Downstream::MSG_COMPLETE) {
 
+    *data_flags |= NGHTTP2_DATA_FLAG_EOF;
+
     if(!downstream->get_upgraded()) {
-      *data_flags |= NGHTTP2_DATA_FLAG_EOF;
 
       upstream_accesslog(upstream->get_client_handler()->get_ipaddr(),
                          downstream->get_response_http_status(),
