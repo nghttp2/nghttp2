@@ -44,6 +44,8 @@
 
 namespace shrpx {
 
+struct LogFragment;
+
 namespace ssl {
 
 struct CertLookupTree;
@@ -76,6 +78,7 @@ extern const char SHRPX_OPT_STREAM_READ_TIMEOUT[];
 extern const char SHRPX_OPT_STREAM_WRITE_TIMEOUT[];
 extern const char SHRPX_OPT_ACCESSLOG_FILE[];
 extern const char SHRPX_OPT_ACCESSLOG_SYSLOG[];
+extern const char SHRPX_OPT_ACCESSLOG_FORMAT[];
 extern const char SHRPX_OPT_ERRORLOG_FILE[];
 extern const char SHRPX_OPT_ERRORLOG_SYSLOG[];
 extern const char SHRPX_OPT_BACKEND_KEEP_ALIVE_TIMEOUT[];
@@ -163,6 +166,7 @@ struct Config {
   std::vector<AltSvc> altsvcs;
   std::vector<std::pair<std::string, std::string>> add_response_headers;
   std::vector<unsigned char> alpn_prefs;
+  std::vector<LogFragment> accesslog_format;
   std::shared_ptr<std::string> cached_time;
   sockaddr_union downstream_addr;
   // binary form of http proxy host and port
@@ -318,8 +322,14 @@ void clear_config_str_list(std::vector<char*>& list);
 // allowed.  This function returns pair of NAME and VALUE.
 std::pair<std::string, std::string> parse_header(const char *optarg);
 
+std::vector<LogFragment> parse_log_format(const char *optarg);
+
 // Returns a copy of NULL-terminated string |val|.
 std::unique_ptr<char[]> strcopy(const char *val);
+
+// Returns a copy of string |val| of length |n|.  The returned string
+// will be NULL-terminated.
+std::unique_ptr<char[]> strcopy(const char *val, size_t n);
 
 // Returns a copy of val.c_str().
 std::unique_ptr<char[]> strcopy(const std::string& val);

@@ -107,6 +107,13 @@ public:
   // called after calling normalize_request_headers().
   Headers::const_iterator get_norm_request_header
   (const std::string& name) const;
+  // Returns iterator pointing to the request header with the name
+  // |name|.  This function acts like get_norm_request_header(), but
+  // if request_headers_ was not normalized, use linear search to find
+  // the header.  Otherwise, get_norm_request_header() is used.
+  Headers::const_iterator get_request_header
+  (const std::string& name) const;
+  bool get_request_headers_normalized() const;
   void add_request_header(std::string name, std::string value);
   void set_last_request_header_value(std::string value);
 
@@ -144,8 +151,6 @@ public:
   void set_chunked_request(bool f);
   bool get_request_connection_close() const;
   void set_request_connection_close(bool f);
-  void set_request_user_agent(std::string user_agent);
-  const std::string& get_request_user_agent() const;
   bool get_request_http2_expect_body() const;
   void set_request_http2_expect_body(bool f);
   int push_upload_data_chunk(const uint8_t *data, size_t datalen);
@@ -215,6 +220,8 @@ public:
   evbuffer* get_response_body_buf();
   void add_response_bodylen(size_t amount);
   int64_t get_response_bodylen() const;
+  void add_response_sent_bodylen(size_t amount);
+  int64_t get_response_sent_bodylen() const;
   uint32_t get_response_rst_stream_error_code() const;
   void set_response_rst_stream_error_code(uint32_t error_code);
   // Inspects HTTP/1 response.  This checks tranfer-encoding etc.
@@ -275,7 +282,6 @@ private:
 
   std::string request_method_;
   std::string request_path_;
-  std::string request_user_agent_;
   std::string request_http2_scheme_;
   std::string request_http2_authority_;
   std::string assembled_request_cookie_;
@@ -285,6 +291,8 @@ private:
   int64_t request_bodylen_;
   // the length of response body
   int64_t response_bodylen_;
+  // the length of response body sent to upstream client
+  int64_t response_sent_bodylen_;
 
   Upstream *upstream_;
   std::unique_ptr<DownstreamConnection> dconn_;
@@ -340,6 +348,9 @@ private:
   bool response_connection_close_;
   bool response_header_key_prev_;
   bool expect_final_response_;
+
+  // true if request_headers_ is normalized
+  bool request_headers_normalized_;
 };
 
 } // namespace shrpx

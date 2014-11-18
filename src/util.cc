@@ -260,6 +260,11 @@ bool istartsWith(const char *a, const char* b)
   return !*b;
 }
 
+bool istartsWith(const char *a, size_t n, const char *b)
+{
+  return istartsWith(a, a + n, b, b + strlen(b));
+}
+
 bool endsWith(const std::string& a, const std::string& b)
 {
   return endsWith(a.begin(), a.end(), b.begin(), b.end());
@@ -295,6 +300,11 @@ bool strieq(const char *a, const uint8_t *b, size_t bn)
   const uint8_t *blast = b + bn;
   for(; *a && b != blast && lowcase(*a) == lowcase(*b); ++a, ++b);
   return !*a && b == blast;
+}
+
+bool strieq(const char *a, const char *b, size_t bn)
+{
+  return strieq(a, reinterpret_cast<const uint8_t*>(b), bn);
 }
 
 int strcompare(const char *a, const uint8_t *b, size_t bn)

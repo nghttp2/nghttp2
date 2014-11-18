@@ -79,6 +79,7 @@ const char SHRPX_OPT_STREAM_READ_TIMEOUT[] = "stream-read-timeout";
 const char SHRPX_OPT_STREAM_WRITE_TIMEOUT[] = "stream-write-timeout";
 const char SHRPX_OPT_ACCESSLOG_FILE[] = "accesslog-file";
 const char SHRPX_OPT_ACCESSLOG_SYSLOG[] = "accesslog-syslog";
+const char SHRPX_OPT_ACCESSLOG_FORMAT[] = "accesslog-format";
 const char SHRPX_OPT_ERRORLOG_FILE[] = "errorlog-file";
 const char SHRPX_OPT_ERRORLOG_SYSLOG[] = "errorlog-syslog";
 const char
@@ -236,18 +237,20 @@ std::string read_passwd_from_file(const char *filename)
 
 std::unique_ptr<char[]> strcopy(const char *val)
 {
-  auto len = strlen(val);
+  return strcopy(val, strlen(val));
+}
+
+std::unique_ptr<char[]> strcopy(const char *val, size_t len)
+{
   auto res = util::make_unique<char[]>(len + 1);
-  memcpy(res.get(), val, len + 1);
+  memcpy(res.get(), val, len);
+  res[len] = '\0';
   return res;
 }
 
 std::unique_ptr<char[]> strcopy(const std::string& val)
 {
-  auto len = val.size();
-  auto res = util::make_unique<char[]>(len + 1);
-  memcpy(res.get(), val.c_str(), len + 1);
-  return res;
+  return strcopy(val.c_str(), val.size());
 }
 
 std::vector<char*> parse_config_str_list(const char *s)
@@ -334,6 +337,97 @@ int parse_int(T *dest, const char *opt, const char *optarg)
   *dest = val;
 
   return 0;
+}
+
+namespace {
+LogFragment make_log_fragment(LogFragmentType type,
+                              std::unique_ptr<char[]> value = nullptr)
+{
+  return LogFragment{type, std::move(value)};
+}
+} // namespace
+
+namespace {
+bool var_token(char c)
+{
+  return util::isAlpha(c) || util::isDigit(c) || c == '_';
+}
+} // namespace
+
+std::vector<LogFragment> parse_log_format(const char *optarg)
+{
+  auto literal_start = optarg;
+  auto p = optarg;
+  auto eop = p + strlen(optarg);
+
+  auto res = std::vector<LogFragment>();
+
+  for(; p != eop;) {
+    if(*p != '$') {
+      ++p;
+      continue;
+    }
+
+    auto var_start = p;
+
+    ++p;
+
+    for(; p != eop && var_token(*p); ++p);
+
+    auto varlen = p - var_start;
+
+    auto type = SHRPX_LOGF_NONE;
+    const char *value = nullptr;
+    size_t valuelen = 0;
+
+    if(util::strieq("$remote_addr", var_start, varlen)) {
+      type = SHRPX_LOGF_REMOTE_ADDR;
+    } else if(util::strieq("$time_local", var_start, varlen)) {
+      type = SHRPX_LOGF_TIME_LOCAL;
+    } else if(util::strieq("$request", var_start, varlen)) {
+      type = SHRPX_LOGF_REQUEST;
+    } else if(util::strieq("$status", var_start, varlen)) {
+      type = SHRPX_LOGF_STATUS;
+    } else if(util::strieq("$body_bytes_sent", var_start, varlen)) {
+      type = SHRPX_LOGF_BODY_BYTES_SENT;
+    } else if(util::istartsWith(var_start, varlen, "$http_")) {
+      type = SHRPX_LOGF_HTTP;
+      value = var_start + sizeof("$http_") - 1;
+      valuelen = varlen - (sizeof("$http_") - 1);
+    } else {
+      LOG(WARN) << "Unrecognized log format variable: "
+                << std::string(var_start, varlen);
+      continue;
+    }
+
+    if(literal_start < var_start) {
+      res.push_back(make_log_fragment
+                    (SHRPX_LOGF_LITERAL,
+                     strcopy(literal_start, var_start - literal_start)));
+    }
+
+    if(value == nullptr) {
+      res.push_back(make_log_fragment(type));
+    } else {
+      res.push_back(make_log_fragment(type, strcopy(value, valuelen)));
+      auto& v = res.back().value;
+      for(size_t i = 0; v[i]; ++i) {
+        if(v[i] == '_') {
+          v[i] = '-';
+        }
+      }
+    }
+
+    literal_start = var_start + varlen;
+  }
+
+  if(literal_start != eop) {
+    res.push_back(make_log_fragment
+                  (SHRPX_LOGF_LITERAL,
+                   strcopy(literal_start, eop - literal_start)));
+  }
+
+  return res;
 }
 
 namespace {
@@ -475,6 +569,12 @@ int parse_config(const char *opt, const char *optarg)
 
   if(util::strieq(opt, SHRPX_OPT_ACCESSLOG_SYSLOG)) {
     mod_config()->accesslog_syslog = util::strieq(optarg, "yes");
+
+    return 0;
+  }
+
+  if(util::strieq(opt, SHRPX_OPT_ACCESSLOG_FORMAT)) {
+    mod_config()->accesslog_format = parse_log_format(optarg);
 
     return 0;
   }

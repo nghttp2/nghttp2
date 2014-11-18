@@ -683,6 +683,13 @@ const char *DEFAULT_TLS_PROTO_LIST = "TLSv1.2,TLSv1.1";
 } // namespace
 
 namespace {
+const char *DEFAULT_ACCESSLOG_FORMAT =
+  "$remote_addr - - [$time_local] "
+  "\"$request\" $status $body_bytes_sent "
+  "\"$http_referer\" \"$http_user_agent\"";
+} // namespace
+
+namespace {
 void fill_default_config()
 {
   memset(mod_config(), 0, sizeof(*mod_config()));
@@ -745,6 +752,7 @@ void fill_default_config()
   mod_config()->no_via = false;
   mod_config()->accesslog_file = nullptr;
   mod_config()->accesslog_syslog = false;
+  mod_config()->accesslog_format = parse_log_format(DEFAULT_ACCESSLOG_FORMAT);
 #if defined(__ANDROID__) || defined(ANDROID)
   // Android does not have /dev/stderr.  Use /proc/self/fd/2 instead.
   mod_config()->errorlog_file = strcopy("/proc/self/fd/2");
@@ -1133,6 +1141,17 @@ Logging:
   --accesslog-syslog
                      Send  access log  to syslog.   If this  option is
                      used, --access-file option is ignored.
+  --accesslog-format=<FORMAT>
+                     Specify  format  string   for  access  log.   The
+                     default format is combined format.  The following
+                     variables are available:  $remote_addr: client IP
+                     address.   $time_local:  local  time.   $request:
+                     HTTP request line.  $status: HTTP response status
+                     code.  $body_bytes_sent: the number of bytes sent
+                     to client  as response body.   $http_<VAR>: value
+                     of HTTP request header <VAR>.
+                     Default: )"
+      << DEFAULT_ACCESSLOG_FORMAT << R"(
   --errorlog-file=<PATH>
                      Set  path to  write error  log.  To  reopen file,
                      send USR1 signal to nghttpx.
@@ -1305,6 +1324,7 @@ int main(int argc, char **argv)
       {"backend-connections-per-frontend", required_argument, &flag, 63},
       {"listener-disable-timeout", required_argument, &flag, 64},
       {"strip-incoming-x-forwarded-for", no_argument, &flag, 65},
+      {"accesslog-format", required_argument, &flag, 66},
       {nullptr, 0, nullptr, 0 }
     };
 
@@ -1605,6 +1625,10 @@ int main(int argc, char **argv)
       case 65:
         // --strip-incoming-x-forwarded-for
         cmdcfgs.emplace_back(SHRPX_OPT_STRIP_INCOMING_X_FORWARDED_FOR, "yes");
+        break;
+      case 66:
+        // --accesslog-format
+        cmdcfgs.emplace_back(SHRPX_OPT_ACCESSLOG_FORMAT, optarg);
         break;
       default:
         break;

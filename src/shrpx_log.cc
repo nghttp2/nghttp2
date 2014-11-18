@@ -105,6 +105,10 @@ Log::~Log()
 {
   int rv;
 
+  if(!get_config()) {
+    return;
+  }
+
   auto wconf = worker_config;
 
   if(!log_enabled(severity_) ||
@@ -162,8 +166,18 @@ Log::~Log()
   while(write(wconf->errorlog_fd, buf, nwrite) == -1 && errno == EINTR);
 }
 
-void upstream_accesslog(const std::string& client_ip, unsigned int status_code,
-                        Downstream *downstream)
+namespace {
+template<typename OutputIterator>
+std::pair<OutputIterator, size_t>
+copy(const char *src, size_t avail, OutputIterator oitr)
+{
+  auto nwrite = std::min(strlen(src), avail);
+  auto noitr = std::copy_n(src, nwrite, oitr);
+  return std::make_pair(noitr, avail - nwrite);
+}
+} // namespace
+
+void upstream_accesslog(const std::vector<LogFragment>& lfv, LogSpec *lgsp)
 {
   auto wconf = worker_config;
 
@@ -171,60 +185,60 @@ void upstream_accesslog(const std::string& client_ip, unsigned int status_code,
     return;
   }
 
-  char buf[1024];
-  int rv;
+  char buf[4096];
 
-  const char *path;
-  const char *method;
-  unsigned int major, minor;
-  const char *user_agent;
-  int64_t response_bodylen;
+  auto downstream = lgsp->downstream;
 
-  if(!downstream) {
-    path = "-";
-    method = "-";
-    major = 1;
-    minor = 0;
-    user_agent = "-";
-    response_bodylen = 0;
-  } else {
-    if(downstream->get_request_path().empty()) {
-      path = downstream->get_request_http2_authority().c_str();
-    } else {
-      path = downstream->get_request_path().c_str();
-    }
-
-    method = downstream->get_request_method().c_str();
-    major = downstream->get_request_major();
-    minor = downstream->get_request_minor();
-    user_agent = downstream->get_request_user_agent().c_str();
-    if(!user_agent[0]) {
-      user_agent = "-";
-    }
-    response_bodylen = downstream->get_response_bodylen();
-  }
-
-  static const char fmt[] =
-    "%s - - [%s] \"%s %s HTTP/%u.%u\" %u %lld \"-\" \"%s\"\n";
+  auto p = buf;
+  auto avail = sizeof(buf) - 2;
 
   auto cached_time = get_config()->cached_time;
 
-  rv = snprintf(buf, sizeof(buf), fmt,
-                client_ip.c_str(),
-                cached_time->c_str(),
-                method,
-                path,
-                major,
-                minor,
-                status_code,
-                (long long int)response_bodylen,
-                user_agent);
+  for(auto& lf : lfv) {
+    switch(lf.type) {
+    case SHRPX_LOGF_LITERAL:
+      std::tie(p, avail) = copy(lf.value.get(), avail, p);
+      break;
+    case SHRPX_LOGF_REMOTE_ADDR:
+      std::tie(p, avail) = copy(lgsp->remote_addr, avail, p);
+      break;
+    case SHRPX_LOGF_TIME_LOCAL:
+      std::tie(p, avail) = copy(cached_time->c_str(), avail, p);
+      break;
+    case SHRPX_LOGF_REQUEST:
+      std::tie(p, avail) = copy(lgsp->method, avail, p);
+      std::tie(p, avail) = copy(" ", avail, p);
+      std::tie(p, avail) = copy(lgsp->path, avail, p);
+      std::tie(p, avail) = copy(" HTTP/", avail, p);
+      std::tie(p, avail) = copy(util::utos(lgsp->major).c_str(), avail, p);
+      std::tie(p, avail) = copy(".", avail, p);
+      std::tie(p, avail) = copy(util::utos(lgsp->minor).c_str(), avail, p);
+      break;
+    case SHRPX_LOGF_STATUS:
+      std::tie(p, avail) = copy(util::utos(lgsp->status).c_str(), avail, p);
+      break;
+    case SHRPX_LOGF_BODY_BYTES_SENT:
+      std::tie(p, avail) = copy(util::utos(lgsp->body_bytes_sent).c_str(),
+                                avail, p);
+      break;
+    case SHRPX_LOGF_HTTP:
+      if(downstream) {
+        auto hd = downstream->get_request_header(lf.value.get());
+        if(hd != std::end(downstream->get_request_headers())) {
+          std::tie(p, avail) = copy((*hd).value.c_str(), avail, p);
+          break;
+        }
+      }
 
-  if(rv < 0) {
-    return;
+      std::tie(p, avail) = copy("-", avail, p);
+
+      break;
+    default:
+      break;
+    }
   }
 
-  auto nwrite = std::min(static_cast<size_t>(rv), sizeof(buf) - 1);
+  *p = '\0';
 
   if(get_config()->accesslog_syslog) {
     syslog(LOG_INFO, "%s", buf);
@@ -232,6 +246,9 @@ void upstream_accesslog(const std::string& client_ip, unsigned int status_code,
     return;
   }
 
+  *p++ = '\n';
+
+  auto nwrite = p - buf;
   while(write(wconf->accesslog_fd, buf, nwrite) == -1 && errno == EINTR);
 }
 

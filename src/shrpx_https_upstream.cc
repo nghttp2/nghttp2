@@ -57,7 +57,12 @@ HttpsUpstream::HttpsUpstream(ClientHandler *handler)
 }
 
 HttpsUpstream::~HttpsUpstream()
-{}
+{
+  if(downstream_ &&
+     downstream_->get_response_state() == Downstream::MSG_COMPLETE) {
+    handler_->write_accesslog(downstream_.get());
+  }
+}
 
 void HttpsUpstream::reset_current_header_length()
 {
@@ -161,11 +166,6 @@ int htp_hdrs_completecb(http_parser *htp)
   }
 
   downstream->normalize_request_headers();
-  auto& nva = downstream->get_request_headers();
-
-  auto user_agent = http2::get_header(nva, "user-agent");
-
-  downstream->set_request_user_agent(http2::value_to_str(user_agent));
 
   downstream->inspect_http1_request();
 
@@ -712,7 +712,10 @@ int HttpsUpstream::error_reply(unsigned int status_code)
   }
 
   if(downstream) {
+    downstream->add_response_sent_bodylen(html.size());
     downstream->set_response_state(Downstream::MSG_COMPLETE);
+  } else {
+    handler_->write_accesslog(1, 1, status_code, html.size());
   }
 
   return 0;
@@ -741,6 +744,11 @@ void HttpsUpstream::attach_downstream(std::unique_ptr<Downstream> downstream)
 
 void HttpsUpstream::delete_downstream()
 {
+  if(downstream_ &&
+     downstream_->get_response_state() == Downstream::MSG_COMPLETE) {
+    handler_->write_accesslog(downstream_.get());
+  }
+
   downstream_.reset();
 }
 
@@ -884,14 +892,6 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream)
     return -1;
   }
 
-  if(downstream->get_upgraded()) {
-    upstream_accesslog(this->get_client_handler()->get_ipaddr(),
-                       downstream->get_response_http_status(), downstream);
-  }
-
-  downstream->clear_response_headers();
-  downstream->clear_request_headers();
-
   return 0;
 }
 
@@ -920,6 +920,8 @@ int HttpsUpstream::on_downstream_body(Downstream *downstream,
     return -1;
   }
 
+  downstream->add_response_sent_bodylen(len);
+
   if(downstream->get_chunked_response()) {
     if(evbuffer_add(output, "\r\n", 2) != 0) {
       ULOG(FATAL, this) << "evbuffer_add() failed";
@@ -940,12 +942,6 @@ int HttpsUpstream::on_downstream_body_complete(Downstream *downstream)
   }
   if(LOG_ENABLED(INFO)) {
     DLOG(INFO, downstream) << "HTTP response completed";
-  }
-
-  if(!downstream->get_upgraded()) {
-    upstream_accesslog(get_client_handler()->get_ipaddr(),
-                       downstream->get_response_http_status(),
-                       downstream);
   }
 
   if(downstream->get_request_connection_close() ||

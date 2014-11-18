@@ -37,6 +37,7 @@
 #include "shrpx_worker.h"
 #include "shrpx_worker_config.h"
 #include "shrpx_downstream_connection_pool.h"
+#include "shrpx_downstream.h"
 #ifdef HAVE_SPDYLAY
 #include "shrpx_spdy_upstream.h"
 #endif // HAVE_SPDYLAY
@@ -718,6 +719,43 @@ void ClientHandler::update_last_write_time()
   if(event_base_gettimeofday_cached(get_evbase(), &tv) == 0) {
     last_write_time_ = util::to_time64(tv);
   }
+}
+
+void ClientHandler::write_accesslog(Downstream *downstream)
+{
+  LogSpec lgsp = {
+    downstream,
+    ipaddr_.c_str(),
+    downstream->get_request_method().c_str(),
+
+    downstream->get_request_path().empty() ?
+    downstream->get_request_http2_authority().c_str() :
+    downstream->get_request_path().c_str(),
+
+    downstream->get_request_major(),
+    downstream->get_request_minor(),
+    downstream->get_response_http_status(),
+    downstream->get_response_sent_bodylen()
+  };
+
+  upstream_accesslog(get_config()->accesslog_format, &lgsp);
+}
+
+void ClientHandler::write_accesslog(int major, int minor,
+                                    unsigned int status,
+                                    int64_t body_bytes_sent)
+{
+  LogSpec lgsp = {
+    nullptr,
+    ipaddr_.c_str(),
+    "-", // method
+    "-", // path,
+    major, minor, // major, minor
+    status,
+    body_bytes_sent
+  };
+
+  upstream_accesslog(get_config()->accesslog_format, &lgsp);
 }
 
 } // namespace shrpx

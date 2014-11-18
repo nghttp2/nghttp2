@@ -274,7 +274,8 @@ int Http2DownstreamConnection::push_request_headers()
   if(!get_config()->http2_no_cookie_crumbling) {
     downstream_->crumble_request_cookie();
   }
-  downstream_->normalize_request_headers();
+
+  assert(downstream_->get_request_headers_normalized());
 
   auto end_headers = std::end(downstream_->get_request_headers());
 

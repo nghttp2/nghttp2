@@ -171,7 +171,6 @@ void on_ctrl_recv_callback
     const char *host = nullptr;
     const char *method = nullptr;
     const char *content_length = nullptr;
-    const char *user_agent = nullptr;
 
     for(size_t i = 0; nv[i]; i += 2) {
       if(strcmp(nv[i], ":path") == 0) {
@@ -185,12 +184,13 @@ void on_ctrl_recv_callback
       } else if(nv[i][0] != ':') {
         if(strcmp(nv[i], "content-length") == 0) {
           content_length = nv[i+1];
-        } else if(strcmp(nv[i], "user-agent") == 0) {
-          user_agent = nv[i+1];
         }
         downstream->add_request_header(nv[i], nv[i+1]);
       }
     }
+
+    downstream->normalize_request_headers();
+
     bool is_connect = method && strcmp("CONNECT", method) == 0;
     if(!path || !host || !method ||
        http2::lws(host) || http2::lws(path) || http2::lws(method) ||
@@ -212,10 +212,6 @@ void on_ctrl_recv_callback
       downstream->set_request_http2_scheme(scheme);
       downstream->set_request_http2_authority(host);
       downstream->set_request_path(path);
-    }
-
-    if(user_agent) {
-      downstream->set_request_user_agent(user_agent);
     }
 
     if(!(frame->syn_stream.hd.flags & SPDYLAY_CTRL_FLAG_FIN)) {
@@ -821,9 +817,6 @@ ssize_t spdy_data_read_callback(spdylay_session *session,
      downstream->get_response_state() == Downstream::MSG_COMPLETE) {
     if(!downstream->get_upgraded()) {
       *eof = 1;
-
-      upstream_accesslog(upstream->get_client_handler()->get_ipaddr(),
-                         downstream->get_response_http_status(), downstream);
     } else {
       // For tunneling, issue RST_STREAM to finish the stream.
       if(LOG_ENABLED(INFO)) {
@@ -847,6 +840,10 @@ ssize_t spdy_data_read_callback(spdylay_session *session,
 
   if(nread == 0 && *eof != 1) {
     return SPDYLAY_ERR_DEFERRED;
+  }
+
+  if(nread > 0) {
+    downstream->add_response_sent_bodylen(nread);
   }
 
   return nread;
@@ -921,6 +918,10 @@ Downstream* SpdyUpstream::add_pending_downstream
 
 void SpdyUpstream::remove_downstream(Downstream *downstream)
 {
+  if(downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+    handler_->write_accesslog(downstream);
+  }
+
   downstream_queue_.remove(downstream->get_stream_id());
 
   maintain_downstream_concurrency();
@@ -1031,14 +1032,6 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream)
     ULOG(FATAL, this) << "spdylay_submit_response() failed";
     return -1;
   }
-
-  if(downstream->get_upgraded()) {
-    upstream_accesslog(get_client_handler()->get_ipaddr(),
-                       downstream->get_response_http_status(), downstream);
-  }
-
-  downstream->clear_response_headers();
-  downstream->clear_request_headers();
 
   return 0;
 }

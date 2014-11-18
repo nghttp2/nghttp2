@@ -41,6 +41,7 @@ namespace shrpx {
 Downstream::Downstream(Upstream *upstream, int32_t stream_id, int32_t priority)
   : request_bodylen_(0),
     response_bodylen_(0),
+    response_sent_bodylen_(0),
     upstream_(upstream),
     response_body_buf_(nullptr),
     upstream_rtimerev_(nullptr),
@@ -73,7 +74,8 @@ Downstream::Downstream(Upstream *upstream, int32_t stream_id, int32_t priority)
     chunked_response_(false),
     response_connection_close_(false),
     response_header_key_prev_(false),
-    expect_final_response_(false)
+    expect_final_response_(false),
+    request_headers_normalized_(false)
 {}
 
 Downstream::~Downstream()
@@ -191,6 +193,19 @@ Headers::iterator get_norm_header(Headers& headers, const std::string& name)
 }
 } // namespace
 
+namespace {
+Headers::const_iterator get_header_linear(const Headers& headers,
+                                          const std::string& name)
+{
+  auto i = std::find_if(std::begin(headers), std::end(headers),
+                        [&name](const Header& header)
+                        {
+                          return header.name == name;
+                        });
+  return i;
+}
+} // namespace
+
 const Headers& Downstream::get_request_headers() const
 {
   return request_headers_;
@@ -257,6 +272,9 @@ void Downstream::crumble_request_cookie()
   request_headers_.insert(std::end(request_headers_),
                           std::make_move_iterator(std::begin(cookie_hdrs)),
                           std::make_move_iterator(std::end(cookie_hdrs)));
+  if(request_headers_normalized_) {
+    normalize_request_headers();
+  }
 }
 
 const std::string& Downstream::get_assembled_request_cookie() const
@@ -267,12 +285,28 @@ const std::string& Downstream::get_assembled_request_cookie() const
 void Downstream::normalize_request_headers()
 {
   http2::normalize_headers(request_headers_);
+  request_headers_normalized_ = true;
 }
 
 Headers::const_iterator Downstream::get_norm_request_header
 (const std::string& name) const
 {
   return get_norm_header(request_headers_, name);
+}
+
+Headers::const_iterator Downstream::get_request_header
+(const std::string& name) const
+{
+  if(request_headers_normalized_) {
+    return get_norm_request_header(name);
+  }
+
+  return get_header_linear(request_headers_, name);
+}
+
+bool Downstream::get_request_headers_normalized() const
+{
+  return request_headers_normalized_;
 }
 
 void Downstream::add_request_header(std::string name, std::string value)
@@ -447,16 +481,6 @@ bool Downstream::get_request_connection_close() const
 void Downstream::set_request_connection_close(bool f)
 {
   request_connection_close_ = f;
-}
-
-void Downstream::set_request_user_agent(std::string user_agent)
-{
-  request_user_agent_ = std::move(user_agent);
-}
-
-const std::string& Downstream::get_request_user_agent() const
-{
-  return request_user_agent_;
 }
 
 bool Downstream::get_request_http2_expect_body() const
@@ -730,6 +754,16 @@ void Downstream::add_response_bodylen(size_t amount)
 int64_t Downstream::get_response_bodylen() const
 {
   return response_bodylen_;
+}
+
+void Downstream::add_response_sent_bodylen(size_t amount)
+{
+  response_sent_bodylen_ += amount;
+}
+
+int64_t Downstream::get_response_sent_bodylen() const
+{
+  return response_sent_bodylen_;
 }
 
 void Downstream::set_priority(int32_t pri)

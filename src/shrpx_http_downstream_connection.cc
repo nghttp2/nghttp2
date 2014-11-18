@@ -142,8 +142,10 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream)
 
 int HttpDownstreamConnection::push_request_headers()
 {
+  assert(downstream_->get_request_headers_normalized());
+
   downstream_->assemble_request_cookie();
-  downstream_->normalize_request_headers();
+
   auto end_headers = std::end(downstream_->get_request_headers());
   // Assume that method and request path do not contain \r\n.
   std::string hdrs = downstream_->get_request_method();

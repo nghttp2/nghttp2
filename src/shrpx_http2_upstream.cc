@@ -323,7 +323,6 @@ int on_request_headers(Http2Upstream *upstream,
   auto path = http2::get_unique_header(nva, ":path");
   auto method = http2::get_unique_header(nva, ":method");
   auto scheme = http2::get_unique_header(nva, ":scheme");
-  auto user_agent = http2::get_header(nva, "user-agent");
 
   bool is_connect = method  && "CONNECT" == method->value;
   bool having_host = http2::non_empty_value(host);
@@ -356,7 +355,6 @@ int on_request_headers(Http2Upstream *upstream,
   downstream->set_request_http2_scheme(http2::value_to_str(scheme));
   downstream->set_request_http2_authority(http2::value_to_str(authority));
   downstream->set_request_path(http2::value_to_str(path));
-  downstream->set_request_user_agent(http2::value_to_str(user_agent));
 
   if(!(frame->hd.flags & NGHTTP2_FLAG_END_STREAM)) {
     downstream->set_request_http2_expect_body(true);
@@ -1110,10 +1108,6 @@ ssize_t downstream_data_read_callback(nghttp2_session *session,
 
     if(!downstream->get_upgraded()) {
 
-      upstream_accesslog(upstream->get_client_handler()->get_ipaddr(),
-                         downstream->get_response_http_status(),
-                         downstream);
-
       if(nghttp2_session_get_stream_remote_close(session, stream_id) == 0) {
         upstream->rst_stream(downstream, NGHTTP2_NO_ERROR);
       }
@@ -1139,6 +1133,10 @@ ssize_t downstream_data_read_callback(nghttp2_session *session,
 
   if(nread == 0 && ((*data_flags) & NGHTTP2_DATA_FLAG_EOF) == 0) {
     return NGHTTP2_ERR_DEFERRED;
+  }
+
+  if(nread > 0) {
+    downstream->add_response_sent_bodylen(nread);
   }
 
   return nread;
@@ -1207,6 +1205,10 @@ void Http2Upstream::add_pending_downstream
 
 void Http2Upstream::remove_downstream(Downstream *downstream)
 {
+  if(downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+    handler_->write_accesslog(downstream);
+  }
+
   downstream_queue_.remove(downstream->get_stream_id());
 
   maintain_downstream_concurrency();
@@ -1328,14 +1330,6 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream)
     ULOG(FATAL, this) << "nghttp2_submit_response() failed";
     return -1;
   }
-
-  if(downstream->get_upgraded()) {
-    upstream_accesslog(get_client_handler()->get_ipaddr(),
-                       downstream->get_response_http_status(), downstream);
-  }
-
-  downstream->clear_response_headers();
-  downstream->clear_request_headers();
 
   return 0;
 }

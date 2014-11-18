@@ -112,6 +112,8 @@ int main(int argc, char* argv[])
                    shrpx::test_shrpx_config_parse_config_str_list) ||
       !CU_add_test(pSuite, "config_parse_header",
                    shrpx::test_shrpx_config_parse_header) ||
+      !CU_add_test(pSuite, "config_parse_log_format",
+                   shrpx::test_shrpx_config_parse_log_format) ||
       !CU_add_test(pSuite, "util_streq", shrpx::test_util_streq) ||
       !CU_add_test(pSuite, "util_strieq", shrpx::test_util_strieq) ||
       !CU_add_test(pSuite, "util_inp_strlower",

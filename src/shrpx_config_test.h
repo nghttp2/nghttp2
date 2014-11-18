@@ -29,6 +29,7 @@ namespace shrpx {
 
 void test_shrpx_config_parse_config_str_list(void);
 void test_shrpx_config_parse_header(void);
+void test_shrpx_config_parse_log_format(void);
 
 } // namespace shrpx
 

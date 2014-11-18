@@ -105,6 +105,15 @@ public:
   void update_warmup_writelen(size_t n);
   // Updates the time when last write was done.
   void update_last_write_time();
+
+  // Writes upstream accesslog using |downstream|.  The |downstream|
+  // must not be nullptr.
+  void write_accesslog(Downstream *downstream);
+
+  // Writes upstream accesslog.  This function is used if
+  // corresponding Downstream object is not available.
+  void write_accesslog(int major, int minor, unsigned int status,
+                       int64_t body_bytes_sent);
 private:
   std::unique_ptr<Upstream> upstream_;
   std::string ipaddr_;

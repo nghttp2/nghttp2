@@ -257,6 +257,7 @@ bool istartsWith
 
 bool istartsWith(const std::string& a, const std::string& b);
 bool istartsWith(const char *a, const char* b);
+bool istartsWith(const char *a, size_t n, const char *b);
 
 template<typename InputIterator1, typename InputIterator2>
 bool endsWith
@@ -293,6 +294,8 @@ bool strieq(const std::string& a, const std::string& b);
 bool strieq(const char *a, const char *b);
 
 bool strieq(const char *a, const uint8_t *b, size_t n);
+
+bool strieq(const char *a, const char *b, size_t n);
 
 template<typename A, typename B>
 bool streq(const A *a, const B *b, size_t bn)

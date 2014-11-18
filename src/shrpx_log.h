@@ -28,6 +28,8 @@
 #include "shrpx.h"
 
 #include <sstream>
+#include <memory>
+#include <vector>
 
 namespace shrpx {
 
@@ -100,8 +102,33 @@ private:
 #define TTY_HTTP_HD (worker_config->errorlog_tty ? "\033[1;34m" : "")
 #define TTY_RST (worker_config->errorlog_tty ? "\033[0m" : "")
 
-void upstream_accesslog(const std::string& client_ip, unsigned int status_code,
-                        Downstream *downstream);
+enum LogFragmentType {
+  SHRPX_LOGF_NONE,
+  SHRPX_LOGF_LITERAL,
+  SHRPX_LOGF_REMOTE_ADDR,
+  SHRPX_LOGF_TIME_LOCAL,
+  SHRPX_LOGF_REQUEST,
+  SHRPX_LOGF_STATUS,
+  SHRPX_LOGF_BODY_BYTES_SENT,
+  SHRPX_LOGF_HTTP,
+};
+
+struct LogFragment {
+  LogFragmentType type;
+  std::unique_ptr<char[]> value;
+};
+
+struct LogSpec {
+  Downstream *downstream;
+  const char *remote_addr;
+  const char *method;
+  const char *path;
+  int major, minor;
+  unsigned int status;
+  int64_t body_bytes_sent;
+};
+
+void upstream_accesslog(const std::vector<LogFragment>& lf, LogSpec *lgsp);
 
 int reopen_log_files();
 
