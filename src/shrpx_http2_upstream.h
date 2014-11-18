@@ -74,6 +74,8 @@ public:
                                  const uint8_t *data, size_t len, bool flush);
   virtual int on_downstream_body_complete(Downstream *downstream);
 
+  virtual void on_handler_delete();
+
   virtual void reset_timeouts();
 
   bool get_flow_control() const;

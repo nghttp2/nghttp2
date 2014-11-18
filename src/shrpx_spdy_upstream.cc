@@ -1154,4 +1154,7 @@ void SpdyUpstream::reset_timeouts()
                                   &get_config()->upstream_write_timeout);
 }
 
+void SpdyUpstream::on_handler_delete()
+{}
+
 } // namespace shrpx

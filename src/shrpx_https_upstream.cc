@@ -57,12 +57,7 @@ HttpsUpstream::HttpsUpstream(ClientHandler *handler)
 }
 
 HttpsUpstream::~HttpsUpstream()
-{
-  if(downstream_ &&
-     downstream_->get_response_state() == Downstream::MSG_COMPLETE) {
-    handler_->write_accesslog(downstream_.get());
-  }
-}
+{}
 
 void HttpsUpstream::reset_current_header_length()
 {
@@ -975,6 +970,14 @@ void HttpsUpstream::reset_timeouts()
 {
   handler_->set_upstream_timeouts(&get_config()->upstream_read_timeout,
                                   &get_config()->upstream_write_timeout);
+}
+
+void HttpsUpstream::on_handler_delete()
+{
+  if(downstream_ &&
+     downstream_->get_response_state() == Downstream::MSG_COMPLETE) {
+    handler_->write_accesslog(downstream_.get());
+  }
 }
 
 } // namespace shrpx

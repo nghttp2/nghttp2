@@ -1466,4 +1466,7 @@ void Http2Upstream::reset_timeouts()
                                   &get_config()->upstream_write_timeout);
 }
 
+void Http2Upstream::on_handler_delete()
+{}
+
 } // namespace shrpx

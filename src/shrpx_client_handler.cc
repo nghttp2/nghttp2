@@ -221,6 +221,10 @@ ClientHandler::~ClientHandler()
     CLOG(INFO, this) << "Deleting";
   }
 
+  if(upstream_) {
+    upstream_->on_handler_delete();
+  }
+
   --worker_stat_->num_connections;
 
   // TODO If backend is http/2, and it is in CONNECTED state, signal
