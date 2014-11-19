@@ -32,6 +32,7 @@
 #include <vector>
 #include <string>
 #include <memory>
+#include <chrono>
 
 #include <event.h>
 #include <event2/bufferevent.h>
@@ -132,6 +133,8 @@ public:
   void set_request_method(std::string method);
   const std::string& get_request_method() const;
   void set_request_path(std::string path);
+  void set_request_start_time(std::chrono::high_resolution_clock::time_point time);
+  const std::chrono::high_resolution_clock::time_point& get_request_start_time() const;
   void append_request_path(const char *data, size_t len);
   // Returns request path. For HTTP/1.1, this is request-target. For
   // HTTP/2, this is :path header field value.
@@ -284,6 +287,7 @@ private:
   std::string request_path_;
   std::string request_http2_scheme_;
   std::string request_http2_authority_;
+  std::chrono::high_resolution_clock::time_point request_start_time_;
   std::string assembled_request_cookie_;
   std::string http2_settings_;
 

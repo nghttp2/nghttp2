@@ -476,9 +476,10 @@ ClientHandler* accept_connection
  DownstreamConnectionPool *dconn_pool)
 {
   char host[NI_MAXHOST];
+  char service[NI_MAXSERV];
   int rv;
-  rv = getnameinfo(addr, addrlen, host, sizeof(host), nullptr, 0,
-                   NI_NUMERICHOST);
+  rv = getnameinfo(addr, addrlen, host, sizeof(host),
+                   service, sizeof(service), NI_NUMERICHOST);
   if(rv != 0) {
     LOG(ERROR) << "getnameinfo() failed: " << gai_strerror(rv);
 
@@ -522,8 +523,8 @@ ClientHandler* accept_connection
     return nullptr;
   }
 
-  return new ClientHandler(bev, rate_limit_group, fd, ssl, host, worker_stat,
-                           dconn_pool);
+  return new ClientHandler(bev, rate_limit_group, fd, ssl, host, service,
+                           worker_stat, dconn_pool);
 }
 
 namespace {

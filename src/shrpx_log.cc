@@ -33,6 +33,7 @@
 #include <cstring>
 #include <ctime>
 #include <iostream>
+#include <iomanip>
 
 #include "shrpx_config.h"
 #include "shrpx_downstream.h"
@@ -192,8 +193,6 @@ void upstream_accesslog(const std::vector<LogFragment>& lfv, LogSpec *lgsp)
   auto p = buf;
   auto avail = sizeof(buf) - 2;
 
-  auto cached_time = get_config()->cached_time;
-
   for(auto& lf : lfv) {
     switch(lf.type) {
     case SHRPX_LOGF_LITERAL:
@@ -203,7 +202,10 @@ void upstream_accesslog(const std::vector<LogFragment>& lfv, LogSpec *lgsp)
       std::tie(p, avail) = copy(lgsp->remote_addr, avail, p);
       break;
     case SHRPX_LOGF_TIME_LOCAL:
-      std::tie(p, avail) = copy(cached_time->c_str(), avail, p);
+      std::tie(p, avail) = copy(util::format_common_log(lgsp->time_now).c_str(), avail, p);
+      break;
+    case SHRPX_LOGF_TIME_ISO8601:
+      std::tie(p, avail) = copy(util::format_iso8601(lgsp->time_now).c_str(), avail, p);
       break;
     case SHRPX_LOGF_REQUEST:
       std::tie(p, avail) = copy(lgsp->method, avail, p);
@@ -232,6 +234,31 @@ void upstream_accesslog(const std::vector<LogFragment>& lfv, LogSpec *lgsp)
 
       std::tie(p, avail) = copy("-", avail, p);
 
+      break;
+    case SHRPX_LOGF_REMOTE_PORT:
+      std::tie(p, avail) = copy(lgsp->remote_port, avail, p);
+      break;
+    case SHRPX_LOGF_SERVER_PORT:
+      std::tie(p, avail) = copy(util::utos(lgsp->server_port).c_str(),
+                                      avail, p);
+      break;
+    case SHRPX_LOGF_REQUEST_TIME:
+      {
+        auto t = std::chrono::duration_cast<std::chrono::milliseconds>
+          (lgsp->time_now - lgsp->request_start_time).count();
+
+        auto frac = util::utos(t % 1000);
+        auto sec = util::utos(t / 1000);
+        if (frac.size() < 3) {
+          frac = std::string(3 - frac.size(), '0') + frac;
+        }
+        sec += ".";
+        sec += frac;
+
+        std::tie(p, avail) = copy( sec.c_str(), avail, p);
+      }
+      break;
+    case SHRPX_LOGF_NONE:
       break;
     default:
       break;

@@ -143,6 +143,7 @@ int htp_hdrs_completecb(http_parser *htp)
   downstream->set_request_method(http_method_str((enum http_method)htp->method));
   downstream->set_request_major(htp->http_major);
   downstream->set_request_minor(htp->http_minor);
+  downstream->set_request_start_time(std::chrono::high_resolution_clock::now());
 
   downstream->set_request_connection_close(!http_should_keep_alive(htp));
 

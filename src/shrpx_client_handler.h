@@ -48,7 +48,7 @@ class ClientHandler {
 public:
   ClientHandler(bufferevent *bev,
                 bufferevent_rate_limit_group *rate_limit_group,
-                int fd, SSL *ssl, const char *ipaddr,
+                int fd, SSL *ssl, const char *ipaddr, const char *port,
                 WorkerStat *worker_stat,
                 DownstreamConnectionPool *dconn_pool);
   ~ClientHandler();
@@ -62,6 +62,7 @@ public:
                              const timeval *write_timeout);
   int validate_next_proto();
   const std::string& get_ipaddr() const;
+  const std::string& get_port() const;
   bool get_should_close_after_write() const;
   void set_should_close_after_write(bool f);
   Upstream* get_upstream();
@@ -117,6 +118,7 @@ public:
 private:
   std::unique_ptr<Upstream> upstream_;
   std::string ipaddr_;
+  std::string port_;
   DownstreamConnectionPool *dconn_pool_;
   bufferevent *bev_;
   // Shared HTTP2 session for each thread. NULL if backend is not

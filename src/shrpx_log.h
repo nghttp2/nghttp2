@@ -30,6 +30,7 @@
 #include <sstream>
 #include <memory>
 #include <vector>
+#include <chrono>
 
 namespace shrpx {
 
@@ -107,10 +108,14 @@ enum LogFragmentType {
   SHRPX_LOGF_LITERAL,
   SHRPX_LOGF_REMOTE_ADDR,
   SHRPX_LOGF_TIME_LOCAL,
+  SHRPX_LOGF_TIME_ISO8601,
   SHRPX_LOGF_REQUEST,
   SHRPX_LOGF_STATUS,
   SHRPX_LOGF_BODY_BYTES_SENT,
   SHRPX_LOGF_HTTP,
+  SHRPX_LOGF_REMOTE_PORT,
+  SHRPX_LOGF_SERVER_PORT,
+  SHRPX_LOGF_REQUEST_TIME,
 };
 
 struct LogFragment {
@@ -123,9 +128,13 @@ struct LogSpec {
   const char *remote_addr;
   const char *method;
   const char *path;
+  std::chrono::high_resolution_clock::time_point request_start_time;
+  std::chrono::high_resolution_clock::time_point time_now;
   int major, minor;
   unsigned int status;
   int64_t body_bytes_sent;
+  const char *remote_port;
+  uint16_t server_port;
 };
 
 void upstream_accesslog(const std::vector<LogFragment>& lf, LogSpec *lgsp);

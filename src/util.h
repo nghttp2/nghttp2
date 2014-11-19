@@ -483,9 +483,61 @@ bool check_h2_is_selected(const unsigned char *alpn, size_t len);
 // HTTP/2 protocol identifier.
 std::vector<unsigned char> get_default_alpn();
 
+// Returns given time |tp| in Common Log format (e.g.,
+// 03/Jul/2014:00:19:38 +0900)
+// Expected type of |tp| is std::chrono::timepoint
+template <typename T>
+std::string format_common_log(const T& tp)
+{
+  auto t = std::chrono::duration_cast<std::chrono::milliseconds>
+    (tp.time_since_epoch());
+  time_t sec = t.count() / 1000;
+
+  tm tms;
+  if(localtime_r(&sec, &tms) == nullptr) {
+    return "";
+  }
+
+  char buf[32];
+
+  strftime(buf, sizeof(buf), "%d/%b/%Y:%T %z", &tms);
+
+  return buf;
+}
 // Returns given time |tp| in ISO 8601 format (e.g.,
 // 2014-11-15T12:58:24.741Z)
-std::string format_iso8601(const std::chrono::system_clock::time_point& tp);
+// Expected type of |tp| is std::chrono::timepoint
+template <typename T>
+std::string format_iso8601(const T& tp)
+{
+  auto t = std::chrono::duration_cast<std::chrono::milliseconds>
+    (tp.time_since_epoch());
+  time_t sec = t.count() / 1000;
+
+  tm tms;
+  if(gmtime_r(&sec, &tms) == nullptr) {
+    return "";
+  }
+
+  char buf[128];
+
+  auto nwrite = strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%S", &tms);
+  snprintf(&buf[nwrite], sizeof(buf) - nwrite, ".%03ldZ", t.count() % 1000);
+
+  return buf;
+}
+
+// Return the system precision of the template parameter |Clock| as
+// a nanosecond value of type |Rep|
+template <typename Clock, typename Rep>
+Rep
+clock_precision()
+{
+  std::chrono::duration<Rep, std::nano> duration = typename Clock::duration(1);
+
+  return duration.count();
+}
+
 
 } // namespace util
 

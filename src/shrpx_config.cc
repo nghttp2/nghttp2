@@ -384,6 +384,8 @@ std::vector<LogFragment> parse_log_format(const char *optarg)
       type = SHRPX_LOGF_REMOTE_ADDR;
     } else if(util::strieq("$time_local", var_start, varlen)) {
       type = SHRPX_LOGF_TIME_LOCAL;
+    } else if(util::strieq("$time_iso8601", var_start, varlen)) {
+      type = SHRPX_LOGF_TIME_ISO8601;
     } else if(util::strieq("$request", var_start, varlen)) {
       type = SHRPX_LOGF_REQUEST;
     } else if(util::strieq("$status", var_start, varlen)) {
@@ -394,6 +396,12 @@ std::vector<LogFragment> parse_log_format(const char *optarg)
       type = SHRPX_LOGF_HTTP;
       value = var_start + sizeof("$http_") - 1;
       valuelen = varlen - (sizeof("$http_") - 1);
+    } else if(util::strieq("$remote_port", var_start, varlen)) {
+      type = SHRPX_LOGF_REMOTE_PORT;
+    } else if(util::strieq("$server_port", var_start, varlen)) {
+      type = SHRPX_LOGF_SERVER_PORT;
+    } else if(util::strieq("$request_time", var_start, varlen)) {
+      type = SHRPX_LOGF_REQUEST_TIME;
     } else {
       LOG(WARN) << "Unrecognized log format variable: "
                 << std::string(var_start, varlen);

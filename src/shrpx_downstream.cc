@@ -390,6 +390,16 @@ const std::string& Downstream::get_request_path() const
   return request_path_;
 }
 
+void Downstream::set_request_start_time(std::chrono::high_resolution_clock::time_point time)
+{
+  request_start_time_ = std::move(time);
+}
+
+const std::chrono::high_resolution_clock::time_point& Downstream::get_request_start_time() const
+{
+  return request_start_time_;
+}
+
 const std::string& Downstream::get_request_http2_scheme() const
 {
   return request_http2_scheme_;
