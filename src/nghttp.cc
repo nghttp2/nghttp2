@@ -62,7 +62,9 @@
 
 #include <nghttp2/nghttp2.h>
 
+#ifdef HAVE_JANSSON
 #include <jansson.h>
+#endif // HAVE_JANSSON
 
 #include "http-parser/http_parser.h"
 
