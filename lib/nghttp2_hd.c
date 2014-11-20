@@ -436,51 +436,41 @@ static size_t count_encoded_length(size_t n, size_t prefix)
 {
   size_t k = (1 << prefix) - 1;
   size_t len = 0;
-  if(n >= k) {
-    n -= k;
-    ++len;
-  } else {
+
+  if(n < k) {
     return 1;
   }
-  do {
-    ++len;
-    if(n >= 128) {
-      n >>= 7;
-    } else {
-      break;
-    }
-  } while(n);
-  return len;
+
+  n -= k;
+  ++len;
+
+  for(; n >= 128; n >>= 7, ++len);
+
+  return len + 1;
 }
 
 static size_t encode_length(uint8_t *buf, size_t n, size_t prefix)
 {
   size_t k = (1 << prefix) - 1;
-  size_t len = 0;
+  uint8_t *begin = buf;
 
   *buf &= ~k;
 
   if(n < k) {
-    *buf++ |= n;
-
+    *buf |= n;
     return 1;
   }
 
   *buf++ |= k;
   n -= k;
-  ++len;
 
-  do {
-    ++len;
-    if(n >= 128) {
-      *buf++ = (1 << 7) | (n & 0x7f);
-      n >>= 7;
-    } else {
-      *buf++ = (uint8_t)n;
-      break;
-    }
-  } while(n);
-  return len;
+  for(; n >= 128; n >>= 7) {
+    *buf++ = (1 << 7) | (n & 0x7f);
+  }
+
+  *buf++ = (uint8_t)n;
+
+  return (size_t)(buf - begin);
 }
 
 /*
