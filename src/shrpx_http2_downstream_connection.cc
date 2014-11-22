@@ -67,7 +67,24 @@ Http2DownstreamConnection::~Http2DownstreamConnection()
     downstream_->disable_downstream_rtimer();
     downstream_->disable_downstream_wtimer();
 
-    if(submit_rst_stream(downstream_) == 0) {
+    uint32_t error_code;
+    if(downstream_->get_request_state() == Downstream::STREAM_CLOSED &&
+       downstream_->get_upgraded()) {
+      // For upgraded connection, send NO_ERROR.  Should we consider
+      // request states other than Downstream::STREAM_CLOSED ?
+      error_code = NGHTTP2_NO_ERROR;
+    } else {
+      error_code = NGHTTP2_INTERNAL_ERROR;
+    }
+
+    if(LOG_ENABLED(INFO)) {
+      DCLOG(INFO, this) << "Submit RST_STREAM for DOWNSTREAM:"
+                        << downstream_ << ", stream_id="
+                        << downstream_->get_downstream_stream_id()
+                        << ", error_code=" << error_code;
+    }
+
+    if(submit_rst_stream(downstream_, error_code) == 0) {
       http2session_->notify();
     }
 
