@@ -1101,7 +1101,9 @@ ssize_t downstream_data_read_callback(nghttp2_session *session,
     return NGHTTP2_ERR_CALLBACK_FAILURE;
   }
 
-  if(nread == 0 &&
+  auto body_empty = evbuffer_get_length(body) == 0;
+
+  if(body_empty &&
      downstream->get_response_state() == Downstream::MSG_COMPLETE) {
 
     *data_flags |= NGHTTP2_DATA_FLAG_EOF;
@@ -1121,10 +1123,10 @@ ssize_t downstream_data_read_callback(nghttp2_session *session,
     }
   }
 
-  if(evbuffer_get_length(body) > 0) {
-    downstream->reset_upstream_wtimer();
-  } else {
+  if(body_empty) {
     downstream->disable_upstream_wtimer();
+  } else {
+    downstream->reset_upstream_wtimer();
   }
 
   if(nread > 0 && downstream->resume_read(SHRPX_NO_BUFFER, nread) != 0) {
