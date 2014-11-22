@@ -76,7 +76,7 @@ typedef struct http_parser_settings http_parser_settings;
  * HEAD request which may contain 'Content-Length' or 'Transfer-Encoding:
  * chunked' headers that indicate the presence of a body.
  *
- * http_data_cb does not return data chunks. It will be call arbitrarally
+ * http_data_cb does not return data chunks. It will be called arbitrarily
  * many times for each string. E.G. you might get 10 callbacks for "on_url"
  * each providing just a few characters more data.
  */
@@ -117,6 +117,8 @@ typedef int (*http_cb) (http_parser*);
   /* RFC-5789 */                    \
   XX(24, PATCH,       PATCH)        \
   XX(25, PURGE,       PURGE)        \
+  /* CalDAV */                      \
+  XX(26, MKCALENDAR,  MKCALENDAR)   \
 
 enum http_method
   {
@@ -278,13 +280,15 @@ struct http_parser_url {
  *   unsigned major = (version >> 16) & 255;
  *   unsigned minor = (version >> 8) & 255;
  *   unsigned patch = version & 255;
- *   printf("http_parser v%u.%u.%u\n", major, minor, version);
+ *   printf("http_parser v%u.%u.%u\n", major, minor, patch);
  */
 unsigned long http_parser_version(void);
 
 void http_parser_init(http_parser *parser, enum http_parser_type type);
 
 
+/* Executes the parser. Returns number of parsed bytes. Sets
+ * `parser->http_errno` on error. */
 size_t http_parser_execute(http_parser *parser,
                            const http_parser_settings *settings,
                            const char *data,
