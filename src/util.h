@@ -212,6 +212,14 @@ std::string format_hex(const unsigned char *s, size_t len);
 
 std::string http_date(time_t t);
 
+// Returns given time |t| from epoch in Common Log format (e.g.,
+// 03/Jul/2014:00:19:38 +0900)
+std::string common_log_date(time_t t);
+
+// Returns given millisecond |ms| from epoch in ISO 8601 format (e.g.,
+// 2014-11-15T12:58:24.741Z)
+std::string iso8601_date(int64_t ms);
+
 time_t parse_http_date(const std::string& s);
 
 template<typename InputIterator1, typename InputIterator2>
@@ -489,21 +497,11 @@ std::vector<unsigned char> get_default_alpn();
 template <typename T>
 std::string format_common_log(const T& tp)
 {
-  auto t = std::chrono::duration_cast<std::chrono::milliseconds>
+  auto t = std::chrono::duration_cast<std::chrono::seconds>
     (tp.time_since_epoch());
-  time_t sec = t.count() / 1000;
-
-  tm tms;
-  if(localtime_r(&sec, &tms) == nullptr) {
-    return "";
-  }
-
-  char buf[32];
-
-  strftime(buf, sizeof(buf), "%d/%b/%Y:%T %z", &tms);
-
-  return buf;
+  return common_log_date(t.count());
 }
+
 // Returns given time |tp| in ISO 8601 format (e.g.,
 // 2014-11-15T12:58:24.741Z)
 // Expected type of |tp| is std::chrono::timepoint
@@ -512,20 +510,7 @@ std::string format_iso8601(const T& tp)
 {
   auto t = std::chrono::duration_cast<std::chrono::milliseconds>
     (tp.time_since_epoch());
-  time_t sec = t.count() / 1000;
-
-  tm tms;
-  if(gmtime_r(&sec, &tms) == nullptr) {
-    return "";
-  }
-
-  char buf[128];
-
-  auto nwrite = strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%S", &tms);
-  snprintf(&buf[nwrite], sizeof(buf) - nwrite, ".%03ldZ",
-      static_cast<int>(t.count() % 1000));
-
-  return buf;
+  return iso8601_date(t.count());
 }
 
 // Return the system precision of the template parameter |Clock| as

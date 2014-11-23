@@ -167,7 +167,7 @@ std::string quote_string(const std::string& target)
 
 namespace {
 template<typename Iterator>
-Iterator cpydig(Iterator d, int n, size_t len)
+Iterator cpydig(Iterator d, uint32_t n, size_t len)
 {
   auto p = d + len - 1;
 
@@ -219,6 +219,100 @@ std::string http_date(time_t t)
   p = cpydig(p, tms.tm_sec, 2);
   s = " GMT";
   p = std::copy(s, s + 4, p);
+
+  return res;
+}
+
+std::string common_log_date(time_t t)
+{
+  struct tm tms;
+
+  if(localtime_r(&t, &tms) == nullptr) {
+    return "";
+  }
+
+  // Format data like this:
+  // 03/Jul/2014:00:19:38 +0900
+  std::string res;
+  res.resize(26);
+
+  auto p = std::begin(res);
+
+  p = cpydig(p, tms.tm_mday, 2);
+  *p++ = '/';
+  auto s = MONTH[tms.tm_mon];
+  p = std::copy(s, s + 3, p);
+  *p++ = '/';
+  p = cpydig(p, tms.tm_year + 1900, 4);
+  *p++ = ':';
+  p = cpydig(p, tms.tm_hour, 2);
+  *p++ = ':';
+  p = cpydig(p, tms.tm_min, 2);
+  *p++ = ':';
+  p = cpydig(p, tms.tm_sec, 2);
+  *p++ = ' ';
+
+  auto gmtoff = tms.tm_gmtoff;
+  if(gmtoff >= 0) {
+    *p++ = '+';
+  } else {
+    *p++ = '-';
+    gmtoff = -gmtoff;
+  }
+
+  p = cpydig(p, gmtoff / 3600, 2);
+  p = cpydig(p, (gmtoff % 3600) / 60, 2);
+
+  return res;
+}
+
+std::string iso8601_date(int64_t ms)
+{
+  time_t sec = ms / 1000;
+
+  tm tms;
+  if(localtime_r(&sec, &tms) == nullptr) {
+    return "";
+  }
+
+  // Format data like this:
+  // 2014-11-15T12:58:24.741Z
+  // 2014-11-15T12:58:24.741+09:00
+  std::string res;
+  res.resize(29);
+
+  auto p = std::begin(res);
+
+  p = cpydig(p, tms.tm_year + 1900, 4);
+  *p++ = '-';
+  p = cpydig(p, tms.tm_mon + 1, 2);
+  *p++ = '-';
+  p = cpydig(p, tms.tm_mday, 2);
+  *p++ = 'T';
+  p = cpydig(p, tms.tm_hour, 2);
+  *p++ = ':';
+  p = cpydig(p, tms.tm_min, 2);
+  *p++ = ':';
+  p = cpydig(p, tms.tm_sec, 2);
+  *p++ = '.';
+  p = cpydig(p, ms % 1000, 3);
+
+  auto gmtoff = tms.tm_gmtoff;
+  if(gmtoff == 0) {
+    *p++ = 'Z';
+  } else {
+    if(gmtoff > 0) {
+      *p++ = '+';
+    } else {
+      *p++ = '-';
+      gmtoff = -gmtoff;
+    }
+    p = cpydig(p, gmtoff / 3600, 2);
+    *p++ = ':';
+    p = cpydig(p, (gmtoff % 3600) / 60, 2);
+  }
+
+  res.resize(p - std::begin(res));
 
   return res;
 }
