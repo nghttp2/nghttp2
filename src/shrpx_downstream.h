@@ -276,6 +276,9 @@ public:
   void ensure_downstream_wtimer();
   void disable_downstream_rtimer();
   void disable_downstream_wtimer();
+
+  // Returns true if accesslog can be written for this downstream.
+  bool accesslog_ready() const;
 private:
   Headers request_headers_;
   Headers response_headers_;

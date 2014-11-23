@@ -918,7 +918,7 @@ Downstream* SpdyUpstream::add_pending_downstream
 
 void SpdyUpstream::remove_downstream(Downstream *downstream)
 {
-  if(downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+  if(downstream->accesslog_ready()) {
     handler_->write_accesslog(downstream);
   }
 
@@ -1155,6 +1155,13 @@ void SpdyUpstream::reset_timeouts()
 }
 
 void SpdyUpstream::on_handler_delete()
-{}
+{
+  for(auto& ent : downstream_queue_.get_active_downstreams()) {
+    if(ent.second->accesslog_ready()) {
+      handler_->write_accesslog(ent.second.get());
+    }
+  }
+}
+
 
 } // namespace shrpx

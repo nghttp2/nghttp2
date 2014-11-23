@@ -1207,7 +1207,7 @@ void Http2Upstream::add_pending_downstream
 
 void Http2Upstream::remove_downstream(Downstream *downstream)
 {
-  if(downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+  if(downstream->accesslog_ready()) {
     handler_->write_accesslog(downstream);
   }
 
@@ -1469,6 +1469,12 @@ void Http2Upstream::reset_timeouts()
 }
 
 void Http2Upstream::on_handler_delete()
-{}
+{
+  for(auto& ent : downstream_queue_.get_active_downstreams()) {
+    if(ent.second->accesslog_ready()) {
+      handler_->write_accesslog(ent.second.get());
+    }
+  }
+}
 
 } // namespace shrpx
