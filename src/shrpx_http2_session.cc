@@ -781,11 +781,6 @@ int on_stream_close_callback
         // For tunneled connection, we have to submit RST_STREAM to
         // upstream *after* whole response body is sent. We just set
         // MSG_COMPLETE here. Upstream will take care of that.
-        if(LOG_ENABLED(INFO)) {
-          SSLOG(INFO, http2session) << "RST_STREAM against tunneled stream "
-                                    << "stream_id="
-                                    << stream_id;
-        }
         downstream->get_upstream()->on_downstream_body_complete(downstream);
         downstream->set_response_state(Downstream::MSG_COMPLETE);
       } else if(error_code == NGHTTP2_NO_ERROR) {
