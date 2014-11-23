@@ -740,8 +740,7 @@ void HttpsUpstream::attach_downstream(std::unique_ptr<Downstream> downstream)
 
 void HttpsUpstream::delete_downstream()
 {
-  if(downstream_ &&
-     downstream_->get_response_state() == Downstream::MSG_COMPLETE) {
+  if(downstream_ && downstream_->accesslog_ready()) {
     handler_->write_accesslog(downstream_.get());
   }
 
@@ -975,8 +974,7 @@ void HttpsUpstream::reset_timeouts()
 
 void HttpsUpstream::on_handler_delete()
 {
-  if(downstream_ &&
-     downstream_->get_response_state() == Downstream::MSG_COMPLETE) {
+  if(downstream_ && downstream_->accesslog_ready()) {
     handler_->write_accesslog(downstream_.get());
   }
 }

@@ -1057,6 +1057,7 @@ struct HttpClient {
       auto& req_stat = req->stat;
       auto request_time = (i == 0) ? stat.started_system_time :
         stat.started_system_time +
+        std::chrono::duration_cast<std::chrono::system_clock::duration>
         (req_stat.on_request_time - stat.on_started_time);
 
       auto wait_delta = std::chrono::duration_cast

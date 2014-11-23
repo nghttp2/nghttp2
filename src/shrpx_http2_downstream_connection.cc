@@ -67,7 +67,24 @@ Http2DownstreamConnection::~Http2DownstreamConnection()
     downstream_->disable_downstream_rtimer();
     downstream_->disable_downstream_wtimer();
 
-    if(submit_rst_stream(downstream_) == 0) {
+    uint32_t error_code;
+    if(downstream_->get_request_state() == Downstream::STREAM_CLOSED &&
+       downstream_->get_upgraded()) {
+      // For upgraded connection, send NO_ERROR.  Should we consider
+      // request states other than Downstream::STREAM_CLOSED ?
+      error_code = NGHTTP2_NO_ERROR;
+    } else {
+      error_code = NGHTTP2_INTERNAL_ERROR;
+    }
+
+    if(LOG_ENABLED(INFO)) {
+      DCLOG(INFO, this) << "Submit RST_STREAM for DOWNSTREAM:"
+                        << downstream_ << ", stream_id="
+                        << downstream_->get_downstream_stream_id()
+                        << ", error_code=" << error_code;
+    }
+
+    if(submit_rst_stream(downstream_, error_code) == 0) {
       http2session_->notify();
     }
 
@@ -196,62 +213,51 @@ ssize_t http2_data_read_callback(nghttp2_session *session,
     return NGHTTP2_ERR_DEFERRED;
   }
   auto body = dconn->get_request_body_buf();
-  int nread = 0;
-  for(;;) {
-    nread = evbuffer_remove(body, buf, length);
-    if(nread == -1) {
-      DCLOG(FATAL, dconn) << "evbuffer_remove() failed";
+
+  auto nread = evbuffer_remove(body, buf, length);
+  if(nread == -1) {
+    DCLOG(FATAL, dconn) << "evbuffer_remove() failed";
+    return NGHTTP2_ERR_CALLBACK_FAILURE;
+  }
+
+  if(nread > 0) {
+    // This is important because it will handle flow control
+    // stuff.
+    if(downstream->get_upstream()->resume_read
+       (SHRPX_NO_BUFFER, downstream, nread) != 0) {
+      // In this case, downstream may be deleted.
       return NGHTTP2_ERR_CALLBACK_FAILURE;
     }
 
-    if(nread > 0) {
-      // This is important because it will handle flow control
-      // stuff.
-      if(downstream->get_upstream()->resume_read
-         (SHRPX_NO_BUFFER, downstream, nread) != 0) {
-        // In this case, downstream may be deleted.
-        return NGHTTP2_ERR_CALLBACK_FAILURE;
-      }
-
-      // Check dconn is still alive because Upstream::resume_read()
-      // may delete downstream which will delete dconn.
-      if(sd->dconn == nullptr) {
-        return NGHTTP2_ERR_DEFERRED;
-      }
-
-      break;
-    }
-
-    if(downstream->get_request_state() == Downstream::MSG_COMPLETE) {
-      if(!downstream->get_upgrade_request() ||
-         (downstream->get_response_state() == Downstream::HEADER_COMPLETE &&
-          !downstream->get_upgraded())) {
-        *data_flags |= NGHTTP2_DATA_FLAG_EOF;
-      } else {
-        downstream->disable_downstream_wtimer();
-
-        return NGHTTP2_ERR_DEFERRED;
-      }
-      break;
-    } else {
-      if(evbuffer_get_length(body) == 0) {
-        // Check get_request_state() == MSG_COMPLETE just in case
-        if(downstream->get_request_state() == Downstream::MSG_COMPLETE) {
-          *data_flags |= NGHTTP2_DATA_FLAG_EOF;
-          break;
-        }
-
-        downstream->disable_downstream_wtimer();
-
-        return NGHTTP2_ERR_DEFERRED;
-      }
+    // Check dconn is still alive because Upstream::resume_read()
+    // may delete downstream which will delete dconn.
+    if(sd->dconn == nullptr) {
+      return NGHTTP2_ERR_DEFERRED;
     }
   }
 
-  if(evbuffer_get_length(body) > 0 && !downstream->get_output_buffer_full()) {
+  if(evbuffer_get_length(body) == 0 &&
+     downstream->get_request_state() == Downstream::MSG_COMPLETE &&
+     // If connection is upgraded, don't set EOF flag, since HTTP/1
+     // will set MSG_COMPLETE to request state after upgrade response
+     // header is seen.
+     (!downstream->get_upgrade_request() ||
+      (downstream->get_response_state() == Downstream::HEADER_COMPLETE &&
+       !downstream->get_upgraded()))) {
+
+    *data_flags |= NGHTTP2_DATA_FLAG_EOF;
+  }
+
+  if(evbuffer_get_length(body) > 0) {
     downstream->reset_downstream_wtimer();
   } else {
     downstream->disable_downstream_wtimer();
+  }
+
+  if(nread == 0 && (*data_flags & NGHTTP2_DATA_FLAG_EOF) == 0) {
+    downstream->disable_downstream_wtimer();
+
+    return NGHTTP2_ERR_DEFERRED;
   }
 
   return nread;

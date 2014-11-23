@@ -462,32 +462,41 @@ void eventcb(bufferevent *bev, short events, void *ptr)
       unsigned int next_proto_len;
       SSL_get0_next_proto_negotiated(client->ssl,
                                      &next_proto, &next_proto_len);
+      for(int i = 0; i < 2; ++i) {
+        if(next_proto) {
+          if(util::check_h2_is_selected(next_proto, next_proto_len)) {
+            client->session = util::make_unique<Http2Session>(client);
+          } else {
+#ifdef HAVE_SPDYLAY
+            auto spdy_version = spdylay_npn_get_version(next_proto,
+                                                        next_proto_len);
+            if(spdy_version) {
+              client->session = util::make_unique<SpdySession>(client,
+                                                               spdy_version);
+            } else {
+              debug_nextproto_error();
+              client->fail();
+              return;
+            }
+#else // !HAVE_SPDYLAY
+            debug_nextproto_error();
+            client->fail();
+            return;
+#endif // !HAVE_SPDYLAY
+          }
+        }
+
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+        SSL_get0_alpn_selected(client->ssl, &next_proto, &next_proto_len);
+#else // OPENSSL_VERSION_NUMBER < 0x10002000L
+        break;
+#endif // OPENSSL_VERSION_NUMBER < 0x10002000L
+      }
 
       if(!next_proto) {
         debug_nextproto_error();
         client->fail();
         return;
-      }
-
-      if(util::check_h2_is_selected(next_proto, next_proto_len)) {
-        client->session = util::make_unique<Http2Session>(client);
-      } else {
-#ifdef HAVE_SPDYLAY
-        auto spdy_version = spdylay_npn_get_version(next_proto,
-                                                    next_proto_len);
-        if(spdy_version) {
-          client->session = util::make_unique<SpdySession>(client,
-                                                           spdy_version);
-        } else {
-          debug_nextproto_error();
-          client->fail();
-          return;
-        }
-#else // !HAVE_SPDYLAY
-        debug_nextproto_error();
-        client->fail();
-        return;
-#endif // !HAVE_SPDYLAY
       }
     } else {
       switch(config.no_tls_proto) {
@@ -973,6 +982,16 @@ int main(int argc, char **argv)
   }
   SSL_CTX_set_next_proto_select_cb(ssl_ctx,
                                    client_select_next_proto_cb, nullptr);
+
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+  auto proto_list = util::get_default_alpn();
+#ifdef HAVE_SPDYLAY
+  static const char spdy_proto_list[] = "\x8spdy/3.1\x6spdy/3\x6spdy/2";
+  std::copy(spdy_proto_list, spdy_proto_list + sizeof(spdy_proto_list) - 1,
+            std::back_inserter(proto_list));
+#endif // HAVE_SPDYLAY
+  SSL_CTX_set_alpn_protos(ssl_ctx, proto_list.data(), proto_list.size());
+#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
   std::vector<std::string> reqlines;
 

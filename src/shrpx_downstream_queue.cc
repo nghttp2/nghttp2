@@ -142,4 +142,10 @@ bool DownstreamQueue::pending_empty() const
   return pending_downstreams_.empty();
 }
 
+const std::map<int32_t, std::unique_ptr<Downstream>>&
+DownstreamQueue::get_active_downstreams() const
+{
+  return active_downstreams_;
+}
+
 } // namespace shrpx

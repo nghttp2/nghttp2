@@ -1197,4 +1197,9 @@ void Downstream::disable_downstream_wtimer()
   disable_timer(downstream_wtimerev_);
 }
 
+bool Downstream::accesslog_ready() const
+{
+  return response_http_status_ > 0;
+}
+
 } // namespace shrpx

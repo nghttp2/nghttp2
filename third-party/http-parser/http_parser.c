@@ -925,7 +925,7 @@ size_t http_parser_execute (http_parser *parser,
           case 'G': parser->method = HTTP_GET; break;
           case 'H': parser->method = HTTP_HEAD; break;
           case 'L': parser->method = HTTP_LOCK; break;
-          case 'M': parser->method = HTTP_MKCOL; /* or MOVE, MKACTIVITY, MERGE, M-SEARCH */ break;
+          case 'M': parser->method = HTTP_MKCOL; /* or MOVE, MKACTIVITY, MERGE, M-SEARCH, MKCALENDAR */ break;
           case 'N': parser->method = HTTP_NOTIFY; break;
           case 'O': parser->method = HTTP_OPTIONS; break;
           case 'P': parser->method = HTTP_POST;
@@ -977,6 +977,8 @@ size_t http_parser_execute (http_parser *parser,
             parser->method = HTTP_MSEARCH;
           } else if (parser->index == 2 && ch == 'A') {
             parser->method = HTTP_MKACTIVITY;
+          } else if (parser->index == 3 && ch == 'A') {
+            parser->method = HTTP_MKCALENDAR;
           } else {
             SET_ERRNO(HPE_INVALID_METHOD);
             goto error;
@@ -1384,18 +1386,6 @@ size_t http_parser_execute (http_parser *parser,
 
         if (ch == ':') {
           parser->state = s_header_value_discard_ws;
-          CALLBACK_DATA(header_field);
-          break;
-        }
-
-        if (ch == CR) {
-          parser->state = s_header_almost_done;
-          CALLBACK_DATA(header_field);
-          break;
-        }
-
-        if (ch == LF) {
-          parser->state = s_header_field_start;
           CALLBACK_DATA(header_field);
           break;
         }
@@ -2142,7 +2132,7 @@ http_parser_parse_url(const char *buf, size_t buflen, int is_connect,
 
   u->port = u->field_set = 0;
   s = is_connect ? s_req_server_start : s_req_spaces_before_url;
-  uf = old_uf = UF_MAX;
+  old_uf = UF_MAX;
 
   for (p = buf; p < buf + buflen; p++) {
     s = parse_url_char(s, *p);
