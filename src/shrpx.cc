@@ -1128,7 +1128,7 @@ Logging:
   --accesslog-format=<FORMAT>
                      Specify  format  string   for  access  log.   The
                      default format is combined format.  The following
-                     variables are available: 
+                     variables are available:
                        $remote_addr: client IP address
                        $time_local: local time in Common Log format
                        $time_iso8601:  local time in ISO 8601 format
@@ -1137,10 +1137,12 @@ Logging:
                        $body_bytes_sent: the number of bytes sent
                                          to client  as response body
                        $http_<VAR>: value of HTTP request header <VAR>
+                                    where '_' in <VAR> is replaced with
+                                    '-'.
                        $remote_port: client  port
                        $server_port: server port
-                       $request_time: request processing time in 
-                                      seconds with milliseconds 
+                       $request_time: request processing time in
+                                      seconds with milliseconds
                                       resolution.
                      Default: )"
       << DEFAULT_ACCESSLOG_FORMAT << R"(
