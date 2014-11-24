@@ -468,6 +468,14 @@ AC_CHECK_TYPES([ptrdiff_t])
 AC_C_BIGENDIAN
 AC_SYS_LARGEFILE
 
+AC_CHECK_MEMBER([struct tm.tm_gmtoff], [have_struct_tm_tm_gmtoff=yes],
+                [have_struct_tm_tm_gmtoff=no], [[#include <time.h>]])
+
+if test "x$have_struct_tm_tm_gmtoff" = "xyes"; then
+  AC_DEFINE([HAVE_STRUCT_TM_TM_GMTOFF], [1],
+            [Define to 1 if you have `struct tm.tm_gmtoff` member.])
+fi
+
 # Checks for library functions.
 if test "x$cross_compiling" != "xyes"; then
   AC_FUNC_MALLOC
