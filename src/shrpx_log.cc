@@ -261,6 +261,9 @@ void upstream_accesslog(const std::vector<LogFragment>& lfv, LogSpec *lgsp)
     case SHRPX_LOGF_PID:
       std::tie(p, avail) = copy(util::utos(lgsp->pid).c_str(), avail, p);
       break;
+    case SHRPX_LOGF_ALPN:
+      std::tie(p, avail) = copy(lgsp->alpn, avail, p);
+      break;
     case SHRPX_LOGF_NONE:
       break;
     default:

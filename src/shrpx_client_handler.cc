@@ -213,6 +213,7 @@ ClientHandler::ClientHandler(bufferevent *bev,
     // upgraded to HTTP/2 through HTTP Upgrade or direct HTTP/2
     // connection.
     upstream_ = util::make_unique<HttpsUpstream>(this);
+    alpn_ = "http/1.1";
     set_bev_cb(upstream_http1_connhd_readcb, nullptr, upstream_eventcb);
   }
 }
@@ -324,6 +325,7 @@ int ClientHandler::validate_next_proto()
         }
 
         upstream_ = std::move(http2_upstream);
+        alpn_.assign(next_proto, next_proto + next_proto_len);
 
         // At this point, input buffer is already filled with some
         // bytes.  The read callback is not called until new data
@@ -339,6 +341,20 @@ int ClientHandler::validate_next_proto()
         if(version) {
           upstream_ = util::make_unique<SpdyUpstream>(version, this);
 
+          switch(version) {
+          case SPDYLAY_PROTO_SPDY2:
+            alpn_ = "spdy/2";
+            break;
+          case SPDYLAY_PROTO_SPDY3:
+            alpn_ = "spdy/3";
+            break;
+          case SPDYLAY_PROTO_SPDY3_1:
+            alpn_ = "spdy/3.1";
+            break;
+          default:
+            alpn_ = "spdy/unknown";
+          }
+
           // At this point, input buffer is already filled with some
           // bytes.  The read callback is not called until new data
           // come. So consume input buffer here.
@@ -351,6 +367,7 @@ int ClientHandler::validate_next_proto()
 #endif // HAVE_SPDYLAY
         if(next_proto_len == 8 && memcmp("http/1.1", next_proto, 8) == 0) {
           upstream_ = util::make_unique<HttpsUpstream>(this);
+          alpn_ = "http/1.1";
 
           // At this point, input buffer is already filled with some
           // bytes.  The read callback is not called until new data
@@ -375,6 +392,7 @@ int ClientHandler::validate_next_proto()
       CLOG(INFO, this) << "No protocol negotiated. Fallback to HTTP/1.1";
     }
     upstream_ = util::make_unique<HttpsUpstream>(this);
+    alpn_ = "http/1.1";
 
     // At this point, input buffer is already filled with some bytes.
     // The read callback is not called until new data come. So consume
@@ -594,6 +612,9 @@ ConnectBlocker* ClientHandler::get_http1_connect_blocker() const
 void ClientHandler::direct_http2_upgrade()
 {
   upstream_= util::make_unique<Http2Upstream>(this);
+  // TODO We don't know exact h2 draft version in direct upgrade.  We
+  // just use library default for now.
+  alpn_ = NGHTTP2_CLEARTEXT_PROTO_VERSION_ID;
   set_bev_cb(upstream_readcb, upstream_writecb, upstream_eventcb);
 }
 
@@ -607,6 +628,9 @@ int ClientHandler::perform_http2_upgrade(HttpsUpstream *http)
   // http pointer is now owned by upstream.
   upstream_.release();
   upstream_ = std::move(upstream);
+  // TODO We might get other version id in HTTP2-settings, if we
+  // support aliasing for h2, but we just use library default for now.
+  alpn_ = NGHTTP2_CLEARTEXT_PROTO_VERSION_ID;
   set_bev_cb(upstream_http2_connhd_readcb, upstream_writecb, upstream_eventcb);
   static char res[] = "HTTP/1.1 101 Switching Protocols\r\n"
     "Connection: Upgrade\r\n"
@@ -738,6 +762,8 @@ void ClientHandler::write_accesslog(Downstream *downstream)
     downstream->get_request_http2_authority().c_str() :
     downstream->get_request_path().c_str(),
 
+    alpn_.c_str(),
+
     downstream->get_request_start_time(),
     std::chrono::high_resolution_clock::now(),
 
@@ -762,6 +788,7 @@ void ClientHandler::write_accesslog(int major, int minor,
     ipaddr_.c_str(),
     "-", // method
     "-", // path,
+    alpn_.c_str(),
     std::chrono::high_resolution_clock::now(), //request_start_time TODO is there a better value?
     std::chrono::high_resolution_clock::now(), //time_now
     major, minor, // major, minor

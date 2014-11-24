@@ -119,6 +119,8 @@ private:
   std::unique_ptr<Upstream> upstream_;
   std::string ipaddr_;
   std::string port_;
+  // The ALPN identifier negotiated for this connection.
+  std::string alpn_;
   DownstreamConnectionPool *dconn_pool_;
   bufferevent *bev_;
   // Shared HTTP2 session for each thread. NULL if backend is not

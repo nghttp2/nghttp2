@@ -1144,6 +1144,9 @@ Logging:
                      $request_time:   request  processing   time  in
                      seconds with milliseconds resolution.
                      $pid: PID of the running process.
+                     $alpn:  ALPN  identifier  of the  protocol  which
+                     generates  the  response.   For HTTP/1,  ALPN  is
+                     always http/1.1, regardless of minor version.
                      Default: )"
       << DEFAULT_ACCESSLOG_FORMAT << R"(
   --errorlog-file=<PATH>

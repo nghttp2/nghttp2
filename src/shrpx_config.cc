@@ -404,6 +404,8 @@ std::vector<LogFragment> parse_log_format(const char *optarg)
       type = SHRPX_LOGF_REQUEST_TIME;
     } else if(util::strieq("$pid", var_start, varlen)) {
       type = SHRPX_LOGF_PID;
+    } else if(util::strieq("$alpn", var_start, varlen)) {
+      type = SHRPX_LOGF_ALPN;
     } else {
       LOG(WARN) << "Unrecognized log format variable: "
                 << std::string(var_start, varlen);

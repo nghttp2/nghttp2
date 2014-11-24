@@ -119,6 +119,7 @@ enum LogFragmentType {
   SHRPX_LOGF_SERVER_PORT,
   SHRPX_LOGF_REQUEST_TIME,
   SHRPX_LOGF_PID,
+  SHRPX_LOGF_ALPN,
 };
 
 struct LogFragment {
@@ -131,6 +132,7 @@ struct LogSpec {
   const char *remote_addr;
   const char *method;
   const char *path;
+  const char *alpn;
   std::chrono::high_resolution_clock::time_point request_start_time;
   std::chrono::high_resolution_clock::time_point time_now;
   int major, minor;
