@@ -144,6 +144,12 @@ OPTIONS
     Add  at most  <N>  bytes to  a  frame payload  as
     padding.  Specify 0 to disable padding.
 
+.. option:: -r, --har=<FILE>
+
+    
+    Output  HTTP transactions  <FILE> in  HAR format.
+    If '-' is given, data is written to stdout.
+
 .. option:: --color
 
     
@@ -158,6 +164,12 @@ OPTIONS
 
     
     Don't send content-length header field.
+
+.. option:: --no-dep
+
+    
+    Don't  send  dependency  based priority  hint  to
+    server.
 
 .. option:: --version
 

@@ -309,7 +309,7 @@ SSL/TLS
     used in both ALPN and NPN.  The parameter must be
     delimited by  a single  comma only and  any white
     spaces are treated as a part of protocol string.
-    Default: h2-14,spdy/3.1,spdy/3,spdy/2,http/1.1
+    Default: h2-14,spdy/3.1,http/1.1
 
 .. option:: --verify-client
 
@@ -477,6 +477,31 @@ Logging
     
     Send  access log  to syslog.   If this  option is
     used, :option:`--access-file` option is ignored.
+
+.. option:: --accesslog-format=<FORMAT>
+
+    
+    Specify  format  string   for  access  log.   The
+    default format is combined format.  The following
+    variables are available:
+    $remote_addr: client IP address.
+    $time_local: local time in Common Log format.
+    $time_iso8601: local time in ISO 8601 format.
+    $request: HTTP request line.
+    $status: HTTP response status code.
+    $body_bytes_sent: the  number of bytes  sent to
+    client as response body.
+    $http_<VAR>: value of HTTP request header <VAR>
+    where '_' in <VAR> is replaced with '-'.
+    $remote_port: client  port.
+    $server_port: server port.
+    $request_time:   request  processing   time  in
+    seconds with milliseconds resolution.
+    $pid: PID of the running process.
+    $alpn:  ALPN  identifier  of the  protocol  which
+    generates  the  response.   For HTTP/1,  ALPN  is
+    always http/1.1, regardless of minor version.
+    Default: $remote_addr - - [$time_local] "$request" $status $body_bytes_sent "$http_referer" "$http_user_agent"
 
 .. option:: --errorlog-file=<PATH>
 
