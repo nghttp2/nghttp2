@@ -168,9 +168,11 @@ ClientHandler::ClientHandler(bufferevent *bev,
                              bufferevent_rate_limit_group *rate_limit_group,
                              int fd, SSL *ssl,
                              const char *ipaddr,
+                             const char *port,
                              WorkerStat *worker_stat,
                              DownstreamConnectionPool *dconn_pool)
   : ipaddr_(ipaddr),
+    port_(port),
     dconn_pool_(dconn_pool),
     bev_(bev),
     http2session_(nullptr),
@@ -736,10 +738,15 @@ void ClientHandler::write_accesslog(Downstream *downstream)
     downstream->get_request_http2_authority().c_str() :
     downstream->get_request_path().c_str(),
 
+    downstream->get_request_start_time(),
+    std::chrono::high_resolution_clock::now(),
+
     downstream->get_request_major(),
     downstream->get_request_minor(),
     downstream->get_response_http_status(),
-    downstream->get_response_sent_bodylen()
+    downstream->get_response_sent_bodylen(),
+    port_.c_str(),
+    get_config()->port
   };
 
   upstream_accesslog(get_config()->accesslog_format, &lgsp);
@@ -754,9 +761,13 @@ void ClientHandler::write_accesslog(int major, int minor,
     ipaddr_.c_str(),
     "-", // method
     "-", // path,
+    std::chrono::high_resolution_clock::now(), //request_start_time TODO is there a better value?
+    std::chrono::high_resolution_clock::now(), //time_now
     major, minor, // major, minor
     status,
-    body_bytes_sent
+    body_bytes_sent,
+    port_.c_str(),
+    get_config()->port
   };
 
   upstream_accesslog(get_config()->accesslog_format, &lgsp);

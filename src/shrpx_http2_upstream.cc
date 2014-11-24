@@ -355,6 +355,7 @@ int on_request_headers(Http2Upstream *upstream,
   downstream->set_request_http2_scheme(http2::value_to_str(scheme));
   downstream->set_request_http2_authority(http2::value_to_str(authority));
   downstream->set_request_path(http2::value_to_str(path));
+  downstream->set_request_start_time(std::chrono::high_resolution_clock::now());
 
   if(!(frame->hd.flags & NGHTTP2_FLAG_END_STREAM)) {
     downstream->set_request_http2_expect_body(true);

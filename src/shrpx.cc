@@ -461,22 +461,7 @@ void graceful_shutdown_signal_cb(evutil_socket_t sig, short events, void *arg)
 namespace {
 std::unique_ptr<std::string> generate_time()
 {
-  char buf[32];
-
-  // Format data like this:
-  // 03/Jul/2014:00:19:38 +0900
-  struct tm tms;
-  auto now = time(nullptr);
-
-  if(localtime_r(&now, &tms) == nullptr) {
-    return util::make_unique<std::string>("");
-  }
-
-  if(strftime(buf, sizeof(buf), "%d/%b/%Y:%T %z", &tms) == 0) {
-    return util::make_unique<std::string>("");
-  }
-
-  return util::make_unique<std::string>(buf);
+  return util::make_unique<std::string>(util::format_common_log(std::chrono::system_clock::now()));
 }
 } // namespace
 
@@ -487,7 +472,6 @@ void refresh_cb(evutil_socket_t sig, short events, void *arg)
   auto worker_stat = listener_handler->get_worker_stat();
 
   mod_config()->cached_time = generate_time();
-
   // In multi threaded mode (get_config()->num_worker > 1), we have to
   // wait for event notification to workers to finish.
   if(get_config()->num_worker == 1 &&
@@ -1144,12 +1128,20 @@ Logging:
   --accesslog-format=<FORMAT>
                      Specify  format  string   for  access  log.   The
                      default format is combined format.  The following
-                     variables are available:  $remote_addr: client IP
-                     address.   $time_local:  local  time.   $request:
-                     HTTP request line.  $status: HTTP response status
-                     code.  $body_bytes_sent: the number of bytes sent
-                     to client  as response body.   $http_<VAR>: value
-                     of HTTP request header <VAR>.
+                     variables are available: 
+                       $remote_addr: client IP address
+                       $time_local: local time in Common Log format
+                       $time_iso8601:  local time in ISO 8601 format
+                       $request: HTTP request line
+                       $status: HTTP response status code.
+                       $body_bytes_sent: the number of bytes sent
+                                         to client  as response body
+                       $http_<VAR>: value of HTTP request header <VAR>
+                       $remote_port: client  port
+                       $server_port: server port
+                       $request_time: request processing time in 
+                                      seconds with milliseconds 
+                                      resolution.
                      Default: )"
       << DEFAULT_ACCESSLOG_FORMAT << R"(
   --errorlog-file=<PATH>

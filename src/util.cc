@@ -715,26 +715,6 @@ std::vector<unsigned char> get_default_alpn()
   return res;
 }
 
-std::string format_iso8601(const std::chrono::system_clock::time_point& tp)
-{
-  auto t = std::chrono::duration_cast<std::chrono::milliseconds>
-    (tp.time_since_epoch());
-  time_t sec = t.count() / 1000;
-
-  tm tms;
-  if(gmtime_r(&sec, &tms) == nullptr) {
-    return "";
-  }
-
-  char buf[128];
-
-  auto nwrite = strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%S", &tms);
-  snprintf(&buf[nwrite], sizeof(buf) - nwrite, ".%03dZ",
-           static_cast<int>(t.count() % 1000));
-
-  return buf;
-}
-
 } // namespace util
 
 } // namespace nghttp2
