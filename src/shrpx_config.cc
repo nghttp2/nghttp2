@@ -402,6 +402,8 @@ std::vector<LogFragment> parse_log_format(const char *optarg)
       type = SHRPX_LOGF_SERVER_PORT;
     } else if(util::strieq("$request_time", var_start, varlen)) {
       type = SHRPX_LOGF_REQUEST_TIME;
+    } else if(util::strieq("$pid", var_start, varlen)) {
+      type = SHRPX_LOGF_PID;
     } else {
       LOG(WARN) << "Unrecognized log format variable: "
                 << std::string(var_start, varlen);

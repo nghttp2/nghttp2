@@ -746,7 +746,8 @@ void ClientHandler::write_accesslog(Downstream *downstream)
     downstream->get_response_http_status(),
     downstream->get_response_sent_bodylen(),
     port_.c_str(),
-    get_config()->port
+    get_config()->port,
+    get_config()->pid,
   };
 
   upstream_accesslog(get_config()->accesslog_format, &lgsp);
@@ -767,7 +768,8 @@ void ClientHandler::write_accesslog(int major, int minor,
     status,
     body_bytes_sent,
     port_.c_str(),
-    get_config()->port
+    get_config()->port,
+    get_config()->pid,
   };
 
   upstream_accesslog(get_config()->accesslog_format, &lgsp);

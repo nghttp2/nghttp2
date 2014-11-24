@@ -759,6 +759,7 @@ void fill_default_config()
   mod_config()->pid_file = nullptr;
   mod_config()->uid = 0;
   mod_config()->gid = 0;
+  mod_config()->pid = getpid();
   mod_config()->backend_ipv4 = false;
   mod_config()->backend_ipv6 = false;
   mod_config()->cert_tree = nullptr;
@@ -1142,6 +1143,7 @@ Logging:
                      $server_port: server port.
                      $request_time:   request  processing   time  in
                      seconds with milliseconds resolution.
+                     $pid: PID of the running process.
                      Default: )"
       << DEFAULT_ACCESSLOG_FORMAT << R"(
   --errorlog-file=<PATH>

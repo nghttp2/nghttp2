@@ -27,6 +27,8 @@
 
 #include "shrpx.h"
 
+#include <sys/types.h>
+
 #include <sstream>
 #include <memory>
 #include <vector>
@@ -116,6 +118,7 @@ enum LogFragmentType {
   SHRPX_LOGF_REMOTE_PORT,
   SHRPX_LOGF_SERVER_PORT,
   SHRPX_LOGF_REQUEST_TIME,
+  SHRPX_LOGF_PID,
 };
 
 struct LogFragment {
@@ -135,6 +138,7 @@ struct LogSpec {
   int64_t body_bytes_sent;
   const char *remote_port;
   uint16_t server_port;
+  pid_t pid;
 };
 
 void upstream_accesslog(const std::vector<LogFragment>& lf, LogSpec *lgsp);

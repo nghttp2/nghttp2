@@ -139,7 +139,7 @@ Log::~Log()
     rv = snprintf(buf, sizeof(buf),
                   "%s PID%d [%s%s%s] %s\n",
                   cached_time->c_str(),
-                  getpid(),
+                  get_config()->pid,
                   tty ? SEVERITY_COLOR[severity_] : "",
                   SEVERITY_STR[severity_],
                   tty ? "\033[0m" : "",
@@ -148,7 +148,7 @@ Log::~Log()
     rv = snprintf(buf, sizeof(buf),
                   "%s PID%d [%s%s%s] %s%s:%d%s %s\n",
                   cached_time->c_str(),
-                  getpid(),
+                  get_config()->pid,
                   tty ? SEVERITY_COLOR[severity_] : "",
                   SEVERITY_STR[severity_],
                   tty ? "\033[0m" : "",
@@ -257,6 +257,9 @@ void upstream_accesslog(const std::vector<LogFragment>& lfv, LogSpec *lgsp)
 
         std::tie(p, avail) = copy( sec.c_str(), avail, p);
       }
+      break;
+    case SHRPX_LOGF_PID:
+      std::tie(p, avail) = copy(util::utos(lgsp->pid).c_str(), avail, p);
       break;
     case SHRPX_LOGF_NONE:
       break;

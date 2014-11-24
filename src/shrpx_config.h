@@ -254,6 +254,7 @@ struct Config {
   int argc;
   uid_t uid;
   gid_t gid;
+  pid_t pid;
   uint16_t port;
   uint16_t downstream_port;
   // port in http proxy URI
