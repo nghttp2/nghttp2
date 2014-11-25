@@ -94,7 +94,7 @@ void nghttp2_frame_priority_init(nghttp2_priority *frame, int32_t stream_id,
   frame->pri_spec = *pri_spec;
 }
 
-void nghttp2_frame_priority_free(nghttp2_priority *frame)
+void nghttp2_frame_priority_free(nghttp2_priority *frame _U_)
 {}
 
 void nghttp2_frame_rst_stream_init(nghttp2_rst_stream *frame,
@@ -106,7 +106,7 @@ void nghttp2_frame_rst_stream_init(nghttp2_rst_stream *frame,
   frame->error_code = error_code;
 }
 
-void nghttp2_frame_rst_stream_free(nghttp2_rst_stream *frame)
+void nghttp2_frame_rst_stream_free(nghttp2_rst_stream *frame _U_)
 {}
 
 
@@ -153,7 +153,7 @@ void nghttp2_frame_ping_init(nghttp2_ping *frame, uint8_t flags,
   }
 }
 
-void nghttp2_frame_ping_free(nghttp2_ping *frame)
+void nghttp2_frame_ping_free(nghttp2_ping *frame _U_)
 {}
 
 void nghttp2_frame_goaway_init(nghttp2_goaway *frame, int32_t last_stream_id,
@@ -185,7 +185,7 @@ void nghttp2_frame_window_update_init(nghttp2_window_update *frame,
   frame->reserved = 0;
 }
 
-void nghttp2_frame_window_update_free(nghttp2_window_update *frame)
+void nghttp2_frame_window_update_free(nghttp2_window_update *frame _U_)
 {}
 
 void nghttp2_frame_altsvc_init(nghttp2_extension *frame, int32_t stream_id,
@@ -242,7 +242,7 @@ void nghttp2_frame_data_init(nghttp2_data *frame, uint8_t flags,
   frame->padlen = 0;
 }
 
-void nghttp2_frame_data_free(nghttp2_data *frame)
+void nghttp2_frame_data_free(nghttp2_data *frame _U_)
 {}
 
 size_t nghttp2_frame_priority_len(uint8_t flags)
@@ -382,9 +382,9 @@ void nghttp2_frame_pack_priority_spec(uint8_t *buf,
 }
 
 void nghttp2_frame_unpack_priority_spec(nghttp2_priority_spec *pri_spec,
-                                        uint8_t flags,
+                                        uint8_t flags _U_,
                                         const uint8_t *payload,
-                                        size_t payloadlen)
+                                        size_t payloadlen _U_)
 {
   int32_t dep_stream_id;
   uint8_t exclusive;
@@ -466,7 +466,7 @@ int nghttp2_frame_pack_rst_stream(nghttp2_bufs *bufs,
 
 void nghttp2_frame_unpack_rst_stream_payload(nghttp2_rst_stream *frame,
                                              const uint8_t *payload,
-                                             size_t payloadlen)
+                                             size_t payloadlen _U_)
 {
   frame->error_code = nghttp2_get_uint32(payload);
 }
@@ -602,7 +602,7 @@ int nghttp2_frame_pack_push_promise(nghttp2_bufs *bufs,
 
 int nghttp2_frame_unpack_push_promise_payload(nghttp2_push_promise *frame,
                                               const uint8_t *payload,
-                                              size_t payloadlen)
+                                              size_t payloadlen _U_)
 {
   frame->promised_stream_id = nghttp2_get_uint32(payload) &
     NGHTTP2_STREAM_ID_MASK;
@@ -633,7 +633,7 @@ int nghttp2_frame_pack_ping(nghttp2_bufs *bufs, nghttp2_ping *frame)
 
 void nghttp2_frame_unpack_ping_payload(nghttp2_ping *frame,
                                        const uint8_t *payload,
-                                       size_t payloadlen)
+                                       size_t payloadlen _U_)
 {
   memcpy(frame->opaque_data, payload, sizeof(frame->opaque_data));
 }
@@ -672,7 +672,7 @@ int nghttp2_frame_pack_goaway(nghttp2_bufs *bufs, nghttp2_goaway *frame)
 
 void nghttp2_frame_unpack_goaway_payload(nghttp2_goaway *frame,
                                          const uint8_t *payload,
-                                         size_t payloadlen,
+                                         size_t payloadlen _U_,
                                          uint8_t *var_gift_payload,
                                          size_t var_gift_payloadlen)
 {
@@ -739,7 +739,7 @@ int nghttp2_frame_pack_window_update(nghttp2_bufs *bufs,
 
 void nghttp2_frame_unpack_window_update_payload(nghttp2_window_update *frame,
                                                 const uint8_t *payload,
-                                                size_t payloadlen)
+                                                size_t payloadlen _U_)
 {
   frame->window_size_increment = nghttp2_get_uint32(payload) &
     NGHTTP2_WINDOW_SIZE_INCREMENT_MASK;
@@ -803,7 +803,7 @@ int nghttp2_frame_pack_altsvc(nghttp2_bufs *bufs, nghttp2_extension *frame)
 
 int nghttp2_frame_unpack_altsvc_payload(nghttp2_extension *frame,
                                         const uint8_t *payload,
-                                        size_t payloadlen,
+                                        size_t payloadlen _U_,
                                         uint8_t *var_gift_payload,
                                         size_t var_gift_payloadlen)
 {

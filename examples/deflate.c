@@ -22,6 +22,7 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+#include <config.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -38,7 +39,7 @@ static void deflate(nghttp2_hd_deflater *deflater,
 static int inflate_header_block(nghttp2_hd_inflater *inflater,
                                 uint8_t *in, size_t inlen, int final);
 
-int main(int argc, char **argv)
+int main(int argc _U_, char **argv _U_)
 {
   int rv;
   nghttp2_hd_deflater *deflater;

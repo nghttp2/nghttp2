@@ -74,7 +74,7 @@ void nghttp2_stream_init(nghttp2_stream *stream, int32_t stream_id,
   stream->root_next = NULL;
 }
 
-void nghttp2_stream_free(nghttp2_stream *stream)
+void nghttp2_stream_free(nghttp2_stream *stream _U_)
 {
   /* We don't free stream->data_item.  If it is assigned to aob, then
      active_outbound_item_reset() will delete it.  If it is queued,
@@ -1060,7 +1060,7 @@ void nghttp2_stream_roots_init(nghttp2_stream_roots *roots)
   roots->num_streams = 0;
 }
 
-void nghttp2_stream_roots_free(nghttp2_stream_roots *roots)
+void nghttp2_stream_roots_free(nghttp2_stream_roots *roots _U_)
 {}
 
 void nghttp2_stream_roots_add(nghttp2_stream_roots *roots,

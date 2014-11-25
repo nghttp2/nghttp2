@@ -101,31 +101,31 @@ static void scripted_data_feed_init2(scripted_data_feed *df,
   df->feedseq[0] = len;
 }
 
-static ssize_t null_send_callback(nghttp2_session *session,
-                                  const uint8_t* data, size_t len, int flags,
-                                  void *user_data)
+static ssize_t null_send_callback(nghttp2_session *session _U_,
+                                  const uint8_t* data _U_, size_t len, int flags _U_,
+                                  void *user_data _U_)
 {
   return len;
 }
 
-static ssize_t fail_send_callback(nghttp2_session *session,
-                                  const uint8_t *data, size_t len, int flags,
-                                  void *user_data)
+static ssize_t fail_send_callback(nghttp2_session *session _U_,
+                                  const uint8_t *data _U_, size_t len _U_, int flags _U_,
+                                  void *user_data _U_)
 {
   return NGHTTP2_ERR_CALLBACK_FAILURE;
 }
 
-static ssize_t fixed_bytes_send_callback(nghttp2_session *session,
-                                         const uint8_t *data, size_t len,
-                                         int flags, void *user_data)
+static ssize_t fixed_bytes_send_callback(nghttp2_session *session _U_,
+                                         const uint8_t *data _U_, size_t len,
+                                         int flags _U_, void *user_data)
 {
   size_t fixed_sendlen = ((my_user_data*)user_data)->fixed_sendlen;
   return fixed_sendlen < len ? fixed_sendlen : len;
 }
 
 
-static ssize_t scripted_recv_callback(nghttp2_session *session,
-                                      uint8_t* data, size_t len, int flags,
+static ssize_t scripted_recv_callback(nghttp2_session *session _U_,
+                                      uint8_t* data, size_t len, int flags _U_,
                                       void *user_data)
 {
   scripted_data_feed *df = ((my_user_data*)user_data)->df;
@@ -139,16 +139,16 @@ static ssize_t scripted_recv_callback(nghttp2_session *session,
   return wlen;
 }
 
-static ssize_t eof_recv_callback(nghttp2_session *session,
-                                 uint8_t* data, size_t len, int flags,
-                                 void *user_data)
+static ssize_t eof_recv_callback(nghttp2_session *session _U_,
+                                 uint8_t* data _U_, size_t len _U_, int flags _U_,
+                                 void *user_data _U_)
 {
   return NGHTTP2_ERR_EOF;
 }
 
-static ssize_t accumulator_send_callback(nghttp2_session *session,
+static ssize_t accumulator_send_callback(nghttp2_session *session _U_,
                                          const uint8_t *buf, size_t len,
-                                         int flags, void* user_data)
+                                         int flags _U_, void* user_data)
 {
   accumulator *acc = ((my_user_data*)user_data)->acc;
   assert(acc->length+len < sizeof(acc->buf));
@@ -157,8 +157,8 @@ static ssize_t accumulator_send_callback(nghttp2_session *session,
   return len;
 }
 
-static int on_begin_frame_callback(nghttp2_session *session,
-                                   const nghttp2_frame_hd *hd,
+static int on_begin_frame_callback(nghttp2_session *session  _U_,
+                                   const nghttp2_frame_hd *hd _U_,
                                    void *user_data)
 {
   my_user_data *ud = (my_user_data*)user_data;
@@ -166,7 +166,7 @@ static int on_begin_frame_callback(nghttp2_session *session,
   return 0;
 }
 
-static int on_frame_recv_callback(nghttp2_session *session,
+static int on_frame_recv_callback(nghttp2_session *session _U_,
                                   const nghttp2_frame *frame,
                                   void *user_data)
 {
@@ -176,9 +176,9 @@ static int on_frame_recv_callback(nghttp2_session *session,
   return 0;
 }
 
-static int on_invalid_frame_recv_callback(nghttp2_session *session,
-                                          const nghttp2_frame *frame,
-                                          nghttp2_error_code error_code,
+static int on_invalid_frame_recv_callback(nghttp2_session *session _U_,
+                                          const nghttp2_frame *frame _U_,
+                                          nghttp2_error_code error_code _U_,
                                           void *user_data)
 {
   my_user_data *ud = (my_user_data*)user_data;
@@ -186,7 +186,7 @@ static int on_invalid_frame_recv_callback(nghttp2_session *session,
   return 0;
 }
 
-static int on_frame_send_callback(nghttp2_session *session,
+static int on_frame_send_callback(nghttp2_session *session _U_,
                                   const nghttp2_frame *frame,
                                   void *user_data)
 {
@@ -196,7 +196,7 @@ static int on_frame_send_callback(nghttp2_session *session,
   return 0;
 }
 
-static int on_frame_not_send_callback(nghttp2_session *session,
+static int on_frame_not_send_callback(nghttp2_session *session _U_,
                                       const nghttp2_frame *frame,
                                       int lib_error,
                                       void *user_data)
@@ -208,9 +208,9 @@ static int on_frame_not_send_callback(nghttp2_session *session,
   return 0;
 }
 
-static int on_data_chunk_recv_callback(nghttp2_session *session,
-                                       uint8_t flags, int32_t stream_id,
-                                       const uint8_t *data, size_t len,
+static int on_data_chunk_recv_callback(nghttp2_session *session _U_,
+                                       uint8_t flags _U_, int32_t stream_id _U_,
+                                       const uint8_t *data _U_, size_t len,
                                        void *user_data)
 {
   my_user_data *ud = (my_user_data*)user_data;
@@ -219,9 +219,9 @@ static int on_data_chunk_recv_callback(nghttp2_session *session,
   return 0;
 }
 
-static int pause_on_data_chunk_recv_callback(nghttp2_session *session,
-                                             uint8_t flags, int32_t stream_id,
-                                             const uint8_t *data, size_t len,
+static int pause_on_data_chunk_recv_callback(nghttp2_session *session _U_,
+                                             uint8_t flags _U_, int32_t stream_id _U_,
+                                             const uint8_t *data _U_, size_t len _U_,
                                              void *user_data)
 {
   my_user_data *ud = (my_user_data*)user_data;
@@ -229,7 +229,7 @@ static int pause_on_data_chunk_recv_callback(nghttp2_session *session,
   return NGHTTP2_ERR_PAUSE;
 }
 
-static ssize_t select_padding_callback(nghttp2_session *session,
+static ssize_t select_padding_callback(nghttp2_session *session _U_,
                                        const nghttp2_frame *frame,
                                        size_t max_payloadlen,
                                        void *user_data)
@@ -239,23 +239,23 @@ static ssize_t select_padding_callback(nghttp2_session *session,
 }
 
 static ssize_t too_large_data_source_length_callback
-(nghttp2_session *session, uint8_t frame_type, int32_t stream_id,
- int32_t session_remote_window_size, int32_t stream_remote_window_size,
- uint32_t remote_max_frame_size, void *user_data) {
+(nghttp2_session *session _U_, uint8_t frame_type _U_, int32_t stream_id _U_,
+ int32_t session_remote_window_size _U_, int32_t stream_remote_window_size _U_,
+ uint32_t remote_max_frame_size _U_, void *user_data _U_) {
     return NGHTTP2_MAX_FRAME_SIZE_MAX + 1;
 }
 
 static ssize_t smallest_length_data_source_length_callback
-(nghttp2_session *session, uint8_t frame_type, int32_t stream_id,
- int32_t session_remote_window_size, int32_t stream_remote_window_size,
- uint32_t remote_max_frame_size, void *user_data) {
+(nghttp2_session *session _U_, uint8_t frame_type _U_, int32_t stream_id _U_,
+ int32_t session_remote_window_size _U_, int32_t stream_remote_window_size _U_,
+ uint32_t remote_max_frame_size _U_, void *user_data _U_) {
     return 1;
 }
 
 static ssize_t fixed_length_data_source_read_callback
-(nghttp2_session *session, int32_t stream_id,
- uint8_t *buf, size_t len, uint32_t *data_flags,
- nghttp2_data_source *source, void *user_data)
+(nghttp2_session *session _U_, int32_t stream_id _U_,
+ uint8_t *buf _U_, size_t len, uint32_t *data_flags,
+ nghttp2_data_source *source _U_, void *user_data)
 {
   my_user_data *ud = (my_user_data*)user_data;
   size_t wlen;
@@ -272,17 +272,17 @@ static ssize_t fixed_length_data_source_read_callback
 }
 
 static ssize_t temporal_failure_data_source_read_callback
-(nghttp2_session *session, int32_t stream_id,
- uint8_t *buf, size_t len, uint32_t *data_flags,
- nghttp2_data_source *source, void *user_data)
+(nghttp2_session *session _U_, int32_t stream_id _U_,
+ uint8_t *buf _U_, size_t len _U_, uint32_t *data_flags _U_,
+ nghttp2_data_source *source _U_, void *user_data _U_)
 {
   return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
 }
 
 static ssize_t fail_data_source_read_callback
-(nghttp2_session *session, int32_t stream_id,
- uint8_t *buf, size_t len, uint32_t *data_flags,
- nghttp2_data_source *source, void *user_data)
+(nghttp2_session *session _U_, int32_t stream_id _U_,
+ uint8_t *buf _U_, size_t len _U_, uint32_t *data_flags _U_,
+ nghttp2_data_source *source _U_, void *user_data _U_)
 {
   return NGHTTP2_ERR_CALLBACK_FAILURE;
 }
@@ -297,9 +297,9 @@ static ssize_t fail_data_source_read_callback
 /*   ++my_data->stream_close_cb_called; */
 /* } */
 
-static ssize_t block_count_send_callback(nghttp2_session* session,
-                                         const uint8_t *data, size_t len,
-                                         int flags,
+static ssize_t block_count_send_callback(nghttp2_session* session _U_,
+                                         const uint8_t *data _U_, size_t len,
+                                         int flags _U_,
                                          void *user_data)
 {
   my_user_data *ud = (my_user_data*)user_data;
@@ -313,11 +313,11 @@ static ssize_t block_count_send_callback(nghttp2_session* session,
   return r;
 }
 
-static int on_header_callback(nghttp2_session *session,
+static int on_header_callback(nghttp2_session *session _U_,
                               const nghttp2_frame *frame,
                               const uint8_t *name, size_t namelen,
                               const uint8_t *value, size_t valuelen,
-                              uint8_t flags,
+                              uint8_t flags _U_,
                               void *user_data)
 {
   my_user_data *ud = (my_user_data*)user_data;
@@ -356,8 +356,8 @@ static int temporal_failure_on_header_callback
   return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
 }
 
-static int on_begin_headers_callback(nghttp2_session *session,
-                                     const nghttp2_frame *frame,
+static int on_begin_headers_callback(nghttp2_session *session _U_,
+                                     const nghttp2_frame *frame _U_,
                                      void *user_data)
 {
   my_user_data *ud = (my_user_data*)user_data;
@@ -366,15 +366,15 @@ static int on_begin_headers_callback(nghttp2_session *session,
 }
 
 static ssize_t defer_data_source_read_callback
-(nghttp2_session *session, int32_t stream_id,
- uint8_t *buf, size_t len, uint32_t *data_flags,
- nghttp2_data_source *source, void *user_data)
+(nghttp2_session *session _U_, int32_t stream_id _U_,
+ uint8_t *buf _U_, size_t len _U_, uint32_t *data_flags _U_,
+ nghttp2_data_source *source _U_, void *user_data _U_)
 {
   return NGHTTP2_ERR_DEFERRED;
 }
 
 static int stream_close_callback(nghttp2_session *session, int32_t stream_id,
-                                 nghttp2_error_code error_code,
+                                 nghttp2_error_code error_code _U_,
                                  void *user_data)
 {
   my_user_data* my_data = (my_user_data*)user_data;
@@ -3307,9 +3307,9 @@ void test_nghttp2_submit_data_read_length_smallest(void)
 }
 
 static ssize_t submit_data_twice_data_source_read_callback
-(nghttp2_session *session, int32_t stream_id,
- uint8_t *buf, size_t len, uint32_t *data_flags,
- nghttp2_data_source *source, void *user_data)
+(nghttp2_session *session _U_, int32_t stream_id _U_,
+ uint8_t *buf _U_, size_t len, uint32_t *data_flags,
+ nghttp2_data_source *source _U_, void *user_data _U_)
 {
   *data_flags |= NGHTTP2_DATA_FLAG_EOF;
   return nghttp2_min(len, 16);
@@ -3317,7 +3317,7 @@ static ssize_t submit_data_twice_data_source_read_callback
 
 static int submit_data_twice_on_frame_send_callback(nghttp2_session *session,
                                                     const nghttp2_frame *frame,
-                                                    void *user_data)
+                                                    void *user_data _U_)
 {
   static int called = 0;
   int rv;

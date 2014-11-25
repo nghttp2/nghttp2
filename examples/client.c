@@ -40,6 +40,7 @@
 #include <stdio.h>
 #include <assert.h>
 
+#include <config.h>
 #include <nghttp2/nghttp2.h>
 
 #include <openssl/ssl.h>
@@ -144,8 +145,8 @@ static void diec(const char *func, int error_code)
  * bytes actually written. See the documentation of
  * nghttp2_send_callback for the details.
  */
-static ssize_t send_callback(nghttp2_session *session,
-                             const uint8_t *data, size_t length, int flags,
+static ssize_t send_callback(nghttp2_session *session _U_,
+                             const uint8_t *data, size_t length, int flags _U_,
                              void *user_data)
 {
   struct Connection *connection;
@@ -173,8 +174,8 @@ static ssize_t send_callback(nghttp2_session *session,
  * |length| bytes. Returns the number of bytes stored in |buf|. See
  * the documentation of nghttp2_recv_callback for the details.
  */
-static ssize_t recv_callback(nghttp2_session *session,
-                             uint8_t *buf, size_t length, int flags,
+static ssize_t recv_callback(nghttp2_session *session _U_,
+                             uint8_t *buf, size_t length, int flags _U_,
                              void *user_data)
 {
   struct Connection *connection;
@@ -199,7 +200,7 @@ static ssize_t recv_callback(nghttp2_session *session,
 }
 
 static int on_frame_send_callback(nghttp2_session *session,
-                                  const nghttp2_frame *frame, void *user_data)
+                                  const nghttp2_frame *frame, void *user_data _U_)
 {
   size_t i;
   switch(frame->hd.type) {
@@ -226,7 +227,7 @@ static int on_frame_send_callback(nghttp2_session *session,
 }
 
 static int on_frame_recv_callback(nghttp2_session *session,
-                                  const nghttp2_frame *frame, void *user_data)
+                                  const nghttp2_frame *frame, void *user_data _U_)
 {
   size_t i;
   switch(frame->hd.type) {
@@ -264,8 +265,8 @@ static int on_frame_recv_callback(nghttp2_session *session,
  */
 static int on_stream_close_callback(nghttp2_session *session,
                                     int32_t stream_id,
-                                    nghttp2_error_code error_code,
-                                    void *user_data)
+                                    uint32_t error_code _U_,
+                                    void *user_data _U_)
 {
   struct Request *req;
   req = nghttp2_session_get_stream_user_data(session, stream_id);
@@ -286,10 +287,10 @@ static int on_stream_close_callback(nghttp2_session *session,
  * The implementation of nghttp2_on_data_chunk_recv_callback type. We
  * use this function to print the received response body.
  */
-static int on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
+static int on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags _U_,
                                        int32_t stream_id,
                                        const uint8_t *data, size_t len,
-                                       void *user_data)
+                                       void *user_data _U_)
 {
   struct Request *req;
   req = nghttp2_session_get_stream_user_data(session, stream_id);
@@ -332,10 +333,10 @@ static void setup_nghttp2_callbacks(nghttp2_session_callbacks *callbacks)
  * HTTP/2 protocol, if server does not offer HTTP/2 the nghttp2
  * library supports, we terminate program.
  */
-static int select_next_proto_cb(SSL* ssl,
+static int select_next_proto_cb(SSL* ssl _U_,
                                 unsigned char **out, unsigned char *outlen,
                                 const unsigned char *in, unsigned int inlen,
-                                void *arg)
+                                void *arg _U_)
 {
   int rv;
   /* nghttp2_select_next_protocol() selects HTTP/2 protocol the

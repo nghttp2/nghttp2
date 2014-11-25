@@ -23,6 +23,7 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 #include <sys/types.h>
+#include <config.h>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -179,9 +180,9 @@ static void print_headers(FILE *f, nghttp2_nv *nva, size_t nvlen)
 /* nghttp2_send_callback. Here we transmit the |data|, |length| bytes,
    to the network. Because we are using libevent bufferevent, we just
    write those bytes into bufferevent buffer. */
-static ssize_t send_callback(nghttp2_session *session,
+static ssize_t send_callback(nghttp2_session *session _U_,
                              const uint8_t *data, size_t length,
-                             int flags, void *user_data)
+                             int flags _U_, void *user_data)
 {
   http2_session_data *session_data = (http2_session_data*)user_data;
   struct bufferevent *bev = session_data->bev;
@@ -191,11 +192,11 @@ static ssize_t send_callback(nghttp2_session *session,
 
 /* nghttp2_on_header_callback: Called when nghttp2 library emits
    single header name/value pair. */
-static int on_header_callback(nghttp2_session *session,
+static int on_header_callback(nghttp2_session *session _U_,
                               const nghttp2_frame *frame,
                               const uint8_t *name, size_t namelen,
                               const uint8_t *value, size_t valuelen,
-                              uint8_t flags,
+                              uint8_t flags _U_,
                               void *user_data)
 {
   http2_session_data *session_data = (http2_session_data*)user_data;
@@ -213,7 +214,7 @@ static int on_header_callback(nghttp2_session *session,
 
 /* nghttp2_on_begin_headers_callback: Called when nghttp2 library gets
    started to receive header block. */
-static int on_begin_headers_callback(nghttp2_session *session,
+static int on_begin_headers_callback(nghttp2_session *session _U_,
                                      const nghttp2_frame *frame,
                                      void *user_data)
 {
@@ -232,7 +233,7 @@ static int on_begin_headers_callback(nghttp2_session *session,
 
 /* nghttp2_on_frame_recv_callback: Called when nghttp2 library
    received a complete frame from the remote peer. */
-static int on_frame_recv_callback(nghttp2_session *session,
+static int on_frame_recv_callback(nghttp2_session *session _U_,
                                   const nghttp2_frame *frame, void *user_data)
 {
   http2_session_data *session_data = (http2_session_data*)user_data;
@@ -252,7 +253,7 @@ static int on_frame_recv_callback(nghttp2_session *session,
    is meant to the stream we initiated, print the received data in
    stdout, so that the user can redirect its output to the file
    easily. */
-static int on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
+static int on_data_chunk_recv_callback(nghttp2_session *session _U_, uint8_t flags _U_,
                                        int32_t stream_id,
                                        const uint8_t *data, size_t len,
                                        void *user_data)
@@ -290,10 +291,10 @@ static int on_stream_close_callback(nghttp2_session *session,
 /* NPN TLS extension client callback. We check that server advertised
    the HTTP/2 protocol the nghttp2 library supports. If not, exit
    the program. */
-static int select_next_proto_cb(SSL* ssl,
+static int select_next_proto_cb(SSL* ssl _U_,
                                 unsigned char **out, unsigned char *outlen,
                                 const unsigned char *in, unsigned int inlen,
-                                void *arg)
+                                void *arg _U_)
 {
   if(nghttp2_select_next_protocol(out, outlen, in, inlen) <= 0) {
     errx(1, "Server did not advertise " NGHTTP2_PROTO_VERSION_ID);
@@ -454,7 +455,7 @@ static void readcb(struct bufferevent *bev, void *ptr)
    receiving GOAWAY, we check the some conditions on the nghttp2
    library and output buffer of bufferevent. If it indicates we have
    no business to this session, tear down the connection. */
-static void writecb(struct bufferevent *bev, void *ptr)
+static void writecb(struct bufferevent *bev _U_, void *ptr)
 {
   http2_session_data *session_data = (http2_session_data*)ptr;
   if(nghttp2_session_want_read(session_data->session) == 0 &&
