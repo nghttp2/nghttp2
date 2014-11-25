@@ -387,7 +387,7 @@ Each request header name/value pair is emitted via
       return 0;
     }
 
-In this turotial, we just print the name/value pair.
+In this tutorial, we just print the name/value pair.
 
 After all name/value pairs are emitted for a frame,
 ``on_frame_recv_callback`` function is called::
