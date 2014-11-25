@@ -1233,7 +1233,7 @@ static int stream_predicate_for_send(nghttp2_stream *stream)
  *     received.
  */
 static int session_predicate_request_headers_send
-(nghttp2_session *session, nghttp2_headers *frame)
+(nghttp2_session *session, nghttp2_headers *frame _U_)
 {
   if(session->goaway_flags) {
     /* When GOAWAY is sent or received, peer must not send new request
@@ -1302,7 +1302,7 @@ static int session_predicate_response_headers_send
  *   RST_STREAM was queued for this stream.
  */
 static int session_predicate_push_response_headers_send
-(nghttp2_session *session, nghttp2_stream *stream)
+(nghttp2_session *session _U_, nghttp2_stream *stream)
 {
   int rv;
   /* TODO Should disallow HEADERS if GOAWAY has already been issued? */
@@ -1506,8 +1506,8 @@ static int session_predicate_altsvc_send
  *
  * Currently this function always returns 0.
  */
-static int nghttp2_session_predicate_settings_send(nghttp2_session *session,
-                                                   nghttp2_frame *frame)
+static int nghttp2_session_predicate_settings_send(nghttp2_session *session _U_,
+                                                   nghttp2_frame *frame _U_)
 {
   return 0;
 }
@@ -2815,7 +2815,7 @@ static int session_call_on_header(nghttp2_session *session,
  *   Out of memory.
  */
 static int session_handle_frame_size_error(nghttp2_session *session,
-                                           nghttp2_frame *frame)
+                                           nghttp2_frame *frame _U_)
 {
   /* TODO Currently no callback is called for this error, because we
      call this callback before reading any payload */
@@ -2998,7 +2998,7 @@ static int inflate_header_block(nghttp2_session *session,
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
  */
-int nghttp2_session_end_request_headers_received(nghttp2_session *session,
+int nghttp2_session_end_request_headers_received(nghttp2_session *session _U_,
                                                  nghttp2_frame *frame,
                                                  nghttp2_stream *stream)
 {

@@ -89,7 +89,7 @@ static int node_compar(const void *lhs, const void *rhs)
   return ln->key - rn->key;
 }
 
-static int node_update(void *item, void *arg)
+static int node_update(void *item, void *arg _U_)
 {
   node *nd = (node*)item;
   if((nd->key % 2) == 0) {

@@ -103,7 +103,7 @@ static void shuffle(int *a, int n)
   }
 }
 
-static int eachfun(nghttp2_map_entry *entry, void *ptr)
+static int eachfun(nghttp2_map_entry *entry _U_, void *ptr _U_)
 {
   return 0;
 }
@@ -152,7 +152,7 @@ void test_nghttp2_map_functional(void)
   nghttp2_map_free(&map);
 }
 
-static int entry_free(nghttp2_map_entry *entry, void *ptr)
+static int entry_free(nghttp2_map_entry *entry, void *ptr _U_)
 {
   free(entry);
   return 0;

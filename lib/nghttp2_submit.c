@@ -178,13 +178,13 @@ int32_t nghttp2_submit_headers(nghttp2_session *session, uint8_t flags,
 }
 
 
-int nghttp2_submit_ping(nghttp2_session *session, uint8_t flags,
+int nghttp2_submit_ping(nghttp2_session *session, uint8_t flags _U_,
                         const uint8_t *opaque_data)
 {
   return nghttp2_session_add_ping(session, NGHTTP2_FLAG_NONE, opaque_data);
 }
 
-int nghttp2_submit_priority(nghttp2_session *session, uint8_t flags,
+int nghttp2_submit_priority(nghttp2_session *session, uint8_t flags _U_,
                             int32_t stream_id,
                             const nghttp2_priority_spec *pri_spec)
 {
@@ -229,7 +229,7 @@ int nghttp2_submit_priority(nghttp2_session *session, uint8_t flags,
   return 0;
 }
 
-int nghttp2_submit_rst_stream(nghttp2_session *session, uint8_t flags,
+int nghttp2_submit_rst_stream(nghttp2_session *session, uint8_t flags _U_,
                               int32_t stream_id,
                               uint32_t error_code)
 {
@@ -240,7 +240,7 @@ int nghttp2_submit_rst_stream(nghttp2_session *session, uint8_t flags,
   return nghttp2_session_add_rst_stream(session, stream_id, error_code);
 }
 
-int nghttp2_submit_goaway(nghttp2_session *session, uint8_t flags,
+int nghttp2_submit_goaway(nghttp2_session *session, uint8_t flags _U_,
                           int32_t last_stream_id,
                           uint32_t error_code,
                           const uint8_t *opaque_data, size_t opaque_data_len)
@@ -249,13 +249,13 @@ int nghttp2_submit_goaway(nghttp2_session *session, uint8_t flags,
                                     error_code, opaque_data, opaque_data_len);
 }
 
-int nghttp2_submit_settings(nghttp2_session *session, uint8_t flags,
+int nghttp2_submit_settings(nghttp2_session *session, uint8_t flags _U_,
                             const nghttp2_settings_entry *iv, size_t niv)
 {
   return nghttp2_session_add_settings(session, NGHTTP2_FLAG_NONE, iv, niv);
 }
 
-int32_t nghttp2_submit_push_promise(nghttp2_session *session, uint8_t flags,
+int32_t nghttp2_submit_push_promise(nghttp2_session *session, uint8_t flags _U_,
                                     int32_t stream_id,
                                     const nghttp2_nv *nva, size_t nvlen,
                                     void *promised_stream_user_data)
@@ -366,7 +366,7 @@ int nghttp2_submit_window_update(nghttp2_session *session, uint8_t flags,
   return 0;
 }
 
-int nghttp2_submit_altsvc(nghttp2_session *session, uint8_t flags,
+int nghttp2_submit_altsvc(nghttp2_session *session, uint8_t flags _U_,
                           int32_t stream_id,
                           uint32_t max_age, uint16_t port,
                           const uint8_t *protocol_id, size_t protocol_id_len,

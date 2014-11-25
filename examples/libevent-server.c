@@ -22,6 +22,7 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+#include <config.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
@@ -79,8 +80,8 @@ struct app_context {
 static unsigned char next_proto_list[256];
 static size_t next_proto_list_len;
 
-static int next_proto_cb(SSL *s, const unsigned char **data, unsigned int *len,
-                         void *arg)
+static int next_proto_cb(SSL *s _U_, const unsigned char **data, unsigned int *len,
+                         void *arg _U_)
 {
   *data = next_proto_list;
   *len = (unsigned int)next_proto_list_len;
@@ -140,7 +141,7 @@ static void add_stream(http2_session_data *session_data,
   }
 }
 
-static void remove_stream(http2_session_data *session_data,
+static void remove_stream(http2_session_data *session_data _U_,
                           http2_stream_data *stream_data)
 {
   stream_data->prev->next = stream_data->next;
@@ -259,9 +260,9 @@ static int session_recv(http2_session_data *session_data)
   return 0;
 }
 
-static ssize_t send_callback(nghttp2_session *session,
+static ssize_t send_callback(nghttp2_session *session _U_,
                              const uint8_t *data, size_t length,
-                             int flags, void *user_data)
+                             int flags _U_, void *user_data)
 {
   http2_session_data *session_data = (http2_session_data*)user_data;
   struct bufferevent *bev = session_data->bev;
@@ -330,9 +331,9 @@ static char* percent_decode(const uint8_t *value, size_t valuelen)
 }
 
 static ssize_t file_read_callback
-(nghttp2_session *session, int32_t stream_id,
+(nghttp2_session *session _U_, int32_t stream_id _U_,
  uint8_t *buf, size_t length, uint32_t *data_flags,
- nghttp2_data_source *source, void *user_data)
+ nghttp2_data_source *source, void *user_data _U_)
 {
   int fd = source->fd;
   ssize_t r;
@@ -412,8 +413,8 @@ static int on_header_callback(nghttp2_session *session,
                               const nghttp2_frame *frame,
                               const uint8_t *name, size_t namelen,
                               const uint8_t *value, size_t valuelen,
-                              uint8_t flags,
-                              void *user_data)
+                              uint8_t flags _U_,
+                              void *user_data _U_)
 {
   http2_stream_data *stream_data;
   const char PATH[] = ":path";
@@ -536,7 +537,7 @@ static int on_frame_recv_callback(nghttp2_session *session,
 
 static int on_stream_close_callback(nghttp2_session *session,
                                     int32_t stream_id,
-                                    nghttp2_error_code error_code,
+                                    uint32_t error_code _U_,
                                     void *user_data)
 {
   http2_session_data *session_data = (http2_session_data*)user_data;
@@ -607,7 +608,7 @@ static int send_server_connection_header(http2_session_data *session_data)
 
 /* readcb for bufferevent after client connection header was
    checked. */
-static void readcb(struct bufferevent *bev, void *ptr)
+static void readcb(struct bufferevent *bev _U_, void *ptr)
 {
   http2_session_data *session_data = (http2_session_data*)ptr;
   if(session_recv(session_data) != 0) {
@@ -642,7 +643,7 @@ static void writecb(struct bufferevent *bev, void *ptr)
 }
 
 /* eventcb for bufferevent */
-static void eventcb(struct bufferevent *bev, short events, void *ptr)
+static void eventcb(struct bufferevent *bev _U_, short events, void *ptr)
 {
   http2_session_data *session_data = (http2_session_data*)ptr;
   if(events & BEV_EVENT_CONNECTED) {
@@ -668,7 +669,7 @@ static void eventcb(struct bufferevent *bev, short events, void *ptr)
 }
 
 /* callback for evconnlistener */
-static void acceptcb(struct evconnlistener *listener, int fd,
+static void acceptcb(struct evconnlistener *listener _U_, int fd,
                      struct sockaddr *addr, int addrlen, void *arg)
 {
   app_context *app_ctx = (app_context*)arg;

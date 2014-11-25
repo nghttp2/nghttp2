@@ -1141,7 +1141,7 @@ ssize_t nghttp2_hd_deflate_hd(nghttp2_hd_deflater *deflater,
   return (ssize_t)buflen;
 }
 
-size_t nghttp2_hd_deflate_bound(nghttp2_hd_deflater *deflater,
+size_t nghttp2_hd_deflate_bound(nghttp2_hd_deflater *deflater _U_,
                                 const nghttp2_nv *nva, size_t nvlen)
 {
   size_t n = 0;
