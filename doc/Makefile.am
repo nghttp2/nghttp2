@@ -40,6 +40,7 @@ EXTRA_DIST = \
 	sources/libnghttp2_asio.rst \
 	sources/python-apiref.rst \
 	sources/building-android-binary.rst \
+	sources/contribute.rst \
 	_themes/sphinx_rtd_theme/footer.html \
 	_themes/sphinx_rtd_theme/theme.conf \
 	_themes/sphinx_rtd_theme/layout_old.html \

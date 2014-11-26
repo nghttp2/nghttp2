@@ -597,6 +597,7 @@ AC_CONFIG_FILES([
   doc/nghttp2.h.rst
   doc/nghttp2ver.h.rst
   doc/asio_http2.h.rst
+  doc/contribute.rst
   contrib/Makefile
 ])
 AC_OUTPUT
