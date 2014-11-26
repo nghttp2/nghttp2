@@ -3733,7 +3733,7 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
           (session, frame, NGHTTP2_FLOW_CONTROL_ERROR, NULL);
       }
 
-      session->remote_settings.initial_window_size = entry->value;
+      session->remote_settings.initial_window_size = session->remote_window_size = entry->value;
 
       break;
     case NGHTTP2_SETTINGS_MAX_FRAME_SIZE:
