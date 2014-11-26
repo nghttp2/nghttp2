@@ -27,7 +27,11 @@
  * overhead of underlying I/O library (e.g., libevent, Boost ASIO).
  */
 #define _GNU_SOURCE
+
+#ifdef HAVE_CONFIG_H
 #include <config.h>
+#endif /* !HAVE_CONFIG_H */
+
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/stat.h>

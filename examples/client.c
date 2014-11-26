@@ -26,6 +26,10 @@
  * This program is written to show how to use nghttp2 API in C and
  * intentionally made simple.
  */
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif /* !HAVE_CONFIG_H */
+
 #include <stdint.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -40,7 +44,6 @@
 #include <stdio.h>
 #include <assert.h>
 
-#include <config.h>
 #include <nghttp2/nghttp2.h>
 
 #include <openssl/ssl.h>

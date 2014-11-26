@@ -22,7 +22,10 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+#ifdef HAVE_CONFIG_H
 #include <config.h>
+#endif /* !HAVE_CONFIG_H */
+
 #include <stdio.h>
 #include <string.h>
 
