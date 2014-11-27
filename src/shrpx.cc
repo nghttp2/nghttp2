@@ -513,6 +513,9 @@ int event_loop()
       LOG(FATAL) << "Failed to daemonize: " << strerror(error);
       exit(EXIT_FAILURE);
     }
+
+    // We get new PID after successful daemon().
+    mod_config()->pid = getpid();
   }
 
   if(get_config()->pid_file) {
