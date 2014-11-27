@@ -309,7 +309,7 @@ namespace {
 void save_pid()
 {
   std::ofstream out(get_config()->pid_file.get(), std::ios::binary);
-  out << getpid() << "\n";
+  out << get_config()->pid << "\n";
   out.close();
   if(!out) {
     LOG(ERROR) << "Could not save PID to file "
