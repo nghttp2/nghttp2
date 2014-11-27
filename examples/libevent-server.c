@@ -95,6 +95,8 @@ static int next_proto_cb(SSL *s _U_, const unsigned char **data, unsigned int *l
 static SSL_CTX* create_ssl_ctx(const char *key_file, const char *cert_file)
 {
   SSL_CTX *ssl_ctx;
+  EC_KEY *ecdh;
+
   ssl_ctx = SSL_CTX_new(SSLv23_server_method());
   if(!ssl_ctx) {
     errx(1, "Could not create SSL/TLS context: %s",
@@ -103,6 +105,14 @@ static SSL_CTX* create_ssl_ctx(const char *key_file, const char *cert_file)
   SSL_CTX_set_options(ssl_ctx,
                       SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_COMPRESSION |
                       SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
+
+  ecdh = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
+  if(!ecdh) {
+    errx(1, "EC_KEY_new_by_curv_name failed: %s",
+         ERR_error_string(ERR_get_error(), NULL));
+  }
+  SSL_CTX_set_tmp_ecdh(ssl_ctx, ecdh);
+  EC_KEY_free(ecdh);
 
   if(SSL_CTX_use_PrivateKey_file(ssl_ctx, key_file,
                                  SSL_FILETYPE_PEM) != 1) {
