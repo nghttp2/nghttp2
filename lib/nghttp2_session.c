@@ -2997,11 +2997,14 @@ int nghttp2_session_on_request_headers_received(nghttp2_session *session,
   /* If client recieves idle stream from server, it is invalid
      regardless stream ID is even or odd.  This is because client is
      not expected to receive request from server. */
-  if (!session->server &&
-      session_detect_idle_stream(session, frame->hd.stream_id)) {
-    return session_inflate_handle_invalid_connection(
-        session, frame, NGHTTP2_PROTOCOL_ERROR,
-        "request HEADERS: client received request");
+  if (!session->server) {
+    if (session_detect_idle_stream(session, frame->hd.stream_id)) {
+      return session_inflate_handle_invalid_connection(
+          session, frame, NGHTTP2_PROTOCOL_ERROR,
+          "request HEADERS: client received request");
+    }
+
+    return NGHTTP2_ERR_IGN_HEADER_BLOCK;
   }
 
   if (!session_is_new_peer_stream_id(session, frame->hd.stream_id)) {
