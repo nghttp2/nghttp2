@@ -1723,10 +1723,23 @@ void test_nghttp2_session_on_request_headers_received(void) {
       NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS;
 
   /* Stream ID less than or equal to the previouly received request
-     HEADERS leads to connection error */
+     HEADERS is just ignored due to race condition */
   nghttp2_frame_headers_init(&frame.headers,
                              NGHTTP2_FLAG_END_HEADERS | NGHTTP2_FLAG_PRIORITY,
                              3, NGHTTP2_HCAT_HEADERS, NULL, NULL, 0);
+  user_data.invalid_frame_recv_cb_called = 0;
+  CU_ASSERT(NGHTTP2_ERR_IGN_HEADER_BLOCK ==
+            nghttp2_session_on_request_headers_received(session, &frame));
+  CU_ASSERT(0 == user_data.invalid_frame_recv_cb_called);
+  CU_ASSERT(0 == (session->goaway_flags & NGHTTP2_GOAWAY_FAIL_ON_SEND));
+
+  nghttp2_frame_headers_free(&frame.headers);
+
+  /* Stream ID is our side and it is idle stream ID, then treat it as
+     connection error */
+  nghttp2_frame_headers_init(&frame.headers,
+                             NGHTTP2_FLAG_END_HEADERS | NGHTTP2_FLAG_PRIORITY,
+                             2, NGHTTP2_HCAT_HEADERS, NULL, NULL, 0);
   user_data.invalid_frame_recv_cb_called = 0;
   CU_ASSERT(NGHTTP2_ERR_IGN_HEADER_BLOCK ==
             nghttp2_session_on_request_headers_received(session, &frame));

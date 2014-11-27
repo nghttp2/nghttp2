@@ -2996,10 +2996,18 @@ int nghttp2_session_on_request_headers_received(nghttp2_session *session,
   if (!session_is_new_peer_stream_id(session, frame->hd.stream_id)) {
     /* The spec says if an endpoint receives a HEADERS with invalid
        stream ID, it MUST issue connection error with error code
-       PROTOCOL_ERROR */
-    return session_inflate_handle_invalid_connection(
-        session, frame, NGHTTP2_PROTOCOL_ERROR,
-        "request HEADERS: invalid stream_id");
+       PROTOCOL_ERROR.  But we could get trailer HEADERS after we have
+       sent RST_STREAM to this stream and peer have not received it.
+       Then connection error is too harsh.  It means that we only use
+       connection error if stream ID refers idle stream.  OTherwise we
+       just ignore HEADERS for now. */
+    if (session_detect_idle_stream(session, frame->hd.stream_id)) {
+      return session_inflate_handle_invalid_connection(
+          session, frame, NGHTTP2_PROTOCOL_ERROR,
+          "request HEADERS: invalid stream_id");
+    }
+
+    return NGHTTP2_ERR_IGN_HEADER_BLOCK;
   }
   session->last_recv_stream_id = frame->hd.stream_id;
 
