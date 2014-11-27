@@ -42,9 +42,9 @@ std::string create_via_header_value(int major, int minor);
 // Adds ANSI color codes to HTTP headers |hdrs|.
 std::string colorizeHeaders(const char *hdrs);
 
-ssize_t select_padding_callback
-(nghttp2_session *session, const nghttp2_frame *frame, size_t max_payload,
- void *user_data);
+ssize_t select_padding_callback(nghttp2_session *session,
+                                const nghttp2_frame *frame, size_t max_payload,
+                                void *user_data);
 
 } // namespace http
 

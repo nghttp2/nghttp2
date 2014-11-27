@@ -40,31 +40,29 @@
 namespace nghttp2 {
 
 int verbose_on_header_callback(nghttp2_session *session,
-                               const nghttp2_frame *frame,
-                               const uint8_t *name, size_t namelen,
-                               const uint8_t *value, size_t valuelen,
-                               uint8_t flags,
-                               void *user_data);
+                               const nghttp2_frame *frame, const uint8_t *name,
+                               size_t namelen, const uint8_t *value,
+                               size_t valuelen, uint8_t flags, void *user_data);
 
-int verbose_on_frame_recv_callback
-(nghttp2_session *session, const nghttp2_frame *frame, void *user_data);
+int verbose_on_frame_recv_callback(nghttp2_session *session,
+                                   const nghttp2_frame *frame, void *user_data);
 
-int verbose_on_invalid_frame_recv_callback
-(nghttp2_session *session, const nghttp2_frame *frame,
- uint32_t error_code, void *user_data);
+int verbose_on_invalid_frame_recv_callback(nghttp2_session *session,
+                                           const nghttp2_frame *frame,
+                                           uint32_t error_code,
+                                           void *user_data);
 
-int verbose_on_frame_send_callback
-(nghttp2_session *session, const nghttp2_frame *frame, void *user_data);
+int verbose_on_frame_send_callback(nghttp2_session *session,
+                                   const nghttp2_frame *frame, void *user_data);
 
-int verbose_on_data_chunk_recv_callback
-(nghttp2_session *session, uint8_t flags, int32_t stream_id,
- const uint8_t *data, size_t len, void *user_data);
+int verbose_on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
+                                        int32_t stream_id, const uint8_t *data,
+                                        size_t len, void *user_data);
 
 // Returns difference between |a| and |b| in milliseconds, assuming
 // |a| is more recent than |b|.
-template<typename TimePoint>
-std::chrono::milliseconds time_delta(const TimePoint& a, const TimePoint& b)
-{
+template <typename TimePoint>
+std::chrono::milliseconds time_delta(const TimePoint &a, const TimePoint &b) {
   return std::chrono::duration_cast<std::chrono::milliseconds>(a - b);
 }
 
@@ -88,8 +86,8 @@ void set_color_output(bool f);
 // used.
 void set_output(FILE *file);
 
-ssize_t deflate_data(uint8_t *out, size_t outlen,
-                     const uint8_t *in, size_t inlen);
+ssize_t deflate_data(uint8_t *out, size_t outlen, const uint8_t *in,
+                     size_t inlen);
 
 } // namespace nghttp2
 

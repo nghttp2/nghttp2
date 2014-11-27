@@ -42,8 +42,9 @@ public:
   void add_downstream_connection(std::unique_ptr<DownstreamConnection> dconn);
   std::unique_ptr<DownstreamConnection> pop_downstream_connection();
   void remove_downstream_connection(DownstreamConnection *dconn);
+
 private:
-  std::set<DownstreamConnection*> pool_;
+  std::set<DownstreamConnection *> pool_;
 };
 
 } // namespace shrpx

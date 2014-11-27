@@ -33,17 +33,15 @@
 #include "nghttp2_net.h"
 #include "nghttp2_priority_spec.h"
 
-void nghttp2_frame_pack_frame_hd(uint8_t* buf, const nghttp2_frame_hd *hd)
-{
+void nghttp2_frame_pack_frame_hd(uint8_t *buf, const nghttp2_frame_hd *hd) {
   nghttp2_put_uint32be(&buf[0], (uint32_t)(hd->length << 8));
-  buf[3]=  hd->type;
+  buf[3] = hd->type;
   buf[4] = hd->flags;
   nghttp2_put_uint32be(&buf[5], hd->stream_id);
   /* ignore hd->reserved for now */
 }
 
-void nghttp2_frame_unpack_frame_hd(nghttp2_frame_hd *hd, const uint8_t* buf)
-{
+void nghttp2_frame_unpack_frame_hd(nghttp2_frame_hd *hd, const uint8_t *buf) {
   hd->length = nghttp2_get_uint32(&buf[0]) >> 8;
   hd->type = buf[3];
   hd->flags = buf[4];
@@ -51,10 +49,8 @@ void nghttp2_frame_unpack_frame_hd(nghttp2_frame_hd *hd, const uint8_t* buf)
   hd->reserved = 0;
 }
 
-void nghttp2_frame_hd_init(nghttp2_frame_hd *hd, size_t length,
-                           uint8_t type, uint8_t flags,
-                           int32_t stream_id)
-{
+void nghttp2_frame_hd_init(nghttp2_frame_hd *hd, size_t length, uint8_t type,
+                           uint8_t flags, int32_t stream_id) {
   hd->length = length;
   hd->type = type;
   hd->flags = flags;
@@ -62,73 +58,59 @@ void nghttp2_frame_hd_init(nghttp2_frame_hd *hd, size_t length,
   hd->reserved = 0;
 }
 
-void nghttp2_frame_headers_init(nghttp2_headers *frame,
-                                uint8_t flags, int32_t stream_id,
-                                nghttp2_headers_category cat,
+void nghttp2_frame_headers_init(nghttp2_headers *frame, uint8_t flags,
+                                int32_t stream_id, nghttp2_headers_category cat,
                                 const nghttp2_priority_spec *pri_spec,
-                                nghttp2_nv *nva, size_t nvlen)
-{
+                                nghttp2_nv *nva, size_t nvlen) {
   nghttp2_frame_hd_init(&frame->hd, 0, NGHTTP2_HEADERS, flags, stream_id);
   frame->padlen = 0;
   frame->nva = nva;
   frame->nvlen = nvlen;
   frame->cat = cat;
 
-  if(pri_spec) {
+  if (pri_spec) {
     frame->pri_spec = *pri_spec;
   } else {
     nghttp2_priority_spec_default_init(&frame->pri_spec);
   }
 }
 
-void nghttp2_frame_headers_free(nghttp2_headers *frame)
-{
+void nghttp2_frame_headers_free(nghttp2_headers *frame) {
   nghttp2_nv_array_del(frame->nva);
 }
 
 void nghttp2_frame_priority_init(nghttp2_priority *frame, int32_t stream_id,
-                                 const nghttp2_priority_spec *pri_spec)
-{
+                                 const nghttp2_priority_spec *pri_spec) {
   nghttp2_frame_hd_init(&frame->hd, NGHTTP2_PRIORITY_SPECLEN, NGHTTP2_PRIORITY,
                         NGHTTP2_FLAG_NONE, stream_id);
   frame->pri_spec = *pri_spec;
 }
 
-void nghttp2_frame_priority_free(nghttp2_priority *frame _U_)
-{}
+void nghttp2_frame_priority_free(nghttp2_priority *frame _U_) {}
 
-void nghttp2_frame_rst_stream_init(nghttp2_rst_stream *frame,
-                                   int32_t stream_id,
-                                   uint32_t error_code)
-{
+void nghttp2_frame_rst_stream_init(nghttp2_rst_stream *frame, int32_t stream_id,
+                                   uint32_t error_code) {
   nghttp2_frame_hd_init(&frame->hd, 4, NGHTTP2_RST_STREAM, NGHTTP2_FLAG_NONE,
                         stream_id);
   frame->error_code = error_code;
 }
 
-void nghttp2_frame_rst_stream_free(nghttp2_rst_stream *frame _U_)
-{}
-
+void nghttp2_frame_rst_stream_free(nghttp2_rst_stream *frame _U_) {}
 
 void nghttp2_frame_settings_init(nghttp2_settings *frame, uint8_t flags,
-                                 nghttp2_settings_entry *iv, size_t niv)
-{
+                                 nghttp2_settings_entry *iv, size_t niv) {
   nghttp2_frame_hd_init(&frame->hd, niv * NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH,
                         NGHTTP2_SETTINGS, flags, 0);
   frame->niv = niv;
   frame->iv = iv;
 }
 
-void nghttp2_frame_settings_free(nghttp2_settings *frame)
-{
-  free(frame->iv);
-}
+void nghttp2_frame_settings_free(nghttp2_settings *frame) { free(frame->iv); }
 
-void nghttp2_frame_push_promise_init(nghttp2_push_promise *frame,
-                                     uint8_t flags, int32_t stream_id,
+void nghttp2_frame_push_promise_init(nghttp2_push_promise *frame, uint8_t flags,
+                                     int32_t stream_id,
                                      int32_t promised_stream_id,
-                                     nghttp2_nv *nva, size_t nvlen)
-{
+                                     nghttp2_nv *nva, size_t nvlen) {
   nghttp2_frame_hd_init(&frame->hd, 0, NGHTTP2_PUSH_PROMISE, flags, stream_id);
   frame->padlen = 0;
   frame->nva = nva;
@@ -137,30 +119,26 @@ void nghttp2_frame_push_promise_init(nghttp2_push_promise *frame,
   frame->reserved = 0;
 }
 
-void nghttp2_frame_push_promise_free(nghttp2_push_promise *frame)
-{
+void nghttp2_frame_push_promise_free(nghttp2_push_promise *frame) {
   nghttp2_nv_array_del(frame->nva);
 }
 
 void nghttp2_frame_ping_init(nghttp2_ping *frame, uint8_t flags,
-                             const uint8_t *opaque_data)
-{
+                             const uint8_t *opaque_data) {
   nghttp2_frame_hd_init(&frame->hd, 8, NGHTTP2_PING, flags, 0);
-  if(opaque_data) {
+  if (opaque_data) {
     memcpy(frame->opaque_data, opaque_data, sizeof(frame->opaque_data));
   } else {
     memset(frame->opaque_data, 0, sizeof(frame->opaque_data));
   }
 }
 
-void nghttp2_frame_ping_free(nghttp2_ping *frame _U_)
-{}
+void nghttp2_frame_ping_free(nghttp2_ping *frame _U_) {}
 
 void nghttp2_frame_goaway_init(nghttp2_goaway *frame, int32_t last_stream_id,
-                               uint32_t error_code,
-                               uint8_t *opaque_data, size_t opaque_data_len)
-{
-  nghttp2_frame_hd_init(&frame->hd, 8+opaque_data_len, NGHTTP2_GOAWAY,
+                               uint32_t error_code, uint8_t *opaque_data,
+                               size_t opaque_data_len) {
+  nghttp2_frame_hd_init(&frame->hd, 8 + opaque_data_len, NGHTTP2_GOAWAY,
                         NGHTTP2_FLAG_NONE, 0);
   frame->last_stream_id = last_stream_id;
   frame->error_code = error_code;
@@ -169,33 +147,25 @@ void nghttp2_frame_goaway_init(nghttp2_goaway *frame, int32_t last_stream_id,
   frame->reserved = 0;
 }
 
-void nghttp2_frame_goaway_free(nghttp2_goaway *frame)
-{
+void nghttp2_frame_goaway_free(nghttp2_goaway *frame) {
   free(frame->opaque_data);
 }
 
 void nghttp2_frame_window_update_init(nghttp2_window_update *frame,
-                                      uint8_t flags,
-                                      int32_t stream_id,
-                                      int32_t window_size_increment)
-{
-  nghttp2_frame_hd_init(&frame->hd, 4, NGHTTP2_WINDOW_UPDATE, flags,
-                        stream_id);
+                                      uint8_t flags, int32_t stream_id,
+                                      int32_t window_size_increment) {
+  nghttp2_frame_hd_init(&frame->hd, 4, NGHTTP2_WINDOW_UPDATE, flags, stream_id);
   frame->window_size_increment = window_size_increment;
   frame->reserved = 0;
 }
 
-void nghttp2_frame_window_update_free(nghttp2_window_update *frame _U_)
-{}
+void nghttp2_frame_window_update_free(nghttp2_window_update *frame _U_) {}
 
 void nghttp2_frame_altsvc_init(nghttp2_extension *frame, int32_t stream_id,
-                               uint32_t max_age,
-                               uint16_t port,
-                               uint8_t *protocol_id,
-                               size_t protocol_id_len,
-                               uint8_t *host, size_t host_len,
-                               uint8_t *origin, size_t origin_len)
-{
+                               uint32_t max_age, uint16_t port,
+                               uint8_t *protocol_id, size_t protocol_id_len,
+                               uint8_t *host, size_t host_len, uint8_t *origin,
+                               size_t origin_len) {
   size_t payloadlen;
   nghttp2_ext_altsvc *altsvc;
 
@@ -216,46 +186,40 @@ void nghttp2_frame_altsvc_init(nghttp2_extension *frame, int32_t stream_id,
   altsvc->origin_len = origin_len;
 }
 
-void nghttp2_frame_altsvc_free(nghttp2_extension *frame)
-{
+void nghttp2_frame_altsvc_free(nghttp2_extension *frame) {
   nghttp2_ext_altsvc *altsvc;
 
   altsvc = frame->payload;
 
-  if(altsvc == NULL) {
+  if (altsvc == NULL) {
     return;
   }
 
   free(altsvc->protocol_id);
 }
 
-size_t nghttp2_frame_trail_padlen(nghttp2_frame *frame, size_t padlen)
-{
+size_t nghttp2_frame_trail_padlen(nghttp2_frame *frame, size_t padlen) {
   return padlen - ((frame->hd.flags & NGHTTP2_FLAG_PADDED) > 0);
 }
 
 void nghttp2_frame_data_init(nghttp2_data *frame, uint8_t flags,
-                             int32_t stream_id)
-{
+                             int32_t stream_id) {
   /* At this moment, the length of DATA frame is unknown */
   nghttp2_frame_hd_init(&frame->hd, 0, NGHTTP2_DATA, flags, stream_id);
   frame->padlen = 0;
 }
 
-void nghttp2_frame_data_free(nghttp2_data *frame _U_)
-{}
+void nghttp2_frame_data_free(nghttp2_data *frame _U_) {}
 
-size_t nghttp2_frame_priority_len(uint8_t flags)
-{
-  if(flags & NGHTTP2_FLAG_PRIORITY) {
+size_t nghttp2_frame_priority_len(uint8_t flags) {
+  if (flags & NGHTTP2_FLAG_PRIORITY) {
     return NGHTTP2_PRIORITY_SPECLEN;
   }
 
   return 0;
 }
 
-size_t nghttp2_frame_headers_payload_nv_offset(nghttp2_headers *frame)
-{
+size_t nghttp2_frame_headers_payload_nv_offset(nghttp2_headers *frame) {
   return nghttp2_frame_priority_len(frame->hd.flags);
 }
 
@@ -272,8 +236,7 @@ size_t nghttp2_frame_headers_payload_nv_offset(nghttp2_headers *frame)
  * We don't process any padding here.
  */
 static int frame_pack_headers_shared(nghttp2_bufs *bufs,
-                                     nghttp2_frame_hd *frame_hd)
-{
+                                     nghttp2_frame_hd *frame_hd) {
   nghttp2_buf *buf;
   nghttp2_buf_chain *ci, *ce;
   nghttp2_frame_hd hd;
@@ -283,20 +246,20 @@ static int frame_pack_headers_shared(nghttp2_bufs *bufs,
   hd = *frame_hd;
   hd.length = nghttp2_buf_len(buf);
 
-  DEBUGF(fprintf(stderr,
-                 "send: HEADERS/PUSH_PROMISE, payloadlen=%zu\n", hd.length));
+  DEBUGF(fprintf(stderr, "send: HEADERS/PUSH_PROMISE, payloadlen=%zu\n",
+                 hd.length));
 
   /* We have multiple frame buffers, which means one or more
      CONTINUATION frame is involved. Remove END_HEADERS flag from the
      first frame. */
-  if(bufs->head != bufs->cur) {
+  if (bufs->head != bufs->cur) {
     hd.flags &= ~NGHTTP2_FLAG_END_HEADERS;
   }
 
   buf->pos -= NGHTTP2_FRAME_HDLEN;
   nghttp2_frame_pack_frame_hd(buf->pos, &hd);
 
-  if(bufs->head != bufs->cur) {
+  if (bufs->head != bufs->cur) {
     /* 2nd and later frames are CONTINUATION frames. */
     hd.type = NGHTTP2_CONTINUATION;
     /* We don't have no flags except for last CONTINUATION */
@@ -304,13 +267,13 @@ static int frame_pack_headers_shared(nghttp2_bufs *bufs,
 
     ce = bufs->cur;
 
-    for(ci = bufs->head->next; ci != ce; ci = ci->next) {
+    for (ci = bufs->head->next; ci != ce; ci = ci->next) {
       buf = &ci->buf;
 
       hd.length = nghttp2_buf_len(buf);
 
-      DEBUGF(fprintf(stderr,
-                     "send: int CONTINUATION, payloadlen=%zu\n", hd.length));
+      DEBUGF(fprintf(stderr, "send: int CONTINUATION, payloadlen=%zu\n",
+                     hd.length));
 
       buf->pos -= NGHTTP2_FRAME_HDLEN;
       nghttp2_frame_pack_frame_hd(buf->pos, &hd);
@@ -321,8 +284,8 @@ static int frame_pack_headers_shared(nghttp2_bufs *bufs,
     /* Set END_HEADERS flag for last CONTINUATION */
     hd.flags = NGHTTP2_FLAG_END_HEADERS;
 
-    DEBUGF(fprintf(stderr,
-                   "send: last CONTINUATION, payloadlen=%zu\n", hd.length));
+    DEBUGF(fprintf(stderr, "send: last CONTINUATION, payloadlen=%zu\n",
+                   hd.length));
 
     buf->pos -= NGHTTP2_FRAME_HDLEN;
     nghttp2_frame_pack_frame_hd(buf->pos, &hd);
@@ -331,10 +294,8 @@ static int frame_pack_headers_shared(nghttp2_bufs *bufs,
   return 0;
 }
 
-int nghttp2_frame_pack_headers(nghttp2_bufs *bufs,
-                               nghttp2_headers *frame,
-                               nghttp2_hd_deflater *deflater)
-{
+int nghttp2_frame_pack_headers(nghttp2_bufs *bufs, nghttp2_headers *frame,
+                               nghttp2_hd_deflater *deflater) {
   size_t nv_offset;
   int rv;
   nghttp2_buf *buf;
@@ -351,17 +312,17 @@ int nghttp2_frame_pack_headers(nghttp2_bufs *bufs,
   /* This call will adjust buf->last to the correct position */
   rv = nghttp2_hd_deflate_hd_bufs(deflater, bufs, frame->nva, frame->nvlen);
 
-  if(rv == NGHTTP2_ERR_BUFFER_ERROR) {
+  if (rv == NGHTTP2_ERR_BUFFER_ERROR) {
     rv = NGHTTP2_ERR_HEADER_COMP;
   }
 
   buf->pos -= nv_offset;
 
-  if(rv != 0) {
+  if (rv != 0) {
     return rv;
   }
 
-  if(frame->hd.flags & NGHTTP2_FLAG_PRIORITY) {
+  if (frame->hd.flags & NGHTTP2_FLAG_PRIORITY) {
     nghttp2_frame_pack_priority_spec(buf->pos, &frame->pri_spec);
   }
 
@@ -372,10 +333,9 @@ int nghttp2_frame_pack_headers(nghttp2_bufs *bufs,
 }
 
 void nghttp2_frame_pack_priority_spec(uint8_t *buf,
-                                      const nghttp2_priority_spec *pri_spec)
-{
+                                      const nghttp2_priority_spec *pri_spec) {
   nghttp2_put_uint32be(buf, pri_spec->stream_id);
-  if(pri_spec->exclusive) {
+  if (pri_spec->exclusive) {
     buf[0] |= 0x80;
   }
   buf[4] = pri_spec->weight - 1;
@@ -384,8 +344,7 @@ void nghttp2_frame_pack_priority_spec(uint8_t *buf,
 void nghttp2_frame_unpack_priority_spec(nghttp2_priority_spec *pri_spec,
                                         uint8_t flags _U_,
                                         const uint8_t *payload,
-                                        size_t payloadlen _U_)
-{
+                                        size_t payloadlen _U_) {
   int32_t dep_stream_id;
   uint8_t exclusive;
   int32_t weight;
@@ -399,9 +358,8 @@ void nghttp2_frame_unpack_priority_spec(nghttp2_priority_spec *pri_spec,
 
 int nghttp2_frame_unpack_headers_payload(nghttp2_headers *frame,
                                          const uint8_t *payload,
-                                         size_t payloadlen)
-{
-  if(frame->hd.flags & NGHTTP2_FLAG_PRIORITY) {
+                                         size_t payloadlen) {
+  if (frame->hd.flags & NGHTTP2_FLAG_PRIORITY) {
     nghttp2_frame_unpack_priority_spec(&frame->pri_spec, frame->hd.flags,
                                        payload, payloadlen);
   } else {
@@ -414,8 +372,7 @@ int nghttp2_frame_unpack_headers_payload(nghttp2_headers *frame,
   return 0;
 }
 
-int nghttp2_frame_pack_priority(nghttp2_bufs *bufs, nghttp2_priority *frame)
-{
+int nghttp2_frame_pack_priority(nghttp2_bufs *bufs, nghttp2_priority *frame) {
   nghttp2_buf *buf;
 
   assert(bufs->head == bufs->cur);
@@ -437,15 +394,13 @@ int nghttp2_frame_pack_priority(nghttp2_bufs *bufs, nghttp2_priority *frame)
 
 void nghttp2_frame_unpack_priority_payload(nghttp2_priority *frame,
                                            const uint8_t *payload,
-                                           size_t payloadlen)
-{
-  nghttp2_frame_unpack_priority_spec(&frame->pri_spec, frame->hd.flags,
-                                     payload, payloadlen);
+                                           size_t payloadlen) {
+  nghttp2_frame_unpack_priority_spec(&frame->pri_spec, frame->hd.flags, payload,
+                                     payloadlen);
 }
 
 int nghttp2_frame_pack_rst_stream(nghttp2_bufs *bufs,
-                                  nghttp2_rst_stream *frame)
-{
+                                  nghttp2_rst_stream *frame) {
   nghttp2_buf *buf;
 
   assert(bufs->head == bufs->cur);
@@ -466,20 +421,18 @@ int nghttp2_frame_pack_rst_stream(nghttp2_bufs *bufs,
 
 void nghttp2_frame_unpack_rst_stream_payload(nghttp2_rst_stream *frame,
                                              const uint8_t *payload,
-                                             size_t payloadlen _U_)
-{
+                                             size_t payloadlen _U_) {
   frame->error_code = nghttp2_get_uint32(payload);
 }
 
-int nghttp2_frame_pack_settings(nghttp2_bufs *bufs, nghttp2_settings *frame)
-{
+int nghttp2_frame_pack_settings(nghttp2_bufs *bufs, nghttp2_settings *frame) {
   nghttp2_buf *buf;
 
   assert(bufs->head == bufs->cur);
 
   buf = &bufs->head->buf;
 
-  if(nghttp2_buf_avail(buf) < (ssize_t)frame->hd.length) {
+  if (nghttp2_buf_avail(buf) < (ssize_t)frame->hd.length) {
     return NGHTTP2_ERR_FRAME_SIZE_ERROR;
   }
 
@@ -487,18 +440,17 @@ int nghttp2_frame_pack_settings(nghttp2_bufs *bufs, nghttp2_settings *frame)
 
   nghttp2_frame_pack_frame_hd(buf->pos, &frame->hd);
 
-  buf->last += nghttp2_frame_pack_settings_payload(buf->last,
-                                                   frame->iv, frame->niv);
+  buf->last +=
+      nghttp2_frame_pack_settings_payload(buf->last, frame->iv, frame->niv);
 
   return 0;
 }
 
 size_t nghttp2_frame_pack_settings_payload(uint8_t *buf,
                                            const nghttp2_settings_entry *iv,
-                                           size_t niv)
-{
+                                           size_t niv) {
   size_t i;
-  for(i = 0; i < niv; ++i, buf += NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH) {
+  for (i = 0; i < niv; ++i, buf += NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH) {
     nghttp2_put_uint16be(buf, iv[i].settings_id);
     nghttp2_put_uint32be(buf + 2, iv[i].value);
   }
@@ -507,16 +459,15 @@ size_t nghttp2_frame_pack_settings_payload(uint8_t *buf,
 
 int nghttp2_frame_unpack_settings_payload(nghttp2_settings *frame,
                                           nghttp2_settings_entry *iv,
-                                          size_t niv)
-{
+                                          size_t niv) {
   size_t payloadlen = niv * sizeof(nghttp2_settings_entry);
 
-  if(niv == 0) {
+  if (niv == 0) {
     frame->iv = NULL;
   } else {
     frame->iv = malloc(payloadlen);
 
-    if(frame->iv == NULL) {
+    if (frame->iv == NULL) {
       return NGHTTP2_ERR_NOMEM;
     }
 
@@ -528,8 +479,7 @@ int nghttp2_frame_unpack_settings_payload(nghttp2_settings *frame,
 }
 
 void nghttp2_frame_unpack_settings_entry(nghttp2_settings_entry *iv,
-                                         const uint8_t *payload)
-{
+                                         const uint8_t *payload) {
   iv->settings_id = nghttp2_get_uint16(&payload[0]);
   iv->value = nghttp2_get_uint32(&payload[2]);
 }
@@ -537,26 +487,24 @@ void nghttp2_frame_unpack_settings_entry(nghttp2_settings_entry *iv,
 int nghttp2_frame_unpack_settings_payload2(nghttp2_settings_entry **iv_ptr,
                                            size_t *niv_ptr,
                                            const uint8_t *payload,
-                                           size_t payloadlen)
-{
+                                           size_t payloadlen) {
   size_t i;
 
   *niv_ptr = payloadlen / NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH;
 
-  if(*niv_ptr == 0) {
+  if (*niv_ptr == 0) {
     *iv_ptr = NULL;
 
     return 0;
   }
 
+  *iv_ptr = malloc((*niv_ptr) * sizeof(nghttp2_settings_entry));
 
-  *iv_ptr = malloc((*niv_ptr)*sizeof(nghttp2_settings_entry));
-
-  if(*iv_ptr == NULL) {
+  if (*iv_ptr == NULL) {
     return NGHTTP2_ERR_NOMEM;
   }
 
-  for(i = 0; i < *niv_ptr; ++i) {
+  for (i = 0; i < *niv_ptr; ++i) {
     size_t off = i * NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH;
     nghttp2_frame_unpack_settings_entry(&(*iv_ptr)[i], &payload[off]);
   }
@@ -566,8 +514,7 @@ int nghttp2_frame_unpack_settings_payload2(nghttp2_settings_entry **iv_ptr,
 
 int nghttp2_frame_pack_push_promise(nghttp2_bufs *bufs,
                                     nghttp2_push_promise *frame,
-                                    nghttp2_hd_deflater *deflater)
-{
+                                    nghttp2_hd_deflater *deflater) {
   size_t nv_offset = 4;
   int rv;
   nghttp2_buf *buf;
@@ -582,13 +529,13 @@ int nghttp2_frame_pack_push_promise(nghttp2_bufs *bufs,
   /* This call will adjust buf->last to the correct position */
   rv = nghttp2_hd_deflate_hd_bufs(deflater, bufs, frame->nva, frame->nvlen);
 
-  if(rv == NGHTTP2_ERR_BUFFER_ERROR) {
+  if (rv == NGHTTP2_ERR_BUFFER_ERROR) {
     rv = NGHTTP2_ERR_HEADER_COMP;
   }
 
   buf->pos -= nv_offset;
 
-  if(rv != 0) {
+  if (rv != 0) {
     return rv;
   }
 
@@ -602,17 +549,15 @@ int nghttp2_frame_pack_push_promise(nghttp2_bufs *bufs,
 
 int nghttp2_frame_unpack_push_promise_payload(nghttp2_push_promise *frame,
                                               const uint8_t *payload,
-                                              size_t payloadlen _U_)
-{
-  frame->promised_stream_id = nghttp2_get_uint32(payload) &
-    NGHTTP2_STREAM_ID_MASK;
+                                              size_t payloadlen _U_) {
+  frame->promised_stream_id =
+      nghttp2_get_uint32(payload) & NGHTTP2_STREAM_ID_MASK;
   frame->nva = NULL;
   frame->nvlen = 0;
   return 0;
 }
 
-int nghttp2_frame_pack_ping(nghttp2_bufs *bufs, nghttp2_ping *frame)
-{
+int nghttp2_frame_pack_ping(nghttp2_bufs *bufs, nghttp2_ping *frame) {
   nghttp2_buf *buf;
 
   assert(bufs->head == bufs->cur);
@@ -625,21 +570,19 @@ int nghttp2_frame_pack_ping(nghttp2_bufs *bufs, nghttp2_ping *frame)
 
   nghttp2_frame_pack_frame_hd(buf->pos, &frame->hd);
 
-  buf->last = nghttp2_cpymem(buf->last, frame->opaque_data,
-                             sizeof(frame->opaque_data));
+  buf->last =
+      nghttp2_cpymem(buf->last, frame->opaque_data, sizeof(frame->opaque_data));
 
   return 0;
 }
 
 void nghttp2_frame_unpack_ping_payload(nghttp2_ping *frame,
                                        const uint8_t *payload,
-                                       size_t payloadlen _U_)
-{
+                                       size_t payloadlen _U_) {
   memcpy(frame->opaque_data, payload, sizeof(frame->opaque_data));
 }
 
-int nghttp2_frame_pack_goaway(nghttp2_bufs *bufs, nghttp2_goaway *frame)
-{
+int nghttp2_frame_pack_goaway(nghttp2_bufs *bufs, nghttp2_goaway *frame) {
   int rv;
   nghttp2_buf *buf;
 
@@ -659,11 +602,11 @@ int nghttp2_frame_pack_goaway(nghttp2_bufs *bufs, nghttp2_goaway *frame)
 
   rv = nghttp2_bufs_add(bufs, frame->opaque_data, frame->opaque_data_len);
 
-  if(rv == NGHTTP2_ERR_BUFFER_ERROR) {
+  if (rv == NGHTTP2_ERR_BUFFER_ERROR) {
     return NGHTTP2_ERR_FRAME_SIZE_ERROR;
   }
 
-  if(rv != 0) {
+  if (rv != 0) {
     return rv;
   }
 
@@ -674,8 +617,7 @@ void nghttp2_frame_unpack_goaway_payload(nghttp2_goaway *frame,
                                          const uint8_t *payload,
                                          size_t payloadlen _U_,
                                          uint8_t *var_gift_payload,
-                                         size_t var_gift_payloadlen)
-{
+                                         size_t var_gift_payloadlen) {
   frame->last_stream_id = nghttp2_get_uint32(payload) & NGHTTP2_STREAM_ID_MASK;
   frame->error_code = nghttp2_get_uint32(payload + 4);
 
@@ -685,12 +627,11 @@ void nghttp2_frame_unpack_goaway_payload(nghttp2_goaway *frame,
 
 int nghttp2_frame_unpack_goaway_payload2(nghttp2_goaway *frame,
                                          const uint8_t *payload,
-                                         size_t payloadlen)
-{
+                                         size_t payloadlen) {
   uint8_t *var_gift_payload;
   size_t var_gift_payloadlen;
 
-  if(payloadlen > 8) {
+  if (payloadlen > 8) {
     var_gift_payloadlen = payloadlen - 8;
   } else {
     var_gift_payloadlen = 0;
@@ -698,12 +639,12 @@ int nghttp2_frame_unpack_goaway_payload2(nghttp2_goaway *frame,
 
   payloadlen -= var_gift_payloadlen;
 
-  if(!var_gift_payloadlen) {
+  if (!var_gift_payloadlen) {
     var_gift_payload = NULL;
   } else {
     var_gift_payload = malloc(var_gift_payloadlen);
 
-    if(var_gift_payload == NULL) {
+    if (var_gift_payload == NULL) {
       return NGHTTP2_ERR_NOMEM;
     }
 
@@ -717,8 +658,7 @@ int nghttp2_frame_unpack_goaway_payload2(nghttp2_goaway *frame,
 }
 
 int nghttp2_frame_pack_window_update(nghttp2_bufs *bufs,
-                                     nghttp2_window_update *frame)
-{
+                                     nghttp2_window_update *frame) {
   nghttp2_buf *buf;
 
   assert(bufs->head == bufs->cur);
@@ -739,14 +679,12 @@ int nghttp2_frame_pack_window_update(nghttp2_bufs *bufs,
 
 void nghttp2_frame_unpack_window_update_payload(nghttp2_window_update *frame,
                                                 const uint8_t *payload,
-                                                size_t payloadlen _U_)
-{
-  frame->window_size_increment = nghttp2_get_uint32(payload) &
-    NGHTTP2_WINDOW_SIZE_INCREMENT_MASK;
+                                                size_t payloadlen _U_) {
+  frame->window_size_increment =
+      nghttp2_get_uint32(payload) & NGHTTP2_WINDOW_SIZE_INCREMENT_MASK;
 }
 
-int nghttp2_frame_pack_altsvc(nghttp2_bufs *bufs, nghttp2_extension *frame)
-{
+int nghttp2_frame_pack_altsvc(nghttp2_bufs *bufs, nghttp2_extension *frame) {
   int rv;
   nghttp2_buf *buf;
   nghttp2_ext_altsvc *altsvc;
@@ -771,30 +709,30 @@ int nghttp2_frame_pack_altsvc(nghttp2_bufs *bufs, nghttp2_extension *frame)
   ++buf->last;
 
   rv = nghttp2_bufs_add(bufs, altsvc->protocol_id, altsvc->protocol_id_len);
-  if(rv != 0) {
+  if (rv != 0) {
     goto fail;
   }
 
   rv = nghttp2_bufs_addb(bufs, altsvc->host_len);
-  if(rv != 0) {
+  if (rv != 0) {
     goto fail;
   }
 
   rv = nghttp2_bufs_add(bufs, altsvc->host, altsvc->host_len);
-  if(rv != 0) {
+  if (rv != 0) {
     goto fail;
   }
 
   rv = nghttp2_bufs_add(bufs, altsvc->origin, altsvc->origin_len);
-  if(rv != 0) {
+  if (rv != 0) {
     goto fail;
   }
 
   return 0;
 
- fail:
+fail:
 
-  if(rv == NGHTTP2_ERR_BUFFER_ERROR) {
+  if (rv == NGHTTP2_ERR_BUFFER_ERROR) {
     return NGHTTP2_ERR_FRAME_SIZE_ERROR;
   }
 
@@ -805,8 +743,7 @@ int nghttp2_frame_unpack_altsvc_payload(nghttp2_extension *frame,
                                         const uint8_t *payload,
                                         size_t payloadlen _U_,
                                         uint8_t *var_gift_payload,
-                                        size_t var_gift_payloadlen)
-{
+                                        size_t var_gift_payloadlen) {
   nghttp2_buf buf;
   nghttp2_ext_altsvc *altsvc;
 
@@ -824,7 +761,7 @@ int nghttp2_frame_unpack_altsvc_payload(nghttp2_extension *frame,
   buf.last += var_gift_payloadlen;
 
   /* 1 for Host-Len */
-  if(nghttp2_buf_len(&buf) < 1 + (ssize_t)altsvc->protocol_id_len) {
+  if (nghttp2_buf_len(&buf) < 1 + (ssize_t)altsvc->protocol_id_len) {
     return NGHTTP2_ERR_FRAME_SIZE_ERROR;
   }
 
@@ -834,7 +771,7 @@ int nghttp2_frame_unpack_altsvc_payload(nghttp2_extension *frame,
   altsvc->host_len = *buf.pos;
   ++buf.pos;
 
-  if(nghttp2_buf_len(&buf) < (ssize_t)altsvc->host_len) {
+  if (nghttp2_buf_len(&buf) < (ssize_t)altsvc->host_len) {
     return NGHTTP2_ERR_FRAME_SIZE_ERROR;
   }
 
@@ -847,19 +784,18 @@ int nghttp2_frame_unpack_altsvc_payload(nghttp2_extension *frame,
   return 0;
 }
 
-nghttp2_settings_entry* nghttp2_frame_iv_copy(const nghttp2_settings_entry *iv,
-                                              size_t niv)
-{
+nghttp2_settings_entry *nghttp2_frame_iv_copy(const nghttp2_settings_entry *iv,
+                                              size_t niv) {
   nghttp2_settings_entry *iv_copy;
-  size_t len = niv*sizeof(nghttp2_settings_entry);
+  size_t len = niv * sizeof(nghttp2_settings_entry);
 
-  if(len == 0) {
+  if (len == 0) {
     return NULL;
   }
 
   iv_copy = malloc(len);
 
-  if(iv_copy == NULL) {
+  if (iv_copy == NULL) {
     return NULL;
   }
 
@@ -868,31 +804,26 @@ nghttp2_settings_entry* nghttp2_frame_iv_copy(const nghttp2_settings_entry *iv,
   return iv_copy;
 }
 
-int nghttp2_nv_equal(const nghttp2_nv *a, const nghttp2_nv *b)
-{
+int nghttp2_nv_equal(const nghttp2_nv *a, const nghttp2_nv *b) {
   return a->namelen == b->namelen && a->valuelen == b->valuelen &&
-    memcmp(a->name, b->name, a->namelen) == 0 &&
-    memcmp(a->value, b->value, a->valuelen) == 0;
+         memcmp(a->name, b->name, a->namelen) == 0 &&
+         memcmp(a->value, b->value, a->valuelen) == 0;
 }
 
-void nghttp2_nv_array_del(nghttp2_nv *nva)
-{
-  free(nva);
-}
+void nghttp2_nv_array_del(nghttp2_nv *nva) { free(nva); }
 
-static int bytes_compar(const uint8_t *a, size_t alen,
-                        const uint8_t *b, size_t blen)
-{
+static int bytes_compar(const uint8_t *a, size_t alen, const uint8_t *b,
+                        size_t blen) {
   int rv;
 
-  if(alen == blen) {
+  if (alen == blen) {
     return memcmp(a, b, alen);
   }
 
-  if(alen < blen) {
+  if (alen < blen) {
     rv = memcmp(a, b, alen);
 
-    if(rv == 0) {
+    if (rv == 0) {
       return -1;
     }
 
@@ -901,68 +832,64 @@ static int bytes_compar(const uint8_t *a, size_t alen,
 
   rv = memcmp(a, b, blen);
 
-  if(rv == 0) {
+  if (rv == 0) {
     return 1;
   }
 
   return rv;
 }
 
-int nghttp2_nv_compare_name(const nghttp2_nv *lhs, const nghttp2_nv *rhs)
-{
+int nghttp2_nv_compare_name(const nghttp2_nv *lhs, const nghttp2_nv *rhs) {
   return bytes_compar(lhs->name, lhs->namelen, rhs->name, rhs->namelen);
 }
 
-static int nv_compar(const void *lhs, const void *rhs)
-{
-  const nghttp2_nv *a = (const nghttp2_nv*)lhs;
-  const nghttp2_nv *b = (const nghttp2_nv*)rhs;
+static int nv_compar(const void *lhs, const void *rhs) {
+  const nghttp2_nv *a = (const nghttp2_nv *)lhs;
+  const nghttp2_nv *b = (const nghttp2_nv *)rhs;
   int rv;
 
   rv = bytes_compar(a->name, a->namelen, b->name, b->namelen);
 
-  if(rv == 0) {
+  if (rv == 0) {
     return bytes_compar(a->value, a->valuelen, b->value, b->valuelen);
   }
 
   return rv;
 }
 
-void nghttp2_nv_array_sort(nghttp2_nv *nva, size_t nvlen)
-{
+void nghttp2_nv_array_sort(nghttp2_nv *nva, size_t nvlen) {
   qsort(nva, nvlen, sizeof(nghttp2_nv), nv_compar);
 }
 
-int nghttp2_nv_array_copy(nghttp2_nv **nva_ptr,
-                          const nghttp2_nv *nva, size_t nvlen)
-{
+int nghttp2_nv_array_copy(nghttp2_nv **nva_ptr, const nghttp2_nv *nva,
+                          size_t nvlen) {
   size_t i;
   uint8_t *data;
   size_t buflen = 0;
   nghttp2_nv *p;
 
-  for(i = 0; i < nvlen; ++i) {
+  for (i = 0; i < nvlen; ++i) {
     buflen += nva[i].namelen + nva[i].valuelen;
   }
 
-  if(nvlen == 0) {
+  if (nvlen == 0) {
     *nva_ptr = NULL;
 
     return 0;
   }
 
-  buflen += sizeof(nghttp2_nv)*nvlen;
+  buflen += sizeof(nghttp2_nv) * nvlen;
 
   *nva_ptr = malloc(buflen);
 
-  if(*nva_ptr == NULL) {
+  if (*nva_ptr == NULL) {
     return NGHTTP2_ERR_NOMEM;
   }
 
   p = *nva_ptr;
-  data = (uint8_t*)(*nva_ptr) + sizeof(nghttp2_nv) * nvlen;
+  data = (uint8_t *)(*nva_ptr) + sizeof(nghttp2_nv) * nvlen;
 
-  for(i = 0; i < nvlen; ++i) {
+  for (i = 0; i < nvlen; ++i) {
     p->flags = nva[i].flags;
 
     memcpy(data, nva[i].name, nva[i].namelen);
@@ -979,31 +906,30 @@ int nghttp2_nv_array_copy(nghttp2_nv **nva_ptr,
   return 0;
 }
 
-int nghttp2_iv_check(const nghttp2_settings_entry *iv, size_t niv)
-{
+int nghttp2_iv_check(const nghttp2_settings_entry *iv, size_t niv) {
   size_t i;
-  for(i = 0; i < niv; ++i) {
-    switch(iv[i].settings_id) {
+  for (i = 0; i < niv; ++i) {
+    switch (iv[i].settings_id) {
     case NGHTTP2_SETTINGS_HEADER_TABLE_SIZE:
-      if(iv[i].value > NGHTTP2_MAX_HEADER_TABLE_SIZE) {
+      if (iv[i].value > NGHTTP2_MAX_HEADER_TABLE_SIZE) {
         return 0;
       }
       break;
     case NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS:
       break;
     case NGHTTP2_SETTINGS_ENABLE_PUSH:
-      if(iv[i].value != 0 && iv[i].value != 1) {
+      if (iv[i].value != 0 && iv[i].value != 1) {
         return 0;
       }
       break;
     case NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE:
-      if(iv[i].value > (uint32_t)NGHTTP2_MAX_WINDOW_SIZE) {
+      if (iv[i].value > (uint32_t)NGHTTP2_MAX_WINDOW_SIZE) {
         return 0;
       }
       break;
     case NGHTTP2_SETTINGS_MAX_FRAME_SIZE:
-      if(iv[i].value < NGHTTP2_MAX_FRAME_SIZE_MIN ||
-         iv[i].value > NGHTTP2_MAX_FRAME_SIZE_MAX) {
+      if (iv[i].value < NGHTTP2_MAX_FRAME_SIZE_MIN ||
+          iv[i].value > NGHTTP2_MAX_FRAME_SIZE_MAX) {
         return 0;
       }
       break;
@@ -1014,8 +940,7 @@ int nghttp2_iv_check(const nghttp2_settings_entry *iv, size_t niv)
   return 1;
 }
 
-static void frame_set_pad(nghttp2_buf *buf, size_t padlen)
-{
+static void frame_set_pad(nghttp2_buf *buf, size_t padlen) {
   size_t trail_padlen;
   size_t newlen;
 
@@ -1043,11 +968,10 @@ static void frame_set_pad(nghttp2_buf *buf, size_t padlen)
 }
 
 int nghttp2_frame_add_pad(nghttp2_bufs *bufs, nghttp2_frame_hd *hd,
-                          size_t padlen)
-{
+                          size_t padlen) {
   nghttp2_buf *buf;
 
-  if(padlen == 0) {
+  if (padlen == 0) {
     DEBUGF(fprintf(stderr, "send: padlen = 0, nothing to do\n"));
 
     return 0;
@@ -1082,8 +1006,8 @@ int nghttp2_frame_add_pad(nghttp2_bufs *bufs, nghttp2_frame_hd *hd,
   hd->length += padlen;
   hd->flags |= NGHTTP2_FLAG_PADDED;
 
-  DEBUGF(fprintf(stderr, "send: final payloadlen=%zu, padlen=%zu\n",
-                 hd->length, padlen));
+  DEBUGF(fprintf(stderr, "send: final payloadlen=%zu, padlen=%zu\n", hd->length,
+                 padlen));
 
   return 0;
 }

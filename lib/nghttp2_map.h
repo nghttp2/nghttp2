@@ -26,7 +26,7 @@
 #define NGHTTP2_MAP_H
 
 #ifdef HAVE_CONFIG_H
-#  include <config.h>
+#include <config.h>
 #endif /* HAVE_CONFIG_H */
 
 #include <nghttp2/nghttp2.h>
@@ -98,7 +98,7 @@ int nghttp2_map_insert(nghttp2_map *map, nghttp2_map_entry *entry);
  * Returns the entry associated by the key |key|.  If there is no such
  * entry, this function returns NULL.
  */
-nghttp2_map_entry* nghttp2_map_find(nghttp2_map *map, key_type key);
+nghttp2_map_entry *nghttp2_map_find(nghttp2_map *map, key_type key);
 
 /*
  * Removes the entry associated by the key |key| from the |map|.  The

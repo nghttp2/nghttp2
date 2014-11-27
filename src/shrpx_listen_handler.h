@@ -67,14 +67,14 @@ public:
   int accept_connection(evutil_socket_t fd, sockaddr *addr, int addrlen);
   void create_worker_thread(size_t num);
   void worker_reopen_log_files();
-  event_base* get_evbase() const;
+  event_base *get_evbase() const;
   int create_http2_session();
   int create_http1_connect_blocker();
-  const WorkerStat* get_worker_stat() const;
+  const WorkerStat *get_worker_stat() const;
   void set_evlistener4(evconnlistener *evlistener4);
-  evconnlistener* get_evlistener4() const;
+  evconnlistener *get_evlistener4() const;
   void set_evlistener6(evconnlistener *evlistener6);
-  evconnlistener* get_evlistener6() const;
+  evconnlistener *get_evlistener6() const;
   void enable_evlistener();
   void disable_evlistener();
   void disable_evlistener_temporary(const timeval *timeout);
@@ -82,6 +82,7 @@ public:
   void graceful_shutdown_worker();
   void join_worker();
   void notify_worker_shutdown();
+
 private:
   DownstreamConnectionPool dconn_pool_;
   std::vector<std::unique_ptr<WorkerInfo>> workers_;

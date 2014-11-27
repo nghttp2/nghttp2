@@ -51,7 +51,7 @@ class Session;
 
 struct Config {
   std::vector<std::vector<nghttp2_nv>> nva;
-  std::vector<std::vector<const char*>> nv;
+  std::vector<std::vector<const char *>> nv;
   nghttp2::Headers custom_headers;
   std::string scheme;
   std::string host;
@@ -64,12 +64,7 @@ struct Config {
   ssize_t max_concurrent_streams;
   size_t window_bits;
   size_t connection_window_bits;
-  enum {
-    PROTO_HTTP2,
-    PROTO_SPDY2,
-    PROTO_SPDY3,
-    PROTO_SPDY3_1
-  } no_tls_proto;
+  enum { PROTO_HTTP2, PROTO_SPDY2, PROTO_SPDY3, PROTO_SPDY3_1 } no_tls_proto;
   uint16_t port;
   uint16_t default_port;
   bool verbose;
@@ -105,10 +100,7 @@ struct Stats {
   size_t status[6];
 };
 
-enum ClientState {
-  CLIENT_IDLE,
-  CLIENT_CONNECTED
-};
+enum ClientState { CLIENT_IDLE, CLIENT_CONNECTED };
 
 struct Client;
 
@@ -163,8 +155,7 @@ struct Client {
   int on_read();
   int on_write();
   void on_request(int32_t stream_id);
-  void on_header(int32_t stream_id,
-                 const uint8_t *name, size_t namelen,
+  void on_header(int32_t stream_id, const uint8_t *name, size_t namelen,
                  const uint8_t *value, size_t valuelen);
   void on_stream_close(int32_t stream_id, bool success);
 };

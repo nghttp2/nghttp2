@@ -26,7 +26,7 @@
 #define NGHTTP2_QUEUE_H
 
 #ifdef HAVE_CONFIG_H
-#  include "config.h"
+#include "config.h"
 #endif /* HAVE_CONFIG_H */
 
 #include <nghttp2/nghttp2.h>
@@ -36,16 +36,14 @@ typedef struct nghttp2_queue_cell {
   struct nghttp2_queue_cell *next;
 } nghttp2_queue_cell;
 
-typedef struct {
-  nghttp2_queue_cell *front, *back;
-} nghttp2_queue;
+typedef struct { nghttp2_queue_cell *front, *back; } nghttp2_queue;
 
 void nghttp2_queue_init(nghttp2_queue *queue);
 void nghttp2_queue_free(nghttp2_queue *queue);
 int nghttp2_queue_push(nghttp2_queue *queue, void *data);
 void nghttp2_queue_pop(nghttp2_queue *queue);
-void* nghttp2_queue_front(nghttp2_queue *queue);
-void* nghttp2_queue_back(nghttp2_queue *queue);
+void *nghttp2_queue_front(nghttp2_queue *queue);
+void *nghttp2_queue_back(nghttp2_queue *queue);
 int nghttp2_queue_empty(nghttp2_queue *queue);
 
 #endif /* NGHTTP2_QUEUE_H */

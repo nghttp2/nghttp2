@@ -32,32 +32,19 @@ namespace nghttp2 {
 namespace util {
 
 EvbufferBuffer::EvbufferBuffer()
-  : evbuffer_(nullptr),
-    bucket_(nullptr),
-    buf_(nullptr),
-    bufmax_(0),
-    buflen_(0),
-    limit_(0),
-    writelen_(0)
-{}
+    : evbuffer_(nullptr), bucket_(nullptr), buf_(nullptr), bufmax_(0),
+      buflen_(0), limit_(0), writelen_(0) {}
 
 EvbufferBuffer::EvbufferBuffer(evbuffer *evbuffer, uint8_t *buf, size_t bufmax,
                                ssize_t limit)
-  : evbuffer_(evbuffer),
-    bucket_(limit == -1 ? nullptr : evbuffer_new()),
-    buf_(buf),
-    bufmax_(bufmax),
-    buflen_(0),
-    limit_(limit),
-    writelen_(0)
-{}
+    : evbuffer_(evbuffer), bucket_(limit == -1 ? nullptr : evbuffer_new()),
+      buf_(buf), bufmax_(bufmax), buflen_(0), limit_(limit), writelen_(0) {}
 
 void EvbufferBuffer::reset(evbuffer *evbuffer, uint8_t *buf, size_t bufmax,
-                           ssize_t limit)
-{
+                           ssize_t limit) {
   evbuffer_ = evbuffer;
   buf_ = buf;
-  if(limit != -1 && !bucket_) {
+  if (limit != -1 && !bucket_) {
     bucket_ = evbuffer_new();
   }
   bufmax_ = bufmax;
@@ -66,25 +53,23 @@ void EvbufferBuffer::reset(evbuffer *evbuffer, uint8_t *buf, size_t bufmax,
   writelen_ = 0;
 }
 
-EvbufferBuffer::~EvbufferBuffer()
-{
-  if(bucket_) {
+EvbufferBuffer::~EvbufferBuffer() {
+  if (bucket_) {
     evbuffer_free(bucket_);
   }
 }
 
-int EvbufferBuffer::write_buffer()
-{
-  for(auto pos = buf_, end = buf_ + buflen_; pos < end;) {
+int EvbufferBuffer::write_buffer() {
+  for (auto pos = buf_, end = buf_ + buflen_; pos < end;) {
     // To avoid merging chunks in evbuffer, we first add to temporal
     // buffer bucket_ and then move its chain to evbuffer_.
     auto nwrite = std::min(end - pos, limit_);
     auto rv = evbuffer_add(bucket_, pos, nwrite);
-    if(rv == -1) {
+    if (rv == -1) {
       return -1;
     }
     rv = evbuffer_add_buffer(evbuffer_, bucket_);
-    if(rv == -1) {
+    if (rv == -1) {
       return -1;
     }
     pos += nwrite;
@@ -92,16 +77,15 @@ int EvbufferBuffer::write_buffer()
   return 0;
 }
 
-int EvbufferBuffer::flush()
-{
+int EvbufferBuffer::flush() {
   int rv;
-  if(buflen_ > 0) {
-    if(limit_ == -1) {
+  if (buflen_ > 0) {
+    if (limit_ == -1) {
       rv = evbuffer_add(evbuffer_, buf_, buflen_);
     } else {
       rv = write_buffer();
     }
-    if(rv == -1) {
+    if (rv == -1) {
       return -1;
     }
     writelen_ += buflen_;
@@ -110,29 +94,28 @@ int EvbufferBuffer::flush()
   return 0;
 }
 
-int EvbufferBuffer::add(const uint8_t *data, size_t datalen)
-{
+int EvbufferBuffer::add(const uint8_t *data, size_t datalen) {
   int rv;
-  if(buflen_ + datalen > bufmax_) {
-    if(buflen_ > 0) {
-      if(limit_ == -1) {
+  if (buflen_ + datalen > bufmax_) {
+    if (buflen_ > 0) {
+      if (limit_ == -1) {
         rv = evbuffer_add(evbuffer_, buf_, buflen_);
       } else {
         rv = write_buffer();
       }
-      if(rv == -1) {
+      if (rv == -1) {
         return -1;
       }
       writelen_ += buflen_;
       buflen_ = 0;
     }
-    if(datalen > bufmax_) {
-      if(limit_ == -1) {
+    if (datalen > bufmax_) {
+      if (limit_ == -1) {
         rv = evbuffer_add(evbuffer_, data, datalen);
       } else {
         rv = write_buffer();
       }
-      if(rv == -1) {
+      if (rv == -1) {
         return -1;
       }
       writelen_ += buflen_;
@@ -144,28 +127,20 @@ int EvbufferBuffer::add(const uint8_t *data, size_t datalen)
   return 0;
 }
 
-size_t EvbufferBuffer::get_buflen() const
-{
-  return buflen_;
-}
+size_t EvbufferBuffer::get_buflen() const { return buflen_; }
 
-size_t EvbufferBuffer::get_writelen() const
-{
-  return writelen_;
-}
+size_t EvbufferBuffer::get_writelen() const { return writelen_; }
 
-void bev_enable_unless(bufferevent *bev, int events)
-{
-  if((bufferevent_get_enabled(bev) & events) == events) {
+void bev_enable_unless(bufferevent *bev, int events) {
+  if ((bufferevent_get_enabled(bev) & events) == events) {
     return;
   }
 
   bufferevent_enable(bev, events);
 }
 
-void bev_disable_unless(bufferevent *bev, int events)
-{
-  if((bufferevent_get_enabled(bev) & events) == 0) {
+void bev_disable_unless(bufferevent *bev, int events) {
+  if ((bufferevent_get_enabled(bev) & events) == 0) {
     return;
   }
 

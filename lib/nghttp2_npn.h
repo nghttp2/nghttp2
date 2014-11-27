@@ -26,7 +26,7 @@
 #define NGHTTP2_NPN_H
 
 #ifdef HAVE_CONFIG
-# include <config.h>
+#include <config.h>
 #endif /* HAVE_CONFIG */
 
 #include <nghttp2/nghttp2.h>

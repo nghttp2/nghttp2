@@ -46,8 +46,7 @@ typedef struct {
   size_t data_source_length;
 } my_user_data;
 
-static void data_feed_init(data_feed *df, nghttp2_bufs *bufs)
-{
+static void data_feed_init(data_feed *df, nghttp2_bufs *bufs) {
   nghttp2_buf *buf;
   size_t data_length;
 
@@ -60,18 +59,14 @@ static void data_feed_init(data_feed *df, nghttp2_bufs *bufs)
   df->datalimit = df->data + data_length;
 }
 
-static ssize_t null_send_callback(nghttp2_session *session,
-                                  const uint8_t* data, size_t len, int flags,
-                                  void *user_data)
-{
+static ssize_t null_send_callback(nghttp2_session *session, const uint8_t *data,
+                                  size_t len, int flags, void *user_data) {
   return len;
 }
 
-static ssize_t data_feed_recv_callback(nghttp2_session *session,
-                                       uint8_t* data, size_t len, int flags,
-                                       void *user_data)
-{
-  data_feed *df = ((my_user_data*)user_data)->df;
+static ssize_t data_feed_recv_callback(nghttp2_session *session, uint8_t *data,
+                                       size_t len, int flags, void *user_data) {
+  data_feed *df = ((my_user_data *)user_data)->df;
   size_t avail = df->datalimit - df->datamark;
   size_t wlen = nghttp2_min(avail, len);
   memcpy(data, df->datamark, wlen);
@@ -79,53 +74,48 @@ static ssize_t data_feed_recv_callback(nghttp2_session *session,
   return wlen;
 }
 
-static ssize_t fixed_length_data_source_read_callback
-(nghttp2_session *session, int32_t stream_id,
- uint8_t *buf, size_t len, uint32_t *data_flags,
- nghttp2_data_source *source, void *user_data)
-{
-  my_user_data *ud = (my_user_data*)user_data;
+static ssize_t fixed_length_data_source_read_callback(
+    nghttp2_session *session, int32_t stream_id, uint8_t *buf, size_t len,
+    uint32_t *data_flags, nghttp2_data_source *source, void *user_data) {
+  my_user_data *ud = (my_user_data *)user_data;
   size_t wlen;
-  if(len < ud->data_source_length) {
+  if (len < ud->data_source_length) {
     wlen = len;
   } else {
     wlen = ud->data_source_length;
   }
   ud->data_source_length -= wlen;
-  if(ud->data_source_length == 0) {
+  if (ud->data_source_length == 0) {
     *data_flags = NGHTTP2_DATA_FLAG_EOF;
   }
   return wlen;
 }
 
-#define TEST_FAILMALLOC_RUN(FUN)                        \
-  do {                                                  \
-    size_t nmalloc, i;                                  \
-                                                        \
-    nghttp2_failmalloc = 0;                             \
-    nghttp2_nmalloc = 0;                                \
-    FUN();                                              \
-    nmalloc = nghttp2_nmalloc;                          \
-                                                        \
-    nghttp2_failmalloc = 1;                             \
-    for(i = 0; i < nmalloc; ++i) {                      \
-      nghttp2_nmalloc = 0;                              \
-      nghttp2_failstart = i;                            \
-      /* printf("i=%zu\n", i); */                       \
-      FUN();                                            \
-      /* printf("nmalloc=%d\n", nghttp2_nmalloc); */    \
-    }                                                   \
-    nghttp2_failmalloc = 0;                             \
-  } while(0)
+#define TEST_FAILMALLOC_RUN(FUN)                                               \
+  do {                                                                         \
+    size_t nmalloc, i;                                                         \
+                                                                               \
+    nghttp2_failmalloc = 0;                                                    \
+    nghttp2_nmalloc = 0;                                                       \
+    FUN();                                                                     \
+    nmalloc = nghttp2_nmalloc;                                                 \
+                                                                               \
+    nghttp2_failmalloc = 1;                                                    \
+    for (i = 0; i < nmalloc; ++i) {                                            \
+      nghttp2_nmalloc = 0;                                                     \
+      nghttp2_failstart = i;                                                   \
+      /* printf("i=%zu\n", i); */                                              \
+      FUN();                                                                   \
+      /* printf("nmalloc=%d\n", nghttp2_nmalloc); */                           \
+    }                                                                          \
+    nghttp2_failmalloc = 0;                                                    \
+  } while (0)
 
-static void run_nghttp2_session_send(void)
-{
+static void run_nghttp2_session_send(void) {
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;
-  nghttp2_nv nv[] = {
-    MAKE_NV(":host", "example.org"),
-    MAKE_NV(":scheme", "https")
-  };
+  nghttp2_nv nv[] = {MAKE_NV(":host", "example.org"),
+                     MAKE_NV(":scheme", "https")};
   nghttp2_data_provider data_prd;
   nghttp2_settings_entry iv[2];
   my_user_data ud;
@@ -134,7 +124,7 @@ static void run_nghttp2_session_send(void)
   callbacks.send_callback = null_send_callback;
 
   data_prd.read_callback = fixed_length_data_source_read_callback;
-  ud.data_source_length = 64*1024;
+  ud.data_source_length = 64 * 1024;
 
   iv[0].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
   iv[0].value = 4096;
@@ -142,100 +132,95 @@ static void run_nghttp2_session_send(void)
   iv[1].value = 100;
 
   rv = nghttp2_session_client_new(&session, &callbacks, &ud);
-  if(rv != 0) {
+  if (rv != 0) {
     goto client_new_fail;
   }
   rv = nghttp2_submit_request(session, NULL, nv, ARRLEN(nv), &data_prd, NULL);
-  if(rv < 0) {
+  if (rv < 0) {
     goto fail;
   }
-  rv = nghttp2_submit_headers(session, NGHTTP2_FLAG_NONE, -1, NULL,
-                              nv, ARRLEN(nv), NULL);
-  if(rv < 0) {
+  rv = nghttp2_submit_headers(session, NGHTTP2_FLAG_NONE, -1, NULL, nv,
+                              ARRLEN(nv), NULL);
+  if (rv < 0) {
     goto fail;
   }
   rv = nghttp2_session_send(session);
-  if(rv != 0) {
+  if (rv != 0) {
     goto fail;
   }
   /* The HEADERS submitted by the previous nghttp2_submit_headers will
      have stream ID 3. Send HEADERS to that stream. */
-  rv = nghttp2_submit_headers(session, NGHTTP2_FLAG_NONE, 3, NULL,
-                              nv, ARRLEN(nv), NULL);
-  if(rv != 0) {
+  rv = nghttp2_submit_headers(session, NGHTTP2_FLAG_NONE, 3, NULL, nv,
+                              ARRLEN(nv), NULL);
+  if (rv != 0) {
     goto fail;
   }
   rv = nghttp2_submit_data(session, NGHTTP2_FLAG_END_STREAM, 3, &data_prd);
-  if(rv != 0) {
+  if (rv != 0) {
     goto fail;
   }
   rv = nghttp2_session_send(session);
-  if(rv != 0) {
+  if (rv != 0) {
     goto fail;
   }
-  rv = nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, 3,
-                                 NGHTTP2_CANCEL);
-  if(rv != 0) {
+  rv = nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, 3, NGHTTP2_CANCEL);
+  if (rv != 0) {
     goto fail;
   }
   rv = nghttp2_session_send(session);
-  if(rv != 0) {
+  if (rv != 0) {
     goto fail;
   }
   /* Sending against half-closed stream */
-  rv = nghttp2_submit_headers(session, NGHTTP2_FLAG_NONE, 3, NULL,
-                              nv, ARRLEN(nv), NULL);
-  if(rv != 0) {
+  rv = nghttp2_submit_headers(session, NGHTTP2_FLAG_NONE, 3, NULL, nv,
+                              ARRLEN(nv), NULL);
+  if (rv != 0) {
     goto fail;
   }
   rv = nghttp2_submit_data(session, NGHTTP2_FLAG_END_STREAM, 3, &data_prd);
-  if(rv != 0) {
+  if (rv != 0) {
     goto fail;
   }
   rv = nghttp2_submit_ping(session, NGHTTP2_FLAG_NONE, NULL);
-  if(rv != 0) {
+  if (rv != 0) {
     goto fail;
   }
   rv = nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, iv, 2);
-  if(rv != 0) {
+  if (rv != 0) {
     goto fail;
   }
   rv = nghttp2_session_send(session);
-  if(rv != 0) {
+  if (rv != 0) {
     goto fail;
   }
   rv = nghttp2_submit_goaway(session, NGHTTP2_FLAG_NONE, 100, NGHTTP2_NO_ERROR,
                              NULL, 0);
-  if(rv != 0) {
+  if (rv != 0) {
     goto fail;
   }
   rv = nghttp2_session_send(session);
-  if(rv != 0) {
+  if (rv != 0) {
     goto fail;
   }
 
- fail:
+fail:
   nghttp2_session_del(session);
- client_new_fail:
+client_new_fail:
   ;
 }
 
-void test_nghttp2_session_send(void)
-{
+void test_nghttp2_session_send(void) {
   TEST_FAILMALLOC_RUN(run_nghttp2_session_send);
 }
 
-static void run_nghttp2_session_recv(void)
-{
+static void run_nghttp2_session_recv(void) {
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;
   nghttp2_hd_deflater deflater;
   nghttp2_frame frame;
   nghttp2_bufs bufs;
-  nghttp2_nv nv[] = {
-    MAKE_NV(":authority", "example.org"),
-    MAKE_NV(":scheme", "https")
-  };
+  nghttp2_nv nv[] = {MAKE_NV(":authority", "example.org"),
+                     MAKE_NV(":scheme", "https")};
   nghttp2_settings_entry iv[2];
   my_user_data ud;
   data_feed df;
@@ -245,7 +230,7 @@ static void run_nghttp2_session_recv(void)
 
   rv = frame_pack_bufs_init(&bufs);
 
-  if(rv != 0) {
+  if (rv != 0) {
     return;
   }
 
@@ -262,8 +247,8 @@ static void run_nghttp2_session_recv(void)
 
   /* HEADERS */
   nghttp2_failmalloc_pause();
-  nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_END_STREAM,
-                             1, NGHTTP2_HCAT_REQUEST, NULL, nva, nvlen);
+  nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_END_STREAM, 1,
+                             NGHTTP2_HCAT_REQUEST, NULL, nva, nvlen);
   nghttp2_frame_pack_headers(&bufs, &frame.headers, &deflater);
   nghttp2_frame_headers_free(&frame.headers);
   data_feed_init(&df, &bufs);
@@ -272,7 +257,7 @@ static void run_nghttp2_session_recv(void)
   nghttp2_failmalloc_unpause();
 
   rv = nghttp2_session_recv(session);
-  if(rv != 0) {
+  if (rv != 0) {
     goto fail;
   }
 
@@ -287,7 +272,7 @@ static void run_nghttp2_session_recv(void)
   nghttp2_failmalloc_unpause();
 
   rv = nghttp2_session_recv(session);
-  if(rv != 0) {
+  if (rv != 0) {
     goto fail;
   }
 
@@ -301,7 +286,7 @@ static void run_nghttp2_session_recv(void)
   nghttp2_failmalloc_unpause();
 
   rv = nghttp2_session_recv(session);
-  if(rv != 0) {
+  if (rv != 0) {
     goto fail;
   }
 
@@ -320,78 +305,73 @@ static void run_nghttp2_session_recv(void)
   nghttp2_failmalloc_unpause();
 
   rv = nghttp2_session_recv(session);
-  if(rv != 0) {
+  if (rv != 0) {
     goto fail;
   }
 
- fail:
+fail:
   nghttp2_bufs_free(&bufs);
   nghttp2_session_del(session);
   nghttp2_hd_deflate_free(&deflater);
 }
 
-void test_nghttp2_session_recv(void)
-{
+void test_nghttp2_session_recv(void) {
   TEST_FAILMALLOC_RUN(run_nghttp2_session_recv);
 }
 
-static void run_nghttp2_frame_pack_headers(void)
-{
+static void run_nghttp2_frame_pack_headers(void) {
   nghttp2_hd_deflater deflater;
   nghttp2_hd_inflater inflater;
   nghttp2_frame frame, oframe;
   nghttp2_bufs bufs;
-  nghttp2_nv nv[] = {
-    MAKE_NV(":host", "example.org"),
-    MAKE_NV(":scheme", "https")
-  };
+  nghttp2_nv nv[] = {MAKE_NV(":host", "example.org"),
+                     MAKE_NV(":scheme", "https")};
   int rv;
   nghttp2_nv *nva;
   ssize_t nvlen;
 
   rv = frame_pack_bufs_init(&bufs);
 
-  if(rv != 0) {
+  if (rv != 0) {
     return;
   }
 
   rv = nghttp2_hd_deflate_init(&deflater);
-  if(rv != 0) {
+  if (rv != 0) {
     goto deflate_init_fail;
   }
   rv = nghttp2_hd_inflate_init(&inflater);
-  if(rv != 0) {
+  if (rv != 0) {
     goto inflate_init_fail;
   }
   nvlen = ARRLEN(nv);
   rv = nghttp2_nv_array_copy(&nva, nv, nvlen);
-  if(rv < 0) {
+  if (rv < 0) {
     goto nv_copy_fail;
   }
-  nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_END_STREAM,
-                             1, NGHTTP2_HCAT_REQUEST, NULL, nva, nvlen);
+  nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_END_STREAM, 1,
+                             NGHTTP2_HCAT_REQUEST, NULL, nva, nvlen);
   rv = nghttp2_frame_pack_headers(&bufs, &frame.headers, &deflater);
-  if(rv != 0) {
+  if (rv != 0) {
     goto fail;
   }
   rv = unpack_framebuf(&oframe, &bufs);
-  if(rv != 0) {
+  if (rv != 0) {
     goto fail;
   }
   nghttp2_frame_headers_free(&oframe.headers);
 
- fail:
+fail:
   nghttp2_frame_headers_free(&frame.headers);
- nv_copy_fail:
+nv_copy_fail:
   nghttp2_hd_inflate_free(&inflater);
- inflate_init_fail:
+inflate_init_fail:
   nghttp2_hd_deflate_free(&deflater);
- deflate_init_fail:
+deflate_init_fail:
   nghttp2_bufs_free(&bufs);
 }
 
-static void run_nghttp2_frame_pack_settings(void)
-{
+static void run_nghttp2_frame_pack_settings(void) {
   nghttp2_frame frame, oframe;
   nghttp2_bufs bufs;
   nghttp2_buf *buf;
@@ -400,7 +380,7 @@ static void run_nghttp2_frame_pack_settings(void)
 
   rv = frame_pack_bufs_init(&bufs);
 
-  if(rv != 0) {
+  if (rv != 0) {
     return;
   }
 
@@ -411,7 +391,7 @@ static void run_nghttp2_frame_pack_settings(void)
 
   iv_copy = nghttp2_frame_iv_copy(iv, 2);
 
-  if(iv_copy == NULL) {
+  if (iv_copy == NULL) {
     goto iv_copy_fail;
   }
 
@@ -419,51 +399,46 @@ static void run_nghttp2_frame_pack_settings(void)
 
   rv = nghttp2_frame_pack_settings(&bufs, &frame.settings);
 
-  if(rv != 0) {
+  if (rv != 0) {
     goto fail;
   }
 
   buf = &bufs.head->buf;
 
-  rv = nghttp2_frame_unpack_settings_payload2
-    (&oframe.settings.iv,
-     &oframe.settings.niv,
-     buf->pos + NGHTTP2_FRAME_HDLEN,
-     nghttp2_buf_len(buf) - NGHTTP2_FRAME_HDLEN);
+  rv = nghttp2_frame_unpack_settings_payload2(
+      &oframe.settings.iv, &oframe.settings.niv, buf->pos + NGHTTP2_FRAME_HDLEN,
+      nghttp2_buf_len(buf) - NGHTTP2_FRAME_HDLEN);
 
-  if(rv != 0) {
+  if (rv != 0) {
     goto fail;
   }
   nghttp2_frame_settings_free(&oframe.settings);
 
- fail:
+fail:
   nghttp2_frame_settings_free(&frame.settings);
- iv_copy_fail:
+iv_copy_fail:
   nghttp2_bufs_free(&bufs);
 }
 
-void test_nghttp2_frame(void)
-{
+void test_nghttp2_frame(void) {
   TEST_FAILMALLOC_RUN(run_nghttp2_frame_pack_headers);
   TEST_FAILMALLOC_RUN(run_nghttp2_frame_pack_settings);
 }
 
 static int deflate_inflate(nghttp2_hd_deflater *deflater,
-                           nghttp2_hd_inflater *inflater,
-                           nghttp2_bufs *bufs,
-                           nghttp2_nv *nva, size_t nvlen)
-{
+                           nghttp2_hd_inflater *inflater, nghttp2_bufs *bufs,
+                           nghttp2_nv *nva, size_t nvlen) {
   int rv;
 
   rv = nghttp2_hd_deflate_hd_bufs(deflater, bufs, nva, nvlen);
 
-  if(rv != 0) {
+  if (rv != 0) {
     return rv;
   }
 
   rv = inflate_hd(inflater, NULL, bufs, 0);
 
-  if(rv < 0) {
+  if (rv < 0) {
     return rv;
   }
 
@@ -472,64 +447,55 @@ static int deflate_inflate(nghttp2_hd_deflater *deflater,
   return 0;
 }
 
-static void run_nghttp2_hd(void)
-{
+static void run_nghttp2_hd(void) {
   nghttp2_hd_deflater deflater;
   nghttp2_hd_inflater inflater;
   nghttp2_bufs bufs;
   int rv;
-  nghttp2_nv nva1[] = {
-    MAKE_NV(":scheme", "https"),
-    MAKE_NV(":authority", "example.org"),
-    MAKE_NV(":path", "/slashdot"),
-    MAKE_NV("accept-encoding", "gzip, deflate")
-  };
+  nghttp2_nv nva1[] = {MAKE_NV(":scheme", "https"),
+                       MAKE_NV(":authority", "example.org"),
+                       MAKE_NV(":path", "/slashdot"),
+                       MAKE_NV("accept-encoding", "gzip, deflate")};
   nghttp2_nv nva2[] = {
-    MAKE_NV(":scheme", "https"),
-    MAKE_NV(":authority", "example.org"),
-    MAKE_NV(":path", "/style.css"),
-    MAKE_NV("cookie", "nghttp2=FTW")
-  };
+      MAKE_NV(":scheme", "https"), MAKE_NV(":authority", "example.org"),
+      MAKE_NV(":path", "/style.css"), MAKE_NV("cookie", "nghttp2=FTW")};
 
   rv = frame_pack_bufs_init(&bufs);
 
-  if(rv != 0) {
+  if (rv != 0) {
     return;
   }
 
   rv = nghttp2_hd_deflate_init(&deflater);
 
-  if(rv != 0) {
+  if (rv != 0) {
     goto deflate_init_fail;
   }
 
   rv = nghttp2_hd_inflate_init(&inflater);
 
-  if(rv != 0) {
+  if (rv != 0) {
     goto inflate_init_fail;
   }
 
   rv = deflate_inflate(&deflater, &inflater, &bufs, nva1, ARRLEN(nva1));
 
-  if(rv != 0) {
+  if (rv != 0) {
     goto deflate_hd_fail;
   }
 
   rv = deflate_inflate(&deflater, &inflater, &bufs, nva2, ARRLEN(nva2));
 
-  if(rv != 0) {
+  if (rv != 0) {
     goto deflate_hd_fail;
   }
 
- deflate_hd_fail:
+deflate_hd_fail:
   nghttp2_hd_inflate_free(&inflater);
- inflate_init_fail:
+inflate_init_fail:
   nghttp2_hd_deflate_free(&deflater);
- deflate_init_fail:
+deflate_init_fail:
   nghttp2_bufs_free(&bufs);
 }
 
-void test_nghttp2_hd(void)
-{
-  TEST_FAILMALLOC_RUN(run_nghttp2_hd);
-}
+void test_nghttp2_hd(void) { TEST_FAILMALLOC_RUN(run_nghttp2_hd); }

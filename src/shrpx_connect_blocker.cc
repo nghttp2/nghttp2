@@ -30,50 +30,39 @@ namespace {
 const int INITIAL_SLEEP = 2;
 } // namespace
 
-ConnectBlocker::ConnectBlocker()
-  : timerev_(nullptr),
-    sleep_(INITIAL_SLEEP)
-{}
+ConnectBlocker::ConnectBlocker() : timerev_(nullptr), sleep_(INITIAL_SLEEP) {}
 
-ConnectBlocker::~ConnectBlocker()
-{
-  if(timerev_) {
+ConnectBlocker::~ConnectBlocker() {
+  if (timerev_) {
     event_free(timerev_);
   }
 }
 
 namespace {
-void connect_blocker_cb(evutil_socket_t sig, short events, void *arg)
-{
-  if(LOG_ENABLED(INFO)) {
+void connect_blocker_cb(evutil_socket_t sig, short events, void *arg) {
+  if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "unblock downstream connection";
   }
 }
 } // namespace
 
-int ConnectBlocker::init(event_base *evbase)
-{
+int ConnectBlocker::init(event_base *evbase) {
   timerev_ = evtimer_new(evbase, connect_blocker_cb, this);
 
-  if(timerev_ == nullptr) {
+  if (timerev_ == nullptr) {
     return -1;
   }
 
   return 0;
 }
 
-bool ConnectBlocker::blocked() const
-{
+bool ConnectBlocker::blocked() const {
   return evtimer_pending(timerev_, nullptr);
 }
 
-void ConnectBlocker::on_success()
-{
-  sleep_ = INITIAL_SLEEP;
-}
+void ConnectBlocker::on_success() { sleep_ = INITIAL_SLEEP; }
 
-void ConnectBlocker::on_failure()
-{
+void ConnectBlocker::on_failure() {
   int rv;
 
   sleep_ = std::min(128, sleep_ * 2);
@@ -84,7 +73,7 @@ void ConnectBlocker::on_failure()
 
   rv = evtimer_add(timerev_, &t);
 
-  if(rv == -1) {
+  if (rv == -1) {
     LOG(ERROR) << "evtimer_add for ConnectBlocker timerev_ failed";
   }
 }

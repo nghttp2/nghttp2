@@ -1150,3 +1150,7 @@ to hand over that patch/code to us.  We will credit you for your
 changes as far as possible, to give credit but also to keep a trace
 back to who made what changes.  Please always provide us with your
 full real name when contributing!
+
+See `Contribution Guidelines
+<https://nghttp2.org/documentation/contribute.html>`_ for more
+details.

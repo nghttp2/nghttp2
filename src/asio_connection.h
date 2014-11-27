@@ -56,81 +56,62 @@ namespace asio_http2 {
 namespace server {
 
 /// Represents a single connection from a client.
-template<typename socket_type>
-class connection
-  : public std::enable_shared_from_this<connection<socket_type>>,
-    private boost::noncopyable
-{
+template <typename socket_type>
+class connection : public std::enable_shared_from_this<connection<socket_type>>,
+                   private boost::noncopyable {
 public:
   /// Construct a connection with the given io_service.
-  template<typename... SocketArgs>
-  explicit connection(request_cb cb,
-                      boost::asio::io_service& task_io_service,
-                      SocketArgs&&... args)
-    : socket_(std::forward<SocketArgs>(args)...),
-      request_cb_(std::move(cb)),
-      task_io_service_(task_io_service),
-      writing_(false)
-  {}
+  template <typename... SocketArgs>
+  explicit connection(request_cb cb, boost::asio::io_service &task_io_service,
+                      SocketArgs &&... args)
+      : socket_(std::forward<SocketArgs>(args)...), request_cb_(std::move(cb)),
+        task_io_service_(task_io_service), writing_(false) {}
 
   /// Start the first asynchronous operation for the connection.
-  void start()
-  {
-    handler_ = std::make_shared<http2_handler>
-      (socket_.get_io_service(),
-       task_io_service_,
-       [this]()
-       {
-         do_write();
-       },
-       request_cb_);
-    if(handler_->start() != 0) {
+  void start() {
+    handler_ = std::make_shared<http2_handler>(
+        socket_.get_io_service(), task_io_service_, [this]() { do_write(); },
+        request_cb_);
+    if (handler_->start() != 0) {
       return;
     }
     do_read();
   }
 
-  socket_type& socket()
-  {
-    return socket_;
-  }
+  socket_type &socket() { return socket_; }
 
-  void do_read()
-  {
+  void do_read() {
     auto self = this->shared_from_this();
 
-    socket_.async_read_some
-      (boost::asio::buffer(buffer_),
-       [this, self](const boost::system::error_code& e,
-                    std::size_t bytes_transferred)
-       {
-         if (!e) {
-           if(handler_->on_read(buffer_, bytes_transferred) != 0) {
-             return;
-           }
+    socket_.async_read_some(boost::asio::buffer(buffer_),
+                            [this, self](const boost::system::error_code &e,
+                                         std::size_t bytes_transferred) {
+      if (!e) {
+        if (handler_->on_read(buffer_, bytes_transferred) != 0) {
+          return;
+        }
 
-           do_write();
+        do_write();
 
-           if(!writing_ && handler_->should_stop()) {
-             return;
-           }
+        if (!writing_ && handler_->should_stop()) {
+          return;
+        }
 
-           do_read();
-         }
+        do_read();
+      }
 
-         // If an error occurs then no new asynchronous operations are
-         // started. This means that all shared_ptr references to the
-         // connection object will disappear and the object will be
-         // destroyed automatically after this handler returns. The
-         // connection class's destructor closes the socket.
-       });
+      // If an error occurs then no new asynchronous operations are
+      // started. This means that all shared_ptr references to the
+      // connection object will disappear and the object will be
+      // destroyed automatically after this handler returns. The
+      // connection class's destructor closes the socket.
+    });
   }
 
-  void do_write()
-  {
+  void do_write() {
     auto self = this->shared_from_this();
 
-    if(writing_) {
+    if (writing_) {
       return;
     }
 
@@ -139,27 +120,25 @@ public:
 
     rv = handler_->on_write(outbuf_, nwrite);
 
-    if(rv != 0) {
+    if (rv != 0) {
       return;
     }
 
-    if(nwrite == 0) {
+    if (nwrite == 0) {
       return;
     }
 
     writing_ = true;
 
-    boost::asio::async_write
-      (socket_, boost::asio::buffer(outbuf_, nwrite),
-       [this, self](const boost::system::error_code& e,
-                    std::size_t)
-       {
-         if(!e) {
-           writing_ = false;
+    boost::asio::async_write(
+        socket_, boost::asio::buffer(outbuf_, nwrite),
+        [this, self](const boost::system::error_code &e, std::size_t) {
+          if (!e) {
+            writing_ = false;
 
-           do_write();
-         }
-       });
+            do_write();
+          }
+        });
 
     // No new asynchronous operations are started. This means that all
     // shared_ptr references to the connection object will disappear and
@@ -172,7 +151,7 @@ private:
 
   request_cb request_cb_;
 
-  boost::asio::io_service& task_io_service_;
+  boost::asio::io_service &task_io_service_;
 
   std::shared_ptr<http2_handler> handler_;
 

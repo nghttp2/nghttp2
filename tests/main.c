@@ -23,7 +23,7 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 #ifdef HAVE_CONFIG_H
-#  include <config.h>
+#include <config.h>
 #endif /* HAVE_CONFIG_H */
 
 #include <stdio.h>
@@ -43,37 +43,29 @@
 
 extern int nghttp2_enable_strict_first_settings_check;
 
-static int init_suite1(void)
-{
-  return 0;
-}
+static int init_suite1(void) { return 0; }
 
-static int clean_suite1(void)
-{
-  return 0;
-}
+static int clean_suite1(void) { return 0; }
 
+int main(int argc _U_, char *argv[] _U_) {
+  CU_pSuite pSuite = NULL;
+  unsigned int num_tests_failed;
 
-int main(int argc _U_, char* argv[] _U_)
-{
-   CU_pSuite pSuite = NULL;
-   unsigned int num_tests_failed;
+  nghttp2_enable_strict_first_settings_check = 0;
 
-   nghttp2_enable_strict_first_settings_check = 0;
+  /* initialize the CUnit test registry */
+  if (CUE_SUCCESS != CU_initialize_registry())
+    return CU_get_error();
 
-   /* initialize the CUnit test registry */
-   if (CUE_SUCCESS != CU_initialize_registry())
-      return CU_get_error();
+  /* add a suite to the registry */
+  pSuite = CU_add_suite("libnghttp2_TestSuite", init_suite1, clean_suite1);
+  if (NULL == pSuite) {
+    CU_cleanup_registry();
+    return CU_get_error();
+  }
 
-   /* add a suite to the registry */
-   pSuite = CU_add_suite("libnghttp2_TestSuite", init_suite1, clean_suite1);
-   if (NULL == pSuite) {
-      CU_cleanup_registry();
-      return CU_get_error();
-   }
-
-   /* add the tests to the suite */
-   if(!CU_add_test(pSuite, "pq", test_nghttp2_pq) ||
+  /* add the tests to the suite */
+  if (!CU_add_test(pSuite, "pq", test_nghttp2_pq) ||
       !CU_add_test(pSuite, "pq_update", test_nghttp2_pq_update) ||
       !CU_add_test(pSuite, "map", test_nghttp2_map) ||
       !CU_add_test(pSuite, "map_functional", test_nghttp2_map_functional) ||
@@ -85,8 +77,7 @@ int main(int argc _U_, char* argv[] _U_)
                    test_nghttp2_session_recv_invalid_stream_id) ||
       !CU_add_test(pSuite, "session_recv_invalid_frame",
                    test_nghttp2_session_recv_invalid_frame) ||
-      !CU_add_test(pSuite, "session_recv_eof",
-                   test_nghttp2_session_recv_eof) ||
+      !CU_add_test(pSuite, "session_recv_eof", test_nghttp2_session_recv_eof) ||
       !CU_add_test(pSuite, "session_recv_data",
                    test_nghttp2_session_recv_data) ||
       !CU_add_test(pSuite, "session_recv_continuation",
@@ -149,8 +140,9 @@ int main(int argc _U_, char* argv[] _U_)
       !CU_add_test(pSuite, "session_upgrade", test_nghttp2_session_upgrade) ||
       !CU_add_test(pSuite, "session_reprioritize_stream",
                    test_nghttp2_session_reprioritize_stream) ||
-      !CU_add_test(pSuite, "session_reprioritize_stream_with_closed_stream_limit",
-                   test_nghttp2_session_reprioritize_stream_with_closed_stream_limit) ||
+      !CU_add_test(
+          pSuite, "session_reprioritize_stream_with_closed_stream_limit",
+          test_nghttp2_session_reprioritize_stream_with_closed_stream_limit) ||
       !CU_add_test(pSuite, "submit_data", test_nghttp2_submit_data) ||
       !CU_add_test(pSuite, "submit_data_read_length_too_large",
                    test_nghttp2_submit_data_read_length_too_large) ||
@@ -239,8 +231,9 @@ int main(int argc _U_, char* argv[] _U_)
                    test_nghttp2_session_stream_dep_add_subtree) ||
       !CU_add_test(pSuite, "session_stream_dep_remove_subtree",
                    test_nghttp2_session_stream_dep_remove_subtree) ||
-      !CU_add_test(pSuite, "session_stream_dep_all_your_stream_are_belong_to_us",
-                   test_nghttp2_session_stream_dep_all_your_stream_are_belong_to_us) ||
+      !CU_add_test(
+          pSuite, "session_stream_dep_all_your_stream_are_belong_to_us",
+          test_nghttp2_session_stream_dep_all_your_stream_are_belong_to_us) ||
       !CU_add_test(pSuite, "session_stream_attach_data",
                    test_nghttp2_session_stream_attach_data) ||
       !CU_add_test(pSuite, "session_stream_attach_data_subtree",
@@ -310,11 +303,9 @@ int main(int argc _U_, char* argv[] _U_)
       !CU_add_test(pSuite, "hd_deflate_inflate",
                    test_nghttp2_hd_deflate_inflate) ||
       !CU_add_test(pSuite, "hd_no_index", test_nghttp2_hd_no_index) ||
-      !CU_add_test(pSuite, "hd_deflate_bound",
-                   test_nghttp2_hd_deflate_bound) ||
+      !CU_add_test(pSuite, "hd_deflate_bound", test_nghttp2_hd_deflate_bound) ||
       !CU_add_test(pSuite, "hd_public_api", test_nghttp2_hd_public_api) ||
-      !CU_add_test(pSuite, "hd_decode_length",
-                   test_nghttp2_hd_decode_length) ||
+      !CU_add_test(pSuite, "hd_decode_length", test_nghttp2_hd_decode_length) ||
       !CU_add_test(pSuite, "adjust_local_window_size",
                    test_nghttp2_adjust_local_window_size) ||
       !CU_add_test(pSuite, "check_header_name",
@@ -329,21 +320,20 @@ int main(int argc _U_, char* argv[] _U_)
       !CU_add_test(pSuite, "bufs_advance", test_nghttp2_bufs_advance) ||
       !CU_add_test(pSuite, "bufs_next_present",
                    test_nghttp2_bufs_next_present) ||
-      !CU_add_test(pSuite, "bufs_realloc", test_nghttp2_bufs_realloc)
-      ) {
-     CU_cleanup_registry();
-     return CU_get_error();
-   }
+      !CU_add_test(pSuite, "bufs_realloc", test_nghttp2_bufs_realloc)) {
+    CU_cleanup_registry();
+    return CU_get_error();
+  }
 
-   /* Run all tests using the CUnit Basic interface */
-   CU_basic_set_mode(CU_BRM_VERBOSE);
-   CU_basic_run_tests();
-   num_tests_failed = CU_get_number_of_tests_failed();
-   CU_cleanup_registry();
-   if(CU_get_error() == CUE_SUCCESS) {
-     return num_tests_failed;
-   } else {
-     printf("CUnit Error: %s\n", CU_get_error_msg());
-     return CU_get_error();
-   }
+  /* Run all tests using the CUnit Basic interface */
+  CU_basic_set_mode(CU_BRM_VERBOSE);
+  CU_basic_run_tests();
+  num_tests_failed = CU_get_number_of_tests_failed();
+  CU_cleanup_registry();
+  if (CU_get_error() == CUE_SUCCESS) {
+    return num_tests_failed;
+  } else {
+    printf("CUnit Error: %s\n", CU_get_error_msg());
+    return CU_get_error();
+  }
 }

@@ -27,26 +27,22 @@
 
 namespace shrpx {
 
-DownstreamConnectionPool::DownstreamConnectionPool()
-{}
+DownstreamConnectionPool::DownstreamConnectionPool() {}
 
-DownstreamConnectionPool::~DownstreamConnectionPool()
-{
-  for(auto dconn : pool_) {
+DownstreamConnectionPool::~DownstreamConnectionPool() {
+  for (auto dconn : pool_) {
     delete dconn;
   }
 }
 
-void DownstreamConnectionPool::add_downstream_connection
-(std::unique_ptr<DownstreamConnection> dconn)
-{
+void DownstreamConnectionPool::add_downstream_connection(
+    std::unique_ptr<DownstreamConnection> dconn) {
   pool_.insert(dconn.release());
 }
 
 std::unique_ptr<DownstreamConnection>
-DownstreamConnectionPool::pop_downstream_connection()
-{
-  if(pool_.empty()) {
+DownstreamConnectionPool::pop_downstream_connection() {
+  if (pool_.empty()) {
     return nullptr;
   }
 
@@ -55,9 +51,8 @@ DownstreamConnectionPool::pop_downstream_connection()
   return dconn;
 }
 
-void DownstreamConnectionPool::remove_downstream_connection
-(DownstreamConnection *dconn)
-{
+void DownstreamConnectionPool::remove_downstream_connection(
+    DownstreamConnection *dconn) {
   pool_.erase(dconn);
   delete dconn;
 }

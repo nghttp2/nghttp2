@@ -45,55 +45,49 @@ class Downstream;
 #define LOG(SEVERITY) Log(SEVERITY, __FILE__, __LINE__)
 
 // Listener log
-#define LLOG(SEVERITY, LISTEN)                                       \
-  (Log(SEVERITY, __FILE__, __LINE__) << "[LISTEN:" << LISTEN         \
-   << "] ")
+#define LLOG(SEVERITY, LISTEN)                                                 \
+  (Log(SEVERITY, __FILE__, __LINE__) << "[LISTEN:" << LISTEN << "] ")
 
 // ThreadEventReceiver log
-#define TLOG(SEVERITY, THREAD_RECV)                                     \
-  (Log(SEVERITY, __FILE__, __LINE__) << "[THREAD_RECV:" << THREAD_RECV  \
-   << "] ")
+#define TLOG(SEVERITY, THREAD_RECV)                                            \
+  (Log(SEVERITY, __FILE__, __LINE__) << "[THREAD_RECV:" << THREAD_RECV << "]"  \
+                                                                          " ")
 
 // ClientHandler log
-#define CLOG(SEVERITY, CLIENT_HANDLER)                                  \
-  (Log(SEVERITY, __FILE__, __LINE__) << "[CLIENT_HANDLER:" << CLIENT_HANDLER \
-   << "] ")
+#define CLOG(SEVERITY, CLIENT_HANDLER)                                         \
+  (Log(SEVERITY, __FILE__, __LINE__) << "[CLIENT_HANDLER:" << CLIENT_HANDLER   \
+                                     << "] ")
 
 // Upstream log
-#define ULOG(SEVERITY, UPSTREAM)                                        \
+#define ULOG(SEVERITY, UPSTREAM)                                               \
   (Log(SEVERITY, __FILE__, __LINE__) << "[UPSTREAM:" << UPSTREAM << "] ")
 
 // Downstream log
-#define DLOG(SEVERITY, DOWNSTREAM)                                      \
+#define DLOG(SEVERITY, DOWNSTREAM)                                             \
   (Log(SEVERITY, __FILE__, __LINE__) << "[DOWNSTREAM:" << DOWNSTREAM << "] ")
 
 // Downstream connection log
-#define DCLOG(SEVERITY, DCONN)                                          \
+#define DCLOG(SEVERITY, DCONN)                                                 \
   (Log(SEVERITY, __FILE__, __LINE__) << "[DCONN:" << DCONN << "] ")
 
 // Downstream HTTP2 session log
-#define SSLOG(SEVERITY, HTTP2)                                           \
+#define SSLOG(SEVERITY, HTTP2)                                                 \
   (Log(SEVERITY, __FILE__, __LINE__) << "[DHTTP2:" << HTTP2 << "] ")
 
-enum SeverityLevel {
-  INFO, NOTICE, WARN, ERROR, FATAL
-};
+enum SeverityLevel { INFO, NOTICE, WARN, ERROR, FATAL };
 
 class Log {
 public:
   Log(int severity, const char *filename, int linenum);
   ~Log();
-  template<typename Type> Log& operator<<(Type s)
-  {
+  template <typename Type> Log &operator<<(Type s) {
     stream_ << s;
     return *this;
   }
   static void set_severity_level(int severity);
   static int set_severity_level_by_name(const char *name);
-  static bool log_enabled(int severity)
-  {
-    return severity >= severity_thres_;
-  }
+  static bool log_enabled(int severity) { return severity >= severity_thres_; }
+
 private:
   std::stringstream stream_;
   const char *filename_;
@@ -143,7 +137,7 @@ struct LogSpec {
   pid_t pid;
 };
 
-void upstream_accesslog(const std::vector<LogFragment>& lf, LogSpec *lgsp);
+void upstream_accesslog(const std::vector<LogFragment> &lf, LogSpec *lgsp);
 
 int reopen_log_files();
 

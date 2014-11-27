@@ -29,52 +29,44 @@
 #include <CUnit/CUnit.h>
 #include <nghttp2/nghttp2.h>
 
-static void http2(void)
-{
-  const unsigned char p[] = {
-    8, 'h', 't', 't', 'p', '/', '1', '.', '1',
-    5, 'h', '2', '-', '1', '4',
-    6, 's', 'p', 'd', 'y', '/', '3'
-  };
+static void http2(void) {
+  const unsigned char p[] = {8,   'h', 't', 't', 'p', '/', '1', '.',
+                             '1', 5,   'h', '2', '-', '1', '4', 6,
+                             's', 'p', 'd', 'y', '/', '3'};
   unsigned char outlen;
-  unsigned char* out;
+  unsigned char *out;
   CU_ASSERT(1 == nghttp2_select_next_protocol(&out, &outlen, p, sizeof(p)));
   CU_ASSERT(NGHTTP2_PROTO_VERSION_ID_LEN == outlen);
   CU_ASSERT(memcmp(NGHTTP2_PROTO_VERSION_ID, out, outlen) == 0);
 }
 
-static void http11(void)
-{
+static void http11(void) {
   const unsigned char spdy[] = {
-    6, 's', 'p', 'd', 'y', '/', '4',
-    8, 's', 'p', 'd', 'y', '/', '2', '.', '1',
-    8, 'h', 't', 't', 'p', '/', '1', '.', '1',
+      6,   's', 'p', 'd', 'y', '/', '4', 8,   's', 'p', 'd', 'y', '/',
+      '2', '.', '1', 8,   'h', 't', 't', 'p', '/', '1', '.', '1',
   };
   unsigned char outlen;
-  unsigned char* out;
-  CU_ASSERT(0 == nghttp2_select_next_protocol(&out, &outlen,
-                                              spdy, sizeof(spdy)));
+  unsigned char *out;
+  CU_ASSERT(0 ==
+            nghttp2_select_next_protocol(&out, &outlen, spdy, sizeof(spdy)));
   CU_ASSERT(8 == outlen);
   CU_ASSERT(memcmp("http/1.1", out, outlen) == 0);
 }
 
-static void no_overlap(void)
-{
+static void no_overlap(void) {
   const unsigned char spdy[] = {
-    6, 's', 'p', 'd', 'y', '/', '4',
-    8, 's', 'p', 'd', 'y', '/', '2', '.', '1',
-    8, 'h', 't', 't', 'p', '/', '1', '.', '0',
+      6,   's', 'p', 'd', 'y', '/', '4', 8,   's', 'p', 'd', 'y', '/',
+      '2', '.', '1', 8,   'h', 't', 't', 'p', '/', '1', '.', '0',
   };
   unsigned char outlen = 0;
-  unsigned char* out = NULL;
-  CU_ASSERT(-1 == nghttp2_select_next_protocol(&out, &outlen,
-                                               spdy, sizeof(spdy)));
+  unsigned char *out = NULL;
+  CU_ASSERT(-1 ==
+            nghttp2_select_next_protocol(&out, &outlen, spdy, sizeof(spdy)));
   CU_ASSERT(0 == outlen);
   CU_ASSERT(NULL == out);
 }
 
-void test_nghttp2_npn(void)
-{
+void test_nghttp2_npn(void) {
   http2();
   http11();
   no_overlap();

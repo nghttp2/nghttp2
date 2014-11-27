@@ -45,6 +45,7 @@ public:
   // Call this function if connect operation failed.  This will start
   // timer and blocks connection establishment for sleep_ seconds.
   void on_failure();
+
 private:
   event *timerev_;
   int sleep_;

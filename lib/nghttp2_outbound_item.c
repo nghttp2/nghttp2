@@ -26,17 +26,16 @@
 
 #include <assert.h>
 
-void nghttp2_outbound_item_free(nghttp2_outbound_item *item)
-{
+void nghttp2_outbound_item_free(nghttp2_outbound_item *item) {
   nghttp2_frame *frame;
 
-  if(item == NULL) {
+  if (item == NULL) {
     return;
   }
 
   frame = &item->frame;
 
-  switch(frame->hd.type) {
+  switch (frame->hd.type) {
   case NGHTTP2_DATA:
     nghttp2_frame_data_free(&frame->data);
     break;

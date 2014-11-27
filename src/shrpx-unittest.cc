@@ -23,7 +23,7 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 #ifdef HAVE_CONFIG_H
-#  include <config.h>
+#include <config.h>
 #endif /* HAVE_CONFIG_H */
 
 #include <stdio.h>
@@ -39,39 +39,31 @@
 #include "util_test.h"
 #include "nghttp2_gzip_test.h"
 
-static int init_suite1(void)
-{
-  return 0;
-}
+static int init_suite1(void) { return 0; }
 
-static int clean_suite1(void)
-{
-  return 0;
-}
+static int clean_suite1(void) { return 0; }
 
+int main(int argc, char *argv[]) {
+  CU_pSuite pSuite = NULL;
+  unsigned int num_tests_failed;
 
-int main(int argc, char* argv[])
-{
-   CU_pSuite pSuite = NULL;
-   unsigned int num_tests_failed;
+  OpenSSL_add_all_algorithms();
+  SSL_load_error_strings();
+  SSL_library_init();
 
-   OpenSSL_add_all_algorithms();
-   SSL_load_error_strings();
-   SSL_library_init();
+  // initialize the CUnit test registry
+  if (CUE_SUCCESS != CU_initialize_registry())
+    return CU_get_error();
 
-   // initialize the CUnit test registry
-   if (CUE_SUCCESS != CU_initialize_registry())
-      return CU_get_error();
+  // add a suite to the registry
+  pSuite = CU_add_suite("shrpx_TestSuite", init_suite1, clean_suite1);
+  if (NULL == pSuite) {
+    CU_cleanup_registry();
+    return CU_get_error();
+  }
 
-   // add a suite to the registry
-   pSuite = CU_add_suite("shrpx_TestSuite", init_suite1, clean_suite1);
-   if (NULL == pSuite) {
-      CU_cleanup_registry();
-      return CU_get_error();
-   }
-
-   // add the tests to the suite
-   if(!CU_add_test(pSuite, "ssl_create_lookup_tree",
+  // add the tests to the suite
+  if (!CU_add_test(pSuite, "ssl_create_lookup_tree",
                    shrpx::test_shrpx_ssl_create_lookup_tree) ||
       !CU_add_test(pSuite, "ssl_cert_lookup_tree_add_cert_from_file",
                    shrpx::test_shrpx_ssl_cert_lookup_tree_add_cert_from_file) ||
@@ -80,16 +72,13 @@ int main(int argc, char* argv[])
                    shrpx::test_http2_check_http2_headers) ||
       !CU_add_test(pSuite, "http2_get_unique_header",
                    shrpx::test_http2_get_unique_header) ||
-      !CU_add_test(pSuite, "http2_get_header",
-                   shrpx::test_http2_get_header) ||
-      !CU_add_test(pSuite, "http2_value_lws",
-                   shrpx::test_http2_value_lws) ||
+      !CU_add_test(pSuite, "http2_get_header", shrpx::test_http2_get_header) ||
+      !CU_add_test(pSuite, "http2_value_lws", shrpx::test_http2_value_lws) ||
       !CU_add_test(pSuite, "http2_copy_norm_headers_to_nva",
                    shrpx::test_http2_copy_norm_headers_to_nva) ||
       !CU_add_test(pSuite, "http2_build_http1_headers_from_norm_headers",
                    shrpx::test_http2_build_http1_headers_from_norm_headers) ||
-      !CU_add_test(pSuite, "http2_lws",
-                   shrpx::test_http2_lws) ||
+      !CU_add_test(pSuite, "http2_lws", shrpx::test_http2_lws) ||
       !CU_add_test(pSuite, "http2_rewrite_location_uri",
                    shrpx::test_http2_rewrite_location_uri) ||
       !CU_add_test(pSuite, "http2_parse_http_status_code",
@@ -106,8 +95,9 @@ int main(int argc, char* argv[])
                    shrpx::test_downstream_crumble_request_cookie) ||
       !CU_add_test(pSuite, "downstream_assemble_request_cookie",
                    shrpx::test_downstream_assemble_request_cookie) ||
-      !CU_add_test(pSuite, "downstream_rewrite_norm_location_response_header",
-                   shrpx::test_downstream_rewrite_norm_location_response_header) ||
+      !CU_add_test(
+          pSuite, "downstream_rewrite_norm_location_response_header",
+          shrpx::test_downstream_rewrite_norm_location_response_header) ||
       !CU_add_test(pSuite, "config_parse_config_str_list",
                    shrpx::test_shrpx_config_parse_config_str_list) ||
       !CU_add_test(pSuite, "config_parse_header",
@@ -118,8 +108,7 @@ int main(int argc, char* argv[])
       !CU_add_test(pSuite, "util_strieq", shrpx::test_util_strieq) ||
       !CU_add_test(pSuite, "util_inp_strlower",
                    shrpx::test_util_inp_strlower) ||
-      !CU_add_test(pSuite, "util_to_base64",
-                   shrpx::test_util_to_base64) ||
+      !CU_add_test(pSuite, "util_to_base64", shrpx::test_util_to_base64) ||
       !CU_add_test(pSuite, "util_percent_encode_token",
                    shrpx::test_util_percent_encode_token) ||
       !CU_add_test(pSuite, "util_quote_string",
@@ -127,19 +116,19 @@ int main(int argc, char* argv[])
       !CU_add_test(pSuite, "util_utox", shrpx::test_util_utox) ||
       !CU_add_test(pSuite, "util_http_date", shrpx::test_util_http_date) ||
       !CU_add_test(pSuite, "gzip_inflate", test_nghttp2_gzip_inflate)) {
-     CU_cleanup_registry();
-     return CU_get_error();
-   }
+    CU_cleanup_registry();
+    return CU_get_error();
+  }
 
-   // Run all tests using the CUnit Basic interface
-   CU_basic_set_mode(CU_BRM_VERBOSE);
-   CU_basic_run_tests();
-   num_tests_failed = CU_get_number_of_tests_failed();
-   CU_cleanup_registry();
-   if(CU_get_error() == CUE_SUCCESS) {
-     return num_tests_failed;
-   } else {
-     printf("CUnit Error: %s\n", CU_get_error_msg());
-     return CU_get_error();
-   }
+  // Run all tests using the CUnit Basic interface
+  CU_basic_set_mode(CU_BRM_VERBOSE);
+  CU_basic_run_tests();
+  num_tests_failed = CU_get_number_of_tests_failed();
+  CU_cleanup_registry();
+  if (CU_get_error() == CUE_SUCCESS) {
+    return num_tests_failed;
+  } else {
+    printf("CUnit Error: %s\n", CU_get_error_msg());
+    return CU_get_error();
+  }
 }

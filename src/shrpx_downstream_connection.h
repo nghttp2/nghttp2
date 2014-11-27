@@ -61,9 +61,10 @@ public:
   virtual int on_priority_change(int32_t pri) = 0;
 
   void set_client_handler(ClientHandler *client_handler);
-  ClientHandler* get_client_handler();
-  Downstream* get_downstream();
-  DownstreamConnectionPool* get_dconn_pool() const;
+  ClientHandler *get_client_handler();
+  Downstream *get_downstream();
+  DownstreamConnectionPool *get_dconn_pool() const;
+
 protected:
   DownstreamConnectionPool *dconn_pool_;
   ClientHandler *client_handler_;

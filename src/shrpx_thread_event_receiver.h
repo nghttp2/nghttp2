@@ -66,6 +66,7 @@ public:
                       ConnectBlocker *http1_connect_blocker);
   ~ThreadEventReceiver();
   void on_read(bufferevent *bev);
+
 private:
   DownstreamConnectionPool dconn_pool_;
   event_base *evbase_;

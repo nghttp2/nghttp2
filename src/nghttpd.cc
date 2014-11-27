@@ -48,22 +48,21 @@
 namespace nghttp2 {
 
 namespace {
-int parse_push_config(Config& config, const char *optarg)
-{
+int parse_push_config(Config &config, const char *optarg) {
   const char *eq = strchr(optarg, '=');
-  if(eq == NULL) {
+  if (eq == NULL) {
     return -1;
   }
   auto paths = std::vector<std::string>();
   auto optarg_end = optarg + strlen(optarg);
   const char *i = eq + 1;
-  for(;;) {
+  for (;;) {
     const char *j = strchr(i, ',');
-    if(j == NULL) {
+    if (j == NULL) {
       j = optarg_end;
     }
     paths.emplace_back(i, j);
-    if(j == optarg_end) {
+    if (j == optarg_end) {
       break;
     }
     i = j;
@@ -75,15 +74,13 @@ int parse_push_config(Config& config, const char *optarg)
 } // namespace
 
 namespace {
-void print_version(std::ostream& out)
-{
+void print_version(std::ostream &out) {
   out << "nghttpd nghttp2/" NGHTTP2_VERSION << std::endl;
 }
 } // namespace
 
 namespace {
-void print_usage(std::ostream& out)
-{
+void print_usage(std::ostream &out) {
   out << "Usage: nghttpd [OPTION]... <PORT> <PRIVATE_KEY> <CERT>\n"
       << "  or:  nghttpd --no-tls [OPTION]... <PORT>\n"
       << "HTTP/2 experimental server" << std::endl;
@@ -91,8 +88,7 @@ void print_usage(std::ostream& out)
 } // namespace
 
 namespace {
-void print_help(std::ostream& out)
-{
+void print_help(std::ostream &out) {
   print_usage(out);
   out << R"(
   <PORT>             Specify listening port number.
@@ -142,43 +138,40 @@ Options:
                      received,   rather  than   complete  request   is
                      received.
   --version          Display version information and exit.
-  -h, --help         Display this help and exit.)"
-      << std::endl;
+  -h, --help         Display this help and exit.)" << std::endl;
 }
 } // namespace
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   Config config;
   bool color = false;
-  while(1) {
+  while (1) {
     static int flag = 0;
     static option long_options[] = {
-      {"daemon", no_argument, nullptr, 'D'},
-      {"htdocs", required_argument, nullptr, 'd'},
-      {"help", no_argument, nullptr, 'h'},
-      {"verbose", no_argument, nullptr, 'v'},
-      {"verify-client", no_argument, nullptr, 'V'},
-      {"header-table-size", required_argument, nullptr, 'c'},
-      {"push", required_argument, nullptr, 'p'},
-      {"padding", required_argument, nullptr, 'b'},
-      {"workers", required_argument, nullptr, 'n'},
-      {"error-gzip", no_argument, nullptr, 'e'},
-      {"no-tls", no_argument, &flag, 1},
-      {"color", no_argument, &flag, 2},
-      {"version", no_argument, &flag, 3},
-      {"dh-param-file", required_argument, &flag, 4},
-      {"early-response", no_argument, &flag, 5},
-      {nullptr, 0, nullptr, 0}
-    };
+        {"daemon", no_argument, nullptr, 'D'},
+        {"htdocs", required_argument, nullptr, 'd'},
+        {"help", no_argument, nullptr, 'h'},
+        {"verbose", no_argument, nullptr, 'v'},
+        {"verify-client", no_argument, nullptr, 'V'},
+        {"header-table-size", required_argument, nullptr, 'c'},
+        {"push", required_argument, nullptr, 'p'},
+        {"padding", required_argument, nullptr, 'b'},
+        {"workers", required_argument, nullptr, 'n'},
+        {"error-gzip", no_argument, nullptr, 'e'},
+        {"no-tls", no_argument, &flag, 1},
+        {"color", no_argument, &flag, 2},
+        {"version", no_argument, &flag, 3},
+        {"dh-param-file", required_argument, &flag, 4},
+        {"early-response", no_argument, &flag, 5},
+        {nullptr, 0, nullptr, 0}};
     int option_index = 0;
-    int c = getopt_long(argc, argv, "DVb:c:d:ehn:p:v", long_options,
-                        &option_index);
+    int c =
+        getopt_long(argc, argv, "DVb:c:d:ehn:p:v", long_options, &option_index);
     char *end;
-    if(c == -1) {
+    if (c == -1) {
       break;
     }
-    switch(c) {
+    switch (c) {
     case 'D':
       config.daemon = true;
       break;
@@ -196,12 +189,12 @@ int main(int argc, char **argv)
       break;
     case 'n':
 #ifdef NOTHREADS
-	  std::cerr << "-n: WARNING: Threading disabled at build time, " <<
-		  "no threads created." << std::endl;
+      std::cerr << "-n: WARNING: Threading disabled at build time, "
+                << "no threads created." << std::endl;
 #else
       errno = 0;
       config.num_worker = strtoul(optarg, &end, 10);
-      if(errno == ERANGE || *end != '\0' || config.num_worker == 0) {
+      if (errno == ERANGE || *end != '\0' || config.num_worker == 0) {
         std::cerr << "-n: Bad option value: " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
@@ -216,13 +209,13 @@ int main(int argc, char **argv)
     case 'c':
       errno = 0;
       config.header_table_size = strtol(optarg, &end, 10);
-      if(errno == ERANGE || *end != '\0') {
+      if (errno == ERANGE || *end != '\0') {
         std::cerr << "-c: Bad option value: " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
       break;
     case 'p':
-      if(parse_push_config(config, optarg) != 0) {
+      if (parse_push_config(config, optarg) != 0) {
         std::cerr << "-p: Bad option value: " << optarg << std::endl;
       }
       break;
@@ -230,7 +223,7 @@ int main(int argc, char **argv)
       util::show_candidates(argv[optind - 1], long_options);
       exit(EXIT_FAILURE);
     case 0:
-      switch(flag) {
+      switch (flag) {
       case 1:
         // no-tls option
         config.no_tls = true;
@@ -257,7 +250,7 @@ int main(int argc, char **argv)
       break;
     }
   }
-  if(argc - optind < (config.no_tls ? 1 : 3)) {
+  if (argc - optind < (config.no_tls ? 1 : 3)) {
     print_usage(std::cerr);
     std::cerr << "Too few arguments" << std::endl;
     exit(EXIT_FAILURE);
@@ -265,23 +258,23 @@ int main(int argc, char **argv)
 
   config.port = strtol(argv[optind++], nullptr, 10);
 
-  if(!config.no_tls) {
+  if (!config.no_tls) {
     config.private_key_file = argv[optind++];
     config.cert_file = argv[optind++];
   }
 
-  if(config.daemon) {
-    if(config.htdocs.empty()) {
+  if (config.daemon) {
+    if (config.htdocs.empty()) {
       print_usage(std::cerr);
       std::cerr << "-d option must be specified when -D is used." << std::endl;
       exit(EXIT_FAILURE);
     }
-    if(daemon(0, 0) == -1) {
+    if (daemon(0, 0) == -1) {
       perror("daemon");
       exit(EXIT_FAILURE);
     }
   }
-  if(config.htdocs.empty()) {
+  if (config.htdocs.empty()) {
     config.htdocs = "./";
   }
 
@@ -308,7 +301,4 @@ int main(int argc, char **argv)
 
 } // namespace nghttp2
 
-int main(int argc, char **argv)
-{
-  return nghttp2::main(argc, argv);
-}
+int main(int argc, char **argv) { return nghttp2::main(argc, argv); }

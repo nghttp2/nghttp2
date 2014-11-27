@@ -51,15 +51,15 @@ public:
   virtual int on_downstream_abort_request(Downstream *downstream,
                                           unsigned int status_code);
   int send();
-  virtual ClientHandler* get_client_handler() const;
+  virtual ClientHandler *get_client_handler() const;
   virtual bufferevent_data_cb get_downstream_readcb();
   virtual bufferevent_data_cb get_downstream_writecb();
   virtual bufferevent_event_cb get_downstream_eventcb();
-  Downstream* add_pending_downstream(int32_t stream_id, int32_t priority);
+  Downstream *add_pending_downstream(int32_t stream_id, int32_t priority);
   void remove_downstream(Downstream *downstream);
-  Downstream* find_downstream(int32_t stream_id);
+  Downstream *find_downstream(int32_t stream_id);
 
-  spdylay_session* get_http2_session();
+  spdylay_session *get_http2_session();
 
   int rst_stream(Downstream *downstream, int status_code);
   int error_reply(Downstream *downstream, unsigned int status_code);
@@ -69,8 +69,8 @@ public:
                           size_t consumed);
 
   virtual int on_downstream_header_complete(Downstream *downstream);
-  virtual int on_downstream_body(Downstream *downstream,
-                                 const uint8_t *data, size_t len, bool flush);
+  virtual int on_downstream_body(Downstream *downstream, const uint8_t *data,
+                                 size_t len, bool flush);
   virtual int on_downstream_body_complete(Downstream *downstream);
 
   virtual void on_handler_delete();
@@ -85,6 +85,7 @@ public:
   void initiate_downstream(std::unique_ptr<Downstream> downstream);
 
   nghttp2::util::EvbufferBuffer sendbuf;
+
 private:
   DownstreamQueue downstream_queue_;
   ClientHandler *handler_;

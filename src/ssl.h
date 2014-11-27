@@ -34,11 +34,11 @@ class LibsslGlobalLock {
 public:
   LibsslGlobalLock();
   ~LibsslGlobalLock();
-  LibsslGlobalLock(const LibsslGlobalLock&) = delete;
-  LibsslGlobalLock& operator=(const LibsslGlobalLock&) = delete;
+  LibsslGlobalLock(const LibsslGlobalLock &) = delete;
+  LibsslGlobalLock &operator=(const LibsslGlobalLock &) = delete;
 };
 
-extern const char* const DEFAULT_CIPHER_LIST;
+extern const char *const DEFAULT_CIPHER_LIST;
 
 } // namespace ssl
 

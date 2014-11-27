@@ -40,7 +40,7 @@ struct header {
   std::string value;
 };
 
-typedef std::function<void(const uint8_t*, std::size_t)> data_cb;
+typedef std::function<void(const uint8_t *, std::size_t)> data_cb;
 typedef std::function<void(void)> void_cb;
 
 // Callback function to generate response body.  The implementation of
@@ -53,8 +53,8 @@ typedef std::function<void(void)> void_cb;
 // callback until application calls response::resume().  This is
 // useful when there is no data to send at the moment but there will
 // be more to come in near future.
-typedef std::function<std::pair<ssize_t, bool>
-                      (uint8_t *buf, std::size_t len)> read_cb;
+typedef std::function<std::pair<ssize_t, bool>(uint8_t *buf, std::size_t len)>
+    read_cb;
 
 class channel_impl;
 
@@ -71,12 +71,13 @@ public:
   void post(void_cb cb);
 
   // Application must not call this directly.
-  channel_impl& impl();
+  channel_impl &impl();
+
 private:
   std::unique_ptr<channel_impl> impl_;
 };
 
-typedef std::function<void(channel&)> thread_cb;
+typedef std::function<void(channel &)> thread_cb;
 
 namespace server {
 
@@ -90,25 +91,25 @@ public:
 
   // Returns request headers.  The pusedo headers, which start with
   // colon (;), are exluced from this list.
-  const std::vector<header>& headers() const;
+  const std::vector<header> &headers() const;
 
   // Returns method (e.g., GET).
-  const std::string& method() const;
+  const std::string &method() const;
 
   // Returns scheme (e.g., https).
-  const std::string& scheme() const;
+  const std::string &scheme() const;
 
   // Returns authority (e.g., example.org).  This could be empty
   // string.  In this case, check host().
 
-  const std::string& authority() const;
+  const std::string &authority() const;
   // Returns host (e.g., example.org).  If host header field is not
   // present, this value is copied from authority().
 
-  const std::string& host() const;
+  const std::string &host() const;
 
   // Returns path (e.g., /index.html).
-  const std::string& path() const;
+  const std::string &path() const;
 
   // Sets callback when chunk of request body is received.
   void on_data(data_cb cb);
@@ -141,7 +142,8 @@ public:
   bool run_task(thread_cb start);
 
   // Application must not call this directly.
-  request_impl& impl();
+  request_impl &impl();
+
 private:
   std::unique_ptr<request_impl> impl_;
 };
@@ -173,15 +175,16 @@ public:
   bool started() const;
 
   // Application must not call this directly.
-  response_impl& impl();
+  response_impl &impl();
+
 private:
   std::unique_ptr<response_impl> impl_;
 };
 
 // This is so called request callback.  Called every time request is
 // received.
-typedef std::function<void(const std::shared_ptr<request>&,
-                           const std::shared_ptr<response>&)> request_cb;
+typedef std::function<void(const std::shared_ptr<request> &,
+                           const std::shared_ptr<response> &)> request_cb;
 
 class http2_impl;
 
@@ -192,8 +195,7 @@ public:
 
   // Starts listening connection on given address and port.  The
   // incoming requests are handled by given callback |cb|.
-  void listen(const std::string& address, uint16_t port,
-              request_cb cb);
+  void listen(const std::string &address, uint16_t port, request_cb cb);
 
   // Sets number of native threads to handle incoming HTTP request.
   // It defaults to 1.
@@ -212,6 +214,7 @@ public:
   // Sets the maximum length to which the queue of pending
   // connections.
   void backlog(int backlog);
+
 private:
   std::unique_ptr<http2_impl> impl_;
 };
@@ -220,7 +223,7 @@ private:
 
 // Convenient function to create function to read file denoted by
 // |path|.  This can be passed to response::end().
-read_cb file_reader(const std::string& path);
+read_cb file_reader(const std::string &path);
 
 // Like file_reader(const std::string&), but it takes opened file
 // descriptor.  The passed descriptor will be closed when returned
@@ -231,10 +234,10 @@ read_cb file_reader_from_fd(int fd);
 // vector.  Returns true if path is safe.  The |path| must start with
 // "/" otherwise returns false.  This function should be called after
 // percent-decode was performed.
-bool check_path(const std::string& path);
+bool check_path(const std::string &path);
 
 // Performs percent-decode against string |s|.
-std::string percent_decode(const std::string& s);
+std::string percent_decode(const std::string &s);
 
 // Returns HTTP date representation of current posix time |t|.
 std::string http_date(int64_t t);

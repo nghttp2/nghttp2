@@ -60,14 +60,12 @@ public:
   virtual int on_write();
 
   virtual void on_upstream_change(Upstream *upstream);
-  virtual int on_priority_change(int32_t pri)
-  {
-    return 0;
-  }
+  virtual int on_priority_change(int32_t pri) { return 0; }
 
-  bufferevent* get_bev();
+  bufferevent *get_bev();
 
   void reset_timeouts();
+
 private:
   bufferevent *bev_;
   IOControl ioctrl_;

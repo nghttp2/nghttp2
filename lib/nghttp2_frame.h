@@ -26,7 +26,7 @@
 #define NGHTTP2_FRAME_H
 
 #ifdef HAVE_CONFIG_H
-#  include <config.h>
+#include <config.h>
 #endif /* HAVE_CONFIG_H */
 
 #include <nghttp2/nghttp2.h>
@@ -49,7 +49,7 @@
 /* The one frame buffer length for tranmission.  We may use several of
    them to support CONTINUATION.  To account for Pad Length field, we
    allocate extra 1 byte, which saves extra large memcopying. */
-#define NGHTTP2_FRAMEBUF_CHUNKLEN \
+#define NGHTTP2_FRAMEBUF_CHUNKLEN                                              \
   (NGHTTP2_FRAME_HDLEN + 1 + NGHTTP2_MAX_PAYLOADLEN)
 
 /* Number of inbound buffer */
@@ -57,7 +57,8 @@
 
 /* The default length of DATA frame payload. This should be small enough
  * for the data payload and the header to fit into 1 TLS record */
-#define NGHTTP2_DATA_PAYLOADLEN ((NGHTTP2_MAX_FRAME_SIZE_MIN) - (NGHTTP2_FRAME_HDLEN))
+#define NGHTTP2_DATA_PAYLOADLEN                                                \
+  ((NGHTTP2_MAX_FRAME_SIZE_MIN) - (NGHTTP2_FRAME_HDLEN))
 
 /* Maximum headers payload length, calculated in compressed form.
    This applies to transmission only. */
@@ -84,21 +85,18 @@
 #define NGHTTP2_MAX_PADLEN 256
 
 /* Union of extension frame payload */
-typedef union {
-  nghttp2_ext_altsvc altsvc;
-} nghttp2_ext_frame_payload;
+typedef union { nghttp2_ext_altsvc altsvc; } nghttp2_ext_frame_payload;
 
 void nghttp2_frame_pack_frame_hd(uint8_t *buf, const nghttp2_frame_hd *hd);
 
-void nghttp2_frame_unpack_frame_hd(nghttp2_frame_hd *hd, const uint8_t* buf);
+void nghttp2_frame_unpack_frame_hd(nghttp2_frame_hd *hd, const uint8_t *buf);
 
 /**
  * Initializes frame header |hd| with given parameters.  Reserved bit
  * is set to 0.
  */
-void nghttp2_frame_hd_init(nghttp2_frame_hd *hd, size_t length,
-                           uint8_t type, uint8_t flags,
-                           int32_t stream_id);
+void nghttp2_frame_hd_init(nghttp2_frame_hd *hd, size_t length, uint8_t type,
+                           uint8_t flags, int32_t stream_id);
 
 /**
  * Returns the number of priority field depending on the |flags|.  If
@@ -121,8 +119,7 @@ void nghttp2_frame_pack_priority_spec(uint8_t *buf,
  * assumes the |payload| contains whole priority specification.
  */
 void nghttp2_frame_unpack_priority_spec(nghttp2_priority_spec *pri_spec,
-                                        uint8_t flags,
-                                        const uint8_t *payload,
+                                        uint8_t flags, const uint8_t *payload,
                                         size_t payloadlen);
 
 /*
@@ -151,8 +148,7 @@ size_t nghttp2_frame_headers_payload_nv_offset(nghttp2_headers *frame);
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
  */
-int nghttp2_frame_pack_headers(nghttp2_bufs *bufs,
-                               nghttp2_headers *frame,
+int nghttp2_frame_pack_headers(nghttp2_bufs *bufs, nghttp2_headers *frame,
                                nghttp2_hd_deflater *deflater);
 
 /*
@@ -175,8 +171,7 @@ int nghttp2_frame_unpack_headers_payload(nghttp2_headers *frame,
  *
  * This function always succeeds and returns 0.
  */
-int nghttp2_frame_pack_priority(nghttp2_bufs *bufs,
-                                nghttp2_priority *frame);
+int nghttp2_frame_pack_priority(nghttp2_bufs *bufs, nghttp2_priority *frame);
 
 /*
  * Unpacks PRIORITY wire format into |frame|.
@@ -405,7 +400,6 @@ void nghttp2_frame_unpack_window_update_payload(nghttp2_window_update *frame,
  */
 int nghttp2_frame_pack_altsvc(nghttp2_bufs *bufs, nghttp2_extension *frame);
 
-
 /*
  * Unpacks ALTSVC frame byte sequence into |frame|.
  * The |payload| of length |payloadlen| contains first 8 bytes of
@@ -434,22 +428,19 @@ int nghttp2_frame_unpack_altsvc_payload(nghttp2_extension *frame,
  * ownership of |nva|, so caller must not free it. If |stream_id| is
  * not assigned yet, it must be -1.
  */
-void nghttp2_frame_headers_init(nghttp2_headers *frame,
-                                uint8_t flags, int32_t stream_id,
-                                nghttp2_headers_category cat,
+void nghttp2_frame_headers_init(nghttp2_headers *frame, uint8_t flags,
+                                int32_t stream_id, nghttp2_headers_category cat,
                                 const nghttp2_priority_spec *pri_spec,
                                 nghttp2_nv *nva, size_t nvlen);
 
 void nghttp2_frame_headers_free(nghttp2_headers *frame);
-
 
 void nghttp2_frame_priority_init(nghttp2_priority *frame, int32_t stream_id,
                                  const nghttp2_priority_spec *pri_spec);
 
 void nghttp2_frame_priority_free(nghttp2_priority *frame);
 
-void nghttp2_frame_rst_stream_init(nghttp2_rst_stream *frame,
-                                   int32_t stream_id,
+void nghttp2_frame_rst_stream_init(nghttp2_rst_stream *frame, int32_t stream_id,
                                    uint32_t error_code);
 
 void nghttp2_frame_rst_stream_free(nghttp2_rst_stream *frame);
@@ -458,8 +449,8 @@ void nghttp2_frame_rst_stream_free(nghttp2_rst_stream *frame);
  * Initializes PUSH_PROMISE frame |frame| with given values.  |frame|
  * takes ownership of |nva|, so caller must not free it.
  */
-void nghttp2_frame_push_promise_init(nghttp2_push_promise *frame,
-                                     uint8_t flags, int32_t stream_id,
+void nghttp2_frame_push_promise_init(nghttp2_push_promise *frame, uint8_t flags,
+                                     int32_t stream_id,
                                      int32_t promised_stream_id,
                                      nghttp2_nv *nva, size_t nvlen);
 
@@ -492,14 +483,13 @@ void nghttp2_frame_ping_free(nghttp2_ping *frame);
  * free it. If the |opaque_data_len| is 0, opaque_data could be NULL.
  */
 void nghttp2_frame_goaway_init(nghttp2_goaway *frame, int32_t last_stream_id,
-                               uint32_t error_code,
-                               uint8_t *opaque_data, size_t opaque_data_len);
+                               uint32_t error_code, uint8_t *opaque_data,
+                               size_t opaque_data_len);
 
 void nghttp2_frame_goaway_free(nghttp2_goaway *frame);
 
 void nghttp2_frame_window_update_init(nghttp2_window_update *frame,
-                                      uint8_t flags,
-                                      int32_t stream_id,
+                                      uint8_t flags, int32_t stream_id,
                                       int32_t window_size_increment);
 
 void nghttp2_frame_window_update_free(nghttp2_window_update *frame);
@@ -511,12 +501,10 @@ void nghttp2_frame_window_update_free(nghttp2_window_update *frame);
    |protocol_id_len|, |host_len| and |origin_len| are all zero,
    |protocol_id| can be NULL. */
 void nghttp2_frame_altsvc_init(nghttp2_extension *frame, int32_t stream_id,
-                               uint32_t max_age,
-                               uint16_t port,
-                               uint8_t *protocol_id,
-                               size_t protocol_id_len,
-                               uint8_t *host, size_t host_len,
-                               uint8_t *origin, size_t origin_len);
+                               uint32_t max_age, uint16_t port,
+                               uint8_t *protocol_id, size_t protocol_id_len,
+                               uint8_t *host, size_t host_len, uint8_t *origin,
+                               size_t origin_len);
 
 /*
  *  Frees resources used by |frame|.  This function does not free
@@ -541,7 +529,7 @@ void nghttp2_frame_data_free(nghttp2_data *frame);
  * entries in |iv|. This function returns the pointer to the copy if
  * it succeeds, or NULL.
  */
-nghttp2_settings_entry* nghttp2_frame_iv_copy(const nghttp2_settings_entry *iv,
+nghttp2_settings_entry *nghttp2_frame_iv_copy(const nghttp2_settings_entry *iv,
                                               size_t niv);
 
 /*
@@ -563,8 +551,8 @@ void nghttp2_nv_array_sort(nghttp2_nv *nva, size_t nvlen);
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
  */
-int nghttp2_nv_array_copy(nghttp2_nv **nva_ptr,
-                          const nghttp2_nv *nva, size_t nvlen);
+int nghttp2_nv_array_copy(nghttp2_nv **nva_ptr, const nghttp2_nv *nva,
+                          size_t nvlen);
 
 /*
  * Returns nonzero if the name/value pair |a| equals to |b|. The name

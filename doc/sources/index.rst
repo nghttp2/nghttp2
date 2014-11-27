@@ -17,6 +17,7 @@ Contents:
    :maxdepth: 2
 
    package_README
+   contribute
    building-android-binary
    tutorial-client
    tutorial-server

@@ -44,7 +44,7 @@
 
 #include <nghttp2/nghttp2.h>
 
-#ifdef  __cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -112,36 +112,31 @@ public:
   int on_connect();
   int verify_npn_result();
 
-  int submit_file_response(const std::string& status,
-                           Stream *stream,
-                           time_t last_modified,
-                           off_t file_length,
+  int submit_file_response(const std::string &status, Stream *stream,
+                           time_t last_modified, off_t file_length,
                            nghttp2_data_provider *data_prd);
 
-  int submit_response(const std::string& status,
-                      int32_t stream_id,
+  int submit_response(const std::string &status, int32_t stream_id,
                       nghttp2_data_provider *data_prd);
 
-  int submit_response
-  (const std::string& status,
-   int32_t stream_id,
-   const Headers& headers,
-   nghttp2_data_provider *data_prd);
+  int submit_response(const std::string &status, int32_t stream_id,
+                      const Headers &headers, nghttp2_data_provider *data_prd);
 
-  int submit_non_final_response(const std::string& status, int32_t stream_id);
+  int submit_non_final_response(const std::string &status, int32_t stream_id);
 
-  int submit_push_promise(Stream *stream, const std::string& push_path);
+  int submit_push_promise(Stream *stream, const std::string &push_path);
 
   int submit_rst_stream(Stream *stream, uint32_t error_code);
 
   void add_stream(int32_t stream_id, std::unique_ptr<Stream> stream);
   void remove_stream(int32_t stream_id);
-  Stream* get_stream(int32_t stream_id);
+  Stream *get_stream(int32_t stream_id);
   int64_t session_id() const;
-  Sessions* get_sessions() const;
-  const Config* get_config() const;
+  Sessions *get_sessions() const;
+  const Config *get_config() const;
   void remove_settings_timer();
   void terminate_session(uint32_t error_code);
+
 private:
   std::map<int32_t, std::unique_ptr<Stream>> id2stream_;
   int64_t session_id_;
@@ -155,18 +150,18 @@ private:
 
 class HttpServer {
 public:
-  HttpServer(const Config* config);
+  HttpServer(const Config *config);
   int listen();
   int run();
-  const Config* get_config() const;
+  const Config *get_config() const;
+
 private:
   const Config *config_;
 };
 
-ssize_t file_read_callback
-(nghttp2_session *session, int32_t stream_id,
- uint8_t *buf, size_t length, int *eof,
- nghttp2_data_source *source, void *user_data);
+ssize_t file_read_callback(nghttp2_session *session, int32_t stream_id,
+                           uint8_t *buf, size_t length, int *eof,
+                           nghttp2_data_source *source, void *user_data);
 
 } // namespace nghttp2
 

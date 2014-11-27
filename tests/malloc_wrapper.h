@@ -40,7 +40,7 @@ extern int nghttp2_countmalloc;
    incremented if nghttp2_nmalloc is nonzero. */
 extern int nghttp2_nmalloc;
 
-void* malloc(size_t size);
+void *malloc(size_t size);
 
 /* Copies nghttp2_failmalloc and nghttp2_countmalloc to statically
    allocated space and sets 0 to them. This will effectively make

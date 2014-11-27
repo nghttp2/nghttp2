@@ -24,38 +24,30 @@
  */
 #include "nghttp2_option.h"
 
-int nghttp2_option_new(nghttp2_option **option_ptr)
-{
+int nghttp2_option_new(nghttp2_option **option_ptr) {
   *option_ptr = calloc(1, sizeof(nghttp2_option));
 
-  if(*option_ptr == NULL) {
+  if (*option_ptr == NULL) {
     return NGHTTP2_ERR_NOMEM;
   }
 
   return 0;
 }
 
-void nghttp2_option_del(nghttp2_option *option)
-{
-  free(option);
-}
+void nghttp2_option_del(nghttp2_option *option) { free(option); }
 
-void nghttp2_option_set_no_auto_window_update(nghttp2_option *option, int val)
-{
+void nghttp2_option_set_no_auto_window_update(nghttp2_option *option, int val) {
   option->opt_set_mask |= NGHTTP2_OPT_NO_AUTO_WINDOW_UPDATE;
   option->no_auto_window_update = val;
 }
 
 void nghttp2_option_set_peer_max_concurrent_streams(nghttp2_option *option,
-                                                    uint32_t val)
-{
+                                                    uint32_t val) {
   option->opt_set_mask |= NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS;
   option->peer_max_concurrent_streams = val;
 }
 
-void nghttp2_option_set_recv_client_preface
-(nghttp2_option *option, int val)
-{
+void nghttp2_option_set_recv_client_preface(nghttp2_option *option, int val) {
   option->opt_set_mask |= NGHTTP2_OPT_RECV_CLIENT_PREFACE;
   option->recv_client_preface = val;
 }

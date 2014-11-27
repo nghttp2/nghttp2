@@ -48,13 +48,13 @@ public:
   virtual int on_event();
   virtual int on_downstream_abort_request(Downstream *downstream,
                                           unsigned int status_code);
-  virtual ClientHandler* get_client_handler() const;
+  virtual ClientHandler *get_client_handler() const;
   virtual bufferevent_data_cb get_downstream_readcb();
   virtual bufferevent_data_cb get_downstream_writecb();
   virtual bufferevent_event_cb get_downstream_eventcb();
   void attach_downstream(std::unique_ptr<Downstream> downstream);
   void delete_downstream();
-  Downstream* get_downstream() const;
+  Downstream *get_downstream() const;
   std::unique_ptr<Downstream> pop_downstream();
   int error_reply(unsigned int status_code);
 
@@ -63,8 +63,8 @@ public:
                           size_t consumed);
 
   virtual int on_downstream_header_complete(Downstream *downstream);
-  virtual int on_downstream_body(Downstream *downstream,
-                                 const uint8_t *data, size_t len, bool flush);
+  virtual int on_downstream_body(Downstream *downstream, const uint8_t *data,
+                                 size_t len, bool flush);
   virtual int on_downstream_body_complete(Downstream *downstream);
 
   virtual void on_handler_delete();
@@ -72,7 +72,8 @@ public:
   virtual void reset_timeouts();
 
   void reset_current_header_length();
-  void log_response_headers(const std::string& hdrs) const;
+  void log_response_headers(const std::string &hdrs) const;
+
 private:
   ClientHandler *handler_;
   http_parser htp_;

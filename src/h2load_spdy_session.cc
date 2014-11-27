@@ -34,23 +34,16 @@ using namespace nghttp2;
 namespace h2load {
 
 SpdySession::SpdySession(Client *client, uint16_t spdy_version)
-  : client_(client),
-    session_(nullptr),
-    spdy_version_(spdy_version)
-{}
+    : client_(client), session_(nullptr), spdy_version_(spdy_version) {}
 
-SpdySession::~SpdySession()
-{
-  spdylay_session_del(session_);
-}
+SpdySession::~SpdySession() { spdylay_session_del(session_); }
 
 namespace {
-void before_ctrl_send_callback
-(spdylay_session *session, spdylay_frame_type type, spdylay_frame *frame,
- void *user_data)
-{
-  auto client = static_cast<Client*>(user_data);
-  if(type != SPDYLAY_SYN_STREAM) {
+void before_ctrl_send_callback(spdylay_session *session,
+                               spdylay_frame_type type, spdylay_frame *frame,
+                               void *user_data) {
+  auto client = static_cast<Client *>(user_data);
+  if (type != SPDYLAY_SYN_STREAM) {
     return;
   }
   client->on_request(frame->syn_stream.stream_id);
@@ -58,71 +51,61 @@ void before_ctrl_send_callback
 } // namespace
 
 namespace {
-void on_ctrl_recv_callback(spdylay_session *session,
-                           spdylay_frame_type type,
-                           spdylay_frame *frame,
-                           void *user_data)
-{
-  auto client = static_cast<Client*>(user_data);
-  if(type != SPDYLAY_SYN_REPLY) {
+void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
+                           spdylay_frame *frame, void *user_data) {
+  auto client = static_cast<Client *>(user_data);
+  if (type != SPDYLAY_SYN_REPLY) {
     return;
   }
-  for(auto p = frame->syn_reply.nv; *p; p += 2) {
+  for (auto p = frame->syn_reply.nv; *p; p += 2) {
     auto name = *p;
     auto value = *(p + 1);
     client->on_header(frame->syn_reply.stream_id,
-                      reinterpret_cast<const uint8_t*>(name),
-                      strlen(name),
-                      reinterpret_cast<const uint8_t*>(value),
-                      strlen(value));
+                      reinterpret_cast<const uint8_t *>(name), strlen(name),
+                      reinterpret_cast<const uint8_t *>(value), strlen(value));
   }
   client->worker->stats.bytes_head += frame->syn_reply.hd.length;
 }
 } // namespace
 
 namespace {
-void on_data_chunk_recv_callback
-(spdylay_session *session, uint8_t flags, int32_t stream_id,
- const uint8_t *data, size_t len, void *user_data)
-{
-  auto client = static_cast<Client*>(user_data);
+void on_data_chunk_recv_callback(spdylay_session *session, uint8_t flags,
+                                 int32_t stream_id, const uint8_t *data,
+                                 size_t len, void *user_data) {
+  auto client = static_cast<Client *>(user_data);
   client->worker->stats.bytes_body += len;
 
-  auto spdy_session = static_cast<SpdySession*>(client->session.get());
+  auto spdy_session = static_cast<SpdySession *>(client->session.get());
 
   spdy_session->handle_window_update(stream_id, len);
 }
 } // namespace
 
 namespace {
-void on_stream_close_callback
-(spdylay_session *session, int32_t stream_id, spdylay_status_code status_code,
- void *user_data)
-{
-  auto client = static_cast<Client*>(user_data);
+void on_stream_close_callback(spdylay_session *session, int32_t stream_id,
+                              spdylay_status_code status_code,
+                              void *user_data) {
+  auto client = static_cast<Client *>(user_data);
   client->on_stream_close(stream_id, status_code == SPDYLAY_OK);
 }
 } // namespace
 
 namespace {
-ssize_t send_callback(spdylay_session *session,
-                      const uint8_t *data, size_t length, int flags,
-                      void *user_data)
-{
-  auto client = static_cast<Client*>(user_data);
-  auto spdy_session = static_cast<SpdySession*>(client->session.get());
+ssize_t send_callback(spdylay_session *session, const uint8_t *data,
+                      size_t length, int flags, void *user_data) {
+  auto client = static_cast<Client *>(user_data);
+  auto spdy_session = static_cast<SpdySession *>(client->session.get());
   int rv;
 
   rv = spdy_session->sendbuf.add(data, length);
-  if(rv != 0) {
+  if (rv != 0) {
     return SPDYLAY_ERR_CALLBACK_FAILURE;
   }
   return length;
 }
-} //namespace
+} // namespace
 
-void SpdySession::on_connect()
-{
+void SpdySession::on_connect() {
   spdylay_session_callbacks callbacks = {0};
   callbacks.send_callback = send_callback;
   callbacks.before_ctrl_send_callback = before_ctrl_send_callback;
@@ -133,8 +116,8 @@ void SpdySession::on_connect()
   spdylay_session_client_new(&session_, spdy_version_, &callbacks, client_);
 
   int val = 1;
-  spdylay_session_set_option(session_, SPDYLAY_OPT_NO_AUTO_WINDOW_UPDATE,
-                             &val, sizeof(val));
+  spdylay_session_set_option(session_, SPDYLAY_OPT_NO_AUTO_WINDOW_UPDATE, &val,
+                             sizeof(val));
 
   spdylay_settings_entry iv[1];
   iv[0].settings_id = SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE;
@@ -145,36 +128,34 @@ void SpdySession::on_connect()
 
   auto config = client_->worker->config;
 
-  if(spdy_version_ >= SPDYLAY_PROTO_SPDY3_1 &&
-     config->connection_window_bits > 16) {
-    auto delta = (1 << config->connection_window_bits)
-      - SPDYLAY_INITIAL_WINDOW_SIZE;
+  if (spdy_version_ >= SPDYLAY_PROTO_SPDY3_1 &&
+      config->connection_window_bits > 16) {
+    auto delta =
+        (1 << config->connection_window_bits) - SPDYLAY_INITIAL_WINDOW_SIZE;
     spdylay_submit_window_update(session_, 0, delta);
   }
 }
 
-void SpdySession::submit_request()
-{
+void SpdySession::submit_request() {
   auto config = client_->worker->config;
-  auto& nv = config->nv[client_->reqidx++];
+  auto &nv = config->nv[client_->reqidx++];
 
-  if(client_->reqidx == config->nv.size()) {
+  if (client_->reqidx == config->nv.size()) {
     client_->reqidx = 0;
   }
 
   spdylay_submit_request(session_, 0, nv.data(), nullptr, nullptr);
 }
 
-ssize_t SpdySession::on_read()
-{
+ssize_t SpdySession::on_read() {
   int rv;
   size_t nread = 0;
   auto input = bufferevent_get_input(client_->bev);
 
-  for(;;) {
+  for (;;) {
     auto inputlen = evbuffer_get_contiguous_space(input);
 
-    if(inputlen == 0) {
+    if (inputlen == 0) {
       assert(evbuffer_get_length(input) == 0);
 
       return nread;
@@ -184,65 +165,62 @@ ssize_t SpdySession::on_read()
 
     rv = spdylay_session_mem_recv(session_, mem, inputlen);
 
-    if(rv < 0) {
+    if (rv < 0) {
       return -1;
     }
 
     nread += rv;
 
-    if(evbuffer_drain(input, rv) != 0) {
+    if (evbuffer_drain(input, rv) != 0) {
       return -1;
     }
   }
 }
 
-int SpdySession::on_write()
-{
+int SpdySession::on_write() {
   int rv;
   uint8_t buf[16384];
 
   sendbuf.reset(bufferevent_get_output(client_->bev), buf, sizeof(buf));
 
   rv = spdylay_session_send(session_);
-  if(rv != 0) {
+  if (rv != 0) {
     return -1;
   }
 
   rv = sendbuf.flush();
-  if(rv != 0) {
+  if (rv != 0) {
     return -1;
   }
 
-  if(spdylay_session_want_read(session_) == 0 &&
-     spdylay_session_want_write(session_) == 0 &&
-     evbuffer_get_length(bufferevent_get_output(client_->bev)) == 0) {
+  if (spdylay_session_want_read(session_) == 0 &&
+      spdylay_session_want_write(session_) == 0 &&
+      evbuffer_get_length(bufferevent_get_output(client_->bev)) == 0) {
     return -1;
   }
   return 0;
 }
 
-void SpdySession::terminate()
-{
+void SpdySession::terminate() {
   spdylay_session_fail_session(session_, SPDYLAY_OK);
 }
 
 namespace {
 int32_t determine_window_update_transmission(spdylay_session *session,
                                              int32_t stream_id,
-                                             size_t window_bits)
-{
+                                             size_t window_bits) {
   int32_t recv_length;
 
-  if(stream_id == 0) {
+  if (stream_id == 0) {
     recv_length = spdylay_session_get_recv_data_length(session);
   } else {
-    recv_length = spdylay_session_get_stream_recv_data_length
-      (session, stream_id);
+    recv_length =
+        spdylay_session_get_stream_recv_data_length(session, stream_id);
   }
 
   auto window_size = 1 << window_bits;
 
-  if(recv_length != -1 && recv_length >= window_size / 2) {
+  if (recv_length != -1 && recv_length >= window_size / 2) {
     return recv_length;
   }
 
@@ -250,26 +228,25 @@ int32_t determine_window_update_transmission(spdylay_session *session,
 }
 } // namespace
 
-void SpdySession::handle_window_update(int32_t stream_id, size_t recvlen)
-{
+void SpdySession::handle_window_update(int32_t stream_id, size_t recvlen) {
   auto config = client_->worker->config;
   size_t connection_window_bits;
 
-  if(config->connection_window_bits > 16) {
+  if (config->connection_window_bits > 16) {
     connection_window_bits = config->connection_window_bits;
   } else {
     connection_window_bits = 16;
   }
 
-  auto delta = determine_window_update_transmission
-    (session_, 0, connection_window_bits);
-  if(delta > 0) {
+  auto delta =
+      determine_window_update_transmission(session_, 0, connection_window_bits);
+  if (delta > 0) {
     spdylay_submit_window_update(session_, 0, delta);
   }
 
-  delta = determine_window_update_transmission
-    (session_, stream_id, config->window_bits);
-  if(delta > 0) {
+  delta = determine_window_update_transmission(session_, stream_id,
+                                               config->window_bits);
+  if (delta > 0) {
     spdylay_submit_window_update(session_, stream_id, delta);
   }
 }

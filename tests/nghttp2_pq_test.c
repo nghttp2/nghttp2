@@ -28,27 +28,25 @@
 
 #include "nghttp2_pq.h"
 
-static int pq_compar(const void *lhs, const void *rhs)
-{
+static int pq_compar(const void *lhs, const void *rhs) {
   return strcmp(lhs, rhs);
 }
 
-void test_nghttp2_pq(void)
-{
+void test_nghttp2_pq(void) {
   int i;
   nghttp2_pq pq;
   nghttp2_pq_init(&pq, pq_compar);
   CU_ASSERT(nghttp2_pq_empty(&pq));
   CU_ASSERT(0 == nghttp2_pq_size(&pq));
-  CU_ASSERT(0 == nghttp2_pq_push(&pq, (void*)"foo"));
+  CU_ASSERT(0 == nghttp2_pq_push(&pq, (void *)"foo"));
   CU_ASSERT(0 == nghttp2_pq_empty(&pq));
   CU_ASSERT(1 == nghttp2_pq_size(&pq));
   CU_ASSERT(strcmp("foo", nghttp2_pq_top(&pq)) == 0);
-  CU_ASSERT(0 == nghttp2_pq_push(&pq, (void*)"bar"));
+  CU_ASSERT(0 == nghttp2_pq_push(&pq, (void *)"bar"));
   CU_ASSERT(strcmp("bar", nghttp2_pq_top(&pq)) == 0);
-  CU_ASSERT(0 == nghttp2_pq_push(&pq, (void*)"baz"));
+  CU_ASSERT(0 == nghttp2_pq_push(&pq, (void *)"baz"));
   CU_ASSERT(strcmp("bar", nghttp2_pq_top(&pq)) == 0);
-  CU_ASSERT(0 == nghttp2_pq_push(&pq, (void*)"C"));
+  CU_ASSERT(0 == nghttp2_pq_push(&pq, (void *)"C"));
   CU_ASSERT(4 == nghttp2_pq_size(&pq));
   CU_ASSERT(strcmp("C", nghttp2_pq_top(&pq)) == 0);
   nghttp2_pq_pop(&pq);
@@ -64,14 +62,14 @@ void test_nghttp2_pq(void)
   CU_ASSERT(NULL == nghttp2_pq_top(&pq));
 
   /* Add bunch of entry to see realloc works */
-  for(i = 0; i < 10000; ++i) {
-    CU_ASSERT(0 == nghttp2_pq_push(&pq, (void*)"foo"));
-    CU_ASSERT((size_t)(i+1) == nghttp2_pq_size(&pq));
+  for (i = 0; i < 10000; ++i) {
+    CU_ASSERT(0 == nghttp2_pq_push(&pq, (void *)"foo"));
+    CU_ASSERT((size_t)(i + 1) == nghttp2_pq_size(&pq));
   }
-  for(i = 10000; i > 0; --i) {
+  for (i = 10000; i > 0; --i) {
     CU_ASSERT(NULL != nghttp2_pq_top(&pq));
     nghttp2_pq_pop(&pq);
-    CU_ASSERT((size_t)(i-1) == nghttp2_pq_size(&pq));
+    CU_ASSERT((size_t)(i - 1) == nghttp2_pq_size(&pq));
   }
 
   nghttp2_pq_free(&pq);
@@ -82,17 +80,15 @@ typedef struct {
   int val;
 } node;
 
-static int node_compar(const void *lhs, const void *rhs)
-{
-  node *ln = (node*)lhs;
-  node *rn = (node*)rhs;
+static int node_compar(const void *lhs, const void *rhs) {
+  node *ln = (node *)lhs;
+  node *rn = (node *)rhs;
   return ln->key - rn->key;
 }
 
-static int node_update(void *item, void *arg _U_)
-{
-  node *nd = (node*)item;
-  if((nd->key % 2) == 0) {
+static int node_update(void *item, void *arg _U_) {
+  node *nd = (node *)item;
+  if ((nd->key % 2) == 0) {
     nd->key *= -1;
     return 1;
   } else {
@@ -100,8 +96,7 @@ static int node_update(void *item, void *arg _U_)
   }
 }
 
-void test_nghttp2_pq_update(void)
-{
+void test_nghttp2_pq_update(void) {
   nghttp2_pq pq;
   node nodes[10];
   int i;
@@ -110,7 +105,7 @@ void test_nghttp2_pq_update(void)
 
   nghttp2_pq_init(&pq, node_compar);
 
-  for(i = 0; i < (int)(sizeof(nodes)/sizeof(nodes[0])); ++i) {
+  for (i = 0; i < (int)(sizeof(nodes) / sizeof(nodes[0])); ++i) {
     nodes[i].key = i;
     nodes[i].val = i;
     nghttp2_pq_push(&pq, &nodes[i]);
@@ -118,7 +113,7 @@ void test_nghttp2_pq_update(void)
 
   nghttp2_pq_update(&pq, node_update, NULL);
 
-  for(i = 0; i < (int)(sizeof(nodes)/sizeof(nodes[0])); ++i) {
+  for (i = 0; i < (int)(sizeof(nodes) / sizeof(nodes[0])); ++i) {
     nd = nghttp2_pq_top(&pq);
     CU_ASSERT(ans[i] == nd->key);
     nghttp2_pq_pop(&pq);
@@ -126,4 +121,3 @@ void test_nghttp2_pq_update(void)
 
   nghttp2_pq_free(&pq);
 }
-

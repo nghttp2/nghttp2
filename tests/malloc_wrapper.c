@@ -32,22 +32,18 @@ int nghttp2_failstart = 0;
 int nghttp2_countmalloc = 1;
 int nghttp2_nmalloc = 0;
 
-static void* (*real_malloc)(size_t) = NULL;
+static void *(*real_malloc)(size_t) = NULL;
 
-static void init(void)
-{
-  real_malloc = dlsym(RTLD_NEXT, "malloc");
-}
+static void init(void) { real_malloc = dlsym(RTLD_NEXT, "malloc"); }
 
-void* malloc(size_t size)
-{
-  if(real_malloc == NULL) {
+void *malloc(size_t size) {
+  if (real_malloc == NULL) {
     init();
   }
-  if(nghttp2_failmalloc && nghttp2_nmalloc >= nghttp2_failstart) {
+  if (nghttp2_failmalloc && nghttp2_nmalloc >= nghttp2_failstart) {
     return NULL;
   } else {
-    if(nghttp2_countmalloc) {
+    if (nghttp2_countmalloc) {
       ++nghttp2_nmalloc;
     }
     return real_malloc(size);
@@ -56,16 +52,14 @@ void* malloc(size_t size)
 
 static int failmalloc_bk, countmalloc_bk;
 
-void nghttp2_failmalloc_pause(void)
-{
+void nghttp2_failmalloc_pause(void) {
   failmalloc_bk = nghttp2_failmalloc;
   countmalloc_bk = nghttp2_countmalloc;
   nghttp2_failmalloc = 0;
   nghttp2_countmalloc = 0;
 }
 
-void nghttp2_failmalloc_unpause(void)
-{
+void nghttp2_failmalloc_unpause(void) {
   nghttp2_failmalloc = failmalloc_bk;
   nghttp2_countmalloc = countmalloc_bk;
 }

@@ -42,6 +42,7 @@ public:
   virtual ssize_t on_read();
   virtual int on_write();
   virtual void terminate();
+
 private:
   Client *client_;
   nghttp2_session *session_;
