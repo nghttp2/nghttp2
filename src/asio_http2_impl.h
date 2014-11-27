@@ -40,12 +40,12 @@ class server;
 class http2_impl {
 public:
   http2_impl();
-  void listen(const std::string& address, uint16_t port,
-              request_cb cb);
+  void listen(const std::string &address, uint16_t port, request_cb cb);
   void num_threads(size_t num_threads);
   void tls(std::string private_key_file, std::string certificate_file);
   void num_concurrent_tasks(size_t num_concurrent_tasks);
   void backlog(int backlog);
+
 private:
   std::string private_key_file_;
   std::string certificate_file_;

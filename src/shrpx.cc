@@ -83,17 +83,15 @@ const int GRACEFUL_SHUTDOWN_SIGNAL = SIGQUIT;
 #define ENV_PORT "NGHTTPX_PORT"
 
 namespace {
-void ssl_acceptcb(evconnlistener *listener, int fd,
-                  sockaddr *addr, int addrlen, void *arg)
-{
-  auto handler = static_cast<ListenHandler*>(arg);
+void ssl_acceptcb(evconnlistener *listener, int fd, sockaddr *addr, int addrlen,
+                  void *arg) {
+  auto handler = static_cast<ListenHandler *>(arg);
   handler->accept_connection(fd, addr, addrlen);
 }
 } // namespace
 
 namespace {
-bool is_ipv6_numeric_addr(const char *host)
-{
+bool is_ipv6_numeric_addr(const char *host) {
   uint8_t dst[16];
   return inet_pton(AF_INET6, host, dst) == 1;
 }
@@ -101,8 +99,7 @@ bool is_ipv6_numeric_addr(const char *host)
 
 namespace {
 int resolve_hostname(sockaddr_union *addr, size_t *addrlen,
-                     const char *hostname, uint16_t port, int family)
-{
+                     const char *hostname, uint16_t port, int family) {
   addrinfo hints;
   int rv;
 
@@ -117,27 +114,27 @@ int resolve_hostname(sockaddr_union *addr, size_t *addrlen,
   addrinfo *res;
 
   rv = getaddrinfo(hostname, service.c_str(), &hints, &res);
-  if(rv != 0) {
-    LOG(FATAL) << "Unable to resolve address for " << hostname
-               << ": " << gai_strerror(rv);
+  if (rv != 0) {
+    LOG(FATAL) << "Unable to resolve address for " << hostname << ": "
+               << gai_strerror(rv);
     return -1;
   }
 
   char host[NI_MAXHOST];
-  rv = getnameinfo(res->ai_addr, res->ai_addrlen, host, sizeof(host),
-                  0, 0, NI_NUMERICHOST);
-  if(rv != 0) {
-    LOG(FATAL) << "Address resolution for " << hostname << " failed: "
-               << gai_strerror(rv);
+  rv = getnameinfo(res->ai_addr, res->ai_addrlen, host, sizeof(host), 0, 0,
+                   NI_NUMERICHOST);
+  if (rv != 0) {
+    LOG(FATAL) << "Address resolution for " << hostname
+               << " failed: " << gai_strerror(rv);
 
     freeaddrinfo(res);
 
     return -1;
   }
 
-  if(LOG_ENABLED(INFO)) {
-    LOG(INFO) << "Address resolution for " << hostname << " succeeded: "
-              << host;
+  if (LOG_ENABLED(INFO)) {
+    LOG(INFO) << "Address resolution for " << hostname
+              << " succeeded: " << host;
   }
 
   memcpy(addr, res->ai_addr, res->ai_addrlen);
@@ -148,48 +145,41 @@ int resolve_hostname(sockaddr_union *addr, size_t *addrlen,
 } // namespace
 
 namespace {
-void evlistener_errorcb(evconnlistener *listener, void *ptr)
-{
+void evlistener_errorcb(evconnlistener *listener, void *ptr) {
   LOG(ERROR) << "Accepting incoming connection failed";
 
-  auto listener_handler = static_cast<ListenHandler*>(ptr);
+  auto listener_handler = static_cast<ListenHandler *>(ptr);
 
-  listener_handler->disable_evlistener_temporary
-    (&get_config()->listener_disable_timeout);
+  listener_handler->disable_evlistener_temporary(
+      &get_config()->listener_disable_timeout);
 }
 } // namespace
 
 namespace {
-evconnlistener* new_evlistener(ListenHandler *handler, int fd)
-{
-  auto evlistener = evconnlistener_new
-    (handler->get_evbase(),
-     ssl_acceptcb,
-     handler,
-     LEV_OPT_REUSEABLE | LEV_OPT_CLOSE_ON_FREE,
-     get_config()->backlog,
-     fd);
+evconnlistener *new_evlistener(ListenHandler *handler, int fd) {
+  auto evlistener = evconnlistener_new(
+      handler->get_evbase(), ssl_acceptcb, handler,
+      LEV_OPT_REUSEABLE | LEV_OPT_CLOSE_ON_FREE, get_config()->backlog, fd);
   evconnlistener_set_error_cb(evlistener, evlistener_errorcb);
   return evlistener;
 }
 } // namespace
 
 namespace {
-evconnlistener* create_evlistener(ListenHandler *handler, int family)
-{
+evconnlistener *create_evlistener(ListenHandler *handler, int family) {
   {
-    auto envfd = getenv(family == AF_INET ?
-                        ENV_LISTENER4_FD : ENV_LISTENER6_FD);
+    auto envfd =
+        getenv(family == AF_INET ? ENV_LISTENER4_FD : ENV_LISTENER6_FD);
     auto envport = getenv(ENV_PORT);
 
-    if(envfd && envport) {
+    if (envfd && envport) {
       auto fd = strtoul(envfd, nullptr, 10);
       auto port = strtoul(envport, nullptr, 10);
 
       // Only do this iff NGHTTPX_PORT == get_config()->port.
       // Otherwise, close fd, and create server socket as usual.
 
-      if(port == get_config()->port) {
+      if (port == get_config()->port) {
         LOG(NOTICE) << "Listening on port " << get_config()->port;
 
         return new_evlistener(handler, fd);
@@ -214,47 +204,48 @@ evconnlistener* create_evlistener(ListenHandler *handler, int family)
   hints.ai_flags |= AI_ADDRCONFIG;
 #endif // AI_ADDRCONFIG
 
-  auto node = strcmp("*", get_config()->host.get()) == 0 ?
-    nullptr : get_config()->host.get();
+  auto node = strcmp("*", get_config()->host.get()) == 0
+                  ? nullptr
+                  : get_config()->host.get();
 
   addrinfo *res, *rp;
   rv = getaddrinfo(node, service.c_str(), &hints, &res);
-  if(rv != 0) {
-    if(LOG_ENABLED(INFO)) {
+  if (rv != 0) {
+    if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "Unable to get IPv" << (family == AF_INET ? "4" : "6")
                 << " address for " << get_config()->host.get() << ": "
                 << gai_strerror(rv);
     }
     return nullptr;
   }
-  for(rp = res; rp; rp = rp->ai_next) {
+  for (rp = res; rp; rp = rp->ai_next) {
     fd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
-    if(fd == -1) {
+    if (fd == -1) {
       continue;
     }
     int val = 1;
-    if(setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &val,
-                  static_cast<socklen_t>(sizeof(val))) == -1) {
+    if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &val,
+                   static_cast<socklen_t>(sizeof(val))) == -1) {
       close(fd);
       continue;
     }
     evutil_make_socket_nonblocking(fd);
 #ifdef IPV6_V6ONLY
-    if(family == AF_INET6) {
-      if(setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &val,
-                    static_cast<socklen_t>(sizeof(val))) == -1) {
+    if (family == AF_INET6) {
+      if (setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &val,
+                     static_cast<socklen_t>(sizeof(val))) == -1) {
         close(fd);
         continue;
       }
     }
 #endif // IPV6_V6ONLY
-    if(bind(fd, rp->ai_addr, rp->ai_addrlen) == 0) {
+    if (bind(fd, rp->ai_addr, rp->ai_addrlen) == 0) {
       break;
     }
     close(fd);
   }
 
-  if(!rp) {
+  if (!rp) {
     LOG(WARN) << "Listening " << (family == AF_INET ? "IPv4" : "IPv6")
               << " socket failed";
 
@@ -264,12 +255,12 @@ evconnlistener* create_evlistener(ListenHandler *handler, int family)
   }
 
   char host[NI_MAXHOST];
-  rv = getnameinfo(rp->ai_addr, rp->ai_addrlen, host, sizeof(host),
-                   nullptr, 0, NI_NUMERICHOST);
+  rv = getnameinfo(rp->ai_addr, rp->ai_addrlen, host, sizeof(host), nullptr, 0,
+                   NI_NUMERICHOST);
 
   freeaddrinfo(res);
 
-  if(rv != 0) {
+  if (rv != 0) {
     LOG(WARN) << gai_strerror(rv);
 
     close(fd);
@@ -284,20 +275,19 @@ evconnlistener* create_evlistener(ListenHandler *handler, int family)
 } // namespace
 
 namespace {
-void drop_privileges()
-{
-  if(getuid() == 0 && get_config()->uid != 0) {
-    if(setgid(get_config()->gid) != 0) {
+void drop_privileges() {
+  if (getuid() == 0 && get_config()->uid != 0) {
+    if (setgid(get_config()->gid) != 0) {
       auto error = errno;
       LOG(FATAL) << "Could not change gid: " << strerror(error);
       exit(EXIT_FAILURE);
     }
-    if(setuid(get_config()->uid) != 0) {
+    if (setuid(get_config()->uid) != 0) {
       auto error = errno;
       LOG(FATAL) << "Could not change uid: " << strerror(error);
       exit(EXIT_FAILURE);
     }
-    if(setuid(0) != -1) {
+    if (setuid(0) != -1) {
       LOG(FATAL) << "Still have root privileges?";
       exit(EXIT_FAILURE);
     }
@@ -306,98 +296,92 @@ void drop_privileges()
 } // namespace
 
 namespace {
-void save_pid()
-{
+void save_pid() {
   std::ofstream out(get_config()->pid_file.get(), std::ios::binary);
   out << get_config()->pid << "\n";
   out.close();
-  if(!out) {
-    LOG(ERROR) << "Could not save PID to file "
-               << get_config()->pid_file.get();
+  if (!out) {
+    LOG(ERROR) << "Could not save PID to file " << get_config()->pid_file.get();
     exit(EXIT_FAILURE);
   }
 
-  if(get_config()->uid != 0) {
-    if(chown(get_config()->pid_file.get(),
-             get_config()->uid, get_config()->gid)  == -1) {
+  if (get_config()->uid != 0) {
+    if (chown(get_config()->pid_file.get(), get_config()->uid,
+              get_config()->gid) == -1) {
       auto error = errno;
-      LOG(WARN) << "Changing owner of pid file "
-                << get_config()->pid_file.get()
-                << " failed: "
-                << strerror(error);
+      LOG(WARN) << "Changing owner of pid file " << get_config()->pid_file.get()
+                << " failed: " << strerror(error);
     }
   }
 }
 } // namespace
 
 namespace {
-void reopen_log_signal_cb(evutil_socket_t sig, short events, void *arg)
-{
-  auto listener_handler = static_cast<ListenHandler*>(arg);
+void reopen_log_signal_cb(evutil_socket_t sig, short events, void *arg) {
+  auto listener_handler = static_cast<ListenHandler *>(arg);
 
-  if(LOG_ENABLED(INFO)) {
+  if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "Reopening log files: worker_info(" << worker_config << ")";
   }
 
   (void)reopen_log_files();
 
-  if(get_config()->num_worker > 1) {
+  if (get_config()->num_worker > 1) {
     listener_handler->worker_reopen_log_files();
   }
 }
 } // namespace
 
 namespace {
-void exec_binary_signal_cb(evutil_socket_t sig, short events, void *arg)
-{
-  auto listener_handler = static_cast<ListenHandler*>(arg);
+void exec_binary_signal_cb(evutil_socket_t sig, short events, void *arg) {
+  auto listener_handler = static_cast<ListenHandler *>(arg);
 
   LOG(NOTICE) << "Executing new binary";
 
   auto pid = fork();
 
-  if(pid == -1) {
+  if (pid == -1) {
     auto error = errno;
     LOG(ERROR) << "fork() failed errno=" << error;
     return;
   }
 
-  if(pid != 0) {
+  if (pid != 0) {
     return;
   }
 
-  auto exec_path = util::get_exec_path(get_config()->argc,
-                                       get_config()->argv,
+  auto exec_path = util::get_exec_path(get_config()->argc, get_config()->argv,
                                        get_config()->cwd);
 
-  if(!exec_path) {
+  if (!exec_path) {
     LOG(ERROR) << "Could not resolve the executable path";
     return;
   }
 
-  auto argv = util::make_unique<char*[]>(get_config()->argc + 1);
+  auto argv = util::make_unique<char *[]>(get_config()->argc + 1);
 
   argv[0] = exec_path;
-  for(int i = 1; i < get_config()->argc; ++i) {
+  for (int i = 1; i < get_config()->argc; ++i) {
     argv[i] = strdup(get_config()->argv[i]);
   }
   argv[get_config()->argc] = nullptr;
 
   size_t envlen = 0;
-  for(char **p = environ; *p; ++p, ++envlen);
+  for (char **p = environ; *p; ++p, ++envlen)
+    ;
   // 3 for missing fd4, fd6 and port.
-  auto envp = util::make_unique<char*[]>(envlen + 3 + 1);
+  auto envp = util::make_unique<char *[]>(envlen + 3 + 1);
   size_t envidx = 0;
 
   auto evlistener4 = listener_handler->get_evlistener4();
-  if(evlistener4) {
+  if (evlistener4) {
     std::string fd4 = ENV_LISTENER4_FD "=";
     fd4 += util::utos(evconnlistener_get_fd(evlistener4));
     envp[envidx++] = strdup(fd4.c_str());
   }
 
   auto evlistener6 = listener_handler->get_evlistener6();
-  if(evlistener6) {
+  if (evlistener6) {
     std::string fd6 = ENV_LISTENER6_FD "=";
     fd6 += util::utos(evconnlistener_get_fd(evlistener6));
     envp[envidx++] = strdup(fd6.c_str());
@@ -407,10 +391,10 @@ void exec_binary_signal_cb(evutil_socket_t sig, short events, void *arg)
   port += util::utos(get_config()->port);
   envp[envidx++] = strdup(port.c_str());
 
-  for(size_t i = 0; i < envlen; ++i) {
-    if(strcmp(ENV_LISTENER4_FD, environ[i]) == 0 ||
-       strcmp(ENV_LISTENER6_FD, environ[i]) == 0 ||
-       strcmp(ENV_PORT, environ[i]) == 0) {
+  for (size_t i = 0; i < envlen; ++i) {
+    if (strcmp(ENV_LISTENER4_FD, environ[i]) == 0 ||
+        strcmp(ENV_LISTENER6_FD, environ[i]) == 0 ||
+        strcmp(ENV_PORT, environ[i]) == 0) {
       continue;
     }
 
@@ -419,18 +403,18 @@ void exec_binary_signal_cb(evutil_socket_t sig, short events, void *arg)
 
   envp[envidx++] = nullptr;
 
-  if(LOG_ENABLED(INFO)) {
+  if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "cmdline";
-    for(int i = 0; argv[i]; ++i) {
+    for (int i = 0; argv[i]; ++i) {
       LOG(INFO) << i << ": " << argv[i];
     }
     LOG(INFO) << "environ";
-    for(int i = 0; envp[i]; ++i) {
+    for (int i = 0; envp[i]; ++i) {
       LOG(INFO) << i << ": " << envp[i];
     }
   }
 
-  if(execve(argv[0], argv.get(), envp.get()) == -1) {
+  if (execve(argv[0], argv.get(), envp.get()) == -1) {
     auto error = errno;
     LOG(ERROR) << "execve failed: errno=" << error;
     _Exit(EXIT_FAILURE);
@@ -439,9 +423,8 @@ void exec_binary_signal_cb(evutil_socket_t sig, short events, void *arg)
 } // namespace
 
 namespace {
-void graceful_shutdown_signal_cb(evutil_socket_t sig, short events, void *arg)
-{
-  auto listener_handler = static_cast<ListenHandler*>(arg);
+void graceful_shutdown_signal_cb(evutil_socket_t sig, short events, void *arg) {
+  auto listener_handler = static_cast<ListenHandler *>(arg);
 
   LOG(NOTICE) << "Graceful shutdown signal received";
 
@@ -459,56 +442,54 @@ void graceful_shutdown_signal_cb(evutil_socket_t sig, short events, void *arg)
 } // namespace
 
 namespace {
-std::unique_ptr<std::string> generate_time()
-{
-  return util::make_unique<std::string>(util::format_common_log(std::chrono::system_clock::now()));
+std::unique_ptr<std::string> generate_time() {
+  return util::make_unique<std::string>(
+      util::format_common_log(std::chrono::system_clock::now()));
 }
 } // namespace
 
 namespace {
-void refresh_cb(evutil_socket_t sig, short events, void *arg)
-{
-  auto listener_handler = static_cast<ListenHandler*>(arg);
+void refresh_cb(evutil_socket_t sig, short events, void *arg) {
+  auto listener_handler = static_cast<ListenHandler *>(arg);
   auto worker_stat = listener_handler->get_worker_stat();
 
   mod_config()->cached_time = generate_time();
   // In multi threaded mode (get_config()->num_worker > 1), we have to
   // wait for event notification to workers to finish.
-  if(get_config()->num_worker == 1 &&
-     worker_config->graceful_shutdown &&
-     (!worker_stat || worker_stat->num_connections == 0)) {
+  if (get_config()->num_worker == 1 && worker_config->graceful_shutdown &&
+      (!worker_stat || worker_stat->num_connections == 0)) {
     event_base_loopbreak(listener_handler->get_evbase());
   }
 }
 } // namespace
 
 namespace {
-int event_loop()
-{
+int event_loop() {
   int rv;
 
   auto evbase = event_base_new();
-  if(!evbase) {
+  if (!evbase) {
     LOG(FATAL) << "event_base_new() failed";
     exit(EXIT_FAILURE);
   }
   SSL_CTX *sv_ssl_ctx, *cl_ssl_ctx;
 
-  if(get_config()->client_mode) {
+  if (get_config()->client_mode) {
     sv_ssl_ctx = nullptr;
-    cl_ssl_ctx = get_config()->downstream_no_tls ?
-      nullptr : ssl::create_ssl_client_context();
+    cl_ssl_ctx = get_config()->downstream_no_tls
+                     ? nullptr
+                     : ssl::create_ssl_client_context();
   } else {
-    sv_ssl_ctx = get_config()->upstream_no_tls ?
-      nullptr : get_config()->default_ssl_ctx;
-    cl_ssl_ctx = get_config()->http2_bridge &&
-      !get_config()->downstream_no_tls ?
-      ssl::create_ssl_client_context() : nullptr;
+    sv_ssl_ctx =
+        get_config()->upstream_no_tls ? nullptr : get_config()->default_ssl_ctx;
+    cl_ssl_ctx = get_config()->http2_bridge && !get_config()->downstream_no_tls
+                     ? ssl::create_ssl_client_context()
+                     : nullptr;
   }
 
   auto listener_handler = new ListenHandler(evbase, sv_ssl_ctx, cl_ssl_ctx);
-  if(get_config()->daemon) {
-    if(daemon(0, 0) == -1) {
+  if (get_config()->daemon) {
+    if (daemon(0, 0) == -1) {
       auto error = errno;
       LOG(FATAL) << "Failed to daemonize: " << strerror(error);
       exit(EXIT_FAILURE);
@@ -518,15 +499,15 @@ int event_loop()
     mod_config()->pid = getpid();
   }
 
-  if(get_config()->pid_file) {
+  if (get_config()->pid_file) {
     save_pid();
   }
 
   auto evlistener6 = create_evlistener(listener_handler, AF_INET6);
   auto evlistener4 = create_evlistener(listener_handler, AF_INET);
-  if(!evlistener6 && !evlistener4) {
-    LOG(FATAL) << "Failed to listen on address "
-               << get_config()->host.get() << ", port " << get_config()->port;
+  if (!evlistener6 && !evlistener4) {
+    LOG(FATAL) << "Failed to listen on address " << get_config()->host.get()
+               << ", port " << get_config()->port;
     exit(EXIT_FAILURE);
   }
 
@@ -544,14 +525,14 @@ int event_loop()
   sigaddset(&signals, EXEC_BINARY_SIGNAL);
   sigaddset(&signals, GRACEFUL_SHUTDOWN_SIGNAL);
   rv = pthread_sigmask(SIG_BLOCK, &signals, nullptr);
-  if(rv != 0) {
+  if (rv != 0) {
     LOG(ERROR) << "Blocking signals failed: " << strerror(rv);
   }
 #endif // !NOTHREADS
 
-  if(get_config()->num_worker > 1) {
+  if (get_config()->num_worker > 1) {
     listener_handler->create_worker_thread(get_config()->num_worker);
-  } else if(get_config()->downstream_proto == PROTO_HTTP2) {
+  } else if (get_config()->downstream_proto == PROTO_HTTP2) {
     listener_handler->create_http2_session();
   } else {
     listener_handler->create_http1_connect_blocker();
@@ -559,88 +540,86 @@ int event_loop()
 
 #ifndef NOTHREADS
   rv = pthread_sigmask(SIG_UNBLOCK, &signals, nullptr);
-  if(rv != 0) {
+  if (rv != 0) {
     LOG(ERROR) << "Unblocking signals failed: " << strerror(rv);
   }
 #endif // !NOTHREADS
 
-  auto reopen_log_signal_event = evsignal_new(evbase, REOPEN_LOG_SIGNAL,
-                                              reopen_log_signal_cb,
-                                              listener_handler);
+  auto reopen_log_signal_event = evsignal_new(
+      evbase, REOPEN_LOG_SIGNAL, reopen_log_signal_cb, listener_handler);
 
-  if(!reopen_log_signal_event) {
+  if (!reopen_log_signal_event) {
     LOG(ERROR) << "evsignal_new failed";
   } else {
     rv = event_add(reopen_log_signal_event, nullptr);
-    if(rv < 0) {
+    if (rv < 0) {
       LOG(ERROR) << "event_add for reopen_log_signal_event failed";
     }
   }
 
-  auto exec_binary_signal_event = evsignal_new(evbase, EXEC_BINARY_SIGNAL,
-                                               exec_binary_signal_cb,
-                                               listener_handler);
+  auto exec_binary_signal_event = evsignal_new(
+      evbase, EXEC_BINARY_SIGNAL, exec_binary_signal_cb, listener_handler);
   rv = event_add(exec_binary_signal_event, nullptr);
 
-  if(rv == -1) {
+  if (rv == -1) {
     LOG(FATAL) << "event_add for exec_binary_signal_event failed";
 
     exit(EXIT_FAILURE);
   }
 
-  auto graceful_shutdown_signal_event = evsignal_new
-    (evbase, GRACEFUL_SHUTDOWN_SIGNAL, graceful_shutdown_signal_cb,
-     listener_handler);
+  auto graceful_shutdown_signal_event =
+      evsignal_new(evbase, GRACEFUL_SHUTDOWN_SIGNAL,
+                   graceful_shutdown_signal_cb, listener_handler);
 
   rv = event_add(graceful_shutdown_signal_event, nullptr);
 
-  if(rv == -1) {
+  if (rv == -1) {
     LOG(FATAL) << "event_add for graceful_shutdown_signal_event failed";
 
     exit(EXIT_FAILURE);
   }
 
-  auto refresh_event = event_new(evbase, -1, EV_PERSIST, refresh_cb,
-                                 listener_handler);
+  auto refresh_event =
+      event_new(evbase, -1, EV_PERSIST, refresh_cb, listener_handler);
 
-  if(!refresh_event) {
+  if (!refresh_event) {
     LOG(ERROR) << "event_new failed";
 
     exit(EXIT_FAILURE);
   }
 
-  timeval refresh_timeout = { 1, 0 };
+  timeval refresh_timeout = {1, 0};
   rv = event_add(refresh_event, &refresh_timeout);
 
-  if(rv == -1) {
+  if (rv == -1) {
     LOG(ERROR) << "Adding refresh_event failed";
 
     exit(EXIT_FAILURE);
   }
 
-  if(LOG_ENABLED(INFO)) {
+  if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "Entering event loop";
   }
   event_base_loop(evbase, 0);
 
   listener_handler->join_worker();
 
-  if(refresh_event) {
+  if (refresh_event) {
     event_free(refresh_event);
   }
-  if(graceful_shutdown_signal_event) {
+  if (graceful_shutdown_signal_event) {
     event_free(graceful_shutdown_signal_event);
   }
-  if(exec_binary_signal_event) {
+  if (exec_binary_signal_event) {
     event_free(exec_binary_signal_event);
   }
-  if(reopen_log_signal_event) {
+  if (reopen_log_signal_event) {
     event_free(reopen_log_signal_event);
   }
-  if(evlistener4) {
+  if (evlistener4) {
     evconnlistener_free(evlistener4);
   }
-  if(evlistener6) {
+  if (evlistener6) {
     evconnlistener_free(evlistener6);
   }
   return 0;
@@ -649,8 +628,7 @@ int event_loop()
 
 namespace {
 // Returns true if regular file or symbolic link |path| exists.
-bool conf_exists(const char *path)
-{
+bool conf_exists(const char *path) {
   struct stat buf;
   int rv = stat(path, &buf);
   return rv == 0 && (buf.st_mode & (S_IFREG | S_IFLNK));
@@ -660,9 +638,9 @@ bool conf_exists(const char *path)
 namespace {
 const char *DEFAULT_NPN_LIST = NGHTTP2_PROTO_VERSION_ID ","
 #ifdef HAVE_SPDYLAY
-  "spdy/3.1,"
+                                                        "spdy/3.1,"
 #endif // HAVE_SPDYLAY
-  "http/1.1";
+                                                        "http/1.1";
 } // namespace
 
 namespace {
@@ -670,15 +648,13 @@ const char *DEFAULT_TLS_PROTO_LIST = "TLSv1.2,TLSv1.1";
 } // namespace
 
 namespace {
-const char *DEFAULT_ACCESSLOG_FORMAT =
-  "$remote_addr - - [$time_local] "
-  "\"$request\" $status $body_bytes_sent "
-  "\"$http_referer\" \"$http_user_agent\"";
+const char *DEFAULT_ACCESSLOG_FORMAT = "$remote_addr - - [$time_local] "
+                                       "\"$request\" $status $body_bytes_sent "
+                                       "\"$http_referer\" \"$http_user_agent\"";
 } // namespace
 
 namespace {
-void fill_default_config()
-{
+void fill_default_config() {
   memset(mod_config(), 0, sizeof(*mod_config()));
 
   mod_config()->verbose = false;
@@ -743,7 +719,7 @@ void fill_default_config()
 #if defined(__ANDROID__) || defined(ANDROID)
   // Android does not have /dev/stderr.  Use /proc/self/fd/2 instead.
   mod_config()->errorlog_file = strcopy("/proc/self/fd/2");
-#else // !__ANDROID__ && ANDROID
+#else  // !__ANDROID__ && ANDROID
   mod_config()->errorlog_file = strcopy("/dev/stderr");
 #endif // !__ANDROID__ && ANDROID
   mod_config()->errorlog_syslog = false;
@@ -793,8 +769,7 @@ void fill_default_config()
 
   nghttp2_option_new(&mod_config()->http2_option);
 
-  nghttp2_option_set_no_auto_window_update
-    (mod_config()->http2_option, 1);
+  nghttp2_option_set_no_auto_window_update(mod_config()->http2_option, 1);
 
   mod_config()->tls_proto_mask = 0;
   mod_config()->cached_time = generate_time();
@@ -807,9 +782,8 @@ void fill_default_config()
 } // namespace
 
 namespace {
-size_t get_rate_limit(size_t rate_limit)
-{
-  if(rate_limit == 0) {
+size_t get_rate_limit(size_t rate_limit) {
+  if (rate_limit == 0) {
     return EV_RATE_LIMIT_MAX;
   } else {
     return rate_limit;
@@ -818,23 +792,20 @@ size_t get_rate_limit(size_t rate_limit)
 } // namespace
 
 namespace {
-void print_version(std::ostream& out)
-{
+void print_version(std::ostream &out) {
   out << get_config()->server_name << std::endl;
 }
 } // namespace
 
 namespace {
-void print_usage(std::ostream& out)
-{
+void print_usage(std::ostream &out) {
   out << R"(Usage: nghttpx [OPTIONS]... [<PRIVATE_KEY> <CERT>]
 A reverse proxy for HTTP/2, HTTP/1 and SPDY.)" << std::endl;
 }
 } // namespace
 
 namespace {
-void print_help(std::ostream& out)
-{
+void print_help(std::ostream &out) {
   print_usage(out);
   out << R"(
   <PRIVATE_KEY>      Set  path  to  server's  private  key.   Required
@@ -849,19 +820,17 @@ Options:
 Connections:
   -b, --backend=<HOST,PORT>
                      Set backend host and port.
-                     Default: ')"
-      << get_config()->downstream_host.get() << ","
+                     Default: ')" << get_config()->downstream_host.get() << ","
       << get_config()->downstream_port << R"('
   -f, --frontend=<HOST,PORT>
                      Set frontend host and port.  If <HOST> is '*', it
                      assumes  all addresses  including  both IPv4  and
                      IPv6.
-                     Default: ')"
-      << get_config()->host.get() << "," << get_config()->port << R"('
+                     Default: ')" << get_config()->host.get() << ","
+      << get_config()->port << R"('
   --backlog=<NUM>    Set  listen  backlog  size.    If  -1  is  given,
                      libevent will choose suitable value.
-                     Default: )"
-      << get_config()->backlog << R"(
+                     Default: )" << get_config()->backlog << R"(
   --backend-ipv4     Resolve backend hostname to IPv4 address only.
   --backend-ipv6     Resolve backend hostname to IPv6 address only.
   --backend-http-proxy-uri=<URI>
@@ -883,58 +852,49 @@ Connections:
 Performance:
   -n, --workers=<CORES>
                      Set the number of worker threads.
-                     Default: )"
-      << get_config()->num_worker << R"(
+                     Default: )" << get_config()->num_worker << R"(
   --read-rate=<RATE>
                      Set  maximum   average  read  rate   on  frontend
                      connection.  Setting 0 to  this option means read
                      rate is unlimited.
-                     Default: )"
-      << get_config()->read_rate << R"(
+                     Default: )" << get_config()->read_rate << R"(
   --read-burst=<SIZE>
                      Set   maximum  read   burst   size  on   frontend
                      connection.  Setting  0 does not work,  but it is
                      not  a problem  because  --read-rate=0 will  give
                      unlimited  read rate  regardless  of this  option
                      value.
-                     Default: )"
-      << get_config()->read_burst << R"(
+                     Default: )" << get_config()->read_burst << R"(
   --write-rate=<RATE>
                      Set  maximum  average   write  rate  on  frontend
                      connection.  Setting 0 to this option means write
                      rate is unlimited.
-                     Default: )"
-      << get_config()->write_rate << R"(
+                     Default: )" << get_config()->write_rate << R"(
   --write-burst=<SIZE>
                      Set   maximum  write   burst  size   on  frontend
                      connection.  Setting 0 to this option means write
                      burst size is unlimited.
-                     Default: )"
-      << get_config()->write_burst << R"(
+                     Default: )" << get_config()->write_burst << R"(
   --worker-read-rate=<RATE>
                      Set  maximum   average  read  rate   on  frontend
                      connection per worker.  Setting  0 to this option
                      means read rate is unlimited.
-                     Default: )"
-      << get_config()->worker_read_rate << R"(
+                     Default: )" << get_config()->worker_read_rate << R"(
   --worker-read-burst=<SIZE>
                      Set   maximum  read   burst   size  on   frontend
                      connection per worker.  Setting  0 to this option
                      means read burst size is unlimited.
-                     Default: )"
-      << get_config()->worker_read_burst << R"(
+                     Default: )" << get_config()->worker_read_burst << R"(
   --worker-write-rate=<RATE>
                      Set  maximum  average   write  rate  on  frontend
                      connection per worker.  Setting  0 to this option
                      means write rate is unlimited.
-                     Default: )"
-      << get_config()->worker_write_rate << R"(
+                     Default: )" << get_config()->worker_write_rate << R"(
   --worker-write-burst=<SIZE>
                      Set   maximum  write   burst  size   on  frontend
                      connection per worker.  Setting  0 to this option
                      means write burst size is unlimited.
-                     Default: )"
-      << get_config()->worker_write_burst << R"(
+                     Default: )" << get_config()->worker_write_burst << R"(
   --worker-frontend-connections=<NUM>
                      Set  maximum number  of simultaneous  connections
                      frontend accepts.  Setting 0 means unlimited.
@@ -944,8 +904,8 @@ Performance:
                      connections   per  frontend.    This  option   is
                      meaningful when the combination of HTTP/2 or SPDY
                      frontend and HTTP/1 backend is used.
-                     Default: )"
-      << get_config()->max_downstream_connections << R"(
+                     Default: )" << get_config()->max_downstream_connections
+      << R"(
 
 Timeout:
   --frontend-http2-read-timeout=<SEC>
@@ -956,27 +916,27 @@ Timeout:
   --frontend-read-timeout=<SEC>
                      Specify  read   timeout  for   HTTP/1.1  frontend
                      connection.
-                     Default: )"
-      << get_config()->upstream_read_timeout.tv_sec << R"(
+                     Default: )" << get_config()->upstream_read_timeout.tv_sec
+      << R"(
   --frontend-write-timeout=<SEC>
                      Specify   write   timeout    for   all   frontend
                      connections.
-                     Default: )"
-      << get_config()->upstream_write_timeout.tv_sec << R"(
+                     Default: )" << get_config()->upstream_write_timeout.tv_sec
+      << R"(
   --stream-read-timeout=<SEC>
                      Specify read timeout for HTTP/2 and SPDY streams.
                      0 means no timeout.
-                     Default: )"
-      << get_config()->stream_read_timeout.tv_sec << R"(
+                     Default: )" << get_config()->stream_read_timeout.tv_sec
+      << R"(
   --stream-write-timeout=<SEC>
                      Specify  write   timeout  for  HTTP/2   and  SPDY
                      streams.  0 means no timeout.
-                     Default: )"
-      << get_config()->stream_write_timeout.tv_sec << R"(
+                     Default: )" << get_config()->stream_write_timeout.tv_sec
+      << R"(
   --backend-read-timeout=<SEC>
                      Specify read timeout for backend connection.
-                     Default: )"
-      << get_config()->downstream_read_timeout.tv_sec << R"(
+                     Default: )" << get_config()->downstream_read_timeout.tv_sec
+      << R"(
   --backend-write-timeout=<SEC>
                      Specify write timeout for backend connection.
                      Default: )"
@@ -1059,14 +1019,14 @@ HTTP/2 and SPDY:
   -c, --http2-max-concurrent-streams=<NUM>
                      Set the maximum number  of the concurrent streams
                      in one HTTP/2 and SPDY session.
-                     Default: )"
-      << get_config()->http2_max_concurrent_streams << R"(
+                     Default: )" << get_config()->http2_max_concurrent_streams
+      << R"(
   --frontend-http2-window-bits=<N>
                      Sets the per-stream initial window size of HTTP/2
                      SPDY frontend  connection.  For HTTP/2,  the size
                      is 2**<N>-1.  For SPDY, the size is 2**<N>.
-                     Default: )"
-      << get_config()->http2_upstream_window_bits << R"(
+                     Default: )" << get_config()->http2_upstream_window_bits
+      << R"(
   --frontend-http2-connection-window-bits=<N>
                      Sets the per-connection window size of HTTP/2 and
                      SPDY frontend  connection.  For HTTP/2,  the size
@@ -1077,8 +1037,8 @@ HTTP/2 and SPDY:
   --backend-http2-window-bits=<N>
                      Sets the  initial window  size of  HTTP/2 backend
                      connection to 2**<N>-1.
-                     Default: )"
-      << get_config()->http2_downstream_window_bits << R"(
+                     Default: )" << get_config()->http2_downstream_window_bits
+      << R"(
   --backend-http2-connection-window-bits=<N>
                      Sets  the per-connection  window  size of  HTTP/2
                      backend connection to 2**<N>-1.
@@ -1150,13 +1110,11 @@ Logging:
                      $alpn:  ALPN  identifier  of the  protocol  which
                      generates  the  response.   For HTTP/1,  ALPN  is
                      always http/1.1, regardless of minor version.
-                     Default: )"
-      << DEFAULT_ACCESSLOG_FORMAT << R"(
+                     Default: )" << DEFAULT_ACCESSLOG_FORMAT << R"(
   --errorlog-file=<PATH>
                      Set  path to  write error  log.  To  reopen file,
                      send USR1 signal to nghttpx.
-                     Default: )"
-      << get_config()->errorlog_file.get() << R"(
+                     Default: )" << get_config()->errorlog_file.get() << R"(
   --errorlog-syslog  Send  error log  to  syslog.  If  this option  is
                      used, --errorlog-file option is ignored.
   --syslog-facility=<FACILITY>
@@ -1218,123 +1176,119 @@ Misc:
   --user=<USER>      Run  this  program  as <USER>.   This  option  is
                      intended to be used to drop root privileges.
   --conf=<PATH>      Load configuration from <PATH>.
-                     Default: )"
-      << get_config()->conf_path.get() << R"(
+                     Default: )" << get_config()->conf_path.get() << R"(
   -v, --version      Print version and exit.
-  -h, --help         Print this help and exit.)"
-      << std::endl;
+  -h, --help         Print this help and exit.)" << std::endl;
 }
 } // namespace
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   Log::set_severity_level(NOTICE);
   create_config();
   fill_default_config();
 
   // We have to copy argv, since getopt_long may change its content.
   mod_config()->argc = argc;
-  mod_config()->argv = new char*[argc];
+  mod_config()->argv = new char *[argc];
 
-  for(int i = 0; i < argc; ++i) {
+  for (int i = 0; i < argc; ++i) {
     mod_config()->argv[i] = strdup(argv[i]);
   }
 
   mod_config()->cwd = getcwd(nullptr, 0);
-  if(mod_config()->cwd == nullptr) {
+  if (mod_config()->cwd == nullptr) {
     auto error = errno;
     LOG(FATAL) << "failed to get current working directory: errno=" << error;
     exit(EXIT_FAILURE);
   }
 
-  std::vector<std::pair<const char*, const char*> > cmdcfgs;
-  while(1) {
+  std::vector<std::pair<const char *, const char *>> cmdcfgs;
+  while (1) {
     static int flag = 0;
     static option long_options[] = {
-      {"daemon", no_argument, nullptr, 'D'},
-      {"log-level", required_argument, nullptr, 'L'},
-      {"backend", required_argument, nullptr, 'b'},
-      {"http2-max-concurrent-streams", required_argument, nullptr, 'c'},
-      {"frontend", required_argument, nullptr, 'f'},
-      {"help", no_argument, nullptr, 'h'},
-      {"insecure", no_argument, nullptr, 'k'},
-      {"workers", required_argument, nullptr, 'n'},
-      {"client-proxy", no_argument, nullptr, 'p'},
-      {"http2-proxy", no_argument, nullptr, 's'},
-      {"version", no_argument, nullptr, 'v'},
-      {"frontend-frame-debug", no_argument, nullptr, 'o'},
-      {"add-x-forwarded-for", no_argument, &flag, 1},
-      {"frontend-http2-read-timeout", required_argument, &flag, 2},
-      {"frontend-read-timeout", required_argument, &flag, 3},
-      {"frontend-write-timeout", required_argument, &flag, 4},
-      {"backend-read-timeout", required_argument, &flag, 5},
-      {"backend-write-timeout", required_argument, &flag, 6},
-      {"accesslog-file", required_argument, &flag, 7},
-      {"backend-keep-alive-timeout", required_argument, &flag, 8},
-      {"frontend-http2-window-bits", required_argument, &flag, 9},
-      {"pid-file", required_argument, &flag, 10},
-      {"user", required_argument, &flag, 11},
-      {"conf", required_argument, &flag, 12},
-      {"syslog-facility", required_argument, &flag, 14},
-      {"backlog", required_argument, &flag, 15},
-      {"ciphers", required_argument, &flag, 16},
-      {"client", no_argument, &flag, 17},
-      {"backend-http2-window-bits", required_argument, &flag, 18},
-      {"cacert", required_argument, &flag, 19},
-      {"backend-ipv4", no_argument, &flag, 20},
-      {"backend-ipv6", no_argument, &flag, 21},
-      {"private-key-passwd-file", required_argument, &flag, 22},
-      {"no-via", no_argument, &flag, 23},
-      {"subcert", required_argument, &flag, 24},
-      {"http2-bridge", no_argument, &flag, 25},
-      {"backend-http-proxy-uri", required_argument, &flag, 26},
-      {"backend-no-tls", no_argument, &flag, 27},
-      {"frontend-no-tls", no_argument, &flag, 29},
-      {"backend-tls-sni-field", required_argument, &flag, 31},
-      {"dh-param-file", required_argument, &flag, 33},
-      {"read-rate", required_argument, &flag, 34},
-      {"read-burst", required_argument, &flag, 35},
-      {"write-rate", required_argument, &flag, 36},
-      {"write-burst", required_argument, &flag, 37},
-      {"npn-list", required_argument, &flag, 38},
-      {"verify-client", no_argument, &flag, 39},
-      {"verify-client-cacert", required_argument, &flag, 40},
-      {"client-private-key-file", required_argument, &flag, 41},
-      {"client-cert-file", required_argument, &flag, 42},
-      {"frontend-http2-dump-request-header", required_argument, &flag, 43},
-      {"frontend-http2-dump-response-header", required_argument, &flag, 44},
-      {"http2-no-cookie-crumbling", no_argument, &flag, 45},
-      {"frontend-http2-connection-window-bits", required_argument, &flag, 46},
-      {"backend-http2-connection-window-bits", required_argument, &flag, 47},
-      {"tls-proto-list", required_argument, &flag, 48},
-      {"padding", required_argument, &flag, 49},
-      {"worker-read-rate", required_argument, &flag, 50},
-      {"worker-read-burst", required_argument, &flag, 51},
-      {"worker-write-rate", required_argument, &flag, 52},
-      {"worker-write-burst", required_argument, &flag, 53},
-      {"altsvc", required_argument, &flag, 54},
-      {"add-response-header", required_argument, &flag, 55},
-      {"worker-frontend-connections", required_argument, &flag, 56},
-      {"accesslog-syslog", no_argument, &flag, 57},
-      {"errorlog-file", required_argument, &flag, 58},
-      {"errorlog-syslog", no_argument, &flag, 59},
-      {"stream-read-timeout", required_argument, &flag, 60},
-      {"stream-write-timeout", required_argument, &flag, 61},
-      {"no-location-rewrite", no_argument, &flag, 62},
-      {"backend-connections-per-frontend", required_argument, &flag, 63},
-      {"listener-disable-timeout", required_argument, &flag, 64},
-      {"strip-incoming-x-forwarded-for", no_argument, &flag, 65},
-      {"accesslog-format", required_argument, &flag, 66},
-      {nullptr, 0, nullptr, 0 }
-    };
+        {"daemon", no_argument, nullptr, 'D'},
+        {"log-level", required_argument, nullptr, 'L'},
+        {"backend", required_argument, nullptr, 'b'},
+        {"http2-max-concurrent-streams", required_argument, nullptr, 'c'},
+        {"frontend", required_argument, nullptr, 'f'},
+        {"help", no_argument, nullptr, 'h'},
+        {"insecure", no_argument, nullptr, 'k'},
+        {"workers", required_argument, nullptr, 'n'},
+        {"client-proxy", no_argument, nullptr, 'p'},
+        {"http2-proxy", no_argument, nullptr, 's'},
+        {"version", no_argument, nullptr, 'v'},
+        {"frontend-frame-debug", no_argument, nullptr, 'o'},
+        {"add-x-forwarded-for", no_argument, &flag, 1},
+        {"frontend-http2-read-timeout", required_argument, &flag, 2},
+        {"frontend-read-timeout", required_argument, &flag, 3},
+        {"frontend-write-timeout", required_argument, &flag, 4},
+        {"backend-read-timeout", required_argument, &flag, 5},
+        {"backend-write-timeout", required_argument, &flag, 6},
+        {"accesslog-file", required_argument, &flag, 7},
+        {"backend-keep-alive-timeout", required_argument, &flag, 8},
+        {"frontend-http2-window-bits", required_argument, &flag, 9},
+        {"pid-file", required_argument, &flag, 10},
+        {"user", required_argument, &flag, 11},
+        {"conf", required_argument, &flag, 12},
+        {"syslog-facility", required_argument, &flag, 14},
+        {"backlog", required_argument, &flag, 15},
+        {"ciphers", required_argument, &flag, 16},
+        {"client", no_argument, &flag, 17},
+        {"backend-http2-window-bits", required_argument, &flag, 18},
+        {"cacert", required_argument, &flag, 19},
+        {"backend-ipv4", no_argument, &flag, 20},
+        {"backend-ipv6", no_argument, &flag, 21},
+        {"private-key-passwd-file", required_argument, &flag, 22},
+        {"no-via", no_argument, &flag, 23},
+        {"subcert", required_argument, &flag, 24},
+        {"http2-bridge", no_argument, &flag, 25},
+        {"backend-http-proxy-uri", required_argument, &flag, 26},
+        {"backend-no-tls", no_argument, &flag, 27},
+        {"frontend-no-tls", no_argument, &flag, 29},
+        {"backend-tls-sni-field", required_argument, &flag, 31},
+        {"dh-param-file", required_argument, &flag, 33},
+        {"read-rate", required_argument, &flag, 34},
+        {"read-burst", required_argument, &flag, 35},
+        {"write-rate", required_argument, &flag, 36},
+        {"write-burst", required_argument, &flag, 37},
+        {"npn-list", required_argument, &flag, 38},
+        {"verify-client", no_argument, &flag, 39},
+        {"verify-client-cacert", required_argument, &flag, 40},
+        {"client-private-key-file", required_argument, &flag, 41},
+        {"client-cert-file", required_argument, &flag, 42},
+        {"frontend-http2-dump-request-header", required_argument, &flag, 43},
+        {"frontend-http2-dump-response-header", required_argument, &flag, 44},
+        {"http2-no-cookie-crumbling", no_argument, &flag, 45},
+        {"frontend-http2-connection-window-bits", required_argument, &flag, 46},
+        {"backend-http2-connection-window-bits", required_argument, &flag, 47},
+        {"tls-proto-list", required_argument, &flag, 48},
+        {"padding", required_argument, &flag, 49},
+        {"worker-read-rate", required_argument, &flag, 50},
+        {"worker-read-burst", required_argument, &flag, 51},
+        {"worker-write-rate", required_argument, &flag, 52},
+        {"worker-write-burst", required_argument, &flag, 53},
+        {"altsvc", required_argument, &flag, 54},
+        {"add-response-header", required_argument, &flag, 55},
+        {"worker-frontend-connections", required_argument, &flag, 56},
+        {"accesslog-syslog", no_argument, &flag, 57},
+        {"errorlog-file", required_argument, &flag, 58},
+        {"errorlog-syslog", no_argument, &flag, 59},
+        {"stream-read-timeout", required_argument, &flag, 60},
+        {"stream-write-timeout", required_argument, &flag, 61},
+        {"no-location-rewrite", no_argument, &flag, 62},
+        {"backend-connections-per-frontend", required_argument, &flag, 63},
+        {"listener-disable-timeout", required_argument, &flag, 64},
+        {"strip-incoming-x-forwarded-for", no_argument, &flag, 65},
+        {"accesslog-format", required_argument, &flag, 66},
+        {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
     int c = getopt_long(argc, argv, "DL:b:c:f:hkn:opsv", long_options,
                         &option_index);
-    if(c == -1) {
+    if (c == -1) {
       break;
     }
-    switch(c) {
+    switch (c) {
     case 'D':
       cmdcfgs.emplace_back(SHRPX_OPT_DAEMON, "yes");
       break;
@@ -1379,7 +1333,7 @@ int main(int argc, char **argv)
       util::show_candidates(argv[optind - 1], long_options);
       exit(EXIT_FAILURE);
     case 0:
-      switch(flag) {
+      switch (flag) {
       case 1:
         // --add-x-forwarded-for
         cmdcfgs.emplace_back(SHRPX_OPT_ADD_X_FORWARDED_FOR, "yes");
@@ -1649,15 +1603,15 @@ int main(int argc, char **argv)
   nghttp2::ssl::LibsslGlobalLock lock;
 #endif // NOTHREADS
 
-  if(conf_exists(get_config()->conf_path.get())) {
-    if(load_config(get_config()->conf_path.get()) == -1) {
+  if (conf_exists(get_config()->conf_path.get())) {
+    if (load_config(get_config()->conf_path.get()) == -1) {
       LOG(FATAL) << "Failed to load configuration from "
                  << get_config()->conf_path.get();
       exit(EXIT_FAILURE);
     }
   }
 
-  if(argc - optind >= 2) {
+  if (argc - optind >= 2) {
     cmdcfgs.emplace_back(SHRPX_OPT_PRIVATE_KEY_FILE, argv[optind++]);
     cmdcfgs.emplace_back(SHRPX_OPT_CERTIFICATE_FILE, argv[optind++]);
   }
@@ -1666,45 +1620,45 @@ int main(int argc, char **argv)
   // parsing option values.
   reopen_log_files();
 
-  for(size_t i = 0, len = cmdcfgs.size(); i < len; ++i) {
-    if(parse_config(cmdcfgs[i].first, cmdcfgs[i].second) == -1) {
+  for (size_t i = 0, len = cmdcfgs.size(); i < len; ++i) {
+    if (parse_config(cmdcfgs[i].first, cmdcfgs[i].second) == -1) {
       LOG(FATAL) << "Failed to parse command-line argument.";
       exit(EXIT_FAILURE);
     }
   }
 
-  if(get_config()->accesslog_syslog || get_config()->errorlog_syslog) {
+  if (get_config()->accesslog_syslog || get_config()->errorlog_syslog) {
     openlog("nghttpx", LOG_NDELAY | LOG_NOWAIT | LOG_PID,
             get_config()->syslog_facility);
   }
 
-  if(reopen_log_files() != 0) {
+  if (reopen_log_files() != 0) {
     LOG(FATAL) << "Failed to open log file";
     exit(EXIT_FAILURE);
   }
 
-  if(get_config()->uid != 0) {
-    if(worker_config->accesslog_fd != -1 &&
-       fchown(worker_config->accesslog_fd,
-              get_config()->uid, get_config()->gid)  == -1) {
+  if (get_config()->uid != 0) {
+    if (worker_config->accesslog_fd != -1 &&
+        fchown(worker_config->accesslog_fd, get_config()->uid,
+               get_config()->gid) == -1) {
       auto error = errno;
       LOG(WARN) << "Changing owner of access log file failed: "
                 << strerror(error);
     }
-    if(worker_config->errorlog_fd != -1 &&
-       fchown(worker_config->errorlog_fd,
-              get_config()->uid, get_config()->gid) == -1) {
+    if (worker_config->errorlog_fd != -1 &&
+        fchown(worker_config->errorlog_fd, get_config()->uid,
+               get_config()->gid) == -1) {
       auto error = errno;
       LOG(WARN) << "Changing owner of error log file failed: "
                 << strerror(error);
     }
   }
 
-  if(get_config()->http2_upstream_dump_request_header_file) {
+  if (get_config()->http2_upstream_dump_request_header_file) {
     auto path = get_config()->http2_upstream_dump_request_header_file.get();
     auto f = open_file_for_write(path);
 
-    if(f == nullptr) {
+    if (f == nullptr) {
       LOG(FATAL) << "Failed to open http2 upstream request header file: "
                  << path;
       exit(EXIT_FAILURE);
@@ -1712,22 +1666,20 @@ int main(int argc, char **argv)
 
     mod_config()->http2_upstream_dump_request_header = f;
 
-    if(get_config()->uid != 0) {
-      if(chown(path, get_config()->uid, get_config()->gid) == -1) {
+    if (get_config()->uid != 0) {
+      if (chown(path, get_config()->uid, get_config()->gid) == -1) {
         auto error = errno;
         LOG(WARN) << "Changing owner of http2 upstream request header file "
-                  << path
-                  << " failed: "
-                  << strerror(error);
+                  << path << " failed: " << strerror(error);
       }
     }
   }
 
-  if(get_config()->http2_upstream_dump_response_header_file) {
+  if (get_config()->http2_upstream_dump_response_header_file) {
     auto path = get_config()->http2_upstream_dump_response_header_file.get();
     auto f = open_file_for_write(path);
 
-    if(f == nullptr) {
+    if (f == nullptr) {
       LOG(FATAL) << "Failed to open http2 upstream response header file: "
                  << path;
       exit(EXIT_FAILURE);
@@ -1735,90 +1687,86 @@ int main(int argc, char **argv)
 
     mod_config()->http2_upstream_dump_response_header = f;
 
-    if(get_config()->uid != 0) {
-      if(chown(path, get_config()->uid, get_config()->gid) == -1) {
+    if (get_config()->uid != 0) {
+      if (chown(path, get_config()->uid, get_config()->gid) == -1) {
         auto error = errno;
         LOG(WARN) << "Changing owner of http2 upstream response header file"
-                  << " "
-                  << path
-                  << " failed: "
-                  << strerror(error);
+                  << " " << path << " failed: " << strerror(error);
       }
     }
   }
 
-  if(get_config()->npn_list.empty()) {
+  if (get_config()->npn_list.empty()) {
     mod_config()->npn_list = parse_config_str_list(DEFAULT_NPN_LIST);
   }
-  if(get_config()->tls_proto_list.empty()) {
-    mod_config()->tls_proto_list = parse_config_str_list
-      (DEFAULT_TLS_PROTO_LIST);
+  if (get_config()->tls_proto_list.empty()) {
+    mod_config()->tls_proto_list =
+        parse_config_str_list(DEFAULT_TLS_PROTO_LIST);
   }
 
   mod_config()->tls_proto_mask =
-    ssl::create_tls_proto_mask(get_config()->tls_proto_list);
+      ssl::create_tls_proto_mask(get_config()->tls_proto_list);
 
   mod_config()->alpn_prefs = ssl::set_alpn_prefs(get_config()->npn_list);
 
-  if(!get_config()->subcerts.empty()) {
+  if (!get_config()->subcerts.empty()) {
     mod_config()->cert_tree = ssl::cert_lookup_tree_new();
   }
 
-  for(auto& keycert : get_config()->subcerts) {
-    auto ssl_ctx = ssl::create_ssl_context(keycert.first.c_str(),
-                                           keycert.second.c_str());
-    if(ssl::cert_lookup_tree_add_cert_from_file
-       (get_config()->cert_tree, ssl_ctx, keycert.second.c_str()) == -1) {
+  for (auto &keycert : get_config()->subcerts) {
+    auto ssl_ctx =
+        ssl::create_ssl_context(keycert.first.c_str(), keycert.second.c_str());
+    if (ssl::cert_lookup_tree_add_cert_from_file(
+            get_config()->cert_tree, ssl_ctx, keycert.second.c_str()) == -1) {
       LOG(FATAL) << "Failed to add sub certificate.";
       exit(EXIT_FAILURE);
     }
   }
 
-  if(get_config()->cert_file && get_config()->private_key_file) {
-    mod_config()->default_ssl_ctx =
-      ssl::create_ssl_context(get_config()->private_key_file.get(),
-                              get_config()->cert_file.get());
-    if(get_config()->cert_tree) {
-      if(ssl::cert_lookup_tree_add_cert_from_file
-         (get_config()->cert_tree,
-          get_config()->default_ssl_ctx,
-          get_config()->cert_file.get()) == -1) {
+  if (get_config()->cert_file && get_config()->private_key_file) {
+    mod_config()->default_ssl_ctx = ssl::create_ssl_context(
+        get_config()->private_key_file.get(), get_config()->cert_file.get());
+    if (get_config()->cert_tree) {
+      if (ssl::cert_lookup_tree_add_cert_from_file(
+              get_config()->cert_tree, get_config()->default_ssl_ctx,
+              get_config()->cert_file.get()) == -1) {
         LOG(FATAL) << "Failed to parse command-line argument.";
         exit(EXIT_FAILURE);
       }
     }
   }
 
-  if(get_config()->backend_ipv4 && get_config()->backend_ipv6) {
+  if (get_config()->backend_ipv4 && get_config()->backend_ipv6) {
     LOG(FATAL) << "--backend-ipv4 and --backend-ipv6 cannot be used at the "
                << "same time.";
     exit(EXIT_FAILURE);
   }
 
-  if(get_config()->worker_frontend_connections == 0) {
+  if (get_config()->worker_frontend_connections == 0) {
     mod_config()->worker_frontend_connections =
-      std::numeric_limits<size_t>::max();
+        std::numeric_limits<size_t>::max();
   }
 
-  if(get_config()->http2_proxy + get_config()->http2_bridge +
-     get_config()->client_proxy + get_config()->client > 1) {
+  if (get_config()->http2_proxy + get_config()->http2_bridge +
+          get_config()->client_proxy + get_config()->client >
+      1) {
     LOG(FATAL) << "--http2-proxy, --http2-bridge, --client-proxy and --client "
                << "cannot be used at the same time.";
     exit(EXIT_FAILURE);
   }
 
-  if(get_config()->client || get_config()->client_proxy) {
+  if (get_config()->client || get_config()->client_proxy) {
     mod_config()->client_mode = true;
   }
 
-  if(get_config()->client_mode || get_config()->http2_bridge) {
+  if (get_config()->client_mode || get_config()->http2_bridge) {
     mod_config()->downstream_proto = PROTO_HTTP2;
   } else {
     mod_config()->downstream_proto = PROTO_HTTP;
   }
 
-  if(!get_config()->client_mode && !get_config()->upstream_no_tls) {
-    if(!get_config()->private_key_file || !get_config()->cert_file) {
+  if (!get_config()->client_mode && !get_config()->upstream_no_tls) {
+    if (!get_config()->private_key_file || !get_config()->cert_file) {
       print_usage(std::cerr);
       LOG(FATAL) << "Too few arguments";
       exit(EXIT_FAILURE);
@@ -1826,18 +1774,18 @@ int main(int argc, char **argv)
   }
 
   bool downstream_ipv6_addr =
-    is_ipv6_numeric_addr(get_config()->downstream_host.get());
+      is_ipv6_numeric_addr(get_config()->downstream_host.get());
 
   {
     std::string hostport;
 
-    if(downstream_ipv6_addr) {
+    if (downstream_ipv6_addr) {
       hostport += "[";
     }
 
     hostport += get_config()->downstream_host.get();
 
-    if(downstream_ipv6_addr) {
+    if (downstream_ipv6_addr) {
       hostport += "]";
     }
 
@@ -1847,50 +1795,47 @@ int main(int argc, char **argv)
     mod_config()->downstream_hostport = strcopy(hostport);
   }
 
-  if(LOG_ENABLED(INFO)) {
+  if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "Resolving backend address";
   }
-  if(resolve_hostname(&mod_config()->downstream_addr,
-                      &mod_config()->downstream_addrlen,
-                      get_config()->downstream_host.get(),
-                      get_config()->downstream_port,
-                      get_config()->backend_ipv4 ? AF_INET :
-                      (get_config()->backend_ipv6 ?
-                       AF_INET6 : AF_UNSPEC)) == -1) {
+  if (resolve_hostname(
+          &mod_config()->downstream_addr, &mod_config()->downstream_addrlen,
+          get_config()->downstream_host.get(), get_config()->downstream_port,
+          get_config()->backend_ipv4
+              ? AF_INET
+              : (get_config()->backend_ipv6 ? AF_INET6 : AF_UNSPEC)) == -1) {
     exit(EXIT_FAILURE);
   }
 
-  if(get_config()->downstream_http_proxy_host) {
-    if(LOG_ENABLED(INFO)) {
+  if (get_config()->downstream_http_proxy_host) {
+    if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "Resolving backend http proxy address";
     }
-    if(resolve_hostname(&mod_config()->downstream_http_proxy_addr,
-                        &mod_config()->downstream_http_proxy_addrlen,
-                        get_config()->downstream_http_proxy_host.get(),
-                        get_config()->downstream_http_proxy_port,
-                        AF_UNSPEC) == -1) {
+    if (resolve_hostname(&mod_config()->downstream_http_proxy_addr,
+                         &mod_config()->downstream_http_proxy_addrlen,
+                         get_config()->downstream_http_proxy_host.get(),
+                         get_config()->downstream_http_proxy_port,
+                         AF_UNSPEC) == -1) {
       exit(EXIT_FAILURE);
     }
   }
 
-  mod_config()->rate_limit_cfg = ev_token_bucket_cfg_new
-    (get_rate_limit(get_config()->read_rate),
-     get_rate_limit(get_config()->read_burst),
-     get_rate_limit(get_config()->write_rate),
-     get_rate_limit(get_config()->write_burst),
-     nullptr);
+  mod_config()->rate_limit_cfg = ev_token_bucket_cfg_new(
+      get_rate_limit(get_config()->read_rate),
+      get_rate_limit(get_config()->read_burst),
+      get_rate_limit(get_config()->write_rate),
+      get_rate_limit(get_config()->write_burst), nullptr);
 
-  mod_config()->worker_rate_limit_cfg = ev_token_bucket_cfg_new
-    (get_rate_limit(get_config()->worker_read_rate),
-     get_rate_limit(get_config()->worker_read_burst),
-     get_rate_limit(get_config()->worker_write_rate),
-     get_rate_limit(get_config()->worker_write_burst),
-     nullptr);
+  mod_config()->worker_rate_limit_cfg = ev_token_bucket_cfg_new(
+      get_rate_limit(get_config()->worker_read_rate),
+      get_rate_limit(get_config()->worker_read_burst),
+      get_rate_limit(get_config()->worker_write_rate),
+      get_rate_limit(get_config()->worker_write_burst), nullptr);
 
-  if(get_config()->upstream_frame_debug) {
+  if (get_config()->upstream_frame_debug) {
     // To make it sync to logging
     set_output(stderr);
-    if(isatty(fileno(stdout))) {
+    if (isatty(fileno(stdout))) {
       set_color_output(true);
     }
     reset_timer();
@@ -1911,7 +1856,4 @@ int main(int argc, char **argv)
 
 } // namespace shrpx
 
-int main(int argc, char **argv)
-{
-  return shrpx::main(argc, argv);
-}
+int main(int argc, char **argv) { return shrpx::main(argc, argv); }

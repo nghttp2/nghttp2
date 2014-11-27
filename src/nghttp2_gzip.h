@@ -25,13 +25,13 @@
 #ifndef NGHTTP2_GZIP_H
 
 #ifdef HAVE_CONFIG_H
-#  include <config.h>
+#include <config.h>
 #endif /* HAVE_CONFIG_H */
 #include <zlib.h>
 
 #include <nghttp2/nghttp2.h>
 
-#ifdef  __cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -102,9 +102,9 @@ void nghttp2_gzip_inflate_del(nghttp2_gzip *inflater);
  *         ....
  *     }
  */
-int nghttp2_gzip_inflate(nghttp2_gzip *inflater,
-                         uint8_t *out, size_t *outlen_ptr,
-                         const uint8_t *in, size_t *inlen_ptr);
+int nghttp2_gzip_inflate(nghttp2_gzip *inflater, uint8_t *out,
+                         size_t *outlen_ptr, const uint8_t *in,
+                         size_t *inlen_ptr);
 
 /**
  * @function

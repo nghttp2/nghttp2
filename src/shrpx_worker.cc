@@ -46,73 +46,65 @@ using namespace nghttp2;
 namespace shrpx {
 
 Worker::Worker(const WorkerInfo *info)
-  : sv_ssl_ctx_(info->sv_ssl_ctx),
-    cl_ssl_ctx_(info->cl_ssl_ctx),
-    fd_(info->sv[1])
-{}
+    : sv_ssl_ctx_(info->sv_ssl_ctx), cl_ssl_ctx_(info->cl_ssl_ctx),
+      fd_(info->sv[1]) {}
 
-Worker::~Worker()
-{
+Worker::~Worker() {
   shutdown(fd_, SHUT_WR);
   close(fd_);
 }
 
 namespace {
-void readcb(bufferevent *bev, void *arg)
-{
-  auto receiver = static_cast<ThreadEventReceiver*>(arg);
+void readcb(bufferevent *bev, void *arg) {
+  auto receiver = static_cast<ThreadEventReceiver *>(arg);
   receiver->on_read(bev);
 }
 } // namespace
 
 namespace {
-void eventcb(bufferevent *bev, short events, void *arg)
-{
-  if(events & BEV_EVENT_EOF) {
+void eventcb(bufferevent *bev, short events, void *arg) {
+  if (events & BEV_EVENT_EOF) {
     LOG(ERROR) << "Connection to main thread lost: eof";
   }
-  if(events & BEV_EVENT_ERROR) {
+  if (events & BEV_EVENT_ERROR) {
     LOG(ERROR) << "Connection to main thread lost: network error";
   }
 }
 } // namespace
 
-void Worker::run()
-{
+void Worker::run() {
   (void)reopen_log_files();
 
-  auto evbase = std::unique_ptr<event_base, decltype(&event_base_free)>
-    (event_base_new(), event_base_free);
-  if(!evbase) {
+  auto evbase = std::unique_ptr<event_base, decltype(&event_base_free)>(
+      event_base_new(), event_base_free);
+  if (!evbase) {
     LOG(ERROR) << "event_base_new() failed";
     return;
   }
-  auto bev = std::unique_ptr<bufferevent, decltype(&bufferevent_free)>
-    (bufferevent_socket_new(evbase.get(), fd_, BEV_OPT_DEFER_CALLBACKS),
-     bufferevent_free);
-  if(!bev) {
+  auto bev = std::unique_ptr<bufferevent, decltype(&bufferevent_free)>(
+      bufferevent_socket_new(evbase.get(), fd_, BEV_OPT_DEFER_CALLBACKS),
+      bufferevent_free);
+  if (!bev) {
     LOG(ERROR) << "bufferevent_socket_new() failed";
     return;
   }
   std::unique_ptr<Http2Session> http2session;
   std::unique_ptr<ConnectBlocker> http1_connect_blocker;
-  if(get_config()->downstream_proto == PROTO_HTTP2) {
+  if (get_config()->downstream_proto == PROTO_HTTP2) {
     http2session = util::make_unique<Http2Session>(evbase.get(), cl_ssl_ctx_);
-    if(http2session->init_notification() == -1) {
+    if (http2session->init_notification() == -1) {
       DIE();
     }
   } else {
     http1_connect_blocker = util::make_unique<ConnectBlocker>();
-    if(http1_connect_blocker->init(evbase.get()) == -1) {
+    if (http1_connect_blocker->init(evbase.get()) == -1) {
       DIE();
     }
   }
 
-  auto receiver = util::make_unique<ThreadEventReceiver>
-    (evbase.get(),
-     sv_ssl_ctx_,
-     http2session.get(),
-     http1_connect_blocker.get());
+  auto receiver = util::make_unique<ThreadEventReceiver>(
+      evbase.get(), sv_ssl_ctx_, http2session.get(),
+      http1_connect_blocker.get());
 
   util::bev_enable_unless(bev.get(), EV_READ);
   bufferevent_setcb(bev.get(), readcb, nullptr, eventcb, receiver.get());
@@ -120,8 +112,7 @@ void Worker::run()
   event_base_loop(evbase.get(), 0);
 }
 
-void start_threaded_worker(WorkerInfo *info)
-{
+void start_threaded_worker(WorkerInfo *info) {
   Worker worker(info);
   worker.run();
 }

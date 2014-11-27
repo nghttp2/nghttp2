@@ -30,35 +30,29 @@
 
 namespace shrpx {
 
-DownstreamQueue::DownstreamQueue()
-{}
+DownstreamQueue::DownstreamQueue() {}
 
-DownstreamQueue::~DownstreamQueue()
-{}
+DownstreamQueue::~DownstreamQueue() {}
 
-void DownstreamQueue::add_pending(std::unique_ptr<Downstream> downstream)
-{
+void DownstreamQueue::add_pending(std::unique_ptr<Downstream> downstream) {
   auto stream_id = downstream->get_stream_id();
   pending_downstreams_[stream_id] = std::move(downstream);
 }
 
-void DownstreamQueue::add_failure(std::unique_ptr<Downstream> downstream)
-{
+void DownstreamQueue::add_failure(std::unique_ptr<Downstream> downstream) {
   auto stream_id = downstream->get_stream_id();
   failure_downstreams_[stream_id] = std::move(downstream);
 }
 
-void DownstreamQueue::add_active(std::unique_ptr<Downstream> downstream)
-{
+void DownstreamQueue::add_active(std::unique_ptr<Downstream> downstream) {
   auto stream_id = downstream->get_stream_id();
   active_downstreams_[stream_id] = std::move(downstream);
 }
 
-std::unique_ptr<Downstream> DownstreamQueue::remove(int32_t stream_id)
-{
+std::unique_ptr<Downstream> DownstreamQueue::remove(int32_t stream_id) {
   auto kv = pending_downstreams_.find(stream_id);
 
-  if(kv != std::end(pending_downstreams_)) {
+  if (kv != std::end(pending_downstreams_)) {
     auto downstream = std::move((*kv).second);
     pending_downstreams_.erase(kv);
     return downstream;
@@ -66,7 +60,7 @@ std::unique_ptr<Downstream> DownstreamQueue::remove(int32_t stream_id)
 
   kv = active_downstreams_.find(stream_id);
 
-  if(kv != std::end(active_downstreams_)) {
+  if (kv != std::end(active_downstreams_)) {
     auto downstream = std::move((*kv).second);
     active_downstreams_.erase(kv);
     return downstream;
@@ -74,7 +68,7 @@ std::unique_ptr<Downstream> DownstreamQueue::remove(int32_t stream_id)
 
   kv = failure_downstreams_.find(stream_id);
 
-  if(kv != std::end(failure_downstreams_)) {
+  if (kv != std::end(failure_downstreams_)) {
     auto downstream = std::move((*kv).second);
     failure_downstreams_.erase(kv);
     return downstream;
@@ -83,34 +77,32 @@ std::unique_ptr<Downstream> DownstreamQueue::remove(int32_t stream_id)
   return nullptr;
 }
 
-Downstream* DownstreamQueue::find(int32_t stream_id)
-{
+Downstream *DownstreamQueue::find(int32_t stream_id) {
   auto kv = pending_downstreams_.find(stream_id);
 
-  if(kv != std::end(pending_downstreams_)) {
+  if (kv != std::end(pending_downstreams_)) {
     return (*kv).second.get();
   }
 
   kv = active_downstreams_.find(stream_id);
 
-  if(kv != std::end(active_downstreams_)) {
+  if (kv != std::end(active_downstreams_)) {
     return (*kv).second.get();
   }
 
   kv = failure_downstreams_.find(stream_id);
 
-  if(kv != std::end(failure_downstreams_)) {
+  if (kv != std::end(failure_downstreams_)) {
     return (*kv).second.get();
   }
 
   return nullptr;
 }
 
-std::unique_ptr<Downstream> DownstreamQueue::pop_pending()
-{
+std::unique_ptr<Downstream> DownstreamQueue::pop_pending() {
   auto i = std::begin(pending_downstreams_);
 
-  if(i == std::end(pending_downstreams_)) {
+  if (i == std::end(pending_downstreams_)) {
     return nullptr;
   }
 
@@ -121,30 +113,26 @@ std::unique_ptr<Downstream> DownstreamQueue::pop_pending()
   return downstream;
 }
 
-Downstream* DownstreamQueue::pending_top() const
-{
+Downstream *DownstreamQueue::pending_top() const {
   auto i = std::begin(pending_downstreams_);
 
-  if(i == std::end(pending_downstreams_)) {
+  if (i == std::end(pending_downstreams_)) {
     return nullptr;
   }
 
   return (*i).second.get();
 }
 
-size_t DownstreamQueue::num_active() const
-{
+size_t DownstreamQueue::num_active() const {
   return active_downstreams_.size();
 }
 
-bool DownstreamQueue::pending_empty() const
-{
+bool DownstreamQueue::pending_empty() const {
   return pending_downstreams_.empty();
 }
 
-const std::map<int32_t, std::unique_ptr<Downstream>>&
-DownstreamQueue::get_active_downstreams() const
-{
+const std::map<int32_t, std::unique_ptr<Downstream>> &
+DownstreamQueue::get_active_downstreams() const {
   return active_downstreams_;
 }
 

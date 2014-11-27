@@ -29,8 +29,7 @@
 #include "nghttp2_buf.h"
 #include "nghttp2_test_helper.h"
 
-void test_nghttp2_bufs_add(void)
-{
+void test_nghttp2_bufs_add(void) {
   int rv;
   nghttp2_bufs bufs;
   uint8_t data[2048];
@@ -61,8 +60,7 @@ void test_nghttp2_bufs_add(void)
   nghttp2_bufs_free(&bufs);
 }
 
-void test_nghttp2_bufs_addb(void)
-{
+void test_nghttp2_bufs_addb(void) {
   int rv;
   nghttp2_bufs bufs;
   ssize_t i;
@@ -76,7 +74,7 @@ void test_nghttp2_bufs_addb(void)
   CU_ASSERT(1 == nghttp2_bufs_len(&bufs));
   CU_ASSERT(14 == *bufs.cur->buf.pos);
 
-  for(i = 0; i < 999; ++i) {
+  for (i = 0; i < 999; ++i) {
     rv = nghttp2_bufs_addb(&bufs, 254);
 
     CU_ASSERT(0 == rv);
@@ -125,8 +123,7 @@ void test_nghttp2_bufs_addb(void)
   nghttp2_bufs_free(&bufs);
 }
 
-void test_nghttp2_bufs_orb(void)
-{
+void test_nghttp2_bufs_orb(void) {
   int rv;
   nghttp2_bufs bufs;
 
@@ -157,8 +154,7 @@ void test_nghttp2_bufs_orb(void)
   nghttp2_bufs_free(&bufs);
 }
 
-void test_nghttp2_bufs_remove(void)
-{
+void test_nghttp2_bufs_remove(void) {
   int rv;
   nghttp2_bufs bufs;
   nghttp2_buf_chain *chain;
@@ -174,7 +170,7 @@ void test_nghttp2_bufs_remove(void)
   rv = nghttp2_bufs_add(&bufs, "hello ", 6);
   CU_ASSERT(0 == rv);
 
-  for(i = 0; i < 2; ++i) {
+  for (i = 0; i < 2; ++i) {
     chain = bufs.cur;
 
     rv = nghttp2_bufs_advance(&bufs);
@@ -197,8 +193,7 @@ void test_nghttp2_bufs_remove(void)
   nghttp2_bufs_free(&bufs);
 }
 
-void test_nghttp2_bufs_reset(void)
-{
+void test_nghttp2_bufs_reset(void) {
   int rv;
   nghttp2_bufs bufs;
   nghttp2_buf_chain *ci;
@@ -223,7 +218,7 @@ void test_nghttp2_bufs_reset(void)
   CU_ASSERT(0 == nghttp2_bufs_len(&bufs));
   CU_ASSERT(bufs.cur == bufs.head);
 
-  for(ci = bufs.head; ci; ci = ci->next) {
+  for (ci = bufs.head; ci; ci = ci->next) {
     CU_ASSERT(offset == ci->buf.pos - ci->buf.begin);
     CU_ASSERT(ci->buf.pos == ci->buf.last);
   }
@@ -233,8 +228,7 @@ void test_nghttp2_bufs_reset(void)
   nghttp2_bufs_free(&bufs);
 }
 
-void test_nghttp2_bufs_advance(void)
-{
+void test_nghttp2_bufs_advance(void) {
   int rv;
   nghttp2_bufs bufs;
   int i;
@@ -242,7 +236,7 @@ void test_nghttp2_bufs_advance(void)
   rv = nghttp2_bufs_init(&bufs, 250, 3);
   CU_ASSERT(0 == rv);
 
-  for(i = 0; i < 2; ++i) {
+  for (i = 0; i < 2; ++i) {
     rv = nghttp2_bufs_advance(&bufs);
     CU_ASSERT(0 == rv);
   }
@@ -253,8 +247,7 @@ void test_nghttp2_bufs_advance(void)
   nghttp2_bufs_free(&bufs);
 }
 
-void test_nghttp2_bufs_next_present(void)
-{
+void test_nghttp2_bufs_next_present(void) {
   int rv;
   nghttp2_bufs bufs;
 
@@ -282,8 +275,7 @@ void test_nghttp2_bufs_next_present(void)
   nghttp2_bufs_free(&bufs);
 }
 
-void test_nghttp2_bufs_realloc(void)
-{
+void test_nghttp2_bufs_realloc(void) {
   int rv;
   nghttp2_bufs bufs;
 

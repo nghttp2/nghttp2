@@ -31,43 +31,39 @@
 
 #include <nghttp2/nghttp2.h>
 
-#define MAKE_NV(K, V)                                           \
-  { (uint8_t*)K, (uint8_t*)V, sizeof(K) - 1, sizeof(V) - 1,     \
-      NGHTTP2_NV_FLAG_NONE }
+#define MAKE_NV(K, V)                                                          \
+  {                                                                            \
+    (uint8_t *) K, (uint8_t *)V, sizeof(K) - 1, sizeof(V) - 1,                 \
+        NGHTTP2_NV_FLAG_NONE                                                   \
+  }
 
 static void deflate(nghttp2_hd_deflater *deflater,
-                    nghttp2_hd_inflater *inflater,
-                    const nghttp2_nv * const nva, size_t nvlen);
+                    nghttp2_hd_inflater *inflater, const nghttp2_nv *const nva,
+                    size_t nvlen);
 
-static int inflate_header_block(nghttp2_hd_inflater *inflater,
-                                uint8_t *in, size_t inlen, int final);
+static int inflate_header_block(nghttp2_hd_inflater *inflater, uint8_t *in,
+                                size_t inlen, int final);
 
-int main(int argc _U_, char **argv _U_)
-{
+int main(int argc _U_, char **argv _U_) {
   int rv;
   nghttp2_hd_deflater *deflater;
   nghttp2_hd_inflater *inflater;
   /* Define 1st header set.  This is looks like a HTTP request. */
   nghttp2_nv nva1[] = {
-    MAKE_NV(":scheme", "https"),
-    MAKE_NV(":authority", "example.org"),
-    MAKE_NV(":path", "/"),
-    MAKE_NV("user-agent", "libnghttp2"),
-    MAKE_NV("accept-encoding", "gzip, deflate")
-  };
+      MAKE_NV(":scheme", "https"), MAKE_NV(":authority", "example.org"),
+      MAKE_NV(":path", "/"), MAKE_NV("user-agent", "libnghttp2"),
+      MAKE_NV("accept-encoding", "gzip, deflate")};
   /* Define 2nd header set */
-  nghttp2_nv nva2[] = {
-    MAKE_NV(":scheme", "https"),
-    MAKE_NV(":authority", "example.org"),
-    MAKE_NV(":path", "/stylesheet/style.css"),
-    MAKE_NV("user-agent", "libnghttp2"),
-    MAKE_NV("accept-encoding", "gzip, deflate"),
-    MAKE_NV("referer", "https://example.org")
-  };
+  nghttp2_nv nva2[] = {MAKE_NV(":scheme", "https"),
+                       MAKE_NV(":authority", "example.org"),
+                       MAKE_NV(":path", "/stylesheet/style.css"),
+                       MAKE_NV("user-agent", "libnghttp2"),
+                       MAKE_NV("accept-encoding", "gzip, deflate"),
+                       MAKE_NV("referer", "https://example.org")};
 
   rv = nghttp2_hd_deflate_new(&deflater, 4096);
 
-  if(rv != 0) {
+  if (rv != 0) {
     fprintf(stderr, "nghttp2_hd_deflate_init failed with error: %s\n",
             nghttp2_strerror(rv));
     exit(EXIT_FAILURE);
@@ -75,7 +71,7 @@ int main(int argc _U_, char **argv _U_)
 
   rv = nghttp2_hd_inflate_new(&inflater);
 
-  if(rv != 0) {
+  if (rv != 0) {
     fprintf(stderr, "nghttp2_hd_inflate_init failed with error: %s\n",
             nghttp2_strerror(rv));
     exit(EXIT_FAILURE);
@@ -95,9 +91,8 @@ int main(int argc _U_, char **argv _U_)
 }
 
 static void deflate(nghttp2_hd_deflater *deflater,
-                    nghttp2_hd_inflater *inflater,
-                    const nghttp2_nv * const nva, size_t nvlen)
-{
+                    nghttp2_hd_inflater *inflater, const nghttp2_nv *const nva,
+                    size_t nvlen) {
   ssize_t rv;
   uint8_t *buf;
   size_t buflen;
@@ -107,13 +102,13 @@ static void deflate(nghttp2_hd_deflater *deflater,
 
   sum = 0;
 
-  for(i = 0; i < nvlen; ++i) {
+  for (i = 0; i < nvlen; ++i) {
     sum += nva[i].namelen + nva[i].valuelen;
   }
 
   printf("Input (%zu byte(s)):\n\n", sum);
 
-  for(i = 0; i < nvlen; ++i) {
+  for (i = 0; i < nvlen; ++i) {
     fwrite(nva[i].name, nva[i].namelen, 1, stdout);
     printf(": ");
     fwrite(nva[i].value, nva[i].valuelen, 1, stdout);
@@ -125,7 +120,7 @@ static void deflate(nghttp2_hd_deflater *deflater,
 
   rv = nghttp2_hd_deflate_hd(deflater, buf, buflen, nva, nvlen);
 
-  if(rv < 0) {
+  if (rv < 0) {
     fprintf(stderr, "nghttp2_hd_deflate_hd() failed with error: %s\n",
             nghttp2_strerror((int)rv));
 
@@ -136,17 +131,17 @@ static void deflate(nghttp2_hd_deflater *deflater,
 
   outlen = rv;
 
-  printf("\nDeflate (%zu byte(s), ratio %.02f):\n\n",
-         outlen, sum == 0 ? 0 : (double)outlen / sum);
+  printf("\nDeflate (%zu byte(s), ratio %.02f):\n\n", outlen,
+         sum == 0 ? 0 : (double)outlen / sum);
 
-  for(i = 0; i < outlen; ++i) {
-    if((i & 0x0fu) == 0) {
+  for (i = 0; i < outlen; ++i) {
+    if ((i & 0x0fu) == 0) {
       printf("%08zX: ", i);
     }
 
     printf("%02X ", buf[i]);
 
-    if(((i + 1) & 0x0fu) == 0) {
+    if (((i + 1) & 0x0fu) == 0) {
       printf("\n");
     }
   }
@@ -157,7 +152,7 @@ static void deflate(nghttp2_hd_deflater *deflater,
      header data. */
   rv = inflate_header_block(inflater, buf, outlen, 1);
 
-  if(rv != 0) {
+  if (rv != 0) {
     free(buf);
 
     exit(EXIT_FAILURE);
@@ -169,20 +164,18 @@ static void deflate(nghttp2_hd_deflater *deflater,
   free(buf);
 }
 
-int inflate_header_block(nghttp2_hd_inflater *inflater,
-                         uint8_t *in, size_t inlen, int final)
-{
+int inflate_header_block(nghttp2_hd_inflater *inflater, uint8_t *in,
+                         size_t inlen, int final) {
   ssize_t rv;
 
-  for(;;) {
+  for (;;) {
     nghttp2_nv nv;
     int inflate_flags = 0;
     size_t proclen;
 
-    rv = nghttp2_hd_inflate_hd(inflater, &nv, &inflate_flags,
-                               in, inlen, final);
+    rv = nghttp2_hd_inflate_hd(inflater, &nv, &inflate_flags, in, inlen, final);
 
-    if(rv < 0) {
+    if (rv < 0) {
       fprintf(stderr, "inflate failed with error code %zd", rv);
       return -1;
     }
@@ -192,20 +185,19 @@ int inflate_header_block(nghttp2_hd_inflater *inflater,
     in += proclen;
     inlen -= proclen;
 
-    if(inflate_flags & NGHTTP2_HD_INFLATE_EMIT) {
+    if (inflate_flags & NGHTTP2_HD_INFLATE_EMIT) {
       fwrite(nv.name, nv.namelen, 1, stderr);
       fprintf(stderr, ": ");
       fwrite(nv.value, nv.valuelen, 1, stderr);
       fprintf(stderr, "\n");
     }
 
-    if(inflate_flags & NGHTTP2_HD_INFLATE_FINAL) {
+    if (inflate_flags & NGHTTP2_HD_INFLATE_FINAL) {
       nghttp2_hd_inflate_end_headers(inflater);
       break;
     }
 
-    if((inflate_flags & NGHTTP2_HD_INFLATE_EMIT) == 0 &&
-       inlen == 0) {
+    if ((inflate_flags & NGHTTP2_HD_INFLATE_EMIT) == 0 && inlen == 0) {
       break;
     }
   }

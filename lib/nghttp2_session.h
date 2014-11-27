@@ -26,7 +26,7 @@
 #define NGHTTP2_SESSION_H
 
 #ifdef HAVE_CONFIG_H
-#  include <config.h>
+#include <config.h>
 #endif /* HAVE_CONFIG_H */
 
 #include <nghttp2/nghttp2.h>
@@ -264,7 +264,7 @@ int nghttp2_session_is_my_stream_id(nghttp2_session *session,
  * Don't call nghttp2_outbound_item_free() until frame member is
  * initialized.
  */
-void nghttp2_session_outbound_item_init(nghttp2_session* session,
+void nghttp2_session_outbound_item_init(nghttp2_session *session,
                                         nghttp2_outbound_item *item);
 
 /*
@@ -298,8 +298,7 @@ int nghttp2_session_add_item(nghttp2_session *session,
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
  */
-int nghttp2_session_add_rst_stream(nghttp2_session *session,
-                                   int32_t stream_id,
+int nghttp2_session_add_rst_stream(nghttp2_session *session, int32_t stream_id,
                                    uint32_t error_code);
 
 /*
@@ -332,10 +331,8 @@ int nghttp2_session_add_ping(nghttp2_session *session, uint8_t flags,
  * NGHTTP2_ERR_INVALID_ARGUMENT
  *     The |opaque_data_len| is too large.
  */
-int nghttp2_session_add_goaway(nghttp2_session *session,
-                               int32_t last_stream_id,
-                               uint32_t error_code,
-                               const uint8_t *opaque_data,
+int nghttp2_session_add_goaway(nghttp2_session *session, int32_t last_stream_id,
+                               uint32_t error_code, const uint8_t *opaque_data,
                                size_t opaque_data_len);
 
 /*
@@ -378,9 +375,8 @@ int nghttp2_session_add_settings(nghttp2_session *session, uint8_t flags,
  * This function returns a pointer to created new stream object, or
  * NULL.
  */
-nghttp2_stream* nghttp2_session_open_stream(nghttp2_session *session,
-                                            int32_t stream_id,
-                                            uint8_t flags,
+nghttp2_stream *nghttp2_session_open_stream(nghttp2_session *session,
+                                            int32_t stream_id, uint8_t flags,
                                             nghttp2_priority_spec *pri_spec,
                                             nghttp2_stream_state initial_state,
                                             void *stream_user_data);
@@ -461,7 +457,6 @@ void nghttp2_session_adjust_closed_stream(nghttp2_session *session,
 int nghttp2_session_close_stream_if_shut_rdwr(nghttp2_session *session,
                                               nghttp2_stream *stream);
 
-
 int nghttp2_session_end_request_headers_received(nghttp2_session *session,
                                                  nghttp2_frame *frame,
                                                  nghttp2_stream *stream);
@@ -504,7 +499,6 @@ int nghttp2_session_on_push_response_headers_received(nghttp2_session *session,
 int nghttp2_session_on_headers_received(nghttp2_session *session,
                                         nghttp2_frame *frame,
                                         nghttp2_stream *stream);
-
 
 /*
  * Called when PRIORITY is received, assuming |frame| is properly
@@ -551,8 +545,7 @@ int nghttp2_session_on_rst_stream_received(nghttp2_session *session,
  *     The read_callback failed
  */
 int nghttp2_session_on_settings_received(nghttp2_session *session,
-                                         nghttp2_frame *frame,
-                                         int noack);
+                                         nghttp2_frame *frame, int noack);
 
 /*
  * Called when PUSH_PROMISE is received, assuming |frame| is properly
@@ -652,7 +645,7 @@ int nghttp2_session_on_data_received(nghttp2_session *session,
  * could be NULL if such stream does not exist.  This function returns
  * NULL if stream is marked as closed.
  */
-nghttp2_stream* nghttp2_session_get_stream(nghttp2_session *session,
+nghttp2_stream *nghttp2_session_get_stream(nghttp2_session *session,
                                            int32_t stream_id);
 
 /*
@@ -660,7 +653,7 @@ nghttp2_stream* nghttp2_session_get_stream(nghttp2_session *session,
  * returns stream object even if it is marked as closed or in
  * NGHTTP2_STREAM_IDLE state.
  */
-nghttp2_stream* nghttp2_session_get_stream_raw(nghttp2_session *session,
+nghttp2_stream *nghttp2_session_get_stream_raw(nghttp2_session *session,
                                                int32_t stream_id);
 
 /*
@@ -680,17 +673,15 @@ nghttp2_stream* nghttp2_session_get_stream_raw(nghttp2_session *session,
  * NGHTTP2_ERR_CALLBACK_FAILURE
  *     The read_callback failed (session error).
  */
-int nghttp2_session_pack_data(nghttp2_session *session,
-                              nghttp2_bufs *bufs,
-                              size_t datamax,
-                              nghttp2_frame *frame,
+int nghttp2_session_pack_data(nghttp2_session *session, nghttp2_bufs *bufs,
+                              size_t datamax, nghttp2_frame *frame,
                               nghttp2_data_aux_data *aux_data);
 
 /*
  * Returns top of outbound frame queue. This function returns NULL if
  * queue is empty.
  */
-nghttp2_outbound_item* nghttp2_session_get_ob_pq_top(nghttp2_session *session);
+nghttp2_outbound_item *nghttp2_session_get_ob_pq_top(nghttp2_session *session);
 
 /*
  * Pops and returns next item to send. If there is no such item,
@@ -699,8 +690,8 @@ nghttp2_outbound_item* nghttp2_session_get_ob_pq_top(nghttp2_session *session);
  * session->ob_ss_pq has item and max concurrent streams is reached,
  * then this function returns NULL.
  */
-nghttp2_outbound_item* nghttp2_session_pop_next_ob_item
-(nghttp2_session *session);
+nghttp2_outbound_item *
+nghttp2_session_pop_next_ob_item(nghttp2_session *session);
 
 /*
  * Returns next item to send. If there is no such item, this function
@@ -709,8 +700,8 @@ nghttp2_outbound_item* nghttp2_session_pop_next_ob_item
  * session->ob_ss_pq has item and max concurrent streams is reached,
  * then this function returns NULL.
  */
-nghttp2_outbound_item* nghttp2_session_get_next_ob_item
-(nghttp2_session *session);
+nghttp2_outbound_item *
+nghttp2_session_get_next_ob_item(nghttp2_session *session);
 
 /*
  * Updates local settings with the |iv|. The number of elements in the
@@ -742,9 +733,9 @@ int nghttp2_session_update_local_settings(nghttp2_session *session,
  * NGHTTP2_ERR_NOMEM
  *     Out of memory
  */
-int nghttp2_session_reprioritize_stream
-(nghttp2_session *session, nghttp2_stream *stream,
- const nghttp2_priority_spec *pri_spec);
+int nghttp2_session_reprioritize_stream(nghttp2_session *session,
+                                        nghttp2_stream *stream,
+                                        const nghttp2_priority_spec *pri_spec);
 
 /*
  * Terminates current |session| with the |error_code|.  The |reason|
@@ -758,7 +749,8 @@ int nghttp2_session_reprioritize_stream
  * NGHTTP2_ERR_INVALID_ARGUMENT
  *     The |reason| is too long.
  */
-int nghttp2_session_terminate_session_with_reason
-(nghttp2_session *session, uint32_t error_code, const char *reason);
+int nghttp2_session_terminate_session_with_reason(nghttp2_session *session,
+                                                  uint32_t error_code,
+                                                  const char *reason);
 
 #endif /* NGHTTP2_SESSION_H */

@@ -30,33 +30,22 @@
 
 namespace shrpx {
 
-DownstreamConnection::DownstreamConnection
-(DownstreamConnectionPool *dconn_pool)
-  : dconn_pool_(dconn_pool),
-    client_handler_(nullptr),
-    downstream_(nullptr)
-{}
+DownstreamConnection::DownstreamConnection(DownstreamConnectionPool *dconn_pool)
+    : dconn_pool_(dconn_pool), client_handler_(nullptr), downstream_(nullptr) {}
 
-DownstreamConnection::~DownstreamConnection()
-{}
+DownstreamConnection::~DownstreamConnection() {}
 
-void DownstreamConnection::set_client_handler(ClientHandler *handler)
-{
+void DownstreamConnection::set_client_handler(ClientHandler *handler) {
   client_handler_ = handler;
 }
 
-ClientHandler* DownstreamConnection::get_client_handler()
-{
+ClientHandler *DownstreamConnection::get_client_handler() {
   return client_handler_;
 }
 
-Downstream* DownstreamConnection::get_downstream()
-{
-  return downstream_;
-}
+Downstream *DownstreamConnection::get_downstream() { return downstream_; }
 
-DownstreamConnectionPool* DownstreamConnection::get_dconn_pool() const
-{
+DownstreamConnectionPool *DownstreamConnection::get_dconn_pool() const {
   return dconn_pool_;
 }
 

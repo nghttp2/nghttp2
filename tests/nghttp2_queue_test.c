@@ -28,20 +28,19 @@
 
 #include "nghttp2_queue.h"
 
-void test_nghttp2_queue(void)
-{
-  int ints[] = { 1, 2, 3, 4, 5 };
+void test_nghttp2_queue(void) {
+  int ints[] = {1, 2, 3, 4, 5};
   int i;
   nghttp2_queue queue;
   nghttp2_queue_init(&queue);
   CU_ASSERT(nghttp2_queue_empty(&queue));
-  for(i = 0; i < 5; ++i) {
+  for (i = 0; i < 5; ++i) {
     nghttp2_queue_push(&queue, &ints[i]);
-    CU_ASSERT_EQUAL(ints[0], *(int*)(nghttp2_queue_front(&queue)));
+    CU_ASSERT_EQUAL(ints[0], *(int *)(nghttp2_queue_front(&queue)));
     CU_ASSERT(!nghttp2_queue_empty(&queue));
   }
-  for(i = 0; i < 5; ++i) {
-    CU_ASSERT_EQUAL(ints[i], *(int*)(nghttp2_queue_front(&queue)));
+  for (i = 0; i < 5; ++i) {
+    CU_ASSERT_EQUAL(ints[i], *(int *)(nghttp2_queue_front(&queue)));
     nghttp2_queue_pop(&queue);
   }
   CU_ASSERT(nghttp2_queue_empty(&queue));

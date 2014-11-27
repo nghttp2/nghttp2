@@ -50,7 +50,7 @@ public:
   // Finds Downstream object denoted by |stream_id| either in
   // pending_downstreams_, active_downstreams_ or
   // failure_downstreams_.
-  Downstream* find(int32_t stream_id);
+  Downstream *find(int32_t stream_id);
   // Returns the number of active Downstream objects.
   size_t num_active() const;
   // Returns true if pending_downstreams_ is empty.
@@ -60,9 +60,10 @@ public:
   std::unique_ptr<Downstream> pop_pending();
   // Returns first Downstream object in pending_downstreams_.  This
   // does not pop the first one.  If queue is empty, returns nullptr.
-  Downstream* pending_top() const;
-  const std::map<int32_t, std::unique_ptr<Downstream>>&
+  Downstream *pending_top() const;
+  const std::map<int32_t, std::unique_ptr<Downstream>> &
   get_active_downstreams() const;
+
 private:
   // Downstream objects, not processed yet
   std::map<int32_t, std::unique_ptr<Downstream>> pending_downstreams_;

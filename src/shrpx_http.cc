@@ -36,8 +36,7 @@ namespace shrpx {
 
 namespace http {
 
-std::string create_error_html(unsigned int status_code)
-{
+std::string create_error_html(unsigned int status_code) {
   std::string res;
   res.reserve(512);
   auto status = http2::get_status_string(status_code);
@@ -54,29 +53,27 @@ std::string create_error_html(unsigned int status_code)
   return res;
 }
 
-std::string create_via_header_value(int major, int minor)
-{
+std::string create_via_header_value(int major, int minor) {
   std::string hdrs;
-  hdrs += static_cast<char>(major+'0');
+  hdrs += static_cast<char>(major + '0');
   hdrs += ".";
-  hdrs += static_cast<char>(minor+'0');
+  hdrs += static_cast<char>(minor + '0');
   hdrs += " nghttpx";
   return hdrs;
 }
 
-std::string colorizeHeaders(const char *hdrs)
-{
+std::string colorizeHeaders(const char *hdrs) {
   std::string nhdrs;
   const char *p = strchr(hdrs, '\n');
-  if(!p) {
+  if (!p) {
     // Not valid HTTP header
     return hdrs;
   }
-  nhdrs.append(hdrs, p+1);
+  nhdrs.append(hdrs, p + 1);
   ++p;
-  while(1) {
-    const char* np = strchr(p, ':');
-    if(!np) {
+  while (1) {
+    const char *np = strchr(p, ':');
+    if (!np) {
       nhdrs.append(p);
       break;
     }
@@ -85,20 +82,19 @@ std::string colorizeHeaders(const char *hdrs)
     nhdrs += TTY_RST;
     p = np;
     np = strchr(p, '\n');
-    if(!np) {
+    if (!np) {
       nhdrs.append(p);
       break;
     }
-    nhdrs.append(p, np+1);
-    p = np+1;
+    nhdrs.append(p, np + 1);
+    p = np + 1;
   }
   return nhdrs;
 }
 
-ssize_t select_padding_callback
-(nghttp2_session *session, const nghttp2_frame *frame, size_t max_payload,
- void *user_data)
-{
+ssize_t select_padding_callback(nghttp2_session *session,
+                                const nghttp2_frame *frame, size_t max_payload,
+                                void *user_data) {
   return std::min(max_payload, frame->hd.length + get_config()->padding);
 }
 

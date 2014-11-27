@@ -133,21 +133,12 @@ union sockaddr_union {
   sockaddr_in in;
 };
 
-enum shrpx_proto {
-  PROTO_HTTP2,
-  PROTO_HTTP
-};
+enum shrpx_proto { PROTO_HTTP2, PROTO_HTTP };
 
 struct AltSvc {
   AltSvc()
-    : protocol_id(nullptr),
-      host(nullptr),
-      origin(nullptr),
-      protocol_id_len(0),
-      host_len(0),
-      origin_len(0),
-      port(0)
-  {}
+      : protocol_id(nullptr), host(nullptr), origin(nullptr),
+        protocol_id_len(0), host_len(0), origin_len(0), port(0) {}
 
   char *protocol_id;
   char *host;
@@ -208,10 +199,10 @@ struct Config {
   // list of supported NPN/ALPN protocol strings in the order of
   // preference. The each element of this list is a NULL-terminated
   // string.
-  std::vector<char*> npn_list;
+  std::vector<char *> npn_list;
   // list of supported SSL/TLS protocol strings. The each element of
   // this list is a NULL-terminated string.
-  std::vector<char*> tls_proto_list;
+  std::vector<char *> tls_proto_list;
   // Path to file containing CA certificate solely used for client
   // certificate validation
   std::unique_ptr<char[]> verify_client_cacert;
@@ -285,8 +276,8 @@ struct Config {
   bool no_location_rewrite;
 };
 
-const Config* get_config();
-Config* mod_config();
+const Config *get_config();
+Config *mod_config();
 void create_config();
 
 // Parses option name |opt| and value |optarg|.  The results are
@@ -310,12 +301,12 @@ std::string read_passwd_from_file(const char *filename);
 // |s| and the caller must leave it as is after this call.  This
 // function copies |s| and first element in the return value points to
 // it.  It is caller's responsibility to deallocate its memory.
-std::vector<char*> parse_config_str_list(const char *s);
+std::vector<char *> parse_config_str_list(const char *s);
 
 // Clears all elements of |list|, which is returned by
 // parse_config_str_list().  If list is not empty, list[0] is freed by
 // free(2).  After this call, list.empty() must be true.
-void clear_config_str_list(std::vector<char*>& list);
+void clear_config_str_list(std::vector<char *> &list);
 
 // Parses header field in |optarg|.  We expect header field is formed
 // like "NAME: VALUE".  We require that NAME is non empty string.  ":"
@@ -333,15 +324,15 @@ std::unique_ptr<char[]> strcopy(const char *val);
 std::unique_ptr<char[]> strcopy(const char *val, size_t n);
 
 // Returns a copy of val.c_str().
-std::unique_ptr<char[]> strcopy(const std::string& val);
+std::unique_ptr<char[]> strcopy(const std::string &val);
 
 // Returns string for syslog |facility|.
-const char* str_syslog_facility(int facility);
+const char *str_syslog_facility(int facility);
 
 // Returns integer value of syslog |facility| string.
 int int_syslog_facility(const char *strfacility);
 
-FILE* open_file_for_write(const char *filename);
+FILE *open_file_for_write(const char *filename);
 
 } // namespace shrpx
 

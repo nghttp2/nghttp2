@@ -48,9 +48,7 @@ namespace server {
 
 io_service_pool::io_service_pool(std::size_t pool_size,
                                  std::size_t thread_pool_size)
-  : next_io_service_(0),
-    thread_pool_size_(thread_pool_size)
-{
+    : next_io_service_(0), thread_pool_size_(thread_pool_size) {
   if (pool_size == 0) {
     throw std::runtime_error("io_service_pool size is 0");
   }
@@ -64,54 +62,45 @@ io_service_pool::io_service_pool(std::size_t pool_size,
     work_.push_back(work);
   }
 
-  auto work = std::make_shared<boost::asio::io_service::work>
-    (task_io_service_);
+  auto work = std::make_shared<boost::asio::io_service::work>(task_io_service_);
   work_.push_back(work);
 }
 
-void io_service_pool::run()
-{
-  for(std::size_t i = 0; i < thread_pool_size_; ++i) {
-    thread_pool_.create_thread
-      ([this]()
-       {
-         task_io_service_.run();
-       });
+void io_service_pool::run() {
+  for (std::size_t i = 0; i < thread_pool_size_; ++i) {
+    thread_pool_.create_thread([this]() { task_io_service_.run(); });
   }
 
   // Create a pool of threads to run all of the io_services.
   auto futs = std::vector<std::future<std::size_t>>();
 
   for (std::size_t i = 0; i < io_services_.size(); ++i) {
-    futs.push_back
-      (std::async(std::launch::async,
-                  (size_t(boost::asio::io_service::*)(void))
-                  &boost::asio::io_service::run,
-                  io_services_[i]));
+    futs.push_back(std::async(std::launch::async,
+                              (size_t (boost::asio::io_service::*)(void)) &
+                                  boost::asio::io_service::run,
+                              io_services_[i]));
   }
 
   // Wait for all threads in the pool to exit.
-  for (auto& fut : futs) {
+  for (auto &fut : futs) {
     fut.get();
   }
 
   thread_pool_.join_all();
 }
 
-void io_service_pool::stop()
-{
+void io_service_pool::stop() {
   // Explicitly stop all io_services.
-  for (auto& iosv : io_services_) {
+  for (auto &iosv : io_services_) {
     iosv->stop();
   }
 
   task_io_service_.stop();
 }
 
-boost::asio::io_service& io_service_pool::get_io_service()
-{
+boost::asio::io_service &io_service_pool::get_io_service() {
   // Use a round-robin scheme to choose the next io_service to use.
-  auto& io_service = *io_services_[next_io_service_];
+  auto &io_service = *io_services_[next_io_service_];
   ++next_io_service_;
   if (next_io_service_ == io_services_.size()) {
     next_io_service_ = 0;
@@ -119,8 +108,7 @@ boost::asio::io_service& io_service_pool::get_io_service()
   return io_service;
 }
 
-boost::asio::io_service& io_service_pool::get_task_io_service()
-{
+boost::asio::io_service &io_service_pool::get_task_io_service() {
   return task_io_service_;
 }
 

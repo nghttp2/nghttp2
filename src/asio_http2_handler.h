@@ -46,6 +46,7 @@ public:
   channel_impl();
   void post(void_cb cb);
   void strand(boost::asio::io_service::strand *strand);
+
 private:
   boost::asio::io_service::strand *strand_;
 };
@@ -59,12 +60,12 @@ class request_impl {
 public:
   request_impl();
 
-  const std::vector<header>& headers() const;
-  const std::string& method() const;
-  const std::string& scheme() const;
-  const std::string& authority() const;
-  const std::string& host() const;
-  const std::string& path() const;
+  const std::vector<header> &headers() const;
+  const std::string &method() const;
+  const std::string &scheme() const;
+  const std::string &authority() const;
+  const std::string &host() const;
+  const std::string &path() const;
 
   bool push(std::string method, std::string path,
             std::vector<header> headers = {});
@@ -89,6 +90,7 @@ public:
   void stream(std::weak_ptr<http2_stream> s);
   void call_on_data(const uint8_t *data, std::size_t len);
   void call_on_end();
+
 private:
   std::vector<header> headers_;
   std::string method_;
@@ -113,11 +115,12 @@ public:
   bool closed() const;
 
   unsigned int status_code() const;
-  const std::vector<header>& headers() const;
+  const std::vector<header> &headers() const;
   bool started() const;
   void handler(std::weak_ptr<http2_handler> h);
   void stream(std::weak_ptr<http2_stream> s);
   read_cb::result_type call_read(uint8_t *data, std::size_t len);
+
 private:
   std::vector<header> headers_;
   read_cb read_cb_;
@@ -132,8 +135,9 @@ public:
   http2_stream(int32_t stream_id);
 
   int32_t get_stream_id() const;
-  const std::shared_ptr<request>& get_request();
-  const std::shared_ptr<response>& get_response();
+  const std::shared_ptr<request> &get_request();
+  const std::shared_ptr<response> &get_response();
+
 private:
   std::shared_ptr<request> request_;
   std::shared_ptr<response> response_;
@@ -141,19 +145,18 @@ private:
 };
 
 struct callback_guard {
-  callback_guard(http2_handler& h);
+  callback_guard(http2_handler &h);
   ~callback_guard();
-  http2_handler& handler;
+  http2_handler &handler;
 };
 
 typedef std::function<void(void)> connection_write;
 
 class http2_handler : public std::enable_shared_from_this<http2_handler> {
 public:
-  http2_handler(boost::asio::io_service& io_service,
-                boost::asio::io_service& task_io_service,
-                connection_write writefun,
-                request_cb cb);
+  http2_handler(boost::asio::io_service &io_service,
+                boost::asio::io_service &task_io_service,
+                connection_write writefun, request_cb cb);
 
   ~http2_handler();
 
@@ -163,11 +166,11 @@ public:
   void close_stream(int32_t stream_id);
   std::shared_ptr<http2_stream> find_stream(int32_t stream_id);
 
-  void call_on_request(http2_stream& stream);
+  void call_on_request(http2_stream &stream);
 
   bool should_stop() const;
 
-  int start_response(http2_stream& stream);
+  int start_response(http2_stream &stream);
 
   void stream_error(int32_t stream_id, uint32_t error_code);
 
@@ -177,40 +180,37 @@ public:
   void leave_callback();
   bool inside_callback() const;
 
-  void resume(http2_stream& stream);
+  void resume(http2_stream &stream);
 
-  int push_promise(http2_stream& stream, std::string method,
-                   std::string path,
+  int push_promise(http2_stream &stream, std::string method, std::string path,
                    std::vector<header> headers);
 
   bool run_task(thread_cb start);
 
-  boost::asio::io_service& io_service();
+  boost::asio::io_service &io_service();
 
-  template<size_t N>
-  int on_read(const boost::array<uint8_t, N>& buffer, std::size_t len)
-  {
+  template <size_t N>
+  int on_read(const boost::array<uint8_t, N> &buffer, std::size_t len) {
     callback_guard cg(*this);
 
     int rv;
 
     rv = nghttp2_session_mem_recv(session_, buffer.data(), len);
 
-    if(rv < 0) {
+    if (rv < 0) {
       return -1;
     }
 
     return 0;
   }
 
-  template<size_t N>
-  int on_write(boost::array<uint8_t, N>& buffer, std::size_t& len)
-  {
+  template <size_t N>
+  int on_write(boost::array<uint8_t, N> &buffer, std::size_t &len) {
     callback_guard cg(*this);
 
     len = 0;
 
-    if(buf_) {
+    if (buf_) {
       std::copy(buf_, buf_ + buflen_, std::begin(buffer));
 
       len += buflen_;
@@ -219,18 +219,18 @@ public:
       buflen_ = 0;
     }
 
-    for(;;) {
+    for (;;) {
       const uint8_t *data;
       auto nread = nghttp2_session_mem_send(session_, &data);
-      if(nread < 0) {
+      if (nread < 0) {
         return -1;
       }
 
-      if(nread == 0) {
+      if (nread == 0) {
         break;
       }
 
-      if(len + nread > buffer.size()) {
+      if (len + nread > buffer.size()) {
         buf_ = data;
         buflen_ = nread;
 
@@ -249,8 +249,8 @@ private:
   std::map<int32_t, std::shared_ptr<http2_stream>> streams_;
   connection_write writefun_;
   request_cb request_cb_;
-  boost::asio::io_service& io_service_;
-  boost::asio::io_service& task_io_service_;
+  boost::asio::io_service &io_service_;
+  boost::asio::io_service &task_io_service_;
   std::shared_ptr<boost::asio::io_service::strand> strand_;
   nghttp2_session *session_;
   const uint8_t *buf_;

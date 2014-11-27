@@ -42,28 +42,24 @@ class DownstreamConnectionPool;
 
 namespace ssl {
 
-SSL_CTX* create_ssl_context(const char *private_key_file,
+SSL_CTX *create_ssl_context(const char *private_key_file,
                             const char *cert_file);
 
-SSL_CTX* create_ssl_client_context();
+SSL_CTX *create_ssl_client_context();
 
-ClientHandler* accept_connection
-(event_base *evbase,
- bufferevent_rate_limit_group *rate_limit_group,
- SSL_CTX *ssl_ctx,
- evutil_socket_t fd,
- sockaddr *addr, int addrlen,
- WorkerStat *worker_stat,
- DownstreamConnectionPool *dconn_pool);
+ClientHandler *accept_connection(event_base *evbase,
+                                 bufferevent_rate_limit_group *rate_limit_group,
+                                 SSL_CTX *ssl_ctx, evutil_socket_t fd,
+                                 sockaddr *addr, int addrlen,
+                                 WorkerStat *worker_stat,
+                                 DownstreamConnectionPool *dconn_pool);
 
 int check_cert(SSL *ssl);
 
 // Retrieves DNS and IP address in subjectAltNames and commonName from
 // the |cert|.
-void get_altnames(X509 *cert,
-                  std::vector<std::string>& dns_names,
-                  std::vector<std::string>& ip_addrs,
-                  std::string& common_name);
+void get_altnames(X509 *cert, std::vector<std::string> &dns_names,
+                  std::vector<std::string> &ip_addrs, std::string &common_name);
 
 // CertLookupTree forms lookup tree to get SSL_CTX whose DNS or
 // commonName matches hostname in query. The tree is patricia trie
@@ -90,9 +86,9 @@ struct CertNode {
   SSL_CTX *ssl_ctx;
   // list of wildcard domain name and its SSL_CTX pair, the wildcard
   // '*' appears in this position.
-  std::vector<std::pair<char*, SSL_CTX*> > wildcard_certs;
+  std::vector<std::pair<char *, SSL_CTX *>> wildcard_certs;
   // Next CertNode index of CertLookupTree::nodes
-  std::vector<CertNode*> next;
+  std::vector<CertNode *> next;
   char *str;
   // [first, last) in the reverse direction in str, first >=
   // last. This indices only work for str member.
@@ -100,12 +96,12 @@ struct CertNode {
 };
 
 struct CertLookupTree {
-  std::vector<SSL_CTX*> certs;
-  std::vector<char*> hosts;
+  std::vector<SSL_CTX *> certs;
+  std::vector<char *> hosts;
   CertNode *root;
 };
 
-CertLookupTree* cert_lookup_tree_new();
+CertLookupTree *cert_lookup_tree_new();
 void cert_lookup_tree_del(CertLookupTree *lt);
 
 // Adds |ssl_ctx| with hostname pattern |hostname| with length |len|
@@ -117,7 +113,7 @@ void cert_lookup_tree_add_cert(CertLookupTree *lt, SSL_CTX *ssl_ctx,
 // more than one SSL_CTX which matches the query, it is undefined
 // which one is returned. The |hostname| must be NULL-terminated. If
 // no matching SSL_CTX found, returns NULL.
-SSL_CTX* cert_lookup_tree_lookup(CertLookupTree *lt, const char *hostname,
+SSL_CTX *cert_lookup_tree_lookup(CertLookupTree *lt, const char *hostname,
                                  size_t len);
 
 // Adds |ssl_ctx| to lookup tree |lt| using hostnames read from
@@ -129,7 +125,7 @@ int cert_lookup_tree_add_cert_from_file(CertLookupTree *lt, SSL_CTX *ssl_ctx,
 
 // Returns true if |needle| which has |len| bytes is included in the
 // protocol list |protos|.
-bool in_proto_list(const std::vector<char*>& protos,
+bool in_proto_list(const std::vector<char *> &protos,
                    const unsigned char *needle, size_t len);
 
 // Returns true if security requirement for HTTP/2 is fulfilled.
@@ -138,9 +134,9 @@ bool check_http2_requirement(SSL *ssl);
 // Returns SSL/TLS option mask to disable SSL/TLS protocol version not
 // included in |tls_proto_list|.  The returned mask can be directly
 // passed to SSL_CTX_set_options().
-long int create_tls_proto_mask(const std::vector<char*>& tls_proto_list);
+long int create_tls_proto_mask(const std::vector<char *> &tls_proto_list);
 
-std::vector<unsigned char> set_alpn_prefs(const std::vector<char*>& protos);
+std::vector<unsigned char> set_alpn_prefs(const std::vector<char *> &protos);
 
 } // namespace ssl
 

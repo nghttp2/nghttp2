@@ -26,7 +26,7 @@
 #define NGHTTP2_STREAM_H
 
 #ifdef HAVE_CONFIG_H
-#  include <config.h>
+#include <config.h>
 #endif /* HAVE_CONFIG_H */
 
 #include <nghttp2/nghttp2.h>
@@ -94,7 +94,7 @@ typedef enum {
   NGHTTP2_STREAM_FLAG_DEFERRED_USER = 0x08,
   /* bitwise OR of NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL and
      NGHTTP2_STREAM_FLAG_DEFERRED_USER. */
-  NGHTTP2_STREAM_FLAG_DEFERRED_ALL =  0x0c
+  NGHTTP2_STREAM_FLAG_DEFERRED_ALL = 0x0c
 
 } nghttp2_stream_flag;
 
@@ -189,10 +189,8 @@ struct nghttp2_stream {
 };
 
 void nghttp2_stream_init(nghttp2_stream *stream, int32_t stream_id,
-                         uint8_t flags,
-                         nghttp2_stream_state initial_state,
-                         int32_t weight,
-                         nghttp2_stream_roots *roots,
+                         uint8_t flags, nghttp2_stream_state initial_state,
+                         int32_t weight, nghttp2_stream_roots *roots,
                          int32_t remote_initial_window_size,
                          int32_t local_initial_window_size,
                          void *stream_user_data);
@@ -250,10 +248,9 @@ int nghttp2_stream_check_deferred_by_flow_control(nghttp2_stream *stream);
  * This function returns 0 if it succeeds or -1. The failure is due to
  * overflow.
  */
-int nghttp2_stream_update_remote_initial_window_size
-(nghttp2_stream *stream,
- int32_t new_initial_window_size,
- int32_t old_initial_window_size);
+int nghttp2_stream_update_remote_initial_window_size(
+    nghttp2_stream *stream, int32_t new_initial_window_size,
+    int32_t old_initial_window_size);
 
 /*
  * Updates the local window size with the new value
@@ -263,10 +260,9 @@ int nghttp2_stream_update_remote_initial_window_size
  * This function returns 0 if it succeeds or -1. The failure is due to
  * overflow.
  */
-int nghttp2_stream_update_local_initial_window_size
-(nghttp2_stream *stream,
- int32_t new_initial_window_size,
- int32_t old_initial_window_size);
+int nghttp2_stream_update_local_initial_window_size(
+    nghttp2_stream *stream, int32_t new_initial_window_size,
+    int32_t old_initial_window_size);
 
 /*
  * Call this function if promised stream |stream| is replied with
@@ -279,7 +275,7 @@ void nghttp2_stream_promise_fulfilled(nghttp2_stream *stream);
  * Returns the stream positioned in root of the dependency tree the
  * |stream| belongs to.
  */
-nghttp2_stream* nghttp2_stream_get_dep_root(nghttp2_stream *stream);
+nghttp2_stream *nghttp2_stream_get_dep_root(nghttp2_stream *stream);
 
 /*
  * Returns nonzero if |target| is found in subtree of |stream|.
@@ -302,8 +298,8 @@ int32_t nghttp2_stream_dep_distributed_weight(nghttp2_stream *stream,
  * rather than stream->weight.  This function is used to determine
  * weight in dependency tree.
  */
-int32_t nghttp2_stream_dep_distributed_effective_weight
-(nghttp2_stream *stream, int32_t weight);
+int32_t nghttp2_stream_dep_distributed_effective_weight(nghttp2_stream *stream,
+                                                        int32_t weight);
 
 /*
  * Makes the |stream| depend on the |dep_stream|.  This dependency is
@@ -320,8 +316,7 @@ void nghttp2_stream_dep_insert(nghttp2_stream *dep_stream,
  * not exclusive.  This function assumes |stream->data| is NULL and no
  * dpri members are changed in this dependency tree.
  */
-void nghttp2_stream_dep_add(nghttp2_stream *dep_stream,
-                            nghttp2_stream *stream);
+void nghttp2_stream_dep_add(nghttp2_stream *dep_stream, nghttp2_stream *stream);
 
 /*
  * Removes the |stream| from the current dependency tree.  This
@@ -421,8 +416,9 @@ int nghttp2_stream_dep_make_root(nghttp2_stream *stream,
  * NGHTTP2_ERR_NOMEM
  *     Out of memory
  */
-int nghttp2_stream_dep_all_your_stream_are_belong_to_us
-(nghttp2_stream *stream, nghttp2_session *session);
+int
+nghttp2_stream_dep_all_your_stream_are_belong_to_us(nghttp2_stream *stream,
+                                                    nghttp2_session *session);
 
 /*
  * Returns nonzero if |stream| is in any dependency tree.

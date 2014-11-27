@@ -52,9 +52,8 @@
 namespace nghttp2 {
 
 namespace {
-const char* strstatus(uint32_t error_code)
-{
-  switch(error_code) {
+const char *strstatus(uint32_t error_code) {
+  switch (error_code) {
   case NGHTTP2_NO_ERROR:
     return "NO_ERROR";
   case NGHTTP2_PROTOCOL_ERROR:
@@ -90,9 +89,8 @@ const char* strstatus(uint32_t error_code)
 } // namespace
 
 namespace {
-const char* strsettingsid(int32_t id)
-{
-  switch(id) {
+const char *strsettingsid(int32_t id) {
+  switch (id) {
   case NGHTTP2_SETTINGS_HEADER_TABLE_SIZE:
     return "SETTINGS_HEADER_TABLE_SIZE";
   case NGHTTP2_SETTINGS_ENABLE_PUSH:
@@ -112,9 +110,8 @@ const char* strsettingsid(int32_t id)
 } // namespace
 
 namespace {
-const char* strframetype(uint8_t type)
-{
-  switch(type) {
+const char *strframetype(uint8_t type) {
+  switch (type) {
   case NGHTTP2_DATA:
     return "DATA";
   case NGHTTP2_HEADERS:
@@ -145,44 +142,28 @@ namespace {
 bool color_output = false;
 } // namespace
 
-void set_color_output(bool f)
-{
-  color_output = f;
-}
+void set_color_output(bool f) { color_output = f; }
 
 namespace {
 FILE *outfile = stdout;
 } // namespace
 
-void set_output(FILE *file)
-{
-  outfile = file;
-}
+void set_output(FILE *file) { outfile = file; }
 
 namespace {
-void print_frame_attr_indent()
-{
-  fprintf(outfile, "          ");
-}
+void print_frame_attr_indent() { fprintf(outfile, "          "); }
 } // namespace
 
 namespace {
-const char* ansi_esc(const char *code)
-{
-  return color_output ? code : "";
-}
+const char *ansi_esc(const char *code) { return color_output ? code : ""; }
 } // namespace
 
 namespace {
-const char* ansi_escend()
-{
-  return color_output ? "\033[0m" : "";
-}
+const char *ansi_escend() { return color_output ? "\033[0m" : ""; }
 } // namespace
 
 namespace {
-void print_nv(nghttp2_nv *nv)
-{
+void print_nv(nghttp2_nv *nv) {
   fprintf(outfile, "%s", ansi_esc("\033[1;34m"));
   fwrite(nv->name, nv->namelen, 1, outfile);
   fprintf(outfile, "%s: ", ansi_escend());
@@ -191,10 +172,9 @@ void print_nv(nghttp2_nv *nv)
 }
 } // namespace
 namespace {
-void print_nv(nghttp2_nv *nva, size_t nvlen)
-{
+void print_nv(nghttp2_nv *nva, size_t nvlen) {
   auto end = nva + nvlen;
-  for(; nva != end; ++nva) {
+  for (; nva != end; ++nva) {
     print_frame_attr_indent();
 
     print_nv(nva);
@@ -202,57 +182,53 @@ void print_nv(nghttp2_nv *nva, size_t nvlen)
 }
 } // namelen
 
-void print_timer()
-{
+void print_timer() {
   auto millis = get_timer();
-  fprintf(outfile, "%s[%3ld.%03ld]%s",
-          ansi_esc("\033[33m"),
-          (long int)(millis.count()/1000), (long int)(millis.count()%1000),
+  fprintf(outfile, "%s[%3ld.%03ld]%s", ansi_esc("\033[33m"),
+          (long int)(millis.count() / 1000), (long int)(millis.count() % 1000),
           ansi_escend());
 }
 
 namespace {
-void print_frame_hd(const nghttp2_frame_hd& hd)
-{
-  fprintf(outfile, "<length=%zu, flags=0x%02x, stream_id=%d>\n",
-          hd.length, hd.flags, hd.stream_id);
+void print_frame_hd(const nghttp2_frame_hd &hd) {
+  fprintf(outfile, "<length=%zu, flags=0x%02x, stream_id=%d>\n", hd.length,
+          hd.flags, hd.stream_id);
 }
 } // namespace
 
 namespace {
-void print_flags(const nghttp2_frame_hd& hd)
-{
+void print_flags(const nghttp2_frame_hd &hd) {
   std::string s;
-  switch(hd.type) {
+  switch (hd.type) {
   case NGHTTP2_DATA:
-    if(hd.flags & NGHTTP2_FLAG_END_STREAM) {
+    if (hd.flags & NGHTTP2_FLAG_END_STREAM) {
       s += "END_STREAM";
     }
-    if(hd.flags & NGHTTP2_FLAG_PADDED) {
-      if(!s.empty()) {
+    if (hd.flags & NGHTTP2_FLAG_PADDED) {
+      if (!s.empty()) {
         s += " | ";
       }
       s += "PADDED";
     }
     break;
   case NGHTTP2_HEADERS:
-    if(hd.flags & NGHTTP2_FLAG_END_STREAM) {
+    if (hd.flags & NGHTTP2_FLAG_END_STREAM) {
       s += "END_STREAM";
     }
-    if(hd.flags & NGHTTP2_FLAG_END_HEADERS) {
-      if(!s.empty()) {
+    if (hd.flags & NGHTTP2_FLAG_END_HEADERS) {
+      if (!s.empty()) {
         s += " | ";
       }
       s += "END_HEADERS";
     }
-    if(hd.flags & NGHTTP2_FLAG_PADDED) {
-      if(!s.empty()) {
+    if (hd.flags & NGHTTP2_FLAG_PADDED) {
+      if (!s.empty()) {
         s += " | ";
       }
       s += "PADDED";
     }
-    if(hd.flags & NGHTTP2_FLAG_PRIORITY) {
-      if(!s.empty()) {
+    if (hd.flags & NGHTTP2_FLAG_PRIORITY) {
+      if (!s.empty()) {
         s += " | ";
       }
       s += "PRIORITY";
@@ -262,23 +238,23 @@ void print_flags(const nghttp2_frame_hd& hd)
   case NGHTTP2_PRIORITY:
     break;
   case NGHTTP2_SETTINGS:
-    if(hd.flags & NGHTTP2_FLAG_ACK) {
+    if (hd.flags & NGHTTP2_FLAG_ACK) {
       s += "ACK";
     }
     break;
   case NGHTTP2_PUSH_PROMISE:
-    if(hd.flags & NGHTTP2_FLAG_END_HEADERS) {
+    if (hd.flags & NGHTTP2_FLAG_END_HEADERS) {
       s += "END_HEADERS";
     }
-    if(hd.flags & NGHTTP2_FLAG_PADDED) {
-      if(!s.empty()) {
+    if (hd.flags & NGHTTP2_FLAG_PADDED) {
+      if (!s.empty()) {
         s += " | ";
       }
       s += "PADDED";
     }
     break;
   case NGHTTP2_PING:
-    if(hd.flags & NGHTTP2_FLAG_ACK) {
+    if (hd.flags & NGHTTP2_FLAG_ACK) {
       s += "ACK";
     }
     break;
@@ -287,33 +263,26 @@ void print_flags(const nghttp2_frame_hd& hd)
 }
 } // namespace
 
-enum print_type {
-  PRINT_SEND,
-  PRINT_RECV
-};
+enum print_type { PRINT_SEND, PRINT_RECV };
 
 namespace {
-const char* frame_name_ansi_esc(print_type ptype)
-{
+const char *frame_name_ansi_esc(print_type ptype) {
   return ansi_esc(ptype == PRINT_SEND ? "\033[1;35m" : "\033[1;36m");
 }
 } // namespace
 
 namespace {
-void print_frame(print_type ptype, const nghttp2_frame *frame)
-{
-  fprintf(outfile, "%s%s%s frame ",
-          frame_name_ansi_esc(ptype),
-          strframetype(frame->hd.type),
-          ansi_escend());
+void print_frame(print_type ptype, const nghttp2_frame *frame) {
+  fprintf(outfile, "%s%s%s frame ", frame_name_ansi_esc(ptype),
+          strframetype(frame->hd.type), ansi_escend());
   print_frame_hd(frame->hd);
-  if(frame->hd.flags) {
+  if (frame->hd.flags) {
     print_frame_attr_indent();
     print_flags(frame->hd);
   }
-  switch(frame->hd.type) {
+  switch (frame->hd.type) {
   case NGHTTP2_DATA:
-    if(frame->data.padlen > 0) {
+    if (frame->data.padlen > 0) {
       print_frame_attr_indent();
       fprintf(outfile, "(padlen=%zu)\n", frame->data.padlen);
     }
@@ -321,14 +290,13 @@ void print_frame(print_type ptype, const nghttp2_frame *frame)
   case NGHTTP2_HEADERS:
     print_frame_attr_indent();
     fprintf(outfile, "(padlen=%zu", frame->headers.padlen);
-    if(frame->hd.flags & NGHTTP2_FLAG_PRIORITY) {
+    if (frame->hd.flags & NGHTTP2_FLAG_PRIORITY) {
       fprintf(outfile, ", stream_id=%d, weight=%u, exclusive=%d",
-              frame->headers.pri_spec.stream_id,
-              frame->headers.pri_spec.weight,
+              frame->headers.pri_spec.stream_id, frame->headers.pri_spec.weight,
               frame->headers.pri_spec.exclusive);
     }
     fprintf(outfile, ")\n");
-    switch(frame->headers.cat) {
+    switch (frame->headers.cat) {
     case NGHTTP2_HCAT_REQUEST:
       print_frame_attr_indent();
       fprintf(outfile, "; Open new stream\n");
@@ -350,8 +318,7 @@ void print_frame(print_type ptype, const nghttp2_frame *frame)
     print_frame_attr_indent();
 
     fprintf(outfile, "(stream_id=%d, weight=%u, exclusive=%d)\n",
-            frame->priority.pri_spec.stream_id,
-            frame->priority.pri_spec.weight,
+            frame->priority.pri_spec.stream_id, frame->priority.pri_spec.weight,
             frame->priority.pri_spec.exclusive);
 
     break;
@@ -365,19 +332,17 @@ void print_frame(print_type ptype, const nghttp2_frame *frame)
     print_frame_attr_indent();
     fprintf(outfile, "(niv=%lu)\n",
             static_cast<unsigned long>(frame->settings.niv));
-    for(size_t i = 0; i < frame->settings.niv; ++i) {
+    for (size_t i = 0; i < frame->settings.niv; ++i) {
       print_frame_attr_indent();
       fprintf(outfile, "[%s(0x%02x):%u]\n",
               strsettingsid(frame->settings.iv[i].settings_id),
-              frame->settings.iv[i].settings_id,
-              frame->settings.iv[i].value);
+              frame->settings.iv[i].settings_id, frame->settings.iv[i].value);
     }
     break;
   case NGHTTP2_PUSH_PROMISE:
     print_frame_attr_indent();
     fprintf(outfile, "(padlen=%zu, promised_stream_id=%d)\n",
-            frame->push_promise.padlen,
-            frame->push_promise.promised_stream_id);
+            frame->push_promise.padlen, frame->push_promise.promised_stream_id);
     print_nv(frame->push_promise.nva, frame->push_promise.nvlen);
     break;
   case NGHTTP2_PING:
@@ -387,11 +352,9 @@ void print_frame(print_type ptype, const nghttp2_frame *frame)
     break;
   case NGHTTP2_GOAWAY:
     print_frame_attr_indent();
-    fprintf(outfile,
-            "(last_stream_id=%d, error_code=%s(0x%02x), "
-            "opaque_data(%u)=[%s])\n",
-            frame->goaway.last_stream_id,
-            strstatus(frame->goaway.error_code),
+    fprintf(outfile, "(last_stream_id=%d, error_code=%s(0x%02x), "
+                     "opaque_data(%u)=[%s])\n",
+            frame->goaway.last_stream_id, strstatus(frame->goaway.error_code),
             frame->goaway.error_code,
             static_cast<unsigned int>(frame->goaway.opaque_data_len),
             util::ascii_dump(frame->goaway.opaque_data,
@@ -405,24 +368,24 @@ void print_frame(print_type ptype, const nghttp2_frame *frame)
   case NGHTTP2_EXT_ALTSVC: {
     print_frame_attr_indent();
 
-    auto altsvc = static_cast<const nghttp2_ext_altsvc*>(frame->ext.payload);
+    auto altsvc = static_cast<const nghttp2_ext_altsvc *>(frame->ext.payload);
 
-    fprintf(outfile, "(max-age=%u, port=%u, protocol_id=",
-            altsvc->max_age, altsvc->port);
+    fprintf(outfile, "(max-age=%u, port=%u, protocol_id=", altsvc->max_age,
+            altsvc->port);
 
-    if(altsvc->protocol_id_len) {
+    if (altsvc->protocol_id_len) {
       fwrite(altsvc->protocol_id, altsvc->protocol_id_len, 1, outfile);
     }
 
     fprintf(outfile, ", host=");
 
-    if(altsvc->host_len) {
+    if (altsvc->host_len) {
       fwrite(altsvc->host, altsvc->host_len, 1, outfile);
     }
 
     fprintf(outfile, ", origin=");
 
-    if(altsvc->origin_len) {
+    if (altsvc->origin_len) {
       fwrite(altsvc->origin, altsvc->origin_len, 1, outfile);
     }
 
@@ -437,16 +400,12 @@ void print_frame(print_type ptype, const nghttp2_frame *frame)
 } // namespace
 
 int verbose_on_header_callback(nghttp2_session *session,
-                               const nghttp2_frame *frame,
-                               const uint8_t *name, size_t namelen,
-                               const uint8_t *value, size_t valuelen,
-                               uint8_t flags,
-                               void *user_data)
-{
-  nghttp2_nv nv = {
-    const_cast<uint8_t*>(name), const_cast<uint8_t*>(value),
-    namelen, valuelen
-  };
+                               const nghttp2_frame *frame, const uint8_t *name,
+                               size_t namelen, const uint8_t *value,
+                               size_t valuelen, uint8_t flags,
+                               void *user_data) {
+  nghttp2_nv nv = {const_cast<uint8_t *>(name), const_cast<uint8_t *>(value),
+                   namelen, valuelen};
 
   print_timer();
   fprintf(outfile, " recv (stream_id=%d, noind=%d) ", frame->hd.stream_id,
@@ -458,9 +417,9 @@ int verbose_on_header_callback(nghttp2_session *session,
   return 0;
 }
 
-int verbose_on_frame_recv_callback
-(nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
-{
+int verbose_on_frame_recv_callback(nghttp2_session *session,
+                                   const nghttp2_frame *frame,
+                                   void *user_data) {
   print_timer();
   fprintf(outfile, " recv ");
   print_frame(PRINT_RECV, frame);
@@ -468,10 +427,10 @@ int verbose_on_frame_recv_callback
   return 0;
 }
 
-int verbose_on_invalid_frame_recv_callback
-(nghttp2_session *session, const nghttp2_frame *frame,
- uint32_t error_code, void *user_data)
-{
+int verbose_on_invalid_frame_recv_callback(nghttp2_session *session,
+                                           const nghttp2_frame *frame,
+                                           uint32_t error_code,
+                                           void *user_data) {
   print_timer();
   fprintf(outfile, " [INVALID; status=%s] recv ", strstatus(error_code));
   print_frame(PRINT_RECV, frame);
@@ -479,9 +438,9 @@ int verbose_on_invalid_frame_recv_callback
   return 0;
 }
 
-int verbose_on_frame_send_callback
-(nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
-{
+int verbose_on_frame_send_callback(nghttp2_session *session,
+                                   const nghttp2_frame *frame,
+                                   void *user_data) {
   print_timer();
   fprintf(outfile, " send ");
   print_frame(PRINT_SEND, frame);
@@ -489,13 +448,12 @@ int verbose_on_frame_send_callback
   return 0;
 }
 
-int verbose_on_data_chunk_recv_callback
-(nghttp2_session *session, uint8_t flags, int32_t stream_id,
- const uint8_t *data, size_t len, void *user_data)
-{
+int verbose_on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
+                                        int32_t stream_id, const uint8_t *data,
+                                        size_t len, void *user_data) {
   print_timer();
-  auto srecv = nghttp2_session_get_stream_effective_recv_data_length
-    (session, stream_id);
+  auto srecv =
+      nghttp2_session_get_stream_effective_recv_data_length(session, stream_id);
   auto crecv = nghttp2_session_get_effective_recv_data_length(session);
 
   fprintf(outfile,
@@ -510,24 +468,18 @@ namespace {
 std::chrono::steady_clock::time_point base_tv;
 } // namespace
 
-void reset_timer()
-{
-  base_tv = std::chrono::steady_clock::now();
-}
+void reset_timer() { base_tv = std::chrono::steady_clock::now(); }
 
-std::chrono::milliseconds get_timer()
-{
+std::chrono::milliseconds get_timer() {
   return time_delta(std::chrono::steady_clock::now(), base_tv);
 }
 
-std::chrono::steady_clock::time_point get_time()
-{
+std::chrono::steady_clock::time_point get_time() {
   return std::chrono::steady_clock::now();
 }
 
-ssize_t deflate_data(uint8_t *out, size_t outlen,
-                     const uint8_t *in, size_t inlen)
-{
+ssize_t deflate_data(uint8_t *out, size_t outlen, const uint8_t *in,
+                     size_t inlen) {
   int rv;
   z_stream zst;
   uint8_t temp_out[8192];
@@ -538,15 +490,15 @@ ssize_t deflate_data(uint8_t *out, size_t outlen,
   zst.zfree = Z_NULL;
   zst.opaque = Z_NULL;
 
-  rv = deflateInit2(&zst, Z_DEFAULT_COMPRESSION, Z_DEFLATED,
-                    31, 9, Z_DEFAULT_STRATEGY);
+  rv = deflateInit2(&zst, Z_DEFAULT_COMPRESSION, Z_DEFLATED, 31, 9,
+                    Z_DEFAULT_STRATEGY);
 
-  if(rv != Z_OK) {
+  if (rv != Z_OK) {
     return -1;
   }
 
   zst.avail_in = inlen;
-  zst.next_in = (uint8_t*)in;
+  zst.next_in = (uint8_t *)in;
   zst.avail_out = temp_outlen;
   zst.next_out = temp_out;
 
@@ -554,13 +506,13 @@ ssize_t deflate_data(uint8_t *out, size_t outlen,
 
   deflateEnd(&zst);
 
-  if(rv != Z_STREAM_END) {
+  if (rv != Z_STREAM_END) {
     return -1;
   }
 
   temp_outlen -= zst.avail_out;
 
-  if(temp_outlen > outlen) {
+  if (temp_outlen > outlen) {
     return -1;
   }
 

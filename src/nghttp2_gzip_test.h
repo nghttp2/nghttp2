@@ -25,7 +25,7 @@
 #ifndef NGHTTP2_GZIP_TEST_H
 #define NGHTTP2_GZIP_TEST_H
 
-#ifdef  __cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 

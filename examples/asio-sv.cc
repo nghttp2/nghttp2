@@ -42,8 +42,7 @@
 using namespace nghttp2::asio_http2;
 using namespace nghttp2::asio_http2::server;
 
-int main(int argc, char* argv[])
-{
+int main(int argc, char *argv[]) {
   try {
     // Check command line arguments.
     if (argc < 3) {
@@ -59,19 +58,16 @@ int main(int argc, char* argv[])
 
     server.num_threads(num_threads);
 
-    if(argc >= 5) {
+    if (argc >= 5) {
       server.tls(argv[3], argv[4]);
     }
 
-    server.listen
-      ("*", port,
-       [](const std::shared_ptr<request>& req,
-          const std::shared_ptr<response>& res)
-       {
-         res->write_head(200, { header{ "foo", "bar" } });
-         res->end("hello, world");
-       });
-  } catch (std::exception& e) {
+    server.listen("*", port, [](const std::shared_ptr<request> &req,
+                                const std::shared_ptr<response> &res) {
+      res->write_head(200, {header{"foo", "bar"}});
+      res->end("hello, world");
+    });
+  } catch (std::exception &e) {
     std::cerr << "exception: " << e.what() << "\n";
   }
 

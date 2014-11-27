@@ -43,8 +43,7 @@
 using namespace nghttp2::asio_http2;
 using namespace nghttp2::asio_http2::server;
 
-int main(int argc, char* argv[])
-{
+int main(int argc, char *argv[]) {
   try {
     // Check command line arguments.
     if (argc < 4) {
@@ -61,89 +60,81 @@ int main(int argc, char* argv[])
 
     server.num_threads(num_threads);
 
-    if(argc >= 5) {
+    if (argc >= 5) {
       server.tls(argv[4], argv[5]);
     }
 
     server.num_concurrent_tasks(num_concurrent_tasks);
 
-    server.listen
-      ("*", port,
-       [](const std::shared_ptr<request>& req,
-          const std::shared_ptr<response>& res)
-       {
-         res->write_head(200);
+    server.listen("*", port, [](const std::shared_ptr<request> &req,
+                                const std::shared_ptr<response> &res) {
+      res->write_head(200);
 
-         auto msgq = std::make_shared<std::deque<std::string>>();
+      auto msgq = std::make_shared<std::deque<std::string>>();
 
-         res->end
-           ([msgq](uint8_t *buf, std::size_t len) -> std::pair<ssize_t, bool>
-            {
-              if(msgq->empty()) {
-                // if msgq is empty, tells the library that don't call
-                // this callback until we call res->resume().  This is
-                // done by returing std::make_pair(0, false).
-                return std::make_pair(0, false);
-              }
-              auto msg = std::move(msgq->front());
-              msgq->pop_front();
+      res->end([msgq](uint8_t * buf, std::size_t len)
+                   -> std::pair<ssize_t, bool> {
+        if (msgq->empty()) {
+          // if msgq is empty, tells the library that don't call
+          // this callback until we call res->resume().  This is
+          // done by returing std::make_pair(0, false).
+          return std::make_pair(0, false);
+        }
+        auto msg = std::move(msgq->front());
+        msgq->pop_front();
 
-              if(msg.empty()) {
-                // The empty message signals the end of response in
-                // this simple protocol.
-                return std::make_pair(0, true);
-              }
+        if (msg.empty()) {
+          // The empty message signals the end of response in
+          // this simple protocol.
+          return std::make_pair(0, true);
+        }
 
-              auto nwrite = std::min(len, msg.size());
-              std::copy(std::begin(msg), std::begin(msg) + nwrite, buf);
-              if(msg.size() > nwrite) {
-                msgq->push_front(msg.substr(nwrite));
-              }
-              return std::make_pair(nwrite, false);
-            });
+        auto nwrite = std::min(len, msg.size());
+        std::copy(std::begin(msg), std::begin(msg) + nwrite, buf);
+        if (msg.size() > nwrite) {
+          msgq->push_front(msg.substr(nwrite));
+        }
+        return std::make_pair(nwrite, false);
+      });
 
-         req->run_task
-           ([res, msgq](channel& channel)
-            {
-              // executed in different thread from request callback
-              // was called.
+      req->run_task([res, msgq](channel &channel) {
+        // executed in different thread from request callback
+        // was called.
 
-              // Using res and msgq is not safe inside this callback.
-              // But using them in callback passed to channel::post is
-              // safe.
+        // Using res and msgq is not safe inside this callback.
+        // But using them in callback passed to channel::post is
+        // safe.
 
-              // We just emit simple message "message N\n" in every 1
-              // second and 3 times in total.
-              for(std::size_t i = 0; i < 3; ++i) {
-                msgq->push_back("message " + std::to_string(i + 1) + "\n");
+        // We just emit simple message "message N\n" in every 1
+        // second and 3 times in total.
+        for (std::size_t i = 0; i < 3; ++i) {
+          msgq->push_back("message " + std::to_string(i + 1) + "\n");
 
-                channel.post([res]()
-                             {
-                               // executed in same thread where
-                               // request callback was called.
+          channel.post([res]() {
+            // executed in same thread where
+            // request callback was called.
 
-                               // Tells library we have new message.
-                               res->resume();
-                             });
+            // Tells library we have new message.
+            res->resume();
+          });
 
-                sleep(1);
-              }
+          sleep(1);
+        }
 
-              // Send empty message to signal the end of response
-              // body.
-              msgq->push_back("");
+        // Send empty message to signal the end of response
+        // body.
+        msgq->push_back("");
 
-              channel.post([res]()
-                           {
-                             // executed in same thread where request
-                             // callback was called.
-                             res->resume();
-                           });
+        channel.post([res]() {
+          // executed in same thread where request
+          // callback was called.
+          res->resume();
+        });
 
-            });
+      });
 
-       });
-  } catch (std::exception& e) {
+    });
+  } catch (std::exception &e) {
     std::cerr << "exception: " << e.what() << "\n";
   }
 

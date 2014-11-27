@@ -26,13 +26,13 @@
 #define NGHTTP2_CONFIG_H
 
 #ifdef HAVE_CONFIG_H
-#  include <config.h>
+#include <config.h>
 #endif // HAVE_CONFIG_H
 
 // gcc 4.6 has std::chrono::monotonic_clock, which was renamed as
 // std::chrono::steady_clock in C++11 standard.
 #ifndef HAVE_STEADY_CLOCK
-#  define steady_clock monotonic_clock
+#define steady_clock monotonic_clock
 #endif // !HAVE_STEADY_CLOCK
 
 #endif // NGHTTP2_CONFIG_H

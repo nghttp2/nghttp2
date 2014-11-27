@@ -58,16 +58,13 @@ namespace asio_http2 {
 namespace server {
 
 /// The top-level class of the HTTP server.
-class server
-  : private boost::noncopyable
-{
+class server : private boost::noncopyable {
 public:
   /// Construct the server to listen on the specified TCP address and port, and
   /// serve up files from the given directory.
-  explicit server(const std::string& address, uint16_t port,
+  explicit server(const std::string &address, uint16_t port,
                   std::size_t io_service_pool_size,
-                  std::size_t thread_pool_size,
-                  request_cb cb,
+                  std::size_t thread_pool_size, request_cb cb,
                   std::unique_ptr<boost::asio::ssl::context> ssl_ctx,
                   int backlog = -1);
 

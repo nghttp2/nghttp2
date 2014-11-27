@@ -26,19 +26,19 @@
 #define NGHTTP2_COMP_HELPER_H
 
 #ifdef HAVE_CONFIG_H
-#  include <config.h>
+#include <config.h>
 #endif // HAVE_CONFIG_H
 
 #include <jansson.h>
 
 #include "nghttp2_hd.h"
 
-json_t* dump_header_table(nghttp2_hd_context *context);
+json_t *dump_header_table(nghttp2_hd_context *context);
 
-json_t* dump_header(const uint8_t *name, size_t namelen,
-                    const uint8_t *value, size_t vlauelen);
+json_t *dump_header(const uint8_t *name, size_t namelen, const uint8_t *value,
+                    size_t vlauelen);
 
-json_t* dump_headers(const nghttp2_nv *nva, size_t nvlen);
+json_t *dump_headers(const nghttp2_nv *nva, size_t nvlen);
 
 void output_json_header(void);
 

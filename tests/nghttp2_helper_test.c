@@ -28,8 +28,7 @@
 
 #include "nghttp2_helper.h"
 
-void test_nghttp2_adjust_local_window_size(void)
-{
+void test_nghttp2_adjust_local_window_size(void) {
   int32_t local_window_size = 100;
   int32_t recv_window_size = 50;
   int32_t recv_reduction = 0;
@@ -38,8 +37,7 @@ void test_nghttp2_adjust_local_window_size(void)
   delta = 0;
   CU_ASSERT(0 == nghttp2_adjust_local_window_size(&local_window_size,
                                                   &recv_window_size,
-                                                  &recv_reduction,
-                                                  &delta));
+                                                  &recv_reduction, &delta));
   CU_ASSERT(100 == local_window_size);
   CU_ASSERT(50 == recv_window_size);
   CU_ASSERT(0 == recv_reduction);
@@ -48,8 +46,7 @@ void test_nghttp2_adjust_local_window_size(void)
   delta = 49;
   CU_ASSERT(0 == nghttp2_adjust_local_window_size(&local_window_size,
                                                   &recv_window_size,
-                                                  &recv_reduction,
-                                                  &delta));
+                                                  &recv_reduction, &delta));
   CU_ASSERT(100 == local_window_size);
   CU_ASSERT(1 == recv_window_size);
   CU_ASSERT(0 == recv_reduction);
@@ -58,8 +55,7 @@ void test_nghttp2_adjust_local_window_size(void)
   delta = 1;
   CU_ASSERT(0 == nghttp2_adjust_local_window_size(&local_window_size,
                                                   &recv_window_size,
-                                                  &recv_reduction,
-                                                  &delta));
+                                                  &recv_reduction, &delta));
   CU_ASSERT(100 == local_window_size);
   CU_ASSERT(0 == recv_window_size);
   CU_ASSERT(0 == recv_reduction);
@@ -68,8 +64,7 @@ void test_nghttp2_adjust_local_window_size(void)
   delta = 1;
   CU_ASSERT(0 == nghttp2_adjust_local_window_size(&local_window_size,
                                                   &recv_window_size,
-                                                  &recv_reduction,
-                                                  &delta));
+                                                  &recv_reduction, &delta));
   CU_ASSERT(101 == local_window_size);
   CU_ASSERT(0 == recv_window_size);
   CU_ASSERT(0 == recv_reduction);
@@ -78,8 +73,7 @@ void test_nghttp2_adjust_local_window_size(void)
   delta = -1;
   CU_ASSERT(0 == nghttp2_adjust_local_window_size(&local_window_size,
                                                   &recv_window_size,
-                                                  &recv_reduction,
-                                                  &delta));
+                                                  &recv_reduction, &delta));
   CU_ASSERT(100 == local_window_size);
   CU_ASSERT(-1 == recv_window_size);
   CU_ASSERT(1 == recv_reduction);
@@ -88,8 +82,7 @@ void test_nghttp2_adjust_local_window_size(void)
   delta = 1;
   CU_ASSERT(0 == nghttp2_adjust_local_window_size(&local_window_size,
                                                   &recv_window_size,
-                                                  &recv_reduction,
-                                                  &delta));
+                                                  &recv_reduction, &delta));
   CU_ASSERT(101 == local_window_size);
   CU_ASSERT(0 == recv_window_size);
   CU_ASSERT(0 == recv_reduction);
@@ -98,8 +91,7 @@ void test_nghttp2_adjust_local_window_size(void)
   delta = 100;
   CU_ASSERT(0 == nghttp2_adjust_local_window_size(&local_window_size,
                                                   &recv_window_size,
-                                                  &recv_reduction,
-                                                  &delta));
+                                                  &recv_reduction, &delta));
   CU_ASSERT(201 == local_window_size);
   CU_ASSERT(0 == recv_window_size);
   CU_ASSERT(0 == recv_reduction);
@@ -108,8 +100,7 @@ void test_nghttp2_adjust_local_window_size(void)
   delta = -3;
   CU_ASSERT(0 == nghttp2_adjust_local_window_size(&local_window_size,
                                                   &recv_window_size,
-                                                  &recv_reduction,
-                                                  &delta));
+                                                  &recv_reduction, &delta));
   CU_ASSERT(198 == local_window_size);
   CU_ASSERT(-3 == recv_window_size);
   CU_ASSERT(3 == recv_reduction);
@@ -120,8 +111,7 @@ void test_nghttp2_adjust_local_window_size(void)
   delta = 3;
   CU_ASSERT(0 == nghttp2_adjust_local_window_size(&local_window_size,
                                                   &recv_window_size,
-                                                  &recv_reduction,
-                                                  &delta));
+                                                  &recv_reduction, &delta));
   CU_ASSERT(201 == local_window_size);
   CU_ASSERT(3 == recv_window_size);
   CU_ASSERT(0 == recv_reduction);
@@ -133,8 +123,7 @@ void test_nghttp2_adjust_local_window_size(void)
   delta = INT32_MAX;
   CU_ASSERT(NGHTTP2_ERR_FLOW_CONTROL ==
             nghttp2_adjust_local_window_size(&local_window_size,
-                                             &recv_window_size,
-                                             &recv_reduction,
+                                             &recv_window_size, &recv_reduction,
                                              &delta));
   CU_ASSERT(100 == local_window_size);
   CU_ASSERT(50 == recv_window_size);
@@ -144,8 +133,7 @@ void test_nghttp2_adjust_local_window_size(void)
   delta = INT32_MIN;
   CU_ASSERT(NGHTTP2_ERR_FLOW_CONTROL ==
             nghttp2_adjust_local_window_size(&local_window_size,
-                                             &recv_window_size,
-                                             &recv_reduction,
+                                             &recv_window_size, &recv_reduction,
                                              &delta));
   CU_ASSERT(100 == local_window_size);
   CU_ASSERT(50 == recv_window_size);
@@ -153,11 +141,10 @@ void test_nghttp2_adjust_local_window_size(void)
   CU_ASSERT(INT32_MIN == delta);
 }
 
-#define check_header_name(S)                                    \
-  nghttp2_check_header_name((const uint8_t*)S, sizeof(S) - 1)
+#define check_header_name(S)                                                   \
+  nghttp2_check_header_name((const uint8_t *)S, sizeof(S) - 1)
 
-void test_nghttp2_check_header_name(void)
-{
+void test_nghttp2_check_header_name(void) {
   CU_ASSERT(check_header_name(":path"));
   CU_ASSERT(check_header_name("path"));
   CU_ASSERT(check_header_name("!#$%&'*+-.^_`|~"));
@@ -167,14 +154,13 @@ void test_nghttp2_check_header_name(void)
   CU_ASSERT(!check_header_name(":"));
 }
 
-#define check_header_value(S)                                   \
-  nghttp2_check_header_value((const uint8_t*)S, sizeof(S) - 1)
+#define check_header_value(S)                                                  \
+  nghttp2_check_header_value((const uint8_t *)S, sizeof(S) - 1)
 
-void test_nghttp2_check_header_value(void)
-{
-  uint8_t goodval[] = { 'a', 'b', 0x80u, 'c', 0xffu, 'd', '\t', ' ' };
-  uint8_t badval1[] = { 'a', 0x1fu, 'b' };
-  uint8_t badval2[] = { 'a', 0x7fu, 'b' };
+void test_nghttp2_check_header_value(void) {
+  uint8_t goodval[] = {'a', 'b', 0x80u, 'c', 0xffu, 'd', '\t', ' '};
+  uint8_t badval1[] = {'a', 0x1fu, 'b'};
+  uint8_t badval2[] = {'a', 0x7fu, 'b'};
 
   CU_ASSERT(check_header_value(" !|}~"));
   CU_ASSERT(check_header_value(goodval));

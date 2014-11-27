@@ -33,32 +33,23 @@ using namespace nghttp2;
 
 namespace shrpx {
 
-IOControl::IOControl(bufferevent *bev)
-  : bev_(bev),
-    rdbits_(0)
-{}
+IOControl::IOControl(bufferevent *bev) : bev_(bev), rdbits_(0) {}
 
-IOControl::~IOControl()
-{}
+IOControl::~IOControl() {}
 
-void IOControl::set_bev(bufferevent *bev)
-{
-  bev_ = bev;
-}
+void IOControl::set_bev(bufferevent *bev) { bev_ = bev; }
 
-void IOControl::pause_read(IOCtrlReason reason)
-{
+void IOControl::pause_read(IOCtrlReason reason) {
   rdbits_ |= reason;
-  if(bev_) {
+  if (bev_) {
     util::bev_disable_unless(bev_, EV_READ);
   }
 }
 
-bool IOControl::resume_read(IOCtrlReason reason)
-{
+bool IOControl::resume_read(IOCtrlReason reason) {
   rdbits_ &= ~reason;
-  if(rdbits_ == 0) {
-    if(bev_) {
+  if (rdbits_ == 0) {
+    if (bev_) {
       util::bev_enable_unless(bev_, EV_READ);
     }
     return true;
@@ -67,10 +58,9 @@ bool IOControl::resume_read(IOCtrlReason reason)
   }
 }
 
-void IOControl::force_resume_read()
-{
+void IOControl::force_resume_read() {
   rdbits_ = 0;
-  if(bev_) {
+  if (bev_) {
     util::bev_enable_unless(bev_, EV_READ);
   }
 }

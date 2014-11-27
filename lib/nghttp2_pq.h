@@ -26,7 +26,7 @@
 #define NGHTTP2_PQ_H
 
 #ifdef HAVE_CONFIG_H
-#  include <config.h>
+#include <config.h>
 #endif /* HAVE_CONFIG_H */
 
 #include <nghttp2/nghttp2.h>
@@ -78,7 +78,7 @@ int nghttp2_pq_push(nghttp2_pq *pq, void *item);
  * Returns item at the top of the queue |pq|. If the queue is empty,
  * this function returns NULL.
  */
-void* nghttp2_pq_top(nghttp2_pq *pq);
+void *nghttp2_pq_top(nghttp2_pq *pq);
 
 /*
  * Pops item at the top of the queue |pq|. The popped item is not

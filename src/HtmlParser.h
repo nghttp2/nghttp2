@@ -48,19 +48,19 @@ enum RequestPriority {
 struct ParserData {
   std::string base_uri;
   std::vector<std::pair<std::string, RequestPriority>> links;
-  ParserData(const std::string& base_uri);
+  ParserData(const std::string &base_uri);
 };
 
 #ifdef HAVE_LIBXML2
 
 class HtmlParser {
 public:
-  HtmlParser(const std::string& base_uri);
+  HtmlParser(const std::string &base_uri);
   ~HtmlParser();
   int parse_chunk(const char *chunk, size_t size, int fin);
-  const std::vector<std::pair<std::string, RequestPriority>>&
-  get_links() const;
+  const std::vector<std::pair<std::string, RequestPriority>> &get_links() const;
   void clear_links();
+
 private:
   int parse_chunk_internal(const char *chunk, size_t size, int fin);
 
@@ -73,11 +73,14 @@ private:
 
 class HtmlParser {
 public:
-  HtmlParser(const std::string& base_uri) {}
+  HtmlParser(const std::string &base_uri) {}
   int parse_chunk(const char *chunk, size_t size, int fin) { return 0; }
-  const std::vector<std::pair<std::string, RequestPriority>>&
-  get_links() const { return links_; }
+  const std::vector<std::pair<std::string, RequestPriority>> &
+  get_links() const {
+    return links_;
+  }
   void clear_links() {}
+
 private:
   std::vector<std::pair<std::string, RequestPriority>> links_;
 };

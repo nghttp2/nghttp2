@@ -47,35 +47,34 @@ struct WorkerStat;
 class ClientHandler {
 public:
   ClientHandler(bufferevent *bev,
-                bufferevent_rate_limit_group *rate_limit_group,
-                int fd, SSL *ssl, const char *ipaddr, const char *port,
-                WorkerStat *worker_stat,
-                DownstreamConnectionPool *dconn_pool);
+                bufferevent_rate_limit_group *rate_limit_group, int fd,
+                SSL *ssl, const char *ipaddr, const char *port,
+                WorkerStat *worker_stat, DownstreamConnectionPool *dconn_pool);
   ~ClientHandler();
   int on_read();
   int on_event();
-  bufferevent* get_bev() const;
-  event_base* get_evbase() const;
+  bufferevent *get_bev() const;
+  event_base *get_evbase() const;
   void set_bev_cb(bufferevent_data_cb readcb, bufferevent_data_cb writecb,
                   bufferevent_event_cb eventcb);
   void set_upstream_timeouts(const timeval *read_timeout,
                              const timeval *write_timeout);
   int validate_next_proto();
-  const std::string& get_ipaddr() const;
-  const std::string& get_port() const;
+  const std::string &get_ipaddr() const;
+  const std::string &get_port() const;
   bool get_should_close_after_write() const;
   void set_should_close_after_write(bool f);
-  Upstream* get_upstream();
+  Upstream *get_upstream();
 
   void pool_downstream_connection(std::unique_ptr<DownstreamConnection> dconn);
   void remove_downstream_connection(DownstreamConnection *dconn);
   std::unique_ptr<DownstreamConnection> get_downstream_connection();
   size_t get_outbuf_length();
-  SSL* get_ssl() const;
+  SSL *get_ssl() const;
   void set_http2_session(Http2Session *http2session);
-  Http2Session* get_http2_session() const;
+  Http2Session *get_http2_session() const;
   void set_http1_connect_blocker(ConnectBlocker *http1_connect_blocker);
-  ConnectBlocker* get_http1_connect_blocker() const;
+  ConnectBlocker *get_http1_connect_blocker() const;
   // Call this function when HTTP/2 connection header is received at
   // the start of the connection.
   void direct_http2_upgrade();
@@ -115,6 +114,7 @@ public:
   // corresponding Downstream object is not available.
   void write_accesslog(int major, int minor, unsigned int status,
                        int64_t body_bytes_sent);
+
 private:
   std::unique_ptr<Upstream> upstream_;
   std::string ipaddr_;

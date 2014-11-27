@@ -30,8 +30,7 @@
 
 namespace shrpx {
 
-void test_shrpx_config_parse_config_str_list(void)
-{
+void test_shrpx_config_parse_config_str_list(void) {
   auto res = parse_config_str_list("a");
   CU_ASSERT(1 == res.size());
   CU_ASSERT(0 == strcmp("a", res[0]));
@@ -64,8 +63,7 @@ void test_shrpx_config_parse_config_str_list(void)
   clear_config_str_list(res);
 }
 
-void test_shrpx_config_parse_header(void)
-{
+void test_shrpx_config_parse_header(void) {
   auto p = parse_header("a: b");
   CU_ASSERT("a" == p.first);
   CU_ASSERT("b" == p.second);
@@ -90,8 +88,7 @@ void test_shrpx_config_parse_header(void)
   CU_ASSERT("bravo charlie" == p.second);
 }
 
-void test_shrpx_config_parse_log_format(void)
-{
+void test_shrpx_config_parse_log_format(void) {
   auto res = parse_log_format("$remote_addr - $remote_user [$time_local] "
                               "\"$request\" $status $body_bytes_sent "
                               "\"$http_referer\" \"$http_user_agent\"");

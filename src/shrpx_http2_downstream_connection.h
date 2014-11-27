@@ -67,13 +67,14 @@ public:
   int send();
 
   int init_request_body_buf();
-  evbuffer* get_request_body_buf() const;
+  evbuffer *get_request_body_buf() const;
 
   void attach_stream_data(StreamData *sd);
-  StreamData* detach_stream_data();
+  StreamData *detach_stream_data();
 
-  int submit_rst_stream
-  (Downstream *downstream, uint32_t error_code = NGHTTP2_INTERNAL_ERROR);
+  int submit_rst_stream(Downstream *downstream,
+                        uint32_t error_code = NGHTTP2_INTERNAL_ERROR);
+
 private:
   Http2Session *http2session_;
   evbuffer *request_body_buf_;

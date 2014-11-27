@@ -25,19 +25,17 @@
 #include "comp_helper.h"
 #include <string.h>
 
-static void dump_val(json_t *jent, const char *key, uint8_t *val, size_t len)
-{
+static void dump_val(json_t *jent, const char *key, uint8_t *val, size_t len) {
   json_object_set_new(jent, key, json_pack("s#", val, len));
 }
 
-json_t* dump_header_table(nghttp2_hd_context *context)
-{
+json_t *dump_header_table(nghttp2_hd_context *context) {
   json_t *obj, *entries;
   size_t i;
 
   obj = json_object();
   entries = json_array();
-  for(i = 0; i < context->hd_table.len; ++i) {
+  for (i = 0; i < context->hd_table.len; ++i) {
     nghttp2_hd_entry *ent = nghttp2_hd_table_get(context, i);
     json_t *outent = json_object();
     json_object_set_new(outent, "index", json_integer(i + 1));
@@ -55,9 +53,8 @@ json_t* dump_header_table(nghttp2_hd_context *context)
   return obj;
 }
 
-json_t* dump_header(const uint8_t *name, size_t namelen,
-                    const uint8_t *value, size_t valuelen)
-{
+json_t *dump_header(const uint8_t *name, size_t namelen, const uint8_t *value,
+                    size_t valuelen) {
   json_t *nv_pair = json_object();
   char *cname = malloc(namelen + 1);
   memcpy(cname, name, namelen);
@@ -67,29 +64,25 @@ json_t* dump_header(const uint8_t *name, size_t namelen,
   return nv_pair;
 }
 
-json_t* dump_headers(const nghttp2_nv *nva, size_t nvlen)
-{
+json_t *dump_headers(const nghttp2_nv *nva, size_t nvlen) {
   json_t *headers;
   size_t i;
 
   headers = json_array();
-  for(i = 0; i < nvlen; ++i) {
-    json_array_append_new(headers,
-                          dump_header(nva[i].name, nva[i].namelen,
-                                      nva[i].value, nva[i].valuelen));
+  for (i = 0; i < nvlen; ++i) {
+    json_array_append_new(headers, dump_header(nva[i].name, nva[i].namelen,
+                                               nva[i].value, nva[i].valuelen));
   }
   return headers;
 }
 
-void output_json_header(void)
-{
+void output_json_header(void) {
   printf("{\n"
          "  \"cases\":\n"
          "  [\n");
 }
 
-void output_json_footer(void)
-{
+void output_json_footer(void) {
   printf("  ]\n"
          "}\n");
 }

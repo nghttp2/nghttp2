@@ -40,76 +40,55 @@ namespace asio_http2 {
 
 namespace server {
 
-http2::http2()
-  : impl_(util::make_unique<http2_impl>())
-{}
+http2::http2() : impl_(util::make_unique<http2_impl>()) {}
 
-http2::~http2()
-{}
+http2::~http2() {}
 
-void http2::listen(const std::string& address, uint16_t port, request_cb cb)
-{
+void http2::listen(const std::string &address, uint16_t port, request_cb cb) {
   impl_->listen(address, port, std::move(cb));
 }
 
-void http2::num_threads(size_t num_threads)
-{
-  impl_->num_threads(num_threads);
-}
+void http2::num_threads(size_t num_threads) { impl_->num_threads(num_threads); }
 
-void http2::tls(std::string private_key_file,
-                std::string certificate_file)
-{
+void http2::tls(std::string private_key_file, std::string certificate_file) {
   impl_->tls(std::move(private_key_file), std::move(certificate_file));
 }
 
-void http2::num_concurrent_tasks(size_t num_concurrent_tasks)
-{
+void http2::num_concurrent_tasks(size_t num_concurrent_tasks) {
   impl_->num_concurrent_tasks(num_concurrent_tasks);
 }
 
-void http2::backlog(int backlog)
-{
-  impl_->backlog(backlog);
-}
+void http2::backlog(int backlog) { impl_->backlog(backlog); }
 
 http2_impl::http2_impl()
-  : num_threads_(1),
-    num_concurrent_tasks_(1),
-    backlog_(-1)
-{}
+    : num_threads_(1), num_concurrent_tasks_(1), backlog_(-1) {}
 
 namespace {
-std::vector<unsigned char>&
-get_alpn_token()
-{
+std::vector<unsigned char> &get_alpn_token() {
   static auto alpn_token = util::get_default_alpn();
   return alpn_token;
 }
 } // namespace
 
-void http2_impl::listen(const std::string& address, uint16_t port,
-                        request_cb cb)
-{
+void http2_impl::listen(const std::string &address, uint16_t port,
+                        request_cb cb) {
   std::unique_ptr<boost::asio::ssl::context> ssl_ctx;
 
-  if(!private_key_file_.empty() && !certificate_file_.empty()) {
-    ssl_ctx = util::make_unique<boost::asio::ssl::context>
-      (boost::asio::ssl::context::sslv23);
+  if (!private_key_file_.empty() && !certificate_file_.empty()) {
+    ssl_ctx = util::make_unique<boost::asio::ssl::context>(
+        boost::asio::ssl::context::sslv23);
 
     ssl_ctx->use_private_key_file(private_key_file_,
-                                 boost::asio::ssl::context::pem);
+                                  boost::asio::ssl::context::pem);
     ssl_ctx->use_certificate_chain_file(certificate_file_);
 
     auto ctx = ssl_ctx->native_handle();
 
-    SSL_CTX_set_options(ctx,
-                        SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 |
-                        SSL_OP_NO_COMPRESSION |
-                        SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION |
-                        SSL_OP_SINGLE_ECDH_USE |
-                        SSL_OP_NO_TICKET |
-                        SSL_OP_CIPHER_SERVER_PREFERENCE);
+    SSL_CTX_set_options(ctx, SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 |
+                                 SSL_OP_NO_COMPRESSION |
+                                 SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION |
+                                 SSL_OP_SINGLE_ECDH_USE | SSL_OP_NO_TICKET |
+                                 SSL_OP_CIPHER_SERVER_PREFERENCE);
     SSL_CTX_set_mode(ctx, SSL_MODE_AUTO_RETRY);
     SSL_CTX_set_mode(ctx, SSL_MODE_RELEASE_BUFFERS);
     SSL_CTX_set_mode(ctx, SSL_MODE_ENABLE_PARTIAL_WRITE);
@@ -117,103 +96,86 @@ void http2_impl::listen(const std::string& address, uint16_t port,
     SSL_CTX_set_cipher_list(ctx, ssl::DEFAULT_CIPHER_LIST);
 
     auto ecdh = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
-    if(ecdh) {
+    if (ecdh) {
       SSL_CTX_set_tmp_ecdh(ctx, ecdh);
       EC_KEY_free(ecdh);
     }
 
-    SSL_CTX_set_next_protos_advertised_cb
-      (ctx,
-       [](SSL *s, const unsigned char **data, unsigned int *len, void *arg) {
-        auto& token = get_alpn_token();
+    SSL_CTX_set_next_protos_advertised_cb(
+        ctx,
+        [](SSL *s, const unsigned char **data, unsigned int *len, void *arg) {
+          auto &token = get_alpn_token();
 
-        *data = token.data();
-        *len = token.size();
+          *data = token.data();
+          *len = token.size();
 
-        return SSL_TLSEXT_ERR_OK;
-      }, nullptr);
+          return SSL_TLSEXT_ERR_OK;
+        },
+        nullptr);
   }
 
-  server(address, port, num_threads_, num_concurrent_tasks_,
-         std::move(cb), std::move(ssl_ctx), backlog_).run();
+  server(address, port, num_threads_, num_concurrent_tasks_, std::move(cb),
+         std::move(ssl_ctx), backlog_).run();
 }
 
-void http2_impl::num_threads(size_t num_threads)
-{
-  num_threads_ = num_threads;
-}
+void http2_impl::num_threads(size_t num_threads) { num_threads_ = num_threads; }
 
 void http2_impl::tls(std::string private_key_file,
-                     std::string certificate_file)
-{
+                     std::string certificate_file) {
   private_key_file_ = std::move(private_key_file);
   certificate_file_ = std::move(certificate_file);
 }
 
-void http2_impl::num_concurrent_tasks(size_t num_concurrent_tasks)
-{
+void http2_impl::num_concurrent_tasks(size_t num_concurrent_tasks) {
   num_concurrent_tasks_ = num_concurrent_tasks;
 }
 
-void http2_impl::backlog(int backlog)
-{
-  backlog_ = backlog;
-}
+void http2_impl::backlog(int backlog) { backlog_ = backlog; }
 
 } // namespace server
 
-template<typename T, typename F>
-std::shared_ptr<util::Defer<T, F>> defer_shared(T&& t, F f)
-{
+template <typename T, typename F>
+std::shared_ptr<util::Defer<T, F>> defer_shared(T &&t, F f) {
   return std::make_shared<util::Defer<T, F>>(std::forward<T>(t),
                                              std::forward<F>(f));
 }
 
-read_cb file_reader(const std::string& path)
-{
+read_cb file_reader(const std::string &path) {
   auto fd = open(path.c_str(), O_RDONLY);
-  if(fd == -1) {
+  if (fd == -1) {
     return read_cb();
   }
 
   return file_reader_from_fd(fd);
 }
 
-read_cb file_reader_from_fd(int fd)
-{
+read_cb file_reader_from_fd(int fd) {
   auto d = defer_shared(static_cast<int>(fd), close);
 
-  return [fd, d](uint8_t *buf, size_t len) -> read_cb::result_type
-    {
-      int rv;
-      while((rv = read(fd, buf, len)) == -1 && errno == EINTR);
+  return [fd, d](uint8_t *buf, size_t len) -> read_cb::result_type {
+    int rv;
+    while ((rv = read(fd, buf, len)) == -1 && errno == EINTR)
+      ;
 
-      if(rv == -1) {
-        return std::make_pair(-1, false);
-      }
+    if (rv == -1) {
+      return std::make_pair(-1, false);
+    }
 
-      if(rv == 0) {
-        return std::make_pair(rv, true);
-      }
+    if (rv == 0) {
+      return std::make_pair(rv, true);
+    }
 
-      return std::make_pair(rv, false);
-    };
+    return std::make_pair(rv, false);
+  };
 }
 
-bool check_path(const std::string& path)
-{
-  return util::check_path(path);
-}
+bool check_path(const std::string &path) { return util::check_path(path); }
 
-std::string percent_decode(const std::string& s)
-{
+std::string percent_decode(const std::string &s) {
   return util::percentDecode(std::begin(s), std::end(s));
 }
 
-std::string http_date(int64_t t)
-{
-  return util::http_date(t);
-}
+std::string http_date(int64_t t) { return util::http_date(t); }
 
 } // namespace asio_http2
 

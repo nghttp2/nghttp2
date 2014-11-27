@@ -45,8 +45,7 @@
 using namespace nghttp2::asio_http2;
 using namespace nghttp2::asio_http2::server;
 
-int main(int argc, char* argv[])
-{
+int main(int argc, char *argv[]) {
   try {
     // Check command line arguments.
     if (argc < 4) {
@@ -63,47 +62,44 @@ int main(int argc, char* argv[])
 
     server.num_threads(num_threads);
 
-    if(argc >= 6) {
+    if (argc >= 6) {
       server.tls(argv[4], argv[5]);
     }
 
-    server.listen
-      ("*", port,
-       [&docroot](const std::shared_ptr<request>& req,
-                  const std::shared_ptr<response>& res)
-       {
-         auto path = percent_decode(req->path());
-         if(!check_path(path)) {
-           res->write_head(404);
-           res->end();
-           return;
-         }
+    server.listen("*", port, [&docroot](const std::shared_ptr<request> &req,
+                                        const std::shared_ptr<response> &res) {
+      auto path = percent_decode(req->path());
+      if (!check_path(path)) {
+        res->write_head(404);
+        res->end();
+        return;
+      }
 
-         if(path == "/") {
-           path = "/index.html";
-         }
+      if (path == "/") {
+        path = "/index.html";
+      }
 
-         path = docroot + path;
-         auto fd = open(path.c_str(), O_RDONLY);
-         if(fd == -1) {
-           res->write_head(404);
-           res->end();
-           return;
-         }
+      path = docroot + path;
+      auto fd = open(path.c_str(), O_RDONLY);
+      if (fd == -1) {
+        res->write_head(404);
+        res->end();
+        return;
+      }
 
-         auto headers = std::vector<header>();
+      auto headers = std::vector<header>();
 
-         struct stat stbuf;
-         if(stat(path.c_str(), &stbuf) == 0) {
-           headers.push_back
-             (header{"content-length", std::to_string(stbuf.st_size)});
-           headers.push_back
-             (header{"last-modified", http_date(stbuf.st_mtim.tv_sec)});
-         }
-         res->write_head(200, std::move(headers));
-         res->end(file_reader_from_fd(fd));
-       });
-  } catch (std::exception& e) {
+      struct stat stbuf;
+      if (stat(path.c_str(), &stbuf) == 0) {
+        headers.push_back(
+            header{"content-length", std::to_string(stbuf.st_size)});
+        headers.push_back(
+            header{"last-modified", http_date(stbuf.st_mtim.tv_sec)});
+      }
+      res->write_head(200, std::move(headers));
+      res->end(file_reader_from_fd(fd));
+    });
+  } catch (std::exception &e) {
     std::cerr << "exception: " << e.what() << "\n";
   }
 

@@ -64,8 +64,8 @@ public:
 
   void remove_stream_data(StreamData *sd);
 
-  int submit_request(Http2DownstreamConnection *dconn,
-                     int32_t pri, const nghttp2_nv *nva, size_t nvlen,
+  int submit_request(Http2DownstreamConnection *dconn, int32_t pri,
+                     const nghttp2_nv *nva, size_t nvlen,
                      const nghttp2_data_provider *data_prd);
 
   int submit_rst_stream(int32_t stream_id, uint32_t error_code);
@@ -74,7 +74,7 @@ public:
 
   int terminate_session(uint32_t error_code);
 
-  nghttp2_session* get_session() const;
+  nghttp2_session *get_session() const;
 
   bool get_flow_control() const;
 
@@ -91,7 +91,7 @@ public:
   void clear_notify();
   void notify();
 
-  bufferevent* get_bev() const;
+  bufferevent *get_bev() const;
   void unwrap_free_bev();
 
   int get_state() const;
@@ -102,7 +102,7 @@ public:
 
   size_t get_outbuf_length() const;
 
-  SSL* get_ssl() const;
+  SSL *get_ssl() const;
 
   int consume(int32_t stream_id, size_t len);
 
@@ -123,10 +123,11 @@ public:
     CONNECTED
   };
 
-  static const size_t OUTBUF_MAX_THRES = 64*1024;
+  static const size_t OUTBUF_MAX_THRES = 64 * 1024;
+
 private:
-  std::set<Http2DownstreamConnection*> dconns_;
-  std::set<StreamData*> streams_;
+  std::set<Http2DownstreamConnection *> dconns_;
+  std::set<StreamData *> streams_;
   // Used to parse the response from HTTP proxy
   std::unique_ptr<http_parser> proxy_htp_;
   event_base *evbase_;

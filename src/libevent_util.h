@@ -51,6 +51,7 @@ public:
   // Returns the number of written bytes to evbuffer_ so far.  reset()
   // resets this value to 0.
   size_t get_writelen() const;
+
 private:
   evbuffer *evbuffer_;
   evbuffer *bucket_;

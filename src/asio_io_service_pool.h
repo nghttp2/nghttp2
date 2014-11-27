@@ -54,13 +54,10 @@ namespace asio_http2 {
 namespace server {
 
 /// A pool of io_service objects.
-class io_service_pool
-  : private boost::noncopyable
-{
+class io_service_pool : private boost::noncopyable {
 public:
   /// Construct the io_service pool.
-  explicit io_service_pool(std::size_t pool_size,
-                           std::size_t thread_pool_size);
+  explicit io_service_pool(std::size_t pool_size, std::size_t thread_pool_size);
 
   /// Run all io_service objects in the pool.
   void run();
@@ -69,9 +66,9 @@ public:
   void stop();
 
   /// Get an io_service to use.
-  boost::asio::io_service& get_io_service();
+  boost::asio::io_service &get_io_service();
 
-  boost::asio::io_service& get_task_io_service();
+  boost::asio::io_service &get_task_io_service();
 
 private:
   typedef std::shared_ptr<boost::asio::io_service> io_service_ptr;

@@ -32,8 +32,7 @@
 
 namespace shrpx {
 
-void test_downstream_normalize_request_headers(void)
-{
+void test_downstream_normalize_request_headers(void) {
   Downstream d(nullptr, 0, 0);
   d.add_request_header("1", "0");
   d.add_request_header("2", "1");
@@ -45,21 +44,18 @@ void test_downstream_normalize_request_headers(void)
   d.add_request_header(":authority", "7");
   d.normalize_request_headers();
 
-  auto ans = Headers{
-    {":authority", "7"},
-    {":method", "6"},
-    {"1", "0"},
-    {"2", "1"},
-    {"alpha", "3"},
-    {"bravo", "5"},
-    {"charlie", "2"},
-    {"delta", "4"}
-  };
+  auto ans = Headers{{":authority", "7"},
+                     {":method", "6"},
+                     {"1", "0"},
+                     {"2", "1"},
+                     {"alpha", "3"},
+                     {"bravo", "5"},
+                     {"charlie", "2"},
+                     {"delta", "4"}};
   CU_ASSERT(ans == d.get_request_headers());
 }
 
-void test_downstream_normalize_response_headers(void)
-{
+void test_downstream_normalize_response_headers(void) {
   Downstream d(nullptr, 0, 0);
   d.add_response_header("Charlie", "0");
   d.add_response_header("Alpha", "1");
@@ -67,17 +63,12 @@ void test_downstream_normalize_response_headers(void)
   d.add_response_header("BravO", "3");
   d.normalize_response_headers();
 
-  auto ans = Headers{
-    {"alpha", "1"},
-    {"bravo", "3"},
-    {"charlie", "0"},
-    {"delta", "2"}
-  };
+  auto ans =
+      Headers{{"alpha", "1"}, {"bravo", "3"}, {"charlie", "0"}, {"delta", "2"}};
   CU_ASSERT(ans == d.get_response_headers());
 }
 
-void test_downstream_get_norm_request_header(void)
-{
+void test_downstream_get_norm_request_header(void) {
   Downstream d(nullptr, 0, 0);
   d.add_request_header("alpha", "0");
   d.add_request_header("bravo", "1");
@@ -97,8 +88,7 @@ void test_downstream_get_norm_request_header(void)
   CU_ASSERT(i == std::end(d.get_request_headers()));
 }
 
-void test_downstream_get_norm_response_header(void)
-{
+void test_downstream_get_norm_response_header(void) {
   Downstream d(nullptr, 0, 0);
   d.add_response_header("alpha", "0");
   d.add_response_header("bravo", "1");
@@ -118,8 +108,7 @@ void test_downstream_get_norm_response_header(void)
   CU_ASSERT(i == std::end(d.get_response_headers()));
 }
 
-void test_downstream_crumble_request_cookie(void)
-{
+void test_downstream_crumble_request_cookie(void) {
   Downstream d(nullptr, 0, 0);
   d.add_request_header(":method", "get");
   d.add_request_header(":path", "/");
@@ -127,20 +116,17 @@ void test_downstream_crumble_request_cookie(void)
   d.add_request_header("cookie", ";delta");
   d.add_request_header("cookie", "echo");
   d.crumble_request_cookie();
-  Headers ans = {
-    {":method", "get"},
-    {":path", "/"},
-    {"cookie", "alpha"},
-    {"cookie", "delta"},
-    {"cookie", "echo"},
-    {"cookie", "bravo"},
-    {"cookie", "charlie"}
-  };
+  Headers ans = {{":method", "get"},
+                 {":path", "/"},
+                 {"cookie", "alpha"},
+                 {"cookie", "delta"},
+                 {"cookie", "echo"},
+                 {"cookie", "bravo"},
+                 {"cookie", "charlie"}};
   CU_ASSERT(ans == d.get_request_headers());
 }
 
-void test_downstream_assemble_request_cookie(void)
-{
+void test_downstream_assemble_request_cookie(void) {
   Downstream d(nullptr, 0, 0);
   d.add_request_header(":method", "get");
   d.add_request_header(":path", "/");
@@ -149,13 +135,10 @@ void test_downstream_assemble_request_cookie(void)
   d.add_request_header("cookie", "charlie; ");
   d.add_request_header("cookie", "delta;;");
   d.assemble_request_cookie();
-  CU_ASSERT("alpha; bravo; charlie; delta" ==
-            d.get_assembled_request_cookie());
-
+  CU_ASSERT("alpha; bravo; charlie; delta" == d.get_assembled_request_cookie());
 }
 
-void test_downstream_rewrite_norm_location_response_header(void)
-{
+void test_downstream_rewrite_norm_location_response_header(void) {
   {
     Downstream d(nullptr, 0, 0);
     d.add_request_header("host", "localhost:3000");

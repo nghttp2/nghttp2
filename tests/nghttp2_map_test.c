@@ -33,14 +33,12 @@ typedef struct strentry {
   const char *str;
 } strentry;
 
-static void strentry_init(strentry *entry, key_type key, const char *str)
-{
+static void strentry_init(strentry *entry, key_type key, const char *str) {
   nghttp2_map_entry_init(&entry->map_entry, key);
   entry->str = str;
 }
 
-void test_nghttp2_map(void)
-{
+void test_nghttp2_map(void) {
   strentry foo, FOO, bar, baz, shrubbery;
   nghttp2_map map;
   nghttp2_map_init(&map);
@@ -52,14 +50,14 @@ void test_nghttp2_map(void)
   strentry_init(&shrubbery, 4, "shrubbery");
 
   CU_ASSERT(0 == nghttp2_map_insert(&map, &foo.map_entry));
-  CU_ASSERT(strcmp("foo", ((strentry*)nghttp2_map_find(&map, 1))->str) == 0);
+  CU_ASSERT(strcmp("foo", ((strentry *)nghttp2_map_find(&map, 1))->str) == 0);
   CU_ASSERT(1 == nghttp2_map_size(&map));
 
   CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT ==
             nghttp2_map_insert(&map, &FOO.map_entry));
 
   CU_ASSERT(1 == nghttp2_map_size(&map));
-  CU_ASSERT(strcmp("foo", ((strentry*)nghttp2_map_find(&map, 1))->str) == 0);
+  CU_ASSERT(strcmp("foo", ((strentry *)nghttp2_map_find(&map, 1))->str) == 0);
 
   CU_ASSERT(0 == nghttp2_map_insert(&map, &bar.map_entry));
   CU_ASSERT(2 == nghttp2_map_size(&map));
@@ -70,7 +68,7 @@ void test_nghttp2_map(void)
   CU_ASSERT(0 == nghttp2_map_insert(&map, &shrubbery.map_entry));
   CU_ASSERT(4 == nghttp2_map_size(&map));
 
-  CU_ASSERT(strcmp("baz", ((strentry*)nghttp2_map_find(&map, 3))->str) == 0);
+  CU_ASSERT(strcmp("baz", ((strentry *)nghttp2_map_find(&map, 3))->str) == 0);
 
   nghttp2_map_remove(&map, 3);
   CU_ASSERT(3 == nghttp2_map_size(&map));
@@ -85,17 +83,16 @@ void test_nghttp2_map(void)
   CU_ASSERT(2 == nghttp2_map_size(&map));
   CU_ASSERT(NULL == nghttp2_map_find(&map, 1));
 
-  CU_ASSERT(strcmp("bar", ((strentry*)nghttp2_map_find(&map, 2))->str) == 0);
-  CU_ASSERT(strcmp("shrubbery",
-                   ((strentry*)nghttp2_map_find(&map, 4))->str) == 0);
+  CU_ASSERT(strcmp("bar", ((strentry *)nghttp2_map_find(&map, 2))->str) == 0);
+  CU_ASSERT(strcmp("shrubbery", ((strentry *)nghttp2_map_find(&map, 4))->str) ==
+            0);
 
   nghttp2_map_free(&map);
 }
 
-static void shuffle(int *a, int n)
-{
+static void shuffle(int *a, int n) {
   int i;
-  for(i = n - 1; i >= 1; --i) {
+  for (i = n - 1; i >= 1; --i) {
     size_t j = (int)((double)(i + 1) * rand() / (RAND_MAX + 1.0));
     int t = a[j];
     a[j] = a[i];
@@ -103,67 +100,60 @@ static void shuffle(int *a, int n)
   }
 }
 
-static int eachfun(nghttp2_map_entry *entry _U_, void *ptr _U_)
-{
-  return 0;
-}
+static int eachfun(nghttp2_map_entry *entry _U_, void *ptr _U_) { return 0; }
 
 #define NUM_ENT 6000
 strentry arr[NUM_ENT];
 int order[NUM_ENT];
 
-void test_nghttp2_map_functional(void)
-{
+void test_nghttp2_map_functional(void) {
   nghttp2_map map;
   int i;
 
   nghttp2_map_init(&map);
-  for(i = 0; i < NUM_ENT; ++i) {
+  for (i = 0; i < NUM_ENT; ++i) {
     strentry_init(&arr[i], i + 1, "foo");
     order[i] = i + 1;
   }
   /* insertion */
   shuffle(order, NUM_ENT);
-  for(i = 0; i < NUM_ENT; ++i) {
+  for (i = 0; i < NUM_ENT; ++i) {
     CU_ASSERT(0 == nghttp2_map_insert(&map, &arr[order[i] - 1].map_entry));
   }
   /* traverse */
   nghttp2_map_each(&map, eachfun, NULL);
   /* find */
   shuffle(order, NUM_ENT);
-  for(i = 0; i < NUM_ENT; ++i) {
+  for (i = 0; i < NUM_ENT; ++i) {
     nghttp2_map_find(&map, order[i]);
   }
   /* remove */
   shuffle(order, NUM_ENT);
-  for(i = 0; i < NUM_ENT; ++i) {
+  for (i = 0; i < NUM_ENT; ++i) {
     CU_ASSERT(0 == nghttp2_map_remove(&map, order[i]));
   }
 
   /* each_free (but no op function for testing purpose) */
-  for(i = 0; i < NUM_ENT; ++i) {
+  for (i = 0; i < NUM_ENT; ++i) {
     strentry_init(&arr[i], i + 1, "foo");
   }
   /* insert once again */
-  for(i = 0; i < NUM_ENT; ++i) {
+  for (i = 0; i < NUM_ENT; ++i) {
     CU_ASSERT(0 == nghttp2_map_insert(&map, &arr[i].map_entry));
   }
   nghttp2_map_each_free(&map, eachfun, NULL);
   nghttp2_map_free(&map);
 }
 
-static int entry_free(nghttp2_map_entry *entry, void *ptr _U_)
-{
+static int entry_free(nghttp2_map_entry *entry, void *ptr _U_) {
   free(entry);
   return 0;
 }
 
-void test_nghttp2_map_each_free(void)
-{
-  strentry *foo = malloc(sizeof(strentry)),
-    *bar = malloc(sizeof(strentry)),
-    *baz = malloc(sizeof(strentry)),
-    *shrubbery = malloc(sizeof(strentry));
+void test_nghttp2_map_each_free(void) {
+  strentry *foo = malloc(sizeof(strentry)), *bar = malloc(sizeof(strentry)),
+           *baz = malloc(sizeof(strentry)),
+           *shrubbery = malloc(sizeof(strentry));
   nghttp2_map map;
   nghttp2_map_init(&map);
 

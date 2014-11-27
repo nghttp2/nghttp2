@@ -45,6 +45,7 @@ public:
   Worker(const WorkerInfo *info);
   ~Worker();
   void run();
+
 private:
   SSL_CTX *sv_ssl_ctx_;
   SSL_CTX *cl_ssl_ctx_;

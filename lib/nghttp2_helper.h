@@ -26,7 +26,7 @@
 #define NGHTTP2_HELPER_H
 
 #ifdef HAVE_CONFIG_H
-#  include <config.h>
+#include <config.h>
 #endif /* HAVE_CONFIG_H */
 
 #include <nghttp2/nghttp2.h>
@@ -68,7 +68,7 @@ uint32_t nghttp2_get_uint32(const uint8_t *data);
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
  */
-void* nghttp2_memdup(const void* src, size_t n);
+void *nghttp2_memdup(const void *src, size_t n);
 
 void nghttp2_downcase(uint8_t *s, size_t len);
 
@@ -112,6 +112,6 @@ void nghttp2_free(void *ptr);
  * by the |dest|, assuming that the |dest| is at lest |len| bytes long
  * . Returns dest + len.
  */
-uint8_t* nghttp2_cpymem(uint8_t *dest, const void *src, size_t len);
+uint8_t *nghttp2_cpymem(uint8_t *dest, const void *src, size_t len);
 
 #endif /* NGHTTP2_HELPER_H */

@@ -54,13 +54,17 @@
 
 #define SERVER_NAME "tiny-nghttpd nghttp2/" NGHTTP2_VERSION
 
-#define MAKE_NV(name, value)                                            \
-  {(uint8_t*)(name), (uint8_t*)(value),                                 \
-      sizeof((name)) - 1, sizeof((value)) - 1, NGHTTP2_NV_FLAG_NONE}
+#define MAKE_NV(name, value)                                                   \
+  {                                                                            \
+    (uint8_t *)(name), (uint8_t *)(value), sizeof((name)) - 1,                 \
+        sizeof((value)) - 1, NGHTTP2_NV_FLAG_NONE                              \
+  }
 
-#define MAKE_NV2(name, value, valuelen)                                 \
-  {(uint8_t*)(name), (uint8_t*)(value),                                 \
-      sizeof((name)) - 1, (valuelen), NGHTTP2_NV_FLAG_NONE}
+#define MAKE_NV2(name, value, valuelen)                                        \
+  {                                                                            \
+    (uint8_t *)(name), (uint8_t *)(value), sizeof((name)) - 1, (valuelen),     \
+        NGHTTP2_NV_FLAG_NONE                                                   \
+  }
 
 #define array_size(a) (sizeof((a)) / sizeof((a)[0]))
 
@@ -112,9 +116,7 @@ typedef struct stream {
   uint8_t rawscrbuf[4096];
 } stream;
 
-typedef struct {
-  int (*handler)(io_loop*, uint32_t, void*);
-} evhandle;
+typedef struct { int (*handler)(io_loop *, uint32_t, void *); } evhandle;
 
 typedef struct {
   evhandle evhn;
@@ -157,62 +159,57 @@ static int handle_accept(io_loop *loop, uint32_t events, void *ptr);
 static int handle_connection(io_loop *loop, uint32_t events, void *ptr);
 static int handle_timer(io_loop *loop, uint32_t events, void *ptr);
 
-static void io_buf_init(io_buf *buf, uint8_t *underlying, size_t len)
-{
+static void io_buf_init(io_buf *buf, uint8_t *underlying, size_t len) {
   buf->begin = buf->pos = buf->last = underlying;
   buf->end = underlying + len;
 }
 
-static void io_buf_add(io_buf *buf, const void *src, size_t len)
-{
+static void io_buf_add(io_buf *buf, const void *src, size_t len) {
   memcpy(buf->last, src, len);
   buf->last += len;
 }
 
-static char* io_buf_add_str(io_buf *buf, const void *src, size_t len)
-{
+static char *io_buf_add_str(io_buf *buf, const void *src, size_t len) {
   uint8_t *start = buf->last;
 
   memcpy(buf->last, src, len);
   buf->last += len;
   *buf->last++ = '\0';
 
-  return (char*)start;
+  return (char *)start;
 }
 
-static int memseq(const uint8_t *a, size_t alen, const char *b)
-{
+static int memseq(const uint8_t *a, size_t alen, const char *b) {
   const uint8_t *last = a + alen;
 
-  for(; a != last && *b && *a == *b; ++a, ++b);
+  for (; a != last && *b && *a == *b; ++a, ++b)
+    ;
 
   return a == last && *b == 0;
 }
 
-static char* cpydig(char *buf, int n, size_t len)
-{
+static char *cpydig(char *buf, int n, size_t len) {
   char *p;
 
   p = buf + len - 1;
   do {
     *p-- = (n % 10) + '0';
     n /= 10;
-  } while(p >= buf);
+  } while (p >= buf);
 
   return buf + len;
 }
 
-static const char *MONTH[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                               "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
-static const char *DAY_OF_WEEK[] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri",
-                                     "Sat" };
+static const char *MONTH[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                              "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+static const char *DAY_OF_WEEK[] = {"Sun", "Mon", "Tue", "Wed",
+                                    "Thu", "Fri", "Sat"};
 
-static size_t http_date(char *buf, time_t t)
-{
+static size_t http_date(char *buf, time_t t) {
   struct tm tms;
   char *p = buf;
 
-  if(gmtime_r(&t, &tms) == NULL) {
+  if (gmtime_r(&t, &tms) == NULL) {
     return 0;
   }
 
@@ -243,28 +240,25 @@ static size_t http_date(char *buf, time_t t)
 static char date[29];
 static char datelen;
 
-static void update_date()
-{
-  datelen = http_date(date, time(NULL));
-}
+static void update_date() { datelen = http_date(date, time(NULL)); }
 
-static size_t utos(char *buf, size_t len, uint64_t n)
-{
+static size_t utos(char *buf, size_t len, uint64_t n) {
   size_t nwrite = 0;
   uint64_t t = n;
 
-  if(len == 0) {
+  if (len == 0) {
     return 0;
   }
 
-  if(n == 0) {
+  if (n == 0) {
     buf[0] = '0';
     return 1;
   }
 
-  for(; t; t /= 10, ++nwrite);
+  for (; t; t /= 10, ++nwrite)
+    ;
 
-  if(nwrite > len) {
+  if (nwrite > len) {
     return 0;
   }
 
@@ -272,13 +266,12 @@ static size_t utos(char *buf, size_t len, uint64_t n)
   do {
     *buf-- = (n % 10) + '0';
     n /= 10;
-  } while(n);
+  } while (n);
 
   return nwrite;
 }
 
-static void print_errno(const char *prefix, int errnum)
-{
+static void print_errno(const char *prefix, int errnum) {
   char buf[1024];
   char *errmsg;
 
@@ -287,27 +280,26 @@ static void print_errno(const char *prefix, int errnum)
   fprintf(stderr, "%s: %s\n", prefix, errmsg);
 }
 
-#define list_insert(head, elem)                     \
-  do {                                              \
-    (elem)->prev = (head);                          \
-    (elem)->next = (head)->next;                    \
-                                                    \
-    if((head)->next) {                              \
-      (head)->next->prev = (elem);                  \
-    }                                               \
-    (head)->next = (elem);                          \
-  } while(0)
+#define list_insert(head, elem)                                                \
+  do {                                                                         \
+    (elem)->prev = (head);                                                     \
+    (elem)->next = (head)->next;                                               \
+                                                                               \
+    if ((head)->next) {                                                        \
+      (head)->next->prev = (elem);                                             \
+    }                                                                          \
+    (head)->next = (elem);                                                     \
+  } while (0)
 
-#define list_remove(elem)                                   \
-  do {                                                      \
-    (elem)->prev->next = (elem)->next;                      \
-    if((elem)->next) {                                      \
-      (elem)->next->prev = (elem)->prev;                    \
-    }                                                       \
-  } while(0)
+#define list_remove(elem)                                                      \
+  do {                                                                         \
+    (elem)->prev->next = (elem)->next;                                         \
+    if ((elem)->next) {                                                        \
+      (elem)->next->prev = (elem)->prev;                                       \
+    }                                                                          \
+  } while (0)
 
-static stream* stream_new(int32_t stream_id, connection *conn)
-{
+static stream *stream_new(int32_t stream_id, connection *conn) {
   stream *strm;
 
   strm = malloc(sizeof(stream));
@@ -336,19 +328,17 @@ static stream* stream_new(int32_t stream_id, connection *conn)
   return strm;
 }
 
-static void stream_del(stream *strm)
-{
+static void stream_del(stream *strm) {
   list_remove(strm);
 
-  if(strm->filefd != -1) {
+  if (strm->filefd != -1) {
     close(strm->filefd);
   }
 
   free(strm);
 }
 
-static connection* connection_new(int fd)
-{
+static connection *connection_new(int fd) {
   connection *conn;
   int rv;
 
@@ -357,7 +347,7 @@ static connection* connection_new(int fd)
   rv = nghttp2_session_server_new2(&conn->session, shared_callbacks, conn,
                                    shared_option);
 
-  if(rv != 0) {
+  if (rv != 0) {
     goto cleanup;
   }
 
@@ -370,13 +360,12 @@ static connection* connection_new(int fd)
 
   return conn;
 
- cleanup:
+cleanup:
   free(conn);
   return NULL;
 }
 
-static void connection_del(connection *conn)
-{
+static void connection_del(connection *conn) {
   stream *strm;
 
   nghttp2_session_del(conn->session);
@@ -384,7 +373,7 @@ static void connection_del(connection *conn)
   close(conn->fd);
 
   strm = conn->strm_head.next;
-  while(strm) {
+  while (strm) {
     stream *next_strm = strm->next;
 
     stream_del(strm);
@@ -394,22 +383,20 @@ static void connection_del(connection *conn)
   free(conn);
 }
 
-static int connection_start(connection *conn)
-{
-  nghttp2_settings_entry iv = { NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, 100 };
+static int connection_start(connection *conn) {
+  nghttp2_settings_entry iv = {NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, 100};
   int rv;
 
   rv = nghttp2_submit_settings(conn->session, NGHTTP2_FLAG_NONE, &iv, 1);
 
-  if(rv != 0) {
+  if (rv != 0) {
     return -1;
   }
 
   return 0;
 }
 
-static int server_init(server *serv, const char *node, const char *service)
-{
+static int server_init(server *serv, const char *node, const char *service) {
   int rv;
   struct addrinfo hints;
   struct addrinfo *res, *rp;
@@ -425,31 +412,31 @@ static int server_init(server *serv, const char *node, const char *service)
 
   rv = getaddrinfo(node, service, &hints, &res);
 
-  if(rv != 0) {
+  if (rv != 0) {
     fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
     return -1;
   }
 
-  for(rp = res; rp; rp = rp->ai_next) {
-    fd = socket(rp->ai_family, rp->ai_socktype | SOCK_NONBLOCK,
-                rp->ai_protocol);
+  for (rp = res; rp; rp = rp->ai_next) {
+    fd =
+        socket(rp->ai_family, rp->ai_socktype | SOCK_NONBLOCK, rp->ai_protocol);
 
-    if(fd == -1) {
+    if (fd == -1) {
       continue;
     }
 
     rv = setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &on, optlen);
 
-    if(rv == -1) {
+    if (rv == -1) {
       print_errno("setsockopt", errno);
     }
 
-    if(bind(fd, rp->ai_addr, rp->ai_addrlen) != 0) {
+    if (bind(fd, rp->ai_addr, rp->ai_addrlen) != 0) {
       close(fd);
       continue;
     }
 
-    if(listen(fd, 65536) != 0) {
+    if (listen(fd, 65536) != 0) {
       close(fd);
       continue;
     }
@@ -459,7 +446,7 @@ static int server_init(server *serv, const char *node, const char *service)
 
   freeaddrinfo(res);
 
-  if(!rp) {
+  if (!rp) {
     fprintf(stderr, "No address to bind\n");
     return -1;
   }
@@ -470,18 +457,17 @@ static int server_init(server *serv, const char *node, const char *service)
   return 0;
 }
 
-static int timer_init(timer *tmr)
-{
+static int timer_init(timer *tmr) {
   int fd;
   struct itimerspec timerval = {{1, 0}, {1, 0}};
 
   fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK);
-  if(fd == -1) {
+  if (fd == -1) {
     print_errno("timerfd_create", errno);
     return -1;
   }
 
-  if(timerfd_settime(fd, 0, &timerval, NULL) != 0) {
+  if (timerfd_settime(fd, 0, &timerval, NULL) != 0) {
     print_errno("timerfd_settime", errno);
     return -1;
   }
@@ -492,13 +478,12 @@ static int timer_init(timer *tmr)
   return 0;
 }
 
-static int io_loop_init(io_loop *loop)
-{
+static int io_loop_init(io_loop *loop) {
   int epfd;
 
   epfd = epoll_create1(0);
 
-  if(epfd == -1) {
+  if (epfd == -1) {
     print_errno("epoll_create", errno);
     return -1;
   }
@@ -508,9 +493,8 @@ static int io_loop_init(io_loop *loop)
   return 0;
 }
 
-static int io_loop_ctl
-(io_loop *loop, int op, int fd, uint32_t events, void *ptr)
-{
+static int io_loop_ctl(io_loop *loop, int op, int fd, uint32_t events,
+                       void *ptr) {
   int rv;
   struct epoll_event ev;
 
@@ -519,7 +503,7 @@ static int io_loop_ctl
 
   rv = epoll_ctl(loop->epfd, op, fd, &ev);
 
-  if(rv != 0) {
+  if (rv != 0) {
     print_errno("epoll_ctl", errno);
     return -1;
   }
@@ -527,48 +511,46 @@ static int io_loop_ctl
   return 0;
 }
 
-static int io_loop_add(io_loop *loop, int fd, uint32_t events, void *ptr)
-{
+static int io_loop_add(io_loop *loop, int fd, uint32_t events, void *ptr) {
   return io_loop_ctl(loop, EPOLL_CTL_ADD, fd, events, ptr);
 }
 
-static int io_loop_mod(io_loop *loop, int fd, uint32_t events, void *ptr)
-{
+static int io_loop_mod(io_loop *loop, int fd, uint32_t events, void *ptr) {
   return io_loop_ctl(loop, EPOLL_CTL_MOD, fd, events, ptr);
 }
 
-static int io_loop_run(io_loop *loop, server *serv _U_)
-{
+static int io_loop_run(io_loop *loop, server *serv _U_) {
 #define NUM_EVENTS 1024
   struct epoll_event events[NUM_EVENTS];
 
-  for(;;) {
+  for (;;) {
     int nev;
     evhandle *evhn;
     struct epoll_event *ev, *end;
 
-    while((nev = epoll_wait(loop->epfd, events, NUM_EVENTS, -1)) == -1 &&
-          errno == EINTR);
+    while ((nev = epoll_wait(loop->epfd, events, NUM_EVENTS, -1)) == -1 &&
+           errno == EINTR)
+      ;
 
-    if(nev == -1) {
+    if (nev == -1) {
       print_errno("epoll_wait", errno);
       return -1;
     }
 
-    for(ev = events, end = events + nev; ev != end; ++ev) {
+    for (ev = events, end = events + nev; ev != end; ++ev) {
       evhn = ev->data.ptr;
       evhn->handler(loop, ev->events, ev->data.ptr);
     }
   }
 }
 
-static int handle_timer(io_loop *loop _U_, uint32_t events _U_, void *ptr)
-{
+static int handle_timer(io_loop *loop _U_, uint32_t events _U_, void *ptr) {
   timer *tmr = ptr;
   int64_t buf;
   ssize_t nread;
 
-  while((nread = read(tmr->fd, &buf, sizeof(buf))) == -1 && errno == EINTR);
+  while ((nread = read(tmr->fd, &buf, sizeof(buf))) == -1 && errno == EINTR)
+    ;
 
   assert(nread == sizeof(buf));
 
@@ -577,22 +559,22 @@ static int handle_timer(io_loop *loop _U_, uint32_t events _U_, void *ptr)
   return 0;
 }
 
-static int handle_accept(io_loop *loop, uint32_t events _U_, void *ptr)
-{
+static int handle_accept(io_loop *loop, uint32_t events _U_, void *ptr) {
   int acfd;
   server *serv = ptr;
   int on = 1;
   socklen_t optlen = sizeof(on);
   int rv;
 
-  for(;;) {
+  for (;;) {
     connection *conn;
 
-    while((acfd = accept4(serv->fd, NULL, NULL, SOCK_NONBLOCK)) == -1 &&
-          errno == EINTR);
+    while ((acfd = accept4(serv->fd, NULL, NULL, SOCK_NONBLOCK)) == -1 &&
+           errno == EINTR)
+      ;
 
-    if(acfd == -1) {
-      switch(errno) {
+    if (acfd == -1) {
+      switch (errno) {
       case ENETDOWN:
       case EPROTO:
       case ENOPROTOOPT:
@@ -608,46 +590,46 @@ static int handle_accept(io_loop *loop, uint32_t events _U_, void *ptr)
 
     rv = setsockopt(acfd, IPPROTO_TCP, TCP_NODELAY, &on, optlen);
 
-    if(rv == -1) {
+    if (rv == -1) {
       print_errno("setsockopt", errno);
     }
 
     conn = connection_new(acfd);
 
-    if(conn == NULL) {
+    if (conn == NULL) {
       close(acfd);
       continue;
     }
 
-    if(connection_start(conn) != 0 ||
-       io_loop_add(loop, acfd, EPOLLIN | EPOLLOUT, conn) != 0) {
+    if (connection_start(conn) != 0 ||
+        io_loop_add(loop, acfd, EPOLLIN | EPOLLOUT, conn) != 0) {
       connection_del(conn);
     }
   }
 }
 
-static void stream_error
-(connection *conn, int32_t stream_id, uint32_t error_code)
-{
+static void stream_error(connection *conn, int32_t stream_id,
+                         uint32_t error_code) {
   nghttp2_submit_rst_stream(conn->session, NGHTTP2_FLAG_NONE, stream_id,
                             error_code);
 }
 
-static ssize_t fd_read_callback
-(nghttp2_session *session _U_, int32_t stream_id _U_,
- uint8_t *buf, size_t length, uint32_t *data_flags,
- nghttp2_data_source *source, void *user_data _U_)
-{
+static ssize_t fd_read_callback(nghttp2_session *session _U_,
+                                int32_t stream_id _U_, uint8_t *buf,
+                                size_t length, uint32_t *data_flags,
+                                nghttp2_data_source *source,
+                                void *user_data _U_) {
   stream *strm = source->ptr;
   ssize_t nread;
 
-  while((nread = read(strm->filefd, buf, length)) == -1 && errno == EINTR);
-  if(nread == -1) {
+  while ((nread = read(strm->filefd, buf, length)) == -1 && errno == EINTR)
+    ;
+  if (nread == -1) {
     return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
   }
   strm->fileleft -= nread;
-  if(nread == 0 || strm->fileleft == 0) {
-    if(strm->fileleft != 0) {
+  if (nread == 0 || strm->fileleft == 0) {
+    if (strm->fileleft != 0) {
       return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
     }
     *data_flags |= NGHTTP2_DATA_FLAG_EOF;
@@ -655,11 +637,11 @@ static ssize_t fd_read_callback
   return nread;
 }
 
-static ssize_t resbuf_read_callback
-(nghttp2_session *session _U_, int32_t stream_id _U_,
- uint8_t *buf, size_t length, uint32_t *data_flags,
- nghttp2_data_source *source, void *user_data _U_)
-{
+static ssize_t resbuf_read_callback(nghttp2_session *session _U_,
+                                    int32_t stream_id _U_, uint8_t *buf,
+                                    size_t length, uint32_t *data_flags,
+                                    nghttp2_data_source *source,
+                                    void *user_data _U_) {
   stream *strm = source->ptr;
   size_t left = strm->res_end - strm->res_begin;
   size_t nwrite = length < left ? length : left;
@@ -667,40 +649,37 @@ static ssize_t resbuf_read_callback
   memcpy(buf, strm->res_begin, nwrite);
   strm->res_begin += nwrite;
 
-  if(strm->res_begin == strm->res_end) {
+  if (strm->res_begin == strm->res_end) {
     *data_flags |= NGHTTP2_DATA_FLAG_EOF;
   }
 
   return nwrite;
 }
 
-static int hex_digit(char c)
-{
+static int hex_digit(char c) {
   return ('0' <= c && c <= '9') || ('A' <= c && c <= 'F') ||
-    ('a' <= c && c <= 'f');
+         ('a' <= c && c <= 'f');
 }
 
-static unsigned int hex_to_uint(char c)
-{
-  if(c <= '9') {
+static unsigned int hex_to_uint(char c) {
+  if (c <= '9') {
     return c - '0';
   }
 
-  if(c <= 'F') {
+  if (c <= 'F') {
     return c - 'A' + 10;
   }
 
   return c - 'a' + 10;
 }
 
-static void percent_decode(io_buf *buf, const char *s)
-{
-  for(; *s; ++s) {
-    if(*s == '?' || *s == '#') {
+static void percent_decode(io_buf *buf, const char *s) {
+  for (; *s; ++s) {
+    if (*s == '?' || *s == '#') {
       break;
     }
 
-    if(*s == '%' && hex_digit(*(s + 1)) && hex_digit(*(s + 2))) {
+    if (*s == '%' && hex_digit(*(s + 1)) && hex_digit(*(s + 2))) {
       *buf->last++ = (hex_to_uint(*(s + 1)) << 4) + hex_to_uint(*(s + 2));
       s += 2;
       continue;
@@ -710,26 +689,22 @@ static void percent_decode(io_buf *buf, const char *s)
   }
 }
 
-static int check_path(const char *path, size_t len)
-{
-  return path[0] == '/' &&
-    strchr(path, '\\') == NULL &&
-    strstr(path, "/../") == NULL &&
-    strstr(path, "/./") == NULL &&
-    (len < 3 || memcmp(path + len - 3, "/..", 3) != 0) &&
-    (len < 2 || memcmp(path + len - 2, "/.", 2) != 0);
+static int check_path(const char *path, size_t len) {
+  return path[0] == '/' && strchr(path, '\\') == NULL &&
+         strstr(path, "/../") == NULL && strstr(path, "/./") == NULL &&
+         (len < 3 || memcmp(path + len - 3, "/..", 3) != 0) &&
+         (len < 2 || memcmp(path + len - 2, "/.", 2) != 0);
 }
 
-static int make_path(io_buf *pathbuf, const char *req, size_t reqlen _U_)
-{
+static int make_path(io_buf *pathbuf, const char *req, size_t reqlen _U_) {
   uint8_t *p;
 
-  if(req[0] != '/') {
+  if (req[0] != '/') {
     return -1;
   }
 
-  if(docrootlen + strlen(req) + sizeof("index.html") >
-     (size_t)io_buf_left(pathbuf)) {
+  if (docrootlen + strlen(req) + sizeof("index.html") >
+      (size_t)io_buf_left(pathbuf)) {
     return -1;
   }
 
@@ -739,13 +714,13 @@ static int make_path(io_buf *pathbuf, const char *req, size_t reqlen _U_)
 
   percent_decode(pathbuf, req);
 
-  if(*(pathbuf->last - 1) == '/') {
+  if (*(pathbuf->last - 1) == '/') {
     io_buf_add(pathbuf, "index.html", sizeof("index.html") - 1);
   }
 
   *pathbuf->last++ = '\0';
 
-  if(!check_path((const char*)p, pathbuf->last - 1 - p)) {
+  if (!check_path((const char *)p, pathbuf->last - 1 - p)) {
 
     return -1;
   }
@@ -753,9 +728,8 @@ static int make_path(io_buf *pathbuf, const char *req, size_t reqlen _U_)
   return 0;
 }
 
-static int status_response
-(stream *strm, connection *conn, const char *status_code)
-{
+static int status_response(stream *strm, connection *conn,
+                           const char *status_code) {
   int rv;
   size_t status_codelen = strlen(status_code);
   char contentlength[19];
@@ -763,24 +737,22 @@ static int status_response
   size_t reslen;
   nghttp2_data_provider prd, *prdptr;
   nghttp2_nv nva[5] = {
-    MAKE_NV(":status", ""),
-    MAKE_NV("server", SERVER_NAME),
-    MAKE_NV2("date", date, datelen),
-    MAKE_NV("content-length", ""),
+      MAKE_NV(":status", ""), MAKE_NV("server", SERVER_NAME),
+      MAKE_NV2("date", date, datelen), MAKE_NV("content-length", ""),
   };
   size_t nvlen = 3;
 
-  nva[0].value = (uint8_t*)status_code;
+  nva[0].value = (uint8_t *)status_code;
   nva[0].valuelen = strlen(status_code);
 
 #define BODY1 "<html><head><title>"
 #define BODY2 "</title></head><body><h1>"
 #define BODY3 "</h1></body></html>"
 
-  reslen = sizeof(BODY1) - 1 + sizeof(BODY2) - 1 + sizeof(BODY3) - 1
-    + status_codelen * 2;
+  reslen = sizeof(BODY1) - 1 + sizeof(BODY2) - 1 + sizeof(BODY3) - 1 +
+           status_codelen * 2;
 
-  if((size_t)io_buf_left(&strm->scrbuf) < reslen) {
+  if ((size_t)io_buf_left(&strm->scrbuf) < reslen) {
     contentlength[0] = '0';
     contentlengthlen = 1;
     prdptr = NULL;
@@ -799,7 +771,7 @@ static int status_response
     prdptr = &prd;
   }
 
-  nva[nvlen].value = (uint8_t*)contentlength;
+  nva[nvlen].value = (uint8_t *)contentlength;
   nva[nvlen].valuelen = contentlengthlen;
 
   ++nvlen;
@@ -809,28 +781,25 @@ static int status_response
 
   rv = nghttp2_submit_response(conn->session, strm->stream_id, nva, nvlen,
                                prdptr);
-  if(rv != 0) {
+  if (rv != 0) {
     return -1;
   }
 
   return 0;
 }
 
-static int redirect_response(stream *strm, connection *conn)
-{
+static int redirect_response(stream *strm, connection *conn) {
   int rv;
   size_t locationlen;
   nghttp2_nv nva[5] = {
-    MAKE_NV(":status", "301"),
-    MAKE_NV("server", SERVER_NAME),
-    MAKE_NV2("date", date, datelen),
-    MAKE_NV("content-length", "0"),
-    MAKE_NV("location", ""),
+      MAKE_NV(":status", "301"),       MAKE_NV("server", SERVER_NAME),
+      MAKE_NV2("date", date, datelen), MAKE_NV("content-length", "0"),
+      MAKE_NV("location", ""),
   };
 
   /* + 1 for trailing '/' */
   locationlen = strm->schemelen + 3 + strm->hostlen + strm->pathlen + 1;
-  if((size_t)io_buf_left(&strm->scrbuf) < locationlen) {
+  if ((size_t)io_buf_left(&strm->scrbuf) < locationlen) {
     return -1;
   }
 
@@ -846,15 +815,14 @@ static int redirect_response(stream *strm, connection *conn)
   rv = nghttp2_submit_response(conn->session, strm->stream_id, nva,
                                array_size(nva), NULL);
 
-  if(rv != 0) {
+  if (rv != 0) {
     return -1;
   }
 
   return 0;
 }
 
-static int process_request(stream *strm, connection *conn)
-{
+static int process_request(stream *strm, connection *conn) {
   int fd;
   struct stat stbuf;
   int rv;
@@ -866,24 +834,22 @@ static int process_request(stream *strm, connection *conn)
   char path[1024];
   io_buf pathbuf;
   nghttp2_nv nva[5] = {
-    MAKE_NV(":status", "200"),
-    MAKE_NV("server", SERVER_NAME),
-    MAKE_NV2("date", date, datelen),
-    MAKE_NV("content-length", ""),
+      MAKE_NV(":status", "200"), MAKE_NV("server", SERVER_NAME),
+      MAKE_NV2("date", date, datelen), MAKE_NV("content-length", ""),
   };
   size_t nvlen = 3;
 
-  io_buf_init(&pathbuf, (uint8_t*)path, sizeof(path));
+  io_buf_init(&pathbuf, (uint8_t *)path, sizeof(path));
 
   rv = make_path(&pathbuf, strm->path, strm->pathlen);
 
-  if(rv != 0) {
+  if (rv != 0) {
     return status_response(strm, conn, "400");
   }
 
   fd = open(path, O_RDONLY);
 
-  if(fd == -1) {
+  if (fd == -1) {
     return status_response(strm, conn, "404");
   }
 
@@ -891,11 +857,11 @@ static int process_request(stream *strm, connection *conn)
 
   rv = fstat(fd, &stbuf);
 
-  if(rv == -1) {
+  if (rv == -1) {
     return status_response(strm, conn, "404");
   }
 
-  if(stbuf.st_mode & S_IFDIR) {
+  if (stbuf.st_mode & S_IFDIR) {
     return redirect_response(strm, conn);
   }
 
@@ -907,44 +873,44 @@ static int process_request(stream *strm, connection *conn)
   lastmodlen = http_date(lastmod, stbuf.st_mtim.tv_sec);
   contentlengthlen = utos(contentlength, sizeof(contentlength), stbuf.st_size);
 
-  nva[nvlen].value = (uint8_t*)contentlength;
+  nva[nvlen].value = (uint8_t *)contentlength;
   nva[nvlen].valuelen = contentlengthlen;
 
   ++nvlen;
 
-  if(lastmodlen) {
-    nva[nvlen].name = (uint8_t*)"last-modified";
+  if (lastmodlen) {
+    nva[nvlen].name = (uint8_t *)"last-modified";
     nva[nvlen].namelen = sizeof("last-modified") - 1;
-    nva[nvlen].value = (uint8_t*)lastmod;
+    nva[nvlen].value = (uint8_t *)lastmod;
     nva[nvlen].valuelen = lastmodlen;
     nva[nvlen].flags = NGHTTP2_NV_FLAG_NONE;
 
     ++nvlen;
   }
 
-  rv = nghttp2_submit_response(conn->session, strm->stream_id, nva, nvlen,
-                               &prd);
-  if(rv != 0) {
+  rv =
+      nghttp2_submit_response(conn->session, strm->stream_id, nva, nvlen, &prd);
+  if (rv != 0) {
     return -1;
   }
 
   return 0;
 }
 
-static int on_begin_headers_callback
-(nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
-{
+static int on_begin_headers_callback(nghttp2_session *session,
+                                     const nghttp2_frame *frame,
+                                     void *user_data) {
   connection *conn = user_data;
   stream *strm;
 
-  if(frame->hd.type != NGHTTP2_HEADERS ||
-     frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
+  if (frame->hd.type != NGHTTP2_HEADERS ||
+      frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
     return 0;
   }
 
   strm = stream_new(frame->hd.stream_id, conn);
 
-  if(!strm) {
+  if (!strm) {
     nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, frame->hd.stream_id,
                               NGHTTP2_INTERNAL_ERROR);
     return 0;
@@ -955,90 +921,90 @@ static int on_begin_headers_callback
   return 0;
 }
 
-static int on_header_callback
-(nghttp2_session *session, const nghttp2_frame *frame,
- const uint8_t *name, size_t namelen, const uint8_t *value, size_t valuelen,
- uint8_t flags _U_, void *user_data)
-{
+static int on_header_callback(nghttp2_session *session,
+                              const nghttp2_frame *frame, const uint8_t *name,
+                              size_t namelen, const uint8_t *value,
+                              size_t valuelen, uint8_t flags _U_,
+                              void *user_data) {
   connection *conn = user_data;
   stream *strm;
 
-  if(frame->hd.type != NGHTTP2_HEADERS ||
-     frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
+  if (frame->hd.type != NGHTTP2_HEADERS ||
+      frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
     return 0;
   }
 
   strm = nghttp2_session_get_stream_user_data(session, frame->hd.stream_id);
 
-  if(!strm) {
+  if (!strm) {
     return 0;
   }
 
-  if(!nghttp2_check_header_name(name, namelen) ||
-     !nghttp2_check_header_value(value, valuelen)) {
+  if (!nghttp2_check_header_name(name, namelen) ||
+      !nghttp2_check_header_value(value, valuelen)) {
     return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
   }
 
-  if(memseq(name, namelen, ":method")) {
-    if(strm->method) {
+  if (memseq(name, namelen, ":method")) {
+    if (strm->method) {
       stream_error(conn, strm->stream_id, NGHTTP2_PROTOCOL_ERROR);
       return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
     }
     strm->method = io_buf_add_str(&strm->scrbuf, value, valuelen);
-    if(!strm->method) {
+    if (!strm->method) {
       return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
     }
     strm->methodlen = valuelen;
     return 0;
   }
 
-  if(memseq(name, namelen, ":scheme")) {
-    if(strm->scheme) {
+  if (memseq(name, namelen, ":scheme")) {
+    if (strm->scheme) {
       stream_error(conn, strm->stream_id, NGHTTP2_PROTOCOL_ERROR);
       return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
     }
     strm->scheme = io_buf_add_str(&strm->scrbuf, value, valuelen);
-    if(!strm->scheme) {
+    if (!strm->scheme) {
       return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
     }
     strm->schemelen = valuelen;
     return 0;
   }
 
-  if(memseq(name, namelen, ":authority")) {
-    if(strm->authority) {
+  if (memseq(name, namelen, ":authority")) {
+    if (strm->authority) {
       stream_error(conn, strm->stream_id, NGHTTP2_PROTOCOL_ERROR);
       return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
     }
     strm->authority = io_buf_add_str(&strm->scrbuf, value, valuelen);
-    if(!strm->authority) {
+    if (!strm->authority) {
       return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
     }
     strm->authoritylen = valuelen;
     return 0;
   }
 
-  if(memseq(name, namelen, ":path")) {
-    if(strm->path) {
+  if (memseq(name, namelen, ":path")) {
+    if (strm->path) {
       stream_error(conn, strm->stream_id, NGHTTP2_PROTOCOL_ERROR);
       return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
     }
     strm->path = io_buf_add_str(&strm->scrbuf, value, valuelen);
-    if(!strm->path) {
+    if (!strm->path) {
       return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
     }
     strm->pathlen = valuelen;
     return 0;
   }
 
-  if(name[0] == ':') {
+  if (name[0] == ':') {
     stream_error(conn, strm->stream_id, NGHTTP2_PROTOCOL_ERROR);
     return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
   }
 
-  if(memseq(name, namelen, "host") && !strm->host) {
+  if (memseq(name, namelen, "host") && !strm->host) {
     strm->host = io_buf_add_str(&strm->scrbuf, value, valuelen);
-    if(!strm->host) {
+    if (!strm->host) {
       return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
     }
     strm->hostlen = valuelen;
@@ -1047,35 +1013,34 @@ static int on_header_callback
   return 0;
 }
 
-static int on_frame_recv_callback
-(nghttp2_session *session, const nghttp2_frame *frame, void *user_data)
-{
+static int on_frame_recv_callback(nghttp2_session *session,
+                                  const nghttp2_frame *frame, void *user_data) {
   connection *conn = user_data;
   stream *strm;
 
-  if(frame->hd.type != NGHTTP2_HEADERS ||
-     frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
+  if (frame->hd.type != NGHTTP2_HEADERS ||
+      frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
     return 0;
   }
 
   strm = nghttp2_session_get_stream_user_data(session, frame->hd.stream_id);
 
-  if(!strm) {
+  if (!strm) {
     return 0;
   }
 
-  if(!strm->method || !strm->scheme || !strm->path ||
-     (!strm->authority && !strm->host)) {
+  if (!strm->method || !strm->scheme || !strm->path ||
+      (!strm->authority && !strm->host)) {
     stream_error(conn, strm->stream_id, NGHTTP2_PROTOCOL_ERROR);
     return 0;
   }
 
-  if(!strm->host) {
+  if (!strm->host) {
     strm->host = strm->authority;
     strm->hostlen = strm->authoritylen;
   }
 
-  if(process_request(strm, conn) != 0) {
+  if (process_request(strm, conn) != 0) {
     stream_error(conn, strm->stream_id, NGHTTP2_INTERNAL_ERROR);
     return 0;
   }
@@ -1083,15 +1048,14 @@ static int on_frame_recv_callback
   return 0;
 }
 
-static int on_stream_close_callback
-(nghttp2_session *session, int32_t stream_id, uint32_t error_code _U_,
- void *user_data _U_)
-{
+static int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
+                                    uint32_t error_code _U_,
+                                    void *user_data _U_) {
   stream *strm;
 
   strm = nghttp2_session_get_stream_user_data(session, stream_id);
 
-  if(!strm) {
+  if (!strm) {
     return 0;
   }
 
@@ -1100,13 +1064,12 @@ static int on_stream_close_callback
   return 0;
 }
 
-static int on_frame_not_send_callback
-(nghttp2_session *session _U_, const nghttp2_frame *frame, int lib_error_code _U_,
- void *user_data)
-{
+static int on_frame_not_send_callback(nghttp2_session *session _U_,
+                                      const nghttp2_frame *frame,
+                                      int lib_error_code _U_, void *user_data) {
   connection *conn = user_data;
 
-  if(frame->hd.type != NGHTTP2_HEADERS) {
+  if (frame->hd.type != NGHTTP2_HEADERS) {
     return 0;
   }
 
@@ -1117,44 +1080,45 @@ static int on_frame_not_send_callback
   return 0;
 }
 
-static int do_read(connection *conn)
-{
+static int do_read(connection *conn) {
   uint8_t buf[32768];
 
-  for(;;) {
+  for (;;) {
     ssize_t nread;
     ssize_t nproc;
 
-    while((nread = read(conn->fd, buf, sizeof(buf))) == -1 && errno == EINTR);
-    if(nread == -1) {
-      if(errno == EAGAIN || errno == EWOULDBLOCK) {
+    while ((nread = read(conn->fd, buf, sizeof(buf))) == -1 && errno == EINTR)
+      ;
+    if (nread == -1) {
+      if (errno == EAGAIN || errno == EWOULDBLOCK) {
         return 0;
       }
 
       return -1;
     }
 
-    if(nread == 0) {
+    if (nread == 0) {
       return -1;
     }
 
     nproc = nghttp2_session_mem_recv(conn->session, buf, nread);
 
-    if(nproc < 0) {
+    if (nproc < 0) {
       return -1;
     }
   }
 }
 
-static int do_write(connection *conn)
-{
-  for(;;) {
-    if(io_buf_len(&conn->buf)) {
+static int do_write(connection *conn) {
+  for (;;) {
+    if (io_buf_len(&conn->buf)) {
       ssize_t nwrite;
-      while((nwrite = write(conn->fd, conn->buf.pos,
-                            io_buf_len(&conn->buf))) == -1 && errno == EINTR);
-      if(nwrite == -1) {
-        if(errno == EAGAIN || errno == EWOULDBLOCK) {
+      while ((nwrite = write(conn->fd, conn->buf.pos,
+                             io_buf_len(&conn->buf))) == -1 &&
+             errno == EINTR)
+        ;
+      if (nwrite == -1) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
           return 0;
         }
         return -1;
@@ -1162,37 +1126,37 @@ static int do_write(connection *conn)
 
       conn->buf.pos += nwrite;
 
-      if(io_buf_len(&conn->buf)) {
+      if (io_buf_len(&conn->buf)) {
         return 0;
       }
 
       io_buf_init(&conn->buf, conn->rawoutbuf, sizeof(conn->rawoutbuf));
     }
 
-    if(conn->cache) {
+    if (conn->cache) {
       io_buf_add(&conn->buf, conn->cache, conn->cachelen);
       conn->cache = NULL;
       conn->cachelen = 0;
     }
 
-    for(;;) {
+    for (;;) {
       ssize_t n;
       const uint8_t *b;
 
       n = nghttp2_session_mem_send(conn->session, &b);
 
-      if(n < 0) {
+      if (n < 0) {
         return -1;
       }
 
-      if(n == 0) {
-        if(io_buf_len(&conn->buf) == 0) {
+      if (n == 0) {
+        if (io_buf_len(&conn->buf) == 0) {
           return 0;
         }
         break;
       }
 
-      if(io_buf_left(&conn->buf) < n) {
+      if (io_buf_left(&conn->buf) < n) {
         conn->cache = b;
         conn->cachelen = n;
         break;
@@ -1203,39 +1167,38 @@ static int do_write(connection *conn)
   }
 }
 
-static int handle_connection(io_loop *loop, uint32_t events, void *ptr)
-{
+static int handle_connection(io_loop *loop, uint32_t events, void *ptr) {
   connection *conn = ptr;
   int rv;
   uint32_t nextev = 0;
 
-  if(events & (EPOLLHUP | EPOLLERR)) {
+  if (events & (EPOLLHUP | EPOLLERR)) {
     goto cleanup;
   }
 
-  if(events & EPOLLIN) {
+  if (events & EPOLLIN) {
     rv = do_read(conn);
 
-    if(rv != 0) {
+    if (rv != 0) {
       goto cleanup;
     }
   }
 
   rv = do_write(conn);
 
-  if(rv != 0) {
+  if (rv != 0) {
     goto cleanup;
   }
 
-  if(nghttp2_session_want_read(conn->session)) {
+  if (nghttp2_session_want_read(conn->session)) {
     nextev |= EPOLLIN;
   }
 
-  if(io_buf_len(&conn->buf) || nghttp2_session_want_write(conn->session)) {
+  if (io_buf_len(&conn->buf) || nghttp2_session_want_write(conn->session)) {
     nextev |= EPOLLOUT;
   }
 
-  if(!nextev) {
+  if (!nextev) {
     goto cleanup;
   }
 
@@ -1243,14 +1206,13 @@ static int handle_connection(io_loop *loop, uint32_t events, void *ptr)
 
   return 0;
 
- cleanup:
+cleanup:
   connection_del(conn);
 
   return 0;
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   int rv;
   server serv;
   timer tmr;
@@ -1259,8 +1221,7 @@ int main(int argc, char **argv)
   const char *address;
   const char *service;
 
-
-  if(argc < 4) {
+  if (argc < 4) {
     fprintf(stderr, "Usage: tiny-nghttpd <address> <port> <doc-root>\n");
     exit(EXIT_FAILURE);
   }
@@ -1276,41 +1237,41 @@ int main(int argc, char **argv)
 
   rv = server_init(&serv, address, service);
 
-  if(rv != 0) {
+  if (rv != 0) {
     exit(EXIT_FAILURE);
   }
 
   rv = timer_init(&tmr);
 
-  if(rv != 0) {
+  if (rv != 0) {
     exit(EXIT_FAILURE);
   }
 
   rv = io_loop_init(&loop);
 
-  if(rv != 0) {
+  if (rv != 0) {
     exit(EXIT_FAILURE);
   }
 
   rv = nghttp2_session_callbacks_new(&shared_callbacks);
-  if(rv != 0) {
+  if (rv != 0) {
     fprintf(stderr, "nghttp2_session_callbacks_new: %s", nghttp2_strerror(rv));
     exit(EXIT_FAILURE);
   }
 
-  nghttp2_session_callbacks_set_on_begin_headers_callback
-    (shared_callbacks, on_begin_headers_callback);
-  nghttp2_session_callbacks_set_on_header_callback
-    (shared_callbacks, on_header_callback);
-  nghttp2_session_callbacks_set_on_frame_recv_callback
-    (shared_callbacks, on_frame_recv_callback);
-  nghttp2_session_callbacks_set_on_stream_close_callback
-    (shared_callbacks, on_stream_close_callback);
-  nghttp2_session_callbacks_set_on_frame_not_send_callback
-    (shared_callbacks, on_frame_not_send_callback);
+  nghttp2_session_callbacks_set_on_begin_headers_callback(
+      shared_callbacks, on_begin_headers_callback);
+  nghttp2_session_callbacks_set_on_header_callback(shared_callbacks,
+                                                   on_header_callback);
+  nghttp2_session_callbacks_set_on_frame_recv_callback(shared_callbacks,
+                                                       on_frame_recv_callback);
+  nghttp2_session_callbacks_set_on_stream_close_callback(
+      shared_callbacks, on_stream_close_callback);
+  nghttp2_session_callbacks_set_on_frame_not_send_callback(
+      shared_callbacks, on_frame_not_send_callback);
 
   rv = nghttp2_option_new(&shared_option);
-  if(rv != 0) {
+  if (rv != 0) {
     fprintf(stderr, "nghttp2_option_new: %s", nghttp2_strerror(rv));
     exit(EXIT_FAILURE);
   }
@@ -1319,13 +1280,13 @@ int main(int argc, char **argv)
 
   rv = io_loop_add(&loop, serv.fd, EPOLLIN, &serv);
 
-  if(rv != 0) {
+  if (rv != 0) {
     exit(EXIT_FAILURE);
   }
 
   rv = io_loop_add(&loop, tmr.fd, EPOLLIN, &tmr);
 
-  if(rv != 0) {
+  if (rv != 0) {
     exit(EXIT_FAILURE);
   }
 

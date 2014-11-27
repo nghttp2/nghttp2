@@ -34,10 +34,7 @@
 
 namespace shrpx {
 
-enum IOCtrlReason {
-  SHRPX_NO_BUFFER = 1 << 0,
-  SHRPX_MSG_BLOCK = 1 << 1
-};
+enum IOCtrlReason { SHRPX_NO_BUFFER = 1 << 0, SHRPX_MSG_BLOCK = 1 << 1 };
 
 class IOControl {
 public:
@@ -49,6 +46,7 @@ public:
   bool resume_read(IOCtrlReason reason);
   // Clear all pause flags and enable read
   void force_resume_read();
+
 private:
   bufferevent *bev_;
   uint32_t rdbits_;
