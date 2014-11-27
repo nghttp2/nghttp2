@@ -461,7 +461,12 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
       downstream->end_upload_data();
       downstream->set_request_state(Downstream::MSG_COMPLETE);
     } else {
-      return NGHTTP2_ERR_CALLBACK_FAILURE;
+      rv = nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
+                                     frame->hd.stream_id,
+                                     NGHTTP2_PROTOCOL_ERROR);
+      if (rv != 0) {
+        return NGHTTP2_ERR_CALLBACK_FAILURE;
+      }
     }
 
     break;
