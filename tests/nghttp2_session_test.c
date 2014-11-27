@@ -1767,6 +1767,58 @@ void test_nghttp2_session_on_request_headers_received(void) {
   nghttp2_frame_headers_free(&frame.headers);
 
   nghttp2_session_del(session);
+
+  /* Check client side */
+  nghttp2_session_client_new(&session, &callbacks, &user_data);
+
+  /* Receiving peer's idle stream ID is subject to connection error */
+  nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_END_HEADERS, 2,
+                             NGHTTP2_HCAT_REQUEST, NULL, NULL, 0);
+
+  user_data.invalid_frame_recv_cb_called = 0;
+  CU_ASSERT(NGHTTP2_ERR_IGN_HEADER_BLOCK ==
+            nghttp2_session_on_request_headers_received(session, &frame));
+  CU_ASSERT(1 == user_data.invalid_frame_recv_cb_called);
+  CU_ASSERT(session->goaway_flags & NGHTTP2_GOAWAY_FAIL_ON_SEND);
+
+  nghttp2_frame_headers_free(&frame.headers);
+
+  nghttp2_session_del(session);
+
+  nghttp2_session_client_new(&session, &callbacks, &user_data);
+
+  /* Receiving our's idle stream ID is subject to connection error */
+  nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_END_HEADERS, 1,
+                             NGHTTP2_HCAT_REQUEST, NULL, NULL, 0);
+
+  user_data.invalid_frame_recv_cb_called = 0;
+  CU_ASSERT(NGHTTP2_ERR_IGN_HEADER_BLOCK ==
+            nghttp2_session_on_request_headers_received(session, &frame));
+  CU_ASSERT(1 == user_data.invalid_frame_recv_cb_called);
+  CU_ASSERT(session->goaway_flags & NGHTTP2_GOAWAY_FAIL_ON_SEND);
+
+  nghttp2_frame_headers_free(&frame.headers);
+
+  nghttp2_session_del(session);
+
+  nghttp2_session_client_new(&session, &callbacks, &user_data);
+
+  session->next_stream_id = 5;
+
+  /* Stream ID which is not idle and not in stream map is just
+     ignored */
+  nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_END_HEADERS, 3,
+                             NGHTTP2_HCAT_REQUEST, NULL, NULL, 0);
+
+  user_data.invalid_frame_recv_cb_called = 0;
+  CU_ASSERT(NGHTTP2_ERR_IGN_HEADER_BLOCK ==
+            nghttp2_session_on_request_headers_received(session, &frame));
+  CU_ASSERT(0 == user_data.invalid_frame_recv_cb_called);
+  CU_ASSERT(0 == (session->goaway_flags & NGHTTP2_GOAWAY_FAIL_ON_SEND));
+
+  nghttp2_frame_headers_free(&frame.headers);
+
+  nghttp2_session_del(session);
 }
 
 void test_nghttp2_session_on_response_headers_received(void) {
