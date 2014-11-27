@@ -571,7 +571,7 @@ int nghttp2_session_reprioritize_stream
  const nghttp2_priority_spec *pri_spec_in)
 {
   int rv;
-  nghttp2_stream *dep_stream;
+  nghttp2_stream *dep_stream = NULL;
   nghttp2_stream *root_stream;
   nghttp2_priority_spec pri_spec_default;
   const nghttp2_priority_spec *pri_spec = pri_spec_in;
