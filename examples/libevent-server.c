@@ -103,7 +103,8 @@ static SSL_CTX* create_ssl_ctx(const char *key_file, const char *cert_file)
          ERR_error_string(ERR_get_error(), NULL));
   }
   SSL_CTX_set_options(ssl_ctx,
-                      SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_COMPRESSION |
+                      SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 |
+                      SSL_OP_NO_COMPRESSION |
                       SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
 
   ecdh = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
