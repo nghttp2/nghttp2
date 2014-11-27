@@ -2,3 +2,4 @@ asio_http2.h
 ============
 
 .. literalinclude:: @top_srcdir@/src/includes/nghttp2/asio_http2.h
+   :language: cpp
