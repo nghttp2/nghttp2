@@ -2251,8 +2251,10 @@ int nghttp2_session_get_stream_remote_close(nghttp2_session *session,
  *
  * Signals the session so that the connection should be terminated.
  *
- * The last stream ID is the ID of a stream for which
- * :type:`nghttp2_on_frame_recv_callback` was called most recently.
+ * The last stream ID is the minimum value between the stream ID of a
+ * stream for which :type:`nghttp2_on_frame_recv_callback` was called
+ * most recently and the last stream ID we have sent to the peer
+ * previously.
  *
  * The |error_code| is the error code of this GOAWAY frame.  The
  * pre-defined error code is one of :enum:`nghttp2_error_code`.
@@ -2280,13 +2282,24 @@ int nghttp2_session_terminate_session(nghttp2_session *session,
  *
  * This function behaves like `nghttp2_session_terminate_session()`,
  * but the last stream ID can be specified by the application for fine
- * grained control of stream.
+ * grained control of stream.  The HTTP/2 specification does not allow
+ * last_stream_id to be increased.  So the actual value sent as
+ * last_stream_id is the minimum value between the given
+ * |last_stream_id| and the last_stream_id we have previously sent to
+ * the peer.
+ *
+ * The |last_stream_id| is peer's stream ID or 0.  So if |session| is
+ * initialized as client, |last_stream_id| must be even or 0.  If
+ * |session| is initialized as server, |last_stream_id| must be odd or
+ * 0.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
+ * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
+ *     The |last_stream_id| is invalid.
  */
 int nghttp2_session_terminate_session2(nghttp2_session *session,
                                        int32_t last_stream_id,
@@ -2840,6 +2853,17 @@ int nghttp2_submit_ping(nghttp2_session *session, uint8_t flags,
  * The |flags| is currently ignored and should be
  * :enum:`NGHTTP2_FLAG_NONE`.
  *
+ * The |last_stream_id| is peer's stream ID or 0.  So if |session| is
+ * initialized as client, |last_stream_id| must be even or 0.  If
+ * |session| is initialized as server, |last_stream_id| must be odd or
+ * 0.
+ *
+ * The HTTP/2 specification says last_stream_id must not be increased
+ * from the value previously sent.  So the actual value sent as
+ * last_stream_id is the minimum value between the given
+ * |last_stream_id| and the last_stream_id previously sent to the
+ * peer.
+ *
  * If the |opaque_data| is not ``NULL`` and |opaque_data_len| is not
  * zero, those data will be sent as additional debug data.  The
  * library makes a copy of the memory region pointed by |opaque_data|
@@ -2847,19 +2871,14 @@ int nghttp2_submit_ping(nghttp2_session *session, uint8_t flags,
  * keep this memory after the return of this function.  If the
  * |opaque_data_len| is 0, the |opaque_data| could be ``NULL``.
  *
- * To shutdown gracefully, first send GOAWAY with ``last_stream_id =
- * (1u << 31) - 1``.  After 1 RTT, call either
- * `nghttp2_submit_goaway()`, `nghttp2_session_terminate_session()` or
- * `nghttp2_session_terminate_session2()`.  The latter 2 will close
- * HTTP/2 session immediately after transmission of the frame.
- *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
  * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
- *     The |opaque_data_len| is too large.
+ *     The |opaque_data_len| is too large; the |last_stream_id| is
+ *     invalid.
  */
 int nghttp2_submit_goaway(nghttp2_session *session, uint8_t flags,
                           int32_t last_stream_id, uint32_t error_code,

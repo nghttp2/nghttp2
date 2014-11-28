@@ -69,10 +69,18 @@ typedef struct {
   uint8_t eof;
 } nghttp2_data_aux_data;
 
+/* struct used for GOAWAY frame */
+typedef struct {
+  /* nonzero if session should be terminated after the transmission of
+     this frame. */
+  int terminate_on_send;
+} nghttp2_goaway_aux_data;
+
 /* Additional data which cannot be stored in nghttp2_frame struct */
 typedef union {
   nghttp2_data_aux_data data;
   nghttp2_headers_aux_data headers;
+  nghttp2_goaway_aux_data goaway;
 } nghttp2_aux_data;
 
 typedef struct {

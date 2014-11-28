@@ -124,13 +124,13 @@ static int session_detect_idle_stream(nghttp2_session *session,
 static int session_terminate_session(nghttp2_session *session,
                                      int32_t last_stream_id,
                                      uint32_t error_code, const char *reason) {
+  int rv;
   const uint8_t *debug_data;
   size_t debug_datalen;
 
   if (session->goaway_flags & NGHTTP2_GOAWAY_FAIL_ON_SEND) {
     return 0;
   }
-  session->goaway_flags |= NGHTTP2_GOAWAY_FAIL_ON_SEND;
 
   if (reason == NULL) {
     debug_data = NULL;
@@ -140,8 +140,16 @@ static int session_terminate_session(nghttp2_session *session,
     debug_datalen = strlen(reason);
   }
 
-  return nghttp2_submit_goaway(session, NGHTTP2_FLAG_NONE, last_stream_id,
-                               error_code, debug_data, debug_datalen);
+  rv = nghttp2_session_add_goaway(session, last_stream_id, error_code,
+                                  debug_data, debug_datalen, 1);
+
+  if (rv != 0) {
+    return rv;
+  }
+
+  session->goaway_flags |= NGHTTP2_GOAWAY_FAIL_ON_SEND;
+
+  return 0;
 }
 
 int nghttp2_session_terminate_session(nghttp2_session *session,
@@ -981,7 +989,8 @@ int nghttp2_session_close_stream(nghttp2_session *session, int32_t stream_id,
      hang the stream in a local endpoint.
   */
 
-  if (session->callbacks.on_stream_close_callback) {
+  if (stream->state != NGHTTP2_STREAM_IDLE &&
+      session->callbacks.on_stream_close_callback) {
     if (session->callbacks.on_stream_close_callback(
             session, stream_id, error_code, session->user_data) != 0) {
 
@@ -1168,14 +1177,17 @@ static int stream_predicate_for_send(nghttp2_stream *stream) {
  * negative error codes:
  *
  * NGHTTP2_ERR_START_STREAM_NOT_ALLOWED
- *     New stream cannot be created because GOAWAY is already sent or
- *     received.
+ *     New stream cannot be created because of GOAWAY: session is
+ *     going down or received last_stream_id is strictly less than
+ *     frame->hd.stream_id.
  */
 static int session_predicate_request_headers_send(nghttp2_session *session,
-                                                  nghttp2_headers *frame _U_) {
-  if (session->goaway_flags) {
-    /* When GOAWAY is sent or received, peer must not send new request
-       HEADERS. */
+                                                  nghttp2_headers *frame) {
+  /* If we are terminating session (session->goaway_flag is nonzero),
+     we don't send new request. Also if received last_stream_id is
+     strictly less than new stream ID, cancel its transmission. */
+  if (session->goaway_flags ||
+      session->remote_last_stream_id < frame->hd.stream_id) {
     return NGHTTP2_ERR_START_STREAM_NOT_ALLOWED;
   }
   return 0;
@@ -1331,7 +1343,8 @@ static int session_predicate_headers_send(nghttp2_session *session,
  *     The remote peer disabled reception of PUSH_PROMISE.
  */
 static int session_predicate_push_promise_send(nghttp2_session *session,
-                                               nghttp2_stream *stream) {
+                                               nghttp2_stream *stream,
+                                               int32_t promised_stream_id) {
   int rv;
 
   if (!session->server) {
@@ -1356,9 +1369,7 @@ static int session_predicate_push_promise_send(nghttp2_session *session,
   if (stream->state == NGHTTP2_STREAM_CLOSING) {
     return NGHTTP2_ERR_STREAM_CLOSING;
   }
-  if (session->goaway_flags) {
-    /* When GOAWAY is sent or received, peer must not promise new
-       stream ID */
+  if (session->remote_last_stream_id < promised_stream_id) {
     return NGHTTP2_ERR_START_STREAM_NOT_ALLOWED;
   }
   return 0;
@@ -1772,7 +1783,8 @@ static int session_prep_frame(nghttp2_session *session,
 
       stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
 
-      rv = session_predicate_push_promise_send(session, stream);
+      rv = session_predicate_push_promise_send(
+          session, stream, frame->push_promise.promised_stream_id);
       if (rv != 0) {
         return rv;
       }
@@ -1821,10 +1833,6 @@ static int session_prep_frame(nghttp2_session *session,
       break;
     }
     case NGHTTP2_GOAWAY:
-      if (session->local_last_stream_id < frame->goaway.last_stream_id) {
-        return NGHTTP2_ERR_INVALID_ARGUMENT;
-      }
-
       framerv =
           nghttp2_frame_pack_goaway(&session->aob.framebufs, &frame->goaway);
       if (framerv < 0) {
@@ -2085,6 +2093,80 @@ static int session_call_on_frame_send(nghttp2_session *session,
   return 0;
 }
 
+static int find_stream_on_goaway_func(nghttp2_map_entry *entry, void *ptr) {
+  nghttp2_close_stream_on_goaway_arg *arg;
+  nghttp2_stream *stream;
+
+  arg = (nghttp2_close_stream_on_goaway_arg *)ptr;
+  stream = (nghttp2_stream *)entry;
+
+  if (nghttp2_session_is_my_stream_id(arg->session, stream->stream_id)) {
+    if (arg->incoming) {
+      return 0;
+    }
+  } else if (!arg->incoming) {
+    return 0;
+  }
+
+  if (stream->state != NGHTTP2_STREAM_IDLE &&
+      (stream->flags & NGHTTP2_STREAM_FLAG_CLOSED) == 0 &&
+      stream->stream_id > arg->last_stream_id) {
+    /* We are collecting streams to close because we cannot call
+       nghttp2_session_close_stream() inside nghttp2_map_each().
+       Reuse closed_next member.. bad choice? */
+    assert(stream->closed_next == NULL);
+    assert(stream->closed_prev == NULL);
+
+    if (arg->head) {
+      stream->closed_next = arg->head;
+      arg->head = stream;
+    } else {
+      arg->head = stream;
+    }
+  }
+
+  return 0;
+}
+
+/* Closes non-idle and non-closed streams whose stream ID >
+   last_stream_id.  If incoming is nonzero, we are going to close
+   incoming streams.  Otherwise, close outgoing streams. */
+static int session_close_stream_on_goaway(nghttp2_session *session,
+                                          int32_t last_stream_id,
+                                          int incoming) {
+  int rv;
+  nghttp2_stream *stream, *next_stream;
+  nghttp2_close_stream_on_goaway_arg arg = {session, NULL, last_stream_id,
+                                            incoming};
+
+  rv = nghttp2_map_each(&session->streams, find_stream_on_goaway_func, &arg);
+  assert(rv == 0);
+
+  stream = arg.head;
+  while (stream) {
+    next_stream = stream->closed_next;
+    stream->closed_next = NULL;
+    rv = nghttp2_session_close_stream(session, stream->stream_id,
+                                      NGHTTP2_REFUSED_STREAM);
+
+    /* stream may be deleted here */
+
+    stream = next_stream;
+
+    if (nghttp2_is_fatal(rv)) {
+      /* Clean up closed_next member just in case */
+      while (stream) {
+        next_stream = stream->closed_next;
+        stream->closed_next = NULL;
+        stream = next_stream;
+      }
+      return rv;
+    }
+  }
+
+  return 0;
+}
+
 static void session_outbound_item_cycle_weight(nghttp2_session *session,
                                                nghttp2_outbound_item *item,
                                                int32_t ini_weight) {
@@ -2239,9 +2321,24 @@ static int session_after_frame_sent(nghttp2_session *session) {
         return rv;
       }
       break;
-    case NGHTTP2_GOAWAY:
-      session->goaway_flags |= NGHTTP2_GOAWAY_SEND;
+    case NGHTTP2_GOAWAY: {
+      nghttp2_goaway_aux_data *aux_data;
+
+      aux_data = &item->aux_data.goaway;
+
+      if (aux_data->terminate_on_send) {
+        session->goaway_flags |= NGHTTP2_GOAWAY_TERM_SENT;
+      }
+
+      rv = session_close_stream_on_goaway(session, frame->goaway.last_stream_id,
+                                          1);
+
+      if (nghttp2_is_fatal(rv)) {
+        return rv;
+      }
+
       break;
+    }
     default:
       break;
     }
@@ -2989,10 +3086,6 @@ int nghttp2_session_on_request_headers_received(nghttp2_session *session,
         session, frame, NGHTTP2_PROTOCOL_ERROR,
         "request HEADERS: stream_id == 0");
   }
-  if (session->goaway_flags) {
-    /* We don't accept new stream after GOAWAY is sent or received. */
-    return NGHTTP2_ERR_IGN_HEADER_BLOCK;
-  }
 
   /* If client recieves idle stream from server, it is invalid
      regardless stream ID is even or odd.  This is because client is
@@ -3024,6 +3117,11 @@ int nghttp2_session_on_request_headers_received(nghttp2_session *session,
     return NGHTTP2_ERR_IGN_HEADER_BLOCK;
   }
   session->last_recv_stream_id = frame->hd.stream_id;
+
+  if (session->local_last_stream_id < frame->hd.stream_id) {
+    /* We just ignore stream rather than local_last_stream_id */
+    return NGHTTP2_ERR_IGN_HEADER_BLOCK;
+  }
 
   if (session_is_incoming_concurrent_streams_max(session)) {
     return session_inflate_handle_invalid_connection(
@@ -3810,21 +3908,33 @@ static int session_process_ping_frame(nghttp2_session *session) {
 
 int nghttp2_session_on_goaway_received(nghttp2_session *session,
                                        nghttp2_frame *frame) {
+  int rv;
+
   if (frame->hd.stream_id != 0) {
     return session_handle_invalid_connection(
         session, frame, NGHTTP2_PROTOCOL_ERROR, "GOAWAY: stream_id != 0");
   }
-  /* Draft says Endpoints MUST NOT increase the value they send in the
+  /* Spec says Endpoints MUST NOT increase the value they send in the
      last stream identifier. */
-  if (session->remote_last_stream_id < frame->goaway.last_stream_id) {
+  if ((frame->goaway.last_stream_id > 0 &&
+       !nghttp2_session_is_my_stream_id(session,
+                                        frame->goaway.last_stream_id)) ||
+      session->remote_last_stream_id < frame->goaway.last_stream_id) {
     return session_handle_invalid_connection(session, frame,
                                              NGHTTP2_PROTOCOL_ERROR,
                                              "GOAWAY: invalid last_stream_id");
   }
 
   session->remote_last_stream_id = frame->goaway.last_stream_id;
-  session->goaway_flags |= NGHTTP2_GOAWAY_RECV;
-  return session_call_on_frame_received(session, frame);
+
+  rv = session_call_on_frame_received(session, frame);
+
+  if (nghttp2_is_fatal(rv)) {
+    return rv;
+  }
+
+  return session_close_stream_on_goaway(session, frame->goaway.last_stream_id,
+                                        0);
 }
 
 static int session_process_goaway_frame(nghttp2_session *session) {
@@ -5483,7 +5593,7 @@ int nghttp2_session_want_read(nghttp2_session *session) {
   /* If these flags are set, we don't want to read. The application
      should drop the connection. */
   if ((session->goaway_flags & NGHTTP2_GOAWAY_FAIL_ON_SEND) &&
-      (session->goaway_flags & NGHTTP2_GOAWAY_SEND)) {
+      (session->goaway_flags & NGHTTP2_GOAWAY_TERM_SENT)) {
     return 0;
   }
 
@@ -5497,10 +5607,6 @@ int nghttp2_session_want_read(nghttp2_session *session) {
     return 1;
   }
 
-  if (session->goaway_flags & (NGHTTP2_GOAWAY_SEND | NGHTTP2_GOAWAY_RECV)) {
-    return 0;
-  }
-
   return 1;
 }
 
@@ -5510,7 +5616,7 @@ int nghttp2_session_want_write(nghttp2_session *session) {
   /* If these flags are set, we don't want to write any data. The
      application should drop the connection. */
   if ((session->goaway_flags & NGHTTP2_GOAWAY_FAIL_ON_SEND) &&
-      (session->goaway_flags & NGHTTP2_GOAWAY_SEND)) {
+      (session->goaway_flags & NGHTTP2_GOAWAY_TERM_SENT)) {
     return 0;
   }
 
@@ -5534,10 +5640,6 @@ int nghttp2_session_want_write(nghttp2_session *session) {
 
   if (num_active_streams > 0) {
     return 1;
-  }
-
-  if (session->goaway_flags & (NGHTTP2_GOAWAY_SEND | NGHTTP2_GOAWAY_RECV)) {
-    return 0;
   }
 
   return 1;
@@ -5572,11 +5674,16 @@ int nghttp2_session_add_ping(nghttp2_session *session, uint8_t flags,
 
 int nghttp2_session_add_goaway(nghttp2_session *session, int32_t last_stream_id,
                                uint32_t error_code, const uint8_t *opaque_data,
-                               size_t opaque_data_len) {
+                               size_t opaque_data_len, int terminate_on_send) {
   int rv;
   nghttp2_outbound_item *item;
   nghttp2_frame *frame;
   uint8_t *opaque_data_copy = NULL;
+  nghttp2_goaway_aux_data *aux_data;
+
+  if (nghttp2_session_is_my_stream_id(session, last_stream_id)) {
+    return NGHTTP2_ERR_INVALID_ARGUMENT;
+  }
 
   if (opaque_data_len) {
     if (opaque_data_len + 8 > NGHTTP2_MAX_PAYLOADLEN) {
@@ -5599,8 +5706,15 @@ int nghttp2_session_add_goaway(nghttp2_session *session, int32_t last_stream_id,
 
   frame = &item->frame;
 
+  /* last_stream_id must not be increased from the value previously
+     sent */
+  last_stream_id = nghttp2_min(last_stream_id, session->local_last_stream_id);
+
   nghttp2_frame_goaway_init(&frame->goaway, last_stream_id, error_code,
                             opaque_data_copy, opaque_data_len);
+
+  aux_data = &item->aux_data.goaway;
+  aux_data->terminate_on_send = terminate_on_send;
 
   rv = nghttp2_session_add_item(session, item);
   if (rv != 0) {

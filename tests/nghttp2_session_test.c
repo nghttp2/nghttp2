@@ -345,13 +345,13 @@ static ssize_t defer_data_source_read_callback(nghttp2_session *session _U_,
   return NGHTTP2_ERR_DEFERRED;
 }
 
-static int stream_close_callback(nghttp2_session *session, int32_t stream_id,
-                                 nghttp2_error_code error_code _U_,
-                                 void *user_data) {
+static int on_stream_close_callback(nghttp2_session *session _U_,
+                                    int32_t stream_id _U_,
+                                    nghttp2_error_code error_code _U_,
+                                    void *user_data) {
   my_user_data *my_data = (my_user_data *)user_data;
-  void *stream_data = nghttp2_session_get_stream_user_data(session, stream_id);
   ++my_data->stream_close_cb_called;
-  CU_ASSERT(stream_data != NULL);
+
   return 0;
 }
 
@@ -1819,6 +1819,33 @@ void test_nghttp2_session_on_request_headers_received(void) {
   nghttp2_frame_headers_free(&frame.headers);
 
   nghttp2_session_del(session);
+
+  nghttp2_session_server_new(&session, &callbacks, &user_data);
+
+  /* Stream ID which is equal to local_last_stream_id is ok. */
+  session->local_last_stream_id = 3;
+
+  nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_END_HEADERS, 3,
+                             NGHTTP2_HCAT_REQUEST, NULL, NULL, 0);
+
+  CU_ASSERT(0 == nghttp2_session_on_request_headers_received(session, &frame));
+
+  nghttp2_frame_headers_free(&frame.headers);
+
+  /* Stream ID which is greater than local_last_stream_id is
+     ignored */
+  nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_END_HEADERS, 5,
+                             NGHTTP2_HCAT_REQUEST, NULL, NULL, 0);
+
+  user_data.invalid_frame_recv_cb_called = 0;
+  CU_ASSERT(NGHTTP2_ERR_IGN_HEADER_BLOCK ==
+            nghttp2_session_on_request_headers_received(session, &frame));
+  CU_ASSERT(0 == user_data.invalid_frame_recv_cb_called);
+  CU_ASSERT(0 == (session->goaway_flags & NGHTTP2_GOAWAY_FAIL_ON_SEND));
+
+  nghttp2_frame_headers_free(&frame.headers);
+
+  nghttp2_session_del(session);
 }
 
 void test_nghttp2_session_on_response_headers_received(void) {
@@ -2471,19 +2498,40 @@ void test_nghttp2_session_on_goaway_received(void) {
   nghttp2_session_callbacks callbacks;
   my_user_data user_data;
   nghttp2_frame frame;
+  int i;
+
   user_data.frame_recv_cb_called = 0;
   user_data.invalid_frame_recv_cb_called = 0;
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks.on_frame_recv_callback = on_frame_recv_callback;
   callbacks.on_invalid_frame_recv_callback = on_invalid_frame_recv_callback;
+  callbacks.on_stream_close_callback = on_stream_close_callback;
 
   nghttp2_session_client_new(&session, &callbacks, &user_data);
-  nghttp2_frame_goaway_init(&frame.goaway, 1, NGHTTP2_PROTOCOL_ERROR, NULL, 0);
+
+  for (i = 1; i <= 7; ++i) {
+    open_stream(session, i);
+  }
+
+  nghttp2_frame_goaway_init(&frame.goaway, 3, NGHTTP2_PROTOCOL_ERROR, NULL, 0);
+
+  user_data.stream_close_cb_called = 0;
 
   CU_ASSERT(0 == nghttp2_session_on_goaway_received(session, &frame));
+
   CU_ASSERT(1 == user_data.frame_recv_cb_called);
-  CU_ASSERT(session->goaway_flags == NGHTTP2_GOAWAY_RECV);
+  CU_ASSERT(3 == session->remote_last_stream_id);
+  /* on_stream_close should be callsed for 2 times (stream 5 and 7) */
+  CU_ASSERT(2 == user_data.stream_close_cb_called);
+
+  CU_ASSERT(NULL != nghttp2_session_get_stream(session, 1));
+  CU_ASSERT(NULL != nghttp2_session_get_stream(session, 2));
+  CU_ASSERT(NULL != nghttp2_session_get_stream(session, 3));
+  CU_ASSERT(NULL != nghttp2_session_get_stream(session, 4));
+  CU_ASSERT(NULL == nghttp2_session_get_stream(session, 5));
+  CU_ASSERT(NULL != nghttp2_session_get_stream(session, 6));
+  CU_ASSERT(NULL == nghttp2_session_get_stream(session, 7));
 
   nghttp2_frame_goaway_free(&frame.goaway);
   nghttp2_session_del(session);
@@ -4855,7 +4903,7 @@ void test_nghttp2_session_on_stream_close(void) {
   nghttp2_stream *stream;
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
-  callbacks.on_stream_close_callback = stream_close_callback;
+  callbacks.on_stream_close_callback = on_stream_close_callback;
   user_data.stream_close_cb_called = 0;
 
   nghttp2_session_client_new(&session, &callbacks, &user_data);
@@ -4917,10 +4965,6 @@ void test_nghttp2_session_on_ctrl_not_send(void) {
   CU_ASSERT(NGHTTP2_HEADERS == user_data.not_sent_frame_type);
   CU_ASSERT(NGHTTP2_ERR_STREAM_CLOSING == user_data.not_sent_error);
 
-  stream = nghttp2_session_open_stream(session, 3, NGHTTP2_STREAM_FLAG_NONE,
-                                       &pri_spec_default, NGHTTP2_STREAM_OPENED,
-                                       &user_data);
-
   nghttp2_session_del(session);
 
   /* Check request HEADERS */
@@ -4933,10 +4977,9 @@ void test_nghttp2_session_on_ctrl_not_send(void) {
                                    NULL, 0, NULL));
 
   user_data.frame_not_send_cb_called = 0;
-  /* Send GOAWAY */
-  CU_ASSERT(0 == nghttp2_submit_goaway(session, NGHTTP2_FLAG_NONE,
-                                       (1u << 31) - 1, NGHTTP2_NO_ERROR, NULL,
-                                       0));
+  /* Terminating session */
+  CU_ASSERT(0 == nghttp2_session_add_goaway(session, 0, NGHTTP2_NO_ERROR, NULL,
+                                            0, 1));
 
   session->next_stream_id = 9;
 
@@ -4961,7 +5004,7 @@ void test_nghttp2_session_get_outbound_queue_size(void) {
   CU_ASSERT(0 == nghttp2_submit_ping(session, NGHTTP2_FLAG_NONE, NULL));
   CU_ASSERT(1 == nghttp2_session_get_outbound_queue_size(session));
 
-  CU_ASSERT(0 == nghttp2_submit_goaway(session, NGHTTP2_FLAG_NONE, 3,
+  CU_ASSERT(0 == nghttp2_submit_goaway(session, NGHTTP2_FLAG_NONE, 2,
                                        NGHTTP2_NO_ERROR, NULL, 0));
   CU_ASSERT(2 == nghttp2_session_get_outbound_queue_size(session));
 
@@ -6401,8 +6444,14 @@ void test_nghttp2_session_graceful_shutdown(void) {
   memset(&callbacks, 0, sizeof(callbacks));
   callbacks.send_callback = block_count_send_callback;
   callbacks.on_frame_send_callback = on_frame_send_callback;
+  callbacks.on_stream_close_callback = on_stream_close_callback;
 
   nghttp2_session_server_new(&session, &callbacks, &ud);
+
+  open_stream(session, 301);
+  open_stream(session, 302);
+  open_stream(session, 311);
+  open_stream(session, 319);
 
   CU_ASSERT(0 == nghttp2_submit_goaway(session, NGHTTP2_FLAG_NONE,
                                        (1u << 31) - 1, NGHTTP2_NO_ERROR, NULL,
@@ -6417,15 +6466,22 @@ void test_nghttp2_session_graceful_shutdown(void) {
   CU_ASSERT((1u << 31) - 1 == session->local_last_stream_id);
 
   CU_ASSERT(0 ==
-            nghttp2_session_terminate_session2(session, 300, NGHTTP2_NO_ERROR));
+            nghttp2_session_terminate_session2(session, 301, NGHTTP2_NO_ERROR));
 
   ud.block_count = 1;
   ud.frame_send_cb_called = 0;
+  ud.stream_close_cb_called = 0;
 
   CU_ASSERT(0 == nghttp2_session_send(session));
 
   CU_ASSERT(1 == ud.frame_send_cb_called);
-  CU_ASSERT(300 == session->local_last_stream_id);
+  CU_ASSERT(301 == session->local_last_stream_id);
+  CU_ASSERT(2 == ud.stream_close_cb_called);
+
+  CU_ASSERT(NULL != nghttp2_session_get_stream(session, 301));
+  CU_ASSERT(NULL != nghttp2_session_get_stream(session, 302));
+  CU_ASSERT(NULL == nghttp2_session_get_stream(session, 311));
+  CU_ASSERT(NULL == nghttp2_session_get_stream(session, 319));
 
   nghttp2_session_del(session);
 }

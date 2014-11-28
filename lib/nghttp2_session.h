@@ -126,12 +126,10 @@ typedef struct {
 
 typedef enum {
   NGHTTP2_GOAWAY_NONE = 0,
-  /* Flag means GOAWAY frame is sent to the remote peer. */
-  NGHTTP2_GOAWAY_SEND = 0x1,
-  /* Flag means GOAWAY frame is received from the remote peer. */
-  NGHTTP2_GOAWAY_RECV = 0x2,
-  /* Flag means connection should be dropped after sending GOAWAY. */
-  NGHTTP2_GOAWAY_FAIL_ON_SEND = 0x4
+  /* Flag means that connection should be terminated after sending GOAWAY. */
+  NGHTTP2_GOAWAY_FAIL_ON_SEND = 0x1,
+  /* Flag means GOAWAY to terminate session has been sent */
+  NGHTTP2_GOAWAY_TERM_SENT = 0x2,
 } nghttp2_goaway_flag;
 
 struct nghttp2_session {
@@ -250,6 +248,17 @@ typedef struct {
   int32_t new_window_size, old_window_size;
 } nghttp2_update_window_size_arg;
 
+typedef struct {
+  nghttp2_session *session;
+  /* linked list of streams to close */
+  nghttp2_stream *head;
+  int32_t last_stream_id;
+  /* nonzero if GOAWAY is sent to peer, which means we are going to
+     close incoming streams.  zero if GOAWAY is received from peer and
+     we are going to close outgoing streams. */
+  int incoming;
+} nghttp2_close_stream_on_goaway_arg;
+
 /* TODO stream timeout etc */
 
 /*
@@ -333,7 +342,7 @@ int nghttp2_session_add_ping(nghttp2_session *session, uint8_t flags,
  */
 int nghttp2_session_add_goaway(nghttp2_session *session, int32_t last_stream_id,
                                uint32_t error_code, const uint8_t *opaque_data,
-                               size_t opaque_data_len);
+                               size_t opaque_data_len, int terminate_on_send);
 
 /*
  * Adds WINDOW_UPDATE frame with stream ID |stream_id| and
