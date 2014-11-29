@@ -91,19 +91,14 @@ static int state_reserved_local(nghttp2_session *session,
 }
 
 /*
- * Checks whether received stream_id is valid.
- * This function returns 1 if it succeeds, or 0.
+ * Checks whether received stream_id is valid.  This function returns
+ * 1 if it succeeds, or 0.
  */
 static int session_is_new_peer_stream_id(nghttp2_session *session,
                                          int32_t stream_id) {
-  if (stream_id == 0 || session->last_recv_stream_id >= stream_id) {
-    return 0;
-  }
-  if (session->server) {
-    return stream_id % 2 == 1;
-  } else {
-    return stream_id % 2 == 0;
-  }
+  return stream_id != 0 &&
+         !nghttp2_session_is_my_stream_id(session, stream_id) &&
+         session->last_recv_stream_id < stream_id;
 }
 
 static int session_detect_idle_stream(nghttp2_session *session,
