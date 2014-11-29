@@ -5589,15 +5589,24 @@ int nghttp2_session_want_read(nghttp2_session *session) {
 
   num_active_streams = session_get_num_active_streams(session);
 
-  /* Unless GOAWAY is sent or received, we always want to read
-     incoming frames. After GOAWAY is sent or received, we are only
-     interested in active streams. */
+  /* Unless termination GOAWAY is sent or received, we always want to
+     read incoming frames. */
 
   if (num_active_streams > 0) {
     return 1;
   }
 
-  return 1;
+  /* If there is no active streams, we check last_stream_id peer sent
+     to us.  Here is the asymmetry between server and client.  For
+     server, if client cannot make new request, current conneciton is
+     no use.  Server push might be going, but it is idempotent and can
+     be safely retried with the new connection.  For client side, the
+     theory is the same. */
+  if (session->server) {
+    return session->local_last_stream_id > session->last_recv_stream_id;
+  } else {
+    return (uint32_t)session->remote_last_stream_id >= session->next_stream_id;
+  }
 }
 
 int nghttp2_session_want_write(nghttp2_session *session) {
@@ -5613,11 +5622,10 @@ int nghttp2_session_want_write(nghttp2_session *session) {
   num_active_streams = session_get_num_active_streams(session);
 
   /*
-   * Unless GOAWAY is sent or received, we want to write frames if
-   * there is pending ones. If pending frame is request/push response
-   * HEADERS and concurrent stream limit is reached, we don't want to
-   * write them.  After GOAWAY is sent or received, we want to write
-   * frames if there is pending ones AND there are active frames.
+   * Unless termination GOAWAY is sent or received, we want to write
+   * frames if there is pending ones. If pending frame is request/push
+   * response HEADERS and concurrent stream limit is reached, we don't
+   * want to write them.
    */
 
   if (session->aob.item == NULL && nghttp2_pq_empty(&session->ob_pq) &&
@@ -5632,7 +5640,17 @@ int nghttp2_session_want_write(nghttp2_session *session) {
     return 1;
   }
 
-  return 1;
+  /* If there is no active streams, we check last_stream_id peer sent
+     to us.  Here is the asymmetry between server and client.  For
+     server, if client cannot make new request, current conneciton is
+     no use.  Server push might be going, but it is idempotent and can
+     be safely retried with the new connection.  For client side, the
+     theory is the same. */
+  if (session->server) {
+    return session->local_last_stream_id > session->last_recv_stream_id;
+  } else {
+    return (uint32_t)session->remote_last_stream_id >= session->next_stream_id;
+  }
 }
 
 int nghttp2_session_add_ping(nghttp2_session *session, uint8_t flags,
