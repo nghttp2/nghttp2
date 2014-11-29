@@ -128,7 +128,7 @@ static int session_terminate_session(nghttp2_session *session,
   const uint8_t *debug_data;
   size_t debug_datalen;
 
-  if (session->goaway_flags & NGHTTP2_GOAWAY_FAIL_ON_SEND) {
+  if (session->goaway_flags & NGHTTP2_GOAWAY_TERM_ON_SEND) {
     return 0;
   }
 
@@ -147,7 +147,7 @@ static int session_terminate_session(nghttp2_session *session,
     return rv;
   }
 
-  session->goaway_flags |= NGHTTP2_GOAWAY_FAIL_ON_SEND;
+  session->goaway_flags |= NGHTTP2_GOAWAY_TERM_ON_SEND;
 
   return 0;
 }
@@ -5587,7 +5587,7 @@ int nghttp2_session_want_read(nghttp2_session *session) {
 
   /* If these flags are set, we don't want to read. The application
      should drop the connection. */
-  if ((session->goaway_flags & NGHTTP2_GOAWAY_FAIL_ON_SEND) &&
+  if ((session->goaway_flags & NGHTTP2_GOAWAY_TERM_ON_SEND) &&
       (session->goaway_flags & NGHTTP2_GOAWAY_TERM_SENT)) {
     return 0;
   }
@@ -5610,7 +5610,7 @@ int nghttp2_session_want_write(nghttp2_session *session) {
 
   /* If these flags are set, we don't want to write any data. The
      application should drop the connection. */
-  if ((session->goaway_flags & NGHTTP2_GOAWAY_FAIL_ON_SEND) &&
+  if ((session->goaway_flags & NGHTTP2_GOAWAY_TERM_ON_SEND) &&
       (session->goaway_flags & NGHTTP2_GOAWAY_TERM_SENT)) {
     return 0;
   }

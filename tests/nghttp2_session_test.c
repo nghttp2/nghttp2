@@ -1716,7 +1716,7 @@ void test_nghttp2_session_on_request_headers_received(void) {
   CU_ASSERT(NGHTTP2_ERR_IGN_HEADER_BLOCK ==
             nghttp2_session_on_request_headers_received(session, &frame));
   CU_ASSERT(1 == user_data.invalid_frame_recv_cb_called);
-  CU_ASSERT(0 == (session->goaway_flags & NGHTTP2_GOAWAY_FAIL_ON_SEND));
+  CU_ASSERT(0 == (session->goaway_flags & NGHTTP2_GOAWAY_TERM_ON_SEND));
 
   nghttp2_frame_headers_free(&frame.headers);
   session->local_settings.max_concurrent_streams =
@@ -1731,7 +1731,7 @@ void test_nghttp2_session_on_request_headers_received(void) {
   CU_ASSERT(NGHTTP2_ERR_IGN_HEADER_BLOCK ==
             nghttp2_session_on_request_headers_received(session, &frame));
   CU_ASSERT(0 == user_data.invalid_frame_recv_cb_called);
-  CU_ASSERT(0 == (session->goaway_flags & NGHTTP2_GOAWAY_FAIL_ON_SEND));
+  CU_ASSERT(0 == (session->goaway_flags & NGHTTP2_GOAWAY_TERM_ON_SEND));
 
   nghttp2_frame_headers_free(&frame.headers);
 
@@ -1744,7 +1744,7 @@ void test_nghttp2_session_on_request_headers_received(void) {
   CU_ASSERT(NGHTTP2_ERR_IGN_HEADER_BLOCK ==
             nghttp2_session_on_request_headers_received(session, &frame));
   CU_ASSERT(1 == user_data.invalid_frame_recv_cb_called);
-  CU_ASSERT(session->goaway_flags & NGHTTP2_GOAWAY_FAIL_ON_SEND);
+  CU_ASSERT(session->goaway_flags & NGHTTP2_GOAWAY_TERM_ON_SEND);
 
   nghttp2_frame_headers_free(&frame.headers);
 
@@ -1779,7 +1779,7 @@ void test_nghttp2_session_on_request_headers_received(void) {
   CU_ASSERT(NGHTTP2_ERR_IGN_HEADER_BLOCK ==
             nghttp2_session_on_request_headers_received(session, &frame));
   CU_ASSERT(1 == user_data.invalid_frame_recv_cb_called);
-  CU_ASSERT(session->goaway_flags & NGHTTP2_GOAWAY_FAIL_ON_SEND);
+  CU_ASSERT(session->goaway_flags & NGHTTP2_GOAWAY_TERM_ON_SEND);
 
   nghttp2_frame_headers_free(&frame.headers);
 
@@ -1795,7 +1795,7 @@ void test_nghttp2_session_on_request_headers_received(void) {
   CU_ASSERT(NGHTTP2_ERR_IGN_HEADER_BLOCK ==
             nghttp2_session_on_request_headers_received(session, &frame));
   CU_ASSERT(1 == user_data.invalid_frame_recv_cb_called);
-  CU_ASSERT(session->goaway_flags & NGHTTP2_GOAWAY_FAIL_ON_SEND);
+  CU_ASSERT(session->goaway_flags & NGHTTP2_GOAWAY_TERM_ON_SEND);
 
   nghttp2_frame_headers_free(&frame.headers);
 
@@ -1814,7 +1814,7 @@ void test_nghttp2_session_on_request_headers_received(void) {
   CU_ASSERT(NGHTTP2_ERR_IGN_HEADER_BLOCK ==
             nghttp2_session_on_request_headers_received(session, &frame));
   CU_ASSERT(0 == user_data.invalid_frame_recv_cb_called);
-  CU_ASSERT(0 == (session->goaway_flags & NGHTTP2_GOAWAY_FAIL_ON_SEND));
+  CU_ASSERT(0 == (session->goaway_flags & NGHTTP2_GOAWAY_TERM_ON_SEND));
 
   nghttp2_frame_headers_free(&frame.headers);
 
@@ -1841,7 +1841,7 @@ void test_nghttp2_session_on_request_headers_received(void) {
   CU_ASSERT(NGHTTP2_ERR_IGN_HEADER_BLOCK ==
             nghttp2_session_on_request_headers_received(session, &frame));
   CU_ASSERT(0 == user_data.invalid_frame_recv_cb_called);
-  CU_ASSERT(0 == (session->goaway_flags & NGHTTP2_GOAWAY_FAIL_ON_SEND));
+  CU_ASSERT(0 == (session->goaway_flags & NGHTTP2_GOAWAY_TERM_ON_SEND));
 
   nghttp2_frame_headers_free(&frame.headers);
 
@@ -2589,9 +2589,9 @@ void test_nghttp2_session_on_window_update_received(void) {
   nghttp2_frame_window_update_init(&frame.window_update, NGHTTP2_FLAG_NONE, 2,
                                    4096);
 
-  CU_ASSERT(!(session->goaway_flags & NGHTTP2_GOAWAY_FAIL_ON_SEND));
+  CU_ASSERT(!(session->goaway_flags & NGHTTP2_GOAWAY_TERM_ON_SEND));
   CU_ASSERT(0 == nghttp2_session_on_window_update_received(session, &frame));
-  CU_ASSERT(session->goaway_flags & NGHTTP2_GOAWAY_FAIL_ON_SEND);
+  CU_ASSERT(session->goaway_flags & NGHTTP2_GOAWAY_TERM_ON_SEND);
 
   nghttp2_frame_window_update_free(&frame.window_update);
 
@@ -2608,7 +2608,7 @@ void test_nghttp2_session_on_window_update_received(void) {
                                    4096);
 
   CU_ASSERT(0 == nghttp2_session_on_window_update_received(session, &frame));
-  CU_ASSERT(!(session->goaway_flags & NGHTTP2_GOAWAY_FAIL_ON_SEND));
+  CU_ASSERT(!(session->goaway_flags & NGHTTP2_GOAWAY_TERM_ON_SEND));
 
   CU_ASSERT(NGHTTP2_INITIAL_WINDOW_SIZE + 4096 == stream->remote_window_size);
 

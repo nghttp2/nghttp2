@@ -127,7 +127,7 @@ typedef struct {
 typedef enum {
   NGHTTP2_GOAWAY_NONE = 0,
   /* Flag means that connection should be terminated after sending GOAWAY. */
-  NGHTTP2_GOAWAY_FAIL_ON_SEND = 0x1,
+  NGHTTP2_GOAWAY_TERM_ON_SEND = 0x1,
   /* Flag means GOAWAY to terminate session has been sent */
   NGHTTP2_GOAWAY_TERM_SENT = 0x2,
 } nghttp2_goaway_flag;
