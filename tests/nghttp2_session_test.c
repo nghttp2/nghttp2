@@ -4146,7 +4146,9 @@ void test_nghttp2_submit_invalid_nv(void) {
                                        NULL));
 
   /* nghttp2_submit_push_promise */
-  CU_ASSERT(0 < nghttp2_submit_push_promise(session, NGHTTP2_FLAG_NONE, 2,
+  open_stream(session, 1);
+
+  CU_ASSERT(0 < nghttp2_submit_push_promise(session, NGHTTP2_FLAG_NONE, 1,
                                             empty_name_nv,
                                             ARRLEN(empty_name_nv), NULL));
 

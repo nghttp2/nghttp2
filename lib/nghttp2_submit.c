@@ -247,7 +247,7 @@ int32_t nghttp2_submit_push_promise(nghttp2_session *session, uint8_t flags _U_,
   int32_t promised_stream_id;
   int rv;
 
-  if (stream_id == 0) {
+  if (stream_id == 0 || nghttp2_session_is_my_stream_id(session, stream_id)) {
     return NGHTTP2_ERR_INVALID_ARGUMENT;
   }
 

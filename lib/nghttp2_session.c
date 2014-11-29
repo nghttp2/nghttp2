@@ -1358,11 +1358,6 @@ static int session_predicate_push_promise_send(nghttp2_session *session,
 
   assert(stream);
 
-  if (nghttp2_session_is_my_stream_id(session, stream->stream_id)) {
-    /* The associated stream must be initiated by the remote peer */
-    return NGHTTP2_ERR_PROTO;
-  }
-
   if (session->remote_settings.enable_push == 0) {
     return NGHTTP2_ERR_PUSH_DISABLED;
   }

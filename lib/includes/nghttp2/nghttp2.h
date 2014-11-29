@@ -2802,7 +2802,8 @@ int nghttp2_submit_settings(nghttp2_session *session, uint8_t flags,
  *     No stream ID is available because maximum stream ID was
  *     reached.
  * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
- *     The |stream_id| is 0.
+ *     The |stream_id| is 0; The |stream_id| does not designate stream
+ *     that peer initiated.
  *
  * .. warning::
  *
