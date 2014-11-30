@@ -48,7 +48,6 @@ void nghttp2_stream_init(nghttp2_stream *stream, int32_t stream_id,
   stream->recv_window_size = 0;
   stream->consumed_size = 0;
   stream->recv_reduction = 0;
-  stream->blocked_sent = 0;
 
   stream->dep_prev = NULL;
   stream->dep_next = NULL;
