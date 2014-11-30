@@ -1370,8 +1370,10 @@ int Http2Session::on_connect() {
     return -1;
   }
 
-  if (!get_config()->downstream_no_tls && !ssl::check_http2_requirement(ssl_)) {
+  auto must_terminate =
+      !get_config()->downstream_no_tls && !ssl::check_http2_requirement(ssl_);
 
+  if (must_terminate) {
     rv = terminate_session(NGHTTP2_INADEQUATE_SECURITY);
 
     if (rv != 0) {
@@ -1384,8 +1386,7 @@ int Http2Session::on_connect() {
     return -1;
   }
 
-  if (!get_config()->downstream_no_tls && !ssl::check_http2_requirement(ssl_)) {
-
+  if (must_terminate) {
     return 0;
   }
 
