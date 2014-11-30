@@ -1108,6 +1108,8 @@ void nghttp2_session_adjust_closed_stream(nghttp2_session *session,
 
     head_stream = session->closed_stream_head;
 
+    assert(head_stream);
+
     session->closed_stream_head = head_stream->closed_next;
 
     if (session->closed_stream_head) {
