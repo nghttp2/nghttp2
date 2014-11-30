@@ -29,17 +29,17 @@ time::
     static unsigned char next_proto_list[256];
     static size_t next_proto_list_len;
 
-    static int next_proto_cb(SSL *s, const unsigned char **data, unsigned int *len,
-                             void *arg)
-    {
+    static int next_proto_cb(SSL *s _U_, const unsigned char **data,
+                             unsigned int *len, void *arg _U_) {
       *data = next_proto_list;
       *len = (unsigned int)next_proto_list_len;
       return SSL_TLSEXT_ERR_OK;
     }
 
-    static SSL_CTX* create_ssl_ctx(const char *key_file, const char *cert_file)
-    {
+    static SSL_CTX *create_ssl_ctx(const char *key_file, const char *cert_file) {
       SSL_CTX *ssl_ctx;
+      EC_KEY *ecdh;
+
       ssl_ctx = SSL_CTX_new(SSLv23_server_method());
 
       ...
@@ -104,8 +104,7 @@ We first create a listener object to accept incoming connections.  We use
 libevent's ``struct evconnlistener`` for this purpose::
 
     static void start_listen(struct event_base *evbase, const char *service,
-                             app_context *app_ctx)
-    {
+                             app_context *app_ctx) {
       int rv;
       struct addrinfo hints;
       struct addrinfo *res, *rp;
@@ -116,19 +115,20 @@ libevent's ``struct evconnlistener`` for this purpose::
       hints.ai_flags = AI_PASSIVE;
     #ifdef AI_ADDRCONFIG
       hints.ai_flags |= AI_ADDRCONFIG;
-    #endif // AI_ADDRCONFIG
+    #endif /* AI_ADDRCONFIG */
 
       rv = getaddrinfo(NULL, service, &hints, &res);
-      if(rv != 0) {
+      if (rv != 0) {
         errx(1, NULL);
       }
-      for(rp = res; rp; rp = rp->ai_next) {
+      for (rp = res; rp; rp = rp->ai_next) {
         struct evconnlistener *listener;
-        listener = evconnlistener_new_bind(evbase, acceptcb, app_ctx,
-                                           LEV_OPT_CLOSE_ON_FREE |
-                                           LEV_OPT_REUSEABLE, -1,
-                                           rp->ai_addr, rp->ai_addrlen);
-        if(listener) {
+        listener = evconnlistener_new_bind(
+            evbase, acceptcb, app_ctx, LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE,
+            16, rp->ai_addr, rp->ai_addrlen);
+        if (listener) {
+          freeaddrinfo(res);
+
           return;
         }
       }
@@ -138,10 +138,9 @@ libevent's ``struct evconnlistener`` for this purpose::
 We specify the ``acceptcb`` callback which is called when a new connection is
 accepted::
 
-    static void acceptcb(struct evconnlistener *listener, int fd,
-                         struct sockaddr *addr, int addrlen, void *arg)
-    {
-      app_context *app_ctx = (app_context*)arg;
+    static void acceptcb(struct evconnlistener *listener _U_, int fd,
+                         struct sockaddr *addr, int addrlen, void *arg) {
+      app_context *app_ctx = (app_context *)arg;
       http2_session_data *session_data;
 
       session_data = create_http2_session_data(app_ctx, fd, addr, addrlen);
@@ -158,26 +157,25 @@ The ``eventcb()`` callback is invoked by the libevent event loop when an event
 (e.g., connection has been established, timeout, etc) happens on the
 underlying network socket::
 
-    static void eventcb(struct bufferevent *bev, short events, void *ptr)
-    {
-      http2_session_data *session_data = (http2_session_data*)ptr;
-      if(events & BEV_EVENT_CONNECTED) {
+    static void eventcb(struct bufferevent *bev _U_, short events, void *ptr) {
+      http2_session_data *session_data = (http2_session_data *)ptr;
+      if (events & BEV_EVENT_CONNECTED) {
         fprintf(stderr, "%s connected\n", session_data->client_addr);
 
         initialize_nghttp2_session(session_data);
 
-        if(send_server_connection_header(session_data) != 0) {
+        if (send_server_connection_header(session_data) != 0) {
           delete_http2_session_data(session_data);
           return;
         }
 
         return;
       }
-      if(events & BEV_EVENT_EOF) {
+      if (events & BEV_EVENT_EOF) {
         fprintf(stderr, "%s EOF\n", session_data->client_addr);
-      } else if(events & BEV_EVENT_ERROR) {
+      } else if (events & BEV_EVENT_ERROR) {
         fprintf(stderr, "%s network error\n", session_data->client_addr);
-      } else if(events & BEV_EVENT_TIMEOUT) {
+      } else if (events & BEV_EVENT_TIMEOUT) {
         fprintf(stderr, "%s timeout\n", session_data->client_addr);
       }
       delete_http2_session_data(session_data);
@@ -195,8 +193,7 @@ communication.
 We initialize a nghttp2 session object which is done in
 ``initialize_nghttp2_session()``::
 
-    static void initialize_nghttp2_session(http2_session_data *session_data)
-    {
+    static void initialize_nghttp2_session(http2_session_data *session_data) {
       nghttp2_option *option;
       nghttp2_session_callbacks *callbacks;
 
@@ -210,19 +207,17 @@ We initialize a nghttp2 session object which is done in
 
       nghttp2_session_callbacks_set_send_callback(callbacks, send_callback);
 
-      nghttp2_session_callbacks_set_on_frame_recv_callback
-        (callbacks, on_frame_recv_callback);
+      nghttp2_session_callbacks_set_on_frame_recv_callback(callbacks,
+                                                           on_frame_recv_callback);
 
-      nghttp2_session_callbacks_set_on_stream_close_callback
-        (callbacks, on_stream_close_callback);
+      nghttp2_session_callbacks_set_on_stream_close_callback(
+          callbacks, on_stream_close_callback);
 
-      nghttp2_session_callbacks_set_on_header_callback
-        (callbacks, on_header_callback);
+      nghttp2_session_callbacks_set_on_header_callback(callbacks,
+                                                       on_header_callback);
 
-      nghttp2_session_callbacks_set_on_begin_headers_callback
-        (callbacks, on_begin_headers_callback);
-
-
+      nghttp2_session_callbacks_set_on_begin_headers_callback(
+          callbacks, on_begin_headers_callback);
 
       nghttp2_session_server_new2(&session_data->session, callbacks, session_data,
                                   option);
@@ -242,16 +237,14 @@ saves some lines of application code.
 After initialization of the nghttp2 session object, we are going to send
 a server connection header in ``send_server_connection_header()``::
 
-    static int send_server_connection_header(http2_session_data *session_data)
-    {
+    static int send_server_connection_header(http2_session_data *session_data) {
       nghttp2_settings_entry iv[1] = {
-        { NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, 100 }
-      };
+          {NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, 100}};
       int rv;
 
-      rv = nghttp2_submit_settings(session_data->session, NGHTTP2_FLAG_NONE,
-                                   iv, ARRLEN(iv));
-      if(rv != 0) {
+      rv = nghttp2_submit_settings(session_data->session, NGHTTP2_FLAG_NONE, iv,
+                                   ARRLEN(iv));
+      if (rv != 0) {
         warnx("Fatal error: %s", nghttp2_strerror(rv));
         return -1;
       }
@@ -272,23 +265,22 @@ have to process them here since libevent won't invoke callback functions for
 this pending data. To process the received data, we call the
 ``session_recv()`` function::
 
-    static int session_recv(http2_session_data *session_data)
-    {
+    static int session_recv(http2_session_data *session_data) {
       ssize_t readlen;
       struct evbuffer *input = bufferevent_get_input(session_data->bev);
       size_t datalen = evbuffer_get_length(input);
       unsigned char *data = evbuffer_pullup(input, -1);
 
       readlen = nghttp2_session_mem_recv(session_data->session, data, datalen);
-      if(readlen < 0) {
+      if (readlen < 0) {
         warnx("Fatal error: %s", nghttp2_strerror((int)readlen));
         return -1;
       }
-      if(evbuffer_drain(input, readlen) != 0) {
+      if (evbuffer_drain(input, readlen) != 0) {
         warnx("Fatal error: evbuffer_drain failed");
         return -1;
       }
-      if(session_send(session_data) != 0) {
+      if (session_send(session_data) != 0) {
         return -1;
       }
       return 0;
@@ -301,11 +293,10 @@ nghttp2 callbacks and also queue outgoing frames. Since there may be pending
 outgoing frames, we call ``session_send()`` function to send off those
 frames. The ``session_send()`` function is defined as follows::
 
-    static int session_send(http2_session_data *session_data)
-    {
+    static int session_send(http2_session_data *session_data) {
       int rv;
       rv = nghttp2_session_send(session_data->session);
-      if(rv != 0) {
+      if (rv != 0) {
         warnx("Fatal error: %s", nghttp2_strerror(rv));
         return -1;
       }
@@ -317,15 +308,13 @@ format and calls ``send_callback()`` of type
 :type:`nghttp2_send_callback`.  The ``send_callback()`` is defined as
 follows::
 
-    static ssize_t send_callback(nghttp2_session *session,
-                                 const uint8_t *data, size_t length,
-                                 int flags, void *user_data)
-    {
-      http2_session_data *session_data = (http2_session_data*)user_data;
+    static ssize_t send_callback(nghttp2_session *session _U_, const uint8_t *data,
+                                 size_t length, int flags _U_, void *user_data) {
+      http2_session_data *session_data = (http2_session_data *)user_data;
       struct bufferevent *bev = session_data->bev;
       /* Avoid excessive buffering in server side. */
-      if(evbuffer_get_length(bufferevent_get_output(session_data->bev)) >=
-         OUTPUT_WOULDBLOCK_THRESHOLD) {
+      if (evbuffer_get_length(bufferevent_get_output(session_data->bev)) >=
+          OUTPUT_WOULDBLOCK_THRESHOLD) {
         return NGHTTP2_ERR_WOULDBLOCK;
       }
       bufferevent_write(bev, data, length);
@@ -350,10 +339,9 @@ calling send_callback.
 The next bufferevent callback is ``readcb()``, which is invoked when
 data is available to read in the bufferevent input buffer::
 
-    static void readcb(struct bufferevent *bev, void *ptr)
-    {
-      http2_session_data *session_data = (http2_session_data*)ptr;
-      if(session_recv(session_data) != 0) {
+    static void readcb(struct bufferevent *bev _U_, void *ptr) {
+      http2_session_data *session_data = (http2_session_data *)ptr;
+      if (session_recv(session_data) != 0) {
         delete_http2_session_data(session_data);
         return;
       }
@@ -365,18 +353,17 @@ data.
 The third bufferevent callback is ``writecb()``, which is invoked when all
 data in the bufferevent output buffer has been sent::
 
-    static void writecb(struct bufferevent *bev, void *ptr)
-    {
-      http2_session_data *session_data = (http2_session_data*)ptr;
-      if(evbuffer_get_length(bufferevent_get_output(bev)) > 0) {
+    static void writecb(struct bufferevent *bev, void *ptr) {
+      http2_session_data *session_data = (http2_session_data *)ptr;
+      if (evbuffer_get_length(bufferevent_get_output(bev)) > 0) {
         return;
       }
-      if(nghttp2_session_want_read(session_data->session) == 0 &&
-         nghttp2_session_want_write(session_data->session) == 0) {
+      if (nghttp2_session_want_read(session_data->session) == 0 &&
+          nghttp2_session_want_write(session_data->session) == 0) {
         delete_http2_session_data(session_data);
         return;
       }
-      if(session_send(session_data) != 0) {
+      if (session_send(session_data) != 0) {
         delete_http2_session_data(session_data);
         return;
       }
@@ -407,13 +394,12 @@ a header block in HEADERS or PUSH_PROMISE frame is started::
 
     static int on_begin_headers_callback(nghttp2_session *session,
                                          const nghttp2_frame *frame,
-                                         void *user_data)
-    {
-      http2_session_data *session_data = (http2_session_data*)user_data;
+                                         void *user_data) {
+      http2_session_data *session_data = (http2_session_data *)user_data;
       http2_stream_data *stream_data;
 
-      if(frame->hd.type != NGHTTP2_HEADERS ||
-         frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
+      if (frame->hd.type != NGHTTP2_HEADERS ||
+          frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
         return 0;
       }
       stream_data = create_http2_stream_data(session_data, frame->hd.stream_id);
@@ -436,26 +422,26 @@ emitted via ``on_header_callback`` function, which is called after
 ``on_begin_headers_callback()``::
 
     static int on_header_callback(nghttp2_session *session,
-                                  const nghttp2_frame *frame,
-                                  const uint8_t *name, size_t namelen,
-                                  const uint8_t *value, size_t valuelen,
-                                  void *user_data)
-    {
+                                  const nghttp2_frame *frame, const uint8_t *name,
+                                  size_t namelen, const uint8_t *value,
+                                  size_t valuelen, uint8_t flags _U_,
+                                  void *user_data _U_) {
       http2_stream_data *stream_data;
       const char PATH[] = ":path";
-      switch(frame->hd.type) {
+      switch (frame->hd.type) {
       case NGHTTP2_HEADERS:
-        if(frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
+        if (frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
           break;
         }
-        stream_data = nghttp2_session_get_stream_user_data(session,
-                                                           frame->hd.stream_id);
-        if(!stream_data || stream_data->request_path) {
+        stream_data =
+            nghttp2_session_get_stream_user_data(session, frame->hd.stream_id);
+        if (!stream_data || stream_data->request_path) {
           break;
         }
-        if(namelen == sizeof(PATH) - 1 && memcmp(PATH, name, namelen) == 0) {
+        if (namelen == sizeof(PATH) - 1 && memcmp(PATH, name, namelen) == 0) {
           size_t j;
-          for(j = 0; j < valuelen && value[j] != '?'; ++j);
+          for (j = 0; j < valuelen && value[j] != '?'; ++j)
+            ;
           stream_data->request_path = percent_decode(value, j);
         }
         break;
@@ -472,20 +458,19 @@ The ``on_frame_recv_callback()`` function is invoked when a frame is
 fully received::
 
     static int on_frame_recv_callback(nghttp2_session *session,
-                                      const nghttp2_frame *frame, void *user_data)
-    {
-      http2_session_data *session_data = (http2_session_data*)user_data;
+                                      const nghttp2_frame *frame, void *user_data) {
+      http2_session_data *session_data = (http2_session_data *)user_data;
       http2_stream_data *stream_data;
-      switch(frame->hd.type) {
+      switch (frame->hd.type) {
       case NGHTTP2_DATA:
       case NGHTTP2_HEADERS:
         /* Check that the client request has finished */
-        if(frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
-          stream_data = nghttp2_session_get_stream_user_data(session,
-                                                             frame->hd.stream_id);
+        if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
+          stream_data =
+              nghttp2_session_get_stream_user_data(session, frame->hd.stream_id);
           /* For DATA and HEADERS frame, this callback may be called after
              on_stream_close_callback. Check that stream still alive. */
-          if(!stream_data) {
+          if (!stream_data) {
             return 0;
           }
           return on_request_recv(session, session_data, stream_data);
@@ -508,15 +493,14 @@ header.
 Sending the content of the file is done in ``send_response()`` function::
 
     static int send_response(nghttp2_session *session, int32_t stream_id,
-                             nghttp2_nv *nva, size_t nvlen, int fd)
-    {
+                             nghttp2_nv *nva, size_t nvlen, int fd) {
       int rv;
       nghttp2_data_provider data_prd;
       data_prd.source.fd = fd;
       data_prd.read_callback = file_read_callback;
 
       rv = nghttp2_submit_response(session, stream_id, nva, nvlen, &data_prd);
-      if(rv != 0) {
+      if (rv != 0) {
         warnx("Fatal error: %s", nghttp2_strerror(rv));
         return -1;
       }
@@ -530,18 +514,19 @@ intended to be used as file descriptor. In this example server, we use
 the file descriptor. We also set the ``file_read_callback()`` callback
 function to read the contents of the file::
 
-    static ssize_t file_read_callback
-    (nghttp2_session *session, int32_t stream_id,
-     uint8_t *buf, size_t length, uint32_t *data_flags,
-     nghttp2_data_source *source, void *user_data)
-    {
+    static ssize_t file_read_callback(nghttp2_session *session _U_,
+                                      int32_t stream_id _U_, uint8_t *buf,
+                                      size_t length, uint32_t *data_flags,
+                                      nghttp2_data_source *source,
+                                      void *user_data _U_) {
       int fd = source->fd;
       ssize_t r;
-      while((r = read(fd, buf, length)) == -1 && errno == EINTR);
-      if(r == -1) {
+      while ((r = read(fd, buf, length)) == -1 && errno == EINTR)
+        ;
+      if (r == -1) {
         return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
       }
-      if(r == 0) {
+      if (r == 0) {
         *data_flags |= NGHTTP2_DATA_FLAG_EOF;
       }
       return r;
@@ -559,16 +544,13 @@ remote peer.
 The ``on_stream_close_callback()`` function is invoked when the stream
 is about to close::
 
-    static int on_stream_close_callback(nghttp2_session *session,
-                                        int32_t stream_id,
-                                        nghttp2_error_code error_code,
-                                        void *user_data)
-    {
-      http2_session_data *session_data = (http2_session_data*)user_data;
+    static int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
+                                        uint32_t error_code _U_, void *user_data) {
+      http2_session_data *session_data = (http2_session_data *)user_data;
       http2_stream_data *stream_data;
 
       stream_data = nghttp2_session_get_stream_user_data(session, stream_id);
-      if(!stream_data) {
+      if (!stream_data) {
         return 0;
       }
       remove_stream(session_data, stream_data);
