@@ -36,18 +36,14 @@ HTTP/2 server looks like this:
     using namespace nghttp2::asio_http2;
     using namespace nghttp2::asio_http2::server;
 
-    int main(int argc, char* argv[])
-    {
+    int main(int argc, char *argv[]) {
       http2 server;
 
-      server.listen
-        ("*", 3000,
-         [](const std::shared_ptr<request>& req,
-            const std::shared_ptr<response>& res)
-         {
-           res->write_head(200);
-           res->end("hello, world");
-         });
+      server.listen("*", 3000, [](const std::shared_ptr<request> &req,
+                                  const std::shared_ptr<response> &res) {
+        res->write_head(200);
+        res->end("hello, world");
+      });
     }
 
 First we instantiate ``nghttp2::asio_http2::server::http2`` object.
@@ -78,26 +74,22 @@ SSL/TLS.
     using namespace nghttp2::asio_http2;
     using namespace nghttp2::asio_http2::server;
 
-    int main(int argc, char* argv[])
-    {
+    int main(int argc, char *argv[]) {
       http2 server;
 
       server.tls("server.key", "server.crt");
 
-      server.listen
-        ("*", 3000,
-         [](const std::shared_ptr<request>& req,
-            const std::shared_ptr<response>& res)
-         {
-           if(req->path() == "/" || req->path() == "/index.html") {
-             res->write_head(200);
-             res->end(file_reader("index.html"));
-           } else {
-             res->write_head(404);
-             res->end("<html><head><title>404</title></head>"
-                      "<body>404 Not Found</body></html>");
-           }
-         });
+      server.listen("*", 3000, [](const std::shared_ptr<request> &req,
+                                  const std::shared_ptr<response> &res) {
+        if (req->path() == "/" || req->path() == "/index.html") {
+          res->write_head(200);
+          res->end(file_reader("index.html"));
+        } else {
+          res->write_head(404);
+          res->end("<html><head><title>404</title></head>"
+                   "<body>404 Not Found</body></html>");
+        }
+      });
     }
 
 Specifying path to private key file and certificate file in
@@ -124,37 +116,33 @@ Server push is also supported.
     using namespace nghttp2::asio_http2;
     using namespace nghttp2::asio_http2::server;
 
-    int main(int argc, char* argv[])
-    {
+    int main(int argc, char *argv[]) {
       http2 server;
 
       server.tls("server.key", "server.crt");
 
-      server.listen
-        ("*", 3000,
-         [](const std::shared_ptr<request>& req,
-            const std::shared_ptr<response>& res)
-         {
-           if(req->path() == "/") {
-             req->push("GET", "/my.css");
+      server.listen("*", 3000, [](const std::shared_ptr<request> &req,
+                                  const std::shared_ptr<response> &res) {
+        if (req->path() == "/") {
+          req->push("GET", "/my.css");
 
-             res->write_head(200);
-             res->end(file_reader("index.html"));
+          res->write_head(200);
+          res->end(file_reader("index.html"));
 
-             return;
-           }
+          return;
+        }
 
-           if(req->path() == "/my.css") {
-             res->write_head(200);
-             res->end(file_reader("my.css"));
+        if (req->path() == "/my.css") {
+          res->write_head(200);
+          res->end(file_reader("my.css"));
 
-             return;
-           }
+          return;
+        }
 
-           res->write_head(404);
-           res->end("<html><head><title>404</title></head>"
-                    "<body>404 Not Found</body></html>");
-         });
+        res->write_head(404);
+        res->end("<html><head><title>404</title></head>"
+                 "<body>404 Not Found</body></html>");
+      });
     }
 
 When client requested "/", we push "/my.css".  To push resource, call
@@ -197,38 +185,30 @@ blocking task there.  The example follows:
     using namespace nghttp2::asio_http2;
     using namespace nghttp2::asio_http2::server;
 
-    int main(int argc, char* argv[])
-    {
+    int main(int argc, char *argv[]) {
       http2 server;
 
       server.num_concurrent_tasks(16);
 
-      server.listen
-        ("*", 3000,
-         [](const std::shared_ptr<request>& req,
-            const std::shared_ptr<response>& res)
-         {
-           req->run_task
-             ([res](channel& channel)
-              {
-                // executed in different thread than the thread where
-                // request callback was executed.
+      server.listen("*", 3000, [](const std::shared_ptr<request> &req,
+                                  const std::shared_ptr<response> &res) {
+        req->run_task([res](channel &channel) {
+          // executed in different thread than the thread where
+          // request callback was executed.
 
-                // using res directly here is not safe.  Capturing it by
-                // value is safe because it is std::shared_ptr.
+          // using res directly here is not safe.  Capturing it by
+          // value is safe because it is std::shared_ptr.
 
-                sleep(1);
+          sleep(1);
 
-                channel.post
-                  ([res]()
-                   {
-                     // executed in the same thread where request callback
-                     // was executed.
-                     res->write_head(200);
-                     res->end("hello, world");
-                   });
-              });
-         });
+          channel.post([res]() {
+            // executed in the same thread where request callback
+            // was executed.
+            res->write_head(200);
+            res->end("hello, world");
+          });
+        });
+      });
     }
 
 First we set the number of background threads which run tasks.  By
