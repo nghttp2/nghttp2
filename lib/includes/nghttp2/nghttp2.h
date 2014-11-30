@@ -1393,6 +1393,11 @@ typedef int (*nghttp2_on_begin_headers_callback)(nghttp2_session *session,
  * `nghttp2_check_header_value()` provide simple validation against
  * HTTP2 header field construction rule.
  *
+ * HTTP/2 specification requires that pseudo header fields (header
+ * field starting with ':') must appear in front of regular header
+ * fields.  The library does not validate this requirement.  The
+ * application must check them if it matters.
+ *
  * If the application uses `nghttp2_session_mem_recv()`, it can return
  * :enum:`NGHTTP2_ERR_PAUSE` to make `nghttp2_session_mem_recv()`
  * return without processing further input bytes.  The memory pointed
