@@ -50,7 +50,6 @@ server::server(const std::string &address, uint16_t port,
       signals_(io_service_pool_.get_io_service()),
       tick_timer_(io_service_pool_.get_io_service(),
                   boost::posix_time::seconds(1)),
-      acceptor_(io_service_pool_.get_io_service()),
       ssl_ctx_(std::move(ssl_ctx)), request_cb_(std::move(cb)) {
   // Register to handle the signals that indicate when the server should exit.
   // It is safe to register for the same signal multiple times in a program,
@@ -64,16 +63,24 @@ server::server(const std::string &address, uint16_t port,
                              int signal_number) { io_service_pool_.stop(); });
 
   // Open the acceptor with the option to reuse the address (i.e. SO_REUSEADDR).
-  boost::asio::ip::tcp::resolver resolver(acceptor_.get_io_service());
+  boost::asio::ip::tcp::resolver resolver(io_service_pool_.get_io_service());
   boost::asio::ip::tcp::resolver::query query(address, std::to_string(port));
-  boost::asio::ip::tcp::endpoint endpoint = *resolver.resolve(query);
-  acceptor_.open(endpoint.protocol());
-  acceptor_.set_option(boost::asio::ip::tcp::acceptor::reuse_address(true));
-  acceptor_.bind(endpoint);
-  if (backlog == -1) {
-    acceptor_.listen();
-  } else {
-    acceptor_.listen(backlog);
+
+  for (auto itr = resolver.resolve(query);
+       itr != boost::asio::ip::tcp::resolver::iterator(); ++itr) {
+    boost::asio::ip::tcp::endpoint endpoint = *itr;
+    auto acceptor =
+        boost::asio::ip::tcp::acceptor(io_service_pool_.get_io_service());
+
+    acceptor.open(endpoint.protocol());
+    acceptor.set_option(boost::asio::ip::tcp::acceptor::reuse_address(true));
+    acceptor.bind(endpoint);
+    if (backlog == -1) {
+      acceptor.listen();
+    } else {
+      acceptor.listen(backlog);
+    }
+    acceptors_.push_back(std::move(acceptor));
   }
 
   start_accept();
@@ -109,40 +116,44 @@ void server::start_accept() {
         request_cb_, io_service_pool_.get_task_io_service(),
         io_service_pool_.get_io_service(), *ssl_ctx_);
 
-    acceptor_.async_accept(
-        new_connection->socket().lowest_layer(),
-        [this, new_connection](const boost::system::error_code &e) {
-          if (!e) {
-            new_connection->socket().lowest_layer().set_option(
-                boost::asio::ip::tcp::no_delay(true));
-            new_connection->socket().async_handshake(
-                boost::asio::ssl::stream_base::server,
-                [new_connection](const boost::system::error_code &e) {
-                  if (!e) {
-                    new_connection->start();
-                  }
-                });
-          }
+    for (auto &acceptor : acceptors_) {
+      acceptor.async_accept(
+          new_connection->socket().lowest_layer(),
+          [this, new_connection](const boost::system::error_code &e) {
+            if (!e) {
+              new_connection->socket().lowest_layer().set_option(
+                  boost::asio::ip::tcp::no_delay(true));
+              new_connection->socket().async_handshake(
+                  boost::asio::ssl::stream_base::server,
+                  [new_connection](const boost::system::error_code &e) {
+                    if (!e) {
+                      new_connection->start();
+                    }
+                  });
+            }
 
-          start_accept();
-        });
+            start_accept();
+          });
+    }
   } else {
     auto new_connection =
         std::make_shared<connection<boost::asio::ip::tcp::socket>>(
             request_cb_, io_service_pool_.get_task_io_service(),
             io_service_pool_.get_io_service());
 
-    acceptor_.async_accept(
-        new_connection->socket(),
-        [this, new_connection](const boost::system::error_code &e) {
-          if (!e) {
-            new_connection->socket().set_option(
-                boost::asio::ip::tcp::no_delay(true));
-            new_connection->start();
-          }
+    for (auto &acceptor : acceptors_) {
+      acceptor.async_accept(
+          new_connection->socket(),
+          [this, new_connection](const boost::system::error_code &e) {
+            if (!e) {
+              new_connection->socket().set_option(
+                  boost::asio::ip::tcp::no_delay(true));
+              new_connection->start();
+            }
 
-          start_accept();
-        });
+            start_accept();
+          });
+    }
   }
 }
 

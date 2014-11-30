@@ -86,7 +86,7 @@ private:
   boost::asio::deadline_timer tick_timer_;
 
   /// Acceptor used to listen for incoming connections.
-  boost::asio::ip::tcp::acceptor acceptor_;
+  std::vector<boost::asio::ip::tcp::acceptor> acceptors_;
 
   std::unique_ptr<boost::asio::ssl::context> ssl_ctx_;
 
