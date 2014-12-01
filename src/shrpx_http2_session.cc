@@ -456,11 +456,15 @@ int Http2Session::initiate_connection() {
         SSLOG(ERROR, this) << "bufferevent_socket_new() failed";
         return SHRPX_ERR_NETWORK;
       }
-      rv = bufferevent_socket_connect(
-          bev_,
-          // TODO maybe not thread-safe?
-          const_cast<sockaddr *>(&get_config()->downstream_addr.sa),
-          get_config()->downstream_addrlen);
+      if (state_ == DISCONNECTED) {
+        rv = bufferevent_socket_connect(
+            bev_,
+            // TODO maybe not thread-safe?
+            const_cast<sockaddr *>(&get_config()->downstream_addr.sa),
+            get_config()->downstream_addrlen);
+      } else {
+        rv = 0;
+      }
     } else {
       if (state_ == DISCONNECTED) {
         // Without TLS and proxy.
