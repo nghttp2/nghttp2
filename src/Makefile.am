@@ -181,7 +181,7 @@ libnghttp2_asio_la_SOURCES = \
 	util.cc util.h http2.cc http2.h \
 	ssl.cc ssl.h
 
-libnghttp2_asio_la_CPPFLAGS= ${BOOST_CPPFLAGS} ${AM_CPPFLAGS}
+libnghttp2_asio_la_CPPFLAGS= ${AM_CPPFLAGS} ${BOOST_CPPFLAGS}
 libnghttp2_asio_la_LDFLAGS = \
 	${BOOST_LDFLAGS} \
 	${BOOST_ASIO_LIB} \
