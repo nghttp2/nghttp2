@@ -29,7 +29,7 @@ dist_doc_DATA = README.rst
 EXTRA_DIST = nghttpx.conf.sample proxy.pac.sample android-config android-make \
 	Dockerfile.android
 
-.PONY: clang-format
+.PHONY: clang-format
 
 # Format source files using clang-format.  Don't format source files
 # under third-party directory since we are not responsible for thier
