@@ -26,6 +26,7 @@ bin_PROGRAMS =
 check_PROGRAMS =
 TESTS =
 
+AM_CFLAGS = $(WARNCFLAGS)
 AM_CPPFLAGS = \
 	-Wall \
 	-I$(top_srcdir)/lib/includes \

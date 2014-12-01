@@ -20,6 +20,10 @@ dnl NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
 dnl LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 dnl OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 dnl WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+dnl Do not change user variables!
+dnl http://www.gnu.org/software/automake/manual/html_node/Flag-Variables-Ordering.html
+
 AC_PREREQ(2.61)
 AC_INIT([nghttp2], [0.6.8-DEV], [t-tujikawa@users.sourceforge.net])
 LT_PREREQ([2.2.6])
@@ -522,6 +526,9 @@ case "${host}" in
     ;;
 esac
 
+ac_save_CFLAGS=$CFLAGS
+CFLAGS=
+
 if test "x$werror" != "xno"; then
     AX_CHECK_COMPILE_FLAG([-Wall], [CFLAGS="$CFLAGS -Wall"])
     AX_CHECK_COMPILE_FLAG([-Wextra], [CFLAGS="$CFLAGS -Wextra"])
@@ -553,6 +560,11 @@ if test "x$werror" != "xno"; then
     # Only work with Clang for the moment
     AX_CHECK_COMPILE_FLAG([-Wheader-guard], [CFLAGS="$CFLAGS -Wheader-guard"])
 fi
+
+WARNCFLAGS=$CFLAGS
+CFLAGS=$ac_save_CFLAGS
+
+AC_SUBST([WARNCFLAGS])
 
 if test "x$debug" != "xno"; then
     AC_DEFINE([DEBUGBUILD], [1], [Define to 1 to enable debug output.])
@@ -609,6 +621,7 @@ AC_MSG_NOTICE([summary of build options:
     Install prefix: ${prefix}
     C compiler:     ${CC}
     CFLAGS:         ${CFLAGS}
+    WARNCFLAGS:     ${WARNCFLAGS}
     LDFLAGS:        ${LDFLAGS}
     LIBS:           ${LIBS}
     CPPFLAGS:       ${CPPFLAGS}

@@ -23,6 +23,7 @@
 
 if ENABLE_EXAMPLES
 
+AM_CFLAGS = $(WARNCFLAGS)
 AM_CPPFLAGS = \
 	-Wall \
 	-I$(top_srcdir)/lib/includes \

@@ -24,7 +24,7 @@ SUBDIRS = includes
 
 EXTRA_DIST = Makefile.msvc
 
-AM_CFLAGS = -Wall
+AM_CFLAGS = $(WARNCFLAGS)
 AM_CPPFLAGS = -I$(srcdir)/includes -I$(builddir)/includes @DEFS@
 
 pkgconfigdir = $(libdir)/pkgconfig

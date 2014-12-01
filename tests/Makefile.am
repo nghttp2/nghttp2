@@ -60,7 +60,10 @@ failmalloc_LDADD = $(main_LDADD)
 failmalloc_LDFLAGS = $(main_LDFLAGS)
 endif # ENABLE_FAILMALLOC
 
-AM_CFLAGS = -Wall -I${top_srcdir}/lib -I${top_srcdir}/lib/includes -I${top_builddir}/lib/includes \
+AM_CFLAGS = $(WARNCFLAGS) \
+	-I${top_srcdir}/lib \
+	-I${top_srcdir}/lib/includes \
+	-I${top_builddir}/lib/includes \
 	@CUNIT_CFLAGS@ @DEFS@
 
 TESTS = main
