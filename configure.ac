@@ -202,41 +202,41 @@ AC_LANG_POP()
 # Checks for libraries.
 
 # Additional libraries required for tests.
-TESTS_LIBS=
+TESTLDFLAGS=
 
 # Additional libraries required for programs under src directory.
-SRC_LIBS=
+APPLDFLAGS=
 
 LIBS_OLD=$LIBS
 # Search for dlsym function, which is used in tests. Linux needs -ldl,
 # but netbsd does not need it.
 AC_SEARCH_LIBS([dlsym], [dl])
-TESTS_LIBS="$LIBS $TESTS_LIBS"
+TESTLDFLAGS="$LIBS $TESTLDFLAGS"
 LIBS=$LIBS_OLD
 
 LIBS_OLD=$LIBS
 AC_SEARCH_LIBS([clock_gettime], [rt],
                [AC_DEFINE([HAVE_CLOCK_GETTIME], [1],
                           [Define to 1 if you have the `clock_gettime`.])])
-SRC_LIBS="$LIBS $SRC_LIBS"
+APPLDFLAGS="$LIBS $APPLDFLAGS"
 LIBS=$LIBS_OLD
 
 case "$host" in
   *android*)
     android_build=yes
     # android does not need -pthread, but needs followng 2 libs for C++
-    SRC_LIBS="$SRC_LIBS -lstdc++ -lsupc++"
+    APPLDFLAGS="$APPLDFLAGS -lstdc++ -lsupc++"
     ;;
   *)
     PTHREAD_LDFLAGS="-pthread"
-    SRC_LIBS="$SRC_LIBS $PTHREAD_LDFLAGS"
+    APPLDFLAGS="$APPLDFLAGS $PTHREAD_LDFLAGS"
     ;;
 esac
 
 # zlib
 if test "x$android_build" = "xyes"; then
   # Use zlib provided by NDK
-  SRC_LIBS="-lz $SRC_LIBS"
+  APPLDFLAGS="-lz $APPLDFLAGS"
   have_zlib=yes
 else
   PKG_CHECK_MODULES([ZLIB], [zlib >= 1.2.3], [have_zlib=yes], [have_zlib=no])
@@ -576,8 +576,8 @@ if test "x$threads" != "xyes" || test "x$have_std_future" != "xyes"; then
     AC_DEFINE([NOTHREADS], [1], [Define to 1 if you want to disable threads.])
 fi
 
-AC_SUBST([TESTS_LIBS])
-AC_SUBST([SRC_LIBS])
+AC_SUBST([TESTLDFLAGS])
+AC_SUBST([APPLDFLAGS])
 
 AC_CONFIG_FILES([
   Makefile

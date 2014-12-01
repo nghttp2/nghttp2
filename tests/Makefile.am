@@ -50,7 +50,7 @@ HFILES = nghttp2_pq_test.h nghttp2_map_test.h nghttp2_queue_test.h \
 main_SOURCES = $(HFILES) $(OBJECTS)
 
 main_LDADD = ${top_builddir}/lib/libnghttp2.la
-main_LDFLAGS = -static @CUNIT_LIBS@ @TESTS_LIBS@
+main_LDFLAGS = -static @CUNIT_LIBS@ @TESTLDFLAGS@
 
 if ENABLE_FAILMALLOC
 failmalloc_SOURCES = failmalloc.c failmalloc_test.c failmalloc_test.h \

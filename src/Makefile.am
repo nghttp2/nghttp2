@@ -49,7 +49,7 @@ AM_LDFLAGS = \
 	@OPENSSL_LIBS@ \
 	@JANSSON_LIBS@ \
 	@ZLIB_LIBS@ \
-	@SRC_LIBS@
+	@APPLDFLAGS@
 
 LDADD = \
 	$(top_builddir)/lib/libnghttp2.la \
@@ -145,7 +145,7 @@ nghttpx_unittest_CPPFLAGS = ${AM_CPPFLAGS}\
 	 -DNGHTTP2_TESTS_DIR=\"$(top_srcdir)/tests\"
 nghttpx_unittest_LDFLAGS = -static
 nghttpx_unittest_LDADD = libnghttpx.a ${LDADD} ${AM_LDFLAGS} \
-	@CUNIT_LIBS@ @TESTS_LIBS@
+	@CUNIT_LIBS@ @TESTLDFLAGS@
 
 TESTS += nghttpx-unittest
 endif # HAVE_CUNIT
