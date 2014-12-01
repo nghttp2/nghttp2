@@ -172,54 +172,59 @@ int nghttp2_adjust_local_window_size(int32_t *local_window_size_ptr,
                                      int32_t *recv_reduction_ptr,
                                      int32_t *delta_ptr) {
   if (*delta_ptr > 0) {
+    int32_t recv_reduction_delta;
+    int32_t delta;
     int32_t new_recv_window_size =
         nghttp2_max(0, *recv_window_size_ptr) - *delta_ptr;
-    if (new_recv_window_size < 0) {
-      /* The delta size is strictly more than received bytes. Increase
-         local_window_size by that difference. */
-      int32_t recv_reduction_diff;
-      if (*local_window_size_ptr >
-          NGHTTP2_MAX_WINDOW_SIZE + new_recv_window_size) {
-        return NGHTTP2_ERR_FLOW_CONTROL;
-      }
-      *local_window_size_ptr -= new_recv_window_size;
-      /* If there is recv_reduction due to earlier window_size
-         reduction, we have to adjust it too. */
-      recv_reduction_diff =
-          nghttp2_min(*recv_reduction_ptr, -new_recv_window_size);
-      *recv_reduction_ptr -= recv_reduction_diff;
-      if (*recv_window_size_ptr < 0) {
-        *recv_window_size_ptr += recv_reduction_diff;
-      } else {
-        /* If *recv_window_size_ptr > 0, then those bytes are going to
-           be backed to the remote peer (by WINDOW_UPDATE with the
-           adjusted *delta_ptr), so it is effectively 0 now.  We set
-           to *recv_reduction_diff, because caller does not take into
-           account it in *delta_ptr. */
-        *recv_window_size_ptr = recv_reduction_diff;
-      }
-      /* recv_reduction_diff must be paied from *delta_ptr, since it
-         was added in window size reduction (see below). */
-      *delta_ptr -= recv_reduction_diff;
-    } else {
+
+    if (new_recv_window_size >= 0) {
       *recv_window_size_ptr = new_recv_window_size;
+      return 0;
     }
-    return 0;
-  } else {
-    if (*local_window_size_ptr + *delta_ptr < 0 ||
-        *recv_window_size_ptr < INT32_MIN - *delta_ptr ||
-        *recv_reduction_ptr > INT32_MAX + *delta_ptr) {
+
+    delta = -new_recv_window_size;
+
+    /* The delta size is strictly more than received bytes. Increase
+       local_window_size by that difference |delta|. */
+    if (*local_window_size_ptr > NGHTTP2_MAX_WINDOW_SIZE - delta) {
       return NGHTTP2_ERR_FLOW_CONTROL;
     }
-    /* Decreasing local window size. Note that we achieve this without
-       noticing to the remote peer. To do this, we cut
-       recv_window_size by -delta. This means that we don't send
-       WINDOW_UPDATE for -delta bytes. */
-    *local_window_size_ptr += *delta_ptr;
-    *recv_window_size_ptr += *delta_ptr;
-    *recv_reduction_ptr -= *delta_ptr;
-    *delta_ptr = 0;
+    *local_window_size_ptr += delta;
+    /* If there is recv_reduction due to earlier window_size
+       reduction, we have to adjust it too. */
+    recv_reduction_delta = nghttp2_min(*recv_reduction_ptr, delta);
+    *recv_reduction_ptr -= recv_reduction_delta;
+    if (*recv_window_size_ptr < 0) {
+      *recv_window_size_ptr += recv_reduction_delta;
+    } else {
+      /* If *recv_window_size_ptr > 0, then those bytes are going to
+         be returned to the remote peer (by WINDOW_UPDATE with the
+         adjusted *delta_ptr), so it is effectively 0 now.  We set to
+         *recv_reduction_delta, because caller does not take into
+         account it in *delta_ptr. */
+      *recv_window_size_ptr = recv_reduction_delta;
+    }
+    /* recv_reduction_delta must be paied from *delta_ptr, since it
+       was added in window size reduction (see below). */
+    *delta_ptr -= recv_reduction_delta;
+
+    return 0;
   }
+
+  if (*local_window_size_ptr + *delta_ptr < 0 ||
+      *recv_window_size_ptr < INT32_MIN - *delta_ptr ||
+      *recv_reduction_ptr > INT32_MAX + *delta_ptr) {
+    return NGHTTP2_ERR_FLOW_CONTROL;
+  }
+  /* Decreasing local window size. Note that we achieve this without
+     noticing to the remote peer. To do this, we cut
+     recv_window_size by -delta. This means that we don't send
+     WINDOW_UPDATE for -delta bytes. */
+  *local_window_size_ptr += *delta_ptr;
+  *recv_window_size_ptr += *delta_ptr;
+  *recv_reduction_ptr -= *delta_ptr;
+  *delta_ptr = 0;
+
   return 0;
 }
 
