@@ -630,29 +630,33 @@ AC_MSG_NOTICE([summary of build options:
     CXXFLAGS:       ${CXXFLAGS}
     CXXCPP:         ${CXXCPP}
     Library types:  Shared=${enable_shared}, Static=${enable_static}
-    Python:         ${PYTHON}
-    PYTHON_VERSION: ${PYTHON_VERSION}
-    pyexecdir:      ${pyexecdir}
-    Python-dev:     ${have_python_dev}
-    PYTHON_CPPFLAGS:${PYTHON_CPPFLAGS}
-    PYTHON_LDFLAGS: ${PYTHON_LDFLAGS}
-    Cython:         ${CYTHON}
-    CUnit:          ${have_cunit}
-    OpenSSL:        ${have_openssl}
-    Libxml2:        ${have_libxml2}
-    Libevent(SSL):  ${have_libevent_openssl}
-    Spdylay:        ${have_spdylay}
-    Jansson:        ${have_jansson}
-    Jemalloc:       ${have_jemalloc}
-    Boost CPPFLAGS: ${BOOST_CPPFLAGS}
-    Boost LDFLAGS:  ${BOOST_LDFLAGS}
-    Boost::ASIO:    ${BOOST_ASIO_LIB}
-    Boost::System:  ${BOOST_SYSTEM_LIB}
-    Boost::Thread:  ${BOOST_THREAD_LIB}
-    Applications:   ${enable_app}
-    HPACK tools:    ${enable_hpack_tools}
-    Libnghttp2_asio:${enable_asio_lib}
-    Examples:       ${enable_examples}
-    Python bindings:${enable_python_bindings}
-    Failmalloc:     ${request_failmalloc}
+    Python:
+      Python:         ${PYTHON}
+      PYTHON_VERSION: ${PYTHON_VERSION}
+      pyexecdir:      ${pyexecdir}
+      Python-dev:     ${have_python_dev}
+      PYTHON_CPPFLAGS:${PYTHON_CPPFLAGS}
+      PYTHON_LDFLAGS: ${PYTHON_LDFLAGS}
+      Cython:         ${CYTHON}
+    Test:
+      CUnit:          ${have_cunit}
+      Failmalloc:     ${request_failmalloc}
+    Libs:
+      OpenSSL:        ${have_openssl}
+      Libxml2:        ${have_libxml2}
+      Libevent(SSL):  ${have_libevent_openssl}
+      Spdylay:        ${have_spdylay}
+      Jansson:        ${have_jansson}
+      Jemalloc:       ${have_jemalloc}
+      Boost CPPFLAGS: ${BOOST_CPPFLAGS}
+      Boost LDFLAGS:  ${BOOST_LDFLAGS}
+      Boost::ASIO:    ${BOOST_ASIO_LIB}
+      Boost::System:  ${BOOST_SYSTEM_LIB}
+      Boost::Thread:  ${BOOST_THREAD_LIB}
+    Features:
+      Applications:   ${enable_app}
+      HPACK tools:    ${enable_hpack_tools}
+      Libnghttp2_asio:${enable_asio_lib}
+      Examples:       ${enable_examples}
+      Python bindings:${enable_python_bindings}
 ])
