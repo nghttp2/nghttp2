@@ -342,106 +342,13 @@ int nghttp2_submit_window_update(nghttp2_session *session, uint8_t flags,
   return 0;
 }
 
-int nghttp2_submit_altsvc(nghttp2_session *session, uint8_t flags _U_,
-                          int32_t stream_id, uint32_t max_age, uint16_t port,
-                          const uint8_t *protocol_id, size_t protocol_id_len,
-                          const uint8_t *host, size_t host_len,
-                          const uint8_t *origin, size_t origin_len) {
-  int rv;
-  size_t varlen;
-  uint8_t *var, *varp;
-  nghttp2_outbound_item *item;
-  nghttp2_frame *frame;
-  nghttp2_ext_altsvc *altsvc;
-  uint8_t *copy_protocol_id, *copy_host, *copy_origin;
-
-  if (!session->server) {
-    return NGHTTP2_ERR_PROTO;
-  }
-
-  varlen = protocol_id_len + host_len + origin_len;
-
-  /* 9 = fixed part 8 bytes + HOST_LEN 1 byte */
-  if (varlen + 9 > NGHTTP2_MAX_PAYLOADLEN) {
-    return NGHTTP2_ERR_INVALID_ARGUMENT;
-  }
-
-  altsvc = malloc(sizeof(nghttp2_ext_altsvc));
-
-  if (altsvc == NULL) {
-    rv = NGHTTP2_ERR_NOMEM;
-
-    goto fail;
-  }
-
-  if (varlen == 0) {
-    var = NULL;
-    copy_protocol_id = NULL;
-    copy_host = NULL;
-    copy_origin = NULL;
-  } else {
-    var = malloc(varlen);
-
-    if (var == NULL) {
-      rv = NGHTTP2_ERR_NOMEM;
-
-      goto var_alloc_fail;
-    }
-
-    varp = var;
-
-    memcpy(varp, protocol_id, protocol_id_len);
-
-    copy_protocol_id = varp;
-    varp += protocol_id_len;
-
-    memcpy(varp, host, host_len);
-
-    copy_host = varp;
-    varp += host_len;
-
-    memcpy(varp, origin, origin_len);
-
-    copy_origin = varp;
-  }
-
-  item = malloc(sizeof(nghttp2_outbound_item));
-
-  if (item == NULL) {
-    rv = NGHTTP2_ERR_NOMEM;
-
-    goto frame_alloc_fail;
-  }
-
-  nghttp2_session_outbound_item_init(session, item);
-
-  frame = &item->frame;
-  frame->ext.payload = altsvc;
-
-  nghttp2_frame_altsvc_init(&frame->ext, stream_id, max_age, port,
-                            copy_protocol_id, protocol_id_len, copy_host,
-                            host_len, copy_origin, origin_len);
-
-  rv = nghttp2_session_add_item(session, item);
-
-  if (rv != 0) {
-    nghttp2_frame_altsvc_free(&frame->ext);
-    free(item);
-    free(altsvc);
-
-    return rv;
-  }
-
+int nghttp2_submit_altsvc(nghttp2_session *session _U_, uint8_t flags _U_,
+                          int32_t stream_id _U_, uint32_t max_age _U_,
+                          uint16_t port _U_, const uint8_t *protocol_id _U_,
+                          size_t protocol_id_len _U_, const uint8_t *host _U_,
+                          size_t host_len _U_, const uint8_t *origin _U_,
+                          size_t origin_len _U_) {
   return 0;
-
-frame_alloc_fail:
-  free(var);
-
-var_alloc_fail:
-  free(altsvc);
-
-fail:
-  return rv;
 }
 
 static uint8_t set_request_flags(const nghttp2_priority_spec *pri_spec,

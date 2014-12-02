@@ -63,9 +63,5 @@ void nghttp2_outbound_item_free(nghttp2_outbound_item *item) {
   case NGHTTP2_WINDOW_UPDATE:
     nghttp2_frame_window_update_free(&frame->window_update);
     break;
-  case NGHTTP2_EXT_ALTSVC:
-    nghttp2_frame_altsvc_free(&frame->ext);
-    free(frame->ext.payload);
-    break;
   }
 }

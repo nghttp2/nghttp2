@@ -22,9 +22,7 @@ Development Status
 We started to implement h2-14
 (http://tools.ietf.org/html/draft-ietf-httpbis-http2-14), the header
 compression
-(http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-09)
-and HTTP Alternative Services
-(http://tools.ietf.org/html/draft-ietf-httpbis-alt-svc-04).
+(http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-09).
 
 The nghttp2 code base was forked from spdylay project.
 
@@ -34,7 +32,6 @@ HTTP/2 Features             Support
 Core frames handling        Yes
 Dependency Tree             Yes
 Large header (CONTINUATION) Yes
-ALTSVC extension            Yes
 =========================== =======
 
 Public Test Server
@@ -51,10 +48,7 @@ implementation.
 
 * http://nghttp2.org/ (Upgrade / Direct)
 
-  ``h2c-14`` and ``http/1.1``.  We configured this server to send
-  ALTSVC frame or Alt-Svc header field to announce that alternative
-  service is available at port 443.
-
+  ``h2c-14`` and ``http/1.1``.
 
 Requirements
 ------------
@@ -283,8 +277,6 @@ The HTTP Upgrade is performed like this::
               (niv=2)
               [SETTINGS_MAX_CONCURRENT_STREAMS(3):100]
               [SETTINGS_INITIAL_WINDOW_SIZE(4):65535]
-    [  0.024] recv ALTSVC frame <length=43, flags=0x00, stream_id=0>
-              (max-age=86400, port=443, protocol_id=h2-14, host=nghttp2.org, origin=http://nghttp2.org)
     [  0.024] send SETTINGS frame <length=0, flags=0x01, stream_id=0>
               ; ACK
               (niv=0)

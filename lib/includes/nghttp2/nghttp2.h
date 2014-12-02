@@ -2929,32 +2929,9 @@ int nghttp2_submit_window_update(nghttp2_session *session, uint8_t flags,
 /**
  * @function
  *
- * Submits ALTSVC frame with given parameters.
- *
- * The |flags| is currently ignored and should be
- * :enum:`NGHTTP2_FLAG_NONE`.
- *
- * Only the server can send the ALTSVC frame.  If |session| is
- * initialized as client, this function fails and returns
- * :enum:`NGHTTP2_ERR_PROTO`.
- *
- * If the |protocol_id_len| is 0, the |protocol_id| could be ``NULL``.
- *
- * If the |host_len| is 0, the |host| could be ``NULL``.
- *
- * If the |origin_len| is 0, the |origin| could be ``NULL``.
- *
- * This function returns 0 if it succeeds, or one of the following
- * negative error codes:
- *
- * :enum:`NGHTTP2_ERR_NOMEM`
- *     Out of memory.
- * :enum:`NGHTTP2_ERR_PROTO`
- *     The function is invoked with |session| which was initialized as
- *     client.
- * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
- *     The combined length of |protocol_id_len|, |host_len| and
- *     |origin_len| is is too large.
+ * This function previously submits ALTSVC frame with given
+ * parameters, but is deprecated and will be removed in a future
+ * release.  This function does nothing and just return 0.
  */
 int nghttp2_submit_altsvc(nghttp2_session *session, uint8_t flags,
                           int32_t stream_id, uint32_t max_age, uint16_t port,
