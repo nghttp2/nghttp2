@@ -36,6 +36,7 @@ Contents:
    asio_http2.h
    Source <https://github.com/tatsuhiro-t/nghttp2>
    Issues <https://github.com/tatsuhiro-t/nghttp2/issues>
+   nghttp2.org <https://nghttp2.org/>
 
 Released Versions
 =================
