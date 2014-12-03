@@ -46,7 +46,9 @@ correct path.  Also add ``$ANDROID_HOME/toolchain/bin`` to ``PATH``::
 
     $ export PATH=$PATH:$ANDROID_HOME/toolchain/bin
 
-To configure OpenSSL, use the following script::
+To configure OpenSSL, use the following script:
+
+.. code-block:: sh
 
     #!/bin/sh
 
@@ -63,7 +65,9 @@ To configure OpenSSL, use the following script::
 
 And run ``make install`` to build and install.
 
-To configure libevent, use the following script::
+To configure libevent, use the following script:
+
+.. code-block:: sh
 
     #!/bin/sh
 
@@ -86,7 +90,9 @@ To configure libevent, use the following script::
 
 And run ``make install`` to build and install.
 
-To configure spdylay, use the following script::
+To configure spdylay, use the following script:
+
+.. code-block:: sh
 
     if [ -z "$ANDROID_HOME" ]; then
 	echo 'No $ANDROID_HOME specified.'
