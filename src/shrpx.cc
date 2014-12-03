@@ -687,7 +687,7 @@ void fill_default_config() {
   mod_config()->stream_write_timeout = {0, 0};
 
   // Timeout for pooled (idle) connections
-  mod_config()->downstream_idle_read_timeout = {60, 0};
+  mod_config()->downstream_idle_read_timeout = {600, 0};
 
   // window bits for HTTP/2 and SPDY upstream/downstream connection
   // per stream. 2**16-1 = 64KiB-1, which is HTTP/2 default. Please
