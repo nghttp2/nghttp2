@@ -132,8 +132,8 @@ const char SHRPX_OPT_ADD_RESPONSE_HEADER[] = "add-response-header";
 const char SHRPX_OPT_WORKER_FRONTEND_CONNECTIONS[] =
     "worker-frontend-connections";
 const char SHRPX_OPT_NO_LOCATION_REWRITE[] = "no-location-rewrite";
-const char SHRPX_OPT_BACKEND_CONNECTIONS_PER_FRONTEND[] =
-    "backend-connections-per-frontend";
+const char SHRPX_OPT_BACKEND_HTTP1_CONNECTIONS_PER_HOST[] =
+    "backend-http1-connections-per-host";
 const char SHRPX_OPT_LISTENER_DISABLE_TIMEOUT[] = "listener-disable-timeout";
 
 namespace {
@@ -1006,7 +1006,7 @@ int parse_config(const char *opt, const char *optarg) {
     return 0;
   }
 
-  if (util::strieq(opt, SHRPX_OPT_BACKEND_CONNECTIONS_PER_FRONTEND)) {
+  if (util::strieq(opt, SHRPX_OPT_BACKEND_HTTP1_CONNECTIONS_PER_HOST)) {
     int n;
 
     if (parse_uint(&n, opt, optarg) != 0) {
@@ -1019,7 +1019,7 @@ int parse_config(const char *opt, const char *optarg) {
       return -1;
     }
 
-    mod_config()->max_downstream_connections = n;
+    mod_config()->downstream_connections_per_host = n;
 
     return 0;
   }

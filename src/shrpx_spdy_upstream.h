@@ -81,7 +81,7 @@ public:
 
   int consume(int32_t stream_id, size_t len);
 
-  void maintain_downstream_concurrency();
+  void start_downstream(Downstream *downstream);
   void initiate_downstream(std::unique_ptr<Downstream> downstream);
 
   nghttp2::util::EvbufferBuffer sendbuf;

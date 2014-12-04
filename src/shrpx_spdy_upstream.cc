@@ -232,7 +232,7 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
       downstream->set_request_state(Downstream::MSG_COMPLETE);
     }
 
-    upstream->maintain_downstream_concurrency();
+    upstream->start_downstream(downstream);
 
     break;
   }
@@ -242,29 +242,18 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
 }
 } // namespace
 
-void SpdyUpstream::maintain_downstream_concurrency() {
-  while (get_config()->max_downstream_connections >
-         downstream_queue_.num_active()) {
-    if (downstream_queue_.pending_empty()) {
-      break;
-    }
+void SpdyUpstream::start_downstream(Downstream *downstream) {
+  auto next_downstream =
+      downstream_queue_.pop_pending(downstream->get_stream_id());
+  assert(next_downstream);
 
-    {
-      auto downstream = downstream_queue_.pending_top();
-      if (downstream->get_request_state() != Downstream::HEADER_COMPLETE &&
-          downstream->get_request_state() != Downstream::MSG_COMPLETE) {
-        break;
-      }
-    }
-
-    auto downstream = downstream_queue_.pop_pending();
-
-    if (!downstream) {
-      break;
-    }
-
-    initiate_downstream(std::move(downstream));
+  if (downstream_queue_.can_activate(
+          downstream->get_request_http2_authority())) {
+    initiate_downstream(std::move(next_downstream));
+    return;
   }
+
+  downstream_queue_.add_blocked(std::move(next_downstream));
 }
 
 void SpdyUpstream::initiate_downstream(std::unique_ptr<Downstream> downstream) {
@@ -425,7 +414,10 @@ uint32_t infer_upstream_rst_stream_status_code(uint32_t downstream_error_code) {
 } // namespace
 
 SpdyUpstream::SpdyUpstream(uint16_t version, ClientHandler *handler)
-    : handler_(handler), session_(nullptr) {
+    : downstream_queue_(get_config()->http2_proxy
+                            ? get_config()->downstream_connections_per_host
+                            : 0),
+      handler_(handler), session_(nullptr) {
   // handler->set_bev_cb(spdy_readcb, 0, spdy_eventcb);
   reset_timeouts();
 
@@ -875,9 +867,12 @@ void SpdyUpstream::remove_downstream(Downstream *downstream) {
     handler_->write_accesslog(downstream);
   }
 
-  downstream_queue_.remove(downstream->get_stream_id());
+  auto next_downstream =
+      downstream_queue_.remove_and_pop_blocked(downstream->get_stream_id());
 
-  maintain_downstream_concurrency();
+  if (next_downstream) {
+    initiate_downstream(std::move(next_downstream));
+  }
 }
 
 Downstream *SpdyUpstream::find_downstream(int32_t stream_id) {
@@ -1090,6 +1085,11 @@ void SpdyUpstream::reset_timeouts() {
 
 void SpdyUpstream::on_handler_delete() {
   for (auto &ent : downstream_queue_.get_active_downstreams()) {
+    if (ent.second->accesslog_ready()) {
+      handler_->write_accesslog(ent.second.get());
+    }
+  }
+  for (auto &ent : downstream_queue_.get_blocked_downstreams()) {
     if (ent.second->accesslog_ready()) {
       handler_->write_accesslog(ent.second.get());
     }

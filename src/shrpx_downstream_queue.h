@@ -30,6 +30,7 @@
 #include <stdint.h>
 
 #include <map>
+#include <set>
 #include <memory>
 
 namespace shrpx {
@@ -38,39 +39,67 @@ class Downstream;
 
 class DownstreamQueue {
 public:
-  DownstreamQueue();
+  typedef std::map<int32_t, std::unique_ptr<Downstream>> DownstreamMap;
+
+  struct HostEntry {
+    // Set of stream ID that blocked by conn_max_per_host_.
+    std::set<int32_t> blocked;
+    // The number of connections currently made to this host.
+    size_t num_active;
+    HostEntry();
+  };
+
+  typedef std::map<std::string, HostEntry> HostEntryMap;
+
+  // conn_max_per_host == 0 means no limit for downstream connection.
+  DownstreamQueue(size_t conn_max_per_host = 0);
   ~DownstreamQueue();
   void add_pending(std::unique_ptr<Downstream> downstream);
   void add_failure(std::unique_ptr<Downstream> downstream);
+  // Adds |downstream| to active_downstreams_, which means that
+  // downstream connection has been started.
   void add_active(std::unique_ptr<Downstream> downstream);
-  // Removes |downstream| from either pending_downstreams_,
-  // active_downstreams_ or failure_downstreams_ and returns it
-  // wrapped in std::unique_ptr.
-  std::unique_ptr<Downstream> remove(int32_t stream_id);
+  // Adds |downstream| to blocked_downstreams_, which means that
+  // download connection was blocked because conn_max_per_host_ limit.
+  void add_blocked(std::unique_ptr<Downstream> downstream);
+  // Returns true if we can make downstream connection to given
+  // |host|.
+  bool can_activate(const std::string &host) const;
+  // Removes pending Downstream object whose stream ID is |stream_id|
+  // from pending_downstreams_ and returns it.
+  std::unique_ptr<Downstream> pop_pending(int32_t stream_id);
+  // Removes Downstream object whose stream ID is |stream_id| from
+  // either pending_downstreams_, active_downstreams_,
+  // blocked_downstreams_ or failure_downstreams_.  If a Downstream
+  // object is removed from active_downstreams_, this function may
+  // return Downstream object with the same target host in
+  // blocked_downstreams_ if its connection is now not blocked by
+  // conn_max_per_host_ limit.
+  std::unique_ptr<Downstream> remove_and_pop_blocked(int32_t stream_id);
   // Finds Downstream object denoted by |stream_id| either in
-  // pending_downstreams_, active_downstreams_ or
-  // failure_downstreams_.
+  // pending_downstreams_, active_downstreams_, blocked_downstreams_
+  // or failure_downstreams_.
   Downstream *find(int32_t stream_id);
-  // Returns the number of active Downstream objects.
-  size_t num_active() const;
-  // Returns true if pending_downstreams_ is empty.
-  bool pending_empty() const;
-  // Pops first Downstream object in pending_downstreams_ and returns
-  // it.
-  std::unique_ptr<Downstream> pop_pending();
-  // Returns first Downstream object in pending_downstreams_.  This
-  // does not pop the first one.  If queue is empty, returns nullptr.
-  Downstream *pending_top() const;
-  const std::map<int32_t, std::unique_ptr<Downstream>> &
-  get_active_downstreams() const;
+  const DownstreamMap &get_active_downstreams() const;
+  const DownstreamMap &get_blocked_downstreams() const;
+
+  HostEntry &find_host_entry(const std::string &host);
+
+  // Maximum number of concurrent connections to the same host.
+  size_t conn_max_per_host_;
 
 private:
+  // Per target host structure to keep track of the number of
+  // connections to the same host.
+  std::map<std::string, HostEntry> host_entries_;
   // Downstream objects, not processed yet
-  std::map<int32_t, std::unique_ptr<Downstream>> pending_downstreams_;
-  // Downstream objects in use, consuming downstream concurrency limit
-  std::map<int32_t, std::unique_ptr<Downstream>> active_downstreams_;
+  DownstreamMap pending_downstreams_;
   // Downstream objects, failed to connect to downstream server
-  std::map<int32_t, std::unique_ptr<Downstream>> failure_downstreams_;
+  DownstreamMap failure_downstreams_;
+  // Downstream objects, downstream connection started
+  DownstreamMap active_downstreams_;
+  // Downstream objects, blocked by conn_max_per_host_
+  DownstreamMap blocked_downstreams_;
 };
 
 } // namespace shrpx

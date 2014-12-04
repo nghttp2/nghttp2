@@ -776,7 +776,7 @@ void fill_default_config() {
   mod_config()->no_location_rewrite = false;
   mod_config()->argc = 0;
   mod_config()->argv = nullptr;
-  mod_config()->max_downstream_connections = 100;
+  mod_config()->downstream_connections_per_host = 8;
   mod_config()->listener_disable_timeout = {0, 0};
 }
 } // namespace
@@ -899,13 +899,12 @@ Performance:
                      Set  maximum number  of simultaneous  connections
                      frontend accepts.  Setting 0 means unlimited.
                      Default: 0
-  --backend-connections-per-frontend=<NUM>
-                     Set  maximum   number  of   backend  simultaneous
-                     connections   per  frontend.    This  option   is
-                     meaningful when the combination of HTTP/2 or SPDY
-                     frontend and HTTP/1 backend is used.
-                     Default: )" << get_config()->max_downstream_connections
-      << R"(
+  --backend-http1-connections-per-host=<NUM>
+                     Set maximum  number of backend  concurrent HTTP/1
+                     connections per host.   This option is meaningful
+                     when -s option is used.
+                     Default: )"
+      << get_config()->downstream_connections_per_host << R"(
 
 Timeout:
   --frontend-http2-read-timeout=<SEC>
@@ -1276,7 +1275,7 @@ int main(int argc, char **argv) {
         {"stream-read-timeout", required_argument, &flag, 60},
         {"stream-write-timeout", required_argument, &flag, 61},
         {"no-location-rewrite", no_argument, &flag, 62},
-        {"backend-connections-per-frontend", required_argument, &flag, 63},
+        {"backend-http1-connections-per-host", required_argument, &flag, 63},
         {"listener-disable-timeout", required_argument, &flag, 64},
         {"strip-incoming-x-forwarded-for", no_argument, &flag, 65},
         {"accesslog-format", required_argument, &flag, 66},
@@ -1568,8 +1567,8 @@ int main(int argc, char **argv) {
         cmdcfgs.emplace_back(SHRPX_OPT_NO_LOCATION_REWRITE, "yes");
         break;
       case 63:
-        // --backend-connections-per-frontend
-        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_CONNECTIONS_PER_FRONTEND,
+        // --backend-http1-connections-per-host
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP1_CONNECTIONS_PER_HOST,
                              optarg);
         break;
       case 64:
