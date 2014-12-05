@@ -207,9 +207,4 @@ DownstreamQueue::get_active_downstreams() const {
   return active_downstreams_;
 }
 
-const DownstreamQueue::DownstreamMap &
-DownstreamQueue::get_blocked_downstreams() const {
-  return blocked_downstreams_;
-}
-
 } // namespace shrpx

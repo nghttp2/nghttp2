@@ -81,8 +81,6 @@ public:
   // or failure_downstreams_.
   Downstream *find(int32_t stream_id);
   const DownstreamMap &get_active_downstreams() const;
-  const DownstreamMap &get_blocked_downstreams() const;
-
   HostEntry &find_host_entry(const std::string &host);
 
   // Maximum number of concurrent connections to the same host.

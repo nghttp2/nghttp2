@@ -1395,11 +1395,6 @@ void Http2Upstream::on_handler_delete() {
       handler_->write_accesslog(ent.second.get());
     }
   }
-  for (auto &ent : downstream_queue_.get_blocked_downstreams()) {
-    if (ent.second->accesslog_ready()) {
-      handler_->write_accesslog(ent.second.get());
-    }
-  }
 }
 
 } // namespace shrpx
