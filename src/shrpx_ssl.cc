@@ -459,7 +459,7 @@ ClientHandler *accept_connection(event_base *evbase,
   char service[NI_MAXSERV];
   int rv;
   rv = getnameinfo(addr, addrlen, host, sizeof(host), service, sizeof(service),
-                   NI_NUMERICHOST);
+                   NI_NUMERICHOST | NI_NUMERICSERV);
   if (rv != 0) {
     LOG(ERROR) << "getnameinfo() failed: " << gai_strerror(rv);
 
