@@ -52,18 +52,18 @@ like forward proxy and assumes the backend is HTTP/1 proxy server
 (e.g., squid, traffic server).  So HTTP/1 request must include
 absolute URI in request line.
 
-By default, frontend connection is encrypted, this mode is also called
-secure proxy.  If nghttpx is linked with spdylay, it supports SPDY
-protocols and it works as so called SPDY proxy.
+By default, frontend connection is encrypted.  So this mode is also
+called secure proxy.  If nghttpx is linked with spdylay, it supports
+SPDY protocols and it works as so called SPDY proxy.
 
 With ``--frontend-no-tls`` option, SSL/TLS is turned off in frontend
 connection, so the connection gets insecure.
 
-The backend must be HTTP/1 proxy server.  nghttpx only supports 1
-backend server address.  It translates incoming requests to HTTP/1
-request to backend server.  The backend server performs real proxy
-work for each request, for example, dispatching requests to the origin
-server and caching contents.
+The backend must be HTTP/1 proxy server.  nghttpx only supports
+multiple backend server addresses.  It translates incoming requests to
+HTTP/1 request to backend server.  The backend server performs real
+proxy work for each request, for example, dispatching requests to the
+origin server and caching contents.
 
 For example, to make nghttpx listen to encrypted HTTP/2 requests at
 port 8443, and a backend HTTP/1 proxy server is configured to listen
@@ -87,7 +87,7 @@ proxy, user has to create proxy.pac script file like this:
 
 ``SERVERADDR`` and ``PORT`` is the hostname/address and port of the
 machine nghttpx is running.  Please note that both Firefox nightly and
-Chromium requires valid certificate for secure proxy.
+Chromium require valid certificate for secure proxy.
 
 For Firefox nightly, open Preference window and select Advanced then
 click Network tab.  Clicking Connection Settings button will show the
@@ -100,9 +100,9 @@ For Chromium, use following command-line::
 
     $ google-chrome --proxy-pac-url=file:///path/to/proxy.pac --use-npn
 
-Squid may work as out-of-box.  Traffic server requires to be
-configured as forward proxy.  Here is the minimum configuration items
-to edit::
+As HTTP/1 proxy server, Squid may work as out-of-box.  Traffic server
+requires to be configured as forward proxy.  Here is the minimum
+configuration items to edit::
 
     CONFIG proxy.config.reverse_proxy.enabled INT 0
     CONFIG proxy.config.url_remap.remap_required INT 0
@@ -284,3 +284,12 @@ log rotation daemon renamed existing log files.  To tell nghttpx to
 re-open log files, send USR1 signal to nghttpx process.  It will
 re-open files specified by ``--accesslog-file`` and
 ``--errorlog-file`` options.
+
+Multiple HTTP/1 backend addresses
+---------------------------------
+
+nghttpx supports multiple HTTP/1 backend addresses.  To specify them,
+just use ``-b`` option repeatedly.  For example, to use backend1:8080
+and backend2:8080, use command-line like this: ``-bbackend1,8080
+-bbackend2,8080``.  Please note that HTTP/2 backend only supports 1
+backend address.
