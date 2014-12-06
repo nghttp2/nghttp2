@@ -40,7 +40,11 @@ Connections
 .. option:: -b, --backend=<HOST,PORT>
 
     
-    Set backend host and port.
+    Set backend  host and port.  For  HTTP/1 backend,
+    multiple  backend   addresses  are   accepted  by
+    repeating this  option.  HTTP/2 backend  does not
+    support multiple backend  addresses and the first
+    occurrence of this option is used.
     Default: '127.0.0.1,80'
 
 .. option:: -f, --frontend=<HOST,PORT>
@@ -168,14 +172,13 @@ Performance
     frontend accepts.  Setting 0 means unlimited.
     Default: 0
 
-.. option:: --backend-connections-per-frontend=<NUM>
+.. option:: --backend-http1-connections-per-host=<NUM>
 
     
-    Set  maximum   number  of   backend  simultaneous
-    connections   per  frontend.    This  option   is
-    meaningful when the combination of HTTP/2 or SPDY
-    frontend and HTTP/1 backend is used.
-    Default: 100
+    Set maximum  number of backend  concurrent HTTP/1
+    connections per host.   This option is meaningful
+    when :option:`-s` option is used.
+    Default: 8
 
 Timeout
 ^^^^^^^
@@ -192,7 +195,7 @@ Timeout
     
     Specify  read   timeout  for   HTTP/1.1  frontend
     connection.
-    Default: 30
+    Default: 180
 
 .. option:: --frontend-write-timeout=<SEC>
 
@@ -219,7 +222,7 @@ Timeout
 
     
     Specify read timeout for backend connection.
-    Default: 30
+    Default: 180
 
 .. option:: --backend-write-timeout=<SEC>
 
@@ -232,7 +235,7 @@ Timeout
     
     Specify    keep-alive    timeout   for    backend
     connection.
-    Default: 60
+    Default: 600
 
 .. option:: --listener-disable-timeout=<SEC>
 
