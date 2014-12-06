@@ -151,6 +151,15 @@ struct AltSvc {
   uint16_t port;
 };
 
+struct DownstreamAddr {
+  DownstreamAddr() : addr{{0}}, addrlen(0), port(0) {}
+  sockaddr_union addr;
+  std::unique_ptr<char[]> host;
+  std::unique_ptr<char[]> hostport;
+  size_t addrlen;
+  uint16_t port;
+};
+
 struct Config {
   // The list of (private key file, certificate file) pair
   std::vector<std::pair<std::string, std::string>> subcerts;
@@ -159,7 +168,7 @@ struct Config {
   std::vector<unsigned char> alpn_prefs;
   std::vector<LogFragment> accesslog_format;
   std::shared_ptr<std::string> cached_time;
-  sockaddr_union downstream_addr;
+  std::vector<DownstreamAddr> downstream_addrs;
   // binary form of http proxy host and port
   sockaddr_union downstream_http_proxy_addr;
   timeval http2_upstream_read_timeout;
@@ -179,8 +188,6 @@ struct Config {
   SSL_CTX *default_ssl_ctx;
   ssl::CertLookupTree *cert_tree;
   const char *server_name;
-  std::unique_ptr<char[]> downstream_host;
-  std::unique_ptr<char[]> downstream_hostport;
   std::unique_ptr<char[]> backend_tls_sni_name;
   std::unique_ptr<char[]> pid_file;
   std::unique_ptr<char[]> conf_path;
@@ -215,7 +222,6 @@ struct Config {
   nghttp2_option *http2_option;
   char **argv;
   char *cwd;
-  size_t downstream_addrlen;
   size_t num_worker;
   size_t http2_max_concurrent_streams;
   size_t http2_upstream_window_bits;
@@ -247,7 +253,6 @@ struct Config {
   gid_t gid;
   pid_t pid;
   uint16_t port;
-  uint16_t downstream_port;
   // port in http proxy URI
   uint16_t downstream_http_proxy_port;
   bool verbose;

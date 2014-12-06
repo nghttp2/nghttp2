@@ -657,10 +657,10 @@ int check_cert(SSL *ssl) {
   std::vector<std::string> dns_names;
   std::vector<std::string> ip_addrs;
   get_altnames(cert, dns_names, ip_addrs, common_name);
-  if (verify_hostname(get_config()->downstream_host.get(),
-                      &get_config()->downstream_addr,
-                      get_config()->downstream_addrlen, dns_names, ip_addrs,
-                      common_name) != 0) {
+  if (verify_hostname(get_config()->downstream_addrs[0].host.get(),
+                      &get_config()->downstream_addrs[0].addr,
+                      get_config()->downstream_addrs[0].addrlen, dns_names,
+                      ip_addrs, common_name) != 0) {
     LOG(ERROR) << "Certificate verification failed: hostname does not match";
     return -1;
   }

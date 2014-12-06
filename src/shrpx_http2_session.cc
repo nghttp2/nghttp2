@@ -319,9 +319,9 @@ void proxy_eventcb(bufferevent *bev, short events, void *ptr) {
       SSLOG(INFO, http2session) << "Connected to the proxy";
     }
     std::string req = "CONNECT ";
-    req += get_config()->downstream_hostport.get();
+    req += get_config()->downstream_addrs[0].hostport.get();
     req += " HTTP/1.1\r\nHost: ";
-    req += get_config()->downstream_host.get();
+    req += get_config()->downstream_addrs[0].host.get();
     req += "\r\n";
     if (get_config()->downstream_http_proxy_userinfo) {
       req += "Proxy-Authorization: Basic ";
@@ -431,7 +431,7 @@ int Http2Session::initiate_connection() {
       if (get_config()->backend_tls_sni_name) {
         sni_name = get_config()->backend_tls_sni_name.get();
       } else {
-        sni_name = get_config()->downstream_host.get();
+        sni_name = get_config()->downstream_addrs[0].host.get();
       }
 
       if (sni_name && !util::numeric_host(sni_name)) {
@@ -445,7 +445,7 @@ int Http2Session::initiate_connection() {
       if (state_ == DISCONNECTED) {
         assert(fd_ == -1);
 
-        fd_ = socket(get_config()->downstream_addr.storage.ss_family,
+        fd_ = socket(get_config()->downstream_addrs[0].addr.storage.ss_family,
                      SOCK_STREAM | SOCK_CLOEXEC, 0);
       }
 
@@ -460,8 +460,8 @@ int Http2Session::initiate_connection() {
         rv = bufferevent_socket_connect(
             bev_,
             // TODO maybe not thread-safe?
-            const_cast<sockaddr *>(&get_config()->downstream_addr.sa),
-            get_config()->downstream_addrlen);
+            const_cast<sockaddr *>(&get_config()->downstream_addrs[0].addr.sa),
+            get_config()->downstream_addrs[0].addrlen);
       } else {
         rv = 0;
       }
@@ -470,7 +470,7 @@ int Http2Session::initiate_connection() {
         // Without TLS and proxy.
         assert(fd_ == -1);
 
-        fd_ = socket(get_config()->downstream_addr.storage.ss_family,
+        fd_ = socket(get_config()->downstream_addrs[0].addr.storage.ss_family,
                      SOCK_STREAM | SOCK_CLOEXEC, 0);
 
         if (fd_ == -1) {
@@ -486,8 +486,9 @@ int Http2Session::initiate_connection() {
 
       if (state_ == DISCONNECTED) {
         rv = bufferevent_socket_connect(
-            bev_, const_cast<sockaddr *>(&get_config()->downstream_addr.sa),
-            get_config()->downstream_addrlen);
+            bev_,
+            const_cast<sockaddr *>(&get_config()->downstream_addrs[0].addr.sa),
+            get_config()->downstream_addrs[0].addrlen);
       } else {
         // Without TLS but with proxy.
 

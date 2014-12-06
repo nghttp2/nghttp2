@@ -54,6 +54,9 @@ ClientHandler *accept_connection(event_base *evbase,
                                  WorkerStat *worker_stat,
                                  DownstreamConnectionPool *dconn_pool);
 
+// Check peer's certificate against first downstream address in
+// Config::downstream_addrs.  We only consider first downstream since
+// we use this function for HTTP/2 downstream link only.
 int check_cert(SSL *ssl);
 
 // Retrieves DNS and IP address in subjectAltNames and commonName from

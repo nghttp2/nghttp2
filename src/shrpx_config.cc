@@ -443,8 +443,11 @@ int parse_config(const char *opt, const char *optarg) {
       return -1;
     }
 
-    mod_config()->downstream_host = strcopy(host);
-    mod_config()->downstream_port = port;
+    DownstreamAddr addr;
+    addr.host = strcopy(host);
+    addr.port = port;
+
+    mod_config()->downstream_addrs.push_back(std::move(addr));
 
     return 0;
   }

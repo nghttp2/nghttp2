@@ -33,6 +33,7 @@
 #include "shrpx_worker_config.h"
 #include "shrpx_connect_blocker.h"
 #include "shrpx_downstream_connection_pool.h"
+#include "shrpx_worker.h"
 #include "http2.h"
 #include "util.h"
 #include "libevent_util.h"
@@ -75,43 +76,64 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
     }
 
     auto evbase = client_handler_->get_evbase();
+    auto worker_stat = client_handler_->get_worker_stat();
+    for (;;) {
+      auto i = worker_stat->next_downstream;
+      ++worker_stat->next_downstream;
+      worker_stat->next_downstream %= get_config()->downstream_addrs.size();
 
-    auto fd = socket(get_config()->downstream_addr.storage.ss_family,
-                     SOCK_STREAM | SOCK_CLOEXEC, 0);
+      auto fd = socket(get_config()->downstream_addrs[i].addr.storage.ss_family,
+                       SOCK_STREAM | SOCK_CLOEXEC, 0);
 
-    if (fd == -1) {
-      connect_blocker->on_failure();
+      if (fd == -1) {
+        auto error = errno;
+        DCLOG(WARN, this) << "socket() failed; errno=" << error;
 
-      return SHRPX_ERR_NETWORK;
-    }
+        connect_blocker->on_failure();
 
-    bev_ = bufferevent_socket_new(evbase, fd, BEV_OPT_CLOSE_ON_FREE |
-                                                  BEV_OPT_DEFER_CALLBACKS);
-    if (!bev_) {
-      connect_blocker->on_failure();
+        return SHRPX_ERR_NETWORK;
+      }
 
-      DCLOG(INFO, this) << "bufferevent_socket_new() failed";
-      close(fd);
+      bev_ = bufferevent_socket_new(evbase, fd, BEV_OPT_CLOSE_ON_FREE |
+                                                    BEV_OPT_DEFER_CALLBACKS);
+      if (!bev_) {
+        auto error = errno;
+        DCLOG(WARN, this) << "bufferevent_socket_new() failed; errno=" << error;
 
-      return SHRPX_ERR_NETWORK;
-    }
-    int rv = bufferevent_socket_connect(
-        bev_,
-        // TODO maybe not thread-safe?
-        const_cast<sockaddr *>(&get_config()->downstream_addr.sa),
-        get_config()->downstream_addrlen);
-    if (rv != 0) {
-      connect_blocker->on_failure();
+        connect_blocker->on_failure();
+        close(fd);
 
-      bufferevent_free(bev_);
-      bev_ = nullptr;
-      return SHRPX_ERR_NETWORK;
-    }
+        return SHRPX_ERR_NETWORK;
+      }
+      int rv = bufferevent_socket_connect(
+          bev_,
+          // TODO maybe not thread-safe?
+          const_cast<sockaddr *>(&get_config()->downstream_addrs[i].addr.sa),
+          get_config()->downstream_addrs[i].addrlen);
+      if (rv != 0) {
+        auto error = errno;
+        DCLOG(WARN, this) << "bufferevent_socket_connect() failed; errno="
+                          << error;
 
-    connect_blocker->on_success();
+        connect_blocker->on_failure();
+        bufferevent_free(bev_);
+        bev_ = nullptr;
 
-    if (LOG_ENABLED(INFO)) {
-      DCLOG(INFO, this) << "Connecting to downstream server";
+        if (i == worker_stat->next_downstream) {
+          return SHRPX_ERR_NETWORK;
+        }
+
+        // Try again with the next downstream server
+        continue;
+      }
+
+      connect_blocker->on_success();
+
+      if (LOG_ENABLED(INFO)) {
+        DCLOG(INFO, this) << "Connecting to downstream server";
+      }
+
+      break;
     }
   }
 

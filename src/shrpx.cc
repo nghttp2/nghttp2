@@ -654,6 +654,11 @@ const char *DEFAULT_ACCESSLOG_FORMAT = "$remote_addr - - [$time_local] "
 } // namespace
 
 namespace {
+auto DEFAULT_DOWNSTREAM_HOST = "127.0.0.1";
+int16_t DEFAULT_DOWNSTREAM_PORT = 80;
+} // namespace;
+
+namespace {
 void fill_default_config() {
   memset(mod_config(), 0, sizeof(*mod_config()));
 
@@ -702,11 +707,6 @@ void fill_default_config() {
 
   mod_config()->upstream_no_tls = false;
   mod_config()->downstream_no_tls = false;
-
-  mod_config()->downstream_host = strcopy("127.0.0.1");
-  mod_config()->downstream_port = 80;
-  mod_config()->downstream_hostport = nullptr;
-  mod_config()->downstream_addrlen = 0;
 
   mod_config()->num_worker = 1;
   mod_config()->http2_max_concurrent_streams = 100;
@@ -819,9 +819,13 @@ Options:
 
 Connections:
   -b, --backend=<HOST,PORT>
-                     Set backend host and port.
-                     Default: ')" << get_config()->downstream_host.get() << ","
-      << get_config()->downstream_port << R"('
+                     Set backend  host and port.  For  HTTP/1 backend,
+                     multiple  backend   addresses  are   accepted  by
+                     repeating this  option.  HTTP/2 backend  does not
+                     support multiple backend  addresses and the first
+                     occurrence of this option is used.
+                     Default: ')" << DEFAULT_DOWNSTREAM_HOST << ","
+      << DEFAULT_DOWNSTREAM_PORT << R"('
   -f, --frontend=<HOST,PORT>
                      Set frontend host and port.  If <HOST> is '*', it
                      assumes  all addresses  including  both IPv4  and
@@ -1772,38 +1776,44 @@ int main(int argc, char **argv) {
     }
   }
 
-  bool downstream_ipv6_addr =
-      is_ipv6_numeric_addr(get_config()->downstream_host.get());
+  if (get_config()->downstream_addrs.empty()) {
+    DownstreamAddr addr;
+    addr.host = strcopy(DEFAULT_DOWNSTREAM_HOST);
+    addr.port = DEFAULT_DOWNSTREAM_PORT;
 
-  {
-    std::string hostport;
-
-    if (downstream_ipv6_addr) {
-      hostport += "[";
-    }
-
-    hostport += get_config()->downstream_host.get();
-
-    if (downstream_ipv6_addr) {
-      hostport += "]";
-    }
-
-    hostport += ":";
-    hostport += util::utos(get_config()->downstream_port);
-
-    mod_config()->downstream_hostport = strcopy(hostport);
+    mod_config()->downstream_addrs.push_back(std::move(addr));
   }
 
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "Resolving backend address";
   }
-  if (resolve_hostname(
-          &mod_config()->downstream_addr, &mod_config()->downstream_addrlen,
-          get_config()->downstream_host.get(), get_config()->downstream_port,
-          get_config()->backend_ipv4
-              ? AF_INET
-              : (get_config()->backend_ipv6 ? AF_INET6 : AF_UNSPEC)) == -1) {
-    exit(EXIT_FAILURE);
+
+  for (auto &addr : mod_config()->downstream_addrs) {
+    auto ipv6 = is_ipv6_numeric_addr(addr.host.get());
+    std::string hostport;
+
+    if (ipv6) {
+      hostport += "[";
+    }
+
+    hostport += addr.host.get();
+
+    if (ipv6) {
+      hostport += "]";
+    }
+
+    hostport += ":";
+    hostport += util::utos(addr.port);
+
+    addr.hostport = strcopy(hostport);
+
+    if (resolve_hostname(
+            &addr.addr, &addr.addrlen, addr.host.get(), addr.port,
+            get_config()->backend_ipv4
+                ? AF_INET
+                : (get_config()->backend_ipv6 ? AF_INET6 : AF_UNSPEC)) == -1) {
+      exit(EXIT_FAILURE);
+    }
   }
 
   if (get_config()->downstream_http_proxy_host) {

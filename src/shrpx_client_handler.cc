@@ -717,4 +717,6 @@ void ClientHandler::write_accesslog(int major, int minor, unsigned int status,
   upstream_accesslog(get_config()->accesslog_format, &lgsp);
 }
 
+WorkerStat *ClientHandler::get_worker_stat() const { return worker_stat_; }
+
 } // namespace shrpx

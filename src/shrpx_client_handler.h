@@ -114,6 +114,7 @@ public:
   // corresponding Downstream object is not available.
   void write_accesslog(int major, int minor, unsigned int status,
                        int64_t body_bytes_sent);
+  WorkerStat *get_worker_stat() const;
 
 private:
   std::unique_ptr<Upstream> upstream_;
