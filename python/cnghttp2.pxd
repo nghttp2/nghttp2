@@ -249,7 +249,7 @@ cdef extern from 'nghttp2/nghttp2.h':
         int32_t stream_id
         int32_t weight
         uint8_t exclusive
-        
+
     int nghttp2_submit_request(nghttp2_session *session, const nghttp2_priority_spec *pri_spec,
                                const nghttp2_nv *nva, size_t nvlen,
                                const nghttp2_data_provider *data_prd,
@@ -312,14 +312,6 @@ cdef extern from 'nghttp2/nghttp2.h':
 
     int nghttp2_hd_inflate_end_headers(nghttp2_hd_inflater *inflater)
 
-cdef extern from 'nghttp2_helper.h':
-
-    void nghttp2_free(void *ptr)
-
-cdef extern from 'nghttp2_frame.h':
-
-    void nghttp2_nv_array_del(nghttp2_nv *nva)
-
 cdef extern from 'nghttp2_hd.h':
 
     # This is macro
@@ -347,15 +339,3 @@ cdef extern from 'nghttp2_hd.h':
 
     nghttp2_hd_entry* nghttp2_hd_table_get(nghttp2_hd_context *context,
                                            size_t index)
-
-cdef extern from 'nghttp2_buf.h':
-
-    ctypedef struct nghttp2_bufs:
-        pass
-
-    void nghttp2_bufs_init(nghttp2_bufs *bufs, size_t chunk_size,
-                           size_t max_chunk)
-
-    void nghttp2_bufs_free(nghttp2_bufs *bufs)
-
-    ssize_t nghttp2_bufs_remove(nghttp2_bufs *bufs, uint8_t **out)

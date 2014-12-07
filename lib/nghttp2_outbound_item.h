@@ -31,6 +31,7 @@
 
 #include <nghttp2/nghttp2.h>
 #include "nghttp2_frame.h"
+#include "nghttp2_mem.h"
 
 /* A bit higher weight for non-DATA frames */
 #define NGHTTP2_OB_EX_WEIGHT 300
@@ -101,6 +102,6 @@ typedef struct {
  * Deallocates resource for |item|. If |item| is NULL, this function
  * does nothing.
  */
-void nghttp2_outbound_item_free(nghttp2_outbound_item *item);
+void nghttp2_outbound_item_free(nghttp2_outbound_item *item, nghttp2_mem *mem);
 
 #endif /* NGHTTP2_OUTBOUND_ITEM_H */

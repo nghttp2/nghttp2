@@ -47,13 +47,16 @@ static int32_t submit_headers_shared(nghttp2_session *session, uint8_t flags,
   nghttp2_outbound_item *item = NULL;
   nghttp2_frame *frame = NULL;
   nghttp2_headers_category hcat;
+  nghttp2_mem *mem;
+
+  mem = &session->mem;
 
   if (stream_id == 0) {
     rv = NGHTTP2_ERR_INVALID_ARGUMENT;
     goto fail;
   }
 
-  item = malloc(sizeof(nghttp2_outbound_item));
+  item = nghttp2_mem_malloc(mem, sizeof(nghttp2_outbound_item));
   if (item == NULL) {
     rv = NGHTTP2_ERR_NOMEM;
     goto fail;
@@ -94,7 +97,7 @@ static int32_t submit_headers_shared(nghttp2_session *session, uint8_t flags,
   rv = nghttp2_session_add_item(session, item);
 
   if (rv != 0) {
-    nghttp2_frame_headers_free(&frame->headers);
+    nghttp2_frame_headers_free(&frame->headers, mem);
     goto fail2;
   }
 
@@ -106,9 +109,9 @@ static int32_t submit_headers_shared(nghttp2_session *session, uint8_t flags,
 
 fail:
   /* nghttp2_frame_headers_init() takes ownership of nva_copy. */
-  nghttp2_nv_array_del(nva_copy);
+  nghttp2_nv_array_del(nva_copy, mem);
 fail2:
-  free(item);
+  nghttp2_mem_free(mem, item);
 
   return rv;
 }
@@ -131,6 +134,9 @@ static int32_t submit_headers_shared_nva(nghttp2_session *session,
   int rv;
   nghttp2_nv *nva_copy;
   nghttp2_priority_spec copy_pri_spec;
+  nghttp2_mem *mem;
+
+  mem = &session->mem;
 
   if (pri_spec) {
     copy_pri_spec = *pri_spec;
@@ -139,7 +145,7 @@ static int32_t submit_headers_shared_nva(nghttp2_session *session,
     nghttp2_priority_spec_default_init(&copy_pri_spec);
   }
 
-  rv = nghttp2_nv_array_copy(&nva_copy, nva, nvlen);
+  rv = nghttp2_nv_array_copy(&nva_copy, nva, nvlen, mem);
   if (rv < 0) {
     return rv;
   }
@@ -178,6 +184,9 @@ int nghttp2_submit_priority(nghttp2_session *session, uint8_t flags _U_,
   nghttp2_outbound_item *item;
   nghttp2_frame *frame;
   nghttp2_priority_spec copy_pri_spec;
+  nghttp2_mem *mem;
+
+  mem = &session->mem;
 
   if (stream_id == 0 || pri_spec == NULL) {
     return NGHTTP2_ERR_INVALID_ARGUMENT;
@@ -191,7 +200,7 @@ int nghttp2_submit_priority(nghttp2_session *session, uint8_t flags _U_,
 
   adjust_priority_spec_weight(&copy_pri_spec);
 
-  item = malloc(sizeof(nghttp2_outbound_item));
+  item = nghttp2_mem_malloc(mem, sizeof(nghttp2_outbound_item));
 
   if (item == NULL) {
     return NGHTTP2_ERR_NOMEM;
@@ -207,7 +216,7 @@ int nghttp2_submit_priority(nghttp2_session *session, uint8_t flags _U_,
 
   if (rv != 0) {
     nghttp2_frame_priority_free(&frame->priority);
-    free(item);
+    nghttp2_mem_free(mem, item);
 
     return rv;
   }
@@ -246,6 +255,9 @@ int32_t nghttp2_submit_push_promise(nghttp2_session *session, uint8_t flags _U_,
   uint8_t flags_copy;
   int32_t promised_stream_id;
   int rv;
+  nghttp2_mem *mem;
+
+  mem = &session->mem;
 
   if (stream_id == 0 || nghttp2_session_is_my_stream_id(session, stream_id)) {
     return NGHTTP2_ERR_INVALID_ARGUMENT;
@@ -260,7 +272,7 @@ int32_t nghttp2_submit_push_promise(nghttp2_session *session, uint8_t flags _U_,
     return NGHTTP2_ERR_STREAM_ID_NOT_AVAILABLE;
   }
 
-  item = malloc(sizeof(nghttp2_outbound_item));
+  item = nghttp2_mem_malloc(mem, sizeof(nghttp2_outbound_item));
   if (item == NULL) {
     return NGHTTP2_ERR_NOMEM;
   }
@@ -271,9 +283,9 @@ int32_t nghttp2_submit_push_promise(nghttp2_session *session, uint8_t flags _U_,
 
   frame = &item->frame;
 
-  rv = nghttp2_nv_array_copy(&nva_copy, nva, nvlen);
+  rv = nghttp2_nv_array_copy(&nva_copy, nva, nvlen, mem);
   if (rv < 0) {
-    free(item);
+    nghttp2_mem_free(mem, item);
     return rv;
   }
 
@@ -288,8 +300,8 @@ int32_t nghttp2_submit_push_promise(nghttp2_session *session, uint8_t flags _U_,
   rv = nghttp2_session_add_item(session, item);
 
   if (rv != 0) {
-    nghttp2_frame_push_promise_free(&frame->push_promise);
-    free(item);
+    nghttp2_frame_push_promise_free(&frame->push_promise, mem);
+    nghttp2_mem_free(mem, item);
 
     return rv;
   }
@@ -406,12 +418,15 @@ int nghttp2_submit_data(nghttp2_session *session, uint8_t flags,
   nghttp2_frame *frame;
   nghttp2_data_aux_data *aux_data;
   uint8_t nflags = flags & NGHTTP2_FLAG_END_STREAM;
+  nghttp2_mem *mem;
+
+  mem = &session->mem;
 
   if (stream_id == 0) {
     return NGHTTP2_ERR_INVALID_ARGUMENT;
   }
 
-  item = malloc(sizeof(nghttp2_outbound_item));
+  item = nghttp2_mem_malloc(mem, sizeof(nghttp2_outbound_item));
   if (item == NULL) {
     return NGHTTP2_ERR_NOMEM;
   }
@@ -430,7 +445,7 @@ int nghttp2_submit_data(nghttp2_session *session, uint8_t flags,
   rv = nghttp2_session_add_item(session, item);
   if (rv != 0) {
     nghttp2_frame_data_free(&frame->data);
-    free(item);
+    nghttp2_mem_free(mem, item);
     return rv;
   }
   return 0;

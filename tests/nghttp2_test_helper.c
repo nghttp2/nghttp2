@@ -45,6 +45,9 @@ int unpack_frame(nghttp2_frame *frame, const uint8_t *in, size_t len) {
   const uint8_t *payload = in + NGHTTP2_FRAME_HDLEN;
   size_t payloadlen = len - NGHTTP2_FRAME_HDLEN;
   size_t payloadoff;
+  nghttp2_mem *mem;
+
+  mem = nghttp2_mem_default();
 
   nghttp2_frame_unpack_frame_hd(&frame->hd, in);
   switch (frame->hd.type) {
@@ -63,7 +66,7 @@ int unpack_frame(nghttp2_frame *frame, const uint8_t *in, size_t len) {
     break;
   case NGHTTP2_SETTINGS:
     rv = nghttp2_frame_unpack_settings_payload2(
-        &frame->settings.iv, &frame->settings.niv, payload, payloadlen);
+        &frame->settings.iv, &frame->settings.niv, payload, payloadlen, mem);
     break;
   case NGHTTP2_PUSH_PROMISE:
     rv = nghttp2_frame_unpack_push_promise_payload(&frame->push_promise,
@@ -73,7 +76,8 @@ int unpack_frame(nghttp2_frame *frame, const uint8_t *in, size_t len) {
     nghttp2_frame_unpack_ping_payload(&frame->ping, payload, payloadlen);
     break;
   case NGHTTP2_GOAWAY:
-    nghttp2_frame_unpack_goaway_payload2(&frame->goaway, payload, payloadlen);
+    nghttp2_frame_unpack_goaway_payload2(&frame->goaway, payload, payloadlen,
+                                         mem);
     break;
   case NGHTTP2_WINDOW_UPDATE:
     nghttp2_frame_unpack_window_update_payload(&frame->window_update, payload,
@@ -198,12 +202,14 @@ ssize_t inflate_hd(nghttp2_hd_inflater *inflater, nva_out *out,
 
 int frame_pack_bufs_init(nghttp2_bufs *bufs) {
   /* 1 for Pad Length */
-  return nghttp2_bufs_init2(bufs, 4096, 16, NGHTTP2_FRAME_HDLEN + 1);
+  return nghttp2_bufs_init2(bufs, 4096, 16, NGHTTP2_FRAME_HDLEN + 1,
+                            nghttp2_mem_default());
 }
 
 void bufs_large_init(nghttp2_bufs *bufs, size_t chunk_size) {
   /* 1 for Pad Length */
-  nghttp2_bufs_init2(bufs, chunk_size, 16, NGHTTP2_FRAME_HDLEN + 1);
+  nghttp2_bufs_init2(bufs, chunk_size, 16, NGHTTP2_FRAME_HDLEN + 1,
+                     nghttp2_mem_default());
 }
 
 static nghttp2_stream *open_stream_with_all(nghttp2_session *session,

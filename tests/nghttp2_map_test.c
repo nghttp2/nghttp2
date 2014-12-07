@@ -41,7 +41,7 @@ static void strentry_init(strentry *entry, key_type key, const char *str) {
 void test_nghttp2_map(void) {
   strentry foo, FOO, bar, baz, shrubbery;
   nghttp2_map map;
-  nghttp2_map_init(&map);
+  nghttp2_map_init(&map, nghttp2_mem_default());
 
   strentry_init(&foo, 1, "foo");
   strentry_init(&FOO, 1, "FOO");
@@ -110,7 +110,7 @@ void test_nghttp2_map_functional(void) {
   nghttp2_map map;
   int i;
 
-  nghttp2_map_init(&map);
+  nghttp2_map_init(&map, nghttp2_mem_default());
   for (i = 0; i < NUM_ENT; ++i) {
     strentry_init(&arr[i], i + 1, "foo");
     order[i] = i + 1;
@@ -155,7 +155,7 @@ void test_nghttp2_map_each_free(void) {
            *baz = malloc(sizeof(strentry)),
            *shrubbery = malloc(sizeof(strentry));
   nghttp2_map map;
-  nghttp2_map_init(&map);
+  nghttp2_map_init(&map, nghttp2_mem_default());
 
   strentry_init(foo, 1, "foo");
   strentry_init(bar, 2, "bar");

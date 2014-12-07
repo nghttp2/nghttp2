@@ -24,9 +24,10 @@
  */
 #include "nghttp2_pq.h"
 
-int nghttp2_pq_init(nghttp2_pq *pq, nghttp2_compar compar) {
+int nghttp2_pq_init(nghttp2_pq *pq, nghttp2_compar compar, nghttp2_mem *mem) {
+  pq->mem = mem;
   pq->capacity = 128;
-  pq->q = malloc(pq->capacity * sizeof(void *));
+  pq->q = nghttp2_mem_malloc(mem, pq->capacity * sizeof(void *));
   if (pq->q == NULL) {
     return NGHTTP2_ERR_NOMEM;
   }
@@ -36,7 +37,7 @@ int nghttp2_pq_init(nghttp2_pq *pq, nghttp2_compar compar) {
 }
 
 void nghttp2_pq_free(nghttp2_pq *pq) {
-  free(pq->q);
+  nghttp2_mem_free(pq->mem, pq->q);
   pq->q = NULL;
 }
 
@@ -61,7 +62,8 @@ static void bubble_up(nghttp2_pq *pq, size_t index) {
 int nghttp2_pq_push(nghttp2_pq *pq, void *item) {
   if (pq->capacity <= pq->length) {
     void *nq;
-    nq = realloc(pq->q, (pq->capacity * 2) * sizeof(void *));
+    nq = nghttp2_mem_realloc(pq->mem, pq->q,
+                             (pq->capacity * 2) * sizeof(void *));
     if (nq == NULL) {
       return NGHTTP2_ERR_NOMEM;
     }

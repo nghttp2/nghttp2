@@ -39,6 +39,7 @@
 #include "nghttp2_int.h"
 #include "nghttp2_buf.h"
 #include "nghttp2_callbacks.h"
+#include "nghttp2_mem.h"
 
 /*
  * Option flags.
@@ -146,6 +147,8 @@ struct nghttp2_session {
   nghttp2_hd_deflater hd_deflater;
   nghttp2_hd_inflater hd_inflater;
   nghttp2_session_callbacks callbacks;
+  /* Memory allocator */
+  nghttp2_mem mem;
   /* Sequence number of outbound frame to maintain the order of
      enqueue if priority is equal. */
   int64_t next_seq;

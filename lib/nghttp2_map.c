@@ -28,9 +28,11 @@
 
 #define INITIAL_TABLE_LENGTH 256
 
-int nghttp2_map_init(nghttp2_map *map) {
+int nghttp2_map_init(nghttp2_map *map, nghttp2_mem *mem) {
+  map->mem = mem;
   map->tablelen = INITIAL_TABLE_LENGTH;
-  map->table = calloc(map->tablelen, sizeof(nghttp2_map_entry *));
+  map->table =
+      nghttp2_mem_calloc(mem, map->tablelen, sizeof(nghttp2_map_entry *));
   if (map->table == NULL) {
     return NGHTTP2_ERR_NOMEM;
   }
@@ -40,7 +42,9 @@ int nghttp2_map_init(nghttp2_map *map) {
   return 0;
 }
 
-void nghttp2_map_free(nghttp2_map *map) { free(map->table); }
+void nghttp2_map_free(nghttp2_map *map) {
+  nghttp2_mem_free(map->mem, map->table);
+}
 
 void nghttp2_map_each_free(nghttp2_map *map,
                            int (*func)(nghttp2_map_entry *entry, void *ptr),
@@ -110,7 +114,9 @@ static int insert(nghttp2_map_entry **table, size_t tablelen,
 static int resize(nghttp2_map *map, size_t new_tablelen) {
   size_t i;
   nghttp2_map_entry **new_table;
-  new_table = calloc(new_tablelen, sizeof(nghttp2_map_entry *));
+
+  new_table =
+      nghttp2_mem_calloc(map->mem, new_tablelen, sizeof(nghttp2_map_entry *));
   if (new_table == NULL) {
     return NGHTTP2_ERR_NOMEM;
   }
@@ -125,7 +131,7 @@ static int resize(nghttp2_map *map, size_t new_tablelen) {
       entry = next;
     }
   }
-  free(map->table);
+  nghttp2_mem_free(map->mem, map->table);
   map->tablelen = new_tablelen;
   map->table = new_table;
 

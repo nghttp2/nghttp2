@@ -31,12 +31,15 @@
 
 #include <nghttp2/nghttp2.h>
 #include "nghttp2_int.h"
+#include "nghttp2_mem.h"
 
 /* Implementation of priority queue */
 
 typedef struct {
   /* The pointer to the pointer to the item stored */
   void **q;
+  /* Memory allocator */
+  nghttp2_mem *mem;
   /* The number of items sotred */
   size_t length;
   /* The maximum number of items this pq can store. This is
@@ -55,7 +58,7 @@ typedef struct {
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
  */
-int nghttp2_pq_init(nghttp2_pq *pq, nghttp2_compar cmp);
+int nghttp2_pq_init(nghttp2_pq *pq, nghttp2_compar cmp, nghttp2_mem *mem);
 
 /*
  * Deallocates any resources allocated for |pq|.  The stored items are

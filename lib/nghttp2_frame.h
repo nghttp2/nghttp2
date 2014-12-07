@@ -231,7 +231,7 @@ void nghttp2_frame_unpack_settings_entry(nghttp2_settings_entry *iv,
  */
 int nghttp2_frame_unpack_settings_payload(nghttp2_settings *frame,
                                           nghttp2_settings_entry *iv,
-                                          size_t niv);
+                                          size_t niv, nghttp2_mem *mem);
 
 /*
  * Unpacks SETTINGS payload into |*iv_ptr|. The number of entries are
@@ -248,7 +248,7 @@ int nghttp2_frame_unpack_settings_payload(nghttp2_settings *frame,
 int nghttp2_frame_unpack_settings_payload2(nghttp2_settings_entry **iv_ptr,
                                            size_t *niv_ptr,
                                            const uint8_t *payload,
-                                           size_t payloadlen);
+                                           size_t payloadlen, nghttp2_mem *mem);
 
 /*
  * Packs PUSH_PROMISE frame |frame| in wire format and store it in
@@ -351,7 +351,7 @@ void nghttp2_frame_unpack_goaway_payload(nghttp2_goaway *frame,
  */
 int nghttp2_frame_unpack_goaway_payload2(nghttp2_goaway *frame,
                                          const uint8_t *payload,
-                                         size_t payloadlen);
+                                         size_t payloadlen, nghttp2_mem *mem);
 
 /*
  * Packs WINDOW_UPDATE frame |frame| in wire frame format and store it
@@ -382,7 +382,7 @@ void nghttp2_frame_headers_init(nghttp2_headers *frame, uint8_t flags,
                                 const nghttp2_priority_spec *pri_spec,
                                 nghttp2_nv *nva, size_t nvlen);
 
-void nghttp2_frame_headers_free(nghttp2_headers *frame);
+void nghttp2_frame_headers_free(nghttp2_headers *frame, nghttp2_mem *mem);
 
 void nghttp2_frame_priority_init(nghttp2_priority *frame, int32_t stream_id,
                                  const nghttp2_priority_spec *pri_spec);
@@ -403,7 +403,8 @@ void nghttp2_frame_push_promise_init(nghttp2_push_promise *frame, uint8_t flags,
                                      int32_t promised_stream_id,
                                      nghttp2_nv *nva, size_t nvlen);
 
-void nghttp2_frame_push_promise_free(nghttp2_push_promise *frame);
+void nghttp2_frame_push_promise_free(nghttp2_push_promise *frame,
+                                     nghttp2_mem *mem);
 
 /*
  * Initializes SETTINGS frame |frame| with given values. |frame| takes
@@ -413,7 +414,7 @@ void nghttp2_frame_push_promise_free(nghttp2_push_promise *frame);
 void nghttp2_frame_settings_init(nghttp2_settings *frame, uint8_t flags,
                                  nghttp2_settings_entry *iv, size_t niv);
 
-void nghttp2_frame_settings_free(nghttp2_settings *frame);
+void nghttp2_frame_settings_free(nghttp2_settings *frame, nghttp2_mem *mem);
 
 /*
  * Initializes PING frame |frame| with given values. If the
@@ -435,7 +436,7 @@ void nghttp2_frame_goaway_init(nghttp2_goaway *frame, int32_t last_stream_id,
                                uint32_t error_code, uint8_t *opaque_data,
                                size_t opaque_data_len);
 
-void nghttp2_frame_goaway_free(nghttp2_goaway *frame);
+void nghttp2_frame_goaway_free(nghttp2_goaway *frame, nghttp2_mem *mem);
 
 void nghttp2_frame_window_update_init(nghttp2_window_update *frame,
                                       uint8_t flags, int32_t stream_id,
@@ -461,7 +462,7 @@ void nghttp2_frame_data_free(nghttp2_data *frame);
  * it succeeds, or NULL.
  */
 nghttp2_settings_entry *nghttp2_frame_iv_copy(const nghttp2_settings_entry *iv,
-                                              size_t niv);
+                                              size_t niv, nghttp2_mem *mem);
 
 /*
  * Sorts the |nva| in ascending order of name and value. If names are
@@ -483,7 +484,7 @@ void nghttp2_nv_array_sort(nghttp2_nv *nva, size_t nvlen);
  *     Out of memory.
  */
 int nghttp2_nv_array_copy(nghttp2_nv **nva_ptr, const nghttp2_nv *nva,
-                          size_t nvlen);
+                          size_t nvlen, nghttp2_mem *mem);
 
 /*
  * Returns nonzero if the name/value pair |a| equals to |b|. The name
@@ -495,7 +496,7 @@ int nghttp2_nv_equal(const nghttp2_nv *a, const nghttp2_nv *b);
 /*
  * Frees |nva|.
  */
-void nghttp2_nv_array_del(nghttp2_nv *nva);
+void nghttp2_nv_array_del(nghttp2_nv *nva, nghttp2_mem *mem);
 
 /*
  * Checks that the |iv|, which includes |niv| entries, does not have

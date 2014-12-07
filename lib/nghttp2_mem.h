@@ -1,7 +1,7 @@
 /*
  * nghttp2 - HTTP/2 C Library
  *
- * Copyright (c) 2012 Tatsuhiro Tsujikawa
+ * Copyright (c) 2014 Tatsuhiro Tsujikawa
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -22,46 +22,23 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#include "nghttp2_outbound_item.h"
+#ifndef NGHTTP2_MEM_H
+#define NGHTTP2_MEM_H
 
-#include <assert.h>
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif /* HAVE_CONFIG_H */
 
-void nghttp2_outbound_item_free(nghttp2_outbound_item *item, nghttp2_mem *mem) {
-  nghttp2_frame *frame;
+#include <nghttp2/nghttp2.h>
 
-  if (item == NULL) {
-    return;
-  }
+/* The default, system standard memory allocator */
+nghttp2_mem *nghttp2_mem_default(void);
 
-  frame = &item->frame;
+/* Convenient wrapper functions to call allocator function in
+   |mem|. */
+void *nghttp2_mem_malloc(nghttp2_mem *mem, size_t size);
+void nghttp2_mem_free(nghttp2_mem *mem, void *ptr);
+void *nghttp2_mem_calloc(nghttp2_mem *mem, size_t nmemb, size_t size);
+void *nghttp2_mem_realloc(nghttp2_mem *mem, void *ptr, size_t size);
 
-  switch (frame->hd.type) {
-  case NGHTTP2_DATA:
-    nghttp2_frame_data_free(&frame->data);
-    break;
-  case NGHTTP2_HEADERS:
-    nghttp2_frame_headers_free(&frame->headers, mem);
-    break;
-  case NGHTTP2_PRIORITY:
-    nghttp2_frame_priority_free(&frame->priority);
-    break;
-  case NGHTTP2_RST_STREAM:
-    nghttp2_frame_rst_stream_free(&frame->rst_stream);
-    break;
-  case NGHTTP2_SETTINGS:
-    nghttp2_frame_settings_free(&frame->settings, mem);
-    break;
-  case NGHTTP2_PUSH_PROMISE:
-    nghttp2_frame_push_promise_free(&frame->push_promise, mem);
-    break;
-  case NGHTTP2_PING:
-    nghttp2_frame_ping_free(&frame->ping);
-    break;
-  case NGHTTP2_GOAWAY:
-    nghttp2_frame_goaway_free(&frame->goaway, mem);
-    break;
-  case NGHTTP2_WINDOW_UPDATE:
-    nghttp2_frame_window_update_free(&frame->window_update);
-    break;
-  }
-}
+#endif /* NGHTTP2_MEM_H */

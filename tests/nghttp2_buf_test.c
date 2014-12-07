@@ -33,8 +33,11 @@ void test_nghttp2_bufs_add(void) {
   int rv;
   nghttp2_bufs bufs;
   uint8_t data[2048];
+  nghttp2_mem *mem;
 
-  rv = nghttp2_bufs_init(&bufs, 1000, 3);
+  mem = nghttp2_mem_default();
+
+  rv = nghttp2_bufs_init(&bufs, 1000, 3, mem);
   CU_ASSERT(0 == rv);
 
   CU_ASSERT(bufs.cur->buf.pos == bufs.cur->buf.last);
@@ -64,8 +67,11 @@ void test_nghttp2_bufs_addb(void) {
   int rv;
   nghttp2_bufs bufs;
   ssize_t i;
+  nghttp2_mem *mem;
 
-  rv = nghttp2_bufs_init(&bufs, 1000, 3);
+  mem = nghttp2_mem_default();
+
+  rv = nghttp2_bufs_init(&bufs, 1000, 3, mem);
   CU_ASSERT(0 == rv);
 
   rv = nghttp2_bufs_addb(&bufs, 14);
@@ -126,8 +132,11 @@ void test_nghttp2_bufs_addb(void) {
 void test_nghttp2_bufs_orb(void) {
   int rv;
   nghttp2_bufs bufs;
+  nghttp2_mem *mem;
 
-  rv = nghttp2_bufs_init(&bufs, 1000, 3);
+  mem = nghttp2_mem_default();
+
+  rv = nghttp2_bufs_init(&bufs, 1000, 3, mem);
   CU_ASSERT(0 == rv);
 
   *(bufs.cur->buf.last) = 0;
@@ -161,8 +170,11 @@ void test_nghttp2_bufs_remove(void) {
   int i;
   uint8_t *out;
   ssize_t outlen;
+  nghttp2_mem *mem;
 
-  rv = nghttp2_bufs_init(&bufs, 1000, 3);
+  mem = nghttp2_mem_default();
+
+  rv = nghttp2_bufs_init(&bufs, 1000, 3, mem);
   CU_ASSERT(0 == rv);
 
   nghttp2_buf_shift_right(&bufs.cur->buf, 10);
@@ -198,8 +210,11 @@ void test_nghttp2_bufs_reset(void) {
   nghttp2_bufs bufs;
   nghttp2_buf_chain *ci;
   ssize_t offset = 9;
+  nghttp2_mem *mem;
 
-  rv = nghttp2_bufs_init3(&bufs, 250, 3, 1, offset);
+  mem = nghttp2_mem_default();
+
+  rv = nghttp2_bufs_init3(&bufs, 250, 3, 1, offset, mem);
   CU_ASSERT(0 == rv);
 
   rv = nghttp2_bufs_add(&bufs, "foo", 3);
@@ -232,8 +247,11 @@ void test_nghttp2_bufs_advance(void) {
   int rv;
   nghttp2_bufs bufs;
   int i;
+  nghttp2_mem *mem;
 
-  rv = nghttp2_bufs_init(&bufs, 250, 3);
+  mem = nghttp2_mem_default();
+
+  rv = nghttp2_bufs_init(&bufs, 250, 3, mem);
   CU_ASSERT(0 == rv);
 
   for (i = 0; i < 2; ++i) {
@@ -250,8 +268,11 @@ void test_nghttp2_bufs_advance(void) {
 void test_nghttp2_bufs_next_present(void) {
   int rv;
   nghttp2_bufs bufs;
+  nghttp2_mem *mem;
 
-  rv = nghttp2_bufs_init(&bufs, 250, 3);
+  mem = nghttp2_mem_default();
+
+  rv = nghttp2_bufs_init(&bufs, 250, 3, mem);
   CU_ASSERT(0 == rv);
 
   CU_ASSERT(0 == nghttp2_bufs_next_present(&bufs));
@@ -278,8 +299,11 @@ void test_nghttp2_bufs_next_present(void) {
 void test_nghttp2_bufs_realloc(void) {
   int rv;
   nghttp2_bufs bufs;
+  nghttp2_mem *mem;
 
-  rv = nghttp2_bufs_init3(&bufs, 266, 3, 1, 10);
+  mem = nghttp2_mem_default();
+
+  rv = nghttp2_bufs_init3(&bufs, 266, 3, 1, 10, mem);
   CU_ASSERT(0 == rv);
 
   /* Create new buffer to see that these buffers are deallocated on
