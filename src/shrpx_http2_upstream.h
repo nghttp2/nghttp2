@@ -75,6 +75,7 @@ public:
   virtual int on_downstream_body_complete(Downstream *downstream);
 
   virtual void on_handler_delete();
+  virtual int on_downstream_reset();
 
   virtual void reset_timeouts();
 

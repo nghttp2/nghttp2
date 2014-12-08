@@ -108,6 +108,20 @@ public:
 
   void reset_timeouts();
 
+  // Returns true if request can be issued on downstream connection.
+  bool can_push_request() const;
+  // Initiates the connection checking if downstream connection has
+  // been established and connection checking is required.
+  void start_checking_connection();
+  // Resets connection check timer.  After timeout, we require
+  // connection checking.
+  int reset_connection_check_timer();
+  // Signals that connection is alive.  Internally
+  // reset_connection_check_timer() is called.
+  int connection_alive();
+  // Change connection check state.
+  void set_connection_check_state(int state);
+
   enum {
     // Disconnected
     DISCONNECTED,
@@ -125,6 +139,15 @@ public:
 
   static const size_t OUTBUF_MAX_THRES = 64 * 1024;
 
+  enum {
+    // Connection checking is not required
+    CONNECTION_CHECK_NONE,
+    // Connection checking is required
+    CONNECTION_CHECK_REQUIRED,
+    // Connection checking has been started
+    CONNECTION_CHECK_STARTED
+  };
+
 private:
   std::set<Http2DownstreamConnection *> dconns_;
   std::set<StreamData *> streams_;
@@ -139,12 +162,14 @@ private:
   bufferevent *wrbev_;
   bufferevent *rdbev_;
   event *settings_timerev_;
+  event *connection_check_timerev_;
   // fd_ is used for proxy connection and no TLS connection. For
   // direct or TLS connection, it may be -1 even after connection is
   // established. Use bufferevent_getfd(bev_) to get file descriptor
   // in these cases.
   int fd_;
   int state_;
+  int connection_check_state_;
   bool notified_;
   bool flow_control_;
 };

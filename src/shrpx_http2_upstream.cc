@@ -1397,4 +1397,38 @@ void Http2Upstream::on_handler_delete() {
   }
 }
 
+int Http2Upstream::on_downstream_reset() {
+  int rv;
+
+  for (auto &ent : downstream_queue_.get_active_downstreams()) {
+    auto downstream = ent.second.get();
+    if ((downstream->get_request_state() != Downstream::HEADER_COMPLETE &&
+         downstream->get_request_state() != Downstream::MSG_COMPLETE) ||
+        downstream->get_response_state() != Downstream::INITIAL) {
+      rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+      downstream->pop_downstream_connection();
+      continue;
+    }
+
+    // downstream connection is clean; we can retry with new
+    // downstream connection.
+    downstream->pop_downstream_connection();
+
+    rv = downstream->attach_downstream_connection(
+        handler_->get_downstream_connection());
+    if (rv != 0) {
+      rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+      downstream->pop_downstream_connection();
+      continue;
+    }
+  }
+
+  rv = send();
+  if (rv != 0) {
+    return -1;
+  }
+
+  return 0;
+}
+
 } // namespace shrpx

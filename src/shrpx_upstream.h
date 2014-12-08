@@ -56,6 +56,9 @@ public:
   virtual int on_downstream_body_complete(Downstream *downstream) = 0;
 
   virtual void on_handler_delete() = 0;
+  // Called when downstream connection is reset.  Currently this is
+  // only used by Http2Session.
+  virtual int on_downstream_reset() = 0;
 
   virtual void pause_read(IOCtrlReason reason) = 0;
   virtual int resume_read(IOCtrlReason reason, Downstream *downstream,

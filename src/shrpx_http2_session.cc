@@ -54,7 +54,8 @@ namespace shrpx {
 Http2Session::Http2Session(event_base *evbase, SSL_CTX *ssl_ctx)
     : evbase_(evbase), ssl_ctx_(ssl_ctx), ssl_(nullptr), session_(nullptr),
       bev_(nullptr), wrbev_(nullptr), rdbev_(nullptr),
-      settings_timerev_(nullptr), fd_(-1), state_(DISCONNECTED),
+      settings_timerev_(nullptr), connection_check_timerev_(nullptr), fd_(-1),
+      state_(DISCONNECTED), connection_check_state_(CONNECTION_CHECK_NONE),
       notified_(false), flow_control_(false) {}
 
 Http2Session::~Http2Session() { disconnect(); }
@@ -65,6 +66,11 @@ int Http2Session::disconnect() {
   }
   nghttp2_session_del(session_);
   session_ = nullptr;
+
+  if (connection_check_timerev_) {
+    event_free(connection_check_timerev_);
+    connection_check_timerev_ = nullptr;
+  }
 
   if (settings_timerev_) {
     event_free(settings_timerev_);
@@ -109,29 +115,40 @@ int Http2Session::disconnect() {
   }
 
   notified_ = false;
+  connection_check_state_ = CONNECTION_CHECK_NONE;
   state_ = DISCONNECTED;
 
   // Delete all client handler associated to Downstream. When deleting
   // Http2DownstreamConnection, it calls this object's
   // remove_downstream_connection(). The multiple
-  // Http2DownstreamConnection objects belong to the same ClientHandler
-  // object. So first dump ClientHandler objects and delete them once
-  // and for all.
-  std::vector<Http2DownstreamConnection *> vec(std::begin(dconns_),
-                                               std::end(dconns_));
+  // Http2DownstreamConnection objects belong to the same
+  // ClientHandler object. So first dump ClientHandler objects.  We
+  // want to allow creating new pending Http2DownstreamConnection with
+  // this object.  In order to achieve this, we first swap dconns_ and
+  // streams_.  Upstream::on_downstream_reset() may add
+  // Http2DownstreamConnection.
+  std::set<Http2DownstreamConnection *> dconns;
+  dconns.swap(dconns_);
+  std::set<StreamData *> streams;
+  streams.swap(streams_);
+
   std::set<ClientHandler *> handlers;
-  for (auto dc : vec) {
+  for (auto dc : dconns) {
+    if (!dc->get_client_handler()) {
+      continue;
+    }
     handlers.insert(dc->get_client_handler());
   }
-  for (auto &h : handlers) {
-    delete h;
+  for (auto h : handlers) {
+    if (h->get_upstream()->on_downstream_reset() != 0) {
+      delete h;
+    }
   }
 
-  dconns_.clear();
-  for (auto &s : streams_) {
+  for (auto &s : streams) {
     delete s;
   }
-  streams_.clear();
+
   return 0;
 }
 
@@ -211,6 +228,11 @@ void readcb(bufferevent *bev, void *ptr) {
   int rv;
   auto http2session = static_cast<Http2Session *>(ptr);
   http2session->reset_timeouts();
+  rv = http2session->connection_alive();
+  if (rv != 0) {
+    http2session->disconnect();
+    return;
+  }
   rv = http2session->on_read();
   if (rv != 0) {
     http2session->disconnect();
@@ -220,12 +242,17 @@ void readcb(bufferevent *bev, void *ptr) {
 
 namespace {
 void writecb(bufferevent *bev, void *ptr) {
+  int rv;
   auto http2session = static_cast<Http2Session *>(ptr);
   http2session->reset_timeouts();
+  rv = http2session->connection_alive();
+  if (rv != 0) {
+    http2session->disconnect();
+    return;
+  }
   if (evbuffer_get_length(bufferevent_get_output(bev)) > 0) {
     return;
   }
-  int rv;
   rv = http2session->on_write();
   if (rv != 0) {
     http2session->disconnect();
@@ -1271,6 +1298,15 @@ int on_frame_not_send_callback(nghttp2_session *session,
 }
 } // namespace
 
+namespace {
+void connection_check_timeout_cb(evutil_socket_t fd, short what, void *arg) {
+  auto http2session = static_cast<Http2Session *>(arg);
+  SSLOG(INFO, http2session) << "connection check required";
+  http2session->set_connection_check_state(
+      Http2Session::CONNECTION_CHECK_REQUIRED);
+}
+} // namespace
+
 int Http2Session::on_connect() {
   int rv;
   if (ssl_ctx_) {
@@ -1393,6 +1429,17 @@ int Http2Session::on_connect() {
 
   if (must_terminate) {
     return 0;
+  }
+
+  connection_check_timerev_ =
+      evtimer_new(evbase_, connection_check_timeout_cb, this);
+  if (connection_check_timerev_ == nullptr) {
+    return -1;
+  }
+
+  rv = reset_connection_check_timer();
+  if (rv != 0) {
+    return -1;
   }
 
   // submit pending request
@@ -1564,6 +1611,84 @@ int Http2Session::consume(int32_t stream_id, size_t len) {
 void Http2Session::reset_timeouts() {
   bufferevent_set_timeouts(bev_, &get_config()->downstream_read_timeout,
                            &get_config()->downstream_write_timeout);
+}
+
+bool Http2Session::can_push_request() const {
+  return state_ == CONNECTED &&
+         connection_check_state_ == CONNECTION_CHECK_NONE;
+}
+
+void Http2Session::start_checking_connection() {
+  if (state_ != CONNECTED ||
+      connection_check_state_ != CONNECTION_CHECK_REQUIRED) {
+    return;
+  }
+  connection_check_state_ = CONNECTION_CHECK_STARTED;
+
+  SSLOG(INFO, this) << "Start checking connection";
+  // If connection is down, we may get error when writing data.  Issue
+  // ping frame to see whether connection is alive.
+  nghttp2_submit_ping(session_, NGHTTP2_FLAG_NONE, NULL);
+
+  notify();
+}
+
+int Http2Session::reset_connection_check_timer() {
+  int rv;
+  timeval timeout = {5, 0};
+
+  rv = evtimer_add(connection_check_timerev_, &timeout);
+  if (rv == -1) {
+    return -1;
+  }
+
+  return 0;
+}
+
+int Http2Session::connection_alive() {
+  int rv;
+
+  rv = reset_connection_check_timer();
+  if (rv != 0) {
+    return -1;
+  }
+
+  if (connection_check_state_ == CONNECTION_CHECK_NONE) {
+    return 0;
+  }
+
+  SSLOG(INFO, this) << "Connection alive";
+  connection_check_state_ = CONNECTION_CHECK_NONE;
+
+  // submit pending request
+  for (auto dconn : dconns_) {
+    auto downstream = dconn->get_downstream();
+    if (!downstream ||
+        (downstream->get_request_state() != Downstream::HEADER_COMPLETE &&
+         downstream->get_request_state() != Downstream::MSG_COMPLETE) ||
+        downstream->get_response_state() != Downstream::INITIAL) {
+      continue;
+    }
+
+    auto upstream = downstream->get_upstream();
+
+    if (dconn->push_request_headers() == 0) {
+      upstream->resume_read(SHRPX_NO_BUFFER, downstream, 0);
+      continue;
+    }
+
+    if (LOG_ENABLED(INFO)) {
+      SSLOG(INFO, this) << "backend request failed";
+    }
+
+    upstream->on_downstream_abort_request(downstream, 400);
+  }
+
+  return 0;
+}
+
+void Http2Session::set_connection_check_state(int state) {
+  connection_check_state_ = state;
 }
 
 } // namespace shrpx

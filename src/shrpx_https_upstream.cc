@@ -936,4 +936,24 @@ void HttpsUpstream::on_handler_delete() {
   }
 }
 
+int HttpsUpstream::on_downstream_reset() {
+  int rv;
+
+  if ((downstream_->get_request_state() != Downstream::HEADER_COMPLETE &&
+       downstream_->get_request_state() != Downstream::MSG_COMPLETE) ||
+      downstream_->get_response_state() != Downstream::INITIAL) {
+    // Return error so that caller can delete handler
+    return -1;
+  }
+
+  downstream_->pop_downstream_connection();
+
+  rv = downstream_->attach_downstream_connection(
+      handler_->get_downstream_connection());
+  if (rv != 0) {
+    return -1;
+  }
+  return 0;
+}
+
 } // namespace shrpx
