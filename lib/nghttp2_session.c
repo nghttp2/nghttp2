@@ -310,6 +310,7 @@ static int session_new(nghttp2_session **session_ptr,
   }
 
   (*session_ptr)->mem = *mem;
+  mem = &(*session_ptr)->mem;
 
   /* next_stream_id is initialized in either
      nghttp2_session_client_new2 or nghttp2_session_server_new2 */
