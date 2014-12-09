@@ -245,6 +245,8 @@ public:
     auto session_id = next_session_id_;
     if (next_session_id_ == std::numeric_limits<int64_t>::max()) {
       next_session_id_ = 1;
+    } else {
+      ++next_session_id_;
     }
     return session_id;
   }
