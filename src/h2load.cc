@@ -904,6 +904,20 @@ int main(int argc, char **argv) {
               << ERR_error_string(ERR_get_error(), nullptr) << std::endl;
     exit(EXIT_FAILURE);
   }
+
+  SSL_CTX_set_options(ssl_ctx,
+                      SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 |
+                          SSL_OP_NO_COMPRESSION |
+                          SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
+  SSL_CTX_set_mode(ssl_ctx, SSL_MODE_AUTO_RETRY);
+  SSL_CTX_set_mode(ssl_ctx, SSL_MODE_RELEASE_BUFFERS);
+
+  if (SSL_CTX_set_cipher_list(ssl_ctx, ssl::DEFAULT_CIPHER_LIST) == 0) {
+    std::cerr << "SSL_CTX_set_cipher_list failed: "
+              << ERR_error_string(ERR_get_error(), nullptr) << std::endl;
+    exit(EXIT_FAILURE);
+  }
+
   SSL_CTX_set_next_proto_select_cb(ssl_ctx, client_select_next_proto_cb,
                                    nullptr);
 

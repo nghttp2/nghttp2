@@ -73,7 +73,8 @@ HTML_PARSER_OBJECTS += HtmlParser.cc
 endif # HAVE_LIBXML2
 
 nghttp_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} nghttp.cc \
-	${HTML_PARSER_OBJECTS} ${HTML_PARSER_HFILES}
+	${HTML_PARSER_OBJECTS} ${HTML_PARSER_HFILES} \
+	ssl.cc ssl.h
 
 nghttpd_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} nghttpd.cc \
 	ssl.cc ssl.h \
