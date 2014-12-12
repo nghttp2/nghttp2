@@ -82,6 +82,17 @@
 
 namespace nghttp2 {
 
+// stream ID of anchor stream node when --dep-idle is enabled.  These
+// * portion of ANCHOR_ID_* matches RequestPriority in HtmlParser.h.
+// The stream ID = 1 is excluded since it is used as first stream in
+// upgrade case.
+enum {
+  ANCHOR_ID_HIGH = 3,
+  ANCHOR_ID_MEDIUM = 5,
+  ANCHOR_ID_LOW = 7,
+  ANCHOR_ID_LOWEST = 9,
+};
+
 namespace {
 struct Config {
   Headers headers;
@@ -109,6 +120,7 @@ struct Config {
   bool continuation;
   bool no_content_length;
   bool no_dep;
+  bool dep_idle;
 
   Config()
       : output_upper_thres(1024 * 1024), padding(0),
@@ -117,7 +129,7 @@ struct Config {
         timeout(-1), window_bits(-1), connection_window_bits(-1), verbose(0),
         null_out(false), remote_name(false), get_assets(false), stat(false),
         upgrade(false), continuation(false), no_content_length(false),
-        no_dep(false) {
+        no_dep(false), dep_idle(false) {
     nghttp2_option_new(&http2_option);
     nghttp2_option_set_peer_max_concurrent_streams(http2_option,
                                                    peer_max_concurrent_streams);
@@ -255,11 +267,34 @@ struct Request {
 
     nghttp2_priority_spec_default_init(&pri_spec);
 
-    if (config.no_dep || pri == 0) {
+    if (config.no_dep) {
       return pri_spec;
     }
 
-    nghttp2_priority_spec_default_init(&pri_spec);
+    if (config.dep_idle) {
+      int32_t anchor_id = 0;
+      switch (pri) {
+      case REQ_PRI_HIGH:
+        anchor_id = ANCHOR_ID_HIGH;
+        break;
+      case REQ_PRI_MEDIUM:
+        anchor_id = ANCHOR_ID_MEDIUM;
+        break;
+      case REQ_PRI_LOW:
+        anchor_id = ANCHOR_ID_LOW;
+        break;
+      case REQ_PRI_LOWEST:
+        anchor_id = ANCHOR_ID_LOWEST;
+        break;
+      }
+      nghttp2_priority_spec_init(&pri_spec, anchor_id, NGHTTP2_DEFAULT_WEIGHT,
+                                 0);
+      return pri_spec;
+    }
+
+    if (pri == 0) {
+      return pri_spec;
+    }
 
     auto start = std::min(pri, (int)dep->deps.size() - 1);
 
@@ -723,6 +758,30 @@ struct HttpClient {
         return -1;
       }
     }
+    if (!config.no_dep && config.dep_idle) {
+      // Create anchor stream nodes
+      nghttp2_priority_spec pri_spec;
+      int32_t dep_stream_id = 0;
+
+      for (auto stream_id : {ANCHOR_ID_HIGH, ANCHOR_ID_MEDIUM, ANCHOR_ID_LOW,
+                             ANCHOR_ID_LOWEST}) {
+
+        nghttp2_priority_spec_init(&pri_spec, dep_stream_id,
+                                   NGHTTP2_DEFAULT_WEIGHT, 0);
+        rv = nghttp2_submit_priority(session, NGHTTP2_FLAG_NONE, stream_id,
+                                     &pri_spec);
+        if (rv != 0) {
+          return -1;
+        }
+
+        dep_stream_id = stream_id;
+      }
+    }
+    rv = nghttp2_session_set_next_stream_id(session, ANCHOR_ID_LOWEST + 2);
+    if (rv != 0) {
+      return -1;
+    }
+
     assert(settings_timerev == nullptr);
     settings_timerev = evtimer_new(evbase, settings_timeout_cb, this);
     // SETTINGS ACK timeout is 10 seconds for now
@@ -1827,11 +1886,16 @@ int communicate(
     HttpClient client{callbacks, evbase, ssl_ctx};
 
     nghttp2_priority_spec pri_spec;
+    int32_t dep_stream_id = 0;
 
+    if (!config.no_dep && config.dep_idle) {
+      dep_stream_id = ANCHOR_ID_HIGH;
+    }
     if (config.weight != NGHTTP2_DEFAULT_WEIGHT) {
-      nghttp2_priority_spec_init(&pri_spec, 0, config.weight, 0);
+      nghttp2_priority_spec_init(&pri_spec, dep_stream_id, config.weight, 0);
     } else {
-      nghttp2_priority_spec_default_init(&pri_spec);
+      nghttp2_priority_spec_init(&pri_spec, dep_stream_id,
+                                 NGHTTP2_DEFAULT_WEIGHT, 0);
     }
 
     for (auto req : requests) {
@@ -2106,6 +2170,8 @@ Options:
                      Don't send content-length header field.
   --no-dep           Don't  send  dependency  based priority  hint  to
                      server.
+  --dep-idle         Use  idle  streams  as anchor  nodes  to  express
+                     priority.
   --version          Display version information and exit.
   -h, --help         Display this help and exit.)" << std::endl;
 }
@@ -2141,6 +2207,7 @@ int main(int argc, char **argv) {
         {"version", no_argument, &flag, 5},
         {"no-content-length", no_argument, &flag, 6},
         {"no-dep", no_argument, &flag, 7},
+        {"dep-idle", no_argument, &flag, 8},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     int c = getopt_long(argc, argv, "M:Oab:c:d:gm:np:r:hH:vst:uw:W:",
@@ -2299,6 +2366,10 @@ int main(int argc, char **argv) {
       case 7:
         // no-dep option
         config.no_dep = true;
+        break;
+      case 8:
+        // dep-idle option
+        config.dep_idle = true;
         break;
       }
       break;
