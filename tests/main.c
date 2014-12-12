@@ -139,8 +139,8 @@ int main(int argc _U_, char *argv[] _U_) {
       !CU_add_test(pSuite, "session_reprioritize_stream",
                    test_nghttp2_session_reprioritize_stream) ||
       !CU_add_test(
-          pSuite, "session_reprioritize_stream_with_closed_stream_limit",
-          test_nghttp2_session_reprioritize_stream_with_closed_stream_limit) ||
+          pSuite, "session_reprioritize_stream_with_idle_stream_dep",
+          test_nghttp2_session_reprioritize_stream_with_idle_stream_dep) ||
       !CU_add_test(pSuite, "submit_data", test_nghttp2_submit_data) ||
       !CU_add_test(pSuite, "submit_data_read_length_too_large",
                    test_nghttp2_submit_data_read_length_too_large) ||
@@ -178,8 +178,8 @@ int main(int argc _U_, char *argv[] _U_) {
                    test_nghttp2_submit_invalid_nv) ||
       !CU_add_test(pSuite, "session_open_stream",
                    test_nghttp2_session_open_stream) ||
-      !CU_add_test(pSuite, "session_open_stream_with_closed_stream_limit",
-                   test_nghttp2_session_open_stream_with_closed_stream_limit) ||
+      !CU_add_test(pSuite, "session_open_stream_with_idle_stream_dep",
+                   test_nghttp2_session_open_stream_with_idle_stream_dep) ||
       !CU_add_test(pSuite, "session_get_next_ob_item",
                    test_nghttp2_session_get_next_ob_item) ||
       !CU_add_test(pSuite, "session_pop_next_ob_item",
@@ -237,8 +237,10 @@ int main(int argc _U_, char *argv[] _U_) {
                    test_nghttp2_session_stream_attach_data_subtree) ||
       !CU_add_test(pSuite, "session_stream_keep_closed_stream",
                    test_nghttp2_session_keep_closed_stream) ||
-      !CU_add_test(pSuite, "session_detach_closed_stream",
-                   test_nghttp2_session_detach_closed_stream) ||
+      !CU_add_test(pSuite, "session_stream_keep_idle_stream",
+                   test_nghttp2_session_keep_idle_stream) ||
+      !CU_add_test(pSuite, "session_detach_idle_stream",
+                   test_nghttp2_session_detach_idle_stream) ||
       !CU_add_test(pSuite, "session_large_dep_tree",
                    test_nghttp2_session_large_dep_tree) ||
       !CU_add_test(pSuite, "session_graceful_shutdown",

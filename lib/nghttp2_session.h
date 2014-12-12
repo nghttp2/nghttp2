@@ -173,6 +173,12 @@ struct nghttp2_session {
   /* Points to the oldest closed stream.  NULL if there is no closed
      stream.  Only used when session is initialized as server. */
   nghttp2_stream *closed_stream_tail;
+  /* Points to the latest idle stream.  NULL if there is no idle
+     stream.  Only used when session is initialized as server .*/
+  nghttp2_stream *idle_stream_head;
+  /* Points to the oldest idle stream.  NULL if there is no idle
+     stream.  Only used when session is initialized as erver. */
+  nghttp2_stream *idle_stream_tail;
   /* In-flight SETTINGS values. NULL does not necessarily mean there
      is no in-flight SETTINGS. */
   nghttp2_settings_entry *inflight_iv;
@@ -190,6 +196,11 @@ struct nghttp2_session {
      |closed_stream_head|.  The current implementation only keeps
      incoming streams and session is initialized as server. */
   size_t num_closed_streams;
+  /* The number of idle streams kept in |streams| hash.  The idle
+     streams can be accessed through doubly linked list
+     |idle_stream_head|.  The current implementation only keeps idle
+     streams if session is initialized as server. */
+  size_t num_idle_streams;
   /* The number of bytes allocated for nvbuf */
   size_t nvbuflen;
   /* Next Stream ID. Made unsigned int to detect >= (1 << 31). */
@@ -433,17 +444,18 @@ void nghttp2_session_keep_closed_stream(nghttp2_session *session,
                                         nghttp2_stream *stream);
 
 /*
- * Detaches |stream| from closed streams linked list.
+ * Appends |stream| to linked list |session->idle_stream_head|.  We
+ * apply fixed limit for list size.  To fit into that limit, one or
+ * more oldest streams are removed from list as necessary.
  */
-void nghttp2_session_detach_closed_stream(nghttp2_session *session,
-                                          nghttp2_stream *stream);
+void nghttp2_session_keep_idle_stream(nghttp2_session *session,
+                                      nghttp2_stream *stream);
 
 /*
- * Returns nonzero if |offset| closed stream(s) can be added to closed
- * linked list now.
+ * Detaches |stream| from idle streams linked list.
  */
-int nghttp2_session_can_add_closed_stream(nghttp2_session *session,
-                                          ssize_t offset);
+void nghttp2_session_detach_idle_stream(nghttp2_session *session,
+                                        nghttp2_stream *stream);
 
 /*
  * Deletes closed stream to ensure that number of incoming streams
@@ -454,6 +466,12 @@ int nghttp2_session_can_add_closed_stream(nghttp2_session *session,
  */
 void nghttp2_session_adjust_closed_stream(nghttp2_session *session,
                                           ssize_t offset);
+
+/*
+ * Deletes idle stream to ensure that number of idle streams is in
+ * certain limit.
+ */
+void nghttp2_session_adjust_idle_stream(nghttp2_session *session);
 
 /*
  * If further receptions and transmissions over the stream |stream_id|

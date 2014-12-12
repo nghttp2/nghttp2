@@ -3033,7 +3033,7 @@ void test_nghttp2_session_reprioritize_stream(void) {
   nghttp2_session_del(session);
 }
 
-void test_nghttp2_session_reprioritize_stream_with_closed_stream_limit(void) {
+void test_nghttp2_session_reprioritize_stream_with_idle_stream_dep(void) {
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;
   nghttp2_stream *stream;
@@ -3054,16 +3054,7 @@ void test_nghttp2_session_reprioritize_stream_with_closed_stream_limit(void) {
 
   nghttp2_session_reprioritize_stream(session, stream, &pri_spec);
 
-  /* No room to create idle stream, so default priority was applied. */
-
-  CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == stream->weight);
-  CU_ASSERT(NULL == stream->dep_prev);
-
-  session->pending_local_max_concurrent_stream = 2;
-
-  /* Now idle stream can be created */
-
-  nghttp2_session_reprioritize_stream(session, stream, &pri_spec);
+  /* idle stream is not counteed to max concurrent streams */
 
   CU_ASSERT(10 == stream->weight);
   CU_ASSERT(101 == stream->dep_prev->stream_id);
@@ -4124,7 +4115,7 @@ void test_nghttp2_session_open_stream(void) {
   nghttp2_session_del(session);
 }
 
-void test_nghttp2_session_open_stream_with_closed_stream_limit(void) {
+void test_nghttp2_session_open_stream_with_idle_stream_dep(void) {
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;
   nghttp2_stream *stream;
@@ -4133,20 +4124,10 @@ void test_nghttp2_session_open_stream_with_closed_stream_limit(void) {
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   nghttp2_session_server_new(&session, &callbacks, NULL);
 
-  session->pending_local_max_concurrent_stream = 1;
-
   /* Dependency to idle stream */
   nghttp2_priority_spec_init(&pri_spec, 101, 245, 0);
 
   stream = nghttp2_session_open_stream(session, 1, NGHTTP2_STREAM_FLAG_NONE,
-                                       &pri_spec, NGHTTP2_STREAM_OPENED, NULL);
-
-  CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == stream->weight);
-
-  session->pending_local_max_concurrent_stream = 3;
-
-  /* Now another 2 streams can be added */
-  stream = nghttp2_session_open_stream(session, 3, NGHTTP2_STREAM_FLAG_NONE,
                                        &pri_spec, NGHTTP2_STREAM_OPENED, NULL);
 
   CU_ASSERT(245 == stream->weight);
@@ -4157,14 +4138,9 @@ void test_nghttp2_session_open_stream_with_closed_stream_limit(void) {
   CU_ASSERT(NGHTTP2_STREAM_IDLE == stream->state);
   CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == stream->weight);
 
-  session->pending_local_max_concurrent_stream = 4;
-
-  /* Now another 1 stream can be added */
-
   nghttp2_priority_spec_init(&pri_spec, 211, 1, 0);
 
-  /* stream 101 was already created and does not consume another
-     limit. */
+  /* stream 101 was already created as idle. */
   stream = nghttp2_session_open_stream(session, 101, NGHTTP2_STREAM_FLAG_NONE,
                                        &pri_spec, NGHTTP2_STREAM_OPENED, NULL);
 
@@ -6218,7 +6194,45 @@ void test_nghttp2_session_keep_closed_stream(void) {
   nghttp2_session_del(session);
 }
 
-void test_nghttp2_session_detach_closed_stream(void) {
+void test_nghttp2_session_keep_idle_stream(void) {
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  const size_t max_concurrent_streams = 1;
+  nghttp2_settings_entry iv = {NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS,
+                               max_concurrent_streams};
+  int i;
+
+  memset(&callbacks, 0, sizeof(callbacks));
+  callbacks.send_callback = null_send_callback;
+
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, &iv, 1);
+
+  /* We at least allow 2 idle streams even if max concurrent streams
+     is very low. */
+  for (i = 0; i < 2; ++i) {
+    nghttp2_session_open_stream(session, i * 2 + 1, NGHTTP2_STREAM_FLAG_NONE,
+                                &pri_spec_default, NGHTTP2_STREAM_IDLE, NULL);
+  }
+
+  CU_ASSERT(2 == session->num_idle_streams);
+
+  CU_ASSERT(1 == session->idle_stream_head->stream_id);
+  CU_ASSERT(3 == session->idle_stream_tail->stream_id);
+
+  nghttp2_session_open_stream(session, 5, NGHTTP2_FLAG_NONE, &pri_spec_default,
+                              NGHTTP2_STREAM_IDLE, NULL);
+
+  CU_ASSERT(2 == session->num_idle_streams);
+
+  CU_ASSERT(3 == session->idle_stream_head->stream_id);
+  CU_ASSERT(5 == session->idle_stream_tail->stream_id);
+
+  nghttp2_session_del(session);
+}
+
+void test_nghttp2_session_detach_idle_stream(void) {
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;
   int i;
@@ -6229,72 +6243,76 @@ void test_nghttp2_session_detach_closed_stream(void) {
 
   nghttp2_session_server_new(&session, &callbacks, NULL);
 
-  for (i = 0; i < 3; ++i) {
-    open_stream(session, i);
-    nghttp2_session_close_stream(session, i, NGHTTP2_NO_ERROR);
+  for (i = 1; i <= 3; ++i) {
+    nghttp2_session_open_stream(session, i, NGHTTP2_STREAM_FLAG_NONE,
+                                &pri_spec_default, NGHTTP2_STREAM_IDLE, NULL);
   }
 
-  CU_ASSERT(3 == session->num_closed_streams);
+  CU_ASSERT(3 == session->num_idle_streams);
 
-  stream = nghttp2_session_get_stream_raw(session, 1);
+  /* Detach middle stream */
+  stream = nghttp2_session_get_stream_raw(session, 2);
 
-  CU_ASSERT(session->closed_stream_head == stream->closed_prev);
-  CU_ASSERT(session->closed_stream_tail == stream->closed_next);
-  CU_ASSERT(stream == session->closed_stream_head->closed_next);
-  CU_ASSERT(stream == session->closed_stream_tail->closed_prev);
+  CU_ASSERT(session->idle_stream_head == stream->closed_prev);
+  CU_ASSERT(session->idle_stream_tail == stream->closed_next);
+  CU_ASSERT(stream == session->idle_stream_head->closed_next);
+  CU_ASSERT(stream == session->idle_stream_tail->closed_prev);
 
-  nghttp2_session_detach_closed_stream(session, stream);
+  nghttp2_session_detach_idle_stream(session, stream);
 
-  CU_ASSERT(2 == session->num_closed_streams);
+  CU_ASSERT(2 == session->num_idle_streams);
 
   CU_ASSERT(NULL == stream->closed_prev);
   CU_ASSERT(NULL == stream->closed_next);
 
-  CU_ASSERT(session->closed_stream_head ==
-            session->closed_stream_tail->closed_prev);
-  CU_ASSERT(session->closed_stream_tail ==
-            session->closed_stream_head->closed_next);
+  CU_ASSERT(session->idle_stream_head ==
+            session->idle_stream_tail->closed_prev);
+  CU_ASSERT(session->idle_stream_tail ==
+            session->idle_stream_head->closed_next);
 
-  /* Close head stream */
-  stream = session->closed_stream_head;
+  /* Detach head stream */
+  stream = session->idle_stream_head;
 
-  nghttp2_session_detach_closed_stream(session, stream);
+  nghttp2_session_detach_idle_stream(session, stream);
 
-  CU_ASSERT(1 == session->num_closed_streams);
+  CU_ASSERT(1 == session->num_idle_streams);
 
-  CU_ASSERT(session->closed_stream_head == session->closed_stream_tail);
-  CU_ASSERT(NULL == session->closed_stream_head->closed_prev);
-  CU_ASSERT(NULL == session->closed_stream_head->closed_next);
+  CU_ASSERT(session->idle_stream_head == session->idle_stream_tail);
+  fprintf(stderr, "head=%p, tail=%p\n", session->idle_stream_head,
+          session->idle_stream_tail);
 
-  /* Close last stream */
+  CU_ASSERT(NULL == session->idle_stream_head->closed_prev);
+  CU_ASSERT(NULL == session->idle_stream_head->closed_next);
 
-  stream = session->closed_stream_head;
+  /* Detach last stream */
 
-  nghttp2_session_detach_closed_stream(session, stream);
+  stream = session->idle_stream_head;
 
-  CU_ASSERT(0 == session->num_closed_streams);
+  nghttp2_session_detach_idle_stream(session, stream);
 
-  CU_ASSERT(NULL == session->closed_stream_head);
-  CU_ASSERT(NULL == session->closed_stream_tail);
+  CU_ASSERT(0 == session->num_idle_streams);
 
-  for (i = 3; i < 5; ++i) {
-    open_stream(session, i);
-    nghttp2_session_close_stream(session, i, NGHTTP2_NO_ERROR);
+  CU_ASSERT(NULL == session->idle_stream_head);
+  CU_ASSERT(NULL == session->idle_stream_tail);
+
+  for (i = 4; i <= 5; ++i) {
+    nghttp2_session_open_stream(session, i, NGHTTP2_STREAM_FLAG_NONE,
+                                &pri_spec_default, NGHTTP2_STREAM_IDLE, NULL);
   }
 
-  CU_ASSERT(2 == session->num_closed_streams);
+  CU_ASSERT(2 == session->num_idle_streams);
 
-  /* Close tail stream */
+  /* Detach tail stream */
 
-  stream = session->closed_stream_tail;
+  stream = session->idle_stream_tail;
 
-  nghttp2_session_detach_closed_stream(session, stream);
+  nghttp2_session_detach_idle_stream(session, stream);
 
-  CU_ASSERT(1 == session->num_closed_streams);
+  CU_ASSERT(1 == session->num_idle_streams);
 
-  CU_ASSERT(session->closed_stream_head == session->closed_stream_tail);
-  CU_ASSERT(NULL == session->closed_stream_head->closed_prev);
-  CU_ASSERT(NULL == session->closed_stream_head->closed_next);
+  CU_ASSERT(session->idle_stream_head == session->idle_stream_tail);
+  CU_ASSERT(NULL == session->idle_stream_head->closed_prev);
+  CU_ASSERT(NULL == session->idle_stream_head->closed_next);
 
   nghttp2_session_del(session);
 }
@@ -6556,9 +6574,9 @@ void test_nghttp2_session_open_idle_stream(void) {
   CU_ASSERT(NGHTTP2_STREAM_IDLE == stream->state);
   CU_ASSERT(NULL == stream->closed_prev);
   CU_ASSERT(NULL == stream->closed_next);
-  CU_ASSERT(1 == session->num_closed_streams);
-  CU_ASSERT(session->closed_stream_head == stream);
-  CU_ASSERT(session->closed_stream_tail == stream);
+  CU_ASSERT(1 == session->num_idle_streams);
+  CU_ASSERT(session->idle_stream_head == stream);
+  CU_ASSERT(session->idle_stream_tail == stream);
 
   opened_stream = nghttp2_session_open_stream(
       session, 1, NGHTTP2_STREAM_FLAG_NONE, &pri_spec_default,
@@ -6566,9 +6584,9 @@ void test_nghttp2_session_open_idle_stream(void) {
 
   CU_ASSERT(stream == opened_stream);
   CU_ASSERT(NGHTTP2_STREAM_OPENING == stream->state);
-  CU_ASSERT(0 == session->num_closed_streams);
-  CU_ASSERT(NULL == session->closed_stream_head);
-  CU_ASSERT(NULL == session->closed_stream_tail);
+  CU_ASSERT(0 == session->num_idle_streams);
+  CU_ASSERT(NULL == session->idle_stream_head);
+  CU_ASSERT(NULL == session->idle_stream_tail);
 
   nghttp2_frame_priority_free(&frame.priority);
 

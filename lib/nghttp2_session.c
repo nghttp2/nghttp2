@@ -588,21 +588,15 @@ nghttp2_session_reprioritize_stream(nghttp2_session *session,
 
     if (session->server && !dep_stream &&
         session_detect_idle_stream(session, pri_spec->stream_id)) {
-      nghttp2_session_adjust_closed_stream(session, 1);
 
       nghttp2_priority_spec_default_init(&pri_spec_default);
 
-      if (nghttp2_session_can_add_closed_stream(session, 1)) {
+      dep_stream = nghttp2_session_open_stream(
+          session, pri_spec->stream_id, NGHTTP2_FLAG_NONE, &pri_spec_default,
+          NGHTTP2_STREAM_IDLE, NULL);
 
-        dep_stream = nghttp2_session_open_stream(
-            session, pri_spec->stream_id, NGHTTP2_FLAG_NONE, &pri_spec_default,
-            NGHTTP2_STREAM_IDLE, NULL);
-
-        if (dep_stream == NULL) {
-          return NGHTTP2_ERR_NOMEM;
-        }
-      } else {
-        pri_spec = &pri_spec_default;
+      if (dep_stream == NULL) {
+        return NGHTTP2_ERR_NOMEM;
       }
     } else if (!dep_stream || !nghttp2_stream_in_dep_tree(dep_stream)) {
       nghttp2_priority_spec_default_init(&pri_spec_default);
@@ -831,7 +825,6 @@ nghttp2_stream *nghttp2_session_open_stream(nghttp2_session *session,
   int stream_alloc = 0;
   nghttp2_priority_spec pri_spec_default;
   nghttp2_priority_spec *pri_spec = pri_spec_in;
-  ssize_t num_adjust_closed = 0;
   nghttp2_mem *mem;
 
   mem = &session->mem;
@@ -840,13 +833,12 @@ nghttp2_stream *nghttp2_session_open_stream(nghttp2_session *session,
   if (stream) {
     assert(stream->state == NGHTTP2_STREAM_IDLE);
     assert(nghttp2_stream_in_dep_tree(stream));
-    nghttp2_session_detach_closed_stream(session, stream);
+    nghttp2_session_detach_idle_stream(session, stream);
     nghttp2_stream_dep_remove(stream);
   } else {
-    if (session->server &&
-        (!nghttp2_session_is_my_stream_id(session, stream_id) ||
-         initial_state == NGHTTP2_STREAM_IDLE)) {
-      num_adjust_closed = 1;
+    if (session->server && initial_state != NGHTTP2_STREAM_IDLE &&
+        !nghttp2_session_is_my_stream_id(session, stream_id)) {
+
       nghttp2_session_adjust_closed_stream(session, 1);
     }
 
@@ -863,26 +855,20 @@ nghttp2_stream *nghttp2_session_open_stream(nghttp2_session *session,
 
     if (session->server && !dep_stream &&
         session_detect_idle_stream(session, pri_spec->stream_id)) {
-      ++num_adjust_closed;
-      nghttp2_session_adjust_closed_stream(session, num_adjust_closed);
-
+      /* Depends on idle stream, which does not exist in memory.
+         Assign default priority for it. */
       nghttp2_priority_spec_default_init(&pri_spec_default);
 
-      if (nghttp2_session_can_add_closed_stream(session, num_adjust_closed)) {
+      dep_stream = nghttp2_session_open_stream(
+          session, pri_spec->stream_id, NGHTTP2_FLAG_NONE, &pri_spec_default,
+          NGHTTP2_STREAM_IDLE, NULL);
 
-        dep_stream = nghttp2_session_open_stream(
-            session, pri_spec->stream_id, NGHTTP2_FLAG_NONE, &pri_spec_default,
-            NGHTTP2_STREAM_IDLE, NULL);
-
-        if (dep_stream == NULL) {
-          if (stream_alloc) {
-            nghttp2_mem_free(mem, stream);
-          }
-
-          return NULL;
+      if (dep_stream == NULL) {
+        if (stream_alloc) {
+          nghttp2_mem_free(mem, stream);
         }
-      } else {
-        pri_spec = &pri_spec_default;
+
+        return NULL;
       }
     } else if (!dep_stream || !nghttp2_stream_in_dep_tree(dep_stream)) {
       /* If dep_stream is not part of dependency tree, stream will get
@@ -921,7 +907,7 @@ nghttp2_stream *nghttp2_session_open_stream(nghttp2_session *session,
     /* Idle stream does not count toward the concurrent streams limit.
        This is used as anchor node in dependency tree. */
     assert(session->server);
-    nghttp2_session_keep_closed_stream(session, stream);
+    nghttp2_session_keep_idle_stream(session, stream);
     break;
   default:
     if (nghttp2_session_is_my_stream_id(session, stream_id)) {
@@ -1021,8 +1007,7 @@ int nghttp2_session_close_stream(nghttp2_session *session, int32_t stream_id,
      hang the stream in a local endpoint.
   */
 
-  if (stream->state != NGHTTP2_STREAM_IDLE &&
-      session->callbacks.on_stream_close_callback) {
+  if (session->callbacks.on_stream_close_callback) {
     if (session->callbacks.on_stream_close_callback(
             session, stream_id, error_code, session->user_data) != 0) {
 
@@ -1032,7 +1017,6 @@ int nghttp2_session_close_stream(nghttp2_session *session, int32_t stream_id,
 
   switch (stream->state) {
   case NGHTTP2_STREAM_RESERVED:
-  case NGHTTP2_STREAM_IDLE:
     break;
   default:
     if (nghttp2_session_is_my_stream_id(session, stream_id)) {
@@ -1091,11 +1075,29 @@ void nghttp2_session_keep_closed_stream(nghttp2_session *session,
   nghttp2_session_adjust_closed_stream(session, 0);
 }
 
-void nghttp2_session_detach_closed_stream(nghttp2_session *session,
-                                          nghttp2_stream *stream) {
+void nghttp2_session_keep_idle_stream(nghttp2_session *session,
+                                      nghttp2_stream *stream) {
+  DEBUGF(fprintf(stderr, "stream: keep idle stream(%p)=%d, state=%d\n", stream,
+                 stream->stream_id, stream->state));
+
+  if (session->idle_stream_tail) {
+    session->idle_stream_tail->closed_next = stream;
+    stream->closed_prev = session->idle_stream_tail;
+  } else {
+    session->idle_stream_head = stream;
+  }
+  session->idle_stream_tail = stream;
+
+  ++session->num_idle_streams;
+
+  nghttp2_session_adjust_idle_stream(session);
+}
+
+void nghttp2_session_detach_idle_stream(nghttp2_session *session,
+                                        nghttp2_stream *stream) {
   nghttp2_stream *prev_stream, *next_stream;
 
-  DEBUGF(fprintf(stderr, "stream: detach closed stream(%p)=%d, state=%d\n",
+  DEBUGF(fprintf(stderr, "stream: detach idle stream(%p)=%d, state=%d\n",
                  stream, stream->stream_id, stream->state));
 
   prev_stream = stream->closed_prev;
@@ -1104,29 +1106,19 @@ void nghttp2_session_detach_closed_stream(nghttp2_session *session,
   if (prev_stream) {
     prev_stream->closed_next = next_stream;
   } else {
-    session->closed_stream_head = next_stream;
+    session->idle_stream_head = next_stream;
   }
 
   if (next_stream) {
     next_stream->closed_prev = prev_stream;
   } else {
-    session->closed_stream_tail = prev_stream;
+    session->idle_stream_tail = prev_stream;
   }
 
   stream->closed_prev = NULL;
   stream->closed_next = NULL;
 
-  --session->num_closed_streams;
-}
-
-int nghttp2_session_can_add_closed_stream(nghttp2_session *session,
-                                          ssize_t offset) {
-  size_t num_stream_max;
-
-  num_stream_max = nghttp2_min(session->local_settings.max_concurrent_streams,
-                               session->pending_local_max_concurrent_stream);
-
-  return offset + session->num_incoming_streams <= num_stream_max;
+  --session->num_idle_streams;
 }
 
 void nghttp2_session_adjust_closed_stream(nghttp2_session *session,
@@ -1162,6 +1154,41 @@ void nghttp2_session_adjust_closed_stream(nghttp2_session *session,
     nghttp2_session_destroy_stream(session, head_stream);
     /* head_stream is now freed */
     --session->num_closed_streams;
+  }
+}
+
+void nghttp2_session_adjust_idle_stream(nghttp2_session *session) {
+  size_t max;
+
+  /* Make minimum number of idle streams 2 so that allocating 2
+     streams at once is easy.  This happens when PRIORITY frame to
+     idle stream, which depends on idle stream which does not
+     exist. */
+  max =
+      nghttp2_max(2, nghttp2_min(session->local_settings.max_concurrent_streams,
+                                 session->pending_local_max_concurrent_stream));
+
+  DEBUGF(fprintf(stderr, "stream: adjusting kept idle streams "
+                         "num_idle_streams=%zu, max=%zu\n",
+                 session->num_idle_streams, max));
+
+  while (session->num_idle_streams > max) {
+    nghttp2_stream *head;
+
+    head = session->idle_stream_head;
+    assert(head);
+
+    session->idle_stream_head = head->closed_next;
+
+    if (session->idle_stream_head) {
+      session->idle_stream_head->closed_prev = NULL;
+    } else {
+      session->idle_stream_tail = NULL;
+    }
+
+    nghttp2_session_destroy_stream(session, head);
+    /* head is now destroyed */
+    --session->num_idle_streams;
   }
 }
 
@@ -3325,8 +3352,7 @@ int nghttp2_session_on_priority_received(nghttp2_session *session,
   if (!stream) {
     /* PRIORITY against idle stream can create anchor node in
        dependency tree. */
-    if (!session_detect_idle_stream(session, frame->hd.stream_id) ||
-        !nghttp2_session_can_add_closed_stream(session, 1)) {
+    if (!session_detect_idle_stream(session, frame->hd.stream_id)) {
       return 0;
     }
 
