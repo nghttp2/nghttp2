@@ -291,7 +291,7 @@ void print_frame(print_type ptype, const nghttp2_frame *frame) {
     print_frame_attr_indent();
     fprintf(outfile, "(padlen=%zu", frame->headers.padlen);
     if (frame->hd.flags & NGHTTP2_FLAG_PRIORITY) {
-      fprintf(outfile, ", stream_id=%d, weight=%u, exclusive=%d",
+      fprintf(outfile, ", dep_stream_id=%d, weight=%u, exclusive=%d",
               frame->headers.pri_spec.stream_id, frame->headers.pri_spec.weight,
               frame->headers.pri_spec.exclusive);
     }
@@ -317,7 +317,7 @@ void print_frame(print_type ptype, const nghttp2_frame *frame) {
   case NGHTTP2_PRIORITY:
     print_frame_attr_indent();
 
-    fprintf(outfile, "(stream_id=%d, weight=%u, exclusive=%d)\n",
+    fprintf(outfile, "(dep_stream_id=%d, weight=%u, exclusive=%d)\n",
             frame->priority.pri_spec.stream_id, frame->priority.pri_spec.weight,
             frame->priority.pri_spec.exclusive);
 
