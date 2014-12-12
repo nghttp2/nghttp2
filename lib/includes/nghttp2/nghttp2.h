@@ -2438,6 +2438,32 @@ uint32_t nghttp2_session_get_remote_settings(nghttp2_session *session,
 /**
  * @function
  *
+ * Tells the |session| that next stream ID is |next_stream_id|.  The
+ * |next_stream_id| must be equal or greater than the value returned
+ * by `nghttp2_session_get_next_stream_id()`.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
+ *     The |next_stream_id| is strictly less than the value
+ *     `nghttp2_session_get_next_stream_id()` returns.
+ */
+int nghttp2_session_set_next_stream_id(nghttp2_session *session,
+                                       int32_t next_stream_id);
+
+/**
+ * @function
+ *
+ * Returns the next outgoing stream ID.  Notice that return type is
+ * uint32_t.  If we run out of stream ID for this session, this
+ * function returns 1 << 31.
+ */
+uint32_t nghttp2_session_get_next_stream_id(nghttp2_session *session);
+
+/**
+ * @function
+ *
  * Tells the |session| that |size| bytes for a stream denoted by
  * |stream_id| were consumed by application and are ready to
  * WINDOW_UPDATE.  This function is intended to be used without

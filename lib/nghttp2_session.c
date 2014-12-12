@@ -6158,3 +6158,18 @@ int nghttp2_session_consume(nghttp2_session *session, int32_t stream_id,
 
   return 0;
 }
+
+int nghttp2_session_set_next_stream_id(nghttp2_session *session,
+                                       int32_t next_stream_id) {
+  if (next_stream_id < 0 ||
+      session->next_stream_id > (uint32_t)next_stream_id) {
+    return NGHTTP2_ERR_INVALID_ARGUMENT;
+  }
+
+  session->next_stream_id = next_stream_id;
+  return 0;
+}
+
+uint32_t nghttp2_session_get_next_stream_id(nghttp2_session *session) {
+  return session->next_stream_id;
+}
