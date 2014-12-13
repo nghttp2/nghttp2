@@ -94,7 +94,7 @@ int main(int argc, char *argv[]) {
         headers.push_back(
             header{"content-length", std::to_string(stbuf.st_size)});
         headers.push_back(
-            header{"last-modified", http_date(stbuf.st_mtim.tv_sec)});
+            header{"last-modified", http_date((int64_t)stbuf.st_mtime)});
       }
       res->write_head(200, std::move(headers));
       res->end(file_reader_from_fd(fd));
