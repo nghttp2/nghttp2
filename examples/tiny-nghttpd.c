@@ -870,7 +870,7 @@ static int process_request(stream *strm, connection *conn) {
 
   strm->fileleft = stbuf.st_size;
 
-  lastmodlen = http_date(lastmod, stbuf.st_mtim.tv_sec);
+  lastmodlen = http_date(lastmod, stbuf.st_mtime.tv_sec);
   contentlengthlen = utos(contentlength, sizeof(contentlength), stbuf.st_size);
 
   nva[nvlen].value = (uint8_t *)contentlength;
