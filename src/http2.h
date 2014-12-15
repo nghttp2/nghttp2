@@ -111,7 +111,7 @@ Headers::value_type to_header(const uint8_t *name, size_t namelen,
 
 // Add name/value pairs to |nva|.  If |no_index| is true, this
 // name/value pair won't be indexed when it is forwarded to the next
-// hop.
+// hop.  This function strips white spaces around |value|.
 void add_header(Headers &nva, const uint8_t *name, size_t namelen,
                 const uint8_t *value, size_t valuelen, bool no_index);
 

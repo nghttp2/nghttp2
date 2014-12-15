@@ -68,6 +68,36 @@ void test_http2_add_header(void) {
                     true);
   CU_ASSERT(Headers::value_type("alpha", "") == nva[0]);
   CU_ASSERT(nva[0].no_index);
+
+  nva.clear();
+
+  http2::add_header(nva, (const uint8_t *)"a", 1, (const uint8_t *)" b", 2,
+                    false);
+  CU_ASSERT(Headers::value_type("a", "b") == nva[0]);
+
+  nva.clear();
+
+  http2::add_header(nva, (const uint8_t *)"a", 1, (const uint8_t *)"b ", 2,
+                    false);
+  CU_ASSERT(Headers::value_type("a", "b") == nva[0]);
+
+  nva.clear();
+
+  http2::add_header(nva, (const uint8_t *)"a", 1, (const uint8_t *)"  b  ", 5,
+                    false);
+  CU_ASSERT(Headers::value_type("a", "b") == nva[0]);
+
+  nva.clear();
+
+  http2::add_header(nva, (const uint8_t *)"a", 1, (const uint8_t *)"  bravo  ",
+                    9, false);
+  CU_ASSERT(Headers::value_type("a", "bravo") == nva[0]);
+
+  nva.clear();
+
+  http2::add_header(nva, (const uint8_t *)"a", 1, (const uint8_t *)"    ", 4,
+                    false);
+  CU_ASSERT(Headers::value_type("a", "") == nva[0]);
 }
 
 void test_http2_check_http2_headers(void) {

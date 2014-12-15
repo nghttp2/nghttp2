@@ -316,6 +316,15 @@ Headers::value_type to_header(const uint8_t *name, size_t namelen,
 
 void add_header(Headers &nva, const uint8_t *name, size_t namelen,
                 const uint8_t *value, size_t valuelen, bool no_index) {
+  if (valuelen > 0) {
+    size_t i, j;
+    for (i = 0; i < valuelen && (value[i] == ' ' || value[i] == '\t'); ++i)
+      ;
+    for (j = valuelen - 1; j > i && (value[j] == ' ' || value[j] == '\t'); --j)
+      ;
+    value += i;
+    valuelen -= i + (valuelen - j - 1);
+  }
   nva.push_back(to_header(name, namelen, value, valuelen, no_index));
 }
 
