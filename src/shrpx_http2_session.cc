@@ -60,7 +60,7 @@ Http2Session::Http2Session(event_base *evbase, SSL_CTX *ssl_ctx)
 
 Http2Session::~Http2Session() { disconnect(); }
 
-int Http2Session::disconnect() {
+int Http2Session::disconnect(bool hard) {
   if (LOG_ENABLED(INFO)) {
     SSLOG(INFO, this) << "Disconnecting";
   }
@@ -140,6 +140,10 @@ int Http2Session::disconnect() {
     handlers.insert(dc->get_client_handler());
   }
   for (auto h : handlers) {
+    if (hard) {
+      delete h;
+      continue;
+    }
     if (h->get_upstream()->on_downstream_reset() != 0) {
       delete h;
     }
@@ -271,13 +275,13 @@ void eventcb(bufferevent *bev, short events, void *ptr) {
     if (!get_config()->downstream_no_tls && !get_config()->insecure &&
         http2session->check_cert() != 0) {
 
-      http2session->disconnect();
+      http2session->disconnect(true);
 
       return;
     }
 
     if (http2session->on_connect() != 0) {
-      http2session->disconnect();
+      http2session->disconnect(true);
       return;
     }
 
@@ -296,7 +300,8 @@ void eventcb(bufferevent *bev, short events, void *ptr) {
     if (LOG_ENABLED(INFO)) {
       SSLOG(INFO, http2session) << "EOF";
     }
-    http2session->disconnect();
+    http2session->disconnect(http2session->get_state() ==
+                             Http2Session::CONNECTING);
     return;
   }
 
@@ -308,7 +313,8 @@ void eventcb(bufferevent *bev, short events, void *ptr) {
         SSLOG(INFO, http2session) << "Timeout";
       }
     }
-    http2session->disconnect();
+    http2session->disconnect(http2session->get_state() ==
+                             Http2Session::CONNECTING);
     return;
   }
 }
@@ -364,7 +370,7 @@ void proxy_eventcb(bufferevent *bev, short events, void *ptr) {
     }
     if (bufferevent_write(bev, req.c_str(), req.size()) != 0) {
       SSLOG(ERROR, http2session) << "bufferevent_write() failed";
-      http2session->disconnect();
+      http2session->disconnect(true);
     }
     return;
   }
@@ -373,7 +379,8 @@ void proxy_eventcb(bufferevent *bev, short events, void *ptr) {
     if (LOG_ENABLED(INFO)) {
       SSLOG(INFO, http2session) << "Proxy EOF";
     }
-    http2session->disconnect();
+    http2session->disconnect(http2session->get_state() ==
+                             Http2Session::PROXY_CONNECTING);
     return;
   }
 
@@ -385,7 +392,8 @@ void proxy_eventcb(bufferevent *bev, short events, void *ptr) {
         SSLOG(INFO, http2session) << "Timeout";
       }
     }
-    http2session->disconnect();
+    http2session->disconnect(http2session->get_state() ==
+                             Http2Session::PROXY_CONNECTING);
     return;
   }
 }

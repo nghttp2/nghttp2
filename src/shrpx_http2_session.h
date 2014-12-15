@@ -56,7 +56,9 @@ public:
 
   int check_cert();
 
-  int disconnect();
+  // If hard is true, all pending requests are abandoned and
+  // associated ClientHandlers will be deleted.
+  int disconnect(bool hard = false);
   int initiate_connection();
 
   void add_downstream_connection(Http2DownstreamConnection *dconn);
