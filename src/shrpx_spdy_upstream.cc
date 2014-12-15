@@ -192,12 +192,6 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
       upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
       return;
     }
-    // Require content-length if FIN flag is not set.
-    if (!is_connect && !content_length &&
-        (frame->syn_stream.hd.flags & SPDYLAY_CTRL_FLAG_FIN) == 0) {
-      upstream->rst_stream(downstream, SPDYLAY_PROTOCOL_ERROR);
-      return;
-    }
 
     downstream->set_request_method(method);
     if (is_connect) {
