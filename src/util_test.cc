@@ -24,9 +24,12 @@
  */
 #include "util_test.h"
 
+#include <cstring>
 #include <iostream>
 
 #include <CUnit/CUnit.h>
+
+#include <nghttp2/nghttp2.h>
 
 #include "util.h"
 
@@ -114,6 +117,52 @@ void test_util_utox(void) {
 void test_util_http_date(void) {
   CU_ASSERT("Thu, 01 Jan 1970 00:00:00 GMT" == util::http_date(0));
   CU_ASSERT("Wed, 29 Feb 2012 09:15:16 GMT" == util::http_date(1330506916));
+}
+
+void test_util_select_h2(void) {
+  const unsigned char *out = NULL;
+  unsigned char outlen = 0;
+
+  // Check single entry and select it.
+  const unsigned char t1[] = "\x5h2-14";
+  CU_ASSERT(util::select_h2(&out, &outlen, t1, sizeof(t1) - 1));
+  CU_ASSERT(
+      memcmp(NGHTTP2_PROTO_VERSION_ID, out, NGHTTP2_PROTO_VERSION_ID_LEN) == 0);
+  CU_ASSERT(NGHTTP2_PROTO_VERSION_ID_LEN == outlen);
+
+  out = NULL;
+  outlen = 0;
+
+  // Check the case where id is correct but length is invalid and too
+  // long.
+  const unsigned char t2[] = "\x6h2-14";
+  CU_ASSERT(!util::select_h2(&out, &outlen, t2, sizeof(t2) - 1));
+
+  // Check the case where h2-14 is located after bogus ID.
+  const unsigned char t3[] = "\x2h3\x5h2-14";
+  CU_ASSERT(util::select_h2(&out, &outlen, t3, sizeof(t3) - 1));
+  CU_ASSERT(
+      memcmp(NGHTTP2_PROTO_VERSION_ID, out, NGHTTP2_PROTO_VERSION_ID_LEN) == 0);
+  CU_ASSERT(NGHTTP2_PROTO_VERSION_ID_LEN == outlen);
+
+  out = NULL;
+  outlen = 0;
+
+  // Check the case that last entry's length is invalid and too long.
+  const unsigned char t4[] = "\x2h3\x6h2-14";
+  CU_ASSERT(!util::select_h2(&out, &outlen, t4, sizeof(t4) - 1));
+
+  // Check the case that all entries are not supported.
+  const unsigned char t5[] = "\x2h3\x2h4";
+  CU_ASSERT(!util::select_h2(&out, &outlen, t5, sizeof(t5) - 1));
+
+  // Check the case where 2 values are eligible, but last one is
+  // picked up because it has precedence over the other.
+  const unsigned char t6[] = "\x5h2-14\x5h2-16";
+  CU_ASSERT(util::select_h2(&out, &outlen, t6, sizeof(t6) - 1));
+  CU_ASSERT(memcmp(NGHTTP2_H2_PROTO_ALIAS, out, NGHTTP2_H2_PROTO_ALIAS_LEN) ==
+            0);
+  CU_ASSERT(NGHTTP2_H2_PROTO_ALIAS_LEN == outlen);
 }
 
 } // namespace shrpx

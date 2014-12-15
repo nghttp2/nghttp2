@@ -43,6 +43,12 @@
 
 namespace nghttp2 {
 
+// The additional HTTP/2 protocol ALPN ID we also supports for our
+// applications.  This will be removed once HTTP/2 specification is
+// finalized.
+extern const unsigned char NGHTTP2_H2_PROTO_ALIAS[];
+extern size_t NGHTTP2_H2_PROTO_ALIAS_LEN;
+
 namespace util {
 
 template <typename T, size_t N> constexpr size_t array_size(T (&)[N]) {
@@ -423,6 +429,12 @@ int64_t to_time64(const timeval &tv);
 // Returns true if ALPN ID |proto| of length |len| is supported HTTP/2
 // protocol identifier.
 bool check_h2_is_selected(const unsigned char *alpn, size_t len);
+
+// Selects h2 protocol ALPN ID if one of supported h2 versions are
+// present in |in| of length inlen.  Returns true if h2 version is
+// selected.
+bool select_h2(const unsigned char **out, unsigned char *outlen,
+               const unsigned char *in, unsigned int inlen);
 
 // Returns default ALPN protocol list, which only contains supported
 // HTTP/2 protocol identifier.

@@ -1403,8 +1403,7 @@ int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
       std::cout << std::endl;
     }
   }
-  if (nghttp2_select_next_protocol(const_cast<unsigned char **>(out), outlen,
-                                   in, inlen) <= 0) {
+  if (!util::select_h2(out, outlen, in, inlen)) {
     return SSL_TLSEXT_ERR_NOACK;
   }
   return SSL_TLSEXT_ERR_OK;

@@ -280,7 +280,9 @@ int ClientHandler::validate_next_proto() {
                               next_proto_len)) {
         break;
       }
-      if (util::check_h2_is_selected(next_proto, next_proto_len)) {
+      if (util::check_h2_is_selected(next_proto, next_proto_len) ||
+          (next_proto_len == sizeof("h2-16") - 1 &&
+           memcmp("h2-16", next_proto, next_proto_len) == 0)) {
 
         set_bev_cb(upstream_http2_connhd_readcb, upstream_writecb,
                    upstream_eventcb);

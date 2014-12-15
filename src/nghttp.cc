@@ -1701,7 +1701,8 @@ int client_select_next_proto_cb(SSL *ssl, unsigned char **out,
       std::cout << std::endl;
     }
   }
-  if (nghttp2_select_next_protocol(out, outlen, in, inlen) <= 0) {
+  if (!util::select_h2(const_cast<const unsigned char **>(out), outlen, in,
+                       inlen)) {
     print_protocol_nego_error();
     return SSL_TLSEXT_ERR_NOACK;
   }

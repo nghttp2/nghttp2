@@ -42,6 +42,9 @@
 
 namespace nghttp2 {
 
+const unsigned char NGHTTP2_H2_PROTO_ALIAS[] = "h2-16";
+size_t NGHTTP2_H2_PROTO_ALIAS_LEN = sizeof(NGHTTP2_H2_PROTO_ALIAS) - 1;
+
 namespace util {
 
 const char DEFAULT_STRIP_CHARSET[] = "\r\n\t ";
@@ -772,13 +775,52 @@ int64_t to_time64(const timeval &tv) {
 
 bool check_h2_is_selected(const unsigned char *proto, size_t len) {
   return streq(NGHTTP2_PROTO_VERSION_ID, NGHTTP2_PROTO_VERSION_ID_LEN, proto,
-               len);
+               len) ||
+         streq(NGHTTP2_H2_PROTO_ALIAS, NGHTTP2_H2_PROTO_ALIAS_LEN, proto, len);
+}
+
+namespace {
+bool select_h2(const unsigned char **out, unsigned char *outlen,
+               const unsigned char *in, unsigned int inlen,
+               const unsigned char *target, unsigned int tlen) {
+  for (auto p = in, end = in + inlen; p < end;) {
+    auto len = *p++;
+    if (p + len > end) {
+      return false;
+    }
+    if (len != tlen) {
+      p += len;
+      continue;
+    }
+    if (memcmp(target, p, tlen) == 0) {
+      *out = target;
+      *outlen = tlen;
+      return true;
+    }
+    p += len;
+  }
+  return false;
+}
+} // namespace
+
+bool select_h2(const unsigned char **out, unsigned char *outlen,
+               const unsigned char *in, unsigned int inlen) {
+  return select_h2(out, outlen, in, inlen, NGHTTP2_H2_PROTO_ALIAS,
+                   NGHTTP2_H2_PROTO_ALIAS_LEN) ||
+         select_h2(
+             out, outlen, in, inlen,
+             reinterpret_cast<const unsigned char *>(NGHTTP2_PROTO_VERSION_ID),
+             NGHTTP2_PROTO_VERSION_ID_LEN);
 }
 
 std::vector<unsigned char> get_default_alpn() {
-  auto res = std::vector<unsigned char>(1 + NGHTTP2_PROTO_VERSION_ID_LEN);
+  auto res = std::vector<unsigned char>(1 + NGHTTP2_PROTO_VERSION_ID_LEN + 1 +
+                                        NGHTTP2_H2_PROTO_ALIAS_LEN);
   auto p = res.data();
 
+  *p++ = NGHTTP2_H2_PROTO_ALIAS_LEN;
+  memcpy(p, NGHTTP2_H2_PROTO_ALIAS, NGHTTP2_H2_PROTO_ALIAS_LEN);
+  p += NGHTTP2_H2_PROTO_ALIAS_LEN;
   *p++ = NGHTTP2_PROTO_VERSION_ID_LEN;
   memcpy(p, NGHTTP2_PROTO_VERSION_ID, NGHTTP2_PROTO_VERSION_ID_LEN);
 

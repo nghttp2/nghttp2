@@ -565,11 +565,12 @@ namespace {
 int client_select_next_proto_cb(SSL *ssl, unsigned char **out,
                                 unsigned char *outlen, const unsigned char *in,
                                 unsigned int inlen, void *arg) {
-  if (nghttp2_select_next_protocol(out, outlen, in, inlen) > 0) {
+  if (util::select_h2(const_cast<const unsigned char **>(out), outlen, in,
+                      inlen)) {
     return SSL_TLSEXT_ERR_OK;
   }
 #ifdef HAVE_SPDYLAY
-  else if (spdylay_select_next_protocol(out, outlen, in, inlen) > 0) {
+  if (spdylay_select_next_protocol(out, outlen, in, inlen) > 0) {
     return SSL_TLSEXT_ERR_OK;
   }
 #endif
