@@ -130,11 +130,7 @@ const Headers::value_type *get_header(const Headers &nva, const char *name);
 // Returns nv->second if nv is not nullptr. Otherwise, returns "".
 std::string value_to_str(const Headers::value_type *nv);
 
-// Returns true if the value of |nv| includes only ' ' (0x20) or '\t'.
-bool value_lws(const Headers::value_type *nv);
-
-// Returns true if the value of |nv| is not empty value and not LWS
-// and not contain illegal characters.
+// Returns true if the value of |nv| is not empty.
 bool non_empty_value(const Headers::value_type *nv);
 
 // Creates nghttp2_nv using |name| and |value| and returns it. The

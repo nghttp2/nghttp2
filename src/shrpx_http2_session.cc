@@ -921,7 +921,7 @@ int on_response_headers(Http2Session *http2session, Downstream *downstream,
   auto status = http2::get_unique_header(nva, ":status");
   int status_code;
 
-  if (!status || http2::value_lws(status) ||
+  if (!http2::non_empty_value(status) ||
       (status_code = http2::parse_http_status_code(status->value)) == -1) {
 
     http2session->submit_rst_stream(frame->hd.stream_id,

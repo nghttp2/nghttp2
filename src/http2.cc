@@ -357,12 +357,8 @@ std::string value_to_str(const Headers::value_type *nv) {
   return "";
 }
 
-bool value_lws(const Headers::value_type *nv) {
-  return (*nv).value.find_first_not_of("\t ") == std::string::npos;
-}
-
 bool non_empty_value(const Headers::value_type *nv) {
-  return nv && !value_lws(nv);
+  return nv && !nv->value.empty();
 }
 
 nghttp2_nv make_nv(const std::string &name, const std::string &value,

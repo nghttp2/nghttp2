@@ -162,16 +162,6 @@ void test_http2_get_header(void) {
   CU_ASSERT(rv == nullptr);
 }
 
-void test_http2_value_lws(void) {
-  auto nva = Headers{
-      {"0", "alpha"}, {"1", " alpha"}, {"2", ""}, {" 3", " "}, {" 4", " a "}};
-  CU_ASSERT(!http2::value_lws(&nva[0]));
-  CU_ASSERT(!http2::value_lws(&nva[1]));
-  CU_ASSERT(http2::value_lws(&nva[2]));
-  CU_ASSERT(http2::value_lws(&nva[3]));
-  CU_ASSERT(!http2::value_lws(&nva[4]));
-}
-
 namespace {
 auto headers = Headers{{"alpha", "0", true},
                        {"bravo", "1"},
