@@ -144,9 +144,9 @@ nghttpx_unittest_SOURCES = shrpx-unittest.cc \
 	nghttp2_gzip.c nghttp2_gzip.h
 nghttpx_unittest_CPPFLAGS = ${AM_CPPFLAGS}\
 	 -DNGHTTP2_TESTS_DIR=\"$(top_srcdir)/tests\"
-nghttpx_unittest_LDFLAGS = -static
-nghttpx_unittest_LDADD = libnghttpx.a ${LDADD} ${AM_LDFLAGS} \
+nghttpx_unittest_LDFLAGS = ${AM_LDFLAGS} \
 	@CUNIT_LIBS@ @TESTLDFLAGS@
+nghttpx_unittest_LDADD = libnghttpx.a ${LDADD}
 
 TESTS += nghttpx-unittest
 endif # HAVE_CUNIT
