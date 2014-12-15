@@ -1379,6 +1379,10 @@ int start_listen(event_base *evbase, Sessions *sessions, const Config *config) {
     close(fd);
   }
   freeaddrinfo(res);
+
+  if (listen_handler_store) {
+    return -1;
+  }
   return 0;
 }
 } // namespace
