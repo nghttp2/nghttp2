@@ -164,7 +164,6 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
     const char *scheme = nullptr;
     const char *host = nullptr;
     const char *method = nullptr;
-    const char *content_length = nullptr;
 
     for (size_t i = 0; nv[i]; i += 2) {
       if (strcmp(nv[i], ":path") == 0) {
@@ -176,9 +175,6 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
       } else if (strcmp(nv[i], ":host") == 0) {
         host = nv[i + 1];
       } else if (nv[i][0] != ':') {
-        if (strcmp(nv[i], "content-length") == 0) {
-          content_length = nv[i + 1];
-        }
         downstream->add_request_header(nv[i], nv[i + 1]);
       }
     }
