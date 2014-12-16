@@ -1725,6 +1725,38 @@ typedef void *(*nghttp2_realloc)(void *ptr, size_t size, void *mem_user_data);
  * Custom memory allocator functions and user defined pointer.  The
  * |mem_user_data| member is passed to each allocator function.  This
  * can be used, for example, to achieve per-session memory pool.
+ *
+ * In the following example code, ``my_malloc``, ``my_free``,
+ * ``my_calloc`` and ``my_realloc`` are the replacement of the
+ * standard allocators ``malloc``, ``free``, ``calloc`` and
+ * ``realloc`` respectively::
+ *
+ *     void *my_malloc_cb(size_t size, void *mem_user_data) {
+ *       return my_malloc(size);
+ *     }
+ *
+ *     void my_free_cb(void *ptr, void *mem_user_data) { my_free(ptr); }
+ *
+ *     void *my_calloc_cb(size_t nmemb, size_t size, void *mem_user_data) {
+ *       return my_calloc(nmemb, size);
+ *     }
+ *
+ *     void *my_realloc_cb(void *ptr, size_t size, void *mem_user_data) {
+ *       return my_realloc(ptr, size);
+ *     }
+ *
+ *     void session_new() {
+ *       nghttp2_session *session;
+ *       nghttp2_session_callbacks *callbacks;
+ *       nghttp2_mem mem = {NULL, my_malloc_cb, my_free_cb, my_calloc_cb,
+ *                          my_realloc_cb};
+ *
+ *       ...
+ *
+ *       nghttp2_session_client_new3(&session, callbacks, NULL, NULL, &mem);
+ *
+ *       ...
+ *     }
  */
 typedef struct {
   /**
