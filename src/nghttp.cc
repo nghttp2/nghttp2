@@ -172,6 +172,20 @@ std::string strip_fragment(const char *raw_uri) {
 } // namespace
 
 namespace {
+// Returns numeric address string of |addr|.  If getnameinfo() is
+// failed, "unknown" is returned.
+std::string numeric_name(addrinfo *addr) {
+  char host[NI_MAXHOST];
+  auto rv = getnameinfo(addr->ai_addr, addr->ai_addrlen, host, sizeof(host),
+                        nullptr, 0, NI_NUMERICHOST);
+  if (rv != 0) {
+    return "unknown";
+  }
+  return host;
+}
+} // namespace
+
+namespace {
 struct Request;
 } // namespace
 
@@ -453,6 +467,7 @@ struct HttpClient {
   event *settings_timerev;
   addrinfo *addrs;
   addrinfo *next_addr;
+  addrinfo *cur_addr;
   // The number of completed requests, including failed ones.
   size_t complete;
   // The length of settings_payload
@@ -470,9 +485,9 @@ struct HttpClient {
              SSL_CTX *ssl_ctx)
       : session(nullptr), callbacks(callbacks), evbase(evbase),
         ssl_ctx(ssl_ctx), ssl(nullptr), bev(nullptr), settings_timerev(nullptr),
-        addrs(nullptr), next_addr(nullptr), complete(0), settings_payloadlen(0),
-        state(STATE_IDLE), upgrade_response_status_code(0),
-        upgrade_response_complete(false) {}
+        addrs(nullptr), next_addr(nullptr), cur_addr(nullptr), complete(0),
+        settings_payloadlen(0), state(STATE_IDLE),
+        upgrade_response_status_code(0), upgrade_response_complete(false) {}
 
   ~HttpClient() {
     disconnect();
@@ -541,7 +556,9 @@ struct HttpClient {
       bev = bufferevent_socket_new(evbase, -1, BEV_OPT_DEFER_CALLBACKS);
     }
     rv = -1;
+    cur_addr = nullptr;
     while (next_addr) {
+      cur_addr = next_addr;
       rv = bufferevent_socket_connect(bev, next_addr->ai_addr,
                                       next_addr->ai_addrlen);
       next_addr = next_addr->ai_next;
@@ -1807,8 +1824,11 @@ void eventcb(bufferevent *bev, short events, void *ptr) {
     auto state = client->state;
     client->disconnect();
     if (state == STATE_IDLE) {
+      auto failed_name = numeric_name(client->cur_addr);
       if (client->initiate_connection() == 0) {
-        std::cerr << "Trying next address" << std::endl;
+        std::cerr << "[ERROR] EOF from " << failed_name << "\n"
+                  << "Trying next address " << numeric_name(client->cur_addr)
+                  << std::endl;
       }
     }
     return;
@@ -1816,7 +1836,8 @@ void eventcb(bufferevent *bev, short events, void *ptr) {
   if (events & (BEV_EVENT_ERROR | BEV_EVENT_TIMEOUT)) {
     if (events & BEV_EVENT_ERROR) {
       if (client->state == STATE_IDLE) {
-        std::cerr << "[ERROR] Could not connect to the host" << std::endl;
+        std::cerr << "[ERROR] Could not connect to the address "
+                  << numeric_name(client->cur_addr) << std::endl;
       } else {
         std::cerr << "[ERROR] Network error" << std::endl;
       }
@@ -1827,7 +1848,8 @@ void eventcb(bufferevent *bev, short events, void *ptr) {
     client->disconnect();
     if (state == STATE_IDLE) {
       if (client->initiate_connection() == 0) {
-        std::cerr << "Trying next address" << std::endl;
+        std::cerr << "Trying next address " << numeric_name(client->cur_addr)
+                  << std::endl;
       }
     }
     return;
