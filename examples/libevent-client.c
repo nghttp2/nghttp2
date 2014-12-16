@@ -258,7 +258,7 @@ static int on_data_chunk_recv_callback(nghttp2_session *session _U_,
    stream), if it is closed, we send GOAWAY and tear down the
    session */
 static int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
-                                    nghttp2_error_code error_code,
+                                    uint32_t error_code,
                                     void *user_data) {
   http2_session_data *session_data = (http2_session_data *)user_data;
   int rv;
