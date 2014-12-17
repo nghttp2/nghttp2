@@ -794,10 +794,11 @@ struct HttpClient {
 
         dep_stream_id = stream_id;
       }
-    }
-    rv = nghttp2_session_set_next_stream_id(session, ANCHOR_ID_LOWEST + 2);
-    if (rv != 0) {
-      return -1;
+
+      rv = nghttp2_session_set_next_stream_id(session, ANCHOR_ID_LOWEST + 2);
+      if (rv != 0) {
+        return -1;
+      }
     }
 
     assert(settings_timerev == nullptr);
