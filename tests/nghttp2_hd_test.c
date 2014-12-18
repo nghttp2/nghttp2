@@ -1211,3 +1211,32 @@ void test_nghttp2_hd_decode_length(void) {
 
   CU_ASSERT(-1 == rv);
 }
+
+void test_nghttp2_hd_huff_encode(void) {
+  int rv;
+  ssize_t len;
+  nghttp2_bufs bufs, outbufs;
+  nghttp2_hd_huff_decode_context ctx;
+  const uint8_t t1[] = {22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11,
+                        10, 9,  8,  7,  6,  5,  4,  3,  2,  1,  0};
+
+  frame_pack_bufs_init(&bufs);
+  frame_pack_bufs_init(&outbufs);
+
+  rv = nghttp2_hd_huff_encode(&bufs, t1, sizeof(t1));
+
+  CU_ASSERT(rv == 0);
+
+  nghttp2_hd_huff_decode_context_init(&ctx);
+
+  len = nghttp2_hd_huff_decode(&ctx, &outbufs, bufs.cur->buf.pos,
+                               nghttp2_bufs_len(&bufs), 1);
+
+  CU_ASSERT(nghttp2_bufs_len(&bufs) == len);
+  CU_ASSERT((ssize_t)sizeof(t1) == nghttp2_bufs_len(&outbufs));
+
+  CU_ASSERT(0 == memcmp(t1, outbufs.cur->buf.pos, sizeof(t1)));
+
+  nghttp2_bufs_free(&bufs);
+  nghttp2_bufs_free(&outbufs);
+}
