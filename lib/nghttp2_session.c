@@ -2200,7 +2200,10 @@ static void session_outbound_item_cycle_weight(nghttp2_session *session,
 }
 
 /*
- * Called after a frame is sent.
+ * Called after a frame is sent.  This function runs
+ * on_frame_send_callback and handles stream closure upon END_STREAM
+ * or RST_STREAM.  This function does not reset session->aob.  It is a
+ * responsibility of session_after_frame_sent2.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -2210,7 +2213,7 @@ static void session_outbound_item_cycle_weight(nghttp2_session *session,
  * NGHTTP2_ERR_CALLBACK_FAILURE
  *     The callback function failed.
  */
-static int session_after_frame_sent(nghttp2_session *session) {
+static int session_after_frame_sent1(nghttp2_session *session) {
   int rv;
   nghttp2_active_outbound_item *aob = &session->aob;
   nghttp2_outbound_item *item = aob->item;
@@ -2227,11 +2230,7 @@ static int session_after_frame_sent(nghttp2_session *session) {
         frame->hd.type == NGHTTP2_PUSH_PROMISE) {
 
       if (nghttp2_bufs_next_present(framebufs)) {
-        framebufs->cur = framebufs->cur->next;
-
-        DEBUGF(fprintf(stderr, "send: next CONTINUATION frame, %zu bytes\n",
-                       nghttp2_buf_len(&framebufs->cur->buf)));
-
+        DEBUGF(fprintf(stderr, "send: CONTINUATION exists, just return\n"));
         return 0;
       }
     }
@@ -2242,8 +2241,9 @@ static int session_after_frame_sent(nghttp2_session *session) {
     switch (frame->hd.type) {
     case NGHTTP2_HEADERS: {
       nghttp2_headers_aux_data *aux_data;
-      nghttp2_stream *stream =
-          nghttp2_session_get_stream(session, frame->hd.stream_id);
+      nghttp2_stream *stream;
+
+      stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
       if (!stream) {
         break;
       }
@@ -2359,10 +2359,9 @@ static int session_after_frame_sent(nghttp2_session *session) {
     default:
       break;
     }
-    active_outbound_item_reset(&session->aob, mem);
+
     return 0;
   } else {
-    nghttp2_outbound_item *next_item;
     nghttp2_stream *stream;
     nghttp2_data_aux_data *aux_data;
 
@@ -2412,7 +2411,10 @@ static int session_after_frame_sent(nghttp2_session *session) {
           stream = NULL;
         }
       }
-    } else if (session->callbacks.on_frame_send_callback) {
+      return 0;
+    }
+
+    if (session->callbacks.on_frame_send_callback) {
       rv = session_call_on_frame_send(session, frame);
 
       if (nghttp2_is_fatal(rv)) {
@@ -2420,16 +2422,72 @@ static int session_after_frame_sent(nghttp2_session *session) {
       }
     }
 
-    /* On EOF, we have already detached data if stream is not NULL.
-       If stream is NULL, we cannot detach data.  Please note that
+    return 0;
+  }
+  /* Unreachable */
+  assert(0);
+  return 0;
+}
+
+/*
+ * Called after a frame is sent and session_after_frame_sent1.  This
+ * function is responsible to reset session->aob.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory.
+ * NGHTTP2_ERR_CALLBACK_FAILURE
+ *     The callback function failed.
+ */
+static int session_after_frame_sent2(nghttp2_session *session) {
+  int rv;
+  nghttp2_active_outbound_item *aob = &session->aob;
+  nghttp2_outbound_item *item = aob->item;
+  nghttp2_bufs *framebufs = &aob->framebufs;
+  nghttp2_frame *frame;
+  nghttp2_mem *mem;
+
+  mem = &session->mem;
+  frame = &item->frame;
+
+  if (frame->hd.type != NGHTTP2_DATA) {
+
+    if (frame->hd.type == NGHTTP2_HEADERS ||
+        frame->hd.type == NGHTTP2_PUSH_PROMISE) {
+
+      if (nghttp2_bufs_next_present(framebufs)) {
+        framebufs->cur = framebufs->cur->next;
+
+        DEBUGF(fprintf(stderr, "send: next CONTINUATION frame, %zu bytes\n",
+                       nghttp2_buf_len(&framebufs->cur->buf)));
+
+        return 0;
+      }
+    }
+
+    active_outbound_item_reset(&session->aob, mem);
+
+    return 0;
+  } else {
+    nghttp2_outbound_item *next_item;
+    nghttp2_stream *stream;
+    nghttp2_data_aux_data *aux_data;
+
+    aux_data = &item->aux_data.data;
+
+    /* On EOF, we have already detached data.  Please note that
        application may issue nghttp2_submit_data() in
-       on_frame_send_callback, which attach data to stream.  We don't
-       want to detach it. */
+       on_frame_send_callback (call from session_after_frame_sent1),
+       which attach data to stream.  We don't want to detach it. */
     if (aux_data->eof) {
       active_outbound_item_reset(aob, mem);
 
       return 0;
     }
+
+    stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
 
     /* If session is closed or RST_STREAM was queued, we won't send
        further data. */
@@ -2558,8 +2616,9 @@ static int session_after_frame_sent(nghttp2_session *session) {
   return 0;
 }
 
-ssize_t nghttp2_session_mem_send(nghttp2_session *session,
-                                 const uint8_t **data_ptr) {
+static ssize_t nghttp2_session_mem_send_internal(nghttp2_session *session,
+                                                 const uint8_t **data_ptr,
+                                                 int fast_cb) {
   int rv;
   nghttp2_active_outbound_item *aob;
   nghttp2_bufs *framebufs;
@@ -2680,7 +2739,12 @@ ssize_t nghttp2_session_mem_send(nghttp2_session *session,
         DEBUGF(fprintf(stderr, "send: end transmission of a frame\n"));
 
         /* Frame has completely sent */
-        rv = session_after_frame_sent(session);
+        if (fast_cb) {
+          rv = session_after_frame_sent2(session);
+        } else {
+          rv = session_after_frame_sent1(session);
+          rv = session_after_frame_sent2(session);
+        }
         if (rv < 0) {
           /* FATAL */
           assert(nghttp2_is_fatal(rv));
@@ -2703,6 +2767,29 @@ ssize_t nghttp2_session_mem_send(nghttp2_session *session,
   }
 }
 
+ssize_t nghttp2_session_mem_send(nghttp2_session *session,
+                                 const uint8_t **data_ptr) {
+  int rv;
+  ssize_t len;
+
+  len = nghttp2_session_mem_send_internal(session, data_ptr, 1);
+  if (len <= 0) {
+    return len;
+  }
+
+  /* We have to call session_after_frame_sent1 here to handle stream
+     closure upon transmission of frames.  Otherwise, END_STREAM may
+     be reached to client before we call nghttp2_session_mem_send
+     again and we may get exceeding number of incoming streams. */
+  rv = session_after_frame_sent1(session);
+  if (rv < 0) {
+    assert(nghttp2_is_fatal(rv));
+    return (ssize_t)rv;
+  }
+
+  return len;
+}
+
 int nghttp2_session_send(nghttp2_session *session) {
   const uint8_t *data;
   ssize_t datalen;
@@ -2712,7 +2799,7 @@ int nghttp2_session_send(nghttp2_session *session) {
   framebufs = &session->aob.framebufs;
 
   for (;;) {
-    datalen = nghttp2_session_mem_send(session, &data);
+    datalen = nghttp2_session_mem_send_internal(session, &data, 0);
     if (datalen <= 0) {
       return (int)datalen;
     }
