@@ -799,8 +799,29 @@ struct HttpClient {
       if (rv != 0) {
         return -1;
       }
-    }
 
+      if (need_upgrade()) {
+        // Amend the priority because we cannot send priority in
+        // HTTP/1.1 Upgrade.
+        nghttp2_priority_spec_init(&pri_spec, ANCHOR_ID_HIGH, config.weight, 0);
+
+        rv = nghttp2_submit_priority(session, NGHTTP2_FLAG_NONE, 1, &pri_spec);
+        if (rv != 0) {
+          return -1;
+        }
+      }
+    } else if (need_upgrade() && config.weight != NGHTTP2_DEFAULT_WEIGHT) {
+      // Amend the priority because we cannot send priority in
+      // HTTP/1.1 Upgrade.
+      nghttp2_priority_spec pri_spec;
+
+      nghttp2_priority_spec_init(&pri_spec, 0, config.weight, 0);
+
+      rv = nghttp2_submit_priority(session, NGHTTP2_FLAG_NONE, 1, &pri_spec);
+      if (rv != 0) {
+        return -1;
+      }
+    }
     assert(settings_timerev == nullptr);
     settings_timerev = evtimer_new(evbase, settings_timeout_cb, this);
     // SETTINGS ACK timeout is 10 seconds for now
@@ -1922,12 +1943,8 @@ int communicate(
     if (!config.no_dep && config.dep_idle) {
       dep_stream_id = ANCHOR_ID_HIGH;
     }
-    if (config.weight != NGHTTP2_DEFAULT_WEIGHT) {
-      nghttp2_priority_spec_init(&pri_spec, dep_stream_id, config.weight, 0);
-    } else {
-      nghttp2_priority_spec_init(&pri_spec, dep_stream_id,
-                                 NGHTTP2_DEFAULT_WEIGHT, 0);
-    }
+
+    nghttp2_priority_spec_init(&pri_spec, dep_stream_id, config.weight, 0);
 
     for (auto req : requests) {
       for (int i = 0; i < config.multiply; ++i) {
