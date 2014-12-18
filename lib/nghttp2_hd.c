@@ -785,11 +785,18 @@ static nghttp2_hd_entry *add_hd_table_incremental(nghttp2_hd_context *context,
     if (rv != 0) {
       --new_ent->ref;
 
-      /* nv->name and nv->value are managed by caller. */
-      new_ent->nv.name = NULL;
-      new_ent->nv.namelen = 0;
-      new_ent->nv.value = NULL;
-      new_ent->nv.valuelen = 0;
+      if ((entry_flags & NGHTTP2_HD_FLAG_NAME_ALLOC) &&
+          (entry_flags & NGHTTP2_HD_FLAG_NAME_GIFT)) {
+        /* nv->name are managed by caller. */
+        new_ent->nv.name = NULL;
+        new_ent->nv.namelen = 0;
+      }
+      if ((entry_flags & NGHTTP2_HD_FLAG_VALUE_ALLOC) &&
+          (entry_flags & NGHTTP2_HD_FLAG_VALUE_GIFT)) {
+        /* nv->value are managed by caller. */
+        new_ent->nv.value = NULL;
+        new_ent->nv.valuelen = 0;
+      }
 
       nghttp2_hd_entry_free(new_ent, mem);
       nghttp2_mem_free(mem, new_ent);
