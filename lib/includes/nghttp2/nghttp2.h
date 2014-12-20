@@ -2726,6 +2726,12 @@ int32_t nghttp2_submit_request(nghttp2_session *session,
  *     Out of memory.
  * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
  *     The |stream_id| is 0.
+ *
+ * .. warning::
+ *
+ *   Calling this function twice for the same stream ID may lead to
+ *   program crash.  It is generally considered to a programming error
+ *   to commit response twice.
  */
 int nghttp2_submit_response(nghttp2_session *session, int32_t stream_id,
                             const nghttp2_nv *nva, size_t nvlen,
