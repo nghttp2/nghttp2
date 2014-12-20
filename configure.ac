@@ -96,9 +96,9 @@ AC_ARG_ENABLE([python-bindings],
     [request_python_bindings=$enableval], [request_python_bindings=check])
 
 AC_ARG_ENABLE([failmalloc],
-    [AS_HELP_STRING([--enable-failmalloc],
-                    [Build failmalloc test program [default=no]])],
-    [request_failmalloc=$enableval], [request_failmalloc=no])
+    [AS_HELP_STRING([--disable-failmalloc],
+                    [Do not build failmalloc test program])],
+    [request_failmalloc=$enableval], [request_failmalloc=yes])
 
 AC_ARG_WITH([libxml2],
     [AS_HELP_STRING([--with-libxml2],
@@ -452,6 +452,11 @@ AM_CONDITIONAL([ENABLE_PYTHON_BINDINGS],
 AM_CONDITIONAL([HAVE_CYTHON], [test "x${CYTHON}" != "x"])
 
 # failmalloc tests
+enable_failmalloc=no
+if test "x${request_failmalloc}" = "xyes"; then
+  enable_failmalloc=yes
+fi
+
 AM_CONDITIONAL([ENABLE_FAILMALLOC], [ test "x${enable_failmalloc}" = "xyes" ])
 
 # Checks for header files.
@@ -640,7 +645,7 @@ AC_MSG_NOTICE([summary of build options:
       Cython:         ${CYTHON}
     Test:
       CUnit:          ${have_cunit}
-      Failmalloc:     ${request_failmalloc}
+      Failmalloc:     ${enable_failmalloc}
     Libs:
       OpenSSL:        ${have_openssl}
       Libxml2:        ${have_libxml2}
