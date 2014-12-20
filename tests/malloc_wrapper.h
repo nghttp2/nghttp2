@@ -27,6 +27,8 @@
 
 #include <stdlib.h>
 
+#include "nghttp2_mem.h"
+
 /* Global variables to control the behavior of malloc() */
 
 /* If nonzero, malloc failure mode is on */
@@ -40,7 +42,10 @@ extern int nghttp2_countmalloc;
    incremented if nghttp2_nmalloc is nonzero. */
 extern int nghttp2_nmalloc;
 
-void *malloc(size_t size);
+/* Returns pointer to nghttp2_mem, which, when dereferenced, contains
+   specifically instrumented memory allocators for failmalloc
+   tests. */
+nghttp2_mem *nghttp2_mem_fm(void);
 
 /* Copies nghttp2_failmalloc and nghttp2_countmalloc to statically
    allocated space and sets 0 to them. This will effectively make

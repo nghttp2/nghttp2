@@ -24,31 +24,41 @@
  */
 #include "malloc_wrapper.h"
 
-#define __USE_GNU
-#include <dlfcn.h>
-
 int nghttp2_failmalloc = 0;
 int nghttp2_failstart = 0;
 int nghttp2_countmalloc = 1;
 int nghttp2_nmalloc = 0;
 
-static void *(*real_malloc)(size_t) = NULL;
+#define CHECK_PREREQ                                                           \
+  do {                                                                         \
+    if (nghttp2_failmalloc && nghttp2_nmalloc >= nghttp2_failstart) {          \
+      return NULL;                                                             \
+    }                                                                          \
+    if (nghttp2_countmalloc) {                                                 \
+      ++nghttp2_nmalloc;                                                       \
+    }                                                                          \
+  } while (0)
 
-static void init(void) { real_malloc = dlsym(RTLD_NEXT, "malloc"); }
-
-void *malloc(size_t size) {
-  if (real_malloc == NULL) {
-    init();
-  }
-  if (nghttp2_failmalloc && nghttp2_nmalloc >= nghttp2_failstart) {
-    return NULL;
-  } else {
-    if (nghttp2_countmalloc) {
-      ++nghttp2_nmalloc;
-    }
-    return real_malloc(size);
-  }
+static void *my_malloc(size_t size, void *mud _U_) {
+  CHECK_PREREQ;
+  return malloc(size);
 }
+
+static void my_free(void *ptr, void *mud _U_) { free(ptr); }
+
+static void *my_calloc(size_t nmemb, size_t size, void *mud _U_) {
+  CHECK_PREREQ;
+  return calloc(nmemb, size);
+}
+
+static void *my_realloc(void *ptr, size_t size, void *mud _U_) {
+  CHECK_PREREQ;
+  return realloc(ptr, size);
+}
+
+static nghttp2_mem mem = {NULL, my_malloc, my_free, my_calloc, my_realloc};
+
+nghttp2_mem *nghttp2_mem_fm(void) { return &mem; }
 
 static int failmalloc_bk, countmalloc_bk;
 

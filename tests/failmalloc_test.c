@@ -59,13 +59,15 @@ static void data_feed_init(data_feed *df, nghttp2_bufs *bufs) {
   df->datalimit = df->data + data_length;
 }
 
-static ssize_t null_send_callback(nghttp2_session *session, const uint8_t *data,
-                                  size_t len, int flags, void *user_data) {
+static ssize_t null_send_callback(nghttp2_session *session _U_,
+                                  const uint8_t *data _U_, size_t len,
+                                  int flags _U_, void *user_data _U_) {
   return len;
 }
 
-static ssize_t data_feed_recv_callback(nghttp2_session *session, uint8_t *data,
-                                       size_t len, int flags, void *user_data) {
+static ssize_t data_feed_recv_callback(nghttp2_session *session _U_,
+                                       uint8_t *data, size_t len, int flags _U_,
+                                       void *user_data) {
   data_feed *df = ((my_user_data *)user_data)->df;
   size_t avail = df->datalimit - df->datamark;
   size_t wlen = nghttp2_min(avail, len);
@@ -75,8 +77,9 @@ static ssize_t data_feed_recv_callback(nghttp2_session *session, uint8_t *data,
 }
 
 static ssize_t fixed_length_data_source_read_callback(
-    nghttp2_session *session, int32_t stream_id, uint8_t *buf, size_t len,
-    uint32_t *data_flags, nghttp2_data_source *source, void *user_data) {
+    nghttp2_session *session _U_, int32_t stream_id _U_, uint8_t *buf _U_,
+    size_t len, uint32_t *data_flags, nghttp2_data_source *source _U_,
+    void *user_data) {
   my_user_data *ud = (my_user_data *)user_data;
   size_t wlen;
   if (len < ud->data_source_length) {
@@ -93,7 +96,7 @@ static ssize_t fixed_length_data_source_read_callback(
 
 #define TEST_FAILMALLOC_RUN(FUN)                                               \
   do {                                                                         \
-    size_t nmalloc, i;                                                         \
+    int nmalloc, i;                                                            \
                                                                                \
     nghttp2_failmalloc = 0;                                                    \
     nghttp2_nmalloc = 0;                                                       \
@@ -131,7 +134,8 @@ static void run_nghttp2_session_send(void) {
   iv[1].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
   iv[1].value = 100;
 
-  rv = nghttp2_session_client_new(&session, &callbacks, &ud);
+  rv = nghttp2_session_client_new3(&session, &callbacks, &ud, NULL,
+                                   nghttp2_mem_fm());
   if (rv != 0) {
     goto client_new_fail;
   }
@@ -240,9 +244,10 @@ static void run_nghttp2_session_recv(void) {
 
   nghttp2_failmalloc_pause();
   nvlen = ARRLEN(nv);
-  nghttp2_nv_array_copy(&nva, nv, nvlen);
-  nghttp2_hd_deflate_init(&deflater);
-  nghttp2_session_server_new(&session, &callbacks, &ud);
+  nghttp2_nv_array_copy(&nva, nv, nvlen, nghttp2_mem_fm());
+  nghttp2_hd_deflate_init(&deflater, nghttp2_mem_fm());
+  nghttp2_session_server_new3(&session, &callbacks, &ud, NULL,
+                              nghttp2_mem_fm());
   nghttp2_failmalloc_unpause();
 
   /* HEADERS */
@@ -250,7 +255,7 @@ static void run_nghttp2_session_recv(void) {
   nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_END_STREAM, 1,
                              NGHTTP2_HCAT_REQUEST, NULL, nva, nvlen);
   nghttp2_frame_pack_headers(&bufs, &frame.headers, &deflater);
-  nghttp2_frame_headers_free(&frame.headers);
+  nghttp2_frame_headers_free(&frame.headers, nghttp2_mem_fm());
   data_feed_init(&df, &bufs);
   nghttp2_bufs_reset(&bufs);
 
@@ -297,9 +302,10 @@ static void run_nghttp2_session_recv(void) {
   iv[1].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
   iv[1].value = 100;
   nghttp2_frame_settings_init(&frame.settings, NGHTTP2_FLAG_NONE,
-                              nghttp2_frame_iv_copy(iv, 2), 2);
+                              nghttp2_frame_iv_copy(iv, 2, nghttp2_mem_fm()),
+                              2);
   nghttp2_frame_pack_settings(&bufs, &frame.settings);
-  nghttp2_frame_settings_free(&frame.settings);
+  nghttp2_frame_settings_free(&frame.settings, nghttp2_mem_fm());
   nghttp2_bufs_reset(&bufs);
 
   nghttp2_failmalloc_unpause();
@@ -336,16 +342,16 @@ static void run_nghttp2_frame_pack_headers(void) {
     return;
   }
 
-  rv = nghttp2_hd_deflate_init(&deflater);
+  rv = nghttp2_hd_deflate_init(&deflater, nghttp2_mem_fm());
   if (rv != 0) {
     goto deflate_init_fail;
   }
-  rv = nghttp2_hd_inflate_init(&inflater);
+  rv = nghttp2_hd_inflate_init(&inflater, nghttp2_mem_fm());
   if (rv != 0) {
     goto inflate_init_fail;
   }
   nvlen = ARRLEN(nv);
-  rv = nghttp2_nv_array_copy(&nva, nv, nvlen);
+  rv = nghttp2_nv_array_copy(&nva, nv, nvlen, nghttp2_mem_fm());
   if (rv < 0) {
     goto nv_copy_fail;
   }
@@ -359,10 +365,10 @@ static void run_nghttp2_frame_pack_headers(void) {
   if (rv != 0) {
     goto fail;
   }
-  nghttp2_frame_headers_free(&oframe.headers);
+  nghttp2_frame_headers_free(&oframe.headers, nghttp2_mem_fm());
 
 fail:
-  nghttp2_frame_headers_free(&frame.headers);
+  nghttp2_frame_headers_free(&frame.headers, nghttp2_mem_fm());
 nv_copy_fail:
   nghttp2_hd_inflate_free(&inflater);
 inflate_init_fail:
@@ -389,7 +395,7 @@ static void run_nghttp2_frame_pack_settings(void) {
   iv[1].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
   iv[1].value = 100;
 
-  iv_copy = nghttp2_frame_iv_copy(iv, 2);
+  iv_copy = nghttp2_frame_iv_copy(iv, 2, nghttp2_mem_fm());
 
   if (iv_copy == NULL) {
     goto iv_copy_fail;
@@ -407,15 +413,15 @@ static void run_nghttp2_frame_pack_settings(void) {
 
   rv = nghttp2_frame_unpack_settings_payload2(
       &oframe.settings.iv, &oframe.settings.niv, buf->pos + NGHTTP2_FRAME_HDLEN,
-      nghttp2_buf_len(buf) - NGHTTP2_FRAME_HDLEN);
+      nghttp2_buf_len(buf) - NGHTTP2_FRAME_HDLEN, nghttp2_mem_fm());
 
   if (rv != 0) {
     goto fail;
   }
-  nghttp2_frame_settings_free(&oframe.settings);
+  nghttp2_frame_settings_free(&oframe.settings, nghttp2_mem_fm());
 
 fail:
-  nghttp2_frame_settings_free(&frame.settings);
+  nghttp2_frame_settings_free(&frame.settings, nghttp2_mem_fm());
 iv_copy_fail:
   nghttp2_bufs_free(&bufs);
 }
@@ -436,7 +442,7 @@ static int deflate_inflate(nghttp2_hd_deflater *deflater,
     return rv;
   }
 
-  rv = inflate_hd(inflater, NULL, bufs, 0);
+  rv = (int)inflate_hd(inflater, NULL, bufs, 0);
 
   if (rv < 0) {
     return rv;
@@ -466,13 +472,13 @@ static void run_nghttp2_hd(void) {
     return;
   }
 
-  rv = nghttp2_hd_deflate_init(&deflater);
+  rv = nghttp2_hd_deflate_init(&deflater, nghttp2_mem_fm());
 
   if (rv != 0) {
     goto deflate_init_fail;
   }
 
-  rv = nghttp2_hd_inflate_init(&inflater);
+  rv = nghttp2_hd_inflate_init(&inflater, nghttp2_mem_fm());
 
   if (rv != 0) {
     goto inflate_init_fail;
