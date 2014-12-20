@@ -2495,7 +2495,7 @@ void test_nghttp2_session_on_window_update_received(void) {
 
   data_item = create_data_ob_item();
 
-  CU_ASSERT(0 == nghttp2_stream_attach_data(stream, data_item, session));
+  CU_ASSERT(0 == nghttp2_stream_attach_item(stream, data_item, session));
 
   nghttp2_frame_window_update_init(&frame.window_update, NGHTTP2_FLAG_NONE, 1,
                                    16 * 1024);
@@ -2506,7 +2506,7 @@ void test_nghttp2_session_on_window_update_received(void) {
             stream->remote_window_size);
 
   CU_ASSERT(0 ==
-            nghttp2_stream_defer_data(
+            nghttp2_stream_defer_item(
                 stream, NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL, session));
 
   CU_ASSERT(0 == nghttp2_session_on_window_update_received(session, &frame));
@@ -4255,7 +4255,7 @@ void test_nghttp2_session_pop_next_ob_item(void) {
 
   stream = nghttp2_session_get_stream(session, 1);
 
-  nghttp2_stream_detach_data(stream, session);
+  nghttp2_stream_detach_item(stream, session);
 
   nghttp2_outbound_item_free(item, mem);
   free(item);
@@ -4736,9 +4736,9 @@ void test_nghttp2_session_data_read_temporal_failure(void) {
 
   stream = nghttp2_session_get_stream(session, 1);
   CU_ASSERT(nghttp2_stream_check_deferred_by_flow_control(stream));
-  CU_ASSERT(NGHTTP2_DATA == stream->data_item->frame.hd.type);
+  CU_ASSERT(NGHTTP2_DATA == stream->item->frame.hd.type);
 
-  stream->data_item->aux_data.data.data_prd.read_callback =
+  stream->item->aux_data.data.data_prd.read_callback =
       temporal_failure_data_source_read_callback;
 
   /* Back NGHTTP2_INITIAL_WINDOW_SIZE to both connection-level and
@@ -5813,7 +5813,7 @@ void test_nghttp2_session_stream_dep_all_your_stream_are_belong_to_us(void) {
   nghttp2_session_del(session);
 }
 
-void test_nghttp2_session_stream_attach_data(void) {
+void test_nghttp2_session_stream_attach_item(void) {
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;
   nghttp2_stream *a, *b, *c, *d;
@@ -5837,12 +5837,12 @@ void test_nghttp2_session_stream_attach_data(void) {
 
   db = create_data_ob_item();
 
-  nghttp2_stream_attach_data(b, db, session);
+  nghttp2_stream_attach_item(b, db, session);
 
-  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == a->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == a->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == b->dpri);
-  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == c->dpri);
-  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == d->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == c->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == d->dpri);
 
   CU_ASSERT(16 == b->effective_weight);
 
@@ -5852,12 +5852,12 @@ void test_nghttp2_session_stream_attach_data(void) {
 
   dc = create_data_ob_item();
 
-  nghttp2_stream_attach_data(c, dc, session);
+  nghttp2_stream_attach_item(c, dc, session);
 
-  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == a->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == a->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == b->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == c->dpri);
-  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == d->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == d->dpri);
 
   CU_ASSERT(16 * 16 / 32 == b->effective_weight);
   CU_ASSERT(16 * 16 / 32 == c->effective_weight);
@@ -5868,32 +5868,32 @@ void test_nghttp2_session_stream_attach_data(void) {
 
   da = create_data_ob_item();
 
-  nghttp2_stream_attach_data(a, da, session);
+  nghttp2_stream_attach_item(a, da, session);
 
   CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == a->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_REST == b->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_REST == c->dpri);
-  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == d->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == d->dpri);
 
   CU_ASSERT(16 == a->effective_weight);
 
   CU_ASSERT(1 == da->queued);
 
-  nghttp2_stream_detach_data(a, session);
+  nghttp2_stream_detach_item(a, session);
 
-  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == a->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == a->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == b->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == c->dpri);
-  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == d->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == d->dpri);
 
   CU_ASSERT(16 * 16 / 32 == b->effective_weight);
   CU_ASSERT(16 * 16 / 32 == c->effective_weight);
 
   dd = create_data_ob_item();
 
-  nghttp2_stream_attach_data(d, dd, session);
+  nghttp2_stream_attach_item(d, dd, session);
 
-  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == a->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == a->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == b->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == c->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_REST == d->dpri);
@@ -5903,22 +5903,22 @@ void test_nghttp2_session_stream_attach_data(void) {
 
   CU_ASSERT(0 == dd->queued);
 
-  nghttp2_stream_detach_data(c, session);
+  nghttp2_stream_detach_item(c, session);
 
-  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == a->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == a->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == b->dpri);
-  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == c->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == c->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_REST == d->dpri);
 
   CU_ASSERT(16 * 16 / 16 == b->effective_weight);
 
   CU_ASSERT(0 == dd->queued);
 
-  nghttp2_stream_detach_data(b, session);
+  nghttp2_stream_detach_item(b, session);
 
-  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == a->dpri);
-  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == b->dpri);
-  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == c->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == a->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == b->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == c->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == d->dpri);
 
   CU_ASSERT(16 * 16 / 16 == d->effective_weight);
@@ -5928,7 +5928,7 @@ void test_nghttp2_session_stream_attach_data(void) {
   nghttp2_session_del(session);
 }
 
-void test_nghttp2_session_stream_attach_data_subtree(void) {
+void test_nghttp2_session_stream_attach_item_subtree(void) {
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;
   nghttp2_stream *a, *b, *c, *d, *e, *f;
@@ -5955,18 +5955,18 @@ void test_nghttp2_session_stream_attach_data_subtree(void) {
 
   de = create_data_ob_item();
 
-  nghttp2_stream_attach_data(e, de, session);
+  nghttp2_stream_attach_item(e, de, session);
 
   db = create_data_ob_item();
 
-  nghttp2_stream_attach_data(b, db, session);
+  nghttp2_stream_attach_item(b, db, session);
 
-  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == a->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == a->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == b->dpri);
-  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == c->dpri);
-  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == d->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == c->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == d->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == e->dpri);
-  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == f->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == f->dpri);
 
   CU_ASSERT(16 == b->effective_weight);
   CU_ASSERT(16 == e->effective_weight);
@@ -5986,12 +5986,12 @@ void test_nghttp2_session_stream_attach_data_subtree(void) {
    *    d
    */
 
-  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == a->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == a->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_REST == b->dpri);
-  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == c->dpri);
-  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == d->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == c->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == d->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == e->dpri);
-  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == f->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == f->dpri);
 
   CU_ASSERT(16 == e->effective_weight);
 
@@ -6011,12 +6011,12 @@ void test_nghttp2_session_stream_attach_data_subtree(void) {
    *    d
    */
 
-  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == a->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == a->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == b->dpri);
-  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == c->dpri);
-  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == d->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == c->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == d->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == e->dpri);
-  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == f->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == f->dpri);
 
   CU_ASSERT(16 == b->effective_weight);
   CU_ASSERT(16 == e->effective_weight);
@@ -6027,12 +6027,12 @@ void test_nghttp2_session_stream_attach_data_subtree(void) {
 
   nghttp2_stream_dep_make_root(a, session);
 
-  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == a->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == a->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == b->dpri);
-  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == c->dpri);
-  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == d->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == c->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == d->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == e->dpri);
-  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == f->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == f->dpri);
 
   /* Remove subtree c */
 
@@ -6048,16 +6048,16 @@ void test_nghttp2_session_stream_attach_data_subtree(void) {
    * f
    */
 
-  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == a->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == a->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == b->dpri);
-  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == c->dpri);
-  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == d->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == c->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == d->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == e->dpri);
-  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == f->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == f->dpri);
 
   dd = create_data_ob_item();
 
-  nghttp2_stream_attach_data(d, dd, session);
+  nghttp2_stream_attach_item(d, dd, session);
 
   /* Add subtree c to a */
 
@@ -6072,12 +6072,12 @@ void test_nghttp2_session_stream_attach_data_subtree(void) {
    * d  f
    */
 
-  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == a->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == a->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == b->dpri);
-  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == c->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == c->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_REST == d->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == e->dpri);
-  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == f->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == f->dpri);
 
   CU_ASSERT(16 == b->effective_weight);
   CU_ASSERT(16 * 16 / 16 == e->effective_weight);
@@ -6100,12 +6100,12 @@ void test_nghttp2_session_stream_attach_data_subtree(void) {
    * f  d
    */
 
-  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == a->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == a->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == b->dpri);
-  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == c->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == c->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_REST == d->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_REST == e->dpri);
-  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == f->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == f->dpri);
 
   CU_ASSERT(16 == b->effective_weight);
 
@@ -6125,12 +6125,12 @@ void test_nghttp2_session_stream_attach_data_subtree(void) {
    * f  d
    */
 
-  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == a->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == a->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == b->dpri);
-  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == c->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == c->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_REST == d->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_REST == e->dpri);
-  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_DATA == f->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == f->dpri);
 
   CU_ASSERT(0 == a->sum_norest_weight);
   CU_ASSERT(0 == b->sum_norest_weight);

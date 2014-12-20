@@ -231,10 +231,10 @@ int main(int argc _U_, char *argv[] _U_) {
       !CU_add_test(
           pSuite, "session_stream_dep_all_your_stream_are_belong_to_us",
           test_nghttp2_session_stream_dep_all_your_stream_are_belong_to_us) ||
-      !CU_add_test(pSuite, "session_stream_attach_data",
-                   test_nghttp2_session_stream_attach_data) ||
-      !CU_add_test(pSuite, "session_stream_attach_data_subtree",
-                   test_nghttp2_session_stream_attach_data_subtree) ||
+      !CU_add_test(pSuite, "session_stream_attach_item",
+                   test_nghttp2_session_stream_attach_item) ||
+      !CU_add_test(pSuite, "session_stream_attach_item_subtree",
+                   test_nghttp2_session_stream_attach_item_subtree) ||
       !CU_add_test(pSuite, "session_stream_keep_closed_stream",
                    test_nghttp2_session_keep_closed_stream) ||
       !CU_add_test(pSuite, "session_stream_keep_idle_stream",

@@ -100,7 +100,7 @@ typedef enum {
 
 typedef enum {
   NGHTTP2_STREAM_DPRI_NONE = 0,
-  NGHTTP2_STREAM_DPRI_NO_DATA = 0x01,
+  NGHTTP2_STREAM_DPRI_NO_ITEM = 0x01,
   NGHTTP2_STREAM_DPRI_TOP = 0x02,
   NGHTTP2_STREAM_DPRI_REST = 0x04
 } nghttp2_stream_dpri;
@@ -139,7 +139,7 @@ struct nghttp2_stream {
   /* The arbitrary data provided by user for this stream. */
   void *stream_user_data;
   /* Item to send */
-  nghttp2_outbound_item *data_item;
+  nghttp2_outbound_item *item;
   /* stream ID */
   int32_t stream_id;
   /* categorized priority of this stream.  Only stream bearing
@@ -201,9 +201,9 @@ void nghttp2_stream_free(nghttp2_stream *stream);
 void nghttp2_stream_shutdown(nghttp2_stream *stream, nghttp2_shut_flag flag);
 
 /*
- * Defer |stream->data_item|.  We won't call this function in the
- * situation where |stream->data_item| == NULL.  If |flags| is bitwise
- * OR of zero or more of NGHTTP2_STREAM_FLAG_DEFERRED_USER and
+ * Defer |stream->item|.  We won't call this function in the situation
+ * where |stream->item| == NULL.  The |flags| is bitwise OR of zero or
+ * more of NGHTTP2_STREAM_FLAG_DEFERRED_USER and
  * NGHTTP2_STREAM_FLAG_DEFERRED_FLOW_CONTROL.  The |flags| indicates
  * the reason of this action.
  *
@@ -213,7 +213,7 @@ void nghttp2_stream_shutdown(nghttp2_stream *stream, nghttp2_shut_flag flag);
  * NGHTTP2_ERR_NOMEM
  *     Out of memory
  */
-int nghttp2_stream_defer_data(nghttp2_stream *stream, uint8_t flags,
+int nghttp2_stream_defer_item(nghttp2_stream *stream, uint8_t flags,
                               nghttp2_session *session);
 
 /*
@@ -224,16 +224,16 @@ int nghttp2_stream_defer_data(nghttp2_stream *stream, uint8_t flags,
  * cleared if they are set.  So even if this function is called, if
  * one of flag is still set, data does not become active.
  */
-int nghttp2_stream_resume_deferred_data(nghttp2_stream *stream, uint8_t flags,
+int nghttp2_stream_resume_deferred_item(nghttp2_stream *stream, uint8_t flags,
                                         nghttp2_session *session);
 
 /*
- * Returns nonzero if data item is deferred by whatever reason.
+ * Returns nonzero if item is deferred by whatever reason.
  */
-int nghttp2_stream_check_deferred_data(nghttp2_stream *stream);
+int nghttp2_stream_check_deferred_item(nghttp2_stream *stream);
 
 /*
- * Returns nonzero if data item is deferred by flow control.
+ * Returns nonzero if item is deferred by flow control.
  */
 int nghttp2_stream_check_deferred_by_flow_control(nghttp2_stream *stream);
 
@@ -322,7 +322,7 @@ void nghttp2_stream_dep_add(nghttp2_stream *dep_stream, nghttp2_stream *stream);
 void nghttp2_stream_dep_remove(nghttp2_stream *stream);
 
 /*
- * Attaches |data_item| to |stream|.  Updates dpri members in this
+ * Attaches |item| to |stream|.  Updates dpri members in this
  * dependency tree.
  *
  * This function returns 0 if it succeeds, or one of the following
@@ -331,14 +331,14 @@ void nghttp2_stream_dep_remove(nghttp2_stream *stream);
  * NGHTTP2_ERR_NOMEM
  *     Out of memory
  */
-int nghttp2_stream_attach_data(nghttp2_stream *stream,
-                               nghttp2_outbound_item *data_item,
+int nghttp2_stream_attach_item(nghttp2_stream *stream,
+                               nghttp2_outbound_item *item,
                                nghttp2_session *session);
 
 /*
- * Detaches |stream->data_item|.  Updates dpri members in this
- * dependency tree.  This function does not free |stream->data_item|.
- * The caller must free it.
+ * Detaches |stream->item|.  Updates dpri members in this dependency
+ * tree.  This function does not free |stream->item|.  The caller must
+ * free it.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -346,7 +346,7 @@ int nghttp2_stream_attach_data(nghttp2_stream *stream,
  * NGHTTP2_ERR_NOMEM
  *     Out of memory
  */
-int nghttp2_stream_detach_data(nghttp2_stream *stream,
+int nghttp2_stream_detach_item(nghttp2_stream *stream,
                                nghttp2_session *session);
 
 /*
