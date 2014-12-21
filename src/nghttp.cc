@@ -2120,6 +2120,11 @@ int run(char **uris, int n) {
             return 1;
           }
         }
+        if (fstat(data_fd, &data_stat) == -1) {
+          close(data_fd);
+          std::cerr << "[ERROR] Could not stat temporary file" << std::endl;
+          return 1;
+        }
       }
     } else {
       data_fd = open(config.datafile.c_str(), O_RDONLY | O_BINARY);
