@@ -2096,6 +2096,10 @@ int run(char **uris, int n) {
                     << std::endl;
           return 1;
         }
+        if (unlink(tempfn) != 0) {
+          std::cerr << "[WARNING] failed to unlink temporary file:" << tempfn
+                    << std::endl;
+        }
         while (1) {
           char buf[1024];
           ssize_t rret, wret;
