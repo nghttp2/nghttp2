@@ -2082,17 +2082,54 @@ int run(char **uris, int n) {
   struct stat data_stat;
 
   if (!config.datafile.empty()) {
-    data_fd = open(config.datafile.c_str(), O_RDONLY | O_BINARY);
-    if (data_fd == -1) {
-      std::cerr << "[ERROR] Could not open file " << config.datafile
-                << std::endl;
-      return 1;
-    }
-    if (fstat(data_fd, &data_stat) == -1) {
-      close(data_fd);
-      std::cerr << "[ERROR] Could not stat file " << config.datafile
-                << std::endl;
-      return 1;
+    if (config.datafile == "-") {
+      if (fstat(0, &data_stat) == 0 &&
+          (data_stat.st_mode & S_IFMT) == S_IFREG) {
+        // use STDIN if it is a regular file
+        data_fd = 0;
+      } else {
+        // copy the contents of STDIN to a temporary file
+        char tempfn[] = "/tmp/nghttp.temp.XXXXXX";
+        data_fd = mkstemp(tempfn);
+        if (data_fd == -1) {
+          std::cerr << "[ERROR] Could not create a temporary file in /tmp"
+                    << std::endl;
+          return 1;
+        }
+        while (1) {
+          char buf[1024];
+          ssize_t rret, wret;
+          while ((rret = read(0, buf, sizeof(buf))) == -1 && errno == EINTR)
+            ;
+          if (rret == 0)
+            break;
+          if (rret == -1) {
+            std::cerr << "[ERROR] I/O error while reading from STDIN"
+                      << std::endl;
+            return 1;
+          }
+          while ((wret = write(data_fd, buf, rret)) == -1 && errno == EINTR)
+            ;
+          if (wret != rret) {
+            std::cerr << "[ERROR] I/O error while writing to temporary file"
+                      << std::endl;
+            return 1;
+          }
+        }
+      }
+    } else {
+      data_fd = open(config.datafile.c_str(), O_RDONLY | O_BINARY);
+      if (data_fd == -1) {
+        std::cerr << "[ERROR] Could not open file " << config.datafile
+                  << std::endl;
+        return 1;
+      }
+      if (fstat(data_fd, &data_stat) == -1) {
+        close(data_fd);
+        std::cerr << "[ERROR] Could not stat file " << config.datafile
+                  << std::endl;
+        return 1;
+      }
     }
     data_prd.source.fd = data_fd;
     data_prd.read_callback = file_read_callback;
@@ -2369,7 +2406,7 @@ int main(int argc, char **argv) {
       config.stat = true;
       break;
     case 'd':
-      config.datafile = strcmp("-", optarg) == 0 ? "/dev/stdin" : optarg;
+      config.datafile = optarg;
       break;
     case 'm':
       config.multiply = strtoul(optarg, nullptr, 10);
