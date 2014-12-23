@@ -90,6 +90,7 @@ struct Stream {
   Http2Handler *handler;
   event *rtimer;
   event *wtimer;
+  int64_t body_left;
   int32_t stream_id;
   int file;
   Stream(Http2Handler *handler, int32_t stream_id);

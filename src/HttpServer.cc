@@ -110,8 +110,8 @@ Config::Config()
 Config::~Config() { nghttp2_option_del(session_option); }
 
 Stream::Stream(Http2Handler *handler, int32_t stream_id)
-    : handler(handler), rtimer(nullptr), wtimer(nullptr), stream_id(stream_id),
-      file(-1) {}
+    : handler(handler), rtimer(nullptr), wtimer(nullptr), body_left(0),
+      stream_id(stream_id), file(-1) {}
 
 Stream::~Stream() {
   if (file != -1) {
@@ -692,7 +692,8 @@ ssize_t file_read_callback(nghttp2_session *session, int32_t stream_id,
     return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
   }
 
-  if (nread == 0) {
+  stream->body_left -= nread;
+  if (nread == 0 || stream->body_left <= 0) {
     *data_flags |= NGHTTP2_DATA_FLAG_EOF;
 
     if (nghttp2_session_get_stream_remote_close(session, stream_id) == 0) {
@@ -747,6 +748,7 @@ void prepare_status_response(Stream *stream, Http2Handler *hd,
   close(pipefd[1]);
 
   stream->file = pipefd[0];
+  stream->body_left = body.size();
   nghttp2_data_provider data_prd;
   data_prd.source.fd = pipefd[0];
   data_prd.read_callback = file_read_callback;
@@ -856,6 +858,7 @@ void prepare_response(Stream *stream, Http2Handler *hd,
   }
 
   stream->file = file;
+  stream->body_left = buf.st_size;
 
   nghttp2_data_provider data_prd;
 
