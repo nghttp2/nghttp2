@@ -398,7 +398,7 @@ int Http2Handler::send() {
   util::EvbufferBuffer evbbuf(output, buf, sizeof(buf));
   for (;;) {
     // Check buffer length and break if it is large enough.
-    if (evbuffer_get_length(output) + evbbuf.get_buflen() >= 65536) {
+    if (evbuffer_get_length(output) > 0) {
       break;
     }
 
