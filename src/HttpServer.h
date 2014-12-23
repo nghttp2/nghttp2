@@ -87,7 +87,6 @@ class Http2Handler;
 
 struct Stream {
   Headers headers;
-  std::pair<std::string, size_t> response_body;
   Http2Handler *handler;
   event *rtimer;
   event *wtimer;
