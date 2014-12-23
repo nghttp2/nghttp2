@@ -541,19 +541,21 @@ int Http2Handler::submit_file_response(const std::string &status,
   auto date_str = cached_date;
   std::string content_length = util::utos(file_length);
   std::string last_modified_str;
-  auto nva = std::vector<nghttp2_nv>{
+  nghttp2_nv nva[] = {
       http2::make_nv_ls(":status", status),
       http2::make_nv_ls("server", NGHTTPD_SERVER),
       http2::make_nv_ls("content-length", content_length),
       http2::make_nv_ll("cache-control", "max-age=3600"),
       http2::make_nv_ls("date", *date_str),
+      http2::make_nv_ll("", ""),
   };
+  size_t nvlen = 5;
   if (last_modified != 0) {
     last_modified_str = util::http_date(last_modified);
-    nva.push_back(http2::make_nv_ls("last-modified", last_modified_str));
+    nva[nvlen++] = http2::make_nv_ls("last-modified", last_modified_str);
   }
-  return nghttp2_submit_response(session_, stream->stream_id, nva.data(),
-                                 nva.size(), data_prd);
+  return nghttp2_submit_response(session_, stream->stream_id, nva, nvlen,
+                                 data_prd);
 }
 
 int Http2Handler::submit_response(const std::string &status, int32_t stream_id,
