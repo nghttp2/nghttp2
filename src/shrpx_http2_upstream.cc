@@ -46,7 +46,6 @@ using namespace nghttp2;
 namespace shrpx {
 
 namespace {
-const size_t OUTBUF_MAX_THRES = 16 * 1024;
 const size_t INBUF_MAX_THRES = 16 * 1024;
 } // namespace
 
@@ -598,11 +597,19 @@ uint32_t infer_upstream_rst_stream_error_code(uint32_t downstream_error_code) {
 }
 } // namespace
 
+namespace {
+void write_notify_cb(evutil_socket_t fd, short what, void *arg) {
+  auto upstream = static_cast<Http2Upstream *>(arg);
+  upstream->perform_send();
+}
+} // namespace
+
 Http2Upstream::Http2Upstream(ClientHandler *handler)
     : downstream_queue_(get_config()->http2_proxy
                             ? get_config()->downstream_connections_per_host
                             : 0),
-      handler_(handler), session_(nullptr), settings_timerev_(nullptr) {
+      handler_(handler), session_(nullptr), settings_timerev_(nullptr),
+      write_notifyev_(nullptr), deferred_(false) {
   reset_timeouts();
 
   int rv;
@@ -691,12 +698,17 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
       }
     }
   }
+
+  write_notifyev_ = evtimer_new(handler_->get_evbase(), write_notify_cb, this);
 }
 
 Http2Upstream::~Http2Upstream() {
   nghttp2_session_del(session_);
   if (settings_timerev_) {
     event_free(settings_timerev_);
+  }
+  if (write_notifyev_) {
+    event_free(write_notifyev_);
   }
 }
 
@@ -732,8 +744,17 @@ int Http2Upstream::on_read() {
 
 int Http2Upstream::on_write() { return send(); }
 
-// After this function call, downstream may be deleted.
 int Http2Upstream::send() {
+  if (write_notifyev_ == nullptr) {
+    return -1;
+  }
+  event_active(write_notifyev_, 0, 0);
+
+  return 0;
+}
+
+// After this function call, downstream may be deleted.
+int Http2Upstream::perform_send() {
   int rv;
   uint8_t buf[16384];
   auto bev = handler_->get_bev();
@@ -742,8 +763,7 @@ int Http2Upstream::send() {
   sendbuf.reset(output, buf, sizeof(buf), handler_->get_write_limit());
   for (;;) {
     // Check buffer length and break if it is large enough.
-    if (handler_->get_outbuf_length() + sendbuf.get_buflen() >=
-        OUTBUF_MAX_THRES) {
+    if (handler_->get_outbuf_length() > 0) {
       break;
     }
 
@@ -763,7 +783,12 @@ int Http2Upstream::send() {
       ULOG(FATAL, this) << "evbuffer_add() failed";
       return -1;
     }
+    if (deferred_) {
+      break;
+    }
   }
+
+  deferred_ = false;
 
   rv = sendbuf.flush();
   if (rv != 0) {
@@ -1076,6 +1101,11 @@ ssize_t downstream_data_read_callback(nghttp2_session *session,
   }
 
   if (nread == 0 && ((*data_flags) & NGHTTP2_DATA_FLAG_EOF) == 0) {
+    // Higher priority stream is likely to be handled first and if it
+    // has no data to send, we'd better to break here, so that we have
+    // a chance to read another incoming data from backend to this
+    // stream.
+    upstream->set_deferred(true);
     return NGHTTP2_ERR_DEFERRED;
   }
 
@@ -1430,5 +1460,7 @@ int Http2Upstream::on_downstream_reset() {
 
   return 0;
 }
+
+void Http2Upstream::set_deferred(bool f) { deferred_ = f; }
 
 } // namespace shrpx

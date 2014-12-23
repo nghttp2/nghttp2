@@ -51,6 +51,7 @@ public:
   virtual int on_downstream_abort_request(Downstream *downstream,
                                           unsigned int status_code);
   int send();
+  int perform_send();
   virtual ClientHandler *get_client_handler() const;
   virtual bufferevent_data_cb get_downstream_readcb();
   virtual bufferevent_data_cb get_downstream_writecb();
@@ -92,6 +93,8 @@ public:
   void start_downstream(Downstream *downstream);
   void initiate_downstream(std::unique_ptr<Downstream> downstream);
 
+  void set_deferred(bool f);
+
   nghttp2::util::EvbufferBuffer sendbuf;
 
 private:
@@ -100,7 +103,9 @@ private:
   ClientHandler *handler_;
   nghttp2_session *session_;
   event *settings_timerev_;
+  event *write_notifyev_;
   bool flow_control_;
+  bool deferred_;
 };
 
 } // namespace shrpx
