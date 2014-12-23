@@ -38,6 +38,7 @@
 #include "http2_test.h"
 #include "util_test.h"
 #include "nghttp2_gzip_test.h"
+#include "ringbuf_test.h"
 
 static int init_suite1(void) { return 0; }
 
@@ -115,7 +116,9 @@ int main(int argc, char *argv[]) {
       !CU_add_test(pSuite, "util_utox", shrpx::test_util_utox) ||
       !CU_add_test(pSuite, "util_http_date", shrpx::test_util_http_date) ||
       !CU_add_test(pSuite, "util_select_h2", shrpx::test_util_select_h2) ||
-      !CU_add_test(pSuite, "gzip_inflate", test_nghttp2_gzip_inflate)) {
+      !CU_add_test(pSuite, "gzip_inflate", test_nghttp2_gzip_inflate) ||
+      !CU_add_test(pSuite, "ringbuf_write", nghttp2::test_ringbuf_write) ||
+      !CU_add_test(pSuite, "ringbuf_iovec", nghttp2::test_ringbuf_iovec)) {
     CU_cleanup_registry();
     return CU_get_error();
   }

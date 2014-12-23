@@ -275,6 +275,21 @@ fi
 
 AM_CONDITIONAL([HAVE_CUNIT], [ test "x${have_cunit}" = "xyes" ])
 
+# libev (for src)
+# libev does not have pkg-config file.  Check it in an old way.
+LIBS_OLD=$LIBS
+AC_CHECK_LIB([ev], [ev_time], [have_libev=yes], [have_libev=no])
+if test "x${have_libev}" = "xyes"; then
+  AC_CHECK_HEADER([ev.h], [have_libev=yes], [have_libev=no])
+  if test "x${have_libev}" = "xyes"; then
+    LIBEV_LIBS=-lev
+    LIBEV_CFLAGS=
+    AC_SUBST([LIBEV_LIBS])
+    AC_SUBST([LIBEV_CFLAGS])
+  fi
+fi
+LIBS=$LIBS_OLD
+
 # openssl (for src)
 PKG_CHECK_MODULES([OPENSSL], [openssl >= 1.0.1],
                   [have_openssl=yes], [have_openssl=no])
@@ -375,11 +390,12 @@ if test "x${request_asio_lib}" = "xyes"; then
 fi
 
 # The nghttp, nghttpd and nghttpx under src depend on zlib, OpenSSL
-# and libevent_openssl
+# libev and libevent_openssl
 enable_app=no
 if test "x${request_app}" != "xno" &&
    test "x${have_zlib}" = "xyes" &&
    test "x${have_openssl}" = "xyes" &&
+   test "x${have_libev}" = "xyes" &&
    test "x${have_libevent_openssl}" = "xyes"; then
   enable_app=yes
 fi
@@ -649,6 +665,7 @@ AC_MSG_NOTICE([summary of build options:
     Libs:
       OpenSSL:        ${have_openssl}
       Libxml2:        ${have_libxml2}
+      Libev:          ${have_libev}
       Libevent(SSL):  ${have_libevent_openssl}
       Spdylay:        ${have_spdylay}
       Jansson:        ${have_jansson}

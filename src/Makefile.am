@@ -50,6 +50,15 @@ AM_LDFLAGS = \
 	@JANSSON_LIBS@ \
 	@ZLIB_LIBS@ \
 	@APPLDFLAGS@
+EVLDFLAGS = \
+	@JEMALLOC_LIBS@ \
+	@LIBSPDYLAY_LIBS@ \
+	@XML_LIBS@ \
+	@LIBEV_LIBS@ \
+	@OPENSSL_LIBS@ \
+	@JANSSON_LIBS@ \
+	@ZLIB_LIBS@ \
+	@APPLDFLAGS@
 
 LDADD = \
 	$(top_builddir)/lib/libnghttp2.la \
@@ -59,9 +68,9 @@ if ENABLE_APP
 
 bin_PROGRAMS += nghttp nghttpd nghttpx
 
-HELPER_OBJECTS = util.cc libevent_util.cc \
+HELPER_OBJECTS = util.cc \
 	http2.cc timegm.c app_helper.cc nghttp2_gzip.c
-HELPER_HFILES = util.h libevent_util.h \
+HELPER_HFILES = util.h \
 	http2.h timegm.h app_helper.h nghttp2_config.h \
 	nghttp2_gzip.h
 
@@ -74,11 +83,15 @@ endif # HAVE_LIBXML2
 
 nghttp_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} nghttp.cc \
 	${HTML_PARSER_OBJECTS} ${HTML_PARSER_HFILES} \
+	libevent_util.cc libevent_util.h \
 	ssl.cc ssl.h
+
+nghttpd_LDFLAGS = ${EVLDFLAGS}
 
 nghttpd_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} nghttpd.cc \
 	ssl.cc ssl.h \
-	HttpServer.cc HttpServer.h
+	HttpServer.cc HttpServer.h \
+	ringbuf.h
 
 bin_PROGRAMS += h2load
 
@@ -141,7 +154,8 @@ nghttpx_unittest_SOURCES = shrpx-unittest.cc \
 	http2_test.cc http2_test.h \
 	util_test.cc util_test.h \
 	nghttp2_gzip_test.c nghttp2_gzip_test.h \
-	nghttp2_gzip.c nghttp2_gzip.h
+	nghttp2_gzip.c nghttp2_gzip.h \
+	ringbuf_test.cc ringbuf_test.h
 nghttpx_unittest_CPPFLAGS = ${AM_CPPFLAGS}\
 	 -DNGHTTP2_TESTS_DIR=\"$(top_srcdir)/tests\"
 nghttpx_unittest_LDFLAGS = ${AM_LDFLAGS} \
