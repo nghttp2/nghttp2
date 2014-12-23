@@ -440,26 +440,21 @@ int Http2Handler::on_read() {
   int rv;
 
   auto input = bufferevent_get_input(bev_);
+  auto len = evbuffer_get_length(input);
+  if (len == 0) {
+    return 0;
+  }
+  auto data = evbuffer_pullup(input, -1);
 
-  for (;;) {
-    auto len = evbuffer_get_contiguous_space(input);
+  rv = nghttp2_session_mem_recv(session_, data, len);
+  if (rv < 0) {
+    std::cerr << "nghttp2_session_mem_recv() returned error: "
+              << nghttp2_strerror(rv) << std::endl;
+    return -1;
+  }
 
-    if (len == 0) {
-      break;
-    }
-
-    auto data = evbuffer_pullup(input, len);
-
-    rv = nghttp2_session_mem_recv(session_, data, len);
-    if (rv < 0) {
-      std::cerr << "nghttp2_session_mem_recv() returned error: "
-                << nghttp2_strerror(rv) << std::endl;
-      return -1;
-    }
-
-    if (evbuffer_drain(input, len) == -1) {
-      std::cerr << "evbuffer_drain() failed" << std::endl;
-    }
+  if (evbuffer_drain(input, len) == -1) {
+    std::cerr << "evbuffer_drain() failed" << std::endl;
   }
 
   return send();
