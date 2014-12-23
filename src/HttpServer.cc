@@ -111,7 +111,9 @@ Config::~Config() { nghttp2_option_del(session_option); }
 
 Stream::Stream(Http2Handler *handler, int32_t stream_id)
     : handler(handler), rtimer(nullptr), wtimer(nullptr), body_left(0),
-      stream_id(stream_id), file(-1) {}
+      stream_id(stream_id), file(-1) {
+  headers.reserve(10);
+}
 
 Stream::~Stream() {
   if (file != -1) {
