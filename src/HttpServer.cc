@@ -763,7 +763,7 @@ void prepare_redirect_response(Stream *stream, Http2Handler *hd,
   auto scheme = http2::get_unique_header(stream->headers, ":scheme");
   auto authority = http2::get_unique_header(stream->headers, ":authority");
   if (!authority) {
-    authority = http2::get_unique_header(stream->headers, ":host");
+    authority = http2::get_unique_header(stream->headers, "host");
   }
 
   auto redirect_url = scheme->value;
