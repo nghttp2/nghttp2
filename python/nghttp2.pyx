@@ -934,14 +934,14 @@ cdef class _HTTP2ClientSessionCore(_HTTP2SessionCoreBase):
 
         body = wrap_body(body)
 
-        if headers is None:
-            headers = []
-
-        headers = _encode_headers(headers)
-        headers.append((b':scheme', scheme.encode('utf-8')))
-        headers.append((b':method', method.encode('utf-8')))
-        headers.append((b':authority', host.encode('utf-8')))
-        headers.append((b':path', path.encode('utf-8')))
+        custom_headers = _encode_headers(headers)
+        headers = [
+            (b':scheme', scheme.encode('utf-8')),
+            (b':method', method.encode('utf-8')),
+            (b':authority', host.encode('utf-8')),
+            (b':path', path.encode('utf-8'))
+        ]
+        headers.extend(custom_headers)
 
         nva = NULL
         nvlen = _make_nva(&nva, headers)
@@ -1200,6 +1200,8 @@ if asyncio:
             self.response_body = body
 
     def _encode_headers(headers):
+        if not headers:
+            return []
         return [(k if isinstance(k, bytes) else k.encode('utf-8'),
                  v if isinstance(v, bytes) else v.encode('utf-8')) \
                 for k, v in headers]
