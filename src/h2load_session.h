@@ -28,6 +28,7 @@
 #include "nghttp2_config.h"
 
 #include <sys/types.h>
+#include <stdint.h>
 
 namespace h2load {
 
@@ -40,7 +41,7 @@ public:
   virtual void submit_request() = 0;
   // Called when incoming bytes are available. The subclass has to
   // return the number of bytes read.
-  virtual ssize_t on_read() = 0;
+  virtual int on_read(const uint8_t *data, size_t len) = 0;
   // Called when write is available. Returns 0 on success, otherwise
   // return -1.
   virtual int on_write() = 0;

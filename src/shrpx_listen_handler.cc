@@ -29,10 +29,7 @@
 #include <cerrno>
 #include <thread>
 
-#include <event2/bufferevent_ssl.h>
-
 #include "shrpx_client_handler.h"
-#include "shrpx_thread_event_receiver.h"
 #include "shrpx_ssl.h"
 #include "shrpx_worker.h"
 #include "shrpx_worker_config.h"
@@ -40,16 +37,16 @@
 #include "shrpx_http2_session.h"
 #include "shrpx_connect_blocker.h"
 #include "shrpx_downstream_connection.h"
+#include "shrpx_accept_handler.h"
 #include "util.h"
-#include "libevent_util.h"
 
 using namespace nghttp2;
 
 namespace shrpx {
 
 namespace {
-void evlistener_disable_cb(evutil_socket_t fd, short events, void *arg) {
-  auto listener_handler = static_cast<ListenHandler *>(arg);
+void acceptor_disable_cb(struct ev_loop *loop, ev_timer *w, int revent) {
+  auto h = static_cast<ListenHandler *>(w->data);
 
   // If we are in graceful shutdown period, we must not enable
   // evlisteners again.
@@ -57,23 +54,24 @@ void evlistener_disable_cb(evutil_socket_t fd, short events, void *arg) {
     return;
   }
 
-  listener_handler->enable_evlistener();
+  h->enable_acceptor();
 }
 } // namespace
 
-ListenHandler::ListenHandler(event_base *evbase, SSL_CTX *sv_ssl_ctx,
+ListenHandler::ListenHandler(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx,
                              SSL_CTX *cl_ssl_ctx)
-    : evbase_(evbase), sv_ssl_ctx_(sv_ssl_ctx), cl_ssl_ctx_(cl_ssl_ctx),
-      rate_limit_group_(bufferevent_rate_limit_group_new(
-          evbase, get_config()->worker_rate_limit_cfg)),
-      evlistener4_(nullptr), evlistener6_(nullptr),
-      evlistener_disable_timerev_(
-          evtimer_new(evbase, evlistener_disable_cb, this)),
-      worker_stat_(util::make_unique<WorkerStat>()), num_worker_shutdown_(0),
-      worker_round_robin_cnt_(0) {}
+    : loop_(loop), sv_ssl_ctx_(sv_ssl_ctx), cl_ssl_ctx_(cl_ssl_ctx),
+      // rate_limit_group_(bufferevent_rate_limit_group_new(
+      //     evbase, get_config()->worker_rate_limit_cfg)),
+      worker_stat_(util::make_unique<WorkerStat>()),
+      worker_round_robin_cnt_(0) {
+  ev_timer_init(&disable_acceptor_timer_, acceptor_disable_cb, 0., 0.);
+  disable_acceptor_timer_.data = this;
+}
 
 ListenHandler::~ListenHandler() {
-  bufferevent_rate_limit_group_free(rate_limit_group_);
+  //  bufferevent_rate_limit_group_free(rate_limit_group_);
+  ev_timer_stop(loop_, &disable_acceptor_timer_);
 }
 
 void ListenHandler::worker_reopen_log_files() {
@@ -82,68 +80,19 @@ void ListenHandler::worker_reopen_log_files() {
   memset(&wev, 0, sizeof(wev));
   wev.type = REOPEN_LOG;
 
-  for (auto &info : workers_) {
-    bufferevent_write(info->bev, &wev, sizeof(wev));
+  for (auto &worker : workers_) {
+    worker->send(wev);
   }
 }
-
-#ifndef NOTHREADS
-namespace {
-void worker_writecb(bufferevent *bev, void *ptr) {
-  auto listener_handler = static_cast<ListenHandler *>(ptr);
-  auto output = bufferevent_get_output(bev);
-
-  if (!worker_config->graceful_shutdown || evbuffer_get_length(output) != 0) {
-    return;
-  }
-
-  // If graceful_shutdown is true and nothing left to send, we sent
-  // graceful shutdown event to worker successfully.  The worker is
-  // now doing shutdown.
-  listener_handler->notify_worker_shutdown();
-
-  // Disable bev so that this won' be called accidentally in the
-  // future.
-  util::bev_disable_unless(bev, EV_READ | EV_WRITE);
-}
-} // namespace
-#endif // NOTHREADS
 
 void ListenHandler::create_worker_thread(size_t num) {
 #ifndef NOTHREADS
-  workers_.resize(0);
+  assert(workers_.size() == 0);
+
   for (size_t i = 0; i < num; ++i) {
-    int rv;
-    auto info = util::make_unique<WorkerInfo>();
-    rv = socketpair(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0,
-                    info->sv);
-    if (rv == -1) {
-      auto error = errno;
-      LLOG(ERROR, this) << "socketpair() failed: errno=" << error;
-      continue;
-    }
-
-    info->sv_ssl_ctx = sv_ssl_ctx_;
-    info->cl_ssl_ctx = cl_ssl_ctx_;
-
-    info->fut =
-        std::async(std::launch::async, start_threaded_worker, info.get());
-
-    auto bev =
-        bufferevent_socket_new(evbase_, info->sv[0], BEV_OPT_DEFER_CALLBACKS);
-    if (!bev) {
-      LLOG(ERROR, this) << "bufferevent_socket_new() failed";
-      for (size_t j = 0; j < 2; ++j) {
-        close(info->sv[j]);
-      }
-      continue;
-    }
-
-    bufferevent_setcb(bev, nullptr, worker_writecb, nullptr, this);
-
-    info->bev = bev;
-
-    workers_.push_back(std::move(info));
+    auto worker = util::make_unique<Worker>(sv_ssl_ctx_, cl_ssl_ctx_);
+    worker->run();
+    workers_.push_back(std::move(worker));
 
     if (LOG_ENABLED(INFO)) {
       LLOG(INFO, this) << "Created thread #" << workers_.size() - 1;
@@ -162,7 +111,7 @@ void ListenHandler::join_worker() {
   }
 
   for (auto &worker : workers_) {
-    worker->fut.get();
+    worker->wait();
     if (LOG_ENABLED(INFO)) {
       LLOG(INFO, this) << "Thread #" << n << " joined";
     }
@@ -185,21 +134,14 @@ void ListenHandler::graceful_shutdown_worker() {
       LLOG(INFO, this) << "Sending graceful shutdown signal to worker";
     }
 
-    auto output = bufferevent_get_output(worker->bev);
-
-    if (evbuffer_add(output, &wev, sizeof(wev)) != 0) {
-      LLOG(FATAL, this) << "evbuffer_add() failed";
-    }
+    worker->send(wev);
   }
 }
 
-int ListenHandler::accept_connection(evutil_socket_t fd, sockaddr *addr,
-                                     int addrlen) {
+int ListenHandler::handle_connection(int fd, sockaddr *addr, int addrlen) {
   if (LOG_ENABLED(INFO)) {
     LLOG(INFO, this) << "Accepted connection. fd=" << fd;
   }
-
-  evutil_make_socket_closeonexec(fd);
 
   if (get_config()->num_worker == 1) {
 
@@ -207,7 +149,7 @@ int ListenHandler::accept_connection(evutil_socket_t fd, sockaddr *addr,
         get_config()->worker_frontend_connections) {
 
       if (LOG_ENABLED(INFO)) {
-        TLOG(INFO, this) << "Too many connections >="
+        LLOG(INFO, this) << "Too many connections >="
                          << get_config()->worker_frontend_connections;
       }
 
@@ -215,9 +157,8 @@ int ListenHandler::accept_connection(evutil_socket_t fd, sockaddr *addr,
       return -1;
     }
 
-    auto client =
-        ssl::accept_connection(evbase_, rate_limit_group_, sv_ssl_ctx_, fd,
-                               addr, addrlen, worker_stat_.get(), &dconn_pool_);
+    auto client = ssl::accept_connection(loop_, sv_ssl_ctx_, fd, addr, addrlen,
+                                         worker_stat_.get(), &dconn_pool_);
     if (!client) {
       LLOG(ERROR, this) << "ClientHandler creation failed";
 
@@ -230,6 +171,7 @@ int ListenHandler::accept_connection(evutil_socket_t fd, sockaddr *addr,
 
     return 0;
   }
+
   size_t idx = worker_round_robin_cnt_ % workers_.size();
   ++worker_round_robin_cnt_;
   WorkerEvent wev;
@@ -238,140 +180,77 @@ int ListenHandler::accept_connection(evutil_socket_t fd, sockaddr *addr,
   wev.client_fd = fd;
   memcpy(&wev.client_addr, addr, addrlen);
   wev.client_addrlen = addrlen;
-  auto output = bufferevent_get_output(workers_[idx]->bev);
-  if (evbuffer_add(output, &wev, sizeof(wev)) != 0) {
-    LLOG(FATAL, this) << "evbuffer_add() failed";
-    close(fd);
-    return -1;
-  }
+
+  workers_[idx]->send(wev);
 
   return 0;
 }
 
-event_base *ListenHandler::get_evbase() const { return evbase_; }
-
-int ListenHandler::create_http2_session() {
-  int rv;
-  http2session_ = util::make_unique<Http2Session>(evbase_, cl_ssl_ctx_);
-  rv = http2session_->init_notification();
-  return rv;
+struct ev_loop *ListenHandler::get_loop() const {
+  return loop_;
 }
 
-int ListenHandler::create_http1_connect_blocker() {
-  int rv;
-  http1_connect_blocker_ = util::make_unique<ConnectBlocker>();
+void ListenHandler::create_http2_session() {
+  http2session_ = util::make_unique<Http2Session>(loop_, cl_ssl_ctx_);
+}
 
-  rv = http1_connect_blocker_->init(evbase_);
-
-  if (rv != 0) {
-    return -1;
-  }
-
-  return 0;
+void ListenHandler::create_http1_connect_blocker() {
+  http1_connect_blocker_ = util::make_unique<ConnectBlocker>(loop_);
 }
 
 const WorkerStat *ListenHandler::get_worker_stat() const {
   return worker_stat_.get();
 }
 
-void ListenHandler::set_evlistener4(evconnlistener *evlistener4) {
-  evlistener4_ = evlistener4;
+void ListenHandler::set_acceptor4(std::unique_ptr<AcceptHandler> h) {
+  acceptor4_ = std::move(h);
 }
 
-evconnlistener *ListenHandler::get_evlistener4() const { return evlistener4_; }
+AcceptHandler *ListenHandler::get_acceptor4() const { return acceptor4_.get(); }
 
-void ListenHandler::set_evlistener6(evconnlistener *evlistener6) {
-  evlistener6_ = evlistener6;
+void ListenHandler::set_acceptor6(std::unique_ptr<AcceptHandler> h) {
+  acceptor6_ = std::move(h);
 }
 
-evconnlistener *ListenHandler::get_evlistener6() const { return evlistener6_; }
+AcceptHandler *ListenHandler::get_acceptor6() const { return acceptor6_.get(); }
 
-void ListenHandler::enable_evlistener() {
-  if (evlistener4_) {
-    evconnlistener_enable(evlistener4_);
+void ListenHandler::enable_acceptor() {
+  if (acceptor4_) {
+    acceptor4_->enable();
   }
 
-  if (evlistener6_) {
-    evconnlistener_enable(evlistener6_);
-  }
-}
-
-void ListenHandler::disable_evlistener() {
-  if (evlistener4_) {
-    evconnlistener_disable(evlistener4_);
-  }
-
-  if (evlistener6_) {
-    evconnlistener_disable(evlistener6_);
+  if (acceptor6_) {
+    acceptor6_->enable();
   }
 }
 
-void ListenHandler::disable_evlistener_temporary(const timeval *timeout) {
-  int rv;
+void ListenHandler::disable_acceptor() {
+  if (acceptor4_) {
+    acceptor4_->disable();
+  }
 
-  if (timeout->tv_sec == 0 ||
-      evtimer_pending(evlistener_disable_timerev_, nullptr)) {
+  if (acceptor6_) {
+    acceptor6_->disable();
+  }
+}
+
+void ListenHandler::disable_acceptor_temporary(ev_tstamp t) {
+  if (t == 0. || ev_is_active(&disable_acceptor_timer_)) {
     return;
   }
 
-  disable_evlistener();
+  disable_acceptor();
 
-  rv = evtimer_add(evlistener_disable_timerev_, timeout);
-
-  if (rv < 0) {
-    LOG(ERROR) << "evtimer_add for evlistener_disable_timerev_ failed";
-  }
+  ev_timer_set(&disable_acceptor_timer_, t, 0.);
+  ev_timer_start(loop_, &disable_acceptor_timer_);
 }
-
-namespace {
-void perform_accept_pending_connection(ListenHandler *listener_handler,
-                                       evconnlistener *listener) {
-  if (!listener) {
-    return;
-  }
-
-  auto server_fd = evconnlistener_get_fd(listener);
-
-  for (;;) {
-    sockaddr_union sockaddr;
-    socklen_t addrlen = sizeof(sockaddr);
-
-    auto fd = accept(server_fd, &sockaddr.sa, &addrlen);
-
-    if (fd == -1) {
-      switch (errno) {
-      case EINTR:
-      case ENETDOWN:
-      case EPROTO:
-      case ENOPROTOOPT:
-      case EHOSTDOWN:
-#ifdef ENONET
-      case ENONET:
-#endif // ENONET
-      case EHOSTUNREACH:
-      case EOPNOTSUPP:
-      case ENETUNREACH:
-        continue;
-      }
-
-      return;
-    }
-
-    evutil_make_socket_nonblocking(fd);
-
-    listener_handler->accept_connection(fd, &sockaddr.sa, addrlen);
-  }
-}
-} // namespace
 
 void ListenHandler::accept_pending_connection() {
-  perform_accept_pending_connection(this, evlistener4_);
-  perform_accept_pending_connection(this, evlistener6_);
-}
-
-void ListenHandler::notify_worker_shutdown() {
-  if (++num_worker_shutdown_ == workers_.size()) {
-    event_base_loopbreak(evbase_);
+  if (acceptor4_) {
+    acceptor4_->accept_connection();
+  }
+  if (acceptor6_) {
+    acceptor6_->accept_connection();
   }
 }
 

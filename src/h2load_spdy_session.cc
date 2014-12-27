@@ -94,14 +94,13 @@ namespace {
 ssize_t send_callback(spdylay_session *session, const uint8_t *data,
                       size_t length, int flags, void *user_data) {
   auto client = static_cast<Client *>(user_data);
-  auto spdy_session = static_cast<SpdySession *>(client->session.get());
-  int rv;
+  auto &wb = client->wb;
 
-  rv = spdy_session->sendbuf.add(data, length);
-  if (rv != 0) {
-    return SPDYLAY_ERR_CALLBACK_FAILURE;
+  if (wb.wleft() == 0) {
+    return SPDYLAY_ERR_DEFERRED;
   }
-  return length;
+
+  return wb.write(data, length);
 }
 } // namespace
 
@@ -134,6 +133,8 @@ void SpdySession::on_connect() {
         (1 << config->connection_window_bits) - SPDYLAY_INITIAL_WINDOW_SIZE;
     spdylay_submit_window_update(session_, 0, delta);
   }
+
+  client_->signal_write();
 }
 
 void SpdySession::submit_request() {
@@ -147,55 +148,32 @@ void SpdySession::submit_request() {
   spdylay_submit_request(session_, 0, nv.data(), nullptr, nullptr);
 }
 
-ssize_t SpdySession::on_read() {
-  int rv;
-  size_t nread = 0;
-  auto input = bufferevent_get_input(client_->bev);
-
-  for (;;) {
-    auto inputlen = evbuffer_get_contiguous_space(input);
-
-    if (inputlen == 0) {
-      assert(evbuffer_get_length(input) == 0);
-
-      return nread;
-    }
-
-    auto mem = evbuffer_pullup(input, inputlen);
-
-    rv = spdylay_session_mem_recv(session_, mem, inputlen);
-
-    if (rv < 0) {
-      return -1;
-    }
-
-    nread += rv;
-
-    if (evbuffer_drain(input, rv) != 0) {
-      return -1;
-    }
-  }
-}
-
-int SpdySession::on_write() {
-  int rv;
-  uint8_t buf[16384];
-
-  sendbuf.reset(bufferevent_get_output(client_->bev), buf, sizeof(buf));
-
-  rv = spdylay_session_send(session_);
-  if (rv != 0) {
+int SpdySession::on_read(const uint8_t *data, size_t len) {
+  auto rv = spdylay_session_mem_recv(session_, data, len);
+  if (rv < 0) {
     return -1;
   }
 
-  rv = sendbuf.flush();
+  assert(static_cast<size_t>(rv) == len);
+
+  if (spdylay_session_want_read(session_) == 0 &&
+      spdylay_session_want_write(session_) == 0 && client_->wb.rleft() == 0) {
+    return -1;
+  }
+
+  client_->signal_write();
+
+  return 0;
+}
+
+int SpdySession::on_write() {
+  auto rv = spdylay_session_send(session_);
   if (rv != 0) {
     return -1;
   }
 
   if (spdylay_session_want_read(session_) == 0 &&
-      spdylay_session_want_write(session_) == 0 &&
-      evbuffer_get_length(bufferevent_get_output(client_->bev)) == 0) {
+      spdylay_session_want_write(session_) == 0 && client_->wb.rleft() == 0) {
     return -1;
   }
   return 0;

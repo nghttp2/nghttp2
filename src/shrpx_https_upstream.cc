@@ -31,7 +31,7 @@
 #include "shrpx_client_handler.h"
 #include "shrpx_downstream.h"
 #include "shrpx_downstream_connection.h"
-#include "shrpx_http2_downstream_connection.h"
+//#include "shrpx_http2_downstream_connection.h"
 #include "shrpx_http.h"
 #include "shrpx_config.h"
 #include "shrpx_error.h"
@@ -43,13 +43,9 @@ using namespace nghttp2;
 
 namespace shrpx {
 
-namespace {
-const size_t OUTBUF_MAX_THRES = 16 * 1024;
-} // namespace
-
 HttpsUpstream::HttpsUpstream(ClientHandler *handler)
     : handler_(handler), current_header_length_(0),
-      ioctrl_(handler->get_bev()) {
+      ioctrl_(handler->get_rlimit()) {
   http_parser_init(&htp_, HTTP_REQUEST);
   htp_.data = this;
 }
@@ -241,37 +237,32 @@ http_parser_settings htp_hooks = {
 // on_read() does not consume all available data in input buffer if
 // one http request is fully received.
 int HttpsUpstream::on_read() {
-  auto bev = handler_->get_bev();
-  auto input = bufferevent_get_input(bev);
+  auto rb = handler_->get_rb();
   auto downstream = get_downstream();
+  const void *data;
+  size_t datalen;
 
   // downstream can be nullptr here, because it is initialized in the
   // callback chain called by http_parser_execute()
   if (downstream && downstream->get_upgraded()) {
     for (;;) {
-      auto inputlen = evbuffer_get_contiguous_space(input);
-
-      if (inputlen == 0) {
+      std::tie(data, datalen) = rb->get();
+      if (datalen == 0) {
         return 0;
       }
 
-      auto mem = evbuffer_pullup(input, inputlen);
-
       auto rv = downstream->push_upload_data_chunk(
-          reinterpret_cast<const uint8_t *>(mem), inputlen);
+          reinterpret_cast<const uint8_t *>(data), datalen);
 
       if (rv != 0) {
         return -1;
       }
 
-      if (evbuffer_drain(input, inputlen) != 0) {
-        ULOG(FATAL, this) << "evbuffer_drain() failed";
-        return -1;
-      }
+      rb->drain(datalen);
 
-      if (downstream->get_output_buffer_full()) {
+      if (downstream->request_buf_full()) {
         if (LOG_ENABLED(INFO)) {
-          ULOG(INFO, this) << "Downstream output buffer is full";
+          ULOG(INFO, this) << "Downstream request buf is full";
         }
         pause_read(SHRPX_NO_BUFFER);
 
@@ -281,21 +272,15 @@ int HttpsUpstream::on_read() {
   }
 
   for (;;) {
-    auto inputlen = evbuffer_get_contiguous_space(input);
-
-    if (inputlen == 0) {
+    std::tie(data, datalen) = rb->get();
+    if (datalen == 0) {
       return 0;
     }
 
-    auto mem = evbuffer_pullup(input, inputlen);
-
     auto nread = http_parser_execute(
-        &htp_, &htp_hooks, reinterpret_cast<const char *>(mem), inputlen);
+        &htp_, &htp_hooks, reinterpret_cast<const char *>(data), datalen);
 
-    if (evbuffer_drain(input, nread) != 0) {
-      ULOG(FATAL, this) << "evbuffer_drain() failed";
-      return -1;
-    }
+    rb->drain(nread);
 
     // Well, actually header length + some body bytes
     current_header_length_ += nread;
@@ -318,6 +303,7 @@ int HttpsUpstream::on_read() {
         if (error_reply(503) != 0) {
           return -1;
         }
+        handler_->signal_write();
         // Downstream gets deleted after response body is read.
         return 0;
       }
@@ -338,6 +324,8 @@ int HttpsUpstream::on_read() {
         if (handler->perform_http2_upgrade(this) != 0) {
           return -1;
         }
+
+        handler_->signal_write();
 
         return 0;
       }
@@ -370,13 +358,15 @@ int HttpsUpstream::on_read() {
         return -1;
       }
 
+      handler_->signal_write();
+
       return 0;
     }
 
     // downstream can be NULL here.
-    if (downstream && downstream->get_output_buffer_full()) {
+    if (downstream && downstream->request_buf_full()) {
       if (LOG_ENABLED(INFO)) {
-        ULOG(INFO, this) << "Downstream output buffer is full";
+        ULOG(INFO, this) << "Downstream request buffer is full";
       }
 
       pause_read(SHRPX_NO_BUFFER);
@@ -387,31 +377,45 @@ int HttpsUpstream::on_read() {
 }
 
 int HttpsUpstream::on_write() {
-  int rv = 0;
   auto downstream = get_downstream();
-  if (downstream) {
-    // We need to postpone detachment until all data are sent so that
-    // we can notify nghttp2 library all data consumed.
-    if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
-      if (downstream->get_response_connection_close()) {
-        // Connection close
-        downstream->pop_downstream_connection();
-        // dconn was deleted
-      } else {
-        // Keep-alive
-        downstream->detach_downstream_connection();
-      }
-      // We need this if response ends before request.
-      if (downstream->get_request_state() == Downstream::MSG_COMPLETE) {
-        delete_downstream();
-        return resume_read(SHRPX_MSG_BLOCK, nullptr, 0);
-      }
-    }
-
-    rv = downstream->resume_read(SHRPX_NO_BUFFER,
-                                 downstream->get_response_datalen());
+  if (!downstream) {
+    return 0;
   }
-  return rv;
+  auto wb = handler_->get_wb();
+  struct iovec iov[2];
+  auto iovcnt = wb->wiovec(iov);
+  if (iovcnt == 0) {
+    return 0;
+  }
+  auto output = downstream->get_response_buf();
+  for (int i = 0; i < iovcnt; ++i) {
+    auto n = output->remove(iov[i].iov_base, iov[i].iov_len);
+    wb->write(n);
+  }
+  if (wb->rleft() > 0) {
+    return 0;
+  }
+
+  // We need to postpone detachment until all data are sent so that
+  // we can notify nghttp2 library all data consumed.
+  if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+    if (downstream->get_response_connection_close()) {
+      // Connection close
+      downstream->pop_downstream_connection();
+      // dconn was deleted
+    } else {
+      // Keep-alive
+      downstream->detach_downstream_connection();
+    }
+    // We need this if response ends before request.
+    if (downstream->get_request_state() == Downstream::MSG_COMPLETE) {
+      delete_downstream();
+      return resume_read(SHRPX_MSG_BLOCK, nullptr, 0);
+    }
+  }
+
+  return downstream->resume_read(SHRPX_NO_BUFFER,
+                                 downstream->get_response_datalen());
 }
 
 int HttpsUpstream::on_event() { return 0; }
@@ -424,6 +428,10 @@ void HttpsUpstream::pause_read(IOCtrlReason reason) {
 
 int HttpsUpstream::resume_read(IOCtrlReason reason, Downstream *downstream,
                                size_t consumed) {
+  // downstream could be nullptr if reason is SHRPX_MSG_BLOCK.
+  if (downstream && downstream->request_buf_full()) {
+    return 0;
+  }
   if (ioctrl_.resume_read(reason)) {
     // Process remaining data in input buffer here because these bytes
     // are not notified by readcb until new data arrive.
@@ -434,272 +442,147 @@ int HttpsUpstream::resume_read(IOCtrlReason reason, Downstream *downstream,
   return 0;
 }
 
-namespace {
-void https_downstream_readcb(bufferevent *bev, void *ptr) {
-  auto dconn = static_cast<DownstreamConnection *>(ptr);
+int HttpsUpstream::downstream_read(DownstreamConnection *dconn) {
   auto downstream = dconn->get_downstream();
-  auto upstream = static_cast<HttpsUpstream *>(downstream->get_upstream());
   int rv;
 
   rv = downstream->on_read();
 
   if (downstream->get_response_state() == Downstream::MSG_RESET) {
-    delete upstream->get_client_handler();
-
-    return;
-  }
-
-  if (rv != 0) {
-    if (downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
-      // We already sent HTTP response headers to upstream
-      // client. Just close the upstream connection.
-      delete upstream->get_client_handler();
-
-      return;
-    }
-
-    // We did not sent any HTTP response, so sent error
-    // response. Cannot reuse downstream connection in this case.
-    if (upstream->error_reply(502) != 0) {
-      delete upstream->get_client_handler();
-
-      return;
-    }
-
-    if (downstream->get_request_state() == Downstream::MSG_COMPLETE) {
-      upstream->delete_downstream();
-
-      // Process next HTTP request
-      if (upstream->resume_read(SHRPX_MSG_BLOCK, nullptr, 0) == -1) {
-        return;
-      }
-    }
-
-    return;
-  }
-
-  auto handler = upstream->get_client_handler();
-
-  if (downstream->get_response_state() != Downstream::MSG_COMPLETE) {
-    if (handler->get_outbuf_length() >= OUTBUF_MAX_THRES) {
-      downstream->pause_read(SHRPX_NO_BUFFER);
-    }
-
-    return;
-  }
-
-  // If pending data exist, we defer detachment to correctly notify
-  // the all consumed data to nghttp2 library.
-  if (handler->get_outbuf_length() == 0) {
-    if (downstream->get_response_connection_close()) {
-      // Connection close
-      downstream->pop_downstream_connection();
-
-      dconn = nullptr;
-    } else {
-      // Keep-alive
-      downstream->detach_downstream_connection();
-    }
-  }
-
-  if (downstream->get_request_state() == Downstream::MSG_COMPLETE) {
-    if (handler->get_should_close_after_write() &&
-        handler->get_outbuf_length() == 0) {
-      // If all upstream response body has already written out to
-      // the peer, we cannot use writecb for ClientHandler. In
-      // this case, we just delete handler here.
-      delete handler;
-
-      return;
-    }
-
-    upstream->delete_downstream();
-
-    // Process next HTTP request
-    if (upstream->resume_read(SHRPX_MSG_BLOCK, nullptr, 0) == -1) {
-      return;
-    }
-
-    return;
-  }
-
-  if (downstream->get_upgraded()) {
-    // This path is effectively only taken for HTTP2 downstream
-    // because only HTTP2 downstream sets response_state to
-    // MSG_COMPLETE and this function. For HTTP downstream, EOF
-    // from tunnel connection is handled on
-    // https_downstream_eventcb.
-    //
-    // Tunneled connection always indicates connection close.
-    if (handler->get_outbuf_length() == 0) {
-      // For tunneled connection, if there is no pending data,
-      // delete handler because on_write will not be called.
-      delete handler;
-
-      return;
-    }
-
-    if (LOG_ENABLED(INFO)) {
-      DLOG(INFO, downstream) << "Tunneled connection has pending data";
-    }
-
-    return;
-  }
-
-  // Delete handler here if we have no pending write.
-  if (handler->get_should_close_after_write() &&
-      handler->get_outbuf_length() == 0) {
-    delete handler;
-  }
-}
-} // namespace
-
-namespace {
-void https_downstream_writecb(bufferevent *bev, void *ptr) {
-  if (evbuffer_get_length(bufferevent_get_output(bev)) > 0) {
-    return;
-  }
-  auto dconn = static_cast<DownstreamConnection *>(ptr);
-  auto downstream = dconn->get_downstream();
-  auto upstream = static_cast<HttpsUpstream *>(downstream->get_upstream());
-  // May return -1
-  upstream->resume_read(SHRPX_NO_BUFFER, downstream, 0);
-}
-} // namespace
-
-namespace {
-void https_downstream_eventcb(bufferevent *bev, short events, void *ptr) {
-  auto dconn = static_cast<DownstreamConnection *>(ptr);
-  auto downstream = dconn->get_downstream();
-  auto upstream = static_cast<HttpsUpstream *>(downstream->get_upstream());
-  if (events & BEV_EVENT_CONNECTED) {
-    if (LOG_ENABLED(INFO)) {
-      DCLOG(INFO, dconn) << "Connection established";
-    }
-
-    return;
-  }
-
-  if (events & BEV_EVENT_EOF) {
-    if (LOG_ENABLED(INFO)) {
-      DCLOG(INFO, dconn) << "EOF";
-    }
-    if (downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
-      // Server may indicate the end of the request by EOF
-      if (LOG_ENABLED(INFO)) {
-        DCLOG(INFO, dconn) << "The end of the response body was indicated by "
-                           << "EOF";
-      }
-      upstream->on_downstream_body_complete(downstream);
-      downstream->set_response_state(Downstream::MSG_COMPLETE);
-
-      auto handler = upstream->get_client_handler();
-      if (handler->get_should_close_after_write() &&
-          handler->get_outbuf_length() == 0) {
-        // If all upstream response body has already written out to
-        // the peer, we cannot use writecb for ClientHandler. In this
-        // case, we just delete handler here.
-        delete handler;
-        return;
-      }
-    } else if (downstream->get_response_state() != Downstream::MSG_COMPLETE) {
-      // error
-      if (LOG_ENABLED(INFO)) {
-        DCLOG(INFO, dconn) << "Treated as error";
-      }
-      if (upstream->error_reply(502) != 0) {
-        delete upstream->get_client_handler();
-        return;
-      }
-    }
-    if (downstream->get_request_state() == Downstream::MSG_COMPLETE) {
-      upstream->delete_downstream();
-      if (upstream->resume_read(SHRPX_MSG_BLOCK, nullptr, 0) == -1) {
-        return;
-      }
-    }
-
-    return;
-  }
-
-  if (events & (BEV_EVENT_ERROR | BEV_EVENT_TIMEOUT)) {
-    if (LOG_ENABLED(INFO)) {
-      if (events & BEV_EVENT_ERROR) {
-        DCLOG(INFO, dconn) << "Network error";
-      } else {
-        DCLOG(INFO, dconn) << "Timeout";
-      }
-    }
-    if (downstream->get_response_state() == Downstream::INITIAL) {
-      unsigned int status;
-      if (events & BEV_EVENT_TIMEOUT) {
-        status = 504;
-      } else {
-        status = 502;
-      }
-      if (upstream->error_reply(status) != 0) {
-        delete upstream->get_client_handler();
-        return;
-      }
-    }
-    if (downstream->get_request_state() == Downstream::MSG_COMPLETE) {
-      upstream->delete_downstream();
-      if (upstream->resume_read(SHRPX_MSG_BLOCK, nullptr, 0) == -1) {
-        return;
-      }
-    }
-  }
-}
-} // namespace
-
-int HttpsUpstream::error_reply(unsigned int status_code) {
-  auto html = http::create_error_html(status_code);
-  auto downstream = get_downstream();
-
-  if (downstream) {
-    downstream->set_response_http_status(status_code);
-  }
-
-  std::string header;
-  header.reserve(512);
-  header += "HTTP/1.1 ";
-  header += http2::get_status_string(status_code);
-  header += "\r\nServer: ";
-  header += get_config()->server_name;
-  header += "\r\nContent-Length: ";
-  header += util::utos(html.size());
-  header += "\r\nContent-Type: text/html; charset=UTF-8\r\n";
-  if (get_client_handler()->get_should_close_after_write()) {
-    header += "Connection: close\r\n";
-  }
-  header += "\r\n";
-  auto output = bufferevent_get_output(handler_->get_bev());
-  if (evbuffer_add(output, header.c_str(), header.size()) != 0 ||
-      evbuffer_add(output, html.c_str(), html.size()) != 0) {
-    ULOG(FATAL, this) << "evbuffer_add() failed";
     return -1;
   }
 
-  if (downstream) {
-    downstream->add_response_sent_bodylen(html.size());
-    downstream->set_response_state(Downstream::MSG_COMPLETE);
-  } else {
-    handler_->write_accesslog(1, 1, status_code, html.size());
+  if (rv == DownstreamConnection::ERR_EOF) {
+    return downstream_eof(dconn);
+  }
+
+  if (rv == DownstreamConnection::ERR_NET) {
+    return downstream_error(dconn, Downstream::EVENT_ERROR);
+  }
+
+  if (rv < 0) {
+    return -1;
+  }
+
+  handler_->signal_write();
+
+  return 0;
+}
+
+int HttpsUpstream::downstream_write(DownstreamConnection *dconn) {
+  int rv;
+  rv = dconn->on_write();
+  if (rv == DownstreamConnection::ERR_NET) {
+    return downstream_error(dconn, Downstream::EVENT_ERROR);
+  }
+
+  if (rv != 0) {
+    return -1;
   }
 
   return 0;
 }
 
-bufferevent_data_cb HttpsUpstream::get_downstream_readcb() {
-  return https_downstream_readcb;
+int HttpsUpstream::downstream_eof(DownstreamConnection *dconn) {
+  auto downstream = dconn->get_downstream();
+
+  if (LOG_ENABLED(INFO)) {
+    DCLOG(INFO, dconn) << "EOF";
+  }
+  if (downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
+    // Server may indicate the end of the request by EOF
+    if (LOG_ENABLED(INFO)) {
+      DCLOG(INFO, dconn) << "The end of the response body was indicated by "
+                         << "EOF";
+    }
+    on_downstream_body_complete(downstream);
+    downstream->set_response_state(Downstream::MSG_COMPLETE);
+    downstream->pop_downstream_connection();
+    goto end;
+  }
+
+  if (downstream->get_response_state() != Downstream::MSG_COMPLETE) {
+    // error
+    if (LOG_ENABLED(INFO)) {
+      DCLOG(INFO, dconn) << "Treated as error";
+    }
+    if (error_reply(502) != 0) {
+      return -1;
+    }
+    downstream->pop_downstream_connection();
+    goto end;
+  }
+
+  // Otherwise, we don't know how to recover from this situation. Just
+  // drop connection.
+  return -1;
+end:
+  handler_->signal_write();
+
+  return 0;
 }
 
-bufferevent_data_cb HttpsUpstream::get_downstream_writecb() {
-  return https_downstream_writecb;
+int HttpsUpstream::downstream_error(DownstreamConnection *dconn, int events) {
+  auto downstream = dconn->get_downstream();
+  if (LOG_ENABLED(INFO)) {
+    if (events & Downstream::EVENT_ERROR) {
+      DCLOG(INFO, dconn) << "Network error/general error";
+    } else {
+      DCLOG(INFO, dconn) << "Timeout";
+    }
+  }
+  if (downstream->get_response_state() != Downstream::INITIAL) {
+    return -1;
+  }
+
+  unsigned int status;
+  if (events & Downstream::EVENT_TIMEOUT) {
+    status = 504;
+  } else {
+    status = 502;
+  }
+  if (error_reply(status) != 0) {
+    return -1;
+  }
+
+  downstream->pop_downstream_connection();
+
+  handler_->signal_write();
+  return 0;
 }
 
-bufferevent_event_cb HttpsUpstream::get_downstream_eventcb() {
-  return https_downstream_eventcb;
+int HttpsUpstream::error_reply(unsigned int status_code) {
+  auto html = http::create_error_html(status_code);
+  auto downstream = get_downstream();
+
+  if (!downstream) {
+    attach_downstream(util::make_unique<Downstream>(this, 1, 1));
+    downstream = get_downstream();
+  }
+
+  downstream->set_response_http_status(status_code);
+
+  auto output = downstream->get_response_buf();
+
+  output->append_cstr("HTTP/1.1 ");
+  auto status_str = http2::get_status_string(status_code);
+  output->append(status_str.c_str(), status_str.size());
+  output->append_cstr("\r\nServer: ");
+  output->append(get_config()->server_name, strlen(get_config()->server_name));
+  output->append_cstr("\r\nContent-Length: ");
+  auto cl = util::utos(html.size());
+  output->append(cl.c_str(), cl.size());
+  output->append_cstr("\r\nContent-Type: text/html; charset=UTF-8\r\n");
+  if (get_client_handler()->get_should_close_after_write()) {
+    output->append_cstr("Connection: close\r\n");
+  }
+  output->append_cstr("\r\n");
+  output->append(html.c_str(), html.size());
+
+  downstream->add_response_sent_bodylen(html.size());
+  downstream->set_response_state(Downstream::MSG_COMPLETE);
+
+  return 0;
 }
 
 void HttpsUpstream::attach_downstream(std::unique_ptr<Downstream> downstream) {
@@ -747,6 +630,8 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
   http2::build_http1_headers_from_norm_headers(
       hdrs, downstream->get_response_headers());
 
+  auto output = downstream->get_response_buf();
+
   if (downstream->get_non_final_response()) {
     hdrs += "\r\n";
 
@@ -754,11 +639,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
       log_response_headers(hdrs);
     }
 
-    auto output = bufferevent_get_output(handler_->get_bev());
-    if (evbuffer_add(output, hdrs.c_str(), hdrs.size()) != 0) {
-      ULOG(FATAL, this) << "evbuffer_add() failed";
-      return -1;
-    }
+    output->append(hdrs.c_str(), hdrs.size());
 
     downstream->clear_response_headers();
 
@@ -844,11 +725,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
     log_response_headers(hdrs);
   }
 
-  auto output = bufferevent_get_output(handler_->get_bev());
-  if (evbuffer_add(output, hdrs.c_str(), hdrs.size()) != 0) {
-    ULOG(FATAL, this) << "evbuffer_add() failed";
-    return -1;
-  }
+  output->append(hdrs.c_str(), hdrs.size());
 
   return 0;
 }
@@ -856,45 +733,30 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
 int HttpsUpstream::on_downstream_body(Downstream *downstream,
                                       const uint8_t *data, size_t len,
                                       bool flush) {
-  int rv;
   if (len == 0) {
     return 0;
   }
-  auto output = bufferevent_get_output(handler_->get_bev());
+  auto output = downstream->get_response_buf();
   if (downstream->get_chunked_response()) {
     auto chunk_size_hex = util::utox(len);
     chunk_size_hex += "\r\n";
 
-    rv = evbuffer_add(output, chunk_size_hex.c_str(), chunk_size_hex.size());
-
-    if (rv != 0) {
-      ULOG(FATAL, this) << "evbuffer_add() failed";
-      return -1;
-    }
+    output->append(chunk_size_hex.c_str(), chunk_size_hex.size());
   }
-  if (evbuffer_add(output, data, len) != 0) {
-    ULOG(FATAL, this) << "evbuffer_add() failed";
-    return -1;
-  }
+  output->append(data, len);
 
   downstream->add_response_sent_bodylen(len);
 
   if (downstream->get_chunked_response()) {
-    if (evbuffer_add(output, "\r\n", 2) != 0) {
-      ULOG(FATAL, this) << "evbuffer_add() failed";
-      return -1;
-    }
+    output->append_cstr("\r\n");
   }
   return 0;
 }
 
 int HttpsUpstream::on_downstream_body_complete(Downstream *downstream) {
   if (downstream->get_chunked_response()) {
-    auto output = bufferevent_get_output(handler_->get_bev());
-    if (evbuffer_add(output, "0\r\n\r\n", 5) != 0) {
-      ULOG(FATAL, this) << "evbuffer_add() failed";
-      return -1;
-    }
+    auto output = downstream->get_response_buf();
+    output->append_cstr("0\r\n\r\n");
   }
   if (LOG_ENABLED(INFO)) {
     DLOG(INFO, downstream) << "HTTP response completed";
@@ -925,11 +787,6 @@ void HttpsUpstream::log_response_headers(const std::string &hdrs) const {
   ULOG(INFO, this) << "HTTP response headers\n" << hdrp;
 }
 
-void HttpsUpstream::reset_timeouts() {
-  handler_->set_upstream_timeouts(&get_config()->upstream_read_timeout,
-                                  &get_config()->upstream_write_timeout);
-}
-
 void HttpsUpstream::on_handler_delete() {
   if (downstream_ && downstream_->accesslog_ready()) {
     handler_->write_accesslog(downstream_.get());
@@ -955,5 +812,7 @@ int HttpsUpstream::on_downstream_reset() {
   }
   return 0;
 }
+
+MemchunkPool4K *HttpsUpstream::get_mcpool() { return &mcpool_; }
 
 } // namespace shrpx

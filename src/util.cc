@@ -30,6 +30,8 @@
 #include <netdb.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
 
 #include <cassert>
 #include <cstdio>
@@ -825,6 +827,48 @@ std::vector<unsigned char> get_default_alpn() {
   memcpy(p, NGHTTP2_PROTO_VERSION_ID, NGHTTP2_PROTO_VERSION_ID_LEN);
 
   return res;
+}
+
+int make_socket_closeonexec(int fd) {
+  int flags;
+  int rv;
+  while ((flags = fcntl(fd, F_GETFD)) == -1 && errno == EINTR)
+    ;
+  while ((rv = fcntl(fd, F_SETFD, flags | FD_CLOEXEC)) == -1 && errno == EINTR)
+    ;
+  return rv;
+}
+
+int make_socket_nodelay(int fd) {
+  int val = 1;
+  if (setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<char *>(&val),
+                 sizeof(val)) == -1) {
+    return -1;
+  }
+  return 0;
+}
+
+int create_nonblock_socket(int family) {
+  auto fd = socket(family, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
+
+  if (fd == -1) {
+    return -1;
+  }
+
+  make_socket_nodelay(fd);
+
+  return fd;
+}
+
+bool check_socket_connected(int fd) {
+  int error;
+  socklen_t len = sizeof(error);
+  if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &error, &len) == 0) {
+    if (error != 0) {
+      return false;
+    }
+  }
+  return true;
 }
 
 } // namespace util

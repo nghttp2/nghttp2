@@ -25,6 +25,8 @@
 #ifndef RINGBUF_H
 #define RINGBUF_H
 
+#include "nghttp2_config.h"
+
 #include <sys/uio.h>
 
 #include <cstring>
@@ -50,6 +52,11 @@ template <size_t N> struct RingBuf {
     } else {
       memcpy(begin + last, buf, count);
     }
+    len += count;
+    return count;
+  }
+  size_t write(size_t count) {
+    count = std::min(count, wleft());
     len += count;
     return count;
   }
@@ -115,6 +122,21 @@ template <size_t N> struct RingBuf {
   size_t len;
   uint8_t begin[N];
 };
+
+inline int limit_iovec(struct iovec *iov, int iovcnt, size_t max) {
+  if (max == 0) {
+    return 0;
+  }
+  for (int i = 0; i < iovcnt; ++i) {
+    auto d = std::min(max, iov[i].iov_len);
+    iov[i].iov_len = d;
+    max -= d;
+    if (max == 0) {
+      return i + 1;
+    }
+  }
+  return iovcnt;
+}
 
 } // namespace nghttp2
 

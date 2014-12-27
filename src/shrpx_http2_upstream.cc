@@ -46,10 +46,6 @@ using namespace nghttp2;
 namespace shrpx {
 
 namespace {
-const size_t INBUF_MAX_THRES = 16 * 1024;
-} // namespace
-
-namespace {
 int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
                              uint32_t error_code, void *user_data) {
   auto upstream = static_cast<Http2Upstream *>(user_data);
@@ -129,7 +125,6 @@ int Http2Upstream::upgrade_upstream(HttpsUpstream *http) {
   downstream->set_stream_id(1);
   downstream->init_upstream_timer();
   downstream->reset_upstream_rtimer();
-  downstream->init_response_body_buf();
   downstream->set_stream_id(1);
   downstream->set_priority(0);
 
@@ -142,46 +137,12 @@ int Http2Upstream::upgrade_upstream(HttpsUpstream *http) {
   return 0;
 }
 
-namespace {
-void settings_timeout_cb(evutil_socket_t fd, short what, void *arg) {
-  auto upstream = static_cast<Http2Upstream *>(arg);
-  ULOG(INFO, upstream) << "SETTINGS timeout";
-  if (upstream->terminate_session(NGHTTP2_SETTINGS_TIMEOUT) != 0) {
-    delete upstream->get_client_handler();
-    return;
-  }
-  if (upstream->send() != 0) {
-    delete upstream->get_client_handler();
-  }
-}
-} // namespace
-
-int Http2Upstream::start_settings_timer() {
-  int rv;
-  // We submit SETTINGS only once
-  if (settings_timerev_) {
-    return 0;
-  }
-  settings_timerev_ =
-      evtimer_new(handler_->get_evbase(), settings_timeout_cb, this);
-  if (settings_timerev_ == nullptr) {
-    return -1;
-  }
-  // SETTINGS ACK timeout is 10 seconds for now
-  timeval settings_timeout = {10, 0};
-  rv = evtimer_add(settings_timerev_, &settings_timeout);
-  if (rv == -1) {
-    return -1;
-  }
-  return 0;
+void Http2Upstream::start_settings_timer() {
+  ev_timer_start(handler_->get_loop(), &settings_timer_);
 }
 
 void Http2Upstream::stop_settings_timer() {
-  if (settings_timerev_ == nullptr) {
-    return;
-  }
-  event_free(settings_timerev_);
-  settings_timerev_ = nullptr;
+  ev_timer_stop(handler_->get_loop(), &settings_timer_);
 }
 
 namespace {
@@ -258,7 +219,6 @@ int on_begin_headers_callback(nghttp2_session *session,
 
   downstream->init_upstream_timer();
   downstream->reset_upstream_rtimer();
-  downstream->init_response_body_buf();
 
   // Although, we deprecated minor version from HTTP/2, we supply
   // minor version 0 to use via header field in a conventional way.
@@ -540,10 +500,8 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
 
   switch (frame->hd.type) {
   case NGHTTP2_SETTINGS:
-    if ((frame->hd.flags & NGHTTP2_FLAG_ACK) == 0 &&
-        upstream->start_settings_timer() != 0) {
-
-      return NGHTTP2_ERR_CALLBACK_FAILURE;
+    if ((frame->hd.flags & NGHTTP2_FLAG_ACK) == 0) {
+      upstream->start_settings_timer();
     }
     break;
   case NGHTTP2_GOAWAY:
@@ -598,9 +556,15 @@ uint32_t infer_upstream_rst_stream_error_code(uint32_t downstream_error_code) {
 } // namespace
 
 namespace {
-void write_notify_cb(evutil_socket_t fd, short what, void *arg) {
-  auto upstream = static_cast<Http2Upstream *>(arg);
-  upstream->perform_send();
+void settings_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
+  auto upstream = static_cast<Http2Upstream *>(w->data);
+  auto handler = upstream->get_client_handler();
+  ULOG(INFO, upstream) << "SETTINGS timeout";
+  if (upstream->terminate_session(NGHTTP2_SETTINGS_TIMEOUT) != 0) {
+    delete handler;
+    return;
+  }
+  handler->signal_write();
 }
 } // namespace
 
@@ -608,9 +572,8 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
     : downstream_queue_(get_config()->http2_proxy
                             ? get_config()->downstream_connections_per_host
                             : 0),
-      handler_(handler), session_(nullptr), settings_timerev_(nullptr),
-      write_notifyev_(nullptr), deferred_(false) {
-  reset_timeouts();
+      handler_(handler), session_(nullptr), data_pending_(nullptr),
+      data_pendinglen_(0), deferred_(false) {
 
   int rv;
 
@@ -699,74 +662,76 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
     }
   }
 
-  write_notifyev_ = evtimer_new(handler_->get_evbase(), write_notify_cb, this);
+  // We wait for SETTINGS ACK at least 10 seconds.
+  ev_timer_init(&settings_timer_, settings_timeout_cb, 10., 0.);
+
+  settings_timer_.data = this;
+
+  handler_->reset_upstream_read_timeout(
+      get_config()->http2_upstream_read_timeout);
+
+  handler_->signal_write();
 }
 
 Http2Upstream::~Http2Upstream() {
   nghttp2_session_del(session_);
-  if (settings_timerev_) {
-    event_free(settings_timerev_);
-  }
-  if (write_notifyev_) {
-    event_free(write_notifyev_);
-  }
+  ev_timer_stop(handler_->get_loop(), &settings_timer_);
 }
 
 int Http2Upstream::on_read() {
   ssize_t rv = 0;
-  auto bev = handler_->get_bev();
-  auto input = bufferevent_get_input(bev);
+  auto rb = handler_->get_rb();
 
   for (;;) {
-    auto inputlen = evbuffer_get_contiguous_space(input);
-
-    if (inputlen == 0) {
-      assert(evbuffer_get_length(input) == 0);
-
-      return send();
+    const void *data;
+    size_t nread;
+    std::tie(data, nread) = rb->get();
+    if (nread == 0) {
+      break;
     }
 
-    auto mem = evbuffer_pullup(input, inputlen);
-
-    rv = nghttp2_session_mem_recv(session_, mem, inputlen);
+    rv = nghttp2_session_mem_recv(
+        session_, reinterpret_cast<const uint8_t *>(data), nread);
     if (rv < 0) {
       ULOG(ERROR, this) << "nghttp2_session_recv() returned error: "
                         << nghttp2_strerror(rv);
       return -1;
     }
 
-    if (evbuffer_drain(input, rv) != 0) {
-      DCLOG(FATAL, this) << "evbuffer_drain() failed";
-      return -1;
-    }
+    rb->drain(nread);
   }
-}
 
-int Http2Upstream::on_write() { return send(); }
-
-int Http2Upstream::send() {
-  if (write_notifyev_ == nullptr) {
+  auto wb = handler_->get_wb();
+  if (nghttp2_session_want_read(session_) == 0 &&
+      nghttp2_session_want_write(session_) == 0 && wb->rleft() == 0) {
+    if (LOG_ENABLED(INFO)) {
+      ULOG(INFO, this) << "No more read/write for this HTTP2 session";
+    }
     return -1;
   }
-  event_active(write_notifyev_, 0, 0);
 
+  handler_->signal_write();
   return 0;
 }
 
 // After this function call, downstream may be deleted.
-int Http2Upstream::perform_send() {
-  int rv;
-  uint8_t buf[16384];
-  auto bev = handler_->get_bev();
-  auto output = bufferevent_get_output(bev);
+int Http2Upstream::on_write() {
+  auto wb = handler_->get_wb();
 
-  sendbuf.reset(output, buf, sizeof(buf), handler_->get_write_limit());
-  for (;;) {
-    // Check buffer length and break if it is large enough.
-    if (handler_->get_outbuf_length() > 0) {
-      break;
+  if (data_pending_) {
+    auto n = std::min(wb->wleft(), data_pendinglen_);
+    wb->write(data_pending_, n);
+    if (n < data_pendinglen_) {
+      data_pendinglen_ += n;
+      data_pendinglen_ -= n;
+      return 0;
     }
 
+    data_pending_ = nullptr;
+    data_pendinglen_ = 0;
+  }
+
+  for (;;) {
     const uint8_t *data;
     auto datalen = nghttp2_session_mem_send(session_, &data);
 
@@ -778,55 +743,38 @@ int Http2Upstream::perform_send() {
     if (datalen == 0) {
       break;
     }
-    rv = sendbuf.add(data, datalen);
-    if (rv != 0) {
-      ULOG(FATAL, this) << "evbuffer_add() failed";
-      return -1;
-    }
-    if (deferred_) {
-      break;
+    auto n = wb->write(data, datalen);
+    if (n < static_cast<decltype(n)>(datalen)) {
+      data_pending_ = data + n;
+      data_pendinglen_ = datalen - n;
+      return 0;
     }
   }
-
-  deferred_ = false;
-
-  rv = sendbuf.flush();
-  if (rv != 0) {
-    ULOG(FATAL, this) << "evbuffer_add() failed";
-    return -1;
-  }
-
-  handler_->update_warmup_writelen(sendbuf.get_writelen());
 
   if (nghttp2_session_want_read(session_) == 0 &&
-      nghttp2_session_want_write(session_) == 0 &&
-      handler_->get_outbuf_length() == 0) {
+      nghttp2_session_want_write(session_) == 0 && wb->rleft() == 0) {
     if (LOG_ENABLED(INFO)) {
       ULOG(INFO, this) << "No more read/write for this HTTP2 session";
     }
     return -1;
   }
+
   return 0;
 }
 
-int Http2Upstream::on_event() { return 0; }
-
 ClientHandler *Http2Upstream::get_client_handler() const { return handler_; }
 
-namespace {
-void downstream_readcb(bufferevent *bev, void *ptr) {
-  auto dconn = static_cast<DownstreamConnection *>(ptr);
+int Http2Upstream::downstream_read(DownstreamConnection *dconn) {
   auto downstream = dconn->get_downstream();
-  auto upstream = static_cast<Http2Upstream *>(downstream->get_upstream());
 
   if (downstream->get_request_state() == Downstream::STREAM_CLOSED) {
     // If upstream HTTP2 stream was closed, we just close downstream,
     // because there is no consumer now. Downstream connection is also
     // closed in this case.
-    upstream->remove_downstream(downstream);
+    remove_downstream(downstream);
     // downstream was deleted
 
-    return;
+    return 0;
   }
 
   if (downstream->get_response_state() == Downstream::MSG_RESET) {
@@ -834,186 +782,150 @@ void downstream_readcb(bufferevent *bev, void *ptr) {
     // RST_STREAM to the upstream and delete downstream connection
     // here. Deleting downstream will be taken place at
     // on_stream_close_callback.
-    upstream->rst_stream(downstream,
-                         infer_upstream_rst_stream_error_code(
-                             downstream->get_response_rst_stream_error_code()));
+    rst_stream(downstream,
+               infer_upstream_rst_stream_error_code(
+                   downstream->get_response_rst_stream_error_code()));
     downstream->pop_downstream_connection();
     // dconn was deleted
     dconn = nullptr;
   } else {
     auto rv = downstream->on_read();
+    if (rv == DownstreamConnection::ERR_EOF) {
+      return downstream_eof(dconn);
+    }
     if (rv != 0) {
-      if (LOG_ENABLED(INFO)) {
-        DCLOG(INFO, dconn) << "HTTP parser failure";
-      }
-      if (downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
-        upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
-      } else if (downstream->get_response_state() != Downstream::MSG_COMPLETE) {
-        // If response was completed, then don't issue RST_STREAM
-        if (upstream->error_reply(downstream, 502) != 0) {
-          delete upstream->get_client_handler();
-          return;
+      if (rv != DownstreamConnection::ERR_NET) {
+        if (LOG_ENABLED(INFO)) {
+          DCLOG(INFO, dconn) << "HTTP parser failure";
         }
       }
-      downstream->set_response_state(Downstream::MSG_COMPLETE);
-      // Clearly, we have to close downstream connection on http parser
-      // failure.
-      downstream->pop_downstream_connection();
-      // dconn was deleted
-      dconn = nullptr;
+      return downstream_error(dconn, Downstream::EVENT_ERROR);
     }
   }
-  if (upstream->send() != 0) {
-    delete upstream->get_client_handler();
-    return;
-  }
+
+  handler_->signal_write();
+
   // At this point, downstream may be deleted.
-}
-} // namespace
 
-namespace {
-void downstream_writecb(bufferevent *bev, void *ptr) {
-  if (evbuffer_get_length(bufferevent_get_output(bev)) > 0) {
-    return;
+  return 0;
+}
+
+int Http2Upstream::downstream_write(DownstreamConnection *dconn) {
+  int rv;
+  rv = dconn->on_write();
+  if (rv == DownstreamConnection::ERR_NET) {
+    return downstream_error(dconn, Downstream::EVENT_ERROR);
   }
-  auto dconn = static_cast<DownstreamConnection *>(ptr);
-  dconn->on_write();
+  if (rv != 0) {
+    return -1;
+  }
+  return 0;
 }
-} // namespace
 
-namespace {
-void downstream_eventcb(bufferevent *bev, short events, void *ptr) {
-  auto dconn = static_cast<DownstreamConnection *>(ptr);
+int Http2Upstream::downstream_eof(DownstreamConnection *dconn) {
   auto downstream = dconn->get_downstream();
-  auto upstream = static_cast<Http2Upstream *>(downstream->get_upstream());
-  if (events & BEV_EVENT_CONNECTED) {
-    if (LOG_ENABLED(INFO)) {
-      DCLOG(INFO, dconn) << "Connection established. stream_id="
-                         << downstream->get_stream_id();
-    }
-    auto fd = bufferevent_getfd(bev);
-    int val = 1;
-    if (setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<char *>(&val),
-                   sizeof(val)) == -1) {
-      DCLOG(WARN, dconn) << "Setting option TCP_NODELAY failed: errno="
-                         << errno;
-    }
 
-    return;
+  if (LOG_ENABLED(INFO)) {
+    DCLOG(INFO, dconn) << "EOF. stream_id=" << downstream->get_stream_id();
+  }
+  if (downstream->get_request_state() == Downstream::STREAM_CLOSED) {
+    // If stream was closed already, we don't need to send reply at
+    // the first place. We can delete downstream.
+    remove_downstream(downstream);
+    // downstream was deleted
+
+    return 0;
   }
 
-  if (events & BEV_EVENT_EOF) {
+  // Delete downstream connection. If we don't delete it here, it will
+  // be pooled in on_stream_close_callback.
+  downstream->pop_downstream_connection();
+  // dconn was deleted
+  dconn = nullptr;
+  // downstream wil be deleted in on_stream_close_callback.
+  if (downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
+    // Server may indicate the end of the request by EOF
     if (LOG_ENABLED(INFO)) {
-      DCLOG(INFO, dconn) << "EOF. stream_id=" << downstream->get_stream_id();
+      ULOG(INFO, this) << "Downstream body was ended by EOF";
     }
-    if (downstream->get_request_state() == Downstream::STREAM_CLOSED) {
-      // If stream was closed already, we don't need to send reply at
-      // the first place. We can delete downstream.
-      upstream->remove_downstream(downstream);
-      // downstream was deleted
+    downstream->set_response_state(Downstream::MSG_COMPLETE);
 
-      return;
+    // For tunneled connection, MSG_COMPLETE signals
+    // downstream_data_read_callback to send RST_STREAM after pending
+    // response body is sent. This is needed to ensure that RST_STREAM
+    // is sent after all pending data are sent.
+    on_downstream_body_complete(downstream);
+  } else if (downstream->get_response_state() != Downstream::MSG_COMPLETE) {
+    // If stream was not closed, then we set MSG_COMPLETE and let
+    // on_stream_close_callback delete downstream.
+    if (error_reply(downstream, 502) != 0) {
+      return -1;
     }
+    downstream->set_response_state(Downstream::MSG_COMPLETE);
+  }
+  handler_->signal_write();
+  // At this point, downstream may be deleted.
+  return 0;
+}
 
-    // Delete downstream connection. If we don't delete it here, it
-    // will be pooled in on_stream_close_callback.
-    downstream->pop_downstream_connection();
-    // dconn was deleted
-    dconn = nullptr;
-    // downstream wil be deleted in on_stream_close_callback.
+int Http2Upstream::downstream_error(DownstreamConnection *dconn, int events) {
+  auto downstream = dconn->get_downstream();
+
+  if (LOG_ENABLED(INFO)) {
+    if (events & Downstream::EVENT_ERROR) {
+      DCLOG(INFO, dconn) << "Downstream network/general error";
+    } else {
+      DCLOG(INFO, dconn) << "Timeout";
+    }
+    if (downstream->get_upgraded()) {
+      DCLOG(INFO, dconn) << "Note: this is tunnel connection";
+    }
+  }
+
+  if (downstream->get_request_state() == Downstream::STREAM_CLOSED) {
+    remove_downstream(downstream);
+    // downstream was deleted
+
+    return 0;
+  }
+
+  // Delete downstream connection. If we don't delete it here, it will
+  // be pooled in on_stream_close_callback.
+  downstream->pop_downstream_connection();
+  // dconn was deleted
+  dconn = nullptr;
+
+  if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+    // For SSL tunneling, we issue RST_STREAM. For other types of
+    // stream, we don't have to do anything since response was
+    // complete.
+    if (downstream->get_upgraded()) {
+      rst_stream(downstream, NGHTTP2_NO_ERROR);
+    }
+  } else {
     if (downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
-      // Server may indicate the end of the request by EOF
-      if (LOG_ENABLED(INFO)) {
-        ULOG(INFO, upstream) << "Downstream body was ended by EOF";
-      }
-      downstream->set_response_state(Downstream::MSG_COMPLETE);
-
-      // For tunneled connection, MSG_COMPLETE signals
-      // downstream_data_read_callback to send RST_STREAM after
-      // pending response body is sent. This is needed to ensure
-      // that RST_STREAM is sent after all pending data are sent.
-      upstream->on_downstream_body_complete(downstream);
-    } else if (downstream->get_response_state() != Downstream::MSG_COMPLETE) {
-      // If stream was not closed, then we set MSG_COMPLETE and let
-      // on_stream_close_callback delete downstream.
-      if (upstream->error_reply(downstream, 502) != 0) {
-        delete upstream->get_client_handler();
-        return;
-      }
-      downstream->set_response_state(Downstream::MSG_COMPLETE);
-    }
-    if (upstream->send() != 0) {
-      delete upstream->get_client_handler();
-      return;
-    }
-    // At this point, downstream may be deleted.
-    return;
-  }
-
-  if (events & (BEV_EVENT_ERROR | BEV_EVENT_TIMEOUT)) {
-    if (LOG_ENABLED(INFO)) {
-      if (events & BEV_EVENT_ERROR) {
-        DCLOG(INFO, dconn) << "Downstream network error: "
-                           << evutil_socket_error_to_string(
-                                  EVUTIL_SOCKET_ERROR());
+      if (downstream->get_upgraded()) {
+        on_downstream_body_complete(downstream);
       } else {
-        DCLOG(INFO, dconn) << "Timeout";
-      }
-      if (downstream->get_upgraded()) {
-        DCLOG(INFO, dconn) << "Note: this is tunnel connection";
-      }
-    }
-
-    if (downstream->get_request_state() == Downstream::STREAM_CLOSED) {
-      upstream->remove_downstream(downstream);
-      // downstream was deleted
-
-      return;
-    }
-
-    // Delete downstream connection. If we don't delete it here, it
-    // will be pooled in on_stream_close_callback.
-    downstream->pop_downstream_connection();
-    // dconn was deleted
-    dconn = nullptr;
-
-    if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
-      // For SSL tunneling, we issue RST_STREAM. For other types of
-      // stream, we don't have to do anything since response was
-      // complete.
-      if (downstream->get_upgraded()) {
-        upstream->rst_stream(downstream, NGHTTP2_NO_ERROR);
+        rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
       }
     } else {
-      if (downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
-        if (downstream->get_upgraded()) {
-          upstream->on_downstream_body_complete(downstream);
-        } else {
-          upstream->rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
-        }
+      unsigned int status;
+      if (events & Downstream::EVENT_TIMEOUT) {
+        status = 504;
       } else {
-        unsigned int status;
-        if (events & BEV_EVENT_TIMEOUT) {
-          status = 504;
-        } else {
-          status = 502;
-        }
-        if (upstream->error_reply(downstream, status) != 0) {
-          delete upstream->get_client_handler();
-          return;
-        }
+        status = 502;
       }
-      downstream->set_response_state(Downstream::MSG_COMPLETE);
+      if (error_reply(downstream, status) != 0) {
+        return -1;
+      }
     }
-    if (upstream->send() != 0) {
-      delete upstream->get_client_handler();
-      return;
-    }
-    // At this point, downstream may be deleted.
-    return;
+    downstream->set_response_state(Downstream::MSG_COMPLETE);
   }
+  handler_->signal_write();
+  // At this point, downstream may be deleted.
+  return 0;
 }
-} // namespace
 
 int Http2Upstream::rst_stream(Downstream *downstream, uint32_t error_code) {
   if (LOG_ENABLED(INFO)) {
@@ -1048,7 +960,7 @@ ssize_t downstream_data_read_callback(nghttp2_session *session,
                                       void *user_data) {
   auto downstream = static_cast<Downstream *>(source->ptr);
   auto upstream = static_cast<Http2Upstream *>(downstream->get_upstream());
-  auto body = downstream->get_response_body_buf();
+  auto body = downstream->get_response_buf();
   auto handler = upstream->get_client_handler();
   assert(body);
 
@@ -1062,13 +974,8 @@ ssize_t downstream_data_read_callback(nghttp2_session *session,
     length = std::min(length, static_cast<size_t>(limit - 9));
   }
 
-  int nread = evbuffer_remove(body, buf, length);
-  if (nread == -1) {
-    ULOG(FATAL, upstream) << "evbuffer_remove() failed";
-    return NGHTTP2_ERR_CALLBACK_FAILURE;
-  }
-
-  auto body_empty = evbuffer_get_length(body) == 0;
+  auto nread = body->remove(buf, length);
+  auto body_empty = body->rleft() == 0;
 
   if (body_empty &&
       downstream->get_response_state() == Downstream::MSG_COMPLETE) {
@@ -1106,6 +1013,7 @@ ssize_t downstream_data_read_callback(nghttp2_session *session,
     // a chance to read another incoming data from backend to this
     // stream.
     upstream->set_deferred(true);
+
     return NGHTTP2_ERR_DEFERRED;
   }
 
@@ -1122,13 +1030,8 @@ int Http2Upstream::error_reply(Downstream *downstream,
   int rv;
   auto html = http::create_error_html(status_code);
   downstream->set_response_http_status(status_code);
-  downstream->init_response_body_buf();
-  auto body = downstream->get_response_body_buf();
-  rv = evbuffer_add(body, html.c_str(), html.size());
-  if (rv == -1) {
-    ULOG(FATAL, this) << "evbuffer_add() failed";
-    return -1;
-  }
+  auto body = downstream->get_response_buf();
+  body->append(html.c_str(), html.size());
   downstream->set_response_state(Downstream::MSG_COMPLETE);
 
   nghttp2_data_provider data_prd;
@@ -1154,18 +1057,6 @@ int Http2Upstream::error_reply(Downstream *downstream,
   return 0;
 }
 
-bufferevent_data_cb Http2Upstream::get_downstream_readcb() {
-  return downstream_readcb;
-}
-
-bufferevent_data_cb Http2Upstream::get_downstream_writecb() {
-  return downstream_writecb;
-}
-
-bufferevent_event_cb Http2Upstream::get_downstream_eventcb() {
-  return downstream_eventcb;
-}
-
 void
 Http2Upstream::add_pending_downstream(std::unique_ptr<Downstream> downstream) {
   downstream_queue_.add_pending(std::move(downstream));
@@ -1182,6 +1073,9 @@ void Http2Upstream::remove_downstream(Downstream *downstream) {
   if (next_downstream) {
     initiate_downstream(std::move(next_downstream));
   }
+
+  mcpool_.shrink((downstream_queue_.get_active_downstreams().size() + 1) *
+                 65536);
 }
 
 Downstream *Http2Upstream::find_downstream(int32_t stream_id) {
@@ -1304,27 +1198,13 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
 int Http2Upstream::on_downstream_body(Downstream *downstream,
                                       const uint8_t *data, size_t len,
                                       bool flush) {
-  auto body = downstream->get_response_body_buf();
-  int rv = evbuffer_add(body, data, len);
-  if (rv != 0) {
-    ULOG(FATAL, this) << "evbuffer_add() failed";
-    return -1;
-  }
+  auto body = downstream->get_response_buf();
+  body->append(data, len);
 
   if (flush) {
     nghttp2_session_resume_data(session_, downstream->get_stream_id());
 
     downstream->ensure_upstream_wtimer();
-  }
-
-  if (evbuffer_get_length(body) >= INBUF_MAX_THRES) {
-    if (!flush) {
-      nghttp2_session_resume_data(session_, downstream->get_stream_id());
-
-      downstream->ensure_upstream_wtimer();
-    }
-
-    downstream->pause_read(SHRPX_NO_BUFFER);
   }
 
   return 0;
@@ -1358,7 +1238,8 @@ int Http2Upstream::resume_read(IOCtrlReason reason, Downstream *downstream,
     downstream->dec_request_datalen(consumed);
   }
 
-  return send();
+  handler_->signal_write();
+  return 0;
 }
 
 int Http2Upstream::on_downstream_abort_request(Downstream *downstream,
@@ -1371,7 +1252,8 @@ int Http2Upstream::on_downstream_abort_request(Downstream *downstream,
     return -1;
   }
 
-  return send();
+  handler_->signal_write();
+  return 0;
 }
 
 int Http2Upstream::consume(int32_t stream_id, size_t len) {
@@ -1414,11 +1296,6 @@ int Http2Upstream::on_timeout(Downstream *downstream) {
   return 0;
 }
 
-void Http2Upstream::reset_timeouts() {
-  handler_->set_upstream_timeouts(&get_config()->http2_upstream_read_timeout,
-                                  &get_config()->upstream_write_timeout);
-}
-
 void Http2Upstream::on_handler_delete() {
   for (auto &ent : downstream_queue_.get_active_downstreams()) {
     if (ent.second->accesslog_ready()) {
@@ -1453,14 +1330,13 @@ int Http2Upstream::on_downstream_reset() {
     }
   }
 
-  rv = send();
-  if (rv != 0) {
-    return -1;
-  }
+  handler_->signal_write();
 
   return 0;
 }
 
 void Http2Upstream::set_deferred(bool f) { deferred_ = f; }
+
+MemchunkPool4K *Http2Upstream::get_mcpool() { return &mcpool_; }
 
 } // namespace shrpx

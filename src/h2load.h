@@ -38,12 +38,14 @@
 
 #include <nghttp2/nghttp2.h>
 
-#include <event.h>
-#include <event2/event.h>
+#include <ev.h>
 
 #include <openssl/ssl.h>
 
 #include "http2.h"
+#include "ringbuf.h"
+
+using namespace nghttp2;
 
 namespace h2load {
 
@@ -107,7 +109,7 @@ struct Client;
 struct Worker {
   std::vector<std::unique_ptr<Client>> clients;
   Stats stats;
-  event_base *evbase;
+  struct ev_loop *loop;
   SSL_CTX *ssl_ctx;
   Config *config;
   size_t progress_interval;
@@ -128,9 +130,13 @@ struct Stream {
 struct Client {
   std::unordered_map<int32_t, Stream> streams;
   std::unique_ptr<Session> session;
+  ev_io wev;
+  ev_io rev;
+  std::function<int(Client &)> readfn, writefn;
+  std::function<int(Client &, const uint8_t *, size_t)> on_readfn;
+  std::function<int(Client &)> on_writefn;
   Worker *worker;
   SSL *ssl;
-  bufferevent *bev;
   addrinfo *next_addr;
   size_t reqidx;
   ClientState state;
@@ -140,6 +146,8 @@ struct Client {
   size_t req_started;
   // The number of requests this client has done so far.
   size_t req_done;
+  int fd;
+  RingBuf<65536> wb;
 
   Client(Worker *worker, size_t req_todo);
   ~Client();
@@ -151,13 +159,29 @@ struct Client {
   void report_progress();
   void report_tls_info();
   void terminate_session();
-  int on_connect();
-  int on_read();
+
+  int do_read();
+  int do_write();
+
+  int connected();
+  int read_clear();
+  int write_clear();
+  int tls_handshake();
+  int read_tls();
+  int write_tls();
+
+  int on_read(const uint8_t *data, size_t len);
   int on_write();
+  int on_connect();
+  int on_net_error();
+  int noop();
+
   void on_request(int32_t stream_id);
   void on_header(int32_t stream_id, const uint8_t *name, size_t namelen,
                  const uint8_t *value, size_t valuelen);
   void on_stream_close(int32_t stream_id, bool success);
+
+  void signal_write();
 };
 
 } // namespace h2load

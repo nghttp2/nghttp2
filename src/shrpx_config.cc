@@ -198,7 +198,7 @@ FILE *open_file_for_write(const char *filename) {
     return nullptr;
   }
 
-  evutil_make_socket_closeonexec(fileno(f));
+  util::make_socket_closeonexec(fileno(f));
 
   return f;
 }
@@ -421,15 +421,14 @@ std::vector<LogFragment> parse_log_format(const char *optarg) {
 }
 
 namespace {
-int parse_timeval(timeval *dest, const char *opt, const char *optarg) {
+int parse_timeval(ev_tstamp *dest, const char *opt, const char *optarg) {
   time_t sec;
 
   if (parse_uint(&sec, opt, optarg) != 0) {
     return -1;
   }
 
-  dest->tv_sec = sec;
-  dest->tv_usec = 0;
+  *dest = sec;
 
   return 0;
 }

@@ -37,8 +37,9 @@
 #include <memory>
 #include <atomic>
 
-#include <event.h>
 #include <openssl/ssl.h>
+
+#include <ev.h>
 
 #include <nghttp2/nghttp2.h>
 
@@ -171,15 +172,15 @@ struct Config {
   std::vector<DownstreamAddr> downstream_addrs;
   // binary form of http proxy host and port
   sockaddr_union downstream_http_proxy_addr;
-  timeval http2_upstream_read_timeout;
-  timeval upstream_read_timeout;
-  timeval upstream_write_timeout;
-  timeval downstream_read_timeout;
-  timeval downstream_write_timeout;
-  timeval stream_read_timeout;
-  timeval stream_write_timeout;
-  timeval downstream_idle_read_timeout;
-  timeval listener_disable_timeout;
+  ev_tstamp http2_upstream_read_timeout;
+  ev_tstamp upstream_read_timeout;
+  ev_tstamp upstream_write_timeout;
+  ev_tstamp downstream_read_timeout;
+  ev_tstamp downstream_write_timeout;
+  ev_tstamp stream_read_timeout;
+  ev_tstamp stream_write_timeout;
+  ev_tstamp downstream_idle_read_timeout;
+  ev_tstamp listener_disable_timeout;
   std::unique_ptr<char[]> host;
   std::unique_ptr<char[]> private_key_file;
   std::unique_ptr<char[]> private_key_passwd;
@@ -199,10 +200,10 @@ struct Config {
   std::unique_ptr<char[]> downstream_http_proxy_host;
   std::unique_ptr<char[]> http2_upstream_dump_request_header_file;
   std::unique_ptr<char[]> http2_upstream_dump_response_header_file;
-  // Rate limit configuration per connection
-  ev_token_bucket_cfg *rate_limit_cfg;
-  // Rate limit configuration per worker (thread)
-  ev_token_bucket_cfg *worker_rate_limit_cfg;
+  // // Rate limit configuration per connection
+  // ev_token_bucket_cfg *rate_limit_cfg;
+  // // Rate limit configuration per worker (thread)
+  // ev_token_bucket_cfg *worker_rate_limit_cfg;
   // list of supported NPN/ALPN protocol strings in the order of
   // preference. The each element of this list is a NULL-terminated
   // string.

@@ -29,11 +29,15 @@
 
 #include <memory>
 
+#include <ev.h>
+
 #include <nghttp2/nghttp2.h>
 
 #include "shrpx_upstream.h"
 #include "shrpx_downstream_queue.h"
-#include "libevent_util.h"
+#include "memchunk.h"
+
+using namespace nghttp2;
 
 namespace shrpx {
 
@@ -46,16 +50,16 @@ public:
   virtual ~Http2Upstream();
   virtual int on_read();
   virtual int on_write();
-  virtual int on_event();
   virtual int on_timeout(Downstream *downstream);
   virtual int on_downstream_abort_request(Downstream *downstream,
                                           unsigned int status_code);
-  int send();
-  int perform_send();
   virtual ClientHandler *get_client_handler() const;
-  virtual bufferevent_data_cb get_downstream_readcb();
-  virtual bufferevent_data_cb get_downstream_writecb();
-  virtual bufferevent_event_cb get_downstream_eventcb();
+
+  virtual int downstream_read(DownstreamConnection *dconn);
+  virtual int downstream_write(DownstreamConnection *dconn);
+  virtual int downstream_eof(DownstreamConnection *dconn);
+  virtual int downstream_error(DownstreamConnection *dconn, int events);
+
   void add_pending_downstream(std::unique_ptr<Downstream> downstream);
   void remove_downstream(Downstream *downstream);
   Downstream *find_downstream(int32_t stream_id);
@@ -78,14 +82,14 @@ public:
   virtual void on_handler_delete();
   virtual int on_downstream_reset();
 
-  virtual void reset_timeouts();
+  virtual MemchunkPool4K *get_mcpool();
 
   bool get_flow_control() const;
   // Perform HTTP/2 upgrade from |upstream|. On success, this object
   // takes ownership of the |upstream|. This function returns 0 if it
   // succeeds, or -1.
   int upgrade_upstream(HttpsUpstream *upstream);
-  int start_settings_timer();
+  void start_settings_timer();
   void stop_settings_timer();
   int consume(int32_t stream_id, size_t len);
   void log_response_headers(Downstream *downstream,
@@ -95,15 +99,16 @@ public:
 
   void set_deferred(bool f);
 
-  nghttp2::util::EvbufferBuffer sendbuf;
-
 private:
-  DownstreamQueue downstream_queue_;
+  // must be put before downstream_queue_
   std::unique_ptr<HttpsUpstream> pre_upstream_;
+  MemchunkPool4K mcpool_;
+  DownstreamQueue downstream_queue_;
+  ev_timer settings_timer_;
   ClientHandler *handler_;
   nghttp2_session *session_;
-  event *settings_timerev_;
-  event *write_notifyev_;
+  const uint8_t *data_pending_;
+  size_t data_pendinglen_;
   bool flow_control_;
   bool deferred_;
 };

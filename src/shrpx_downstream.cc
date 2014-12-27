@@ -38,11 +38,76 @@
 
 namespace shrpx {
 
+namespace {
+void upstream_timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
+  auto downstream = static_cast<Downstream *>(w->data);
+  auto upstream = downstream->get_upstream();
+
+  auto which = revents == EV_READ ? "read" : "write";
+
+  if (LOG_ENABLED(INFO)) {
+    DLOG(INFO, downstream) << "upstream timeout stream_id="
+                           << downstream->get_stream_id() << " event=" << which;
+  }
+
+  downstream->disable_upstream_rtimer();
+  downstream->disable_upstream_wtimer();
+
+  upstream->on_timeout(downstream);
+}
+} // namespace
+
+namespace {
+void upstream_rtimeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
+  upstream_timeoutcb(loop, w, EV_READ);
+}
+} // namespace
+
+namespace {
+void upstream_wtimeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
+  upstream_timeoutcb(loop, w, EV_WRITE);
+}
+} // namespace
+
+namespace {
+void downstream_timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
+  auto downstream = static_cast<Downstream *>(w->data);
+
+  auto which = revents == EV_READ ? "read" : "write";
+
+  if (LOG_ENABLED(INFO)) {
+    DLOG(INFO, downstream) << "downstream timeout stream_id="
+                           << downstream->get_downstream_stream_id()
+                           << " event=" << which;
+  }
+
+  downstream->disable_downstream_rtimer();
+  downstream->disable_downstream_wtimer();
+
+  auto dconn = downstream->get_downstream_connection();
+
+  if (dconn) {
+    dconn->on_timeout();
+  }
+}
+} // namespace
+
+namespace {
+void downstream_rtimeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
+  downstream_timeoutcb(loop, w, EV_READ);
+}
+} // namespace
+
+namespace {
+void downstream_wtimeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
+  downstream_timeoutcb(loop, w, EV_WRITE);
+}
+} // namespace
+
 Downstream::Downstream(Upstream *upstream, int32_t stream_id, int32_t priority)
-    : request_bodylen_(0), response_bodylen_(0), response_sent_bodylen_(0),
-      upstream_(upstream), response_body_buf_(nullptr),
-      upstream_rtimerev_(nullptr), upstream_wtimerev_(nullptr),
-      downstream_rtimerev_(nullptr), downstream_wtimerev_(nullptr),
+    : request_buf_(upstream->get_mcpool()),
+      response_buf_(upstream->get_mcpool()), request_bodylen_(0),
+      response_bodylen_(0), response_sent_bodylen_(0), upstream_(upstream),
       request_headers_sum_(0), response_headers_sum_(0), request_datalen_(0),
       response_datalen_(0), stream_id_(stream_id), priority_(priority),
       downstream_stream_id_(-1),
@@ -55,28 +120,34 @@ Downstream::Downstream(Upstream *upstream, int32_t stream_id, int32_t priority)
       request_header_key_prev_(false), request_http2_expect_body_(false),
       chunked_response_(false), response_connection_close_(false),
       response_header_key_prev_(false), expect_final_response_(false),
-      request_headers_normalized_(false) {}
+      request_headers_normalized_(false) {
+
+  ev_timer_init(&upstream_rtimer_, &upstream_rtimeoutcb, 0.,
+                get_config()->stream_read_timeout);
+  ev_timer_init(&upstream_wtimer_, &upstream_wtimeoutcb, 0.,
+                get_config()->stream_write_timeout);
+  ev_timer_init(&downstream_rtimer_, &downstream_rtimeoutcb, 0.,
+                get_config()->stream_read_timeout);
+  ev_timer_init(&downstream_wtimer_, &downstream_wtimeoutcb, 0.,
+                get_config()->stream_write_timeout);
+
+  upstream_rtimer_.data = this;
+  upstream_wtimer_.data = this;
+  downstream_rtimer_.data = this;
+  downstream_wtimer_.data = this;
+}
 
 Downstream::~Downstream() {
   if (LOG_ENABLED(INFO)) {
     DLOG(INFO, this) << "Deleting";
   }
-  if (response_body_buf_) {
-    // Passing NULL to evbuffer_free() causes segmentation fault.
-    evbuffer_free(response_body_buf_);
-  }
-  if (upstream_rtimerev_) {
-    event_free(upstream_rtimerev_);
-  }
-  if (upstream_wtimerev_) {
-    event_free(upstream_wtimerev_);
-  }
-  if (downstream_rtimerev_) {
-    event_free(downstream_rtimerev_);
-  }
-  if (downstream_wtimerev_) {
-    event_free(downstream_wtimerev_);
-  }
+  auto loop = upstream_->get_client_handler()->get_loop();
+
+  ev_timer_stop(loop, &upstream_rtimer_);
+  ev_timer_stop(loop, &upstream_wtimer_);
+  ev_timer_stop(loop, &downstream_rtimer_);
+  ev_timer_stop(loop, &downstream_wtimer_);
+
   if (LOG_ENABLED(INFO)) {
     DLOG(INFO, this) << "Deleted";
   }
@@ -399,13 +470,15 @@ void Downstream::set_request_http2_expect_body(bool f) {
   request_http2_expect_body_ = f;
 }
 
-bool Downstream::get_output_buffer_full() {
+bool Downstream::request_buf_full() {
   if (dconn_) {
-    return dconn_->get_output_buffer_full();
+    return request_buf_.rleft() >= 16384;
   } else {
     return false;
   }
 }
+
+Memchunks4K *Downstream::get_request_buf() { return &request_buf_; }
 
 // Call this function after this object is attached to
 // Downstream. Otherwise, the program will crash.
@@ -585,17 +658,15 @@ void Downstream::set_response_state(int state) { response_state_ = state; }
 
 int Downstream::get_response_state() const { return response_state_; }
 
-int Downstream::init_response_body_buf() {
-  if (!response_body_buf_) {
-    response_body_buf_ = evbuffer_new();
-    if (response_body_buf_ == nullptr) {
-      DIE();
-    }
-  }
-  return 0;
-}
+Memchunks4K *Downstream::get_response_buf() { return &response_buf_; }
 
-evbuffer *Downstream::get_response_body_buf() { return response_body_buf_; }
+bool Downstream::response_buf_full() {
+  if (dconn_) {
+    return response_buf_.rleft() >= 64 * 1024;
+  } else {
+    return false;
+  }
+}
 
 void Downstream::add_response_bodylen(size_t amount) {
   response_bodylen_ += amount;
@@ -764,199 +835,120 @@ bool Downstream::response_pseudo_header_allowed() const {
   return pseudo_header_allowed(response_headers_);
 }
 
-namespace {
-void upstream_timeoutcb(evutil_socket_t fd, short event, void *arg) {
-  auto downstream = static_cast<Downstream *>(arg);
-  auto upstream = downstream->get_upstream();
-
-  auto which = event == EV_READ ? "read" : "write";
-
-  if (LOG_ENABLED(INFO)) {
-    DLOG(INFO, downstream) << "upstream timeout stream_id="
-                           << downstream->get_stream_id() << " event=" << which;
-  }
-
-  downstream->disable_upstream_rtimer();
-  downstream->disable_upstream_wtimer();
-
-  upstream->on_timeout(downstream);
-}
-} // namespace
-
-namespace {
-void upstream_rtimeoutcb(evutil_socket_t fd, short event, void *arg) {
-  upstream_timeoutcb(fd, EV_READ, arg);
-}
-} // namespace
-
-namespace {
-void upstream_wtimeoutcb(evutil_socket_t fd, short event, void *arg) {
-  upstream_timeoutcb(fd, EV_WRITE, arg);
-}
-} // namespace
-
-namespace {
-event *init_timer(event_base *evbase, event_callback_fn cb, void *arg) {
-  auto timerev = evtimer_new(evbase, cb, arg);
-
-  if (timerev == nullptr) {
-    LOG(WARN) << "timer initialization failed";
-    return nullptr;
-  }
-
-  return timerev;
-}
-} // namespace
-
 void Downstream::init_upstream_timer() {
-  auto evbase = upstream_->get_client_handler()->get_evbase();
+  // auto evbase = upstream_->get_client_handler()->get_evbase();
 
-  if (get_config()->stream_read_timeout.tv_sec > 0) {
-    upstream_rtimerev_ = init_timer(evbase, upstream_rtimeoutcb, this);
-  }
+  // if (get_config()->stream_read_timeout.tv_sec > 0) {
+  //   upstream_rtimerev_ = init_timer(evbase, upstream_rtimeoutcb, this);
+  // }
 
-  if (get_config()->stream_write_timeout.tv_sec > 0) {
-    upstream_wtimerev_ = init_timer(evbase, upstream_wtimeoutcb, this);
-  }
+  // if (get_config()->stream_write_timeout.tv_sec > 0) {
+  //   upstream_wtimerev_ = init_timer(evbase, upstream_wtimeoutcb, this);
+  // }
 }
 
-namespace {
-void reset_timer(event *timer, const timeval *timeout) {
-  if (!timer) {
-    return;
-  }
+// namespace {
+// void reset_timer(event *timer, const timeval *timeout) {
+//   if (!timer) {
+//     return;
+//   }
 
-  event_add(timer, timeout);
-}
-} // namespace
+//   event_add(timer, timeout);
+// }
+// } // namespace
 
-namespace {
-void try_reset_timer(event *timer, const timeval *timeout) {
-  if (!timer) {
-    return;
-  }
+// namespace {
+// void try_reset_timer(event *timer, const timeval *timeout) {
+// if (!timer) {
+//   return;
+// }
 
-  if (!evtimer_pending(timer, nullptr)) {
-    return;
-  }
+// if (!evtimer_pending(timer, nullptr)) {
+//   return;
+// }
 
-  event_add(timer, timeout);
-}
-} // namespace
+// event_add(timer, timeout);
+// }
+// } // namespace
 
-namespace {
-void ensure_timer(event *timer, const timeval *timeout) {
-  if (!timer) {
-    return;
-  }
+// namespace {
+// void ensure_timer(event *timer, const timeval *timeout) {
+// if (!timer) {
+//   return;
+// }
 
-  if (evtimer_pending(timer, nullptr)) {
-    return;
-  }
+// if (evtimer_pending(timer, nullptr)) {
+//   return;
+// }
 
-  event_add(timer, timeout);
-}
-} // namespace
+// event_add(timer, timeout);
+// }
+// } // namespace
 
-namespace {
-void disable_timer(event *timer) {
-  if (!timer) {
-    return;
-  }
+// namespace {
+// void disable_timer(event *timer) {
+// if (!timer) {
+//   return;
+// }
 
-  event_del(timer);
-}
-} // namespace
+// event_del(timer);
+// }
+// } // namespace
 
 void Downstream::reset_upstream_rtimer() {
-  reset_timer(upstream_rtimerev_, &get_config()->stream_read_timeout);
-  try_reset_timer(upstream_wtimerev_, &get_config()->stream_write_timeout);
+  // reset_timer(upstream_rtimerev_, &get_config()->stream_read_timeout);
+  // try_reset_timer(upstream_wtimerev_, &get_config()->stream_write_timeout);
 }
 
 void Downstream::reset_upstream_wtimer() {
-  reset_timer(upstream_wtimerev_, &get_config()->stream_write_timeout);
-  try_reset_timer(upstream_rtimerev_, &get_config()->stream_read_timeout);
+  // reset_timer(upstream_wtimerev_, &get_config()->stream_write_timeout);
+  // try_reset_timer(upstream_rtimerev_, &get_config()->stream_read_timeout);
 }
 
 void Downstream::ensure_upstream_wtimer() {
-  ensure_timer(upstream_wtimerev_, &get_config()->stream_write_timeout);
+  // ensure_timer(upstream_wtimerev_, &get_config()->stream_write_timeout);
 }
 
 void Downstream::disable_upstream_rtimer() {
-  disable_timer(upstream_rtimerev_);
+  // disable_timer(upstream_rtimerev_);
 }
 
 void Downstream::disable_upstream_wtimer() {
-  disable_timer(upstream_wtimerev_);
+  // disable_timer(upstream_wtimerev_);
 }
-
-namespace {
-void downstream_timeoutcb(evutil_socket_t fd, short event, void *arg) {
-  auto downstream = static_cast<Downstream *>(arg);
-
-  auto which = event == EV_READ ? "read" : "write";
-
-  if (LOG_ENABLED(INFO)) {
-    DLOG(INFO, downstream) << "downstream timeout stream_id="
-                           << downstream->get_downstream_stream_id()
-                           << " event=" << which;
-  }
-
-  downstream->disable_downstream_rtimer();
-  downstream->disable_downstream_wtimer();
-
-  auto dconn = downstream->get_downstream_connection();
-
-  if (dconn) {
-    dconn->on_timeout();
-  }
-}
-} // namespace
-
-namespace {
-void downstream_rtimeoutcb(evutil_socket_t fd, short event, void *arg) {
-  downstream_timeoutcb(fd, EV_READ, arg);
-}
-} // namespace
-
-namespace {
-void downstream_wtimeoutcb(evutil_socket_t fd, short event, void *arg) {
-  downstream_timeoutcb(fd, EV_WRITE, arg);
-}
-} // namespace
 
 void Downstream::init_downstream_timer() {
-  auto evbase = upstream_->get_client_handler()->get_evbase();
+  // auto evbase = upstream_->get_client_handler()->get_evbase();
 
-  if (get_config()->stream_read_timeout.tv_sec > 0) {
-    downstream_rtimerev_ = init_timer(evbase, downstream_rtimeoutcb, this);
-  }
+  // if (get_config()->stream_read_timeout.tv_sec > 0) {
+  //   downstream_rtimerev_ = init_timer(evbase, downstream_rtimeoutcb, this);
+  // }
 
-  if (get_config()->stream_write_timeout.tv_sec > 0) {
-    downstream_wtimerev_ = init_timer(evbase, downstream_wtimeoutcb, this);
-  }
+  // if (get_config()->stream_write_timeout.tv_sec > 0) {
+  //   downstream_wtimerev_ = init_timer(evbase, downstream_wtimeoutcb, this);
+  // }
 }
 
 void Downstream::reset_downstream_rtimer() {
-  reset_timer(downstream_rtimerev_, &get_config()->stream_read_timeout);
-  try_reset_timer(downstream_wtimerev_, &get_config()->stream_write_timeout);
+  // reset_timer(downstream_rtimerev_, &get_config()->stream_read_timeout);
+  // try_reset_timer(downstream_wtimerev_, &get_config()->stream_write_timeout);
 }
 
 void Downstream::reset_downstream_wtimer() {
-  reset_timer(downstream_wtimerev_, &get_config()->stream_write_timeout);
-  try_reset_timer(downstream_rtimerev_, &get_config()->stream_read_timeout);
+  // reset_timer(downstream_wtimerev_, &get_config()->stream_write_timeout);
+  // try_reset_timer(downstream_rtimerev_, &get_config()->stream_read_timeout);
 }
 
 void Downstream::ensure_downstream_wtimer() {
-  ensure_timer(downstream_wtimerev_, &get_config()->stream_write_timeout);
+  // ensure_timer(downstream_wtimerev_, &get_config()->stream_write_timeout);
 }
 
 void Downstream::disable_downstream_rtimer() {
-  disable_timer(downstream_rtimerev_);
+  // disable_timer(downstream_rtimerev_);
 }
 
 void Downstream::disable_downstream_wtimer() {
-  disable_timer(downstream_wtimerev_);
+  // disable_timer(downstream_wtimerev_);
 }
 
 bool Downstream::accesslog_ready() const { return response_http_status_ > 0; }

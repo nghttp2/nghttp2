@@ -32,7 +32,7 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
-#include <event.h>
+#include <ev.h>
 
 namespace shrpx {
 
@@ -47,9 +47,7 @@ SSL_CTX *create_ssl_context(const char *private_key_file,
 
 SSL_CTX *create_ssl_client_context();
 
-ClientHandler *accept_connection(event_base *evbase,
-                                 bufferevent_rate_limit_group *rate_limit_group,
-                                 SSL_CTX *ssl_ctx, evutil_socket_t fd,
+ClientHandler *accept_connection(struct ev_loop *loop, SSL_CTX *ssl_ctx, int fd,
                                  sockaddr *addr, int addrlen,
                                  WorkerStat *worker_stat,
                                  DownstreamConnectionPool *dconn_pool);

@@ -27,12 +27,25 @@
 
 #include "shrpx.h"
 
+#include <mutex>
+#include <deque>
+#include <thread>
+#ifndef NOTHREADS
+#include <future>
+#endif // NOTHREADS
+
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
-#include "shrpx_listen_handler.h"
+#include <ev.h>
+
+#include "shrpx_config.h"
+#include "shrpx_downstream_connection_pool.h"
 
 namespace shrpx {
+
+class Http2Session;
+class ConnectBlocker;
 
 struct WorkerStat {
   WorkerStat() : num_connections(0), next_downstream(0) {}
@@ -44,20 +57,48 @@ struct WorkerStat {
   size_t next_downstream;
 };
 
-class Worker {
-public:
-  Worker(const WorkerInfo *info);
-  ~Worker();
-  void run();
-
-private:
-  SSL_CTX *sv_ssl_ctx_;
-  SSL_CTX *cl_ssl_ctx_;
-  // Channel to the main thread
-  int fd_;
+enum WorkerEventType {
+  NEW_CONNECTION = 0x01,
+  REOPEN_LOG = 0x02,
+  GRACEFUL_SHUTDOWN = 0x03,
 };
 
-void start_threaded_worker(WorkerInfo *info);
+struct WorkerEvent {
+  WorkerEventType type;
+  union {
+    struct {
+      sockaddr_union client_addr;
+      size_t client_addrlen;
+      int client_fd;
+    };
+  };
+};
+
+class Worker {
+public:
+  Worker(SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx);
+  ~Worker();
+  void run();
+  void run_loop();
+  void wait();
+  void process_events();
+  void send(const WorkerEvent &event);
+
+private:
+#ifndef NOTHREADS
+  std::future<void> fut_;
+#endif // NOTHREADS
+  std::mutex m_;
+  std::deque<WorkerEvent> q_;
+  ev_async w_;
+  DownstreamConnectionPool dconn_pool_;
+  struct ev_loop *loop_;
+  SSL_CTX *sv_ssl_ctx_;
+  SSL_CTX *cl_ssl_ctx_;
+  std::unique_ptr<Http2Session> http2session_;
+  std::unique_ptr<ConnectBlocker> http1_connect_blocker_;
+  std::unique_ptr<WorkerStat> worker_stat_;
+};
 
 } // namespace shrpx
 

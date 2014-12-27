@@ -34,13 +34,13 @@
 #include <memory>
 #include <chrono>
 
-#include <event.h>
-#include <event2/bufferevent.h>
+#include <ev.h>
 
 #include <nghttp2/nghttp2.h>
 
 #include "shrpx_io_control.h"
 #include "http2.h"
+#include "memchunk.h"
 
 using namespace nghttp2;
 
@@ -76,7 +76,7 @@ public:
 
   // Returns true if output buffer is full. If underlying dconn_ is
   // NULL, this function always returns false.
-  bool get_output_buffer_full();
+  bool request_buf_full();
   // Returns true if upgrade (HTTP Upgrade or CONNECT) is succeeded.
   void check_upgrade_fulfilled();
   // Returns true if the request is upgrade.
@@ -174,6 +174,7 @@ public:
   };
   void set_request_state(int state);
   int get_request_state() const;
+  Memchunks4K *get_request_buf();
   // downstream response API
   const Headers &get_response_headers() const;
   // Makes key lowercase and sort headers by name using <
@@ -218,8 +219,8 @@ public:
   void set_response_connection_close(bool f);
   void set_response_state(int state);
   int get_response_state() const;
-  int init_response_body_buf();
-  evbuffer *get_response_body_buf();
+  Memchunks4K *get_response_buf();
+  bool response_buf_full();
   void add_response_bodylen(size_t amount);
   int64_t get_response_bodylen() const;
   void add_response_sent_bodylen(size_t amount);
@@ -282,6 +283,11 @@ public:
   // Returns true if accesslog can be written for this downstream.
   bool accesslog_ready() const;
 
+  enum {
+    EVENT_ERROR = 0x1,
+    EVENT_TIMEOUT = 0x2,
+  };
+
 private:
   Headers request_headers_;
   Headers response_headers_;
@@ -294,6 +300,15 @@ private:
   std::string assembled_request_cookie_;
   std::string http2_settings_;
 
+  Memchunks4K request_buf_;
+  Memchunks4K response_buf_;
+
+  ev_timer upstream_rtimer_;
+  ev_timer upstream_wtimer_;
+
+  ev_timer downstream_rtimer_;
+  ev_timer downstream_wtimer_;
+
   // the length of request body
   int64_t request_bodylen_;
   // the length of response body
@@ -303,15 +318,6 @@ private:
 
   Upstream *upstream_;
   std::unique_ptr<DownstreamConnection> dconn_;
-  // This buffer is used to temporarily store downstream response
-  // body. nghttp2 library reads data from this in the callback.
-  evbuffer *response_body_buf_;
-
-  event *upstream_rtimerev_;
-  event *upstream_wtimerev_;
-
-  event *downstream_rtimerev_;
-  event *downstream_wtimerev_;
 
   size_t request_headers_sum_;
   size_t response_headers_sum_;
@@ -358,6 +364,8 @@ private:
 
   // true if request_headers_ is normalized
   bool request_headers_normalized_;
+
+  bool use_timer_;
 };
 
 } // namespace shrpx

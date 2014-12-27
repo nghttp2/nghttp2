@@ -27,9 +27,6 @@
 
 #include "shrpx.h"
 
-#include <event.h>
-#include <event2/bufferevent.h>
-
 #include "http-parser/http_parser.h"
 
 #include "shrpx_downstream_connection.h"
@@ -41,7 +38,8 @@ class DownstreamConnectionPool;
 
 class HttpDownstreamConnection : public DownstreamConnection {
 public:
-  HttpDownstreamConnection(DownstreamConnectionPool *dconn_pool);
+  HttpDownstreamConnection(DownstreamConnectionPool *dconn_pool,
+                           struct ev_loop *loop);
   virtual ~HttpDownstreamConnection();
   virtual int attach_downstream(Downstream *downstream);
   virtual void detach_downstream(Downstream *downstream);
@@ -54,22 +52,25 @@ public:
   virtual int resume_read(IOCtrlReason reason, size_t consumed);
   virtual void force_resume_read();
 
-  virtual bool get_output_buffer_full();
-
   virtual int on_read();
   virtual int on_write();
 
   virtual void on_upstream_change(Upstream *upstream);
   virtual int on_priority_change(int32_t pri) { return 0; }
 
-  bufferevent *get_bev();
-
-  void reset_timeouts();
+  void on_connect();
+  void signal_write();
 
 private:
-  bufferevent *bev_;
+  ev_io wev_;
+  ev_io rev_;
+  ev_timer wt_;
+  ev_timer rt_;
+  RateLimit rlimit_;
   IOControl ioctrl_;
   http_parser response_htp_;
+  struct ev_loop *loop_;
+  int fd_;
 };
 
 } // namespace shrpx

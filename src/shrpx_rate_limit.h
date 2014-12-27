@@ -1,7 +1,7 @@
 /*
  * nghttp2 - HTTP/2 C Library
  *
- * Copyright (c) 2014 Tatsuhiro Tsujikawa
+ * Copyright (c) 2015 Tatsuhiro Tsujikawa
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -22,36 +22,34 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef H2LOAD_SPDY_SESSION_H
-#define H2LOAD_SPDY_SESSION_H
+#ifndef SHRPX_RATE_LIMIT_H
+#define SHRPX_RATE_LIMIT_H
 
-#include "h2load_session.h"
+#include "shrpx.h"
 
-#include <spdylay/spdylay.h>
+#include <ev.h>
 
-#include "util.h"
+namespace shrpx {
 
-namespace h2load {
-
-struct Client;
-
-class SpdySession : public Session {
+class RateLimit {
 public:
-  SpdySession(Client *client, uint16_t spdy_version);
-  virtual ~SpdySession();
-  virtual void on_connect();
-  virtual void submit_request();
-  virtual int on_read(const uint8_t *data, size_t len);
-  virtual int on_write();
-  virtual void terminate();
-  void handle_window_update(int32_t stream_id, size_t recvlen);
-
+  RateLimit(struct ev_loop *loop, ev_io *w, size_t rate, size_t burst);
+  ~RateLimit();
+  size_t avail() const;
+  void drain(size_t n);
+  void regen();
+  void startw();
+  void stopw();
 private:
-  Client *client_;
-  spdylay_session *session_;
-  uint16_t spdy_version_;
+  ev_io *w_;
+  ev_timer t_;
+  struct ev_loop *loop_;
+  size_t rate_;
+  size_t burst_;
+  size_t avail_;
+  bool startw_req_;
 };
 
-} // namespace h2load
+} // namespace shrpx
 
-#endif // H2LOAD_SPDY_SESSION_H
+#endif // SHRPX_RATE_LIMIT_H

@@ -74,7 +74,6 @@ int make_socket_nonblocking(int fd) {
     ;
   return rv;
 }
-
 } // namespace
 
 namespace {
@@ -115,6 +114,9 @@ void stream_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto stream = static_cast<Stream *>(w->data);
   auto hd = stream->handler;
   auto config = hd->get_config();
+
+  ev_timer_stop(hd->get_loop(), &stream->rtimer);
+  ev_timer_stop(hd->get_loop(), &stream->wtimer);
 
   if (config->verbose) {
     print_session_id(hd->session_id());
@@ -545,8 +547,6 @@ int Http2Handler::read_tls() {
       return -1;
     }
   }
-
-  ev_io_stop(sessions_->get_loop(), &wev_);
 
 fin:
   return write_(*this);
@@ -1307,13 +1307,15 @@ void worker_acceptcb(struct ev_loop *loop, ev_async *w, int revents) {
   auto worker = static_cast<Worker *>(w->data);
   auto &sessions = worker->sessions;
 
-  std::lock_guard<std::mutex> lock(worker->m);
-
-  for (auto c : worker->q) {
-    sessions->accept_connection(c.fd);
+  std::deque<ClientInfo> q;
+  {
+    std::lock_guard<std::mutex> lock(worker->m);
+    q.swap(worker->q);
   }
 
-  worker->q.clear();
+  for (auto c : q) {
+    sessions->accept_connection(c.fd);
+  }
 }
 } // namespace
 

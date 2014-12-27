@@ -29,12 +29,14 @@
 
 #include <memory>
 
+#include <ev.h>
+
 #include <spdylay/spdylay.h>
 
 #include "shrpx_upstream.h"
 #include "shrpx_downstream_queue.h"
+#include "memchunk.h"
 #include "util.h"
-#include "libevent_util.h"
 
 namespace shrpx {
 
@@ -46,15 +48,14 @@ public:
   virtual ~SpdyUpstream();
   virtual int on_read();
   virtual int on_write();
-  virtual int on_event();
   virtual int on_timeout(Downstream *downstream);
   virtual int on_downstream_abort_request(Downstream *downstream,
                                           unsigned int status_code);
-  int send();
   virtual ClientHandler *get_client_handler() const;
-  virtual bufferevent_data_cb get_downstream_readcb();
-  virtual bufferevent_data_cb get_downstream_writecb();
-  virtual bufferevent_event_cb get_downstream_eventcb();
+  virtual int downstream_read(DownstreamConnection *dconn);
+  virtual int downstream_write(DownstreamConnection *dconn);
+  virtual int downstream_eof(DownstreamConnection *dconn);
+  virtual int downstream_error(DownstreamConnection *dconn, int events);
   Downstream *add_pending_downstream(int32_t stream_id, int32_t priority);
   void remove_downstream(Downstream *downstream);
   Downstream *find_downstream(int32_t stream_id);
@@ -76,7 +77,7 @@ public:
   virtual void on_handler_delete();
   virtual int on_downstream_reset();
 
-  virtual void reset_timeouts();
+  virtual MemchunkPool4K *get_mcpool();
 
   bool get_flow_control() const;
 
@@ -85,9 +86,9 @@ public:
   void start_downstream(Downstream *downstream);
   void initiate_downstream(std::unique_ptr<Downstream> downstream);
 
-  nghttp2::util::EvbufferBuffer sendbuf;
-
 private:
+  // must be put before downstream_queue_
+  MemchunkPool4K mcpool_;
   DownstreamQueue downstream_queue_;
   ClientHandler *handler_;
   spdylay_session *session_;

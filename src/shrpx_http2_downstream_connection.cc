@@ -26,10 +26,6 @@
 
 #include <unistd.h>
 
-#include <openssl/err.h>
-
-#include <event2/bufferevent_ssl.h>
-
 #include "http-parser/http_parser.h"
 
 #include "shrpx_client_handler.h"
@@ -50,14 +46,11 @@ namespace shrpx {
 Http2DownstreamConnection::Http2DownstreamConnection(
     DownstreamConnectionPool *dconn_pool, Http2Session *http2session)
     : DownstreamConnection(dconn_pool), http2session_(http2session),
-      request_body_buf_(nullptr), sd_(nullptr) {}
+      sd_(nullptr) {}
 
 Http2DownstreamConnection::~Http2DownstreamConnection() {
   if (LOG_ENABLED(INFO)) {
     DCLOG(INFO, this) << "Deleting";
-  }
-  if (request_body_buf_) {
-    evbuffer_free(request_body_buf_);
   }
   if (downstream_) {
     downstream_->disable_downstream_rtimer();
@@ -73,24 +66,22 @@ Http2DownstreamConnection::~Http2DownstreamConnection() {
       error_code = NGHTTP2_INTERNAL_ERROR;
     }
 
-    if (LOG_ENABLED(INFO)) {
-      DCLOG(INFO, this) << "Submit RST_STREAM for DOWNSTREAM:" << downstream_
-                        << ", stream_id="
-                        << downstream_->get_downstream_stream_id()
-                        << ", error_code=" << error_code;
-    }
-
-    if (submit_rst_stream(downstream_, error_code) == 0) {
-      http2session_->notify();
-    }
-
     if (downstream_->get_downstream_stream_id() != -1) {
+      if (LOG_ENABLED(INFO)) {
+        DCLOG(INFO, this) << "Submit RST_STREAM for DOWNSTREAM:" << downstream_
+                          << ", stream_id="
+                          << downstream_->get_downstream_stream_id()
+                          << ", error_code=" << error_code;
+      }
+
+      submit_rst_stream(downstream_, error_code);
+
       http2session_->consume(downstream_->get_downstream_stream_id(),
                              downstream_->get_response_datalen());
 
       downstream_->reset_response_datalen();
 
-      http2session_->notify();
+      http2session_->signal_write();
     }
   }
   http2session_->remove_downstream_connection(this);
@@ -104,33 +95,13 @@ Http2DownstreamConnection::~Http2DownstreamConnection() {
   }
 }
 
-int Http2DownstreamConnection::init_request_body_buf() {
-  int rv;
-  if (request_body_buf_) {
-    rv = evbuffer_drain(request_body_buf_,
-                        evbuffer_get_length(request_body_buf_));
-    if (rv != 0) {
-      return -1;
-    }
-  } else {
-    request_body_buf_ = evbuffer_new();
-    if (request_body_buf_ == nullptr) {
-      return -1;
-    }
-  }
-  return 0;
-}
-
 int Http2DownstreamConnection::attach_downstream(Downstream *downstream) {
   if (LOG_ENABLED(INFO)) {
     DCLOG(INFO, this) << "Attaching to DOWNSTREAM:" << downstream;
   }
-  if (init_request_body_buf() == -1) {
-    return -1;
-  }
   http2session_->add_downstream_connection(this);
   if (http2session_->get_state() == Http2Session::DISCONNECTED) {
-    http2session_->notify();
+    http2session_->signal_write();
   }
 
   downstream_ = downstream;
@@ -145,7 +116,7 @@ void Http2DownstreamConnection::detach_downstream(Downstream *downstream) {
     DCLOG(INFO, this) << "Detaching from DOWNSTREAM:" << downstream;
   }
   if (submit_rst_stream(downstream) == 0) {
-    http2session_->notify();
+    http2session_->signal_write();
   }
 
   if (downstream_->get_downstream_stream_id() != -1) {
@@ -154,7 +125,7 @@ void Http2DownstreamConnection::detach_downstream(Downstream *downstream) {
 
     downstream_->reset_response_datalen();
 
-    http2session_->notify();
+    http2session_->signal_write();
   }
 
   downstream->disable_downstream_rtimer();
@@ -201,13 +172,9 @@ ssize_t http2_data_read_callback(nghttp2_session *session, int32_t stream_id,
     // on the priority, DATA frame may come first.
     return NGHTTP2_ERR_DEFERRED;
   }
-  auto body = dconn->get_request_body_buf();
-
-  auto nread = evbuffer_remove(body, buf, length);
-  if (nread == -1) {
-    DCLOG(FATAL, dconn) << "evbuffer_remove() failed";
-    return NGHTTP2_ERR_CALLBACK_FAILURE;
-  }
+  auto input = downstream->get_request_buf();
+  auto nread = input->remove(buf, length);
+  auto input_empty = input->rleft() == 0;
 
   if (nread > 0) {
     // This is important because it will handle flow control
@@ -225,7 +192,7 @@ ssize_t http2_data_read_callback(nghttp2_session *session, int32_t stream_id,
     }
   }
 
-  if (evbuffer_get_length(body) == 0 &&
+  if (input_empty &&
       downstream->get_request_state() == Downstream::MSG_COMPLETE &&
       // If connection is upgraded, don't set EOF flag, since HTTP/1
       // will set MSG_COMPLETE to request state after upgrade response
@@ -237,7 +204,7 @@ ssize_t http2_data_read_callback(nghttp2_session *session, int32_t stream_id,
     *data_flags |= NGHTTP2_DATA_FLAG_EOF;
   }
 
-  if (evbuffer_get_length(body) > 0) {
+  if (!input_empty) {
     downstream->reset_downstream_wtimer();
   } else {
     downstream->disable_downstream_wtimer();
@@ -461,17 +428,15 @@ int Http2DownstreamConnection::push_request_headers() {
 
   downstream_->reset_downstream_wtimer();
 
-  http2session_->notify();
+  http2session_->signal_write();
   return 0;
 }
 
 int Http2DownstreamConnection::push_upload_data_chunk(const uint8_t *data,
                                                       size_t datalen) {
-  int rv = evbuffer_add(request_body_buf_, data, datalen);
-  if (rv != 0) {
-    DCLOG(FATAL, this) << "evbuffer_add() failed";
-    return -1;
-  }
+  int rv;
+  auto output = downstream_->get_request_buf();
+  output->append(data, datalen);
   if (downstream_->get_downstream_stream_id() != -1) {
     rv = http2session_->resume_data(this);
     if (rv != 0) {
@@ -480,7 +445,7 @@ int Http2DownstreamConnection::push_upload_data_chunk(const uint8_t *data,
 
     downstream_->ensure_downstream_wtimer();
 
-    http2session_->notify();
+    http2session_->signal_write();
   }
   return 0;
 }
@@ -495,7 +460,7 @@ int Http2DownstreamConnection::end_upload_data() {
 
     downstream_->ensure_downstream_wtimer();
 
-    http2session_->notify();
+    http2session_->signal_write();
   }
   return 0;
 }
@@ -525,7 +490,7 @@ int Http2DownstreamConnection::resume_read(IOCtrlReason reason,
 
     downstream_->dec_response_datalen(consumed);
 
-    http2session_->notify();
+    http2session_->signal_write();
   }
 
   return 0;
@@ -534,10 +499,6 @@ int Http2DownstreamConnection::resume_read(IOCtrlReason reason,
 int Http2DownstreamConnection::on_read() { return 0; }
 
 int Http2DownstreamConnection::on_write() { return 0; }
-
-evbuffer *Http2DownstreamConnection::get_request_body_buf() const {
-  return request_body_buf_;
-}
 
 void Http2DownstreamConnection::attach_stream_data(StreamData *sd) {
   // It is possible sd->dconn is not NULL. sd is detached when
@@ -556,18 +517,8 @@ StreamData *Http2DownstreamConnection::detach_stream_data() {
     sd_ = nullptr;
     sd->dconn = nullptr;
     return sd;
-  } else {
-    return nullptr;
   }
-}
-
-bool Http2DownstreamConnection::get_output_buffer_full() {
-  if (request_body_buf_) {
-    return evbuffer_get_length(request_body_buf_) >=
-           Http2Session::OUTBUF_MAX_THRES;
-  } else {
-    return false;
-  }
+  return nullptr;
 }
 
 int Http2DownstreamConnection::on_priority_change(int32_t pri) {
@@ -584,7 +535,7 @@ int Http2DownstreamConnection::on_priority_change(int32_t pri) {
     DLOG(FATAL, this) << "nghttp2_submit_priority() failed";
     return -1;
   }
-  http2session_->notify();
+  http2session_->signal_write();
   return 0;
 }
 

@@ -31,8 +31,6 @@
 
 #include <openssl/ssl.h>
 
-#include <event2/bufferevent.h>
-
 #include "shrpx_config.h"
 #include "shrpx_downstream_connection_pool.h"
 
@@ -54,28 +52,26 @@ struct WorkerEvent {
     struct {
       sockaddr_union client_addr;
       size_t client_addrlen;
-      evutil_socket_t client_fd;
+      int client_fd;
     };
   };
 };
 
 class ThreadEventReceiver {
 public:
-  ThreadEventReceiver(event_base *evbase, SSL_CTX *ssl_ctx,
-                      Http2Session *http2session,
+  ThreadEventReceiver(SSL_CTX *ssl_ctx, Http2Session *http2session,
                       ConnectBlocker *http1_connect_blocker);
   ~ThreadEventReceiver();
-  void on_read(bufferevent *bev);
+  void on_read();
 
 private:
   DownstreamConnectionPool dconn_pool_;
-  event_base *evbase_;
+  // event_base *evbase_;
   SSL_CTX *ssl_ctx_;
   // Shared HTTP2 session for each thread. NULL if not client
   // mode. Not deleted by this object.
   Http2Session *http2session_;
   ConnectBlocker *http1_connect_blocker_;
-  bufferevent_rate_limit_group *rate_limit_group_;
   std::unique_ptr<WorkerStat> worker_stat_;
 };
 

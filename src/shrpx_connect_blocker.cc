@@ -27,55 +27,35 @@
 namespace shrpx {
 
 namespace {
-const int INITIAL_SLEEP = 2;
+const ev_tstamp INITIAL_SLEEP = 2.;
 } // namespace
 
-ConnectBlocker::ConnectBlocker() : timerev_(nullptr), sleep_(INITIAL_SLEEP) {}
-
-ConnectBlocker::~ConnectBlocker() {
-  if (timerev_) {
-    event_free(timerev_);
-  }
-}
-
 namespace {
-void connect_blocker_cb(evutil_socket_t sig, short events, void *arg) {
+void connect_blocker_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "unblock downstream connection";
   }
 }
 } // namespace
 
-int ConnectBlocker::init(event_base *evbase) {
-  timerev_ = evtimer_new(evbase, connect_blocker_cb, this);
-
-  if (timerev_ == nullptr) {
-    return -1;
-  }
-
-  return 0;
+ConnectBlocker::ConnectBlocker(struct ev_loop *loop)
+    : loop_(loop), sleep_(INITIAL_SLEEP) {
+  ev_timer_init(&timer_, connect_blocker_cb, 0., 0.);
 }
 
-bool ConnectBlocker::blocked() const {
-  return evtimer_pending(timerev_, nullptr);
-}
+ConnectBlocker::~ConnectBlocker() { ev_timer_stop(loop_, &timer_); }
+
+bool ConnectBlocker::blocked() const { return ev_is_active(&timer_); }
 
 void ConnectBlocker::on_success() { sleep_ = INITIAL_SLEEP; }
 
 void ConnectBlocker::on_failure() {
-  int rv;
-
-  sleep_ = std::min(128, sleep_ * 2);
+  sleep_ = std::min(128., sleep_ * 2);
 
   LOG(WARN) << "connect failure, start sleeping " << sleep_;
 
-  timeval t = {sleep_, 0};
-
-  rv = evtimer_add(timerev_, &t);
-
-  if (rv == -1) {
-    LOG(ERROR) << "evtimer_add for ConnectBlocker timerev_ failed";
-  }
+  ev_timer_set(&timer_, sleep_, 0.);
+  ev_timer_start(loop_, &timer_);
 }
 
 } // namespace shrpx

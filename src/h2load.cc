@@ -42,8 +42,6 @@
 #include <spdylay/spdylay.h>
 #endif // HAVE_SPDYLAY
 
-#include <event2/bufferevent_ssl.h>
-
 #include <openssl/err.h>
 #include <openssl/conf.h>
 
@@ -71,18 +69,6 @@ Config::~Config() { freeaddrinfo(addrs); }
 Config config;
 
 namespace {
-void eventcb(bufferevent *bev, short events, void *ptr);
-} // namespace
-
-namespace {
-void readcb(bufferevent *bev, void *ptr);
-} // namespace
-
-namespace {
-void writecb(bufferevent *bev, void *ptr);
-} // namespace
-
-namespace {
 void debug(const char *format, ...) {
   if (config.verbose) {
     fprintf(stderr, "[DEBUG] ");
@@ -94,46 +80,103 @@ void debug(const char *format, ...) {
 }
 } // namespace
 
+namespace {
+void debug_nextproto_error() {
+#ifdef HAVE_SPDYLAY
+  debug("no supported protocol was negotiated, expected: %s, "
+        "spdy/2, spdy/3, spdy/3.1\n",
+        NGHTTP2_PROTO_VERSION_ID);
+#else  // !HAVE_SPDYLAY
+  debug("no supported protocol was negotiated, expected: %s\n",
+        NGHTTP2_PROTO_VERSION_ID);
+#endif // !HAVE_SPDYLAY
+}
+} // namespace
+
 Stream::Stream() : status_success(-1) {}
 
+namespace {
+void readcb(struct ev_loop *loop, ev_io *w, int revents) {
+  auto client = static_cast<Client *>(w->data);
+  if (client->do_read() != 0) {
+    client->fail();
+  }
+}
+} // namespace
+
+namespace {
+void writecb(struct ev_loop *loop, ev_io *w, int revents) {
+  auto client = static_cast<Client *>(w->data);
+  if (client->do_write() != 0) {
+    client->fail();
+  }
+}
+} // namespace
+
 Client::Client(Worker *worker, size_t req_todo)
-    : worker(worker), ssl(nullptr), bev(nullptr), next_addr(config.addrs),
-      reqidx(0), state(CLIENT_IDLE), req_todo(req_todo), req_started(0),
-      req_done(0) {}
+    : worker(worker), ssl(nullptr), next_addr(config.addrs), reqidx(0),
+      state(CLIENT_IDLE), req_todo(req_todo), req_started(0), req_done(0),
+      fd(-1) {
+  ev_io_init(&wev, writecb, 0, EV_WRITE);
+  ev_io_init(&rev, readcb, 0, EV_READ);
+
+  wev.data = this;
+  rev.data = this;
+}
 
 Client::~Client() { disconnect(); }
 
+int Client::do_read() { return readfn(*this); }
+int Client::do_write() { return writefn(*this); }
+
 int Client::connect() {
-  if (config.scheme == "https") {
-    ssl = SSL_new(worker->ssl_ctx);
-
-    auto config = worker->config;
-
-    if (!util::numeric_host(config->host.c_str())) {
-      SSL_set_tlsext_host_name(ssl, config->host.c_str());
-    }
-
-    bev = bufferevent_openssl_socket_new(worker->evbase, -1, ssl,
-                                         BUFFEREVENT_SSL_CONNECTING,
-                                         BEV_OPT_DEFER_CALLBACKS);
-  } else {
-    bev = bufferevent_socket_new(worker->evbase, -1, BEV_OPT_DEFER_CALLBACKS);
-  }
-
-  int rv = -1;
   while (next_addr) {
-    rv = bufferevent_socket_connect(bev, next_addr->ai_addr,
-                                    next_addr->ai_addrlen);
+    auto addr = next_addr;
     next_addr = next_addr->ai_next;
-    if (rv == 0) {
-      break;
+    fd = util::create_nonblock_socket(addr->ai_family);
+    if (fd == -1) {
+      continue;
     }
+    if (config.scheme == "https") {
+      ssl = SSL_new(worker->ssl_ctx);
+
+      auto config = worker->config;
+
+      if (!util::numeric_host(config->host.c_str())) {
+        SSL_set_tlsext_host_name(ssl, config->host.c_str());
+      }
+
+      SSL_set_fd(ssl, fd);
+      SSL_set_connect_state(ssl);
+    }
+
+    auto rv = ::connect(fd, addr->ai_addr, addr->ai_addrlen);
+    if (rv != 0 && errno != EINPROGRESS) {
+      if (ssl) {
+        SSL_free(ssl);
+        ssl = nullptr;
+      }
+      close(fd);
+      fd = -1;
+      continue;
+    }
+    break;
   }
-  if (rv != 0) {
+
+  if (fd == -1) {
     return -1;
   }
-  bufferevent_enable(bev, EV_READ);
-  bufferevent_setcb(bev, readcb, writecb, eventcb, this);
+
+  writefn = &Client::connected;
+
+  on_readfn = &Client::on_read;
+  on_writefn = &Client::on_write;
+
+  ev_io_set(&rev, fd, EV_READ);
+  ev_io_set(&wev, fd, EV_WRITE);
+
+  ev_io_start(worker->loop, &wev);
+
   return 0;
 }
 
@@ -144,27 +187,21 @@ void Client::fail() {
 }
 
 void Client::disconnect() {
-  int fd = -1;
   streams.clear();
   session.reset();
   state = CLIENT_IDLE;
+  ev_io_stop(worker->loop, &wev);
+  ev_io_stop(worker->loop, &rev);
   if (ssl) {
-    fd = SSL_get_fd(ssl);
     SSL_set_shutdown(ssl, SSL_RECEIVED_SHUTDOWN);
     SSL_shutdown(ssl);
-  }
-  if (bev) {
-    bufferevent_disable(bev, EV_READ | EV_WRITE);
-    bufferevent_free(bev);
-    bev = nullptr;
-  }
-  if (ssl) {
     SSL_free(ssl);
     ssl = nullptr;
   }
   if (fd != -1) {
     shutdown(fd, SHUT_WR);
     close(fd);
+    fd = -1;
   }
 }
 
@@ -325,7 +362,74 @@ void Client::on_stream_close(int32_t stream_id, bool success) {
   }
 }
 
+int Client::noop() { return 0; }
+
 int Client::on_connect() {
+  if (ssl) {
+    report_tls_info();
+
+    const unsigned char *next_proto = nullptr;
+    unsigned int next_proto_len;
+    SSL_get0_next_proto_negotiated(ssl, &next_proto, &next_proto_len);
+    for (int i = 0; i < 2; ++i) {
+      if (next_proto) {
+        if (util::check_h2_is_selected(next_proto, next_proto_len)) {
+          session = util::make_unique<Http2Session>(this);
+        } else {
+#ifdef HAVE_SPDYLAY
+          auto spdy_version =
+              spdylay_npn_get_version(next_proto, next_proto_len);
+          if (spdy_version) {
+            session = util::make_unique<SpdySession>(this, spdy_version);
+          } else {
+            debug_nextproto_error();
+            fail();
+            return -1;
+          }
+#else  // !HAVE_SPDYLAY
+          debug_nextproto_error();
+          fail();
+          return -1;
+#endif // !HAVE_SPDYLAY
+        }
+      }
+
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+      SSL_get0_alpn_selected(ssl, &next_proto, &next_proto_len);
+#else  // OPENSSL_VERSION_NUMBER < 0x10002000L
+      break;
+#endif // OPENSSL_VERSION_NUMBER < 0x10002000L
+    }
+
+    if (!next_proto) {
+      debug_nextproto_error();
+      fail();
+      return -1;
+    }
+  } else {
+    switch (config.no_tls_proto) {
+    case Config::PROTO_HTTP2:
+      session = util::make_unique<Http2Session>(this);
+      break;
+#ifdef HAVE_SPDYLAY
+    case Config::PROTO_SPDY2:
+      session = util::make_unique<SpdySession>(this, SPDYLAY_PROTO_SPDY2);
+      break;
+    case Config::PROTO_SPDY3:
+      session = util::make_unique<SpdySession>(this, SPDYLAY_PROTO_SPDY3);
+      break;
+    case Config::PROTO_SPDY3_1:
+      session = util::make_unique<SpdySession>(this, SPDYLAY_PROTO_SPDY3_1);
+      break;
+#endif // HAVE_SPDYLAY
+    default:
+      // unreachable
+      assert(0);
+    }
+  }
+
+  state = CLIENT_CONNECTED;
+
   session->on_connect();
 
   auto nreq =
@@ -334,25 +438,232 @@ int Client::on_connect() {
   for (; nreq > 0; --nreq) {
     submit_request();
   }
-  return session->on_write();
+
+  signal_write();
+
+  return 0;
 }
 
-int Client::on_read() {
-  ssize_t rv = session->on_read();
-  if (rv < 0) {
+int Client::on_net_error() {
+  if (state == CLIENT_IDLE) {
+    disconnect();
+    if (connect() == 0) {
+      return 0;
+    }
+  }
+  debug("error/eof\n");
+  return -1;
+}
+
+int Client::on_read(const uint8_t *data, size_t len) {
+  auto rv = session->on_read(data, len);
+  if (rv != 0) {
     return -1;
   }
   worker->stats.bytes_total += rv;
-
-  return on_write();
+  signal_write();
+  return 0;
 }
 
-int Client::on_write() { return session->on_write(); }
+int Client::on_write() {
+  if (session->on_write() != 0) {
+    return -1;
+  }
+  return 0;
+}
+
+int Client::read_clear() {
+  uint8_t buf[8192];
+
+  for (;;) {
+    ssize_t nread;
+    while ((nread = read(fd, buf, sizeof(buf))) == -1 && errno == EINTR)
+      ;
+    if (nread == -1) {
+      if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        return 0;
+      }
+      return on_net_error();
+    }
+
+    if (nread == 0) {
+      return -1;
+    }
+
+    if (on_read(buf, nread) != 0) {
+      return -1;
+    }
+  }
+
+  return 0;
+}
+
+int Client::write_clear() {
+  for (;;) {
+    if (wb.rleft() > 0) {
+      struct iovec iov[2];
+      auto iovcnt = wb.riovec(iov);
+
+      ssize_t nwrite;
+      while ((nwrite = writev(fd, iov, iovcnt)) == -1 && errno == EINTR)
+        ;
+      if (nwrite == -1) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+          ev_io_start(worker->loop, &wev);
+          return 0;
+        }
+        return -1;
+      }
+      wb.drain(nwrite);
+      continue;
+    }
+
+    if (on_write() != 0) {
+      return -1;
+    }
+    if (wb.rleft() == 0) {
+      wb.reset();
+      break;
+    }
+  }
+
+  ev_io_stop(worker->loop, &wev);
+
+  return 0;
+}
+
+int Client::connected() {
+  ev_io_start(worker->loop, &rev);
+  ev_io_stop(worker->loop, &wev);
+
+  if (ssl) {
+    readfn = &Client::tls_handshake;
+    writefn = &Client::tls_handshake;
+
+    return do_write();
+  }
+
+  readfn = &Client::read_clear;
+  writefn = &Client::write_clear;
+
+  if (on_connect() != 0) {
+    return -1;
+  }
+
+  return 0;
+}
+
+int Client::tls_handshake() {
+  auto rv = SSL_do_handshake(ssl);
+
+  if (rv == 0) {
+    return -1;
+  }
+
+  if (rv < 0) {
+    auto err = SSL_get_error(ssl, rv);
+    switch (err) {
+    case SSL_ERROR_WANT_READ:
+      ev_io_stop(worker->loop, &wev);
+      return 0;
+    case SSL_ERROR_WANT_WRITE:
+      ev_io_start(worker->loop, &wev);
+      return 0;
+    default:
+      return -1;
+    }
+  }
+
+  ev_io_stop(worker->loop, &wev);
+
+  readfn = &Client::read_tls;
+  writefn = &Client::write_tls;
+
+  if (on_connect() != 0) {
+    return -1;
+  }
+
+  return 0;
+}
+
+int Client::read_tls() {
+  uint8_t buf[8192];
+  for (;;) {
+    auto rv = SSL_read(ssl, buf, sizeof(buf));
+
+    if (rv == 0) {
+      return -1;
+    }
+
+    if (rv < 0) {
+      auto err = SSL_get_error(ssl, rv);
+      switch (err) {
+      case SSL_ERROR_WANT_READ:
+        return 0;
+      case SSL_ERROR_WANT_WRITE:
+        ev_io_start(worker->loop, &wev);
+        return 0;
+      default:
+        return -1;
+      }
+    }
+
+    if (on_read(buf, rv) != 0) {
+      return -1;
+    }
+  }
+}
+
+int Client::write_tls() {
+  for (;;) {
+    if (wb.rleft() > 0) {
+      const void *p;
+      size_t len;
+      std::tie(p, len) = wb.get();
+
+      auto rv = SSL_write(ssl, p, len);
+
+      if (rv == 0) {
+        return -1;
+      }
+
+      if (rv < 0) {
+        auto err = SSL_get_error(ssl, rv);
+        switch (err) {
+        case SSL_ERROR_WANT_READ:
+          ev_io_stop(worker->loop, &wev);
+          return 0;
+        case SSL_ERROR_WANT_WRITE:
+          ev_io_start(worker->loop, &wev);
+          return 0;
+        default:
+          return -1;
+        }
+      }
+
+      wb.drain(rv);
+
+      continue;
+    }
+    if (on_write() != 0) {
+      return -1;
+    }
+    if (wb.rleft() == 0) {
+      break;
+    }
+  }
+
+  ev_io_stop(worker->loop, &wev);
+
+  return 0;
+}
+
+void Client::signal_write() { ev_io_start(worker->loop, &wev); }
 
 Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
                Config *config)
-    : stats{0}, evbase(event_base_new()), ssl_ctx(ssl_ctx), config(config),
-      id(id), tls_info_report_done(false) {
+    : stats{0}, loop(ev_loop_new(0)), ssl_ctx(ssl_ctx), config(config), id(id),
+      tls_info_report_done(false) {
   stats.req_todo = req_todo;
   progress_interval = std::max((size_t)1, req_todo / 10);
 
@@ -369,7 +680,12 @@ Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
   }
 }
 
-Worker::~Worker() { event_base_free(evbase); }
+Worker::~Worker() {
+  // first clear clients so that io watchers are stopped before
+  // destructing ev_loop.
+  clients.clear();
+  ev_loop_destroy(loop);
+}
 
 void Worker::run() {
   for (auto &client : clients) {
@@ -378,144 +694,8 @@ void Worker::run() {
       client->fail();
     }
   }
-  event_base_loop(evbase, 0);
+  ev_run(loop, 0);
 }
-
-namespace {
-void debug_nextproto_error() {
-#ifdef HAVE_SPDYLAY
-  debug("no supported protocol was negotiated, expected: %s, "
-        "spdy/2, spdy/3, spdy/3.1\n",
-        NGHTTP2_PROTO_VERSION_ID);
-#else  // !HAVE_SPDYLAY
-  debug("no supported protocol was negotiated, expected: %s\n",
-        NGHTTP2_PROTO_VERSION_ID);
-#endif // !HAVE_SPDYLAY
-}
-} // namespace
-
-namespace {
-void eventcb(bufferevent *bev, short events, void *ptr) {
-  int rv;
-  auto client = static_cast<Client *>(ptr);
-  if (events & BEV_EVENT_CONNECTED) {
-    if (client->ssl) {
-      client->report_tls_info();
-
-      const unsigned char *next_proto = nullptr;
-      unsigned int next_proto_len;
-      SSL_get0_next_proto_negotiated(client->ssl, &next_proto, &next_proto_len);
-      for (int i = 0; i < 2; ++i) {
-        if (next_proto) {
-          if (util::check_h2_is_selected(next_proto, next_proto_len)) {
-            client->session = util::make_unique<Http2Session>(client);
-          } else {
-#ifdef HAVE_SPDYLAY
-            auto spdy_version =
-                spdylay_npn_get_version(next_proto, next_proto_len);
-            if (spdy_version) {
-              client->session =
-                  util::make_unique<SpdySession>(client, spdy_version);
-            } else {
-              debug_nextproto_error();
-              client->fail();
-              return;
-            }
-#else  // !HAVE_SPDYLAY
-            debug_nextproto_error();
-            client->fail();
-            return;
-#endif // !HAVE_SPDYLAY
-          }
-        }
-
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L
-        SSL_get0_alpn_selected(client->ssl, &next_proto, &next_proto_len);
-#else  // OPENSSL_VERSION_NUMBER < 0x10002000L
-        break;
-#endif // OPENSSL_VERSION_NUMBER < 0x10002000L
-      }
-
-      if (!next_proto) {
-        debug_nextproto_error();
-        client->fail();
-        return;
-      }
-    } else {
-      switch (config.no_tls_proto) {
-      case Config::PROTO_HTTP2:
-        client->session = util::make_unique<Http2Session>(client);
-        break;
-#ifdef HAVE_SPDYLAY
-      case Config::PROTO_SPDY2:
-        client->session =
-            util::make_unique<SpdySession>(client, SPDYLAY_PROTO_SPDY2);
-        break;
-      case Config::PROTO_SPDY3:
-        client->session =
-            util::make_unique<SpdySession>(client, SPDYLAY_PROTO_SPDY3);
-        break;
-      case Config::PROTO_SPDY3_1:
-        client->session =
-            util::make_unique<SpdySession>(client, SPDYLAY_PROTO_SPDY3_1);
-        break;
-#endif // HAVE_SPDYLAY
-      default:
-        // unreachable
-        assert(0);
-      }
-    }
-    int fd = bufferevent_getfd(bev);
-    int val = 1;
-    (void)setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,
-                     reinterpret_cast<char *>(&val), sizeof(val));
-    client->state = CLIENT_CONNECTED;
-    client->on_connect();
-    return;
-  }
-  if (events & BEV_EVENT_EOF) {
-    client->fail();
-    return;
-  }
-  if (events & (BEV_EVENT_ERROR | BEV_EVENT_TIMEOUT)) {
-    if (client->state == CLIENT_IDLE) {
-      client->disconnect();
-      rv = client->connect();
-      if (rv == 0) {
-        return;
-      }
-    }
-    debug("error/eof\n");
-    client->fail();
-    return;
-  }
-}
-} // namespace
-
-namespace {
-void readcb(bufferevent *bev, void *ptr) {
-  int rv;
-  auto client = static_cast<Client *>(ptr);
-  rv = client->on_read();
-  if (rv != 0) {
-    client->fail();
-  }
-}
-} // namespace
-
-namespace {
-void writecb(bufferevent *bev, void *ptr) {
-  if (evbuffer_get_length(bufferevent_get_output(bev)) > 0) {
-    return;
-  }
-  int rv;
-  auto client = static_cast<Client *>(ptr);
-  rv = client->on_write();
-  if (rv != 0) {
-    client->fail();
-  }
-}
-} // namespace
 
 namespace {
 void resolve_host() {

@@ -36,9 +36,6 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
-#include <event2/bufferevent.h>
-#include <event2/bufferevent_ssl.h>
-
 #include <nghttp2/nghttp2.h>
 
 #ifdef HAVE_SPDYLAY
@@ -450,9 +447,7 @@ SSL_CTX *create_ssl_client_context() {
   return ssl_ctx;
 }
 
-ClientHandler *accept_connection(event_base *evbase,
-                                 bufferevent_rate_limit_group *rate_limit_group,
-                                 SSL_CTX *ssl_ctx, evutil_socket_t fd,
+ClientHandler *accept_connection(struct ev_loop *loop, SSL_CTX *ssl_ctx, int fd,
                                  sockaddr *addr, int addrlen,
                                  WorkerStat *worker_stat,
                                  DownstreamConnectionPool *dconn_pool) {
@@ -474,7 +469,6 @@ ClientHandler *accept_connection(event_base *evbase,
     LOG(WARN) << "Setting option TCP_NODELAY failed: errno=" << errno;
   }
   SSL *ssl = nullptr;
-  bufferevent *bev;
   if (ssl_ctx) {
     ssl = SSL_new(ssl_ctx);
     if (!ssl) {
@@ -490,21 +484,11 @@ ClientHandler *accept_connection(event_base *evbase,
       return nullptr;
     }
 
-    bev = bufferevent_openssl_socket_new(
-        evbase, fd, ssl, BUFFEREVENT_SSL_ACCEPTING, BEV_OPT_DEFER_CALLBACKS);
-  } else {
-    bev = bufferevent_socket_new(evbase, fd, BEV_OPT_DEFER_CALLBACKS);
-  }
-  if (!bev) {
-    LOG(ERROR) << "bufferevent_socket_new() failed";
-    if (ssl) {
-      SSL_free(ssl);
-    }
-    return nullptr;
+    SSL_set_accept_state(ssl);
   }
 
-  return new ClientHandler(bev, rate_limit_group, fd, ssl, host, service,
-                           worker_stat, dconn_pool);
+  return new ClientHandler(loop, fd, ssl, host, service, worker_stat,
+                           dconn_pool);
 }
 
 namespace {

@@ -22,36 +22,32 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef H2LOAD_SPDY_SESSION_H
-#define H2LOAD_SPDY_SESSION_H
+#ifndef SHRPX_ACCEPT_HANDLER_H
+#define SHRPX_ACCEPT_HANDLER_H
 
-#include "h2load_session.h"
+#include "shrpx.h"
 
-#include <spdylay/spdylay.h>
+#include <ev.h>
 
-#include "util.h"
+namespace shrpx {
 
-namespace h2load {
+class ListenHandler;
 
-struct Client;
-
-class SpdySession : public Session {
+class AcceptHandler {
 public:
-  SpdySession(Client *client, uint16_t spdy_version);
-  virtual ~SpdySession();
-  virtual void on_connect();
-  virtual void submit_request();
-  virtual int on_read(const uint8_t *data, size_t len);
-  virtual int on_write();
-  virtual void terminate();
-  void handle_window_update(int32_t stream_id, size_t recvlen);
+  AcceptHandler(int fd, ListenHandler *h);
+  ~AcceptHandler();
+  void accept_connection();
+  void enable();
+  void disable();
+  int get_fd() const;
 
 private:
-  Client *client_;
-  spdylay_session *session_;
-  uint16_t spdy_version_;
+  ev_io wev_;
+  ListenHandler *conn_hnr_;
+  int fd_;
 };
 
-} // namespace h2load
+} // namespace shrpx
 
-#endif // H2LOAD_SPDY_SESSION_H
+#endif // SHRPX_ACCEPT_HANDLER_H

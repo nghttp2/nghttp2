@@ -32,12 +32,15 @@
 
 #include <openssl/ssl.h>
 
-#include <event.h>
-#include <event2/bufferevent.h>
+#include <ev.h>
 
 #include <nghttp2/nghttp2.h>
 
 #include "http-parser/http_parser.h"
+
+#include "ringbuf.h"
+
+using namespace nghttp2;
 
 namespace shrpx {
 
@@ -49,10 +52,10 @@ struct StreamData {
 
 class Http2Session {
 public:
-  Http2Session(event_base *evbase, SSL_CTX *ssl_ctx);
-  ~Http2Session();
+  typedef RingBuf<65536> Buf;
 
-  int init_notification();
+  Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx);
+  ~Http2Session();
 
   int check_cert();
 
@@ -84,31 +87,44 @@ public:
 
   int on_connect();
 
+  int do_read();
+  int do_write();
+
   int on_read();
   int on_write();
-  int send();
 
-  int on_read_proxy();
+  int connected();
+  int read_clear();
+  int write_clear();
+  int tls_handshake();
+  int read_tls();
+  int write_tls();
 
-  void clear_notify();
-  void notify();
+  int downstream_read_proxy();
+  int downstream_connect_proxy();
 
-  bufferevent *get_bev() const;
-  void unwrap_free_bev();
+  int downstream_read();
+  int downstream_write();
+
+  int noop();
+
+  void signal_write();
+  void clear_write_request();
+  bool write_requested() const;
+
+  struct ev_loop *get_loop() const;
+
+  ev_io *get_wev();
 
   int get_state() const;
   void set_state(int state);
 
-  int start_settings_timer();
+  void start_settings_timer();
   void stop_settings_timer();
-
-  size_t get_outbuf_length() const;
 
   SSL *get_ssl() const;
 
   int consume(int32_t stream_id, size_t len);
-
-  void reset_timeouts();
 
   // Returns true if request can be issued on downstream connection.
   bool can_push_request() const;
@@ -117,12 +133,14 @@ public:
   void start_checking_connection();
   // Resets connection check timer.  After timeout, we require
   // connection checking.
-  int reset_connection_check_timer();
+  void reset_connection_check_timer();
   // Signals that connection is alive.  Internally
   // reset_connection_check_timer() is called.
-  int connection_alive();
+  void connection_alive();
   // Change connection check state.
   void set_connection_check_state(int state);
+
+  bool should_hard_fail() const;
 
   enum {
     // Disconnected
@@ -136,7 +154,9 @@ public:
     // Connecting to downstream and/or performing SSL/TLS handshake
     CONNECTING,
     // Connected to downstream
-    CONNECTED
+    CONNECTED,
+    // Connection is started to fail
+    CONNECT_FAILING,
   };
 
   static const size_t OUTBUF_MAX_THRES = 64 * 1024;
@@ -151,20 +171,26 @@ public:
   };
 
 private:
+  ev_io wev_;
+  ev_io rev_;
+  ev_timer wt_;
+  ev_timer rt_;
+  ev_timer settings_timer_;
+  ev_timer connchk_timer_;
+  ev_prepare wrsched_prep_;
   std::set<Http2DownstreamConnection *> dconns_;
   std::set<StreamData *> streams_;
+  std::function<int(Http2Session &)> read_, write_;
+  std::function<int(Http2Session &)> on_read_, on_write_;
   // Used to parse the response from HTTP proxy
   std::unique_ptr<http_parser> proxy_htp_;
-  event_base *evbase_;
+  struct ev_loop *loop_;
   // NULL if no TLS is configured
   SSL_CTX *ssl_ctx_;
   SSL *ssl_;
   nghttp2_session *session_;
-  bufferevent *bev_;
-  bufferevent *wrbev_;
-  bufferevent *rdbev_;
-  event *settings_timerev_;
-  event *connection_check_timerev_;
+  const uint8_t *data_pending_;
+  size_t data_pendinglen_;
   // fd_ is used for proxy connection and no TLS connection. For
   // direct or TLS connection, it may be -1 even after connection is
   // established. Use bufferevent_getfd(bev_) to get file descriptor
@@ -172,8 +198,10 @@ private:
   int fd_;
   int state_;
   int connection_check_state_;
-  bool notified_;
   bool flow_control_;
+  bool write_requested_;
+  Buf wb_;
+  Buf rb_;
 };
 
 } // namespace shrpx

@@ -466,6 +466,14 @@ template <typename Clock, typename Rep> Rep clock_precision() {
   return duration.count();
 }
 
+int make_socket_closeonexec(int fd);
+int make_socket_nonblocking(int fd);
+int make_socket_nodelay(int fd);
+
+int create_nonblock_socket(int family);
+
+bool check_socket_connected(int fd);
+
 } // namespace util
 
 } // namespace nghttp2

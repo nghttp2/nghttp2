@@ -34,6 +34,9 @@
 #include "http-parser/http_parser.h"
 
 #include "shrpx_upstream.h"
+#include "memchunk.h"
+
+using namespace nghttp2;
 
 namespace shrpx {
 
@@ -49,9 +52,12 @@ public:
   virtual int on_downstream_abort_request(Downstream *downstream,
                                           unsigned int status_code);
   virtual ClientHandler *get_client_handler() const;
-  virtual bufferevent_data_cb get_downstream_readcb();
-  virtual bufferevent_data_cb get_downstream_writecb();
-  virtual bufferevent_event_cb get_downstream_eventcb();
+
+  virtual int downstream_read(DownstreamConnection *dconn);
+  virtual int downstream_write(DownstreamConnection *dconn);
+  virtual int downstream_eof(DownstreamConnection *dconn);
+  virtual int downstream_error(DownstreamConnection *dconn, int events);
+
   void attach_downstream(std::unique_ptr<Downstream> downstream);
   void delete_downstream();
   Downstream *get_downstream() const;
@@ -70,7 +76,7 @@ public:
   virtual void on_handler_delete();
   virtual int on_downstream_reset();
 
-  virtual void reset_timeouts();
+  virtual MemchunkPool4K *get_mcpool();
 
   void reset_current_header_length();
   void log_response_headers(const std::string &hdrs) const;
@@ -79,6 +85,8 @@ private:
   ClientHandler *handler_;
   http_parser htp_;
   size_t current_header_length_;
+  // must be put before downstream_
+  MemchunkPool4K mcpool_;
   std::unique_ptr<Downstream> downstream_;
   IOControl ioctrl_;
 };
