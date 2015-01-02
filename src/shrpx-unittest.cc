@@ -39,6 +39,7 @@
 #include "util_test.h"
 #include "nghttp2_gzip_test.h"
 #include "ringbuf_test.h"
+#include "shrpx_config.h"
 
 static int init_suite1(void) { return 0; }
 
@@ -51,6 +52,8 @@ int main(int argc, char *argv[]) {
   OpenSSL_add_all_algorithms();
   SSL_load_error_strings();
   SSL_library_init();
+
+  shrpx::create_config();
 
   // initialize the CUnit test registry
   if (CUE_SUCCESS != CU_initialize_registry())

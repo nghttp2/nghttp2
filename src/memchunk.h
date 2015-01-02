@@ -114,6 +114,9 @@ template <typename Memchunk> struct Memchunks {
   Memchunks(Pool<Memchunk> *pool)
       : pool(pool), head(nullptr), tail(nullptr), len(0) {}
   ~Memchunks() {
+    if (!pool) {
+      return;
+    }
     for (auto m = head; m;) {
       auto next = m->next;
       pool->recycle(m);

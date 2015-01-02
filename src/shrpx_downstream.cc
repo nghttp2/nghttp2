@@ -104,13 +104,14 @@ void downstream_wtimeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
 }
 } // namespace
 
+// upstream could be nullptr for unittests
 Downstream::Downstream(Upstream *upstream, int32_t stream_id, int32_t priority)
-    : request_buf_(upstream->get_mcpool()),
-      response_buf_(upstream->get_mcpool()), request_bodylen_(0),
-      response_bodylen_(0), response_sent_bodylen_(0), upstream_(upstream),
-      request_headers_sum_(0), response_headers_sum_(0), request_datalen_(0),
-      response_datalen_(0), stream_id_(stream_id), priority_(priority),
-      downstream_stream_id_(-1),
+    : request_buf_(upstream ? upstream->get_mcpool() : nullptr),
+      response_buf_(upstream ? upstream->get_mcpool() : nullptr),
+      request_bodylen_(0), response_bodylen_(0), response_sent_bodylen_(0),
+      upstream_(upstream), request_headers_sum_(0), response_headers_sum_(0),
+      request_datalen_(0), response_datalen_(0), stream_id_(stream_id),
+      priority_(priority), downstream_stream_id_(-1),
       response_rst_stream_error_code_(NGHTTP2_NO_ERROR),
       request_state_(INITIAL), request_major_(1), request_minor_(1),
       response_state_(INITIAL), response_http_status_(0), response_major_(1),
@@ -141,12 +142,16 @@ Downstream::~Downstream() {
   if (LOG_ENABLED(INFO)) {
     DLOG(INFO, this) << "Deleting";
   }
-  auto loop = upstream_->get_client_handler()->get_loop();
 
-  ev_timer_stop(loop, &upstream_rtimer_);
-  ev_timer_stop(loop, &upstream_wtimer_);
-  ev_timer_stop(loop, &downstream_rtimer_);
-  ev_timer_stop(loop, &downstream_wtimer_);
+  // check nullptr for unittest
+  if (upstream_) {
+    auto loop = upstream_->get_client_handler()->get_loop();
+
+    ev_timer_stop(loop, &upstream_rtimer_);
+    ev_timer_stop(loop, &upstream_wtimer_);
+    ev_timer_stop(loop, &downstream_rtimer_);
+    ev_timer_stop(loop, &downstream_wtimer_);
+  }
 
   if (LOG_ENABLED(INFO)) {
     DLOG(INFO, this) << "Deleted";
