@@ -454,6 +454,7 @@ int Http2Handler::write_clear() {
       rb_.drain(nwrite);
       continue;
     }
+    rb_.reset();
     if (fill_rb() != 0) {
       return -1;
     }
@@ -583,6 +584,7 @@ int Http2Handler::write_tls() {
       rb_.drain(rv);
       continue;
     }
+    rb_.reset();
     if (fill_rb() != 0) {
       return -1;
     }
