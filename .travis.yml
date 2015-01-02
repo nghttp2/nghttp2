@@ -3,8 +3,6 @@ compiler:
   - clang
 #Disable gcc build for the moment...
 #  - gcc
-python:
- - "3.4" 
 before_install:
   - $CC --version
   - sudo add-apt-repository --yes ppa:ubuntu-toolchain-r/test
