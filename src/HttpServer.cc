@@ -89,7 +89,9 @@ void print_session_id(int64_t id) { std::cout << "[id=" << id << "] "; }
 
 namespace {
 void append_nv(Stream *stream, const std::vector<nghttp2_nv> &nva) {
+  size_t idx = 0;
   for (auto &nv : nva) {
+    http2::index_header(stream->hdidx, nv.name, nv.namelen, idx++);
     http2::add_header(stream->headers, nv.name, nv.namelen, nv.value,
                       nv.valuelen, nv.flags & NGHTTP2_NV_FLAG_NO_INDEX);
   }
@@ -270,6 +272,8 @@ Stream::Stream(Http2Handler *handler, int32_t stream_id)
   wtimer.data = this;
 
   headers.reserve(10);
+
+  http2::init_hdidx(hdidx);
 }
 
 Stream::~Stream() {
@@ -734,13 +738,12 @@ int Http2Handler::submit_non_final_response(const std::string &status,
 
 int Http2Handler::submit_push_promise(Stream *stream,
                                       const std::string &push_path) {
-  auto itr =
-      std::lower_bound(std::begin(stream->headers), std::end(stream->headers),
-                       Header(":authority", ""));
+  auto authority =
+      http2::get_header(stream->hdidx, http2::HD_AUTHORITY, stream->headers);
 
-  if (itr == std::end(stream->headers) || (*itr).name != ":authority") {
-    itr = std::lower_bound(std::begin(stream->headers),
-                           std::end(stream->headers), Header("host", ""));
+  if (!authority) {
+    authority =
+        http2::get_header(stream->hdidx, http2::HD_HOST, stream->headers);
   }
 
   auto nva = std::vector<nghttp2_nv>{
@@ -748,7 +751,7 @@ int Http2Handler::submit_push_promise(Stream *stream,
       http2::make_nv_ls(":path", push_path),
       get_config()->no_tls ? http2::make_nv_ll(":scheme", "http")
                            : http2::make_nv_ll(":scheme", "https"),
-      http2::make_nv_ls(":authority", (*itr).value)};
+      http2::make_nv_ls(":authority", authority->value)};
 
   auto promised_stream_id = nghttp2_submit_push_promise(
       session_, NGHTTP2_FLAG_END_HEADERS, stream->stream_id, nva.data(),
@@ -896,10 +899,13 @@ namespace {
 void prepare_redirect_response(Stream *stream, Http2Handler *hd,
                                const std::string &path,
                                const std::string &status) {
-  auto scheme = http2::get_unique_header(stream->headers, ":scheme");
-  auto authority = http2::get_unique_header(stream->headers, ":authority");
+  auto scheme =
+      http2::get_header(stream->hdidx, http2::HD_SCHEME, stream->headers);
+  auto authority =
+      http2::get_header(stream->hdidx, http2::HD_AUTHORITY, stream->headers);
   if (!authority) {
-    authority = http2::get_unique_header(stream->headers, "host");
+    authority =
+        http2::get_header(stream->hdidx, http2::HD_HOST, stream->headers);
   }
 
   auto redirect_url = scheme->value;
@@ -918,17 +924,15 @@ void prepare_response(Stream *stream, Http2Handler *hd,
                       bool allow_push = true) {
   int rv;
   auto reqpath =
-      (*std::lower_bound(std::begin(stream->headers), std::end(stream->headers),
-                         Header(":path", ""))).value;
+      http2::get_header(stream->hdidx, http2::HD_PATH, stream->headers)->value;
   auto ims =
-      std::lower_bound(std::begin(stream->headers), std::end(stream->headers),
-                       Header("if-modified-since", ""));
+      get_header(stream->hdidx, http2::HD_IF_MODIFIED_SINCE, stream->headers);
 
   time_t last_mod = 0;
   bool last_mod_found = false;
-  if (ims != std::end(stream->headers) && (*ims).name == "if-modified-since") {
+  if (ims) {
     last_mod_found = true;
-    last_mod = util::parse_http_date((*ims).value);
+    last_mod = util::parse_http_date(ims->value);
   }
   auto query_pos = reqpath.find("?");
   std::string url;
@@ -1012,10 +1016,6 @@ void prepare_response(Stream *stream, Http2Handler *hd,
 } // namespace
 
 namespace {
-const char *REQUIRED_HEADERS[] = {":method", ":path", ":scheme", nullptr};
-} // namespace
-
-namespace {
 int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
                        const uint8_t *name, size_t namelen,
                        const uint8_t *value, size_t valuelen, uint8_t flags,
@@ -1041,13 +1041,16 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
   if (namelen > 0 && name[0] == ':') {
     if ((!stream->headers.empty() &&
          stream->headers.back().name.c_str()[0] != ':') ||
-        !http2::check_http2_request_pseudo_header(name, namelen)) {
+        !http2::check_http2_request_pseudo_header(stream->hdidx, name,
+                                                  namelen)) {
 
       nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, frame->hd.stream_id,
                                 NGHTTP2_PROTOCOL_ERROR);
       return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
     }
   }
+
+  http2::index_header(stream->hdidx, name, namelen, stream->headers.size());
 
   http2::add_header(stream->headers, name, namelen, value, valuelen,
                     flags & NGHTTP2_NV_FLAG_NO_INDEX);
@@ -1110,27 +1113,13 @@ int hd_on_frame_recv_callback(nghttp2_session *session,
 
     if (frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
 
-      http2::normalize_headers(stream->headers);
-      if (!http2::check_http2_request_headers(stream->headers)) {
-        hd->submit_rst_stream(stream, NGHTTP2_PROTOCOL_ERROR);
-        return 0;
-      }
-      for (size_t i = 0; REQUIRED_HEADERS[i]; ++i) {
-        if (!http2::get_unique_header(stream->headers, REQUIRED_HEADERS[i])) {
-          hd->submit_rst_stream(stream, NGHTTP2_PROTOCOL_ERROR);
-          return 0;
-        }
-      }
-      // intermediary translating from HTTP/1 request to HTTP/2 may
-      // not produce :authority header field. In this case, it should
-      // provide host HTTP/1.1 header field.
-      if (!http2::get_unique_header(stream->headers, ":authority") &&
-          !http2::get_unique_header(stream->headers, "host")) {
+      if (!http2::check_http2_request_headers(stream->hdidx)) {
         hd->submit_rst_stream(stream, NGHTTP2_PROTOCOL_ERROR);
         return 0;
       }
 
-      auto expect100 = http2::get_header(stream->headers, "expect");
+      auto expect100 =
+          http2::get_header(stream->hdidx, http2::HD_EXPECT, stream->headers);
 
       if (expect100 && util::strieq("100-continue", expect100->value.c_str())) {
         hd->submit_non_final_response("100", frame->hd.stream_id);

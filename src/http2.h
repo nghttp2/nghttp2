@@ -218,6 +218,45 @@ int check_nv(const uint8_t *name, size_t namelen, const uint8_t *value,
 // Returns parsed HTTP status code.  Returns -1 on failure.
 int parse_http_status_code(const std::string &src);
 
+enum {
+  HD_AUTHORITY,
+  HD_METHOD,
+  HD_PATH,
+  HD_SCHEME,
+  HD_CONNECTION,
+  HD_EXPECT,
+  HD_HOST,
+  HD_IF_MODIFIED_SINCE,
+  HD_KEEP_ALIVE,
+  HD_PROXY_CONNECTION,
+  HD_TE,
+  HD_TRANSFER_ENCODING,
+  HD_UPGRADE,
+  HD_MAXIDX,
+};
+
+// Initializes |hdidx|, header index.  The |hdidx| must point to the
+// array containing at least HD_MAXIDX elements.
+void init_hdidx(int *hdidx);
+// Indexes header |name| of length |namelen| using index |idx|.
+void index_header(int *hdidx, const uint8_t *name, size_t namelen, size_t idx);
+
+// Checks pseudo header |name| of length |namelen| are unique and
+// allowed for HTTP/2 request.
+bool check_http2_request_pseudo_header(int *hdidx, const uint8_t *name,
+                                       size_t namelen);
+
+// Checks |hdidx| does not contain disallowed headers.
+bool check_http2_headers(int *hdidx);
+// Checks |hdidx| does not contain disallowed headers and contains
+// mandatory headers.  This funtions internally calls
+// check_http2_headers().
+bool check_http2_request_headers(int *hdidx);
+
+// Returns header denoted by |hdkey| using index |hdidx|.
+const Headers::value_type *get_header(int *hdidx, int hdkey,
+                                      const Headers &nva);
+
 } // namespace http2
 
 } // namespace nghttp2
