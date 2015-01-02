@@ -2219,9 +2219,7 @@ static int session_after_frame_sent1(nghttp2_session *session) {
   nghttp2_outbound_item *item = aob->item;
   nghttp2_bufs *framebufs = &aob->framebufs;
   nghttp2_frame *frame;
-  nghttp2_mem *mem;
 
-  mem = &session->mem;
   frame = &item->frame;
 
   if (frame->hd.type != NGHTTP2_DATA) {
