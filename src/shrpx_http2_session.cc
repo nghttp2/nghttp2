@@ -70,47 +70,6 @@ void settings_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 }
 } // namespace
 
-// Do this in tls_handshake
-// if (events & BEV_EVENT_CONNECTED) {
-//   if (LOG_ENABLED(INFO)) {
-//     SSLOG(INFO, http2session) << "Connection established";
-//   }
-//   http2session->set_state(Http2Session::CONNECTED);
-//   if (!get_config()->downstream_no_tls && !get_config()->insecure &&
-//       http2session->check_cert() != 0) {
-
-//     http2session->disconnect(true);
-
-//     return;
-//   }
-
-//   if (http2session->on_connect() != 0) {
-//     http2session->disconnect(true);
-//     return;
-//   }
-
-//   auto fd = bufferevent_getfd(bev);
-//   int val = 1;
-//   if (setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<char
-//   *>(&val),
-//                  sizeof(val)) == -1) {
-//     auto error = errno;
-//     SSLOG(WARN, http2session)
-//         << "Setting option TCP_NODELAY failed: errno=" << error;
-//   }
-//   return;
-// }
-
-// TODO check EOF in read function
-// if (events & BEV_EVENT_EOF) {
-//   if (LOG_ENABLED(INFO)) {
-//     SSLOG(INFO, http2session) << "EOF";
-//   }
-//   http2session->disconnect(http2session->get_state() ==
-//                            Http2Session::CONNECTING);
-//   return;
-// }
-
 namespace {
 void timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto http2session = static_cast<Http2Session *>(w->data);
@@ -293,30 +252,6 @@ int Http2Session::disconnect(bool hard) {
 
   return 0;
 }
-
-//   if (events & BEV_EVENT_EOF) {
-//     if (LOG_ENABLED(INFO)) {
-//       SSLOG(INFO, http2session) << "Proxy EOF";
-//     }
-//     http2session->disconnect(http2session->get_state() ==
-//                              Http2Session::PROXY_CONNECTING);
-//     return;
-//   }
-
-//   if (events & (BEV_EVENT_ERROR | BEV_EVENT_TIMEOUT)) {
-//     if (LOG_ENABLED(INFO)) {
-//       if (events & BEV_EVENT_ERROR) {
-//         SSLOG(INFO, http2session) << "Network error";
-//       } else {
-//         SSLOG(INFO, http2session) << "Timeout";
-//       }
-//     }
-//     http2session->disconnect(http2session->get_state() ==
-//                              Http2Session::PROXY_CONNECTING);
-//     return;
-//   }
-// }
-// } // namespace
 
 int Http2Session::check_cert() { return ssl::check_cert(ssl_); }
 
