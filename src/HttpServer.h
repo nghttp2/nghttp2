@@ -126,7 +126,7 @@ public:
   void remove_settings_timer();
   void terminate_session(uint32_t error_code);
 
-  int fill_rb();
+  int fill_wb();
 
   int read_clear();
   int write_clear();
@@ -141,7 +141,7 @@ private:
   ev_io rev_;
   ev_timer settings_timerev_;
   std::map<int32_t, std::unique_ptr<Stream>> id2stream_;
-  RingBuf<16384> rb_;
+  RingBuf<16384> wb_;
   std::function<int(Http2Handler &)> read_, write_;
   int64_t session_id_;
   nghttp2_session *session_;

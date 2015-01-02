@@ -375,11 +375,16 @@ struct ev_loop *Http2Handler::get_loop() const {
 
 int Http2Handler::setup_bev() { return 0; }
 
-int Http2Handler::fill_rb() {
+int Http2Handler::fill_wb() {
   if (data_pending_) {
-    assert(rb_.wleft() >= data_pendinglen_);
+    auto n = std::min(wb_.wleft(), data_pendinglen_);
+    wb_.write(data_pending_, n);
+    if (n < data_pendinglen_) {
+      data_pending_ += n;
+      data_pendinglen_ -= n;
+      return 0;
+    }
 
-    rb_.write(data_pending_, data_pendinglen_);
     data_pending_ = nullptr;
     data_pendinglen_ = 0;
   }
@@ -396,7 +401,7 @@ int Http2Handler::fill_rb() {
     if (datalen == 0) {
       break;
     }
-    auto n = rb_.write(data, datalen);
+    auto n = wb_.write(data, datalen);
     if (n < static_cast<decltype(n)>(datalen)) {
       data_pending_ = data + n;
       data_pendinglen_ = datalen - n;
@@ -437,9 +442,9 @@ int Http2Handler::read_clear() {
 int Http2Handler::write_clear() {
   auto loop = sessions_->get_loop();
   for (;;) {
-    if (rb_.rleft() > 0) {
+    if (wb_.rleft() > 0) {
       struct iovec iov[2];
-      auto iovcnt = rb_.riovec(iov);
+      auto iovcnt = wb_.riovec(iov);
 
       ssize_t nwrite;
       while ((nwrite = writev(fd_, iov, iovcnt)) == -1 && errno == EINTR)
@@ -451,26 +456,26 @@ int Http2Handler::write_clear() {
         }
         return -1;
       }
-      rb_.drain(nwrite);
+      wb_.drain(nwrite);
       continue;
     }
-    rb_.reset();
-    if (fill_rb() != 0) {
+    wb_.reset();
+    if (fill_wb() != 0) {
       return -1;
     }
-    if (rb_.rleft() == 0) {
+    if (wb_.rleft() == 0) {
       break;
     }
   }
 
-  if (rb_.rleft() == 0) {
+  if (wb_.rleft() == 0) {
     ev_io_stop(loop, &wev_);
   } else {
     ev_io_start(loop, &wev_);
   }
 
   if (nghttp2_session_want_read(session_) == 0 &&
-      nghttp2_session_want_write(session_) == 0 && rb_.rleft() == 0) {
+      nghttp2_session_want_write(session_) == 0 && wb_.rleft() == 0) {
     return -1;
   }
 
@@ -556,10 +561,10 @@ fin:
 int Http2Handler::write_tls() {
   auto loop = sessions_->get_loop();
   for (;;) {
-    if (rb_.rleft() > 0) {
+    if (wb_.rleft() > 0) {
       const void *p;
       size_t len;
-      std::tie(p, len) = rb_.get();
+      std::tie(p, len) = wb_.get();
 
       auto rv = SSL_write(ssl_, p, len);
 
@@ -581,26 +586,26 @@ int Http2Handler::write_tls() {
         }
       }
 
-      rb_.drain(rv);
+      wb_.drain(rv);
       continue;
     }
-    rb_.reset();
-    if (fill_rb() != 0) {
+    wb_.reset();
+    if (fill_wb() != 0) {
       return -1;
     }
-    if (rb_.rleft() == 0) {
+    if (wb_.rleft() == 0) {
       break;
     }
   }
 
-  if (rb_.rleft() == 0) {
+  if (wb_.rleft() == 0) {
     ev_io_stop(loop, &wev_);
   } else {
     ev_io_start(loop, &wev_);
   }
 
   if (nghttp2_session_want_read(session_) == 0 &&
-      nghttp2_session_want_write(session_) == 0 && rb_.rleft() == 0) {
+      nghttp2_session_want_write(session_) == 0 && wb_.rleft() == 0) {
     return -1;
   }
 
