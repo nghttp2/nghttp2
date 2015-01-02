@@ -52,7 +52,7 @@ public:
   typedef std::map<std::string, HostEntry> HostEntryMap;
 
   // conn_max_per_host == 0 means no limit for downstream connection.
-  DownstreamQueue(size_t conn_max_per_host = 0);
+  DownstreamQueue(size_t conn_max_per_host = 0, bool unified_host = true);
   ~DownstreamQueue();
   void add_pending(std::unique_ptr<Downstream> downstream);
   void add_failure(std::unique_ptr<Downstream> downstream);
@@ -82,6 +82,8 @@ public:
   Downstream *find(int32_t stream_id);
   const DownstreamMap &get_active_downstreams() const;
   HostEntry &find_host_entry(const std::string &host);
+  const std::string &make_host_key(const std::string &host) const;
+  const std::string &make_host_key(Downstream *downstream) const;
 
   // Maximum number of concurrent connections to the same host.
   size_t conn_max_per_host_;
@@ -98,6 +100,9 @@ private:
   DownstreamMap active_downstreams_;
   // Downstream objects, blocked by conn_max_per_host_
   DownstreamMap blocked_downstreams_;
+  // true if downstream host is treated as the same.  Used for reverse
+  // proxying.
+  bool unified_host_;
 };
 
 } // namespace shrpx

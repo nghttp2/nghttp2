@@ -712,6 +712,7 @@ void fill_default_config() {
   mod_config()->argc = 0;
   mod_config()->argv = nullptr;
   mod_config()->downstream_connections_per_host = 8;
+  mod_config()->downstream_connections_per_frontend = 0;
   mod_config()->listener_disable_timeout = 0.;
 }
 } // namespace
@@ -843,9 +844,20 @@ Performance:
   --backend-http1-connections-per-host=<NUM>
                      Set maximum  number of backend  concurrent HTTP/1
                      connections per host.   This option is meaningful
-                     when -s option is used.
+                     when -s option  is used.  To limit  the number of
+                     connections  per frontend  for default  mode, use
+                     --backend-http1-connections-per-frontend.
                      Default: )"
       << get_config()->downstream_connections_per_host << R"(
+  --backend-http1-connections-per-frontend=<NUM>
+                     Set maximum  number of backend  concurrent HTTP/1
+                     connections  per frontend.   This option  is only
+                     used for  default mode.   0 means  unlimited.  To
+                     limit  the number  of  connections  per host  for
+                     HTTP/2  or  SPDY  proxy  mode  (-s  option),  use
+                     --backend-http1-connections-per-host.
+                     Default: )"
+      << get_config()->downstream_connections_per_frontend << R"(
 
 Timeout:
   --frontend-http2-read-timeout=<SEC>
@@ -1215,6 +1227,8 @@ int main(int argc, char **argv) {
         {"listener-disable-timeout", required_argument, &flag, 64},
         {"strip-incoming-x-forwarded-for", no_argument, &flag, 65},
         {"accesslog-format", required_argument, &flag, 66},
+        {"backend-http1-connections-per-frontend", required_argument, &flag,
+         67},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -1518,6 +1532,11 @@ int main(int argc, char **argv) {
       case 66:
         // --accesslog-format
         cmdcfgs.emplace_back(SHRPX_OPT_ACCESSLOG_FORMAT, optarg);
+        break;
+      case 67:
+        // --backend-http1-connections-per-frontend
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP1_CONNECTIONS_PER_FRONTEND,
+                             optarg);
         break;
       default:
         break;

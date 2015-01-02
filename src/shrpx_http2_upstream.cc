@@ -569,9 +569,13 @@ void settings_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 } // namespace
 
 Http2Upstream::Http2Upstream(ClientHandler *handler)
-    : downstream_queue_(get_config()->http2_proxy
-                            ? get_config()->downstream_connections_per_host
-                            : 0),
+    : downstream_queue_(
+          get_config()->http2_proxy
+              ? get_config()->downstream_connections_per_host
+              : get_config()->downstream_proto == PROTO_HTTP
+                    ? get_config()->downstream_connections_per_frontend
+                    : 0,
+          !get_config()->http2_proxy),
       handler_(handler), session_(nullptr), data_pending_(nullptr),
       data_pendinglen_(0), deferred_(false) {
 

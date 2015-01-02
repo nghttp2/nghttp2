@@ -33,10 +33,11 @@ namespace shrpx {
 
 DownstreamQueue::HostEntry::HostEntry() : num_active(0) {}
 
-DownstreamQueue::DownstreamQueue(size_t conn_max_per_host)
+DownstreamQueue::DownstreamQueue(size_t conn_max_per_host, bool unified_host)
     : conn_max_per_host_(conn_max_per_host == 0
                              ? std::numeric_limits<size_t>::max()
-                             : conn_max_per_host) {}
+                             : conn_max_per_host),
+      unified_host_(unified_host) {}
 
 DownstreamQueue::~DownstreamQueue() {}
 
@@ -59,8 +60,19 @@ DownstreamQueue::find_host_entry(const std::string &host) {
   return (*itr).second;
 }
 
+const std::string &
+DownstreamQueue::make_host_key(const std::string &host) const {
+  static std::string empty_key;
+  return unified_host_ ? empty_key : host;
+}
+
+const std::string &
+DownstreamQueue::make_host_key(Downstream *downstream) const {
+  return make_host_key(downstream->get_request_http2_authority());
+}
+
 void DownstreamQueue::add_active(std::unique_ptr<Downstream> downstream) {
-  auto &ent = find_host_entry(downstream->get_request_http2_authority());
+  auto &ent = find_host_entry(make_host_key(downstream.get()));
   ++ent.num_active;
 
   auto stream_id = downstream->get_stream_id();
@@ -68,14 +80,14 @@ void DownstreamQueue::add_active(std::unique_ptr<Downstream> downstream) {
 }
 
 void DownstreamQueue::add_blocked(std::unique_ptr<Downstream> downstream) {
-  auto &ent = find_host_entry(downstream->get_request_http2_authority());
+  auto &ent = find_host_entry(make_host_key(downstream.get()));
   auto stream_id = downstream->get_stream_id();
   ent.blocked.insert(stream_id);
   blocked_downstreams_[stream_id] = std::move(downstream);
 }
 
 bool DownstreamQueue::can_activate(const std::string &host) const {
-  auto itr = host_entries_.find(host);
+  auto itr = host_entries_.find(make_host_key(host));
   if (itr == std::end(host_entries_)) {
     return true;
   }
@@ -119,7 +131,7 @@ DownstreamQueue::remove_and_pop_blocked(int32_t stream_id) {
 
   if (kv != std::end(active_downstreams_)) {
     auto downstream = pop_downstream(kv, active_downstreams_);
-    auto &host = downstream->get_request_http2_authority();
+    auto &host = make_host_key(downstream.get());
     auto &ent = find_host_entry(host);
     --ent.num_active;
 
@@ -148,7 +160,7 @@ DownstreamQueue::remove_and_pop_blocked(int32_t stream_id) {
 
   if (kv != std::end(blocked_downstreams_)) {
     auto downstream = pop_downstream(kv, blocked_downstreams_);
-    auto &host = downstream->get_request_http2_authority();
+    auto &host = make_host_key(downstream.get());
     auto &ent = find_host_entry(host);
     ent.blocked.erase(stream_id);
 
