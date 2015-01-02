@@ -2741,6 +2741,11 @@ static ssize_t nghttp2_session_mem_send_internal(nghttp2_session *session,
           rv = session_after_frame_sent2(session);
         } else {
           rv = session_after_frame_sent1(session);
+          if (rv < 0) {
+            /* FATAL */
+            assert(nghttp2_is_fatal(rv));
+            return rv;
+          }
           rv = session_after_frame_sent2(session);
         }
         if (rv < 0) {
