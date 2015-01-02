@@ -1653,11 +1653,11 @@ int Http2Session::write_clear() {
       continue;
     }
 
+    wb_.reset();
     if (on_write() != 0) {
       return -1;
     }
     if (wb_.rleft() == 0) {
-      wb_.reset();
       break;
     }
   }
@@ -1729,6 +1729,7 @@ int Http2Session::read_tls() {
       return -1;
     }
 
+    rb_.reset();
     struct iovec iov[2];
     auto iovcnt = rb_.wiovec(iov);
     if (iovcnt > 0) {
@@ -1792,6 +1793,7 @@ int Http2Session::write_tls() {
 
       continue;
     }
+    wb_.reset();
     if (on_write() != 0) {
       return -1;
     }

@@ -156,11 +156,11 @@ int ClientHandler::write_clear() {
       wlimit_.drain(nwrite);
       continue;
     }
+    wb_.reset();
     if (on_write() != 0) {
       return -1;
     }
     if (wb_.rleft() == 0) {
-      wb_.reset();
       break;
     }
   }
@@ -310,6 +310,7 @@ int ClientHandler::write_tls() {
 
       continue;
     }
+    wb_.reset();
     if (on_write() != 0) {
       return -1;
     }
