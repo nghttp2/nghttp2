@@ -297,7 +297,7 @@ if test "x${have_openssl}" = "xno"; then
   AC_MSG_NOTICE($OPENSSL_PKG_ERRORS)
 fi
 
-# libevent_openssl (for src)
+# libevent_openssl (for examples)
 # 2.0.8 is required because we use evconnlistener_set_error_cb()
 PKG_CHECK_MODULES([LIBEVENT_OPENSSL], [libevent_openssl >= 2.0.8],
                   [have_libevent_openssl=yes], [have_libevent_openssl=no])
@@ -390,13 +390,12 @@ if test "x${request_asio_lib}" = "xyes"; then
 fi
 
 # The nghttp, nghttpd and nghttpx under src depend on zlib, OpenSSL
-# libev and libevent_openssl
+# and libev
 enable_app=no
 if test "x${request_app}" != "xno" &&
    test "x${have_zlib}" = "xyes" &&
    test "x${have_openssl}" = "xyes" &&
-   test "x${have_libev}" = "xyes" &&
-   test "x${have_libevent_openssl}" = "xyes"; then
+   test "x${have_libev}" = "xyes"; then
   enable_app=yes
 fi
 
