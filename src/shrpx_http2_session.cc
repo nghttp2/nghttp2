@@ -1417,7 +1417,7 @@ int Http2Session::downstream_write() {
     auto n = std::min(wb_.wleft(), data_pendinglen_);
     wb_.write(data_pending_, n);
     if (n < data_pendinglen_) {
-      data_pendinglen_ += n;
+      data_pending_ += n;
       data_pendinglen_ -= n;
       return 0;
     }

@@ -726,7 +726,7 @@ int Http2Upstream::on_write() {
     auto n = std::min(wb->wleft(), data_pendinglen_);
     wb->write(data_pending_, n);
     if (n < data_pendinglen_) {
-      data_pendinglen_ += n;
+      data_pending_ += n;
       data_pendinglen_ -= n;
       return 0;
     }
