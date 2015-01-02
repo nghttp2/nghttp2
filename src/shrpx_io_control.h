@@ -41,7 +41,6 @@ class IOControl {
 public:
   IOControl(RateLimit *lim);
   ~IOControl();
-  void set_lim(RateLimit *lim);
   void pause_read(IOCtrlReason reason);
   // Returns true if read operation is enabled after this call
   bool resume_read(IOCtrlReason reason);

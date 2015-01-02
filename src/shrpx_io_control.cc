@@ -37,8 +37,6 @@ IOControl::IOControl(RateLimit *lim) : lim_(lim), rdbits_(0) {}
 
 IOControl::~IOControl() {}
 
-void IOControl::set_lim(RateLimit *lim) { lim_ = lim; }
-
 void IOControl::pause_read(IOCtrlReason reason) {
   rdbits_ |= reason;
   if (lim_) {
