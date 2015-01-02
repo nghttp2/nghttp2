@@ -706,10 +706,6 @@ ssize_t spdy_data_read_callback(spdylay_session *session, int32_t stream_id,
   auto nread = body->remove(buf, length);
   auto body_empty = body->rleft() == 0;
 
-  if (nread == -1) {
-    ULOG(FATAL, upstream) << "evbuffer_remove() failed";
-    return SPDYLAY_ERR_CALLBACK_FAILURE;
-  }
   if (nread == 0 &&
       downstream->get_response_state() == Downstream::MSG_COMPLETE) {
     if (!downstream->get_upgraded()) {

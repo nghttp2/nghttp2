@@ -24,6 +24,8 @@
  */
 #include "shrpx_rate_limit.h"
 
+#include <limits>
+
 namespace shrpx {
 
 namespace {
@@ -49,7 +51,7 @@ RateLimit::~RateLimit() {
 
 size_t RateLimit::avail() const {
   if (rate_ == 0) {
-    return SSIZE_MAX;
+    return std::numeric_limits<ssize_t>::max();
   }
   return avail_;
 }

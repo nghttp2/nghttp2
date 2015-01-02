@@ -660,7 +660,7 @@ int HttpDownstreamConnection::on_read() {
     auto nproc = http_parser_execute(&response_htp_, &htp_hooks,
                                      reinterpret_cast<char *>(buf), nread);
 
-    if (nproc != nread) {
+    if (nproc != static_cast<size_t>(nread)) {
       if (LOG_ENABLED(INFO)) {
         DCLOG(INFO, this) << "nproc != nread";
       }

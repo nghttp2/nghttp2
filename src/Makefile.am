@@ -131,7 +131,8 @@ noinst_LIBRARIES = libnghttpx.a
 libnghttpx_a_SOURCES = ${NGHTTPX_SRCS}
 
 nghttpx_SOURCES = shrpx.cc shrpx.h
-nghttpx_LDADD = libnghttpx.a ${LDADD}
+nghttpx_LDFLAGS =
+nghttpx_LDADD = libnghttpx.a ${LDADD} ${AM_LDFLAGS}
 
 if HAVE_CUNIT
 check_PROGRAMS += nghttpx-unittest
