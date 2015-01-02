@@ -855,18 +855,22 @@ int parse_config(const char *opt, const char *optarg) {
   }
 
   if (util::strieq(opt, SHRPX_OPT_WORKER_READ_RATE)) {
+    LOG(WARN) << opt << ": not implemented yet";
     return parse_uint(&mod_config()->worker_read_rate, opt, optarg);
   }
 
   if (util::strieq(opt, SHRPX_OPT_WORKER_READ_BURST)) {
+    LOG(WARN) << opt << ": not implemented yet";
     return parse_uint(&mod_config()->worker_read_burst, opt, optarg);
   }
 
   if (util::strieq(opt, SHRPX_OPT_WORKER_WRITE_RATE)) {
+    LOG(WARN) << opt << ": not implemented yet";
     return parse_uint(&mod_config()->worker_write_rate, opt, optarg);
   }
 
   if (util::strieq(opt, SHRPX_OPT_WORKER_WRITE_BURST)) {
+    LOG(WARN) << opt << ": not implemented yet";
     return parse_uint(&mod_config()->worker_write_burst, opt, optarg);
   }
 

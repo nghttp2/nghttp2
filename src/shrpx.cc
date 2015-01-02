@@ -815,22 +815,26 @@ Performance:
   --worker-read-rate=<RATE>
                      Set  maximum   average  read  rate   on  frontend
                      connection per worker.  Setting  0 to this option
-                     means read rate is unlimited.
+                     means  read rate  is unlimited.   Not implemented
+                     yet.
                      Default: )" << get_config()->worker_read_rate << R"(
   --worker-read-burst=<SIZE>
                      Set   maximum  read   burst   size  on   frontend
                      connection per worker.  Setting  0 to this option
-                     means read burst size is unlimited.
+                     means   read  burst   size  is   unlimited.   Not
+                     implemented yet.
                      Default: )" << get_config()->worker_read_burst << R"(
   --worker-write-rate=<RATE>
                      Set  maximum  average   write  rate  on  frontend
                      connection per worker.  Setting  0 to this option
-                     means write rate is unlimited.
+                     means write  rate is unlimited.   Not implemented
+                     yet.
                      Default: )" << get_config()->worker_write_rate << R"(
   --worker-write-burst=<SIZE>
                      Set   maximum  write   burst  size   on  frontend
                      connection per worker.  Setting  0 to this option
-                     means write burst size is unlimited.
+                     means  write   burst  size  is   unlimited.   Not
+                     implemented yet.
                      Default: )" << get_config()->worker_write_burst << R"(
   --worker-frontend-connections=<NUM>
                      Set  maximum number  of simultaneous  connections
