@@ -36,6 +36,7 @@ void test_http2_build_http1_headers_from_norm_headers(void);
 void test_http2_lws(void);
 void test_http2_rewrite_location_uri(void);
 void test_http2_parse_http_status_code(void);
+void test_http2_index_header(void);
 
 } // namespace shrpx
 

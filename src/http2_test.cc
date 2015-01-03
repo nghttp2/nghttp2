@@ -270,4 +270,16 @@ void test_http2_parse_http_status_code(void) {
   CU_ASSERT(-1 == http2::parse_http_status_code(""));
 }
 
+void test_http2_index_header(void) {
+  int hdidx[http2::HD_MAXIDX];
+  http2::init_hdidx(hdidx);
+
+  http2::index_header(hdidx, reinterpret_cast<const uint8_t *>(":authority"),
+                      10, 0);
+  http2::index_header(hdidx, reinterpret_cast<const uint8_t *>("hos"), 3, 1);
+
+  CU_ASSERT(0 == hdidx[http2::HD_AUTHORITY]);
+  CU_ASSERT(-1 == hdidx[http2::HD_HOST]);
+}
+
 } // namespace shrpx
