@@ -54,22 +54,22 @@ enum {'''
 
 def gen_index_header():
     print '''\
-void index_header(int *hdidx, const uint8_t *s, size_t len, size_t idx) {
-  switch (len) {'''
+void index_header(int *hdidx, const uint8_t *name, size_t namelen, size_t idx) {
+  switch (namelen) {'''
     b = build_header(HEADERS)
     for size in sorted(b.keys()):
         ents = b[size]
         print '''\
   case {}:'''.format(size)
         print '''\
-    switch (util::lowcase(s[len - 1])) {'''
+    switch (util::lowcase(name[namelen - 1])) {'''
         for c in sorted(ents.keys()):
             headers = sorted(ents[c])
             print '''\
     case '{}':'''.format(c)
             for k in headers:
                 print '''\
-      if (util::strieq("{}", s, {})) {{
+      if (util::streq("{}", name, {})) {{
         hdidx[{}] = idx;
         return;
       }}'''.format(k[:-1], size - 1, to_enum_hd(k))
