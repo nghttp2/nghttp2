@@ -107,7 +107,17 @@ void readcb(struct ev_loop *loop, ev_io *w, int revents) {
 namespace {
 void writecb(struct ev_loop *loop, ev_io *w, int revents) {
   auto client = static_cast<Client *>(w->data);
-  if (client->do_write() != 0) {
+  auto rv = client->do_write();
+  if (rv == Client::ERR_CONNECT_FAIL) {
+    client->disconnect();
+    rv = client->connect();
+    if (rv != 0) {
+      client->fail();
+      return;
+    }
+    return;
+  }
+  if (rv != 0) {
     client->fail();
   }
 }
@@ -533,6 +543,9 @@ int Client::write_clear() {
 }
 
 int Client::connected() {
+  if (!util::check_socket_connected(fd)) {
+    return ERR_CONNECT_FAIL;
+  }
   ev_io_start(worker->loop, &rev);
   ev_io_stop(worker->loop, &wev);
 

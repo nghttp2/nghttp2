@@ -149,6 +149,8 @@ struct Client {
   int fd;
   RingBuf<65536> wb;
 
+  enum { ERR_CONNECT_FAIL = -100 };
+
   Client(Worker *worker, size_t req_todo);
   ~Client();
   int connect();
