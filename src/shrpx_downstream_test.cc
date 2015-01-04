@@ -32,7 +32,7 @@
 
 namespace shrpx {
 
-void test_downstream_normalize_request_headers(void) {
+void test_downstream_index_request_headers(void) {
   Downstream d(nullptr, 0, 0);
   d.add_request_header("1", "0");
   d.add_request_header("2", "1");
@@ -42,88 +42,83 @@ void test_downstream_normalize_request_headers(void) {
   d.add_request_header("BravO", "5");
   d.add_request_header(":method", "6");
   d.add_request_header(":authority", "7");
-  d.normalize_request_headers();
+  d.index_request_headers();
 
-  auto ans = Headers{{":authority", "7"},
-                     {":method", "6"},
-                     {"1", "0"},
+  auto ans = Headers{{"1", "0"},
                      {"2", "1"},
-                     {"alpha", "3"},
-                     {"bravo", "5"},
                      {"charlie", "2"},
-                     {"delta", "4"}};
+                     {"alpha", "3"},
+                     {"delta", "4"},
+                     {"bravo", "5"},
+                     {":method", "6"},
+                     {":authority", "7"}};
   CU_ASSERT(ans == d.get_request_headers());
 }
 
-void test_downstream_normalize_response_headers(void) {
+void test_downstream_index_response_headers(void) {
   Downstream d(nullptr, 0, 0);
   d.add_response_header("Charlie", "0");
   d.add_response_header("Alpha", "1");
   d.add_response_header("Delta", "2");
   d.add_response_header("BravO", "3");
-  d.normalize_response_headers();
+  d.index_response_headers();
 
   auto ans =
-      Headers{{"alpha", "1"}, {"bravo", "3"}, {"charlie", "0"}, {"delta", "2"}};
+      Headers{{"charlie", "0"}, {"alpha", "1"}, {"delta", "2"}, {"bravo", "3"}};
   CU_ASSERT(ans == d.get_response_headers());
 }
 
-void test_downstream_get_norm_request_header(void) {
+void test_downstream_get_request_header(void) {
   Downstream d(nullptr, 0, 0);
   d.add_request_header("alpha", "0");
-  d.add_request_header("bravo", "1");
-  d.add_request_header("bravo", "2");
-  d.add_request_header("charlie", "3");
-  d.add_request_header("delta", "4");
-  d.add_request_header("echo", "5");
-  auto i = d.get_norm_request_header("alpha");
-  CU_ASSERT(Header("alpha", "0") == *i);
-  i = d.get_norm_request_header("bravo");
-  CU_ASSERT(Header("bravo", "1") == *i);
-  i = d.get_norm_request_header("delta");
-  CU_ASSERT(Header("delta", "4") == *i);
-  i = d.get_norm_request_header("echo");
-  CU_ASSERT(Header("echo", "5") == *i);
-  i = d.get_norm_request_header("foxtrot");
-  CU_ASSERT(i == std::end(d.get_request_headers()));
+  d.add_request_header(":authority", "1");
+  d.add_request_header("content-length", "2");
+  d.index_request_headers();
+
+  // By token
+  CU_ASSERT(Header(":authority", "1") ==
+            *d.get_request_header(http2::HD__AUTHORITY));
+  CU_ASSERT(nullptr == d.get_request_header(http2::HD__METHOD));
+
+  // By name
+  CU_ASSERT(Header("alpha", "0") == *d.get_request_header("alpha"));
+  CU_ASSERT(nullptr == d.get_request_header("bravo"));
 }
 
-void test_downstream_get_norm_response_header(void) {
+void test_downstream_get_response_header(void) {
   Downstream d(nullptr, 0, 0);
   d.add_response_header("alpha", "0");
-  d.add_response_header("bravo", "1");
-  d.add_response_header("bravo", "2");
-  d.add_response_header("charlie", "3");
-  d.add_response_header("delta", "4");
-  d.add_response_header("echo", "5");
-  auto i = d.get_norm_response_header("alpha");
-  CU_ASSERT(Header("alpha", "0") == *i);
-  i = d.get_norm_response_header("bravo");
-  CU_ASSERT(Header("bravo", "1") == *i);
-  i = d.get_norm_response_header("delta");
-  CU_ASSERT(Header("delta", "4") == *i);
-  i = d.get_norm_response_header("echo");
-  CU_ASSERT(Header("echo", "5") == *i);
-  i = d.get_norm_response_header("foxtrot");
-  CU_ASSERT(i == std::end(d.get_response_headers()));
+  d.add_response_header(":status", "1");
+  d.add_response_header("content-length", "2");
+  d.index_response_headers();
+
+  // By token
+  CU_ASSERT(Header(":status", "1") ==
+            *d.get_response_header(http2::HD__STATUS));
+  CU_ASSERT(nullptr == d.get_response_header(http2::HD__METHOD));
 }
 
 void test_downstream_crumble_request_cookie(void) {
   Downstream d(nullptr, 0, 0);
   d.add_request_header(":method", "get");
   d.add_request_header(":path", "/");
-  d.add_request_header("cookie", "alpha; bravo; ; ;; charlie;;");
+  auto val = "alpha; bravo; ; ;; charlie;;";
+  d.add_request_header(
+      reinterpret_cast<const uint8_t *>("cookie"), sizeof("cookie") - 1,
+      reinterpret_cast<const uint8_t *>(val), strlen(val), true, -1);
   d.add_request_header("cookie", ";delta");
   d.add_request_header("cookie", "echo");
-  d.crumble_request_cookie();
-  Headers ans = {{":method", "get"},
-                 {":path", "/"},
-                 {"cookie", "alpha"},
-                 {"cookie", "delta"},
-                 {"cookie", "echo"},
+  auto cookies = d.crumble_request_cookie();
+
+  Headers ans = {{"cookie", "alpha"},
                  {"cookie", "bravo"},
-                 {"cookie", "charlie"}};
-  CU_ASSERT(ans == d.get_request_headers());
+                 {"cookie", "charlie"},
+                 {"cookie", "delta"},
+                 {"cookie", "echo"}};
+  CU_ASSERT(ans == cookies);
+  CU_ASSERT(cookies[0].no_index);
+  CU_ASSERT(cookies[1].no_index);
+  CU_ASSERT(cookies[2].no_index);
 }
 
 void test_downstream_assemble_request_cookie(void) {
@@ -138,21 +133,24 @@ void test_downstream_assemble_request_cookie(void) {
   CU_ASSERT("alpha; bravo; charlie; delta" == d.get_assembled_request_cookie());
 }
 
-void test_downstream_rewrite_norm_location_response_header(void) {
+void test_downstream_rewrite_location_response_header(void) {
   {
     Downstream d(nullptr, 0, 0);
     d.add_request_header("host", "localhost:3000");
     d.add_response_header("location", "http://localhost:3000/");
-    d.rewrite_norm_location_response_header("https", 443);
-    auto location = d.get_norm_response_header("location");
+    d.index_request_headers();
+    d.index_response_headers();
+    d.rewrite_location_response_header("https", 443);
+    auto location = d.get_response_header(http2::HD_LOCATION);
     CU_ASSERT("https://localhost/" == (*location).value);
   }
   {
     Downstream d(nullptr, 0, 0);
     d.set_request_http2_authority("localhost");
     d.add_response_header("location", "http://localhost/");
-    d.rewrite_norm_location_response_header("https", 443);
-    auto location = d.get_norm_response_header("location");
+    d.index_response_headers();
+    d.rewrite_location_response_header("https", 443);
+    auto location = d.get_response_header(http2::HD_LOCATION);
     CU_ASSERT("https://localhost/" == (*location).value);
   }
 }

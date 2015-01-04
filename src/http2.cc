@@ -174,138 +174,6 @@ void copy_url_component(std::string &dest, const http_parser_url *u, int field,
   }
 }
 
-bool check_http2_allowed_header(const char *name) {
-  return check_http2_allowed_header(reinterpret_cast<const uint8_t *>(name),
-                                    strlen(name));
-}
-
-bool check_http2_allowed_header(const uint8_t *name, size_t namelen) {
-  return !util::strieq("connection", name, namelen) &&
-         !util::strieq("host", name, namelen) &&
-         !util::strieq("keep-alive", name, namelen) &&
-         !util::strieq("proxy-connection", name, namelen) &&
-         !util::strieq("te", name, namelen) &&
-         !util::strieq("transfer-encoding", name, namelen) &&
-         !util::strieq("upgrade", name, namelen);
-}
-
-namespace {
-const char *DISALLOWED_HD[] = {
-    "connection", "keep-alive",        "proxy-connection",
-    "te",         "transfer-encoding", "upgrade",
-};
-} // namespace
-
-namespace {
-auto DISALLOWED_HDLEN = util::array_size(DISALLOWED_HD);
-} // namespace
-
-namespace {
-const char *REQUEST_PSEUDO_HD[] = {
-    ":authority", ":method", ":path", ":scheme",
-};
-} // namespace
-
-namespace {
-auto REQUEST_PSEUDO_HDLEN = util::array_size(REQUEST_PSEUDO_HD);
-} // namespace
-
-namespace {
-const char *RESPONSE_PSEUDO_HD[] = {
-    ":status",
-};
-} // namespace
-
-namespace {
-auto RESPONSE_PSEUDO_HDLEN = util::array_size(RESPONSE_PSEUDO_HD);
-} // namespace
-
-namespace {
-const char *IGN_HD[] = {
-    "connection", "http2-settings",  "keep-alive",        "proxy-connection",
-    "server",     "te",              "transfer-encoding", "upgrade",
-    "via",        "x-forwarded-for", "x-forwarded-proto",
-};
-} // namespace
-
-namespace {
-auto IGN_HDLEN = util::array_size(IGN_HD);
-} // namespace
-
-namespace {
-const char *HTTP1_IGN_HD[] = {
-    "connection",       "cookie",            "http2-settings", "keep-alive",
-    "proxy-connection", "server",            "upgrade",        "via",
-    "x-forwarded-for",  "x-forwarded-proto",
-};
-} // namespace
-
-namespace {
-auto HTTP1_IGN_HDLEN = util::array_size(HTTP1_IGN_HD);
-} // namespace
-
-bool name_less(const Headers::value_type &lhs, const Headers::value_type &rhs) {
-  if (lhs.name.c_str()[0] == ':') {
-    if (rhs.name.c_str()[0] != ':') {
-      return true;
-    }
-  } else if (rhs.name.c_str()[0] == ':') {
-    return false;
-  }
-
-  return lhs.name < rhs.name;
-}
-
-bool check_http2_headers(const Headers &nva) {
-  for (size_t i = 0; i < DISALLOWED_HDLEN; ++i) {
-    if (std::binary_search(std::begin(nva), std::end(nva),
-                           Header(DISALLOWED_HD[i], ""), name_less)) {
-      return false;
-    }
-  }
-  return true;
-}
-
-bool check_http2_request_headers(const Headers &nva) {
-  return check_http2_headers(nva);
-}
-
-bool check_http2_response_headers(const Headers &nva) {
-  return check_http2_headers(nva);
-}
-
-namespace {
-template <typename InputIterator>
-bool check_pseudo_header(const uint8_t *name, size_t namelen,
-                         InputIterator allowed_first,
-                         InputIterator allowed_last) {
-  for (auto i = allowed_first; i != allowed_last; ++i) {
-    if (util::streq(*i, name, namelen)) {
-      return true;
-    }
-  }
-
-  return false;
-}
-} // namespace
-
-bool check_http2_request_pseudo_header(const uint8_t *name, size_t namelen) {
-  return check_pseudo_header(name, namelen, REQUEST_PSEUDO_HD,
-                             REQUEST_PSEUDO_HD + REQUEST_PSEUDO_HDLEN);
-}
-
-bool check_http2_response_pseudo_header(const uint8_t *name, size_t namelen) {
-  return check_pseudo_header(name, namelen, RESPONSE_PSEUDO_HD,
-                             RESPONSE_PSEUDO_HD + RESPONSE_PSEUDO_HDLEN);
-}
-
-void normalize_headers(Headers &nva) {
-  for (auto &kv : nva) {
-    util::inp_strlower(kv.name);
-  }
-  std::stable_sort(std::begin(nva), std::end(nva), name_less);
-}
-
 Headers::value_type to_header(const uint8_t *name, size_t namelen,
                               const uint8_t *value, size_t valuelen,
                               bool no_index) {
@@ -328,26 +196,14 @@ void add_header(Headers &nva, const uint8_t *name, size_t namelen,
   nva.push_back(to_header(name, namelen, value, valuelen, no_index));
 }
 
-const Headers::value_type *get_unique_header(const Headers &nva,
-                                             const char *name) {
-  auto nv = Headers::value_type(name, "");
-  auto i = std::lower_bound(std::begin(nva), std::end(nva), nv, name_less);
-  if (i != std::end(nva) && (*i).name == nv.name) {
-    auto j = i + 1;
-    if (j == std::end(nva) || (*j).name != nv.name) {
-      return &(*i);
+const Headers::value_type *get_header(const Headers &nva, const char *name) {
+  const Headers::value_type *res = nullptr;
+  for (auto &nv : nva) {
+    if (nv.name == name) {
+      res = &nv;
     }
   }
-  return nullptr;
-}
-
-const Headers::value_type *get_header(const Headers &nva, const char *name) {
-  auto nv = Headers::value_type(name, "");
-  auto i = std::lower_bound(std::begin(nva), std::end(nva), nv, name_less);
-  if (i != std::end(nva) && (*i).name == nv.name) {
-    return &(*i);
-  }
-  return nullptr;
+  return res;
 }
 
 std::string value_to_str(const Headers::value_type *nv) {
@@ -371,65 +227,54 @@ nghttp2_nv make_nv(const std::string &name, const std::string &value,
           value.size(), flags};
 }
 
-void copy_norm_headers_to_nva(std::vector<nghttp2_nv> &nva,
-                              const Headers &headers) {
-  size_t i, j;
-  for (i = 0, j = 0; i < headers.size() && j < IGN_HDLEN;) {
-    auto &kv = headers[i];
-    int rv = strcmp(kv.name.c_str(), IGN_HD[j]);
-    if (rv < 0) {
-      if (!kv.name.empty() && kv.name.c_str()[0] != ':') {
-        nva.push_back(make_nv(kv.name, kv.value, kv.no_index));
-      }
-      ++i;
-    } else if (rv > 0) {
-      ++j;
-    } else {
-      ++i;
+void copy_headers_to_nva(std::vector<nghttp2_nv> &nva, const Headers &headers) {
+  for (auto &kv : headers) {
+    if (kv.name.empty() || kv.name[0] == ':') {
+      continue;
     }
-  }
-  for (; i < headers.size(); ++i) {
-    auto &kv = headers[i];
-    if (!kv.name.empty() && kv.name.c_str()[0] != ':') {
-      nva.push_back(make_nv(kv.name, kv.value, kv.no_index));
+    switch (lookup_token(kv.name)) {
+    case HD_COOKIE:
+    case HD_CONNECTION:
+    case HD_HTTP2_SETTINGS:
+    case HD_KEEP_ALIVE:
+    case HD_PROXY_CONNECTION:
+    case HD_SERVER:
+    case HD_TRANSFER_ENCODING:
+    case HD_UPGRADE:
+    case HD_VIA:
+    case HD_X_FORWARDED_FOR:
+    case HD_X_FORWARDED_PROTO:
+      continue;
     }
+    nva.push_back(make_nv(kv.name, kv.value, kv.no_index));
   }
 }
 
-void build_http1_headers_from_norm_headers(std::string &hdrs,
-                                           const Headers &headers) {
-  size_t i, j;
-  for (i = 0, j = 0; i < headers.size() && j < HTTP1_IGN_HDLEN;) {
-    auto &kv = headers[i];
-    auto rv = strcmp(kv.name.c_str(), HTTP1_IGN_HD[j]);
-
-    if (rv < 0) {
-      if (!kv.name.empty() && kv.name.c_str()[0] != ':') {
-        hdrs += kv.name;
-        capitalize(hdrs, hdrs.size() - kv.name.size());
-        hdrs += ": ";
-        hdrs += kv.value;
-        sanitize_header_value(hdrs, hdrs.size() - kv.value.size());
-        hdrs += "\r\n";
-      }
-      ++i;
-    } else if (rv > 0) {
-      ++j;
-    } else {
-      ++i;
+void build_http1_headers_from_headers(std::string &hdrs,
+                                      const Headers &headers) {
+  for (auto &kv : headers) {
+    if (kv.name.empty() || kv.name[0] == ':') {
+      continue;
     }
-  }
-  for (; i < headers.size(); ++i) {
-    auto &kv = headers[i];
-
-    if (!kv.name.empty() && kv.name.c_str()[0] != ':') {
-      hdrs += kv.name;
-      capitalize(hdrs, hdrs.size() - kv.name.size());
-      hdrs += ": ";
-      hdrs += kv.value;
-      sanitize_header_value(hdrs, hdrs.size() - kv.value.size());
-      hdrs += "\r\n";
+    switch (lookup_token(kv.name)) {
+    case HD_CONNECTION:
+    case HD_COOKIE:
+    case HD_HTTP2_SETTINGS:
+    case HD_KEEP_ALIVE:
+    case HD_PROXY_CONNECTION:
+    case HD_SERVER:
+    case HD_UPGRADE:
+    case HD_VIA:
+    case HD_X_FORWARDED_FOR:
+    case HD_X_FORWARDED_PROTO:
+      continue;
     }
+    hdrs += kv.name;
+    capitalize(hdrs, hdrs.size() - kv.name.size());
+    hdrs += ": ";
+    hdrs += kv.value;
+    sanitize_header_value(hdrs, hdrs.size() - kv.value.size());
+    hdrs += "\r\n";
   }
 }
 
@@ -572,18 +417,29 @@ int parse_http_status_code(const std::string &src) {
   return status;
 }
 
-void init_hdidx(int *hdidx) { memset(hdidx, -1, sizeof(hdidx[0]) * HD_MAXIDX); }
+int lookup_token(const std::string &name) {
+  return lookup_token(reinterpret_cast<const uint8_t *>(name.c_str()),
+                      name.size());
+}
 
 // This function was generated by genheaderfunc.py.  Inspired by h2o
 // header lookup.  https://github.com/h2o/h2o
-void index_header(int *hdidx, const uint8_t *name, size_t namelen, size_t idx) {
+int lookup_token(const uint8_t *name, size_t namelen) {
   switch (namelen) {
   case 2:
     switch (util::lowcase(name[namelen - 1])) {
     case 'e':
       if (util::streq("t", name, 1)) {
-        hdidx[HD_TE] = idx;
-        return;
+        return HD_TE;
+      }
+      break;
+    }
+    break;
+  case 3:
+    switch (util::lowcase(name[namelen - 1])) {
+    case 'a':
+      if (util::streq("vi", name, 2)) {
+        return HD_VIA;
       }
       break;
     }
@@ -592,8 +448,7 @@ void index_header(int *hdidx, const uint8_t *name, size_t namelen, size_t idx) {
     switch (util::lowcase(name[namelen - 1])) {
     case 't':
       if (util::streq("hos", name, 3)) {
-        hdidx[HD_HOST] = idx;
-        return;
+        return HD_HOST;
       }
       break;
     }
@@ -602,38 +457,67 @@ void index_header(int *hdidx, const uint8_t *name, size_t namelen, size_t idx) {
     switch (util::lowcase(name[namelen - 1])) {
     case 'h':
       if (util::streq(":pat", name, 4)) {
-        hdidx[HD_PATH] = idx;
-        return;
+        return HD__PATH;
+      }
+      break;
+    case 't':
+      if (util::streq(":hos", name, 4)) {
+        return HD__HOST;
       }
       break;
     }
     break;
   case 6:
     switch (util::lowcase(name[namelen - 1])) {
+    case 'e':
+      if (util::streq("cooki", name, 5)) {
+        return HD_COOKIE;
+      }
+      break;
+    case 'r':
+      if (util::streq("serve", name, 5)) {
+        return HD_SERVER;
+      }
+      break;
     case 't':
       if (util::streq("expec", name, 5)) {
-        hdidx[HD_EXPECT] = idx;
-        return;
+        return HD_EXPECT;
       }
       break;
     }
     break;
   case 7:
     switch (util::lowcase(name[namelen - 1])) {
+    case 'c':
+      if (util::streq("alt-sv", name, 6)) {
+        return HD_ALT_SVC;
+      }
+      break;
     case 'd':
       if (util::streq(":metho", name, 6)) {
-        hdidx[HD_METHOD] = idx;
-        return;
+        return HD__METHOD;
       }
       break;
     case 'e':
       if (util::streq(":schem", name, 6)) {
-        hdidx[HD_SCHEME] = idx;
-        return;
+        return HD__SCHEME;
       }
       if (util::streq("upgrad", name, 6)) {
-        hdidx[HD_UPGRADE] = idx;
-        return;
+        return HD_UPGRADE;
+      }
+      break;
+    case 's':
+      if (util::streq(":statu", name, 6)) {
+        return HD__STATUS;
+      }
+      break;
+    }
+    break;
+  case 8:
+    switch (util::lowcase(name[namelen - 1])) {
+    case 'n':
+      if (util::streq("locatio", name, 7)) {
+        return HD_LOCATION;
       }
       break;
     }
@@ -642,20 +526,40 @@ void index_header(int *hdidx, const uint8_t *name, size_t namelen, size_t idx) {
     switch (util::lowcase(name[namelen - 1])) {
     case 'e':
       if (util::streq("keep-aliv", name, 9)) {
-        hdidx[HD_KEEP_ALIVE] = idx;
-        return;
+        return HD_KEEP_ALIVE;
       }
       break;
     case 'n':
       if (util::streq("connectio", name, 9)) {
-        hdidx[HD_CONNECTION] = idx;
-        return;
+        return HD_CONNECTION;
       }
       break;
     case 'y':
       if (util::streq(":authorit", name, 9)) {
-        hdidx[HD_AUTHORITY] = idx;
-        return;
+        return HD__AUTHORITY;
+      }
+      break;
+    }
+    break;
+  case 14:
+    switch (util::lowcase(name[namelen - 1])) {
+    case 'h':
+      if (util::streq("content-lengt", name, 13)) {
+        return HD_CONTENT_LENGTH;
+      }
+      break;
+    case 's':
+      if (util::streq("http2-setting", name, 13)) {
+        return HD_HTTP2_SETTINGS;
+      }
+      break;
+    }
+    break;
+  case 15:
+    switch (util::lowcase(name[namelen - 1])) {
+    case 'r':
+      if (util::streq("x-forwarded-fo", name, 14)) {
+        return HD_X_FORWARDED_FOR;
       }
       break;
     }
@@ -664,8 +568,7 @@ void index_header(int *hdidx, const uint8_t *name, size_t namelen, size_t idx) {
     switch (util::lowcase(name[namelen - 1])) {
     case 'n':
       if (util::streq("proxy-connectio", name, 15)) {
-        hdidx[HD_PROXY_CONNECTION] = idx;
-        return;
+        return HD_PROXY_CONNECTION;
       }
       break;
     }
@@ -674,96 +577,92 @@ void index_header(int *hdidx, const uint8_t *name, size_t namelen, size_t idx) {
     switch (util::lowcase(name[namelen - 1])) {
     case 'e':
       if (util::streq("if-modified-sinc", name, 16)) {
-        hdidx[HD_IF_MODIFIED_SINCE] = idx;
-        return;
+        return HD_IF_MODIFIED_SINCE;
       }
       break;
     case 'g':
       if (util::streq("transfer-encodin", name, 16)) {
-        hdidx[HD_TRANSFER_ENCODING] = idx;
-        return;
+        return HD_TRANSFER_ENCODING;
+      }
+      break;
+    case 'o':
+      if (util::streq("x-forwarded-prot", name, 16)) {
+        return HD_X_FORWARDED_PROTO;
       }
       break;
     }
     break;
   }
+  return -1;
 }
 
-bool check_http2_request_pseudo_header(int *hdidx, const uint8_t *s,
-                                       size_t len) {
-  switch (len) {
-  case 5:
-    switch (util::lowcase(s[len - 1])) {
-    case 'h':
-      if (util::streq(":pat", s, 4)) {
-        if (hdidx[HD_PATH] != -1) {
-          return false;
-        }
-        return true;
-      }
-      break;
+void init_hdidx(int *hdidx) { memset(hdidx, -1, sizeof(hdidx[0]) * HD_MAXIDX); }
+
+void index_headers(int *hdidx, const Headers &headers) {
+  for (size_t i = 0; i < headers.size(); ++i) {
+    auto &kv = headers[i];
+    auto token = lookup_token(
+        reinterpret_cast<const uint8_t *>(kv.name.c_str()), kv.name.size());
+    if (token >= 0) {
+      http2::index_header(hdidx, token, i);
     }
-    break;
-  case 7:
-    switch (util::lowcase(s[len - 1])) {
-    case 'd':
-      if (util::streq(":metho", s, 6)) {
-        if (hdidx[HD_METHOD] != -1) {
-          return false;
-        }
-        return true;
-      }
-      break;
-    case 'e':
-      if (util::streq(":schem", s, 6)) {
-        if (hdidx[HD_SCHEME] != -1) {
-          return false;
-        }
-        return true;
-      }
-      break;
-    }
-    break;
-  case 10:
-    switch (util::lowcase(s[len - 1])) {
-    case 'y':
-      if (util::streq(":authorit", s, 9)) {
-        if (hdidx[HD_AUTHORITY] != -1) {
-          return false;
-        }
-        return true;
-      }
-      break;
-    }
-    break;
   }
-  return false;
 }
 
-bool check_http2_headers(int *hdidx) {
-  if (hdidx[HD_CONNECTION] != -1 || hdidx[HD_KEEP_ALIVE] != -1 ||
-      hdidx[HD_PROXY_CONNECTION] != -1 || hdidx[HD_TE] != -1 ||
-      hdidx[HD_TRANSFER_ENCODING] != -1 || hdidx[HD_UPGRADE] != -1) {
+void index_header(int *hdidx, int token, size_t idx) {
+  if (token == -1) {
+    return;
+  }
+  assert(token < HD_MAXIDX);
+  hdidx[token] = idx;
+}
+
+bool check_http2_request_pseudo_header(const int *hdidx, int token) {
+  switch (token) {
+  case HD__AUTHORITY:
+  case HD__METHOD:
+  case HD__PATH:
+  case HD__SCHEME:
+    return hdidx[token] == -1;
+  default:
+    return false;
+  }
+}
+
+bool check_http2_response_pseudo_header(const int *hdidx, int token) {
+  switch (token) {
+  case HD__STATUS:
+    return hdidx[token] == -1;
+  default:
+    return false;
+  }
+}
+
+bool http2_header_allowed(int token) {
+  switch (token) {
+  case HD_CONNECTION:
+  case HD_KEEP_ALIVE:
+  case HD_PROXY_CONNECTION:
+  case HD_TRANSFER_ENCODING:
+  case HD_UPGRADE:
+    return false;
+  default:
+    return true;
+  }
+}
+
+bool http2_mandatory_request_headers_presence(const int *hdidx) {
+  if (hdidx[HD__METHOD] == -1 || hdidx[HD__PATH] == -1 ||
+      hdidx[HD__SCHEME] == -1 ||
+      (hdidx[HD__AUTHORITY] == -1 && hdidx[HD_HOST] == -1)) {
     return false;
   }
   return true;
 }
 
-bool check_http2_request_headers(int *hdidx) {
-  if (!check_http2_headers(hdidx)) {
-    return false;
-  }
-  if (hdidx[HD_METHOD] == -1 || hdidx[HD_PATH] == -1 ||
-      hdidx[HD_SCHEME] == -1 ||
-      (hdidx[HD_AUTHORITY] == -1 && hdidx[HD_HOST] == -1)) {
-    return false;
-  }
-  return true;
-}
-
-const Headers::value_type *get_header(int *hdidx, int hdkey,
+const Headers::value_type *get_header(const int *hdidx, int token,
                                       const Headers &nva) {
-  auto i = hdidx[hdkey];
+  auto i = hdidx[token];
   if (i == -1) {
     return nullptr;
   }

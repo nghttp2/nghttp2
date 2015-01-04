@@ -233,13 +233,11 @@ int Http2DownstreamConnection::push_request_headers() {
     return 0;
   }
   size_t nheader = downstream_->get_request_headers().size();
+
+  Headers cookies;
   if (!get_config()->http2_no_cookie_crumbling) {
-    downstream_->crumble_request_cookie();
+    cookies = downstream_->crumble_request_cookie();
   }
-
-  assert(downstream_->get_request_headers_normalized());
-
-  auto end_headers = std::end(downstream_->get_request_headers());
 
   // 7 means:
   // 1. :method
@@ -250,10 +248,12 @@ int Http2DownstreamConnection::push_request_headers() {
   // 6. x-forwarded-for (optional)
   // 7. x-forwarded-proto (optional)
   auto nva = std::vector<nghttp2_nv>();
-  nva.reserve(nheader + 7);
+  nva.reserve(nheader + 7 + cookies.size());
+
   std::string via_value;
   std::string xff_value;
   std::string scheme, authority, path, query;
+
   // To reconstruct HTTP/1 status line and headers, proxy should
   // preserve host header field. See draft-09 section 8.1.3.1.
   if (downstream_->get_request_method() == "CONNECT") {
@@ -273,7 +273,7 @@ int Http2DownstreamConnection::push_request_headers() {
     if (!downstream_->get_request_http2_authority().empty()) {
       nva.push_back(http2::make_nv_ls(
           ":authority", downstream_->get_request_http2_authority()));
-    } else if (downstream_->get_norm_request_header("host") == end_headers) {
+    } else if (!downstream_->get_request_header(http2::HD_HOST)) {
       if (LOG_ENABLED(INFO)) {
         DCLOG(INFO, this) << "host header field missing";
       }
@@ -330,7 +330,7 @@ int Http2DownstreamConnection::push_request_headers() {
         authority += util::utos(u.port);
       }
       nva.push_back(http2::make_nv_ls(":authority", authority));
-    } else if (downstream_->get_norm_request_header("host") == end_headers) {
+    } else if (!downstream_->get_request_header(http2::HD_HOST)) {
       if (LOG_ENABLED(INFO)) {
         DCLOG(INFO, this) << "host header field missing";
       }
@@ -341,27 +341,30 @@ int Http2DownstreamConnection::push_request_headers() {
   nva.push_back(
       http2::make_nv_ls(":method", downstream_->get_request_method()));
 
-  http2::copy_norm_headers_to_nva(nva, downstream_->get_request_headers());
+  http2::copy_headers_to_nva(nva, downstream_->get_request_headers());
 
   bool chunked_encoding = false;
   auto transfer_encoding =
-      downstream_->get_norm_request_header("transfer-encoding");
-  if (transfer_encoding != end_headers &&
+      downstream_->get_request_header(http2::HD_TRANSFER_ENCODING);
+  if (transfer_encoding &&
       util::strieq((*transfer_encoding).value.c_str(), "chunked")) {
     chunked_encoding = true;
   }
 
-  auto xff = downstream_->get_norm_request_header("x-forwarded-for");
+  for (auto &nv : cookies) {
+    nva.push_back(http2::make_nv(nv.name, nv.value, nv.no_index));
+  }
+
+  auto xff = downstream_->get_request_header(http2::HD_X_FORWARDED_FOR);
   if (get_config()->add_x_forwarded_for) {
-    if (xff != end_headers && !get_config()->strip_incoming_x_forwarded_for) {
+    if (xff && !get_config()->strip_incoming_x_forwarded_for) {
       xff_value = (*xff).value;
       xff_value += ", ";
     }
     xff_value +=
         downstream_->get_upstream()->get_client_handler()->get_ipaddr();
     nva.push_back(http2::make_nv_ls("x-forwarded-for", xff_value));
-  } else if (xff != end_headers &&
-             !get_config()->strip_incoming_x_forwarded_for) {
+  } else if (xff && !get_config()->strip_incoming_x_forwarded_for) {
     nva.push_back(http2::make_nv_ls("x-forwarded-for", (*xff).value));
   }
 
@@ -379,13 +382,13 @@ int Http2DownstreamConnection::push_request_headers() {
     }
   }
 
-  auto via = downstream_->get_norm_request_header("via");
+  auto via = downstream_->get_request_header(http2::HD_VIA);
   if (get_config()->no_via) {
-    if (via != end_headers) {
+    if (via) {
       nva.push_back(http2::make_nv_ls("via", (*via).value));
     }
   } else {
-    if (via != end_headers) {
+    if (via) {
       via_value = (*via).value;
       via_value += ", ";
     }
@@ -407,7 +410,8 @@ int Http2DownstreamConnection::push_request_headers() {
   }
 
   auto content_length =
-      downstream_->get_norm_request_header("content-length") != end_headers;
+      downstream_->get_request_header(http2::HD_CONTENT_LENGTH);
+  // TODO check content-length: 0 case
 
   if (downstream_->get_request_method() == "CONNECT" || chunked_encoding ||
       content_length || downstream_->get_request_http2_expect_body()) {

@@ -72,15 +72,11 @@ int main(int argc, char *argv[]) {
       !CU_add_test(pSuite, "ssl_cert_lookup_tree_add_cert_from_file",
                    shrpx::test_shrpx_ssl_cert_lookup_tree_add_cert_from_file) ||
       !CU_add_test(pSuite, "http2_add_header", shrpx::test_http2_add_header) ||
-      !CU_add_test(pSuite, "http2_check_http2_headers",
-                   shrpx::test_http2_check_http2_headers) ||
-      !CU_add_test(pSuite, "http2_get_unique_header",
-                   shrpx::test_http2_get_unique_header) ||
       !CU_add_test(pSuite, "http2_get_header", shrpx::test_http2_get_header) ||
-      !CU_add_test(pSuite, "http2_copy_norm_headers_to_nva",
-                   shrpx::test_http2_copy_norm_headers_to_nva) ||
-      !CU_add_test(pSuite, "http2_build_http1_headers_from_norm_headers",
-                   shrpx::test_http2_build_http1_headers_from_norm_headers) ||
+      !CU_add_test(pSuite, "http2_copy_headers_to_nva",
+                   shrpx::test_http2_copy_headers_to_nva) ||
+      !CU_add_test(pSuite, "http2_build_http1_headers_from_headers",
+                   shrpx::test_http2_build_http1_headers_from_headers) ||
       !CU_add_test(pSuite, "http2_lws", shrpx::test_http2_lws) ||
       !CU_add_test(pSuite, "http2_rewrite_location_uri",
                    shrpx::test_http2_rewrite_location_uri) ||
@@ -88,21 +84,28 @@ int main(int argc, char *argv[]) {
                    shrpx::test_http2_parse_http_status_code) ||
       !CU_add_test(pSuite, "http2_index_header",
                    shrpx::test_http2_index_header) ||
-      !CU_add_test(pSuite, "downstream_normalize_request_headers",
-                   shrpx::test_downstream_normalize_request_headers) ||
-      !CU_add_test(pSuite, "downstream_normalize_response_headers",
-                   shrpx::test_downstream_normalize_response_headers) ||
-      !CU_add_test(pSuite, "downstream_get_norm_request_header",
-                   shrpx::test_downstream_get_norm_request_header) ||
-      !CU_add_test(pSuite, "downstream_get_norm_response_header",
-                   shrpx::test_downstream_get_norm_response_header) ||
+      !CU_add_test(pSuite, "http2_lookup_token",
+                   shrpx::test_http2_lookup_token) ||
+      !CU_add_test(pSuite, "http2_check_http2_pseudo_header",
+                   shrpx::test_http2_check_http2_pseudo_header) ||
+      !CU_add_test(pSuite, "http2_http2_header_allowed",
+                   shrpx::test_http2_http2_header_allowed) ||
+      !CU_add_test(pSuite, "http2_mandatory_request_headers_presence",
+                   shrpx::test_http2_mandatory_request_headers_presence) ||
+      !CU_add_test(pSuite, "downstream_index_request_headers",
+                   shrpx::test_downstream_index_request_headers) ||
+      !CU_add_test(pSuite, "downstream_index_response_headers",
+                   shrpx::test_downstream_index_response_headers) ||
+      !CU_add_test(pSuite, "downstream_get_request_header",
+                   shrpx::test_downstream_get_request_header) ||
+      !CU_add_test(pSuite, "downstream_get_response_header",
+                   shrpx::test_downstream_get_response_header) ||
       !CU_add_test(pSuite, "downstream_crumble_request_cookie",
                    shrpx::test_downstream_crumble_request_cookie) ||
       !CU_add_test(pSuite, "downstream_assemble_request_cookie",
                    shrpx::test_downstream_assemble_request_cookie) ||
-      !CU_add_test(
-          pSuite, "downstream_rewrite_norm_location_response_header",
-          shrpx::test_downstream_rewrite_norm_location_response_header) ||
+      !CU_add_test(pSuite, "downstream_rewrite_location_response_header",
+                   shrpx::test_downstream_rewrite_location_response_header) ||
       !CU_add_test(pSuite, "config_parse_config_str_list",
                    shrpx::test_shrpx_config_parse_config_str_list) ||
       !CU_add_test(pSuite, "config_parse_header",

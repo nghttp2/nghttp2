@@ -95,30 +95,27 @@ public:
   const std::string &get_http2_settings() const;
   // downstream request API
   const Headers &get_request_headers() const;
-  void crumble_request_cookie();
+  // Crumbles (split cookie by ";") in request_headers_ and returns
+  // them.  Headers::no_index is inherited.
+  Headers crumble_request_cookie();
   void assemble_request_cookie();
   const std::string &get_assembled_request_cookie() const;
-  // Makes key lowercase and sort headers by name using <
-  void normalize_request_headers();
-  // Returns iterator pointing to the request header with the name
-  // |name|. If multiple header have |name| as name, return first
-  // occurrence from the beginning. If no such header is found,
-  // returns std::end(get_request_headers()). This function must be
-  // called after calling normalize_request_headers().
-  Headers::const_iterator
-  get_norm_request_header(const std::string &name) const;
-  // Returns iterator pointing to the request header with the name
-  // |name|.  This function acts like get_norm_request_header(), but
-  // if request_headers_ was not normalized, use linear search to find
-  // the header.  Otherwise, get_norm_request_header() is used.
-  Headers::const_iterator get_request_header(const std::string &name) const;
-  bool get_request_headers_normalized() const;
+  // Lower the request header field names and indexes request headers
+  void index_request_headers();
+  // Returns pointer to the request header with the name |name|.  If
+  // multiple header have |name| as name, return last occurrence from
+  // the beginning.  If no such header is found, returns nullptr.
+  // This function must be called after headers are indexed
+  const Headers::value_type *get_request_header(int token) const;
+  // Returns pointer to the request header with the name |name|.  If
+  // no such header is found, returns nullptr.
+  const Headers::value_type *get_request_header(const std::string &name) const;
   void add_request_header(std::string name, std::string value);
   void set_last_request_header_value(std::string value);
 
-  void split_add_request_header(const uint8_t *name, size_t namelen,
-                                const uint8_t *value, size_t valuelen,
-                                bool no_index);
+  void add_request_header(const uint8_t *name, size_t namelen,
+                          const uint8_t *value, size_t valuelen, bool no_index,
+                          int token);
 
   bool get_request_header_key_prev() const;
   void append_last_request_header_key(const char *data, size_t len);
@@ -161,7 +158,7 @@ public:
   size_t get_request_datalen() const;
   void dec_request_datalen(size_t len);
   void reset_request_datalen();
-  bool request_pseudo_header_allowed() const;
+  bool request_pseudo_header_allowed(int token) const;
   bool expect_response_body() const;
   enum {
     INITIAL,
@@ -177,26 +174,22 @@ public:
   Memchunks4K *get_request_buf();
   // downstream response API
   const Headers &get_response_headers() const;
-  // Makes key lowercase and sort headers by name using <
-  void normalize_response_headers();
-  // Returns iterator pointing to the response header with the name
-  // |name|. If multiple header have |name| as name, return first
-  // occurrence from the beginning. If no such header is found,
-  // returns std::end(get_response_headers()). This function must be
-  // called after calling normalize_response_headers().
-  Headers::const_iterator
-  get_norm_response_header(const std::string &name) const;
-  // Rewrites the location response header field. This function must
-  // be called after calling normalize_response_headers() and
-  // normalize_request_headers().
-  void rewrite_norm_location_response_header(const std::string &upstream_scheme,
-                                             uint16_t upstream_port);
+  // Lower the response header field names and indexes response headers
+  void index_response_headers();
+  // Returns pointer to the response header with the name |name|.  If
+  // multiple header have |name| as name, return last occurrence from
+  // the beginning.  If no such header is found, returns nullptr.
+  // This function must be called after response headers are indexed.
+  const Headers::value_type *get_response_header(int token) const;
+  // Rewrites the location response header field.
+  void rewrite_location_response_header(const std::string &upstream_scheme,
+                                        uint16_t upstream_port);
   void add_response_header(std::string name, std::string value);
   void set_last_response_header_value(std::string value);
 
-  void split_add_response_header(const uint8_t *name, size_t namelen,
-                                 const uint8_t *value, size_t valuelen,
-                                 bool no_index);
+  void add_response_header(const uint8_t *name, size_t namelen,
+                           const uint8_t *value, size_t valuelen, bool no_index,
+                           int token);
 
   bool get_response_header_key_prev() const;
   void append_last_response_header_key(const char *data, size_t len);
@@ -238,7 +231,7 @@ public:
   void dec_response_datalen(size_t len);
   size_t get_response_datalen() const;
   void reset_response_datalen();
-  bool response_pseudo_header_allowed() const;
+  bool response_pseudo_header_allowed(int token) const;
 
   // Call this method when there is incoming data in downstream
   // connection.
@@ -298,7 +291,6 @@ private:
   std::string request_http2_authority_;
   std::chrono::high_resolution_clock::time_point request_start_time_;
   std::string assembled_request_cookie_;
-  std::string http2_settings_;
 
   Memchunks4K request_buf_;
   Memchunks4K response_buf_;
@@ -343,6 +335,9 @@ private:
   int response_major_;
   int response_minor_;
 
+  int request_hdidx_[http2::HD_MAXIDX];
+  int response_hdidx_[http2::HD_MAXIDX];
+
   // true if the request contains upgrade token (HTTP Upgrade or
   // CONNECT)
   bool upgrade_request_;
@@ -350,7 +345,6 @@ private:
   bool upgraded_;
 
   bool http2_upgrade_seen_;
-  bool http2_settings_seen_;
 
   bool chunked_request_;
   bool request_connection_close_;
@@ -361,9 +355,6 @@ private:
   bool response_connection_close_;
   bool response_header_key_prev_;
   bool expect_final_response_;
-
-  // true if request_headers_ is normalized
-  bool request_headers_normalized_;
 
   bool use_timer_;
 };

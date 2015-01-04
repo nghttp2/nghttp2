@@ -185,17 +185,22 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
     return 0;
   }
 
-  if (namelen > 0 && name[0] == ':') {
-    if (!downstream->request_pseudo_header_allowed() ||
-        !http2::check_http2_request_pseudo_header(name, namelen)) {
+  auto token = http2::lookup_token(name, namelen);
 
+  if (name[0] == ':') {
+    if (!downstream->request_pseudo_header_allowed(token)) {
       upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
       return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
     }
   }
 
-  downstream->split_add_request_header(name, namelen, value, valuelen,
-                                       flags & NGHTTP2_NV_FLAG_NO_INDEX);
+  if (!http2::http2_header_allowed(token)) {
+    upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
+    return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+  }
+
+  downstream->add_request_header(name, namelen, value, valuelen,
+                                 flags & NGHTTP2_NV_FLAG_NO_INDEX, token);
   return 0;
 }
 } // namespace
@@ -238,7 +243,6 @@ int on_request_headers(Http2Upstream *upstream, Downstream *downstream,
     return 0;
   }
 
-  downstream->normalize_request_headers();
   auto &nva = downstream->get_request_headers();
 
   if (LOG_ENABLED(INFO)) {
@@ -254,17 +258,11 @@ int on_request_headers(Http2Upstream *upstream, Downstream *downstream,
     http2::dump_nv(get_config()->http2_upstream_dump_request_header, nva);
   }
 
-  if (!http2::check_http2_request_headers(nva)) {
-    upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
-
-    return 0;
-  }
-
-  auto host = http2::get_unique_header(nva, "host");
-  auto authority = http2::get_unique_header(nva, ":authority");
-  auto path = http2::get_unique_header(nva, ":path");
-  auto method = http2::get_unique_header(nva, ":method");
-  auto scheme = http2::get_unique_header(nva, ":scheme");
+  auto host = downstream->get_request_header(http2::HD_HOST);
+  auto authority = downstream->get_request_header(http2::HD__AUTHORITY);
+  auto path = downstream->get_request_header(http2::HD__PATH);
+  auto method = downstream->get_request_header(http2::HD__METHOD);
+  auto scheme = downstream->get_request_header(http2::HD__SCHEME);
 
   bool is_connect = method && "CONNECT" == method->value;
   bool having_host = http2::non_empty_value(host);
@@ -1101,14 +1099,12 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
     }
   }
 
-  downstream->normalize_response_headers();
   if (!get_config()->http2_proxy && !get_config()->client_proxy &&
       !get_config()->no_location_rewrite) {
-    downstream->rewrite_norm_location_response_header(
+    downstream->rewrite_location_response_header(
         get_client_handler()->get_upstream_scheme(), get_config()->port);
   }
 
-  auto end_headers = std::end(downstream->get_response_headers());
   size_t nheader = downstream->get_response_headers().size();
   auto nva = std::vector<nghttp2_nv>();
   // 3 means :status and possible server and via header field.
@@ -1117,7 +1113,7 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
   auto response_status = util::utos(downstream->get_response_http_status());
   nva.push_back(http2::make_nv_ls(":status", response_status));
 
-  http2::copy_norm_headers_to_nva(nva, downstream->get_response_headers());
+  http2::copy_headers_to_nva(nva, downstream->get_response_headers());
 
   if (downstream->get_non_final_response()) {
     if (LOG_ENABLED(INFO)) {
@@ -1141,19 +1137,19 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
   if (!get_config()->http2_proxy && !get_config()->client_proxy) {
     nva.push_back(http2::make_nv_lc("server", get_config()->server_name));
   } else {
-    auto server = downstream->get_norm_response_header("server");
-    if (server != end_headers) {
+    auto server = downstream->get_response_header(http2::HD_SERVER);
+    if (server) {
       nva.push_back(http2::make_nv_ls("server", (*server).value));
     }
   }
 
-  auto via = downstream->get_norm_response_header("via");
+  auto via = downstream->get_response_header(http2::HD_VIA);
   if (get_config()->no_via) {
-    if (via != end_headers) {
+    if (via) {
       nva.push_back(http2::make_nv_ls("via", (*via).value));
     }
   } else {
-    if (via != end_headers) {
+    if (via) {
       via_value = (*via).value;
       via_value += ", ";
     }

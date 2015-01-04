@@ -116,12 +116,11 @@ Downstream::Downstream(Upstream *upstream, int32_t stream_id, int32_t priority)
       request_state_(INITIAL), request_major_(1), request_minor_(1),
       response_state_(INITIAL), response_http_status_(0), response_major_(1),
       response_minor_(1), upgrade_request_(false), upgraded_(false),
-      http2_upgrade_seen_(false), http2_settings_seen_(false),
-      chunked_request_(false), request_connection_close_(false),
-      request_header_key_prev_(false), request_http2_expect_body_(false),
-      chunked_response_(false), response_connection_close_(false),
-      response_header_key_prev_(false), expect_final_response_(false),
-      request_headers_normalized_(false) {
+      http2_upgrade_seen_(false), chunked_request_(false),
+      request_connection_close_(false), request_header_key_prev_(false),
+      request_http2_expect_body_(false), chunked_response_(false),
+      response_connection_close_(false), response_header_key_prev_(false),
+      expect_final_response_(false) {
 
   ev_timer_init(&upstream_rtimer_, &upstream_rtimeoutcb, 0.,
                 get_config()->stream_read_timeout);
@@ -136,6 +135,9 @@ Downstream::Downstream(Upstream *upstream, int32_t stream_id, int32_t priority)
   upstream_wtimer_.data = this;
   downstream_rtimer_.data = this;
   downstream_wtimer_.data = this;
+
+  http2::init_hdidx(request_hdidx_);
+  http2::init_hdidx(response_hdidx_);
 }
 
 Downstream::~Downstream() {
@@ -213,35 +215,15 @@ void Downstream::force_resume_read() {
 }
 
 namespace {
-Headers::const_iterator get_norm_header(const Headers &headers,
-                                        const std::string &name) {
-  auto i = std::lower_bound(std::begin(headers), std::end(headers),
-                            Header(name, ""), http2::name_less);
-  if (i != std::end(headers) && (*i).name == name) {
-    return i;
+const Headers::value_type *get_header_linear(const Headers &headers,
+                                             const std::string &name) {
+  const Headers::value_type *res = nullptr;
+  for (auto &kv : headers) {
+    if (kv.name == name) {
+      res = &kv;
+    }
   }
-  return std::end(headers);
-}
-} // namespace
-
-namespace {
-Headers::iterator get_norm_header(Headers &headers, const std::string &name) {
-  auto i = std::lower_bound(std::begin(headers), std::end(headers),
-                            Header(name, ""), http2::name_less);
-  if (i != std::end(headers) && (*i).name == name) {
-    return i;
-  }
-  return std::end(headers);
-}
-} // namespace
-
-namespace {
-Headers::const_iterator get_header_linear(const Headers &headers,
-                                          const std::string &name) {
-  auto i = std::find_if(
-      std::begin(headers), std::end(headers),
-      [&name](const Header &header) { return header.name == name; });
-  return i;
+  return res;
 }
 } // namespace
 
@@ -253,90 +235,70 @@ void Downstream::assemble_request_cookie() {
   std::string &cookie = assembled_request_cookie_;
   cookie = "";
   for (auto &kv : request_headers_) {
-    if (util::strieq("cookie", kv.name.c_str())) {
-      auto end = kv.value.find_last_not_of(" ;");
-      if (end == std::string::npos) {
-        cookie += kv.value;
-      } else {
-        cookie.append(std::begin(kv.value), std::begin(kv.value) + end + 1);
-      }
-      cookie += "; ";
+    if (kv.name.size() != 6 || kv.name[5] != 'e' ||
+        !util::streq("cooki", kv.name.c_str(), 5)) {
+      continue;
     }
+
+    auto end = kv.value.find_last_not_of(" ;");
+    if (end == std::string::npos) {
+      cookie += kv.value;
+    } else {
+      cookie.append(std::begin(kv.value), std::begin(kv.value) + end + 1);
+    }
+    cookie += "; ";
   }
   if (cookie.size() >= 2) {
     cookie.erase(cookie.size() - 2);
   }
 }
 
-void Downstream::crumble_request_cookie() {
+Headers Downstream::crumble_request_cookie() {
   Headers cookie_hdrs;
   for (auto &kv : request_headers_) {
-    if (util::strieq("cookie", kv.name.c_str())) {
-      size_t last = kv.value.size();
-      size_t num = 0;
-      std::string rep_cookie;
+    if (kv.name.size() != 6 || kv.name[5] != 'e' ||
+        !util::streq("cooki", kv.name.c_str(), 5)) {
+      continue;
+    }
+    size_t last = kv.value.size();
 
-      for (size_t j = 0; j < last;) {
-        j = kv.value.find_first_not_of("\t ;", j);
-        if (j == std::string::npos) {
-          break;
-        }
-        auto first = j;
-
-        j = kv.value.find(';', j);
-        if (j == std::string::npos) {
-          j = last;
-        }
-
-        if (num == 0) {
-          if (first == 0 && j == last) {
-            break;
-          }
-          rep_cookie = kv.value.substr(first, j - first);
-        } else {
-          cookie_hdrs.push_back(
-              Header("cookie", kv.value.substr(first, j - first), kv.no_index));
-        }
-        ++num;
+    for (size_t j = 0; j < last;) {
+      j = kv.value.find_first_not_of("\t ;", j);
+      if (j == std::string::npos) {
+        break;
       }
-      if (num > 0) {
-        kv.value = std::move(rep_cookie);
+      auto first = j;
+
+      j = kv.value.find(';', j);
+      if (j == std::string::npos) {
+        j = last;
       }
+
+      cookie_hdrs.push_back(
+          Header("cookie", kv.value.substr(first, j - first), kv.no_index));
     }
   }
-  request_headers_.insert(std::end(request_headers_),
-                          std::make_move_iterator(std::begin(cookie_hdrs)),
-                          std::make_move_iterator(std::end(cookie_hdrs)));
-  if (request_headers_normalized_) {
-    normalize_request_headers();
-  }
+  return cookie_hdrs;
 }
 
 const std::string &Downstream::get_assembled_request_cookie() const {
   return assembled_request_cookie_;
 }
 
-void Downstream::normalize_request_headers() {
-  http2::normalize_headers(request_headers_);
-  request_headers_normalized_ = true;
-}
-
-Headers::const_iterator
-Downstream::get_norm_request_header(const std::string &name) const {
-  return get_norm_header(request_headers_, name);
-}
-
-Headers::const_iterator
-Downstream::get_request_header(const std::string &name) const {
-  if (request_headers_normalized_) {
-    return get_norm_request_header(name);
+void Downstream::index_request_headers() {
+  for (auto &kv : request_headers_) {
+    util::inp_strlower(kv.name);
   }
-
-  return get_header_linear(request_headers_, name);
+  http2::index_headers(request_hdidx_, request_headers_);
 }
 
-bool Downstream::get_request_headers_normalized() const {
-  return request_headers_normalized_;
+const Headers::value_type *Downstream::get_request_header(int token) const {
+  return http2::get_header(request_hdidx_, token, request_headers_);
+}
+
+const Headers::value_type *
+Downstream::get_request_header(const std::string &name) const {
+  return get_header_linear(request_headers_, name);
 }
 
 void Downstream::add_request_header(std::string name, std::string value) {
@@ -352,9 +314,10 @@ void Downstream::set_last_request_header_value(std::string value) {
   item.value = std::move(value);
 }
 
-void Downstream::split_add_request_header(const uint8_t *name, size_t namelen,
-                                          const uint8_t *value, size_t valuelen,
-                                          bool no_index) {
+void Downstream::add_request_header(const uint8_t *name, size_t namelen,
+                                    const uint8_t *value, size_t valuelen,
+                                    bool no_index, int token) {
+  http2::index_header(request_hdidx_, token, request_headers_.size());
   request_headers_sum_ += namelen + valuelen;
   http2::add_header(request_headers_, name, namelen, value, valuelen, no_index);
 }
@@ -378,7 +341,10 @@ void Downstream::append_last_request_header_value(const char *data,
   item.value.append(data, len);
 }
 
-void Downstream::clear_request_headers() { Headers().swap(request_headers_); }
+void Downstream::clear_request_headers() {
+  Headers().swap(request_headers_);
+  http2::init_hdidx(request_hdidx_);
+}
 
 size_t Downstream::get_request_headers_sum() const {
   return request_headers_sum_;
@@ -524,19 +490,23 @@ const Headers &Downstream::get_response_headers() const {
   return response_headers_;
 }
 
-void Downstream::normalize_response_headers() {
-  http2::normalize_headers(response_headers_);
+void Downstream::index_response_headers() {
+  for (auto &kv : response_headers_) {
+    util::inp_strlower(kv.name);
+  }
+  http2::index_headers(response_hdidx_, response_headers_);
 }
 
-Headers::const_iterator
-Downstream::get_norm_response_header(const std::string &name) const {
-  return get_norm_header(response_headers_, name);
+const Headers::value_type *Downstream::get_response_header(int token) const {
+  return http2::get_header(response_hdidx_, token, response_headers_);
 }
 
-void Downstream::rewrite_norm_location_response_header(
-    const std::string &upstream_scheme, uint16_t upstream_port) {
-  auto hd = get_norm_header(response_headers_, "location");
-  if (hd == std::end(response_headers_)) {
+void
+Downstream::rewrite_location_response_header(const std::string &upstream_scheme,
+                                             uint16_t upstream_port) {
+  auto hd =
+      http2::get_header(response_hdidx_, http2::HD_LOCATION, response_headers_);
+  if (!hd) {
     return;
   }
   http_parser_url u;
@@ -553,15 +523,16 @@ void Downstream::rewrite_norm_location_response_header(
                                     upstream_scheme, upstream_port);
   }
   if (new_uri.empty()) {
-    auto host = get_norm_request_header("host");
-    if (host == std::end(request_headers_)) {
+    auto host = get_request_header(http2::HD_HOST);
+    if (!host) {
       return;
     }
     new_uri = http2::rewrite_location_uri((*hd).value, u, (*host).value,
                                           upstream_scheme, upstream_port);
   }
   if (!new_uri.empty()) {
-    (*hd).value = std::move(new_uri);
+    auto idx = response_hdidx_[http2::HD_LOCATION];
+    response_headers_[idx].value = std::move(new_uri);
   }
 }
 
@@ -578,9 +549,10 @@ void Downstream::set_last_response_header_value(std::string value) {
   item.value = std::move(value);
 }
 
-void Downstream::split_add_response_header(const uint8_t *name, size_t namelen,
-                                           const uint8_t *value,
-                                           size_t valuelen, bool no_index) {
+void Downstream::add_response_header(const uint8_t *name, size_t namelen,
+                                     const uint8_t *value, size_t valuelen,
+                                     bool no_index, int token) {
+  http2::index_header(response_hdidx_, token, response_headers_.size());
   response_headers_sum_ += namelen + valuelen;
   http2::add_header(response_headers_, name, namelen, value, valuelen,
                     no_index);
@@ -605,7 +577,10 @@ void Downstream::append_last_response_header_value(const char *data,
   item.value.append(data, len);
 }
 
-void Downstream::clear_response_headers() { Headers().swap(response_headers_); }
+void Downstream::clear_response_headers() {
+  Headers().swap(response_headers_);
+  http2::init_hdidx(response_hdidx_);
+}
 
 size_t Downstream::get_response_headers_sum() const {
   return response_headers_sum_;
@@ -717,37 +692,31 @@ void Downstream::inspect_http1_request() {
     upgrade_request_ = true;
   }
 
-  for (auto &hd : request_headers_) {
-    if (!upgrade_request_ && util::strieq("upgrade", hd.name.c_str())) {
-      // TODO Perform more strict checking for upgrade headers
+  if (!upgrade_request_) {
+    auto idx = request_hdidx_[http2::HD_UPGRADE];
+    if (idx != -1) {
       upgrade_request_ = true;
 
-      if (util::streq(NGHTTP2_CLEARTEXT_PROTO_VERSION_ID, hd.value.c_str(),
-                      hd.value.size())) {
+      auto &val = request_headers_[idx].value;
+      // TODO Perform more strict checking for upgrade headers
+      if (util::streq(NGHTTP2_CLEARTEXT_PROTO_VERSION_ID, val.c_str(),
+                      val.size())) {
         http2_upgrade_seen_ = true;
       }
-    } else if (!http2_settings_seen_ &&
-               util::strieq(hd.name.c_str(), "http2-settings")) {
-
-      http2_settings_seen_ = true;
-      http2_settings_ = hd.value;
-    } else if (!chunked_request_ &&
-               util::strieq(hd.name.c_str(), "transfer-encoding")) {
-      if (util::strifind(hd.value.c_str(), "chunked")) {
-        chunked_request_ = true;
-      }
     }
+  }
+  auto idx = request_hdidx_[http2::HD_TRANSFER_ENCODING];
+  if (idx != -1 &&
+      util::strifind(request_headers_[idx].value.c_str(), "chunked")) {
+    chunked_request_ = true;
   }
 }
 
 void Downstream::inspect_http1_response() {
-  for (auto &hd : response_headers_) {
-    if (!chunked_response_ &&
-        util::strieq(hd.name.c_str(), "transfer-encoding")) {
-      if (util::strifind(hd.value.c_str(), "chunked")) {
-        chunked_response_ = true;
-      }
-    }
+  auto idx = response_hdidx_[http2::HD_TRANSFER_ENCODING];
+  if (idx != -1 &&
+      util::strifind(response_headers_[idx].value.c_str(), "chunked")) {
+    chunked_response_ = true;
   }
 }
 
@@ -766,11 +735,20 @@ bool Downstream::get_upgraded() const { return upgraded_; }
 bool Downstream::get_upgrade_request() const { return upgrade_request_; }
 
 bool Downstream::get_http2_upgrade_request() const {
-  return request_bodylen_ == 0 && http2_upgrade_seen_ && http2_settings_seen_;
+  return request_bodylen_ == 0 && http2_upgrade_seen_ &&
+         request_hdidx_[http2::HD_HTTP2_SETTINGS] != -1;
 }
 
+namespace {
+const std::string EMPTY;
+} // namespace
+
 const std::string &Downstream::get_http2_settings() const {
-  return http2_settings_;
+  auto idx = request_hdidx_[http2::HD_HTTP2_SETTINGS];
+  if (idx == -1) {
+    return EMPTY;
+  }
+  return request_headers_[idx].value;
 }
 
 void Downstream::set_downstream_stream_id(int32_t stream_id) {
@@ -832,12 +810,18 @@ bool pseudo_header_allowed(const Headers &headers) {
 }
 } // namespace
 
-bool Downstream::request_pseudo_header_allowed() const {
-  return pseudo_header_allowed(request_headers_);
+bool Downstream::request_pseudo_header_allowed(int token) const {
+  if (!pseudo_header_allowed(request_headers_)) {
+    return false;
+  }
+  return http2::check_http2_request_pseudo_header(request_hdidx_, token);
 }
 
-bool Downstream::response_pseudo_header_allowed() const {
-  return pseudo_header_allowed(response_headers_);
+bool Downstream::response_pseudo_header_allowed(int token) const {
+  if (!pseudo_header_allowed(response_headers_)) {
+    return false;
+  }
+  return http2::check_http2_response_pseudo_header(response_hdidx_, token);
 }
 
 void Downstream::init_upstream_timer() {

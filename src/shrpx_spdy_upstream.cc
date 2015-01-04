@@ -156,42 +156,33 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
     downstream->reset_upstream_rtimer();
 
     auto nv = frame->syn_stream.nv;
-    const char *path = nullptr;
-    const char *scheme = nullptr;
-    const char *host = nullptr;
-    const char *method = nullptr;
 
     for (size_t i = 0; nv[i]; i += 2) {
-      if (strcmp(nv[i], ":path") == 0) {
-        path = nv[i + 1];
-      } else if (strcmp(nv[i], ":scheme") == 0) {
-        scheme = nv[i + 1];
-      } else if (strcmp(nv[i], ":method") == 0) {
-        method = nv[i + 1];
-      } else if (strcmp(nv[i], ":host") == 0) {
-        host = nv[i + 1];
-      } else if (nv[i][0] != ':') {
-        downstream->add_request_header(nv[i], nv[i + 1]);
-      }
+      downstream->add_request_header(nv[i], nv[i + 1]);
     }
 
-    downstream->normalize_request_headers();
+    downstream->index_request_headers();
 
-    bool is_connect = method && strcmp("CONNECT", method) == 0;
-    if (!path || !host || !method || http2::lws(host) || http2::lws(path) ||
-        http2::lws(method) ||
-        (!is_connect && (!scheme || http2::lws(scheme)))) {
+    auto path = downstream->get_request_header(http2::HD__PATH);
+    auto scheme = downstream->get_request_header(http2::HD__SCHEME);
+    auto host = downstream->get_request_header(http2::HD__HOST);
+    auto method = downstream->get_request_header(http2::HD__METHOD);
+
+    bool is_connect = method && "CONNECT" == method->value;
+    if (!path || !host || !method || !http2::non_empty_value(host) ||
+        !http2::non_empty_value(path) || !http2::non_empty_value(method) ||
+        (!is_connect && (!scheme || !http2::non_empty_value(scheme)))) {
       upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
       return;
     }
 
-    downstream->set_request_method(method);
+    downstream->set_request_method(method->value);
     if (is_connect) {
-      downstream->set_request_http2_authority(path);
+      downstream->set_request_http2_authority(path->value);
     } else {
-      downstream->set_request_http2_scheme(scheme);
-      downstream->set_request_http2_authority(host);
-      downstream->set_request_path(path);
+      downstream->set_request_http2_scheme(scheme->value);
+      downstream->set_request_http2_authority(host->value);
+      downstream->set_request_path(path->value);
     }
 
     downstream->set_request_start_time(
@@ -824,10 +815,10 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream) {
   if (LOG_ENABLED(INFO)) {
     DLOG(INFO, downstream) << "HTTP response header completed";
   }
-  downstream->normalize_response_headers();
+
   if (!get_config()->http2_proxy && !get_config()->client_proxy &&
       !get_config()->no_location_rewrite) {
-    downstream->rewrite_norm_location_response_header(
+    downstream->rewrite_location_response_header(
         get_client_handler()->get_upstream_scheme(), get_config()->port);
   }
   size_t nheader = downstream->get_response_headers().size();
@@ -844,30 +835,39 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream) {
   nv[hdidx++] = ":version";
   nv[hdidx++] = "HTTP/1.1";
   for (auto &hd : downstream->get_response_headers()) {
-    if (hd.name.empty() || hd.name.c_str()[0] == ':' ||
-        util::strieq(hd.name.c_str(), "transfer-encoding") ||
-        util::strieq(hd.name.c_str(), "keep-alive") || // HTTP/1.0?
-        util::strieq(hd.name.c_str(), "connection") ||
-        util::strieq(hd.name.c_str(), "proxy-connection")) {
-      // These are ignored
-    } else if (!get_config()->no_via && util::strieq(hd.name.c_str(), "via")) {
-      via_value = hd.value;
-    } else if (!get_config()->http2_proxy && !get_config()->client_proxy &&
-               util::strieq(hd.name.c_str(), "server")) {
-      // Rewrite server header field later
-    } else {
-      nv[hdidx++] = hd.name.c_str();
-      nv[hdidx++] = hd.value.c_str();
+    if (hd.name.empty() || hd.name.c_str()[0] == ':') {
+      continue;
     }
+    auto token = http2::lookup_token(hd.name);
+    switch (token) {
+    case http2::HD_CONNECTION:
+    case http2::HD_KEEP_ALIVE:
+    case http2::HD_PROXY_CONNECTION:
+    case http2::HD_TRANSFER_ENCODING:
+    case http2::HD_VIA:
+    case http2::HD_SERVER:
+      continue;
+    }
+
+    nv[hdidx++] = hd.name.c_str();
+    nv[hdidx++] = hd.value.c_str();
   }
 
   if (!get_config()->http2_proxy && !get_config()->client_proxy) {
     nv[hdidx++] = "server";
     nv[hdidx++] = get_config()->server_name;
+  } else {
+    auto server = downstream->get_response_header(http2::HD_SERVER);
+    if (server) {
+      nv[hdidx++] = "server";
+      nv[hdidx++] = server->value.c_str();
+    }
   }
 
   if (!get_config()->no_via) {
-    if (!via_value.empty()) {
+    auto via = downstream->get_response_header(http2::HD_VIA);
+    if (via) {
+      via_value = via->value;
       via_value += ", ";
     }
     via_value += http::create_via_header_value(

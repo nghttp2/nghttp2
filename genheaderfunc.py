@@ -5,14 +5,25 @@ HEADERS = [
     ':method',
     ':path',
     ':scheme',
-    # disallowed h1 headers
-    'connection',
+    ':status',
+    ':host', # for spdy
     'expect',
     'host',
     'if-modified-since',
+    "te",
+    "cookie",
+    "http2-settings",
+    "server",
+    "via",
+    "x-forwarded-for",
+    "x-forwarded-proto",
+    "alt-svc",
+    "content-length",
+    "location",
+    # disallowed h1 headers
+    'connection',
     'keep-alive',
     'proxy-connection',
-    'te',
     'transfer-encoding',
     'upgrade'
 ]
@@ -20,9 +31,7 @@ HEADERS = [
 def to_enum_hd(k):
     res = 'HD_'
     for c in k.upper():
-        if c == ':':
-            continue
-        if c == '-':
+        if c == ':' or c == '-':
             res += '_'
             continue
         res += c
@@ -54,7 +63,7 @@ enum {'''
 
 def gen_index_header():
     print '''\
-void index_header(int *hdidx, const uint8_t *name, size_t namelen, size_t idx) {
+int lookup_token(const uint8_t *name, size_t namelen) {
   switch (namelen) {'''
     b = build_header(HEADERS)
     for size in sorted(b.keys()):
@@ -70,8 +79,7 @@ void index_header(int *hdidx, const uint8_t *name, size_t namelen, size_t idx) {
             for k in headers:
                 print '''\
       if (util::streq("{}", name, {})) {{
-        hdidx[{}] = idx;
-        return;
+        return {};
       }}'''.format(k[:-1], size - 1, to_enum_hd(k))
             print '''\
       break;'''
@@ -80,6 +88,7 @@ void index_header(int *hdidx, const uint8_t *name, size_t namelen, size_t idx) {
     break;'''
     print '''\
   }
+  return -1;
 }'''
 
 if __name__ == '__main__':

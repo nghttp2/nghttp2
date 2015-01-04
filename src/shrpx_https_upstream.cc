@@ -149,7 +149,7 @@ int htp_hdrs_completecb(http_parser *htp) {
     ULOG(INFO, upstream) << "HTTP request headers\n" << ss.str();
   }
 
-  downstream->normalize_request_headers();
+  downstream->index_request_headers();
 
   downstream->inspect_http1_request();
 
@@ -620,15 +620,15 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
   hdrs += " ";
   hdrs += http2::get_status_string(downstream->get_response_http_status());
   hdrs += "\r\n";
-  downstream->normalize_response_headers();
+
   if (!get_config()->http2_proxy && !get_config()->client_proxy &&
       !get_config()->no_location_rewrite) {
-    downstream->rewrite_norm_location_response_header(
+    downstream->rewrite_location_response_header(
         get_client_handler()->get_upstream_scheme(), get_config()->port);
   }
-  auto end_headers = std::end(downstream->get_response_headers());
-  http2::build_http1_headers_from_norm_headers(
-      hdrs, downstream->get_response_headers());
+
+  http2::build_http1_headers_from_headers(hdrs,
+                                          downstream->get_response_headers());
 
   auto output = downstream->get_response_buf();
 
@@ -660,8 +660,8 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
     hdrs += "Connection: close\r\n";
   }
 
-  if (downstream->get_norm_response_header("alt-svc") == end_headers) {
-    // We won't change or alter alt-svc from backend at the moment.
+  if (!downstream->get_response_header(http2::HD_ALT_SVC)) {
+    // We won't change or alter alt-svc from backend for now
     if (!get_config()->altsvcs.empty()) {
       hdrs += "Alt-Svc: ";
 
@@ -684,17 +684,17 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
     hdrs += get_config()->server_name;
     hdrs += "\r\n";
   } else {
-    auto server = downstream->get_norm_response_header("server");
-    if (server != end_headers) {
+    auto server = downstream->get_response_header(http2::HD_SERVER);
+    if (server) {
       hdrs += "Server: ";
       hdrs += (*server).value;
       hdrs += "\r\n";
     }
   }
 
-  auto via = downstream->get_norm_response_header("via");
+  auto via = downstream->get_response_header(http2::HD_VIA);
   if (get_config()->no_via) {
-    if (via != end_headers) {
+    if (via) {
       hdrs += "Via: ";
       hdrs += (*via).value;
       http2::sanitize_header_value(hdrs, hdrs.size() - (*via).value.size());
@@ -702,7 +702,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
     }
   } else {
     hdrs += "Via: ";
-    if (via != end_headers) {
+    if (via) {
       hdrs += (*via).value;
       http2::sanitize_header_value(hdrs, hdrs.size() - (*via).value.size());
       hdrs += ", ";

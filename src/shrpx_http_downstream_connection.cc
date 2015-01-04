@@ -213,11 +213,8 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
 }
 
 int HttpDownstreamConnection::push_request_headers() {
-  assert(downstream_->get_request_headers_normalized());
-
   downstream_->assemble_request_cookie();
 
-  auto end_headers = std::end(downstream_->get_request_headers());
   // Assume that method and request path do not contain \r\n.
   std::string hdrs = downstream_->get_request_method();
   hdrs += " ";
@@ -253,14 +250,14 @@ int HttpDownstreamConnection::push_request_headers() {
     hdrs += downstream_->get_request_path();
   }
   hdrs += " HTTP/1.1\r\n";
-  if (downstream_->get_norm_request_header("host") == end_headers &&
+  if (!downstream_->get_request_header(http2::HD_HOST) &&
       !downstream_->get_request_http2_authority().empty()) {
     hdrs += "Host: ";
     hdrs += downstream_->get_request_http2_authority();
     hdrs += "\r\n";
   }
-  http2::build_http1_headers_from_norm_headers(
-      hdrs, downstream_->get_request_headers());
+  http2::build_http1_headers_from_headers(hdrs,
+                                          downstream_->get_request_headers());
 
   if (!downstream_->get_assembled_request_cookie().empty()) {
     hdrs += "Cookie: ";
@@ -270,7 +267,7 @@ int HttpDownstreamConnection::push_request_headers() {
 
   if (downstream_->get_request_method() != "CONNECT" &&
       downstream_->get_request_http2_expect_body() &&
-      downstream_->get_norm_request_header("content-length") == end_headers) {
+      !downstream_->get_request_header(http2::HD_CONTENT_LENGTH)) {
 
     downstream_->set_chunked_request(true);
     hdrs += "Transfer-Encoding: chunked\r\n";
@@ -279,18 +276,17 @@ int HttpDownstreamConnection::push_request_headers() {
   if (downstream_->get_request_connection_close()) {
     hdrs += "Connection: close\r\n";
   }
-  auto xff = downstream_->get_norm_request_header("x-forwarded-for");
+  auto xff = downstream_->get_request_header(http2::HD_X_FORWARDED_FOR);
   if (get_config()->add_x_forwarded_for) {
     hdrs += "X-Forwarded-For: ";
-    if (xff != end_headers && !get_config()->strip_incoming_x_forwarded_for) {
+    if (xff && !get_config()->strip_incoming_x_forwarded_for) {
       hdrs += (*xff).value;
       http2::sanitize_header_value(hdrs, hdrs.size() - (*xff).value.size());
       hdrs += ", ";
     }
     hdrs += client_handler_->get_ipaddr();
     hdrs += "\r\n";
-  } else if (xff != end_headers &&
-             !get_config()->strip_incoming_x_forwarded_for) {
+  } else if (xff && !get_config()->strip_incoming_x_forwarded_for) {
     hdrs += "X-Forwarded-For: ";
     hdrs += (*xff).value;
     http2::sanitize_header_value(hdrs, hdrs.size() - (*xff).value.size());
@@ -308,17 +304,16 @@ int HttpDownstreamConnection::push_request_headers() {
       hdrs += "http\r\n";
     }
   }
-  auto expect = downstream_->get_norm_request_header("expect");
-  if (expect != end_headers &&
-      !util::strifind((*expect).value.c_str(), "100-continue")) {
+  auto expect = downstream_->get_request_header(http2::HD_EXPECT);
+  if (expect && !util::strifind((*expect).value.c_str(), "100-continue")) {
     hdrs += "Expect: ";
     hdrs += (*expect).value;
     http2::sanitize_header_value(hdrs, hdrs.size() - (*expect).value.size());
     hdrs += "\r\n";
   }
-  auto via = downstream_->get_norm_request_header("via");
+  auto via = downstream_->get_request_header(http2::HD_VIA);
   if (get_config()->no_via) {
-    if (via != end_headers) {
+    if (via) {
       hdrs += "Via: ";
       hdrs += (*via).value;
       http2::sanitize_header_value(hdrs, hdrs.size() - (*via).value.size());
@@ -326,7 +321,7 @@ int HttpDownstreamConnection::push_request_headers() {
     }
   } else {
     hdrs += "Via: ";
-    if (via != end_headers) {
+    if (via) {
       hdrs += (*via).value;
       http2::sanitize_header_value(hdrs, hdrs.size() - (*via).value.size());
       hdrs += ", ";
@@ -472,6 +467,8 @@ int htp_hdrs_completecb(http_parser *htp) {
   downstream->set_response_http_status(htp->status_code);
   downstream->set_response_major(htp->http_major);
   downstream->set_response_minor(htp->http_minor);
+
+  downstream->index_response_headers();
 
   if (downstream->get_non_final_response()) {
     // For non-final response code, we just call

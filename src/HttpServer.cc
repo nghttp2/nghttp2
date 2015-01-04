@@ -89,9 +89,12 @@ void print_session_id(int64_t id) { std::cout << "[id=" << id << "] "; }
 
 namespace {
 void append_nv(Stream *stream, const std::vector<nghttp2_nv> &nva) {
-  size_t idx = 0;
-  for (auto &nv : nva) {
-    http2::index_header(stream->hdidx, nv.name, nv.namelen, idx++);
+  for (size_t i = 0; i < nva.size(); ++i) {
+    auto &nv = nva[i];
+    auto token = http2::lookup_token(nv.name, nv.namelen);
+    if (token != -1) {
+      http2::index_header(stream->hdidx, token, i);
+    }
     http2::add_header(stream->headers, nv.name, nv.namelen, nv.value,
                       nv.valuelen, nv.flags & NGHTTP2_NV_FLAG_NO_INDEX);
   }
@@ -739,7 +742,7 @@ int Http2Handler::submit_non_final_response(const std::string &status,
 int Http2Handler::submit_push_promise(Stream *stream,
                                       const std::string &push_path) {
   auto authority =
-      http2::get_header(stream->hdidx, http2::HD_AUTHORITY, stream->headers);
+      http2::get_header(stream->hdidx, http2::HD__AUTHORITY, stream->headers);
 
   if (!authority) {
     authority =
@@ -900,9 +903,9 @@ void prepare_redirect_response(Stream *stream, Http2Handler *hd,
                                const std::string &path,
                                const std::string &status) {
   auto scheme =
-      http2::get_header(stream->hdidx, http2::HD_SCHEME, stream->headers);
+      http2::get_header(stream->hdidx, http2::HD__SCHEME, stream->headers);
   auto authority =
-      http2::get_header(stream->hdidx, http2::HD_AUTHORITY, stream->headers);
+      http2::get_header(stream->hdidx, http2::HD__AUTHORITY, stream->headers);
   if (!authority) {
     authority =
         http2::get_header(stream->hdidx, http2::HD_HOST, stream->headers);
@@ -924,7 +927,7 @@ void prepare_response(Stream *stream, Http2Handler *hd,
                       bool allow_push = true) {
   int rv;
   auto reqpath =
-      http2::get_header(stream->hdidx, http2::HD_PATH, stream->headers)->value;
+      http2::get_header(stream->hdidx, http2::HD__PATH, stream->headers)->value;
   auto ims =
       get_header(stream->hdidx, http2::HD_IF_MODIFIED_SINCE, stream->headers);
 
@@ -1038,11 +1041,12 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
     return 0;
   }
 
-  if (namelen > 0 && name[0] == ':') {
+  auto token = http2::lookup_token(name, namelen);
+
+  if (name[0] == ':') {
     if ((!stream->headers.empty() &&
          stream->headers.back().name.c_str()[0] != ':') ||
-        !http2::check_http2_request_pseudo_header(stream->hdidx, name,
-                                                  namelen)) {
+        !http2::check_http2_request_pseudo_header(stream->hdidx, token)) {
 
       nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, frame->hd.stream_id,
                                 NGHTTP2_PROTOCOL_ERROR);
@@ -1050,8 +1054,13 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
     }
   }
 
-  http2::index_header(stream->hdidx, name, namelen, stream->headers.size());
+  if (!http2::http2_header_allowed(token)) {
+    nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, frame->hd.stream_id,
+                              NGHTTP2_PROTOCOL_ERROR);
+    return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+  }
 
+  http2::index_header(stream->hdidx, token, stream->headers.size());
   http2::add_header(stream->headers, name, namelen, value, valuelen,
                     flags & NGHTTP2_NV_FLAG_NO_INDEX);
   return 0;
@@ -1113,7 +1122,7 @@ int hd_on_frame_recv_callback(nghttp2_session *session,
 
     if (frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
 
-      if (!http2::check_http2_request_headers(stream->hdidx)) {
+      if (!http2::http2_mandatory_request_headers_presence(stream->hdidx)) {
         hd->submit_rst_stream(stream, NGHTTP2_PROTOCOL_ERROR);
         return 0;
       }

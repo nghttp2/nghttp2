@@ -206,7 +206,7 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv, LogSpec *lgsp) {
     case SHRPX_LOGF_HTTP:
       if (downstream) {
         auto hd = downstream->get_request_header(lf.value.get());
-        if (hd != std::end(downstream->get_request_headers())) {
+        if (hd) {
           std::tie(p, avail) = copy((*hd).value.c_str(), avail, p);
           break;
         }

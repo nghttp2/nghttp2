@@ -28,15 +28,17 @@
 namespace shrpx {
 
 void test_http2_add_header(void);
-void test_http2_check_http2_headers(void);
-void test_http2_get_unique_header(void);
 void test_http2_get_header(void);
-void test_http2_copy_norm_headers_to_nva(void);
-void test_http2_build_http1_headers_from_norm_headers(void);
+void test_http2_copy_headers_to_nva(void);
+void test_http2_build_http1_headers_from_headers(void);
 void test_http2_lws(void);
 void test_http2_rewrite_location_uri(void);
 void test_http2_parse_http_status_code(void);
 void test_http2_index_header(void);
+void test_http2_lookup_token(void);
+void test_http2_check_http2_pseudo_header(void);
+void test_http2_http2_header_allowed(void);
+void test_http2_mandatory_request_headers_presence(void);
 
 } // namespace shrpx
 

@@ -224,6 +224,9 @@ struct Request {
   int level;
   // RequestPriority value defined in HtmlParser.h
   int pri;
+  int res_hdidx[http2::HD_MAXIDX];
+  // used for incoming PUSH_PROMISE
+  int req_hdidx[http2::HD_MAXIDX];
   bool expect_final_response;
 
   // For pushed request, |uri| is empty and |u| is zero-cleared.
@@ -235,7 +238,10 @@ struct Request {
         data_length(data_length), data_offset(0), response_len(0),
         inflater(nullptr), html_parser(nullptr), data_prd(data_prd),
         stream_id(-1), status(0), level(level), pri(pri),
-        expect_final_response(false) {}
+        expect_final_response(false) {
+    http2::init_hdidx(res_hdidx);
+    http2::init_hdidx(req_hdidx);
+  }
 
   ~Request() {
     nghttp2_gzip_inflate_del(inflater);
@@ -354,12 +360,47 @@ struct Request {
     }
   }
 
-  bool response_pseudo_header_allowed() const {
-    return res_nva.empty() || res_nva.back().name.c_str()[0] == ':';
+  bool response_pseudo_header_allowed(int token) const {
+    if (!res_nva.empty() && res_nva.back().name.c_str()[0] != ':') {
+      return false;
+    }
+    switch (token) {
+    case http2::HD__STATUS:
+      return res_hdidx[token] == -1;
+    default:
+      return false;
+    }
   }
 
-  bool push_request_pseudo_header_allowed() const {
-    return res_nva.empty() || req_nva.back().name.c_str()[0] == ':';
+  bool push_request_pseudo_header_allowed(int token) const {
+    if (!req_nva.empty() && req_nva.back().name.c_str()[0] != ':') {
+      return false;
+    }
+    switch (token) {
+    case http2::HD__AUTHORITY:
+    case http2::HD__METHOD:
+    case http2::HD__PATH:
+    case http2::HD__SCHEME:
+      return req_hdidx[token] == -1;
+    default:
+      return false;
+    }
+  }
+
+  Headers::value_type *get_res_header(int token) {
+    auto idx = res_hdidx[token];
+    if (idx == -1) {
+      return nullptr;
+    }
+    return &res_nva[idx];
+  }
+
+  Headers::value_type *get_req_header(int token) {
+    auto idx = req_hdidx[token];
+    if (idx == -1) {
+      return nullptr;
+    }
+    return &req_nva[idx];
   }
 
   void record_request_time() {
@@ -1537,8 +1578,6 @@ int submit_request(HttpClient *client, const Headers &headers, Request *req) {
 
     build_headers.emplace_back(kv.name, kv.value, kv.no_index);
   }
-  std::stable_sort(std::begin(build_headers), std::end(build_headers),
-                   http2::name_less);
 
   auto nva = std::vector<nghttp2_nv>();
   nva.reserve(build_headers.size());
@@ -1690,30 +1729,29 @@ void check_response_header(nghttp2_session *session, Request *req) {
 
   req->expect_final_response = false;
 
+  auto status_hd = req->get_res_header(http2::HD__STATUS);
+
+  if (!status_hd) {
+    nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, req->stream_id,
+                              NGHTTP2_PROTOCOL_ERROR);
+    return;
+  }
+
+  auto status = http2::parse_http_status_code(status_hd->value);
+  if (status == -1) {
+    nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, req->stream_id,
+                              NGHTTP2_PROTOCOL_ERROR);
+    return;
+  }
+
+  req->status = status;
+
   for (auto &nv : req->res_nva) {
     if ("content-encoding" == nv.name) {
       gzip =
           util::strieq("gzip", nv.value) || util::strieq("deflate", nv.value);
       continue;
     }
-    if (":status" == nv.name) {
-      int status;
-      if (req->status != 0 ||
-          (status = http2::parse_http_status_code(nv.value)) == -1) {
-
-        nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, req->stream_id,
-                                  NGHTTP2_PROTOCOL_ERROR);
-        return;
-      }
-
-      req->status = status;
-    }
-  }
-
-  if (req->status == 0) {
-    nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, req->stream_id,
-                              NGHTTP2_PROTOCOL_ERROR);
-    return;
   }
 
   if (req->status / 100 == 1) {
@@ -1797,15 +1835,17 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
       break;
     }
 
-    if (namelen > 0 && name[0] == ':') {
-      if (!req->response_pseudo_header_allowed() ||
-          !http2::check_http2_response_pseudo_header(name, namelen)) {
+    auto token = http2::lookup_token(name, namelen);
+
+    if (name[0] == ':') {
+      if (!req->response_pseudo_header_allowed(token)) {
         nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
                                   frame->hd.stream_id, NGHTTP2_PROTOCOL_ERROR);
         return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
       }
     }
 
+    http2::index_header(req->res_hdidx, token, req->res_nva.size());
     http2::add_header(req->res_nva, name, namelen, value, valuelen,
                       flags & NGHTTP2_NV_FLAG_NO_INDEX);
     break;
@@ -1818,9 +1858,10 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
       break;
     }
 
-    if (namelen > 0 && name[0] == ':') {
-      if (!req->push_request_pseudo_header_allowed() ||
-          !http2::check_http2_request_pseudo_header(name, namelen)) {
+    auto token = http2::lookup_token(name, namelen);
+
+    if (name[0] == ':') {
+      if (!req->push_request_pseudo_header_allowed(token)) {
         nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
                                   frame->push_promise.promised_stream_id,
                                   NGHTTP2_PROTOCOL_ERROR);
@@ -1828,6 +1869,7 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
       }
     }
 
+    http2::index_header(req->req_hdidx, token, req->req_nva.size());
     http2::add_header(req->req_nva, name, namelen, value, valuelen,
                       flags & NGHTTP2_NV_FLAG_NO_INDEX);
     break;
@@ -1895,36 +1937,27 @@ int on_frame_recv_callback2(nghttp2_session *session,
     if (!req) {
       break;
     }
-    std::string scheme, authority, method, path;
-    for (auto &nv : req->req_nva) {
-      if (nv.name == ":scheme") {
-        scheme = nv.value;
-        continue;
-      }
-      if (nv.name == ":authority" || nv.name == "host") {
-        authority = nv.value;
-        continue;
-      }
-      if (nv.name == ":method") {
-        method = nv.value;
-        continue;
-      }
-      if (nv.name == ":path") {
-        path = nv.value;
-        continue;
-      }
+    auto scheme = req->get_req_header(http2::HD__SCHEME);
+    auto authority = req->get_req_header(http2::HD__AUTHORITY);
+    auto method = req->get_req_header(http2::HD__METHOD);
+    auto path = req->get_req_header(http2::HD__PATH);
+
+    if (!authority) {
+      authority = req->get_req_header(http2::HD_HOST);
     }
-    if (scheme.empty() || authority.empty() || method.empty() || path.empty() ||
-        path[0] != '/') {
+
+    if (!scheme || !authority || !method || !path || scheme->value.empty() ||
+        authority->value.empty() || method->value.empty() ||
+        path->value.empty() || path->value[0] != '/') {
       nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
                                 frame->push_promise.promised_stream_id,
                                 NGHTTP2_PROTOCOL_ERROR);
       break;
     }
-    std::string uri = scheme;
+    std::string uri = scheme->value;
     uri += "://";
-    uri += authority;
-    uri += path;
+    uri += authority->value;
+    uri += path->value;
     http_parser_url u;
     memset(&u, 0, sizeof(u));
     if (http_parser_parse_url(uri.c_str(), uri.size(), 0, &u) != 0) {

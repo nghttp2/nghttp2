@@ -709,18 +709,24 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
     return 0;
   }
 
-  if (namelen > 0 && name[0] == ':') {
-    if (!downstream->response_pseudo_header_allowed() ||
-        !http2::check_http2_response_pseudo_header(name, namelen)) {
+  auto token = http2::lookup_token(name, namelen);
 
+  if (name[0] == ':') {
+    if (!downstream->response_pseudo_header_allowed(token)) {
       http2session->submit_rst_stream(frame->hd.stream_id,
                                       NGHTTP2_PROTOCOL_ERROR);
       return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
     }
   }
 
-  downstream->split_add_response_header(name, namelen, value, valuelen,
-                                        flags & NGHTTP2_NV_FLAG_NO_INDEX);
+  if (!http2::http2_header_allowed(token)) {
+    http2session->submit_rst_stream(frame->hd.stream_id,
+                                    NGHTTP2_PROTOCOL_ERROR);
+    return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+  }
+
+  downstream->add_response_header(name, namelen, value, valuelen,
+                                  flags & NGHTTP2_NV_FLAG_NO_INDEX, token);
   return 0;
 }
 } // namespace
@@ -763,20 +769,11 @@ int on_response_headers(Http2Session *http2session, Downstream *downstream,
 
   auto upstream = downstream->get_upstream();
 
-  downstream->normalize_response_headers();
   auto &nva = downstream->get_response_headers();
 
   downstream->set_expect_final_response(false);
 
-  if (!http2::check_http2_response_headers(nva)) {
-    http2session->submit_rst_stream(frame->hd.stream_id,
-                                    NGHTTP2_PROTOCOL_ERROR);
-    downstream->set_response_state(Downstream::MSG_RESET);
-    call_downstream_readcb(http2session, downstream);
-    return 0;
-  }
-
-  auto status = http2::get_unique_header(nva, ":status");
+  auto status = downstream->get_response_header(http2::HD__STATUS);
   int status_code;
 
   if (!http2::non_empty_value(status) ||
@@ -824,7 +821,8 @@ int on_response_headers(Http2Session *http2session, Downstream *downstream,
     return 0;
   }
 
-  auto content_length = http2::get_header(nva, "content-length");
+  auto content_length =
+      downstream->get_response_header(http2::HD_CONTENT_LENGTH);
   if (!content_length && downstream->get_request_method() != "HEAD" &&
       downstream->get_request_method() != "CONNECT") {
     unsigned int status;
