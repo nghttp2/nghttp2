@@ -61,6 +61,7 @@ void connchk_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 namespace {
 void settings_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto http2session = static_cast<Http2Session *>(w->data);
+  http2session->stop_settings_timer();
   SSLOG(INFO, http2session) << "SETTINGS timeout";
   if (http2session->terminate_session(NGHTTP2_SETTINGS_TIMEOUT) != 0) {
     http2session->disconnect();
@@ -669,7 +670,7 @@ int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
 } // namespace
 
 void Http2Session::start_settings_timer() {
-  ev_timer_start(loop_, &settings_timer_);
+  ev_timer_again(loop_, &settings_timer_);
 }
 
 void Http2Session::stop_settings_timer() {
