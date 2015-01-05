@@ -91,7 +91,13 @@ void writecb(struct ev_loop *loop, ev_io *w, int revents) {
 namespace {
 void connectcb(struct ev_loop *loop, ev_io *w, int revents) {
   auto dconn = static_cast<HttpDownstreamConnection *>(w->data);
-  dconn->on_connect();
+  auto downstream = dconn->get_downstream();
+  auto upstream = downstream->get_upstream();
+  auto handler = upstream->get_client_handler();
+  if (dconn->on_connect() != 0) {
+    delete handler;
+    return;
+  }
   writecb(loop, w, revents);
 }
 } // namespace
@@ -724,9 +730,15 @@ end:
   return 0;
 }
 
-void HttpDownstreamConnection::on_connect() {
+int HttpDownstreamConnection::on_connect() {
+  if (!util::check_socket_connected(fd_)) {
+    return -1;
+  }
+
   ev_io_start(loop_, &rev_);
   ev_set_cb(&wev_, writecb);
+
+  return 0;
 }
 
 void HttpDownstreamConnection::on_upstream_change(Upstream *upstream) {}

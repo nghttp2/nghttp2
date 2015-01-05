@@ -1503,6 +1503,10 @@ void Http2Session::set_connection_check_state(int state) {
 int Http2Session::noop() { return 0; }
 
 int Http2Session::connected() {
+  if (!util::check_socket_connected(fd_)) {
+    return -1;
+  }
+
   if (LOG_ENABLED(INFO)) {
     SSLOG(INFO, this) << "Connection established";
   }
