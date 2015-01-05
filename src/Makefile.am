@@ -36,7 +36,7 @@ AM_CPPFLAGS = \
 	-I$(top_srcdir)/third-party \
 	@LIBSPDYLAY_CFLAGS@ \
 	@XML_CPPFLAGS@	\
-	@LIBEVENT_OPENSSL_CFLAGS@ \
+	@LIBEV_CFLAGS@ \
 	@OPENSSL_CFLAGS@ \
 	@JANSSON_CFLAGS@ \
 	@ZLIB_CFLAGS@ \
@@ -45,7 +45,7 @@ AM_LDFLAGS = \
 	@JEMALLOC_LIBS@ \
 	@LIBSPDYLAY_LIBS@ \
 	@XML_LIBS@ \
-	@LIBEVENT_OPENSSL_LIBS@ \
+	@LIBEV_LIBS@ \
 	@OPENSSL_LIBS@ \
 	@JANSSON_LIBS@ \
 	@ZLIB_LIBS@ \
@@ -59,9 +59,9 @@ if ENABLE_APP
 
 bin_PROGRAMS += nghttp nghttpd nghttpx
 
-HELPER_OBJECTS = util.cc libevent_util.cc \
+HELPER_OBJECTS = util.cc \
 	http2.cc timegm.c app_helper.cc nghttp2_gzip.c
-HELPER_HFILES = util.h libevent_util.h \
+HELPER_HFILES = util.h \
 	http2.h timegm.h app_helper.h nghttp2_config.h \
 	nghttp2_gzip.h
 
@@ -78,11 +78,12 @@ nghttp_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} nghttp.cc \
 
 nghttpd_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} nghttpd.cc \
 	ssl.cc ssl.h \
-	HttpServer.cc HttpServer.h
+	HttpServer.cc HttpServer.h \
+	ringbuf.h
 
 bin_PROGRAMS += h2load
 
-h2load_SOURCES = util.cc util.h libevent_util.cc libevent_util.h \
+h2load_SOURCES = util.cc util.h \
 	http2.cc http2.h h2load.cc h2load.h \
 	timegm.c timegm.h \
 	ssl.cc ssl.h \
@@ -95,31 +96,32 @@ endif # HAVE_SPDYLAY
 
 NGHTTPX_SRCS = \
 	util.cc util.h http2.cc http2.h timegm.c timegm.h base64.h \
-	libevent_util.cc libevent_util.h \
 	app_helper.cc app_helper.h \
 	ssl.cc ssl.h \
 	shrpx_config.cc shrpx_config.h \
 	shrpx_error.h \
+	shrpx_accept_handler.cc shrpx_accept_handler.h \
 	shrpx_listen_handler.cc shrpx_listen_handler.h \
 	shrpx_client_handler.cc shrpx_client_handler.h \
 	shrpx_upstream.h \
 	shrpx_http2_upstream.cc shrpx_http2_upstream.h \
 	shrpx_https_upstream.cc shrpx_https_upstream.h \
-	shrpx_downstream_queue.cc shrpx_downstream_queue.h \
 	shrpx_downstream.cc shrpx_downstream.h \
 	shrpx_downstream_connection.cc shrpx_downstream_connection.h \
 	shrpx_http_downstream_connection.cc shrpx_http_downstream_connection.h \
 	shrpx_http2_downstream_connection.cc shrpx_http2_downstream_connection.h \
 	shrpx_http2_session.cc shrpx_http2_session.h \
+	shrpx_downstream_queue.cc shrpx_downstream_queue.h \
 	shrpx_log.cc shrpx_log.h \
 	shrpx_http.cc shrpx_http.h \
 	shrpx_io_control.cc shrpx_io_control.h \
 	shrpx_ssl.cc shrpx_ssl.h \
-	shrpx_thread_event_receiver.cc shrpx_thread_event_receiver.h \
 	shrpx_worker.cc shrpx_worker.h \
 	shrpx_worker_config.cc shrpx_worker_config.h \
 	shrpx_connect_blocker.cc shrpx_connect_blocker.h \
-	shrpx_downstream_connection_pool.cc shrpx_downstream_connection_pool.h
+	shrpx_downstream_connection_pool.cc shrpx_downstream_connection_pool.h \
+	shrpx_rate_limit.cc shrpx_rate_limit.h \
+	ringbuf.h memchunk.h
 
 if HAVE_SPDYLAY
 NGHTTPX_SRCS += shrpx_spdy_upstream.cc shrpx_spdy_upstream.h
@@ -141,7 +143,8 @@ nghttpx_unittest_SOURCES = shrpx-unittest.cc \
 	http2_test.cc http2_test.h \
 	util_test.cc util_test.h \
 	nghttp2_gzip_test.c nghttp2_gzip_test.h \
-	nghttp2_gzip.c nghttp2_gzip.h
+	nghttp2_gzip.c nghttp2_gzip.h \
+	ringbuf_test.cc ringbuf_test.h
 nghttpx_unittest_CPPFLAGS = ${AM_CPPFLAGS}\
 	 -DNGHTTP2_TESTS_DIR=\"$(top_srcdir)/tests\"
 nghttpx_unittest_LDFLAGS = ${AM_LDFLAGS} \

@@ -100,55 +100,14 @@ void test_http2_add_header(void) {
   CU_ASSERT(Headers::value_type("a", "") == nva[0]);
 }
 
-void test_http2_check_http2_headers(void) {
-  auto nva1 = Headers{{"alpha", "1"}, {"bravo", "2"}, {"upgrade", "http2"}};
-  CU_ASSERT(!http2::check_http2_headers(nva1));
-
-  auto nva2 = Headers{{"connection", "1"}, {"delta", "2"}, {"echo", "3"}};
-  CU_ASSERT(!http2::check_http2_headers(nva2));
-
-  auto nva3 = Headers{{"alpha", "1"}, {"bravo", "2"}, {"te2", "3"}};
-  CU_ASSERT(http2::check_http2_headers(nva3));
-
-  auto n1 = ":authority";
-  auto n1u8 = reinterpret_cast<const uint8_t *>(n1);
-
-  CU_ASSERT(http2::check_http2_request_pseudo_header(n1u8, strlen(n1)));
-  CU_ASSERT(!http2::check_http2_response_pseudo_header(n1u8, strlen(n1)));
-
-  auto n2 = ":status";
-  auto n2u8 = reinterpret_cast<const uint8_t *>(n2);
-
-  CU_ASSERT(!http2::check_http2_request_pseudo_header(n2u8, strlen(n2)));
-  CU_ASSERT(http2::check_http2_response_pseudo_header(n2u8, strlen(n2)));
-}
-
-void test_http2_get_unique_header(void) {
-  auto nva = Headers{{"alpha", "1"},
-                     {"bravo", "2"},
-                     {"bravo", "3"},
-                     {"charlie", "4"},
-                     {"delta", "5"},
-                     {"echo", "6"}};
-  const Headers::value_type *rv;
-  rv = http2::get_unique_header(nva, "delta");
-  CU_ASSERT(rv != nullptr);
-  CU_ASSERT("delta" == rv->name);
-
-  rv = http2::get_unique_header(nva, "bravo");
-  CU_ASSERT(rv == nullptr);
-
-  rv = http2::get_unique_header(nva, "foxtrot");
-  CU_ASSERT(rv == nullptr);
-}
-
 void test_http2_get_header(void) {
   auto nva = Headers{{"alpha", "1"},
                      {"bravo", "2"},
                      {"bravo", "3"},
                      {"charlie", "4"},
                      {"delta", "5"},
-                     {"echo", "6"}};
+                     {"echo", "6"},
+                     {"content-length", "7"}};
   const Headers::value_type *rv;
   rv = http2::get_header(nva, "delta");
   CU_ASSERT(rv != nullptr);
@@ -160,6 +119,12 @@ void test_http2_get_header(void) {
 
   rv = http2::get_header(nva, "foxtrot");
   CU_ASSERT(rv == nullptr);
+
+  int hdidx[http2::HD_MAXIDX];
+  http2::init_hdidx(hdidx);
+  hdidx[http2::HD_CONTENT_LENGTH] = 6;
+  rv = http2::get_header(hdidx, http2::HD_CONTENT_LENGTH, nva);
+  CU_ASSERT("content-length" == rv->name);
 }
 
 namespace {
@@ -178,11 +143,11 @@ auto headers = Headers{{"alpha", "0", true},
                        {"zulu", "12"}};
 } // namespace
 
-void test_http2_copy_norm_headers_to_nva(void) {
+void test_http2_copy_headers_to_nva(void) {
   std::vector<nghttp2_nv> nva;
-  http2::copy_norm_headers_to_nva(nva, headers);
-  CU_ASSERT(7 == nva.size());
-  auto ans = std::vector<int>{0, 1, 4, 5, 6, 7, 12};
+  http2::copy_headers_to_nva(nva, headers);
+  CU_ASSERT(9 == nva.size());
+  auto ans = std::vector<int>{0, 1, 4, 5, 6, 7, 8, 9, 12};
   for (size_t i = 0; i < ans.size(); ++i) {
     check_nv(headers[ans[i]], &nva[i]);
 
@@ -194,9 +159,9 @@ void test_http2_copy_norm_headers_to_nva(void) {
   }
 }
 
-void test_http2_build_http1_headers_from_norm_headers(void) {
+void test_http2_build_http1_headers_from_headers(void) {
   std::string hdrs;
-  http2::build_http1_headers_from_norm_headers(hdrs, headers);
+  http2::build_http1_headers_from_headers(hdrs, headers);
   CU_ASSERT(hdrs == "Alpha: 0\r\n"
                     "Bravo: 1\r\n"
                     "Delta: 4\r\n"
@@ -206,15 +171,6 @@ void test_http2_build_http1_headers_from_norm_headers(void) {
                     "Te: 8\r\n"
                     "Te: 9\r\n"
                     "Zulu: 12\r\n");
-
-  hdrs.clear();
-  // Both nghttp2 and spdylay do not allow \r and \n in header value
-  // now.
-
-  // auto hd2 = std::vector<std::pair<std::string, std::string>>
-  //   {{"alpha", "bravo\r\ncharlie\r\n"}};
-  // http2::build_http1_headers_from_norm_headers(hdrs, hd2);
-  // CU_ASSERT(hdrs == "Alpha: bravo  charlie  \r\n");
 }
 
 void test_http2_lws(void) {
@@ -268,6 +224,70 @@ void test_http2_parse_http_status_code(void) {
   CU_ASSERT(-1 == http2::parse_http_status_code("-1"));
   CU_ASSERT(-1 == http2::parse_http_status_code("20a"));
   CU_ASSERT(-1 == http2::parse_http_status_code(""));
+}
+
+void test_http2_index_header(void) {
+  int hdidx[http2::HD_MAXIDX];
+  http2::init_hdidx(hdidx);
+
+  http2::index_header(hdidx, http2::HD__AUTHORITY, 0);
+  http2::index_header(hdidx, -1, 1);
+
+  CU_ASSERT(0 == hdidx[http2::HD__AUTHORITY]);
+}
+
+void test_http2_lookup_token(void) {
+  CU_ASSERT(http2::HD__AUTHORITY == http2::lookup_token(":authority"));
+  CU_ASSERT(-1 == http2::lookup_token(":authorit"));
+  CU_ASSERT(-1 == http2::lookup_token(":Authority"));
+  CU_ASSERT(http2::HD_EXPECT == http2::lookup_token("expect"));
+}
+
+void test_http2_check_http2_pseudo_header(void) {
+  int hdidx[http2::HD_MAXIDX];
+  http2::init_hdidx(hdidx);
+
+  CU_ASSERT(http2::check_http2_request_pseudo_header(hdidx, http2::HD__METHOD));
+  hdidx[http2::HD__PATH] = 0;
+  CU_ASSERT(http2::check_http2_request_pseudo_header(hdidx, http2::HD__METHOD));
+  hdidx[http2::HD__METHOD] = 1;
+  CU_ASSERT(
+      !http2::check_http2_request_pseudo_header(hdidx, http2::HD__METHOD));
+  CU_ASSERT(!http2::check_http2_request_pseudo_header(hdidx, http2::HD_VIA));
+
+  http2::init_hdidx(hdidx);
+
+  CU_ASSERT(
+      http2::check_http2_response_pseudo_header(hdidx, http2::HD__STATUS));
+  hdidx[http2::HD__STATUS] = 0;
+  CU_ASSERT(
+      !http2::check_http2_response_pseudo_header(hdidx, http2::HD__STATUS));
+  CU_ASSERT(!http2::check_http2_response_pseudo_header(hdidx, http2::HD_VIA));
+}
+
+void test_http2_http2_header_allowed(void) {
+  CU_ASSERT(http2::http2_header_allowed(http2::HD__PATH));
+  CU_ASSERT(http2::http2_header_allowed(http2::HD_CONTENT_LENGTH));
+  CU_ASSERT(!http2::http2_header_allowed(http2::HD_CONNECTION));
+}
+
+void test_http2_mandatory_request_headers_presence(void) {
+  int hdidx[http2::HD_MAXIDX];
+  http2::init_hdidx(hdidx);
+
+  CU_ASSERT(!http2::http2_mandatory_request_headers_presence(hdidx));
+  hdidx[http2::HD__AUTHORITY] = 0;
+  CU_ASSERT(!http2::http2_mandatory_request_headers_presence(hdidx));
+  hdidx[http2::HD__METHOD] = 1;
+  CU_ASSERT(!http2::http2_mandatory_request_headers_presence(hdidx));
+  hdidx[http2::HD__PATH] = 2;
+  CU_ASSERT(!http2::http2_mandatory_request_headers_presence(hdidx));
+  hdidx[http2::HD__SCHEME] = 3;
+  CU_ASSERT(http2::http2_mandatory_request_headers_presence(hdidx));
+
+  hdidx[http2::HD__AUTHORITY] = -1;
+  hdidx[http2::HD_HOST] = 0;
+  CU_ASSERT(http2::http2_mandatory_request_headers_presence(hdidx));
 }
 
 } // namespace shrpx

@@ -42,161 +42,446 @@
 #include "shrpx_spdy_upstream.h"
 #endif // HAVE_SPDYLAY
 #include "util.h"
-#include "libevent_util.h"
 
 using namespace nghttp2;
 
 namespace shrpx {
 
 namespace {
-void upstream_readcb(bufferevent *bev, void *arg) {
-  auto handler = static_cast<ClientHandler *>(arg);
-  auto upstream = handler->get_upstream();
-  if (upstream) {
-    upstream->reset_timeouts();
+void timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
+  auto handler = static_cast<ClientHandler *>(w->data);
+
+  if (LOG_ENABLED(INFO)) {
+    CLOG(INFO, handler) << "Time out";
   }
-  int rv = handler->on_read();
-  if (rv != 0) {
+
+  delete handler;
+}
+} // namespace
+
+namespace {
+void shutdowncb(struct ev_loop *loop, ev_timer *w, int revents) {
+  auto handler = static_cast<ClientHandler *>(w->data);
+
+  if (LOG_ENABLED(INFO)) {
+    CLOG(INFO, handler) << "Close connection due to TLS renegotiation";
+  }
+
+  delete handler;
+}
+} // namespace
+
+namespace {
+void readcb(struct ev_loop *loop, ev_io *w, int revents) {
+  auto handler = static_cast<ClientHandler *>(w->data);
+
+  if (handler->do_read() != 0) {
     delete handler;
+    return;
   }
 }
 } // namespace
 
 namespace {
-void upstream_writecb(bufferevent *bev, void *arg) {
-  auto handler = static_cast<ClientHandler *>(arg);
-  auto upstream = handler->get_upstream();
-  if (upstream) {
-    upstream->reset_timeouts();
-  }
+void writecb(struct ev_loop *loop, ev_io *w, int revents) {
+  auto handler = static_cast<ClientHandler *>(w->data);
 
-  handler->update_last_write_time();
-
-  // We actually depend on write low-water mark == 0.
-  if (handler->get_outbuf_length() > 0) {
-    // Possibly because of deferred callback, we may get this callback
-    // when the output buffer is not empty.
-    return;
-  }
-  if (handler->get_should_close_after_write()) {
+  if (handler->do_write() != 0) {
     delete handler;
     return;
-  }
-
-  if (!upstream) {
-    return;
-  }
-  int rv = upstream->on_write();
-  if (rv != 0) {
-    delete handler;
   }
 }
 } // namespace
 
-namespace {
-void upstream_eventcb(bufferevent *bev, short events, void *arg) {
-  auto handler = static_cast<ClientHandler *>(arg);
-  bool finish = false;
-  if (events & BEV_EVENT_EOF) {
-    if (LOG_ENABLED(INFO)) {
-      CLOG(INFO, handler) << "EOF";
+int ClientHandler::read_clear() {
+  ev_timer_again(loop_, &rt_);
+
+  for (;;) {
+    if (rb_.rleft() && on_read() != 0) {
+      return -1;
     }
-    finish = true;
-  }
-  if (events & BEV_EVENT_ERROR) {
-    if (LOG_ENABLED(INFO)) {
-      CLOG(INFO, handler) << "Network error: " << evutil_socket_error_to_string(
-                                                      EVUTIL_SOCKET_ERROR());
+    rb_.reset();
+    struct iovec iov[2];
+    auto iovcnt = rb_.wiovec(iov);
+    iovcnt = limit_iovec(iov, iovcnt, rlimit_.avail());
+    if (iovcnt == 0) {
+      break;
     }
-    finish = true;
-  }
-  if (events & BEV_EVENT_TIMEOUT) {
-    if (LOG_ENABLED(INFO)) {
-      CLOG(INFO, handler) << "Time out";
-    }
-    finish = true;
-  }
-  if (finish) {
-    delete handler;
-  } else {
-    if (events & BEV_EVENT_CONNECTED) {
-      handler->set_tls_handshake(true);
-      if (LOG_ENABLED(INFO)) {
-        CLOG(INFO, handler) << "SSL/TLS handshake completed";
+
+    ssize_t nread;
+    while ((nread = readv(fd_, iov, iovcnt)) == -1 && errno == EINTR)
+      ;
+    if (nread == -1) {
+      if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        break;
       }
-      if (handler->validate_next_proto() != 0) {
-        delete handler;
-        return;
+      return -1;
+    }
+
+    if (nread == 0) {
+      return -1;
+    }
+
+    rb_.write(nread);
+    rlimit_.drain(nread);
+  }
+
+  return 0;
+}
+
+int ClientHandler::write_clear() {
+  ev_timer_again(loop_, &rt_);
+
+  for (;;) {
+    if (wb_.rleft() > 0) {
+      struct iovec iov[2];
+      auto iovcnt = wb_.riovec(iov);
+      iovcnt = limit_iovec(iov, iovcnt, wlimit_.avail());
+      if (iovcnt == 0) {
+        return 0;
       }
-      if (LOG_ENABLED(INFO)) {
-        if (SSL_session_reused(handler->get_ssl())) {
-          CLOG(INFO, handler) << "SSL/TLS session reused";
+
+      ssize_t nwrite;
+      while ((nwrite = writev(fd_, iov, iovcnt)) == -1 && errno == EINTR)
+        ;
+      if (nwrite == -1) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+          wlimit_.startw();
+          ev_timer_again(loop_, &wt_);
+          return 0;
+        }
+        return -1;
+      }
+      wb_.drain(nwrite);
+      wlimit_.drain(nwrite);
+      continue;
+    }
+    wb_.reset();
+    if (on_write() != 0) {
+      return -1;
+    }
+    if (wb_.rleft() == 0) {
+      break;
+    }
+  }
+
+  wlimit_.stopw();
+  ev_timer_stop(loop_, &wt_);
+
+  return 0;
+}
+
+int ClientHandler::tls_handshake() {
+  ev_timer_again(loop_, &rt_);
+
+  auto rv = SSL_do_handshake(ssl_);
+
+  if (rv == 0) {
+    return -1;
+  }
+
+  if (rv < 0) {
+    auto err = SSL_get_error(ssl_, rv);
+    switch (err) {
+    case SSL_ERROR_WANT_READ:
+      wlimit_.stopw();
+      ev_timer_stop(loop_, &wt_);
+      return 0;
+    case SSL_ERROR_WANT_WRITE:
+      wlimit_.startw();
+      ev_timer_again(loop_, &wt_);
+      return 0;
+    default:
+      return -1;
+    }
+  }
+
+  wlimit_.stopw();
+  ev_timer_stop(loop_, &wt_);
+
+  set_tls_handshake(true);
+  if (LOG_ENABLED(INFO)) {
+    CLOG(INFO, this) << "SSL/TLS handshake completed";
+  }
+  if (validate_next_proto() != 0) {
+    return -1;
+  }
+  if (LOG_ENABLED(INFO)) {
+    if (SSL_session_reused(ssl_)) {
+      CLOG(INFO, this) << "SSL/TLS session reused";
+    }
+  }
+
+  read_ = &ClientHandler::read_tls;
+  write_ = &ClientHandler::write_tls;
+
+  return 0;
+}
+
+int ClientHandler::read_tls() {
+  ev_timer_again(loop_, &rt_);
+
+  for (;;) {
+    if (rb_.rleft() && on_read() != 0) {
+      return -1;
+    }
+
+    rb_.reset();
+    struct iovec iov[2];
+    auto iovcnt = rb_.wiovec(iov);
+    iovcnt = limit_iovec(iov, iovcnt, rlimit_.avail());
+    if (iovcnt == 0) {
+      return 0;
+    }
+
+    auto rv = SSL_read(ssl_, iov[0].iov_base, iov[0].iov_len);
+
+    if (rv == 0) {
+      return -1;
+    }
+
+    if (rv < 0) {
+      auto err = SSL_get_error(ssl_, rv);
+      switch (err) {
+      case SSL_ERROR_WANT_READ:
+        goto fin;
+      case SSL_ERROR_WANT_WRITE:
+        wlimit_.startw();
+        ev_timer_again(loop_, &wt_);
+        goto fin;
+      default:
+        return -1;
+      }
+    }
+
+    rb_.write(rv);
+    rlimit_.drain(rv);
+  }
+
+fin:
+  return 0;
+}
+
+int ClientHandler::write_tls() {
+  ev_timer_again(loop_, &rt_);
+
+  for (;;) {
+    if (wb_.rleft() > 0) {
+      const void *p;
+      size_t len;
+      std::tie(p, len) = wb_.get();
+
+      len = std::min(len, wlimit_.avail());
+      if (len == 0) {
+        return 0;
+      }
+
+      auto limit = get_write_limit();
+      if (limit != -1) {
+        len = std::min(len, static_cast<size_t>(limit));
+      }
+      auto rv = SSL_write(ssl_, p, len);
+
+      if (rv == 0) {
+        return -1;
+      }
+
+      if (rv < 0) {
+        auto err = SSL_get_error(ssl_, rv);
+        switch (err) {
+        case SSL_ERROR_WANT_READ:
+          wlimit_.stopw();
+          ev_timer_stop(loop_, &wt_);
+          return 0;
+        case SSL_ERROR_WANT_WRITE:
+          wlimit_.startw();
+          ev_timer_again(loop_, &wt_);
+          return 0;
+        default:
+          return -1;
         }
       }
+
+      wb_.drain(rv);
+      wlimit_.drain(rv);
+
+      update_warmup_writelen(rv);
+      update_last_write_time();
+
+      continue;
+    }
+    wb_.reset();
+    if (on_write() != 0) {
+      return -1;
+    }
+    if (wb_.rleft() == 0) {
+      break;
     }
   }
-}
-} // namespace
 
-namespace {
-void upstream_http2_connhd_readcb(bufferevent *bev, void *arg) {
-  // This callback assumes upstream is Http2Upstream.
-  auto handler = static_cast<ClientHandler *>(arg);
-  if (handler->on_http2_connhd_read() != 0) {
-    delete handler;
+  wlimit_.stopw();
+  ev_timer_stop(loop_, &wt_);
+
+  return 0;
+}
+
+int ClientHandler::upstream_noop() { return 0; }
+
+int ClientHandler::upstream_read() {
+  assert(upstream_);
+  if (upstream_->on_read() != 0) {
+    return -1;
   }
+  return 0;
 }
-} // namespace
 
-namespace {
-void upstream_http1_connhd_readcb(bufferevent *bev, void *arg) {
-  // This callback assumes upstream is HttpsUpstream.
-  auto handler = static_cast<ClientHandler *>(arg);
-  if (handler->on_http1_connhd_read() != 0) {
-    delete handler;
+int ClientHandler::upstream_write() {
+  assert(upstream_);
+  if (upstream_->on_write() != 0) {
+    return -1;
   }
-}
-} // namespace
 
-ClientHandler::ClientHandler(bufferevent *bev,
-                             bufferevent_rate_limit_group *rate_limit_group,
-                             int fd, SSL *ssl, const char *ipaddr,
-                             const char *port, WorkerStat *worker_stat,
+  if (get_should_close_after_write() && wb_.rleft() == 0) {
+    return -1;
+  }
+
+  return 0;
+}
+
+int ClientHandler::upstream_http2_connhd_read() {
+  struct iovec iov[2];
+  auto iovcnt = rb_.riovec(iov);
+  for (int i = 0; i < iovcnt; ++i) {
+    auto nread =
+        std::min(left_connhd_len_, static_cast<size_t>(iov[i].iov_len));
+    if (memcmp(NGHTTP2_CLIENT_CONNECTION_PREFACE +
+                   NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN - left_connhd_len_,
+               iov[i].iov_base, nread) != 0) {
+      // There is no downgrade path here. Just drop the connection.
+      if (LOG_ENABLED(INFO)) {
+        CLOG(INFO, this) << "invalid client connection header";
+      }
+
+      return -1;
+    }
+
+    left_connhd_len_ -= nread;
+    rb_.drain(nread);
+
+    if (left_connhd_len_ == 0) {
+      on_read_ = &ClientHandler::upstream_read;
+      // Run on_read to process data left in buffer since they are not
+      // notified further
+      if (on_read() != 0) {
+        return -1;
+      }
+      return 0;
+    }
+  }
+
+  return 0;
+}
+
+int ClientHandler::upstream_http1_connhd_read() {
+  struct iovec iov[2];
+  auto iovcnt = rb_.riovec(iov);
+  for (int i = 0; i < iovcnt; ++i) {
+    auto nread =
+        std::min(left_connhd_len_, static_cast<size_t>(iov[i].iov_len));
+    if (memcmp(NGHTTP2_CLIENT_CONNECTION_PREFACE +
+                   NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN - left_connhd_len_,
+               iov[i].iov_base, nread) != 0) {
+      if (LOG_ENABLED(INFO)) {
+        CLOG(INFO, this) << "This is HTTP/1.1 connection, "
+                         << "but may be upgraded to HTTP/2 later.";
+      }
+
+      // Reset header length for later HTTP/2 upgrade
+      left_connhd_len_ = NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN;
+      on_read_ = &ClientHandler::upstream_read;
+      on_write_ = &ClientHandler::upstream_write;
+
+      if (on_read() != 0) {
+        return -1;
+      }
+
+      return 0;
+    }
+
+    left_connhd_len_ -= nread;
+    rb_.drain(nread);
+
+    if (left_connhd_len_ == 0) {
+      if (LOG_ENABLED(INFO)) {
+        CLOG(INFO, this) << "direct HTTP/2 connection";
+      }
+
+      direct_http2_upgrade();
+      on_read_ = &ClientHandler::upstream_read;
+      on_write_ = &ClientHandler::upstream_write;
+
+      // Run on_read to process data left in buffer since they are not
+      // notified further
+      if (on_read() != 0) {
+        return -1;
+      }
+
+      return 0;
+    }
+  }
+
+  return 0;
+}
+
+ClientHandler::ClientHandler(struct ev_loop *loop, int fd, SSL *ssl,
+                             const char *ipaddr, const char *port,
+                             WorkerStat *worker_stat,
                              DownstreamConnectionPool *dconn_pool)
-    : ipaddr_(ipaddr), port_(port), dconn_pool_(dconn_pool), bev_(bev),
-      http2session_(nullptr), ssl_(ssl), reneg_shutdown_timerev_(nullptr),
+    : ipaddr_(ipaddr), port_(port),
+      wlimit_(loop, &wev_, get_config()->write_rate, get_config()->write_burst),
+      rlimit_(loop, &rev_, get_config()->read_rate, get_config()->read_burst),
+      loop_(loop), dconn_pool_(dconn_pool), http2session_(nullptr), ssl_(ssl),
       worker_stat_(worker_stat), last_write_time_(0), warmup_writelen_(0),
       left_connhd_len_(NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN), fd_(fd),
       should_close_after_write_(false), tls_handshake_(false),
       tls_renegotiation_(false) {
-  int rv;
 
   ++worker_stat->num_connections;
 
-  rv = bufferevent_set_rate_limit(bev_, get_config()->rate_limit_cfg);
-  if (rv == -1) {
-    CLOG(FATAL, this) << "bufferevent_set_rate_limit() failed";
-  }
+  ev_io_init(&wev_, writecb, fd_, EV_WRITE);
+  ev_io_init(&rev_, readcb, fd_, EV_READ);
 
-  rv = bufferevent_add_to_rate_limit_group(bev_, rate_limit_group);
-  if (rv == -1) {
-    CLOG(FATAL, this) << "bufferevent_add_to_rate_limit_group() failed";
-  }
+  wev_.data = this;
+  rev_.data = this;
 
-  util::bev_enable_unless(bev_, EV_READ | EV_WRITE);
-  bufferevent_setwatermark(bev_, EV_READ, 0, SHRPX_READ_WATERMARK);
-  set_upstream_timeouts(&get_config()->upstream_read_timeout,
-                        &get_config()->upstream_write_timeout);
+  ev_timer_init(&wt_, timeoutcb, 0., get_config()->upstream_write_timeout);
+  ev_timer_init(&rt_, timeoutcb, 0., get_config()->upstream_read_timeout);
+
+  wt_.data = this;
+  rt_.data = this;
+
+  ev_timer_init(&reneg_shutdown_timer_, shutdowncb, 0., 0.);
+
+  reneg_shutdown_timer_.data = this;
+
+  rlimit_.startw();
+  ev_timer_again(loop_, &rt_);
+
   if (ssl_) {
     SSL_set_app_data(ssl_, reinterpret_cast<char *>(this));
-    set_bev_cb(nullptr, upstream_writecb, upstream_eventcb);
+    read_ = write_ = &ClientHandler::tls_handshake;
+    on_read_ = &ClientHandler::upstream_noop;
+    on_write_ = &ClientHandler::upstream_write;
   } else {
     // For non-TLS version, first create HttpsUpstream. It may be
     // upgraded to HTTP/2 through HTTP Upgrade or direct HTTP/2
     // connection.
     upstream_ = util::make_unique<HttpsUpstream>(this);
     alpn_ = "http/1.1";
-    set_bev_cb(upstream_http1_connhd_readcb, nullptr, upstream_eventcb);
+    read_ = &ClientHandler::read_clear;
+    write_ = &ClientHandler::write_clear;
+    on_read_ = &ClientHandler::upstream_http1_connhd_read;
+    on_write_ = &ClientHandler::upstream_noop;
   }
 }
 
@@ -211,14 +496,18 @@ ClientHandler::~ClientHandler() {
 
   --worker_stat_->num_connections;
 
+  ev_timer_stop(loop_, &reneg_shutdown_timer_);
+
+  ev_timer_stop(loop_, &rt_);
+  ev_timer_stop(loop_, &wt_);
+
+  ev_io_stop(loop_, &rev_);
+  ev_io_stop(loop_, &wev_);
+
   // TODO If backend is http/2, and it is in CONNECTED state, signal
   // it and make it loopbreak when output is zero.
   if (worker_config->graceful_shutdown && worker_stat_->num_connections == 0) {
-    event_base_loopbreak(get_evbase());
-  }
-
-  if (reneg_shutdown_timerev_) {
-    event_free(reneg_shutdown_timerev_);
+    ev_break(loop_);
   }
 
   if (ssl_) {
@@ -226,11 +515,6 @@ ClientHandler::~ClientHandler() {
     SSL_set_shutdown(ssl_, SSL_RECEIVED_SHUTDOWN);
     SSL_shutdown(ssl_);
   }
-
-  bufferevent_remove_from_rate_limit_group(bev_);
-
-  util::bev_disable_unless(bev_, EV_READ | EV_WRITE);
-  bufferevent_free(bev_);
 
   if (ssl_) {
     SSL_free(ssl_);
@@ -245,21 +529,22 @@ ClientHandler::~ClientHandler() {
 
 Upstream *ClientHandler::get_upstream() { return upstream_.get(); }
 
-bufferevent *ClientHandler::get_bev() const { return bev_; }
-
-event_base *ClientHandler::get_evbase() const {
-  return bufferevent_get_base(bev_);
+struct ev_loop *ClientHandler::get_loop() const {
+  return loop_;
 }
 
-void ClientHandler::set_bev_cb(bufferevent_data_cb readcb,
-                               bufferevent_data_cb writecb,
-                               bufferevent_event_cb eventcb) {
-  bufferevent_setcb(bev_, readcb, writecb, eventcb, this);
+void ClientHandler::reset_upstream_read_timeout(ev_tstamp t) {
+  ev_timer_set(&rt_, 0., t);
+  if (ev_is_active(&rt_)) {
+    ev_timer_again(loop_, &rt_);
+  }
 }
 
-void ClientHandler::set_upstream_timeouts(const timeval *read_timeout,
-                                          const timeval *write_timeout) {
-  bufferevent_set_timeouts(bev_, read_timeout, write_timeout);
+void ClientHandler::reset_upstream_write_timeout(ev_tstamp t) {
+  ev_timer_set(&wt_, 0., t);
+  if (ev_is_active(&wt_)) {
+    ev_timer_again(loop_, &wt_);
+  }
 }
 
 int ClientHandler::validate_next_proto() {
@@ -268,7 +553,8 @@ int ClientHandler::validate_next_proto() {
   int rv;
 
   // First set callback for catch all cases
-  set_bev_cb(upstream_readcb, upstream_writecb, upstream_eventcb);
+  on_read_ = &ClientHandler::upstream_read;
+
   SSL_get0_next_proto_negotiated(ssl_, &next_proto, &next_proto_len);
   for (int i = 0; i < 2; ++i) {
     if (next_proto) {
@@ -284,8 +570,7 @@ int ClientHandler::validate_next_proto() {
           (next_proto_len == sizeof("h2-16") - 1 &&
            memcmp("h2-16", next_proto, next_proto_len) == 0)) {
 
-        set_bev_cb(upstream_http2_connhd_readcb, upstream_writecb,
-                   upstream_eventcb);
+        on_read_ = &ClientHandler::upstream_http2_connhd_read;
 
         auto http2_upstream = util::make_unique<Http2Upstream>(this);
 
@@ -303,7 +588,7 @@ int ClientHandler::validate_next_proto() {
         // At this point, input buffer is already filled with some
         // bytes.  The read callback is not called until new data
         // come. So consume input buffer here.
-        if (on_http2_connhd_read() != 0) {
+        if (on_read() != 0) {
           return -1;
         }
 
@@ -331,7 +616,7 @@ int ClientHandler::validate_next_proto() {
           // At this point, input buffer is already filled with some
           // bytes.  The read callback is not called until new data
           // come. So consume input buffer here.
-          if (upstream_->on_read() != 0) {
+          if (on_read() != 0) {
             return -1;
           }
 
@@ -345,7 +630,7 @@ int ClientHandler::validate_next_proto() {
           // At this point, input buffer is already filled with some
           // bytes.  The read callback is not called until new data
           // come. So consume input buffer here.
-          if (upstream_->on_read() != 0) {
+          if (on_read() != 0) {
             return -1;
           }
 
@@ -370,7 +655,7 @@ int ClientHandler::validate_next_proto() {
     // At this point, input buffer is already filled with some bytes.
     // The read callback is not called until new data come. So consume
     // input buffer here.
-    if (upstream_->on_read() != 0) {
+    if (on_read() != 0) {
       return -1;
     }
 
@@ -382,101 +667,11 @@ int ClientHandler::validate_next_proto() {
   return -1;
 }
 
-int ClientHandler::on_read() { return upstream_->on_read(); }
+int ClientHandler::do_read() { return read_(*this); }
+int ClientHandler::do_write() { return write_(*this); }
 
-int ClientHandler::on_event() { return upstream_->on_event(); }
-
-int ClientHandler::on_http2_connhd_read() {
-  // This callback assumes upstream is Http2Upstream.
-  uint8_t data[NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN];
-  auto input = bufferevent_get_input(bev_);
-  auto readlen = evbuffer_remove(input, data, left_connhd_len_);
-
-  if (readlen == -1) {
-    return -1;
-  }
-
-  if (memcmp(NGHTTP2_CLIENT_CONNECTION_PREFACE +
-                 NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN - left_connhd_len_,
-             data, readlen) != 0) {
-    // There is no downgrade path here. Just drop the connection.
-    if (LOG_ENABLED(INFO)) {
-      CLOG(INFO, this) << "invalid client connection header";
-    }
-
-    return -1;
-  }
-
-  left_connhd_len_ -= readlen;
-
-  if (left_connhd_len_ > 0) {
-    return 0;
-  }
-
-  set_bev_cb(upstream_readcb, upstream_writecb, upstream_eventcb);
-
-  // Run on_read to process data left in buffer since they are not
-  // notified further
-  if (on_read() != 0) {
-    return -1;
-  }
-
-  return 0;
-}
-
-int ClientHandler::on_http1_connhd_read() {
-  uint8_t data[NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN];
-  auto input = bufferevent_get_input(bev_);
-  auto readlen = evbuffer_copyout(input, data, left_connhd_len_);
-
-  if (readlen == -1) {
-    return -1;
-  }
-
-  if (memcmp(NGHTTP2_CLIENT_CONNECTION_PREFACE +
-                 NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN - left_connhd_len_,
-             data, readlen) != 0) {
-    if (LOG_ENABLED(INFO)) {
-      CLOG(INFO, this) << "This is HTTP/1.1 connection, "
-                       << "but may be upgraded to HTTP/2 later.";
-    }
-
-    // Reset header length for later HTTP/2 upgrade
-    left_connhd_len_ = NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN;
-    set_bev_cb(upstream_readcb, upstream_writecb, upstream_eventcb);
-
-    if (on_read() != 0) {
-      return -1;
-    }
-
-    return 0;
-  }
-
-  if (evbuffer_drain(input, readlen) == -1) {
-    return -1;
-  }
-
-  left_connhd_len_ -= readlen;
-
-  if (left_connhd_len_ > 0) {
-    return 0;
-  }
-
-  if (LOG_ENABLED(INFO)) {
-    CLOG(INFO, this) << "direct HTTP/2 connection";
-  }
-
-  direct_http2_upgrade();
-  set_bev_cb(upstream_readcb, upstream_writecb, upstream_eventcb);
-
-  // Run on_read to process data left in buffer since they are not
-  // notified further
-  if (on_read() != 0) {
-    return -1;
-  }
-
-  return 0;
-}
+int ClientHandler::on_read() { return on_read_(*this); }
+int ClientHandler::on_write() { return on_write_(*this); }
 
 const std::string &ClientHandler::get_ipaddr() const { return ipaddr_; }
 
@@ -519,7 +714,7 @@ ClientHandler::get_downstream_connection() {
       dconn = util::make_unique<Http2DownstreamConnection>(dconn_pool_,
                                                            http2session_);
     } else {
-      dconn = util::make_unique<HttpDownstreamConnection>(dconn_pool_);
+      dconn = util::make_unique<HttpDownstreamConnection>(dconn_pool_, loop_);
     }
     dconn->set_client_handler(this);
     return dconn;
@@ -533,10 +728,6 @@ ClientHandler::get_downstream_connection() {
   }
 
   return dconn;
-}
-
-size_t ClientHandler::get_outbuf_length() {
-  return evbuffer_get_length(bufferevent_get_output(bev_));
 }
 
 SSL *ClientHandler::get_ssl() const { return ssl_; }
@@ -561,11 +752,10 @@ void ClientHandler::direct_http2_upgrade() {
   // TODO We don't know exact h2 draft version in direct upgrade.  We
   // just use library default for now.
   alpn_ = NGHTTP2_CLEARTEXT_PROTO_VERSION_ID;
-  set_bev_cb(upstream_readcb, upstream_writecb, upstream_eventcb);
+  on_read_ = &ClientHandler::upstream_read;
 }
 
 int ClientHandler::perform_http2_upgrade(HttpsUpstream *http) {
-  int rv;
   auto upstream = util::make_unique<Http2Upstream>(this);
   if (upstream->upgrade_upstream(http) != 0) {
     return -1;
@@ -576,16 +766,13 @@ int ClientHandler::perform_http2_upgrade(HttpsUpstream *http) {
   // TODO We might get other version id in HTTP2-settings, if we
   // support aliasing for h2, but we just use library default for now.
   alpn_ = NGHTTP2_CLEARTEXT_PROTO_VERSION_ID;
-  set_bev_cb(upstream_http2_connhd_readcb, upstream_writecb, upstream_eventcb);
+  on_read_ = &ClientHandler::upstream_http2_connhd_read;
+
   static char res[] = "HTTP/1.1 101 Switching Protocols\r\n"
                       "Connection: Upgrade\r\n"
                       "Upgrade: " NGHTTP2_CLEARTEXT_PROTO_VERSION_ID "\r\n"
                       "\r\n";
-  rv = bufferevent_write(bev_, res, sizeof(res) - 1);
-  if (rv != 0) {
-    CLOG(FATAL, this) << "bufferevent_write() faild";
-    return -1;
-  }
+  wb_.write(res, sizeof(res) - 1);
   return 0;
 }
 
@@ -603,18 +790,6 @@ void ClientHandler::set_tls_handshake(bool f) { tls_handshake_ = f; }
 
 bool ClientHandler::get_tls_handshake() const { return tls_handshake_; }
 
-namespace {
-void shutdown_cb(evutil_socket_t fd, short what, void *arg) {
-  auto handler = static_cast<ClientHandler *>(arg);
-
-  if (LOG_ENABLED(INFO)) {
-    CLOG(INFO, handler) << "Close connection due to TLS renegotiation";
-  }
-
-  delete handler;
-}
-} // namespace
-
 void ClientHandler::set_tls_renegotiation(bool f) {
   if (tls_renegotiation_ == false) {
     if (LOG_ENABLED(INFO)) {
@@ -622,13 +797,7 @@ void ClientHandler::set_tls_renegotiation(bool f) {
                        << "Start shutdown timer now.";
     }
 
-    reneg_shutdown_timerev_ = evtimer_new(get_evbase(), shutdown_cb, this);
-    event_priority_set(reneg_shutdown_timerev_, 0);
-
-    timeval timeout = {0, 0};
-
-    // TODO What to do if this failed?
-    evtimer_add(reneg_shutdown_timerev_, &timeout);
+    ev_timer_start(loop_, &reneg_shutdown_timer_);
   }
   tls_renegotiation_ = f;
 }
@@ -645,14 +814,12 @@ ssize_t ClientHandler::get_write_limit() {
     return -1;
   }
 
-  timeval tv;
-  if (event_base_gettimeofday_cached(get_evbase(), &tv) == 0) {
-    auto now = util::to_time64(tv);
-    if (now - last_write_time_ > 1000000) {
-      // Time out, use small record size
-      warmup_writelen_ = 0;
-      return SHRPX_SMALL_WRITE_LIMIT;
-    }
+  auto t = ev_now(loop_);
+
+  if (t - last_write_time_ > 1.0) {
+    // Time out, use small record size
+    warmup_writelen_ = 0;
+    return SHRPX_SMALL_WRITE_LIMIT;
   }
 
   // If event_base_gettimeofday_cached() failed, we just skip timer
@@ -672,10 +839,7 @@ void ClientHandler::update_warmup_writelen(size_t n) {
 }
 
 void ClientHandler::update_last_write_time() {
-  timeval tv;
-  if (event_base_gettimeofday_cached(get_evbase(), &tv) == 0) {
-    last_write_time_ = util::to_time64(tv);
-  }
+  last_write_time_ = ev_now(loop_);
 }
 
 void ClientHandler::write_accesslog(Downstream *downstream) {
@@ -720,5 +884,14 @@ void ClientHandler::write_accesslog(int major, int minor, unsigned int status,
 }
 
 WorkerStat *ClientHandler::get_worker_stat() const { return worker_stat_; }
+
+UpstreamBuf *ClientHandler::get_wb() { return &wb_; }
+
+UpstreamBuf *ClientHandler::get_rb() { return &rb_; }
+
+void ClientHandler::signal_write() { wlimit_.startw(); }
+
+RateLimit *ClientHandler::get_rlimit() { return &rlimit_; }
+RateLimit *ClientHandler::get_wlimit() { return &wlimit_; }
 
 } // namespace shrpx

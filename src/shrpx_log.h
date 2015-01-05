@@ -48,10 +48,9 @@ class Downstream;
 #define LLOG(SEVERITY, LISTEN)                                                 \
   (Log(SEVERITY, __FILE__, __LINE__) << "[LISTEN:" << LISTEN << "] ")
 
-// ThreadEventReceiver log
-#define TLOG(SEVERITY, THREAD_RECV)                                            \
-  (Log(SEVERITY, __FILE__, __LINE__) << "[THREAD_RECV:" << THREAD_RECV << "]"  \
-                                                                          " ")
+// Worker log
+#define WLOG(SEVERITY, WORKER)                                                 \
+  (Log(SEVERITY, __FILE__, __LINE__) << "[WORKER:" << WORKER << "] ")
 
 // ClientHandler log
 #define CLOG(SEVERITY, CLIENT_HANDLER)                                         \

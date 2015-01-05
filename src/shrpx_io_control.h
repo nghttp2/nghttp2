@@ -29,8 +29,9 @@
 
 #include <vector>
 
-#include <event.h>
-#include <event2/bufferevent.h>
+#include <ev.h>
+
+#include "shrpx_rate_limit.h"
 
 namespace shrpx {
 
@@ -38,9 +39,8 @@ enum IOCtrlReason { SHRPX_NO_BUFFER = 1 << 0, SHRPX_MSG_BLOCK = 1 << 1 };
 
 class IOControl {
 public:
-  IOControl(bufferevent *bev);
+  IOControl(RateLimit *lim);
   ~IOControl();
-  void set_bev(bufferevent *bev);
   void pause_read(IOCtrlReason reason);
   // Returns true if read operation is enabled after this call
   bool resume_read(IOCtrlReason reason);
@@ -48,7 +48,7 @@ public:
   void force_resume_read();
 
 private:
-  bufferevent *bev_;
+  RateLimit *lim_;
   uint32_t rdbits_;
 };
 

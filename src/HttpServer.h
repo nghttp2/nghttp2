@@ -39,22 +39,12 @@
 
 #include <openssl/ssl.h>
 
-#include <event2/event.h>
-#include <event2/bufferevent.h>
+#include <ev.h>
 
 #include <nghttp2/nghttp2.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#include "nghttp2_buf.h"
-
-#ifdef __cplusplus
-}
-#endif
-
 #include "http2.h"
+#include "ringbuf.h"
 
 namespace nghttp2 {
 
@@ -65,8 +55,8 @@ struct Config {
   std::string private_key_file;
   std::string cert_file;
   std::string dh_param_file;
-  timeval stream_read_timeout;
-  timeval stream_write_timeout;
+  ev_tstamp stream_read_timeout;
+  ev_tstamp stream_write_timeout;
   nghttp2_option *session_option;
   void *data_ptr;
   size_t padding;
@@ -88,11 +78,12 @@ class Http2Handler;
 struct Stream {
   Headers headers;
   Http2Handler *handler;
-  event *rtimer;
-  event *wtimer;
+  ev_timer rtimer;
+  ev_timer wtimer;
   int64_t body_left;
   int32_t stream_id;
   int file;
+  int hdidx[http2::HD_MAXIDX];
   Stream(Http2Handler *handler, int32_t stream_id);
   ~Stream();
 };
@@ -106,7 +97,6 @@ public:
 
   void remove_self();
   int setup_bev();
-  int send();
   int on_read();
   int on_write();
   int on_connect();
@@ -137,14 +127,29 @@ public:
   void remove_settings_timer();
   void terminate_session(uint32_t error_code);
 
+  int fill_wb();
+
+  int read_clear();
+  int write_clear();
+  int tls_handshake();
+  int read_tls();
+  int write_tls();
+
+  struct ev_loop *get_loop() const;
+
 private:
+  ev_io wev_;
+  ev_io rev_;
+  ev_timer settings_timerev_;
   std::map<int32_t, std::unique_ptr<Stream>> id2stream_;
+  RingBuf<65536> wb_;
+  std::function<int(Http2Handler &)> read_, write_;
   int64_t session_id_;
   nghttp2_session *session_;
   Sessions *sessions_;
   SSL *ssl_;
-  bufferevent *bev_;
-  event *settings_timerev_;
+  const uint8_t *data_pending_;
+  size_t data_pendinglen_;
   int fd_;
 };
 

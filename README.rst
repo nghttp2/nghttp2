@@ -71,7 +71,7 @@ To build and run the application programs (``nghttp``, ``nghttpd`` and
 required:
 
 * OpenSSL >= 1.0.1
-* libevent-openssl >= 2.0.8
+* libev >= 4.15
 * zlib >= 1.2.3
 
 ALPN support requires unreleased version OpenSSL >= 1.0.2.
@@ -89,6 +89,10 @@ resource) in ``nghttp``, the following package is required:
 The HPACK tools require the following package:
 
 * jansson >= 2.5
+
+To build sources under examples directory, libevent is required:
+
+* libevent-openssl >= 2.0.8
 
 To mitigate heap fragmentation in long running server programs
 (``nghttpd`` and ``nghttpx``), jemalloc is recommended:
@@ -119,6 +123,7 @@ installed:
 * libcunit1-dev
 * libssl-dev
 * libxml2-dev
+* libev-dev
 * libevent-dev
 * libjansson-dev
 * libjemalloc-dev

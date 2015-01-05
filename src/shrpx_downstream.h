@@ -34,13 +34,13 @@
 #include <memory>
 #include <chrono>
 
-#include <event.h>
-#include <event2/bufferevent.h>
+#include <ev.h>
 
 #include <nghttp2/nghttp2.h>
 
 #include "shrpx_io_control.h"
 #include "http2.h"
+#include "memchunk.h"
 
 using namespace nghttp2;
 
@@ -76,7 +76,7 @@ public:
 
   // Returns true if output buffer is full. If underlying dconn_ is
   // NULL, this function always returns false.
-  bool get_output_buffer_full();
+  bool request_buf_full();
   // Returns true if upgrade (HTTP Upgrade or CONNECT) is succeeded.
   void check_upgrade_fulfilled();
   // Returns true if the request is upgrade.
@@ -95,30 +95,27 @@ public:
   const std::string &get_http2_settings() const;
   // downstream request API
   const Headers &get_request_headers() const;
-  void crumble_request_cookie();
+  // Crumbles (split cookie by ";") in request_headers_ and returns
+  // them.  Headers::no_index is inherited.
+  Headers crumble_request_cookie();
   void assemble_request_cookie();
   const std::string &get_assembled_request_cookie() const;
-  // Makes key lowercase and sort headers by name using <
-  void normalize_request_headers();
-  // Returns iterator pointing to the request header with the name
-  // |name|. If multiple header have |name| as name, return first
-  // occurrence from the beginning. If no such header is found,
-  // returns std::end(get_request_headers()). This function must be
-  // called after calling normalize_request_headers().
-  Headers::const_iterator
-  get_norm_request_header(const std::string &name) const;
-  // Returns iterator pointing to the request header with the name
-  // |name|.  This function acts like get_norm_request_header(), but
-  // if request_headers_ was not normalized, use linear search to find
-  // the header.  Otherwise, get_norm_request_header() is used.
-  Headers::const_iterator get_request_header(const std::string &name) const;
-  bool get_request_headers_normalized() const;
+  // Lower the request header field names and indexes request headers
+  void index_request_headers();
+  // Returns pointer to the request header with the name |name|.  If
+  // multiple header have |name| as name, return last occurrence from
+  // the beginning.  If no such header is found, returns nullptr.
+  // This function must be called after headers are indexed
+  const Headers::value_type *get_request_header(int token) const;
+  // Returns pointer to the request header with the name |name|.  If
+  // no such header is found, returns nullptr.
+  const Headers::value_type *get_request_header(const std::string &name) const;
   void add_request_header(std::string name, std::string value);
   void set_last_request_header_value(std::string value);
 
-  void split_add_request_header(const uint8_t *name, size_t namelen,
-                                const uint8_t *value, size_t valuelen,
-                                bool no_index);
+  void add_request_header(const uint8_t *name, size_t namelen,
+                          const uint8_t *value, size_t valuelen, bool no_index,
+                          int token);
 
   bool get_request_header_key_prev() const;
   void append_last_request_header_key(const char *data, size_t len);
@@ -161,7 +158,7 @@ public:
   size_t get_request_datalen() const;
   void dec_request_datalen(size_t len);
   void reset_request_datalen();
-  bool request_pseudo_header_allowed() const;
+  bool request_pseudo_header_allowed(int token) const;
   bool expect_response_body() const;
   enum {
     INITIAL,
@@ -174,28 +171,25 @@ public:
   };
   void set_request_state(int state);
   int get_request_state() const;
+  Memchunks4K *get_request_buf();
   // downstream response API
   const Headers &get_response_headers() const;
-  // Makes key lowercase and sort headers by name using <
-  void normalize_response_headers();
-  // Returns iterator pointing to the response header with the name
-  // |name|. If multiple header have |name| as name, return first
-  // occurrence from the beginning. If no such header is found,
-  // returns std::end(get_response_headers()). This function must be
-  // called after calling normalize_response_headers().
-  Headers::const_iterator
-  get_norm_response_header(const std::string &name) const;
-  // Rewrites the location response header field. This function must
-  // be called after calling normalize_response_headers() and
-  // normalize_request_headers().
-  void rewrite_norm_location_response_header(const std::string &upstream_scheme,
-                                             uint16_t upstream_port);
+  // Lower the response header field names and indexes response headers
+  void index_response_headers();
+  // Returns pointer to the response header with the name |name|.  If
+  // multiple header have |name| as name, return last occurrence from
+  // the beginning.  If no such header is found, returns nullptr.
+  // This function must be called after response headers are indexed.
+  const Headers::value_type *get_response_header(int token) const;
+  // Rewrites the location response header field.
+  void rewrite_location_response_header(const std::string &upstream_scheme,
+                                        uint16_t upstream_port);
   void add_response_header(std::string name, std::string value);
   void set_last_response_header_value(std::string value);
 
-  void split_add_response_header(const uint8_t *name, size_t namelen,
-                                 const uint8_t *value, size_t valuelen,
-                                 bool no_index);
+  void add_response_header(const uint8_t *name, size_t namelen,
+                           const uint8_t *value, size_t valuelen, bool no_index,
+                           int token);
 
   bool get_response_header_key_prev() const;
   void append_last_response_header_key(const char *data, size_t len);
@@ -218,8 +212,8 @@ public:
   void set_response_connection_close(bool f);
   void set_response_state(int state);
   int get_response_state() const;
-  int init_response_body_buf();
-  evbuffer *get_response_body_buf();
+  Memchunks4K *get_response_buf();
+  bool response_buf_full();
   void add_response_bodylen(size_t amount);
   int64_t get_response_bodylen() const;
   void add_response_sent_bodylen(size_t amount);
@@ -237,7 +231,7 @@ public:
   void dec_response_datalen(size_t len);
   size_t get_response_datalen() const;
   void reset_response_datalen();
-  bool response_pseudo_header_allowed() const;
+  bool response_pseudo_header_allowed(int token) const;
 
   // Call this method when there is incoming data in downstream
   // connection.
@@ -252,18 +246,15 @@ public:
   bool get_rst_stream_after_end_stream() const;
   void set_rst_stream_after_end_stream(bool f);
 
-  // Initializes upstream timers, but they are not pending.
-  void init_upstream_timer();
-  // Makes upstream read timer pending.  If it is already pending,
-  // timeout value is reset.  This function also resets write timer if
-  // it is already pending.
+  // Resets upstream read timer.  If it is active, timeout value is
+  // reset.  If it is not active, timer will be started.
   void reset_upstream_rtimer();
-  // Makes upstream write timer pending.  If it is already pending,
-  // timeout value is reset.  This function also resets read timer if
-  // it is already pending.
+  // Resets upstream write timer. If it is active, timeout value is
+  // reset.  If it is not active, timer will be started.  This
+  // function also resets read timer if it has been started.
   void reset_upstream_wtimer();
-  // Makes upstream write timer pending.  If it is already pending, do
-  // nothing.
+  // Makes sure that upstream write timer is started.  If it has been
+  // started, do nothing.  Otherwise, write timer will be started.
   void ensure_upstream_wtimer();
   // Disables upstream read timer.
   void disable_upstream_rtimer();
@@ -272,7 +263,6 @@ public:
 
   // Downstream timer functions.  They works in a similar way just
   // like the upstream timer function.
-  void init_downstream_timer();
   void reset_downstream_rtimer();
   void reset_downstream_wtimer();
   void ensure_downstream_wtimer();
@@ -281,6 +271,11 @@ public:
 
   // Returns true if accesslog can be written for this downstream.
   bool accesslog_ready() const;
+
+  enum {
+    EVENT_ERROR = 0x1,
+    EVENT_TIMEOUT = 0x2,
+  };
 
 private:
   Headers request_headers_;
@@ -292,7 +287,15 @@ private:
   std::string request_http2_authority_;
   std::chrono::high_resolution_clock::time_point request_start_time_;
   std::string assembled_request_cookie_;
-  std::string http2_settings_;
+
+  Memchunks4K request_buf_;
+  Memchunks4K response_buf_;
+
+  ev_timer upstream_rtimer_;
+  ev_timer upstream_wtimer_;
+
+  ev_timer downstream_rtimer_;
+  ev_timer downstream_wtimer_;
 
   // the length of request body
   int64_t request_bodylen_;
@@ -303,15 +306,6 @@ private:
 
   Upstream *upstream_;
   std::unique_ptr<DownstreamConnection> dconn_;
-  // This buffer is used to temporarily store downstream response
-  // body. nghttp2 library reads data from this in the callback.
-  evbuffer *response_body_buf_;
-
-  event *upstream_rtimerev_;
-  event *upstream_wtimerev_;
-
-  event *downstream_rtimerev_;
-  event *downstream_wtimerev_;
 
   size_t request_headers_sum_;
   size_t response_headers_sum_;
@@ -337,6 +331,9 @@ private:
   int response_major_;
   int response_minor_;
 
+  int request_hdidx_[http2::HD_MAXIDX];
+  int response_hdidx_[http2::HD_MAXIDX];
+
   // true if the request contains upgrade token (HTTP Upgrade or
   // CONNECT)
   bool upgrade_request_;
@@ -344,7 +341,6 @@ private:
   bool upgraded_;
 
   bool http2_upgrade_seen_;
-  bool http2_settings_seen_;
 
   bool chunked_request_;
   bool request_connection_close_;
@@ -355,9 +351,6 @@ private:
   bool response_connection_close_;
   bool response_header_key_prev_;
   bool expect_final_response_;
-
-  // true if request_headers_ is normalized
-  bool request_headers_normalized_;
 };
 
 } // namespace shrpx

@@ -21,6 +21,7 @@ before_install:
       libcunit1-dev
       libssl-dev
       libxml2-dev
+      libev-dev
       libevent-dev
       libjansson-dev
       libjemalloc-dev

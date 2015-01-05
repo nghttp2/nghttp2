@@ -76,35 +76,6 @@ void sanitize_header_value(std::string &s, size_t offset);
 void copy_url_component(std::string &dest, const http_parser_url *u, int field,
                         const char *url);
 
-// Returns true if the header field |name| with length |namelen| bytes
-// is valid for HTTP/2.
-bool check_http2_allowed_header(const uint8_t *name, size_t namelen);
-
-// Calls check_http2_allowed_header with |name| and strlen(name),
-// assuming |name| is null-terminated string.
-bool check_http2_allowed_header(const char *name);
-
-// Checks that headers |nva| do not contain disallowed header fields
-// in HTTP/2 spec. This function returns true if |nva| does not
-// contains such headers.
-bool check_http2_headers(const Headers &nva);
-
-// Calls check_http2_headers()
-bool check_http2_request_headers(const Headers &nva);
-
-// Calls check_http2_headers()
-bool check_http2_response_headers(const Headers &nva);
-
-// Returns true if |name| is allowed pusedo header for request.
-bool check_http2_request_pseudo_header(const uint8_t *name, size_t namelen);
-
-// Returns true if |name| is allowed pusedo header for response.
-bool check_http2_response_pseudo_header(const uint8_t *name, size_t namelen);
-
-bool name_less(const Headers::value_type &lhs, const Headers::value_type &rhs);
-
-void normalize_headers(Headers &nva);
-
 Headers::value_type to_header(const uint8_t *name, size_t namelen,
                               const uint8_t *value, size_t valuelen,
                               bool no_index);
@@ -115,16 +86,9 @@ Headers::value_type to_header(const uint8_t *name, size_t namelen,
 void add_header(Headers &nva, const uint8_t *name, size_t namelen,
                 const uint8_t *value, size_t valuelen, bool no_index);
 
-// Returns the iterator to the entry in |nva| which has name |name|
-// and the |name| is uinque in the |nva|. If no such entry exist,
-// returns nullptr.
-const Headers::value_type *get_unique_header(const Headers &nva,
-                                             const char *name);
-
-// Returns the iterator to the entry in |nva| which has name
-// |name|. If more than one entries which have the name |name|, first
-// occurrence in |nva| is returned. If no such entry exist, returns
-// nullptr.
+// Returns pointer to the entry in |nva| which has name |name|.  If
+// more than one entries which have the name |name|, last occurrence
+// in |nva| is returned.  If no such entry exist, returns nullptr.
 const Headers::value_type *get_header(const Headers &nva, const char *name);
 
 // Returns nv->second if nv is not nullptr. Otherwise, returns "".
@@ -165,14 +129,13 @@ nghttp2_nv make_nv_ls(const char (&name)[N], const std::string &value) {
 // Appends headers in |headers| to |nv|. Certain headers, including
 // disallowed headers in HTTP/2 spec and headers which require
 // special handling (i.e. via), are not copied.
-void copy_norm_headers_to_nva(std::vector<nghttp2_nv> &nva,
-                              const Headers &headers);
+void copy_headers_to_nva(std::vector<nghttp2_nv> &nva, const Headers &headers);
 
 // Appends HTTP/1.1 style header lines to |hdrs| from headers in
 // |headers|. Certain headers, which requires special handling
 // (i.e. via and cookie), are not appended.
-void build_http1_headers_from_norm_headers(std::string &hdrs,
-                                           const Headers &headers);
+void build_http1_headers_from_headers(std::string &hdrs,
+                                      const Headers &headers);
 
 // Return positive window_size_increment if WINDOW_UPDATE should be
 // sent for the stream |stream_id|. If |stream_id| == 0, this function
@@ -217,6 +180,70 @@ int check_nv(const uint8_t *name, size_t namelen, const uint8_t *value,
 
 // Returns parsed HTTP status code.  Returns -1 on failure.
 int parse_http_status_code(const std::string &src);
+
+// Header fields to be indexed, except HD_MAXIDX which is convenient
+// member to get maximum value.
+enum {
+  HD__AUTHORITY,
+  HD__HOST,
+  HD__METHOD,
+  HD__PATH,
+  HD__SCHEME,
+  HD__STATUS,
+  HD_ALT_SVC,
+  HD_CONNECTION,
+  HD_CONTENT_LENGTH,
+  HD_COOKIE,
+  HD_EXPECT,
+  HD_HOST,
+  HD_HTTP2_SETTINGS,
+  HD_IF_MODIFIED_SINCE,
+  HD_KEEP_ALIVE,
+  HD_LOCATION,
+  HD_PROXY_CONNECTION,
+  HD_SERVER,
+  HD_TE,
+  HD_TRANSFER_ENCODING,
+  HD_UPGRADE,
+  HD_VIA,
+  HD_X_FORWARDED_FOR,
+  HD_X_FORWARDED_PROTO,
+  HD_MAXIDX,
+};
+
+// Looks up header token for header name |name| of length |namelen|.
+// Only headers we are interested in are tokenized.  If header name
+// cannot be tokenized, returns -1.
+int lookup_token(const uint8_t *name, size_t namelen);
+int lookup_token(const std::string &name);
+
+// Initializes |hdidx|, header index.  The |hdidx| must point to the
+// array containing at least HD_MAXIDX elements.
+void init_hdidx(int *hdidx);
+// Indexes header |token| using index |idx|.
+void index_header(int *hdidx, int token, size_t idx);
+// Iterates |headers| and for each element, call index_header.
+void index_headers(int *hdidx, const Headers &headers);
+
+// Returns true if HTTP/2 request pseudo header |token| is not indexed
+// yet and not -1.
+bool check_http2_request_pseudo_header(const int *hdidx, int token);
+
+// Returns true if HTTP/2 response pseudo header |token| is not
+// indexed yet and not -1.
+bool check_http2_response_pseudo_header(const int *hdidx, int token);
+
+// Returns true if header field denoted by |token| is allowed for
+// HTTP/2.
+bool http2_header_allowed(int token);
+
+// Returns true that |hdidx| contains mandatory HTTP/2 request
+// headers.
+bool http2_mandatory_request_headers_presence(const int *hdidx);
+
+// Returns header denoted by |token| using index |hdidx|.
+const Headers::value_type *get_header(const int *hdidx, int token,
+                                      const Headers &nva);
 
 } // namespace http2
 

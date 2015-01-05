@@ -38,95 +38,93 @@ using namespace nghttp2;
 
 namespace shrpx {
 
-ThreadEventReceiver::ThreadEventReceiver(event_base *evbase, SSL_CTX *ssl_ctx,
+ThreadEventReceiver::ThreadEventReceiver(SSL_CTX *ssl_ctx,
                                          Http2Session *http2session,
                                          ConnectBlocker *http1_connect_blocker)
-    : evbase_(evbase), ssl_ctx_(ssl_ctx), http2session_(http2session),
+    : ssl_ctx_(ssl_ctx), http2session_(http2session),
       http1_connect_blocker_(http1_connect_blocker),
-      rate_limit_group_(bufferevent_rate_limit_group_new(
-          evbase_, get_config()->worker_rate_limit_cfg)),
       worker_stat_(util::make_unique<WorkerStat>()) {}
 
-ThreadEventReceiver::~ThreadEventReceiver() {
-  bufferevent_rate_limit_group_free(rate_limit_group_);
-}
+ThreadEventReceiver::~ThreadEventReceiver() {}
 
-void ThreadEventReceiver::on_read(bufferevent *bev) {
-  auto input = bufferevent_get_input(bev);
-  while (evbuffer_get_length(input) >= sizeof(WorkerEvent)) {
-    WorkerEvent wev;
-    int nread = evbuffer_remove(input, &wev, sizeof(wev));
-    if (nread == -1) {
-      TLOG(FATAL, this) << "evbuffer_remove() failed";
-      continue;
-    }
-    if (nread != sizeof(wev)) {
-      TLOG(FATAL, this) << "evbuffer_remove() removed fewer bytes. Expected:"
-                        << sizeof(wev) << " Actual:" << nread;
-      continue;
-    }
+void ThreadEventReceiver::on_read() {
+  // auto input = bufferevent_get_input(bev);
+  // while (evbuffer_get_length(input) >= sizeof(WorkerEvent)) {
+  //   WorkerEvent wev;
+  //   int nread = evbuffer_remove(input, &wev, sizeof(wev));
+  //   if (nread == -1) {
+  //     TLOG(FATAL, this) << "evbuffer_remove() failed";
+  //     continue;
+  //   }
+  //   if (nread != sizeof(wev)) {
+  //     TLOG(FATAL, this) << "evbuffer_remove() removed fewer bytes. Expected:"
+  //                       << sizeof(wev) << " Actual:" << nread;
+  //     continue;
+  //   }
 
-    if (wev.type == REOPEN_LOG) {
-      if (LOG_ENABLED(INFO)) {
-        LOG(INFO) << "Reopening log files: worker_info(" << worker_config
-                  << ")";
-      }
+  //   if (wev.type == REOPEN_LOG) {
+  //     if (LOG_ENABLED(INFO)) {
+  //       LOG(INFO) << "Reopening log files: worker_info(" << worker_config
+  //                 << ")";
+  //     }
 
-      reopen_log_files();
+  //     reopen_log_files();
 
-      continue;
-    }
+  //     continue;
+  //   }
 
-    if (wev.type == GRACEFUL_SHUTDOWN) {
-      LOG(NOTICE) << "Graceful shutdown commencing";
+  //   if (wev.type == GRACEFUL_SHUTDOWN) {
+  //     LOG(NOTICE) << "Graceful shutdown commencing";
 
-      worker_config->graceful_shutdown = true;
+  //     worker_config->graceful_shutdown = true;
 
-      if (worker_stat_->num_connections == 0) {
-        event_base_loopbreak(evbase_);
+  //     if (worker_stat_->num_connections == 0) {
+  //       event_base_loopbreak(evbase_);
 
-        break;
-      }
+  //       break;
+  //     }
 
-      continue;
-    }
+  //     continue;
+  //   }
 
-    if (LOG_ENABLED(INFO)) {
-      TLOG(INFO, this) << "WorkerEvent: client_fd=" << wev.client_fd
-                       << ", addrlen=" << wev.client_addrlen;
-    }
+  //   if (LOG_ENABLED(INFO)) {
+  //     TLOG(INFO, this) << "WorkerEvent: client_fd=" << wev.client_fd
+  //                      << ", addrlen=" << wev.client_addrlen;
+  //   }
 
-    if (worker_stat_->num_connections >=
-        get_config()->worker_frontend_connections) {
+  //   if (worker_stat_->num_connections >=
+  //       get_config()->worker_frontend_connections) {
 
-      if (LOG_ENABLED(INFO)) {
-        TLOG(INFO, this) << "Too many connections >= "
-                         << get_config()->worker_frontend_connections;
-      }
+  //     if (LOG_ENABLED(INFO)) {
+  //       TLOG(INFO, this) << "Too many connections >= "
+  //                        << get_config()->worker_frontend_connections;
+  //     }
 
-      close(wev.client_fd);
+  //     close(wev.client_fd);
 
-      continue;
-    }
+  //     continue;
+  //   }
 
-    auto evbase = bufferevent_get_base(bev);
-    auto client_handler = ssl::accept_connection(
-        evbase, rate_limit_group_, ssl_ctx_, wev.client_fd, &wev.client_addr.sa,
-        wev.client_addrlen, worker_stat_.get(), &dconn_pool_);
-    if (client_handler) {
-      client_handler->set_http2_session(http2session_);
-      client_handler->set_http1_connect_blocker(http1_connect_blocker_);
+  //   auto evbase = bufferevent_get_base(bev);
+  //   auto client_handler = ssl::accept_connection(
+  //       evbase, rate_limit_group_, ssl_ctx_, wev.client_fd,
+  //       &wev.client_addr.sa,
+  //       wev.client_addrlen, worker_stat_.get(), &dconn_pool_);
+  //   if (client_handler) {
+  //     client_handler->set_http2_session(http2session_);
+  //     client_handler->set_http1_connect_blocker(http1_connect_blocker_);
 
-      if (LOG_ENABLED(INFO)) {
-        TLOG(INFO, this) << "CLIENT_HANDLER:" << client_handler << " created";
-      }
-    } else {
-      if (LOG_ENABLED(INFO)) {
-        TLOG(ERROR, this) << "ClientHandler creation failed";
-      }
-      close(wev.client_fd);
-    }
-  }
+  //     if (LOG_ENABLED(INFO)) {
+  //       TLOG(INFO, this) << "CLIENT_HANDLER:" << client_handler << "
+  //       created";
+  //     }
+  //   } else {
+  //     if (LOG_ENABLED(INFO)) {
+  //       TLOG(ERROR, this) << "ClientHandler creation failed";
+  //     }
+  //     close(wev.client_fd);
+  //   }
+  // }
 }
 
 } // namespace shrpx

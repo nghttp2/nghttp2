@@ -55,8 +55,6 @@ public:
   virtual int resume_read(IOCtrlReason reason, size_t consumed);
   virtual void force_resume_read() {}
 
-  virtual bool get_output_buffer_full();
-
   virtual int on_read();
   virtual int on_write();
   virtual int on_timeout();
@@ -66,9 +64,6 @@ public:
 
   int send();
 
-  int init_request_body_buf();
-  evbuffer *get_request_body_buf() const;
-
   void attach_stream_data(StreamData *sd);
   StreamData *detach_stream_data();
 
@@ -77,7 +72,6 @@ public:
 
 private:
   Http2Session *http2session_;
-  evbuffer *request_body_buf_;
   StreamData *sd_;
 };
 

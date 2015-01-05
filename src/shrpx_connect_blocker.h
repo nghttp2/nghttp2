@@ -27,16 +27,15 @@
 
 #include "shrpx.h"
 
-#include <event2/event.h>
+#include <ev.h>
 
 namespace shrpx {
 
 class ConnectBlocker {
 public:
-  ConnectBlocker();
+  ConnectBlocker(struct ev_loop *loop);
   ~ConnectBlocker();
 
-  int init(event_base *evbase);
   // Returns true if making connection is not allowed.
   bool blocked() const;
   // Call this function if connect operation succeeded.  This will
@@ -47,8 +46,9 @@ public:
   void on_failure();
 
 private:
-  event *timerev_;
-  int sleep_;
+  ev_timer timer_;
+  struct ev_loop *loop_;
+  ev_tstamp sleep_;
 };
 
 } // namespace

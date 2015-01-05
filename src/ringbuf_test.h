@@ -22,36 +22,14 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef H2LOAD_SPDY_SESSION_H
-#define H2LOAD_SPDY_SESSION_H
+#ifndef RINGBUF_TEST_H
+#define RINGBUF_TEST_H
 
-#include "h2load_session.h"
+namespace nghttp2 {
 
-#include <spdylay/spdylay.h>
+void test_ringbuf_write(void);
+void test_ringbuf_iovec(void);
 
-#include "util.h"
+} // namespace nghttp2
 
-namespace h2load {
-
-struct Client;
-
-class SpdySession : public Session {
-public:
-  SpdySession(Client *client, uint16_t spdy_version);
-  virtual ~SpdySession();
-  virtual void on_connect();
-  virtual void submit_request();
-  virtual int on_read(const uint8_t *data, size_t len);
-  virtual int on_write();
-  virtual void terminate();
-  void handle_window_update(int32_t stream_id, size_t recvlen);
-
-private:
-  Client *client_;
-  spdylay_session *session_;
-  uint16_t spdy_version_;
-};
-
-} // namespace h2load
-
-#endif // H2LOAD_SPDY_SESSION_H
+#endif // RINGBUF_TEST_H

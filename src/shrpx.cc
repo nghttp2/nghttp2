@@ -48,7 +48,7 @@
 #include <openssl/err.h>
 #include <openssl/conf.h>
 
-#include <event2/listener.h>
+#include <ev.h>
 
 #include <nghttp2/nghttp2.h>
 
@@ -57,6 +57,7 @@
 #include "shrpx_ssl.h"
 #include "shrpx_worker_config.h"
 #include "shrpx_worker.h"
+#include "shrpx_accept_handler.h"
 #include "util.h"
 #include "app_helper.h"
 #include "ssl.h"
@@ -82,13 +83,14 @@ const int GRACEFUL_SHUTDOWN_SIGNAL = SIGQUIT;
 // binary is listening to.
 #define ENV_PORT "NGHTTPX_PORT"
 
-namespace {
-void ssl_acceptcb(evconnlistener *listener, int fd, sockaddr *addr, int addrlen,
-                  void *arg) {
-  auto handler = static_cast<ListenHandler *>(arg);
-  handler->accept_connection(fd, addr, addrlen);
-}
-} // namespace
+// namespace {
+// void ssl_acceptcb(evconnlistener *listener, int fd, sockaddr *addr, int
+// addrlen,
+//                   void *arg) {
+//   auto handler = static_cast<ListenHandler *>(arg);
+//   handler->accept_connection(fd, addr, addrlen);
+// }
+// } // namespace
 
 namespace {
 bool is_ipv6_numeric_addr(const char *host) {
@@ -145,28 +147,8 @@ int resolve_hostname(sockaddr_union *addr, size_t *addrlen,
 } // namespace
 
 namespace {
-void evlistener_errorcb(evconnlistener *listener, void *ptr) {
-  LOG(ERROR) << "Accepting incoming connection failed";
-
-  auto listener_handler = static_cast<ListenHandler *>(ptr);
-
-  listener_handler->disable_evlistener_temporary(
-      &get_config()->listener_disable_timeout);
-}
-} // namespace
-
-namespace {
-evconnlistener *new_evlistener(ListenHandler *handler, int fd) {
-  auto evlistener = evconnlistener_new(
-      handler->get_evbase(), ssl_acceptcb, handler,
-      LEV_OPT_REUSEABLE | LEV_OPT_CLOSE_ON_FREE, get_config()->backlog, fd);
-  evconnlistener_set_error_cb(evlistener, evlistener_errorcb);
-  return evlistener;
-}
-} // namespace
-
-namespace {
-evconnlistener *create_evlistener(ListenHandler *handler, int family) {
+std::unique_ptr<AcceptHandler> create_acceptor(ListenHandler *handler,
+                                               int family) {
   {
     auto envfd =
         getenv(family == AF_INET ? ENV_LISTENER4_FD : ENV_LISTENER6_FD);
@@ -182,7 +164,7 @@ evconnlistener *create_evlistener(ListenHandler *handler, int family) {
       if (port == get_config()->port) {
         LOG(NOTICE) << "Listening on port " << get_config()->port;
 
-        return new_evlistener(handler, fd);
+        return util::make_unique<AcceptHandler>(fd, handler);
       }
 
       LOG(WARN) << "Port was changed between old binary (" << port
@@ -219,7 +201,8 @@ evconnlistener *create_evlistener(ListenHandler *handler, int family) {
     return nullptr;
   }
   for (rp = res; rp; rp = rp->ai_next) {
-    fd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+    fd =
+        socket(rp->ai_family, rp->ai_socktype | SOCK_NONBLOCK, rp->ai_protocol);
     if (fd == -1) {
       continue;
     }
@@ -229,7 +212,7 @@ evconnlistener *create_evlistener(ListenHandler *handler, int family) {
       close(fd);
       continue;
     }
-    evutil_make_socket_nonblocking(fd);
+
 #ifdef IPV6_V6ONLY
     if (family == AF_INET6) {
       if (setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &val,
@@ -239,7 +222,8 @@ evconnlistener *create_evlistener(ListenHandler *handler, int family) {
       }
     }
 #endif // IPV6_V6ONLY
-    if (bind(fd, rp->ai_addr, rp->ai_addrlen) == 0) {
+    if (bind(fd, rp->ai_addr, rp->ai_addrlen) == 0 &&
+        listen(fd, get_config()->backlog) == 0) {
       break;
     }
     close(fd);
@@ -270,7 +254,7 @@ evconnlistener *create_evlistener(ListenHandler *handler, int family) {
 
   LOG(NOTICE) << "Listening on " << host << ", port " << get_config()->port;
 
-  return new_evlistener(handler, fd);
+  return util::make_unique<AcceptHandler>(fd, handler);
 }
 } // namespace
 
@@ -317,8 +301,8 @@ void save_pid() {
 } // namespace
 
 namespace {
-void reopen_log_signal_cb(evutil_socket_t sig, short events, void *arg) {
-  auto listener_handler = static_cast<ListenHandler *>(arg);
+void reopen_log_signal_cb(struct ev_loop *loop, ev_signal *w, int revents) {
+  auto listener_handler = static_cast<ListenHandler *>(w->data);
 
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "Reopening log files: worker_info(" << worker_config << ")";
@@ -333,8 +317,8 @@ void reopen_log_signal_cb(evutil_socket_t sig, short events, void *arg) {
 } // namespace
 
 namespace {
-void exec_binary_signal_cb(evutil_socket_t sig, short events, void *arg) {
-  auto listener_handler = static_cast<ListenHandler *>(arg);
+void exec_binary_signal_cb(struct ev_loop *loop, ev_signal *w, int revents) {
+  auto listener_handler = static_cast<ListenHandler *>(w->data);
 
   LOG(NOTICE) << "Executing new binary";
 
@@ -373,17 +357,17 @@ void exec_binary_signal_cb(evutil_socket_t sig, short events, void *arg) {
   auto envp = util::make_unique<char *[]>(envlen + 3 + 1);
   size_t envidx = 0;
 
-  auto evlistener4 = listener_handler->get_evlistener4();
-  if (evlistener4) {
+  auto acceptor4 = listener_handler->get_acceptor4();
+  if (acceptor4) {
     std::string fd4 = ENV_LISTENER4_FD "=";
-    fd4 += util::utos(evconnlistener_get_fd(evlistener4));
+    fd4 += util::utos(acceptor4->get_fd());
     envp[envidx++] = strdup(fd4.c_str());
   }
 
-  auto evlistener6 = listener_handler->get_evlistener6();
-  if (evlistener6) {
+  auto acceptor6 = listener_handler->get_acceptor6();
+  if (acceptor6) {
     std::string fd6 = ENV_LISTENER6_FD "=";
-    fd6 += util::utos(evconnlistener_get_fd(evlistener6));
+    fd6 += util::utos(acceptor6->get_fd());
     envp[envidx++] = strdup(fd6.c_str());
   }
 
@@ -423,14 +407,15 @@ void exec_binary_signal_cb(evutil_socket_t sig, short events, void *arg) {
 } // namespace
 
 namespace {
-void graceful_shutdown_signal_cb(evutil_socket_t sig, short events, void *arg) {
-  auto listener_handler = static_cast<ListenHandler *>(arg);
+void graceful_shutdown_signal_cb(struct ev_loop *loop, ev_signal *w,
+                                 int revents) {
+  auto listener_handler = static_cast<ListenHandler *>(w->data);
 
   LOG(NOTICE) << "Graceful shutdown signal received";
 
   worker_config->graceful_shutdown = true;
 
-  listener_handler->disable_evlistener();
+  listener_handler->disable_acceptor();
 
   // After disabling accepting new connection, disptach incoming
   // connection in backlog.
@@ -438,6 +423,10 @@ void graceful_shutdown_signal_cb(evutil_socket_t sig, short events, void *arg) {
   listener_handler->accept_pending_connection();
 
   listener_handler->graceful_shutdown_worker();
+
+  // We have accepted all pending connections.  Shutdown main event
+  // loop.
+  ev_break(loop);
 }
 } // namespace
 
@@ -449,8 +438,8 @@ std::unique_ptr<std::string> generate_time() {
 } // namespace
 
 namespace {
-void refresh_cb(evutil_socket_t sig, short events, void *arg) {
-  auto listener_handler = static_cast<ListenHandler *>(arg);
+void refresh_cb(struct ev_loop *loop, ev_timer *w, int revents) {
+  auto listener_handler = static_cast<ListenHandler *>(w->data);
   auto worker_stat = listener_handler->get_worker_stat();
 
   mod_config()->cached_time = generate_time();
@@ -458,20 +447,14 @@ void refresh_cb(evutil_socket_t sig, short events, void *arg) {
   // wait for event notification to workers to finish.
   if (get_config()->num_worker == 1 && worker_config->graceful_shutdown &&
       (!worker_stat || worker_stat->num_connections == 0)) {
-    event_base_loopbreak(listener_handler->get_evbase());
+    ev_break(loop);
   }
 }
 } // namespace
 
 namespace {
 int event_loop() {
-  int rv;
-
-  auto evbase = event_base_new();
-  if (!evbase) {
-    LOG(FATAL) << "event_base_new() failed";
-    exit(EXIT_FAILURE);
-  }
+  auto loop = EV_DEFAULT;
   SSL_CTX *sv_ssl_ctx, *cl_ssl_ctx;
 
   if (get_config()->client_mode) {
@@ -487,7 +470,8 @@ int event_loop() {
                      : nullptr;
   }
 
-  auto listener_handler = new ListenHandler(evbase, sv_ssl_ctx, cl_ssl_ctx);
+  auto listener_handler =
+      util::make_unique<ListenHandler>(loop, sv_ssl_ctx, cl_ssl_ctx);
   if (get_config()->daemon) {
     if (daemon(0, 0) == -1) {
       auto error = errno;
@@ -503,22 +487,23 @@ int event_loop() {
     save_pid();
   }
 
-  auto evlistener6 = create_evlistener(listener_handler, AF_INET6);
-  auto evlistener4 = create_evlistener(listener_handler, AF_INET);
-  if (!evlistener6 && !evlistener4) {
+  auto acceptor6 = create_acceptor(listener_handler.get(), AF_INET6);
+  auto acceptor4 = create_acceptor(listener_handler.get(), AF_INET);
+  if (!acceptor6 && !acceptor4) {
     LOG(FATAL) << "Failed to listen on address " << get_config()->host.get()
                << ", port " << get_config()->port;
     exit(EXIT_FAILURE);
   }
 
-  listener_handler->set_evlistener4(evlistener4);
-  listener_handler->set_evlistener6(evlistener6);
+  listener_handler->set_acceptor4(std::move(acceptor4));
+  listener_handler->set_acceptor6(std::move(acceptor6));
 
   // ListenHandler loads private key, and we listen on a priveleged port.
   // After that, we drop the root privileges if needed.
   drop_privileges();
 
 #ifndef NOTHREADS
+  int rv;
   sigset_t signals;
   sigemptyset(&signals);
   sigaddset(&signals, REOPEN_LOG_SIGNAL);
@@ -545,83 +530,35 @@ int event_loop() {
   }
 #endif // !NOTHREADS
 
-  auto reopen_log_signal_event = evsignal_new(
-      evbase, REOPEN_LOG_SIGNAL, reopen_log_signal_cb, listener_handler);
+  ev_signal reopen_log_sig;
+  ev_signal_init(&reopen_log_sig, reopen_log_signal_cb, REOPEN_LOG_SIGNAL);
+  reopen_log_sig.data = listener_handler.get();
+  ev_signal_start(loop, &reopen_log_sig);
 
-  if (!reopen_log_signal_event) {
-    LOG(ERROR) << "evsignal_new failed";
-  } else {
-    rv = event_add(reopen_log_signal_event, nullptr);
-    if (rv < 0) {
-      LOG(ERROR) << "event_add for reopen_log_signal_event failed";
-    }
-  }
+  ev_signal exec_bin_sig;
+  ev_signal_init(&exec_bin_sig, exec_binary_signal_cb, EXEC_BINARY_SIGNAL);
+  exec_bin_sig.data = listener_handler.get();
+  ev_signal_start(loop, &exec_bin_sig);
 
-  auto exec_binary_signal_event = evsignal_new(
-      evbase, EXEC_BINARY_SIGNAL, exec_binary_signal_cb, listener_handler);
-  rv = event_add(exec_binary_signal_event, nullptr);
+  ev_signal graceful_shutdown_sig;
+  ev_signal_init(&graceful_shutdown_sig, graceful_shutdown_signal_cb,
+                 GRACEFUL_SHUTDOWN_SIGNAL);
+  graceful_shutdown_sig.data = listener_handler.get();
+  ev_signal_start(loop, &graceful_shutdown_sig);
 
-  if (rv == -1) {
-    LOG(FATAL) << "event_add for exec_binary_signal_event failed";
-
-    exit(EXIT_FAILURE);
-  }
-
-  auto graceful_shutdown_signal_event =
-      evsignal_new(evbase, GRACEFUL_SHUTDOWN_SIGNAL,
-                   graceful_shutdown_signal_cb, listener_handler);
-
-  rv = event_add(graceful_shutdown_signal_event, nullptr);
-
-  if (rv == -1) {
-    LOG(FATAL) << "event_add for graceful_shutdown_signal_event failed";
-
-    exit(EXIT_FAILURE);
-  }
-
-  auto refresh_event =
-      event_new(evbase, -1, EV_PERSIST, refresh_cb, listener_handler);
-
-  if (!refresh_event) {
-    LOG(ERROR) << "event_new failed";
-
-    exit(EXIT_FAILURE);
-  }
-
-  timeval refresh_timeout = {1, 0};
-  rv = event_add(refresh_event, &refresh_timeout);
-
-  if (rv == -1) {
-    LOG(ERROR) << "Adding refresh_event failed";
-
-    exit(EXIT_FAILURE);
-  }
+  ev_timer refresh_timer;
+  ev_timer_init(&refresh_timer, refresh_cb, 0., 1.);
+  refresh_timer.data = listener_handler.get();
+  ev_timer_again(loop, &refresh_timer);
 
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "Entering event loop";
   }
-  event_base_loop(evbase, 0);
+
+  ev_run(loop, 0);
 
   listener_handler->join_worker();
 
-  if (refresh_event) {
-    event_free(refresh_event);
-  }
-  if (graceful_shutdown_signal_event) {
-    event_free(graceful_shutdown_signal_event);
-  }
-  if (exec_binary_signal_event) {
-    event_free(exec_binary_signal_event);
-  }
-  if (reopen_log_signal_event) {
-    event_free(reopen_log_signal_event);
-  }
-  if (evlistener4) {
-    evconnlistener_free(evlistener4);
-  }
-  if (evlistener6) {
-    evconnlistener_free(evlistener6);
-  }
   return 0;
 }
 } // namespace
@@ -673,26 +610,26 @@ void fill_default_config() {
   mod_config()->cert_file = nullptr;
 
   // Read timeout for HTTP2 upstream connection
-  mod_config()->http2_upstream_read_timeout = {180, 0};
+  mod_config()->http2_upstream_read_timeout = 180.;
 
   // Read timeout for non-HTTP2 upstream connection
-  mod_config()->upstream_read_timeout = {180, 0};
+  mod_config()->upstream_read_timeout = 180.;
 
   // Write timeout for HTTP2/non-HTTP2 upstream connection
-  mod_config()->upstream_write_timeout = {30, 0};
+  mod_config()->upstream_write_timeout = 30.;
 
   // Read/Write timeouts for downstream connection
-  mod_config()->downstream_read_timeout = {180, 0};
-  mod_config()->downstream_write_timeout = {30, 0};
+  mod_config()->downstream_read_timeout = 180.;
+  mod_config()->downstream_write_timeout = 30.;
 
   // Read timeout for HTTP/2 stream
-  mod_config()->stream_read_timeout = {0, 0};
+  mod_config()->stream_read_timeout = 0.;
 
   // Write timeout for HTTP/2 stream
-  mod_config()->stream_write_timeout = {0, 0};
+  mod_config()->stream_write_timeout = 0.;
 
   // Timeout for pooled (idle) connections
-  mod_config()->downstream_idle_read_timeout = {600, 0};
+  mod_config()->downstream_idle_read_timeout = 600.;
 
   // window bits for HTTP/2 and SPDY upstream/downstream connection
   // per stream. 2**16-1 = 64KiB-1, which is HTTP/2 default. Please
@@ -726,7 +663,7 @@ void fill_default_config() {
   mod_config()->conf_path = strcopy("/etc/nghttpx/nghttpx.conf");
   mod_config()->syslog_facility = LOG_DAEMON;
   // Default accept() backlog
-  mod_config()->backlog = -1;
+  mod_config()->backlog = SOMAXCONN;
   mod_config()->ciphers = nullptr;
   mod_config()->http2_proxy = false;
   mod_config()->http2_bridge = false;
@@ -746,16 +683,14 @@ void fill_default_config() {
   mod_config()->downstream_http_proxy_host = nullptr;
   mod_config()->downstream_http_proxy_port = 0;
   mod_config()->downstream_http_proxy_addrlen = 0;
-  mod_config()->rate_limit_cfg = nullptr;
   mod_config()->read_rate = 0;
-  mod_config()->read_burst = 1 << 30;
+  mod_config()->read_burst = 0;
   mod_config()->write_rate = 0;
   mod_config()->write_burst = 0;
   mod_config()->worker_read_rate = 0;
   mod_config()->worker_read_burst = 0;
   mod_config()->worker_write_rate = 0;
   mod_config()->worker_write_burst = 0;
-  mod_config()->worker_rate_limit_cfg = nullptr;
   mod_config()->verify_client = false;
   mod_config()->verify_client_cacert = nullptr;
   mod_config()->client_private_key_file = nullptr;
@@ -777,19 +712,20 @@ void fill_default_config() {
   mod_config()->argc = 0;
   mod_config()->argv = nullptr;
   mod_config()->downstream_connections_per_host = 8;
-  mod_config()->listener_disable_timeout = {0, 0};
+  mod_config()->downstream_connections_per_frontend = 0;
+  mod_config()->listener_disable_timeout = 0.;
 }
 } // namespace
 
-namespace {
-size_t get_rate_limit(size_t rate_limit) {
-  if (rate_limit == 0) {
-    return EV_RATE_LIMIT_MAX;
-  } else {
-    return rate_limit;
-  }
-}
-} // namespace
+// namespace {
+// size_t get_rate_limit(size_t rate_limit) {
+//   if (rate_limit == 0) {
+//     return EV_RATE_LIMIT_MAX;
+//   } else {
+//     return rate_limit;
+//   }
+// }
+// } // namespace
 
 namespace {
 void print_version(std::ostream &out) {
@@ -864,10 +800,8 @@ Performance:
                      Default: )" << get_config()->read_rate << R"(
   --read-burst=<SIZE>
                      Set   maximum  read   burst   size  on   frontend
-                     connection.  Setting  0 does not work,  but it is
-                     not  a problem  because  --read-rate=0 will  give
-                     unlimited  read rate  regardless  of this  option
-                     value.
+                     connection.  Setting 0 to  this option means read
+                     burst size is unlimited.
                      Default: )" << get_config()->read_burst << R"(
   --write-rate=<RATE>
                      Set  maximum  average   write  rate  on  frontend
@@ -882,22 +816,26 @@ Performance:
   --worker-read-rate=<RATE>
                      Set  maximum   average  read  rate   on  frontend
                      connection per worker.  Setting  0 to this option
-                     means read rate is unlimited.
+                     means  read rate  is unlimited.   Not implemented
+                     yet.
                      Default: )" << get_config()->worker_read_rate << R"(
   --worker-read-burst=<SIZE>
                      Set   maximum  read   burst   size  on   frontend
                      connection per worker.  Setting  0 to this option
-                     means read burst size is unlimited.
+                     means   read  burst   size  is   unlimited.   Not
+                     implemented yet.
                      Default: )" << get_config()->worker_read_burst << R"(
   --worker-write-rate=<RATE>
                      Set  maximum  average   write  rate  on  frontend
                      connection per worker.  Setting  0 to this option
-                     means write rate is unlimited.
+                     means write  rate is unlimited.   Not implemented
+                     yet.
                      Default: )" << get_config()->worker_write_rate << R"(
   --worker-write-burst=<SIZE>
                      Set   maximum  write   burst  size   on  frontend
                      connection per worker.  Setting  0 to this option
-                     means write burst size is unlimited.
+                     means  write   burst  size  is   unlimited.   Not
+                     implemented yet.
                      Default: )" << get_config()->worker_write_burst << R"(
   --worker-frontend-connections=<NUM>
                      Set  maximum number  of simultaneous  connections
@@ -906,55 +844,61 @@ Performance:
   --backend-http1-connections-per-host=<NUM>
                      Set maximum  number of backend  concurrent HTTP/1
                      connections per host.   This option is meaningful
-                     when -s option is used.
+                     when -s option  is used.  To limit  the number of
+                     connections  per frontend  for default  mode, use
+                     --backend-http1-connections-per-frontend.
                      Default: )"
       << get_config()->downstream_connections_per_host << R"(
+  --backend-http1-connections-per-frontend=<NUM>
+                     Set maximum  number of backend  concurrent HTTP/1
+                     connections  per frontend.   This option  is only
+                     used for  default mode.   0 means  unlimited.  To
+                     limit  the number  of  connections  per host  for
+                     HTTP/2  or  SPDY  proxy  mode  (-s  option),  use
+                     --backend-http1-connections-per-host.
+                     Default: )"
+      << get_config()->downstream_connections_per_frontend << R"(
 
 Timeout:
   --frontend-http2-read-timeout=<SEC>
                      Specify read timeout for HTTP/2 and SPDY frontend
                      connection.
-                     Default: )"
-      << get_config()->http2_upstream_read_timeout.tv_sec << R"(
+                     Default: )" << get_config()->http2_upstream_read_timeout
+      << R"(
   --frontend-read-timeout=<SEC>
                      Specify  read   timeout  for   HTTP/1.1  frontend
                      connection.
-                     Default: )" << get_config()->upstream_read_timeout.tv_sec
-      << R"(
+                     Default: )" << get_config()->upstream_read_timeout << R"(
   --frontend-write-timeout=<SEC>
                      Specify   write   timeout    for   all   frontend
                      connections.
-                     Default: )" << get_config()->upstream_write_timeout.tv_sec
-      << R"(
+                     Default: )" << get_config()->upstream_write_timeout << R"(
   --stream-read-timeout=<SEC>
                      Specify read timeout for HTTP/2 and SPDY streams.
                      0 means no timeout.
-                     Default: )" << get_config()->stream_read_timeout.tv_sec
-      << R"(
+                     Default: )" << get_config()->stream_read_timeout << R"(
   --stream-write-timeout=<SEC>
                      Specify  write   timeout  for  HTTP/2   and  SPDY
                      streams.  0 means no timeout.
-                     Default: )" << get_config()->stream_write_timeout.tv_sec
-      << R"(
+                     Default: )" << get_config()->stream_write_timeout << R"(
   --backend-read-timeout=<SEC>
                      Specify read timeout for backend connection.
-                     Default: )" << get_config()->downstream_read_timeout.tv_sec
-      << R"(
+                     Default: )" << get_config()->downstream_read_timeout << R"(
   --backend-write-timeout=<SEC>
                      Specify write timeout for backend connection.
-                     Default: )"
-      << get_config()->downstream_write_timeout.tv_sec << R"(
+                     Default: )" << get_config()->downstream_write_timeout
+      << R"(
   --backend-keep-alive-timeout=<SEC>
                      Specify    keep-alive    timeout   for    backend
                      connection.
-                     Default: )"
-      << get_config()->downstream_idle_read_timeout.tv_sec << R"(
+                     Default: )" << get_config()->downstream_idle_read_timeout
+      << R"(
   --listener-disable-timeout=<SEC>
                      After  accepting  connection  failed,  connection
                      listener is disabled for a given time in seconds.
                      Specifying 0 disables this feature.
-                     Default: )"
-      << get_config()->listener_disable_timeout.tv_sec << R"(
+                     Default: )" << get_config()->listener_disable_timeout
+      << R"(
 
 SSL/TLS:
   --ciphers=<SUITE>  Set  allowed  cipher  list.  The  format  of  the
@@ -1283,6 +1227,8 @@ int main(int argc, char **argv) {
         {"listener-disable-timeout", required_argument, &flag, 64},
         {"strip-incoming-x-forwarded-for", no_argument, &flag, 65},
         {"accesslog-format", required_argument, &flag, 66},
+        {"backend-http1-connections-per-frontend", required_argument, &flag,
+         67},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -1587,6 +1533,11 @@ int main(int argc, char **argv) {
         // --accesslog-format
         cmdcfgs.emplace_back(SHRPX_OPT_ACCESSLOG_FORMAT, optarg);
         break;
+      case 67:
+        // --backend-http1-connections-per-frontend
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP1_CONNECTIONS_PER_FRONTEND,
+                             optarg);
+        break;
       default:
         break;
       }
@@ -1829,17 +1780,17 @@ int main(int argc, char **argv) {
     }
   }
 
-  mod_config()->rate_limit_cfg = ev_token_bucket_cfg_new(
-      get_rate_limit(get_config()->read_rate),
-      get_rate_limit(get_config()->read_burst),
-      get_rate_limit(get_config()->write_rate),
-      get_rate_limit(get_config()->write_burst), nullptr);
+  // mod_config()->rate_limit_cfg = ev_token_bucket_cfg_new(
+  //     get_rate_limit(get_config()->read_rate),
+  //     get_rate_limit(get_config()->read_burst),
+  //     get_rate_limit(get_config()->write_rate),
+  //     get_rate_limit(get_config()->write_burst), nullptr);
 
-  mod_config()->worker_rate_limit_cfg = ev_token_bucket_cfg_new(
-      get_rate_limit(get_config()->worker_read_rate),
-      get_rate_limit(get_config()->worker_read_burst),
-      get_rate_limit(get_config()->worker_write_rate),
-      get_rate_limit(get_config()->worker_write_burst), nullptr);
+  // mod_config()->worker_rate_limit_cfg = ev_token_bucket_cfg_new(
+  //     get_rate_limit(get_config()->worker_read_rate),
+  //     get_rate_limit(get_config()->worker_read_burst),
+  //     get_rate_limit(get_config()->worker_write_rate),
+  //     get_rate_limit(get_config()->worker_write_burst), nullptr);
 
   if (get_config()->upstream_frame_debug) {
     // To make it sync to logging

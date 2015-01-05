@@ -134,6 +134,8 @@ const char SHRPX_OPT_WORKER_FRONTEND_CONNECTIONS[] =
 const char SHRPX_OPT_NO_LOCATION_REWRITE[] = "no-location-rewrite";
 const char SHRPX_OPT_BACKEND_HTTP1_CONNECTIONS_PER_HOST[] =
     "backend-http1-connections-per-host";
+const char SHRPX_OPT_BACKEND_HTTP1_CONNECTIONS_PER_FRONTEND[] =
+    "backend-http1-connections-per-frontend";
 const char SHRPX_OPT_LISTENER_DISABLE_TIMEOUT[] = "listener-disable-timeout";
 
 namespace {
@@ -198,7 +200,7 @@ FILE *open_file_for_write(const char *filename) {
     return nullptr;
   }
 
-  evutil_make_socket_closeonexec(fileno(f));
+  util::make_socket_closeonexec(fileno(f));
 
   return f;
 }
@@ -421,15 +423,14 @@ std::vector<LogFragment> parse_log_format(const char *optarg) {
 }
 
 namespace {
-int parse_timeval(timeval *dest, const char *opt, const char *optarg) {
+int parse_timeval(ev_tstamp *dest, const char *opt, const char *optarg) {
   time_t sec;
 
   if (parse_uint(&sec, opt, optarg) != 0) {
     return -1;
   }
 
-  dest->tv_sec = sec;
-  dest->tv_usec = 0;
+  *dest = sec;
 
   return 0;
 }
@@ -856,18 +857,22 @@ int parse_config(const char *opt, const char *optarg) {
   }
 
   if (util::strieq(opt, SHRPX_OPT_WORKER_READ_RATE)) {
+    LOG(WARN) << opt << ": not implemented yet";
     return parse_uint(&mod_config()->worker_read_rate, opt, optarg);
   }
 
   if (util::strieq(opt, SHRPX_OPT_WORKER_READ_BURST)) {
+    LOG(WARN) << opt << ": not implemented yet";
     return parse_uint(&mod_config()->worker_read_burst, opt, optarg);
   }
 
   if (util::strieq(opt, SHRPX_OPT_WORKER_WRITE_RATE)) {
+    LOG(WARN) << opt << ": not implemented yet";
     return parse_uint(&mod_config()->worker_write_rate, opt, optarg);
   }
 
   if (util::strieq(opt, SHRPX_OPT_WORKER_WRITE_BURST)) {
+    LOG(WARN) << opt << ": not implemented yet";
     return parse_uint(&mod_config()->worker_write_burst, opt, optarg);
   }
 
@@ -1023,6 +1028,24 @@ int parse_config(const char *opt, const char *optarg) {
     }
 
     mod_config()->downstream_connections_per_host = n;
+
+    return 0;
+  }
+
+  if (util::strieq(opt, SHRPX_OPT_BACKEND_HTTP1_CONNECTIONS_PER_FRONTEND)) {
+    int n;
+
+    if (parse_uint(&n, opt, optarg) != 0) {
+      return -1;
+    }
+
+    if (n < 0) {
+      LOG(ERROR) << opt << ": specify the integer more than or equal to 0";
+
+      return -1;
+    }
+
+    mod_config()->downstream_connections_per_frontend = n;
 
     return 0;
   }

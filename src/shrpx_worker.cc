@@ -25,96 +25,135 @@
 #include "shrpx_worker.h"
 
 #include <unistd.h>
-#include <sys/socket.h>
 
 #include <memory>
 
-#include <event.h>
-#include <event2/bufferevent.h>
-
 #include "shrpx_ssl.h"
-#include "shrpx_thread_event_receiver.h"
 #include "shrpx_log.h"
+#include "shrpx_client_handler.h"
 #include "shrpx_http2_session.h"
 #include "shrpx_worker_config.h"
 #include "shrpx_connect_blocker.h"
 #include "util.h"
-#include "libevent_util.h"
 
 using namespace nghttp2;
 
 namespace shrpx {
 
-Worker::Worker(const WorkerInfo *info)
-    : sv_ssl_ctx_(info->sv_ssl_ctx), cl_ssl_ctx_(info->cl_ssl_ctx),
-      fd_(info->sv[1]) {}
+namespace {
+void eventcb(struct ev_loop *loop, ev_async *w, int revents) {
+  auto worker = static_cast<Worker *>(w->data);
+  worker->process_events();
+}
+} // namespace
+
+Worker::Worker(SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx)
+    : loop_(ev_loop_new(0)), sv_ssl_ctx_(sv_ssl_ctx), cl_ssl_ctx_(cl_ssl_ctx),
+      worker_stat_(util::make_unique<WorkerStat>()) {
+  ev_async_init(&w_, eventcb);
+  w_.data = this;
+  ev_async_start(loop_, &w_);
+
+  if (get_config()->downstream_proto == PROTO_HTTP2) {
+    http2session_ = util::make_unique<Http2Session>(loop_, cl_ssl_ctx_);
+  } else {
+    http1_connect_blocker_ = util::make_unique<ConnectBlocker>(loop_);
+  }
+}
 
 Worker::~Worker() {
-  shutdown(fd_, SHUT_WR);
-  close(fd_);
+  ev_async_stop(loop_, &w_);
 }
-
-namespace {
-void readcb(bufferevent *bev, void *arg) {
-  auto receiver = static_cast<ThreadEventReceiver *>(arg);
-  receiver->on_read(bev);
-}
-} // namespace
-
-namespace {
-void eventcb(bufferevent *bev, short events, void *arg) {
-  if (events & BEV_EVENT_EOF) {
-    LOG(ERROR) << "Connection to main thread lost: eof";
-  }
-  if (events & BEV_EVENT_ERROR) {
-    LOG(ERROR) << "Connection to main thread lost: network error";
-  }
-}
-} // namespace
 
 void Worker::run() {
-  (void)reopen_log_files();
-
-  auto evbase = std::unique_ptr<event_base, decltype(&event_base_free)>(
-      event_base_new(), event_base_free);
-  if (!evbase) {
-    LOG(ERROR) << "event_base_new() failed";
-    return;
-  }
-  auto bev = std::unique_ptr<bufferevent, decltype(&bufferevent_free)>(
-      bufferevent_socket_new(evbase.get(), fd_, BEV_OPT_DEFER_CALLBACKS),
-      bufferevent_free);
-  if (!bev) {
-    LOG(ERROR) << "bufferevent_socket_new() failed";
-    return;
-  }
-  std::unique_ptr<Http2Session> http2session;
-  std::unique_ptr<ConnectBlocker> http1_connect_blocker;
-  if (get_config()->downstream_proto == PROTO_HTTP2) {
-    http2session = util::make_unique<Http2Session>(evbase.get(), cl_ssl_ctx_);
-    if (http2session->init_notification() == -1) {
-      DIE();
-    }
-  } else {
-    http1_connect_blocker = util::make_unique<ConnectBlocker>();
-    if (http1_connect_blocker->init(evbase.get()) == -1) {
-      DIE();
-    }
-  }
-
-  auto receiver = util::make_unique<ThreadEventReceiver>(
-      evbase.get(), sv_ssl_ctx_, http2session.get(),
-      http1_connect_blocker.get());
-
-  util::bev_enable_unless(bev.get(), EV_READ);
-  bufferevent_setcb(bev.get(), readcb, nullptr, eventcb, receiver.get());
-
-  event_base_loop(evbase.get(), 0);
+  fut_ = std::async(std::launch::async, [this] { this->run_loop(); });
 }
 
-void start_threaded_worker(WorkerInfo *info) {
-  Worker worker(info);
-  worker.run();
+void Worker::run_loop() {
+  (void)reopen_log_files();
+  ev_run(loop_);
+}
+
+void Worker::wait() { fut_.get(); }
+
+void Worker::send(const WorkerEvent &event) {
+  {
+    std::lock_guard<std::mutex> g(m_);
+
+    q_.push_back(event);
+  }
+
+  ev_async_send(loop_, &w_);
+}
+
+void Worker::process_events() {
+  std::deque<WorkerEvent> q;
+  {
+    std::lock_guard<std::mutex> g(m_);
+    q.swap(q_);
+  }
+  for (auto &wev : q) {
+    if (wev.type == REOPEN_LOG) {
+      if (LOG_ENABLED(INFO)) {
+        LOG(INFO) << "Reopening log files: worker_info(" << worker_config
+                  << ")";
+      }
+
+      reopen_log_files();
+
+      continue;
+    }
+
+    if (wev.type == GRACEFUL_SHUTDOWN) {
+      LOG(NOTICE) << "Graceful shutdown commencing";
+
+      worker_config->graceful_shutdown = true;
+
+      if (worker_stat_->num_connections == 0) {
+        ev_break(loop_);
+
+        break;
+      }
+
+      continue;
+    }
+
+    if (LOG_ENABLED(INFO)) {
+      WLOG(INFO, this) << "WorkerEvent: client_fd=" << wev.client_fd
+                       << ", addrlen=" << wev.client_addrlen;
+    }
+
+    if (worker_stat_->num_connections >=
+        get_config()->worker_frontend_connections) {
+
+      if (LOG_ENABLED(INFO)) {
+        WLOG(INFO, this) << "Too many connections >= "
+                         << get_config()->worker_frontend_connections;
+      }
+
+      close(wev.client_fd);
+
+      continue;
+    }
+
+    auto client_handler = ssl::accept_connection(
+        loop_, sv_ssl_ctx_, wev.client_fd, &wev.client_addr.sa,
+        wev.client_addrlen, worker_stat_.get(), &dconn_pool_);
+    if (!client_handler) {
+      if (LOG_ENABLED(INFO)) {
+        WLOG(ERROR, this) << "ClientHandler creation failed";
+      }
+      close(wev.client_fd);
+      continue;
+    }
+
+    client_handler->set_http2_session(http2session_.get());
+    client_handler->set_http1_connect_blocker(http1_connect_blocker_.get());
+
+    if (LOG_ENABLED(INFO)) {
+      WLOG(INFO, this) << "CLIENT_HANDLER:" << client_handler << " created ";
+    }
+  }
 }
 
 } // namespace shrpx
