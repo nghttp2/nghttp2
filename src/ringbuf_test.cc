@@ -26,6 +26,7 @@
 
 #include <cstring>
 #include <iostream>
+#include <tuple>
 
 #include <CUnit/CUnit.h>
 
