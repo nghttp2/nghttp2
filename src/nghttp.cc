@@ -1758,6 +1758,7 @@ void check_response_header(nghttp2_session *session, Request *req) {
     req->expect_final_response = true;
     req->status = 0;
     req->res_nva.clear();
+    http2::init_hdidx(req->res_hdidx);
     return;
   }
 
