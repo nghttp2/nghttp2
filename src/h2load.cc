@@ -470,7 +470,7 @@ int Client::on_read(const uint8_t *data, size_t len) {
   if (rv != 0) {
     return -1;
   }
-  worker->stats.bytes_total += rv;
+  worker->stats.bytes_total += len;
   signal_write();
   return 0;
 }
