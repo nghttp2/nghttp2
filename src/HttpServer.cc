@@ -65,18 +65,6 @@ const std::string NGHTTPD_SERVER = "nghttpd nghttp2/" NGHTTP2_VERSION;
 } // namespace
 
 namespace {
-int make_socket_nonblocking(int fd) {
-  int flags;
-  int rv;
-  while ((flags = fcntl(fd, F_GETFL, 0)) == -1 && errno == EINTR)
-    ;
-  while ((rv = fcntl(fd, F_SETFL, flags | O_NONBLOCK)) == -1 && errno == EINTR)
-    ;
-  return rv;
-}
-} // namespace
-
-namespace {
 void delete_handler(Http2Handler *handler) {
   handler->remove_self();
   delete handler;
@@ -235,9 +223,7 @@ public:
   }
   const nghttp2_session_callbacks *get_callbacks() const { return callbacks_; }
   void accept_connection(int fd) {
-    int val = 1;
-    (void)setsockopt(fd, IPPROTO_TCP, TCP_NODELAY,
-                     reinterpret_cast<char *>(&val), sizeof(val));
+    util::make_socket_nodelay(fd);
     SSL *ssl = nullptr;
     if (ssl_ctx_) {
       ssl = ssl_session_new(fd);
@@ -1397,14 +1383,20 @@ public:
   }
   void accept_connection() {
     for (;;) {
+#ifdef HAVE_ACCEPT4
+      auto fd = accept4(fd_, nullptr, nullptr, SOCK_NONBLOCK);
+#else  // !HAVE_ACCEPT4
       auto fd = accept(fd_, nullptr, nullptr);
+#endif // !HAVE_ACCEPT4
       if (fd == -1) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
           break;
         }
         continue;
       }
-      make_socket_nonblocking(fd);
+#ifndef HAVE_ACCEPT4
+      util::make_socket_nonblocking(fd);
+#endif // !HAVE_ACCEPT4
       acceptor_->accept_connection(fd);
     }
   }
@@ -1478,7 +1470,7 @@ int start_listen(struct ev_loop *loop, Sessions *sessions,
       close(fd);
       continue;
     }
-    make_socket_nonblocking(fd);
+    util::make_socket_nonblocking(fd);
 #ifdef IPV6_V6ONLY
     if (rp->ai_family == AF_INET6) {
       if (setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &val,

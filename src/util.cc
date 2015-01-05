@@ -839,6 +839,16 @@ int make_socket_closeonexec(int fd) {
   return rv;
 }
 
+int make_socket_nonblocking(int fd) {
+  int flags;
+  int rv;
+  while ((flags = fcntl(fd, F_GETFL, 0)) == -1 && errno == EINTR)
+    ;
+  while ((rv = fcntl(fd, F_SETFL, flags | O_NONBLOCK)) == -1 && errno == EINTR)
+    ;
+  return rv;
+}
+
 int make_socket_nodelay(int fd) {
   int val = 1;
   if (setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<char *>(&val),

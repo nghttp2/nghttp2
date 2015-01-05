@@ -520,6 +520,7 @@ if test "x$cross_compiling" != "xyes"; then
 fi
 AC_CHECK_FUNCS([ \
   _Exit \
+  accept4 \
   getpwnam \
   memmove \
   memset \
