@@ -939,9 +939,7 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
       if (rv != 0) {
         return 0;
       }
-    }
-
-    if (frame->headers.cat == NGHTTP2_HCAT_HEADERS) {
+    } else if (frame->headers.cat == NGHTTP2_HCAT_HEADERS) {
       if (downstream->get_expect_final_response()) {
         rv = on_response_headers(http2session, downstream, session, frame);
 
