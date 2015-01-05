@@ -57,8 +57,12 @@ void AcceptHandler::accept_connection() {
     sockaddr_union sockaddr;
     socklen_t addrlen = sizeof(sockaddr);
 
+#ifdef HAVE_ACCEPT4
     auto cfd =
         accept4(fd_, &sockaddr.sa, &addrlen, SOCK_NONBLOCK | SOCK_CLOEXEC);
+#else  // !HAVE_ACCEPT4
+    auto cfd = accept(fd_, &sockaddr.sa, &addrlen);
+#endif // !HAVE_ACCEPT4
 
     if (cfd == -1) {
       switch (errno) {
@@ -78,6 +82,11 @@ void AcceptHandler::accept_connection() {
 
       return;
     }
+
+#ifndef HAVE_ACCEPT4
+    util::make_socket_nonblocking(cfd);
+    util::make_socket_closeonexec(cfd);
+#endif // !HAVE_ACCEPT4
 
     util::make_socket_nodelay(cfd);
 
