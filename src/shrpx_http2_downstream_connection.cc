@@ -105,8 +105,7 @@ int Http2DownstreamConnection::attach_downstream(Downstream *downstream) {
   }
 
   downstream_ = downstream;
-
-  downstream_->init_downstream_timer();
+  downstream_->reset_downstream_rtimer();
 
   return 0;
 }

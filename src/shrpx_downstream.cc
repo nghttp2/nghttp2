@@ -824,120 +824,116 @@ bool Downstream::response_pseudo_header_allowed(int token) const {
   return http2::check_http2_response_pseudo_header(response_hdidx_, token);
 }
 
-void Downstream::init_upstream_timer() {
-  // auto evbase = upstream_->get_client_handler()->get_evbase();
+namespace {
+void reset_timer(struct ev_loop *loop, ev_timer *w) { ev_timer_again(loop, w); }
+} // namespace
 
-  // if (get_config()->stream_read_timeout.tv_sec > 0) {
-  //   upstream_rtimerev_ = init_timer(evbase, upstream_rtimeoutcb, this);
-  // }
-
-  // if (get_config()->stream_write_timeout.tv_sec > 0) {
-  //   upstream_wtimerev_ = init_timer(evbase, upstream_wtimeoutcb, this);
-  // }
+namespace {
+void try_reset_timer(struct ev_loop *loop, ev_timer *w) {
+  if (!ev_is_active(w)) {
+    return;
+  }
+  ev_timer_again(loop, w);
 }
+} // namespace
 
-// namespace {
-// void reset_timer(event *timer, const timeval *timeout) {
-//   if (!timer) {
-//     return;
-//   }
+namespace {
+void ensure_timer(struct ev_loop *loop, ev_timer *w) {
+  if (ev_is_active(w)) {
+    return;
+  }
+  ev_timer_again(loop, w);
+}
+} // namespace
 
-//   event_add(timer, timeout);
-// }
-// } // namespace
-
-// namespace {
-// void try_reset_timer(event *timer, const timeval *timeout) {
-// if (!timer) {
-//   return;
-// }
-
-// if (!evtimer_pending(timer, nullptr)) {
-//   return;
-// }
-
-// event_add(timer, timeout);
-// }
-// } // namespace
-
-// namespace {
-// void ensure_timer(event *timer, const timeval *timeout) {
-// if (!timer) {
-//   return;
-// }
-
-// if (evtimer_pending(timer, nullptr)) {
-//   return;
-// }
-
-// event_add(timer, timeout);
-// }
-// } // namespace
-
-// namespace {
-// void disable_timer(event *timer) {
-// if (!timer) {
-//   return;
-// }
-
-// event_del(timer);
-// }
-// } // namespace
+namespace {
+void disable_timer(struct ev_loop *loop, ev_timer *w) {
+  ev_timer_stop(loop, w);
+}
+} // namespace
 
 void Downstream::reset_upstream_rtimer() {
-  // reset_timer(upstream_rtimerev_, &get_config()->stream_read_timeout);
-  // try_reset_timer(upstream_wtimerev_, &get_config()->stream_write_timeout);
+  if (get_config()->stream_read_timeout == 0.) {
+    return;
+  }
+  auto loop = upstream_->get_client_handler()->get_loop();
+  reset_timer(loop, &upstream_rtimer_);
 }
 
 void Downstream::reset_upstream_wtimer() {
-  // reset_timer(upstream_wtimerev_, &get_config()->stream_write_timeout);
-  // try_reset_timer(upstream_rtimerev_, &get_config()->stream_read_timeout);
+  auto loop = upstream_->get_client_handler()->get_loop();
+  if (get_config()->stream_write_timeout != 0.) {
+    reset_timer(loop, &upstream_wtimer_);
+  }
+  if (get_config()->stream_read_timeout != 0.) {
+    try_reset_timer(loop, &upstream_rtimer_);
+  }
 }
 
 void Downstream::ensure_upstream_wtimer() {
-  // ensure_timer(upstream_wtimerev_, &get_config()->stream_write_timeout);
+  if (get_config()->stream_write_timeout == 0.) {
+    return;
+  }
+  auto loop = upstream_->get_client_handler()->get_loop();
+  ensure_timer(loop, &upstream_wtimer_);
 }
 
 void Downstream::disable_upstream_rtimer() {
-  // disable_timer(upstream_rtimerev_);
+  if (get_config()->stream_read_timeout == 0.) {
+    return;
+  }
+  auto loop = upstream_->get_client_handler()->get_loop();
+  disable_timer(loop, &upstream_rtimer_);
 }
 
 void Downstream::disable_upstream_wtimer() {
-  // disable_timer(upstream_wtimerev_);
-}
-
-void Downstream::init_downstream_timer() {
-  // auto evbase = upstream_->get_client_handler()->get_evbase();
-
-  // if (get_config()->stream_read_timeout.tv_sec > 0) {
-  //   downstream_rtimerev_ = init_timer(evbase, downstream_rtimeoutcb, this);
-  // }
-
-  // if (get_config()->stream_write_timeout.tv_sec > 0) {
-  //   downstream_wtimerev_ = init_timer(evbase, downstream_wtimeoutcb, this);
-  // }
+  if (get_config()->stream_write_timeout == 0.) {
+    return;
+  }
+  auto loop = upstream_->get_client_handler()->get_loop();
+  disable_timer(loop, &upstream_wtimer_);
 }
 
 void Downstream::reset_downstream_rtimer() {
-  // reset_timer(downstream_rtimerev_, &get_config()->stream_read_timeout);
-  // try_reset_timer(downstream_wtimerev_, &get_config()->stream_write_timeout);
+  if (get_config()->stream_read_timeout == 0.) {
+    return;
+  }
+  auto loop = upstream_->get_client_handler()->get_loop();
+  reset_timer(loop, &downstream_rtimer_);
 }
 
 void Downstream::reset_downstream_wtimer() {
-  // reset_timer(downstream_wtimerev_, &get_config()->stream_write_timeout);
-  // try_reset_timer(downstream_rtimerev_, &get_config()->stream_read_timeout);
+  auto loop = upstream_->get_client_handler()->get_loop();
+  if (get_config()->stream_write_timeout != 0.) {
+    reset_timer(loop, &downstream_wtimer_);
+  }
+  if (get_config()->stream_read_timeout != 0.) {
+    try_reset_timer(loop, &downstream_rtimer_);
+  }
 }
 
 void Downstream::ensure_downstream_wtimer() {
-  // ensure_timer(downstream_wtimerev_, &get_config()->stream_write_timeout);
+  if (get_config()->stream_write_timeout == 0.) {
+    return;
+  }
+  auto loop = upstream_->get_client_handler()->get_loop();
+  ensure_timer(loop, &downstream_wtimer_);
 }
 
 void Downstream::disable_downstream_rtimer() {
-  // disable_timer(downstream_rtimerev_);
+  if (get_config()->stream_read_timeout == 0.) {
+    return;
+  }
+  auto loop = upstream_->get_client_handler()->get_loop();
+  disable_timer(loop, &downstream_rtimer_);
 }
 
 void Downstream::disable_downstream_wtimer() {
-  // disable_timer(downstream_wtimerev_);
+  if (get_config()->stream_write_timeout == 0.) {
+    return;
+  }
+  auto loop = upstream_->get_client_handler()->get_loop();
+  disable_timer(loop, &downstream_wtimer_);
 }
 
 bool Downstream::accesslog_ready() const { return response_http_status_ > 0; }

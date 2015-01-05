@@ -246,18 +246,15 @@ public:
   bool get_rst_stream_after_end_stream() const;
   void set_rst_stream_after_end_stream(bool f);
 
-  // Initializes upstream timers, but they are not pending.
-  void init_upstream_timer();
-  // Makes upstream read timer pending.  If it is already pending,
-  // timeout value is reset.  This function also resets write timer if
-  // it is already pending.
+  // Resets upstream read timer.  If it is active, timeout value is
+  // reset.  If it is not active, timer will be started.
   void reset_upstream_rtimer();
-  // Makes upstream write timer pending.  If it is already pending,
-  // timeout value is reset.  This function also resets read timer if
-  // it is already pending.
+  // Resets upstream write timer. If it is active, timeout value is
+  // reset.  If it is not active, timer will be started.  This
+  // function also resets read timer if it has been started.
   void reset_upstream_wtimer();
-  // Makes upstream write timer pending.  If it is already pending, do
-  // nothing.
+  // Makes sure that upstream write timer is started.  If it has been
+  // started, do nothing.  Otherwise, write timer will be started.
   void ensure_upstream_wtimer();
   // Disables upstream read timer.
   void disable_upstream_rtimer();
@@ -266,7 +263,6 @@ public:
 
   // Downstream timer functions.  They works in a similar way just
   // like the upstream timer function.
-  void init_downstream_timer();
   void reset_downstream_rtimer();
   void reset_downstream_wtimer();
   void ensure_downstream_wtimer();
@@ -355,8 +351,6 @@ private:
   bool response_connection_close_;
   bool response_header_key_prev_;
   bool expect_final_response_;
-
-  bool use_timer_;
 };
 
 } // namespace shrpx

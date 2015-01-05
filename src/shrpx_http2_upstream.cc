@@ -123,7 +123,6 @@ int Http2Upstream::upgrade_upstream(HttpsUpstream *http) {
   auto downstream = http->pop_downstream();
   downstream->reset_upstream(this);
   downstream->set_stream_id(1);
-  downstream->init_upstream_timer();
   downstream->reset_upstream_rtimer();
   downstream->set_stream_id(1);
   downstream->set_priority(0);
@@ -222,7 +221,6 @@ int on_begin_headers_callback(nghttp2_session *session,
   auto downstream =
       util::make_unique<Downstream>(upstream, frame->hd.stream_id, 0);
 
-  downstream->init_upstream_timer();
   downstream->reset_upstream_rtimer();
 
   // Although, we deprecated minor version from HTTP/2, we supply

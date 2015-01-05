@@ -152,7 +152,6 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
     auto downstream = upstream->add_pending_downstream(
         frame->syn_stream.stream_id, frame->syn_stream.pri);
 
-    downstream->init_upstream_timer();
     downstream->reset_upstream_rtimer();
 
     auto nv = frame->syn_stream.nv;
