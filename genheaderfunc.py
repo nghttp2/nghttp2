@@ -71,7 +71,7 @@ int lookup_token(const uint8_t *name, size_t namelen) {
         print '''\
   case {}:'''.format(size)
         print '''\
-    switch (util::lowcase(name[namelen - 1])) {'''
+    switch (name[namelen - 1]) {'''
         for c in sorted(ents.keys()):
             headers = sorted(ents[c])
             print '''\

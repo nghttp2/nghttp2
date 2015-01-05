@@ -427,7 +427,7 @@ int lookup_token(const std::string &name) {
 int lookup_token(const uint8_t *name, size_t namelen) {
   switch (namelen) {
   case 2:
-    switch (util::lowcase(name[namelen - 1])) {
+    switch (name[namelen - 1]) {
     case 'e':
       if (util::streq("t", name, 1)) {
         return HD_TE;
@@ -436,7 +436,7 @@ int lookup_token(const uint8_t *name, size_t namelen) {
     }
     break;
   case 3:
-    switch (util::lowcase(name[namelen - 1])) {
+    switch (name[namelen - 1]) {
     case 'a':
       if (util::streq("vi", name, 2)) {
         return HD_VIA;
@@ -445,7 +445,7 @@ int lookup_token(const uint8_t *name, size_t namelen) {
     }
     break;
   case 4:
-    switch (util::lowcase(name[namelen - 1])) {
+    switch (name[namelen - 1]) {
     case 't':
       if (util::streq("hos", name, 3)) {
         return HD_HOST;
@@ -454,7 +454,7 @@ int lookup_token(const uint8_t *name, size_t namelen) {
     }
     break;
   case 5:
-    switch (util::lowcase(name[namelen - 1])) {
+    switch (name[namelen - 1]) {
     case 'h':
       if (util::streq(":pat", name, 4)) {
         return HD__PATH;
@@ -468,7 +468,7 @@ int lookup_token(const uint8_t *name, size_t namelen) {
     }
     break;
   case 6:
-    switch (util::lowcase(name[namelen - 1])) {
+    switch (name[namelen - 1]) {
     case 'e':
       if (util::streq("cooki", name, 5)) {
         return HD_COOKIE;
@@ -487,7 +487,7 @@ int lookup_token(const uint8_t *name, size_t namelen) {
     }
     break;
   case 7:
-    switch (util::lowcase(name[namelen - 1])) {
+    switch (name[namelen - 1]) {
     case 'c':
       if (util::streq("alt-sv", name, 6)) {
         return HD_ALT_SVC;
@@ -514,7 +514,7 @@ int lookup_token(const uint8_t *name, size_t namelen) {
     }
     break;
   case 8:
-    switch (util::lowcase(name[namelen - 1])) {
+    switch (name[namelen - 1]) {
     case 'n':
       if (util::streq("locatio", name, 7)) {
         return HD_LOCATION;
@@ -523,7 +523,7 @@ int lookup_token(const uint8_t *name, size_t namelen) {
     }
     break;
   case 10:
-    switch (util::lowcase(name[namelen - 1])) {
+    switch (name[namelen - 1]) {
     case 'e':
       if (util::streq("keep-aliv", name, 9)) {
         return HD_KEEP_ALIVE;
@@ -542,7 +542,7 @@ int lookup_token(const uint8_t *name, size_t namelen) {
     }
     break;
   case 14:
-    switch (util::lowcase(name[namelen - 1])) {
+    switch (name[namelen - 1]) {
     case 'h':
       if (util::streq("content-lengt", name, 13)) {
         return HD_CONTENT_LENGTH;
@@ -556,7 +556,7 @@ int lookup_token(const uint8_t *name, size_t namelen) {
     }
     break;
   case 15:
-    switch (util::lowcase(name[namelen - 1])) {
+    switch (name[namelen - 1]) {
     case 'r':
       if (util::streq("x-forwarded-fo", name, 14)) {
         return HD_X_FORWARDED_FOR;
@@ -565,7 +565,7 @@ int lookup_token(const uint8_t *name, size_t namelen) {
     }
     break;
   case 16:
-    switch (util::lowcase(name[namelen - 1])) {
+    switch (name[namelen - 1]) {
     case 'n':
       if (util::streq("proxy-connectio", name, 15)) {
         return HD_PROXY_CONNECTION;
@@ -574,7 +574,7 @@ int lookup_token(const uint8_t *name, size_t namelen) {
     }
     break;
   case 17:
-    switch (util::lowcase(name[namelen - 1])) {
+    switch (name[namelen - 1]) {
     case 'e':
       if (util::streq("if-modified-sinc", name, 16)) {
         return HD_IF_MODIFIED_SINCE;
