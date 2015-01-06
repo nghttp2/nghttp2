@@ -680,18 +680,7 @@ ssize_t spdy_data_read_callback(spdylay_session *session, int32_t stream_id,
   auto downstream = static_cast<Downstream *>(source->ptr);
   auto upstream = static_cast<SpdyUpstream *>(downstream->get_upstream());
   auto body = downstream->get_response_buf();
-  auto handler = upstream->get_client_handler();
   assert(body);
-
-  auto limit = handler->get_write_limit();
-
-  if (limit != -1) {
-    // 9 is HTTP/2 frame header length.  Make DATA frame also under
-    // certain limit, so that application layer can flush at DATA
-    // frame boundary, instead of buffering large frame.
-    assert(limit > 9);
-    length = std::min(length, static_cast<size_t>(limit - 9));
-  }
 
   auto nread = body->remove(buf, length);
   auto body_empty = body->rleft() == 0;
