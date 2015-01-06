@@ -1537,8 +1537,12 @@ int Http2Session::read_clear() {
   ev_timer_again(loop_, &rt_);
 
   for (;;) {
+    // we should process buffered data first before we read EOF.
     if (rb_.rleft() && on_read() != 0) {
       return -1;
+    }
+    if (rb_.rleft()) {
+      return 0;
     }
     rb_.reset();
     struct iovec iov[2];
@@ -1661,10 +1665,13 @@ int Http2Session::read_tls() {
   ev_timer_again(loop_, &rt_);
 
   for (;;) {
+    // we should process buffered data first before we read EOF.
     if (rb_.rleft() && on_read() != 0) {
       return -1;
     }
-
+    if (rb_.rleft()) {
+      return 0;
+    }
     rb_.reset();
     struct iovec iov[2];
     auto iovcnt = rb_.wiovec(iov);
