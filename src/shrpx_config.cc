@@ -29,6 +29,7 @@
 #include <syslog.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <fcntl.h>
 #include <unistd.h>
 
 #include <cstring>
@@ -193,14 +194,19 @@ bool is_secure(const char *filename) {
 } // namespace
 
 FILE *open_file_for_write(const char *filename) {
-  auto f = fopen(filename, "wb");
+  auto fd = open(filename, O_WRONLY | O_CLOEXEC | O_CREAT | O_TRUNC,
+                 S_IRUSR | S_IWUSR);
+  if (fd == -1) {
+    LOG(ERROR) << "Failed to open " << filename
+               << " for writing. Cause: " << strerror(errno);
+    return nullptr;
+  }
+  auto f = fdopen(fd, "wb");
   if (f == nullptr) {
     LOG(ERROR) << "Failed to open " << filename
                << " for writing. Cause: " << strerror(errno);
     return nullptr;
   }
-
-  util::make_socket_closeonexec(fileno(f));
 
   return f;
 }
