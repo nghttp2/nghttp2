@@ -171,6 +171,12 @@ OPTIONS
     Don't  send  dependency  based priority  hint  to
     server.
 
+.. option:: --dep-idle
+
+    
+    Use  idle  streams  as anchor  nodes  to  express
+    priority.
+
 .. option:: --version
 
     

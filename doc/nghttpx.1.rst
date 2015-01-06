@@ -60,7 +60,7 @@ Connections
     
     Set  listen  backlog  size.    If  -1  is  given,
     libevent will choose suitable value.
-    Default: -1
+    Default: 128
 
 .. option:: --backend-ipv4
 
@@ -111,11 +111,9 @@ Performance
 
     
     Set   maximum  read   burst   size  on   frontend
-    connection.  Setting  0 does not work,  but it is
-    not  a problem  because  --read-rate=0 will  give
-    unlimited  read rate  regardless  of this  option
-    value.
-    Default: 1073741824
+    connection.  Setting 0 to  this option means read
+    burst size is unlimited.
+    Default: 0
 
 .. option:: --write-rate=<RATE>
 
@@ -138,7 +136,8 @@ Performance
     
     Set  maximum   average  read  rate   on  frontend
     connection per worker.  Setting  0 to this option
-    means read rate is unlimited.
+    means  read rate  is unlimited.   Not implemented
+    yet.
     Default: 0
 
 .. option:: --worker-read-burst=<SIZE>
@@ -146,7 +145,8 @@ Performance
     
     Set   maximum  read   burst   size  on   frontend
     connection per worker.  Setting  0 to this option
-    means read burst size is unlimited.
+    means   read  burst   size  is   unlimited.   Not
+    implemented yet.
     Default: 0
 
 .. option:: --worker-write-rate=<RATE>
@@ -154,7 +154,8 @@ Performance
     
     Set  maximum  average   write  rate  on  frontend
     connection per worker.  Setting  0 to this option
-    means write rate is unlimited.
+    means write  rate is unlimited.   Not implemented
+    yet.
     Default: 0
 
 .. option:: --worker-write-burst=<SIZE>
@@ -162,7 +163,8 @@ Performance
     
     Set   maximum  write   burst  size   on  frontend
     connection per worker.  Setting  0 to this option
-    means write burst size is unlimited.
+    means  write   burst  size  is   unlimited.   Not
+    implemented yet.
     Default: 0
 
 .. option:: --worker-frontend-connections=<NUM>
@@ -177,8 +179,21 @@ Performance
     
     Set maximum  number of backend  concurrent HTTP/1
     connections per host.   This option is meaningful
-    when :option:`-s` option is used.
+    when :option:`-s` option  is used.  To limit  the number of
+    connections  per frontend  for default  mode, use
+    :option:`--backend-http1-connections-per-frontend`.
     Default: 8
+
+.. option:: --backend-http1-connections-per-frontend=<NUM>
+
+    
+    Set maximum  number of backend  concurrent HTTP/1
+    connections  per frontend.   This option  is only
+    used for  default mode.   0 means  unlimited.  To
+    limit  the number  of  connections  per host  for
+    HTTP/2  or  SPDY  proxy  mode  (:option:`-s`  option),  use
+    :option:`--backend-http1-connections-per-host`.
+    Default: 0
 
 Timeout
 ^^^^^^^
@@ -312,7 +327,7 @@ SSL/TLS
     used in both ALPN and NPN.  The parameter must be
     delimited by  a single  comma only and  any white
     spaces are treated as a part of protocol string.
-    Default: h2-14,spdy/3.1,http/1.1
+    Default: h2-16,h2-14,spdy/3.1,http/1.1
 
 .. option:: --verify-client
 
