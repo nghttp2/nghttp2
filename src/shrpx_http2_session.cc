@@ -1668,29 +1668,34 @@ int Http2Session::read_tls() {
     rb_.reset();
     struct iovec iov[2];
     auto iovcnt = rb_.wiovec(iov);
-    if (iovcnt > 0) {
-      auto rv = SSL_read(ssl_, iov[0].iov_base, iov[0].iov_len);
+    if (iovcnt == 0) {
+      return 0;
+    }
 
-      if (rv == 0) {
+    auto rv = SSL_read(ssl_, iov[0].iov_base, iov[0].iov_len);
+
+    if (rv == 0) {
+      return -1;
+    }
+
+    if (rv < 0) {
+      auto err = SSL_get_error(ssl_, rv);
+      switch (err) {
+      case SSL_ERROR_WANT_READ:
+        return 0;
+      case SSL_ERROR_WANT_WRITE:
+        ev_io_start(loop_, &wev_);
+        ev_timer_again(loop_, &wt_);
+        return 0;
+      default:
+        if (LOG_ENABLED(INFO)) {
+          SSLOG(INFO, this) << "SSL_read: SSL_get_error returned " << err;
+        }
         return -1;
       }
-
-      if (rv < 0) {
-        auto err = SSL_get_error(ssl_, rv);
-        switch (err) {
-        case SSL_ERROR_WANT_READ:
-          return 0;
-        case SSL_ERROR_WANT_WRITE:
-          ev_io_start(loop_, &wev_);
-          ev_timer_again(loop_, &wt_);
-          return 0;
-        default:
-          return -1;
-        }
-      }
-
-      rb_.write(rv);
     }
+
+    rb_.write(rv);
   }
 }
 
@@ -1721,6 +1726,9 @@ int Http2Session::write_tls() {
           ev_timer_again(loop_, &wt_);
           return 0;
         default:
+          if (LOG_ENABLED(INFO)) {
+            SSLOG(INFO, this) << "SSL_write: SSL_get_error returned " << err;
+          }
           return -1;
         }
       }

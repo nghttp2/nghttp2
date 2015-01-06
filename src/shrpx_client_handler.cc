@@ -250,6 +250,9 @@ int ClientHandler::read_tls() {
         ev_timer_again(loop_, &wt_);
         goto fin;
       default:
+        if (LOG_ENABLED(INFO)) {
+          CLOG(INFO, this) << "SSL_read: SSL_get_error returned " << err;
+        }
         return -1;
       }
     }
@@ -298,6 +301,9 @@ int ClientHandler::write_tls() {
           ev_timer_again(loop_, &wt_);
           return 0;
         default:
+          if (LOG_ENABLED(INFO)) {
+            CLOG(INFO, this) << "SSL_write: SSL_get_error returned " << err;
+          }
           return -1;
         }
       }
