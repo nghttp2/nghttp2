@@ -865,8 +865,9 @@ void ClientHandler::write_accesslog(Downstream *downstream) {
 
       alpn_.c_str(),
 
-      downstream->get_request_start_time(),
-      std::chrono::high_resolution_clock::now(),
+      std::chrono::system_clock::now(),          // time_now
+      downstream->get_request_start_time(),      // request_start_time
+      std::chrono::high_resolution_clock::now(), // request_end_time
 
       downstream->get_request_major(), downstream->get_request_minor(),
       downstream->get_response_http_status(),
@@ -879,18 +880,20 @@ void ClientHandler::write_accesslog(Downstream *downstream) {
 
 void ClientHandler::write_accesslog(int major, int minor, unsigned int status,
                                     int64_t body_bytes_sent) {
+  auto time_now = std::chrono::system_clock::now();
+  auto highres_now = std::chrono::high_resolution_clock::now();
+
   LogSpec lgsp = {
-      nullptr,                                   ipaddr_.c_str(),
+      nullptr,            ipaddr_.c_str(),
       "-", // method
       "-", // path,
-      alpn_.c_str(),
-      std::chrono::high_resolution_clock::now(), // request_start_time TODO is
-                                                 // there a better value?
-      std::chrono::high_resolution_clock::now(), // time_now
-      major,                                     minor, // major, minor
-      status,                                    body_bytes_sent,
-      port_.c_str(),                             get_config()->port,
-      get_config()->pid,
+      alpn_.c_str(),      time_now,
+      highres_now,               // request_start_time TODO is
+                                 // there a better value?
+      highres_now,               // request_end_time
+      major,              minor, // major, minor
+      status,             body_bytes_sent,   port_.c_str(),
+      get_config()->port, get_config()->pid,
   };
 
   upstream_accesslog(get_config()->accesslog_format, &lgsp);

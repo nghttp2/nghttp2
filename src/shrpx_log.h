@@ -126,8 +126,9 @@ struct LogSpec {
   const char *method;
   const char *path;
   const char *alpn;
+  std::chrono::system_clock::time_point time_now;
   std::chrono::high_resolution_clock::time_point request_start_time;
-  std::chrono::high_resolution_clock::time_point time_now;
+  std::chrono::high_resolution_clock::time_point request_end_time;
   int major, minor;
   unsigned int status;
   int64_t body_bytes_sent;

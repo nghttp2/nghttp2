@@ -224,7 +224,7 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv, LogSpec *lgsp) {
       break;
     case SHRPX_LOGF_REQUEST_TIME: {
       auto t = std::chrono::duration_cast<std::chrono::milliseconds>(
-                   lgsp->time_now - lgsp->request_start_time).count();
+                   lgsp->request_end_time - lgsp->request_start_time).count();
 
       auto frac = util::utos(t % 1000);
       auto sec = util::utos(t / 1000);
