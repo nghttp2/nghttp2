@@ -710,7 +710,7 @@ int reopen_log_file(const char *path) {
 
   // We get race condition if execve is called at the same time.
   if (fd != -1) {
-    fcntl(fd, F_SETFD, FD_CLOEXEC);
+    make_socket_closeonexec(fd);
   }
 
 #endif // !O_CLOEXEC
