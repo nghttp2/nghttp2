@@ -169,7 +169,6 @@ struct Config {
   std::vector<std::pair<std::string, std::string>> add_response_headers;
   std::vector<unsigned char> alpn_prefs;
   std::vector<LogFragment> accesslog_format;
-  std::shared_ptr<std::string> cached_time;
   std::vector<DownstreamAddr> downstream_addrs;
   // binary form of http proxy host and port
   sockaddr_union downstream_http_proxy_addr;

@@ -122,16 +122,16 @@ Log::~Log() {
   char buf[4096];
   auto tty = wconf->errorlog_tty;
 
-  auto cached_time = get_config()->cached_time;
+  auto time_now = util::format_common_log(std::chrono::system_clock::now());
 
   if (severity_ == NOTICE) {
-    rv = snprintf(buf, sizeof(buf), "%s PID%d [%s%s%s] %s\n",
-                  cached_time->c_str(), get_config()->pid,
-                  tty ? SEVERITY_COLOR[severity_] : "", SEVERITY_STR[severity_],
-                  tty ? "\033[0m" : "", stream_.str().c_str());
+    rv = snprintf(buf, sizeof(buf), "%s PID%d [%s%s%s] %s\n", time_now.c_str(),
+                  get_config()->pid, tty ? SEVERITY_COLOR[severity_] : "",
+                  SEVERITY_STR[severity_], tty ? "\033[0m" : "",
+                  stream_.str().c_str());
   } else {
     rv = snprintf(buf, sizeof(buf), "%s PID%d [%s%s%s] %s%s:%d%s %s\n",
-                  cached_time->c_str(), get_config()->pid,
+                  time_now.c_str(), get_config()->pid,
                   tty ? SEVERITY_COLOR[severity_] : "", SEVERITY_STR[severity_],
                   tty ? "\033[0m" : "", tty ? "\033[1;30m" : "", filename_,
                   linenum_, tty ? "\033[0m" : "", stream_.str().c_str());

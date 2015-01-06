@@ -422,18 +422,10 @@ void graceful_shutdown_signal_cb(struct ev_loop *loop, ev_signal *w,
 } // namespace
 
 namespace {
-std::unique_ptr<std::string> generate_time() {
-  return util::make_unique<std::string>(
-      util::format_common_log(std::chrono::system_clock::now()));
-}
-} // namespace
-
-namespace {
 void refresh_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto listener_handler = static_cast<ListenHandler *>(w->data);
   auto worker_stat = listener_handler->get_worker_stat();
 
-  mod_config()->cached_time = generate_time();
   // In multi threaded mode (get_config()->num_worker > 1), we have to
   // wait for event notification to workers to finish.
   if (get_config()->num_worker == 1 && worker_config->graceful_shutdown &&
@@ -698,7 +690,6 @@ void fill_default_config() {
   nghttp2_option_set_no_auto_window_update(mod_config()->http2_option, 1);
 
   mod_config()->tls_proto_mask = 0;
-  mod_config()->cached_time = generate_time();
   mod_config()->no_location_rewrite = false;
   mod_config()->argc = 0;
   mod_config()->argv = nullptr;
