@@ -1470,7 +1470,7 @@ int start_listen(struct ev_loop *loop, Sessions *sessions,
       close(fd);
       continue;
     }
-    util::make_socket_nonblocking(fd);
+    (void)util::make_socket_nonblocking(fd);
 #ifdef IPV6_V6ONLY
     if (rp->ai_family == AF_INET6) {
       if (setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &val,
@@ -1547,7 +1547,10 @@ int HttpServer::run() {
     SSL_CTX_set_mode(ssl_ctx, SSL_MODE_AUTO_RETRY);
     SSL_CTX_set_mode(ssl_ctx, SSL_MODE_RELEASE_BUFFERS);
 
-    SSL_CTX_set_cipher_list(ssl_ctx, ssl::DEFAULT_CIPHER_LIST);
+    if (SSL_CTX_set_cipher_list(ssl_ctx, ssl::DEFAULT_CIPHER_LIST) == 0) {
+      std::cerr << ERR_error_string(ERR_get_error(), nullptr) << std::endl;
+      return -1;
+    }
 
     const unsigned char sid_ctx[] = "nghttpd";
     SSL_CTX_set_session_id_context(ssl_ctx, sid_ctx, sizeof(sid_ctx) - 1);

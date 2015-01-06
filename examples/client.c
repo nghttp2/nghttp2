@@ -152,7 +152,7 @@ static ssize_t send_callback(nghttp2_session *session _U_, const uint8_t *data,
   connection->want_io = IO_NONE;
   ERR_clear_error();
   rv = SSL_write(connection->ssl, data, (int)length);
-  if (rv < 0) {
+  if (rv <= 0) {
     int err = SSL_get_error(connection->ssl, rv);
     if (err == SSL_ERROR_WANT_WRITE || err == SSL_ERROR_WANT_READ) {
       connection->want_io =
@@ -529,8 +529,12 @@ static void fetch_uri(const struct URI *uri) {
   connection.want_io = IO_NONE;
 
   /* Send connection header in blocking I/O mode */
-  SSL_write(ssl, NGHTTP2_CLIENT_CONNECTION_PREFACE,
-            NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN);
+  rv = SSL_write(ssl, NGHTTP2_CLIENT_CONNECTION_PREFACE,
+                 NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN);
+  if (rv <= 0) {
+    dief("SSL_write failed: could not send connection preface",
+         ERR_error_string(ERR_get_error(), NULL));
+  }
 
   /* Here make file descriptor non-block */
   make_non_block(fd);
