@@ -573,7 +573,7 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
                     : 0,
           !get_config()->http2_proxy),
       handler_(handler), session_(nullptr), data_pending_(nullptr),
-      data_pendinglen_(0), deferred_(false) {
+      data_pendinglen_(0) {
 
   int rv;
 
@@ -1008,12 +1008,6 @@ ssize_t downstream_data_read_callback(nghttp2_session *session,
   }
 
   if (nread == 0 && ((*data_flags) & NGHTTP2_DATA_FLAG_EOF) == 0) {
-    // Higher priority stream is likely to be handled first and if it
-    // has no data to send, we'd better to break here, so that we have
-    // a chance to read another incoming data from backend to this
-    // stream.
-    upstream->set_deferred(true);
-
     return NGHTTP2_ERR_DEFERRED;
   }
 
@@ -1332,8 +1326,6 @@ int Http2Upstream::on_downstream_reset() {
 
   return 0;
 }
-
-void Http2Upstream::set_deferred(bool f) { deferred_ = f; }
 
 MemchunkPool4K *Http2Upstream::get_mcpool() { return &mcpool_; }
 

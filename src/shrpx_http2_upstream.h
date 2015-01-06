@@ -97,8 +97,6 @@ public:
   void start_downstream(Downstream *downstream);
   void initiate_downstream(std::unique_ptr<Downstream> downstream);
 
-  void set_deferred(bool f);
-
 private:
   // must be put before downstream_queue_
   std::unique_ptr<HttpsUpstream> pre_upstream_;
@@ -110,7 +108,6 @@ private:
   const uint8_t *data_pending_;
   size_t data_pendinglen_;
   bool flow_control_;
-  bool deferred_;
 };
 
 } // namespace shrpx
