@@ -83,15 +83,6 @@ const int GRACEFUL_SHUTDOWN_SIGNAL = SIGQUIT;
 // binary is listening to.
 #define ENV_PORT "NGHTTPX_PORT"
 
-// namespace {
-// void ssl_acceptcb(evconnlistener *listener, int fd, sockaddr *addr, int
-// addrlen,
-//                   void *arg) {
-//   auto handler = static_cast<ListenHandler *>(arg);
-//   handler->accept_connection(fd, addr, addrlen);
-// }
-// } // namespace
-
 namespace {
 bool is_ipv6_numeric_addr(const char *host) {
   uint8_t dst[16];
