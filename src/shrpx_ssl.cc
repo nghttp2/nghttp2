@@ -35,6 +35,7 @@
 #include <openssl/crypto.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
+#include <openssl/rand.h>
 
 #include <nghttp2/nghttp2.h>
 
@@ -143,6 +144,71 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
 } // namespace
 
 namespace {
+int ticket_key_cb(SSL *ssl, unsigned char *key_name, unsigned char *iv,
+                  EVP_CIPHER_CTX *ctx, HMAC_CTX *hctx, int enc) {
+  auto handler = static_cast<ClientHandler *>(SSL_get_app_data(ssl));
+  auto ticket_keys = std::atomic_load(&get_config()->ticket_keys);
+  if (!ticket_keys) {
+    /* No ticket keys available.  Perform full handshake */
+    return 0;
+  }
+
+  auto &keys = ticket_keys->keys;
+  assert(!keys.empty());
+
+  if (enc) {
+    if (RAND_bytes(iv, EVP_MAX_IV_LENGTH) == 0) {
+      if (LOG_ENABLED(INFO)) {
+        CLOG(INFO, handler) << "session ticket key: RAND_bytes failed";
+      }
+      return 0;
+    }
+
+    auto &key = keys[0];
+
+    if (LOG_ENABLED(INFO)) {
+      CLOG(INFO, handler) << "encrypt session ticket key: "
+                          << util::format_hex(key.name, 16);
+    }
+
+    memcpy(key_name, key.name, sizeof(key.name));
+
+    EVP_EncryptInit_ex(ctx, EVP_aes_128_cbc(), nullptr, key.aes_key, iv);
+    HMAC_Init_ex(hctx, key.hmac_key, sizeof(key.hmac_key), EVP_sha256(),
+                 nullptr);
+    return 1;
+  }
+
+  size_t i;
+  for (i = 0; i < keys.size(); ++i) {
+    auto &key = keys[0];
+    if (memcmp(key.name, key_name, sizeof(key.name)) == 0) {
+      break;
+    }
+  }
+
+  if (i == keys.size()) {
+    if (LOG_ENABLED(INFO)) {
+      CLOG(INFO, handler) << "session ticket key "
+                          << util::format_hex(key_name, 16) << " not found";
+    }
+    return 0;
+  }
+
+  if (LOG_ENABLED(INFO)) {
+    CLOG(INFO, handler) << "decrypt session ticket key: "
+                        << util::format_hex(key_name, 16);
+  }
+
+  auto &key = keys[i];
+  HMAC_Init_ex(hctx, key.hmac_key, sizeof(key.hmac_key), EVP_sha256(), nullptr);
+  EVP_DecryptInit_ex(ctx, EVP_aes_128_cbc(), nullptr, key.aes_key, iv);
+
+  return i == 0 ? 1 : 2;
+}
+} // namespace
+
+namespace {
 void info_callback(const SSL *ssl, int where, int ret) {
   // To mitigate possible DOS attack using lots of renegotiations, we
   // disable renegotiation. Since OpenSSL does not provide an easy way
@@ -232,7 +298,7 @@ SSL_CTX *create_ssl_context(const char *private_key_file,
                           SSL_OP_NO_COMPRESSION |
                           SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION |
                           SSL_OP_SINGLE_ECDH_USE | SSL_OP_SINGLE_DH_USE |
-                          SSL_OP_NO_TICKET | get_config()->tls_proto_mask);
+                          get_config()->tls_proto_mask);
 
   const unsigned char sid_ctx[] = "shrpx";
   SSL_CTX_set_session_id_context(ssl_ctx, sid_ctx, sizeof(sid_ctx) - 1);
@@ -346,6 +412,7 @@ SSL_CTX *create_ssl_context(const char *private_key_file,
                        verify_callback);
   }
   SSL_CTX_set_tlsext_servername_callback(ssl_ctx, servername_callback);
+  SSL_CTX_set_tlsext_ticket_key_cb(ssl_ctx, ticket_key_cb);
   SSL_CTX_set_info_callback(ssl_ctx, info_callback);
 
   // NPN advertisement

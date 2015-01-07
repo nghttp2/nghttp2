@@ -162,6 +162,17 @@ struct DownstreamAddr {
   uint16_t port;
 };
 
+struct TicketKey {
+  uint8_t name[16];
+  uint8_t aes_key[16];
+  uint8_t hmac_key[16];
+};
+
+struct TicketKeys {
+  ~TicketKeys();
+  std::vector<TicketKey> keys;
+};
+
 struct Config {
   // The list of (private key file, certificate file) pair
   std::vector<std::pair<std::string, std::string>> subcerts;
@@ -170,6 +181,7 @@ struct Config {
   std::vector<unsigned char> alpn_prefs;
   std::vector<LogFragment> accesslog_format;
   std::vector<DownstreamAddr> downstream_addrs;
+  std::shared_ptr<TicketKeys> ticket_keys;
   // binary form of http proxy host and port
   sockaddr_union downstream_http_proxy_addr;
   ev_tstamp http2_upstream_read_timeout;

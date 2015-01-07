@@ -149,6 +149,13 @@ Config *mod_config() { return config; }
 
 void create_config() { config = new Config(); }
 
+TicketKeys::~TicketKeys() {
+  /* Erase keys from memory */
+  for (auto &key : keys) {
+    memset(&key, 0, sizeof(key));
+  }
+}
+
 namespace {
 int split_host_port(char *host, size_t hostlen, uint16_t *port_ptr,
                     const char *hostport) {

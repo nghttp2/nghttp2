@@ -47,6 +47,7 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/conf.h>
+#include <openssl/rand.h>
 
 #include <ev.h>
 
@@ -436,6 +437,47 @@ void refresh_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 } // namespace
 
 namespace {
+void renew_ticket_key_cb(struct ev_loop *loop, ev_timer *w, int revents) {
+  auto old_ticket_keys = std::atomic_load(&get_config()->ticket_keys);
+  auto ticket_keys = std::make_shared<TicketKeys>();
+  if (LOG_ENABLED(INFO)) {
+    LOG(INFO) << "renew ticket key";
+  }
+  // We store at most 2 ticket keys
+  if (old_ticket_keys) {
+    auto &old_keys = old_ticket_keys->keys;
+    auto &new_keys = ticket_keys->keys;
+
+    assert(!old_keys.empty());
+
+    new_keys.resize(2);
+    new_keys[1] = old_keys[0];
+  } else {
+    ticket_keys->keys.resize(1);
+  }
+
+  if (RAND_bytes(reinterpret_cast<unsigned char *>(&ticket_keys->keys[0]),
+                 sizeof(ticket_keys->keys[0])) == 0) {
+    if (LOG_ENABLED(INFO)) {
+      LOG(INFO) << "failed to renew ticket key";
+    }
+    std::atomic_store(&mod_config()->ticket_keys,
+                      std::shared_ptr<TicketKeys>());
+    return;
+  }
+
+  if (LOG_ENABLED(INFO)) {
+    LOG(INFO) << "ticket keys generation done";
+    for (auto &key : ticket_keys->keys) {
+      LOG(INFO) << "name: " << util::format_hex(key.name, sizeof(key.name));
+    }
+  }
+
+  std::atomic_store(&mod_config()->ticket_keys, ticket_keys);
+}
+} // namespace
+
+namespace {
 int event_loop() {
   auto loop = EV_DEFAULT;
   SSL_CTX *sv_ssl_ctx, *cl_ssl_ctx;
@@ -533,6 +575,14 @@ int event_loop() {
   ev_timer_init(&refresh_timer, refresh_cb, 0., 1.);
   refresh_timer.data = listener_handler.get();
   ev_timer_again(loop, &refresh_timer);
+
+  ev_timer renew_ticket_key_timer;
+  if (sv_ssl_ctx) {
+    // Renew ticket key every 12hrs
+    ev_timer_init(&renew_ticket_key_timer, renew_ticket_key_cb, 0., 12 * 3600.);
+    ev_timer_again(loop, &renew_ticket_key_timer);
+    renew_ticket_key_cb(loop, &renew_ticket_key_timer, 0);
+  }
 
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "Entering event loop";
