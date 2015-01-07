@@ -1248,11 +1248,10 @@ static int stream_predicate_for_send(nghttp2_stream *stream) {
  */
 static int session_predicate_request_headers_send(nghttp2_session *session,
                                                   nghttp2_headers *frame) {
-  /* If we are terminating session (session->goaway_flag is nonzero),
-     we don't send new request. Also if received last_stream_id is
-     strictly less than new stream ID, cancel its transmission. */
-  if (session->goaway_flags ||
-      session->remote_last_stream_id < frame->hd.stream_id) {
+  /* If we are terminating session (NGHTTP2_GOAWAY_TERM_ON_SEND) or
+     GOAWAY was received from peer, new request is not allowed. */
+  if (session->goaway_flags &
+      (NGHTTP2_GOAWAY_TERM_ON_SEND | NGHTTP2_GOAWAY_RECV)) {
     return NGHTTP2_ERR_START_STREAM_NOT_ALLOWED;
   }
   return 0;
@@ -1429,7 +1428,8 @@ static int session_predicate_push_promise_send(nghttp2_session *session,
   if (stream->state == NGHTTP2_STREAM_CLOSING) {
     return NGHTTP2_ERR_STREAM_CLOSING;
   }
-  if (session->remote_last_stream_id < promised_stream_id) {
+  if (session->goaway_flags &
+      (NGHTTP2_GOAWAY_TERM_ON_SEND | NGHTTP2_GOAWAY_RECV)) {
     return NGHTTP2_ERR_START_STREAM_NOT_ALLOWED;
   }
   return 0;
@@ -2345,6 +2345,8 @@ static int session_after_frame_sent1(nghttp2_session *session) {
         session->goaway_flags |= NGHTTP2_GOAWAY_TERM_SENT;
       }
 
+      session->goaway_flags |= NGHTTP2_GOAWAY_SENT;
+
       rv = session_close_stream_on_goaway(session, frame->goaway.last_stream_id,
                                           1);
 
@@ -3227,8 +3229,8 @@ int nghttp2_session_on_request_headers_received(nghttp2_session *session,
   }
   session->last_recv_stream_id = frame->hd.stream_id;
 
-  if (session->local_last_stream_id < frame->hd.stream_id) {
-    /* We just ignore stream rather than local_last_stream_id */
+  if (session->goaway_flags & NGHTTP2_GOAWAY_SENT) {
+    /* We just ignore stream after GOAWAY was queued */
     return NGHTTP2_ERR_IGN_HEADER_BLOCK;
   }
 
@@ -4037,6 +4039,8 @@ int nghttp2_session_on_goaway_received(nghttp2_session *session,
                                              NGHTTP2_PROTOCOL_ERROR,
                                              "GOAWAY: invalid last_stream_id");
   }
+
+  session->goaway_flags |= NGHTTP2_GOAWAY_RECV;
 
   session->remote_last_stream_id = frame->goaway.last_stream_id;
 
@@ -5615,10 +5619,9 @@ static size_t session_get_num_active_streams(nghttp2_session *session) {
 int nghttp2_session_want_read(nghttp2_session *session) {
   size_t num_active_streams;
 
-  /* If these flags are set, we don't want to read. The application
+  /* If this flag is set, we don't want to read. The application
      should drop the connection. */
-  if ((session->goaway_flags & NGHTTP2_GOAWAY_TERM_ON_SEND) &&
-      (session->goaway_flags & NGHTTP2_GOAWAY_TERM_SENT)) {
+  if (session->goaway_flags & NGHTTP2_GOAWAY_TERM_SENT) {
     return 0;
   }
 
@@ -5631,26 +5634,18 @@ int nghttp2_session_want_read(nghttp2_session *session) {
     return 1;
   }
 
-  /* If there is no active streams, we check last_stream_id peer sent
-     to us.  Here is the asymmetry between server and client.  For
-     server, if client cannot make new request, current conneciton is
-     no use.  Server push might be going, but it is idempotent and can
-     be safely retried with the new connection.  For client side, the
-     theory is the same. */
-  if (session->server) {
-    return session->local_last_stream_id > session->last_recv_stream_id;
-  } else {
-    return (uint32_t)session->remote_last_stream_id >= session->next_stream_id;
-  }
+  /* If there is no active streams and GOAWAY has been sent or
+     received, we are done with this session. */
+  return (session->goaway_flags &
+          (NGHTTP2_GOAWAY_SENT | NGHTTP2_GOAWAY_RECV)) == 0;
 }
 
 int nghttp2_session_want_write(nghttp2_session *session) {
   size_t num_active_streams;
 
-  /* If these flags are set, we don't want to write any data. The
+  /* If these flag is set, we don't want to write any data. The
      application should drop the connection. */
-  if ((session->goaway_flags & NGHTTP2_GOAWAY_TERM_ON_SEND) &&
-      (session->goaway_flags & NGHTTP2_GOAWAY_TERM_SENT)) {
+  if (session->goaway_flags & NGHTTP2_GOAWAY_TERM_SENT) {
     return 0;
   }
 
@@ -5675,17 +5670,10 @@ int nghttp2_session_want_write(nghttp2_session *session) {
     return 1;
   }
 
-  /* If there is no active streams, we check last_stream_id peer sent
-     to us.  Here is the asymmetry between server and client.  For
-     server, if client cannot make new request, current conneciton is
-     no use.  Server push might be going, but it is idempotent and can
-     be safely retried with the new connection.  For client side, the
-     theory is the same. */
-  if (session->server) {
-    return session->local_last_stream_id > session->last_recv_stream_id;
-  } else {
-    return (uint32_t)session->remote_last_stream_id >= session->next_stream_id;
-  }
+  /* If there is no active streams and GOAWAY has been sent or
+     received, we are done with this session. */
+  return (session->goaway_flags &
+          (NGHTTP2_GOAWAY_SENT | NGHTTP2_GOAWAY_RECV)) == 0;
 }
 
 int nghttp2_session_add_ping(nghttp2_session *session, uint8_t flags,

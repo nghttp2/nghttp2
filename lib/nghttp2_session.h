@@ -130,6 +130,10 @@ typedef enum {
   NGHTTP2_GOAWAY_TERM_ON_SEND = 0x1,
   /* Flag means GOAWAY to terminate session has been sent */
   NGHTTP2_GOAWAY_TERM_SENT = 0x2,
+  /* Flag means GOAWAY was sent */
+  NGHTTP2_GOAWAY_SENT = 0x4,
+  /* Flag means GOAWAY was received */
+  NGHTTP2_GOAWAY_RECV = 0x8,
 } nghttp2_goaway_flag;
 
 struct nghttp2_session {

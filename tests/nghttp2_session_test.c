@@ -1756,11 +1756,11 @@ void test_nghttp2_session_on_request_headers_received(void) {
 
   nghttp2_frame_headers_free(&frame.headers, mem);
 
-  /* Stream ID which is greater than local_last_stream_id is
-     ignored */
+  /* If GOAWAY has been sent, new stream is ignored */
   nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_END_HEADERS, 5,
                              NGHTTP2_HCAT_REQUEST, NULL, NULL, 0);
 
+  session->goaway_flags |= NGHTTP2_GOAWAY_SENT;
   user_data.invalid_frame_recv_cb_called = 0;
   CU_ASSERT(NGHTTP2_ERR_IGN_HEADER_BLOCK ==
             nghttp2_session_on_request_headers_received(session, &frame));
@@ -4847,10 +4847,8 @@ void test_nghttp2_session_on_ctrl_not_send(void) {
                                    NULL, 0, NULL));
 
   user_data.frame_not_send_cb_called = 0;
-  /* Terminating session */
-  CU_ASSERT(0 == nghttp2_session_add_goaway(session, 0, NGHTTP2_NO_ERROR, NULL,
-                                            0, 1));
-
+  /* GOAWAY received */
+  session->goaway_flags |= NGHTTP2_GOAWAY_RECV;
   session->next_stream_id = 9;
 
   CU_ASSERT(0 < nghttp2_submit_headers(session, NGHTTP2_FLAG_END_STREAM, -1,
