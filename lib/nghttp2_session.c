@@ -1246,8 +1246,7 @@ static int stream_predicate_for_send(nghttp2_stream *stream) {
  *     going down or received last_stream_id is strictly less than
  *     frame->hd.stream_id.
  */
-static int session_predicate_request_headers_send(nghttp2_session *session,
-                                                  nghttp2_headers *frame) {
+static int session_predicate_request_headers_send(nghttp2_session *session) {
   /* If we are terminating session (NGHTTP2_GOAWAY_TERM_ON_SEND) or
      GOAWAY was received from peer, new request is not allowed. */
   if (session->goaway_flags &
@@ -1407,8 +1406,7 @@ static int session_predicate_headers_send(nghttp2_session *session,
  *     The remote peer disabled reception of PUSH_PROMISE.
  */
 static int session_predicate_push_promise_send(nghttp2_session *session,
-                                               nghttp2_stream *stream,
-                                               int32_t promised_stream_id) {
+                                               nghttp2_stream *stream) {
   int rv;
 
   if (!session->server) {
@@ -1674,7 +1672,7 @@ static int session_prep_frame(nghttp2_session *session,
         nghttp2_stream *stream;
 
         /* initial HEADERS, which opens stream */
-        rv = session_predicate_request_headers_send(session, &frame->headers);
+        rv = session_predicate_request_headers_send(session);
         if (rv != 0) {
           return rv;
         }
@@ -1811,8 +1809,7 @@ static int session_prep_frame(nghttp2_session *session,
 
       stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
 
-      rv = session_predicate_push_promise_send(
-          session, stream, frame->push_promise.promised_stream_id);
+      rv = session_predicate_push_promise_send(session, stream);
       if (rv != 0) {
         return rv;
       }
