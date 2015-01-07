@@ -438,7 +438,11 @@ void refresh_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 
 namespace {
 void renew_ticket_key_cb(struct ev_loop *loop, ev_timer *w, int revents) {
-  auto old_ticket_keys = std::atomic_load(&get_config()->ticket_keys);
+#ifndef NOTHREADS
+  std::lock_guard<std::mutex> g(mod_config()->ticket_keys_lock);
+#endif // !NOTHREADS
+  auto old_ticket_keys = get_config()->ticket_keys;
+
   auto ticket_keys = std::make_shared<TicketKeys>();
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "renew ticket key";
@@ -461,8 +465,7 @@ void renew_ticket_key_cb(struct ev_loop *loop, ev_timer *w, int revents) {
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "failed to renew ticket key";
     }
-    std::atomic_store(&mod_config()->ticket_keys,
-                      std::shared_ptr<TicketKeys>());
+    mod_config()->ticket_keys.reset();
     return;
   }
 
@@ -473,7 +476,7 @@ void renew_ticket_key_cb(struct ev_loop *loop, ev_timer *w, int revents) {
     }
   }
 
-  std::atomic_store(&mod_config()->ticket_keys, ticket_keys);
+  mod_config()->ticket_keys = ticket_keys;
 }
 } // namespace
 

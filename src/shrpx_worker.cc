@@ -66,7 +66,9 @@ Worker::~Worker() {
 }
 
 void Worker::run() {
+#ifndef NOTHREADS
   fut_ = std::async(std::launch::async, [this] { this->run_loop(); });
+#endif // !NOTHREADS
 }
 
 void Worker::run_loop() {
@@ -74,7 +76,11 @@ void Worker::run_loop() {
   ev_run(loop_);
 }
 
-void Worker::wait() { fut_.get(); }
+void Worker::wait() {
+#ifndef NOTHREADS
+  fut_.get();
+#endif // !NOTHREADS
+}
 
 void Worker::send(const WorkerEvent &event) {
   {
