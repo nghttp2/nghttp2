@@ -138,6 +138,7 @@ const char SHRPX_OPT_BACKEND_HTTP1_CONNECTIONS_PER_HOST[] =
 const char SHRPX_OPT_BACKEND_HTTP1_CONNECTIONS_PER_FRONTEND[] =
     "backend-http1-connections-per-frontend";
 const char SHRPX_OPT_LISTENER_DISABLE_TIMEOUT[] = "listener-disable-timeout";
+const char SHRPX_OPT_TLS_TICKET_KEY_FILE[] = "tls-ticket-key-file";
 
 namespace {
 Config *config = nullptr;
@@ -199,6 +200,42 @@ bool is_secure(const char *filename) {
   return false;
 }
 } // namespace
+
+std::unique_ptr<TicketKeys>
+read_tls_ticket_key_file(const std::vector<std::string> &files) {
+  auto ticket_keys = util::make_unique<TicketKeys>();
+  auto &keys = ticket_keys->keys;
+  keys.resize(files.size());
+  size_t i = 0;
+  for (auto &file : files) {
+    std::ifstream f(file.c_str());
+    if (!f) {
+      LOG(ERROR) << "tls-ticket-key-file: could not open file " << file;
+      return nullptr;
+    }
+    char buf[48];
+    f.read(buf, sizeof(buf));
+    if (f.gcount() != sizeof(buf)) {
+      LOG(ERROR) << "tls-ticket-key-file: want to read 48 bytes but read "
+                 << f.gcount() << " bytes from " << file;
+      return nullptr;
+    }
+
+    auto &key = keys[i++];
+    auto p = buf;
+    memcpy(key.name, p, sizeof(key.name));
+    p += sizeof(key.name);
+    memcpy(key.aes_key, p, sizeof(key.aes_key));
+    p += sizeof(key.aes_key);
+    memcpy(key.hmac_key, p, sizeof(key.hmac_key));
+
+    if (LOG_ENABLED(INFO)) {
+      LOG(INFO) << "session ticket key: " << util::format_hex(key.name,
+                                                              sizeof(key.name));
+    }
+  }
+  return ticket_keys;
+}
 
 FILE *open_file_for_write(const char *filename) {
   auto fd = open(filename, O_WRONLY | O_CLOEXEC | O_CREAT | O_TRUNC,
@@ -1065,6 +1102,11 @@ int parse_config(const char *opt, const char *optarg) {
 
   if (util::strieq(opt, SHRPX_OPT_LISTENER_DISABLE_TIMEOUT)) {
     return parse_timeval(&mod_config()->listener_disable_timeout, opt, optarg);
+  }
+
+  if (util::strieq(opt, SHRPX_OPT_TLS_TICKET_KEY_FILE)) {
+    mod_config()->tls_ticket_key_files.push_back(optarg);
+    return 0;
   }
 
   if (util::strieq(opt, "conf")) {

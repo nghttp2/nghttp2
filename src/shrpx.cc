@@ -577,7 +577,7 @@ int event_loop() {
   ev_timer_again(loop, &refresh_timer);
 
   ev_timer renew_ticket_key_timer;
-  if (sv_ssl_ctx) {
+  if (sv_ssl_ctx && get_config()->auto_tls_ticket_key) {
     // Renew ticket key every 12hrs
     ev_timer_init(&renew_ticket_key_timer, renew_ticket_key_cb, 0., 12 * 3600.);
     ev_timer_again(loop, &renew_ticket_key_timer);
@@ -746,6 +746,7 @@ void fill_default_config() {
   mod_config()->downstream_connections_per_host = 8;
   mod_config()->downstream_connections_per_frontend = 0;
   mod_config()->listener_disable_timeout = 0.;
+  mod_config()->auto_tls_ticket_key = true;
 }
 } // namespace
 
@@ -993,6 +994,25 @@ SSL/TLS:
                      only and any  white spaces are treated  as a part
                      of protocol string.
                      Default: )" << DEFAULT_TLS_PROTO_LIST << R"(
+  --tls-ticket-key-file=<FILE>
+                     Path to  file that contains 48  bytes random data
+                     to construct TLS session ticket parameters.  This
+                     options  can   be  used  repeatedly   to  specify
+                     multiple ticket parameters.  If several files are
+                     given, only the first key  is used to encrypt TLS
+                     session  tickets.  Other  keys  are accepted  but
+                     server will  issue new session ticket  with first
+                     key.  This  allows session key  rotation.  Please
+                     note   that   key   rotation   does   not   occur
+                     automatically.   User should  rearrange files  or
+                     change   options  values   and  restart   nghttpx
+                     gracefully.   If opening  or  reading given  file
+                     fails, all  loaded keys  are discarded and  it is
+                     treated as if  none of this option  is given.  If
+                     this  option is  not given  or an  error occurred
+                     while opening or reading a file, key is generated
+                     automatically and renewed every 12hrs.  At most 2
+                     keys are stored in memory.
 
 HTTP/2 and SPDY:
   -c, --http2-max-concurrent-streams=<NUM>
@@ -1261,6 +1281,7 @@ int main(int argc, char **argv) {
         {"accesslog-format", required_argument, &flag, 66},
         {"backend-http1-connections-per-frontend", required_argument, &flag,
          67},
+        {"tls-ticket-key-file", required_argument, &flag, 68},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -1570,6 +1591,10 @@ int main(int argc, char **argv) {
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP1_CONNECTIONS_PER_FRONTEND,
                              optarg);
         break;
+      case 68:
+        // --tls-ticket-key-file
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_FILE, optarg);
+        break;
       default:
         break;
       }
@@ -1719,6 +1744,17 @@ int main(int argc, char **argv) {
         LOG(FATAL) << "Failed to parse command-line argument.";
         exit(EXIT_FAILURE);
       }
+    }
+  }
+
+  if (!get_config()->tls_ticket_key_files.empty()) {
+    auto ticket_keys =
+        read_tls_ticket_key_file(get_config()->tls_ticket_key_files);
+    if (!ticket_keys) {
+      LOG(WARN) << "Use internal session ticket key generator";
+    } else {
+      mod_config()->ticket_keys = std::move(ticket_keys);
+      mod_config()->auto_tls_ticket_key = false;
     }
   }
 

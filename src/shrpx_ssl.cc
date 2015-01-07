@@ -147,7 +147,9 @@ namespace {
 int ticket_key_cb(SSL *ssl, unsigned char *key_name, unsigned char *iv,
                   EVP_CIPHER_CTX *ctx, HMAC_CTX *hctx, int enc) {
   auto handler = static_cast<ClientHandler *>(SSL_get_app_data(ssl));
-  auto ticket_keys = std::atomic_load(&get_config()->ticket_keys);
+  auto ticket_keys = get_config()->auto_tls_ticket_key
+                         ? std::atomic_load(&get_config()->ticket_keys)
+                         : get_config()->ticket_keys;
   if (!ticket_keys) {
     /* No ticket keys available.  Perform full handshake */
     return 0;

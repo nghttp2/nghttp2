@@ -127,6 +127,7 @@ extern const char SHRPX_OPT_NO_LOCATION_REWRITE[];
 extern const char SHRPX_OPT_BACKEND_HTTP1_CONNECTIONS_PER_HOST[];
 extern const char SHRPX_OPT_BACKEND_HTTP1_CONNECTIONS_PER_FRONTEND[];
 extern const char SHRPX_OPT_LISTENER_DISABLE_TIMEOUT[];
+extern const char SHRPX_OPT_TLS_TICKET_KEY_FILE[];
 
 union sockaddr_union {
   sockaddr sa;
@@ -181,6 +182,7 @@ struct Config {
   std::vector<unsigned char> alpn_prefs;
   std::vector<LogFragment> accesslog_format;
   std::vector<DownstreamAddr> downstream_addrs;
+  std::vector<std::string> tls_ticket_key_files;
   std::shared_ptr<TicketKeys> ticket_keys;
   // binary form of http proxy host and port
   sockaddr_union downstream_http_proxy_addr;
@@ -293,6 +295,7 @@ struct Config {
   bool http2_no_cookie_crumbling;
   bool upstream_frame_debug;
   bool no_location_rewrite;
+  bool auto_tls_ticket_key;
 };
 
 const Config *get_config();
@@ -352,6 +355,12 @@ const char *str_syslog_facility(int facility);
 int int_syslog_facility(const char *strfacility);
 
 FILE *open_file_for_write(const char *filename);
+
+// Reads TLS ticket key file in |files| and returns TicketKey which
+// stores read key data.  This function returns TicketKey if it
+// succeeds, or nullptr.
+std::unique_ptr<TicketKeys>
+read_tls_ticket_key_file(const std::vector<std::string> &files);
 
 } // namespace shrpx
 
