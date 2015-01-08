@@ -465,7 +465,6 @@ void renew_ticket_key_cb(struct ev_loop *loop, ev_timer *w, int revents) {
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "failed to renew ticket key";
     }
-    mod_config()->ticket_keys.reset();
     return;
   }
 

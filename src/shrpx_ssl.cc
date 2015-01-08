@@ -160,8 +160,8 @@ int ticket_key_cb(SSL *ssl, unsigned char *key_name, unsigned char *iv,
 #endif // NOTHREADS
 
   if (!ticket_keys) {
-    /* No ticket keys available.  Perform full handshake */
-    return 0;
+    // No ticket keys available.
+    return -1;
   }
 
   auto &keys = ticket_keys->keys;
@@ -172,7 +172,7 @@ int ticket_key_cb(SSL *ssl, unsigned char *key_name, unsigned char *iv,
       if (LOG_ENABLED(INFO)) {
         CLOG(INFO, handler) << "session ticket key: RAND_bytes failed";
       }
-      return 0;
+      return -1;
     }
 
     auto &key = keys[0];
