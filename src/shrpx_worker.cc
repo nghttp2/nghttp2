@@ -93,7 +93,8 @@ void Worker::process_events() {
     q.swap(q_);
   }
   for (auto &wev : q) {
-    if (wev.type == NEW_CONNECTION) {
+    switch (wev.type) {
+    case NEW_CONNECTION: {
       if (LOG_ENABLED(INFO)) {
         WLOG(INFO, this) << "WorkerEvent: client_fd=" << wev.client_fd
                          << ", addrlen=" << wev.client_addrlen;
@@ -109,7 +110,7 @@ void Worker::process_events() {
 
         close(wev.client_fd);
 
-        continue;
+        break;
       }
 
       auto client_handler = ssl::accept_connection(
@@ -120,7 +121,7 @@ void Worker::process_events() {
           WLOG(ERROR, this) << "ClientHandler creation failed";
         }
         close(wev.client_fd);
-        continue;
+        break;
       }
 
       client_handler->set_http2_session(http2session_.get());
@@ -130,10 +131,9 @@ void Worker::process_events() {
         WLOG(INFO, this) << "CLIENT_HANDLER:" << client_handler << " created ";
       }
 
-      continue;
+      break;
     }
-
-    if (wev.type == RENEW_TICKET_KEYS) {
+    case RENEW_TICKET_KEYS:
       if (LOG_ENABLED(INFO)) {
         WLOG(INFO, this) << "Renew ticket keys: worker_info(" << worker_config
                          << ")";
@@ -141,10 +141,8 @@ void Worker::process_events() {
 
       worker_config->ticket_keys = wev.ticket_keys;
 
-      continue;
-    }
-
-    if (wev.type == REOPEN_LOG) {
+      break;
+    case REOPEN_LOG:
       if (LOG_ENABLED(INFO)) {
         WLOG(INFO, this) << "Reopening log files: worker_info(" << worker_config
                          << ")";
@@ -152,10 +150,8 @@ void Worker::process_events() {
 
       reopen_log_files();
 
-      continue;
-    }
-
-    if (wev.type == GRACEFUL_SHUTDOWN) {
+      break;
+    case GRACEFUL_SHUTDOWN:
       WLOG(NOTICE, this) << "Graceful shutdown commencing";
 
       worker_config->graceful_shutdown = true;
@@ -163,14 +159,14 @@ void Worker::process_events() {
       if (worker_stat_->num_connections == 0) {
         ev_break(loop_);
 
-        break;
+        return;
       }
 
-      continue;
-    }
-
-    if (LOG_ENABLED(INFO)) {
-      WLOG(INFO, this) << "unknown event type " << wev.type;
+      break;
+    default:
+      if (LOG_ENABLED(INFO)) {
+        WLOG(INFO, this) << "unknown event type " << wev.type;
+      }
     }
   }
 }

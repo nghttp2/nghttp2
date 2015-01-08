@@ -137,14 +137,15 @@ void ConnectionHandler::graceful_shutdown_worker() {
     return;
   }
 
-  for (auto &worker : workers_) {
-    WorkerEvent wev;
-    memset(&wev, 0, sizeof(wev));
-    wev.type = GRACEFUL_SHUTDOWN;
+  WorkerEvent wev;
+  memset(&wev, 0, sizeof(wev));
+  wev.type = GRACEFUL_SHUTDOWN;
 
-    if (LOG_ENABLED(INFO)) {
-      LLOG(INFO, this) << "Sending graceful shutdown signal to worker";
-    }
+  if (LOG_ENABLED(INFO)) {
+    LLOG(INFO, this) << "Sending graceful shutdown signal to worker";
+  }
+
+  for (auto &worker : workers_) {
 
     worker->send(wev);
   }
