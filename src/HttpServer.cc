@@ -164,16 +164,6 @@ void remove_stream_write_timeout(Stream *stream) {
 } // namespace
 
 namespace {
-std::shared_ptr<std::string> cached_date;
-} // namespace
-
-namespace {
-void refresh_cb(struct ev_loop *loop, ev_timer *w, int revents) {
-  cached_date = std::make_shared<std::string>(util::http_date(time(nullptr)));
-}
-} // namespace
-
-namespace {
 void fill_callback(nghttp2_session_callbacks *callbacks, const Config *config);
 } // namespace
 
@@ -242,9 +232,12 @@ public:
     }
     add_handler(handler.release());
   }
+  void update_cached_date() { cached_date_ = util::http_date(time(nullptr)); }
+  const std::string &get_cached_date() const { return cached_date_; }
 
 private:
   std::set<Http2Handler *> handlers_;
+  std::string cached_date_;
   struct ev_loop *loop_;
   const Config *config_;
   SSL_CTX *ssl_ctx_;
@@ -673,7 +666,6 @@ int Http2Handler::submit_file_response(const std::string &status,
                                        Stream *stream, time_t last_modified,
                                        off_t file_length,
                                        nghttp2_data_provider *data_prd) {
-  auto date_str = cached_date;
   std::string content_length = util::utos(file_length);
   std::string last_modified_str;
   nghttp2_nv nva[] = {
@@ -681,7 +673,7 @@ int Http2Handler::submit_file_response(const std::string &status,
       http2::make_nv_ls("server", NGHTTPD_SERVER),
       http2::make_nv_ls("content-length", content_length),
       http2::make_nv_ll("cache-control", "max-age=3600"),
-      http2::make_nv_ls("date", *date_str),
+      http2::make_nv_ls("date", sessions_->get_cached_date()),
       http2::make_nv_ll("", ""),
   };
   size_t nvlen = 5;
@@ -696,11 +688,10 @@ int Http2Handler::submit_file_response(const std::string &status,
 int Http2Handler::submit_response(const std::string &status, int32_t stream_id,
                                   const Headers &headers,
                                   nghttp2_data_provider *data_prd) {
-  auto date_str = cached_date;
-  auto nva =
-      std::vector<nghttp2_nv>{http2::make_nv_ls(":status", status),
-                              http2::make_nv_ls("server", NGHTTPD_SERVER),
-                              http2::make_nv_ls("date", *date_str)};
+  auto nva = std::vector<nghttp2_nv>{
+      http2::make_nv_ls(":status", status),
+      http2::make_nv_ls("server", NGHTTPD_SERVER),
+      http2::make_nv_ls("date", sessions_->get_cached_date())};
   for (auto &nv : headers) {
     nva.push_back(http2::make_nv(nv.name, nv.value, nv.no_index));
   }
@@ -1311,7 +1302,23 @@ void worker_acceptcb(struct ev_loop *loop, ev_async *w, int revents) {
 } // namespace
 
 namespace {
-void run_worker(Worker *worker) { ev_run(worker->sessions->get_loop(), 0); }
+void refresh_cb(struct ev_loop *loop, ev_timer *w, int revents) {
+  auto sessions = static_cast<Sessions *>(w->data);
+  sessions->update_cached_date();
+}
+} // namespace
+
+namespace {
+void run_worker(Worker *worker) {
+  auto loop = worker->sessions->get_loop();
+  ev_timer w;
+  ev_timer_init(&w, refresh_cb, 0., 1.);
+  w.data = worker->sessions.get();
+  ev_timer_again(loop, &w);
+  worker->sessions->update_cached_date();
+
+  ev_run(loop, 0);
+}
 } // namespace
 
 class AcceptHandler {
@@ -1637,11 +1644,13 @@ int HttpServer::run() {
     return -1;
   }
 
-  ev_timer refresh_wtc;
-  ev_timer_init(&refresh_wtc, refresh_cb, 1.0, 0.);
-  ev_timer_again(loop, &refresh_wtc);
-
-  cached_date = std::make_shared<std::string>(util::http_date(time(nullptr)));
+  ev_timer refresh_timer;
+  ev_timer_init(&refresh_timer, refresh_cb, 0., 1.);
+  refresh_timer.data = &sessions;
+  if (config_->num_worker == 1) {
+    ev_timer_again(loop, &refresh_timer);
+    sessions.update_cached_date();
+  }
 
   ev_run(loop, 0);
   return 0;
