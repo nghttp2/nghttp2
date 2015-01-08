@@ -236,6 +236,10 @@ int ClientHandler::read_tls() {
     rb_.reset();
     struct iovec iov[2];
     auto iovcnt = rb_.wiovec(iov);
+    // SSL_read requires the same arguments (buf pointer and its
+    // length) on SSL_ERROR_WANT_READ or SSL_ERROR_WANT_WRITE.
+    // rlimit_.avail() does not change if we don't read anything, so
+    // we don't do anything special here.
     iovcnt = limit_iovec(iov, iovcnt, rlimit_.avail());
     if (iovcnt == 0) {
       return 0;
@@ -281,15 +285,29 @@ int ClientHandler::write_tls() {
       size_t len;
       std::tie(p, len) = wb_.get();
 
-      len = std::min(len, wlimit_.avail());
-      if (len == 0) {
-        return 0;
+      // SSL_write requires the same arguments (buf pointer and its
+      // length) on SSL_ERROR_WANT_READ or SSL_ERROR_WANT_WRITE.
+      // get_write_limit() may return smaller length than previously
+      // passed to SSL_write, which violates OpenSSL assumption.  To
+      // avoid this, we keep last legnth passed to SSL_write to
+      // tls_last_writelen_ if SSL_write indicated I/O blocking.
+      if (tls_last_writelen_ == 0) {
+        len = std::min(len, wlimit_.avail());
+        if (len == 0) {
+          return 0;
+        }
+
+        auto limit = get_write_limit();
+        if (limit != -1) {
+          len = std::min(len, static_cast<size_t>(limit));
+        }
+      } else {
+        assert(len >= tls_last_writelen_);
+
+        len = tls_last_writelen_;
+        tls_last_writelen_ = 0;
       }
 
-      auto limit = get_write_limit();
-      if (limit != -1) {
-        len = std::min(len, static_cast<size_t>(limit));
-      }
       auto rv = SSL_write(ssl_, p, len);
 
       if (rv == 0) {
@@ -300,10 +318,12 @@ int ClientHandler::write_tls() {
         auto err = SSL_get_error(ssl_, rv);
         switch (err) {
         case SSL_ERROR_WANT_READ:
+          tls_last_writelen_ = len;
           wlimit_.stopw();
           ev_timer_stop(loop_, &wt_);
           return 0;
         case SSL_ERROR_WANT_WRITE:
+          tls_last_writelen_ = len;
           wlimit_.startw();
           ev_timer_again(loop_, &wt_);
           return 0;
@@ -456,9 +476,9 @@ ClientHandler::ClientHandler(struct ev_loop *loop, int fd, SSL *ssl,
       loop_(loop), dconn_pool_(dconn_pool), http2session_(nullptr),
       http1_connect_blocker_(nullptr), ssl_(ssl), worker_stat_(worker_stat),
       last_write_time_(0), warmup_writelen_(0),
-      left_connhd_len_(NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN), fd_(fd),
-      should_close_after_write_(false), tls_handshake_(false),
-      tls_renegotiation_(false) {
+      left_connhd_len_(NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN),
+      tls_last_writelen_(0), fd_(fd), should_close_after_write_(false),
+      tls_handshake_(false), tls_renegotiation_(false) {
 
   ++worker_stat->num_connections;
 
