@@ -755,16 +755,6 @@ void fill_default_config() {
 }
 } // namespace
 
-// namespace {
-// size_t get_rate_limit(size_t rate_limit) {
-//   if (rate_limit == 0) {
-//     return EV_RATE_LIMIT_MAX;
-//   } else {
-//     return rate_limit;
-//   }
-// }
-// } // namespace
-
 namespace {
 void print_version(std::ostream &out) {
   out << get_config()->server_name << std::endl;
@@ -1852,18 +1842,6 @@ int main(int argc, char **argv) {
       exit(EXIT_FAILURE);
     }
   }
-
-  // mod_config()->rate_limit_cfg = ev_token_bucket_cfg_new(
-  //     get_rate_limit(get_config()->read_rate),
-  //     get_rate_limit(get_config()->read_burst),
-  //     get_rate_limit(get_config()->write_rate),
-  //     get_rate_limit(get_config()->write_burst), nullptr);
-
-  // mod_config()->worker_rate_limit_cfg = ev_token_bucket_cfg_new(
-  //     get_rate_limit(get_config()->worker_read_rate),
-  //     get_rate_limit(get_config()->worker_read_burst),
-  //     get_rate_limit(get_config()->worker_write_rate),
-  //     get_rate_limit(get_config()->worker_write_burst), nullptr);
 
   if (get_config()->upstream_frame_debug) {
     // To make it sync to logging
