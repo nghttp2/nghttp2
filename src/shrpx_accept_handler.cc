@@ -26,7 +26,7 @@
 
 #include <unistd.h>
 
-#include "shrpx_listen_handler.h"
+#include "shrpx_connection_handler.h"
 #include "shrpx_config.h"
 #include "util.h"
 
@@ -41,7 +41,8 @@ void acceptcb(struct ev_loop *loop, ev_io *w, int revent) {
 }
 } // namespace
 
-AcceptHandler::AcceptHandler(int fd, ListenHandler *h) : conn_hnr_(h), fd_(fd) {
+AcceptHandler::AcceptHandler(int fd, ConnectionHandler *h)
+    : conn_hnr_(h), fd_(fd) {
   ev_io_init(&wev_, acceptcb, fd_, EV_READ);
   wev_.data = this;
   ev_io_start(conn_hnr_->get_loop(), &wev_);

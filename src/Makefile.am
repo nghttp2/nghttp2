@@ -101,7 +101,7 @@ NGHTTPX_SRCS = \
 	shrpx_config.cc shrpx_config.h \
 	shrpx_error.h \
 	shrpx_accept_handler.cc shrpx_accept_handler.h \
-	shrpx_listen_handler.cc shrpx_listen_handler.h \
+	shrpx_connection_handler.cc shrpx_connection_handler.h \
 	shrpx_client_handler.cc shrpx_client_handler.h \
 	shrpx_upstream.h \
 	shrpx_http2_upstream.cc shrpx_http2_upstream.h \

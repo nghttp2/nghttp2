@@ -31,11 +31,11 @@
 
 namespace shrpx {
 
-class ListenHandler;
+class ConnectionHandler;
 
 class AcceptHandler {
 public:
-  AcceptHandler(int fd, ListenHandler *h);
+  AcceptHandler(int fd, ConnectionHandler *h);
   ~AcceptHandler();
   void accept_connection();
   void enable();
@@ -44,7 +44,7 @@ public:
 
 private:
   ev_io wev_;
-  ListenHandler *conn_hnr_;
+  ConnectionHandler *conn_hnr_;
   int fd_;
 };
 

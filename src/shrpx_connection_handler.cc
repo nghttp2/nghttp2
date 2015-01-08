@@ -22,7 +22,7 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#include "shrpx_listen_handler.h"
+#include "shrpx_connection_handler.h"
 
 #include <unistd.h>
 
@@ -46,10 +46,10 @@ namespace shrpx {
 
 namespace {
 void acceptor_disable_cb(struct ev_loop *loop, ev_timer *w, int revent) {
-  auto h = static_cast<ListenHandler *>(w->data);
+  auto h = static_cast<ConnectionHandler *>(w->data);
 
   // If we are in graceful shutdown period, we must not enable
-  // evlisteners again.
+  // acceptors again.
   if (worker_config->graceful_shutdown) {
     return;
   }
@@ -58,8 +58,8 @@ void acceptor_disable_cb(struct ev_loop *loop, ev_timer *w, int revent) {
 }
 } // namespace
 
-ListenHandler::ListenHandler(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx,
-                             SSL_CTX *cl_ssl_ctx)
+ConnectionHandler::ConnectionHandler(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx,
+                                     SSL_CTX *cl_ssl_ctx)
     : loop_(loop), sv_ssl_ctx_(sv_ssl_ctx), cl_ssl_ctx_(cl_ssl_ctx),
       // rate_limit_group_(bufferevent_rate_limit_group_new(
       //     evbase, get_config()->worker_rate_limit_cfg)),
@@ -69,12 +69,12 @@ ListenHandler::ListenHandler(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx,
   disable_acceptor_timer_.data = this;
 }
 
-ListenHandler::~ListenHandler() {
+ConnectionHandler::~ConnectionHandler() {
   //  bufferevent_rate_limit_group_free(rate_limit_group_);
   ev_timer_stop(loop_, &disable_acceptor_timer_);
 }
 
-void ListenHandler::worker_reopen_log_files() {
+void ConnectionHandler::worker_reopen_log_files() {
   WorkerEvent wev;
 
   memset(&wev, 0, sizeof(wev));
@@ -85,7 +85,7 @@ void ListenHandler::worker_reopen_log_files() {
   }
 }
 
-void ListenHandler::worker_renew_ticket_keys(
+void ConnectionHandler::worker_renew_ticket_keys(
     const std::shared_ptr<TicketKeys> &ticket_keys) {
   WorkerEvent wev;
 
@@ -98,7 +98,7 @@ void ListenHandler::worker_renew_ticket_keys(
   }
 }
 
-void ListenHandler::create_worker_thread(size_t num) {
+void ConnectionHandler::create_worker_thread(size_t num) {
 #ifndef NOTHREADS
   assert(workers_.size() == 0);
 
@@ -113,7 +113,7 @@ void ListenHandler::create_worker_thread(size_t num) {
 #endif // NOTHREADS
 }
 
-void ListenHandler::join_worker() {
+void ConnectionHandler::join_worker() {
 #ifndef NOTHREADS
   int n = 0;
 
@@ -132,7 +132,7 @@ void ListenHandler::join_worker() {
 #endif // NOTHREADS
 }
 
-void ListenHandler::graceful_shutdown_worker() {
+void ConnectionHandler::graceful_shutdown_worker() {
   if (get_config()->num_worker == 1) {
     return;
   }
@@ -150,7 +150,7 @@ void ListenHandler::graceful_shutdown_worker() {
   }
 }
 
-int ListenHandler::handle_connection(int fd, sockaddr *addr, int addrlen) {
+int ConnectionHandler::handle_connection(int fd, sockaddr *addr, int addrlen) {
   if (LOG_ENABLED(INFO)) {
     LLOG(INFO, this) << "Accepted connection. fd=" << fd;
   }
@@ -198,35 +198,39 @@ int ListenHandler::handle_connection(int fd, sockaddr *addr, int addrlen) {
   return 0;
 }
 
-struct ev_loop *ListenHandler::get_loop() const {
+struct ev_loop *ConnectionHandler::get_loop() const {
   return loop_;
 }
 
-void ListenHandler::create_http2_session() {
+void ConnectionHandler::create_http2_session() {
   http2session_ = util::make_unique<Http2Session>(loop_, cl_ssl_ctx_);
 }
 
-void ListenHandler::create_http1_connect_blocker() {
+void ConnectionHandler::create_http1_connect_blocker() {
   http1_connect_blocker_ = util::make_unique<ConnectBlocker>(loop_);
 }
 
-const WorkerStat *ListenHandler::get_worker_stat() const {
+const WorkerStat *ConnectionHandler::get_worker_stat() const {
   return worker_stat_.get();
 }
 
-void ListenHandler::set_acceptor4(std::unique_ptr<AcceptHandler> h) {
+void ConnectionHandler::set_acceptor4(std::unique_ptr<AcceptHandler> h) {
   acceptor4_ = std::move(h);
 }
 
-AcceptHandler *ListenHandler::get_acceptor4() const { return acceptor4_.get(); }
+AcceptHandler *ConnectionHandler::get_acceptor4() const {
+  return acceptor4_.get();
+}
 
-void ListenHandler::set_acceptor6(std::unique_ptr<AcceptHandler> h) {
+void ConnectionHandler::set_acceptor6(std::unique_ptr<AcceptHandler> h) {
   acceptor6_ = std::move(h);
 }
 
-AcceptHandler *ListenHandler::get_acceptor6() const { return acceptor6_.get(); }
+AcceptHandler *ConnectionHandler::get_acceptor6() const {
+  return acceptor6_.get();
+}
 
-void ListenHandler::enable_acceptor() {
+void ConnectionHandler::enable_acceptor() {
   if (acceptor4_) {
     acceptor4_->enable();
   }
@@ -236,7 +240,7 @@ void ListenHandler::enable_acceptor() {
   }
 }
 
-void ListenHandler::disable_acceptor() {
+void ConnectionHandler::disable_acceptor() {
   if (acceptor4_) {
     acceptor4_->disable();
   }
@@ -246,7 +250,7 @@ void ListenHandler::disable_acceptor() {
   }
 }
 
-void ListenHandler::disable_acceptor_temporary(ev_tstamp t) {
+void ConnectionHandler::disable_acceptor_temporary(ev_tstamp t) {
   if (t == 0. || ev_is_active(&disable_acceptor_timer_)) {
     return;
   }
@@ -257,7 +261,7 @@ void ListenHandler::disable_acceptor_temporary(ev_tstamp t) {
   ev_timer_start(loop_, &disable_acceptor_timer_);
 }
 
-void ListenHandler::accept_pending_connection() {
+void ConnectionHandler::accept_pending_connection() {
   if (acceptor4_) {
     acceptor4_->accept_connection();
   }

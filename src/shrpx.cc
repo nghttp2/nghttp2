@@ -54,7 +54,7 @@
 #include <nghttp2/nghttp2.h>
 
 #include "shrpx_config.h"
-#include "shrpx_listen_handler.h"
+#include "shrpx_connection_handler.h"
 #include "shrpx_ssl.h"
 #include "shrpx_worker_config.h"
 #include "shrpx_worker.h"
@@ -139,7 +139,7 @@ int resolve_hostname(sockaddr_union *addr, size_t *addrlen,
 } // namespace
 
 namespace {
-std::unique_ptr<AcceptHandler> create_acceptor(ListenHandler *handler,
+std::unique_ptr<AcceptHandler> create_acceptor(ConnectionHandler *handler,
                                                int family) {
   {
     auto envfd =
@@ -294,7 +294,7 @@ void save_pid() {
 
 namespace {
 void reopen_log_signal_cb(struct ev_loop *loop, ev_signal *w, int revents) {
-  auto listener_handler = static_cast<ListenHandler *>(w->data);
+  auto conn_handler = static_cast<ConnectionHandler *>(w->data);
 
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "Reopening log files: worker_info(" << worker_config << ")";
@@ -303,14 +303,14 @@ void reopen_log_signal_cb(struct ev_loop *loop, ev_signal *w, int revents) {
   (void)reopen_log_files();
 
   if (get_config()->num_worker > 1) {
-    listener_handler->worker_reopen_log_files();
+    conn_handler->worker_reopen_log_files();
   }
 }
 } // namespace
 
 namespace {
 void exec_binary_signal_cb(struct ev_loop *loop, ev_signal *w, int revents) {
-  auto listener_handler = static_cast<ListenHandler *>(w->data);
+  auto conn_handler = static_cast<ConnectionHandler *>(w->data);
 
   LOG(NOTICE) << "Executing new binary";
 
@@ -349,14 +349,14 @@ void exec_binary_signal_cb(struct ev_loop *loop, ev_signal *w, int revents) {
   auto envp = util::make_unique<char *[]>(envlen + 3 + 1);
   size_t envidx = 0;
 
-  auto acceptor4 = listener_handler->get_acceptor4();
+  auto acceptor4 = conn_handler->get_acceptor4();
   if (acceptor4) {
     std::string fd4 = ENV_LISTENER4_FD "=";
     fd4 += util::utos(acceptor4->get_fd());
     envp[envidx++] = strdup(fd4.c_str());
   }
 
-  auto acceptor6 = listener_handler->get_acceptor6();
+  auto acceptor6 = conn_handler->get_acceptor6();
   if (acceptor6) {
     std::string fd6 = ENV_LISTENER6_FD "=";
     fd6 += util::utos(acceptor6->get_fd());
@@ -401,20 +401,20 @@ void exec_binary_signal_cb(struct ev_loop *loop, ev_signal *w, int revents) {
 namespace {
 void graceful_shutdown_signal_cb(struct ev_loop *loop, ev_signal *w,
                                  int revents) {
-  auto listener_handler = static_cast<ListenHandler *>(w->data);
+  auto conn_handler = static_cast<ConnectionHandler *>(w->data);
 
   LOG(NOTICE) << "Graceful shutdown signal received";
 
   worker_config->graceful_shutdown = true;
 
-  listener_handler->disable_acceptor();
+  conn_handler->disable_acceptor();
 
   // After disabling accepting new connection, disptach incoming
   // connection in backlog.
 
-  listener_handler->accept_pending_connection();
+  conn_handler->accept_pending_connection();
 
-  listener_handler->graceful_shutdown_worker();
+  conn_handler->graceful_shutdown_worker();
 
   // We have accepted all pending connections.  Shutdown main event
   // loop.
@@ -424,8 +424,8 @@ void graceful_shutdown_signal_cb(struct ev_loop *loop, ev_signal *w,
 
 namespace {
 void refresh_cb(struct ev_loop *loop, ev_timer *w, int revents) {
-  auto listener_handler = static_cast<ListenHandler *>(w->data);
-  auto worker_stat = listener_handler->get_worker_stat();
+  auto conn_handler = static_cast<ConnectionHandler *>(w->data);
+  auto worker_stat = conn_handler->get_worker_stat();
 
   // In multi threaded mode (get_config()->num_worker > 1), we have to
   // wait for event notification to workers to finish.
@@ -438,7 +438,7 @@ void refresh_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 
 namespace {
 void renew_ticket_key_cb(struct ev_loop *loop, ev_timer *w, int revents) {
-  auto listener_handler = static_cast<ListenHandler *>(w->data);
+  auto conn_handler = static_cast<ConnectionHandler *>(w->data);
   const auto &old_ticket_keys = worker_config->ticket_keys;
 
   auto ticket_keys = std::make_shared<TicketKeys>();
@@ -475,7 +475,7 @@ void renew_ticket_key_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 
   worker_config->ticket_keys = ticket_keys;
 
-  listener_handler->worker_renew_ticket_keys(ticket_keys);
+  conn_handler->worker_renew_ticket_keys(ticket_keys);
 }
 } // namespace
 
@@ -497,8 +497,8 @@ int event_loop() {
                      : nullptr;
   }
 
-  auto listener_handler =
-      util::make_unique<ListenHandler>(loop, sv_ssl_ctx, cl_ssl_ctx);
+  auto conn_handler =
+      util::make_unique<ConnectionHandler>(loop, sv_ssl_ctx, cl_ssl_ctx);
   if (get_config()->daemon) {
     if (daemon(0, 0) == -1) {
       auto error = errno;
@@ -514,16 +514,16 @@ int event_loop() {
     save_pid();
   }
 
-  auto acceptor6 = create_acceptor(listener_handler.get(), AF_INET6);
-  auto acceptor4 = create_acceptor(listener_handler.get(), AF_INET);
+  auto acceptor6 = create_acceptor(conn_handler.get(), AF_INET6);
+  auto acceptor4 = create_acceptor(conn_handler.get(), AF_INET);
   if (!acceptor6 && !acceptor4) {
     LOG(FATAL) << "Failed to listen on address " << get_config()->host.get()
                << ", port " << get_config()->port;
     exit(EXIT_FAILURE);
   }
 
-  listener_handler->set_acceptor4(std::move(acceptor4));
-  listener_handler->set_acceptor6(std::move(acceptor6));
+  conn_handler->set_acceptor4(std::move(acceptor4));
+  conn_handler->set_acceptor6(std::move(acceptor6));
 
   // ListenHandler loads private key, and we listen on a priveleged port.
   // After that, we drop the root privileges if needed.
@@ -533,7 +533,7 @@ int event_loop() {
   if (sv_ssl_ctx && get_config()->auto_tls_ticket_key) {
     // Renew ticket key every 12hrs
     ev_timer_init(&renew_ticket_key_timer, renew_ticket_key_cb, 0., 12 * 3600.);
-    renew_ticket_key_timer.data = listener_handler.get();
+    renew_ticket_key_timer.data = conn_handler.get();
     ev_timer_again(loop, &renew_ticket_key_timer);
 
     // Generate first session ticket key before running workers.
@@ -554,11 +554,11 @@ int event_loop() {
 #endif // !NOTHREADS
 
   if (get_config()->num_worker > 1) {
-    listener_handler->create_worker_thread(get_config()->num_worker);
+    conn_handler->create_worker_thread(get_config()->num_worker);
   } else if (get_config()->downstream_proto == PROTO_HTTP2) {
-    listener_handler->create_http2_session();
+    conn_handler->create_http2_session();
   } else {
-    listener_handler->create_http1_connect_blocker();
+    conn_handler->create_http1_connect_blocker();
   }
 
 #ifndef NOTHREADS
@@ -570,23 +570,23 @@ int event_loop() {
 
   ev_signal reopen_log_sig;
   ev_signal_init(&reopen_log_sig, reopen_log_signal_cb, REOPEN_LOG_SIGNAL);
-  reopen_log_sig.data = listener_handler.get();
+  reopen_log_sig.data = conn_handler.get();
   ev_signal_start(loop, &reopen_log_sig);
 
   ev_signal exec_bin_sig;
   ev_signal_init(&exec_bin_sig, exec_binary_signal_cb, EXEC_BINARY_SIGNAL);
-  exec_bin_sig.data = listener_handler.get();
+  exec_bin_sig.data = conn_handler.get();
   ev_signal_start(loop, &exec_bin_sig);
 
   ev_signal graceful_shutdown_sig;
   ev_signal_init(&graceful_shutdown_sig, graceful_shutdown_signal_cb,
                  GRACEFUL_SHUTDOWN_SIGNAL);
-  graceful_shutdown_sig.data = listener_handler.get();
+  graceful_shutdown_sig.data = conn_handler.get();
   ev_signal_start(loop, &graceful_shutdown_sig);
 
   ev_timer refresh_timer;
   ev_timer_init(&refresh_timer, refresh_cb, 0., 1.);
-  refresh_timer.data = listener_handler.get();
+  refresh_timer.data = conn_handler.get();
   ev_timer_again(loop, &refresh_timer);
 
   if (LOG_ENABLED(INFO)) {
@@ -595,7 +595,7 @@ int event_loop() {
 
   ev_run(loop, 0);
 
-  listener_handler->join_worker();
+  conn_handler->join_worker();
 
   return 0;
 }

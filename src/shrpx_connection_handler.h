@@ -22,8 +22,8 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef SHRPX_LISTEN_HANDLER_H
-#define SHRPX_LISTEN_HANDLER_H
+#ifndef SHRPX_CONNECTION_HANDLER_H
+#define SHRPX_CONNECTION_HANDLER_H
 
 #include "shrpx.h"
 
@@ -49,10 +49,11 @@ struct WorkerStat;
 struct TicketKeys;
 
 // TODO should be renamed as ConnectionHandler
-class ListenHandler {
+class ConnectionHandler {
 public:
-  ListenHandler(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx);
-  ~ListenHandler();
+  ConnectionHandler(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx,
+                    SSL_CTX *cl_ssl_ctx);
+  ~ConnectionHandler();
   int handle_connection(int fd, sockaddr *addr, int addrlen);
   void create_worker_thread(size_t num);
   void worker_reopen_log_files();
@@ -94,4 +95,4 @@ private:
 
 } // namespace shrpx
 
-#endif // SHRPX_LISTEN_HANDLER_H
+#endif // SHRPX_CONNECTION_HANDLER_H
