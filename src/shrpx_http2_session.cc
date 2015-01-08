@@ -1695,9 +1695,10 @@ int Http2Session::read_tls() {
       case SSL_ERROR_WANT_READ:
         return 0;
       case SSL_ERROR_WANT_WRITE:
-        ev_io_start(loop_, &wev_);
-        ev_timer_again(loop_, &wt_);
-        return 0;
+        if (LOG_ENABLED(INFO)) {
+          SSLOG(INFO, this) << "Close connection due to TLS renegotiation";
+        }
+        return -1;
       default:
         if (LOG_ENABLED(INFO)) {
           SSLOG(INFO, this) << "SSL_read: SSL_get_error returned " << err;
@@ -1731,9 +1732,10 @@ int Http2Session::write_tls() {
         auto err = SSL_get_error(ssl_, rv);
         switch (err) {
         case SSL_ERROR_WANT_READ:
-          ev_io_stop(loop_, &wev_);
-          ev_timer_stop(loop_, &wt_);
-          return 0;
+          if (LOG_ENABLED(INFO)) {
+            SSLOG(INFO, this) << "Close connection due to TLS renegotiation";
+          }
+          return -1;
         case SSL_ERROR_WANT_WRITE:
           ev_io_start(loop_, &wev_);
           ev_timer_again(loop_, &wt_);

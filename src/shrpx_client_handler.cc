@@ -270,10 +270,10 @@ int ClientHandler::read_tls() {
         tls_last_readlen_ = iov[0].iov_len;
         return 0;
       case SSL_ERROR_WANT_WRITE:
-        tls_last_readlen_ = iov[0].iov_len;
-        wlimit_.startw();
-        ev_timer_again(loop_, &wt_);
-        return 0;
+        if (LOG_ENABLED(INFO)) {
+          CLOG(INFO, this) << "Close connection due to TLS renegotiation";
+        }
+        return -1;
       default:
         if (LOG_ENABLED(INFO)) {
           CLOG(INFO, this) << "SSL_read: SSL_get_error returned " << err;
@@ -331,10 +331,10 @@ int ClientHandler::write_tls() {
         auto err = SSL_get_error(ssl_, rv);
         switch (err) {
         case SSL_ERROR_WANT_READ:
-          tls_last_writelen_ = len;
-          wlimit_.stopw();
-          ev_timer_stop(loop_, &wt_);
-          return 0;
+          if (LOG_ENABLED(INFO)) {
+            CLOG(INFO, this) << "Close connection due to TLS renegotiation";
+          }
+          return -1;
         case SSL_ERROR_WANT_WRITE:
           tls_last_writelen_ = len;
           wlimit_.startw();
