@@ -52,8 +52,6 @@ struct StreamData {
 
 class Http2Session {
 public:
-  typedef RingBuf<65536> Buf;
-
   Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx);
   ~Http2Session();
 
@@ -170,6 +168,9 @@ public:
     CONNECTION_CHECK_STARTED
   };
 
+  using ReadBuf = RingBuf<8192>;
+  using WriteBuf = RingBuf<65536>;
+
 private:
   ev_io wev_;
   ev_io rev_;
@@ -200,8 +201,8 @@ private:
   int connection_check_state_;
   bool flow_control_;
   bool write_requested_;
-  Buf wb_;
-  Buf rb_;
+  WriteBuf wb_;
+  ReadBuf rb_;
 };
 
 } // namespace shrpx

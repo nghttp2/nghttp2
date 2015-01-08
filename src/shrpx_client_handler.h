@@ -48,8 +48,6 @@ class ConnectBlocker;
 class DownstreamConnectionPool;
 struct WorkerStat;
 
-typedef RingBuf<65536> UpstreamBuf;
-
 class ClientHandler {
 public:
   ClientHandler(struct ev_loop *loop, int fd, SSL *ssl, const char *ipaddr,
@@ -137,8 +135,11 @@ public:
                        int64_t body_bytes_sent);
   WorkerStat *get_worker_stat() const;
 
-  UpstreamBuf *get_wb();
-  UpstreamBuf *get_rb();
+  using WriteBuf = RingBuf<65536>;
+  using ReadBuf = RingBuf<8192>;
+
+  WriteBuf *get_wb();
+  ReadBuf *get_rb();
 
   RateLimit *get_rlimit();
   RateLimit *get_wlimit();
@@ -176,8 +177,8 @@ private:
   bool should_close_after_write_;
   bool tls_handshake_;
   bool tls_renegotiation_;
-  UpstreamBuf wb_;
-  UpstreamBuf rb_;
+  WriteBuf wb_;
+  ReadBuf rb_;
 };
 
 } // namespace shrpx

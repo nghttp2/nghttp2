@@ -902,9 +902,9 @@ void ClientHandler::write_accesslog(int major, int minor, unsigned int status,
 
 WorkerStat *ClientHandler::get_worker_stat() const { return worker_stat_; }
 
-UpstreamBuf *ClientHandler::get_wb() { return &wb_; }
+ClientHandler::WriteBuf *ClientHandler::get_wb() { return &wb_; }
 
-UpstreamBuf *ClientHandler::get_rb() { return &rb_; }
+ClientHandler::ReadBuf *ClientHandler::get_rb() { return &rb_; }
 
 void ClientHandler::signal_write() { wlimit_.startw(); }
 
