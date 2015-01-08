@@ -93,9 +93,50 @@ void Worker::process_events() {
     q.swap(q_);
   }
   for (auto &wev : q) {
+    if (wev.type == NEW_CONNECTION) {
+      if (LOG_ENABLED(INFO)) {
+        WLOG(INFO, this) << "WorkerEvent: client_fd=" << wev.client_fd
+                         << ", addrlen=" << wev.client_addrlen;
+      }
+
+      if (worker_stat_->num_connections >=
+          get_config()->worker_frontend_connections) {
+
+        if (LOG_ENABLED(INFO)) {
+          WLOG(INFO, this) << "Too many connections >= "
+                           << get_config()->worker_frontend_connections;
+        }
+
+        close(wev.client_fd);
+
+        continue;
+      }
+
+      auto client_handler = ssl::accept_connection(
+          loop_, sv_ssl_ctx_, wev.client_fd, &wev.client_addr.sa,
+          wev.client_addrlen, worker_stat_.get(), &dconn_pool_);
+      if (!client_handler) {
+        if (LOG_ENABLED(INFO)) {
+          WLOG(ERROR, this) << "ClientHandler creation failed";
+        }
+        close(wev.client_fd);
+        continue;
+      }
+
+      client_handler->set_http2_session(http2session_.get());
+      client_handler->set_http1_connect_blocker(http1_connect_blocker_.get());
+
+      if (LOG_ENABLED(INFO)) {
+        WLOG(INFO, this) << "CLIENT_HANDLER:" << client_handler << " created ";
+      }
+
+      continue;
+    }
+
     if (wev.type == RENEW_TICKET_KEYS) {
       if (LOG_ENABLED(INFO)) {
-        LOG(INFO) << "Renew ticket keys: worker_info(" << worker_config << ")";
+        WLOG(INFO, this) << "Renew ticket keys: worker_info(" << worker_config
+                         << ")";
       }
 
       worker_config->ticket_keys = wev.ticket_keys;
@@ -105,8 +146,8 @@ void Worker::process_events() {
 
     if (wev.type == REOPEN_LOG) {
       if (LOG_ENABLED(INFO)) {
-        LOG(INFO) << "Reopening log files: worker_info(" << worker_config
-                  << ")";
+        WLOG(INFO, this) << "Reopening log files: worker_info(" << worker_config
+                         << ")";
       }
 
       reopen_log_files();
@@ -115,7 +156,7 @@ void Worker::process_events() {
     }
 
     if (wev.type == GRACEFUL_SHUTDOWN) {
-      LOG(NOTICE) << "Graceful shutdown commencing";
+      WLOG(NOTICE, this) << "Graceful shutdown commencing";
 
       worker_config->graceful_shutdown = true;
 
@@ -129,39 +170,7 @@ void Worker::process_events() {
     }
 
     if (LOG_ENABLED(INFO)) {
-      WLOG(INFO, this) << "WorkerEvent: client_fd=" << wev.client_fd
-                       << ", addrlen=" << wev.client_addrlen;
-    }
-
-    if (worker_stat_->num_connections >=
-        get_config()->worker_frontend_connections) {
-
-      if (LOG_ENABLED(INFO)) {
-        WLOG(INFO, this) << "Too many connections >= "
-                         << get_config()->worker_frontend_connections;
-      }
-
-      close(wev.client_fd);
-
-      continue;
-    }
-
-    auto client_handler = ssl::accept_connection(
-        loop_, sv_ssl_ctx_, wev.client_fd, &wev.client_addr.sa,
-        wev.client_addrlen, worker_stat_.get(), &dconn_pool_);
-    if (!client_handler) {
-      if (LOG_ENABLED(INFO)) {
-        WLOG(ERROR, this) << "ClientHandler creation failed";
-      }
-      close(wev.client_fd);
-      continue;
-    }
-
-    client_handler->set_http2_session(http2session_.get());
-    client_handler->set_http1_connect_blocker(http1_connect_blocker_.get());
-
-    if (LOG_ENABLED(INFO)) {
-      WLOG(INFO, this) << "CLIENT_HANDLER:" << client_handler << " created ";
+      WLOG(INFO, this) << "unknown event type " << wev.type;
     }
   }
 }
