@@ -148,7 +148,7 @@ namespace {
 int ticket_key_cb(SSL *ssl, unsigned char *key_name, unsigned char *iv,
                   EVP_CIPHER_CTX *ctx, HMAC_CTX *hctx, int enc) {
   auto handler = static_cast<ClientHandler *>(SSL_get_app_data(ssl));
-  auto ticket_keys = worker_config->ticket_keys;
+  const auto &ticket_keys = worker_config->ticket_keys;
 
   if (!ticket_keys) {
     // No ticket keys available.
