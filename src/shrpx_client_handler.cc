@@ -178,6 +178,8 @@ int ClientHandler::write_clear() {
 int ClientHandler::tls_handshake() {
   ev_timer_again(loop_, &rt_);
 
+  ERR_clear_error();
+
   auto rv = SSL_do_handshake(ssl_);
 
   if (rv == 0) {
@@ -225,6 +227,8 @@ int ClientHandler::tls_handshake() {
 int ClientHandler::read_tls() {
   ev_timer_again(loop_, &rt_);
 
+  ERR_clear_error();
+
   for (;;) {
     // we should process buffered data first before we read EOF.
     if (rb_.rleft() && on_read() != 0) {
@@ -238,11 +242,19 @@ int ClientHandler::read_tls() {
     auto iovcnt = rb_.wiovec(iov);
     // SSL_read requires the same arguments (buf pointer and its
     // length) on SSL_ERROR_WANT_READ or SSL_ERROR_WANT_WRITE.
-    // rlimit_.avail() does not change if we don't read anything, so
-    // we don't do anything special here.
-    iovcnt = limit_iovec(iov, iovcnt, rlimit_.avail());
-    if (iovcnt == 0) {
-      return 0;
+    // rlimit_.avail() or rlimit_.avail() may return different length
+    // than the length previously passed to SSL_read, which violates
+    // OpenSSL assumption.  To avoid this, we keep last legnth passed
+    // to SSL_read to tls_last_readlen_ if SSL_read indicated I/O
+    // blocking.
+    if (tls_last_readlen_ == 0) {
+      iovcnt = limit_iovec(iov, iovcnt, rlimit_.avail());
+      if (iovcnt == 0) {
+        return 0;
+      }
+    } else {
+      assert(iov[0].iov_len == tls_last_readlen_);
+      tls_last_readlen_ = 0;
     }
 
     auto rv = SSL_read(ssl_, iov[0].iov_base, iov[0].iov_len);
@@ -255,11 +267,13 @@ int ClientHandler::read_tls() {
       auto err = SSL_get_error(ssl_, rv);
       switch (err) {
       case SSL_ERROR_WANT_READ:
-        goto fin;
+        tls_last_readlen_ = iov[0].iov_len;
+        return 0;
       case SSL_ERROR_WANT_WRITE:
+        tls_last_readlen_ = iov[0].iov_len;
         wlimit_.startw();
         ev_timer_again(loop_, &wt_);
-        goto fin;
+        return 0;
       default:
         if (LOG_ENABLED(INFO)) {
           CLOG(INFO, this) << "SSL_read: SSL_get_error returned " << err;
@@ -271,13 +285,12 @@ int ClientHandler::read_tls() {
     rb_.write(rv);
     rlimit_.drain(rv);
   }
-
-fin:
-  return 0;
 }
 
 int ClientHandler::write_tls() {
   ev_timer_again(loop_, &rt_);
+
+  ERR_clear_error();
 
   for (;;) {
     if (wb_.rleft() > 0) {
@@ -477,8 +490,9 @@ ClientHandler::ClientHandler(struct ev_loop *loop, int fd, SSL *ssl,
       http1_connect_blocker_(nullptr), ssl_(ssl), worker_stat_(worker_stat),
       last_write_time_(0), warmup_writelen_(0),
       left_connhd_len_(NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN),
-      tls_last_writelen_(0), fd_(fd), should_close_after_write_(false),
-      tls_handshake_(false), tls_renegotiation_(false) {
+      tls_last_writelen_(0), tls_last_readlen_(0), fd_(fd),
+      should_close_after_write_(false), tls_handshake_(false),
+      tls_renegotiation_(false) {
 
   ++worker_stat->num_connections;
 

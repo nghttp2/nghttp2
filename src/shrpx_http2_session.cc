@@ -1611,6 +1611,8 @@ int Http2Session::write_clear() {
 int Http2Session::tls_handshake() {
   ev_timer_again(loop_, &rt_);
 
+  ERR_clear_error();
+
   auto rv = SSL_do_handshake(ssl_);
 
   if (rv == 0) {
@@ -1664,6 +1666,8 @@ int Http2Session::tls_handshake() {
 int Http2Session::read_tls() {
   ev_timer_again(loop_, &rt_);
 
+  ERR_clear_error();
+
   for (;;) {
     // we should process buffered data first before we read EOF.
     if (rb_.rleft() && on_read() != 0) {
@@ -1708,6 +1712,8 @@ int Http2Session::read_tls() {
 
 int Http2Session::write_tls() {
   ev_timer_again(loop_, &rt_);
+
+  ERR_clear_error();
 
   for (;;) {
     if (wb_.rleft() > 0) {

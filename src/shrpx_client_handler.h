@@ -174,6 +174,7 @@ private:
   // The number of bytes of HTTP/2 client connection header to read
   size_t left_connhd_len_;
   size_t tls_last_writelen_;
+  size_t tls_last_readlen_;
   int fd_;
   bool should_close_after_write_;
   bool tls_handshake_;
