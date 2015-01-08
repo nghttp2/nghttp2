@@ -47,7 +47,8 @@ void eventcb(struct ev_loop *loop, ev_async *w, int revents) {
 }
 } // namespace
 
-Worker::Worker(SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx)
+Worker::Worker(SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
+               const std::shared_ptr<TicketKeys> &ticket_keys)
     : loop_(ev_loop_new(0)), sv_ssl_ctx_(sv_ssl_ctx), cl_ssl_ctx_(cl_ssl_ctx),
       worker_stat_(util::make_unique<WorkerStat>()) {
   ev_async_init(&w_, eventcb);
@@ -59,22 +60,15 @@ Worker::Worker(SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx)
   } else {
     http1_connect_blocker_ = util::make_unique<ConnectBlocker>(loop_);
   }
+
+  fut_ = std::async(std::launch::async, [this, &ticket_keys] {
+    worker_config->ticket_keys = ticket_keys;
+    (void)reopen_log_files();
+    ev_run(loop_);
+  });
 }
 
-Worker::~Worker() {
-  ev_async_stop(loop_, &w_);
-}
-
-void Worker::run() {
-#ifndef NOTHREADS
-  fut_ = std::async(std::launch::async, [this] { this->run_loop(); });
-#endif // !NOTHREADS
-}
-
-void Worker::run_loop() {
-  (void)reopen_log_files();
-  ev_run(loop_);
-}
+Worker::~Worker() { ev_async_stop(loop_, &w_); }
 
 void Worker::wait() {
 #ifndef NOTHREADS
@@ -99,6 +93,16 @@ void Worker::process_events() {
     q.swap(q_);
   }
   for (auto &wev : q) {
+    if (wev.type == RENEW_TICKET_KEYS) {
+      if (LOG_ENABLED(INFO)) {
+        LOG(INFO) << "Renew ticket keys: worker_info(" << worker_config << ")";
+      }
+
+      worker_config->ticket_keys = wev.ticket_keys;
+
+      continue;
+    }
+
     if (wev.type == REOPEN_LOG) {
       if (LOG_ENABLED(INFO)) {
         LOG(INFO) << "Reopening log files: worker_info(" << worker_config

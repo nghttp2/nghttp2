@@ -438,10 +438,8 @@ void refresh_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 
 namespace {
 void renew_ticket_key_cb(struct ev_loop *loop, ev_timer *w, int revents) {
-#ifndef NOTHREADS
-  std::lock_guard<std::mutex> g(mod_config()->ticket_keys_lock);
-#endif // !NOTHREADS
-  auto old_ticket_keys = get_config()->ticket_keys;
+  auto listener_handler = static_cast<ListenHandler *>(w->data);
+  const auto &old_ticket_keys = worker_config->ticket_keys;
 
   auto ticket_keys = std::make_shared<TicketKeys>();
   if (LOG_ENABLED(INFO)) {
@@ -475,7 +473,9 @@ void renew_ticket_key_cb(struct ev_loop *loop, ev_timer *w, int revents) {
     }
   }
 
-  mod_config()->ticket_keys = ticket_keys;
+  worker_config->ticket_keys = ticket_keys;
+
+  listener_handler->worker_renew_ticket_keys(ticket_keys);
 }
 } // namespace
 
@@ -529,6 +529,17 @@ int event_loop() {
   // After that, we drop the root privileges if needed.
   drop_privileges();
 
+  ev_timer renew_ticket_key_timer;
+  if (sv_ssl_ctx && get_config()->auto_tls_ticket_key) {
+    // Renew ticket key every 12hrs
+    ev_timer_init(&renew_ticket_key_timer, renew_ticket_key_cb, 0., 12 * 3600.);
+    renew_ticket_key_timer.data = listener_handler.get();
+    ev_timer_again(loop, &renew_ticket_key_timer);
+
+    // Generate first session ticket key before running workers.
+    renew_ticket_key_cb(loop, &renew_ticket_key_timer, 0);
+  }
+
 #ifndef NOTHREADS
   int rv;
   sigset_t signals;
@@ -577,14 +588,6 @@ int event_loop() {
   ev_timer_init(&refresh_timer, refresh_cb, 0., 1.);
   refresh_timer.data = listener_handler.get();
   ev_timer_again(loop, &refresh_timer);
-
-  ev_timer renew_ticket_key_timer;
-  if (sv_ssl_ctx && get_config()->auto_tls_ticket_key) {
-    // Renew ticket key every 12hrs
-    ev_timer_init(&renew_ticket_key_timer, renew_ticket_key_cb, 0., 12 * 3600.);
-    ev_timer_again(loop, &renew_ticket_key_timer);
-    renew_ticket_key_cb(loop, &renew_ticket_key_timer, 0);
-  }
 
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "Entering event loop";
@@ -1755,7 +1758,7 @@ int main(int argc, char **argv) {
     if (!ticket_keys) {
       LOG(WARN) << "Use internal session ticket key generator";
     } else {
-      mod_config()->ticket_keys = std::move(ticket_keys);
+      worker_config->ticket_keys = std::move(ticket_keys);
       mod_config()->auto_tls_ticket_key = false;
     }
   }

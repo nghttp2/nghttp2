@@ -61,25 +61,24 @@ enum WorkerEventType {
   NEW_CONNECTION = 0x01,
   REOPEN_LOG = 0x02,
   GRACEFUL_SHUTDOWN = 0x03,
+  RENEW_TICKET_KEYS = 0x04,
 };
 
 struct WorkerEvent {
   WorkerEventType type;
-  union {
-    struct {
-      sockaddr_union client_addr;
-      size_t client_addrlen;
-      int client_fd;
-    };
+  struct {
+    sockaddr_union client_addr;
+    size_t client_addrlen;
+    int client_fd;
   };
+  std::shared_ptr<TicketKeys> ticket_keys;
 };
 
 class Worker {
 public:
-  Worker(SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx);
+  Worker(SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
+         const std::shared_ptr<TicketKeys> &ticket_keys);
   ~Worker();
-  void run();
-  void run_loop();
   void wait();
   void process_events();
   void send(const WorkerEvent &event);

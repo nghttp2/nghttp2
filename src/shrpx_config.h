@@ -35,8 +35,6 @@
 #include <cstdio>
 #include <vector>
 #include <memory>
-#include <atomic>
-#include <mutex>
 
 #include <openssl/ssl.h>
 
@@ -184,8 +182,6 @@ struct Config {
   std::vector<LogFragment> accesslog_format;
   std::vector<DownstreamAddr> downstream_addrs;
   std::vector<std::string> tls_ticket_key_files;
-  std::mutex ticket_keys_lock;
-  std::shared_ptr<TicketKeys> ticket_keys;
   // binary form of http proxy host and port
   sockaddr_union downstream_http_proxy_addr;
   ev_tstamp http2_upstream_read_timeout;

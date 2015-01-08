@@ -47,6 +47,7 @@
 #include "shrpx_client_handler.h"
 #include "shrpx_config.h"
 #include "shrpx_worker.h"
+#include "shrpx_worker_config.h"
 #include "shrpx_downstream_connection_pool.h"
 #include "util.h"
 #include "ssl.h"
@@ -147,17 +148,7 @@ namespace {
 int ticket_key_cb(SSL *ssl, unsigned char *key_name, unsigned char *iv,
                   EVP_CIPHER_CTX *ctx, HMAC_CTX *hctx, int enc) {
   auto handler = static_cast<ClientHandler *>(SSL_get_app_data(ssl));
-#ifndef NOTHREADS
-  std::shared_ptr<TicketKeys> ticket_keys;
-  if (get_config()->auto_tls_ticket_key) {
-    std::lock_guard<std::mutex> g(mod_config()->ticket_keys_lock);
-    ticket_keys = get_config()->ticket_keys;
-  } else {
-    ticket_keys = get_config()->ticket_keys;
-  }
-#else  // NOTHREADS
-  auto ticket_keys = get_config()->ticket_keys;
-#endif // NOTHREADS
+  auto ticket_keys = worker_config->ticket_keys;
 
   if (!ticket_keys) {
     // No ticket keys available.

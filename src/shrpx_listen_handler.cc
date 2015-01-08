@@ -85,14 +85,26 @@ void ListenHandler::worker_reopen_log_files() {
   }
 }
 
+void ListenHandler::worker_renew_ticket_keys(
+    const std::shared_ptr<TicketKeys> &ticket_keys) {
+  WorkerEvent wev;
+
+  memset(&wev, 0, sizeof(wev));
+  wev.type = RENEW_TICKET_KEYS;
+  wev.ticket_keys = ticket_keys;
+
+  for (auto &worker : workers_) {
+    worker->send(wev);
+  }
+}
+
 void ListenHandler::create_worker_thread(size_t num) {
 #ifndef NOTHREADS
   assert(workers_.size() == 0);
 
   for (size_t i = 0; i < num; ++i) {
-    auto worker = util::make_unique<Worker>(sv_ssl_ctx_, cl_ssl_ctx_);
-    worker->run();
-    workers_.push_back(std::move(worker));
+    workers_.push_back(util::make_unique<Worker>(sv_ssl_ctx_, cl_ssl_ctx_,
+                                                 worker_config->ticket_keys));
 
     if (LOG_ENABLED(INFO)) {
       LLOG(INFO, this) << "Created thread #" << workers_.size() - 1;

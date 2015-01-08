@@ -46,6 +46,7 @@ class ConnectBlocker;
 class AcceptHandler;
 class Worker;
 struct WorkerStat;
+struct TicketKeys;
 
 // TODO should be renamed as ConnectionHandler
 class ListenHandler {
@@ -55,6 +56,7 @@ public:
   int handle_connection(int fd, sockaddr *addr, int addrlen);
   void create_worker_thread(size_t num);
   void worker_reopen_log_files();
+  void worker_renew_ticket_keys(const std::shared_ptr<TicketKeys> &ticket_keys);
   struct ev_loop *get_loop() const;
   void create_http2_session();
   void create_http1_connect_blocker();
