@@ -6276,9 +6276,6 @@ void test_nghttp2_session_detach_idle_stream(void) {
   CU_ASSERT(1 == session->num_idle_streams);
 
   CU_ASSERT(session->idle_stream_head == session->idle_stream_tail);
-  fprintf(stderr, "head=%p, tail=%p\n", session->idle_stream_head,
-          session->idle_stream_tail);
-
   CU_ASSERT(NULL == session->idle_stream_head->closed_prev);
   CU_ASSERT(NULL == session->idle_stream_head->closed_next);
 
