@@ -195,6 +195,7 @@ int Http2Session::disconnect(bool hard) {
 
   if (ssl_) {
     SSL_set_shutdown(ssl_, SSL_RECEIVED_SHUTDOWN);
+    ERR_clear_error();
     SSL_shutdown(ssl_);
     SSL_free(ssl_);
     ssl_ = nullptr;

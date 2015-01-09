@@ -340,6 +340,7 @@ Http2Handler::~Http2Handler() {
   nghttp2_session_del(session_);
   if (ssl_) {
     SSL_set_shutdown(ssl_, SSL_RECEIVED_SHUTDOWN);
+    ERR_clear_error();
     SSL_shutdown(ssl_);
   }
   auto loop = sessions_->get_loop();

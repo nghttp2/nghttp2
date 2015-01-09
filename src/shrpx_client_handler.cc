@@ -561,6 +561,7 @@ ClientHandler::~ClientHandler() {
   if (ssl_) {
     SSL_set_app_data(ssl_, nullptr);
     SSL_set_shutdown(ssl_, SSL_RECEIVED_SHUTDOWN);
+    ERR_clear_error();
     SSL_shutdown(ssl_);
   }
 

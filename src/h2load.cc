@@ -204,6 +204,7 @@ void Client::disconnect() {
   ev_io_stop(worker->loop, &rev);
   if (ssl) {
     SSL_set_shutdown(ssl, SSL_RECEIVED_SHUTDOWN);
+    ERR_clear_error();
     SSL_shutdown(ssl);
     SSL_free(ssl);
     ssl = nullptr;
