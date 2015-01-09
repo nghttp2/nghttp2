@@ -1123,6 +1123,8 @@ struct HttpClient {
   int tls_handshake() {
     ev_timer_again(loop, &rt);
 
+    ERR_clear_error();
+
     auto rv = SSL_do_handshake(ssl);
 
     if (rv == 0) {
@@ -1161,6 +1163,8 @@ struct HttpClient {
   int read_tls() {
     ev_timer_again(loop, &rt);
 
+    ERR_clear_error();
+
     uint8_t buf[8192];
     for (;;) {
       auto rv = SSL_read(ssl, buf, sizeof(buf));
@@ -1175,9 +1179,8 @@ struct HttpClient {
         case SSL_ERROR_WANT_READ:
           return 0;
         case SSL_ERROR_WANT_WRITE:
-          ev_io_start(loop, &wev);
-          ev_timer_again(loop, &wt);
-          return 0;
+          // renegotiation started
+          return -1;
         default:
           return -1;
         }
@@ -1191,6 +1194,8 @@ struct HttpClient {
 
   int write_tls() {
     ev_timer_again(loop, &rt);
+
+    ERR_clear_error();
 
     for (;;) {
       if (wb.rleft() > 0) {
@@ -1208,9 +1213,8 @@ struct HttpClient {
           auto err = SSL_get_error(ssl, rv);
           switch (err) {
           case SSL_ERROR_WANT_READ:
-            ev_io_stop(loop, &wev);
-            ev_timer_stop(loop, &wt);
-            return 0;
+            // renegotiation started
+            return -1;
           case SSL_ERROR_WANT_WRITE:
             ev_io_start(loop, &wev);
             ev_timer_again(loop, &wt);

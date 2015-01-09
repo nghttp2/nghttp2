@@ -471,6 +471,8 @@ int Http2Handler::write_clear() {
 int Http2Handler::tls_handshake() {
   ev_io_stop(sessions_->get_loop(), &wev_);
 
+  ERR_clear_error();
+
   auto rv = SSL_do_handshake(ssl_);
 
   if (rv == 0) {
@@ -511,6 +513,8 @@ int Http2Handler::tls_handshake() {
 int Http2Handler::read_tls() {
   uint8_t buf[8192];
 
+  ERR_clear_error();
+
   for (;;) {
     auto rv = SSL_read(ssl_, buf, sizeof(buf));
 
@@ -524,8 +528,8 @@ int Http2Handler::read_tls() {
       case SSL_ERROR_WANT_READ:
         goto fin;
       case SSL_ERROR_WANT_WRITE:
-        ev_io_start(sessions_->get_loop(), &wev_);
-        goto fin;
+        // renegotiation started
+        return -1;
       default:
         return -1;
       }
@@ -546,6 +550,9 @@ fin:
 
 int Http2Handler::write_tls() {
   auto loop = sessions_->get_loop();
+
+  ERR_clear_error();
+
   for (;;) {
     if (wb_.rleft() > 0) {
       const void *p;
@@ -562,8 +569,8 @@ int Http2Handler::write_tls() {
         auto err = SSL_get_error(ssl_, rv);
         switch (err) {
         case SSL_ERROR_WANT_READ:
-          ev_io_stop(loop, &wev_);
-          return 0;
+          // renegotiation started
+          return -1;
         case SSL_ERROR_WANT_WRITE:
           ev_io_start(sessions_->get_loop(), &wev_);
           return 0;

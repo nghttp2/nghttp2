@@ -567,6 +567,8 @@ int Client::connected() {
 }
 
 int Client::tls_handshake() {
+  ERR_clear_error();
+
   auto rv = SSL_do_handshake(ssl);
 
   if (rv == 0) {
@@ -601,6 +603,9 @@ int Client::tls_handshake() {
 
 int Client::read_tls() {
   uint8_t buf[8192];
+
+  ERR_clear_error();
+
   for (;;) {
     auto rv = SSL_read(ssl, buf, sizeof(buf));
 
@@ -614,8 +619,8 @@ int Client::read_tls() {
       case SSL_ERROR_WANT_READ:
         return 0;
       case SSL_ERROR_WANT_WRITE:
-        ev_io_start(worker->loop, &wev);
-        return 0;
+        // renegotiation started
+        return -1;
       default:
         return -1;
       }
@@ -628,6 +633,8 @@ int Client::read_tls() {
 }
 
 int Client::write_tls() {
+  ERR_clear_error();
+
   for (;;) {
     if (wb.rleft() > 0) {
       const void *p;
@@ -644,8 +651,8 @@ int Client::write_tls() {
         auto err = SSL_get_error(ssl, rv);
         switch (err) {
         case SSL_ERROR_WANT_READ:
-          ev_io_stop(worker->loop, &wev);
-          return 0;
+          // renegotiation started
+          return -1;
         case SSL_ERROR_WANT_WRITE:
           ev_io_start(worker->loop, &wev);
           return 0;
