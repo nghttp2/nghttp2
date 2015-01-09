@@ -168,8 +168,8 @@ public:
     CONNECTION_CHECK_STARTED
   };
 
+  using WriteBuf = RingBuf<16384>;
   using ReadBuf = RingBuf<8192>;
-  using WriteBuf = RingBuf<65536>;
 
 private:
   ev_io wev_;

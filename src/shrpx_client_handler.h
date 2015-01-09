@@ -135,7 +135,7 @@ public:
                        int64_t body_bytes_sent);
   WorkerStat *get_worker_stat() const;
 
-  using WriteBuf = RingBuf<65536>;
+  using WriteBuf = RingBuf<16384>;
   using ReadBuf = RingBuf<8192>;
 
   WriteBuf *get_wb();
