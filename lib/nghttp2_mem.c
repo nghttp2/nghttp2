@@ -49,7 +49,7 @@ void *nghttp2_mem_malloc(nghttp2_mem *mem, size_t size) {
 }
 
 void nghttp2_mem_free(nghttp2_mem *mem, void *ptr) {
-  return mem->free(ptr, mem->mem_user_data);
+  mem->free(ptr, mem->mem_user_data);
 }
 
 void *nghttp2_mem_calloc(nghttp2_mem *mem, size_t nmemb, size_t size) {
