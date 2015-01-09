@@ -852,8 +852,7 @@ void print_version(std::ostream &out) {
 
 namespace {
 void print_usage(std::ostream &out) {
-  out << R"(
-Usage: h2load [OPTIONS]... [URI]...
+  out << R"(Usage: h2load [OPTIONS]... [URI]...
 benchmarking tool for HTTP/2 and SPDY server)" << std::endl;
 }
 } // namespace
@@ -871,11 +870,12 @@ void print_help(std::ostream &out) {
                      are  ignored.  Those  in the  first URI  are used
                      solely.
 Options:
-  -n, --requests=<N> Number of requests. Default: )" << config.nreqs << R"(
-  -c, --clients=<N>  Number of concurrent clients. Default: )"
-      << config.nclients << R"(
-  -t, --threads=<N>  Number of native threads. Default: )" << config.nthreads
-      << R"(
+  -n, --requests=<N> Number of requests.
+                     Default: )" << config.nreqs << R"(
+  -c, --clients=<N>  Number of concurrent clients.
+                     Default: )" << config.nclients << R"(
+  -t, --threads=<N>  Number of native threads.
+                     Default: )" << config.nthreads << R"(
   -i, --input-file=<FILE>
                      Path of  a file with multiple  URIs are seperated
                      by EOLs.   This option will disable  URIs getting
@@ -889,7 +889,8 @@ Options:
   -m, --max-concurrent-streams=(auto|<N>)
                      Max concurrent streams to  issue per session.  If
                      "auto"  is given,  the  number of  given URIs  is
-                     used.  Default: auto
+                     used.
+                     Default: auto
   -w, --window-bits=<N>
                      Sets  the stream  level  initial  window size  to
                      (2**<N>)-1.  For SPDY, 2**<N> is used instead.

@@ -1,0 +1,28 @@
+FILES
+-----
+
+*/etc/nghttpx/nghttpx.conf*
+  The default configuration file path nghttpx searches at startup.
+  The configuration file path can be changed using :option:`--conf`
+  option.
+
+SIGNALS
+-------
+
+SIGQUIT
+  Shutdown gracefully.  First accept pending connections and stop
+  accepting connection.  After all connections are handled, nghttpx
+  exits.
+
+SIGUSR1
+  Reopen log files.
+
+SIGUSR2
+  Fork and execute nghttpx.  It will execute the binary in the same
+  path.  After new process comes up, sending SIGQUIT to the original
+  process to perform hotswap.
+
+SEE ALSO
+--------
+
+:manpage:`nghttp(1)`, :manpage:`nghttpd(1)`, :manpage:`h2load(1)`

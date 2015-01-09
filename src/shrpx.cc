@@ -788,14 +788,14 @@ Connections:
                      repeating this  option.  HTTP/2 backend  does not
                      support multiple backend  addresses and the first
                      occurrence of this option is used.
-                     Default: ')" << DEFAULT_DOWNSTREAM_HOST << ","
-      << DEFAULT_DOWNSTREAM_PORT << R"('
+                     Default: )" << DEFAULT_DOWNSTREAM_HOST << ","
+      << DEFAULT_DOWNSTREAM_PORT << R"(
   -f, --frontend=<HOST,PORT>
                      Set frontend host and port.  If <HOST> is '*', it
                      assumes  all addresses  including  both IPv4  and
                      IPv6.
-                     Default: ')" << get_config()->host.get() << ","
-      << get_config()->port << R"('
+                     Default: )" << get_config()->host.get() << ","
+      << get_config()->port << R"(
   --backlog=<NUM>    Set  listen  backlog  size.    If  -1  is  given,
                      libevent will choose suitable value.
                      Default: )" << get_config()->backlog << R"(
@@ -1082,28 +1082,30 @@ Logging:
                      send USR1 signal to nghttpx.
   --accesslog-syslog
                      Send  access log  to syslog.   If this  option is
-                     used, --access-file option is ignored.
+                     used, --accesslog-file option is ignored.
   --accesslog-format=<FORMAT>
                      Specify  format  string   for  access  log.   The
                      default format is combined format.  The following
                      variables are available:
-                     $remote_addr: client IP address.
-                     $time_local: local time in Common Log format.
-                     $time_iso8601: local time in ISO 8601 format.
-                     $request: HTTP request line.
-                     $status: HTTP response status code.
-                     $body_bytes_sent: the  number of bytes  sent to
-                     client as response body.
-                     $http_<VAR>: value of HTTP request header <VAR>
-                     where '_' in <VAR> is replaced with '-'.
-                     $remote_port: client  port.
-                     $server_port: server port.
-                     $request_time:   request  processing   time  in
-                     seconds with milliseconds resolution.
-                     $pid: PID of the running process.
-                     $alpn:  ALPN  identifier  of the  protocol  which
-                     generates  the  response.   For HTTP/1,  ALPN  is
-                     always http/1.1, regardless of minor version.
+
+                     * $remote_addr: client IP address.
+                     * $time_local: local time in Common Log format.
+                     * $time_iso8601: local time in ISO 8601 format.
+                     * $request: HTTP request line.
+                     * $status: HTTP response status code.
+                     * $body_bytes_sent: the  number of bytes  sent to
+                       client as response body.
+                     * $http_<VAR>: value of HTTP request header <VAR>
+                       where '_' in <VAR> is replaced with '-'.
+                     * $remote_port: client  port.
+                     * $server_port: server port.
+                     * $request_time:   request  processing   time  in
+                       seconds with milliseconds resolution.
+                     * $pid: PID of the running process.
+                     * $alpn:  ALPN identifier  of the  protocol which
+                       generates  the response.   For HTTP/1,  ALPN is
+                       always http/1.1, regardless of minor version.
+
                      Default: )" << DEFAULT_ACCESSLOG_FORMAT << R"(
   --errorlog-file=<PATH>
                      Set  path to  write error  log.  To  reopen file,

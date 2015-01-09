@@ -81,8 +81,7 @@ void print_version(std::ostream &out) {
 
 namespace {
 void print_usage(std::ostream &out) {
-  out << "Usage: nghttpd [OPTION]... <PORT> <PRIVATE_KEY> <CERT>\n"
-      << "  or:  nghttpd --no-tls [OPTION]... <PORT>\n"
+  out << "Usage: nghttpd [OPTION]... <PORT> [<PRIVATE_KEY> <CERT>]\n"
       << "HTTP/2 experimental server" << std::endl;
 }
 } // namespace

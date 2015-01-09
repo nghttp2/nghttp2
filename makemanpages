@@ -1,17 +1,12 @@
 #!/bin/sh -e
 
-help2man --output=doc/nghttp.1 --name="HTTP/2 experimental client" \
-    -N --include doc/nghttp.h2m src/nghttp
+for prog in nghttp nghttpd nghttpx h2load; do
+    src/$prog -h | ./help2rst.py -i doc/$prog.h2r > doc/$prog.1.rst
+done
 
-help2man --output=doc/nghttpd.1 --name="HTTP/2 experimental server" \
-    -N --include doc/nghttpd.h2m src/nghttpd
+cd doc
+make man
 
-help2man --output=doc/nghttpx.1 --name="HTTP/2 experimental proxy" \
-    -N --include doc/nghttpx.h2m src/nghttpx
-
-help2man --output=doc/h2load.1 --name="HTTP/2 benchmarking tool" \
-    -N --include doc/h2load.h2m src/h2load
-
-for file in doc/nghttp.1 doc/nghttpd.1 doc/nghttpx.1 doc/h2load.1; do
-    ./man2rst.py < $file > $file.rst
+for prog in nghttp nghttpd nghttpx h2load; do
+    cp manual/man/$prog.1 $prog.1
 done
