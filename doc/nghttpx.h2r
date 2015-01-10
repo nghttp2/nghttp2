@@ -19,8 +19,9 @@ SIGUSR1
 
 SIGUSR2
   Fork and execute nghttpx.  It will execute the binary in the same
-  path.  After new process comes up, sending SIGQUIT to the original
-  process to perform hotswap.
+  path with same command-line arguments and environment variables.
+  After new process comes up, sending SIGQUIT to the original process
+  to perform hot swapping.
 
 SEE ALSO
 --------

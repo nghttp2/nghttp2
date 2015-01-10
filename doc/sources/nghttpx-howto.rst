@@ -235,12 +235,12 @@ Read/write rate limit
 ---------------------
 
 nghttpx supports transfer rate limiting on frontend connections.  You
-can do rate limit per worker (thread) for reading and writeing
+can do rate limit per frontend connection for reading and writeing
 individually.
 
-To rate limit per worker (thread), use ``--worker-read-rate`` and
-``--worker-read-burst`` options.  For writing, use
-``--worker-write-rate`` and ``--worker-write-burst``.
+To perform rate limit for reading, use ``--read-rate`` and
+``--read-burst`` options.  For writing, use ``--write-rate`` and
+``--write-burst``.
 
 Please note that rate limit is performed on top of TCP and nothing to
 do with HTTP/2 flow control.
@@ -263,10 +263,10 @@ precedence.  If the above conditions are not met with the host value
 in :authority header field, rewrite is retried with the value in host
 header field.
 
-Hot deploy
-----------
+Hot swapping
+------------
 
-nghttpx supports hot deploy feature using signals.  The hot deploy in
+nghttpx supports hot swapping using signals.  The hot swapping in
 nghttpx is multi step process.  First send USR2 signal to nghttpx
 process.  It will do fork and execute new executable, using same
 command-line arguments and environment variables.  At this point, both
