@@ -689,14 +689,23 @@ int HttpDownstreamConnection::on_read() {
   }
 }
 
+#define DEFAULT_WR_IOVCNT 16
+
+#if defined(IOV_MAX) && IOV_MAX < DEFAULT_WR_IOVCNT
+#define MAX_WR_IOVCNT IOV_MAX
+#else // !defined(IOV_MAX) || IOV_MAX >= DEFAULT_WR_IOVCNT
+#define MAX_WR_IOVCNT DEFAULT_WR_IOVCNT
+#endif // !defined(IOV_MAX) || IOV_MAX >= DEFAULT_WR_IOVCNT
+
 int HttpDownstreamConnection::on_write() {
   ev_timer_again(loop_, &rt_);
 
   auto upstream = downstream_->get_upstream();
   auto input = downstream_->get_request_buf();
 
+  struct iovec iov[MAX_WR_IOVCNT];
+
   while (input->rleft() > 0) {
-    struct iovec iov[2];
     auto iovcnt = input->riovec(iov, util::array_size(iov));
 
     ssize_t nwrite;
