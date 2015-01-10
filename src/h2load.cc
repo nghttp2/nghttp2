@@ -455,17 +455,6 @@ int Client::on_connect() {
   return 0;
 }
 
-int Client::on_net_error() {
-  if (state == CLIENT_IDLE) {
-    disconnect();
-    if (connect() == 0) {
-      return 0;
-    }
-  }
-  debug("error/eof\n");
-  return -1;
-}
-
 int Client::on_read(const uint8_t *data, size_t len) {
   auto rv = session->on_read(data, len);
   if (rv != 0) {
@@ -494,7 +483,7 @@ int Client::read_clear() {
       if (errno == EAGAIN || errno == EWOULDBLOCK) {
         return 0;
       }
-      return on_net_error();
+      return -1;
     }
 
     if (nread == 0) {
