@@ -474,6 +474,9 @@ int create_nonblock_socket(int family);
 
 bool check_socket_connected(int fd);
 
+// Returns true if |host| is IPv6 numeric address (e.g., ::1)
+bool ipv6_numeric_addr(const char *host);
+
 } // namespace util
 
 } // namespace nghttp2

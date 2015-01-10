@@ -85,13 +85,6 @@ const int GRACEFUL_SHUTDOWN_SIGNAL = SIGQUIT;
 #define ENV_PORT "NGHTTPX_PORT"
 
 namespace {
-bool is_ipv6_numeric_addr(const char *host) {
-  uint8_t dst[16];
-  return inet_pton(AF_INET6, host, dst) == 1;
-}
-} // namespace
-
-namespace {
 int resolve_hostname(sockaddr_union *addr, size_t *addrlen,
                      const char *hostname, uint16_t port, int family) {
   addrinfo hints;
@@ -1805,7 +1798,7 @@ int main(int argc, char **argv) {
   }
 
   for (auto &addr : mod_config()->downstream_addrs) {
-    auto ipv6 = is_ipv6_numeric_addr(addr.host.get());
+    auto ipv6 = util::ipv6_numeric_addr(addr.host.get());
     std::string hostport;
 
     if (ipv6) {

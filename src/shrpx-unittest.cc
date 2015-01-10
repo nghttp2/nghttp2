@@ -126,6 +126,8 @@ int main(int argc, char *argv[]) {
       !CU_add_test(pSuite, "util_utox", shrpx::test_util_utox) ||
       !CU_add_test(pSuite, "util_http_date", shrpx::test_util_http_date) ||
       !CU_add_test(pSuite, "util_select_h2", shrpx::test_util_select_h2) ||
+      !CU_add_test(pSuite, "util_ipv6_numeric_addr",
+                   shrpx::test_util_ipv6_numeric_addr) ||
       !CU_add_test(pSuite, "gzip_inflate", test_nghttp2_gzip_inflate) ||
       !CU_add_test(pSuite, "ringbuf_write", nghttp2::test_ringbuf_write) ||
       !CU_add_test(pSuite, "ringbuf_iovec", nghttp2::test_ringbuf_iovec)) {

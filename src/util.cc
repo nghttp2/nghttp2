@@ -32,6 +32,7 @@
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
+#include <arpa/inet.h>
 
 #include <cassert>
 #include <cstdio>
@@ -879,6 +880,11 @@ bool check_socket_connected(int fd) {
     }
   }
   return true;
+}
+
+bool ipv6_numeric_addr(const char *host) {
+  uint8_t dst[16];
+  return inet_pton(AF_INET6, host, dst) == 1;
 }
 
 } // namespace util
