@@ -72,7 +72,7 @@ if HAVE_LIBXML2
 HTML_PARSER_OBJECTS += HtmlParser.cc
 endif # HAVE_LIBXML2
 
-nghttp_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} nghttp.cc \
+nghttp_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} nghttp.cc nghttp.h \
 	${HTML_PARSER_OBJECTS} ${HTML_PARSER_HFILES} \
 	ssl.cc ssl.h
 

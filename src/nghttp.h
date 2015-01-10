@@ -1,0 +1,277 @@
+/*
+ * nghttp2 - HTTP/2 C Library
+ *
+ * Copyright (c) 2015 Tatsuhiro Tsujikawa
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+ * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+ * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+#ifndef NGHTTP_H
+#define NGHTTP_H
+
+#include "nghttp2_config.h"
+
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+
+#include <string>
+#include <vector>
+#include <set>
+#include <chrono>
+
+#include <openssl/ssl.h>
+
+#include <ev.h>
+
+#include <nghttp2/nghttp2.h>
+
+#include "http-parser/http_parser.h"
+
+#include "ringbuf.h"
+#include "http2.h"
+#include "nghttp2_gzip.h"
+
+namespace nghttp2 {
+
+class HtmlParser;
+
+struct Config {
+  Config();
+  ~Config();
+
+  Headers headers;
+  std::string certfile;
+  std::string keyfile;
+  std::string datafile;
+  std::string harfile;
+  nghttp2_option *http2_option;
+  size_t output_upper_thres;
+  size_t padding;
+  ssize_t peer_max_concurrent_streams;
+  ssize_t header_table_size;
+  int32_t weight;
+  int multiply;
+  // milliseconds
+  ev_tstamp timeout;
+  int window_bits;
+  int connection_window_bits;
+  int verbose;
+  bool null_out;
+  bool remote_name;
+  bool get_assets;
+  bool stat;
+  bool upgrade;
+  bool continuation;
+  bool no_content_length;
+  bool no_dep;
+  bool dep_idle;
+};
+
+enum StatStage {
+  STAT_INITIAL,
+  STAT_ON_REQUEST,
+  STAT_ON_RESPONSE,
+  STAT_ON_COMPLETE
+};
+
+struct RequestStat {
+  std::chrono::steady_clock::time_point on_request_time;
+  std::chrono::steady_clock::time_point on_response_time;
+  std::chrono::steady_clock::time_point on_complete_time;
+  StatStage stage;
+  RequestStat() : stage(STAT_INITIAL) {}
+};
+
+struct Request;
+
+struct Dependency {
+  std::vector<std::vector<Request *>> deps;
+};
+
+struct Request {
+  // For pushed request, |uri| is empty and |u| is zero-cleared.
+  Request(const std::string &uri, const http_parser_url &u,
+          const nghttp2_data_provider *data_prd, int64_t data_length,
+          const nghttp2_priority_spec &pri_spec,
+          std::shared_ptr<Dependency> dep, int pri = 0, int level = 0);
+  ~Request();
+
+  void init_inflater();
+
+  void init_html_parser();
+  int update_html_parser(const uint8_t *data, size_t len, int fin);
+
+  std::string make_reqpath() const;
+
+  int32_t find_dep_stream_id(int start);
+
+  nghttp2_priority_spec resolve_dep(int32_t pri);
+
+  bool is_ipv6_literal_addr() const;
+
+  bool response_pseudo_header_allowed(int token) const;
+  bool push_request_pseudo_header_allowed(int token) const;
+
+  Headers::value_type *get_res_header(int token);
+  Headers::value_type *get_req_header(int token);
+
+  void record_request_time();
+  void record_response_time();
+  void record_complete_time();
+
+  Headers res_nva;
+  Headers req_nva;
+  // URI without fragment
+  std::string uri;
+  http_parser_url u;
+  std::shared_ptr<Dependency> dep;
+  nghttp2_priority_spec pri_spec;
+  RequestStat stat;
+  int64_t data_length;
+  int64_t data_offset;
+  // Number of bytes received from server
+  int64_t response_len;
+  nghttp2_gzip *inflater;
+  HtmlParser *html_parser;
+  const nghttp2_data_provider *data_prd;
+  int32_t stream_id;
+  int status;
+  // Recursion level: 0: first entity, 1: entity linked from first entity
+  int level;
+  // RequestPriority value defined in HtmlParser.h
+  int pri;
+  int res_hdidx[http2::HD_MAXIDX];
+  // used for incoming PUSH_PROMISE
+  int req_hdidx[http2::HD_MAXIDX];
+  bool expect_final_response;
+};
+
+struct SessionStat {
+  // The point in time when download was started.
+  std::chrono::system_clock::time_point started_system_time;
+  // The point of time when download was started.
+  std::chrono::steady_clock::time_point on_started_time;
+  // The point of time when DNS resolution was completed.
+  std::chrono::steady_clock::time_point on_dns_complete_time;
+  // The point of time when connection was established or SSL/TLS
+  // handshake was completed.
+  std::chrono::steady_clock::time_point on_connect_time;
+  // The point of time when HTTP/2 commnucation was started.
+  std::chrono::steady_clock::time_point on_handshake_time;
+};
+
+enum client_state { STATE_IDLE, STATE_CONNECTED };
+
+struct HttpClient {
+  HttpClient(const nghttp2_session_callbacks *callbacks, struct ev_loop *loop,
+             SSL_CTX *ssl_ctx);
+  ~HttpClient();
+
+  bool need_upgrade() const;
+  int resolve_host(const std::string &host, uint16_t port);
+  int initiate_connection();
+  void disconnect();
+
+  void on_connect_fail();
+
+  int noop();
+  int read_clear();
+  int write_clear();
+  int connected();
+  int tls_handshake();
+  int read_tls();
+  int write_tls();
+
+  int do_read();
+  int do_write();
+
+  int on_upgrade_connect();
+  int on_upgrade_read(const uint8_t *data, size_t len);
+  int on_read(const uint8_t *data, size_t len);
+  int on_write();
+
+  int on_connect();
+  void on_request(Request *req);
+
+  void signal_write();
+
+  bool all_requests_processed() const;
+  void update_hostport();
+  bool add_request(const std::string &uri,
+                   const nghttp2_data_provider *data_prd, int64_t data_length,
+                   const nghttp2_priority_spec &pri_spec,
+                   std::shared_ptr<Dependency> dep, int pri = 0, int level = 0);
+
+  void record_handshake_time();
+  void record_started_time();
+  void record_dns_complete_time();
+  void record_connect_time();
+
+#ifdef HAVE_JANSSON
+  void output_har(FILE *outfile);
+#endif // HAVE_JANSSON
+
+  std::vector<std::unique_ptr<Request>> reqvec;
+  // Insert path already added in reqvec to prevent multiple request
+  // for 1 resource.
+  std::set<std::string> path_cache;
+  std::string scheme;
+  std::string host;
+  std::string hostport;
+  // Used for parse the HTTP upgrade response from server
+  std::unique_ptr<http_parser> htp;
+  SessionStat stat;
+  ev_io wev;
+  ev_io rev;
+  ev_timer wt;
+  ev_timer rt;
+  ev_timer settings_timer;
+  std::function<int(HttpClient &)> readfn, writefn;
+  std::function<int(HttpClient &, const uint8_t *, size_t)> on_readfn;
+  std::function<int(HttpClient &)> on_writefn;
+  nghttp2_session *session;
+  const nghttp2_session_callbacks *callbacks;
+  struct ev_loop *loop;
+  SSL_CTX *ssl_ctx;
+  SSL *ssl;
+  addrinfo *addrs;
+  addrinfo *next_addr;
+  addrinfo *cur_addr;
+  // The number of completed requests, including failed ones.
+  size_t complete;
+  // The length of settings_payload
+  size_t settings_payloadlen;
+  client_state state;
+  // The HTTP status code of the response message of HTTP Upgrade.
+  unsigned int upgrade_response_status_code;
+  int fd;
+  // true if the response message of HTTP Upgrade request is fully
+  // received. It is not relevant the upgrade succeeds, or not.
+  bool upgrade_response_complete;
+  RingBuf<65536> wb;
+  // SETTINGS payload sent as token68 in HTTP Upgrade
+  uint8_t settings_payload[128];
+
+  enum { ERR_CONNECT_FAIL = -100 };
+};
+
+} // namespace nghttp2
+
+#endif // NGHTTP_H
