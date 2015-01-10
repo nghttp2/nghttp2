@@ -41,7 +41,7 @@ RateLimit::RateLimit(struct ev_loop *loop, ev_io *w, size_t rate, size_t burst)
   ev_timer_init(&t_, regencb, 0., 1.);
   t_.data = this;
   if (rate_ > 0) {
-    ev_timer_start(loop_, &t_);
+    ev_timer_again(loop_, &t_);
   }
 }
 
