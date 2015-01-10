@@ -43,7 +43,7 @@ extern const nghttp2_huff_decode huff_decode_table[][16];
 static ssize_t huff_encode_sym(nghttp2_bufs *bufs, size_t *avail_ptr,
                                size_t rembits, const nghttp2_huff_sym *sym) {
   int rv;
-  uint32_t nbits = sym->nbits;
+  size_t nbits = sym->nbits;
   uint32_t code = sym->code;
 
   /* We assume that sym->nbits <= 32 */
