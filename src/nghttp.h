@@ -35,6 +35,7 @@
 #include <vector>
 #include <set>
 #include <chrono>
+#include <memory>
 
 #include <openssl/ssl.h>
 
