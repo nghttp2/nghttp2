@@ -37,6 +37,8 @@
 #include <syslog.h>
 #include <signal.h>
 #include <limits.h>
+#include <sys/time.h>
+#include <sys/resource.h>
 
 #include <limits>
 #include <cstdlib>
@@ -879,6 +881,11 @@ Performance:
                      --backend-http1-connections-per-host.
                      Default: )"
       << get_config()->downstream_connections_per_frontend << R"(
+  --rlimit-nofile=<N>
+                     Set maximum number  of open files (RLIMIT_NOFILE)
+                     to <N>.  If 0 is  given, nghttpx does not set the
+                     limit.
+                     Default: )" << get_config()->rlimit_nofile << R"(
 
 Timeout:
   --frontend-http2-read-timeout=<SEC>
@@ -1272,6 +1279,7 @@ int main(int argc, char **argv) {
         {"backend-http1-connections-per-frontend", required_argument, &flag,
          67},
         {"tls-ticket-key-file", required_argument, &flag, 68},
+        {"rlimit-nofile", required_argument, &flag, 69},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -1585,6 +1593,10 @@ int main(int argc, char **argv) {
         // --tls-ticket-key-file
         cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_FILE, optarg);
         break;
+      case 69:
+        // --rlimit-nofile
+        cmdcfgs.emplace_back(SHRPX_OPT_RLIMIT_NOFILE, optarg);
+        break;
       default:
         break;
       }
@@ -1835,6 +1847,15 @@ int main(int argc, char **argv) {
                          get_config()->downstream_http_proxy_port,
                          AF_UNSPEC) == -1) {
       exit(EXIT_FAILURE);
+    }
+  }
+
+  if (get_config()->rlimit_nofile) {
+    struct rlimit lim = {get_config()->rlimit_nofile,
+                         get_config()->rlimit_nofile};
+    if (setrlimit(RLIMIT_NOFILE, &lim) != 0) {
+      auto error = errno;
+      LOG(WARN) << "Setting rlimit-nofile failed: " << strerror(error);
     }
   }
 

@@ -139,6 +139,7 @@ const char SHRPX_OPT_BACKEND_HTTP1_CONNECTIONS_PER_FRONTEND[] =
     "backend-http1-connections-per-frontend";
 const char SHRPX_OPT_LISTENER_DISABLE_TIMEOUT[] = "listener-disable-timeout";
 const char SHRPX_OPT_TLS_TICKET_KEY_FILE[] = "tls-ticket-key-file";
+const char SHRPX_OPT_RLIMIT_NOFILE[] = "rlimit-nofile";
 
 namespace {
 Config *config = nullptr;
@@ -1106,6 +1107,24 @@ int parse_config(const char *opt, const char *optarg) {
 
   if (util::strieq(opt, SHRPX_OPT_TLS_TICKET_KEY_FILE)) {
     mod_config()->tls_ticket_key_files.push_back(optarg);
+    return 0;
+  }
+
+  if (util::strieq(opt, SHRPX_OPT_RLIMIT_NOFILE)) {
+    int n;
+
+    if (parse_uint(&n, opt, optarg) != 0) {
+      return -1;
+    }
+
+    if (n < 0) {
+      LOG(ERROR) << opt << ": specify the integer more than or equal to 0";
+
+      return -1;
+    }
+
+    mod_config()->rlimit_nofile = n;
+
     return 0;
   }
 

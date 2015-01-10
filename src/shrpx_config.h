@@ -127,6 +127,7 @@ extern const char SHRPX_OPT_BACKEND_HTTP1_CONNECTIONS_PER_HOST[];
 extern const char SHRPX_OPT_BACKEND_HTTP1_CONNECTIONS_PER_FRONTEND[];
 extern const char SHRPX_OPT_LISTENER_DISABLE_TIMEOUT[];
 extern const char SHRPX_OPT_TLS_TICKET_KEY_FILE[];
+extern const char SHRPX_OPT_RLIMIT_NOFILE[];
 
 union sockaddr_union {
   sockaddr sa;
@@ -255,6 +256,7 @@ struct Config {
   size_t worker_write_burst;
   size_t padding;
   size_t worker_frontend_connections;
+  size_t rlimit_nofile;
   // Bit mask to disable SSL/TLS protocol versions.  This will be
   // passed to SSL_CTX_set_options().
   long int tls_proto_mask;
