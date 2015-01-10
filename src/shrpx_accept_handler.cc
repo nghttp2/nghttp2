@@ -26,6 +26,8 @@
 
 #include <unistd.h>
 
+#include <cerrno>
+
 #include "shrpx_connection_handler.h"
 #include "shrpx_config.h"
 #include "util.h"

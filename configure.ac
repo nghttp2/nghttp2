@@ -278,7 +278,8 @@ AM_CONDITIONAL([HAVE_CUNIT], [ test "x${have_cunit}" = "xyes" ])
 # libev (for src)
 # libev does not have pkg-config file.  Check it in an old way.
 LIBS_OLD=$LIBS
-AC_CHECK_LIB([ev], [ev_time], [have_libev=yes], [have_libev=no])
+# android requires -lm for floor
+AC_CHECK_LIB([ev], [ev_time], [have_libev=yes], [have_libev=no], [-lm])
 if test "x${have_libev}" = "xyes"; then
   AC_CHECK_HEADER([ev.h], [have_libev=yes], [have_libev=no])
   if test "x${have_libev}" = "xyes"; then

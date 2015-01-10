@@ -34,6 +34,7 @@
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 
+#include <cerrno>
 #include <cassert>
 #include <cstdio>
 #include <cstring>
@@ -860,11 +861,22 @@ int make_socket_nodelay(int fd) {
 }
 
 int create_nonblock_socket(int family) {
+#ifdef SOCK_NONBLOCK
   auto fd = socket(family, SOCK_STREAM | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
 
   if (fd == -1) {
     return -1;
   }
+#else  // !SOCK_NONBLOCK
+  auto fd = socket(family, SOCK_STREAM, 0);
+
+  if (fd == -1) {
+    return -1;
+  }
+
+  make_socket_nonblocking(fd);
+  make_socket_closeonexec(fd);
+#endif // !SOCK_NONBLOCK
 
   make_socket_nodelay(fd);
 

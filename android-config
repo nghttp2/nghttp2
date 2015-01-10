@@ -41,5 +41,6 @@ PATH=$TOOLCHAIN/bin:$PATH
     --disable-examples \
     --disable-threads \
     CPPFLAGS="-I$PREFIX/include" \
+    CXXFLAGS="-fno-strict-aliasing" \
     PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig" \
     LDFLAGS="-L$PREFIX/lib"

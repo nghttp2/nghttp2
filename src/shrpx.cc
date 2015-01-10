@@ -188,11 +188,19 @@ std::unique_ptr<AcceptHandler> create_acceptor(ConnectionHandler *handler,
     return nullptr;
   }
   for (rp = res; rp; rp = rp->ai_next) {
+#ifdef SOCK_NONBLOCK
     fd =
         socket(rp->ai_family, rp->ai_socktype | SOCK_NONBLOCK, rp->ai_protocol);
     if (fd == -1) {
       continue;
     }
+#else  // !SOCK_NONBLOCK
+    fd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+    if (fd == -1) {
+      continue;
+    }
+    util::make_socket_nonblocking(fd);
+#endif // !SOCK_NONBLOCK
     int val = 1;
     if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &val,
                    static_cast<socklen_t>(sizeof(val))) == -1) {

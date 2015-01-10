@@ -61,11 +61,13 @@ Worker::Worker(SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
     http1_connect_blocker_ = util::make_unique<ConnectBlocker>(loop_);
   }
 
+#ifndef NOTHREADS
   fut_ = std::async(std::launch::async, [this, &ticket_keys] {
     worker_config->ticket_keys = ticket_keys;
     (void)reopen_log_files();
     ev_run(loop_);
   });
+#endif // !NOTHREADS
 }
 
 Worker::~Worker() { ev_async_stop(loop_, &w_); }
