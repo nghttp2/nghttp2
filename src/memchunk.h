@@ -27,6 +27,8 @@
 
 #include "nghttp2_config.h"
 
+#include <sys/uio.h>
+
 #include <cstring>
 #include <memory>
 
@@ -100,6 +102,7 @@ template <typename T> struct Pool {
     }
     freelist = m;
   }
+  using value_type = T;
   std::unique_ptr<T> pool;
   T *freelist;
   size_t poolsize;
@@ -226,9 +229,9 @@ template <typename Memchunk> struct Memchunks {
   size_t len;
 };
 
-typedef Memchunk<4096> Memchunk4K;
-typedef Pool<Memchunk4K> MemchunkPool4K;
-typedef Memchunks<Memchunk4K> Memchunks4K;
+using Memchunk4K = Memchunk<4096>;
+using MemchunkPool4K = Pool<Memchunk4K>;
+using Memchunks4K = Memchunks<Memchunk4K>;
 
 } // namespace nghttp2
 
