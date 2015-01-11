@@ -188,6 +188,14 @@ Performance:
 
     Default: ``0``
 
+.. option:: --rlimit-nofile=<N>
+
+    Set maximum number  of open files (RLIMIT_NOFILE)
+    to <N>.  If 0 is  given, nghttpx does not set the
+    limit.
+
+    Default: ``0``
+
 
 Timeout:
 ~~~~~~~~
@@ -643,6 +651,25 @@ FILES
   The default configuration file path nghttpx searches at startup.
   The configuration file path can be changed using :option:`--conf`
   option.
+
+  Those lines which are staring ``#`` are treated as comment.
+
+  The option name in the configuration file is the long command-line
+  option name with leading ``--`` stripped (e.g., ``frontend``).  Put
+  ``=`` between option name and value.  Don't put extra leading or
+  trailing spaces.
+
+  The options which do not take argument in the command-line *take*
+  argument in the configuration file.  Specify ``yes`` as an argument
+  (e.g., ``http2-proxy=yes``).  If other string is given, it is
+  ignored.
+
+  To specify private key and certificate file which are given as
+  positional arguments in commnad-line, use ``private-key-file`` and
+  ``certificate-file``.
+
+  :option:`--conf` option cannot be used in the configuration file and
+  will be ignored if specified.
 
 SIGNALS
 -------

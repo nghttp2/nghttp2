@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "January 10, 2015" "0.7.1-DEV" "nghttp2"
+.TH "NGHTTPX" "1" "January 11, 2015" "0.7.1-DEV" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 experimental proxy
 .
@@ -222,6 +222,15 @@ used for  default mode.   0 means  unlimited.  To
 limit  the number  of  connections  per host  for
 HTTP/2  or  SPDY  proxy  mode  (\-s  option),  use
 \fI\%\-\-backend\-http1\-connections\-per\-host\fP\&.
+.sp
+Default: \fB0\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-rlimit\-nofile=<N>
+Set maximum number  of open files (RLIMIT_NOFILE)
+to <N>.  If 0 is  given, nghttpx does not set the
+limit.
 .sp
 Default: \fB0\fP
 .UNINDENT
@@ -733,6 +742,25 @@ Print this help and exit.
 The default configuration file path nghttpx searches at startup.
 The configuration file path can be changed using \fI\%\-\-conf\fP
 option.
+.sp
+Those lines which are staring \fB#\fP are treated as comment.
+.sp
+The option name in the configuration file is the long command\-line
+option name with leading \fB\-\-\fP stripped (e.g., \fBfrontend\fP).  Put
+\fB=\fP between option name and value.  Don\(aqt put extra leading or
+trailing spaces.
+.sp
+The options which do not take argument in the command\-line \fItake\fP
+argument in the configuration file.  Specify \fByes\fP as an argument
+(e.g., \fBhttp2\-proxy=yes\fP).  If other string is given, it is
+ignored.
+.sp
+To specify private key and certificate file which are given as
+positional arguments in commnad\-line, use \fBprivate\-key\-file\fP and
+\fBcertificate\-file\fP\&.
+.sp
+\fI\%\-\-conf\fP option cannot be used in the configuration file and
+will be ignored if specified.
 .UNINDENT
 .SH SIGNALS
 .INDENT 0.0
