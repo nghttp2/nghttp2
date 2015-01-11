@@ -224,8 +224,8 @@ LIBS=$LIBS_OLD
 case "$host" in
   *android*)
     android_build=yes
-    # android does not need -pthread, but needs followng 2 libs for C++
-    APPLDFLAGS="$APPLDFLAGS -lstdc++ -lsupc++"
+    # android does not need -pthread, but needs followng 3 libs for C++
+    APPLDFLAGS="$APPLDFLAGS -lstdc++ -latomic -lsupc++"
     ;;
   *)
     PTHREAD_LDFLAGS="-pthread"

@@ -39,8 +39,8 @@ PATH=$TOOLCHAIN/bin:$PATH
     --without-libxml2 \
     --disable-python-bindings \
     --disable-examples \
-    --disable-threads \
+    CC=clang \
+    CXX=clang++ \
     CPPFLAGS="-I$PREFIX/include" \
-    CXXFLAGS="-fno-strict-aliasing" \
     PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig" \
     LDFLAGS="-L$PREFIX/lib"
