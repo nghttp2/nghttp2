@@ -65,9 +65,11 @@ RUN export CROSS_COMPILE=$TOOLCHAIN/bin/arm-linux-androideabi- && \
     make && make install_sw
 
 WORKDIR /root/build
-RUN curl -L -O https://github.com/downloads/libevent/libevent/libevent-2.0.21-stable.tar.gz
-RUN tar xf libevent-2.0.21-stable.tar.gz
-WORKDIR /root/build/libevent-2.0.21-stable
+RUN curl -L -O http://dist.schmorp.de/libev/libev-4.19.tar.gz
+RUN curl -L -O https://gist.github.com/tatsuhiro-t/48c45f08950f587180ed/raw/80a8f003b5d1091eae497c5995bbaa68096e739b/libev-4.19-android.patch
+RUN tar xf libev-4.19.tar.gz
+WORKDIR /root/build/libev-4.19
+RUN patch -p1 < ../libev-4.19-android.patch
 RUN ./configure \
     --host=arm-linux-androideabi \
     --build=`dpkg-architecture -qDEB_BUILD_GNU_TYPE` \
@@ -94,6 +96,7 @@ RUN autoreconf -i && \
     LIBSPDYLAY_CFLAGS=-I$PREFIX/usr/local/include \
     LIBSPDYLAY_LIBS="-L$PREFIX/usr/local/lib -lspdylay" \
     CPPFLAGS="-I$PREFIX/include" \
+    CXXFLAGS="-fno-strict-aliasing" \
     PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig" \
     LDFLAGS="-L$PREFIX/lib" && \
     make && \

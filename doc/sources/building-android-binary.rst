@@ -29,7 +29,7 @@ are using x86_64 system.
 The platform level is not important here because we don't use Android
 specific C/C++ API.
 
-The dependent libraries, such as OpenSSL and libevent should be built
+The dependent libraries, such as OpenSSL and libev should be built
 with the toolchain and installed under ``$ANDROID_HOME/usr/local``.
 We recommend to build these libraries as static library to make the
 deployment easier.  libxml2 support is currently disabled.
@@ -65,7 +65,10 @@ To configure OpenSSL, use the following script:
 
 And run ``make install`` to build and install.
 
-To configure libevent, use the following script:
+We cannot compile libev without modification.  Apply `this patch
+<https://gist.github.com/tatsuhiro-t/48c45f08950f587180ed>`_ before
+configuring libev.  This patch is for libev-4.19.  After applying the
+patch, to configure libev, use the following script:
 
 .. code-block:: sh
 
