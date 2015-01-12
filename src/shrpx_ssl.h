@@ -42,9 +42,11 @@ class DownstreamConnectionPool;
 
 namespace ssl {
 
+// Create server side SSL_CTX
 SSL_CTX *create_ssl_context(const char *private_key_file,
                             const char *cert_file);
 
+// Create client side SSL_CTX
 SSL_CTX *create_ssl_client_context();
 
 ClientHandler *accept_connection(struct ev_loop *loop, SSL_CTX *ssl_ctx, int fd,

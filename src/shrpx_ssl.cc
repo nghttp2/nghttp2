@@ -288,8 +288,7 @@ long int create_tls_proto_mask(const std::vector<char *> &tls_proto_list) {
 
 SSL_CTX *create_ssl_context(const char *private_key_file,
                             const char *cert_file) {
-  SSL_CTX *ssl_ctx;
-  ssl_ctx = SSL_CTX_new(SSLv23_server_method());
+  auto ssl_ctx = SSL_CTX_new(SSLv23_server_method());
   if (!ssl_ctx) {
     LOG(FATAL) << ERR_error_string(ERR_get_error(), nullptr);
     DIE();
@@ -440,8 +439,7 @@ int select_next_proto_cb(SSL *ssl, unsigned char **out, unsigned char *outlen,
 } // namespace
 
 SSL_CTX *create_ssl_client_context() {
-  SSL_CTX *ssl_ctx;
-  ssl_ctx = SSL_CTX_new(SSLv23_client_method());
+  auto ssl_ctx = SSL_CTX_new(SSLv23_client_method());
   if (!ssl_ctx) {
     LOG(FATAL) << ERR_error_string(ERR_get_error(), nullptr);
     DIE();
