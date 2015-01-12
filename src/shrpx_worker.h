@@ -47,6 +47,10 @@ namespace shrpx {
 class Http2Session;
 class ConnectBlocker;
 
+namespace ssl {
+struct CertLookupTree;
+} // namespace ssl
+
 struct WorkerStat {
   WorkerStat() : num_connections(0), next_downstream(0) {}
 
@@ -77,6 +81,7 @@ struct WorkerEvent {
 class Worker {
 public:
   Worker(SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
+         ssl::CertLookupTree *cert_tree,
          const std::shared_ptr<TicketKeys> &ticket_keys);
   ~Worker();
   void wait();

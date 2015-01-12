@@ -140,6 +140,7 @@ const char SHRPX_OPT_BACKEND_HTTP1_CONNECTIONS_PER_FRONTEND[] =
 const char SHRPX_OPT_LISTENER_DISABLE_TIMEOUT[] = "listener-disable-timeout";
 const char SHRPX_OPT_TLS_TICKET_KEY_FILE[] = "tls-ticket-key-file";
 const char SHRPX_OPT_RLIMIT_NOFILE[] = "rlimit-nofile";
+const char SHRPX_OPT_TLS_CTX_PER_WORKER[] = "tls-ctx-per-worker";
 
 namespace {
 Config *config = nullptr;
@@ -1124,6 +1125,12 @@ int parse_config(const char *opt, const char *optarg) {
     }
 
     mod_config()->rlimit_nofile = n;
+
+    return 0;
+  }
+
+  if (util::strieq(opt, SHRPX_OPT_TLS_CTX_PER_WORKER)) {
+    mod_config()->tls_ctx_per_worker = util::strieq(optarg, "yes");
 
     return 0;
   }

@@ -128,6 +128,7 @@ extern const char SHRPX_OPT_BACKEND_HTTP1_CONNECTIONS_PER_FRONTEND[];
 extern const char SHRPX_OPT_LISTENER_DISABLE_TIMEOUT[];
 extern const char SHRPX_OPT_TLS_TICKET_KEY_FILE[];
 extern const char SHRPX_OPT_RLIMIT_NOFILE[];
+extern const char SHRPX_OPT_TLS_CTX_PER_WORKER[];
 
 union sockaddr_union {
   sockaddr sa;
@@ -199,8 +200,6 @@ struct Config {
   std::unique_ptr<char[]> private_key_passwd;
   std::unique_ptr<char[]> cert_file;
   std::unique_ptr<char[]> dh_param_file;
-  SSL_CTX *default_ssl_ctx;
-  ssl::CertLookupTree *cert_tree;
   const char *server_name;
   std::unique_ptr<char[]> backend_tls_sni_name;
   std::unique_ptr<char[]> pid_file;
@@ -296,6 +295,7 @@ struct Config {
   bool upstream_frame_debug;
   bool no_location_rewrite;
   bool auto_tls_ticket_key;
+  bool tls_ctx_per_worker;
 };
 
 const Config *get_config();

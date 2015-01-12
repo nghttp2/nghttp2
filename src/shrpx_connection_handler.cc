@@ -58,9 +58,8 @@ void acceptor_disable_cb(struct ev_loop *loop, ev_timer *w, int revent) {
 }
 } // namespace
 
-ConnectionHandler::ConnectionHandler(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx,
-                                     SSL_CTX *cl_ssl_ctx)
-    : loop_(loop), sv_ssl_ctx_(sv_ssl_ctx), cl_ssl_ctx_(cl_ssl_ctx),
+ConnectionHandler::ConnectionHandler(struct ev_loop *loop)
+    : loop_(loop), sv_ssl_ctx_(nullptr), cl_ssl_ctx_(nullptr),
       // rate_limit_group_(bufferevent_rate_limit_group_new(
       //     evbase, get_config()->worker_rate_limit_cfg)),
       worker_stat_(util::make_unique<WorkerStat>()),
@@ -72,6 +71,11 @@ ConnectionHandler::ConnectionHandler(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx,
 ConnectionHandler::~ConnectionHandler() {
   //  bufferevent_rate_limit_group_free(rate_limit_group_);
   ev_timer_stop(loop_, &disable_acceptor_timer_);
+}
+
+void ConnectionHandler::create_ssl_context() {
+  sv_ssl_ctx_ = ssl::setup_server_ssl_context();
+  cl_ssl_ctx_ = ssl::setup_client_ssl_context();
 }
 
 void ConnectionHandler::worker_reopen_log_files() {
@@ -104,6 +108,7 @@ void ConnectionHandler::create_worker_thread(size_t num) {
 
   for (size_t i = 0; i < num; ++i) {
     workers_.push_back(util::make_unique<Worker>(sv_ssl_ctx_, cl_ssl_ctx_,
+                                                 worker_config->cert_tree,
                                                  worker_config->ticket_keys));
 
     if (LOG_ENABLED(INFO)) {

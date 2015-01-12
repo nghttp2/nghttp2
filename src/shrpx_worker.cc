@@ -48,6 +48,7 @@ void eventcb(struct ev_loop *loop, ev_async *w, int revents) {
 } // namespace
 
 Worker::Worker(SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
+               ssl::CertLookupTree *cert_tree,
                const std::shared_ptr<TicketKeys> &ticket_keys)
     : loop_(ev_loop_new(0)), sv_ssl_ctx_(sv_ssl_ctx), cl_ssl_ctx_(cl_ssl_ctx),
       worker_stat_(util::make_unique<WorkerStat>()) {
@@ -55,14 +56,21 @@ Worker::Worker(SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
   w_.data = this;
   ev_async_start(loop_, &w_);
 
-  if (get_config()->downstream_proto == PROTO_HTTP2) {
-    http2session_ = util::make_unique<Http2Session>(loop_, cl_ssl_ctx_);
-  } else {
-    http1_connect_blocker_ = util::make_unique<ConnectBlocker>(loop_);
-  }
-
 #ifndef NOTHREADS
-  fut_ = std::async(std::launch::async, [this, &ticket_keys] {
+  fut_ = std::async(std::launch::async, [this, cert_tree, &ticket_keys] {
+    if (get_config()->tls_ctx_per_worker) {
+      sv_ssl_ctx_ = ssl::setup_server_ssl_context();
+      cl_ssl_ctx_ = ssl::setup_client_ssl_context();
+    } else {
+      worker_config->cert_tree = cert_tree;
+    }
+
+    if (get_config()->downstream_proto == PROTO_HTTP2) {
+      http2session_ = util::make_unique<Http2Session>(loop_, cl_ssl_ctx_);
+    } else {
+      http1_connect_blocker_ = util::make_unique<ConnectBlocker>(loop_);
+    }
+
     worker_config->ticket_keys = ticket_keys;
     (void)reopen_log_files();
     ev_run(loop_);

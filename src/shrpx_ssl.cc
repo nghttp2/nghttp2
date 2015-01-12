@@ -129,11 +129,12 @@ int ssl_pem_passwd_cb(char *buf, int size, int rwflag, void *user_data) {
 
 namespace {
 int servername_callback(SSL *ssl, int *al, void *arg) {
-  if (get_config()->cert_tree) {
+  auto cert_tree = worker_config->cert_tree;
+  if (cert_tree) {
     const char *hostname = SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
     if (hostname) {
-      auto ssl_ctx = cert_lookup_tree_lookup(get_config()->cert_tree, hostname,
-                                             strlen(hostname));
+      auto ssl_ctx =
+          cert_lookup_tree_lookup(cert_tree, hostname, strlen(hostname));
       if (ssl_ctx) {
         SSL_set_SSL_CTX(ssl, ssl_ctx);
       }
@@ -941,6 +942,50 @@ bool check_http2_requirement(SSL *ssl) {
   }
 
   return true;
+}
+
+SSL_CTX *setup_server_ssl_context() {
+  if (get_config()->upstream_no_tls) {
+    return nullptr;
+  }
+
+  auto ssl_ctx = ssl::create_ssl_context(get_config()->private_key_file.get(),
+                                         get_config()->cert_file.get());
+
+  auto cert_tree =
+      get_config()->subcerts.empty() ? nullptr : cert_lookup_tree_new();
+  worker_config->cert_tree = cert_tree;
+
+  for (auto &keycert : get_config()->subcerts) {
+    auto ssl_ctx =
+        ssl::create_ssl_context(keycert.first.c_str(), keycert.second.c_str());
+    if (ssl::cert_lookup_tree_add_cert_from_file(
+            cert_tree, ssl_ctx, keycert.second.c_str()) == -1) {
+      LOG(FATAL) << "Failed to add sub certificate.";
+      DIE();
+    }
+  }
+
+  if (cert_tree) {
+    if (ssl::cert_lookup_tree_add_cert_from_file(
+            cert_tree, ssl_ctx, get_config()->cert_file.get()) == -1) {
+      LOG(FATAL) << "Failed to add default certificate.";
+      DIE();
+    }
+  }
+
+  return ssl_ctx;
+}
+
+SSL_CTX *setup_client_ssl_context() {
+  if (get_config()->client_mode) {
+    return get_config()->downstream_no_tls ? nullptr
+                                           : ssl::create_ssl_client_context();
+  }
+
+  return get_config()->http2_bridge && !get_config()->downstream_no_tls
+             ? ssl::create_ssl_client_context()
+             : nullptr;
 }
 
 } // namespace ssl

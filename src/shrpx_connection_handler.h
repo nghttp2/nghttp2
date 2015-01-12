@@ -51,10 +51,10 @@ struct TicketKeys;
 // TODO should be renamed as ConnectionHandler
 class ConnectionHandler {
 public:
-  ConnectionHandler(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx,
-                    SSL_CTX *cl_ssl_ctx);
+  ConnectionHandler(struct ev_loop *loop);
   ~ConnectionHandler();
   int handle_connection(int fd, sockaddr *addr, int addrlen);
+  void create_ssl_context();
   void create_worker_thread(size_t num);
   void worker_reopen_log_files();
   void worker_renew_ticket_keys(const std::shared_ptr<TicketKeys> &ticket_keys);

@@ -141,6 +141,17 @@ long int create_tls_proto_mask(const std::vector<char *> &tls_proto_list);
 
 std::vector<unsigned char> set_alpn_prefs(const std::vector<char *> &protos);
 
+// Setups server side SSL_CTX.  This function inspects get_config()
+// and if upstream_no_tls is true, returns nullptr.  Otherwise
+// construct default SSL_CTX.  If subcerts are not empty, create
+// SSL_CTX for them.  All created SSL_CTX are added to CertLookupTree.
+SSL_CTX *setup_server_ssl_context();
+
+// Setups client side SSL_CTX.  This function inspects get_config()
+// and if downstream_no_tls is true, returns nullptr.  Otherwise, only
+// construct SSL_CTX if either client_mode or http2_bridge is true.
+SSL_CTX *setup_client_ssl_context();
+
 } // namespace ssl
 
 } // namespace shrpx
