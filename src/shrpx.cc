@@ -1751,7 +1751,7 @@ int main(int argc, char **argv) {
       if (ssl::cert_lookup_tree_add_cert_from_file(
               get_config()->cert_tree, get_config()->default_ssl_ctx,
               get_config()->cert_file.get()) == -1) {
-        LOG(FATAL) << "Failed to parse command-line argument.";
+        LOG(FATAL) << "Failed to add server certificate to the lookup tree.";
         exit(EXIT_FAILURE);
       }
     }
