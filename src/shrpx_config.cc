@@ -356,6 +356,21 @@ int parse_uint(T *dest, const char *opt, const char *optarg) {
   return 0;
 }
 
+namespace {
+template <typename T>
+int parse_uint_with_unit(T *dest, const char *opt, const char *optarg) {
+  auto n = util::parse_uint_with_unit(optarg);
+  if (n == -1) {
+    LOG(ERROR) << opt << ": bad value: '" << optarg << "'";
+    return -1;
+  }
+
+  *dest = n;
+
+  return 0;
+}
+} // namespace
+
 template <typename T>
 int parse_int(T *dest, const char *opt, const char *optarg) {
   char *end = nullptr;
@@ -879,53 +894,39 @@ int parse_config(const char *opt, const char *optarg) {
   }
 
   if (util::strieq(opt, SHRPX_OPT_READ_RATE)) {
-    return parse_uint(&mod_config()->read_rate, opt, optarg);
+    return parse_uint_with_unit(&mod_config()->read_rate, opt, optarg);
   }
 
   if (util::strieq(opt, SHRPX_OPT_READ_BURST)) {
-    int n;
-
-    if (parse_uint(&n, opt, optarg) != 0) {
-      return -1;
-    }
-
-    if (n == 0) {
-      LOG(ERROR) << opt << ": specify integer strictly larger than 0";
-
-      return -1;
-    }
-
-    mod_config()->read_burst = n;
-
-    return 0;
+    return parse_uint_with_unit(&mod_config()->read_burst, opt, optarg);
   }
 
   if (util::strieq(opt, SHRPX_OPT_WRITE_RATE)) {
-    return parse_uint(&mod_config()->write_rate, opt, optarg);
+    return parse_uint_with_unit(&mod_config()->write_rate, opt, optarg);
   }
 
   if (util::strieq(opt, SHRPX_OPT_WRITE_BURST)) {
-    return parse_uint(&mod_config()->write_burst, opt, optarg);
+    return parse_uint_with_unit(&mod_config()->write_burst, opt, optarg);
   }
 
   if (util::strieq(opt, SHRPX_OPT_WORKER_READ_RATE)) {
     LOG(WARN) << opt << ": not implemented yet";
-    return parse_uint(&mod_config()->worker_read_rate, opt, optarg);
+    return parse_uint_with_unit(&mod_config()->worker_read_rate, opt, optarg);
   }
 
   if (util::strieq(opt, SHRPX_OPT_WORKER_READ_BURST)) {
     LOG(WARN) << opt << ": not implemented yet";
-    return parse_uint(&mod_config()->worker_read_burst, opt, optarg);
+    return parse_uint_with_unit(&mod_config()->worker_read_burst, opt, optarg);
   }
 
   if (util::strieq(opt, SHRPX_OPT_WORKER_WRITE_RATE)) {
     LOG(WARN) << opt << ": not implemented yet";
-    return parse_uint(&mod_config()->worker_write_rate, opt, optarg);
+    return parse_uint_with_unit(&mod_config()->worker_write_rate, opt, optarg);
   }
 
   if (util::strieq(opt, SHRPX_OPT_WORKER_WRITE_BURST)) {
     LOG(WARN) << opt << ": not implemented yet";
-    return parse_uint(&mod_config()->worker_write_burst, opt, optarg);
+    return parse_uint_with_unit(&mod_config()->worker_write_burst, opt, optarg);
   }
 
   if (util::strieq(opt, SHRPX_OPT_NPN_LIST)) {

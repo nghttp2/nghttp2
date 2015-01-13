@@ -899,6 +899,57 @@ bool ipv6_numeric_addr(const char *host) {
   return inet_pton(AF_INET6, host, dst) == 1;
 }
 
+int64_t parse_uint_with_unit(const char *s) {
+  int64_t n = 0;
+  size_t i;
+  auto len = strlen(s);
+  if (len == 0) {
+    return -1;
+  }
+  constexpr int64_t max = std::numeric_limits<int64_t>::max();
+  for (i = 0; i < len; ++i) {
+    if ('0' <= s[i] && s[i] <= '9') {
+      if (n > max / 10) {
+        return -1;
+      }
+      n *= 10;
+      if (n > max - (s[i] - '0')) {
+        return -1;
+      }
+      n += s[i] - '0';
+      continue;
+    }
+    break;
+  }
+  if (i == len) {
+    return n;
+  }
+  if (i == 0 || i + 1 != len) {
+    return -1;
+  }
+  int mul = 1;
+  switch (s[i]) {
+  case 'K':
+  case 'k':
+    mul = 1 << 10;
+    break;
+  case 'M':
+  case 'm':
+    mul = 1 << 20;
+    break;
+  case 'G':
+  case 'g':
+    mul = 1 << 30;
+    break;
+  default:
+    return -1;
+  }
+  if (n > max / mul) {
+    return -1;
+  }
+  return n * mul;
+}
+
 } // namespace util
 
 } // namespace nghttp2

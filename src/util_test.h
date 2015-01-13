@@ -37,6 +37,8 @@ void test_util_utox(void);
 void test_util_http_date(void);
 void test_util_select_h2(void);
 void test_util_ipv6_numeric_addr(void);
+void test_util_utos_with_unit(void);
+void test_util_parse_uint_with_unit(void);
 
 } // namespace shrpx
 

@@ -341,6 +341,24 @@ template <typename T> std::string utos(T n) {
   return res;
 }
 
+template <typename T> std::string utos_with_unit(T n) {
+  char u = 0;
+  if (n >= (1 << 30)) {
+    u = 'G';
+    n /= (1 << 30);
+  } else if (n >= (1 << 20)) {
+    u = 'M';
+    n /= (1 << 20);
+  } else if (n >= (1 << 10)) {
+    u = 'K';
+    n /= (1 << 10);
+  }
+  if (u == 0) {
+    return utos(n);
+  }
+  return utos(n) + u;
+}
+
 extern const char UPPER_XDIGITS[];
 
 template <typename T> std::string utox(T n) {
@@ -476,6 +494,13 @@ bool check_socket_connected(int fd);
 
 // Returns true if |host| is IPv6 numeric address (e.g., ::1)
 bool ipv6_numeric_addr(const char *host);
+
+// Parses NULL terminated string |s| as unsigned integer and returns
+// the parsed integer.  Additionally, if |s| ends with 'k', 'm', 'g'
+// and its upper case characters, multiply the integer by 1024, 1024 *
+// 1024 and 1024 * 1024 respectively.  If there is an error, returns
+// -1.
+int64_t parse_uint_with_unit(const char *s);
 
 } // namespace util
 

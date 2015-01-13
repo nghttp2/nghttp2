@@ -174,4 +174,37 @@ void test_util_ipv6_numeric_addr(void) {
   CU_ASSERT(!util::ipv6_numeric_addr("localhost"));
 }
 
+void test_util_utos_with_unit(void) {
+  CU_ASSERT("0" == util::utos_with_unit(0));
+  CU_ASSERT("1023" == util::utos_with_unit(1023));
+  CU_ASSERT("1K" == util::utos_with_unit(1024));
+  CU_ASSERT("1K" == util::utos_with_unit(1025));
+  CU_ASSERT("1M" == util::utos_with_unit(1 << 20));
+  CU_ASSERT("1G" == util::utos_with_unit(1 << 30));
+  CU_ASSERT("1024G" == util::utos_with_unit(1LL << 40));
+}
+
+void test_util_parse_uint_with_unit(void) {
+  CU_ASSERT(0 == util::parse_uint_with_unit("0"));
+  CU_ASSERT(1023 == util::parse_uint_with_unit("1023"));
+  CU_ASSERT(1024 == util::parse_uint_with_unit("1k"));
+  CU_ASSERT(2048 == util::parse_uint_with_unit("2K"));
+  CU_ASSERT(1 << 20 == util::parse_uint_with_unit("1m"));
+  CU_ASSERT(1 << 21 == util::parse_uint_with_unit("2M"));
+  CU_ASSERT(1 << 30 == util::parse_uint_with_unit("1g"));
+  CU_ASSERT(1LL << 31 == util::parse_uint_with_unit("2G"));
+  CU_ASSERT(9223372036854775807LL ==
+            util::parse_uint_with_unit("9223372036854775807"));
+  // check overflow case
+  CU_ASSERT(-1 == util::parse_uint_with_unit("9223372036854775808"));
+  CU_ASSERT(-1 == util::parse_uint_with_unit("10000000000000000000"));
+  CU_ASSERT(-1 == util::parse_uint_with_unit("9223372036854775807G"));
+  // bad characters
+  CU_ASSERT(-1 == util::parse_uint_with_unit("1.1"));
+  CU_ASSERT(-1 == util::parse_uint_with_unit("1a"));
+  CU_ASSERT(-1 == util::parse_uint_with_unit("a1"));
+  CU_ASSERT(-1 == util::parse_uint_with_unit("1T"));
+  CU_ASSERT(-1 == util::parse_uint_with_unit(""));
+}
+
 } // namespace shrpx

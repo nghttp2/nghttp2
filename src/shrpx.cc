@@ -816,7 +816,7 @@ Performance:
   -n, --workers=<CORES>
                      Set the number of worker threads.
                      Default: )" << get_config()->num_worker << R"(
-  --read-rate=<RATE>
+  --read-rate=<SIZE>
                      Set  maximum   average  read  rate   on  frontend
                      connection.  Setting 0 to  this option means read
                      rate is unlimited.
@@ -826,7 +826,7 @@ Performance:
                      connection.  Setting 0 to  this option means read
                      burst size is unlimited.
                      Default: )" << get_config()->read_burst << R"(
-  --write-rate=<RATE>
+  --write-rate=<SIZE>
                      Set  maximum  average   write  rate  on  frontend
                      connection.  Setting 0 to this option means write
                      rate is unlimited.
@@ -836,7 +836,7 @@ Performance:
                      connection.  Setting 0 to this option means write
                      burst size is unlimited.
                      Default: )" << get_config()->write_burst << R"(
-  --worker-read-rate=<RATE>
+  --worker-read-rate=<SIZE>
                      Set  maximum   average  read  rate   on  frontend
                      connection per worker.  Setting  0 to this option
                      means  read rate  is unlimited.   Not implemented
@@ -848,7 +848,7 @@ Performance:
                      means   read  burst   size  is   unlimited.   Not
                      implemented yet.
                      Default: )" << get_config()->worker_read_burst << R"(
-  --worker-write-rate=<RATE>
+  --worker-write-rate=<SIZE>
                      Set  maximum  average   write  rate  on  frontend
                      connection per worker.  Setting  0 to this option
                      means write  rate is unlimited.   Not implemented
