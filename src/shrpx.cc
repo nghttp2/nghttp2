@@ -542,16 +542,18 @@ int event_loop() {
   }
 #endif // !NOTHREADS
 
-  if (!get_config()->tls_ctx_per_worker) {
-    conn_handler->create_ssl_context();
-  }
-
   if (get_config()->num_worker > 1) {
+    if (!get_config()->tls_ctx_per_worker) {
+      conn_handler->create_ssl_context();
+    }
     conn_handler->create_worker_thread(get_config()->num_worker);
-  } else if (get_config()->downstream_proto == PROTO_HTTP2) {
-    conn_handler->create_http2_session();
   } else {
-    conn_handler->create_http1_connect_blocker();
+    conn_handler->create_ssl_context();
+    if (get_config()->downstream_proto == PROTO_HTTP2) {
+      conn_handler->create_http2_session();
+    } else {
+      conn_handler->create_http1_connect_blocker();
+    }
   }
 
 #ifndef NOTHREADS
