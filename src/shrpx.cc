@@ -791,8 +791,7 @@ Connections:
                      IPv6.
                      Default: )" << get_config()->host.get() << ","
       << get_config()->port << R"(
-  --backlog=<NUM>    Set  listen  backlog  size.    If  -1  is  given,
-                     libevent will choose suitable value.
+  --backlog=<N>      Set listen backlog size.
                      Default: )" << get_config()->backlog << R"(
   --backend-ipv4     Resolve backend hostname to IPv4 address only.
   --backend-ipv6     Resolve backend hostname to IPv6 address only.
@@ -813,7 +812,7 @@ Connections:
                      --backend-write-timeout options.
 
 Performance:
-  -n, --workers=<CORES>
+  -n, --workers=<N>
                      Set the number of worker threads.
                      Default: )" << get_config()->num_worker << R"(
   --read-rate=<SIZE>
@@ -860,11 +859,12 @@ Performance:
                      means  write   burst  size  is   unlimited.   Not
                      implemented yet.
                      Default: )" << get_config()->worker_write_burst << R"(
-  --worker-frontend-connections=<NUM>
+  --worker-frontend-connections=<N>
                      Set  maximum number  of simultaneous  connections
                      frontend accepts.  Setting 0 means unlimited.
-                     Default: 0
-  --backend-http1-connections-per-host=<NUM>
+                     Default: )" << get_config()->worker_frontend_connections
+      << R"(
+  --backend-http1-connections-per-host=<N>
                      Set maximum  number of backend  concurrent HTTP/1
                      connections per host.   This option is meaningful
                      when -s option  is used.  To limit  the number of
@@ -872,7 +872,7 @@ Performance:
                      --backend-http1-connections-per-frontend.
                      Default: )"
       << get_config()->downstream_connections_per_host << R"(
-  --backend-http1-connections-per-frontend=<NUM>
+  --backend-http1-connections-per-frontend=<N>
                      Set maximum  number of backend  concurrent HTTP/1
                      connections  per frontend.   This option  is only
                      used for  default mode.   0 means  unlimited.  To
@@ -942,7 +942,7 @@ SSL/TLS:
                      certificates.    If   the   linked   OpenSSL   is
                      configured to load system wide certificates, they
                      are loaded at startup regardless of this option.
-  --private-key-passwd-file=<FILEPATH>
+  --private-key-passwd-file=<PATH>
                      Path  to  file  that contains  password  for  the
                      server's private  key.  If none is  given and the
                      private  key  is   password  protected  it'll  be
@@ -989,7 +989,7 @@ SSL/TLS:
                      only and any  white spaces are treated  as a part
                      of protocol string.
                      Default: )" << DEFAULT_TLS_PROTO_LIST << R"(
-  --tls-ticket-key-file=<FILE>
+  --tls-ticket-key-file=<PATH>
                      Path to  file that contains 48  bytes random data
                      to construct TLS session ticket parameters.  This
                      options  can   be  used  repeatedly   to  specify
@@ -1020,7 +1020,7 @@ SSL/TLS:
                      threads.
 
 HTTP/2 and SPDY:
-  -c, --http2-max-concurrent-streams=<NUM>
+  -c, --http2-max-concurrent-streams=<N>
                      Set the maximum number  of the concurrent streams
                      in one HTTP/2 and SPDY session.
                      Default: )" << get_config()->http2_max_concurrent_streams
