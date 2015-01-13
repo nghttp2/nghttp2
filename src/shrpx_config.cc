@@ -141,6 +141,7 @@ const char SHRPX_OPT_LISTENER_DISABLE_TIMEOUT[] = "listener-disable-timeout";
 const char SHRPX_OPT_TLS_TICKET_KEY_FILE[] = "tls-ticket-key-file";
 const char SHRPX_OPT_RLIMIT_NOFILE[] = "rlimit-nofile";
 const char SHRPX_OPT_TLS_CTX_PER_WORKER[] = "tls-ctx-per-worker";
+const char SHRPX_OPT_BACKEND_REQUEST_BUFFER[] = "backend-request-buffer";
 const char SHRPX_OPT_BACKEND_RESPONSE_BUFFER[] = "backend-response-buffer";
 
 namespace {
@@ -1118,7 +1119,8 @@ int parse_config(const char *opt, const char *optarg) {
     return 0;
   }
 
-  if (util::strieq(opt, SHRPX_OPT_BACKEND_RESPONSE_BUFFER)) {
+  if (util::strieq(opt, SHRPX_OPT_BACKEND_REQUEST_BUFFER) ||
+      util::strieq(opt, SHRPX_OPT_BACKEND_RESPONSE_BUFFER)) {
     size_t n;
     if (parse_uint_with_unit(&n, opt, optarg) != 0) {
       return -1;
@@ -1130,7 +1132,11 @@ int parse_config(const char *opt, const char *optarg) {
       return -1;
     }
 
-    mod_config()->downstream_response_buffer_size = n;
+    if (util::strieq(opt, SHRPX_OPT_BACKEND_REQUEST_BUFFER)) {
+      mod_config()->downstream_request_buffer_size = n;
+    } else {
+      mod_config()->downstream_response_buffer_size = n;
+    }
 
     return 0;
   }

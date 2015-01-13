@@ -443,7 +443,7 @@ void Downstream::set_request_http2_expect_body(bool f) {
 
 bool Downstream::request_buf_full() {
   if (dconn_) {
-    return request_buf_.rleft() >= 16384;
+    return request_buf_.rleft() >= get_config()->downstream_request_buffer_size;
   } else {
     return false;
   }

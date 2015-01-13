@@ -747,6 +747,7 @@ void fill_default_config() {
   mod_config()->listener_disable_timeout = 0.;
   mod_config()->auto_tls_ticket_key = true;
   mod_config()->tls_ctx_per_worker = false;
+  mod_config()->downstream_request_buffer_size = 16 * 1024;
   mod_config()->downstream_response_buffer_size = 64 * 1024;
 }
 } // namespace
@@ -878,6 +879,11 @@ Performance:
               Set maximum number of open files (RLIMIT_NOFILE) to <N>.
               If 0 is given, nghttpx does not set the limit.
               Default: )" << get_config()->rlimit_nofile << R"(
+  --backend-request-buffer=<SIZE>
+              Set buffer size used to store backend request.
+              Default: )"
+      << util::utos_with_unit(get_config()->downstream_request_buffer_size)
+      << R"(
   --backend-response-buffer=<SIZE>
               Set buffer size used to store backend response.
               Default: )"
@@ -1280,6 +1286,7 @@ int main(int argc, char **argv) {
         {"rlimit-nofile", required_argument, &flag, 69},
         {"tls-ctx-per-worker", no_argument, &flag, 70},
         {"backend-response-buffer", required_argument, &flag, 71},
+        {"backend-request-buffer", required_argument, &flag, 72},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -1604,6 +1611,10 @@ int main(int argc, char **argv) {
       case 71:
         // --backend-response-buffer
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_RESPONSE_BUFFER, optarg);
+        break;
+      case 72:
+        // --backend-request-buffer
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_REQUEST_BUFFER, optarg);
         break;
       default:
         break;
