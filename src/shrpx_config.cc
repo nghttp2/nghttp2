@@ -141,6 +141,7 @@ const char SHRPX_OPT_LISTENER_DISABLE_TIMEOUT[] = "listener-disable-timeout";
 const char SHRPX_OPT_TLS_TICKET_KEY_FILE[] = "tls-ticket-key-file";
 const char SHRPX_OPT_RLIMIT_NOFILE[] = "rlimit-nofile";
 const char SHRPX_OPT_TLS_CTX_PER_WORKER[] = "tls-ctx-per-worker";
+const char SHRPX_OPT_BACKEND_RESPONSE_BUFFER[] = "backend-response-buffer";
 
 namespace {
 Config *config = nullptr;
@@ -1126,6 +1127,22 @@ int parse_config(const char *opt, const char *optarg) {
     }
 
     mod_config()->rlimit_nofile = n;
+
+    return 0;
+  }
+
+  if (util::strieq(opt, SHRPX_OPT_BACKEND_RESPONSE_BUFFER)) {
+    size_t n;
+    if (parse_uint_with_unit(&n, opt, optarg) != 0) {
+      return -1;
+    }
+
+    if (n == 0) {
+      LOG(ERROR) << opt << ": specify an integer strictly more than 0";
+      return -1;
+    }
+
+    mod_config()->downstream_response_buffer_size = n;
 
     return 0;
   }

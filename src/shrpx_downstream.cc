@@ -642,7 +642,8 @@ Memchunks4K *Downstream::get_response_buf() { return &response_buf_; }
 
 bool Downstream::response_buf_full() {
   if (dconn_) {
-    return response_buf_.rleft() >= 64 * 1024;
+    return response_buf_.rleft() >=
+           get_config()->downstream_response_buffer_size;
   } else {
     return false;
   }

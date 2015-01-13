@@ -747,6 +747,7 @@ void fill_default_config() {
   mod_config()->listener_disable_timeout = 0.;
   mod_config()->auto_tls_ticket_key = true;
   mod_config()->tls_ctx_per_worker = false;
+  mod_config()->downstream_response_buffer_size = 64 * 1024;
 }
 } // namespace
 
@@ -877,6 +878,11 @@ Performance:
               Set maximum number of open files (RLIMIT_NOFILE) to <N>.
               If 0 is given, nghttpx does not set the limit.
               Default: )" << get_config()->rlimit_nofile << R"(
+  --backend-response-buffer=<SIZE>
+              Set buffer size used to store backend response.
+              Default: )"
+      << util::utos_with_unit(get_config()->downstream_response_buffer_size)
+      << R"(
 
 Timeout:
   --frontend-http2-read-timeout=<SEC>
@@ -1273,6 +1279,7 @@ int main(int argc, char **argv) {
         {"tls-ticket-key-file", required_argument, &flag, 68},
         {"rlimit-nofile", required_argument, &flag, 69},
         {"tls-ctx-per-worker", no_argument, &flag, 70},
+        {"backend-response-buffer", required_argument, &flag, 71},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -1593,6 +1600,10 @@ int main(int argc, char **argv) {
       case 70:
         // --tls-ctx-per-worker
         cmdcfgs.emplace_back(SHRPX_OPT_TLS_CTX_PER_WORKER, "yes");
+        break;
+      case 71:
+        // --backend-response-buffer
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_RESPONSE_BUFFER, optarg);
         break;
       default:
         break;
