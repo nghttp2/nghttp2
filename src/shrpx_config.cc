@@ -1075,8 +1075,8 @@ int parse_config(const char *opt, const char *optarg) {
       return -1;
     }
 
-    if (n < 1) {
-      LOG(ERROR) << opt << ": specify the integer more than or equal to 1";
+    if (n == 0) {
+      LOG(ERROR) << opt << ": specify an integer strictly more than 0";
 
       return -1;
     }
@@ -1087,21 +1087,8 @@ int parse_config(const char *opt, const char *optarg) {
   }
 
   if (util::strieq(opt, SHRPX_OPT_BACKEND_HTTP1_CONNECTIONS_PER_FRONTEND)) {
-    int n;
-
-    if (parse_uint(&n, opt, optarg) != 0) {
-      return -1;
-    }
-
-    if (n < 0) {
-      LOG(ERROR) << opt << ": specify the integer more than or equal to 0";
-
-      return -1;
-    }
-
-    mod_config()->downstream_connections_per_frontend = n;
-
-    return 0;
+    return parse_uint(&mod_config()->downstream_connections_per_frontend, opt,
+                      optarg);
   }
 
   if (util::strieq(opt, SHRPX_OPT_LISTENER_DISABLE_TIMEOUT)) {
@@ -1139,6 +1126,7 @@ int parse_config(const char *opt, const char *optarg) {
 
     if (n == 0) {
       LOG(ERROR) << opt << ": specify an integer strictly more than 0";
+
       return -1;
     }
 
