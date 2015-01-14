@@ -4373,6 +4373,7 @@ static int session_on_data_received_fail_fast(nghttp2_session *session) {
   nghttp2_inbound_frame *iframe;
   int32_t stream_id;
   const char *failure_reason;
+  uint32_t error_code = NGHTTP2_PROTOCOL_ERROR;
 
   iframe = &session->iframe;
   stream_id = iframe->frame.hd.stream_id;
@@ -4388,12 +4389,14 @@ static int session_on_data_received_fail_fast(nghttp2_session *session) {
   if (!stream) {
     if (session_detect_idle_stream(session, stream_id)) {
       failure_reason = "DATA: stream in idle";
+      error_code = NGHTTP2_STREAM_CLOSED;
       goto fail;
     }
     return NGHTTP2_ERR_IGN_PAYLOAD;
   }
   if (stream->shut_flags & NGHTTP2_SHUT_RD) {
     failure_reason = "DATA: stream in half-closed(remote)";
+    error_code = NGHTTP2_STREAM_CLOSED;
     goto fail;
   }
 
@@ -4416,8 +4419,8 @@ static int session_on_data_received_fail_fast(nghttp2_session *session) {
   }
   return 0;
 fail:
-  rv = nghttp2_session_terminate_session_with_reason(
-      session, NGHTTP2_PROTOCOL_ERROR, failure_reason);
+  rv = nghttp2_session_terminate_session_with_reason(session, error_code,
+                                                     failure_reason);
   if (nghttp2_is_fatal(rv)) {
     return rv;
   }
