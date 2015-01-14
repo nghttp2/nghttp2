@@ -20,6 +20,7 @@ HEADERS = [
     "alt-svc",
     "content-length",
     "location",
+    "trailer",
     # disallowed h1 headers
     'connection',
     'keep-alive',

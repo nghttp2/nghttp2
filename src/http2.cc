@@ -239,6 +239,7 @@ void copy_headers_to_nva(std::vector<nghttp2_nv> &nva, const Headers &headers) {
     case HD_KEEP_ALIVE:
     case HD_PROXY_CONNECTION:
     case HD_SERVER:
+    case HD_TRAILER:
     case HD_TRANSFER_ENCODING:
     case HD_UPGRADE:
     case HD_VIA:
@@ -263,6 +264,7 @@ void build_http1_headers_from_headers(std::string &hdrs,
     case HD_KEEP_ALIVE:
     case HD_PROXY_CONNECTION:
     case HD_SERVER:
+    case HD_TRAILER:
     case HD_UPGRADE:
     case HD_VIA:
     case HD_X_FORWARDED_FOR:
@@ -504,6 +506,11 @@ int lookup_token(const uint8_t *name, size_t namelen) {
       }
       if (util::streq("upgrad", name, 6)) {
         return HD_UPGRADE;
+      }
+      break;
+    case 'r':
+      if (util::streq("traile", name, 6)) {
+        return HD_TRAILER;
       }
       break;
     case 's':
