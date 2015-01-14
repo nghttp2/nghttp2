@@ -532,6 +532,10 @@ int htp_hdrs_completecb(http_parser *htp) {
 namespace {
 int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
   auto downstream = static_cast<Downstream *>(htp->data);
+  if (downstream->get_response_state() != Downstream::INITIAL) {
+    // ignore trailers
+    return 0;
+  }
   if (downstream->get_response_header_key_prev()) {
     downstream->append_last_response_header_key(data, len);
   } else {
@@ -551,6 +555,10 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
 namespace {
 int htp_hdr_valcb(http_parser *htp, const char *data, size_t len) {
   auto downstream = static_cast<Downstream *>(htp->data);
+  if (downstream->get_response_state() != Downstream::INITIAL) {
+    // ignore trailers
+    return 0;
+  }
   if (downstream->get_response_header_key_prev()) {
     downstream->set_last_response_header_value(std::string(data, len));
   } else {

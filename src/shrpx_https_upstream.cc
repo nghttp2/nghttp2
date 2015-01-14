@@ -82,6 +82,10 @@ namespace {
 int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
   auto upstream = static_cast<HttpsUpstream *>(htp->data);
   auto downstream = upstream->get_downstream();
+  if (downstream->get_request_state() != Downstream::INITIAL) {
+    // ignore trailers
+    return 0;
+  }
   if (downstream->get_request_header_key_prev()) {
     downstream->append_last_request_header_key(data, len);
   } else {
@@ -102,6 +106,10 @@ namespace {
 int htp_hdr_valcb(http_parser *htp, const char *data, size_t len) {
   auto upstream = static_cast<HttpsUpstream *>(htp->data);
   auto downstream = upstream->get_downstream();
+  if (downstream->get_request_state() != Downstream::INITIAL) {
+    // ignore trailers
+    return 0;
+  }
   if (downstream->get_request_header_key_prev()) {
     downstream->set_last_request_header_value(std::string(data, len));
   } else {
