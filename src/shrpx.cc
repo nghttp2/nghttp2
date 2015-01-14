@@ -696,7 +696,7 @@ void fill_default_config() {
   mod_config()->conf_path = strcopy("/etc/nghttpx/nghttpx.conf");
   mod_config()->syslog_facility = LOG_DAEMON;
   // Default accept() backlog
-  mod_config()->backlog = SOMAXCONN;
+  mod_config()->backlog = 512;
   mod_config()->ciphers = nullptr;
   mod_config()->http2_proxy = false;
   mod_config()->http2_bridge = false;
