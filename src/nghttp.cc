@@ -2224,75 +2224,78 @@ namespace {
 void print_help(std::ostream &out) {
   print_usage(out);
   out << R"(
-  <URI>              Specify URI to access.
+  <URI>       Specify URI to access.
 Options:
-  -v, --verbose      Print  debug information  such  as reception  and
-                     transmission  of  frames  and  name/value  pairs.
-                     Specifying this  option multiple  times increases
-                     verbosity.
-  -n, --null-out     Discard downloaded data.
-  -O, --remote-name  Save download data in the current directory.  The
-                     filename is dereived from  URI.  If URI ends with
-                     '/',  'index.html' is  used as  a filename.   Not
-                     implemented yet.
-  -t, --timeout=<N>  Timeout each request after <N> seconds.
+  -v, --verbose
+              Print   debug   information   such  as   reception   and
+              transmission of frames and name/value pairs.  Specifying
+              this option multiple times increases verbosity.
+  -n, --null-out
+              Discard downloaded data.
+  -O, --remote-name
+              Save  download  data  in  the  current  directory.   The
+              filename is  dereived from URI.   If URI ends  with '/',
+              'index.html'  is used  as a  filename.  Not  implemented
+              yet.
+  -t, --timeout=<SEC>
+              Timeout each request after <SEC> seconds.
   -w, --window-bits=<N>
-                     Sets  the stream  level  initial  window size  to
-                     2**<N>-1.
+              Sets the stream level initial window size to 2**<N>-1.
   -W, --connection-window-bits=<N>
-                     Sets the connection level  initial window size to
-                     2**<N>-1.
-  -a, --get-assets   Download assets  such as stylesheets,  images and
-                     script files linked from the downloaded resource.
-                     Only links  whose origins  are the same  with the
-                     linking  resource  will  be  downloaded.   nghttp
-                     prioritizes  resources  using  HTTP/2  dependency
-                     based priority.  The priority order, from highest
-                     to lowest,  is html  itself, css,  javascript and
-                     images.
-  -s, --stat         Print statistics.
+              Sets  the  connection  level   initial  window  size  to
+              2**<N>-1.
+  -a, --get-assets
+              Download assets  such as stylesheets, images  and script
+              files linked  from the downloaded resource.   Only links
+              whose  origins are  the same  with the  linking resource
+              will be downloaded.   nghttp prioritizes resources using
+              HTTP/2 dependency  based priority.  The  priority order,
+              from highest to lowest,  is html itself, css, javascript
+              and images.
+  -s, --stat  Print statistics.
   -H, --header=<HEADER>
-                     Add   a  header   to   the  requests.    Example:
-                     -H':method: PUT'
-  --cert=<CERT>      Use the  specified client certificate  file.  The
-                     file must be in PEM format.
-  --key=<KEY>        Use the  client private key file.   The file must
-                     be in PEM format.
-  -d, --data=<FILE>  Post FILE to  server. If '-' is  given, data will
-                     be read from stdin.
-  -m, --multiply=<N> Request each URI <N> times.  By default, same URI
-                     is not requested twice.   This option disables it
-                     too.
-  -u, --upgrade      Perform HTTP Upgrade for  HTTP/2.  This option is
-                     ignored if the request  URI has https scheme.  If
-                     -d is used, the HTTP upgrade request is performed
-                     with OPTIONS method.
+              Add a header to the requests.  Example: -H':method: PUT'
+  --cert=<CERT>
+              Use  the specified  client certificate  file.  The  file
+              must be in PEM format.
+  --key=<KEY> Use the  client private key  file.  The file must  be in
+              PEM format.
+  -d, --data=<FILE>
+              Post FILE to server. If '-'  is given, data will be read
+              from stdin.
+  -m, --multiply=<N>
+              Request each URI <N> times.  By default, same URI is not
+              requested twice.  This option disables it too.
+  -u, --upgrade
+              Perform HTTP Upgrade for HTTP/2.  This option is ignored
+              if the request URI has https scheme.  If -d is used, the
+              HTTP upgrade request is performed with OPTIONS method.
   -p, --weight=<WEIGHT>
-                     Sets  priority  group  weight.  The  valid  value
-                     range is [)" << NGHTTP2_MIN_WEIGHT << ", "
-      << NGHTTP2_MAX_WEIGHT << R"(], inclusive.
-                     Default: )" << NGHTTP2_DEFAULT_WEIGHT << R"(
+              Sets priority group weight.  The valid value range is
+              [)" << NGHTTP2_MIN_WEIGHT << ", " << NGHTTP2_MAX_WEIGHT
+      << R"(], inclusive.
+              Default: )" << NGHTTP2_DEFAULT_WEIGHT << R"(
   -M, --peer-max-concurrent-streams=<N>
-                     Use <N>  as SETTINGS_MAX_CONCURRENT_STREAMS value
-                     of  remote  endpoint  as  if it  is  received  in
-                     SETTINGS frame.   The default is large  enough as
-                     it is seen as unlimited.
-  -c, --header-table-size=<N>
-                     Specify decoder header table size.
-  -b, --padding=<N>  Add  at most  <N>  bytes to  a  frame payload  as
-                     padding.  Specify 0 to disable padding.
-  -r, --har=<FILE>   Output  HTTP transactions  <FILE> in  HAR format.
-                     If '-' is given, data is written to stdout.
-  --color            Force colored log output.
-  --continuation     Send large header to test CONTINUATION.
+              Use  <N>  as  SETTINGS_MAX_CONCURRENT_STREAMS  value  of
+              remote endpoint as if it  is received in SETTINGS frame.
+              The default is large enough as it is seen as unlimited.
+  -c, --header-table-size=<SIZE>
+              Specify decoder header table size.
+  -b, --padding=<N>
+              Add at  most <N>  bytes to a  frame payload  as padding.
+              Specify 0 to disable padding.
+  -r, --har=<FILE>
+              Output HTTP  transactions <FILE> in HAR  format.  If '-'
+              is given, data is written to stdout.
+  --color     Force colored log output.
+  --continuation
+              Send large header to test CONTINUATION.
   --no-content-length
-                     Don't send content-length header field.
-  --no-dep           Don't  send  dependency  based priority  hint  to
-                     server.
-  --dep-idle         Use  idle  streams  as anchor  nodes  to  express
-                     priority.
-  --version          Display version information and exit.
-  -h, --help         Display this help and exit.)" << std::endl;
+              Don't send content-length header field.
+  --no-dep    Don't send dependency based priority hint to server.
+  --dep-idle  Use idle streams as anchor nodes to express priority.
+  --version   Display version information and exit.
+  -h, --help  Display this help and exit.)" << std::endl;
 }
 } // namespace
 
