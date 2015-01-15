@@ -1025,8 +1025,7 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
   }
 
   if (!http2::check_nv(name, namelen, value, valuelen)) {
-    nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, frame->hd.stream_id,
-                              NGHTTP2_PROTOCOL_ERROR);
+    hd->submit_rst_stream(stream, NGHTTP2_PROTOCOL_ERROR);
     return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
   }
 
@@ -1037,15 +1036,13 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
          stream->headers.back().name.c_str()[0] != ':') ||
         !http2::check_http2_request_pseudo_header(stream->hdidx, token)) {
 
-      nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, frame->hd.stream_id,
-                                NGHTTP2_PROTOCOL_ERROR);
+      hd->submit_rst_stream(stream, NGHTTP2_PROTOCOL_ERROR);
       return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
     }
   }
 
   if (!http2::http2_header_allowed(token)) {
-    nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, frame->hd.stream_id,
-                              NGHTTP2_PROTOCOL_ERROR);
+    hd->submit_rst_stream(stream, NGHTTP2_PROTOCOL_ERROR);
     return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
   }
 
@@ -1158,11 +1155,6 @@ int hd_on_frame_recv_callback(nghttp2_session *session,
     if (frame->hd.flags & NGHTTP2_FLAG_ACK) {
       hd->remove_settings_timer();
     }
-    break;
-  case NGHTTP2_PUSH_PROMISE:
-    nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
-                              frame->push_promise.promised_stream_id,
-                              NGHTTP2_REFUSED_STREAM);
     break;
   default:
     break;
