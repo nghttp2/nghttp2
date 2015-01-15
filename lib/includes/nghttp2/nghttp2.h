@@ -326,6 +326,11 @@ typedef enum {
    */
   NGHTTP2_ERR_DATA_EXIST = -529,
   /**
+   * The current session is closing due to a connection error or
+   * `nghttp2_session_terminate_session()` is called.
+   */
+  NGHTTP2_ERR_SESSION_CLOSING = -530,
+  /**
    * The errors < :enum:`NGHTTP2_ERR_FATAL` mean that the library is
    * under unexpected condition and processing was terminated (e.g.,
    * out of memory).  If application receives this error code, it must

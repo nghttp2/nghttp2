@@ -267,6 +267,8 @@ const char *nghttp2_strerror(int error_code) {
     return "Invalid stream state";
   case NGHTTP2_ERR_DEFERRED_DATA_EXIST:
     return "Another DATA frame has already been deferred";
+  case NGHTTP2_ERR_SESSION_CLOSING:
+    return "The current session is closing";
   case NGHTTP2_ERR_START_STREAM_NOT_ALLOWED:
     return "request HEADERS is not allowed";
   case NGHTTP2_ERR_GOAWAY_ALREADY_SENT:

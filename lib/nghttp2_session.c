@@ -1215,6 +1215,13 @@ int nghttp2_session_close_stream_if_shut_rdwr(nghttp2_session *session,
 }
 
 /*
+ * This function returns nonzero if session is closing.
+ */
+static int session_is_closing(nghttp2_session *session) {
+  return (session->goaway_flags & NGHTTP2_GOAWAY_TERM_ON_SEND) != 0;
+}
+
+/*
  * Check that we can send a frame to the |stream|. This function
  * returns 0 if we can send a frame to the |frame|, or one of the
  * following negative error codes:
@@ -1223,10 +1230,16 @@ int nghttp2_session_close_stream_if_shut_rdwr(nghttp2_session *session,
  *   The stream is already closed.
  * NGHTTP2_ERR_STREAM_SHUT_WR
  *   The stream is half-closed for transmission.
+ * NGHTTP2_ERR_SESSION_CLOSING
+ *   This session is closing.
  */
-static int stream_predicate_for_send(nghttp2_stream *stream) {
+static int session_predicate_for_stream_send(nghttp2_session *session,
+                                             nghttp2_stream *stream) {
   if (stream == NULL) {
     return NGHTTP2_ERR_STREAM_CLOSED;
+  }
+  if (session_is_closing(session)) {
+    return NGHTTP2_ERR_SESSION_CLOSING;
   }
   if (stream->shut_flags & NGHTTP2_SHUT_WR) {
     return NGHTTP2_ERR_STREAM_SHUT_WR;
@@ -1275,11 +1288,13 @@ static int session_predicate_request_headers_send(nghttp2_session *session) {
  *     RST_STREAM was queued for this stream.
  * NGHTTP2_ERR_INVALID_STREAM_STATE
  *     The state of the stream is not valid.
+ * NGHTTP2_ERR_SESSION_CLOSING
+ *   This session is closing.
  */
 static int session_predicate_response_headers_send(nghttp2_session *session,
                                                    nghttp2_stream *stream) {
   int rv;
-  rv = stream_predicate_for_send(stream);
+  rv = session_predicate_for_stream_send(session, stream);
   if (rv != 0) {
     return rv;
   }
@@ -1312,13 +1327,15 @@ static int session_predicate_response_headers_send(nghttp2_session *session,
  *   The stream is not reserved state
  * NGHTTP2_ERR_STREAM_CLOSED
  *   RST_STREAM was queued for this stream.
+ * NGHTTP2_ERR_SESSION_CLOSING
+ *   This session is closing.
  */
 static int
-session_predicate_push_response_headers_send(nghttp2_session *session _U_,
+session_predicate_push_response_headers_send(nghttp2_session *session,
                                              nghttp2_stream *stream) {
   int rv;
   /* TODO Should disallow HEADERS if GOAWAY has already been issued? */
-  rv = stream_predicate_for_send(stream);
+  rv = session_predicate_for_stream_send(session, stream);
   if (rv != 0) {
     return rv;
   }
@@ -1333,7 +1350,8 @@ session_predicate_push_response_headers_send(nghttp2_session *session _U_,
 }
 
 /*
- * This function checks frames belongs to the |stream| can be sent.
+ * This function checks HEADERS, which is neither stream-opening nor
+ * first response header, with the |stream| can be sent at this time.
  * The |stream| can be NULL.
  *
  * This function returns 0 if it succeeds, or one of the following
@@ -1348,11 +1366,13 @@ session_predicate_push_response_headers_send(nghttp2_session *session _U_,
  *     RST_STREAM was queued for this stream.
  * NGHTTP2_ERR_INVALID_STREAM_STATE
  *     The state of the stream is not valid.
+ * NGHTTP2_ERR_SESSION_CLOSING
+ *   This session is closing.
  */
-static int session_predicate_stream_frame_send(nghttp2_session *session,
-                                               nghttp2_stream *stream) {
+static int session_predicate_headers_send(nghttp2_session *session,
+                                          nghttp2_stream *stream) {
   int rv;
-  rv = stream_predicate_for_send(stream);
+  rv = session_predicate_for_stream_send(session, stream);
   if (rv != 0) {
     return rv;
   }
@@ -1370,16 +1390,6 @@ static int session_predicate_stream_frame_send(nghttp2_session *session,
     return NGHTTP2_ERR_STREAM_CLOSING;
   }
   return NGHTTP2_ERR_INVALID_STREAM_STATE;
-}
-
-/*
- * This function checks HEADERS, which is neither stream-opening nor
- * first response header, with the |stream| can be sent at this time.
- * The |stream| can be NULL.
- */
-static int session_predicate_headers_send(nghttp2_session *session,
-                                          nghttp2_stream *stream) {
-  return session_predicate_stream_frame_send(session, stream);
 }
 
 /*
@@ -1404,6 +1414,8 @@ static int session_predicate_headers_send(nghttp2_session *session,
  *     with END_STREAM flag set has already sent)
  * NGHTTP2_ERR_PUSH_DISABLED
  *     The remote peer disabled reception of PUSH_PROMISE.
+ * NGHTTP2_ERR_SESSION_CLOSING
+ *   This session is closing.
  */
 static int session_predicate_push_promise_send(nghttp2_session *session,
                                                nghttp2_stream *stream) {
@@ -1413,7 +1425,7 @@ static int session_predicate_push_promise_send(nghttp2_session *session,
     return NGHTTP2_ERR_PROTO;
   }
 
-  rv = stream_predicate_for_send(stream);
+  rv = session_predicate_for_stream_send(session, stream);
   if (rv != 0) {
     return rv;
   }
@@ -1426,8 +1438,7 @@ static int session_predicate_push_promise_send(nghttp2_session *session,
   if (stream->state == NGHTTP2_STREAM_CLOSING) {
     return NGHTTP2_ERR_STREAM_CLOSING;
   }
-  if (session->goaway_flags &
-      (NGHTTP2_GOAWAY_TERM_ON_SEND | NGHTTP2_GOAWAY_RECV)) {
+  if (session->goaway_flags & NGHTTP2_GOAWAY_RECV) {
     return NGHTTP2_ERR_START_STREAM_NOT_ALLOWED;
   }
   return 0;
@@ -1447,6 +1458,8 @@ static int session_predicate_push_promise_send(nghttp2_session *session,
  *     RST_STREAM was queued for this stream.
  * NGHTTP2_ERR_INVALID_STREAM_STATE
  *     The state of the stream is not valid.
+ * NGHTTP2_ERR_SESSION_CLOSING
+ *   This session is closing.
  */
 static int session_predicate_window_update_send(nghttp2_session *session,
                                                 int32_t stream_id) {
@@ -1459,22 +1472,15 @@ static int session_predicate_window_update_send(nghttp2_session *session,
   if (stream == NULL) {
     return NGHTTP2_ERR_STREAM_CLOSED;
   }
+  if (session_is_closing(session)) {
+    return NGHTTP2_ERR_SESSION_CLOSING;
+  }
   if (stream->state == NGHTTP2_STREAM_CLOSING) {
     return NGHTTP2_ERR_STREAM_CLOSING;
   }
   if (state_reserved_local(session, stream)) {
     return NGHTTP2_ERR_INVALID_STREAM_STATE;
   }
-  return 0;
-}
-
-/*
- * This function checks SETTINGS can be sent at this time.
- *
- * Currently this function always returns 0.
- */
-static int nghttp2_session_predicate_settings_send(nghttp2_session *session _U_,
-                                                   nghttp2_frame *frame _U_) {
   return 0;
 }
 
@@ -1530,11 +1536,13 @@ static size_t nghttp2_session_next_data_read(nghttp2_session *session,
  *     RST_STREAM was queued for this stream.
  * NGHTTP2_ERR_INVALID_STREAM_STATE
  *     The state of the stream is not valid.
+ * NGHTTP2_ERR_SESSION_CLOSING
+ *   This session is closing.
  */
 static int nghttp2_session_predicate_data_send(nghttp2_session *session,
                                                nghttp2_stream *stream) {
   int rv;
-  rv = stream_predicate_for_send(stream);
+  rv = session_predicate_for_stream_send(session, stream);
   if (rv != 0) {
     return rv;
   }
@@ -1759,6 +1767,9 @@ static int session_prep_frame(nghttp2_session *session,
       return framerv;
     }
     case NGHTTP2_PRIORITY: {
+      if (session_is_closing(session)) {
+        return NGHTTP2_ERR_SESSION_CLOSING;
+      }
       /* PRIORITY frame can be sent at any time and to any stream
          ID. */
       framerv = nghttp2_frame_pack_priority(&session->aob.framebufs,
@@ -1774,6 +1785,9 @@ static int session_prep_frame(nghttp2_session *session,
       break;
     }
     case NGHTTP2_RST_STREAM:
+      if (session_is_closing(session)) {
+        return NGHTTP2_ERR_SESSION_CLOSING;
+      }
       framerv = nghttp2_frame_pack_rst_stream(&session->aob.framebufs,
                                               &frame->rst_stream);
       if (framerv < 0) {
@@ -1781,10 +1795,6 @@ static int session_prep_frame(nghttp2_session *session,
       }
       break;
     case NGHTTP2_SETTINGS: {
-      rv = nghttp2_session_predicate_settings_send(session, frame);
-      if (rv != 0) {
-        return rv;
-      }
       framerv = nghttp2_frame_pack_settings(&session->aob.framebufs,
                                             &frame->settings);
       if (framerv < 0) {
@@ -1840,6 +1850,9 @@ static int session_prep_frame(nghttp2_session *session,
       break;
     }
     case NGHTTP2_PING:
+      if (session_is_closing(session)) {
+        return NGHTTP2_ERR_SESSION_CLOSING;
+      }
       framerv = nghttp2_frame_pack_ping(&session->aob.framebufs, &frame->ping);
       if (framerv < 0) {
         return framerv;
@@ -3829,7 +3842,7 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
     }
   }
 
-  if (!noack) {
+  if (!noack && !session_is_closing(session)) {
     rv = nghttp2_session_add_settings(session, NGHTTP2_FLAG_ACK, NULL, 0);
 
     if (rv != 0) {
@@ -3997,7 +4010,8 @@ int nghttp2_session_on_ping_received(nghttp2_session *session,
     return session_handle_invalid_connection(
         session, frame, NGHTTP2_PROTOCOL_ERROR, "PING: stream_id != 0");
   }
-  if ((frame->hd.flags & NGHTTP2_FLAG_ACK) == 0) {
+  if ((frame->hd.flags & NGHTTP2_FLAG_ACK) == 0 &&
+      !session_is_closing(session)) {
     /* Peer sent ping, so ping it back */
     rv = nghttp2_session_add_ping(session, NGHTTP2_FLAG_ACK,
                                   frame->ping.opaque_data);
