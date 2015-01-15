@@ -246,7 +246,8 @@ private:
 };
 
 Stream::Stream(Http2Handler *handler, int32_t stream_id)
-    : handler(handler), body_left(0), stream_id(stream_id), file(-1) {
+    : handler(handler), body_left(0), upload_left(-1), stream_id(stream_id),
+      file(-1) {
   auto config = handler->get_config();
   ev_timer_init(&rtimer, stream_timeout_cb, 0., config->stream_read_timeout);
   ev_timer_init(&wtimer, stream_timeout_cb, 0., config->stream_write_timeout);
@@ -1048,6 +1049,13 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
     return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
   }
 
+  if (token == http2::HD_CONTENT_LENGTH) {
+    auto upload_left = util::parse_uint(value, valuelen);
+    if (upload_left != -1) {
+      stream->upload_left = upload_left;
+    }
+  }
+
   http2::index_header(stream->hdidx, token, stream->headers.size());
   http2::add_header(stream->headers, name, namelen, value, valuelen,
                     flags & NGHTTP2_NV_FLAG_NO_INDEX);
@@ -1093,6 +1101,10 @@ int hd_on_frame_recv_callback(nghttp2_session *session,
 
     if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
       remove_stream_read_timeout(stream);
+      if (stream->upload_left > 0) {
+        hd->submit_rst_stream(stream, NGHTTP2_PROTOCOL_ERROR);
+        return 0;
+      }
       if (!hd->get_config()->early_response) {
         prepare_response(stream, hd);
       }
@@ -1129,6 +1141,10 @@ int hd_on_frame_recv_callback(nghttp2_session *session,
 
     if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
       remove_stream_read_timeout(stream);
+      if (stream->upload_left > 0) {
+        hd->submit_rst_stream(stream, NGHTTP2_PROTOCOL_ERROR);
+        return 0;
+      }
       if (!hd->get_config()->early_response) {
         prepare_response(stream, hd);
       }
@@ -1229,6 +1245,15 @@ int on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
   }
 
   // TODO Handle POST
+
+  if (stream->upload_left != -1) {
+    if (stream->upload_left < len) {
+      stream->upload_left = -1;
+      hd->submit_rst_stream(stream, NGHTTP2_PROTOCOL_ERROR);
+      return 0;
+    }
+    stream->upload_left -= len;
+  }
 
   add_stream_read_timeout(stream);
 

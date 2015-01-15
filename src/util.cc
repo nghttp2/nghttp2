@@ -950,6 +950,33 @@ int64_t parse_uint_with_unit(const char *s) {
   return n * mul;
 }
 
+int64_t parse_uint(const char *s) {
+  return parse_uint(reinterpret_cast<const uint8_t *>(s), strlen(s));
+}
+
+int64_t parse_uint(const uint8_t *s, size_t len) {
+  if (len == 0) {
+    return -1;
+  }
+  constexpr int64_t max = std::numeric_limits<int64_t>::max();
+  int64_t n = 0;
+  for (size_t i = 0; i < len; ++i) {
+    if ('0' <= s[i] && s[i] <= '9') {
+      if (n > max / 10) {
+        return -1;
+      }
+      n *= 10;
+      if (n > max - (s[i] - '0')) {
+        return -1;
+      }
+      n += s[i] - '0';
+      continue;
+    }
+    return -1;
+  }
+  return n;
+}
+
 } // namespace util
 
 } // namespace nghttp2

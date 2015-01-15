@@ -502,6 +502,11 @@ bool ipv6_numeric_addr(const char *host);
 // -1.
 int64_t parse_uint_with_unit(const char *s);
 
+// Parses NULL terminated string |s| as unsigned integer and returns
+// the parsed integer.  If there is an error, returns -1.
+int64_t parse_uint(const char *s);
+int64_t parse_uint(const uint8_t *s, size_t len);
+
 } // namespace util
 
 } // namespace nghttp2

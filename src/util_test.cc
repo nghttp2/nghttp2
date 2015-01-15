@@ -207,4 +207,20 @@ void test_util_parse_uint_with_unit(void) {
   CU_ASSERT(-1 == util::parse_uint_with_unit(""));
 }
 
+void test_util_parse_uint(void) {
+  CU_ASSERT(0 == util::parse_uint("0"));
+  CU_ASSERT(1023 == util::parse_uint("1023"));
+  CU_ASSERT(-1 == util::parse_uint("1k"));
+  CU_ASSERT(9223372036854775807LL == util::parse_uint("9223372036854775807"));
+  // check overflow case
+  CU_ASSERT(-1 == util::parse_uint("9223372036854775808"));
+  CU_ASSERT(-1 == util::parse_uint("10000000000000000000"));
+  // bad characters
+  CU_ASSERT(-1 == util::parse_uint("1.1"));
+  CU_ASSERT(-1 == util::parse_uint("1a"));
+  CU_ASSERT(-1 == util::parse_uint("a1"));
+  CU_ASSERT(-1 == util::parse_uint("1T"));
+  CU_ASSERT(-1 == util::parse_uint(""));
+}
+
 } // namespace shrpx

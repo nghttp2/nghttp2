@@ -81,6 +81,7 @@ struct Stream {
   ev_timer rtimer;
   ev_timer wtimer;
   int64_t body_left;
+  int64_t upload_left;
   int32_t stream_id;
   int file;
   int hdidx[http2::HD_MAXIDX];
