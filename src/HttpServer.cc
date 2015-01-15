@@ -1330,19 +1330,8 @@ void worker_acceptcb(struct ev_loop *loop, ev_async *w, int revents) {
 } // namespace
 
 namespace {
-void refresh_cb(struct ev_loop *loop, ev_timer *w, int revents) {
-  auto sessions = static_cast<Sessions *>(w->data);
-  sessions->update_cached_date();
-}
-} // namespace
-
-namespace {
 void run_worker(Worker *worker) {
   auto loop = worker->sessions->get_loop();
-  ev_timer w;
-  ev_timer_init(&w, refresh_cb, 0., 1.);
-  w.data = worker->sessions.get();
-  ev_timer_again(loop, &w);
   worker->sessions->update_cached_date();
 
   ev_run(loop, 0);
@@ -1672,11 +1661,7 @@ int HttpServer::run() {
     return -1;
   }
 
-  ev_timer refresh_timer;
-  ev_timer_init(&refresh_timer, refresh_cb, 0., 1.);
-  refresh_timer.data = &sessions;
   if (config_->num_worker == 1) {
-    ev_timer_again(loop, &refresh_timer);
     sessions.update_cached_date();
   }
 
