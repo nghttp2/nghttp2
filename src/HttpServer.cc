@@ -1022,8 +1022,11 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
   if (!stream) {
     return 0;
   }
+
   if (!http2::check_nv(name, namelen, value, valuelen)) {
-    return 0;
+    nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, frame->hd.stream_id,
+                              NGHTTP2_PROTOCOL_ERROR);
+    return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
   }
 
   auto token = http2::lookup_token(name, namelen);
