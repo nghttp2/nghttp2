@@ -138,7 +138,10 @@ Options:
               Start sending response when request HEADERS is received,
               rather than complete request is received.
   --version   Display version information and exit.
-  -h, --help  Display this help and exit.)" << std::endl;
+  -h, --help  Display this help and exit.
+
+  The <SIZE> argument is an integer and an optional unit (e.g., 10K is
+  10 * 1024).  Units are K, M and G (powers of 1024).)" << std::endl;
 }
 } // namespace
 
@@ -208,8 +211,8 @@ int main(int argc, char **argv) {
       break;
     case 'c':
       errno = 0;
-      config.header_table_size = strtol(optarg, &end, 10);
-      if (errno == ERANGE || *end != '\0') {
+      config.header_table_size = util::parse_uint_with_unit(optarg);
+      if (config.header_table_size == -1) {
         std::cerr << "-c: Bad option value: " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }

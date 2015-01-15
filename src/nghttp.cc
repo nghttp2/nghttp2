@@ -2295,7 +2295,10 @@ Options:
   --no-dep    Don't send dependency based priority hint to server.
   --dep-idle  Use idle streams as anchor nodes to express priority.
   --version   Display version information and exit.
-  -h, --help  Display this help and exit.)" << std::endl;
+  -h, --help  Display this help and exit.
+
+  The <SIZE> argument is an integer and an optional unit (e.g., 10K is
+  10 * 1024).  Units are K, M and G (powers of 1024).)" << std::endl;
 }
 } // namespace
 
@@ -2334,7 +2337,6 @@ int main(int argc, char **argv) {
     int option_index = 0;
     int c = getopt_long(argc, argv, "M:Oab:c:d:gm:np:r:hH:vst:uw:W:",
                         long_options, &option_index);
-    char *end;
     if (c == -1) {
       break;
     }
@@ -2450,8 +2452,8 @@ int main(int argc, char **argv) {
       break;
     case 'c':
       errno = 0;
-      config.header_table_size = strtol(optarg, &end, 10);
-      if (errno == ERANGE || *end != '\0') {
+      config.header_table_size = util::parse_uint_with_unit(optarg);
+      if (config.header_table_size == -1) {
         std::cerr << "-c: Bad option value: " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
