@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTP" "1" "January 11, 2015" "0.7.1" "nghttp2"
+.TH "NGHTTP" "1" "January 16, 2015" "0.7.2-DEV" "nghttp2"
 .SH NAME
 nghttp \- HTTP/2 experimental client
 .
@@ -45,10 +45,9 @@ Specify URI to access.
 .INDENT 0.0
 .TP
 .B \-v, \-\-verbose
-Print  debug information  such  as reception  and
-transmission  of  frames  and  name/value  pairs.
-Specifying this  option multiple  times increases
-verbosity.
+Print   debug   information   such  as   reception   and
+transmission of frames and name/value pairs.  Specifying
+this option multiple times increases verbosity.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -58,39 +57,37 @@ Discard downloaded data.
 .INDENT 0.0
 .TP
 .B \-O, \-\-remote\-name
-Save download data in the current directory.  The
-filename is dereived from  URI.  If URI ends with
-\(aq\fI/\fP\(aq,  \(aqindex.html\(aq is  used as  a filename.   Not
-implemented yet.
+Save  download  data  in  the  current  directory.   The
+filename is  dereived from URI.   If URI ends  with \(aq\fI/\fP\(aq,
+\(aqindex.html\(aq  is used  as a  filename.  Not  implemented
+yet.
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-t, \-\-timeout=<N>
-Timeout each request after <N> seconds.
+.B \-t, \-\-timeout=<SEC>
+Timeout each request after <SEC> seconds.
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-w, \-\-window\-bits=<N>
-Sets  the stream  level  initial  window size  to
-2**<N>\-1.
+Sets the stream level initial window size to 2**<N>\-1.
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-W, \-\-connection\-window\-bits=<N>
-Sets the connection level  initial window size to
+Sets  the  connection  level   initial  window  size  to
 2**<N>\-1.
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-a, \-\-get\-assets
-Download assets  such as stylesheets,  images and
-script files linked from the downloaded resource.
-Only links  whose origins  are the same  with the
-linking  resource  will  be  downloaded.   nghttp
-prioritizes  resources  using  HTTP/2  dependency
-based priority.  The priority order, from highest
-to lowest,  is html  itself, css,  javascript and
-images.
+Download assets  such as stylesheets, images  and script
+files linked  from the downloaded resource.   Only links
+whose  origins are  the same  with the  linking resource
+will be downloaded.   nghttp prioritizes resources using
+HTTP/2 dependency  based priority.  The  priority order,
+from highest to lowest,  is html itself, css, javascript
+and images.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -100,74 +97,70 @@ Print statistics.
 .INDENT 0.0
 .TP
 .B \-H, \-\-header=<HEADER>
-Add   a  header   to   the  requests.    Example:
-\fI\%\-H\fP\(aq:method: PUT\(aq
+Add a header to the requests.  Example: \fI\%\-H\fP\(aq:method: PUT\(aq
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-\-cert=<CERT>
-Use the  specified client certificate  file.  The
-file must be in PEM format.
+Use  the specified  client certificate  file.  The  file
+must be in PEM format.
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-\-key=<KEY>
-Use the  client private key file.   The file must
-be in PEM format.
+Use the  client private key  file.  The file must  be in
+PEM format.
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-d, \-\-data=<FILE>
-Post FILE to  server. If \(aq\-\(aq is  given, data will
-be read from stdin.
+Post FILE to server. If \(aq\-\(aq  is given, data will be read
+from stdin.
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-m, \-\-multiply=<N>
-Request each URI <N> times.  By default, same URI
-is not requested twice.   This option disables it
-too.
+Request each URI <N> times.  By default, same URI is not
+requested twice.  This option disables it too.
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-u, \-\-upgrade
-Perform HTTP Upgrade for  HTTP/2.  This option is
-ignored if the request  URI has https scheme.  If
-\fI\-d\fP is used, the HTTP upgrade request is performed
-with OPTIONS method.
+Perform HTTP Upgrade for HTTP/2.  This option is ignored
+if the request URI has https scheme.  If \fI\-d\fP is used, the
+HTTP upgrade request is performed with OPTIONS method.
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-p, \-\-weight=<WEIGHT>
-Sets  priority  group  weight.  The  valid  value
-range is [1, 256], inclusive.
+Sets priority group weight.  The valid value range is
+[1, 256], inclusive.
 .sp
 Default: \fB16\fP
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-M, \-\-peer\-max\-concurrent\-streams=<N>
-Use <N>  as SETTINGS_MAX_CONCURRENT_STREAMS value
-of  remote  endpoint  as  if it  is  received  in
-SETTINGS frame.   The default is large  enough as
-it is seen as unlimited.
+Use  <N>  as  SETTINGS_MAX_CONCURRENT_STREAMS  value  of
+remote endpoint as if it  is received in SETTINGS frame.
+The default is large enough as it is seen as unlimited.
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-c, \-\-header\-table\-size=<N>
+.B \-c, \-\-header\-table\-size=<SIZE>
 Specify decoder header table size.
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-b, \-\-padding=<N>
-Add  at most  <N>  bytes to  a  frame payload  as
-padding.  Specify 0 to disable padding.
+Add at  most <N>  bytes to a  frame payload  as padding.
+Specify 0 to disable padding.
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-r, \-\-har=<FILE>
-Output  HTTP transactions  <FILE> in  HAR format.
-If \(aq\-\(aq is given, data is written to stdout.
+Output HTTP  transactions <FILE> in HAR  format.  If \(aq\-\(aq
+is given, data is written to stdout.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -187,14 +180,12 @@ Don\(aqt send content\-length header field.
 .INDENT 0.0
 .TP
 .B \-\-no\-dep
-Don\(aqt  send  dependency  based priority  hint  to
-server.
+Don\(aqt send dependency based priority hint to server.
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-\-dep\-idle
-Use  idle  streams  as anchor  nodes  to  express
-priority.
+Use idle streams as anchor nodes to express priority.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -206,6 +197,9 @@ Display version information and exit.
 .B \-h, \-\-help
 Display this help and exit.
 .UNINDENT
+.sp
+The <SIZE> argument is an integer and an optional unit (e.g., 10K is
+10 * 1024).  Units are K, M and G (powers of 1024).
 .SH SEE ALSO
 .sp
 \fInghttpd(1)\fP, \fInghttpx(1)\fP, \fIh2load(1)\fP

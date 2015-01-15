@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "January 11, 2015" "0.7.1" "nghttp2"
+.TH "NGHTTPX" "1" "January 16, 2015" "0.7.2-DEV" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 experimental proxy
 .
@@ -39,16 +39,14 @@ A reverse proxy for HTTP/2, HTTP/1 and SPDY.
 .INDENT 0.0
 .TP
 .B <PRIVATE_KEY>
-Set  path  to  server\(aqs  private  key.   Required
-unless  \fI\%\-p\fP,  \fI\%\-\-client\fP  or  \fI\%\-\-frontend\-no\-tls\fP  are
-given.
+Set path  to server\(aqs private key.   Required unless \fI\%\-p\fP,
+\fI\%\-\-client\fP or \fI\%\-\-frontend\-no\-tls\fP are given.
 .UNINDENT
 .INDENT 0.0
 .TP
 .B <CERT>
-Set  path  to   server\(aqs  certificate.   Required
-unless  \fI\%\-p\fP,  \fI\%\-\-client\fP  or  \fI\%\-\-frontend\-no\-tls\fP  are
-given.
+Set path  to server\(aqs certificate.  Required  unless \fI\%\-p\fP,
+\fI\%\-\-client\fP or \fI\%\-\-frontend\-no\-tls\fP are given.
 .UNINDENT
 .SH OPTIONS:
 .sp
@@ -57,30 +55,28 @@ The options are categorized into several groups.
 .INDENT 0.0
 .TP
 .B \-b, \-\-backend=<HOST,PORT>
-Set backend  host and port.  For  HTTP/1 backend,
-multiple  backend   addresses  are   accepted  by
-repeating this  option.  HTTP/2 backend  does not
-support multiple backend  addresses and the first
-occurrence of this option is used.
+Set backend host and port.  For HTTP/1 backend, multiple
+backend addresses are accepted by repeating this option.
+HTTP/2  backend   does  not  support   multiple  backend
+addresses  and the  first occurrence  of this  option is
+used.
 .sp
 Default: \fB127.0.0.1,80\fP
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-f, \-\-frontend=<HOST,PORT>
-Set frontend host and port.  If <HOST> is \(aq*\(aq, it
-assumes  all addresses  including  both IPv4  and
-IPv6.
+Set  frontend  host and  port.   If  <HOST> is  \(aq*\(aq,  it
+assumes all addresses including both IPv4 and IPv6.
 .sp
 Default: \fB*,3000\fP
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-\-backlog=<NUM>
-Set  listen  backlog  size.    If  \fI\-1\fP  is  given,
-libevent will choose suitable value.
+.B \-\-backlog=<N>
+Set listen backlog size.
 .sp
-Default: \fB128\fP
+Default: \fB512\fP
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -95,150 +91,154 @@ Resolve backend hostname to IPv6 address only.
 .INDENT 0.0
 .TP
 .B \-\-backend\-http\-proxy\-uri=<URI>
-Specify     proxy     URI     in     the     form
-\fI\%http:/\fP/[<USER>:<PASS>@]<PROXY>:<PORT>.     If   a
-proxy requires authentication, specify <USER> and
-<PASS>.    Note  that   they  must   be  properly
-percent\-encoded.   This proxy  is  used when  the
-backend  connection  is  HTTP/2.  First,  make  a
-CONNECT request  to the proxy and  it connects to
-the  backend on  behalf of  nghttpx.  This  forms
-tunnel.   After  that, nghttpx  performs  SSL/TLS
-handshake with the downstream through the tunnel.
-The timeouts  when connecting and  making CONNECT
-request       can      be       specified      by
-\fI\%\-\-backend\-read\-timeout\fP                        and
+Specify      proxy       URI      in       the      form
+\fI\%http:/\fP/[<USER>:<PASS>@]<PROXY>:<PORT>.    If   a   proxy
+requires  authentication,  specify  <USER>  and  <PASS>.
+Note that  they must be properly  percent\-encoded.  This
+proxy  is used  when the  backend connection  is HTTP/2.
+First,  make  a CONNECT  request  to  the proxy  and  it
+connects  to the  backend  on behalf  of nghttpx.   This
+forms  tunnel.   After  that, nghttpx  performs  SSL/TLS
+handshake with  the downstream through the  tunnel.  The
+timeouts when connecting and  making CONNECT request can
+be     specified    by     \fI\%\-\-backend\-read\-timeout\fP    and
 \fI\%\-\-backend\-write\-timeout\fP options.
 .UNINDENT
 .SS Performance:
 .INDENT 0.0
 .TP
-.B \-n, \-\-workers=<CORES>
+.B \-n, \-\-workers=<N>
 Set the number of worker threads.
 .sp
 Default: \fB1\fP
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-\-read\-rate=<RATE>
-Set  maximum   average  read  rate   on  frontend
-connection.  Setting 0 to  this option means read
-rate is unlimited.
+.B \-\-read\-rate=<SIZE>
+Set maximum  average read  rate on  frontend connection.
+Setting 0 to this option means read rate is unlimited.
 .sp
 Default: \fB0\fP
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-\-read\-burst=<SIZE>
-Set   maximum  read   burst   size  on   frontend
-connection.  Setting 0 to  this option means read
-burst size is unlimited.
+Set  maximum read  burst  size  on frontend  connection.
+Setting  0  to this  option  means  read burst  size  is
+unlimited.
 .sp
 Default: \fB0\fP
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-\-write\-rate=<RATE>
-Set  maximum  average   write  rate  on  frontend
-connection.  Setting 0 to this option means write
-rate is unlimited.
+.B \-\-write\-rate=<SIZE>
+Set maximum  average write rate on  frontend connection.
+Setting 0 to this option means write rate is unlimited.
 .sp
 Default: \fB0\fP
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-\-write\-burst=<SIZE>
-Set   maximum  write   burst  size   on  frontend
-connection.  Setting 0 to this option means write
-burst size is unlimited.
+Set  maximum write  burst size  on frontend  connection.
+Setting  0 to  this  option means  write  burst size  is
+unlimited.
 .sp
 Default: \fB0\fP
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-\-worker\-read\-rate=<RATE>
-Set  maximum   average  read  rate   on  frontend
-connection per worker.  Setting  0 to this option
-means  read rate  is unlimited.   Not implemented
-yet.
+.B \-\-worker\-read\-rate=<SIZE>
+Set maximum average read rate on frontend connection per
+worker.  Setting  0 to  this option  means read  rate is
+unlimited.  Not implemented yet.
 .sp
 Default: \fB0\fP
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-\-worker\-read\-burst=<SIZE>
-Set   maximum  read   burst   size  on   frontend
-connection per worker.  Setting  0 to this option
-means   read  burst   size  is   unlimited.   Not
-implemented yet.
+Set maximum  read burst size on  frontend connection per
+worker.  Setting 0 to this  option means read burst size
+is unlimited.  Not implemented yet.
 .sp
 Default: \fB0\fP
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-\-worker\-write\-rate=<RATE>
-Set  maximum  average   write  rate  on  frontend
-connection per worker.  Setting  0 to this option
-means write  rate is unlimited.   Not implemented
-yet.
+.B \-\-worker\-write\-rate=<SIZE>
+Set maximum  average write  rate on  frontend connection
+per worker.  Setting  0 to this option  means write rate
+is unlimited.  Not implemented yet.
 .sp
 Default: \fB0\fP
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-\-worker\-write\-burst=<SIZE>
-Set   maximum  write   burst  size   on  frontend
-connection per worker.  Setting  0 to this option
-means  write   burst  size  is   unlimited.   Not
-implemented yet.
+Set maximum write burst  size on frontend connection per
+worker.  Setting 0 to this option means write burst size
+is unlimited.  Not implemented yet.
 .sp
 Default: \fB0\fP
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-\-worker\-frontend\-connections=<NUM>
-Set  maximum number  of simultaneous  connections
-frontend accepts.  Setting 0 means unlimited.
+.B \-\-worker\-frontend\-connections=<N>
+Set maximum number  of simultaneous connections frontend
+accepts.  Setting 0 means unlimited.
 .sp
 Default: \fB0\fP
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-\-backend\-http1\-connections\-per\-host=<NUM>
-Set maximum  number of backend  concurrent HTTP/1
-connections per host.   This option is meaningful
-when \fI\%\-s\fP option  is used.  To limit  the number of
-connections  per frontend  for default  mode, use
+.B \-\-backend\-http1\-connections\-per\-host=<N>
+Set   maximum  number   of  backend   concurrent  HTTP/1
+connections per host.  This option is meaningful when \fI\%\-s\fP
+option is used.  To limit  the number of connections per
+frontend        for       default        mode,       use
 \fI\%\-\-backend\-http1\-connections\-per\-frontend\fP\&.
 .sp
 Default: \fB8\fP
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-\-backend\-http1\-connections\-per\-frontend=<NUM>
-Set maximum  number of backend  concurrent HTTP/1
-connections  per frontend.   This option  is only
-used for  default mode.   0 means  unlimited.  To
-limit  the number  of  connections  per host  for
-HTTP/2  or  SPDY  proxy  mode  (\-s  option),  use
-\fI\%\-\-backend\-http1\-connections\-per\-host\fP\&.
+.B \-\-backend\-http1\-connections\-per\-frontend=<N>
+Set   maximum  number   of  backend   concurrent  HTTP/1
+connections per frontend.  This  option is only used for
+default mode.   0 means unlimited.  To  limit the number
+of connections  per host for  HTTP/2 or SPDY  proxy mode
+(\-s option), use \fI\%\-\-backend\-http1\-connections\-per\-host\fP\&.
 .sp
 Default: \fB0\fP
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-\-rlimit\-nofile=<N>
-Set maximum number  of open files (RLIMIT_NOFILE)
-to <N>.  If 0 is  given, nghttpx does not set the
-limit.
+Set maximum number of open files (RLIMIT_NOFILE) to <N>.
+If 0 is given, nghttpx does not set the limit.
 .sp
 Default: \fB0\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-backend\-request\-buffer=<SIZE>
+Set buffer size used to store backend request.
+.sp
+Default: \fB16K\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-backend\-response\-buffer=<SIZE>
+Set buffer size used to store backend response.
+.sp
+Default: \fB64K\fP
 .UNINDENT
 .SS Timeout:
 .INDENT 0.0
 .TP
 .B \-\-frontend\-http2\-read\-timeout=<SEC>
-Specify read timeout for HTTP/2 and SPDY frontend
+Specify  read  timeout  for  HTTP/2  and  SPDY  frontend
 connection.
 .sp
 Default: \fB180\fP
@@ -246,32 +246,30 @@ Default: \fB180\fP
 .INDENT 0.0
 .TP
 .B \-\-frontend\-read\-timeout=<SEC>
-Specify  read   timeout  for   HTTP/1.1  frontend
-connection.
+Specify read timeout for HTTP/1.1 frontend connection.
 .sp
 Default: \fB180\fP
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-\-frontend\-write\-timeout=<SEC>
-Specify   write   timeout    for   all   frontend
-connections.
+Specify write timeout for all frontend connections.
 .sp
 Default: \fB30\fP
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-\-stream\-read\-timeout=<SEC>
-Specify read timeout for HTTP/2 and SPDY streams.
-0 means no timeout.
+Specify  read timeout  for HTTP/2  and SPDY  streams.  0
+means no timeout.
 .sp
 Default: \fB0\fP
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-\-stream\-write\-timeout=<SEC>
-Specify  write   timeout  for  HTTP/2   and  SPDY
-streams.  0 means no timeout.
+Specify write  timeout for  HTTP/2 and SPDY  streams.  0
+means no timeout.
 .sp
 Default: \fB0\fP
 .UNINDENT
@@ -292,17 +290,16 @@ Default: \fB30\fP
 .INDENT 0.0
 .TP
 .B \-\-backend\-keep\-alive\-timeout=<SEC>
-Specify    keep\-alive    timeout   for    backend
-connection.
+Specify keep\-alive timeout for backend connection.
 .sp
 Default: \fB600\fP
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-\-listener\-disable\-timeout=<SEC>
-After  accepting  connection  failed,  connection
-listener is disabled for a given time in seconds.
-Specifying 0 disables this feature.
+After accepting  connection failed,  connection listener
+is disabled for  a given time in  seconds.  Specifying 0
+disables this feature.
 .sp
 Default: \fB0\fP
 .UNINDENT
@@ -310,67 +307,63 @@ Default: \fB0\fP
 .INDENT 0.0
 .TP
 .B \-\-ciphers=<SUITE>
-Set  allowed  cipher  list.  The  format  of  the
-string  is described  in OpenSSL  ciphers(1).
+Set allowed  cipher list.  The  format of the  string is
+described in OpenSSL ciphers(1).
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-k, \-\-insecure
-Don\(aqt verify backend  server\(aqs certificate if \fI\%\-p\fP,
-\fI\%\-\-client\fP   or   \fI\%\-\-http2\-bridge\fP  are   given   and
+Don\(aqt  verify   backend  server\(aqs  certificate   if  \fI\%\-p\fP,
+\fI\%\-\-client\fP    or    \fI\%\-\-http2\-bridge\fP     are    given    and
 \fI\%\-\-backend\-no\-tls\fP is not given.
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-\-cacert=<PATH>
-Set path  to trusted  CA certificate file  if \fI\%\-p\fP,
-\fI\%\-\-client\fP   or   \fI\%\-\-http2\-bridge\fP  are   given   and
-\fI\%\-\-backend\-no\-tls\fP is not given.   The file must be
-in   PEM  format.    It   can  contain   multiple
-certificates.    If   the   linked   OpenSSL   is
-configured to load system wide certificates, they
-are loaded at startup regardless of this option.
+Set path to trusted CA  certificate file if \fI\%\-p\fP, \fI\%\-\-client\fP
+or \fI\%\-\-http2\-bridge\fP are given  and \fI\%\-\-backend\-no\-tls\fP is not
+given.  The file must be  in PEM format.  It can contain
+multiple  certificates.    If  the  linked   OpenSSL  is
+configured to  load system  wide certificates,  they are
+loaded at startup regardless of this option.
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-\-private\-key\-passwd\-file=<FILEPATH>
-Path  to  file  that contains  password  for  the
-server\(aqs private  key.  If none is  given and the
-private  key  is   password  protected  it\(aqll  be
-requested interactively.
+.B \-\-private\-key\-passwd\-file=<PATH>
+Path  to file  that contains  password for  the server\(aqs
+private key.   If none is  given and the private  key is
+password protected it\(aqll be requested interactively.
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-\-subcert=<KEYPATH>:<CERTPATH>
-Specify  additional certificate  and private  key
-file.  nghttpx will  choose certificates based on
-the hostname  indicated by  client using  TLS SNI
-extension.   This  option  can be  used  multiple
-times.
+Specify  additional certificate  and  private key  file.
+nghttpx will  choose certificates based on  the hostname
+indicated  by  client  using TLS  SNI  extension.   This
+option can be used multiple times.
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-\-backend\-tls\-sni\-field=<HOST>
-Explicitly  set  the  content   of  the  TLS  SNI
-extension.  This will default to the backend HOST
-name.
+Explicitly  set the  content of  the TLS  SNI extension.
+This will default to the backend HOST name.
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-\-dh\-param\-file=<PATH>
-Path to  file that contains DH  parameters in PEM
-format.  Without  this option, DHE  cipher suites
-are not available.
+Path to file that contains  DH parameters in PEM format.
+Without  this   option,  DHE   cipher  suites   are  not
+available.
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-\-npn\-list=<LIST>
-Comma delimited list  of ALPN protocol identifier
-sorted in  the order  of preference.   That means
-most  desirable protocol  comes  first.  This  is
-used in both ALPN and NPN.  The parameter must be
-delimited by  a single  comma only and  any white
-spaces are treated as a part of protocol string.
+Comma delimited list of  ALPN protocol identifier sorted
+in the  order of preference.  That  means most desirable
+protocol comes  first.  This  is used  in both  ALPN and
+NPN.  The parameter must be  delimited by a single comma
+only  and any  white spaces  are  treated as  a part  of
+protocol string.
 .sp
 Default: \fBh2\-16,h2\-14,spdy/3.1,http/1.1\fP
 .UNINDENT
@@ -382,82 +375,89 @@ Require and verify client certificate.
 .INDENT 0.0
 .TP
 .B \-\-verify\-client\-cacert=<PATH>
-Path  to file  that contains  CA certificates  to
-verify client  certificate.  The file must  be in
-PEM    format.    It    can   contain    multiple
-certificates.
+Path  to file  that contains  CA certificates  to verify
+client certificate.  The file must be in PEM format.  It
+can contain multiple certificates.
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-\-client\-private\-key\-file=<PATH>
-Path  to file  that contains  client private  key
-used in backend client authentication.
+Path to  file that contains  client private key  used in
+backend client authentication.
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-\-client\-cert\-file=<PATH>
-Path  to file  that  contains client  certificate
-used in backend client authentication.
+Path to  file that  contains client certificate  used in
+backend client authentication.
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-\-tls\-proto\-list=<LIST>
-Comma delimited  list of  SSL/TLS protocol  to be
-enabled.  The following  protocols are available:
-TLSv1.2, TLSv1.1 and  TLSv1.0.  The name matching
-is   done   in  case\-insensitive   manner.    The
-parameter  must be  delimited by  a single  comma
-only and any  white spaces are treated  as a part
-of protocol string.
+Comma delimited list of  SSL/TLS protocol to be enabled.
+The following protocols  are available: TLSv1.2, TLSv1.1
+and   TLSv1.0.    The   name   matching   is   done   in
+case\-insensitive   manner.    The  parameter   must   be
+delimited by  a single comma  only and any  white spaces
+are treated as a part of protocol string.
 .sp
 Default: \fBTLSv1.2,TLSv1.1\fP
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-\-tls\-ticket\-key\-file=<FILE>
-Path to  file that contains 48  bytes random data
-to construct TLS session ticket parameters.  This
-options  can   be  used  repeatedly   to  specify
-multiple ticket parameters.  If several files are
-given, only the first key  is used to encrypt TLS
-session  tickets.  Other  keys  are accepted  but
-server will  issue new session ticket  with first
-key.  This  allows session key  rotation.  Please
-note   that   key   rotation   does   not   occur
-automatically.   User should  rearrange files  or
-change   options  values   and  restart   nghttpx
-gracefully.   If opening  or  reading given  file
-fails, all  loaded keys  are discarded and  it is
-treated as if  none of this option  is given.  If
-this  option is  not given  or an  error occurred
-while opening or reading a file, key is generated
-automatically and renewed every 12hrs.  At most 2
-keys are stored in memory.
+.B \-\-tls\-ticket\-key\-file=<PATH>
+Path  to file  that  contains 48  bytes  random data  to
+construct TLS  session ticket parameters.   This options
+can  be  used  repeatedly  to  specify  multiple  ticket
+parameters.  If several files  are given, only the first
+key is used to encrypt  TLS session tickets.  Other keys
+are accepted  but server  will issue new  session ticket
+with  first  key.   This allows  session  key  rotation.
+Please   note  that   key   rotation   does  not   occur
+automatically.   User should  rearrange files  or change
+options  values  and  restart  nghttpx  gracefully.   If
+opening or reading given file fails, all loaded keys are
+discarded and it is treated as if none of this option is
+given.  If this option is not given or an error occurred
+while  opening  or  reading  a file,  key  is  generated
+automatically and  renewed every 12hrs.  At  most 2 keys
+are stored in memory.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-tls\-ctx\-per\-worker
+Create OpenSSL\(aqs SSL_CTX per worker, so that no internal
+locking is required.  This  may improve scalability with
+multi  threaded   configuration.   If  this   option  is
+enabled, session ID is  no longer shared accross SSL_CTX
+objects, which means session  ID generated by one worker
+is not acceptable by another worker.  On the other hand,
+session ticket key is shared across all worker threads.
 .UNINDENT
 .SS HTTP/2 and SPDY:
 .INDENT 0.0
 .TP
-.B \-c, \-\-http2\-max\-concurrent\-streams=<NUM>
-Set the maximum number  of the concurrent streams
-in one HTTP/2 and SPDY session.
+.B \-c, \-\-http2\-max\-concurrent\-streams=<N>
+Set the maximum number of  the concurrent streams in one
+HTTP/2 and SPDY session.
 .sp
 Default: \fB100\fP
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-\-frontend\-http2\-window\-bits=<N>
-Sets the per\-stream initial window size of HTTP/2
-SPDY frontend  connection.  For HTTP/2,  the size
-is 2**<N>\-1.  For SPDY, the size is 2**<N>.
+Sets the  per\-stream initial window size  of HTTP/2 SPDY
+frontend connection.  For HTTP/2,  the size is 2**<N>\-1.
+For SPDY, the size is 2**<N>.
 .sp
 Default: \fB16\fP
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-\-frontend\-http2\-connection\-window\-bits=<N>
-Sets the per\-connection window size of HTTP/2 and
-SPDY frontend  connection.  For HTTP/2,  the size
-is 2**<N>\-1. For SPDY, the size is 2**<N>.
+Sets the  per\-connection window size of  HTTP/2 and SPDY
+frontend   connection.    For   HTTP/2,  the   size   is
+2**<N>\-1. For SPDY, the size is 2**<N>.
 .sp
 Default: \fB16\fP
 .UNINDENT
@@ -469,7 +469,7 @@ Disable SSL/TLS on frontend connections.
 .INDENT 0.0
 .TP
 .B \-\-backend\-http2\-window\-bits=<N>
-Sets the  initial window  size of  HTTP/2 backend
+Sets  the   initial  window   size  of   HTTP/2  backend
 connection to 2**<N>\-1.
 .sp
 Default: \fB16\fP
@@ -477,8 +477,8 @@ Default: \fB16\fP
 .INDENT 0.0
 .TP
 .B \-\-backend\-http2\-connection\-window\-bits=<N>
-Sets  the per\-connection  window  size of  HTTP/2
-backend connection to 2**<N>\-1.
+Sets the  per\-connection window  size of  HTTP/2 backend
+connection to 2**<N>\-1.
 .sp
 Default: \fB16\fP
 .UNINDENT
@@ -495,20 +495,20 @@ Don\(aqt crumble cookie header field.
 .INDENT 0.0
 .TP
 .B \-\-padding=<N>
-Add at most  <N> bytes to a  HTTP/2 frame payload
-as padding.  Specify 0  to disable padding.  This
-option  is meant  for debugging  purpose and  not
-intended to enhance protocol security.
+Add  at most  <N> bytes  to  a HTTP/2  frame payload  as
+padding.  Specify 0 to  disable padding.  This option is
+meant for debugging purpose  and not intended to enhance
+protocol security.
 .UNINDENT
 .SS Mode:
 .INDENT 0.0
 .TP
 .B (default mode)
-Accept  HTTP/2, SPDY  and HTTP/1.1  over SSL/TLS.
-If \fI\%\-\-frontend\-no\-tls\fP  is used, accept  HTTP/2 and
-HTTP/1.1.  The  incoming HTTP/1.1  connection can
-be upgraded to HTTP/2  through HTTP Upgrade.  The
-protocol to the backend is HTTP/1.1.
+Accept  HTTP/2,  SPDY  and HTTP/1.1  over  SSL/TLS.   If
+\fI\%\-\-frontend\-no\-tls\fP is  used, accept HTTP/2  and HTTP/1.1.
+The  incoming HTTP/1.1  connection  can  be upgraded  to
+HTTP/2  through  HTTP  Upgrade.   The  protocol  to  the
+backend is HTTP/1.1.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -518,59 +518,56 @@ Like default mode, but enable secure proxy mode.
 .INDENT 0.0
 .TP
 .B \-\-http2\-bridge
-Like  default  mode,  but  communicate  with  the
-backend  in   HTTP/2  over  SSL/TLS.    Thus  the
-incoming all connections  are converted to HTTP/2
-connection  and  relayed  to  the  backend.   See
-\fI\%\-\-backend\-http\-proxy\-uri\fP option if you are behind
-the  proxy and  want  to connect  to the  outside
+Like default  mode, but communicate with  the backend in
+HTTP/2 over SSL/TLS.  Thus  the incoming all connections
+are converted  to HTTP/2  connection and relayed  to the
+backend.  See \fI\%\-\-backend\-http\-proxy\-uri\fP option if you are
+behind  the proxy  and want  to connect  to the  outside
 HTTP/2 proxy.
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-\-client
-Accept HTTP/2 and  HTTP/1.1 without SSL/TLS.  The
-incoming HTTP/1.1  connection can be  upgraded to
-HTTP/2  connection  through  HTTP  Upgrade.   The
-protocol  to  the  backend  is  HTTP/2.   To  use
-nghttpx  as  a  forward   proxy,  use  \fI\%\-p\fP  option
-instead.
+Accept  HTTP/2   and  HTTP/1.1  without   SSL/TLS.   The
+incoming HTTP/1.1  connection can be upgraded  to HTTP/2
+connection through  HTTP Upgrade.   The protocol  to the
+backend is HTTP/2.   To use nghttpx as  a forward proxy,
+use \fI\%\-p\fP option instead.
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-p, \-\-client\-proxy
-Like \fI\%\-\-client\fP  option, but  it also  requires the
-request path  from frontend  must be  an absolute
-URI, suitable for use as a forward proxy.
+Like \fI\%\-\-client\fP  option, but it also  requires the request
+path from frontend must be an absolute URI, suitable for
+use as a forward proxy.
 .UNINDENT
 .SS Logging:
 .INDENT 0.0
 .TP
 .B \-L, \-\-log\-level=<LEVEL>
-Set the  severity level  of log  output.  <LEVEL>
-must  be one  of  INFO, NOTICE,  WARN, ERROR  and
-FATAL.
+Set the severity  level of log output.   <LEVEL> must be
+one of INFO, NOTICE, WARN, ERROR and FATAL.
 .sp
 Default: \fBNOTICE\fP
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-\-accesslog\-file=<PATH>
-Set path  to write  access log.  To  reopen file,
-send USR1 signal to nghttpx.
+Set path to write access log.  To reopen file, send USR1
+signal to nghttpx.
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-\-accesslog\-syslog
-Send  access log  to syslog.   If this  option is
-used, \fI\%\-\-accesslog\-file\fP option is ignored.
+Send  access log  to syslog.   If this  option is  used,
+\fI\%\-\-accesslog\-file\fP option is ignored.
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-\-accesslog\-format=<FORMAT>
-Specify  format  string   for  access  log.   The
-default format is combined format.  The following
-variables are available:
+Specify  format  string  for access  log.   The  default
+format is combined format.   The following variables are
+available:
 .INDENT 7.0
 .IP \(bu 2
 $remote_addr: client IP address.
@@ -583,24 +580,24 @@ $request: HTTP request line.
 .IP \(bu 2
 $status: HTTP response status code.
 .IP \(bu 2
-$body_bytes_sent: the  number of bytes  sent to
-client as response body.
+$body_bytes_sent: the  number of bytes sent  to client
+as response body.
 .IP \(bu 2
-$http_<VAR>: value of HTTP request header <VAR>
-where \(aq_\(aq in <VAR> is replaced with \(aq\-\(aq.
+$http_<VAR>: value of HTTP  request header <VAR> where
+\(aq_\(aq in <VAR> is replaced with \(aq\-\(aq.
 .IP \(bu 2
 $remote_port: client  port.
 .IP \(bu 2
 $server_port: server port.
 .IP \(bu 2
-$request_time:   request  processing   time  in
-seconds with milliseconds resolution.
+$request_time: request processing time in seconds with
+milliseconds resolution.
 .IP \(bu 2
 $pid: PID of the running process.
 .IP \(bu 2
-$alpn:  ALPN identifier  of the  protocol which
-generates  the response.   For HTTP/1,  ALPN is
-always http/1.1, regardless of minor version.
+$alpn: ALPN identifier of the protocol which generates
+the response.   For HTTP/1,  ALPN is  always http/1.1,
+regardless of minor version.
 .UNINDENT
 .sp
 Default: \fB$remote_addr \- \- [$time_local] "$request" $status $body_bytes_sent "$http_referer" "$http_user_agent"\fP
@@ -608,16 +605,16 @@ Default: \fB$remote_addr \- \- [$time_local] "$request" $status $body_bytes_sent
 .INDENT 0.0
 .TP
 .B \-\-errorlog\-file=<PATH>
-Set  path to  write error  log.  To  reopen file,
-send USR1 signal to nghttpx.
+Set path to write error  log.  To reopen file, send USR1
+signal to nghttpx.
 .sp
 Default: \fB/dev/stderr\fP
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-\-errorlog\-syslog
-Send  error log  to  syslog.  If  this option  is
-used, \fI\%\-\-errorlog\-file\fP option is ignored.
+Send  error log  to  syslog.  If  this  option is  used,
+\fI\%\-\-errorlog\-file\fP option is ignored.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -626,86 +623,84 @@ Set syslog facility to <FACILITY>.
 .sp
 Default: \fBdaemon\fP
 .UNINDENT
-.SS Misc:
+.SS HTTP:
 .INDENT 0.0
 .TP
 .B \-\-add\-x\-forwarded\-for
-Append  X\-Forwarded\-For   header  field   to  the
-downstream request.
+Append  X\-Forwarded\-For header  field to  the downstream
+request.
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-\-strip\-incoming\-x\-forwarded\-for
-Strip  X\-Forwarded\-For  header field from inbound
-client requests.
+Strip X\-Forwarded\-For  header field from  inbound client
+requests.
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-\-no\-via
-Don\(aqt append to Via  header field.  If Via header
-field is received, it is left unaltered.
+Don\(aqt append to  Via header field.  If  Via header field
+is received, it is left unaltered.
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-\-no\-location\-rewrite
-Don\(aqt   rewrite   location    header   field   on
-\fI\%\-\-http2\-bridge\fP, \fI\%\-\-client\fP  and default  mode.  For
-\fI\%\-\-http2\-proxy\fP  and \fI\%\-\-client\-proxy\fP  mode, location
-header field  will not  be altered  regardless of
-this option.
+Don\(aqt rewrite  location header field  on \fI\%\-\-http2\-bridge\fP,
+\fI\%\-\-client\fP  and  default   mode.   For  \fI\%\-\-http2\-proxy\fP  and
+\fI\%\-\-client\-proxy\fP mode,  location header field will  not be
+altered regardless of this option.
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-\-altsvc=<PROTOID,PORT[,HOST,[ORIGIN]]>
-Specify  protocol ID,  port, host  and origin  of
-alternative  service.   <HOST> and  <ORIGIN>  are
-optional.  They are  advertised in alt\-svc header
-field or HTTP/2 ALTSVC frame.  This option can be
-used   multiple   times   to   specify   multiple
-alternative services.  Example: \fI\%\-\-altsvc\fP=h2,443
+Specify   protocol  ID,   port,  host   and  origin   of
+alternative service.  <HOST>  and <ORIGIN> are optional.
+They are  advertised in  alt\-svc header field  or HTTP/2
+ALTSVC frame.  This option can be used multiple times to
+specify   multiple   alternative   services.    Example:
+\fI\%\-\-altsvc\fP=h2,443
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-\-add\-response\-header=<HEADER>
-Specify  additional   header  field  to   add  to
-response  header set.   This option  just appends
-header field  and won\(aqt replace  anything already
-set.  This  option can  be used several  times to
-specify multiple header fields.
+Specify  additional  header  field to  add  to  response
+header set.   This option just appends  header field and
+won\(aqt replace anything already  set.  This option can be
+used several  times to  specify multiple  header fields.
 Example: \fI\%\-\-add\-response\-header\fP="foo: bar"
 .UNINDENT
+.SS Debug:
 .INDENT 0.0
 .TP
 .B \-\-frontend\-http2\-dump\-request\-header=<PATH>
-Dumps request headers received by HTTP/2 frontend
-to  the file  denoted in  <PATH>.  The  output is
-done  in  HTTP/1  header field  format  and  each
-header block is followed  by an empty line.  This
-option is  not thread safe  and MUST NOT  be used
-with option \fI\%\-n\fP<N>, where <N> >= 2.
+Dumps request headers received by HTTP/2 frontend to the
+file denoted  in <PATH>.  The  output is done  in HTTP/1
+header field format and each header block is followed by
+an empty line.  This option  is not thread safe and MUST
+NOT be used with option \fI\%\-n\fP<N>, where <N> >= 2.
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-\-frontend\-http2\-dump\-response\-header=<PATH>
-Dumps response headers  sent from HTTP/2 frontend
-to  the file  denoted in  <PATH>.  The  output is
-done  in  HTTP/1  header field  format  and  each
-header block is followed  by an empty line.  This
-option is  not thread safe  and MUST NOT  be used
-with option \fI\%\-n\fP<N>, where <N> >= 2.
+Dumps response headers sent  from HTTP/2 frontend to the
+file denoted  in <PATH>.  The  output is done  in HTTP/1
+header field format and each header block is followed by
+an empty line.  This option  is not thread safe and MUST
+NOT be used with option \fI\%\-n\fP<N>, where <N> >= 2.
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-o, \-\-frontend\-frame\-debug
-Print HTTP/2 frames in  frontend to stderr.  This
-option is  not thread safe  and MUST NOT  be used
-with option \fI\%\-n\fP=N, where N >= 2.
+Print HTTP/2 frames in  frontend to stderr.  This option
+is  not thread  safe and  MUST NOT  be used  with option
+\fI\%\-n\fP=N, where N >= 2.
 .UNINDENT
+.SS Process:
 .INDENT 0.0
 .TP
 .B \-D, \-\-daemon
-Run in a background.  If  \fI\%\-D\fP is used, the current
-working directory is changed to \(aq\fI/\fP\(aq.
+Run in a background.  If \fI\%\-D\fP is used, the current working
+directory is changed to \(aq\fI/\fP\(aq.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -715,9 +710,10 @@ Set path to save PID of this program.
 .INDENT 0.0
 .TP
 .B \-\-user=<USER>
-Run  this  program  as <USER>.   This  option  is
-intended to be used to drop root privileges.
+Run this program as <USER>.   This option is intended to
+be used to drop root privileges.
 .UNINDENT
+.SS Misc:
 .INDENT 0.0
 .TP
 .B \-\-conf=<PATH>
@@ -735,6 +731,9 @@ Print version and exit.
 .B \-h, \-\-help
 Print this help and exit.
 .UNINDENT
+.sp
+The <SIZE> argument is an integer and an optional unit (e.g., 10K is
+10 * 1024).  Units are K, M and G (powers of 1024).
 .SH FILES
 .INDENT 0.0
 .TP
