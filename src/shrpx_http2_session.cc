@@ -737,12 +737,6 @@ namespace {
 int on_begin_headers_callback(nghttp2_session *session,
                               const nghttp2_frame *frame, void *user_data) {
   auto http2session = static_cast<Http2Session *>(user_data);
-  if (frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
-    // server sends request HEADERS
-    http2session->submit_rst_stream(frame->hd.stream_id,
-                                    NGHTTP2_REFUSED_STREAM);
-    return 0;
-  }
   if (frame->headers.cat != NGHTTP2_HCAT_RESPONSE) {
     return 0;
   }
