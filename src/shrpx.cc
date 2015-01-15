@@ -1119,7 +1119,7 @@ Logging:
               Default: )" << str_syslog_facility(get_config()->syslog_facility)
       << R"(
 
-Misc:
+HTTP:
   --add-x-forwarded-for
               Append  X-Forwarded-For header  field to  the downstream
               request.
@@ -1146,6 +1146,8 @@ Misc:
               won't replace anything already  set.  This option can be
               used several  times to  specify multiple  header fields.
               Example: --add-response-header="foo: bar"
+
+Debug:
   --frontend-http2-dump-request-header=<PATH>
               Dumps request headers received by HTTP/2 frontend to the
               file denoted  in <PATH>.  The  output is done  in HTTP/1
@@ -1162,6 +1164,8 @@ Misc:
               Print HTTP/2 frames in  frontend to stderr.  This option
               is  not thread  safe and  MUST NOT  be used  with option
               -n=N, where N >= 2.
+
+Process:
   -D, --daemon
               Run in a background.  If -D is used, the current working
               directory is changed to '/'.
@@ -1170,6 +1174,8 @@ Misc:
   --user=<USER>
               Run this program as <USER>.   This option is intended to
               be used to drop root privileges.
+
+Misc:
   --conf=<PATH>
               Load configuration from <PATH>.
               Default: )" << get_config()->conf_path.get() << R"(
