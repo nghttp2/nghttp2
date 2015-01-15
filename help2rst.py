@@ -8,7 +8,7 @@ import sys
 import re
 import argparse
 
-arg_indent = ' ' * 21
+arg_indent = ' ' * 14
 
 def help2man(infile):
     # We assume that first line is usage line like this:
@@ -87,7 +87,7 @@ DESCRIPTION
             continue
         if line.startswith('   ') and in_arg:
             if not line.startswith(arg_indent):
-                sys.stderr.write('warning: argument description is not indented correctly.  We need {} spaces as indentation.'.format(len(arg_indent)))
+                sys.stderr.write('warning: argument description is not indented correctly.  We need {} spaces as indentation.\n'.format(len(arg_indent)))
             print '{}'.format(format_arg_text(line[len(arg_indent):]))
             continue
 
