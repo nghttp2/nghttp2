@@ -68,8 +68,6 @@ void capitalize(std::string &s, size_t offset);
 // Returns true if |value| is LWS
 bool lws(const char *value);
 
-void sanitize_header_value(std::string &s, size_t offset);
-
 // Copies the |field| component value from |u| and |url| to the
 // |dest|. If |u| does not have |field|, then this function does
 // nothing.

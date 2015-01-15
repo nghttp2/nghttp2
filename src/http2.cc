@@ -156,17 +156,6 @@ bool lws(const char *value) {
   return true;
 }
 
-void sanitize_header_value(std::string &s, size_t offset) {
-  // Since both nghttp2 and spdylay do not allow \n and \r in header
-  // values, we don't have to do this anymore.
-
-  // for(size_t i = offset, eoi = s.size(); i < eoi; ++i) {
-  //   if(s[i] == '\r' || s[i] == '\n') {
-  //     s[i] = ' ';
-  //   }
-  // }
-}
-
 void copy_url_component(std::string &dest, const http_parser_url *u, int field,
                         const char *url) {
   if (u->field_set & (1 << field)) {
@@ -275,7 +264,6 @@ void build_http1_headers_from_headers(std::string &hdrs,
     capitalize(hdrs, hdrs.size() - kv.name.size());
     hdrs += ": ";
     hdrs += kv.value;
-    sanitize_header_value(hdrs, hdrs.size() - kv.value.size());
     hdrs += "\r\n";
   }
 }

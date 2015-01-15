@@ -287,7 +287,6 @@ int HttpDownstreamConnection::push_request_headers() {
     hdrs += "X-Forwarded-For: ";
     if (xff && !get_config()->strip_incoming_x_forwarded_for) {
       hdrs += (*xff).value;
-      http2::sanitize_header_value(hdrs, hdrs.size() - (*xff).value.size());
       hdrs += ", ";
     }
     hdrs += client_handler_->get_ipaddr();
@@ -295,7 +294,6 @@ int HttpDownstreamConnection::push_request_headers() {
   } else if (xff && !get_config()->strip_incoming_x_forwarded_for) {
     hdrs += "X-Forwarded-For: ";
     hdrs += (*xff).value;
-    http2::sanitize_header_value(hdrs, hdrs.size() - (*xff).value.size());
     hdrs += "\r\n";
   }
   if (!get_config()->http2_proxy && !get_config()->client_proxy &&
@@ -314,7 +312,6 @@ int HttpDownstreamConnection::push_request_headers() {
   if (expect && !util::strifind((*expect).value.c_str(), "100-continue")) {
     hdrs += "Expect: ";
     hdrs += (*expect).value;
-    http2::sanitize_header_value(hdrs, hdrs.size() - (*expect).value.size());
     hdrs += "\r\n";
   }
   auto via = downstream_->get_request_header(http2::HD_VIA);
@@ -322,14 +319,12 @@ int HttpDownstreamConnection::push_request_headers() {
     if (via) {
       hdrs += "Via: ";
       hdrs += (*via).value;
-      http2::sanitize_header_value(hdrs, hdrs.size() - (*via).value.size());
       hdrs += "\r\n";
     }
   } else {
     hdrs += "Via: ";
     if (via) {
       hdrs += (*via).value;
-      http2::sanitize_header_value(hdrs, hdrs.size() - (*via).value.size());
       hdrs += ", ";
     }
     hdrs += http::create_via_header_value(downstream_->get_request_major(),
