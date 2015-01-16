@@ -201,7 +201,7 @@ typedef enum {
    */
   NGHTTP2_ERR_INVALID_ARGUMENT = -501,
   /**
-   * Ouf of buffer space.
+   * Out of buffer space.
    */
   NGHTTP2_ERR_BUFFER_ERROR = -502,
   /**
