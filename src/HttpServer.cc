@@ -1239,7 +1239,7 @@ int on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
   // TODO Handle POST
 
   if (stream->upload_left != -1) {
-    if (stream->upload_left < len) {
+    if (stream->upload_left < static_cast<int64_t>(len)) {
       stream->upload_left = -1;
       hd->submit_rst_stream(stream, NGHTTP2_PROTOCOL_ERROR);
       return 0;
