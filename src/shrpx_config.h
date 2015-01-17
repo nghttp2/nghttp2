@@ -133,8 +133,8 @@ extern const char SHRPX_OPT_BACKEND_REQUEST_BUFFER[];
 extern const char SHRPX_OPT_BACKEND_RESPONSE_BUFFER[];
 
 union sockaddr_union {
-  sockaddr sa;
   sockaddr_storage storage;
+  sockaddr sa;
   sockaddr_in6 in6;
   sockaddr_in in;
 };
