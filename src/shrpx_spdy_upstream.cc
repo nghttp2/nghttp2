@@ -642,14 +642,16 @@ int SpdyUpstream::downstream_error(DownstreamConnection *dconn, int events) {
     // stream, we don't have to do anything since response was
     // complete.
     if (downstream->get_upgraded()) {
-      rst_stream(downstream, NGHTTP2_NO_ERROR);
+      // We want "NO_ERROR" error code but SPDY does not have such
+      // code for RST_STREAM.
+      rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
     }
   } else {
     if (downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
       if (downstream->get_upgraded()) {
         on_downstream_body_complete(downstream);
       } else {
-        rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
+        rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
       }
     } else {
       unsigned int status;
