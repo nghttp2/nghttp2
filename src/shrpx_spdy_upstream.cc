@@ -336,7 +336,8 @@ void on_ctrl_not_send_callback(spdylay_session *session,
   ULOG(WARN, upstream) << "Failed to send control frame type=" << type
                        << ", error_code=" << error_code << ":"
                        << spdylay_strerror(error_code);
-  if (type == SPDYLAY_SYN_REPLY) {
+  if (type == SPDYLAY_SYN_REPLY && error_code != SPDYLAY_ERR_STREAM_CLOSED &&
+      error_code != SPDYLAY_ERR_STREAM_CLOSING) {
     // To avoid stream hanging around, issue RST_STREAM.
     auto stream_id = frame->syn_reply.stream_id;
     auto downstream = upstream->find_downstream(stream_id);
@@ -915,6 +916,12 @@ int SpdyUpstream::on_downstream_body(Downstream *downstream,
 int SpdyUpstream::on_downstream_body_complete(Downstream *downstream) {
   if (LOG_ENABLED(INFO)) {
     DLOG(INFO, downstream) << "HTTP response completed";
+  }
+
+  if (!downstream->validate_response_bodylen()) {
+    rst_stream(downstream, SPDYLAY_PROTOCOL_ERROR);
+    downstream->set_response_connection_close(true);
+    return 0;
   }
 
   spdylay_session_resume_data(session_, downstream->get_stream_id());

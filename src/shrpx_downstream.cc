@@ -109,9 +109,10 @@ Downstream::Downstream(Upstream *upstream, int32_t stream_id, int32_t priority)
     : request_buf_(upstream ? upstream->get_mcpool() : nullptr),
       response_buf_(upstream ? upstream->get_mcpool() : nullptr),
       request_bodylen_(0), response_bodylen_(0), response_sent_bodylen_(0),
-      upstream_(upstream), request_headers_sum_(0), response_headers_sum_(0),
-      request_datalen_(0), response_datalen_(0), stream_id_(stream_id),
-      priority_(priority), downstream_stream_id_(-1),
+      response_content_length_(-1), upstream_(upstream),
+      request_headers_sum_(0), response_headers_sum_(0), request_datalen_(0),
+      response_datalen_(0), stream_id_(stream_id), priority_(priority),
+      downstream_stream_id_(-1),
       response_rst_stream_error_code_(NGHTTP2_NO_ERROR),
       request_state_(INITIAL), request_major_(1), request_minor_(1),
       response_state_(INITIAL), response_http_status_(0), response_major_(1),
@@ -663,6 +664,24 @@ int64_t Downstream::get_response_sent_bodylen() const {
   return response_sent_bodylen_;
 }
 
+void Downstream::set_response_content_length(int64_t len) {
+  response_content_length_ = len;
+}
+
+bool Downstream::validate_response_bodylen() const {
+  if (!expect_response_body() || response_content_length_ == -1) {
+    return true;
+  }
+
+  if (LOG_ENABLED(INFO)) {
+    DLOG(INFO, this) << "response invalid bodylen: content-length="
+                     << response_content_length_
+                     << ", received=" << response_bodylen_;
+  }
+
+  return response_content_length_ == response_bodylen_;
+}
+
 void Downstream::set_priority(int32_t pri) { priority_ = pri; }
 
 int32_t Downstream::get_priority() const { return priority_; }
@@ -718,6 +737,14 @@ void Downstream::inspect_http1_response() {
   if (idx != -1 &&
       util::strifind(response_headers_[idx].value.c_str(), "chunked")) {
     chunked_response_ = true;
+  }
+
+  idx = response_hdidx_[http2::HD_CONTENT_LENGTH];
+  if (idx != -1) {
+    auto len = util::parse_uint(response_headers_[idx].value);
+    if (len != -1) {
+      response_content_length_ = len;
+    }
   }
 }
 

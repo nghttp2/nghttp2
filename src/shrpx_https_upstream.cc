@@ -768,6 +768,10 @@ int HttpsUpstream::on_downstream_body_complete(Downstream *downstream) {
     DLOG(INFO, downstream) << "HTTP response completed";
   }
 
+  if (!downstream->validate_response_bodylen()) {
+    downstream->set_response_connection_close(true);
+  }
+
   if (downstream->get_request_connection_close() ||
       downstream->get_response_connection_close()) {
     auto handler = get_client_handler();

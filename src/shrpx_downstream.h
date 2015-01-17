@@ -218,6 +218,10 @@ public:
   int64_t get_response_bodylen() const;
   void add_response_sent_bodylen(size_t amount);
   int64_t get_response_sent_bodylen() const;
+  void set_response_content_length(int64_t len);
+  // Validates that received response body length and content-length
+  // matches.
+  bool validate_response_bodylen() const;
   uint32_t get_response_rst_stream_error_code() const;
   void set_response_rst_stream_error_code(uint32_t error_code);
   // Inspects HTTP/1 response.  This checks tranfer-encoding etc.
@@ -297,12 +301,16 @@ private:
   ev_timer downstream_rtimer_;
   ev_timer downstream_wtimer_;
 
-  // the length of request body
+  // the length of request body received so far
   int64_t request_bodylen_;
-  // the length of response body
+  // the length of response body received so far
   int64_t response_bodylen_;
+
   // the length of response body sent to upstream client
   int64_t response_sent_bodylen_;
+
+  // content-length of response body, -1 if it is unknown.
+  int64_t response_content_length_;
 
   Upstream *upstream_;
   std::unique_ptr<DownstreamConnection> dconn_;

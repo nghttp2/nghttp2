@@ -954,6 +954,10 @@ int64_t parse_uint(const char *s) {
   return parse_uint(reinterpret_cast<const uint8_t *>(s), strlen(s));
 }
 
+int64_t parse_uint(const std::string &s) {
+  return parse_uint(reinterpret_cast<const uint8_t *>(s.c_str()), s.size());
+}
+
 int64_t parse_uint(const uint8_t *s, size_t len) {
   if (len == 0) {
     return -1;

@@ -506,6 +506,7 @@ int64_t parse_uint_with_unit(const char *s);
 // the parsed integer.  If there is an error, returns -1.
 int64_t parse_uint(const char *s);
 int64_t parse_uint(const uint8_t *s, size_t len);
+int64_t parse_uint(const std::string &s);
 
 } // namespace util
 

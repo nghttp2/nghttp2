@@ -526,7 +526,9 @@ int on_frame_not_send_callback(nghttp2_session *session,
                        << ", lib_error_code=" << lib_error_code << ":"
                        << nghttp2_strerror(lib_error_code);
   if (frame->hd.type == NGHTTP2_HEADERS &&
-      frame->headers.cat == NGHTTP2_HCAT_RESPONSE) {
+      frame->headers.cat == NGHTTP2_HCAT_RESPONSE &&
+      lib_error_code != NGHTTP2_ERR_STREAM_CLOSED &&
+      lib_error_code != NGHTTP2_ERR_STREAM_CLOSING) {
     // To avoid stream hanging around, issue RST_STREAM.
     auto downstream = upstream->find_downstream(frame->hd.stream_id);
     if (downstream) {
@@ -1207,6 +1209,13 @@ int Http2Upstream::on_downstream_body_complete(Downstream *downstream) {
   if (LOG_ENABLED(INFO)) {
     DLOG(INFO, downstream) << "HTTP response completed";
   }
+
+  if (!downstream->validate_response_bodylen()) {
+    rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
+    downstream->set_response_connection_close(true);
+    return 0;
+  }
+
   nghttp2_session_resume_data(session_, downstream->get_stream_id());
   downstream->ensure_upstream_wtimer();
 

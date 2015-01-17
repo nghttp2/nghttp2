@@ -817,23 +817,24 @@ int on_response_headers(Http2Session *http2session, Downstream *downstream,
     return 0;
   }
 
-  auto content_length =
+  auto content_length_hd =
       downstream->get_response_header(http2::HD_CONTENT_LENGTH);
-  if (!content_length && downstream->get_request_method() != "HEAD" &&
-      downstream->get_request_method() != "CONNECT") {
-    unsigned int status;
-    status = downstream->get_response_http_status();
-    if (!((100 <= status && status <= 199) || status == 204 || status == 304)) {
-      // Here we have response body but Content-Length is not known
-      // in advance.
+
+  if (content_length_hd) {
+    auto content_length = util::parse_uint(content_length_hd->value);
+    if (content_length != -1) {
+      downstream->set_response_content_length(content_length);
+    } else if (downstream->expect_response_body()) {
+      // Here we have response body but Content-Length is not known in
+      // advance.
       if (downstream->get_request_major() <= 0 ||
           downstream->get_request_minor() <= 0) {
         // We simply close connection for pre-HTTP/1.1 in this case.
         downstream->set_response_connection_close(true);
-      } else {
-        // Otherwise, use chunked encoding to keep upstream
-        // connection open.  In HTTP2, we are supporsed not to
-        // receive transfer-encoding.
+      } else if (downstream->get_request_method() != "CONNECT") {
+        // Otherwise, use chunked encoding to keep upstream connection
+        // open.  In HTTP2, we are supporsed not to receive
+        // transfer-encoding.
         downstream->add_response_header("transfer-encoding", "chunked");
         downstream->set_chunked_response(true);
       }
