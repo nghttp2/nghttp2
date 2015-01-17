@@ -197,6 +197,22 @@ std::vector<std::future<int>> v;
     [have_std_future=no
      AC_MSG_RESULT([no])])
 
+# Check that std::map::emplace is available for g++-4.7.
+AC_MSG_CHECKING([whether std::map::emplace is available])
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM(
+[[
+#include <map>
+]],
+[[
+std::map<int, int>().emplace(1, 2);
+]])],
+    [AC_DEFINE([HAVE_STD_MAP_EMPLACE], [1],
+               [Define to 1 if you have the `std::map::emplace`.])
+     have_std_map_emplace=yes
+     AC_MSG_RESULT([yes])],
+    [have_std_map_emplace=no
+     AC_MSG_RESULT([no])])
+
 AC_LANG_POP()
 
 # Checks for libraries.
