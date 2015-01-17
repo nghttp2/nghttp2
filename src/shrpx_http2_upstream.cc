@@ -302,6 +302,11 @@ int on_request_headers(Http2Upstream *upstream, Downstream *downstream,
 
   downstream->set_request_state(Downstream::HEADER_COMPLETE);
   if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
+    if (!downstream->validate_request_bodylen()) {
+      upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
+      return 0;
+    }
+
     downstream->disable_upstream_rtimer();
 
     downstream->set_request_state(Downstream::MSG_COMPLETE);
@@ -381,6 +386,11 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
     if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
       downstream->disable_upstream_rtimer();
 
+      if (!downstream->validate_request_bodylen()) {
+        upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
+        return 0;
+      }
+
       downstream->end_upload_data();
       downstream->set_request_state(Downstream::MSG_COMPLETE);
     }
@@ -400,6 +410,11 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
     }
 
     if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
+      if (!downstream->validate_request_bodylen()) {
+        upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
+        return 0;
+      }
+
       downstream->disable_upstream_rtimer();
 
       downstream->end_upload_data();

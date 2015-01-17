@@ -158,6 +158,9 @@ public:
   size_t get_request_datalen() const;
   void dec_request_datalen(size_t len);
   void reset_request_datalen();
+  // Validates that received request body length and content-length
+  // matches.
+  bool validate_request_bodylen() const;
   bool request_pseudo_header_allowed(int token) const;
   bool expect_response_body() const;
   enum {
@@ -309,6 +312,8 @@ private:
   // the length of response body sent to upstream client
   int64_t response_sent_bodylen_;
 
+  // content-length of request body, -1 if it is unknown.
+  int64_t request_content_length_;
   // content-length of response body, -1 if it is unknown.
   int64_t response_content_length_;
 

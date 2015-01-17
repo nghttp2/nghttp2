@@ -109,10 +109,10 @@ Downstream::Downstream(Upstream *upstream, int32_t stream_id, int32_t priority)
     : request_buf_(upstream ? upstream->get_mcpool() : nullptr),
       response_buf_(upstream ? upstream->get_mcpool() : nullptr),
       request_bodylen_(0), response_bodylen_(0), response_sent_bodylen_(0),
-      response_content_length_(-1), upstream_(upstream),
-      request_headers_sum_(0), response_headers_sum_(0), request_datalen_(0),
-      response_datalen_(0), stream_id_(stream_id), priority_(priority),
-      downstream_stream_id_(-1),
+      request_content_length_(-1), response_content_length_(-1),
+      upstream_(upstream), request_headers_sum_(0), response_headers_sum_(0),
+      request_datalen_(0), response_datalen_(0), stream_id_(stream_id),
+      priority_(priority), downstream_stream_id_(-1),
       response_rst_stream_error_code_(NGHTTP2_NO_ERROR),
       request_state_(INITIAL), request_major_(1), request_minor_(1),
       response_state_(INITIAL), response_http_status_(0), response_major_(1),
@@ -668,18 +668,38 @@ void Downstream::set_response_content_length(int64_t len) {
   response_content_length_ = len;
 }
 
+bool Downstream::validate_request_bodylen() const {
+  if (request_content_length_ == -1) {
+    return true;
+  }
+
+  if (request_content_length_ != request_bodylen_) {
+    if (LOG_ENABLED(INFO)) {
+      DLOG(INFO, this) << "request invalid bodylen: content-length="
+                       << request_content_length_
+                       << ", received=" << request_bodylen_;
+    }
+    return false;
+  }
+
+  return true;
+}
+
 bool Downstream::validate_response_bodylen() const {
   if (!expect_response_body() || response_content_length_ == -1) {
     return true;
   }
 
-  if (LOG_ENABLED(INFO)) {
-    DLOG(INFO, this) << "response invalid bodylen: content-length="
-                     << response_content_length_
-                     << ", received=" << response_bodylen_;
+  if (response_content_length_ != response_bodylen_) {
+    if (LOG_ENABLED(INFO)) {
+      DLOG(INFO, this) << "response invalid bodylen: content-length="
+                       << response_content_length_
+                       << ", received=" << response_bodylen_;
+    }
+    return false;
   }
 
-  return response_content_length_ == response_bodylen_;
+  return true;
 }
 
 void Downstream::set_priority(int32_t pri) { priority_ = pri; }
@@ -704,6 +724,14 @@ void Downstream::check_upgrade_fulfilled() {
 void Downstream::inspect_http2_request() {
   if (request_method_ == "CONNECT") {
     upgrade_request_ = true;
+  }
+
+  auto idx = request_hdidx_[http2::HD_CONTENT_LENGTH];
+  if (idx != -1) {
+    auto len = util::parse_uint(request_headers_[idx].value);
+    if (len != -1) {
+      request_content_length_ = len;
+    }
   }
 }
 

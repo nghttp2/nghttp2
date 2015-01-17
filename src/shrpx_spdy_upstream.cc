@@ -204,6 +204,11 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
 
     downstream->set_request_state(Downstream::HEADER_COMPLETE);
     if (frame->syn_stream.hd.flags & SPDYLAY_CTRL_FLAG_FIN) {
+      if (!downstream->validate_request_bodylen()) {
+        upstream->rst_stream(downstream, SPDYLAY_PROTOCOL_ERROR);
+        return;
+      }
+
       downstream->disable_upstream_rtimer();
       downstream->set_request_state(Downstream::MSG_COMPLETE);
     }
@@ -321,6 +326,11 @@ void on_data_recv_callback(spdylay_session *session, uint8_t flags,
   auto upstream = static_cast<SpdyUpstream *>(user_data);
   auto downstream = upstream->find_downstream(stream_id);
   if (downstream && (flags & SPDYLAY_DATA_FLAG_FIN)) {
+    if (!downstream->validate_request_bodylen()) {
+      upstream->rst_stream(downstream, SPDYLAY_PROTOCOL_ERROR);
+      return;
+    }
+
     downstream->disable_upstream_rtimer();
     downstream->end_upload_data();
     downstream->set_request_state(Downstream::MSG_COMPLETE);
