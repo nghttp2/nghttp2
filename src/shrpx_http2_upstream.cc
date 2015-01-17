@@ -963,6 +963,16 @@ ssize_t downstream_data_read_callback(nghttp2_session *session,
   auto body = downstream->get_response_buf();
   assert(body);
 
+  auto dconn = downstream->get_downstream_connection();
+
+  if (body->rleft() == 0 && dconn) {
+    // Try to read more if buffer is empty.  This will help small
+    // buffer and make priority handling a bit better.
+    if (upstream->downstream_read(dconn) != 0) {
+      return NGHTTP2_ERR_CALLBACK_FAILURE;
+    }
+  }
+
   auto nread = body->remove(buf, length);
   auto body_empty = body->rleft() == 0;
 
