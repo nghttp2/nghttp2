@@ -651,6 +651,7 @@ AC_CONFIG_FILES([
   examples/Makefile
   python/Makefile
   python/setup.py
+  integration-tests/config.go
   doc/Makefile
   doc/conf.py
   doc/index.rst
