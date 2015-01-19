@@ -84,7 +84,7 @@ func newServerTester(args []string, t *testing.T, handler http.HandlerFunc) *ser
 			if retry >= 10 {
 				st.t.Fatalf("Error server is not responding too long; server command-line arguments may be invalid")
 			}
-			time.Sleep(500 * time.Millisecond)
+			time.Sleep(150 * time.Millisecond)
 			continue
 		}
 		st.conn = conn
