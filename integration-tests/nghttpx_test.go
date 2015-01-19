@@ -9,12 +9,12 @@ import (
 	"testing"
 )
 
-func TestPlainGET(t *testing.T) {
+func TestH2H1PlainGET(t *testing.T) {
 	st := newServerTester(nil, t, noopHandler)
 	defer st.Close()
 
 	res, err := st.http2(requestParam{
-		name: "TestPlainGet",
+		name: "TestH2H1PlainGet",
 	})
 	if err != nil {
 		t.Errorf("Error st.http2() = %v", err)
@@ -26,7 +26,7 @@ func TestPlainGET(t *testing.T) {
 	}
 }
 
-func TestAddXff(t *testing.T) {
+func TestH2H1AddXff(t *testing.T) {
 	st := newServerTester([]string{"--add-x-forwarded-for"}, t, func(w http.ResponseWriter, r *http.Request) {
 		xff := r.Header.Get("X-Forwarded-For")
 		want := "127.0.0.1"
@@ -37,14 +37,14 @@ func TestAddXff(t *testing.T) {
 	defer st.Close()
 
 	_, err := st.http2(requestParam{
-		name: "TestAddXff",
+		name: "TestH2H1AddXff",
 	})
 	if err != nil {
 		t.Errorf("Error st.http2() = %v", err)
 	}
 }
 
-func TestAddXff2(t *testing.T) {
+func TestH2H1AddXff2(t *testing.T) {
 	st := newServerTester([]string{"--add-x-forwarded-for"}, t, func(w http.ResponseWriter, r *http.Request) {
 		xff := r.Header.Get("X-Forwarded-For")
 		want := "host, 127.0.0.1"
@@ -55,7 +55,7 @@ func TestAddXff2(t *testing.T) {
 	defer st.Close()
 
 	_, err := st.http2(requestParam{
-		name: "TestAddXff2",
+		name: "TestH2H1AddXff2",
 		header: []hpack.HeaderField{
 			pair("x-forwarded-for", "host"),
 		},
@@ -65,7 +65,7 @@ func TestAddXff2(t *testing.T) {
 	}
 }
 
-func TestStripXff(t *testing.T) {
+func TestH2H1StripXff(t *testing.T) {
 	st := newServerTester([]string{"--strip-incoming-x-forwarded-for"}, t, func(w http.ResponseWriter, r *http.Request) {
 		if xff, found := r.Header["X-Forwarded-For"]; found {
 			t.Errorf("X-Forwarded-For = %v; want nothing", xff)
@@ -74,7 +74,7 @@ func TestStripXff(t *testing.T) {
 	defer st.Close()
 
 	_, err := st.http2(requestParam{
-		name: "TestStripXff1",
+		name: "TestH2H1StripXff1",
 		header: []hpack.HeaderField{
 			pair("x-forwarded-for", "host"),
 		},
@@ -84,7 +84,7 @@ func TestStripXff(t *testing.T) {
 	}
 }
 
-func TestStripAddXff(t *testing.T) {
+func TestH2H1StripAddXff(t *testing.T) {
 	args := []string{
 		"--strip-incoming-x-forwarded-for",
 		"--add-x-forwarded-for",
@@ -99,7 +99,7 @@ func TestStripAddXff(t *testing.T) {
 	defer st.Close()
 
 	_, err := st.http2(requestParam{
-		name: "TestStripAddXff",
+		name: "TestH2H1StripAddXff",
 		header: []hpack.HeaderField{
 			pair("x-forwarded-for", "host"),
 		},
@@ -109,14 +109,14 @@ func TestStripAddXff(t *testing.T) {
 	}
 }
 
-func TestHTTP2BadRequestCL(t *testing.T) {
+func TestH2H1BadRequestCL(t *testing.T) {
 	st := newServerTester(nil, t, noopHandler)
 	defer st.Close()
 
 	// we set content-length: 1024, but the actual request body is
 	// 3 bytes.
 	res, err := st.http2(requestParam{
-		name:   "TestHTTP2BadRequestCL",
+		name:   "TestH2H1BadRequestCL",
 		method: "POST",
 		header: []hpack.HeaderField{
 			pair("content-length", "1024"),
@@ -133,7 +133,7 @@ func TestHTTP2BadRequestCL(t *testing.T) {
 	}
 }
 
-func TestHTTP2BadResponseCL(t *testing.T) {
+func TestH2H1BadResponseCL(t *testing.T) {
 	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
 		// we set content-length: 1024, but only send 3 bytes.
 		w.Header().Add("Content-Length", "1024")
@@ -142,7 +142,7 @@ func TestHTTP2BadResponseCL(t *testing.T) {
 	defer st.Close()
 
 	res, err := st.http2(requestParam{
-		name: "TestHTTP2BadResponseCL",
+		name: "TestH2H1BadResponseCL",
 	})
 	if err != nil {
 		t.Errorf("Error st.http2() = %v", err)
@@ -154,7 +154,7 @@ func TestHTTP2BadResponseCL(t *testing.T) {
 	}
 }
 
-func TestHTTP2LocationRewrite(t *testing.T) {
+func TestH2H1LocationRewrite(t *testing.T) {
 	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
 		// TODO we cannot get st.ts's port number here.. 8443
 		// is just a place holder.  We ignore it on rewrite.
@@ -163,7 +163,7 @@ func TestHTTP2LocationRewrite(t *testing.T) {
 	defer st.Close()
 
 	res, err := st.http2(requestParam{
-		name: "TestHTTP2LocationRewrite",
+		name: "TestH2H1LocationRewrite",
 	})
 	if err != nil {
 		t.Errorf("Error st.http2() = %v", err)
@@ -175,7 +175,7 @@ func TestHTTP2LocationRewrite(t *testing.T) {
 	}
 }
 
-func TestHTTP2ChunkedRequestBody(t *testing.T) {
+func TestH2H1ChunkedRequestBody(t *testing.T) {
 	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
 		want := "[chunked]"
 		if got := fmt.Sprint(r.TransferEncoding); got != want {
@@ -193,7 +193,7 @@ func TestHTTP2ChunkedRequestBody(t *testing.T) {
 	defer st.Close()
 
 	_, err := st.http2(requestParam{
-		name:   "TestHTTP2ChunkedRequestBody",
+		name:   "TestH2H1ChunkedRequestBody",
 		method: "POST",
 		body:   []byte("foo"),
 	})
@@ -202,12 +202,12 @@ func TestHTTP2ChunkedRequestBody(t *testing.T) {
 	}
 }
 
-func TestHTTP2DuplicateRequestCL(t *testing.T) {
+func TestH2H1DuplicateRequestCL(t *testing.T) {
 	st := newServerTester(nil, t, noopHandler)
 	defer st.Close()
 
 	res, err := st.http2(requestParam{
-		name: "TestHTTP2DuplicateRequestCL",
+		name: "TestH2H1DuplicateRequestCL",
 		header: []hpack.HeaderField{
 			pair("content-length", "1"),
 			pair("content-length", "2"),
@@ -222,12 +222,12 @@ func TestHTTP2DuplicateRequestCL(t *testing.T) {
 	}
 }
 
-func TestHTTP2InvalidRequestCL(t *testing.T) {
+func TestH2H1InvalidRequestCL(t *testing.T) {
 	st := newServerTester(nil, t, noopHandler)
 	defer st.Close()
 
 	res, err := st.http2(requestParam{
-		name: "TestHTTP2InvalidRequestCL",
+		name: "TestH2H1InvalidRequestCL",
 		header: []hpack.HeaderField{
 			pair("content-length", ""),
 		},
@@ -241,7 +241,7 @@ func TestHTTP2InvalidRequestCL(t *testing.T) {
 	}
 }
 
-func TestHTTP2DuplicateResponseCL(t *testing.T) {
+func TestH2H2DuplicateResponseCL(t *testing.T) {
 	st := newServerTester([]string{"--http2-bridge"}, t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("content-length", "1")
 		w.Header().Add("content-length", "2")
@@ -249,7 +249,7 @@ func TestHTTP2DuplicateResponseCL(t *testing.T) {
 	defer st.Close()
 
 	res, err := st.http2(requestParam{
-		name: "TestHTTP2DuplicateResponseCL",
+		name: "TestH2H2DuplicateResponseCL",
 	})
 	if err != nil {
 		t.Errorf("Error st.http2() = %v", err)
@@ -260,14 +260,14 @@ func TestHTTP2DuplicateResponseCL(t *testing.T) {
 	}
 }
 
-func TestHTTP2InvalidResponseCL(t *testing.T) {
+func TestH2H2InvalidResponseCL(t *testing.T) {
 	st := newServerTester([]string{"--http2-bridge"}, t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("content-length", "")
 	})
 	defer st.Close()
 
 	res, err := st.http2(requestParam{
-		name: "TestHTTP2InvalidResponseCL",
+		name: "TestH2H2InvalidResponseCL",
 	})
 	if err != nil {
 		t.Errorf("Error st.http2() = %v", err)
