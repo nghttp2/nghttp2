@@ -111,8 +111,6 @@ func (st *serverTester) Close() {
 	if st.ts != nil {
 		st.ts.Close()
 	}
-	close(st.frCh)
-	close(st.errCh)
 }
 
 func (st *serverTester) readFrame() (http2.Frame, error) {
@@ -125,14 +123,12 @@ func (st *serverTester) readFrame() (http2.Frame, error) {
 		st.frCh <- f
 	}()
 
-	t := time.NewTimer(2 * time.Second)
-	defer t.Stop()
 	select {
 	case f := <-st.frCh:
 		return f, nil
 	case err := <-st.errCh:
 		return nil, err
-	case <-t.C:
+	case <-time.After(2 * time.Second):
 		return nil, errors.New("timeout waiting for frame")
 	}
 }
