@@ -172,6 +172,29 @@ The generated documents will not be installed with ``make install``.
 The online documentation is available at
 https://nghttp2.org/documentation/
 
+Unit tests
+----------
+
+Unit tests are done by simply running `make check`.
+
+Integration tests
+-----------------
+
+We have the integration tests for nghttpx proxy server.  The tests are
+written in `Go programming language <http://golang.org/>`_ and uses
+its testing framework.  We depends on the following libraries:
+
+* https://github.com/bradfitz/http2
+* https://github.com/tatsuhiro-t/go-nghttp2
+
+To run the tests, enter ``integration-tests`` directory and run::
+
+    $ sh setenv go test
+
+``setenv`` will set necessary environment variables to compile
+go-nghttp2 library (which uses cgo to interface nghttp2).  In side the
+tests, we use port 3009 to run test subject server.
+
 Client, Server and Proxy programs
 ---------------------------------
 

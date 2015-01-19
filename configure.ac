@@ -652,6 +652,7 @@ AC_CONFIG_FILES([
   python/Makefile
   python/setup.py
   integration-tests/config.go
+  integration-tests/setenv
   doc/Makefile
   doc/conf.py
   doc/index.rst

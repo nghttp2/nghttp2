@@ -240,3 +240,40 @@ func TestHTTP2InvalidRequestCL(t *testing.T) {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 }
+
+func TestHTTP2DuplicateResponseCL(t *testing.T) {
+	st := newServerTester([]string{"--http2-bridge"}, t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("content-length", "1")
+		w.Header().Add("content-length", "2")
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestHTTP2DuplicateResponseCL",
+	})
+	if err != nil {
+		t.Errorf("Error st.http2() = %v", err)
+	}
+	want := 502
+	if got := res.status; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+}
+
+func TestHTTP2InvalidResponseCL(t *testing.T) {
+	st := newServerTester([]string{"--http2-bridge"}, t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("content-length", "")
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestHTTP2InvalidResponseCL",
+	})
+	if err != nil {
+		t.Errorf("Error st.http2() = %v", err)
+	}
+	want := 502
+	if got := res.status; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+}

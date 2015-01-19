@@ -1,0 +1,6 @@
+#!/bin/sh -e
+
+export CGO_CFLAGS="-I@abs_top_srcdir@/lib/includes -I@abs_top_builddir@/lib/includes"
+export CGO_LDFLAGS="-L@abs_top_builddir@/lib/.libs"
+export LD_LIBRARY_PATH="@abs_top_builddir@/lib/.libs"
+"$@"

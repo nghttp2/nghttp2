@@ -2,10 +2,12 @@ package nghttp2
 
 import (
 	"bytes"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"github.com/bradfitz/http2"
 	"github.com/bradfitz/http2/hpack"
+	"github.com/tatsuhiro-t/go-nghttp2"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -48,8 +50,27 @@ type serverTester struct {
 }
 
 func newServerTester(args []string, t *testing.T, handler http.HandlerFunc) *serverTester {
-	ts := httptest.NewServer(handler)
+	ts := httptest.NewUnstartedServer(handler)
 
+	backendTLS := false
+	for _, k := range args {
+		if k == "--http2-bridge" {
+			backendTLS = true
+			break
+		}
+	}
+	if backendTLS {
+		nghttp2.ConfigureServer(ts.Config, &nghttp2.Server{})
+		// According to httptest/server.go, we have to set
+		// NextProtos separately for ts.TLS.  NextProtos set
+		// in nghttp2.ConfigureServer is effectively ignored.
+		ts.TLS = new(tls.Config)
+		ts.TLS.NextProtos = append(ts.TLS.NextProtos, "h2-14")
+		ts.StartTLS()
+		args = append(args, "-k")
+	} else {
+		ts.Start()
+	}
 	u, err := url.Parse(ts.URL)
 	if err != nil {
 		t.Fatalf("Error parsing URL from httptest.Server: %v", err)
