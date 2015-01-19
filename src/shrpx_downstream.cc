@@ -767,11 +767,14 @@ void Downstream::inspect_http1_response() {
     chunked_response_ = true;
   }
 
-  idx = response_hdidx_[http2::HD_CONTENT_LENGTH];
-  if (idx != -1) {
-    auto len = util::parse_uint(response_headers_[idx].value);
-    if (len != -1) {
-      response_content_length_ = len;
+  // examine Content-Length only when Transfer-Encoding is missing
+  if (idx == -1) {
+    idx = response_hdidx_[http2::HD_CONTENT_LENGTH];
+    if (idx != -1) {
+      auto len = util::parse_uint(response_headers_[idx].value);
+      if (len != -1) {
+        response_content_length_ = len;
+      }
     }
   }
 }
