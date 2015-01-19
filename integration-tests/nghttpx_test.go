@@ -3,6 +3,7 @@ package nghttp2
 import (
 	"fmt"
 	"github.com/bradfitz/http2"
+	"github.com/bradfitz/http2/hpack"
 	"net/http"
 	"testing"
 )
@@ -54,8 +55,8 @@ func TestAddXff2(t *testing.T) {
 
 	_, err := st.http2(requestParam{
 		name: "TestAddXff2",
-		header: http.Header{
-			"x-forwarded-for": []string{"host"},
+		header: []hpack.HeaderField{
+			pair("x-forwarded-for", "host"),
 		},
 	})
 	if err != nil {
@@ -73,8 +74,8 @@ func TestStripXff(t *testing.T) {
 
 	_, err := st.http2(requestParam{
 		name: "TestStripXff1",
-		header: http.Header{
-			"x-forwarded-for": []string{"host"},
+		header: []hpack.HeaderField{
+			pair("x-forwarded-for", "host"),
 		},
 	})
 	if err != nil {
@@ -98,8 +99,8 @@ func TestStripAddXff(t *testing.T) {
 
 	_, err := st.http2(requestParam{
 		name: "TestStripAddXff",
-		header: http.Header{
-			"x-forwarded-for": []string{"host"},
+		header: []hpack.HeaderField{
+			pair("x-forwarded-for", "host"),
 		},
 	})
 	if err != nil {
@@ -116,8 +117,8 @@ func TestHTTP2BadRequestCL(t *testing.T) {
 	res, err := st.http2(requestParam{
 		name:   "TestHTTP2BadRequestCL",
 		method: "POST",
-		header: http.Header{
-			"content-length": []string{"1024"},
+		header: []hpack.HeaderField{
+			pair("content-length", "1024"),
 		},
 		body: []byte("foo"),
 	})

@@ -134,15 +134,14 @@ func (st *serverTester) readFrame() (http2.Frame, error) {
 }
 
 type requestParam struct {
-	name string // name for this request to identify the request
-	// in log easily
-	streamID  uint32      // stream ID, automatically assigned if 0
-	method    string      // method, defaults to GET
-	scheme    string      // scheme, defaults to http
-	authority string      // authority, defaults to backend server address
-	path      string      // path, defaults to /
-	header    http.Header // additional request header fields
-	body      []byte      // request body
+	name      string              // name for this request to identify the request in log easily
+	streamID  uint32              // stream ID, automatically assigned if 0
+	method    string              // method, defaults to GET
+	scheme    string              // scheme, defaults to http
+	authority string              // authority, defaults to backend server address
+	path      string              // path, defaults to /
+	header    []hpack.HeaderField // additional request header fields
+	body      []byte              // request body
 }
 
 func (st *serverTester) http2(rp requestParam) (*serverResponse, error) {
@@ -195,10 +194,8 @@ func (st *serverTester) http2(rp requestParam) (*serverResponse, error) {
 
 	_ = st.enc.WriteField(pair("test-case", rp.name))
 
-	for k, v := range rp.header {
-		for _, h := range v {
-			_ = st.enc.WriteField(pair(strings.ToLower(k), h))
-		}
+	for _, h := range rp.header {
+		_ = st.enc.WriteField(pair(strings.ToLower(h.Name), h.Value))
 	}
 
 	err := st.fr.WriteHeaders(http2.HeadersFrameParam{
