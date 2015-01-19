@@ -172,7 +172,10 @@ public:
     STREAM_CLOSED,
     CONNECT_FAIL,
     IDLE,
-    MSG_RESET
+    MSG_RESET,
+    // header contains invalid header field.  We can safely send error
+    // response (502) to a client.
+    MSG_BAD_HEADER,
   };
   void set_request_state(int state);
   int get_request_state() const;
@@ -223,6 +226,7 @@ public:
   int64_t get_response_bodylen() const;
   void add_response_sent_bodylen(size_t amount);
   int64_t get_response_sent_bodylen() const;
+  int64_t get_response_content_length() const;
   void set_response_content_length(int64_t len);
   // Validates that received response body length and content-length
   // matches.

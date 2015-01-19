@@ -823,6 +823,13 @@ int Http2Upstream::downstream_read(DownstreamConnection *dconn) {
     downstream->pop_downstream_connection();
     // dconn was deleted
     dconn = nullptr;
+  } else if (downstream->get_response_state() == Downstream::MSG_BAD_HEADER) {
+    if (error_reply(downstream, 502) != 0) {
+      return -1;
+    }
+    downstream->pop_downstream_connection();
+    // dconn was deleted
+    dconn = nullptr;
   } else {
     auto rv = downstream->on_read();
     if (rv == DownstreamConnection::ERR_EOF) {

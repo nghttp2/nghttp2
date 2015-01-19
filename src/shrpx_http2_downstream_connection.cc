@@ -139,6 +139,7 @@ int Http2DownstreamConnection::submit_rst_stream(Downstream *downstream,
       downstream->get_downstream_stream_id() != -1) {
     switch (downstream->get_response_state()) {
     case Downstream::MSG_RESET:
+    case Downstream::MSG_BAD_HEADER:
     case Downstream::MSG_COMPLETE:
       break;
     default:

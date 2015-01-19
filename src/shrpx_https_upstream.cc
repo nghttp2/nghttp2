@@ -460,6 +460,14 @@ int HttpsUpstream::downstream_read(DownstreamConnection *dconn) {
     return -1;
   }
 
+  if (downstream->get_response_state() == Downstream::MSG_BAD_HEADER) {
+    if (error_reply(502) != 0) {
+      return -1;
+    }
+    downstream->pop_downstream_connection();
+    goto end;
+  }
+
   if (rv == DownstreamConnection::ERR_EOF) {
     return downstream_eof(dconn);
   }
@@ -472,6 +480,7 @@ int HttpsUpstream::downstream_read(DownstreamConnection *dconn) {
     return -1;
   }
 
+end:
   handler_->signal_write();
 
   return 0;

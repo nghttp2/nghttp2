@@ -654,10 +654,15 @@ int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
         downstream->get_upstream()->on_downstream_body_complete(downstream);
         downstream->set_response_state(Downstream::MSG_COMPLETE);
       } else if (error_code == NGHTTP2_NO_ERROR) {
-        if (downstream->get_response_state() != Downstream::MSG_COMPLETE) {
+        switch (downstream->get_response_state()) {
+        case Downstream::MSG_COMPLETE:
+        case Downstream::MSG_BAD_HEADER:
+          break;
+        default:
           downstream->set_response_state(Downstream::MSG_RESET);
         }
-      } else {
+      } else if (downstream->get_response_state() !=
+                 Downstream::MSG_BAD_HEADER) {
         downstream->set_response_state(Downstream::MSG_RESET);
       }
       call_downstream_readcb(http2session, downstream);
@@ -725,6 +730,24 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
     http2session->submit_rst_stream(frame->hd.stream_id,
                                     NGHTTP2_PROTOCOL_ERROR);
     return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+  }
+
+  if (token == http2::HD_CONTENT_LENGTH) {
+    auto len = util::parse_uint(value, valuelen);
+    if (len == -1) {
+      http2session->submit_rst_stream(frame->hd.stream_id,
+                                      NGHTTP2_PROTOCOL_ERROR);
+      downstream->set_response_state(Downstream::MSG_BAD_HEADER);
+      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+    }
+    auto cl = downstream->get_response_content_length();
+    if (cl != -1 && cl != len) {
+      http2session->submit_rst_stream(frame->hd.stream_id,
+                                      NGHTTP2_PROTOCOL_ERROR);
+      downstream->set_response_state(Downstream::MSG_BAD_HEADER);
+      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+    }
+    downstream->set_response_content_length(len);
   }
 
   downstream->add_response_header(name, namelen, value, valuelen,
@@ -817,27 +840,21 @@ int on_response_headers(Http2Session *http2session, Downstream *downstream,
     return 0;
   }
 
-  auto content_length_hd =
-      downstream->get_response_header(http2::HD_CONTENT_LENGTH);
-
-  if (content_length_hd) {
-    auto content_length = util::parse_uint(content_length_hd->value);
-    if (content_length != -1) {
-      downstream->set_response_content_length(content_length);
-    } else if (downstream->expect_response_body()) {
-      // Here we have response body but Content-Length is not known in
-      // advance.
-      if (downstream->get_request_major() <= 0 ||
-          downstream->get_request_minor() <= 0) {
-        // We simply close connection for pre-HTTP/1.1 in this case.
-        downstream->set_response_connection_close(true);
-      } else if (downstream->get_request_method() != "CONNECT") {
-        // Otherwise, use chunked encoding to keep upstream connection
-        // open.  In HTTP2, we are supporsed not to receive
-        // transfer-encoding.
-        downstream->add_response_header("transfer-encoding", "chunked");
-        downstream->set_chunked_response(true);
-      }
+  if (downstream->get_response_content_length() == -1 &&
+      downstream->expect_response_body()) {
+    // Here we have response body but Content-Length is not known in
+    // advance.
+    if (downstream->get_request_major() <= 0 ||
+        (downstream->get_request_major() <= 1 &&
+         downstream->get_request_minor() <= 0)) {
+      // We simply close connection for pre-HTTP/1.1 in this case.
+      downstream->set_response_connection_close(true);
+    } else if (downstream->get_request_method() != "CONNECT") {
+      // Otherwise, use chunked encoding to keep upstream connection
+      // open.  In HTTP2, we are supporsed not to receive
+      // transfer-encoding.
+      downstream->add_response_header("transfer-encoding", "chunked");
+      downstream->set_chunked_response(true);
     }
   }
 

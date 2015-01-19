@@ -664,6 +664,10 @@ int64_t Downstream::get_response_sent_bodylen() const {
   return response_sent_bodylen_;
 }
 
+int64_t Downstream::get_response_content_length() const {
+  return response_content_length_;
+}
+
 void Downstream::set_response_content_length(int64_t len) {
   response_content_length_ = len;
 }
