@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/bradfitz/http2"
 	"github.com/bradfitz/http2/hpack"
+	"io/ioutil"
 	"net/http"
 	"testing"
 )
@@ -171,5 +172,32 @@ func TestHTTP2LocationRewrite(t *testing.T) {
 	want := fmt.Sprintf("http://127.0.0.1:%v/p/q?a=b#fragment", serverPort)
 	if got := res.header.Get("Location"); got != want {
 		t.Errorf("Location: %v; want %v", got, want)
+	}
+}
+
+func TestHTTP2ChunkedRequestBody(t *testing.T) {
+	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
+		want := "[chunked]"
+		if got := fmt.Sprint(r.TransferEncoding); got != want {
+			t.Errorf("Transfer-Encoding: %v; want %v", got, want)
+		}
+		body, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			t.Errorf("Error reading r.body: %v", err)
+		}
+		want = "foo"
+		if got := string(body); got != want {
+			t.Errorf("body: %v; want %v", got, want)
+		}
+	})
+	defer st.Close()
+
+	_, err := st.http2(requestParam{
+		name:   "TestHTTP2ChunkedRequestBody",
+		method: "POST",
+		body:   []byte("foo"),
+	})
+	if err != nil {
+		t.Errorf("Error st.http2() = %v", err)
 	}
 }
