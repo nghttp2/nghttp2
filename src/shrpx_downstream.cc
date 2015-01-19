@@ -668,6 +668,14 @@ void Downstream::set_response_content_length(int64_t len) {
   response_content_length_ = len;
 }
 
+int64_t Downstream::get_request_content_length() const {
+  return request_content_length_;
+}
+
+void Downstream::set_request_content_length(int64_t len) {
+  request_content_length_ = len;
+}
+
 bool Downstream::validate_request_bodylen() const {
   if (request_content_length_ == -1) {
     return true;
@@ -724,14 +732,6 @@ void Downstream::check_upgrade_fulfilled() {
 void Downstream::inspect_http2_request() {
   if (request_method_ == "CONNECT") {
     upgrade_request_ = true;
-  }
-
-  auto idx = request_hdidx_[http2::HD_CONTENT_LENGTH];
-  if (idx != -1) {
-    auto len = util::parse_uint(request_headers_[idx].value);
-    if (len != -1) {
-      request_content_length_ = len;
-    }
   }
 }
 

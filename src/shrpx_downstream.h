@@ -161,6 +161,8 @@ public:
   // Validates that received request body length and content-length
   // matches.
   bool validate_request_bodylen() const;
+  int64_t get_request_content_length() const;
+  void set_request_content_length(int64_t len);
   bool request_pseudo_header_allowed(int token) const;
   bool expect_response_body() const;
   enum {

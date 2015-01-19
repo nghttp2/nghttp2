@@ -201,3 +201,42 @@ func TestHTTP2ChunkedRequestBody(t *testing.T) {
 		t.Errorf("Error st.http2() = %v", err)
 	}
 }
+
+func TestHTTP2DuplicateRequestCL(t *testing.T) {
+	st := newServerTester(nil, t, noopHandler)
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestHTTP2DuplicateRequestCL",
+		header: []hpack.HeaderField{
+			pair("content-length", "1"),
+			pair("content-length", "2"),
+		},
+	})
+	if err != nil {
+		t.Errorf("Error st.http2() = %v", err)
+	}
+	want := 400
+	if got := res.status; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+}
+
+func TestHTTP2InvalidRequestCL(t *testing.T) {
+	st := newServerTester(nil, t, noopHandler)
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestHTTP2InvalidRequestCL",
+		header: []hpack.HeaderField{
+			pair("content-length", ""),
+		},
+	})
+	if err != nil {
+		t.Errorf("Error st.http2() = %v", err)
+	}
+	want := 400
+	if got := res.status; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+}
