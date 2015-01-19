@@ -189,11 +189,9 @@ its testing framework.  We depends on the following libraries:
 
 To run the tests, enter ``integration-tests`` directory and run::
 
-    $ sh setenv go test
+    $ make it
 
-``setenv`` will set necessary environment variables to compile
-go-nghttp2 library (which uses cgo to interface nghttp2).  In side the
-tests, we use port 3009 to run test subject server.
+In side the tests, we use port 3009 to run test subject server.
 
 Client, Server and Proxy programs
 ---------------------------------

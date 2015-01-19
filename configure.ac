@@ -651,6 +651,7 @@ AC_CONFIG_FILES([
   examples/Makefile
   python/Makefile
   python/setup.py
+  integration-tests/Makefile
   integration-tests/config.go
   integration-tests/setenv
   doc/Makefile

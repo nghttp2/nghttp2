@@ -1,6 +1,6 @@
 # nghttp2 - HTTP/2 C Library
 
-# Copyright (c) 2012 Tatsuhiro Tsujikawa
+# Copyright (c) 2015 Tatsuhiro Tsujikawa
 
 # Permission is hereby granted, free of charge, to any person obtaining
 # a copy of this software and associated documentation files (the
@@ -20,24 +20,10 @@
 # LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-SUBDIRS = lib third-party src examples python tests integration-tests \
-	doc contrib
 
-ACLOCAL_AMFLAGS = -I m4
+EXTRA_DIST = \
+	nghttpx_test.go \
+	server_tester.go
 
-dist_doc_DATA = README.rst
-
-EXTRA_DIST = nghttpx.conf.sample proxy.pac.sample android-config android-make \
-	Dockerfile.android
-
-.PHONY: clang-format
-
-# Format source files using clang-format.  Don't format source files
-# under third-party directory since we are not responsible for thier
-# coding style.
-clang-format:
-	CLANGFORMAT=`git config --get clangformat.binary`; \
-	test -z $${CLANGFORMAT} && CLANGFORMAT="clang-format"; \
-	$${CLANGFORMAT} -i lib/*.{c,h} lib/includes/nghttp2/*.h \
-	src/*.{c,cc,h} src/includes/nghttp2/*.h examples/*.{c,cc} \
-	tests/*.{c,h}
+it:
+	sh setenv go test
