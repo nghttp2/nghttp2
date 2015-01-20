@@ -48,13 +48,13 @@ func TestH1H1PlainGETClose(t *testing.T) {
 	}
 }
 
-func TestH1H1DuplicateRequestCL(t *testing.T) {
+func TestH1H1MultipleRequestCL(t *testing.T) {
 	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
 		t.Errorf("server should not forward bad request")
 	})
 	defer st.Close()
 
-	if _, err := io.WriteString(st.conn, fmt.Sprintf("GET / HTTP/1.1\r\nHost: %v\r\nTest-Case: TestH1H1DuplicateRequestCL\r\nContent-Length: 0\r\nContent-Length: 1\r\n\r\n", st.authority)); err != nil {
+	if _, err := io.WriteString(st.conn, fmt.Sprintf("GET / HTTP/1.1\r\nHost: %v\r\nTest-Case: TestH1H1MultipleRequestCL\r\nContent-Length: 0\r\nContent-Length: 1\r\n\r\n", st.authority)); err != nil {
 		t.Fatalf("Error io.WriteString() = %v", err)
 	}
 
@@ -262,14 +262,14 @@ func TestH2H1ChunkedRequestBody(t *testing.T) {
 	}
 }
 
-func TestH2H1DuplicateRequestCL(t *testing.T) {
+func TestH2H1MultipleRequestCL(t *testing.T) {
 	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
 		t.Errorf("server should not forward bad request")
 	})
 	defer st.Close()
 
 	res, err := st.http2(requestParam{
-		name: "TestH2H1DuplicateRequestCL",
+		name: "TestH2H1MultipleRequestCL",
 		header: []hpack.HeaderField{
 			pair("content-length", "1"),
 			pair("content-length", "2"),
@@ -305,7 +305,7 @@ func TestH2H1InvalidRequestCL(t *testing.T) {
 	}
 }
 
-func TestH2H2DuplicateResponseCL(t *testing.T) {
+func TestH2H2MultipleResponseCL(t *testing.T) {
 	st := newServerTester([]string{"--http2-bridge"}, t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("content-length", "1")
 		w.Header().Add("content-length", "2")
@@ -313,7 +313,7 @@ func TestH2H2DuplicateResponseCL(t *testing.T) {
 	defer st.Close()
 
 	res, err := st.http2(requestParam{
-		name: "TestH2H2DuplicateResponseCL",
+		name: "TestH2H2MultipleResponseCL",
 	})
 	if err != nil {
 		t.Errorf("Error st.http2() = %v", err)
