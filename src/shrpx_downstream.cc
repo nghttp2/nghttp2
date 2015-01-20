@@ -286,11 +286,31 @@ const std::string &Downstream::get_assembled_request_cookie() const {
   return assembled_request_cookie_;
 }
 
-void Downstream::index_request_headers() {
-  for (auto &kv : request_headers_) {
+int Downstream::index_request_headers() {
+  for (size_t i = 0; i < request_headers_.size(); ++i) {
+    auto &kv = request_headers_[i];
     util::inp_strlower(kv.name);
+
+    auto token = http2::lookup_token(
+        reinterpret_cast<const uint8_t *>(kv.name.c_str()), kv.name.size());
+    if (token < 0) {
+      continue;
+    }
+
+    http2::index_header(request_hdidx_, token, i);
+
+    if (token == http2::HD_CONTENT_LENGTH) {
+      auto len = util::parse_uint(kv.value);
+      if (len == -1) {
+        return -1;
+      }
+      if (request_content_length_ != -1 && request_content_length_ != len) {
+        return -1;
+      }
+      request_content_length_ = len;
+    }
   }
-  http2::index_headers(request_hdidx_, request_headers_);
+  return 0;
 }
 
 const Headers::value_type *Downstream::get_request_header(int token) const {
@@ -758,9 +778,11 @@ void Downstream::inspect_http1_request() {
     }
   }
   auto idx = request_hdidx_[http2::HD_TRANSFER_ENCODING];
-  if (idx != -1 &&
-      util::strifind(request_headers_[idx].value.c_str(), "chunked")) {
-    chunked_request_ = true;
+  if (idx != -1) {
+    request_content_length_ = -1;
+    if (util::strifind(request_headers_[idx].value.c_str(), "chunked")) {
+      chunked_request_ = true;
+    }
   }
 }
 

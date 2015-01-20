@@ -100,8 +100,10 @@ public:
   Headers crumble_request_cookie();
   void assemble_request_cookie();
   const std::string &get_assembled_request_cookie() const;
-  // Lower the request header field names and indexes request headers
-  void index_request_headers();
+  // Lower the request header field names and indexes request headers.
+  // If there is any invalid headers (e.g., multiple Content-Length
+  // having different values), returns -1.
+  int index_request_headers();
   // Returns pointer to the request header with the name |name|.  If
   // multiple header have |name| as name, return last occurrence from
   // the beginning.  If no such header is found, returns nullptr.

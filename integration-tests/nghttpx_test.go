@@ -1,9 +1,11 @@
 package nghttp2
 
 import (
+	"bufio"
 	"fmt"
 	"github.com/bradfitz/http2"
 	"github.com/bradfitz/http2/hpack"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"testing"
@@ -43,6 +45,27 @@ func TestH1H1PlainGETClose(t *testing.T) {
 	want := 200
 	if got := res.status; got != want {
 		t.Errorf("status = %v; want %v", got, want)
+	}
+}
+
+func TestH1H1DuplicateRequestCL(t *testing.T) {
+	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("server should not forward bad request")
+	})
+	defer st.Close()
+
+	if _, err := io.WriteString(st.conn, fmt.Sprintf("GET / HTTP/1.1\r\nHost: %v\r\nTest-Case: TestH1H1DuplicateRequestCL\r\nContent-Length: 0\r\nContent-Length: 1\r\n\r\n", st.authority)); err != nil {
+		t.Fatalf("Error io.WriteString() = %v", err)
+	}
+
+	resp, err := http.ReadResponse(bufio.NewReader(st.conn), nil)
+	if err != nil {
+		t.Fatalf("Error http.ReadResponse() = %v", err)
+	}
+
+	want := 400
+	if got := resp.StatusCode; got != want {
+		t.Errorf("status: %v; want %v", got, want)
 	}
 }
 

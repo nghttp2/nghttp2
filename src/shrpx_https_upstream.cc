@@ -157,7 +157,9 @@ int htp_hdrs_completecb(http_parser *htp) {
     ULOG(INFO, upstream) << "HTTP request headers\n" << ss.str();
   }
 
-  downstream->index_request_headers();
+  if (downstream->index_request_headers() != 0) {
+    return -1;
+  }
 
   downstream->inspect_http1_request();
 
