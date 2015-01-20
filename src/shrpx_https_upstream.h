@@ -76,7 +76,7 @@ public:
   virtual void on_handler_delete();
   virtual int on_downstream_reset();
 
-  virtual MemchunkPool4K *get_mcpool();
+  virtual MemchunkPool *get_mcpool();
 
   void reset_current_header_length();
   void log_response_headers(const std::string &hdrs) const;
@@ -86,7 +86,7 @@ private:
   http_parser htp_;
   size_t current_header_length_;
   // must be put before downstream_
-  MemchunkPool4K mcpool_;
+  MemchunkPool mcpool_;
   std::unique_ptr<Downstream> downstream_;
   IOControl ioctrl_;
 };

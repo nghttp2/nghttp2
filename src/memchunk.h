@@ -229,9 +229,9 @@ template <typename Memchunk> struct Memchunks {
   size_t len;
 };
 
-using Memchunk4K = Memchunk<4096>;
-using MemchunkPool4K = Pool<Memchunk4K>;
-using Memchunks4K = Memchunks<Memchunk4K>;
+using Memchunk16K = Memchunk<16384>;
+using MemchunkPool = Pool<Memchunk16K>;
+using DefaultMemchunks = Memchunks<Memchunk16K>;
 
 } // namespace nghttp2
 

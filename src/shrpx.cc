@@ -748,7 +748,7 @@ void fill_default_config() {
   mod_config()->auto_tls_ticket_key = true;
   mod_config()->tls_ctx_per_worker = false;
   mod_config()->downstream_request_buffer_size = 16 * 1024;
-  mod_config()->downstream_response_buffer_size = 64 * 1024;
+  mod_config()->downstream_response_buffer_size = 16 * 1024;
 }
 } // namespace
 

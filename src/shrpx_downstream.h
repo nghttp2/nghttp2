@@ -181,7 +181,7 @@ public:
   };
   void set_request_state(int state);
   int get_request_state() const;
-  Memchunks4K *get_request_buf();
+  DefaultMemchunks *get_request_buf();
   // downstream response API
   const Headers &get_response_headers() const;
   // Lower the response header field names and indexes response
@@ -224,7 +224,7 @@ public:
   void set_response_connection_close(bool f);
   void set_response_state(int state);
   int get_response_state() const;
-  Memchunks4K *get_response_buf();
+  DefaultMemchunks *get_response_buf();
   bool response_buf_full();
   void add_response_bodylen(size_t amount);
   int64_t get_response_bodylen() const;
@@ -305,8 +305,8 @@ private:
   std::chrono::high_resolution_clock::time_point request_start_time_;
   std::string assembled_request_cookie_;
 
-  Memchunks4K request_buf_;
-  Memchunks4K response_buf_;
+  DefaultMemchunks request_buf_;
+  DefaultMemchunks response_buf_;
 
   ev_timer upstream_rtimer_;
   ev_timer upstream_wtimer_;

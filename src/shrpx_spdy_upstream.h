@@ -77,7 +77,7 @@ public:
   virtual void on_handler_delete();
   virtual int on_downstream_reset();
 
-  virtual MemchunkPool4K *get_mcpool();
+  virtual MemchunkPool *get_mcpool();
 
   bool get_flow_control() const;
 
@@ -88,7 +88,7 @@ public:
 
 private:
   // must be put before downstream_queue_
-  MemchunkPool4K mcpool_;
+  MemchunkPool mcpool_;
   DownstreamQueue downstream_queue_;
   ClientHandler *handler_;
   spdylay_session *session_;

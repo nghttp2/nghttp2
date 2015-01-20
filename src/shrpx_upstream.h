@@ -65,7 +65,7 @@ public:
   virtual int resume_read(IOCtrlReason reason, Downstream *downstream,
                           size_t consumed) = 0;
 
-  virtual MemchunkPool4K *get_mcpool() = 0;
+  virtual MemchunkPool *get_mcpool() = 0;
 };
 
 } // namespace shrpx

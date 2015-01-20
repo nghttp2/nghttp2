@@ -1060,6 +1060,6 @@ int SpdyUpstream::on_downstream_reset() {
   return 0;
 }
 
-MemchunkPool4K *SpdyUpstream::get_mcpool() { return &mcpool_; }
+MemchunkPool *SpdyUpstream::get_mcpool() { return &mcpool_; }
 
 } // namespace shrpx

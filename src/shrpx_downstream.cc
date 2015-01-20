@@ -477,7 +477,7 @@ bool Downstream::request_buf_full() {
   }
 }
 
-Memchunks4K *Downstream::get_request_buf() { return &request_buf_; }
+DefaultMemchunks *Downstream::get_request_buf() { return &request_buf_; }
 
 // Call this function after this object is attached to
 // Downstream. Otherwise, the program will crash.
@@ -664,7 +664,7 @@ void Downstream::set_response_state(int state) { response_state_ = state; }
 
 int Downstream::get_response_state() const { return response_state_; }
 
-Memchunks4K *Downstream::get_response_buf() { return &response_buf_; }
+DefaultMemchunks *Downstream::get_response_buf() { return &response_buf_; }
 
 bool Downstream::response_buf_full() {
   if (dconn_) {

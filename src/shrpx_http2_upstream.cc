@@ -1375,6 +1375,6 @@ int Http2Upstream::on_downstream_reset() {
   return 0;
 }
 
-MemchunkPool4K *Http2Upstream::get_mcpool() { return &mcpool_; }
+MemchunkPool *Http2Upstream::get_mcpool() { return &mcpool_; }
 
 } // namespace shrpx
