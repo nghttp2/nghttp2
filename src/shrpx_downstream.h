@@ -184,8 +184,10 @@ public:
   Memchunks4K *get_request_buf();
   // downstream response API
   const Headers &get_response_headers() const;
-  // Lower the response header field names and indexes response headers
-  void index_response_headers();
+  // Lower the response header field names and indexes response
+  // headers.  If there are invalid headers (e.g., multiple
+  // Content-Length with different values), returns -1.
+  int index_response_headers();
   // Returns pointer to the response header with the name |name|.  If
   // multiple header have |name| as name, return last occurrence from
   // the beginning.  If no such header is found, returns nullptr.

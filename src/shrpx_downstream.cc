@@ -286,9 +286,10 @@ const std::string &Downstream::get_assembled_request_cookie() const {
   return assembled_request_cookie_;
 }
 
-int Downstream::index_request_headers() {
-  for (size_t i = 0; i < request_headers_.size(); ++i) {
-    auto &kv = request_headers_[i];
+namespace {
+int index_headers(int *hdidx, Headers &headers, int64_t &content_length) {
+  for (size_t i = 0; i < headers.size(); ++i) {
+    auto &kv = headers[i];
     util::inp_strlower(kv.name);
 
     auto token = http2::lookup_token(
@@ -297,20 +298,26 @@ int Downstream::index_request_headers() {
       continue;
     }
 
-    http2::index_header(request_hdidx_, token, i);
+    http2::index_header(hdidx, token, i);
 
     if (token == http2::HD_CONTENT_LENGTH) {
       auto len = util::parse_uint(kv.value);
       if (len == -1) {
         return -1;
       }
-      if (request_content_length_ != -1 && request_content_length_ != len) {
+      if (content_length != -1 && content_length != len) {
         return -1;
       }
-      request_content_length_ = len;
+      content_length = len;
     }
   }
   return 0;
+}
+} // namespace
+
+int Downstream::index_request_headers() {
+  return index_headers(request_hdidx_, request_headers_,
+                       request_content_length_);
 }
 
 const Headers::value_type *Downstream::get_request_header(int token) const {
@@ -511,11 +518,9 @@ const Headers &Downstream::get_response_headers() const {
   return response_headers_;
 }
 
-void Downstream::index_response_headers() {
-  for (auto &kv : response_headers_) {
-    util::inp_strlower(kv.name);
-  }
-  http2::index_headers(response_hdidx_, response_headers_);
+int Downstream::index_response_headers() {
+  return index_headers(response_hdidx_, response_headers_,
+                       response_content_length_);
 }
 
 const Headers::value_type *Downstream::get_response_header(int token) const {
@@ -788,19 +793,10 @@ void Downstream::inspect_http1_request() {
 
 void Downstream::inspect_http1_response() {
   auto idx = response_hdidx_[http2::HD_TRANSFER_ENCODING];
-  if (idx != -1 &&
-      util::strifind(response_headers_[idx].value.c_str(), "chunked")) {
-    chunked_response_ = true;
-  }
-
-  // examine Content-Length only when Transfer-Encoding is missing
-  if (idx == -1) {
-    idx = response_hdidx_[http2::HD_CONTENT_LENGTH];
-    if (idx != -1) {
-      auto len = util::parse_uint(response_headers_[idx].value);
-      if (len != -1) {
-        response_content_length_ = len;
-      }
+  if (idx != -1) {
+    response_content_length_ = -1;
+    if (util::strifind(response_headers_[idx].value.c_str(), "chunked")) {
+      chunked_response_ = true;
     }
   }
 }

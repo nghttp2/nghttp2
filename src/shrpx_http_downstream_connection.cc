@@ -469,7 +469,10 @@ int htp_hdrs_completecb(http_parser *htp) {
   downstream->set_response_major(htp->http_major);
   downstream->set_response_minor(htp->http_minor);
 
-  downstream->index_response_headers();
+  if (downstream->index_response_headers() != 0) {
+    downstream->set_response_state(Downstream::MSG_BAD_HEADER);
+    return -1;
+  }
 
   if (downstream->get_non_final_response()) {
     // For non-final response code, we just call
