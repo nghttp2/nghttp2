@@ -240,7 +240,9 @@ func TestH2H1ChunkedRequestBody(t *testing.T) {
 }
 
 func TestH2H1DuplicateRequestCL(t *testing.T) {
-	st := newServerTester(nil, t, noopHandler)
+	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("server should not forward bad request")
+	})
 	defer st.Close()
 
 	res, err := st.http2(requestParam{
@@ -260,7 +262,9 @@ func TestH2H1DuplicateRequestCL(t *testing.T) {
 }
 
 func TestH2H1InvalidRequestCL(t *testing.T) {
-	st := newServerTester(nil, t, noopHandler)
+	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("server should not forward bad request")
+	})
 	defer st.Close()
 
 	res, err := st.http2(requestParam{
