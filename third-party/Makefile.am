@@ -27,5 +27,3 @@ noinst_LTLIBRARIES = libhttp-parser.la
 libhttp_parser_la_SOURCES = \
 	http-parser/http_parser.c \
 	http-parser/http_parser.h
-
-it-local: all

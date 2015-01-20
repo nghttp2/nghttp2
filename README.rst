@@ -189,7 +189,7 @@ its testing framework.  We depends on the following libraries:
 * https://golang.org/x/net/spdy
 
 To run the tests, after installing above packages and their
-dependencies, run::
+dependencies, enter ``integration-tests`` directory and run::
 
     $ make it
 

@@ -49,7 +49,9 @@ AC_CANONICAL_TARGET
 AC_CONFIG_MACRO_DIR([m4])
 
 AM_INIT_AUTOMAKE([subdir-objects])
-AM_EXTRA_RECURSIVE_TARGETS([it])
+# comment out for now since this requires automake 1.13 or higher and
+# travis has older one.
+# AM_EXTRA_RECURSIVE_TARGETS([it])
 
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
