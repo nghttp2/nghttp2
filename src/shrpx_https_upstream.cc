@@ -506,6 +506,11 @@ int HttpsUpstream::downstream_eof(DownstreamConnection *dconn) {
   if (LOG_ENABLED(INFO)) {
     DCLOG(INFO, dconn) << "EOF";
   }
+
+  if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+    goto end;
+  }
+
   if (downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
     // Server may indicate the end of the request by EOF
     if (LOG_ENABLED(INFO)) {
@@ -518,10 +523,11 @@ int HttpsUpstream::downstream_eof(DownstreamConnection *dconn) {
     goto end;
   }
 
-  if (downstream->get_response_state() != Downstream::MSG_COMPLETE) {
-    // error
+  if (downstream->get_response_state() == Downstream::INITIAL) {
+    // we did not send any response headers, so we can reply error
+    // message.
     if (LOG_ENABLED(INFO)) {
-      DCLOG(INFO, dconn) << "Treated as error";
+      DCLOG(INFO, dconn) << "Return error reply";
     }
     if (error_reply(502) != 0) {
       return -1;

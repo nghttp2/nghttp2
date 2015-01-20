@@ -9,6 +9,43 @@ import (
 	"testing"
 )
 
+func TestH1H1PlainGET(t *testing.T) {
+	st := newServerTester(nil, t, noopHandler)
+	defer st.Close()
+
+	res, err := st.http1(requestParam{
+		name: "TestH1H1PlainGET",
+	})
+	if err != nil {
+		t.Errorf("Error st.http1() = %v", err)
+	}
+
+	want := 200
+	if got := res.status; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+}
+
+func TestH1H1PlainGETClose(t *testing.T) {
+	st := newServerTester(nil, t, noopHandler)
+	defer st.Close()
+
+	res, err := st.http1(requestParam{
+		name: "TestH1H1PlainGET",
+		header: []hpack.HeaderField{
+			pair("Connection", "close"),
+		},
+	})
+	if err != nil {
+		t.Fatalf("Error st.http1() = %v", err)
+	}
+
+	want := 200
+	if got := res.status; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+}
+
 func TestH2H1PlainGET(t *testing.T) {
 	st := newServerTester(nil, t, noopHandler)
 	defer st.Close()

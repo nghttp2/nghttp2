@@ -1,6 +1,7 @@
 package nghttp2
 
 import (
+	"bufio"
 	"bytes"
 	"crypto/tls"
 	"errors"
@@ -8,6 +9,8 @@ import (
 	"github.com/bradfitz/http2"
 	"github.com/bradfitz/http2/hpack"
 	"github.com/tatsuhiro-t/go-nghttp2"
+	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -34,6 +37,7 @@ func pair(name, value string) hpack.HeaderField {
 type serverTester struct {
 	args          []string  // command-line arguments
 	cmd           *exec.Cmd // test frontend server process, which is test subject
+	url           string    // test frontend server URL
 	t             *testing.T
 	ts            *httptest.Server // backend server
 	conn          net.Conn         // connection to frontend server
@@ -87,6 +91,7 @@ func newServerTester(args []string, t *testing.T, handler http.HandlerFunc) *ser
 		cmd:          exec.Command(serverBin, args...),
 		t:            t,
 		ts:           ts,
+		url:          fmt.Sprintf("http://127.0.0.1:%v", serverPort),
 		nextStreamID: 1,
 		authority:    u.Host,
 		frCh:         make(chan http2.Frame),
@@ -163,6 +168,47 @@ type requestParam struct {
 	path      string              // path, defaults to /
 	header    []hpack.HeaderField // additional request header fields
 	body      []byte              // request body
+}
+
+func (st *serverTester) http1(rp requestParam) (*serverResponse, error) {
+	method := "GET"
+	if rp.method != "" {
+		method = rp.method
+	}
+
+	var body io.Reader
+	if rp.body != nil {
+		body = bytes.NewBuffer(rp.body)
+	}
+	req, err := http.NewRequest(method, st.url, body)
+	if err != nil {
+		return nil, err
+	}
+	for _, h := range rp.header {
+		req.Header.Add(h.Name, h.Value)
+	}
+	req.Header.Add("Test-Case", rp.name)
+
+	if err := req.Write(st.conn); err != nil {
+		return nil, err
+	}
+	resp, err := http.ReadResponse(bufio.NewReader(st.conn), req)
+	if err != nil {
+		return nil, err
+	}
+	respBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	resp.Body.Close()
+
+	res := &serverResponse{
+		status: resp.StatusCode,
+		header: resp.Header,
+		body:   respBody,
+	}
+
+	return res, nil
 }
 
 func (st *serverTester) http2(rp requestParam) (*serverResponse, error) {
