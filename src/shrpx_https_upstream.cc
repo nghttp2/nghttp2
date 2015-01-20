@@ -560,6 +560,8 @@ int HttpsUpstream::downstream_error(DownstreamConnection *dconn, int events) {
     return -1;
   }
 
+  handler_->set_should_close_after_write(true);
+
   unsigned int status;
   if (events & Downstream::EVENT_TIMEOUT) {
     status = 504;

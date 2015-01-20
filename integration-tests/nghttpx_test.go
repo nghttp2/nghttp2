@@ -69,6 +69,25 @@ func TestH1H1MultipleRequestCL(t *testing.T) {
 	}
 }
 
+func TestH1H1ConnectFailure(t *testing.T) {
+	st := newServerTester(nil, t, noopHandler)
+	defer st.Close()
+
+	// shutdown backend server to simulate backend connect failure
+	st.ts.Close()
+
+	res, err := st.http1(requestParam{
+		name: "TestH1H1ConnectFailure",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+	want := 502
+	if got := res.status; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+}
+
 func TestH2H1PlainGET(t *testing.T) {
 	st := newServerTester(nil, t, noopHandler)
 	defer st.Close()
@@ -300,6 +319,25 @@ func TestH2H1InvalidRequestCL(t *testing.T) {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
 	want := 400
+	if got := res.status; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+}
+
+func TestH2H1ConnectFailure(t *testing.T) {
+	st := newServerTester(nil, t, noopHandler)
+	defer st.Close()
+
+	// shutdown backend server to simulate backend connect failure
+	st.ts.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1ConnectFailure",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+	want := 502
 	if got := res.status; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}

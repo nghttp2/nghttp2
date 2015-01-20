@@ -95,7 +95,9 @@ void connectcb(struct ev_loop *loop, ev_io *w, int revents) {
   auto upstream = downstream->get_upstream();
   auto handler = upstream->get_client_handler();
   if (dconn->on_connect() != 0) {
-    delete handler;
+    if (upstream->downstream_error(dconn, Downstream::EVENT_ERROR) != 0) {
+      delete handler;
+    }
     return;
   }
   writecb(loop, w, revents);
@@ -747,6 +749,9 @@ end:
 
 int HttpDownstreamConnection::on_connect() {
   if (!util::check_socket_connected(fd_)) {
+    if (LOG_ENABLED(INFO)) {
+      DLOG(INFO, this) << "downstream connect failed";
+    }
     return -1;
   }
 
