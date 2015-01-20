@@ -198,3 +198,5 @@ libnghttp2_asio_la_LDFLAGS = \
 libnghttp2_asio_la_LIBADD = $(top_builddir)/lib/libnghttp2.la
 
 endif # ENABLE_ASIO_LIB
+
+it-local: all

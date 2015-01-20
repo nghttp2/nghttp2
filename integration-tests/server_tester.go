@@ -102,7 +102,7 @@ func newServerTester(args []string, t *testing.T, handler http.HandlerFunc) *ser
 		conn, err := net.Dial("tcp", fmt.Sprintf("127.0.0.1:%v", serverPort))
 		if err != nil {
 			retry += 1
-			if retry >= 10 {
+			if retry >= 100 {
 				st.t.Fatalf("Error server is not responding too long; server command-line arguments may be invalid")
 			}
 			time.Sleep(150 * time.Millisecond)

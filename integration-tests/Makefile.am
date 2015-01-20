@@ -25,5 +25,5 @@ EXTRA_DIST = \
 	nghttpx_test.go \
 	server_tester.go
 
-it:
-	sh setenv go test
+it-local:
+	sh setenv go test -v
