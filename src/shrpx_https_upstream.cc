@@ -463,6 +463,7 @@ int HttpsUpstream::downstream_read(DownstreamConnection *dconn) {
   }
 
   if (downstream->get_response_state() == Downstream::MSG_BAD_HEADER) {
+    handler_->set_should_close_after_write(true);
     if (error_reply(502) != 0) {
       return -1;
     }
@@ -531,6 +532,7 @@ int HttpsUpstream::downstream_eof(DownstreamConnection *dconn) {
     if (LOG_ENABLED(INFO)) {
       DCLOG(INFO, dconn) << "Return error reply";
     }
+    handler_->set_should_close_after_write(true);
     if (error_reply(502) != 0) {
       return -1;
     }
@@ -801,6 +803,7 @@ int HttpsUpstream::on_downstream_body_complete(Downstream *downstream) {
 
 int HttpsUpstream::on_downstream_abort_request(Downstream *downstream,
                                                unsigned int status_code) {
+  handler_->set_should_close_after_write(true);
   return error_reply(status_code);
 }
 
