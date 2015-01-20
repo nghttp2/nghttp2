@@ -31,7 +31,7 @@ func TestH1H1PlainGETClose(t *testing.T) {
 	defer st.Close()
 
 	res, err := st.http1(requestParam{
-		name: "TestH1H1PlainGET",
+		name: "TestH1H1PlainGETClose",
 		header: []hpack.HeaderField{
 			pair("Connection", "close"),
 		},
@@ -51,7 +51,7 @@ func TestH2H1PlainGET(t *testing.T) {
 	defer st.Close()
 
 	res, err := st.http2(requestParam{
-		name: "TestH2H1PlainGet",
+		name: "TestH2H1PlainGET",
 	})
 	if err != nil {
 		t.Errorf("Error st.http2() = %v", err)
