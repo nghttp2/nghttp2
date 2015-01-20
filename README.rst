@@ -186,8 +186,10 @@ its testing framework.  We depends on the following libraries:
 
 * https://github.com/bradfitz/http2
 * https://github.com/tatsuhiro-t/go-nghttp2
+* https://golang.org/x/net/spdy
 
-To run the tests, enter ``integration-tests`` directory and run::
+To run the tests, after installing above packages and their
+dependencies, run::
 
     $ make it
 
