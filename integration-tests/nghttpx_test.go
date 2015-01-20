@@ -54,7 +54,13 @@ func TestH1H1MultipleRequestCL(t *testing.T) {
 	})
 	defer st.Close()
 
-	if _, err := io.WriteString(st.conn, fmt.Sprintf("GET / HTTP/1.1\r\nHost: %v\r\nTest-Case: TestH1H1MultipleRequestCL\r\nContent-Length: 0\r\nContent-Length: 1\r\n\r\n", st.authority)); err != nil {
+	if _, err := io.WriteString(st.conn, fmt.Sprintf(`GET / HTTP/1.1
+Host: %v
+Test-Case: TestH1H1MultipleRequestCL
+Content-Length: 0
+Content-Length: 1
+
+`, st.authority)); err != nil {
 		t.Fatalf("Error io.WriteString() = %v", err)
 	}
 
