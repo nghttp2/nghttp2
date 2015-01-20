@@ -1006,7 +1006,8 @@ ssize_t downstream_data_read_callback(nghttp2_session *session,
 
   auto dconn = downstream->get_downstream_connection();
 
-  if (body->rleft() == 0 && dconn) {
+  if (body->rleft() == 0 && dconn &&
+      downstream->get_response_state() != Downstream::MSG_COMPLETE) {
     // Try to read more if buffer is empty.  This will help small
     // buffer and make priority handling a bit better.
     if (upstream->downstream_read(dconn) != 0) {

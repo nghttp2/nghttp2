@@ -391,7 +391,14 @@ int HttpsUpstream::on_write() {
   if (!downstream) {
     return 0;
   }
+  auto dconn = downstream->get_downstream_connection();
   auto wb = handler_->get_wb();
+  if (wb->rleft() == 0 && dconn &&
+      downstream->get_response_state() != Downstream::MSG_COMPLETE) {
+    if (downstream_read(dconn) != 0) {
+      return -1;
+    }
+  }
   struct iovec iov[2];
   auto iovcnt = wb->wiovec(iov);
   if (iovcnt == 0) {

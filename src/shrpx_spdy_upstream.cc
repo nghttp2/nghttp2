@@ -704,6 +704,17 @@ ssize_t spdy_data_read_callback(spdylay_session *session, int32_t stream_id,
   auto body = downstream->get_response_buf();
   assert(body);
 
+  auto dconn = downstream->get_downstream_connection();
+
+  if (body->rleft() == 0 && dconn &&
+      downstream->get_response_state() != Downstream::MSG_COMPLETE) {
+    // Try to read more if buffer is empty.  This will help small
+    // buffer and make priority handling a bit better.
+    if (upstream->downstream_read(dconn) != 0) {
+      return SPDYLAY_ERR_CALLBACK_FAILURE;
+    }
+  }
+
   auto nread = body->remove(buf, length);
   auto body_empty = body->rleft() == 0;
 
