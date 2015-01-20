@@ -19,7 +19,7 @@ func TestH1H1PlainGET(t *testing.T) {
 		name: "TestH1H1PlainGET",
 	})
 	if err != nil {
-		t.Errorf("Error st.http1() = %v", err)
+		t.Fatalf("Error st.http1() = %v", err)
 	}
 
 	want := 200
@@ -77,7 +77,7 @@ func TestH2H1PlainGET(t *testing.T) {
 		name: "TestH2H1PlainGET",
 	})
 	if err != nil {
-		t.Errorf("Error st.http2() = %v", err)
+		t.Fatalf("Error st.http2() = %v", err)
 	}
 
 	want := 200
@@ -100,7 +100,7 @@ func TestH2H1AddXff(t *testing.T) {
 		name: "TestH2H1AddXff",
 	})
 	if err != nil {
-		t.Errorf("Error st.http2() = %v", err)
+		t.Fatalf("Error st.http2() = %v", err)
 	}
 }
 
@@ -121,7 +121,7 @@ func TestH2H1AddXff2(t *testing.T) {
 		},
 	})
 	if err != nil {
-		t.Errorf("Error st.http2() = %v", err)
+		t.Fatalf("Error st.http2() = %v", err)
 	}
 }
 
@@ -140,7 +140,7 @@ func TestH2H1StripXff(t *testing.T) {
 		},
 	})
 	if err != nil {
-		t.Errorf("Error st.http2() = %v", err)
+		t.Fatalf("Error st.http2() = %v", err)
 	}
 }
 
@@ -165,7 +165,7 @@ func TestH2H1StripAddXff(t *testing.T) {
 		},
 	})
 	if err != nil {
-		t.Errorf("Error st.http2() = %v", err)
+		t.Fatalf("Error st.http2() = %v", err)
 	}
 }
 
@@ -184,7 +184,7 @@ func TestH2H1BadRequestCL(t *testing.T) {
 		body: []byte("foo"),
 	})
 	if err != nil {
-		t.Errorf("Error st.http2() = %v", err)
+		t.Fatalf("Error st.http2() = %v", err)
 	}
 
 	want := http2.ErrCodeProtocol
@@ -205,7 +205,7 @@ func TestH2H1BadResponseCL(t *testing.T) {
 		name: "TestH2H1BadResponseCL",
 	})
 	if err != nil {
-		t.Errorf("Error st.http2() = %v", err)
+		t.Fatalf("Error st.http2() = %v", err)
 	}
 
 	want := http2.ErrCodeProtocol
@@ -226,7 +226,7 @@ func TestH2H1LocationRewrite(t *testing.T) {
 		name: "TestH2H1LocationRewrite",
 	})
 	if err != nil {
-		t.Errorf("Error st.http2() = %v", err)
+		t.Fatalf("Error st.http2() = %v", err)
 	}
 
 	want := fmt.Sprintf("http://127.0.0.1:%v/p/q?a=b#fragment", serverPort)
@@ -243,7 +243,7 @@ func TestH2H1ChunkedRequestBody(t *testing.T) {
 		}
 		body, err := ioutil.ReadAll(r.Body)
 		if err != nil {
-			t.Errorf("Error reading r.body: %v", err)
+			t.Fatalf("Error reading r.body: %v", err)
 		}
 		want = "foo"
 		if got := string(body); got != want {
@@ -258,7 +258,7 @@ func TestH2H1ChunkedRequestBody(t *testing.T) {
 		body:   []byte("foo"),
 	})
 	if err != nil {
-		t.Errorf("Error st.http2() = %v", err)
+		t.Fatalf("Error st.http2() = %v", err)
 	}
 }
 
@@ -276,7 +276,7 @@ func TestH2H1MultipleRequestCL(t *testing.T) {
 		},
 	})
 	if err != nil {
-		t.Errorf("Error st.http2() = %v", err)
+		t.Fatalf("Error st.http2() = %v", err)
 	}
 	want := 400
 	if got := res.status; got != want {
@@ -297,7 +297,7 @@ func TestH2H1InvalidRequestCL(t *testing.T) {
 		},
 	})
 	if err != nil {
-		t.Errorf("Error st.http2() = %v", err)
+		t.Fatalf("Error st.http2() = %v", err)
 	}
 	want := 400
 	if got := res.status; got != want {
@@ -316,7 +316,7 @@ func TestH2H2MultipleResponseCL(t *testing.T) {
 		name: "TestH2H2MultipleResponseCL",
 	})
 	if err != nil {
-		t.Errorf("Error st.http2() = %v", err)
+		t.Fatalf("Error st.http2() = %v", err)
 	}
 	want := 502
 	if got := res.status; got != want {
@@ -334,7 +334,7 @@ func TestH2H2InvalidResponseCL(t *testing.T) {
 		name: "TestH2H2InvalidResponseCL",
 	})
 	if err != nil {
-		t.Errorf("Error st.http2() = %v", err)
+		t.Fatalf("Error st.http2() = %v", err)
 	}
 	want := 502
 	if got := res.status; got != want {
