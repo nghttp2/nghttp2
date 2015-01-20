@@ -156,11 +156,23 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
 
     auto nv = frame->syn_stream.nv;
 
+    if (LOG_ENABLED(INFO)) {
+      std::stringstream ss;
+      for (size_t i = 0; nv[i]; i += 2) {
+        ss << TTY_HTTP_HD << nv[i] << TTY_RST << ": " << nv[i + 1] << "\n";
+      }
+      ULOG(INFO, upstream) << "HTTP request headers. stream_id="
+                           << downstream->get_stream_id() << "\n" << ss.str();
+    }
+
     for (size_t i = 0; nv[i]; i += 2) {
       downstream->add_request_header(nv[i], nv[i + 1]);
     }
 
-    downstream->index_request_headers();
+    if (downstream->index_request_headers() != 0) {
+      upstream->error_reply(downstream, 400);
+      return;
+    }
 
     auto path = downstream->get_request_header(http2::HD__PATH);
     auto scheme = downstream->get_request_header(http2::HD__SCHEME);
@@ -192,15 +204,6 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
     }
 
     downstream->inspect_http2_request();
-
-    if (LOG_ENABLED(INFO)) {
-      std::stringstream ss;
-      for (size_t i = 0; nv[i]; i += 2) {
-        ss << TTY_HTTP_HD << nv[i] << TTY_RST << ": " << nv[i + 1] << "\n";
-      }
-      ULOG(INFO, upstream) << "HTTP request headers. stream_id="
-                           << downstream->get_stream_id() << "\n" << ss.str();
-    }
 
     downstream->set_request_state(Downstream::HEADER_COMPLETE);
     if (frame->syn_stream.hd.flags & SPDYLAY_CTRL_FLAG_FIN) {
