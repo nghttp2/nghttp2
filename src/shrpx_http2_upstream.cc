@@ -903,7 +903,6 @@ int Http2Upstream::downstream_eof(DownstreamConnection *dconn) {
     if (error_reply(downstream, 502) != 0) {
       return -1;
     }
-    downstream->set_response_state(Downstream::MSG_COMPLETE);
   }
   handler_->signal_write();
   // At this point, downstream may be deleted.
