@@ -95,7 +95,7 @@ void connectcb(struct ev_loop *loop, ev_io *w, int revents) {
   auto upstream = downstream->get_upstream();
   auto handler = upstream->get_client_handler();
   if (dconn->on_connect() != 0) {
-    if (upstream->downstream_error(dconn, Downstream::EVENT_ERROR) != 0) {
+    if (upstream->on_downstream_abort_request(downstream, 503) != 0) {
       delete handler;
     }
     return;
