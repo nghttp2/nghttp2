@@ -1087,7 +1087,7 @@ int Http2Upstream::error_reply(Downstream *downstream,
   if (rv < NGHTTP2_ERR_FATAL) {
     ULOG(FATAL, this) << "nghttp2_submit_response() failed: "
                       << nghttp2_strerror(rv);
-    DIE();
+    return -1;
   }
 
   return 0;

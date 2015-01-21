@@ -782,7 +782,7 @@ int SpdyUpstream::error_reply(Downstream *downstream,
   if (rv < SPDYLAY_ERR_FATAL) {
     ULOG(FATAL, this) << "spdylay_submit_response() failed: "
                       << spdylay_strerror(rv);
-    DIE();
+    return -1;
   }
 
   return 0;

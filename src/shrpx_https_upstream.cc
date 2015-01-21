@@ -309,9 +309,7 @@ int HttpsUpstream::on_read() {
         handler->set_should_close_after_write(true);
         // Following paues_read is needed to avoid reading next data.
         pause_read(SHRPX_MSG_BLOCK);
-        if (error_reply(503) != 0) {
-          return -1;
-        }
+        error_reply(503);
         handler_->signal_write();
         // Downstream gets deleted after response body is read.
         return 0;
@@ -363,9 +361,7 @@ int HttpsUpstream::on_read() {
         status_code = 400;
       }
 
-      if (error_reply(status_code) != 0) {
-        return -1;
-      }
+      error_reply(status_code);
 
       handler_->signal_write();
 
@@ -470,9 +466,7 @@ int HttpsUpstream::downstream_read(DownstreamConnection *dconn) {
 
   if (downstream->get_response_state() == Downstream::MSG_BAD_HEADER) {
     handler_->set_should_close_after_write(true);
-    if (error_reply(502) != 0) {
-      return -1;
-    }
+    error_reply(502);
     downstream->pop_downstream_connection();
     goto end;
   }
@@ -539,9 +533,7 @@ int HttpsUpstream::downstream_eof(DownstreamConnection *dconn) {
       DCLOG(INFO, dconn) << "Return error reply";
     }
     handler_->set_should_close_after_write(true);
-    if (error_reply(502) != 0) {
-      return -1;
-    }
+    error_reply(502);
     downstream->pop_downstream_connection();
     goto end;
   }
@@ -576,9 +568,7 @@ int HttpsUpstream::downstream_error(DownstreamConnection *dconn, int events) {
   } else {
     status = 502;
   }
-  if (error_reply(status) != 0) {
-    return -1;
-  }
+  error_reply(status);
 
   downstream->pop_downstream_connection();
 
@@ -586,7 +576,7 @@ int HttpsUpstream::downstream_error(DownstreamConnection *dconn, int events) {
   return 0;
 }
 
-int HttpsUpstream::error_reply(unsigned int status_code) {
+void HttpsUpstream::error_reply(unsigned int status_code) {
   auto html = http::create_error_html(status_code);
   auto downstream = get_downstream();
 
@@ -616,8 +606,6 @@ int HttpsUpstream::error_reply(unsigned int status_code) {
 
   downstream->add_response_sent_bodylen(html.size());
   downstream->set_response_state(Downstream::MSG_COMPLETE);
-
-  return 0;
 }
 
 void HttpsUpstream::attach_downstream(std::unique_ptr<Downstream> downstream) {

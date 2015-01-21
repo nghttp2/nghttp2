@@ -62,7 +62,7 @@ public:
   void delete_downstream();
   Downstream *get_downstream() const;
   std::unique_ptr<Downstream> pop_downstream();
-  int error_reply(unsigned int status_code);
+  void error_reply(unsigned int status_code);
 
   virtual void pause_read(IOCtrlReason reason);
   virtual int resume_read(IOCtrlReason reason, Downstream *downstream,
