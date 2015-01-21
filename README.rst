@@ -182,7 +182,7 @@ Integration tests
 
 We have the integration tests for nghttpx proxy server.  The tests are
 written in `Go programming language <http://golang.org/>`_ and uses
-its testing framework.  We depends on the following libraries:
+its testing framework.  We depend on the following libraries:
 
 * https://github.com/bradfitz/http2
 * https://github.com/tatsuhiro-t/go-nghttp2
@@ -193,7 +193,7 @@ dependencies, enter ``integration-tests`` directory and run::
 
     $ make it
 
-In side the tests, we use port 3009 to run test subject server.
+Inside the tests, we use port 3009 to run test subject server.
 
 Client, Server and Proxy programs
 ---------------------------------
@@ -457,7 +457,7 @@ SPDY proxy)::
     Client <-- (HTTP/2, SPDY, HTTP/1.1) --> nghttpx <-- (HTTP/1.1) --> Proxy
                                            [secure proxy]          (e.g., Squid, ATS)
 
-The ``Client`` in the above is needs to be configured to use
+The ``Client`` in the above needs to be configured to use
 ``nghttpx`` as secure proxy.
 
 At the time of this writing, Chrome is the only browser which supports
