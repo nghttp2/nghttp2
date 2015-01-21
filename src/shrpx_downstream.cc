@@ -106,7 +106,8 @@ void downstream_wtimeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
 
 // upstream could be nullptr for unittests
 Downstream::Downstream(Upstream *upstream, int32_t stream_id, int32_t priority)
-    : request_buf_(upstream ? upstream->get_mcpool() : nullptr),
+    : request_start_time_(std::chrono::high_resolution_clock::now()),
+      request_buf_(upstream ? upstream->get_mcpool() : nullptr),
       response_buf_(upstream ? upstream->get_mcpool() : nullptr),
       request_bodylen_(0), response_bodylen_(0), response_sent_bodylen_(0),
       request_content_length_(-1), response_content_length_(-1),

@@ -196,9 +196,6 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
       downstream->set_request_path(path->value);
     }
 
-    downstream->set_request_start_time(
-        std::chrono::high_resolution_clock::now());
-
     if (!(frame->syn_stream.hd.flags & SPDYLAY_CTRL_FLAG_FIN)) {
       downstream->set_request_http2_expect_body(true);
     }

@@ -298,11 +298,12 @@ private:
   Headers request_headers_;
   Headers response_headers_;
 
+  std::chrono::high_resolution_clock::time_point request_start_time_;
+
   std::string request_method_;
   std::string request_path_;
   std::string request_http2_scheme_;
   std::string request_http2_authority_;
-  std::chrono::high_resolution_clock::time_point request_start_time_;
   std::string assembled_request_cookie_;
 
   DefaultMemchunks request_buf_;
