@@ -50,6 +50,10 @@ bool ConnectBlocker::blocked() const { return ev_is_active(&timer_); }
 void ConnectBlocker::on_success() { sleep_ = INITIAL_SLEEP; }
 
 void ConnectBlocker::on_failure() {
+  if (ev_is_active(&timer_)) {
+    return;
+  }
+
   sleep_ = std::min(128., sleep_ * 2);
 
   LOG(WARN) << "connect failure, start sleeping " << sleep_;

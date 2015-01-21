@@ -385,6 +385,12 @@ int Http2Session::initiate_connection() {
       }
     }
 
+    // rev_ and wev_ could possibly be active here.  Since calling
+    // ev_io_set is not allowed while watcher is active, we have to
+    // stop them just in case.
+    ev_io_stop(loop_, &rev_);
+    ev_io_stop(loop_, &wev_);
+
     ev_io_set(&rev_, fd_, EV_READ);
     ev_io_set(&wev_, fd_, EV_WRITE);
 

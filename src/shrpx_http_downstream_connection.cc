@@ -212,8 +212,8 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
 
   ev_set_cb(&rev_, readcb);
 
-  ev_timer_set(&rt_, 0., get_config()->downstream_read_timeout);
-
+  rt_.repeat = get_config()->downstream_read_timeout;
+  ev_timer_again(loop_, &rt_);
   // TODO we should have timeout for connection establishment
   ev_timer_again(loop_, &wt_);
 
@@ -424,10 +424,11 @@ void HttpDownstreamConnection::detach_downstream(Downstream *downstream) {
   ev_io_start(loop_, &rev_);
   ev_io_stop(loop_, &wev_);
 
+  ev_set_cb(&rev_, idle_readcb);
+
   ev_timer_stop(loop_, &wt_);
 
-  ev_set_cb(&rev_, idle_readcb);
-  ev_timer_set(&rt_, 0., get_config()->downstream_idle_read_timeout);
+  rt_.repeat = get_config()->downstream_idle_read_timeout;
   ev_set_cb(&rt_, idle_timeoutcb);
   ev_timer_again(loop_, &rt_);
 }

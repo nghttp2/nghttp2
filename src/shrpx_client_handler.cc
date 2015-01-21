@@ -583,14 +583,14 @@ struct ev_loop *ClientHandler::get_loop() const {
 }
 
 void ClientHandler::reset_upstream_read_timeout(ev_tstamp t) {
-  ev_timer_set(&rt_, 0., t);
+  rt_.repeat = t;
   if (ev_is_active(&rt_)) {
     ev_timer_again(loop_, &rt_);
   }
 }
 
 void ClientHandler::reset_upstream_write_timeout(ev_tstamp t) {
-  ev_timer_set(&wt_, 0., t);
+  wt_.repeat = t;
   if (ev_is_active(&wt_)) {
     ev_timer_again(loop_, &wt_);
   }
