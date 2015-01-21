@@ -87,7 +87,7 @@ func TestH1H1ConnectFailure(t *testing.T) {
 		name: "TestH1H1ConnectFailure",
 	})
 	if err != nil {
-		t.Fatalf("Error st.http2() = %v", err)
+		t.Fatalf("Error st.http1() = %v", err)
 	}
 	want := 502
 	if got := res.status; got != want {
