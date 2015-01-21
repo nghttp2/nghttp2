@@ -810,7 +810,9 @@ int HttpsUpstream::on_downstream_body_complete(Downstream *downstream) {
 int HttpsUpstream::on_downstream_abort_request(Downstream *downstream,
                                                unsigned int status_code) {
   handler_->set_should_close_after_write(true);
-  return error_reply(status_code);
+  error_reply(status_code);
+  handler_->signal_write();
+  return 0;
 }
 
 void HttpsUpstream::log_response_headers(const std::string &hdrs) const {

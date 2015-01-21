@@ -95,6 +95,28 @@ func TestH1H1ConnectFailure(t *testing.T) {
 	}
 }
 
+func TestH1H2NoHost(t *testing.T) {
+	st := newServerTester([]string{"--http2-bridge"}, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("server should not forward bad request")
+	})
+	defer st.Close()
+
+	// without Host header field, we expect 400 response
+	if _, err := io.WriteString(st.conn, "GET / HTTP/1.1\r\nTest-Case: TestH1H2NoHost\r\n\r\n"); err != nil {
+		t.Fatalf("Error io.WriteString() = %v", err)
+	}
+
+	resp, err := http.ReadResponse(bufio.NewReader(st.conn), nil)
+	if err != nil {
+		t.Fatalf("Error http.ReadResponse() = %v", err)
+	}
+
+	want := 400
+	if got := resp.StatusCode; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+}
+
 func TestH2H1PlainGET(t *testing.T) {
 	st := newServerTester(nil, t, noopHandler)
 	defer st.Close()
