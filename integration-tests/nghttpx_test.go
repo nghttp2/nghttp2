@@ -9,6 +9,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"syscall"
 	"testing"
 )
 
@@ -388,6 +389,82 @@ func TestH2H1ConnectFailure(t *testing.T) {
 	want := 503
 	if got := res.status; got != want {
 		t.Errorf("status: %v; want %v", got, want)
+	}
+}
+
+func TestH2H1GracefulShutdown(t *testing.T) {
+	st := newServerTester(nil, t, noopHandler)
+	defer st.Close()
+
+	fmt.Fprint(st.conn, "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n")
+	if err := st.fr.WriteSettings(); err != nil {
+		t.Fatalf("st.fr.WriteSettings(): %v", err)
+	}
+
+	header := []hpack.HeaderField{
+		pair(":method", "GET"),
+		pair(":scheme", "http"),
+		pair(":authority", st.authority),
+		pair(":path", "/"),
+	}
+
+	for _, h := range header {
+		_ = st.enc.WriteField(h)
+	}
+
+	if err := st.fr.WriteHeaders(http2.HeadersFrameParam{
+		StreamID:      1,
+		EndStream:     false,
+		EndHeaders:    true,
+		BlockFragment: st.headerBlkBuf.Bytes(),
+	}); err != nil {
+		t.Fatalf("st.fr.WriteHeaders(): %v", err)
+	}
+
+	// send SIGQUIT signal to nghttpx to perform graceful shutdown
+	st.cmd.Process.Signal(syscall.SIGQUIT)
+
+	// after signal, finish request body
+	if err := st.fr.WriteData(1, true, nil); err != nil {
+		t.Fatalf("st.fr.WriteData(): %v", err)
+	}
+
+	numGoAway := 0
+
+	for {
+		fr, err := st.readFrame()
+		if err != nil {
+			if err == io.EOF {
+				want := 2
+				if got := numGoAway; got != want {
+					t.Fatalf("numGoAway: %v; want %v", got, want)
+				}
+				return
+			}
+			t.Fatalf("st.readFrame(): %v", err)
+		}
+		switch f := fr.(type) {
+		case *http2.GoAwayFrame:
+			numGoAway += 1
+			want := http2.ErrCodeNo
+			if got := f.ErrCode; got != want {
+				t.Fatalf("f.ErrCode(%v): %v; want %v", numGoAway, got, want)
+			}
+			switch numGoAway {
+			case 1:
+				want := (uint32(1) << 31) - 1
+				if got := f.LastStreamID; got != want {
+					t.Fatalf("f.LastStreamID(%v): %v; want %v", numGoAway, got, want)
+				}
+			case 2:
+				want := uint32(1)
+				if got := f.LastStreamID; got != want {
+					t.Fatalf("f.LastStreamID(%v): %v; want %v", numGoAway, got, want)
+				}
+			case 3:
+				t.Fatalf("too many GOAWAYs received")
+			}
+		}
 	}
 }
 

@@ -347,7 +347,9 @@ int nghttp2_session_add_ping(nghttp2_session *session, uint8_t flags,
 /*
  * Adds GOAWAY frame with the last-stream-ID |last_stream_id| and the
  * error code |error_code|. This is a convenient function built on top
- * of nghttp2_session_add_frame() to add GOAWAY easily.
+ * of nghttp2_session_add_frame() to add GOAWAY easily.  The
+ * |aux_flags| are bitwise-OR of one or more of
+ * nghttp2_goaway_aux_flag.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -359,7 +361,7 @@ int nghttp2_session_add_ping(nghttp2_session *session, uint8_t flags,
  */
 int nghttp2_session_add_goaway(nghttp2_session *session, int32_t last_stream_id,
                                uint32_t error_code, const uint8_t *opaque_data,
-                               size_t opaque_data_len, int terminate_on_send);
+                               size_t opaque_data_len, uint8_t aux_flags);
 
 /*
  * Adds WINDOW_UPDATE frame with stream ID |stream_id| and

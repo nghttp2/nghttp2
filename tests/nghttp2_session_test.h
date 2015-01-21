@@ -80,6 +80,7 @@ void test_nghttp2_submit_settings_update_local_window_size(void);
 void test_nghttp2_submit_push_promise(void);
 void test_nghttp2_submit_window_update(void);
 void test_nghttp2_submit_window_update_local_window_size(void);
+void test_nghttp2_submit_shutdown_notice(void);
 void test_nghttp2_submit_invalid_nv(void);
 void test_nghttp2_session_open_stream(void);
 void test_nghttp2_session_open_stream_with_idle_stream_dep(void);

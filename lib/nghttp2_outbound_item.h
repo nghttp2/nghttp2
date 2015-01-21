@@ -70,11 +70,21 @@ typedef struct {
   uint8_t eof;
 } nghttp2_data_aux_data;
 
+typedef enum {
+  NGHTTP2_GOAWAY_AUX_NONE = 0x0,
+  /* indicates that session should be terminated after the
+     transmission of this frame. */
+  NGHTTP2_GOAWAY_AUX_TERM_ON_SEND = 0x1,
+  /* indicates that this GOAWAY is just a notification for graceful
+     shutdown.  No nghttp2_session.goaway_flags should be updated on
+     the reaction to this frame. */
+  NGHTTP2_GOAWAY_AUX_SHUTDOWN_NOTICE = 0x2,
+} nghttp2_goaway_aux_flag;
+
 /* struct used for GOAWAY frame */
 typedef struct {
-  /* nonzero if session should be terminated after the transmission of
-     this frame. */
-  int terminate_on_send;
+  /* bitwise-OR of one or more of nghttp2_goaway_aux_flag. */
+  uint8_t flags;
 } nghttp2_goaway_aux_data;
 
 /* Additional data which cannot be stored in nghttp2_frame struct */

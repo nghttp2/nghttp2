@@ -600,6 +600,46 @@ void settings_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 }
 } // namespace
 
+namespace {
+void shutdown_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
+  auto upstream = static_cast<Http2Upstream *>(w->data);
+  auto handler = upstream->get_client_handler();
+  upstream->submit_goaway();
+  handler->signal_write();
+}
+} // namespace
+
+namespace {
+void prepare_cb(struct ev_loop *loop, ev_prepare *w, int revents) {
+  auto upstream = static_cast<Http2Upstream *>(w->data);
+  upstream->check_shutdown();
+}
+} // namespace
+
+void Http2Upstream::submit_goaway() {
+  auto last_stream_id = nghttp2_session_get_last_proc_stream_id(session_);
+  nghttp2_submit_goaway(session_, NGHTTP2_FLAG_NONE, last_stream_id,
+                        NGHTTP2_NO_ERROR, nullptr, 0);
+}
+
+void Http2Upstream::check_shutdown() {
+  int rv;
+  if (shutdown_handled_) {
+    return;
+  }
+  if (worker_config->graceful_shutdown) {
+    shutdown_handled_ = true;
+    rv = nghttp2_submit_shutdown_notice(session_);
+    if (rv != 0) {
+      ULOG(FATAL, this) << "nghttp2_submit_shutdown_notice() failed: "
+                        << nghttp2_strerror(rv);
+      return;
+    }
+    handler_->signal_write();
+    ev_timer_start(handler_->get_loop(), &shutdown_timer_);
+  }
+}
+
 Http2Upstream::Http2Upstream(ClientHandler *handler)
     : downstream_queue_(
           get_config()->http2_proxy
@@ -609,7 +649,7 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
                     : 0,
           !get_config()->http2_proxy),
       handler_(handler), session_(nullptr), data_pending_(nullptr),
-      data_pendinglen_(0) {
+      data_pendinglen_(0), shutdown_handled_(false) {
 
   int rv;
 
@@ -703,6 +743,15 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
 
   settings_timer_.data = this;
 
+  // timer for 2nd GOAWAY.  HTTP/2 spec recommend 1 RTT.  We wait for
+  // 2 seconds.
+  ev_timer_init(&shutdown_timer_, shutdown_timeout_cb, 2., 0);
+  shutdown_timer_.data = this;
+
+  ev_prepare_init(&prep_, prepare_cb);
+  prep_.data = this;
+  ev_prepare_start(handler_->get_loop(), &prep_);
+
   handler_->reset_upstream_read_timeout(
       get_config()->http2_upstream_read_timeout);
 
@@ -711,6 +760,8 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
 
 Http2Upstream::~Http2Upstream() {
   nghttp2_session_del(session_);
+  ev_prepare_stop(handler_->get_loop(), &prep_);
+  ev_timer_stop(handler_->get_loop(), &shutdown_timer_);
   ev_timer_stop(handler_->get_loop(), &settings_timer_);
 }
 

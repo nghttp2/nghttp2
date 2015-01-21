@@ -174,6 +174,8 @@ int main(int argc _U_, char *argv[] _U_) {
                    test_nghttp2_submit_window_update) ||
       !CU_add_test(pSuite, "submit_window_update_local_window_size",
                    test_nghttp2_submit_window_update_local_window_size) ||
+      !CU_add_test(pSuite, "submit_shutdown_notice",
+                   test_nghttp2_submit_shutdown_notice) ||
       !CU_add_test(pSuite, "submit_invalid_nv",
                    test_nghttp2_submit_invalid_nv) ||
       !CU_add_test(pSuite, "session_open_stream",

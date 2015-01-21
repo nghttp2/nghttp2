@@ -136,7 +136,8 @@ static int session_terminate_session(nghttp2_session *session,
   }
 
   rv = nghttp2_session_add_goaway(session, last_stream_id, error_code,
-                                  debug_data, debug_datalen, 1);
+                                  debug_data, debug_datalen,
+                                  NGHTTP2_GOAWAY_AUX_TERM_ON_SEND);
 
   if (rv != 0) {
     return rv;
@@ -2351,17 +2352,20 @@ static int session_after_frame_sent1(nghttp2_session *session) {
 
       aux_data = &item->aux_data.goaway;
 
-      if (aux_data->terminate_on_send) {
-        session->goaway_flags |= NGHTTP2_GOAWAY_TERM_SENT;
-      }
+      if ((aux_data->flags & NGHTTP2_GOAWAY_AUX_SHUTDOWN_NOTICE) == 0) {
 
-      session->goaway_flags |= NGHTTP2_GOAWAY_SENT;
+        if (aux_data->flags & NGHTTP2_GOAWAY_AUX_TERM_ON_SEND) {
+          session->goaway_flags |= NGHTTP2_GOAWAY_TERM_SENT;
+        }
 
-      rv = session_close_stream_on_goaway(session, frame->goaway.last_stream_id,
-                                          1);
+        session->goaway_flags |= NGHTTP2_GOAWAY_SENT;
 
-      if (nghttp2_is_fatal(rv)) {
-        return rv;
+        rv = session_close_stream_on_goaway(session,
+                                            frame->goaway.last_stream_id, 1);
+
+        if (nghttp2_is_fatal(rv)) {
+          return rv;
+        }
       }
 
       break;
@@ -5721,7 +5725,7 @@ int nghttp2_session_add_ping(nghttp2_session *session, uint8_t flags,
 
 int nghttp2_session_add_goaway(nghttp2_session *session, int32_t last_stream_id,
                                uint32_t error_code, const uint8_t *opaque_data,
-                               size_t opaque_data_len, int terminate_on_send) {
+                               size_t opaque_data_len, uint8_t aux_flags) {
   int rv;
   nghttp2_outbound_item *item;
   nghttp2_frame *frame;
@@ -5764,7 +5768,7 @@ int nghttp2_session_add_goaway(nghttp2_session *session, int32_t last_stream_id,
                             opaque_data_copy, opaque_data_len);
 
   aux_data = &item->aux_data.goaway;
-  aux_data->terminate_on_send = terminate_on_send;
+  aux_data->flags = aux_flags;
 
   rv = nghttp2_session_add_item(session, item);
   if (rv != 0) {
@@ -6264,4 +6268,8 @@ int nghttp2_session_set_next_stream_id(nghttp2_session *session,
 
 uint32_t nghttp2_session_get_next_stream_id(nghttp2_session *session) {
   return session->next_stream_id;
+}
+
+int32_t nghttp2_session_get_last_proc_stream_id(nghttp2_session *session) {
+  return session->last_proc_stream_id;
 }

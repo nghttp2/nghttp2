@@ -206,7 +206,7 @@ func (st *serverTester) readFrame() (http2.Frame, error) {
 		return f, nil
 	case err := <-st.errCh:
 		return nil, err
-	case <-time.After(2 * time.Second):
+	case <-time.After(5 * time.Second):
 		return nil, errors.New("timeout waiting for frame")
 	}
 }
@@ -446,7 +446,7 @@ func (st *serverTester) http2(rp requestParam) (*serverResponse, error) {
 	_ = st.enc.WriteField(pair("test-case", rp.name))
 
 	for _, h := range rp.header {
-		_ = st.enc.WriteField(pair(strings.ToLower(h.Name), h.Value))
+		_ = st.enc.WriteField(h)
 	}
 
 	err := st.fr.WriteHeaders(http2.HeadersFrameParam{

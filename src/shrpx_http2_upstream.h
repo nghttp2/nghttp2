@@ -97,17 +97,23 @@ public:
   void start_downstream(Downstream *downstream);
   void initiate_downstream(std::unique_ptr<Downstream> downstream);
 
+  void submit_goaway();
+  void check_shutdown();
+
 private:
   // must be put before downstream_queue_
   std::unique_ptr<HttpsUpstream> pre_upstream_;
   MemchunkPool mcpool_;
   DownstreamQueue downstream_queue_;
   ev_timer settings_timer_;
+  ev_timer shutdown_timer_;
+  ev_prepare prep_;
   ClientHandler *handler_;
   nghttp2_session *session_;
   const uint8_t *data_pending_;
   size_t data_pendinglen_;
   bool flow_control_;
+  bool shutdown_handled_;
 };
 
 } // namespace shrpx

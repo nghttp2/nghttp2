@@ -236,8 +236,24 @@ int nghttp2_submit_rst_stream(nghttp2_session *session, uint8_t flags _U_,
 int nghttp2_submit_goaway(nghttp2_session *session, uint8_t flags _U_,
                           int32_t last_stream_id, uint32_t error_code,
                           const uint8_t *opaque_data, size_t opaque_data_len) {
+  if (session->goaway_flags & NGHTTP2_GOAWAY_TERM_ON_SEND) {
+    return 0;
+  }
   return nghttp2_session_add_goaway(session, last_stream_id, error_code,
-                                    opaque_data, opaque_data_len, 0);
+                                    opaque_data, opaque_data_len,
+                                    NGHTTP2_GOAWAY_AUX_NONE);
+}
+
+int nghttp2_submit_shutdown_notice(nghttp2_session *session) {
+  if (!session->server) {
+    return NGHTTP2_ERR_INVALID_STATE;
+  }
+  if (session->goaway_flags) {
+    return 0;
+  }
+  return nghttp2_session_add_goaway(session, (1u << 31) - 1, NGHTTP2_NO_ERROR,
+                                    NULL, 0,
+                                    NGHTTP2_GOAWAY_AUX_SHUTDOWN_NOTICE);
 }
 
 int nghttp2_submit_settings(nghttp2_session *session, uint8_t flags _U_,

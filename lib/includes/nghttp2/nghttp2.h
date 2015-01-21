@@ -2465,6 +2465,43 @@ int nghttp2_session_terminate_session2(nghttp2_session *session,
 /**
  * @function
  *
+ * Signals to the client that the server started graceful shutdown
+ * procedure.
+ *
+ * This function is only usable for server.  If this function is
+ * called with client side session, this function returns
+ * :enum:`NGHTTP2_ERR_INVALID_STATE`.
+ *
+ * To gracefully shutdown HTTP/2 session, server should call this
+ * function to send GOAWAY with last_stream_id (1u << 31) - 1.  And
+ * after some delay (e.g., 1 RTT), send another GOAWAY with the stream
+ * ID that the server has some processing using
+ * `nghttp2_submit_goaway()`.  See also
+ * `nghttp2_session_get_last_proc_stream_id()`.
+ *
+ * Unlike `nghttp2_submit_goaway()`, this function just sends GOAWAY
+ * and does nothing more.  This is a mere indication to the client
+ * that session shutdown is imminent.  The application should call
+ * `nghttp2_submit_goaway()` with appropriate last_stream_id after
+ * this call.
+ *
+ * If one or more GOAWAY frame have been already sent by either
+ * `nghttp2_submit_goaway()` or `nghttp2_session_terminate_session()`,
+ * this function has no effect.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * :enum:`NGHTTP2_ERR_NOMEM`
+ *     Out of memory.
+ * :enum:`NGHTTP2_ERR_INVALID_STATE`
+ *     The |session| is initialized as client.
+ */
+int nghttp2_submit_shutdown_notice(nghttp2_session *session);
+
+/**
+ * @function
+ *
  * Returns the value of SETTINGS |id| notified by a remote endpoint.
  * The |id| must be one of values defined in
  * :enum:`nghttp2_settings_id`.
@@ -3061,6 +3098,13 @@ int nghttp2_submit_ping(nghttp2_session *session, uint8_t flags,
  * keep this memory after the return of this function.  If the
  * |opaque_data_len| is 0, the |opaque_data| could be ``NULL``.
  *
+ * After successful transmission of GOAWAY, following things happen.
+ * All incoming streams having strictly more than |last_stream_id| are
+ * closed.  All incoming HEADERS which starts new stream are simply
+ * ignored.  After all active streams are handled, both
+ * `nghttp2_session_want_read()` and `nghttp2_session_want_write()`
+ * return 0 and the application can close session.
+ *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
@@ -3073,6 +3117,19 @@ int nghttp2_submit_ping(nghttp2_session *session, uint8_t flags,
 int nghttp2_submit_goaway(nghttp2_session *session, uint8_t flags,
                           int32_t last_stream_id, uint32_t error_code,
                           const uint8_t *opaque_data, size_t opaque_data_len);
+
+/**
+ * @function
+ *
+ * Returns the last stream ID of a stream for which
+ * :type:`nghttp2_on_frame_recv_callback` was invoked most recently.
+ * The returned value can be used as last_stream_id parameter for
+ * `nghttp2_submit_goaway()` and
+ * `nghttp2_session_terminate_session2()`.
+ *
+ * This function always succeeds.
+ */
+int32_t nghttp2_session_get_last_proc_stream_id(nghttp2_session *session);
 
 /**
  * @function
