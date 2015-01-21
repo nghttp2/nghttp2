@@ -753,6 +753,8 @@ int HttpDownstreamConnection::on_connect() {
     if (LOG_ENABLED(INFO)) {
       DLOG(INFO, this) << "downstream connect failed";
     }
+    auto connect_blocker = client_handler_->get_http1_connect_blocker();
+    connect_blocker->on_failure();
     return -1;
   }
 
