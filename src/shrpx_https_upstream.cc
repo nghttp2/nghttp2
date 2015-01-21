@@ -306,7 +306,6 @@ int HttpsUpstream::on_read() {
       assert(downstream);
 
       if (downstream->get_request_state() == Downstream::CONNECT_FAIL) {
-        handler->set_should_close_after_write(true);
         // Following paues_read is needed to avoid reading next data.
         pause_read(SHRPX_MSG_BLOCK);
         error_reply(503);
@@ -349,7 +348,6 @@ int HttpsUpstream::on_read() {
                          << http_errno_description(htperr);
       }
 
-      handler->set_should_close_after_write(true);
       pause_read(SHRPX_MSG_BLOCK);
 
       unsigned int status_code;
@@ -465,7 +463,6 @@ int HttpsUpstream::downstream_read(DownstreamConnection *dconn) {
   }
 
   if (downstream->get_response_state() == Downstream::MSG_BAD_HEADER) {
-    handler_->set_should_close_after_write(true);
     error_reply(502);
     downstream->pop_downstream_connection();
     goto end;
@@ -532,7 +529,6 @@ int HttpsUpstream::downstream_eof(DownstreamConnection *dconn) {
     if (LOG_ENABLED(INFO)) {
       DCLOG(INFO, dconn) << "Return error reply";
     }
-    handler_->set_should_close_after_write(true);
     error_reply(502);
     downstream->pop_downstream_connection();
     goto end;
@@ -560,8 +556,6 @@ int HttpsUpstream::downstream_error(DownstreamConnection *dconn, int events) {
     return -1;
   }
 
-  handler_->set_should_close_after_write(true);
-
   unsigned int status;
   if (events & Downstream::EVENT_TIMEOUT) {
     status = 504;
@@ -586,6 +580,10 @@ void HttpsUpstream::error_reply(unsigned int status_code) {
   }
 
   downstream->set_response_http_status(status_code);
+  // we are going to close connection for both frontend and backend in
+  // error condition.  This is safest option.
+  downstream->set_response_connection_close(true);
+  handler_->set_should_close_after_write(true);
 
   auto output = downstream->get_response_buf();
 
@@ -597,11 +595,8 @@ void HttpsUpstream::error_reply(unsigned int status_code) {
   output->append_cstr("\r\nContent-Length: ");
   auto cl = util::utos(html.size());
   output->append(cl.c_str(), cl.size());
-  output->append_cstr("\r\nContent-Type: text/html; charset=UTF-8\r\n");
-  if (get_client_handler()->get_should_close_after_write()) {
-    output->append_cstr("Connection: close\r\n");
-  }
-  output->append_cstr("\r\n");
+  output->append_cstr("\r\nContent-Type: text/html; "
+                      "charset=UTF-8\r\nConnection: close\r\n\r\n");
   output->append(html.c_str(), html.size());
 
   downstream->add_response_sent_bodylen(html.size());
@@ -797,7 +792,6 @@ int HttpsUpstream::on_downstream_body_complete(Downstream *downstream) {
 
 int HttpsUpstream::on_downstream_abort_request(Downstream *downstream,
                                                unsigned int status_code) {
-  handler_->set_should_close_after_write(true);
   error_reply(status_code);
   handler_->signal_write();
   return 0;
