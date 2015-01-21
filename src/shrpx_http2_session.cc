@@ -239,11 +239,7 @@ int Http2Session::disconnect(bool hard) {
     handlers.insert(dc->get_client_handler());
   }
   for (auto h : handlers) {
-    if (hard) {
-      delete h;
-      continue;
-    }
-    if (h->get_upstream()->on_downstream_reset() != 0) {
+    if (h->get_upstream()->on_downstream_reset(hard) != 0) {
       delete h;
     }
   }

@@ -1345,7 +1345,7 @@ void Http2Upstream::on_handler_delete() {
   }
 }
 
-int Http2Upstream::on_downstream_reset() {
+int Http2Upstream::on_downstream_reset(bool no_retry) {
   int rv;
 
   for (auto &ent : downstream_queue_.get_active_downstreams()) {
@@ -1358,9 +1358,17 @@ int Http2Upstream::on_downstream_reset() {
       continue;
     }
 
+    downstream->pop_downstream_connection();
+
+    if (no_retry) {
+      if (on_downstream_abort_request(downstream, 503) != 0) {
+        return -1;
+      }
+      continue;
+    }
+
     // downstream connection is clean; we can retry with new
     // downstream connection.
-    downstream->pop_downstream_connection();
 
     rv = downstream->attach_downstream_connection(
         handler_->get_downstream_connection());

@@ -95,6 +95,25 @@ func TestH1H1ConnectFailure(t *testing.T) {
 	}
 }
 
+func TestH1H2ConnectFailure(t *testing.T) {
+	st := newServerTester([]string{"--http2-bridge"}, t, noopHandler)
+	defer st.Close()
+
+	// simulate backend connect attempt failure
+	st.ts.Close()
+
+	res, err := st.http1(requestParam{
+		name: "TestH1H2ConnectFailure",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http1() = %v", err)
+	}
+	want := 503
+	if got := res.status; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+}
+
 func TestH1H2NoHost(t *testing.T) {
 	st := newServerTester([]string{"--http2-bridge"}, t, func(w http.ResponseWriter, r *http.Request) {
 		t.Errorf("server should not forward bad request")
@@ -409,6 +428,25 @@ func TestH2H2InvalidResponseCL(t *testing.T) {
 	}
 }
 
+func TestH2H2ConnectFailure(t *testing.T) {
+	st := newServerTester([]string{"--http2-bridge"}, t, noopHandler)
+	defer st.Close()
+
+	// simulate backend connect attempt failure
+	st.ts.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H2ConnectFailure",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+	want := 503
+	if got := res.status; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+}
+
 func TestS3H1PlainGET(t *testing.T) {
 	st := newServerTesterTLS([]string{"--npn-list=spdy/3.1"}, t, noopHandler)
 	defer st.Close()
@@ -488,6 +526,25 @@ func TestS3H1InvalidRequestCL(t *testing.T) {
 		t.Fatalf("Error st.spdy() = %v", err)
 	}
 	want := 400
+	if got := res.status; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+}
+
+func TestS3H2ConnectFailure(t *testing.T) {
+	st := newServerTesterTLS([]string{"--npn-list=spdy/3.1", "--http2-bridge"}, t, noopHandler)
+	defer st.Close()
+
+	// simulate backend connect attempt failure
+	st.ts.Close()
+
+	res, err := st.spdy(requestParam{
+		name: "TestS3H2ConnectFailure",
+	})
+	if err != nil {
+		t.Fatalf("Error st.spdy() = %v", err)
+	}
+	want := 503
 	if got := res.status; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}

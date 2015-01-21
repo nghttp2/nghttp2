@@ -74,7 +74,7 @@ public:
   virtual int on_downstream_body_complete(Downstream *downstream);
 
   virtual void on_handler_delete();
-  virtual int on_downstream_reset();
+  virtual int on_downstream_reset(bool no_retry);
 
   virtual MemchunkPool *get_mcpool();
 

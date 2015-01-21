@@ -815,7 +815,7 @@ void HttpsUpstream::on_handler_delete() {
   }
 }
 
-int HttpsUpstream::on_downstream_reset() {
+int HttpsUpstream::on_downstream_reset(bool no_retry) {
   int rv;
 
   if ((downstream_->get_request_state() != Downstream::HEADER_COMPLETE &&
@@ -823,6 +823,13 @@ int HttpsUpstream::on_downstream_reset() {
       downstream_->get_response_state() != Downstream::INITIAL) {
     // Return error so that caller can delete handler
     return -1;
+  }
+
+  if (no_retry) {
+    if (on_downstream_abort_request(downstream_.get(), 503) != 0) {
+      return -1;
+    }
+    return 0;
   }
 
   downstream_->pop_downstream_connection();
