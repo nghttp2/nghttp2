@@ -169,7 +169,7 @@ private:
   ConnectBlocker *http1_connect_blocker_;
   SSL *ssl_;
   WorkerStat *worker_stat_;
-  int64_t last_write_time_;
+  double last_write_time_;
   size_t warmup_writelen_;
   // The number of bytes of HTTP/2 client connection header to read
   size_t left_connhd_len_;
