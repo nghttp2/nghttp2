@@ -23,6 +23,9 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 #include "shrpx_worker_config.h"
+#include "util.h"
+
+using namespace nghttp2;
 
 namespace shrpx {
 
@@ -34,5 +37,19 @@ WorkerConfig::WorkerConfig()
 thread_local
 #endif // NOTHREADS
     WorkerConfig *worker_config = new WorkerConfig();
+
+void
+WorkerConfig::update_tstamp(const std::chrono::system_clock::time_point &now) {
+  auto t0 = std::chrono::system_clock::to_time_t(time_str_updated_);
+  auto t1 = std::chrono::system_clock::to_time_t(now);
+  if (t0 == t1) {
+    return;
+  }
+
+  time_str_updated_ = now;
+
+  time_local_str = util::format_common_log(now);
+  time_iso8601_str = util::format_iso8601(now);
+}
 
 } // namespace shrpx

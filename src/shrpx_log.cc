@@ -122,16 +122,17 @@ Log::~Log() {
   char buf[4096];
   auto tty = wconf->errorlog_tty;
 
-  auto time_now = util::format_common_log(std::chrono::system_clock::now());
+  wconf->update_tstamp(std::chrono::system_clock::now());
+  auto &time_local = wconf->time_local_str;
 
   if (severity_ == NOTICE) {
-    rv = snprintf(buf, sizeof(buf), "%s PID%d [%s%s%s] %s\n", time_now.c_str(),
-                  get_config()->pid, tty ? SEVERITY_COLOR[severity_] : "",
-                  SEVERITY_STR[severity_], tty ? "\033[0m" : "",
-                  stream_.str().c_str());
+    rv = snprintf(buf, sizeof(buf), "%s PID%d [%s%s%s] %s\n",
+                  time_local.c_str(), get_config()->pid,
+                  tty ? SEVERITY_COLOR[severity_] : "", SEVERITY_STR[severity_],
+                  tty ? "\033[0m" : "", stream_.str().c_str());
   } else {
     rv = snprintf(buf, sizeof(buf), "%s PID%d [%s%s%s] %s%s:%d%s %s\n",
-                  time_now.c_str(), get_config()->pid,
+                  time_local.c_str(), get_config()->pid,
                   tty ? SEVERITY_COLOR[severity_] : "", SEVERITY_STR[severity_],
                   tty ? "\033[0m" : "", tty ? "\033[1;30m" : "", filename_,
                   linenum_, tty ? "\033[0m" : "", stream_.str().c_str());
@@ -171,6 +172,10 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv, LogSpec *lgsp) {
   auto p = buf;
   auto avail = sizeof(buf) - 2;
 
+  wconf->update_tstamp(lgsp->time_now);
+  auto &time_local = wconf->time_local_str;
+  auto &time_iso8601 = wconf->time_iso8601_str;
+
   for (auto &lf : lfv) {
     switch (lf.type) {
     case SHRPX_LOGF_LITERAL:
@@ -180,12 +185,10 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv, LogSpec *lgsp) {
       std::tie(p, avail) = copy(lgsp->remote_addr, avail, p);
       break;
     case SHRPX_LOGF_TIME_LOCAL:
-      std::tie(p, avail) =
-          copy(util::format_common_log(lgsp->time_now).c_str(), avail, p);
+      std::tie(p, avail) = copy(time_local.c_str(), avail, p);
       break;
     case SHRPX_LOGF_TIME_ISO8601:
-      std::tie(p, avail) =
-          copy(util::format_iso8601(lgsp->time_now).c_str(), avail, p);
+      std::tie(p, avail) = copy(time_iso8601.c_str(), avail, p);
       break;
     case SHRPX_LOGF_REQUEST:
       std::tie(p, avail) = copy(lgsp->method, avail, p);
