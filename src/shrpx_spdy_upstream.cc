@@ -343,9 +343,11 @@ void on_ctrl_not_send_callback(spdylay_session *session,
                                spdylay_frame_type type, spdylay_frame *frame,
                                int error_code, void *user_data) {
   auto upstream = static_cast<SpdyUpstream *>(user_data);
-  ULOG(WARN, upstream) << "Failed to send control frame type=" << type
-                       << ", error_code=" << error_code << ":"
-                       << spdylay_strerror(error_code);
+  if (LOG_ENABLED(INFO)) {
+    ULOG(INFO, upstream) << "Failed to send control frame type=" << type
+                         << ", error_code=" << error_code << ":"
+                         << spdylay_strerror(error_code);
+  }
   if (type == SPDYLAY_SYN_REPLY && error_code != SPDYLAY_ERR_STREAM_CLOSED &&
       error_code != SPDYLAY_ERR_STREAM_CLOSING) {
     // To avoid stream hanging around, issue RST_STREAM.

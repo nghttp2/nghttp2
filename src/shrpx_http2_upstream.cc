@@ -553,10 +553,12 @@ int on_frame_not_send_callback(nghttp2_session *session,
                                const nghttp2_frame *frame, int lib_error_code,
                                void *user_data) {
   auto upstream = static_cast<Http2Upstream *>(user_data);
-  ULOG(WARN, upstream) << "Failed to send control frame type="
-                       << static_cast<uint32_t>(frame->hd.type)
-                       << ", lib_error_code=" << lib_error_code << ":"
-                       << nghttp2_strerror(lib_error_code);
+  if (LOG_ENABLED(INFO)) {
+    ULOG(INFO, upstream) << "Failed to send control frame type="
+                         << static_cast<uint32_t>(frame->hd.type)
+                         << ", lib_error_code=" << lib_error_code << ":"
+                         << nghttp2_strerror(lib_error_code);
+  }
   if (frame->hd.type == NGHTTP2_HEADERS &&
       frame->headers.cat == NGHTTP2_HCAT_RESPONSE &&
       lib_error_code != NGHTTP2_ERR_STREAM_CLOSED &&

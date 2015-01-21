@@ -1142,10 +1142,12 @@ int on_frame_not_send_callback(nghttp2_session *session,
                                const nghttp2_frame *frame, int lib_error_code,
                                void *user_data) {
   auto http2session = static_cast<Http2Session *>(user_data);
-  SSLOG(WARN, http2session) << "Failed to send control frame type="
-                            << static_cast<uint32_t>(frame->hd.type)
-                            << "lib_error_code=" << lib_error_code << ":"
-                            << nghttp2_strerror(lib_error_code);
+  if (LOG_ENABLED(INFO)) {
+    SSLOG(INFO, http2session) << "Failed to send control frame type="
+                              << static_cast<uint32_t>(frame->hd.type)
+                              << "lib_error_code=" << lib_error_code << ":"
+                              << nghttp2_strerror(lib_error_code);
+  }
   if (frame->hd.type == NGHTTP2_HEADERS &&
       frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
     // To avoid stream hanging around, flag Downstream::MSG_RESET and
