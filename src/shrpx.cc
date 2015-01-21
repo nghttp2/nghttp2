@@ -406,6 +406,10 @@ void graceful_shutdown_signal_cb(struct ev_loop *loop, ev_signal *w,
                                  int revents) {
   auto conn_handler = static_cast<ConnectionHandler *>(w->data);
 
+  if (worker_config->graceful_shutdown) {
+    return;
+  }
+
   LOG(NOTICE) << "Graceful shutdown signal received";
 
   worker_config->graceful_shutdown = true;
@@ -418,6 +422,10 @@ void graceful_shutdown_signal_cb(struct ev_loop *loop, ev_signal *w,
   conn_handler->accept_pending_connection();
 
   conn_handler->graceful_shutdown_worker();
+
+  if (get_config()->num_worker == 1) {
+    return;
+  }
 
   // We have accepted all pending connections.  Shutdown main event
   // loop.
