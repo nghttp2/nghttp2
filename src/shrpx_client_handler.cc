@@ -327,6 +327,8 @@ int ClientHandler::write_tls() {
         return -1;
       }
 
+      update_last_write_time();
+
       if (rv < 0) {
         auto err = SSL_get_error(ssl_, rv);
         switch (err) {
@@ -352,7 +354,6 @@ int ClientHandler::write_tls() {
       wlimit_.drain(rv);
 
       update_warmup_writelen(rv);
-      update_last_write_time();
 
       continue;
     }
