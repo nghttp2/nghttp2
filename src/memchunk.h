@@ -156,7 +156,7 @@ template <typename Memchunk> struct Memchunks {
 
     return all;
   }
-  template <size_t N> size_t append_cstr(const char (&s)[N]) {
+  template <size_t N> size_t append(const char (&s)[N]) {
     return append(s, N - 1);
   }
   size_t remove(void *data, size_t count) {

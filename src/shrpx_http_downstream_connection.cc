@@ -363,13 +363,13 @@ int HttpDownstreamConnection::push_upload_data_chunk(const uint8_t *data,
   if (chunked) {
     auto chunk_size_hex = util::utox(datalen);
     output->append(chunk_size_hex.c_str(), chunk_size_hex.size());
-    output->append_cstr("\r\n");
+    output->append("\r\n");
   }
 
   output->append(data, datalen);
 
   if (chunked) {
-    output->append_cstr("\r\n");
+    output->append("\r\n");
   }
 
   signal_write();
@@ -383,7 +383,7 @@ int HttpDownstreamConnection::end_upload_data() {
   }
 
   auto output = downstream_->get_request_buf();
-  output->append_cstr("0\r\n\r\n");
+  output->append("0\r\n\r\n");
 
   signal_write();
 

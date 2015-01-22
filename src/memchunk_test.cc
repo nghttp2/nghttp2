@@ -88,14 +88,14 @@ void test_memchunks_append(void) {
   MemchunkPool16 pool;
   Memchunks16 chunks(&pool);
 
-  chunks.append_cstr("012");
+  chunks.append("012");
 
   auto m = chunks.tail;
 
   CU_ASSERT(3 == m->len());
   CU_ASSERT(13 == m->left());
 
-  chunks.append_cstr("3456789abcdef@");
+  chunks.append("3456789abcdef@");
 
   CU_ASSERT(16 == m->len());
   CU_ASSERT(0 == m->left());
@@ -129,7 +129,7 @@ void test_memchunks_drain(void) {
   MemchunkPool16 pool;
   Memchunks16 chunks(&pool);
 
-  chunks.append_cstr("0123456789");
+  chunks.append("0123456789");
 
   size_t nread;
 

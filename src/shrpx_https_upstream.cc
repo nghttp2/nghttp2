@@ -587,16 +587,16 @@ void HttpsUpstream::error_reply(unsigned int status_code) {
 
   auto output = downstream->get_response_buf();
 
-  output->append_cstr("HTTP/1.1 ");
+  output->append("HTTP/1.1 ");
   auto status_str = http2::get_status_string(status_code);
   output->append(status_str.c_str(), status_str.size());
-  output->append_cstr("\r\nServer: ");
+  output->append("\r\nServer: ");
   output->append(get_config()->server_name, strlen(get_config()->server_name));
-  output->append_cstr("\r\nContent-Length: ");
+  output->append("\r\nContent-Length: ");
   auto cl = util::utos(html.size());
   output->append(cl.c_str(), cl.size());
-  output->append_cstr("\r\nContent-Type: text/html; "
-                      "charset=UTF-8\r\nConnection: close\r\n\r\n");
+  output->append("\r\nContent-Type: text/html; "
+                 "charset=UTF-8\r\nConnection: close\r\n\r\n");
   output->append(html.c_str(), html.size());
 
   downstream->add_response_sent_bodylen(html.size());
@@ -770,7 +770,7 @@ int HttpsUpstream::on_downstream_body(Downstream *downstream,
   downstream->add_response_sent_bodylen(len);
 
   if (downstream->get_chunked_response()) {
-    output->append_cstr("\r\n");
+    output->append("\r\n");
   }
   return 0;
 }
@@ -778,7 +778,7 @@ int HttpsUpstream::on_downstream_body(Downstream *downstream,
 int HttpsUpstream::on_downstream_body_complete(Downstream *downstream) {
   if (downstream->get_chunked_response()) {
     auto output = downstream->get_response_buf();
-    output->append_cstr("0\r\n\r\n");
+    output->append("0\r\n\r\n");
   }
   if (LOG_ENABLED(INFO)) {
     DLOG(INFO, downstream) << "HTTP response completed";
