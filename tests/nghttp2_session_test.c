@@ -6408,7 +6408,7 @@ void test_nghttp2_session_graceful_shutdown(void) {
   my_user_data ud;
 
   memset(&callbacks, 0, sizeof(callbacks));
-  callbacks.send_callback = block_count_send_callback;
+  callbacks.send_callback = null_send_callback;
   callbacks.on_frame_send_callback = on_frame_send_callback;
   callbacks.on_stream_close_callback = on_stream_close_callback;
 
@@ -6432,7 +6432,6 @@ void test_nghttp2_session_graceful_shutdown(void) {
   CU_ASSERT(0 == nghttp2_submit_goaway(session, NGHTTP2_FLAG_NONE, 311,
                                        NGHTTP2_NO_ERROR, NULL, 0));
 
-  ud.block_count = 1;
   ud.frame_send_cb_called = 0;
   ud.stream_close_cb_called = 0;
 
@@ -6445,7 +6444,6 @@ void test_nghttp2_session_graceful_shutdown(void) {
   CU_ASSERT(0 ==
             nghttp2_session_terminate_session2(session, 301, NGHTTP2_NO_ERROR));
 
-  ud.block_count = 1;
   ud.frame_send_cb_called = 0;
   ud.stream_close_cb_called = 0;
 
