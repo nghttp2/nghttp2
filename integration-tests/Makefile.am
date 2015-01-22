@@ -25,5 +25,12 @@ EXTRA_DIST = \
 	nghttpx_test.go \
 	server_tester.go
 
+.PHONY: itprep it
+
+itprep:
+	go get -d -v github.com/bradfitz/http2
+	go get -d -v github.com/tatsuhiro-t/go-nghttp2
+	go get -d -v golang.org/x/net/spdy
+
 it:
 	sh setenv go test -v
