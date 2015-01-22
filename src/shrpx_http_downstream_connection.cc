@@ -148,6 +148,10 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
     auto connect_blocker = client_handler_->get_http1_connect_blocker();
 
     if (connect_blocker->blocked()) {
+      if (LOG_ENABLED(INFO)) {
+        DCLOG(INFO, this)
+            << "Downstream connection was blocked by connect_blocker";
+      }
       return -1;
     }
 
