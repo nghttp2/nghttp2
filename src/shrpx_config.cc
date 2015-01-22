@@ -242,8 +242,17 @@ read_tls_ticket_key_file(const std::vector<std::string> &files) {
 }
 
 FILE *open_file_for_write(const char *filename) {
+#if defined O_CLOEXEC
   auto fd = open(filename, O_WRONLY | O_CLOEXEC | O_CREAT | O_TRUNC,
                  S_IRUSR | S_IWUSR);
+#else
+  auto fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+
+  // We get race condition if execve is called at the same time.
+  if (fd != -1) {
+    util::make_socket_closeonexec(fd);
+  }
+#endif
   if (fd == -1) {
     LOG(ERROR) << "Failed to open " << filename
                << " for writing. Cause: " << strerror(errno);
