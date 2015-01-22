@@ -664,6 +664,12 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
     return 0;
   }
 
+  // after graceful shutdown commenced, add connection: close header
+  // field.
+  if (worker_config->graceful_shutdown) {
+    downstream->set_response_connection_close(true);
+  }
+
   // We check downstream->get_response_connection_close() in case when
   // the Content-Length is not available.
   if (!downstream->get_request_connection_close() &&

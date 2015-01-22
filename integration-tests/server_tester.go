@@ -275,9 +275,10 @@ func (st *serverTester) http1(rp requestParam) (*serverResponse, error) {
 	resp.Body.Close()
 
 	res := &serverResponse{
-		status: resp.StatusCode,
-		header: resp.Header,
-		body:   respBody,
+		status:    resp.StatusCode,
+		header:    resp.Header,
+		body:      respBody,
+		connClose: resp.Close,
 	}
 
 	return res, nil
@@ -534,6 +535,7 @@ type serverResponse struct {
 	connErr           bool                 // true if HTTP/2 connection error
 	spdyGoAwayErrCode spdy.GoAwayStatus    // status code received in SPDY RST_STREAM
 	spdyRstErrCode    spdy.RstStreamStatus // status code received in SPDY GOAWAY
+	connClose         bool                 // Conection: close is included in response header in HTTP/1 test
 }
 
 func cloneHeader(h http.Header) http.Header {

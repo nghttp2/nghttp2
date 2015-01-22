@@ -96,6 +96,44 @@ func TestH1H1ConnectFailure(t *testing.T) {
 	}
 }
 
+func TestH1H1GracefulShutdown(t *testing.T) {
+	st := newServerTester(nil, t, noopHandler)
+	defer st.Close()
+
+	res, err := st.http1(requestParam{
+		name: "TestH1H1GracefulShutdown-1",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http1() = %v", err)
+	}
+
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+
+	st.cmd.Process.Signal(syscall.SIGQUIT)
+
+	res, err = st.http1(requestParam{
+		name: "TestH1H1GracefulShutdown-2",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http1() = %v", err)
+	}
+
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+
+	if got, want := res.connClose, true; got != want {
+		t.Errorf("res.connClose: %v; want %v", got, want)
+	}
+
+	want := io.EOF
+	if _, err := st.conn.Read(nil); err == nil || err != want {
+		t.Errorf("st.conn.Read(): %v; want %v", err, want)
+	}
+}
+
 func TestH1H2ConnectFailure(t *testing.T) {
 	st := newServerTester([]string{"--http2-bridge"}, t, noopHandler)
 	defer st.Close()
