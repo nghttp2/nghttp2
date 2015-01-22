@@ -40,16 +40,15 @@ std::string create_error_html(unsigned int status_code) {
   std::string res;
   res.reserve(512);
   auto status = http2::get_status_string(status_code);
-  res += "<html><head><title>";
+  res += "<!DOCTYPE html><html lang=en><title>";
   res += status;
-  res += "</title></head><body><h1>";
+  res += "</title><body><h1>";
   res += status;
-  res += "</h1><hr><address>";
+  res += "</h1><footer>";
   res += get_config()->server_name;
   res += " at port ";
   res += util::utos(get_config()->port);
-  res += "</address>";
-  res += "</body></html>";
+  res += "</footer></body></html>";
   return res;
 }
 
