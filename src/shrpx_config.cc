@@ -251,7 +251,7 @@ FILE *open_file_for_write(const char *filename) {
  
     // We get race condition if execve is called at the same time.
     if(fd != -1) {
-        make_socket_closeonexec_(fd);
+        int make_socket_closeonexec_(fd);
     }
   #endif
   if (fd == -1) {
