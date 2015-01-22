@@ -750,6 +750,8 @@ end:
 
 int HttpDownstreamConnection::on_connect() {
   if (!util::check_socket_connected(fd_)) {
+    ev_io_stop(loop_, &wev_);
+
     if (LOG_ENABLED(INFO)) {
       DLOG(INFO, this) << "downstream connect failed";
     }
