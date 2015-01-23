@@ -188,8 +188,13 @@ its testing framework.  We depend on the following libraries:
 * https://github.com/tatsuhiro-t/go-nghttp2
 * https://golang.org/x/net/spdy
 
-To run the tests, after installing above packages and their
-dependencies, enter ``integration-tests`` directory and run::
+To download the above packages, after settings ``GOPATH``, run the
+following command under ``integration-tests`` directory::
+
+    $ make itprep
+
+To run the tests, run the following command under
+``integration-tests`` directory::
 
     $ make it
 
