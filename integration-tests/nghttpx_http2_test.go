@@ -11,6 +11,7 @@ import (
 	"testing"
 )
 
+// TestH1H2PlainGET tests whether simple HTTP/2 GET request works.
 func TestH2H1PlainGET(t *testing.T) {
 	st := newServerTester(nil, t, noopHandler)
 	defer st.Close()
@@ -28,6 +29,8 @@ func TestH2H1PlainGET(t *testing.T) {
 	}
 }
 
+// TestH2H1AddXff tests that server generates X-Forwarded-For header
+// field when forwarding request to backend.
 func TestH2H1AddXff(t *testing.T) {
 	st := newServerTester([]string{"--add-x-forwarded-for"}, t, func(w http.ResponseWriter, r *http.Request) {
 		xff := r.Header.Get("X-Forwarded-For")
@@ -46,6 +49,8 @@ func TestH2H1AddXff(t *testing.T) {
 	}
 }
 
+// TestH2H1AddXff2 tests that server appends X-Forwarded-For header
+// field to existing one when forwarding request to backend.
 func TestH2H1AddXff2(t *testing.T) {
 	st := newServerTester([]string{"--add-x-forwarded-for"}, t, func(w http.ResponseWriter, r *http.Request) {
 		xff := r.Header.Get("X-Forwarded-For")
@@ -67,6 +72,8 @@ func TestH2H1AddXff2(t *testing.T) {
 	}
 }
 
+// TestH2H1StripXff tests that --strip-incoming-x-forwarded-for
+// option.
 func TestH2H1StripXff(t *testing.T) {
 	st := newServerTester([]string{"--strip-incoming-x-forwarded-for"}, t, func(w http.ResponseWriter, r *http.Request) {
 		if xff, found := r.Header["X-Forwarded-For"]; found {
@@ -86,6 +93,8 @@ func TestH2H1StripXff(t *testing.T) {
 	}
 }
 
+// TestH2H1StripAddXff tests that --strip-incoming-x-forwarded-for and
+// --add-x-forwarded-for options.
 func TestH2H1StripAddXff(t *testing.T) {
 	args := []string{
 		"--strip-incoming-x-forwarded-for",
@@ -111,6 +120,9 @@ func TestH2H1StripAddXff(t *testing.T) {
 	}
 }
 
+// TestH2H1BadRequestCL tests that server rejects request whose
+// content-length header field value does not match its request body
+// size.
 func TestH2H1BadRequestCL(t *testing.T) {
 	st := newServerTester(nil, t, noopHandler)
 	defer st.Close()
@@ -135,6 +147,9 @@ func TestH2H1BadRequestCL(t *testing.T) {
 	}
 }
 
+// TestH2H1BadResponseCL tests that server returns error when
+// content-length response header field value does not match its
+// response body size.
 func TestH2H1BadResponseCL(t *testing.T) {
 	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
 		// we set content-length: 1024, but only send 3 bytes.
@@ -156,6 +171,8 @@ func TestH2H1BadResponseCL(t *testing.T) {
 	}
 }
 
+// TestH2H1LocationRewrite tests location header field rewriting
+// works.
 func TestH2H1LocationRewrite(t *testing.T) {
 	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
 		// TODO we cannot get st.ts's port number here.. 8443
@@ -177,6 +194,7 @@ func TestH2H1LocationRewrite(t *testing.T) {
 	}
 }
 
+// TestH2H1ChunkedRequestBody tests that chunked request body works.
 func TestH2H1ChunkedRequestBody(t *testing.T) {
 	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
 		want := "[chunked]"
@@ -204,6 +222,8 @@ func TestH2H1ChunkedRequestBody(t *testing.T) {
 	}
 }
 
+// TestH2H1MultipleRequestCL tests that server rejects request with
+// multiple Content-Length request header fields.
 func TestH2H1MultipleRequestCL(t *testing.T) {
 	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
 		t.Errorf("server should not forward bad request")
@@ -226,6 +246,8 @@ func TestH2H1MultipleRequestCL(t *testing.T) {
 	}
 }
 
+// TestH2H1InvalidRequestCL tests that server rejects request with
+// Content-Length which cannot be parsed as a number.
 func TestH2H1InvalidRequestCL(t *testing.T) {
 	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
 		t.Errorf("server should not forward bad request")
@@ -247,6 +269,8 @@ func TestH2H1InvalidRequestCL(t *testing.T) {
 	}
 }
 
+// TestH2H1ConnectFailure tests that server handles the situation that
+// connection attempt to HTTP/1 backend failed.
 func TestH2H1ConnectFailure(t *testing.T) {
 	st := newServerTester(nil, t, noopHandler)
 	defer st.Close()
@@ -266,6 +290,7 @@ func TestH2H1ConnectFailure(t *testing.T) {
 	}
 }
 
+// TestH2H1GracefulShutdown tests graceful shutdown.
 func TestH2H1GracefulShutdown(t *testing.T) {
 	st := newServerTester(nil, t, noopHandler)
 	defer st.Close()
@@ -342,6 +367,8 @@ func TestH2H1GracefulShutdown(t *testing.T) {
 	}
 }
 
+// TestH2H2MultipleResponseCL tests that server returns error if
+// multiple Content-Length response header fields are received.
 func TestH2H2MultipleResponseCL(t *testing.T) {
 	st := newServerTester([]string{"--http2-bridge"}, t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("content-length", "1")
@@ -361,6 +388,9 @@ func TestH2H2MultipleResponseCL(t *testing.T) {
 	}
 }
 
+// TestH2H2InvalidResponseCL tests that server returns error if
+// Content-Length response header field value cannot be parsed as a
+// number.
 func TestH2H2InvalidResponseCL(t *testing.T) {
 	st := newServerTester([]string{"--http2-bridge"}, t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("content-length", "")
@@ -379,6 +409,8 @@ func TestH2H2InvalidResponseCL(t *testing.T) {
 	}
 }
 
+// TestH2H2ConnectFailure tests that server handles the situation that
+// connection attempt to HTTP/2 backend failed.
 func TestH2H2ConnectFailure(t *testing.T) {
 	st := newServerTester([]string{"--http2-bridge"}, t, noopHandler)
 	defer st.Close()

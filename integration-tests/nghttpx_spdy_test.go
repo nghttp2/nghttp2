@@ -7,6 +7,7 @@ import (
 	"testing"
 )
 
+// TestS3H1PlainGET tests whether simple SPDY GET request works.
 func TestS3H1PlainGET(t *testing.T) {
 	st := newServerTesterTLS([]string{"--npn-list=spdy/3.1"}, t, noopHandler)
 	defer st.Close()
@@ -24,6 +25,9 @@ func TestS3H1PlainGET(t *testing.T) {
 	}
 }
 
+// TestS3H1BadRequestCL tests that server rejects request whose
+// content-length header field value does not match its request body
+// size.
 func TestS3H1BadRequestCL(t *testing.T) {
 	st := newServerTesterTLS([]string{"--npn-list=spdy/3.1"}, t, noopHandler)
 	defer st.Close()
@@ -48,6 +52,8 @@ func TestS3H1BadRequestCL(t *testing.T) {
 	}
 }
 
+// TestS3H1MultipleRequestCL tests that server rejects request with
+// multiple Content-Length request header fields.
 func TestS3H1MultipleRequestCL(t *testing.T) {
 	st := newServerTesterTLS([]string{"--npn-list=spdy/3.1"}, t, func(w http.ResponseWriter, r *http.Request) {
 		t.Errorf("server should not forward bad request")
@@ -70,6 +76,8 @@ func TestS3H1MultipleRequestCL(t *testing.T) {
 	}
 }
 
+// TestS3H1InvalidRequestCL tests that server rejects request with
+// Content-Length which cannot be parsed as a number.
 func TestS3H1InvalidRequestCL(t *testing.T) {
 	st := newServerTesterTLS([]string{"--npn-list=spdy/3.1"}, t, func(w http.ResponseWriter, r *http.Request) {
 		t.Errorf("server should not forward bad request")
@@ -91,6 +99,8 @@ func TestS3H1InvalidRequestCL(t *testing.T) {
 	}
 }
 
+// TestS3H2ConnectFailure tests that server handles the situation that
+// connection attempt to HTTP/2 backend failed.
 func TestS3H2ConnectFailure(t *testing.T) {
 	st := newServerTesterTLS([]string{"--npn-list=spdy/3.1", "--http2-bridge"}, t, noopHandler)
 	defer st.Close()

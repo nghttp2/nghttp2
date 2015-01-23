@@ -10,6 +10,7 @@ import (
 	"testing"
 )
 
+// TestH1H1PlainGET tests whether simple HTTP/1 GET request works.
 func TestH1H1PlainGET(t *testing.T) {
 	st := newServerTester(nil, t, noopHandler)
 	defer st.Close()
@@ -27,6 +28,8 @@ func TestH1H1PlainGET(t *testing.T) {
 	}
 }
 
+// TestH1H1PlainGETClose tests whether simple HTTP/1 GET request with
+// Connetion: close request header field works.
 func TestH1H1PlainGETClose(t *testing.T) {
 	st := newServerTester(nil, t, noopHandler)
 	defer st.Close()
@@ -47,6 +50,8 @@ func TestH1H1PlainGETClose(t *testing.T) {
 	}
 }
 
+// TestH1H1MultipleRequestCL tests that server rejects request which
+// contains multiple Content-Length header fields.
 func TestH1H1MultipleRequestCL(t *testing.T) {
 	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
 		t.Errorf("server should not forward bad request")
@@ -74,6 +79,8 @@ Content-Length: 1
 	}
 }
 
+// TestH1H1ConnectFailure tests that server handles the situation that
+// connection attempt to HTTP/1 backend failed.
 func TestH1H1ConnectFailure(t *testing.T) {
 	st := newServerTester(nil, t, noopHandler)
 	defer st.Close()
@@ -93,6 +100,7 @@ func TestH1H1ConnectFailure(t *testing.T) {
 	}
 }
 
+// TestH1H1GracefulShutdown tests graceful shutdown.
 func TestH1H1GracefulShutdown(t *testing.T) {
 	st := newServerTester(nil, t, noopHandler)
 	defer st.Close()
@@ -131,6 +139,8 @@ func TestH1H1GracefulShutdown(t *testing.T) {
 	}
 }
 
+// TestH1H2ConnectFailure tests that server handles the situation that
+// connection attempt to HTTP/2 backend failed.
 func TestH1H2ConnectFailure(t *testing.T) {
 	st := newServerTester([]string{"--http2-bridge"}, t, noopHandler)
 	defer st.Close()
@@ -150,6 +160,8 @@ func TestH1H2ConnectFailure(t *testing.T) {
 	}
 }
 
+// TestH1H2NoHost tests that server rejects request without Host
+// header field for HTTP/2 backend.
 func TestH1H2NoHost(t *testing.T) {
 	st := newServerTester([]string{"--http2-bridge"}, t, func(w http.ResponseWriter, r *http.Request) {
 		t.Errorf("server should not forward bad request")
