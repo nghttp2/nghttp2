@@ -179,6 +179,15 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
 
     return 0;
   }
+  if (!nghttp2_check_header_name(name, namelen)) {
+    // we are not forgiving for malformed header field name in
+    // request.
+    upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
+    return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+  }
+  if (!nghttp2_check_header_value(value, valuelen)) {
+    return 0;
+  }
   if (!http2::check_nv(name, namelen, value, valuelen)) {
     // Simply discard name/value, as if it never happen.
     return 0;
