@@ -295,12 +295,12 @@ SSL_CTX *create_ssl_context(const char *private_key_file,
     DIE();
   }
 
-  SSL_CTX_set_options(ssl_ctx,
-                      SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 |
-                          SSL_OP_NO_COMPRESSION |
-                          SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION |
-                          SSL_OP_SINGLE_ECDH_USE | SSL_OP_SINGLE_DH_USE |
-                          get_config()->tls_proto_mask);
+  SSL_CTX_set_options(
+      ssl_ctx,
+      SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION |
+          SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION |
+          SSL_OP_SINGLE_ECDH_USE | SSL_OP_SINGLE_DH_USE |
+          SSL_OP_CIPHER_SERVER_PREFERENCE | get_config()->tls_proto_mask);
 
   const unsigned char sid_ctx[] = "shrpx";
   SSL_CTX_set_session_id_context(ssl_ctx, sid_ctx, sizeof(sid_ctx) - 1);
@@ -312,8 +312,6 @@ SSL_CTX *create_ssl_context(const char *private_key_file,
   } else {
     ciphers = nghttp2::ssl::DEFAULT_CIPHER_LIST;
   }
-
-  SSL_CTX_set_options(ssl_ctx, SSL_OP_CIPHER_SERVER_PREFERENCE);
 
   if (SSL_CTX_set_cipher_list(ssl_ctx, ciphers) == 0) {
     LOG(FATAL) << "SSL_CTX_set_cipher_list " << ciphers
