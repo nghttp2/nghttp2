@@ -183,3 +183,29 @@ func TestH1H2NoHost(t *testing.T) {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 }
+
+// TestH1H2CrumbleCookie tests that Cookies are crumbled and assembled
+// when forwarding to HTTP/2 backend link.  go-nghttp2 server
+// concatenates crumbled Cookies automatically, so this test is not
+// much effective now.
+func TestH1H2CrumbleCookie(t *testing.T) {
+	st := newServerTester([]string{"--http2-bridge"}, t, func(w http.ResponseWriter, r *http.Request) {
+		if got, want := r.Header.Get("Cookie"), "alpha; bravo; charlie"; got != want {
+			t.Errorf("Cookie: %v; want %v", got, want)
+		}
+	})
+	defer st.Close()
+
+	res, err := st.http1(requestParam{
+		name: "TestH1H2CrumbleCookie",
+		header: []hpack.HeaderField{
+			pair("Cookie", "alpha; bravo; charlie"),
+		},
+	})
+	if err != nil {
+		t.Fatalf("Error st.http1() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+}
