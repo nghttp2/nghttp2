@@ -194,8 +194,6 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
         continue;
       }
 
-      connect_blocker->on_success();
-
       if (LOG_ENABLED(INFO)) {
         DCLOG(INFO, this) << "Connecting to downstream server";
       }
@@ -753,16 +751,19 @@ end:
 }
 
 int HttpDownstreamConnection::on_connect() {
+  auto connect_blocker = client_handler_->get_http1_connect_blocker();
+
   if (!util::check_socket_connected(fd_)) {
     ev_io_stop(loop_, &wev_);
 
     if (LOG_ENABLED(INFO)) {
       DLOG(INFO, this) << "downstream connect failed";
     }
-    auto connect_blocker = client_handler_->get_http1_connect_blocker();
     connect_blocker->on_failure();
     return -1;
   }
+
+  connect_blocker->on_success();
 
   ev_io_start(loop_, &rev_);
   ev_set_cb(&wev_, writecb);
