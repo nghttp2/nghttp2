@@ -62,7 +62,7 @@ func TestH1H1MultipleRequestCL(t *testing.T) {
 Host: %v
 Test-Case: TestH1H1MultipleRequestCL
 Content-Length: 0
-Content-Length: 1
+Content-Length: 0
 
 `, st.authority)); err != nil {
 		t.Fatalf("Error io.WriteString() = %v", err)

@@ -234,7 +234,7 @@ func TestH2H1MultipleRequestCL(t *testing.T) {
 		name: "TestH2H1MultipleRequestCL",
 		header: []hpack.HeaderField{
 			pair("content-length", "1"),
-			pair("content-length", "2"),
+			pair("content-length", "1"),
 		},
 	})
 	if err != nil {
@@ -372,7 +372,7 @@ func TestH2H1GracefulShutdown(t *testing.T) {
 func TestH2H2MultipleResponseCL(t *testing.T) {
 	st := newServerTester([]string{"--http2-bridge"}, t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("content-length", "1")
-		w.Header().Add("content-length", "2")
+		w.Header().Add("content-length", "1")
 	})
 	defer st.Close()
 

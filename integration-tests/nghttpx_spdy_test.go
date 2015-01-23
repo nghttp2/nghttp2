@@ -64,7 +64,7 @@ func TestS3H1MultipleRequestCL(t *testing.T) {
 		name: "TestS3H1MultipleRequestCL",
 		header: []hpack.HeaderField{
 			pair("content-length", "1"),
-			pair("content-length", "2"),
+			pair("content-length", "1"),
 		},
 	})
 	if err != nil {

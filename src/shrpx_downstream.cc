@@ -306,7 +306,7 @@ int index_headers(int *hdidx, Headers &headers, int64_t &content_length) {
       if (len == -1) {
         return -1;
       }
-      if (content_length != -1 && content_length != len) {
+      if (content_length != -1) {
         return -1;
       }
       content_length = len;

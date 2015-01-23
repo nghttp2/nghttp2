@@ -742,8 +742,7 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
       downstream->set_response_state(Downstream::MSG_BAD_HEADER);
       return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
     }
-    auto cl = downstream->get_response_content_length();
-    if (cl != -1 && cl != len) {
+    if (downstream->get_response_content_length() != -1) {
       http2session->submit_rst_stream(frame->hd.stream_id,
                                       NGHTTP2_PROTOCOL_ERROR);
       downstream->set_response_state(Downstream::MSG_BAD_HEADER);

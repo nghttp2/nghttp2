@@ -206,8 +206,7 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
       }
       return 0;
     }
-    auto cl = downstream->get_request_content_length();
-    if (cl != -1 && cl != len) {
+    if (downstream->get_request_content_length() != -1) {
       if (upstream->error_reply(downstream, 400) != 0) {
         return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
       }
