@@ -7,14 +7,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>nghttpx(1) &mdash; nghttp2 0.6.3-DEV documentation</title>
+  <title>nghttpx(1) &mdash; nghttp2 0.7.2-DEV documentation</title>
   
 
   
   
 
   
-  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700&subset=latin,cyrillic' rel='stylesheet' type='text/css'>
 
   
   
@@ -28,7 +28,7 @@
   
 
   
-    <link rel="top" title="nghttp2 0.6.3-DEV documentation" href="index.html"/>
+    <link rel="top" title="nghttp2 0.7.2-DEV documentation" href="index.html"/>
         <link rel="next" title="h2load(1)" href="h2load.1.html"/>
         <link rel="prev" title="nghttpd(1)" href="nghttpd.1.html"/> 
 
@@ -47,8 +47,9 @@
         
           <a href="index.html" class="fa fa-home"> nghttp2</a>
         
-        <div role="search">
-  <form id ="rtd-search-form" class="wy-form" action="search.html" method="get">
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" />
     <input type="hidden" name="check_keywords" value="yes" />
     <input type="hidden" name="area" value="default" />
@@ -58,20 +59,27 @@
 
       <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
         
-        
-            <ul class="current">
+          
+          
+              <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="package_README.html">nghttp2 - HTTP/2 C Library</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#development-status">Development Status</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#public-test-server">Public Test Server</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#requirements">Requirements</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#build-from-git">Build from git</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#building-documentation">Building documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#unit-tests">Unit tests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#integration-tests">Integration tests</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#client-server-and-proxy-programs">Client, Server and Proxy programs</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#benchmarking-tool">Benchmarking tool</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#hpack-tools">HPACK tools</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#libnghttp2-asio-high-level-http-2-c-library">libnghttp2_asio: High level HTTP/2 C++ library</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#python-bindings">Python bindings</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#contribution">Contribution</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="contribute.html">Contribution Guidelines</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="contribute.html#coding-style">Coding style</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="building-android-binary.html">Building Android binary</a></li>
@@ -90,34 +98,32 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="nghttp.1.html">nghttp(1)</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#name">NAME</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#options">OPTIONS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#options">OPTIONS:</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="nghttpd.1.html">nghttpd(1)</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#name">NAME</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#options">OPTIONS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#options">OPTIONS:</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
 <li class="toctree-l1 current"><a class="current reference internal" href="">nghttpx(1)</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#name">NAME</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#options">OPTIONS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#options">OPTIONS:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#files">FILES</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#signals">SIGNALS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#see-also">SEE ALSO</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="h2load.1.html">h2load(1)</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#name">NAME</a></li>
 <li class="toctree-l2"><a class="reference internal" href="h2load.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="h2load.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#options">OPTIONS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#options">OPTIONS:</a></li>
 <li class="toctree-l2"><a class="reference internal" href="h2load.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
@@ -131,8 +137,9 @@
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#specifying-additional-ca-certificate">Specifying additional CA certificate</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#read-write-rate-limit">Read/write rate limit</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#rewriting-location-header-field">Rewriting location header field</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#hot-deploy">Hot deploy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#hot-swapping">Hot swapping</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#re-opening-log-files">Re-opening log files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#multiple-http-1-backend-addresses">Multiple HTTP/1 backend addresses</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="h2load-howto.html">h2load - HTTP/2 benchmarking tool - HOW-TO</a><ul>
@@ -166,8 +173,10 @@
 <li class="toctree-l1"><a class="reference internal" href="asio_http2.h.html">asio_http2.h</a></li>
 <li class="toctree-l1"><a class="reference external" href="https://github.com/tatsuhiro-t/nghttp2">Source</a></li>
 <li class="toctree-l1"><a class="reference external" href="https://github.com/tatsuhiro-t/nghttp2/issues">Issues</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://nghttp2.org/">nghttp2.org</a></li>
 </ul>
 
+          
         
       </div>
       &nbsp;
@@ -200,10 +209,6 @@
             
   <div class="section" id="nghttpx-1">
 <h1>nghttpx(1)<a class="headerlink" href="#nghttpx-1" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="name">
-<h2>NAME<a class="headerlink" href="#name" title="Permalink to this headline">¶</a></h2>
-<p>nghttpx - HTTP/2 experimental proxy</p>
-</div>
 <div class="section" id="synopsis">
 <h2>SYNOPSIS<a class="headerlink" href="#synopsis" title="Permalink to this headline">¶</a></h2>
 <p><strong>nghttpx</strong> [OPTIONS]... [&lt;PRIVATE_KEY&gt; &lt;CERT&gt;]</p>
@@ -211,670 +216,802 @@
 <div class="section" id="description">
 <h2>DESCRIPTION<a class="headerlink" href="#description" title="Permalink to this headline">¶</a></h2>
 <p>A reverse proxy for HTTP/2, HTTP/1 and SPDY.</p>
-<dl class="option">
-<dt id="cmdoption-nghttpx-arg-PRIVATE_KEY">
-<tt class="descname">PRIVATE_KEY</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-nghttpx-arg-PRIVATE_KEY" title="Permalink to this definition">¶</a></dt>
-<dd><p>Set  path  to  server&#8217;s  private  key.   Required
-unless  <a class="reference internal" href="#cmdoption-nghttpx-p"><em class="xref std std-option">-p</em></a>,  <a class="reference internal" href="#cmdoption-nghttpx--client"><em class="xref std std-option">--client</em></a>  or  <a class="reference internal" href="#cmdoption-nghttpx--frontend-no-tls"><em class="xref std std-option">--frontend-no-tls</em></a>  are
-given.</p>
+<dl class="describe">
+<dt>
+<tt class="descname">&lt;PRIVATE_KEY&gt;</tt></dt>
+<dd><p>Set path  to server's private key.   Required unless <a class="reference internal" href="#cmdoption-p"><em class="xref std std-option">-p</em></a>,
+<a class="reference internal" href="#cmdoption--client"><em class="xref std std-option">--client</em></a> or <a class="reference internal" href="#cmdoption--frontend-no-tls"><em class="xref std std-option">--frontend-no-tls</em></a> are given.</p>
 </dd></dl>
 
-<dl class="option">
-<dt id="cmdoption-nghttpx-arg-CERT">
-<tt class="descname">CERT</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-nghttpx-arg-CERT" title="Permalink to this definition">¶</a></dt>
-<dd><p>Set  path  to   server&#8217;s  certificate.   Required
-unless  <a class="reference internal" href="#cmdoption-nghttpx-p"><em class="xref std std-option">-p</em></a>,  <a class="reference internal" href="#cmdoption-nghttpx--client"><em class="xref std std-option">--client</em></a>  or  <a class="reference internal" href="#cmdoption-nghttpx--frontend-no-tls"><em class="xref std std-option">--frontend-no-tls</em></a>  are
-given.</p>
+<dl class="describe">
+<dt>
+<tt class="descname">&lt;CERT&gt;</tt></dt>
+<dd><p>Set path  to server's certificate.  Required  unless <a class="reference internal" href="#cmdoption-p"><em class="xref std std-option">-p</em></a>,
+<a class="reference internal" href="#cmdoption--client"><em class="xref std std-option">--client</em></a> or <a class="reference internal" href="#cmdoption--frontend-no-tls"><em class="xref std std-option">--frontend-no-tls</em></a> are given.</p>
 </dd></dl>
 
 </div>
 <div class="section" id="options">
-<h2>OPTIONS<a class="headerlink" href="#options" title="Permalink to this headline">¶</a></h2>
+<h2>OPTIONS:<a class="headerlink" href="#options" title="Permalink to this headline">¶</a></h2>
 <p>The options are categorized into several groups.</p>
 <div class="section" id="connections">
-<h3>Connections<a class="headerlink" href="#connections" title="Permalink to this headline">¶</a></h3>
+<h3>Connections:<a class="headerlink" href="#connections" title="Permalink to this headline">¶</a></h3>
 <dl class="option">
-<dt id="cmdoption-nghttpx-b">
-<span id="cmdoption-nghttpx--backend"></span><tt class="descname">-b</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--backend</tt><tt class="descclassname">=&lt;HOST,PORT&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx-b" title="Permalink to this definition">¶</a></dt>
-<dd><p>Set backend host and port.
-Default: &#8216;127.0.0.1,80&#8217;</p>
+<dt id="cmdoption-b">
+<span id="cmdoption--backend"></span><tt class="descname">-b</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--backend</tt><tt class="descclassname">=&lt;HOST,PORT&gt;</tt><a class="headerlink" href="#cmdoption-b" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set backend host and port.  For HTTP/1 backend, multiple
+backend addresses are accepted by repeating this option.
+HTTP/2  backend   does  not  support   multiple  backend
+addresses  and the  first occurrence  of this  option is
+used.</p>
+<p>Default: <tt class="docutils literal"><span class="pre">127.0.0.1,80</span></tt></p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx-f">
-<span id="cmdoption-nghttpx--frontend"></span><tt class="descname">-f</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--frontend</tt><tt class="descclassname">=&lt;HOST,PORT&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx-f" title="Permalink to this definition">¶</a></dt>
-<dd><p>Set frontend host and port.  If &lt;HOST&gt; is &#8216;*&#8217;, it
-assumes  all addresses  including  both IPv4  and
-IPv6.
-Default: &#8216;*,3000&#8217;</p>
+<dt id="cmdoption-f">
+<span id="cmdoption--frontend"></span><tt class="descname">-f</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--frontend</tt><tt class="descclassname">=&lt;HOST,PORT&gt;</tt><a class="headerlink" href="#cmdoption-f" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set  frontend  host and  port.   If  &lt;HOST&gt; is  '*',  it
+assumes all addresses including both IPv4 and IPv6.</p>
+<p>Default: <tt class="docutils literal"><span class="pre">*,3000</span></tt></p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--backlog">
-<tt class="descname">--backlog</tt><tt class="descclassname">=&lt;NUM&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--backlog" title="Permalink to this definition">¶</a></dt>
-<dd><p>Set  listen  backlog  size.    If  -1  is  given,
-libevent will choose suitable value.
-Default: -1</p>
+<dt id="cmdoption--backlog">
+<tt class="descname">--backlog</tt><tt class="descclassname">=&lt;N&gt;</tt><a class="headerlink" href="#cmdoption--backlog" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set listen backlog size.</p>
+<p>Default: <tt class="docutils literal"><span class="pre">512</span></tt></p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--backend-ipv4">
-<tt class="descname">--backend-ipv4</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-nghttpx--backend-ipv4" title="Permalink to this definition">¶</a></dt>
+<dt id="cmdoption--backend-ipv4">
+<tt class="descname">--backend-ipv4</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption--backend-ipv4" title="Permalink to this definition">¶</a></dt>
 <dd><p>Resolve backend hostname to IPv4 address only.</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--backend-ipv6">
-<tt class="descname">--backend-ipv6</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-nghttpx--backend-ipv6" title="Permalink to this definition">¶</a></dt>
+<dt id="cmdoption--backend-ipv6">
+<tt class="descname">--backend-ipv6</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption--backend-ipv6" title="Permalink to this definition">¶</a></dt>
 <dd><p>Resolve backend hostname to IPv6 address only.</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--backend-http-proxy-uri">
-<tt class="descname">--backend-http-proxy-uri</tt><tt class="descclassname">=&lt;URI&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--backend-http-proxy-uri" title="Permalink to this definition">¶</a></dt>
-<dd><p>Specify     proxy     URI     in     the     form
-<a class="reference external" href="http:/">http:/</a>/[&lt;USER&gt;:&lt;PASS&gt;&#64;]&lt;PROXY&gt;:&lt;PORT&gt;.     If   a
-proxy requires authentication, specify &lt;USER&gt; and
-&lt;PASS&gt;.    Note  that   they  must   be  properly
-percent-encoded.   This proxy  is  used when  the
-backend  connection  is  HTTP/2.  First,  make  a
-CONNECT request  to the proxy and  it connects to
-the  backend on  behalf of  nghttpx.  This  forms
-tunnel.   After  that, nghttpx  performs  SSL/TLS
-handshake with the downstream through the tunnel.
-The timeouts  when connecting and  making CONNECT
-request       can      be       specified      by
-<a class="reference internal" href="#cmdoption-nghttpx--backend-read-timeout"><em class="xref std std-option">--backend-read-timeout</em></a>                        and
-<a class="reference internal" href="#cmdoption-nghttpx--backend-write-timeout"><em class="xref std std-option">--backend-write-timeout</em></a> options.</p>
+<dt id="cmdoption--backend-http-proxy-uri">
+<tt class="descname">--backend-http-proxy-uri</tt><tt class="descclassname">=&lt;URI&gt;</tt><a class="headerlink" href="#cmdoption--backend-http-proxy-uri" title="Permalink to this definition">¶</a></dt>
+<dd><p>Specify      proxy       URI      in       the      form
+<a class="reference external" href="http:/">http:/</a>/[&lt;USER&gt;:&lt;PASS&gt;&#64;]&lt;PROXY&gt;:&lt;PORT&gt;.    If   a   proxy
+requires  authentication,  specify  &lt;USER&gt;  and  &lt;PASS&gt;.
+Note that  they must be properly  percent-encoded.  This
+proxy  is used  when the  backend connection  is HTTP/2.
+First,  make  a CONNECT  request  to  the proxy  and  it
+connects  to the  backend  on behalf  of nghttpx.   This
+forms  tunnel.   After  that, nghttpx  performs  SSL/TLS
+handshake with  the downstream through the  tunnel.  The
+timeouts when connecting and  making CONNECT request can
+be     specified    by     <a class="reference internal" href="#cmdoption--backend-read-timeout"><em class="xref std std-option">--backend-read-timeout</em></a>    and
+<a class="reference internal" href="#cmdoption--backend-write-timeout"><em class="xref std std-option">--backend-write-timeout</em></a> options.</p>
 </dd></dl>
 
 </div>
 <div class="section" id="performance">
-<h3>Performance<a class="headerlink" href="#performance" title="Permalink to this headline">¶</a></h3>
+<h3>Performance:<a class="headerlink" href="#performance" title="Permalink to this headline">¶</a></h3>
 <dl class="option">
-<dt id="cmdoption-nghttpx-n">
-<span id="cmdoption-nghttpx--workers"></span><tt class="descname">-n</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--workers</tt><tt class="descclassname">=&lt;CORES&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx-n" title="Permalink to this definition">¶</a></dt>
-<dd><p>Set the number of worker threads.
-Default: 1</p>
+<dt id="cmdoption-n">
+<span id="cmdoption--workers"></span><tt class="descname">-n</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--workers</tt><tt class="descclassname">=&lt;N&gt;</tt><a class="headerlink" href="#cmdoption-n" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the number of worker threads.</p>
+<p>Default: <tt class="docutils literal"><span class="pre">1</span></tt></p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--read-rate">
-<tt class="descname">--read-rate</tt><tt class="descclassname">=&lt;RATE&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--read-rate" title="Permalink to this definition">¶</a></dt>
-<dd><p>Set  maximum   average  read  rate   on  frontend
-connection.  Setting 0 to  this option means read
-rate is unlimited.
-Default: 0</p>
+<dt id="cmdoption--read-rate">
+<tt class="descname">--read-rate</tt><tt class="descclassname">=&lt;SIZE&gt;</tt><a class="headerlink" href="#cmdoption--read-rate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set maximum  average read  rate on  frontend connection.
+Setting 0 to this option means read rate is unlimited.</p>
+<p>Default: <tt class="docutils literal"><span class="pre">0</span></tt></p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--read-burst">
-<tt class="descname">--read-burst</tt><tt class="descclassname">=&lt;SIZE&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--read-burst" title="Permalink to this definition">¶</a></dt>
-<dd><p>Set   maximum  read   burst   size  on   frontend
-connection.  Setting  0 does not work,  but it is
-not  a problem  because  &#8211;read-rate=0 will  give
-unlimited  read rate  regardless  of this  option
-value.
-Default: 1073741824</p>
+<dt id="cmdoption--read-burst">
+<tt class="descname">--read-burst</tt><tt class="descclassname">=&lt;SIZE&gt;</tt><a class="headerlink" href="#cmdoption--read-burst" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set  maximum read  burst  size  on frontend  connection.
+Setting  0  to this  option  means  read burst  size  is
+unlimited.</p>
+<p>Default: <tt class="docutils literal"><span class="pre">0</span></tt></p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--write-rate">
-<tt class="descname">--write-rate</tt><tt class="descclassname">=&lt;RATE&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--write-rate" title="Permalink to this definition">¶</a></dt>
-<dd><p>Set  maximum  average   write  rate  on  frontend
-connection.  Setting 0 to this option means write
-rate is unlimited.
-Default: 0</p>
+<dt id="cmdoption--write-rate">
+<tt class="descname">--write-rate</tt><tt class="descclassname">=&lt;SIZE&gt;</tt><a class="headerlink" href="#cmdoption--write-rate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set maximum  average write rate on  frontend connection.
+Setting 0 to this option means write rate is unlimited.</p>
+<p>Default: <tt class="docutils literal"><span class="pre">0</span></tt></p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--write-burst">
-<tt class="descname">--write-burst</tt><tt class="descclassname">=&lt;SIZE&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--write-burst" title="Permalink to this definition">¶</a></dt>
-<dd><p>Set   maximum  write   burst  size   on  frontend
-connection.  Setting 0 to this option means write
-burst size is unlimited.
-Default: 0</p>
+<dt id="cmdoption--write-burst">
+<tt class="descname">--write-burst</tt><tt class="descclassname">=&lt;SIZE&gt;</tt><a class="headerlink" href="#cmdoption--write-burst" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set  maximum write  burst size  on frontend  connection.
+Setting  0 to  this  option means  write  burst size  is
+unlimited.</p>
+<p>Default: <tt class="docutils literal"><span class="pre">0</span></tt></p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--worker-read-rate">
-<tt class="descname">--worker-read-rate</tt><tt class="descclassname">=&lt;RATE&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--worker-read-rate" title="Permalink to this definition">¶</a></dt>
-<dd><p>Set  maximum   average  read  rate   on  frontend
-connection per worker.  Setting  0 to this option
-means read rate is unlimited.
-Default: 0</p>
+<dt id="cmdoption--worker-read-rate">
+<tt class="descname">--worker-read-rate</tt><tt class="descclassname">=&lt;SIZE&gt;</tt><a class="headerlink" href="#cmdoption--worker-read-rate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set maximum average read rate on frontend connection per
+worker.  Setting  0 to  this option  means read  rate is
+unlimited.  Not implemented yet.</p>
+<p>Default: <tt class="docutils literal"><span class="pre">0</span></tt></p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--worker-read-burst">
-<tt class="descname">--worker-read-burst</tt><tt class="descclassname">=&lt;SIZE&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--worker-read-burst" title="Permalink to this definition">¶</a></dt>
-<dd><p>Set   maximum  read   burst   size  on   frontend
-connection per worker.  Setting  0 to this option
-means read burst size is unlimited.
-Default: 0</p>
+<dt id="cmdoption--worker-read-burst">
+<tt class="descname">--worker-read-burst</tt><tt class="descclassname">=&lt;SIZE&gt;</tt><a class="headerlink" href="#cmdoption--worker-read-burst" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set maximum  read burst size on  frontend connection per
+worker.  Setting 0 to this  option means read burst size
+is unlimited.  Not implemented yet.</p>
+<p>Default: <tt class="docutils literal"><span class="pre">0</span></tt></p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--worker-write-rate">
-<tt class="descname">--worker-write-rate</tt><tt class="descclassname">=&lt;RATE&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--worker-write-rate" title="Permalink to this definition">¶</a></dt>
-<dd><p>Set  maximum  average   write  rate  on  frontend
-connection per worker.  Setting  0 to this option
-means write rate is unlimited.
-Default: 0</p>
+<dt id="cmdoption--worker-write-rate">
+<tt class="descname">--worker-write-rate</tt><tt class="descclassname">=&lt;SIZE&gt;</tt><a class="headerlink" href="#cmdoption--worker-write-rate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set maximum  average write  rate on  frontend connection
+per worker.  Setting  0 to this option  means write rate
+is unlimited.  Not implemented yet.</p>
+<p>Default: <tt class="docutils literal"><span class="pre">0</span></tt></p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--worker-write-burst">
-<tt class="descname">--worker-write-burst</tt><tt class="descclassname">=&lt;SIZE&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--worker-write-burst" title="Permalink to this definition">¶</a></dt>
-<dd><p>Set   maximum  write   burst  size   on  frontend
-connection per worker.  Setting  0 to this option
-means write burst size is unlimited.
-Default: 0</p>
+<dt id="cmdoption--worker-write-burst">
+<tt class="descname">--worker-write-burst</tt><tt class="descclassname">=&lt;SIZE&gt;</tt><a class="headerlink" href="#cmdoption--worker-write-burst" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set maximum write burst  size on frontend connection per
+worker.  Setting 0 to this option means write burst size
+is unlimited.  Not implemented yet.</p>
+<p>Default: <tt class="docutils literal"><span class="pre">0</span></tt></p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--worker-frontend-connections">
-<tt class="descname">--worker-frontend-connections</tt><tt class="descclassname">=&lt;NUM&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--worker-frontend-connections" title="Permalink to this definition">¶</a></dt>
-<dd><p>Set  maximum number  of simultaneous  connections
-frontend accepts.  Setting 0 means unlimited.
-Default: 0</p>
+<dt id="cmdoption--worker-frontend-connections">
+<tt class="descname">--worker-frontend-connections</tt><tt class="descclassname">=&lt;N&gt;</tt><a class="headerlink" href="#cmdoption--worker-frontend-connections" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set maximum number  of simultaneous connections frontend
+accepts.  Setting 0 means unlimited.</p>
+<p>Default: <tt class="docutils literal"><span class="pre">0</span></tt></p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--backend-connections-per-frontend">
-<tt class="descname">--backend-connections-per-frontend</tt><tt class="descclassname">=&lt;NUM&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--backend-connections-per-frontend" title="Permalink to this definition">¶</a></dt>
-<dd><p>Set  maximum   number  of   backend  simultaneous
-connections   per  frontend.    This  option   is
-meaningful when the combination of HTTP/2 or SPDY
-frontend and HTTP/1 backend is used.
-Default: 100</p>
+<dt id="cmdoption--backend-http1-connections-per-host">
+<tt class="descname">--backend-http1-connections-per-host</tt><tt class="descclassname">=&lt;N&gt;</tt><a class="headerlink" href="#cmdoption--backend-http1-connections-per-host" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set   maximum  number   of  backend   concurrent  HTTP/1
+connections per host.  This option is meaningful when <a class="reference internal" href="#cmdoption-s"><em class="xref std std-option">-s</em></a>
+option is used.  To limit  the number of connections per
+frontend        for       default        mode,       use
+<a class="reference internal" href="#cmdoption--backend-http1-connections-per-frontend"><em class="xref std std-option">--backend-http1-connections-per-frontend</em></a>.</p>
+<p>Default: <tt class="docutils literal"><span class="pre">8</span></tt></p>
+</dd></dl>
+
+<dl class="option">
+<dt id="cmdoption--backend-http1-connections-per-frontend">
+<tt class="descname">--backend-http1-connections-per-frontend</tt><tt class="descclassname">=&lt;N&gt;</tt><a class="headerlink" href="#cmdoption--backend-http1-connections-per-frontend" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set   maximum  number   of  backend   concurrent  HTTP/1
+connections per frontend.  This  option is only used for
+default mode.   0 means unlimited.  To  limit the number
+of connections  per host for  HTTP/2 or SPDY  proxy mode
+(-s option), use <a class="reference internal" href="#cmdoption--backend-http1-connections-per-host"><em class="xref std std-option">--backend-http1-connections-per-host</em></a>.</p>
+<p>Default: <tt class="docutils literal"><span class="pre">0</span></tt></p>
+</dd></dl>
+
+<dl class="option">
+<dt id="cmdoption--rlimit-nofile">
+<tt class="descname">--rlimit-nofile</tt><tt class="descclassname">=&lt;N&gt;</tt><a class="headerlink" href="#cmdoption--rlimit-nofile" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set maximum number of open files (RLIMIT_NOFILE) to &lt;N&gt;.
+If 0 is given, nghttpx does not set the limit.</p>
+<p>Default: <tt class="docutils literal"><span class="pre">0</span></tt></p>
+</dd></dl>
+
+<dl class="option">
+<dt id="cmdoption--backend-request-buffer">
+<tt class="descname">--backend-request-buffer</tt><tt class="descclassname">=&lt;SIZE&gt;</tt><a class="headerlink" href="#cmdoption--backend-request-buffer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set buffer size used to store backend request.</p>
+<p>Default: <tt class="docutils literal"><span class="pre">16K</span></tt></p>
+</dd></dl>
+
+<dl class="option">
+<dt id="cmdoption--backend-response-buffer">
+<tt class="descname">--backend-response-buffer</tt><tt class="descclassname">=&lt;SIZE&gt;</tt><a class="headerlink" href="#cmdoption--backend-response-buffer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set buffer size used to store backend response.</p>
+<p>Default: <tt class="docutils literal"><span class="pre">64K</span></tt></p>
 </dd></dl>
 
 </div>
 <div class="section" id="timeout">
-<h3>Timeout<a class="headerlink" href="#timeout" title="Permalink to this headline">¶</a></h3>
+<h3>Timeout:<a class="headerlink" href="#timeout" title="Permalink to this headline">¶</a></h3>
 <dl class="option">
-<dt id="cmdoption-nghttpx--frontend-http2-read-timeout">
-<tt class="descname">--frontend-http2-read-timeout</tt><tt class="descclassname">=&lt;SEC&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--frontend-http2-read-timeout" title="Permalink to this definition">¶</a></dt>
-<dd><p>Specify read timeout for HTTP/2 and SPDY frontend
-connection.
-Default: 180</p>
+<dt id="cmdoption--frontend-http2-read-timeout">
+<tt class="descname">--frontend-http2-read-timeout</tt><tt class="descclassname">=&lt;SEC&gt;</tt><a class="headerlink" href="#cmdoption--frontend-http2-read-timeout" title="Permalink to this definition">¶</a></dt>
+<dd><p>Specify  read  timeout  for  HTTP/2  and  SPDY  frontend
+connection.</p>
+<p>Default: <tt class="docutils literal"><span class="pre">180</span></tt></p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--frontend-read-timeout">
-<tt class="descname">--frontend-read-timeout</tt><tt class="descclassname">=&lt;SEC&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--frontend-read-timeout" title="Permalink to this definition">¶</a></dt>
-<dd><p>Specify  read   timeout  for   HTTP/1.1  frontend
-connection.
-Default: 30</p>
+<dt id="cmdoption--frontend-read-timeout">
+<tt class="descname">--frontend-read-timeout</tt><tt class="descclassname">=&lt;SEC&gt;</tt><a class="headerlink" href="#cmdoption--frontend-read-timeout" title="Permalink to this definition">¶</a></dt>
+<dd><p>Specify read timeout for HTTP/1.1 frontend connection.</p>
+<p>Default: <tt class="docutils literal"><span class="pre">180</span></tt></p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--frontend-write-timeout">
-<tt class="descname">--frontend-write-timeout</tt><tt class="descclassname">=&lt;SEC&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--frontend-write-timeout" title="Permalink to this definition">¶</a></dt>
-<dd><p>Specify   write   timeout    for   all   frontend
-connections.
-Default: 30</p>
+<dt id="cmdoption--frontend-write-timeout">
+<tt class="descname">--frontend-write-timeout</tt><tt class="descclassname">=&lt;SEC&gt;</tt><a class="headerlink" href="#cmdoption--frontend-write-timeout" title="Permalink to this definition">¶</a></dt>
+<dd><p>Specify write timeout for all frontend connections.</p>
+<p>Default: <tt class="docutils literal"><span class="pre">30</span></tt></p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--stream-read-timeout">
-<tt class="descname">--stream-read-timeout</tt><tt class="descclassname">=&lt;SEC&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--stream-read-timeout" title="Permalink to this definition">¶</a></dt>
-<dd><p>Specify read timeout for HTTP/2 and SPDY streams.
-0 means no timeout.
-Default: 0</p>
+<dt id="cmdoption--stream-read-timeout">
+<tt class="descname">--stream-read-timeout</tt><tt class="descclassname">=&lt;SEC&gt;</tt><a class="headerlink" href="#cmdoption--stream-read-timeout" title="Permalink to this definition">¶</a></dt>
+<dd><p>Specify  read timeout  for HTTP/2  and SPDY  streams.  0
+means no timeout.</p>
+<p>Default: <tt class="docutils literal"><span class="pre">0</span></tt></p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--stream-write-timeout">
-<tt class="descname">--stream-write-timeout</tt><tt class="descclassname">=&lt;SEC&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--stream-write-timeout" title="Permalink to this definition">¶</a></dt>
-<dd><p>Specify  write   timeout  for  HTTP/2   and  SPDY
-streams.  0 means no timeout.
-Default: 0</p>
+<dt id="cmdoption--stream-write-timeout">
+<tt class="descname">--stream-write-timeout</tt><tt class="descclassname">=&lt;SEC&gt;</tt><a class="headerlink" href="#cmdoption--stream-write-timeout" title="Permalink to this definition">¶</a></dt>
+<dd><p>Specify write  timeout for  HTTP/2 and SPDY  streams.  0
+means no timeout.</p>
+<p>Default: <tt class="docutils literal"><span class="pre">0</span></tt></p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--backend-read-timeout">
-<tt class="descname">--backend-read-timeout</tt><tt class="descclassname">=&lt;SEC&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--backend-read-timeout" title="Permalink to this definition">¶</a></dt>
-<dd><p>Specify read timeout for backend connection.
-Default: 30</p>
+<dt id="cmdoption--backend-read-timeout">
+<tt class="descname">--backend-read-timeout</tt><tt class="descclassname">=&lt;SEC&gt;</tt><a class="headerlink" href="#cmdoption--backend-read-timeout" title="Permalink to this definition">¶</a></dt>
+<dd><p>Specify read timeout for backend connection.</p>
+<p>Default: <tt class="docutils literal"><span class="pre">180</span></tt></p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--backend-write-timeout">
-<tt class="descname">--backend-write-timeout</tt><tt class="descclassname">=&lt;SEC&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--backend-write-timeout" title="Permalink to this definition">¶</a></dt>
-<dd><p>Specify write timeout for backend connection.
-Default: 30</p>
+<dt id="cmdoption--backend-write-timeout">
+<tt class="descname">--backend-write-timeout</tt><tt class="descclassname">=&lt;SEC&gt;</tt><a class="headerlink" href="#cmdoption--backend-write-timeout" title="Permalink to this definition">¶</a></dt>
+<dd><p>Specify write timeout for backend connection.</p>
+<p>Default: <tt class="docutils literal"><span class="pre">30</span></tt></p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--backend-keep-alive-timeout">
-<tt class="descname">--backend-keep-alive-timeout</tt><tt class="descclassname">=&lt;SEC&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--backend-keep-alive-timeout" title="Permalink to this definition">¶</a></dt>
-<dd><p>Specify    keep-alive    timeout   for    backend
-connection.
-Default: 60</p>
+<dt id="cmdoption--backend-keep-alive-timeout">
+<tt class="descname">--backend-keep-alive-timeout</tt><tt class="descclassname">=&lt;SEC&gt;</tt><a class="headerlink" href="#cmdoption--backend-keep-alive-timeout" title="Permalink to this definition">¶</a></dt>
+<dd><p>Specify keep-alive timeout for backend connection.</p>
+<p>Default: <tt class="docutils literal"><span class="pre">600</span></tt></p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--listener-disable-timeout">
-<tt class="descname">--listener-disable-timeout</tt><tt class="descclassname">=&lt;SEC&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--listener-disable-timeout" title="Permalink to this definition">¶</a></dt>
-<dd><p>After  accepting  connection  failed,  connection
-listener is disabled for a given time in seconds.
-Specifying 0 disables this feature.
-Default: 0</p>
+<dt id="cmdoption--listener-disable-timeout">
+<tt class="descname">--listener-disable-timeout</tt><tt class="descclassname">=&lt;SEC&gt;</tt><a class="headerlink" href="#cmdoption--listener-disable-timeout" title="Permalink to this definition">¶</a></dt>
+<dd><p>After accepting  connection failed,  connection listener
+is disabled for  a given time in  seconds.  Specifying 0
+disables this feature.</p>
+<p>Default: <tt class="docutils literal"><span class="pre">0</span></tt></p>
 </dd></dl>
 
 </div>
 <div class="section" id="ssl-tls">
-<h3>SSL/TLS<a class="headerlink" href="#ssl-tls" title="Permalink to this headline">¶</a></h3>
+<h3>SSL/TLS:<a class="headerlink" href="#ssl-tls" title="Permalink to this headline">¶</a></h3>
 <dl class="option">
-<dt id="cmdoption-nghttpx--ciphers">
-<tt class="descname">--ciphers</tt><tt class="descclassname">=&lt;SUITE&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--ciphers" title="Permalink to this definition">¶</a></dt>
-<dd><p>Set  allowed  cipher  list.  The  format  of  the
-string  is described  in OpenSSL  ciphers(1).</p>
+<dt id="cmdoption--ciphers">
+<tt class="descname">--ciphers</tt><tt class="descclassname">=&lt;SUITE&gt;</tt><a class="headerlink" href="#cmdoption--ciphers" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set allowed  cipher list.  The  format of the  string is
+described in OpenSSL ciphers(1).</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx-k">
-<span id="cmdoption-nghttpx--insecure"></span><tt class="descname">-k</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--insecure</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-nghttpx-k" title="Permalink to this definition">¶</a></dt>
-<dd><p>Don&#8217;t verify backend  server&#8217;s certificate if <a class="reference internal" href="#cmdoption-nghttpx-p"><em class="xref std std-option">-p</em></a>,
-<a class="reference internal" href="#cmdoption-nghttpx--client"><em class="xref std std-option">--client</em></a>   or   <a class="reference internal" href="#cmdoption-nghttpx--http2-bridge"><em class="xref std std-option">--http2-bridge</em></a>  are   given   and
-<a class="reference internal" href="#cmdoption-nghttpx--backend-no-tls"><em class="xref std std-option">--backend-no-tls</em></a> is not given.</p>
+<dt id="cmdoption-k">
+<span id="cmdoption--insecure"></span><tt class="descname">-k</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--insecure</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-k" title="Permalink to this definition">¶</a></dt>
+<dd><p>Don't  verify   backend  server's  certificate   if  <a class="reference internal" href="#cmdoption-p"><em class="xref std std-option">-p</em></a>,
+<a class="reference internal" href="#cmdoption--client"><em class="xref std std-option">--client</em></a>    or    <a class="reference internal" href="#cmdoption--http2-bridge"><em class="xref std std-option">--http2-bridge</em></a>     are    given    and
+<a class="reference internal" href="#cmdoption--backend-no-tls"><em class="xref std std-option">--backend-no-tls</em></a> is not given.</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--cacert">
-<tt class="descname">--cacert</tt><tt class="descclassname">=&lt;PATH&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--cacert" title="Permalink to this definition">¶</a></dt>
-<dd><p>Set path  to trusted  CA certificate file  if <a class="reference internal" href="#cmdoption-nghttpx-p"><em class="xref std std-option">-p</em></a>,
-<a class="reference internal" href="#cmdoption-nghttpx--client"><em class="xref std std-option">--client</em></a>   or   <a class="reference internal" href="#cmdoption-nghttpx--http2-bridge"><em class="xref std std-option">--http2-bridge</em></a>  are   given   and
-<a class="reference internal" href="#cmdoption-nghttpx--backend-no-tls"><em class="xref std std-option">--backend-no-tls</em></a> is not given.   The file must be
-in   PEM  format.    It   can  contain   multiple
-certificates.    If   the   linked   OpenSSL   is
-configured to load system wide certificates, they
-are loaded at startup regardless of this option.</p>
+<dt id="cmdoption--cacert">
+<tt class="descname">--cacert</tt><tt class="descclassname">=&lt;PATH&gt;</tt><a class="headerlink" href="#cmdoption--cacert" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set path to trusted CA  certificate file if <a class="reference internal" href="#cmdoption-p"><em class="xref std std-option">-p</em></a>, <a class="reference internal" href="#cmdoption--client"><em class="xref std std-option">--client</em></a>
+or <a class="reference internal" href="#cmdoption--http2-bridge"><em class="xref std std-option">--http2-bridge</em></a> are given  and <a class="reference internal" href="#cmdoption--backend-no-tls"><em class="xref std std-option">--backend-no-tls</em></a> is not
+given.  The file must be  in PEM format.  It can contain
+multiple  certificates.    If  the  linked   OpenSSL  is
+configured to  load system  wide certificates,  they are
+loaded at startup regardless of this option.</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--private-key-passwd-file">
-<tt class="descname">--private-key-passwd-file</tt><tt class="descclassname">=&lt;FILEPATH&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--private-key-passwd-file" title="Permalink to this definition">¶</a></dt>
-<dd><p>Path  to  file  that contains  password  for  the
-server&#8217;s private  key.  If none is  given and the
-private  key  is   password  protected  it&#8217;ll  be
-requested interactively.</p>
+<dt id="cmdoption--private-key-passwd-file">
+<tt class="descname">--private-key-passwd-file</tt><tt class="descclassname">=&lt;PATH&gt;</tt><a class="headerlink" href="#cmdoption--private-key-passwd-file" title="Permalink to this definition">¶</a></dt>
+<dd><p>Path  to file  that contains  password for  the server's
+private key.   If none is  given and the private  key is
+password protected it'll be requested interactively.</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--subcert">
-<tt class="descname">--subcert</tt><tt class="descclassname">=&lt;KEYPATH&gt;:&lt;CERTPATH&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--subcert" title="Permalink to this definition">¶</a></dt>
-<dd><p>Specify  additional certificate  and private  key
-file.  nghttpx will  choose certificates based on
-the hostname  indicated by  client using  TLS SNI
-extension.   This  option  can be  used  multiple
-times.</p>
+<dt id="cmdoption--subcert">
+<tt class="descname">--subcert</tt><tt class="descclassname">=&lt;KEYPATH&gt;:&lt;CERTPATH&gt;</tt><a class="headerlink" href="#cmdoption--subcert" title="Permalink to this definition">¶</a></dt>
+<dd><p>Specify  additional certificate  and  private key  file.
+nghttpx will  choose certificates based on  the hostname
+indicated  by  client  using TLS  SNI  extension.   This
+option can be used multiple times.</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--backend-tls-sni-field">
-<tt class="descname">--backend-tls-sni-field</tt><tt class="descclassname">=&lt;HOST&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--backend-tls-sni-field" title="Permalink to this definition">¶</a></dt>
-<dd><p>Explicitly  set  the  content   of  the  TLS  SNI
-extension.  This will default to the backend HOST
-name.</p>
+<dt id="cmdoption--backend-tls-sni-field">
+<tt class="descname">--backend-tls-sni-field</tt><tt class="descclassname">=&lt;HOST&gt;</tt><a class="headerlink" href="#cmdoption--backend-tls-sni-field" title="Permalink to this definition">¶</a></dt>
+<dd><p>Explicitly  set the  content of  the TLS  SNI extension.
+This will default to the backend HOST name.</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--dh-param-file">
-<tt class="descname">--dh-param-file</tt><tt class="descclassname">=&lt;PATH&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--dh-param-file" title="Permalink to this definition">¶</a></dt>
-<dd><p>Path to  file that contains DH  parameters in PEM
-format.  Without  this option, DHE  cipher suites
-are not available.</p>
+<dt id="cmdoption--dh-param-file">
+<tt class="descname">--dh-param-file</tt><tt class="descclassname">=&lt;PATH&gt;</tt><a class="headerlink" href="#cmdoption--dh-param-file" title="Permalink to this definition">¶</a></dt>
+<dd><p>Path to file that contains  DH parameters in PEM format.
+Without  this   option,  DHE   cipher  suites   are  not
+available.</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--npn-list">
-<tt class="descname">--npn-list</tt><tt class="descclassname">=&lt;LIST&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--npn-list" title="Permalink to this definition">¶</a></dt>
-<dd><p>Comma delimited list  of ALPN protocol identifier
-sorted in  the order  of preference.   That means
-most  desirable protocol  comes  first.  This  is
-used in both ALPN and NPN.  The parameter must be
-delimited by  a single  comma only and  any white
-spaces are treated as a part of protocol string.
-Default: h2-14,spdy/3.1,spdy/3,spdy/2,http/1.1</p>
+<dt id="cmdoption--npn-list">
+<tt class="descname">--npn-list</tt><tt class="descclassname">=&lt;LIST&gt;</tt><a class="headerlink" href="#cmdoption--npn-list" title="Permalink to this definition">¶</a></dt>
+<dd><p>Comma delimited list of  ALPN protocol identifier sorted
+in the  order of preference.  That  means most desirable
+protocol comes  first.  This  is used  in both  ALPN and
+NPN.  The parameter must be  delimited by a single comma
+only  and any  white spaces  are  treated as  a part  of
+protocol string.</p>
+<p>Default: <tt class="docutils literal"><span class="pre">h2-16,h2-14,spdy/3.1,http/1.1</span></tt></p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--verify-client">
-<tt class="descname">--verify-client</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-nghttpx--verify-client" title="Permalink to this definition">¶</a></dt>
+<dt id="cmdoption--verify-client">
+<tt class="descname">--verify-client</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption--verify-client" title="Permalink to this definition">¶</a></dt>
 <dd><p>Require and verify client certificate.</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--verify-client-cacert">
-<tt class="descname">--verify-client-cacert</tt><tt class="descclassname">=&lt;PATH&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--verify-client-cacert" title="Permalink to this definition">¶</a></dt>
-<dd><p>Path  to file  that contains  CA certificates  to
-verify client  certificate.  The file must  be in
-PEM    format.    It    can   contain    multiple
-certificates.</p>
+<dt id="cmdoption--verify-client-cacert">
+<tt class="descname">--verify-client-cacert</tt><tt class="descclassname">=&lt;PATH&gt;</tt><a class="headerlink" href="#cmdoption--verify-client-cacert" title="Permalink to this definition">¶</a></dt>
+<dd><p>Path  to file  that contains  CA certificates  to verify
+client certificate.  The file must be in PEM format.  It
+can contain multiple certificates.</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--client-private-key-file">
-<tt class="descname">--client-private-key-file</tt><tt class="descclassname">=&lt;PATH&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--client-private-key-file" title="Permalink to this definition">¶</a></dt>
-<dd><p>Path  to file  that contains  client private  key
-used in backend client authentication.</p>
+<dt id="cmdoption--client-private-key-file">
+<tt class="descname">--client-private-key-file</tt><tt class="descclassname">=&lt;PATH&gt;</tt><a class="headerlink" href="#cmdoption--client-private-key-file" title="Permalink to this definition">¶</a></dt>
+<dd><p>Path to  file that contains  client private key  used in
+backend client authentication.</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--client-cert-file">
-<tt class="descname">--client-cert-file</tt><tt class="descclassname">=&lt;PATH&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--client-cert-file" title="Permalink to this definition">¶</a></dt>
-<dd><p>Path  to file  that  contains client  certificate
-used in backend client authentication.</p>
+<dt id="cmdoption--client-cert-file">
+<tt class="descname">--client-cert-file</tt><tt class="descclassname">=&lt;PATH&gt;</tt><a class="headerlink" href="#cmdoption--client-cert-file" title="Permalink to this definition">¶</a></dt>
+<dd><p>Path to  file that  contains client certificate  used in
+backend client authentication.</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--tls-proto-list">
-<tt class="descname">--tls-proto-list</tt><tt class="descclassname">=&lt;LIST&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--tls-proto-list" title="Permalink to this definition">¶</a></dt>
-<dd><p>Comma delimited  list of  SSL/TLS protocol  to be
-enabled.  The following  protocols are available:
-TLSv1.2,  TLSv1.1, TLSv1.0  and SSLv3.   The name
-matching is done in case-insensitive manner.  The
-parameter  must be  delimited by  a single  comma
-only and any  white spaces are treated  as a part
-of protocol string.
-Default: TLSv1.2,TLSv1.1</p>
+<dt id="cmdoption--tls-proto-list">
+<tt class="descname">--tls-proto-list</tt><tt class="descclassname">=&lt;LIST&gt;</tt><a class="headerlink" href="#cmdoption--tls-proto-list" title="Permalink to this definition">¶</a></dt>
+<dd><p>Comma delimited list of  SSL/TLS protocol to be enabled.
+The following protocols  are available: TLSv1.2, TLSv1.1
+and   TLSv1.0.    The   name   matching   is   done   in
+case-insensitive   manner.    The  parameter   must   be
+delimited by  a single comma  only and any  white spaces
+are treated as a part of protocol string.</p>
+<p>Default: <tt class="docutils literal"><span class="pre">TLSv1.2,TLSv1.1</span></tt></p>
+</dd></dl>
+
+<dl class="option">
+<dt id="cmdoption--tls-ticket-key-file">
+<tt class="descname">--tls-ticket-key-file</tt><tt class="descclassname">=&lt;PATH&gt;</tt><a class="headerlink" href="#cmdoption--tls-ticket-key-file" title="Permalink to this definition">¶</a></dt>
+<dd><p>Path  to file  that  contains 48  bytes  random data  to
+construct TLS  session ticket parameters.   This options
+can  be  used  repeatedly  to  specify  multiple  ticket
+parameters.  If several files  are given, only the first
+key is used to encrypt  TLS session tickets.  Other keys
+are accepted  but server  will issue new  session ticket
+with  first  key.   This allows  session  key  rotation.
+Please   note  that   key   rotation   does  not   occur
+automatically.   User should  rearrange files  or change
+options  values  and  restart  nghttpx  gracefully.   If
+opening or reading given file fails, all loaded keys are
+discarded and it is treated as if none of this option is
+given.  If this option is not given or an error occurred
+while  opening  or  reading  a file,  key  is  generated
+automatically and  renewed every 12hrs.  At  most 2 keys
+are stored in memory.</p>
+</dd></dl>
+
+<dl class="option">
+<dt id="cmdoption--tls-ctx-per-worker">
+<tt class="descname">--tls-ctx-per-worker</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption--tls-ctx-per-worker" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create OpenSSL's SSL_CTX per worker, so that no internal
+locking is required.  This  may improve scalability with
+multi  threaded   configuration.   If  this   option  is
+enabled, session ID is  no longer shared accross SSL_CTX
+objects, which means session  ID generated by one worker
+is not acceptable by another worker.  On the other hand,
+session ticket key is shared across all worker threads.</p>
 </dd></dl>
 
 </div>
 <div class="section" id="http-2-and-spdy">
-<h3>HTTP/2 and SPDY<a class="headerlink" href="#http-2-and-spdy" title="Permalink to this headline">¶</a></h3>
+<h3>HTTP/2 and SPDY:<a class="headerlink" href="#http-2-and-spdy" title="Permalink to this headline">¶</a></h3>
 <dl class="option">
-<dt id="cmdoption-nghttpx-c">
-<span id="cmdoption-nghttpx--http2-max-concurrent-streams"></span><tt class="descname">-c</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--http2-max-concurrent-streams</tt><tt class="descclassname">=&lt;NUM&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx-c" title="Permalink to this definition">¶</a></dt>
-<dd><p>Set the maximum number  of the concurrent streams
-in one HTTP/2 and SPDY session.
-Default: 100</p>
+<dt id="cmdoption-c">
+<span id="cmdoption--http2-max-concurrent-streams"></span><tt class="descname">-c</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--http2-max-concurrent-streams</tt><tt class="descclassname">=&lt;N&gt;</tt><a class="headerlink" href="#cmdoption-c" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the maximum number of  the concurrent streams in one
+HTTP/2 and SPDY session.</p>
+<p>Default: <tt class="docutils literal"><span class="pre">100</span></tt></p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--frontend-http2-window-bits">
-<tt class="descname">--frontend-http2-window-bits</tt><tt class="descclassname">=&lt;N&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--frontend-http2-window-bits" title="Permalink to this definition">¶</a></dt>
-<dd><p>Sets the per-stream initial window size of HTTP/2
-SPDY frontend  connection.  For HTTP/2,  the size
-is 2**&lt;N&gt;-1.  For SPDY, the size is 2**&lt;N&gt;.
-Default: 16</p>
+<dt id="cmdoption--frontend-http2-window-bits">
+<tt class="descname">--frontend-http2-window-bits</tt><tt class="descclassname">=&lt;N&gt;</tt><a class="headerlink" href="#cmdoption--frontend-http2-window-bits" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets the  per-stream initial window size  of HTTP/2 SPDY
+frontend connection.  For HTTP/2,  the size is 2**&lt;N&gt;-1.
+For SPDY, the size is 2**&lt;N&gt;.</p>
+<p>Default: <tt class="docutils literal"><span class="pre">16</span></tt></p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--frontend-http2-connection-window-bits">
-<tt class="descname">--frontend-http2-connection-window-bits</tt><tt class="descclassname">=&lt;N&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--frontend-http2-connection-window-bits" title="Permalink to this definition">¶</a></dt>
-<dd><p>Sets the per-connection window size of HTTP/2 and
-SPDY frontend  connection.  For HTTP/2,  the size
-is 2**&lt;N&gt;-1. For SPDY, the size is 2**&lt;N&gt;.
-Default: 16</p>
+<dt id="cmdoption--frontend-http2-connection-window-bits">
+<tt class="descname">--frontend-http2-connection-window-bits</tt><tt class="descclassname">=&lt;N&gt;</tt><a class="headerlink" href="#cmdoption--frontend-http2-connection-window-bits" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets the  per-connection window size of  HTTP/2 and SPDY
+frontend   connection.    For   HTTP/2,  the   size   is
+2**&lt;N&gt;-1. For SPDY, the size is 2**&lt;N&gt;.</p>
+<p>Default: <tt class="docutils literal"><span class="pre">16</span></tt></p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--frontend-no-tls">
-<tt class="descname">--frontend-no-tls</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-nghttpx--frontend-no-tls" title="Permalink to this definition">¶</a></dt>
+<dt id="cmdoption--frontend-no-tls">
+<tt class="descname">--frontend-no-tls</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption--frontend-no-tls" title="Permalink to this definition">¶</a></dt>
 <dd><p>Disable SSL/TLS on frontend connections.</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--backend-http2-window-bits">
-<tt class="descname">--backend-http2-window-bits</tt><tt class="descclassname">=&lt;N&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--backend-http2-window-bits" title="Permalink to this definition">¶</a></dt>
-<dd><p>Sets the  initial window  size of  HTTP/2 backend
-connection to 2**&lt;N&gt;-1.
-Default: 16</p>
+<dt id="cmdoption--backend-http2-window-bits">
+<tt class="descname">--backend-http2-window-bits</tt><tt class="descclassname">=&lt;N&gt;</tt><a class="headerlink" href="#cmdoption--backend-http2-window-bits" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets  the   initial  window   size  of   HTTP/2  backend
+connection to 2**&lt;N&gt;-1.</p>
+<p>Default: <tt class="docutils literal"><span class="pre">16</span></tt></p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--backend-http2-connection-window-bits">
-<tt class="descname">--backend-http2-connection-window-bits</tt><tt class="descclassname">=&lt;N&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--backend-http2-connection-window-bits" title="Permalink to this definition">¶</a></dt>
-<dd><p>Sets  the per-connection  window  size of  HTTP/2
-backend connection to 2**&lt;N&gt;-1.
-Default: 16</p>
+<dt id="cmdoption--backend-http2-connection-window-bits">
+<tt class="descname">--backend-http2-connection-window-bits</tt><tt class="descclassname">=&lt;N&gt;</tt><a class="headerlink" href="#cmdoption--backend-http2-connection-window-bits" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets the  per-connection window  size of  HTTP/2 backend
+connection to 2**&lt;N&gt;-1.</p>
+<p>Default: <tt class="docutils literal"><span class="pre">16</span></tt></p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--backend-no-tls">
-<tt class="descname">--backend-no-tls</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-nghttpx--backend-no-tls" title="Permalink to this definition">¶</a></dt>
+<dt id="cmdoption--backend-no-tls">
+<tt class="descname">--backend-no-tls</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption--backend-no-tls" title="Permalink to this definition">¶</a></dt>
 <dd><p>Disable SSL/TLS on backend connections.</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--http2-no-cookie-crumbling">
-<tt class="descname">--http2-no-cookie-crumbling</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-nghttpx--http2-no-cookie-crumbling" title="Permalink to this definition">¶</a></dt>
-<dd><p>Don&#8217;t crumble cookie header field.</p>
+<dt id="cmdoption--http2-no-cookie-crumbling">
+<tt class="descname">--http2-no-cookie-crumbling</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption--http2-no-cookie-crumbling" title="Permalink to this definition">¶</a></dt>
+<dd><p>Don't crumble cookie header field.</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--padding">
-<tt class="descname">--padding</tt><tt class="descclassname">=&lt;N&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--padding" title="Permalink to this definition">¶</a></dt>
-<dd><p>Add at most  &lt;N&gt; bytes to a  HTTP/2 frame payload
-as padding.  Specify 0  to disable padding.  This
-option  is meant  for debugging  purpose and  not
-intended to enhance protocol security.</p>
+<dt id="cmdoption--padding">
+<tt class="descname">--padding</tt><tt class="descclassname">=&lt;N&gt;</tt><a class="headerlink" href="#cmdoption--padding" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add  at most  &lt;N&gt; bytes  to  a HTTP/2  frame payload  as
+padding.  Specify 0 to  disable padding.  This option is
+meant for debugging purpose  and not intended to enhance
+protocol security.</p>
 </dd></dl>
 
 </div>
 <div class="section" id="mode">
-<h3>Mode<a class="headerlink" href="#mode" title="Permalink to this headline">¶</a></h3>
+<h3>Mode:<a class="headerlink" href="#mode" title="Permalink to this headline">¶</a></h3>
 <dl class="describe">
 <dt>
 <tt class="descname">(default mode)</tt></dt>
-<dd><p>Accept  HTTP/2, SPDY  and HTTP/1.1  over SSL/TLS.
-If <a class="reference internal" href="#cmdoption-nghttpx--frontend-no-tls"><em class="xref std std-option">--frontend-no-tls</em></a>  is used, accept  HTTP/2 and
-HTTP/1.1.  The  incoming HTTP/1.1  connection can
-be upgraded to HTTP/2  through HTTP Upgrade.  The
-protocol to the backend is HTTP/1.1.</p>
+<dd><p>Accept  HTTP/2,  SPDY  and HTTP/1.1  over  SSL/TLS.   If
+<a class="reference internal" href="#cmdoption--frontend-no-tls"><em class="xref std std-option">--frontend-no-tls</em></a> is  used, accept HTTP/2  and HTTP/1.1.
+The  incoming HTTP/1.1  connection  can  be upgraded  to
+HTTP/2  through  HTTP  Upgrade.   The  protocol  to  the
+backend is HTTP/1.1.</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx-s">
-<span id="cmdoption-nghttpx--http2-proxy"></span><tt class="descname">-s</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--http2-proxy</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-nghttpx-s" title="Permalink to this definition">¶</a></dt>
+<dt id="cmdoption-s">
+<span id="cmdoption--http2-proxy"></span><tt class="descname">-s</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--http2-proxy</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-s" title="Permalink to this definition">¶</a></dt>
 <dd><p>Like default mode, but enable secure proxy mode.</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--http2-bridge">
-<tt class="descname">--http2-bridge</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-nghttpx--http2-bridge" title="Permalink to this definition">¶</a></dt>
-<dd><p>Like  default  mode,  but  communicate  with  the
-backend  in   HTTP/2  over  SSL/TLS.    Thus  the
-incoming all connections  are converted to HTTP/2
-connection  and  relayed  to  the  backend.   See
-<a class="reference internal" href="#cmdoption-nghttpx--backend-http-proxy-uri"><em class="xref std std-option">--backend-http-proxy-uri</em></a> option if you are behind
-the  proxy and  want  to connect  to the  outside
+<dt id="cmdoption--http2-bridge">
+<tt class="descname">--http2-bridge</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption--http2-bridge" title="Permalink to this definition">¶</a></dt>
+<dd><p>Like default  mode, but communicate with  the backend in
+HTTP/2 over SSL/TLS.  Thus  the incoming all connections
+are converted  to HTTP/2  connection and relayed  to the
+backend.  See <a class="reference internal" href="#cmdoption--backend-http-proxy-uri"><em class="xref std std-option">--backend-http-proxy-uri</em></a> option if you are
+behind  the proxy  and want  to connect  to the  outside
 HTTP/2 proxy.</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--client">
-<tt class="descname">--client</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-nghttpx--client" title="Permalink to this definition">¶</a></dt>
-<dd><p>Accept HTTP/2 and  HTTP/1.1 without SSL/TLS.  The
-incoming HTTP/1.1  connection can be  upgraded to
-HTTP/2  connection  through  HTTP  Upgrade.   The
-protocol  to  the  backend  is  HTTP/2.   To  use
-nghttpx  as  a  forward   proxy,  use  <a class="reference internal" href="#cmdoption-nghttpx-p"><em class="xref std std-option">-p</em></a>  option
-instead.</p>
+<dt id="cmdoption--client">
+<tt class="descname">--client</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption--client" title="Permalink to this definition">¶</a></dt>
+<dd><p>Accept  HTTP/2   and  HTTP/1.1  without   SSL/TLS.   The
+incoming HTTP/1.1  connection can be upgraded  to HTTP/2
+connection through  HTTP Upgrade.   The protocol  to the
+backend is HTTP/2.   To use nghttpx as  a forward proxy,
+use <a class="reference internal" href="#cmdoption-p"><em class="xref std std-option">-p</em></a> option instead.</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx-p">
-<span id="cmdoption-nghttpx--client-proxy"></span><tt class="descname">-p</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--client-proxy</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-nghttpx-p" title="Permalink to this definition">¶</a></dt>
-<dd><p>Like <a class="reference internal" href="#cmdoption-nghttpx--client"><em class="xref std std-option">--client</em></a>  option, but  it also  requires the
-request path  from frontend  must be  an absolute
-URI, suitable for use as a forward proxy.</p>
+<dt id="cmdoption-p">
+<span id="cmdoption--client-proxy"></span><tt class="descname">-p</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--client-proxy</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-p" title="Permalink to this definition">¶</a></dt>
+<dd><p>Like <a class="reference internal" href="#cmdoption--client"><em class="xref std std-option">--client</em></a>  option, but it also  requires the request
+path from frontend must be an absolute URI, suitable for
+use as a forward proxy.</p>
 </dd></dl>
 
 </div>
 <div class="section" id="logging">
-<h3>Logging<a class="headerlink" href="#logging" title="Permalink to this headline">¶</a></h3>
+<h3>Logging:<a class="headerlink" href="#logging" title="Permalink to this headline">¶</a></h3>
 <dl class="option">
-<dt id="cmdoption-nghttpx-L">
-<span id="cmdoption-nghttpx--log-level"></span><tt class="descname">-L</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--log-level</tt><tt class="descclassname">=&lt;LEVEL&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx-L" title="Permalink to this definition">¶</a></dt>
-<dd><p>Set the  severity level  of log  output.  &lt;LEVEL&gt;
-must be one of INFO, WARNING, ERROR and FATAL.
-Default: WARNING</p>
+<dt id="cmdoption-L">
+<span id="cmdoption--log-level"></span><tt class="descname">-L</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--log-level</tt><tt class="descclassname">=&lt;LEVEL&gt;</tt><a class="headerlink" href="#cmdoption-L" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the severity  level of log output.   &lt;LEVEL&gt; must be
+one of INFO, NOTICE, WARN, ERROR and FATAL.</p>
+<p>Default: <tt class="docutils literal"><span class="pre">NOTICE</span></tt></p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--accesslog-file">
-<tt class="descname">--accesslog-file</tt><tt class="descclassname">=&lt;PATH&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--accesslog-file" title="Permalink to this definition">¶</a></dt>
-<dd><p>Set path  to write  access log.  To  reopen file,
-send USR1 signal to nghttpx.</p>
+<dt id="cmdoption--accesslog-file">
+<tt class="descname">--accesslog-file</tt><tt class="descclassname">=&lt;PATH&gt;</tt><a class="headerlink" href="#cmdoption--accesslog-file" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set path to write access log.  To reopen file, send USR1
+signal to nghttpx.</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--accesslog-syslog">
-<tt class="descname">--accesslog-syslog</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-nghttpx--accesslog-syslog" title="Permalink to this definition">¶</a></dt>
-<dd><p>Send  access log  to syslog.   If this  option is
-used, <em class="xref std std-option">--access-file</em> option is ignored.</p>
+<dt id="cmdoption--accesslog-syslog">
+<tt class="descname">--accesslog-syslog</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption--accesslog-syslog" title="Permalink to this definition">¶</a></dt>
+<dd><p>Send  access log  to syslog.   If this  option is  used,
+<a class="reference internal" href="#cmdoption--accesslog-file"><em class="xref std std-option">--accesslog-file</em></a> option is ignored.</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--errorlog-file">
-<tt class="descname">--errorlog-file</tt><tt class="descclassname">=&lt;PATH&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--errorlog-file" title="Permalink to this definition">¶</a></dt>
-<dd><p>Set  path to  write error  log.  To  reopen file,
-send USR1 signal to nghttpx.
-Default: /dev/stderr</p>
+<dt id="cmdoption--accesslog-format">
+<tt class="descname">--accesslog-format</tt><tt class="descclassname">=&lt;FORMAT&gt;</tt><a class="headerlink" href="#cmdoption--accesslog-format" title="Permalink to this definition">¶</a></dt>
+<dd><p>Specify  format  string  for access  log.   The  default
+format is combined format.   The following variables are
+available:</p>
+<ul class="simple">
+<li>$remote_addr: client IP address.</li>
+<li>$time_local: local time in Common Log format.</li>
+<li>$time_iso8601: local time in ISO 8601 format.</li>
+<li>$request: HTTP request line.</li>
+<li>$status: HTTP response status code.</li>
+<li>$body_bytes_sent: the  number of bytes sent  to client
+as response body.</li>
+<li>$http_&lt;VAR&gt;: value of HTTP  request header &lt;VAR&gt; where
+'_' in &lt;VAR&gt; is replaced with '-'.</li>
+<li>$remote_port: client  port.</li>
+<li>$server_port: server port.</li>
+<li>$request_time: request processing time in seconds with
+milliseconds resolution.</li>
+<li>$pid: PID of the running process.</li>
+<li>$alpn: ALPN identifier of the protocol which generates
+the response.   For HTTP/1,  ALPN is  always http/1.1,
+regardless of minor version.</li>
+</ul>
+<p>Default: <tt class="docutils literal"><span class="pre">$remote_addr</span> <span class="pre">-</span> <span class="pre">-</span> <span class="pre">[$time_local]</span> <span class="pre">&quot;$request&quot;</span> <span class="pre">$status</span> <span class="pre">$body_bytes_sent</span> <span class="pre">&quot;$http_referer&quot;</span> <span class="pre">&quot;$http_user_agent&quot;</span></tt></p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--errorlog-syslog">
-<tt class="descname">--errorlog-syslog</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-nghttpx--errorlog-syslog" title="Permalink to this definition">¶</a></dt>
-<dd><p>Send  error log  to  syslog.  If  this option  is
-used, <a class="reference internal" href="#cmdoption-nghttpx--errorlog-file"><em class="xref std std-option">--errorlog-file</em></a> option is ignored.</p>
+<dt id="cmdoption--errorlog-file">
+<tt class="descname">--errorlog-file</tt><tt class="descclassname">=&lt;PATH&gt;</tt><a class="headerlink" href="#cmdoption--errorlog-file" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set path to write error  log.  To reopen file, send USR1
+signal to nghttpx.</p>
+<p>Default: <tt class="docutils literal"><span class="pre">/dev/stderr</span></tt></p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--syslog-facility">
-<tt class="descname">--syslog-facility</tt><tt class="descclassname">=&lt;FACILITY&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--syslog-facility" title="Permalink to this definition">¶</a></dt>
-<dd><p>Set syslog facility to &lt;FACILITY&gt;.
-Default: daemon</p>
+<dt id="cmdoption--errorlog-syslog">
+<tt class="descname">--errorlog-syslog</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption--errorlog-syslog" title="Permalink to this definition">¶</a></dt>
+<dd><p>Send  error log  to  syslog.  If  this  option is  used,
+<a class="reference internal" href="#cmdoption--errorlog-file"><em class="xref std std-option">--errorlog-file</em></a> option is ignored.</p>
+</dd></dl>
+
+<dl class="option">
+<dt id="cmdoption--syslog-facility">
+<tt class="descname">--syslog-facility</tt><tt class="descclassname">=&lt;FACILITY&gt;</tt><a class="headerlink" href="#cmdoption--syslog-facility" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set syslog facility to &lt;FACILITY&gt;.</p>
+<p>Default: <tt class="docutils literal"><span class="pre">daemon</span></tt></p>
 </dd></dl>
 
 </div>
-<div class="section" id="misc">
-<h3>Misc<a class="headerlink" href="#misc" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="http">
+<h3>HTTP:<a class="headerlink" href="#http" title="Permalink to this headline">¶</a></h3>
 <dl class="option">
-<dt id="cmdoption-nghttpx--add-x-forwarded-for">
-<tt class="descname">--add-x-forwarded-for</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-nghttpx--add-x-forwarded-for" title="Permalink to this definition">¶</a></dt>
-<dd><p>Append  X-Forwarded-For   header  field   to  the
-downstream request.</p>
+<dt id="cmdoption--add-x-forwarded-for">
+<tt class="descname">--add-x-forwarded-for</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption--add-x-forwarded-for" title="Permalink to this definition">¶</a></dt>
+<dd><p>Append  X-Forwarded-For header  field to  the downstream
+request.</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--no-via">
-<tt class="descname">--no-via</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-nghttpx--no-via" title="Permalink to this definition">¶</a></dt>
-<dd><p>Don&#8217;t append to Via  header field.  If Via header
-field is received, it is left unaltered.</p>
+<dt id="cmdoption--strip-incoming-x-forwarded-for">
+<tt class="descname">--strip-incoming-x-forwarded-for</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption--strip-incoming-x-forwarded-for" title="Permalink to this definition">¶</a></dt>
+<dd><p>Strip X-Forwarded-For  header field from  inbound client
+requests.</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--no-location-rewrite">
-<tt class="descname">--no-location-rewrite</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-nghttpx--no-location-rewrite" title="Permalink to this definition">¶</a></dt>
-<dd><p>Don&#8217;t   rewrite   location    header   field   on
-<a class="reference internal" href="#cmdoption-nghttpx--http2-bridge"><em class="xref std std-option">--http2-bridge</em></a>, <a class="reference internal" href="#cmdoption-nghttpx--client"><em class="xref std std-option">--client</em></a>  and default  mode.  For
-<a class="reference internal" href="#cmdoption-nghttpx--http2-proxy"><em class="xref std std-option">--http2-proxy</em></a>  and <a class="reference internal" href="#cmdoption-nghttpx--client-proxy"><em class="xref std std-option">--client-proxy</em></a>  mode, location
-header field  will not  be altered  regardless of
-this option.</p>
+<dt id="cmdoption--no-via">
+<tt class="descname">--no-via</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption--no-via" title="Permalink to this definition">¶</a></dt>
+<dd><p>Don't append to  Via header field.  If  Via header field
+is received, it is left unaltered.</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--altsvc">
-<tt class="descname">--altsvc</tt><tt class="descclassname">=&lt;PROTOID,PORT[,HOST,[ORIGIN]]&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--altsvc" title="Permalink to this definition">¶</a></dt>
-<dd><p>Specify  protocol ID,  port, host  and origin  of
-alternative  service.   &lt;HOST&gt; and  &lt;ORIGIN&gt;  are
-optional.  They are  advertised in alt-svc header
-field or HTTP/2 ALTSVC frame.  This option can be
-used   multiple   times   to   specify   multiple
-alternative services.  Example: &#8211;altsvc=h2,443</p>
+<dt id="cmdoption--no-location-rewrite">
+<tt class="descname">--no-location-rewrite</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption--no-location-rewrite" title="Permalink to this definition">¶</a></dt>
+<dd><p>Don't rewrite  location header field  on <a class="reference internal" href="#cmdoption--http2-bridge"><em class="xref std std-option">--http2-bridge</em></a>,
+<a class="reference internal" href="#cmdoption--client"><em class="xref std std-option">--client</em></a>  and  default   mode.   For  <a class="reference internal" href="#cmdoption--http2-proxy"><em class="xref std std-option">--http2-proxy</em></a>  and
+<a class="reference internal" href="#cmdoption--client-proxy"><em class="xref std std-option">--client-proxy</em></a> mode,  location header field will  not be
+altered regardless of this option.</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--add-response-header">
-<tt class="descname">--add-response-header</tt><tt class="descclassname">=&lt;HEADER&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--add-response-header" title="Permalink to this definition">¶</a></dt>
-<dd><p>Specify  additional   header  field  to   add  to
-response  header set.   This option  just appends
-header field  and won&#8217;t replace  anything already
-set.  This  option can  be used several  times to
-specify multiple header fields.
-Example: &#8211;add-response-header=&#8221;foo: bar&#8221;</p>
+<dt id="cmdoption--altsvc">
+<tt class="descname">--altsvc</tt><tt class="descclassname">=&lt;PROTOID,PORT[,HOST,[ORIGIN]]&gt;</tt><a class="headerlink" href="#cmdoption--altsvc" title="Permalink to this definition">¶</a></dt>
+<dd><p>Specify   protocol  ID,   port,  host   and  origin   of
+alternative service.  &lt;HOST&gt;  and &lt;ORIGIN&gt; are optional.
+They are  advertised in  alt-svc header field  or HTTP/2
+ALTSVC frame.  This option can be used multiple times to
+specify   multiple   alternative   services.    Example:
+<a class="reference internal" href="#cmdoption--altsvc"><em class="xref std std-option">--altsvc</em></a>=h2,443</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--frontend-http2-dump-request-header">
-<tt class="descname">--frontend-http2-dump-request-header</tt><tt class="descclassname">=&lt;PATH&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--frontend-http2-dump-request-header" title="Permalink to this definition">¶</a></dt>
-<dd><p>Dumps request headers received by HTTP/2 frontend
-to  the file  denoted in  &lt;PATH&gt;.  The  output is
-done  in  HTTP/1  header field  format  and  each
-header block is followed  by an empty line.  This
-option is  not thread safe  and MUST NOT  be used
-with option -n&lt;N&gt;, where &lt;N&gt; &gt;= 2.</p>
+<dt id="cmdoption--add-response-header">
+<tt class="descname">--add-response-header</tt><tt class="descclassname">=&lt;HEADER&gt;</tt><a class="headerlink" href="#cmdoption--add-response-header" title="Permalink to this definition">¶</a></dt>
+<dd><p>Specify  additional  header  field to  add  to  response
+header set.   This option just appends  header field and
+won't replace anything already  set.  This option can be
+used several  times to  specify multiple  header fields.
+Example: <a class="reference internal" href="#cmdoption--add-response-header"><em class="xref std std-option">--add-response-header</em></a>=&quot;foo: bar&quot;</p>
+</dd></dl>
+
+</div>
+<div class="section" id="debug">
+<h3>Debug:<a class="headerlink" href="#debug" title="Permalink to this headline">¶</a></h3>
+<dl class="option">
+<dt id="cmdoption--frontend-http2-dump-request-header">
+<tt class="descname">--frontend-http2-dump-request-header</tt><tt class="descclassname">=&lt;PATH&gt;</tt><a class="headerlink" href="#cmdoption--frontend-http2-dump-request-header" title="Permalink to this definition">¶</a></dt>
+<dd><p>Dumps request headers received by HTTP/2 frontend to the
+file denoted  in &lt;PATH&gt;.  The  output is done  in HTTP/1
+header field format and each header block is followed by
+an empty line.  This option  is not thread safe and MUST
+NOT be used with option <a class="reference internal" href="#cmdoption-n"><em class="xref std std-option">-n</em></a>&lt;N&gt;, where &lt;N&gt; &gt;= 2.</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--frontend-http2-dump-response-header">
-<tt class="descname">--frontend-http2-dump-response-header</tt><tt class="descclassname">=&lt;PATH&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--frontend-http2-dump-response-header" title="Permalink to this definition">¶</a></dt>
-<dd><p>Dumps response headers  sent from HTTP/2 frontend
-to  the file  denoted in  &lt;PATH&gt;.  The  output is
-done  in  HTTP/1  header field  format  and  each
-header block is followed  by an empty line.  This
-option is  not thread safe  and MUST NOT  be used
-with option -n&lt;N&gt;, where &lt;N&gt; &gt;= 2.</p>
+<dt id="cmdoption--frontend-http2-dump-response-header">
+<tt class="descname">--frontend-http2-dump-response-header</tt><tt class="descclassname">=&lt;PATH&gt;</tt><a class="headerlink" href="#cmdoption--frontend-http2-dump-response-header" title="Permalink to this definition">¶</a></dt>
+<dd><p>Dumps response headers sent  from HTTP/2 frontend to the
+file denoted  in &lt;PATH&gt;.  The  output is done  in HTTP/1
+header field format and each header block is followed by
+an empty line.  This option  is not thread safe and MUST
+NOT be used with option <a class="reference internal" href="#cmdoption-n"><em class="xref std std-option">-n</em></a>&lt;N&gt;, where &lt;N&gt; &gt;= 2.</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx-o">
-<span id="cmdoption-nghttpx--frontend-frame-debug"></span><tt class="descname">-o</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--frontend-frame-debug</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-nghttpx-o" title="Permalink to this definition">¶</a></dt>
-<dd><p>Print HTTP/2 frames in  frontend to stderr.  This
-option is  not thread safe  and MUST NOT  be used
-with option -n=N, where N &gt;= 2.</p>
+<dt id="cmdoption-o">
+<span id="cmdoption--frontend-frame-debug"></span><tt class="descname">-o</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--frontend-frame-debug</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-o" title="Permalink to this definition">¶</a></dt>
+<dd><p>Print HTTP/2 frames in  frontend to stderr.  This option
+is  not thread  safe and  MUST NOT  be used  with option
+<a class="reference internal" href="#cmdoption-n"><em class="xref std std-option">-n</em></a>=N, where N &gt;= 2.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="process">
+<h3>Process:<a class="headerlink" href="#process" title="Permalink to this headline">¶</a></h3>
+<dl class="option">
+<dt id="cmdoption-D">
+<span id="cmdoption--daemon"></span><tt class="descname">-D</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--daemon</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-D" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run in a background.  If <a class="reference internal" href="#cmdoption-D"><em class="xref std std-option">-D</em></a> is used, the current working
+directory is changed to '<em>/</em>'.</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx-D">
-<span id="cmdoption-nghttpx--daemon"></span><tt class="descname">-D</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--daemon</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-nghttpx-D" title="Permalink to this definition">¶</a></dt>
-<dd><p>Run in a background.  If  <a class="reference internal" href="#cmdoption-nghttpx-D"><em class="xref std std-option">-D</em></a> is used, the current
-working directory is changed to &#8216;/&#8217;.</p>
-</dd></dl>
-
-<dl class="option">
-<dt id="cmdoption-nghttpx--pid-file">
-<tt class="descname">--pid-file</tt><tt class="descclassname">=&lt;PATH&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--pid-file" title="Permalink to this definition">¶</a></dt>
+<dt id="cmdoption--pid-file">
+<tt class="descname">--pid-file</tt><tt class="descclassname">=&lt;PATH&gt;</tt><a class="headerlink" href="#cmdoption--pid-file" title="Permalink to this definition">¶</a></dt>
 <dd><p>Set path to save PID of this program.</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--user">
-<tt class="descname">--user</tt><tt class="descclassname">=&lt;USER&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--user" title="Permalink to this definition">¶</a></dt>
-<dd><p>Run  this  program  as &lt;USER&gt;.   This  option  is
-intended to be used to drop root privileges.</p>
+<dt id="cmdoption--user">
+<tt class="descname">--user</tt><tt class="descclassname">=&lt;USER&gt;</tt><a class="headerlink" href="#cmdoption--user" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run this program as &lt;USER&gt;.   This option is intended to
+be used to drop root privileges.</p>
+</dd></dl>
+
+</div>
+<div class="section" id="misc">
+<h3>Misc:<a class="headerlink" href="#misc" title="Permalink to this headline">¶</a></h3>
+<dl class="option">
+<dt id="cmdoption--conf">
+<tt class="descname">--conf</tt><tt class="descclassname">=&lt;PATH&gt;</tt><a class="headerlink" href="#cmdoption--conf" title="Permalink to this definition">¶</a></dt>
+<dd><p>Load configuration from &lt;PATH&gt;.</p>
+<p>Default: <tt class="docutils literal"><span class="pre">/etc/nghttpx/nghttpx.conf</span></tt></p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx--conf">
-<tt class="descname">--conf</tt><tt class="descclassname">=&lt;PATH&gt;</tt><a class="headerlink" href="#cmdoption-nghttpx--conf" title="Permalink to this definition">¶</a></dt>
-<dd><p>Load configuration from &lt;PATH&gt;.
-Default: /etc/nghttpx/nghttpx.conf</p>
-</dd></dl>
-
-<dl class="option">
-<dt id="cmdoption-nghttpx-v">
-<span id="cmdoption-nghttpx--version"></span><tt class="descname">-v</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--version</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-nghttpx-v" title="Permalink to this definition">¶</a></dt>
+<dt id="cmdoption-v">
+<span id="cmdoption--version"></span><tt class="descname">-v</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--version</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-v" title="Permalink to this definition">¶</a></dt>
 <dd><p>Print version and exit.</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpx-h">
-<span id="cmdoption-nghttpx--help"></span><tt class="descname">-h</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--help</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-nghttpx-h" title="Permalink to this definition">¶</a></dt>
+<dt id="cmdoption-h">
+<span id="cmdoption--help"></span><tt class="descname">-h</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--help</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-h" title="Permalink to this definition">¶</a></dt>
 <dd><p>Print this help and exit.</p>
 </dd></dl>
 
+<p>The &lt;SIZE&gt; argument is an integer and an optional unit (e.g., 10K is
+10 * 1024).  Units are K, M and G (powers of 1024).</p>
 </div>
+</div>
+<div class="section" id="files">
+<h2>FILES<a class="headerlink" href="#files" title="Permalink to this headline">¶</a></h2>
+<dl class="docutils">
+<dt><em>/etc/nghttpx/nghttpx.conf</em></dt>
+<dd><p class="first">The default configuration file path nghttpx searches at startup.
+The configuration file path can be changed using <a class="reference internal" href="#cmdoption--conf"><em class="xref std std-option">--conf</em></a>
+option.</p>
+<p>Those lines which are staring <tt class="docutils literal"><span class="pre">#</span></tt> are treated as comment.</p>
+<p>The option name in the configuration file is the long command-line
+option name with leading <tt class="docutils literal"><span class="pre">--</span></tt> stripped (e.g., <tt class="docutils literal"><span class="pre">frontend</span></tt>).  Put
+<tt class="docutils literal"><span class="pre">=</span></tt> between option name and value.  Don't put extra leading or
+trailing spaces.</p>
+<p>The options which do not take argument in the command-line <em>take</em>
+argument in the configuration file.  Specify <tt class="docutils literal"><span class="pre">yes</span></tt> as an argument
+(e.g., <tt class="docutils literal"><span class="pre">http2-proxy=yes</span></tt>).  If other string is given, it is
+ignored.</p>
+<p>To specify private key and certificate file which are given as
+positional arguments in commnad-line, use <tt class="docutils literal"><span class="pre">private-key-file</span></tt> and
+<tt class="docutils literal"><span class="pre">certificate-file</span></tt>.</p>
+<p class="last"><a class="reference internal" href="#cmdoption--conf"><em class="xref std std-option">--conf</em></a> option cannot be used in the configuration file and
+will be ignored if specified.</p>
+</dd>
+</dl>
+</div>
+<div class="section" id="signals">
+<h2>SIGNALS<a class="headerlink" href="#signals" title="Permalink to this headline">¶</a></h2>
+<dl class="docutils">
+<dt>SIGQUIT</dt>
+<dd>Shutdown gracefully.  First accept pending connections and stop
+accepting connection.  After all connections are handled, nghttpx
+exits.</dd>
+<dt>SIGUSR1</dt>
+<dd>Reopen log files.</dd>
+<dt>SIGUSR2</dt>
+<dd>Fork and execute nghttpx.  It will execute the binary in the same
+path with same command-line arguments and environment variables.
+After new process comes up, sending SIGQUIT to the original process
+to perform hot swapping.</dd>
+</dl>
 </div>
 <div class="section" id="see-also">
 <h2>SEE ALSO<a class="headerlink" href="#see-also" title="Permalink to this headline">¶</a></h2>
-<p>nghttp(1), nghttpd(1), h2load(1)</p>
+<p><em class="manpage">nghttp(1)</em>, <em class="manpage">nghttpd(1)</em>, <em class="manpage">h2load(1)</em></p>
 </div>
 </div>
 
@@ -896,11 +1033,12 @@ Default: /etc/nghttpx/nghttpx.conf</p>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2012, 2014, Tatsuhiro Tsujikawa.
+        &copy; Copyright 2012, 2015, Tatsuhiro Tsujikawa.
     </p>
   </div>
 
-  <a href="https://github.com/snide/sphinx_rtd_theme">Sphinx theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+  
 </footer>
         </div>
       </div>
@@ -916,7 +1054,7 @@ Default: /etc/nghttpx/nghttpx.conf</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.6.3-DEV',
+            VERSION:'0.7.2-DEV',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  false

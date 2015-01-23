@@ -7,7 +7,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>nghttp2ver.h &mdash; nghttp2 0.7.2-DEV documentation</title>
+  <title>Contribution Guidelines &mdash; nghttp2 0.7.2-DEV documentation</title>
   
 
   
@@ -29,8 +29,8 @@
 
   
     <link rel="top" title="nghttp2 0.7.2-DEV documentation" href="index.html"/>
-        <link rel="next" title="asio_http2.h" href="asio_http2.h.html"/>
-        <link rel="prev" title="nghttp2.h" href="nghttp2.h.html"/> 
+        <link rel="next" title="Building Android binary" href="building-android-binary.html"/>
+        <link rel="prev" title="nghttp2 - HTTP/2 C Library" href="package_README.html"/> 
 
   
   <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
@@ -78,8 +78,8 @@
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#contribution">Contribution</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="contribute.html">Contribution Guidelines</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="contribute.html#coding-style">Coding style</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="">Contribution Guidelines</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#coding-style">Coding style</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="building-android-binary.html">Building Android binary</a></li>
@@ -169,7 +169,7 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="nghttp2.h.html">nghttp2.h</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="">nghttp2ver.h</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nghttp2ver.h.html">nghttp2ver.h</a></li>
 <li class="toctree-l1"><a class="reference internal" href="asio_http2.h.html">asio_http2.h</a></li>
 <li class="toctree-l1"><a class="reference external" href="https://github.com/tatsuhiro-t/nghttp2">Source</a></li>
 <li class="toctree-l1"><a class="reference external" href="https://github.com/tatsuhiro-t/nghttp2/issues">Issues</a></li>
@@ -198,7 +198,7 @@
   <ul class="wy-breadcrumbs">
     <li><a href="index.html">Docs</a> &raquo;</li>
       
-    <li>nghttp2ver.h</li>
+    <li>Contribution Guidelines</li>
       <li class="wy-breadcrumbs-aside">
         
       </li>
@@ -207,51 +207,52 @@
 </div>
           <div role="main" class="document">
             
-  <div class="section" id="nghttp2ver-h">
-<h1>nghttp2ver.h<a class="headerlink" href="#nghttp2ver-h" title="Permalink to this headline">¶</a></h1>
-<div class="highlight-c"><div class="highlight"><pre><span class="cm">/*</span>
-<span class="cm"> * nghttp2 - HTTP/2 C Library</span>
-<span class="cm"> *</span>
-<span class="cm"> * Copyright (c) 2012, 2013 Tatsuhiro Tsujikawa</span>
-<span class="cm"> *</span>
-<span class="cm"> * Permission is hereby granted, free of charge, to any person obtaining</span>
-<span class="cm"> * a copy of this software and associated documentation files (the</span>
-<span class="cm"> * &quot;Software&quot;), to deal in the Software without restriction, including</span>
-<span class="cm"> * without limitation the rights to use, copy, modify, merge, publish,</span>
-<span class="cm"> * distribute, sublicense, and/or sell copies of the Software, and to</span>
-<span class="cm"> * permit persons to whom the Software is furnished to do so, subject to</span>
-<span class="cm"> * the following conditions:</span>
-<span class="cm"> *</span>
-<span class="cm"> * The above copyright notice and this permission notice shall be</span>
-<span class="cm"> * included in all copies or substantial portions of the Software.</span>
-<span class="cm"> *</span>
-<span class="cm"> * THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND,</span>
-<span class="cm"> * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF</span>
-<span class="cm"> * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND</span>
-<span class="cm"> * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE</span>
-<span class="cm"> * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION</span>
-<span class="cm"> * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION</span>
-<span class="cm"> * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</span>
-<span class="cm"> */</span>
-<span class="cp">#ifndef NGHTTP2VER_H</span>
-<span class="cp">#define NGHTTP2VER_H</span>
-
-<span class="cm">/**</span>
-<span class="cm"> * @macro</span>
-<span class="cm"> * Version number of the nghttp2 library release</span>
-<span class="cm"> */</span>
-<span class="cp">#define NGHTTP2_VERSION &quot;0.7.2-DEV&quot;</span>
-
-<span class="cm">/**</span>
-<span class="cm"> * @macro</span>
-<span class="cm"> * Numerical representation of the version number of the nghttp2 library</span>
-<span class="cm"> * release. This is a 24 bit number with 8 bits for major number, 8 bits</span>
-<span class="cm"> * for minor and 8 bits for patch. Version 1.2.3 becomes 0x010203.</span>
-<span class="cm"> */</span>
-<span class="cp">#define NGHTTP2_VERSION_NUM 0x000702</span>
-
-<span class="cp">#endif </span><span class="cm">/* NGHTTP2VER_H */</span><span class="cp"></span>
+  <div class="section" id="contribution-guidelines">
+<h1>Contribution Guidelines<a class="headerlink" href="#contribution-guidelines" title="Permalink to this headline">¶</a></h1>
+<p>[This text was composed based on 1.2. License section of curl/libcurl
+project.]</p>
+<p>When contributing with code, you agree to put your changes and new
+code under the same license nghttp2 is already using unless stated and
+agreed otherwise.</p>
+<p>When changing existing source code, you do not alter the copyright of
+the original file(s).  The copyright will still be owned by the
+original creator(s) or those who have been assigned copyright by the
+original author(s).</p>
+<p>By submitting a patch to the nghttp2 project, you are assumed to have
+the right to the code and to be allowed by your employer or whatever
+to hand over that patch/code to us.  We will credit you for your
+changes as far as possible, to give credit but also to keep a trace
+back to who made what changes.  Please always provide us with your
+full real name when contributing!</p>
+<div class="section" id="coding-style">
+<h2>Coding style<a class="headerlink" href="#coding-style" title="Permalink to this headline">¶</a></h2>
+<p>We use clang-format to format source code consistently.  The
+clang-format configuration file .clang-format is located at the root
+directory.  Since clang-format produces slightly different results
+between versions, we currently use clang-format which comes with
+clang-3.5.</p>
+<p>To detect any violation to the coding style, we recommend to setup git
+pre-commit hook to check coding style of the changes you introduced.
+The pre-commit file is located at the root directory.  Copy it under
+.git/hooks and make sure that it is executable.  The pre-commit script
+uses clang-format-diff.py to detect any style errors.  If it is not in
+your PATH or it exists under different name (e.g.,
+clang-format-diff-3.5 in debian), either add it to PATH variable or
+add git option <tt class="docutils literal"><span class="pre">clangformatdiff.binary</span></tt> to point to the script.</p>
+<p>For emacs users, integrating clang-format to emacs is very easy.
+clang-format.el should come with clang distribution.  If it is not
+found, download it from <a class="reference external" href="https://llvm.org/svn/llvm-project/cfe/trunk/tools/clang-format/clang-format.el">here</a>.
+And add these lines to your .emacs file:</p>
+<div class="highlight-lisp"><div class="highlight"><pre><span class="c1">;; From</span>
+<span class="c1">;; https://code.google.com/p/chromium/wiki/Emacs#Use_Google&#39;s_C++_style!</span>
+<span class="p">(</span><span class="nb">load</span> <span class="s">&quot;/&lt;path/to&gt;/clang-format.el&quot;</span><span class="p">)</span>
+<span class="p">(</span><span class="nv">add-hook</span> <span class="ss">&#39;c-mode-common-hook</span>
+     <span class="p">(</span><span class="k">function</span> <span class="p">(</span><span class="k">lambda</span> <span class="p">()</span> <span class="p">(</span><span class="nv">local-set-key</span> <span class="p">(</span><span class="nv">kbd</span> <span class="s">&quot;TAB&quot;</span><span class="p">)</span>
+                                         <span class="ss">&#39;clang-format-region</span><span class="p">))))</span>
 </pre></div>
+</div>
+<p>You can find other editor integration in
+<a class="reference external" href="http://clang.llvm.org/docs/ClangFormat.html">http://clang.llvm.org/docs/ClangFormat.html</a>.</p>
 </div>
 </div>
 
@@ -261,10 +262,10 @@
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="asio_http2.h.html" class="btn btn-neutral float-right" title="asio_http2.h">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="building-android-binary.html" class="btn btn-neutral float-right" title="Building Android binary">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="nghttp2.h.html" class="btn btn-neutral" title="nghttp2.h"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="package_README.html" class="btn btn-neutral" title="nghttp2 - HTTP/2 C Library"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

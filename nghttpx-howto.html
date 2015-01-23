@@ -7,14 +7,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>nghttpx - HTTP/2 proxy - HOW-TO &mdash; nghttp2 0.6.3-DEV documentation</title>
+  <title>nghttpx - HTTP/2 proxy - HOW-TO &mdash; nghttp2 0.7.2-DEV documentation</title>
   
 
   
   
 
   
-  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700&subset=latin,cyrillic' rel='stylesheet' type='text/css'>
 
   
   
@@ -28,7 +28,7 @@
   
 
   
-    <link rel="top" title="nghttp2 0.6.3-DEV documentation" href="index.html"/>
+    <link rel="top" title="nghttp2 0.7.2-DEV documentation" href="index.html"/>
         <link rel="next" title="h2load - HTTP/2 benchmarking tool - HOW-TO" href="h2load-howto.html"/>
         <link rel="prev" title="h2load(1)" href="h2load.1.html"/> 
 
@@ -47,8 +47,9 @@
         
           <a href="index.html" class="fa fa-home"> nghttp2</a>
         
-        <div role="search">
-  <form id ="rtd-search-form" class="wy-form" action="search.html" method="get">
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" />
     <input type="hidden" name="check_keywords" value="yes" />
     <input type="hidden" name="area" value="default" />
@@ -58,20 +59,27 @@
 
       <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
         
-        
-            <ul class="current">
+          
+          
+              <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="package_README.html">nghttp2 - HTTP/2 C Library</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#development-status">Development Status</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#public-test-server">Public Test Server</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#requirements">Requirements</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#build-from-git">Build from git</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#building-documentation">Building documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#unit-tests">Unit tests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#integration-tests">Integration tests</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#client-server-and-proxy-programs">Client, Server and Proxy programs</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#benchmarking-tool">Benchmarking tool</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#hpack-tools">HPACK tools</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#libnghttp2-asio-high-level-http-2-c-library">libnghttp2_asio: High level HTTP/2 C++ library</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#python-bindings">Python bindings</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#contribution">Contribution</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="contribute.html">Contribution Guidelines</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="contribute.html#coding-style">Coding style</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="building-android-binary.html">Building Android binary</a></li>
@@ -90,34 +98,32 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="nghttp.1.html">nghttp(1)</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#name">NAME</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#options">OPTIONS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#options">OPTIONS:</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="nghttpd.1.html">nghttpd(1)</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#name">NAME</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#options">OPTIONS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#options">OPTIONS:</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="nghttpx.1.html">nghttpx(1)</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#name">NAME</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#options">OPTIONS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#options">OPTIONS:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#files">FILES</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#signals">SIGNALS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="h2load.1.html">h2load(1)</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#name">NAME</a></li>
 <li class="toctree-l2"><a class="reference internal" href="h2load.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="h2load.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#options">OPTIONS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#options">OPTIONS:</a></li>
 <li class="toctree-l2"><a class="reference internal" href="h2load.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
@@ -131,8 +137,9 @@
 <li class="toctree-l2"><a class="reference internal" href="#specifying-additional-ca-certificate">Specifying additional CA certificate</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#read-write-rate-limit">Read/write rate limit</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#rewriting-location-header-field">Rewriting location header field</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#hot-deploy">Hot deploy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#hot-swapping">Hot swapping</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#re-opening-log-files">Re-opening log files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#multiple-http-1-backend-addresses">Multiple HTTP/1 backend addresses</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="h2load-howto.html">h2load - HTTP/2 benchmarking tool - HOW-TO</a><ul>
@@ -166,8 +173,10 @@
 <li class="toctree-l1"><a class="reference internal" href="asio_http2.h.html">asio_http2.h</a></li>
 <li class="toctree-l1"><a class="reference external" href="https://github.com/tatsuhiro-t/nghttp2">Source</a></li>
 <li class="toctree-l1"><a class="reference external" href="https://github.com/tatsuhiro-t/nghttp2/issues">Issues</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://nghttp2.org/">nghttp2.org</a></li>
 </ul>
 
+          
         
       </div>
       &nbsp;
@@ -214,8 +223,8 @@ as reverse proxy (gateway) for HTTP/2 clients to HTTP/1 web server.
 HTTP/1 requests are also supported in frontend as a fallback.  If
 nghttpx is linked with spdylay library and frontend connection is
 SSL/TLS, the frontend also supports SPDY protocol.</p>
-<p>By default, this mode&#8217;s frontend connection is encrypted using
-SSL/TLS.  So server&#8217;s private key and certificate must be supplied to
+<p>By default, this mode's frontend connection is encrypted using
+SSL/TLS.  So server's private key and certificate must be supplied to
 the command line (or through configuration file).  In this case, the
 fontend protocol selection will is done via ALPN or NPN.</p>
 <p>With <tt class="docutils literal"><span class="pre">--frontend-no-tls</span></tt> option, user can turn off SSL/TLS in
@@ -245,16 +254,16 @@ the same in <a class="reference internal" href="#default-mode">default mode</a>.
 like forward proxy and assumes the backend is HTTP/1 proxy server
 (e.g., squid, traffic server).  So HTTP/1 request must include
 absolute URI in request line.</p>
-<p>By default, frontend connection is encrypted, this mode is also called
-secure proxy.  If nghttpx is linked with spdylay, it supports SPDY
-protocols and it works as so called SPDY proxy.</p>
+<p>By default, frontend connection is encrypted.  So this mode is also
+called secure proxy.  If nghttpx is linked with spdylay, it supports
+SPDY protocols and it works as so called SPDY proxy.</p>
 <p>With <tt class="docutils literal"><span class="pre">--frontend-no-tls</span></tt> option, SSL/TLS is turned off in frontend
 connection, so the connection gets insecure.</p>
-<p>The backend must be HTTP/1 proxy server.  nghttpx only supports 1
-backend server address.  It translates incoming requests to HTTP/1
-request to backend server.  The backend server performs real proxy
-work for each request, for example, dispatching requests to the origin
-server and caching contents.</p>
+<p>The backend must be HTTP/1 proxy server.  nghttpx only supports
+multiple backend server addresses.  It translates incoming requests to
+HTTP/1 request to backend server.  The backend server performs real
+proxy work for each request, for example, dispatching requests to the
+origin server and caching contents.</p>
 <p>For example, to make nghttpx listen to encrypted HTTP/2 requests at
 port 8443, and a backend HTTP/1 proxy server is configured to listen
 to HTTP/1 request at port 8080 in the same host, run nghttpx
@@ -274,21 +283,21 @@ proxy, user has to create proxy.pac script file like this:</p>
 </div>
 <p><tt class="docutils literal"><span class="pre">SERVERADDR</span></tt> and <tt class="docutils literal"><span class="pre">PORT</span></tt> is the hostname/address and port of the
 machine nghttpx is running.  Please note that both Firefox nightly and
-Chromium requires valid certificate for secure proxy.</p>
+Chromium require valid certificate for secure proxy.</p>
 <p>For Firefox nightly, open Preference window and select Advanced then
 click Network tab.  Clicking Connection Settings button will show the
-dialog.  Select &#8220;Automatic proxy configuration URL&#8221; and enter the path
+dialog.  Select &quot;Automatic proxy configuration URL&quot; and enter the path
 to proxy.pac file, something like this:</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="nl">file:</span><span class="c1">///path/to/proxy.pac</span>
+<div class="highlight-c"><div class="highlight"><pre><span class="nl">file</span><span class="p">:</span><span class="c1">///path/to/proxy.pac</span>
 </pre></div>
 </div>
 <p>For Chromium, use following command-line:</p>
 <div class="highlight-c"><div class="highlight"><pre>$ google-chrome --proxy-pac-url=file:///path/to/proxy.pac --use-npn
 </pre></div>
 </div>
-<p>Squid may work as out-of-box.  Traffic server requires to be
-configured as forward proxy.  Here is the minimum configuration items
-to edit:</p>
+<p>As HTTP/1 proxy server, Squid may work as out-of-box.  Traffic server
+requires to be configured as forward proxy.  Here is the minimum
+configuration items to edit:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="n">CONFIG</span> <span class="n">proxy</span><span class="p">.</span><span class="n">config</span><span class="p">.</span><span class="n">reverse_proxy</span><span class="p">.</span><span class="n">enabled</span> <span class="n">INT</span> <span class="mi">0</span>
 <span class="n">CONFIG</span> <span class="n">proxy</span><span class="p">.</span><span class="n">config</span><span class="p">.</span><span class="n">url_remap</span><span class="p">.</span><span class="n">remap_required</span> <span class="n">INT</span> <span class="mi">0</span>
 </pre></div>
@@ -351,7 +360,7 @@ that server, invoke nghttpx like this:</p>
 </div>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">You may need <tt class="docutils literal"><span class="pre">-k</span></tt> option if HTTP/2 server&#8217;s certificate is
+<p class="last">You may need <tt class="docutils literal"><span class="pre">-k</span></tt> option if HTTP/2 server's certificate is
 self-signed. But please note that it is insecure.</p>
 </div>
 <p>Then you can use curl to issue HTTP request via HTTP/2 proxy:</p>
@@ -395,7 +404,7 @@ depending on the system you use, this may fail or is not supported.
 To specify CA certificate manually, use <tt class="docutils literal"><span class="pre">--cacert</span></tt> option.  The
 specified file must be PEM format and can contain multiple
 certificates.</p>
-<p>By default, nghttpx validates server&#8217;s certificate.  If you want to
+<p>By default, nghttpx validates server's certificate.  If you want to
 turn off this validation, knowing this is really insecure and what you
 are doing, you can use <tt class="docutils literal"><span class="pre">-k</span></tt> option to disable certificate
 validation.</p>
@@ -403,11 +412,11 @@ validation.</p>
 <div class="section" id="read-write-rate-limit">
 <h2>Read/write rate limit<a class="headerlink" href="#read-write-rate-limit" title="Permalink to this headline">¶</a></h2>
 <p>nghttpx supports transfer rate limiting on frontend connections.  You
-can do rate limit per worker (thread) for reading and writeing
+can do rate limit per frontend connection for reading and writeing
 individually.</p>
-<p>To rate limit per worker (thread), use <tt class="docutils literal"><span class="pre">--worker-read-rate</span></tt> and
-<tt class="docutils literal"><span class="pre">--worker-read-burst</span></tt> options.  For writing, use
-<tt class="docutils literal"><span class="pre">--worker-write-rate</span></tt> and <tt class="docutils literal"><span class="pre">--worker-write-burst</span></tt>.</p>
+<p>To perform rate limit for reading, use <tt class="docutils literal"><span class="pre">--read-rate</span></tt> and
+<tt class="docutils literal"><span class="pre">--read-burst</span></tt> options.  For writing, use <tt class="docutils literal"><span class="pre">--write-rate</span></tt> and
+<tt class="docutils literal"><span class="pre">--write-burst</span></tt>.</p>
 <p>Please note that rate limit is performed on top of TCP and nothing to
 do with HTTP/2 flow control.</p>
 </div>
@@ -428,9 +437,9 @@ precedence.  If the above conditions are not met with the host value
 in :authority header field, rewrite is retried with the value in host
 header field.</p>
 </div>
-<div class="section" id="hot-deploy">
-<h2>Hot deploy<a class="headerlink" href="#hot-deploy" title="Permalink to this headline">¶</a></h2>
-<p>nghttpx supports hot deploy feature using signals.  The hot deploy in
+<div class="section" id="hot-swapping">
+<h2>Hot swapping<a class="headerlink" href="#hot-swapping" title="Permalink to this headline">¶</a></h2>
+<p>nghttpx supports hot swapping using signals.  The hot swapping in
 nghttpx is multi step process.  First send USR2 signal to nghttpx
 process.  It will do fork and execute new executable, using same
 command-line arguments and environment variables.  At this point, both
@@ -447,6 +456,14 @@ log rotation daemon renamed existing log files.  To tell nghttpx to
 re-open log files, send USR1 signal to nghttpx process.  It will
 re-open files specified by <tt class="docutils literal"><span class="pre">--accesslog-file</span></tt> and
 <tt class="docutils literal"><span class="pre">--errorlog-file</span></tt> options.</p>
+</div>
+<div class="section" id="multiple-http-1-backend-addresses">
+<h2>Multiple HTTP/1 backend addresses<a class="headerlink" href="#multiple-http-1-backend-addresses" title="Permalink to this headline">¶</a></h2>
+<p>nghttpx supports multiple HTTP/1 backend addresses.  To specify them,
+just use <tt class="docutils literal"><span class="pre">-b</span></tt> option repeatedly.  For example, to use backend1:8080
+and backend2:8080, use command-line like this: <tt class="docutils literal"><span class="pre">-bbackend1,8080</span>
+<span class="pre">-bbackend2,8080</span></tt>.  Please note that HTTP/2 backend only supports 1
+backend address.</p>
 </div>
 </div>
 
@@ -468,11 +485,12 @@ re-open files specified by <tt class="docutils literal"><span class="pre">--acce
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2012, 2014, Tatsuhiro Tsujikawa.
+        &copy; Copyright 2012, 2015, Tatsuhiro Tsujikawa.
     </p>
   </div>
 
-  <a href="https://github.com/snide/sphinx_rtd_theme">Sphinx theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+  
 </footer>
         </div>
       </div>
@@ -488,7 +506,7 @@ re-open files specified by <tt class="docutils literal"><span class="pre">--acce
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.6.3-DEV',
+            VERSION:'0.7.2-DEV',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  false

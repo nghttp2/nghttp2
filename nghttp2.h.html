@@ -7,14 +7,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>nghttp2.h &mdash; nghttp2 0.6.3-DEV documentation</title>
+  <title>nghttp2.h &mdash; nghttp2 0.7.2-DEV documentation</title>
   
 
   
   
 
   
-  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700&subset=latin,cyrillic' rel='stylesheet' type='text/css'>
 
   
   
@@ -28,7 +28,7 @@
   
 
   
-    <link rel="top" title="nghttp2 0.6.3-DEV documentation" href="index.html"/>
+    <link rel="top" title="nghttp2 0.7.2-DEV documentation" href="index.html"/>
         <link rel="next" title="nghttp2ver.h" href="nghttp2ver.h.html"/>
         <link rel="prev" title="Python API Reference" href="python-apiref.html"/> 
 
@@ -47,8 +47,9 @@
         
           <a href="index.html" class="fa fa-home"> nghttp2</a>
         
-        <div role="search">
-  <form id ="rtd-search-form" class="wy-form" action="search.html" method="get">
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" />
     <input type="hidden" name="check_keywords" value="yes" />
     <input type="hidden" name="area" value="default" />
@@ -58,20 +59,27 @@
 
       <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
         
-        
-            <ul class="current">
+          
+          
+              <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="package_README.html">nghttp2 - HTTP/2 C Library</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#development-status">Development Status</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#public-test-server">Public Test Server</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#requirements">Requirements</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#build-from-git">Build from git</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#building-documentation">Building documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#unit-tests">Unit tests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#integration-tests">Integration tests</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#client-server-and-proxy-programs">Client, Server and Proxy programs</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#benchmarking-tool">Benchmarking tool</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#hpack-tools">HPACK tools</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#libnghttp2-asio-high-level-http-2-c-library">libnghttp2_asio: High level HTTP/2 C++ library</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#python-bindings">Python bindings</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#contribution">Contribution</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="contribute.html">Contribution Guidelines</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="contribute.html#coding-style">Coding style</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="building-android-binary.html">Building Android binary</a></li>
@@ -90,34 +98,32 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="nghttp.1.html">nghttp(1)</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#name">NAME</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#options">OPTIONS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#options">OPTIONS:</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="nghttpd.1.html">nghttpd(1)</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#name">NAME</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#options">OPTIONS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#options">OPTIONS:</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="nghttpx.1.html">nghttpx(1)</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#name">NAME</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#options">OPTIONS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#options">OPTIONS:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#files">FILES</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#signals">SIGNALS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="h2load.1.html">h2load(1)</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#name">NAME</a></li>
 <li class="toctree-l2"><a class="reference internal" href="h2load.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="h2load.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#options">OPTIONS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#options">OPTIONS:</a></li>
 <li class="toctree-l2"><a class="reference internal" href="h2load.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
@@ -131,8 +137,9 @@
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#specifying-additional-ca-certificate">Specifying additional CA certificate</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#read-write-rate-limit">Read/write rate limit</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#rewriting-location-header-field">Rewriting location header field</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#hot-deploy">Hot deploy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#hot-swapping">Hot swapping</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#re-opening-log-files">Re-opening log files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#multiple-http-1-backend-addresses">Multiple HTTP/1 backend addresses</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="h2load-howto.html">h2load - HTTP/2 benchmarking tool - HOW-TO</a><ul>
@@ -166,8 +173,10 @@
 <li class="toctree-l1"><a class="reference internal" href="asio_http2.h.html">asio_http2.h</a></li>
 <li class="toctree-l1"><a class="reference external" href="https://github.com/tatsuhiro-t/nghttp2">Source</a></li>
 <li class="toctree-l1"><a class="reference external" href="https://github.com/tatsuhiro-t/nghttp2/issues">Issues</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://nghttp2.org/">nghttp2.org</a></li>
 </ul>
 
+          
         
       </div>
       &nbsp;
@@ -227,7 +236,7 @@
 <span class="cp">#ifndef NGHTTP2_H</span>
 <span class="cp">#define NGHTTP2_H</span>
 
-<span class="cp">#ifdef  __cplusplus</span>
+<span class="cp">#ifdef __cplusplus</span>
 <span class="k">extern</span> <span class="s">&quot;C&quot;</span> <span class="p">{</span>
 <span class="cp">#endif</span>
 
@@ -388,7 +397,7 @@
 <span class="cm"> *</span>
 <span class="cm"> * The length of :macro:`NGHTTP2_CLIENT_CONNECTION_HEADER`.</span>
 <span class="cm"> */</span>
-<span class="cp">#define NGHTTP2_CLIENT_CONNECTION_HEADER_LEN    \</span>
+<span class="cp">#define NGHTTP2_CLIENT_CONNECTION_HEADER_LEN                                   \</span>
 <span class="cp">  NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN</span>
 
 <span class="cm">/**</span>
@@ -403,7 +412,7 @@
 <span class="cm">   */</span>
   <span class="n">NGHTTP2_ERR_INVALID_ARGUMENT</span> <span class="o">=</span> <span class="o">-</span><span class="mi">501</span><span class="p">,</span>
   <span class="cm">/**</span>
-<span class="cm">   * Ouf of buffer space.</span>
+<span class="cm">   * Out of buffer space.</span>
 <span class="cm">   */</span>
   <span class="n">NGHTTP2_ERR_BUFFER_ERROR</span> <span class="o">=</span> <span class="o">-</span><span class="mi">502</span><span class="p">,</span>
   <span class="cm">/**</span>
@@ -527,6 +536,11 @@
 <span class="cm">   * not been fully processed yet.</span>
 <span class="cm">   */</span>
   <span class="n">NGHTTP2_ERR_DATA_EXIST</span> <span class="o">=</span> <span class="o">-</span><span class="mi">529</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * The current session is closing due to a connection error or</span>
+<span class="cm">   * `nghttp2_session_terminate_session()` is called.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_ERR_SESSION_CLOSING</span> <span class="o">=</span> <span class="o">-</span><span class="mi">530</span><span class="p">,</span>
   <span class="cm">/**</span>
 <span class="cm">   * The errors &lt; :enum:`NGHTTP2_ERR_FATAL` mean that the library is</span>
 <span class="cm">   * under unexpected condition and processing was terminated (e.g.,</span>
@@ -788,7 +802,11 @@
   <span class="cm">/**</span>
 <span class="cm">   * INADEQUATE_SECURITY</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_INADEQUATE_SECURITY</span> <span class="o">=</span> <span class="mh">0x0c</span>
+  <span class="n">NGHTTP2_INADEQUATE_SECURITY</span> <span class="o">=</span> <span class="mh">0x0c</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * HTTP_1_1_REQUIRED</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_HTTP_1_1_REQUIRED</span> <span class="o">=</span> <span class="mh">0x0d</span>
 <span class="p">}</span> <span class="n">nghttp2_error_code</span><span class="p">;</span>
 
 <span class="cm">/**</span>
@@ -818,7 +836,6 @@
 <span class="cm">   */</span>
   <span class="kt">uint8_t</span> <span class="n">reserved</span><span class="p">;</span>
 <span class="p">}</span> <span class="n">nghttp2_frame_hd</span><span class="p">;</span>
-
 
 <span class="cm">/**</span>
 <span class="cm"> * @union</span>
@@ -879,10 +896,9 @@
 <span class="cm"> * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE` will signal the entire session</span>
 <span class="cm"> * failure.</span>
 <span class="cm"> */</span>
-<span class="k">typedef</span> <span class="nf">ssize_t</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_data_source_read_callback</span><span class="p">)</span>
-<span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
- <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">buf</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">length</span><span class="p">,</span> <span class="kt">uint32_t</span> <span class="o">*</span><span class="n">data_flags</span><span class="p">,</span>
- <span class="n">nghttp2_data_source</span> <span class="o">*</span><span class="n">source</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
+<span class="k">typedef</span> <span class="nf">ssize_t</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_data_source_read_callback</span><span class="p">)(</span>
+    <span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">buf</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">length</span><span class="p">,</span>
+    <span class="kt">uint32_t</span> <span class="o">*</span><span class="n">data_flags</span><span class="p">,</span> <span class="n">nghttp2_data_source</span> <span class="o">*</span><span class="n">source</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @struct</span>
@@ -1311,9 +1327,9 @@
 <span class="cm"> * To set this callback to :type:`nghttp2_session_callbacks`, use</span>
 <span class="cm"> * `nghttp2_session_callbacks_set_send_callback()`.</span>
 <span class="cm"> */</span>
-<span class="k">typedef</span> <span class="nf">ssize_t</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_send_callback</span><span class="p">)</span>
-<span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
- <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">data</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">length</span><span class="p">,</span> <span class="kt">int</span> <span class="n">flags</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
+<span class="k">typedef</span> <span class="nf">ssize_t</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_send_callback</span><span class="p">)(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
+                                         <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">data</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">length</span><span class="p">,</span>
+                                         <span class="kt">int</span> <span class="n">flags</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @functypedef</span>
@@ -1339,9 +1355,9 @@
 <span class="cm"> * To set this callback to :type:`nghttp2_session_callbacks`, use</span>
 <span class="cm"> * `nghttp2_session_callbacks_set_recv_callback()`.</span>
 <span class="cm"> */</span>
-<span class="k">typedef</span> <span class="nf">ssize_t</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_recv_callback</span><span class="p">)</span>
-<span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
- <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">buf</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">length</span><span class="p">,</span> <span class="kt">int</span> <span class="n">flags</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
+<span class="k">typedef</span> <span class="nf">ssize_t</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_recv_callback</span><span class="p">)(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">buf</span><span class="p">,</span>
+                                         <span class="kt">size_t</span> <span class="n">length</span><span class="p">,</span> <span class="kt">int</span> <span class="n">flags</span><span class="p">,</span>
+                                         <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @functypedef</span>
@@ -1377,8 +1393,9 @@
 <span class="cm"> * To set this callback to :type:`nghttp2_session_callbacks`, use</span>
 <span class="cm"> * `nghttp2_session_callbacks_set_on_frame_recv_callback()`.</span>
 <span class="cm"> */</span>
-<span class="k">typedef</span> <span class="nf">int</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_on_frame_recv_callback</span><span class="p">)</span>
-<span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="k">const</span> <span class="n">nghttp2_frame</span> <span class="o">*</span><span class="n">frame</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
+<span class="k">typedef</span> <span class="nf">int</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_on_frame_recv_callback</span><span class="p">)(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
+                                              <span class="k">const</span> <span class="n">nghttp2_frame</span> <span class="o">*</span><span class="n">frame</span><span class="p">,</span>
+                                              <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @functypedef</span>
@@ -1404,9 +1421,9 @@
 <span class="cm"> * To set this callback to :type:`nghttp2_session_callbacks`, use</span>
 <span class="cm"> * `nghttp2_session_callbacks_set_on_invalid_frame_recv_callback()`.</span>
 <span class="cm"> */</span>
-<span class="k">typedef</span> <span class="nf">int</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_on_invalid_frame_recv_callback</span><span class="p">)</span>
-<span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="k">const</span> <span class="n">nghttp2_frame</span> <span class="o">*</span><span class="n">frame</span><span class="p">,</span>
- <span class="kt">uint32_t</span> <span class="n">error_code</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
+<span class="k">typedef</span> <span class="nf">int</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_on_invalid_frame_recv_callback</span><span class="p">)(</span>
+    <span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="k">const</span> <span class="n">nghttp2_frame</span> <span class="o">*</span><span class="n">frame</span><span class="p">,</span> <span class="kt">uint32_t</span> <span class="n">error_code</span><span class="p">,</span>
+    <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @functypedef</span>
@@ -1438,9 +1455,11 @@
 <span class="cm"> * To set this callback to :type:`nghttp2_session_callbacks`, use</span>
 <span class="cm"> * `nghttp2_session_callbacks_set_on_data_chunk_recv_callback()`.</span>
 <span class="cm"> */</span>
-<span class="k">typedef</span> <span class="nf">int</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_on_data_chunk_recv_callback</span><span class="p">)</span>
-<span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span> <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
- <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">data</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">len</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
+<span class="k">typedef</span> <span class="nf">int</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_on_data_chunk_recv_callback</span><span class="p">)(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
+                                                   <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span>
+                                                   <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
+                                                   <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">data</span><span class="p">,</span>
+                                                   <span class="kt">size_t</span> <span class="n">len</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @functypedef</span>
@@ -1458,8 +1477,9 @@
 <span class="cm"> * To set this callback to :type:`nghttp2_session_callbacks`, use</span>
 <span class="cm"> * `nghttp2_session_callbacks_set_before_frame_send_callback()`.</span>
 <span class="cm"> */</span>
-<span class="k">typedef</span> <span class="nf">int</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_before_frame_send_callback</span><span class="p">)</span>
-<span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="k">const</span> <span class="n">nghttp2_frame</span> <span class="o">*</span><span class="n">frame</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
+<span class="k">typedef</span> <span class="nf">int</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_before_frame_send_callback</span><span class="p">)(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
+                                                  <span class="k">const</span> <span class="n">nghttp2_frame</span> <span class="o">*</span><span class="n">frame</span><span class="p">,</span>
+                                                  <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @functypedef</span>
@@ -1476,8 +1496,9 @@
 <span class="cm"> * To set this callback to :type:`nghttp2_session_callbacks`, use</span>
 <span class="cm"> * `nghttp2_session_callbacks_set_on_frame_send_callback()`.</span>
 <span class="cm"> */</span>
-<span class="k">typedef</span> <span class="nf">int</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_on_frame_send_callback</span><span class="p">)</span>
-<span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="k">const</span> <span class="n">nghttp2_frame</span> <span class="o">*</span><span class="n">frame</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
+<span class="k">typedef</span> <span class="nf">int</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_on_frame_send_callback</span><span class="p">)(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
+                                              <span class="k">const</span> <span class="n">nghttp2_frame</span> <span class="o">*</span><span class="n">frame</span><span class="p">,</span>
+                                              <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @functypedef</span>
@@ -1497,9 +1518,10 @@
 <span class="cm"> * To set this callback to :type:`nghttp2_session_callbacks`, use</span>
 <span class="cm"> * `nghttp2_session_callbacks_set_on_frame_not_send_callback()`.</span>
 <span class="cm"> */</span>
-<span class="k">typedef</span> <span class="nf">int</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_on_frame_not_send_callback</span><span class="p">)</span>
-<span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="k">const</span> <span class="n">nghttp2_frame</span> <span class="o">*</span><span class="n">frame</span><span class="p">,</span> <span class="kt">int</span> <span class="n">lib_error_code</span><span class="p">,</span>
- <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
+<span class="k">typedef</span> <span class="nf">int</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_on_frame_not_send_callback</span><span class="p">)(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
+                                                  <span class="k">const</span> <span class="n">nghttp2_frame</span> <span class="o">*</span><span class="n">frame</span><span class="p">,</span>
+                                                  <span class="kt">int</span> <span class="n">lib_error_code</span><span class="p">,</span>
+                                                  <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @functypedef</span>
@@ -1523,9 +1545,10 @@
 <span class="cm"> * To set this callback to :type:`nghttp2_session_callbacks`, use</span>
 <span class="cm"> * `nghttp2_session_callbacks_set_on_stream_close_callback()`.</span>
 <span class="cm"> */</span>
-<span class="k">typedef</span> <span class="nf">int</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_on_stream_close_callback</span><span class="p">)</span>
-<span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span> <span class="kt">uint32_t</span> <span class="n">error_code</span><span class="p">,</span>
- <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
+<span class="k">typedef</span> <span class="nf">int</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_on_stream_close_callback</span><span class="p">)(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
+                                                <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
+                                                <span class="kt">uint32_t</span> <span class="n">error_code</span><span class="p">,</span>
+                                                <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @functypedef</span>
@@ -1551,8 +1574,9 @@
 <span class="cm"> * To set this callback to :type:`nghttp2_session_callbacks`, use</span>
 <span class="cm"> * `nghttp2_session_callbacks_set_on_begin_headers_callback()`.</span>
 <span class="cm"> */</span>
-<span class="k">typedef</span> <span class="nf">int</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_on_begin_headers_callback</span><span class="p">)</span>
-<span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="k">const</span> <span class="n">nghttp2_frame</span> <span class="o">*</span><span class="n">frame</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
+<span class="k">typedef</span> <span class="nf">int</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_on_begin_headers_callback</span><span class="p">)(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
+                                                 <span class="k">const</span> <span class="n">nghttp2_frame</span> <span class="o">*</span><span class="n">frame</span><span class="p">,</span>
+                                                 <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @functypedef</span>
@@ -1585,6 +1609,11 @@
 <span class="cm"> * `nghttp2_check_header_value()` provide simple validation against</span>
 <span class="cm"> * HTTP2 header field construction rule.</span>
 <span class="cm"> *</span>
+<span class="cm"> * HTTP/2 specification requires that pseudo header fields (header</span>
+<span class="cm"> * field starting with &#39;:&#39;) must appear in front of regular header</span>
+<span class="cm"> * fields.  The library does not validate this requirement.  The</span>
+<span class="cm"> * application must check them if it matters.</span>
+<span class="cm"> *</span>
 <span class="cm"> * If the application uses `nghttp2_session_mem_recv()`, it can return</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_PAUSE` to make `nghttp2_session_mem_recv()`</span>
 <span class="cm"> * return without processing further input bytes.  The memory pointed</span>
@@ -1615,13 +1644,11 @@
 <span class="cm"> * To set this callback to :type:`nghttp2_session_callbacks`, use</span>
 <span class="cm"> * `nghttp2_session_callbacks_set_on_header_callback()`.</span>
 <span class="cm"> */</span>
-<span class="k">typedef</span> <span class="nf">int</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_on_header_callback</span><span class="p">)</span>
-<span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
- <span class="k">const</span> <span class="n">nghttp2_frame</span> <span class="o">*</span><span class="n">frame</span><span class="p">,</span>
- <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">name</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">namelen</span><span class="p">,</span>
- <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">value</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">valuelen</span><span class="p">,</span>
- <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span>
- <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
+<span class="k">typedef</span> <span class="nf">int</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_on_header_callback</span><span class="p">)(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
+                                          <span class="k">const</span> <span class="n">nghttp2_frame</span> <span class="o">*</span><span class="n">frame</span><span class="p">,</span>
+                                          <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">name</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">namelen</span><span class="p">,</span>
+                                          <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">value</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">valuelen</span><span class="p">,</span>
+                                          <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @functypedef</span>
@@ -1640,11 +1667,10 @@
 <span class="cm"> * To set this callback to :type:`nghttp2_session_callbacks`, use</span>
 <span class="cm"> * `nghttp2_session_callbacks_set_select_padding_callback()`.</span>
 <span class="cm"> */</span>
-<span class="k">typedef</span> <span class="nf">ssize_t</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_select_padding_callback</span><span class="p">)</span>
-<span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
- <span class="k">const</span> <span class="n">nghttp2_frame</span> <span class="o">*</span><span class="n">frame</span><span class="p">,</span>
- <span class="kt">size_t</span> <span class="n">max_payloadlen</span><span class="p">,</span>
- <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
+<span class="k">typedef</span> <span class="nf">ssize_t</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_select_padding_callback</span><span class="p">)(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
+                                                   <span class="k">const</span> <span class="n">nghttp2_frame</span> <span class="o">*</span><span class="n">frame</span><span class="p">,</span>
+                                                   <span class="kt">size_t</span> <span class="n">max_payloadlen</span><span class="p">,</span>
+                                                   <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @functypedef</span>
@@ -1670,12 +1696,10 @@
 <span class="cm"> * To set this callback to :type:`nghttp2_session_callbacks`, use</span>
 <span class="cm"> * `nghttp2_session_callbacks_set_data_source_read_length_callback()`.</span>
 <span class="cm"> */</span>
-<span class="k">typedef</span> <span class="nf">ssize_t</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_data_source_read_length_callback</span><span class="p">)</span>
-<span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="n">frame_type</span><span class="p">,</span> <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
- <span class="kt">int32_t</span> <span class="n">session_remote_window_size</span><span class="p">,</span>
- <span class="kt">int32_t</span> <span class="n">stream_remote_window_size</span><span class="p">,</span>
- <span class="kt">uint32_t</span> <span class="n">remote_max_frame_size</span><span class="p">,</span>
- <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
+<span class="k">typedef</span> <span class="nf">ssize_t</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_data_source_read_length_callback</span><span class="p">)(</span>
+    <span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="n">frame_type</span><span class="p">,</span> <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
+    <span class="kt">int32_t</span> <span class="n">session_remote_window_size</span><span class="p">,</span> <span class="kt">int32_t</span> <span class="n">stream_remote_window_size</span><span class="p">,</span>
+    <span class="kt">uint32_t</span> <span class="n">remote_max_frame_size</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @functypedef</span>
@@ -1699,8 +1723,9 @@
 <span class="cm"> * To set this callback to :type:`nghttp2_session_callbacks`, use</span>
 <span class="cm"> * `nghttp2_session_callbacks_set_on_begin_frame_callback()`.</span>
 <span class="cm"> */</span>
-<span class="k">typedef</span> <span class="nf">int</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_on_begin_frame_callback</span><span class="p">)</span>
-<span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="k">const</span> <span class="n">nghttp2_frame_hd</span> <span class="o">*</span><span class="n">hd</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
+<span class="k">typedef</span> <span class="nf">int</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_on_begin_frame_callback</span><span class="p">)(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
+                                               <span class="k">const</span> <span class="n">nghttp2_frame_hd</span> <span class="o">*</span><span class="n">hd</span><span class="p">,</span>
+                                               <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">);</span>
 
 <span class="k">struct</span> <span class="n">nghttp2_session_callbacks</span><span class="p">;</span>
 
@@ -1739,7 +1764,6 @@
 <span class="cm"> */</span>
 <span class="kt">void</span> <span class="nf">nghttp2_session_callbacks_del</span><span class="p">(</span><span class="n">nghttp2_session_callbacks</span> <span class="o">*</span><span class="n">callbacks</span><span class="p">);</span>
 
-
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
 <span class="cm"> *</span>
@@ -1748,8 +1772,8 @@
 <span class="cm"> * uses solely `nghttp2_session_mem_send()` to serialize data to</span>
 <span class="cm"> * transmit.</span>
 <span class="cm"> */</span>
-<span class="kt">void</span> <span class="nf">nghttp2_session_callbacks_set_send_callback</span>
-<span class="p">(</span><span class="n">nghttp2_session_callbacks</span> <span class="o">*</span><span class="n">cbs</span><span class="p">,</span> <span class="n">nghttp2_send_callback</span> <span class="n">send_callback</span><span class="p">);</span>
+<span class="kt">void</span> <span class="nf">nghttp2_session_callbacks_set_send_callback</span><span class="p">(</span>
+    <span class="n">nghttp2_session_callbacks</span> <span class="o">*</span><span class="n">cbs</span><span class="p">,</span> <span class="n">nghttp2_send_callback</span> <span class="n">send_callback</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
@@ -1759,8 +1783,8 @@
 <span class="cm"> * application uses solely `nghttp2_session_mem_recv()` to process</span>
 <span class="cm"> * received data.</span>
 <span class="cm"> */</span>
-<span class="kt">void</span> <span class="nf">nghttp2_session_callbacks_set_recv_callback</span>
-<span class="p">(</span><span class="n">nghttp2_session_callbacks</span> <span class="o">*</span><span class="n">cbs</span><span class="p">,</span> <span class="n">nghttp2_recv_callback</span> <span class="n">recv_callback</span><span class="p">);</span>
+<span class="kt">void</span> <span class="nf">nghttp2_session_callbacks_set_recv_callback</span><span class="p">(</span>
+    <span class="n">nghttp2_session_callbacks</span> <span class="o">*</span><span class="n">cbs</span><span class="p">,</span> <span class="n">nghttp2_recv_callback</span> <span class="n">recv_callback</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
@@ -1768,9 +1792,9 @@
 <span class="cm"> * Sets callback function invoked by `nghttp2_session_recv()` when a</span>
 <span class="cm"> * frame is received.</span>
 <span class="cm"> */</span>
-<span class="kt">void</span> <span class="nf">nghttp2_session_callbacks_set_on_frame_recv_callback</span>
-<span class="p">(</span><span class="n">nghttp2_session_callbacks</span> <span class="o">*</span><span class="n">cbs</span><span class="p">,</span>
- <span class="n">nghttp2_on_frame_recv_callback</span> <span class="n">on_frame_recv_callback</span><span class="p">);</span>
+<span class="kt">void</span> <span class="nf">nghttp2_session_callbacks_set_on_frame_recv_callback</span><span class="p">(</span>
+    <span class="n">nghttp2_session_callbacks</span> <span class="o">*</span><span class="n">cbs</span><span class="p">,</span>
+    <span class="n">nghttp2_on_frame_recv_callback</span> <span class="n">on_frame_recv_callback</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
@@ -1778,9 +1802,9 @@
 <span class="cm"> * Sets callback function invoked by `nghttp2_session_recv()` when an</span>
 <span class="cm"> * invalid non-DATA frame is received.</span>
 <span class="cm"> */</span>
-<span class="kt">void</span> <span class="nf">nghttp2_session_callbacks_set_on_invalid_frame_recv_callback</span>
-<span class="p">(</span><span class="n">nghttp2_session_callbacks</span> <span class="o">*</span><span class="n">cbs</span><span class="p">,</span>
- <span class="n">nghttp2_on_invalid_frame_recv_callback</span> <span class="n">on_invalid_frame_recv_callback</span><span class="p">);</span>
+<span class="kt">void</span> <span class="nf">nghttp2_session_callbacks_set_on_invalid_frame_recv_callback</span><span class="p">(</span>
+    <span class="n">nghttp2_session_callbacks</span> <span class="o">*</span><span class="n">cbs</span><span class="p">,</span>
+    <span class="n">nghttp2_on_invalid_frame_recv_callback</span> <span class="n">on_invalid_frame_recv_callback</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
@@ -1788,27 +1812,27 @@
 <span class="cm"> * Sets callback function invoked when a chunk of data in DATA frame</span>
 <span class="cm"> * is received.</span>
 <span class="cm"> */</span>
-<span class="kt">void</span> <span class="nf">nghttp2_session_callbacks_set_on_data_chunk_recv_callback</span>
-<span class="p">(</span><span class="n">nghttp2_session_callbacks</span> <span class="o">*</span><span class="n">cbs</span><span class="p">,</span>
- <span class="n">nghttp2_on_data_chunk_recv_callback</span> <span class="n">on_data_chunk_recv_callback</span><span class="p">);</span>
+<span class="kt">void</span> <span class="nf">nghttp2_session_callbacks_set_on_data_chunk_recv_callback</span><span class="p">(</span>
+    <span class="n">nghttp2_session_callbacks</span> <span class="o">*</span><span class="n">cbs</span><span class="p">,</span>
+    <span class="n">nghttp2_on_data_chunk_recv_callback</span> <span class="n">on_data_chunk_recv_callback</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
 <span class="cm"> *</span>
 <span class="cm"> * Sets callback function invoked before a non-DATA frame is sent.</span>
 <span class="cm"> */</span>
-<span class="kt">void</span> <span class="nf">nghttp2_session_callbacks_set_before_frame_send_callback</span>
-<span class="p">(</span><span class="n">nghttp2_session_callbacks</span> <span class="o">*</span><span class="n">cbs</span><span class="p">,</span>
- <span class="n">nghttp2_before_frame_send_callback</span> <span class="n">before_frame_send_callback</span><span class="p">);</span>
+<span class="kt">void</span> <span class="nf">nghttp2_session_callbacks_set_before_frame_send_callback</span><span class="p">(</span>
+    <span class="n">nghttp2_session_callbacks</span> <span class="o">*</span><span class="n">cbs</span><span class="p">,</span>
+    <span class="n">nghttp2_before_frame_send_callback</span> <span class="n">before_frame_send_callback</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
 <span class="cm"> *</span>
 <span class="cm"> * Sets callback function invoked after a frame is sent.</span>
 <span class="cm"> */</span>
-<span class="kt">void</span> <span class="nf">nghttp2_session_callbacks_set_on_frame_send_callback</span>
-<span class="p">(</span><span class="n">nghttp2_session_callbacks</span> <span class="o">*</span><span class="n">cbs</span><span class="p">,</span>
- <span class="n">nghttp2_on_frame_send_callback</span> <span class="n">on_frame_send_callback</span><span class="p">);</span>
+<span class="kt">void</span> <span class="nf">nghttp2_session_callbacks_set_on_frame_send_callback</span><span class="p">(</span>
+    <span class="n">nghttp2_session_callbacks</span> <span class="o">*</span><span class="n">cbs</span><span class="p">,</span>
+    <span class="n">nghttp2_on_frame_send_callback</span> <span class="n">on_frame_send_callback</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
@@ -1816,18 +1840,18 @@
 <span class="cm"> * Sets callback function invoked when a non-DATA frame is not sent</span>
 <span class="cm"> * because of an error.</span>
 <span class="cm"> */</span>
-<span class="kt">void</span> <span class="nf">nghttp2_session_callbacks_set_on_frame_not_send_callback</span>
-<span class="p">(</span><span class="n">nghttp2_session_callbacks</span> <span class="o">*</span><span class="n">cbs</span><span class="p">,</span>
- <span class="n">nghttp2_on_frame_not_send_callback</span> <span class="n">on_frame_not_send_callback</span><span class="p">);</span>
+<span class="kt">void</span> <span class="nf">nghttp2_session_callbacks_set_on_frame_not_send_callback</span><span class="p">(</span>
+    <span class="n">nghttp2_session_callbacks</span> <span class="o">*</span><span class="n">cbs</span><span class="p">,</span>
+    <span class="n">nghttp2_on_frame_not_send_callback</span> <span class="n">on_frame_not_send_callback</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
 <span class="cm"> *</span>
 <span class="cm"> * Sets callback function invoked when the stream is closed.</span>
 <span class="cm"> */</span>
-<span class="kt">void</span> <span class="nf">nghttp2_session_callbacks_set_on_stream_close_callback</span>
-<span class="p">(</span><span class="n">nghttp2_session_callbacks</span> <span class="o">*</span><span class="n">cbs</span><span class="p">,</span>
- <span class="n">nghttp2_on_stream_close_callback</span> <span class="n">on_stream_close_callback</span><span class="p">);</span>
+<span class="kt">void</span> <span class="nf">nghttp2_session_callbacks_set_on_stream_close_callback</span><span class="p">(</span>
+    <span class="n">nghttp2_session_callbacks</span> <span class="o">*</span><span class="n">cbs</span><span class="p">,</span>
+    <span class="n">nghttp2_on_stream_close_callback</span> <span class="n">on_stream_close_callback</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
@@ -1835,9 +1859,9 @@
 <span class="cm"> * Sets callback function invoked when the reception of header block</span>
 <span class="cm"> * in HEADERS or PUSH_PROMISE is started.</span>
 <span class="cm"> */</span>
-<span class="kt">void</span> <span class="nf">nghttp2_session_callbacks_set_on_begin_headers_callback</span>
-<span class="p">(</span><span class="n">nghttp2_session_callbacks</span> <span class="o">*</span><span class="n">cbs</span><span class="p">,</span>
- <span class="n">nghttp2_on_begin_headers_callback</span> <span class="n">on_begin_headers_callback</span><span class="p">);</span>
+<span class="kt">void</span> <span class="nf">nghttp2_session_callbacks_set_on_begin_headers_callback</span><span class="p">(</span>
+    <span class="n">nghttp2_session_callbacks</span> <span class="o">*</span><span class="n">cbs</span><span class="p">,</span>
+    <span class="n">nghttp2_on_begin_headers_callback</span> <span class="n">on_begin_headers_callback</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
@@ -1845,9 +1869,9 @@
 <span class="cm"> * Sets callback function invoked when a header name/value pair is</span>
 <span class="cm"> * received.</span>
 <span class="cm"> */</span>
-<span class="kt">void</span> <span class="nf">nghttp2_session_callbacks_set_on_header_callback</span>
-<span class="p">(</span><span class="n">nghttp2_session_callbacks</span> <span class="o">*</span><span class="n">cbs</span><span class="p">,</span>
- <span class="n">nghttp2_on_header_callback</span> <span class="n">on_header_callback</span><span class="p">);</span>
+<span class="kt">void</span> <span class="nf">nghttp2_session_callbacks_set_on_header_callback</span><span class="p">(</span>
+    <span class="n">nghttp2_session_callbacks</span> <span class="o">*</span><span class="n">cbs</span><span class="p">,</span>
+    <span class="n">nghttp2_on_header_callback</span> <span class="n">on_header_callback</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
@@ -1856,9 +1880,9 @@
 <span class="cm"> * how many padding bytes are required for the transmission of the</span>
 <span class="cm"> * given frame.</span>
 <span class="cm"> */</span>
-<span class="kt">void</span> <span class="nf">nghttp2_session_callbacks_set_select_padding_callback</span>
-<span class="p">(</span><span class="n">nghttp2_session_callbacks</span> <span class="o">*</span><span class="n">cbs</span><span class="p">,</span>
- <span class="n">nghttp2_select_padding_callback</span> <span class="n">select_padding_callback</span><span class="p">);</span>
+<span class="kt">void</span> <span class="nf">nghttp2_session_callbacks_set_select_padding_callback</span><span class="p">(</span>
+    <span class="n">nghttp2_session_callbacks</span> <span class="o">*</span><span class="n">cbs</span><span class="p">,</span>
+    <span class="n">nghttp2_select_padding_callback</span> <span class="n">select_padding_callback</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
@@ -1866,18 +1890,113 @@
 <span class="cm"> * Sets callback function determine the length allowed in</span>
 <span class="cm"> * :type:`nghttp2_data_source_read_callback`.</span>
 <span class="cm"> */</span>
-<span class="kt">void</span> <span class="nf">nghttp2_session_callbacks_set_data_source_read_length_callback</span>
-<span class="p">(</span><span class="n">nghttp2_session_callbacks</span> <span class="o">*</span><span class="n">cbs</span><span class="p">,</span>
- <span class="n">nghttp2_data_source_read_length_callback</span> <span class="n">data_source_read_length_callback</span><span class="p">);</span>
+<span class="kt">void</span> <span class="nf">nghttp2_session_callbacks_set_data_source_read_length_callback</span><span class="p">(</span>
+    <span class="n">nghttp2_session_callbacks</span> <span class="o">*</span><span class="n">cbs</span><span class="p">,</span>
+    <span class="n">nghttp2_data_source_read_length_callback</span> <span class="n">data_source_read_length_callback</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
 <span class="cm"> *</span>
 <span class="cm"> * Sets callback function invoked when a frame header is received.</span>
 <span class="cm"> */</span>
-<span class="kt">void</span> <span class="nf">nghttp2_session_callbacks_set_on_begin_frame_callback</span>
-<span class="p">(</span><span class="n">nghttp2_session_callbacks</span> <span class="o">*</span><span class="n">cbs</span><span class="p">,</span>
- <span class="n">nghttp2_on_begin_frame_callback</span> <span class="n">on_begin_frame_callback</span><span class="p">);</span>
+<span class="kt">void</span> <span class="nf">nghttp2_session_callbacks_set_on_begin_frame_callback</span><span class="p">(</span>
+    <span class="n">nghttp2_session_callbacks</span> <span class="o">*</span><span class="n">cbs</span><span class="p">,</span>
+    <span class="n">nghttp2_on_begin_frame_callback</span> <span class="n">on_begin_frame_callback</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @functypedef</span>
+<span class="cm"> *</span>
+<span class="cm"> * Custom memory allocator to replace malloc().  The |mem_user_data|</span>
+<span class="cm"> * is the mem_user_data member of :type:`nghttp2_mem` structure.</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="kt">void</span> <span class="o">*</span><span class="p">(</span><span class="o">*</span><span class="n">nghttp2_malloc</span><span class="p">)(</span><span class="kt">size_t</span> <span class="n">size</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">mem_user_data</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @functypedef</span>
+<span class="cm"> *</span>
+<span class="cm"> * Custom memory allocator to replace free().  The |mem_user_data| is</span>
+<span class="cm"> * the mem_user_data member of :type:`nghttp2_mem` structure.</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="nf">void</span> <span class="p">(</span><span class="o">*</span><span class="n">nghttp2_free</span><span class="p">)(</span><span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">mem_user_data</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @functypedef</span>
+<span class="cm"> *</span>
+<span class="cm"> * Custom memory allocator to replace calloc().  The |mem_user_data|</span>
+<span class="cm"> * is the mem_user_data member of :type:`nghttp2_mem` structure.</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="kt">void</span> <span class="o">*</span><span class="p">(</span><span class="o">*</span><span class="n">nghttp2_calloc</span><span class="p">)(</span><span class="kt">size_t</span> <span class="n">nmemb</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">size</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">mem_user_data</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @functypedef</span>
+<span class="cm"> *</span>
+<span class="cm"> * Custom memory allocator to replace realloc().  The |mem_user_data|</span>
+<span class="cm"> * is the mem_user_data member of :type:`nghttp2_mem` structure.</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="kt">void</span> <span class="o">*</span><span class="p">(</span><span class="o">*</span><span class="n">nghttp2_realloc</span><span class="p">)(</span><span class="kt">void</span> <span class="o">*</span><span class="n">ptr</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">size</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">mem_user_data</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @struct</span>
+<span class="cm"> *</span>
+<span class="cm"> * Custom memory allocator functions and user defined pointer.  The</span>
+<span class="cm"> * |mem_user_data| member is passed to each allocator function.  This</span>
+<span class="cm"> * can be used, for example, to achieve per-session memory pool.</span>
+<span class="cm"> *</span>
+<span class="cm"> * In the following example code, ``my_malloc``, ``my_free``,</span>
+<span class="cm"> * ``my_calloc`` and ``my_realloc`` are the replacement of the</span>
+<span class="cm"> * standard allocators ``malloc``, ``free``, ``calloc`` and</span>
+<span class="cm"> * ``realloc`` respectively::</span>
+<span class="cm"> *</span>
+<span class="cm"> *     void *my_malloc_cb(size_t size, void *mem_user_data) {</span>
+<span class="cm"> *       return my_malloc(size);</span>
+<span class="cm"> *     }</span>
+<span class="cm"> *</span>
+<span class="cm"> *     void my_free_cb(void *ptr, void *mem_user_data) { my_free(ptr); }</span>
+<span class="cm"> *</span>
+<span class="cm"> *     void *my_calloc_cb(size_t nmemb, size_t size, void *mem_user_data) {</span>
+<span class="cm"> *       return my_calloc(nmemb, size);</span>
+<span class="cm"> *     }</span>
+<span class="cm"> *</span>
+<span class="cm"> *     void *my_realloc_cb(void *ptr, size_t size, void *mem_user_data) {</span>
+<span class="cm"> *       return my_realloc(ptr, size);</span>
+<span class="cm"> *     }</span>
+<span class="cm"> *</span>
+<span class="cm"> *     void session_new() {</span>
+<span class="cm"> *       nghttp2_session *session;</span>
+<span class="cm"> *       nghttp2_session_callbacks *callbacks;</span>
+<span class="cm"> *       nghttp2_mem mem = {NULL, my_malloc_cb, my_free_cb, my_calloc_cb,</span>
+<span class="cm"> *                          my_realloc_cb};</span>
+<span class="cm"> *</span>
+<span class="cm"> *       ...</span>
+<span class="cm"> *</span>
+<span class="cm"> *       nghttp2_session_client_new3(&amp;session, callbacks, NULL, NULL, &amp;mem);</span>
+<span class="cm"> *</span>
+<span class="cm"> *       ...</span>
+<span class="cm"> *     }</span>
+<span class="cm"> */</span>
+<span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
+  <span class="cm">/**</span>
+<span class="cm">   * An arbitrary user supplied data.  This is passed to each</span>
+<span class="cm">   * allocator function.</span>
+<span class="cm">   */</span>
+  <span class="kt">void</span> <span class="o">*</span><span class="n">mem_user_data</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * Custom allocator function to replace malloc().</span>
+<span class="cm">   */</span>
+  <span class="n">nghttp2_malloc</span> <span class="n">malloc</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * Custom allocator function to replace free().</span>
+<span class="cm">   */</span>
+  <span class="n">nghttp2_free</span> <span class="n">free</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * Custom allocator function to replace calloc().</span>
+<span class="cm">   */</span>
+  <span class="n">nghttp2_calloc</span> <span class="n">calloc</span><span class="p">;</span>
+  <span class="cm">/**</span>
+<span class="cm">   * Custom allocator function to replace realloc().</span>
+<span class="cm">   */</span>
+  <span class="n">nghttp2_realloc</span> <span class="n">realloc</span><span class="p">;</span>
+<span class="p">}</span> <span class="n">nghttp2_mem</span><span class="p">;</span>
 
 <span class="k">struct</span> <span class="n">nghttp2_option</span><span class="p">;</span>
 
@@ -2034,8 +2153,7 @@
 <span class="cm"> */</span>
 <span class="kt">int</span> <span class="nf">nghttp2_session_client_new2</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">**</span><span class="n">session_ptr</span><span class="p">,</span>
                                 <span class="k">const</span> <span class="n">nghttp2_session_callbacks</span> <span class="o">*</span><span class="n">callbacks</span><span class="p">,</span>
-                                <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">,</span>
-                                <span class="k">const</span> <span class="n">nghttp2_option</span> <span class="o">*</span><span class="n">option</span><span class="p">);</span>
+                                <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">,</span> <span class="k">const</span> <span class="n">nghttp2_option</span> <span class="o">*</span><span class="n">option</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
@@ -2060,8 +2178,59 @@
 <span class="cm"> */</span>
 <span class="kt">int</span> <span class="nf">nghttp2_session_server_new2</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">**</span><span class="n">session_ptr</span><span class="p">,</span>
                                 <span class="k">const</span> <span class="n">nghttp2_session_callbacks</span> <span class="o">*</span><span class="n">callbacks</span><span class="p">,</span>
-                                <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">,</span>
-                                <span class="k">const</span> <span class="n">nghttp2_option</span> <span class="o">*</span><span class="n">option</span><span class="p">);</span>
+                                <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">,</span> <span class="k">const</span> <span class="n">nghttp2_option</span> <span class="o">*</span><span class="n">option</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Like `nghttp2_session_client_new2()`, but with additional custom</span>
+<span class="cm"> * memory allocator specified in the |mem|.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The |mem| can be ``NULL`` and the call is equivalent to</span>
+<span class="cm"> * `nghttp2_session_client_new2()`.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function does not take ownership |mem|.  The application is</span>
+<span class="cm"> * responsible for freeing |mem|.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The library code does not refer to |mem| pointer after this</span>
+<span class="cm"> * function returns, so the application can safely free it.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
+<span class="cm"> * negative error codes:</span>
+<span class="cm"> *</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
+<span class="cm"> *     Out of memory.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_session_client_new3</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">**</span><span class="n">session_ptr</span><span class="p">,</span>
+                                <span class="k">const</span> <span class="n">nghttp2_session_callbacks</span> <span class="o">*</span><span class="n">callbacks</span><span class="p">,</span>
+                                <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">,</span> <span class="k">const</span> <span class="n">nghttp2_option</span> <span class="o">*</span><span class="n">option</span><span class="p">,</span>
+                                <span class="n">nghttp2_mem</span> <span class="o">*</span><span class="n">mem</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Like `nghttp2_session_server_new2()`, but with additional custom</span>
+<span class="cm"> * memory allocator specified in the |mem|.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The |mem| can be ``NULL`` and the call is equivalent to</span>
+<span class="cm"> * `nghttp2_session_server_new2()`.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function does not take ownership |mem|.  The application is</span>
+<span class="cm"> * responsible for freeing |mem|.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The library code does not refer to |mem| pointer after this</span>
+<span class="cm"> * function returns, so the application can safely free it.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
+<span class="cm"> * negative error codes:</span>
+<span class="cm"> *</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
+<span class="cm"> *     Out of memory.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_session_server_new3</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">**</span><span class="n">session_ptr</span><span class="p">,</span>
+                                <span class="k">const</span> <span class="n">nghttp2_session_callbacks</span> <span class="o">*</span><span class="n">callbacks</span><span class="p">,</span>
+                                <span class="kt">void</span> <span class="o">*</span><span class="n">user_data</span><span class="p">,</span> <span class="k">const</span> <span class="n">nghttp2_option</span> <span class="o">*</span><span class="n">option</span><span class="p">,</span>
+                                <span class="n">nghttp2_mem</span> <span class="o">*</span><span class="n">mem</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
@@ -2251,8 +2420,8 @@
 <span class="cm"> *     when |session| was configured as server and</span>
 <span class="cm"> *     `nghttp2_option_set_recv_client_preface()` is used.</span>
 <span class="cm"> */</span>
-<span class="kt">ssize_t</span> <span class="nf">nghttp2_session_mem_recv</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
-                                 <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">in</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">inlen</span><span class="p">);</span>
+<span class="kt">ssize_t</span> <span class="nf">nghttp2_session_mem_recv</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">in</span><span class="p">,</span>
+                                 <span class="kt">size_t</span> <span class="n">inlen</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
@@ -2306,7 +2475,7 @@
 <span class="cm"> * ``NULL``.  If the stream does not exist, this function returns</span>
 <span class="cm"> * ``NULL``.</span>
 <span class="cm"> */</span>
-<span class="kt">void</span><span class="o">*</span> <span class="nf">nghttp2_session_get_stream_user_data</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
+<span class="kt">void</span> <span class="o">*</span><span class="nf">nghttp2_session_get_stream_user_data</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
                                            <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">);</span>
 
 <span class="cm">/**</span>
@@ -2353,8 +2522,9 @@
 <span class="cm"> *</span>
 <span class="cm"> * This function returns -1 if it fails.</span>
 <span class="cm"> */</span>
-<span class="kt">int32_t</span> <span class="nf">nghttp2_session_get_stream_effective_recv_data_length</span>
-<span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">);</span>
+<span class="kt">int32_t</span>
+<span class="nf">nghttp2_session_get_stream_effective_recv_data_length</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
+                                                      <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
@@ -2366,8 +2536,9 @@
 <span class="cm"> *</span>
 <span class="cm"> * This function returns -1 if it fails.</span>
 <span class="cm"> */</span>
-<span class="kt">int32_t</span> <span class="nf">nghttp2_session_get_stream_effective_local_window_size</span>
-<span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">);</span>
+<span class="kt">int32_t</span>
+<span class="nf">nghttp2_session_get_stream_effective_local_window_size</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
+                                                       <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
@@ -2383,8 +2554,8 @@
 <span class="cm"> *</span>
 <span class="cm"> * This function returns -1 if it fails.</span>
 <span class="cm"> */</span>
-<span class="kt">int32_t</span> <span class="nf">nghttp2_session_get_effective_recv_data_length</span>
-<span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">);</span>
+<span class="kt">int32_t</span>
+<span class="nf">nghttp2_session_get_effective_recv_data_length</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
@@ -2396,8 +2567,8 @@
 <span class="cm"> *</span>
 <span class="cm"> * This function returns -1 if it fails.</span>
 <span class="cm"> */</span>
-<span class="kt">int32_t</span> <span class="nf">nghttp2_session_get_effective_local_window_size</span>
-<span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">);</span>
+<span class="kt">int32_t</span>
+<span class="nf">nghttp2_session_get_effective_local_window_size</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
@@ -2413,7 +2584,7 @@
 <span class="cm"> *</span>
 <span class="cm"> * This function returns -1 if it fails.</span>
 <span class="cm"> */</span>
-<span class="kt">int32_t</span> <span class="nf">nghttp2_session_get_stream_remote_window_size</span><span class="p">(</span><span class="n">nghttp2_session</span><span class="o">*</span> <span class="n">session</span><span class="p">,</span>
+<span class="kt">int32_t</span> <span class="nf">nghttp2_session_get_stream_remote_window_size</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
                                                       <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">);</span>
 
 <span class="cm">/**</span>
@@ -2423,7 +2594,7 @@
 <span class="cm"> *</span>
 <span class="cm"> * This function always succeeds.</span>
 <span class="cm"> */</span>
-<span class="kt">int32_t</span> <span class="nf">nghttp2_session_get_remote_window_size</span><span class="p">(</span><span class="n">nghttp2_session</span><span class="o">*</span> <span class="n">session</span><span class="p">);</span>
+<span class="kt">int32_t</span> <span class="nf">nghttp2_session_get_remote_window_size</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
@@ -2431,7 +2602,7 @@
 <span class="cm"> * Returns 1 if local peer half closed the given stream |stream_id|.</span>
 <span class="cm"> * Returns 0 if it did not.  Returns -1 if no such stream exists.</span>
 <span class="cm"> */</span>
-<span class="kt">int</span> <span class="nf">nghttp2_session_get_stream_local_close</span><span class="p">(</span><span class="n">nghttp2_session</span><span class="o">*</span> <span class="n">session</span><span class="p">,</span>
+<span class="kt">int</span> <span class="nf">nghttp2_session_get_stream_local_close</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
                                            <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">);</span>
 
 <span class="cm">/**</span>
@@ -2440,7 +2611,7 @@
 <span class="cm"> * Returns 1 if remote peer half closed the given stream |stream_id|.</span>
 <span class="cm"> * Returns 0 if it did not.  Returns -1 if no such stream exists.</span>
 <span class="cm"> */</span>
-<span class="kt">int</span> <span class="nf">nghttp2_session_get_stream_remote_close</span><span class="p">(</span><span class="n">nghttp2_session</span><span class="o">*</span> <span class="n">session</span><span class="p">,</span>
+<span class="kt">int</span> <span class="nf">nghttp2_session_get_stream_remote_close</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
                                             <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">);</span>
 
 <span class="cm">/**</span>
@@ -2448,8 +2619,10 @@
 <span class="cm"> *</span>
 <span class="cm"> * Signals the session so that the connection should be terminated.</span>
 <span class="cm"> *</span>
-<span class="cm"> * The last stream ID is the ID of a stream for which</span>
-<span class="cm"> * :type:`nghttp2_on_frame_recv_callback` was called most recently.</span>
+<span class="cm"> * The last stream ID is the minimum value between the stream ID of a</span>
+<span class="cm"> * stream for which :type:`nghttp2_on_frame_recv_callback` was called</span>
+<span class="cm"> * most recently and the last stream ID we have sent to the peer</span>
+<span class="cm"> * previously.</span>
 <span class="cm"> *</span>
 <span class="cm"> * The |error_code| is the error code of this GOAWAY frame.  The</span>
 <span class="cm"> * pre-defined error code is one of :enum:`nghttp2_error_code`.</span>
@@ -2477,17 +2650,65 @@
 <span class="cm"> *</span>
 <span class="cm"> * This function behaves like `nghttp2_session_terminate_session()`,</span>
 <span class="cm"> * but the last stream ID can be specified by the application for fine</span>
-<span class="cm"> * grained control of stream.</span>
+<span class="cm"> * grained control of stream.  The HTTP/2 specification does not allow</span>
+<span class="cm"> * last_stream_id to be increased.  So the actual value sent as</span>
+<span class="cm"> * last_stream_id is the minimum value between the given</span>
+<span class="cm"> * |last_stream_id| and the last_stream_id we have previously sent to</span>
+<span class="cm"> * the peer.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The |last_stream_id| is peer&#39;s stream ID or 0.  So if |session| is</span>
+<span class="cm"> * initialized as client, |last_stream_id| must be even or 0.  If</span>
+<span class="cm"> * |session| is initialized as server, |last_stream_id| must be odd or</span>
+<span class="cm"> * 0.</span>
 <span class="cm"> *</span>
 <span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
 <span class="cm"> * negative error codes:</span>
 <span class="cm"> *</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
 <span class="cm"> *     Out of memory.</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`</span>
+<span class="cm"> *     The |last_stream_id| is invalid.</span>
 <span class="cm"> */</span>
 <span class="kt">int</span> <span class="nf">nghttp2_session_terminate_session2</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
                                        <span class="kt">int32_t</span> <span class="n">last_stream_id</span><span class="p">,</span>
                                        <span class="kt">uint32_t</span> <span class="n">error_code</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Signals to the client that the server started graceful shutdown</span>
+<span class="cm"> * procedure.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function is only usable for server.  If this function is</span>
+<span class="cm"> * called with client side session, this function returns</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_STATE`.</span>
+<span class="cm"> *</span>
+<span class="cm"> * To gracefully shutdown HTTP/2 session, server should call this</span>
+<span class="cm"> * function to send GOAWAY with last_stream_id (1u &lt;&lt; 31) - 1.  And</span>
+<span class="cm"> * after some delay (e.g., 1 RTT), send another GOAWAY with the stream</span>
+<span class="cm"> * ID that the server has some processing using</span>
+<span class="cm"> * `nghttp2_submit_goaway()`.  See also</span>
+<span class="cm"> * `nghttp2_session_get_last_proc_stream_id()`.</span>
+<span class="cm"> *</span>
+<span class="cm"> * Unlike `nghttp2_submit_goaway()`, this function just sends GOAWAY</span>
+<span class="cm"> * and does nothing more.  This is a mere indication to the client</span>
+<span class="cm"> * that session shutdown is imminent.  The application should call</span>
+<span class="cm"> * `nghttp2_submit_goaway()` with appropriate last_stream_id after</span>
+<span class="cm"> * this call.</span>
+<span class="cm"> *</span>
+<span class="cm"> * If one or more GOAWAY frame have been already sent by either</span>
+<span class="cm"> * `nghttp2_submit_goaway()` or `nghttp2_session_terminate_session()`,</span>
+<span class="cm"> * this function has no effect.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
+<span class="cm"> * negative error codes:</span>
+<span class="cm"> *</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
+<span class="cm"> *     Out of memory.</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_STATE`</span>
+<span class="cm"> *     The |session| is initialized as client.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_submit_shutdown_notice</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
@@ -2498,6 +2719,32 @@
 <span class="cm"> */</span>
 <span class="kt">uint32_t</span> <span class="nf">nghttp2_session_get_remote_settings</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
                                              <span class="n">nghttp2_settings_id</span> <span class="n">id</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Tells the |session| that next stream ID is |next_stream_id|.  The</span>
+<span class="cm"> * |next_stream_id| must be equal or greater than the value returned</span>
+<span class="cm"> * by `nghttp2_session_get_next_stream_id()`.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
+<span class="cm"> * negative error codes:</span>
+<span class="cm"> *</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`</span>
+<span class="cm"> *     The |next_stream_id| is strictly less than the value</span>
+<span class="cm"> *     `nghttp2_session_get_next_stream_id()` returns.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_session_set_next_stream_id</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
+                                       <span class="kt">int32_t</span> <span class="n">next_stream_id</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Returns the next outgoing stream ID.  Notice that return type is</span>
+<span class="cm"> * uint32_t.  If we run out of stream ID for this session, this</span>
+<span class="cm"> * function returns 1 &lt;&lt; 31.</span>
+<span class="cm"> */</span>
+<span class="kt">uint32_t</span> <span class="nf">nghttp2_session_get_next_stream_id</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
@@ -2559,8 +2806,7 @@
 <span class="cm"> */</span>
 <span class="kt">int</span> <span class="nf">nghttp2_session_upgrade</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
                             <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">settings_payload</span><span class="p">,</span>
-                            <span class="kt">size_t</span> <span class="n">settings_payloadlen</span><span class="p">,</span>
-                            <span class="kt">void</span> <span class="o">*</span><span class="n">stream_user_data</span><span class="p">);</span>
+                            <span class="kt">size_t</span> <span class="n">settings_payloadlen</span><span class="p">,</span> <span class="kt">void</span> <span class="o">*</span><span class="n">stream_user_data</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
@@ -2583,8 +2829,7 @@
 <span class="cm"> * :enum:`NGHTTP2_ERR_INSUFF_BUFSIZE`</span>
 <span class="cm"> *     The provided |buflen| size is too small to hold the output.</span>
 <span class="cm"> */</span>
-<span class="kt">ssize_t</span> <span class="nf">nghttp2_pack_settings_payload</span><span class="p">(</span><span class="kt">uint8_t</span> <span class="o">*</span><span class="n">buf</span><span class="p">,</span>
-                                      <span class="kt">size_t</span> <span class="n">buflen</span><span class="p">,</span>
+<span class="kt">ssize_t</span> <span class="nf">nghttp2_pack_settings_payload</span><span class="p">(</span><span class="kt">uint8_t</span> <span class="o">*</span><span class="n">buf</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">buflen</span><span class="p">,</span>
                                       <span class="k">const</span> <span class="n">nghttp2_settings_entry</span> <span class="o">*</span><span class="n">iv</span><span class="p">,</span>
                                       <span class="kt">size_t</span> <span class="n">niv</span><span class="p">);</span>
 
@@ -2594,7 +2839,7 @@
 <span class="cm"> * Returns string describing the |lib_error_code|.  The</span>
 <span class="cm"> * |lib_error_code| must be one of the :enum:`nghttp2_error`.</span>
 <span class="cm"> */</span>
-<span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="nf">nghttp2_strerror</span><span class="p">(</span><span class="kt">int</span> <span class="n">lib_error_code</span><span class="p">);</span>
+<span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="nf">nghttp2_strerror</span><span class="p">(</span><span class="kt">int</span> <span class="n">lib_error_code</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
@@ -2734,9 +2979,14 @@
 <span class="cm"> *     Out of memory.</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`</span>
 <span class="cm"> *     The |stream_id| is 0.</span>
+<span class="cm"> *</span>
+<span class="cm"> * .. warning::</span>
+<span class="cm"> *</span>
+<span class="cm"> *   Calling this function twice for the same stream ID may lead to</span>
+<span class="cm"> *   program crash.  It is generally considered to a programming error</span>
+<span class="cm"> *   to commit response twice.</span>
 <span class="cm"> */</span>
-<span class="kt">int</span> <span class="nf">nghttp2_submit_response</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span>
-                            <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
+<span class="kt">int</span> <span class="nf">nghttp2_submit_response</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
                             <span class="k">const</span> <span class="n">nghttp2_nv</span> <span class="o">*</span><span class="n">nva</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">nvlen</span><span class="p">,</span>
                             <span class="k">const</span> <span class="n">nghttp2_data_provider</span> <span class="o">*</span><span class="n">data_prd</span><span class="p">);</span>
 
@@ -2909,8 +3159,7 @@
 <span class="cm"> *     The |stream_id| is 0.</span>
 <span class="cm"> */</span>
 <span class="kt">int</span> <span class="nf">nghttp2_submit_rst_stream</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span>
-                              <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
-                              <span class="kt">uint32_t</span> <span class="n">error_code</span><span class="p">);</span>
+                              <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span> <span class="kt">uint32_t</span> <span class="n">error_code</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
@@ -2947,7 +3196,6 @@
 <span class="cm"> */</span>
 <span class="kt">int</span> <span class="nf">nghttp2_submit_settings</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span>
                             <span class="k">const</span> <span class="n">nghttp2_settings_entry</span> <span class="o">*</span><span class="n">iv</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">niv</span><span class="p">);</span>
-
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
@@ -2991,7 +3239,8 @@
 <span class="cm"> *     No stream ID is available because maximum stream ID was</span>
 <span class="cm"> *     reached.</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`</span>
-<span class="cm"> *     The |stream_id| is 0.</span>
+<span class="cm"> *     The |stream_id| is 0; The |stream_id| does not designate stream</span>
+<span class="cm"> *     that peer initiated.</span>
 <span class="cm"> *</span>
 <span class="cm"> * .. warning::</span>
 <span class="cm"> *</span>
@@ -3003,8 +3252,8 @@
 <span class="cm"> *</span>
 <span class="cm"> */</span>
 <span class="kt">int32_t</span> <span class="nf">nghttp2_submit_push_promise</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span>
-                                    <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
-                                    <span class="k">const</span> <span class="n">nghttp2_nv</span> <span class="o">*</span><span class="n">nva</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">nvlen</span><span class="p">,</span>
+                                    <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span> <span class="k">const</span> <span class="n">nghttp2_nv</span> <span class="o">*</span><span class="n">nva</span><span class="p">,</span>
+                                    <span class="kt">size_t</span> <span class="n">nvlen</span><span class="p">,</span>
                                     <span class="kt">void</span> <span class="o">*</span><span class="n">promised_stream_user_data</span><span class="p">);</span>
 
 <span class="cm">/**</span>
@@ -3042,6 +3291,17 @@
 <span class="cm"> * The |flags| is currently ignored and should be</span>
 <span class="cm"> * :enum:`NGHTTP2_FLAG_NONE`.</span>
 <span class="cm"> *</span>
+<span class="cm"> * The |last_stream_id| is peer&#39;s stream ID or 0.  So if |session| is</span>
+<span class="cm"> * initialized as client, |last_stream_id| must be even or 0.  If</span>
+<span class="cm"> * |session| is initialized as server, |last_stream_id| must be odd or</span>
+<span class="cm"> * 0.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The HTTP/2 specification says last_stream_id must not be increased</span>
+<span class="cm"> * from the value previously sent.  So the actual value sent as</span>
+<span class="cm"> * last_stream_id is the minimum value between the given</span>
+<span class="cm"> * |last_stream_id| and the last_stream_id previously sent to the</span>
+<span class="cm"> * peer.</span>
+<span class="cm"> *</span>
 <span class="cm"> * If the |opaque_data| is not ``NULL`` and |opaque_data_len| is not</span>
 <span class="cm"> * zero, those data will be sent as additional debug data.  The</span>
 <span class="cm"> * library makes a copy of the memory region pointed by |opaque_data|</span>
@@ -3049,11 +3309,12 @@
 <span class="cm"> * keep this memory after the return of this function.  If the</span>
 <span class="cm"> * |opaque_data_len| is 0, the |opaque_data| could be ``NULL``.</span>
 <span class="cm"> *</span>
-<span class="cm"> * To shutdown gracefully, first send GOAWAY with ``last_stream_id =</span>
-<span class="cm"> * (1u &lt;&lt; 31) - 1``.  After 1 RTT, call either</span>
-<span class="cm"> * `nghttp2_submit_goaway()`, `nghttp2_session_terminate_session()` or</span>
-<span class="cm"> * `nghttp2_session_terminate_session2()`.  The latter 2 will close</span>
-<span class="cm"> * HTTP/2 session immediately after transmission of the frame.</span>
+<span class="cm"> * After successful transmission of GOAWAY, following things happen.</span>
+<span class="cm"> * All incoming streams having strictly more than |last_stream_id| are</span>
+<span class="cm"> * closed.  All incoming HEADERS which starts new stream are simply</span>
+<span class="cm"> * ignored.  After all active streams are handled, both</span>
+<span class="cm"> * `nghttp2_session_want_read()` and `nghttp2_session_want_write()`</span>
+<span class="cm"> * return 0 and the application can close session.</span>
 <span class="cm"> *</span>
 <span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
 <span class="cm"> * negative error codes:</span>
@@ -3061,12 +3322,25 @@
 <span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
 <span class="cm"> *     Out of memory.</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`</span>
-<span class="cm"> *     The |opaque_data_len| is too large.</span>
+<span class="cm"> *     The |opaque_data_len| is too large; the |last_stream_id| is</span>
+<span class="cm"> *     invalid.</span>
 <span class="cm"> */</span>
 <span class="kt">int</span> <span class="nf">nghttp2_submit_goaway</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span>
-                          <span class="kt">int32_t</span> <span class="n">last_stream_id</span><span class="p">,</span>
-                          <span class="kt">uint32_t</span> <span class="n">error_code</span><span class="p">,</span>
+                          <span class="kt">int32_t</span> <span class="n">last_stream_id</span><span class="p">,</span> <span class="kt">uint32_t</span> <span class="n">error_code</span><span class="p">,</span>
                           <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">opaque_data</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">opaque_data_len</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Returns the last stream ID of a stream for which</span>
+<span class="cm"> * :type:`nghttp2_on_frame_recv_callback` was invoked most recently.</span>
+<span class="cm"> * The returned value can be used as last_stream_id parameter for</span>
+<span class="cm"> * `nghttp2_submit_goaway()` and</span>
+<span class="cm"> * `nghttp2_session_terminate_session2()`.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function always succeeds.</span>
+<span class="cm"> */</span>
+<span class="kt">int32_t</span> <span class="nf">nghttp2_session_get_last_proc_stream_id</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
@@ -3107,36 +3381,12 @@
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
 <span class="cm"> *</span>
-<span class="cm"> * Submits ALTSVC frame with given parameters.</span>
-<span class="cm"> *</span>
-<span class="cm"> * The |flags| is currently ignored and should be</span>
-<span class="cm"> * :enum:`NGHTTP2_FLAG_NONE`.</span>
-<span class="cm"> *</span>
-<span class="cm"> * Only the server can send the ALTSVC frame.  If |session| is</span>
-<span class="cm"> * initialized as client, this function fails and returns</span>
-<span class="cm"> * :enum:`NGHTTP2_ERR_PROTO`.</span>
-<span class="cm"> *</span>
-<span class="cm"> * If the |protocol_id_len| is 0, the |protocol_id| could be ``NULL``.</span>
-<span class="cm"> *</span>
-<span class="cm"> * If the |host_len| is 0, the |host| could be ``NULL``.</span>
-<span class="cm"> *</span>
-<span class="cm"> * If the |origin_len| is 0, the |origin| could be ``NULL``.</span>
-<span class="cm"> *</span>
-<span class="cm"> * This function returns 0 if it succeeds, or one of the following</span>
-<span class="cm"> * negative error codes:</span>
-<span class="cm"> *</span>
-<span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
-<span class="cm"> *     Out of memory.</span>
-<span class="cm"> * :enum:`NGHTTP2_ERR_PROTO`</span>
-<span class="cm"> *     The function is invoked with |session| which was initialized as</span>
-<span class="cm"> *     client.</span>
-<span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`</span>
-<span class="cm"> *     The combined length of |protocol_id_len|, |host_len| and</span>
-<span class="cm"> *     |origin_len| is is too large.</span>
+<span class="cm"> * This function previously submits ALTSVC frame with given</span>
+<span class="cm"> * parameters, but is deprecated and will be removed in a future</span>
+<span class="cm"> * release.  This function does nothing and just return 0.</span>
 <span class="cm"> */</span>
 <span class="kt">int</span> <span class="nf">nghttp2_submit_altsvc</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="n">flags</span><span class="p">,</span>
-                          <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
-                          <span class="kt">uint32_t</span> <span class="n">max_age</span><span class="p">,</span> <span class="kt">uint16_t</span> <span class="n">port</span><span class="p">,</span>
+                          <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span> <span class="kt">uint32_t</span> <span class="n">max_age</span><span class="p">,</span> <span class="kt">uint16_t</span> <span class="n">port</span><span class="p">,</span>
                           <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">protocol_id</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">protocol_id_len</span><span class="p">,</span>
                           <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">host</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">host_len</span><span class="p">,</span>
                           <span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">origin</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">origin_len</span><span class="p">);</span>
@@ -3284,6 +3534,25 @@
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
 <span class="cm"> *</span>
+<span class="cm"> * Like `nghttp2_hd_deflate_new()`, but with additional custom memory</span>
+<span class="cm"> * allocator specified in the |mem|.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The |mem| can be ``NULL`` and the call is equivalent to</span>
+<span class="cm"> * `nghttp2_hd_deflate_new()`.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function does not take ownership |mem|.  The application is</span>
+<span class="cm"> * responsible for freeing |mem|.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The library code does not refer to |mem| pointer after this</span>
+<span class="cm"> * function returns, so the application can safely free it.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_hd_deflate_new2</span><span class="p">(</span><span class="n">nghttp2_hd_deflater</span> <span class="o">**</span><span class="n">deflater_ptr</span><span class="p">,</span>
+                            <span class="kt">size_t</span> <span class="n">deflate_hd_table_bufsize_max</span><span class="p">,</span>
+                            <span class="n">nghttp2_mem</span> <span class="o">*</span><span class="n">mem</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
 <span class="cm"> * Deallocates any resources allocated for |deflater|.</span>
 <span class="cm"> */</span>
 <span class="kt">void</span> <span class="nf">nghttp2_hd_deflate_del</span><span class="p">(</span><span class="n">nghttp2_hd_deflater</span> <span class="o">*</span><span class="n">deflater</span><span class="p">);</span>
@@ -3341,9 +3610,9 @@
 <span class="cm"> * :enum:`NGHTTP2_ERR_INSUFF_BUFSIZE`</span>
 <span class="cm"> *     The provided |buflen| size is too small to hold the output.</span>
 <span class="cm"> */</span>
-<span class="kt">ssize_t</span> <span class="nf">nghttp2_hd_deflate_hd</span><span class="p">(</span><span class="n">nghttp2_hd_deflater</span> <span class="o">*</span><span class="n">deflater</span><span class="p">,</span>
-                              <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">buf</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">buflen</span><span class="p">,</span>
-                              <span class="k">const</span> <span class="n">nghttp2_nv</span> <span class="o">*</span><span class="n">nva</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">nvlen</span><span class="p">);</span>
+<span class="kt">ssize_t</span> <span class="nf">nghttp2_hd_deflate_hd</span><span class="p">(</span><span class="n">nghttp2_hd_deflater</span> <span class="o">*</span><span class="n">deflater</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">buf</span><span class="p">,</span>
+                              <span class="kt">size_t</span> <span class="n">buflen</span><span class="p">,</span> <span class="k">const</span> <span class="n">nghttp2_nv</span> <span class="o">*</span><span class="n">nva</span><span class="p">,</span>
+                              <span class="kt">size_t</span> <span class="n">nvlen</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
@@ -3377,6 +3646,24 @@
 <span class="cm"> *     Out of memory.</span>
 <span class="cm"> */</span>
 <span class="kt">int</span> <span class="nf">nghttp2_hd_inflate_new</span><span class="p">(</span><span class="n">nghttp2_hd_inflater</span> <span class="o">**</span><span class="n">inflater_ptr</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * Like `nghttp2_hd_inflate_new()`, but with additional custom memory</span>
+<span class="cm"> * allocator specified in the |mem|.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The |mem| can be ``NULL`` and the call is equivalent to</span>
+<span class="cm"> * `nghttp2_hd_inflate_new()`.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function does not take ownership |mem|.  The application is</span>
+<span class="cm"> * responsible for freeing |mem|.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The library code does not refer to |mem| pointer after this</span>
+<span class="cm"> * function returns, so the application can safely free it.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_hd_inflate_new2</span><span class="p">(</span><span class="n">nghttp2_hd_inflater</span> <span class="o">**</span><span class="n">inflater_ptr</span><span class="p">,</span>
+                            <span class="n">nghttp2_mem</span> <span class="o">*</span><span class="n">mem</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
@@ -3500,9 +3787,9 @@
 <span class="cm"> *     }</span>
 <span class="cm"> *</span>
 <span class="cm"> */</span>
-<span class="kt">ssize_t</span> <span class="nf">nghttp2_hd_inflate_hd</span><span class="p">(</span><span class="n">nghttp2_hd_inflater</span> <span class="o">*</span><span class="n">inflater</span><span class="p">,</span>
-                              <span class="n">nghttp2_nv</span> <span class="o">*</span><span class="n">nv_out</span><span class="p">,</span> <span class="kt">int</span> <span class="o">*</span><span class="n">inflate_flags</span><span class="p">,</span>
-                              <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">in</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">inlen</span><span class="p">,</span> <span class="kt">int</span> <span class="n">in_final</span><span class="p">);</span>
+<span class="kt">ssize_t</span> <span class="nf">nghttp2_hd_inflate_hd</span><span class="p">(</span><span class="n">nghttp2_hd_inflater</span> <span class="o">*</span><span class="n">inflater</span><span class="p">,</span> <span class="n">nghttp2_nv</span> <span class="o">*</span><span class="n">nv_out</span><span class="p">,</span>
+                              <span class="kt">int</span> <span class="o">*</span><span class="n">inflate_flags</span><span class="p">,</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">in</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">inlen</span><span class="p">,</span>
+                              <span class="kt">int</span> <span class="n">in_final</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
@@ -3541,11 +3828,12 @@
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2012, 2014, Tatsuhiro Tsujikawa.
+        &copy; Copyright 2012, 2015, Tatsuhiro Tsujikawa.
     </p>
   </div>
 
-  <a href="https://github.com/snide/sphinx_rtd_theme">Sphinx theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+  
 </footer>
         </div>
       </div>
@@ -3561,7 +3849,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.6.3-DEV',
+            VERSION:'0.7.2-DEV',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  false

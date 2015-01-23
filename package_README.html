@@ -7,14 +7,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>nghttp2 - HTTP/2 C Library &mdash; nghttp2 0.6.3-DEV documentation</title>
+  <title>nghttp2 - HTTP/2 C Library &mdash; nghttp2 0.7.2-DEV documentation</title>
   
 
   
   
 
   
-  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700&subset=latin,cyrillic' rel='stylesheet' type='text/css'>
 
   
   
@@ -28,8 +28,8 @@
   
 
   
-    <link rel="top" title="nghttp2 0.6.3-DEV documentation" href="index.html"/>
-        <link rel="next" title="Building Android binary" href="building-android-binary.html"/>
+    <link rel="top" title="nghttp2 0.7.2-DEV documentation" href="index.html"/>
+        <link rel="next" title="Contribution Guidelines" href="contribute.html"/>
         <link rel="prev" title="nghttp2 - HTTP/2 C Library" href="index.html"/> 
 
   
@@ -47,8 +47,9 @@
         
           <a href="index.html" class="fa fa-home"> nghttp2</a>
         
-        <div role="search">
-  <form id ="rtd-search-form" class="wy-form" action="search.html" method="get">
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" />
     <input type="hidden" name="check_keywords" value="yes" />
     <input type="hidden" name="area" value="default" />
@@ -58,20 +59,27 @@
 
       <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
         
-        
-            <ul class="current">
+          
+          
+              <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="">nghttp2 - HTTP/2 C Library</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#development-status">Development Status</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#public-test-server">Public Test Server</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#requirements">Requirements</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#build-from-git">Build from git</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#building-documentation">Building documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#unit-tests">Unit tests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#integration-tests">Integration tests</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#client-server-and-proxy-programs">Client, Server and Proxy programs</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#benchmarking-tool">Benchmarking tool</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#hpack-tools">HPACK tools</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#libnghttp2-asio-high-level-http-2-c-library">libnghttp2_asio: High level HTTP/2 C++ library</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#python-bindings">Python bindings</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#contribution">Contribution</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="contribute.html">Contribution Guidelines</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="contribute.html#coding-style">Coding style</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="building-android-binary.html">Building Android binary</a></li>
@@ -90,34 +98,32 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="nghttp.1.html">nghttp(1)</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#name">NAME</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#options">OPTIONS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#options">OPTIONS:</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="nghttpd.1.html">nghttpd(1)</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#name">NAME</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#options">OPTIONS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#options">OPTIONS:</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="nghttpx.1.html">nghttpx(1)</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#name">NAME</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#options">OPTIONS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#options">OPTIONS:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#files">FILES</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#signals">SIGNALS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="h2load.1.html">h2load(1)</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#name">NAME</a></li>
 <li class="toctree-l2"><a class="reference internal" href="h2load.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="h2load.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#options">OPTIONS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#options">OPTIONS:</a></li>
 <li class="toctree-l2"><a class="reference internal" href="h2load.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
@@ -131,8 +137,9 @@
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#specifying-additional-ca-certificate">Specifying additional CA certificate</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#read-write-rate-limit">Read/write rate limit</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#rewriting-location-header-field">Rewriting location header field</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#hot-deploy">Hot deploy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#hot-swapping">Hot swapping</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#re-opening-log-files">Re-opening log files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#multiple-http-1-backend-addresses">Multiple HTTP/1 backend addresses</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="h2load-howto.html">h2load - HTTP/2 benchmarking tool - HOW-TO</a><ul>
@@ -166,8 +173,10 @@
 <li class="toctree-l1"><a class="reference internal" href="asio_http2.h.html">asio_http2.h</a></li>
 <li class="toctree-l1"><a class="reference external" href="https://github.com/tatsuhiro-t/nghttp2">Source</a></li>
 <li class="toctree-l1"><a class="reference external" href="https://github.com/tatsuhiro-t/nghttp2/issues">Issues</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://nghttp2.org/">nghttp2.org</a></li>
 </ul>
 
+          
         
       </div>
       &nbsp;
@@ -202,11 +211,11 @@
 <h1>nghttp2 - HTTP/2 C Library<a class="headerlink" href="#nghttp2-http-2-c-library" title="Permalink to this headline">¶</a></h1>
 <p>This is an implementation of Hypertext Transfer Protocol version 2
 in C.</p>
-<p>The framing layer of HTTP/2 is implemented as form of reusable C
+<p>The framing layer of HTTP/2 is implemented as a form of reusable C
 library.  On top of that, we have implemented HTTP/2 client, server
-and proxy.  Also we have developed load test/benchmarking tool for
+and proxy.  We have also developed load test and benchmarking tool for
 HTTP/2 and SPDY.</p>
-<p>HPACK encoding and decoding are available as public API.</p>
+<p>HPACK encoder and decoder are available as public API.</p>
 <p>The experimental high level C++ library is also available.</p>
 <p>We have Python binding of this libary, but we have not covered
 everything yet.</p>
@@ -215,9 +224,7 @@ everything yet.</p>
 <p>We started to implement h2-14
 (<a class="reference external" href="http://tools.ietf.org/html/draft-ietf-httpbis-http2-14">http://tools.ietf.org/html/draft-ietf-httpbis-http2-14</a>), the header
 compression
-(<a class="reference external" href="http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-09">http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-09</a>)
-and HTTP Alternative Services
-(<a class="reference external" href="http://tools.ietf.org/html/draft-ietf-httpbis-alt-svc-02">http://tools.ietf.org/html/draft-ietf-httpbis-alt-svc-02</a>).</p>
+(<a class="reference external" href="http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-09">http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-09</a>).</p>
 <p>The nghttp2 code base was forked from spdylay project.</p>
 <table border="1" class="docutils">
 <colgroup>
@@ -239,9 +246,6 @@ and HTTP Alternative Services
 <tr class="row-even"><td>Large header (CONTINUATION)</td>
 <td>Yes</td>
 </tr>
-<tr class="row-odd"><td>ALTSVC extension</td>
-<td>Yes</td>
-</tr>
 </tbody>
 </table>
 </div>
@@ -252,13 +256,10 @@ implementation.</p>
 <ul>
 <li><p class="first"><a class="reference external" href="https://nghttp2.org/">https://nghttp2.org/</a> (TLS + ALPN/NPN)</p>
 <p>NPN offer <tt class="docutils literal"><span class="pre">h2-14</span></tt>, <tt class="docutils literal"><span class="pre">spdy/3.1</span></tt> and <tt class="docutils literal"><span class="pre">http/1.1</span></tt>.</p>
-<p>This endpoint requires TLSv1.2 and DHE or EDCHE with GCM cipher
-suite for HTTP/2 connection.</p>
+<p>This endpoint requires TLSv1.2 for HTTP/2 connection.</p>
 </li>
 <li><p class="first"><a class="reference external" href="http://nghttp2.org/">http://nghttp2.org/</a> (Upgrade / Direct)</p>
-<p><tt class="docutils literal"><span class="pre">h2c-14</span></tt> and <tt class="docutils literal"><span class="pre">http/1.1</span></tt>.  We configured this server to send
-ALTSVC frame or Alt-Svc header field to announce that alternative
-service is available at port 443.</p>
+<p><tt class="docutils literal"><span class="pre">h2c-14</span></tt> and <tt class="docutils literal"><span class="pre">http/1.1</span></tt>.</p>
 </li>
 </ul>
 </div>
@@ -282,7 +283,7 @@ required:</p>
 required:</p>
 <ul class="simple">
 <li>OpenSSL &gt;= 1.0.1</li>
-<li>libevent-openssl &gt;= 2.0.8</li>
+<li>libev &gt;= 4.15</li>
 <li>zlib &gt;= 1.2.3</li>
 </ul>
 <p>ALPN support requires unreleased version OpenSSL &gt;= 1.0.2.</p>
@@ -299,6 +300,10 @@ resource) in <tt class="docutils literal"><span class="pre">nghttp</span></tt>, 
 <p>The HPACK tools require the following package:</p>
 <ul class="simple">
 <li>jansson &gt;= 2.5</li>
+</ul>
+<p>To build sources under examples directory, libevent is required:</p>
+<ul class="simple">
+<li>libevent-openssl &gt;= 2.0.8</li>
 </ul>
 <p>To mitigate heap fragmentation in long running server programs
 (<tt class="docutils literal"><span class="pre">nghttpd</span></tt> and <tt class="docutils literal"><span class="pre">nghttpx</span></tt>), jemalloc is recommended:</p>
@@ -318,6 +323,8 @@ resource) in <tt class="docutils literal"><span class="pre">nghttp</span></tt>, 
 <p>If you are using Ubuntu 14.04 LTS, you need the following packages
 installed:</p>
 <ul class="simple">
+<li>make</li>
+<li>binutils</li>
 <li>autoconf</li>
 <li>automake</li>
 <li>autotools-dev</li>
@@ -327,6 +334,7 @@ installed:</p>
 <li>libcunit1-dev</li>
 <li>libssl-dev</li>
 <li>libxml2-dev</li>
+<li>libev-dev</li>
 <li>libevent-dev</li>
 <li>libjansson-dev</li>
 <li>libjemalloc-dev</li>
@@ -370,6 +378,32 @@ on Mac OS X platform.</p>
 <p>The generated documents will not be installed with <tt class="docutils literal"><span class="pre">make</span> <span class="pre">install</span></tt>.</p>
 <p>The online documentation is available at
 <a class="reference external" href="https://nghttp2.org/documentation/">https://nghttp2.org/documentation/</a></p>
+</div>
+<div class="section" id="unit-tests">
+<h2>Unit tests<a class="headerlink" href="#unit-tests" title="Permalink to this headline">¶</a></h2>
+<p>Unit tests are done by simply running <tt class="xref c c-func docutils literal"><span class="pre">make</span> <span class="pre">check()</span></tt>.</p>
+</div>
+<div class="section" id="integration-tests">
+<h2>Integration tests<a class="headerlink" href="#integration-tests" title="Permalink to this headline">¶</a></h2>
+<p>We have the integration tests for nghttpx proxy server.  The tests are
+written in <a class="reference external" href="http://golang.org/">Go programming language</a> and uses
+its testing framework.  We depend on the following libraries:</p>
+<ul class="simple">
+<li><a class="reference external" href="https://github.com/bradfitz/http2">https://github.com/bradfitz/http2</a></li>
+<li><a class="reference external" href="https://github.com/tatsuhiro-t/go-nghttp2">https://github.com/tatsuhiro-t/go-nghttp2</a></li>
+<li><a class="reference external" href="https://golang.org/x/net/spdy">https://golang.org/x/net/spdy</a></li>
+</ul>
+<p>To download the above packages, after settings <tt class="docutils literal"><span class="pre">GOPATH</span></tt>, run the
+following command under <tt class="docutils literal"><span class="pre">integration-tests</span></tt> directory:</p>
+<div class="highlight-c"><div class="highlight"><pre>$ make itprep
+</pre></div>
+</div>
+<p>To run the tests, run the following command under
+<tt class="docutils literal"><span class="pre">integration-tests</span></tt> directory:</p>
+<div class="highlight-c"><div class="highlight"><pre>$ make it
+</pre></div>
+</div>
+<p>Inside the tests, we use port 3009 to run test subject server.</p>
 </div>
 <div class="section" id="client-server-and-proxy-programs">
 <h2>Client, Server and Proxy programs<a class="headerlink" href="#client-server-and-proxy-programs" title="Permalink to this headline">¶</a></h2>
@@ -476,8 +510,6 @@ Upgrade: h2c-14
           (niv=2)
           [SETTINGS_MAX_CONCURRENT_STREAMS(3):100]
           [SETTINGS_INITIAL_WINDOW_SIZE(4):65535]
-[  0.024] recv ALTSVC frame &lt;length=43, flags=0x00, stream_id=0&gt;
-          (max-age=86400, port=443, protocol_id=h2-14, host=nghttp2.org, origin=http://nghttp2.org)
 [  0.024] send SETTINGS frame &lt;length=0, flags=0x01, stream_id=0&gt;
           ; ACK
           (niv=0)
@@ -653,7 +685,7 @@ SPDY proxy):</p>
                                        <span class="p">[</span><span class="n">secure</span> <span class="n">proxy</span><span class="p">]</span>          <span class="p">(</span><span class="n">e</span><span class="p">.</span><span class="n">g</span><span class="p">.,</span> <span class="n">Squid</span><span class="p">,</span> <span class="n">ATS</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>The <tt class="docutils literal"><span class="pre">Client</span></tt> in the above is needs to be configured to use
+<p>The <tt class="docutils literal"><span class="pre">Client</span></tt> in the above needs to be configured to use
 <tt class="docutils literal"><span class="pre">nghttpx</span></tt> as secure proxy.</p>
 <p>At the time of this writing, Chrome is the only browser which supports
 secure proxy.  The one way to configure Chrome to use secure proxy is
@@ -740,7 +772,7 @@ With <tt class="docutils literal"><span class="pre">-t</span></tt> option, <tt c
 avoid saturating single core on client side.</p>
 <div class="admonition warning">
 <p class="first admonition-title">Warning</p>
-<p class="last"><strong>Don&#8217;t use this tool against publicly available servers.</strong> That is
+<p class="last"><strong>Don't use this tool against publicly available servers.</strong> That is
 considered a DOS attack.  Please only use against your private
 servers.</p>
 </div>
@@ -786,12 +818,12 @@ which includes exactly one name/value pair.</p>
 <p>With <tt class="docutils literal"><span class="pre">-t</span></tt> option, the program can accept more familiar HTTP/1 style
 header field block.  Each header set is delimited by empty line:</p>
 <p>Example:</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="o">:</span><span class="n">method</span><span class="o">:</span> <span class="n">GET</span>
-<span class="o">:</span><span class="n">scheme</span><span class="o">:</span> <span class="n">https</span>
-<span class="o">:</span><span class="n">path</span><span class="o">:</span> <span class="o">/</span>
+<div class="highlight-c"><div class="highlight"><pre><span class="o">:</span><span class="nl">method</span><span class="p">:</span> <span class="nl">GET</span>
+<span class="p">:</span><span class="nl">scheme</span><span class="p">:</span> <span class="nl">https</span>
+<span class="p">:</span><span class="nl">path</span><span class="p">:</span> <span class="o">/</span>
 
-<span class="o">:</span><span class="n">method</span><span class="o">:</span> <span class="n">POST</span>
-<span class="n">user</span><span class="o">-</span><span class="n">agent</span><span class="o">:</span> <span class="n">nghttp2</span>
+<span class="o">:</span><span class="nl">method</span><span class="p">:</span> <span class="n">POST</span>
+<span class="n">user</span><span class="o">-</span><span class="nl">agent</span><span class="p">:</span> <span class="n">nghttp2</span>
 </pre></div>
 </div>
 <p>The output is JSON object.  It should include <tt class="docutils literal"><span class="pre">cases</span></tt> key and its
@@ -1168,17 +1200,14 @@ HTTP/2 server looks like this:</p>
 <span class="k">using</span> <span class="k">namespace</span> <span class="n">nghttp2</span><span class="o">::</span><span class="n">asio_http2</span><span class="p">;</span>
 <span class="k">using</span> <span class="k">namespace</span> <span class="n">nghttp2</span><span class="o">::</span><span class="n">asio_http2</span><span class="o">::</span><span class="n">server</span><span class="p">;</span>
 
-<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span><span class="o">*</span> <span class="n">argv</span><span class="p">[])</span>
-<span class="p">{</span>
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">argv</span><span class="p">[])</span> <span class="p">{</span>
   <span class="n">http2</span> <span class="n">server</span><span class="p">;</span>
 
-  <span class="n">server</span><span class="p">.</span><span class="n">listen</span>
-    <span class="p">(</span><span class="s">&quot;*&quot;</span><span class="p">,</span> <span class="mi">3000</span><span class="p">,</span>
-     <span class="p">[](</span><span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">request</span><span class="o">&gt;</span> <span class="n">req</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">response</span><span class="o">&gt;</span> <span class="n">res</span><span class="p">)</span>
-     <span class="p">{</span>
-       <span class="n">res</span><span class="o">-&gt;</span><span class="n">write_head</span><span class="p">(</span><span class="mi">200</span><span class="p">);</span>
-       <span class="n">res</span><span class="o">-&gt;</span><span class="n">end</span><span class="p">(</span><span class="s">&quot;hello, world&quot;</span><span class="p">);</span>
-     <span class="p">});</span>
+  <span class="n">server</span><span class="p">.</span><span class="n">listen</span><span class="p">(</span><span class="s">&quot;*&quot;</span><span class="p">,</span> <span class="mi">3000</span><span class="p">,</span> <span class="p">[](</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">request</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">req</span><span class="p">,</span>
+                              <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">response</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">res</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">res</span><span class="o">-&gt;</span><span class="n">write_head</span><span class="p">(</span><span class="mi">200</span><span class="p">);</span>
+    <span class="n">res</span><span class="o">-&gt;</span><span class="n">end</span><span class="p">(</span><span class="s">&quot;hello, world&quot;</span><span class="p">);</span>
+  <span class="p">});</span>
 <span class="p">}</span>
 </pre></div>
 </div>
@@ -1232,7 +1261,7 @@ used before <tt class="docutils literal"><span class="pre">send_response()</span
 <dl class="docutils">
 <dt>client_address</dt>
 <dd>Contains a tuple of the form (host, port) referring to the
-client&#8217;s address.</dd>
+client's address.</dd>
 <dt>stream_id</dt>
 <dd>Stream ID of this stream.</dd>
 <dt>scheme</dt>
@@ -1297,6 +1326,8 @@ to hand over that patch/code to us.  We will credit you for your
 changes as far as possible, to give credit but also to keep a trace
 back to who made what changes.  Please always provide us with your
 full real name when contributing!</p>
+<p>See <a class="reference external" href="https://nghttp2.org/documentation/contribute.html">Contribution Guidelines</a> for more
+details.</p>
 </div>
 </div>
 
@@ -1306,7 +1337,7 @@ full real name when contributing!</p>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="building-android-binary.html" class="btn btn-neutral float-right" title="Building Android binary">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="contribute.html" class="btn btn-neutral float-right" title="Contribution Guidelines">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="index.html" class="btn btn-neutral" title="nghttp2 - HTTP/2 C Library"><span class="fa fa-arrow-circle-left"></span> Previous</a>
@@ -1318,11 +1349,12 @@ full real name when contributing!</p>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2012, 2014, Tatsuhiro Tsujikawa.
+        &copy; Copyright 2012, 2015, Tatsuhiro Tsujikawa.
     </p>
   </div>
 
-  <a href="https://github.com/snide/sphinx_rtd_theme">Sphinx theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+  
 </footer>
         </div>
       </div>
@@ -1338,7 +1370,7 @@ full real name when contributing!</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.6.3-DEV',
+            VERSION:'0.7.2-DEV',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  false

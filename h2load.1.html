@@ -7,14 +7,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>h2load(1) &mdash; nghttp2 0.6.3-DEV documentation</title>
+  <title>h2load(1) &mdash; nghttp2 0.7.2-DEV documentation</title>
   
 
   
   
 
   
-  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700&subset=latin,cyrillic' rel='stylesheet' type='text/css'>
 
   
   
@@ -28,7 +28,7 @@
   
 
   
-    <link rel="top" title="nghttp2 0.6.3-DEV documentation" href="index.html"/>
+    <link rel="top" title="nghttp2 0.7.2-DEV documentation" href="index.html"/>
         <link rel="next" title="nghttpx - HTTP/2 proxy - HOW-TO" href="nghttpx-howto.html"/>
         <link rel="prev" title="nghttpx(1)" href="nghttpx.1.html"/> 
 
@@ -47,8 +47,9 @@
         
           <a href="index.html" class="fa fa-home"> nghttp2</a>
         
-        <div role="search">
-  <form id ="rtd-search-form" class="wy-form" action="search.html" method="get">
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" />
     <input type="hidden" name="check_keywords" value="yes" />
     <input type="hidden" name="area" value="default" />
@@ -58,20 +59,27 @@
 
       <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
         
-        
-            <ul class="current">
+          
+          
+              <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="package_README.html">nghttp2 - HTTP/2 C Library</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#development-status">Development Status</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#public-test-server">Public Test Server</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#requirements">Requirements</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#build-from-git">Build from git</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#building-documentation">Building documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#unit-tests">Unit tests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#integration-tests">Integration tests</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#client-server-and-proxy-programs">Client, Server and Proxy programs</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#benchmarking-tool">Benchmarking tool</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#hpack-tools">HPACK tools</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#libnghttp2-asio-high-level-http-2-c-library">libnghttp2_asio: High level HTTP/2 C++ library</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#python-bindings">Python bindings</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#contribution">Contribution</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="contribute.html">Contribution Guidelines</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="contribute.html#coding-style">Coding style</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="building-android-binary.html">Building Android binary</a></li>
@@ -90,34 +98,32 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="nghttp.1.html">nghttp(1)</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#name">NAME</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#options">OPTIONS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#options">OPTIONS:</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="nghttpd.1.html">nghttpd(1)</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#name">NAME</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#options">OPTIONS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#options">OPTIONS:</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="nghttpx.1.html">nghttpx(1)</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#name">NAME</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#options">OPTIONS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#options">OPTIONS:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#files">FILES</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#signals">SIGNALS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
 <li class="toctree-l1 current"><a class="current reference internal" href="">h2load(1)</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#name">NAME</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#options">OPTIONS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#options">OPTIONS:</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#see-also">SEE ALSO</a></li>
 </ul>
 </li>
@@ -131,8 +137,9 @@
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#specifying-additional-ca-certificate">Specifying additional CA certificate</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#read-write-rate-limit">Read/write rate limit</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#rewriting-location-header-field">Rewriting location header field</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#hot-deploy">Hot deploy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#hot-swapping">Hot swapping</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#re-opening-log-files">Re-opening log files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#multiple-http-1-backend-addresses">Multiple HTTP/1 backend addresses</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="h2load-howto.html">h2load - HTTP/2 benchmarking tool - HOW-TO</a><ul>
@@ -166,8 +173,10 @@
 <li class="toctree-l1"><a class="reference internal" href="asio_http2.h.html">asio_http2.h</a></li>
 <li class="toctree-l1"><a class="reference external" href="https://github.com/tatsuhiro-t/nghttp2">Source</a></li>
 <li class="toctree-l1"><a class="reference external" href="https://github.com/tatsuhiro-t/nghttp2/issues">Issues</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://nghttp2.org/">nghttp2.org</a></li>
 </ul>
 
+          
         
       </div>
       &nbsp;
@@ -200,106 +209,122 @@
             
   <div class="section" id="h2load-1">
 <h1>h2load(1)<a class="headerlink" href="#h2load-1" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="name">
-<h2>NAME<a class="headerlink" href="#name" title="Permalink to this headline">¶</a></h2>
-<p>h2load - HTTP/2 benchmarking tool</p>
-</div>
 <div class="section" id="synopsis">
 <h2>SYNOPSIS<a class="headerlink" href="#synopsis" title="Permalink to this headline">¶</a></h2>
-<p><strong>h2load</strong> [OPTIONS]... &lt;URI&gt;...</p>
+<p><strong>h2load</strong> [OPTIONS]... [URI]...</p>
 </div>
 <div class="section" id="description">
 <h2>DESCRIPTION<a class="headerlink" href="#description" title="Permalink to this headline">¶</a></h2>
 <p>benchmarking tool for HTTP/2 and SPDY server</p>
-<dl class="option">
-<dt id="cmdoption-h2load-arg-URI">
-<tt class="descname">URI</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-h2load-arg-URI" title="Permalink to this definition">¶</a></dt>
-<dd><p>Specify  URI to  access.   Multiple  URIs can  be
-specified.  URIs are used  in this order for each
-client.   All URIs  are used,  then first  URI is
-used and  then 2nd URI,  and so on.   The scheme,
-host and port in the subsequent URIs, if present,
-are  ignored.  Those  in the  first URI  are used
-solely.</p>
+<dl class="describe">
+<dt>
+<tt class="descname">&lt;URI&gt;</tt></dt>
+<dd><p>Specify URI to access.   Multiple URIs can be specified.
+URIs are used  in this order for each  client.  All URIs
+are used, then  first URI is used and then  2nd URI, and
+so  on.  The  scheme, host  and port  in the  subsequent
+URIs, if present,  are ignored.  Those in  the first URI
+are used solely.</p>
 </dd></dl>
 
 </div>
 <div class="section" id="options">
-<h2>OPTIONS<a class="headerlink" href="#options" title="Permalink to this headline">¶</a></h2>
+<h2>OPTIONS:<a class="headerlink" href="#options" title="Permalink to this headline">¶</a></h2>
 <dl class="option">
-<dt id="cmdoption-h2load-n">
-<span id="cmdoption-h2load--requests"></span><tt class="descname">-n</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--requests</tt><tt class="descclassname">=&lt;N&gt;</tt><a class="headerlink" href="#cmdoption-h2load-n" title="Permalink to this definition">¶</a></dt>
-<dd><p>Number of requests. Default: 1</p>
+<dt id="cmdoption-n">
+<span id="cmdoption--requests"></span><tt class="descname">-n</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--requests</tt><tt class="descclassname">=&lt;N&gt;</tt><a class="headerlink" href="#cmdoption-n" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of requests.</p>
+<p>Default: <tt class="docutils literal"><span class="pre">1</span></tt></p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-h2load-c">
-<span id="cmdoption-h2load--clients"></span><tt class="descname">-c</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--clients</tt><tt class="descclassname">=&lt;N&gt;</tt><a class="headerlink" href="#cmdoption-h2load-c" title="Permalink to this definition">¶</a></dt>
-<dd><p>Number of concurrent clients. Default: 1</p>
+<dt id="cmdoption-c">
+<span id="cmdoption--clients"></span><tt class="descname">-c</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--clients</tt><tt class="descclassname">=&lt;N&gt;</tt><a class="headerlink" href="#cmdoption-c" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of concurrent clients.</p>
+<p>Default: <tt class="docutils literal"><span class="pre">1</span></tt></p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-h2load-t">
-<span id="cmdoption-h2load--threads"></span><tt class="descname">-t</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--threads</tt><tt class="descclassname">=&lt;N&gt;</tt><a class="headerlink" href="#cmdoption-h2load-t" title="Permalink to this definition">¶</a></dt>
-<dd><p>Number of native threads. Default: 1</p>
+<dt id="cmdoption-t">
+<span id="cmdoption--threads"></span><tt class="descname">-t</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--threads</tt><tt class="descclassname">=&lt;N&gt;</tt><a class="headerlink" href="#cmdoption-t" title="Permalink to this definition">¶</a></dt>
+<dd><p>Number of native threads.</p>
+<p>Default: <tt class="docutils literal"><span class="pre">1</span></tt></p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-h2load-m">
-<span id="cmdoption-h2load--max-concurrent-streams"></span><tt class="descname">-m</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--max-concurrent-streams</tt><tt class="descclassname">=(auto|&lt;N&gt;)</tt><a class="headerlink" href="#cmdoption-h2load-m" title="Permalink to this definition">¶</a></dt>
-<dd><p>Max concurrent streams to  issue per session.  If
-&#8220;auto&#8221;  is given,  the  number of  given URIs  is
-used.  Default: auto</p>
+<dt id="cmdoption-i">
+<span id="cmdoption--input-file"></span><tt class="descname">-i</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--input-file</tt><tt class="descclassname">=&lt;FILE&gt;</tt><a class="headerlink" href="#cmdoption-i" title="Permalink to this definition">¶</a></dt>
+<dd><p>Path of a file with multiple URIs are seperated by EOLs.
+This option will disable URIs getting from command-line.
+If '-' is given as &lt;FILE&gt;, URIs will be read from stdin.
+URIs are used  in this order for each  client.  All URIs
+are used, then  first URI is used and then  2nd URI, and
+so  on.  The  scheme, host  and port  in the  subsequent
+URIs, if present,  are ignored.  Those in  the first URI
+are used solely.</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-h2load-w">
-<span id="cmdoption-h2load--window-bits"></span><tt class="descname">-w</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--window-bits</tt><tt class="descclassname">=&lt;N&gt;</tt><a class="headerlink" href="#cmdoption-h2load-w" title="Permalink to this definition">¶</a></dt>
-<dd><p>Sets  the stream  level  initial  window size  to
-(2**&lt;N&gt;)-1.  For SPDY, 2**&lt;N&gt; is used instead.</p>
+<dt id="cmdoption-m">
+<span id="cmdoption--max-concurrent-streams"></span><tt class="descname">-m</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--max-concurrent-streams</tt><tt class="descclassname">=(auto|&lt;N&gt;)</tt><a class="headerlink" href="#cmdoption-m" title="Permalink to this definition">¶</a></dt>
+<dd><p>Max concurrent streams to  issue per session.  If &quot;auto&quot;
+is given, the number of given URIs is used.</p>
+<p>Default: <tt class="docutils literal"><span class="pre">auto</span></tt></p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-h2load-W">
-<span id="cmdoption-h2load--connection-window-bits"></span><tt class="descname">-W</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--connection-window-bits</tt><tt class="descclassname">=&lt;N&gt;</tt><a class="headerlink" href="#cmdoption-h2load-W" title="Permalink to this definition">¶</a></dt>
-<dd><p>Sets the connection level  initial window size to
-(2**&lt;N&gt;)-1.  For  SPDY, if  &lt;N&gt; is  strictly less
-than  16,  this  option  is  ignored.   Otherwise
-2**&lt;N&gt; is used for SPDY.</p>
+<dt id="cmdoption-w">
+<span id="cmdoption--window-bits"></span><tt class="descname">-w</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--window-bits</tt><tt class="descclassname">=&lt;N&gt;</tt><a class="headerlink" href="#cmdoption-w" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets the stream level initial window size to (2**&lt;N&gt;)-1.
+For SPDY, 2**&lt;N&gt; is used instead.</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-h2load-p">
-<span id="cmdoption-h2load--no-tls-proto"></span><tt class="descname">-p</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--no-tls-proto</tt><tt class="descclassname">=&lt;PROTOID&gt;</tt><a class="headerlink" href="#cmdoption-h2load-p" title="Permalink to this definition">¶</a></dt>
-<dd><p>Specify  ALPN identifier  of the  protocol to  be
-used  when accessing  http  URI without  SSL/TLS.
-Available protocols: spdy/2, spdy/3, spdy/3.1 and
-h2c-14
-Default: h2c-14</p>
+<dt id="cmdoption-W">
+<span id="cmdoption--connection-window-bits"></span><tt class="descname">-W</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--connection-window-bits</tt><tt class="descclassname">=&lt;N&gt;</tt><a class="headerlink" href="#cmdoption-W" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets  the  connection  level   initial  window  size  to
+(2**&lt;N&gt;)-1.  For SPDY, if &lt;N&gt;  is strictly less than 16,
+this option  is ignored.   Otherwise 2**&lt;N&gt; is  used for
+SPDY.</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-h2load-v">
-<span id="cmdoption-h2load--verbose"></span><tt class="descname">-v</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--verbose</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-h2load-v" title="Permalink to this definition">¶</a></dt>
+<dt id="cmdoption-H">
+<span id="cmdoption--header"></span><tt class="descname">-H</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--header</tt><tt class="descclassname">=&lt;HEADER&gt;</tt><a class="headerlink" href="#cmdoption-H" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add/Override a header to the requests.</p>
+</dd></dl>
+
+<dl class="option">
+<dt id="cmdoption-p">
+<span id="cmdoption--no-tls-proto"></span><tt class="descname">-p</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--no-tls-proto</tt><tt class="descclassname">=&lt;PROTOID&gt;</tt><a class="headerlink" href="#cmdoption-p" title="Permalink to this definition">¶</a></dt>
+<dd><p>Specify ALPN identifier of the  protocol to be used when
+accessing http URI without SSL/TLS.
+Available protocols: spdy/2, spdy/3, spdy/3.1 and h2c-14</p>
+<p>Default: <tt class="docutils literal"><span class="pre">h2c-14</span></tt></p>
+</dd></dl>
+
+<dl class="option">
+<dt id="cmdoption-v">
+<span id="cmdoption--verbose"></span><tt class="descname">-v</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--verbose</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-v" title="Permalink to this definition">¶</a></dt>
 <dd><p>Output debug information.</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-h2load--version">
-<tt class="descname">--version</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-h2load--version" title="Permalink to this definition">¶</a></dt>
+<dt id="cmdoption--version">
+<tt class="descname">--version</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption--version" title="Permalink to this definition">¶</a></dt>
 <dd><p>Display version information and exit.</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-h2load-h">
-<span id="cmdoption-h2load--help"></span><tt class="descname">-h</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--help</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-h2load-h" title="Permalink to this definition">¶</a></dt>
+<dt id="cmdoption-h">
+<span id="cmdoption--help"></span><tt class="descname">-h</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--help</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-h" title="Permalink to this definition">¶</a></dt>
 <dd><p>Display this help and exit.</p>
 </dd></dl>
 
 </div>
 <div class="section" id="see-also">
 <h2>SEE ALSO<a class="headerlink" href="#see-also" title="Permalink to this headline">¶</a></h2>
-<p>nghttp(1), nghttpd(1), nghttpx(1)</p>
+<p><em class="manpage">nghttp(1)</em>, <em class="manpage">nghttpd(1)</em>, <em class="manpage">nghttpx(1)</em></p>
 </div>
 </div>
 
@@ -321,11 +346,12 @@ Default: h2c-14</p>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2012, 2014, Tatsuhiro Tsujikawa.
+        &copy; Copyright 2012, 2015, Tatsuhiro Tsujikawa.
     </p>
   </div>
 
-  <a href="https://github.com/snide/sphinx_rtd_theme">Sphinx theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+  
 </footer>
         </div>
       </div>
@@ -341,7 +367,7 @@ Default: h2c-14</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.6.3-DEV',
+            VERSION:'0.7.2-DEV',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  false

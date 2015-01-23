@@ -7,14 +7,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>nghttpd(1) &mdash; nghttp2 0.6.3-DEV documentation</title>
+  <title>nghttpd(1) &mdash; nghttp2 0.7.2-DEV documentation</title>
   
 
   
   
 
   
-  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700&subset=latin,cyrillic' rel='stylesheet' type='text/css'>
 
   
   
@@ -28,7 +28,7 @@
   
 
   
-    <link rel="top" title="nghttp2 0.6.3-DEV documentation" href="index.html"/>
+    <link rel="top" title="nghttp2 0.7.2-DEV documentation" href="index.html"/>
         <link rel="next" title="nghttpx(1)" href="nghttpx.1.html"/>
         <link rel="prev" title="nghttp(1)" href="nghttp.1.html"/> 
 
@@ -47,8 +47,9 @@
         
           <a href="index.html" class="fa fa-home"> nghttp2</a>
         
-        <div role="search">
-  <form id ="rtd-search-form" class="wy-form" action="search.html" method="get">
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" />
     <input type="hidden" name="check_keywords" value="yes" />
     <input type="hidden" name="area" value="default" />
@@ -58,20 +59,27 @@
 
       <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
         
-        
-            <ul class="current">
+          
+          
+              <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="package_README.html">nghttp2 - HTTP/2 C Library</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#development-status">Development Status</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#public-test-server">Public Test Server</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#requirements">Requirements</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#build-from-git">Build from git</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#building-documentation">Building documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#unit-tests">Unit tests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#integration-tests">Integration tests</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#client-server-and-proxy-programs">Client, Server and Proxy programs</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#benchmarking-tool">Benchmarking tool</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#hpack-tools">HPACK tools</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#libnghttp2-asio-high-level-http-2-c-library">libnghttp2_asio: High level HTTP/2 C++ library</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#python-bindings">Python bindings</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#contribution">Contribution</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="contribute.html">Contribution Guidelines</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="contribute.html#coding-style">Coding style</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="building-android-binary.html">Building Android binary</a></li>
@@ -90,34 +98,32 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="nghttp.1.html">nghttp(1)</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#name">NAME</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#options">OPTIONS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#options">OPTIONS:</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
 <li class="toctree-l1 current"><a class="current reference internal" href="">nghttpd(1)</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#name">NAME</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#options">OPTIONS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#options">OPTIONS:</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#see-also">SEE ALSO</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="nghttpx.1.html">nghttpx(1)</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#name">NAME</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#options">OPTIONS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#options">OPTIONS:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#files">FILES</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#signals">SIGNALS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="h2load.1.html">h2load(1)</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#name">NAME</a></li>
 <li class="toctree-l2"><a class="reference internal" href="h2load.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="h2load.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#options">OPTIONS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#options">OPTIONS:</a></li>
 <li class="toctree-l2"><a class="reference internal" href="h2load.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
@@ -131,8 +137,9 @@
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#specifying-additional-ca-certificate">Specifying additional CA certificate</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#read-write-rate-limit">Read/write rate limit</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#rewriting-location-header-field">Rewriting location header field</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#hot-deploy">Hot deploy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#hot-swapping">Hot swapping</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#re-opening-log-files">Re-opening log files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#multiple-http-1-backend-addresses">Multiple HTTP/1 backend addresses</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="h2load-howto.html">h2load - HTTP/2 benchmarking tool - HOW-TO</a><ul>
@@ -166,8 +173,10 @@
 <li class="toctree-l1"><a class="reference internal" href="asio_http2.h.html">asio_http2.h</a></li>
 <li class="toctree-l1"><a class="reference external" href="https://github.com/tatsuhiro-t/nghttp2">Source</a></li>
 <li class="toctree-l1"><a class="reference external" href="https://github.com/tatsuhiro-t/nghttp2/issues">Issues</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://nghttp2.org/">nghttp2.org</a></li>
 </ul>
 
+          
         
       </div>
       &nbsp;
@@ -200,156 +209,148 @@
             
   <div class="section" id="nghttpd-1">
 <h1>nghttpd(1)<a class="headerlink" href="#nghttpd-1" title="Permalink to this headline">¶</a></h1>
-<div class="section" id="name">
-<h2>NAME<a class="headerlink" href="#name" title="Permalink to this headline">¶</a></h2>
-<p>nghttpd - HTTP/2 experimental server</p>
-</div>
 <div class="section" id="synopsis">
 <h2>SYNOPSIS<a class="headerlink" href="#synopsis" title="Permalink to this headline">¶</a></h2>
-<p><strong>nghttpd</strong> [OPTION]... &lt;PORT&gt; &lt;PRIVATE_KEY&gt; &lt;CERT&gt;</p>
-<p><strong>nghttpd</strong> &#8211;no-tls [OPTION]... &lt;PORT&gt;</p>
+<p><strong>nghttpd</strong> [OPTION]... &lt;PORT&gt; [&lt;PRIVATE_KEY&gt; &lt;CERT&gt;]</p>
 </div>
 <div class="section" id="description">
 <h2>DESCRIPTION<a class="headerlink" href="#description" title="Permalink to this headline">¶</a></h2>
 <p>HTTP/2 experimental server</p>
-<dl class="option">
-<dt id="cmdoption-nghttpd-arg-PORT">
-<tt class="descname">PORT</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-nghttpd-arg-PORT" title="Permalink to this definition">¶</a></dt>
+<dl class="describe">
+<dt>
+<tt class="descname">&lt;PORT&gt;</tt></dt>
 <dd><p>Specify listening port number.</p>
 </dd></dl>
 
-<dl class="option">
-<dt id="cmdoption-nghttpd-arg-PRIVATE_KEY">
-<tt class="descname">PRIVATE_KEY</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-nghttpd-arg-PRIVATE_KEY" title="Permalink to this definition">¶</a></dt>
-<dd><p>Set  path  to  server&#8217;s  private  key.   Required
-unless <a class="reference internal" href="#cmdoption-nghttpd--no-tls"><em class="xref std std-option">--no-tls</em></a> is specified.</p>
+<dl class="describe">
+<dt>
+<tt class="descname">&lt;PRIVATE_KEY&gt;</tt></dt>
+<dd><p>Set  path  to  server's private  key.   Required  unless
+<a class="reference internal" href="#cmdoption--no-tls"><em class="xref std std-option">--no-tls</em></a> is specified.</p>
 </dd></dl>
 
-<dl class="option">
-<dt id="cmdoption-nghttpd-arg-CERT">
-<tt class="descname">CERT</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-nghttpd-arg-CERT" title="Permalink to this definition">¶</a></dt>
-<dd><p>Set  path  to   server&#8217;s  certificate.   Required
-unless <a class="reference internal" href="#cmdoption-nghttpd--no-tls"><em class="xref std std-option">--no-tls</em></a> is specified.</p>
+<dl class="describe">
+<dt>
+<tt class="descname">&lt;CERT&gt;</tt></dt>
+<dd><p>Set  path  to  server's  certificate.   Required  unless
+<a class="reference internal" href="#cmdoption--no-tls"><em class="xref std std-option">--no-tls</em></a> is specified.</p>
 </dd></dl>
 
 </div>
 <div class="section" id="options">
-<h2>OPTIONS<a class="headerlink" href="#options" title="Permalink to this headline">¶</a></h2>
+<h2>OPTIONS:<a class="headerlink" href="#options" title="Permalink to this headline">¶</a></h2>
 <dl class="option">
-<dt id="cmdoption-nghttpd-D">
-<span id="cmdoption-nghttpd--daemon"></span><tt class="descname">-D</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--daemon</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-nghttpd-D" title="Permalink to this definition">¶</a></dt>
-<dd><p>Run in a background.  If  <a class="reference internal" href="#cmdoption-nghttpd-D"><em class="xref std std-option">-D</em></a> is used, the current
-working directory  is changed to  &#8216;/&#8217;.  Therefore
-if  this  option  is  used,  <a class="reference internal" href="#cmdoption-nghttpd-d"><em class="xref std std-option">-d</em></a>  option  must  be
-specified.</p>
+<dt id="cmdoption-D">
+<span id="cmdoption--daemon"></span><tt class="descname">-D</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--daemon</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-D" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run in a background.  If <a class="reference internal" href="nghttpx.1.html#cmdoption-D"><em class="xref std std-option">-D</em></a> is used, the current working
+directory is  changed to '<em>/</em>'.  Therefore  if this option
+is used, <a class="reference internal" href="#cmdoption-d"><em class="xref std std-option">-d</em></a> option must be specified.</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpd-V">
-<span id="cmdoption-nghttpd--verify-client"></span><tt class="descname">-V</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--verify-client</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-nghttpd-V" title="Permalink to this definition">¶</a></dt>
-<dd><p>The  server sends  a client  certificate request.
-If the  client did not return  a certificate, the
-handshake is terminated.   Currently, this option
-just requests  a client certificate and  does not
-verify it.</p>
+<dt id="cmdoption-V">
+<span id="cmdoption--verify-client"></span><tt class="descname">-V</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--verify-client</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-V" title="Permalink to this definition">¶</a></dt>
+<dd><p>The server  sends a client certificate  request.  If the
+client did  not return  a certificate, the  handshake is
+terminated.   Currently,  this  option just  requests  a
+client certificate and does not verify it.</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpd-d">
-<span id="cmdoption-nghttpd--htdocs"></span><tt class="descname">-d</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--htdocs</tt><tt class="descclassname">=&lt;PATH&gt;</tt><a class="headerlink" href="#cmdoption-nghttpd-d" title="Permalink to this definition">¶</a></dt>
-<dd><p>Specify  document root.   If this  option is  not
-specified,  the  document  root  is  the  current
-working directory.</p>
+<dt id="cmdoption-d">
+<span id="cmdoption--htdocs"></span><tt class="descname">-d</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--htdocs</tt><tt class="descclassname">=&lt;PATH&gt;</tt><a class="headerlink" href="#cmdoption-d" title="Permalink to this definition">¶</a></dt>
+<dd><p>Specify document root.  If this option is not specified,
+the document root is the current working directory.</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpd-v">
-<span id="cmdoption-nghttpd--verbose"></span><tt class="descname">-v</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--verbose</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-nghttpd-v" title="Permalink to this definition">¶</a></dt>
-<dd><p>Print  debug   information  such   as  reception/
-transmission of frames and name/value pairs.</p>
+<dt id="cmdoption-v">
+<span id="cmdoption--verbose"></span><tt class="descname">-v</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--verbose</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-v" title="Permalink to this definition">¶</a></dt>
+<dd><p>Print debug information  such as reception/ transmission
+of frames and name/value pairs.</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpd--no-tls">
-<tt class="descname">--no-tls</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-nghttpd--no-tls" title="Permalink to this definition">¶</a></dt>
+<dt id="cmdoption--no-tls">
+<tt class="descname">--no-tls</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption--no-tls" title="Permalink to this definition">¶</a></dt>
 <dd><p>Disable SSL/TLS.</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpd-c">
-<span id="cmdoption-nghttpd--header-table-size"></span><tt class="descname">-c</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--header-table-size</tt><tt class="descclassname">=&lt;N&gt;</tt><a class="headerlink" href="#cmdoption-nghttpd-c" title="Permalink to this definition">¶</a></dt>
+<dt id="cmdoption-c">
+<span id="cmdoption--header-table-size"></span><tt class="descname">-c</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--header-table-size</tt><tt class="descclassname">=&lt;SIZE&gt;</tt><a class="headerlink" href="#cmdoption-c" title="Permalink to this definition">¶</a></dt>
 <dd><p>Specify decoder header table size.</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpd--color">
-<tt class="descname">--color</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-nghttpd--color" title="Permalink to this definition">¶</a></dt>
+<dt id="cmdoption--color">
+<tt class="descname">--color</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption--color" title="Permalink to this definition">¶</a></dt>
 <dd><p>Force colored log output.</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpd-p">
-<span id="cmdoption-nghttpd--push"></span><tt class="descname">-p</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--push</tt><tt class="descclassname">=&lt;PATH&gt;=&lt;PUSH_PATH,...&gt;</tt><a class="headerlink" href="#cmdoption-nghttpd-p" title="Permalink to this definition">¶</a></dt>
-<dd><p>Push  resources   &lt;PUSH_PATH&gt;s  when   &lt;PATH&gt;  is
-requested.  This option can be used repeatedly to
-specify multiple push configurations.  &lt;PATH&gt; and
-&lt;PUSH_PATH&gt;s are relative  to document root.  See
-<a class="reference internal" href="#cmdoption-nghttpd--htdocs"><em class="xref std std-option">--htdocs</em></a>    option.      Example:    -p/=/foo.png
--p/doc=/bar.css</p>
+<dt id="cmdoption-p">
+<span id="cmdoption--push"></span><tt class="descname">-p</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--push</tt><tt class="descclassname">=&lt;PATH&gt;=&lt;PUSH_PATH,...&gt;</tt><a class="headerlink" href="#cmdoption-p" title="Permalink to this definition">¶</a></dt>
+<dd><p>Push  resources &lt;PUSH_PATH&gt;s  when &lt;PATH&gt;  is requested.
+This option  can be used repeatedly  to specify multiple
+push  configurations.    &lt;PATH&gt;  and   &lt;PUSH_PATH&gt;s  are
+relative  to   document  root.   See   <a class="reference internal" href="#cmdoption--htdocs"><em class="xref std std-option">--htdocs</em></a>  option.
+Example: <a class="reference internal" href="nghttpx.1.html#cmdoption-p"><em class="xref std std-option">-p</em></a>/=/foo.png <a class="reference internal" href="nghttpx.1.html#cmdoption-p"><em class="xref std std-option">-p</em></a>/doc=/bar.css</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpd-b">
-<span id="cmdoption-nghttpd--padding"></span><tt class="descname">-b</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--padding</tt><tt class="descclassname">=&lt;N&gt;</tt><a class="headerlink" href="#cmdoption-nghttpd-b" title="Permalink to this definition">¶</a></dt>
-<dd><p>Add  at most  &lt;N&gt;  bytes to  a  frame payload  as
-padding.  Specify 0 to disable padding.</p>
+<dt id="cmdoption-b">
+<span id="cmdoption--padding"></span><tt class="descname">-b</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--padding</tt><tt class="descclassname">=&lt;N&gt;</tt><a class="headerlink" href="#cmdoption-b" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add at  most &lt;N&gt;  bytes to a  frame payload  as padding.
+Specify 0 to disable padding.</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpd-n">
-<span id="cmdoption-nghttpd--workers"></span><tt class="descname">-n</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--workers</tt><tt class="descclassname">=&lt;CORE&gt;</tt><a class="headerlink" href="#cmdoption-nghttpd-n" title="Permalink to this definition">¶</a></dt>
-<dd><p>Set the number of worker threads.
-Default: 1</p>
+<dt id="cmdoption-n">
+<span id="cmdoption--workers"></span><tt class="descname">-n</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--workers</tt><tt class="descclassname">=&lt;N&gt;</tt><a class="headerlink" href="#cmdoption-n" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set the number of worker threads.</p>
+<p>Default: <tt class="docutils literal"><span class="pre">1</span></tt></p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpd-e">
-<span id="cmdoption-nghttpd--error-gzip"></span><tt class="descname">-e</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--error-gzip</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-nghttpd-e" title="Permalink to this definition">¶</a></dt>
+<dt id="cmdoption-e">
+<span id="cmdoption--error-gzip"></span><tt class="descname">-e</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--error-gzip</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-e" title="Permalink to this definition">¶</a></dt>
 <dd><p>Make error response gzipped.</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpd--dh-param-file">
-<tt class="descname">--dh-param-file</tt><tt class="descclassname">=&lt;PATH&gt;</tt><a class="headerlink" href="#cmdoption-nghttpd--dh-param-file" title="Permalink to this definition">¶</a></dt>
-<dd><p>Path to  file that contains DH  parameters in PEM
-format.  Without  this option, DHE  cipher suites
-are not available.</p>
+<dt id="cmdoption--dh-param-file">
+<tt class="descname">--dh-param-file</tt><tt class="descclassname">=&lt;PATH&gt;</tt><a class="headerlink" href="#cmdoption--dh-param-file" title="Permalink to this definition">¶</a></dt>
+<dd><p>Path to file that contains  DH parameters in PEM format.
+Without  this   option,  DHE   cipher  suites   are  not
+available.</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpd--early-response">
-<tt class="descname">--early-response</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-nghttpd--early-response" title="Permalink to this definition">¶</a></dt>
-<dd><p>Start  sending response  when request  HEADERS is
-received,   rather  than   complete  request   is
-received.</p>
+<dt id="cmdoption--early-response">
+<tt class="descname">--early-response</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption--early-response" title="Permalink to this definition">¶</a></dt>
+<dd><p>Start sending response when request HEADERS is received,
+rather than complete request is received.</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpd--version">
-<tt class="descname">--version</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-nghttpd--version" title="Permalink to this definition">¶</a></dt>
+<dt id="cmdoption--version">
+<tt class="descname">--version</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption--version" title="Permalink to this definition">¶</a></dt>
 <dd><p>Display version information and exit.</p>
 </dd></dl>
 
 <dl class="option">
-<dt id="cmdoption-nghttpd-h">
-<span id="cmdoption-nghttpd--help"></span><tt class="descname">-h</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--help</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-nghttpd-h" title="Permalink to this definition">¶</a></dt>
+<dt id="cmdoption-h">
+<span id="cmdoption--help"></span><tt class="descname">-h</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--help</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-h" title="Permalink to this definition">¶</a></dt>
 <dd><p>Display this help and exit.</p>
 </dd></dl>
 
+<p>The &lt;SIZE&gt; argument is an integer and an optional unit (e.g., 10K is
+10 * 1024).  Units are K, M and G (powers of 1024).</p>
 </div>
 <div class="section" id="see-also">
 <h2>SEE ALSO<a class="headerlink" href="#see-also" title="Permalink to this headline">¶</a></h2>
-<p>nghttp(1), nghttpx(1), h2load(1)</p>
+<p><em class="manpage">nghttp(1)</em>, <em class="manpage">nghttpx(1)</em>, <em class="manpage">h2load(1)</em></p>
 </div>
 </div>
 
@@ -371,11 +372,12 @@ received.</p>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2012, 2014, Tatsuhiro Tsujikawa.
+        &copy; Copyright 2012, 2015, Tatsuhiro Tsujikawa.
     </p>
   </div>
 
-  <a href="https://github.com/snide/sphinx_rtd_theme">Sphinx theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+  
 </footer>
         </div>
       </div>
@@ -391,7 +393,7 @@ received.</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.6.3-DEV',
+            VERSION:'0.7.2-DEV',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  false

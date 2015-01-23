@@ -7,14 +7,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>libnghttp2_asio: High level HTTP/2 C++ library &mdash; nghttp2 0.6.3-DEV documentation</title>
+  <title>libnghttp2_asio: High level HTTP/2 C++ library &mdash; nghttp2 0.7.2-DEV documentation</title>
   
 
   
   
 
   
-  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700&subset=latin,cyrillic' rel='stylesheet' type='text/css'>
 
   
   
@@ -28,7 +28,7 @@
   
 
   
-    <link rel="top" title="nghttp2 0.6.3-DEV documentation" href="index.html"/>
+    <link rel="top" title="nghttp2 0.7.2-DEV documentation" href="index.html"/>
         <link rel="next" title="Python API Reference" href="python-apiref.html"/>
         <link rel="prev" title="API Reference" href="apiref.html"/> 
 
@@ -47,8 +47,9 @@
         
           <a href="index.html" class="fa fa-home"> nghttp2</a>
         
-        <div role="search">
-  <form id ="rtd-search-form" class="wy-form" action="search.html" method="get">
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" />
     <input type="hidden" name="check_keywords" value="yes" />
     <input type="hidden" name="area" value="default" />
@@ -58,20 +59,27 @@
 
       <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
         
-        
-            <ul class="current">
+          
+          
+              <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="package_README.html">nghttp2 - HTTP/2 C Library</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#development-status">Development Status</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#public-test-server">Public Test Server</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#requirements">Requirements</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#build-from-git">Build from git</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#building-documentation">Building documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#unit-tests">Unit tests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#integration-tests">Integration tests</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#client-server-and-proxy-programs">Client, Server and Proxy programs</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#benchmarking-tool">Benchmarking tool</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#hpack-tools">HPACK tools</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#libnghttp2-asio-high-level-http-2-c-library">libnghttp2_asio: High level HTTP/2 C++ library</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#python-bindings">Python bindings</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#contribution">Contribution</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="contribute.html">Contribution Guidelines</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="contribute.html#coding-style">Coding style</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="building-android-binary.html">Building Android binary</a></li>
@@ -90,34 +98,32 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="nghttp.1.html">nghttp(1)</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#name">NAME</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#options">OPTIONS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#options">OPTIONS:</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="nghttpd.1.html">nghttpd(1)</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#name">NAME</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#options">OPTIONS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#options">OPTIONS:</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="nghttpx.1.html">nghttpx(1)</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#name">NAME</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#options">OPTIONS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#options">OPTIONS:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#files">FILES</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#signals">SIGNALS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="h2load.1.html">h2load(1)</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#name">NAME</a></li>
 <li class="toctree-l2"><a class="reference internal" href="h2load.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="h2load.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#options">OPTIONS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#options">OPTIONS:</a></li>
 <li class="toctree-l2"><a class="reference internal" href="h2load.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
@@ -131,8 +137,9 @@
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#specifying-additional-ca-certificate">Specifying additional CA certificate</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#read-write-rate-limit">Read/write rate limit</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#rewriting-location-header-field">Rewriting location header field</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#hot-deploy">Hot deploy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#hot-swapping">Hot swapping</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#re-opening-log-files">Re-opening log files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#multiple-http-1-backend-addresses">Multiple HTTP/1 backend addresses</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="h2load-howto.html">h2load - HTTP/2 benchmarking tool - HOW-TO</a><ul>
@@ -166,8 +173,10 @@
 <li class="toctree-l1"><a class="reference internal" href="asio_http2.h.html">asio_http2.h</a></li>
 <li class="toctree-l1"><a class="reference external" href="https://github.com/tatsuhiro-t/nghttp2">Source</a></li>
 <li class="toctree-l1"><a class="reference external" href="https://github.com/tatsuhiro-t/nghttp2/issues">Issues</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://nghttp2.org/">nghttp2.org</a></li>
 </ul>
 
+          
         
       </div>
       &nbsp;
@@ -227,24 +236,21 @@ HTTP/2 server looks like this:</p>
 <span class="k">using</span> <span class="k">namespace</span> <span class="n">nghttp2</span><span class="o">::</span><span class="n">asio_http2</span><span class="p">;</span>
 <span class="k">using</span> <span class="k">namespace</span> <span class="n">nghttp2</span><span class="o">::</span><span class="n">asio_http2</span><span class="o">::</span><span class="n">server</span><span class="p">;</span>
 
-<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span><span class="o">*</span> <span class="n">argv</span><span class="p">[])</span>
-<span class="p">{</span>
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">argv</span><span class="p">[])</span> <span class="p">{</span>
   <span class="n">http2</span> <span class="n">server</span><span class="p">;</span>
 
-  <span class="n">server</span><span class="p">.</span><span class="n">listen</span>
-    <span class="p">(</span><span class="s">&quot;*&quot;</span><span class="p">,</span> <span class="mi">3000</span><span class="p">,</span>
-     <span class="p">[](</span><span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">request</span><span class="o">&gt;</span> <span class="n">req</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">response</span><span class="o">&gt;</span> <span class="n">res</span><span class="p">)</span>
-     <span class="p">{</span>
-       <span class="n">res</span><span class="o">-&gt;</span><span class="n">write_head</span><span class="p">(</span><span class="mi">200</span><span class="p">);</span>
-       <span class="n">res</span><span class="o">-&gt;</span><span class="n">end</span><span class="p">(</span><span class="s">&quot;hello, world&quot;</span><span class="p">);</span>
-     <span class="p">});</span>
+  <span class="n">server</span><span class="p">.</span><span class="n">listen</span><span class="p">(</span><span class="s">&quot;*&quot;</span><span class="p">,</span> <span class="mi">3000</span><span class="p">,</span> <span class="p">[](</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">request</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">req</span><span class="p">,</span>
+                              <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">response</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">res</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">res</span><span class="o">-&gt;</span><span class="n">write_head</span><span class="p">(</span><span class="mi">200</span><span class="p">);</span>
+    <span class="n">res</span><span class="o">-&gt;</span><span class="n">end</span><span class="p">(</span><span class="s">&quot;hello, world&quot;</span><span class="p">);</span>
+  <span class="p">});</span>
 <span class="p">}</span>
 </pre></div>
 </div>
 <p>First we instantiate <tt class="docutils literal"><span class="pre">nghttp2::asio_http2::server::http2</span></tt> object.
 Then call <tt class="docutils literal"><span class="pre">nghttp2::asio_http2::server::http2::listen</span></tt> function with
-address and port to listen to and callback function, namely &#8220;request
-callback&#8221;, invoked when request arrives.</p>
+address and port to listen to and callback function, namely &quot;request
+callback&quot;, invoked when request arrives.</p>
 <p>The <tt class="docutils literal"><span class="pre">req</span></tt> and <tt class="docutils literal"><span class="pre">res</span></tt> represent HTTP request and response
 respectively.  <tt class="docutils literal"><span class="pre">nghttp2::asio_http2_::server::response::write_head</span></tt>
 constructs HTTP response header fields.  The first argument is HTTP
@@ -252,7 +258,7 @@ status code, in the above example, which is 200.  The second argument,
 which is omitted in the above example, is additional header fields to
 send.</p>
 <p><tt class="docutils literal"><span class="pre">nghttp2::asio_http2::server::response::end</span></tt> sends responde body.
-In the above example, we send string &#8220;hello, world&#8221;.</p>
+In the above example, we send string &quot;hello, world&quot;.</p>
 <div class="section" id="serving-static-files-and-enabling-ssl-tls">
 <h3>Serving static files and enabling SSL/TLS<a class="headerlink" href="#serving-static-files-and-enabling-ssl-tls" title="Permalink to this headline">¶</a></h3>
 <p>In this example, we serve a couple of static files and also enable
@@ -262,32 +268,29 @@ SSL/TLS.</p>
 <span class="k">using</span> <span class="k">namespace</span> <span class="n">nghttp2</span><span class="o">::</span><span class="n">asio_http2</span><span class="p">;</span>
 <span class="k">using</span> <span class="k">namespace</span> <span class="n">nghttp2</span><span class="o">::</span><span class="n">asio_http2</span><span class="o">::</span><span class="n">server</span><span class="p">;</span>
 
-<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span><span class="o">*</span> <span class="n">argv</span><span class="p">[])</span>
-<span class="p">{</span>
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">argv</span><span class="p">[])</span> <span class="p">{</span>
   <span class="n">http2</span> <span class="n">server</span><span class="p">;</span>
 
   <span class="n">server</span><span class="p">.</span><span class="n">tls</span><span class="p">(</span><span class="s">&quot;server.key&quot;</span><span class="p">,</span> <span class="s">&quot;server.crt&quot;</span><span class="p">);</span>
 
-  <span class="n">server</span><span class="p">.</span><span class="n">listen</span>
-    <span class="p">(</span><span class="s">&quot;*&quot;</span><span class="p">,</span> <span class="mi">3000</span><span class="p">,</span>
-     <span class="p">[](</span><span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">request</span><span class="o">&gt;</span> <span class="n">req</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">response</span><span class="o">&gt;</span> <span class="n">res</span><span class="p">)</span>
-     <span class="p">{</span>
-       <span class="k">if</span><span class="p">(</span><span class="n">req</span><span class="o">-&gt;</span><span class="n">path</span><span class="p">()</span> <span class="o">==</span> <span class="s">&quot;/&quot;</span> <span class="o">||</span> <span class="n">req</span><span class="o">-&gt;</span><span class="n">path</span><span class="p">()</span> <span class="o">==</span> <span class="s">&quot;/index.html&quot;</span><span class="p">)</span> <span class="p">{</span>
-         <span class="n">res</span><span class="o">-&gt;</span><span class="n">write_head</span><span class="p">(</span><span class="mi">200</span><span class="p">);</span>
-         <span class="n">res</span><span class="o">-&gt;</span><span class="n">end</span><span class="p">(</span><span class="n">file_reader</span><span class="p">(</span><span class="s">&quot;index.html&quot;</span><span class="p">));</span>
-       <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
-         <span class="n">res</span><span class="o">-&gt;</span><span class="n">write_head</span><span class="p">(</span><span class="mi">404</span><span class="p">);</span>
-         <span class="n">res</span><span class="o">-&gt;</span><span class="n">end</span><span class="p">(</span><span class="s">&quot;&lt;html&gt;&lt;head&gt;&lt;title&gt;404&lt;/title&gt;&lt;/head&gt;&quot;</span>
-                  <span class="s">&quot;&lt;body&gt;404 Not Found&lt;/body&gt;&lt;/html&gt;&quot;</span><span class="p">);</span>
-       <span class="p">}</span>
-     <span class="p">});</span>
+  <span class="n">server</span><span class="p">.</span><span class="n">listen</span><span class="p">(</span><span class="s">&quot;*&quot;</span><span class="p">,</span> <span class="mi">3000</span><span class="p">,</span> <span class="p">[](</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">request</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">req</span><span class="p">,</span>
+                              <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">response</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">res</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">req</span><span class="o">-&gt;</span><span class="n">path</span><span class="p">()</span> <span class="o">==</span> <span class="s">&quot;/&quot;</span> <span class="o">||</span> <span class="n">req</span><span class="o">-&gt;</span><span class="n">path</span><span class="p">()</span> <span class="o">==</span> <span class="s">&quot;/index.html&quot;</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">res</span><span class="o">-&gt;</span><span class="n">write_head</span><span class="p">(</span><span class="mi">200</span><span class="p">);</span>
+      <span class="n">res</span><span class="o">-&gt;</span><span class="n">end</span><span class="p">(</span><span class="n">file_reader</span><span class="p">(</span><span class="s">&quot;index.html&quot;</span><span class="p">));</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+      <span class="n">res</span><span class="o">-&gt;</span><span class="n">write_head</span><span class="p">(</span><span class="mi">404</span><span class="p">);</span>
+      <span class="n">res</span><span class="o">-&gt;</span><span class="n">end</span><span class="p">(</span><span class="s">&quot;&lt;html&gt;&lt;head&gt;&lt;title&gt;404&lt;/title&gt;&lt;/head&gt;&quot;</span>
+               <span class="s">&quot;&lt;body&gt;404 Not Found&lt;/body&gt;&lt;/html&gt;&quot;</span><span class="p">);</span>
+    <span class="p">}</span>
+  <span class="p">});</span>
 <span class="p">}</span>
 </pre></div>
 </div>
 <p>Specifying path to private key file and certificate file in
 <tt class="docutils literal"><span class="pre">nghttp2::asio_http2::server::http2::tls</span></tt> will enable SSL/TLS.  Both
 files must be in PEM format.</p>
-<p>In the above example, if request path is either &#8220;/&#8221; or &#8220;/index.html&#8221;,
+<p>In the above example, if request path is either &quot;/&quot; or &quot;/index.html&quot;,
 we serve index.html file in the current working directory.
 <tt class="docutils literal"><span class="pre">nghttp2::asio_http2::server::response::end</span></tt> has overload to take
 function of type <tt class="docutils literal"><span class="pre">nghttp2::asio_http2::read_cb</span></tt> and application pass
@@ -303,43 +306,40 @@ function to generate function to server static file.</p>
 <span class="k">using</span> <span class="k">namespace</span> <span class="n">nghttp2</span><span class="o">::</span><span class="n">asio_http2</span><span class="p">;</span>
 <span class="k">using</span> <span class="k">namespace</span> <span class="n">nghttp2</span><span class="o">::</span><span class="n">asio_http2</span><span class="o">::</span><span class="n">server</span><span class="p">;</span>
 
-<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span><span class="o">*</span> <span class="n">argv</span><span class="p">[])</span>
-<span class="p">{</span>
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">argv</span><span class="p">[])</span> <span class="p">{</span>
   <span class="n">http2</span> <span class="n">server</span><span class="p">;</span>
 
   <span class="n">server</span><span class="p">.</span><span class="n">tls</span><span class="p">(</span><span class="s">&quot;server.key&quot;</span><span class="p">,</span> <span class="s">&quot;server.crt&quot;</span><span class="p">);</span>
 
-  <span class="n">server</span><span class="p">.</span><span class="n">listen</span>
-    <span class="p">(</span><span class="s">&quot;*&quot;</span><span class="p">,</span> <span class="mi">3000</span><span class="p">,</span>
-     <span class="p">[](</span><span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">request</span><span class="o">&gt;</span> <span class="n">req</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">response</span><span class="o">&gt;</span> <span class="n">res</span><span class="p">)</span>
-     <span class="p">{</span>
-       <span class="k">if</span><span class="p">(</span><span class="n">req</span><span class="o">-&gt;</span><span class="n">path</span><span class="p">()</span> <span class="o">==</span> <span class="s">&quot;/&quot;</span><span class="p">)</span> <span class="p">{</span>
-         <span class="n">req</span><span class="o">-&gt;</span><span class="n">push</span><span class="p">(</span><span class="s">&quot;GET&quot;</span><span class="p">,</span> <span class="s">&quot;/my.css&quot;</span><span class="p">);</span>
+  <span class="n">server</span><span class="p">.</span><span class="n">listen</span><span class="p">(</span><span class="s">&quot;*&quot;</span><span class="p">,</span> <span class="mi">3000</span><span class="p">,</span> <span class="p">[](</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">request</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">req</span><span class="p">,</span>
+                              <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">response</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">res</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">req</span><span class="o">-&gt;</span><span class="n">path</span><span class="p">()</span> <span class="o">==</span> <span class="s">&quot;/&quot;</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">req</span><span class="o">-&gt;</span><span class="n">push</span><span class="p">(</span><span class="s">&quot;GET&quot;</span><span class="p">,</span> <span class="s">&quot;/my.css&quot;</span><span class="p">);</span>
 
-         <span class="n">res</span><span class="o">-&gt;</span><span class="n">write_head</span><span class="p">(</span><span class="mi">200</span><span class="p">);</span>
-         <span class="n">res</span><span class="o">-&gt;</span><span class="n">end</span><span class="p">(</span><span class="n">file_reader</span><span class="p">(</span><span class="s">&quot;index.html&quot;</span><span class="p">));</span>
+      <span class="n">res</span><span class="o">-&gt;</span><span class="n">write_head</span><span class="p">(</span><span class="mi">200</span><span class="p">);</span>
+      <span class="n">res</span><span class="o">-&gt;</span><span class="n">end</span><span class="p">(</span><span class="n">file_reader</span><span class="p">(</span><span class="s">&quot;index.html&quot;</span><span class="p">));</span>
 
-         <span class="k">return</span><span class="p">;</span>
-       <span class="p">}</span>
+      <span class="k">return</span><span class="p">;</span>
+    <span class="p">}</span>
 
-       <span class="k">if</span><span class="p">(</span><span class="n">req</span><span class="o">-&gt;</span><span class="n">path</span><span class="p">()</span> <span class="o">==</span> <span class="s">&quot;/my.css&quot;</span><span class="p">)</span> <span class="p">{</span>
-         <span class="n">res</span><span class="o">-&gt;</span><span class="n">write_head</span><span class="p">(</span><span class="mi">200</span><span class="p">);</span>
-         <span class="n">res</span><span class="o">-&gt;</span><span class="n">end</span><span class="p">(</span><span class="n">file_reader</span><span class="p">(</span><span class="s">&quot;my.css&quot;</span><span class="p">));</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">req</span><span class="o">-&gt;</span><span class="n">path</span><span class="p">()</span> <span class="o">==</span> <span class="s">&quot;/my.css&quot;</span><span class="p">)</span> <span class="p">{</span>
+      <span class="n">res</span><span class="o">-&gt;</span><span class="n">write_head</span><span class="p">(</span><span class="mi">200</span><span class="p">);</span>
+      <span class="n">res</span><span class="o">-&gt;</span><span class="n">end</span><span class="p">(</span><span class="n">file_reader</span><span class="p">(</span><span class="s">&quot;my.css&quot;</span><span class="p">));</span>
 
-         <span class="k">return</span><span class="p">;</span>
-       <span class="p">}</span>
+      <span class="k">return</span><span class="p">;</span>
+    <span class="p">}</span>
 
-       <span class="n">res</span><span class="o">-&gt;</span><span class="n">write_head</span><span class="p">(</span><span class="mi">404</span><span class="p">);</span>
-       <span class="n">res</span><span class="o">-&gt;</span><span class="n">end</span><span class="p">(</span><span class="s">&quot;&lt;html&gt;&lt;head&gt;&lt;title&gt;404&lt;/title&gt;&lt;/head&gt;&quot;</span>
-                <span class="s">&quot;&lt;body&gt;404 Not Found&lt;/body&gt;&lt;/html&gt;&quot;</span><span class="p">);</span>
-     <span class="p">});</span>
+    <span class="n">res</span><span class="o">-&gt;</span><span class="n">write_head</span><span class="p">(</span><span class="mi">404</span><span class="p">);</span>
+    <span class="n">res</span><span class="o">-&gt;</span><span class="n">end</span><span class="p">(</span><span class="s">&quot;&lt;html&gt;&lt;head&gt;&lt;title&gt;404&lt;/title&gt;&lt;/head&gt;&quot;</span>
+             <span class="s">&quot;&lt;body&gt;404 Not Found&lt;/body&gt;&lt;/html&gt;&quot;</span><span class="p">);</span>
+  <span class="p">});</span>
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>When client requested &#8220;/&#8221;, we push &#8220;/my.css&#8221;.  To push resource, call
+<p>When client requested &quot;/&quot;, we push &quot;/my.css&quot;.  To push resource, call
 <tt class="docutils literal"><span class="pre">nghttp2::asio_http2::server::request::push</span></tt> function with desired
 method and path.  Later, the callback will be called with the pushed
-resource &#8220;/my.css&#8221;.</p>
+resource &quot;/my.css&quot;.</p>
 </div>
 <div class="section" id="enable-multi-threading">
 <h3>Enable multi-threading<a class="headerlink" href="#enable-multi-threading" title="Permalink to this headline">¶</a></h3>
@@ -369,37 +369,30 @@ blocking task there.  The example follows:</p>
 <span class="k">using</span> <span class="k">namespace</span> <span class="n">nghttp2</span><span class="o">::</span><span class="n">asio_http2</span><span class="p">;</span>
 <span class="k">using</span> <span class="k">namespace</span> <span class="n">nghttp2</span><span class="o">::</span><span class="n">asio_http2</span><span class="o">::</span><span class="n">server</span><span class="p">;</span>
 
-<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span><span class="o">*</span> <span class="n">argv</span><span class="p">[])</span>
-<span class="p">{</span>
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">argv</span><span class="p">[])</span> <span class="p">{</span>
   <span class="n">http2</span> <span class="n">server</span><span class="p">;</span>
 
   <span class="n">server</span><span class="p">.</span><span class="n">num_concurrent_tasks</span><span class="p">(</span><span class="mi">16</span><span class="p">);</span>
 
-  <span class="n">server</span><span class="p">.</span><span class="n">listen</span>
-    <span class="p">(</span><span class="s">&quot;*&quot;</span><span class="p">,</span> <span class="mi">3000</span><span class="p">,</span>
-     <span class="p">[](</span><span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">request</span><span class="o">&gt;</span> <span class="n">req</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">response</span><span class="o">&gt;</span> <span class="n">res</span><span class="p">)</span>
-     <span class="p">{</span>
-       <span class="n">req</span><span class="o">-&gt;</span><span class="n">run_task</span>
-         <span class="p">([</span><span class="n">res</span><span class="p">](</span><span class="n">channel</span><span class="o">&amp;</span> <span class="n">channel</span><span class="p">)</span>
-          <span class="p">{</span>
-            <span class="c1">// executed in different thread than the thread where</span>
-            <span class="c1">// request callback was executed.</span>
+  <span class="n">server</span><span class="p">.</span><span class="n">listen</span><span class="p">(</span><span class="s">&quot;*&quot;</span><span class="p">,</span> <span class="mi">3000</span><span class="p">,</span> <span class="p">[](</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">request</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">req</span><span class="p">,</span>
+                              <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">response</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">res</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">req</span><span class="o">-&gt;</span><span class="n">run_task</span><span class="p">([</span><span class="n">res</span><span class="p">](</span><span class="n">channel</span> <span class="o">&amp;</span><span class="n">channel</span><span class="p">)</span> <span class="p">{</span>
+      <span class="c1">// executed in different thread than the thread where</span>
+      <span class="c1">// request callback was executed.</span>
 
-            <span class="c1">// using res directly here is not safe.  Capturing it by</span>
-            <span class="c1">// value is safe because it is std::shared_ptr.</span>
+      <span class="c1">// using res directly here is not safe.  Capturing it by</span>
+      <span class="c1">// value is safe because it is std::shared_ptr.</span>
 
-            <span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+      <span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
 
-            <span class="n">channel</span><span class="p">.</span><span class="n">post</span>
-              <span class="p">([</span><span class="n">res</span><span class="p">]()</span>
-               <span class="p">{</span>
-                 <span class="c1">// executed in the same thread where request callback</span>
-                 <span class="c1">// was executed.</span>
-                 <span class="n">res</span><span class="o">-&gt;</span><span class="n">write_head</span><span class="p">(</span><span class="mi">200</span><span class="p">);</span>
-                 <span class="n">res</span><span class="o">-&gt;</span><span class="n">end</span><span class="p">(</span><span class="s">&quot;hello, world&quot;</span><span class="p">);</span>
-               <span class="p">});</span>
-          <span class="p">});</span>
-     <span class="p">});</span>
+      <span class="n">channel</span><span class="p">.</span><span class="n">post</span><span class="p">([</span><span class="n">res</span><span class="p">]()</span> <span class="p">{</span>
+        <span class="c1">// executed in the same thread where request callback</span>
+        <span class="c1">// was executed.</span>
+        <span class="n">res</span><span class="o">-&gt;</span><span class="n">write_head</span><span class="p">(</span><span class="mi">200</span><span class="p">);</span>
+        <span class="n">res</span><span class="o">-&gt;</span><span class="n">end</span><span class="p">(</span><span class="s">&quot;hello, world&quot;</span><span class="p">);</span>
+      <span class="p">});</span>
+    <span class="p">});</span>
+  <span class="p">});</span>
 <span class="p">}</span>
 </pre></div>
 </div>
@@ -439,11 +432,12 @@ called.</p>
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2012, 2014, Tatsuhiro Tsujikawa.
+        &copy; Copyright 2012, 2015, Tatsuhiro Tsujikawa.
     </p>
   </div>
 
-  <a href="https://github.com/snide/sphinx_rtd_theme">Sphinx theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+  
 </footer>
         </div>
       </div>
@@ -459,7 +453,7 @@ called.</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.6.3-DEV',
+            VERSION:'0.7.2-DEV',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  false
