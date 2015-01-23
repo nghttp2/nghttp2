@@ -290,6 +290,32 @@ func TestH2H1ConnectFailure(t *testing.T) {
 	}
 }
 
+// TestH2H1AssembleCookies tests that crumbled cookies in HTTP/2
+// request is assembled into 1 when forwarding to HTTP/1 backend link.
+func TestH2H1AssembleCookies(t *testing.T) {
+	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
+		if got, want := r.Header.Get("Cookie"), "alpha; bravo; charlie"; got != want {
+			t.Errorf("Cookie: %v; want %v", got, want)
+		}
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1AssembleCookies",
+		header: []hpack.HeaderField{
+			pair("cookie", "alpha"),
+			pair("cookie", "bravo"),
+			pair("cookie", "charlie"),
+		},
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+}
+
 // TestH2H1GracefulShutdown tests graceful shutdown.
 func TestH2H1GracefulShutdown(t *testing.T) {
 	st := newServerTester(nil, t, noopHandler)
