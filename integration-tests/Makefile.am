@@ -22,8 +22,13 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 EXTRA_DIST = \
-	nghttpx_test.go \
-	server_tester.go
+	nghttpx_http1_test.go \
+	nghttpx_http2_test.go \
+	nghttpx_spdy_test.go \
+	server_tester.go \
+	server.key \
+	server.crt \
+	setenv
 
 .PHONY: itprep it
 
