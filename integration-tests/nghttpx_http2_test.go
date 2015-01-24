@@ -316,6 +316,48 @@ func TestH2H1AssembleCookies(t *testing.T) {
 	}
 }
 
+// TestH2H1TETrailer tests that server accepts TE request header field
+// if it has trailer only.
+func TestH2H1TETrailer(t *testing.T) {
+	st := newServerTester(nil, t, noopHandler)
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1TETrailer",
+		header: []hpack.HeaderField{
+			pair("te", "trailer"),
+		},
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+}
+
+// TestH2H1TEGzip tests that server reset stream if TE request
+// header field contains gzip.
+func TestH2H1TEGzip(t *testing.T) {
+	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Error("server should not forward bad request")
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1TEGzip",
+		header: []hpack.HeaderField{
+			pair("te", "gzip"),
+		},
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.errCode, http2.ErrCodeProtocol; got != want {
+		t.Errorf("res.errCode = %v; want %v", res.errCode, want)
+	}
+}
+
 // TestH2H1GracefulShutdown tests graceful shutdown.
 func TestH2H1GracefulShutdown(t *testing.T) {
 	st := newServerTester(nil, t, noopHandler)
