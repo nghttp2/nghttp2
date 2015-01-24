@@ -31,6 +31,7 @@
 #include <fcntl.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
+#include <arpa/inet.h>
 
 #include <cassert>
 #include <set>
@@ -1460,11 +1461,33 @@ int verify_callback(int preverify_ok, X509_STORE_CTX *ctx) {
 } // namespace
 
 namespace {
+// finds a readable address and adds stores it in the given string
+char *get_ip_str(const struct sockaddr *sa, char *s, size_t maxlen) {
+  switch (sa->sa_family) {
+  case AF_INET:
+    inet_ntop(AF_INET, &(((struct sockaddr_in *)sa)->sin_addr), s, maxlen);
+    break;
+
+  case AF_INET6:
+    inet_ntop(AF_INET6, &(((struct sockaddr_in6 *)sa)->sin6_addr), s, maxlen);
+    break;
+
+  default:
+    strncpy(s, "Unknown AF", maxlen);
+    return NULL;
+  }
+
+  return s;
+}
+} // namespace
+
+namespace {
 int start_listen(struct ev_loop *loop, Sessions *sessions,
                  const Config *config) {
   addrinfo hints;
   int r;
   bool ok = false;
+  const char *addr = nullptr;
 
   auto acceptor = std::make_shared<AcceptHandler>(sessions, config);
   auto service = util::utos(config->port);
@@ -1477,12 +1500,17 @@ int start_listen(struct ev_loop *loop, Sessions *sessions,
   hints.ai_flags |= AI_ADDRCONFIG;
 #endif // AI_ADDRCONFIG
 
+  if (!config->address.empty()) {
+    addr = config->address.c_str();
+  }
+
   addrinfo *res, *rp;
-  r = getaddrinfo(nullptr, service.c_str(), &hints, &res);
+  r = getaddrinfo(addr, service.c_str(), &hints, &res);
   if (r != 0) {
     std::cerr << "getaddrinfo() failed: " << gai_strerror(r) << std::endl;
     return -1;
   }
+
   for (rp = res; rp; rp = rp->ai_next) {
     int fd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
     if (fd == -1) {
@@ -1508,8 +1536,10 @@ int start_listen(struct ev_loop *loop, Sessions *sessions,
       new ListenEventHandler(sessions, fd, acceptor);
 
       if (config->verbose) {
-        std::cout << (rp->ai_family == AF_INET ? "IPv4" : "IPv6")
-                  << ": listen on port " << config->port << std::endl;
+        char s[INET6_ADDRSTRLEN];
+        get_ip_str((struct sockaddr *)rp->ai_addr, s, sizeof s);
+        std::cout << (rp->ai_family == AF_INET ? "IPv4" : "IPv6") << ": listen "
+                  << s << ":" << config->port << std::endl;
       }
       ok = true;
       continue;
