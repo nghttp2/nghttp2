@@ -207,7 +207,8 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
     return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
   }
 
-  if (token == http2::HD_CONTENT_LENGTH) {
+  switch (token) {
+  case http2::HD_CONTENT_LENGTH: {
     auto len = util::parse_uint(value, valuelen);
     if (len == -1) {
       if (upstream->error_reply(downstream, 400) != 0) {
@@ -222,6 +223,14 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
       return 0;
     }
     downstream->set_request_content_length(len);
+    break;
+  }
+  case http2::HD_TE:
+    if (!http2::check_http2_te(value, valuelen)) {
+      upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
+      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+    }
+    break;
   }
 
   downstream->add_request_header(name, namelen, value, valuelen,

@@ -93,6 +93,8 @@ int main(int argc, char *argv[]) {
                    shrpx::test_http2_http2_header_allowed) ||
       !CU_add_test(pSuite, "http2_mandatory_request_headers_presence",
                    shrpx::test_http2_mandatory_request_headers_presence) ||
+      !CU_add_test(pSuite, "http2_check_http2_te",
+                   shrpx::test_http2_check_http2_te) ||
       !CU_add_test(pSuite, "downstream_index_request_headers",
                    shrpx::test_downstream_index_request_headers) ||
       !CU_add_test(pSuite, "downstream_index_response_headers",

@@ -290,4 +290,60 @@ void test_http2_mandatory_request_headers_presence(void) {
   CU_ASSERT(http2::http2_mandatory_request_headers_presence(hdidx));
 }
 
+void test_http2_check_http2_te(void) {
+  {
+    const uint8_t v[] = "trailer";
+    CU_ASSERT(http2::check_http2_te(v, sizeof(v) - 1));
+  }
+  {
+    const uint8_t v[] = "Trailer";
+    CU_ASSERT(http2::check_http2_te(v, sizeof(v) - 1));
+  }
+  {
+    const uint8_t v[] = "trailer,";
+    CU_ASSERT(http2::check_http2_te(v, sizeof(v) - 1));
+  }
+  {
+    const uint8_t v[] = "trailer,,";
+    CU_ASSERT(http2::check_http2_te(v, sizeof(v) - 1));
+  }
+  {
+    const uint8_t v[] = "trailer, ,";
+    CU_ASSERT(http2::check_http2_te(v, sizeof(v) - 1));
+  }
+  {
+    const uint8_t v[] = "trailer, , ";
+    CU_ASSERT(http2::check_http2_te(v, sizeof(v) - 1));
+  }
+  {
+    const uint8_t v[] = "trailer; q=0.9";
+    CU_ASSERT(http2::check_http2_te(v, sizeof(v) - 1));
+  }
+  {
+    const uint8_t v[] = "trailer ; q=0.9";
+    CU_ASSERT(http2::check_http2_te(v, sizeof(v) - 1));
+  }
+  {
+    const uint8_t v[] = "trailer ; q=0.9, trailer";
+    CU_ASSERT(http2::check_http2_te(v, sizeof(v) - 1));
+  }
+  {
+    const uint8_t v[] = "trailer ; q=0.9,  trailer";
+    CU_ASSERT(http2::check_http2_te(v, sizeof(v) - 1));
+  }
+  // failure cases
+  {
+    const uint8_t v[] = "trailer; q=0.9, gzip";
+    CU_ASSERT(!http2::check_http2_te(v, sizeof(v) - 1));
+  }
+  {
+    const uint8_t v[] = "traile";
+    CU_ASSERT(!http2::check_http2_te(v, sizeof(v) - 1));
+  }
+  {
+    const uint8_t v[] = "trailerr";
+    CU_ASSERT(!http2::check_http2_te(v, sizeof(v) - 1));
+  }
+}
+
 } // namespace shrpx
