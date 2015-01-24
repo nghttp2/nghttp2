@@ -41,7 +41,9 @@ AM_CPPFLAGS = \
 	@JANSSON_CFLAGS@ \
 	@ZLIB_CFLAGS@ \
 	@DEFS@
-AM_LDFLAGS = \
+
+LDADD = $(top_builddir)/lib/libnghttp2.la \
+	$(top_builddir)/third-party/libhttp-parser.la \
 	@JEMALLOC_LIBS@ \
 	@LIBSPDYLAY_LIBS@ \
 	@XML_LIBS@ \
@@ -50,10 +52,6 @@ AM_LDFLAGS = \
 	@JANSSON_LIBS@ \
 	@ZLIB_LIBS@ \
 	@APPLDFLAGS@
-
-LDADD = \
-	$(top_builddir)/lib/libnghttp2.la \
-	$(top_builddir)/third-party/libhttp-parser.la
 
 if ENABLE_APP
 
@@ -131,8 +129,7 @@ noinst_LIBRARIES = libnghttpx.a
 libnghttpx_a_SOURCES = ${NGHTTPX_SRCS}
 
 nghttpx_SOURCES = shrpx.cc shrpx.h
-nghttpx_LDFLAGS =
-nghttpx_LDADD = libnghttpx.a ${LDADD} ${AM_LDFLAGS}
+nghttpx_LDADD = libnghttpx.a ${LDADD}
 
 if HAVE_CUNIT
 check_PROGRAMS += nghttpx-unittest
@@ -147,10 +144,8 @@ nghttpx_unittest_SOURCES = shrpx-unittest.cc \
 	ringbuf_test.cc ringbuf_test.h \
 	memchunk_test.cc memchunk_test.h
 nghttpx_unittest_CPPFLAGS = ${AM_CPPFLAGS}\
-	 -DNGHTTP2_TESTS_DIR=\"$(top_srcdir)/tests\"
-nghttpx_unittest_LDFLAGS = ${AM_LDFLAGS} \
-	@CUNIT_LIBS@ @TESTLDFLAGS@
-nghttpx_unittest_LDADD = libnghttpx.a ${LDADD}
+	-DNGHTTP2_TESTS_DIR=\"$(top_srcdir)/tests\"
+nghttpx_unittest_LDADD = libnghttpx.a ${LDADD} @CUNIT_LIBS@ @TESTLDADD@
 
 TESTS += nghttpx-unittest
 endif # HAVE_CUNIT
@@ -186,15 +181,14 @@ libnghttp2_asio_la_SOURCES = \
 	util.cc util.h http2.cc http2.h \
 	ssl.cc ssl.h
 
-libnghttp2_asio_la_CPPFLAGS= ${AM_CPPFLAGS} ${BOOST_CPPFLAGS}
-libnghttp2_asio_la_LDFLAGS = \
+libnghttp2_asio_la_CPPFLAGS = ${AM_CPPFLAGS} ${BOOST_CPPFLAGS}
+libnghttp2_asio_la_LDFLAGS = -no-undefined -version-info 0:0:0
+libnghttp2_asio_la_LIBADD = \
+	$(top_builddir)/lib/libnghttp2.la \
 	${BOOST_LDFLAGS} \
 	${BOOST_ASIO_LIB} \
 	${BOOST_THREAD_LIB} \
 	${BOOST_SYSTEM_LIB} \
-	@OPENSSL_LIBS@ \
-	-no-undefined \
-	-version-info 0:0:0
-libnghttp2_asio_la_LIBADD = $(top_builddir)/lib/libnghttp2.la
+	@OPENSSL_LIBS@
 
 endif # ENABLE_ASIO_LIB

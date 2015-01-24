@@ -33,12 +33,10 @@ AM_CPPFLAGS = \
 	@LIBEVENT_OPENSSL_CFLAGS@ \
 	@OPENSSL_CFLAGS@ \
 	@DEFS@
-AM_LDFLAGS = \
+LDADD = $(top_builddir)/lib/libnghttp2.la \
+	$(top_builddir)/third-party/libhttp-parser.la \
 	@LIBEVENT_OPENSSL_LIBS@ \
 	@OPENSSL_LIBS@
-LDADD = \
-	$(top_builddir)/lib/libnghttp2.la \
-	$(top_builddir)/third-party/libhttp-parser.la
 
 noinst_PROGRAMS = client libevent-client libevent-server deflate
 
@@ -63,22 +61,18 @@ if ENABLE_ASIO_LIB
 noinst_PROGRAMS += asio-sv asio-sv2 asio-sv3
 
 ASIOCPPFLAGS = ${BOOST_CPPFLAGS} ${AM_CPPFLAGS}
-ASIOLDFLAGS = @JEMALLOC_LIBS@
-ASIOLDADD = $(top_builddir)/src/libnghttp2_asio.la
+ASIOLDADD = $(top_builddir)/src/libnghttp2_asio.la @JEMALLOC_LIBS@
 
 asio_sv_SOURCES = asio-sv.cc
 asio_sv_CPPFLAGS = ${ASIOCPPFLAGS}
-asio_sv_LDFLAGS = ${ASIOLDFLAGS}
 asio_sv_LDADD = ${ASIOLDADD}
 
 asio_sv2_SOURCES = asio-sv2.cc
 asio_sv2_CPPFLAGS = ${ASIOCPPFLAGS}
-asio_sv2_LDFLAGS = ${ASIOLDFLAGS}
 asio_sv2_LDADD = ${ASIOLDADD}
 
 asio_sv3_SOURCES = asio-sv3.cc
 asio_sv3_CPPFLAGS = ${ASIOCPPFLAGS}
-asio_sv3_LDFLAGS = ${ASIOLDFLAGS}
 asio_sv3_LDADD = ${ASIOLDADD}
 
 endif # ENABLE_ASIO_LIB

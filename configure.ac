@@ -236,7 +236,7 @@ AC_LANG_POP()
 # Checks for libraries.
 
 # Additional libraries required for tests.
-TESTLDFLAGS=
+TESTLDADD=
 
 # Additional libraries required for programs under src directory.
 APPLDFLAGS=
@@ -245,7 +245,7 @@ LIBS_OLD=$LIBS
 # Search for dlsym function, which is used in tests. Linux needs -ldl,
 # but netbsd does not need it.
 AC_SEARCH_LIBS([dlsym], [dl])
-TESTLDFLAGS="$LIBS $TESTLDFLAGS"
+TESTLDADD="$LIBS $TESTLDADD"
 LIBS=$LIBS_OLD
 
 LIBS_OLD=$LIBS
@@ -636,7 +636,7 @@ if test "x$threads" != "xyes" ||
     AC_DEFINE([NOTHREADS], [1], [Define to 1 if you want to disable threads.])
 fi
 
-AC_SUBST([TESTLDFLAGS])
+AC_SUBST([TESTLDADD])
 AC_SUBST([APPLDFLAGS])
 
 AC_CONFIG_FILES([
