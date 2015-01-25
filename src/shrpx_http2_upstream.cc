@@ -226,7 +226,7 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
     break;
   }
   case http2::HD_TE:
-    if (!http2::check_http2_te(value, valuelen)) {
+    if (!util::strieq("trailers", value, valuelen)) {
       upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
       return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
     }

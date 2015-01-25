@@ -317,16 +317,16 @@ func TestH2H1AssembleCookies(t *testing.T) {
 	}
 }
 
-// TestH2H1TETrailer tests that server accepts TE request header field
-// if it has trailer only.
-func TestH2H1TETrailer(t *testing.T) {
+// TestH2H1TETrailers tests that server accepts TE request header
+// field if it has trailers only.
+func TestH2H1TETrailers(t *testing.T) {
 	st := newServerTester(nil, t, noopHandler)
 	defer st.Close()
 
 	res, err := st.http2(requestParam{
-		name: "TestH2H1TETrailer",
+		name: "TestH2H1TETrailers",
 		header: []hpack.HeaderField{
-			pair("te", "trailer"),
+			pair("te", "trailers"),
 		},
 	})
 	if err != nil {
@@ -337,8 +337,8 @@ func TestH2H1TETrailer(t *testing.T) {
 	}
 }
 
-// TestH2H1TEGzip tests that server reset stream if TE request
-// header field contains gzip.
+// TestH2H1TEGzip tests that server resets stream if TE request header
+// field contains gzip.
 func TestH2H1TEGzip(t *testing.T) {
 	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
 		t.Error("server should not forward bad request")

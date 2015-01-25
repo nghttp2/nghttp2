@@ -664,38 +664,6 @@ const Headers::value_type *get_header(const int *hdidx, int token,
   return &nva[i];
 }
 
-bool check_http2_te(const uint8_t *value, size_t valuelen) {
-  auto first = value;
-  auto last = first + valuelen;
-  for (;;) {
-    if (first == last) {
-      return true;
-    }
-    auto end_param = std::find(first, last, ',');
-    auto len = end_param - first;
-    if (!util::istartsWith(reinterpret_cast<const char *>(first), len,
-                           "trailer")) {
-      return false;
-    }
-    if (len == sizeof("trailer") - 1) {
-      goto next;
-    }
-    switch (first[sizeof("trailer") - 1]) {
-    case ' ':
-    case ';':
-      goto next;
-    }
-    return false;
-  next:
-    if (end_param == last) {
-      return true;
-    }
-    first = std::find_if_not(end_param + 1, last, [](uint8_t c) {
-      return c == ' ' || c == '\t' || c == ',';
-    });
-  }
-}
-
 } // namespace http2
 
 } // namespace nghttp2

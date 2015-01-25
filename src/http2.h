@@ -244,12 +244,6 @@ bool http2_mandatory_request_headers_presence(const int *hdidx);
 const Headers::value_type *get_header(const int *hdidx, int token,
                                       const Headers &nva);
 
-// Returns true if TE request header field value |value| of length
-// |valuelen| is empty or only contains "trailers".  The valid header
-// field value is "trailer" and optionally followed by "," or OWS for
-// simplicity.
-bool check_http2_te(const uint8_t *value, size_t valuelen);
-
 } // namespace http2
 
 } // namespace nghttp2
