@@ -194,7 +194,7 @@ Performance:
 
     Set buffer size used to store backend response.
 
-    Default: ``64K``
+    Default: ``16K``
 
 
 Timeout:
