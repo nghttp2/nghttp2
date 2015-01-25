@@ -1,6 +1,7 @@
 package nghttp2
 
 import (
+	"crypto/tls"
 	"fmt"
 	"github.com/bradfitz/http2"
 	"github.com/bradfitz/http2/hpack"
@@ -355,6 +356,21 @@ func TestH2H1TEGzip(t *testing.T) {
 	}
 	if got, want := res.errCode, http2.ErrCodeProtocol; got != want {
 		t.Errorf("res.errCode = %v; want %v", res.errCode, want)
+	}
+}
+
+func TestH2H1SNI(t *testing.T) {
+	st := newServerTesterTLSConfig([]string{"--subcert=" + testDir + "/alt-server.key:" + testDir + "/alt-server.crt"}, t, noopHandler, &tls.Config{
+		ServerName: "alt-domain",
+	})
+	defer st.Close()
+
+	tlsConn := st.conn.(*tls.Conn)
+	connState := tlsConn.ConnectionState()
+	cert := connState.PeerCertificates[0]
+
+	if got, want := cert.Subject.CommonName, "alt-domain"; got != want {
+		t.Errorf("CommonName: %v; want %v", got, want)
 	}
 }
 

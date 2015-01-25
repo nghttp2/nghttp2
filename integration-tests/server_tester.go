@@ -60,17 +60,23 @@ type serverTester struct {
 // newServerTester creates test context for plain TCP frontend
 // connection.
 func newServerTester(args []string, t *testing.T, handler http.HandlerFunc) *serverTester {
-	return newServerTesterInternal(args, t, handler, false)
+	return newServerTesterInternal(args, t, handler, false, nil)
 }
 
 // newServerTester creates test context for TLS frontend connection.
 func newServerTesterTLS(args []string, t *testing.T, handler http.HandlerFunc) *serverTester {
-	return newServerTesterInternal(args, t, handler, true)
+	return newServerTesterInternal(args, t, handler, true, nil)
+}
+
+// newServerTester creates test context for TLS frontend connection
+// with given clientConfig
+func newServerTesterTLSConfig(args []string, t *testing.T, handler http.HandlerFunc, clientConfig *tls.Config) *serverTester {
+	return newServerTesterInternal(args, t, handler, true, clientConfig)
 }
 
 // newServerTesterInternal creates test context.  If frontendTLS is
 // true, set up TLS frontend connection.
-func newServerTesterInternal(args []string, t *testing.T, handler http.HandlerFunc, frontendTLS bool) *serverTester {
+func newServerTesterInternal(args []string, t *testing.T, handler http.HandlerFunc, frontendTLS bool, clientConfig *tls.Config) *serverTester {
 	ts := httptest.NewUnstartedServer(handler)
 
 	backendTLS := false
@@ -134,10 +140,14 @@ func newServerTesterInternal(args []string, t *testing.T, handler http.HandlerFu
 		var conn net.Conn
 		var err error
 		if frontendTLS {
-			tlsConfig := &tls.Config{
-				InsecureSkipVerify: true,
-				NextProtos:         []string{"h2-14", "spdy/3.1"},
+			var tlsConfig *tls.Config
+			if clientConfig == nil {
+				tlsConfig = new(tls.Config)
+			} else {
+				tlsConfig = clientConfig
 			}
+			tlsConfig.InsecureSkipVerify = true
+			tlsConfig.NextProtos = []string{"h2-14", "spdy/3.1"}
 			conn, err = tls.Dial("tcp", authority, tlsConfig)
 		} else {
 			conn, err = net.Dial("tcp", authority)

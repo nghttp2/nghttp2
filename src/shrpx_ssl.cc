@@ -950,8 +950,12 @@ SSL_CTX *setup_server_ssl_context() {
   auto ssl_ctx = ssl::create_ssl_context(get_config()->private_key_file.get(),
                                          get_config()->cert_file.get());
 
-  auto cert_tree =
-      get_config()->subcerts.empty() ? nullptr : cert_lookup_tree_new();
+  if (get_config()->subcerts.empty()) {
+    return ssl_ctx;
+  }
+
+  auto cert_tree = cert_lookup_tree_new();
+
   worker_config->cert_tree = cert_tree;
 
   for (auto &keycert : get_config()->subcerts) {
@@ -964,12 +968,10 @@ SSL_CTX *setup_server_ssl_context() {
     }
   }
 
-  if (cert_tree) {
-    if (ssl::cert_lookup_tree_add_cert_from_file(
-            cert_tree, ssl_ctx, get_config()->cert_file.get()) == -1) {
-      LOG(FATAL) << "Failed to add default certificate.";
-      DIE();
-    }
+  if (ssl::cert_lookup_tree_add_cert_from_file(
+          cert_tree, ssl_ctx, get_config()->cert_file.get()) == -1) {
+    LOG(FATAL) << "Failed to add default certificate.";
+    DIE();
   }
 
   return ssl_ctx;
