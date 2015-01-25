@@ -1046,11 +1046,20 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
     return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
   }
 
-  if (token == http2::HD_CONTENT_LENGTH) {
+  switch (token) {
+  case http2::HD_CONTENT_LENGTH: {
     auto upload_left = util::parse_uint(value, valuelen);
     if (upload_left != -1) {
       stream->upload_left = upload_left;
     }
+    break;
+  }
+  case http2::HD_TE:
+    if (!util::strieq("trailers", value, valuelen)) {
+      hd->submit_rst_stream(stream, NGHTTP2_PROTOCOL_ERROR);
+      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+    }
+    break;
   }
 
   http2::index_header(stream->hdidx, token, stream->headers.size());
