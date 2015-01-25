@@ -28,6 +28,8 @@ EXTRA_DIST = \
 	server_tester.go \
 	server.key \
 	server.crt \
+	alt-server.key \
+	alt-server.crt \
 	setenv
 
 .PHONY: itprep it
