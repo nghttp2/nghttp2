@@ -170,7 +170,9 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
     }
 
     if (downstream->index_request_headers() != 0) {
-      upstream->error_reply(downstream, 400);
+      if (upstream->error_reply(downstream, 400) != 0) {
+        ULOG(FATAL, upstream) << "error_reply failed";
+      }
       return;
     }
 
