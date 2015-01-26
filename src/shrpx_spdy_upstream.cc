@@ -886,8 +886,13 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream) {
     }
   }
 
-  if (!get_config()->no_via) {
-    auto via = downstream->get_response_header(http2::HD_VIA);
+  auto via = downstream->get_response_header(http2::HD_VIA);
+  if (get_config()->no_via) {
+    if (via) {
+      nv[hdidx++] = "via";
+      nv[hdidx++] = via->value.c_str();
+    }
+  } else {
     if (via) {
       via_value = via->value;
       via_value += ", ";

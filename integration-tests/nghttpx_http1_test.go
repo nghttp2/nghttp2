@@ -209,3 +209,74 @@ func TestH1H2CrumbleCookie(t *testing.T) {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 }
+
+// TestH1H2GenerateVia tests that server generates Via header field to and
+// from backend server.
+func TestH1H2GenerateVia(t *testing.T) {
+	st := newServerTester([]string{"--http2-bridge"}, t, func(w http.ResponseWriter, r *http.Request) {
+		if got, want := r.Header.Get("Via"), "1.1 nghttpx"; got != want {
+			t.Errorf("Via: %v; want %v", got, want)
+		}
+	})
+	defer st.Close()
+
+	res, err := st.http1(requestParam{
+		name: "TestH1H2GenerateVia",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http1() = %v", err)
+	}
+	if got, want := res.header.Get("Via"), "2.0 nghttpx"; got != want {
+		t.Errorf("Via: %v; want %v", got, want)
+	}
+}
+
+// TestH1H2AppendVia tests that server adds value to existing Via
+// header field to and from backend server.
+func TestH1H2AppendVia(t *testing.T) {
+	st := newServerTester([]string{"--http2-bridge"}, t, func(w http.ResponseWriter, r *http.Request) {
+		if got, want := r.Header.Get("Via"), "foo, 1.1 nghttpx"; got != want {
+			t.Errorf("Via: %v; want %v", got, want)
+		}
+		w.Header().Add("Via", "bar")
+	})
+	defer st.Close()
+
+	res, err := st.http1(requestParam{
+		name: "TestH1H2AppendVia",
+		header: []hpack.HeaderField{
+			pair("via", "foo"),
+		},
+	})
+	if err != nil {
+		t.Fatalf("Error st.http1() = %v", err)
+	}
+	if got, want := res.header.Get("Via"), "bar, 2.0 nghttpx"; got != want {
+		t.Errorf("Via: %v; want %v", got, want)
+	}
+}
+
+// TestH1H2NoVia tests that server does not add value to existing Via
+// header field to and from backend server.
+func TestH1H2NoVia(t *testing.T) {
+	st := newServerTester([]string{"--http2-bridge", "--no-via"}, t, func(w http.ResponseWriter, r *http.Request) {
+		if got, want := r.Header.Get("Via"), "foo"; got != want {
+			t.Errorf("Via: %v; want %v", got, want)
+		}
+		w.Header().Add("Via", "bar")
+	})
+	defer st.Close()
+
+	res, err := st.http1(requestParam{
+		name: "TestH1H2NoVia",
+		header: []hpack.HeaderField{
+			pair("via", "foo"),
+		},
+	})
+	if err != nil {
+		t.Fatalf("Error st.http1() = %v", err)
+	}
+	if got, want := res.header.Get("Via"), "bar"; got != want {
+		t.Errorf("Via: %v; want %v", got, want)
+	}
+}

@@ -121,6 +121,77 @@ func TestH2H1StripAddXff(t *testing.T) {
 	}
 }
 
+// TestH2H1GenerateVia tests that server generates Via header field to and
+// from backend server.
+func TestH2H1GenerateVia(t *testing.T) {
+	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
+		if got, want := r.Header.Get("Via"), "2.0 nghttpx"; got != want {
+			t.Errorf("Via: %v; want %v", got, want)
+		}
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1GenerateVia",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.header.Get("Via"), "1.1 nghttpx"; got != want {
+		t.Errorf("Via: %v; want %v", got, want)
+	}
+}
+
+// TestH2H1AppendVia tests that server adds value to existing Via
+// header field to and from backend server.
+func TestH2H1AppendVia(t *testing.T) {
+	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
+		if got, want := r.Header.Get("Via"), "foo, 2.0 nghttpx"; got != want {
+			t.Errorf("Via: %v; want %v", got, want)
+		}
+		w.Header().Add("Via", "bar")
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1AppendVia",
+		header: []hpack.HeaderField{
+			pair("via", "foo"),
+		},
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.header.Get("Via"), "bar, 1.1 nghttpx"; got != want {
+		t.Errorf("Via: %v; want %v", got, want)
+	}
+}
+
+// TestH2H1NoVia tests that server does not add value to existing Via
+// header field to and from backend server.
+func TestH2H1NoVia(t *testing.T) {
+	st := newServerTester([]string{"--no-via"}, t, func(w http.ResponseWriter, r *http.Request) {
+		if got, want := r.Header.Get("Via"), "foo"; got != want {
+			t.Errorf("Via: %v; want %v", got, want)
+		}
+		w.Header().Add("Via", "bar")
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1NoVia",
+		header: []hpack.HeaderField{
+			pair("via", "foo"),
+		},
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.header.Get("Via"), "bar"; got != want {
+		t.Errorf("Via: %v; want %v", got, want)
+	}
+}
+
 // TestH2H1BadRequestCL tests that server rejects request whose
 // content-length header field value does not match its request body
 // size.

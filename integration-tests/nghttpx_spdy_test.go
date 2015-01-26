@@ -99,6 +99,77 @@ func TestS3H1InvalidRequestCL(t *testing.T) {
 	}
 }
 
+// TestS3H1GenerateVia tests that server generates Via header field to and
+// from backend server.
+func TestS3H1GenerateVia(t *testing.T) {
+	st := newServerTesterTLS([]string{"--npn-list=spdy/3.1"}, t, func(w http.ResponseWriter, r *http.Request) {
+		if got, want := r.Header.Get("Via"), "1.1 nghttpx"; got != want {
+			t.Errorf("Via: %v; want %v", got, want)
+		}
+	})
+	defer st.Close()
+
+	res, err := st.spdy(requestParam{
+		name: "TestS3H1GenerateVia",
+	})
+	if err != nil {
+		t.Fatalf("Error st.spdy() = %v", err)
+	}
+	if got, want := res.header.Get("Via"), "1.1 nghttpx"; got != want {
+		t.Errorf("Via: %v; want %v", got, want)
+	}
+}
+
+// TestS3H1AppendVia tests that server adds value to existing Via
+// header field to and from backend server.
+func TestS3H1AppendVia(t *testing.T) {
+	st := newServerTesterTLS([]string{"--npn-list=spdy/3.1"}, t, func(w http.ResponseWriter, r *http.Request) {
+		if got, want := r.Header.Get("Via"), "foo, 1.1 nghttpx"; got != want {
+			t.Errorf("Via: %v; want %v", got, want)
+		}
+		w.Header().Add("Via", "bar")
+	})
+	defer st.Close()
+
+	res, err := st.spdy(requestParam{
+		name: "TestS3H1AppendVia",
+		header: []hpack.HeaderField{
+			pair("via", "foo"),
+		},
+	})
+	if err != nil {
+		t.Fatalf("Error st.spdy() = %v", err)
+	}
+	if got, want := res.header.Get("Via"), "bar, 1.1 nghttpx"; got != want {
+		t.Errorf("Via: %v; want %v", got, want)
+	}
+}
+
+// TestS3H1NoVia tests that server does not add value to existing Via
+// header field to and from backend server.
+func TestS3H1NoVia(t *testing.T) {
+	st := newServerTesterTLS([]string{"--npn-list=spdy/3.1", "--no-via"}, t, func(w http.ResponseWriter, r *http.Request) {
+		if got, want := r.Header.Get("Via"), "foo"; got != want {
+			t.Errorf("Via: %v; want %v", got, want)
+		}
+		w.Header().Add("Via", "bar")
+	})
+	defer st.Close()
+
+	res, err := st.spdy(requestParam{
+		name: "TestS3H1NoVia",
+		header: []hpack.HeaderField{
+			pair("via", "foo"),
+		},
+	})
+	if err != nil {
+		t.Fatalf("Error st.spdy() = %v", err)
+	}
+	if got, want := res.header.Get("Via"), "bar"; got != want {
+		t.Errorf("Via: %v; want %v", got, want)
+	}
+}
+
 // TestS3H2ConnectFailure tests that server handles the situation that
 // connection attempt to HTTP/2 backend failed.
 func TestS3H2ConnectFailure(t *testing.T) {
