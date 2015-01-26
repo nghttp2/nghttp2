@@ -39,6 +39,7 @@
 #include <limits.h>
 #include <sys/time.h>
 #include <sys/resource.h>
+#include <grp.h>
 
 #include <limits>
 #include <cstdlib>
@@ -256,6 +257,11 @@ std::unique_ptr<AcceptHandler> create_acceptor(ConnectionHandler *handler,
 namespace {
 void drop_privileges() {
   if (getuid() == 0 && get_config()->uid != 0) {
+    if (initgroups(get_config()->user.get()) != 0) {
+      auto error = errno;
+      LOG(FATAL) << "Could not change supplementary groups: " << strerror(error);
+      exit(EXIT_FAILURE);
+    }
     if (setgid(get_config()->gid) != 0) {
       auto error = errno;
       LOG(FATAL) << "Could not change gid: " << strerror(error);
@@ -714,6 +720,7 @@ void fill_default_config() {
   mod_config()->insecure = false;
   mod_config()->cacert = nullptr;
   mod_config()->pid_file = nullptr;
+  mod_config()->user = nullptr;
   mod_config()->uid = 0;
   mod_config()->gid = 0;
   mod_config()->pid = getpid();
