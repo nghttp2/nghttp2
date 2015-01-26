@@ -12,7 +12,7 @@ import (
 	"testing"
 )
 
-// TestH1H2PlainGET tests whether simple HTTP/2 GET request works.
+// TestH2H1PlainGET tests whether simple HTTP/2 GET request works.
 func TestH2H1PlainGET(t *testing.T) {
 	st := newServerTester(nil, t, noopHandler)
 	defer st.Close()
