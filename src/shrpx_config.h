@@ -272,6 +272,7 @@ struct Config {
   int syslog_facility;
   int backlog;
   int argc;
+  std::unique_ptr<char[]> user;
   uid_t uid;
   gid_t gid;
   pid_t pid;
