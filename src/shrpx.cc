@@ -900,7 +900,8 @@ Performance:
       << util::utos_with_unit(get_config()->downstream_response_buffer_size)
       << R"(
   --num-accept=<N>
-              The number of connections acceptor can accept at once.
+              The number  of connections acceptor can  accept at once.
+              0 means unlimited.
               Default: )" << get_config()->num_accept << R"(
   --accept-delay=<T>
               Acceptors  get idle  in <T>  amount of  time after  they
