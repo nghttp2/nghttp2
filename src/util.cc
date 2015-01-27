@@ -899,32 +899,48 @@ bool ipv6_numeric_addr(const char *host) {
   return inet_pton(AF_INET6, host, dst) == 1;
 }
 
-int64_t parse_uint_with_unit(const char *s) {
+namespace {
+std::pair<int64_t, size_t> parse_uint_digits(const void *ss, size_t len) {
+  const uint8_t *s = static_cast<const uint8_t *>(ss);
   int64_t n = 0;
   size_t i;
-  auto len = strlen(s);
   if (len == 0) {
-    return -1;
+    return {-1, 0};
   }
   constexpr int64_t max = std::numeric_limits<int64_t>::max();
   for (i = 0; i < len; ++i) {
     if ('0' <= s[i] && s[i] <= '9') {
       if (n > max / 10) {
-        return -1;
+        return {-1, 0};
       }
       n *= 10;
       if (n > max - (s[i] - '0')) {
-        return -1;
+        return {-1, 0};
       }
       n += s[i] - '0';
       continue;
     }
     break;
   }
+  if (i == 0) {
+    return {-1, 0};
+  }
+  return {n, i};
+}
+} // namespace
+
+int64_t parse_uint_with_unit(const char *s) {
+  int64_t n;
+  size_t i;
+  auto len = strlen(s);
+  std::tie(n, i) = parse_uint_digits(s, len);
+  if (n == -1) {
+    return -1;
+  }
   if (i == len) {
     return n;
   }
-  if (i == 0 || i + 1 != len) {
+  if (i + 1 != len) {
     return -1;
   }
   int mul = 1;
@@ -944,6 +960,7 @@ int64_t parse_uint_with_unit(const char *s) {
   default:
     return -1;
   }
+  constexpr int64_t max = std::numeric_limits<int64_t>::max();
   if (n > max / mul) {
     return -1;
   }
@@ -959,26 +976,51 @@ int64_t parse_uint(const std::string &s) {
 }
 
 int64_t parse_uint(const uint8_t *s, size_t len) {
-  if (len == 0) {
-    return -1;
-  }
-  constexpr int64_t max = std::numeric_limits<int64_t>::max();
-  int64_t n = 0;
-  for (size_t i = 0; i < len; ++i) {
-    if ('0' <= s[i] && s[i] <= '9') {
-      if (n > max / 10) {
-        return -1;
-      }
-      n *= 10;
-      if (n > max - (s[i] - '0')) {
-        return -1;
-      }
-      n += s[i] - '0';
-      continue;
-    }
+  int64_t n;
+  size_t i;
+  std::tie(n, i) = parse_uint_digits(s, len);
+  if (n == -1 || i != len) {
     return -1;
   }
   return n;
+}
+
+double parse_time_with_unit(const char *s) {
+  int64_t n;
+  size_t i;
+  auto len = strlen(s);
+  std::tie(n, i) = parse_uint_digits(s, len);
+  if (n == -1) {
+    goto fail;
+  }
+  if (i == len) {
+    return static_cast<double>(n);
+  }
+  switch (s[i]) {
+  case 'S':
+  case 's':
+    if (i + 1 != len) {
+      goto fail;
+    }
+    return static_cast<double>(n);
+    break;
+  case 'M':
+  case 'm':
+    if (i + 2 != len || (s[i + 1] != 's' && s[i + 1] != 'S')) {
+      goto fail;
+    }
+    return static_cast<double>(n) / 1000.;
+  }
+fail:
+  return std::numeric_limits<double>::infinity();
+}
+
+std::string duration_str(double t) {
+  auto frac = static_cast<int64_t>(t * 1000) % 1000;
+  if (frac > 0) {
+    return utos(static_cast<int64_t>(t * 1000)) + "ms";
+  }
+  return utos(static_cast<int64_t>(t)) + "s";
 }
 
 } // namespace util

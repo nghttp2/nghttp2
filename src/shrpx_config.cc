@@ -503,14 +503,14 @@ std::vector<LogFragment> parse_log_format(const char *optarg) {
 }
 
 namespace {
-int parse_timeval(ev_tstamp *dest, const char *opt, const char *optarg) {
-  time_t sec;
-
-  if (parse_uint(&sec, opt, optarg) != 0) {
+int parse_duration(ev_tstamp *dest, const char *opt, const char *optarg) {
+  auto t = util::parse_time_with_unit(optarg);
+  if (t == std::numeric_limits<double>::infinity()) {
+    LOG(ERROR) << opt << ": bad value: '" << optarg << "'";
     return -1;
   }
 
-  *dest = sec;
+  *dest = t;
 
   return 0;
 }
@@ -604,32 +604,32 @@ int parse_config(const char *opt, const char *optarg) {
   }
 
   if (util::strieq(opt, SHRPX_OPT_FRONTEND_HTTP2_READ_TIMEOUT)) {
-    return parse_timeval(&mod_config()->http2_upstream_read_timeout, opt,
-                         optarg);
+    return parse_duration(&mod_config()->http2_upstream_read_timeout, opt,
+                          optarg);
   }
 
   if (util::strieq(opt, SHRPX_OPT_FRONTEND_READ_TIMEOUT)) {
-    return parse_timeval(&mod_config()->upstream_read_timeout, opt, optarg);
+    return parse_duration(&mod_config()->upstream_read_timeout, opt, optarg);
   }
 
   if (util::strieq(opt, SHRPX_OPT_FRONTEND_WRITE_TIMEOUT)) {
-    return parse_timeval(&mod_config()->upstream_write_timeout, opt, optarg);
+    return parse_duration(&mod_config()->upstream_write_timeout, opt, optarg);
   }
 
   if (util::strieq(opt, SHRPX_OPT_BACKEND_READ_TIMEOUT)) {
-    return parse_timeval(&mod_config()->downstream_read_timeout, opt, optarg);
+    return parse_duration(&mod_config()->downstream_read_timeout, opt, optarg);
   }
 
   if (util::strieq(opt, SHRPX_OPT_BACKEND_WRITE_TIMEOUT)) {
-    return parse_timeval(&mod_config()->downstream_write_timeout, opt, optarg);
+    return parse_duration(&mod_config()->downstream_write_timeout, opt, optarg);
   }
 
   if (util::strieq(opt, SHRPX_OPT_STREAM_READ_TIMEOUT)) {
-    return parse_timeval(&mod_config()->stream_read_timeout, opt, optarg);
+    return parse_duration(&mod_config()->stream_read_timeout, opt, optarg);
   }
 
   if (util::strieq(opt, SHRPX_OPT_STREAM_WRITE_TIMEOUT)) {
-    return parse_timeval(&mod_config()->stream_write_timeout, opt, optarg);
+    return parse_duration(&mod_config()->stream_write_timeout, opt, optarg);
   }
 
   if (util::strieq(opt, SHRPX_OPT_ACCESSLOG_FILE)) {
@@ -663,8 +663,8 @@ int parse_config(const char *opt, const char *optarg) {
   }
 
   if (util::strieq(opt, SHRPX_OPT_BACKEND_KEEP_ALIVE_TIMEOUT)) {
-    return parse_timeval(&mod_config()->downstream_idle_read_timeout, opt,
-                         optarg);
+    return parse_duration(&mod_config()->downstream_idle_read_timeout, opt,
+                          optarg);
   }
 
   if (util::strieq(opt, SHRPX_OPT_FRONTEND_HTTP2_WINDOW_BITS) ||
@@ -1104,7 +1104,7 @@ int parse_config(const char *opt, const char *optarg) {
   }
 
   if (util::strieq(opt, SHRPX_OPT_LISTENER_DISABLE_TIMEOUT)) {
-    return parse_timeval(&mod_config()->listener_disable_timeout, opt, optarg);
+    return parse_duration(&mod_config()->listener_disable_timeout, opt, optarg);
   }
 
   if (util::strieq(opt, SHRPX_OPT_TLS_TICKET_KEY_FILE)) {
@@ -1170,14 +1170,7 @@ int parse_config(const char *opt, const char *optarg) {
   }
 
   if (util::strieq(opt, SHRPX_OPT_ACCEPT_DELAY)) {
-    size_t n;
-    if (parse_uint(&n, opt, optarg) != 0) {
-      return -1;
-    }
-
-    mod_config()->accept_delay = n / 1000.;
-
-    return 0;
+    return parse_duration(&mod_config()->accept_delay, opt, optarg);
   }
 
   if (util::strieq(opt, "conf")) {

@@ -902,46 +902,55 @@ Performance:
   --num-accept=<N>
               The number of connections acceptor can accept at once.
               Default: )" << get_config()->num_accept << R"(
-  --accept-delay=<MSEC>
-              Acceptors  get idle  in <MSEC>  milliseconds after  they
+  --accept-delay=<T>
+              Acceptors  get idle  in <T>  amount of  time after  they
               accepted at  most N connections,  where N is  defined in
               --num-accept option.
-              Default: )" << static_cast<int>(get_config()->accept_delay * 1000)
+              Default: )" << util::duration_str(get_config()->accept_delay)
       << R"(
 
 Timeout:
-  --frontend-http2-read-timeout=<SEC>
+  --frontend-http2-read-timeout=<T>
               Specify  read  timeout  for  HTTP/2  and  SPDY  frontend
               connection.
-              Default: )" << get_config()->http2_upstream_read_timeout << R"(
-  --frontend-read-timeout=<SEC>
+              Default: )"
+      << util::duration_str(get_config()->http2_upstream_read_timeout) << R"(
+  --frontend-read-timeout=<T>
               Specify read timeout for HTTP/1.1 frontend connection.
-              Default: )" << get_config()->upstream_read_timeout << R"(
-  --frontend-write-timeout=<SEC>
+              Default: )"
+      << util::duration_str(get_config()->upstream_read_timeout) << R"(
+  --frontend-write-timeout=<T>
               Specify write timeout for all frontend connections.
-              Default: )" << get_config()->upstream_write_timeout << R"(
-  --stream-read-timeout=<SEC>
+              Default: )"
+      << util::duration_str(get_config()->upstream_write_timeout) << R"(
+  --stream-read-timeout=<T>
               Specify  read timeout  for HTTP/2  and SPDY  streams.  0
               means no timeout.
-              Default: )" << get_config()->stream_read_timeout << R"(
-  --stream-write-timeout=<SEC>
+              Default: )"
+      << util::duration_str(get_config()->stream_read_timeout) << R"(
+  --stream-write-timeout=<T>
               Specify write  timeout for  HTTP/2 and SPDY  streams.  0
               means no timeout.
-              Default: )" << get_config()->stream_write_timeout << R"(
-  --backend-read-timeout=<SEC>
+              Default: )"
+      << util::duration_str(get_config()->stream_write_timeout) << R"(
+  --backend-read-timeout=<T>
               Specify read timeout for backend connection.
-              Default: )" << get_config()->downstream_read_timeout << R"(
-  --backend-write-timeout=<SEC>
+              Default: )"
+      << util::duration_str(get_config()->downstream_read_timeout) << R"(
+  --backend-write-timeout=<T>
               Specify write timeout for backend connection.
-              Default: )" << get_config()->downstream_write_timeout << R"(
-  --backend-keep-alive-timeout=<SEC>
+              Default: )"
+      << util::duration_str(get_config()->downstream_write_timeout) << R"(
+  --backend-keep-alive-timeout=<T>
               Specify keep-alive timeout for backend connection.
-              Default: )" << get_config()->downstream_idle_read_timeout << R"(
-  --listener-disable-timeout=<SEC>
+              Default: )"
+      << util::duration_str(get_config()->downstream_idle_read_timeout) << R"(
+  --listener-disable-timeout=<T>
               After accepting  connection failed,  connection listener
-              is disabled for  a given time in  seconds.  Specifying 0
+              is disabled  for a given  amount of time.   Specifying 0
               disables this feature.
-              Default: )" << get_config()->listener_disable_timeout << R"(
+              Default: )"
+      << util::duration_str(get_config()->listener_disable_timeout) << R"(
 
 SSL/TLS:
   --ciphers=<SUITE>
@@ -1203,7 +1212,11 @@ Misc:
   -h, --help  Print this help and exit.
 
   The <SIZE> argument is an integer and an optional unit (e.g., 10K is
-  10 * 1024).  Units are K, M and G (powers of 1024).)" << std::endl;
+  10 * 1024).  Units are K, M and G (powers of 1024).
+
+  The <T> argument is an integer and an optional unit (e.g., 1s is 1
+  second and 500ms is 500 milliseconds).  Units are s or ms.  If a
+  unit is omitted, a second is used as unit.)" << std::endl;
 }
 } // namespace
 

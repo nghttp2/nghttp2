@@ -134,6 +134,8 @@ int main(int argc, char *argv[]) {
       !CU_add_test(pSuite, "util_parse_uint_with_unit",
                    shrpx::test_util_parse_uint_with_unit) ||
       !CU_add_test(pSuite, "util_parse_uint", shrpx::test_util_parse_uint) ||
+      !CU_add_test(pSuite, "util_parse_time_with_unit",
+                   shrpx::test_util_parse_time_with_unit) ||
       !CU_add_test(pSuite, "gzip_inflate", test_nghttp2_gzip_inflate) ||
       !CU_add_test(pSuite, "ringbuf_write", nghttp2::test_ringbuf_write) ||
       !CU_add_test(pSuite, "ringbuf_iovec", nghttp2::test_ringbuf_iovec) ||

@@ -223,4 +223,24 @@ void test_util_parse_uint(void) {
   CU_ASSERT(-1 == util::parse_uint(""));
 }
 
+void test_util_parse_time_with_unit(void) {
+  CU_ASSERT(0. == util::parse_time_with_unit("0"));
+  CU_ASSERT(123. == util::parse_time_with_unit("123"));
+  CU_ASSERT(123. == util::parse_time_with_unit("123s"));
+  CU_ASSERT(0.500 == util::parse_time_with_unit("500ms"));
+  CU_ASSERT(123. == util::parse_time_with_unit("123S"));
+  CU_ASSERT(0.500 == util::parse_time_with_unit("500MS"));
+
+  auto err = std::numeric_limits<double>::infinity();
+  // check overflow case
+  CU_ASSERT(err == util::parse_time_with_unit("9223372036854775808"));
+  // bad characters
+  CU_ASSERT(err == util::parse_time_with_unit("0u"));
+  CU_ASSERT(err == util::parse_time_with_unit("0xs"));
+  CU_ASSERT(err == util::parse_time_with_unit("0mt"));
+  CU_ASSERT(err == util::parse_time_with_unit("0mss"));
+  CU_ASSERT(err == util::parse_time_with_unit("s"));
+  CU_ASSERT(err == util::parse_time_with_unit("ms"));
+}
+
 } // namespace shrpx

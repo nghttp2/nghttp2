@@ -508,6 +508,20 @@ int64_t parse_uint(const char *s);
 int64_t parse_uint(const uint8_t *s, size_t len);
 int64_t parse_uint(const std::string &s);
 
+// Parses NULL terminated string |s| as unsigned integer and returns
+// the parsed integer casted to double.  If |s| ends with "s", the
+// parsed value's unit is a second.  If |s| ends with "ms", the unit
+// is millisecond.  If none of them are given, the unit is second.
+// This function returns std::numeric_limits<double>::infinity() if
+// error occurs.
+double parse_time_with_unit(const char *s);
+
+// Returns string representation of time duration |t|.  If t has
+// fractional part (at least more than or equal to 1e-3), |t| is
+// multiplied by 1000 and the unit "ms" is appended.  Otherwise, |t|
+// is left as is and "s" is appended.
+std::string duration_str(double t);
+
 } // namespace util
 
 } // namespace nghttp2
