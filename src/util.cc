@@ -521,10 +521,8 @@ namespace {
 // with given costs.  swapcost, subcost, addcost and delcost are cost
 // to swap 2 adjacent characters, substitute characters, add character
 // and delete character respectively.
-int levenshtein(const char *a, const char *b, int swapcost, int subcost,
-                int addcost, int delcost) {
-  int alen = strlen(a);
-  int blen = strlen(b);
+int levenshtein(const char *a, int alen, const char *b, int blen, int swapcost,
+                int subcost, int addcost, int delcost) {
   auto dp = std::vector<std::vector<int>>(3, std::vector<int>(blen + 1));
   for (int i = 0; i <= blen; ++i) {
     dp[1][i] = i;
@@ -552,8 +550,14 @@ void show_candidates(const char *unkopt, option *options) {
   if (*unkopt == '\0') {
     return;
   }
+  auto unkoptend = unkopt;
+  for (; *unkoptend && *unkoptend != '='; ++unkoptend)
+    ;
+  auto unkoptlen = unkoptend - unkopt;
+  if (unkoptlen == 0) {
+    return;
+  }
   int prefix_match = 0;
-  auto unkoptlen = strlen(unkopt);
   auto cands = std::vector<std::pair<int, const char *>>();
   for (size_t i = 0; options[i].name != nullptr; ++i) {
     auto optnamelen = strlen(options[i].name);
@@ -576,7 +580,8 @@ void show_candidates(const char *unkopt, option *options) {
       continue;
     }
     // cost values are borrowed from git, help.c.
-    int sim = levenshtein(unkopt, options[i].name, 0, 2, 1, 3);
+    int sim =
+        levenshtein(unkopt, unkoptlen, options[i].name, optnamelen, 0, 2, 1, 3);
     cands.emplace_back(sim, options[i].name);
   }
   if (prefix_match == 1 || cands.empty()) {
