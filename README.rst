@@ -110,25 +110,9 @@ The Python bindings require the following packages:
 * python >= 2.7
 
 If you are using Ubuntu 14.04 LTS, you need the following packages
-installed:
+installed::
 
-* make
-* binutils
-* autoconf
-* automake
-* autotools-dev
-* libtool
-* pkg-config
-* zlib1g-dev
-* libcunit1-dev
-* libssl-dev
-* libxml2-dev
-* libev-dev
-* libevent-dev
-* libjansson-dev
-* libjemalloc-dev
-* cython
-* python3.4-dev
+    apt-get install make binutils autoconf  automake autotools-dev libtool pkg-config zlib1g-dev libcunit1-dev libssl-dev libxml2-dev libev-dev libevent-dev libjansson-dev libjemalloc-dev cython python3.4-dev
 
 spdylay is not packaged in Ubuntu, so you need to build it yourself:
 http://tatsuhiro-t.github.io/spdylay/
