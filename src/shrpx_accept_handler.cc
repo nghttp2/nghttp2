@@ -56,6 +56,7 @@ AcceptHandler::~AcceptHandler() {
 }
 
 void AcceptHandler::accept_connection() {
+  size_t n = 0;
   for (;;) {
     sockaddr_union sockaddr;
     socklen_t addrlen = sizeof(sockaddr);
@@ -83,7 +84,7 @@ void AcceptHandler::accept_connection() {
         continue;
       }
 
-      return;
+      break;
     }
 
 #ifndef HAVE_ACCEPT4
@@ -94,7 +95,12 @@ void AcceptHandler::accept_connection() {
     util::make_socket_nodelay(cfd);
 
     conn_hnr_->handle_connection(cfd, &sockaddr.sa, addrlen);
+    ++n;
+    if (n == get_config()->num_accept) {
+      break;
+    }
   }
+  conn_hnr_->disable_acceptor_temporary(get_config()->accept_delay);
 }
 
 void AcceptHandler::enable() { ev_io_start(conn_hnr_->get_loop(), &wev_); }

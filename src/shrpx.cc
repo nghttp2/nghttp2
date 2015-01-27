@@ -757,6 +757,8 @@ void fill_default_config() {
   mod_config()->tls_ctx_per_worker = false;
   mod_config()->downstream_request_buffer_size = 16 * 1024;
   mod_config()->downstream_response_buffer_size = 16 * 1024;
+  mod_config()->num_accept = 16;
+  mod_config()->accept_delay = 0.5;
 }
 } // namespace
 
@@ -896,6 +898,15 @@ Performance:
               Set buffer size used to store backend response.
               Default: )"
       << util::utos_with_unit(get_config()->downstream_response_buffer_size)
+      << R"(
+  --num-accept=<N>
+              The number of connections acceptor can accept at once.
+              Default: )" << get_config()->num_accept << R"(
+  --accept-delay=<MSEC>
+              Acceptors  get idle  in <MSEC>  milliseconds after  they
+              accepted at  most N connections,  where N is  defined in
+              --num-accept option.
+              Default: )" << static_cast<int>(get_config()->accept_delay * 1000)
       << R"(
 
 Timeout:
@@ -1301,6 +1312,8 @@ int main(int argc, char **argv) {
         {"tls-ctx-per-worker", no_argument, &flag, 70},
         {"backend-response-buffer", required_argument, &flag, 71},
         {"backend-request-buffer", required_argument, &flag, 72},
+        {"num-accept", required_argument, &flag, 73},
+        {"accept-delay", required_argument, &flag, 74},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -1629,6 +1642,14 @@ int main(int argc, char **argv) {
       case 72:
         // --backend-request-buffer
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_REQUEST_BUFFER, optarg);
+        break;
+      case 73:
+        // --num-accept
+        cmdcfgs.emplace_back(SHRPX_OPT_NUM_ACCEPT, optarg);
+        break;
+      case 74:
+        // --accept-delay
+        cmdcfgs.emplace_back(SHRPX_OPT_ACCEPT_DELAY, optarg);
         break;
       default:
         break;
