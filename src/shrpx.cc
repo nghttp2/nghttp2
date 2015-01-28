@@ -426,6 +426,10 @@ void graceful_shutdown_signal_cb(struct ev_loop *loop, ev_signal *w,
   // After disabling accepting new connection, disptach incoming
   // connection in backlog.
 
+  // Make num_accept unlimited so that we can accept all connections
+  // waiting in listen queue.
+  mod_config()->num_accept = 0;
+
   conn_handler->accept_pending_connection();
 
   conn_handler->graceful_shutdown_worker();
