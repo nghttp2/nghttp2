@@ -257,7 +257,7 @@ std::unique_ptr<AcceptHandler> create_acceptor(ConnectionHandler *handler,
 namespace {
 void drop_privileges() {
   if (getuid() == 0 && get_config()->uid != 0) {
-    if (initgroups(get_config()->user.get()) != 0) {
+    if (initgroups(get_config()->user.get(), get_config()->gid) != 0) {
       auto error = errno;
       LOG(FATAL) << "Could not change supplementary groups: " << strerror(error);
       exit(EXIT_FAILURE);
