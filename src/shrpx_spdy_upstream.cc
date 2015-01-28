@@ -811,9 +811,6 @@ void SpdyUpstream::remove_downstream(Downstream *downstream) {
   if (next_downstream) {
     initiate_downstream(std::move(next_downstream));
   }
-
-  mcpool_.shrink((downstream_queue_.get_active_downstreams().size() + 1) *
-                 65536);
 }
 
 Downstream *SpdyUpstream::find_downstream(int32_t stream_id) {
