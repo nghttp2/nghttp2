@@ -766,7 +766,7 @@ void fill_default_config() {
   mod_config()->downstream_request_buffer_size = 16 * 1024;
   mod_config()->downstream_response_buffer_size = 16 * 1024;
   mod_config()->num_accept = 16;
-  mod_config()->accept_delay = 0.5;
+  mod_config()->accept_delay = 0.01;
 }
 } // namespace
 
