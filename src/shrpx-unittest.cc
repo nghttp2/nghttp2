@@ -39,6 +39,7 @@
 #include "util_test.h"
 #include "nghttp2_gzip_test.h"
 #include "ringbuf_test.h"
+#include "buffer_test.h"
 #include "memchunk_test.h"
 #include "shrpx_config.h"
 
@@ -139,6 +140,7 @@ int main(int argc, char *argv[]) {
       !CU_add_test(pSuite, "gzip_inflate", test_nghttp2_gzip_inflate) ||
       !CU_add_test(pSuite, "ringbuf_write", nghttp2::test_ringbuf_write) ||
       !CU_add_test(pSuite, "ringbuf_iovec", nghttp2::test_ringbuf_iovec) ||
+      !CU_add_test(pSuite, "buffer_write", nghttp2::test_ringbuf_write) ||
       !CU_add_test(pSuite, "pool_recycle", nghttp2::test_pool_recycle) ||
       !CU_add_test(pSuite, "memchunk_append", nghttp2::test_memchunks_append) ||
       !CU_add_test(pSuite, "memchunk_drain", nghttp2::test_memchunks_drain) ||

@@ -69,17 +69,14 @@ ssize_t recv_callback(spdylay_session *session, uint8_t *buf, size_t len,
   auto upstream = static_cast<SpdyUpstream *>(user_data);
   auto handler = upstream->get_client_handler();
   auto rb = handler->get_rb();
-  const void *data;
-  size_t nread;
 
-  std::tie(data, nread) = rb->get();
-  if (nread == 0) {
+  if (rb->rleft() == 0) {
     return SPDYLAY_ERR_WOULDBLOCK;
   }
 
-  nread = std::min(nread, len);
+  auto nread = std::min(rb->rleft(), len);
 
-  memcpy(buf, data, nread);
+  memcpy(buf, rb->pos, nread);
   rb->drain(nread);
 
   return nread;

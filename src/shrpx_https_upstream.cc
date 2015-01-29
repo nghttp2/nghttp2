@@ -248,135 +248,127 @@ http_parser_settings htp_hooks = {
 int HttpsUpstream::on_read() {
   auto rb = handler_->get_rb();
   auto downstream = get_downstream();
-  const void *data;
-  size_t datalen;
+
+  if (rb->rleft() == 0) {
+    return 0;
+  }
 
   // downstream can be nullptr here, because it is initialized in the
   // callback chain called by http_parser_execute()
   if (downstream && downstream->get_upgraded()) {
-    for (;;) {
-      std::tie(data, datalen) = rb->get();
-      if (datalen == 0) {
-        return 0;
-      }
 
-      auto rv = downstream->push_upload_data_chunk(
-          reinterpret_cast<const uint8_t *>(data), datalen);
+    auto rv = downstream->push_upload_data_chunk(rb->pos, rb->rleft());
 
-      if (rv != 0) {
-        return -1;
-      }
-
-      rb->drain(datalen);
-
-      if (downstream->request_buf_full()) {
-        if (LOG_ENABLED(INFO)) {
-          ULOG(INFO, this) << "Downstream request buf is full";
-        }
-        pause_read(SHRPX_NO_BUFFER);
-
-        return 0;
-      }
+    if (rv != 0) {
+      return -1;
     }
+
+    rb->reset();
+
+    if (downstream->request_buf_full()) {
+      if (LOG_ENABLED(INFO)) {
+        ULOG(INFO, this) << "Downstream request buf is full";
+      }
+      pause_read(SHRPX_NO_BUFFER);
+
+      return 0;
+    }
+
+    return 0;
   }
 
-  for (;;) {
-    std::tie(data, datalen) = rb->get();
-    if (datalen == 0) {
+  auto nread = http_parser_execute(
+      &htp_, &htp_hooks, reinterpret_cast<const char *>(rb->pos), rb->rleft());
+
+  rb->drain(nread);
+
+  // Well, actually header length + some body bytes
+  current_header_length_ += nread;
+
+  // Get downstream again because it may be initialized in http parser
+  // execution
+  downstream = get_downstream();
+
+  auto handler = get_client_handler();
+  auto htperr = HTTP_PARSER_ERRNO(&htp_);
+
+  if (htperr == HPE_PAUSED) {
+
+    assert(downstream);
+
+    if (downstream->get_request_state() == Downstream::CONNECT_FAIL) {
+      // Following paues_read is needed to avoid reading next data.
+      pause_read(SHRPX_MSG_BLOCK);
+      error_reply(503);
+      handler_->signal_write();
+      // Downstream gets deleted after response body is read.
       return 0;
     }
 
-    auto nread = http_parser_execute(
-        &htp_, &htp_hooks, reinterpret_cast<const char *>(data), datalen);
+    assert(downstream->get_request_state() == Downstream::MSG_COMPLETE);
 
-    rb->drain(nread);
-
-    // Well, actually header length + some body bytes
-    current_header_length_ += nread;
-
-    // Get downstream again because it may be initialized in http parser
-    // execution
-    downstream = get_downstream();
-
-    auto handler = get_client_handler();
-    auto htperr = HTTP_PARSER_ERRNO(&htp_);
-
-    if (htperr == HPE_PAUSED) {
-
-      assert(downstream);
-
-      if (downstream->get_request_state() == Downstream::CONNECT_FAIL) {
-        // Following paues_read is needed to avoid reading next data.
-        pause_read(SHRPX_MSG_BLOCK);
-        error_reply(503);
-        handler_->signal_write();
-        // Downstream gets deleted after response body is read.
-        return 0;
-      }
-
-      assert(downstream->get_request_state() == Downstream::MSG_COMPLETE);
-
-      if (downstream->get_downstream_connection() == nullptr) {
-        // Error response has already be sent
-        assert(downstream->get_response_state() == Downstream::MSG_COMPLETE);
-        delete_downstream();
-
-        return 0;
-      }
-
-      if (handler->get_http2_upgrade_allowed() &&
-          downstream->get_http2_upgrade_request()) {
-
-        if (handler->perform_http2_upgrade(this) != 0) {
-          return -1;
-        }
-
-        handler_->signal_write();
-
-        return 0;
-      }
-
-      pause_read(SHRPX_MSG_BLOCK);
+    if (downstream->get_downstream_connection() == nullptr) {
+      // Error response has already be sent
+      assert(downstream->get_response_state() == Downstream::MSG_COMPLETE);
+      delete_downstream();
 
       return 0;
     }
 
-    if (htperr != HPE_OK) {
-      if (LOG_ENABLED(INFO)) {
-        ULOG(INFO, this) << "HTTP parse failure: "
-                         << "(" << http_errno_name(htperr) << ") "
-                         << http_errno_description(htperr);
+    if (handler->get_http2_upgrade_allowed() &&
+        downstream->get_http2_upgrade_request()) {
+
+      if (handler->perform_http2_upgrade(this) != 0) {
+        return -1;
       }
-
-      pause_read(SHRPX_MSG_BLOCK);
-
-      unsigned int status_code;
-
-      if (downstream &&
-          downstream->get_request_state() == Downstream::CONNECT_FAIL) {
-        status_code = 503;
-      } else {
-        status_code = 400;
-      }
-
-      error_reply(status_code);
 
       handler_->signal_write();
 
       return 0;
     }
 
-    // downstream can be NULL here.
-    if (downstream && downstream->request_buf_full()) {
-      if (LOG_ENABLED(INFO)) {
-        ULOG(INFO, this) << "Downstream request buffer is full";
-      }
+    pause_read(SHRPX_MSG_BLOCK);
 
-      pause_read(SHRPX_NO_BUFFER);
-
-      return 0;
-    }
+    return 0;
   }
+
+  if (htperr != HPE_OK) {
+    if (LOG_ENABLED(INFO)) {
+      ULOG(INFO, this) << "HTTP parse failure: "
+                       << "(" << http_errno_name(htperr) << ") "
+                       << http_errno_description(htperr);
+    }
+
+    pause_read(SHRPX_MSG_BLOCK);
+
+    unsigned int status_code;
+
+    if (downstream &&
+        downstream->get_request_state() == Downstream::CONNECT_FAIL) {
+      status_code = 503;
+    } else {
+      status_code = 400;
+    }
+
+    error_reply(status_code);
+
+    handler_->signal_write();
+
+    return 0;
+  }
+
+  // downstream can be NULL here.
+  if (downstream && downstream->request_buf_full()) {
+    if (LOG_ENABLED(INFO)) {
+      ULOG(INFO, this) << "Downstream request buffer is full";
+    }
+
+    pause_read(SHRPX_NO_BUFFER);
+
+    return 0;
+  }
+
+  return 0;
 }
 
 int HttpsUpstream::on_write() {
@@ -384,24 +376,29 @@ int HttpsUpstream::on_write() {
   if (!downstream) {
     return 0;
   }
-  auto dconn = downstream->get_downstream_connection();
   auto wb = handler_->get_wb();
-  if (wb->rleft() == 0 && dconn &&
+  if (wb->wleft() == 0) {
+    return 0;
+  }
+
+  auto dconn = downstream->get_downstream_connection();
+  auto output = downstream->get_response_buf();
+
+  if (output->rleft() == 0 && dconn &&
       downstream->get_response_state() != Downstream::MSG_COMPLETE) {
+    if (downstream->resume_read(SHRPX_NO_BUFFER,
+                                downstream->get_response_datalen()) != 0) {
+      return -1;
+    }
+
     if (downstream_read(dconn) != 0) {
       return -1;
     }
   }
-  struct iovec iov[2];
-  auto iovcnt = wb->wiovec(iov);
-  if (iovcnt == 0) {
-    return 0;
-  }
-  auto output = downstream->get_response_buf();
-  for (int i = 0; i < iovcnt; ++i) {
-    auto n = output->remove(iov[i].iov_base, iov[i].iov_len);
-    wb->write(n);
-  }
+
+  auto n = output->remove(wb->last, wb->wleft());
+  wb->write(n);
+
   if (wb->rleft() > 0) {
     return 0;
   }

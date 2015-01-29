@@ -34,7 +34,7 @@
 #include <openssl/ssl.h>
 
 #include "shrpx_rate_limit.h"
-#include "ringbuf.h"
+#include "buffer.h"
 
 using namespace nghttp2;
 
@@ -135,8 +135,8 @@ public:
                        int64_t body_bytes_sent);
   WorkerStat *get_worker_stat() const;
 
-  using WriteBuf = RingBuf<65536>;
-  using ReadBuf = RingBuf<8192>;
+  using WriteBuf = Buffer<65536>;
+  using ReadBuf = Buffer<8192>;
 
   WriteBuf *get_wb();
   ReadBuf *get_rb();

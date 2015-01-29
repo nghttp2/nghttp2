@@ -777,23 +777,18 @@ int Http2Upstream::on_read() {
   ssize_t rv = 0;
   auto rb = handler_->get_rb();
 
-  for (;;) {
-    const void *data;
-    size_t nread;
-    std::tie(data, nread) = rb->get();
-    if (nread == 0) {
-      break;
-    }
-
-    rv = nghttp2_session_mem_recv(
-        session_, reinterpret_cast<const uint8_t *>(data), nread);
+  if (rb->rleft()) {
+    rv = nghttp2_session_mem_recv(session_, rb->pos, rb->rleft());
     if (rv < 0) {
       ULOG(ERROR, this) << "nghttp2_session_recv() returned error: "
                         << nghttp2_strerror(rv);
       return -1;
     }
 
-    rb->drain(nread);
+    // nghttp2_session_mem_recv should consume all input bytes on
+    // success.
+    assert(static_cast<size_t>(rv) == rb->rleft());
+    rb->reset();
   }
 
   auto wb = handler_->get_wb();

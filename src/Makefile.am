@@ -119,7 +119,7 @@ NGHTTPX_SRCS = \
 	shrpx_connect_blocker.cc shrpx_connect_blocker.h \
 	shrpx_downstream_connection_pool.cc shrpx_downstream_connection_pool.h \
 	shrpx_rate_limit.cc shrpx_rate_limit.h \
-	ringbuf.h memchunk.h
+	buffer.h memchunk.h
 
 if HAVE_SPDYLAY
 NGHTTPX_SRCS += shrpx_spdy_upstream.cc shrpx_spdy_upstream.h
@@ -142,6 +142,7 @@ nghttpx_unittest_SOURCES = shrpx-unittest.cc \
 	nghttp2_gzip_test.c nghttp2_gzip_test.h \
 	nghttp2_gzip.c nghttp2_gzip.h \
 	ringbuf_test.cc ringbuf_test.h \
+	buffer_test.cc buffer_test.h \
 	memchunk_test.cc memchunk_test.h
 nghttpx_unittest_CPPFLAGS = ${AM_CPPFLAGS}\
 	-DNGHTTP2_TESTS_DIR=\"$(top_srcdir)/tests\"

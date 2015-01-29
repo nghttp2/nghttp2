@@ -105,15 +105,13 @@ int ClientHandler::read_clear() {
       return 0;
     }
     rb_.reset();
-    struct iovec iov[2];
-    auto iovcnt = rb_.wiovec(iov);
-    iovcnt = limit_iovec(iov, iovcnt, rlimit_.avail());
-    if (iovcnt == 0) {
+
+    ssize_t nread = std::min(rb_.wleft(), rlimit_.avail());
+    if (nread == 0) {
       break;
     }
 
-    ssize_t nread;
-    while ((nread = readv(fd_, iov, iovcnt)) == -1 && errno == EINTR)
+    while ((nread = read(fd_, rb_.last, nread)) == -1 && errno == EINTR)
       ;
     if (nread == -1) {
       if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -138,15 +136,12 @@ int ClientHandler::write_clear() {
 
   for (;;) {
     if (wb_.rleft() > 0) {
-      struct iovec iov[2];
-      auto iovcnt = wb_.riovec(iov);
-      iovcnt = limit_iovec(iov, iovcnt, wlimit_.avail());
-      if (iovcnt == 0) {
+      ssize_t nwrite = std::min(wb_.rleft(), wlimit_.avail());
+      if (nwrite == 0) {
         return 0;
       }
 
-      ssize_t nwrite;
-      while ((nwrite = writev(fd_, iov, iovcnt)) == -1 && errno == EINTR)
+      while ((nwrite = write(fd_, wb_.pos, nwrite)) == -1 && errno == EINTR)
         ;
       if (nwrite == -1) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -238,8 +233,8 @@ int ClientHandler::read_tls() {
       return 0;
     }
     rb_.reset();
-    struct iovec iov[2];
-    auto iovcnt = rb_.wiovec(iov);
+
+    ssize_t nread;
     // SSL_read requires the same arguments (buf pointer and its
     // length) on SSL_ERROR_WANT_READ or SSL_ERROR_WANT_WRITE.
     // rlimit_.avail() or rlimit_.avail() may return different length
@@ -248,16 +243,16 @@ int ClientHandler::read_tls() {
     // to SSL_read to tls_last_readlen_ if SSL_read indicated I/O
     // blocking.
     if (tls_last_readlen_ == 0) {
-      iovcnt = limit_iovec(iov, iovcnt, rlimit_.avail());
-      if (iovcnt == 0) {
+      nread = std::min(rb_.wleft(), rlimit_.avail());
+      if (nread == 0) {
         return 0;
       }
     } else {
-      assert(iov[0].iov_len == tls_last_readlen_);
+      nread = tls_last_readlen_;
       tls_last_readlen_ = 0;
     }
 
-    auto rv = SSL_read(ssl_, iov[0].iov_base, iov[0].iov_len);
+    auto rv = SSL_read(ssl_, rb_.last, nread);
 
     if (rv == 0) {
       return -1;
@@ -267,7 +262,7 @@ int ClientHandler::read_tls() {
       auto err = SSL_get_error(ssl_, rv);
       switch (err) {
       case SSL_ERROR_WANT_READ:
-        tls_last_readlen_ = iov[0].iov_len;
+        tls_last_readlen_ = nread;
         return 0;
       case SSL_ERROR_WANT_WRITE:
         if (LOG_ENABLED(INFO)) {
@@ -294,10 +289,7 @@ int ClientHandler::write_tls() {
 
   for (;;) {
     if (wb_.rleft() > 0) {
-      const void *p;
-      size_t len;
-      std::tie(p, len) = wb_.get();
-
+      ssize_t nwrite;
       // SSL_write requires the same arguments (buf pointer and its
       // length) on SSL_ERROR_WANT_READ or SSL_ERROR_WANT_WRITE.
       // get_write_limit() may return smaller length than previously
@@ -305,23 +297,21 @@ int ClientHandler::write_tls() {
       // avoid this, we keep last legnth passed to SSL_write to
       // tls_last_writelen_ if SSL_write indicated I/O blocking.
       if (tls_last_writelen_ == 0) {
-        len = std::min(len, wlimit_.avail());
-        if (len == 0) {
+        nwrite = std::min(wb_.rleft(), wlimit_.avail());
+        if (nwrite == 0) {
           return 0;
         }
 
         auto limit = get_write_limit();
         if (limit != -1) {
-          len = std::min(len, static_cast<size_t>(limit));
+          nwrite = std::min(nwrite, limit);
         }
       } else {
-        assert(len >= tls_last_writelen_);
-
-        len = tls_last_writelen_;
+        nwrite = tls_last_writelen_;
         tls_last_writelen_ = 0;
       }
 
-      auto rv = SSL_write(ssl_, p, len);
+      auto rv = SSL_write(ssl_, wb_.pos, nwrite);
 
       if (rv == 0) {
         return -1;
@@ -338,7 +328,7 @@ int ClientHandler::write_tls() {
           }
           return -1;
         case SSL_ERROR_WANT_WRITE:
-          tls_last_writelen_ = len;
+          tls_last_writelen_ = nwrite;
           wlimit_.startw();
           ev_timer_again(loop_, &wt_);
           return 0;
@@ -396,85 +386,75 @@ int ClientHandler::upstream_write() {
 }
 
 int ClientHandler::upstream_http2_connhd_read() {
-  struct iovec iov[2];
-  auto iovcnt = rb_.riovec(iov);
-  for (int i = 0; i < iovcnt; ++i) {
-    auto nread =
-        std::min(left_connhd_len_, static_cast<size_t>(iov[i].iov_len));
-    if (memcmp(NGHTTP2_CLIENT_CONNECTION_PREFACE +
-                   NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN - left_connhd_len_,
-               iov[i].iov_base, nread) != 0) {
-      // There is no downgrade path here. Just drop the connection.
-      if (LOG_ENABLED(INFO)) {
-        CLOG(INFO, this) << "invalid client connection header";
-      }
+  auto nread = std::min(left_connhd_len_, rb_.rleft());
+  if (memcmp(NGHTTP2_CLIENT_CONNECTION_PREFACE +
+                 NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN - left_connhd_len_,
+             rb_.pos, nread) != 0) {
+    // There is no downgrade path here. Just drop the connection.
+    if (LOG_ENABLED(INFO)) {
+      CLOG(INFO, this) << "invalid client connection header";
+    }
 
+    return -1;
+  }
+
+  left_connhd_len_ -= nread;
+  rb_.drain(nread);
+
+  if (left_connhd_len_ == 0) {
+    on_read_ = &ClientHandler::upstream_read;
+    // Run on_read to process data left in buffer since they are not
+    // notified further
+    if (on_read() != 0) {
       return -1;
     }
-
-    left_connhd_len_ -= nread;
-    rb_.drain(nread);
-
-    if (left_connhd_len_ == 0) {
-      on_read_ = &ClientHandler::upstream_read;
-      // Run on_read to process data left in buffer since they are not
-      // notified further
-      if (on_read() != 0) {
-        return -1;
-      }
-      return 0;
-    }
+    return 0;
   }
 
   return 0;
 }
 
 int ClientHandler::upstream_http1_connhd_read() {
-  struct iovec iov[2];
-  auto iovcnt = rb_.riovec(iov);
-  for (int i = 0; i < iovcnt; ++i) {
-    auto nread =
-        std::min(left_connhd_len_, static_cast<size_t>(iov[i].iov_len));
-    if (memcmp(NGHTTP2_CLIENT_CONNECTION_PREFACE +
-                   NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN - left_connhd_len_,
-               iov[i].iov_base, nread) != 0) {
-      if (LOG_ENABLED(INFO)) {
-        CLOG(INFO, this) << "This is HTTP/1.1 connection, "
-                         << "but may be upgraded to HTTP/2 later.";
-      }
-
-      // Reset header length for later HTTP/2 upgrade
-      left_connhd_len_ = NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN;
-      on_read_ = &ClientHandler::upstream_read;
-      on_write_ = &ClientHandler::upstream_write;
-
-      if (on_read() != 0) {
-        return -1;
-      }
-
-      return 0;
+  auto nread = std::min(left_connhd_len_, rb_.rleft());
+  if (memcmp(NGHTTP2_CLIENT_CONNECTION_PREFACE +
+                 NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN - left_connhd_len_,
+             rb_.pos, nread) != 0) {
+    if (LOG_ENABLED(INFO)) {
+      CLOG(INFO, this) << "This is HTTP/1.1 connection, "
+                       << "but may be upgraded to HTTP/2 later.";
     }
 
-    left_connhd_len_ -= nread;
-    rb_.drain(nread);
+    // Reset header length for later HTTP/2 upgrade
+    left_connhd_len_ = NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN;
+    on_read_ = &ClientHandler::upstream_read;
+    on_write_ = &ClientHandler::upstream_write;
 
-    if (left_connhd_len_ == 0) {
-      if (LOG_ENABLED(INFO)) {
-        CLOG(INFO, this) << "direct HTTP/2 connection";
-      }
-
-      direct_http2_upgrade();
-      on_read_ = &ClientHandler::upstream_read;
-      on_write_ = &ClientHandler::upstream_write;
-
-      // Run on_read to process data left in buffer since they are not
-      // notified further
-      if (on_read() != 0) {
-        return -1;
-      }
-
-      return 0;
+    if (on_read() != 0) {
+      return -1;
     }
+
+    return 0;
+  }
+
+  left_connhd_len_ -= nread;
+  rb_.drain(nread);
+
+  if (left_connhd_len_ == 0) {
+    if (LOG_ENABLED(INFO)) {
+      CLOG(INFO, this) << "direct HTTP/2 connection";
+    }
+
+    direct_http2_upgrade();
+    on_read_ = &ClientHandler::upstream_read;
+    on_write_ = &ClientHandler::upstream_write;
+
+    // Run on_read to process data left in buffer since they are not
+    // notified further
+    if (on_read() != 0) {
+      return -1;
+    }
+
+    return 0;
   }
 
   return 0;
