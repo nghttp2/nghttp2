@@ -917,42 +917,42 @@ Performance:
       << R"(
 
 Timeout:
-  --frontend-http2-read-timeout=<T>
+  --frontend-http2-read-timeout=<DURATION>
               Specify  read  timeout  for  HTTP/2  and  SPDY  frontend
               connection.
               Default: )"
       << util::duration_str(get_config()->http2_upstream_read_timeout) << R"(
-  --frontend-read-timeout=<T>
+  --frontend-read-timeout=<DURATION>
               Specify read timeout for HTTP/1.1 frontend connection.
               Default: )"
       << util::duration_str(get_config()->upstream_read_timeout) << R"(
-  --frontend-write-timeout=<T>
+  --frontend-write-timeout=<DURATION>
               Specify write timeout for all frontend connections.
               Default: )"
       << util::duration_str(get_config()->upstream_write_timeout) << R"(
-  --stream-read-timeout=<T>
+  --stream-read-timeout=<DURATION>
               Specify  read timeout  for HTTP/2  and SPDY  streams.  0
               means no timeout.
               Default: )"
       << util::duration_str(get_config()->stream_read_timeout) << R"(
-  --stream-write-timeout=<T>
+  --stream-write-timeout=<DURATION>
               Specify write  timeout for  HTTP/2 and SPDY  streams.  0
               means no timeout.
               Default: )"
       << util::duration_str(get_config()->stream_write_timeout) << R"(
-  --backend-read-timeout=<T>
+  --backend-read-timeout=<DURATION>
               Specify read timeout for backend connection.
               Default: )"
       << util::duration_str(get_config()->downstream_read_timeout) << R"(
-  --backend-write-timeout=<T>
+  --backend-write-timeout=<DURATION>
               Specify write timeout for backend connection.
               Default: )"
       << util::duration_str(get_config()->downstream_write_timeout) << R"(
-  --backend-keep-alive-timeout=<T>
+  --backend-keep-alive-timeout=<DURATION>
               Specify keep-alive timeout for backend connection.
               Default: )"
       << util::duration_str(get_config()->downstream_idle_read_timeout) << R"(
-  --listener-disable-timeout=<T>
+  --listener-disable-timeout=<DURATION>
               After accepting  connection failed,  connection listener
               is disabled  for a given  amount of time.   Specifying 0
               disables this feature.
@@ -1221,9 +1221,9 @@ Misc:
   The <SIZE> argument is an integer and an optional unit (e.g., 10K is
   10 * 1024).  Units are K, M and G (powers of 1024).
 
-  The <T> argument is an integer and an optional unit (e.g., 1s is 1
-  second and 500ms is 500 milliseconds).  Units are s or ms.  If a
-  unit is omitted, a second is used as unit.)" << std::endl;
+  The <DURATION> argument is an integer and an optional unit (e.g., 1s
+  is 1 second and 500ms is 500  milliseconds).  Units are s or ms.  If
+  a unit is omitted, a second is used as unit.)" << std::endl;
 }
 } // namespace
 
