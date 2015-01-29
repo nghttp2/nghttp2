@@ -200,61 +200,61 @@ Performance:
 Timeout:
 ~~~~~~~~
 
-.. option:: --frontend-http2-read-timeout=<SEC>
+.. option:: --frontend-http2-read-timeout=<DURATION>
 
     Specify  read  timeout  for  HTTP/2  and  SPDY  frontend
     connection.
 
-    Default: ``180``
+    Default: ``180s``
 
-.. option:: --frontend-read-timeout=<SEC>
+.. option:: --frontend-read-timeout=<DURATION>
 
     Specify read timeout for HTTP/1.1 frontend connection.
 
-    Default: ``180``
+    Default: ``180s``
 
-.. option:: --frontend-write-timeout=<SEC>
+.. option:: --frontend-write-timeout=<DURATION>
 
     Specify write timeout for all frontend connections.
 
-    Default: ``30``
+    Default: ``30s``
 
-.. option:: --stream-read-timeout=<SEC>
+.. option:: --stream-read-timeout=<DURATION>
 
     Specify  read timeout  for HTTP/2  and SPDY  streams.  0
     means no timeout.
 
     Default: ``0``
 
-.. option:: --stream-write-timeout=<SEC>
+.. option:: --stream-write-timeout=<DURATION>
 
     Specify write  timeout for  HTTP/2 and SPDY  streams.  0
     means no timeout.
 
     Default: ``0``
 
-.. option:: --backend-read-timeout=<SEC>
+.. option:: --backend-read-timeout=<DURATION>
 
     Specify read timeout for backend connection.
 
-    Default: ``180``
+    Default: ``180s``
 
-.. option:: --backend-write-timeout=<SEC>
+.. option:: --backend-write-timeout=<DURATION>
 
     Specify write timeout for backend connection.
 
-    Default: ``30``
+    Default: ``30s``
 
-.. option:: --backend-keep-alive-timeout=<SEC>
+.. option:: --backend-keep-alive-timeout=<DURATION>
 
     Specify keep-alive timeout for backend connection.
 
-    Default: ``600``
+    Default: ``2s``
 
-.. option:: --listener-disable-timeout=<SEC>
+.. option:: --listener-disable-timeout=<DURATION>
 
     After accepting  connection failed,  connection listener
-    is disabled for  a given time in  seconds.  Specifying 0
+    is disabled  for a given  amount of time.   Specifying 0
     disables this feature.
 
     Default: ``0``
@@ -652,6 +652,10 @@ Misc:
 
 The <SIZE> argument is an integer and an optional unit (e.g., 10K is
 10 * 1024).  Units are K, M and G (powers of 1024).
+
+The <DURATION> argument is an integer and an optional unit (e.g., 1s
+is 1 second and 500ms is 500  milliseconds).  Units are s or ms.  If
+a unit is omitted, a second is used as unit.
 
 FILES
 -----
