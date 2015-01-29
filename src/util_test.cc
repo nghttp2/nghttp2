@@ -223,24 +223,31 @@ void test_util_parse_uint(void) {
   CU_ASSERT(-1 == util::parse_uint(""));
 }
 
-void test_util_parse_time_with_unit(void) {
-  CU_ASSERT(0. == util::parse_time_with_unit("0"));
-  CU_ASSERT(123. == util::parse_time_with_unit("123"));
-  CU_ASSERT(123. == util::parse_time_with_unit("123s"));
-  CU_ASSERT(0.500 == util::parse_time_with_unit("500ms"));
-  CU_ASSERT(123. == util::parse_time_with_unit("123S"));
-  CU_ASSERT(0.500 == util::parse_time_with_unit("500MS"));
+void test_util_parse_duration_with_unit(void) {
+  CU_ASSERT(0. == util::parse_duration_with_unit("0"));
+  CU_ASSERT(123. == util::parse_duration_with_unit("123"));
+  CU_ASSERT(123. == util::parse_duration_with_unit("123s"));
+  CU_ASSERT(0.500 == util::parse_duration_with_unit("500ms"));
+  CU_ASSERT(123. == util::parse_duration_with_unit("123S"));
+  CU_ASSERT(0.500 == util::parse_duration_with_unit("500MS"));
 
   auto err = std::numeric_limits<double>::infinity();
   // check overflow case
-  CU_ASSERT(err == util::parse_time_with_unit("9223372036854775808"));
+  CU_ASSERT(err == util::parse_duration_with_unit("9223372036854775808"));
   // bad characters
-  CU_ASSERT(err == util::parse_time_with_unit("0u"));
-  CU_ASSERT(err == util::parse_time_with_unit("0xs"));
-  CU_ASSERT(err == util::parse_time_with_unit("0mt"));
-  CU_ASSERT(err == util::parse_time_with_unit("0mss"));
-  CU_ASSERT(err == util::parse_time_with_unit("s"));
-  CU_ASSERT(err == util::parse_time_with_unit("ms"));
+  CU_ASSERT(err == util::parse_duration_with_unit("0u"));
+  CU_ASSERT(err == util::parse_duration_with_unit("0xs"));
+  CU_ASSERT(err == util::parse_duration_with_unit("0mt"));
+  CU_ASSERT(err == util::parse_duration_with_unit("0mss"));
+  CU_ASSERT(err == util::parse_duration_with_unit("s"));
+  CU_ASSERT(err == util::parse_duration_with_unit("ms"));
+}
+
+void test_util_duration_str(void) {
+  CU_ASSERT("0" == util::duration_str(0.));
+  CU_ASSERT("1s" == util::duration_str(1.));
+  CU_ASSERT("500ms" == util::duration_str(0.5));
+  CU_ASSERT("1500ms" == util::duration_str(1.5));
 }
 
 } // namespace shrpx

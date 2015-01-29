@@ -514,7 +514,7 @@ int64_t parse_uint(const std::string &s);
 // is millisecond.  If none of them are given, the unit is second.
 // This function returns std::numeric_limits<double>::infinity() if
 // error occurs.
-double parse_time_with_unit(const char *s);
+double parse_duration_with_unit(const char *s);
 
 // Returns string representation of time duration |t|.  If t has
 // fractional part (at least more than or equal to 1e-3), |t| is

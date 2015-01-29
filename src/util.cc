@@ -990,7 +990,7 @@ int64_t parse_uint(const uint8_t *s, size_t len) {
   return n;
 }
 
-double parse_time_with_unit(const char *s) {
+double parse_duration_with_unit(const char *s) {
   int64_t n;
   size_t i;
   auto len = strlen(s);
@@ -1021,6 +1021,9 @@ fail:
 }
 
 std::string duration_str(double t) {
+  if (t == 0.) {
+    return "0";
+  }
   auto frac = static_cast<int64_t>(t * 1000) % 1000;
   if (frac > 0) {
     return utos(static_cast<int64_t>(t * 1000)) + "ms";

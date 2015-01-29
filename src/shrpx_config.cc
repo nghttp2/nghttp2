@@ -502,7 +502,7 @@ std::vector<LogFragment> parse_log_format(const char *optarg) {
 
 namespace {
 int parse_duration(ev_tstamp *dest, const char *opt, const char *optarg) {
-  auto t = util::parse_time_with_unit(optarg);
+  auto t = util::parse_duration_with_unit(optarg);
   if (t == std::numeric_limits<double>::infinity()) {
     LOG(ERROR) << opt << ": bad value: '" << optarg << "'";
     return -1;
