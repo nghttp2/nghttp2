@@ -31,6 +31,7 @@
 #include <netdb.h>
 #include <signal.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <getopt.h>
@@ -218,6 +219,15 @@ std::unique_ptr<AcceptHandler> create_acceptor(ConnectionHandler *handler,
       }
     }
 #endif // IPV6_V6ONLY
+
+#ifdef TCP_DEFER_ACCEPT
+    val = 3;
+    if (setsockopt(fd, IPPROTO_TCP, TCP_DEFER_ACCEPT, &val,
+                   static_cast<socklen_t>(sizeof(val))) == -1) {
+      LOG(WARN) << "Failed to set TCP_DEFER_ACCEPT option to listener socket";
+    }
+#endif // TCP_DEFER_ACCEPT
+
     if (bind(fd, rp->ai_addr, rp->ai_addrlen) == 0 &&
         listen(fd, get_config()->backlog) == 0) {
       break;
