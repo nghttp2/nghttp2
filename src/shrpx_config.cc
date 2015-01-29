@@ -143,8 +143,6 @@ const char SHRPX_OPT_RLIMIT_NOFILE[] = "rlimit-nofile";
 const char SHRPX_OPT_TLS_CTX_PER_WORKER[] = "tls-ctx-per-worker";
 const char SHRPX_OPT_BACKEND_REQUEST_BUFFER[] = "backend-request-buffer";
 const char SHRPX_OPT_BACKEND_RESPONSE_BUFFER[] = "backend-response-buffer";
-const char SHRPX_OPT_NUM_ACCEPT[] = "num-accept";
-const char SHRPX_OPT_ACCEPT_DELAY[] = "accept-delay";
 
 namespace {
 Config *config = nullptr;
@@ -1157,21 +1155,6 @@ int parse_config(const char *opt, const char *optarg) {
     mod_config()->tls_ctx_per_worker = util::strieq(optarg, "yes");
 
     return 0;
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_NUM_ACCEPT)) {
-    size_t n;
-    if (parse_uint(&n, opt, optarg) != 0) {
-      return -1;
-    }
-
-    mod_config()->num_accept = n;
-
-    return 0;
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_ACCEPT_DELAY)) {
-    return parse_duration(&mod_config()->accept_delay, opt, optarg);
   }
 
   if (util::strieq(opt, "conf")) {

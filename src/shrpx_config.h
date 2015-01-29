@@ -131,8 +131,6 @@ extern const char SHRPX_OPT_RLIMIT_NOFILE[];
 extern const char SHRPX_OPT_TLS_CTX_PER_WORKER[];
 extern const char SHRPX_OPT_BACKEND_REQUEST_BUFFER[];
 extern const char SHRPX_OPT_BACKEND_RESPONSE_BUFFER[];
-extern const char SHRPX_OPT_NUM_ACCEPT[];
-extern const char SHRPX_OPT_ACCEPT_DELAY[];
 
 union sockaddr_union {
   sockaddr_storage storage;
@@ -199,7 +197,6 @@ struct Config {
   ev_tstamp stream_write_timeout;
   ev_tstamp downstream_idle_read_timeout;
   ev_tstamp listener_disable_timeout;
-  ev_tstamp accept_delay;
   std::unique_ptr<char[]> host;
   std::unique_ptr<char[]> private_key_file;
   std::unique_ptr<char[]> private_key_passwd;
@@ -263,7 +260,6 @@ struct Config {
   size_t rlimit_nofile;
   size_t downstream_request_buffer_size;
   size_t downstream_response_buffer_size;
-  size_t num_accept;
   // Bit mask to disable SSL/TLS protocol versions.  This will be
   // passed to SSL_CTX_set_options().
   long int tls_proto_mask;
