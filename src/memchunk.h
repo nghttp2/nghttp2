@@ -37,8 +37,12 @@
 namespace nghttp2 {
 
 template <size_t N> struct Memchunk {
-  Memchunk()
-      : kprev(nullptr), next(nullptr), pos(begin), last(begin), end(begin + N) {
+  Memchunk(std::unique_ptr<Memchunk> next_chunk)
+      : knext(std::move(next_chunk)), kprev(nullptr), next(nullptr), pos(begin),
+        last(begin), end(begin + N) {
+    if (knext) {
+      knext->kprev = this;
+    }
   }
   size_t len() const { return last - pos; }
   size_t left() const { return end - last; }
@@ -63,15 +67,9 @@ template <typename T> struct Pool {
       return m;
     }
 
-    auto m = util::make_unique<T>();
-    auto p = m.get();
-    if (pool) {
-      m->knext = std::move(pool);
-      m->knext->kprev = m.get();
-    }
-    pool = std::move(m);
+    pool = util::make_unique<T>(std::move(pool));
     poolsize += T::size;
-    return p;
+    return pool.get();
   }
   void recycle(T *m) {
     if (freelist) {
