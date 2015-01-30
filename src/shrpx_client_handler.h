@@ -110,12 +110,8 @@ public:
   bool get_tls_handshake() const;
   void set_tls_renegotiation(bool f);
   bool get_tls_renegotiation() const;
-  // Returns maximum chunk size for one evbuffer_add().  The intention
-  // of this chunk size is control the TLS record size.  The actual
-  // SSL_write() call is done under libevent control.  In
-  // libevent-2.0.21, libevent calls SSL_write() for each chunk inside
-  // evbuffer.  This means that we can control TLS record size by
-  // adjusting the chunk size to evbuffer_add().
+  // Returns maximum write size.  The intention of this chunk size is
+  // control the TLS record size.
   //
   // This function returns -1, if TLS is not enabled or no limitation
   // is required.
