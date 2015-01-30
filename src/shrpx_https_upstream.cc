@@ -465,6 +465,14 @@ int HttpsUpstream::downstream_read(DownstreamConnection *dconn) {
     goto end;
   }
 
+  // Detach downstream connection early so that it could be reused
+  // without hitting server's request timeout.
+  if (downstream->get_response_state() == Downstream::MSG_COMPLETE &&
+      !downstream->get_response_connection_close()) {
+    // Keep-alive
+    downstream->detach_downstream_connection();
+  }
+
   if (rv == DownstreamConnection::ERR_EOF) {
     return downstream_eof(dconn);
   }

@@ -552,6 +552,13 @@ int SpdyUpstream::downstream_read(DownstreamConnection *dconn) {
       }
       return downstream_error(dconn, Downstream::EVENT_ERROR);
     }
+    // Detach downstream connection early so that it could be reused
+    // without hitting server's request timeout.
+    if (downstream->get_response_state() == Downstream::MSG_COMPLETE &&
+        !downstream->get_response_connection_close()) {
+      // Keep-alive
+      downstream->detach_downstream_connection();
+    }
   }
 
   handler_->signal_write();
