@@ -135,7 +135,7 @@ public:
                        int64_t body_bytes_sent);
   WorkerStat *get_worker_stat() const;
 
-  using WriteBuf = Buffer<65536>;
+  using WriteBuf = Buffer<32768>;
   using ReadBuf = Buffer<8192>;
 
   WriteBuf *get_wb();
