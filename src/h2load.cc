@@ -94,12 +94,6 @@ void debug_nextproto_error() {
 }
 } // namespace
 
-namespace {
-std::chrono::steady_clock::time_point get_current_time() {
-  return std::chrono::steady_clock::now();
-}
-} // namespace
-
 RequestStat::RequestStat() : completed(false) {}
 
 Stats::Stats(size_t req_todo)
@@ -232,9 +226,6 @@ void Client::disconnect() {
 
 void Client::submit_request() {
   auto req_stat = &worker->stats.req_stats[worker->stats.req_started++];
-  // TODO It would be more accurate to record time when
-  // HEADERS/SYN_STREAM was transmitted (e.g., on_frame_sent_callback)
-  req_stat->request_time = get_current_time();
   session->submit_request(req_stat);
   ++req_started;
 }
@@ -371,7 +362,7 @@ void Client::on_header(int32_t stream_id, const uint8_t *name, size_t namelen,
 
 void Client::on_stream_close(int32_t stream_id, bool success,
                              RequestStat *req_stat) {
-  req_stat->stream_close_time = get_current_time();
+  req_stat->stream_close_time = std::chrono::steady_clock::now();
   if (success) {
     req_stat->completed = true;
     ++worker->stats.req_success;
