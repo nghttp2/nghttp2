@@ -38,10 +38,12 @@ void test_util_http_date(void);
 void test_util_select_h2(void);
 void test_util_ipv6_numeric_addr(void);
 void test_util_utos_with_unit(void);
+void test_util_utos_with_funit(void);
 void test_util_parse_uint_with_unit(void);
 void test_util_parse_uint(void);
 void test_util_parse_duration_with_unit(void);
 void test_util_duration_str(void);
+void test_util_format_duration(void);
 
 } // namespace shrpx
 

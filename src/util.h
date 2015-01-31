@@ -30,6 +30,7 @@
 #include <unistd.h>
 #include <getopt.h>
 
+#include <cmath>
 #include <cstring>
 #include <cassert>
 #include <vector>
@@ -323,6 +324,9 @@ inline char lowcase(char c) {
 // Lowercase |s| in place.
 void inp_strlower(std::string &s);
 
+// Returns string representation of |n| with 2 fractional digits.
+std::string dtos(double n);
+
 template <typename T> std::string utos(T n) {
   std::string res;
   if (n == 0) {
@@ -357,6 +361,26 @@ template <typename T> std::string utos_with_unit(T n) {
     return utos(n);
   }
   return utos(n) + u;
+}
+
+// Like utos_with_unit(), but 2 digits fraction part is followed.
+template <typename T> std::string utos_with_funit(T n) {
+  char u = 0;
+  int b = 0;
+  if (n >= (1 << 30)) {
+    u = 'G';
+    b = 30;
+  } else if (n >= (1 << 20)) {
+    u = 'M';
+    b = 20;
+  } else if (n >= (1 << 10)) {
+    u = 'K';
+    b = 10;
+  }
+  if (b == 0) {
+    return utos(n);
+  }
+  return dtos(static_cast<double>(n) / (1 << b)) + u;
 }
 
 extern const char UPPER_XDIGITS[];
@@ -521,6 +545,12 @@ double parse_duration_with_unit(const char *s);
 // multiplied by 1000 and the unit "ms" is appended.  Otherwise, |t|
 // is left as is and "s" is appended.
 std::string duration_str(double t);
+
+// Returns string representation of time duration |t|.  It appends
+// unit after the formatting.  The available units are s, ms and us.
+// The unit which is equal to or less than |t| is used and 2
+// fractional digits follow.
+std::string format_duration(const std::chrono::microseconds &u);
 
 } // namespace util
 

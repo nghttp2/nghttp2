@@ -38,7 +38,7 @@ public:
   Http2Session(Client *client);
   virtual ~Http2Session();
   virtual void on_connect();
-  virtual void submit_request();
+  virtual void submit_request(RequestStat *req_stat);
   virtual int on_read(const uint8_t *data, size_t len);
   virtual int on_write();
   virtual void terminate();

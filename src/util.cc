@@ -34,6 +34,7 @@
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 
+#include <cmath>
 #include <cerrno>
 #include <cassert>
 #include <cstdio>
@@ -1029,6 +1030,27 @@ std::string duration_str(double t) {
     return utos(static_cast<int64_t>(t * 1000)) + "ms";
   }
   return utos(static_cast<int64_t>(t)) + "s";
+}
+
+std::string format_duration(const std::chrono::microseconds &u) {
+  const char *unit = "us";
+  int d = 0;
+  auto t = u.count();
+  if (t >= 1000000) {
+    d = 1000000;
+    unit = "s";
+  } else if (t >= 1000) {
+    d = 1000;
+    unit = "ms";
+  } else {
+    return utos(t) + unit;
+  }
+  return dtos(static_cast<double>(t) / d) + unit;
+}
+
+std::string dtos(double n) {
+  auto f = utos(static_cast<int64_t>(round(100. * n)) % 100);
+  return utos(static_cast<int64_t>(n)) + "." + (f.size() == 1 ? "0" : "") + f;
 }
 
 } // namespace util

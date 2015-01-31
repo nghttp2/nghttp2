@@ -184,6 +184,20 @@ void test_util_utos_with_unit(void) {
   CU_ASSERT("1024G" == util::utos_with_unit(1LL << 40));
 }
 
+void test_util_utos_with_funit(void) {
+  CU_ASSERT("0" == util::utos_with_funit(0));
+  CU_ASSERT("1023" == util::utos_with_funit(1023));
+  CU_ASSERT("1.00K" == util::utos_with_funit(1024));
+  CU_ASSERT("1.00K" == util::utos_with_funit(1025));
+  CU_ASSERT("1.09K" == util::utos_with_funit(1119));
+  CU_ASSERT("1.27K" == util::utos_with_funit(1300));
+  CU_ASSERT("1.00M" == util::utos_with_funit(1 << 20));
+  CU_ASSERT("1.18M" == util::utos_with_funit(1234567));
+  CU_ASSERT("1.00G" == util::utos_with_funit(1 << 30));
+  CU_ASSERT("4492450797.23G" == util::utos_with_funit(4823732313248234343LL));
+  CU_ASSERT("1024.00G" == util::utos_with_funit(1LL << 40));
+}
+
 void test_util_parse_uint_with_unit(void) {
   CU_ASSERT(0 == util::parse_uint_with_unit("0"));
   CU_ASSERT(1023 == util::parse_uint_with_unit("1023"));
@@ -248,6 +262,20 @@ void test_util_duration_str(void) {
   CU_ASSERT("1s" == util::duration_str(1.));
   CU_ASSERT("500ms" == util::duration_str(0.5));
   CU_ASSERT("1500ms" == util::duration_str(1.5));
+}
+
+void test_util_format_duration(void) {
+  CU_ASSERT("0us" == util::format_duration(std::chrono::microseconds(0)));
+  CU_ASSERT("999us" == util::format_duration(std::chrono::microseconds(999)));
+  CU_ASSERT("1.00ms" == util::format_duration(std::chrono::microseconds(1000)));
+  CU_ASSERT("1.09ms" == util::format_duration(std::chrono::microseconds(1090)));
+  CU_ASSERT("1.01ms" == util::format_duration(std::chrono::microseconds(1009)));
+  CU_ASSERT("999.99ms" ==
+            util::format_duration(std::chrono::microseconds(999990)));
+  CU_ASSERT("1.00s" ==
+            util::format_duration(std::chrono::microseconds(1000000)));
+  CU_ASSERT("1.05s" ==
+            util::format_duration(std::chrono::microseconds(1050000)));
 }
 
 } // namespace shrpx

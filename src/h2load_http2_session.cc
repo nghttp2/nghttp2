@@ -80,7 +80,27 @@ namespace {
 int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
                              uint32_t error_code, void *user_data) {
   auto client = static_cast<Client *>(user_data);
-  client->on_stream_close(stream_id, error_code == NGHTTP2_NO_ERROR);
+  auto req_stat = static_cast<RequestStat *>(
+      nghttp2_session_get_stream_user_data(session, stream_id));
+  client->on_stream_close(stream_id, error_code == NGHTTP2_NO_ERROR, req_stat);
+  return 0;
+}
+} // namespace
+
+namespace {
+int before_frame_send_callback(nghttp2_session *session,
+                               const nghttp2_frame *frame, void *user_data) {
+  if (frame->hd.type != NGHTTP2_HEADERS ||
+      frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
+    return 0;
+  }
+
+  auto client = static_cast<Client *>(user_data);
+  client->on_request(frame->hd.stream_id);
+  auto req_stat = static_cast<RequestStat *>(
+      nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
+  client->record_request_time(req_stat);
+
   return 0;
 }
 } // namespace
@@ -121,6 +141,9 @@ void Http2Session::on_connect() {
   nghttp2_session_callbacks_set_on_header_callback(callbacks,
                                                    on_header_callback);
 
+  nghttp2_session_callbacks_set_before_frame_send_callback(
+      callbacks, before_frame_send_callback);
+
   nghttp2_session_callbacks_set_send_callback(callbacks, send_callback);
 
   nghttp2_session_client_new(&session_, callbacks, client_);
@@ -153,7 +176,7 @@ void Http2Session::on_connect() {
   client_->signal_write();
 }
 
-void Http2Session::submit_request() {
+void Http2Session::submit_request(RequestStat *req_stat) {
   auto config = client_->worker->config;
   auto &nva = config->nva[client_->reqidx++];
 
@@ -162,10 +185,8 @@ void Http2Session::submit_request() {
   }
 
   auto stream_id = nghttp2_submit_request(session_, nullptr, nva.data(),
-                                          nva.size(), nullptr, nullptr);
+                                          nva.size(), nullptr, req_stat);
   assert(stream_id > 0);
-
-  client_->on_request(stream_id);
 }
 
 int Http2Session::on_read(const uint8_t *data, size_t len) {

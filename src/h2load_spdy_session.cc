@@ -47,6 +47,10 @@ void before_ctrl_send_callback(spdylay_session *session,
     return;
   }
   client->on_request(frame->syn_stream.stream_id);
+  auto req_stat =
+      static_cast<RequestStat *>(spdylay_session_get_stream_user_data(
+          session, frame->syn_stream.stream_id));
+  client->record_request_time(req_stat);
 }
 } // namespace
 
@@ -86,7 +90,9 @@ void on_stream_close_callback(spdylay_session *session, int32_t stream_id,
                               spdylay_status_code status_code,
                               void *user_data) {
   auto client = static_cast<Client *>(user_data);
-  client->on_stream_close(stream_id, status_code == SPDYLAY_OK);
+  auto req_stat = static_cast<RequestStat *>(
+      spdylay_session_get_stream_user_data(session, stream_id));
+  client->on_stream_close(stream_id, status_code == SPDYLAY_OK, req_stat);
 }
 } // namespace
 
@@ -137,7 +143,7 @@ void SpdySession::on_connect() {
   client_->signal_write();
 }
 
-void SpdySession::submit_request() {
+void SpdySession::submit_request(RequestStat *req_stat) {
   auto config = client_->worker->config;
   auto &nv = config->nv[client_->reqidx++];
 
@@ -145,7 +151,7 @@ void SpdySession::submit_request() {
     client_->reqidx = 0;
   }
 
-  spdylay_submit_request(session_, 0, nv.data(), nullptr, nullptr);
+  spdylay_submit_request(session_, 0, nv.data(), nullptr, req_stat);
 }
 
 int SpdySession::on_read(const uint8_t *data, size_t len) {

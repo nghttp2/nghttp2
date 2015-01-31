@@ -35,6 +35,8 @@
 #include <string>
 #include <unordered_map>
 #include <memory>
+#include <chrono>
+#include <array>
 
 #include <nghttp2/nghttp2.h>
 
@@ -75,16 +77,38 @@ struct Config {
   ~Config();
 };
 
+struct RequestStat {
+  RequestStat();
+  // time point when request was sent
+  std::chrono::steady_clock::time_point request_time;
+  // time point when stream was closed
+  std::chrono::steady_clock::time_point stream_close_time;
+  // true if stream was successfully closed.  This means stream was
+  // not reset, but it does not mean HTTP level error (e.g., 404).
+  bool completed;
+};
+
+struct TimeStats {
+  // time for request: max, min, mean and sd (standard deviation)
+  std::chrono::microseconds time_max, time_min, time_mean, time_sd;
+  // percentage of number of requests inside mean -/+ sd
+  double within_sd;
+};
+
 struct Stats {
+  Stats(size_t req_todo);
   // The total number of requests
   size_t req_todo;
   // The number of requests issued so far
   size_t req_started;
   // The number of requests finished
   size_t req_done;
-  // The number of requests marked as success. This is subset of
-  // req_done.
+  // The number of requests completed successfull, but not necessarily
+  // means successful HTTP status code.
   size_t req_success;
+  // The number of requests marked as success.  HTTP status code is
+  // also considered as success. This is subset of req_done.
+  size_t req_status_success;
   // The number of requests failed. This is subset of req_done.
   size_t req_failed;
   // The number of requests failed due to network errors. This is
@@ -99,7 +123,9 @@ struct Stats {
   int64_t bytes_body;
   // The number of each HTTP status category, status[i] is status code
   // in the range [i*100, (i+1)*100).
-  size_t status[6];
+  std::array<size_t, 6> status;
+  // The statistics per request
+  std::vector<RequestStat> req_stats;
 };
 
 enum ClientState { CLIENT_IDLE, CLIENT_CONNECTED };
@@ -119,6 +145,7 @@ struct Worker {
   Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t nreq_todo, size_t nclients,
          Config *config);
   ~Worker();
+  Worker(Worker &&o) = default;
   void run();
 };
 
@@ -180,7 +207,9 @@ struct Client {
   void on_request(int32_t stream_id);
   void on_header(int32_t stream_id, const uint8_t *name, size_t namelen,
                  const uint8_t *value, size_t valuelen);
-  void on_stream_close(int32_t stream_id, bool success);
+  void on_stream_close(int32_t stream_id, bool success, RequestStat *req_stat);
+
+  void record_request_time(RequestStat *req_stat);
 
   void signal_write();
 };

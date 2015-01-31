@@ -514,8 +514,11 @@ library.  The UI of ``h2load`` is heavily inspired by ``weighttp``
 (https://github.com/lighttpd/weighttp).  The typical usage is as
 follows::
 
-    $ src/h2load -n1000 -c10 -m10 https://127.0.0.1:8443/
+    $ src/h2load -n100000 -c100 -m100 https://localhost:8443/
     starting benchmark...
+    spawning thread #0: 100 concurrent clients, 100000 total requests
+    Protocol: TLSv1.2
+    Cipher: ECDHE-RSA-AES128-GCM-SHA256
     progress: 10% done
     progress: 20% done
     progress: 30% done
@@ -527,15 +530,17 @@ follows::
     progress: 90% done
     progress: 100% done
 
-    finished in 0 sec, 152 millisec and 152 microsec, 6572 req/s, 749 kbytes/s
-    requests: 1000 total, 1000 started, 1000 done, 0 succeeded, 1000 failed, 0 errored
-    status codes: 0 2xx, 0 3xx, 1000 4xx, 0 5xx
-    traffic: 141100 bytes total, 840 bytes headers, 116000 bytes data
+    finished in 7.10s, 14092 req/s, 55.67MB/s
+    requests: 100000 total, 100000 started, 100000 done, 100000 succeeded, 0 failed, 0 errored
+    status codes: 100000 2xx, 0 3xx, 0 4xx, 0 5xx
+    traffic: 414200800 bytes total, 2723100 bytes headers, 409600000 bytes data
+			 min         max         mean         sd        +/- sd
+    time for request:   283.86ms       1.46s    659.70ms    150.87ms    84.68%
 
-The above example issued total 1000 requests, using 10 concurrent
-clients (thus 10 HTTP/2 sessions), and maximum 10 streams per client.
-With ``-t`` option, ``h2load`` will use multiple native threads to
-avoid saturating single core on client side.
+The above example issued total 100000 requests, using 100 concurrent
+clients (in other words, 100 HTTP/2 sessions), and maximum 100 streams
+per client.  With ``-t`` option, ``h2load`` will use multiple native
+threads to avoid saturating single core on client side.
 
 .. warning::
 
