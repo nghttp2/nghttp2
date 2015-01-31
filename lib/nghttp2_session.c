@@ -2523,8 +2523,14 @@ static int session_after_frame_sent2(nghttp2_session *session) {
     assert(stream);
     next_item = nghttp2_session_get_next_ob_item(session);
 
-    session_outbound_item_cycle_weight(session, aob->item,
-                                       stream->effective_weight);
+    /* Imagine we hit connection window size limit while sending DATA
+       frame.  If we decrement weight here, its stream might get
+       inferior share because the other streams' weight is not
+       decremented because of flow control. */
+    if (session->remote_window_size > 0 || stream->remote_window_size <= 0) {
+      session_outbound_item_cycle_weight(session, aob->item,
+                                         stream->effective_weight);
+    }
 
     /* If priority of this stream is higher or equal to other stream
        waiting at the top of the queue, we continue to send this
