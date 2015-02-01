@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "H2LOAD" "1" "January 29, 2015" "0.7.4-DEV" "nghttp2"
+.TH "H2LOAD" "1" "February 01, 2015" "0.7.4-DEV" "nghttp2"
 .SH NAME
 h2load \- HTTP/2 benchmarking tool
 .
@@ -130,6 +130,77 @@ Display version information and exit.
 .TP
 .B \-h, \-\-help
 Display this help and exit.
+.UNINDENT
+.SH OUTPUT
+.INDENT 0.0
+.TP
+.B requests
+.INDENT 7.0
+.TP
+.B total
+The number of requests h2load was instructed to make.
+.TP
+.B started
+The number of requests h2load has started.
+.TP
+.B done
+The number of requests completed.
+.TP
+.B succeeded
+The number of requests completed successfully.  Only HTTP status
+code 2xx or3xx are considered as success.
+.TP
+.B failed
+The number of requests failed, including HTTP level failures
+(non\-successful HTTP status code).
+.TP
+.B errored
+The number of requests failed, except for HTTP level failures.
+status code.  This is the subset of the number reported in
+\fBfailed\fP and most likely the network level failures or stream
+was reset by RST_STREAM.
+.UNINDENT
+.TP
+.B status codes
+The number of status code h2load received.
+.TP
+.B traffic
+.INDENT 7.0
+.TP
+.B total
+The number of bytes received from the server "on the wire".  If
+requests were made via TLS, this value is the number of decrpyted
+bytes.
+.TP
+.B headers
+The number of response header bytes from the server without
+decompression.  For HTTP/2, this is the sum of the payload of
+HEADERS frame.  For SPDY, this is the sum of the payload of
+SYN_REPLY frame.
+.TP
+.B data
+The number of response body bytes received from the server.
+.UNINDENT
+.TP
+.B time for request
+.INDENT 7.0
+.TP
+.B min
+The minimum time taken for request and response.
+.TP
+.B max
+The maximum time taken for request and response.
+.TP
+.B mean
+The mean time taken for request and response.
+.TP
+.B sd
+The standard deviation of the time for request and response.
+.TP
+.B +/\- sd
+The fraction of the number of requests within standard deviation
+range (mean +/\- sd) against total number of successful requests.
+.UNINDENT
 .UNINDENT
 .SH SEE ALSO
 .sp
