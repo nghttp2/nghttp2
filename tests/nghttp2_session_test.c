@@ -1942,7 +1942,7 @@ void test_nghttp2_session_on_push_response_headers_received(void) {
                                                               stream));
   item = nghttp2_session_get_next_ob_item(session);
   CU_ASSERT(NGHTTP2_GOAWAY == item->frame.hd.type);
-  CU_ASSERT(NGHTTP2_ENHANCE_YOUR_CALM == item->frame.goaway.error_code);
+  CU_ASSERT(NGHTTP2_PROTOCOL_ERROR == item->frame.goaway.error_code);
   CU_ASSERT(1 == session->num_incoming_streams);
 
   nghttp2_frame_headers_free(&frame.headers, mem);
@@ -4396,7 +4396,7 @@ void test_nghttp2_session_max_concurrent_streams(void) {
 
   item = nghttp2_session_get_ob_pq_top(session);
   CU_ASSERT(NGHTTP2_GOAWAY == item->frame.hd.type);
-  CU_ASSERT(NGHTTP2_ENHANCE_YOUR_CALM == item->frame.goaway.error_code);
+  CU_ASSERT(NGHTTP2_PROTOCOL_ERROR == item->frame.goaway.error_code);
 
   nghttp2_frame_headers_free(&frame.headers, mem);
   nghttp2_session_del(session);

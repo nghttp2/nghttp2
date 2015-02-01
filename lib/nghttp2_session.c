@@ -3256,7 +3256,7 @@ int nghttp2_session_on_request_headers_received(nghttp2_session *session,
 
   if (session_is_incoming_concurrent_streams_max(session)) {
     return session_inflate_handle_invalid_connection(
-        session, frame, NGHTTP2_ENHANCE_YOUR_CALM,
+        session, frame, NGHTTP2_PROTOCOL_ERROR,
         "request HEADERS: max concurrent streams exceeded");
   }
 
@@ -3333,7 +3333,7 @@ int nghttp2_session_on_push_response_headers_received(nghttp2_session *session,
 
   if (session_is_incoming_concurrent_streams_max(session)) {
     return session_inflate_handle_invalid_connection(
-        session, frame, NGHTTP2_ENHANCE_YOUR_CALM,
+        session, frame, NGHTTP2_PROTOCOL_ERROR,
         "push response HEADERS: max concurrent streams exceeded");
   }
   if (session_is_incoming_concurrent_streams_pending_max(session)) {
