@@ -1894,7 +1894,7 @@ Request timing:
 
 sorted by 'complete'
 
-complete request  process  code request path)" << std::endl;
+complete  request   process  code request path)" << std::endl;
 
   const auto &base = client.timing.on_handshake_time;
   for (const auto &req : reqs) {
@@ -1906,8 +1906,8 @@ complete request  process  code request path)" << std::endl;
     auto total = std::chrono::duration_cast<std::chrono::microseconds>(
         req->timing.on_complete_time - req->timing.on_request_time);
 
-    std::cout << std::setw(8) << ("+" + util::format_duration(completed_delta))
-              << " " << std::setw(8)
+    std::cout << std::setw(9) << ("+" + util::format_duration(completed_delta))
+              << " " << std::setw(9)
               << ("+" + util::format_duration(request_delta)) << " "
               << std::setw(8) << util::format_duration(total) << " "
               << std::setw(4) << req->status << " " << req->make_reqpath()
