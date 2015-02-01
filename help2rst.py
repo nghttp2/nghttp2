@@ -96,8 +96,8 @@ DESCRIPTION
             in_arg = False
 
         if line == 'Options:':
-            print 'OPTIONS:'
-            print '--------'
+            print 'OPTIONS'
+            print '-------'
             print ''
             continue
 
@@ -137,7 +137,7 @@ DESCRIPTION
 
         if not line.startswith(' ') and line.endswith(':'):
             # subsection
-            subsec = line.strip()
+            subsec = line.strip()[:-1]
             print '{}'.format(subsec)
             print '{}'.format('~' * len(subsec))
             print ''
