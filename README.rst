@@ -198,7 +198,7 @@ with prior knowledge, HTTP Upgrade and NPN/ALPN TLS extension.
 It has verbose output mode for framing information.  Here is sample
 output from ``nghttp`` client::
 
-    $ src/nghttp -nv https://nghttp2.org
+    $ nghttp -nv https://nghttp2.org
     [  0.033][NPN] server offers:
               * h2-14
               * spdy/3.1
@@ -267,7 +267,7 @@ output from ``nghttp`` client::
 
 The HTTP Upgrade is performed like this::
 
-    $ src/nghttp -nvu http://nghttp2.org
+    $ nghttp -nvu http://nghttp2.org
     [  0.013] HTTP Upgrade request
     GET / HTTP/1.1
     Host: nghttp2.org
@@ -334,6 +334,33 @@ The HTTP Upgrade is performed like this::
     [  0.038] send GOAWAY frame <length=8, flags=0x00, stream_id=0>
               (last_stream_id=0, error_code=NO_ERROR(0), opaque_data(0)=[])
 
+With ``-s`` option, ``nghttp`` prints out some timing information for
+requests, sorted by completion time::
+
+    $ nghttp -nas https://nghttp2.org/
+    ***** Statistics *****
+
+    Request timing:
+      complete: relative time from protocol handshake to stream close
+       request: relative   time  from   protocol   handshake  to   request
+		transmission
+       process: time for request and response
+	  code: HTTP status code
+	   URI: request URI
+
+    sorted by 'complete'
+
+    complete  request   process  code request path
+     +17.37ms    +104us  17.27ms  200 /
+     +17.50ms   +8.15ms   9.35ms  200 /javascripts/octopress.js
+     +22.06ms   +8.15ms  13.91ms  200 /javascripts/modernizr-2.0.js
+     +27.07ms   +8.15ms  18.92ms  200 /stylesheets/screen.css
+     +98.57ms  +17.55ms  81.02ms  200 /images/posts/with-pri-blog.png
+    +104.70ms  +17.55ms  87.15ms  200 /images/posts/without-pri-blog.png
+
+With ``-r`` option, ``nghttp`` writes more detailed timing data to
+given file in HAR format.
+
 nghttpd - server
 ++++++++++++++++
 
@@ -350,7 +377,7 @@ HTTP/2 connection.  No HTTP Upgrade is supported.
 Just like ``nghttp``, it has verbose output mode for framing
 information.  Here is sample output from ``nghttpd`` server::
 
-    $ src/nghttpd --no-tls -v 8080
+    $ nghttpd --no-tls -v 8080
     IPv4: listen on port 8080
     IPv6: listen on port 8080
     [id=1] [ 15.921] send SETTINGS frame <length=10, flags=0x00, stream_id=0>
@@ -514,7 +541,7 @@ library.  The UI of ``h2load`` is heavily inspired by ``weighttp``
 (https://github.com/lighttpd/weighttp).  The typical usage is as
 follows::
 
-    $ src/h2load -n100000 -c100 -m100 https://localhost:8443/
+    $ h2load -n100000 -c100 -m100 https://localhost:8443/
     starting benchmark...
     spawning thread #0: 100 concurrent clients, 100000 total requests
     Protocol: TLSv1.2
