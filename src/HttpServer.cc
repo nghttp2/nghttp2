@@ -418,8 +418,10 @@ int Http2Handler::read_clear() {
     }
     rv = nghttp2_session_mem_recv(session_, buf, nread);
     if (rv < 0) {
-      std::cerr << "nghttp2_session_mem_recv() returned error: "
-                << nghttp2_strerror(rv) << std::endl;
+      if (rv != NGHTTP2_ERR_BAD_PREFACE) {
+        std::cerr << "nghttp2_session_mem_recv() returned error: "
+                  << nghttp2_strerror(rv) << std::endl;
+      }
       return -1;
     }
   }
@@ -540,8 +542,10 @@ int Http2Handler::read_tls() {
     auto nread = rv;
     rv = nghttp2_session_mem_recv(session_, buf, nread);
     if (rv < 0) {
-      std::cerr << "nghttp2_session_mem_recv() returned error: "
-                << nghttp2_strerror(rv) << std::endl;
+      if (rv != NGHTTP2_ERR_BAD_PREFACE) {
+        std::cerr << "nghttp2_session_mem_recv() returned error: "
+                  << nghttp2_strerror(rv) << std::endl;
+      }
       return -1;
     }
   }
