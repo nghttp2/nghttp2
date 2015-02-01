@@ -37,6 +37,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <iomanip>
 #include <sstream>
 #include <tuple>
 
@@ -1857,31 +1858,60 @@ int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
 }
 } // namespace
 
+struct RequestResult {
+  std::chrono::microseconds time;
+};
+
 namespace {
 void print_stats(const HttpClient &client) {
   std::cout << "***** Statistics *****" << std::endl;
-  int i = 0;
-  for (auto &req : client.reqvec) {
-    std::cout << "#" << ++i << ": " << req->uri << std::endl;
-    std::cout << "    Status: " << req->status << std::endl;
-    std::cout << "    Delta (ms) from handshake(HEADERS):" << std::endl;
-    if (req->timing.state >= RequestState::ON_RESPONSE) {
-      std::cout << "        response HEADERS: "
-                << time_delta(req->timing.on_response_time,
-                              client.timing.on_handshake_time).count() << "("
-                << time_delta(req->timing.on_response_time,
-                              req->timing.on_request_time).count() << ")"
-                << std::endl;
+
+  std::vector<Request *> reqs;
+  reqs.reserve(client.reqvec.size());
+  for (const auto &req : client.reqvec) {
+    if (req->timing.state == RequestState::ON_COMPLETE) {
+      reqs.push_back(req.get());
     }
-    if (req->timing.state >= RequestState::ON_COMPLETE) {
-      std::cout << "        Completed: "
-                << time_delta(req->timing.on_complete_time,
-                              client.timing.on_handshake_time).count() << "("
-                << time_delta(req->timing.on_complete_time,
-                              req->timing.on_request_time).count() << ")"
-                << std::endl;
-    }
-    std::cout << std::endl;
+  }
+
+  std::sort(std::begin(reqs), std::end(reqs),
+            [](const Request *lhs, const Request *rhs) {
+    const auto &ltiming = lhs->timing;
+    const auto &rtiming = rhs->timing;
+    return ltiming.on_complete_time < rtiming.on_complete_time ||
+           (ltiming.on_complete_time == rtiming.on_complete_time &&
+            ltiming.on_request_time < rtiming.on_request_time);
+  });
+
+  std::cout << R"(
+Request timing:
+  complete: relative time from protocol handshake to stream close
+   request: relative   time  from   protocol   handshake  to   request
+            transmission
+   process: time for request and response
+      code: HTTP status code
+       URI: request URI
+
+sorted by 'complete'
+
+complete request  process  code request path)" << std::endl;
+
+  const auto &base = client.timing.on_handshake_time;
+  for (const auto &req : reqs) {
+    auto completed_delta =
+        std::chrono::duration_cast<std::chrono::microseconds>(
+            req->timing.on_complete_time - base);
+    auto request_delta = std::chrono::duration_cast<std::chrono::microseconds>(
+        req->timing.on_request_time - base);
+    auto total = std::chrono::duration_cast<std::chrono::microseconds>(
+        req->timing.on_complete_time - req->timing.on_request_time);
+
+    std::cout << std::setw(8) << ("+" + util::format_duration(completed_delta))
+              << " " << std::setw(8)
+              << ("+" + util::format_duration(request_delta)) << " "
+              << std::setw(8) << util::format_duration(total) << " "
+              << std::setw(4) << req->status << " " << req->make_reqpath()
+              << std::endl;
   }
 }
 } // namespace
