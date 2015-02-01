@@ -85,19 +85,14 @@ struct Config {
   bool dep_idle;
 };
 
-enum StatStage {
-  STAT_INITIAL,
-  STAT_ON_REQUEST,
-  STAT_ON_RESPONSE,
-  STAT_ON_COMPLETE
-};
+enum class RequestState { INITIAL, ON_REQUEST, ON_RESPONSE, ON_COMPLETE };
 
-struct RequestStat {
+struct RequestTiming {
   std::chrono::steady_clock::time_point on_request_time;
   std::chrono::steady_clock::time_point on_response_time;
   std::chrono::steady_clock::time_point on_complete_time;
-  StatStage stage;
-  RequestStat() : stage(STAT_INITIAL) {}
+  RequestState state;
+  RequestTiming() : state(RequestState::INITIAL) {}
 };
 
 struct Request;
@@ -144,7 +139,7 @@ struct Request {
   http_parser_url u;
   std::shared_ptr<Dependency> dep;
   nghttp2_priority_spec pri_spec;
-  RequestStat stat;
+  RequestTiming timing;
   int64_t data_length;
   int64_t data_offset;
   // Number of bytes received from server
@@ -164,7 +159,7 @@ struct Request {
   bool expect_final_response;
 };
 
-struct SessionStat {
+struct SessionTiming {
   // The point in time when download was started.
   std::chrono::system_clock::time_point started_system_time;
   // The point of time when download was started.
@@ -178,7 +173,7 @@ struct SessionStat {
   std::chrono::steady_clock::time_point on_handshake_time;
 };
 
-enum client_state { STATE_IDLE, STATE_CONNECTED };
+enum class ClientState { IDLE, CONNECTED };
 
 struct HttpClient {
   HttpClient(const nghttp2_session_callbacks *callbacks, struct ev_loop *loop,
@@ -238,7 +233,7 @@ struct HttpClient {
   std::string hostport;
   // Used for parse the HTTP upgrade response from server
   std::unique_ptr<http_parser> htp;
-  SessionStat stat;
+  SessionTiming timing;
   ev_io wev;
   ev_io rev;
   ev_timer wt;
@@ -259,7 +254,7 @@ struct HttpClient {
   size_t complete;
   // The length of settings_payload
   size_t settings_payloadlen;
-  client_state state;
+  ClientState state;
   // The HTTP status code of the response message of HTTP Upgrade.
   unsigned int upgrade_response_status_code;
   int fd;

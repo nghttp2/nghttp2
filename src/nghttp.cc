@@ -292,18 +292,18 @@ Headers::value_type *Request::get_req_header(int token) {
 }
 
 void Request::record_request_time() {
-  stat.stage = STAT_ON_REQUEST;
-  stat.on_request_time = get_time();
+  timing.state = RequestState::ON_REQUEST;
+  timing.on_request_time = get_time();
 }
 
 void Request::record_response_time() {
-  stat.stage = STAT_ON_RESPONSE;
-  stat.on_response_time = get_time();
+  timing.state = RequestState::ON_RESPONSE;
+  timing.on_response_time = get_time();
 }
 
 void Request::record_complete_time() {
-  stat.stage = STAT_ON_COMPLETE;
-  stat.on_complete_time = get_time();
+  timing.state = RequestState::ON_COMPLETE;
+  timing.on_complete_time = get_time();
 }
 
 namespace {
@@ -452,7 +452,7 @@ HttpClient::HttpClient(const nghttp2_session_callbacks *callbacks,
                        struct ev_loop *loop, SSL_CTX *ssl_ctx)
     : session(nullptr), callbacks(callbacks), loop(loop), ssl_ctx(ssl_ctx),
       ssl(nullptr), addrs(nullptr), next_addr(nullptr), cur_addr(nullptr),
-      complete(0), settings_payloadlen(0), state(STATE_IDLE),
+      complete(0), settings_payloadlen(0), state(ClientState::IDLE),
       upgrade_response_status_code(0), fd(-1),
       upgrade_response_complete(false) {
   ev_io_init(&wev, writecb, 0, EV_WRITE);
@@ -589,7 +589,7 @@ int HttpClient::initiate_connection() {
 }
 
 void HttpClient::disconnect() {
-  state = STATE_IDLE;
+  state = ClientState::IDLE;
 
   ev_timer_stop(loop, &settings_timer);
 
@@ -686,13 +686,13 @@ int HttpClient::write_clear() {
 int HttpClient::noop() { return 0; }
 
 void HttpClient::on_connect_fail() {
-  if (state == STATE_IDLE) {
+  if (state == ClientState::IDLE) {
     std::cerr << "[ERROR] Could not connect to the address "
               << numeric_name(cur_addr) << std::endl;
   }
   auto cur_state = state;
   disconnect();
-  if (cur_state == STATE_IDLE) {
+  if (cur_state == ClientState::IDLE) {
     if (initiate_connection() == 0) {
       std::cerr << "Trying next address " << numeric_name(cur_addr)
                 << std::endl;
@@ -711,7 +711,7 @@ int HttpClient::connected() {
   }
 
   record_connect_time();
-  state = STATE_CONNECTED;
+  state = ClientState::CONNECTED;
 
   ev_io_start(loop, &rev);
   ev_io_stop(loop, &wev);
@@ -1239,19 +1239,19 @@ bool HttpClient::add_request(const std::string &uri,
 }
 
 void HttpClient::record_handshake_time() {
-  stat.on_handshake_time = get_time();
+  timing.on_handshake_time = get_time();
 }
 
 void HttpClient::record_started_time() {
-  stat.started_system_time = std::chrono::system_clock::now();
-  stat.on_started_time = get_time();
+  timing.started_system_time = std::chrono::system_clock::now();
+  timing.on_started_time = get_time();
 }
 
 void HttpClient::record_dns_complete_time() {
-  stat.on_dns_complete_time = get_time();
+  timing.on_dns_complete_time = get_time();
 }
 
-void HttpClient::record_connect_time() { stat.on_connect_time = get_time(); }
+void HttpClient::record_connect_time() { timing.on_connect_time = get_time(); }
 
 void HttpClient::on_request(Request *req) {
   if (req->pri == 0 && req->dep) {
@@ -1310,7 +1310,7 @@ void HttpClient::output_har(FILE *outfile) {
 
   json_object_set_new(
       page, "startedDateTime",
-      json_string(util::format_iso8601(stat.started_system_time).c_str()));
+      json_string(util::format_iso8601(timing.started_system_time).c_str()));
   json_object_set_new(page, "id", json_string(PAGE_ID));
   json_object_set_new(page, "title", json_string(""));
 
@@ -1321,45 +1321,45 @@ void HttpClient::output_har(FILE *outfile) {
 
   auto dns_delta =
       std::chrono::duration_cast<std::chrono::microseconds>(
-          stat.on_dns_complete_time - stat.on_started_time).count() /
+          timing.on_dns_complete_time - timing.on_started_time).count() /
       1000.0;
   auto connect_delta =
       std::chrono::duration_cast<std::chrono::microseconds>(
-          stat.on_connect_time - stat.on_dns_complete_time).count() /
+          timing.on_connect_time - timing.on_dns_complete_time).count() /
       1000.0;
 
   for (size_t i = 0; i < reqvec.size(); ++i) {
     auto &req = reqvec[i];
 
-    if (req->stat.stage != STAT_ON_COMPLETE) {
+    if (req->timing.state != RequestState::ON_COMPLETE) {
       continue;
     }
 
     auto entry = json_object();
     json_array_append_new(entries, entry);
 
-    auto &req_stat = req->stat;
+    auto &req_timing = req->timing;
     auto request_time =
-        (i == 0) ? stat.started_system_time
-                 : stat.started_system_time +
+        (i == 0) ? timing.started_system_time
+                 : timing.started_system_time +
                        std::chrono::duration_cast<
                            std::chrono::system_clock::duration>(
-                           req_stat.on_request_time - stat.on_started_time);
+                           req_timing.on_request_time - timing.on_started_time);
 
     auto wait_delta =
         std::chrono::duration_cast<std::chrono::microseconds>(
-            req_stat.on_response_time - req_stat.on_request_time).count() /
+            req_timing.on_response_time - req_timing.on_request_time).count() /
         1000.0;
     auto receive_delta =
         std::chrono::duration_cast<std::chrono::microseconds>(
-            req_stat.on_complete_time - req_stat.on_response_time).count() /
+            req_timing.on_complete_time - req_timing.on_response_time).count() /
         1000.0;
 
     auto time_sum =
         std::chrono::duration_cast<std::chrono::microseconds>(
-            (i == 0) ? (req_stat.on_complete_time - stat.on_started_time)
-                     : (req_stat.on_complete_time - req_stat.on_request_time))
-            .count() /
+            (i == 0) ? (req_timing.on_complete_time - timing.on_started_time)
+                     : (req_timing.on_complete_time -
+                        req_timing.on_request_time)).count() /
         1000.0;
 
     json_object_set_new(
@@ -1865,20 +1865,20 @@ void print_stats(const HttpClient &client) {
     std::cout << "#" << ++i << ": " << req->uri << std::endl;
     std::cout << "    Status: " << req->status << std::endl;
     std::cout << "    Delta (ms) from handshake(HEADERS):" << std::endl;
-    if (req->stat.stage >= STAT_ON_RESPONSE) {
+    if (req->timing.state >= RequestState::ON_RESPONSE) {
       std::cout << "        response HEADERS: "
-                << time_delta(req->stat.on_response_time,
-                              client.stat.on_handshake_time).count() << "("
-                << time_delta(req->stat.on_response_time,
-                              req->stat.on_request_time).count() << ")"
+                << time_delta(req->timing.on_response_time,
+                              client.timing.on_handshake_time).count() << "("
+                << time_delta(req->timing.on_response_time,
+                              req->timing.on_request_time).count() << ")"
                 << std::endl;
     }
-    if (req->stat.stage >= STAT_ON_COMPLETE) {
+    if (req->timing.state >= RequestState::ON_COMPLETE) {
       std::cout << "        Completed: "
-                << time_delta(req->stat.on_complete_time,
-                              client.stat.on_handshake_time).count() << "("
-                << time_delta(req->stat.on_complete_time,
-                              req->stat.on_request_time).count() << ")"
+                << time_delta(req->timing.on_complete_time,
+                              client.timing.on_handshake_time).count() << "("
+                << time_delta(req->timing.on_complete_time,
+                              req->timing.on_request_time).count() << ")"
                 << std::endl;
     }
     std::cout << std::endl;
