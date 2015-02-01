@@ -1,3 +1,54 @@
+OUTPUT
+------
+
+requests
+  total
+    The number of requests h2load was instructed to make.
+  started
+    The number of requests h2load has started.
+  done
+    The number of requests completed.
+  succeeded
+    The number of requests completed successfully.  Only HTTP status
+    code 2xx or3xx are considered as success.
+  failed
+    The number of requests failed, including HTTP level failures
+    (non-successful HTTP status code).
+  errored
+    The number of requests failed, except for HTTP level failures.
+    status code.  This is the subset of the number reported in
+    ``failed`` and most likely the network level failures or stream
+    was reset by RST_STREAM.
+
+status codes
+  The number of status code h2load received.
+
+traffic
+  total
+    The number of bytes received from the server "on the wire".  If
+    requests were made via TLS, this value is the number of decrpyted
+    bytes.
+  headers
+    The number of response header bytes from the server without
+    decompression.  For HTTP/2, this is the sum of the payload of
+    HEADERS frame.  For SPDY, this is the sum of the payload of
+    SYN_REPLY frame.
+  data
+    The number of response body bytes received from the server.
+
+time for request
+  min
+    The minimum time taken for request and response.
+  max
+    The maximum time taken for request and response.
+  mean
+    The mean time taken for request and response.
+  sd
+    The standard deviation of the time for request and response.
+  +/- sd
+    The fraction of the number of requests within standard deviation
+    range (mean +/- sd) against total number of successful requests.
+
 SEE ALSO
 --------
 
