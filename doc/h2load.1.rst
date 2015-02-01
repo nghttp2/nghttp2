@@ -21,8 +21,8 @@ benchmarking tool for HTTP/2 and SPDY server
     URIs, if present,  are ignored.  Those in  the first URI
     are used solely.
 
-OPTIONS:
---------
+OPTIONS
+-------
 
 .. option:: -n, --requests=<N>
 

@@ -24,13 +24,13 @@ A reverse proxy for HTTP/2, HTTP/1 and SPDY.
     :option:`--client` or :option:`\--frontend-no-tls` are given.
 
 
-OPTIONS:
---------
+OPTIONS
+-------
 
 The options are categorized into several groups.
 
-Connections:
-~~~~~~~~~~~~
+Connections
+~~~~~~~~~~~
 
 .. option:: -b, --backend=<HOST,PORT>
 
@@ -79,8 +79,8 @@ Connections:
     :option:`--backend-write-timeout` options.
 
 
-Performance:
-~~~~~~~~~~~~
+Performance
+~~~~~~~~~~~
 
 .. option:: -n, --workers=<N>
 
@@ -197,8 +197,8 @@ Performance:
     Default: ``16K``
 
 
-Timeout:
-~~~~~~~~
+Timeout
+~~~~~~~
 
 .. option:: --frontend-http2-read-timeout=<DURATION>
 
@@ -260,8 +260,8 @@ Timeout:
     Default: ``0``
 
 
-SSL/TLS:
-~~~~~~~~
+SSL/TLS
+~~~~~~~
 
 .. option:: --ciphers=<SUITE>
 
@@ -379,8 +379,8 @@ SSL/TLS:
     session ticket key is shared across all worker threads.
 
 
-HTTP/2 and SPDY:
-~~~~~~~~~~~~~~~~
+HTTP/2 and SPDY
+~~~~~~~~~~~~~~~
 
 .. option:: -c, --http2-max-concurrent-streams=<N>
 
@@ -439,8 +439,8 @@ HTTP/2 and SPDY:
     protocol security.
 
 
-Mode:
-~~~~~
+Mode
+~~~~
 
 .. describe:: (default mode)
 
@@ -479,8 +479,8 @@ Mode:
     use as a forward proxy.
 
 
-Logging:
-~~~~~~~~
+Logging
+~~~~~~~
 
 .. option:: -L, --log-level=<LEVEL>
 
@@ -545,8 +545,8 @@ Logging:
     Default: ``daemon``
 
 
-HTTP:
-~~~~~
+HTTP
+~~~~
 
 .. option:: --add-x-forwarded-for
 
@@ -588,8 +588,8 @@ HTTP:
     Example: :option:`--add-response-header`\="foo: bar"
 
 
-Debug:
-~~~~~~
+Debug
+~~~~~
 
 .. option:: --frontend-http2-dump-request-header=<PATH>
 
@@ -614,8 +614,8 @@ Debug:
     :option:`-n`\=N, where N >= 2.
 
 
-Process:
-~~~~~~~~
+Process
+~~~~~~~
 
 .. option:: -D, --daemon
 
@@ -632,8 +632,8 @@ Process:
     be used to drop root privileges.
 
 
-Misc:
-~~~~~
+Misc
+~~~~
 
 .. option:: --conf=<PATH>
 

@@ -27,8 +27,8 @@ HTTP/2 experimental server
     Set  path  to  server's  certificate.   Required  unless
     :option:`--no-tls` is specified.
 
-OPTIONS:
---------
+OPTIONS
+-------
 
 .. option:: -D, --daemon
 

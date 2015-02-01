@@ -16,8 +16,8 @@ HTTP/2 experimental client
 
     Specify URI to access.
 
-OPTIONS:
---------
+OPTIONS
+-------
 
 .. option:: -v, --verbose
 
