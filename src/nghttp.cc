@@ -811,6 +811,11 @@ int HttpClient::on_upgrade_connect() {
     std::cout << " HTTP Upgrade request\n" << req << std::endl;
   }
 
+  // record request time if this is GET request
+  if (!reqvec[0]->data_prd) {
+    reqvec[0]->record_request_time();
+  }
+
   on_writefn = &HttpClient::noop;
 
   signal_write();
@@ -1249,8 +1254,6 @@ void HttpClient::record_dns_complete_time() {
 void HttpClient::record_connect_time() { stat.on_connect_time = get_time(); }
 
 void HttpClient::on_request(Request *req) {
-  req->record_request_time();
-
   if (req->pri == 0 && req->dep) {
     assert(req->dep->deps.empty());
 
@@ -1634,6 +1637,7 @@ int on_begin_headers_callback(nghttp2_session *session,
     nghttp2_session_set_stream_user_data(session, stream_id, req.get());
 
     client->on_request(req.get());
+    req->record_request_time();
     client->reqvec.push_back(std::move(req));
 
     break;
@@ -1813,6 +1817,21 @@ int on_frame_recv_callback2(nghttp2_session *session,
   }
   return rv;
 }
+} // namespace
+
+namespace {
+int before_frame_send_callback(nghttp2_session *session,
+                               const nghttp2_frame *frame, void *user_data) {
+  if (frame->hd.type != NGHTTP2_HEADERS ||
+      frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
+    return 0;
+  }
+  auto req = static_cast<Request *>(
+      nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
+  req->record_request_time();
+  return 0;
+}
+
 } // namespace
 
 namespace {
@@ -2108,6 +2127,9 @@ int run(char **uris, int n) {
 
   nghttp2_session_callbacks_set_on_header_callback(callbacks,
                                                    on_header_callback);
+
+  nghttp2_session_callbacks_set_before_frame_send_callback(
+      callbacks, before_frame_send_callback);
 
   nghttp2_session_callbacks_set_send_callback(callbacks, send_callback);
 
