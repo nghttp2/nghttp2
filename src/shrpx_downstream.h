@@ -289,6 +289,11 @@ public:
   // Returns true if accesslog can be written for this downstream.
   bool accesslog_ready() const;
 
+  // Increment retry count
+  void add_retry();
+  // true if retry attempt should not be done.
+  bool no_more_retry() const;
+
   enum {
     EVENT_ERROR = 0x1,
     EVENT_TIMEOUT = 0x2,
@@ -337,6 +342,8 @@ private:
   // The number of bytes not consumed by the application yet.
   size_t request_datalen_;
   size_t response_datalen_;
+
+  size_t num_retry_;
 
   int32_t stream_id_;
   int32_t priority_;

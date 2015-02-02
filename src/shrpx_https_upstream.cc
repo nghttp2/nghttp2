@@ -836,14 +836,16 @@ int HttpsUpstream::on_downstream_reset(bool no_retry) {
     return -1;
   }
 
-  if (no_retry) {
+  downstream_->pop_downstream_connection();
+
+  downstream_->add_retry();
+
+  if (no_retry || downstream_->no_more_retry()) {
     if (on_downstream_abort_request(downstream_.get(), 503) != 0) {
       return -1;
     }
     return 0;
   }
-
-  downstream_->pop_downstream_connection();
 
   rv = downstream_->attach_downstream_connection(
       handler_->get_downstream_connection());

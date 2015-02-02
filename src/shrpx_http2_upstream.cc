@@ -1420,7 +1420,9 @@ int Http2Upstream::on_downstream_reset(bool no_retry) {
 
     downstream->pop_downstream_connection();
 
-    if (no_retry) {
+    downstream->add_retry();
+
+    if (no_retry || downstream->no_more_retry()) {
       if (on_downstream_abort_request(downstream, 503) != 0) {
         return -1;
       }

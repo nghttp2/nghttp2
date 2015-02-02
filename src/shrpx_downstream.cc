@@ -112,8 +112,8 @@ Downstream::Downstream(Upstream *upstream, int32_t stream_id, int32_t priority)
       request_bodylen_(0), response_bodylen_(0), response_sent_bodylen_(0),
       request_content_length_(-1), response_content_length_(-1),
       upstream_(upstream), request_headers_sum_(0), response_headers_sum_(0),
-      request_datalen_(0), response_datalen_(0), stream_id_(stream_id),
-      priority_(priority), downstream_stream_id_(-1),
+      request_datalen_(0), response_datalen_(0), num_retry_(0),
+      stream_id_(stream_id), priority_(priority), downstream_stream_id_(-1),
       response_rst_stream_error_code_(NGHTTP2_NO_ERROR),
       request_state_(INITIAL), request_major_(1), request_minor_(1),
       response_state_(INITIAL), response_http_status_(0), response_major_(1),
@@ -1019,5 +1019,9 @@ void Downstream::disable_downstream_wtimer() {
 }
 
 bool Downstream::accesslog_ready() const { return response_http_status_ > 0; }
+
+void Downstream::add_retry() { ++num_retry_; }
+
+bool Downstream::no_more_retry() const { return num_retry_ > 5; }
 
 } // namespace shrpx
