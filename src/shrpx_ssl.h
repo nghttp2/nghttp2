@@ -85,39 +85,39 @@ void get_altnames(X509 *cert, std::vector<std::string> &dns_names,
 // matches, query is continued to the next character.
 
 struct CertNode {
-  // SSL_CTX for exact match
-  SSL_CTX *ssl_ctx;
   // list of wildcard domain name and its SSL_CTX pair, the wildcard
   // '*' appears in this position.
   std::vector<std::pair<char *, SSL_CTX *>> wildcard_certs;
   // Next CertNode index of CertLookupTree::nodes
-  std::vector<CertNode *> next;
+  std::vector<std::unique_ptr<CertNode>> next;
+  // SSL_CTX for exact match
+  SSL_CTX *ssl_ctx;
   char *str;
   // [first, last) in the reverse direction in str, first >=
   // last. This indices only work for str member.
   int first, last;
 };
 
-struct CertLookupTree {
-  std::vector<SSL_CTX *> certs;
-  std::vector<char *> hosts;
-  CertNode *root;
+class CertLookupTree {
+public:
+  CertLookupTree();
+
+  // Adds |ssl_ctx| with hostname pattern |hostname| with length |len|
+  // to the lookup tree.  The |hostname| must be NULL-terminated.
+  void add_cert(SSL_CTX *ssl_ctx, const char *hostname, size_t len);
+
+  // Looks up SSL_CTX using the given |hostname| with length |len|.
+  // If more than one SSL_CTX which matches the query, it is undefined
+  // which one is returned.  The |hostname| must be NULL-terminated.
+  // If no matching SSL_CTX found, returns NULL.
+  SSL_CTX *lookup(const char *hostname, size_t len);
+
+private:
+  CertNode root_;
+  // Stores pointers to copied hostname when adding hostname and
+  // ssl_ctx pair.
+  std::vector<std::unique_ptr<char[]>> hosts_;
 };
-
-CertLookupTree *cert_lookup_tree_new();
-void cert_lookup_tree_del(CertLookupTree *lt);
-
-// Adds |ssl_ctx| with hostname pattern |hostname| with length |len|
-// to the lookup tree |lt|. The |hostname| must be NULL-terminated.
-void cert_lookup_tree_add_cert(CertLookupTree *lt, SSL_CTX *ssl_ctx,
-                               const char *hostname, size_t len);
-
-// Looks up SSL_CTX using the given |hostname| with length |len|. If
-// more than one SSL_CTX which matches the query, it is undefined
-// which one is returned. The |hostname| must be NULL-terminated. If
-// no matching SSL_CTX found, returns NULL.
-SSL_CTX *cert_lookup_tree_lookup(CertLookupTree *lt, const char *hostname,
-                                 size_t len);
 
 // Adds |ssl_ctx| to lookup tree |lt| using hostnames read from
 // |certfile|. The subjectAltNames and commonName are considered as

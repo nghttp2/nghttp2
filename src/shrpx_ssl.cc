@@ -51,6 +51,7 @@
 #include "shrpx_downstream_connection_pool.h"
 #include "util.h"
 #include "ssl.h"
+#include "template.h"
 
 using namespace nghttp2;
 
@@ -133,8 +134,7 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
   if (cert_tree) {
     const char *hostname = SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
     if (hostname) {
-      auto ssl_ctx =
-          cert_lookup_tree_lookup(cert_tree, hostname, strlen(hostname));
+      auto ssl_ctx = cert_tree->lookup(hostname, strlen(hostname));
       if (ssl_ctx) {
         SSL_set_SSL_CTX(ssl, ssl_ctx);
       }
@@ -720,44 +720,22 @@ int check_cert(SSL *ssl) {
   return 0;
 }
 
-CertLookupTree *cert_lookup_tree_new() {
-  auto tree = new CertLookupTree();
-  auto root = new CertNode();
-  root->ssl_ctx = 0;
-  root->str = 0;
-  root->first = root->last = 0;
-  tree->root = root;
-  return tree;
-}
-
-namespace {
-void cert_node_del(CertNode *node) {
-  for (auto &a : node->next) {
-    cert_node_del(a);
-  }
-  delete node;
-}
-} // namespace
-
-void cert_lookup_tree_del(CertLookupTree *lt) {
-  cert_node_del(lt->root);
-  for (auto &s : lt->hosts) {
-    delete[] s;
-  }
-  delete lt;
+CertLookupTree::CertLookupTree() {
+  root_.ssl_ctx = nullptr;
+  root_.str = nullptr;
+  root_.first = root_.last = 0;
 }
 
 namespace {
 // The |offset| is the index in the hostname we are examining.  We are
 // going to scan from |offset| in backwards.
-void cert_lookup_tree_add_cert(CertLookupTree *lt, CertNode *node,
-                               SSL_CTX *ssl_ctx, char *hostname, size_t len,
-                               int offset) {
+void cert_lookup_tree_add_cert(CertNode *node, SSL_CTX *ssl_ctx, char *hostname,
+                               size_t len, int offset) {
   int i, next_len = node->next.size();
   char c = hostname[offset];
   CertNode *cn = nullptr;
   for (i = 0; i < next_len; ++i) {
-    cn = node->next[i];
+    cn = node->next[i].get();
     if (cn->str[cn->first] == c) {
       break;
     }
@@ -769,85 +747,92 @@ void cert_lookup_tree_add_cert(CertLookupTree *lt, CertNode *node,
       // some restrictions for wildcard hostname. We just ignore
       // these rules here but do the proper check when we do the
       // match.
-      node->wildcard_certs.push_back(std::make_pair(hostname, ssl_ctx));
-    } else {
-      int j;
-      auto new_node = new CertNode();
-      new_node->str = hostname;
-      new_node->first = offset;
-      // If wildcard is found, set the region before it because we
-      // don't include it in [first, last).
-      for (j = offset; j >= 0 && hostname[j] != '*'; --j)
-        ;
-      new_node->last = j;
-      if (j == -1) {
-        new_node->ssl_ctx = ssl_ctx;
-      } else {
-        new_node->ssl_ctx = nullptr;
-        new_node->wildcard_certs.push_back(std::make_pair(hostname, ssl_ctx));
-      }
-      node->next.push_back(new_node);
+      node->wildcard_certs.emplace_back(hostname, ssl_ctx);
+      return;
     }
-  } else {
+
     int j;
-    for (i = cn->first, j = offset;
-         i > cn->last && j >= 0 && cn->str[i] == hostname[j]; --i, --j)
+    auto new_node = make_unique<CertNode>();
+    new_node->str = hostname;
+    new_node->first = offset;
+    // If wildcard is found, set the region before it because we
+    // don't include it in [first, last).
+    for (j = offset; j >= 0 && hostname[j] != '*'; --j)
       ;
-    if (i == cn->last) {
-      if (j == -1) {
-        if (cn->ssl_ctx) {
-          // same hostname, we don't overwrite exiting ssl_ctx
-        } else {
-          cn->ssl_ctx = ssl_ctx;
-        }
-      } else {
-        // The existing hostname is a suffix of this hostname.
-        // Continue matching at potion j.
-        cert_lookup_tree_add_cert(lt, cn, ssl_ctx, hostname, len, j);
-      }
+    new_node->last = j;
+    if (j == -1) {
+      new_node->ssl_ctx = ssl_ctx;
     } else {
-      auto new_node = new CertNode();
-      new_node->ssl_ctx = cn->ssl_ctx;
-      new_node->str = cn->str;
-      new_node->first = i;
-      new_node->last = cn->last;
-      new_node->wildcard_certs.swap(cn->wildcard_certs);
-      new_node->next.swap(cn->next);
-
-      cn->next.push_back(new_node);
-
-      cn->last = i;
-      if (j == -1) {
-        // This hostname is a suffix of the existing hostname.
-        cn->ssl_ctx = ssl_ctx;
-      } else {
-        // This hostname and existing one share suffix.
-        cn->ssl_ctx = nullptr;
-        cert_lookup_tree_add_cert(lt, cn, ssl_ctx, hostname, len, j);
-      }
+      new_node->ssl_ctx = nullptr;
+      new_node->wildcard_certs.emplace_back(hostname, ssl_ctx);
     }
+    node->next.push_back(std::move(new_node));
+    return;
   }
+
+  int j;
+  for (i = cn->first, j = offset;
+       i > cn->last && j >= 0 && cn->str[i] == hostname[j]; --i, --j)
+    ;
+  if (i == cn->last) {
+    if (j == -1) {
+      // If the same hostname already exists, we don't overwrite
+      // exiting ssl_ctx
+      if (!cn->ssl_ctx) {
+        cn->ssl_ctx = ssl_ctx;
+      }
+      return;
+    }
+
+    // The existing hostname is a suffix of this hostname.  Continue
+    // matching at potion j.
+    cert_lookup_tree_add_cert(cn, ssl_ctx, hostname, len, j);
+    return;
+  }
+
+  {
+    auto new_node = make_unique<CertNode>();
+    new_node->ssl_ctx = cn->ssl_ctx;
+    new_node->str = cn->str;
+    new_node->first = i;
+    new_node->last = cn->last;
+    new_node->wildcard_certs.swap(cn->wildcard_certs);
+    new_node->next.swap(cn->next);
+
+    cn->next.push_back(std::move(new_node));
+  }
+
+  cn->last = i;
+  if (j == -1) {
+    // This hostname is a suffix of the existing hostname.
+    cn->ssl_ctx = ssl_ctx;
+    return;
+  }
+
+  // This hostname and existing one share suffix.
+  cn->ssl_ctx = nullptr;
+  cert_lookup_tree_add_cert(cn, ssl_ctx, hostname, len, j);
 }
 } // namespace
 
-void cert_lookup_tree_add_cert(CertLookupTree *lt, SSL_CTX *ssl_ctx,
-                               const char *hostname, size_t len) {
+void CertLookupTree::add_cert(SSL_CTX *ssl_ctx, const char *hostname,
+                              size_t len) {
   if (len == 0) {
     return;
   }
   // Copy hostname including terminal NULL
-  char *host_copy = new char[len + 1];
+  hosts_.push_back(make_unique<char[]>(len + 1));
+  const auto &host_copy = hosts_.back();
   for (size_t i = 0; i < len; ++i) {
     host_copy[i] = util::lowcase(hostname[i]);
   }
   host_copy[len] = '\0';
-  lt->hosts.push_back(host_copy);
-  cert_lookup_tree_add_cert(lt, lt->root, ssl_ctx, host_copy, len, len - 1);
+  cert_lookup_tree_add_cert(&root_, ssl_ctx, host_copy.get(), len, len - 1);
 }
 
 namespace {
-SSL_CTX *cert_lookup_tree_lookup(CertLookupTree *lt, CertNode *node,
-                                 const char *hostname, size_t len, int offset) {
+SSL_CTX *cert_lookup_tree_lookup(CertNode *node, const char *hostname,
+                                 size_t len, int offset) {
   int i, j;
   for (i = node->first, j = offset;
        i > node->last && j >= 0 && node->str[i] == util::lowcase(hostname[j]);
@@ -860,30 +845,29 @@ SSL_CTX *cert_lookup_tree_lookup(CertLookupTree *lt, CertNode *node,
     if (node->ssl_ctx) {
       // exact match
       return node->ssl_ctx;
-    } else {
-      // Do not perform wildcard-match because '*' must match at least
-      // one character.
-      return nullptr;
     }
+
+    // Do not perform wildcard-match because '*' must match at least
+    // one character.
+    return nullptr;
   }
-  for (auto &wildcert : node->wildcard_certs) {
+  for (const auto &wildcert : node->wildcard_certs) {
     if (tls_hostname_match(wildcert.first, hostname)) {
       return wildcert.second;
     }
   }
-  char c = util::lowcase(hostname[j]);
-  for (auto &next_node : node->next) {
+  auto c = util::lowcase(hostname[j]);
+  for (const auto &next_node : node->next) {
     if (next_node->str[next_node->first] == c) {
-      return cert_lookup_tree_lookup(lt, next_node, hostname, len, j);
+      return cert_lookup_tree_lookup(next_node.get(), hostname, len, j);
     }
   }
   return nullptr;
 }
 } // namespace
 
-SSL_CTX *cert_lookup_tree_lookup(CertLookupTree *lt, const char *hostname,
-                                 size_t len) {
-  return cert_lookup_tree_lookup(lt, lt->root, hostname, len, len - 1);
+SSL_CTX *CertLookupTree::lookup(const char *hostname, size_t len) {
+  return cert_lookup_tree_lookup(&root_, hostname, len, len - 1);
 }
 
 int cert_lookup_tree_add_cert_from_file(CertLookupTree *lt, SSL_CTX *ssl_ctx,
@@ -910,10 +894,9 @@ int cert_lookup_tree_add_cert_from_file(CertLookupTree *lt, SSL_CTX *ssl_ctx,
   std::vector<std::string> ip_addrs;
   get_altnames(cert, dns_names, ip_addrs, common_name);
   for (auto &dns_name : dns_names) {
-    cert_lookup_tree_add_cert(lt, ssl_ctx, dns_name.c_str(), dns_name.size());
+    lt->add_cert(ssl_ctx, dns_name.c_str(), dns_name.size());
   }
-  cert_lookup_tree_add_cert(lt, ssl_ctx, common_name.c_str(),
-                            common_name.size());
+  lt->add_cert(ssl_ctx, common_name.c_str(), common_name.size());
   return 0;
 }
 
@@ -956,7 +939,7 @@ SSL_CTX *setup_server_ssl_context() {
     return ssl_ctx;
   }
 
-  auto cert_tree = cert_lookup_tree_new();
+  auto cert_tree = new CertLookupTree();
 
   worker_config->cert_tree = cert_tree;
 

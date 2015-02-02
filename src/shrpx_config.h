@@ -48,7 +48,7 @@ struct LogFragment;
 
 namespace ssl {
 
-struct CertLookupTree;
+class CertLookupTree;
 
 } // namespace ssl
 

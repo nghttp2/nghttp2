@@ -48,7 +48,7 @@ class Http2Session;
 class ConnectBlocker;
 
 namespace ssl {
-struct CertLookupTree;
+class CertLookupTree;
 } // namespace ssl
 
 struct WorkerStat {
