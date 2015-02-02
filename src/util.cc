@@ -565,7 +565,7 @@ void show_candidates(const char *unkopt, option *options) {
     // Use cost 0 for prefix match
     if (istartsWith(options[i].name, options[i].name + optnamelen, unkopt,
                     unkopt + unkoptlen)) {
-      if (optnamelen == unkoptlen) {
+      if (optnamelen == static_cast<size_t>(unkoptlen)) {
         // Exact match, then we don't show any condidates.
         return;
       }
