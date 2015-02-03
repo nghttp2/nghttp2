@@ -139,6 +139,27 @@ func TestH1H1GracefulShutdown(t *testing.T) {
 	}
 }
 
+// TestH1H1HostRewrite tests that server rewrites Host header field
+func TestH1H1HostRewrite(t *testing.T) {
+	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("request-host", r.Host)
+	})
+	defer st.Close()
+
+	res, err := st.http1(requestParam{
+		name: "TestH1H1HostRewrite",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http1() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+	if got, want := res.header.Get("request-host"), st.backendHost; got != want {
+		t.Errorf("request-host: %v; want %v", got, want)
+	}
+}
+
 // TestH1H2ConnectFailure tests that server handles the situation that
 // connection attempt to HTTP/2 backend failed.
 func TestH1H2ConnectFailure(t *testing.T) {
@@ -181,6 +202,31 @@ func TestH1H2NoHost(t *testing.T) {
 	want := 400
 	if got := resp.StatusCode; got != want {
 		t.Errorf("status: %v; want %v", got, want)
+	}
+}
+
+// TestH1H2HTTP10 tests that server can accept HTTP/1.0 request
+// without Host header field
+func TestH1H2HTTP10(t *testing.T) {
+	st := newServerTester([]string{"--http2-bridge"}, t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("request-host", r.Host)
+	})
+	defer st.Close()
+
+	if _, err := io.WriteString(st.conn, "GET / HTTP/1.0\r\nTest-Case: TestH1H2HTTP10\r\n\r\n"); err != nil {
+		t.Fatalf("Error io.WriteString() = %v", err)
+	}
+
+	resp, err := http.ReadResponse(bufio.NewReader(st.conn), nil)
+	if err != nil {
+		t.Fatalf("Error http.ReadResponse() = %v", err)
+	}
+
+	if got, want := resp.StatusCode, 200; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+	if got, want := resp.Header.Get("request-host"), st.backendHost; got != want {
+		t.Errorf("request-host: %v; want %v", got, want)
 	}
 }
 

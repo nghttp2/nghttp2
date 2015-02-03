@@ -42,6 +42,7 @@ type serverTester struct {
 	url           string    // test frontend server URL
 	t             *testing.T
 	ts            *httptest.Server // backend server
+	backendHost   string           // backend server host
 	conn          net.Conn         // connection to frontend server
 	h2PrefaceSent bool             // HTTP/2 preface was sent in conn
 	nextStreamID  uint32           // next stream ID
@@ -124,6 +125,7 @@ func newServerTesterInternal(args []string, t *testing.T, handler http.HandlerFu
 		t:            t,
 		ts:           ts,
 		url:          fmt.Sprintf("%v://%v", scheme, authority),
+		backendHost:  backendURL.Host,
 		nextStreamID: 1,
 		authority:    authority,
 		frCh:         make(chan http2.Frame),

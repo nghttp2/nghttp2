@@ -160,7 +160,11 @@ int htp_hdrs_completecb(http_parser *htp) {
     return -1;
   }
 
-  downstream->inspect_http1_request();
+  if (downstream->get_request_major() == 1 &&
+      downstream->get_request_minor() == 1 &&
+      !downstream->get_request_header(http2::HD_HOST)) {
+    return -1;
+  }
 
   if (get_config()->client_proxy &&
       downstream->get_request_method() != "CONNECT") {

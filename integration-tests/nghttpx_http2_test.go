@@ -192,6 +192,27 @@ func TestH2H1NoVia(t *testing.T) {
 	}
 }
 
+// TestH2H1HostRewrite tests that server rewrites host header field
+func TestH2H1HostRewrite(t *testing.T) {
+	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("request-host", r.Host)
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1HostRewrite",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+	if got, want := res.header.Get("request-host"), st.backendHost; got != want {
+		t.Errorf("request-host: %v; want %v", got, want)
+	}
+}
+
 // TestH2H1BadRequestCL tests that server rejects request whose
 // content-length header field value does not match its request body
 // size.
@@ -582,5 +603,26 @@ func TestH2H2ConnectFailure(t *testing.T) {
 	want := 503
 	if got := res.status; got != want {
 		t.Errorf("status: %v; want %v", got, want)
+	}
+}
+
+// TestH2H2HostRewrite tests that server rewrites host header field
+func TestH2H2HostRewrite(t *testing.T) {
+	st := newServerTester([]string{"--http2-bridge"}, t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("request-host", r.Host)
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H2HostRewrite",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+	if got, want := res.header.Get("request-host"), st.backendHost; got != want {
+		t.Errorf("request-host: %v; want %v", got, want)
 	}
 }
