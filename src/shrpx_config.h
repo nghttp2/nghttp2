@@ -123,6 +123,7 @@ extern const char SHRPX_OPT_ALTSVC[];
 extern const char SHRPX_OPT_ADD_RESPONSE_HEADER[];
 extern const char SHRPX_OPT_WORKER_FRONTEND_CONNECTIONS[];
 extern const char SHRPX_OPT_NO_LOCATION_REWRITE[];
+extern const char SHRPX_OPT_NO_HOST_REWRITE[];
 extern const char SHRPX_OPT_BACKEND_HTTP1_CONNECTIONS_PER_HOST[];
 extern const char SHRPX_OPT_BACKEND_HTTP1_CONNECTIONS_PER_FRONTEND[];
 extern const char SHRPX_OPT_LISTENER_DISABLE_TIMEOUT[];
@@ -299,6 +300,7 @@ struct Config {
   bool http2_no_cookie_crumbling;
   bool upstream_frame_debug;
   bool no_location_rewrite;
+  bool no_host_rewrite;
   bool auto_tls_ticket_key;
   bool tls_ctx_per_worker;
 };

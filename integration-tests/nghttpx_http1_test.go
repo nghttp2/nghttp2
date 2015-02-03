@@ -160,6 +160,57 @@ func TestH1H1HostRewrite(t *testing.T) {
 	}
 }
 
+// TestH1H1HTTP10 tests that server can accept HTTP/1.0 request
+// without Host header field
+func TestH1H1HTTP10(t *testing.T) {
+	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("request-host", r.Host)
+	})
+	defer st.Close()
+
+	if _, err := io.WriteString(st.conn, "GET / HTTP/1.0\r\nTest-Case: TestH1H1HTTP10\r\n\r\n"); err != nil {
+		t.Fatalf("Error io.WriteString() = %v", err)
+	}
+
+	resp, err := http.ReadResponse(bufio.NewReader(st.conn), nil)
+	if err != nil {
+		t.Fatalf("Error http.ReadResponse() = %v", err)
+	}
+
+	if got, want := resp.StatusCode, 200; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+	if got, want := resp.Header.Get("request-host"), st.backendHost; got != want {
+		t.Errorf("request-host: %v; want %v", got, want)
+	}
+}
+
+// TestH1H1HTTP10NoHostRewrite tests that server generates host header
+// field using actual backend server even if --no-http-rewrite is
+// used.
+func TestH1H1HTTP10NoHostRewrite(t *testing.T) {
+	st := newServerTester([]string{"--no-host-rewrite"}, t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("request-host", r.Host)
+	})
+	defer st.Close()
+
+	if _, err := io.WriteString(st.conn, "GET / HTTP/1.0\r\nTest-Case: TestH1H1HTTP10NoHostRewrite\r\n\r\n"); err != nil {
+		t.Fatalf("Error io.WriteString() = %v", err)
+	}
+
+	resp, err := http.ReadResponse(bufio.NewReader(st.conn), nil)
+	if err != nil {
+		t.Fatalf("Error http.ReadResponse() = %v", err)
+	}
+
+	if got, want := resp.StatusCode, 200; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+	if got, want := resp.Header.Get("request-host"), st.backendHost; got != want {
+		t.Errorf("request-host: %v; want %v", got, want)
+	}
+}
+
 // TestH1H2ConnectFailure tests that server handles the situation that
 // connection attempt to HTTP/2 backend failed.
 func TestH1H2ConnectFailure(t *testing.T) {
@@ -214,6 +265,32 @@ func TestH1H2HTTP10(t *testing.T) {
 	defer st.Close()
 
 	if _, err := io.WriteString(st.conn, "GET / HTTP/1.0\r\nTest-Case: TestH1H2HTTP10\r\n\r\n"); err != nil {
+		t.Fatalf("Error io.WriteString() = %v", err)
+	}
+
+	resp, err := http.ReadResponse(bufio.NewReader(st.conn), nil)
+	if err != nil {
+		t.Fatalf("Error http.ReadResponse() = %v", err)
+	}
+
+	if got, want := resp.StatusCode, 200; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+	if got, want := resp.Header.Get("request-host"), st.backendHost; got != want {
+		t.Errorf("request-host: %v; want %v", got, want)
+	}
+}
+
+// TestH1H2HTTP10NoHostRewrite tests that server generates host header
+// field using actual backend server even if --no-http-rewrite is
+// used.
+func TestH1H2HTTP10NoHostRewrite(t *testing.T) {
+	st := newServerTester([]string{"--http2-bridge", "--no-host-rewrite"}, t, func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("request-host", r.Host)
+	})
+	defer st.Close()
+
+	if _, err := io.WriteString(st.conn, "GET / HTTP/1.0\r\nTest-Case: TestH1H2HTTP10NoHostRewrite\r\n\r\n"); err != nil {
 		t.Fatalf("Error io.WriteString() = %v", err)
 	}
 

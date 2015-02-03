@@ -226,7 +226,8 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
 
 int HttpDownstreamConnection::push_request_headers() {
   const char *authority = nullptr, *host = nullptr;
-  if (!get_config()->http2_proxy && !get_config()->client_proxy) {
+  if (!get_config()->no_host_rewrite && !get_config()->http2_proxy &&
+      !get_config()->client_proxy) {
     if (!downstream_->get_request_http2_authority().empty()) {
       authority = get_config()->downstream_addrs[addr_idx_].hostport.get();
     }

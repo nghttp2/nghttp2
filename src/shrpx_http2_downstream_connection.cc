@@ -234,7 +234,8 @@ int Http2DownstreamConnection::push_request_headers() {
   }
 
   const char *authority = nullptr, *host = nullptr;
-  if (!get_config()->http2_proxy && !get_config()->client_proxy) {
+  if (!get_config()->no_host_rewrite && !get_config()->http2_proxy &&
+      !get_config()->client_proxy) {
     // HTTP/2 backend does not support multiple address, so we always
     // use index = 0.
     if (!downstream_->get_request_http2_authority().empty()) {
@@ -341,7 +342,8 @@ int Http2DownstreamConnection::push_request_headers() {
       nva.push_back(http2::make_nv_ls(":path", path));
     }
 
-    if (!get_config()->http2_proxy && !get_config()->client_proxy) {
+    if (!get_config()->no_host_rewrite && !get_config()->http2_proxy &&
+        !get_config()->client_proxy) {
       if (authority) {
         nva.push_back(http2::make_nv_lc(":authority", authority));
       }

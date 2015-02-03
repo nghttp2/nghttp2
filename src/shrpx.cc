@@ -766,6 +766,7 @@ void fill_default_config() {
 
   mod_config()->tls_proto_mask = 0;
   mod_config()->no_location_rewrite = false;
+  mod_config()->no_host_rewrite = false;
   mod_config()->argc = 0;
   mod_config()->argv = nullptr;
   mod_config()->downstream_connections_per_host = 8;
@@ -1168,6 +1169,11 @@ HTTP:
               --client  and  default   mode.   For  --http2-proxy  and
               --client-proxy mode,  location header field will  not be
               altered regardless of this option.
+  --no-host-rewrite
+              Don't  rewrite  host  and :authority  header  fields  on
+              --http2-bridge,   --client   and  default   mode.    For
+              --http2-proxy  and  --client-proxy mode,  these  headers
+              will not be altered regardless of this option.
   --altsvc=<PROTOID,PORT[,HOST,[ORIGIN]]>
               Specify   protocol  ID,   port,  host   and  origin   of
               alternative service.  <HOST>  and <ORIGIN> are optional.
@@ -1332,6 +1338,7 @@ int main(int argc, char **argv) {
         {"tls-ctx-per-worker", no_argument, &flag, 70},
         {"backend-response-buffer", required_argument, &flag, 71},
         {"backend-request-buffer", required_argument, &flag, 72},
+        {"no-host-rewrite", no_argument, &flag, 73},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -1660,6 +1667,10 @@ int main(int argc, char **argv) {
       case 72:
         // --backend-request-buffer
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_REQUEST_BUFFER, optarg);
+        break;
+      case 73:
+        // --no-host-rewrite
+        cmdcfgs.emplace_back(SHRPX_OPT_NO_HOST_REWRITE, "yes");
         break;
       default:
         break;
