@@ -198,8 +198,8 @@ backend connection, use ``--backend-no-tls`` option.
 
 The backend server is supporsed to be a HTTP/2 web server or HTTP/2
 proxy.  If backend server is HTTP/2 proxy, use
-``--no-location-rewrite`` option to disable rewriting location header
-field.
+``--no-location-rewrite`` and ``--no-host-rewrite`` options to disable
+rewriting location, host and :authority header field.
 
 The use-case of this mode is aggregate the incoming connections to one
 HTTP/2 connection.  One backend HTTP/2 connection is created per

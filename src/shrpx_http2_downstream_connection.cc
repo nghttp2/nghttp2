@@ -232,6 +232,34 @@ int Http2DownstreamConnection::push_request_headers() {
   if (!downstream_) {
     return 0;
   }
+
+  const char *authority = nullptr, *host = nullptr;
+  if (!get_config()->no_host_rewrite && !get_config()->http2_proxy &&
+      !get_config()->client_proxy) {
+    // HTTP/2 backend does not support multiple address, so we always
+    // use index = 0.
+    if (!downstream_->get_request_http2_authority().empty()) {
+      authority = get_config()->downstream_addrs[0].hostport.get();
+    }
+    if (downstream_->get_request_header(http2::HD_HOST)) {
+      host = get_config()->downstream_addrs[0].hostport.get();
+    }
+  } else {
+    if (!downstream_->get_request_http2_authority().empty()) {
+      authority = downstream_->get_request_http2_authority().c_str();
+    }
+    auto h = downstream_->get_request_header(http2::HD_HOST);
+    if (h) {
+      host = h->value.c_str();
+    }
+  }
+
+  if (!authority && !host) {
+    // upstream is HTTP/1.0.  We use backend server's host
+    // nonetheless.
+    host = get_config()->downstream_addrs[0].hostport.get();
+  }
+
   size_t nheader = downstream_->get_request_headers().size();
 
   Headers cookies;
@@ -239,28 +267,28 @@ int Http2DownstreamConnection::push_request_headers() {
     cookies = downstream_->crumble_request_cookie();
   }
 
-  // 7 means:
+  // 8 means:
   // 1. :method
   // 2. :scheme
   // 3. :path
-  // 4. :authority (optional)
-  // 5. via (optional)
-  // 6. x-forwarded-for (optional)
-  // 7. x-forwarded-proto (optional)
+  // 4. :authority (at least either :authority or host exists)
+  // 5. host
+  // 6. via (optional)
+  // 7. x-forwarded-for (optional)
+  // 8. x-forwarded-proto (optional)
   auto nva = std::vector<nghttp2_nv>();
-  nva.reserve(nheader + 7 + cookies.size());
+  nva.reserve(nheader + 8 + cookies.size());
 
   std::string via_value;
   std::string xff_value;
-  std::string scheme, authority, path, query;
+  std::string scheme, uri_authority, path, query;
 
   // To reconstruct HTTP/1 status line and headers, proxy should
   // preserve host header field. See draft-09 section 8.1.3.1.
   if (downstream_->get_request_method() == "CONNECT") {
     // The upstream may be HTTP/2 or HTTP/1
-    if (!downstream_->get_request_http2_authority().empty()) {
-      nva.push_back(http2::make_nv_ls(
-          ":authority", downstream_->get_request_http2_authority()));
+    if (authority) {
+      nva.push_back(http2::make_nv_lc(":authority", authority));
     } else {
       nva.push_back(
           http2::make_nv_ls(":authority", downstream_->get_request_path()));
@@ -270,14 +298,8 @@ int Http2DownstreamConnection::push_request_headers() {
     nva.push_back(
         http2::make_nv_ls(":scheme", downstream_->get_request_http2_scheme()));
     nva.push_back(http2::make_nv_ls(":path", downstream_->get_request_path()));
-    if (!downstream_->get_request_http2_authority().empty()) {
-      nva.push_back(http2::make_nv_ls(
-          ":authority", downstream_->get_request_http2_authority()));
-    } else if (!downstream_->get_request_header(http2::HD_HOST)) {
-      if (LOG_ENABLED(INFO)) {
-        DCLOG(INFO, this) << "host header field missing";
-      }
-      return -1;
+    if (authority) {
+      nva.push_back(http2::make_nv_lc(":authority", authority));
     }
   } else {
     // The upstream is HTTP/1
@@ -288,11 +310,11 @@ int Http2DownstreamConnection::push_request_headers() {
                                &u);
     if (rv == 0) {
       http2::copy_url_component(scheme, &u, UF_SCHEMA, url);
-      http2::copy_url_component(authority, &u, UF_HOST, url);
+      http2::copy_url_component(uri_authority, &u, UF_HOST, url);
       http2::copy_url_component(path, &u, UF_PATH, url);
       http2::copy_url_component(query, &u, UF_QUERY, url);
       if (path.empty()) {
-        if (!authority.empty() &&
+        if (!uri_authority.empty() &&
             downstream_->get_request_method() == "OPTIONS") {
           path = "*";
         } else {
@@ -319,27 +341,32 @@ int Http2DownstreamConnection::push_request_headers() {
     } else {
       nva.push_back(http2::make_nv_ls(":path", path));
     }
-    if (!authority.empty()) {
+
+    if (!get_config()->no_host_rewrite && !get_config()->http2_proxy &&
+        !get_config()->client_proxy) {
+      if (authority) {
+        nva.push_back(http2::make_nv_lc(":authority", authority));
+      }
+    } else if (!uri_authority.empty()) {
       // TODO properly check IPv6 numeric address
-      if (authority.find(":") != std::string::npos) {
-        authority = "[" + authority;
-        authority += "]";
+      if (uri_authority.find(":") != std::string::npos) {
+        uri_authority = "[" + uri_authority;
+        uri_authority += "]";
       }
       if (u.field_set & (1 << UF_PORT)) {
-        authority += ":";
-        authority += util::utos(u.port);
+        uri_authority += ":";
+        uri_authority += util::utos(u.port);
       }
-      nva.push_back(http2::make_nv_ls(":authority", authority));
-    } else if (!downstream_->get_request_header(http2::HD_HOST)) {
-      if (LOG_ENABLED(INFO)) {
-        DCLOG(INFO, this) << "host header field missing";
-      }
-      return -1;
+      nva.push_back(http2::make_nv_ls(":authority", uri_authority));
     }
   }
 
   nva.push_back(
       http2::make_nv_ls(":method", downstream_->get_request_method()));
+
+  if (host) {
+    nva.push_back(http2::make_nv_lc("host", host));
+  }
 
   http2::copy_headers_to_nva(nva, downstream_->get_request_headers());
 

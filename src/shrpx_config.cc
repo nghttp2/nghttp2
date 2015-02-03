@@ -133,6 +133,7 @@ const char SHRPX_OPT_ADD_RESPONSE_HEADER[] = "add-response-header";
 const char SHRPX_OPT_WORKER_FRONTEND_CONNECTIONS[] =
     "worker-frontend-connections";
 const char SHRPX_OPT_NO_LOCATION_REWRITE[] = "no-location-rewrite";
+const char SHRPX_OPT_NO_HOST_REWRITE[] = "no-host-rewrite";
 const char SHRPX_OPT_BACKEND_HTTP1_CONNECTIONS_PER_HOST[] =
     "backend-http1-connections-per-host";
 const char SHRPX_OPT_BACKEND_HTTP1_CONNECTIONS_PER_FRONTEND[] =
@@ -1075,6 +1076,12 @@ int parse_config(const char *opt, const char *optarg) {
 
   if (util::strieq(opt, SHRPX_OPT_NO_LOCATION_REWRITE)) {
     mod_config()->no_location_rewrite = util::strieq(optarg, "yes");
+
+    return 0;
+  }
+
+  if (util::strieq(opt, SHRPX_OPT_NO_HOST_REWRITE)) {
+    mod_config()->no_host_rewrite = util::strieq(optarg, "yes");
 
     return 0;
   }

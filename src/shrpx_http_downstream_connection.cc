@@ -107,7 +107,7 @@ void connectcb(struct ev_loop *loop, ev_io *w, int revents) {
 HttpDownstreamConnection::HttpDownstreamConnection(
     DownstreamConnectionPool *dconn_pool, struct ev_loop *loop)
     : DownstreamConnection(dconn_pool), rlimit_(loop, &rev_, 0, 0),
-      ioctrl_(&rlimit_), response_htp_{0}, loop_(loop), fd_(-1) {
+      ioctrl_(&rlimit_), response_htp_{0}, loop_(loop), addr_idx_(0), fd_(-1) {
   // We do not know fd yet, so just set dummy fd 0
   ev_io_init(&wev_, connectcb, 0, EV_WRITE);
   ev_io_init(&rev_, readcb, 0, EV_READ);
@@ -198,6 +198,8 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
         DCLOG(INFO, this) << "Connecting to downstream server";
       }
 
+      addr_idx_ = i;
+
       ev_io_set(&wev_, fd_, EV_WRITE);
       ev_io_set(&rev_, fd_, EV_READ);
 
@@ -223,27 +225,51 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
 }
 
 int HttpDownstreamConnection::push_request_headers() {
+  const char *authority = nullptr, *host = nullptr;
+  if (!get_config()->no_host_rewrite && !get_config()->http2_proxy &&
+      !get_config()->client_proxy) {
+    if (!downstream_->get_request_http2_authority().empty()) {
+      authority = get_config()->downstream_addrs[addr_idx_].hostport.get();
+    }
+    if (downstream_->get_request_header(http2::HD_HOST)) {
+      host = get_config()->downstream_addrs[addr_idx_].hostport.get();
+    }
+  } else {
+    if (!downstream_->get_request_http2_authority().empty()) {
+      authority = downstream_->get_request_http2_authority().c_str();
+    }
+    auto h = downstream_->get_request_header(http2::HD_HOST);
+    if (h) {
+      host = h->value.c_str();
+    }
+  }
+
+  if (!authority && !host) {
+    // upstream is HTTP/1.0.  We use backend server's host
+    // nonetheless.
+    host = get_config()->downstream_addrs[addr_idx_].hostport.get();
+  }
+
   downstream_->assemble_request_cookie();
 
   // Assume that method and request path do not contain \r\n.
   std::string hdrs = downstream_->get_request_method();
   hdrs += " ";
   if (downstream_->get_request_method() == "CONNECT") {
-    if (!downstream_->get_request_http2_authority().empty()) {
-      hdrs += downstream_->get_request_http2_authority();
+    if (authority) {
+      hdrs += authority;
     } else {
       hdrs += downstream_->get_request_path();
     }
   } else if (get_config()->http2_proxy &&
-             !downstream_->get_request_http2_scheme().empty() &&
-             !downstream_->get_request_http2_authority().empty() &&
+             !downstream_->get_request_http2_scheme().empty() && authority &&
              (downstream_->get_request_path().c_str()[0] == '/' ||
               downstream_->get_request_path() == "*")) {
     // Construct absolute-form request target because we are going to
     // send a request to a HTTP/1 proxy.
     hdrs += downstream_->get_request_http2_scheme();
     hdrs += "://";
-    hdrs += downstream_->get_request_http2_authority();
+    hdrs += authority;
 
     // Server-wide OPTIONS takes following form in proxy request:
     //
@@ -259,13 +285,14 @@ int HttpDownstreamConnection::push_request_headers() {
     // don't care.
     hdrs += downstream_->get_request_path();
   }
-  hdrs += " HTTP/1.1\r\n";
-  if (!downstream_->get_request_header(http2::HD_HOST) &&
-      !downstream_->get_request_http2_authority().empty()) {
-    hdrs += "Host: ";
-    hdrs += downstream_->get_request_http2_authority();
-    hdrs += "\r\n";
+  hdrs += " HTTP/1.1\r\nHost: ";
+  if (authority) {
+    hdrs += authority;
+  } else {
+    hdrs += host;
   }
+  hdrs += "\r\n";
+
   http2::build_http1_headers_from_headers(hdrs,
                                           downstream_->get_request_headers());
 

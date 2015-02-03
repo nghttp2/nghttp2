@@ -634,7 +634,8 @@ int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
   auto http2session = static_cast<Http2Session *>(user_data);
   if (LOG_ENABLED(INFO)) {
     SSLOG(INFO, http2session) << "Stream stream_id=" << stream_id
-                              << " is being closed";
+                              << " is being closed with error code "
+                              << error_code;
   }
   auto sd = static_cast<StreamData *>(
       nghttp2_session_get_stream_user_data(session, stream_id));

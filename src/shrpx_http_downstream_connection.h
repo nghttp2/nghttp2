@@ -70,6 +70,8 @@ private:
   IOControl ioctrl_;
   http_parser response_htp_;
   struct ev_loop *loop_;
+  // index of get_config()->downstream_addrs this object is using
+  size_t addr_idx_;
   int fd_;
 };
 

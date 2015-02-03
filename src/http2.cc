@@ -224,6 +224,7 @@ void copy_headers_to_nva(std::vector<nghttp2_nv> &nva, const Headers &headers) {
     switch (lookup_token(kv.name)) {
     case HD_COOKIE:
     case HD_CONNECTION:
+    case HD_HOST:
     case HD_HTTP2_SETTINGS:
     case HD_KEEP_ALIVE:
     case HD_PROXY_CONNECTION:
@@ -249,6 +250,7 @@ void build_http1_headers_from_headers(std::string &hdrs,
     switch (lookup_token(kv.name)) {
     case HD_CONNECTION:
     case HD_COOKIE:
+    case HD_HOST:
     case HD_HTTP2_SETTINGS:
     case HD_KEEP_ALIVE:
     case HD_PROXY_CONNECTION:
