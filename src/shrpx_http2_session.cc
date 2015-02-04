@@ -375,6 +375,7 @@ int Http2Session::initiate_connection() {
       // TODO we should have timeout for connection establishment
       ev_timer_again(conn_.loop, &conn_.wt);
     } else {
+      conn_.rlimit.startw();
       ev_timer_again(conn_.loop, &conn_.rt);
     }
 
