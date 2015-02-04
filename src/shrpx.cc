@@ -761,8 +761,13 @@ void fill_default_config() {
   mod_config()->worker_frontend_connections = 0;
 
   nghttp2_option_new(&mod_config()->http2_option);
+  nghttp2_option_set_no_auto_window_update(get_config()->http2_option, 1);
 
-  nghttp2_option_set_no_auto_window_update(mod_config()->http2_option, 1);
+  nghttp2_option_new(&mod_config()->http2_client_option);
+  nghttp2_option_set_no_auto_window_update(get_config()->http2_client_option,
+                                           1);
+  nghttp2_option_set_peer_max_concurrent_streams(
+      get_config()->http2_client_option, 100);
 
   mod_config()->tls_proto_mask = 0;
   mod_config()->no_location_rewrite = false;

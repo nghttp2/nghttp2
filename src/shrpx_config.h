@@ -236,6 +236,7 @@ struct Config {
   FILE *http2_upstream_dump_request_header;
   FILE *http2_upstream_dump_response_header;
   nghttp2_option *http2_option;
+  nghttp2_option *http2_client_option;
   char **argv;
   char *cwd;
   size_t num_worker;

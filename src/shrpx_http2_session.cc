@@ -1202,7 +1202,7 @@ int Http2Session::on_connect() {
   }
 
   rv = nghttp2_session_client_new2(&session_, callbacks, this,
-                                   get_config()->http2_option);
+                                   get_config()->http2_client_option);
 
   if (rv != 0) {
     return -1;
