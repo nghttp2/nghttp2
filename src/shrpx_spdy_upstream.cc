@@ -57,8 +57,6 @@ ssize_t send_callback(spdylay_session *session, const uint8_t *data, size_t len,
 
   auto nread = wb->write(data, len);
 
-  handler->update_warmup_writelen(nread);
-
   return nread;
 }
 } // namespace
@@ -541,11 +539,11 @@ int SpdyUpstream::downstream_read(DownstreamConnection *dconn) {
     dconn = nullptr;
   } else {
     auto rv = downstream->on_read();
-    if (rv == DownstreamConnection::ERR_EOF) {
+    if (rv == SHRPX_ERR_EOF) {
       return downstream_eof(dconn);
     }
     if (rv != 0) {
-      if (rv != DownstreamConnection::ERR_NET) {
+      if (rv != SHRPX_ERR_NETWORK) {
         if (LOG_ENABLED(INFO)) {
           DCLOG(INFO, dconn) << "HTTP parser failure";
         }
@@ -570,7 +568,7 @@ int SpdyUpstream::downstream_read(DownstreamConnection *dconn) {
 int SpdyUpstream::downstream_write(DownstreamConnection *dconn) {
   int rv;
   rv = dconn->on_write();
-  if (rv == DownstreamConnection::ERR_NET) {
+  if (rv == SHRPX_ERR_NETWORK) {
     return downstream_error(dconn, Downstream::EVENT_ERROR);
   }
   if (rv != 0) {

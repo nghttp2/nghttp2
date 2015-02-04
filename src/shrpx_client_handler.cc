@@ -49,7 +49,8 @@ namespace shrpx {
 
 namespace {
 void timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
-  auto handler = static_cast<ClientHandler *>(w->data);
+  auto conn = static_cast<Connection *>(w->data);
+  auto handler = static_cast<ClientHandler *>(conn->data);
 
   if (LOG_ENABLED(INFO)) {
     CLOG(INFO, handler) << "Time out";
@@ -73,7 +74,8 @@ void shutdowncb(struct ev_loop *loop, ev_timer *w, int revents) {
 
 namespace {
 void readcb(struct ev_loop *loop, ev_io *w, int revents) {
-  auto handler = static_cast<ClientHandler *>(w->data);
+  auto conn = static_cast<Connection *>(w->data);
+  auto handler = static_cast<ClientHandler *>(conn->data);
 
   if (handler->do_read() != 0) {
     delete handler;
@@ -84,7 +86,8 @@ void readcb(struct ev_loop *loop, ev_io *w, int revents) {
 
 namespace {
 void writecb(struct ev_loop *loop, ev_io *w, int revents) {
-  auto handler = static_cast<ClientHandler *>(w->data);
+  auto conn = static_cast<Connection *>(w->data);
+  auto handler = static_cast<ClientHandler *>(conn->data);
 
   if (handler->do_write() != 0) {
     delete handler;
@@ -94,7 +97,7 @@ void writecb(struct ev_loop *loop, ev_io *w, int revents) {
 } // namespace
 
 int ClientHandler::read_clear() {
-  ev_timer_again(loop_, &rt_);
+  ev_timer_again(conn_.loop, &conn_.rt);
 
   for (;;) {
     // we should process buffered data first before we read EOF.
@@ -106,53 +109,33 @@ int ClientHandler::read_clear() {
     }
     rb_.reset();
 
-    ssize_t nread = std::min(rb_.wleft(), rlimit_.avail());
-    if (nread == 0) {
-      break;
-    }
-
-    while ((nread = read(fd_, rb_.last, nread)) == -1 && errno == EINTR)
-      ;
-    if (nread == -1) {
-      if (errno == EAGAIN || errno == EWOULDBLOCK) {
-        break;
-      }
-      return -1;
-    }
+    auto nread = conn_.read_clear(rb_.last, rb_.wleft());
 
     if (nread == 0) {
+      return 0;
+    }
+
+    if (nread < 0) {
       return -1;
     }
 
     rb_.write(nread);
-    rlimit_.drain(nread);
   }
-
-  return 0;
 }
 
 int ClientHandler::write_clear() {
-  ev_timer_again(loop_, &rt_);
+  ev_timer_again(conn_.loop, &conn_.rt);
 
   for (;;) {
     if (wb_.rleft() > 0) {
-      ssize_t nwrite = std::min(wb_.rleft(), wlimit_.avail());
+      auto nwrite = conn_.write_clear(wb_.pos, wb_.rleft());
       if (nwrite == 0) {
         return 0;
       }
-
-      while ((nwrite = write(fd_, wb_.pos, nwrite)) == -1 && errno == EINTR)
-        ;
-      if (nwrite == -1) {
-        if (errno == EAGAIN || errno == EWOULDBLOCK) {
-          wlimit_.startw();
-          ev_timer_again(loop_, &wt_);
-          return 0;
-        }
+      if (nwrite < 0) {
         return -1;
       }
       wb_.drain(nwrite);
-      wlimit_.drain(nwrite);
       continue;
     }
     wb_.reset();
@@ -164,53 +147,33 @@ int ClientHandler::write_clear() {
     }
   }
 
-  wlimit_.stopw();
-  ev_timer_stop(loop_, &wt_);
+  conn_.wlimit.stopw();
+  ev_timer_stop(conn_.loop, &conn_.wt);
 
   return 0;
 }
 
 int ClientHandler::tls_handshake() {
-  ev_timer_again(loop_, &rt_);
+  ev_timer_again(conn_.loop, &conn_.rt);
 
   ERR_clear_error();
 
-  auto rv = SSL_do_handshake(ssl_);
+  auto rv = conn_.tls_handshake();
 
-  if (rv == 0) {
-    return -1;
+  if (rv == SHRPX_ERR_INPROGRESS) {
+    return 0;
   }
 
   if (rv < 0) {
-    auto err = SSL_get_error(ssl_, rv);
-    switch (err) {
-    case SSL_ERROR_WANT_READ:
-      wlimit_.stopw();
-      ev_timer_stop(loop_, &wt_);
-      return 0;
-    case SSL_ERROR_WANT_WRITE:
-      wlimit_.startw();
-      ev_timer_again(loop_, &wt_);
-      return 0;
-    default:
-      return -1;
-    }
+    return -1;
   }
 
-  wlimit_.stopw();
-  ev_timer_stop(loop_, &wt_);
-
-  set_tls_handshake(true);
   if (LOG_ENABLED(INFO)) {
     CLOG(INFO, this) << "SSL/TLS handshake completed";
   }
+
   if (validate_next_proto() != 0) {
     return -1;
-  }
-  if (LOG_ENABLED(INFO)) {
-    if (SSL_session_reused(ssl_)) {
-      CLOG(INFO, this) << "SSL/TLS session reused";
-    }
   }
 
   read_ = &ClientHandler::read_tls;
@@ -220,7 +183,7 @@ int ClientHandler::tls_handshake() {
 }
 
 int ClientHandler::read_tls() {
-  ev_timer_again(loop_, &rt_);
+  ev_timer_again(conn_.loop, &conn_.rt);
 
   ERR_clear_error();
 
@@ -234,116 +197,38 @@ int ClientHandler::read_tls() {
     }
     rb_.reset();
 
-    ssize_t nread;
-    // SSL_read requires the same arguments (buf pointer and its
-    // length) on SSL_ERROR_WANT_READ or SSL_ERROR_WANT_WRITE.
-    // rlimit_.avail() or rlimit_.avail() may return different length
-    // than the length previously passed to SSL_read, which violates
-    // OpenSSL assumption.  To avoid this, we keep last legnth passed
-    // to SSL_read to tls_last_readlen_ if SSL_read indicated I/O
-    // blocking.
-    if (tls_last_readlen_ == 0) {
-      nread = std::min(rb_.wleft(), rlimit_.avail());
-      if (nread == 0) {
-        return 0;
-      }
-    } else {
-      nread = tls_last_readlen_;
-      tls_last_readlen_ = 0;
+    auto nread = conn_.read_tls(rb_.last, rb_.wleft());
+
+    if (nread == 0) {
+      return 0;
     }
 
-    auto rv = SSL_read(ssl_, rb_.last, nread);
-
-    if (rv == 0) {
+    if (nread < 0) {
       return -1;
     }
 
-    if (rv < 0) {
-      auto err = SSL_get_error(ssl_, rv);
-      switch (err) {
-      case SSL_ERROR_WANT_READ:
-        tls_last_readlen_ = nread;
-        return 0;
-      case SSL_ERROR_WANT_WRITE:
-        if (LOG_ENABLED(INFO)) {
-          CLOG(INFO, this) << "Close connection due to TLS renegotiation";
-        }
-        return -1;
-      default:
-        if (LOG_ENABLED(INFO)) {
-          CLOG(INFO, this) << "SSL_read: SSL_get_error returned " << err;
-        }
-        return -1;
-      }
-    }
-
-    rb_.write(rv);
-    rlimit_.drain(rv);
+    rb_.write(nread);
   }
 }
 
 int ClientHandler::write_tls() {
-  ev_timer_again(loop_, &rt_);
+  ev_timer_again(conn_.loop, &conn_.rt);
 
   ERR_clear_error();
 
   for (;;) {
     if (wb_.rleft() > 0) {
-      ssize_t nwrite;
-      // SSL_write requires the same arguments (buf pointer and its
-      // length) on SSL_ERROR_WANT_READ or SSL_ERROR_WANT_WRITE.
-      // get_write_limit() may return smaller length than previously
-      // passed to SSL_write, which violates OpenSSL assumption.  To
-      // avoid this, we keep last legnth passed to SSL_write to
-      // tls_last_writelen_ if SSL_write indicated I/O blocking.
-      if (tls_last_writelen_ == 0) {
-        nwrite = std::min(wb_.rleft(), wlimit_.avail());
-        if (nwrite == 0) {
-          return 0;
-        }
+      auto nwrite = conn_.write_tls(wb_.pos, wb_.rleft());
 
-        auto limit = get_write_limit();
-        if (limit != -1) {
-          nwrite = std::min(nwrite, limit);
-        }
-      } else {
-        nwrite = tls_last_writelen_;
-        tls_last_writelen_ = 0;
+      if (nwrite == 0) {
+        return 0;
       }
 
-      auto rv = SSL_write(ssl_, wb_.pos, nwrite);
-
-      if (rv == 0) {
+      if (nwrite < 0) {
         return -1;
       }
 
-      update_last_write_time();
-
-      if (rv < 0) {
-        auto err = SSL_get_error(ssl_, rv);
-        switch (err) {
-        case SSL_ERROR_WANT_READ:
-          if (LOG_ENABLED(INFO)) {
-            CLOG(INFO, this) << "Close connection due to TLS renegotiation";
-          }
-          return -1;
-        case SSL_ERROR_WANT_WRITE:
-          tls_last_writelen_ = nwrite;
-          wlimit_.startw();
-          ev_timer_again(loop_, &wt_);
-          return 0;
-        default:
-          if (LOG_ENABLED(INFO)) {
-            CLOG(INFO, this) << "SSL_write: SSL_get_error returned " << err;
-          }
-          return -1;
-        }
-      }
-
-      wb_.drain(rv);
-      wlimit_.drain(rv);
-
-      update_warmup_writelen(rv);
+      wb_.drain(nwrite);
 
       continue;
     }
@@ -356,8 +241,8 @@ int ClientHandler::write_tls() {
     }
   }
 
-  wlimit_.stopw();
-  ev_timer_stop(loop_, &wt_);
+  conn_.wlimit.stopw();
+  ev_timer_stop(conn_.loop, &conn_.wt);
 
   return 0;
 }
@@ -464,40 +349,27 @@ ClientHandler::ClientHandler(struct ev_loop *loop, int fd, SSL *ssl,
                              const char *ipaddr, const char *port,
                              WorkerStat *worker_stat,
                              DownstreamConnectionPool *dconn_pool)
-    : ipaddr_(ipaddr), port_(port),
-      wlimit_(loop, &wev_, get_config()->write_rate, get_config()->write_burst),
-      rlimit_(loop, &rev_, get_config()->read_rate, get_config()->read_burst),
-      loop_(loop), dconn_pool_(dconn_pool), http2session_(nullptr),
-      http1_connect_blocker_(nullptr), ssl_(ssl), worker_stat_(worker_stat),
-      last_write_time_(0.), warmup_writelen_(0),
+    : conn_(loop, fd, ssl, get_config()->upstream_write_timeout,
+            get_config()->upstream_read_timeout, get_config()->write_rate,
+            get_config()->write_burst, get_config()->read_rate,
+            get_config()->read_burst, writecb, readcb, timeoutcb, this),
+      ipaddr_(ipaddr), port_(port), dconn_pool_(dconn_pool),
+      http2session_(nullptr), http1_connect_blocker_(nullptr),
+      worker_stat_(worker_stat),
       left_connhd_len_(NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN),
-      tls_last_writelen_(0), tls_last_readlen_(0), fd_(fd),
-      should_close_after_write_(false), tls_handshake_(false),
-      tls_renegotiation_(false) {
+      should_close_after_write_(false) {
 
   ++worker_stat->num_connections;
-
-  ev_io_init(&wev_, writecb, fd_, EV_WRITE);
-  ev_io_init(&rev_, readcb, fd_, EV_READ);
-
-  wev_.data = this;
-  rev_.data = this;
-
-  ev_timer_init(&wt_, timeoutcb, 0., get_config()->upstream_write_timeout);
-  ev_timer_init(&rt_, timeoutcb, 0., get_config()->upstream_read_timeout);
-
-  wt_.data = this;
-  rt_.data = this;
 
   ev_timer_init(&reneg_shutdown_timer_, shutdowncb, 0., 0.);
 
   reneg_shutdown_timer_.data = this;
 
-  rlimit_.startw();
-  ev_timer_again(loop_, &rt_);
+  conn_.rlimit.startw();
+  ev_timer_again(conn_.loop, &conn_.rt);
 
-  if (ssl_) {
-    SSL_set_app_data(ssl_, reinterpret_cast<char *>(this));
+  if (conn_.tls.ssl) {
+    SSL_set_app_data(conn_.tls.ssl, &conn_);
     read_ = write_ = &ClientHandler::tls_handshake;
     on_read_ = &ClientHandler::upstream_noop;
     on_write_ = &ClientHandler::upstream_write;
@@ -525,33 +397,14 @@ ClientHandler::~ClientHandler() {
 
   --worker_stat_->num_connections;
 
-  ev_timer_stop(loop_, &reneg_shutdown_timer_);
-
-  ev_timer_stop(loop_, &rt_);
-  ev_timer_stop(loop_, &wt_);
-
-  ev_io_stop(loop_, &rev_);
-  ev_io_stop(loop_, &wev_);
+  ev_timer_stop(conn_.loop, &reneg_shutdown_timer_);
 
   // TODO If backend is http/2, and it is in CONNECTED state, signal
   // it and make it loopbreak when output is zero.
   if (worker_config->graceful_shutdown && worker_stat_->num_connections == 0) {
-    ev_break(loop_);
+    ev_break(conn_.loop);
   }
 
-  if (ssl_) {
-    SSL_set_app_data(ssl_, nullptr);
-    SSL_set_shutdown(ssl_, SSL_RECEIVED_SHUTDOWN);
-    ERR_clear_error();
-    SSL_shutdown(ssl_);
-  }
-
-  if (ssl_) {
-    SSL_free(ssl_);
-  }
-
-  shutdown(fd_, SHUT_WR);
-  close(fd_);
   if (LOG_ENABLED(INFO)) {
     CLOG(INFO, this) << "Deleted";
   }
@@ -560,20 +413,20 @@ ClientHandler::~ClientHandler() {
 Upstream *ClientHandler::get_upstream() { return upstream_.get(); }
 
 struct ev_loop *ClientHandler::get_loop() const {
-  return loop_;
+  return conn_.loop;
 }
 
 void ClientHandler::reset_upstream_read_timeout(ev_tstamp t) {
-  rt_.repeat = t;
-  if (ev_is_active(&rt_)) {
-    ev_timer_again(loop_, &rt_);
+  conn_.rt.repeat = t;
+  if (ev_is_active(&conn_.rt)) {
+    ev_timer_again(conn_.loop, &conn_.rt);
   }
 }
 
 void ClientHandler::reset_upstream_write_timeout(ev_tstamp t) {
-  wt_.repeat = t;
-  if (ev_is_active(&wt_)) {
-    ev_timer_again(loop_, &wt_);
+  conn_.wt.repeat = t;
+  if (ev_is_active(&conn_.wt)) {
+    ev_timer_again(conn_.loop, &conn_.wt);
   }
 }
 
@@ -585,7 +438,7 @@ int ClientHandler::validate_next_proto() {
   // First set callback for catch all cases
   on_read_ = &ClientHandler::upstream_read;
 
-  SSL_get0_next_proto_negotiated(ssl_, &next_proto, &next_proto_len);
+  SSL_get0_next_proto_negotiated(conn_.tls.ssl, &next_proto, &next_proto_len);
   for (int i = 0; i < 2; ++i) {
     if (next_proto) {
       if (LOG_ENABLED(INFO)) {
@@ -604,7 +457,7 @@ int ClientHandler::validate_next_proto() {
 
         auto http2_upstream = util::make_unique<Http2Upstream>(this);
 
-        if (!ssl::check_http2_requirement(ssl_)) {
+        if (!ssl::check_http2_requirement(conn_.tls.ssl)) {
           rv = http2_upstream->terminate_session(NGHTTP2_INADEQUATE_SECURITY);
 
           if (rv != 0) {
@@ -744,7 +597,8 @@ ClientHandler::get_downstream_connection() {
       dconn = util::make_unique<Http2DownstreamConnection>(dconn_pool_,
                                                            http2session_);
     } else {
-      dconn = util::make_unique<HttpDownstreamConnection>(dconn_pool_, loop_);
+      dconn =
+          util::make_unique<HttpDownstreamConnection>(dconn_pool_, conn_.loop);
     }
     dconn->set_client_handler(this);
     return dconn;
@@ -760,7 +614,7 @@ ClientHandler::get_downstream_connection() {
   return dconn;
 }
 
-SSL *ClientHandler::get_ssl() const { return ssl_; }
+SSL *ClientHandler::get_ssl() const { return conn_.tls.ssl; }
 
 void ClientHandler::set_http2_session(Http2Session *http2session) {
   http2session_ = http2session;
@@ -806,70 +660,18 @@ int ClientHandler::perform_http2_upgrade(HttpsUpstream *http) {
   return 0;
 }
 
-bool ClientHandler::get_http2_upgrade_allowed() const { return !ssl_; }
+bool ClientHandler::get_http2_upgrade_allowed() const { return !conn_.tls.ssl; }
 
 std::string ClientHandler::get_upstream_scheme() const {
-  if (ssl_) {
+  if (conn_.tls.ssl) {
     return "https";
   } else {
     return "http";
   }
 }
 
-void ClientHandler::set_tls_handshake(bool f) { tls_handshake_ = f; }
-
-bool ClientHandler::get_tls_handshake() const { return tls_handshake_; }
-
-void ClientHandler::set_tls_renegotiation(bool f) {
-  if (tls_renegotiation_ == false) {
-    if (LOG_ENABLED(INFO)) {
-      CLOG(INFO, this) << "TLS renegotiation detected. "
-                       << "Start shutdown timer now.";
-    }
-
-    ev_timer_start(loop_, &reneg_shutdown_timer_);
-  }
-  tls_renegotiation_ = f;
-}
-
-bool ClientHandler::get_tls_renegotiation() const { return tls_renegotiation_; }
-
-namespace {
-const size_t SHRPX_SMALL_WRITE_LIMIT = 1300;
-const size_t SHRPX_WARMUP_THRESHOLD = 1 << 20;
-} // namespace
-
-ssize_t ClientHandler::get_write_limit() {
-  if (!ssl_) {
-    return -1;
-  }
-
-  auto t = ev_now(loop_);
-
-  if (t - last_write_time_ > 1.0) {
-    // Time out, use small record size
-    warmup_writelen_ = 0;
-    return SHRPX_SMALL_WRITE_LIMIT;
-  }
-
-  // If event_base_gettimeofday_cached() failed, we just skip timer
-  // checking.  Don't know how to treat this.
-
-  if (warmup_writelen_ >= SHRPX_WARMUP_THRESHOLD) {
-    return -1;
-  }
-
-  return SHRPX_SMALL_WRITE_LIMIT;
-}
-
-void ClientHandler::update_warmup_writelen(size_t n) {
-  if (warmup_writelen_ < SHRPX_WARMUP_THRESHOLD) {
-    warmup_writelen_ += n;
-  }
-}
-
-void ClientHandler::update_last_write_time() {
-  last_write_time_ = ev_now(loop_);
+void ClientHandler::start_immediate_shutdown() {
+  ev_timer_start(conn_.loop, &reneg_shutdown_timer_);
 }
 
 void ClientHandler::write_accesslog(Downstream *downstream) {
@@ -922,9 +724,9 @@ ClientHandler::WriteBuf *ClientHandler::get_wb() { return &wb_; }
 
 ClientHandler::ReadBuf *ClientHandler::get_rb() { return &rb_; }
 
-void ClientHandler::signal_write() { wlimit_.startw(); }
+void ClientHandler::signal_write() { conn_.wlimit.startw(); }
 
-RateLimit *ClientHandler::get_rlimit() { return &rlimit_; }
-RateLimit *ClientHandler::get_wlimit() { return &wlimit_; }
+RateLimit *ClientHandler::get_rlimit() { return &conn_.rlimit; }
+RateLimit *ClientHandler::get_wlimit() { return &conn_.wlimit; }
 
 } // namespace shrpx

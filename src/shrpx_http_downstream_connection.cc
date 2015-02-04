@@ -43,7 +43,8 @@ namespace shrpx {
 
 namespace {
 void timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
-  auto dconn = static_cast<HttpDownstreamConnection *>(w->data);
+  auto conn = static_cast<Connection *>(w->data);
+  auto dconn = static_cast<HttpDownstreamConnection *>(conn->data);
 
   if (LOG_ENABLED(INFO)) {
     DCLOG(INFO, dconn) << "Time out";
@@ -64,7 +65,8 @@ void timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
 
 namespace {
 void readcb(struct ev_loop *loop, ev_io *w, int revents) {
-  auto dconn = static_cast<HttpDownstreamConnection *>(w->data);
+  auto conn = static_cast<Connection *>(w->data);
+  auto dconn = static_cast<HttpDownstreamConnection *>(conn->data);
   auto downstream = dconn->get_downstream();
   auto upstream = downstream->get_upstream();
   auto handler = upstream->get_client_handler();
@@ -77,7 +79,8 @@ void readcb(struct ev_loop *loop, ev_io *w, int revents) {
 
 namespace {
 void writecb(struct ev_loop *loop, ev_io *w, int revents) {
-  auto dconn = static_cast<HttpDownstreamConnection *>(w->data);
+  auto conn = static_cast<Connection *>(w->data);
+  auto dconn = static_cast<HttpDownstreamConnection *>(conn->data);
   auto downstream = dconn->get_downstream();
   auto upstream = downstream->get_upstream();
   auto handler = upstream->get_client_handler();
@@ -90,7 +93,8 @@ void writecb(struct ev_loop *loop, ev_io *w, int revents) {
 
 namespace {
 void connectcb(struct ev_loop *loop, ev_io *w, int revents) {
-  auto dconn = static_cast<HttpDownstreamConnection *>(w->data);
+  auto conn = static_cast<Connection *>(w->data);
+  auto dconn = static_cast<HttpDownstreamConnection *>(conn->data);
   auto downstream = dconn->get_downstream();
   auto upstream = downstream->get_upstream();
   auto handler = upstream->get_client_handler();
@@ -106,32 +110,13 @@ void connectcb(struct ev_loop *loop, ev_io *w, int revents) {
 
 HttpDownstreamConnection::HttpDownstreamConnection(
     DownstreamConnectionPool *dconn_pool, struct ev_loop *loop)
-    : DownstreamConnection(dconn_pool), rlimit_(loop, &rev_, 0, 0),
-      ioctrl_(&rlimit_), response_htp_{0}, loop_(loop), addr_idx_(0), fd_(-1) {
-  // We do not know fd yet, so just set dummy fd 0
-  ev_io_init(&wev_, connectcb, 0, EV_WRITE);
-  ev_io_init(&rev_, readcb, 0, EV_READ);
-
-  wev_.data = this;
-  rev_.data = this;
-
-  ev_timer_init(&wt_, timeoutcb, 0., get_config()->downstream_write_timeout);
-  ev_timer_init(&rt_, timeoutcb, 0., get_config()->downstream_read_timeout);
-
-  wt_.data = this;
-  rt_.data = this;
-}
+    : DownstreamConnection(dconn_pool),
+      conn_(loop, -1, nullptr, get_config()->downstream_write_timeout,
+            get_config()->downstream_read_timeout, 0, 0, 0, 0, connectcb,
+            readcb, timeoutcb, this),
+      ioctrl_(&conn_.rlimit), response_htp_{0}, addr_idx_(0) {}
 
 HttpDownstreamConnection::~HttpDownstreamConnection() {
-  ev_timer_stop(loop_, &rt_);
-  ev_timer_stop(loop_, &wt_);
-  ev_io_stop(loop_, &rev_);
-  ev_io_stop(loop_, &wev_);
-
-  if (fd_ != -1) {
-    shutdown(fd_, SHUT_WR);
-    close(fd_);
-  }
   // Downstream and DownstreamConnection may be deleted
   // asynchronously.
   if (downstream_) {
@@ -144,7 +129,7 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
     DCLOG(INFO, this) << "Attaching to DOWNSTREAM:" << downstream;
   }
 
-  if (fd_ == -1) {
+  if (conn_.fd == -1) {
     auto connect_blocker = client_handler_->get_http1_connect_blocker();
 
     if (connect_blocker->blocked()) {
@@ -162,10 +147,10 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
       ++worker_stat->next_downstream;
       worker_stat->next_downstream %= get_config()->downstream_addrs.size();
 
-      fd_ = util::create_nonblock_socket(
+      conn_.fd = util::create_nonblock_socket(
           get_config()->downstream_addrs[i].addr.storage.ss_family);
 
-      if (fd_ == -1) {
+      if (conn_.fd == -1) {
         auto error = errno;
         DCLOG(WARN, this) << "socket() failed; errno=" << error;
 
@@ -175,16 +160,16 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
       }
 
       int rv;
-      rv = connect(fd_, const_cast<sockaddr *>(
-                            &get_config()->downstream_addrs[i].addr.sa),
+      rv = connect(conn_.fd, const_cast<sockaddr *>(
+                                 &get_config()->downstream_addrs[i].addr.sa),
                    get_config()->downstream_addrs[i].addrlen);
       if (rv != 0 && errno != EINPROGRESS) {
         auto error = errno;
         DCLOG(WARN, this) << "connect() failed; errno=" << error;
 
         connect_blocker->on_failure();
-        close(fd_);
-        fd_ = -1;
+        close(conn_.fd);
+        conn_.fd = -1;
 
         if (end == worker_stat->next_downstream) {
           return SHRPX_ERR_NETWORK;
@@ -200,10 +185,10 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
 
       addr_idx_ = i;
 
-      ev_io_set(&wev_, fd_, EV_WRITE);
-      ev_io_set(&rev_, fd_, EV_READ);
+      ev_io_set(&conn_.wev, conn_.fd, EV_WRITE);
+      ev_io_set(&conn_.rev, conn_.fd, EV_READ);
 
-      ev_io_start(loop_, &wev_);
+      conn_.wlimit.startw();
 
       break;
     }
@@ -214,12 +199,12 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
   http_parser_init(&response_htp_, HTTP_RESPONSE);
   response_htp_.data = downstream_;
 
-  ev_set_cb(&rev_, readcb);
+  ev_set_cb(&conn_.rev, readcb);
 
-  rt_.repeat = get_config()->downstream_read_timeout;
-  ev_timer_again(loop_, &rt_);
+  conn_.rt.repeat = get_config()->downstream_read_timeout;
+  ev_timer_again(conn_.loop, &conn_.rt);
   // TODO we should have timeout for connection establishment
-  ev_timer_again(loop_, &wt_);
+  ev_timer_again(conn_.loop, &conn_.wt);
 
   return 0;
 }
@@ -421,7 +406,8 @@ int HttpDownstreamConnection::end_upload_data() {
 
 namespace {
 void idle_readcb(struct ev_loop *loop, ev_io *w, int revents) {
-  auto dconn = static_cast<HttpDownstreamConnection *>(w->data);
+  auto conn = static_cast<Connection *>(w->data);
+  auto dconn = static_cast<HttpDownstreamConnection *>(conn->data);
   if (LOG_ENABLED(INFO)) {
     DCLOG(INFO, dconn) << "Idle connection EOF";
   }
@@ -433,7 +419,8 @@ void idle_readcb(struct ev_loop *loop, ev_io *w, int revents) {
 
 namespace {
 void idle_timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
-  auto dconn = static_cast<HttpDownstreamConnection *>(w->data);
+  auto conn = static_cast<Connection *>(w->data);
+  auto dconn = static_cast<HttpDownstreamConnection *>(conn->data);
   if (LOG_ENABLED(INFO)) {
     DCLOG(INFO, dconn) << "Idle connection timeout";
   }
@@ -450,16 +437,16 @@ void HttpDownstreamConnection::detach_downstream(Downstream *downstream) {
   downstream_ = nullptr;
   ioctrl_.force_resume_read();
 
-  ev_io_start(loop_, &rev_);
-  ev_io_stop(loop_, &wev_);
+  conn_.rlimit.startw();
+  conn_.wlimit.stopw();
 
-  ev_set_cb(&rev_, idle_readcb);
+  ev_set_cb(&conn_.rev, idle_readcb);
 
-  ev_timer_stop(loop_, &wt_);
+  ev_timer_stop(conn_.loop, &conn_.wt);
 
-  rt_.repeat = get_config()->downstream_idle_read_timeout;
-  ev_set_cb(&rt_, idle_timeoutcb);
-  ev_timer_again(loop_, &rt_);
+  conn_.rt.repeat = get_config()->downstream_idle_read_timeout;
+  ev_set_cb(&conn_.rt, idle_timeoutcb);
+  ev_timer_again(conn_.loop, &conn_.rt);
 }
 
 void HttpDownstreamConnection::pause_read(IOCtrlReason reason) {
@@ -649,25 +636,21 @@ http_parser_settings htp_hooks = {
 } // namespace
 
 int HttpDownstreamConnection::on_read() {
-  ev_timer_again(loop_, &rt_);
+  ev_timer_again(conn_.loop, &conn_.rt);
   uint8_t buf[8192];
   int rv;
 
   if (downstream_->get_upgraded()) {
     // For upgraded connection, just pass data to the upstream.
     for (;;) {
-      ssize_t nread;
-      while ((nread = read(fd_, buf, sizeof(buf))) == -1 && errno == EINTR)
-        ;
-      if (nread == -1) {
-        if (errno == EAGAIN || errno == EWOULDBLOCK) {
-          return 0;
-        }
-        return DownstreamConnection::ERR_NET;
-      }
+      auto nread = conn_.read_clear(buf, sizeof(buf));
 
       if (nread == 0) {
-        return DownstreamConnection::ERR_EOF;
+        return 0;
+      }
+
+      if (nread < 0) {
+        return nread;
       }
 
       rv = downstream_->get_upstream()->on_downstream_body(downstream_, buf,
@@ -684,18 +667,14 @@ int HttpDownstreamConnection::on_read() {
   }
 
   for (;;) {
-    ssize_t nread;
-    while ((nread = read(fd_, buf, sizeof(buf))) == -1 && errno == EINTR)
-      ;
-    if (nread == -1) {
-      if (errno == EAGAIN || errno == EWOULDBLOCK) {
-        return 0;
-      }
-      return DownstreamConnection::ERR_NET;
-    }
+    auto nread = conn_.read_clear(buf, sizeof(buf));
 
     if (nread == 0) {
-      return DownstreamConnection::ERR_EOF;
+      return 0;
+    }
+
+    if (nread < 0) {
+      return nread;
     }
 
     auto nproc = http_parser_execute(&response_htp_, &htp_hooks,
@@ -727,16 +706,8 @@ int HttpDownstreamConnection::on_read() {
   }
 }
 
-#define DEFAULT_WR_IOVCNT 16
-
-#if defined(IOV_MAX) && IOV_MAX < DEFAULT_WR_IOVCNT
-#define MAX_WR_IOVCNT IOV_MAX
-#else // !defined(IOV_MAX) || IOV_MAX >= DEFAULT_WR_IOVCNT
-#define MAX_WR_IOVCNT DEFAULT_WR_IOVCNT
-#endif // !defined(IOV_MAX) || IOV_MAX >= DEFAULT_WR_IOVCNT
-
 int HttpDownstreamConnection::on_write() {
-  ev_timer_again(loop_, &rt_);
+  ev_timer_again(conn_.loop, &conn_.rt);
 
   auto upstream = downstream_->get_upstream();
   auto input = downstream_->get_request_buf();
@@ -746,29 +717,22 @@ int HttpDownstreamConnection::on_write() {
   while (input->rleft() > 0) {
     auto iovcnt = input->riovec(iov, util::array_size(iov));
 
-    ssize_t nwrite;
-    while ((nwrite = writev(fd_, iov, iovcnt)) == -1 && errno == EINTR)
-      ;
-    if (nwrite == -1) {
-      if (errno == EAGAIN || errno == EWOULDBLOCK) {
-        ev_io_start(loop_, &wev_);
-        ev_timer_again(loop_, &wt_);
-        goto end;
-      }
-      return DownstreamConnection::ERR_NET;
+    auto nwrite = conn_.writev_clear(iov, iovcnt);
+
+    if (nwrite == 0) {
+      return 0;
     }
+
+    if (nwrite < 0) {
+      return nwrite;
+    }
+
     input->drain(nwrite);
   }
 
-  if (input->rleft() == 0) {
-    ev_io_stop(loop_, &wev_);
-    ev_timer_stop(loop_, &wt_);
-  } else {
-    ev_io_start(loop_, &wev_);
-    ev_timer_again(loop_, &wt_);
-  }
+  conn_.wlimit.stopw();
+  ev_timer_stop(conn_.loop, &conn_.wt);
 
-end:
   if (input->rleft() == 0) {
     upstream->resume_read(SHRPX_NO_BUFFER, downstream_,
                           downstream_->get_request_datalen());
@@ -780,8 +744,8 @@ end:
 int HttpDownstreamConnection::on_connect() {
   auto connect_blocker = client_handler_->get_http1_connect_blocker();
 
-  if (!util::check_socket_connected(fd_)) {
-    ev_io_stop(loop_, &wev_);
+  if (!util::check_socket_connected(conn_.fd)) {
+    conn_.wlimit.stopw();
 
     if (LOG_ENABLED(INFO)) {
       DLOG(INFO, this) << "downstream connect failed";
@@ -792,14 +756,14 @@ int HttpDownstreamConnection::on_connect() {
 
   connect_blocker->on_success();
 
-  ev_io_start(loop_, &rev_);
-  ev_set_cb(&wev_, writecb);
+  conn_.rlimit.startw();
+  ev_set_cb(&conn_.wev, writecb);
 
   return 0;
 }
 
 void HttpDownstreamConnection::on_upstream_change(Upstream *upstream) {}
 
-void HttpDownstreamConnection::signal_write() { ev_io_start(loop_, &wev_); }
+void HttpDownstreamConnection::signal_write() { conn_.wlimit.startw(); }
 
 } // namespace shrpx

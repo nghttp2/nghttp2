@@ -477,7 +477,7 @@ int HttpsUpstream::downstream_read(DownstreamConnection *dconn) {
     downstream->detach_downstream_connection();
   }
 
-  if (rv == DownstreamConnection::ERR_EOF) {
+  if (rv == SHRPX_ERR_EOF) {
     return downstream_eof(dconn);
   }
 
@@ -494,7 +494,7 @@ end:
 int HttpsUpstream::downstream_write(DownstreamConnection *dconn) {
   int rv;
   rv = dconn->on_write();
-  if (rv == DownstreamConnection::ERR_NET) {
+  if (rv == SHRPX_ERR_NETWORK) {
     return downstream_error(dconn, Downstream::EVENT_ERROR);
   }
 

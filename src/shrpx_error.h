@@ -29,11 +29,13 @@
 
 namespace shrpx {
 
+// Deprecated, do not use.
 enum ErrorCode {
   SHRPX_ERR_SUCCESS = 0,
-  SHRPX_ERR_UNKNOWN = -1,
-  SHRPX_ERR_HTTP_PARSE = -2,
-  SHRPX_ERR_NETWORK = -3
+  SHRPX_ERR_ERROR = -1,
+  SHRPX_ERR_NETWORK = -100,
+  SHRPX_ERR_EOF = -101,
+  SHRPX_ERR_INPROGRESS = -102,
 };
 
 } // namespace shrpx

@@ -218,12 +218,14 @@ void info_callback(const SSL *ssl, int where, int ret) {
   // to disable it, we check that renegotiation is started in this
   // callback.
   if (where & SSL_CB_HANDSHAKE_START) {
-    auto handler = static_cast<ClientHandler *>(SSL_get_app_data(ssl));
-    if (handler && handler->get_tls_handshake()) {
-      handler->set_tls_renegotiation(true);
+    auto conn = static_cast<Connection *>(SSL_get_app_data(ssl));
+    if (conn && conn->tls.initial_handshake_done) {
+      // We only set SSL_get_app_data for ClientHandler for now.
+      auto handler = static_cast<ClientHandler *>(conn->data);
       if (LOG_ENABLED(INFO)) {
         CLOG(INFO, handler) << "TLS renegotiation started";
       }
+      handler->start_immediate_shutdown();
     }
   }
 }

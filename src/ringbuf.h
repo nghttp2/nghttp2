@@ -123,21 +123,6 @@ template <size_t N> struct RingBuf {
   uint8_t begin[N];
 };
 
-inline int limit_iovec(struct iovec *iov, int iovcnt, size_t max) {
-  if (max == 0) {
-    return 0;
-  }
-  for (int i = 0; i < iovcnt; ++i) {
-    auto d = std::min(max, iov[i].iov_len);
-    iov[i].iov_len = d;
-    max -= d;
-    if (max == 0) {
-      return i + 1;
-    }
-  }
-  return iovcnt;
-}
-
 } // namespace nghttp2
 
 #endif // RINGBUF_H

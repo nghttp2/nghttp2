@@ -1,0 +1,107 @@
+/*
+ * nghttp2 - HTTP/2 C Library
+ *
+ * Copyright (c) 2015 Tatsuhiro Tsujikawa
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+ * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+ * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+#ifndef SHRPX_CONNECTION_H
+#define SHRPX_CONNECTION_H
+
+#include "shrpx_config.h"
+
+#include <sys/uio.h>
+
+#include <ev.h>
+
+#include <openssl/ssl.h>
+
+#include "shrpx_rate_limit.h"
+#include "shrpx_error.h"
+
+namespace shrpx {
+
+struct TLSConnection {
+  SSL *ssl;
+  ev_tstamp last_write_time;
+  size_t warmup_writelen;
+  // length passed to SSL_write and SSL_read last time.  This is
+  // required since these functions require the exact same parameters
+  // on non-blocking I/O.
+  size_t last_writelen, last_readlen;
+  bool initial_handshake_done;
+  bool reneg_started;
+};
+
+template <typename T> using EVCb = void (*)(struct ev_loop *, T *, int);
+
+using IOCb = EVCb<ev_io>;
+using TimerCb = EVCb<ev_timer>;
+
+struct Connection {
+  Connection(struct ev_loop *loop, int fd, SSL *ssl, ev_tstamp write_timeout,
+             ev_tstamp read_timeout, size_t write_rate, size_t write_burst,
+             size_t read_rate, size_t read_burst, IOCb writecb, IOCb readcb,
+             TimerCb timeoutcb, void *data);
+  ~Connection();
+
+  void disconnect();
+
+  int tls_handshake();
+
+  // All write_* and writev_clear functions return number of bytes
+  // written.  If nothing cannot be written (e.g., there is no
+  // allowance in RateLimit or underlying connection blocks), return
+  // 0.  SHRPX_ERR_NETWORK is returned in case of error.
+  //
+  // All read_* functions return number of bytes read.  If nothing
+  // cannot be read (e.g., there is no allowance in Ratelimit or
+  // underlying connection blocks), return 0.  SHRPX_ERR_EOF is
+  // returned in case of EOF and no data was read.  Otherwise
+  // SHRPX_ERR_NETWORK is return in case of error.
+  ssize_t write_tls(const void *data, size_t len);
+  ssize_t read_tls(void *data, size_t len);
+
+  ssize_t get_tls_write_limit();
+  // Updates the number of bytes written in warm up period.
+  void update_tls_warmup_writelen(size_t n);
+
+  ssize_t write_clear(const void *data, size_t len);
+  ssize_t writev_clear(struct iovec *iov, int iovcnt);
+  ssize_t read_clear(void *data, size_t len);
+
+  TLSConnection tls;
+  ev_io wev;
+  ev_io rev;
+  ev_timer wt;
+  ev_timer rt;
+  RateLimit wlimit;
+  RateLimit rlimit;
+  IOCb writecb;
+  IOCb readcb;
+  TimerCb timeoutcb;
+  struct ev_loop *loop;
+  void *data;
+  int fd;
+};
+
+} // namespace shrpx
+
+#endif // SHRPX_CONNECTION_H

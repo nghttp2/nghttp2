@@ -34,6 +34,7 @@
 #include <openssl/ssl.h>
 
 #include "shrpx_rate_limit.h"
+#include "shrpx_connection.h"
 #include "buffer.h"
 
 using namespace nghttp2;
@@ -106,20 +107,7 @@ public:
   bool get_http2_upgrade_allowed() const;
   // Returns upstream scheme, either "http" or "https"
   std::string get_upstream_scheme() const;
-  void set_tls_handshake(bool f);
-  bool get_tls_handshake() const;
-  void set_tls_renegotiation(bool f);
-  bool get_tls_renegotiation() const;
-  // Returns maximum write size.  The intention of this chunk size is
-  // control the TLS record size.
-  //
-  // This function returns -1, if TLS is not enabled or no limitation
-  // is required.
-  ssize_t get_write_limit();
-  // Updates the number of bytes written in warm up period.
-  void update_warmup_writelen(size_t n);
-  // Updates the time when last write was done.
-  void update_last_write_time();
+  void start_immediate_shutdown();
 
   // Writes upstream accesslog using |downstream|.  The |downstream|
   // must not be nullptr.
@@ -143,10 +131,7 @@ public:
   void signal_write();
 
 private:
-  ev_io wev_;
-  ev_io rev_;
-  ev_timer wt_;
-  ev_timer rt_;
+  Connection conn_;
   ev_timer reneg_shutdown_timer_;
   std::unique_ptr<Upstream> upstream_;
   std::string ipaddr_;
@@ -155,26 +140,15 @@ private:
   std::string alpn_;
   std::function<int(ClientHandler &)> read_, write_;
   std::function<int(ClientHandler &)> on_read_, on_write_;
-  RateLimit wlimit_;
-  RateLimit rlimit_;
-  struct ev_loop *loop_;
   DownstreamConnectionPool *dconn_pool_;
   // Shared HTTP2 session for each thread. NULL if backend is not
   // HTTP2. Not deleted by this object.
   Http2Session *http2session_;
   ConnectBlocker *http1_connect_blocker_;
-  SSL *ssl_;
   WorkerStat *worker_stat_;
-  double last_write_time_;
-  size_t warmup_writelen_;
   // The number of bytes of HTTP/2 client connection header to read
   size_t left_connhd_len_;
-  size_t tls_last_writelen_;
-  size_t tls_last_readlen_;
-  int fd_;
   bool should_close_after_write_;
-  bool tls_handshake_;
-  bool tls_renegotiation_;
   WriteBuf wb_;
   ReadBuf rb_;
 };

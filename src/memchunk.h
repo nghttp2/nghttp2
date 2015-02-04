@@ -231,6 +231,29 @@ using Memchunk16K = Memchunk<16384>;
 using MemchunkPool = Pool<Memchunk16K>;
 using DefaultMemchunks = Memchunks<Memchunk16K>;
 
+#define DEFAULT_WR_IOVCNT 16
+
+#if defined(IOV_MAX) && IOV_MAX < DEFAULT_WR_IOVCNT
+#define MAX_WR_IOVCNT IOV_MAX
+#else // !defined(IOV_MAX) || IOV_MAX >= DEFAULT_WR_IOVCNT
+#define MAX_WR_IOVCNT DEFAULT_WR_IOVCNT
+#endif // !defined(IOV_MAX) || IOV_MAX >= DEFAULT_WR_IOVCNT
+
+inline int limit_iovec(struct iovec *iov, int iovcnt, size_t max) {
+  if (max == 0) {
+    return 0;
+  }
+  for (int i = 0; i < iovcnt; ++i) {
+    auto d = std::min(max, iov[i].iov_len);
+    iov[i].iov_len = d;
+    max -= d;
+    if (max == 0) {
+      return i + 1;
+    }
+  }
+  return iovcnt;
+}
+
 } // namespace nghttp2
 
 #endif // MEMCHUNK_H

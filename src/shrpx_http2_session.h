@@ -38,7 +38,8 @@
 
 #include "http-parser/http_parser.h"
 
-#include "ringbuf.h"
+#include "shrpx_connection.h"
+#include "buffer.h"
 
 using namespace nghttp2;
 
@@ -168,14 +169,11 @@ public:
     CONNECTION_CHECK_STARTED
   };
 
-  using ReadBuf = RingBuf<8192>;
-  using WriteBuf = RingBuf<65536>;
+  using ReadBuf = Buffer<8192>;
+  using WriteBuf = Buffer<32768>;
 
 private:
-  ev_io wev_;
-  ev_io rev_;
-  ev_timer wt_;
-  ev_timer rt_;
+  Connection conn_;
   ev_timer settings_timer_;
   ev_timer connchk_timer_;
   ev_prepare wrsched_prep_;
@@ -185,18 +183,11 @@ private:
   std::function<int(Http2Session &)> on_read_, on_write_;
   // Used to parse the response from HTTP proxy
   std::unique_ptr<http_parser> proxy_htp_;
-  struct ev_loop *loop_;
   // NULL if no TLS is configured
   SSL_CTX *ssl_ctx_;
-  SSL *ssl_;
   nghttp2_session *session_;
   const uint8_t *data_pending_;
   size_t data_pendinglen_;
-  // fd_ is used for proxy connection and no TLS connection. For
-  // direct or TLS connection, it may be -1 even after connection is
-  // established. Use bufferevent_getfd(bev_) to get file descriptor
-  // in these cases.
-  int fd_;
   int state_;
   int connection_check_state_;
   bool flow_control_;

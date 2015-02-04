@@ -73,7 +73,8 @@ void settings_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 
 namespace {
 void timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
-  auto http2session = static_cast<Http2Session *>(w->data);
+  auto conn = static_cast<Connection *>(w->data);
+  auto http2session = static_cast<Http2Session *>(conn->data);
 
   if (LOG_ENABLED(INFO)) {
     SSLOG(INFO, http2session) << "Timeout";
@@ -87,7 +88,8 @@ void timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
 namespace {
 void readcb(struct ev_loop *loop, ev_io *w, int revents) {
   int rv;
-  auto http2session = static_cast<Http2Session *>(w->data);
+  auto conn = static_cast<Connection *>(w->data);
+  auto http2session = static_cast<Http2Session *>(conn->data);
   http2session->connection_alive();
   rv = http2session->do_read();
   if (rv != 0) {
@@ -99,7 +101,8 @@ void readcb(struct ev_loop *loop, ev_io *w, int revents) {
 namespace {
 void writecb(struct ev_loop *loop, ev_io *w, int revents) {
   int rv;
-  auto http2session = static_cast<Http2Session *>(w->data);
+  auto conn = static_cast<Connection *>(w->data);
+  auto http2session = static_cast<Http2Session *>(conn->data);
   http2session->clear_write_request();
   http2session->connection_alive();
   rv = http2session->do_write();
@@ -132,25 +135,16 @@ void wrschedcb(struct ev_loop *loop, ev_prepare *w, int revents) {
 } // namespace
 
 Http2Session::Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx)
-    : loop_(loop), ssl_ctx_(ssl_ctx), ssl_(nullptr), session_(nullptr),
-      data_pending_(nullptr), data_pendinglen_(0), fd_(-1),
-      state_(DISCONNECTED), connection_check_state_(CONNECTION_CHECK_NONE),
-      flow_control_(false), write_requested_(false) {
-  // We do not know fd yet, so just set dummy fd 0
-  ev_io_init(&wev_, writecb, 0, EV_WRITE);
-  ev_io_init(&rev_, readcb, 0, EV_READ);
-
-  wev_.data = this;
-  rev_.data = this;
+    : conn_(loop, -1, nullptr, get_config()->downstream_write_timeout,
+            get_config()->downstream_read_timeout, 0, 0, 0, 0, writecb, readcb,
+            timeoutcb, this),
+      ssl_ctx_(ssl_ctx), session_(nullptr), data_pending_(nullptr),
+      data_pendinglen_(0), state_(DISCONNECTED),
+      connection_check_state_(CONNECTION_CHECK_NONE), flow_control_(false),
+      write_requested_(false) {
 
   read_ = write_ = &Http2Session::noop;
   on_read_ = on_write_ = &Http2Session::noop;
-
-  ev_timer_init(&wt_, timeoutcb, 0., get_config()->downstream_write_timeout);
-  ev_timer_init(&rt_, timeoutcb, 0., get_config()->downstream_read_timeout);
-
-  wt_.data = this;
-  rt_.data = this;
 
   // We will resuse this many times, so use repeat timeout value.
   ev_timer_init(&connchk_timer_, connchk_timeout_cb, 0., 5.);
@@ -166,7 +160,7 @@ Http2Session::Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx)
   ev_prepare_init(&wrsched_prep_, &wrschedcb);
   wrsched_prep_.data = this;
 
-  ev_prepare_start(loop_, &wrsched_prep_);
+  ev_prepare_start(conn_.loop, &wrsched_prep_);
 }
 
 Http2Session::~Http2Session() { disconnect(); }
@@ -181,34 +175,13 @@ int Http2Session::disconnect(bool hard) {
   rb_.reset();
   wb_.reset();
 
-  ev_timer_stop(loop_, &settings_timer_);
-  ev_timer_stop(loop_, &connchk_timer_);
-
-  ev_timer_stop(loop_, &rt_);
-  ev_timer_stop(loop_, &wt_);
+  ev_timer_stop(conn_.loop, &settings_timer_);
+  ev_timer_stop(conn_.loop, &connchk_timer_);
 
   read_ = write_ = &Http2Session::noop;
   on_read_ = on_write_ = &Http2Session::noop;
 
-  ev_io_stop(loop_, &rev_);
-  ev_io_stop(loop_, &wev_);
-
-  if (ssl_) {
-    SSL_set_shutdown(ssl_, SSL_RECEIVED_SHUTDOWN);
-    ERR_clear_error();
-    SSL_shutdown(ssl_);
-    SSL_free(ssl_);
-    ssl_ = nullptr;
-  }
-
-  if (fd_ != -1) {
-    if (LOG_ENABLED(INFO)) {
-      SSLOG(INFO, this) << "Closing fd=" << fd_;
-    }
-    shutdown(fd_, SHUT_WR);
-    close(fd_);
-    fd_ = -1;
-  }
+  conn_.disconnect();
 
   if (proxy_htp_) {
     proxy_htp_.reset();
@@ -251,7 +224,7 @@ int Http2Session::disconnect(bool hard) {
   return 0;
 }
 
-int Http2Session::check_cert() { return ssl::check_cert(ssl_); }
+int Http2Session::check_cert() { return ssl::check_cert(conn_.tls.ssl); }
 
 int Http2Session::initiate_connection() {
   int rv = 0;
@@ -262,15 +235,15 @@ int Http2Session::initiate_connection() {
                         << get_config()->downstream_http_proxy_port;
     }
 
-    fd_ = util::create_nonblock_socket(
+    conn_.fd = util::create_nonblock_socket(
         get_config()->downstream_http_proxy_addr.storage.ss_family);
 
-    if (fd_ == -1) {
+    if (conn_.fd == -1) {
       return -1;
     }
 
-    rv = connect(fd_, const_cast<sockaddr *>(
-                          &get_config()->downstream_http_proxy_addr.sa),
+    rv = connect(conn_.fd, const_cast<sockaddr *>(
+                               &get_config()->downstream_http_proxy_addr.sa),
                  get_config()->downstream_http_proxy_addrlen);
     if (rv != 0 && errno != EINPROGRESS) {
       SSLOG(ERROR, this) << "Failed to connect to the proxy "
@@ -279,13 +252,13 @@ int Http2Session::initiate_connection() {
       return -1;
     }
 
-    ev_io_set(&rev_, fd_, EV_READ);
-    ev_io_set(&wev_, fd_, EV_WRITE);
+    ev_io_set(&conn_.rev, conn_.fd, EV_READ);
+    ev_io_set(&conn_.wev, conn_.fd, EV_WRITE);
 
-    ev_io_start(loop_, &wev_);
+    conn_.wlimit.startw();
 
     // TODO we should have timeout for connection establishment
-    ev_timer_again(loop_, &wt_);
+    ev_timer_again(conn_.loop, &conn_.wt);
 
     write_ = &Http2Session::connected;
 
@@ -307,8 +280,8 @@ int Http2Session::initiate_connection() {
     }
     if (ssl_ctx_) {
       // We are establishing TLS connection.
-      ssl_ = SSL_new(ssl_ctx_);
-      if (!ssl_) {
+      conn_.tls.ssl = SSL_new(ssl_ctx_);
+      if (!conn_.tls.ssl) {
         SSLOG(ERROR, this) << "SSL_new() failed: "
                            << ERR_error_string(ERR_get_error(), NULL);
         return -1;
@@ -325,21 +298,21 @@ int Http2Session::initiate_connection() {
         // TLS extensions: SNI. There is no documentation about the return
         // code for this function (actually this is macro wrapping SSL_ctrl
         // at the time of this writing).
-        SSL_set_tlsext_host_name(ssl_, sni_name);
+        SSL_set_tlsext_host_name(conn_.tls.ssl, sni_name);
       }
       // If state_ == PROXY_CONNECTED, we has connected to the proxy
-      // using fd_ and tunnel has been established.
+      // using conn_.fd and tunnel has been established.
       if (state_ == DISCONNECTED) {
-        assert(fd_ == -1);
+        assert(conn_.fd == -1);
 
-        fd_ = util::create_nonblock_socket(
+        conn_.fd = util::create_nonblock_socket(
             get_config()->downstream_addrs[0].addr.storage.ss_family);
-        if (fd_ == -1) {
+        if (conn_.fd == -1) {
           return -1;
         }
 
         rv = connect(
-            fd_,
+            conn_.fd,
             // TODO maybe not thread-safe?
             const_cast<sockaddr *>(&get_config()->downstream_addrs[0].addr.sa),
             get_config()->downstream_addrs[0].addrlen);
@@ -348,25 +321,25 @@ int Http2Session::initiate_connection() {
         }
       }
 
-      if (SSL_set_fd(ssl_, fd_) == 0) {
+      if (SSL_set_fd(conn_.tls.ssl, conn_.fd) == 0) {
         return -1;
       }
 
-      SSL_set_connect_state(ssl_);
+      SSL_set_connect_state(conn_.tls.ssl);
     } else {
       if (state_ == DISCONNECTED) {
         // Without TLS and proxy.
-        assert(fd_ == -1);
+        assert(conn_.fd == -1);
 
-        fd_ = util::create_nonblock_socket(
+        conn_.fd = util::create_nonblock_socket(
             get_config()->downstream_addrs[0].addr.storage.ss_family);
 
-        if (fd_ == -1) {
+        if (conn_.fd == -1) {
           return -1;
         }
 
-        rv = connect(fd_, const_cast<sockaddr *>(
-                              &get_config()->downstream_addrs[0].addr.sa),
+        rv = connect(conn_.fd, const_cast<sockaddr *>(
+                                   &get_config()->downstream_addrs[0].addr.sa),
                      get_config()->downstream_addrs[0].addrlen);
         if (rv != 0 && errno != EINPROGRESS) {
           return -1;
@@ -384,13 +357,11 @@ int Http2Session::initiate_connection() {
     // rev_ and wev_ could possibly be active here.  Since calling
     // ev_io_set is not allowed while watcher is active, we have to
     // stop them just in case.
-    ev_io_stop(loop_, &rev_);
-    ev_io_stop(loop_, &wev_);
+    conn_.rlimit.stopw();
+    conn_.wlimit.stopw();
 
-    ev_io_set(&rev_, fd_, EV_READ);
-    ev_io_set(&wev_, fd_, EV_WRITE);
-
-    ev_io_start(loop_, &wev_);
+    ev_io_set(&conn_.rev, conn_.fd, EV_READ);
+    ev_io_set(&conn_.wev, conn_.fd, EV_WRITE);
 
     write_ = &Http2Session::connected;
 
@@ -400,11 +371,11 @@ int Http2Session::initiate_connection() {
     // We have been already connected when no TLS and proxy is used.
     if (state_ != CONNECTED) {
       state_ = CONNECTING;
-      ev_io_start(loop_, &wev_);
+      conn_.wlimit.startw();
       // TODO we should have timeout for connection establishment
-      ev_timer_again(loop_, &wt_);
+      ev_timer_again(conn_.loop, &conn_.wt);
     } else {
-      ev_timer_again(loop_, &rt_);
+      ev_timer_again(conn_.loop, &conn_.rt);
     }
 
     return 0;
@@ -450,17 +421,13 @@ http_parser_settings htp_hooks = {
 
 int Http2Session::downstream_read_proxy() {
   for (;;) {
-    const void *data;
-    size_t datalen;
-    std::tie(data, datalen) = rb_.get();
-
-    if (datalen == 0) {
-      break;
+    if (rb_.rleft() == 0) {
+      return 0;
     }
 
-    size_t nread =
-        http_parser_execute(proxy_htp_.get(), &htp_hooks,
-                            reinterpret_cast<const char *>(data), datalen);
+    size_t nread = http_parser_execute(proxy_htp_.get(), &htp_hooks,
+                                       reinterpret_cast<const char *>(rb_.pos),
+                                       rb_.rleft());
 
     rb_.drain(nread);
 
@@ -476,12 +443,11 @@ int Http2Session::downstream_read_proxy() {
       if (initiate_connection() != 0) {
         return -1;
       }
-      break;
+      return 0;
     case Http2Session::PROXY_FAILED:
       return -1;
     }
   }
-  return 0;
 }
 
 int Http2Session::downstream_connect_proxy() {
@@ -679,11 +645,11 @@ int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
 } // namespace
 
 void Http2Session::start_settings_timer() {
-  ev_timer_again(loop_, &settings_timer_);
+  ev_timer_again(conn_.loop, &settings_timer_);
 }
 
 void Http2Session::stop_settings_timer() {
-  ev_timer_stop(loop_, &settings_timer_);
+  ev_timer_stop(conn_.loop, &settings_timer_);
 }
 
 namespace {
@@ -1176,7 +1142,7 @@ int Http2Session::on_connect() {
   if (ssl_ctx_) {
     const unsigned char *next_proto = nullptr;
     unsigned int next_proto_len;
-    SSL_get0_next_proto_negotiated(ssl_, &next_proto, &next_proto_len);
+    SSL_get0_next_proto_negotiated(conn_.tls.ssl, &next_proto, &next_proto_len);
     for (int i = 0; i < 2; ++i) {
       if (next_proto) {
         if (LOG_ENABLED(INFO)) {
@@ -1276,8 +1242,8 @@ int Http2Session::on_connect() {
     return -1;
   }
 
-  auto must_terminate =
-      !get_config()->downstream_no_tls && !ssl::check_http2_requirement(ssl_);
+  auto must_terminate = !get_config()->downstream_no_tls &&
+                        !ssl::check_http2_requirement(conn_.tls.ssl);
 
   if (must_terminate) {
     rv = terminate_session(NGHTTP2_INADEQUATE_SECURITY);
@@ -1329,16 +1295,9 @@ int Http2Session::on_write() { return on_write_(*this); }
 int Http2Session::downstream_read() {
   ssize_t rv = 0;
 
-  for (;;) {
-    const void *data;
-    size_t nread;
-    std::tie(data, nread) = rb_.get();
-    if (nread == 0) {
-      break;
-    }
-
+  if (rb_.rleft() > 0) {
     rv = nghttp2_session_mem_recv(
-        session_, reinterpret_cast<const uint8_t *>(data), nread);
+        session_, reinterpret_cast<const uint8_t *>(rb_.pos), rb_.rleft());
 
     if (rv < 0) {
       SSLOG(ERROR, this) << "nghttp2_session_recv() returned error: "
@@ -1346,7 +1305,9 @@ int Http2Session::downstream_read() {
       return -1;
     }
 
-    rb_.drain(nread);
+    // nghttp2_session_mem_recv() should consume all input data in
+    // case of success.
+    rb_.reset();
   }
 
   if (nghttp2_session_want_read(session_) == 0 &&
@@ -1413,10 +1374,10 @@ void Http2Session::clear_write_request() { write_requested_ = false; }
 bool Http2Session::write_requested() const { return write_requested_; }
 
 struct ev_loop *Http2Session::get_loop() const {
-  return loop_;
+  return conn_.loop;
 }
 
-ev_io *Http2Session::get_wev() { return &wev_; }
+ev_io *Http2Session::get_wev() { return &conn_.wev; }
 
 int Http2Session::get_state() const { return state_; }
 
@@ -1431,7 +1392,7 @@ int Http2Session::terminate_session(uint32_t error_code) {
   return 0;
 }
 
-SSL *Http2Session::get_ssl() const { return ssl_; }
+SSL *Http2Session::get_ssl() const { return conn_.tls.ssl; }
 
 int Http2Session::consume(int32_t stream_id, size_t len) {
   int rv;
@@ -1473,7 +1434,7 @@ void Http2Session::start_checking_connection() {
 }
 
 void Http2Session::reset_connection_check_timer() {
-  ev_timer_again(loop_, &connchk_timer_);
+  ev_timer_again(conn_.loop, &connchk_timer_);
 }
 
 void Http2Session::connection_alive() {
@@ -1518,7 +1479,7 @@ void Http2Session::set_connection_check_state(int state) {
 int Http2Session::noop() { return 0; }
 
 int Http2Session::connected() {
-  if (!util::check_socket_connected(fd_)) {
+  if (!util::check_socket_connected(conn_.fd)) {
     return -1;
   }
 
@@ -1526,9 +1487,9 @@ int Http2Session::connected() {
     SSLOG(INFO, this) << "Connection established";
   }
 
-  ev_io_start(loop_, &rev_);
+  conn_.rlimit.startw();
 
-  if (ssl_) {
+  if (conn_.tls.ssl) {
     read_ = &Http2Session::tls_handshake;
     write_ = &Http2Session::tls_handshake;
 
@@ -1551,7 +1512,7 @@ int Http2Session::connected() {
 }
 
 int Http2Session::read_clear() {
-  ev_timer_again(loop_, &rt_);
+  ev_timer_again(conn_.loop, &conn_.rt);
 
   for (;;) {
     // we should process buffered data first before we read EOF.
@@ -1562,50 +1523,36 @@ int Http2Session::read_clear() {
       return 0;
     }
     rb_.reset();
-    struct iovec iov[2];
-    auto iovcnt = rb_.wiovec(iov);
 
-    if (iovcnt > 0) {
-      ssize_t nread;
-      while ((nread = readv(fd_, iov, iovcnt)) == -1 && errno == EINTR)
-        ;
-      if (nread == -1) {
-        if (errno == EAGAIN || errno == EWOULDBLOCK) {
-          break;
-        }
-        return -1;
-      }
+    auto nread = conn_.read_clear(rb_.last, rb_.wleft());
 
-      if (nread == 0) {
-        return -1;
-      }
-
-      rb_.write(nread);
+    if (nread == 0) {
+      return 0;
     }
-  }
 
-  return 0;
+    if (nread < 0) {
+      return nread;
+    }
+
+    rb_.write(nread);
+  }
 }
 
 int Http2Session::write_clear() {
-  ev_timer_again(loop_, &rt_);
+  ev_timer_again(conn_.loop, &conn_.rt);
 
   for (;;) {
     if (wb_.rleft() > 0) {
-      struct iovec iov[2];
-      auto iovcnt = wb_.riovec(iov);
+      auto nwrite = conn_.write_clear(wb_.pos, wb_.rleft());
 
-      ssize_t nwrite;
-      while ((nwrite = writev(fd_, iov, iovcnt)) == -1 && errno == EINTR)
-        ;
-      if (nwrite == -1) {
-        if (errno == EAGAIN || errno == EWOULDBLOCK) {
-          ev_io_start(loop_, &wev_);
-          ev_timer_again(loop_, &wt_);
-          return 0;
-        }
-        return -1;
+      if (nwrite == 0) {
+        return 0;
       }
+
+      if (nwrite < 0) {
+        return nwrite;
+      }
+
       wb_.drain(nwrite);
       continue;
     }
@@ -1619,49 +1566,29 @@ int Http2Session::write_clear() {
     }
   }
 
-  ev_io_stop(loop_, &wev_);
-  ev_timer_stop(loop_, &wt_);
+  conn_.wlimit.stopw();
+  ev_timer_stop(conn_.loop, &conn_.wt);
 
   return 0;
 }
 
 int Http2Session::tls_handshake() {
-  ev_timer_again(loop_, &rt_);
+  ev_timer_again(conn_.loop, &conn_.rt);
 
   ERR_clear_error();
 
-  auto rv = SSL_do_handshake(ssl_);
+  auto rv = conn_.tls_handshake();
 
-  if (rv == 0) {
-    return -1;
+  if (rv == SHRPX_ERR_INPROGRESS) {
+    return 0;
   }
 
   if (rv < 0) {
-    auto err = SSL_get_error(ssl_, rv);
-    switch (err) {
-    case SSL_ERROR_WANT_READ:
-      ev_io_stop(loop_, &wev_);
-      ev_timer_stop(loop_, &wt_);
-      return 0;
-    case SSL_ERROR_WANT_WRITE:
-      ev_io_start(loop_, &wev_);
-      ev_timer_again(loop_, &wt_);
-      return 0;
-    default:
-      return -1;
-    }
+    return rv;
   }
-
-  ev_io_stop(loop_, &wev_);
-  ev_timer_stop(loop_, &wt_);
 
   if (LOG_ENABLED(INFO)) {
     SSLOG(INFO, this) << "SSL/TLS handshake completed";
-  }
-  if (LOG_ENABLED(INFO)) {
-    if (SSL_session_reused(ssl_)) {
-      CLOG(INFO, this) << "SSL/TLS session reused";
-    }
   }
 
   if (!get_config()->downstream_no_tls && !get_config()->insecure &&
@@ -1681,7 +1608,7 @@ int Http2Session::tls_handshake() {
 }
 
 int Http2Session::read_tls() {
-  ev_timer_again(loop_, &rt_);
+  ev_timer_again(conn_.loop, &conn_.rt);
 
   ERR_clear_error();
 
@@ -1694,78 +1621,39 @@ int Http2Session::read_tls() {
       return 0;
     }
     rb_.reset();
-    struct iovec iov[2];
-    auto iovcnt = rb_.wiovec(iov);
-    if (iovcnt == 0) {
+
+    auto nread = conn_.read_tls(rb_.last, rb_.wleft());
+
+    if (nread == 0) {
       return 0;
     }
 
-    auto rv = SSL_read(ssl_, iov[0].iov_base, iov[0].iov_len);
-
-    if (rv == 0) {
-      return -1;
+    if (nread < 0) {
+      return nread;
     }
 
-    if (rv < 0) {
-      auto err = SSL_get_error(ssl_, rv);
-      switch (err) {
-      case SSL_ERROR_WANT_READ:
-        return 0;
-      case SSL_ERROR_WANT_WRITE:
-        if (LOG_ENABLED(INFO)) {
-          SSLOG(INFO, this) << "Close connection due to TLS renegotiation";
-        }
-        return -1;
-      default:
-        if (LOG_ENABLED(INFO)) {
-          SSLOG(INFO, this) << "SSL_read: SSL_get_error returned " << err;
-        }
-        return -1;
-      }
-    }
-
-    rb_.write(rv);
+    rb_.write(nread);
   }
 }
 
 int Http2Session::write_tls() {
-  ev_timer_again(loop_, &rt_);
+  ev_timer_again(conn_.loop, &conn_.rt);
 
   ERR_clear_error();
 
   for (;;) {
     if (wb_.rleft() > 0) {
-      const void *p;
-      size_t len;
-      std::tie(p, len) = wb_.get();
+      auto nwrite = conn_.write_tls(wb_.pos, wb_.rleft());
 
-      auto rv = SSL_write(ssl_, p, len);
-
-      if (rv == 0) {
-        return -1;
+      if (nwrite == 0) {
+        return 0;
       }
 
-      if (rv < 0) {
-        auto err = SSL_get_error(ssl_, rv);
-        switch (err) {
-        case SSL_ERROR_WANT_READ:
-          if (LOG_ENABLED(INFO)) {
-            SSLOG(INFO, this) << "Close connection due to TLS renegotiation";
-          }
-          return -1;
-        case SSL_ERROR_WANT_WRITE:
-          ev_io_start(loop_, &wev_);
-          ev_timer_again(loop_, &wt_);
-          return 0;
-        default:
-          if (LOG_ENABLED(INFO)) {
-            SSLOG(INFO, this) << "SSL_write: SSL_get_error returned " << err;
-          }
-          return -1;
-        }
+      if (nwrite < 0) {
+        return nwrite;
       }
 
-      wb_.drain(rv);
+      wb_.drain(nwrite);
 
       continue;
     }
@@ -1778,8 +1666,8 @@ int Http2Session::write_tls() {
     }
   }
 
-  ev_io_stop(loop_, &wev_);
-  ev_timer_stop(loop_, &wt_);
+  conn_.wlimit.stopw();
+  ev_timer_stop(conn_.loop, &conn_.wt);
 
   return 0;
 }

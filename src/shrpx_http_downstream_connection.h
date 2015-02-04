@@ -31,6 +31,7 @@
 
 #include "shrpx_downstream_connection.h"
 #include "shrpx_io_control.h"
+#include "shrpx_connection.h"
 
 namespace shrpx {
 
@@ -62,17 +63,11 @@ public:
   void signal_write();
 
 private:
-  ev_io wev_;
-  ev_io rev_;
-  ev_timer wt_;
-  ev_timer rt_;
-  RateLimit rlimit_;
+  Connection conn_;
   IOControl ioctrl_;
   http_parser response_htp_;
-  struct ev_loop *loop_;
   // index of get_config()->downstream_addrs this object is using
   size_t addr_idx_;
-  int fd_;
 };
 
 } // namespace shrpx

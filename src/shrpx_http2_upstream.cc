@@ -889,11 +889,11 @@ int Http2Upstream::downstream_read(DownstreamConnection *dconn) {
     dconn = nullptr;
   } else {
     auto rv = downstream->on_read();
-    if (rv == DownstreamConnection::ERR_EOF) {
+    if (rv == SHRPX_ERR_EOF) {
       return downstream_eof(dconn);
     }
     if (rv != 0) {
-      if (rv != DownstreamConnection::ERR_NET) {
+      if (rv != SHRPX_ERR_NETWORK) {
         if (LOG_ENABLED(INFO)) {
           DCLOG(INFO, dconn) << "HTTP parser failure";
         }
@@ -919,7 +919,7 @@ int Http2Upstream::downstream_read(DownstreamConnection *dconn) {
 int Http2Upstream::downstream_write(DownstreamConnection *dconn) {
   int rv;
   rv = dconn->on_write();
-  if (rv == DownstreamConnection::ERR_NET) {
+  if (rv == SHRPX_ERR_NETWORK) {
     return downstream_error(dconn, Downstream::EVENT_ERROR);
   }
   if (rv != 0) {

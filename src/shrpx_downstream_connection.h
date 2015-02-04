@@ -51,8 +51,6 @@ public:
   virtual int resume_read(IOCtrlReason reason, size_t consumed) = 0;
   virtual void force_resume_read() = 0;
 
-  enum { ERR_EOF = -100, ERR_NET = -101 };
-
   virtual int on_read() = 0;
   virtual int on_write() = 0;
   virtual int on_timeout() { return 0; }
