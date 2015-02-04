@@ -481,12 +481,8 @@ int HttpsUpstream::downstream_read(DownstreamConnection *dconn) {
     return downstream_eof(dconn);
   }
 
-  if (rv == DownstreamConnection::ERR_NET) {
-    return downstream_error(dconn, Downstream::EVENT_ERROR);
-  }
-
   if (rv < 0) {
-    return -1;
+    return downstream_error(dconn, Downstream::EVENT_ERROR);
   }
 
 end:
