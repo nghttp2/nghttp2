@@ -29,6 +29,7 @@
 #include <nghttp2/nghttp2.h>
 
 #include "memchunk.h"
+#include "util.h"
 
 namespace nghttp2 {
 

@@ -40,6 +40,7 @@
 #include "util.h"
 #include "base64.h"
 #include "app_helper.h"
+#include "template.h"
 
 using namespace nghttp2;
 
@@ -244,8 +245,7 @@ int on_begin_headers_callback(nghttp2_session *session,
   }
 
   // TODO Use priority 0 for now
-  auto downstream =
-      util::make_unique<Downstream>(upstream, frame->hd.stream_id, 0);
+  auto downstream = make_unique<Downstream>(upstream, frame->hd.stream_id, 0);
 
   downstream->reset_upstream_rtimer();
 

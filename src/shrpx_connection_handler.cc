@@ -39,6 +39,7 @@
 #include "shrpx_downstream_connection.h"
 #include "shrpx_accept_handler.h"
 #include "util.h"
+#include "template.h"
 
 using namespace nghttp2;
 
@@ -62,8 +63,7 @@ ConnectionHandler::ConnectionHandler(struct ev_loop *loop)
     : loop_(loop), sv_ssl_ctx_(nullptr), cl_ssl_ctx_(nullptr),
       // rate_limit_group_(bufferevent_rate_limit_group_new(
       //     evbase, get_config()->worker_rate_limit_cfg)),
-      worker_stat_(util::make_unique<WorkerStat>()),
-      worker_round_robin_cnt_(0) {
+      worker_stat_(make_unique<WorkerStat>()), worker_round_robin_cnt_(0) {
   ev_timer_init(&disable_acceptor_timer_, acceptor_disable_cb, 0., 0.);
   disable_acceptor_timer_.data = this;
 }
@@ -107,9 +107,9 @@ void ConnectionHandler::create_worker_thread(size_t num) {
   assert(workers_.size() == 0);
 
   for (size_t i = 0; i < num; ++i) {
-    workers_.push_back(util::make_unique<Worker>(sv_ssl_ctx_, cl_ssl_ctx_,
-                                                 worker_config->cert_tree,
-                                                 worker_config->ticket_keys));
+    workers_.push_back(make_unique<Worker>(sv_ssl_ctx_, cl_ssl_ctx_,
+                                           worker_config->cert_tree,
+                                           worker_config->ticket_keys));
 
     if (LOG_ENABLED(INFO)) {
       LLOG(INFO, this) << "Created thread #" << workers_.size() - 1;
@@ -209,11 +209,11 @@ struct ev_loop *ConnectionHandler::get_loop() const {
 }
 
 void ConnectionHandler::create_http2_session() {
-  http2session_ = util::make_unique<Http2Session>(loop_, cl_ssl_ctx_);
+  http2session_ = make_unique<Http2Session>(loop_, cl_ssl_ctx_);
 }
 
 void ConnectionHandler::create_http1_connect_blocker() {
-  http1_connect_blocker_ = util::make_unique<ConnectBlocker>(loop_);
+  http1_connect_blocker_ = make_unique<ConnectBlocker>(loop_);
 }
 
 const WorkerStat *ConnectionHandler::get_worker_stat() const {

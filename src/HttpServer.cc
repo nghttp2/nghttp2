@@ -47,6 +47,7 @@
 #include "http2.h"
 #include "util.h"
 #include "ssl.h"
+#include "template.h"
 
 #ifndef O_BINARY
 #define O_BINARY (0)
@@ -223,7 +224,7 @@ public:
       }
     }
     auto handler =
-        util::make_unique<Http2Handler>(this, fd, ssl, get_next_session_id());
+        make_unique<Http2Handler>(this, fd, ssl, get_next_session_id());
     handler->setup_bev();
     if (!ssl) {
       if (handler->on_connect() != 0) {
@@ -754,7 +755,7 @@ int Http2Handler::submit_push_promise(Stream *stream,
     return promised_stream_id;
   }
 
-  auto promised_stream = util::make_unique<Stream>(this, promised_stream_id);
+  auto promised_stream = make_unique<Stream>(this, promised_stream_id);
 
   append_nv(promised_stream.get(), nva);
   add_stream(promised_stream_id, std::move(promised_stream));
@@ -1083,7 +1084,7 @@ int on_begin_headers_callback(nghttp2_session *session,
     return 0;
   }
 
-  auto stream = util::make_unique<Stream>(hd, frame->hd.stream_id);
+  auto stream = make_unique<Stream>(hd, frame->hd.stream_id);
 
   add_stream_read_timeout(stream.get());
 
@@ -1362,10 +1363,10 @@ public:
       if (config_->verbose) {
         std::cerr << "spawning thread #" << i << std::endl;
       }
-      auto worker = util::make_unique<Worker>();
+      auto worker = make_unique<Worker>();
       auto loop = ev_loop_new(0);
       worker->sessions =
-          util::make_unique<Sessions>(loop, config_, sessions_->get_ssl_ctx());
+          make_unique<Sessions>(loop, config_, sessions_->get_ssl_ctx());
       ev_async_init(&worker->w, worker_acceptcb);
       worker->w.data = worker.get();
       ev_async_start(loop, &worker->w);

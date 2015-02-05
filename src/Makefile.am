@@ -120,7 +120,7 @@ NGHTTPX_SRCS = \
 	shrpx_downstream_connection_pool.cc shrpx_downstream_connection_pool.h \
 	shrpx_rate_limit.cc shrpx_rate_limit.h \
 	shrpx_connection.cc shrpx_connection.h \
-	buffer.h memchunk.h
+	buffer.h memchunk.h template.h
 
 if HAVE_SPDYLAY
 NGHTTPX_SRCS += shrpx_spdy_upstream.cc shrpx_spdy_upstream.h

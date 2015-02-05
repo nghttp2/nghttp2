@@ -31,13 +31,13 @@
 #include "shrpx_client_handler.h"
 #include "shrpx_downstream.h"
 #include "shrpx_downstream_connection.h"
-//#include "shrpx_http2_downstream_connection.h"
 #include "shrpx_http.h"
 #include "shrpx_config.h"
 #include "shrpx_error.h"
 #include "shrpx_worker_config.h"
 #include "http2.h"
 #include "util.h"
+#include "template.h"
 
 using namespace nghttp2;
 
@@ -64,7 +64,7 @@ int htp_msg_begin(http_parser *htp) {
   }
   upstream->reset_current_header_length();
   // TODO specify 0 as priority for now
-  upstream->attach_downstream(util::make_unique<Downstream>(upstream, 0, 0));
+  upstream->attach_downstream(make_unique<Downstream>(upstream, 0, 0));
   return 0;
 }
 } // namespace
@@ -582,7 +582,7 @@ void HttpsUpstream::error_reply(unsigned int status_code) {
   auto downstream = get_downstream();
 
   if (!downstream) {
-    attach_downstream(util::make_unique<Downstream>(this, 1, 1));
+    attach_downstream(make_unique<Downstream>(this, 1, 1));
     downstream = get_downstream();
   }
 

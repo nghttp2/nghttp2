@@ -43,6 +43,7 @@
 #include "http2.h"
 #include "util.h"
 #include "base64.h"
+#include "template.h"
 
 using namespace nghttp2;
 
@@ -265,7 +266,7 @@ int Http2Session::initiate_connection() {
     on_read_ = &Http2Session::downstream_read_proxy;
     on_write_ = &Http2Session::downstream_connect_proxy;
 
-    proxy_htp_ = util::make_unique<http_parser>();
+    proxy_htp_ = make_unique<http_parser>();
     http_parser_init(proxy_htp_.get(), HTTP_RESPONSE);
     proxy_htp_->data = this;
 
@@ -505,7 +506,7 @@ int Http2Session::submit_request(Http2DownstreamConnection *dconn, int32_t pri,
                                  const nghttp2_nv *nva, size_t nvlen,
                                  const nghttp2_data_provider *data_prd) {
   assert(state_ == CONNECTED);
-  auto sd = util::make_unique<StreamData>();
+  auto sd = make_unique<StreamData>();
   // TODO Specify nullptr to pri_spec for now
   auto stream_id =
       nghttp2_submit_request(session_, nullptr, nva, nvlen, data_prd, sd.get());

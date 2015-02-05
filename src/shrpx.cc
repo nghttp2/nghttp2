@@ -66,6 +66,7 @@
 #include "util.h"
 #include "app_helper.h"
 #include "ssl.h"
+#include "template.h"
 
 extern char **environ;
 
@@ -153,7 +154,7 @@ std::unique_ptr<AcceptHandler> create_acceptor(ConnectionHandler *handler,
       if (port == get_config()->port) {
         LOG(NOTICE) << "Listening on port " << get_config()->port;
 
-        return util::make_unique<AcceptHandler>(fd, handler);
+        return make_unique<AcceptHandler>(fd, handler);
       }
 
       LOG(WARN) << "Port was changed between old binary (" << port
@@ -201,7 +202,7 @@ std::unique_ptr<AcceptHandler> create_acceptor(ConnectionHandler *handler,
     if (fd == -1) {
       continue;
     }
-    util::make_socket_nonblocking(fd);
+    make_socket_nonblocking(fd);
 #endif // !SOCK_NONBLOCK
     int val = 1;
     if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &val,
@@ -260,7 +261,7 @@ std::unique_ptr<AcceptHandler> create_acceptor(ConnectionHandler *handler,
 
   LOG(NOTICE) << "Listening on " << host << ", port " << get_config()->port;
 
-  return util::make_unique<AcceptHandler>(fd, handler);
+  return make_unique<AcceptHandler>(fd, handler);
 }
 } // namespace
 
@@ -354,7 +355,7 @@ void exec_binary_signal_cb(struct ev_loop *loop, ev_signal *w, int revents) {
     return;
   }
 
-  auto argv = util::make_unique<char *[]>(get_config()->argc + 1);
+  auto argv = make_unique<char *[]>(get_config()->argc + 1);
 
   argv[0] = exec_path;
   for (int i = 1; i < get_config()->argc; ++i) {
@@ -366,7 +367,7 @@ void exec_binary_signal_cb(struct ev_loop *loop, ev_signal *w, int revents) {
   for (char **p = environ; *p; ++p, ++envlen)
     ;
   // 3 for missing fd4, fd6 and port.
-  auto envp = util::make_unique<char *[]>(envlen + 3 + 1);
+  auto envp = make_unique<char *[]>(envlen + 3 + 1);
   size_t envidx = 0;
 
   auto acceptor4 = conn_handler->get_acceptor4();
@@ -511,7 +512,7 @@ namespace {
 int event_loop() {
   auto loop = EV_DEFAULT;
 
-  auto conn_handler = util::make_unique<ConnectionHandler>(loop);
+  auto conn_handler = make_unique<ConnectionHandler>(loop);
   if (get_config()->daemon) {
     if (daemon(0, 0) == -1) {
       auto error = errno;
@@ -1720,7 +1721,7 @@ int main(int argc, char **argv) {
 #ifndef NOTHREADS
   std::unique_ptr<nghttp2::ssl::LibsslGlobalLock> lock;
   if (!get_config()->tls_ctx_per_worker) {
-    lock = util::make_unique<nghttp2::ssl::LibsslGlobalLock>();
+    lock = make_unique<nghttp2::ssl::LibsslGlobalLock>();
   }
 #endif // NOTHREADS
 

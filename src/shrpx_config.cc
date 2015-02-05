@@ -46,6 +46,7 @@
 #include "shrpx_http.h"
 #include "http2.h"
 #include "util.h"
+#include "template.h"
 
 using namespace nghttp2;
 
@@ -208,7 +209,7 @@ bool is_secure(const char *filename) {
 
 std::unique_ptr<TicketKeys>
 read_tls_ticket_key_file(const std::vector<std::string> &files) {
-  auto ticket_keys = util::make_unique<TicketKeys>();
+  auto ticket_keys = make_unique<TicketKeys>();
   auto &keys = ticket_keys->keys;
   keys.resize(files.size());
   size_t i = 0;
@@ -251,7 +252,7 @@ FILE *open_file_for_write(const char *filename) {
 
   // We get race condition if execve is called at the same time.
   if (fd != -1) {
-    util::make_socket_closeonexec(fd);
+    make_socket_closeonexec(fd);
   }
 #endif
   if (fd == -1) {
@@ -293,7 +294,7 @@ std::unique_ptr<char[]> strcopy(const char *val) {
 }
 
 std::unique_ptr<char[]> strcopy(const char *val, size_t len) {
-  auto res = util::make_unique<char[]>(len + 1);
+  auto res = make_unique<char[]>(len + 1);
   memcpy(res.get(), val, len);
   res[len] = '\0';
   return res;

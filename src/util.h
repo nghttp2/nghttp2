@@ -403,18 +403,6 @@ template <typename T> std::string utox(T n) {
   return res;
 }
 
-template <typename T, typename... U>
-typename std::enable_if<!std::is_array<T>::value, std::unique_ptr<T>>::type
-make_unique(U &&... u) {
-  return std::unique_ptr<T>(new T(std::forward<U>(u)...));
-}
-
-template <typename T>
-typename std::enable_if<std::is_array<T>::value, std::unique_ptr<T>>::type
-make_unique(size_t size) {
-  return std::unique_ptr<T>(new typename std::remove_extent<T>::type[size]());
-}
-
 void to_token68(std::string &base64str);
 void to_base64(std::string &token68str);
 

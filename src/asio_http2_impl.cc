@@ -33,6 +33,7 @@
 #include "asio_server.h"
 #include "util.h"
 #include "ssl.h"
+#include "template.h"
 
 namespace nghttp2 {
 
@@ -40,7 +41,7 @@ namespace asio_http2 {
 
 namespace server {
 
-http2::http2() : impl_(util::make_unique<http2_impl>()) {}
+http2::http2() : impl_(make_unique<http2_impl>()) {}
 
 http2::~http2() {}
 
@@ -75,7 +76,7 @@ void http2_impl::listen(const std::string &address, uint16_t port,
   std::unique_ptr<boost::asio::ssl::context> ssl_ctx;
 
   if (!private_key_file_.empty() && !certificate_file_.empty()) {
-    ssl_ctx = util::make_unique<boost::asio::ssl::context>(
+    ssl_ctx = make_unique<boost::asio::ssl::context>(
         boost::asio::ssl::context::sslv23);
 
     ssl_ctx->use_private_key_file(private_key_file_,

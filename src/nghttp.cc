@@ -53,6 +53,7 @@
 #include "util.h"
 #include "base64.h"
 #include "ssl.h"
+#include "template.h"
 
 #ifndef O_BINARY
 #define O_BINARY (0)
@@ -731,7 +732,7 @@ int HttpClient::connected() {
   writefn = &HttpClient::write_clear;
 
   if (need_upgrade()) {
-    htp = util::make_unique<http_parser>();
+    htp = make_unique<http_parser>();
     http_parser_init(htp.get(), HTTP_RESPONSE);
     htp->data = this;
 
@@ -1234,8 +1235,8 @@ bool HttpClient::add_request(const std::string &uri,
     path_cache.insert(uri);
   }
 
-  reqvec.push_back(util::make_unique<Request>(
-      uri, u, data_prd, data_length, pri_spec, std::move(dep), pri, level));
+  reqvec.push_back(make_unique<Request>(uri, u, data_prd, data_length, pri_spec,
+                                        std::move(dep), pri, level));
   return true;
 }
 
@@ -1632,7 +1633,7 @@ int on_begin_headers_callback(nghttp2_session *session,
 
     nghttp2_priority_spec_default_init(&pri_spec);
 
-    auto req = util::make_unique<Request>("", u, nullptr, 0, pri_spec, nullptr);
+    auto req = make_unique<Request>("", u, nullptr, 0, pri_spec, nullptr);
     req->stream_id = stream_id;
 
     nghttp2_session_set_stream_user_data(session, stream_id, req.get());

@@ -29,11 +29,12 @@
 
 #include <sys/uio.h>
 
+#include <cassert>
 #include <cstring>
 #include <memory>
 #include <array>
 
-#include "util.h"
+#include "template.h"
 
 namespace nghttp2 {
 
@@ -67,7 +68,7 @@ template <typename T> struct Pool {
       return m;
     }
 
-    pool = util::make_unique<T>(std::move(pool));
+    pool = make_unique<T>(std::move(pool));
     poolsize += T::size;
     return pool.get();
   }

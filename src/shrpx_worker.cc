@@ -35,6 +35,7 @@
 #include "shrpx_worker_config.h"
 #include "shrpx_connect_blocker.h"
 #include "util.h"
+#include "template.h"
 
 using namespace nghttp2;
 
@@ -51,7 +52,7 @@ Worker::Worker(SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
                ssl::CertLookupTree *cert_tree,
                const std::shared_ptr<TicketKeys> &ticket_keys)
     : loop_(ev_loop_new(0)), sv_ssl_ctx_(sv_ssl_ctx), cl_ssl_ctx_(cl_ssl_ctx),
-      worker_stat_(util::make_unique<WorkerStat>()) {
+      worker_stat_(make_unique<WorkerStat>()) {
   ev_async_init(&w_, eventcb);
   w_.data = this;
   ev_async_start(loop_, &w_);
@@ -66,9 +67,9 @@ Worker::Worker(SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
     }
 
     if (get_config()->downstream_proto == PROTO_HTTP2) {
-      http2session_ = util::make_unique<Http2Session>(loop_, cl_ssl_ctx_);
+      http2session_ = make_unique<Http2Session>(loop_, cl_ssl_ctx_);
     } else {
-      http1_connect_blocker_ = util::make_unique<ConnectBlocker>(loop_);
+      http1_connect_blocker_ = make_unique<ConnectBlocker>(loop_);
     }
 
     worker_config->ticket_keys = ticket_keys;

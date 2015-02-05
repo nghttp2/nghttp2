@@ -55,6 +55,7 @@
 #include "ssl.h"
 #include "http2.h"
 #include "util.h"
+#include "template.h"
 
 using namespace nghttp2;
 
@@ -399,13 +400,13 @@ int Client::on_connect() {
     for (int i = 0; i < 2; ++i) {
       if (next_proto) {
         if (util::check_h2_is_selected(next_proto, next_proto_len)) {
-          session = util::make_unique<Http2Session>(this);
+          session = make_unique<Http2Session>(this);
         } else {
 #ifdef HAVE_SPDYLAY
           auto spdy_version =
               spdylay_npn_get_version(next_proto, next_proto_len);
           if (spdy_version) {
-            session = util::make_unique<SpdySession>(this, spdy_version);
+            session = make_unique<SpdySession>(this, spdy_version);
           } else {
             debug_nextproto_error();
             fail();
@@ -434,17 +435,17 @@ int Client::on_connect() {
   } else {
     switch (config.no_tls_proto) {
     case Config::PROTO_HTTP2:
-      session = util::make_unique<Http2Session>(this);
+      session = make_unique<Http2Session>(this);
       break;
 #ifdef HAVE_SPDYLAY
     case Config::PROTO_SPDY2:
-      session = util::make_unique<SpdySession>(this, SPDYLAY_PROTO_SPDY2);
+      session = make_unique<SpdySession>(this, SPDYLAY_PROTO_SPDY2);
       break;
     case Config::PROTO_SPDY3:
-      session = util::make_unique<SpdySession>(this, SPDYLAY_PROTO_SPDY3);
+      session = make_unique<SpdySession>(this, SPDYLAY_PROTO_SPDY3);
       break;
     case Config::PROTO_SPDY3_1:
-      session = util::make_unique<SpdySession>(this, SPDYLAY_PROTO_SPDY3_1);
+      session = make_unique<SpdySession>(this, SPDYLAY_PROTO_SPDY3_1);
       break;
 #endif // HAVE_SPDYLAY
     default:
@@ -704,7 +705,7 @@ Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
       ++req_todo;
       --nreqs_rem;
     }
-    clients.push_back(util::make_unique<Client>(this, req_todo));
+    clients.push_back(make_unique<Client>(this, req_todo));
   }
 }
 
@@ -1327,7 +1328,7 @@ int main(int argc, char **argv) {
               << " concurrent clients, " << nreqs << " total requests"
               << std::endl;
     workers.push_back(
-        util::make_unique<Worker>(i, ssl_ctx, nreqs, nclients, &config));
+        make_unique<Worker>(i, ssl_ctx, nreqs, nclients, &config));
     auto &worker = workers.back();
     futures.push_back(
         std::async(std::launch::async, [&worker]() { worker->run(); }));
@@ -1339,8 +1340,8 @@ int main(int argc, char **argv) {
   std::cout << "spawning thread #" << (config.nthreads - 1) << ": "
             << nclients_last << " concurrent clients, " << nreqs_last
             << " total requests" << std::endl;
-  workers.push_back(util::make_unique<Worker>(
-      config.nthreads - 1, ssl_ctx, nreqs_last, nclients_last, &config));
+  workers.push_back(make_unique<Worker>(config.nthreads - 1, ssl_ctx,
+                                        nreqs_last, nclients_last, &config));
   workers.back()->run();
 
 #ifndef NOTHREADS

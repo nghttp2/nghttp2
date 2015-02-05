@@ -39,6 +39,7 @@
 #include "shrpx_worker_config.h"
 #include "http2.h"
 #include "util.h"
+#include "template.h"
 
 using namespace nghttp2;
 
@@ -794,7 +795,7 @@ int SpdyUpstream::error_reply(Downstream *downstream,
 
 Downstream *SpdyUpstream::add_pending_downstream(int32_t stream_id,
                                                  int32_t priority) {
-  auto downstream = util::make_unique<Downstream>(this, stream_id, priority);
+  auto downstream = make_unique<Downstream>(this, stream_id, priority);
   auto res = downstream.get();
 
   downstream_queue_.add_pending(std::move(downstream));
@@ -844,7 +845,7 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream) {
   }
   size_t nheader = downstream->get_response_headers().size();
   // 8 means server, :status, :version and possible via header field.
-  auto nv = util::make_unique<const char *[]>(
+  auto nv = make_unique<const char *[]>(
       nheader * 2 + 8 + get_config()->add_response_headers.size() * 2 + 1);
 
   size_t hdidx = 0;

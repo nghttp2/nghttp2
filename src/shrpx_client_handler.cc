@@ -42,6 +42,7 @@
 #include "shrpx_spdy_upstream.h"
 #endif // HAVE_SPDYLAY
 #include "util.h"
+#include "template.h"
 
 using namespace nghttp2;
 
@@ -377,7 +378,7 @@ ClientHandler::ClientHandler(struct ev_loop *loop, int fd, SSL *ssl,
     // For non-TLS version, first create HttpsUpstream. It may be
     // upgraded to HTTP/2 through HTTP Upgrade or direct HTTP/2
     // connection.
-    upstream_ = util::make_unique<HttpsUpstream>(this);
+    upstream_ = make_unique<HttpsUpstream>(this);
     alpn_ = "http/1.1";
     read_ = &ClientHandler::read_clear;
     write_ = &ClientHandler::write_clear;
@@ -455,7 +456,7 @@ int ClientHandler::validate_next_proto() {
 
         on_read_ = &ClientHandler::upstream_http2_connhd_read;
 
-        auto http2_upstream = util::make_unique<Http2Upstream>(this);
+        auto http2_upstream = make_unique<Http2Upstream>(this);
 
         if (!ssl::check_http2_requirement(conn_.tls.ssl)) {
           rv = http2_upstream->terminate_session(NGHTTP2_INADEQUATE_SECURITY);
@@ -480,7 +481,7 @@ int ClientHandler::validate_next_proto() {
 #ifdef HAVE_SPDYLAY
         uint16_t version = spdylay_npn_get_version(next_proto, next_proto_len);
         if (version) {
-          upstream_ = util::make_unique<SpdyUpstream>(version, this);
+          upstream_ = make_unique<SpdyUpstream>(version, this);
 
           switch (version) {
           case SPDYLAY_PROTO_SPDY2:
@@ -507,7 +508,7 @@ int ClientHandler::validate_next_proto() {
         }
 #endif // HAVE_SPDYLAY
         if (next_proto_len == 8 && memcmp("http/1.1", next_proto, 8) == 0) {
-          upstream_ = util::make_unique<HttpsUpstream>(this);
+          upstream_ = make_unique<HttpsUpstream>(this);
           alpn_ = "http/1.1";
 
           // At this point, input buffer is already filled with some
@@ -532,7 +533,7 @@ int ClientHandler::validate_next_proto() {
     if (LOG_ENABLED(INFO)) {
       CLOG(INFO, this) << "No protocol negotiated. Fallback to HTTP/1.1";
     }
-    upstream_ = util::make_unique<HttpsUpstream>(this);
+    upstream_ = make_unique<HttpsUpstream>(this);
     alpn_ = "http/1.1";
 
     // At this point, input buffer is already filled with some bytes.
@@ -594,11 +595,10 @@ ClientHandler::get_downstream_connection() {
     }
 
     if (http2session_) {
-      dconn = util::make_unique<Http2DownstreamConnection>(dconn_pool_,
-                                                           http2session_);
-    } else {
       dconn =
-          util::make_unique<HttpDownstreamConnection>(dconn_pool_, conn_.loop);
+          make_unique<Http2DownstreamConnection>(dconn_pool_, http2session_);
+    } else {
+      dconn = make_unique<HttpDownstreamConnection>(dconn_pool_, conn_.loop);
     }
     dconn->set_client_handler(this);
     return dconn;
@@ -632,7 +632,7 @@ ConnectBlocker *ClientHandler::get_http1_connect_blocker() const {
 }
 
 void ClientHandler::direct_http2_upgrade() {
-  upstream_ = util::make_unique<Http2Upstream>(this);
+  upstream_ = make_unique<Http2Upstream>(this);
   // TODO We don't know exact h2 draft version in direct upgrade.  We
   // just use library default for now.
   alpn_ = NGHTTP2_CLEARTEXT_PROTO_VERSION_ID;
@@ -640,7 +640,7 @@ void ClientHandler::direct_http2_upgrade() {
 }
 
 int ClientHandler::perform_http2_upgrade(HttpsUpstream *http) {
-  auto upstream = util::make_unique<Http2Upstream>(this);
+  auto upstream = make_unique<Http2Upstream>(this);
   if (upstream->upgrade_upstream(http) != 0) {
     return -1;
   }

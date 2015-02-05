@@ -28,12 +28,13 @@
 
 #include "http2.h"
 #include "util.h"
+#include "template.h"
 
 namespace nghttp2 {
 
 namespace asio_http2 {
 
-channel::channel() : impl_(util::make_unique<channel_impl>()) {}
+channel::channel() : impl_(make_unique<channel_impl>()) {}
 
 void channel::post(void_cb cb) { impl_->post(std::move(cb)); }
 
@@ -51,7 +52,7 @@ namespace server {
 
 extern std::shared_ptr<std::string> cached_date;
 
-request::request() : impl_(util::make_unique<request_impl>()) {}
+request::request() : impl_(make_unique<request_impl>()) {}
 
 const std::vector<header> &request::headers() const { return impl_->headers(); }
 
@@ -84,7 +85,7 @@ bool request::run_task(thread_cb start) {
 
 request_impl &request::impl() { return *impl_; }
 
-response::response() : impl_(util::make_unique<response_impl>()) {}
+response::response() : impl_(make_unique<response_impl>()) {}
 
 void response::write_head(unsigned int status_code,
                           std::vector<header> headers) {
