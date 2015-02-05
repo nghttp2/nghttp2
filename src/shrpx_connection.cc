@@ -55,6 +55,9 @@ Connection::Connection(struct ev_loop *loop, int fd, SSL *ssl,
 
   wt.data = this;
   rt.data = this;
+
+  // set 0. to double field explicitly just in case
+  tls.last_write_time = 0.;
 }
 
 Connection::~Connection() { disconnect(); }
