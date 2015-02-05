@@ -1249,7 +1249,7 @@ int main(int argc, char **argv) {
 
   // list overridalbe headers
   auto override_hdrs =
-      std::vector<std::string>{":authority", ":host", ":method", ":scheme"};
+      make_array<std::string>(":authority", ":host", ":method", ":scheme");
 
   for (auto &kv : config.custom_headers) {
     if (std::find(std::begin(override_hdrs), std::end(override_hdrs),

@@ -1139,11 +1139,11 @@ int Http2Upstream::error_reply(Downstream *downstream,
 
   auto content_length = util::utos(html.size());
   auto status_code_str = util::utos(status_code);
-  auto nva = std::vector<nghttp2_nv>{
-      http2::make_nv_ls(":status", status_code_str),
-      http2::make_nv_ll("content-type", "text/html; charset=UTF-8"),
-      http2::make_nv_lc("server", get_config()->server_name),
-      http2::make_nv_ls("content-length", content_length)};
+  auto nva =
+      make_array(http2::make_nv_ls(":status", status_code_str),
+                 http2::make_nv_ll("content-type", "text/html; charset=UTF-8"),
+                 http2::make_nv_lc("server", get_config()->server_name),
+                 http2::make_nv_ls("content-length", content_length));
 
   rv = nghttp2_submit_response(session_, downstream->get_stream_id(),
                                nva.data(), nva.size(), &data_prd);

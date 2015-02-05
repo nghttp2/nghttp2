@@ -77,7 +77,7 @@ void print_session_id(int64_t id) { std::cout << "[id=" << id << "] "; }
 } // namespace
 
 namespace {
-void append_nv(Stream *stream, const std::vector<nghttp2_nv> &nva) {
+template <typename Array> void append_nv(Stream *stream, const Array &nva) {
   for (size_t i = 0; i < nva.size(); ++i) {
     auto &nv = nva[i];
     auto token = http2::lookup_token(nv.name, nv.namelen);
@@ -702,10 +702,11 @@ int Http2Handler::submit_file_response(const std::string &status,
 int Http2Handler::submit_response(const std::string &status, int32_t stream_id,
                                   const Headers &headers,
                                   nghttp2_data_provider *data_prd) {
-  auto nva = std::vector<nghttp2_nv>{
-      http2::make_nv_ls(":status", status),
-      http2::make_nv_ls("server", NGHTTPD_SERVER),
-      http2::make_nv_ls("date", sessions_->get_cached_date())};
+  auto nva = std::vector<nghttp2_nv>();
+  nva.reserve(3 + headers.size());
+  nva.push_back(http2::make_nv_ls(":status", status));
+  nva.push_back(http2::make_nv_ls("server", NGHTTPD_SERVER));
+  nva.push_back(http2::make_nv_ls("date", sessions_->get_cached_date()));
   for (auto &nv : headers) {
     nva.push_back(http2::make_nv(nv.name, nv.value, nv.no_index));
   }
@@ -716,16 +717,15 @@ int Http2Handler::submit_response(const std::string &status, int32_t stream_id,
 
 int Http2Handler::submit_response(const std::string &status, int32_t stream_id,
                                   nghttp2_data_provider *data_prd) {
-  auto nva =
-      std::vector<nghttp2_nv>{http2::make_nv_ls(":status", status),
-                              http2::make_nv_ls("server", NGHTTPD_SERVER)};
+  auto nva = make_array(http2::make_nv_ls(":status", status),
+                        http2::make_nv_ls("server", NGHTTPD_SERVER));
   return nghttp2_submit_response(session_, stream_id, nva.data(), nva.size(),
                                  data_prd);
 }
 
 int Http2Handler::submit_non_final_response(const std::string &status,
                                             int32_t stream_id) {
-  auto nva = std::vector<nghttp2_nv>{http2::make_nv_ls(":status", status)};
+  auto nva = make_array(http2::make_nv_ls(":status", status));
   return nghttp2_submit_headers(session_, NGHTTP2_FLAG_NONE, stream_id, nullptr,
                                 nva.data(), nva.size(), nullptr);
 }
@@ -740,12 +740,12 @@ int Http2Handler::submit_push_promise(Stream *stream,
         http2::get_header(stream->hdidx, http2::HD_HOST, stream->headers);
   }
 
-  auto nva = std::vector<nghttp2_nv>{
-      http2::make_nv_ll(":method", "GET"),
-      http2::make_nv_ls(":path", push_path),
-      get_config()->no_tls ? http2::make_nv_ll(":scheme", "http")
-                           : http2::make_nv_ll(":scheme", "https"),
-      http2::make_nv_ls(":authority", authority->value)};
+  auto nva =
+      make_array(http2::make_nv_ll(":method", "GET"),
+                 http2::make_nv_ls(":path", push_path),
+                 get_config()->no_tls ? http2::make_nv_ll(":scheme", "http")
+                                      : http2::make_nv_ll(":scheme", "https"),
+                 http2::make_nv_ls(":authority", authority->value));
 
   auto promised_stream_id = nghttp2_submit_push_promise(
       session_, NGHTTP2_FLAG_END_HEADERS, stream->stream_id, nva.data(),

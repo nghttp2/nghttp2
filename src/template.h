@@ -28,6 +28,7 @@
 #include "nghttp2_config.h"
 
 #include <memory>
+#include <array>
 
 namespace nghttp2 {
 
@@ -41,6 +42,12 @@ template <typename T>
 typename std::enable_if<std::is_array<T>::value, std::unique_ptr<T>>::type
 make_unique(size_t size) {
   return std::unique_ptr<T>(new typename std::remove_extent<T>::type[size]());
+}
+
+template <typename T, typename... Rest>
+std::array<T, sizeof...(Rest)+1> make_array(T &&t, Rest &&... rest) {
+  return std::array<T, sizeof...(Rest)+1>{
+      {std::forward<T>(t), std::forward<Rest>(rest)...}};
 }
 
 } // namespace nghttp2
