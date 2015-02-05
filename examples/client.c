@@ -558,6 +558,8 @@ static void fetch_uri(const struct URI *uri) {
     diec("nghttp2_session_client_new", rv);
   }
 
+  nghttp2_submit_settings(connection.session, NGHTTP2_FLAG_NONE, NULL, 0);
+
   /* Submit the HTTP request to the outbound queue. */
   submit_request(&connection, &req);
 
