@@ -31,6 +31,7 @@
 
 #include <cstring>
 #include <memory>
+#include <array>
 
 #include "util.h"
 
@@ -38,21 +39,20 @@ namespace nghttp2 {
 
 template <size_t N> struct Memchunk {
   Memchunk(std::unique_ptr<Memchunk> next_chunk)
-      : knext(std::move(next_chunk)), kprev(nullptr), next(nullptr), pos(begin),
-        last(begin), end(begin + N) {
+      : pos(std::begin(buf)), last(pos), knext(std::move(next_chunk)),
+        kprev(nullptr), next(nullptr) {
     if (knext) {
       knext->kprev = this;
     }
   }
   size_t len() const { return last - pos; }
-  size_t left() const { return end - last; }
-  void reset() { pos = last = begin; }
+  size_t left() const { return std::end(buf) - last; }
+  void reset() { pos = last = std::begin(buf); }
+  std::array<uint8_t, N> buf;
+  uint8_t *pos, *last;
   std::unique_ptr<Memchunk> knext;
   Memchunk *kprev;
   Memchunk *next;
-  uint8_t *pos, *last;
-  uint8_t *end;
-  uint8_t begin[N];
   static const size_t size = N;
 };
 
@@ -106,11 +106,6 @@ template <typename T> struct Pool {
   size_t poolsize;
 };
 
-inline void *cpymem(void *dest, const void *src, size_t count) {
-  memcpy(dest, src, count);
-  return reinterpret_cast<uint8_t *>(dest) + count;
-}
-
 template <typename Memchunk> struct Memchunks {
   Memchunks(Pool<Memchunk> *pool)
       : pool(pool), head(nullptr), tail(nullptr), len(0) {}
@@ -124,54 +119,53 @@ template <typename Memchunk> struct Memchunks {
       m = next;
     }
   }
-  size_t append(const void *data, size_t count) {
+  size_t append(const void *src, size_t count) {
     if (count == 0) {
       return 0;
     }
 
-    auto p = reinterpret_cast<const uint8_t *>(data);
+    auto first = static_cast<const uint8_t *>(src);
+    auto last = first + count;
 
     if (!tail) {
       head = tail = pool->get();
     }
-    auto all = count;
 
-    while (count > 0) {
-      auto n = std::min(count, tail->left());
-      tail->last = reinterpret_cast<uint8_t *>(cpymem(tail->last, p, n));
-      p += n;
-      count -= n;
+    for (;;) {
+      auto n = std::min(static_cast<size_t>(last - first), tail->left());
+      tail->last = std::copy_n(first, n, tail->last);
+      first += n;
       len += n;
-      if (count == 0) {
+      if (first == last) {
         break;
       }
 
       tail->next = pool->get();
-
-      assert(tail != tail->next);
       tail = tail->next;
     }
 
-    return all;
+    return count;
   }
   template <size_t N> size_t append(const char (&s)[N]) {
     return append(s, N - 1);
   }
-  size_t remove(void *data, size_t count) {
+  size_t remove(void *dest, size_t count) {
     if (!tail || count == 0) {
       return 0;
     }
-    auto ndata = count;
+
+    auto first = static_cast<uint8_t *>(dest);
+    auto last = first + count;
+
     auto m = head;
 
     while (m) {
       auto next = m->next;
-      auto n = std::min(count, m->len());
+      auto n = std::min(static_cast<size_t>(last - first), m->len());
 
       assert(m->len());
-      data = cpymem(data, m->pos, n);
+      first = std::copy_n(m->pos, n, first);
       m->pos += n;
-      count -= n;
       len -= n;
       if (m->len() > 0) {
         break;
@@ -184,7 +178,7 @@ template <typename Memchunk> struct Memchunks {
       tail = nullptr;
     }
 
-    return ndata - count;
+    return first - static_cast<uint8_t *>(dest);
   }
   size_t drain(size_t count) {
     auto ndata = count;

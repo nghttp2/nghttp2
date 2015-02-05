@@ -159,12 +159,12 @@ void test_memchunks_riovec(void) {
   auto m = chunks.head;
 
   CU_ASSERT(2 == iovcnt);
-  CU_ASSERT(m->begin == iov[0].iov_base);
+  CU_ASSERT(m->buf.data() == iov[0].iov_base);
   CU_ASSERT(m->len() == iov[0].iov_len);
 
   m = m->next;
 
-  CU_ASSERT(m->begin == iov[1].iov_base);
+  CU_ASSERT(m->buf.data() == iov[1].iov_base);
   CU_ASSERT(m->len() == iov[1].iov_len);
 
   chunks.drain(2 * 16);
@@ -174,7 +174,7 @@ void test_memchunks_riovec(void) {
   CU_ASSERT(1 == iovcnt);
 
   m = chunks.head;
-  CU_ASSERT(m->begin == iov[0].iov_base);
+  CU_ASSERT(m->buf.data() == iov[0].iov_base);
   CU_ASSERT(m->len() == iov[0].iov_len);
 }
 
