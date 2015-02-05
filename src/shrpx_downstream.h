@@ -362,8 +362,8 @@ private:
   int response_major_;
   int response_minor_;
 
-  int request_hdidx_[http2::HD_MAXIDX];
-  int response_hdidx_[http2::HD_MAXIDX];
+  http2::HeaderIndex request_hdidx_;
+  http2::HeaderIndex response_hdidx_;
 
   // true if the request contains upgrade token (HTTP Upgrade or
   // CONNECT)

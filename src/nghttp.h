@@ -153,9 +153,9 @@ struct Request {
   int level;
   // RequestPriority value defined in HtmlParser.h
   int pri;
-  int res_hdidx[http2::HD_MAXIDX];
+  http2::HeaderIndex res_hdidx;
   // used for incoming PUSH_PROMISE
-  int req_hdidx[http2::HD_MAXIDX];
+  http2::HeaderIndex req_hdidx;
   bool expect_final_response;
 };
 

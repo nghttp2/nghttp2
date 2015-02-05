@@ -120,7 +120,7 @@ void test_http2_get_header(void) {
   rv = http2::get_header(nva, "foxtrot");
   CU_ASSERT(rv == nullptr);
 
-  int hdidx[http2::HD_MAXIDX];
+  http2::HeaderIndex hdidx;
   http2::init_hdidx(hdidx);
   hdidx[http2::HD_CONTENT_LENGTH] = 6;
   rv = http2::get_header(hdidx, http2::HD_CONTENT_LENGTH, nva);
@@ -227,7 +227,7 @@ void test_http2_parse_http_status_code(void) {
 }
 
 void test_http2_index_header(void) {
-  int hdidx[http2::HD_MAXIDX];
+  http2::HeaderIndex hdidx;
   http2::init_hdidx(hdidx);
 
   http2::index_header(hdidx, http2::HD__AUTHORITY, 0);
@@ -244,7 +244,7 @@ void test_http2_lookup_token(void) {
 }
 
 void test_http2_check_http2_pseudo_header(void) {
-  int hdidx[http2::HD_MAXIDX];
+  http2::HeaderIndex hdidx;
   http2::init_hdidx(hdidx);
 
   CU_ASSERT(http2::check_http2_request_pseudo_header(hdidx, http2::HD__METHOD));
@@ -272,7 +272,7 @@ void test_http2_http2_header_allowed(void) {
 }
 
 void test_http2_mandatory_request_headers_presence(void) {
-  int hdidx[http2::HD_MAXIDX];
+  http2::HeaderIndex hdidx;
   http2::init_hdidx(hdidx);
 
   CU_ASSERT(!http2::http2_mandatory_request_headers_presence(hdidx));

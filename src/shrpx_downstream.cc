@@ -288,7 +288,8 @@ const std::string &Downstream::get_assembled_request_cookie() const {
 }
 
 namespace {
-int index_headers(int *hdidx, Headers &headers, int64_t &content_length) {
+int index_headers(http2::HeaderIndex &hdidx, Headers &headers,
+                  int64_t &content_length) {
   for (size_t i = 0; i < headers.size(); ++i) {
     auto &kv = headers[i];
     util::inp_strlower(kv.name);

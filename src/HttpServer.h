@@ -84,7 +84,7 @@ struct Stream {
   int64_t upload_left;
   int32_t stream_id;
   int file;
-  int hdidx[http2::HD_MAXIDX];
+  http2::HeaderIndex hdidx;
   Stream(Http2Handler *handler, int32_t stream_id);
   ~Stream();
 };

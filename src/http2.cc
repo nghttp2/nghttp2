@@ -593,9 +593,11 @@ int lookup_token(const uint8_t *name, size_t namelen) {
   return -1;
 }
 
-void init_hdidx(int *hdidx) { memset(hdidx, -1, sizeof(hdidx[0]) * HD_MAXIDX); }
+void init_hdidx(HeaderIndex &hdidx) {
+  std::fill(std::begin(hdidx), std::end(hdidx), -1);
+}
 
-void index_headers(int *hdidx, const Headers &headers) {
+void index_headers(HeaderIndex &hdidx, const Headers &headers) {
   for (size_t i = 0; i < headers.size(); ++i) {
     auto &kv = headers[i];
     auto token = lookup_token(
@@ -606,7 +608,7 @@ void index_headers(int *hdidx, const Headers &headers) {
   }
 }
 
-void index_header(int *hdidx, int token, size_t idx) {
+void index_header(HeaderIndex &hdidx, int token, size_t idx) {
   if (token == -1) {
     return;
   }
@@ -614,7 +616,7 @@ void index_header(int *hdidx, int token, size_t idx) {
   hdidx[token] = idx;
 }
 
-bool check_http2_request_pseudo_header(const int *hdidx, int token) {
+bool check_http2_request_pseudo_header(const HeaderIndex &hdidx, int token) {
   switch (token) {
   case HD__AUTHORITY:
   case HD__METHOD:
@@ -626,7 +628,7 @@ bool check_http2_request_pseudo_header(const int *hdidx, int token) {
   }
 }
 
-bool check_http2_response_pseudo_header(const int *hdidx, int token) {
+bool check_http2_response_pseudo_header(const HeaderIndex &hdidx, int token) {
   switch (token) {
   case HD__STATUS:
     return hdidx[token] == -1;
@@ -648,7 +650,7 @@ bool http2_header_allowed(int token) {
   }
 }
 
-bool http2_mandatory_request_headers_presence(const int *hdidx) {
+bool http2_mandatory_request_headers_presence(const HeaderIndex &hdidx) {
   if (hdidx[HD__METHOD] == -1 || hdidx[HD__PATH] == -1 ||
       hdidx[HD__SCHEME] == -1 ||
       (hdidx[HD__AUTHORITY] == -1 && hdidx[HD_HOST] == -1)) {
@@ -657,7 +659,7 @@ bool http2_mandatory_request_headers_presence(const int *hdidx) {
   return true;
 }
 
-const Headers::value_type *get_header(const int *hdidx, int token,
+const Headers::value_type *get_header(const HeaderIndex &hdidx, int token,
                                       const Headers &nva) {
   auto i = hdidx[token];
   if (i == -1) {

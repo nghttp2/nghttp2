@@ -31,6 +31,7 @@
 #include <cstring>
 #include <string>
 #include <vector>
+#include <array>
 
 #include <nghttp2/nghttp2.h>
 
@@ -210,6 +211,8 @@ enum {
   HD_MAXIDX,
 };
 
+using HeaderIndex = std::array<int, HD_MAXIDX>;
+
 // Looks up header token for header name |name| of length |namelen|.
 // Only headers we are interested in are tokenized.  If header name
 // cannot be tokenized, returns -1.
@@ -218,19 +221,19 @@ int lookup_token(const std::string &name);
 
 // Initializes |hdidx|, header index.  The |hdidx| must point to the
 // array containing at least HD_MAXIDX elements.
-void init_hdidx(int *hdidx);
+void init_hdidx(HeaderIndex &hdidx);
 // Indexes header |token| using index |idx|.
-void index_header(int *hdidx, int token, size_t idx);
+void index_header(HeaderIndex &hdidx, int token, size_t idx);
 // Iterates |headers| and for each element, call index_header.
-void index_headers(int *hdidx, const Headers &headers);
+void index_headers(HeaderIndex &hdidx, const Headers &headers);
 
 // Returns true if HTTP/2 request pseudo header |token| is not indexed
 // yet and not -1.
-bool check_http2_request_pseudo_header(const int *hdidx, int token);
+bool check_http2_request_pseudo_header(const HeaderIndex &hdidx, int token);
 
 // Returns true if HTTP/2 response pseudo header |token| is not
 // indexed yet and not -1.
-bool check_http2_response_pseudo_header(const int *hdidx, int token);
+bool check_http2_response_pseudo_header(const HeaderIndex &hdidx, int token);
 
 // Returns true if header field denoted by |token| is allowed for
 // HTTP/2.
@@ -238,10 +241,10 @@ bool http2_header_allowed(int token);
 
 // Returns true that |hdidx| contains mandatory HTTP/2 request
 // headers.
-bool http2_mandatory_request_headers_presence(const int *hdidx);
+bool http2_mandatory_request_headers_presence(const HeaderIndex &hdidx);
 
 // Returns header denoted by |token| using index |hdidx|.
-const Headers::value_type *get_header(const int *hdidx, int token,
+const Headers::value_type *get_header(const HeaderIndex &hdidx, int token,
                                       const Headers &nva);
 
 } // namespace http2
