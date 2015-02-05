@@ -2742,7 +2742,7 @@ static ssize_t nghttp2_session_mem_send_internal(nghttp2_session *session,
 
       DEBUGF(fprintf(stderr,
                      "send: start transmitting frame type=%u, length=%zd\n",
-                     framebufs->cur->buf.pos[2],
+                     framebufs->cur->buf.pos[3],
                      framebufs->cur->buf.last - framebufs->cur->buf.pos));
 
       aob->state = NGHTTP2_OB_SEND_DATA;
