@@ -4631,7 +4631,8 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
         return in - first;
       }
 
-      if (iframe->sbuf.pos[3] != NGHTTP2_SETTINGS) {
+      if (iframe->sbuf.pos[3] != NGHTTP2_SETTINGS ||
+          (iframe->sbuf.pos[4] & NGHTTP2_FLAG_ACK)) {
         nghttp2_frame_unpack_frame_hd(&iframe->frame.hd, iframe->sbuf.pos);
         iframe->payloadleft = iframe->frame.hd.length;
 
