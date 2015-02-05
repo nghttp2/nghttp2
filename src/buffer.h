@@ -43,7 +43,8 @@ template <size_t N> struct Buffer {
   // |src|.  Returns number of bytes written.
   size_t write(const void *src, size_t count) {
     count = std::min(count, wleft());
-    last = std::copy_n(static_cast<const uint8_t *>(src), count, last);
+    auto p = static_cast<const uint8_t *>(src);
+    last = std::copy(p, p + count, last);
     return count;
   }
   size_t write(size_t count) {
