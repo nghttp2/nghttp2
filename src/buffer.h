@@ -29,21 +29,21 @@
 
 #include <cstring>
 #include <algorithm>
+#include <array>
 
 namespace nghttp2 {
 
 template <size_t N> struct Buffer {
-  Buffer() : pos(begin), last(begin) {}
+  Buffer() : pos(std::begin(buf)), last(pos) {}
   // Returns the number of bytes to read.
   size_t rleft() const { return last - pos; }
   // Returns the number of bytes this buffer can store.
-  size_t wleft() const { return begin + N - last; }
+  size_t wleft() const { return std::end(buf) - last; }
   // Writes up to min(wleft(), |count|) bytes from buffer pointed by
-  // |buf|.  Returns number of bytes written.
-  size_t write(const void *buf, size_t count) {
+  // |src|.  Returns number of bytes written.
+  size_t write(const void *src, size_t count) {
     count = std::min(count, wleft());
-    memcpy(last, buf, count);
-    last += count;
+    last = std::copy_n(static_cast<const uint8_t *>(src), count, last);
     return count;
   }
   size_t write(size_t count) {
@@ -57,8 +57,8 @@ template <size_t N> struct Buffer {
     pos += count;
     return count;
   }
-  void reset() { pos = last = begin; }
-  uint8_t begin[N];
+  void reset() { pos = last = std::begin(buf); }
+  std::array<uint8_t, N> buf;
   uint8_t *pos, *last;
 };
 

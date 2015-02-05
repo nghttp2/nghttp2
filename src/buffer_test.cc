@@ -45,13 +45,13 @@ void test_buffer_write(void) {
 
   CU_ASSERT(3 == b.rleft());
   CU_ASSERT(13 == b.wleft());
-  CU_ASSERT(0 == b.pos - b.begin);
+  CU_ASSERT(0 == b.pos - std::begin(b.buf));
 
   b.drain(3);
 
   CU_ASSERT(0 == b.rleft());
   CU_ASSERT(13 == b.wleft());
-  CU_ASSERT(3 == b.pos - b.begin);
+  CU_ASSERT(3 == b.pos - std::begin(b.buf));
 
   auto n = b.write("0123456789ABCDEF", 16);
 
@@ -59,20 +59,20 @@ void test_buffer_write(void) {
 
   CU_ASSERT(13 == b.rleft());
   CU_ASSERT(0 == b.wleft());
-  CU_ASSERT(3 == b.pos - b.begin);
+  CU_ASSERT(3 == b.pos - std::begin(b.buf));
   CU_ASSERT(0 == memcmp(b.pos, "0123456789ABC", 13));
 
   b.reset();
 
   CU_ASSERT(0 == b.rleft());
   CU_ASSERT(0 == b.wleft());
-  CU_ASSERT(0 == b.pos - b.begin);
+  CU_ASSERT(0 == b.pos - std::begin(b.buf));
 
   b.write(5);
 
   CU_ASSERT(5 == b.rleft());
   CU_ASSERT(11 == b.wleft());
-  CU_ASSERT(0 == b.pos - b.begin);
+  CU_ASSERT(0 == b.pos - std::begin(b.buf));
 }
 
 } // namespace nghttp2
