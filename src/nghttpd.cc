@@ -49,15 +49,15 @@ namespace nghttp2 {
 
 namespace {
 int parse_push_config(Config &config, const char *optarg) {
-  const char *eq = strchr(optarg, '=');
+  const auto eq = strchr(optarg, '=');
   if (eq == NULL) {
     return -1;
   }
-  auto paths = std::vector<std::string>();
+  auto &paths = config.push[std::string(optarg, eq)];
   auto optarg_end = optarg + strlen(optarg);
-  const char *i = eq + 1;
+  auto i = eq + 1;
   for (;;) {
-    const char *j = strchr(i, ',');
+    auto j = strchr(i, ',');
     if (j == NULL) {
       j = optarg_end;
     }
@@ -68,7 +68,7 @@ int parse_push_config(Config &config, const char *optarg) {
     i = j;
     ++i;
   }
-  config.push[std::string(optarg, eq)] = std::move(paths);
+
   return 0;
 }
 } // namespace
