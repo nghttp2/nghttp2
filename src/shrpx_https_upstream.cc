@@ -166,6 +166,8 @@ int htp_hdrs_completecb(http_parser *htp) {
     return -1;
   }
 
+  downstream->inspect_http1_request();
+
   if (get_config()->client_proxy &&
       downstream->get_request_method() != "CONNECT") {
     // Make sure that request path is an absolute URI.
