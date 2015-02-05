@@ -438,7 +438,7 @@ SpdyUpstream::SpdyUpstream(uint16_t version, ClientHandler *handler)
     initial_window_size_ = 0;
   }
   // TODO Maybe call from outside?
-  spdylay_settings_entry entry[2];
+  std::array<spdylay_settings_entry, 2> entry;
   entry[0].settings_id = SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS;
   entry[0].value = get_config()->http2_max_concurrent_streams;
   entry[0].flags = SPDYLAY_ID_FLAG_SETTINGS_NONE;
@@ -447,8 +447,8 @@ SpdyUpstream::SpdyUpstream(uint16_t version, ClientHandler *handler)
   entry[1].value = initial_window_size_;
   entry[1].flags = SPDYLAY_ID_FLAG_SETTINGS_NONE;
 
-  rv = spdylay_submit_settings(session_, SPDYLAY_FLAG_SETTINGS_NONE, entry,
-                               util::array_size(entry));
+  rv = spdylay_submit_settings(session_, SPDYLAY_FLAG_SETTINGS_NONE,
+                               entry.data(), entry.size());
   assert(rv == 0);
 
   if (version >= SPDYLAY_PROTO_SPDY3_1 &&

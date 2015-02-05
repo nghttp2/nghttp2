@@ -113,13 +113,13 @@ namespace {
 // Returns numeric address string of |addr|.  If getnameinfo() is
 // failed, "unknown" is returned.
 std::string numeric_name(addrinfo *addr) {
-  char host[NI_MAXHOST];
-  auto rv = getnameinfo(addr->ai_addr, addr->ai_addrlen, host, sizeof(host),
-                        nullptr, 0, NI_NUMERICHOST);
+  std::array<char, NI_MAXHOST> host;
+  auto rv = getnameinfo(addr->ai_addr, addr->ai_addrlen, host.data(),
+                        host.size(), nullptr, 0, NI_NUMERICHOST);
   if (rv != 0) {
     return "unknown";
   }
-  return host;
+  return host.data();
 }
 } // namespace
 
@@ -622,11 +622,11 @@ void HttpClient::disconnect() {
 int HttpClient::read_clear() {
   ev_timer_again(loop, &rt);
 
-  uint8_t buf[8192];
+  std::array<uint8_t, 8192> buf;
 
   for (;;) {
     ssize_t nread;
-    while ((nread = read(fd, buf, sizeof(buf))) == -1 && errno == EINTR)
+    while ((nread = read(fd, buf.data(), buf.size())) == -1 && errno == EINTR)
       ;
     if (nread == -1) {
       if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -639,7 +639,7 @@ int HttpClient::read_clear() {
       return -1;
     }
 
-    if (on_readfn(*this, buf, nread) != 0) {
+    if (on_readfn(*this, buf.data(), nread) != 0) {
       return -1;
     }
   }
@@ -773,17 +773,18 @@ int HttpClient::on_upgrade_connect() {
   ssize_t rv;
   record_handshake_time();
   assert(!reqvec.empty());
-  nghttp2_settings_entry iv[32];
-  size_t niv = populate_settings(iv);
-  assert(sizeof(settings_payload) >= 8 * niv);
-  rv = nghttp2_pack_settings_payload(settings_payload, sizeof(settings_payload),
-                                     iv, niv);
+  std::array<nghttp2_settings_entry, 32> iv;
+  size_t niv = populate_settings(iv.data());
+  assert(settings_payload.size() >= 8 * niv);
+  rv = nghttp2_pack_settings_payload(settings_payload.data(),
+                                     settings_payload.size(), iv.data(), niv);
   if (rv < 0) {
     return -1;
   }
   settings_payloadlen = rv;
-  auto token68 = base64::encode(&settings_payload[0],
-                                &settings_payload[settings_payloadlen]);
+  auto token68 =
+      base64::encode(std::begin(settings_payload),
+                     std::begin(settings_payload) + settings_payloadlen);
   util::to_token68(token68);
   std::string req;
   if (reqvec[0]->data_prd) {
@@ -934,8 +935,8 @@ int HttpClient::on_connect() {
     if (!reqvec[0]->data_prd) {
       stream_user_data = reqvec[0].get();
     }
-    rv = nghttp2_session_upgrade(session, settings_payload, settings_payloadlen,
-                                 stream_user_data);
+    rv = nghttp2_session_upgrade(session, settings_payload.data(),
+                                 settings_payloadlen, stream_user_data);
     if (rv != 0) {
       std::cerr << "[ERROR] nghttp2_session_upgrade() returned error: "
                 << nghttp2_strerror(rv) << std::endl;
@@ -953,9 +954,9 @@ int HttpClient::on_connect() {
   // HTTP2-Settings header field has already been submitted to
   // session object.
   if (!need_upgrade()) {
-    nghttp2_settings_entry iv[16];
-    auto niv = populate_settings(iv);
-    rv = nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, iv, niv);
+    std::array<nghttp2_settings_entry, 16> iv;
+    auto niv = populate_settings(iv.data());
+    rv = nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, iv.data(), niv);
     if (rv != 0) {
       return -1;
     }
@@ -1112,9 +1113,9 @@ int HttpClient::read_tls() {
 
   ERR_clear_error();
 
-  uint8_t buf[8192];
+  std::array<uint8_t, 8192> buf;
   for (;;) {
-    auto rv = SSL_read(ssl, buf, sizeof(buf));
+    auto rv = SSL_read(ssl, buf.data(), buf.size());
 
     if (rv == 0) {
       return -1;
@@ -1133,7 +1134,7 @@ int HttpClient::read_tls() {
       }
     }
 
-    if (on_readfn(*this, buf, rv) != 0) {
+    if (on_readfn(*this, buf.data(), rv) != 0) {
       return -1;
     }
   }
@@ -1523,10 +1524,11 @@ int on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
   if (req->inflater) {
     while (len > 0) {
       const size_t MAX_OUTLEN = 4096;
-      uint8_t out[MAX_OUTLEN];
+      std::array<uint8_t, MAX_OUTLEN> out;
       size_t outlen = MAX_OUTLEN;
       size_t tlen = len;
-      int rv = nghttp2_gzip_inflate(req->inflater, out, &outlen, data, &tlen);
+      int rv =
+          nghttp2_gzip_inflate(req->inflater, out.data(), &outlen, data, &tlen);
       if (rv != 0) {
         nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, stream_id,
                                   NGHTTP2_INTERNAL_ERROR);
@@ -1536,10 +1538,10 @@ int on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
       req->response_len += outlen;
 
       if (!config.null_out) {
-        std::cout.write(reinterpret_cast<const char *>(out), outlen);
+        std::cout.write(reinterpret_cast<const char *>(out.data()), outlen);
       }
 
-      update_html_parser(client, req, out, outlen, 0);
+      update_html_parser(client, req, out.data(), outlen, 0);
       data += tlen;
       len -= tlen;
     }
@@ -2197,9 +2199,10 @@ int run(char **uris, int n) {
                     << std::endl;
         }
         while (1) {
-          char buf[1024];
+          std::array<char, 1024> buf;
           ssize_t rret, wret;
-          while ((rret = read(0, buf, sizeof(buf))) == -1 && errno == EINTR)
+          while ((rret = read(0, buf.data(), buf.size())) == -1 &&
+                 errno == EINTR)
             ;
           if (rret == 0)
             break;
@@ -2208,7 +2211,8 @@ int run(char **uris, int n) {
                       << std::endl;
             return 1;
           }
-          while ((wret = write(data_fd, buf, rret)) == -1 && errno == EINTR)
+          while ((wret = write(data_fd, buf.data(), rret)) == -1 &&
+                 errno == EINTR)
             ;
           if (wret != rret) {
             std::cerr << "[ERROR] I/O error while writing to temporary file"

@@ -703,15 +703,15 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
   flow_control_ = true;
 
   // TODO Maybe call from outside?
-  nghttp2_settings_entry entry[2];
+  std::array<nghttp2_settings_entry, 2> entry;
   entry[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
   entry[0].value = get_config()->http2_max_concurrent_streams;
 
   entry[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
   entry[1].value = (1 << get_config()->http2_upstream_window_bits) - 1;
 
-  rv = nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE, entry,
-                               util::array_size(entry));
+  rv = nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE, entry.data(),
+                               entry.size());
   if (rv != 0) {
     ULOG(ERROR, this) << "nghttp2_submit_settings() returned error: "
                       << nghttp2_strerror(rv);

@@ -263,7 +263,7 @@ struct HttpClient {
   bool upgrade_response_complete;
   RingBuf<65536> wb;
   // SETTINGS payload sent as token68 in HTTP Upgrade
-  uint8_t settings_payload[128];
+  std::array<uint8_t, 128> settings_payload;
 
   enum { ERR_CONNECT_FAIL = -100 };
 };

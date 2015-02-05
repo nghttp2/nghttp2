@@ -402,11 +402,11 @@ int Http2Handler::fill_wb() {
 
 int Http2Handler::read_clear() {
   int rv;
-  uint8_t buf[8192];
+  std::array<uint8_t, 8192> buf;
 
   for (;;) {
     ssize_t nread;
-    while ((nread = read(fd_, buf, sizeof(buf))) == -1 && errno == EINTR)
+    while ((nread = read(fd_, buf.data(), buf.size())) == -1 && errno == EINTR)
       ;
     if (nread == -1) {
       if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -417,7 +417,7 @@ int Http2Handler::read_clear() {
     if (nread == 0) {
       return -1;
     }
-    rv = nghttp2_session_mem_recv(session_, buf, nread);
+    rv = nghttp2_session_mem_recv(session_, buf.data(), nread);
     if (rv < 0) {
       if (rv != NGHTTP2_ERR_BAD_PREFACE) {
         std::cerr << "nghttp2_session_mem_recv() returned error: "
@@ -516,12 +516,12 @@ int Http2Handler::tls_handshake() {
 }
 
 int Http2Handler::read_tls() {
-  uint8_t buf[8192];
+  std::array<uint8_t, 8192> buf;
 
   ERR_clear_error();
 
   for (;;) {
-    auto rv = SSL_read(ssl_, buf, sizeof(buf));
+    auto rv = SSL_read(ssl_, buf.data(), buf.size());
 
     if (rv == 0) {
       return -1;
@@ -541,7 +541,7 @@ int Http2Handler::read_tls() {
     }
 
     auto nread = rv;
-    rv = nghttp2_session_mem_recv(session_, buf, nread);
+    rv = nghttp2_session_mem_recv(session_, buf.data(), nread);
     if (rv < 0) {
       if (rv != NGHTTP2_ERR_BAD_PREFACE) {
         std::cerr << "nghttp2_session_mem_recv() returned error: "
@@ -624,7 +624,7 @@ int Http2Handler::on_connect() {
   if (r != 0) {
     return r;
   }
-  nghttp2_settings_entry entry[4];
+  std::array<nghttp2_settings_entry, 4> entry;
   size_t niv = 1;
 
   entry[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
@@ -635,7 +635,7 @@ int Http2Handler::on_connect() {
     entry[niv].value = sessions_->get_config()->header_table_size;
     ++niv;
   }
-  r = nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE, entry, niv);
+  r = nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE, entry.data(), niv);
   if (r != 0) {
     return r;
   }
@@ -682,20 +682,18 @@ int Http2Handler::submit_file_response(const std::string &status,
                                        nghttp2_data_provider *data_prd) {
   std::string content_length = util::utos(file_length);
   std::string last_modified_str;
-  nghttp2_nv nva[] = {
-      http2::make_nv_ls(":status", status),
-      http2::make_nv_ls("server", NGHTTPD_SERVER),
-      http2::make_nv_ls("content-length", content_length),
-      http2::make_nv_ll("cache-control", "max-age=3600"),
-      http2::make_nv_ls("date", sessions_->get_cached_date()),
-      http2::make_nv_ll("", ""),
-  };
+  auto nva = make_array(http2::make_nv_ls(":status", status),
+                        http2::make_nv_ls("server", NGHTTPD_SERVER),
+                        http2::make_nv_ls("content-length", content_length),
+                        http2::make_nv_ll("cache-control", "max-age=3600"),
+                        http2::make_nv_ls("date", sessions_->get_cached_date()),
+                        http2::make_nv_ll("", ""));
   size_t nvlen = 5;
   if (last_modified != 0) {
     last_modified_str = util::http_date(last_modified);
     nva[nvlen++] = http2::make_nv_ls("last-modified", last_modified_str);
   }
-  return nghttp2_submit_response(session_, stream->stream_id, nva, nvlen,
+  return nghttp2_submit_response(session_, stream->stream_id, nva.data(), nvlen,
                                  data_prd);
 }
 

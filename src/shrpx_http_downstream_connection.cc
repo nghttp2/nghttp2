@@ -637,13 +637,13 @@ http_parser_settings htp_hooks = {
 
 int HttpDownstreamConnection::on_read() {
   ev_timer_again(conn_.loop, &conn_.rt);
-  uint8_t buf[8192];
+  std::array<uint8_t, 8192> buf;
   int rv;
 
   if (downstream_->get_upgraded()) {
     // For upgraded connection, just pass data to the upstream.
     for (;;) {
-      auto nread = conn_.read_clear(buf, sizeof(buf));
+      auto nread = conn_.read_clear(buf.data(), buf.size());
 
       if (nread == 0) {
         return 0;
@@ -653,8 +653,8 @@ int HttpDownstreamConnection::on_read() {
         return nread;
       }
 
-      rv = downstream_->get_upstream()->on_downstream_body(downstream_, buf,
-                                                           nread, true);
+      rv = downstream_->get_upstream()->on_downstream_body(
+          downstream_, buf.data(), nread, true);
       if (rv != 0) {
         return rv;
       }
@@ -667,7 +667,7 @@ int HttpDownstreamConnection::on_read() {
   }
 
   for (;;) {
-    auto nread = conn_.read_clear(buf, sizeof(buf));
+    auto nread = conn_.read_clear(buf.data(), buf.size());
 
     if (nread == 0) {
       return 0;
@@ -677,8 +677,9 @@ int HttpDownstreamConnection::on_read() {
       return nread;
     }
 
-    auto nproc = http_parser_execute(&response_htp_, &htp_hooks,
-                                     reinterpret_cast<char *>(buf), nread);
+    auto nproc =
+        http_parser_execute(&response_htp_, &htp_hooks,
+                            reinterpret_cast<char *>(buf.data()), nread);
 
     if (nproc != static_cast<size_t>(nread)) {
       if (LOG_ENABLED(INFO)) {

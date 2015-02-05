@@ -1212,7 +1212,7 @@ int Http2Session::on_connect() {
 
   flow_control_ = true;
 
-  nghttp2_settings_entry entry[3];
+  std::array<nghttp2_settings_entry, 3> entry;
   entry[0].settings_id = NGHTTP2_SETTINGS_ENABLE_PUSH;
   entry[0].value = 0;
   entry[1].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
@@ -1221,8 +1221,8 @@ int Http2Session::on_connect() {
   entry[2].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
   entry[2].value = (1 << get_config()->http2_downstream_window_bits) - 1;
 
-  rv = nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE, entry,
-                               util::array_size(entry));
+  rv = nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE, entry.data(),
+                               entry.size());
   if (rv != 0) {
     return -1;
   }
