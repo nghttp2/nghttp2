@@ -124,12 +124,11 @@ void SpdySession::on_connect() {
   spdylay_session_set_option(session_, SPDYLAY_OPT_NO_AUTO_WINDOW_UPDATE, &val,
                              sizeof(val));
 
-  spdylay_settings_entry iv[1];
-  iv[0].settings_id = SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE;
-  iv[0].flags = SPDYLAY_ID_FLAG_SETTINGS_NONE;
-  iv[0].value = (1 << client_->worker->config->window_bits);
-  spdylay_submit_settings(session_, SPDYLAY_FLAG_SETTINGS_NONE, iv,
-                          util::array_size(iv));
+  spdylay_settings_entry iv;
+  iv.settings_id = SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE;
+  iv.flags = SPDYLAY_ID_FLAG_SETTINGS_NONE;
+  iv.value = (1 << client_->worker->config->window_bits);
+  spdylay_submit_settings(session_, SPDYLAY_FLAG_SETTINGS_NONE, &iv, 1);
 
   auto config = client_->worker->config;
 

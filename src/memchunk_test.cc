@@ -154,8 +154,8 @@ void test_memchunks_riovec(void) {
 
   chunks.append(buf, sizeof(buf));
 
-  struct iovec iov[2];
-  auto iovcnt = chunks.riovec(iov, util::array_size(iov));
+  std::array<struct iovec, 2> iov;
+  auto iovcnt = chunks.riovec(iov.data(), iov.size());
 
   auto m = chunks.head;
 
@@ -170,7 +170,7 @@ void test_memchunks_riovec(void) {
 
   chunks.drain(2 * 16);
 
-  iovcnt = chunks.riovec(iov, util::array_size(iov));
+  iovcnt = chunks.riovec(iov.data(), iov.size());
 
   CU_ASSERT(1 == iovcnt);
 

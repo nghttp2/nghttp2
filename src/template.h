@@ -50,6 +50,10 @@ std::array<T, sizeof...(Rest)+1> make_array(T &&t, Rest &&... rest) {
       {std::forward<T>(t), std::forward<Rest>(rest)...}};
 }
 
+template <typename T, size_t N> constexpr size_t array_size(T (&)[N]) {
+  return N;
+}
+
 } // namespace nghttp2
 
 #endif // TEMPLATE_H

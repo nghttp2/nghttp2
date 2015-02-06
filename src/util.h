@@ -54,10 +54,6 @@ namespace nghttp2 {
 
 namespace util {
 
-template <typename T, size_t N> constexpr size_t array_size(T (&)[N]) {
-  return N;
-}
-
 template <typename T, typename F> struct Defer {
   Defer(T t, F f) : t(t), f(std::move(f)) {}
 

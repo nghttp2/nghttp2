@@ -39,6 +39,7 @@
 #include "shrpx_downstream.h"
 #include "shrpx_worker_config.h"
 #include "util.h"
+#include "template.h"
 
 using namespace nghttp2;
 
@@ -63,7 +64,7 @@ int Log::severity_thres_ = NOTICE;
 void Log::set_severity_level(int severity) { severity_thres_ = severity; }
 
 int Log::set_severity_level_by_name(const char *name) {
-  for (size_t i = 0, max = util::array_size(SEVERITY_STR); i < max; ++i) {
+  for (size_t i = 0, max = array_size(SEVERITY_STR); i < max; ++i) {
     if (strcmp(SEVERITY_STR[i], name) == 0) {
       severity_thres_ = i;
       return 0;

@@ -148,14 +148,14 @@ void Http2Session::on_connect() {
 
   nghttp2_session_client_new(&session_, callbacks, client_);
 
-  nghttp2_settings_entry iv[2];
+  std::array<nghttp2_settings_entry, 2> iv;
   iv[0].settings_id = NGHTTP2_SETTINGS_ENABLE_PUSH;
   iv[0].value = 0;
   iv[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
   iv[1].value = (1 << client_->worker->config->window_bits) - 1;
 
-  rv = nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE, iv,
-                               util::array_size(iv));
+  rv = nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE, iv.data(),
+                               iv.size());
 
   assert(rv == 0);
 

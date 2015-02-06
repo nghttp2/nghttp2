@@ -50,7 +50,7 @@ void test_shrpx_ssl_create_lookup_tree(void) {
                              "sourceforge.net", // duplicate
                              "*.foo.bar",       // oo.bar is suffix of *.foo.bar
                              "oo.bar"};
-  int num = util::array_size(ctxs);
+  int num = array_size(ctxs);
   for (int i = 0; i < num; ++i) {
     tree->add_cert(ctxs[i], hostnames[i], strlen(hostnames[i]));
   }
@@ -88,7 +88,7 @@ void test_shrpx_ssl_create_lookup_tree(void) {
       SSL_CTX_new(SSLv23_method()), SSL_CTX_new(SSLv23_method()),
       SSL_CTX_new(SSLv23_method()), SSL_CTX_new(SSLv23_method())};
   const char *names[] = {"rab", "zab", "zzub", "ab"};
-  num = util::array_size(ctxs2);
+  num = array_size(ctxs2);
 
   tree = make_unique<ssl::CertLookupTree>();
   for (int i = 0; i < num; ++i) {
