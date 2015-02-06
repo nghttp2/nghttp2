@@ -195,13 +195,13 @@ std::string http_date(time_t t) {
   auto p = std::begin(res);
 
   auto s = DAY_OF_WEEK[tms.tm_wday];
-  p = std::copy(s, s + 3, p);
+  p = std::copy_n(s, 3, p);
   *p++ = ',';
   *p++ = ' ';
   p = cpydig(p, tms.tm_mday, 2);
   *p++ = ' ';
   s = MONTH[tms.tm_mon];
-  p = std::copy(s, s + 3, p);
+  p = std::copy_n(s, 3, p);
   *p++ = ' ';
   p = cpydig(p, tms.tm_year + 1900, 4);
   *p++ = ' ';
@@ -211,7 +211,7 @@ std::string http_date(time_t t) {
   *p++ = ':';
   p = cpydig(p, tms.tm_sec, 2);
   s = " GMT";
-  p = std::copy(s, s + 4, p);
+  p = std::copy_n(s, 4, p);
 
   return res;
 }
@@ -234,7 +234,7 @@ std::string common_log_date(time_t t) {
   p = cpydig(p, tms.tm_mday, 2);
   *p++ = '/';
   auto s = MONTH[tms.tm_mon];
-  p = std::copy(s, s + 3, p);
+  p = std::copy_n(s, 3, p);
   *p++ = '/';
   p = cpydig(p, tms.tm_year + 1900, 4);
   *p++ = ':';

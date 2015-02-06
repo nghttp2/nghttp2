@@ -211,7 +211,7 @@ public:
     len = 0;
 
     if (buf_) {
-      std::copy(buf_, buf_ + buflen_, std::begin(buffer));
+      std::copy_n(buf_, buflen_, std::begin(buffer));
 
       len += buflen_;
 
@@ -237,7 +237,7 @@ public:
         break;
       }
 
-      std::copy(data, data + nread, std::begin(buffer) + len);
+      std::copy_n(data, nread, std::begin(buffer) + len);
 
       len += nread;
     }

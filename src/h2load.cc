@@ -1204,8 +1204,8 @@ int main(int argc, char **argv) {
   auto proto_list = util::get_default_alpn();
 #ifdef HAVE_SPDYLAY
   static const char spdy_proto_list[] = "\x8spdy/3.1\x6spdy/3\x6spdy/2";
-  std::copy(spdy_proto_list, spdy_proto_list + sizeof(spdy_proto_list) - 1,
-            std::back_inserter(proto_list));
+  std::copy_n(spdy_proto_list, sizeof(spdy_proto_list) - 1,
+              std::back_inserter(proto_list));
 #endif // HAVE_SPDYLAY
   SSL_CTX_set_alpn_protos(ssl_ctx, proto_list.data(), proto_list.size());
 #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L

@@ -33,6 +33,7 @@
 #include <cstring>
 #include <memory>
 #include <array>
+#include <algorithm>
 
 #include "template.h"
 
@@ -134,7 +135,7 @@ template <typename Memchunk> struct Memchunks {
 
     for (;;) {
       auto n = std::min(static_cast<size_t>(last - first), tail->left());
-      tail->last = std::copy(first, first + n, tail->last);
+      tail->last = std::copy_n(first, n, tail->last);
       first += n;
       len += n;
       if (first == last) {
@@ -165,7 +166,7 @@ template <typename Memchunk> struct Memchunks {
       auto n = std::min(static_cast<size_t>(last - first), m->len());
 
       assert(m->len());
-      first = std::copy(m->pos, m->pos + n, first);
+      first = std::copy_n(m->pos, n, first);
       m->pos += n;
       len -= n;
       if (m->len() > 0) {

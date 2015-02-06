@@ -44,7 +44,7 @@ template <size_t N> struct Buffer {
   size_t write(const void *src, size_t count) {
     count = std::min(count, wleft());
     auto p = static_cast<const uint8_t *>(src);
-    last = std::copy(p, p + count, last);
+    last = std::copy_n(p, count, last);
     return count;
   }
   size_t write(size_t count) {
