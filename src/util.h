@@ -44,11 +44,13 @@
 
 namespace nghttp2 {
 
-// The additional HTTP/2 protocol ALPN ID we also supports for our
-// applications.  This will be removed once HTTP/2 specification is
-// finalized.
-extern const unsigned char NGHTTP2_H2_PROTO_ALIAS[];
-extern size_t NGHTTP2_H2_PROTO_ALIAS_LEN;
+// The additional HTTP/2 protocol ALPN protocol identifier we also
+// supports for our applications.  This will be removed once HTTP/2
+// specification is finalized.
+#define NGHTTP2_H2_16_ALPN "\x5h2-16"
+#define NGHTTP2_H2_16_ALPN_LEN (sizeof(NGHTTP2_H2_16_ALPN) - 1)
+#define NGHTTP2_H2_16_ID "h2-16"
+#define NGHTTP2_H2_16_ID_LEN (sizeof(NGHTTP2_H2_16_ID) - 1)
 
 namespace util {
 

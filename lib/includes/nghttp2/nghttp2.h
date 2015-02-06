@@ -52,6 +52,24 @@ extern "C" {
 /**
  * @macro
  *
+ * The seriazlied form of ALPN protocol identifier this library
+ * supports.  Notice that first byte is the length of following
+ * protocol identifier.  This is the same wire format of `TLS ALPN
+ * extension <https://tools.ietf.org/html/rfc7301>`_.  This is useful
+ * to process incoming ALPN tokens in wire format.
+ */
+#define NGHTTP2_PROTO_ALPN "\x5h2-14"
+
+/**
+ * @macro
+ *
+ * The length of :macro:`NGHTTP2_PROTO_ALPN`.
+ */
+#define NGHTTP2_PROTO_ALPN_LEN (sizeof(NGHTTP2_PROTO_ALPN) - 1)
+
+/**
+ * @macro
+ *
  * The protocol version identification string of this library
  * supports.  This identifier is used if HTTP/2 is used over cleartext
  * TCP.
