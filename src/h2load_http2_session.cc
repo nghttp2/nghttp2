@@ -28,6 +28,7 @@
 
 #include "h2load.h"
 #include "util.h"
+#include "template.h"
 
 using namespace nghttp2;
 
@@ -126,8 +127,7 @@ void Http2Session::on_connect() {
 
   nghttp2_session_callbacks_new(&callbacks);
 
-  auto callbacks_deleter =
-      util::defer(callbacks, nghttp2_session_callbacks_del);
+  auto callbacks_deleter = defer(nghttp2_session_callbacks_del, callbacks);
 
   nghttp2_session_callbacks_set_on_frame_recv_callback(callbacks,
                                                        on_frame_recv_callback);

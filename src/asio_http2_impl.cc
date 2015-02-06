@@ -135,10 +135,10 @@ void http2_impl::backlog(int backlog) { backlog_ = backlog; }
 
 } // namespace server
 
-template <typename T, typename F>
-std::shared_ptr<util::Defer<T, F>> defer_shared(T &&t, F f) {
-  return std::make_shared<util::Defer<T, F>>(std::forward<T>(t),
-                                             std::forward<F>(f));
+template <typename F, typename... T>
+std::shared_ptr<Defer<F, T...>> defer_shared(F &&f, T &&... t) {
+  return std::make_shared<Defer<F, T...>>(std::forward<F>(f),
+                                          std::forward<T>(t)...);
 }
 
 read_cb file_reader(const std::string &path) {
@@ -151,7 +151,7 @@ read_cb file_reader(const std::string &path) {
 }
 
 read_cb file_reader_from_fd(int fd) {
-  auto d = defer_shared(static_cast<int>(fd), close);
+  auto d = defer_shared(close, fd);
 
   return [fd, d](uint8_t *buf, size_t len) -> read_cb::result_type {
     int rv;

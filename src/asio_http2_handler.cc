@@ -525,7 +525,7 @@ int http2_handler::start() {
     return -1;
   }
 
-  auto cb_del = util::defer(callbacks, nghttp2_session_callbacks_del);
+  auto cb_del = defer(nghttp2_session_callbacks_del, callbacks);
 
   nghttp2_session_callbacks_set_on_begin_headers_callback(
       callbacks, on_begin_headers_callback);
@@ -548,7 +548,7 @@ int http2_handler::start() {
     return -1;
   }
 
-  auto opt_del = util::defer(option, nghttp2_option_del);
+  auto opt_del = defer(nghttp2_option_del, option);
 
   nghttp2_option_set_recv_client_preface(option, 1);
 

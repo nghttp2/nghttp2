@@ -280,7 +280,7 @@ void print_server_tmp_key(SSL *ssl) {
     return;
   }
 
-  auto key_del = util::defer(key, EVP_PKEY_free);
+  auto key_del = defer(EVP_PKEY_free, key);
 
   std::cout << "Server Temp Key: ";
 
@@ -293,7 +293,7 @@ void print_server_tmp_key(SSL *ssl) {
     break;
   case EVP_PKEY_EC: {
     auto ec = EVP_PKEY_get1_EC_KEY(key);
-    auto ec_del = util::defer(ec, EC_KEY_free);
+    auto ec_del = defer(EC_KEY_free, ec);
     auto nid = EC_GROUP_get_curve_name(EC_KEY_get0_group(ec));
     auto cname = EC_curve_nid2nist(nid);
     if (!cname) {

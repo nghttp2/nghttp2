@@ -54,19 +54,6 @@ namespace nghttp2 {
 
 namespace util {
 
-template <typename T, typename F> struct Defer {
-  Defer(T t, F f) : t(t), f(std::move(f)) {}
-
-  ~Defer() { f(t); }
-
-  T t;
-  F f;
-};
-
-template <typename T, typename F> Defer<T, F> defer(T &&t, F f) {
-  return Defer<T, F>(std::forward<T>(t), std::forward<F>(f));
-}
-
 extern const char DEFAULT_STRIP_CHARSET[];
 
 template <typename InputIterator>

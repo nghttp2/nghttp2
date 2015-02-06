@@ -54,6 +54,23 @@ template <typename T, size_t N> constexpr size_t array_size(T (&)[N]) {
   return N;
 }
 
+// inspired by <http://blog.korfuri.fr/post/go-defer-in-cpp/>, but our
+// template can take functions returning other than void.
+template <typename F, typename... T> struct Defer {
+  Defer(F &&f, T &&... t)
+      : f(std::bind(std::forward<F>(f), std::forward<T>(t)...)) {}
+  Defer(Defer &&o) : f(std::move(o.f)) {}
+  ~Defer() { f(); }
+
+  using ResultType = typename std::result_of<
+      typename std::decay<F>::type(typename std::decay<T>::type...)>::type;
+  std::function<ResultType()> f;
+};
+
+template <typename F, typename... T> Defer<F, T...> defer(F &&f, T &&... t) {
+  return Defer<F, T...>(std::forward<F>(f), std::forward<T>(t)...);
+}
+
 } // namespace nghttp2
 
 #endif // TEMPLATE_H
