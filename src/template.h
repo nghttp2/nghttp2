@@ -29,6 +29,7 @@
 
 #include <memory>
 #include <array>
+#include <functional>
 
 namespace nghttp2 {
 

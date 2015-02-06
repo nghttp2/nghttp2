@@ -45,7 +45,7 @@
 #include <openssl/ssl.h>
 
 #include "http2.h"
-#include "ringbuf.h"
+#include "buffer.h"
 
 using namespace nghttp2;
 
@@ -174,7 +174,7 @@ struct Client {
   // The number of requests this client has done so far.
   size_t req_done;
   int fd;
-  RingBuf<65536> wb;
+  Buffer<65536> wb;
 
   enum { ERR_CONNECT_FAIL = -100 };
 

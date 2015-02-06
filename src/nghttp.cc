@@ -652,11 +652,8 @@ int HttpClient::write_clear() {
 
   for (;;) {
     if (wb.rleft() > 0) {
-      struct iovec iov[2];
-      auto iovcnt = wb.riovec(iov);
-
       ssize_t nwrite;
-      while ((nwrite = writev(fd, iov, iovcnt)) == -1 && errno == EINTR)
+      while ((nwrite = write(fd, wb.pos, wb.rleft())) == -1 && errno == EINTR)
         ;
       if (nwrite == -1) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -1147,11 +1144,7 @@ int HttpClient::write_tls() {
 
   for (;;) {
     if (wb.rleft() > 0) {
-      const void *p;
-      size_t len;
-      std::tie(p, len) = wb.get();
-
-      auto rv = SSL_write(ssl, p, len);
+      auto rv = SSL_write(ssl, wb.pos, wb.rleft());
 
       if (rv == 0) {
         return -1;

@@ -45,7 +45,7 @@ void test_buffer_write(void) {
 
   CU_ASSERT(3 == b.rleft());
   CU_ASSERT(13 == b.wleft());
-  CU_ASSERT(0 == b.pos - std::begin(b.buf));
+  CU_ASSERT(b.pos == std::begin(b.buf));
 
   b.drain(3);
 
@@ -65,14 +65,14 @@ void test_buffer_write(void) {
   b.reset();
 
   CU_ASSERT(0 == b.rleft());
-  CU_ASSERT(0 == b.wleft());
-  CU_ASSERT(0 == b.pos - std::begin(b.buf));
+  CU_ASSERT(16 == b.wleft());
+  CU_ASSERT(b.pos == std::begin(b.buf));
 
   b.write(5);
 
   CU_ASSERT(5 == b.rleft());
   CU_ASSERT(11 == b.wleft());
-  CU_ASSERT(0 == b.pos - std::begin(b.buf));
+  CU_ASSERT(b.pos == std::begin(b.buf));
 }
 
 } // namespace nghttp2

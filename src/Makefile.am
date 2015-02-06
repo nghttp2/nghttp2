@@ -76,8 +76,7 @@ nghttp_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} nghttp.cc nghttp.h \
 
 nghttpd_SOURCES = ${HELPER_OBJECTS} ${HELPER_HFILES} nghttpd.cc \
 	ssl.cc ssl.h \
-	HttpServer.cc HttpServer.h \
-	ringbuf.h
+	HttpServer.cc HttpServer.h
 
 bin_PROGRAMS += h2load
 
@@ -142,7 +141,6 @@ nghttpx_unittest_SOURCES = shrpx-unittest.cc \
 	util_test.cc util_test.h \
 	nghttp2_gzip_test.c nghttp2_gzip_test.h \
 	nghttp2_gzip.c nghttp2_gzip.h \
-	ringbuf_test.cc ringbuf_test.h \
 	buffer_test.cc buffer_test.h \
 	memchunk_test.cc memchunk_test.h
 nghttpx_unittest_CPPFLAGS = ${AM_CPPFLAGS}\

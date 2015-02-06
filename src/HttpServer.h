@@ -44,7 +44,7 @@
 #include <nghttp2/nghttp2.h>
 
 #include "http2.h"
-#include "ringbuf.h"
+#include "buffer.h"
 
 namespace nghttp2 {
 
@@ -143,7 +143,7 @@ private:
   ev_io rev_;
   ev_timer settings_timerev_;
   std::map<int32_t, std::unique_ptr<Stream>> id2stream_;
-  RingBuf<65536> wb_;
+  Buffer<65536> wb_;
   std::function<int(Http2Handler &)> read_, write_;
   int64_t session_id_;
   nghttp2_session *session_;

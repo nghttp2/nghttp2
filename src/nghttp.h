@@ -45,7 +45,7 @@
 
 #include "http-parser/http_parser.h"
 
-#include "ringbuf.h"
+#include "buffer.h"
 #include "http2.h"
 #include "nghttp2_gzip.h"
 
@@ -261,7 +261,7 @@ struct HttpClient {
   // true if the response message of HTTP Upgrade request is fully
   // received. It is not relevant the upgrade succeeds, or not.
   bool upgrade_response_complete;
-  RingBuf<65536> wb;
+  Buffer<65536> wb;
   // SETTINGS payload sent as token68 in HTTP Upgrade
   std::array<uint8_t, 128> settings_payload;
 

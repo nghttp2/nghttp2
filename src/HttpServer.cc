@@ -434,11 +434,9 @@ int Http2Handler::write_clear() {
   auto loop = sessions_->get_loop();
   for (;;) {
     if (wb_.rleft() > 0) {
-      struct iovec iov[2];
-      auto iovcnt = wb_.riovec(iov);
-
       ssize_t nwrite;
-      while ((nwrite = writev(fd_, iov, iovcnt)) == -1 && errno == EINTR)
+      while ((nwrite = write(fd_, wb_.pos, wb_.rleft())) == -1 &&
+             errno == EINTR)
         ;
       if (nwrite == -1) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -562,11 +560,7 @@ int Http2Handler::write_tls() {
 
   for (;;) {
     if (wb_.rleft() > 0) {
-      const void *p;
-      size_t len;
-      std::tie(p, len) = wb_.get();
-
-      auto rv = SSL_write(ssl_, p, len);
+      auto rv = SSL_write(ssl_, wb_.pos, wb_.rleft());
 
       if (rv == 0) {
         return -1;
