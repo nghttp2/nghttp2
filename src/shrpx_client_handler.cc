@@ -524,7 +524,7 @@ int ClientHandler::validate_next_proto() {
       break;
     }
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L
-    SSL_get0_alpn_selected(ssl_, &next_proto, &next_proto_len);
+    SSL_get0_alpn_selected(conn_.tls.ssl, &next_proto, &next_proto_len);
 #else  // OPENSSL_VERSION_NUMBER < 0x10002000L
     break;
 #endif // OPENSSL_VERSION_NUMBER < 0x10002000L
