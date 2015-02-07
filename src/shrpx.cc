@@ -202,7 +202,7 @@ std::unique_ptr<AcceptHandler> create_acceptor(ConnectionHandler *handler,
     if (fd == -1) {
       continue;
     }
-    make_socket_nonblocking(fd);
+    util::make_socket_nonblocking(fd);
 #endif // !SOCK_NONBLOCK
     int val = 1;
     if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &val,
