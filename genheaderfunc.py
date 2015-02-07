@@ -21,6 +21,9 @@ HEADERS = [
     "content-length",
     "location",
     "trailer",
+    "referer",
+    "link",
+    "accept",
     # disallowed h1 headers
     'connection',
     'keep-alive',

@@ -540,6 +540,48 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
       upstream->start_settings_timer();
     }
     break;
+  case NGHTTP2_PUSH_PROMISE: {
+    auto downstream = make_unique<Downstream>(
+        upstream, frame->push_promise.promised_stream_id, 0);
+
+    downstream->disable_upstream_rtimer();
+
+    downstream->set_request_major(2);
+    downstream->set_request_minor(0);
+
+    for (size_t i = 0; i < frame->push_promise.nvlen; ++i) {
+      auto &nv = frame->push_promise.nva[i];
+      auto token = http2::lookup_token(nv.name, nv.namelen);
+      switch (token) {
+      case http2::HD__METHOD:
+        downstream->set_request_method({nv.value, nv.value + nv.valuelen});
+        break;
+      case http2::HD__SCHEME:
+        downstream->set_request_http2_scheme(
+            {nv.value, nv.value + nv.valuelen});
+        break;
+      case http2::HD__AUTHORITY:
+        downstream->set_request_http2_authority(
+            {nv.value, nv.value + nv.valuelen});
+        break;
+      case http2::HD__PATH:
+        downstream->set_request_path({nv.value, nv.value + nv.valuelen});
+        break;
+      }
+    }
+
+    downstream->inspect_http2_request();
+
+    downstream->set_request_state(Downstream::MSG_COMPLETE);
+
+    // a bit weird but start_downstream() expects that given
+    // downstream is in pending queue.
+    auto ptr = downstream.get();
+    upstream->add_pending_downstream(std::move(downstream));
+    upstream->start_downstream(ptr);
+
+    break;
+  }
   case NGHTTP2_GOAWAY:
     if (LOG_ENABLED(INFO)) {
       auto debug_data = util::ascii_dump(frame->goaway.opaque_data,
@@ -1283,6 +1325,18 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
     return -1;
   }
 
+  if (get_config()->downstream_proto == PROTO_HTTP &&
+      (downstream->get_stream_id() % 2) &&
+      downstream->get_response_header(http2::HD_LINK) &&
+      downstream->get_response_http_status() == 200 &&
+      (downstream->get_request_method() == "GET" ||
+       downstream->get_request_method() == "POST")) {
+
+    if (prepare_push_promise(downstream) != 0) {
+      return -1;
+    }
+  }
+
   return 0;
 }
 
@@ -1446,5 +1500,130 @@ int Http2Upstream::on_downstream_reset(bool no_retry) {
 }
 
 MemchunkPool *Http2Upstream::get_mcpool() { return &mcpool_; }
+
+int Http2Upstream::prepare_push_promise(Downstream *downstream) {
+  int rv;
+  http_parser_url u;
+  memset(&u, 0, sizeof(u));
+  rv = http_parser_parse_url(downstream->get_request_path().c_str(),
+                             downstream->get_request_path().size(), 0, &u);
+  if (rv != 0) {
+    return 0;
+  }
+  const char *base;
+  size_t baselen;
+  if (u.field_set & (1 << UF_PATH)) {
+    auto &f = u.field_data[UF_PATH];
+    base = downstream->get_request_path().c_str() + f.off;
+    baselen = f.len;
+  } else {
+    base = "/";
+    baselen = 1;
+  }
+  for (auto &kv : downstream->get_response_headers()) {
+    auto token = http2::lookup_token(kv.name);
+    if (token != http2::HD_LINK) {
+      continue;
+    }
+    for (auto &link :
+         http2::parse_link_header(kv.value.c_str(), kv.value.size())) {
+      auto link_url = link.url.first;
+      auto link_urllen = link.url.second - link.url.first;
+
+      const char *rel;
+      size_t rellen;
+      const char *relq = nullptr;
+      size_t relqlen = 0;
+
+      http_parser_url v;
+      memset(&v, 0, sizeof(v));
+      rv = http_parser_parse_url(link_url, link_urllen, 0, &v);
+      if (rv != 0) {
+        assert(link_urllen);
+        if (link_url[0] == '/') {
+          continue;
+        }
+        // treat link_url as relative URI.
+        auto end = std::find(link_url, link_url + link_urllen, '#');
+        auto q = std::find(link_url, end, '?');
+        rel = link_url;
+        rellen = q - link_url;
+        if (q != end) {
+          relq = q + 1;
+          relqlen = end - relq;
+        }
+      } else {
+        if (v.field_set & (1 << UF_HOST)) {
+          continue;
+        }
+        if (v.field_set & (1 << UF_PATH)) {
+          auto &f = v.field_data[UF_PATH];
+          rel = link_url + f.off;
+          rellen = f.len;
+        } else {
+          rel = "/";
+          rellen = 1;
+        }
+
+        if (v.field_set & (1 << UF_QUERY)) {
+          auto &f = v.field_data[UF_QUERY];
+          relq = link_url + f.off;
+          relqlen = f.len;
+        }
+      }
+      auto path = http2::path_join(base, baselen, nullptr, 0, rel, rellen, relq,
+                                   relqlen);
+      rv = submit_push_promise(path, downstream);
+      if (rv != 0) {
+        return -1;
+      }
+    }
+  }
+  return 0;
+}
+
+int Http2Upstream::submit_push_promise(const std::string &path,
+                                       Downstream *downstream) {
+  int rv;
+  std::vector<nghttp2_nv> nva;
+  nva.reserve(downstream->get_request_headers().size());
+  for (auto &kv : downstream->get_request_headers()) {
+    auto token = http2::lookup_token(kv.name);
+    switch (token) {
+    case http2::HD__METHOD:
+      // juse use "GET" for now
+      nva.push_back(http2::make_nv_lc(":method", "GET"));
+      continue;
+    case http2::HD__PATH:
+      nva.push_back(http2::make_nv_ls(":path", path));
+      continue;
+    case http2::HD_ACCEPT:
+      // browser tends to change accept header field value depending
+      // on requesting resource.  So just omit it for now.
+      continue;
+    case http2::HD_REFERER:
+      // TODO construct referer
+      continue;
+    }
+    nva.push_back(http2::make_nv(kv.name, kv.value, kv.no_index));
+  }
+
+  rv = nghttp2_submit_push_promise(session_, NGHTTP2_FLAG_NONE,
+                                   downstream->get_stream_id(), nva.data(),
+                                   nva.size(), nullptr);
+
+  if (rv != 0) {
+    if (LOG_ENABLED(INFO)) {
+      ULOG(INFO, this) << "nghttp2_submit_push_promise() failed: "
+                       << nghttp2_strerror(rv);
+    }
+    if (nghttp2_is_fatal(rv)) {
+      return -1;
+    }
+    return 0;
+  }
+
+  return 0;
+}
 
 } // namespace shrpx

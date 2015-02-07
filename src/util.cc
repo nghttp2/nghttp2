@@ -99,6 +99,12 @@ bool in_token(char c) {
              &extra[sizeof(extra)];
 }
 
+bool in_attr_char(char c) {
+  static const char bad[] = {'*', '\'', '%'};
+  return util::in_token(c) &&
+         std::find(std::begin(bad), std::end(bad) - 1, c) == std::end(bad) - 1;
+}
+
 std::string percent_encode_token(const std::string &target) {
   auto len = target.size();
   std::string dest;

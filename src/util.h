@@ -163,6 +163,8 @@ bool inRFC3986UnreservedChars(const char c);
 // Returns true if |c| is in token (HTTP-p1, Section 3.2.6)
 bool in_token(char c);
 
+bool in_attr_char(char c);
+
 std::string percentEncode(const unsigned char *target, size_t len);
 
 std::string percentEncode(const std::string &target);

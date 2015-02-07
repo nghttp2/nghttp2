@@ -438,6 +438,11 @@ int lookup_token(const uint8_t *name, size_t namelen) {
     break;
   case 4:
     switch (name[namelen - 1]) {
+    case 'k':
+      if (util::streq("lin", name, 3)) {
+        return HD_LINK;
+      }
+      break;
     case 't':
       if (util::streq("hos", name, 3)) {
         return HD_HOST;
@@ -472,6 +477,9 @@ int lookup_token(const uint8_t *name, size_t namelen) {
       }
       break;
     case 't':
+      if (util::streq("accep", name, 5)) {
+        return HD_ACCEPT;
+      }
       if (util::streq("expec", name, 5)) {
         return HD_EXPECT;
       }
@@ -499,6 +507,9 @@ int lookup_token(const uint8_t *name, size_t namelen) {
       }
       break;
     case 'r':
+      if (util::streq("refere", name, 6)) {
+        return HD_REFERER;
+      }
       if (util::streq("traile", name, 6)) {
         return HD_TRAILER;
       }
@@ -666,6 +677,330 @@ const Headers::value_type *get_header(const HeaderIndex &hdidx, int token,
     return nullptr;
   }
   return &nva[i];
+}
+
+namespace {
+template <typename InputIt> InputIt skip_lws(InputIt first, InputIt last) {
+  for (; first != last; ++first) {
+    switch (*first) {
+    case ' ':
+    case '\t':
+      continue;
+    default:
+      return first;
+    }
+  }
+  return first;
+}
+} // namespace
+
+namespace {
+template <typename InputIt>
+InputIt skip_to_next_field(InputIt first, InputIt last) {
+  for (; first != last; ++first) {
+    switch (*first) {
+    case ' ':
+    case '\t':
+    case ',':
+      continue;
+    default:
+      return first;
+    }
+  }
+  return first;
+}
+} // namespace
+
+namespace {
+std::pair<LinkHeader, const char *>
+parse_next_link_header_once(const char *first, const char *last) {
+  first = skip_to_next_field(first, last);
+  if (first == last || *first != '<') {
+    return {{{0, 0}}, last};
+  }
+  auto url_first = ++first;
+  first = std::find(first, last, '>');
+  if (first == last) {
+    return {{{0, 0}}, first};
+  }
+  auto url_last = first++;
+  if (first == last) {
+    return {{{0, 0}}, first};
+  }
+  // we expect ';' or ',' here
+  switch (*first) {
+  case ',':
+    return {{{0, 0}}, ++first};
+  case ';':
+    ++first;
+    break;
+  default:
+    return {{{0, 0}}, last};
+  }
+
+  auto ok = false;
+  for (;;) {
+    first = skip_lws(first, last);
+    if (first == last) {
+      return {{{0, 0}}, first};
+    }
+    // we expect link-param
+
+    // we are only interested in rel=preload parameter.  Others are
+    // simply skipped.
+    static const char PL[] = "rel=preload";
+    if (last - first >= sizeof(PL) - 1) {
+      if (memcmp(PL, first, sizeof(PL) - 1) == 0) {
+        if (first + sizeof(PL) - 1 == last) {
+          ok = true;
+          // this is the end of sequence
+          return {{{url_first, url_last}}, last};
+        }
+        switch (*(first + sizeof(PL) - 1)) {
+        case ',':
+          ok = true;
+          // skip including ','
+          first += sizeof(PL);
+          return {{{url_first, url_last}}, first};
+        case ';':
+          ok = true;
+          // skip including ';'
+          first += sizeof(PL);
+          // continue parse next link-param
+          continue;
+        }
+      }
+    }
+    auto param_first = first;
+    for (; first != last;) {
+      if (util::in_attr_char(*first)) {
+        ++first;
+        continue;
+      }
+      // '*' is only allowed at the end of parameter name and must be
+      // followed by '='
+      if (last - first >= 2 && first != param_first) {
+        if (*first == '*' && *(first + 1) == '=') {
+          ++first;
+          break;
+        }
+      }
+      if (*first == '=' || *first == ';' || *first == ',') {
+        break;
+      }
+      return {{{0, 0}}, last};
+    }
+    if (param_first == first) {
+      // empty parmname
+      return {{{0, 0}}, last};
+    }
+    // link-param without value is acceptable (see link-extension) if
+    // it is not followed by '='
+    if (first == last || *first == ',') {
+      goto almost_done;
+    }
+    if (*first == ';') {
+      ++first;
+      // parse next link-param
+      continue;
+    }
+    // now parsing lin-param value
+    assert(*first == '=');
+    ++first;
+    if (first == last) {
+      // empty value is not acceptable
+      return {{{0, 0}}, first};
+    }
+    if (*first == '"') {
+      // quoted-string
+      first = std::find(first + 1, last, '"');
+      if (first == last) {
+        return {{{0, 0}}, first};
+      }
+      ++first;
+      if (first == last || *first == ',') {
+        goto almost_done;
+      }
+      if (*first == ';') {
+        ++first;
+        // parse next link-param
+        continue;
+      }
+      return {{{0, 0}}, last};
+    }
+    // not quoted-string, skip to next ',' or ';'
+    if (*first == ',' || *first == ';') {
+      // empty value
+      return {{{0, 0}}, last};
+    }
+    for (; first != last; ++first) {
+      if (*first == ',' || *first == ';') {
+        break;
+      }
+    }
+    if (first == last || *first == ',') {
+      goto almost_done;
+    }
+    assert(*first == ';');
+    ++first;
+    // parse next link-param
+  }
+
+almost_done:
+  assert(first == last || *first == ',');
+
+  if (*first == ',') {
+    ++first;
+  }
+  if (ok) {
+    return {{{url_first, url_last}}, first};
+  }
+  return {{{0, 0}}, first};
+}
+} // namespace
+
+std::vector<LinkHeader> parse_link_header(const char *src, size_t len) {
+  auto first = src;
+  auto last = src + len;
+  std::vector<LinkHeader> res;
+  for (; first != last;) {
+    auto rv = parse_next_link_header_once(first, last);
+    first = rv.second;
+    if (rv.first.url.first != 0 || rv.first.url.second != 0) {
+      res.push_back(rv.first);
+    }
+  }
+  return res;
+}
+
+namespace {
+void eat_file(std::string &path) {
+  if (path.empty()) {
+    path = "/";
+    return;
+  }
+  auto p = path.size() - 1;
+  if (path[p] == '/') {
+    return;
+  }
+  p = path.rfind('/', p);
+  if (p == std::string::npos) {
+    // this should not happend in normal case, where we expect path
+    // starts with '/'
+    path = "/";
+    return;
+  }
+  path.erase(std::begin(path) + p + 1, std::end(path));
+}
+} // namespace
+
+namespace {
+void eat_dir(std::string &path) {
+  if (path.empty()) {
+    path = "/";
+    return;
+  }
+  auto p = path.size() - 1;
+  if (path[p] != '/') {
+    p = path.rfind('/', p);
+    if (p == std::string::npos) {
+      // this should not happend in normal case, where we expect path
+      // starts with '/'
+      path = "/";
+      return;
+    }
+  }
+  if (path[p] == '/') {
+    if (p == 0) {
+      return;
+    }
+    --p;
+  }
+  p = path.rfind('/', p);
+  if (p == std::string::npos) {
+    // this should not happend in normal case, where we expect path
+    // starts with '/'
+    path = "/";
+    return;
+  }
+  path.erase(std::begin(path) + p + 1, std::end(path));
+}
+} // namespace
+
+std::string path_join(const char *base_path, size_t base_pathlen,
+                      const char *base_query, size_t base_querylen,
+                      const char *rel_path, size_t rel_pathlen,
+                      const char *rel_query, size_t rel_querylen) {
+  std::string res;
+  if (rel_pathlen == 0) {
+    if (base_pathlen == 0) {
+      res = "/";
+    } else {
+      res.assign(base_path, base_pathlen);
+    }
+    if (rel_querylen == 0) {
+      if (base_querylen) {
+        res += "?";
+        res.append(base_query, base_querylen);
+      }
+      return res;
+    }
+    res += "?";
+    res.append(rel_query, rel_querylen);
+    return res;
+  }
+
+  auto first = rel_path;
+  auto last = rel_path + rel_pathlen;
+
+  if (rel_path[0] == '/') {
+    res = "/";
+    ++first;
+  } else if (base_pathlen == 0) {
+    res = "/";
+  } else {
+    res.assign(base_path, base_pathlen);
+  }
+
+  for (; first != last;) {
+    if (*first == '.') {
+      if (first + 1 == last) {
+        break;
+      }
+      if (*(first + 1) == '/') {
+        first += 2;
+        continue;
+      }
+      if (*(first + 1) == '.') {
+        if (first + 2 == last) {
+          eat_dir(res);
+          break;
+        }
+        if (*(first + 2) == '/') {
+          eat_dir(res);
+          first += 3;
+          continue;
+        }
+      }
+    }
+    if (res.back() != '/') {
+      eat_file(res);
+    }
+    auto slash = std::find(first, last, '/');
+    if (slash == last) {
+      res.append(first, last);
+      break;
+    }
+    res.append(first, slash + 1);
+    first = slash + 1;
+    for (; first != last && *first == '/'; ++first)
+      ;
+  }
+  if (rel_querylen) {
+    res += "?";
+    res.append(rel_query, rel_querylen);
+  }
+  return res;
 }
 
 } // namespace http2

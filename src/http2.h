@@ -189,6 +189,7 @@ enum {
   HD__PATH,
   HD__SCHEME,
   HD__STATUS,
+  HD_ACCEPT,
   HD_ALT_SVC,
   HD_CONNECTION,
   HD_CONTENT_LENGTH,
@@ -198,8 +199,10 @@ enum {
   HD_HTTP2_SETTINGS,
   HD_IF_MODIFIED_SINCE,
   HD_KEEP_ALIVE,
+  HD_LINK,
   HD_LOCATION,
   HD_PROXY_CONNECTION,
+  HD_REFERER,
   HD_SERVER,
   HD_TE,
   HD_TRAILER,
@@ -246,6 +249,27 @@ bool http2_mandatory_request_headers_presence(const HeaderIndex &hdidx);
 // Returns header denoted by |token| using index |hdidx|.
 const Headers::value_type *get_header(const HeaderIndex &hdidx, int token,
                                       const Headers &nva);
+
+struct LinkHeader {
+  std::pair<const char *, const char *> url;
+};
+
+// Returns next URI-reference in Link header field value |src| of
+// length |len|.  If no URI-reference found after searching all input,
+// returned uri field is empty.  This imply that empty URI-reference
+// is ignored during parsing.
+std::vector<LinkHeader> parse_link_header(const char *src, size_t len);
+
+// Constructs path by combining base path |base_path| of length
+// |base_pathlen| with another path |rel_path| of length
+// |rel_pathlen|.  The base path and another path can have optional
+// query component.  This function assumes |base_path| is
+// cannibalized.  In other words, it does not contain ".." or "." path
+// components and starts with "/" if it is not empty.
+std::string path_join(const char *base_path, size_t base_pathlen,
+                      const char *base_query, size_t base_querylen,
+                      const char *rel_path, size_t rel_pathlen,
+                      const char *rel_query, size_t rel_querylen);
 
 } // namespace http2
 

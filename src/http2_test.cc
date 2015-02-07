@@ -290,4 +290,359 @@ void test_http2_mandatory_request_headers_presence(void) {
   CU_ASSERT(http2::http2_mandatory_request_headers_presence(hdidx));
 }
 
+void test_http2_parse_link_header(void) {
+  {
+    // only URI appears; we don't extract URI unless it bears rel=preload
+    const char s[] = "<url>";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(0 == res.size());
+  }
+  {
+    // URI url should be extracted
+    const char s[] = "<url>; rel=preload";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(1 == res.size());
+    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].url);
+  }
+  {
+    // With extra link-param.  URI url should be extracted
+    const char s[] = "<url>; rel=preload; as=file";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(1 == res.size());
+    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].url);
+  }
+  {
+    // With extra link-param.  URI url should be extracted
+    const char s[] = "<url>; as=file; rel=preload";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(1 == res.size());
+    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].url);
+  }
+  {
+    // With extra link-param and quote-string.  URI url should be
+    // extracted
+    const char s[] = R"(<url>; rel=preload; title="foo,bar")";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(1 == res.size());
+    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].url);
+  }
+  {
+    // With extra link-param and quote-string.  URI url should be
+    // extracted
+    const char s[] = R"(<url>; title="foo,bar"; rel=preload)";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(1 == res.size());
+    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].url);
+  }
+  {
+    // ',' after quote-string
+    const char s[] = R"(<url>; title="foo,bar", <url>; rel=preload)";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(1 == res.size());
+    CU_ASSERT(std::make_pair(&s[25], &s[28]) == res[0].url);
+  }
+  {
+    // Only first URI should be extracted.
+    const char s[] = "<url>; rel=preload, <url>";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(1 == res.size());
+    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].url);
+  }
+  {
+    // Both have rel=preload, so both urls should be extracted
+    const char s[] = "<url>; rel=preload, <url>; rel=preload";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(2 == res.size());
+    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].url);
+    CU_ASSERT(std::make_pair(&s[21], &s[24]) == res[1].url);
+  }
+  {
+    // Second URI uri should be extracted.
+    const char s[] = "<url>, <url>;rel=preload";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(1 == res.size());
+    CU_ASSERT(std::make_pair(&s[8], &s[11]) == res[0].url);
+  }
+  {
+    // Error if input ends with ';'
+    const char s[] = "<url>;rel=preload;";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(0 == res.size());
+  }
+  {
+    // OK if input ends with ','
+    const char s[] = "<url>;rel=preload,";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(1 == res.size());
+    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].url);
+  }
+  {
+    // Multiple repeated ','s between fields is OK
+    const char s[] = "<url>,,,<url>;rel=preload";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(1 == res.size());
+    CU_ASSERT(std::make_pair(&s[9], &s[12]) == res[0].url);
+  }
+  {
+    // Error if url is not enclosed by <>
+    const char s[] = "url>;rel=preload;";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(0 == res.size());
+  }
+  {
+    // Error if url is not enclosed by <>
+    const char s[] = "<url;rel=preload;";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(0 == res.size());
+  }
+  {
+    // Empty parameter value is not allowed
+    const char s[] = "<url>;rel=preload; as=";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(0 == res.size());
+  }
+  {
+    // Empty parameter value is not allowed
+    const char s[] = "<url>;as=;rel=preload";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(0 == res.size());
+  }
+  {
+    // Empty parameter value is not allowed
+    const char s[] = "<url>;as=, <url>;rel=preload";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(0 == res.size());
+  }
+  {
+    // Empty parameter name is not allowed
+    const char s[] = "<url>; =file; rel=preload";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(0 == res.size());
+  }
+  {
+    // Without whitespaces
+    const char s[] = "<url>;as=file;rel=preload,<url>;rel=preload";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(2 == res.size());
+    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].url);
+    CU_ASSERT(std::make_pair(&s[27], &s[30]) == res[1].url);
+  }
+  {
+    // link-extension may have no value
+    const char s[] = "<url>; as; rel=preload";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(1 == res.size());
+    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].url);
+  }
+  {
+    // ext-name-star
+    const char s[] = "<url>; foo*=bar; rel=preload";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(1 == res.size());
+    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].url);
+  }
+  {
+    // '*' is not allowed expect for trailing one
+    const char s[] = "<url>; *=bar; rel=preload";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(0 == res.size());
+  }
+  {
+    // '*' is not allowed expect for trailing one
+    const char s[] = "<url>; foo*bar=buzz; rel=preload";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(0 == res.size());
+  }
+  {
+    // ext-name-star must be followed by '='
+    const char s[] = "<url>; foo*; rel=preload";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(0 == res.size());
+  }
+  {
+    // '>' is not followed by ';'
+    const char s[] = "<url> rel=preload";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(0 == res.size());
+  }
+  {
+    // Starting with whitespace is no problem.
+    const char s[] = "  <url>; rel=preload";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(1 == res.size());
+    CU_ASSERT(std::make_pair(&s[3], &s[6]) == res[0].url);
+  }
+}
+
+void test_http2_path_join(void) {
+  {
+    const char base[] = "/";
+    const char rel[] = "/";
+    CU_ASSERT("/" == http2::path_join(base, sizeof(base) - 1, nullptr, 0, rel,
+                                      sizeof(rel) - 1, nullptr, 0));
+  }
+  {
+    const char base[] = "/";
+    const char rel[] = "/alpha";
+    CU_ASSERT("/alpha" == http2::path_join(base, sizeof(base) - 1, nullptr, 0,
+                                           rel, sizeof(rel) - 1, nullptr, 0));
+  }
+  {
+    // rel ends with trailing '/'
+    const char base[] = "/";
+    const char rel[] = "/alpha/";
+    CU_ASSERT("/alpha/" == http2::path_join(base, sizeof(base) - 1, nullptr, 0,
+                                            rel, sizeof(rel) - 1, nullptr, 0));
+  }
+  {
+    // rel contains multiple components
+    const char base[] = "/";
+    const char rel[] = "/alpha/bravo";
+    CU_ASSERT("/alpha/bravo" == http2::path_join(base, sizeof(base) - 1,
+                                                 nullptr, 0, rel,
+                                                 sizeof(rel) - 1, nullptr, 0));
+  }
+  {
+    // rel is relative
+    const char base[] = "/";
+    const char rel[] = "alpha/bravo";
+    CU_ASSERT("/alpha/bravo" == http2::path_join(base, sizeof(base) - 1,
+                                                 nullptr, 0, rel,
+                                                 sizeof(rel) - 1, nullptr, 0));
+  }
+  {
+    // rel is relative
+    const char base[] = "/alpha";
+    const char rel[] = "bravo/charlie";
+    CU_ASSERT("/bravo/charlie" ==
+              http2::path_join(base, sizeof(base) - 1, nullptr, 0, rel,
+                               sizeof(rel) - 1, nullptr, 0));
+  }
+  {
+    // rel contains repeated '/'s
+    const char base[] = "/";
+    const char rel[] = "/alpha/////bravo/////";
+    CU_ASSERT("/alpha/bravo/" == http2::path_join(base, sizeof(base) - 1,
+                                                  nullptr, 0, rel,
+                                                  sizeof(rel) - 1, nullptr, 0));
+  }
+  {
+    // base ends with '/', so '..' eats 'bravo'
+    const char base[] = "/alpha/bravo/";
+    const char rel[] = "../charlie/delta";
+    CU_ASSERT("/alpha/charlie/delta" ==
+              http2::path_join(base, sizeof(base) - 1, nullptr, 0, rel,
+                               sizeof(rel) - 1, nullptr, 0));
+  }
+  {
+    // base does not end with '/', so '..' eats 'alpha/bravo'
+    const char base[] = "/alpha/bravo";
+    const char rel[] = "../charlie";
+    CU_ASSERT("/charlie" == http2::path_join(base, sizeof(base) - 1, nullptr, 0,
+                                             rel, sizeof(rel) - 1, nullptr, 0));
+  }
+  {
+    // 'charlie' is eaten by following '..'
+    const char base[] = "/alpha/bravo/";
+    const char rel[] = "../charlie/../delta";
+    CU_ASSERT("/alpha/delta" == http2::path_join(base, sizeof(base) - 1,
+                                                 nullptr, 0, rel,
+                                                 sizeof(rel) - 1, nullptr, 0));
+  }
+  {
+    // excessive '..' results in '/'
+    const char base[] = "/alpha/bravo/";
+    const char rel[] = "../../../";
+    CU_ASSERT("/" == http2::path_join(base, sizeof(base) - 1, nullptr, 0, rel,
+                                      sizeof(rel) - 1, nullptr, 0));
+  }
+  {
+    // excessive '..'  and  path component
+    const char base[] = "/alpha/bravo/";
+    const char rel[] = "../../../charlie";
+    CU_ASSERT("/charlie" == http2::path_join(base, sizeof(base) - 1, nullptr, 0,
+                                             rel, sizeof(rel) - 1, nullptr, 0));
+  }
+  {
+    // rel ends with '..'
+    const char base[] = "/alpha/bravo/";
+    const char rel[] = "charlie/..";
+    CU_ASSERT("/alpha/bravo/" == http2::path_join(base, sizeof(base) - 1,
+                                                  nullptr, 0, rel,
+                                                  sizeof(rel) - 1, nullptr, 0));
+  }
+  {
+    // base empty and rel contains '..'
+    const char base[] = "";
+    const char rel[] = "charlie/..";
+    CU_ASSERT("/" == http2::path_join(base, sizeof(base) - 1, nullptr, 0, rel,
+                                      sizeof(rel) - 1, nullptr, 0));
+  }
+  {
+    // '.' is ignored
+    const char base[] = "/";
+    const char rel[] = "charlie/././././delta";
+    CU_ASSERT("/charlie/delta" ==
+              http2::path_join(base, sizeof(base) - 1, nullptr, 0, rel,
+                               sizeof(rel) - 1, nullptr, 0));
+  }
+  {
+    // '.' is ignored
+    const char base[] = "/";
+    const char rel[] = "charlie/.";
+    CU_ASSERT("/charlie/" == http2::path_join(base, sizeof(base) - 1, nullptr,
+                                              0, rel, sizeof(rel) - 1, nullptr,
+                                              0));
+  }
+  {
+    // query
+    const char base[] = "/";
+    const char rel[] = "/";
+    const char relq[] = "q";
+    CU_ASSERT("/?q" == http2::path_join(base, sizeof(base) - 1, nullptr, 0, rel,
+                                        sizeof(rel) - 1, relq,
+                                        sizeof(relq) - 1));
+  }
+  {
+    // empty rel and query
+    const char base[] = "/alpha";
+    const char rel[] = "";
+    const char relq[] = "q";
+    CU_ASSERT("/alpha?q" == http2::path_join(base, sizeof(base) - 1, nullptr, 0,
+                                             rel, sizeof(rel) - 1, relq,
+                                             sizeof(relq) - 1));
+  }
+  {
+    // both rel and query are empty
+    const char base[] = "/alpha";
+    const char baseq[] = "r";
+    const char rel[] = "";
+    const char relq[] = "";
+    CU_ASSERT("/alpha?r" ==
+              http2::path_join(base, sizeof(base) - 1, baseq, sizeof(baseq) - 1,
+                               rel, sizeof(rel) - 1, relq, sizeof(relq) - 1));
+  }
+  {
+    // empty base
+    const char base[] = "";
+    const char rel[] = "/alpha";
+    CU_ASSERT("/alpha" == http2::path_join(base, sizeof(base) - 1, nullptr, 0,
+                                           rel, sizeof(rel) - 1, nullptr, 0));
+  }
+  {
+    // everything is empty
+    CU_ASSERT("/" ==
+              http2::path_join(nullptr, 0, nullptr, 0, nullptr, 0, nullptr, 0));
+  }
+  {
+    // only baseq is not empty
+    const char base[] = "";
+    const char baseq[] = "r";
+    const char rel[] = "";
+    CU_ASSERT("/?r" == http2::path_join(base, sizeof(base) - 1, baseq,
+                                        sizeof(baseq) - 1, rel, sizeof(rel) - 1,
+                                        nullptr, 0));
+  }
+}
+
 } // namespace shrpx
