@@ -578,4 +578,6 @@ int Http2DownstreamConnection::on_timeout() {
   return submit_rst_stream(downstream_, NGHTTP2_NO_ERROR);
 }
 
+size_t Http2DownstreamConnection::get_addr_idx() const { return 0; }
+
 } // namespace shrpx

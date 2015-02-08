@@ -767,4 +767,6 @@ void HttpDownstreamConnection::on_upstream_change(Upstream *upstream) {}
 
 void HttpDownstreamConnection::signal_write() { conn_.wlimit.startw(); }
 
+size_t HttpDownstreamConnection::get_addr_idx() const { return addr_idx_; }
+
 } // namespace shrpx

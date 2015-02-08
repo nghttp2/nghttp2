@@ -548,17 +548,25 @@ Downstream::rewrite_location_response_header(const std::string &upstream_scheme,
     return;
   }
   std::string new_uri;
-  if (!request_http2_authority_.empty()) {
-    new_uri =
-        http2::rewrite_location_uri((*hd).value, u, request_http2_authority_,
-                                    upstream_scheme, upstream_port);
-  }
-  if (new_uri.empty()) {
-    auto host = get_request_header(http2::HD_HOST);
-    if (!host) {
-      return;
+  if (get_config()->no_host_rewrite) {
+    if (!request_http2_authority_.empty()) {
+      new_uri =
+          http2::rewrite_location_uri((*hd).value, u, request_http2_authority_,
+                                      upstream_scheme, upstream_port);
     }
-    new_uri = http2::rewrite_location_uri((*hd).value, u, (*host).value,
+    if (new_uri.empty()) {
+      auto host = get_request_header(http2::HD_HOST);
+      if (!host) {
+        return;
+      }
+      new_uri = http2::rewrite_location_uri((*hd).value, u, (*host).value,
+                                            upstream_scheme, upstream_port);
+    }
+  } else {
+    assert(dconn_);
+    auto request_host =
+        get_config()->downstream_addrs[dconn_->get_addr_idx()].host.get();
+    new_uri = http2::rewrite_location_uri((*hd).value, u, request_host,
                                           upstream_scheme, upstream_port);
   }
   if (!new_uri.empty()) {
