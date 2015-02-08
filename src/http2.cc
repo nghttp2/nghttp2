@@ -741,6 +741,54 @@ parse_next_link_header_once(const char *first, const char *last) {
     }
     // we expect link-param
 
+    // rel can take several relations using quoted form.
+    static const char PLP[] = "rel=\"";
+    static const size_t PLPLEN = sizeof(PLP) - 1;
+
+    static const char PLT[] = "preload";
+    static const size_t PLTLEN = sizeof(PLT) - 1;
+    if (first + PLPLEN < last && *(first + PLPLEN - 1) == '"' &&
+        std::equal(PLP, PLP + PLPLEN, first)) {
+      // we have to search preload in whitespace separated list:
+      // rel="preload something http://example.org/foo"
+      first += PLPLEN;
+      auto start = first;
+      for (; first != last;) {
+        if (*first != ' ' && *first != '"') {
+          ++first;
+          continue;
+        }
+
+        if (start == first) {
+          return {{{0, 0}}, last};
+        }
+
+        if (!ok && start + PLTLEN == first && *(start + PLTLEN - 1) == 'd' &&
+            std::equal(PLT, PLT + PLTLEN, start)) {
+          ok = true;
+        }
+
+        if (*first == '"') {
+          break;
+        }
+        first = skip_lws(first, last);
+        start = first;
+      }
+      if (first == last) {
+        return {{{0, 0}}, first};
+      }
+      assert(*first == '"');
+      ++first;
+      if (first == last || *first == ',') {
+        goto almost_done;
+      }
+      if (*first == ';') {
+        ++first;
+        // parse next link-param
+        continue;
+      }
+      return {{{0, 0}}, last};
+    }
     // we are only interested in rel=preload parameter.  Others are
     // simply skipped.
     static const char PL[] = "rel=preload";

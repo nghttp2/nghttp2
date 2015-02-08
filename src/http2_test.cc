@@ -489,6 +489,110 @@ void test_http2_parse_link_header(void) {
     auto res = http2::parse_link_header(s, sizeof(s) - 1);
     CU_ASSERT(0 == res.size());
   }
+  {
+    // preload in relation-types list
+    const char s[] = R"(<url>; rel="preload")";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(1 == res.size());
+    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
+  }
+  {
+    // preload in relation-types list followed by another parameter
+    const char s[] = R"(<url>; rel="preload foo")";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(1 == res.size());
+    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
+  }
+  {
+    // preload in relation-types list following another parameter
+    const char s[] = R"(<url>; rel="foo preload")";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(1 == res.size());
+    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
+  }
+  {
+    // preload in relation-types list between other parameters
+    const char s[] = R"(<url>; rel="foo preload bar")";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(1 == res.size());
+    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
+  }
+  {
+    // preload in relation-types list between other parameters
+    const char s[] = R"(<url>; rel="foo   preload   bar")";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(1 == res.size());
+    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
+  }
+  {
+    // no preload in relation-types list
+    const char s[] = R"(<url>; rel="foo")";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(0 == res.size());
+  }
+  {
+    // no preload in relation-types list, multiple unrelated elements.
+    const char s[] = R"(<url>; rel="foo bar")";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(0 == res.size());
+  }
+  {
+    // preload in relation-types list, followed by another link-value.
+    const char s[] = R"(<url>; rel="preload", <url>)";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(1 == res.size());
+    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
+  }
+  {
+    // preload in relation-types list, following another link-value.
+    const char s[] = R"(<url>, <url>; rel="preload")";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(1 == res.size());
+    CU_ASSERT(std::make_pair(&s[8], &s[11]) == res[0].uri);
+  }
+  {
+    // preload in relation-types list, followed by another link-param.
+    const char s[] = R"(<url>; rel="preload"; as="font")";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(1 == res.size());
+    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
+  }
+  {
+    // preload in relation-types list, followed by character other
+    // than ';' or ','
+    const char s[] = R"(<url>; rel="preload".)";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(0 == res.size());
+  }
+  {
+    // preload in relation-types list, followed by ';' but it
+    // terminates input
+    const char s[] = R"(<url>; rel="preload";)";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(0 == res.size());
+  }
+  {
+    // preload in relation-types list, followed by ',' but it
+    // terminates input
+    const char s[] = R"(<url>; rel="preload",)";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(1 == res.size());
+    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
+  }
+  {
+    // preload in relation-types list but there is preceding white
+    // space.
+    const char s[] = R"(<url>; rel=" preload")";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(0 == res.size());
+  }
+  {
+    // preload in relation-types list but there is trailing white
+    // space.
+    const char s[] = R"(<url>; rel="preload ")";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(0 == res.size());
+  }
 }
 
 void test_http2_path_join(void) {
