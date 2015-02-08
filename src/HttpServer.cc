@@ -85,7 +85,7 @@ template <typename Array> void append_nv(Stream *stream, const Array &nva) {
       http2::index_header(stream->hdidx, token, i);
     }
     http2::add_header(stream->headers, nv.name, nv.namelen, nv.value,
-                      nv.valuelen, nv.flags & NGHTTP2_NV_FLAG_NO_INDEX);
+                      nv.valuelen, nv.flags & NGHTTP2_NV_FLAG_NO_INDEX, token);
   }
 }
 } // namespace
@@ -1061,7 +1061,7 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
 
   http2::index_header(stream->hdidx, token, stream->headers.size());
   http2::add_header(stream->headers, name, namelen, value, valuelen,
-                    flags & NGHTTP2_NV_FLAG_NO_INDEX);
+                    flags & NGHTTP2_NV_FLAG_NO_INDEX, token);
   return 0;
 }
 } // namespace

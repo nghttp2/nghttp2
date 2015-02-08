@@ -58,46 +58,52 @@ void test_http2_add_header(void) {
   auto nva = Headers();
 
   http2::add_header(nva, (const uint8_t *)"alpha", 5, (const uint8_t *)"123", 3,
-                    false);
+                    false, -1);
   CU_ASSERT(Headers::value_type("alpha", "123") == nva[0]);
   CU_ASSERT(!nva[0].no_index);
 
   nva.clear();
 
   http2::add_header(nva, (const uint8_t *)"alpha", 5, (const uint8_t *)"", 0,
-                    true);
+                    true, -1);
   CU_ASSERT(Headers::value_type("alpha", "") == nva[0]);
   CU_ASSERT(nva[0].no_index);
 
   nva.clear();
 
   http2::add_header(nva, (const uint8_t *)"a", 1, (const uint8_t *)" b", 2,
-                    false);
+                    false, -1);
   CU_ASSERT(Headers::value_type("a", "b") == nva[0]);
 
   nva.clear();
 
   http2::add_header(nva, (const uint8_t *)"a", 1, (const uint8_t *)"b ", 2,
-                    false);
+                    false, -1);
   CU_ASSERT(Headers::value_type("a", "b") == nva[0]);
 
   nva.clear();
 
   http2::add_header(nva, (const uint8_t *)"a", 1, (const uint8_t *)"  b  ", 5,
-                    false);
+                    false, -1);
   CU_ASSERT(Headers::value_type("a", "b") == nva[0]);
 
   nva.clear();
 
   http2::add_header(nva, (const uint8_t *)"a", 1, (const uint8_t *)"  bravo  ",
-                    9, false);
+                    9, false, -1);
   CU_ASSERT(Headers::value_type("a", "bravo") == nva[0]);
 
   nva.clear();
 
   http2::add_header(nva, (const uint8_t *)"a", 1, (const uint8_t *)"    ", 4,
-                    false);
+                    false, -1);
   CU_ASSERT(Headers::value_type("a", "") == nva[0]);
+
+  nva.clear();
+
+  http2::add_header(nva, (const uint8_t *)"te", 2, (const uint8_t *)"trailers",
+                    8, false, http2::HD_TE);
+  CU_ASSERT(http2::HD_TE == nva[0].token);
 }
 
 void test_http2_get_header(void) {
@@ -128,19 +134,20 @@ void test_http2_get_header(void) {
 }
 
 namespace {
-auto headers = Headers{{"alpha", "0", true},
-                       {"bravo", "1"},
-                       {"connection", "2"},
-                       {"connection", "3"},
-                       {"delta", "4"},
-                       {"expect", "5"},
-                       {"foxtrot", "6"},
-                       {"tango", "7"},
-                       {"te", "8"},
-                       {"te", "9"},
-                       {"x-forwarded-proto", "10"},
-                       {"x-forwarded-proto", "11"},
-                       {"zulu", "12"}};
+auto headers =
+    Headers{{"alpha", "0", true},
+            {"bravo", "1"},
+            {"connection", "2", false, http2::HD_CONNECTION},
+            {"connection", "3", false, http2::HD_CONNECTION},
+            {"delta", "4"},
+            {"expect", "5"},
+            {"foxtrot", "6"},
+            {"tango", "7"},
+            {"te", "8", false, http2::HD_TE},
+            {"te", "9", false, http2::HD_TE},
+            {"x-forwarded-proto", "10", false, http2::HD_X_FORWARDED_FOR},
+            {"x-forwarded-proto", "11", false, http2::HD_X_FORWARDED_FOR},
+            {"zulu", "12"}};
 } // namespace
 
 void test_http2_copy_headers_to_nva(void) {

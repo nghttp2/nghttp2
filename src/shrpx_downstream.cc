@@ -300,6 +300,7 @@ int index_headers(http2::HeaderIndex &hdidx, Headers &headers,
       continue;
     }
 
+    kv.token = token;
     http2::index_header(hdidx, token, i);
 
     if (token == http2::HD_CONTENT_LENGTH) {
@@ -322,7 +323,7 @@ int Downstream::index_request_headers() {
                        request_content_length_);
 }
 
-const Headers::value_type *Downstream::get_request_header(int token) const {
+const Headers::value_type *Downstream::get_request_header(int16_t token) const {
   return http2::get_header(request_hdidx_, token, request_headers_);
 }
 
@@ -346,10 +347,11 @@ void Downstream::set_last_request_header_value(std::string value) {
 
 void Downstream::add_request_header(const uint8_t *name, size_t namelen,
                                     const uint8_t *value, size_t valuelen,
-                                    bool no_index, int token) {
+                                    bool no_index, int16_t token) {
   http2::index_header(request_hdidx_, token, request_headers_.size());
   request_headers_sum_ += namelen + valuelen;
-  http2::add_header(request_headers_, name, namelen, value, valuelen, no_index);
+  http2::add_header(request_headers_, name, namelen, value, valuelen, no_index,
+                    token);
 }
 
 bool Downstream::get_request_header_key_prev() const {
@@ -525,7 +527,8 @@ int Downstream::index_response_headers() {
                        response_content_length_);
 }
 
-const Headers::value_type *Downstream::get_response_header(int token) const {
+const Headers::value_type *
+Downstream::get_response_header(int16_t token) const {
   return http2::get_header(response_hdidx_, token, response_headers_);
 }
 
@@ -577,13 +580,21 @@ void Downstream::set_last_response_header_value(std::string value) {
   item.value = std::move(value);
 }
 
+void Downstream::add_response_header(std::string name, std::string value,
+                                     int16_t token) {
+  http2::index_header(response_hdidx_, token, response_headers_.size());
+  response_headers_sum_ += name.size() + value.size();
+  response_headers_.emplace_back(std::move(name), std::move(value), false,
+                                 token);
+}
+
 void Downstream::add_response_header(const uint8_t *name, size_t namelen,
                                      const uint8_t *value, size_t valuelen,
-                                     bool no_index, int token) {
+                                     bool no_index, int16_t token) {
   http2::index_header(response_hdidx_, token, response_headers_.size());
   response_headers_sum_ += namelen + valuelen;
-  http2::add_header(response_headers_, name, namelen, value, valuelen,
-                    no_index);
+  http2::add_header(response_headers_, name, namelen, value, valuelen, no_index,
+                    token);
 }
 
 bool Downstream::get_response_header_key_prev() const {
@@ -893,14 +904,14 @@ bool pseudo_header_allowed(const Headers &headers) {
 }
 } // namespace
 
-bool Downstream::request_pseudo_header_allowed(int token) const {
+bool Downstream::request_pseudo_header_allowed(int16_t token) const {
   if (!pseudo_header_allowed(request_headers_)) {
     return false;
   }
   return http2::check_http2_request_pseudo_header(request_hdidx_, token);
 }
 
-bool Downstream::response_pseudo_header_allowed(int token) const {
+bool Downstream::response_pseudo_header_allowed(int16_t token) const {
   if (!pseudo_header_allowed(response_headers_)) {
     return false;
   }

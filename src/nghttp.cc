@@ -250,7 +250,7 @@ bool Request::is_ipv6_literal_addr() const {
   }
 }
 
-bool Request::response_pseudo_header_allowed(int token) const {
+bool Request::response_pseudo_header_allowed(int16_t token) const {
   if (!res_nva.empty() && res_nva.back().name.c_str()[0] != ':') {
     return false;
   }
@@ -262,7 +262,7 @@ bool Request::response_pseudo_header_allowed(int token) const {
   }
 }
 
-bool Request::push_request_pseudo_header_allowed(int token) const {
+bool Request::push_request_pseudo_header_allowed(int16_t token) const {
   if (!req_nva.empty() && req_nva.back().name.c_str()[0] != ':') {
     return false;
   }
@@ -277,7 +277,7 @@ bool Request::push_request_pseudo_header_allowed(int token) const {
   }
 }
 
-Headers::value_type *Request::get_res_header(int token) {
+Headers::value_type *Request::get_res_header(int16_t token) {
   auto idx = res_hdidx[token];
   if (idx == -1) {
     return nullptr;
@@ -285,7 +285,7 @@ Headers::value_type *Request::get_res_header(int token) {
   return &res_nva[idx];
 }
 
-Headers::value_type *Request::get_req_header(int token) {
+Headers::value_type *Request::get_req_header(int16_t token) {
   auto idx = req_hdidx[token];
   if (idx == -1) {
     return nullptr;
@@ -1688,7 +1688,7 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
 
     http2::index_header(req->res_hdidx, token, req->res_nva.size());
     http2::add_header(req->res_nva, name, namelen, value, valuelen,
-                      flags & NGHTTP2_NV_FLAG_NO_INDEX);
+                      flags & NGHTTP2_NV_FLAG_NO_INDEX, token);
     break;
   }
   case NGHTTP2_PUSH_PROMISE: {
@@ -1712,7 +1712,7 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
 
     http2::index_header(req->req_hdidx, token, req->req_nva.size());
     http2::add_header(req->req_nva, name, namelen, value, valuelen,
-                      flags & NGHTTP2_NV_FLAG_NO_INDEX);
+                      flags & NGHTTP2_NV_FLAG_NO_INDEX, token);
     break;
   }
   }

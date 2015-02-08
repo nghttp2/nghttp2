@@ -108,7 +108,7 @@ public:
   // multiple header have |name| as name, return last occurrence from
   // the beginning.  If no such header is found, returns nullptr.
   // This function must be called after headers are indexed
-  const Headers::value_type *get_request_header(int token) const;
+  const Headers::value_type *get_request_header(int16_t token) const;
   // Returns pointer to the request header with the name |name|.  If
   // no such header is found, returns nullptr.
   const Headers::value_type *get_request_header(const std::string &name) const;
@@ -117,7 +117,7 @@ public:
 
   void add_request_header(const uint8_t *name, size_t namelen,
                           const uint8_t *value, size_t valuelen, bool no_index,
-                          int token);
+                          int16_t token);
 
   bool get_request_header_key_prev() const;
   void append_last_request_header_key(const char *data, size_t len);
@@ -165,7 +165,7 @@ public:
   bool validate_request_bodylen() const;
   int64_t get_request_content_length() const;
   void set_request_content_length(int64_t len);
-  bool request_pseudo_header_allowed(int token) const;
+  bool request_pseudo_header_allowed(int16_t token) const;
   bool expect_response_body() const;
   enum {
     INITIAL,
@@ -192,16 +192,17 @@ public:
   // multiple header have |name| as name, return last occurrence from
   // the beginning.  If no such header is found, returns nullptr.
   // This function must be called after response headers are indexed.
-  const Headers::value_type *get_response_header(int token) const;
+  const Headers::value_type *get_response_header(int16_t token) const;
   // Rewrites the location response header field.
   void rewrite_location_response_header(const std::string &upstream_scheme,
                                         uint16_t upstream_port);
   void add_response_header(std::string name, std::string value);
   void set_last_response_header_value(std::string value);
 
+  void add_response_header(std::string name, std::string value, int16_t token);
   void add_response_header(const uint8_t *name, size_t namelen,
                            const uint8_t *value, size_t valuelen, bool no_index,
-                           int token);
+                           int16_t token);
 
   bool get_response_header_key_prev() const;
   void append_last_response_header_key(const char *data, size_t len);
@@ -248,7 +249,7 @@ public:
   void dec_response_datalen(size_t len);
   size_t get_response_datalen() const;
   void reset_response_datalen();
-  bool response_pseudo_header_allowed(int token) const;
+  bool response_pseudo_header_allowed(int16_t token) const;
 
   // Call this method when there is incoming data in downstream
   // connection.

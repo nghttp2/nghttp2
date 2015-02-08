@@ -165,14 +165,15 @@ void copy_url_component(std::string &dest, const http_parser_url *u, int field,
 
 Headers::value_type to_header(const uint8_t *name, size_t namelen,
                               const uint8_t *value, size_t valuelen,
-                              bool no_index) {
+                              bool no_index, int16_t token) {
   return Header(std::string(reinterpret_cast<const char *>(name), namelen),
                 std::string(reinterpret_cast<const char *>(value), valuelen),
-                no_index);
+                no_index, token);
 }
 
 void add_header(Headers &nva, const uint8_t *name, size_t namelen,
-                const uint8_t *value, size_t valuelen, bool no_index) {
+                const uint8_t *value, size_t valuelen, bool no_index,
+                int16_t token) {
   if (valuelen > 0) {
     size_t i, j;
     for (i = 0; i < valuelen && (value[i] == ' ' || value[i] == '\t'); ++i)
@@ -182,7 +183,7 @@ void add_header(Headers &nva, const uint8_t *name, size_t namelen,
     value += i;
     valuelen -= i + (valuelen - j - 1);
   }
-  nva.push_back(to_header(name, namelen, value, valuelen, no_index));
+  nva.push_back(to_header(name, namelen, value, valuelen, no_index, token));
 }
 
 const Headers::value_type *get_header(const Headers &nva, const char *name) {
@@ -221,7 +222,7 @@ void copy_headers_to_nva(std::vector<nghttp2_nv> &nva, const Headers &headers) {
     if (kv.name.empty() || kv.name[0] == ':') {
       continue;
     }
-    switch (lookup_token(kv.name)) {
+    switch (kv.token) {
     case HD_COOKIE:
     case HD_CONNECTION:
     case HD_HOST:
@@ -247,7 +248,7 @@ void build_http1_headers_from_headers(std::string &hdrs,
     if (kv.name.empty() || kv.name[0] == ':') {
       continue;
     }
-    switch (lookup_token(kv.name)) {
+    switch (kv.token) {
     case HD_CONNECTION:
     case HD_COOKIE:
     case HD_HOST:
@@ -608,18 +609,7 @@ void init_hdidx(HeaderIndex &hdidx) {
   std::fill(std::begin(hdidx), std::end(hdidx), -1);
 }
 
-void index_headers(HeaderIndex &hdidx, const Headers &headers) {
-  for (size_t i = 0; i < headers.size(); ++i) {
-    auto &kv = headers[i];
-    auto token = lookup_token(
-        reinterpret_cast<const uint8_t *>(kv.name.c_str()), kv.name.size());
-    if (token >= 0) {
-      http2::index_header(hdidx, token, i);
-    }
-  }
-}
-
-void index_header(HeaderIndex &hdidx, int token, size_t idx) {
+void index_header(HeaderIndex &hdidx, int16_t token, size_t idx) {
   if (token == -1) {
     return;
   }
@@ -627,7 +617,8 @@ void index_header(HeaderIndex &hdidx, int token, size_t idx) {
   hdidx[token] = idx;
 }
 
-bool check_http2_request_pseudo_header(const HeaderIndex &hdidx, int token) {
+bool check_http2_request_pseudo_header(const HeaderIndex &hdidx,
+                                       int16_t token) {
   switch (token) {
   case HD__AUTHORITY:
   case HD__METHOD:
@@ -639,7 +630,8 @@ bool check_http2_request_pseudo_header(const HeaderIndex &hdidx, int token) {
   }
 }
 
-bool check_http2_response_pseudo_header(const HeaderIndex &hdidx, int token) {
+bool check_http2_response_pseudo_header(const HeaderIndex &hdidx,
+                                        int16_t token) {
   switch (token) {
   case HD__STATUS:
     return hdidx[token] == -1;
@@ -648,7 +640,7 @@ bool check_http2_response_pseudo_header(const HeaderIndex &hdidx, int token) {
   }
 }
 
-bool http2_header_allowed(int token) {
+bool http2_header_allowed(int16_t token) {
   switch (token) {
   case HD_CONNECTION:
   case HD_KEEP_ALIVE:
@@ -670,7 +662,7 @@ bool http2_mandatory_request_headers_presence(const HeaderIndex &hdidx) {
   return true;
 }
 
-const Headers::value_type *get_header(const HeaderIndex &hdidx, int token,
+const Headers::value_type *get_header(const HeaderIndex &hdidx, int16_t token,
                                       const Headers &nva) {
   auto i = hdidx[token];
   if (i == -1) {

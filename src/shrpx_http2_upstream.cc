@@ -1521,8 +1521,7 @@ int Http2Upstream::prepare_push_promise(Downstream *downstream) {
     baselen = 1;
   }
   for (auto &kv : downstream->get_response_headers()) {
-    auto token = http2::lookup_token(kv.name);
-    if (token != http2::HD_LINK) {
+    if (kv.token != http2::HD_LINK) {
       continue;
     }
     for (auto &link :
@@ -1588,8 +1587,7 @@ int Http2Upstream::submit_push_promise(const std::string &path,
   std::vector<nghttp2_nv> nva;
   nva.reserve(downstream->get_request_headers().size());
   for (auto &kv : downstream->get_request_headers()) {
-    auto token = http2::lookup_token(kv.name);
-    switch (token) {
+    switch (kv.token) {
     case http2::HD__METHOD:
       // juse use "GET" for now
       nva.push_back(http2::make_nv_lc(":method", "GET"));
