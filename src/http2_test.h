@@ -39,6 +39,8 @@ void test_http2_lookup_token(void);
 void test_http2_check_http2_pseudo_header(void);
 void test_http2_http2_header_allowed(void);
 void test_http2_mandatory_request_headers_presence(void);
+void test_http2_parse_link_header(void);
+void test_http2_path_join(void);
 
 } // namespace shrpx
 

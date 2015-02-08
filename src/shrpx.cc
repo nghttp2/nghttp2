@@ -782,6 +782,7 @@ void fill_default_config() {
   mod_config()->tls_ctx_per_worker = false;
   mod_config()->downstream_request_buffer_size = 16 * 1024;
   mod_config()->downstream_response_buffer_size = 16 * 1024;
+  mod_config()->no_server_push = false;
 }
 } // namespace
 
@@ -1087,6 +1088,10 @@ HTTP/2 and SPDY:
               padding.  Specify 0 to  disable padding.  This option is
               meant for debugging purpose  and not intended to enhance
               protocol security.
+  --no-server-push
+              Disable  HTTP/2  server  push.    Server  push  is  only
+              supported  by default  mode and  HTTP/2 frontend.   SPDY
+              frontend does not support server push.
 
 Mode:
   (default mode)
@@ -1345,6 +1350,7 @@ int main(int argc, char **argv) {
         {"backend-response-buffer", required_argument, &flag, 71},
         {"backend-request-buffer", required_argument, &flag, 72},
         {"no-host-rewrite", no_argument, &flag, 73},
+        {"no-server-push", no_argument, &flag, 74},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -1677,6 +1683,10 @@ int main(int argc, char **argv) {
       case 73:
         // --no-host-rewrite
         cmdcfgs.emplace_back(SHRPX_OPT_NO_HOST_REWRITE, "yes");
+        break;
+      case 74:
+        // --no-server-push
+        cmdcfgs.emplace_back(SHRPX_OPT_NO_SERVER_PUSH, "yes");
         break;
       default:
         break;

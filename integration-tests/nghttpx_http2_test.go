@@ -473,6 +473,9 @@ func TestH2H1TEGzip(t *testing.T) {
 	}
 }
 
+// TestH2H1SNI tests server's TLS SNI extension feature.  It must
+// choose appropriate certificate depending on the indicated
+// server_name from client.
 func TestH2H1SNI(t *testing.T) {
 	st := newServerTesterTLSConfig([]string{"--subcert=" + testDir + "/alt-server.key:" + testDir + "/alt-server.crt"}, t, noopHandler, &tls.Config{
 		ServerName: "alt-domain",
@@ -485,6 +488,37 @@ func TestH2H1SNI(t *testing.T) {
 
 	if got, want := cert.Subject.CommonName, "alt-domain"; got != want {
 		t.Errorf("CommonName: %v; want %v", got, want)
+	}
+}
+
+// TestH2H1ServerPush tests server push using Link header field from
+// backend server.
+func TestH2H1ServerPush(t *testing.T) {
+	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
+		// only resources marked as rel=preload are pushed
+		w.Header().Add("Link", "</css/main.css>; rel=preload, </foo>, </css/theme.css>; rel=preload")
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1ServerPush",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("res.status: %v; want %v", got, want)
+	}
+	if got, want := len(res.pushResponse), 2; got != want {
+		t.Fatalf("len(res.pushResponse): %v; want %v", got, want)
+	}
+	mainCSS := res.pushResponse[0]
+	if got, want := mainCSS.status, 200; got != want {
+		t.Errorf("mainCSS.status: %v; want %v", got, want)
+	}
+	themeCSS := res.pushResponse[1]
+	if got, want := themeCSS.status, 200; got != want {
+		t.Errorf("themeCSS.status: %v; want %v", got, want)
 	}
 }
 

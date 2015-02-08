@@ -145,6 +145,7 @@ const char SHRPX_OPT_RLIMIT_NOFILE[] = "rlimit-nofile";
 const char SHRPX_OPT_TLS_CTX_PER_WORKER[] = "tls-ctx-per-worker";
 const char SHRPX_OPT_BACKEND_REQUEST_BUFFER[] = "backend-request-buffer";
 const char SHRPX_OPT_BACKEND_RESPONSE_BUFFER[] = "backend-response-buffer";
+const char SHRPX_OPT_NO_SERVER_PUSH[] = "no-server-push";
 
 namespace {
 Config *config = nullptr;
@@ -1161,6 +1162,12 @@ int parse_config(const char *opt, const char *optarg) {
 
   if (util::strieq(opt, SHRPX_OPT_TLS_CTX_PER_WORKER)) {
     mod_config()->tls_ctx_per_worker = util::strieq(optarg, "yes");
+
+    return 0;
+  }
+
+  if (util::strieq(opt, SHRPX_OPT_NO_SERVER_PUSH)) {
+    mod_config()->no_server_push = util::strieq(optarg, "yes");
 
     return 0;
   }

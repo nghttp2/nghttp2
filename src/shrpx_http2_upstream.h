@@ -100,6 +100,9 @@ public:
   void submit_goaway();
   void check_shutdown();
 
+  int prepare_push_promise(Downstream *downstream);
+  int submit_push_promise(const std::string &path, Downstream *downstream);
+
 private:
   // must be put before downstream_queue_
   std::unique_ptr<HttpsUpstream> pre_upstream_;

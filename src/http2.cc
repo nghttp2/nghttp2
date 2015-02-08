@@ -165,14 +165,15 @@ void copy_url_component(std::string &dest, const http_parser_url *u, int field,
 
 Headers::value_type to_header(const uint8_t *name, size_t namelen,
                               const uint8_t *value, size_t valuelen,
-                              bool no_index) {
+                              bool no_index, int16_t token) {
   return Header(std::string(reinterpret_cast<const char *>(name), namelen),
                 std::string(reinterpret_cast<const char *>(value), valuelen),
-                no_index);
+                no_index, token);
 }
 
 void add_header(Headers &nva, const uint8_t *name, size_t namelen,
-                const uint8_t *value, size_t valuelen, bool no_index) {
+                const uint8_t *value, size_t valuelen, bool no_index,
+                int16_t token) {
   if (valuelen > 0) {
     size_t i, j;
     for (i = 0; i < valuelen && (value[i] == ' ' || value[i] == '\t'); ++i)
@@ -182,7 +183,7 @@ void add_header(Headers &nva, const uint8_t *name, size_t namelen,
     value += i;
     valuelen -= i + (valuelen - j - 1);
   }
-  nva.push_back(to_header(name, namelen, value, valuelen, no_index));
+  nva.push_back(to_header(name, namelen, value, valuelen, no_index, token));
 }
 
 const Headers::value_type *get_header(const Headers &nva, const char *name) {
@@ -221,7 +222,7 @@ void copy_headers_to_nva(std::vector<nghttp2_nv> &nva, const Headers &headers) {
     if (kv.name.empty() || kv.name[0] == ':') {
       continue;
     }
-    switch (lookup_token(kv.name)) {
+    switch (kv.token) {
     case HD_COOKIE:
     case HD_CONNECTION:
     case HD_HOST:
@@ -247,7 +248,7 @@ void build_http1_headers_from_headers(std::string &hdrs,
     if (kv.name.empty() || kv.name[0] == ':') {
       continue;
     }
-    switch (lookup_token(kv.name)) {
+    switch (kv.token) {
     case HD_CONNECTION:
     case HD_COOKIE:
     case HD_HOST:
@@ -438,6 +439,11 @@ int lookup_token(const uint8_t *name, size_t namelen) {
     break;
   case 4:
     switch (name[namelen - 1]) {
+    case 'k':
+      if (util::streq("lin", name, 3)) {
+        return HD_LINK;
+      }
+      break;
     case 't':
       if (util::streq("hos", name, 3)) {
         return HD_HOST;
@@ -531,9 +537,23 @@ int lookup_token(const uint8_t *name, size_t namelen) {
         return HD_CONNECTION;
       }
       break;
+    case 't':
+      if (util::streq("user-agen", name, 9)) {
+        return HD_USER_AGENT;
+      }
+      break;
     case 'y':
       if (util::streq(":authorit", name, 9)) {
         return HD__AUTHORITY;
+      }
+      break;
+    }
+    break;
+  case 13:
+    switch (name[namelen - 1]) {
+    case 'l':
+      if (util::streq("cache-contro", name, 12)) {
+        return HD_CACHE_CONTROL;
       }
       break;
     }
@@ -554,6 +574,16 @@ int lookup_token(const uint8_t *name, size_t namelen) {
     break;
   case 15:
     switch (name[namelen - 1]) {
+    case 'e':
+      if (util::streq("accept-languag", name, 14)) {
+        return HD_ACCEPT_LANGUAGE;
+      }
+      break;
+    case 'g':
+      if (util::streq("accept-encodin", name, 14)) {
+        return HD_ACCEPT_ENCODING;
+      }
+      break;
     case 'r':
       if (util::streq("x-forwarded-fo", name, 14)) {
         return HD_X_FORWARDED_FOR;
@@ -597,18 +627,7 @@ void init_hdidx(HeaderIndex &hdidx) {
   std::fill(std::begin(hdidx), std::end(hdidx), -1);
 }
 
-void index_headers(HeaderIndex &hdidx, const Headers &headers) {
-  for (size_t i = 0; i < headers.size(); ++i) {
-    auto &kv = headers[i];
-    auto token = lookup_token(
-        reinterpret_cast<const uint8_t *>(kv.name.c_str()), kv.name.size());
-    if (token >= 0) {
-      http2::index_header(hdidx, token, i);
-    }
-  }
-}
-
-void index_header(HeaderIndex &hdidx, int token, size_t idx) {
+void index_header(HeaderIndex &hdidx, int16_t token, size_t idx) {
   if (token == -1) {
     return;
   }
@@ -616,7 +635,8 @@ void index_header(HeaderIndex &hdidx, int token, size_t idx) {
   hdidx[token] = idx;
 }
 
-bool check_http2_request_pseudo_header(const HeaderIndex &hdidx, int token) {
+bool check_http2_request_pseudo_header(const HeaderIndex &hdidx,
+                                       int16_t token) {
   switch (token) {
   case HD__AUTHORITY:
   case HD__METHOD:
@@ -628,7 +648,8 @@ bool check_http2_request_pseudo_header(const HeaderIndex &hdidx, int token) {
   }
 }
 
-bool check_http2_response_pseudo_header(const HeaderIndex &hdidx, int token) {
+bool check_http2_response_pseudo_header(const HeaderIndex &hdidx,
+                                        int16_t token) {
   switch (token) {
   case HD__STATUS:
     return hdidx[token] == -1;
@@ -637,7 +658,7 @@ bool check_http2_response_pseudo_header(const HeaderIndex &hdidx, int token) {
   }
 }
 
-bool http2_header_allowed(int token) {
+bool http2_header_allowed(int16_t token) {
   switch (token) {
   case HD_CONNECTION:
   case HD_KEEP_ALIVE:
@@ -659,13 +680,343 @@ bool http2_mandatory_request_headers_presence(const HeaderIndex &hdidx) {
   return true;
 }
 
-const Headers::value_type *get_header(const HeaderIndex &hdidx, int token,
+const Headers::value_type *get_header(const HeaderIndex &hdidx, int16_t token,
                                       const Headers &nva) {
   auto i = hdidx[token];
   if (i == -1) {
     return nullptr;
   }
   return &nva[i];
+}
+
+namespace {
+template <typename InputIt> InputIt skip_lws(InputIt first, InputIt last) {
+  for (; first != last; ++first) {
+    switch (*first) {
+    case ' ':
+    case '\t':
+      continue;
+    default:
+      return first;
+    }
+  }
+  return first;
+}
+} // namespace
+
+namespace {
+template <typename InputIt>
+InputIt skip_to_next_field(InputIt first, InputIt last) {
+  for (; first != last; ++first) {
+    switch (*first) {
+    case ' ':
+    case '\t':
+    case ',':
+      continue;
+    default:
+      return first;
+    }
+  }
+  return first;
+}
+} // namespace
+
+namespace {
+std::pair<LinkHeader, const char *>
+parse_next_link_header_once(const char *first, const char *last) {
+  first = skip_to_next_field(first, last);
+  if (first == last || *first != '<') {
+    return {{{0, 0}}, last};
+  }
+  auto url_first = ++first;
+  first = std::find(first, last, '>');
+  if (first == last) {
+    return {{{0, 0}}, first};
+  }
+  auto url_last = first++;
+  if (first == last) {
+    return {{{0, 0}}, first};
+  }
+  // we expect ';' or ',' here
+  switch (*first) {
+  case ',':
+    return {{{0, 0}}, ++first};
+  case ';':
+    ++first;
+    break;
+  default:
+    return {{{0, 0}}, last};
+  }
+
+  auto ok = false;
+  for (;;) {
+    first = skip_lws(first, last);
+    if (first == last) {
+      return {{{0, 0}}, first};
+    }
+    // we expect link-param
+
+    // we are only interested in rel=preload parameter.  Others are
+    // simply skipped.
+    static const char PL[] = "rel=preload";
+    static const size_t PLLEN = sizeof(PL) - 1;
+    if (first + PLLEN == last) {
+      if (std::equal(PL, PL + PLLEN, first)) {
+        ok = true;
+        // this is the end of sequence
+        return {{{url_first, url_last}}, last};
+      }
+    } else if (first + PLLEN + 1 <= last) {
+      switch (*(first + PLLEN)) {
+      case ',':
+        if (!std::equal(PL, PL + PLLEN, first)) {
+          break;
+        }
+        ok = true;
+        // skip including ','
+        first += PLLEN + 1;
+        return {{{url_first, url_last}}, first};
+      case ';':
+        if (!std::equal(PL, PL + PLLEN, first)) {
+          break;
+        }
+        ok = true;
+        // skip including ';'
+        first += PLLEN + 1;
+        // continue parse next link-param
+        continue;
+      }
+    }
+    auto param_first = first;
+    for (; first != last;) {
+      if (util::in_attr_char(*first)) {
+        ++first;
+        continue;
+      }
+      // '*' is only allowed at the end of parameter name and must be
+      // followed by '='
+      if (last - first >= 2 && first != param_first) {
+        if (*first == '*' && *(first + 1) == '=') {
+          ++first;
+          break;
+        }
+      }
+      if (*first == '=' || *first == ';' || *first == ',') {
+        break;
+      }
+      return {{{0, 0}}, last};
+    }
+    if (param_first == first) {
+      // empty parmname
+      return {{{0, 0}}, last};
+    }
+    // link-param without value is acceptable (see link-extension) if
+    // it is not followed by '='
+    if (first == last || *first == ',') {
+      goto almost_done;
+    }
+    if (*first == ';') {
+      ++first;
+      // parse next link-param
+      continue;
+    }
+    // now parsing lin-param value
+    assert(*first == '=');
+    ++first;
+    if (first == last) {
+      // empty value is not acceptable
+      return {{{0, 0}}, first};
+    }
+    if (*first == '"') {
+      // quoted-string
+      first = std::find(first + 1, last, '"');
+      if (first == last) {
+        return {{{0, 0}}, first};
+      }
+      ++first;
+      if (first == last || *first == ',') {
+        goto almost_done;
+      }
+      if (*first == ';') {
+        ++first;
+        // parse next link-param
+        continue;
+      }
+      return {{{0, 0}}, last};
+    }
+    // not quoted-string, skip to next ',' or ';'
+    if (*first == ',' || *first == ';') {
+      // empty value
+      return {{{0, 0}}, last};
+    }
+    for (; first != last; ++first) {
+      if (*first == ',' || *first == ';') {
+        break;
+      }
+    }
+    if (first == last || *first == ',') {
+      goto almost_done;
+    }
+    assert(*first == ';');
+    ++first;
+    // parse next link-param
+  }
+
+almost_done:
+  assert(first == last || *first == ',');
+
+  if (*first == ',') {
+    ++first;
+  }
+  if (ok) {
+    return {{{url_first, url_last}}, first};
+  }
+  return {{{0, 0}}, first};
+}
+} // namespace
+
+std::vector<LinkHeader> parse_link_header(const char *src, size_t len) {
+  auto first = src;
+  auto last = src + len;
+  std::vector<LinkHeader> res;
+  for (; first != last;) {
+    auto rv = parse_next_link_header_once(first, last);
+    first = rv.second;
+    if (rv.first.uri.first != 0 || rv.first.uri.second != 0) {
+      res.push_back(rv.first);
+    }
+  }
+  return res;
+}
+
+namespace {
+void eat_file(std::string &path) {
+  if (path.empty()) {
+    path = "/";
+    return;
+  }
+  auto p = path.size() - 1;
+  if (path[p] == '/') {
+    return;
+  }
+  p = path.rfind('/', p);
+  if (p == std::string::npos) {
+    // this should not happend in normal case, where we expect path
+    // starts with '/'
+    path = "/";
+    return;
+  }
+  path.erase(std::begin(path) + p + 1, std::end(path));
+}
+} // namespace
+
+namespace {
+void eat_dir(std::string &path) {
+  if (path.empty()) {
+    path = "/";
+    return;
+  }
+  auto p = path.size() - 1;
+  if (path[p] != '/') {
+    p = path.rfind('/', p);
+    if (p == std::string::npos) {
+      // this should not happend in normal case, where we expect path
+      // starts with '/'
+      path = "/";
+      return;
+    }
+  }
+  if (path[p] == '/') {
+    if (p == 0) {
+      return;
+    }
+    --p;
+  }
+  p = path.rfind('/', p);
+  if (p == std::string::npos) {
+    // this should not happend in normal case, where we expect path
+    // starts with '/'
+    path = "/";
+    return;
+  }
+  path.erase(std::begin(path) + p + 1, std::end(path));
+}
+} // namespace
+
+std::string path_join(const char *base_path, size_t base_pathlen,
+                      const char *base_query, size_t base_querylen,
+                      const char *rel_path, size_t rel_pathlen,
+                      const char *rel_query, size_t rel_querylen) {
+  std::string res;
+  if (rel_pathlen == 0) {
+    if (base_pathlen == 0) {
+      res = "/";
+    } else {
+      res.assign(base_path, base_pathlen);
+    }
+    if (rel_querylen == 0) {
+      if (base_querylen) {
+        res += "?";
+        res.append(base_query, base_querylen);
+      }
+      return res;
+    }
+    res += "?";
+    res.append(rel_query, rel_querylen);
+    return res;
+  }
+
+  auto first = rel_path;
+  auto last = rel_path + rel_pathlen;
+
+  if (rel_path[0] == '/') {
+    res = "/";
+    ++first;
+  } else if (base_pathlen == 0) {
+    res = "/";
+  } else {
+    res.assign(base_path, base_pathlen);
+  }
+
+  for (; first != last;) {
+    if (*first == '.') {
+      if (first + 1 == last) {
+        break;
+      }
+      if (*(first + 1) == '/') {
+        first += 2;
+        continue;
+      }
+      if (*(first + 1) == '.') {
+        if (first + 2 == last) {
+          eat_dir(res);
+          break;
+        }
+        if (*(first + 2) == '/') {
+          eat_dir(res);
+          first += 3;
+          continue;
+        }
+      }
+    }
+    if (res.back() != '/') {
+      eat_file(res);
+    }
+    auto slash = std::find(first, last, '/');
+    if (slash == last) {
+      res.append(first, last);
+      break;
+    }
+    res.append(first, slash + 1);
+    first = slash + 1;
+    for (; first != last && *first == '/'; ++first)
+      ;
+  }
+  if (rel_querylen) {
+    res += "?";
+    res.append(rel_query, rel_querylen);
+  }
+  return res;
 }
 
 } // namespace http2

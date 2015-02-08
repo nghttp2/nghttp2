@@ -860,8 +860,7 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream) {
     if (hd.name.empty() || hd.name.c_str()[0] == ':') {
       continue;
     }
-    auto token = http2::lookup_token(hd.name);
-    switch (token) {
+    switch (hd.token) {
     case http2::HD_CONNECTION:
     case http2::HD_KEEP_ALIVE:
     case http2::HD_PROXY_CONNECTION:

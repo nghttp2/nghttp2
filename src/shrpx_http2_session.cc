@@ -823,7 +823,8 @@ int on_response_headers(Http2Session *http2session, Downstream *downstream,
       // Otherwise, use chunked encoding to keep upstream connection
       // open.  In HTTP2, we are supporsed not to receive
       // transfer-encoding.
-      downstream->add_response_header("transfer-encoding", "chunked");
+      downstream->add_response_header("transfer-encoding", "chunked",
+                                      http2::HD_TRANSFER_ENCODING);
       downstream->set_chunked_response(true);
     }
   }

@@ -21,6 +21,11 @@ HEADERS = [
     "content-length",
     "location",
     "trailer",
+    "link",
+    "accept-encoding",
+    "accept-language",
+    "cache-control",
+    "user-agent",
     # disallowed h1 headers
     'connection',
     'keep-alive',
