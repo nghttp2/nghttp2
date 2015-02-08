@@ -518,7 +518,8 @@ void test_http2_path_join(void) {
                                                  sizeof(rel) - 1, nullptr, 0));
   }
   {
-    // rel is relative
+    // rel is relative and base ends without /, which means it refers
+    // to file.
     const char base[] = "/alpha";
     const char rel[] = "bravo/charlie";
     CU_ASSERT("/bravo/charlie" ==
@@ -594,7 +595,7 @@ void test_http2_path_join(void) {
                                sizeof(rel) - 1, nullptr, 0));
   }
   {
-    // '.' is ignored
+    // trailing '.' is ignored
     const char base[] = "/";
     const char rel[] = "charlie/.";
     CU_ASSERT("/charlie/" == http2::path_join(base, sizeof(base) - 1, nullptr,
