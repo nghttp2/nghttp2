@@ -759,26 +759,32 @@ parse_next_link_header_once(const char *first, const char *last) {
     // we are only interested in rel=preload parameter.  Others are
     // simply skipped.
     static const char PL[] = "rel=preload";
-    if (last - first >= sizeof(PL) - 1) {
-      if (memcmp(PL, first, sizeof(PL) - 1) == 0) {
-        if (first + sizeof(PL) - 1 == last) {
-          ok = true;
-          // this is the end of sequence
-          return {{{url_first, url_last}}, last};
+    static const size_t PLLEN = sizeof(PL) - 1;
+    if (first + PLLEN == last) {
+      if (std::equal(PL, PL + PLLEN, first)) {
+        ok = true;
+        // this is the end of sequence
+        return {{{url_first, url_last}}, last};
+      }
+    } else if (first + PLLEN + 1 <= last) {
+      switch (*(first + PLLEN)) {
+      case ',':
+        if (!std::equal(PL, PL + PLLEN, first)) {
+          break;
         }
-        switch (*(first + sizeof(PL) - 1)) {
-        case ',':
-          ok = true;
-          // skip including ','
-          first += sizeof(PL);
-          return {{{url_first, url_last}}, first};
-        case ';':
-          ok = true;
-          // skip including ';'
-          first += sizeof(PL);
-          // continue parse next link-param
-          continue;
+        ok = true;
+        // skip including ','
+        first += PLLEN + 1;
+        return {{{url_first, url_last}}, first};
+      case ';':
+        if (!std::equal(PL, PL + PLLEN, first)) {
+          break;
         }
+        ok = true;
+        // skip including ';'
+        first += PLLEN + 1;
+        // continue parse next link-param
+        continue;
       }
     }
     auto param_first = first;

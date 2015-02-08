@@ -479,6 +479,12 @@ void test_http2_parse_link_header(void) {
     CU_ASSERT(1 == res.size());
     CU_ASSERT(std::make_pair(&s[3], &s[6]) == res[0].uri);
   }
+  {
+    // preload is a prefix of bogus rel parameter value
+    const char s[] = "<url>; rel=preloadx";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(0 == res.size());
+  }
 }
 
 void test_http2_path_join(void) {
