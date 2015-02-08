@@ -1635,6 +1635,15 @@ int Http2Upstream::submit_push_promise(const std::string &path,
     return 0;
   }
 
+  if (LOG_ENABLED(INFO)) {
+    std::stringstream ss;
+    for (auto &nv : nva) {
+      ss << TTY_HTTP_HD << nv.name << TTY_RST << ": " << nv.value << "\n";
+    }
+    ULOG(INFO, this) << "HTTP push request headers. promised_stream_id=" << rv
+                     << "\n" << ss.str();
+  }
+
   return 0;
 }
 
