@@ -1336,7 +1336,8 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
   // * We requires GET or POST for associated resource.  Probably we
   //   don't want to push for HEAD request.  Not sure other methods
   //   are also eligible for push.
-  if (get_config()->downstream_proto == PROTO_HTTP &&
+  if (!get_config()->no_server_push &&
+      get_config()->downstream_proto == PROTO_HTTP &&
       !get_config()->http2_proxy && (downstream->get_stream_id() % 2) &&
       downstream->get_response_header(http2::HD_LINK) &&
       downstream->get_response_http_status() == 200 &&
