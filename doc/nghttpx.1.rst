@@ -438,6 +438,12 @@ HTTP/2 and SPDY
     meant for debugging purpose  and not intended to enhance
     protocol security.
 
+.. option:: --no-server-push
+
+    Disable  HTTP/2  server  push.    Server  push  is  only
+    supported  by default  mode and  HTTP/2 frontend.   SPDY
+    frontend does not support server push.
+
 
 Mode
 ~~~~
@@ -570,6 +576,13 @@ HTTP
     :option:`--client-proxy` mode,  location header field will  not be
     altered regardless of this option.
 
+.. option:: --no-host-rewrite
+
+    Don't  rewrite  host  and :authority  header  fields  on
+    :option:`--http2-bridge`\,   :option:`--client`   and  default   mode.    For
+    :option:`--http2-proxy`  and  :option:`\--client-proxy` mode,  these  headers
+    will not be altered regardless of this option.
+
 .. option:: --altsvc=<PROTOID,PORT[,HOST,[ORIGIN]]>
 
     Specify   protocol  ID,   port,  host   and  origin   of
@@ -700,6 +713,35 @@ SIGUSR2
   path with same command-line arguments and environment variables.
   After new process comes up, sending SIGQUIT to the original process
   to perform hot swapping.
+
+SERVER PUSH
+-----------
+
+nghttpx supports HTTP/2 server push in default mode.  nghttpx looks
+for Link header field (`RFC 5988
+<http://tools.ietf.org/html/rfc5988>`_) in response headers for
+backend server and extracts URI-reference with parameter
+``rel=preload`` (see `preload
+<http://w3c.github.io/preload/#interoperability-with-http-link-header>`_)
+and pushes those URIs to the frontend client. Here is a sample Link
+header field to initiate server push:
+
+.. code-block:: http
+
+  Link: </fonts/font.woff>; rel=preload
+  Link: </css/theme.css>; rel=preload
+
+Currently, the following restrictions are applied for server push:
+
+1. URI-reference must not contain authority.  If it exists, it is not
+   pushed.  ``/fonts/font.woff`` and ``css/theme.css`` are eligible to
+   be pushed.  ``https://example.org/fonts/font.woff`` and
+   ``//example.org/css/theme.css`` are not.
+
+2. The associated stream must have method "GET" or "POST".  The
+   associated stream's status code must be 200.
+
+These limitations may be loosened in the future release.
 
 SEE ALSO
 --------

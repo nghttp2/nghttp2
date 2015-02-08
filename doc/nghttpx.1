@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "February 01, 2015" "0.7.4-DEV" "nghttp2"
+.TH "NGHTTPX" "1" "February 08, 2015" "0.7.4-DEV" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 experimental proxy
 .
@@ -500,6 +500,13 @@ padding.  Specify 0 to  disable padding.  This option is
 meant for debugging purpose  and not intended to enhance
 protocol security.
 .UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-no\-server\-push
+Disable  HTTP/2  server  push.    Server  push  is  only
+supported  by default  mode and  HTTP/2 frontend.   SPDY
+frontend does not support server push.
+.UNINDENT
 .SS Mode
 .INDENT 0.0
 .TP
@@ -652,6 +659,14 @@ altered regardless of this option.
 .UNINDENT
 .INDENT 0.0
 .TP
+.B \-\-no\-host\-rewrite
+Don\(aqt  rewrite  host  and :authority  header  fields  on
+\fI\%\-\-http2\-bridge\fP,   \fI\%\-\-client\fP   and  default   mode.    For
+\fI\%\-\-http2\-proxy\fP  and  \fI\%\-\-client\-proxy\fP mode,  these  headers
+will not be altered regardless of this option.
+.UNINDENT
+.INDENT 0.0
+.TP
 .B \-\-altsvc=<PROTOID,PORT[,HOST,[ORIGIN]]>
 Specify   protocol  ID,   port,  host   and  origin   of
 alternative service.  <HOST>  and <ORIGIN> are optional.
@@ -782,6 +797,39 @@ path with same command\-line arguments and environment variables.
 After new process comes up, sending SIGQUIT to the original process
 to perform hot swapping.
 .UNINDENT
+.SH SERVER PUSH
+.sp
+nghttpx supports HTTP/2 server push in default mode.  nghttpx looks
+for Link header field (\fI\%RFC 5988\fP) in response headers for
+backend server and extracts URI\-reference with parameter
+\fBrel=preload\fP (see \fI\%preload\fP)
+and pushes those URIs to the frontend client. Here is a sample Link
+header field to initiate server push:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+Link: </fonts/font.woff>; rel=preload
+Link: </css/theme.css>; rel=preload
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+Currently, the following restrictions are applied for server push:
+.INDENT 0.0
+.IP 1. 3
+URI\-reference must not contain authority.  If it exists, it is not
+pushed.  \fB/fonts/font.woff\fP and \fBcss/theme.css\fP are eligible to
+be pushed.  \fBhttps://example.org/fonts/font.woff\fP and
+\fB//example.org/css/theme.css\fP are not.
+.IP 2. 3
+The associated stream must have method "GET" or "POST".  The
+associated stream\(aqs status code must be 200.
+.UNINDENT
+.sp
+These limitations may be loosened in the future release.
 .SH SEE ALSO
 .sp
 \fInghttp(1)\fP, \fInghttpd(1)\fP, \fIh2load(1)\fP
