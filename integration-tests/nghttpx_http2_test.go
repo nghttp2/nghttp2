@@ -473,6 +473,9 @@ func TestH2H1TEGzip(t *testing.T) {
 	}
 }
 
+// TestH2H1SNI tests server's TLS SNI extension feature.  It must
+// choose appropriate certificate depending on the indicated
+// server_name from client.
 func TestH2H1SNI(t *testing.T) {
 	st := newServerTesterTLSConfig([]string{"--subcert=" + testDir + "/alt-server.key:" + testDir + "/alt-server.crt"}, t, noopHandler, &tls.Config{
 		ServerName: "alt-domain",
