@@ -1624,7 +1624,7 @@ int Http2Upstream::submit_push_promise(const std::string &path,
                                    downstream->get_stream_id(), nva.data(),
                                    nva.size(), nullptr);
 
-  if (rv != 0) {
+  if (rv < 0) {
     if (LOG_ENABLED(INFO)) {
       ULOG(INFO, this) << "nghttp2_submit_push_promise() failed: "
                        << nghttp2_strerror(rv);
