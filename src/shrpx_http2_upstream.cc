@@ -469,14 +469,6 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
     }
     upstream->stop_settings_timer();
     break;
-  case NGHTTP2_PUSH_PROMISE:
-    rv = nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
-                                   frame->push_promise.promised_stream_id,
-                                   NGHTTP2_REFUSED_STREAM);
-    if (rv != 0) {
-      return NGHTTP2_ERR_CALLBACK_FAILURE;
-    }
-    break;
   case NGHTTP2_GOAWAY:
     if (LOG_ENABLED(INFO)) {
       auto debug_data = util::ascii_dump(frame->goaway.opaque_data,
