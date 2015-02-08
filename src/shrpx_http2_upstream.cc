@@ -568,6 +568,9 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
         downstream->set_request_path({nv.value, nv.value + nv.valuelen});
         break;
       }
+      downstream->add_request_header(nv.name, nv.namelen, nv.value, nv.valuelen,
+                                     nv.flags & NGHTTP2_NV_FLAG_NO_INDEX,
+                                     token);
     }
 
     downstream->inspect_http2_request();
@@ -1588,6 +1591,16 @@ int Http2Upstream::submit_push_promise(const std::string &path,
   nva.reserve(downstream->get_request_headers().size());
   for (auto &kv : downstream->get_request_headers()) {
     switch (kv.token) {
+    // TODO generate referer
+    case http2::HD__AUTHORITY:
+    case http2::HD__SCHEME:
+    case http2::HD_ACCEPT_ENCODING:
+    case http2::HD_ACCEPT_LANGUAGE:
+    case http2::HD_CACHE_CONTROL:
+    case http2::HD_HOST:
+    case http2::HD_USER_AGENT:
+      nva.push_back(http2::make_nv(kv.name, kv.value, kv.no_index));
+      break;
     case http2::HD__METHOD:
       // juse use "GET" for now
       nva.push_back(http2::make_nv_lc(":method", "GET"));
@@ -1595,15 +1608,7 @@ int Http2Upstream::submit_push_promise(const std::string &path,
     case http2::HD__PATH:
       nva.push_back(http2::make_nv_ls(":path", path));
       continue;
-    case http2::HD_ACCEPT:
-      // browser tends to change accept header field value depending
-      // on requesting resource.  So just omit it for now.
-      continue;
-    case http2::HD_REFERER:
-      // TODO construct referer
-      continue;
     }
-    nva.push_back(http2::make_nv(kv.name, kv.value, kv.no_index));
   }
 
   rv = nghttp2_submit_push_promise(session_, NGHTTP2_FLAG_NONE,
