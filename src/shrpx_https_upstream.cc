@@ -649,7 +649,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
   if (!get_config()->http2_proxy && !get_config()->client_proxy &&
       !get_config()->no_location_rewrite) {
     downstream->rewrite_location_response_header(
-        get_client_handler()->get_upstream_scheme(), get_config()->port);
+        get_client_handler()->get_upstream_scheme());
   }
 
   http2::build_http1_headers_from_headers(hdrs,

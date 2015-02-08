@@ -260,6 +260,12 @@ int Http2DownstreamConnection::push_request_headers() {
     host = get_config()->downstream_addrs[0].hostport.get();
   }
 
+  if (authority) {
+    downstream_->set_request_downstream_host(authority);
+  } else {
+    downstream_->set_request_downstream_host(host);
+  }
+
   size_t nheader = downstream_->get_request_headers().size();
 
   Headers cookies;
@@ -577,7 +583,5 @@ int Http2DownstreamConnection::on_timeout() {
 
   return submit_rst_stream(downstream_, NGHTTP2_NO_ERROR);
 }
-
-size_t Http2DownstreamConnection::get_addr_idx() const { return 0; }
 
 } // namespace shrpx

@@ -327,39 +327,24 @@ void dump_nv(FILE *out, const Headers &nva) {
 
 std::string rewrite_location_uri(const std::string &uri,
                                  const http_parser_url &u,
-                                 const std::string &request_host,
-                                 const std::string &upstream_scheme,
-                                 uint16_t upstream_port) {
-  // We just rewrite host and optionally port. We don't rewrite https
-  // link. Not sure it happens in practice.
-  if (u.field_set & (1 << UF_SCHEMA)) {
-    auto field = &u.field_data[UF_SCHEMA];
-    if (!util::streq("http", &uri[field->off], field->len)) {
-      return "";
-    }
-  }
+                                 const std::string &match_host,
+                                 const std::string &request_authority,
+                                 const std::string &upstream_scheme) {
+  // We just rewrite scheme and authority.
   if ((u.field_set & (1 << UF_HOST)) == 0) {
     return "";
   }
   auto field = &u.field_data[UF_HOST];
-  if (!util::startsWith(std::begin(request_host), std::end(request_host),
+  if (!util::startsWith(std::begin(match_host), std::end(match_host),
                         &uri[field->off], &uri[field->off] + field->len) ||
-      (request_host.size() != field->len && request_host[field->len] != ':')) {
+      (match_host.size() != field->len && match_host[field->len] != ':')) {
     return "";
   }
-  std::string res = upstream_scheme;
-  res += "://";
-  res.append(&uri[field->off], field->len);
-  if (upstream_scheme == "http") {
-    if (upstream_port != 80) {
-      res += ":";
-      res += util::utos(upstream_port);
-    }
-  } else if (upstream_scheme == "https") {
-    if (upstream_port != 443) {
-      res += ":";
-      res += util::utos(upstream_port);
-    }
+  std::string res;
+  if (!request_authority.empty()) {
+    res += upstream_scheme;
+    res += "://";
+    res += request_authority;
   }
   if (u.field_set & (1 << UF_PATH)) {
     field = &u.field_data[UF_PATH];

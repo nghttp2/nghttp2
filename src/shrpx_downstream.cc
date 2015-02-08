@@ -532,9 +532,8 @@ Downstream::get_response_header(int16_t token) const {
   return http2::get_header(response_hdidx_, token, response_headers_);
 }
 
-void
-Downstream::rewrite_location_response_header(const std::string &upstream_scheme,
-                                             uint16_t upstream_port) {
+void Downstream::rewrite_location_response_header(
+    const std::string &upstream_scheme) {
   auto hd =
       http2::get_header(response_hdidx_, http2::HD_LOCATION, response_headers_);
   if (!hd) {
@@ -550,24 +549,41 @@ Downstream::rewrite_location_response_header(const std::string &upstream_scheme,
   std::string new_uri;
   if (get_config()->no_host_rewrite) {
     if (!request_http2_authority_.empty()) {
-      new_uri =
-          http2::rewrite_location_uri((*hd).value, u, request_http2_authority_,
-                                      upstream_scheme, upstream_port);
+      new_uri = http2::rewrite_location_uri(
+          (*hd).value, u, request_http2_authority_, request_http2_authority_,
+          upstream_scheme);
     }
     if (new_uri.empty()) {
       auto host = get_request_header(http2::HD_HOST);
-      if (!host) {
+      if (host) {
+        new_uri = http2::rewrite_location_uri((*hd).value, u, (*host).value,
+                                              (*host).value, upstream_scheme);
+      } else if (!request_downstream_host_.empty()) {
+        new_uri = http2::rewrite_location_uri(
+            (*hd).value, u, request_downstream_host_, "", upstream_scheme);
+      } else {
         return;
       }
-      new_uri = http2::rewrite_location_uri((*hd).value, u, (*host).value,
-                                            upstream_scheme, upstream_port);
     }
   } else {
-    assert(dconn_);
-    auto request_host =
-        get_config()->downstream_addrs[dconn_->get_addr_idx()].host.get();
-    new_uri = http2::rewrite_location_uri((*hd).value, u, request_host,
-                                          upstream_scheme, upstream_port);
+    if (request_downstream_host_.empty()) {
+      return;
+    }
+    if (!request_http2_authority_.empty()) {
+      new_uri = http2::rewrite_location_uri(
+          (*hd).value, u, request_downstream_host_, request_http2_authority_,
+          upstream_scheme);
+    } else {
+      auto host = get_request_header(http2::HD_HOST);
+      if (host) {
+        new_uri = http2::rewrite_location_uri((*hd).value, u,
+                                              request_downstream_host_,
+                                              (*host).value, upstream_scheme);
+      } else {
+        new_uri = http2::rewrite_location_uri(
+            (*hd).value, u, request_downstream_host_, "", upstream_scheme);
+      }
+    }
   }
   if (!new_uri.empty()) {
     auto idx = response_hdidx_[http2::HD_LOCATION];
@@ -1043,5 +1059,9 @@ bool Downstream::accesslog_ready() const { return response_http_status_ > 0; }
 void Downstream::add_retry() { ++num_retry_; }
 
 bool Downstream::no_more_retry() const { return num_retry_ > 5; }
+
+void Downstream::set_request_downstream_host(std::string host) {
+  request_downstream_host_ = std::move(host);
+}
 
 } // namespace shrpx

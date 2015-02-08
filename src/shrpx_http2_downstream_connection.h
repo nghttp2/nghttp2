@@ -62,8 +62,6 @@ public:
   virtual void on_upstream_change(Upstream *upstream) {}
   virtual int on_priority_change(int32_t pri);
 
-  virtual size_t get_addr_idx() const;
-
   int send();
 
   void attach_stream_data(StreamData *sd);

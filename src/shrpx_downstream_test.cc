@@ -136,20 +136,22 @@ void test_downstream_assemble_request_cookie(void) {
 void test_downstream_rewrite_location_response_header(void) {
   {
     Downstream d(nullptr, 0, 0);
-    d.add_request_header("host", "localhost:3000");
+    d.set_request_downstream_host("localhost:3000");
+    d.add_request_header("host", "localhost");
     d.add_response_header("location", "http://localhost:3000/");
     d.index_request_headers();
     d.index_response_headers();
-    d.rewrite_location_response_header("https", 443);
+    d.rewrite_location_response_header("https");
     auto location = d.get_response_header(http2::HD_LOCATION);
     CU_ASSERT("https://localhost/" == (*location).value);
   }
   {
     Downstream d(nullptr, 0, 0);
+    d.set_request_downstream_host("localhost");
     d.set_request_http2_authority("localhost");
-    d.add_response_header("location", "http://localhost/");
+    d.add_response_header("location", "http://localhost:3000/");
     d.index_response_headers();
-    d.rewrite_location_response_header("https", 443);
+    d.rewrite_location_response_header("https");
     auto location = d.get_response_header(http2::HD_LOCATION);
     CU_ASSERT("https://localhost/" == (*location).value);
   }

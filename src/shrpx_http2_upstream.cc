@@ -1232,7 +1232,7 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
   if (!get_config()->http2_proxy && !get_config()->client_proxy &&
       !get_config()->no_location_rewrite) {
     downstream->rewrite_location_response_header(
-        get_client_handler()->get_upstream_scheme(), get_config()->port);
+        downstream->get_request_http2_scheme());
   }
 
   size_t nheader = downstream->get_response_headers().size();

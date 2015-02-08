@@ -59,8 +59,6 @@ public:
   virtual void on_upstream_change(Upstream *upstream);
   virtual int on_priority_change(int32_t pri) { return 0; }
 
-  virtual size_t get_addr_idx() const;
-
   int on_connect();
   void signal_write();
 

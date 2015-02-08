@@ -166,6 +166,7 @@ public:
   int64_t get_request_content_length() const;
   void set_request_content_length(int64_t len);
   bool request_pseudo_header_allowed(int16_t token) const;
+  void set_request_downstream_host(std::string host);
   bool expect_response_body() const;
   enum {
     INITIAL,
@@ -194,8 +195,7 @@ public:
   // This function must be called after response headers are indexed.
   const Headers::value_type *get_response_header(int16_t token) const;
   // Rewrites the location response header field.
-  void rewrite_location_response_header(const std::string &upstream_scheme,
-                                        uint16_t upstream_port);
+  void rewrite_location_response_header(const std::string &upstream_scheme);
   void add_response_header(std::string name, std::string value);
   void set_last_response_header_value(std::string value);
 
@@ -310,6 +310,10 @@ private:
   std::string request_path_;
   std::string request_http2_scheme_;
   std::string request_http2_authority_;
+  // host we requested to downstream.  This is used to rewrite
+  // location header field to decide the location should be rewritten
+  // or not.
+  std::string request_downstream_host_;
   std::string assembled_request_cookie_;
 
   DefaultMemchunks request_buf_;

@@ -235,6 +235,12 @@ int HttpDownstreamConnection::push_request_headers() {
     host = get_config()->downstream_addrs[addr_idx_].hostport.get();
   }
 
+  if (authority) {
+    downstream_->set_request_downstream_host(authority);
+  } else {
+    downstream_->set_request_downstream_host(host);
+  }
+
   downstream_->assemble_request_cookie();
 
   // Assume that method and request path do not contain \r\n.
@@ -766,7 +772,5 @@ int HttpDownstreamConnection::on_connect() {
 void HttpDownstreamConnection::on_upstream_change(Upstream *upstream) {}
 
 void HttpDownstreamConnection::signal_write() { conn_.wlimit.startw(); }
-
-size_t HttpDownstreamConnection::get_addr_idx() const { return addr_idx_; }
 
 } // namespace shrpx

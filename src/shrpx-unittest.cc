@@ -55,7 +55,6 @@ int main(int argc, char *argv[]) {
   SSL_library_init();
 
   shrpx::create_config();
-  shrpx::mod_config()->no_host_rewrite = true;
 
   // initialize the CUnit test registry
   if (CUE_SUCCESS != CU_initialize_registry())

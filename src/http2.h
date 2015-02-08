@@ -163,19 +163,22 @@ void dump_nv(FILE *out, const Headers &nva);
 
 // Rewrites redirection URI which usually appears in location header
 // field. The |uri| is the URI in the location header field. The |u|
-// stores the result of parsed |uri|. The |request_host| is the host
-// or :authority header field value in the request. The
+// stores the result of parsed |uri|. The |request_authority| is the
+// host or :authority header field value in the request. The
 // |upstream_scheme| is either "https" or "http" in the upstream
-// interface.
+// interface.  Rewrite is done only if location header field value
+// contains |match_host| as host excluding port.  The |match_host| and
+// |request_authority| could be different.  If |request_authority| is
+// empty, strip authority.
 //
 // This function returns the new rewritten URI on success. If the
 // location URI is not subject to the rewrite, this function returns
 // emtpy string.
 std::string rewrite_location_uri(const std::string &uri,
                                  const http_parser_url &u,
-                                 const std::string &request_host,
-                                 const std::string &upstream_scheme,
-                                 uint16_t upstream_port);
+                                 const std::string &match_host,
+                                 const std::string &request_authority,
+                                 const std::string &upstream_scheme);
 
 // Checks the header name/value pair using nghttp2_check_header_name()
 // and nghttp2_check_header_value(). If both function returns nonzero,

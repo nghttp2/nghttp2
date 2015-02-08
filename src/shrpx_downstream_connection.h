@@ -58,8 +58,6 @@ public:
   virtual void on_upstream_change(Upstream *uptream) = 0;
   virtual int on_priority_change(int32_t pri) = 0;
 
-  virtual size_t get_addr_idx() const = 0;
-
   void set_client_handler(ClientHandler *client_handler);
   ClientHandler *get_client_handler();
   Downstream *get_downstream();

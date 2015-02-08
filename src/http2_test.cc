@@ -187,40 +187,44 @@ void test_http2_lws(void) {
 }
 
 namespace {
-void check_rewrite_location_uri(const std::string &new_uri,
-                                const std::string &uri,
-                                const std::string &req_host,
-                                const std::string &upstream_scheme,
-                                uint16_t upstream_port) {
+void check_rewrite_location_uri(const std::string &want, const std::string &uri,
+                                const std::string &match_host,
+                                const std::string &req_authority,
+                                const std::string &upstream_scheme) {
   http_parser_url u;
   memset(&u, 0, sizeof(u));
   CU_ASSERT(0 == http_parser_parse_url(uri.c_str(), uri.size(), 0, &u));
-  CU_ASSERT(new_uri == http2::rewrite_location_uri(
-                           uri, u, req_host, upstream_scheme, upstream_port));
+  auto got = http2::rewrite_location_uri(uri, u, match_host, req_authority,
+                                         upstream_scheme);
+  CU_ASSERT(want == got);
 }
 } // namespace
 
 void test_http2_rewrite_location_uri(void) {
   check_rewrite_location_uri("https://localhost:3000/alpha?bravo#charlie",
                              "http://localhost:3001/alpha?bravo#charlie",
-                             "localhost:3001", "https", 3000);
+                             "localhost:3001", "localhost:3000", "https");
   check_rewrite_location_uri("https://localhost/", "http://localhost:3001/",
-                             "localhost:3001", "https", 443);
+                             "localhost", "localhost", "https");
   check_rewrite_location_uri("http://localhost/", "http://localhost:3001/",
-                             "localhost:3001", "http", 80);
+                             "localhost", "localhost", "http");
   check_rewrite_location_uri("http://localhost:443/", "http://localhost:3001/",
-                             "localhost:3001", "http", 443);
+                             "localhost", "localhost:443", "http");
   check_rewrite_location_uri("https://localhost:80/", "http://localhost:3001/",
-                             "localhost:3001", "https", 80);
-  check_rewrite_location_uri("", "http://localhost:3001/", "127.0.0.1", "https",
-                             3000);
+                             "localhost", "localhost:80", "https");
+  check_rewrite_location_uri("", "http://localhost:3001/", "127.0.0.1",
+                             "127.0.0.1", "https");
   check_rewrite_location_uri("https://localhost:3000/",
-                             "http://localhost:3001/", "localhost", "https",
-                             3000);
-  check_rewrite_location_uri("", "https://localhost:3001/", "localhost",
-                             "https", 3000);
+                             "http://localhost:3001/", "localhost",
+                             "localhost:3000", "https");
   check_rewrite_location_uri("https://localhost:3000/", "http://localhost/",
-                             "localhost", "https", 3000);
+                             "localhost", "localhost:3000", "https");
+
+  // match_host != req_authority
+  check_rewrite_location_uri("https://example.org", "http://127.0.0.1:8080",
+                             "127.0.0.1", "example.org", "https");
+  check_rewrite_location_uri("", "http://example.org", "127.0.0.1",
+                             "example.org", "https");
 }
 
 void test_http2_parse_http_status_code(void) {
