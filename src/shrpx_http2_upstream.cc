@@ -1320,8 +1320,24 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
     return -1;
   }
 
+  // We need some conditions that must be fulfilled to initiate server
+  // push.
+  //
+  // * Server push is disabled for http2 proxy, since incoming headers
+  //   are mixed origins.  We don't know how to reliably determine the
+  //   authority yet.
+  //
+  // * If downstream is http/2, it is likely that PUSH_PROMISE is
+  //   coming from there, so we don't initiate PUSH_RPOMISE here.
+  //
+  // * We need 200 response code for associated resource.  This is too
+  //   restrictive, we will review this later.
+  //
+  // * We requires GET or POST for associated resource.  Probably we
+  //   don't want to push for HEAD request.  Not sure other methods
+  //   are also eligible for push.
   if (get_config()->downstream_proto == PROTO_HTTP &&
-      (downstream->get_stream_id() % 2) &&
+      !get_config()->http2_proxy && (downstream->get_stream_id() % 2) &&
       downstream->get_response_header(http2::HD_LINK) &&
       downstream->get_response_http_status() == 200 &&
       (downstream->get_request_method() == "GET" ||
