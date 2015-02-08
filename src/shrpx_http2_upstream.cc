@@ -1538,8 +1538,8 @@ int Http2Upstream::prepare_push_promise(Downstream *downstream) {
     }
     for (auto &link :
          http2::parse_link_header(kv.value.c_str(), kv.value.size())) {
-      auto link_url = link.url.first;
-      auto link_urllen = link.url.second - link.url.first;
+      auto link_url = link.uri.first;
+      auto link_urllen = link.uri.second - link.uri.first;
 
       const char *rel;
       size_t rellen;

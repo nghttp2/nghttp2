@@ -309,21 +309,21 @@ void test_http2_parse_link_header(void) {
     const char s[] = "<url>; rel=preload";
     auto res = http2::parse_link_header(s, sizeof(s) - 1);
     CU_ASSERT(1 == res.size());
-    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].url);
+    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
   }
   {
     // With extra link-param.  URI url should be extracted
     const char s[] = "<url>; rel=preload; as=file";
     auto res = http2::parse_link_header(s, sizeof(s) - 1);
     CU_ASSERT(1 == res.size());
-    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].url);
+    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
   }
   {
     // With extra link-param.  URI url should be extracted
     const char s[] = "<url>; as=file; rel=preload";
     auto res = http2::parse_link_header(s, sizeof(s) - 1);
     CU_ASSERT(1 == res.size());
-    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].url);
+    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
   }
   {
     // With extra link-param and quote-string.  URI url should be
@@ -331,7 +331,7 @@ void test_http2_parse_link_header(void) {
     const char s[] = R"(<url>; rel=preload; title="foo,bar")";
     auto res = http2::parse_link_header(s, sizeof(s) - 1);
     CU_ASSERT(1 == res.size());
-    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].url);
+    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
   }
   {
     // With extra link-param and quote-string.  URI url should be
@@ -339,36 +339,36 @@ void test_http2_parse_link_header(void) {
     const char s[] = R"(<url>; title="foo,bar"; rel=preload)";
     auto res = http2::parse_link_header(s, sizeof(s) - 1);
     CU_ASSERT(1 == res.size());
-    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].url);
+    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
   }
   {
     // ',' after quote-string
     const char s[] = R"(<url>; title="foo,bar", <url>; rel=preload)";
     auto res = http2::parse_link_header(s, sizeof(s) - 1);
     CU_ASSERT(1 == res.size());
-    CU_ASSERT(std::make_pair(&s[25], &s[28]) == res[0].url);
+    CU_ASSERT(std::make_pair(&s[25], &s[28]) == res[0].uri);
   }
   {
     // Only first URI should be extracted.
     const char s[] = "<url>; rel=preload, <url>";
     auto res = http2::parse_link_header(s, sizeof(s) - 1);
     CU_ASSERT(1 == res.size());
-    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].url);
+    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
   }
   {
     // Both have rel=preload, so both urls should be extracted
     const char s[] = "<url>; rel=preload, <url>; rel=preload";
     auto res = http2::parse_link_header(s, sizeof(s) - 1);
     CU_ASSERT(2 == res.size());
-    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].url);
-    CU_ASSERT(std::make_pair(&s[21], &s[24]) == res[1].url);
+    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
+    CU_ASSERT(std::make_pair(&s[21], &s[24]) == res[1].uri);
   }
   {
     // Second URI uri should be extracted.
     const char s[] = "<url>, <url>;rel=preload";
     auto res = http2::parse_link_header(s, sizeof(s) - 1);
     CU_ASSERT(1 == res.size());
-    CU_ASSERT(std::make_pair(&s[8], &s[11]) == res[0].url);
+    CU_ASSERT(std::make_pair(&s[8], &s[11]) == res[0].uri);
   }
   {
     // Error if input ends with ';'
@@ -381,14 +381,14 @@ void test_http2_parse_link_header(void) {
     const char s[] = "<url>;rel=preload,";
     auto res = http2::parse_link_header(s, sizeof(s) - 1);
     CU_ASSERT(1 == res.size());
-    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].url);
+    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
   }
   {
     // Multiple repeated ','s between fields is OK
     const char s[] = "<url>,,,<url>;rel=preload";
     auto res = http2::parse_link_header(s, sizeof(s) - 1);
     CU_ASSERT(1 == res.size());
-    CU_ASSERT(std::make_pair(&s[9], &s[12]) == res[0].url);
+    CU_ASSERT(std::make_pair(&s[9], &s[12]) == res[0].uri);
   }
   {
     // Error if url is not enclosed by <>
@@ -431,22 +431,22 @@ void test_http2_parse_link_header(void) {
     const char s[] = "<url>;as=file;rel=preload,<url>;rel=preload";
     auto res = http2::parse_link_header(s, sizeof(s) - 1);
     CU_ASSERT(2 == res.size());
-    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].url);
-    CU_ASSERT(std::make_pair(&s[27], &s[30]) == res[1].url);
+    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
+    CU_ASSERT(std::make_pair(&s[27], &s[30]) == res[1].uri);
   }
   {
     // link-extension may have no value
     const char s[] = "<url>; as; rel=preload";
     auto res = http2::parse_link_header(s, sizeof(s) - 1);
     CU_ASSERT(1 == res.size());
-    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].url);
+    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
   }
   {
     // ext-name-star
     const char s[] = "<url>; foo*=bar; rel=preload";
     auto res = http2::parse_link_header(s, sizeof(s) - 1);
     CU_ASSERT(1 == res.size());
-    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].url);
+    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
   }
   {
     // '*' is not allowed expect for trailing one
@@ -477,7 +477,7 @@ void test_http2_parse_link_header(void) {
     const char s[] = "  <url>; rel=preload";
     auto res = http2::parse_link_header(s, sizeof(s) - 1);
     CU_ASSERT(1 == res.size());
-    CU_ASSERT(std::make_pair(&s[3], &s[6]) == res[0].url);
+    CU_ASSERT(std::make_pair(&s[3], &s[6]) == res[0].uri);
   }
 }
 

@@ -876,7 +876,7 @@ std::vector<LinkHeader> parse_link_header(const char *src, size_t len) {
   for (; first != last;) {
     auto rv = parse_next_link_header_once(first, last);
     first = rv.second;
-    if (rv.first.url.first != 0 || rv.first.url.second != 0) {
+    if (rv.first.uri.first != 0 || rv.first.uri.second != 0) {
       res.push_back(rv.first);
     }
   }
