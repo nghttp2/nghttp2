@@ -756,6 +756,7 @@ parse_next_link_header_once(const char *first, const char *last) {
   }
 
   auto ok = false;
+  auto ign = false;
   for (;;) {
     first = skip_lws(first, last);
     if (first == last) {
@@ -842,6 +843,23 @@ parse_next_link_header_once(const char *first, const char *last) {
         continue;
       }
     }
+    // we have to reject URI if we have nonempty anchor parameter.
+    static const char ANCHOR[] = "anchor=";
+    static const size_t ANCHORLEN = sizeof(ANCHOR) - 1;
+    if (!ign && first + ANCHORLEN <= last) {
+      if (std::equal(ANCHOR, ANCHOR + ANCHORLEN, first)) {
+        // we only accept URI if anchor="" here.
+        if (first + ANCHORLEN + 2 <= last) {
+          if (*(first + ANCHORLEN) != '"' || *(first + ANCHORLEN + 1) != '"') {
+            ign = true;
+          }
+        } else {
+          // here we got invalid production (anchor=") or anchor=?
+          ign = true;
+        }
+      }
+    }
+
     auto param_first = first;
     for (; first != last;) {
       if (util::in_attr_char(*first)) {
@@ -923,7 +941,7 @@ almost_done:
   if (*first == ',') {
     ++first;
   }
-  if (ok) {
+  if (ok && !ign) {
     return {{{url_first, url_last}}, first};
   }
   return {{{0, 0}}, first};

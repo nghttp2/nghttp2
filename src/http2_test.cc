@@ -600,6 +600,33 @@ void test_http2_parse_link_header(void) {
     CU_ASSERT(1 == res.size());
     CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
   }
+  {
+    // anchor="" is acceptable
+    const char s[] = R"(<url>; rel=preload; anchor="")";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(1 == res.size());
+    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
+  }
+  {
+    // With anchor="#foo", url should be ignored
+    const char s[] = R"(<url>; rel=preload; anchor="#foo")";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(0 == res.size());
+  }
+  {
+    // With anchor=f, url should be ignored
+    const char s[] = "<url>; rel=preload; anchor=f";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(0 == res.size());
+  }
+  {
+    // First url is ignored With anchor="#foo", but url should be
+    // accepted.
+    const char s[] = R"(<url>; rel=preload; anchor="#foo", <url>; rel=preload)";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(1 == res.size());
+    CU_ASSERT(std::make_pair(&s[36], &s[39]) == res[0].uri);
+  }
 }
 
 void test_http2_path_join(void) {
