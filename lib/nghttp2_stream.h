@@ -84,7 +84,8 @@ typedef enum {
 
 typedef enum {
   NGHTTP2_STREAM_FLAG_NONE = 0,
-  /* Indicates that this stream is pushed stream */
+  /* Indicates that this stream is pushed stream and not opened
+     yet. */
   NGHTTP2_STREAM_FLAG_PUSH = 0x01,
   /* Indicates that this stream was closed */
   NGHTTP2_STREAM_FLAG_CLOSED = 0x02,

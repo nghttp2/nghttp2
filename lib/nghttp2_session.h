@@ -400,6 +400,9 @@ int nghttp2_session_add_settings(nghttp2_session *session, uint8_t flags,
  * is a pointer to the arbitrary user supplied data to be associated
  * to this stream.
  *
+ * If |initial_state| is NGHTTP2_STREAM_RESERVED, this function sets
+ * NGHTTP2_STREAM_FLAG_PUSH flag set.
+ *
  * This function returns a pointer to created new stream object, or
  * NULL.
  */

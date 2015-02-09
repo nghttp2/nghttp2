@@ -688,16 +688,7 @@ int nghttp2_session_add_item(nghttp2_session *session,
     switch (frame->hd.type) {
     case NGHTTP2_RST_STREAM:
       if (stream) {
-        /* We rely on the stream state to decide whether number of
-           streams should be decremented or not. For purly reserved or
-           idle streams, they are not counted to those numbers and we
-           must keep this state in order not to decrement the number.
-           We don't check against NGHTTP2_STREAM_IDLE because
-           nghttp2_session_get_stream() does not return such
-           stream. */
-        if (stream->state != NGHTTP2_STREAM_RESERVED) {
-          stream->state = NGHTTP2_STREAM_CLOSING;
-        }
+        stream->state = NGHTTP2_STREAM_CLOSING;
       }
 
       break;
@@ -879,6 +870,10 @@ nghttp2_stream *nghttp2_session_open_stream(nghttp2_session *session,
     }
   }
 
+  if (initial_state == NGHTTP2_STREAM_RESERVED) {
+    flags |= NGHTTP2_STREAM_FLAG_PUSH;
+  }
+
   nghttp2_stream_init(
       stream, stream_id, flags, initial_state, pri_spec->weight,
       &session->roots, session->remote_settings.initial_window_size,
@@ -1016,10 +1011,9 @@ int nghttp2_session_close_stream(nghttp2_session *session, int32_t stream_id,
     }
   }
 
-  switch (stream->state) {
-  case NGHTTP2_STREAM_RESERVED:
-    break;
-  default:
+  /* pushed streams which is not opened yet is not counted toward max
+     concurrent limits */
+  if ((stream->flags & NGHTTP2_STREAM_FLAG_PUSH) == 0) {
     if (nghttp2_session_is_my_stream_id(session, stream_id)) {
       --session->num_outgoing_streams;
     } else {
@@ -1844,7 +1838,7 @@ static int session_prep_frame(nghttp2_session *session,
 
       if (!nghttp2_session_open_stream(
               session, frame->push_promise.promised_stream_id,
-              NGHTTP2_STREAM_FLAG_PUSH, &pri_spec, NGHTTP2_STREAM_RESERVED,
+              NGHTTP2_STREAM_FLAG_NONE, &pri_spec, NGHTTP2_STREAM_RESERVED,
               aux_data->stream_user_data)) {
         return NGHTTP2_ERR_NOMEM;
       }
@@ -2290,6 +2284,7 @@ static int session_after_frame_sent1(nghttp2_session *session) {
         break;
       }
       case NGHTTP2_HCAT_PUSH_RESPONSE:
+        stream->flags &= ~NGHTTP2_STREAM_FLAG_PUSH;
         ++session->num_outgoing_streams;
       /* Fall through */
       case NGHTTP2_HCAT_RESPONSE:
@@ -3982,7 +3977,7 @@ int nghttp2_session_on_push_promise_received(nghttp2_session *session,
                              NGHTTP2_DEFAULT_WEIGHT, 0);
 
   promised_stream = nghttp2_session_open_stream(
-      session, frame->push_promise.promised_stream_id, NGHTTP2_STREAM_FLAG_PUSH,
+      session, frame->push_promise.promised_stream_id, NGHTTP2_STREAM_FLAG_NONE,
       &pri_spec, NGHTTP2_STREAM_RESERVED, NULL);
 
   if (!promised_stream) {

@@ -515,6 +515,7 @@ int nghttp2_stream_update_local_initial_window_size(
 
 void nghttp2_stream_promise_fulfilled(nghttp2_stream *stream) {
   stream->state = NGHTTP2_STREAM_OPENED;
+  stream->flags &= ~NGHTTP2_STREAM_FLAG_PUSH;
 }
 
 nghttp2_stream *nghttp2_stream_get_dep_root(nghttp2_stream *stream) {
