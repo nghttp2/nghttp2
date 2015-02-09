@@ -707,6 +707,28 @@ InputIt skip_to_next_field(InputIt first, InputIt last) {
 } // namespace
 
 namespace {
+// Skip to the right dquote ('"'), handling backslash escapes.
+// Returns |last| if input is not terminated with '"'.
+template <typename InputIt>
+InputIt skip_to_right_dquote(InputIt first, InputIt last) {
+  for (; first != last;) {
+    switch (*first) {
+    case '"':
+      return first;
+    case '\\':
+      ++first;
+      if (first == last) {
+        return first;
+      }
+      break;
+    }
+    ++first;
+  }
+  return first;
+}
+} // namespace
+
+namespace {
 std::pair<LinkHeader, const char *>
 parse_next_link_header_once(const char *first, const char *last) {
   first = skip_to_next_field(first, last);
@@ -862,7 +884,7 @@ parse_next_link_header_once(const char *first, const char *last) {
     }
     if (*first == '"') {
       // quoted-string
-      first = std::find(first + 1, last, '"');
+      first = skip_to_right_dquote(first + 1, last);
       if (first == last) {
         return {{{0, 0}}, first};
       }

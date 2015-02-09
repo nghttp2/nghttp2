@@ -593,6 +593,13 @@ void test_http2_parse_link_header(void) {
     auto res = http2::parse_link_header(s, sizeof(s) - 1);
     CU_ASSERT(0 == res.size());
   }
+  {
+    // backslash escaped characters in quoted-string
+    const char s[] = R"(<url>; rel=preload; title="foo\"baz\"bar")";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(1 == res.size());
+    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
+  }
 }
 
 void test_http2_path_join(void) {
