@@ -875,7 +875,7 @@ parse_next_link_header_once(const char *first, const char *last) {
       // parse next link-param
       continue;
     }
-    // now parsing lin-param value
+    // now parsing link-param value
     assert(*first == '=');
     ++first;
     if (first == last) {
