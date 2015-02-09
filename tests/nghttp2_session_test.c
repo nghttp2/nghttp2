@@ -6666,7 +6666,7 @@ void test_nghttp2_session_cancel_reserved_remote(void) {
   nghttp2_hd_deflater deflater;
   nghttp2_mem *mem;
   nghttp2_bufs bufs;
-  int rv;
+  ssize_t rv;
 
   mem = nghttp2_mem_default();
   frame_pack_bufs_init(&bufs);
@@ -6736,7 +6736,9 @@ void test_nghttp2_session_cancel_reserved_remote(void) {
 
   nghttp2_frame_headers_free(&frame.headers, mem);
 
-  nghttp2_bufs_free(&bufs);
+  nghttp2_hd_deflate_free(&deflater);
 
   nghttp2_session_del(session);
+
+  nghttp2_bufs_free(&bufs);
 }
