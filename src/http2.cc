@@ -938,7 +938,7 @@ parse_next_link_header_once(const char *first, const char *last) {
 almost_done:
   assert(first == last || *first == ',');
 
-  if (*first == ',') {
+  if (first != last) {
     ++first;
   }
   if (ok && !ign) {
