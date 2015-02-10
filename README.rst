@@ -429,7 +429,8 @@ nghttpx - proxy
 +++++++++++++++
 
 ``nghttpx`` is a multi-threaded reverse proxy for ``h2-14``, SPDY and
-HTTP/1.1 and powers nghttp2.org site.  It has several operation modes:
+HTTP/1.1 and powers nghttp2.org site and supports HTTP/2 server push.
+It has several operation modes:
 
 ================== ============================ ============== =============
 Mode option        Frontend                     Backend        Note
