@@ -467,7 +467,8 @@ void to_token68(std::string &base64str) {
       return c;
     }
   });
-  base64str.erase(std::find(std::begin(base64str), std::end(base64str), '='));
+  base64str.erase(std::find(std::begin(base64str), std::end(base64str), '='),
+                  std::end(base64str));
 }
 
 void to_base64(std::string &token68str) {
