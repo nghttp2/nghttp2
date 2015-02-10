@@ -66,6 +66,18 @@ void test_util_strieq(void) {
   CU_ASSERT(util::strieq(std::string(), std::string()));
   CU_ASSERT(!util::strieq(std::string("alpha"), std::string("AlPhA ")));
   CU_ASSERT(!util::strieq(std::string(), std::string("AlPhA ")));
+
+  CU_ASSERT(util::strieq("alpha", "alpha", 5));
+  CU_ASSERT(util::strieq("alpha", "AlPhA", 5));
+  CU_ASSERT(util::strieq("", static_cast<const char *>(nullptr), 0));
+  CU_ASSERT(!util::strieq("alpha", "AlPhA ", 6));
+  CU_ASSERT(!util::strieq("", "AlPhA ", 6));
+
+  CU_ASSERT(util::strieq("alpha", "alpha"));
+  CU_ASSERT(util::strieq("alpha", "AlPhA"));
+  CU_ASSERT(util::strieq("", ""));
+  CU_ASSERT(!util::strieq("alpha", "AlPhA "));
+  CU_ASSERT(!util::strieq("", "AlPhA "));
 }
 
 void test_util_inp_strlower(void) {
@@ -92,11 +104,36 @@ void test_util_to_base64(void) {
   CU_ASSERT("AAA++B/B" == x);
 }
 
+void test_util_to_token68(void) {
+  std::string x = "AAA++B/=";
+  util::to_token68(x);
+  CU_ASSERT("AAA--B_" == x);
+
+  x = "AAA++B/B";
+  util::to_token68(x);
+  CU_ASSERT("AAA--B_B" == x);
+}
+
 void test_util_percent_encode_token(void) {
   CU_ASSERT("h2" == util::percent_encode_token("h2"));
   CU_ASSERT("h3~" == util::percent_encode_token("h3~"));
   CU_ASSERT("100%25" == util::percent_encode_token("100%"));
   CU_ASSERT("http%202" == util::percent_encode_token("http 2"));
+}
+
+void test_util_percent_decode(void) {
+  {
+    std::string s = "%66%6F%6f%62%61%72";
+    CU_ASSERT("foobar" == util::percentDecode(std::begin(s), std::end(s)));
+  }
+  {
+    std::string s = "%66%6";
+    CU_ASSERT("f%6" == util::percentDecode(std::begin(s), std::end(s)));
+  }
+  {
+    std::string s = "%66%";
+    CU_ASSERT("f%" == util::percentDecode(std::begin(s), std::end(s)));
+  }
 }
 
 void test_util_quote_string(void) {
@@ -275,6 +312,30 @@ void test_util_format_duration(void) {
             util::format_duration(std::chrono::microseconds(1000000)));
   CU_ASSERT("1.05s" ==
             util::format_duration(std::chrono::microseconds(1050000)));
+}
+
+void test_util_starts_with(void) {
+  CU_ASSERT(util::startsWith("foo", "foo"));
+  CU_ASSERT(util::startsWith("fooo", "foo"));
+  CU_ASSERT(util::startsWith("ofoo", ""));
+  CU_ASSERT(!util::startsWith("ofoo", "foo"));
+
+  CU_ASSERT(util::istartsWith("FOO", "fOO"));
+  CU_ASSERT(util::startsWith("ofoo", ""));
+  CU_ASSERT(util::istartsWith("fOOo", "Foo"));
+  CU_ASSERT(!util::istartsWith("ofoo", "foo"));
+}
+
+void test_util_ends_with(void) {
+  CU_ASSERT(util::endsWith("foo", "foo"));
+  CU_ASSERT(util::endsWith("foo", ""));
+  CU_ASSERT(util::endsWith("ofoo", "foo"));
+  CU_ASSERT(!util::endsWith("ofoo", "fo"));
+
+  CU_ASSERT(util::iendsWith("fOo", "Foo"));
+  CU_ASSERT(util::iendsWith("foo", ""));
+  CU_ASSERT(util::iendsWith("oFoo", "fOO"));
+  CU_ASSERT(!util::iendsWith("ofoo", "fo"));
 }
 
 } // namespace shrpx

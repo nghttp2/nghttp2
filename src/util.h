@@ -165,6 +165,10 @@ bool in_token(char c);
 
 bool in_attr_char(char c);
 
+// Returns integer corresponding to hex notation |c|.  It is undefined
+// if isHexDigit(c) is false.
+uint32_t hex_to_uint(char c);
+
 std::string percentEncode(const unsigned char *target, size_t len);
 
 std::string percentEncode(const std::string &target);
@@ -193,96 +197,7 @@ std::string iso8601_date(int64_t ms);
 
 time_t parse_http_date(const std::string &s);
 
-template <typename InputIterator1, typename InputIterator2>
-bool startsWith(InputIterator1 first1, InputIterator1 last1,
-                InputIterator2 first2, InputIterator2 last2) {
-  if (last1 - first1 < last2 - first2) {
-    return false;
-  }
-  return std::equal(first2, last2, first1);
-}
-
-bool startsWith(const std::string &a, const std::string &b);
-
-struct CaseCmp {
-  bool operator()(char lhs, char rhs) const {
-    if ('A' <= lhs && lhs <= 'Z') {
-      lhs += 'a' - 'A';
-    }
-    if ('A' <= rhs && rhs <= 'Z') {
-      rhs += 'a' - 'A';
-    }
-    return lhs == rhs;
-  }
-};
-
-template <typename InputIterator1, typename InputIterator2>
-bool istartsWith(InputIterator1 first1, InputIterator1 last1,
-                 InputIterator2 first2, InputIterator2 last2) {
-  if (last1 - first1 < last2 - first2) {
-    return false;
-  }
-  return std::equal(first2, last2, first1, CaseCmp());
-}
-
-bool istartsWith(const std::string &a, const std::string &b);
-bool istartsWith(const char *a, const char *b);
-bool istartsWith(const char *a, size_t n, const char *b);
-
-template <typename InputIterator1, typename InputIterator2>
-bool endsWith(InputIterator1 first1, InputIterator1 last1,
-              InputIterator2 first2, InputIterator2 last2) {
-  if (last1 - first1 < last2 - first2) {
-    return false;
-  }
-  return std::equal(first2, last2, last1 - (last2 - first2));
-}
-
-template <typename InputIterator1, typename InputIterator2>
-bool iendsWith(InputIterator1 first1, InputIterator1 last1,
-               InputIterator2 first2, InputIterator2 last2) {
-  if (last1 - first1 < last2 - first2) {
-    return false;
-  }
-  return std::equal(first2, last2, last1 - (last2 - first2), CaseCmp());
-}
-
-bool endsWith(const std::string &a, const std::string &b);
-
-int strcompare(const char *a, const uint8_t *b, size_t n);
-
-bool strieq(const std::string &a, const std::string &b);
-
-bool strieq(const char *a, const char *b);
-
-bool strieq(const char *a, const uint8_t *b, size_t n);
-
-bool strieq(const char *a, const char *b, size_t n);
-
-template <typename A, typename B>
-bool streq(const A *a, const B *b, size_t bn) {
-  if (!a || !b) {
-    return false;
-  }
-  auto blast = b + bn;
-  for (; *a && b != blast && *a == *b; ++a, ++b)
-    ;
-  return !*a && b == blast;
-}
-
-template <typename A, typename B>
-bool streq(const A *a, size_t alen, const B *b, size_t blen) {
-  if (alen != blen) {
-    return false;
-  }
-  return memcmp(a, b, alen) == 0;
-}
-
-bool strifind(const char *a, const char *b);
-
 char upcase(char c);
-
-char lowcase(char c);
 
 inline char lowcase(char c) {
   static unsigned char tbl[] = {
@@ -308,8 +223,111 @@ inline char lowcase(char c) {
   return tbl[static_cast<unsigned char>(c)];
 }
 
+template <typename InputIterator1, typename InputIterator2>
+bool startsWith(InputIterator1 first1, InputIterator1 last1,
+                InputIterator2 first2, InputIterator2 last2) {
+  if (last1 - first1 < last2 - first2) {
+    return false;
+  }
+  return std::equal(first2, last2, first1);
+}
+
+inline bool startsWith(const std::string &a, const std::string &b) {
+  return startsWith(std::begin(a), std::end(a), std::begin(b), std::end(b));
+}
+
+struct CaseCmp {
+  bool operator()(char lhs, char rhs) const {
+    return lowcase(lhs) == lowcase(rhs);
+  }
+};
+
+template <typename InputIterator1, typename InputIterator2>
+bool istartsWith(InputIterator1 first1, InputIterator1 last1,
+                 InputIterator2 first2, InputIterator2 last2) {
+  if (last1 - first1 < last2 - first2) {
+    return false;
+  }
+  return std::equal(first2, last2, first1, CaseCmp());
+}
+
+inline bool istartsWith(const std::string &a, const std::string &b) {
+  return istartsWith(std::begin(a), std::end(a), std::begin(b), std::end(b));
+}
+
+template <typename InputIt>
+bool istartsWith(InputIt a, size_t an, const char *b) {
+  return istartsWith(a, a + an, b, b + strlen(b));
+}
+
+bool istartsWith(const char *a, const char *b);
+
+template <typename InputIterator1, typename InputIterator2>
+bool endsWith(InputIterator1 first1, InputIterator1 last1,
+              InputIterator2 first2, InputIterator2 last2) {
+  if (last1 - first1 < last2 - first2) {
+    return false;
+  }
+  return std::equal(first2, last2, last1 - (last2 - first2));
+}
+
+inline bool endsWith(const std::string &a, const std::string &b) {
+  return endsWith(std::begin(a), std::end(a), std::begin(b), std::end(b));
+}
+
+template <typename InputIterator1, typename InputIterator2>
+bool iendsWith(InputIterator1 first1, InputIterator1 last1,
+               InputIterator2 first2, InputIterator2 last2) {
+  if (last1 - first1 < last2 - first2) {
+    return false;
+  }
+  return std::equal(first2, last2, last1 - (last2 - first2), CaseCmp());
+}
+
+inline bool iendsWith(const std::string &a, const std::string &b) {
+  return iendsWith(std::begin(a), std::end(a), std::begin(b), std::end(b));
+}
+
+int strcompare(const char *a, const uint8_t *b, size_t n);
+
+template <typename InputIt> bool strieq(const char *a, InputIt b, size_t bn) {
+  if (!a) {
+    return false;
+  }
+  auto blast = b + bn;
+  for (; *a && b != blast && lowcase(*a) == lowcase(*b); ++a, ++b)
+    ;
+  return !*a && b == blast;
+}
+
+bool strieq(const std::string &a, const std::string &b);
+
+bool strieq(const char *a, const char *b);
+
+template <typename InputIt> bool streq(const char *a, InputIt b, size_t bn) {
+  if (!a) {
+    return false;
+  }
+  auto blast = b + bn;
+  for (; *a && b != blast && *a == *b; ++a, ++b)
+    ;
+  return !*a && b == blast;
+}
+
+template <typename InputIt1, typename InputIt2>
+bool streq(InputIt1 a, size_t alen, InputIt2 b, size_t blen) {
+  if (alen != blen) {
+    return false;
+  }
+  return std::equal(a, a + alen, b);
+}
+
+bool strifind(const char *a, const char *b);
+
 // Lowercase |s| in place.
-void inp_strlower(std::string &s);
+inline void inp_strlower(std::string &s) {
+  std::transform(std::begin(s), std::end(s), std::begin(s), lowcase);
+}
 
 // Returns string representation of |n| with 2 fractional digits.
 std::string dtos(double n);

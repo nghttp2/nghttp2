@@ -123,8 +123,11 @@ int main(int argc, char *argv[]) {
       !CU_add_test(pSuite, "util_inp_strlower",
                    shrpx::test_util_inp_strlower) ||
       !CU_add_test(pSuite, "util_to_base64", shrpx::test_util_to_base64) ||
+      !CU_add_test(pSuite, "util_to_token68", shrpx::test_util_to_token68) ||
       !CU_add_test(pSuite, "util_percent_encode_token",
                    shrpx::test_util_percent_encode_token) ||
+      !CU_add_test(pSuite, "util_percent_decode",
+                   shrpx::test_util_percent_decode) ||
       !CU_add_test(pSuite, "util_quote_string",
                    shrpx::test_util_quote_string) ||
       !CU_add_test(pSuite, "util_utox", shrpx::test_util_utox) ||
@@ -145,6 +148,8 @@ int main(int argc, char *argv[]) {
                    shrpx::test_util_duration_str) ||
       !CU_add_test(pSuite, "util_format_duration",
                    shrpx::test_util_format_duration) ||
+      !CU_add_test(pSuite, "util_starts_with", shrpx::test_util_starts_with) ||
+      !CU_add_test(pSuite, "util_ends_with", shrpx::test_util_ends_with) ||
       !CU_add_test(pSuite, "gzip_inflate", test_nghttp2_gzip_inflate) ||
       !CU_add_test(pSuite, "buffer_write", nghttp2::test_buffer_write) ||
       !CU_add_test(pSuite, "pool_recycle", nghttp2::test_pool_recycle) ||

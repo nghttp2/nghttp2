@@ -123,6 +123,19 @@ std::string percent_encode_token(const std::string &target) {
   return dest;
 }
 
+uint32_t hex_to_uint(char c) {
+  if (c <= '9') {
+    return c - '0';
+  }
+  if (c <= 'Z') {
+    return c - 'A' + 10;
+  }
+  if (c <= 'z') {
+    return c - 'a' + 10;
+  }
+  return c;
+}
+
 std::string percentDecode(std::string::const_iterator first,
                           std::string::const_iterator last) {
   std::string result;
@@ -130,15 +143,14 @@ std::string percentDecode(std::string::const_iterator first,
     if (*first == '%') {
       if (first + 1 != last && first + 2 != last && isHexDigit(*(first + 1)) &&
           isHexDigit(*(first + 2))) {
-        std::string numstr(first + 1, first + 3);
-        result += strtol(numstr.c_str(), 0, 16);
+        result += (hex_to_uint(*(first + 1)) << 4) + hex_to_uint(*(first + 2));
         first += 2;
-      } else {
-        result += *first;
+        continue;
       }
-    } else {
       result += *first;
+      continue;
     }
+    result += *first;
   }
   return result;
 }
@@ -353,14 +365,6 @@ time_t parse_http_date(const std::string &s) {
   return timegm(&tm);
 }
 
-bool startsWith(const std::string &a, const std::string &b) {
-  return startsWith(a.begin(), a.end(), b.begin(), b.end());
-}
-
-bool istartsWith(const std::string &a, const std::string &b) {
-  return istartsWith(a.begin(), a.end(), b.begin(), b.end());
-}
-
 namespace {
 void streq_advance(const char **ap, const char **bp) {
   for (; **ap && **bp && lowcase(**ap) == lowcase(**bp); ++*ap, ++*bp)
@@ -376,24 +380,11 @@ bool istartsWith(const char *a, const char *b) {
   return !*b;
 }
 
-bool istartsWith(const char *a, size_t n, const char *b) {
-  return istartsWith(a, a + n, b, b + strlen(b));
-}
-
-bool endsWith(const std::string &a, const std::string &b) {
-  return endsWith(a.begin(), a.end(), b.begin(), b.end());
-}
-
 bool strieq(const std::string &a, const std::string &b) {
   if (a.size() != b.size()) {
     return false;
   }
-  for (size_t i = 0; i < a.size(); ++i) {
-    if (lowcase(a[i]) != lowcase(b[i])) {
-      return false;
-    }
-  }
-  return true;
+  return std::equal(std::begin(a), std::end(a), std::begin(b), CaseCmp());
 }
 
 bool strieq(const char *a, const char *b) {
@@ -403,20 +394,6 @@ bool strieq(const char *a, const char *b) {
   for (; *a && *b && lowcase(*a) == lowcase(*b); ++a, ++b)
     ;
   return !*a && !*b;
-}
-
-bool strieq(const char *a, const uint8_t *b, size_t bn) {
-  if (!a || !b) {
-    return false;
-  }
-  const uint8_t *blast = b + bn;
-  for (; *a && b != blast && lowcase(*a) == lowcase(*b); ++a, ++b)
-    ;
-  return !*a && b == blast;
-}
-
-bool strieq(const char *a, const char *b, size_t bn) {
-  return strieq(a, reinterpret_cast<const uint8_t *>(b), bn);
 }
 
 int strcompare(const char *a, const uint8_t *b, size_t bn) {
@@ -479,45 +456,36 @@ std::string format_hex(const unsigned char *s, size_t len) {
 }
 
 void to_token68(std::string &base64str) {
-  for (auto i = std::begin(base64str); i != std::end(base64str); ++i) {
-    switch (*i) {
+  std::transform(std::begin(base64str), std::end(base64str),
+                 std::begin(base64str), [](char c) {
+    switch (c) {
     case '+':
-      *i = '-';
-      break;
+      return '-';
     case '/':
-      *i = '_';
-      break;
-    case '=':
-      base64str.erase(i, std::end(base64str));
-      return;
+      return '_';
+    default:
+      return c;
     }
-  }
-  return;
+  });
+  base64str.erase(std::find(std::begin(base64str), std::end(base64str), '='));
 }
 
 void to_base64(std::string &token68str) {
-  for (auto i = std::begin(token68str); i != std::end(token68str); ++i) {
-    switch (*i) {
+  std::transform(std::begin(token68str), std::end(token68str),
+                 std::begin(token68str), [](char c) {
+    switch (c) {
     case '-':
-      *i = '+';
-      break;
+      return '+';
     case '_':
-      *i = '/';
-      break;
+      return '/';
+    default:
+      return c;
     }
-  }
+  });
   if (token68str.size() & 0x3) {
     token68str.append(4 - (token68str.size() & 0x3), '=');
   }
   return;
-}
-
-void inp_strlower(std::string &s) {
-  for (auto i = std::begin(s); i != std::end(s); ++i) {
-    if ('A' <= *i && *i <= 'Z') {
-      *i = (*i) - 'A' + 'a';
-    }
-  }
 }
 
 namespace {

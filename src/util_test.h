@@ -31,7 +31,9 @@ void test_util_streq(void);
 void test_util_strieq(void);
 void test_util_inp_strlower(void);
 void test_util_to_base64(void);
+void test_util_to_token68(void);
 void test_util_percent_encode_token(void);
+void test_util_percent_decode(void);
 void test_util_quote_string(void);
 void test_util_utox(void);
 void test_util_http_date(void);
@@ -44,6 +46,8 @@ void test_util_parse_uint(void);
 void test_util_parse_duration_with_unit(void);
 void test_util_duration_str(void);
 void test_util_format_duration(void);
+void test_util_starts_with(void);
+void test_util_ends_with(void);
 
 } // namespace shrpx
 
