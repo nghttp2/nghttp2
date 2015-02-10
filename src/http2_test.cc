@@ -627,6 +627,15 @@ void test_http2_parse_link_header(void) {
     CU_ASSERT(1 == res.size());
     CU_ASSERT(std::make_pair(&s[36], &s[39]) == res[0].uri);
   }
+  {
+    // case-insensitive match
+    const char s[] = R"(<url>; rel=preload; ANCHOR="#foo", <url>; )"
+                     R"(REL=PRELOAD, <url>; REL="foo PRELOAD bar")";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(2 == res.size());
+    CU_ASSERT(std::make_pair(&s[36], &s[39]) == res[0].uri);
+    CU_ASSERT(std::make_pair(&s[42 + 14], &s[42 + 17]) == res[1].uri);
+  }
 }
 
 void test_http2_path_join(void) {

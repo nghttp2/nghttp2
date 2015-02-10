@@ -771,7 +771,7 @@ parse_next_link_header_once(const char *first, const char *last) {
     static const char PLT[] = "preload";
     static const size_t PLTLEN = sizeof(PLT) - 1;
     if (first + PLPLEN < last && *(first + PLPLEN - 1) == '"' &&
-        std::equal(PLP, PLP + PLPLEN, first)) {
+        std::equal(PLP, PLP + PLPLEN, first, util::CaseCmp())) {
       // we have to search preload in whitespace separated list:
       // rel="preload something http://example.org/foo"
       first += PLPLEN;
@@ -786,8 +786,8 @@ parse_next_link_header_once(const char *first, const char *last) {
           return {{{nullptr, nullptr}}, last};
         }
 
-        if (!ok && start + PLTLEN == first && *(start + PLTLEN - 1) == 'd' &&
-            std::equal(PLT, PLT + PLTLEN, start)) {
+        if (!ok && start + PLTLEN == first &&
+            std::equal(PLT, PLT + PLTLEN, start, util::CaseCmp())) {
           ok = true;
         }
 
@@ -817,7 +817,7 @@ parse_next_link_header_once(const char *first, const char *last) {
     static const char PL[] = "rel=preload";
     static const size_t PLLEN = sizeof(PL) - 1;
     if (first + PLLEN == last) {
-      if (std::equal(PL, PL + PLLEN, first)) {
+      if (std::equal(PL, PL + PLLEN, first, util::CaseCmp())) {
         ok = true;
         // this is the end of sequence
         return {{{url_first, url_last}}, last};
@@ -825,7 +825,7 @@ parse_next_link_header_once(const char *first, const char *last) {
     } else if (first + PLLEN + 1 <= last) {
       switch (*(first + PLLEN)) {
       case ',':
-        if (!std::equal(PL, PL + PLLEN, first)) {
+        if (!std::equal(PL, PL + PLLEN, first, util::CaseCmp())) {
           break;
         }
         ok = true;
@@ -833,7 +833,7 @@ parse_next_link_header_once(const char *first, const char *last) {
         first += PLLEN + 1;
         return {{{url_first, url_last}}, first};
       case ';':
-        if (!std::equal(PL, PL + PLLEN, first)) {
+        if (!std::equal(PL, PL + PLLEN, first, util::CaseCmp())) {
           break;
         }
         ok = true;
@@ -847,7 +847,7 @@ parse_next_link_header_once(const char *first, const char *last) {
     static const char ANCHOR[] = "anchor=";
     static const size_t ANCHORLEN = sizeof(ANCHOR) - 1;
     if (!ign && first + ANCHORLEN <= last) {
-      if (std::equal(ANCHOR, ANCHOR + ANCHORLEN, first)) {
+      if (std::equal(ANCHOR, ANCHOR + ANCHORLEN, first, util::CaseCmp())) {
         // we only accept URI if anchor="" here.
         if (first + ANCHORLEN + 2 <= last) {
           if (*(first + ANCHORLEN) != '"' || *(first + ANCHORLEN + 1) != '"') {
