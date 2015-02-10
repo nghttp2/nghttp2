@@ -765,7 +765,7 @@ bool select_h2(const unsigned char **out, unsigned char *outlen,
                const unsigned char *in, unsigned int inlen, const char *key,
                unsigned int keylen) {
   for (auto p = in, end = in + inlen; p + keylen <= end; p += *p + 1) {
-    if (memcmp(key, p, keylen) == 0) {
+    if (std::equal(key, key + keylen, p)) {
       *out = p + 1;
       *outlen = *p;
       return true;
