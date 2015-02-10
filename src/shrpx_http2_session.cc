@@ -95,6 +95,14 @@ void readcb(struct ev_loop *loop, ev_io *w, int revents) {
   rv = http2session->do_read();
   if (rv != 0) {
     http2session->disconnect(http2session->should_hard_fail());
+    return;
+  }
+  if (ev_is_active(http2session->get_wev())) {
+    rv = http2session->do_write();
+    if (rv != 0) {
+      http2session->disconnect(http2session->should_hard_fail());
+      return;
+    }
   }
 }
 } // namespace

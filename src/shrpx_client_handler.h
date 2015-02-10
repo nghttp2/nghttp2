@@ -129,6 +129,7 @@ public:
   RateLimit *get_wlimit();
 
   void signal_write();
+  ev_io *get_wev();
 
 private:
   Connection conn_;

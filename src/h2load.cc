@@ -105,15 +105,6 @@ Stats::Stats(size_t req_todo)
 Stream::Stream() : status_success(-1) {}
 
 namespace {
-void readcb(struct ev_loop *loop, ev_io *w, int revents) {
-  auto client = static_cast<Client *>(w->data);
-  if (client->do_read() != 0) {
-    client->fail();
-  }
-}
-} // namespace
-
-namespace {
 void writecb(struct ev_loop *loop, ev_io *w, int revents) {
   auto client = static_cast<Client *>(w->data);
   auto rv = client->do_write();
@@ -128,6 +119,20 @@ void writecb(struct ev_loop *loop, ev_io *w, int revents) {
   }
   if (rv != 0) {
     client->fail();
+  }
+}
+} // namespace
+
+namespace {
+void readcb(struct ev_loop *loop, ev_io *w, int revents) {
+  auto client = static_cast<Client *>(w->data);
+  if (client->do_read() != 0) {
+    client->fail();
+    return;
+  }
+  if (ev_is_active(&client->wev)) {
+    writecb(loop, &client->wev, revents);
+    // client->disconnect() and client->fail() may be called
   }
 }
 } // namespace

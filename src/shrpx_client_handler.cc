@@ -82,6 +82,12 @@ void readcb(struct ev_loop *loop, ev_io *w, int revents) {
     delete handler;
     return;
   }
+  if (ev_is_active(handler->get_wev())) {
+    if (handler->do_write() != 0) {
+      delete handler;
+      return;
+    }
+  }
 }
 } // namespace
 
@@ -728,5 +734,7 @@ void ClientHandler::signal_write() { conn_.wlimit.startw(); }
 
 RateLimit *ClientHandler::get_rlimit() { return &conn_.rlimit; }
 RateLimit *ClientHandler::get_wlimit() { return &conn_.wlimit; }
+
+ev_io *ClientHandler::get_wev() { return &conn_.wev; }
 
 } // namespace shrpx
