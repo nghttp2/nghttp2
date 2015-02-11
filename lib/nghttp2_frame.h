@@ -55,10 +55,8 @@
 /* Number of inbound buffer */
 #define NGHTTP2_FRAMEBUF_MAX_NUM 5
 
-/* The default length of DATA frame payload. This should be small enough
- * for the data payload and the header to fit into 1 TLS record */
-#define NGHTTP2_DATA_PAYLOADLEN                                                \
-  ((NGHTTP2_MAX_FRAME_SIZE_MIN) - (NGHTTP2_FRAME_HDLEN))
+/* The default length of DATA frame payload. */
+#define NGHTTP2_DATA_PAYLOADLEN NGHTTP2_MAX_FRAME_SIZE_MIN
 
 /* Maximum headers payload length, calculated in compressed form.
    This applies to transmission only. */

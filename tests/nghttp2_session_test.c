@@ -4485,6 +4485,7 @@ void test_nghttp2_session_defer_data(void) {
   my_user_data ud;
   nghttp2_data_provider data_prd;
   nghttp2_outbound_item *item;
+  nghttp2_stream *stream;
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks.on_frame_send_callback = on_frame_send_callback;
@@ -4495,8 +4496,13 @@ void test_nghttp2_session_defer_data(void) {
   ud.data_source_length = NGHTTP2_DATA_PAYLOADLEN * 4;
 
   nghttp2_session_server_new(&session, &callbacks, &ud);
-  nghttp2_session_open_stream(session, 1, NGHTTP2_STREAM_FLAG_NONE,
-                              &pri_spec_default, NGHTTP2_STREAM_OPENING, NULL);
+  stream = nghttp2_session_open_stream(session, 1, NGHTTP2_STREAM_FLAG_NONE,
+                                       &pri_spec_default,
+                                       NGHTTP2_STREAM_OPENING, NULL);
+
+  session->remote_window_size = 1 << 20;
+  stream->remote_window_size = 1 << 20;
+
   nghttp2_submit_response(session, 1, NULL, 0, &data_prd);
 
   ud.block_count = 1;
@@ -4524,7 +4530,7 @@ void test_nghttp2_session_defer_data(void) {
 
   /* Deferred again */
   item->aux_data.data.data_prd.read_callback = defer_data_source_read_callback;
-  /* This is needed since 4KiB block is already read and waiting to be
+  /* This is needed since 16KiB block is already read and waiting to be
      sent. No read_callback invocation. */
   ud.block_count = 1;
   CU_ASSERT(0 == nghttp2_session_send(session));
@@ -4536,7 +4542,7 @@ void test_nghttp2_session_defer_data(void) {
   item->aux_data.data.data_prd.read_callback =
       fixed_length_data_source_read_callback;
   ud.block_count = 1;
-  /* Reads 2 4KiB blocks */
+  /* Reads 2 16KiB blocks */
   CU_ASSERT(0 == nghttp2_session_send(session));
   CU_ASSERT(ud.data_source_length == 0);
 
@@ -5049,9 +5055,15 @@ void test_nghttp2_session_data_backoff_by_high_pri_frame(void) {
   nghttp2_session_client_new(&session, &callbacks, &ud);
   nghttp2_submit_request(session, NULL, NULL, 0, &data_prd, NULL);
 
+  session->remote_window_size = 1 << 20;
+
   ud.block_count = 2;
   /* Sends request HEADERS + DATA[0] */
   CU_ASSERT(0 == nghttp2_session_send(session));
+
+  stream = nghttp2_session_get_stream(session, 1);
+  stream->remote_window_size = 1 << 20;
+
   CU_ASSERT(NGHTTP2_DATA == ud.sent_frame_type);
   /* data for DATA[1] is read from data_prd but it is not sent */
   CU_ASSERT(ud.data_source_length == NGHTTP2_DATA_PAYLOADLEN * 2);
@@ -5068,7 +5080,6 @@ void test_nghttp2_session_data_backoff_by_high_pri_frame(void) {
   /* Sends DATA[2..3] */
   CU_ASSERT(0 == nghttp2_session_send(session));
 
-  stream = nghttp2_session_get_stream(session, 1);
   CU_ASSERT(stream->shut_flags & NGHTTP2_SHUT_WR);
 
   nghttp2_session_del(session);
