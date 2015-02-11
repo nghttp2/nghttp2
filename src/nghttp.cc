@@ -666,12 +666,11 @@ int HttpClient::write_clear() {
       wb.drain(nwrite);
       continue;
     }
-
+    wb.reset();
     if (on_writefn(*this) != 0) {
       return -1;
     }
     if (wb.rleft() == 0) {
-      wb.reset();
       break;
     }
   }
@@ -1169,6 +1168,7 @@ int HttpClient::write_tls() {
 
       continue;
     }
+    wb.reset();
     if (on_writefn(*this) != 0) {
       return -1;
     }

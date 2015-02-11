@@ -534,12 +534,11 @@ int Client::write_clear() {
       wb.drain(nwrite);
       continue;
     }
-
+    wb.reset();
     if (on_write() != 0) {
       return -1;
     }
     if (wb.rleft() == 0) {
-      wb.reset();
       break;
     }
   }
@@ -668,6 +667,7 @@ int Client::write_tls() {
 
       continue;
     }
+    wb.reset();
     if (on_write() != 0) {
       return -1;
     }
