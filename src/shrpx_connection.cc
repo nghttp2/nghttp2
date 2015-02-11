@@ -128,7 +128,7 @@ const size_t SHRPX_SMALL_WRITE_LIMIT = 1300;
 const size_t SHRPX_WARMUP_THRESHOLD = 1 << 20;
 } // namespace
 
-ssize_t Connection::get_tls_write_limit() {
+size_t Connection::get_tls_write_limit() {
   auto t = ev_now(loop);
 
   if (t - tls.last_write_time > 1.) {
@@ -151,7 +151,6 @@ void Connection::update_tls_warmup_writelen(size_t n) {
 }
 
 ssize_t Connection::write_tls(const void *data, size_t len) {
-  ssize_t nwrite;
   // SSL_write requires the same arguments (buf pointer and its
   // length) on SSL_ERROR_WANT_READ or SSL_ERROR_WANT_WRITE.
   // get_write_limit() may return smaller length than previously
@@ -159,17 +158,17 @@ ssize_t Connection::write_tls(const void *data, size_t len) {
   // this, we keep last legnth passed to SSL_write to
   // tls.last_writelen if SSL_write indicated I/O blocking.
   if (tls.last_writelen == 0) {
-    nwrite = std::min(len, wlimit.avail());
-    nwrite = std::min(nwrite, get_tls_write_limit());
-    if (nwrite == 0) {
+    len = std::min(len, wlimit.avail());
+    len = std::min(len, get_tls_write_limit());
+    if (len == 0) {
       return 0;
     }
   } else {
-    nwrite = tls.last_writelen;
+    len = tls.last_writelen;
     tls.last_writelen = 0;
   }
 
-  auto rv = SSL_write(tls.ssl, data, nwrite);
+  auto rv = SSL_write(tls.ssl, data, len);
 
   if (rv == 0) {
     return SHRPX_ERR_NETWORK;
@@ -186,7 +185,7 @@ ssize_t Connection::write_tls(const void *data, size_t len) {
       }
       return SHRPX_ERR_NETWORK;
     case SSL_ERROR_WANT_WRITE:
-      tls.last_writelen = nwrite;
+      tls.last_writelen = len;
       wlimit.startw();
       ev_timer_again(loop, &wt);
       return 0;
@@ -206,7 +205,6 @@ ssize_t Connection::write_tls(const void *data, size_t len) {
 }
 
 ssize_t Connection::read_tls(void *data, size_t len) {
-  ssize_t nread;
   // SSL_read requires the same arguments (buf pointer and its
   // length) on SSL_ERROR_WANT_READ or SSL_ERROR_WANT_WRITE.
   // rlimit_.avail() or rlimit_.avail() may return different length
@@ -215,22 +213,22 @@ ssize_t Connection::read_tls(void *data, size_t len) {
   // to SSL_read to tls_last_readlen_ if SSL_read indicated I/O
   // blocking.
   if (tls.last_readlen == 0) {
-    nread = std::min(len, rlimit.avail());
-    if (nread == 0) {
+    len = std::min(len, rlimit.avail());
+    if (len == 0) {
       return 0;
     }
   } else {
-    nread = tls.last_readlen;
+    len = tls.last_readlen;
     tls.last_readlen = 0;
   }
 
-  auto rv = SSL_read(tls.ssl, data, nread);
+  auto rv = SSL_read(tls.ssl, data, len);
 
   if (rv <= 0) {
     auto err = SSL_get_error(tls.ssl, rv);
     switch (err) {
     case SSL_ERROR_WANT_READ:
-      tls.last_readlen = nread;
+      tls.last_readlen = len;
       return 0;
     case SSL_ERROR_WANT_WRITE:
       if (LOG_ENABLED(INFO)) {

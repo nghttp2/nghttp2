@@ -79,7 +79,7 @@ struct Connection {
   ssize_t write_tls(const void *data, size_t len);
   ssize_t read_tls(void *data, size_t len);
 
-  ssize_t get_tls_write_limit();
+  size_t get_tls_write_limit();
   // Updates the number of bytes written in warm up period.
   void update_tls_warmup_writelen(size_t n);
 
