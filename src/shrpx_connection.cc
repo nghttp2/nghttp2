@@ -253,12 +253,13 @@ ssize_t Connection::read_tls(void *data, size_t len) {
 }
 
 ssize_t Connection::write_clear(const void *data, size_t len) {
-  ssize_t nwrite = std::min(len, wlimit.avail());
-  if (nwrite == 0) {
+  len = std::min(len, wlimit.avail());
+  if (len == 0) {
     return 0;
   }
 
-  while ((nwrite = write(fd, data, nwrite)) == -1 && errno == EINTR)
+  ssize_t nwrite;
+  while ((nwrite = write(fd, data, len)) == -1 && errno == EINTR)
     ;
   if (nwrite == -1) {
     if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -298,12 +299,13 @@ ssize_t Connection::writev_clear(struct iovec *iov, int iovcnt) {
 }
 
 ssize_t Connection::read_clear(void *data, size_t len) {
-  ssize_t nread = std::min(len, rlimit.avail());
-  if (nread == 0) {
+  len = std::min(len, rlimit.avail());
+  if (len == 0) {
     return 0;
   }
 
-  while ((nread = read(fd, data, nread)) == -1 && errno == EINTR)
+  ssize_t nread;
+  while ((nread = read(fd, data, len)) == -1 && errno == EINTR)
     ;
   if (nread == -1) {
     if (errno == EAGAIN || errno == EWOULDBLOCK) {

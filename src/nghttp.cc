@@ -1825,6 +1825,7 @@ int before_frame_send_callback(nghttp2_session *session,
   }
   auto req = static_cast<Request *>(
       nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
+  assert(req);
   req->record_request_time();
   return 0;
 }

@@ -83,6 +83,9 @@ int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
   auto client = static_cast<Client *>(user_data);
   auto req_stat = static_cast<RequestStat *>(
       nghttp2_session_get_stream_user_data(session, stream_id));
+  if (!req_stat) {
+    return 0;
+  }
   client->on_stream_close(stream_id, error_code == NGHTTP2_NO_ERROR, req_stat);
   return 0;
 }
@@ -100,6 +103,7 @@ int before_frame_send_callback(nghttp2_session *session,
   client->on_request(frame->hd.stream_id);
   auto req_stat = static_cast<RequestStat *>(
       nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
+  assert(req_stat);
   client->record_request_time(req_stat);
 
   return 0;
