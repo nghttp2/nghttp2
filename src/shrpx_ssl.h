@@ -37,7 +37,7 @@
 namespace shrpx {
 
 class ClientHandler;
-struct WorkerStat;
+class Worker;
 class DownstreamConnectionPool;
 
 namespace ssl {
@@ -49,10 +49,8 @@ SSL_CTX *create_ssl_context(const char *private_key_file,
 // Create client side SSL_CTX
 SSL_CTX *create_ssl_client_context();
 
-ClientHandler *accept_connection(struct ev_loop *loop, SSL_CTX *ssl_ctx, int fd,
-                                 sockaddr *addr, int addrlen,
-                                 WorkerStat *worker_stat,
-                                 DownstreamConnectionPool *dconn_pool);
+ClientHandler *accept_connection(Worker *worker, int fd, sockaddr *addr,
+                                 int addrlen);
 
 // Check peer's certificate against first downstream address in
 // Config::downstream_addrs.  We only consider first downstream since
@@ -143,14 +141,19 @@ std::vector<unsigned char> set_alpn_prefs(const std::vector<char *> &protos);
 
 // Setups server side SSL_CTX.  This function inspects get_config()
 // and if upstream_no_tls is true, returns nullptr.  Otherwise
-// construct default SSL_CTX.  If subcerts are not empty, create
-// SSL_CTX for them.  All created SSL_CTX are added to CertLookupTree.
-SSL_CTX *setup_server_ssl_context();
+// construct default SSL_CTX.  If subcerts are available
+// (get_config()->subcerts), caller should provide CertLookupTree
+// object as |cert_tree| parameter, otherwise SNI does not work.
+SSL_CTX *setup_server_ssl_context(CertLookupTree *cert_tree);
 
 // Setups client side SSL_CTX.  This function inspects get_config()
 // and if downstream_no_tls is true, returns nullptr.  Otherwise, only
 // construct SSL_CTX if either client_mode or http2_bridge is true.
 SSL_CTX *setup_client_ssl_context();
+
+// Creates CertLookupTree.  If frontend is configured not to use TLS,
+// this function returns nullptr.
+CertLookupTree *create_cert_lookup_tree();
 
 } // namespace ssl
 

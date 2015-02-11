@@ -140,7 +140,8 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
       return -1;
     }
 
-    auto worker_stat = client_handler_->get_worker_stat();
+    auto worker = client_handler_->get_worker();
+    auto worker_stat = worker->get_worker_stat();
     auto end = worker_stat->next_downstream;
     for (;;) {
       auto i = worker_stat->next_downstream;

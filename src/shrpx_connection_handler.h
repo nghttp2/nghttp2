@@ -54,14 +54,17 @@ public:
   ConnectionHandler(struct ev_loop *loop);
   ~ConnectionHandler();
   int handle_connection(int fd, sockaddr *addr, int addrlen);
-  void create_ssl_context();
+  // Creates Worker object for single threaded configuration.
+  void create_single_worker();
+  // Creates |num| Worker objects for multi threaded configuration.
+  // The |num| must be strictly more than 1.
   void create_worker_thread(size_t num);
   void worker_reopen_log_files();
   void worker_renew_ticket_keys(const std::shared_ptr<TicketKeys> &ticket_keys);
+  void set_ticket_keys(std::shared_ptr<TicketKeys> ticket_keys);
+  const std::shared_ptr<TicketKeys> &get_ticket_keys() const;
   struct ev_loop *get_loop() const;
-  void create_http2_session();
-  void create_http1_connect_blocker();
-  const WorkerStat *get_worker_stat() const;
+  Worker *get_single_worker() const;
   void set_acceptor4(std::unique_ptr<AcceptHandler> h);
   AcceptHandler *get_acceptor4() const;
   void set_acceptor6(std::unique_ptr<AcceptHandler> h);
@@ -74,22 +77,19 @@ public:
   void join_worker();
 
 private:
-  DownstreamConnectionPool dconn_pool_;
+  // Worker instances when multi threaded mode (-nN, N >= 2) is used.
   std::vector<std::unique_ptr<Worker>> workers_;
+  // Worker instance used when single threaded mode (-n1) is used.
+  // Otherwise, nullptr and workers_ has instances of Worker instead.
+  std::unique_ptr<Worker> single_worker_;
+  // Current TLS session ticket keys.  Note that TLS connection does
+  // not refer to this field directly.  They use TicketKeys object in
+  // Worker object.
+  std::shared_ptr<TicketKeys> ticket_keys_;
   struct ev_loop *loop_;
-  // The frontend server SSL_CTX
-  SSL_CTX *sv_ssl_ctx_;
-  // The backend server SSL_CTX
-  SSL_CTX *cl_ssl_ctx_;
-  // Shared backend HTTP2 session. NULL if multi-threaded. In
-  // multi-threaded case, see shrpx_worker.cc.
-  std::unique_ptr<Http2Session> http2session_;
-  std::unique_ptr<ConnectBlocker> http1_connect_blocker_;
-  // bufferevent_rate_limit_group *rate_limit_group_;
   std::unique_ptr<AcceptHandler> acceptor4_;
   std::unique_ptr<AcceptHandler> acceptor6_;
   ev_timer disable_acceptor_timer_;
-  std::unique_ptr<WorkerStat> worker_stat_;
   unsigned int worker_round_robin_cnt_;
 };
 

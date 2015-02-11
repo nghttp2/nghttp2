@@ -454,12 +454,12 @@ void graceful_shutdown_signal_cb(struct ev_loop *loop, ev_signal *w,
 namespace {
 void refresh_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto conn_handler = static_cast<ConnectionHandler *>(w->data);
-  auto worker_stat = conn_handler->get_worker_stat();
+  auto worker = conn_handler->get_single_worker();
 
   // In multi threaded mode (get_config()->num_worker > 1), we have to
   // wait for event notification to workers to finish.
   if (get_config()->num_worker == 1 && worker_config->graceful_shutdown &&
-      (!worker_stat || worker_stat->num_connections == 0)) {
+      (!worker || worker->get_worker_stat()->num_connections == 0)) {
     ev_break(loop);
   }
 }
@@ -468,7 +468,7 @@ void refresh_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 namespace {
 void renew_ticket_key_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto conn_handler = static_cast<ConnectionHandler *>(w->data);
-  const auto &old_ticket_keys = worker_config->ticket_keys;
+  const auto &old_ticket_keys = conn_handler->get_ticket_keys();
 
   auto ticket_keys = std::make_shared<TicketKeys>();
   if (LOG_ENABLED(INFO)) {
@@ -502,8 +502,7 @@ void renew_ticket_key_cb(struct ev_loop *loop, ev_timer *w, int revents) {
     }
   }
 
-  worker_config->ticket_keys = ticket_keys;
-
+  conn_handler->set_ticket_keys(ticket_keys);
   conn_handler->worker_renew_ticket_keys(ticket_keys);
 }
 } // namespace
@@ -539,21 +538,34 @@ int event_loop() {
   conn_handler->set_acceptor4(std::move(acceptor4));
   conn_handler->set_acceptor6(std::move(acceptor6));
 
+  ev_timer renew_ticket_key_timer;
+  if (!get_config()->upstream_no_tls) {
+    bool auto_tls_ticket_key = true;
+    if (!get_config()->tls_ticket_key_files.empty()) {
+      auto ticket_keys =
+          read_tls_ticket_key_file(get_config()->tls_ticket_key_files);
+      if (!ticket_keys) {
+        LOG(WARN) << "Use internal session ticket key generator";
+      } else {
+        conn_handler->set_ticket_keys(std::move(ticket_keys));
+        auto_tls_ticket_key = false;
+      }
+    }
+    if (auto_tls_ticket_key) {
+      // Renew ticket key every 12hrs
+      ev_timer_init(&renew_ticket_key_timer, renew_ticket_key_cb, 0.,
+                    12 * 3600.);
+      renew_ticket_key_timer.data = conn_handler.get();
+      ev_timer_again(loop, &renew_ticket_key_timer);
+
+      // Generate first session ticket key before running workers.
+      renew_ticket_key_cb(loop, &renew_ticket_key_timer, 0);
+    }
+  }
+
   // ListenHandler loads private key, and we listen on a priveleged port.
   // After that, we drop the root privileges if needed.
   drop_privileges();
-
-  ev_timer renew_ticket_key_timer;
-  if (!get_config()->client_mode && !get_config()->upstream_no_tls &&
-      get_config()->auto_tls_ticket_key) {
-    // Renew ticket key every 12hrs
-    ev_timer_init(&renew_ticket_key_timer, renew_ticket_key_cb, 0., 12 * 3600.);
-    renew_ticket_key_timer.data = conn_handler.get();
-    ev_timer_again(loop, &renew_ticket_key_timer);
-
-    // Generate first session ticket key before running workers.
-    renew_ticket_key_cb(loop, &renew_ticket_key_timer, 0);
-  }
 
 #ifndef NOTHREADS
   int rv;
@@ -568,18 +580,10 @@ int event_loop() {
   }
 #endif // !NOTHREADS
 
-  if (get_config()->num_worker > 1) {
-    if (!get_config()->tls_ctx_per_worker) {
-      conn_handler->create_ssl_context();
-    }
-    conn_handler->create_worker_thread(get_config()->num_worker);
+  if (get_config()->num_worker == 1) {
+    conn_handler->create_single_worker();
   } else {
-    conn_handler->create_ssl_context();
-    if (get_config()->downstream_proto == PROTO_HTTP2) {
-      conn_handler->create_http2_session();
-    } else {
-      conn_handler->create_http1_connect_blocker();
-    }
+    conn_handler->create_worker_thread(get_config()->num_worker);
   }
 
 #ifndef NOTHREADS
@@ -778,7 +782,6 @@ void fill_default_config() {
   mod_config()->downstream_connections_per_host = 8;
   mod_config()->downstream_connections_per_frontend = 0;
   mod_config()->listener_disable_timeout = 0.;
-  mod_config()->auto_tls_ticket_key = true;
   mod_config()->tls_ctx_per_worker = false;
   mod_config()->downstream_request_buffer_size = 16 * 1024;
   mod_config()->downstream_response_buffer_size = 16 * 1024;
@@ -1817,17 +1820,6 @@ int main(int argc, char **argv) {
 
   mod_config()->alpn_prefs = ssl::set_alpn_prefs(get_config()->npn_list);
 
-  if (!get_config()->tls_ticket_key_files.empty()) {
-    auto ticket_keys =
-        read_tls_ticket_key_file(get_config()->tls_ticket_key_files);
-    if (!ticket_keys) {
-      LOG(WARN) << "Use internal session ticket key generator";
-    } else {
-      worker_config->ticket_keys = std::move(ticket_keys);
-      mod_config()->auto_tls_ticket_key = false;
-    }
-  }
-
   if (get_config()->backend_ipv4 && get_config()->backend_ipv6) {
     LOG(FATAL) << "--backend-ipv4 and --backend-ipv6 cannot be used at the "
                << "same time.";
@@ -1849,6 +1841,7 @@ int main(int argc, char **argv) {
 
   if (get_config()->client || get_config()->client_proxy) {
     mod_config()->client_mode = true;
+    mod_config()->upstream_no_tls = true;
   }
 
   if (get_config()->client_mode || get_config()->http2_bridge) {
@@ -1857,12 +1850,11 @@ int main(int argc, char **argv) {
     mod_config()->downstream_proto = PROTO_HTTP;
   }
 
-  if (!get_config()->client_mode && !get_config()->upstream_no_tls) {
-    if (!get_config()->private_key_file || !get_config()->cert_file) {
-      print_usage(std::cerr);
-      LOG(FATAL) << "Too few arguments";
-      exit(EXIT_FAILURE);
-    }
+  if (!get_config()->upstream_no_tls &&
+      (!get_config()->private_key_file || !get_config()->cert_file)) {
+    print_usage(std::cerr);
+    LOG(FATAL) << "Too few arguments";
+    exit(EXIT_FAILURE);
   }
 
   if (get_config()->downstream_addrs.empty()) {

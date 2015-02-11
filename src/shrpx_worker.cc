@@ -48,35 +48,20 @@ void eventcb(struct ev_loop *loop, ev_async *w, int revents) {
 }
 } // namespace
 
-Worker::Worker(SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
+Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
                ssl::CertLookupTree *cert_tree,
                const std::shared_ptr<TicketKeys> &ticket_keys)
-    : loop_(ev_loop_new(0)), sv_ssl_ctx_(sv_ssl_ctx), cl_ssl_ctx_(cl_ssl_ctx),
-      worker_stat_(make_unique<WorkerStat>()) {
+    : loop_(loop), sv_ssl_ctx_(sv_ssl_ctx), cl_ssl_ctx_(cl_ssl_ctx),
+      cert_tree_(cert_tree), ticket_keys_(ticket_keys) {
   ev_async_init(&w_, eventcb);
   w_.data = this;
   ev_async_start(loop_, &w_);
 
-#ifndef NOTHREADS
-  fut_ = std::async(std::launch::async, [this, cert_tree, &ticket_keys] {
-    if (get_config()->tls_ctx_per_worker) {
-      sv_ssl_ctx_ = ssl::setup_server_ssl_context();
-      cl_ssl_ctx_ = ssl::setup_client_ssl_context();
-    } else {
-      worker_config->cert_tree = cert_tree;
-    }
-
-    if (get_config()->downstream_proto == PROTO_HTTP2) {
-      http2session_ = make_unique<Http2Session>(loop_, cl_ssl_ctx_);
-    } else {
-      http1_connect_blocker_ = make_unique<ConnectBlocker>(loop_);
-    }
-
-    worker_config->ticket_keys = ticket_keys;
-    (void)reopen_log_files();
-    ev_run(loop_);
-  });
-#endif // !NOTHREADS
+  if (get_config()->downstream_proto == PROTO_HTTP2) {
+    http2session_ = make_unique<Http2Session>(loop_, cl_ssl_ctx_);
+  } else {
+    http1_connect_blocker_ = make_unique<ConnectBlocker>(loop_);
+  }
 }
 
 Worker::~Worker() { ev_async_stop(loop_, &w_); }
@@ -84,6 +69,15 @@ Worker::~Worker() { ev_async_stop(loop_, &w_); }
 void Worker::wait() {
 #ifndef NOTHREADS
   fut_.get();
+#endif // !NOTHREADS
+}
+
+void Worker::run_async() {
+#ifndef NOTHREADS
+  fut_ = std::async(std::launch::async, [this] {
+    (void)reopen_log_files();
+    ev_run(loop_);
+  });
 #endif // !NOTHREADS
 }
 
@@ -111,7 +105,7 @@ void Worker::process_events() {
                          << ", addrlen=" << wev.client_addrlen;
       }
 
-      if (worker_stat_->num_connections >=
+      if (worker_stat_.num_connections >=
           get_config()->worker_frontend_connections) {
 
         if (LOG_ENABLED(INFO)) {
@@ -125,8 +119,7 @@ void Worker::process_events() {
       }
 
       auto client_handler = ssl::accept_connection(
-          loop_, sv_ssl_ctx_, wev.client_fd, &wev.client_addr.sa,
-          wev.client_addrlen, worker_stat_.get(), &dconn_pool_);
+          this, wev.client_fd, &wev.client_addr.sa, wev.client_addrlen);
       if (!client_handler) {
         if (LOG_ENABLED(INFO)) {
           WLOG(ERROR, this) << "ClientHandler creation failed";
@@ -134,9 +127,6 @@ void Worker::process_events() {
         close(wev.client_fd);
         break;
       }
-
-      client_handler->set_http2_session(http2session_.get());
-      client_handler->set_http1_connect_blocker(http1_connect_blocker_.get());
 
       if (LOG_ENABLED(INFO)) {
         WLOG(INFO, this) << "CLIENT_HANDLER:" << client_handler << " created ";
@@ -150,7 +140,7 @@ void Worker::process_events() {
                          << ")";
       }
 
-      worker_config->ticket_keys = wev.ticket_keys;
+      ticket_keys_ = wev.ticket_keys;
 
       break;
     case REOPEN_LOG:
@@ -167,7 +157,7 @@ void Worker::process_events() {
 
       worker_config->graceful_shutdown = true;
 
-      if (worker_stat_->num_connections == 0) {
+      if (worker_stat_.num_connections == 0) {
         ev_break(loop_);
 
         return;
@@ -181,5 +171,31 @@ void Worker::process_events() {
     }
   }
 }
+
+ssl::CertLookupTree *Worker::get_cert_lookup_tree() const { return cert_tree_; }
+
+const std::shared_ptr<TicketKeys> &Worker::get_ticket_keys() const {
+  return ticket_keys_;
+}
+
+void Worker::set_ticket_keys(std::shared_ptr<TicketKeys> ticket_keys) {
+  ticket_keys_ = std::move(ticket_keys);
+}
+
+WorkerStat *Worker::get_worker_stat() { return &worker_stat_; }
+
+DownstreamConnectionPool *Worker::get_dconn_pool() { return &dconn_pool_; }
+
+Http2Session *Worker::get_http2_session() const { return http2session_.get(); }
+
+ConnectBlocker *Worker::get_http1_connect_blocker() const {
+  return http1_connect_blocker_.get();
+}
+
+struct ev_loop *Worker::get_loop() const {
+  return loop_;
+}
+
+SSL_CTX *Worker::get_sv_ssl_ctx() const { return sv_ssl_ctx_; }
 
 } // namespace shrpx

@@ -60,22 +60,13 @@ void acceptor_disable_cb(struct ev_loop *loop, ev_timer *w, int revent) {
 } // namespace
 
 ConnectionHandler::ConnectionHandler(struct ev_loop *loop)
-    : loop_(loop), sv_ssl_ctx_(nullptr), cl_ssl_ctx_(nullptr),
-      // rate_limit_group_(bufferevent_rate_limit_group_new(
-      //     evbase, get_config()->worker_rate_limit_cfg)),
-      worker_stat_(make_unique<WorkerStat>()), worker_round_robin_cnt_(0) {
+    : single_worker_(nullptr), loop_(loop), worker_round_robin_cnt_(0) {
   ev_timer_init(&disable_acceptor_timer_, acceptor_disable_cb, 0., 0.);
   disable_acceptor_timer_.data = this;
 }
 
 ConnectionHandler::~ConnectionHandler() {
-  //  bufferevent_rate_limit_group_free(rate_limit_group_);
   ev_timer_stop(loop_, &disable_acceptor_timer_);
-}
-
-void ConnectionHandler::create_ssl_context() {
-  sv_ssl_ctx_ = ssl::setup_server_ssl_context();
-  cl_ssl_ctx_ = ssl::setup_client_ssl_context();
 }
 
 void ConnectionHandler::worker_reopen_log_files() {
@@ -102,14 +93,41 @@ void ConnectionHandler::worker_renew_ticket_keys(
   }
 }
 
+void ConnectionHandler::create_single_worker() {
+  auto cert_tree = ssl::create_cert_lookup_tree();
+  auto sv_ssl_ctx = ssl::setup_server_ssl_context(cert_tree);
+  auto cl_ssl_ctx = ssl::setup_client_ssl_context();
+
+  single_worker_ = make_unique<Worker>(loop_, sv_ssl_ctx, cl_ssl_ctx, cert_tree,
+                                       ticket_keys_);
+}
+
 void ConnectionHandler::create_worker_thread(size_t num) {
 #ifndef NOTHREADS
   assert(workers_.size() == 0);
 
+  SSL_CTX *sv_ssl_ctx = nullptr, *cl_ssl_ctx = nullptr;
+  ssl::CertLookupTree *cert_tree = nullptr;
+
+  if (!get_config()->tls_ctx_per_worker) {
+    cert_tree = ssl::create_cert_lookup_tree();
+    sv_ssl_ctx = ssl::setup_server_ssl_context(cert_tree);
+    cl_ssl_ctx = ssl::setup_client_ssl_context();
+  }
+
   for (size_t i = 0; i < num; ++i) {
-    workers_.push_back(make_unique<Worker>(sv_ssl_ctx_, cl_ssl_ctx_,
-                                           worker_config->cert_tree,
-                                           worker_config->ticket_keys));
+    auto loop = ev_loop_new(0);
+
+    if (get_config()->tls_ctx_per_worker) {
+      cert_tree = ssl::create_cert_lookup_tree();
+      sv_ssl_ctx = ssl::setup_server_ssl_context(cert_tree);
+      cl_ssl_ctx = ssl::setup_client_ssl_context();
+    }
+
+    auto worker = make_unique<Worker>(loop, sv_ssl_ctx, cl_ssl_ctx, cert_tree,
+                                      ticket_keys_);
+    worker->run_async();
+    workers_.push_back(std::move(worker));
 
     if (LOG_ENABLED(INFO)) {
       LLOG(INFO, this) << "Created thread #" << workers_.size() - 1;
@@ -163,7 +181,7 @@ int ConnectionHandler::handle_connection(int fd, sockaddr *addr, int addrlen) {
 
   if (get_config()->num_worker == 1) {
 
-    if (worker_stat_->num_connections >=
+    if (single_worker_->get_worker_stat()->num_connections >=
         get_config()->worker_frontend_connections) {
 
       if (LOG_ENABLED(INFO)) {
@@ -175,8 +193,8 @@ int ConnectionHandler::handle_connection(int fd, sockaddr *addr, int addrlen) {
       return -1;
     }
 
-    auto client = ssl::accept_connection(loop_, sv_ssl_ctx_, fd, addr, addrlen,
-                                         worker_stat_.get(), &dconn_pool_);
+    auto client =
+        ssl::accept_connection(single_worker_.get(), fd, addr, addrlen);
     if (!client) {
       LLOG(ERROR, this) << "ClientHandler creation failed";
 
@@ -184,13 +202,13 @@ int ConnectionHandler::handle_connection(int fd, sockaddr *addr, int addrlen) {
       return -1;
     }
 
-    client->set_http2_session(http2session_.get());
-    client->set_http1_connect_blocker(http1_connect_blocker_.get());
-
     return 0;
   }
 
   size_t idx = worker_round_robin_cnt_ % workers_.size();
+  if (LOG_ENABLED(INFO)) {
+    LOG(INFO) << "Dispatch connection to worker #" << idx;
+  }
   ++worker_round_robin_cnt_;
   WorkerEvent wev;
   memset(&wev, 0, sizeof(wev));
@@ -208,16 +226,8 @@ struct ev_loop *ConnectionHandler::get_loop() const {
   return loop_;
 }
 
-void ConnectionHandler::create_http2_session() {
-  http2session_ = make_unique<Http2Session>(loop_, cl_ssl_ctx_);
-}
-
-void ConnectionHandler::create_http1_connect_blocker() {
-  http1_connect_blocker_ = make_unique<ConnectBlocker>(loop_);
-}
-
-const WorkerStat *ConnectionHandler::get_worker_stat() const {
-  return worker_stat_.get();
+Worker *ConnectionHandler::get_single_worker() const {
+  return single_worker_.get();
 }
 
 void ConnectionHandler::set_acceptor4(std::unique_ptr<AcceptHandler> h) {
@@ -274,6 +284,18 @@ void ConnectionHandler::accept_pending_connection() {
   if (acceptor6_) {
     acceptor6_->accept_connection();
   }
+}
+
+void
+ConnectionHandler::set_ticket_keys(std::shared_ptr<TicketKeys> ticket_keys) {
+  ticket_keys_ = std::move(ticket_keys);
+  if (single_worker_) {
+    single_worker_->set_ticket_keys(ticket_keys_);
+  }
+}
+
+const std::shared_ptr<TicketKeys> &ConnectionHandler::get_ticket_keys() const {
+  return ticket_keys_;
 }
 
 } // namespace shrpx

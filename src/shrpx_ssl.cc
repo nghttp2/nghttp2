@@ -47,7 +47,6 @@
 #include "shrpx_client_handler.h"
 #include "shrpx_config.h"
 #include "shrpx_worker.h"
-#include "shrpx_worker_config.h"
 #include "shrpx_downstream_connection_pool.h"
 #include "util.h"
 #include "ssl.h"
@@ -130,7 +129,9 @@ int ssl_pem_passwd_cb(char *buf, int size, int rwflag, void *user_data) {
 
 namespace {
 int servername_callback(SSL *ssl, int *al, void *arg) {
-  auto cert_tree = worker_config->cert_tree;
+  auto handler = static_cast<ClientHandler *>(SSL_get_app_data(ssl));
+  auto worker = handler->get_worker();
+  auto cert_tree = worker->get_cert_lookup_tree();
   if (cert_tree) {
     const char *hostname = SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
     if (hostname) {
@@ -149,7 +150,8 @@ namespace {
 int ticket_key_cb(SSL *ssl, unsigned char *key_name, unsigned char *iv,
                   EVP_CIPHER_CTX *ctx, HMAC_CTX *hctx, int enc) {
   auto handler = static_cast<ClientHandler *>(SSL_get_app_data(ssl));
-  const auto &ticket_keys = worker_config->ticket_keys;
+  auto worker = handler->get_worker();
+  const auto &ticket_keys = worker->get_ticket_keys();
 
   if (!ticket_keys) {
     // No ticket keys available.
@@ -515,10 +517,8 @@ SSL_CTX *create_ssl_client_context() {
   return ssl_ctx;
 }
 
-ClientHandler *accept_connection(struct ev_loop *loop, SSL_CTX *ssl_ctx, int fd,
-                                 sockaddr *addr, int addrlen,
-                                 WorkerStat *worker_stat,
-                                 DownstreamConnectionPool *dconn_pool) {
+ClientHandler *accept_connection(Worker *worker, int fd, sockaddr *addr,
+                                 int addrlen) {
   char host[NI_MAXHOST];
   char service[NI_MAXSERV];
   int rv;
@@ -537,6 +537,7 @@ ClientHandler *accept_connection(struct ev_loop *loop, SSL_CTX *ssl_ctx, int fd,
     LOG(WARN) << "Setting option TCP_NODELAY failed: errno=" << errno;
   }
   SSL *ssl = nullptr;
+  auto ssl_ctx = worker->get_sv_ssl_ctx();
   if (ssl_ctx) {
     ssl = SSL_new(ssl_ctx);
     if (!ssl) {
@@ -555,8 +556,7 @@ ClientHandler *accept_connection(struct ev_loop *loop, SSL_CTX *ssl_ctx, int fd,
     SSL_set_accept_state(ssl);
   }
 
-  return new ClientHandler(loop, fd, ssl, host, service, worker_stat,
-                           dconn_pool);
+  return new ClientHandler(worker, fd, ssl, host, service);
 }
 
 namespace {
@@ -927,7 +927,7 @@ bool check_http2_requirement(SSL *ssl) {
   return true;
 }
 
-SSL_CTX *setup_server_ssl_context() {
+SSL_CTX *setup_server_ssl_context(CertLookupTree *cert_tree) {
   if (get_config()->upstream_no_tls) {
     return nullptr;
   }
@@ -939,9 +939,11 @@ SSL_CTX *setup_server_ssl_context() {
     return ssl_ctx;
   }
 
-  auto cert_tree = new CertLookupTree();
-
-  worker_config->cert_tree = cert_tree;
+  if (!cert_tree) {
+    LOG(WARN) << "We have multiple additional certificates (--subcert), but "
+                 "cert_tree is not given.  SNI may not work.";
+    return ssl_ctx;
+  }
 
   for (auto &keycert : get_config()->subcerts) {
     auto ssl_ctx =
@@ -971,6 +973,13 @@ SSL_CTX *setup_client_ssl_context() {
   return get_config()->http2_bridge && !get_config()->downstream_no_tls
              ? ssl::create_ssl_client_context()
              : nullptr;
+}
+
+CertLookupTree *create_cert_lookup_tree() {
+  if (get_config()->upstream_no_tls || get_config()->subcerts.empty()) {
+    return nullptr;
+  }
+  return new ssl::CertLookupTree();
 }
 
 } // namespace ssl

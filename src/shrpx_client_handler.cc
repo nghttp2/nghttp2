@@ -352,21 +352,17 @@ int ClientHandler::upstream_http1_connhd_read() {
   return 0;
 }
 
-ClientHandler::ClientHandler(struct ev_loop *loop, int fd, SSL *ssl,
-                             const char *ipaddr, const char *port,
-                             WorkerStat *worker_stat,
-                             DownstreamConnectionPool *dconn_pool)
-    : conn_(loop, fd, ssl, get_config()->upstream_write_timeout,
+ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
+                             const char *ipaddr, const char *port)
+    : conn_(worker->get_loop(), fd, ssl, get_config()->upstream_write_timeout,
             get_config()->upstream_read_timeout, get_config()->write_rate,
             get_config()->write_burst, get_config()->read_rate,
             get_config()->read_burst, writecb, readcb, timeoutcb, this),
-      ipaddr_(ipaddr), port_(port), dconn_pool_(dconn_pool),
-      http2session_(nullptr), http1_connect_blocker_(nullptr),
-      worker_stat_(worker_stat),
+      ipaddr_(ipaddr), port_(port), worker_(worker),
       left_connhd_len_(NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN),
       should_close_after_write_(false) {
 
-  ++worker_stat->num_connections;
+  ++worker_->get_worker_stat()->num_connections;
 
   ev_timer_init(&reneg_shutdown_timer_, shutdowncb, 0., 0.);
 
@@ -402,13 +398,14 @@ ClientHandler::~ClientHandler() {
     upstream_->on_handler_delete();
   }
 
-  --worker_stat_->num_connections;
+  auto worker_stat = worker_->get_worker_stat();
+  --worker_stat->num_connections;
 
   ev_timer_stop(conn_.loop, &reneg_shutdown_timer_);
 
   // TODO If backend is http/2, and it is in CONNECTED state, signal
   // it and make it loopbreak when output is zero.
-  if (worker_config->graceful_shutdown && worker_stat_->num_connections == 0) {
+  if (worker_config->graceful_shutdown && worker_stat->num_connections == 0) {
     ev_break(conn_.loop);
   }
 
@@ -579,7 +576,8 @@ void ClientHandler::pool_downstream_connection(
     CLOG(INFO, this) << "Pooling downstream connection DCONN:" << dconn.get();
   }
   dconn->set_client_handler(nullptr);
-  dconn_pool_->add_downstream_connection(std::move(dconn));
+  auto dconn_pool = worker_->get_dconn_pool();
+  dconn_pool->add_downstream_connection(std::move(dconn));
 }
 
 void ClientHandler::remove_downstream_connection(DownstreamConnection *dconn) {
@@ -587,12 +585,14 @@ void ClientHandler::remove_downstream_connection(DownstreamConnection *dconn) {
     CLOG(INFO, this) << "Removing downstream connection DCONN:" << dconn
                      << " from pool";
   }
-  dconn_pool_->remove_downstream_connection(dconn);
+  auto dconn_pool = worker_->get_dconn_pool();
+  dconn_pool->remove_downstream_connection(dconn);
 }
 
 std::unique_ptr<DownstreamConnection>
 ClientHandler::get_downstream_connection() {
-  auto dconn = dconn_pool_->pop_downstream_connection();
+  auto dconn_pool = worker_->get_dconn_pool();
+  auto dconn = dconn_pool->pop_downstream_connection();
 
   if (!dconn) {
     if (LOG_ENABLED(INFO)) {
@@ -600,11 +600,13 @@ ClientHandler::get_downstream_connection() {
                        << " Create new one";
     }
 
-    if (http2session_) {
-      dconn =
-          make_unique<Http2DownstreamConnection>(dconn_pool_, http2session_);
+    auto dconn_pool = worker_->get_dconn_pool();
+    auto http2session = worker_->get_http2_session();
+
+    if (http2session) {
+      dconn = make_unique<Http2DownstreamConnection>(dconn_pool, http2session);
     } else {
-      dconn = make_unique<HttpDownstreamConnection>(dconn_pool_, conn_.loop);
+      dconn = make_unique<HttpDownstreamConnection>(dconn_pool, conn_.loop);
     }
     dconn->set_client_handler(this);
     return dconn;
@@ -622,19 +624,12 @@ ClientHandler::get_downstream_connection() {
 
 SSL *ClientHandler::get_ssl() const { return conn_.tls.ssl; }
 
-void ClientHandler::set_http2_session(Http2Session *http2session) {
-  http2session_ = http2session;
-}
-
-Http2Session *ClientHandler::get_http2_session() const { return http2session_; }
-
-void ClientHandler::set_http1_connect_blocker(
-    ConnectBlocker *http1_connect_blocker) {
-  http1_connect_blocker_ = http1_connect_blocker;
+Http2Session *ClientHandler::get_http2_session() const {
+  return worker_->get_http2_session();
 }
 
 ConnectBlocker *ClientHandler::get_http1_connect_blocker() const {
-  return http1_connect_blocker_;
+  return worker_->get_http1_connect_blocker();
 }
 
 void ClientHandler::direct_http2_upgrade() {
@@ -724,8 +719,6 @@ void ClientHandler::write_accesslog(int major, int minor, unsigned int status,
   upstream_accesslog(get_config()->accesslog_format, &lgsp);
 }
 
-WorkerStat *ClientHandler::get_worker_stat() const { return worker_stat_; }
-
 ClientHandler::WriteBuf *ClientHandler::get_wb() { return &wb_; }
 
 ClientHandler::ReadBuf *ClientHandler::get_rb() { return &rb_; }
@@ -736,5 +729,7 @@ RateLimit *ClientHandler::get_rlimit() { return &conn_.rlimit; }
 RateLimit *ClientHandler::get_wlimit() { return &conn_.wlimit; }
 
 ev_io *ClientHandler::get_wev() { return &conn_.wev; }
+
+Worker *ClientHandler::get_worker() const { return worker_; }
 
 } // namespace shrpx

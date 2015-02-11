@@ -47,13 +47,13 @@ class Http2Session;
 class HttpsUpstream;
 class ConnectBlocker;
 class DownstreamConnectionPool;
+class Worker;
 struct WorkerStat;
 
 class ClientHandler {
 public:
-  ClientHandler(struct ev_loop *loop, int fd, SSL *ssl, const char *ipaddr,
-                const char *port, WorkerStat *worker_stat,
-                DownstreamConnectionPool *dconn_pool);
+  ClientHandler(Worker *worker, int fd, SSL *ssl, const char *ipaddr,
+                const char *port);
   ~ClientHandler();
 
   // Performs clear text I/O
@@ -93,9 +93,7 @@ public:
   void remove_downstream_connection(DownstreamConnection *dconn);
   std::unique_ptr<DownstreamConnection> get_downstream_connection();
   SSL *get_ssl() const;
-  void set_http2_session(Http2Session *http2session);
   Http2Session *get_http2_session() const;
-  void set_http1_connect_blocker(ConnectBlocker *http1_connect_blocker);
   ConnectBlocker *get_http1_connect_blocker() const;
   // Call this function when HTTP/2 connection header is received at
   // the start of the connection.
@@ -117,7 +115,7 @@ public:
   // corresponding Downstream object is not available.
   void write_accesslog(int major, int minor, unsigned int status,
                        int64_t body_bytes_sent);
-  WorkerStat *get_worker_stat() const;
+  Worker *get_worker() const;
 
   using WriteBuf = Buffer<32768>;
   using ReadBuf = Buffer<8192>;
@@ -141,12 +139,7 @@ private:
   std::string alpn_;
   std::function<int(ClientHandler &)> read_, write_;
   std::function<int(ClientHandler &)> on_read_, on_write_;
-  DownstreamConnectionPool *dconn_pool_;
-  // Shared HTTP2 session for each thread. NULL if backend is not
-  // HTTP2. Not deleted by this object.
-  Http2Session *http2session_;
-  ConnectBlocker *http1_connect_blocker_;
-  WorkerStat *worker_stat_;
+  Worker *worker_;
   // The number of bytes of HTTP/2 client connection header to read
   size_t left_connhd_len_;
   bool should_close_after_write_;

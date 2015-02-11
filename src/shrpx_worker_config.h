@@ -38,11 +38,9 @@ class CertLookupTree;
 struct TicketKeys;
 
 struct WorkerConfig {
-  std::shared_ptr<TicketKeys> ticket_keys;
   std::chrono::system_clock::time_point time_str_updated_;
   std::string time_local_str;
   std::string time_iso8601_str;
-  ssl::CertLookupTree *cert_tree;
   int accesslog_fd;
   int errorlog_fd;
   // true if errorlog_fd is referring to a terminal.

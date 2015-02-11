@@ -303,7 +303,6 @@ struct Config {
   bool upstream_frame_debug;
   bool no_location_rewrite;
   bool no_host_rewrite;
-  bool auto_tls_ticket_key;
   bool tls_ctx_per_worker;
   bool no_server_push;
 };

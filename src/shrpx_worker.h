@@ -80,13 +80,24 @@ struct WorkerEvent {
 
 class Worker {
 public:
-  Worker(SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
+  Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
          ssl::CertLookupTree *cert_tree,
          const std::shared_ptr<TicketKeys> &ticket_keys);
   ~Worker();
+  void run_async();
   void wait();
   void process_events();
   void send(const WorkerEvent &event);
+
+  ssl::CertLookupTree *get_cert_lookup_tree() const;
+  const std::shared_ptr<TicketKeys> &get_ticket_keys() const;
+  void set_ticket_keys(std::shared_ptr<TicketKeys> ticket_keys);
+  WorkerStat *get_worker_stat();
+  DownstreamConnectionPool *get_dconn_pool();
+  Http2Session *get_http2_session() const;
+  ConnectBlocker *get_http1_connect_blocker() const;
+  struct ev_loop *get_loop() const;
+  SSL_CTX *get_sv_ssl_ctx() const;
 
 private:
 #ifndef NOTHREADS
@@ -96,12 +107,18 @@ private:
   std::deque<WorkerEvent> q_;
   ev_async w_;
   DownstreamConnectionPool dconn_pool_;
+  WorkerStat worker_stat_;
   struct ev_loop *loop_;
+
+  // Following fields are shared across threads if
+  // get_config()->tls_ctx_per_worker == true.
   SSL_CTX *sv_ssl_ctx_;
   SSL_CTX *cl_ssl_ctx_;
+  ssl::CertLookupTree *cert_tree_;
+
+  std::shared_ptr<TicketKeys> ticket_keys_;
   std::unique_ptr<Http2Session> http2session_;
   std::unique_ptr<ConnectBlocker> http1_connect_blocker_;
-  std::unique_ptr<WorkerStat> worker_stat_;
 };
 
 } // namespace shrpx
