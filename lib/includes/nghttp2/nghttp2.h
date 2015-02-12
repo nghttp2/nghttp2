@@ -1322,6 +1322,9 @@ typedef int (*nghttp2_on_frame_send_callback)(nghttp2_session *session,
  * `nghttp2_session_recv()` and `nghttp2_session_send()` functions
  * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
  *
+ * `nghttp2_session_get_stream_user_data()` can be used to get
+ * associated data.
+ *
  * To set this callback to :type:`nghttp2_session_callbacks`, use
  * `nghttp2_session_callbacks_set_on_frame_not_send_callback()`.
  */
