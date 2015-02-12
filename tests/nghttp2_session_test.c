@@ -6753,3 +6753,36 @@ void test_nghttp2_session_cancel_reserved_remote(void) {
 
   nghttp2_bufs_free(&bufs);
 }
+
+void test_nghttp2_session_reset_pending_headers(void) {
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  nghttp2_stream *stream;
+  int32_t stream_id;
+
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+  callbacks.send_callback = null_send_callback;
+
+  nghttp2_session_client_new(&session, &callbacks, NULL);
+
+  /* See that if request HEADERS and RST_STREAM were submitted in this
+     order, HEADERS is sent first.  This is useful feature since
+     client can issue RST_STREAM in things go wrong while preparing
+     data for HEADERS, but this may be rare in practice.  On the other
+     hand, we don't have same property for PUSH_PROMISE and RST_STREAM
+     to reserved stream.  We may fix this if this is a significant
+     problem. */
+  stream_id = nghttp2_submit_request(session, NULL, NULL, 0, NULL, NULL);
+  CU_ASSERT(stream_id >= 1);
+
+  nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, stream_id,
+                            NGHTTP2_NO_ERROR);
+
+  CU_ASSERT(0 == nghttp2_session_send(session));
+
+  stream = nghttp2_session_get_stream(session, stream_id);
+
+  CU_ASSERT(NULL == stream);
+
+  nghttp2_session_del(session);
+}

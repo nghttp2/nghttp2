@@ -257,6 +257,8 @@ int main(int argc _U_, char *argv[] _U_) {
                    test_nghttp2_session_open_idle_stream) ||
       !CU_add_test(pSuite, "session_cancel_reserved_remote",
                    test_nghttp2_session_cancel_reserved_remote) ||
+      !CU_add_test(pSuite, "session_reset_pending_headers",
+                   test_nghttp2_session_reset_pending_headers) ||
       !CU_add_test(pSuite, "frame_pack_headers",
                    test_nghttp2_frame_pack_headers) ||
       !CU_add_test(pSuite, "frame_pack_headers_frame_too_large",
