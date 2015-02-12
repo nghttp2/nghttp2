@@ -3840,6 +3840,7 @@ void test_nghttp2_submit_push_promise(void) {
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks.send_callback = null_send_callback;
   callbacks.on_frame_send_callback = on_frame_send_callback;
+  callbacks.on_frame_not_send_callback = on_frame_not_send_callback;
 
   CU_ASSERT(0 == nghttp2_session_server_new(&session, &callbacks, &ud));
   nghttp2_session_open_stream(session, 1, NGHTTP2_STREAM_FLAG_NONE,
@@ -3855,6 +3856,20 @@ void test_nghttp2_submit_push_promise(void) {
   stream = nghttp2_session_get_stream(session, 2);
   CU_ASSERT(NGHTTP2_STREAM_RESERVED == stream->state);
   CU_ASSERT(&ud == nghttp2_session_get_stream_user_data(session, 2));
+
+  /* submit PUSH_PROMISE while associated stream is not opened */
+  CU_ASSERT(4 == nghttp2_submit_push_promise(session, NGHTTP2_FLAG_NONE, 3, nv,
+                                             ARRLEN(nv), &ud));
+
+  ud.frame_not_send_cb_called = 0;
+
+  CU_ASSERT(0 == nghttp2_session_send(session));
+  CU_ASSERT(1 == ud.frame_not_send_cb_called);
+  CU_ASSERT(NGHTTP2_PUSH_PROMISE == ud.not_sent_frame_type);
+
+  stream = nghttp2_session_get_stream(session, 4);
+
+  CU_ASSERT(NULL == stream);
 
   nghttp2_session_del(session);
 }
