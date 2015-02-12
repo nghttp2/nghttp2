@@ -298,7 +298,9 @@ int main(int argc, char **argv) {
   reset_timer();
 
   HttpServer server(&config);
-  server.run();
+  if (server.run() != 0) {
+    exit(EXIT_FAILURE);
+  }
   return 0;
 }
 
