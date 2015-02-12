@@ -605,7 +605,6 @@ int on_frame_not_send_callback(nghttp2_session *session,
                          << nghttp2_strerror(lib_error_code);
   }
   if (frame->hd.type == NGHTTP2_HEADERS &&
-      frame->headers.cat == NGHTTP2_HCAT_RESPONSE &&
       lib_error_code != NGHTTP2_ERR_STREAM_CLOSED &&
       lib_error_code != NGHTTP2_ERR_STREAM_CLOSING) {
     // To avoid stream hanging around, issue RST_STREAM.

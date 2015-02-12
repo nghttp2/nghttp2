@@ -1122,24 +1122,24 @@ int on_frame_not_send_callback(nghttp2_session *session,
                               << nghttp2_strerror(lib_error_code);
   }
   if (frame->hd.type == NGHTTP2_HEADERS &&
-      frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
-    // To avoid stream hanging around, flag Downstream::MSG_RESET and
-    // terminate the upstream and downstream connections.
+      lib_error_code != NGHTTP2_ERR_STREAM_CLOSED &&
+      lib_error_code != NGHTTP2_ERR_STREAM_CLOSING) {
+    // To avoid stream hanging around, flag Downstream::MSG_RESET.
     auto sd = static_cast<StreamData *>(
         nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
     if (!sd) {
       return 0;
     }
-    if (sd->dconn) {
-      auto downstream = sd->dconn->get_downstream();
-      if (!downstream ||
-          downstream->get_downstream_stream_id() != frame->hd.stream_id) {
-        return 0;
-      }
-      downstream->set_response_state(Downstream::MSG_RESET);
-      call_downstream_readcb(http2session, downstream);
+    if (!sd->dconn) {
+      return 0;
     }
-    http2session->remove_stream_data(sd);
+    auto downstream = sd->dconn->get_downstream();
+    if (!downstream ||
+        downstream->get_downstream_stream_id() != frame->hd.stream_id) {
+      return 0;
+    }
+    downstream->set_response_state(Downstream::MSG_RESET);
+    call_downstream_readcb(http2session, downstream);
   }
   return 0;
 }
