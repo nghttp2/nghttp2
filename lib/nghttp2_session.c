@@ -2664,15 +2664,14 @@ static ssize_t nghttp2_session_mem_send_internal(nghttp2_session *session,
           /* The library is responsible for the transmission of
              WINDOW_UPDATE frame, so we don't call error callback for
              it. */
-          if (frame->hd.type != NGHTTP2_WINDOW_UPDATE) {
-            if (session->callbacks.on_frame_not_send_callback(
-                    session, frame, rv, session->user_data) != 0) {
+          if (frame->hd.type != NGHTTP2_WINDOW_UPDATE &&
+              session->callbacks.on_frame_not_send_callback(
+                  session, frame, rv, session->user_data) != 0) {
 
-              nghttp2_outbound_item_free(item, mem);
-              nghttp2_mem_free(mem, item);
+            nghttp2_outbound_item_free(item, mem);
+            nghttp2_mem_free(mem, item);
 
-              return NGHTTP2_ERR_CALLBACK_FAILURE;
-            }
+            return NGHTTP2_ERR_CALLBACK_FAILURE;
           }
           /* We have to close stream opened by failed request HEADERS
              or PUSH_PROMISE. */
