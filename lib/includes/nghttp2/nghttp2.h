@@ -3037,6 +3037,9 @@ int nghttp2_submit_settings(nghttp2_session *session, uint8_t flags,
  *
  * The client side is not allowed to use this function.
  *
+ * To submit response headers and data, use
+ * `nghttp2_submit_response()`.
+ *
  * This function returns assigned promised stream ID if it succeeds,
  * or one of the following negative error codes:
  *
