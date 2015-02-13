@@ -68,6 +68,7 @@ ssize_t recv_callback(spdylay_session *session, uint8_t *buf, size_t len,
   auto upstream = static_cast<SpdyUpstream *>(user_data);
   auto handler = upstream->get_client_handler();
   auto rb = handler->get_rb();
+  auto rlimit = handler->get_rlimit();
 
   if (rb->rleft() == 0) {
     return SPDYLAY_ERR_WOULDBLOCK;
@@ -77,6 +78,7 @@ ssize_t recv_callback(spdylay_session *session, uint8_t *buf, size_t len,
 
   memcpy(buf, rb->pos, nread);
   rb->drain(nread);
+  rlimit->startw();
 
   return nread;
 }

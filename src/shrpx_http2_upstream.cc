@@ -811,6 +811,7 @@ Http2Upstream::~Http2Upstream() {
 int Http2Upstream::on_read() {
   ssize_t rv = 0;
   auto rb = handler_->get_rb();
+  auto rlimit = handler_->get_rlimit();
 
   if (rb->rleft()) {
     rv = nghttp2_session_mem_recv(session_, rb->pos, rb->rleft());
@@ -826,6 +827,7 @@ int Http2Upstream::on_read() {
     // success.
     assert(static_cast<size_t>(rv) == rb->rleft());
     rb->reset();
+    rlimit->startw();
   }
 
   auto wb = handler_->get_wb();

@@ -107,14 +107,15 @@ int ClientHandler::read_clear() {
   ev_timer_again(conn_.loop, &conn_.rt);
 
   for (;;) {
-    // we should process buffered data first before we read EOF.
     if (rb_.rleft() && on_read() != 0) {
       return -1;
     }
-    if (rb_.rleft()) {
+    if (rb_.rleft() == 0) {
+      rb_.reset();
+    } else if (rb_.wleft() == 0) {
+      conn_.rlimit.stopw();
       return 0;
     }
-    rb_.reset();
 
     auto nread = conn_.read_clear(rb_.last, rb_.wleft());
 
@@ -199,10 +200,12 @@ int ClientHandler::read_tls() {
     if (rb_.rleft() && on_read() != 0) {
       return -1;
     }
-    if (rb_.rleft()) {
+    if (rb_.rleft() == 0) {
+      rb_.reset();
+    } else if (rb_.wleft() == 0) {
+      conn_.rlimit.stopw();
       return 0;
     }
-    rb_.reset();
 
     auto nread = conn_.read_tls(rb_.last, rb_.wleft());
 
@@ -292,6 +295,7 @@ int ClientHandler::upstream_http2_connhd_read() {
 
   left_connhd_len_ -= nread;
   rb_.drain(nread);
+  conn_.rlimit.startw();
 
   if (left_connhd_len_ == 0) {
     on_read_ = &ClientHandler::upstream_read;
@@ -330,6 +334,7 @@ int ClientHandler::upstream_http1_connhd_read() {
 
   left_connhd_len_ -= nread;
   rb_.drain(nread);
+  conn_.rlimit.startw();
 
   if (left_connhd_len_ == 0) {
     if (LOG_ENABLED(INFO)) {

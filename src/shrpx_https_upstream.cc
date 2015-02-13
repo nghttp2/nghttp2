@@ -253,6 +253,7 @@ http_parser_settings htp_hooks = {
 // one http request is fully received.
 int HttpsUpstream::on_read() {
   auto rb = handler_->get_rb();
+  auto rlimit = handler_->get_rlimit();
   auto downstream = get_downstream();
 
   if (rb->rleft() == 0) {
@@ -270,6 +271,7 @@ int HttpsUpstream::on_read() {
     }
 
     rb->reset();
+    rlimit->startw();
 
     if (downstream->request_buf_full()) {
       if (LOG_ENABLED(INFO)) {
@@ -283,10 +285,22 @@ int HttpsUpstream::on_read() {
     return 0;
   }
 
+  if (downstream) {
+    // To avoid reading next pipelined request
+    switch (downstream->get_request_state()) {
+    case Downstream::INITIAL:
+    case Downstream::HEADER_COMPLETE:
+      break;
+    default:
+      return 0;
+    }
+  }
+
   auto nread = http_parser_execute(
       &htp_, &htp_hooks, reinterpret_cast<const char *>(rb->pos), rb->rleft());
 
   rb->drain(nread);
+  rlimit->startw();
 
   // Well, actually header length + some body bytes
   current_header_length_ += nread;
@@ -303,8 +317,6 @@ int HttpsUpstream::on_read() {
     assert(downstream);
 
     if (downstream->get_request_state() == Downstream::CONNECT_FAIL) {
-      // Following paues_read is needed to avoid reading next data.
-      pause_read(SHRPX_MSG_BLOCK);
       error_reply(503);
       handler_->signal_write();
       // Downstream gets deleted after response body is read.
@@ -333,8 +345,6 @@ int HttpsUpstream::on_read() {
       return 0;
     }
 
-    pause_read(SHRPX_MSG_BLOCK);
-
     return 0;
   }
 
@@ -344,8 +354,6 @@ int HttpsUpstream::on_read() {
                        << "(" << http_errno_name(htperr) << ") "
                        << http_errno_description(htperr);
     }
-
-    pause_read(SHRPX_MSG_BLOCK);
 
     unsigned int status_code;
 
@@ -423,7 +431,7 @@ int HttpsUpstream::on_write() {
     // We need this if response ends before request.
     if (downstream->get_request_state() == Downstream::MSG_COMPLETE) {
       delete_downstream();
-      return resume_read(SHRPX_MSG_BLOCK, nullptr, 0);
+      return resume_read(SHRPX_NO_BUFFER, nullptr, 0);
     }
   }
 
@@ -441,7 +449,7 @@ void HttpsUpstream::pause_read(IOCtrlReason reason) {
 
 int HttpsUpstream::resume_read(IOCtrlReason reason, Downstream *downstream,
                                size_t consumed) {
-  // downstream could be nullptr if reason is SHRPX_MSG_BLOCK.
+  // downstream could be nullptr
   if (downstream && downstream->request_buf_full()) {
     return 0;
   }
