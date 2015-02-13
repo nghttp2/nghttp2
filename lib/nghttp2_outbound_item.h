@@ -44,6 +44,12 @@
 typedef struct {
   nghttp2_data_provider data_prd;
   void *stream_user_data;
+  /* error code when request HEADERS is canceled by RST_STREAM while
+     it is in queue. */
+  uint32_t error_code;
+  /* nonzero if request HEADERS is canceled.  The error code is stored
+     in |error_code|. */
+  uint8_t canceled;
   /* nonzero if this item should be attached to stream object to make
      it under priority control */
   uint8_t attach_stream;

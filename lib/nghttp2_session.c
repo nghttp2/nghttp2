@@ -772,6 +772,30 @@ int nghttp2_session_add_item(nghttp2_session *session,
   return 0;
 }
 
+typedef struct {
+  int32_t stream_id;
+  uint32_t error_code;
+} nghttp2_rst_target;
+
+static int cancel_pending_request(void *pq_item, void *arg) {
+  nghttp2_outbound_item *item;
+  nghttp2_rst_target *t;
+  nghttp2_headers_aux_data *aux_data;
+
+  item = pq_item;
+  t = arg;
+  aux_data = &item->aux_data.headers;
+
+  if (item->frame.hd.stream_id != t->stream_id || aux_data->canceled) {
+    return 0;
+  }
+
+  aux_data->error_code = t->error_code;
+  aux_data->canceled = 1;
+
+  return 1;
+}
+
 int nghttp2_session_add_rst_stream(nghttp2_session *session, int32_t stream_id,
                                    uint32_t error_code) {
   int rv;
@@ -779,11 +803,32 @@ int nghttp2_session_add_rst_stream(nghttp2_session *session, int32_t stream_id,
   nghttp2_frame *frame;
   nghttp2_stream *stream;
   nghttp2_mem *mem;
+  nghttp2_rst_target t = {stream_id, error_code};
 
   mem = &session->mem;
   stream = nghttp2_session_get_stream(session, stream_id);
   if (stream && stream->state == NGHTTP2_STREAM_CLOSING) {
     return 0;
+  }
+
+  /* Cancel pending request HEADERS in ob_ss_pq if this RST_STREAM
+     refers to that stream. */
+  if (!session->server && nghttp2_session_is_my_stream_id(session, stream_id) &&
+      nghttp2_pq_top(&session->ob_ss_pq)) {
+    nghttp2_outbound_item *top;
+    nghttp2_frame *headers_frame;
+
+    top = nghttp2_pq_top(&session->ob_ss_pq);
+    headers_frame = &top->frame;
+
+    assert(headers_frame->hd.type == NGHTTP2_HEADERS);
+
+    if (headers_frame->hd.stream_id <= stream_id &&
+        (uint32_t)stream_id < session->next_stream_id) {
+      if (nghttp2_pq_each(&session->ob_ss_pq, cancel_pending_request, &t)) {
+        return 0;
+      }
+    }
   }
 
   item = nghttp2_mem_malloc(mem, sizeof(nghttp2_outbound_item));
@@ -1243,7 +1288,7 @@ static int session_predicate_for_stream_send(nghttp2_session *session,
 }
 
 /*
- * This function checks HEADERS frame |frame|, which opens stream, can
+ * This function checks request HEADERS frame, which opens stream, can
  * be sent at this time.
  *
  * This function returns 0 if it succeeds, or one of the following
@@ -1253,8 +1298,14 @@ static int session_predicate_for_stream_send(nghttp2_session *session,
  *     New stream cannot be created because of GOAWAY: session is
  *     going down or received last_stream_id is strictly less than
  *     frame->hd.stream_id.
+ * NGHTTP2_ERR_STREAM_CLOSING
+ *     request HEADERS was canceled by RST_STREAM while it is in queue.
  */
-static int session_predicate_request_headers_send(nghttp2_session *session) {
+static int session_predicate_request_headers_send(nghttp2_session *session,
+                                                  nghttp2_outbound_item *item) {
+  if (item->aux_data.headers.canceled) {
+    return NGHTTP2_ERR_STREAM_CLOSING;
+  }
   /* If we are terminating session (NGHTTP2_GOAWAY_TERM_ON_SEND) or
      GOAWAY was received from peer, new request is not allowed. */
   if (session->goaway_flags &
@@ -1683,7 +1734,7 @@ static int session_prep_frame(nghttp2_session *session,
           return NGHTTP2_ERR_NOMEM;
         }
 
-        rv = session_predicate_request_headers_send(session);
+        rv = session_predicate_request_headers_send(session, item);
         if (rv != 0) {
           return rv;
         }
@@ -2653,6 +2704,9 @@ static ssize_t nghttp2_session_mem_send_internal(nghttp2_session *session,
         break;
       }
       if (rv < 0) {
+        int32_t opened_stream_id = 0;
+        uint32_t error_code = NGHTTP2_INTERNAL_ERROR;
+
         DEBUGF(fprintf(stderr, "send: frame preparation failed with %s\n",
                        nghttp2_strerror(rv)));
         /* TODO If the error comes from compressor, the connection
@@ -2660,7 +2714,6 @@ static ssize_t nghttp2_session_mem_send_internal(nghttp2_session *session,
         if (item->frame.hd.type != NGHTTP2_DATA &&
             session->callbacks.on_frame_not_send_callback && is_non_fatal(rv)) {
           nghttp2_frame *frame = &item->frame;
-          int32_t opened_stream_id = 0;
           /* The library is responsible for the transmission of
              WINDOW_UPDATE frame, so we don't call error callback for
              it. */
@@ -2673,29 +2726,33 @@ static ssize_t nghttp2_session_mem_send_internal(nghttp2_session *session,
 
             return NGHTTP2_ERR_CALLBACK_FAILURE;
           }
-          /* We have to close stream opened by failed request HEADERS
-             or PUSH_PROMISE. */
-          switch (item->frame.hd.type) {
-          case NGHTTP2_HEADERS:
-            if (item->frame.headers.cat == NGHTTP2_HCAT_REQUEST) {
-              opened_stream_id = item->frame.hd.stream_id;
+        }
+        /* We have to close stream opened by failed request HEADERS
+           or PUSH_PROMISE. */
+        switch (item->frame.hd.type) {
+        case NGHTTP2_HEADERS:
+          if (item->frame.headers.cat == NGHTTP2_HCAT_REQUEST) {
+            opened_stream_id = item->frame.hd.stream_id;
+            if (item->aux_data.headers.canceled) {
+              error_code = item->aux_data.headers.error_code;
             }
-            break;
-          case NGHTTP2_PUSH_PROMISE:
-            opened_stream_id = item->frame.push_promise.promised_stream_id;
-            break;
           }
-          if (opened_stream_id) {
-            /* careful not to override rv */
-            int rv2;
-            rv2 = nghttp2_session_close_stream(session, opened_stream_id,
-                                               NGHTTP2_NO_ERROR);
+          break;
+        case NGHTTP2_PUSH_PROMISE:
+          opened_stream_id = item->frame.push_promise.promised_stream_id;
+          break;
+        }
+        if (opened_stream_id) {
+          /* careful not to override rv */
+          int rv2;
+          rv2 = nghttp2_session_close_stream(session, opened_stream_id,
+                                             error_code);
 
-            if (nghttp2_is_fatal(rv2)) {
-              return rv2;
-            }
+          if (nghttp2_is_fatal(rv2)) {
+            return rv2;
           }
         }
+
         nghttp2_outbound_item_free(item, mem);
         nghttp2_mem_free(mem, item);
         active_outbound_item_reset(aob, mem);

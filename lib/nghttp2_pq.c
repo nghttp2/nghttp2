@@ -130,3 +130,17 @@ void nghttp2_pq_update(nghttp2_pq *pq, nghttp2_pq_item_cb fun, void *arg) {
     }
   }
 }
+
+int nghttp2_pq_each(nghttp2_pq *pq, nghttp2_pq_item_cb fun, void *arg) {
+  size_t i;
+
+  if (pq->length == 0) {
+    return 0;
+  }
+  for (i = 0; i < pq->length; ++i) {
+    if ((*fun)(pq->q[i], arg)) {
+      return 1;
+    }
+  }
+  return 0;
+}

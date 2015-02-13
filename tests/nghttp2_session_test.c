@@ -64,6 +64,7 @@ typedef struct {
   uint8_t not_sent_frame_type;
   int not_sent_error;
   int stream_close_cb_called;
+  uint32_t stream_close_error_code;
   size_t data_source_length;
   int32_t stream_id;
   size_t block_count;
@@ -351,6 +352,7 @@ static int on_stream_close_callback(nghttp2_session *session _U_,
                                     void *user_data) {
   my_user_data *my_data = (my_user_data *)user_data;
   ++my_data->stream_close_cb_called;
+  my_data->stream_close_error_code = error_code;
 
   return 0;
 }
@@ -6774,26 +6776,45 @@ void test_nghttp2_session_reset_pending_headers(void) {
   nghttp2_session_callbacks callbacks;
   nghttp2_stream *stream;
   int32_t stream_id;
+  my_user_data ud;
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks.send_callback = null_send_callback;
+  callbacks.on_frame_send_callback = on_frame_send_callback;
+  callbacks.on_frame_not_send_callback = on_frame_not_send_callback;
+  callbacks.on_stream_close_callback = on_stream_close_callback;
 
-  nghttp2_session_client_new(&session, &callbacks, NULL);
+  nghttp2_session_client_new(&session, &callbacks, &ud);
 
-  /* See that if request HEADERS and RST_STREAM were submitted in this
-     order, HEADERS is sent first.  This is useful feature since
-     client can issue RST_STREAM in things go wrong while preparing
-     data for HEADERS, but this may be rare in practice.  On the other
-     hand, we don't have same property for PUSH_PROMISE and RST_STREAM
-     to reserved stream.  We may fix this if this is a significant
-     problem. */
   stream_id = nghttp2_submit_request(session, NULL, NULL, 0, NULL, NULL);
   CU_ASSERT(stream_id >= 1);
 
   nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, stream_id,
-                            NGHTTP2_NO_ERROR);
+                            NGHTTP2_CANCEL);
 
+  session->remote_settings.max_concurrent_streams = 0;
+
+  /* RST_STREAM cancels pending HEADERS and is not actually sent. */
+  ud.frame_send_cb_called = 0;
   CU_ASSERT(0 == nghttp2_session_send(session));
+
+  CU_ASSERT(0 == ud.frame_send_cb_called);
+
+  stream = nghttp2_session_get_stream(session, stream_id);
+
+  CU_ASSERT(NULL == stream);
+
+  /* See HEADERS is not sent.  on_stream_close is called just like
+     transmission failure. */
+  session->remote_settings.max_concurrent_streams = 1;
+
+  ud.frame_not_send_cb_called = 0;
+  ud.stream_close_error_code = 0;
+  CU_ASSERT(0 == nghttp2_session_send(session));
+
+  CU_ASSERT(1 == ud.frame_not_send_cb_called);
+  CU_ASSERT(NGHTTP2_HEADERS == ud.not_sent_frame_type);
+  CU_ASSERT(NGHTTP2_CANCEL == ud.stream_close_error_code);
 
   stream = nghttp2_session_get_stream(session, stream_id);
 
