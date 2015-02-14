@@ -6581,15 +6581,15 @@ void test_nghttp2_session_recv_client_preface(void) {
   CU_ASSERT(rv == NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN);
   CU_ASSERT(NGHTTP2_IB_READ_FIRST_SETTINGS == session->iframe.state);
 
-  /* Receiving PING is error */
+  /* Receiving PING is error because we want SETTINGS. */
   nghttp2_frame_ping_init(&ping_frame.ping, NGHTTP2_FLAG_NONE, NULL);
 
   nghttp2_frame_pack_frame_hd(buf, &ping_frame.ping.hd);
 
   rv = nghttp2_session_mem_recv(session, buf, NGHTTP2_FRAME_HDLEN);
   CU_ASSERT(NGHTTP2_FRAME_HDLEN == rv);
-  CU_ASSERT(NGHTTP2_IB_IGN_PAYLOAD == session->iframe.state);
-  CU_ASSERT(8 == session->iframe.payloadleft);
+  CU_ASSERT(NGHTTP2_IB_IGN_ALL == session->iframe.state);
+  CU_ASSERT(0 == session->iframe.payloadleft);
 
   nghttp2_frame_ping_free(&ping_frame.ping);
 

@@ -4684,12 +4684,8 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
 
       if (iframe->sbuf.pos[3] != NGHTTP2_SETTINGS ||
           (iframe->sbuf.pos[4] & NGHTTP2_FLAG_ACK)) {
-        nghttp2_frame_unpack_frame_hd(&iframe->frame.hd, iframe->sbuf.pos);
-        iframe->payloadleft = iframe->frame.hd.length;
 
-        busy = 1;
-
-        iframe->state = NGHTTP2_IB_IGN_PAYLOAD;
+        iframe->state = NGHTTP2_IB_IGN_ALL;
 
         rv = nghttp2_session_terminate_session_with_reason(
             session, NGHTTP2_PROTOCOL_ERROR, "SETTINGS expected");
@@ -4698,7 +4694,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
           return rv;
         }
 
-        break;
+        return inlen;
       }
 
       iframe->state = NGHTTP2_IB_READ_HEAD;
@@ -5649,6 +5645,8 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
       session_inbound_frame_reset(session);
 
       break;
+    case NGHTTP2_IB_IGN_ALL:
+      return inlen;
     }
 
     if (!busy && in == last) {
