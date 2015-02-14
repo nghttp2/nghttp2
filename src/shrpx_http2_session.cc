@@ -184,6 +184,9 @@ int Http2Session::disconnect(bool hard) {
   rb_.reset();
   wb_.reset();
 
+  conn_.rlimit.stopw();
+  conn_.wlimit.stopw();
+
   ev_timer_stop(conn_.loop, &settings_timer_);
   ev_timer_stop(conn_.loop, &connchk_timer_);
 
@@ -198,6 +201,7 @@ int Http2Session::disconnect(bool hard) {
 
   connection_check_state_ = CONNECTION_CHECK_NONE;
   state_ = DISCONNECTED;
+  write_requested_ = false;
 
   // Delete all client handler associated to Downstream. When deleting
   // Http2DownstreamConnection, it calls this object's
@@ -328,6 +332,9 @@ int Http2Session::initiate_connection() {
         if (rv != 0 && errno != EINPROGRESS) {
           return -1;
         }
+
+        ev_io_set(&conn_.rev, conn_.fd, EV_READ);
+        ev_io_set(&conn_.wev, conn_.fd, EV_WRITE);
       }
 
       if (SSL_set_fd(conn_.tls.ssl, conn_.fd) == 0) {
@@ -353,24 +360,11 @@ int Http2Session::initiate_connection() {
         if (rv != 0 && errno != EINPROGRESS) {
           return -1;
         }
-      } else {
-        // Without TLS but with proxy.  Connection already
-        // established.
-        if (on_connect() != -1) {
-          state_ = CONNECT_FAILING;
-          return -1;
-        }
+
+        ev_io_set(&conn_.rev, conn_.fd, EV_READ);
+        ev_io_set(&conn_.wev, conn_.fd, EV_WRITE);
       }
     }
-
-    // rev_ and wev_ could possibly be active here.  Since calling
-    // ev_io_set is not allowed while watcher is active, we have to
-    // stop them just in case.
-    conn_.rlimit.stopw();
-    conn_.wlimit.stopw();
-
-    ev_io_set(&conn_.rev, conn_.fd, EV_READ);
-    ev_io_set(&conn_.wev, conn_.fd, EV_WRITE);
 
     write_ = &Http2Session::connected;
 
@@ -399,6 +393,18 @@ int Http2Session::initiate_connection() {
 namespace {
 int htp_hdrs_completecb(http_parser *htp) {
   auto http2session = static_cast<Http2Session *>(htp->data);
+
+  // We only read HTTP header part.  If tunneling succeeds, response
+  // body is a different protocol (HTTP/2 in this case), we don't read
+  // them here.
+  //
+  // Here is a caveat: http-parser returns 1 less bytes if we pause
+  // here.  The reason why they do this is probably they want to eat
+  // last 1 byte in s_headers_done state, on the other hand, this
+  // callback is called its previous state s_headers_almost_done.  We
+  // will do "+ 1" to the return value to workaround this.
+  http_parser_pause(htp, 1);
+
   // We just check status code here
   if (htp->status_code == 200) {
     if (LOG_ENABLED(INFO)) {
@@ -443,20 +449,33 @@ int Http2Session::downstream_read_proxy() {
 
     auto htperr = HTTP_PARSER_ERRNO(proxy_htp_.get());
 
+    if (htperr == HPE_PAUSED) {
+      switch (state_) {
+      case Http2Session::PROXY_CONNECTED:
+        // we need to increment nread by 1 since http_parser_execute()
+        // returns 1 less value we expect.  This means taht
+        // rb_.pos[nread] points to \x0a (LF), which is last byte of
+        // empty line to terminate headers.  We want to eat that byte
+        // here.
+        rb_.drain(1);
+
+        // Initiate SSL/TLS handshake through established tunnel.
+        if (initiate_connection() != 0) {
+          return -1;
+        }
+        return 0;
+      case Http2Session::PROXY_FAILED:
+        return -1;
+      }
+      // should not be here
+      assert(0);
+    }
+
     if (htperr != HPE_OK) {
       return -1;
     }
 
-    switch (state_) {
-    case Http2Session::PROXY_CONNECTED:
-      // Initiate SSL/TLS handshake through established tunnel.
-      if (initiate_connection() != 0) {
-        return -1;
-      }
-      return 0;
-    case Http2Session::PROXY_FAILED:
-      return -1;
-    }
+    return 0;
   }
 }
 
