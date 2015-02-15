@@ -1514,6 +1514,8 @@ int on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
     return 0;
   }
 
+  req->response_len += len;
+
   if (req->inflater) {
     while (len > 0) {
       const size_t MAX_OUTLEN = 4096;
@@ -1528,8 +1530,6 @@ int on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
         break;
       }
 
-      req->response_len += outlen;
-
       if (!config.null_out) {
         std::cout.write(reinterpret_cast<const char *>(out.data()), outlen);
       }
@@ -1541,8 +1541,6 @@ int on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
 
     return 0;
   }
-
-  req->response_len += len;
 
   if (!config.null_out) {
     std::cout.write(reinterpret_cast<const char *>(data), len);
@@ -1891,7 +1889,7 @@ Request timing:
 
 sorted by 'complete'
 
-complete  request   process  code request path)" << std::endl;
+complete  request   process  code size request path)" << std::endl;
 
   const auto &base = client.timing.on_handshake_time;
   for (const auto &req : reqs) {
@@ -1907,8 +1905,9 @@ complete  request   process  code request path)" << std::endl;
               << " " << std::setw(9)
               << ("+" + util::format_duration(request_delta)) << " "
               << std::setw(8) << util::format_duration(total) << " "
-              << std::setw(4) << req->status << " " << req->make_reqpath()
-              << std::endl;
+              << std::setw(4) << req->status << " " << std::setw(4)
+              << util::utos_with_unit(req->response_len) << " "
+              << req->make_reqpath() << std::endl;
   }
 }
 } // namespace
