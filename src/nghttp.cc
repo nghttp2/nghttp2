@@ -1903,7 +1903,7 @@ Request timing:
 
 sorted by 'complete'
 
-complete  request     process  code size request path)" << std::endl;
+complete  request    process  code size request path)" << std::endl;
 
   const auto &base = client.timing.on_handshake_time;
   for (const auto &req : reqs) {
