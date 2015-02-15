@@ -564,7 +564,7 @@ follows::
     requests: 100000 total, 100000 started, 100000 done, 100000 succeeded, 0 failed, 0 errored
     status codes: 100000 2xx, 0 3xx, 0 4xx, 0 5xx
     traffic: 414200800 bytes total, 2723100 bytes headers, 409600000 bytes data
-			 min         max         mean         sd        +/- sd
+                         min         max         mean         sd        +/- sd
     time for request:   283.86ms       1.46s    659.70ms    150.87ms    84.68%
 
 The above example issued total 100000 requests, using 100 concurrent
