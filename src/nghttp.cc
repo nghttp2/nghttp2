@@ -1807,6 +1807,18 @@ int on_frame_recv_callback2(nghttp2_session *session,
     }
     req->uri = uri;
     req->u = u;
+
+    if (client->path_cache.count(uri)) {
+      nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
+                                frame->push_promise.promised_stream_id,
+                                NGHTTP2_CANCEL);
+      break;
+    }
+
+    if (config.multiply == 1) {
+      client->path_cache.insert(uri);
+    }
+
     break;
   }
   }
