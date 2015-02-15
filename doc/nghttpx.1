@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "February 08, 2015" "0.7.4-DEV" "nghttp2"
+.TH "NGHTTPX" "1" "February 15, 2015" "0.7.4" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 experimental proxy
 .
@@ -800,7 +800,7 @@ to perform hot swapping.
 .SH SERVER PUSH
 .sp
 nghttpx supports HTTP/2 server push in default mode.  nghttpx looks
-for Link header field (\fI\%RFC 5988\fP) in response headers for
+for Link header field (\fI\%RFC 5988\fP) in response headers from
 backend server and extracts URI\-reference with parameter
 \fBrel=preload\fP (see \fI\%preload\fP)
 and pushes those URIs to the frontend client. Here is a sample Link

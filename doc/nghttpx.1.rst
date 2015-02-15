@@ -719,7 +719,7 @@ SERVER PUSH
 
 nghttpx supports HTTP/2 server push in default mode.  nghttpx looks
 for Link header field (`RFC 5988
-<http://tools.ietf.org/html/rfc5988>`_) in response headers for
+<http://tools.ietf.org/html/rfc5988>`_) in response headers from
 backend server and extracts URI-reference with parameter
 ``rel=preload`` (see `preload
 <http://w3c.github.io/preload/#interoperability-with-http-link-header>`_)
