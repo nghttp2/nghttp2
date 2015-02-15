@@ -1,0 +1,19 @@
+_h2load()
+{
+    local cur prev split=false
+    COMPREPLY=()
+    COMP_WORDBREAKS=${COMP_WORDBREAKS//=}
+
+    cmd=${COMP_WORDS[0]}
+    _get_comp_words_by_ref cur prev
+    case $cur in
+        -*)
+            COMPREPLY=( $( compgen -W '--threads --connection-window-bits --input-file --help --requests --verbose --version --window-bits --clients --no-tls-proto --header --max-concurrent-streams ' -- "$cur" ) )
+            ;;
+        *)
+            _filedir
+            return 0
+    esac
+    return 0
+}
+complete -F _h2load h2load

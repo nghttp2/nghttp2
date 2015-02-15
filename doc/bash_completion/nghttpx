@@ -1,0 +1,19 @@
+_nghttpx()
+{
+    local cur prev split=false
+    COMPREPLY=()
+    COMP_WORDBREAKS=${COMP_WORDBREAKS//=}
+
+    cmd=${COMP_WORDS[0]}
+    _get_comp_words_by_ref cur prev
+    case $cur in
+        -*)
+            COMPREPLY=( $( compgen -W '--frontend-http2-connection-window-bits --worker-read-rate --frontend-no-tls --frontend-http2-dump-request-header --daemon --write-rate --altsvc --frontend-http2-dump-response-header --backend-http1-connections-per-frontend --tls-ticket-key-file --ciphers --verify-client-cacert --backend-keep-alive-timeout --strip-incoming-x-forwarded-for --errorlog-file --private-key-passwd-file --version --backlog --backend-http-proxy-uri --add-response-header --backend-write-timeout --backend-request-buffer --add-x-forwarded-for --write-burst --backend-http2-connection-window-bits --insecure --rlimit-nofile --backend-http2-window-bits --tls-proto-list --no-location-rewrite --padding --accesslog-syslog --conf --http2-max-concurrent-streams --client-proxy --worker-frontend-connections --cacert --frontend-read-timeout --worker-write-burst --npn-list --syslog-facility --backend-http1-connections-per-host --no-server-push --client --http2-bridge --no-via --user --stream-write-timeout --backend-response-buffer --http2-no-cookie-crumbling --backend-read-timeout --stream-read-timeout --workers --worker-read-burst --tls-ctx-per-worker --dh-param-file --errorlog-syslog --frontend --accesslog-file --http2-proxy --read-burst --accesslog-format --frontend-http2-window-bits --backend-no-tls --client-private-key-file --pid-file --client-cert-file --no-host-rewrite --log-level --worker-write-rate --help --backend-tls-sni-field --subcert --frontend-frame-debug --frontend-write-timeout --verify-client --read-rate --frontend-http2-read-timeout --backend-ipv4 --listener-disable-timeout --backend-ipv6 --backend ' -- "$cur" ) )
+            ;;
+        *)
+            _filedir
+            return 0
+    esac
+    return 0
+}
+complete -F _nghttpx nghttpx

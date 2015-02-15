@@ -58,7 +58,11 @@ EXTRA_DIST = \
 	_themes/sphinx_rtd_theme/static/js/theme.js \
 	_themes/sphinx_rtd_theme/static/css/theme.css \
 	_themes/sphinx_rtd_theme/static/css/badge_only.css \
-	$(man_MANS)
+	$(man_MANS) \
+	bash_completion/nghttp \
+	bash_completion/nghttpd \
+	bash_completion/nghttpx \
+	bash_completion/h2load
 
 # Makefile for Sphinx documentation
 #
