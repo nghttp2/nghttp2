@@ -108,7 +108,7 @@ clean-local:
 	-rm apiref.rst
 	-rm -rf $(BUILDDIR)/*
 
-html: apiref.rst
+html-local: apiref.rst
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
