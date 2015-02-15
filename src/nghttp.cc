@@ -1894,14 +1894,16 @@ void print_stats(const HttpClient &client) {
 Request timing:
   complete: relative time from protocol handshake to stream close
    request: relative   time  from   protocol   handshake  to   request
-            transmission
+            transmission.  If '*' is shown, this was pushed by server.
    process: time for request and response
       code: HTTP status code
+      size: number  of   bytes  received  as  response   body  without
+            inflation.
        URI: request URI
 
 sorted by 'complete'
 
-complete  request   process  code size request path)" << std::endl;
+complete  request     process  code size request path)" << std::endl;
 
   const auto &base = client.timing.on_handshake_time;
   for (const auto &req : reqs) {
@@ -1912,9 +1914,10 @@ complete  request   process  code size request path)" << std::endl;
         req->timing.on_request_time - base);
     auto total = std::chrono::duration_cast<std::chrono::microseconds>(
         req->timing.on_complete_time - req->timing.on_request_time);
+    auto pushed = req->stream_id % 2 == 0;
 
     std::cout << std::setw(9) << ("+" + util::format_duration(completed_delta))
-              << " " << std::setw(9)
+              << " " << (pushed ? "*" : " ") << std::setw(9)
               << ("+" + util::format_duration(request_delta)) << " "
               << std::setw(8) << util::format_duration(total) << " "
               << std::setw(4) << req->status << " " << std::setw(4)
