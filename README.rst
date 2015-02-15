@@ -352,7 +352,7 @@ requests, sorted by completion time::
 
     sorted by 'complete'
 
-    complete  request     process  code size request path
+    complete  request    process  code size request path
      +11.07ms     +120us  10.95ms  200   9K /
      +16.77ms *  +8.80ms   7.98ms  200   8K /stylesheets/screen.css
      +27.00ms   +11.16ms  15.84ms  200   3K /javascripts/octopress.js
