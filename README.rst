@@ -343,20 +343,22 @@ requests, sorted by completion time::
     Request timing:
       complete: relative time from protocol handshake to stream close
        request: relative   time  from   protocol   handshake  to   request
-		transmission
+                transmission.  If '*' is shown, this was pushed by server.
        process: time for request and response
-	  code: HTTP status code
-	   URI: request URI
+          code: HTTP status code
+          size: number  of   bytes  received  as  response   body  without
+                inflation.
+           URI: request URI
 
     sorted by 'complete'
 
-    complete  request   process  code request path
-     +17.37ms    +104us  17.27ms  200 /
-     +17.50ms   +8.15ms   9.35ms  200 /javascripts/octopress.js
-     +22.06ms   +8.15ms  13.91ms  200 /javascripts/modernizr-2.0.js
-     +27.07ms   +8.15ms  18.92ms  200 /stylesheets/screen.css
-     +98.57ms  +17.55ms  81.02ms  200 /images/posts/with-pri-blog.png
-    +104.70ms  +17.55ms  87.15ms  200 /images/posts/without-pri-blog.png
+    complete  request     process  code size request path
+     +11.07ms     +120us  10.95ms  200   9K /
+     +16.77ms *  +8.80ms   7.98ms  200   8K /stylesheets/screen.css
+     +27.00ms   +11.16ms  15.84ms  200   3K /javascripts/octopress.js
+     +27.40ms   +11.16ms  16.24ms  200   3K /javascripts/modernizr-2.0.js
+     +76.14ms   +11.17ms  64.97ms  200 171K /images/posts/with-pri-blog.png
+     +88.52ms   +11.17ms  77.36ms  200 174K /images/posts/without-pri-blog.png
 
 With ``-r`` option, ``nghttp`` writes more detailed timing data to
 given file in HAR format.
