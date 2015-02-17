@@ -839,8 +839,8 @@ void HttpsUpstream::on_handler_delete() {
 int HttpsUpstream::on_downstream_reset(bool no_retry) {
   int rv;
 
-  if ((downstream_->get_request_state() != Downstream::HEADER_COMPLETE &&
-       downstream_->get_request_state() != Downstream::MSG_COMPLETE) ||
+  if ((downstream_->get_request_state() != Downstream::INITIAL &&
+       !downstream_->get_request_pending()) ||
       downstream_->get_response_state() != Downstream::INITIAL) {
     // Return error so that caller can delete handler
     return -1;
