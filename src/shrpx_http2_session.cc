@@ -907,6 +907,12 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
       break;
     }
 
+    if (downstream->get_expect_final_response()) {
+      http2session->submit_rst_stream(frame->hd.stream_id,
+                                      NGHTTP2_PROTOCOL_ERROR);
+      break;
+    }
+
     auto upstream = downstream->get_upstream();
     rv = upstream->on_downstream_body(downstream, nullptr, 0, true);
     if (rv != 0) {
@@ -966,6 +972,11 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
     }
 
     if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
+      if (downstream->get_expect_final_response()) {
+        http2session->submit_rst_stream(frame->hd.stream_id,
+                                        NGHTTP2_PROTOCOL_ERROR);
+        return 0;
+      }
 
       downstream->disable_downstream_rtimer();
 
