@@ -113,12 +113,11 @@ void writecb(struct ev_loop *loop, ev_io *w, int revents) {
   auto conn = static_cast<Connection *>(w->data);
   auto http2session = static_cast<Http2Session *>(conn->data);
   http2session->clear_write_request();
+  http2session->connection_alive();
   rv = http2session->do_write();
   if (rv != 0) {
     http2session->disconnect(http2session->should_hard_fail());
-    return;
   }
-  http2session->connection_alive();
 }
 } // namespace
 
@@ -1481,8 +1480,8 @@ void Http2Session::connection_alive() {
   for (auto dconn : dconns_) {
     auto downstream = dconn->get_downstream();
     if (!downstream ||
-        (downstream->get_request_state() != Downstream::INITIAL &&
-         !downstream->get_request_pending()) ||
+        (downstream->get_request_state() != Downstream::HEADER_COMPLETE &&
+         downstream->get_request_state() != Downstream::MSG_COMPLETE) ||
         downstream->get_response_state() != Downstream::INITIAL) {
       continue;
     }

@@ -222,19 +222,16 @@ ssize_t http2_data_read_callback(nghttp2_session *session, int32_t stream_id,
 
 int Http2DownstreamConnection::push_request_headers() {
   int rv;
-  if (!downstream_) {
-    return 0;
-  }
   if (!http2session_->can_push_request()) {
     // The HTTP2 session to the backend has not been established or
     // connection is now being checked.  This function will be called
     // again just after it is established.
-    downstream_->set_request_pending(true);
     http2session_->start_checking_connection();
     return 0;
   }
-
-  downstream_->set_request_pending(false);
+  if (!downstream_) {
+    return 0;
+  }
 
   const char *authority = nullptr, *host = nullptr;
   if (!get_config()->no_host_rewrite && !get_config()->http2_proxy &&

@@ -122,7 +122,7 @@ Downstream::Downstream(Upstream *upstream, int32_t stream_id, int32_t priority)
       request_connection_close_(false), request_header_key_prev_(false),
       request_http2_expect_body_(false), chunked_response_(false),
       response_connection_close_(false), response_header_key_prev_(false),
-      expect_final_response_(false), request_pending_(false) {
+      expect_final_response_(false) {
 
   ev_timer_init(&upstream_rtimer_, &upstream_rtimeoutcb, 0.,
                 get_config()->stream_read_timeout);
@@ -1063,9 +1063,5 @@ bool Downstream::no_more_retry() const { return num_retry_ > 5; }
 void Downstream::set_request_downstream_host(std::string host) {
   request_downstream_host_ = std::move(host);
 }
-
-void Downstream::set_request_pending(bool f) { request_pending_ = f; }
-
-bool Downstream::get_request_pending() const { return request_pending_; }
 
 } // namespace shrpx

@@ -1476,8 +1476,8 @@ int Http2Upstream::on_downstream_reset(bool no_retry) {
 
   for (auto &ent : downstream_queue_.get_active_downstreams()) {
     auto downstream = ent.second.get();
-    if ((downstream->get_request_state() != Downstream::INITIAL &&
-         !downstream->get_request_pending()) ||
+    if ((downstream->get_request_state() != Downstream::HEADER_COMPLETE &&
+         downstream->get_request_state() != Downstream::MSG_COMPLETE) ||
         downstream->get_response_state() != Downstream::INITIAL) {
       rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
       downstream->pop_downstream_connection();
