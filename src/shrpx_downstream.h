@@ -183,6 +183,10 @@ public:
   void set_request_state(int state);
   int get_request_state() const;
   DefaultMemchunks *get_request_buf();
+  void set_request_pending(bool f);
+  bool get_request_pending() const;
+  // Returns true if request is ready to be submitted to downstream.
+  bool request_submission_ready() const;
   // downstream response API
   const Headers &get_response_headers() const;
   // Lower the response header field names and indexes response
@@ -387,6 +391,10 @@ private:
   bool response_connection_close_;
   bool response_header_key_prev_;
   bool expect_final_response_;
+  // true if downstream request is pending because backend connection
+  // has not been established or should be checked before use;
+  // currently used only with HTTP/2 connection.
+  bool request_pending_;
 };
 
 } // namespace shrpx

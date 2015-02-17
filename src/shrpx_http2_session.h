@@ -141,6 +141,8 @@ public:
 
   bool should_hard_fail() const;
 
+  void submit_pending_requests();
+
   enum {
     // Disconnected
     DISCONNECTED,

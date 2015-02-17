@@ -113,11 +113,12 @@ void writecb(struct ev_loop *loop, ev_io *w, int revents) {
   auto conn = static_cast<Connection *>(w->data);
   auto http2session = static_cast<Http2Session *>(conn->data);
   http2session->clear_write_request();
-  http2session->connection_alive();
   rv = http2session->do_write();
   if (rv != 0) {
     http2session->disconnect(http2session->should_hard_fail());
+    return;
   }
+  http2session->connection_alive();
 }
 } // namespace
 
@@ -1288,29 +1289,8 @@ int Http2Session::on_connect() {
 
   reset_connection_check_timer();
 
-  // submit pending request
-  for (auto dconn : dconns_) {
-    if (dconn->push_request_headers() == 0) {
-      auto downstream = dconn->get_downstream();
-      auto upstream = downstream->get_upstream();
-      upstream->resume_read(SHRPX_NO_BUFFER, downstream, 0);
-      continue;
-    }
+  submit_pending_requests();
 
-    if (LOG_ENABLED(INFO)) {
-      SSLOG(INFO, this) << "backend request failed";
-    }
-
-    auto downstream = dconn->get_downstream();
-
-    if (!downstream) {
-      continue;
-    }
-
-    auto upstream = downstream->get_upstream();
-
-    upstream->on_downstream_abort_request(downstream, 400);
-  }
   signal_write();
   return 0;
 }
@@ -1476,28 +1456,30 @@ void Http2Session::connection_alive() {
   SSLOG(INFO, this) << "Connection alive";
   connection_check_state_ = CONNECTION_CHECK_NONE;
 
-  // submit pending request
+  submit_pending_requests();
+}
+
+void Http2Session::submit_pending_requests() {
   for (auto dconn : dconns_) {
     auto downstream = dconn->get_downstream();
-    if (!downstream ||
-        (downstream->get_request_state() != Downstream::HEADER_COMPLETE &&
-         downstream->get_request_state() != Downstream::MSG_COMPLETE) ||
-        downstream->get_response_state() != Downstream::INITIAL) {
+
+    if (!downstream || !downstream->request_submission_ready()) {
       continue;
     }
 
     auto upstream = downstream->get_upstream();
 
-    if (dconn->push_request_headers() == 0) {
-      upstream->resume_read(SHRPX_NO_BUFFER, downstream, 0);
+    if (dconn->push_request_headers() != 0) {
+      if (LOG_ENABLED(INFO)) {
+        SSLOG(INFO, this) << "backend request failed";
+      }
+
+      upstream->on_downstream_abort_request(downstream, 400);
+
       continue;
     }
 
-    if (LOG_ENABLED(INFO)) {
-      SSLOG(INFO, this) << "backend request failed";
-    }
-
-    upstream->on_downstream_abort_request(downstream, 400);
+    upstream->resume_read(SHRPX_NO_BUFFER, downstream, 0);
   }
 }
 

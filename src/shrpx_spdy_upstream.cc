@@ -1041,9 +1041,7 @@ int SpdyUpstream::on_downstream_reset(bool no_retry) {
 
   for (auto &ent : downstream_queue_.get_active_downstreams()) {
     auto downstream = ent.second.get();
-    if ((downstream->get_request_state() != Downstream::HEADER_COMPLETE &&
-         downstream->get_request_state() != Downstream::MSG_COMPLETE) ||
-        downstream->get_response_state() != Downstream::INITIAL) {
+    if (!downstream->request_submission_ready()) {
       rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
       downstream->pop_downstream_connection();
       continue;
