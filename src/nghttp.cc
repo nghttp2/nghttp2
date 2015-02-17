@@ -293,19 +293,19 @@ Headers::value_type *Request::get_req_header(int16_t token) {
   return &req_nva[idx];
 }
 
-void Request::record_request_time() {
+void Request::record_request_start_time() {
   timing.state = RequestState::ON_REQUEST;
-  timing.on_request_time = get_time();
+  timing.request_start_time = get_time();
 }
 
-void Request::record_response_time() {
+void Request::record_response_start_time() {
   timing.state = RequestState::ON_RESPONSE;
-  timing.on_response_time = get_time();
+  timing.response_start_time = get_time();
 }
 
-void Request::record_complete_time() {
+void Request::record_response_end_time() {
   timing.state = RequestState::ON_COMPLETE;
-  timing.on_complete_time = get_time();
+  timing.response_end_time = get_time();
 }
 
 namespace {
@@ -708,7 +708,6 @@ int HttpClient::connected() {
     std::cout << " Connected" << std::endl;
   }
 
-  record_connect_time();
   state = ClientState::CONNECTED;
 
   ev_io_start(loop, &rev);
@@ -767,7 +766,7 @@ size_t populate_settings(nghttp2_settings_entry *iv) {
 
 int HttpClient::on_upgrade_connect() {
   ssize_t rv;
-  record_handshake_time();
+  record_connect_end_time();
   assert(!reqvec.empty());
   std::array<nghttp2_settings_entry, 32> iv;
   size_t niv = populate_settings(iv.data());
@@ -812,7 +811,7 @@ int HttpClient::on_upgrade_connect() {
 
   // record request time if this is GET request
   if (!reqvec[0]->data_prd) {
-    reqvec[0]->record_request_time();
+    reqvec[0]->record_request_start_time();
   }
 
   on_writefn = &HttpClient::noop;
@@ -884,6 +883,10 @@ int HttpClient::do_write() { return writefn(*this); }
 int HttpClient::on_connect() {
   int rv;
 
+  if (!need_upgrade()) {
+    record_connect_end_time();
+  }
+
   if (ssl) {
     // Check NPN or ALPN result
     const unsigned char *next_proto = nullptr;
@@ -912,10 +915,6 @@ int HttpClient::on_connect() {
       print_protocol_nego_error();
       return -1;
     }
-  }
-
-  if (!need_upgrade()) {
-    record_handshake_time();
   }
 
   rv = nghttp2_session_client_new2(&session, callbacks, this,
@@ -1234,20 +1233,18 @@ bool HttpClient::add_request(const std::string &uri,
   return true;
 }
 
-void HttpClient::record_handshake_time() {
-  timing.on_handshake_time = get_time();
+void HttpClient::record_start_time() {
+  timing.system_start_time = std::chrono::system_clock::now();
+  timing.start_time = get_time();
 }
 
-void HttpClient::record_started_time() {
-  timing.started_system_time = std::chrono::system_clock::now();
-  timing.on_started_time = get_time();
+void HttpClient::record_domain_lookup_end_time() {
+  timing.domain_lookup_end_time = get_time();
 }
 
-void HttpClient::record_dns_complete_time() {
-  timing.on_dns_complete_time = get_time();
+void HttpClient::record_connect_end_time() {
+  timing.connect_end_time = get_time();
 }
-
-void HttpClient::record_connect_time() { timing.on_connect_time = get_time(); }
 
 void HttpClient::on_request(Request *req) {
   if (req->pri == 0 && req->dep) {
@@ -1306,7 +1303,7 @@ void HttpClient::output_har(FILE *outfile) {
 
   json_object_set_new(
       page, "startedDateTime",
-      json_string(util::format_iso8601(timing.started_system_time).c_str()));
+      json_string(util::format_iso8601(timing.system_start_time).c_str()));
   json_object_set_new(page, "id", json_string(PAGE_ID));
   json_object_set_new(page, "title", json_string(""));
 
@@ -1317,11 +1314,11 @@ void HttpClient::output_har(FILE *outfile) {
 
   auto dns_delta =
       std::chrono::duration_cast<std::chrono::microseconds>(
-          timing.on_dns_complete_time - timing.on_started_time).count() /
+          timing.domain_lookup_end_time - timing.start_time).count() /
       1000.0;
   auto connect_delta =
       std::chrono::duration_cast<std::chrono::microseconds>(
-          timing.on_connect_time - timing.on_dns_complete_time).count() /
+          timing.connect_end_time - timing.domain_lookup_end_time).count() /
       1000.0;
 
   for (size_t i = 0; i < reqvec.size(); ++i) {
@@ -1336,26 +1333,26 @@ void HttpClient::output_har(FILE *outfile) {
 
     auto &req_timing = req->timing;
     auto request_time =
-        (i == 0) ? timing.started_system_time
-                 : timing.started_system_time +
+        (i == 0) ? timing.system_start_time
+                 : timing.system_start_time +
                        std::chrono::duration_cast<
                            std::chrono::system_clock::duration>(
-                           req_timing.on_request_time - timing.on_started_time);
+                           req_timing.request_start_time - timing.start_time);
 
-    auto wait_delta =
-        std::chrono::duration_cast<std::chrono::microseconds>(
-            req_timing.on_response_time - req_timing.on_request_time).count() /
-        1000.0;
-    auto receive_delta =
-        std::chrono::duration_cast<std::chrono::microseconds>(
-            req_timing.on_complete_time - req_timing.on_response_time).count() /
-        1000.0;
+    auto wait_delta = std::chrono::duration_cast<std::chrono::microseconds>(
+                          req_timing.response_start_time -
+                          req_timing.request_start_time).count() /
+                      1000.0;
+    auto receive_delta = std::chrono::duration_cast<std::chrono::microseconds>(
+                             req_timing.response_end_time -
+                             req_timing.response_start_time).count() /
+                         1000.0;
 
     auto time_sum =
         std::chrono::duration_cast<std::chrono::microseconds>(
-            (i == 0) ? (req_timing.on_complete_time - timing.on_started_time)
-                     : (req_timing.on_complete_time -
-                        req_timing.on_request_time)).count() /
+            (i == 0) ? (req_timing.response_end_time - timing.start_time)
+                     : (req_timing.response_end_time -
+                        req_timing.request_start_time)).count() /
         1000.0;
 
     json_object_set_new(
@@ -1508,7 +1505,7 @@ int on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
                                         user_data);
   }
 
-  if (req->status == 0) {
+  if (req->expect_final_response) {
     nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, stream_id,
                               NGHTTP2_PROTOCOL_ERROR);
     return 0;
@@ -1617,6 +1614,24 @@ int on_begin_headers_callback(nghttp2_session *session,
                               const nghttp2_frame *frame, void *user_data) {
   auto client = get_client(user_data);
   switch (frame->hd.type) {
+  case NGHTTP2_HEADERS: {
+    auto req = static_cast<Request *>(
+        nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
+    if (!req) {
+      break;
+    }
+
+    switch (frame->headers.cat) {
+    case NGHTTP2_HCAT_RESPONSE:
+    case NGHTTP2_HCAT_PUSH_RESPONSE:
+      req->record_response_start_time();
+      break;
+    default:
+      break;
+    }
+
+    break;
+  }
   case NGHTTP2_PUSH_PROMISE: {
     auto stream_id = frame->push_promise.promised_stream_id;
     http_parser_url u;
@@ -1632,7 +1647,7 @@ int on_begin_headers_callback(nghttp2_session *session,
     nghttp2_session_set_stream_user_data(session, stream_id, req.get());
 
     client->on_request(req.get());
-    req->record_request_time();
+    req->record_request_start_time();
     client->reqvec.push_back(std::move(req));
 
     break;
@@ -1729,37 +1744,63 @@ int on_frame_recv_callback2(nghttp2_session *session,
 
   auto client = get_client(user_data);
   switch (frame->hd.type) {
+  case NGHTTP2_DATA: {
+    auto req = static_cast<Request *>(
+        nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
+    if (!req) {
+      return 0;
+      ;
+    }
+
+    if (req->expect_final_response) {
+      nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, frame->hd.stream_id,
+                                NGHTTP2_PROTOCOL_ERROR);
+      return 0;
+    }
+
+    if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
+      req->record_response_end_time();
+    }
+
+    break;
+  }
   case NGHTTP2_HEADERS: {
     auto req = static_cast<Request *>(
         nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
     // If this is the HTTP Upgrade with OPTIONS method to avoid POST,
     // req is nullptr.
     if (!req) {
-      break;
+      return 0;
+      ;
     }
 
-    if (frame->headers.cat == NGHTTP2_HCAT_RESPONSE ||
-        frame->headers.cat == NGHTTP2_HCAT_PUSH_RESPONSE) {
-      req->record_response_time();
+    switch (frame->headers.cat) {
+    case NGHTTP2_HCAT_RESPONSE:
+    case NGHTTP2_HCAT_PUSH_RESPONSE:
       check_response_header(session, req);
-
       break;
-    }
-
-    if (frame->headers.cat == NGHTTP2_HCAT_HEADERS) {
+    case NGHTTP2_HCAT_HEADERS:
       if (req->expect_final_response) {
         check_response_header(session, req);
-      } else {
-        nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
-                                  frame->hd.stream_id, NGHTTP2_PROTOCOL_ERROR);
         break;
       }
+      if ((frame->hd.flags & NGHTTP2_FLAG_END_STREAM) == 0) {
+        nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
+                                  frame->hd.stream_id, NGHTTP2_PROTOCOL_ERROR);
+        return 0;
+      }
+      break;
+    default:
+      assert(0);
     }
 
-    if (req->status == 0 && (frame->hd.flags & NGHTTP2_FLAG_END_STREAM)) {
-      nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, frame->hd.stream_id,
-                                NGHTTP2_PROTOCOL_ERROR);
-      break;
+    if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
+      if (req->expect_final_response) {
+        nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
+                                  frame->hd.stream_id, NGHTTP2_PROTOCOL_ERROR);
+        return 0;
+      }
+      req->record_response_end_time();
     }
 
     break;
@@ -1836,7 +1877,7 @@ int before_frame_send_callback(nghttp2_session *session,
   auto req = static_cast<Request *>(
       nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
   assert(req);
-  req->record_request_time();
+  req->record_request_start_time();
   return 0;
 }
 
@@ -1854,7 +1895,6 @@ int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
   }
 
   update_html_parser(client, req, nullptr, 0, 1);
-  req->record_complete_time();
   ++client->complete;
 
   if (client->all_requests_processed()) {
@@ -1885,40 +1925,43 @@ void print_stats(const HttpClient &client) {
             [](const Request *lhs, const Request *rhs) {
     const auto &ltiming = lhs->timing;
     const auto &rtiming = rhs->timing;
-    return ltiming.on_complete_time < rtiming.on_complete_time ||
-           (ltiming.on_complete_time == rtiming.on_complete_time &&
-            ltiming.on_request_time < rtiming.on_request_time);
+    return ltiming.response_end_time < rtiming.response_end_time ||
+           (ltiming.response_end_time == rtiming.response_end_time &&
+            ltiming.request_start_time < rtiming.request_start_time);
   });
 
   std::cout << R"(
 Request timing:
-  complete: relative time from protocol handshake to stream close
-   request: relative   time  from   protocol   handshake  to   request
-            transmission.  If '*' is shown, this was pushed by server.
-   process: time for request and response
-      code: HTTP status code
-      size: number  of   bytes  received  as  response   body  without
-            inflation.
-       URI: request URI
+  responseEnd: the  time  when  last  byte of  response  was  received
+               relative to connectEnd
+ requestStart: the time  just before  first byte  of request  was sent
+               relative  to connectEnd.   If  '*' is  shown, this  was
+               pushed by server.
+      process: responseEnd - requestStart
+         code: HTTP status code
+         size: number  of  bytes  received as  response  body  without
+               inflation.
+          URI: request URI
+
+see http://www.w3.org/TR/resource-timing/#processing-model
 
 sorted by 'complete'
 
-complete  request    process  code size request path)" << std::endl;
+responseEnd requestStart  process code size request path)" << std::endl;
 
-  const auto &base = client.timing.on_handshake_time;
+  const auto &base = client.timing.connect_end_time;
   for (const auto &req : reqs) {
-    auto completed_delta =
-        std::chrono::duration_cast<std::chrono::microseconds>(
-            req->timing.on_complete_time - base);
-    auto request_delta = std::chrono::duration_cast<std::chrono::microseconds>(
-        req->timing.on_request_time - base);
+    auto response_end = std::chrono::duration_cast<std::chrono::microseconds>(
+        req->timing.response_end_time - base);
+    auto request_start = std::chrono::duration_cast<std::chrono::microseconds>(
+        req->timing.request_start_time - base);
     auto total = std::chrono::duration_cast<std::chrono::microseconds>(
-        req->timing.on_complete_time - req->timing.on_request_time);
+        req->timing.response_end_time - req->timing.request_start_time);
     auto pushed = req->stream_id % 2 == 0;
 
-    std::cout << std::setw(9) << ("+" + util::format_duration(completed_delta))
-              << " " << (pushed ? "*" : " ") << std::setw(9)
-              << ("+" + util::format_duration(request_delta)) << " "
+    std::cout << std::setw(11) << ("+" + util::format_duration(response_end))
+              << " " << (pushed ? "*" : " ") << std::setw(11)
+              << ("+" + util::format_duration(request_start)) << " "
               << std::setw(8) << util::format_duration(total) << " "
               << std::setw(4) << req->status << " " << std::setw(4)
               << util::utos_with_unit(req->response_len) << " "
@@ -2045,13 +2088,13 @@ int communicate(
     }
     client.update_hostport();
 
-    client.record_started_time();
+    client.record_start_time();
 
     if (client.resolve_host(host, port) != 0) {
       goto fin;
     }
 
-    client.record_dns_complete_time();
+    client.record_domain_lookup_end_time();
 
     if (client.initiate_connection() != 0) {
       goto fin;

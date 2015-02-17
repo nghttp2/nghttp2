@@ -88,9 +88,15 @@ struct Config {
 enum class RequestState { INITIAL, ON_REQUEST, ON_RESPONSE, ON_COMPLETE };
 
 struct RequestTiming {
-  std::chrono::steady_clock::time_point on_request_time;
-  std::chrono::steady_clock::time_point on_response_time;
-  std::chrono::steady_clock::time_point on_complete_time;
+  // The point in time when request is started to be sent.
+  // Corresponds to requestStart in Resource Timing TR.
+  std::chrono::steady_clock::time_point request_start_time;
+  // The point in time when first byte of response is received.
+  // Corresponds to responseStart in Resource Timing TR.
+  std::chrono::steady_clock::time_point response_start_time;
+  // The point in time when last byte of response is received.
+  // Corresponds to responseEnd in Resource Timing TR.
+  std::chrono::steady_clock::time_point response_end_time;
   RequestState state;
   RequestTiming() : state(RequestState::INITIAL) {}
 };
@@ -128,9 +134,9 @@ struct Request {
   Headers::value_type *get_res_header(int16_t token);
   Headers::value_type *get_req_header(int16_t token);
 
-  void record_request_time();
-  void record_response_time();
-  void record_complete_time();
+  void record_request_start_time();
+  void record_response_start_time();
+  void record_response_end_time();
 
   Headers res_nva;
   Headers req_nva;
@@ -160,17 +166,18 @@ struct Request {
 };
 
 struct SessionTiming {
-  // The point in time when download was started.
-  std::chrono::system_clock::time_point started_system_time;
-  // The point of time when download was started.
-  std::chrono::steady_clock::time_point on_started_time;
-  // The point of time when DNS resolution was completed.
-  std::chrono::steady_clock::time_point on_dns_complete_time;
-  // The point of time when connection was established or SSL/TLS
-  // handshake was completed.
-  std::chrono::steady_clock::time_point on_connect_time;
-  // The point of time when HTTP/2 commnucation was started.
-  std::chrono::steady_clock::time_point on_handshake_time;
+  // The point in time when operation was started.  Corresponds to
+  // startTime in Resource Timing TR, but recorded in system clock time.
+  std::chrono::system_clock::time_point system_start_time;
+  // Same as above, but recorded in steady clock time.
+  std::chrono::steady_clock::time_point start_time;
+  // The point in time when DNS resolution was completed.  Corresponds
+  // to domainLookupEnd in Resource Timing TR.
+  std::chrono::steady_clock::time_point domain_lookup_end_time;
+  // The point in time when connection was established or SSL/TLS
+  // handshake was completed.  Corresponds to connectEnd in Resource
+  // Timing TR.
+  std::chrono::steady_clock::time_point connect_end_time;
 };
 
 enum class ClientState { IDLE, CONNECTED };
@@ -215,10 +222,9 @@ struct HttpClient {
                    const nghttp2_priority_spec &pri_spec,
                    std::shared_ptr<Dependency> dep, int pri = 0, int level = 0);
 
-  void record_handshake_time();
-  void record_started_time();
-  void record_dns_complete_time();
-  void record_connect_time();
+  void record_start_time();
+  void record_domain_lookup_end_time();
+  void record_connect_end_time();
 
 #ifdef HAVE_JANSSON
   void output_har(FILE *outfile);
