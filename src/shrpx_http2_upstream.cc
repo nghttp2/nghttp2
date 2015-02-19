@@ -180,49 +180,12 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
 
     return 0;
   }
-  if (!http2::check_nv(name, namelen, value, valuelen)) {
-    upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
-    return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
-  }
-
   auto token = http2::lookup_token(name, namelen);
 
-  if (name[0] == ':') {
-    if (!downstream->request_pseudo_header_allowed(token)) {
-      upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
-      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
-    }
-  }
-
-  if (!http2::http2_header_allowed(token)) {
-    upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
-    return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
-  }
-
-  switch (token) {
-  case http2::HD_CONTENT_LENGTH: {
+  if (token == http2::HD_CONTENT_LENGTH) {
+    // libnghttp2 guarantees this can be parsed
     auto len = util::parse_uint(value, valuelen);
-    if (len == -1) {
-      if (upstream->error_reply(downstream, 400) != 0) {
-        return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
-      }
-      return 0;
-    }
-    if (downstream->get_request_content_length() != -1) {
-      if (upstream->error_reply(downstream, 400) != 0) {
-        return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
-      }
-      return 0;
-    }
     downstream->set_request_content_length(len);
-    break;
-  }
-  case http2::HD_TE:
-    if (!util::strieq("trailers", value, valuelen)) {
-      upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
-      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
-    }
-    break;
   }
 
   downstream->add_request_header(name, namelen, value, valuelen,
@@ -282,34 +245,19 @@ int on_request_headers(Http2Upstream *upstream, Downstream *downstream,
     http2::dump_nv(get_config()->http2_upstream_dump_request_header, nva);
   }
 
-  auto host = downstream->get_request_header(http2::HD_HOST);
   auto authority = downstream->get_request_header(http2::HD__AUTHORITY);
   auto path = downstream->get_request_header(http2::HD__PATH);
   auto method = downstream->get_request_header(http2::HD__METHOD);
   auto scheme = downstream->get_request_header(http2::HD__SCHEME);
 
-  bool is_connect = method && "CONNECT" == method->value;
-  bool having_host = http2::non_empty_value(host);
+  bool is_connect = "CONNECT" == method->value;
   bool having_authority = http2::non_empty_value(authority);
 
-  if (is_connect) {
-    // Here we strictly require :authority header field.
-    if (scheme || path || !having_authority) {
-
+  // presence of mandatory header fields are guaranteed by libnghttp2.
+  if (!is_connect) {
+    // For HTTP/2 proxy, :authority is required.
+    if (get_config()->http2_proxy && !having_authority) {
       upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
-
-      return 0;
-    }
-  } else {
-    // For proxy, :authority is required. Otherwise, we can accept
-    // :authority or host for methods.
-    if (!http2::non_empty_value(method) || !http2::non_empty_value(scheme) ||
-        (get_config()->http2_proxy && !having_authority) ||
-        (!get_config()->http2_proxy && !having_authority && !having_host) ||
-        !http2::non_empty_value(path)) {
-
-      upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
-
       return 0;
     }
   }
@@ -327,11 +275,6 @@ int on_request_headers(Http2Upstream *upstream, Downstream *downstream,
 
   downstream->set_request_state(Downstream::HEADER_COMPLETE);
   if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
-    if (!downstream->validate_request_bodylen()) {
-      upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
-      return 0;
-    }
-
     downstream->disable_upstream_rtimer();
 
     downstream->set_request_state(Downstream::MSG_COMPLETE);
@@ -411,11 +354,6 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
     if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
       downstream->disable_upstream_rtimer();
 
-      if (!downstream->validate_request_bodylen()) {
-        upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
-        return 0;
-      }
-
       downstream->end_upload_data();
       downstream->set_request_state(Downstream::MSG_COMPLETE);
     }
@@ -435,11 +373,6 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
     }
 
     if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
-      if (!downstream->validate_request_bodylen()) {
-        upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
-        return 0;
-      }
-
       downstream->disable_upstream_rtimer();
 
       downstream->end_upload_data();

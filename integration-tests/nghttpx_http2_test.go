@@ -355,9 +355,8 @@ func TestH2H1MultipleRequestCL(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	want := 400
-	if got := res.status; got != want {
-		t.Errorf("status: %v; want %v", got, want)
+	if got, want := res.errCode, http2.ErrCodeProtocol; got != want {
+		t.Errorf("res.errCode: %v; want %v", got, want)
 	}
 }
 
@@ -378,9 +377,8 @@ func TestH2H1InvalidRequestCL(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	want := 400
-	if got := res.status; got != want {
-		t.Errorf("status: %v; want %v", got, want)
+	if got, want := res.errCode, http2.ErrCodeProtocol; got != want {
+		t.Errorf("res.errCode: %v; want %v", got, want)
 	}
 }
 
@@ -614,9 +612,8 @@ func TestH2H2MultipleResponseCL(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	want := 502
-	if got := res.status; got != want {
-		t.Errorf("status: %v; want %v", got, want)
+	if got, want := res.errCode, http2.ErrCodeInternal; got != want {
+		t.Errorf("res.errCode: %v; want %v", got, want)
 	}
 }
 
@@ -635,9 +632,8 @@ func TestH2H2InvalidResponseCL(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
 	}
-	want := 502
-	if got := res.status; got != want {
-		t.Errorf("status: %v; want %v", got, want)
+	if got, want := res.errCode, http2.ErrCodeInternal; got != want {
+		t.Errorf("res.errCode: %v; want %v", got, want)
 	}
 }
 

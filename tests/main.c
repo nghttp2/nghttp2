@@ -259,6 +259,22 @@ int main(int argc _U_, char *argv[] _U_) {
                    test_nghttp2_session_cancel_reserved_remote) ||
       !CU_add_test(pSuite, "session_reset_pending_headers",
                    test_nghttp2_session_reset_pending_headers) ||
+      !CU_add_test(pSuite, "http_mandatory_headers",
+                   test_nghttp2_http_mandatory_headers) ||
+      !CU_add_test(pSuite, "http_content_length",
+                   test_nghttp2_http_content_length) ||
+      !CU_add_test(pSuite, "http_content_length_mismatch",
+                   test_nghttp2_http_content_length_mismatch) ||
+      !CU_add_test(pSuite, "http_non_final_response",
+                   test_nghttp2_http_non_final_response) ||
+      !CU_add_test(pSuite, "http_trailer_headers",
+                   test_nghttp2_http_trailer_headers) ||
+      !CU_add_test(pSuite, "http_ignore_content_length",
+                   test_nghttp2_http_ignore_content_length) ||
+      !CU_add_test(pSuite, "http_record_request_method",
+                   test_nghttp2_http_record_request_method) ||
+      !CU_add_test(pSuite, "http_push_promise",
+                   test_nghttp2_http_push_promise) ||
       !CU_add_test(pSuite, "frame_pack_headers",
                    test_nghttp2_frame_pack_headers) ||
       !CU_add_test(pSuite, "frame_pack_headers_frame_too_large",

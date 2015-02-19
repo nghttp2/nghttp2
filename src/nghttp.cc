@@ -1505,12 +1505,6 @@ int on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
                                         user_data);
   }
 
-  if (req->expect_final_response) {
-    nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, stream_id,
-                              NGHTTP2_PROTOCOL_ERROR);
-    return 0;
-  }
-
   req->response_len += len;
 
   if (req->inflater) {
@@ -1667,12 +1661,6 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
                                flags, user_data);
   }
 
-  if (!http2::check_nv(name, namelen, value, valuelen)) {
-    nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, frame->hd.stream_id,
-                              NGHTTP2_PROTOCOL_ERROR);
-    return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
-  }
-
   switch (frame->hd.type) {
   case NGHTTP2_HEADERS: {
     auto req = static_cast<Request *>(
@@ -1682,22 +1670,13 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
       break;
     }
 
-    if (frame->headers.cat != NGHTTP2_HCAT_RESPONSE &&
-        frame->headers.cat != NGHTTP2_HCAT_PUSH_RESPONSE &&
-        (frame->headers.cat != NGHTTP2_HCAT_HEADERS ||
-         !req->expect_final_response)) {
+    /* ignore trailer header */
+    if (frame->headers.cat == NGHTTP2_HCAT_HEADERS &&
+        !req->expect_final_response) {
       break;
     }
 
     auto token = http2::lookup_token(name, namelen);
-
-    if (name[0] == ':') {
-      if (!req->response_pseudo_header_allowed(token)) {
-        nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
-                                  frame->hd.stream_id, NGHTTP2_PROTOCOL_ERROR);
-        return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
-      }
-    }
 
     http2::index_header(req->res_hdidx, token, req->res_nva.size());
     http2::add_header(req->res_nva, name, namelen, value, valuelen,
@@ -1713,15 +1692,6 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
     }
 
     auto token = http2::lookup_token(name, namelen);
-
-    if (name[0] == ':') {
-      if (!req->push_request_pseudo_header_allowed(token)) {
-        nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
-                                  frame->push_promise.promised_stream_id,
-                                  NGHTTP2_PROTOCOL_ERROR);
-        break;
-      }
-    }
 
     http2::index_header(req->req_hdidx, token, req->req_nva.size());
     http2::add_header(req->req_nva, name, namelen, value, valuelen,
@@ -1750,12 +1720,6 @@ int on_frame_recv_callback2(nghttp2_session *session,
     if (!req) {
       return 0;
       ;
-    }
-
-    if (req->expect_final_response) {
-      nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, frame->hd.stream_id,
-                                NGHTTP2_PROTOCOL_ERROR);
-      return 0;
     }
 
     if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
@@ -1795,11 +1759,6 @@ int on_frame_recv_callback2(nghttp2_session *session,
     }
 
     if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
-      if (req->expect_final_response) {
-        nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
-                                  frame->hd.stream_id, NGHTTP2_PROTOCOL_ERROR);
-        return 0;
-      }
       req->record_response_end_time();
     }
 
@@ -1826,9 +1785,7 @@ int on_frame_recv_callback2(nghttp2_session *session,
       authority = req->get_req_header(http2::HD_HOST);
     }
 
-    if (!scheme || !authority || !method || !path || scheme->value.empty() ||
-        authority->value.empty() || method->value.empty() ||
-        path->value.empty() || path->value[0] != '/') {
+    if (!scheme || !authority || !method || !path || path->value[0] != '/') {
       nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
                                 frame->push_promise.promised_stream_id,
                                 NGHTTP2_PROTOCOL_ERROR);

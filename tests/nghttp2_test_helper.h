@@ -43,7 +43,7 @@
 #define assert_nv_equal(A, B, len)                                             \
   do {                                                                         \
     size_t alloclen = sizeof(nghttp2_nv) * len;                                \
-    nghttp2_nv *sa = A, *sb = B;                                               \
+    const nghttp2_nv *sa = A, *sb = B;                                         \
     nghttp2_nv *a = malloc(alloclen);                                          \
     nghttp2_nv *b = malloc(alloclen);                                          \
     ssize_t i_;                                                                \
@@ -80,6 +80,14 @@ void add_out(nva_out *out, nghttp2_nv *nv);
 
 ssize_t inflate_hd(nghttp2_hd_inflater *inflater, nva_out *out,
                    nghttp2_bufs *bufs, size_t offset);
+
+int pack_headers(nghttp2_bufs *bufs, nghttp2_hd_deflater *deflater,
+                 int32_t stream_id, int flags, const nghttp2_nv *nva,
+                 size_t nvlen, nghttp2_mem *mem);
+
+int pack_push_promise(nghttp2_bufs *bufs, nghttp2_hd_deflater *deflater,
+                      int32_t stream_id, int flags, int32_t promised_stream_id,
+                      const nghttp2_nv *nva, size_t nvlen, nghttp2_mem *mem);
 
 int frame_pack_bufs_init(nghttp2_bufs *bufs);
 

@@ -122,5 +122,13 @@ void test_nghttp2_session_delete_data_item(void);
 void test_nghttp2_session_open_idle_stream(void);
 void test_nghttp2_session_cancel_reserved_remote(void);
 void test_nghttp2_session_reset_pending_headers(void);
+void test_nghttp2_http_mandatory_headers(void);
+void test_nghttp2_http_content_length(void);
+void test_nghttp2_http_content_length_mismatch(void);
+void test_nghttp2_http_non_final_response(void);
+void test_nghttp2_http_trailer_headers(void);
+void test_nghttp2_http_ignore_content_length(void);
+void test_nghttp2_http_record_request_method(void);
+void test_nghttp2_http_push_promise(void);
 
 #endif /* NGHTTP2_SESSION_TEST_H */
