@@ -296,6 +296,7 @@ int HttpsUpstream::on_read() {
     }
   }
 
+  // http_parser_execute() does nothing once it entered error state.
   auto nread = http_parser_execute(
       &htp_, &htp_hooks, reinterpret_cast<const char *>(rb->pos), rb->rleft());
 
@@ -349,6 +350,10 @@ int HttpsUpstream::on_read() {
   }
 
   if (htperr != HPE_OK) {
+    if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+      return 0;
+    }
+
     if (LOG_ENABLED(INFO)) {
       ULOG(INFO, this) << "HTTP parse failure: "
                        << "(" << http_errno_name(htperr) << ") "
