@@ -33,6 +33,7 @@
 #include "nghttp2_net.h"
 #include "nghttp2_priority_spec.h"
 #include "nghttp2_option.h"
+#include "nghttp2_http.h"
 
 /*
  * Returns non-zero if the number of outgoing opened streams is larger
@@ -75,6 +76,27 @@ static int is_non_fatal(int lib_error) {
 }
 
 int nghttp2_is_fatal(int lib_error) { return lib_error < NGHTTP2_ERR_FATAL; }
+
+static int session_enforce_http_semantics(nghttp2_session *session) {
+  return (session->opt_flags & NGHTTP2_OPTMASK_NO_HTTP_SEMANTICS) == 0;
+}
+
+/*
+ * Returns nonzero if |frame| is trailer headers.
+ */
+static int session_trailer_headers(nghttp2_session *session,
+                                   nghttp2_stream *stream,
+                                   nghttp2_frame *frame) {
+  if (!stream || frame->hd.type != NGHTTP2_HEADERS) {
+    return 0;
+  }
+  if (session->server) {
+    return frame->headers.cat == NGHTTP2_HCAT_HEADERS;
+  }
+
+  return frame->headers.cat == NGHTTP2_HCAT_HEADERS &&
+         (stream->http_flags & NGHTTP2_HTTP_FLAG_EXPECT_FINAL_RESPONSE) == 0;
+}
 
 /* Returns nonzero if the |stream| is in reserved(remote) state */
 static int state_reserved_remote(nghttp2_session *session,
@@ -1738,6 +1760,10 @@ static int session_prep_frame(nghttp2_session *session,
         if (rv != 0) {
           return rv;
         }
+
+        if (session_enforce_http_semantics(session)) {
+          nghttp2_http_record_request_method(stream, frame);
+        }
       } else {
         nghttp2_stream *stream;
 
@@ -3082,8 +3108,19 @@ static int inflate_header_block(nghttp2_session *session, nghttp2_frame *frame,
   int inflate_flags;
   nghttp2_nv nv;
   nghttp2_stream *stream;
+  nghttp2_stream *subject_stream;
+  int trailer = 0;
 
   *readlen_ptr = 0;
+  stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
+
+  if (frame->hd.type == NGHTTP2_PUSH_PROMISE) {
+    subject_stream = nghttp2_session_get_stream(
+        session, frame->push_promise.promised_stream_id);
+  } else {
+    subject_stream = stream;
+    trailer = session_trailer_headers(session, stream, frame);
+  }
 
   DEBUGF(fprintf(stderr, "recv: decoding header block %zu bytes\n", inlen));
   for (;;) {
@@ -3095,8 +3132,6 @@ static int inflate_header_block(nghttp2_session *session, nghttp2_frame *frame,
     }
     if (proclen < 0) {
       if (session->iframe.state == NGHTTP2_IB_READ_HEADER_BLOCK) {
-        stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
-
         if (stream && stream->state != NGHTTP2_STREAM_CLOSING) {
           /* Adding RST_STREAM here is very important. It prevents
              from invoking subsequent callbacks for the same stream
@@ -3124,11 +3159,29 @@ static int inflate_header_block(nghttp2_session *session, nghttp2_frame *frame,
     DEBUGF(fprintf(stderr, "recv: proclen=%zd\n", proclen));
 
     if (call_header_cb && (inflate_flags & NGHTTP2_HD_INFLATE_EMIT)) {
-      rv = session_call_on_header(session, frame, &nv);
-      /* This handles NGHTTP2_ERR_PAUSE and
-         NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE as well */
-      if (rv != 0) {
-        return rv;
+      if (subject_stream && session_enforce_http_semantics(session)) {
+        rv = nghttp2_http_on_header(session, subject_stream, frame, &nv,
+                                    trailer);
+        if (rv != 0) {
+          DEBUGF(fprintf(
+              stderr, "recv: HTTP error: type=%d, id=%d, header %.*s: %.*s\n",
+              frame->hd.type, subject_stream->stream_id, (int)nv.namelen,
+              nv.name, (int)nv.valuelen, nv.value));
+          rv = nghttp2_session_add_rst_stream(
+              session, subject_stream->stream_id, NGHTTP2_PROTOCOL_ERROR);
+          if (nghttp2_is_fatal(rv)) {
+            return rv;
+          }
+          return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+        }
+      }
+      if (call_header_cb) {
+        rv = session_call_on_header(session, frame, &nv);
+        /* This handles NGHTTP2_ERR_PAUSE and
+           NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE as well */
+        if (rv != 0) {
+          return rv;
+        }
       }
     }
     if (inflate_flags & NGHTTP2_HD_INFLATE_FINAL) {
@@ -3224,7 +3277,8 @@ int nghttp2_session_end_headers_received(nghttp2_session *session,
 }
 
 static int session_after_header_block_received(nghttp2_session *session) {
-  int rv;
+  int rv = 0;
+  int call_cb = 1;
   nghttp2_frame *frame = &session->iframe.frame;
   nghttp2_stream *stream;
 
@@ -3235,9 +3289,64 @@ static int session_after_header_block_received(nghttp2_session *session) {
     return 0;
   }
 
-  rv = session_call_on_frame_received(session, frame);
-  if (nghttp2_is_fatal(rv)) {
-    return rv;
+  if (session_enforce_http_semantics(session)) {
+    if (frame->hd.type == NGHTTP2_PUSH_PROMISE) {
+      nghttp2_stream *subject_stream;
+
+      subject_stream = nghttp2_session_get_stream(
+          session, frame->push_promise.promised_stream_id);
+      if (subject_stream) {
+        rv = nghttp2_http_on_request_headers(subject_stream, frame);
+      }
+    } else {
+      assert(frame->hd.type == NGHTTP2_HEADERS);
+      switch (frame->headers.cat) {
+      case NGHTTP2_HCAT_REQUEST:
+        rv = nghttp2_http_on_request_headers(stream, frame);
+        break;
+      case NGHTTP2_HCAT_RESPONSE:
+      case NGHTTP2_HCAT_PUSH_RESPONSE:
+        rv = nghttp2_http_on_response_headers(stream);
+        break;
+      case NGHTTP2_HCAT_HEADERS:
+        if (stream->http_flags & NGHTTP2_HTTP_FLAG_EXPECT_FINAL_RESPONSE) {
+          assert(!session->server);
+          rv = nghttp2_http_on_response_headers(stream);
+        } else {
+          rv = nghttp2_http_on_trailer_headers(stream, frame);
+        }
+        break;
+      default:
+        assert(0);
+      }
+      if (rv == 0 && (frame->hd.flags & NGHTTP2_FLAG_END_STREAM)) {
+        rv = nghttp2_http_on_remote_end_stream(stream);
+      }
+    }
+    if (rv != 0) {
+      int32_t stream_id;
+
+      if (frame->hd.type == NGHTTP2_PUSH_PROMISE) {
+        stream_id = frame->push_promise.promised_stream_id;
+      } else {
+        stream_id = frame->hd.stream_id;
+      }
+
+      call_cb = 0;
+
+      rv = nghttp2_session_add_rst_stream(session, stream_id,
+                                          NGHTTP2_PROTOCOL_ERROR);
+      if (nghttp2_is_fatal(rv)) {
+        return rv;
+      }
+    }
+  }
+
+  if (call_cb) {
+    rv = session_call_on_frame_received(session, frame);
+    if (nghttp2_is_fatal(rv)) {
+      return rv;
+    }
   }
 
   if (frame->hd.type != NGHTTP2_HEADERS) {
@@ -4234,6 +4343,7 @@ static int session_process_window_update_frame(nghttp2_session *session) {
 int nghttp2_session_on_data_received(nghttp2_session *session,
                                      nghttp2_frame *frame) {
   int rv = 0;
+  int call_cb = 1;
   nghttp2_stream *stream;
 
   /* We don't call on_frame_recv_callback if stream has been closed
@@ -4246,9 +4356,23 @@ int nghttp2_session_on_data_received(nghttp2_session *session,
     return 0;
   }
 
-  rv = session_call_on_frame_received(session, frame);
-  if (nghttp2_is_fatal(rv)) {
-    return rv;
+  if (session_enforce_http_semantics(session) &&
+      (frame->hd.flags & NGHTTP2_FLAG_END_STREAM)) {
+    if (nghttp2_http_on_remote_end_stream(stream) != 0) {
+      call_cb = 0;
+      rv = nghttp2_session_add_rst_stream(session, stream->stream_id,
+                                          NGHTTP2_PROTOCOL_ERROR);
+      if (nghttp2_is_fatal(rv)) {
+        return rv;
+      }
+    }
+  }
+
+  if (call_cb) {
+    rv = session_call_on_frame_received(session, frame);
+    if (nghttp2_is_fatal(rv)) {
+      return rv;
+    }
   }
 
   if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
@@ -5582,17 +5706,30 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
 
         DEBUGF(fprintf(stderr, "recv: data_readlen=%zd\n", data_readlen));
 
-        if (stream && data_readlen > 0 &&
-            session->callbacks.on_data_chunk_recv_callback) {
-          rv = session->callbacks.on_data_chunk_recv_callback(
-              session, iframe->frame.hd.flags, iframe->frame.hd.stream_id,
-              in - readlen, data_readlen, session->user_data);
-          if (rv == NGHTTP2_ERR_PAUSE) {
-            return in - first;
+        if (stream && data_readlen > 0) {
+          if (session_enforce_http_semantics(session)) {
+            if (nghttp2_http_on_data_chunk(stream, data_readlen) != 0) {
+              rv = nghttp2_session_add_rst_stream(
+                  session, iframe->frame.hd.stream_id, NGHTTP2_PROTOCOL_ERROR);
+              if (nghttp2_is_fatal(rv)) {
+                return rv;
+              }
+              busy = 1;
+              iframe->state = NGHTTP2_IB_IGN_DATA;
+              break;
+            }
           }
+          if (session->callbacks.on_data_chunk_recv_callback) {
+            rv = session->callbacks.on_data_chunk_recv_callback(
+                session, iframe->frame.hd.flags, iframe->frame.hd.stream_id,
+                in - readlen, data_readlen, session->user_data);
+            if (rv == NGHTTP2_ERR_PAUSE) {
+              return in - first;
+            }
 
-          if (nghttp2_is_fatal(rv)) {
-            return NGHTTP2_ERR_CALLBACK_FAILURE;
+            if (nghttp2_is_fatal(rv)) {
+              return NGHTTP2_ERR_CALLBACK_FAILURE;
+            }
           }
         }
       }

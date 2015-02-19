@@ -99,6 +99,33 @@ typedef enum {
 
 } nghttp2_stream_flag;
 
+/* HTTP related flags to enforce HTTP semantics */
+typedef enum {
+  NGHTTP2_HTTP_FLAG_NONE = 0,
+  /* header field seen so far */
+  NGHTTP2_HTTP_FLAG_AUTHORITY = 1,
+  NGHTTP2_HTTP_FLAG_PATH = 1 << 1,
+  NGHTTP2_HTTP_FLAG_METHOD = 1 << 2,
+  NGHTTP2_HTTP_FLAG_SCHEME = 1 << 3,
+  /* host is not pseudo header, but we require either host or
+     :authority */
+  NGHTTP2_HTTP_FLAG_HOST = 1 << 4,
+  NGHTTP2_HTTP_FLAG_STATUS = 1 << 5,
+  /* required header fields for HTTP request except for CONNECT
+     method. */
+  NGHTTP2_HTTP_FLAG_REQ_HEADERS = NGHTTP2_HTTP_FLAG_METHOD |
+                                  NGHTTP2_HTTP_FLAG_PATH |
+                                  NGHTTP2_HTTP_FLAG_SCHEME,
+  NGHTTP2_HTTP_FLAG_PSEUDO_HEADER_DISALLOWED = 1 << 6,
+  /* HTTP method flags */
+  NGHTTP2_HTTP_FLAG_METH_CONNECT = 1 << 7,
+  NGHTTP2_HTTP_FLAG_METH_HEAD = 1 << 8,
+  NGHTTP2_HTTP_FLAG_METH_ALL =
+      NGHTTP2_HTTP_FLAG_METH_CONNECT | NGHTTP2_HTTP_FLAG_METH_HEAD,
+  /* set if final response is expected */
+  NGHTTP2_HTTP_FLAG_EXPECT_FINAL_RESPONSE = 1 << 9,
+} nghttp2_http_flag;
+
 typedef enum {
   NGHTTP2_STREAM_DPRI_NONE = 0,
   NGHTTP2_STREAM_DPRI_NO_ITEM = 0x01,
@@ -184,6 +211,14 @@ struct nghttp2_stream {
   uint8_t flags;
   /* Bitwise OR of zero or more nghttp2_shut_flag values */
   uint8_t shut_flags;
+  /* Content-Length of request/response body.  -1 if unknown. */
+  int64_t content_length;
+  /* Received body so far */
+  int64_t recv_content_length;
+  /* status code from remote server */
+  int16_t status_code;
+  /* Bitwise OR of zero or more nghttp2_http_flag values */
+  uint16_t http_flags;
 };
 
 void nghttp2_stream_init(nghttp2_stream *stream, int32_t stream_id,

@@ -664,6 +664,11 @@ int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
                  Downstream::MSG_BAD_HEADER) {
         downstream->set_response_state(Downstream::MSG_RESET);
       }
+      if (downstream->get_response_state() == Downstream::MSG_RESET &&
+          downstream->get_response_rst_stream_error_code() ==
+              NGHTTP2_NO_ERROR) {
+        downstream->set_response_rst_stream_error_code(error_code);
+      }
       call_downstream_readcb(http2session, downstream);
       // dconn may be deleted
     }

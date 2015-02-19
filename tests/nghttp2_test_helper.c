@@ -200,6 +200,42 @@ ssize_t inflate_hd(nghttp2_hd_inflater *inflater, nva_out *out,
   return processed;
 }
 
+int pack_headers(nghttp2_bufs *bufs, nghttp2_hd_deflater *deflater,
+                 int32_t stream_id, int flags, const nghttp2_nv *nva,
+                 size_t nvlen, nghttp2_mem *mem) {
+  nghttp2_nv *dnva;
+  nghttp2_frame frame;
+  int rv;
+
+  nghttp2_nv_array_copy(&dnva, nva, nvlen, mem);
+
+  nghttp2_frame_headers_init(&frame.headers, flags, stream_id,
+                             NGHTTP2_HCAT_HEADERS, NULL, dnva, nvlen);
+  rv = nghttp2_frame_pack_headers(bufs, &frame.headers, deflater);
+
+  nghttp2_frame_headers_free(&frame.headers, mem);
+
+  return rv;
+}
+
+int pack_push_promise(nghttp2_bufs *bufs, nghttp2_hd_deflater *deflater,
+                      int32_t stream_id, int flags, int32_t promised_stream_id,
+                      const nghttp2_nv *nva, size_t nvlen, nghttp2_mem *mem) {
+  nghttp2_nv *dnva;
+  nghttp2_frame frame;
+  int rv;
+
+  nghttp2_nv_array_copy(&dnva, nva, nvlen, mem);
+
+  nghttp2_frame_push_promise_init(&frame.push_promise, flags, stream_id,
+                                  promised_stream_id, dnva, nvlen);
+  rv = nghttp2_frame_pack_push_promise(bufs, &frame.push_promise, deflater);
+
+  nghttp2_frame_push_promise_free(&frame.push_promise, mem);
+
+  return rv;
+}
+
 int frame_pack_bufs_init(nghttp2_bufs *bufs) {
   /* 1 for Pad Length */
   return nghttp2_bufs_init2(bufs, 4096, 16, NGHTTP2_FRAME_HDLEN + 1,

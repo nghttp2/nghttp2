@@ -68,6 +68,11 @@ void nghttp2_stream_init(nghttp2_stream *stream, int32_t stream_id,
   stream->roots = roots;
   stream->root_prev = NULL;
   stream->root_next = NULL;
+
+  stream->http_flags = NGHTTP2_HTTP_FLAG_NONE;
+  stream->content_length = -1;
+  stream->recv_content_length = 0;
+  stream->status_code = -1;
 }
 
 void nghttp2_stream_free(nghttp2_stream *stream _U_) {
