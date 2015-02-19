@@ -789,18 +789,38 @@ int HttpClient::on_upgrade_connect() {
     req = "GET ";
     req += reqvec[0]->make_reqpath();
   }
-  req += " HTTP/1.1\r\n"
-         "Host: ";
-  req += hostport;
-  req += "\r\n"
-         "Connection: Upgrade, HTTP2-Settings\r\n"
-         "Upgrade: " NGHTTP2_CLEARTEXT_PROTO_VERSION_ID "\r\n"
-         "HTTP2-Settings: ";
-  req += token68;
-  req += "\r\n"
-         "Accept: */*\r\n"
-         "User-Agent: nghttp2/" NGHTTP2_VERSION "\r\n"
-         "\r\n";
+
+  auto headers = Headers{{"Host", hostport},
+                         {"Connection", "Upgrade, HTTP2-Settings"},
+                         {"Upgrade", NGHTTP2_CLEARTEXT_PROTO_VERSION_ID},
+                         {"HTTP2-Settings", token68},
+                         {"Accept", "*/*"},
+                         {"User-Agent", "nghttp2/" NGHTTP2_VERSION}};
+  auto initial_headerslen = headers.size();
+
+  for (auto &kv : config.headers) {
+    size_t i;
+    for (i = 0; i < initial_headerslen; ++i) {
+      if (util::strieq(kv.name, headers[i].name)) {
+        headers[i].value = kv.value;
+        break;
+      }
+    }
+    if (i < initial_headerslen) {
+      continue;
+    }
+    headers.emplace_back(kv.name, kv.value, kv.no_index);
+  }
+
+  req += " HTTP/1.1\r\n";
+
+  for (auto &kv : headers) {
+    req += kv.name;
+    req += ": ";
+    req += kv.value;
+    req += "\r\n";
+  }
+  req += "\r\n";
 
   wb.write(req.c_str(), req.size());
 
