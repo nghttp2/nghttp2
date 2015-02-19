@@ -247,8 +247,7 @@ private:
 };
 
 Stream::Stream(Http2Handler *handler, int32_t stream_id)
-    : handler(handler), body_left(0), upload_left(-1), stream_id(stream_id),
-      file(-1) {
+    : handler(handler), body_left(0), stream_id(stream_id), file(-1) {
   auto config = handler->get_config();
   ev_timer_init(&rtimer, stream_timeout_cb, 0., config->stream_read_timeout);
   ev_timer_init(&wtimer, stream_timeout_cb, 0., config->stream_write_timeout);
@@ -1021,43 +1020,7 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
     return 0;
   }
 
-  if (!http2::check_nv(name, namelen, value, valuelen)) {
-    hd->submit_rst_stream(stream, NGHTTP2_PROTOCOL_ERROR);
-    return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
-  }
-
   auto token = http2::lookup_token(name, namelen);
-
-  if (name[0] == ':') {
-    if ((!stream->headers.empty() &&
-         stream->headers.back().name.c_str()[0] != ':') ||
-        !http2::check_http2_request_pseudo_header(stream->hdidx, token)) {
-
-      hd->submit_rst_stream(stream, NGHTTP2_PROTOCOL_ERROR);
-      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
-    }
-  }
-
-  if (!http2::http2_header_allowed(token)) {
-    hd->submit_rst_stream(stream, NGHTTP2_PROTOCOL_ERROR);
-    return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
-  }
-
-  switch (token) {
-  case http2::HD_CONTENT_LENGTH: {
-    auto upload_left = util::parse_uint(value, valuelen);
-    if (upload_left != -1) {
-      stream->upload_left = upload_left;
-    }
-    break;
-  }
-  case http2::HD_TE:
-    if (!util::strieq("trailers", value, valuelen)) {
-      hd->submit_rst_stream(stream, NGHTTP2_PROTOCOL_ERROR);
-      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
-    }
-    break;
-  }
 
   http2::index_header(stream->hdidx, token, stream->headers.size());
   http2::add_header(stream->headers, name, namelen, value, valuelen,
@@ -1104,10 +1067,6 @@ int hd_on_frame_recv_callback(nghttp2_session *session,
 
     if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
       remove_stream_read_timeout(stream);
-      if (stream->upload_left > 0) {
-        hd->submit_rst_stream(stream, NGHTTP2_PROTOCOL_ERROR);
-        return 0;
-      }
       if (!hd->get_config()->early_response) {
         prepare_response(stream, hd);
       }
@@ -1125,11 +1084,6 @@ int hd_on_frame_recv_callback(nghttp2_session *session,
 
     if (frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
 
-      if (!http2::http2_mandatory_request_headers_presence(stream->hdidx)) {
-        hd->submit_rst_stream(stream, NGHTTP2_PROTOCOL_ERROR);
-        return 0;
-      }
-
       auto expect100 =
           http2::get_header(stream->hdidx, http2::HD_EXPECT, stream->headers);
 
@@ -1144,10 +1098,6 @@ int hd_on_frame_recv_callback(nghttp2_session *session,
 
     if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
       remove_stream_read_timeout(stream);
-      if (stream->upload_left > 0) {
-        hd->submit_rst_stream(stream, NGHTTP2_PROTOCOL_ERROR);
-        return 0;
-      }
       if (!hd->get_config()->early_response) {
         prepare_response(stream, hd);
       }
@@ -1243,15 +1193,6 @@ int on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
   }
 
   // TODO Handle POST
-
-  if (stream->upload_left != -1) {
-    if (stream->upload_left < static_cast<int64_t>(len)) {
-      stream->upload_left = -1;
-      hd->submit_rst_stream(stream, NGHTTP2_PROTOCOL_ERROR);
-      return 0;
-    }
-    stream->upload_left -= len;
-  }
 
   add_stream_read_timeout(stream);
 

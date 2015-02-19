@@ -692,7 +692,6 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
                        const uint8_t *name, size_t namelen,
                        const uint8_t *value, size_t valuelen, uint8_t flags,
                        void *user_data) {
-  auto http2session = static_cast<Http2Session *>(user_data);
   auto sd = static_cast<StreamData *>(
       nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
   if (!sd || !sd->dconn) {
@@ -716,40 +715,12 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
     }
     return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
   }
-  if (!http2::check_nv(name, namelen, value, valuelen)) {
-    return 0;
-  }
 
   auto token = http2::lookup_token(name, namelen);
 
-  if (name[0] == ':') {
-    if (!downstream->response_pseudo_header_allowed(token)) {
-      http2session->submit_rst_stream(frame->hd.stream_id,
-                                      NGHTTP2_PROTOCOL_ERROR);
-      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
-    }
-  }
-
-  if (!http2::http2_header_allowed(token)) {
-    http2session->submit_rst_stream(frame->hd.stream_id,
-                                    NGHTTP2_PROTOCOL_ERROR);
-    return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
-  }
-
   if (token == http2::HD_CONTENT_LENGTH) {
+    // libnghttp2 guarantees this can be parsed
     auto len = util::parse_uint(value, valuelen);
-    if (len == -1) {
-      http2session->submit_rst_stream(frame->hd.stream_id,
-                                      NGHTTP2_PROTOCOL_ERROR);
-      downstream->set_response_state(Downstream::MSG_BAD_HEADER);
-      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
-    }
-    if (downstream->get_response_content_length() != -1) {
-      http2session->submit_rst_stream(frame->hd.stream_id,
-                                      NGHTTP2_PROTOCOL_ERROR);
-      downstream->set_response_state(Downstream::MSG_BAD_HEADER);
-      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
-    }
     downstream->set_response_content_length(len);
   }
 
@@ -796,18 +767,8 @@ int on_response_headers(Http2Session *http2session, Downstream *downstream,
   downstream->set_expect_final_response(false);
 
   auto status = downstream->get_response_header(http2::HD__STATUS);
-  int status_code;
-
-  if (!http2::non_empty_value(status) ||
-      (status_code = http2::parse_http_status_code(status->value)) == -1) {
-
-    http2session->submit_rst_stream(frame->hd.stream_id,
-                                    NGHTTP2_PROTOCOL_ERROR);
-    downstream->set_response_state(Downstream::MSG_RESET);
-    call_downstream_readcb(http2session, downstream);
-
-    return 0;
-  }
+  // libnghttp2 guarantees this exists and can be parsed
+  auto status_code = http2::parse_http_status_code(status->value);
 
   downstream->set_response_http_status(status_code);
   downstream->set_response_major(2);
@@ -912,12 +873,6 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
       break;
     }
 
-    if (downstream->get_expect_final_response()) {
-      http2session->submit_rst_stream(frame->hd.stream_id,
-                                      NGHTTP2_PROTOCOL_ERROR);
-      break;
-    }
-
     auto upstream = downstream->get_upstream();
     rv = upstream->on_downstream_body(downstream, nullptr, 0, true);
     if (rv != 0) {
@@ -977,12 +932,6 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
     }
 
     if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
-      if (downstream->get_expect_final_response()) {
-        http2session->submit_rst_stream(frame->hd.stream_id,
-                                        NGHTTP2_PROTOCOL_ERROR);
-        return 0;
-      }
-
       downstream->disable_downstream_rtimer();
 
       if (downstream->get_response_state() == Downstream::HEADER_COMPLETE) {
