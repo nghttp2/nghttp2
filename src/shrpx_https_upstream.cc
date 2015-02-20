@@ -224,12 +224,24 @@ int htp_msg_completecb(http_parser *htp) {
   if (LOG_ENABLED(INFO)) {
     ULOG(INFO, upstream) << "HTTP request completed";
   }
+  auto handler = upstream->get_client_handler();
   auto downstream = upstream->get_downstream();
   downstream->set_request_state(Downstream::MSG_COMPLETE);
   rv = downstream->end_upload_data();
   if (rv != 0) {
     return -1;
   }
+
+  if (handler->get_http2_upgrade_allowed() &&
+      downstream->get_http2_upgrade_request()) {
+
+    if (handler->perform_http2_upgrade(upstream) != 0) {
+      return -1;
+    }
+
+    handler->signal_write();
+  }
+
   // Stop further processing to complete this request
   http_parser_pause(htp, 1);
   return 0;
@@ -310,54 +322,23 @@ int HttpsUpstream::on_read() {
   // execution
   downstream = get_downstream();
 
-  auto handler = get_client_handler();
   auto htperr = HTTP_PARSER_ERRNO(&htp_);
 
   if (htperr == HPE_PAUSED) {
-
-    assert(downstream);
-
-    if (downstream->get_request_state() == Downstream::CONNECT_FAIL) {
-      error_reply(503);
-      handler_->signal_write();
-      // Downstream gets deleted after response body is read.
-      return 0;
-    }
-
-    assert(downstream->get_request_state() == Downstream::MSG_COMPLETE);
-
-    if (downstream->get_downstream_connection() == nullptr) {
-      // Error response has already be sent
-      assert(downstream->get_response_state() == Downstream::MSG_COMPLETE);
-      delete_downstream();
-
-      return 0;
-    }
-
-    if (handler->get_http2_upgrade_allowed() &&
-        downstream->get_http2_upgrade_request()) {
-
-      if (handler->perform_http2_upgrade(this) != 0) {
-        return -1;
-      }
-
-      handler_->signal_write();
-
-      return 0;
-    }
-
     return 0;
   }
 
   if (htperr != HPE_OK) {
-    if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
-      return 0;
-    }
-
     if (LOG_ENABLED(INFO)) {
       ULOG(INFO, this) << "HTTP parse failure: "
                        << "(" << http_errno_name(htperr) << ") "
                        << http_errno_description(htperr);
+    }
+
+    if (downstream && downstream->get_response_state() != Downstream::INITIAL) {
+      handler_->set_should_close_after_write(true);
+      handler_->signal_write();
+      return 0;
     }
 
     unsigned int status_code;
