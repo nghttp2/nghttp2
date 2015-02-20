@@ -112,7 +112,6 @@ void writecb(struct ev_loop *loop, ev_io *w, int revents) {
   int rv;
   auto conn = static_cast<Connection *>(w->data);
   auto http2session = static_cast<Http2Session *>(conn->data);
-  http2session->clear_write_request();
   rv = http2session->do_write();
   if (rv != 0) {
     http2session->disconnect(http2session->should_hard_fail());
@@ -122,36 +121,13 @@ void writecb(struct ev_loop *loop, ev_io *w, int revents) {
 }
 } // namespace
 
-namespace {
-void wrschedcb(struct ev_loop *loop, ev_prepare *w, int revents) {
-  auto http2session = static_cast<Http2Session *>(w->data);
-  if (!http2session->write_requested()) {
-    return;
-  }
-  http2session->clear_write_request();
-  switch (http2session->get_state()) {
-  case Http2Session::DISCONNECTED:
-    LOG(INFO) << "wrschedcb start connect";
-    if (http2session->initiate_connection() != 0) {
-      SSLOG(FATAL, http2session) << "Could not initiate backend connection";
-      http2session->disconnect(true);
-    }
-    break;
-  case Http2Session::CONNECTED:
-    writecb(loop, http2session->get_wev(), revents);
-    break;
-  }
-}
-} // namespace
-
 Http2Session::Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx)
     : conn_(loop, -1, nullptr, get_config()->downstream_write_timeout,
             get_config()->downstream_read_timeout, 0, 0, 0, 0, writecb, readcb,
             timeoutcb, this),
       ssl_ctx_(ssl_ctx), session_(nullptr), data_pending_(nullptr),
       data_pendinglen_(0), state_(DISCONNECTED),
-      connection_check_state_(CONNECTION_CHECK_NONE), flow_control_(false),
-      write_requested_(false) {
+      connection_check_state_(CONNECTION_CHECK_NONE), flow_control_(false) {
 
   read_ = write_ = &Http2Session::noop;
   on_read_ = on_write_ = &Http2Session::noop;
@@ -166,11 +142,6 @@ Http2Session::Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx)
   ev_timer_init(&settings_timer_, settings_timeout_cb, 0., 10.);
 
   settings_timer_.data = this;
-
-  ev_prepare_init(&wrsched_prep_, &wrschedcb);
-  wrsched_prep_.data = this;
-
-  ev_prepare_start(conn_.loop, &wrsched_prep_);
 }
 
 Http2Session::~Http2Session() { disconnect(); }
@@ -202,7 +173,6 @@ int Http2Session::disconnect(bool hard) {
 
   connection_check_state_ = CONNECTION_CHECK_NONE;
   state_ = DISCONNECTED;
-  write_requested_ = false;
 
   // Delete all client handler associated to Downstream. When deleting
   // Http2DownstreamConnection, it calls this object's
@@ -1341,11 +1311,22 @@ int Http2Session::downstream_write() {
   return 0;
 }
 
-void Http2Session::signal_write() { write_requested_ = true; }
-
-void Http2Session::clear_write_request() { write_requested_ = false; }
-
-bool Http2Session::write_requested() const { return write_requested_; }
+void Http2Session::signal_write() {
+  switch (state_) {
+  case Http2Session::DISCONNECTED:
+    if (LOG_ENABLED(INFO)) {
+      LOG(INFO) << "Start connecting to backend server";
+    }
+    if (initiate_connection() != 0) {
+      SSLOG(FATAL, this) << "Could not initiate backend connection";
+      disconnect(true);
+    }
+    break;
+  case Http2Session::CONNECTED:
+    conn_.wlimit.startw();
+    break;
+  }
+}
 
 struct ev_loop *Http2Session::get_loop() const {
   return conn_.loop;

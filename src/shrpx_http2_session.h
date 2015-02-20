@@ -108,8 +108,6 @@ public:
   int noop();
 
   void signal_write();
-  void clear_write_request();
-  bool write_requested() const;
 
   struct ev_loop *get_loop() const;
 
@@ -178,7 +176,6 @@ private:
   Connection conn_;
   ev_timer settings_timer_;
   ev_timer connchk_timer_;
-  ev_prepare wrsched_prep_;
   std::set<Http2DownstreamConnection *> dconns_;
   std::set<StreamData *> streams_;
   std::function<int(Http2Session &)> read_, write_;
@@ -193,7 +190,6 @@ private:
   int state_;
   int connection_check_state_;
   bool flow_control_;
-  bool write_requested_;
   WriteBuf wb_;
   ReadBuf rb_;
 };
