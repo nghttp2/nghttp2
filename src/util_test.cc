@@ -39,26 +39,31 @@ using namespace nghttp2;
 namespace shrpx {
 
 void test_util_streq(void) {
-  CU_ASSERT(util::streq("alpha", (const uint8_t *)"alpha", 5));
-  CU_ASSERT(util::streq("alpha", (const uint8_t *)"alphabravo", 5));
-  CU_ASSERT(!util::streq("alpha", (const uint8_t *)"alphabravo", 6));
-  CU_ASSERT(!util::streq("alphabravo", (const uint8_t *)"alpha", 5));
-  CU_ASSERT(!util::streq("alpha", (const uint8_t *)"alphA", 5));
-  CU_ASSERT(!util::streq("", (const uint8_t *)"a", 1));
-  CU_ASSERT(util::streq("", (const uint8_t *)"", 0));
-  CU_ASSERT(!util::streq("alpha", (const uint8_t *)"", 0));
+  CU_ASSERT(util::streq("alpha", "alpha", 5));
+  CU_ASSERT(util::streq("alpha", "alphabravo", 5));
+  CU_ASSERT(!util::streq("alpha", "alphabravo", 6));
+  CU_ASSERT(!util::streq("alphabravo", "alpha", 5));
+  CU_ASSERT(!util::streq("alpha", "alphA", 5));
+  CU_ASSERT(!util::streq("", "a", 1));
+  CU_ASSERT(util::streq("", "", 0));
+  CU_ASSERT(!util::streq("alpha", "", 0));
 
-  CU_ASSERT(
-      util::streq((const uint8_t *)"alpha", 5, (const uint8_t *)"alpha", 5));
-  CU_ASSERT(
-      !util::streq((const uint8_t *)"alpha", 4, (const uint8_t *)"alpha", 5));
-  CU_ASSERT(
-      !util::streq((const uint8_t *)"alpha", 5, (const uint8_t *)"alpha", 4));
-  CU_ASSERT(
-      !util::streq((const uint8_t *)"alpha", 5, (const uint8_t *)"alphA", 5));
+  CU_ASSERT(util::streq("alpha", 5, "alpha", 5));
+  CU_ASSERT(!util::streq("alpha", 4, "alpha", 5));
+  CU_ASSERT(!util::streq("alpha", 5, "alpha", 4));
+  CU_ASSERT(!util::streq("alpha", 5, "alphA", 5));
   char *a = nullptr;
   char *b = nullptr;
   CU_ASSERT(util::streq(a, 0, b, 0));
+
+  CU_ASSERT(util::streq_l("alpha", "alpha", 5));
+  CU_ASSERT(util::streq_l("alpha", "alphabravo", 5));
+  CU_ASSERT(!util::streq_l("alpha", "alphabravo", 6));
+  CU_ASSERT(!util::streq_l("alphabravo", "alpha", 5));
+  CU_ASSERT(!util::streq_l("alpha", "alphA", 5));
+  CU_ASSERT(!util::streq_l("", "a", 1));
+  CU_ASSERT(util::streq_l("", "", 0));
+  CU_ASSERT(!util::streq_l("alpha", "", 0));
 }
 
 void test_util_strieq(void) {

@@ -350,25 +350,25 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
     return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
   }
 
-  if (util::streq(":method", name, namelen)) {
+  if (util::streq_l(":method", name, namelen)) {
     if (!req.method().empty()) {
       stream_error(session, stream_id, NGHTTP2_PROTOCOL_ERROR);
       return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
     }
     req.method(std::string(value, value + valuelen));
-  } else if (util::streq(":scheme", name, namelen)) {
+  } else if (util::streq_l(":scheme", name, namelen)) {
     if (!req.scheme().empty()) {
       stream_error(session, stream_id, NGHTTP2_PROTOCOL_ERROR);
       return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
     }
     req.scheme(std::string(value, value + valuelen));
-  } else if (util::streq(":authority", name, namelen)) {
+  } else if (util::streq_l(":authority", name, namelen)) {
     if (!req.authority().empty()) {
       stream_error(session, stream_id, NGHTTP2_PROTOCOL_ERROR);
       return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
     }
     req.authority(std::string(value, value + valuelen));
-  } else if (util::streq(":path", name, namelen)) {
+  } else if (util::streq_l(":path", name, namelen)) {
     if (!req.path().empty()) {
       stream_error(session, stream_id, NGHTTP2_PROTOCOL_ERROR);
       return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
@@ -380,7 +380,7 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
       return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
     }
 
-    if (util::streq("host", name, namelen)) {
+    if (util::streq_l("host", name, namelen)) {
       req.host(std::string(value, value + valuelen));
     }
 

@@ -336,7 +336,7 @@ void Client::on_header(int32_t stream_id, const uint8_t *name, size_t namelen,
   }
   auto &stream = (*itr).second;
   if (stream.status_success == -1 && namelen == 7 &&
-      util::streq(":status", 7, name, namelen)) {
+      util::streq_l(":status", name, namelen)) {
     int status = 0;
     for (size_t i = 0; i < valuelen; ++i) {
       if ('0' <= value[i] && value[i] <= '9') {

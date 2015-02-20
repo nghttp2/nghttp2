@@ -407,7 +407,7 @@ int lookup_token(const uint8_t *name, size_t namelen) {
   case 2:
     switch (name[namelen - 1]) {
     case 'e':
-      if (util::streq("t", name, 1)) {
+      if (util::streq_l("t", name, 1)) {
         return HD_TE;
       }
       break;
@@ -416,7 +416,7 @@ int lookup_token(const uint8_t *name, size_t namelen) {
   case 3:
     switch (name[namelen - 1]) {
     case 'a':
-      if (util::streq("vi", name, 2)) {
+      if (util::streq_l("vi", name, 2)) {
         return HD_VIA;
       }
       break;
@@ -425,12 +425,12 @@ int lookup_token(const uint8_t *name, size_t namelen) {
   case 4:
     switch (name[namelen - 1]) {
     case 'k':
-      if (util::streq("lin", name, 3)) {
+      if (util::streq_l("lin", name, 3)) {
         return HD_LINK;
       }
       break;
     case 't':
-      if (util::streq("hos", name, 3)) {
+      if (util::streq_l("hos", name, 3)) {
         return HD_HOST;
       }
       break;
@@ -439,12 +439,12 @@ int lookup_token(const uint8_t *name, size_t namelen) {
   case 5:
     switch (name[namelen - 1]) {
     case 'h':
-      if (util::streq(":pat", name, 4)) {
+      if (util::streq_l(":pat", name, 4)) {
         return HD__PATH;
       }
       break;
     case 't':
-      if (util::streq(":hos", name, 4)) {
+      if (util::streq_l(":hos", name, 4)) {
         return HD__HOST;
       }
       break;
@@ -453,17 +453,17 @@ int lookup_token(const uint8_t *name, size_t namelen) {
   case 6:
     switch (name[namelen - 1]) {
     case 'e':
-      if (util::streq("cooki", name, 5)) {
+      if (util::streq_l("cooki", name, 5)) {
         return HD_COOKIE;
       }
       break;
     case 'r':
-      if (util::streq("serve", name, 5)) {
+      if (util::streq_l("serve", name, 5)) {
         return HD_SERVER;
       }
       break;
     case 't':
-      if (util::streq("expec", name, 5)) {
+      if (util::streq_l("expec", name, 5)) {
         return HD_EXPECT;
       }
       break;
@@ -472,30 +472,30 @@ int lookup_token(const uint8_t *name, size_t namelen) {
   case 7:
     switch (name[namelen - 1]) {
     case 'c':
-      if (util::streq("alt-sv", name, 6)) {
+      if (util::streq_l("alt-sv", name, 6)) {
         return HD_ALT_SVC;
       }
       break;
     case 'd':
-      if (util::streq(":metho", name, 6)) {
+      if (util::streq_l(":metho", name, 6)) {
         return HD__METHOD;
       }
       break;
     case 'e':
-      if (util::streq(":schem", name, 6)) {
+      if (util::streq_l(":schem", name, 6)) {
         return HD__SCHEME;
       }
-      if (util::streq("upgrad", name, 6)) {
+      if (util::streq_l("upgrad", name, 6)) {
         return HD_UPGRADE;
       }
       break;
     case 'r':
-      if (util::streq("traile", name, 6)) {
+      if (util::streq_l("traile", name, 6)) {
         return HD_TRAILER;
       }
       break;
     case 's':
-      if (util::streq(":statu", name, 6)) {
+      if (util::streq_l(":statu", name, 6)) {
         return HD__STATUS;
       }
       break;
@@ -504,7 +504,7 @@ int lookup_token(const uint8_t *name, size_t namelen) {
   case 8:
     switch (name[namelen - 1]) {
     case 'n':
-      if (util::streq("locatio", name, 7)) {
+      if (util::streq_l("locatio", name, 7)) {
         return HD_LOCATION;
       }
       break;
@@ -513,22 +513,22 @@ int lookup_token(const uint8_t *name, size_t namelen) {
   case 10:
     switch (name[namelen - 1]) {
     case 'e':
-      if (util::streq("keep-aliv", name, 9)) {
+      if (util::streq_l("keep-aliv", name, 9)) {
         return HD_KEEP_ALIVE;
       }
       break;
     case 'n':
-      if (util::streq("connectio", name, 9)) {
+      if (util::streq_l("connectio", name, 9)) {
         return HD_CONNECTION;
       }
       break;
     case 't':
-      if (util::streq("user-agen", name, 9)) {
+      if (util::streq_l("user-agen", name, 9)) {
         return HD_USER_AGENT;
       }
       break;
     case 'y':
-      if (util::streq(":authorit", name, 9)) {
+      if (util::streq_l(":authorit", name, 9)) {
         return HD__AUTHORITY;
       }
       break;
@@ -537,7 +537,7 @@ int lookup_token(const uint8_t *name, size_t namelen) {
   case 13:
     switch (name[namelen - 1]) {
     case 'l':
-      if (util::streq("cache-contro", name, 12)) {
+      if (util::streq_l("cache-contro", name, 12)) {
         return HD_CACHE_CONTROL;
       }
       break;
@@ -546,12 +546,12 @@ int lookup_token(const uint8_t *name, size_t namelen) {
   case 14:
     switch (name[namelen - 1]) {
     case 'h':
-      if (util::streq("content-lengt", name, 13)) {
+      if (util::streq_l("content-lengt", name, 13)) {
         return HD_CONTENT_LENGTH;
       }
       break;
     case 's':
-      if (util::streq("http2-setting", name, 13)) {
+      if (util::streq_l("http2-setting", name, 13)) {
         return HD_HTTP2_SETTINGS;
       }
       break;
@@ -560,17 +560,17 @@ int lookup_token(const uint8_t *name, size_t namelen) {
   case 15:
     switch (name[namelen - 1]) {
     case 'e':
-      if (util::streq("accept-languag", name, 14)) {
+      if (util::streq_l("accept-languag", name, 14)) {
         return HD_ACCEPT_LANGUAGE;
       }
       break;
     case 'g':
-      if (util::streq("accept-encodin", name, 14)) {
+      if (util::streq_l("accept-encodin", name, 14)) {
         return HD_ACCEPT_ENCODING;
       }
       break;
     case 'r':
-      if (util::streq("x-forwarded-fo", name, 14)) {
+      if (util::streq_l("x-forwarded-fo", name, 14)) {
         return HD_X_FORWARDED_FOR;
       }
       break;
@@ -579,7 +579,7 @@ int lookup_token(const uint8_t *name, size_t namelen) {
   case 16:
     switch (name[namelen - 1]) {
     case 'n':
-      if (util::streq("proxy-connectio", name, 15)) {
+      if (util::streq_l("proxy-connectio", name, 15)) {
         return HD_PROXY_CONNECTION;
       }
       break;
@@ -588,17 +588,17 @@ int lookup_token(const uint8_t *name, size_t namelen) {
   case 17:
     switch (name[namelen - 1]) {
     case 'e':
-      if (util::streq("if-modified-sinc", name, 16)) {
+      if (util::streq_l("if-modified-sinc", name, 16)) {
         return HD_IF_MODIFIED_SINCE;
       }
       break;
     case 'g':
-      if (util::streq("transfer-encodin", name, 16)) {
+      if (util::streq_l("transfer-encodin", name, 16)) {
         return HD_TRANSFER_ENCODING;
       }
       break;
     case 'o':
-      if (util::streq("x-forwarded-prot", name, 16)) {
+      if (util::streq_l("x-forwarded-prot", name, 16)) {
         return HD_X_FORWARDED_PROTO;
       }
       break;

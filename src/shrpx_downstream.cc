@@ -238,7 +238,7 @@ void Downstream::assemble_request_cookie() {
   cookie = "";
   for (auto &kv : request_headers_) {
     if (kv.name.size() != 6 || kv.name[5] != 'e' ||
-        !util::streq("cooki", kv.name.c_str(), 5)) {
+        !util::streq_l("cooki", kv.name.c_str(), 5)) {
       continue;
     }
 
@@ -259,7 +259,7 @@ Headers Downstream::crumble_request_cookie() {
   Headers cookie_hdrs;
   for (auto &kv : request_headers_) {
     if (kv.name.size() != 6 || kv.name[5] != 'e' ||
-        !util::streq("cooki", kv.name.c_str(), 5)) {
+        !util::streq_l("cooki", kv.name.c_str(), 5)) {
       continue;
     }
     size_t last = kv.value.size();
@@ -813,8 +813,8 @@ void Downstream::inspect_http1_request() {
 
       auto &val = request_headers_[idx].value;
       // TODO Perform more strict checking for upgrade headers
-      if (util::streq(NGHTTP2_CLEARTEXT_PROTO_VERSION_ID, val.c_str(),
-                      val.size())) {
+      if (util::streq_l(NGHTTP2_CLEARTEXT_PROTO_VERSION_ID, val.c_str(),
+                        val.size())) {
         http2_upgrade_seen_ = true;
       }
     }
