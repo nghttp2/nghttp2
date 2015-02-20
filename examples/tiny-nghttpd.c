@@ -925,8 +925,7 @@ static int on_header_callback(nghttp2_session *session,
                               const nghttp2_frame *frame, const uint8_t *name,
                               size_t namelen, const uint8_t *value,
                               size_t valuelen, uint8_t flags _U_,
-                              void *user_data) {
-  connection *conn = user_data;
+                              void *user_data _U_) {
   stream *strm;
 
   if (frame->hd.type != NGHTTP2_HEADERS ||
@@ -940,16 +939,7 @@ static int on_header_callback(nghttp2_session *session,
     return 0;
   }
 
-  if (!nghttp2_check_header_name(name, namelen) ||
-      !nghttp2_check_header_value(value, valuelen)) {
-    return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
-  }
-
   if (memseq(name, namelen, ":method")) {
-    if (strm->method) {
-      stream_error(conn, strm->stream_id, NGHTTP2_PROTOCOL_ERROR);
-      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
-    }
     strm->method = io_buf_add_str(&strm->scrbuf, value, valuelen);
     if (!strm->method) {
       return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
@@ -959,10 +949,6 @@ static int on_header_callback(nghttp2_session *session,
   }
 
   if (memseq(name, namelen, ":scheme")) {
-    if (strm->scheme) {
-      stream_error(conn, strm->stream_id, NGHTTP2_PROTOCOL_ERROR);
-      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
-    }
     strm->scheme = io_buf_add_str(&strm->scrbuf, value, valuelen);
     if (!strm->scheme) {
       return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
@@ -972,10 +958,6 @@ static int on_header_callback(nghttp2_session *session,
   }
 
   if (memseq(name, namelen, ":authority")) {
-    if (strm->authority) {
-      stream_error(conn, strm->stream_id, NGHTTP2_PROTOCOL_ERROR);
-      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
-    }
     strm->authority = io_buf_add_str(&strm->scrbuf, value, valuelen);
     if (!strm->authority) {
       return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
@@ -985,21 +967,12 @@ static int on_header_callback(nghttp2_session *session,
   }
 
   if (memseq(name, namelen, ":path")) {
-    if (strm->path) {
-      stream_error(conn, strm->stream_id, NGHTTP2_PROTOCOL_ERROR);
-      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
-    }
     strm->path = io_buf_add_str(&strm->scrbuf, value, valuelen);
     if (!strm->path) {
       return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
     }
     strm->pathlen = valuelen;
     return 0;
-  }
-
-  if (name[0] == ':') {
-    stream_error(conn, strm->stream_id, NGHTTP2_PROTOCOL_ERROR);
-    return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
   }
 
   if (memseq(name, namelen, "host") && !strm->host) {
@@ -1026,12 +999,6 @@ static int on_frame_recv_callback(nghttp2_session *session,
   strm = nghttp2_session_get_stream_user_data(session, frame->hd.stream_id);
 
   if (!strm) {
-    return 0;
-  }
-
-  if (!strm->method || !strm->scheme || !strm->path ||
-      (!strm->authority && !strm->host)) {
-    stream_error(conn, strm->stream_id, NGHTTP2_PROTOCOL_ERROR);
     return 0;
   }
 
