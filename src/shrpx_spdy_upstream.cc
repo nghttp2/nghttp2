@@ -1052,10 +1052,7 @@ int SpdyUpstream::on_downstream_reset(bool no_retry) {
     downstream->add_retry();
 
     if (no_retry || downstream->no_more_retry()) {
-      if (on_downstream_abort_request(downstream, 503) != 0) {
-        return -1;
-      }
-      return 0;
+      goto fail;
     }
 
     // downstream connection is clean; we can retry with new
@@ -1064,10 +1061,16 @@ int SpdyUpstream::on_downstream_reset(bool no_retry) {
     rv = downstream->attach_downstream_connection(
         handler_->get_downstream_connection());
     if (rv != 0) {
-      rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
-      downstream->pop_downstream_connection();
-      continue;
+      goto fail;
     }
+
+    continue;
+
+  fail:
+    if (on_downstream_abort_request(downstream, 503) != 0) {
+      return -1;
+    }
+    downstream->pop_downstream_connection();
   }
 
   handler_->signal_write();
