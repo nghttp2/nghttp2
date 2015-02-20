@@ -26,8 +26,8 @@ extern "C" {
 
 /* Also update SONAME in the Makefile whenever you change these. */
 #define HTTP_PARSER_VERSION_MAJOR 2
-#define HTTP_PARSER_VERSION_MINOR 3
-#define HTTP_PARSER_VERSION_PATCH 0
+#define HTTP_PARSER_VERSION_MINOR 4
+#define HTTP_PARSER_VERSION_PATCH 2
 
 #include <sys/types.h>
 #if defined(_WIN32) && !defined(__MINGW32__) && (!defined(_MSC_VER) || _MSC_VER<1600)
@@ -204,8 +204,8 @@ enum http_errno {
 struct http_parser {
   /** PRIVATE **/
   unsigned int type : 2;         /* enum http_parser_type */
-  unsigned int flags : 6;        /* F_* values from 'flags' enum; semi-public */
-  unsigned int state : 8;        /* enum state from http_parser.c */
+  unsigned int flags : 7;        /* F_* values from 'flags' enum; semi-public */
+  unsigned int state : 7;        /* enum state from http_parser.c */
   unsigned int header_state : 8; /* enum header_state from http_parser.c */
   unsigned int index : 8;        /* index into current matcher */
 
@@ -286,6 +286,11 @@ struct http_parser_url {
 unsigned long http_parser_version(void);
 
 void http_parser_init(http_parser *parser, enum http_parser_type type);
+
+
+/* Initialize http_parser_settings members to 0
+ */
+void http_parser_settings_init(http_parser_settings *settings);
 
 
 /* Executes the parser. Returns number of parsed bytes. Sets
