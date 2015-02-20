@@ -1408,21 +1408,14 @@ typedef int (*nghttp2_on_begin_headers_callback)(nghttp2_session *session,
  * :type:`nghttp2_on_frame_recv_callback` for the |frame| will not be
  * invoked.
  *
- * The |name| may be ``NULL`` if the |namelen| is 0.  The same thing
- * can be said about the |value|.
+ * The |value| may be ``NULL`` if the |valuelen| is 0.
  *
- * Please note that nghttp2 library does not perform any validity
- * check against the |name| and the |value|.  For example, the
- * |namelen| could be 0, and/or the |value| contains ``0x0a`` or
- * ``0x0d``.  The application must check them if it matters.  The
- * helper function `nghttp2_check_header_name()` and
- * `nghttp2_check_header_value()` provide simple validation against
- * HTTP2 header field construction rule.
- *
- * HTTP/2 specification requires that pseudo header fields (header
- * field starting with ':') must appear in front of regular header
- * fields.  The library does not validate this requirement.  The
- * application must check them if it matters.
+ * Please note that unless `nghttp2_option_set_no_http_messaging()` is
+ * used, nghttp2 library does perform validation against the |name|
+ * and the |value| using `nghttp2_check_header_name()` and
+ * `nghttp2_check_header_value()`.  In addition to this, nghttp2
+ * performs vaidation based on HTTP Messaging rule, which is briefly
+ * explained in `HTTP Messaging`_ section.
  *
  * If the application uses `nghttp2_session_mem_recv()`, it can return
  * :enum:`NGHTTP2_ERR_PAUSE` to make `nghttp2_session_mem_recv()`
@@ -1889,6 +1882,18 @@ void nghttp2_option_set_peer_max_concurrent_streams(nghttp2_option *option,
  * return error :enum:`NGHTTP2_ERR_BAD_PREFACE`, which is fatal error.
  */
 void nghttp2_option_set_recv_client_preface(nghttp2_option *option, int val);
+
+/**
+ * @function
+ *
+ * By default, nghttp2 library enforces subset of HTTP Messaging rules
+ * described in `HTTP/2 specification, section 8
+ * <https://tools.ietf.org/html/draft-ietf-httpbis-http2-17#section-8>`_.
+ * See `HTTP Messaging`_ section for details.  For those applications
+ * who use nghttp2 library as non-HTTP use, give nonzero to |val| to
+ * disable this enforcement.
+ */
+void nghttp2_option_set_no_http_messaging(nghttp2_option *option, int val);
 
 /**
  * @function

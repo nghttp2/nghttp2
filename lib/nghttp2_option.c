@@ -51,3 +51,8 @@ void nghttp2_option_set_recv_client_preface(nghttp2_option *option, int val) {
   option->opt_set_mask |= NGHTTP2_OPT_RECV_CLIENT_PREFACE;
   option->recv_client_preface = val;
 }
+
+void nghttp2_option_set_no_http_messaging(nghttp2_option *option, int val) {
+  option->opt_set_mask |= NGHTTP2_OPT_NO_HTTP_MESSAGING;
+  option->no_http_messaging = val;
+}

@@ -42,7 +42,8 @@ Everything described in that section is not validated however.  We
 briefly describe what the library does in this area.  In the following
 description, without loss of generality we omit CONTINUATION frame
 since they must follow HEADERS frame and are processed atomically.  In
-other words, they are just one big HEADERS frame.
+other words, they are just one big HEADERS frame.  To disable these
+validations, use `nghttp2_option_set_no_http_messaging()`.
 
 For HTTP request, including those carried by PUSH_PROMISE, HTTP
 message starts with one HEADERS frame containing request headers.  It
@@ -71,6 +72,10 @@ Each header field name and value must obey the field-name and
 field-value production rules described in `RFC 7230, section
 3.2. <https://tools.ietf.org/html/rfc7230#section-3.2>`_.
 Additionally, all field name must be lower cased.
+
+With the above validations, nghttp2 library guarantees that header
+field name passed to `nghttp2_on_header_callback()` is not empty.
+Also required pseudo headers are all present and not empty.
 
 nghttp2 enforces "Content-Length" validation as well.  All request or
 response headers must not contain more than one "Content-Length"

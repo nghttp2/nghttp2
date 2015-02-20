@@ -414,9 +414,16 @@ static int session_new(nghttp2_session **session_ptr,
           option->peer_max_concurrent_streams;
     }
 
-    if (option->opt_set_mask & NGHTTP2_OPT_RECV_CLIENT_PREFACE) {
+    if ((option->opt_set_mask & NGHTTP2_OPT_RECV_CLIENT_PREFACE) &&
+        option->recv_client_preface) {
 
       (*session_ptr)->opt_flags |= NGHTTP2_OPTMASK_RECV_CLIENT_PREFACE;
+    }
+
+    if ((option->opt_set_mask & NGHTTP2_OPT_NO_HTTP_MESSAGING) &&
+        option->no_http_messaging) {
+
+      (*session_ptr)->opt_flags |= NGHTTP2_OPTMASK_NO_HTTP_MESSAGING;
     }
   }
 
