@@ -336,54 +336,25 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
     return 0;
   }
 
-  if (!nghttp2_check_header_name(name, namelen) ||
-      !nghttp2_check_header_value(value, valuelen)) {
-    stream_error(session, stream_id, NGHTTP2_PROTOCOL_ERROR);
-
-    return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
-  }
-
   auto &req = stream->get_request()->impl();
 
-  if (name[0] == ':' && !req.headers().empty()) {
-    stream_error(session, stream_id, NGHTTP2_PROTOCOL_ERROR);
-    return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
-  }
-
-  if (util::streq_l(":method", name, namelen)) {
-    if (!req.method().empty()) {
-      stream_error(session, stream_id, NGHTTP2_PROTOCOL_ERROR);
-      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
-    }
+  switch (nghttp2::http2::lookup_token(name, namelen)) {
+  case nghttp2::http2::HD__METHOD:
     req.method(std::string(value, value + valuelen));
-  } else if (util::streq_l(":scheme", name, namelen)) {
-    if (!req.scheme().empty()) {
-      stream_error(session, stream_id, NGHTTP2_PROTOCOL_ERROR);
-      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
-    }
+    break;
+  case nghttp2::http2::HD__SCHEME:
     req.scheme(std::string(value, value + valuelen));
-  } else if (util::streq_l(":authority", name, namelen)) {
-    if (!req.authority().empty()) {
-      stream_error(session, stream_id, NGHTTP2_PROTOCOL_ERROR);
-      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
-    }
+    break;
+  case nghttp2::http2::HD__AUTHORITY:
     req.authority(std::string(value, value + valuelen));
-  } else if (util::streq_l(":path", name, namelen)) {
-    if (!req.path().empty()) {
-      stream_error(session, stream_id, NGHTTP2_PROTOCOL_ERROR);
-      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
-    }
+    break;
+  case nghttp2::http2::HD__PATH:
     req.path(std::string(value, value + valuelen));
-  } else {
-    if (name[0] == ':') {
-      stream_error(session, stream_id, NGHTTP2_PROTOCOL_ERROR);
-      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
-    }
-
-    if (util::streq_l("host", name, namelen)) {
-      req.host(std::string(value, value + valuelen));
-    }
-
+    break;
+  case nghttp2::http2::HD_HOST:
+    req.host(std::string(value, value + valuelen));
+  // fall through
+  default:
     req.add_header(std::string(name, name + namelen),
                    std::string(value, value + valuelen));
   }
@@ -415,12 +386,6 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
     }
 
     auto &req = stream->get_request()->impl();
-
-    if (req.method().empty() || req.scheme().empty() || req.path().empty() ||
-        (req.authority().empty() && req.host().empty())) {
-      stream_error(session, frame->hd.stream_id, NGHTTP2_PROTOCOL_ERROR);
-      return 0;
-    }
 
     if (req.host().empty()) {
       req.host(req.authority());
