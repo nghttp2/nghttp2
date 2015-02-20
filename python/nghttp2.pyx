@@ -400,12 +400,6 @@ cdef int server_on_frame_recv(cnghttp2.nghttp2_session *session,
             handler = _get_stream_user_data(session, frame.hd.stream_id)
             if not handler:
                 return 0
-            # Check required header fields. We expect that :authority
-            # or host header field.
-            if handler.scheme is None or handler.method is None or\
-               handler.host is None or handler.path is None:
-                return http2._rst_stream(frame.hd.stream_id,
-                                         cnghttp2.NGHTTP2_PROTOCOL_ERROR)
             if handler.cookies:
                 handler.headers.append((b'cookie',
                                         b'; '.join(handler.cookies)))
@@ -556,10 +550,7 @@ cdef int client_on_frame_recv(cnghttp2.nghttp2_session *session,
 
             if not handler:
                 return 0
-            # Check required header fields. We expect a status.
-            if handler.status is None:
-                return http2._rst_stream(frame.hd.stream_id,
-                                         cnghttp2.NGHTTP2_PROTOCOL_ERROR)
+            # TODO handle 1xx non-final response
             if handler.cookies:
                 handler.headers.append((b'cookie',
                                         b'; '.join(handler.cookies)))
@@ -587,10 +578,6 @@ cdef int client_on_frame_recv(cnghttp2.nghttp2_session *session,
         cnghttp2.nghttp2_session_set_stream_user_data(session, frame.push_promise.promised_stream_id,
                                                       <void*>NULL)
 
-        if push_handler.scheme is None or push_handler.method is None or\
-           push_handler.host is None or push_handler.path is None:
-            return http2._rst_stream(frame.push_promise.promised_stream_id,
-                                     cnghttp2.NGHTTP2_PROTOCOL_ERROR)
         try:
             handler.on_push_promise(push_handler)
         except:
