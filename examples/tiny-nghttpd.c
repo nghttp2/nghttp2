@@ -179,13 +179,57 @@ static char *io_buf_add_str(io_buf *buf, const void *src, size_t len) {
   return (char *)start;
 }
 
-static int memseq(const uint8_t *a, size_t alen, const char *b) {
-  const uint8_t *last = a + alen;
+static int memeq(const void *a, const void *b, size_t n) {
+  return memcmp(a, b, n) == 0;
+}
 
-  for (; a != last && *b && *a == *b; ++a, ++b)
-    ;
+#define streq(A, B, N) ((sizeof((A)) - 1) == (N) && memeq((A), (B), (N)))
 
-  return a == last && *b == 0;
+typedef enum {
+  NGHTTP2_TOKEN__AUTHORITY,
+  NGHTTP2_TOKEN__METHOD,
+  NGHTTP2_TOKEN__PATH,
+  NGHTTP2_TOKEN__SCHEME,
+  NGHTTP2_TOKEN_HOST,
+} nghttp2_token;
+
+/* Inspired by h2o header lookup.  https://github.com/h2o/h2o */
+static int lookup_token(const uint8_t *name, size_t namelen) {
+  switch (namelen) {
+  case 5:
+    switch (name[namelen - 1]) {
+    case 'h':
+      if (streq(":pat", name, 4)) {
+        return NGHTTP2_TOKEN__PATH;
+      }
+      break;
+    }
+    break;
+  case 7:
+    switch (name[namelen - 1]) {
+    case 'd':
+      if (streq(":metho", name, 6)) {
+        return NGHTTP2_TOKEN__METHOD;
+      }
+      break;
+    case 'e':
+      if (streq(":schem", name, 6)) {
+        return NGHTTP2_TOKEN__SCHEME;
+      }
+      break;
+    }
+    break;
+  case 10:
+    switch (name[namelen - 1]) {
+    case 'y':
+      if (streq(":authorit", name, 9)) {
+        return NGHTTP2_TOKEN__AUTHORITY;
+      }
+      break;
+    }
+    break;
+  }
+  return -1;
 }
 
 static char *cpydig(char *buf, int n, size_t len) {
@@ -939,48 +983,42 @@ static int on_header_callback(nghttp2_session *session,
     return 0;
   }
 
-  if (memseq(name, namelen, ":method")) {
+  switch (lookup_token(name, namelen)) {
+  case NGHTTP2_TOKEN__METHOD:
     strm->method = io_buf_add_str(&strm->scrbuf, value, valuelen);
     if (!strm->method) {
       return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
     }
     strm->methodlen = valuelen;
-    return 0;
-  }
-
-  if (memseq(name, namelen, ":scheme")) {
+    break;
+  case NGHTTP2_TOKEN__SCHEME:
     strm->scheme = io_buf_add_str(&strm->scrbuf, value, valuelen);
     if (!strm->scheme) {
       return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
     }
     strm->schemelen = valuelen;
-    return 0;
-  }
-
-  if (memseq(name, namelen, ":authority")) {
+    break;
+  case NGHTTP2_TOKEN__AUTHORITY:
     strm->authority = io_buf_add_str(&strm->scrbuf, value, valuelen);
     if (!strm->authority) {
       return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
     }
     strm->authoritylen = valuelen;
-    return 0;
-  }
-
-  if (memseq(name, namelen, ":path")) {
+    break;
+  case NGHTTP2_TOKEN__PATH:
     strm->path = io_buf_add_str(&strm->scrbuf, value, valuelen);
     if (!strm->path) {
       return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
     }
     strm->pathlen = valuelen;
-    return 0;
-  }
-
-  if (memseq(name, namelen, "host") && !strm->host) {
+    break;
+  case NGHTTP2_TOKEN_HOST:
     strm->host = io_buf_add_str(&strm->scrbuf, value, valuelen);
     if (!strm->host) {
       return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
     }
     strm->hostlen = valuelen;
+    break;
   }
 
   return 0;
