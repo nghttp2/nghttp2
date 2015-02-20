@@ -158,7 +158,7 @@ private:
   /// Buffer for incoming data.
   boost::array<uint8_t, 8192> buffer_;
 
-  boost::array<uint8_t, 16394> outbuf_;
+  boost::array<uint8_t, 65536> outbuf_;
 
   bool writing_;
 };
