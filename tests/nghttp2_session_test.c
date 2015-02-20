@@ -1386,7 +1386,7 @@ void test_nghttp2_session_continue(void) {
 
   nghttp2_session_server_new(&session, &callbacks, &user_data);
   /* disable strict HTTP layering checks */
-  session->opt_flags |= NGHTTP2_OPTMASK_NO_HTTP_SEMANTICS;
+  session->opt_flags |= NGHTTP2_OPTMASK_NO_HTTP_MESSAGING;
 
   nghttp2_hd_deflate_init(&deflater, mem);
 

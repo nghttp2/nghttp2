@@ -77,8 +77,8 @@ static int is_non_fatal(int lib_error) {
 
 int nghttp2_is_fatal(int lib_error) { return lib_error < NGHTTP2_ERR_FATAL; }
 
-static int session_enforce_http_semantics(nghttp2_session *session) {
-  return (session->opt_flags & NGHTTP2_OPTMASK_NO_HTTP_SEMANTICS) == 0;
+static int session_enforce_http_messaging(nghttp2_session *session) {
+  return (session->opt_flags & NGHTTP2_OPTMASK_NO_HTTP_MESSAGING) == 0;
 }
 
 /*
@@ -1761,7 +1761,7 @@ static int session_prep_frame(nghttp2_session *session,
           return rv;
         }
 
-        if (session_enforce_http_semantics(session)) {
+        if (session_enforce_http_messaging(session)) {
           nghttp2_http_record_request_method(stream, frame);
         }
       } else {
@@ -3159,7 +3159,7 @@ static int inflate_header_block(nghttp2_session *session, nghttp2_frame *frame,
     DEBUGF(fprintf(stderr, "recv: proclen=%zd\n", proclen));
 
     if (call_header_cb && (inflate_flags & NGHTTP2_HD_INFLATE_EMIT)) {
-      if (subject_stream && session_enforce_http_semantics(session)) {
+      if (subject_stream && session_enforce_http_messaging(session)) {
         rv = nghttp2_http_on_header(session, subject_stream, frame, &nv,
                                     trailer);
         if (rv != 0) {
@@ -3289,7 +3289,7 @@ static int session_after_header_block_received(nghttp2_session *session) {
     return 0;
   }
 
-  if (session_enforce_http_semantics(session)) {
+  if (session_enforce_http_messaging(session)) {
     if (frame->hd.type == NGHTTP2_PUSH_PROMISE) {
       nghttp2_stream *subject_stream;
 
@@ -4356,7 +4356,7 @@ int nghttp2_session_on_data_received(nghttp2_session *session,
     return 0;
   }
 
-  if (session_enforce_http_semantics(session) &&
+  if (session_enforce_http_messaging(session) &&
       (frame->hd.flags & NGHTTP2_FLAG_END_STREAM)) {
     if (nghttp2_http_on_remote_end_stream(stream) != 0) {
       call_cb = 0;
@@ -5707,7 +5707,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
         DEBUGF(fprintf(stderr, "recv: data_readlen=%zd\n", data_readlen));
 
         if (stream && data_readlen > 0) {
-          if (session_enforce_http_semantics(session)) {
+          if (session_enforce_http_messaging(session)) {
             if (nghttp2_http_on_data_chunk(stream, data_readlen) != 0) {
               rv = nghttp2_session_add_rst_stream(
                   session, iframe->frame.hd.stream_id, NGHTTP2_PROTOCOL_ERROR);
