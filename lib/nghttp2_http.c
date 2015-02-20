@@ -494,18 +494,20 @@ void nghttp2_http_record_request_method(nghttp2_stream *stream,
     return;
   }
 
-  /* TODO we should do this in stricter manner. */
+  /* TODO we should do this strictly. */
   for (i = 0; i < nvlen; ++i) {
     const nghttp2_nv *nv = &nva[i];
-    if (lookup_token(nv->name, nv->namelen) == NGHTTP2_TOKEN__METHOD) {
-      if (streq("CONNECT", nv->value, nv->valuelen)) {
-        stream->http_flags |= NGHTTP2_HTTP_FLAG_METH_CONNECT;
-        return;
-      }
-      if (streq("HEAD", nv->value, nv->valuelen)) {
-        stream->http_flags |= NGHTTP2_HTTP_FLAG_METH_HEAD;
-        return;
-      }
+    if (lookup_token(nv->name, nv->namelen) != NGHTTP2_TOKEN__METHOD) {
+      continue;
     }
+    if (streq("CONNECT", nv->value, nv->valuelen)) {
+      stream->http_flags |= NGHTTP2_HTTP_FLAG_METH_CONNECT;
+      return;
+    }
+    if (streq("HEAD", nv->value, nv->valuelen)) {
+      stream->http_flags |= NGHTTP2_HTTP_FLAG_METH_HEAD;
+      return;
+    }
+    return;
   }
 }
