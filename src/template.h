@@ -55,6 +55,10 @@ template <typename T, size_t N> constexpr size_t array_size(T (&)[N]) {
   return N;
 }
 
+template <typename T, size_t N> constexpr size_t str_size(T (&)[N]) {
+  return N - 1;
+}
+
 // inspired by <http://blog.korfuri.fr/post/go-defer-in-cpp/>, but our
 // template can take functions returning other than void.
 template <typename F, typename... T> struct Defer {

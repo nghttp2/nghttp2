@@ -636,7 +636,7 @@ bool conf_exists(const char *path) {
 } // namespace
 
 namespace {
-const char *DEFAULT_NPN_LIST = "h2-16," NGHTTP2_PROTO_VERSION_ID ","
+const char *DEFAULT_NPN_LIST = "h2,h2-16," NGHTTP2_PROTO_VERSION_ID ","
 #ifdef HAVE_SPDYLAY
                                "spdy/3.1,"
 #endif // HAVE_SPDYLAY

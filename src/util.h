@@ -48,9 +48,10 @@ namespace nghttp2 {
 // supports for our applications.  This will be removed once HTTP/2
 // specification is finalized.
 #define NGHTTP2_H2_16_ALPN "\x5h2-16"
-#define NGHTTP2_H2_16_ALPN_LEN (sizeof(NGHTTP2_H2_16_ALPN) - 1)
-#define NGHTTP2_H2_16_ID "h2-16"
-#define NGHTTP2_H2_16_ID_LEN (sizeof(NGHTTP2_H2_16_ID) - 1)
+#define NGHTTP2_H2_16 "h2-16"
+
+#define NGHTTP2_H2_ALPN "\x2h2"
+#define NGHTTP2_H2 "h2"
 
 namespace util {
 
@@ -320,6 +321,11 @@ bool streq(InputIt1 a, size_t alen, InputIt2 b, size_t blen) {
     return false;
   }
   return std::equal(a, a + alen, b);
+}
+
+template <typename InputIt, size_t N>
+bool streq_l(const char (&a)[N], InputIt b, size_t blen) {
+  return streq(a, N - 1, b, blen);
 }
 
 bool strifind(const char *a, const char *b);

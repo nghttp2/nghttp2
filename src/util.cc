@@ -44,6 +44,7 @@
 #include <nghttp2/nghttp2.h>
 
 #include "timegm.h"
+#include "template.h"
 
 namespace nghttp2 {
 
@@ -756,9 +757,9 @@ int64_t to_time64(const timeval &tv) {
 }
 
 bool check_h2_is_selected(const unsigned char *proto, size_t len) {
-  return streq(NGHTTP2_PROTO_VERSION_ID, NGHTTP2_PROTO_VERSION_ID_LEN, proto,
-               len) ||
-         streq(NGHTTP2_H2_16_ID, NGHTTP2_H2_16_ID_LEN, proto, len);
+  return streq_l(NGHTTP2_H2, proto, len) ||
+         streq_l(NGHTTP2_H2_16, proto, len) ||
+         streq_l(NGHTTP2_PROTO_VERSION_ID, proto, len);
 }
 
 namespace {
@@ -778,19 +779,23 @@ bool select_h2(const unsigned char **out, unsigned char *outlen,
 
 bool select_h2(const unsigned char **out, unsigned char *outlen,
                const unsigned char *in, unsigned int inlen) {
-  return select_h2(out, outlen, in, inlen, NGHTTP2_H2_16_ALPN,
-                   NGHTTP2_H2_16_ALPN_LEN) ||
+  return select_h2(out, outlen, in, inlen, NGHTTP2_H2_ALPN,
+                   str_size(NGHTTP2_H2_ALPN)) ||
+         select_h2(out, outlen, in, inlen, NGHTTP2_H2_16_ALPN,
+                   str_size(NGHTTP2_H2_16_ALPN)) ||
          select_h2(out, outlen, in, inlen, NGHTTP2_PROTO_ALPN,
-                   NGHTTP2_PROTO_ALPN_LEN);
+                   str_size(NGHTTP2_PROTO_ALPN));
 }
 
 std::vector<unsigned char> get_default_alpn() {
-  auto res = std::vector<unsigned char>(NGHTTP2_PROTO_ALPN_LEN +
-                                        NGHTTP2_H2_16_ALPN_LEN);
+  auto res = std::vector<unsigned char>(str_size(NGHTTP2_PROTO_ALPN) +
+                                        str_size(NGHTTP2_H2_16_ALPN) +
+                                        str_size(NGHTTP2_H2_ALPN));
   auto p = std::begin(res);
 
-  p = std::copy_n(NGHTTP2_H2_16_ALPN, NGHTTP2_H2_16_ALPN_LEN, p);
-  p = std::copy_n(NGHTTP2_PROTO_ALPN, NGHTTP2_PROTO_ALPN_LEN, p);
+  p = std::copy_n(NGHTTP2_H2_ALPN, str_size(NGHTTP2_H2_ALPN), p);
+  p = std::copy_n(NGHTTP2_H2_16_ALPN, str_size(NGHTTP2_H2_16_ALPN), p);
+  p = std::copy_n(NGHTTP2_PROTO_ALPN, str_size(NGHTTP2_PROTO_ALPN), p);
 
   return res;
 }
