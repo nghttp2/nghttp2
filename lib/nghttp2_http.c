@@ -238,12 +238,12 @@ static int http_request_on_header(nghttp2_stream *stream, nghttp2_nv *nv,
 
   switch (token) {
   case NGHTTP2_TOKEN__AUTHORITY:
-    if (!check_pseudo_header(stream, nv, NGHTTP2_HTTP_FLAG_AUTHORITY)) {
+    if (!check_pseudo_header(stream, nv, NGHTTP2_HTTP_FLAG__AUTHORITY)) {
       return -1;
     }
     break;
   case NGHTTP2_TOKEN__METHOD:
-    if (!check_pseudo_header(stream, nv, NGHTTP2_HTTP_FLAG_METHOD)) {
+    if (!check_pseudo_header(stream, nv, NGHTTP2_HTTP_FLAG__METHOD)) {
       return -1;
     }
     if (streq("HEAD", nv->value, nv->valuelen)) {
@@ -255,7 +255,7 @@ static int http_request_on_header(nghttp2_stream *stream, nghttp2_nv *nv,
       }
       stream->http_flags |= NGHTTP2_HTTP_FLAG_METH_CONNECT;
       if (stream->http_flags &
-          (NGHTTP2_HTTP_FLAG_PATH | NGHTTP2_HTTP_FLAG_SCHEME)) {
+          (NGHTTP2_HTTP_FLAG__PATH | NGHTTP2_HTTP_FLAG__SCHEME)) {
         return -1;
       }
     }
@@ -264,7 +264,7 @@ static int http_request_on_header(nghttp2_stream *stream, nghttp2_nv *nv,
     if (stream->http_flags & NGHTTP2_HTTP_FLAG_METH_CONNECT) {
       return -1;
     }
-    if (!check_pseudo_header(stream, nv, NGHTTP2_HTTP_FLAG_PATH)) {
+    if (!check_pseudo_header(stream, nv, NGHTTP2_HTTP_FLAG__PATH)) {
       return -1;
     }
     break;
@@ -272,7 +272,7 @@ static int http_request_on_header(nghttp2_stream *stream, nghttp2_nv *nv,
     if (stream->http_flags & NGHTTP2_HTTP_FLAG_METH_CONNECT) {
       return -1;
     }
-    if (!check_pseudo_header(stream, nv, NGHTTP2_HTTP_FLAG_SCHEME)) {
+    if (!check_pseudo_header(stream, nv, NGHTTP2_HTTP_FLAG__SCHEME)) {
       return -1;
     }
     break;
@@ -331,7 +331,7 @@ static int http_response_on_header(nghttp2_stream *stream, nghttp2_nv *nv,
 
   switch (token) {
   case NGHTTP2_TOKEN__STATUS: {
-    if (!check_pseudo_header(stream, nv, NGHTTP2_HTTP_FLAG_STATUS)) {
+    if (!check_pseudo_header(stream, nv, NGHTTP2_HTTP_FLAG__STATUS)) {
       return -1;
     }
     if (nv->valuelen != 3) {
@@ -395,14 +395,14 @@ int nghttp2_http_on_header(nghttp2_session *session, nghttp2_stream *stream,
 int nghttp2_http_on_request_headers(nghttp2_stream *stream,
                                     nghttp2_frame *frame) {
   if (stream->http_flags & NGHTTP2_HTTP_FLAG_METH_CONNECT) {
-    if ((stream->http_flags & NGHTTP2_HTTP_FLAG_AUTHORITY) == 0) {
+    if ((stream->http_flags & NGHTTP2_HTTP_FLAG__AUTHORITY) == 0) {
       return -1;
     }
     stream->content_length = -1;
   } else if ((stream->http_flags & NGHTTP2_HTTP_FLAG_REQ_HEADERS) !=
                  NGHTTP2_HTTP_FLAG_REQ_HEADERS ||
              (stream->http_flags &
-              (NGHTTP2_HTTP_FLAG_AUTHORITY | NGHTTP2_HTTP_FLAG_HOST)) == 0) {
+              (NGHTTP2_HTTP_FLAG__AUTHORITY | NGHTTP2_HTTP_FLAG_HOST)) == 0) {
     return -1;
   }
 
@@ -417,7 +417,7 @@ int nghttp2_http_on_request_headers(nghttp2_stream *stream,
 }
 
 int nghttp2_http_on_response_headers(nghttp2_stream *stream) {
-  if ((stream->http_flags & NGHTTP2_HTTP_FLAG_STATUS) == 0) {
+  if ((stream->http_flags & NGHTTP2_HTTP_FLAG__STATUS) == 0) {
     return -1;
   }
 

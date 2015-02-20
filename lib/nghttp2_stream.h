@@ -103,19 +103,19 @@ typedef enum {
 typedef enum {
   NGHTTP2_HTTP_FLAG_NONE = 0,
   /* header field seen so far */
-  NGHTTP2_HTTP_FLAG_AUTHORITY = 1,
-  NGHTTP2_HTTP_FLAG_PATH = 1 << 1,
-  NGHTTP2_HTTP_FLAG_METHOD = 1 << 2,
-  NGHTTP2_HTTP_FLAG_SCHEME = 1 << 3,
+  NGHTTP2_HTTP_FLAG__AUTHORITY = 1,
+  NGHTTP2_HTTP_FLAG__PATH = 1 << 1,
+  NGHTTP2_HTTP_FLAG__METHOD = 1 << 2,
+  NGHTTP2_HTTP_FLAG__SCHEME = 1 << 3,
   /* host is not pseudo header, but we require either host or
      :authority */
   NGHTTP2_HTTP_FLAG_HOST = 1 << 4,
-  NGHTTP2_HTTP_FLAG_STATUS = 1 << 5,
+  NGHTTP2_HTTP_FLAG__STATUS = 1 << 5,
   /* required header fields for HTTP request except for CONNECT
      method. */
-  NGHTTP2_HTTP_FLAG_REQ_HEADERS = NGHTTP2_HTTP_FLAG_METHOD |
-                                  NGHTTP2_HTTP_FLAG_PATH |
-                                  NGHTTP2_HTTP_FLAG_SCHEME,
+  NGHTTP2_HTTP_FLAG_REQ_HEADERS = NGHTTP2_HTTP_FLAG__METHOD |
+                                  NGHTTP2_HTTP_FLAG__PATH |
+                                  NGHTTP2_HTTP_FLAG__SCHEME,
   NGHTTP2_HTTP_FLAG_PSEUDO_HEADER_DISALLOWED = 1 << 6,
   /* HTTP method flags */
   NGHTTP2_HTTP_FLAG_METH_CONNECT = 1 << 7,
