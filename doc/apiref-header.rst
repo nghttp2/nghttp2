@@ -31,3 +31,54 @@ do not consume client connection preface unless
 value.  The applications are responsible to receive it before calling
 these functions if :type:`nghttp2_session` is configured as server and
 `nghttp2_option_set_recv_client_preface()` is not used.
+
+HTTP Messaging
+--------------
+
+By default, nghttp2 library checks HTTP messaging rules described in
+`HTTP/2 specification, section 8
+<https://tools.ietf.org/html/draft-ietf-httpbis-http2-17#section-8>`_.
+Everything described in that section is not validated however.  We
+briefly describe what the library does in this area.  In the following
+description, without loss of generality we omit CONTINUATION frame
+since they must follow HEADERS frame and are processed atomically.  In
+other words, they are just one big HEADERS frame.
+
+For HTTP request, including those carried by PUSH_PROMISE, HTTP
+message starts with one HEADERS frame containing request headers.  It
+is followed by zero or more DATA frames containing request body, which
+is followed by zero or one HEADERS containing trailer headers.  The
+request headers must include ":scheme", ":method" and ":path" pseudo
+header fields unless ":method" is not "CONNECT".  ":authority" is
+optional, but nghttp2 requires either ":authority" or "Host" header
+field must be present.  If ":method" is "CONNECT", the request headers
+must include ":method" and ":authority" and must omit ":scheme" and
+":path".
+
+For HTTP response, HTTP message starts with zero or more HEADERS
+frames containing non-final response (status code 1xx).  They are
+followed by one HEADERS frame containing final response headers
+(non-1xx).  It is followed by zero or more DATA frames containing
+response body, which is followed by zero or one HEADERS containing
+trailer headers.  The non-final and final response headers must
+contain ":status" pseudo header field containing 3 digits only.
+
+All request and response headers must include exactly one valid value
+for each pseudo header field.  Additionally nghttp2 requires all
+request headers must not include more than one "Host" header field.
+
+Each header field name and value must obey the field-name and
+field-value production rules described in `RFC 7230, section
+3.2. <https://tools.ietf.org/html/rfc7230#section-3.2>`_.
+Additionally, all field name must be lower cased.
+
+nghttp2 enforces "Content-Length" validation as well.  All request or
+response headers must not contain more than one "Content-Length"
+header field.  If "Content-Length" header field is present, it must be
+parsed as 64 bit signed integer.  The sum of data length in the
+following DATA frames must match with the number in "Content-Length"
+header field if it is present (this does not include padding bytes).
+
+Any deviation results in stream error of type PROTOCOL_ERROR.  If
+error is found in PUSH_PROMISE frame, stream error is raised against
+promised stream.
