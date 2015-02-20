@@ -1798,14 +1798,15 @@ int on_frame_recv_callback2(nghttp2_session *session,
     }
     auto scheme = req->get_req_header(http2::HD__SCHEME);
     auto authority = req->get_req_header(http2::HD__AUTHORITY);
-    auto method = req->get_req_header(http2::HD__METHOD);
     auto path = req->get_req_header(http2::HD__PATH);
 
     if (!authority) {
       authority = req->get_req_header(http2::HD_HOST);
     }
 
-    if (!scheme || !authority || !method || !path || path->value[0] != '/') {
+    // libnghttp2 guarantees :scheme, :method, :path and (:authority |
+    // host) exist and non-empty.
+    if (path->value[0] != '/') {
       nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
                                 frame->push_promise.promised_stream_id,
                                 NGHTTP2_PROTOCOL_ERROR);
