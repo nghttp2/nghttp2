@@ -383,7 +383,9 @@ typedef enum {
    */
   NGHTTP2_NV_FLAG_NONE = 0,
   /**
-   * Indicates that this name/value pair must not be indexed.
+   * Indicates that this name/value pair must not be indexed ("Literal
+   * Header Field never Indexed" representation must be used in HPACK
+   * encoding).  Other implementation calls this bit as "sensitive".
    */
   NGHTTP2_NV_FLAG_NO_INDEX = 0x01
 } nghttp2_nv_flag;
@@ -1398,7 +1400,8 @@ typedef int (*nghttp2_on_begin_headers_callback)(nghttp2_session *session,
  *
  * If :enum:`NGHTTP2_NV_FLAG_NO_INDEX` is set in |flags|, the receiver
  * must not index this name/value pair when forwarding it to the next
- * hop.
+ * hop.  More specifically, "Literal Header Field never Indexed"
+ * representation must be used in HPACK encoding.
  *
  * When this callback is invoked, ``frame->hd.type`` is either
  * :enum:`NGHTTP2_HEADERS` or :enum:`NGHTTP2_PUSH_PROMISE`.  After all
