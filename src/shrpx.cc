@@ -1911,8 +1911,8 @@ int main(int argc, char **argv) {
   }
 
   if (get_config()->rlimit_nofile) {
-    struct rlimit lim = {get_config()->rlimit_nofile,
-                         get_config()->rlimit_nofile};
+    struct rlimit lim = {static_cast<rlim_t>(get_config()->rlimit_nofile),
+                         static_cast<rlim_t>(get_config()->rlimit_nofile)};
     if (setrlimit(RLIMIT_NOFILE, &lim) != 0) {
       auto error = errno;
       LOG(WARN) << "Setting rlimit-nofile failed: " << strerror(error);
