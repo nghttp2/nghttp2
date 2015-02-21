@@ -93,8 +93,7 @@ int main(int argc, char *argv[]) {
       if (stat(path.c_str(), &stbuf) == 0) {
         headers.push_back(
             header{"content-length", std::to_string(stbuf.st_size)});
-        headers.push_back(
-            header{"last-modified", http_date(stbuf.st_mtim.tv_sec)});
+        headers.push_back(header{"last-modified", http_date(stbuf.st_mtime)});
       }
       res->write_head(200, std::move(headers));
       res->end(file_reader_from_fd(fd));
