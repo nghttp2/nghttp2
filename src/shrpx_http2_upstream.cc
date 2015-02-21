@@ -358,7 +358,7 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
       downstream->set_request_state(Downstream::MSG_COMPLETE);
     }
 
-    break;
+    return 0;
   }
   case NGHTTP2_HEADERS: {
     auto downstream = upstream->find_downstream(frame->hd.stream_id);
@@ -386,22 +386,14 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
       }
     }
 
-    break;
-  }
-  case NGHTTP2_PRIORITY: {
-    // TODO comment out for now
-    // rv = downstream->change_priority(frame->priority.pri);
-    // if(rv != 0) {
-    //   return NGHTTP2_ERR_CALLBACK_FAILURE;
-    // }
-    break;
+    return 0;
   }
   case NGHTTP2_SETTINGS:
     if ((frame->hd.flags & NGHTTP2_FLAG_ACK) == 0) {
-      break;
+      return 0;
     }
     upstream->stop_settings_timer();
-    break;
+    return 0;
   case NGHTTP2_GOAWAY:
     if (LOG_ENABLED(INFO)) {
       auto debug_data = util::ascii_dump(frame->goaway.opaque_data,
@@ -412,11 +404,10 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
                            << ", error_code=" << frame->goaway.error_code
                            << ", debug_data=" << debug_data;
     }
-    break;
+    return 0;
   default:
-    break;
+    return 0;
   }
-  return 0;
 }
 } // namespace
 
@@ -464,7 +455,7 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
     if ((frame->hd.flags & NGHTTP2_FLAG_ACK) == 0) {
       upstream->start_settings_timer();
     }
-    break;
+    return 0;
   case NGHTTP2_PUSH_PROMISE: {
     auto downstream = make_unique<Downstream>(
         upstream, frame->push_promise.promised_stream_id, 0);
@@ -508,7 +499,7 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
     upstream->add_pending_downstream(std::move(downstream));
     upstream->start_downstream(ptr);
 
-    break;
+    return 0;
   }
   case NGHTTP2_GOAWAY:
     if (LOG_ENABLED(INFO)) {
@@ -520,9 +511,10 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
                            << ", error_code=" << frame->goaway.error_code
                            << ", debug_data=" << debug_data;
     }
-    break;
+    return 0;
+  default:
+    return 0;
   }
-  return 0;
 }
 } // namespace
 

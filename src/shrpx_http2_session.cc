@@ -835,12 +835,12 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
     auto sd = static_cast<StreamData *>(
         nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
     if (!sd || !sd->dconn) {
-      break;
+      return 0;
     }
     auto downstream = sd->dconn->get_downstream();
     if (!downstream ||
         downstream->get_downstream_stream_id() != frame->hd.stream_id) {
-      break;
+      return 0;
     }
 
     auto upstream = downstream->get_upstream();
@@ -867,13 +867,13 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
     }
 
     call_downstream_readcb(http2session, downstream);
-    break;
+    return 0;
   }
   case NGHTTP2_HEADERS: {
     auto sd = static_cast<StreamData *>(
         nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
     if (!sd || !sd->dconn) {
-      break;
+      return 0;
     }
     auto downstream = sd->dconn->get_downstream();
 
@@ -922,7 +922,7 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
     // This may delete downstream
     call_downstream_readcb(http2session, downstream);
 
-    break;
+    return 0;
   }
   case NGHTTP2_RST_STREAM: {
     auto sd = static_cast<StreamData *>(
@@ -937,14 +937,14 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
         call_downstream_readcb(http2session, downstream);
       }
     }
-    break;
+    return 0;
   }
   case NGHTTP2_SETTINGS:
     if ((frame->hd.flags & NGHTTP2_FLAG_ACK) == 0) {
-      break;
+      return 0;
     }
     http2session->stop_settings_timer();
-    break;
+    return 0;
   case NGHTTP2_PUSH_PROMISE:
     if (LOG_ENABLED(INFO)) {
       SSLOG(INFO, http2session)
@@ -955,11 +955,10 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
     // We just respond with RST_STREAM.
     http2session->submit_rst_stream(frame->push_promise.promised_stream_id,
                                     NGHTTP2_REFUSED_STREAM);
-    break;
+    return 0;
   default:
-    break;
+    return 0;
   }
-  return 0;
 }
 } // namespace
 
