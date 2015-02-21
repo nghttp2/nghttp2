@@ -1375,6 +1375,27 @@ typedef int (*nghttp2_on_stream_close_callback)(nghttp2_session *session,
  * not need to care about that because the header name/value pairs are
  * emitted transparently regardless of CONTINUATION frames.
  *
+ * The server applications probably create an object to store
+ * information about new stream if ``frame->hd.type ==
+ * NGHTTP2_HEADERS`` and ``frame->headers.cat ==
+ * NGHTTP2_HCAT_REQUEST``.  If |session| is configured as server side,
+ * ``frame->headers.cat`` is either ``NGHTTP2_HCAT_REQUEST``
+ * containing request headers or ``NGHTTP2_HCAT_HEADERS`` containing
+ * trailer headers and never get PUSH_PROMISE in this callback.
+ *
+ * For the client applications, ``frame->hd.type`` is either
+ * ``NGHTTP2_HEADERS`` or ``NGHTTP2_PUSH_PROMISE``.  In case of
+ * ``NGHTTP2_HEADERS``, ``frame->headers.cat ==
+ * NGHTTP2_HCAT_RESPONSE`` means that it is the first response
+ * headers, but it may be non-final response which is indicated by 1xx
+ * status code.  In this case, there may be zero or more HEADERS frame
+ * with ``frame->headers.cat == NGHTTP2_HCAT_HEADERS`` which has
+ * non-final response code and finally client gets exactly one HEADERS
+ * frame with ``frame->headers.cat == NGHTTP2_HCAT_HEADERS``
+ * containing final response headers (non-1xx status code).  The
+ * trailer headers also has ``frame->headers.cat ==
+ * NGHTTP2_HCAT_HEADERS`` which does not containg any status code.
+ *
  * The implementation of this function must return 0 if it succeeds or
  * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.  If nonzero value other than
  * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE` is returned, it is treated as
