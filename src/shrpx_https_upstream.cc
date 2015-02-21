@@ -455,6 +455,14 @@ int HttpsUpstream::downstream_read(DownstreamConnection *dconn) {
 
   rv = downstream->on_read();
 
+  if (rv == SHRPX_ERR_EOF) {
+    return downstream_eof(dconn);
+  }
+
+  if (rv < 0) {
+    return downstream_error(dconn, Downstream::EVENT_ERROR);
+  }
+
   if (downstream->get_response_state() == Downstream::MSG_RESET) {
     return -1;
   }
@@ -471,14 +479,6 @@ int HttpsUpstream::downstream_read(DownstreamConnection *dconn) {
       !downstream->get_response_connection_close()) {
     // Keep-alive
     downstream->detach_downstream_connection();
-  }
-
-  if (rv == SHRPX_ERR_EOF) {
-    return downstream_eof(dconn);
-  }
-
-  if (rv < 0) {
-    return downstream_error(dconn, Downstream::EVENT_ERROR);
   }
 
 end:
