@@ -406,47 +406,45 @@ http_parser_settings htp_hooks = {
 } // namespace
 
 int Http2Session::downstream_read_proxy() {
-  for (;;) {
-    if (rb_.rleft() == 0) {
-      return 0;
-    }
-
-    size_t nread = http_parser_execute(proxy_htp_.get(), &htp_hooks,
-                                       reinterpret_cast<const char *>(rb_.pos),
-                                       rb_.rleft());
-
-    rb_.drain(nread);
-
-    auto htperr = HTTP_PARSER_ERRNO(proxy_htp_.get());
-
-    if (htperr == HPE_PAUSED) {
-      switch (state_) {
-      case Http2Session::PROXY_CONNECTED:
-        // we need to increment nread by 1 since http_parser_execute()
-        // returns 1 less value we expect.  This means taht
-        // rb_.pos[nread] points to \x0a (LF), which is last byte of
-        // empty line to terminate headers.  We want to eat that byte
-        // here.
-        rb_.drain(1);
-
-        // Initiate SSL/TLS handshake through established tunnel.
-        if (initiate_connection() != 0) {
-          return -1;
-        }
-        return 0;
-      case Http2Session::PROXY_FAILED:
-        return -1;
-      }
-      // should not be here
-      assert(0);
-    }
-
-    if (htperr != HPE_OK) {
-      return -1;
-    }
-
+  if (rb_.rleft() == 0) {
     return 0;
   }
+
+  size_t nread =
+      http_parser_execute(proxy_htp_.get(), &htp_hooks,
+                          reinterpret_cast<const char *>(rb_.pos), rb_.rleft());
+
+  rb_.drain(nread);
+
+  auto htperr = HTTP_PARSER_ERRNO(proxy_htp_.get());
+
+  if (htperr == HPE_PAUSED) {
+    switch (state_) {
+    case Http2Session::PROXY_CONNECTED:
+      // we need to increment nread by 1 since http_parser_execute()
+      // returns 1 less value we expect.  This means taht
+      // rb_.pos[nread] points to \x0a (LF), which is last byte of
+      // empty line to terminate headers.  We want to eat that byte
+      // here.
+      rb_.drain(1);
+
+      // Initiate SSL/TLS handshake through established tunnel.
+      if (initiate_connection() != 0) {
+        return -1;
+      }
+      return 0;
+    case Http2Session::PROXY_FAILED:
+      return -1;
+    }
+    // should not be here
+    assert(0);
+  }
+
+  if (htperr != HPE_OK) {
+    return -1;
+  }
+
+  return 0;
 }
 
 int Http2Session::downstream_connect_proxy() {

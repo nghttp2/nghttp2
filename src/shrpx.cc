@@ -205,6 +205,7 @@ create_unix_domain_acceptor(ConnectionHandler *handler) {
   if (pathlen + 1 > sizeof(addr.un.sun_path)) {
     LOG(FATAL) << "UNIX domain socket path " << path << " is too long > "
                << sizeof(addr.un.sun_path);
+    close(fd);
     return nullptr;
   }
   // copy path including terminal NULL
@@ -213,8 +214,17 @@ create_unix_domain_acceptor(ConnectionHandler *handler) {
   // unlink (remove) already existing UNIX domain socket path
   unlink(path);
 
-  if (bind(fd, &addr.sa, sizeof(addr.un)) != 0 ||
-      listen(fd, get_config()->backlog) != 0) {
+  if (bind(fd, &addr.sa, sizeof(addr.un)) != 0) {
+    auto error = errno;
+    LOG(FATAL) << "Failed to bind UNIX domain socket, error=" << error;
+    close(fd);
+    return nullptr;
+  }
+
+  if (listen(fd, get_config()->backlog) != 0) {
+    auto error = errno;
+    LOG(FATAL) << "Failed to listen to UNIX domain socket, error=" << error;
+    close(fd);
     return nullptr;
   }
 
