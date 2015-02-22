@@ -523,8 +523,9 @@ int parse_config(const char *opt, const char *optarg) {
   if (util::strieq(opt, SHRPX_OPT_BACKEND)) {
     if (util::istartsWith(optarg, SHRPX_UNIX_PATH_PREFIX)) {
       DownstreamAddr addr;
-      addr.host = strcopy(optarg);
-      addr.port = 0;
+      auto path = optarg + str_size(SHRPX_UNIX_PATH_PREFIX);
+      addr.host = strcopy(path);
+      addr.host_unix = true;
 
       mod_config()->downstream_addrs.push_back(std::move(addr));
 

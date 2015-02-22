@@ -1990,14 +1990,14 @@ int main(int argc, char **argv) {
 
   for (auto &addr : mod_config()->downstream_addrs) {
 
-    if (util::istartsWith(addr.host.get(), SHRPX_UNIX_PATH_PREFIX)) {
+    if (addr.host_unix) {
       // for AF_UNIX socket, we use "localhost" as host for backend
       // hostport.  This is used as Host header field to backend and
       // not going to be passed to any syscalls.
       addr.hostport =
           strcopy(util::make_hostport("localhost", get_config()->port));
 
-      auto path = addr.host.get() + str_size(SHRPX_UNIX_PATH_PREFIX);
+      auto path = addr.host.get();
       auto pathlen = strlen(path);
 
       if (pathlen + 1 > sizeof(addr.addr.un.sun_path)) {
