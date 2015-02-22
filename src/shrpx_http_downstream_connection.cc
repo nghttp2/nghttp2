@@ -161,8 +161,7 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
       }
 
       int rv;
-      rv = connect(conn_.fd, const_cast<sockaddr *>(
-                                 &get_config()->downstream_addrs[i].addr.sa),
+      rv = connect(conn_.fd, &get_config()->downstream_addrs[i].addr.sa,
                    get_config()->downstream_addrs[i].addrlen);
       if (rv != 0 && errno != EINPROGRESS) {
         auto error = errno;

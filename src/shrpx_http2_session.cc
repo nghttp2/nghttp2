@@ -226,8 +226,7 @@ int Http2Session::initiate_connection() {
       return -1;
     }
 
-    rv = connect(conn_.fd, const_cast<sockaddr *>(
-                               &get_config()->downstream_http_proxy_addr.sa),
+    rv = connect(conn_.fd, &get_config()->downstream_http_proxy_addr.sa,
                  get_config()->downstream_http_proxy_addrlen);
     if (rv != 0 && errno != EINPROGRESS) {
       SSLOG(ERROR, this) << "Failed to connect to the proxy "
