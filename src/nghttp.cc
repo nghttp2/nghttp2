@@ -1596,8 +1596,8 @@ void check_response_header(nghttp2_session *session, Request *req) {
 
   for (auto &nv : req->res_nva) {
     if ("content-encoding" == nv.name) {
-      gzip =
-          util::strieq("gzip", nv.value) || util::strieq("deflate", nv.value);
+      gzip = util::strieq_l("gzip", nv.value) ||
+             util::strieq_l("deflate", nv.value);
       continue;
     }
   }
@@ -2532,7 +2532,7 @@ int main(int argc, char **argv) {
       }
       // To test "never index" repr, don't index authorization header
       // field unconditionally.
-      auto no_index = util::strieq("authorization", header);
+      auto no_index = util::strieq_l("authorization", header);
       config.headers.emplace_back(header, value, no_index);
       util::inp_strlower(config.headers.back().name);
       break;

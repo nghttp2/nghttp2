@@ -383,7 +383,7 @@ int Http2DownstreamConnection::push_request_headers() {
   auto transfer_encoding =
       downstream_->get_request_header(http2::HD_TRANSFER_ENCODING);
   if (transfer_encoding &&
-      util::strieq((*transfer_encoding).value.c_str(), "chunked")) {
+      util::strieq_l("chunked", (*transfer_encoding).value)) {
     chunked_encoding = true;
   }
 

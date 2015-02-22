@@ -1087,7 +1087,7 @@ int hd_on_frame_recv_callback(nghttp2_session *session,
       auto expect100 =
           http2::get_header(stream->hdidx, http2::HD_EXPECT, stream->headers);
 
-      if (expect100 && util::strieq("100-continue", expect100->value.c_str())) {
+      if (expect100 && util::strieq_l("100-continue", expect100->value)) {
         hd->submit_non_final_response("100", frame->hd.stream_id);
       }
 

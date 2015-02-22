@@ -442,31 +442,31 @@ std::vector<LogFragment> parse_log_format(const char *optarg) {
     const char *value = nullptr;
     size_t valuelen = 0;
 
-    if (util::strieq("$remote_addr", var_start, varlen)) {
+    if (util::strieq_l("$remote_addr", var_start, varlen)) {
       type = SHRPX_LOGF_REMOTE_ADDR;
-    } else if (util::strieq("$time_local", var_start, varlen)) {
+    } else if (util::strieq_l("$time_local", var_start, varlen)) {
       type = SHRPX_LOGF_TIME_LOCAL;
-    } else if (util::strieq("$time_iso8601", var_start, varlen)) {
+    } else if (util::strieq_l("$time_iso8601", var_start, varlen)) {
       type = SHRPX_LOGF_TIME_ISO8601;
-    } else if (util::strieq("$request", var_start, varlen)) {
+    } else if (util::strieq_l("$request", var_start, varlen)) {
       type = SHRPX_LOGF_REQUEST;
-    } else if (util::strieq("$status", var_start, varlen)) {
+    } else if (util::strieq_l("$status", var_start, varlen)) {
       type = SHRPX_LOGF_STATUS;
-    } else if (util::strieq("$body_bytes_sent", var_start, varlen)) {
+    } else if (util::strieq_l("$body_bytes_sent", var_start, varlen)) {
       type = SHRPX_LOGF_BODY_BYTES_SENT;
     } else if (util::istartsWith(var_start, varlen, "$http_")) {
       type = SHRPX_LOGF_HTTP;
       value = var_start + sizeof("$http_") - 1;
       valuelen = varlen - (sizeof("$http_") - 1);
-    } else if (util::strieq("$remote_port", var_start, varlen)) {
+    } else if (util::strieq_l("$remote_port", var_start, varlen)) {
       type = SHRPX_LOGF_REMOTE_PORT;
-    } else if (util::strieq("$server_port", var_start, varlen)) {
+    } else if (util::strieq_l("$server_port", var_start, varlen)) {
       type = SHRPX_LOGF_SERVER_PORT;
-    } else if (util::strieq("$request_time", var_start, varlen)) {
+    } else if (util::strieq_l("$request_time", var_start, varlen)) {
       type = SHRPX_LOGF_REQUEST_TIME;
-    } else if (util::strieq("$pid", var_start, varlen)) {
+    } else if (util::strieq_l("$pid", var_start, varlen)) {
       type = SHRPX_LOGF_PID;
-    } else if (util::strieq("$alpn", var_start, varlen)) {
+    } else if (util::strieq_l("$alpn", var_start, varlen)) {
       type = SHRPX_LOGF_ALPN;
     } else {
       LOG(WARN) << "Unrecognized log format variable: "

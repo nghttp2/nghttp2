@@ -381,13 +381,6 @@ bool istartsWith(const char *a, const char *b) {
   return !*b;
 }
 
-bool strieq(const std::string &a, const std::string &b) {
-  if (a.size() != b.size()) {
-    return false;
-  }
-  return std::equal(std::begin(a), std::end(a), std::begin(b), CaseCmp());
-}
-
 bool strieq(const char *a, const char *b) {
   if (!a || !b) {
     return false;

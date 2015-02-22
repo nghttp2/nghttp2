@@ -84,6 +84,18 @@ void test_util_strieq(void) {
   CU_ASSERT(util::strieq("", ""));
   CU_ASSERT(!util::strieq("alpha", "AlPhA "));
   CU_ASSERT(!util::strieq("", "AlPhA "));
+
+  CU_ASSERT(util::strieq_l("alpha", "alpha", 5));
+  CU_ASSERT(util::strieq_l("alpha", "AlPhA", 5));
+  CU_ASSERT(util::strieq_l("", static_cast<const char *>(nullptr), 0));
+  CU_ASSERT(!util::strieq_l("alpha", "AlPhA ", 6));
+  CU_ASSERT(!util::strieq_l("", "AlPhA ", 6));
+
+  CU_ASSERT(util::strieq_l("alpha", "alpha"));
+  CU_ASSERT(util::strieq_l("alpha", "AlPhA"));
+  CU_ASSERT(util::strieq_l("", ""));
+  CU_ASSERT(!util::strieq_l("alpha", "AlPhA "));
+  CU_ASSERT(!util::strieq_l("", "AlPhA "));
 }
 
 void test_util_inp_strlower(void) {

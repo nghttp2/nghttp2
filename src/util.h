@@ -301,9 +301,28 @@ template <typename InputIt> bool strieq(const char *a, InputIt b, size_t bn) {
   return !*a && b == blast;
 }
 
-bool strieq(const std::string &a, const std::string &b);
+template <typename InputIt1, typename InputIt2>
+bool strieq(InputIt1 a, size_t alen, InputIt2 b, size_t blen) {
+  if (alen != blen) {
+    return false;
+  }
+  return std::equal(a, a + alen, b, CaseCmp());
+}
+
+inline bool strieq(const std::string &a, const std::string &b) {
+  return strieq(std::begin(a), a.size(), std::begin(b), b.size());
+}
 
 bool strieq(const char *a, const char *b);
+
+template <typename InputIt, size_t N>
+bool strieq_l(const char (&a)[N], InputIt b, size_t blen) {
+  return strieq(a, N - 1, b, blen);
+}
+
+template <size_t N> bool strieq_l(const char (&a)[N], const std::string &b) {
+  return strieq(a, N - 1, std::begin(b), b.size());
+}
 
 template <typename InputIt> bool streq(const char *a, InputIt b, size_t bn) {
   if (!a) {
