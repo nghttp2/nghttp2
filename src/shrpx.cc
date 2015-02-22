@@ -948,14 +948,14 @@ Connections:
               addresses  and the  first occurrence  of this  option is
               used.  UNIX domain socket  can be specified by prefixing
               path        name        with       "unix:"        (e.g.,
-              -bunix:/var/run/backend.sock)
+              unix:/var/run/backend.sock)
               Default: )" << DEFAULT_DOWNSTREAM_HOST << ","
       << DEFAULT_DOWNSTREAM_PORT << R"(
   -f, --frontend=<HOST,PORT>
               Set  frontend  host and  port.   If  <HOST> is  '*',  it
               assumes  all addresses  including  both  IPv4 and  IPv6.
               UNIX domain  socket can  be specified by  prefixing path
-              name with "unix:" (e.g., -funix:/var/run/nghttpx.sock)
+              name with "unix:" (e.g., unix:/var/run/nghttpx.sock)
               Default: )" << get_config()->host.get() << ","
       << get_config()->port << R"(
   --backlog=<N>
