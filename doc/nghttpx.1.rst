@@ -38,14 +38,18 @@ Connections
     backend addresses are accepted by repeating this option.
     HTTP/2  backend   does  not  support   multiple  backend
     addresses  and the  first occurrence  of this  option is
-    used.
+    used.  UNIX domain socket  can be specified by prefixing
+    path        name        with       "unix:"        (e.g.,
+    :option:`-bunix`\:/var/run/backend.sock)
 
     Default: ``127.0.0.1,80``
 
 .. option:: -f, --frontend=<HOST,PORT>
 
     Set  frontend  host and  port.   If  <HOST> is  '\*',  it
-    assumes all addresses including both IPv4 and IPv6.
+    assumes  all addresses  including  both  IPv4 and  IPv6.
+    UNIX domain  socket can  be specified by  prefixing path
+    name with "unix:" (e.g., :option:`-funix`\:/var/run/nghttpx.sock)
 
     Default: ``*,3000``
 
@@ -316,7 +320,7 @@ SSL/TLS
     only  and any  white spaces  are  treated as  a part  of
     protocol string.
 
-    Default: ``h2-16,h2-14,spdy/3.1,http/1.1``
+    Default: ``h2,h2-16,h2-14,spdy/3.1,http/1.1``
 
 .. option:: --verify-client
 

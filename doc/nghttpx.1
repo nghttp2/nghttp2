@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "February 15, 2015" "0.7.4" "nghttp2"
+.TH "NGHTTPX" "1" "February 22, 2015" "0.7.5-DEV" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 experimental proxy
 .
@@ -59,7 +59,9 @@ Set backend host and port.  For HTTP/1 backend, multiple
 backend addresses are accepted by repeating this option.
 HTTP/2  backend   does  not  support   multiple  backend
 addresses  and the  first occurrence  of this  option is
-used.
+used.  UNIX domain socket  can be specified by prefixing
+path        name        with       "unix:"        (e.g.,
+\fI\-bunix\fP:/var/run/backend.sock)
 .sp
 Default: \fB127.0.0.1,80\fP
 .UNINDENT
@@ -67,7 +69,9 @@ Default: \fB127.0.0.1,80\fP
 .TP
 .B \-f, \-\-frontend=<HOST,PORT>
 Set  frontend  host and  port.   If  <HOST> is  \(aq*\(aq,  it
-assumes all addresses including both IPv4 and IPv6.
+assumes  all addresses  including  both  IPv4 and  IPv6.
+UNIX domain  socket can  be specified by  prefixing path
+name with "unix:" (e.g., \fI\-funix\fP:/var/run/nghttpx.sock)
 .sp
 Default: \fB*,3000\fP
 .UNINDENT
@@ -365,7 +369,7 @@ NPN.  The parameter must be  delimited by a single comma
 only  and any  white spaces  are  treated as  a part  of
 protocol string.
 .sp
-Default: \fBh2\-16,h2\-14,spdy/3.1,http/1.1\fP
+Default: \fBh2,h2\-16,h2\-14,spdy/3.1,http/1.1\fP
 .UNINDENT
 .INDENT 0.0
 .TP
