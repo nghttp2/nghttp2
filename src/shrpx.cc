@@ -469,7 +469,7 @@ void exec_binary_signal_cb(struct ev_loop *loop, ev_signal *w, int revents) {
   size_t envidx = 0;
 
   if (get_config()->host_unix) {
-    auto acceptor = conn_handler->get_acceptor4();
+    auto acceptor = conn_handler->get_acceptor();
     std::string fd = ENV_UNIX_FD "=";
     fd += util::utos(acceptor->get_fd());
     envp[envidx++] = strdup(fd.c_str());
@@ -478,7 +478,7 @@ void exec_binary_signal_cb(struct ev_loop *loop, ev_signal *w, int revents) {
     path += get_config()->host.get();
     envp[envidx++] = strdup(path.c_str());
   } else {
-    auto acceptor4 = conn_handler->get_acceptor4();
+    auto acceptor4 = conn_handler->get_acceptor();
     if (acceptor4) {
       std::string fd4 = ENV_LISTENER4_FD "=";
       fd4 += util::utos(acceptor4->get_fd());
@@ -647,7 +647,7 @@ int event_loop() {
       exit(EXIT_FAILURE);
     }
 
-    conn_handler->set_acceptor4(std::move(acceptor));
+    conn_handler->set_acceptor(std::move(acceptor));
   } else {
     close_env_fd({ENV_UNIX_FD});
     auto acceptor6 = create_acceptor(conn_handler.get(), AF_INET6);
@@ -658,7 +658,7 @@ int event_loop() {
       exit(EXIT_FAILURE);
     }
 
-    conn_handler->set_acceptor4(std::move(acceptor4));
+    conn_handler->set_acceptor(std::move(acceptor4));
     conn_handler->set_acceptor6(std::move(acceptor6));
   }
 

@@ -230,12 +230,12 @@ Worker *ConnectionHandler::get_single_worker() const {
   return single_worker_.get();
 }
 
-void ConnectionHandler::set_acceptor4(std::unique_ptr<AcceptHandler> h) {
-  acceptor4_ = std::move(h);
+void ConnectionHandler::set_acceptor(std::unique_ptr<AcceptHandler> h) {
+  acceptor_ = std::move(h);
 }
 
-AcceptHandler *ConnectionHandler::get_acceptor4() const {
-  return acceptor4_.get();
+AcceptHandler *ConnectionHandler::get_acceptor() const {
+  return acceptor_.get();
 }
 
 void ConnectionHandler::set_acceptor6(std::unique_ptr<AcceptHandler> h) {
@@ -247,8 +247,8 @@ AcceptHandler *ConnectionHandler::get_acceptor6() const {
 }
 
 void ConnectionHandler::enable_acceptor() {
-  if (acceptor4_) {
-    acceptor4_->enable();
+  if (acceptor_) {
+    acceptor_->enable();
   }
 
   if (acceptor6_) {
@@ -257,8 +257,8 @@ void ConnectionHandler::enable_acceptor() {
 }
 
 void ConnectionHandler::disable_acceptor() {
-  if (acceptor4_) {
-    acceptor4_->disable();
+  if (acceptor_) {
+    acceptor_->disable();
   }
 
   if (acceptor6_) {
@@ -278,8 +278,8 @@ void ConnectionHandler::disable_acceptor_temporary(ev_tstamp t) {
 }
 
 void ConnectionHandler::accept_pending_connection() {
-  if (acceptor4_) {
-    acceptor4_->accept_connection();
+  if (acceptor_) {
+    acceptor_->accept_connection();
   }
   if (acceptor6_) {
     acceptor6_->accept_connection();

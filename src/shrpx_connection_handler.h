@@ -65,8 +65,8 @@ public:
   const std::shared_ptr<TicketKeys> &get_ticket_keys() const;
   struct ev_loop *get_loop() const;
   Worker *get_single_worker() const;
-  void set_acceptor4(std::unique_ptr<AcceptHandler> h);
-  AcceptHandler *get_acceptor4() const;
+  void set_acceptor(std::unique_ptr<AcceptHandler> h);
+  AcceptHandler *get_acceptor() const;
   void set_acceptor6(std::unique_ptr<AcceptHandler> h);
   AcceptHandler *get_acceptor6() const;
   void enable_acceptor();
@@ -87,7 +87,9 @@ private:
   // Worker object.
   std::shared_ptr<TicketKeys> ticket_keys_;
   struct ev_loop *loop_;
-  std::unique_ptr<AcceptHandler> acceptor4_;
+  // acceptor for IPv4 address or UNIX domain socket.
+  std::unique_ptr<AcceptHandler> acceptor_;
+  // acceptor for IPv6 address
   std::unique_ptr<AcceptHandler> acceptor6_;
   ev_timer disable_acceptor_timer_;
   unsigned int worker_round_robin_cnt_;
