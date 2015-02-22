@@ -847,7 +847,9 @@ int create_nonblock_socket(int family) {
   make_socket_closeonexec(fd);
 #endif // !SOCK_NONBLOCK
 
-  make_socket_nodelay(fd);
+  if (family == AF_INET || family == AF_INET6) {
+    make_socket_nodelay(fd);
+  }
 
   return fd;
 }
@@ -1014,6 +1016,26 @@ std::string format_duration(const std::chrono::microseconds &u) {
 std::string dtos(double n) {
   auto f = utos(static_cast<int64_t>(round(100. * n)) % 100);
   return utos(static_cast<int64_t>(n)) + "." + (f.size() == 1 ? "0" : "") + f;
+}
+
+std::string make_hostport(const char *host, uint16_t port) {
+  auto ipv6 = ipv6_numeric_addr(host);
+  std::string hostport;
+
+  if (ipv6) {
+    hostport += "[";
+  }
+
+  hostport += host;
+
+  if (ipv6) {
+    hostport += "]";
+  }
+
+  hostport += ":";
+  hostport += utos(port);
+
+  return hostport;
 }
 
 } // namespace util

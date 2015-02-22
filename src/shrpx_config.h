@@ -30,6 +30,7 @@
 #include <stdint.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/un.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <cstdio>
@@ -51,6 +52,8 @@ namespace ssl {
 class CertLookupTree;
 
 } // namespace ssl
+
+#define SHRPX_UNIX_PATH_PREFIX "unix:"
 
 extern const char SHRPX_OPT_PRIVATE_KEY_FILE[];
 extern const char SHRPX_OPT_PRIVATE_KEY_PASSWD_FILE[];
@@ -139,6 +142,7 @@ union sockaddr_union {
   sockaddr sa;
   sockaddr_in6 in6;
   sockaddr_in in;
+  sockaddr_un un;
 };
 
 enum shrpx_proto { PROTO_HTTP2, PROTO_HTTP };

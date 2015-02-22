@@ -521,6 +521,16 @@ int parse_config(const char *opt, const char *optarg) {
   char host[NI_MAXHOST];
   uint16_t port;
   if (util::strieq(opt, SHRPX_OPT_BACKEND)) {
+    if (util::istartsWith(optarg, SHRPX_UNIX_PATH_PREFIX)) {
+      DownstreamAddr addr;
+      addr.host = strcopy(optarg);
+      addr.port = 0;
+
+      mod_config()->downstream_addrs.push_back(std::move(addr));
+
+      return 0;
+    }
+
     if (split_host_port(host, sizeof(host), &port, optarg) == -1) {
       return -1;
     }

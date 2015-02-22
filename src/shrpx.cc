@@ -28,6 +28,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
+#include <sys/un.h>
 #include <netdb.h>
 #include <signal.h>
 #include <netinet/in.h>
@@ -821,7 +822,9 @@ Connections:
               backend addresses are accepted by repeating this option.
               HTTP/2  backend   does  not  support   multiple  backend
               addresses  and the  first occurrence  of this  option is
-              used.
+              used.  UNIX domain socket  can be specified by prefixing
+              path        name        with       "unix:"        (e.g.,
+              -bunix:/var/run/backend.sock)
               Default: )" << DEFAULT_DOWNSTREAM_HOST << ","
       << DEFAULT_DOWNSTREAM_PORT << R"(
   -f, --frontend=<HOST,PORT>
@@ -1870,23 +1873,35 @@ int main(int argc, char **argv) {
   }
 
   for (auto &addr : mod_config()->downstream_addrs) {
-    auto ipv6 = util::ipv6_numeric_addr(addr.host.get());
-    std::string hostport;
 
-    if (ipv6) {
-      hostport += "[";
+    if (util::istartsWith(addr.host.get(), SHRPX_UNIX_PATH_PREFIX)) {
+      // for AF_UNIX socket, we use "localhost" as host for backend
+      // hostport.  This is used as Host header field to backend and
+      // not going to be passed to any syscalls.
+      addr.hostport =
+          strcopy(util::make_hostport("localhost", get_config()->port));
+
+      auto path = addr.host.get() + str_size(SHRPX_UNIX_PATH_PREFIX);
+      auto pathlen = strlen(path);
+
+      if (pathlen + 1 > sizeof(addr.addr.un.sun_path)) {
+        LOG(FATAL) << "path unix domain socket is bound to is too long > "
+                   << sizeof(addr.addr.un.sun_path);
+        exit(EXIT_FAILURE);
+      }
+
+      LOG(INFO) << "Use UNIX domain socket path " << path
+                << " for backend connection";
+
+      addr.addr.un.sun_family = AF_UNIX;
+      // copy path including terminal NULL
+      std::copy_n(path, pathlen + 1, addr.addr.un.sun_path);
+      addr.addrlen = sizeof(addr.addr.un);
+
+      continue;
     }
 
-    hostport += addr.host.get();
-
-    if (ipv6) {
-      hostport += "]";
-    }
-
-    hostport += ":";
-    hostport += util::utos(addr.port);
-
-    addr.hostport = strcopy(hostport);
+    addr.hostport = strcopy(util::make_hostport(addr.host.get(), addr.port));
 
     if (resolve_hostname(
             &addr.addr, &addr.addrlen, addr.host.get(), addr.port,

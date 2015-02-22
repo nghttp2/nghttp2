@@ -551,6 +551,11 @@ std::string duration_str(double t);
 // fractional digits follow.
 std::string format_duration(const std::chrono::microseconds &u);
 
+// Creates "host:port" string using given |host| and |port|.  If
+// |host| is numeric IPv6 address (e.g., ::1), it is enclosed by "["
+// and "]".
+std::string make_hostport(const char *host, uint16_t port);
+
 } // namespace util
 
 } // namespace nghttp2
