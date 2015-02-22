@@ -7165,7 +7165,6 @@ void test_nghttp2_http_non_final_response(void) {
   };
   nghttp2_outbound_item *item;
   nghttp2_frame_hd hd;
-  nghttp2_stream *stream;
 
   mem = nghttp2_mem_default();
   frame_pack_bufs_init(&bufs);
@@ -7178,9 +7177,8 @@ void test_nghttp2_http_non_final_response(void) {
   nghttp2_hd_deflate_init(&deflater, mem);
 
   /* non-final HEADERS with END_STREAM is illegal */
-  stream = nghttp2_session_open_stream(session, 1, NGHTTP2_STREAM_FLAG_NONE,
-                                       &pri_spec_default,
-                                       NGHTTP2_STREAM_OPENING, NULL);
+  nghttp2_session_open_stream(session, 1, NGHTTP2_STREAM_FLAG_NONE,
+                              &pri_spec_default, NGHTTP2_STREAM_OPENING, NULL);
 
   rv = pack_headers(&bufs, &deflater, 1,
                     NGHTTP2_FLAG_END_HEADERS | NGHTTP2_FLAG_END_STREAM,
@@ -7200,9 +7198,8 @@ void test_nghttp2_http_non_final_response(void) {
   nghttp2_bufs_reset(&bufs);
 
   /* non-final HEADERS followed by non-empty DATA is illegal */
-  stream = nghttp2_session_open_stream(session, 3, NGHTTP2_STREAM_FLAG_NONE,
-                                       &pri_spec_default,
-                                       NGHTTP2_STREAM_OPENING, NULL);
+  nghttp2_session_open_stream(session, 3, NGHTTP2_STREAM_FLAG_NONE,
+                              &pri_spec_default, NGHTTP2_STREAM_OPENING, NULL);
 
   rv = pack_headers(&bufs, &deflater, 3, NGHTTP2_FLAG_END_HEADERS,
                     nonfinal_resnv, ARRLEN(nonfinal_resnv), mem);
@@ -7226,9 +7223,8 @@ void test_nghttp2_http_non_final_response(void) {
 
   /* non-final HEADERS followed by empty DATA (without END_STREAM) is
      ok */
-  stream = nghttp2_session_open_stream(session, 5, NGHTTP2_STREAM_FLAG_NONE,
-                                       &pri_spec_default,
-                                       NGHTTP2_STREAM_OPENING, NULL);
+  nghttp2_session_open_stream(session, 5, NGHTTP2_STREAM_FLAG_NONE,
+                              &pri_spec_default, NGHTTP2_STREAM_OPENING, NULL);
 
   rv = pack_headers(&bufs, &deflater, 5, NGHTTP2_FLAG_END_HEADERS,
                     nonfinal_resnv, ARRLEN(nonfinal_resnv), mem);
@@ -7249,9 +7245,8 @@ void test_nghttp2_http_non_final_response(void) {
 
   /* non-final HEADERS followed by empty DATA (with END_STREAM) is
      illegal */
-  stream = nghttp2_session_open_stream(session, 7, NGHTTP2_STREAM_FLAG_NONE,
-                                       &pri_spec_default,
-                                       NGHTTP2_STREAM_OPENING, NULL);
+  nghttp2_session_open_stream(session, 7, NGHTTP2_STREAM_FLAG_NONE,
+                              &pri_spec_default, NGHTTP2_STREAM_OPENING, NULL);
 
   rv = pack_headers(&bufs, &deflater, 7, NGHTTP2_FLAG_END_HEADERS,
                     nonfinal_resnv, ARRLEN(nonfinal_resnv), mem);
@@ -7275,9 +7270,8 @@ void test_nghttp2_http_non_final_response(void) {
   nghttp2_bufs_reset(&bufs);
 
   /* non-final HEADERS followed by final HEADERS is OK */
-  stream = nghttp2_session_open_stream(session, 9, NGHTTP2_STREAM_FLAG_NONE,
-                                       &pri_spec_default,
-                                       NGHTTP2_STREAM_OPENING, NULL);
+  nghttp2_session_open_stream(session, 9, NGHTTP2_STREAM_FLAG_NONE,
+                              &pri_spec_default, NGHTTP2_STREAM_OPENING, NULL);
 
   rv = pack_headers(&bufs, &deflater, 9, NGHTTP2_FLAG_END_HEADERS,
                     nonfinal_resnv, ARRLEN(nonfinal_resnv), mem);
