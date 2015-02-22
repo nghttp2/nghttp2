@@ -40,7 +40,7 @@ Connections
     addresses  and the  first occurrence  of this  option is
     used.  UNIX domain socket  can be specified by prefixing
     path        name        with       "unix:"        (e.g.,
-    :option:`-bunix`\:/var/run/backend.sock)
+    unix:/var/run/backend.sock)
 
     Default: ``127.0.0.1,80``
 
@@ -49,7 +49,7 @@ Connections
     Set  frontend  host and  port.   If  <HOST> is  '\*',  it
     assumes  all addresses  including  both  IPv4 and  IPv6.
     UNIX domain  socket can  be specified by  prefixing path
-    name with "unix:" (e.g., :option:`-funix`\:/var/run/nghttpx.sock)
+    name with "unix:" (e.g., unix:/var/run/nghttpx.sock)
 
     Default: ``*,3000``
 

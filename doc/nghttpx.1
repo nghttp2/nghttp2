@@ -61,7 +61,7 @@ HTTP/2  backend   does  not  support   multiple  backend
 addresses  and the  first occurrence  of this  option is
 used.  UNIX domain socket  can be specified by prefixing
 path        name        with       "unix:"        (e.g.,
-\fI\-bunix\fP:/var/run/backend.sock)
+unix:/var/run/backend.sock)
 .sp
 Default: \fB127.0.0.1,80\fP
 .UNINDENT
@@ -71,7 +71,7 @@ Default: \fB127.0.0.1,80\fP
 Set  frontend  host and  port.   If  <HOST> is  \(aq*\(aq,  it
 assumes  all addresses  including  both  IPv4 and  IPv6.
 UNIX domain  socket can  be specified by  prefixing path
-name with "unix:" (e.g., \fI\-funix\fP:/var/run/nghttpx.sock)
+name with "unix:" (e.g., unix:/var/run/nghttpx.sock)
 .sp
 Default: \fB*,3000\fP
 .UNINDENT
