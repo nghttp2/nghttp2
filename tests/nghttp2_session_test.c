@@ -6895,6 +6895,13 @@ void test_nghttp2_http_mandatory_headers(void) {
       MAKE_NV(":scheme", "https"), MAKE_NV(":method", "GET"),
       MAKE_NV(":authority", "localhost"), MAKE_NV(":path", "/"),
       MAKE_NV("connection", "close")};
+  const nghttp2_nv badauthority_reqnv[] = {
+      MAKE_NV(":scheme", "https"), MAKE_NV(":method", "GET"),
+      MAKE_NV(":authority", "\x0d\x0alocalhost"), MAKE_NV(":path", "/")};
+  const nghttp2_nv badhdbtw_reqnv[] = {
+      MAKE_NV(":scheme", "https"), MAKE_NV(":method", "GET"),
+      MAKE_NV("foo", "\x0d\x0a"), MAKE_NV(":authority", "localhost"),
+      MAKE_NV(":path", "/")};
 
   mem = nghttp2_mem_default();
 
@@ -6982,6 +6989,17 @@ void test_nghttp2_http_mandatory_headers(void) {
   /* request header has disallowed header field */
   check_nghttp2_http_recv_headers_fail(session, &deflater, 13, -1, badhd_reqnv,
                                        ARRLEN(badhd_reqnv));
+
+  /* request header has :authority header field containing illegal
+     characters */
+  check_nghttp2_http_recv_headers_fail(session, &deflater, 15, -1,
+                                       badauthority_reqnv,
+                                       ARRLEN(badauthority_reqnv));
+
+  /* request header has regular header field containing illegal
+     character before all mandatory header fields are seen. */
+  check_nghttp2_http_recv_headers_fail(session, &deflater, 17, -1,
+                                       badhdbtw_reqnv, ARRLEN(badhdbtw_reqnv));
 
   nghttp2_hd_deflate_free(&deflater);
 
@@ -7414,6 +7432,66 @@ void test_nghttp2_http_trailer_headers(void) {
 
   nghttp2_session_del(session);
 
+  nghttp2_bufs_free(&bufs);
+}
+
+void test_nghttp2_http_ignore_regular_header(void) {
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  nghttp2_hd_deflater deflater;
+  nghttp2_mem *mem;
+  nghttp2_bufs bufs;
+  ssize_t rv;
+  my_user_data ud;
+  const nghttp2_nv bad_reqnv[] = {
+      MAKE_NV(":authority", "localhost"), MAKE_NV(":scheme", "https"),
+      MAKE_NV(":path", "/"),              MAKE_NV(":method", "GET"),
+      MAKE_NV("foo", "\x0zzz"),           MAKE_NV("bar", "buzz"),
+  };
+  const nghttp2_nv bad_ansnv[] = {
+      MAKE_NV(":authority", "localhost"), MAKE_NV(":scheme", "https"),
+      MAKE_NV(":path", "/"), MAKE_NV(":method", "GET"), MAKE_NV("bar", "buzz")};
+  ssize_t proclen;
+  size_t i;
+
+  mem = nghttp2_mem_default();
+  frame_pack_bufs_init(&bufs);
+
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+  callbacks.send_callback = null_send_callback;
+  callbacks.on_header_callback = pause_on_header_callback;
+
+  nghttp2_session_server_new(&session, &callbacks, &ud);
+  nghttp2_hd_deflate_init(&deflater, mem);
+
+  rv = pack_headers(&bufs, &deflater, 1,
+                    NGHTTP2_FLAG_END_HEADERS | NGHTTP2_FLAG_END_STREAM,
+                    bad_reqnv, ARRLEN(bad_reqnv), mem);
+
+  CU_ASSERT_FATAL(0 == rv);
+
+  proclen = 0;
+
+  for (i = 0; i < 4; ++i) {
+    rv = nghttp2_session_mem_recv(session, bufs.head->buf.pos + proclen,
+                                  nghttp2_buf_len(&bufs.head->buf) - proclen);
+    CU_ASSERT_FATAL(rv > 0);
+    proclen += rv;
+    CU_ASSERT(nghttp2_nv_equal(&bad_ansnv[i], &ud.nv));
+  }
+
+  rv = nghttp2_session_mem_recv(session, bufs.head->buf.pos + proclen,
+                                nghttp2_buf_len(&bufs.head->buf) - proclen);
+  CU_ASSERT_FATAL(rv > 0);
+  /* header field "foo" must be ignored because it has illegal value.
+     So we have "bar" header field for 5th header. */
+  CU_ASSERT(nghttp2_nv_equal(&bad_ansnv[4], &ud.nv));
+  proclen += rv;
+
+  CU_ASSERT(nghttp2_buf_len(&bufs.head->buf) == proclen);
+
+  nghttp2_hd_deflate_free(&deflater);
+  nghttp2_session_del(session);
   nghttp2_bufs_free(&bufs);
 }
 

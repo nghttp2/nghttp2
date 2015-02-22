@@ -269,6 +269,8 @@ int main(int argc _U_, char *argv[] _U_) {
                    test_nghttp2_http_non_final_response) ||
       !CU_add_test(pSuite, "http_trailer_headers",
                    test_nghttp2_http_trailer_headers) ||
+      !CU_add_test(pSuite, "http_ignore_regular_header",
+                   test_nghttp2_http_ignore_regular_header) ||
       !CU_add_test(pSuite, "http_ignore_content_length",
                    test_nghttp2_http_ignore_content_length) ||
       !CU_add_test(pSuite, "http_record_request_method",

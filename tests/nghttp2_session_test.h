@@ -127,6 +127,7 @@ void test_nghttp2_http_content_length(void);
 void test_nghttp2_http_content_length_mismatch(void);
 void test_nghttp2_http_non_final_response(void);
 void test_nghttp2_http_trailer_headers(void);
+void test_nghttp2_http_ignore_regular_header(void);
 void test_nghttp2_http_ignore_content_length(void);
 void test_nghttp2_http_record_request_method(void);
 void test_nghttp2_http_push_promise(void);

@@ -37,7 +37,9 @@
  * This function is called when HTTP header field |nv| in |frame| is
  * received for |stream|.  This function will validate |nv| against
  * the current state of stream.  This function returns 0 if it
- * succeeds, or -1.
+ * succeeds, or 1 if the header field should be ignored, or -1 if the
+ * header field contains totally unforgivable piece of junk and stream
+ * should be killed.
  */
 int nghttp2_http_on_header(nghttp2_session *session, nghttp2_stream *stream,
                            nghttp2_frame *frame, nghttp2_nv *nv, int trailer);

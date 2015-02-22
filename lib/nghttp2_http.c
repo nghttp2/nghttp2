@@ -384,7 +384,21 @@ int nghttp2_http_on_header(nghttp2_session *session, nghttp2_stream *stream,
                            nghttp2_frame *frame, nghttp2_nv *nv, int trailer) {
   if (!nghttp2_check_header_name(nv->name, nv->namelen) ||
       !nghttp2_check_header_value(nv->value, nv->valuelen)) {
-    return -1;
+    /* We are strict for pseudo header field.  One bad character
+       should lead to fail.  OTOH, we should be a bit forgiving for
+       regular headers, since existing public internet has so much
+       illegal headers floating around and if we kill the stream
+       because of this, we may disrupt many web sites and/or
+       libraries.  So we become conservative here, and just ignore
+       those illegal regular headers. */
+    if (nv->namelen > 0 && nv->name[0] == ':') {
+      return -1;
+    }
+    /* When ignoring regular headers, we set this flag so that we
+       still enforce header field ordering rule for pseudo header
+       fields. */
+    stream->http_flags |= NGHTTP2_HTTP_FLAG_PSEUDO_HEADER_DISALLOWED;
+    return 1;
   }
 
   if (session->server || frame->hd.type == NGHTTP2_PUSH_PROMISE) {

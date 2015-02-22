@@ -3166,10 +3166,11 @@ static int inflate_header_block(nghttp2_session *session, nghttp2_frame *frame,
     DEBUGF(fprintf(stderr, "recv: proclen=%zd\n", proclen));
 
     if (call_header_cb && (inflate_flags & NGHTTP2_HD_INFLATE_EMIT)) {
+      rv = 0;
       if (subject_stream && session_enforce_http_messaging(session)) {
         rv = nghttp2_http_on_header(session, subject_stream, frame, &nv,
                                     trailer);
-        if (rv != 0) {
+        if (rv == -1) {
           DEBUGF(fprintf(
               stderr, "recv: HTTP error: type=%d, id=%d, header %.*s: %.*s\n",
               frame->hd.type, subject_stream->stream_id, (int)nv.namelen,
@@ -3180,9 +3181,15 @@ static int inflate_header_block(nghttp2_session *session, nghttp2_frame *frame,
             return rv;
           }
           return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+        } else if (rv == 1) {
+          /* header is ignored */
+          DEBUGF(fprintf(
+              stderr, "recv: HTTP ignored: type=%d, id=%d, header %.*s: %.*s\n",
+              frame->hd.type, subject_stream->stream_id, (int)nv.namelen,
+              nv.name, (int)nv.valuelen, nv.value));
         }
       }
-      if (call_header_cb) {
+      if (rv == 0 && call_header_cb) {
         rv = session_call_on_header(session, frame, &nv);
         /* This handles NGHTTP2_ERR_PAUSE and
            NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE as well */
