@@ -203,6 +203,8 @@ struct Config {
   ev_tstamp stream_write_timeout;
   ev_tstamp downstream_idle_read_timeout;
   ev_tstamp listener_disable_timeout;
+  // address of frontend connection.  This could be a path to UNIX
+  // domain socket.  In this case, |host_unix| must be true.
   std::unique_ptr<char[]> host;
   std::unique_ptr<char[]> private_key_file;
   std::unique_ptr<char[]> private_key_passwd;
@@ -279,6 +281,8 @@ struct Config {
   uid_t uid;
   gid_t gid;
   pid_t pid;
+  // frontend listening port.  0 if frontend listens on UNIX domain
+  // socket, in this case |host_unix| must be true.
   uint16_t port;
   // port in http proxy URI
   uint16_t downstream_http_proxy_port;
@@ -309,6 +313,8 @@ struct Config {
   bool no_host_rewrite;
   bool tls_ctx_per_worker;
   bool no_server_push;
+  // true if host contains UNIX domain socket path
+  bool host_unix;
 };
 
 const Config *get_config();

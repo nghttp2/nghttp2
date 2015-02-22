@@ -237,6 +237,10 @@ inline bool startsWith(const std::string &a, const std::string &b) {
   return startsWith(std::begin(a), std::end(a), std::begin(b), std::end(b));
 }
 
+inline bool startsWith(const char *a, const char *b) {
+  return startsWith(a, a + strlen(a), b, b + strlen(b));
+}
+
 struct CaseCmp {
   bool operator()(char lhs, char rhs) const {
     return lowcase(lhs) == lowcase(rhs);
@@ -340,6 +344,13 @@ bool streq(InputIt1 a, size_t alen, InputIt2 b, size_t blen) {
     return false;
   }
   return std::equal(a, a + alen, b);
+}
+
+inline bool streq(const char *a, const char *b) {
+  if (!a || !b) {
+    return false;
+  }
+  return streq(a, strlen(a), b, strlen(b));
 }
 
 template <typename InputIt, size_t N>

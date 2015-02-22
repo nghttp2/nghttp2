@@ -545,12 +545,22 @@ int parse_config(const char *opt, const char *optarg) {
   }
 
   if (util::strieq(opt, SHRPX_OPT_FRONTEND)) {
+    if (util::istartsWith(optarg, SHRPX_UNIX_PATH_PREFIX)) {
+      auto path = optarg + str_size(SHRPX_UNIX_PATH_PREFIX);
+      mod_config()->host = strcopy(path);
+      mod_config()->port = 0;
+      mod_config()->host_unix = true;
+
+      return 0;
+    }
+
     if (split_host_port(host, sizeof(host), &port, optarg) == -1) {
       return -1;
     }
 
     mod_config()->host = strcopy(host);
     mod_config()->port = port;
+    mod_config()->host_unix = false;
 
     return 0;
   }

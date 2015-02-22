@@ -48,6 +48,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <initializer_list>
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -89,6 +90,13 @@ const int GRACEFUL_SHUTDOWN_SIGNAL = SIGQUIT;
 // Environment variable to tell new binary the port number the current
 // binary is listening to.
 #define ENV_PORT "NGHTTPX_PORT"
+
+// Environment variable to tell new binary the listening socket's file
+// descriptor if frontend listens UNIX domain socket.
+#define ENV_UNIX_FD "NGHTTP2_UNIX_FD"
+// Environment variable to tell new binary the UNIX domain socket
+// path.
+#define ENV_UNIX_PATH "NGHTTP2_UNIX_PATH"
 
 namespace {
 int resolve_hostname(sockaddr_union *addr, size_t *addrlen,
@@ -134,6 +142,85 @@ int resolve_hostname(sockaddr_union *addr, size_t *addrlen,
   *addrlen = res->ai_addrlen;
   freeaddrinfo(res);
   return 0;
+}
+} // namespace
+
+namespace {
+void close_env_fd(std::initializer_list<const char *> envnames) {
+  for (auto envname : envnames) {
+    auto envfd = getenv(envname);
+    if (!envfd) {
+      continue;
+    }
+    auto fd = strtol(envfd, nullptr, 10);
+    close(fd);
+  }
+}
+} // namespace
+
+namespace {
+std::unique_ptr<AcceptHandler>
+create_unix_domain_acceptor(ConnectionHandler *handler) {
+  auto path = get_config()->host.get();
+  auto pathlen = strlen(path);
+  {
+    auto envfd = getenv(ENV_UNIX_FD);
+    auto envpath = getenv(ENV_UNIX_PATH);
+    if (envfd && envpath) {
+      auto fd = strtoul(envfd, nullptr, 10);
+
+      if (util::streq(envpath, path)) {
+        LOG(NOTICE) << "Listening on UNIX domain socket " << path;
+
+        return make_unique<AcceptHandler>(fd, handler);
+      }
+
+      LOG(WARN) << "UNIX domain socket path was changed between old binary ("
+                << envpath << ") and new binary (" << path << ")";
+      close(fd);
+    }
+  }
+
+#ifdef SOCK_NONBLOCK
+  auto fd = socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0);
+  if (fd == -1) {
+    return nullptr;
+  }
+#else  // !SOCK_NONBLOCK
+  auto fd = socket(AF_UNIX, SOCK_STREAM, 0);
+  if (fd == -1) {
+    return nullptr;
+  }
+  util::make_socket_nonblocking(fd);
+#endif // !SOCK_NONBLOCK
+  int val = 1;
+  if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &val,
+                 static_cast<socklen_t>(sizeof(val))) == -1) {
+    close(fd);
+    return nullptr;
+  }
+
+  sockaddr_union addr;
+  addr.un.sun_family = AF_UNIX;
+  if (pathlen + 1 > sizeof(addr.un.sun_path)) {
+    LOG(FATAL) << "UNIX domain socket path " << path << " is too long > "
+               << sizeof(addr.un.sun_path);
+    return nullptr;
+  }
+  // copy path including terminal NULL
+  std::copy_n(path, pathlen + 1, addr.un.sun_path);
+
+  // unlink (remove) already existing UNIX domain socket path
+  unlink(path);
+
+  if (bind(fd, &addr.sa, sizeof(addr.un)) != 0 ||
+      listen(fd, get_config()->backlog) != 0) {
+    return nullptr;
+  }
+
+  LOG(NOTICE) << "Listening on UNIX domain socket " << path;
+
+  return make_unique<AcceptHandler>(fd, handler);
 }
 } // namespace
 
@@ -367,32 +454,45 @@ void exec_binary_signal_cb(struct ev_loop *loop, ev_signal *w, int revents) {
   size_t envlen = 0;
   for (char **p = environ; *p; ++p, ++envlen)
     ;
-  // 3 for missing fd4, fd6 and port.
+  // 3 for missing (fd4, fd6 and port) or (unix fd and unix path)
   auto envp = make_unique<char *[]>(envlen + 3 + 1);
   size_t envidx = 0;
 
-  auto acceptor4 = conn_handler->get_acceptor4();
-  if (acceptor4) {
-    std::string fd4 = ENV_LISTENER4_FD "=";
-    fd4 += util::utos(acceptor4->get_fd());
-    envp[envidx++] = strdup(fd4.c_str());
-  }
+  if (get_config()->host_unix) {
+    auto acceptor = conn_handler->get_acceptor4();
+    std::string fd = ENV_UNIX_FD "=";
+    fd += util::utos(acceptor->get_fd());
+    envp[envidx++] = strdup(fd.c_str());
 
-  auto acceptor6 = conn_handler->get_acceptor6();
-  if (acceptor6) {
-    std::string fd6 = ENV_LISTENER6_FD "=";
-    fd6 += util::utos(acceptor6->get_fd());
-    envp[envidx++] = strdup(fd6.c_str());
-  }
+    std::string path = ENV_UNIX_PATH "=";
+    path += get_config()->host.get();
+    envp[envidx++] = strdup(path.c_str());
+  } else {
+    auto acceptor4 = conn_handler->get_acceptor4();
+    if (acceptor4) {
+      std::string fd4 = ENV_LISTENER4_FD "=";
+      fd4 += util::utos(acceptor4->get_fd());
+      envp[envidx++] = strdup(fd4.c_str());
+    }
 
-  std::string port = ENV_PORT "=";
-  port += util::utos(get_config()->port);
-  envp[envidx++] = strdup(port.c_str());
+    auto acceptor6 = conn_handler->get_acceptor6();
+    if (acceptor6) {
+      std::string fd6 = ENV_LISTENER6_FD "=";
+      fd6 += util::utos(acceptor6->get_fd());
+      envp[envidx++] = strdup(fd6.c_str());
+    }
+
+    std::string port = ENV_PORT "=";
+    port += util::utos(get_config()->port);
+    envp[envidx++] = strdup(port.c_str());
+  }
 
   for (size_t i = 0; i < envlen; ++i) {
-    if (strcmp(ENV_LISTENER4_FD, environ[i]) == 0 ||
-        strcmp(ENV_LISTENER6_FD, environ[i]) == 0 ||
-        strcmp(ENV_PORT, environ[i]) == 0) {
+    if (util::startsWith(environ[i], ENV_LISTENER4_FD) ||
+        util::startsWith(environ[i], ENV_LISTENER6_FD) ||
+        util::startsWith(environ[i], ENV_PORT) ||
+        util::startsWith(environ[i], ENV_UNIX_FD) ||
+        util::startsWith(environ[i], ENV_UNIX_PATH)) {
       continue;
     }
 
@@ -528,16 +628,29 @@ int event_loop() {
     save_pid();
   }
 
-  auto acceptor6 = create_acceptor(conn_handler.get(), AF_INET6);
-  auto acceptor4 = create_acceptor(conn_handler.get(), AF_INET);
-  if (!acceptor6 && !acceptor4) {
-    LOG(FATAL) << "Failed to listen on address " << get_config()->host.get()
-               << ", port " << get_config()->port;
-    exit(EXIT_FAILURE);
-  }
+  if (get_config()->host_unix) {
+    close_env_fd({ENV_LISTENER4_FD, ENV_LISTENER6_FD});
+    auto acceptor = create_unix_domain_acceptor(conn_handler.get());
+    if (!acceptor) {
+      LOG(FATAL) << "Failed to listen on UNIX domain socket "
+                 << get_config()->host.get();
+      exit(EXIT_FAILURE);
+    }
 
-  conn_handler->set_acceptor4(std::move(acceptor4));
-  conn_handler->set_acceptor6(std::move(acceptor6));
+    conn_handler->set_acceptor4(std::move(acceptor));
+  } else {
+    close_env_fd({ENV_UNIX_FD});
+    auto acceptor6 = create_acceptor(conn_handler.get(), AF_INET6);
+    auto acceptor4 = create_acceptor(conn_handler.get(), AF_INET);
+    if (!acceptor6 && !acceptor4) {
+      LOG(FATAL) << "Failed to listen on address " << get_config()->host.get()
+                 << ", port " << get_config()->port;
+      exit(EXIT_FAILURE);
+    }
+
+    conn_handler->set_acceptor4(std::move(acceptor4));
+    conn_handler->set_acceptor6(std::move(acceptor6));
+  }
 
   ev_timer renew_ticket_key_timer;
   if (!get_config()->upstream_no_tls) {
@@ -787,6 +900,7 @@ void fill_default_config() {
   mod_config()->downstream_request_buffer_size = 16 * 1024;
   mod_config()->downstream_response_buffer_size = 16 * 1024;
   mod_config()->no_server_push = false;
+  mod_config()->host_unix = false;
 }
 } // namespace
 
@@ -829,7 +943,9 @@ Connections:
       << DEFAULT_DOWNSTREAM_PORT << R"(
   -f, --frontend=<HOST,PORT>
               Set  frontend  host and  port.   If  <HOST> is  '*',  it
-              assumes all addresses including both IPv4 and IPv6.
+              assumes  all addresses  including  both  IPv4 and  IPv6.
+              UNIX domain  socket can  be specified by  prefixing path
+              name with "unix:" (e.g., -funix:/var/run/nghttpx.sock)
               Default: )" << get_config()->host.get() << ","
       << get_config()->port << R"(
   --backlog=<N>
@@ -1885,7 +2001,7 @@ int main(int argc, char **argv) {
       auto pathlen = strlen(path);
 
       if (pathlen + 1 > sizeof(addr.addr.un.sun_path)) {
-        LOG(FATAL) << "path unix domain socket is bound to is too long > "
+        LOG(FATAL) << "UNIX domain socket path " << path << " is too long > "
                    << sizeof(addr.addr.un.sun_path);
         exit(EXIT_FAILURE);
       }
