@@ -172,7 +172,7 @@ int main(int argc, char **argv) {
         {"early-response", no_argument, &flag, 5},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
-    int c = 
+    int c =
         getopt_long(argc, argv, "DVb:c:d:ehn:p:va:", long_options, &option_index);
     char *end;
     if (c == -1) {
