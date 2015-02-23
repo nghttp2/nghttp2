@@ -154,27 +154,26 @@ int main(int argc, char **argv) {
   while (1) {
     static int flag = 0;
     static option long_options[] = {
-      { "address", required_argument, nullptr, 'a' },
-      { "daemon", no_argument, nullptr, 'D' },
-      { "htdocs", required_argument, nullptr, 'd' },
-      { "help", no_argument, nullptr, 'h' },
-      { "verbose", no_argument, nullptr, 'v' },
-      { "verify-client", no_argument, nullptr, 'V' },
-      { "header-table-size", required_argument, nullptr, 'c' },
-      { "push", required_argument, nullptr, 'p' },
-      { "padding", required_argument, nullptr, 'b' },
-      { "workers", required_argument, nullptr, 'n' },
-      { "error-gzip", no_argument, nullptr, 'e' },
-      { "no-tls", no_argument, &flag, 1 },
-      { "color", no_argument, &flag, 2 },
-      { "version", no_argument, &flag, 3 },
-      { "dh-param-file", required_argument, &flag, 4 },
-      { "early-response", no_argument, &flag, 5 },
-      { nullptr, 0, nullptr, 0 }
-    };
+        {"address", required_argument, nullptr, 'a'},
+        {"daemon", no_argument, nullptr, 'D'},
+        {"htdocs", required_argument, nullptr, 'd'},
+        {"help", no_argument, nullptr, 'h'},
+        {"verbose", no_argument, nullptr, 'v'},
+        {"verify-client", no_argument, nullptr, 'V'},
+        {"header-table-size", required_argument, nullptr, 'c'},
+        {"push", required_argument, nullptr, 'p'},
+        {"padding", required_argument, nullptr, 'b'},
+        {"workers", required_argument, nullptr, 'n'},
+        {"error-gzip", no_argument, nullptr, 'e'},
+        {"no-tls", no_argument, &flag, 1},
+        {"color", no_argument, &flag, 2},
+        {"version", no_argument, &flag, 3},
+        {"dh-param-file", required_argument, &flag, 4},
+        {"early-response", no_argument, &flag, 5},
+        {nullptr, 0, nullptr, 0}};
     int option_index = 0;
-    int c = getopt_long(argc, argv, "DVb:c:d:ehn:p:va:", long_options,
-                        &option_index);
+    int c = 
+        getopt_long(argc, argv, "DVb:c:d:ehn:p:va:", long_options, &option_index);
     char *end;
     if (c == -1) {
       break;
