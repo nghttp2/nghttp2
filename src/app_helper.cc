@@ -408,8 +408,11 @@ int verbose_on_header_callback(nghttp2_session *session,
                    namelen, valuelen};
 
   print_timer();
-  fprintf(outfile, " recv (stream_id=%d, noind=%d) ", frame->hd.stream_id,
-          (flags & NGHTTP2_NV_FLAG_NO_INDEX) != 0);
+  fprintf(outfile, " recv (stream_id=%d", frame->hd.stream_id);
+  if (flags & NGHTTP2_NV_FLAG_NO_INDEX) {
+    fprintf(outfile, ", sensitive");
+  }
+  fprintf(outfile, ") ");
 
   print_nv(&nv);
   fflush(outfile);
