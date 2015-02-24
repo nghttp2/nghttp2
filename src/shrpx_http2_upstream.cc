@@ -250,16 +250,12 @@ int on_request_headers(Http2Upstream *upstream, Downstream *downstream,
   auto method = downstream->get_request_header(http2::HD__METHOD);
   auto scheme = downstream->get_request_header(http2::HD__SCHEME);
 
-  bool is_connect = "CONNECT" == method->value;
-  bool having_authority = http2::non_empty_value(authority);
-
   // presence of mandatory header fields are guaranteed by libnghttp2.
-  if (!is_connect) {
-    // For HTTP/2 proxy, :authority is required.
-    if (get_config()->http2_proxy && !having_authority) {
-      upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
-      return 0;
-    }
+
+  // For HTTP/2 proxy, we request :authority.
+  if (method->value != "CONNECT" && get_config()->http2_proxy && !authority) {
+    upstream->rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
+    return 0;
   }
 
   downstream->set_request_method(http2::value_to_str(method));
