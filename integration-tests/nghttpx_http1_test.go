@@ -349,7 +349,7 @@ func TestH1H2GenerateVia(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
-	if got, want := res.header.Get("Via"), "2.0 nghttpx"; got != want {
+	if got, want := res.header.Get("Via"), "2 nghttpx"; got != want {
 		t.Errorf("Via: %v; want %v", got, want)
 	}
 }
@@ -374,7 +374,7 @@ func TestH1H2AppendVia(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error st.http1() = %v", err)
 	}
-	if got, want := res.header.Get("Via"), "bar, 2.0 nghttpx"; got != want {
+	if got, want := res.header.Get("Via"), "bar, 2 nghttpx"; got != want {
 		t.Errorf("Via: %v; want %v", got, want)
 	}
 }

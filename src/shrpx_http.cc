@@ -55,8 +55,10 @@ std::string create_error_html(unsigned int status_code) {
 std::string create_via_header_value(int major, int minor) {
   std::string hdrs;
   hdrs += static_cast<char>(major + '0');
-  hdrs += ".";
-  hdrs += static_cast<char>(minor + '0');
+  if (major < 2) {
+    hdrs += ".";
+    hdrs += static_cast<char>(minor + '0');
+  }
   hdrs += " nghttpx";
   return hdrs;
 }

@@ -125,7 +125,7 @@ func TestH2H1StripAddXff(t *testing.T) {
 // from backend server.
 func TestH2H1GenerateVia(t *testing.T) {
 	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
-		if got, want := r.Header.Get("Via"), "2.0 nghttpx"; got != want {
+		if got, want := r.Header.Get("Via"), "2 nghttpx"; got != want {
 			t.Errorf("Via: %v; want %v", got, want)
 		}
 	})
@@ -146,7 +146,7 @@ func TestH2H1GenerateVia(t *testing.T) {
 // header field to and from backend server.
 func TestH2H1AppendVia(t *testing.T) {
 	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
-		if got, want := r.Header.Get("Via"), "foo, 2.0 nghttpx"; got != want {
+		if got, want := r.Header.Get("Via"), "foo, 2 nghttpx"; got != want {
 			t.Errorf("Via: %v; want %v", got, want)
 		}
 		w.Header().Add("Via", "bar")

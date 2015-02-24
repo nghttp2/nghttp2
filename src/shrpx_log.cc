@@ -197,8 +197,10 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv, LogSpec *lgsp) {
       std::tie(p, avail) = copy(lgsp->path, avail, p);
       std::tie(p, avail) = copy(" HTTP/", avail, p);
       std::tie(p, avail) = copy(util::utos(lgsp->major).c_str(), avail, p);
-      std::tie(p, avail) = copy(".", avail, p);
-      std::tie(p, avail) = copy(util::utos(lgsp->minor).c_str(), avail, p);
+      if (lgsp->major < 2) {
+        std::tie(p, avail) = copy(".", avail, p);
+        std::tie(p, avail) = copy(util::utos(lgsp->minor).c_str(), avail, p);
+      }
       break;
     case SHRPX_LOGF_STATUS:
       std::tie(p, avail) = copy(util::utos(lgsp->status).c_str(), avail, p);
