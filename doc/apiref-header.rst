@@ -68,6 +68,11 @@ All request and response headers must include exactly one valid value
 for each pseudo header field.  Additionally nghttp2 requires all
 request headers must not include more than one "Host" header field.
 
+HTTP/2 prohibits connection-specific header fields.  The following
+header fields must not appear: "Connection", "Keep-Alive",
+"Proxy-Connection", "Transfer-Encoding" and "Upgrade".  Additionally,
+"TE" header field must not include any value other than "trailers".
+
 Each header field name and value must obey the field-name and
 field-value production rules described in `RFC 7230, section
 3.2. <https://tools.ietf.org/html/rfc7230#section-3.2>`_.
