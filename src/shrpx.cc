@@ -65,6 +65,8 @@
 #include "shrpx_worker_config.h"
 #include "shrpx_worker.h"
 #include "shrpx_accept_handler.h"
+#include "shrpx_http2_upstream.h"
+#include "shrpx_http2_session.h"
 #include "util.h"
 #include "app_helper.h"
 #include "ssl.h"
@@ -888,6 +890,10 @@ void fill_default_config() {
   mod_config()->upstream_frame_debug = false;
   mod_config()->padding = 0;
   mod_config()->worker_frontend_connections = 0;
+
+  mod_config()->http2_upstream_callbacks = create_http2_upstream_callbacks();
+  mod_config()->http2_downstream_callbacks =
+      create_http2_downstream_callbacks();
 
   nghttp2_option_new(&mod_config()->http2_option);
   nghttp2_option_set_no_auto_window_update(get_config()->http2_option, 1);

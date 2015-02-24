@@ -194,6 +194,8 @@ private:
   ReadBuf rb_;
 };
 
+nghttp2_session_callbacks *create_http2_downstream_callbacks();
+
 } // namespace shrpx
 
 #endif // SHRPX_HTTP2_SESSION_H

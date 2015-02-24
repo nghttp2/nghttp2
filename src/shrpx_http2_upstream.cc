@@ -605,25 +605,15 @@ void Http2Upstream::check_shutdown() {
   }
 }
 
-Http2Upstream::Http2Upstream(ClientHandler *handler)
-    : downstream_queue_(
-          get_config()->http2_proxy
-              ? get_config()->downstream_connections_per_host
-              : get_config()->downstream_proto == PROTO_HTTP
-                    ? get_config()->downstream_connections_per_frontend
-                    : 0,
-          !get_config()->http2_proxy),
-      handler_(handler), session_(nullptr), data_pending_(nullptr),
-      data_pendinglen_(0), shutdown_handled_(false) {
-
+nghttp2_session_callbacks *create_http2_upstream_callbacks() {
   int rv;
-
   nghttp2_session_callbacks *callbacks;
+
   rv = nghttp2_session_callbacks_new(&callbacks);
 
-  assert(rv == 0);
-
-  auto callbacks_deleter = defer(nghttp2_session_callbacks_del, callbacks);
+  if (rv != 0) {
+    return nullptr;
+  }
 
   nghttp2_session_callbacks_set_on_stream_close_callback(
       callbacks, on_stream_close_callback);
@@ -651,7 +641,24 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
         callbacks, http::select_padding_callback);
   }
 
-  rv = nghttp2_session_server_new2(&session_, callbacks, this,
+  return callbacks;
+}
+
+Http2Upstream::Http2Upstream(ClientHandler *handler)
+    : downstream_queue_(
+          get_config()->http2_proxy
+              ? get_config()->downstream_connections_per_host
+              : get_config()->downstream_proto == PROTO_HTTP
+                    ? get_config()->downstream_connections_per_frontend
+                    : 0,
+          !get_config()->http2_proxy),
+      handler_(handler), session_(nullptr), data_pending_(nullptr),
+      data_pendinglen_(0), shutdown_handled_(false) {
+
+  int rv;
+
+  rv = nghttp2_session_server_new2(&session_,
+                                   get_config()->http2_upstream_callbacks, this,
                                    get_config()->http2_option);
 
   assert(rv == 0);

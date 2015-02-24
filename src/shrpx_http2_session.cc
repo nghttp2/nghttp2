@@ -1096,6 +1096,45 @@ int on_frame_not_send_callback(nghttp2_session *session,
 }
 } // namespace
 
+nghttp2_session_callbacks *create_http2_downstream_callbacks() {
+  int rv;
+  nghttp2_session_callbacks *callbacks;
+
+  rv = nghttp2_session_callbacks_new(&callbacks);
+
+  if (rv != 0) {
+    return nullptr;
+  }
+
+  nghttp2_session_callbacks_set_on_stream_close_callback(
+      callbacks, on_stream_close_callback);
+
+  nghttp2_session_callbacks_set_on_frame_recv_callback(callbacks,
+                                                       on_frame_recv_callback);
+
+  nghttp2_session_callbacks_set_on_data_chunk_recv_callback(
+      callbacks, on_data_chunk_recv_callback);
+
+  nghttp2_session_callbacks_set_on_frame_send_callback(callbacks,
+                                                       on_frame_send_callback);
+
+  nghttp2_session_callbacks_set_on_frame_not_send_callback(
+      callbacks, on_frame_not_send_callback);
+
+  nghttp2_session_callbacks_set_on_header_callback(callbacks,
+                                                   on_header_callback);
+
+  nghttp2_session_callbacks_set_on_begin_headers_callback(
+      callbacks, on_begin_headers_callback);
+
+  if (get_config()->padding) {
+    nghttp2_session_callbacks_set_select_padding_callback(
+        callbacks, http::select_padding_callback);
+  }
+
+  return callbacks;
+}
+
 int Http2Session::on_connect() {
   int rv;
 
@@ -1127,43 +1166,9 @@ int Http2Session::on_connect() {
     }
   }
 
-  nghttp2_session_callbacks *callbacks;
-  rv = nghttp2_session_callbacks_new(&callbacks);
-
-  if (rv != 0) {
-    return -1;
-  }
-
-  auto callbacks_deleter = defer(nghttp2_session_callbacks_del, callbacks);
-
-  nghttp2_session_callbacks_set_on_stream_close_callback(
-      callbacks, on_stream_close_callback);
-
-  nghttp2_session_callbacks_set_on_frame_recv_callback(callbacks,
-                                                       on_frame_recv_callback);
-
-  nghttp2_session_callbacks_set_on_data_chunk_recv_callback(
-      callbacks, on_data_chunk_recv_callback);
-
-  nghttp2_session_callbacks_set_on_frame_send_callback(callbacks,
-                                                       on_frame_send_callback);
-
-  nghttp2_session_callbacks_set_on_frame_not_send_callback(
-      callbacks, on_frame_not_send_callback);
-
-  nghttp2_session_callbacks_set_on_header_callback(callbacks,
-                                                   on_header_callback);
-
-  nghttp2_session_callbacks_set_on_begin_headers_callback(
-      callbacks, on_begin_headers_callback);
-
-  if (get_config()->padding) {
-    nghttp2_session_callbacks_set_select_padding_callback(
-        callbacks, http::select_padding_callback);
-  }
-
-  rv = nghttp2_session_client_new2(&session_, callbacks, this,
-                                   get_config()->http2_client_option);
+  rv = nghttp2_session_client_new2(&session_,
+                                   get_config()->http2_downstream_callbacks,
+                                   this, get_config()->http2_client_option);
 
   if (rv != 0) {
     return -1;

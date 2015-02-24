@@ -247,6 +247,8 @@ struct Config {
   std::unique_ptr<char[]> errorlog_file;
   FILE *http2_upstream_dump_request_header;
   FILE *http2_upstream_dump_response_header;
+  nghttp2_session_callbacks *http2_upstream_callbacks;
+  nghttp2_session_callbacks *http2_downstream_callbacks;
   nghttp2_option *http2_option;
   nghttp2_option *http2_client_option;
   char **argv;
