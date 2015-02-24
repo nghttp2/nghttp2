@@ -71,7 +71,13 @@ request headers must not include more than one "Host" header field.
 Each header field name and value must obey the field-name and
 field-value production rules described in `RFC 7230, section
 3.2. <https://tools.ietf.org/html/rfc7230#section-3.2>`_.
-Additionally, all field name must be lower cased.
+Additionally, all field name must be lower cased.  While the pseudo
+header fields must satisfy these rules, we just ignore illegal regular
+headers (this means that these header fields are not passed to
+application callback).  This is because these illegal header fields
+are floating around in existing internet and resetting stream just
+because of this may break many web sites.  This is especially true if
+we forward to or translate from HTTP/1 traffic.
 
 With the above validations, nghttp2 library guarantees that header
 field name passed to `nghttp2_on_header_callback()` is not empty.
