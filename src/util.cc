@@ -686,6 +686,18 @@ bool numeric_host(const char *hostname) {
   return true;
 }
 
+// Returns numeric address string of |addr|.  If getnameinfo() is
+// failed, "unknown" is returned.
+std::string numeric_name(addrinfo *addr) {
+  char host[NI_MAXHOST];
+  auto rv = getnameinfo(addr->ai_addr, addr->ai_addrlen, host, sizeof(host),
+                        nullptr, 0, NI_NUMERICHOST);
+  if (rv != 0) {
+    return "unknown";
+  }
+  return host;
+}
+
 int reopen_log_file(const char *path) {
 #if defined(__ANDROID__) || defined(ANDROID)
   int fd;

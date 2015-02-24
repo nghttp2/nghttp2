@@ -1536,8 +1536,7 @@ int start_listen(struct ev_loop *loop, Sessions *sessions,
       new ListenEventHandler(sessions, fd, acceptor);
 
       if (config->verbose) {
-        char s[INET6_ADDRSTRLEN];
-        get_ip_str((struct sockaddr *)rp->ai_addr, s, sizeof s);
+        std::string s = util::numeric_name(rp);
         std::cout << (rp->ai_family == AF_INET ? "IPv4" : "IPv6") << ": listen "
                   << s << ":" << config->port << std::endl;
       }
