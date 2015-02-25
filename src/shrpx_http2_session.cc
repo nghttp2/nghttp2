@@ -39,7 +39,6 @@
 #include "shrpx_client_handler.h"
 #include "shrpx_ssl.h"
 #include "shrpx_http.h"
-#include "shrpx_worker_config.h"
 #include "http2.h"
 #include "util.h"
 #include "base64.h"

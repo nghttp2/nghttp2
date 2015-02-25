@@ -32,7 +32,6 @@
 #include "shrpx_client_handler.h"
 #include "shrpx_ssl.h"
 #include "shrpx_worker.h"
-#include "shrpx_worker_config.h"
 #include "shrpx_config.h"
 #include "shrpx_http2_session.h"
 #include "shrpx_connect_blocker.h"

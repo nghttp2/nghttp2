@@ -37,7 +37,6 @@
 
 #include "shrpx_config.h"
 #include "shrpx_downstream.h"
-#include "shrpx_worker_config.h"
 #include "util.h"
 #include "template.h"
 
@@ -100,10 +99,10 @@ Log::~Log() {
     return;
   }
 
-  auto wconf = worker_config;
+  auto lgconf = log_config;
 
   if (!log_enabled(severity_) ||
-      (wconf->errorlog_fd == -1 && !get_config()->errorlog_syslog)) {
+      (lgconf->errorlog_fd == -1 && !get_config()->errorlog_syslog)) {
     return;
   }
 
@@ -121,10 +120,10 @@ Log::~Log() {
   }
 
   char buf[4096];
-  auto tty = wconf->errorlog_tty;
+  auto tty = lgconf->errorlog_tty;
 
-  wconf->update_tstamp(std::chrono::system_clock::now());
-  auto &time_local = wconf->time_local_str;
+  lgconf->update_tstamp(std::chrono::system_clock::now());
+  auto &time_local = lgconf->time_local_str;
 
   if (severity_ == NOTICE) {
     rv = snprintf(buf, sizeof(buf), "%s PID%d [%s%s%s] %s\n",
@@ -145,7 +144,7 @@ Log::~Log() {
 
   auto nwrite = std::min(static_cast<size_t>(rv), sizeof(buf) - 1);
 
-  while (write(wconf->errorlog_fd, buf, nwrite) == -1 && errno == EINTR)
+  while (write(lgconf->errorlog_fd, buf, nwrite) == -1 && errno == EINTR)
     ;
 }
 
@@ -160,9 +159,9 @@ std::pair<OutputIterator, size_t> copy(const char *src, size_t avail,
 } // namespace
 
 void upstream_accesslog(const std::vector<LogFragment> &lfv, LogSpec *lgsp) {
-  auto wconf = worker_config;
+  auto lgconf = log_config;
 
-  if (wconf->accesslog_fd == -1 && !get_config()->accesslog_syslog) {
+  if (lgconf->accesslog_fd == -1 && !get_config()->accesslog_syslog) {
     return;
   }
 
@@ -173,9 +172,9 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv, LogSpec *lgsp) {
   auto p = buf;
   auto avail = sizeof(buf) - 2;
 
-  wconf->update_tstamp(lgsp->time_now);
-  auto &time_local = wconf->time_local_str;
-  auto &time_iso8601 = wconf->time_iso8601_str;
+  lgconf->update_tstamp(lgsp->time_now);
+  auto &time_local = lgconf->time_local_str;
+  auto &time_iso8601 = lgconf->time_iso8601_str;
 
   for (auto &lf : lfv) {
     switch (lf.type) {
@@ -266,26 +265,26 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv, LogSpec *lgsp) {
   *p++ = '\n';
 
   auto nwrite = p - buf;
-  while (write(wconf->accesslog_fd, buf, nwrite) == -1 && errno == EINTR)
+  while (write(lgconf->accesslog_fd, buf, nwrite) == -1 && errno == EINTR)
     ;
 }
 
 int reopen_log_files() {
   int res = 0;
 
-  auto wconf = worker_config;
+  auto lgconf = log_config;
 
-  if (wconf->accesslog_fd != -1) {
-    close(wconf->accesslog_fd);
-    wconf->accesslog_fd = -1;
+  if (lgconf->accesslog_fd != -1) {
+    close(lgconf->accesslog_fd);
+    lgconf->accesslog_fd = -1;
   }
 
   if (!get_config()->accesslog_syslog && get_config()->accesslog_file) {
 
-    wconf->accesslog_fd =
+    lgconf->accesslog_fd =
         util::reopen_log_file(get_config()->accesslog_file.get());
 
-    if (wconf->accesslog_fd == -1) {
+    if (lgconf->accesslog_fd == -1) {
       LOG(ERROR) << "Failed to open accesslog file "
                  << get_config()->accesslog_file.get();
       res = -1;
@@ -299,7 +298,7 @@ int reopen_log_files() {
     new_errorlog_fd = util::reopen_log_file(get_config()->errorlog_file.get());
 
     if (new_errorlog_fd == -1) {
-      if (wconf->errorlog_fd != -1) {
+      if (lgconf->errorlog_fd != -1) {
         LOG(ERROR) << "Failed to open errorlog file "
                    << get_config()->errorlog_file.get();
       } else {
@@ -311,15 +310,15 @@ int reopen_log_files() {
     }
   }
 
-  if (wconf->errorlog_fd != -1) {
-    close(wconf->errorlog_fd);
-    wconf->errorlog_fd = -1;
-    wconf->errorlog_tty = false;
+  if (lgconf->errorlog_fd != -1) {
+    close(lgconf->errorlog_fd);
+    lgconf->errorlog_fd = -1;
+    lgconf->errorlog_tty = false;
   }
 
   if (new_errorlog_fd != -1) {
-    wconf->errorlog_fd = new_errorlog_fd;
-    wconf->errorlog_tty = isatty(wconf->errorlog_fd);
+    lgconf->errorlog_fd = new_errorlog_fd;
+    lgconf->errorlog_tty = isatty(lgconf->errorlog_fd);
   }
 
   return res;

@@ -35,7 +35,6 @@
 #include "shrpx_http2_downstream_connection.h"
 #include "shrpx_ssl.h"
 #include "shrpx_worker.h"
-#include "shrpx_worker_config.h"
 #include "shrpx_downstream_connection_pool.h"
 #include "shrpx_downstream.h"
 #ifdef HAVE_SPDYLAY

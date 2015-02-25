@@ -35,7 +35,6 @@
 #include "shrpx_downstream_connection.h"
 #include "shrpx_config.h"
 #include "shrpx_http.h"
-#include "shrpx_worker_config.h"
 #include "shrpx_worker.h"
 #include "http2.h"
 #include "util.h"

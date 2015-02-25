@@ -114,7 +114,7 @@ NGHTTPX_SRCS = \
 	shrpx_io_control.cc shrpx_io_control.h \
 	shrpx_ssl.cc shrpx_ssl.h \
 	shrpx_worker.cc shrpx_worker.h \
-	shrpx_worker_config.cc shrpx_worker_config.h \
+	shrpx_log_config.cc shrpx_log_config.h \
 	shrpx_connect_blocker.cc shrpx_connect_blocker.h \
 	shrpx_downstream_connection_pool.cc shrpx_downstream_connection_pool.h \
 	shrpx_rate_limit.cc shrpx_rate_limit.h \

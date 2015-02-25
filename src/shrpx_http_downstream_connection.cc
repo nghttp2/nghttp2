@@ -30,7 +30,7 @@
 #include "shrpx_config.h"
 #include "shrpx_error.h"
 #include "shrpx_http.h"
-#include "shrpx_worker_config.h"
+#include "shrpx_log_config.h"
 #include "shrpx_connect_blocker.h"
 #include "shrpx_downstream_connection_pool.h"
 #include "shrpx_worker.h"
@@ -358,7 +358,7 @@ int HttpDownstreamConnection::push_request_headers() {
   if (LOG_ENABLED(INFO)) {
     const char *hdrp;
     std::string nhdrs;
-    if (worker_config->errorlog_tty) {
+    if (log_config->errorlog_tty) {
       nhdrs = http::colorizeHeaders(hdrs.c_str());
       hdrp = nhdrs.c_str();
     } else {

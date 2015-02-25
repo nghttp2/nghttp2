@@ -32,7 +32,7 @@
 #include "shrpx_log.h"
 #include "shrpx_client_handler.h"
 #include "shrpx_http2_session.h"
-#include "shrpx_worker_config.h"
+#include "shrpx_log_config.h"
 #include "shrpx_connect_blocker.h"
 #include "util.h"
 #include "template.h"
@@ -137,8 +137,7 @@ void Worker::process_events() {
     }
     case RENEW_TICKET_KEYS:
       if (LOG_ENABLED(INFO)) {
-        WLOG(INFO, this) << "Renew ticket keys: worker_info(" << worker_config
-                         << ")";
+        WLOG(INFO, this) << "Renew ticket keys: worker(" << this << ")";
       }
 
       ticket_keys_ = wev.ticket_keys;
@@ -146,8 +145,7 @@ void Worker::process_events() {
       break;
     case REOPEN_LOG:
       if (LOG_ENABLED(INFO)) {
-        WLOG(INFO, this) << "Reopening log files: worker_info(" << worker_config
-                         << ")";
+        WLOG(INFO, this) << "Reopening log files: worker(" << this << ")";
       }
 
       reopen_log_files();

@@ -62,7 +62,7 @@
 #include "shrpx_config.h"
 #include "shrpx_connection_handler.h"
 #include "shrpx_ssl.h"
-#include "shrpx_worker_config.h"
+#include "shrpx_log_config.h"
 #include "shrpx_worker.h"
 #include "shrpx_accept_handler.h"
 #include "shrpx_http2_upstream.h"
@@ -418,7 +418,7 @@ void reopen_log_signal_cb(struct ev_loop *loop, ev_signal *w, int revents) {
   auto conn_handler = static_cast<ConnectionHandler *>(w->data);
 
   if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "Reopening log files: worker_info(" << worker_config << ")";
+    LOG(INFO) << "Reopening log files: main";
   }
 
   (void)reopen_log_files();
@@ -1884,16 +1884,16 @@ int main(int argc, char **argv) {
   }
 
   if (get_config()->uid != 0) {
-    if (worker_config->accesslog_fd != -1 &&
-        fchown(worker_config->accesslog_fd, get_config()->uid,
+    if (log_config->accesslog_fd != -1 &&
+        fchown(log_config->accesslog_fd, get_config()->uid,
                get_config()->gid) == -1) {
       auto error = errno;
       LOG(WARN) << "Changing owner of access log file failed: "
                 << strerror(error);
     }
-    if (worker_config->errorlog_fd != -1 &&
-        fchown(worker_config->errorlog_fd, get_config()->uid,
-               get_config()->gid) == -1) {
+    if (log_config->errorlog_fd != -1 &&
+        fchown(log_config->errorlog_fd, get_config()->uid, get_config()->gid) ==
+            -1) {
       auto error = errno;
       LOG(WARN) << "Changing owner of error log file failed: "
                 << strerror(error);

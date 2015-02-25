@@ -22,33 +22,36 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#include "shrpx_worker_config.h"
-#include "util.h"
+#ifndef SHRPX_LOG_CONFIG_H
+#define SHRPX_LOG_CONFIG_H
 
-using namespace nghttp2;
+#include "shrpx.h"
+
+#include <chrono>
 
 namespace shrpx {
 
-WorkerConfig::WorkerConfig()
-    : accesslog_fd(-1), errorlog_fd(-1), errorlog_tty(false) {}
+struct LogConfig {
+  std::chrono::system_clock::time_point time_str_updated_;
+  std::string time_local_str;
+  std::string time_iso8601_str;
+  int accesslog_fd;
+  int errorlog_fd;
+  // true if errorlog_fd is referring to a terminal.
+  bool errorlog_tty;
 
+  LogConfig();
+  void update_tstamp(const std::chrono::system_clock::time_point &now);
+};
+
+// We need LogConfig per thread to avoid data race around opening file
+// descriptor for log files.
+extern
 #ifndef NOTHREADS
-thread_local
+    thread_local
 #endif // NOTHREADS
-    WorkerConfig *worker_config = new WorkerConfig();
-
-void
-WorkerConfig::update_tstamp(const std::chrono::system_clock::time_point &now) {
-  auto t0 = std::chrono::system_clock::to_time_t(time_str_updated_);
-  auto t1 = std::chrono::system_clock::to_time_t(now);
-  if (t0 == t1) {
-    return;
-  }
-
-  time_str_updated_ = now;
-
-  time_local_str = util::format_common_log(now);
-  time_iso8601_str = util::format_iso8601(now);
-}
+    LogConfig *log_config;
 
 } // namespace shrpx
+
+#endif // SHRPX_LOG_CONFIG_H
