@@ -30,8 +30,7 @@ using namespace nghttp2;
 namespace shrpx {
 
 WorkerConfig::WorkerConfig()
-    : accesslog_fd(-1), errorlog_fd(-1), errorlog_tty(false),
-      graceful_shutdown(false) {}
+    : accesslog_fd(-1), errorlog_fd(-1), errorlog_tty(false) {}
 
 #ifndef NOTHREADS
 thread_local

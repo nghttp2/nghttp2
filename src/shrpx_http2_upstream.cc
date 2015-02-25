@@ -36,6 +36,7 @@
 #include "shrpx_config.h"
 #include "shrpx_http.h"
 #include "shrpx_worker_config.h"
+#include "shrpx_worker.h"
 #include "http2.h"
 #include "util.h"
 #include "base64.h"
@@ -592,7 +593,10 @@ void Http2Upstream::check_shutdown() {
   if (shutdown_handled_) {
     return;
   }
-  if (worker_config->graceful_shutdown) {
+
+  auto worker = handler_->get_worker();
+
+  if (worker->get_graceful_shutdown()) {
     shutdown_handled_ = true;
     rv = nghttp2_submit_shutdown_notice(session_);
     if (rv != 0) {

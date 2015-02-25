@@ -410,7 +410,7 @@ ClientHandler::~ClientHandler() {
 
   // TODO If backend is http/2, and it is in CONNECTED state, signal
   // it and make it loopbreak when output is zero.
-  if (worker_config->graceful_shutdown && worker_stat->num_connections == 0) {
+  if (worker_->get_graceful_shutdown() && worker_stat->num_connections == 0) {
     ev_break(conn_.loop);
   }
 

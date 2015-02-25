@@ -51,7 +51,7 @@ void acceptor_disable_cb(struct ev_loop *loop, ev_timer *w, int revent) {
 
   // If we are in graceful shutdown period, we must not enable
   // acceptors again.
-  if (worker_config->graceful_shutdown) {
+  if (h->get_graceful_shutdown()) {
     return;
   }
 
@@ -60,7 +60,8 @@ void acceptor_disable_cb(struct ev_loop *loop, ev_timer *w, int revent) {
 } // namespace
 
 ConnectionHandler::ConnectionHandler(struct ev_loop *loop)
-    : single_worker_(nullptr), loop_(loop), worker_round_robin_cnt_(0) {
+    : single_worker_(nullptr), loop_(loop), worker_round_robin_cnt_(0),
+      graceful_shutdown_(false) {
   ev_timer_init(&disable_acceptor_timer_, acceptor_disable_cb, 0., 0.);
   disable_acceptor_timer_.data = this;
 }
@@ -296,6 +297,17 @@ ConnectionHandler::set_ticket_keys(std::shared_ptr<TicketKeys> ticket_keys) {
 
 const std::shared_ptr<TicketKeys> &ConnectionHandler::get_ticket_keys() const {
   return ticket_keys_;
+}
+
+void ConnectionHandler::set_graceful_shutdown(bool f) {
+  graceful_shutdown_ = f;
+  if (single_worker_) {
+    single_worker_->set_graceful_shutdown(f);
+  }
+}
+
+bool ConnectionHandler::get_graceful_shutdown() const {
+  return graceful_shutdown_;
 }
 
 } // namespace shrpx

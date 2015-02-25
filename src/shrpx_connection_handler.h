@@ -74,6 +74,8 @@ public:
   void disable_acceptor_temporary(ev_tstamp t);
   void accept_pending_connection();
   void graceful_shutdown_worker();
+  void set_graceful_shutdown(bool f);
+  bool get_graceful_shutdown() const;
   void join_worker();
 
 private:
@@ -93,6 +95,7 @@ private:
   std::unique_ptr<AcceptHandler> acceptor6_;
   ev_timer disable_acceptor_timer_;
   unsigned int worker_round_robin_cnt_;
+  bool graceful_shutdown_;
 };
 
 } // namespace shrpx

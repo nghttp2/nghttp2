@@ -35,6 +35,7 @@
 #include "shrpx_config.h"
 #include "shrpx_error.h"
 #include "shrpx_worker_config.h"
+#include "shrpx_worker.h"
 #include "http2.h"
 #include "util.h"
 #include "template.h"
@@ -665,9 +666,11 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
     return 0;
   }
 
+  auto worker = handler_->get_worker();
+
   // after graceful shutdown commenced, add connection: close header
   // field.
-  if (worker_config->graceful_shutdown) {
+  if (worker->get_graceful_shutdown()) {
     downstream->set_response_connection_close(true);
   }
 

@@ -45,7 +45,6 @@ struct WorkerConfig {
   int errorlog_fd;
   // true if errorlog_fd is referring to a terminal.
   bool errorlog_tty;
-  bool graceful_shutdown;
 
   WorkerConfig();
   void update_tstamp(const std::chrono::system_clock::time_point &now);

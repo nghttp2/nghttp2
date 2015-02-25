@@ -52,7 +52,8 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
                ssl::CertLookupTree *cert_tree,
                const std::shared_ptr<TicketKeys> &ticket_keys)
     : loop_(loop), sv_ssl_ctx_(sv_ssl_ctx), cl_ssl_ctx_(cl_ssl_ctx),
-      cert_tree_(cert_tree), ticket_keys_(ticket_keys) {
+      cert_tree_(cert_tree), ticket_keys_(ticket_keys),
+      graceful_shutdown_(false) {
   ev_async_init(&w_, eventcb);
   w_.data = this;
   ev_async_start(loop_, &w_);
@@ -155,7 +156,7 @@ void Worker::process_events() {
     case GRACEFUL_SHUTDOWN:
       WLOG(NOTICE, this) << "Graceful shutdown commencing";
 
-      worker_config->graceful_shutdown = true;
+      graceful_shutdown_ = true;
 
       if (worker_stat_.num_connections == 0) {
         ev_break(loop_);
@@ -197,5 +198,9 @@ struct ev_loop *Worker::get_loop() const {
 }
 
 SSL_CTX *Worker::get_sv_ssl_ctx() const { return sv_ssl_ctx_; }
+
+void Worker::set_graceful_shutdown(bool f) { graceful_shutdown_ = f; }
+
+bool Worker::get_graceful_shutdown() const { return graceful_shutdown_; }
 
 } // namespace shrpx

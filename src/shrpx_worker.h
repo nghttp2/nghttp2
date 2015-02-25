@@ -99,6 +99,9 @@ public:
   struct ev_loop *get_loop() const;
   SSL_CTX *get_sv_ssl_ctx() const;
 
+  void set_graceful_shutdown(bool f);
+  bool get_graceful_shutdown() const;
+
 private:
 #ifndef NOTHREADS
   std::future<void> fut_;
@@ -119,6 +122,8 @@ private:
   std::shared_ptr<TicketKeys> ticket_keys_;
   std::unique_ptr<Http2Session> http2session_;
   std::unique_ptr<ConnectBlocker> http1_connect_blocker_;
+
+  bool graceful_shutdown_;
 };
 
 } // namespace shrpx
