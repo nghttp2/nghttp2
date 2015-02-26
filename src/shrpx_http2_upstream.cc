@@ -273,6 +273,7 @@ int on_request_headers(Http2Upstream *upstream, Downstream *downstream,
   if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
     downstream->disable_upstream_rtimer();
 
+    downstream->end_upload_data();
     downstream->set_request_state(Downstream::MSG_COMPLETE);
   }
 
