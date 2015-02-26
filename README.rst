@@ -42,9 +42,9 @@ implementation.
 
 * https://nghttp2.org/ (TLS + ALPN/NPN)
 
-  NPN offer ``h2-14``, ``spdy/3.1`` and ``http/1.1``.
-
-  This endpoint requires TLSv1.2 for HTTP/2 connection.
+  This endpoint supports ``h2``, ``h2-16``, ``h2-14``, ``spdy/3.1``
+  and ``http/1.1`` via ALPN/NPN and requires TLSv1.2 for HTTP/2
+  connection.
 
 * http://nghttp2.org/ (Upgrade / Direct)
 
