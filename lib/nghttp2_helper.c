@@ -267,8 +267,6 @@ const char *nghttp2_strerror(int error_code) {
     return "Invalid stream state";
   case NGHTTP2_ERR_DEFERRED_DATA_EXIST:
     return "Another DATA frame has already been deferred";
-  case NGHTTP2_ERR_SESSION_CLOSING:
-    return "The current session is closing";
   case NGHTTP2_ERR_START_STREAM_NOT_ALLOWED:
     return "request HEADERS is not allowed";
   case NGHTTP2_ERR_GOAWAY_ALREADY_SENT:
@@ -295,6 +293,10 @@ const char *nghttp2_strerror(int error_code) {
     return "Server push is disabled by peer";
   case NGHTTP2_ERR_DATA_EXIST:
     return "DATA frame already exists";
+  case NGHTTP2_ERR_SESSION_CLOSING:
+    return "The current session is closing";
+  case NGHTTP2_ERR_HTTP_HEADER:
+    return "Invalid HTTP header field was received";
   case NGHTTP2_ERR_NOMEM:
     return "Out of memory";
   case NGHTTP2_ERR_CALLBACK_FAILURE:
