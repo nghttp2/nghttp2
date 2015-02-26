@@ -6820,9 +6820,12 @@ static void check_nghttp2_http_recv_headers_fail(
   ssize_t rv;
   nghttp2_outbound_item *item;
   nghttp2_bufs bufs;
+  my_user_data *ud;
 
   mem = nghttp2_mem_default();
   frame_pack_bufs_init(&bufs);
+
+  ud = session->user_data;
 
   if (stream_state != -1) {
     nghttp2_session_open_stream(session, stream_id, NGHTTP2_STREAM_FLAG_NONE,
@@ -6833,6 +6836,8 @@ static void check_nghttp2_http_recv_headers_fail(
                     nvlen, mem);
   CU_ASSERT(0 == rv);
 
+  ud->invalid_frame_recv_cb_called = 0;
+
   rv = nghttp2_session_mem_recv(session, bufs.head->buf.pos,
                                 nghttp2_buf_len(&bufs.head->buf));
 
@@ -6841,6 +6846,7 @@ static void check_nghttp2_http_recv_headers_fail(
   item = nghttp2_session_get_next_ob_item(session);
 
   CU_ASSERT(NGHTTP2_RST_STREAM == item->frame.hd.type);
+  CU_ASSERT(1 == ud->invalid_frame_recv_cb_called);
 
   CU_ASSERT(0 == nghttp2_session_send(session));
 
@@ -6852,6 +6858,7 @@ void test_nghttp2_http_mandatory_headers(void) {
   nghttp2_session_callbacks callbacks;
   nghttp2_hd_deflater deflater;
   nghttp2_mem *mem;
+  my_user_data ud;
   /* test case for response */
   const nghttp2_nv nostatus_resnv[] = {MAKE_NV("server", "foo")};
   const nghttp2_nv dupstatus_resnv[] = {MAKE_NV(":status", "200"),
@@ -6907,8 +6914,9 @@ void test_nghttp2_http_mandatory_headers(void) {
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks.send_callback = null_send_callback;
+  callbacks.on_invalid_frame_recv_callback = on_invalid_frame_recv_callback;
 
-  nghttp2_session_client_new(&session, &callbacks, NULL);
+  nghttp2_session_client_new(&session, &callbacks, &ud);
 
   nghttp2_hd_deflate_init(&deflater, mem);
 
@@ -6957,7 +6965,7 @@ void test_nghttp2_http_mandatory_headers(void) {
   nghttp2_session_del(session);
 
   /* check server side */
-  nghttp2_session_server_new(&session, &callbacks, NULL);
+  nghttp2_session_server_new(&session, &callbacks, &ud);
 
   nghttp2_hd_deflate_init(&deflater, mem);
 

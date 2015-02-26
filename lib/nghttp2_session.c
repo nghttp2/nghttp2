@@ -3023,11 +3023,12 @@ static int session_handle_frame_size_error(nghttp2_session *session,
   return nghttp2_session_terminate_session(session, NGHTTP2_FRAME_SIZE_ERROR);
 }
 
-static int session_handle_invalid_stream(nghttp2_session *session,
-                                         nghttp2_frame *frame,
-                                         uint32_t error_code) {
+static int session_handle_invalid_stream2(nghttp2_session *session,
+                                          int32_t stream_id,
+                                          nghttp2_frame *frame,
+                                          uint32_t error_code) {
   int rv;
-  rv = nghttp2_session_add_rst_stream(session, frame->hd.stream_id, error_code);
+  rv = nghttp2_session_add_rst_stream(session, stream_id, error_code);
   if (rv != 0) {
     return rv;
   }
@@ -3038,6 +3039,13 @@ static int session_handle_invalid_stream(nghttp2_session *session,
     }
   }
   return 0;
+}
+
+static int session_handle_invalid_stream(nghttp2_session *session,
+                                         nghttp2_frame *frame,
+                                         uint32_t error_code) {
+  return session_handle_invalid_stream2(session, frame->hd.stream_id, frame,
+                                        error_code);
 }
 
 static int session_inflate_handle_invalid_stream(nghttp2_session *session,
@@ -3170,18 +3178,22 @@ static int inflate_header_block(nghttp2_session *session, nghttp2_frame *frame,
       if (subject_stream && session_enforce_http_messaging(session)) {
         rv = nghttp2_http_on_header(session, subject_stream, frame, &nv,
                                     trailer);
-        if (rv == -1) {
+        if (rv == NGHTTP2_ERR_HTTP_HEADER) {
           DEBUGF(fprintf(
               stderr, "recv: HTTP error: type=%d, id=%d, header %.*s: %.*s\n",
               frame->hd.type, subject_stream->stream_id, (int)nv.namelen,
               nv.name, (int)nv.valuelen, nv.value));
-          rv = nghttp2_session_add_rst_stream(
-              session, subject_stream->stream_id, NGHTTP2_PROTOCOL_ERROR);
+
+          rv =
+              session_handle_invalid_stream2(session, subject_stream->stream_id,
+                                             frame, NGHTTP2_PROTOCOL_ERROR);
           if (nghttp2_is_fatal(rv)) {
             return rv;
           }
           return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
-        } else if (rv == 1) {
+        }
+
+        if (rv == NGHTTP2_ERR_IGN_HTTP_HEADER) {
           /* header is ignored */
           DEBUGF(fprintf(
               stderr, "recv: HTTP ignored: type=%d, id=%d, header %.*s: %.*s\n",
@@ -3189,7 +3201,7 @@ static int inflate_header_block(nghttp2_session *session, nghttp2_frame *frame,
               nv.name, (int)nv.valuelen, nv.value));
         }
       }
-      if (rv == 0 && call_header_cb) {
+      if (rv == 0) {
         rv = session_call_on_header(session, frame, &nv);
         /* This handles NGHTTP2_ERR_PAUSE and
            NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE as well */
@@ -3348,7 +3360,7 @@ static int session_after_header_block_received(nghttp2_session *session) {
 
       call_cb = 0;
 
-      rv = nghttp2_session_add_rst_stream(session, stream_id,
+      rv = session_handle_invalid_stream2(session, stream_id, frame,
                                           NGHTTP2_PROTOCOL_ERROR);
       if (nghttp2_is_fatal(rv)) {
         return rv;

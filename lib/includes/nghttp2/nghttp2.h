@@ -349,6 +349,11 @@ typedef enum {
    */
   NGHTTP2_ERR_SESSION_CLOSING = -530,
   /**
+   * Invalid HTTP header field was received and stream is going to be
+   * closed.
+   */
+  NGHTTP2_ERR_HTTP_HEADER = -531,
+  /**
    * The errors < :enum:`NGHTTP2_ERR_FATAL` mean that the library is
    * under unexpected condition and processing was terminated (e.g.,
    * out of memory).  If application receives this error code, it must
