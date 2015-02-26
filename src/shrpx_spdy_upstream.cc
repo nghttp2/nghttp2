@@ -209,7 +209,6 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
       }
 
       downstream->disable_upstream_rtimer();
-      downstream->end_upload_data();
       downstream->set_request_state(Downstream::MSG_COMPLETE);
     }
 
