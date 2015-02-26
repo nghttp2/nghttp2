@@ -55,6 +55,7 @@ struct Config {
   std::string private_key_file;
   std::string cert_file;
   std::string dh_param_file;
+  std::string address;
   ev_tstamp stream_read_timeout;
   ev_tstamp stream_write_timeout;
   nghttp2_option *session_option;

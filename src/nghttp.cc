@@ -109,20 +109,6 @@ std::string strip_fragment(const char *raw_uri) {
 }
 } // namespace
 
-namespace {
-// Returns numeric address string of |addr|.  If getnameinfo() is
-// failed, "unknown" is returned.
-std::string numeric_name(addrinfo *addr) {
-  std::array<char, NI_MAXHOST> host;
-  auto rv = getnameinfo(addr->ai_addr, addr->ai_addrlen, host.data(),
-                        host.size(), nullptr, 0, NI_NUMERICHOST);
-  if (rv != 0) {
-    return "unknown";
-  }
-  return host.data();
-}
-} // namespace
-
 Request::Request(const std::string &uri, const http_parser_url &u,
                  const nghttp2_data_provider *data_prd, int64_t data_length,
                  const nghttp2_priority_spec &pri_spec,
@@ -686,13 +672,15 @@ int HttpClient::noop() { return 0; }
 void HttpClient::on_connect_fail() {
   if (state == ClientState::IDLE) {
     std::cerr << "[ERROR] Could not connect to the address "
-              << numeric_name(cur_addr) << std::endl;
+              << util::numeric_name(cur_addr->ai_addr, cur_addr->ai_addrlen)
+              << std::endl;
   }
   auto cur_state = state;
   disconnect();
   if (cur_state == ClientState::IDLE) {
     if (initiate_connection() == 0) {
-      std::cerr << "Trying next address " << numeric_name(cur_addr)
+      std::cerr << "Trying next address "
+                << util::numeric_name(cur_addr->ai_addr, cur_addr->ai_addrlen)
                 << std::endl;
     }
   }
