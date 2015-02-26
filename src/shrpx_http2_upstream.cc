@@ -334,7 +334,6 @@ Http2Upstream::initiate_downstream(std::unique_ptr<Downstream> downstream) {
 namespace {
 int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
                            void *user_data) {
-  int rv;
   if (get_config()->upstream_frame_debug) {
     verbose_on_frame_recv_callback(session, frame, user_data);
   }
@@ -373,13 +372,6 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
 
       downstream->end_upload_data();
       downstream->set_request_state(Downstream::MSG_COMPLETE);
-    } else {
-      rv = nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
-                                     frame->hd.stream_id,
-                                     NGHTTP2_PROTOCOL_ERROR);
-      if (rv != 0) {
-        return NGHTTP2_ERR_CALLBACK_FAILURE;
-      }
     }
 
     return 0;
