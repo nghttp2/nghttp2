@@ -30,6 +30,11 @@ HTTP/2 experimental server
 OPTIONS
 -------
 
+.. option:: -a, --address=<ADDR>
+
+    The address to bind to.  If not specified the default IP
+    address determined by getaddrinfo is used.
+
 .. option:: -D, --daemon
 
     Run in a background.  If :option:`-D` is used, the current working

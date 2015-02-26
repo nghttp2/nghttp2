@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "February 22, 2015" "0.7.5-DEV" "nghttp2"
+.TH "NGHTTPX" "1" "February 27, 2015" "0.7.5" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 experimental proxy
 .
@@ -834,6 +834,17 @@ associated stream\(aqs status code must be 200.
 .UNINDENT
 .sp
 These limitations may be loosened in the future release.
+.SH UNIX DOMAIN SOCKET
+.sp
+nghttpx supports UNIX domain socket with a filename for both frontend
+and backend connections.
+.sp
+Please note that current nghttpx implementation does not delete a
+socket with a filename.  And on start up, if nghttpx detects that the
+specified socket already exists in the file system, nghttpx first
+deletes it.  However, if SIGUSR2 is used to execute new binary and
+both old and new configurations use same filename, new binary does not
+delete the socket and continues to use it.
 .SH SEE ALSO
 .sp
 \fInghttp(1)\fP, \fInghttpd(1)\fP, \fIh2load(1)\fP

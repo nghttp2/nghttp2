@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPD" "1" "February 22, 2015" "0.7.5-DEV" "nghttp2"
+.TH "NGHTTPD" "1" "February 27, 2015" "0.7.5" "nghttp2"
 .SH NAME
 nghttpd \- HTTP/2 experimental server
 .
@@ -54,6 +54,12 @@ Set  path  to  server\(aqs  certificate.   Required  unless
 \fI\%\-\-no\-tls\fP is specified.
 .UNINDENT
 .SH OPTIONS
+.INDENT 0.0
+.TP
+.B \-a, \-\-address=<ADDR>
+The address to bind to.  If not specified the default IP
+address determined by getaddrinfo is used.
+.UNINDENT
 .INDENT 0.0
 .TP
 .B \-D, \-\-daemon

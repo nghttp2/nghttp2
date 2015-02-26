@@ -747,6 +747,19 @@ Currently, the following restrictions are applied for server push:
 
 These limitations may be loosened in the future release.
 
+UNIX DOMAIN SOCKET
+------------------
+
+nghttpx supports UNIX domain socket with a filename for both frontend
+and backend connections.
+
+Please note that current nghttpx implementation does not delete a
+socket with a filename.  And on start up, if nghttpx detects that the
+specified socket already exists in the file system, nghttpx first
+deletes it.  However, if SIGUSR2 is used to execute new binary and
+both old and new configurations use same filename, new binary does not
+delete the socket and continues to use it.
+
 SEE ALSO
 --------
 
