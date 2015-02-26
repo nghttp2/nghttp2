@@ -688,9 +688,9 @@ bool numeric_host(const char *hostname) {
 
 // Returns numeric address string of |addr|.  If getnameinfo() is
 // failed, "unknown" is returned.
-std::string numeric_name(addrinfo *addr) {
+std::string numeric_name(const struct sockaddr *sa, socklen_t salen) {
   char host[NI_MAXHOST];
-  auto rv = getnameinfo(addr->ai_addr, addr->ai_addrlen, host, sizeof(host),
+  auto rv = getnameinfo(sa, salen, host, sizeof(host),
                         nullptr, 0, NI_NUMERICHOST);
   if (rv != 0) {
     return "unknown";

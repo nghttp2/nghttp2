@@ -674,13 +674,13 @@ int HttpClient::noop() { return 0; }
 void HttpClient::on_connect_fail() {
   if (state == STATE_IDLE) {
     std::cerr << "[ERROR] Could not connect to the address "
-              << util::numeric_name(cur_addr) << std::endl;
+              << util::numeric_name(cur_addr->ai_addr, cur_addr->ai_addrlen) << std::endl;
   }
   auto cur_state = state;
   disconnect();
   if (cur_state == STATE_IDLE) {
     if (initiate_connection() == 0) {
-      std::cerr << "Trying next address " << util::numeric_name(cur_addr)
+      std::cerr << "Trying next address " << util::numeric_name(cur_addr->ai_addr, cur_addr->ai_addrlen)
                 << std::endl;
     }
   }

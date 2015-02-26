@@ -418,7 +418,7 @@ void write_uri_field(std::ostream &o, const char *uri, const http_parser_url &u,
 
 bool numeric_host(const char *hostname);
 
-std::string numeric_name(addrinfo *addr);
+std::string numeric_name(const struct sockaddr *sa, socklen_t salen);
 
 // Opens |path| with O_APPEND enabled.  If file does not exist, it is
 // created first.  This function returns file descriptor referring the
