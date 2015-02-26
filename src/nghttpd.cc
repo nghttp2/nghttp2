@@ -97,7 +97,7 @@ void print_help(std::ostream &out) {
   <CERT>      Set  path  to  server's  certificate.   Required  unless
               --no-tls is specified.
 Options:
-  -a  --address
+  -a, --address=<ADDR>
               The address to bind to.  If not specified the default IP
               address determined by getaddrinfo is used.
   -D, --daemon
