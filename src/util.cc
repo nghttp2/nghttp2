@@ -658,6 +658,16 @@ bool numeric_host(const char *hostname) {
   return true;
 }
 
+std::string numeric_name(const struct sockaddr *sa, socklen_t salen) {
+  std::array<char, NI_MAXHOST> host;
+  auto rv = getnameinfo(sa, salen, host.data(), host.size(), nullptr, 0,
+                        NI_NUMERICHOST);
+  if (rv != 0) {
+    return "unknown";
+  }
+  return host.data();
+}
+
 int reopen_log_file(const char *path) {
 #if defined(__ANDROID__) || defined(ANDROID)
   int fd;
