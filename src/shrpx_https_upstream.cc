@@ -234,13 +234,11 @@ int htp_msg_completecb(http_parser *htp) {
   }
 
   if (handler->get_http2_upgrade_allowed() &&
-      downstream->get_http2_upgrade_request()) {
-
-    if (handler->perform_http2_upgrade(upstream) != 0) {
-      return -1;
+      downstream->get_http2_upgrade_request() &&
+      handler->perform_http2_upgrade(upstream) != 0) {
+    if (LOG_ENABLED(INFO)) {
+      ULOG(INFO, upstream) << "HTTP Upgrade to HTTP/2 failed";
     }
-
-    handler->signal_write();
   }
 
   // Stop further processing to complete this request

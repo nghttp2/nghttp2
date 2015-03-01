@@ -662,6 +662,7 @@ int ClientHandler::perform_http2_upgrade(HttpsUpstream *http) {
                       "Upgrade: " NGHTTP2_CLEARTEXT_PROTO_VERSION_ID "\r\n"
                       "\r\n";
   wb_.write(res, sizeof(res) - 1);
+  signal_write();
   return 0;
 }
 

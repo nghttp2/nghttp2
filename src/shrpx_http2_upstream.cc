@@ -116,8 +116,10 @@ int Http2Upstream::upgrade_upstream(HttpsUpstream *http) {
       session_, reinterpret_cast<const uint8_t *>(settings_payload.c_str()),
       settings_payload.size(), nullptr);
   if (rv != 0) {
-    ULOG(WARN, this) << "nghttp2_session_upgrade() returned error: "
-                     << nghttp2_strerror(rv);
+    if (LOG_ENABLED(INFO)) {
+      ULOG(INFO, this) << "nghttp2_session_upgrade() returned error: "
+                       << nghttp2_strerror(rv);
+    }
     return -1;
   }
   pre_upstream_.reset(http);
