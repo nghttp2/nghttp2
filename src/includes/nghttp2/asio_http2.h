@@ -30,18 +30,79 @@
 #include <string>
 #include <vector>
 #include <functional>
+#include <map>
+
+#include <boost/system/error_code.hpp>
+#include <boost/asio.hpp>
+#include <boost/asio/ssl.hpp>
+
+#include <nghttp2/nghttp2.h>
+
+namespace boost {
+namespace system {
+
+template <> struct is_error_code_enum<nghttp2_error> {
+  BOOST_STATIC_CONSTANT(bool, value = true);
+};
+
+} // namespace system
+} // namespace boost
 
 namespace nghttp2 {
 
 namespace asio_http2 {
 
 struct header {
+  header() : sensitive(false) {}
+  header(std::string name, std::string value, bool sensitive = false)
+      : name(std::move(name)), value(std::move(value)), sensitive(sensitive) {}
+
   std::string name;
   std::string value;
+  bool sensitive;
 };
+
+struct header_value {
+  header_value(std::string value, bool sensitive = false)
+      : value(std::move(value)), sensitive(sensitive) {}
+
+  std::string value;
+  bool sensitive;
+};
+
+using header_map = std::multimap<std::string, header_value>;
+
+class http_header {
+public:
+  http_header();
+  http_header(const http_header &other) = default;
+  http_header(http_header &&other) = default;
+  http_header(
+      std::initializer_list<std::pair<std::string, header_value>> ilist);
+
+  http_header &operator=(const http_header &other) = default;
+  http_header &operator=(http_header &&other) = default;
+  http_header &
+  operator=(std::initializer_list<std::pair<std::string, header_value>> ilist);
+
+  const header_map &items() const;
+
+  void add(std::string name, std::string value, bool sensitive);
+  const header_value *get(const std::string &name) const;
+
+  std::size_t size() const;
+  bool empty() const;
+
+private:
+  header_map items_;
+};
+
+const boost::system::error_category &nghttp2_category() noexcept;
 
 typedef std::function<void(const uint8_t *, std::size_t)> data_cb;
 typedef std::function<void(void)> void_cb;
+typedef std::function<void(const std::string &err)> error_cb;
+typedef std::function<void(uint32_t)> close_cb;
 
 // Callback function to generate response body.  The implementation of
 // this callback must fill at most |len| bytes data to |buf|.  The
@@ -103,9 +164,9 @@ public:
   // string.  In this case, check host().
 
   const std::string &authority() const;
+
   // Returns host (e.g., example.org).  If host header field is not
   // present, this value is copied from authority().
-
   const std::string &host() const;
 
   // Returns path (e.g., /index.html).
@@ -241,6 +302,92 @@ std::string percent_decode(const std::string &s);
 
 // Returns HTTP date representation of current posix time |t|.
 std::string http_date(int64_t t);
+
+namespace client {
+
+class response_impl;
+
+class response {
+public:
+  response();
+  ~response();
+
+  void on_data(data_cb cb);
+
+  int status_code() const;
+
+  int64_t content_length() const;
+
+  const http_header &header() const;
+
+  response_impl &impl();
+
+private:
+  std::unique_ptr<response_impl> impl_;
+};
+
+class request;
+
+using response_cb = std::function<void(response &)>;
+using request_cb = std::function<void(request &)>;
+
+class request_impl;
+
+class request {
+public:
+  request();
+  ~request();
+
+  void on_response(response_cb cb);
+  void on_push(request_cb cb);
+  void on_close(close_cb cb);
+
+  void cancel();
+
+  const std::string &method() const;
+  const std::string &scheme() const;
+  const std::string &path() const;
+  const std::string &authority() const;
+  const std::string &host() const;
+
+  const http_header &header() const;
+
+  request_impl &impl();
+
+private:
+  std::unique_ptr<request_impl> impl_;
+};
+
+class session_impl;
+
+class session {
+public:
+  session(boost::asio::io_service &io_service,
+          boost::asio::ip::tcp::resolver::iterator endpoint_it);
+  session(boost::asio::io_service &io_service,
+          boost::asio::ssl::context &tls_context,
+          boost::asio::ip::tcp::resolver::iterator endpoint_it);
+  ~session();
+
+  void on_connect(void_cb cb);
+  void on_error(error_cb cb);
+
+  void shutdown();
+
+  request *submit(boost::system::error_code &ec, const std::string &method,
+                  const std::string &uri, http_header h = {});
+  request *submit(boost::system::error_code &ec, const std::string &method,
+                  const std::string &uri, std::string data, http_header h = {});
+  request *submit(boost::system::error_code &ec, const std::string &method,
+                  const std::string &uri, read_cb cb, http_header h = {});
+
+private:
+  std::unique_ptr<session_impl> impl_;
+};
+
+void configure_tls_context(boost::asio::ssl::context &tls_ctx);
+
+} // namespace client
 
 } // namespace asio_http2
 

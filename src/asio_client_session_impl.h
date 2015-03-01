@@ -1,0 +1,114 @@
+/*
+ * nghttp2 - HTTP/2 C Library
+ *
+ * Copyright (c) 2015 Tatsuhiro Tsujikawa
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+ * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+ * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+#ifndef ASIO_CLIENT_SESSION_IMPL_H
+#define ASIO_CLIENT_SESSION_IMPL_H
+
+#include "nghttp2_config.h"
+
+#include <map>
+
+#include <boost/asio.hpp>
+
+#include <nghttp2/nghttp2.h>
+
+#include <nghttp2/asio_http2.h>
+
+namespace nghttp2 {
+namespace asio_http2 {
+namespace client {
+
+class stream;
+
+using boost::asio::ip::tcp;
+
+class session_impl {
+public:
+  session_impl();
+  virtual ~session_impl();
+
+  void connected();
+  void not_connected(const boost::system::error_code &ec);
+
+  void on_connect(void_cb cb);
+  void on_error(error_cb cb);
+
+  const void_cb &on_connect() const;
+  const error_cb &on_error() const;
+
+  void cancel(stream &strm);
+
+  std::unique_ptr<stream> create_stream();
+  std::unique_ptr<stream> pop_stream(int32_t stream_id);
+  stream *create_push_stream(int32_t stream_id);
+  stream *find_stream(int32_t stream_id);
+
+  request *submit(boost::system::error_code &ec, const std::string &method,
+                  const std::string &uri, read_cb cb, http_header h);
+
+  virtual tcp::socket &socket() = 0;
+  virtual void read_socket(std::function<
+      void(const boost::system::error_code &ec, std::size_t n)> h) = 0;
+  virtual void write_socket(std::function<
+      void(const boost::system::error_code &ec, std::size_t n)> h) = 0;
+  virtual void shutdown_socket() = 0;
+
+  void shutdown();
+
+  void signal_write();
+
+  void enter_callback();
+  void leave_callback();
+
+  void do_read();
+  void do_write();
+
+protected:
+  boost::array<uint8_t, 8192> rb_;
+  boost::array<uint8_t, 65536> wb_;
+  std::size_t wblen_;
+
+private:
+  bool should_stop() const;
+  bool setup_session();
+
+  std::map<int32_t, std::unique_ptr<stream>> streams_;
+
+  void_cb connect_cb_;
+  error_cb error_cb_;
+
+  nghttp2_session *session_;
+
+  const uint8_t *data_pending_;
+  std::size_t data_pendinglen_;
+
+  bool writing_;
+  bool inside_callback_;
+};
+
+} // namespace client
+} // namespace asio_http2
+} // namespace nghttp2
+
+#endif // ASIO_CLIENT_SESSION_IMPL_H

@@ -179,7 +179,18 @@ libnghttp2_asio_la_SOURCES = \
 	asio_http2_handler.cc asio_http2_handler.h \
 	asio_http2_impl.cc asio_http2_impl.h \
 	util.cc util.h http2.cc http2.h \
-	ssl.cc ssl.h
+	ssl.cc ssl.h \
+	asio_common.cc asio_common.h \
+	asio_client_session.cc \
+	asio_client_session_impl.cc asio_client_session_impl.h \
+	asio_client_session_tcp_impl.cc asio_client_session_tcp_impl.h \
+	asio_client_session_tls_impl.cc asio_client_session_tls_impl.h \
+	asio_client_response.cc \
+	asio_client_response_impl.cc asio_client_response_impl.h \
+	asio_client_request.cc \
+	asio_client_request_impl.cc asio_client_request_impl.h \
+	asio_client_stream.cc asio_client_stream.h \
+	asio_client_tls_context.cc asio_client_tls_context.h
 
 libnghttp2_asio_la_CPPFLAGS = ${AM_CPPFLAGS} ${BOOST_CPPFLAGS}
 libnghttp2_asio_la_LDFLAGS = -no-undefined -version-info 0:0:0

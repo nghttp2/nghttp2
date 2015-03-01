@@ -92,7 +92,6 @@ void http2_impl::listen(const std::string &address, uint16_t port,
                                  SSL_OP_CIPHER_SERVER_PREFERENCE);
     SSL_CTX_set_mode(ctx, SSL_MODE_AUTO_RETRY);
     SSL_CTX_set_mode(ctx, SSL_MODE_RELEASE_BUFFERS);
-    SSL_CTX_set_mode(ctx, SSL_MODE_ENABLE_PARTIAL_WRITE);
 
     SSL_CTX_set_cipher_list(ctx, ssl::DEFAULT_CIPHER_LIST);
 

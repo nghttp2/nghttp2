@@ -1,0 +1,101 @@
+/*
+ * nghttp2 - HTTP/2 C Library
+ *
+ * Copyright (c) 2015 Tatsuhiro Tsujikawa
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+ * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+ * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+#include "asio_client_request_impl.h"
+
+#include "asio_client_stream.h"
+#include "template.h"
+
+namespace nghttp2 {
+namespace asio_http2 {
+namespace client {
+
+request_impl::request_impl() : strm_(nullptr) {}
+
+void request_impl::cancel() { strm_->cancel(); }
+
+void request_impl::on_response(response_cb cb) { response_cb_ = std::move(cb); }
+
+void request_impl::call_on_response(response &res) {
+  if (response_cb_) {
+    response_cb_(res);
+  }
+}
+
+void request_impl::on_push(request_cb cb) { push_request_cb_ = std::move(cb); }
+
+void request_impl::call_on_push(request &push_req) {
+  if (push_request_cb_) {
+    push_request_cb_(push_req);
+  }
+};
+
+void request_impl::on_close(close_cb cb) { close_cb_ = std::move(cb); }
+
+void request_impl::call_on_close(uint32_t error_code) {
+  if (close_cb_) {
+    close_cb_(error_code);
+  }
+}
+
+void request_impl::on_read(read_cb cb) { read_cb_ = std::move(cb); }
+
+read_cb::result_type request_impl::call_on_read(uint8_t *buf, std::size_t len) {
+  if (read_cb_) {
+    return read_cb_(buf, len);
+  }
+  return read_cb::result_type{};
+}
+
+void request_impl::header(http_header h) { header_ = std::move(h); }
+
+http_header &request_impl::header() { return header_; }
+
+const http_header &request_impl::header() const { return header_; }
+
+void request_impl::stream(class stream *strm) { strm_ = strm; }
+
+void request_impl::method(std::string s) { method_ = std::move(s); }
+
+const std::string &request_impl::method() const { return method_; }
+
+void request_impl::scheme(std::string s) { scheme_ = std::move(s); }
+
+const std::string &request_impl::scheme() const { return scheme_; }
+
+void request_impl::path(std::string s) { path_ = std::move(s); }
+
+const std::string &request_impl::path() const { return path_; }
+
+void request_impl::authority(std::string s) { authority_ = std::move(s); }
+
+const std::string &request_impl::authority() const { return authority_; }
+
+void request_impl::host(std::string s) { host_ = std::move(s); }
+
+const std::string &request_impl::host() const { return host_; }
+
+} // namespace client
+} // namespace asio_http2
+} // namespace nghttp2

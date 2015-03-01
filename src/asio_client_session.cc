@@ -1,0 +1,78 @@
+/*
+ * nghttp2 - HTTP/2 C Library
+ *
+ * Copyright (c) 2015 Tatsuhiro Tsujikawa
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+ * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+ * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+#include "nghttp2_config.h"
+
+#include <nghttp2/asio_http2.h>
+
+#include "asio_client_session_tcp_impl.h"
+#include "asio_client_session_tls_impl.h"
+#include "asio_common.h"
+#include "template.h"
+
+namespace nghttp2 {
+namespace asio_http2 {
+namespace client {
+
+using boost::asio::ip::tcp;
+
+session::session(boost::asio::io_service &io_service,
+                 tcp::resolver::iterator endpoint_it)
+    : impl_(make_unique<session_tcp_impl>(io_service, endpoint_it)) {}
+
+session::session(boost::asio::io_service &io_service,
+                 boost::asio::ssl::context &tls_ctx,
+                 tcp::resolver::iterator endpoint_it)
+    : impl_(make_unique<session_tls_impl>(io_service, tls_ctx, endpoint_it)) {}
+
+session::~session() {}
+
+void session::on_connect(void_cb cb) { impl_->on_connect(std::move(cb)); }
+
+void session::on_error(error_cb cb) { impl_->on_error(std::move(cb)); }
+
+void session::shutdown() { impl_->shutdown(); }
+
+request *session::submit(boost::system::error_code &ec,
+                         const std::string &method, const std::string &uri,
+                         http_header h) {
+  return impl_->submit(ec, method, uri, read_cb(), std::move(h));
+}
+
+request *session::submit(boost::system::error_code &ec,
+                         const std::string &method, const std::string &uri,
+                         std::string data, http_header h) {
+  return impl_->submit(ec, method, uri, string_reader(std::move(data)),
+                       std::move(h));
+}
+
+request *session::submit(boost::system::error_code &ec,
+                         const std::string &method, const std::string &uri,
+                         read_cb cb, http_header h) {
+  return impl_->submit(ec, method, uri, std::move(cb), std::move(h));
+}
+
+} // namespace client
+} // namespace asio_http2
+} // nghttp2

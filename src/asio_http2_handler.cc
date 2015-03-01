@@ -26,6 +26,7 @@
 
 #include <iostream>
 
+#include "asio_common.h"
 #include "http2.h"
 #include "util.h"
 #include "template.h"
@@ -206,20 +207,7 @@ void response_impl::end(std::string data) {
     return;
   }
 
-  auto strio = std::make_shared<std::pair<std::string, size_t>>(std::move(data),
-                                                                data.size());
-  auto read_cb = [strio](uint8_t *buf, size_t len) {
-    auto nread = std::min(len, strio->second);
-    memcpy(buf, strio->first.c_str(), nread);
-    strio->second -= nread;
-    if (strio->second == 0) {
-      return std::make_pair(nread, true);
-    }
-
-    return std::make_pair(nread, false);
-  };
-
-  end(std::move(read_cb));
+  end(string_reader(std::move(data)));
 }
 
 void response_impl::end(read_cb cb) {
