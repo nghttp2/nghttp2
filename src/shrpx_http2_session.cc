@@ -700,7 +700,8 @@ namespace {
 int on_begin_headers_callback(nghttp2_session *session,
                               const nghttp2_frame *frame, void *user_data) {
   auto http2session = static_cast<Http2Session *>(user_data);
-  if (frame->headers.cat != NGHTTP2_HCAT_RESPONSE) {
+  if (frame->hd.type != NGHTTP2_HEADERS ||
+      frame->headers.cat != NGHTTP2_HCAT_RESPONSE) {
     return 0;
   }
   auto sd = static_cast<StreamData *>(
