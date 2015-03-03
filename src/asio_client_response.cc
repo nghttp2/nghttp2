@@ -36,7 +36,7 @@ response::response() : impl_(make_unique<response_impl>()) {}
 
 response::~response() {}
 
-void response::on_data(data_cb cb) { impl_->on_data(std::move(cb)); }
+void response::on_data(data_cb cb) const { impl_->on_data(std::move(cb)); }
 
 int response::status_code() const { return impl_->status_code(); }
 

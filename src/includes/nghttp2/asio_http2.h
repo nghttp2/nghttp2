@@ -287,7 +287,7 @@ public:
   response();
   ~response();
 
-  void on_data(data_cb cb);
+  void on_data(data_cb cb) const;
 
   int status_code() const;
 
@@ -303,8 +303,8 @@ private:
 
 class request;
 
-using response_cb = std::function<void(response &)>;
-using request_cb = std::function<void(request &)>;
+using response_cb = std::function<void(const response &)>;
+using request_cb = std::function<void(const request &)>;
 
 class request_impl;
 
@@ -313,11 +313,11 @@ public:
   request();
   ~request();
 
-  void on_response(response_cb cb);
-  void on_push(request_cb cb);
-  void on_close(close_cb cb);
+  void on_response(response_cb cb) const;
+  void on_push(request_cb cb) const;
+  void on_close(close_cb cb) const;
 
-  void cancel();
+  void cancel() const;
 
   const std::string &method() const;
   const std::string &scheme() const;
@@ -351,12 +351,15 @@ public:
 
   boost::asio::io_service &io_service();
 
-  request *submit(boost::system::error_code &ec, const std::string &method,
-                  const std::string &uri, header_map h = {});
-  request *submit(boost::system::error_code &ec, const std::string &method,
-                  const std::string &uri, std::string data, header_map h = {});
-  request *submit(boost::system::error_code &ec, const std::string &method,
-                  const std::string &uri, read_cb cb, header_map h = {});
+  const request *submit(boost::system::error_code &ec,
+                        const std::string &method, const std::string &uri,
+                        header_map h = {});
+  const request *submit(boost::system::error_code &ec,
+                        const std::string &method, const std::string &uri,
+                        std::string data, header_map h = {});
+  const request *submit(boost::system::error_code &ec,
+                        const std::string &method, const std::string &uri,
+                        read_cb cb, header_map h = {});
 
 private:
   std::unique_ptr<session_impl> impl_;

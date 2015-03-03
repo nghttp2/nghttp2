@@ -36,13 +36,15 @@ request::request() : impl_(make_unique<request_impl>()) {}
 
 request::~request() {}
 
-void request::cancel() { impl_->cancel(); }
+void request::cancel() const { impl_->cancel(); }
 
-void request::on_response(response_cb cb) { impl_->on_response(std::move(cb)); }
+void request::on_response(response_cb cb) const {
+  impl_->on_response(std::move(cb));
+}
 
-void request::on_push(request_cb cb) { impl_->on_push(std::move(cb)); }
+void request::on_push(request_cb cb) const { impl_->on_push(std::move(cb)); }
 
-void request::on_close(close_cb cb) { impl_->on_close(std::move(cb)); }
+void request::on_close(close_cb cb) const { impl_->on_close(std::move(cb)); }
 
 const std::string &request::method() const { return impl_->method(); }
 

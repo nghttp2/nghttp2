@@ -57,22 +57,24 @@ void session::shutdown() { impl_->shutdown(); }
 
 boost::asio::io_service &session::io_service() { return impl_->io_service(); }
 
-request *session::submit(boost::system::error_code &ec,
-                         const std::string &method, const std::string &uri,
-                         header_map h) {
+const request *session::submit(boost::system::error_code &ec,
+                               const std::string &method,
+                               const std::string &uri, header_map h) {
   return impl_->submit(ec, method, uri, read_cb(), std::move(h));
 }
 
-request *session::submit(boost::system::error_code &ec,
-                         const std::string &method, const std::string &uri,
-                         std::string data, header_map h) {
+const request *session::submit(boost::system::error_code &ec,
+                               const std::string &method,
+                               const std::string &uri, std::string data,
+                               header_map h) {
   return impl_->submit(ec, method, uri, string_reader(std::move(data)),
                        std::move(h));
 }
 
-request *session::submit(boost::system::error_code &ec,
-                         const std::string &method, const std::string &uri,
-                         read_cb cb, header_map h) {
+const request *session::submit(boost::system::error_code &ec,
+                               const std::string &method,
+                               const std::string &uri, read_cb cb,
+                               header_map h) {
   return impl_->submit(ec, method, uri, std::move(cb), std::move(h));
 }
 

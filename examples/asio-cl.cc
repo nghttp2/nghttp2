@@ -73,7 +73,7 @@ int main(int argc, char *argv[]) {
         return;
       }
 
-      req->on_response([&sess, req](response &res) {
+      req->on_response([&sess, req](const response &res) {
         std::cerr << "response header was received" << std::endl;
         print_header(res);
 
@@ -87,12 +87,12 @@ int main(int argc, char *argv[]) {
         std::cerr << "request done with error_code=" << error_code << std::endl;
       });
 
-      req->on_push([](request &push_req) {
+      req->on_push([](const request &push_req) {
         std::cerr << "push request was received" << std::endl;
 
         print_header(push_req);
 
-        push_req.on_response([](response &res) {
+        push_req.on_response([](const response &res) {
           std::cerr << "push response header was received" << std::endl;
 
           res.on_data([](const uint8_t *data, std::size_t len) {

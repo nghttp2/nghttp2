@@ -358,9 +358,10 @@ std::unique_ptr<stream> session_impl::create_stream() {
   return strm;
 }
 
-request *session_impl::submit(boost::system::error_code &ec,
-                              const std::string &method, const std::string &uri,
-                              read_cb cb, header_map h) {
+const request *session_impl::submit(boost::system::error_code &ec,
+                                    const std::string &method,
+                                    const std::string &uri, read_cb cb,
+                                    header_map h) {
   ec.clear();
 
   auto nva = std::vector<nghttp2_nv>();
