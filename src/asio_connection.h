@@ -41,11 +41,11 @@
 
 #include <memory>
 
-#include <boost/asio.hpp>
 #include <boost/noncopyable.hpp>
 #include <boost/array.hpp>
 
-#include <nghttp2/asio_http2.h>
+#include <nghttp2/asio_http2_server.h>
+
 #include "asio_http2_handler.h"
 #include "util.h"
 

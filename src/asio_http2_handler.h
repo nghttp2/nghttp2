@@ -31,12 +31,10 @@
 #include <vector>
 #include <functional>
 #include <string>
+
 #include <boost/array.hpp>
-#include <boost/asio.hpp>
 
-#include <nghttp2/nghttp2.h>
-
-#include <nghttp2/asio_http2.h>
+#include <nghttp2/asio_http2_server.h>
 
 namespace nghttp2 {
 namespace asio_http2 {

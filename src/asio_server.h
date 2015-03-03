@@ -42,11 +42,10 @@
 #include <string>
 #include <vector>
 #include <memory>
-#include <boost/noncopyable.hpp>
-#include <boost/asio.hpp>
-#include <boost/asio/ssl.hpp>
 
-#include <nghttp2/asio_http2.h>
+#include <boost/noncopyable.hpp>
+
+#include <nghttp2/asio_http2_server.h>
 
 #include "asio_connection.h"
 #include "asio_io_service_pool.h"

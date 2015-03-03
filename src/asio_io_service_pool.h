@@ -41,11 +41,11 @@
 
 #include <vector>
 #include <memory>
-#include <boost/asio.hpp>
+
 #include <boost/noncopyable.hpp>
 #include <boost/thread.hpp>
 
-#include <nghttp2/asio_http2.h>
+#include <nghttp2/asio_http2_server.h>
 
 namespace nghttp2 {
 

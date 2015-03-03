@@ -27,8 +27,6 @@
 
 #include <nghttp2/asio_http2.h>
 
-#include <boost/asio/ssl.hpp>
-
 namespace nghttp2 {
 
 namespace asio_http2 {

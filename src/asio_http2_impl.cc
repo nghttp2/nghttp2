@@ -24,11 +24,7 @@
  */
 #include "asio_http2_impl.h"
 
-#include <boost/asio/ssl.hpp>
-
 #include <openssl/ssl.h>
-
-#include <nghttp2/nghttp2.h>
 
 #include "asio_server.h"
 #include "util.h"
