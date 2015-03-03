@@ -36,8 +36,8 @@ using boost::asio::ip::tcp;
 using namespace nghttp2::asio_http2;
 using namespace nghttp2::asio_http2::client;
 
-void print_header(const http_header &h) {
-  for (auto &kv : h.items()) {
+void print_header(const header_map &h) {
+  for (auto &kv : h) {
     std::cerr << kv.first << ": " << kv.second.value << "\n";
   }
   std::cerr << std::endl;

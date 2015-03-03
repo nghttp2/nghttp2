@@ -54,7 +54,7 @@ const std::string &request::authority() const { return impl_->authority(); }
 
 const std::string &request::host() const { return impl_->host(); }
 
-const http_header &request::header() const { return impl_->header(); }
+const header_map &request::header() const { return impl_->header(); }
 
 request_impl &request::impl() { return *impl_; }
 

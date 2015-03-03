@@ -50,13 +50,13 @@ public:
   void content_length(int64_t n);
   int64_t content_length() const;
 
-  http_header &header();
-  const http_header &header() const;
+  header_map &header();
+  const header_map &header() const;
 
 private:
   data_cb data_cb_;
 
-  http_header header_;
+  header_map header_;
 
   int64_t content_length_;
   int status_code_;

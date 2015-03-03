@@ -48,9 +48,9 @@ void response_impl::content_length(int64_t n) { content_length_ = n; }
 
 int64_t response_impl::content_length() const { return content_length_; }
 
-http_header &response_impl::header() { return header_; }
+header_map &response_impl::header() { return header_; }
 
-const http_header &response_impl::header() const { return header_; }
+const header_map &response_impl::header() const { return header_; }
 
 } // namespace client
 } // namespace asio_http2

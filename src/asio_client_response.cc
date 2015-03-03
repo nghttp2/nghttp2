@@ -42,7 +42,7 @@ int response::status_code() const { return impl_->status_code(); }
 
 int64_t response::content_length() const { return impl_->content_length(); }
 
-const http_header &response::header() const { return impl_->header(); }
+const header_map &response::header() const { return impl_->header(); }
 
 response_impl &response::impl() { return *impl_; }
 

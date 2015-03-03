@@ -72,31 +72,6 @@ struct header_value {
 
 using header_map = std::multimap<std::string, header_value>;
 
-class http_header {
-public:
-  http_header();
-  http_header(const http_header &other) = default;
-  http_header(http_header &&other) = default;
-  http_header(
-      std::initializer_list<std::pair<std::string, header_value>> ilist);
-
-  http_header &operator=(const http_header &other) = default;
-  http_header &operator=(http_header &&other) = default;
-  http_header &
-  operator=(std::initializer_list<std::pair<std::string, header_value>> ilist);
-
-  const header_map &items() const;
-
-  void add(std::string name, std::string value, bool sensitive);
-  const header_value *get(const std::string &name) const;
-
-  std::size_t size() const;
-  bool empty() const;
-
-private:
-  header_map items_;
-};
-
 const boost::system::error_category &nghttp2_category() noexcept;
 
 typedef std::function<void(const uint8_t *, std::size_t)> data_cb;
@@ -318,7 +293,7 @@ public:
 
   int64_t content_length() const;
 
-  const http_header &header() const;
+  const header_map &header() const;
 
   response_impl &impl();
 
@@ -350,7 +325,7 @@ public:
   const std::string &authority() const;
   const std::string &host() const;
 
-  const http_header &header() const;
+  const header_map &header() const;
 
   request_impl &impl();
 
@@ -375,11 +350,11 @@ public:
   void shutdown();
 
   request *submit(boost::system::error_code &ec, const std::string &method,
-                  const std::string &uri, http_header h = {});
+                  const std::string &uri, header_map h = {});
   request *submit(boost::system::error_code &ec, const std::string &method,
-                  const std::string &uri, std::string data, http_header h = {});
+                  const std::string &uri, std::string data, header_map h = {});
   request *submit(boost::system::error_code &ec, const std::string &method,
-                  const std::string &uri, read_cb cb, http_header h = {});
+                  const std::string &uri, read_cb cb, header_map h = {});
 
 private:
   std::unique_ptr<session_impl> impl_;

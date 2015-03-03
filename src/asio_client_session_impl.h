@@ -65,7 +65,7 @@ public:
   stream *find_stream(int32_t stream_id);
 
   request *submit(boost::system::error_code &ec, const std::string &method,
-                  const std::string &uri, read_cb cb, http_header h);
+                  const std::string &uri, read_cb cb, header_map h);
 
   virtual tcp::socket &socket() = 0;
   virtual void read_socket(std::function<

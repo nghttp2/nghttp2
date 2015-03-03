@@ -134,9 +134,9 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
         res.content_length(util::parse_uint(value, valuelen));
       }
 
-      res.header().add(std::string(name, name + namelen),
-                       std::string(value, value + valuelen),
-                       flags & NGHTTP2_NV_FLAG_NO_INDEX);
+      res.header().emplace(std::string(name, name + namelen),
+                           header_value(std::string(value, value + valuelen),
+                                        flags & NGHTTP2_NV_FLAG_NO_INDEX));
     }
     break;
   }
@@ -167,9 +167,9 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
       req.host(std::string(value, value + valuelen));
     // fall through
     default:
-      req.header().add(std::string(name, name + namelen),
-                       std::string(value, value + valuelen),
-                       flags & NGHTTP2_NV_FLAG_NO_INDEX);
+      req.header().emplace(std::string(name, name + namelen),
+                           header_value(std::string(value, value + valuelen),
+                                        flags & NGHTTP2_NV_FLAG_NO_INDEX));
     }
 
     break;
@@ -345,7 +345,7 @@ std::unique_ptr<stream> session_impl::create_stream() {
 
 request *session_impl::submit(boost::system::error_code &ec,
                               const std::string &method, const std::string &uri,
-                              read_cb cb, http_header h) {
+                              read_cb cb, header_map h) {
   ec.clear();
 
   auto nva = std::vector<nghttp2_nv>();
@@ -354,7 +354,7 @@ request *session_impl::submit(boost::system::error_code &ec,
   nva.push_back(http2::make_nv_ll(":scheme", "https"));
   nva.push_back(http2::make_nv_ll(":path", "/"));
   nva.push_back(http2::make_nv_ll(":authority", "localhost:3000"));
-  for (auto &kv : h.items()) {
+  for (auto &kv : h) {
     nva.push_back(
         http2::make_nv(kv.first, kv.second.value, kv.second.sensitive));
   }

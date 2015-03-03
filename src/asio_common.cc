@@ -57,46 +57,5 @@ read_cb string_reader(std::string data) {
   };
 }
 
-http_header::http_header() {}
-
-http_header::http_header(
-    std::initializer_list<std::pair<std::string, header_value>> ilist) {
-  for (auto &kv : ilist) {
-    auto name = kv.first;
-    util::inp_strlower(name);
-    items_.emplace(std::move(name), kv.second);
-  }
-}
-
-http_header &http_header::
-operator=(std::initializer_list<std::pair<std::string, header_value>> ilist) {
-  items_.clear();
-  for (auto &kv : ilist) {
-    auto name = kv.first;
-    util::inp_strlower(name);
-    items_.emplace(std::move(name), kv.second);
-  }
-  return *this;
-}
-
-const header_map &http_header::items() const { return items_; }
-
-void http_header::add(std::string name, std::string value, bool sensitive) {
-  util::inp_strlower(name);
-  items_.emplace(name, header_value(value, sensitive));
-}
-
-const header_value *http_header::get(const std::string &name) const {
-  auto it = items_.find(name);
-  if (it == std::end(items_)) {
-    return nullptr;
-  }
-  return &(*it).second;
-}
-
-std::size_t http_header::size() const { return items_.size(); }
-
-bool http_header::empty() const { return items_.empty(); }
-
 } // namespace asio_http2
 } // namespace nghttp2

@@ -57,9 +57,9 @@ public:
   void on_read(read_cb cb);
   read_cb::result_type call_on_read(uint8_t *buf, std::size_t len);
 
-  void header(http_header h);
-  http_header &header();
-  const http_header &header() const;
+  void header(header_map h);
+  header_map &header();
+  const header_map &header() const;
 
   void stream(class stream *strm);
 
@@ -79,7 +79,7 @@ public:
   const std::string &host() const;
 
 private:
-  http_header header_;
+  header_map header_;
   response_cb response_cb_;
   request_cb push_request_cb_;
   close_cb close_cb_;

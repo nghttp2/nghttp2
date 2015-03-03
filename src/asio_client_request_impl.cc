@@ -68,11 +68,11 @@ read_cb::result_type request_impl::call_on_read(uint8_t *buf, std::size_t len) {
   return read_cb::result_type{};
 }
 
-void request_impl::header(http_header h) { header_ = std::move(h); }
+void request_impl::header(header_map h) { header_ = std::move(h); }
 
-http_header &request_impl::header() { return header_; }
+header_map &request_impl::header() { return header_; }
 
-const http_header &request_impl::header() const { return header_; }
+const header_map &request_impl::header() const { return header_; }
 
 void request_impl::stream(class stream *strm) { strm_ = strm; }
 

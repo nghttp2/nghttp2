@@ -56,20 +56,20 @@ void session::shutdown() { impl_->shutdown(); }
 
 request *session::submit(boost::system::error_code &ec,
                          const std::string &method, const std::string &uri,
-                         http_header h) {
+                         header_map h) {
   return impl_->submit(ec, method, uri, read_cb(), std::move(h));
 }
 
 request *session::submit(boost::system::error_code &ec,
                          const std::string &method, const std::string &uri,
-                         std::string data, http_header h) {
+                         std::string data, header_map h) {
   return impl_->submit(ec, method, uri, string_reader(std::move(data)),
                        std::move(h));
 }
 
 request *session::submit(boost::system::error_code &ec,
                          const std::string &method, const std::string &uri,
-                         read_cb cb, http_header h) {
+                         read_cb cb, header_map h) {
   return impl_->submit(ec, method, uri, std::move(cb), std::move(h));
 }
 
