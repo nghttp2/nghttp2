@@ -27,7 +27,7 @@
 
 #include "nghttp2_config.h"
 
-#include <nghttp2/asio_http2.h>
+#include <nghttp2/asio_http2_client.h>
 
 namespace nghttp2 {
 namespace asio_http2 {

@@ -22,7 +22,9 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#include <nghttp2/asio_http2.h>
+#include "nghttp2_config.h"
+
+#include <nghttp2/asio_http2_client.h>
 
 #include "asio_client_response_impl.h"
 

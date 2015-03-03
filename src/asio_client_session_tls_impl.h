@@ -27,9 +27,7 @@
 
 #include "asio_client_session_impl.h"
 
-#include <boost/asio.hpp>
-
-#include <nghttp2/asio_http2.h>
+#include <nghttp2/asio_http2_client.h>
 
 namespace nghttp2 {
 namespace asio_http2 {

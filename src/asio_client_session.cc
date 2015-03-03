@@ -24,7 +24,7 @@
  */
 #include "nghttp2_config.h"
 
-#include <nghttp2/asio_http2.h>
+#include <nghttp2/asio_http2_client.h>
 
 #include "asio_client_session_tcp_impl.h"
 #include "asio_client_session_tls_impl.h"
