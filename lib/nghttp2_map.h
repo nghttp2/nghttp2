@@ -40,6 +40,10 @@ typedef uint32_t key_type;
 typedef struct nghttp2_map_entry {
   struct nghttp2_map_entry *next;
   key_type key;
+#if SIZEOF_INT_P == 4
+  /* we requires 8 bytes aligment */
+  int64_t pad;
+#endif
 } nghttp2_map_entry;
 
 typedef struct {

@@ -549,6 +549,10 @@ if test "x$have_struct_tm_tm_gmtoff" = "xyes"; then
             [Define to 1 if you have `struct tm.tm_gmtoff` member.])
 fi
 
+# Check size of pointer to decide we need 8 bytes alignment
+# adjustment.
+AC_CHECK_SIZEOF([int *])
+
 # Checks for library functions.
 if test "x$cross_compiling" != "xyes"; then
   AC_FUNC_MALLOC
