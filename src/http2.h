@@ -274,9 +274,9 @@ std::vector<LinkHeader> parse_link_header(const char *src, size_t len);
 // Constructs path by combining base path |base_path| of length
 // |base_pathlen| with another path |rel_path| of length
 // |rel_pathlen|.  The base path and another path can have optional
-// query component.  This function assumes |base_path| is
-// cannibalized.  In other words, it does not contain ".." or "." path
-// components and starts with "/" if it is not empty.
+// query component.  This function assumes |base_path| is normalized.
+// In other words, it does not contain ".." or "."  path components
+// and starts with "/" if it is not empty.
 std::string path_join(const char *base_path, size_t base_pathlen,
                       const char *base_query, size_t base_querylen,
                       const char *rel_path, size_t rel_pathlen,
