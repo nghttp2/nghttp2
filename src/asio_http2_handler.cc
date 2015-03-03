@@ -66,7 +66,7 @@ void request::on_data(data_cb cb) const {
 
 void request::on_end(void_cb cb) const { return impl_->on_end(std::move(cb)); }
 
-request_impl &request::impl() { return *impl_; }
+request_impl &request::impl() const { return *impl_; }
 
 response::response() : impl_(make_unique<response_impl>()) {}
 
@@ -85,7 +85,7 @@ unsigned int response::status_code() const { return impl_->status_code(); }
 
 bool response::started() const { return impl_->started(); }
 
-response_impl &response::impl() { return *impl_; }
+response_impl &response::impl() const { return *impl_; }
 
 request_impl::request_impl() : stream_(nullptr), pushed_(false) {}
 

@@ -54,7 +54,7 @@ const std::string &request::method() const { return impl_->method(); }
 
 const header_map &request::header() const { return impl_->header(); }
 
-request_impl &request::impl() { return *impl_; }
+request_impl &request::impl() const { return *impl_; }
 
 } // namespace client
 } // namespace asio_http2

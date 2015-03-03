@@ -50,7 +50,7 @@ public:
 
   const header_map &header() const;
 
-  response_impl &impl();
+  response_impl &impl() const;
 
 private:
   std::unique_ptr<response_impl> impl_;
@@ -82,7 +82,7 @@ public:
 
   const header_map &header() const;
 
-  request_impl &impl();
+  request_impl &impl() const;
 
 private:
   std::unique_ptr<request_impl> impl_;

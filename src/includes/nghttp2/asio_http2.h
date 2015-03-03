@@ -149,7 +149,7 @@ public:
   bool pushed() const;
 
   // Application must not call this directly.
-  request_impl &impl();
+  request_impl &impl() const;
 
 private:
   std::unique_ptr<request_impl> impl_;
@@ -183,7 +183,7 @@ public:
   bool started() const;
 
   // Application must not call this directly.
-  response_impl &impl();
+  response_impl &impl() const;
 
 private:
   std::unique_ptr<response_impl> impl_;
