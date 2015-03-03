@@ -97,8 +97,8 @@ private:
   static int severity_thres_;
 };
 
-#define TTY_HTTP_HD (log_config->errorlog_tty ? "\033[1;34m" : "")
-#define TTY_RST (log_config->errorlog_tty ? "\033[0m" : "")
+#define TTY_HTTP_HD (log_config()->errorlog_tty ? "\033[1;34m" : "")
+#define TTY_RST (log_config()->errorlog_tty ? "\033[0m" : "")
 
 enum LogFragmentType {
   SHRPX_LOGF_NONE,

@@ -1884,15 +1884,15 @@ int main(int argc, char **argv) {
   }
 
   if (get_config()->uid != 0) {
-    if (log_config->accesslog_fd != -1 &&
-        fchown(log_config->accesslog_fd, get_config()->uid,
+    if (log_config()->accesslog_fd != -1 &&
+        fchown(log_config()->accesslog_fd, get_config()->uid,
                get_config()->gid) == -1) {
       auto error = errno;
       LOG(WARN) << "Changing owner of access log file failed: "
                 << strerror(error);
     }
-    if (log_config->errorlog_fd != -1 &&
-        fchown(log_config->errorlog_fd, get_config()->uid, get_config()->gid) ==
+    if (log_config()->errorlog_fd != -1 &&
+        fchown(log_config()->errorlog_fd, get_config()->uid, get_config()->gid) ==
             -1) {
       auto error = errno;
       LOG(WARN) << "Changing owner of error log file failed: "

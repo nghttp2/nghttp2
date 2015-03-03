@@ -99,7 +99,7 @@ Log::~Log() {
     return;
   }
 
-  auto lgconf = log_config;
+  auto lgconf = log_config();
 
   if (!log_enabled(severity_) ||
       (lgconf->errorlog_fd == -1 && !get_config()->errorlog_syslog)) {
@@ -159,7 +159,7 @@ std::pair<OutputIterator, size_t> copy(const char *src, size_t avail,
 } // namespace
 
 void upstream_accesslog(const std::vector<LogFragment> &lfv, LogSpec *lgsp) {
-  auto lgconf = log_config;
+  auto lgconf = log_config();
 
   if (lgconf->accesslog_fd == -1 && !get_config()->accesslog_syslog) {
     return;
@@ -272,7 +272,7 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv, LogSpec *lgsp) {
 int reopen_log_files() {
   int res = 0;
 
-  auto lgconf = log_config;
+  auto lgconf = log_config();
 
   if (lgconf->accesslog_fd != -1) {
     close(lgconf->accesslog_fd);

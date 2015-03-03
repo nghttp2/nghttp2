@@ -33,9 +33,28 @@ LogConfig::LogConfig()
     : accesslog_fd(-1), errorlog_fd(-1), errorlog_tty(false) {}
 
 #ifndef NOTHREADS
-thread_local
+    static pthread_key_t lckey;
+    static pthread_once_t lckey_once = PTHREAD_ONCE_INIT;
+    
+    static void make_key(void) {
+        pthread_key_create(&lckey, NULL);
+    }
+    
+    LogConfig *log_config(void) {
+        pthread_once(&lckey_once, make_key);
+        LogConfig *config = (LogConfig *)pthread_getspecific(lckey);
+        if (!config) {
+            config = new LogConfig();
+            pthread_setspecific(lckey, config);
+        }
+        return config;
+    }
+#else
+    static LogConfig *config = new LogConfig();
+    LogConfig *log_config(void) {
+        return config;
+    }
 #endif // NOTHREADS
-    LogConfig *log_config = new LogConfig();
 
 void
 LogConfig::update_tstamp(const std::chrono::system_clock::time_point &now) {
