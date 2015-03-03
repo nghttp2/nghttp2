@@ -38,8 +38,9 @@ namespace nghttp2 {
 namespace asio_http2 {
 namespace client {
 
-session_impl::session_impl()
-    : wblen_(0), session_(nullptr), data_pending_(nullptr), data_pendinglen_(0),
+session_impl::session_impl(boost::asio::io_service &io_service)
+    : wblen_(0), io_service_(io_service), resolver_(io_service),
+      session_(nullptr), data_pending_(nullptr), data_pendinglen_(0),
       writing_(false), inside_callback_(false) {}
 
 session_impl::~session_impl() {
@@ -51,6 +52,20 @@ session_impl::~session_impl() {
   }
 
   nghttp2_session_del(session_);
+}
+
+void session_impl::start_resolve(const std::string &host,
+                                 const std::string &service) {
+  resolver_.async_resolve({host, service},
+                          [this](const boost::system::error_code &ec,
+                                 tcp::resolver::iterator endpoint_it) {
+    if (ec) {
+      not_connected(ec);
+      return;
+    }
+
+    start_connect(endpoint_it);
+  });
 }
 
 void session_impl::connected() {
@@ -410,6 +425,8 @@ void session_impl::shutdown() {
   nghttp2_session_terminate_session(session_, NGHTTP2_NO_ERROR);
   signal_write();
 }
+
+boost::asio::io_service &session_impl::io_service() { return io_service_; }
 
 void session_impl::signal_write() {
   if (!inside_callback_) {

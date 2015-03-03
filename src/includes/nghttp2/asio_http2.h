@@ -337,17 +337,19 @@ class session_impl;
 
 class session {
 public:
+  session(boost::asio::io_service &io_service, const std::string &host,
+          const std::string &service);
   session(boost::asio::io_service &io_service,
-          boost::asio::ip::tcp::resolver::iterator endpoint_it);
-  session(boost::asio::io_service &io_service,
-          boost::asio::ssl::context &tls_context,
-          boost::asio::ip::tcp::resolver::iterator endpoint_it);
+          boost::asio::ssl::context &tls_context, const std::string &host,
+          const std::string &service);
   ~session();
 
   void on_connect(void_cb cb);
   void on_error(error_cb cb);
 
   void shutdown();
+
+  boost::asio::io_service &io_service();
 
   request *submit(boost::system::error_code &ec, const std::string &method,
                   const std::string &uri, header_map h = {});

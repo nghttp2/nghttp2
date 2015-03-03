@@ -62,10 +62,7 @@ int main(int argc, char *argv[]) {
     boost::asio::ssl::context tls_ctx(boost::asio::ssl::context::sslv23);
     configure_tls_context(tls_ctx);
 
-    tcp::resolver resolver(io_service);
-    auto endpoint_it = resolver.resolve({"localhost", "3000"});
-
-    session sess(io_service, tls_ctx, endpoint_it);
+    session sess(io_service, tls_ctx, "localhost", "3000");
     sess.on_connect([&sess]() {
       std::cerr << "connected" << std::endl;
       boost::system::error_code ec;

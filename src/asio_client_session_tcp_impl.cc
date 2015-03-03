@@ -29,21 +29,26 @@ namespace asio_http2 {
 namespace client {
 
 session_tcp_impl::session_tcp_impl(boost::asio::io_service &io_service,
-                                   tcp::resolver::iterator endpoint_it)
-    : socket_(io_service) {
-
-  boost::asio::async_connect(socket_, endpoint_it,
-                             [this](boost::system::error_code ec,
-                                    tcp::resolver::iterator endpoint_it) {
-    if (!ec) {
-      connected();
-      return;
-    }
-    not_connected(ec);
-  });
+                                   const std::string &host,
+                                   const std::string &service)
+    : session_impl(io_service), socket_(io_service) {
+  start_resolve(host, service);
 }
 
 session_tcp_impl::~session_tcp_impl() {}
+
+void session_tcp_impl::start_connect(tcp::resolver::iterator endpoint_it) {
+  boost::asio::async_connect(socket_, endpoint_it,
+                             [this](const boost::system::error_code &ec,
+                                    tcp::resolver::iterator endpoint_it) {
+    if (ec) {
+      not_connected(ec);
+      return;
+    }
+
+    connected();
+  });
+}
 
 tcp::socket &session_tcp_impl::socket() { return socket_; }
 

@@ -30,11 +30,17 @@ namespace client {
 
 session_tls_impl::session_tls_impl(boost::asio::io_service &io_service,
                                    boost::asio::ssl::context &tls_ctx,
-                                   tcp::resolver::iterator endpoint_it)
-    : socket_(io_service, tls_ctx) {
+                                   const std::string &host,
+                                   const std::string &service)
+    : session_impl(io_service), socket_(io_service, tls_ctx) {
+  start_resolve(host, service);
+}
 
+session_tls_impl::~session_tls_impl() {}
+
+void session_tls_impl::start_connect(tcp::resolver::iterator endpoint_it) {
   boost::asio::async_connect(socket(), endpoint_it,
-                             [this](boost::system::error_code ec,
+                             [this](const boost::system::error_code &ec,
                                     tcp::resolver::iterator endpoint_it) {
     if (ec) {
       not_connected(ec);
@@ -51,8 +57,6 @@ session_tls_impl::session_tls_impl(boost::asio::io_service &io_service,
     });
   });
 }
-
-session_tls_impl::~session_tls_impl() {}
 
 tcp::socket &session_tls_impl::socket() { return socket_.next_layer(); }
 

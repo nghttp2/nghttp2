@@ -39,10 +39,11 @@ using boost::asio::ip::tcp;
 
 class session_tcp_impl : public session_impl {
 public:
-  session_tcp_impl(boost::asio::io_service &io_service,
-                   tcp::resolver::iterator endpoint_it);
+  session_tcp_impl(boost::asio::io_service &io_service, const std::string &host,
+                   const std::string &service);
   virtual ~session_tcp_impl();
 
+  virtual void start_connect(tcp::resolver::iterator endpoint_it);
   virtual tcp::socket &socket();
   virtual void read_socket(std::function<
       void(const boost::system::error_code &ec, std::size_t n)> h);

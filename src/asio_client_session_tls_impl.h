@@ -42,10 +42,11 @@ using ssl_socket = boost::asio::ssl::stream<tcp::socket>;
 class session_tls_impl : public session_impl {
 public:
   session_tls_impl(boost::asio::io_service &io_service,
-                   boost::asio::ssl::context &tls_ctx,
-                   tcp::resolver::iterator endpoint_it);
+                   boost::asio::ssl::context &tls_ctx, const std::string &host,
+                   const std::string &service);
   virtual ~session_tls_impl();
 
+  virtual void start_connect(tcp::resolver::iterator endpoint_it);
   virtual tcp::socket &socket();
   virtual void read_socket(std::function<
       void(const boost::system::error_code &ec, std::size_t n)> h);

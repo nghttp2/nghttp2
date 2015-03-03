@@ -37,14 +37,15 @@ namespace client {
 
 using boost::asio::ip::tcp;
 
-session::session(boost::asio::io_service &io_service,
-                 tcp::resolver::iterator endpoint_it)
-    : impl_(make_unique<session_tcp_impl>(io_service, endpoint_it)) {}
+session::session(boost::asio::io_service &io_service, const std::string &host,
+                 const std::string &service)
+    : impl_(make_unique<session_tcp_impl>(io_service, host, service)) {}
 
 session::session(boost::asio::io_service &io_service,
-                 boost::asio::ssl::context &tls_ctx,
-                 tcp::resolver::iterator endpoint_it)
-    : impl_(make_unique<session_tls_impl>(io_service, tls_ctx, endpoint_it)) {}
+                 boost::asio::ssl::context &tls_ctx, const std::string &host,
+                 const std::string &service)
+    : impl_(make_unique<session_tls_impl>(io_service, tls_ctx, host, service)) {
+}
 
 session::~session() {}
 
@@ -53,6 +54,8 @@ void session::on_connect(void_cb cb) { impl_->on_connect(std::move(cb)); }
 void session::on_error(error_cb cb) { impl_->on_error(std::move(cb)); }
 
 void session::shutdown() { impl_->shutdown(); }
+
+boost::asio::io_service &session::io_service() { return impl_->io_service(); }
 
 request *session::submit(boost::system::error_code &ec,
                          const std::string &method, const std::string &uri,

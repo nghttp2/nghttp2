@@ -45,8 +45,10 @@ using boost::asio::ip::tcp;
 
 class session_impl {
 public:
-  session_impl();
+  session_impl(boost::asio::io_service &io_service);
   virtual ~session_impl();
+
+  void start_resolve(const std::string &host, const std::string &service);
 
   void connected();
   void not_connected(const boost::system::error_code &ec);
@@ -67,6 +69,7 @@ public:
   request *submit(boost::system::error_code &ec, const std::string &method,
                   const std::string &uri, read_cb cb, header_map h);
 
+  virtual void start_connect(tcp::resolver::iterator endpoint_it) = 0;
   virtual tcp::socket &socket() = 0;
   virtual void read_socket(std::function<
       void(const boost::system::error_code &ec, std::size_t n)> h) = 0;
@@ -75,6 +78,8 @@ public:
   virtual void shutdown_socket() = 0;
 
   void shutdown();
+
+  boost::asio::io_service &io_service();
 
   void signal_write();
 
@@ -92,6 +97,9 @@ protected:
 private:
   bool should_stop() const;
   bool setup_session();
+
+  boost::asio::io_service &io_service_;
+  tcp::resolver resolver_;
 
   std::map<int32_t, std::unique_ptr<stream>> streams_;
 
