@@ -114,26 +114,26 @@ void nva_out_init(nva_out *out) {
   out->nvlen = 0;
 }
 
-void nva_out_reset(nva_out *out) {
+void nva_out_reset(nva_out *out, nghttp2_mem *mem) {
   size_t i;
   for (i = 0; i < out->nvlen; ++i) {
-    free(out->nva[i].name);
-    free(out->nva[i].value);
+    mem->free(out->nva[i].name, NULL);
+    mem->free(out->nva[i].value, NULL);
   }
   memset(out->nva, 0, sizeof(out->nva));
   out->nvlen = 0;
 }
 
-void add_out(nva_out *out, nghttp2_nv *nv) {
+void add_out(nva_out *out, nghttp2_nv *nv, nghttp2_mem *mem) {
   nghttp2_nv *onv = &out->nva[out->nvlen];
   if (nv->namelen) {
-    onv->name = malloc(nv->namelen);
+    onv->name = mem->malloc(nv->namelen, NULL);
     memcpy(onv->name, nv->name, nv->namelen);
   } else {
     onv->name = NULL;
   }
   if (nv->valuelen) {
-    onv->value = malloc(nv->valuelen);
+    onv->value = mem->malloc(nv->valuelen, NULL);
     memcpy(onv->value, nv->value, nv->valuelen);
   } else {
     onv->value = NULL;
@@ -147,7 +147,7 @@ void add_out(nva_out *out, nghttp2_nv *nv) {
 }
 
 ssize_t inflate_hd(nghttp2_hd_inflater *inflater, nva_out *out,
-                   nghttp2_bufs *bufs, size_t offset) {
+                   nghttp2_bufs *bufs, size_t offset, nghttp2_mem *mem) {
   ssize_t rv;
   nghttp2_nv nv;
   int inflate_flags;
@@ -186,7 +186,7 @@ ssize_t inflate_hd(nghttp2_hd_inflater *inflater, nva_out *out,
 
       if (inflate_flags & NGHTTP2_HD_INFLATE_EMIT) {
         if (out) {
-          add_out(out, &nv);
+          add_out(out, &nv, mem);
         }
       }
       if (inflate_flags & NGHTTP2_HD_INFLATE_FINAL) {
@@ -293,10 +293,10 @@ nghttp2_stream *open_stream_with_dep_excl(nghttp2_session *session,
                               dep_stream);
 }
 
-nghttp2_outbound_item *create_data_ob_item(void) {
+nghttp2_outbound_item *create_data_ob_item(nghttp2_mem *mem) {
   nghttp2_outbound_item *item;
 
-  item = malloc(sizeof(nghttp2_outbound_item));
+  item = mem->malloc(sizeof(nghttp2_outbound_item), NULL);
   memset(item, 0, sizeof(nghttp2_outbound_item));
 
   return item;

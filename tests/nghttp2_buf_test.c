@@ -201,7 +201,7 @@ void test_nghttp2_bufs_remove(void) {
   CU_ASSERT(0 == nghttp2_bufs_len(&bufs));
   CU_ASSERT(bufs.cur->buf.pos == bufs.cur->buf.begin);
 
-  free(out);
+  mem->free(out, NULL);
   nghttp2_bufs_free(&bufs);
 }
 

@@ -433,7 +433,7 @@ void test_nghttp2_frame(void) {
 
 static int deflate_inflate(nghttp2_hd_deflater *deflater,
                            nghttp2_hd_inflater *inflater, nghttp2_bufs *bufs,
-                           nghttp2_nv *nva, size_t nvlen) {
+                           nghttp2_nv *nva, size_t nvlen, nghttp2_mem *mem) {
   int rv;
 
   rv = nghttp2_hd_deflate_hd_bufs(deflater, bufs, nva, nvlen);
@@ -442,7 +442,7 @@ static int deflate_inflate(nghttp2_hd_deflater *deflater,
     return rv;
   }
 
-  rv = (int)inflate_hd(inflater, NULL, bufs, 0);
+  rv = (int)inflate_hd(inflater, NULL, bufs, 0, mem);
 
   if (rv < 0) {
     return rv;
@@ -484,13 +484,15 @@ static void run_nghttp2_hd(void) {
     goto inflate_init_fail;
   }
 
-  rv = deflate_inflate(&deflater, &inflater, &bufs, nva1, ARRLEN(nva1));
+  rv = deflate_inflate(&deflater, &inflater, &bufs, nva1, ARRLEN(nva1),
+                       nghttp2_mem_fm());
 
   if (rv != 0) {
     goto deflate_hd_fail;
   }
 
-  rv = deflate_inflate(&deflater, &inflater, &bufs, nva2, ARRLEN(nva2));
+  rv = deflate_inflate(&deflater, &inflater, &bufs, nva2, ARRLEN(nva2),
+                       nghttp2_mem_fm());
 
   if (rv != 0) {
     goto deflate_hd_fail;
