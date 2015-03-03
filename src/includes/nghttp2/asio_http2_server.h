@@ -42,8 +42,8 @@ public:
   request();
 
   // Returns request headers.  The pusedo headers, which start with
-  // colon (;), are exluced from this list.
-  const std::vector<header> &headers() const;
+  // colon (:), are exluced from this list.
+  const header_map &header() const;
 
   // Returns method (e.g., GET).
   const std::string &method() const;
@@ -70,11 +70,10 @@ public:
   void on_end(void_cb cb) const;
 
   // Pushes resource denoted by |path| using |method|.  The additional
-  // headers can be given in |headers|.  request_cb will be called for
+  // headers can be given in |h|.  request_cb will be called for
   // pushed resource later on.  This function returns true if it
   // succeeds, or false.
-  bool push(std::string method, std::string path,
-            std::vector<header> headers = {}) const;
+  bool push(std::string method, std::string path, header_map h = {}) const;
 
   // Returns true if this is pushed request.
   bool pushed() const;
@@ -92,9 +91,8 @@ public:
   response();
 
   // Write response header using |status_code| (e.g., 200) and
-  // additional headers in |headers|.
-  void write_head(unsigned int status_code,
-                  std::vector<header> headers = {}) const;
+  // additional headers in |h|.
+  void write_head(unsigned int status_code, header_map h = {}) const;
 
   // Sends |data| as request body.  No further call of end() is
   // allowed.

@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
     }
 
     server.listen("*", port, [](const request &req, const response &res) {
-      res.write_head(200, {header{"foo", "bar"}});
+      res.write_head(200, {{"foo", {"bar"}}});
       res.end("hello, world");
     });
   } catch (std::exception &e) {

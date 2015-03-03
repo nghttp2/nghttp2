@@ -47,23 +47,22 @@ class request_impl {
 public:
   request_impl();
 
-  const std::vector<header> &headers() const;
+  const header_map &header() const;
   const std::string &method() const;
   const std::string &scheme() const;
   const std::string &authority() const;
   const std::string &host() const;
   const std::string &path() const;
 
-  bool push(std::string method, std::string path,
-            std::vector<header> headers = {});
+  bool push(std::string method, std::string path, header_map h = {});
 
   bool pushed() const;
 
   void on_data(data_cb cb);
   void on_end(void_cb cb);
 
-  void set_header(std::vector<header> headers);
-  void add_header(std::string name, std::string value);
+  void header(header_map h);
+  header_map &header();
   void method(std::string method);
   void scheme(std::string scheme);
   void authority(std::string authority);
@@ -76,7 +75,7 @@ public:
 
 private:
   http2_stream *stream_;
-  std::vector<header> headers_;
+  header_map header_;
   std::string method_;
   std::string scheme_;
   std::string authority_;
@@ -90,20 +89,20 @@ private:
 class response_impl {
 public:
   response_impl();
-  void write_head(unsigned int status_code, std::vector<header> headers = {});
+  void write_head(unsigned int status_code, header_map h = {});
   void end(std::string data = "");
   void end(read_cb cb);
   void resume();
 
   unsigned int status_code() const;
-  const std::vector<header> &headers() const;
+  const header_map &header() const;
   bool started() const;
   void stream(http2_stream *s);
   read_cb::result_type call_read(uint8_t *data, std::size_t len);
 
 private:
   http2_stream *stream_;
-  std::vector<header> headers_;
+  header_map header_;
   read_cb read_cb_;
   unsigned int status_code_;
   bool started_;
@@ -164,7 +163,7 @@ public:
   void resume(http2_stream &stream);
 
   int push_promise(http2_stream &stream, std::string method, std::string path,
-                   std::vector<header> headers);
+                   header_map h);
 
   boost::asio::io_service &io_service();
 

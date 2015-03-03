@@ -87,15 +87,16 @@ int main(int argc, char *argv[]) {
         return;
       }
 
-      auto headers = std::vector<header>();
+      auto header = header_map();
 
       struct stat stbuf;
       if (stat(path.c_str(), &stbuf) == 0) {
-        headers.push_back(
-            header{"content-length", std::to_string(stbuf.st_size)});
-        headers.push_back(header{"last-modified", http_date(stbuf.st_mtime)});
+        header.emplace("content-length",
+                       header_value(std::to_string(stbuf.st_size)));
+        header.emplace("last-modified",
+                       header_value(http_date(stbuf.st_mtime)));
       }
-      res.write_head(200, std::move(headers));
+      res.write_head(200, std::move(header));
       res.end(file_reader_from_fd(fd));
     });
   } catch (std::exception &e) {

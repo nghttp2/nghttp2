@@ -41,7 +41,7 @@ extern std::shared_ptr<std::string> cached_date;
 
 request::request() : impl_(make_unique<request_impl>()) {}
 
-const std::vector<header> &request::headers() const { return impl_->headers(); }
+const header_map &request::header() const { return impl_->header(); }
 
 const std::string &request::method() const { return impl_->method(); }
 
@@ -53,9 +53,8 @@ const std::string &request::host() const { return impl_->host(); }
 
 const std::string &request::path() const { return impl_->path(); }
 
-bool request::push(std::string method, std::string path,
-                   std::vector<header> headers) const {
-  return impl_->push(std::move(method), std::move(path), std::move(headers));
+bool request::push(std::string method, std::string path, header_map h) const {
+  return impl_->push(std::move(method), std::move(path), std::move(h));
 }
 
 bool request::pushed() const { return impl_->pushed(); }
@@ -70,9 +69,8 @@ request_impl &request::impl() const { return *impl_; }
 
 response::response() : impl_(make_unique<response_impl>()) {}
 
-void response::write_head(unsigned int status_code,
-                          std::vector<header> headers) const {
-  impl_->write_head(status_code, std::move(headers));
+void response::write_head(unsigned int status_code, header_map h) const {
+  impl_->write_head(status_code, std::move(h));
 }
 
 void response::end(std::string data) const { impl_->end(std::move(data)); }
@@ -89,7 +87,7 @@ response_impl &response::impl() const { return *impl_; }
 
 request_impl::request_impl() : stream_(nullptr), pushed_(false) {}
 
-const std::vector<header> &request_impl::headers() const { return headers_; }
+const header_map &request_impl::header() const { return header_; }
 
 const std::string &request_impl::method() const { return method_; }
 
@@ -101,13 +99,9 @@ const std::string &request_impl::host() const { return host_; }
 
 const std::string &request_impl::path() const { return path_; }
 
-void request_impl::set_header(std::vector<header> headers) {
-  headers_ = std::move(headers);
-}
+void request_impl::header(header_map h) { header_ = std::move(h); }
 
-void request_impl::add_header(std::string name, std::string value) {
-  headers_.push_back(header{std::move(name), std::move(value)});
-}
+header_map &request_impl::header() { return header_; }
 
 void request_impl::method(std::string arg) { method_ = std::move(arg); }
 
@@ -119,11 +113,10 @@ void request_impl::host(std::string arg) { host_ = std::move(arg); }
 
 void request_impl::path(std::string arg) { path_ = std::move(arg); }
 
-bool request_impl::push(std::string method, std::string path,
-                        std::vector<header> headers) {
+bool request_impl::push(std::string method, std::string path, header_map h) {
   auto handler = stream_->handler();
   auto rv = handler->push_promise(*stream_, std::move(method), std::move(path),
-                                  std::move(headers));
+                                  std::move(h));
   return rv == 0;
 }
 
@@ -154,10 +147,9 @@ response_impl::response_impl()
 
 unsigned int response_impl::status_code() const { return status_code_; }
 
-void response_impl::write_head(unsigned int status_code,
-                               std::vector<header> headers) {
+void response_impl::write_head(unsigned int status_code, header_map h) {
   status_code_ = status_code;
-  headers_ = std::move(headers);
+  header_ = std::move(h);
 }
 
 void response_impl::end(std::string data) {
@@ -199,7 +191,7 @@ void response_impl::resume() {
 
 bool response_impl::started() const { return started_; }
 
-const std::vector<header> &response_impl::headers() const { return headers_; }
+const header_map &response_impl::header() const { return header_; }
 
 void response_impl::stream(http2_stream *s) { stream_ = s; }
 
@@ -287,8 +279,9 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
     req.host(std::string(value, value + valuelen));
   // fall through
   default:
-    req.add_header(std::string(name, name + namelen),
-                   std::string(value, value + valuelen));
+    req.header().emplace(std::string(name, name + namelen),
+                         header_value(std::string(value, value + valuelen),
+                                      flags & NGHTTP2_NV_FLAG_NO_INDEX));
   }
 
   return 0;
@@ -490,15 +483,16 @@ int http2_handler::start_response(http2_stream &stream) {
   int rv;
 
   auto &res = stream.response().impl();
-  auto &headers = res.headers();
+  auto &header = res.header();
   auto nva = std::vector<nghttp2_nv>();
-  nva.reserve(2 + headers.size());
+  nva.reserve(2 + header.size());
   auto status = util::utos(res.status_code());
   auto date = cached_date;
   nva.push_back(nghttp2::http2::make_nv_ls(":status", status));
   nva.push_back(nghttp2::http2::make_nv_ls("date", *date));
-  for (auto &hd : headers) {
-    nva.push_back(nghttp2::http2::make_nv(hd.name, hd.value));
+  for (auto &hd : header) {
+    nva.push_back(nghttp2::http2::make_nv(hd.first, hd.second.value,
+                                          hd.second.sensitive));
   }
 
   nghttp2_data_provider prd;
@@ -555,13 +549,13 @@ void http2_handler::resume(http2_stream &stream) {
 }
 
 int http2_handler::push_promise(http2_stream &stream, std::string method,
-                                std::string path, std::vector<header> headers) {
+                                std::string path, header_map h) {
   int rv;
 
   auto &req = stream.request().impl();
 
   auto nva = std::vector<nghttp2_nv>();
-  nva.reserve(5 + headers.size());
+  nva.reserve(5 + h.size());
   nva.push_back(nghttp2::http2::make_nv_ls(":method", method));
   nva.push_back(nghttp2::http2::make_nv_ls(":scheme", req.scheme()));
   if (!req.authority().empty()) {
@@ -572,8 +566,9 @@ int http2_handler::push_promise(http2_stream &stream, std::string method,
     nva.push_back(nghttp2::http2::make_nv_ls("host", req.host()));
   }
 
-  for (auto &hd : headers) {
-    nva.push_back(nghttp2::http2::make_nv(hd.name, hd.value));
+  for (auto &hd : h) {
+    nva.push_back(nghttp2::http2::make_nv(hd.first, hd.second.value,
+                                          hd.second.sensitive));
   }
 
   rv = nghttp2_submit_push_promise(session_, NGHTTP2_FLAG_NONE,
@@ -592,9 +587,9 @@ int http2_handler::push_promise(http2_stream &stream, std::string method,
   promised_req.authority(req.authority());
   promised_req.path(std::move(path));
   promised_req.host(req.host());
-  promised_req.set_header(std::move(headers));
+  promised_req.header(std::move(h));
   if (!req.host().empty()) {
-    promised_req.add_header("host", req.host());
+    promised_req.header().emplace("host", header_value(req.host()));
   }
 
   return 0;
