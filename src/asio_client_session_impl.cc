@@ -246,6 +246,11 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
       return 0;
     }
 
+    auto &req = push_strm->request().impl();
+    req.uri(make_uri_ref(req.scheme(),
+                         req.authority().empty() ? req.host() : req.authority(),
+                         req.path()));
+
     strm->request().impl().call_on_push(push_strm->request());
 
     break;
@@ -364,6 +369,19 @@ const request *session_impl::submit(boost::system::error_code &ec,
                                     header_map h) {
   ec.clear();
 
+  http_parser_url u{};
+  // TODO Handle CONNECT method
+  if (http_parser_parse_url(uri.c_str(), uri.size(), 0, &u) != 0) {
+    ec = make_error_code(boost::system::errc::invalid_argument);
+    return nullptr;
+  }
+
+  if ((u.field_set & (1 << UF_SCHEMA)) == 0 ||
+      (u.field_set & (1 << UF_HOST)) == 0) {
+    ec = make_error_code(boost::system::errc::invalid_argument);
+    return nullptr;
+  }
+
   auto nva = std::vector<nghttp2_nv>();
   nva.reserve(3 + h.size());
   nva.push_back(http2::make_nv_ls(":method", method));
@@ -378,6 +396,17 @@ const request *session_impl::submit(boost::system::error_code &ec,
   auto strm = create_stream();
   auto &req = strm->request().impl();
   req.header(std::move(h));
+
+  {
+    std::string scheme, host, raw_path, raw_query;
+    http2::copy_url_component(scheme, &u, UF_SCHEMA, uri.c_str());
+    http2::copy_url_component(host, &u, UF_HOST, uri.c_str());
+    http2::copy_url_component(raw_path, &u, UF_PATH, uri.c_str());
+    http2::copy_url_component(raw_query, &u, UF_QUERY, uri.c_str());
+
+    req.uri(make_uri_ref(std::move(scheme), std::move(host),
+                         std::move(raw_path), std::move(raw_query)));
+  }
 
   nghttp2_data_provider *prdptr = nullptr;
   nghttp2_data_provider prd;

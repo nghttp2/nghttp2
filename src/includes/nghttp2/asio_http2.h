@@ -74,6 +74,15 @@ using header_map = std::multimap<std::string, header_value>;
 
 const boost::system::error_category &nghttp2_category() noexcept;
 
+struct uri_ref {
+  std::string scheme;
+  std::string host;
+  // percent-decoded form
+  std::string path;
+  std::string raw_query;
+  std::string fragment;
+};
+
 typedef std::function<void(const uint8_t *, std::size_t)> data_cb;
 typedef std::function<void(void)> void_cb;
 typedef std::function<void(const boost::system::error_code &ec)> error_cb;
@@ -320,10 +329,8 @@ public:
   void cancel() const;
 
   const std::string &method() const;
-  const std::string &scheme() const;
-  const std::string &path() const;
-  const std::string &authority() const;
-  const std::string &host() const;
+
+  const uri_ref &uri() const;
 
   const header_map &header() const;
 

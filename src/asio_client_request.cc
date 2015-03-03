@@ -46,15 +46,9 @@ void request::on_push(request_cb cb) const { impl_->on_push(std::move(cb)); }
 
 void request::on_close(close_cb cb) const { impl_->on_close(std::move(cb)); }
 
+const uri_ref &request::uri() const { return impl_->uri(); }
+
 const std::string &request::method() const { return impl_->method(); }
-
-const std::string &request::scheme() const { return impl_->scheme(); }
-
-const std::string &request::path() const { return impl_->path(); }
-
-const std::string &request::authority() const { return impl_->authority(); }
-
-const std::string &request::host() const { return impl_->host(); }
 
 const header_map &request::header() const { return impl_->header(); }
 

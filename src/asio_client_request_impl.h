@@ -63,6 +63,9 @@ public:
 
   void stream(class stream *strm);
 
+  void uri(uri_ref uri);
+  const uri_ref &uri() const;
+
   void method(std::string s);
   const std::string &method() const;
 
@@ -85,6 +88,7 @@ private:
   close_cb close_cb_;
   read_cb read_cb_;
   class stream *strm_;
+  uri_ref uri_;
   std::string method_;
   std::string scheme_;
   std::string path_;

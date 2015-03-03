@@ -63,6 +63,7 @@ noinst_PROGRAMS += asio-sv asio-sv2 asio-sv3 asio-cl
 ASIOCPPFLAGS = ${BOOST_CPPFLAGS} ${AM_CPPFLAGS}
 ASIOLDADD = $(top_builddir)/lib/libnghttp2.la \
 	$(top_builddir)/src/libnghttp2_asio.la @JEMALLOC_LIBS@ \
+	$(top_builddir)/third-party/libhttp-parser.la \
 	${BOOST_LDFLAGS} \
 	${BOOST_ASIO_LIB} \
 	${BOOST_THREAD_LIB} \

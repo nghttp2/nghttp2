@@ -38,6 +38,12 @@ read_cb string_reader(std::string data);
 
 boost::system::error_code make_error_code(nghttp2_error ev);
 
+uri_ref make_uri_ref(std::string scheme, std::string host, std::string raw_path,
+                     std::string raw_query);
+
+uri_ref make_uri_ref(std::string scheme, std::string host,
+                     const std::string &raw_path_query);
+
 } // namespace asio_http2
 } // namespace nghttp2
 

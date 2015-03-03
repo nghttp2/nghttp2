@@ -49,9 +49,13 @@ void print_header(const response &res) {
 }
 
 void print_header(const request &req) {
-  std::cerr << req.method() << " " << req.scheme() << "://" << req.authority()
-            << req.path() << " "
-            << "HTTP/2\n";
+  auto &uri = req.uri();
+  std::cerr << req.method() << " " << uri.scheme << "://" << uri.host
+            << uri.path;
+  if (!uri.raw_query.empty()) {
+    std::cerr << "?" << uri.raw_query;
+  }
+  std::cerr << " HTTP/2\n";
   print_header(req.header());
 }
 

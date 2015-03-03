@@ -76,6 +76,10 @@ const header_map &request_impl::header() const { return header_; }
 
 void request_impl::stream(class stream *strm) { strm_ = strm; }
 
+void request_impl::uri(uri_ref uri) { uri_ = std::move(uri); }
+
+const uri_ref &request_impl::uri() const { return uri_; }
+
 void request_impl::method(std::string s) { method_ = std::move(s); }
 
 const std::string &request_impl::method() const { return method_; }

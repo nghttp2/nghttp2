@@ -57,5 +57,28 @@ read_cb string_reader(std::string data) {
   };
 }
 
+uri_ref make_uri_ref(std::string scheme, std::string host, std::string raw_path,
+                     std::string raw_query) {
+  return uri_ref{
+      std::move(scheme), std::move(host), percent_decode(raw_path),
+      std::move(raw_path),
+  };
+}
+
+uri_ref make_uri_ref(std::string scheme, std::string host,
+                     const std::string &raw_path_query) {
+  auto path_end = raw_path_query.find('?');
+  std::size_t query_pos;
+  if (path_end == std::string::npos) {
+    query_pos = path_end = raw_path_query.size();
+  } else {
+    query_pos = path_end + 1;
+  }
+  return uri_ref{std::move(scheme), std::move(host),
+                 util::percentDecode(std::begin(raw_path_query),
+                                     std::begin(raw_path_query) + path_end),
+                 raw_path_query.substr(query_pos)};
+}
+
 } // namespace asio_http2
 } // namespace nghttp2
