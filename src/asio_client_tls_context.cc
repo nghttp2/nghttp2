@@ -50,15 +50,6 @@ int client_select_next_proto_cb(SSL *ssl, unsigned char **out,
 void configure_tls_context(boost::asio::ssl::context &tls_ctx) {
   auto ctx = tls_ctx.native_handle();
 
-  SSL_CTX_set_options(ctx, SSL_OP_ALL | SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 |
-                               SSL_OP_NO_COMPRESSION |
-                               SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION);
-
-  SSL_CTX_set_mode(ctx, SSL_MODE_AUTO_RETRY);
-  SSL_CTX_set_mode(ctx, SSL_MODE_RELEASE_BUFFERS);
-
-  SSL_CTX_set_cipher_list(ctx, ssl::DEFAULT_CIPHER_LIST);
-
   SSL_CTX_set_next_proto_select_cb(ctx, client_select_next_proto_cb, nullptr);
 }
 

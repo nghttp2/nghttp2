@@ -372,6 +372,8 @@ private:
   std::unique_ptr<session_impl> impl_;
 };
 
+// configure |tls_ctx| for client use.  Currently, we just set NPN
+// callback for HTTP/2.
 void configure_tls_context(boost::asio::ssl::context &tls_ctx);
 
 } // namespace client

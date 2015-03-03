@@ -64,6 +64,8 @@ int main(int argc, char *argv[]) {
     boost::asio::io_service io_service;
 
     boost::asio::ssl::context tls_ctx(boost::asio::ssl::context::sslv23);
+    tls_ctx.set_default_verify_paths();
+    tls_ctx.set_verify_mode(boost::asio::ssl::verify_peer);
     configure_tls_context(tls_ctx);
 
     session sess(io_service, tls_ctx, "localhost", "3000");

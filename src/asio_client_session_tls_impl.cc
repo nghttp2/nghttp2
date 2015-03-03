@@ -33,6 +33,11 @@ session_tls_impl::session_tls_impl(boost::asio::io_service &io_service,
                                    const std::string &host,
                                    const std::string &service)
     : session_impl(io_service), socket_(io_service, tls_ctx) {
+  // this callback setting is no effect is
+  // ssl::context::set_verify_mode(boost::asio::ssl::verify_peer) is
+  // not used, which is what we want.
+  socket_.set_verify_callback(boost::asio::ssl::rfc2818_verification(host));
+
   start_resolve(host, service);
 }
 
