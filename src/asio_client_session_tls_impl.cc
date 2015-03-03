@@ -52,14 +52,15 @@ void session_tls_impl::start_connect(tcp::resolver::iterator endpoint_it) {
       return;
     }
 
-    socket_.async_handshake(boost::asio::ssl::stream_base::client,
-                            [this](const boost::system::error_code &ec) {
-      if (ec) {
-        not_connected(ec);
-        return;
-      }
-      connected();
-    });
+    socket_.async_handshake(
+        boost::asio::ssl::stream_base::client,
+        [this, endpoint_it](const boost::system::error_code &ec) {
+          if (ec) {
+            not_connected(ec);
+            return;
+          }
+          connected(endpoint_it);
+        });
   });
 }
 

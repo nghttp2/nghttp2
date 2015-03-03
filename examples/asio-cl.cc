@@ -69,8 +69,8 @@ int main(int argc, char *argv[]) {
     configure_tls_context(tls_ctx);
 
     session sess(io_service, tls_ctx, "localhost", "3000");
-    sess.on_connect([&sess]() {
-      std::cerr << "connected" << std::endl;
+    sess.on_connect([&sess](tcp::resolver::iterator endpoint_it) {
+      std::cerr << "connected to " << (*endpoint_it).endpoint() << std::endl;
       boost::system::error_code ec;
       auto req = sess.submit(ec, "GET", "https://localhost:3000/",
                              "hello world", {{"cookie", {"foobar", true}}});

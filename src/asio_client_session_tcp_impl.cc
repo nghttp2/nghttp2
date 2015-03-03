@@ -46,7 +46,7 @@ void session_tcp_impl::start_connect(tcp::resolver::iterator endpoint_it) {
       return;
     }
 
-    connected();
+    connected(endpoint_it);
   });
 }
 

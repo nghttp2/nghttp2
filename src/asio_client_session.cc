@@ -49,7 +49,7 @@ session::session(boost::asio::io_service &io_service,
 
 session::~session() {}
 
-void session::on_connect(void_cb cb) { impl_->on_connect(std::move(cb)); }
+void session::on_connect(connect_cb cb) { impl_->on_connect(std::move(cb)); }
 
 void session::on_error(error_cb cb) { impl_->on_error(std::move(cb)); }
 

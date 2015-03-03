@@ -68,7 +68,7 @@ void session_impl::start_resolve(const std::string &host,
   });
 }
 
-void session_impl::connected() {
+void session_impl::connected(tcp::resolver::iterator endpoint_it) {
   if (!setup_session()) {
     return;
   }
@@ -84,7 +84,7 @@ void session_impl::connected() {
 
   auto &connect_cb = on_connect();
   if (connect_cb) {
-    connect_cb();
+    connect_cb(endpoint_it);
   }
 }
 
@@ -95,11 +95,11 @@ void session_impl::not_connected(const boost::system::error_code &ec) {
   }
 }
 
-void session_impl::on_connect(void_cb cb) { connect_cb_ = std::move(cb); }
+void session_impl::on_connect(connect_cb cb) { connect_cb_ = std::move(cb); }
 
 void session_impl::on_error(error_cb cb) { error_cb_ = std::move(cb); }
 
-const void_cb &session_impl::on_connect() const { return connect_cb_; }
+const connect_cb &session_impl::on_connect() const { return connect_cb_; }
 
 const error_cb &session_impl::on_error() const { return error_cb_; }
 

@@ -314,6 +314,8 @@ class request;
 
 using response_cb = std::function<void(const response &)>;
 using request_cb = std::function<void(const request &)>;
+using connect_cb =
+    std::function<void(boost::asio::ip::tcp::resolver::iterator)>;
 
 class request_impl;
 
@@ -351,7 +353,7 @@ public:
           const std::string &service);
   ~session();
 
-  void on_connect(void_cb cb);
+  void on_connect(connect_cb cb);
   void on_error(error_cb cb);
 
   void shutdown();

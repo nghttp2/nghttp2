@@ -50,13 +50,13 @@ public:
 
   void start_resolve(const std::string &host, const std::string &service);
 
-  void connected();
+  void connected(tcp::resolver::iterator endpoint_it);
   void not_connected(const boost::system::error_code &ec);
 
-  void on_connect(void_cb cb);
+  void on_connect(connect_cb cb);
   void on_error(error_cb cb);
 
-  const void_cb &on_connect() const;
+  const connect_cb &on_connect() const;
   const error_cb &on_error() const;
 
   void cancel(stream &strm);
@@ -104,7 +104,7 @@ private:
 
   std::map<int32_t, std::unique_ptr<stream>> streams_;
 
-  void_cb connect_cb_;
+  connect_cb connect_cb_;
   error_cb error_cb_;
 
   nghttp2_session *session_;
