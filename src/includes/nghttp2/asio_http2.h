@@ -76,7 +76,7 @@ const boost::system::error_category &nghttp2_category() noexcept;
 
 typedef std::function<void(const uint8_t *, std::size_t)> data_cb;
 typedef std::function<void(void)> void_cb;
-typedef std::function<void(const std::string &err)> error_cb;
+typedef std::function<void(const boost::system::error_code &ec)> error_cb;
 typedef std::function<void(uint32_t)> close_cb;
 
 // Callback function to generate response body.  The implementation of

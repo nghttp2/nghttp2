@@ -91,7 +91,7 @@ void session_impl::connected() {
 void session_impl::not_connected(const boost::system::error_code &ec) {
   auto &error_cb = on_error();
   if (error_cb) {
-    error_cb(ec.message());
+    error_cb(ec);
   }
 }
 
@@ -307,7 +307,7 @@ bool session_impl::setup_session() {
   if (rv != 0) {
     auto &error_cb = on_error();
     if (error_cb) {
-      error_cb(nghttp2_strerror(rv));
+      error_cb(make_error_code(static_cast<nghttp2_error>(rv)));
     }
     return false;
   }

@@ -103,8 +103,8 @@ int main(int argc, char *argv[]) {
       });
     });
 
-    sess.on_error([](const std::string &error) {
-      std::cerr << "error: " << error << std::endl;
+    sess.on_error([](const boost::system::error_code &ec) {
+      std::cerr << "error: " << ec.message() << std::endl;
     });
 
     io_service.run();
