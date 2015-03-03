@@ -72,7 +72,7 @@ public:
 
 private:
   /// Initiate an asynchronous accept operation.
-  void start_accept();
+  void start_accept(boost::asio::ip::tcp::acceptor &acceptor);
 
   void start_timer();
 

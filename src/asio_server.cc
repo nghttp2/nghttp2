@@ -82,7 +82,9 @@ server::server(const std::string &address, uint16_t port,
     acceptors_.push_back(std::move(acceptor));
   }
 
-  start_accept();
+  for (auto &acceptor : acceptors_) {
+    start_accept(acceptor);
+  }
 
   start_timer();
 }
@@ -109,48 +111,44 @@ void server::start_timer() {
 
 typedef boost::asio::ssl::stream<boost::asio::ip::tcp::socket> ssl_socket;
 
-void server::start_accept() {
+void server::start_accept(boost::asio::ip::tcp::acceptor &acceptor) {
   if (ssl_ctx_) {
     auto new_connection = std::make_shared<connection<ssl_socket>>(
         request_cb_, io_service_pool_.get_io_service(), *ssl_ctx_);
 
-    for (auto &acceptor : acceptors_) {
-      acceptor.async_accept(
-          new_connection->socket().lowest_layer(),
-          [this, new_connection](const boost::system::error_code &e) {
-            if (!e) {
-              new_connection->socket().lowest_layer().set_option(
-                  boost::asio::ip::tcp::no_delay(true));
-              new_connection->socket().async_handshake(
-                  boost::asio::ssl::stream_base::server,
-                  [new_connection](const boost::system::error_code &e) {
-                    if (!e) {
-                      new_connection->start();
-                    }
-                  });
-            }
+    acceptor.async_accept(
+        new_connection->socket().lowest_layer(),
+        [this, &acceptor, new_connection](const boost::system::error_code &e) {
+          if (!e) {
+            new_connection->socket().lowest_layer().set_option(
+                boost::asio::ip::tcp::no_delay(true));
+            new_connection->socket().async_handshake(
+                boost::asio::ssl::stream_base::server,
+                [new_connection](const boost::system::error_code &e) {
+                  if (!e) {
+                    new_connection->start();
+                  }
+                });
+          }
 
-            start_accept();
-          });
-    }
+          start_accept(acceptor);
+        });
   } else {
     auto new_connection =
         std::make_shared<connection<boost::asio::ip::tcp::socket>>(
             request_cb_, io_service_pool_.get_io_service());
 
-    for (auto &acceptor : acceptors_) {
-      acceptor.async_accept(
-          new_connection->socket(),
-          [this, new_connection](const boost::system::error_code &e) {
-            if (!e) {
-              new_connection->socket().set_option(
-                  boost::asio::ip::tcp::no_delay(true));
-              new_connection->start();
-            }
+    acceptor.async_accept(
+        new_connection->socket(),
+        [this, &acceptor, new_connection](const boost::system::error_code &e) {
+          if (!e) {
+            new_connection->socket().set_option(
+                boost::asio::ip::tcp::no_delay(true));
+            new_connection->start();
+          }
 
-            start_accept();
-          });
-    }
+          start_accept(acceptor);
+        });
   }
 }
 
