@@ -133,23 +133,20 @@ public:
   const std::string &path() const;
 
   // Sets callback when chunk of request body is received.
-  void on_data(data_cb cb);
+  void on_data(data_cb cb) const;
 
   // Sets callback when request was completed.
-  void on_end(void_cb cb);
+  void on_end(void_cb cb) const;
 
   // Pushes resource denoted by |path| using |method|.  The additional
   // headers can be given in |headers|.  request_cb will be called for
   // pushed resource later on.  This function returns true if it
   // succeeds, or false.
   bool push(std::string method, std::string path,
-            std::vector<header> headers = {});
+            std::vector<header> headers = {}) const;
 
   // Returns true if this is pushed request.
   bool pushed() const;
-
-  // Returns true if stream has been closed.
-  bool closed() const;
 
   // Application must not call this directly.
   request_impl &impl();
@@ -165,18 +162,19 @@ public:
 
   // Write response header using |status_code| (e.g., 200) and
   // additional headers in |headers|.
-  void write_head(unsigned int status_code, std::vector<header> headers = {});
+  void write_head(unsigned int status_code,
+                  std::vector<header> headers = {}) const;
 
   // Sends |data| as request body.  No further call of end() is
   // allowed.
-  void end(std::string data = "");
+  void end(std::string data = "") const;
 
   // Sets callback |cb| as a generator of the response body.  No
   // further call of end() is allowed.
-  void end(read_cb cb);
+  void end(read_cb cb) const;
 
   // Resumes deferred response.
-  void resume();
+  void resume() const;
 
   // Returns status code.
   unsigned int status_code() const;
@@ -193,8 +191,7 @@ private:
 
 // This is so called request callback.  Called every time request is
 // received.
-typedef std::function<void(const std::shared_ptr<request> &,
-                           const std::shared_ptr<response> &)> request_cb;
+typedef std::function<void(const request &, const response &)> request_cb;
 
 class http2_impl;
 

@@ -60,7 +60,6 @@ public:
             std::vector<header> headers = {});
 
   bool pushed() const;
-  bool closed() const;
 
   void on_data(data_cb cb);
   void on_end(void_cb cb);
@@ -73,12 +72,12 @@ public:
   void host(std::string host);
   void path(std::string path);
   void pushed(bool f);
-  void handler(std::weak_ptr<http2_handler> h);
-  void stream(std::weak_ptr<http2_stream> s);
+  void stream(http2_stream *s);
   void call_on_data(const uint8_t *data, std::size_t len);
   void call_on_end();
 
 private:
+  http2_stream *stream_;
   std::vector<header> headers_;
   std::string method_;
   std::string scheme_;
@@ -87,8 +86,6 @@ private:
   std::string path_;
   data_cb on_data_cb_;
   void_cb on_end_cb_;
-  std::weak_ptr<http2_handler> handler_;
-  std::weak_ptr<http2_stream> stream_;
   bool pushed_;
 };
 
@@ -99,35 +96,35 @@ public:
   void end(std::string data = "");
   void end(read_cb cb);
   void resume();
-  bool closed() const;
 
   unsigned int status_code() const;
   const std::vector<header> &headers() const;
   bool started() const;
-  void handler(std::weak_ptr<http2_handler> h);
-  void stream(std::weak_ptr<http2_stream> s);
+  void stream(http2_stream *s);
   read_cb::result_type call_read(uint8_t *data, std::size_t len);
 
 private:
+  http2_stream *stream_;
   std::vector<header> headers_;
   read_cb read_cb_;
-  std::weak_ptr<http2_handler> handler_;
-  std::weak_ptr<http2_stream> stream_;
   unsigned int status_code_;
   bool started_;
 };
 
 class http2_stream {
 public:
-  http2_stream(int32_t stream_id);
+  http2_stream(http2_handler *h, int32_t stream_id);
 
   int32_t get_stream_id() const;
-  const std::shared_ptr<request> &get_request();
-  const std::shared_ptr<response> &get_response();
+  request &request();
+  response &response();
+
+  http2_handler *handler() const;
 
 private:
-  std::shared_ptr<request> request_;
-  std::shared_ptr<response> response_;
+  http2_handler *handler_;
+  class request request_;
+  class response response_;
   int32_t stream_id_;
 };
 
@@ -148,9 +145,9 @@ public:
 
   int start();
 
-  std::shared_ptr<http2_stream> create_stream(int32_t stream_id);
+  http2_stream *create_stream(int32_t stream_id);
   void close_stream(int32_t stream_id);
-  std::shared_ptr<http2_stream> find_stream(int32_t stream_id);
+  http2_stream *find_stream(int32_t stream_id);
 
   void call_on_request(http2_stream &stream);
 

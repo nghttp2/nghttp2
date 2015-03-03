@@ -54,32 +54,32 @@ const std::string &request::host() const { return impl_->host(); }
 const std::string &request::path() const { return impl_->path(); }
 
 bool request::push(std::string method, std::string path,
-                   std::vector<header> headers) {
+                   std::vector<header> headers) const {
   return impl_->push(std::move(method), std::move(path), std::move(headers));
 }
 
 bool request::pushed() const { return impl_->pushed(); }
 
-bool request::closed() const { return impl_->closed(); }
+void request::on_data(data_cb cb) const {
+  return impl_->on_data(std::move(cb));
+}
 
-void request::on_data(data_cb cb) { return impl_->on_data(std::move(cb)); }
-
-void request::on_end(void_cb cb) { return impl_->on_end(std::move(cb)); }
+void request::on_end(void_cb cb) const { return impl_->on_end(std::move(cb)); }
 
 request_impl &request::impl() { return *impl_; }
 
 response::response() : impl_(make_unique<response_impl>()) {}
 
 void response::write_head(unsigned int status_code,
-                          std::vector<header> headers) {
+                          std::vector<header> headers) const {
   impl_->write_head(status_code, std::move(headers));
 }
 
-void response::end(std::string data) { impl_->end(std::move(data)); }
+void response::end(std::string data) const { impl_->end(std::move(data)); }
 
-void response::end(read_cb cb) { impl_->end(std::move(cb)); }
+void response::end(read_cb cb) const { impl_->end(std::move(cb)); }
 
-void response::resume() { impl_->resume(); }
+void response::resume() const { impl_->resume(); }
 
 unsigned int response::status_code() const { return impl_->status_code(); }
 
@@ -87,7 +87,7 @@ bool response::started() const { return impl_->started(); }
 
 response_impl &response::impl() { return *impl_; }
 
-request_impl::request_impl() : pushed_(false) {}
+request_impl::request_impl() : stream_(nullptr), pushed_(false) {}
 
 const std::vector<header> &request_impl::headers() const { return headers_; }
 
@@ -121,13 +121,8 @@ void request_impl::path(std::string arg) { path_ = std::move(arg); }
 
 bool request_impl::push(std::string method, std::string path,
                         std::vector<header> headers) {
-  if (closed()) {
-    return false;
-  }
-
-  auto handler = handler_.lock();
-  auto stream = stream_.lock();
-  auto rv = handler->push_promise(*stream, std::move(method), std::move(path),
+  auto handler = stream_->handler();
+  auto rv = handler->push_promise(*stream_, std::move(method), std::move(path),
                                   std::move(headers));
   return rv == 0;
 }
@@ -136,21 +131,11 @@ bool request_impl::pushed() const { return pushed_; }
 
 void request_impl::pushed(bool f) { pushed_ = f; }
 
-bool request_impl::closed() const {
-  return handler_.expired() || stream_.expired();
-}
-
 void request_impl::on_data(data_cb cb) { on_data_cb_ = std::move(cb); }
 
 void request_impl::on_end(void_cb cb) { on_end_cb_ = std::move(cb); }
 
-void request_impl::handler(std::weak_ptr<http2_handler> h) {
-  handler_ = std::move(h);
-}
-
-void request_impl::stream(std::weak_ptr<http2_stream> s) {
-  stream_ = std::move(s);
-}
+void request_impl::stream(http2_stream *s) { stream_ = s; }
 
 void request_impl::call_on_data(const uint8_t *data, std::size_t len) {
   if (on_data_cb_) {
@@ -164,7 +149,8 @@ void request_impl::call_on_end() {
   }
 }
 
-response_impl::response_impl() : status_code_(200), started_(false) {}
+response_impl::response_impl()
+    : stream_(nullptr), status_code_(200), started_(false) {}
 
 unsigned int response_impl::status_code() const { return status_code_; }
 
@@ -183,18 +169,17 @@ void response_impl::end(std::string data) {
 }
 
 void response_impl::end(read_cb cb) {
-  if (started_ || closed()) {
+  if (started_) {
     return;
   }
 
   read_cb_ = std::move(cb);
   started_ = true;
 
-  auto handler = handler_.lock();
-  auto stream = stream_.lock();
+  auto handler = stream_->handler();
 
-  if (handler->start_response(*stream) != 0) {
-    handler->stream_error(stream->get_stream_id(), NGHTTP2_INTERNAL_ERROR);
+  if (handler->start_response(*stream_) != 0) {
+    handler->stream_error(stream_->get_stream_id(), NGHTTP2_INTERNAL_ERROR);
     return;
   }
 
@@ -203,18 +188,9 @@ void response_impl::end(read_cb cb) {
   }
 }
 
-bool response_impl::closed() const {
-  return handler_.expired() || stream_.expired();
-}
-
 void response_impl::resume() {
-  if (closed()) {
-    return;
-  }
-
-  auto handler = handler_.lock();
-  auto stream = stream_.lock();
-  handler->resume(*stream);
+  auto handler = stream_->handler();
+  handler->resume(*stream_);
 
   if (!handler->inside_callback()) {
     handler->initiate_write();
@@ -225,13 +201,7 @@ bool response_impl::started() const { return started_; }
 
 const std::vector<header> &response_impl::headers() const { return headers_; }
 
-void response_impl::handler(std::weak_ptr<http2_handler> h) {
-  handler_ = std::move(h);
-}
-
-void response_impl::stream(std::weak_ptr<http2_stream> s) {
-  stream_ = std::move(s);
-}
+void response_impl::stream(http2_stream *s) { stream_ = s; }
 
 std::pair<ssize_t, bool> response_impl::call_read(uint8_t *data,
                                                   std::size_t len) {
@@ -242,17 +212,19 @@ std::pair<ssize_t, bool> response_impl::call_read(uint8_t *data,
   return std::make_pair(0, true);
 }
 
-http2_stream::http2_stream(int32_t stream_id)
-    : request_(std::make_shared<request>()),
-      response_(std::make_shared<response>()), stream_id_(stream_id) {}
+http2_stream::http2_stream(http2_handler *h, int32_t stream_id)
+    : handler_(h), stream_id_(stream_id) {
+  request_.impl().stream(this);
+  response_.impl().stream(this);
+}
 
 int32_t http2_stream::get_stream_id() const { return stream_id_; }
 
-const std::shared_ptr<request> &http2_stream::get_request() { return request_; }
+request &http2_stream::request() { return request_; }
 
-const std::shared_ptr<response> &http2_stream::get_response() {
-  return response_;
-}
+response &http2_stream::response() { return response_; }
+
+http2_handler *http2_stream::handler() const { return handler_; }
 
 namespace {
 int stream_error(nghttp2_session *session, int32_t stream_id,
@@ -296,7 +268,7 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
     return 0;
   }
 
-  auto &req = stream->get_request()->impl();
+  auto &req = stream->request().impl();
 
   switch (nghttp2::http2::lookup_token(name, namelen)) {
   case nghttp2::http2::HD__METHOD:
@@ -336,7 +308,7 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
     }
 
     if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
-      stream->get_request()->impl().call_on_end();
+      stream->request().impl().call_on_end();
     }
 
     break;
@@ -345,7 +317,7 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
       break;
     }
 
-    auto &req = stream->get_request()->impl();
+    auto &req = stream->request().impl();
 
     if (req.host().empty()) {
       req.host(req.authority());
@@ -354,7 +326,7 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
     handler->call_on_request(*stream);
 
     if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
-      stream->get_request()->impl().call_on_end();
+      stream->request().impl().call_on_end();
     }
 
     break;
@@ -376,7 +348,7 @@ int on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
     return 0;
   }
 
-  stream->get_request()->impl().call_on_data(data, len);
+  stream->request().impl().call_on_data(data, len);
 
   return 0;
 }
@@ -485,36 +457,28 @@ int http2_handler::start() {
   return 0;
 }
 
-std::shared_ptr<http2_stream> http2_handler::create_stream(int32_t stream_id) {
-  auto stream = std::make_shared<http2_stream>(stream_id);
-  streams_.emplace(stream_id, stream);
-
-  auto self = shared_from_this();
-  auto &req = stream->get_request()->impl();
-  auto &res = stream->get_response()->impl();
-  req.handler(self);
-  req.stream(stream);
-  res.handler(self);
-  res.stream(stream);
-
-  return stream;
+http2_stream *http2_handler::create_stream(int32_t stream_id) {
+  auto p =
+      streams_.emplace(stream_id, make_unique<http2_stream>(this, stream_id));
+  assert(p.second);
+  return (*p.first).second.get();
 }
 
 void http2_handler::close_stream(int32_t stream_id) {
   streams_.erase(stream_id);
 }
 
-std::shared_ptr<http2_stream> http2_handler::find_stream(int32_t stream_id) {
+http2_stream *http2_handler::find_stream(int32_t stream_id) {
   auto i = streams_.find(stream_id);
   if (i == std::end(streams_)) {
     return nullptr;
   }
 
-  return (*i).second;
+  return (*i).second.get();
 }
 
 void http2_handler::call_on_request(http2_stream &stream) {
-  request_cb_(stream.get_request(), stream.get_response());
+  request_cb_(stream.request(), stream.response());
 }
 
 bool http2_handler::should_stop() const {
@@ -525,7 +489,7 @@ bool http2_handler::should_stop() const {
 int http2_handler::start_response(http2_stream &stream) {
   int rv;
 
-  auto &res = stream.get_response()->impl();
+  auto &res = stream.response().impl();
   auto &headers = res.headers();
   auto nva = std::vector<nghttp2_nv>();
   nva.reserve(2 + headers.size());
@@ -544,7 +508,7 @@ int http2_handler::start_response(http2_stream &stream) {
          size_t length, uint32_t *data_flags, nghttp2_data_source *source,
          void *user_data) -> ssize_t {
     auto &stream = *static_cast<http2_stream *>(source->ptr);
-    auto rv = stream.get_response()->impl().call_read(buf, length);
+    auto rv = stream.response().impl().call_read(buf, length);
     if (rv.first < 0) {
       return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
     }
@@ -594,7 +558,7 @@ int http2_handler::push_promise(http2_stream &stream, std::string method,
                                 std::string path, std::vector<header> headers) {
   int rv;
 
-  auto &req = stream.get_request()->impl();
+  auto &req = stream.request().impl();
 
   auto nva = std::vector<nghttp2_nv>();
   nva.reserve(5 + headers.size());
@@ -621,7 +585,7 @@ int http2_handler::push_promise(http2_stream &stream, std::string method,
   }
 
   auto promised_stream = create_stream(rv);
-  auto &promised_req = promised_stream->get_request()->impl();
+  auto &promised_req = promised_stream->request().impl();
   promised_req.pushed(true);
   promised_req.method(std::move(method));
   promised_req.scheme(req.scheme());

@@ -62,10 +62,9 @@ int main(int argc, char *argv[]) {
       server.tls(argv[3], argv[4]);
     }
 
-    server.listen("*", port, [](const std::shared_ptr<request> &req,
-                                const std::shared_ptr<response> &res) {
-      res->write_head(200, {header{"foo", "bar"}});
-      res->end("hello, world");
+    server.listen("*", port, [](const request &req, const response &res) {
+      res.write_head(200, {header{"foo", "bar"}});
+      res.end("hello, world");
     });
   } catch (std::exception &e) {
     std::cerr << "exception: " << e.what() << "\n";
