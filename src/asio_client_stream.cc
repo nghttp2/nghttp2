@@ -32,7 +32,10 @@ namespace nghttp2 {
 namespace asio_http2 {
 namespace client {
 
-stream::stream(session_impl *sess) : sess_(sess), stream_id_(0) {}
+stream::stream(session_impl *sess) : sess_(sess), stream_id_(0)
+{
+  request_.impl().stream(this);
+}
 
 void stream::cancel() { sess_->cancel(*this); }
 
