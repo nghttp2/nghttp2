@@ -62,16 +62,14 @@ class connection : public std::enable_shared_from_this<connection<socket_type>>,
 public:
   /// Construct a connection with the given io_service.
   template <typename... SocketArgs>
-  explicit connection(request_cb cb, boost::asio::io_service &task_io_service,
-                      SocketArgs &&... args)
+  explicit connection(request_cb cb, SocketArgs &&... args)
       : socket_(std::forward<SocketArgs>(args)...), request_cb_(std::move(cb)),
-        task_io_service_(task_io_service), writing_(false) {}
+        writing_(false) {}
 
   /// Start the first asynchronous operation for the connection.
   void start() {
     handler_ = std::make_shared<http2_handler>(
-        socket_.get_io_service(), task_io_service_, [this]() { do_write(); },
-        request_cb_);
+        socket_.get_io_service(), [this]() { do_write(); }, request_cb_);
     if (handler_->start() != 0) {
       return;
     }
@@ -150,8 +148,6 @@ private:
   socket_type socket_;
 
   request_cb request_cb_;
-
-  boost::asio::io_service &task_io_service_;
 
   std::shared_ptr<http2_handler> handler_;
 

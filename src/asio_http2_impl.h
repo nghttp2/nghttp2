@@ -43,7 +43,6 @@ public:
   void listen(const std::string &address, uint16_t port, request_cb cb);
   void num_threads(size_t num_threads);
   void tls(std::string private_key_file, std::string certificate_file);
-  void num_concurrent_tasks(size_t num_concurrent_tasks);
   void backlog(int backlog);
 
 private:
@@ -51,7 +50,6 @@ private:
   std::string certificate_file_;
   std::unique_ptr<server> server_;
   std::size_t num_threads_;
-  std::size_t num_concurrent_tasks_;
   int backlog_;
 };
 

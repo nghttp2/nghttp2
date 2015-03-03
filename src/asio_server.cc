@@ -43,10 +43,9 @@ namespace asio_http2 {
 namespace server {
 
 server::server(const std::string &address, uint16_t port,
-               std::size_t io_service_pool_size, std::size_t thread_pool_size,
-               request_cb cb,
+               std::size_t io_service_pool_size, request_cb cb,
                std::unique_ptr<boost::asio::ssl::context> ssl_ctx, int backlog)
-    : io_service_pool_(io_service_pool_size, thread_pool_size),
+    : io_service_pool_(io_service_pool_size),
       signals_(io_service_pool_.get_io_service()),
       tick_timer_(io_service_pool_.get_io_service(),
                   boost::posix_time::seconds(1)),
@@ -113,8 +112,7 @@ typedef boost::asio::ssl::stream<boost::asio::ip::tcp::socket> ssl_socket;
 void server::start_accept() {
   if (ssl_ctx_) {
     auto new_connection = std::make_shared<connection<ssl_socket>>(
-        request_cb_, io_service_pool_.get_task_io_service(),
-        io_service_pool_.get_io_service(), *ssl_ctx_);
+        request_cb_, io_service_pool_.get_io_service(), *ssl_ctx_);
 
     for (auto &acceptor : acceptors_) {
       acceptor.async_accept(
@@ -138,8 +136,7 @@ void server::start_accept() {
   } else {
     auto new_connection =
         std::make_shared<connection<boost::asio::ip::tcp::socket>>(
-            request_cb_, io_service_pool_.get_task_io_service(),
-            io_service_pool_.get_io_service());
+            request_cb_, io_service_pool_.get_io_service());
 
     for (auto &acceptor : acceptors_) {
       acceptor.async_accept(

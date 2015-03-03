@@ -100,29 +100,6 @@ typedef std::function<void(uint32_t)> close_cb;
 typedef std::function<std::pair<ssize_t, bool>(uint8_t *buf, std::size_t len)>
     read_cb;
 
-class channel_impl;
-
-class channel {
-public:
-  // Application must not call this directly.
-  channel();
-
-  // Schedules the execution of callback |cb| in the same thread where
-  // request callback is called.  Therefore, it is same to use request
-  // or response object in |cb|.  The callbacks are executed in the
-  // same order they are posted though same channel object if they are
-  // posted from the same thread.
-  void post(void_cb cb);
-
-  // Application must not call this directly.
-  channel_impl &impl();
-
-private:
-  std::unique_ptr<channel_impl> impl_;
-};
-
-typedef std::function<void(channel &)> thread_cb;
-
 namespace server {
 
 class request_impl;
@@ -173,17 +150,6 @@ public:
 
   // Returns true if stream has been closed.
   bool closed() const;
-
-  // Runs function |start| in one of background threads.  Returns true
-  // if scheduling task was done successfully.
-  //
-  // Since |start| is called in different thread, calling any method
-  // of request or response object in the callback may cause undefined
-  // behavior.  To safely use them, use channel::post().  A callback
-  // passed to channel::post() is executed in the same thread where
-  // request callback is called, so it is safe to use request or
-  // response object.  Example::
-  bool run_task(thread_cb start);
 
   // Application must not call this directly.
   request_impl &impl();
@@ -248,12 +214,6 @@ public:
   // Sets TLS private key file and certificate file.  Both files must
   // be in PEM format.
   void tls(std::string private_key_file, std::string certificate_file);
-
-  // Sets number of background threads to run concurrent tasks (see
-  // request::run_task()).  It defaults to 1.  This is not the number
-  // of thread to handle incoming HTTP request.  For this purpose, see
-  // num_threads().
-  void num_concurrent_tasks(size_t num_concurrent_tasks);
 
   // Sets the maximum length to which the queue of pending
   // connections.

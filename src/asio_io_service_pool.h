@@ -57,7 +57,7 @@ namespace server {
 class io_service_pool : private boost::noncopyable {
 public:
   /// Construct the io_service pool.
-  explicit io_service_pool(std::size_t pool_size, std::size_t thread_pool_size);
+  explicit io_service_pool(std::size_t pool_size);
 
   /// Run all io_service objects in the pool.
   void run();
@@ -68,25 +68,15 @@ public:
   /// Get an io_service to use.
   boost::asio::io_service &get_io_service();
 
-  boost::asio::io_service &get_task_io_service();
-
 private:
-  typedef std::shared_ptr<boost::asio::io_service> io_service_ptr;
-  typedef std::shared_ptr<boost::asio::io_service::work> work_ptr;
-
   /// The pool of io_services.
-  std::vector<io_service_ptr> io_services_;
-
-  boost::asio::io_service task_io_service_;
-  boost::thread_group thread_pool_;
+  std::vector<std::shared_ptr<boost::asio::io_service>> io_services_;
 
   /// The work that keeps the io_services running.
-  std::vector<work_ptr> work_;
+  std::vector<std::shared_ptr<boost::asio::io_service::work>> work_;
 
   /// The next io_service to use for a connection.
   std::size_t next_io_service_;
-
-  std::size_t thread_pool_size_;
 };
 
 } // namespace server
