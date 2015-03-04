@@ -72,6 +72,8 @@ read_cb::result_type request_impl::call_on_read(uint8_t *buf, std::size_t len,
   return 0;
 }
 
+void request_impl::resume() { strm_->resume(); }
+
 void request_impl::header(header_map h) { header_ = std::move(h); }
 
 header_map &request_impl::header() { return header_; }

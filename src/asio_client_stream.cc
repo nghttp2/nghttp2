@@ -38,6 +38,8 @@ stream::stream(session_impl *sess) : sess_(sess), stream_id_(0) {
 
 void stream::cancel(uint32_t error_code) { sess_->cancel(*this, error_code); }
 
+void stream::resume() { sess_->resume(*this); }
+
 void stream::stream_id(int32_t stream_id) { stream_id_ = stream_id; }
 
 int32_t stream::stream_id() const { return stream_id_; }

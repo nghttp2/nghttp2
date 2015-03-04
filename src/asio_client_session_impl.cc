@@ -327,6 +327,11 @@ void session_impl::cancel(stream &strm, uint32_t error_code) {
   signal_write();
 }
 
+void session_impl::resume(stream &strm) {
+  nghttp2_session_resume_data(session_, strm.stream_id());
+  signal_write();
+}
+
 stream *session_impl::find_stream(int32_t stream_id) {
   auto it = streams_.find(stream_id);
   if (it == std::end(streams_)) {

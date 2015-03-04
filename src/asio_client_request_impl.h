@@ -58,6 +58,8 @@ public:
   read_cb::result_type call_on_read(uint8_t *buf, std::size_t len,
                                     uint32_t *data_flags);
 
+  void resume();
+
   void header(header_map h);
   header_map &header();
   const header_map &header() const;

@@ -54,6 +54,8 @@ const std::string &request::method() const { return impl_->method(); }
 
 const header_map &request::header() const { return impl_->header(); }
 
+void request::resume() const { impl_->resume(); }
+
 request_impl &request::impl() const { return *impl_; }
 
 } // namespace client

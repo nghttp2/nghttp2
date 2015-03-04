@@ -54,6 +54,7 @@ public:
   const error_cb &on_error() const;
 
   void cancel(stream &strm, uint32_t error_code);
+  void resume(stream &strm);
 
   std::unique_ptr<stream> create_stream();
   std::unique_ptr<stream> pop_stream(int32_t stream_id);

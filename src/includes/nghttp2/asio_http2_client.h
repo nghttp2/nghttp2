@@ -74,6 +74,9 @@ public:
 
   void cancel(uint32_t error_code = NGHTTP2_INTERNAL_ERROR) const;
 
+  // Resumes deferred uploading.
+  void resume() const;
+
   const std::string &method() const;
 
   const uri_ref &uri() const;
