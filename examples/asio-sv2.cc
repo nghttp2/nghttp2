@@ -92,9 +92,9 @@ int main(int argc, char *argv[]) {
       struct stat stbuf;
       if (stat(path.c_str(), &stbuf) == 0) {
         header.emplace("content-length",
-                       header_value(std::to_string(stbuf.st_size)));
+                       header_value{std::to_string(stbuf.st_size)});
         header.emplace("last-modified",
-                       header_value(http_date(stbuf.st_mtime)));
+                       header_value{http_date(stbuf.st_mtime)});
       }
       res.write_head(200, std::move(header));
       res.end(file_reader_from_fd(fd));

@@ -63,9 +63,6 @@ struct header {
 };
 
 struct header_value {
-  header_value(std::string value, bool sensitive = false)
-      : value(std::move(value)), sensitive(sensitive) {}
-
   std::string value;
   bool sensitive;
 };

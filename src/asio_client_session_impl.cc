@@ -149,9 +149,10 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
         res.content_length(util::parse_uint(value, valuelen));
       }
 
-      res.header().emplace(std::string(name, name + namelen),
-                           header_value(std::string(value, value + valuelen),
-                                        flags & NGHTTP2_NV_FLAG_NO_INDEX));
+      res.header().emplace(
+          std::string(name, name + namelen),
+          header_value{std::string(value, value + valuelen),
+                       (flags & NGHTTP2_NV_FLAG_NO_INDEX) != 0});
     }
     break;
   }
@@ -183,9 +184,10 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
       }
     // fall through
     default:
-      req.header().emplace(std::string(name, name + namelen),
-                           header_value(std::string(value, value + valuelen),
-                                        flags & NGHTTP2_NV_FLAG_NO_INDEX));
+      req.header().emplace(
+          std::string(name, name + namelen),
+          header_value{std::string(value, value + valuelen),
+                       (flags & NGHTTP2_NV_FLAG_NO_INDEX) != 0});
     }
 
     break;
