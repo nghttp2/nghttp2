@@ -76,18 +76,9 @@ typedef std::function<void(void)> void_cb;
 typedef std::function<void(const boost::system::error_code &ec)> error_cb;
 typedef std::function<void(uint32_t)> close_cb;
 
-// Callback function to generate response body.  The implementation of
-// this callback must fill at most |len| bytes data to |buf|.  The
-// return value is pair of written bytes and bool value indicating
-// that this is the end of the body.  If the end of the body was
-// reached, return true.  If there is error and application wants to
-// terminate stream, return std::make_pair(-1, false).  Returning
-// std::make_pair(0, false) tells the library that don't call this
-// callback until application calls response::resume().  This is
-// useful when there is no data to send at the moment but there will
-// be more to come in near future.
-typedef std::function<std::pair<ssize_t, bool>(uint8_t *buf, std::size_t len)>
-    read_cb;
+// Callback function to generate response body.  TBD
+typedef std::function<
+    ssize_t(uint8_t *buf, std::size_t len, uint32_t *data_flags)> read_cb;
 
 // Convenient function to create function to read file denoted by
 // |path|.  This can be passed to response::end().

@@ -177,13 +177,15 @@ const header_map &response_impl::header() const { return header_; }
 
 void response_impl::stream(http2_stream *s) { stream_ = s; }
 
-std::pair<ssize_t, bool> response_impl::call_read(uint8_t *data,
-                                                  std::size_t len) {
+read_cb::result_type response_impl::call_read(uint8_t *data, std::size_t len,
+                                              uint32_t *data_flags) {
   if (read_cb_) {
-    return read_cb_(data, len);
+    return read_cb_(data, len, data_flags);
   }
 
-  return std::make_pair(0, true);
+  *data_flags |= NGHTTP2_DATA_FLAG_EOF;
+
+  return 0;
 }
 
 http2_stream::http2_stream(http2_handler *h, int32_t stream_id)
@@ -481,18 +483,7 @@ int http2_handler::start_response(http2_stream &stream) {
          size_t length, uint32_t *data_flags, nghttp2_data_source *source,
          void *user_data) -> ssize_t {
     auto &stream = *static_cast<http2_stream *>(source->ptr);
-    auto rv = stream.response().impl().call_read(buf, length);
-    if (rv.first < 0) {
-      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
-    }
-
-    if (rv.second) {
-      *data_flags |= NGHTTP2_DATA_FLAG_EOF;
-    } else if (rv.first == 0) {
-      return NGHTTP2_ERR_DEFERRED;
-    }
-
-    return rv.first;
+    return stream.response().impl().call_read(buf, length, data_flags);
   };
 
   rv = nghttp2_submit_response(session_, stream.get_stream_id(), nva.data(),

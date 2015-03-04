@@ -49,11 +49,16 @@ boost::system::error_code make_error_code(nghttp2_error ev) {
 read_cb string_reader(std::string data) {
   auto strio = std::make_shared<std::pair<std::string, size_t>>(std::move(data),
                                                                 data.size());
-  return [strio](uint8_t *buf, size_t len) {
-    auto n = std::min(len, strio->second);
-    std::copy_n(strio->first.c_str(), n, buf);
-    strio->second -= n;
-    return std::make_pair(n, strio->second == 0);
+  return [strio](uint8_t *buf, size_t len, uint32_t *data_flags) {
+    auto &data = strio->first;
+    auto &left = strio->second;
+    auto n = std::min(len, left);
+    std::copy_n(data.c_str() + data.size() - left, n, buf);
+    left -= n;
+    if (left == 0) {
+      *data_flags |= NGHTTP2_DATA_FLAG_EOF;
+    }
+    return n;
   };
 }
 

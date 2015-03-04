@@ -61,11 +61,15 @@ void request_impl::call_on_close(uint32_t error_code) {
 
 void request_impl::on_read(read_cb cb) { read_cb_ = std::move(cb); }
 
-read_cb::result_type request_impl::call_on_read(uint8_t *buf, std::size_t len) {
+read_cb::result_type request_impl::call_on_read(uint8_t *buf, std::size_t len,
+                                                uint32_t *data_flags) {
   if (read_cb_) {
-    return read_cb_(buf, len);
+    return read_cb_(buf, len, data_flags);
   }
-  return read_cb::result_type{};
+
+  *data_flags |= NGHTTP2_DATA_FLAG_EOF;
+
+  return 0;
 }
 
 void request_impl::header(header_map h) { header_ = std::move(h); }

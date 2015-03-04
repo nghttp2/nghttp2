@@ -409,18 +409,7 @@ const request *session_impl::submit(boost::system::error_code &ec,
            size_t length, uint32_t *data_flags, nghttp2_data_source *source,
            void *user_data) -> ssize_t {
       auto strm = static_cast<stream *>(source->ptr);
-      auto rv = strm->request().impl().call_on_read(buf, length);
-      if (rv.first < 0) {
-        return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
-      }
-
-      if (rv.second) {
-        *data_flags |= NGHTTP2_DATA_FLAG_EOF;
-      } else if (rv.first == 0) {
-        return NGHTTP2_ERR_DEFERRED;
-      }
-
-      return rv.first;
+      return strm->request().impl().call_on_read(buf, length, data_flags);
     };
     prdptr = &prd;
   }

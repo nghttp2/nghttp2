@@ -139,20 +139,21 @@ read_cb file_reader(const std::string &path) {
 read_cb file_reader_from_fd(int fd) {
   auto d = defer_shared(close, fd);
 
-  return [fd, d](uint8_t *buf, size_t len) -> read_cb::result_type {
-    int rv;
-    while ((rv = read(fd, buf, len)) == -1 && errno == EINTR)
+  return [fd, d](uint8_t *buf, size_t len, uint32_t *data_flags)
+      -> read_cb::result_type {
+    ssize_t n;
+    while ((n = read(fd, buf, len)) == -1 && errno == EINTR)
       ;
 
-    if (rv == -1) {
-      return std::make_pair(-1, false);
+    if (n == -1) {
+      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
     }
 
-    if (rv == 0) {
-      return std::make_pair(rv, true);
+    if (n == 0) {
+      *data_flags |= NGHTTP2_DATA_FLAG_EOF;
     }
 
-    return std::make_pair(rv, false);
+    return n;
   };
 }
 

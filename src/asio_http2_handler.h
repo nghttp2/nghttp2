@@ -91,7 +91,8 @@ public:
   const header_map &header() const;
   bool started() const;
   void stream(http2_stream *s);
-  read_cb::result_type call_read(uint8_t *data, std::size_t len);
+  read_cb::result_type call_read(uint8_t *data, std::size_t len,
+                                 uint32_t *data_flags);
 
 private:
   http2_stream *stream_;

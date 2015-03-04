@@ -55,7 +55,8 @@ public:
   void call_on_close(uint32_t error_code);
 
   void on_read(read_cb cb);
-  read_cb::result_type call_on_read(uint8_t *buf, std::size_t len);
+  read_cb::result_type call_on_read(uint8_t *buf, std::size_t len,
+                                    uint32_t *data_flags);
 
   void header(header_map h);
   header_map &header();
