@@ -76,7 +76,10 @@ public:
   void write_head(unsigned int status_code, header_map h = {});
   void end(std::string data = "");
   void end(read_cb cb);
+  void on_close(close_cb cb);
   void resume();
+
+  void cancel();
 
   response *push(boost::system::error_code &ec, std::string method,
                  std::string raw_path_query, header_map h = {}) const;
@@ -91,11 +94,13 @@ public:
   void stream(http2_stream *s);
   read_cb::result_type call_read(uint8_t *data, std::size_t len,
                                  uint32_t *data_flags);
+  void call_on_close(uint32_t error_code);
 
 private:
   http2_stream *stream_;
   header_map header_;
   read_cb read_cb_;
+  close_cb close_cb_;
   unsigned int status_code_;
   // true if response started (end() is called)
   bool started_;

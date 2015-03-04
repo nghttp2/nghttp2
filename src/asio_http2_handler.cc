@@ -63,6 +63,10 @@ void response::end(std::string data) const { impl_->end(std::move(data)); }
 
 void response::end(read_cb cb) const { impl_->end(std::move(cb)); }
 
+void response::on_close(close_cb cb) const { impl_->on_close(std::move(cb)); }
+
+void response::cancel() const { impl_->cancel(); }
+
 const response *response::push(boost::system::error_code &ec,
                                std::string method, std::string path,
                                header_map h) const {
@@ -131,6 +135,20 @@ void response_impl::end(read_cb cb) {
   started_ = true;
 
   start_response();
+}
+
+void response_impl::on_close(close_cb cb) { close_cb_ = std::move(cb); }
+
+void response_impl::call_on_close(uint32_t error_code) {
+  if (close_cb_) {
+    close_cb_(error_code);
+  }
+}
+
+void response_impl::cancel() {
+  auto handler = stream_->handler();
+
+  handler->stream_error(stream_->get_stream_id(), NGHTTP2_CANCEL);
 }
 
 void response_impl::start_response() {
@@ -332,6 +350,13 @@ namespace {
 int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
                              uint32_t error_code, void *user_data) {
   auto handler = static_cast<http2_handler *>(user_data);
+
+  auto stream = handler->find_stream(stream_id);
+  if (!stream) {
+    return 0;
+  }
+
+  stream->response().impl().call_on_close(error_code);
 
   handler->close_stream(stream_id);
 

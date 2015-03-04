@@ -78,6 +78,10 @@ public:
   // further call of end() is allowed.
   void end(read_cb cb) const;
 
+  void on_close(close_cb cb) const;
+
+  void cancel() const;
+
   // Resumes deferred response.
   void resume() const;
 
