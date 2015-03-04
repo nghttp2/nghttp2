@@ -57,8 +57,6 @@ void request::on_data(data_cb cb) const {
   return impl_->on_data(std::move(cb));
 }
 
-void request::on_end(void_cb cb) const { return impl_->on_end(std::move(cb)); }
-
 request_impl &request::impl() const { return *impl_; }
 
 response::response() : impl_(make_unique<response_impl>()) {}
@@ -108,19 +106,11 @@ void request_impl::pushed(bool f) { pushed_ = f; }
 
 void request_impl::on_data(data_cb cb) { on_data_cb_ = std::move(cb); }
 
-void request_impl::on_end(void_cb cb) { on_end_cb_ = std::move(cb); }
-
 void request_impl::stream(http2_stream *s) { stream_ = s; }
 
 void request_impl::call_on_data(const uint8_t *data, std::size_t len) {
   if (on_data_cb_) {
     on_data_cb_(data, len);
-  }
-}
-
-void request_impl::call_on_end() {
-  if (on_end_cb_) {
-    on_end_cb_();
   }
 }
 
@@ -288,7 +278,7 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
     }
 
     if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
-      stream->request().impl().call_on_end();
+      stream->request().impl().call_on_data(nullptr, 0);
     }
 
     break;
@@ -300,7 +290,7 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
     handler->call_on_request(*stream);
 
     if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
-      stream->request().impl().call_on_end();
+      stream->request().impl().call_on_data(nullptr, 0);
     }
 
     break;

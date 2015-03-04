@@ -71,6 +71,8 @@ struct uri_ref {
   std::string fragment;
 };
 
+// Callback function when data is arrived.  EOF is indicated by
+// passing 0 to the second parameter.
 typedef std::function<void(const uint8_t *, std::size_t)> data_cb;
 typedef std::function<void(void)> void_cb;
 typedef std::function<void(const boost::system::error_code &ec)> error_cb;

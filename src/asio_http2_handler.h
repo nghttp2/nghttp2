@@ -62,12 +62,10 @@ public:
   bool pushed() const;
 
   void on_data(data_cb cb);
-  void on_end(void_cb cb);
 
   void pushed(bool f);
   void stream(http2_stream *s);
   void call_on_data(const uint8_t *data, std::size_t len);
-  void call_on_end();
 
 private:
   http2_stream *stream_;
@@ -75,7 +73,6 @@ private:
   std::string method_;
   uri_ref uri_;
   data_cb on_data_cb_;
-  void_cb on_end_cb_;
   bool pushed_;
 };
 

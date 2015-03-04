@@ -54,9 +54,6 @@ public:
   // Sets callback when chunk of request body is received.
   void on_data(data_cb cb) const;
 
-  // Sets callback when request was completed.
-  void on_end(void_cb cb) const;
-
   // Pushes resource denoted by |path| using |method|.  The additional
   // headers can be given in |h|.  request_cb will be called for
   // pushed resource later on.  This function returns true if it
