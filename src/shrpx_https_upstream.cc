@@ -808,7 +808,7 @@ int HttpsUpstream::on_downstream_abort_request(Downstream *downstream,
 void HttpsUpstream::log_response_headers(const std::string &hdrs) const {
   const char *hdrp;
   std::string nhdrs;
-  if (log_config->errorlog_tty) {
+  if (log_config()->errorlog_tty) {
     nhdrs = http::colorizeHeaders(hdrs.c_str());
     hdrp = nhdrs.c_str();
   } else {
