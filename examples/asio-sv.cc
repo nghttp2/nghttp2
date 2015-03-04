@@ -62,10 +62,16 @@ int main(int argc, char *argv[]) {
       server.tls(argv[3], argv[4]);
     }
 
-    server.listen("*", port, [](const request &req, const response &res) {
+    server.handle("/", [](const request &req, const response &res) {
       res.write_head(200, {{"foo", {"bar"}}});
       res.end("hello, world");
     });
+    server.handle("/secret/", [](const request &req, const response &res) {
+      res.write_head(200);
+      res.end("under construction!");
+    });
+    server.listen("*", port);
+
   } catch (std::exception &e) {
     std::cerr << "exception: " << e.what() << "\n";
   }

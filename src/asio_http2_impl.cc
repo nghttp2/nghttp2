@@ -41,8 +41,8 @@ http2::http2() : impl_(make_unique<http2_impl>()) {}
 
 http2::~http2() {}
 
-void http2::listen(const std::string &address, uint16_t port, request_cb cb) {
-  impl_->listen(address, port, std::move(cb));
+void http2::listen(const std::string &address, uint16_t port) {
+  impl_->listen(address, port);
 }
 
 void http2::num_threads(size_t num_threads) { impl_->num_threads(num_threads); }
@@ -53,6 +53,10 @@ void http2::tls(std::string private_key_file, std::string certificate_file) {
 
 void http2::backlog(int backlog) { impl_->backlog(backlog); }
 
+bool http2::handle(std::string pattern, request_cb cb) {
+  return impl_->handle(std::move(pattern), std::move(cb));
+}
+
 http2_impl::http2_impl() : num_threads_(1), backlog_(-1) {}
 
 namespace {
@@ -62,8 +66,7 @@ std::vector<unsigned char> &get_alpn_token() {
 }
 } // namespace
 
-void http2_impl::listen(const std::string &address, uint16_t port,
-                        request_cb cb) {
+void http2_impl::listen(const std::string &address, uint16_t port) {
   std::unique_ptr<boost::asio::ssl::context> ssl_ctx;
 
   if (!private_key_file_.empty() && !certificate_file_.empty()) {
@@ -105,8 +108,7 @@ void http2_impl::listen(const std::string &address, uint16_t port,
         nullptr);
   }
 
-  server(address, port, num_threads_, std::move(cb), std::move(ssl_ctx),
-         backlog_).run();
+  server(address, port, num_threads_, mux_, std::move(ssl_ctx), backlog_).run();
 }
 
 void http2_impl::num_threads(size_t num_threads) { num_threads_ = num_threads; }
@@ -118,6 +120,10 @@ void http2_impl::tls(std::string private_key_file,
 }
 
 void http2_impl::backlog(int backlog) { backlog_ = backlog; }
+
+bool http2_impl::handle(std::string pattern, request_cb cb) {
+  return mux_.handle(std::move(pattern), std::move(cb));
+}
 
 } // namespace server
 

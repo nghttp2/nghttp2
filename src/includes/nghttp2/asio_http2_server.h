@@ -119,9 +119,14 @@ public:
   http2();
   ~http2();
 
-  // Starts listening connection on given address and port.  The
-  // incoming requests are handled by given callback |cb|.
-  void listen(const std::string &address, uint16_t port, request_cb cb);
+  // Starts listening connection on given address and port and serves
+  // incoming requests.
+  void listen(const std::string &address, uint16_t port);
+
+  // Registers request handler |cb| with path pattern |pattern|.  This
+  // function will fail and returns false if same pattern has been
+  // already registered.  Otherwise returns true.
+  bool handle(std::string pattern, request_cb cb);
 
   // Sets number of native threads to handle incoming HTTP request.
   // It defaults to 1.

@@ -66,8 +66,7 @@ int main(int argc, char *argv[]) {
       server.tls(argv[4], argv[5]);
     }
 
-    server.listen("*", port,
-                  [&docroot](const request &req, const response &res) {
+    server.handle("/", [&docroot](const request &req, const response &res) {
       auto path = percent_decode(req.uri().path);
       if (!check_path(path)) {
         res.write_head(404);
@@ -99,6 +98,9 @@ int main(int argc, char *argv[]) {
       res.write_head(200, std::move(header));
       res.end(file_reader_from_fd(fd));
     });
+
+    server.listen("*", port);
+
   } catch (std::exception &e) {
     std::cerr << "exception: " << e.what() << "\n";
   }

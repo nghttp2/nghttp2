@@ -56,13 +56,15 @@ namespace asio_http2 {
 
 namespace server {
 
+class serve_mux;
+
 /// The top-level class of the HTTP server.
 class server : private boost::noncopyable {
 public:
   /// Construct the server to listen on the specified TCP address and port, and
   /// serve up files from the given directory.
   explicit server(const std::string &address, uint16_t port,
-                  std::size_t io_service_pool_size, request_cb cb,
+                  std::size_t io_service_pool_size, serve_mux &mux_,
                   std::unique_ptr<boost::asio::ssl::context> ssl_ctx,
                   int backlog = -1);
 
@@ -88,7 +90,7 @@ private:
 
   std::unique_ptr<boost::asio::ssl::context> ssl_ctx_;
 
-  request_cb request_cb_;
+  serve_mux &mux_;
 };
 
 } // namespace server

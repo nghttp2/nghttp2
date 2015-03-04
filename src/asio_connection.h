@@ -47,6 +47,7 @@
 #include <nghttp2/asio_http2_server.h>
 
 #include "asio_http2_handler.h"
+#include "asio_server_serve_mux.h"
 #include "util.h"
 
 namespace nghttp2 {
@@ -62,14 +63,14 @@ class connection : public std::enable_shared_from_this<connection<socket_type>>,
 public:
   /// Construct a connection with the given io_service.
   template <typename... SocketArgs>
-  explicit connection(request_cb cb, SocketArgs &&... args)
-      : socket_(std::forward<SocketArgs>(args)...), request_cb_(std::move(cb)),
-        writing_(false) {}
+  explicit connection(serve_mux &mux, SocketArgs &&... args)
+      : socket_(std::forward<SocketArgs>(args)...), mux_(mux), writing_(false) {
+  }
 
   /// Start the first asynchronous operation for the connection.
   void start() {
-    handler_ = std::make_shared<http2_handler>(
-        socket_.get_io_service(), [this]() { do_write(); }, request_cb_);
+    handler_ = std::make_shared<http2_handler>(socket_.get_io_service(),
+                                               [this]() { do_write(); }, mux_);
     if (handler_->start() != 0) {
       return;
     }
@@ -147,7 +148,7 @@ public:
 private:
   socket_type socket_;
 
-  request_cb request_cb_;
+  serve_mux &mux_;
 
   std::shared_ptr<http2_handler> handler_;
 

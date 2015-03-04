@@ -42,6 +42,7 @@ namespace server {
 
 class http2_handler;
 class http2_stream;
+class serve_mux;
 
 class request_impl {
 public:
@@ -141,7 +142,7 @@ typedef std::function<void(void)> connection_write;
 class http2_handler : public std::enable_shared_from_this<http2_handler> {
 public:
   http2_handler(boost::asio::io_service &io_service, connection_write writefun,
-                request_cb cb);
+                serve_mux &mux);
 
   ~http2_handler();
 
@@ -232,7 +233,7 @@ public:
 private:
   std::map<int32_t, std::shared_ptr<http2_stream>> streams_;
   connection_write writefun_;
-  request_cb request_cb_;
+  serve_mux &mux_;
   boost::asio::io_service &io_service_;
   nghttp2_session *session_;
   const uint8_t *buf_;

@@ -181,6 +181,7 @@ libnghttp2_asio_la_SOURCES = \
 	util.cc util.h http2.cc http2.h \
 	ssl.cc ssl.h \
 	asio_common.cc asio_common.h \
+	asio_server_serve_mux.cc asio_server_serve_mux.h \
 	asio_client_session.cc \
 	asio_client_session_impl.cc asio_client_session_impl.h \
 	asio_client_session_tcp_impl.cc asio_client_session_tcp_impl.h \

@@ -27,6 +27,7 @@
 #include <iostream>
 
 #include "asio_common.h"
+#include "asio_server_serve_mux.h"
 #include "http2.h"
 #include "util.h"
 #include "template.h"
@@ -412,8 +413,8 @@ int on_frame_not_send_callback(nghttp2_session *session,
 } // namespace
 
 http2_handler::http2_handler(boost::asio::io_service &io_service,
-                             connection_write writefun, request_cb cb)
-    : writefun_(writefun), request_cb_(std::move(cb)), io_service_(io_service),
+                             connection_write writefun, serve_mux &mux)
+    : writefun_(writefun), mux_(mux), io_service_(io_service),
       session_(nullptr), buf_(nullptr), buflen_(0), inside_callback_(false) {}
 
 http2_handler::~http2_handler() { nghttp2_session_del(session_); }
@@ -486,7 +487,8 @@ http2_stream *http2_handler::find_stream(int32_t stream_id) {
 }
 
 void http2_handler::call_on_request(http2_stream &stream) {
-  request_cb_(stream.request(), stream.response());
+  auto cb = mux_.handler(stream.request().impl());
+  cb(stream.request(), stream.response());
 }
 
 bool http2_handler::should_stop() const {
