@@ -154,6 +154,10 @@ void response_impl::cancel(uint32_t error_code) {
   auto handler = stream_->handler();
 
   handler->stream_error(stream_->get_stream_id(), error_code);
+
+  if (!handler->inside_callback()) {
+    handler->initiate_write();
+  }
 }
 
 void response_impl::start_response() {
