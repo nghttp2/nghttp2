@@ -52,16 +52,6 @@ namespace nghttp2 {
 
 namespace asio_http2 {
 
-struct header {
-  header() : sensitive(false) {}
-  header(std::string name, std::string value, bool sensitive = false)
-      : name(std::move(name)), value(std::move(value)), sensitive(sensitive) {}
-
-  std::string name;
-  std::string value;
-  bool sensitive;
-};
-
 struct header_value {
   std::string value;
   bool sensitive;
