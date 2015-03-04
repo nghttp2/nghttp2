@@ -33,7 +33,7 @@ namespace client {
 
 request_impl::request_impl() : strm_(nullptr) {}
 
-void request_impl::cancel() { strm_->cancel(); }
+void request_impl::cancel(uint32_t error_code) { strm_->cancel(error_code); }
 
 void request_impl::on_response(response_cb cb) { response_cb_ = std::move(cb); }
 

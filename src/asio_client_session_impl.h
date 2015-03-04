@@ -53,7 +53,7 @@ public:
   const connect_cb &on_connect() const;
   const error_cb &on_error() const;
 
-  void cancel(stream &strm);
+  void cancel(stream &strm, uint32_t error_code);
 
   std::unique_ptr<stream> create_stream();
   std::unique_ptr<stream> pop_stream(int32_t stream_id);

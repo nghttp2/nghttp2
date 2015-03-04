@@ -80,7 +80,7 @@ public:
 
   void on_close(close_cb cb) const;
 
-  void cancel() const;
+  void cancel(uint32_t error_code = NGHTTP2_INTERNAL_ERROR) const;
 
   // Resumes deferred response.
   void resume() const;

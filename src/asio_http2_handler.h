@@ -79,7 +79,7 @@ public:
   void on_close(close_cb cb);
   void resume();
 
-  void cancel();
+  void cancel(uint32_t error_code);
 
   response *push(boost::system::error_code &ec, std::string method,
                  std::string raw_path_query, header_map h = {}) const;

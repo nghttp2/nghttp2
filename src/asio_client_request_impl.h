@@ -43,7 +43,7 @@ public:
   request_impl(const request_impl &) = delete;
   request_impl &operator=(const request_impl &) = delete;
 
-  void cancel();
+  void cancel(uint32_t error_code);
 
   void on_response(response_cb cb);
   void call_on_response(response &res);

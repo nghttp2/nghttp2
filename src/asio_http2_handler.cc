@@ -65,7 +65,7 @@ void response::end(read_cb cb) const { impl_->end(std::move(cb)); }
 
 void response::on_close(close_cb cb) const { impl_->on_close(std::move(cb)); }
 
-void response::cancel() const { impl_->cancel(); }
+void response::cancel(uint32_t error_code) const { impl_->cancel(error_code); }
 
 const response *response::push(boost::system::error_code &ec,
                                std::string method, std::string path,
@@ -145,10 +145,10 @@ void response_impl::call_on_close(uint32_t error_code) {
   }
 }
 
-void response_impl::cancel() {
+void response_impl::cancel(uint32_t error_code) {
   auto handler = stream_->handler();
 
-  handler->stream_error(stream_->get_stream_id(), NGHTTP2_CANCEL);
+  handler->stream_error(stream_->get_stream_id(), error_code);
 }
 
 void response_impl::start_response() {

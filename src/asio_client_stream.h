@@ -44,7 +44,7 @@ public:
   stream(const stream &) = delete;
   stream &operator=(const stream &) = delete;
 
-  void cancel();
+  void cancel(uint32_t error_code);
 
   void stream_id(int32_t stream_id);
   int32_t stream_id() const;

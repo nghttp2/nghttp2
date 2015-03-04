@@ -44,11 +44,11 @@ session_impl::session_impl(boost::asio::io_service &io_service)
       writing_(false), inside_callback_(false) {}
 
 session_impl::~session_impl() {
-  // finish up all active stream with CANCEL error code
+  // finish up all active stream
   for (auto &p : streams_) {
     auto &strm = p.second;
     auto &req = strm->request().impl();
-    req.call_on_close(NGHTTP2_CANCEL);
+    req.call_on_close(NGHTTP2_INTERNAL_ERROR);
   }
 
   nghttp2_session_del(session_);
@@ -321,9 +321,9 @@ bool session_impl::setup_session() {
   return true;
 }
 
-void session_impl::cancel(stream &strm) {
+void session_impl::cancel(stream &strm, uint32_t error_code) {
   nghttp2_submit_rst_stream(session_, NGHTTP2_FLAG_NONE, strm.stream_id(),
-                            NGHTTP2_CANCEL);
+                            error_code);
   signal_write();
 }
 
