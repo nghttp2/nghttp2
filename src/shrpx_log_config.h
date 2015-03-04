@@ -46,11 +46,7 @@ struct LogConfig {
 
 // We need LogConfig per thread to avoid data race around opening file
 // descriptor for log files.
-extern
-#ifndef NOTHREADS
-    thread_local
-#endif // NOTHREADS
-    LogConfig *log_config;
+extern LogConfig *log_config(void);
 
 } // namespace shrpx
 

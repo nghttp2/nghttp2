@@ -200,21 +200,6 @@ std::vector<std::future<int>> v;
     [have_std_future=no
      AC_MSG_RESULT([no])])
 
-# Check that thread_local is available.
-AC_MSG_CHECKING([whether thread_local is available])
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM(
-[[
-]],
-[[
-thread_local int n;
-]])],
-    [AC_DEFINE([HAVE_THREAD_LOCAL], [1],
-               [Define to 1 if you have the `thread_local`.])
-     have_thread_local=yes
-     AC_MSG_RESULT([yes])],
-    [have_thread_local=no
-     AC_MSG_RESULT([no])])
-
 # Check that std::map::emplace is available for g++-4.7.
 AC_MSG_CHECKING([whether std::map::emplace is available])
 AC_COMPILE_IFELSE([AC_LANG_PROGRAM(
@@ -631,11 +616,10 @@ if test "x$debug" != "xno"; then
 fi
 
 enable_threads=yes
-# Some platform does not have working std::future or thread_local.  We
-# disable threading for those platforms.
+# Some platform does not have working std::future.  We disable
+# threading for those platforms.
 if test "x$threads" != "xyes" ||
-   test "x$have_std_future" != "xyes" ||
-   test "x$have_thread_local" != "xyes"; then
+   test "x$have_std_future" != "xyes"; then
     enable_threads=no
     AC_DEFINE([NOTHREADS], [1], [Define to 1 if you want to disable threads.])
 fi
