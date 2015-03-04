@@ -47,27 +47,23 @@ class request_impl {
 public:
   request_impl();
 
+  void header(header_map h);
   const header_map &header() const;
-  const std::string &method() const;
-  const std::string &scheme() const;
-  const std::string &authority() const;
-  const std::string &host() const;
-  const std::string &path() const;
+  header_map &header();
 
-  bool push(std::string method, std::string path, header_map h = {});
+  void method(std::string method);
+  const std::string &method() const;
+
+  const uri_ref &uri() const;
+  uri_ref &uri();
+
+  bool push(std::string method, std::string raw_path_query, header_map h = {});
 
   bool pushed() const;
 
   void on_data(data_cb cb);
   void on_end(void_cb cb);
 
-  void header(header_map h);
-  header_map &header();
-  void method(std::string method);
-  void scheme(std::string scheme);
-  void authority(std::string authority);
-  void host(std::string host);
-  void path(std::string path);
   void pushed(bool f);
   void stream(http2_stream *s);
   void call_on_data(const uint8_t *data, std::size_t len);
@@ -77,10 +73,7 @@ private:
   http2_stream *stream_;
   header_map header_;
   std::string method_;
-  std::string scheme_;
-  std::string authority_;
-  std::string host_;
-  std::string path_;
+  uri_ref uri_;
   data_cb on_data_cb_;
   void_cb on_end_cb_;
   bool pushed_;
@@ -162,8 +155,8 @@ public:
 
   void resume(http2_stream &stream);
 
-  int push_promise(http2_stream &stream, std::string method, std::string path,
-                   header_map h);
+  int push_promise(http2_stream &stream, std::string method,
+                   std::string raw_path_query, header_map h);
 
   boost::asio::io_service &io_service();
 

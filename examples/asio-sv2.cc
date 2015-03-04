@@ -68,7 +68,7 @@ int main(int argc, char *argv[]) {
 
     server.listen("*", port,
                   [&docroot](const request &req, const response &res) {
-      auto path = percent_decode(req.path());
+      auto path = percent_decode(req.uri().path);
       if (!check_path(path)) {
         res.write_head(404);
         res.end();

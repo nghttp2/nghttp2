@@ -48,20 +48,8 @@ public:
   // Returns method (e.g., GET).
   const std::string &method() const;
 
-  // Returns scheme (e.g., https).
-  const std::string &scheme() const;
-
-  // Returns authority (e.g., example.org).  This could be empty
-  // string.  In this case, check host().
-
-  const std::string &authority() const;
-
-  // Returns host (e.g., example.org).  If host header field is not
-  // present, this value is copied from authority().
-  const std::string &host() const;
-
-  // Returns path (e.g., /index.html).
-  const std::string &path() const;
+  // Returns request URI, split into components.
+  const uri_ref &uri() const;
 
   // Sets callback when chunk of request body is received.
   void on_data(data_cb cb) const;
@@ -73,7 +61,8 @@ public:
   // headers can be given in |h|.  request_cb will be called for
   // pushed resource later on.  This function returns true if it
   // succeeds, or false.
-  bool push(std::string method, std::string path, header_map h = {}) const;
+  bool push(std::string method, std::string raw_path_query,
+            header_map h = {}) const;
 
   // Returns true if this is pushed request.
   bool pushed() const;

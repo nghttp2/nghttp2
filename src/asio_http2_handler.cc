@@ -45,13 +45,7 @@ const header_map &request::header() const { return impl_->header(); }
 
 const std::string &request::method() const { return impl_->method(); }
 
-const std::string &request::scheme() const { return impl_->scheme(); }
-
-const std::string &request::authority() const { return impl_->authority(); }
-
-const std::string &request::host() const { return impl_->host(); }
-
-const std::string &request::path() const { return impl_->path(); }
+const uri_ref &request::uri() const { return impl_->uri(); }
 
 bool request::push(std::string method, std::string path, header_map h) const {
   return impl_->push(std::move(method), std::move(path), std::move(h));
@@ -91,27 +85,15 @@ const header_map &request_impl::header() const { return header_; }
 
 const std::string &request_impl::method() const { return method_; }
 
-const std::string &request_impl::scheme() const { return scheme_; }
+const uri_ref &request_impl::uri() const { return uri_; }
 
-const std::string &request_impl::authority() const { return authority_; }
-
-const std::string &request_impl::host() const { return host_; }
-
-const std::string &request_impl::path() const { return path_; }
+uri_ref &request_impl::uri() { return uri_; }
 
 void request_impl::header(header_map h) { header_ = std::move(h); }
 
 header_map &request_impl::header() { return header_; }
 
 void request_impl::method(std::string arg) { method_ = std::move(arg); }
-
-void request_impl::scheme(std::string arg) { scheme_ = std::move(arg); }
-
-void request_impl::authority(std::string arg) { authority_ = std::move(arg); }
-
-void request_impl::host(std::string arg) { host_ = std::move(arg); }
-
-void request_impl::path(std::string arg) { path_ = std::move(arg); }
 
 bool request_impl::push(std::string method, std::string path, header_map h) {
   auto handler = stream_->handler();
@@ -261,22 +243,25 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
   }
 
   auto &req = stream->request().impl();
+  auto &uref = req.uri();
 
   switch (nghttp2::http2::lookup_token(name, namelen)) {
   case nghttp2::http2::HD__METHOD:
     req.method(std::string(value, value + valuelen));
     break;
   case nghttp2::http2::HD__SCHEME:
-    req.scheme(std::string(value, value + valuelen));
+    uref.scheme.assign(value, value + valuelen);
     break;
   case nghttp2::http2::HD__AUTHORITY:
-    req.authority(std::string(value, value + valuelen));
+    uref.host.assign(value, value + valuelen);
     break;
   case nghttp2::http2::HD__PATH:
-    req.path(std::string(value, value + valuelen));
+    split_path(uref, value, value + valuelen);
     break;
   case nghttp2::http2::HD_HOST:
-    req.host(std::string(value, value + valuelen));
+    if (uref.host.empty()) {
+      uref.host.assign(value, value + valuelen);
+    }
   // fall through
   default:
     req.header().emplace(std::string(name, name + namelen),
@@ -308,12 +293,6 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
   case NGHTTP2_HEADERS: {
     if (!stream || frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
       break;
-    }
-
-    auto &req = stream->request().impl();
-
-    if (req.host().empty()) {
-      req.host(req.authority());
     }
 
     handler->call_on_request(*stream);
@@ -549,22 +528,17 @@ void http2_handler::resume(http2_stream &stream) {
 }
 
 int http2_handler::push_promise(http2_stream &stream, std::string method,
-                                std::string path, header_map h) {
+                                std::string raw_path_query, header_map h) {
   int rv;
 
   auto &req = stream.request().impl();
 
   auto nva = std::vector<nghttp2_nv>();
-  nva.reserve(5 + h.size());
+  nva.reserve(4 + h.size());
   nva.push_back(nghttp2::http2::make_nv_ls(":method", method));
-  nva.push_back(nghttp2::http2::make_nv_ls(":scheme", req.scheme()));
-  if (!req.authority().empty()) {
-    nva.push_back(nghttp2::http2::make_nv_ls(":authority", req.authority()));
-  }
-  nva.push_back(nghttp2::http2::make_nv_ls(":path", path));
-  if (!req.host().empty()) {
-    nva.push_back(nghttp2::http2::make_nv_ls("host", req.host()));
-  }
+  nva.push_back(nghttp2::http2::make_nv_ls(":scheme", req.uri().scheme));
+  nva.push_back(nghttp2::http2::make_nv_ls(":authority", req.uri().host));
+  nva.push_back(nghttp2::http2::make_nv_ls(":path", raw_path_query));
 
   for (auto &hd : h) {
     nva.push_back(nghttp2::http2::make_nv(hd.first, hd.second.value,
@@ -582,15 +556,12 @@ int http2_handler::push_promise(http2_stream &stream, std::string method,
   auto promised_stream = create_stream(rv);
   auto &promised_req = promised_stream->request().impl();
   promised_req.pushed(true);
-  promised_req.method(std::move(method));
-  promised_req.scheme(req.scheme());
-  promised_req.authority(req.authority());
-  promised_req.path(std::move(path));
-  promised_req.host(req.host());
   promised_req.header(std::move(h));
-  if (!req.host().empty()) {
-    promised_req.header().emplace("host", header_value(req.host()));
-  }
+  promised_req.method(std::move(method));
+  auto &uref = promised_req.uri();
+  uref.scheme = req.uri().scheme;
+  uref.host = req.uri().host;
+  split_path(uref, std::begin(raw_path_query), std::end(raw_path_query));
 
   return 0;
 }
