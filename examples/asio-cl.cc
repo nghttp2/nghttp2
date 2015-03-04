@@ -100,8 +100,8 @@ int main(int argc, char *argv[]) {
           std::cerr << "push response header was received" << std::endl;
 
           res.on_data([](const uint8_t *data, std::size_t len) {
-            // std::cerr.write(reinterpret_cast<const char *>(data), len);
-            // std::cerr << std::endl;
+            std::cerr.write(reinterpret_cast<const char *>(data), len);
+            std::cerr << std::endl;
           });
         });
       });

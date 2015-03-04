@@ -57,13 +57,8 @@ public:
   const uri_ref &uri() const;
   uri_ref &uri();
 
-  bool push(std::string method, std::string raw_path_query, header_map h = {});
-
-  bool pushed() const;
-
   void on_data(data_cb cb);
 
-  void pushed(bool f);
   void stream(http2_stream *s);
   void call_on_data(const uint8_t *data, std::size_t len);
 
@@ -73,7 +68,6 @@ private:
   std::string method_;
   uri_ref uri_;
   data_cb on_data_cb_;
-  bool pushed_;
 };
 
 class response_impl {
@@ -84,9 +78,16 @@ public:
   void end(read_cb cb);
   void resume();
 
+  response *push(boost::system::error_code &ec, std::string method,
+                 std::string raw_path_query, header_map h = {}) const;
+
+  void start_response();
+
   unsigned int status_code() const;
   const header_map &header() const;
   bool started() const;
+  void pushed(bool f);
+  void push_promise_sent(bool f);
   void stream(http2_stream *s);
   read_cb::result_type call_read(uint8_t *data, std::size_t len,
                                  uint32_t *data_flags);
@@ -96,7 +97,13 @@ private:
   header_map header_;
   read_cb read_cb_;
   unsigned int status_code_;
+  // true if response started (end() is called)
   bool started_;
+  // true if this is pushed stream's response
+  bool pushed_;
+  // true if PUSH_PROMISE is sent if this is response of a pushed
+  // stream
+  bool push_promise_sent_;
 };
 
 class http2_stream {
@@ -153,8 +160,9 @@ public:
 
   void resume(http2_stream &stream);
 
-  int push_promise(http2_stream &stream, std::string method,
-                   std::string raw_path_query, header_map h);
+  response *push_promise(boost::system::error_code &ec, http2_stream &stream,
+                         std::string method, std::string raw_path_query,
+                         header_map h);
 
   boost::asio::io_service &io_service();
 

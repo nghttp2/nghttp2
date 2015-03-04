@@ -54,16 +54,6 @@ public:
   // Sets callback when chunk of request body is received.
   void on_data(data_cb cb) const;
 
-  // Pushes resource denoted by |path| using |method|.  The additional
-  // headers can be given in |h|.  request_cb will be called for
-  // pushed resource later on.  This function returns true if it
-  // succeeds, or false.
-  bool push(std::string method, std::string raw_path_query,
-            header_map h = {}) const;
-
-  // Returns true if this is pushed request.
-  bool pushed() const;
-
   // Application must not call this directly.
   request_impl &impl() const;
 
@@ -90,6 +80,13 @@ public:
 
   // Resumes deferred response.
   void resume() const;
+
+  // Pushes resource denoted by |raw_path_query| using |method|.  The
+  // additional headers can be given in |h|.  This function returns
+  // pointer to response object for promised stream, otherwise nullptr
+  // and error code is filled in |ec|.
+  const response *push(boost::system::error_code &ec, std::string method,
+                       std::string raw_path_query, header_map h = {}) const;
 
   // Returns status code.
   unsigned int status_code() const;

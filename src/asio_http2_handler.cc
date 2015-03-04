@@ -47,12 +47,6 @@ const std::string &request::method() const { return impl_->method(); }
 
 const uri_ref &request::uri() const { return impl_->uri(); }
 
-bool request::push(std::string method, std::string path, header_map h) const {
-  return impl_->push(std::move(method), std::move(path), std::move(h));
-}
-
-bool request::pushed() const { return impl_->pushed(); }
-
 void request::on_data(data_cb cb) const {
   return impl_->on_data(std::move(cb));
 }
@@ -69,6 +63,12 @@ void response::end(std::string data) const { impl_->end(std::move(data)); }
 
 void response::end(read_cb cb) const { impl_->end(std::move(cb)); }
 
+const response *response::push(boost::system::error_code &ec,
+                               std::string method, std::string path,
+                               header_map h) const {
+  return impl_->push(ec, std::move(method), std::move(path), std::move(h));
+}
+
 void response::resume() const { impl_->resume(); }
 
 unsigned int response::status_code() const { return impl_->status_code(); }
@@ -77,7 +77,7 @@ bool response::started() const { return impl_->started(); }
 
 response_impl &response::impl() const { return *impl_; }
 
-request_impl::request_impl() : stream_(nullptr), pushed_(false) {}
+request_impl::request_impl() : stream_(nullptr) {}
 
 const header_map &request_impl::header() const { return header_; }
 
@@ -93,17 +93,6 @@ header_map &request_impl::header() { return header_; }
 
 void request_impl::method(std::string arg) { method_ = std::move(arg); }
 
-bool request_impl::push(std::string method, std::string path, header_map h) {
-  auto handler = stream_->handler();
-  auto rv = handler->push_promise(*stream_, std::move(method), std::move(path),
-                                  std::move(h));
-  return rv == 0;
-}
-
-bool request_impl::pushed() const { return pushed_; }
-
-void request_impl::pushed(bool f) { pushed_ = f; }
-
 void request_impl::on_data(data_cb cb) { on_data_cb_ = std::move(cb); }
 
 void request_impl::stream(http2_stream *s) { stream_ = s; }
@@ -115,7 +104,8 @@ void request_impl::call_on_data(const uint8_t *data, std::size_t len) {
 }
 
 response_impl::response_impl()
-    : stream_(nullptr), status_code_(200), started_(false) {}
+    : stream_(nullptr), status_code_(200), started_(false), pushed_(false),
+      push_promise_sent_(false) {}
 
 unsigned int response_impl::status_code() const { return status_code_; }
 
@@ -140,6 +130,14 @@ void response_impl::end(read_cb cb) {
   read_cb_ = std::move(cb);
   started_ = true;
 
+  start_response();
+}
+
+void response_impl::start_response() {
+  if (!started_ || (pushed_ && !push_promise_sent_)) {
+    return;
+  }
+
   auto handler = stream_->handler();
 
   if (handler->start_response(*stream_) != 0) {
@@ -152,6 +150,13 @@ void response_impl::end(read_cb cb) {
   }
 }
 
+response *response_impl::push(boost::system::error_code &ec, std::string method,
+                              std::string raw_path_query, header_map h) const {
+  auto handler = stream_->handler();
+  return handler->push_promise(ec, *stream_, std::move(method),
+                               std::move(raw_path_query), std::move(h));
+}
+
 void response_impl::resume() {
   auto handler = stream_->handler();
   handler->resume(*stream_);
@@ -162,6 +167,10 @@ void response_impl::resume() {
 }
 
 bool response_impl::started() const { return started_; }
+
+void response_impl::pushed(bool f) { pushed_ = f; }
+
+void response_impl::push_promise_sent(bool f) { push_promise_sent_ = f; }
 
 const header_map &response_impl::header() const { return header_; }
 
@@ -345,7 +354,9 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
     return 0;
   }
 
-  handler->call_on_request(*stream);
+  auto &res = stream->response().impl();
+  res.push_promise_sent(true);
+  res.start_response();
 
   return 0;
 }
@@ -508,9 +519,13 @@ void http2_handler::resume(http2_stream &stream) {
   nghttp2_session_resume_data(session_, stream.get_stream_id());
 }
 
-int http2_handler::push_promise(http2_stream &stream, std::string method,
-                                std::string raw_path_query, header_map h) {
+response *http2_handler::push_promise(boost::system::error_code &ec,
+                                      http2_stream &stream, std::string method,
+                                      std::string raw_path_query,
+                                      header_map h) {
   int rv;
+
+  ec.clear();
 
   auto &req = stream.request().impl();
 
@@ -531,20 +546,24 @@ int http2_handler::push_promise(http2_stream &stream, std::string method,
                                    nva.size(), nullptr);
 
   if (rv < 0) {
-    return -1;
+    ec = make_error_code(static_cast<nghttp2_error>(rv));
+    return nullptr;
   }
 
   auto promised_stream = create_stream(rv);
   auto &promised_req = promised_stream->request().impl();
-  promised_req.pushed(true);
   promised_req.header(std::move(h));
   promised_req.method(std::move(method));
+
   auto &uref = promised_req.uri();
   uref.scheme = req.uri().scheme;
   uref.host = req.uri().host;
   split_path(uref, std::begin(raw_path_query), std::end(raw_path_query));
 
-  return 0;
+  auto &promised_res = promised_stream->response().impl();
+  promised_res.pushed(true);
+
+  return &promised_stream->response();
 }
 
 boost::asio::io_service &http2_handler::io_service() { return io_service_; }
