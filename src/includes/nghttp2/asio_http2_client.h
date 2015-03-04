@@ -97,22 +97,22 @@ public:
           const std::string &service);
   ~session();
 
-  void on_connect(connect_cb cb);
-  void on_error(error_cb cb);
+  void on_connect(connect_cb cb) const;
+  void on_error(error_cb cb) const;
 
-  void shutdown();
+  void shutdown() const;
 
-  boost::asio::io_service &io_service();
+  boost::asio::io_service &io_service() const;
 
   const request *submit(boost::system::error_code &ec,
                         const std::string &method, const std::string &uri,
-                        header_map h = {});
+                        header_map h = {}) const;
   const request *submit(boost::system::error_code &ec,
                         const std::string &method, const std::string &uri,
-                        std::string data, header_map h = {});
+                        std::string data, header_map h = {}) const;
   const request *submit(boost::system::error_code &ec,
                         const std::string &method, const std::string &uri,
-                        read_cb cb, header_map h = {});
+                        read_cb cb, header_map h = {}) const;
 
 private:
   std::unique_ptr<session_impl> impl_;
