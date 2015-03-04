@@ -80,25 +80,11 @@ void request_impl::uri(uri_ref uri) { uri_ = std::move(uri); }
 
 const uri_ref &request_impl::uri() const { return uri_; }
 
+uri_ref &request_impl::uri() { return uri_; }
+
 void request_impl::method(std::string s) { method_ = std::move(s); }
 
 const std::string &request_impl::method() const { return method_; }
-
-void request_impl::scheme(std::string s) { scheme_ = std::move(s); }
-
-const std::string &request_impl::scheme() const { return scheme_; }
-
-void request_impl::path(std::string s) { path_ = std::move(s); }
-
-const std::string &request_impl::path() const { return path_; }
-
-void request_impl::authority(std::string s) { authority_ = std::move(s); }
-
-const std::string &request_impl::authority() const { return authority_; }
-
-void request_impl::host(std::string s) { host_ = std::move(s); }
-
-const std::string &request_impl::host() const { return host_; }
 
 } // namespace client
 } // namespace asio_http2

@@ -31,20 +31,32 @@
 
 #include <nghttp2/asio_http2.h>
 
+#include "util.h"
+
 namespace nghttp2 {
+
 namespace asio_http2 {
 
 read_cb string_reader(std::string data);
 
 boost::system::error_code make_error_code(nghttp2_error ev);
 
-uri_ref make_uri_ref(std::string scheme, std::string host, std::string raw_path,
-                     std::string raw_query);
-
-uri_ref make_uri_ref(std::string scheme, std::string host,
-                     const std::string &raw_path_query);
+template <typename InputIt>
+void split_path(uri_ref &dst, InputIt first, InputIt last) {
+  auto path_last = std::find(first, last, '?');
+  InputIt query_first;
+  if (path_last == last) {
+    query_first = path_last = last;
+  } else {
+    query_first = path_last + 1;
+  }
+  dst.path = util::percentDecode(first, path_last);
+  dst.raw_path.assign(first, path_last);
+  dst.raw_query.assign(query_first, last);
+}
 
 } // namespace asio_http2
+
 } // namespace nghttp2
 
 #endif // ASIO_COMMON_H

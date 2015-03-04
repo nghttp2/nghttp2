@@ -162,24 +162,25 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
     }
 
     auto &req = strm->request().impl();
+    auto &uri = req.uri();
 
     switch (http2::lookup_token(name, namelen)) {
     case http2::HD__METHOD:
       req.method(std::string(value, value + valuelen));
       break;
     case http2::HD__SCHEME:
-      req.scheme(std::string(value, value + valuelen));
+      uri.scheme.assign(value, value + valuelen);
       break;
     case http2::HD__PATH:
-      req.path(std::string(value, value + valuelen));
+      split_path(uri, value, value + valuelen);
       break;
     case http2::HD__AUTHORITY:
-      req.authority(std::string(value, value + valuelen));
-      // host defaults to authority value
-      req.host(std::string(value, value + valuelen));
+      uri.host.assign(value, value + valuelen);
       break;
     case http2::HD_HOST:
-      req.host(std::string(value, value + valuelen));
+      if (uri.host.empty()) {
+        uri.host.assign(value, value + valuelen);
+      }
     // fall through
     default:
       req.header().emplace(std::string(name, name + namelen),
@@ -245,11 +246,6 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
     if (!push_strm) {
       return 0;
     }
-
-    auto &req = push_strm->request().impl();
-    req.uri(make_uri_ref(req.scheme(),
-                         req.authority().empty() ? req.host() : req.authority(),
-                         req.path()));
 
     strm->request().impl().call_on_push(push_strm->request());
 
@@ -392,16 +388,13 @@ const request *session_impl::submit(boost::system::error_code &ec,
   auto &req = strm->request().impl();
   req.header(std::move(h));
 
-  {
-    std::string scheme, host, raw_path, raw_query;
-    http2::copy_url_component(scheme, &u, UF_SCHEMA, uri.c_str());
-    http2::copy_url_component(host, &u, UF_HOST, uri.c_str());
-    http2::copy_url_component(raw_path, &u, UF_PATH, uri.c_str());
-    http2::copy_url_component(raw_query, &u, UF_QUERY, uri.c_str());
+  auto &uref = req.uri();
+  http2::copy_url_component(uref.scheme, &u, UF_SCHEMA, uri.c_str());
+  http2::copy_url_component(uref.host, &u, UF_HOST, uri.c_str());
+  http2::copy_url_component(uref.raw_path, &u, UF_PATH, uri.c_str());
+  http2::copy_url_component(uref.raw_query, &u, UF_QUERY, uri.c_str());
 
-    req.uri(make_uri_ref(std::move(scheme), std::move(host),
-                         std::move(raw_path), std::move(raw_query)));
-  }
+  uref.path = percent_decode(uref.raw_path);
 
   nghttp2_data_provider *prdptr = nullptr;
   nghttp2_data_provider prd;

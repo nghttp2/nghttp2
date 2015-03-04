@@ -175,8 +175,24 @@ std::string percentEncode(const unsigned char *target, size_t len);
 
 std::string percentEncode(const std::string &target);
 
-std::string percentDecode(std::string::const_iterator first,
-                          std::string::const_iterator last);
+template <typename InputIt>
+std::string percentDecode(InputIt first, InputIt last) {
+  std::string result;
+  for (; first != last; ++first) {
+    if (*first == '%') {
+      if (first + 1 != last && first + 2 != last && isHexDigit(*(first + 1)) &&
+          isHexDigit(*(first + 2))) {
+        result += (hex_to_uint(*(first + 1)) << 4) + hex_to_uint(*(first + 2));
+        first += 2;
+        continue;
+      }
+      result += *first;
+      continue;
+    }
+    result += *first;
+  }
+  return result;
+}
 
 // Percent encode |target| if character is not in token or '%'.
 std::string percent_encode_token(const std::string &target);

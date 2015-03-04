@@ -79,6 +79,7 @@ struct uri_ref {
   std::string host;
   // percent-decoded form
   std::string path;
+  std::string raw_path;
   std::string raw_query;
   std::string fragment;
 };

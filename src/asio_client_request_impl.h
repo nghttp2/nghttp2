@@ -65,21 +65,10 @@ public:
 
   void uri(uri_ref uri);
   const uri_ref &uri() const;
+  uri_ref &uri();
 
   void method(std::string s);
   const std::string &method() const;
-
-  void scheme(std::string s);
-  const std::string &scheme() const;
-
-  void path(std::string s);
-  const std::string &path() const;
-
-  void authority(std::string s);
-  const std::string &authority() const;
-
-  void host(std::string s);
-  const std::string &host() const;
 
 private:
   header_map header_;
@@ -90,10 +79,6 @@ private:
   class stream *strm_;
   uri_ref uri_;
   std::string method_;
-  std::string scheme_;
-  std::string path_;
-  std::string authority_;
-  std::string host_;
 };
 
 } // namespace client

@@ -137,25 +137,6 @@ uint32_t hex_to_uint(char c) {
   return c;
 }
 
-std::string percentDecode(std::string::const_iterator first,
-                          std::string::const_iterator last) {
-  std::string result;
-  for (; first != last; ++first) {
-    if (*first == '%') {
-      if (first + 1 != last && first + 2 != last && isHexDigit(*(first + 1)) &&
-          isHexDigit(*(first + 2))) {
-        result += (hex_to_uint(*(first + 1)) << 4) + hex_to_uint(*(first + 2));
-        first += 2;
-        continue;
-      }
-      result += *first;
-      continue;
-    }
-    result += *first;
-  }
-  return result;
-}
-
 std::string quote_string(const std::string &target) {
   auto cnt = std::count(std::begin(target), std::end(target), '"');
 
