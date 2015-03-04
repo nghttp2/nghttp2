@@ -77,6 +77,10 @@ void response::resume() const { impl_->resume(); }
 
 unsigned int response::status_code() const { return impl_->status_code(); }
 
+boost::asio::io_service &response::io_service() const {
+  return impl_->io_service();
+}
+
 bool response::started() const { return impl_->started(); }
 
 response_impl &response::impl() const { return *impl_; }
@@ -182,6 +186,10 @@ void response_impl::resume() {
   if (!handler->inside_callback()) {
     handler->initiate_write();
   }
+}
+
+boost::asio::io_service &response_impl::io_service() {
+  return stream_->handler()->io_service();
 }
 
 bool response_impl::started() const { return started_; }

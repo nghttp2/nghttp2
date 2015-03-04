@@ -84,6 +84,8 @@ public:
   response *push(boost::system::error_code &ec, std::string method,
                  std::string raw_path_query, header_map h = {}) const;
 
+  boost::asio::io_service &io_service();
+
   void start_response();
 
   unsigned int status_code() const;
