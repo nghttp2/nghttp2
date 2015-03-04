@@ -324,6 +324,7 @@ bool session_impl::setup_session() {
 void session_impl::cancel(stream &strm) {
   nghttp2_submit_rst_stream(session_, NGHTTP2_FLAG_NONE, strm.stream_id(),
                             NGHTTP2_CANCEL);
+  signal_write();
 }
 
 stream *session_impl::find_stream(int32_t stream_id) {
