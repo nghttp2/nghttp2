@@ -35,6 +35,14 @@ namespace server {
 
 class stream;
 
+enum class response_state {
+  INITIAL,
+  // response_impl::write_head() was called
+  HEADER_DONE,
+  // response_impl::end() was called
+  BODY_STARTED,
+};
+
 class response_impl {
 public:
   response_impl();
@@ -55,9 +63,8 @@ public:
 
   unsigned int status_code() const;
   const header_map &header() const;
-  bool started() const;
   void pushed(bool f);
-  void push_promise_sent(bool f);
+  void push_promise_sent();
   void stream(class stream *s);
   read_cb::result_type call_read(uint8_t *data, std::size_t len,
                                  uint32_t *data_flags);
@@ -69,8 +76,7 @@ private:
   read_cb read_cb_;
   close_cb close_cb_;
   unsigned int status_code_;
-  // true if response started (end() is called)
-  bool started_;
+  response_state state_;
   // true if this is pushed stream's response
   bool pushed_;
   // true if PUSH_PROMISE is sent if this is response of a pushed

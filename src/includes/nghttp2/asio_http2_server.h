@@ -97,9 +97,6 @@ public:
   // Returns status code.
   unsigned int status_code() const;
 
-  // Returns true if response has been started.
-  bool started() const;
-
   // Returns boost::asio::io_service this response is running on.
   boost::asio::io_service &io_service() const;
 

@@ -204,8 +204,7 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
   }
 
   auto &res = strm->response().impl();
-  res.push_promise_sent(true);
-  res.start_response();
+  res.push_promise_sent();
 
   return 0;
 }

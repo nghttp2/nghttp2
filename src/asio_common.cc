@@ -63,6 +63,11 @@ read_cb string_reader(std::string data) {
   };
 }
 
+read_cb deferred_reader() {
+  return [](uint8_t *buf, size_t len,
+            uint32_t *data_flags) { return NGHTTP2_ERR_DEFERRED; };
+}
+
 template <typename F, typename... T>
 std::shared_ptr<Defer<F, T...>> defer_shared(F &&f, T &&... t) {
   return std::make_shared<Defer<F, T...>>(std::forward<F>(f),

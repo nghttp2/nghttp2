@@ -64,8 +64,6 @@ boost::asio::io_service &response::io_service() const {
   return impl_->io_service();
 }
 
-bool response::started() const { return impl_->started(); }
-
 response_impl &response::impl() const { return *impl_; }
 
 } // namespace server

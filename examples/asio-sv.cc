@@ -70,6 +70,17 @@ int main(int argc, char *argv[]) {
       res.write_head(200);
       res.end("under construction!");
     });
+    server.handle("/push", [](const request &req, const response &res) {
+      boost::system::error_code ec;
+      auto push = res.push(ec, "GET", "/push/1");
+      if (!ec) {
+        push->write_head(200);
+        push->end("server push FTW!");
+      }
+
+      res.write_head(200);
+      res.end("you'll receive server push!");
+    });
     server.listen("*", port);
 
   } catch (std::exception &e) {
