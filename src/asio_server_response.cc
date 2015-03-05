@@ -44,7 +44,7 @@ void response::write_head(unsigned int status_code, header_map h) const {
 
 void response::end(std::string data) const { impl_->end(std::move(data)); }
 
-void response::end(read_cb cb) const { impl_->end(std::move(cb)); }
+void response::end(generator_cb cb) const { impl_->end(std::move(cb)); }
 
 void response::on_close(close_cb cb) const { impl_->on_close(std::move(cb)); }
 

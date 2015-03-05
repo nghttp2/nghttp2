@@ -100,16 +100,16 @@ typedef std::function<void(uint32_t)> close_cb;
 // of the error and request/response must be closed, return
 // NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE.
 typedef std::function<
-    ssize_t(uint8_t *buf, std::size_t len, uint32_t *data_flags)> read_cb;
+    ssize_t(uint8_t *buf, std::size_t len, uint32_t *data_flags)> generator_cb;
 
 // Convenient function to create function to read file denoted by
 // |path|.  This can be passed to response::end().
-read_cb file_reader(const std::string &path);
+generator_cb file_generator(const std::string &path);
 
-// Like file_reader(const std::string&), but it takes opened file
+// Like file_generator(const std::string&), but it takes opened file
 // descriptor.  The passed descriptor will be closed when returned
 // function object is destroyed.
-read_cb file_reader_from_fd(int fd);
+generator_cb file_generator_from_fd(int fd);
 
 // Validates path so that it does not contain directory traversal
 // vector.  Returns true if path is safe.  The |path| must start with

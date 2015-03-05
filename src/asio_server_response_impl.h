@@ -48,7 +48,7 @@ public:
   response_impl();
   void write_head(unsigned int status_code, header_map h = {});
   void end(std::string data = "");
-  void end(read_cb cb);
+  void end(generator_cb cb);
   void on_close(close_cb cb);
   void resume();
 
@@ -66,14 +66,14 @@ public:
   void pushed(bool f);
   void push_promise_sent();
   void stream(class stream *s);
-  read_cb::result_type call_read(uint8_t *data, std::size_t len,
-                                 uint32_t *data_flags);
+  generator_cb::result_type call_read(uint8_t *data, std::size_t len,
+                                      uint32_t *data_flags);
   void call_on_close(uint32_t error_code);
 
 private:
   class stream *strm_;
   header_map header_;
-  read_cb read_cb_;
+  generator_cb generator_cb_;
   close_cb close_cb_;
   unsigned int status_code_;
   response_state state_;

@@ -54,9 +54,9 @@ public:
   void on_close(close_cb cb);
   void call_on_close(uint32_t error_code);
 
-  void on_read(read_cb cb);
-  read_cb::result_type call_on_read(uint8_t *buf, std::size_t len,
-                                    uint32_t *data_flags);
+  void on_read(generator_cb cb);
+  generator_cb::result_type call_on_read(uint8_t *buf, std::size_t len,
+                                         uint32_t *data_flags);
 
   void resume();
 
@@ -78,7 +78,7 @@ private:
   response_cb response_cb_;
   request_cb push_request_cb_;
   close_cb close_cb_;
-  read_cb read_cb_;
+  generator_cb generator_cb_;
   class stream *strm_;
   uri_ref uri_;
   std::string method_;

@@ -79,7 +79,7 @@ public:
 
   // Sets callback as a generator of the response body.  No further
   // call of end() is allowed.
-  void end(read_cb cb) const;
+  void end(generator_cb cb) const;
 
   // Sets callback which is invoked when this request and response are
   // finished.  After the invocation of this callback, the application

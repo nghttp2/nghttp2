@@ -33,7 +33,7 @@ namespace asio_http2 {
 namespace server {
 
 response_impl::response_impl()
-    : strm_(nullptr), read_cb_(deferred_reader()), status_code_(200),
+    : strm_(nullptr), generator_cb_(deferred_generator()), status_code_(200),
       state_(response_state::INITIAL), pushed_(false),
       push_promise_sent_(false) {}
 
@@ -57,20 +57,20 @@ void response_impl::write_head(unsigned int status_code, header_map h) {
 }
 
 void response_impl::end(std::string data) {
-  end(string_reader(std::move(data)));
+  end(string_generator(std::move(data)));
 }
 
-void response_impl::end(read_cb cb) {
+void response_impl::end(generator_cb cb) {
   if (state_ == response_state::BODY_STARTED) {
     return;
   }
 
-  read_cb_ = std::move(cb);
+  generator_cb_ = std::move(cb);
 
   if (state_ == response_state::INITIAL) {
     write_head(status_code_);
   } else {
-    // read_cb is changed, start writing in case it is deferred.
+    // generator_cb is changed, start writing in case it is deferred.
     auto handler = strm_->handler();
     handler->resume(*strm_);
   }
@@ -133,10 +133,10 @@ const header_map &response_impl::header() const { return header_; }
 
 void response_impl::stream(class stream *s) { strm_ = s; }
 
-read_cb::result_type response_impl::call_read(uint8_t *data, std::size_t len,
-                                              uint32_t *data_flags) {
-  if (read_cb_) {
-    return read_cb_(data, len, data_flags);
+generator_cb::result_type
+response_impl::call_read(uint8_t *data, std::size_t len, uint32_t *data_flags) {
+  if (generator_cb_) {
+    return generator_cb_(data, len, data_flags);
   }
 
   *data_flags |= NGHTTP2_DATA_FLAG_EOF;

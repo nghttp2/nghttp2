@@ -47,7 +47,7 @@ boost::system::error_code make_error_code(nghttp2_error ev) {
   return boost::system::error_code(static_cast<int>(ev), nghttp2_category());
 }
 
-read_cb string_reader(std::string data) {
+generator_cb string_generator(std::string data) {
   auto strio = std::make_shared<std::pair<std::string, size_t>>(std::move(data),
                                                                 data.size());
   return [strio](uint8_t *buf, size_t len, uint32_t *data_flags) {
@@ -63,7 +63,7 @@ read_cb string_reader(std::string data) {
   };
 }
 
-read_cb deferred_reader() {
+generator_cb deferred_generator() {
   return [](uint8_t *buf, size_t len,
             uint32_t *data_flags) { return NGHTTP2_ERR_DEFERRED; };
 }
@@ -74,20 +74,20 @@ std::shared_ptr<Defer<F, T...>> defer_shared(F &&f, T &&... t) {
                                           std::forward<T>(t)...);
 }
 
-read_cb file_reader(const std::string &path) {
+generator_cb file_generator(const std::string &path) {
   auto fd = open(path.c_str(), O_RDONLY);
   if (fd == -1) {
-    return read_cb();
+    return generator_cb();
   }
 
-  return file_reader_from_fd(fd);
+  return file_generator_from_fd(fd);
 }
 
-read_cb file_reader_from_fd(int fd) {
+generator_cb file_generator_from_fd(int fd) {
   auto d = defer_shared(close, fd);
 
   return [fd, d](uint8_t *buf, size_t len, uint32_t *data_flags)
-      -> read_cb::result_type {
+      -> generator_cb::result_type {
     ssize_t n;
     while ((n = read(fd, buf, len)) == -1 && errno == EINTR)
       ;

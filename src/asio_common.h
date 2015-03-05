@@ -39,10 +39,10 @@ namespace asio_http2 {
 
 boost::system::error_code make_error_code(nghttp2_error ev);
 
-read_cb string_reader(std::string data);
+generator_cb string_generator(std::string data);
 
-// Returns read_cb, which just returns NGHTTP2_ERR_DEFERRED
-read_cb deferred_reader();
+// Returns generator_cb, which just returns NGHTTP2_ERR_DEFERRED
+generator_cb deferred_generator();
 
 template <typename InputIt>
 void split_path(uri_ref &dst, InputIt first, InputIt last) {

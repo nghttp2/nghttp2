@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
                        header_value{http_date(stbuf.st_mtime)});
       }
       res.write_head(200, std::move(header));
-      res.end(file_reader_from_fd(fd));
+      res.end(file_generator_from_fd(fd));
     });
 
     server.listen("*", port);

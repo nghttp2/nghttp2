@@ -364,7 +364,7 @@ std::unique_ptr<stream> session_impl::create_stream() {
 
 const request *session_impl::submit(boost::system::error_code &ec,
                                     const std::string &method,
-                                    const std::string &uri, read_cb cb,
+                                    const std::string &uri, generator_cb cb,
                                     header_map h) {
   ec.clear();
 

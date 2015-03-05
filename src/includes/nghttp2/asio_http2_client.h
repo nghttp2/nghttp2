@@ -165,7 +165,7 @@ public:
   // nullptr and |ec| contains error message.
   const request *submit(boost::system::error_code &ec,
                         const std::string &method, const std::string &uri,
-                        read_cb cb, header_map h = {}) const;
+                        generator_cb cb, header_map h = {}) const;
 
 private:
   std::unique_ptr<session_impl> impl_;

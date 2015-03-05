@@ -63,12 +63,13 @@ void request_impl::call_on_close(uint32_t error_code) {
   }
 }
 
-void request_impl::on_read(read_cb cb) { read_cb_ = std::move(cb); }
+void request_impl::on_read(generator_cb cb) { generator_cb_ = std::move(cb); }
 
-read_cb::result_type request_impl::call_on_read(uint8_t *buf, std::size_t len,
-                                                uint32_t *data_flags) {
-  if (read_cb_) {
-    return read_cb_(buf, len, data_flags);
+generator_cb::result_type request_impl::call_on_read(uint8_t *buf,
+                                                     std::size_t len,
+                                                     uint32_t *data_flags) {
+  if (generator_cb_) {
+    return generator_cb_(buf, len, data_flags);
   }
 
   *data_flags |= NGHTTP2_DATA_FLAG_EOF;
