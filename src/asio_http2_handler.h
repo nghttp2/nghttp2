@@ -41,7 +41,7 @@ namespace asio_http2 {
 namespace server {
 
 class http2_handler;
-class http2_stream;
+class stream;
 class serve_mux;
 
 class request_impl {
@@ -60,11 +60,11 @@ public:
 
   void on_data(data_cb cb);
 
-  void stream(http2_stream *s);
+  void stream(class stream *s);
   void call_on_data(const uint8_t *data, std::size_t len);
 
 private:
-  http2_stream *stream_;
+  class stream *strm_;
   header_map header_;
   std::string method_;
   uri_ref uri_;
@@ -94,13 +94,13 @@ public:
   bool started() const;
   void pushed(bool f);
   void push_promise_sent(bool f);
-  void stream(http2_stream *s);
+  void stream(class stream *s);
   read_cb::result_type call_read(uint8_t *data, std::size_t len,
                                  uint32_t *data_flags);
   void call_on_close(uint32_t error_code);
 
 private:
-  http2_stream *stream_;
+  class stream *strm_;
   header_map header_;
   read_cb read_cb_;
   close_cb close_cb_;
@@ -114,9 +114,9 @@ private:
   bool push_promise_sent_;
 };
 
-class http2_stream {
+class stream {
 public:
-  http2_stream(http2_handler *h, int32_t stream_id);
+  stream(http2_handler *h, int32_t stream_id);
 
   int32_t get_stream_id() const;
   request &request();
@@ -148,15 +148,15 @@ public:
 
   int start();
 
-  http2_stream *create_stream(int32_t stream_id);
+  stream *create_stream(int32_t stream_id);
   void close_stream(int32_t stream_id);
-  http2_stream *find_stream(int32_t stream_id);
+  stream *find_stream(int32_t stream_id);
 
-  void call_on_request(http2_stream &stream);
+  void call_on_request(stream &s);
 
   bool should_stop() const;
 
-  int start_response(http2_stream &stream);
+  int start_response(stream &s);
 
   void stream_error(int32_t stream_id, uint32_t error_code);
 
@@ -166,9 +166,9 @@ public:
   void leave_callback();
   bool inside_callback() const;
 
-  void resume(http2_stream &stream);
+  void resume(stream &s);
 
-  response *push_promise(boost::system::error_code &ec, http2_stream &stream,
+  response *push_promise(boost::system::error_code &ec, stream &s,
                          std::string method, std::string raw_path_query,
                          header_map h);
 
@@ -231,7 +231,7 @@ public:
   }
 
 private:
-  std::map<int32_t, std::shared_ptr<http2_stream>> streams_;
+  std::map<int32_t, std::shared_ptr<stream>> streams_;
   connection_write writefun_;
   serve_mux &mux_;
   boost::asio::io_service &io_service_;

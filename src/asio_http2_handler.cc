@@ -86,7 +86,7 @@ bool response::started() const { return impl_->started(); }
 
 response_impl &response::impl() const { return *impl_; }
 
-request_impl::request_impl() : stream_(nullptr) {}
+request_impl::request_impl() : strm_(nullptr) {}
 
 const header_map &request_impl::header() const { return header_; }
 
@@ -104,7 +104,7 @@ void request_impl::method(std::string arg) { method_ = std::move(arg); }
 
 void request_impl::on_data(data_cb cb) { on_data_cb_ = std::move(cb); }
 
-void request_impl::stream(http2_stream *s) { stream_ = s; }
+void request_impl::stream(class stream *s) { strm_ = s; }
 
 void request_impl::call_on_data(const uint8_t *data, std::size_t len) {
   if (on_data_cb_) {
@@ -113,7 +113,7 @@ void request_impl::call_on_data(const uint8_t *data, std::size_t len) {
 }
 
 response_impl::response_impl()
-    : stream_(nullptr), status_code_(200), started_(false), pushed_(false),
+    : strm_(nullptr), status_code_(200), started_(false), pushed_(false),
       push_promise_sent_(false) {}
 
 unsigned int response_impl::status_code() const { return status_code_; }
@@ -151,9 +151,9 @@ void response_impl::call_on_close(uint32_t error_code) {
 }
 
 void response_impl::cancel(uint32_t error_code) {
-  auto handler = stream_->handler();
+  auto handler = strm_->handler();
 
-  handler->stream_error(stream_->get_stream_id(), error_code);
+  handler->stream_error(strm_->get_stream_id(), error_code);
 
   if (!handler->inside_callback()) {
     handler->initiate_write();
@@ -165,10 +165,10 @@ void response_impl::start_response() {
     return;
   }
 
-  auto handler = stream_->handler();
+  auto handler = strm_->handler();
 
-  if (handler->start_response(*stream_) != 0) {
-    handler->stream_error(stream_->get_stream_id(), NGHTTP2_INTERNAL_ERROR);
+  if (handler->start_response(*strm_) != 0) {
+    handler->stream_error(strm_->get_stream_id(), NGHTTP2_INTERNAL_ERROR);
     return;
   }
 
@@ -179,14 +179,14 @@ void response_impl::start_response() {
 
 response *response_impl::push(boost::system::error_code &ec, std::string method,
                               std::string raw_path_query, header_map h) const {
-  auto handler = stream_->handler();
-  return handler->push_promise(ec, *stream_, std::move(method),
+  auto handler = strm_->handler();
+  return handler->push_promise(ec, *strm_, std::move(method),
                                std::move(raw_path_query), std::move(h));
 }
 
 void response_impl::resume() {
-  auto handler = stream_->handler();
-  handler->resume(*stream_);
+  auto handler = strm_->handler();
+  handler->resume(*strm_);
 
   if (!handler->inside_callback()) {
     handler->initiate_write();
@@ -194,7 +194,7 @@ void response_impl::resume() {
 }
 
 boost::asio::io_service &response_impl::io_service() {
-  return stream_->handler()->io_service();
+  return strm_->handler()->io_service();
 }
 
 bool response_impl::started() const { return started_; }
@@ -205,7 +205,7 @@ void response_impl::push_promise_sent(bool f) { push_promise_sent_ = f; }
 
 const header_map &response_impl::header() const { return header_; }
 
-void response_impl::stream(http2_stream *s) { stream_ = s; }
+void response_impl::stream(class stream *s) { strm_ = s; }
 
 read_cb::result_type response_impl::call_read(uint8_t *data, std::size_t len,
                                               uint32_t *data_flags) {
@@ -218,19 +218,19 @@ read_cb::result_type response_impl::call_read(uint8_t *data, std::size_t len,
   return 0;
 }
 
-http2_stream::http2_stream(http2_handler *h, int32_t stream_id)
+stream::stream(http2_handler *h, int32_t stream_id)
     : handler_(h), stream_id_(stream_id) {
   request_.impl().stream(this);
   response_.impl().stream(this);
 }
 
-int32_t http2_stream::get_stream_id() const { return stream_id_; }
+int32_t stream::get_stream_id() const { return stream_id_; }
 
-request &http2_stream::request() { return request_; }
+request &stream::request() { return request_; }
 
-response &http2_stream::response() { return response_; }
+response &stream::response() { return response_; }
 
-http2_handler *http2_stream::handler() const { return handler_; }
+http2_handler *stream::handler() const { return handler_; }
 
 namespace {
 int stream_error(nghttp2_session *session, int32_t stream_id,
@@ -269,12 +269,12 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
     return 0;
   }
 
-  auto stream = handler->find_stream(stream_id);
-  if (!stream) {
+  auto strm = handler->find_stream(stream_id);
+  if (!strm) {
     return 0;
   }
 
-  auto &req = stream->request().impl();
+  auto &req = strm->request().impl();
   auto &uref = req.uri();
 
   switch (nghttp2::http2::lookup_token(name, namelen)) {
@@ -309,28 +309,28 @@ namespace {
 int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
                            void *user_data) {
   auto handler = static_cast<http2_handler *>(user_data);
-  auto stream = handler->find_stream(frame->hd.stream_id);
+  auto strm = handler->find_stream(frame->hd.stream_id);
 
   switch (frame->hd.type) {
   case NGHTTP2_DATA:
-    if (!stream) {
+    if (!strm) {
       break;
     }
 
     if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
-      stream->request().impl().call_on_data(nullptr, 0);
+      strm->request().impl().call_on_data(nullptr, 0);
     }
 
     break;
   case NGHTTP2_HEADERS: {
-    if (!stream || frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
+    if (!strm || frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
       break;
     }
 
-    handler->call_on_request(*stream);
+    handler->call_on_request(*strm);
 
     if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
-      stream->request().impl().call_on_data(nullptr, 0);
+      strm->request().impl().call_on_data(nullptr, 0);
     }
 
     break;
@@ -346,13 +346,13 @@ int on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
                                 int32_t stream_id, const uint8_t *data,
                                 size_t len, void *user_data) {
   auto handler = static_cast<http2_handler *>(user_data);
-  auto stream = handler->find_stream(stream_id);
+  auto strm = handler->find_stream(stream_id);
 
-  if (!stream) {
+  if (!strm) {
     return 0;
   }
 
-  stream->request().impl().call_on_data(data, len);
+  strm->request().impl().call_on_data(data, len);
 
   return 0;
 }
@@ -364,12 +364,12 @@ int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
                              uint32_t error_code, void *user_data) {
   auto handler = static_cast<http2_handler *>(user_data);
 
-  auto stream = handler->find_stream(stream_id);
-  if (!stream) {
+  auto strm = handler->find_stream(stream_id);
+  if (!strm) {
     return 0;
   }
 
-  stream->response().impl().call_on_close(error_code);
+  strm->response().impl().call_on_close(error_code);
 
   handler->close_stream(stream_id);
 
@@ -386,13 +386,13 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
     return 0;
   }
 
-  auto stream = handler->find_stream(frame->push_promise.promised_stream_id);
+  auto strm = handler->find_stream(frame->push_promise.promised_stream_id);
 
-  if (!stream) {
+  if (!strm) {
     return 0;
   }
 
-  auto &res = stream->response().impl();
+  auto &res = strm->response().impl();
   res.push_promise_sent(true);
   res.start_response();
 
@@ -470,9 +470,8 @@ int http2_handler::start() {
   return 0;
 }
 
-http2_stream *http2_handler::create_stream(int32_t stream_id) {
-  auto p =
-      streams_.emplace(stream_id, make_unique<http2_stream>(this, stream_id));
+stream *http2_handler::create_stream(int32_t stream_id) {
+  auto p = streams_.emplace(stream_id, make_unique<stream>(this, stream_id));
   assert(p.second);
   return (*p.first).second.get();
 }
@@ -481,7 +480,7 @@ void http2_handler::close_stream(int32_t stream_id) {
   streams_.erase(stream_id);
 }
 
-http2_stream *http2_handler::find_stream(int32_t stream_id) {
+stream *http2_handler::find_stream(int32_t stream_id) {
   auto i = streams_.find(stream_id);
   if (i == std::end(streams_)) {
     return nullptr;
@@ -490,9 +489,9 @@ http2_stream *http2_handler::find_stream(int32_t stream_id) {
   return (*i).second.get();
 }
 
-void http2_handler::call_on_request(http2_stream &stream) {
-  auto cb = mux_.handler(stream.request().impl());
-  cb(stream.request(), stream.response());
+void http2_handler::call_on_request(stream &strm) {
+  auto cb = mux_.handler(strm.request().impl());
+  cb(strm.request(), strm.response());
 }
 
 bool http2_handler::should_stop() const {
@@ -500,10 +499,10 @@ bool http2_handler::should_stop() const {
          !nghttp2_session_want_write(session_);
 }
 
-int http2_handler::start_response(http2_stream &stream) {
+int http2_handler::start_response(stream &strm) {
   int rv;
 
-  auto &res = stream.response().impl();
+  auto &res = strm.response().impl();
   auto &header = res.header();
   auto nva = std::vector<nghttp2_nv>();
   nva.reserve(2 + header.size());
@@ -517,16 +516,16 @@ int http2_handler::start_response(http2_stream &stream) {
   }
 
   nghttp2_data_provider prd;
-  prd.source.ptr = &stream;
+  prd.source.ptr = &strm;
   prd.read_callback =
       [](nghttp2_session *session, int32_t stream_id, uint8_t *buf,
          size_t length, uint32_t *data_flags, nghttp2_data_source *source,
          void *user_data) -> ssize_t {
-    auto &stream = *static_cast<http2_stream *>(source->ptr);
-    return stream.response().impl().call_read(buf, length, data_flags);
+    auto &strm = *static_cast<stream *>(source->ptr);
+    return strm.response().impl().call_read(buf, length, data_flags);
   };
 
-  rv = nghttp2_submit_response(session_, stream.get_stream_id(), nva.data(),
+  rv = nghttp2_submit_response(session_, strm.get_stream_id(), nva.data(),
                                nva.size(), &prd);
 
   if (rv != 0) {
@@ -554,19 +553,19 @@ void http2_handler::stream_error(int32_t stream_id, uint32_t error_code) {
 
 void http2_handler::initiate_write() { writefun_(); }
 
-void http2_handler::resume(http2_stream &stream) {
-  nghttp2_session_resume_data(session_, stream.get_stream_id());
+void http2_handler::resume(stream &strm) {
+  nghttp2_session_resume_data(session_, strm.get_stream_id());
 }
 
 response *http2_handler::push_promise(boost::system::error_code &ec,
-                                      http2_stream &stream, std::string method,
+                                      stream &strm, std::string method,
                                       std::string raw_path_query,
                                       header_map h) {
   int rv;
 
   ec.clear();
 
-  auto &req = stream.request().impl();
+  auto &req = strm.request().impl();
 
   auto nva = std::vector<nghttp2_nv>();
   nva.reserve(4 + h.size());
@@ -581,16 +580,16 @@ response *http2_handler::push_promise(boost::system::error_code &ec,
   }
 
   rv = nghttp2_submit_push_promise(session_, NGHTTP2_FLAG_NONE,
-                                   stream.get_stream_id(), nva.data(),
-                                   nva.size(), nullptr);
+                                   strm.get_stream_id(), nva.data(), nva.size(),
+                                   nullptr);
 
   if (rv < 0) {
     ec = make_error_code(static_cast<nghttp2_error>(rv));
     return nullptr;
   }
 
-  auto promised_stream = create_stream(rv);
-  auto &promised_req = promised_stream->request().impl();
+  auto promised_strm = create_stream(rv);
+  auto &promised_req = promised_strm->request().impl();
   promised_req.header(std::move(h));
   promised_req.method(std::move(method));
 
@@ -599,10 +598,10 @@ response *http2_handler::push_promise(boost::system::error_code &ec,
   uref.host = req.uri().host;
   split_path(uref, std::begin(raw_path_query), std::end(raw_path_query));
 
-  auto &promised_res = promised_stream->response().impl();
+  auto &promised_res = promised_strm->response().impl();
   promised_res.pushed(true);
 
-  return &promised_stream->response();
+  return &promised_strm->response();
 }
 
 boost::asio::io_service &http2_handler::io_service() { return io_service_; }
