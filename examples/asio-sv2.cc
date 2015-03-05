@@ -40,7 +40,7 @@
 #include <iostream>
 #include <string>
 
-#include <nghttp2/asio_http2.h>
+#include <nghttp2/asio_http2_server.h>
 
 using namespace nghttp2::asio_http2;
 using namespace nghttp2::asio_http2::server;
@@ -66,12 +66,11 @@ int main(int argc, char *argv[]) {
       server.tls(argv[4], argv[5]);
     }
 
-    server.listen("*", port, [&docroot](const std::shared_ptr<request> &req,
-                                        const std::shared_ptr<response> &res) {
-      auto path = percent_decode(req->path());
+    server.handle("/", [&docroot](const request &req, const response &res) {
+      auto path = percent_decode(req.uri().path);
       if (!check_path(path)) {
-        res->write_head(404);
-        res->end();
+        res.write_head(404);
+        res.end();
         return;
       }
 
@@ -82,22 +81,26 @@ int main(int argc, char *argv[]) {
       path = docroot + path;
       auto fd = open(path.c_str(), O_RDONLY);
       if (fd == -1) {
-        res->write_head(404);
-        res->end();
+        res.write_head(404);
+        res.end();
         return;
       }
 
-      auto headers = std::vector<header>();
+      auto header = header_map();
 
       struct stat stbuf;
       if (stat(path.c_str(), &stbuf) == 0) {
-        headers.push_back(
-            header{"content-length", std::to_string(stbuf.st_size)});
-        headers.push_back(header{"last-modified", http_date(stbuf.st_mtime)});
+        header.emplace("content-length",
+                       header_value{std::to_string(stbuf.st_size)});
+        header.emplace("last-modified",
+                       header_value{http_date(stbuf.st_mtime)});
       }
-      res->write_head(200, std::move(headers));
-      res->end(file_reader_from_fd(fd));
+      res.write_head(200, std::move(header));
+      res.end(file_generator_from_fd(fd));
     });
+
+    server.listen_and_serve("*", port);
+
   } catch (std::exception &e) {
     std::cerr << "exception: " << e.what() << "\n";
   }

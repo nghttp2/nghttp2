@@ -30,205 +30,86 @@
 #include <string>
 #include <vector>
 #include <functional>
+#include <map>
+
+#include <boost/system/error_code.hpp>
+#include <boost/asio.hpp>
+#include <boost/asio/ssl.hpp>
+
+#include <nghttp2/nghttp2.h>
+
+namespace boost {
+namespace system {
+
+template <> struct is_error_code_enum<nghttp2_error> {
+  BOOST_STATIC_CONSTANT(bool, value = true);
+};
+
+} // namespace system
+} // namespace boost
 
 namespace nghttp2 {
 
 namespace asio_http2 {
 
-struct header {
-  std::string name;
+struct header_value {
+  // header field value
   std::string value;
+  // true if the header field value is sensitive information, such as
+  // authorization information or short length secret cookies.  If
+  // true, those header fields are not indexed by HPACK (but still
+  // huffman-encoded), which results in lesser compression.
+  bool sensitive;
 };
 
+// header fields.  The header field name must be lower-cased.
+using header_map = std::multimap<std::string, header_value>;
+
+const boost::system::error_category &nghttp2_category() noexcept;
+
+struct uri_ref {
+  std::string scheme;
+  std::string host;
+  // form after percent-encoding decoded
+  std::string path;
+  // original path, percent-encoded
+  std::string raw_path;
+  // original query, percent-encoded
+  std::string raw_query;
+  std::string fragment;
+};
+
+// Callback function when data is arrived.  EOF is indicated by
+// passing 0 to the second parameter.
 typedef std::function<void(const uint8_t *, std::size_t)> data_cb;
 typedef std::function<void(void)> void_cb;
+typedef std::function<void(const boost::system::error_code &ec)> error_cb;
+// Callback function when request and response are finished.  The
+// parameter indicates the cause of closure.
+typedef std::function<void(uint32_t)> close_cb;
 
-// Callback function to generate response body.  The implementation of
-// this callback must fill at most |len| bytes data to |buf|.  The
-// return value is pair of written bytes and bool value indicating
-// that this is the end of the body.  If the end of the body was
-// reached, return true.  If there is error and application wants to
-// terminate stream, return std::make_pair(-1, false).  Returning
-// std::make_pair(0, false) tells the library that don't call this
-// callback until application calls response::resume().  This is
-// useful when there is no data to send at the moment but there will
-// be more to come in near future.
-typedef std::function<std::pair<ssize_t, bool>(uint8_t *buf, std::size_t len)>
-    read_cb;
-
-class channel_impl;
-
-class channel {
-public:
-  // Application must not call this directly.
-  channel();
-
-  // Schedules the execution of callback |cb| in the same thread where
-  // request callback is called.  Therefore, it is same to use request
-  // or response object in |cb|.  The callbacks are executed in the
-  // same order they are posted though same channel object if they are
-  // posted from the same thread.
-  void post(void_cb cb);
-
-  // Application must not call this directly.
-  channel_impl &impl();
-
-private:
-  std::unique_ptr<channel_impl> impl_;
-};
-
-typedef std::function<void(channel &)> thread_cb;
-
-namespace server {
-
-class request_impl;
-class response_impl;
-
-class request {
-public:
-  // Application must not call this directly.
-  request();
-
-  // Returns request headers.  The pusedo headers, which start with
-  // colon (;), are exluced from this list.
-  const std::vector<header> &headers() const;
-
-  // Returns method (e.g., GET).
-  const std::string &method() const;
-
-  // Returns scheme (e.g., https).
-  const std::string &scheme() const;
-
-  // Returns authority (e.g., example.org).  This could be empty
-  // string.  In this case, check host().
-
-  const std::string &authority() const;
-  // Returns host (e.g., example.org).  If host header field is not
-  // present, this value is copied from authority().
-
-  const std::string &host() const;
-
-  // Returns path (e.g., /index.html).
-  const std::string &path() const;
-
-  // Sets callback when chunk of request body is received.
-  void on_data(data_cb cb);
-
-  // Sets callback when request was completed.
-  void on_end(void_cb cb);
-
-  // Pushes resource denoted by |path| using |method|.  The additional
-  // headers can be given in |headers|.  request_cb will be called for
-  // pushed resource later on.  This function returns true if it
-  // succeeds, or false.
-  bool push(std::string method, std::string path,
-            std::vector<header> headers = {});
-
-  // Returns true if this is pushed request.
-  bool pushed() const;
-
-  // Returns true if stream has been closed.
-  bool closed() const;
-
-  // Runs function |start| in one of background threads.  Returns true
-  // if scheduling task was done successfully.
-  //
-  // Since |start| is called in different thread, calling any method
-  // of request or response object in the callback may cause undefined
-  // behavior.  To safely use them, use channel::post().  A callback
-  // passed to channel::post() is executed in the same thread where
-  // request callback is called, so it is safe to use request or
-  // response object.  Example::
-  bool run_task(thread_cb start);
-
-  // Application must not call this directly.
-  request_impl &impl();
-
-private:
-  std::unique_ptr<request_impl> impl_;
-};
-
-class response {
-public:
-  // Application must not call this directly.
-  response();
-
-  // Write response header using |status_code| (e.g., 200) and
-  // additional headers in |headers|.
-  void write_head(unsigned int status_code, std::vector<header> headers = {});
-
-  // Sends |data| as request body.  No further call of end() is
-  // allowed.
-  void end(std::string data = "");
-
-  // Sets callback |cb| as a generator of the response body.  No
-  // further call of end() is allowed.
-  void end(read_cb cb);
-
-  // Resumes deferred response.
-  void resume();
-
-  // Returns status code.
-  unsigned int status_code() const;
-
-  // Returns true if response has been started.
-  bool started() const;
-
-  // Application must not call this directly.
-  response_impl &impl();
-
-private:
-  std::unique_ptr<response_impl> impl_;
-};
-
-// This is so called request callback.  Called every time request is
-// received.
-typedef std::function<void(const std::shared_ptr<request> &,
-                           const std::shared_ptr<response> &)> request_cb;
-
-class http2_impl;
-
-class http2 {
-public:
-  http2();
-  ~http2();
-
-  // Starts listening connection on given address and port.  The
-  // incoming requests are handled by given callback |cb|.
-  void listen(const std::string &address, uint16_t port, request_cb cb);
-
-  // Sets number of native threads to handle incoming HTTP request.
-  // It defaults to 1.
-  void num_threads(size_t num_threads);
-
-  // Sets TLS private key file and certificate file.  Both files must
-  // be in PEM format.
-  void tls(std::string private_key_file, std::string certificate_file);
-
-  // Sets number of background threads to run concurrent tasks (see
-  // request::run_task()).  It defaults to 1.  This is not the number
-  // of thread to handle incoming HTTP request.  For this purpose, see
-  // num_threads().
-  void num_concurrent_tasks(size_t num_concurrent_tasks);
-
-  // Sets the maximum length to which the queue of pending
-  // connections.
-  void backlog(int backlog);
-
-private:
-  std::unique_ptr<http2_impl> impl_;
-};
-
-} // namespace server
+// Callback function to generate response body.  This function has the
+// same semantics with nghttp2_data_source_read_callback.  Just source
+// and user_data parameters are removed.
+//
+// Basically, write at most |len| bytes to |data| and returns the
+// number of bytes written.  If there is no data left to send, set
+// NGHTTP2_DATA_FLAG_EOF to *data_flags (e.g., *data_flags |=
+// NGHTTP2_DATA_FLAG_EOF).  If there is still data to send but they
+// are not available right now, return NGHTTP2_ERR_DEFERRED.  In case
+// of the error and request/response must be closed, return
+// NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE.
+typedef std::function<
+    ssize_t(uint8_t *buf, std::size_t len, uint32_t *data_flags)> generator_cb;
 
 // Convenient function to create function to read file denoted by
 // |path|.  This can be passed to response::end().
-read_cb file_reader(const std::string &path);
+generator_cb file_generator(const std::string &path);
 
-// Like file_reader(const std::string&), but it takes opened file
+// Like file_generator(const std::string&), but it takes opened file
 // descriptor.  The passed descriptor will be closed when returned
 // function object is destroyed.
-read_cb file_reader_from_fd(int fd);
+generator_cb file_generator_from_fd(int fd);
 
 // Validates path so that it does not contain directory traversal
 // vector.  Returns true if path is safe.  The |path| must start with

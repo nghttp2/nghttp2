@@ -1,7 +1,7 @@
 /*
  * nghttp2 - HTTP/2 C Library
  *
- * Copyright (c) 2013 Tatsuhiro Tsujikawa
+ * Copyright (c) 2015 Tatsuhiro Tsujikawa
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -22,34 +22,39 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef UTIL_TEST_H
-#define UTIL_TEST_H
+#ifndef ASIO_CLIENT_SESSION_TCP_IMPL_H
+#define ASIO_CLIENT_SESSION_TCP_IMPL_H
 
-namespace shrpx {
+#include "asio_client_session_impl.h"
 
-void test_util_streq(void);
-void test_util_strieq(void);
-void test_util_inp_strlower(void);
-void test_util_to_base64(void);
-void test_util_to_token68(void);
-void test_util_percent_encode_token(void);
-void test_util_percent_encode_path(void);
-void test_util_percent_decode(void);
-void test_util_quote_string(void);
-void test_util_utox(void);
-void test_util_http_date(void);
-void test_util_select_h2(void);
-void test_util_ipv6_numeric_addr(void);
-void test_util_utos_with_unit(void);
-void test_util_utos_with_funit(void);
-void test_util_parse_uint_with_unit(void);
-void test_util_parse_uint(void);
-void test_util_parse_duration_with_unit(void);
-void test_util_duration_str(void);
-void test_util_format_duration(void);
-void test_util_starts_with(void);
-void test_util_ends_with(void);
+#include <nghttp2/asio_http2_client.h>
 
-} // namespace shrpx
+namespace nghttp2 {
+namespace asio_http2 {
+namespace client {
 
-#endif // UTIL_TEST_H
+using boost::asio::ip::tcp;
+
+class session_tcp_impl : public session_impl {
+public:
+  session_tcp_impl(boost::asio::io_service &io_service, const std::string &host,
+                   const std::string &service);
+  virtual ~session_tcp_impl();
+
+  virtual void start_connect(tcp::resolver::iterator endpoint_it);
+  virtual tcp::socket &socket();
+  virtual void read_socket(std::function<
+      void(const boost::system::error_code &ec, std::size_t n)> h);
+  virtual void write_socket(std::function<
+      void(const boost::system::error_code &ec, std::size_t n)> h);
+  virtual void shutdown_socket();
+
+private:
+  tcp::socket socket_;
+};
+
+} // namespace client
+} // namespace asio_http2
+} // namespace nghttp2
+
+#endif // ASIO_CLIENT_SESSION_TCP_IMPL_H

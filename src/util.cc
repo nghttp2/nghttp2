@@ -70,6 +70,13 @@ bool inRFC3986UnreservedChars(const char c) {
          std::find(&unreserved[0], &unreserved[4], c) != &unreserved[4];
 }
 
+bool in_rfc3986_sub_delims(const char c) {
+  static const char sub_delims[] = {'!', '$', '&', '\'', '(', ')',
+                                    '*', '+', ',', ';',  '='};
+  return std::find(std::begin(sub_delims), std::end(sub_delims), c) !=
+         std::end(sub_delims);
+}
+
 std::string percentEncode(const unsigned char *target, size_t len) {
   std::string dest;
   for (size_t i = 0; i < len; ++i) {
@@ -89,6 +96,21 @@ std::string percentEncode(const unsigned char *target, size_t len) {
 std::string percentEncode(const std::string &target) {
   return percentEncode(reinterpret_cast<const unsigned char *>(target.c_str()),
                        target.size());
+}
+
+std::string percent_encode_path(const std::string &s) {
+  std::string dest;
+  for (auto c : s) {
+    if (inRFC3986UnreservedChars(c) || in_rfc3986_sub_delims(c) || c == '/') {
+      dest += c;
+      continue;
+    }
+
+    dest += "%";
+    dest += UPPER_XDIGITS[(c >> 4) & 0x0f];
+    dest += UPPER_XDIGITS[(c & 0x0f)];
+  }
+  return dest;
 }
 
 bool in_token(char c) {
@@ -135,25 +157,6 @@ uint32_t hex_to_uint(char c) {
     return c - 'a' + 10;
   }
   return c;
-}
-
-std::string percentDecode(std::string::const_iterator first,
-                          std::string::const_iterator last) {
-  std::string result;
-  for (; first != last; ++first) {
-    if (*first == '%') {
-      if (first + 1 != last && first + 2 != last && isHexDigit(*(first + 1)) &&
-          isHexDigit(*(first + 2))) {
-        result += (hex_to_uint(*(first + 1)) << 4) + hex_to_uint(*(first + 2));
-        first += 2;
-        continue;
-      }
-      result += *first;
-      continue;
-    }
-    result += *first;
-  }
-  return result;
 }
 
 std::string quote_string(const std::string &target) {

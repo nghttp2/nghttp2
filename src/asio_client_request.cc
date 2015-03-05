@@ -1,7 +1,7 @@
 /*
  * nghttp2 - HTTP/2 C Library
  *
- * Copyright (c) 2013 Tatsuhiro Tsujikawa
+ * Copyright (c) 2015 Tatsuhiro Tsujikawa
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -22,34 +22,42 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef UTIL_TEST_H
-#define UTIL_TEST_H
+#include "nghttp2_config.h"
 
-namespace shrpx {
+#include <nghttp2/asio_http2_client.h>
 
-void test_util_streq(void);
-void test_util_strieq(void);
-void test_util_inp_strlower(void);
-void test_util_to_base64(void);
-void test_util_to_token68(void);
-void test_util_percent_encode_token(void);
-void test_util_percent_encode_path(void);
-void test_util_percent_decode(void);
-void test_util_quote_string(void);
-void test_util_utox(void);
-void test_util_http_date(void);
-void test_util_select_h2(void);
-void test_util_ipv6_numeric_addr(void);
-void test_util_utos_with_unit(void);
-void test_util_utos_with_funit(void);
-void test_util_parse_uint_with_unit(void);
-void test_util_parse_uint(void);
-void test_util_parse_duration_with_unit(void);
-void test_util_duration_str(void);
-void test_util_format_duration(void);
-void test_util_starts_with(void);
-void test_util_ends_with(void);
+#include "asio_client_request_impl.h"
 
-} // namespace shrpx
+#include "template.h"
 
-#endif // UTIL_TEST_H
+namespace nghttp2 {
+namespace asio_http2 {
+namespace client {
+
+request::request() : impl_(make_unique<request_impl>()) {}
+
+request::~request() {}
+
+void request::cancel(uint32_t error_code) const { impl_->cancel(error_code); }
+
+void request::on_response(response_cb cb) const {
+  impl_->on_response(std::move(cb));
+}
+
+void request::on_push(request_cb cb) const { impl_->on_push(std::move(cb)); }
+
+void request::on_close(close_cb cb) const { impl_->on_close(std::move(cb)); }
+
+const uri_ref &request::uri() const { return impl_->uri(); }
+
+const std::string &request::method() const { return impl_->method(); }
+
+const header_map &request::header() const { return impl_->header(); }
+
+void request::resume() const { impl_->resume(); }
+
+request_impl &request::impl() const { return *impl_; }
+
+} // namespace client
+} // namespace asio_http2
+} // namespace nghttp2

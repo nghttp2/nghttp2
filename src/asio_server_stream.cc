@@ -1,7 +1,7 @@
 /*
  * nghttp2 - HTTP/2 C Library
  *
- * Copyright (c) 2013 Tatsuhiro Tsujikawa
+ * Copyright (c) 2015 Tatsuhiro Tsujikawa
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -22,34 +22,34 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef UTIL_TEST_H
-#define UTIL_TEST_H
+#include "asio_server_stream.h"
 
-namespace shrpx {
+#include "asio_server_http2_handler.h"
+#include "asio_server_request_impl.h"
+#include "asio_server_response_impl.h"
 
-void test_util_streq(void);
-void test_util_strieq(void);
-void test_util_inp_strlower(void);
-void test_util_to_base64(void);
-void test_util_to_token68(void);
-void test_util_percent_encode_token(void);
-void test_util_percent_encode_path(void);
-void test_util_percent_decode(void);
-void test_util_quote_string(void);
-void test_util_utox(void);
-void test_util_http_date(void);
-void test_util_select_h2(void);
-void test_util_ipv6_numeric_addr(void);
-void test_util_utos_with_unit(void);
-void test_util_utos_with_funit(void);
-void test_util_parse_uint_with_unit(void);
-void test_util_parse_uint(void);
-void test_util_parse_duration_with_unit(void);
-void test_util_duration_str(void);
-void test_util_format_duration(void);
-void test_util_starts_with(void);
-void test_util_ends_with(void);
+namespace nghttp2 {
+namespace asio_http2 {
+namespace server {
 
-} // namespace shrpx
+stream::stream(http2_handler *h, int32_t stream_id)
+    : handler_(h), stream_id_(stream_id) {
+  request_.impl().stream(this);
+  response_.impl().stream(this);
+}
 
-#endif // UTIL_TEST_H
+int32_t stream::get_stream_id() const { return stream_id_; }
+
+class request &stream::request() {
+  return request_;
+}
+
+class response &stream::response() {
+  return response_;
+}
+
+http2_handler *stream::handler() const { return handler_; }
+
+} // namespace server
+} // namespace asio_http2
+} // namespace nghttp2

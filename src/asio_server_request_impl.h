@@ -1,7 +1,7 @@
 /*
  * nghttp2 - HTTP/2 C Library
  *
- * Copyright (c) 2013 Tatsuhiro Tsujikawa
+ * Copyright (c) 2015 Tatsuhiro Tsujikawa
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -22,34 +22,48 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef UTIL_TEST_H
-#define UTIL_TEST_H
+#ifndef ASIO_SERVER_REQUEST_IMPL_H
+#define ASIO_SERVER_REQUEST_IMPL_H
 
-namespace shrpx {
+#include "nghttp2_config.h"
 
-void test_util_streq(void);
-void test_util_strieq(void);
-void test_util_inp_strlower(void);
-void test_util_to_base64(void);
-void test_util_to_token68(void);
-void test_util_percent_encode_token(void);
-void test_util_percent_encode_path(void);
-void test_util_percent_decode(void);
-void test_util_quote_string(void);
-void test_util_utox(void);
-void test_util_http_date(void);
-void test_util_select_h2(void);
-void test_util_ipv6_numeric_addr(void);
-void test_util_utos_with_unit(void);
-void test_util_utos_with_funit(void);
-void test_util_parse_uint_with_unit(void);
-void test_util_parse_uint(void);
-void test_util_parse_duration_with_unit(void);
-void test_util_duration_str(void);
-void test_util_format_duration(void);
-void test_util_starts_with(void);
-void test_util_ends_with(void);
+#include <nghttp2/asio_http2_server.h>
 
-} // namespace shrpx
+namespace nghttp2 {
+namespace asio_http2 {
+namespace server {
 
-#endif // UTIL_TEST_H
+class stream;
+
+class request_impl {
+public:
+  request_impl();
+
+  void header(header_map h);
+  const header_map &header() const;
+  header_map &header();
+
+  void method(std::string method);
+  const std::string &method() const;
+
+  const uri_ref &uri() const;
+  uri_ref &uri();
+
+  void on_data(data_cb cb);
+
+  void stream(class stream *s);
+  void call_on_data(const uint8_t *data, std::size_t len);
+
+private:
+  class stream *strm_;
+  header_map header_;
+  std::string method_;
+  uri_ref uri_;
+  data_cb on_data_cb_;
+};
+
+} // namespace server
+} // namespace asio_http2
+} // namespace nghttp2
+
+#endif // ASIO_SERVER_REQUEST_IMPL_H

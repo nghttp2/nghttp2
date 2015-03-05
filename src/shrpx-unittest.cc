@@ -126,6 +126,8 @@ int main(int argc, char *argv[]) {
       !CU_add_test(pSuite, "util_to_token68", shrpx::test_util_to_token68) ||
       !CU_add_test(pSuite, "util_percent_encode_token",
                    shrpx::test_util_percent_encode_token) ||
+      !CU_add_test(pSuite, "util_percent_encode_path",
+                   shrpx::test_util_percent_encode_path) ||
       !CU_add_test(pSuite, "util_percent_decode",
                    shrpx::test_util_percent_decode) ||
       !CU_add_test(pSuite, "util_quote_string",

@@ -1,7 +1,7 @@
 /*
  * nghttp2 - HTTP/2 C Library
  *
- * Copyright (c) 2013 Tatsuhiro Tsujikawa
+ * Copyright (c) 2015 Tatsuhiro Tsujikawa
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -22,34 +22,44 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef UTIL_TEST_H
-#define UTIL_TEST_H
+#ifndef ASIO_COMMON_H
+#define ASIO_COMMON_H
 
-namespace shrpx {
+#include "nghttp2_config.h"
 
-void test_util_streq(void);
-void test_util_strieq(void);
-void test_util_inp_strlower(void);
-void test_util_to_base64(void);
-void test_util_to_token68(void);
-void test_util_percent_encode_token(void);
-void test_util_percent_encode_path(void);
-void test_util_percent_decode(void);
-void test_util_quote_string(void);
-void test_util_utox(void);
-void test_util_http_date(void);
-void test_util_select_h2(void);
-void test_util_ipv6_numeric_addr(void);
-void test_util_utos_with_unit(void);
-void test_util_utos_with_funit(void);
-void test_util_parse_uint_with_unit(void);
-void test_util_parse_uint(void);
-void test_util_parse_duration_with_unit(void);
-void test_util_duration_str(void);
-void test_util_format_duration(void);
-void test_util_starts_with(void);
-void test_util_ends_with(void);
+#include <string>
 
-} // namespace shrpx
+#include <nghttp2/asio_http2.h>
 
-#endif // UTIL_TEST_H
+#include "util.h"
+
+namespace nghttp2 {
+
+namespace asio_http2 {
+
+boost::system::error_code make_error_code(nghttp2_error ev);
+
+generator_cb string_generator(std::string data);
+
+// Returns generator_cb, which just returns NGHTTP2_ERR_DEFERRED
+generator_cb deferred_generator();
+
+template <typename InputIt>
+void split_path(uri_ref &dst, InputIt first, InputIt last) {
+  auto path_last = std::find(first, last, '?');
+  InputIt query_first;
+  if (path_last == last) {
+    query_first = path_last = last;
+  } else {
+    query_first = path_last + 1;
+  }
+  dst.path = util::percentDecode(first, path_last);
+  dst.raw_path.assign(first, path_last);
+  dst.raw_query.assign(query_first, last);
+}
+
+} // namespace asio_http2
+
+} // namespace nghttp2
+
+#endif // ASIO_COMMON_H

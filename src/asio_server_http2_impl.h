@@ -22,63 +22,45 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-// We wrote this code based on the original code which has the
-// following license:
-//
-// io_service_pool.hpp
-// ~~~~~~~~~~~~~~~~~~~
-//
-// Copyright (c) 2003-2013 Christopher M. Kohlhoff (chris at kohlhoff dot com)
-//
-// Distributed under the Boost Software License, Version 1.0. (See accompanying
-// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
-//
-
-#ifndef ASIO_IO_SERVICE_POOL_H
-#define ASIO_IO_SERVICE_POOL_H
+#ifndef ASIO_SERVER_HTTP2_IMPL_H
+#define ASIO_SERVER_HTTP2_IMPL_H
 
 #include "nghttp2_config.h"
 
-#include <vector>
-#include <memory>
+#include <nghttp2/asio_http2_server.h>
 
-#include <boost/noncopyable.hpp>
-#include <boost/thread.hpp>
-
-#include <nghttp2/asio_http2.h>
+#include "asio_server_serve_mux.h"
 
 namespace nghttp2 {
 
 namespace asio_http2 {
 
-/// A pool of io_service objects.
-class io_service_pool : private boost::noncopyable {
+namespace server {
+
+class server;
+
+class http2_impl {
 public:
-  /// Construct the io_service pool.
-  explicit io_service_pool(std::size_t pool_size);
-
-  /// Run all io_service objects in the pool.
-  void run();
-
-  /// Stop all io_service objects in the pool.
-  void stop();
-
-  /// Get an io_service to use.
-  boost::asio::io_service &get_io_service();
+  http2_impl();
+  void listen_and_serve(const std::string &address, uint16_t port);
+  void num_threads(size_t num_threads);
+  void tls(std::string private_key_file, std::string certificate_file);
+  void backlog(int backlog);
+  bool handle(std::string pattern, request_cb cb);
 
 private:
-  /// The pool of io_services.
-  std::vector<std::shared_ptr<boost::asio::io_service>> io_services_;
-
-  /// The work that keeps the io_services running.
-  std::vector<std::shared_ptr<boost::asio::io_service::work>> work_;
-
-  /// The next io_service to use for a connection.
-  std::size_t next_io_service_;
+  std::string private_key_file_;
+  std::string certificate_file_;
+  std::unique_ptr<server> server_;
+  std::size_t num_threads_;
+  int backlog_;
+  serve_mux mux_;
 };
+
+} // namespace server
 
 } // namespace asio_http2
 
 } // namespace nghttp2
 
-#endif // ASIO_IO_SERVICE_POOL_H
+#endif // ASIO_SERVER_HTTP2_IMPL_H

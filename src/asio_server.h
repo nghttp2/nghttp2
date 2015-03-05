@@ -34,21 +34,19 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef HTTP_SERVER2_SERVER_HPP
-#define HTTP_SERVER2_SERVER_HPP
+#ifndef ASIO_SERVER_H
+#define ASIO_SERVER_H
 
 #include "nghttp2_config.h"
 
 #include <string>
 #include <vector>
 #include <memory>
+
 #include <boost/noncopyable.hpp>
-#include <boost/asio.hpp>
-#include <boost/asio/ssl.hpp>
 
-#include <nghttp2/asio_http2.h>
+#include <nghttp2/asio_http2_server.h>
 
-#include "asio_connection.h"
 #include "asio_io_service_pool.h"
 
 namespace nghttp2 {
@@ -57,14 +55,15 @@ namespace asio_http2 {
 
 namespace server {
 
+class serve_mux;
+
 /// The top-level class of the HTTP server.
 class server : private boost::noncopyable {
 public:
   /// Construct the server to listen on the specified TCP address and port, and
   /// serve up files from the given directory.
   explicit server(const std::string &address, uint16_t port,
-                  std::size_t io_service_pool_size,
-                  std::size_t thread_pool_size, request_cb cb,
+                  std::size_t io_service_pool_size, serve_mux &mux_,
                   std::unique_ptr<boost::asio::ssl::context> ssl_ctx,
                   int backlog = -1);
 
@@ -73,7 +72,7 @@ public:
 
 private:
   /// Initiate an asynchronous accept operation.
-  void start_accept();
+  void start_accept(boost::asio::ip::tcp::acceptor &acceptor);
 
   void start_timer();
 
@@ -90,7 +89,7 @@ private:
 
   std::unique_ptr<boost::asio::ssl::context> ssl_ctx_;
 
-  request_cb request_cb_;
+  serve_mux &mux_;
 };
 
 } // namespace server
@@ -99,4 +98,4 @@ private:
 
 } // namespace nghttp2
 
-#endif // HTTP_SERVER2_SERVER_HPP
+#endif // ASIO_SERVER_H

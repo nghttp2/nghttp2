@@ -1,7 +1,7 @@
 /*
  * nghttp2 - HTTP/2 C Library
  *
- * Copyright (c) 2013 Tatsuhiro Tsujikawa
+ * Copyright (c) 2015 Tatsuhiro Tsujikawa
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -22,34 +22,36 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef UTIL_TEST_H
-#define UTIL_TEST_H
+#include "asio_client_response_impl.h"
 
-namespace shrpx {
+#include "template.h"
 
-void test_util_streq(void);
-void test_util_strieq(void);
-void test_util_inp_strlower(void);
-void test_util_to_base64(void);
-void test_util_to_token68(void);
-void test_util_percent_encode_token(void);
-void test_util_percent_encode_path(void);
-void test_util_percent_decode(void);
-void test_util_quote_string(void);
-void test_util_utox(void);
-void test_util_http_date(void);
-void test_util_select_h2(void);
-void test_util_ipv6_numeric_addr(void);
-void test_util_utos_with_unit(void);
-void test_util_utos_with_funit(void);
-void test_util_parse_uint_with_unit(void);
-void test_util_parse_uint(void);
-void test_util_parse_duration_with_unit(void);
-void test_util_duration_str(void);
-void test_util_format_duration(void);
-void test_util_starts_with(void);
-void test_util_ends_with(void);
+namespace nghttp2 {
+namespace asio_http2 {
+namespace client {
 
-} // namespace shrpx
+response_impl::response_impl() : content_length_(-1), status_code_(0) {}
 
-#endif // UTIL_TEST_H
+void response_impl::on_data(data_cb cb) { data_cb_ = std::move(cb); }
+
+void response_impl::call_on_data(const uint8_t *data, std::size_t len) {
+  if (data_cb_) {
+    data_cb_(data, len);
+  }
+}
+
+void response_impl::status_code(int sc) { status_code_ = sc; }
+
+int response_impl::status_code() const { return status_code_; }
+
+void response_impl::content_length(int64_t n) { content_length_ = n; }
+
+int64_t response_impl::content_length() const { return content_length_; }
+
+header_map &response_impl::header() { return header_; }
+
+const header_map &response_impl::header() const { return header_; }
+
+} // namespace client
+} // namespace asio_http2
+} // namespace nghttp2

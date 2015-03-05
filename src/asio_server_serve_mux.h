@@ -1,7 +1,7 @@
 /*
  * nghttp2 - HTTP/2 C Library
  *
- * Copyright (c) 2014 Tatsuhiro Tsujikawa
+ * Copyright (c) 2015 Tatsuhiro Tsujikawa
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -22,12 +22,12 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef ASIO_HTTP2_IMPL_H
-#define ASIO_HTTP2_IMPL_H
+#ifndef ASIO_SERVER_SERVE_MUX_H
+#define ASIO_SERVER_SERVE_MUX_H
 
 #include "nghttp2_config.h"
 
-#include <nghttp2/asio_http2.h>
+#include <nghttp2/asio_http2_server.h>
 
 namespace nghttp2 {
 
@@ -35,24 +35,24 @@ namespace asio_http2 {
 
 namespace server {
 
-class server;
+class request_impl;
 
-class http2_impl {
+// port from go's ServeMux
+
+struct handler_entry {
+  bool user_defined;
+  request_cb cb;
+  std::string pattern;
+};
+
+class serve_mux {
 public:
-  http2_impl();
-  void listen(const std::string &address, uint16_t port, request_cb cb);
-  void num_threads(size_t num_threads);
-  void tls(std::string private_key_file, std::string certificate_file);
-  void num_concurrent_tasks(size_t num_concurrent_tasks);
-  void backlog(int backlog);
+  bool handle(std::string pattern, request_cb cb);
+  request_cb handler(request_impl &req) const;
+  request_cb match(const std::string &path) const;
 
 private:
-  std::string private_key_file_;
-  std::string certificate_file_;
-  std::unique_ptr<server> server_;
-  std::size_t num_threads_;
-  std::size_t num_concurrent_tasks_;
-  int backlog_;
+  std::map<std::string, handler_entry> mux_;
 };
 
 } // namespace server
@@ -61,4 +61,4 @@ private:
 
 } // namespace nghttp2
 
-#endif // ASIO_HTTP2_IMPL_H
+#endif // ASIO_SERVER_SERVE_MUX_H

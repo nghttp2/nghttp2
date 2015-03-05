@@ -34,19 +34,20 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef HTTP_SERVER2_CONNECTION_HPP
-#define HTTP_SERVER2_CONNECTION_HPP
+#ifndef ASIO_SERVER_CONNECTION_H
+#define ASIO_SERVER_CONNECTION_H
 
 #include "nghttp2_config.h"
 
 #include <memory>
 
-#include <boost/asio.hpp>
 #include <boost/noncopyable.hpp>
 #include <boost/array.hpp>
 
-#include <nghttp2/asio_http2.h>
-#include "asio_http2_handler.h"
+#include <nghttp2/asio_http2_server.h>
+
+#include "asio_server_http2_handler.h"
+#include "asio_server_serve_mux.h"
 #include "util.h"
 
 namespace nghttp2 {
@@ -62,16 +63,14 @@ class connection : public std::enable_shared_from_this<connection<socket_type>>,
 public:
   /// Construct a connection with the given io_service.
   template <typename... SocketArgs>
-  explicit connection(request_cb cb, boost::asio::io_service &task_io_service,
-                      SocketArgs &&... args)
-      : socket_(std::forward<SocketArgs>(args)...), request_cb_(std::move(cb)),
-        task_io_service_(task_io_service), writing_(false) {}
+  explicit connection(serve_mux &mux, SocketArgs &&... args)
+      : socket_(std::forward<SocketArgs>(args)...), mux_(mux), writing_(false) {
+  }
 
   /// Start the first asynchronous operation for the connection.
   void start() {
-    handler_ = std::make_shared<http2_handler>(
-        socket_.get_io_service(), task_io_service_, [this]() { do_write(); },
-        request_cb_);
+    handler_ = std::make_shared<http2_handler>(socket_.get_io_service(),
+                                               [this]() { do_write(); }, mux_);
     if (handler_->start() != 0) {
       return;
     }
@@ -149,9 +148,7 @@ public:
 private:
   socket_type socket_;
 
-  request_cb request_cb_;
-
-  boost::asio::io_service &task_io_service_;
+  serve_mux &mux_;
 
   std::shared_ptr<http2_handler> handler_;
 
@@ -169,4 +166,4 @@ private:
 
 } // namespace nghttp2
 
-#endif // HTTP_SERVER2_CONNECTION_HPP
+#endif // ASIO_SERVER_CONNECTION_H
