@@ -53,10 +53,16 @@ namespace nghttp2 {
 namespace asio_http2 {
 
 struct header_value {
+  // header field value
   std::string value;
+  // true if the header field value is sensitive information, such as
+  // authorization information or short length secret cookies.  If
+  // true, those header fields are not indexed by HPACK (but still
+  // huffman-encoded), which results in lesser compression.
   bool sensitive;
 };
 
+// header fields.  The header field name must be lower-cased.
 using header_map = std::multimap<std::string, header_value>;
 
 const boost::system::error_category &nghttp2_category() noexcept;
@@ -64,9 +70,11 @@ const boost::system::error_category &nghttp2_category() noexcept;
 struct uri_ref {
   std::string scheme;
   std::string host;
-  // percent-decoded form
+  // form after percent-encoding decoded
   std::string path;
+  // original path, percent-encoded
   std::string raw_path;
+  // original query, percent-encoded
   std::string raw_query;
   std::string fragment;
 };
@@ -76,9 +84,21 @@ struct uri_ref {
 typedef std::function<void(const uint8_t *, std::size_t)> data_cb;
 typedef std::function<void(void)> void_cb;
 typedef std::function<void(const boost::system::error_code &ec)> error_cb;
+// Callback function when request and response are finished.  The
+// parameter indicates the cause of closure.
 typedef std::function<void(uint32_t)> close_cb;
 
-// Callback function to generate response body.  TBD
+// Callback function to generate response body.  This function has the
+// same semantics with nghttp2_data_source_read_callback.  Just source
+// and user_data parameters are removed.
+//
+// Basically, write at most |len| bytes to |data| and returns the
+// number of bytes written.  If there is no data left to send, set
+// NGHTTP2_DATA_FLAG_EOF to *data_flags (e.g., *data_flags |=
+// NGHTTP2_DATA_FLAG_EOF).  If there is still data to send but they
+// are not available right now, return NGHTTP2_ERR_DEFERRED.  In case
+// of the error and request/response must be closed, return
+// NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE.
 typedef std::function<
     ssize_t(uint8_t *buf, std::size_t len, uint32_t *data_flags)> read_cb;
 

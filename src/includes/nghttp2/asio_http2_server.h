@@ -42,8 +42,8 @@ public:
   request();
   ~request();
 
-  // Returns request headers.  The pusedo headers, which start with
-  // colon (:), are exluced from this list.
+  // Returns request header fields.  The pusedo header fields, which
+  // start with colon (:), are exluced from this list.
   const header_map &header() const;
 
   // Returns method (e.g., GET).
@@ -52,7 +52,8 @@ public:
   // Returns request URI, split into components.
   const uri_ref &uri() const;
 
-  // Sets callback when chunk of request body is received.
+  // Sets callback which is invoked when chunk of request body is
+  // received.
   void on_data(data_cb cb) const;
 
   // Application must not call this directly.
@@ -69,28 +70,33 @@ public:
   ~response();
 
   // Write response header using |status_code| (e.g., 200) and
-  // additional headers in |h|.
+  // additional header fields in |h|.
   void write_head(unsigned int status_code, header_map h = {}) const;
 
   // Sends |data| as request body.  No further call of end() is
   // allowed.
   void end(std::string data = "") const;
 
-  // Sets callback |cb| as a generator of the response body.  No
-  // further call of end() is allowed.
+  // Sets callback as a generator of the response body.  No further
+  // call of end() is allowed.
   void end(read_cb cb) const;
 
+  // Sets callback which is invoked when this request and response are
+  // finished.  After the invocation of this callback, the application
+  // must not access request and response object.
   void on_close(close_cb cb) const;
 
+  // Cancels this request and response with given error code.
   void cancel(uint32_t error_code = NGHTTP2_INTERNAL_ERROR) const;
 
   // Resumes deferred response.
   void resume() const;
 
   // Pushes resource denoted by |raw_path_query| using |method|.  The
-  // additional headers can be given in |h|.  This function returns
-  // pointer to response object for promised stream, otherwise nullptr
-  // and error code is filled in |ec|.
+  // additional header fields can be given in |h|.  This function
+  // returns pointer to response object for promised stream, otherwise
+  // nullptr and error code is filled in |ec|.  Be aware that the
+  // header field name given in |h| must be lower-cased.
   const response *push(boost::system::error_code &ec, std::string method,
                        std::string raw_path_query, header_map h = {}) const;
 
@@ -108,7 +114,9 @@ private:
 };
 
 // This is so called request callback.  Called every time request is
-// received.
+// received.  The life time of |request| and |response| objects end
+// when callback set by response::on_close() is called.  After that,
+// the application must not access to those objects.
 typedef std::function<void(const request &, const response &)> request_cb;
 
 class http2_impl;
@@ -124,7 +132,9 @@ public:
 
   // Registers request handler |cb| with path pattern |pattern|.  This
   // function will fail and returns false if same pattern has been
-  // already registered.  Otherwise returns true.
+  // already registered or |pattern| is empty string.  Otherwise
+  // returns true.  The pattern match rule is the same as
+  // net/http/ServeMux in golang.
   bool handle(std::string pattern, request_cb cb);
 
   // Sets number of native threads to handle incoming HTTP request.
