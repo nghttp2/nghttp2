@@ -39,7 +39,7 @@ std::string create_error_html(unsigned int status_code) {
   std::string res;
   res.reserve(512);
   auto status = http2::get_status_string(status_code);
-  res += "<!DOCTYPE html><html lang=en><title>";
+  res += R"(<!DOCTYPE html><html lang="en"><title>)";
   res += status;
   res += "</title><body><h1>";
   res += status;
