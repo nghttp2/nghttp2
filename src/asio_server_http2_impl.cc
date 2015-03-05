@@ -37,26 +37,6 @@ namespace asio_http2 {
 
 namespace server {
 
-http2::http2() : impl_(make_unique<http2_impl>()) {}
-
-http2::~http2() {}
-
-void http2::listen_and_serve(const std::string &address, uint16_t port) {
-  impl_->listen_and_serve(address, port);
-}
-
-void http2::num_threads(size_t num_threads) { impl_->num_threads(num_threads); }
-
-void http2::tls(std::string private_key_file, std::string certificate_file) {
-  impl_->tls(std::move(private_key_file), std::move(certificate_file));
-}
-
-void http2::backlog(int backlog) { impl_->backlog(backlog); }
-
-bool http2::handle(std::string pattern, request_cb cb) {
-  return impl_->handle(std::move(pattern), std::move(cb));
-}
-
 http2_impl::http2_impl() : num_threads_(1), backlog_(-1) {}
 
 namespace {
