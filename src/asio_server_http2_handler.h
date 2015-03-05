@@ -22,13 +22,12 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef HTTP2_HANDLER_H
-#define HTTP2_HANDLER_H
+#ifndef ASIO_SERVER_HTTP2_HANDLER_H
+#define ASIO_SERVER_HTTP2_HANDLER_H
 
 #include "nghttp2_config.h"
 
 #include <map>
-#include <vector>
 #include <functional>
 #include <string>
 
@@ -44,100 +43,13 @@ class http2_handler;
 class stream;
 class serve_mux;
 
-class request_impl {
-public:
-  request_impl();
-
-  void header(header_map h);
-  const header_map &header() const;
-  header_map &header();
-
-  void method(std::string method);
-  const std::string &method() const;
-
-  const uri_ref &uri() const;
-  uri_ref &uri();
-
-  void on_data(data_cb cb);
-
-  void stream(class stream *s);
-  void call_on_data(const uint8_t *data, std::size_t len);
-
-private:
-  class stream *strm_;
-  header_map header_;
-  std::string method_;
-  uri_ref uri_;
-  data_cb on_data_cb_;
-};
-
-class response_impl {
-public:
-  response_impl();
-  void write_head(unsigned int status_code, header_map h = {});
-  void end(std::string data = "");
-  void end(read_cb cb);
-  void on_close(close_cb cb);
-  void resume();
-
-  void cancel(uint32_t error_code);
-
-  response *push(boost::system::error_code &ec, std::string method,
-                 std::string raw_path_query, header_map h = {}) const;
-
-  boost::asio::io_service &io_service();
-
-  void start_response();
-
-  unsigned int status_code() const;
-  const header_map &header() const;
-  bool started() const;
-  void pushed(bool f);
-  void push_promise_sent(bool f);
-  void stream(class stream *s);
-  read_cb::result_type call_read(uint8_t *data, std::size_t len,
-                                 uint32_t *data_flags);
-  void call_on_close(uint32_t error_code);
-
-private:
-  class stream *strm_;
-  header_map header_;
-  read_cb read_cb_;
-  close_cb close_cb_;
-  unsigned int status_code_;
-  // true if response started (end() is called)
-  bool started_;
-  // true if this is pushed stream's response
-  bool pushed_;
-  // true if PUSH_PROMISE is sent if this is response of a pushed
-  // stream
-  bool push_promise_sent_;
-};
-
-class stream {
-public:
-  stream(http2_handler *h, int32_t stream_id);
-
-  int32_t get_stream_id() const;
-  request &request();
-  response &response();
-
-  http2_handler *handler() const;
-
-private:
-  http2_handler *handler_;
-  class request request_;
-  class response response_;
-  int32_t stream_id_;
-};
-
 struct callback_guard {
   callback_guard(http2_handler &h);
   ~callback_guard();
   http2_handler &handler;
 };
 
-typedef std::function<void(void)> connection_write;
+using connection_write = std::function<void(void)>;
 
 class http2_handler : public std::enable_shared_from_this<http2_handler> {
 public:
@@ -245,4 +157,4 @@ private:
 } // namespace asio_http2
 } // namespace nghttp
 
-#endif // HTTP2_HANDLER_H
+#endif // ASIO_SERVER_HTTP2_HANDLER_H

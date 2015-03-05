@@ -173,14 +173,19 @@ DISTCLEANFILES = $(pkgconfig_DATA)
 lib_LTLIBRARIES = libnghttp2_asio.la
 
 libnghttp2_asio_la_SOURCES = \
-	asio_connection.h \
-	asio_server.cc asio_server.h \
-	asio_io_service_pool.cc asio_io_service_pool.h \
-	asio_http2_handler.cc asio_http2_handler.h \
-	asio_http2_impl.cc asio_http2_impl.h \
 	util.cc util.h http2.cc http2.h \
 	ssl.cc ssl.h \
 	asio_common.cc asio_common.h \
+	asio_io_service_pool.cc asio_io_service_pool.h \
+	asio_server_http2_impl.cc asio_server_http2_impl.h \
+	asio_server.cc asio_server.h \
+	asio_server_http2_handler.cc asio_server_http2_handler.h \
+	asio_server_connection.h \
+	asio_server_request.cc \
+	asio_server_request_impl.cc asio_server_request_impl.h \
+	asio_server_response.cc \
+	asio_server_response_impl.cc asio_server_response_impl.h \
+	asio_server_stream.cc asio_server_stream.h \
 	asio_server_serve_mux.cc asio_server_serve_mux.h \
 	asio_client_session.cc \
 	asio_client_session_impl.cc asio_client_session_impl.h \

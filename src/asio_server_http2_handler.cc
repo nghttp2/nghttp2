@@ -22,12 +22,15 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#include "asio_http2_handler.h"
+#include "asio_server_http2_handler.h"
 
 #include <iostream>
 
 #include "asio_common.h"
 #include "asio_server_serve_mux.h"
+#include "asio_server_stream.h"
+#include "asio_server_request_impl.h"
+#include "asio_server_response_impl.h"
 #include "http2.h"
 #include "util.h"
 #include "template.h"
@@ -39,198 +42,6 @@ namespace asio_http2 {
 namespace server {
 
 extern std::shared_ptr<std::string> cached_date;
-
-request::request() : impl_(make_unique<request_impl>()) {}
-
-const header_map &request::header() const { return impl_->header(); }
-
-const std::string &request::method() const { return impl_->method(); }
-
-const uri_ref &request::uri() const { return impl_->uri(); }
-
-void request::on_data(data_cb cb) const {
-  return impl_->on_data(std::move(cb));
-}
-
-request_impl &request::impl() const { return *impl_; }
-
-response::response() : impl_(make_unique<response_impl>()) {}
-
-void response::write_head(unsigned int status_code, header_map h) const {
-  impl_->write_head(status_code, std::move(h));
-}
-
-void response::end(std::string data) const { impl_->end(std::move(data)); }
-
-void response::end(read_cb cb) const { impl_->end(std::move(cb)); }
-
-void response::on_close(close_cb cb) const { impl_->on_close(std::move(cb)); }
-
-void response::cancel(uint32_t error_code) const { impl_->cancel(error_code); }
-
-const response *response::push(boost::system::error_code &ec,
-                               std::string method, std::string path,
-                               header_map h) const {
-  return impl_->push(ec, std::move(method), std::move(path), std::move(h));
-}
-
-void response::resume() const { impl_->resume(); }
-
-unsigned int response::status_code() const { return impl_->status_code(); }
-
-boost::asio::io_service &response::io_service() const {
-  return impl_->io_service();
-}
-
-bool response::started() const { return impl_->started(); }
-
-response_impl &response::impl() const { return *impl_; }
-
-request_impl::request_impl() : strm_(nullptr) {}
-
-const header_map &request_impl::header() const { return header_; }
-
-const std::string &request_impl::method() const { return method_; }
-
-const uri_ref &request_impl::uri() const { return uri_; }
-
-uri_ref &request_impl::uri() { return uri_; }
-
-void request_impl::header(header_map h) { header_ = std::move(h); }
-
-header_map &request_impl::header() { return header_; }
-
-void request_impl::method(std::string arg) { method_ = std::move(arg); }
-
-void request_impl::on_data(data_cb cb) { on_data_cb_ = std::move(cb); }
-
-void request_impl::stream(class stream *s) { strm_ = s; }
-
-void request_impl::call_on_data(const uint8_t *data, std::size_t len) {
-  if (on_data_cb_) {
-    on_data_cb_(data, len);
-  }
-}
-
-response_impl::response_impl()
-    : strm_(nullptr), status_code_(200), started_(false), pushed_(false),
-      push_promise_sent_(false) {}
-
-unsigned int response_impl::status_code() const { return status_code_; }
-
-void response_impl::write_head(unsigned int status_code, header_map h) {
-  status_code_ = status_code;
-  header_ = std::move(h);
-}
-
-void response_impl::end(std::string data) {
-  if (started_) {
-    return;
-  }
-
-  end(string_reader(std::move(data)));
-}
-
-void response_impl::end(read_cb cb) {
-  if (started_) {
-    return;
-  }
-
-  read_cb_ = std::move(cb);
-  started_ = true;
-
-  start_response();
-}
-
-void response_impl::on_close(close_cb cb) { close_cb_ = std::move(cb); }
-
-void response_impl::call_on_close(uint32_t error_code) {
-  if (close_cb_) {
-    close_cb_(error_code);
-  }
-}
-
-void response_impl::cancel(uint32_t error_code) {
-  auto handler = strm_->handler();
-
-  handler->stream_error(strm_->get_stream_id(), error_code);
-
-  if (!handler->inside_callback()) {
-    handler->initiate_write();
-  }
-}
-
-void response_impl::start_response() {
-  if (!started_ || (pushed_ && !push_promise_sent_)) {
-    return;
-  }
-
-  auto handler = strm_->handler();
-
-  if (handler->start_response(*strm_) != 0) {
-    handler->stream_error(strm_->get_stream_id(), NGHTTP2_INTERNAL_ERROR);
-    return;
-  }
-
-  if (!handler->inside_callback()) {
-    handler->initiate_write();
-  }
-}
-
-response *response_impl::push(boost::system::error_code &ec, std::string method,
-                              std::string raw_path_query, header_map h) const {
-  auto handler = strm_->handler();
-  return handler->push_promise(ec, *strm_, std::move(method),
-                               std::move(raw_path_query), std::move(h));
-}
-
-void response_impl::resume() {
-  auto handler = strm_->handler();
-  handler->resume(*strm_);
-
-  if (!handler->inside_callback()) {
-    handler->initiate_write();
-  }
-}
-
-boost::asio::io_service &response_impl::io_service() {
-  return strm_->handler()->io_service();
-}
-
-bool response_impl::started() const { return started_; }
-
-void response_impl::pushed(bool f) { pushed_ = f; }
-
-void response_impl::push_promise_sent(bool f) { push_promise_sent_ = f; }
-
-const header_map &response_impl::header() const { return header_; }
-
-void response_impl::stream(class stream *s) { strm_ = s; }
-
-read_cb::result_type response_impl::call_read(uint8_t *data, std::size_t len,
-                                              uint32_t *data_flags) {
-  if (read_cb_) {
-    return read_cb_(data, len, data_flags);
-  }
-
-  *data_flags |= NGHTTP2_DATA_FLAG_EOF;
-
-  return 0;
-}
-
-stream::stream(http2_handler *h, int32_t stream_id)
-    : handler_(h), stream_id_(stream_id) {
-  request_.impl().stream(this);
-  response_.impl().stream(this);
-}
-
-int32_t stream::get_stream_id() const { return stream_id_; }
-
-request &stream::request() { return request_; }
-
-response &stream::response() { return response_; }
-
-http2_handler *stream::handler() const { return handler_; }
 
 namespace {
 int stream_error(nghttp2_session *session, int32_t stream_id,

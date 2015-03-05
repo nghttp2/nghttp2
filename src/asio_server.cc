@@ -38,6 +38,9 @@
 
 #include <boost/date_time/posix_time/posix_time.hpp>
 
+#include "asio_server_connection.h"
+#include "util.h"
+
 namespace nghttp2 {
 namespace asio_http2 {
 namespace server {

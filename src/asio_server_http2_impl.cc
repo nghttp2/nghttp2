@@ -22,7 +22,7 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#include "asio_http2_impl.h"
+#include "asio_server_http2_impl.h"
 
 #include <openssl/ssl.h>
 
@@ -126,50 +126,6 @@ bool http2_impl::handle(std::string pattern, request_cb cb) {
 }
 
 } // namespace server
-
-template <typename F, typename... T>
-std::shared_ptr<Defer<F, T...>> defer_shared(F &&f, T &&... t) {
-  return std::make_shared<Defer<F, T...>>(std::forward<F>(f),
-                                          std::forward<T>(t)...);
-}
-
-read_cb file_reader(const std::string &path) {
-  auto fd = open(path.c_str(), O_RDONLY);
-  if (fd == -1) {
-    return read_cb();
-  }
-
-  return file_reader_from_fd(fd);
-}
-
-read_cb file_reader_from_fd(int fd) {
-  auto d = defer_shared(close, fd);
-
-  return [fd, d](uint8_t *buf, size_t len, uint32_t *data_flags)
-      -> read_cb::result_type {
-    ssize_t n;
-    while ((n = read(fd, buf, len)) == -1 && errno == EINTR)
-      ;
-
-    if (n == -1) {
-      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
-    }
-
-    if (n == 0) {
-      *data_flags |= NGHTTP2_DATA_FLAG_EOF;
-    }
-
-    return n;
-  };
-}
-
-bool check_path(const std::string &path) { return util::check_path(path); }
-
-std::string percent_decode(const std::string &s) {
-  return util::percentDecode(std::begin(s), std::end(s));
-}
-
-std::string http_date(int64_t t) { return util::http_date(t); }
 
 } // namespace asio_http2
 

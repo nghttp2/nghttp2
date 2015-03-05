@@ -34,8 +34,8 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef HTTP_SERVER2_CONNECTION_HPP
-#define HTTP_SERVER2_CONNECTION_HPP
+#ifndef ASIO_SERVER_CONNECTION_H
+#define ASIO_SERVER_CONNECTION_H
 
 #include "nghttp2_config.h"
 
@@ -46,7 +46,7 @@
 
 #include <nghttp2/asio_http2_server.h>
 
-#include "asio_http2_handler.h"
+#include "asio_server_http2_handler.h"
 #include "asio_server_serve_mux.h"
 #include "util.h"
 
@@ -166,4 +166,4 @@ private:
 
 } // namespace nghttp2
 
-#endif // HTTP_SERVER2_CONNECTION_HPP
+#endif // ASIO_SERVER_CONNECTION_H

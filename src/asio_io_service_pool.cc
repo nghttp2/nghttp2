@@ -33,18 +33,13 @@
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
+#include "asio_io_service_pool.h"
 
-#include "asio_server.h"
-#include <stdexcept>
 #include <future>
-#include <boost/thread/thread.hpp>
-#include <boost/bind.hpp>
 
 namespace nghttp2 {
 
 namespace asio_http2 {
-
-namespace server {
 
 io_service_pool::io_service_pool(std::size_t pool_size) : next_io_service_(0) {
   if (pool_size == 0) {
@@ -94,8 +89,6 @@ boost::asio::io_service &io_service_pool::get_io_service() {
   }
   return io_service;
 }
-
-} // namespace server
 
 } // namespace asio_http2
 
