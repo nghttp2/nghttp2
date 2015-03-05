@@ -322,8 +322,6 @@ cdef int client_on_header(cnghttp2.nghttp2_session *session,
     logging.debug('client_on_header, type:%s, stream_id:%s', frame.hd.type, frame.hd.stream_id)
 
     if frame.hd.type == cnghttp2.NGHTTP2_HEADERS:
-        if frame.headers.cat == cnghttp2.NGHTTP2_HCAT_REQUEST:
-            return 0
         handler = _get_stream_user_data(session, frame.hd.stream_id)
     elif frame.hd.type == cnghttp2.NGHTTP2_PUSH_PROMISE:
         handler = _get_stream_user_data(session, frame.push_promise.promised_stream_id)
@@ -545,7 +543,7 @@ cdef int client_on_frame_recv(cnghttp2.nghttp2_session *session,
                 sys.stderr.write(traceback.format_exc())
                 return http2._rst_stream(frame.hd.stream_id)
     elif frame.hd.type == cnghttp2.NGHTTP2_HEADERS:
-        if frame.headers.cat == cnghttp2.NGHTTP2_HCAT_RESPONSE:
+        if frame.headers.cat == cnghttp2.NGHTTP2_HCAT_RESPONSE or frame.headers.cat == cnghttp2.NGHTTP2_HCAT_PUSH_RESPONSE:
             handler = _get_stream_user_data(session, frame.hd.stream_id)
 
             if not handler:
@@ -970,7 +968,6 @@ cdef class _HTTP2ClientSessionCore(_HTTP2SessionCoreBase):
             handler.method = push_promise.method
             handler.host = push_promise.host
             handler.path = push_promise.path
-            handler.headers = push_promise.headers
             handler.cookies = push_promise.cookies
             handler.stream_id = push_promise.stream_id
             handler.http2 = self
@@ -1032,6 +1029,9 @@ if asyncio:
 
         path
           This is a value of :path header field.
+
+        headers
+          Request header fields
 
         """
 
@@ -1344,6 +1344,11 @@ if asyncio:
 
         path
           This is a value of :path header field.
+
+        headers
+          Response header fields.  There is a special exception.  If this
+          object is passed to push_promise(), this instance variable contains
+          pushed request header fields.
 
         """
 
