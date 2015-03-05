@@ -36,6 +36,8 @@ namespace server {
 
 request::request() : impl_(make_unique<request_impl>()) {}
 
+request::~request() {}
+
 const header_map &request::header() const { return impl_->header(); }
 
 const std::string &request::method() const { return impl_->method(); }

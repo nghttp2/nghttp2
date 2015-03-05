@@ -36,6 +36,8 @@ namespace server {
 
 response::response() : impl_(make_unique<response_impl>()) {}
 
+response::~response() {}
+
 void response::write_head(unsigned int status_code, header_map h) const {
   impl_->write_head(status_code, std::move(h));
 }

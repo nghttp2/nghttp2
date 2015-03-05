@@ -40,6 +40,7 @@ class request {
 public:
   // Application must not call this directly.
   request();
+  ~request();
 
   // Returns request headers.  The pusedo headers, which start with
   // colon (:), are exluced from this list.
@@ -65,6 +66,7 @@ class response {
 public:
   // Application must not call this directly.
   response();
+  ~response();
 
   // Write response header using |status_code| (e.g., 200) and
   // additional headers in |h|.
