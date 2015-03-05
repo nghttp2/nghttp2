@@ -162,6 +162,8 @@ bool isHexDigit(const char c);
 
 bool inRFC3986UnreservedChars(const char c);
 
+bool in_rfc3986_sub_delims(const char c);
+
 // Returns true if |c| is in token (HTTP-p1, Section 3.2.6)
 bool in_token(char c);
 
@@ -174,6 +176,9 @@ uint32_t hex_to_uint(char c);
 std::string percentEncode(const unsigned char *target, size_t len);
 
 std::string percentEncode(const std::string &target);
+
+// percent-encode path component of URI |s|.
+std::string percent_encode_path(const std::string &s);
 
 template <typename InputIt>
 std::string percentDecode(InputIt first, InputIt last) {

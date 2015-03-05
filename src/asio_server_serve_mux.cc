@@ -49,22 +49,15 @@ std::string create_html(int status_code) {
 } // namespace
 
 namespace {
-request_cb redirect_handler(int status_code, std::string path) {
-  return [status_code, path](const request &req, const response &res) {
-    auto &uref = req.impl().uri();
-    auto newloc = uref.scheme;
-    newloc += "://";
-    newloc += uref.host;
-    newloc += path;
-    if (!uref.raw_query.empty()) {
-      newloc += "?";
-      newloc += uref.raw_query;
-    }
-    auto html = create_html(status_code);
+request_cb redirect_handler(int status_code, std::string uri) {
+  return [status_code, uri](const request &req, const response &res) {
     header_map h;
-    h.emplace("location", header_value{std::move(newloc)});
+    h.emplace("location", header_value{std::move(uri)});
+    std::string html;
+    if (req.method() == "GET") {
+      html = create_html(status_code);
+    }
     h.emplace("content-length", header_value{util::utos(html.size())});
-    h.emplace("content-type", header_value{"text/html; charset=utf-8"});
 
     res.write_head(status_code, std::move(h));
     res.end(std::move(html));
@@ -131,7 +124,14 @@ request_cb serve_mux::handler(request_impl &req) const {
     auto clean_path = ::nghttp2::http2::path_join(
         nullptr, 0, nullptr, 0, path.c_str(), path.size(), nullptr, 0);
     if (clean_path != path) {
-      return redirect_handler(301, std::move(clean_path));
+      auto new_uri = util::percent_encode_path(clean_path);
+      auto &uref = req.uri();
+      if (!uref.raw_query.empty()) {
+        new_uri += "?";
+        new_uri += uref.raw_query;
+      }
+
+      return redirect_handler(301, std::move(new_uri));
     }
   }
   auto &host = req.uri().host;
