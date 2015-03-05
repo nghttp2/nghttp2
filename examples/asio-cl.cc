@@ -71,7 +71,7 @@ int main(int argc, char *argv[]) {
       std::cerr << "connected to " << (*endpoint_it).endpoint() << std::endl;
       boost::system::error_code ec;
       auto req = sess.submit(ec, "GET", "https://localhost:3000/",
-                             "hello world", {{"cookie", {"foobar", true}}});
+                             {{"cookie", {"foo=bar", true}}});
       if (ec) {
         std::cerr << "error: " << ec.message() << std::endl;
         return;
