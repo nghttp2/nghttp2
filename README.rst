@@ -1019,7 +1019,7 @@ libnghttp2_asio: High level HTTP/2 C++ library
 libnghttp2_asio is C++ library built on top of libnghttp2 and provides
 high level abstraction API to build HTTP/2 applications.  It depends
 on Boost::ASIO library and OpenSSL.  Currently libnghttp2_asio
-provides server side API.
+provides client and server API.
 
 libnghttp2_asio is not built by default.  Use ``--enable-asio-lib``
 configure flag to build libnghttp2_asio.  The required Boost libraries
