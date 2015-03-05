@@ -146,6 +146,14 @@ private:
   std::unique_ptr<http2_impl> impl_;
 };
 
+// Returns request handler to do redirect to |uri| using
+// |status_code|.  The |uri| appears in "location" header field as is.
+request_cb redirect_handler(int status_code, std::string uri);
+
+// Returns request handler to reply with given |status_code| and HTML
+// including message about status code.
+request_cb status_handler(int status_code);
+
 } // namespace server
 
 } // namespace asio_http2

@@ -187,6 +187,7 @@ libnghttp2_asio_la_SOURCES = \
 	asio_server_response_impl.cc asio_server_response_impl.h \
 	asio_server_stream.cc asio_server_stream.h \
 	asio_server_serve_mux.cc asio_server_serve_mux.h \
+	asio_server_request_handler.cc asio_server_request_handler.h \
 	asio_client_session.cc \
 	asio_client_session_impl.cc asio_client_session_impl.h \
 	asio_client_session_tcp_impl.cc asio_client_session_tcp_impl.h \
