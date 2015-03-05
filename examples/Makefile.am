@@ -58,7 +58,7 @@ endif # ENABLE_TINY_NGHTTPD
 
 if ENABLE_ASIO_LIB
 
-noinst_PROGRAMS += asio-sv asio-sv2 asio-cl
+noinst_PROGRAMS += asio-sv asio-sv2 asio-cl asio-cl2
 
 ASIOCPPFLAGS = ${BOOST_CPPFLAGS} ${AM_CPPFLAGS}
 ASIOLDADD = $(top_builddir)/lib/libnghttp2.la \
@@ -82,6 +82,10 @@ asio_sv2_LDADD = ${ASIOLDADD}
 asio_cl_SOURCES = asio-cl.cc
 asio_cl_CPPFLAGS = ${ASIOCPPFLAGS}
 asio_cl_LDADD = ${ASIOLDADD}
+
+asio_cl2_SOURCES = asio-cl2.cc
+asio_cl2_CPPFLAGS = ${ASIOCPPFLAGS}
+asio_cl2_LDADD = ${ASIOLDADD}
 
 endif # ENABLE_ASIO_LIB
 
