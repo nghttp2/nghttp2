@@ -41,8 +41,8 @@ http2::http2() : impl_(make_unique<http2_impl>()) {}
 
 http2::~http2() {}
 
-void http2::listen(const std::string &address, uint16_t port) {
-  impl_->listen(address, port);
+void http2::listen_and_serve(const std::string &address, uint16_t port) {
+  impl_->listen_and_serve(address, port);
 }
 
 void http2::num_threads(size_t num_threads) { impl_->num_threads(num_threads); }
@@ -66,7 +66,7 @@ std::vector<unsigned char> &get_alpn_token() {
 }
 } // namespace
 
-void http2_impl::listen(const std::string &address, uint16_t port) {
+void http2_impl::listen_and_serve(const std::string &address, uint16_t port) {
   std::unique_ptr<boost::asio::ssl::context> ssl_ctx;
 
   if (!private_key_file_.empty() && !certificate_file_.empty()) {

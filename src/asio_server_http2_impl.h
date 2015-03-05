@@ -42,7 +42,7 @@ class server;
 class http2_impl {
 public:
   http2_impl();
-  void listen(const std::string &address, uint16_t port);
+  void listen_and_serve(const std::string &address, uint16_t port);
   void num_threads(size_t num_threads);
   void tls(std::string private_key_file, std::string certificate_file);
   void backlog(int backlog);

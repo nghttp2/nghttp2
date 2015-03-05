@@ -99,7 +99,7 @@ int main(int argc, char *argv[]) {
       res.end(file_generator_from_fd(fd));
     });
 
-    server.listen("*", port);
+    server.listen_and_serve("*", port);
 
   } catch (std::exception &e) {
     std::cerr << "exception: " << e.what() << "\n";

@@ -128,7 +128,7 @@ public:
 
   // Starts listening connection on given address and port and serves
   // incoming requests.
-  void listen(const std::string &address, uint16_t port);
+  void listen_and_serve(const std::string &address, uint16_t port);
 
   // Registers request handler |cb| with path pattern |pattern|.  This
   // function will fail and returns false if same pattern has been
