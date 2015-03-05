@@ -381,28 +381,43 @@ const request *session_impl::submit(boost::system::error_code &ec,
     return nullptr;
   }
 
-  auto nva = std::vector<nghttp2_nv>();
-  nva.reserve(3 + h.size());
-  nva.push_back(http2::make_nv_ls(":method", method));
-  nva.push_back(http2::make_nv_ll(":scheme", "https"));
-  nva.push_back(http2::make_nv_ll(":path", "/"));
-  nva.push_back(http2::make_nv_ll(":authority", "localhost:3000"));
-  for (auto &kv : h) {
-    nva.push_back(
-        http2::make_nv(kv.first, kv.second.value, kv.second.sensitive));
-  }
-
   auto strm = create_stream();
   auto &req = strm->request().impl();
-  req.header(std::move(h));
-
   auto &uref = req.uri();
+
   http2::copy_url_component(uref.scheme, &u, UF_SCHEMA, uri.c_str());
   http2::copy_url_component(uref.host, &u, UF_HOST, uri.c_str());
   http2::copy_url_component(uref.raw_path, &u, UF_PATH, uri.c_str());
   http2::copy_url_component(uref.raw_query, &u, UF_QUERY, uri.c_str());
 
+  if (util::ipv6_numeric_addr(uref.host.c_str())) {
+    uref.host = "[" + uref.host;
+    uref.host += "]";
+  }
+  if (u.field_set & (1 << UF_PORT)) {
+    uref.host += ":";
+    uref.host += util::utos(u.port);
+  }
   uref.path = percent_decode(uref.raw_path);
+
+  auto path = uref.raw_path;
+  if (u.field_set & (1 << UF_QUERY)) {
+    path += "?";
+    path += uref.raw_query;
+  }
+
+  auto nva = std::vector<nghttp2_nv>();
+  nva.reserve(3 + h.size());
+  nva.push_back(http2::make_nv_ls(":method", method));
+  nva.push_back(http2::make_nv_ls(":scheme", uref.scheme));
+  nva.push_back(http2::make_nv_ls(":path", path));
+  nva.push_back(http2::make_nv_ls(":authority", uref.host));
+  for (auto &kv : h) {
+    nva.push_back(
+        http2::make_nv(kv.first, kv.second.value, kv.second.sensitive));
+  }
+
+  req.header(std::move(h));
 
   nghttp2_data_provider *prdptr = nullptr;
   nghttp2_data_provider prd;
