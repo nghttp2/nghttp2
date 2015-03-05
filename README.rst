@@ -1035,7 +1035,7 @@ HTTP/2 server looks like this:
 
 .. code-block:: cpp
 
-    #include <nghttp2/asio_http2.h>
+    #include <nghttp2/asio_http2_server.h>
 
     using namespace nghttp2::asio_http2;
     using namespace nghttp2::asio_http2::server;
@@ -1043,11 +1043,12 @@ HTTP/2 server looks like this:
     int main(int argc, char *argv[]) {
       http2 server;
 
-      server.listen("*", 3000, [](const std::shared_ptr<request> &req,
-                                  const std::shared_ptr<response> &res) {
-        res->write_head(200);
-        res->end("hello, world");
+      server.handle("/", [](const request &req, const response &res) {
+        res.write_head(200);
+        res.end("hello, world\n");
       });
+
+      server.listen_and_serve("*", 3000);
     }
 
 For more details, see the documentation of libnghttp2_asio.
