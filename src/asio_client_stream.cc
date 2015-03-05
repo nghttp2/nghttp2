@@ -36,10 +36,6 @@ stream::stream(session_impl *sess) : sess_(sess), stream_id_(0) {
   request_.impl().stream(this);
 }
 
-void stream::cancel(uint32_t error_code) { sess_->cancel(*this, error_code); }
-
-void stream::resume() { sess_->resume(*this); }
-
 void stream::stream_id(int32_t stream_id) { stream_id_ = stream_id; }
 
 int32_t stream::stream_id() const { return stream_id_; }
@@ -47,6 +43,8 @@ int32_t stream::stream_id() const { return stream_id_; }
 request &stream::request() { return request_; }
 
 response &stream::response() { return response_; }
+
+session_impl *stream::session() const { return sess_; }
 
 bool stream::expect_final_response() const {
   return response_.status_code() / 100 == 1;

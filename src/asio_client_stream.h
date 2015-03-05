@@ -44,14 +44,13 @@ public:
   stream(const stream &) = delete;
   stream &operator=(const stream &) = delete;
 
-  void cancel(uint32_t error_code);
-  void resume();
-
   void stream_id(int32_t stream_id);
   int32_t stream_id() const;
 
   request &request();
   response &response();
+
+  session_impl *session() const;
 
   bool expect_final_response() const;
 

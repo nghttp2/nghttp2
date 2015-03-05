@@ -25,6 +25,7 @@
 #include "asio_client_request_impl.h"
 
 #include "asio_client_stream.h"
+#include "asio_client_session_impl.h"
 #include "template.h"
 
 namespace nghttp2 {
@@ -33,7 +34,10 @@ namespace client {
 
 request_impl::request_impl() : strm_(nullptr) {}
 
-void request_impl::cancel(uint32_t error_code) { strm_->cancel(error_code); }
+void request_impl::cancel(uint32_t error_code) {
+  auto sess = strm_->session();
+  sess->cancel(*strm_, error_code);
+}
 
 void request_impl::on_response(response_cb cb) { response_cb_ = std::move(cb); }
 
@@ -72,7 +76,10 @@ read_cb::result_type request_impl::call_on_read(uint8_t *buf, std::size_t len,
   return 0;
 }
 
-void request_impl::resume() { strm_->resume(); }
+void request_impl::resume() {
+  auto sess = strm_->session();
+  sess->resume(*strm_);
+}
 
 void request_impl::header(header_map h) { header_ = std::move(h); }
 
