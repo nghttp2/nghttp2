@@ -40,8 +40,8 @@ public:
   stream(http2_handler *h, int32_t stream_id);
 
   int32_t get_stream_id() const;
-  request &request();
-  response &response();
+  class request &request();
+  class response &response();
 
   http2_handler *handler() const;
 

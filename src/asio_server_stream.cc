@@ -40,9 +40,13 @@ stream::stream(http2_handler *h, int32_t stream_id)
 
 int32_t stream::get_stream_id() const { return stream_id_; }
 
-request &stream::request() { return request_; }
+class request &stream::request() {
+  return request_;
+}
 
-response &stream::response() { return response_; }
+class response &stream::response() {
+  return response_;
+}
 
 http2_handler *stream::handler() const { return handler_; }
 

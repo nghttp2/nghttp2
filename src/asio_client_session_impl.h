@@ -27,6 +27,8 @@
 
 #include "nghttp2_config.h"
 
+#include <boost/array.hpp>
+
 #include <nghttp2/asio_http2_client.h>
 
 namespace nghttp2 {

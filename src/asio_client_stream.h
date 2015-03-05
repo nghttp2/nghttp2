@@ -47,8 +47,8 @@ public:
   void stream_id(int32_t stream_id);
   int32_t stream_id() const;
 
-  request &request();
-  response &response();
+  class request &request();
+  class response &response();
 
   session_impl *session() const;
 

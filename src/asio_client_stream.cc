@@ -40,9 +40,13 @@ void stream::stream_id(int32_t stream_id) { stream_id_ = stream_id; }
 
 int32_t stream::stream_id() const { return stream_id_; }
 
-request &stream::request() { return request_; }
+class request &stream::request() {
+  return request_;
+}
 
-response &stream::response() { return response_; }
+class response &stream::response() {
+  return response_;
+}
 
 session_impl *stream::session() const { return sess_; }
 
