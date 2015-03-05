@@ -72,12 +72,7 @@ void response_impl::call_on_close(uint32_t error_code) {
 
 void response_impl::cancel(uint32_t error_code) {
   auto handler = strm_->handler();
-
   handler->stream_error(strm_->get_stream_id(), error_code);
-
-  if (!handler->inside_callback()) {
-    handler->initiate_write();
-  }
 }
 
 void response_impl::start_response() {
@@ -91,10 +86,6 @@ void response_impl::start_response() {
     handler->stream_error(strm_->get_stream_id(), NGHTTP2_INTERNAL_ERROR);
     return;
   }
-
-  if (!handler->inside_callback()) {
-    handler->initiate_write();
-  }
 }
 
 response *response_impl::push(boost::system::error_code &ec, std::string method,
@@ -107,10 +98,6 @@ response *response_impl::push(boost::system::error_code &ec, std::string method,
 void response_impl::resume() {
   auto handler = strm_->handler();
   handler->resume(*strm_);
-
-  if (!handler->inside_callback()) {
-    handler->initiate_write();
-  }
 }
 
 boost::asio::io_service &response_impl::io_service() {

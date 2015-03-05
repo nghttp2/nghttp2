@@ -76,13 +76,14 @@ public:
 
   void enter_callback();
   void leave_callback();
-  bool inside_callback() const;
 
   void resume(stream &s);
 
   response *push_promise(boost::system::error_code &ec, stream &s,
                          std::string method, std::string raw_path_query,
                          header_map h);
+
+  void signal_write();
 
   boost::asio::io_service &io_service();
 

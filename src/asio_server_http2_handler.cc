@@ -343,6 +343,8 @@ int http2_handler::start_response(stream &strm) {
     return -1;
   }
 
+  signal_write();
+
   return 0;
 }
 
@@ -356,16 +358,22 @@ void http2_handler::leave_callback() {
   inside_callback_ = false;
 }
 
-bool http2_handler::inside_callback() const { return inside_callback_; }
-
 void http2_handler::stream_error(int32_t stream_id, uint32_t error_code) {
   ::nghttp2::asio_http2::server::stream_error(session_, stream_id, error_code);
+  signal_write();
+}
+
+void http2_handler::signal_write() {
+  if (!inside_callback_) {
+    initiate_write();
+  }
 }
 
 void http2_handler::initiate_write() { writefun_(); }
 
 void http2_handler::resume(stream &strm) {
   nghttp2_session_resume_data(session_, strm.get_stream_id());
+  signal_write();
 }
 
 response *http2_handler::push_promise(boost::system::error_code &ec,
@@ -411,6 +419,8 @@ response *http2_handler::push_promise(boost::system::error_code &ec,
 
   auto &promised_res = promised_strm->response().impl();
   promised_res.pushed(true);
+
+  signal_write();
 
   return &promised_strm->response();
 }
