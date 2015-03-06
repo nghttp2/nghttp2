@@ -1041,6 +1041,7 @@ HTTP/2 server looks like this:
     using namespace nghttp2::asio_http2::server;
 
     int main(int argc, char *argv[]) {
+      boost::system::error_code ec;
       http2 server;
 
       server.handle("/", [](const request &req, const response &res) {
@@ -1048,7 +1049,9 @@ HTTP/2 server looks like this:
         res.end("hello, world\n");
       });
 
-      server.listen_and_serve("*", 3000);
+      if (server.listen_and_serve(ec, "localhost", "3000")) {
+        std::cerr << "error: " << ec.message() << std::endl;
+      }
     }
 
 For more details, see the documentation of libnghttp2_asio.
