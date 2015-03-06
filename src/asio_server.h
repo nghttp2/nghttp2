@@ -84,13 +84,9 @@ private:
                                             const std::string &port,
                                             int backlog);
 
-  void start_timer();
-
   /// The pool of io_service objects used to perform asynchronous
   /// operations.
   io_service_pool io_service_pool_;
-
-  boost::asio::deadline_timer tick_timer_;
 
   /// Acceptor used to listen for incoming connections.
   std::vector<tcp::acceptor> acceptors_;

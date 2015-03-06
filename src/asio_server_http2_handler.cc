@@ -41,8 +41,6 @@ namespace asio_http2 {
 
 namespace server {
 
-extern std::shared_ptr<std::string> cached_date;
-
 namespace {
 int stream_error(nghttp2_session *session, int32_t stream_id,
                  uint32_t error_code) {
@@ -229,9 +227,20 @@ int on_frame_not_send_callback(nghttp2_session *session,
 http2_handler::http2_handler(boost::asio::io_service &io_service,
                              connection_write writefun, serve_mux &mux)
     : writefun_(writefun), mux_(mux), io_service_(io_service),
-      session_(nullptr), buf_(nullptr), buflen_(0), inside_callback_(false) {}
+      session_(nullptr), buf_(nullptr), buflen_(0), inside_callback_(false),
+      tstamp_cached_(time(nullptr)),
+      formatted_date_(util::http_date(tstamp_cached_)) {}
 
 http2_handler::~http2_handler() { nghttp2_session_del(session_); }
+
+const std::string &http2_handler::http_date() {
+  auto t = time(nullptr);
+  if (t != tstamp_cached_) {
+    tstamp_cached_ = t;
+    formatted_date_ = util::http_date(t);
+  }
+  return formatted_date_;
+}
 
 int http2_handler::start() {
   int rv;
@@ -317,9 +326,9 @@ int http2_handler::start_response(stream &strm) {
   auto nva = std::vector<nghttp2_nv>();
   nva.reserve(2 + header.size());
   auto status = util::utos(res.status_code());
-  auto date = cached_date;
+  auto date = http_date();
   nva.push_back(nghttp2::http2::make_nv_ls(":status", status));
-  nva.push_back(nghttp2::http2::make_nv_ls("date", *date));
+  nva.push_back(nghttp2::http2::make_nv_ls("date", date));
   for (auto &hd : header) {
     nva.push_back(nghttp2::http2::make_nv(hd.first, hd.second.value,
                                           hd.second.sensitive));

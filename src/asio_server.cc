@@ -36,8 +36,6 @@
 
 #include "asio_server.h"
 
-#include <boost/date_time/posix_time/posix_time.hpp>
-
 #include "asio_server_connection.h"
 #include "util.h"
 
@@ -46,9 +44,7 @@ namespace asio_http2 {
 namespace server {
 
 server::server(std::size_t io_service_pool_size)
-    : io_service_pool_(io_service_pool_size),
-      tick_timer_(io_service_pool_.get_io_service(),
-                  boost::posix_time::seconds(1)) {}
+    : io_service_pool_(io_service_pool_size) {}
 
 boost::system::error_code
 server::listen_and_serve(boost::system::error_code &ec,
@@ -68,8 +64,6 @@ server::listen_and_serve(boost::system::error_code &ec,
       start_accept(acceptor, mux);
     }
   }
-
-  start_timer();
 
   io_service_pool_.run();
 
@@ -121,18 +115,6 @@ boost::system::error_code server::bind_and_listen(boost::system::error_code &ec,
   ec.clear();
 
   return ec;
-}
-
-std::shared_ptr<std::string> cached_date;
-
-void server::start_timer() {
-  cached_date = std::make_shared<std::string>(util::http_date(time(nullptr)));
-
-  tick_timer_.async_wait([this](const boost::system::error_code &e) {
-    tick_timer_.expires_at(tick_timer_.expires_at() +
-                           boost::posix_time::seconds(1));
-    start_timer();
-  });
 }
 
 void server::start_accept(boost::asio::ssl::context &tls_context,

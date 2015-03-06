@@ -87,6 +87,8 @@ public:
 
   boost::asio::io_service &io_service();
 
+  const std::string &http_date();
+
   template <size_t N>
   int on_read(const boost::array<uint8_t, N> &buffer, std::size_t len) {
     callback_guard cg(*this);
@@ -152,6 +154,8 @@ private:
   const uint8_t *buf_;
   std::size_t buflen_;
   bool inside_callback_;
+  time_t tstamp_cached_;
+  std::string formatted_date_;
 };
 
 } // namespace server
