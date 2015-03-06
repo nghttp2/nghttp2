@@ -173,7 +173,8 @@ class Sessions {
 public:
   Sessions(struct ev_loop *loop, const Config *config, SSL_CTX *ssl_ctx)
       : loop_(loop), config_(config), ssl_ctx_(ssl_ctx), callbacks_(nullptr),
-        next_session_id_(1) {
+        next_session_id_(1), tstamp_cached_(ev_now(loop)),
+        cached_date_(util::http_date(tstamp_cached_)) {
     nghttp2_session_callbacks_new(&callbacks_);
 
     fill_callback(callbacks_, config_);
@@ -234,17 +235,25 @@ public:
     }
     add_handler(handler.release());
   }
-  void update_cached_date() { cached_date_ = util::http_date(time(nullptr)); }
-  const std::string &get_cached_date() const { return cached_date_; }
+  void update_cached_date() { cached_date_ = util::http_date(tstamp_cached_); }
+  const std::string &get_cached_date() {
+    auto t = ev_now(loop_);
+    if (t != tstamp_cached_) {
+      tstamp_cached_ = t;
+      update_cached_date();
+    }
+    return cached_date_;
+  }
 
 private:
   std::set<Http2Handler *> handlers_;
-  std::string cached_date_;
   struct ev_loop *loop_;
   const Config *config_;
   SSL_CTX *ssl_ctx_;
   nghttp2_session_callbacks *callbacks_;
   int64_t next_session_id_;
+  ev_tstamp tstamp_cached_;
+  std::string cached_date_;
 };
 
 Stream::Stream(Http2Handler *handler, int32_t stream_id)
@@ -1280,7 +1289,6 @@ void worker_acceptcb(struct ev_loop *loop, ev_async *w, int revents) {
 namespace {
 void run_worker(Worker *worker) {
   auto loop = worker->sessions->get_loop();
-  worker->sessions->update_cached_date();
 
   ev_run(loop, 0);
 }
@@ -1614,10 +1622,6 @@ int HttpServer::run() {
   if (start_listen(loop, &sessions, config_) != 0) {
     std::cerr << "Could not listen" << std::endl;
     return -1;
-  }
-
-  if (config_->num_worker == 1) {
-    sessions.update_cached_date();
   }
 
   ev_run(loop, 0);
