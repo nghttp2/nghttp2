@@ -282,6 +282,13 @@ std::string path_join(const char *base_path, size_t base_pathlen,
                       const char *rel_path, size_t rel_pathlen,
                       const char *rel_query, size_t rel_querylen);
 
+// true if response has body, taking into account the request method
+// and status code.
+bool expect_response_body(const std::string &method, int status_code);
+
+// true if response has body, taking into account status code only.
+bool expect_response_body(int status_code);
+
 } // namespace http2
 
 } // namespace nghttp2

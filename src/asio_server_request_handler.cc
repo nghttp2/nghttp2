@@ -62,6 +62,13 @@ request_cb redirect_handler(int status_code, std::string uri) {
 
 request_cb status_handler(int status_code) {
   return [status_code](const request &req, const response &res) {
+    if (!::nghttp2::http2::expect_response_body(status_code)) {
+      res.write_head(status_code);
+      res.end();
+      return;
+    }
+    // we supply content-length for HEAD request, but body will not be
+    // sent.
     auto html = create_html(status_code);
     header_map h;
     h.emplace("content-length", header_value{util::utos(html.size())});

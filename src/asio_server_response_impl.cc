@@ -29,6 +29,8 @@
 #include "asio_server_http2_handler.h"
 #include "asio_common.h"
 
+#include "http2.h"
+
 namespace nghttp2 {
 namespace asio_http2 {
 namespace server {
@@ -79,23 +81,13 @@ void response_impl::end(generator_cb cb) {
   state_ = response_state::BODY_STARTED;
 }
 
-namespace {
-bool expect_response_body(const std::string &method, int status_code) {
-  return method != "HEAD" && status_code / 100 != 1 && status_code != 304 &&
-         status_code != 204;
-}
-} // namespace
-
 void response_impl::start_response() {
   auto handler = strm_->handler();
 
   auto &req = strm_->request().impl();
 
-  // if response body is not expected, nullify it so that HEADERS has
-  // END_STREAM flag set.
-  if (!expect_response_body(req.method(), status_code_)) {
+  if (!::nghttp2::http2::expect_response_body(req.method(), status_code_)) {
     state_ = response_state::BODY_STARTED;
-    generator_cb_ = generator_cb();
   }
 
   if (handler->start_response(*strm_) != 0) {
