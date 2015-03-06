@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
         return;
       }
 
-      req->on_response([&sess, req](const response &res) {
+      req->on_response([&sess](const response &res) {
         std::cerr << "HTTP/2 " << res.status_code() << std::endl;
         for (auto &kv : res.header()) {
           std::cerr << kv.first << ": " << kv.second.value << "\n";
