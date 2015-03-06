@@ -40,6 +40,18 @@ http2::http2() : impl_(make_unique<http2_impl>()) {}
 
 http2::~http2() {}
 
+http2::http2(http2 &&other) : impl_(std::move(other.impl_)) {}
+
+http2 &http2::operator=(http2 &&other) {
+  if (this == &other) {
+    return *this;
+  }
+
+  impl_ = std::move(other.impl_);
+
+  return *this;
+}
+
 boost::system::error_code http2::listen_and_serve(boost::system::error_code &ec,
                                                   const std::string &address,
                                                   const std::string &port) {

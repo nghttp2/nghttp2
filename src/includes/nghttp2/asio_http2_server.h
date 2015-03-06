@@ -126,6 +126,9 @@ public:
   http2();
   ~http2();
 
+  http2(http2 &&other);
+  http2 &operator=(http2 &&other);
+
   // Starts listening connection on given address and port and serves
   // incoming requests in cleartext TCP connection.
   boost::system::error_code listen_and_serve(boost::system::error_code &ec,
