@@ -146,7 +146,31 @@ public:
   // function will fail and returns false if same pattern has been
   // already registered or |pattern| is empty string.  Otherwise
   // returns true.  The pattern match rule is the same as
-  // net/http/ServeMux in golang.
+  // net/http/ServeMux in golang.  Quoted from golang manual
+  // (http://golang.org/pkg/net/http/#ServeMux):
+  //
+  //   Patterns name fixed, rooted paths, like "/favicon.ico", or
+  //   rooted subtrees, like "/images/" (note the trailing
+  //   slash). Longer patterns take precedence over shorter ones, so
+  //   that if there are handlers registered for both "/images/" and
+  //   "/images/thumbnails/", the latter handler will be called for
+  //   paths beginning "/images/thumbnails/" and the former will
+  //   receive requests for any other paths in the "/images/" subtree.
+  //
+  //   Note that since a pattern ending in a slash names a rooted
+  //   subtree, the pattern "/" matches all paths not matched by other
+  //   registered patterns, not just the URL with Path == "/".
+  //
+  //   Patterns may optionally begin with a host name, restricting
+  //   matches to URLs on that host only. Host-specific patterns take
+  //   precedence over general patterns, so that a handler might
+  //   register for the two patterns "/codesearch" and
+  //   "codesearch.google.com/" without also taking over requests for
+  //   "http://www.google.com/".
+  //
+  // Just like ServeMux in golang, URL request path is sanitized and
+  // if they contains . or .. elements, they are redirected to an
+  // equivalent .- and ..-free URL.
   bool handle(std::string pattern, request_cb cb);
 
   // Sets number of native threads to handle incoming HTTP request.
