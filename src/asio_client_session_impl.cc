@@ -315,9 +315,18 @@ bool session_impl::setup_session() {
     return false;
   }
 
-  nghttp2_settings_entry iv = {NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, 100};
-  nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE, &iv, 1);
+  const uint32_t window_size = 256 * 1024 * 1024;
 
+  std::array<nghttp2_settings_entry, 2> iv{
+      {{NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, 100},
+       // typically client is just a *sink* and just process data as
+       // much as possible.  Use large window size by default.
+       {NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE, window_size}}};
+  nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE, iv.data(), iv.size());
+  // increase connection window size up to window_size
+  nghttp2_submit_window_update(session_, NGHTTP2_FLAG_NONE, 0,
+                               window_size -
+                                   NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE);
   return true;
 }
 
