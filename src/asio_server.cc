@@ -47,20 +47,8 @@ namespace server {
 
 server::server(std::size_t io_service_pool_size)
     : io_service_pool_(io_service_pool_size),
-      signals_(io_service_pool_.get_io_service()),
       tick_timer_(io_service_pool_.get_io_service(),
-                  boost::posix_time::seconds(1)) {
-  // Register to handle the signals that indicate when the server should exit.
-  // It is safe to register for the same signal multiple times in a program,
-  // provided all registration for the specified signal is made through Asio.
-  signals_.add(SIGINT);
-  signals_.add(SIGTERM);
-#if defined(SIGQUIT)
-  signals_.add(SIGQUIT);
-#endif // defined(SIGQUIT)
-  signals_.async_wait([this](const boost::system::error_code &error,
-                             int signal_number) { io_service_pool_.stop(); });
-}
+                  boost::posix_time::seconds(1)) {}
 
 boost::system::error_code
 server::listen_and_serve(boost::system::error_code &ec,

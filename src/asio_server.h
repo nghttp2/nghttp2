@@ -90,10 +90,6 @@ private:
   /// operations.
   io_service_pool io_service_pool_;
 
-  /// The signal_set is used to register for process termination
-  /// notifications.
-  boost::asio::signal_set signals_;
-
   boost::asio::deadline_timer tick_timer_;
 
   /// Acceptor used to listen for incoming connections.
