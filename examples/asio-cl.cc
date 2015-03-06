@@ -77,13 +77,14 @@ int main(int argc, char *argv[]) {
         res.on_data([&sess](const uint8_t *data, std::size_t len) {
           if (len == 0) {
             // eof
-            sess.shutdown();
             return;
           }
           std::cerr.write(reinterpret_cast<const char *>(data), len);
           std::cerr << std::endl;
         });
       });
+
+      req->on_close([&sess](uint32_t error_code) { sess.shutdown(); });
     });
 
     sess.on_error([](const boost::system::error_code &ec) {
