@@ -293,7 +293,7 @@ int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
 bool session_impl::setup_session() {
   nghttp2_session_callbacks *callbacks;
   nghttp2_session_callbacks_new(&callbacks);
-  defer(nghttp2_session_callbacks_del, callbacks);
+  auto cb_del = defer(nghttp2_session_callbacks_del, callbacks);
 
   nghttp2_session_callbacks_set_on_begin_headers_callback(
       callbacks, on_begin_headers_callback);
@@ -407,6 +407,11 @@ const request *session_impl::submit(boost::system::error_code &ec,
     uref.host += ":";
     uref.host += util::utos(u.port);
   }
+
+  if (uref.raw_path.empty()) {
+    uref.raw_path = "/";
+  }
+
   uref.path = percent_decode(uref.raw_path);
 
   auto path = uref.raw_path;
