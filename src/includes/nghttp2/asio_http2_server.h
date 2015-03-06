@@ -127,8 +127,17 @@ public:
   ~http2();
 
   // Starts listening connection on given address and port and serves
-  // incoming requests.
-  void listen_and_serve(const std::string &address, uint16_t port);
+  // incoming requests in cleartext TCP connection.
+  boost::system::error_code listen_and_serve(boost::system::error_code &ec,
+                                             const std::string &address,
+                                             const std::string &port);
+
+  // Starts listening connection on given address and port and serves
+  // incoming requests in SSL/TLS encrypted connection.
+  boost::system::error_code
+  listen_and_serve(boost::system::error_code &ec,
+                   boost::asio::ssl::context &tls_context,
+                   const std::string &address, const std::string &port);
 
   // Registers request handler |cb| with path pattern |pattern|.  This
   // function will fail and returns false if same pattern has been
@@ -141,10 +150,6 @@ public:
   // It defaults to 1.
   void num_threads(size_t num_threads);
 
-  // Sets TLS private key file and certificate file.  Both files must
-  // be in PEM format.
-  void tls(std::string private_key_file, std::string certificate_file);
-
   // Sets the maximum length to which the queue of pending
   // connections.
   void backlog(int backlog);
@@ -152,6 +157,13 @@ public:
 private:
   std::unique_ptr<http2_impl> impl_;
 };
+
+// Configures |tls_context| for server use.  This function sets couple
+// of OpenSSL options (disables SSLv2 and SSLv3 and compression) and
+// enables ECDHE ciphers.  NPN callback is also configured.
+boost::system::error_code
+configure_tls_context_easy(boost::system::error_code &ec,
+                           boost::asio::ssl::context &tls_context);
 
 // Returns request handler to do redirect to |uri| using
 // |status_code|.  The |uri| appears in "location" header field as is.

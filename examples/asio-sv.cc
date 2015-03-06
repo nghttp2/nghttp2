@@ -45,22 +45,22 @@ using namespace nghttp2::asio_http2::server;
 int main(int argc, char *argv[]) {
   try {
     // Check command line arguments.
-    if (argc < 3) {
-      std::cerr << "Usage: asio-sv <port> <threads> <private-key-file> "
-                << "<cert-file>\n";
+    if (argc < 4) {
+      std::cerr
+          << "Usage: asio-sv <address> <port> <threads> [<private-key-file> "
+          << "<cert-file>]\n";
       return 1;
     }
 
-    uint16_t port = std::stoi(argv[1]);
-    std::size_t num_threads = std::stoi(argv[2]);
+    boost::system::error_code ec;
+
+    std::string addr = argv[1];
+    std::string port = argv[2];
+    std::size_t num_threads = std::stoi(argv[3]);
 
     http2 server;
 
     server.num_threads(num_threads);
-
-    if (argc >= 5) {
-      server.tls(argv[3], argv[4]);
-    }
 
     server.handle("/", [](const request &req, const response &res) {
       res.write_head(200, {{"foo", {"bar"}}});
@@ -101,8 +101,22 @@ int main(int argc, char *argv[]) {
         res.end("finally!\n");
       });
     });
-    server.listen_and_serve("*", port);
 
+    if (argc >= 6) {
+      boost::asio::ssl::context tls(boost::asio::ssl::context::sslv23);
+      tls.use_private_key_file(argv[4], boost::asio::ssl::context::pem);
+      tls.use_certificate_chain_file(argv[5]);
+
+      configure_tls_context_easy(ec, tls);
+
+      if (server.listen_and_serve(ec, tls, addr, port)) {
+        std::cerr << "error: " << ec.message() << std::endl;
+      }
+    } else {
+      if (server.listen_and_serve(ec, addr, port)) {
+        std::cerr << "error: " << ec.message() << std::endl;
+      }
+    }
   } catch (std::exception &e) {
     std::cerr << "exception: " << e.what() << "\n";
   }

@@ -40,15 +40,20 @@ http2::http2() : impl_(make_unique<http2_impl>()) {}
 
 http2::~http2() {}
 
-void http2::listen_and_serve(const std::string &address, uint16_t port) {
-  impl_->listen_and_serve(address, port);
+boost::system::error_code http2::listen_and_serve(boost::system::error_code &ec,
+                                                  const std::string &address,
+                                                  const std::string &port) {
+  return impl_->listen_and_serve(ec, nullptr, address, port);
+}
+
+boost::system::error_code
+http2::listen_and_serve(boost::system::error_code &ec,
+                        boost::asio::ssl::context &tls_context,
+                        const std::string &address, const std::string &port) {
+  return impl_->listen_and_serve(ec, &tls_context, address, port);
 }
 
 void http2::num_threads(size_t num_threads) { impl_->num_threads(num_threads); }
-
-void http2::tls(std::string private_key_file, std::string certificate_file) {
-  impl_->tls(std::move(private_key_file), std::move(certificate_file));
-}
 
 void http2::backlog(int backlog) { impl_->backlog(backlog); }
 

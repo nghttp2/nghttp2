@@ -42,15 +42,15 @@ class server;
 class http2_impl {
 public:
   http2_impl();
-  void listen_and_serve(const std::string &address, uint16_t port);
+  boost::system::error_code
+  listen_and_serve(boost::system::error_code &ec,
+                   boost::asio::ssl::context *tls_context,
+                   const std::string &address, const std::string &port);
   void num_threads(size_t num_threads);
-  void tls(std::string private_key_file, std::string certificate_file);
   void backlog(int backlog);
   bool handle(std::string pattern, request_cb cb);
 
 private:
-  std::string private_key_file_;
-  std::string certificate_file_;
   std::unique_ptr<server> server_;
   std::size_t num_threads_;
   int backlog_;
