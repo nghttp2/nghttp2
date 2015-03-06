@@ -49,6 +49,17 @@ session::session(boost::asio::io_service &io_service,
 
 session::~session() {}
 
+session::session(session &&other) : impl_(std::move(other.impl_)) {}
+
+session &session::operator=(session &&other) {
+  if (this == &other) {
+    return *this;
+  }
+
+  impl_ = std::move(other.impl_);
+  return *this;
+}
+
 void session::on_connect(connect_cb cb) const {
   impl_->on_connect(std::move(cb));
 }

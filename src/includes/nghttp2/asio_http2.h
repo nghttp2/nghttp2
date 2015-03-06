@@ -123,6 +123,15 @@ std::string percent_decode(const std::string &s);
 // Returns HTTP date representation of current posix time |t|.
 std::string http_date(int64_t t);
 
+// Parses |uri| and extract scheme, host and service.  The service is
+// port component of URI (e.g., "8443") if available, otherwise it is
+// scheme (e.g., "https").
+boost::system::error_code host_service_from_uri(boost::system::error_code &ec,
+                                                std::string &scheme,
+                                                std::string &host,
+                                                std::string &service,
+                                                const std::string &uri);
+
 } // namespace asio_http2
 
 } // namespace nghttp2

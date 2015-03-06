@@ -28,6 +28,7 @@
 
 #include "util.h"
 #include "template.h"
+#include "http2.h"
 
 namespace nghttp2 {
 namespace asio_http2 {
@@ -111,6 +112,37 @@ std::string percent_decode(const std::string &s) {
 }
 
 std::string http_date(int64_t t) { return util::http_date(t); }
+
+boost::system::error_code host_service_from_uri(boost::system::error_code &ec,
+                                                std::string &scheme,
+                                                std::string &host,
+                                                std::string &service,
+                                                const std::string &uri) {
+  ec.clear();
+
+  http_parser_url u{};
+  if (http_parser_parse_url(uri.c_str(), uri.size(), 0, &u) != 0) {
+    ec = make_error_code(boost::system::errc::invalid_argument);
+    return ec;
+  }
+
+  if ((u.field_set & (1 << UF_SCHEMA)) == 0 ||
+      (u.field_set & (1 << UF_HOST)) == 0) {
+    ec = make_error_code(boost::system::errc::invalid_argument);
+    return ec;
+  }
+
+  http2::copy_url_component(scheme, &u, UF_SCHEMA, uri.c_str());
+  http2::copy_url_component(host, &u, UF_HOST, uri.c_str());
+
+  if (u.field_set & (1 << UF_PORT)) {
+    http2::copy_url_component(service, &u, UF_PORT, uri.c_str());
+  } else {
+    service = scheme;
+  }
+
+  return ec;
+}
 
 } // namespace asio_http2
 } // namespace nghttp2
