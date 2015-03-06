@@ -75,10 +75,6 @@ int main(int argc, char *argv[]) {
         std::cerr << std::endl;
 
         res.on_data([&sess](const uint8_t *data, std::size_t len) {
-          if (len == 0) {
-            // eof
-            return;
-          }
           std::cerr.write(reinterpret_cast<const char *>(data), len);
           std::cerr << std::endl;
         });
