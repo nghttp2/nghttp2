@@ -33,6 +33,8 @@ Contents:
    python-apiref
    nghttp2.h
    nghttp2ver.h
+   asio_http2_server.h
+   asio_http2_client.h
    asio_http2.h
    Source <https://github.com/tatsuhiro-t/nghttp2>
    Issues <https://github.com/tatsuhiro-t/nghttp2/issues>

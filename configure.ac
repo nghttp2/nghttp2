@@ -660,6 +660,8 @@ AC_CONFIG_FILES([
   doc/nghttp2.h.rst
   doc/nghttp2ver.h.rst
   doc/asio_http2.h.rst
+  doc/asio_http2_server.h.rst
+  doc/asio_http2_client.h.rst
   doc/contribute.rst
   contrib/Makefile
 ])

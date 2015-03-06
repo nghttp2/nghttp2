@@ -42,6 +42,8 @@ doc/tutorial-hpack.rst
 doc/python-apiref.rst
 doc/building-android-binary.rst
 doc/asio_http2.h.rst
+doc/asio_http2_server.h.rst
+doc/asio_http2_client.h.rst
 doc/libnghttp2_asio.rst
 doc/contribute.rst
 python/setup.py
