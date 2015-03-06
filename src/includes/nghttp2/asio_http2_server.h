@@ -126,8 +126,8 @@ public:
   http2();
   ~http2();
 
-  http2(http2 &&other);
-  http2 &operator=(http2 &&other);
+  http2(http2 &&other) noexcept;
+  http2 &operator=(http2 &&other) noexcept;
 
   // Starts listening connection on given address and port and serves
   // incoming requests in cleartext TCP connection.

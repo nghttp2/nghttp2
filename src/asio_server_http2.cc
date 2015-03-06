@@ -40,9 +40,9 @@ http2::http2() : impl_(make_unique<http2_impl>()) {}
 
 http2::~http2() {}
 
-http2::http2(http2 &&other) : impl_(std::move(other.impl_)) {}
+http2::http2(http2 &&other) noexcept : impl_(std::move(other.impl_)) {}
 
-http2 &http2::operator=(http2 &&other) {
+http2 &http2::operator=(http2 &&other) noexcept {
   if (this == &other) {
     return *this;
   }

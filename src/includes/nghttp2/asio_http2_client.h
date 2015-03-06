@@ -128,8 +128,8 @@ public:
           const std::string &service);
   ~session();
 
-  session(session &&other);
-  session &operator=(session &&other);
+  session(session &&other) noexcept;
+  session &operator=(session &&other) noexcept;
 
   // Sets callback which is invoked after connection is established.
   void on_connect(connect_cb cb) const;

@@ -49,9 +49,9 @@ session::session(boost::asio::io_service &io_service,
 
 session::~session() {}
 
-session::session(session &&other) : impl_(std::move(other.impl_)) {}
+session::session(session &&other) noexcept : impl_(std::move(other.impl_)) {}
 
-session &session::operator=(session &&other) {
+session &session::operator=(session &&other) noexcept {
   if (this == &other) {
     return *this;
   }
