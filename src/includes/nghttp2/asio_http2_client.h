@@ -173,7 +173,9 @@ private:
 
 // configure |tls_ctx| for client use.  Currently, we just set NPN
 // callback for HTTP/2.
-void configure_tls_context(boost::asio::ssl::context &tls_ctx);
+boost::system::error_code
+configure_tls_context(boost::system::error_code &ec,
+                      boost::asio::ssl::context &tls_ctx);
 
 } // namespace client
 

@@ -47,10 +47,16 @@ int client_select_next_proto_cb(SSL *ssl, unsigned char **out,
 }
 } // namespace
 
-void configure_tls_context(boost::asio::ssl::context &tls_ctx) {
+boost::system::error_code
+configure_tls_context(boost::system::error_code &ec,
+                      boost::asio::ssl::context &tls_ctx) {
+  ec.clear();
+
   auto ctx = tls_ctx.native_handle();
 
   SSL_CTX_set_next_proto_select_cb(ctx, client_select_next_proto_cb, nullptr);
+
+  return ec;
 }
 
 } // namespace client
