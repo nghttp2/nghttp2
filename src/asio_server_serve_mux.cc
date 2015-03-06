@@ -103,20 +103,26 @@ request_cb serve_mux::handler(request_impl &req) const {
   return status_handler(404);
 }
 
+namespace {
+bool path_match(const std::string &pattern, const std::string &path) {
+  if (pattern.back() != '/') {
+    return pattern == path;
+  }
+  return util::startsWith(path, pattern);
+}
+} // namespace
+
 request_cb serve_mux::match(const std::string &path) const {
   const handler_entry *ent = nullptr;
   size_t best = 0;
   for (auto &kv : mux_) {
     auto &pattern = kv.first;
-    if (!util::startsWith(path, pattern)) {
+    if (!path_match(pattern, path)) {
       continue;
     }
-    if (path.size() == pattern.size() || pattern.back() == '/' ||
-        path[pattern.size()] == '/') {
-      if (!ent || best < pattern.size()) {
-        best = pattern.size();
-        ent = &kv.second;
-      }
+    if (!ent || best < pattern.size()) {
+      best = pattern.size();
+      ent = &kv.second;
     }
   }
   if (ent) {
