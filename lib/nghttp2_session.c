@@ -6222,7 +6222,10 @@ int nghttp2_session_pack_data(nghttp2_session *session, nghttp2_bufs *bufs,
 
   if (data_flags & NGHTTP2_DATA_FLAG_EOF) {
     aux_data->eof = 1;
-    if (aux_data->flags & NGHTTP2_FLAG_END_STREAM) {
+    /* If NGHTTP2_DATA_FLAG_NO_END_STREAM is set, don't set
+       NGHTTP2_FLAG_END_STREAM */
+    if ((aux_data->flags & NGHTTP2_FLAG_END_STREAM) &&
+        (data_flags & NGHTTP2_DATA_FLAG_NO_END_STREAM) == 0) {
       frame->hd.flags |= NGHTTP2_FLAG_END_STREAM;
     }
   }
