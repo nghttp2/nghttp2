@@ -55,6 +55,8 @@ public:
   const connect_cb &on_connect() const;
   const error_cb &on_error() const;
 
+  int write_trailer(stream &strm, header_map h);
+
   void cancel(stream &strm, uint32_t error_code);
   void resume(stream &strm);
 

@@ -89,6 +89,12 @@ public:
   // must not access request and response object.
   void on_close(close_cb cb) const;
 
+  // Write trailer part.  This must be called after setting both
+  // NGHTTP2_DATA_FLAG_EOF and NGHTTP2_DATA_FLAG_NO_END_STREAM set in
+  // *data_flag parameter in generator_cb passed to session::submit()
+  // function.
+  void write_trailer(header_map h) const;
+
   // Cancels this request and response with given error code.
   void cancel(uint32_t error_code = NGHTTP2_INTERNAL_ERROR) const;
 

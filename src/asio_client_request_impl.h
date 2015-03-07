@@ -43,6 +43,8 @@ public:
   request_impl(const request_impl &) = delete;
   request_impl &operator=(const request_impl &) = delete;
 
+  void write_trailer(header_map h);
+
   void cancel(uint32_t error_code);
 
   void on_response(response_cb cb);

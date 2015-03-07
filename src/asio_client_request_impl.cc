@@ -34,6 +34,11 @@ namespace client {
 
 request_impl::request_impl() : strm_(nullptr) {}
 
+void request_impl::write_trailer(header_map h) {
+  auto sess = strm_->session();
+  sess->write_trailer(*strm_, std::move(h));
+}
+
 void request_impl::cancel(uint32_t error_code) {
   auto sess = strm_->session();
   sess->cancel(*strm_, error_code);

@@ -38,6 +38,10 @@ request::request() : impl_(make_unique<request_impl>()) {}
 
 request::~request() {}
 
+void request::write_trailer(header_map h) const {
+  impl_->write_trailer(std::move(h));
+}
+
 void request::cancel(uint32_t error_code) const { impl_->cancel(error_code); }
 
 void request::on_response(response_cb cb) const {

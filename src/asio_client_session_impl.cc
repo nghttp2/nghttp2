@@ -330,6 +330,27 @@ bool session_impl::setup_session() {
   return true;
 }
 
+int session_impl::write_trailer(stream &strm, header_map h) {
+  int rv;
+  auto nva = std::vector<nghttp2_nv>();
+  nva.reserve(h.size());
+  for (auto &hd : h) {
+    nva.push_back(nghttp2::http2::make_nv(hd.first, hd.second.value,
+                                          hd.second.sensitive));
+  }
+
+  rv = nghttp2_submit_trailer(session_, strm.stream_id(), nva.data(),
+                              nva.size());
+
+  if (rv != 0) {
+    return -1;
+  }
+
+  signal_write();
+
+  return 0;
+}
+
 void session_impl::cancel(stream &strm, uint32_t error_code) {
   nghttp2_submit_rst_stream(session_, NGHTTP2_FLAG_NONE, strm.stream_id(),
                             error_code);
