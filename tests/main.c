@@ -154,6 +154,7 @@ int main(int argc _U_, char *argv[] _U_) {
                    test_nghttp2_submit_response_with_data) ||
       !CU_add_test(pSuite, "submit_response_without_data",
                    test_nghttp2_submit_response_without_data) ||
+      !CU_add_test(pSuite, "submit_trailer", test_nghttp2_submit_trailer) ||
       !CU_add_test(pSuite, "submit_headers_start_stream",
                    test_nghttp2_submit_headers_start_stream) ||
       !CU_add_test(pSuite, "submit_headers_reply",

@@ -140,6 +140,11 @@ Options:
   --early-response
               Start sending response when request HEADERS is received,
               rather than complete request is received.
+  --trailer=<HEADER>
+              Add a trailer  header to a response.   <HEADER> must not
+              include pseudo header field  (header field name starting
+              with ':').  The  trailer is sent only if  a response has
+              body part.  Example: --trailer 'foo: bar'.
   --version   Display version information and exit.
   -h, --help  Display this help and exit.
 
@@ -170,6 +175,7 @@ int main(int argc, char **argv) {
         {"version", no_argument, &flag, 3},
         {"dh-param-file", required_argument, &flag, 4},
         {"early-response", no_argument, &flag, 5},
+        {"trailer", required_argument, &flag, 6},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     int c = getopt_long(argc, argv, "DVb:c:d:ehn:p:va:", long_options,
@@ -254,6 +260,30 @@ int main(int argc, char **argv) {
         // early-response
         config.early_response = true;
         break;
+      case 6: {
+        // trailer option
+        auto header = optarg;
+        auto value = strchr(optarg, ':');
+        if (!value) {
+          std::cerr << "--trailer: invalid header: " << optarg << std::endl;
+          exit(EXIT_FAILURE);
+        }
+        *value = 0;
+        value++;
+        while (isspace(*value)) {
+          value++;
+        }
+        if (*value == 0) {
+          // This could also be a valid case for suppressing a header
+          // similar to curl
+          std::cerr << "--trailer: invalid header - value missing: " << optarg
+                    << std::endl;
+          exit(EXIT_FAILURE);
+        }
+        config.trailer.emplace_back(header, value, false);
+        util::inp_strlower(config.trailer.back().name);
+        break;
+      }
       }
       break;
     default:

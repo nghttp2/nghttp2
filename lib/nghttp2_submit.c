@@ -155,6 +155,12 @@ static int32_t submit_headers_shared_nva(nghttp2_session *session,
                                attach_stream);
 }
 
+int32_t nghttp2_submit_trailer(nghttp2_session *session, int32_t stream_id,
+                               const nghttp2_nv *nva, size_t nvlen) {
+  return submit_headers_shared_nva(session, NGHTTP2_FLAG_END_STREAM, stream_id,
+                                   NULL, nva, nvlen, NULL, NULL, 0);
+}
+
 int32_t nghttp2_submit_headers(nghttp2_session *session, uint8_t flags,
                                int32_t stream_id,
                                const nghttp2_priority_spec *pri_spec,

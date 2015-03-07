@@ -88,6 +88,13 @@ static const nghttp2_nv resnv[] = {
     MAKE_NV(":status", "200"),
 };
 
+static const nghttp2_nv trailernv[] = {
+    // from http://tools.ietf.org/html/rfc6249#section-7
+    MAKE_NV("digest", "SHA-256="
+                      "MWVkMWQxYTRiMzk5MDQ0MzI3NGU5NDEyZTk5OWY1ZGFmNzgyZTJlODYz"
+                      "YjRjYzFhOTlmNTQwYzI2M2QwM2U2MQ=="),
+};
+
 static void scripted_data_feed_init2(scripted_data_feed *df,
                                      nghttp2_bufs *bufs) {
   nghttp2_buf_chain *ci;
@@ -277,6 +284,14 @@ static ssize_t fail_data_source_read_callback(nghttp2_session *session _U_,
                                               nghttp2_data_source *source _U_,
                                               void *user_data _U_) {
   return NGHTTP2_ERR_CALLBACK_FAILURE;
+}
+
+static ssize_t no_end_stream_data_source_read_callback(
+    nghttp2_session *session _U_, int32_t stream_id _U_, uint8_t *buf _U_,
+    size_t len _U_, uint32_t *data_flags, nghttp2_data_source *source _U_,
+    void *user_data _U_) {
+  *data_flags |= NGHTTP2_DATA_FLAG_EOF | NGHTTP2_DATA_FLAG_NO_END_STREAM;
+  return 0;
 }
 
 /* static void no_stream_user_data_stream_close_callback */
@@ -3464,6 +3479,63 @@ void test_nghttp2_submit_response_without_data(void) {
 
   CU_ASSERT(ARRLEN(resnv) == out.nvlen);
   assert_nv_equal(resnv, out.nva, out.nvlen, mem);
+
+  nva_out_reset(&out, mem);
+  nghttp2_bufs_free(&bufs);
+  nghttp2_frame_headers_free(&frame.headers, mem);
+  nghttp2_hd_inflate_free(&inflater);
+  nghttp2_session_del(session);
+}
+
+void test_nghttp2_submit_trailer(void) {
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  accumulator acc;
+  nghttp2_data_provider data_prd;
+  nghttp2_outbound_item *item;
+  my_user_data ud;
+  nghttp2_frame frame;
+  nghttp2_hd_inflater inflater;
+  nva_out out;
+  nghttp2_bufs bufs;
+  nghttp2_mem *mem;
+
+  mem = nghttp2_mem_default();
+  frame_pack_bufs_init(&bufs);
+
+  data_prd.read_callback = no_end_stream_data_source_read_callback;
+  nva_out_init(&out);
+  acc.length = 0;
+  ud.acc = &acc;
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+  callbacks.send_callback = null_send_callback;
+  CU_ASSERT(0 == nghttp2_session_server_new(&session, &callbacks, &ud));
+
+  nghttp2_hd_inflate_init(&inflater, mem);
+  nghttp2_session_open_stream(session, 1, NGHTTP2_FLAG_END_STREAM,
+                              &pri_spec_default, NGHTTP2_STREAM_OPENING, NULL);
+  CU_ASSERT(0 == nghttp2_submit_response(session, 1, resnv, ARRLEN(resnv),
+                                         &data_prd));
+  CU_ASSERT(0 == nghttp2_session_send(session));
+
+  CU_ASSERT(0 ==
+            nghttp2_submit_trailer(session, 1, trailernv, ARRLEN(trailernv)));
+
+  session->callbacks.send_callback = accumulator_send_callback;
+
+  item = nghttp2_session_get_next_ob_item(session);
+  CU_ASSERT(NGHTTP2_HEADERS == item->frame.hd.type);
+  CU_ASSERT(NGHTTP2_HCAT_HEADERS == item->frame.headers.cat);
+  CU_ASSERT(item->frame.hd.flags & NGHTTP2_FLAG_END_STREAM);
+
+  CU_ASSERT(0 == nghttp2_session_send(session));
+  CU_ASSERT(0 == unpack_frame(&frame, acc.buf, acc.length));
+
+  nghttp2_bufs_add(&bufs, acc.buf, acc.length);
+  inflate_hd(&inflater, &out, &bufs, NGHTTP2_FRAME_HDLEN, mem);
+
+  CU_ASSERT(ARRLEN(trailernv) == out.nvlen);
+  assert_nv_equal(trailernv, out.nva, out.nvlen, mem);
 
   nva_out_reset(&out, mem);
   nghttp2_bufs_free(&bufs);
