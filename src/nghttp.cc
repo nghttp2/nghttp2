@@ -2110,6 +2110,7 @@ namespace {
 ssize_t file_read_callback(nghttp2_session *session, int32_t stream_id,
                            uint8_t *buf, size_t length, uint32_t *data_flags,
                            nghttp2_data_source *source, void *user_data) {
+  int rv;
   auto req = static_cast<Request *>(
       nghttp2_session_get_stream_user_data(session, stream_id));
   assert(req);
@@ -2126,6 +2127,18 @@ ssize_t file_read_callback(nghttp2_session *session, int32_t stream_id,
 
   if (nread == 0) {
     *data_flags |= NGHTTP2_DATA_FLAG_EOF;
+    if (!config.trailer.empty()) {
+      *data_flags |= NGHTTP2_DATA_FLAG_NO_END_STREAM;
+      std::vector<nghttp2_nv> nva;
+      nva.reserve(config.trailer.size());
+      for (auto &kv : config.trailer) {
+        nva.push_back(http2::make_nv(kv.name, kv.value, kv.no_index));
+      }
+      rv = nghttp2_submit_trailer(session, stream_id, nva.data(), nva.size());
+      if (rv != 0) {
+        *data_flags &= ~NGHTTP2_DATA_FLAG_NO_END_STREAM;
+      }
+    }
   } else {
     req->data_offset += nread;
   }
@@ -2347,6 +2360,11 @@ Options:
   -s, --stat  Print statistics.
   -H, --header=<HEADER>
               Add a header to the requests.  Example: -H':method: PUT'
+  --trailer=<HEADER>
+              Add a trailer header to the requests.  <HEADER> must not
+              include pseudo header field  (header field name starting
+              with ':').  To  send trailer, one must use  -d option to
+              send request body.  Example: --trailer 'foo: bar'.
   --cert=<CERT>
               Use  the specified  client certificate  file.  The  file
               must be in PEM format.
@@ -2425,6 +2443,7 @@ int main(int argc, char **argv) {
         {"no-content-length", no_argument, &flag, 6},
         {"no-dep", no_argument, &flag, 7},
         {"dep-idle", no_argument, &flag, 8},
+        {"trailer", required_argument, &flag, 9},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     int c = getopt_long(argc, argv, "M:Oab:c:d:gm:np:r:hH:vst:uw:W:",
@@ -2587,6 +2606,30 @@ int main(int argc, char **argv) {
         // dep-idle option
         config.dep_idle = true;
         break;
+      case 9: {
+        // trailer option
+        auto header = optarg;
+        auto value = strchr(optarg, ':');
+        if (!value) {
+          std::cerr << "--trailer: invalid header: " << optarg << std::endl;
+          exit(EXIT_FAILURE);
+        }
+        *value = 0;
+        value++;
+        while (isspace(*value)) {
+          value++;
+        }
+        if (*value == 0) {
+          // This could also be a valid case for suppressing a header
+          // similar to curl
+          std::cerr << "--trailer: invalid header - value missing: " << optarg
+                    << std::endl;
+          exit(EXIT_FAILURE);
+        }
+        config.trailer.emplace_back(header, value, false);
+        util::inp_strlower(config.trailer.back().name);
+        break;
+      }
       }
       break;
     default:

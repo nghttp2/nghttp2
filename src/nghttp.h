@@ -58,6 +58,7 @@ struct Config {
   ~Config();
 
   Headers headers;
+  Headers trailer;
   std::string certfile;
   std::string keyfile;
   std::string datafile;
