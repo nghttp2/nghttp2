@@ -383,6 +383,7 @@ static int session_new(nghttp2_session **session_ptr,
 
   (*session_ptr)->pending_local_max_concurrent_stream =
       NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS;
+  (*session_ptr)->pending_enable_push = 1;
 
   if (server) {
     (*session_ptr)->server = 1;
@@ -3901,6 +3902,7 @@ int nghttp2_session_update_local_settings(nghttp2_session *session,
 
   session->pending_local_max_concurrent_stream =
       NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS;
+  session->pending_enable_push = 1;
 
   return 0;
 }
@@ -4129,7 +4131,8 @@ int nghttp2_session_on_push_promise_received(nghttp2_session *session,
   }
   session->last_recv_stream_id = frame->push_promise.promised_stream_id;
   stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
-  if (!stream || stream->state == NGHTTP2_STREAM_CLOSING) {
+  if (!stream || stream->state == NGHTTP2_STREAM_CLOSING ||
+      !session->pending_enable_push) {
     if (!stream) {
       if (session_detect_idle_stream(session, frame->hd.stream_id)) {
         return session_inflate_handle_invalid_connection(
@@ -6105,11 +6108,20 @@ int nghttp2_session_add_settings(nghttp2_session *session, uint8_t flags,
     return rv;
   }
 
-  /* Extract NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS here and use
-     it to refuse the incoming streams with RST_STREAM. */
+  /* Extract NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS and ENABLE_PUSH
+     here.  We use it to refuse the incoming stream and PUSH_PROMISE
+     with RST_STREAM. */
+
   for (i = niv; i > 0; --i) {
     if (iv[i - 1].settings_id == NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS) {
       session->pending_local_max_concurrent_stream = iv[i - 1].value;
+      break;
+    }
+  }
+
+  for (i = niv; i > 0; --i) {
+    if (iv[i - 1].settings_id == NGHTTP2_SETTINGS_ENABLE_PUSH) {
+      session->pending_enable_push = iv[i - 1].value;
       break;
     }
   }

@@ -2201,6 +2201,7 @@ void test_nghttp2_session_on_push_promise_received(void) {
   nghttp2_nv *nva;
   size_t nvlen;
   nghttp2_mem *mem;
+  nghttp2_settings_entry iv = {NGHTTP2_SETTINGS_ENABLE_PUSH, 0};
 
   mem = nghttp2_mem_default();
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
@@ -2377,6 +2378,25 @@ void test_nghttp2_session_on_push_promise_received(void) {
 
   CU_ASSERT(1 == user_data.begin_headers_cb_called);
   CU_ASSERT(0 == user_data.invalid_frame_recv_cb_called);
+
+  nghttp2_frame_push_promise_free(&frame.push_promise, mem);
+  nghttp2_session_del(session);
+
+  /* If local_settings.enable_push = 0 is pending, but not acked from
+     peer, incoming PUSH_PROMISE is rejected */
+  nghttp2_session_client_new(&session, &callbacks, &user_data);
+
+  stream = nghttp2_session_open_stream(session, 1, NGHTTP2_STREAM_FLAG_NONE,
+                                       &pri_spec_default,
+                                       NGHTTP2_STREAM_OPENING, NULL);
+  /* Submit settings with ENABLE_PUSH = 0 (thus disabling push) */
+  nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, &iv, 1);
+
+  nghttp2_frame_push_promise_init(&frame.push_promise, NGHTTP2_FLAG_END_HEADERS,
+                                  1, 2, NULL, 0);
+
+  CU_ASSERT(NGHTTP2_ERR_IGN_HEADER_BLOCK ==
+            nghttp2_session_on_push_promise_received(session, &frame));
 
   nghttp2_frame_push_promise_free(&frame.push_promise, mem);
   nghttp2_session_del(session);

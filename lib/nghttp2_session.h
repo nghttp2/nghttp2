@@ -253,6 +253,9 @@ struct nghttp2_session {
   /* Unacked local SETTINGS_MAX_CONCURRENT_STREAMS value. We use this
      to refuse the incoming stream if it exceeds this value. */
   uint32_t pending_local_max_concurrent_stream;
+  /* Unacked local ENABLE_PUSH value.  We use this to refuse
+     PUSH_PROMISE before SETTINGS ACK is received. */
+  uint8_t pending_enable_push;
   /* Nonzero if the session is server side. */
   uint8_t server;
   /* Flags indicating GOAWAY is sent and/or recieved. The flags are
