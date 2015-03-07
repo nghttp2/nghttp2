@@ -70,6 +70,8 @@ public:
 
   int start_response(stream &s);
 
+  int submit_trailer(stream &s, header_map h);
+
   void stream_error(int32_t stream_id, uint32_t error_code);
 
   void initiate_write();

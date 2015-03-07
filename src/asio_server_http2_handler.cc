@@ -359,6 +359,27 @@ int http2_handler::start_response(stream &strm) {
   return 0;
 }
 
+int http2_handler::submit_trailer(stream &strm, header_map h) {
+  int rv;
+  auto nva = std::vector<nghttp2_nv>();
+  nva.reserve(h.size());
+  for (auto &hd : h) {
+    nva.push_back(nghttp2::http2::make_nv(hd.first, hd.second.value,
+                                          hd.second.sensitive));
+  }
+
+  rv = nghttp2_submit_trailer(session_, strm.get_stream_id(), nva.data(),
+                              nva.size());
+
+  if (rv != 0) {
+    return -1;
+  }
+
+  signal_write();
+
+  return 0;
+}
+
 void http2_handler::enter_callback() {
   assert(!inside_callback_);
   inside_callback_ = true;

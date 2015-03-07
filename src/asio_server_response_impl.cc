@@ -81,6 +81,11 @@ void response_impl::end(generator_cb cb) {
   state_ = response_state::BODY_STARTED;
 }
 
+void response_impl::write_trailer(header_map h) {
+  auto handler = strm_->handler();
+  handler->submit_trailer(*strm_, std::move(h));
+}
+
 void response_impl::start_response() {
   auto handler = strm_->handler();
 

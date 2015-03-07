@@ -81,6 +81,11 @@ public:
   // call of end() is allowed.
   void end(generator_cb cb) const;
 
+  // Write trailer part.  This must be called after setting both
+  // NGHTTP2_DATA_FLAG_EOF and NGHTTP2_DATA_FLAG_NO_END_STREAM set in
+  // *data_flag parameter in generator_cb passed to end() function.
+  void write_trailer(header_map h) const;
+
   // Sets callback which is invoked when this request and response are
   // finished.  After the invocation of this callback, the application
   // must not access request and response object.

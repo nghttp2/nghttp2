@@ -49,6 +49,7 @@ public:
   void write_head(unsigned int status_code, header_map h = {});
   void end(std::string data = "");
   void end(generator_cb cb);
+  void write_trailer(header_map h);
   void on_close(close_cb cb);
   void resume();
 

@@ -101,6 +101,30 @@ int main(int argc, char *argv[]) {
         res.end("finally!\n");
       });
     });
+    server.handle("/trailer", [](const request &req, const response &res) {
+      // send trailer part.
+      res.write_head(200, {{"trailers", {"digest"}}});
+
+      std::string body = "nghttp2 FTW!\n";
+      auto left = std::make_shared<size_t>(body.size());
+
+      res.end([&res, body, left](uint8_t *dst, std::size_t len,
+                                 uint32_t *data_flags) {
+        auto n = std::min(len, *left);
+        std::copy_n(body.c_str() + (body.size() - *left), n, dst);
+        *left -= n;
+        if (*left == 0) {
+          *data_flags |=
+              NGHTTP2_DATA_FLAG_EOF | NGHTTP2_DATA_FLAG_NO_END_STREAM;
+          // RFC 3230 Instance Digests in HTTP.  The digest value is
+          // SHA-256 message digest of body.
+          res.write_trailer(
+              {{"digest",
+                {"SHA-256=qqXqskW7F3ueBSvmZRCiSwl2ym4HRO0M/pvQCBlSDis="}}});
+        }
+        return n;
+      });
+    });
 
     if (argc >= 6) {
       boost::asio::ssl::context tls(boost::asio::ssl::context::sslv23);

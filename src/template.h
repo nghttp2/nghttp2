@@ -76,6 +76,10 @@ template <typename F, typename... T> Defer<F, T...> defer(F &&f, T &&... t) {
   return Defer<F, T...>(std::forward<F>(f), std::forward<T>(t)...);
 }
 
+template <typename T, typename F> bool test_flags(T t, F flags) {
+  return (t & flags) == flags;
+}
+
 } // namespace nghttp2
 
 #endif // TEMPLATE_H

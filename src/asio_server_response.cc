@@ -46,6 +46,10 @@ void response::end(std::string data) const { impl_->end(std::move(data)); }
 
 void response::end(generator_cb cb) const { impl_->end(std::move(cb)); }
 
+void response::write_trailer(header_map h) const {
+  impl_->write_trailer(std::move(h));
+}
+
 void response::on_close(close_cb cb) const { impl_->on_close(std::move(cb)); }
 
 void response::cancel(uint32_t error_code) const { impl_->cancel(error_code); }
