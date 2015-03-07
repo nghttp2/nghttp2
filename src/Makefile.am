@@ -205,6 +205,7 @@ libnghttp2_asio_la_CPPFLAGS = ${AM_CPPFLAGS} ${BOOST_CPPFLAGS}
 libnghttp2_asio_la_LDFLAGS = -no-undefined -version-info 0:0:0
 libnghttp2_asio_la_LIBADD = \
 	$(top_builddir)/lib/libnghttp2.la \
+	$(top_builddir)/third-party/libhttp-parser.la \
 	${BOOST_LDFLAGS} \
 	${BOOST_ASIO_LIB} \
 	${BOOST_THREAD_LIB} \
