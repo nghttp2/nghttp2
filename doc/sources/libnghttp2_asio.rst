@@ -22,6 +22,16 @@ We have 3 header files for this library:
 
 asio_http2.h is included from the other two files.
 
+To build a program with libnghttp2_asio, link to the following
+libraries::
+
+    -lnghttp2_asio -lboost_system
+
+If ``boost::asio::ssl`` is used in application code, OpenSSL is also
+required in link line::
+
+    -lnghttp2_asio -lboost_system -lssl -lcrypto
+
 Server API
 ----------
 
