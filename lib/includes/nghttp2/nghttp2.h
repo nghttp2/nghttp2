@@ -702,6 +702,21 @@ typedef enum {
  * them in |buf| and return number of data stored in |buf|.  If EOF is
  * reached, set :enum:`NGHTTP2_DATA_FLAG_EOF` flag in |*data_flags|.
  *
+ * If this callback is set by `nghttp2_submit_request()`,
+ * `nghttp2_submit_response()` or `nghttp2_submit_headers()` and
+ * `nghttp2_submit_data()` with flag parameter
+ * :enum:`NGHTTP2_FLAG_END_STREAM` set, and
+ * :enum:`NGHTTP2_DATA_FLAG_EOF` flag is set to |*data_flags|, DATA
+ * frame will have END_STREAM flag set.  Usually, this is expected
+ * behaviour and all are fine.  One exception is send trailer header
+ * fields.  You cannot send trailers after sending frame with
+ * END_STREAM set.  To avoid this problem, one can set
+ * :enum:`NGHTTP2_DATA_FLAG_NO_END_STREAM` along with
+ * :enum:`NGHTTP2_DATA_FLAG_EOF` to signal the library not to set
+ * END_STREAM in DATA frame.  Then application can use
+ * `nghttp2_submit_trailer()` to send trailers.
+ * `nghttp2_submit_trailer()` can be called inside this callback.
+ *
  * If the application wants to postpone DATA frames (e.g.,
  * asynchronous I/O, or reading data blocks for long time), it is
  * achieved by returning :enum:`NGHTTP2_ERR_DEFERRED` without reading
