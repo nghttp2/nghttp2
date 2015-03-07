@@ -50,6 +50,7 @@ namespace nghttp2 {
 
 struct Config {
   std::map<std::string, std::vector<std::string>> push;
+  Headers trailer;
   std::string htdocs;
   std::string host;
   std::string private_key_file;

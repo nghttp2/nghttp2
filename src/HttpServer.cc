@@ -809,6 +809,7 @@ void Http2Handler::terminate_session(uint32_t error_code) {
 ssize_t file_read_callback(nghttp2_session *session, int32_t stream_id,
                            uint8_t *buf, size_t length, uint32_t *data_flags,
                            nghttp2_data_source *source, void *user_data) {
+  int rv;
   auto hd = static_cast<Http2Handler *>(user_data);
   auto stream = hd->get_stream(stream_id);
 
@@ -828,6 +829,20 @@ ssize_t file_read_callback(nghttp2_session *session, int32_t stream_id,
   stream->body_left -= nread;
   if (nread == 0 || stream->body_left <= 0) {
     *data_flags |= NGHTTP2_DATA_FLAG_EOF;
+
+    auto config = hd->get_config();
+    if (!config->trailer.empty()) {
+      *data_flags |= NGHTTP2_DATA_FLAG_NO_END_STREAM;
+      std::vector<nghttp2_nv> nva;
+      nva.reserve(config->trailer.size());
+      for (auto &kv : config->trailer) {
+        nva.push_back(http2::make_nv(kv.name, kv.value, kv.no_index));
+      }
+      rv = nghttp2_submit_trailer(session, stream_id, nva.data(), nva.size());
+      if (rv != 0) {
+        *data_flags &= ~NGHTTP2_DATA_FLAG_NO_END_STREAM;
+      }
+    }
 
     if (nghttp2_session_get_stream_remote_close(session, stream_id) == 0) {
       remove_stream_read_timeout(stream);
