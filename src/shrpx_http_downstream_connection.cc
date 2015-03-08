@@ -594,13 +594,13 @@ int htp_hdr_valcb(http_parser *htp, const char *data, size_t len) {
   auto downstream = static_cast<Downstream *>(htp->data);
   if (downstream->get_response_state() == Downstream::INITIAL) {
     if (downstream->get_response_header_key_prev()) {
-      downstream->set_last_response_header_value(std::string(data, len));
+      downstream->set_last_response_header_value(data, len);
     } else {
       downstream->append_last_response_header_value(data, len);
     }
   } else {
     if (downstream->get_response_trailer_key_prev()) {
-      downstream->set_last_response_trailer_value(std::string(data, len));
+      downstream->set_last_response_trailer_value(data, len);
     } else {
       downstream->append_last_response_trailer_value(data, len);
     }

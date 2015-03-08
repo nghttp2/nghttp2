@@ -83,14 +83,19 @@ namespace {
 int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
   auto upstream = static_cast<HttpsUpstream *>(htp->data);
   auto downstream = upstream->get_downstream();
-  if (downstream->get_request_state() != Downstream::INITIAL) {
-    // ignore trailers
-    return 0;
-  }
-  if (downstream->get_request_header_key_prev()) {
-    downstream->append_last_request_header_key(data, len);
+  if (downstream->get_request_state() == Downstream::INITIAL) {
+    if (downstream->get_request_header_key_prev()) {
+      downstream->append_last_request_header_key(data, len);
+    } else {
+      downstream->add_request_header(std::string(data, len), "");
+    }
   } else {
-    downstream->add_request_header(std::string(data, len), "");
+    // trailer part
+    if (downstream->get_request_trailer_key_prev()) {
+      downstream->append_last_request_trailer_key(data, len);
+    } else {
+      downstream->add_request_trailer(std::string(data, len), "");
+    }
   }
   if (downstream->get_request_headers_sum() > Downstream::MAX_HEADERS_SUM) {
     if (LOG_ENABLED(INFO)) {
@@ -107,14 +112,18 @@ namespace {
 int htp_hdr_valcb(http_parser *htp, const char *data, size_t len) {
   auto upstream = static_cast<HttpsUpstream *>(htp->data);
   auto downstream = upstream->get_downstream();
-  if (downstream->get_request_state() != Downstream::INITIAL) {
-    // ignore trailers
-    return 0;
-  }
-  if (downstream->get_request_header_key_prev()) {
-    downstream->set_last_request_header_value(std::string(data, len));
+  if (downstream->get_request_state() == Downstream::INITIAL) {
+    if (downstream->get_request_header_key_prev()) {
+      downstream->set_last_request_header_value(data, len);
+    } else {
+      downstream->append_last_request_header_value(data, len);
+    }
   } else {
-    downstream->append_last_request_header_value(data, len);
+    if (downstream->get_request_trailer_key_prev()) {
+      downstream->set_last_request_trailer_value(data, len);
+    } else {
+      downstream->append_last_request_trailer_value(data, len);
+    }
   }
   if (downstream->get_request_headers_sum() > Downstream::MAX_HEADERS_SUM) {
     if (LOG_ENABLED(INFO)) {

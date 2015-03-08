@@ -113,7 +113,7 @@ public:
   // no such header is found, returns nullptr.
   const Headers::value_type *get_request_header(const std::string &name) const;
   void add_request_header(std::string name, std::string value);
-  void set_last_request_header_value(std::string value);
+  void set_last_request_header_value(const char *data, size_t len);
 
   void add_request_header(const uint8_t *name, size_t namelen,
                           const uint8_t *value, size_t valuelen, bool no_index,
@@ -131,6 +131,11 @@ public:
   void add_request_trailer(const uint8_t *name, size_t namelen,
                            const uint8_t *value, size_t valuelen, bool no_index,
                            int16_t token);
+  void add_request_trailer(std::string name, std::string value);
+  void set_last_request_trailer_value(const char *data, size_t len);
+  bool get_request_trailer_key_prev() const;
+  void append_last_request_trailer_key(const char *data, size_t len);
+  void append_last_request_trailer_value(const char *data, size_t len);
 
   void set_request_method(std::string method);
   const std::string &get_request_method() const;
@@ -206,7 +211,7 @@ public:
   // Rewrites the location response header field.
   void rewrite_location_response_header(const std::string &upstream_scheme);
   void add_response_header(std::string name, std::string value);
-  void set_last_response_header_value(std::string value);
+  void set_last_response_header_value(const char *data, size_t len);
 
   void add_response_header(std::string name, std::string value, int16_t token);
   void add_response_header(const uint8_t *name, size_t namelen,
@@ -226,10 +231,10 @@ public:
                             const uint8_t *value, size_t valuelen,
                             bool no_index, int16_t token);
   void add_response_trailer(std::string name, std::string value);
+  void set_last_response_trailer_value(const char *data, size_t len);
   bool get_response_trailer_key_prev() const;
   void append_last_response_trailer_key(const char *data, size_t len);
   void append_last_response_trailer_value(const char *data, size_t len);
-  void set_last_response_trailer_value(std::string value);
 
   unsigned int get_response_http_status() const;
   void set_response_http_status(unsigned int status);
@@ -405,6 +410,7 @@ private:
   bool chunked_request_;
   bool request_connection_close_;
   bool request_header_key_prev_;
+  bool request_trailer_key_prev_;
   bool request_http2_expect_body_;
 
   bool chunked_response_;
