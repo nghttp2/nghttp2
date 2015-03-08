@@ -211,6 +211,41 @@ func TestH1H1HTTP10NoHostRewrite(t *testing.T) {
 	}
 }
 
+// TestH1H1RequestTrailer tests request trailer part is forwarded to
+// backend.
+func TestH1H1RequestTrailer(t *testing.T) {
+	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
+		buf := make([]byte, 4096)
+		for {
+			_, err := r.Body.Read(buf)
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				t.Fatalf("r.Body.Read() = %v", err)
+			}
+		}
+		if got, want := r.Trailer.Get("foo"), "bar"; got != want {
+			t.Errorf("r.Trailer.Get(foo): %v; want %v", got, want)
+		}
+	})
+	defer st.Close()
+
+	res, err := st.http1(requestParam{
+		name: "TestH1H1RequestTrailer",
+		body: []byte("1"),
+		trailer: []hpack.HeaderField{
+			pair("foo", "bar"),
+		},
+	})
+	if err != nil {
+		t.Fatalf("Error st.http1() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("res.status: %v; want %v", got, want)
+	}
+}
+
 // TestH1H2ConnectFailure tests that server handles the situation that
 // connection attempt to HTTP/2 backend failed.
 func TestH1H2ConnectFailure(t *testing.T) {
