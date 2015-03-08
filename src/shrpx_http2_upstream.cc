@@ -187,8 +187,7 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
     verbose_on_header_callback(session, frame, name, namelen, value, valuelen,
                                flags, user_data);
   }
-  if (frame->hd.type != NGHTTP2_HEADERS ||
-      frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
+  if (frame->hd.type != NGHTTP2_HEADERS) {
     return 0;
   }
   auto upstream = static_cast<Http2Upstream *>(user_data);
@@ -207,12 +206,25 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
                            << downstream->get_request_headers_sum();
     }
 
+    // just ignore header fields if this is trailer part.
+    if (frame->headers.cat == NGHTTP2_HCAT_HEADERS) {
+      return 0;
+    }
+
     if (upstream->error_reply(downstream, 431) != 0) {
       return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
     }
 
     return 0;
   }
+
+  if (frame->headers.cat == NGHTTP2_HCAT_HEADERS) {
+    // just store header fields for trailer part
+    downstream->add_request_trailer(name, namelen, value, valuelen,
+                                    flags & NGHTTP2_NV_FLAG_NO_INDEX, -1);
+    return 0;
+  }
+
   auto token = http2::lookup_token(name, namelen);
 
   if (token == http2::HD_CONTENT_LENGTH) {

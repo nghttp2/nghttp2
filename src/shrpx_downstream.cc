@@ -382,6 +382,20 @@ size_t Downstream::get_request_headers_sum() const {
   return request_headers_sum_;
 }
 
+void Downstream::add_request_trailer(const uint8_t *name, size_t namelen,
+                                     const uint8_t *value, size_t valuelen,
+                                     bool no_index, int16_t token) {
+  // we never index trailer part.  Header size limit should be applied
+  // to all request header fields combined.
+  request_headers_sum_ += namelen + valuelen;
+  http2::add_header(request_trailers_, name, namelen, value, valuelen, no_index,
+                    -1);
+}
+
+const Headers &Downstream::get_request_trailers() const {
+  return request_trailers_;
+}
+
 void Downstream::set_request_method(std::string method) {
   request_method_ = std::move(method);
 }

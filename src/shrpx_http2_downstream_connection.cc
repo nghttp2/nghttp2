@@ -159,6 +159,7 @@ ssize_t http2_data_read_callback(nghttp2_session *session, int32_t stream_id,
                                  uint8_t *buf, size_t length,
                                  uint32_t *data_flags,
                                  nghttp2_data_source *source, void *user_data) {
+  int rv;
   auto sd = static_cast<StreamData *>(
       nghttp2_session_get_stream_user_data(session, stream_id));
   if (!sd || !sd->dconn) {
@@ -201,6 +202,22 @@ ssize_t http2_data_read_callback(nghttp2_session *session, int32_t stream_id,
         !downstream->get_upgraded()))) {
 
     *data_flags |= NGHTTP2_DATA_FLAG_EOF;
+
+    if (!downstream->get_request_trailers().empty()) {
+      std::vector<nghttp2_nv> nva;
+      nva.reserve(downstream->get_request_trailers().size());
+      for (auto &kv : downstream->get_request_trailers()) {
+        nva.push_back(http2::make_nv(kv.name, kv.value, kv.no_index));
+      }
+      rv = nghttp2_submit_trailer(session, stream_id, nva.data(), nva.size());
+      if (rv != 0) {
+        if (nghttp2_is_fatal(rv)) {
+          return NGHTTP2_ERR_CALLBACK_FAILURE;
+        }
+      } else {
+        *data_flags |= NGHTTP2_DATA_FLAG_NO_END_STREAM;
+      }
+    }
   }
 
   if (!input_empty) {
@@ -275,7 +292,7 @@ int Http2DownstreamConnection::push_request_headers() {
     cookies = downstream_->crumble_request_cookie();
   }
 
-  // 8 means:
+  // 9 means:
   // 1. :method
   // 2. :scheme
   // 3. :path
@@ -284,8 +301,9 @@ int Http2DownstreamConnection::push_request_headers() {
   // 6. via (optional)
   // 7. x-forwarded-for (optional)
   // 8. x-forwarded-proto (optional)
+  // 9. te (optional)
   auto nva = std::vector<nghttp2_nv>();
-  nva.reserve(nheader + 8 + cookies.size());
+  nva.reserve(nheader + 9 + cookies.size());
 
   std::string via_value;
   std::string xff_value;
@@ -430,6 +448,11 @@ int Http2DownstreamConnection::push_request_headers() {
     via_value += http::create_via_header_value(
         downstream_->get_request_major(), downstream_->get_request_minor());
     nva.push_back(http2::make_nv_ls("via", via_value));
+  }
+
+  auto te = downstream_->get_request_header(http2::HD_TE);
+  if (te) {
+    nva.push_back(http2::make_nv_ls("te", te->value));
   }
 
   if (LOG_ENABLED(INFO)) {
