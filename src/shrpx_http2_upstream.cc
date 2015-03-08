@@ -1098,16 +1098,17 @@ ssize_t downstream_data_read_callback(nghttp2_session *session,
       if (!trailers.empty()) {
         std::vector<nghttp2_nv> nva;
         nva.reserve(trailers.size());
-        for (auto &kv : trailers) {
-          nva.push_back(http2::make_nv(kv.name, kv.value, kv.no_index));
-        }
-        rv = nghttp2_submit_trailer(session, stream_id, nva.data(), nva.size());
-        if (rv != 0) {
-          if (nghttp2_is_fatal(rv)) {
-            return NGHTTP2_ERR_CALLBACK_FAILURE;
+        http2::copy_headers_to_nva(nva, trailers);
+        if (!nva.empty()) {
+          rv = nghttp2_submit_trailer(session, stream_id, nva.data(),
+                                      nva.size());
+          if (rv != 0) {
+            if (nghttp2_is_fatal(rv)) {
+              return NGHTTP2_ERR_CALLBACK_FAILURE;
+            }
+          } else {
+            *data_flags |= NGHTTP2_DATA_FLAG_NO_END_STREAM;
           }
-        } else {
-          *data_flags |= NGHTTP2_DATA_FLAG_NO_END_STREAM;
         }
       }
       if (nghttp2_session_get_stream_remote_close(session, stream_id) == 0) {
