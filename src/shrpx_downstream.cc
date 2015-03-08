@@ -122,7 +122,8 @@ Downstream::Downstream(Upstream *upstream, int32_t stream_id, int32_t priority)
       request_connection_close_(false), request_header_key_prev_(false),
       request_http2_expect_body_(false), chunked_response_(false),
       response_connection_close_(false), response_header_key_prev_(false),
-      expect_final_response_(false), request_pending_(false) {
+      response_trailer_key_prev_(false), expect_final_response_(false),
+      request_pending_(false) {
 
   ev_timer_init(&upstream_rtimer_, &upstream_rtimeoutcb, 0.,
                 get_config()->stream_read_timeout);
@@ -677,6 +678,39 @@ void Downstream::add_response_trailer(const uint8_t *name, size_t namelen,
 
 unsigned int Downstream::get_response_http_status() const {
   return response_http_status_;
+}
+
+void Downstream::add_response_trailer(std::string name, std::string value) {
+  response_trailer_key_prev_ = true;
+  response_headers_sum_ += name.size() + value.size();
+  response_trailers_.emplace_back(std::move(name), std::move(value));
+}
+
+bool Downstream::get_response_trailer_key_prev() const {
+  return response_trailer_key_prev_;
+}
+
+void Downstream::append_last_response_trailer_key(const char *data,
+                                                  size_t len) {
+  assert(response_trailer_key_prev_);
+  response_headers_sum_ += len;
+  auto &item = response_trailers_.back();
+  item.name.append(data, len);
+}
+
+void Downstream::append_last_response_trailer_value(const char *data,
+                                                    size_t len) {
+  assert(!response_trailer_key_prev_);
+  response_headers_sum_ += len;
+  auto &item = response_trailers_.back();
+  item.value.append(data, len);
+}
+
+void Downstream::set_last_response_trailer_value(std::string value) {
+  response_trailer_key_prev_ = false;
+  response_headers_sum_ += value.size();
+  auto &item = response_trailers_.back();
+  item.value = std::move(value);
 }
 
 void Downstream::set_response_http_status(unsigned int status) {

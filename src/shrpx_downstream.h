@@ -225,6 +225,11 @@ public:
   void add_response_trailer(const uint8_t *name, size_t namelen,
                             const uint8_t *value, size_t valuelen,
                             bool no_index, int16_t token);
+  void add_response_trailer(std::string name, std::string value);
+  bool get_response_trailer_key_prev() const;
+  void append_last_response_trailer_key(const char *data, size_t len);
+  void append_last_response_trailer_value(const char *data, size_t len);
+  void set_last_response_trailer_value(std::string value);
 
   unsigned int get_response_http_status() const;
   void set_response_http_status(unsigned int status);
@@ -405,6 +410,7 @@ private:
   bool chunked_response_;
   bool response_connection_close_;
   bool response_header_key_prev_;
+  bool response_trailer_key_prev_;
   bool expect_final_response_;
   // true if downstream request is pending because backend connection
   // has not been established or should be checked before use;
