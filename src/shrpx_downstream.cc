@@ -663,6 +663,18 @@ size_t Downstream::get_response_headers_sum() const {
   return response_headers_sum_;
 }
 
+const Headers &Downstream::get_response_trailers() const {
+  return response_trailers_;
+}
+
+void Downstream::add_response_trailer(const uint8_t *name, size_t namelen,
+                                      const uint8_t *value, size_t valuelen,
+                                      bool no_index, int16_t token) {
+  response_headers_sum_ += namelen + valuelen;
+  http2::add_header(response_trailers_, name, namelen, value, valuelen,
+                    no_index, -1);
+}
+
 unsigned int Downstream::get_response_http_status() const {
   return response_http_status_;
 }

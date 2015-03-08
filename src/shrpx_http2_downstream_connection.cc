@@ -203,10 +203,11 @@ ssize_t http2_data_read_callback(nghttp2_session *session, int32_t stream_id,
 
     *data_flags |= NGHTTP2_DATA_FLAG_EOF;
 
-    if (!downstream->get_request_trailers().empty()) {
+    auto &trailers = downstream->get_request_trailers();
+    if (!trailers.empty()) {
       std::vector<nghttp2_nv> nva;
-      nva.reserve(downstream->get_request_trailers().size());
-      for (auto &kv : downstream->get_request_trailers()) {
+      nva.reserve(trailers.size());
+      for (auto &kv : trailers) {
         nva.push_back(http2::make_nv(kv.name, kv.value, kv.no_index));
       }
       rv = nghttp2_submit_trailer(session, stream_id, nva.data(), nva.size());

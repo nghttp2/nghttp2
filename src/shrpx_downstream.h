@@ -221,6 +221,11 @@ public:
 
   size_t get_response_headers_sum() const;
 
+  const Headers &get_response_trailers() const;
+  void add_response_trailer(const uint8_t *name, size_t namelen,
+                            const uint8_t *value, size_t valuelen,
+                            bool no_index, int16_t token);
+
   unsigned int get_response_http_status() const;
   void set_response_http_status(unsigned int status);
   void set_response_major(int major);
@@ -316,6 +321,7 @@ private:
   // trailer part.  For HTTP/1.1, trailer part is only included with
   // chunked encoding.  For HTTP/2, there is no such limit.
   Headers request_trailers_;
+  Headers response_trailers_;
 
   std::chrono::high_resolution_clock::time_point request_start_time_;
 

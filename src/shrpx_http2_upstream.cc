@@ -1068,6 +1068,7 @@ ssize_t downstream_data_read_callback(nghttp2_session *session,
                                       size_t length, uint32_t *data_flags,
                                       nghttp2_data_source *source,
                                       void *user_data) {
+  int rv;
   auto downstream = static_cast<Downstream *>(source->ptr);
   auto upstream = static_cast<Http2Upstream *>(downstream->get_upstream());
   auto body = downstream->get_response_buf();
@@ -1093,7 +1094,22 @@ ssize_t downstream_data_read_callback(nghttp2_session *session,
     *data_flags |= NGHTTP2_DATA_FLAG_EOF;
 
     if (!downstream->get_upgraded()) {
-
+      auto &trailers = downstream->get_response_trailers();
+      if (!trailers.empty()) {
+        std::vector<nghttp2_nv> nva;
+        nva.reserve(trailers.size());
+        for (auto &kv : trailers) {
+          nva.push_back(http2::make_nv(kv.name, kv.value, kv.no_index));
+        }
+        rv = nghttp2_submit_trailer(session, stream_id, nva.data(), nva.size());
+        if (rv != 0) {
+          if (nghttp2_is_fatal(rv)) {
+            return NGHTTP2_ERR_CALLBACK_FAILURE;
+          }
+        } else {
+          *data_flags |= NGHTTP2_DATA_FLAG_NO_END_STREAM;
+        }
+      }
       if (nghttp2_session_get_stream_remote_close(session, stream_id) == 0) {
         upstream->rst_stream(downstream, NGHTTP2_NO_ERROR);
       }
