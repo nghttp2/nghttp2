@@ -187,8 +187,7 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
     verbose_on_header_callback(session, frame, name, namelen, value, valuelen,
                                flags, user_data);
   }
-  if (frame->hd.type != NGHTTP2_HEADERS ||
-      frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
+  if (frame->hd.type != NGHTTP2_HEADERS) {
     return 0;
   }
   auto upstream = static_cast<Http2Upstream *>(user_data);
@@ -207,12 +206,25 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
                            << downstream->get_request_headers_sum();
     }
 
+    // just ignore header fields if this is trailer part.
+    if (frame->headers.cat == NGHTTP2_HCAT_HEADERS) {
+      return 0;
+    }
+
     if (upstream->error_reply(downstream, 431) != 0) {
       return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
     }
 
     return 0;
   }
+
+  if (frame->headers.cat == NGHTTP2_HCAT_HEADERS) {
+    // just store header fields for trailer part
+    downstream->add_request_trailer(name, namelen, value, valuelen,
+                                    flags & NGHTTP2_NV_FLAG_NO_INDEX, -1);
+    return 0;
+  }
+
   auto token = http2::lookup_token(name, namelen);
 
   if (token == http2::HD_CONTENT_LENGTH) {
@@ -1056,6 +1068,7 @@ ssize_t downstream_data_read_callback(nghttp2_session *session,
                                       size_t length, uint32_t *data_flags,
                                       nghttp2_data_source *source,
                                       void *user_data) {
+  int rv;
   auto downstream = static_cast<Downstream *>(source->ptr);
   auto upstream = static_cast<Http2Upstream *>(downstream->get_upstream());
   auto body = downstream->get_response_buf();
@@ -1081,7 +1094,23 @@ ssize_t downstream_data_read_callback(nghttp2_session *session,
     *data_flags |= NGHTTP2_DATA_FLAG_EOF;
 
     if (!downstream->get_upgraded()) {
-
+      auto &trailers = downstream->get_response_trailers();
+      if (!trailers.empty()) {
+        std::vector<nghttp2_nv> nva;
+        nva.reserve(trailers.size());
+        http2::copy_headers_to_nva(nva, trailers);
+        if (!nva.empty()) {
+          rv = nghttp2_submit_trailer(session, stream_id, nva.data(),
+                                      nva.size());
+          if (rv != 0) {
+            if (nghttp2_is_fatal(rv)) {
+              return NGHTTP2_ERR_CALLBACK_FAILURE;
+            }
+          } else {
+            *data_flags |= NGHTTP2_DATA_FLAG_NO_END_STREAM;
+          }
+        }
+      }
       if (nghttp2_session_get_stream_remote_close(session, stream_id) == 0) {
         upstream->rst_stream(downstream, NGHTTP2_NO_ERROR);
       }

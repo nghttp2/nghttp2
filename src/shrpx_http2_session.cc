@@ -668,18 +668,33 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
     return 0;
   }
 
-  if (frame->hd.type != NGHTTP2_HEADERS ||
-      (frame->headers.cat != NGHTTP2_HCAT_RESPONSE &&
-       !downstream->get_expect_final_response())) {
+  if (frame->hd.type != NGHTTP2_HEADERS) {
     return 0;
   }
+
+  auto trailer = frame->headers.cat != NGHTTP2_HCAT_RESPONSE &&
+                 !downstream->get_expect_final_response();
 
   if (downstream->get_response_headers_sum() > Downstream::MAX_HEADERS_SUM) {
     if (LOG_ENABLED(INFO)) {
       DLOG(INFO, downstream) << "Too large header block size="
                              << downstream->get_response_headers_sum();
     }
+
+    if (trailer) {
+      // we don't care trailer part exceeds header size limit; just
+      // discard it.
+      return 0;
+    }
+
     return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+  }
+
+  if (trailer) {
+    // just store header fields for trailer part
+    downstream->add_response_trailer(name, namelen, value, valuelen,
+                                     flags & NGHTTP2_NV_FLAG_NO_INDEX, -1);
+    return 0;
   }
 
   auto token = http2::lookup_token(name, namelen);
@@ -891,10 +906,6 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
         if (rv != 0) {
           return 0;
         }
-      } else if ((frame->hd.flags & NGHTTP2_FLAG_END_STREAM) == 0) {
-        http2session->submit_rst_stream(frame->hd.stream_id,
-                                        NGHTTP2_PROTOCOL_ERROR);
-        return 0;
       }
     }
 

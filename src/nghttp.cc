@@ -376,6 +376,16 @@ int submit_request(HttpClient *client, const Headers &headers, Request *req) {
     nva.push_back(http2::make_nv(kv.name, kv.value, kv.no_index));
   }
 
+  std::string trailer_names;
+  if (!config.trailer.empty()) {
+    trailer_names = config.trailer[0].name;
+    for (size_t i = 1; i < config.trailer.size(); ++i) {
+      trailer_names += ", ";
+      trailer_names += config.trailer[i].name;
+    }
+    nva.push_back(http2::make_nv_ls("trailer", trailer_names));
+  }
+
   auto stream_id =
       nghttp2_submit_request(client->session, &req->pri_spec, nva.data(),
                              nva.size(), req->data_prd, req);
@@ -2128,7 +2138,6 @@ ssize_t file_read_callback(nghttp2_session *session, int32_t stream_id,
   if (nread == 0) {
     *data_flags |= NGHTTP2_DATA_FLAG_EOF;
     if (!config.trailer.empty()) {
-      *data_flags |= NGHTTP2_DATA_FLAG_NO_END_STREAM;
       std::vector<nghttp2_nv> nva;
       nva.reserve(config.trailer.size());
       for (auto &kv : config.trailer) {
@@ -2136,7 +2145,11 @@ ssize_t file_read_callback(nghttp2_session *session, int32_t stream_id,
       }
       rv = nghttp2_submit_trailer(session, stream_id, nva.data(), nva.size());
       if (rv != 0) {
-        *data_flags &= ~NGHTTP2_DATA_FLAG_NO_END_STREAM;
+        if (nghttp2_is_fatal(rv)) {
+          return NGHTTP2_ERR_CALLBACK_FAILURE;
+        }
+      } else {
+        *data_flags |= NGHTTP2_DATA_FLAG_NO_END_STREAM;
       }
     }
   } else {

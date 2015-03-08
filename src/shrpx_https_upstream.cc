@@ -83,14 +83,19 @@ namespace {
 int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
   auto upstream = static_cast<HttpsUpstream *>(htp->data);
   auto downstream = upstream->get_downstream();
-  if (downstream->get_request_state() != Downstream::INITIAL) {
-    // ignore trailers
-    return 0;
-  }
-  if (downstream->get_request_header_key_prev()) {
-    downstream->append_last_request_header_key(data, len);
+  if (downstream->get_request_state() == Downstream::INITIAL) {
+    if (downstream->get_request_header_key_prev()) {
+      downstream->append_last_request_header_key(data, len);
+    } else {
+      downstream->add_request_header(std::string(data, len), "");
+    }
   } else {
-    downstream->add_request_header(std::string(data, len), "");
+    // trailer part
+    if (downstream->get_request_trailer_key_prev()) {
+      downstream->append_last_request_trailer_key(data, len);
+    } else {
+      downstream->add_request_trailer(std::string(data, len), "");
+    }
   }
   if (downstream->get_request_headers_sum() > Downstream::MAX_HEADERS_SUM) {
     if (LOG_ENABLED(INFO)) {
@@ -107,14 +112,18 @@ namespace {
 int htp_hdr_valcb(http_parser *htp, const char *data, size_t len) {
   auto upstream = static_cast<HttpsUpstream *>(htp->data);
   auto downstream = upstream->get_downstream();
-  if (downstream->get_request_state() != Downstream::INITIAL) {
-    // ignore trailers
-    return 0;
-  }
-  if (downstream->get_request_header_key_prev()) {
-    downstream->set_last_request_header_value(std::string(data, len));
+  if (downstream->get_request_state() == Downstream::INITIAL) {
+    if (downstream->get_request_header_key_prev()) {
+      downstream->set_last_request_header_value(data, len);
+    } else {
+      downstream->append_last_request_header_value(data, len);
+    }
   } else {
-    downstream->append_last_request_header_value(data, len);
+    if (downstream->get_request_trailer_key_prev()) {
+      downstream->set_last_request_trailer_value(data, len);
+    } else {
+      downstream->append_last_request_trailer_value(data, len);
+    }
   }
   if (downstream->get_request_headers_sum() > Downstream::MAX_HEADERS_SUM) {
     if (LOG_ENABLED(INFO)) {
@@ -780,7 +789,16 @@ int HttpsUpstream::on_downstream_body(Downstream *downstream,
 int HttpsUpstream::on_downstream_body_complete(Downstream *downstream) {
   if (downstream->get_chunked_response()) {
     auto output = downstream->get_response_buf();
-    output->append("0\r\n\r\n");
+    auto &trailers = downstream->get_response_trailers();
+    if (trailers.empty()) {
+      output->append("0\r\n\r\n");
+    } else {
+      output->append("0\r\n");
+      std::string trailer_part;
+      http2::build_http1_headers_from_headers(trailer_part, trailers);
+      output->append(trailer_part.c_str(), trailer_part.size());
+      output->append("\r\n");
+    }
   }
   if (LOG_ENABLED(INFO)) {
     DLOG(INFO, downstream) << "HTTP response completed";

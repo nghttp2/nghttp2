@@ -120,8 +120,9 @@ Downstream::Downstream(Upstream *upstream, int32_t stream_id, int32_t priority)
       response_minor_(1), upgrade_request_(false), upgraded_(false),
       http2_upgrade_seen_(false), chunked_request_(false),
       request_connection_close_(false), request_header_key_prev_(false),
-      request_http2_expect_body_(false), chunked_response_(false),
-      response_connection_close_(false), response_header_key_prev_(false),
+      request_trailer_key_prev_(false), request_http2_expect_body_(false),
+      chunked_response_(false), response_connection_close_(false),
+      response_header_key_prev_(false), response_trailer_key_prev_(false),
       expect_final_response_(false), request_pending_(false) {
 
   ev_timer_init(&upstream_rtimer_, &upstream_rtimeoutcb, 0.,
@@ -288,6 +289,45 @@ const std::string &Downstream::get_assembled_request_cookie() const {
 }
 
 namespace {
+void add_header(bool &key_prev, size_t &sum, Headers &headers, std::string name,
+                std::string value) {
+  key_prev = true;
+  sum += name.size() + value.size();
+  headers.emplace_back(std::move(name), std::move(value));
+}
+} // namespace
+
+namespace {
+void append_last_header_key(bool key_prev, size_t &sum, Headers &headers,
+                            const char *data, size_t len) {
+  assert(key_prev);
+  sum += len;
+  auto &item = headers.back();
+  item.name.append(data, len);
+}
+} // namespace
+
+namespace {
+void append_last_header_value(bool key_prev, size_t &sum, Headers &headers,
+                              const char *data, size_t len) {
+  assert(!key_prev);
+  sum += len;
+  auto &item = headers.back();
+  item.value.append(data, len);
+}
+} // namespace
+
+namespace {
+void set_last_header_value(bool &key_prev, size_t &sum, Headers &headers,
+                           const char *data, size_t len) {
+  key_prev = false;
+  sum += len;
+  auto &item = headers.back();
+  item.value.assign(data, len);
+}
+} // namespace
+
+namespace {
 int index_headers(http2::HeaderIndex &hdidx, Headers &headers,
                   int64_t &content_length) {
   for (size_t i = 0; i < headers.size(); ++i) {
@@ -333,16 +373,13 @@ Downstream::get_request_header(const std::string &name) const {
 }
 
 void Downstream::add_request_header(std::string name, std::string value) {
-  request_header_key_prev_ = true;
-  request_headers_sum_ += name.size() + value.size();
-  request_headers_.emplace_back(std::move(name), std::move(value));
+  add_header(request_header_key_prev_, request_headers_sum_, request_headers_,
+             std::move(name), std::move(value));
 }
 
-void Downstream::set_last_request_header_value(std::string value) {
-  request_header_key_prev_ = false;
-  request_headers_sum_ += value.size();
-  Headers::value_type &item = request_headers_.back();
-  item.value = std::move(value);
+void Downstream::set_last_request_header_value(const char *data, size_t len) {
+  set_last_header_value(request_header_key_prev_, request_headers_sum_,
+                        request_headers_, data, len);
 }
 
 void Downstream::add_request_header(const uint8_t *name, size_t namelen,
@@ -359,18 +396,14 @@ bool Downstream::get_request_header_key_prev() const {
 }
 
 void Downstream::append_last_request_header_key(const char *data, size_t len) {
-  assert(request_header_key_prev_);
-  request_headers_sum_ += len;
-  auto &item = request_headers_.back();
-  item.name.append(data, len);
+  append_last_header_key(request_header_key_prev_, request_headers_sum_,
+                         request_headers_, data, len);
 }
 
 void Downstream::append_last_request_header_value(const char *data,
                                                   size_t len) {
-  assert(!request_header_key_prev_);
-  request_headers_sum_ += len;
-  auto &item = request_headers_.back();
-  item.value.append(data, len);
+  append_last_header_value(request_header_key_prev_, request_headers_sum_,
+                           request_headers_, data, len);
 }
 
 void Downstream::clear_request_headers() {
@@ -380,6 +413,45 @@ void Downstream::clear_request_headers() {
 
 size_t Downstream::get_request_headers_sum() const {
   return request_headers_sum_;
+}
+
+void Downstream::add_request_trailer(const uint8_t *name, size_t namelen,
+                                     const uint8_t *value, size_t valuelen,
+                                     bool no_index, int16_t token) {
+  // we never index trailer part.  Header size limit should be applied
+  // to all request header fields combined.
+  request_headers_sum_ += namelen + valuelen;
+  http2::add_header(request_trailers_, name, namelen, value, valuelen, no_index,
+                    -1);
+}
+
+const Headers &Downstream::get_request_trailers() const {
+  return request_trailers_;
+}
+
+void Downstream::add_request_trailer(std::string name, std::string value) {
+  add_header(request_trailer_key_prev_, request_headers_sum_, request_trailers_,
+             std::move(name), std::move(value));
+}
+
+void Downstream::set_last_request_trailer_value(const char *data, size_t len) {
+  set_last_header_value(request_trailer_key_prev_, request_headers_sum_,
+                        request_trailers_, data, len);
+}
+
+bool Downstream::get_request_trailer_key_prev() const {
+  return request_trailer_key_prev_;
+}
+
+void Downstream::append_last_request_trailer_key(const char *data, size_t len) {
+  append_last_header_key(request_trailer_key_prev_, request_headers_sum_,
+                         request_trailers_, data, len);
+}
+
+void Downstream::append_last_request_trailer_value(const char *data,
+                                                   size_t len) {
+  append_last_header_value(request_trailer_key_prev_, request_headers_sum_,
+                           request_trailers_, data, len);
 }
 
 void Downstream::set_request_method(std::string method) {
@@ -592,16 +664,13 @@ void Downstream::rewrite_location_response_header(
 }
 
 void Downstream::add_response_header(std::string name, std::string value) {
-  response_header_key_prev_ = true;
-  response_headers_sum_ += name.size() + value.size();
-  response_headers_.emplace_back(std::move(name), std::move(value));
+  add_header(response_header_key_prev_, response_headers_sum_,
+             response_headers_, std::move(name), std::move(value));
 }
 
-void Downstream::set_last_response_header_value(std::string value) {
-  response_header_key_prev_ = false;
-  response_headers_sum_ += value.size();
-  auto &item = response_headers_.back();
-  item.value = std::move(value);
+void Downstream::set_last_response_header_value(const char *data, size_t len) {
+  set_last_header_value(response_header_key_prev_, response_headers_sum_,
+                        response_headers_, data, len);
 }
 
 void Downstream::add_response_header(std::string name, std::string value,
@@ -626,18 +695,14 @@ bool Downstream::get_response_header_key_prev() const {
 }
 
 void Downstream::append_last_response_header_key(const char *data, size_t len) {
-  assert(response_header_key_prev_);
-  response_headers_sum_ += len;
-  auto &item = response_headers_.back();
-  item.name.append(data, len);
+  append_last_header_key(response_header_key_prev_, response_headers_sum_,
+                         response_headers_, data, len);
 }
 
 void Downstream::append_last_response_header_value(const char *data,
                                                    size_t len) {
-  assert(!response_header_key_prev_);
-  response_headers_sum_ += len;
-  auto &item = response_headers_.back();
-  item.value.append(data, len);
+  append_last_header_value(response_header_key_prev_, response_headers_sum_,
+                           response_headers_, data, len);
 }
 
 void Downstream::clear_response_headers() {
@@ -649,8 +714,46 @@ size_t Downstream::get_response_headers_sum() const {
   return response_headers_sum_;
 }
 
+const Headers &Downstream::get_response_trailers() const {
+  return response_trailers_;
+}
+
+void Downstream::add_response_trailer(const uint8_t *name, size_t namelen,
+                                      const uint8_t *value, size_t valuelen,
+                                      bool no_index, int16_t token) {
+  response_headers_sum_ += namelen + valuelen;
+  http2::add_header(response_trailers_, name, namelen, value, valuelen,
+                    no_index, -1);
+}
+
 unsigned int Downstream::get_response_http_status() const {
   return response_http_status_;
+}
+
+void Downstream::add_response_trailer(std::string name, std::string value) {
+  add_header(response_trailer_key_prev_, response_headers_sum_,
+             response_trailers_, std::move(name), std::move(value));
+}
+
+void Downstream::set_last_response_trailer_value(const char *data, size_t len) {
+  set_last_header_value(response_trailer_key_prev_, response_headers_sum_,
+                        response_trailers_, data, len);
+}
+
+bool Downstream::get_response_trailer_key_prev() const {
+  return response_trailer_key_prev_;
+}
+
+void Downstream::append_last_response_trailer_key(const char *data,
+                                                  size_t len) {
+  append_last_header_key(response_trailer_key_prev_, response_headers_sum_,
+                         response_trailers_, data, len);
+}
+
+void Downstream::append_last_response_trailer_value(const char *data,
+                                                    size_t len) {
+  append_last_header_value(response_trailer_key_prev_, response_headers_sum_,
+                           response_trailers_, data, len);
 }
 
 void Downstream::set_response_http_status(unsigned int status) {

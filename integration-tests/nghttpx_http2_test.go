@@ -520,6 +520,41 @@ func TestH2H1ServerPush(t *testing.T) {
 	}
 }
 
+// TestH2H1RequestTrailer tests request trailer part is forwarded to
+// backend.
+func TestH2H1RequestTrailer(t *testing.T) {
+	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
+		buf := make([]byte, 4096)
+		for {
+			_, err := r.Body.Read(buf)
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				t.Fatalf("r.Body.Read() = %v", err)
+			}
+		}
+		if got, want := r.Trailer.Get("foo"), "bar"; got != want {
+			t.Errorf("r.Trailer.Get(foo): %v; want %v", got, want)
+		}
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1RequestTrailer",
+		body: []byte("1"),
+		trailer: []hpack.HeaderField{
+			pair("foo", "bar"),
+		},
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("res.status: %v; want %v", got, want)
+	}
+}
+
 // TestH2H1GracefulShutdown tests graceful shutdown.
 func TestH2H1GracefulShutdown(t *testing.T) {
 	st := newServerTester(nil, t, noopHandler)
