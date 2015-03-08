@@ -780,7 +780,16 @@ int HttpsUpstream::on_downstream_body(Downstream *downstream,
 int HttpsUpstream::on_downstream_body_complete(Downstream *downstream) {
   if (downstream->get_chunked_response()) {
     auto output = downstream->get_response_buf();
-    output->append("0\r\n\r\n");
+    auto &trailers = downstream->get_response_trailers();
+    if (trailers.empty()) {
+      output->append("0\r\n\r\n");
+    } else {
+      output->append("0\r\n");
+      std::string trailer_part;
+      http2::build_http1_headers_from_headers(trailer_part, trailers);
+      output->append(trailer_part.c_str(), trailer_part.size());
+      output->append("\r\n");
+    }
   }
   if (LOG_ENABLED(INFO)) {
     DLOG(INFO, downstream) << "HTTP response completed";
