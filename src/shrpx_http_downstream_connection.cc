@@ -403,7 +403,16 @@ int HttpDownstreamConnection::end_upload_data() {
   }
 
   auto output = downstream_->get_request_buf();
-  output->append("0\r\n\r\n");
+  auto &trailers = downstream_->get_request_trailers();
+  if (trailers.empty()) {
+    output->append("0\r\n\r\n");
+  } else {
+    output->append("0\r\n");
+    std::string trailer_part;
+    http2::build_http1_headers_from_headers(trailer_part, trailers);
+    output->append(trailer_part.c_str(), trailer_part.size());
+    output->append("\r\n");
+  }
 
   signal_write();
 
