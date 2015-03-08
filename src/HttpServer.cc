@@ -690,11 +690,21 @@ int Http2Handler::submit_file_response(const std::string &status,
                         http2::make_nv_ls("content-length", content_length),
                         http2::make_nv_ll("cache-control", "max-age=3600"),
                         http2::make_nv_ls("date", sessions_->get_cached_date()),
-                        http2::make_nv_ll("", ""));
+                        http2::make_nv_ll("", ""), http2::make_nv_ll("", ""));
   size_t nvlen = 5;
   if (last_modified != 0) {
     last_modified_str = util::http_date(last_modified);
     nva[nvlen++] = http2::make_nv_ls("last-modified", last_modified_str);
+  }
+  auto &trailer = get_config()->trailer;
+  std::string trailer_names;
+  if (!trailer.empty()) {
+    trailer_names = trailer[0].name;
+    for (size_t i = 1; i < trailer.size(); ++i) {
+      trailer_names += ", ";
+      trailer_names += trailer[i].name;
+    }
+    nva[nvlen++] = http2::make_nv_ls("trailer", trailer_names);
   }
   return nghttp2_submit_response(session_, stream->stream_id, nva.data(), nvlen,
                                  data_prd);

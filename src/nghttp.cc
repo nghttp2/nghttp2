@@ -376,6 +376,16 @@ int submit_request(HttpClient *client, const Headers &headers, Request *req) {
     nva.push_back(http2::make_nv(kv.name, kv.value, kv.no_index));
   }
 
+  std::string trailer_names;
+  if (!config.trailer.empty()) {
+    trailer_names = config.trailer[0].name;
+    for (size_t i = 1; i < config.trailer.size(); ++i) {
+      trailer_names += ", ";
+      trailer_names += config.trailer[i].name;
+    }
+    nva.push_back(http2::make_nv_ls("trailer", trailer_names));
+  }
+
   auto stream_id =
       nghttp2_submit_request(client->session, &req->pri_spec, nva.data(),
                              nva.size(), req->data_prd, req);
