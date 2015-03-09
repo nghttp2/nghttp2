@@ -49,12 +49,31 @@ using namespace nghttp2;
 namespace shrpx {
 
 namespace {
+const ev_tstamp CONNCHK_TIMEOUT = 5.;
+const ev_tstamp CONNCHK_PING_TIMEOUT = 1.;
+} // namespace
+
+namespace {
 void connchk_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto http2session = static_cast<Http2Session *>(w->data);
-  SSLOG(INFO, http2session) << "connection check required";
+
   ev_timer_stop(loop, w);
-  http2session->set_connection_check_state(
-      Http2Session::CONNECTION_CHECK_REQUIRED);
+
+  switch (http2session->get_connection_check_state()) {
+  case Http2Session::CONNECTION_CHECK_STARTED:
+    // ping timeout; disconnect
+    if (LOG_ENABLED(INFO)) {
+      SSLOG(INFO, http2session) << "ping timeout";
+    }
+    http2session->disconnect();
+    return;
+  default:
+    if (LOG_ENABLED(INFO)) {
+      SSLOG(INFO, http2session) << "connection check required";
+    }
+    http2session->set_connection_check_state(
+        Http2Session::CONNECTION_CHECK_REQUIRED);
+  }
 }
 } // namespace
 
@@ -90,12 +109,12 @@ void readcb(struct ev_loop *loop, ev_io *w, int revents) {
   int rv;
   auto conn = static_cast<Connection *>(w->data);
   auto http2session = static_cast<Http2Session *>(conn->data);
-  http2session->connection_alive();
   rv = http2session->do_read();
   if (rv != 0) {
     http2session->disconnect(http2session->should_hard_fail());
     return;
   }
+  http2session->connection_alive();
   if (ev_is_active(http2session->get_wev())) {
     rv = http2session->do_write();
     if (rv != 0) {
@@ -116,7 +135,6 @@ void writecb(struct ev_loop *loop, ev_io *w, int revents) {
     http2session->disconnect(http2session->should_hard_fail());
     return;
   }
-  http2session->connection_alive();
 }
 } // namespace
 
@@ -131,8 +149,9 @@ Http2Session::Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx)
   read_ = write_ = &Http2Session::noop;
   on_read_ = on_write_ = &Http2Session::noop;
 
-  // We will resuse this many times, so use repeat timeout value.
-  ev_timer_init(&connchk_timer_, connchk_timeout_cb, 0., 5.);
+  // We will resuse this many times, so use repeat timeout value.  The
+  // timeout value is set later.
+  ev_timer_init(&connchk_timer_, connchk_timeout_cb, 0., 0.);
 
   connchk_timer_.data = this;
 
@@ -953,6 +972,14 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
     }
     http2session->stop_settings_timer();
     return 0;
+  case NGHTTP2_PING:
+    if (frame->hd.flags & NGHTTP2_FLAG_ACK) {
+      if (LOG_ENABLED(INFO)) {
+        LOG(INFO) << "PING ACK received";
+      }
+      http2session->connection_alive();
+    }
+    return 0;
   case NGHTTP2_PUSH_PROMISE:
     if (LOG_ENABLED(INFO)) {
       SSLOG(INFO, http2session)
@@ -1234,7 +1261,7 @@ int Http2Session::on_connect() {
     return 0;
   }
 
-  reset_connection_check_timer();
+  reset_connection_check_timer(CONNCHK_TIMEOUT);
 
   submit_pending_requests();
 
@@ -1397,21 +1424,31 @@ void Http2Session::start_checking_connection() {
   // ping frame to see whether connection is alive.
   nghttp2_submit_ping(session_, NGHTTP2_FLAG_NONE, NULL);
 
+  // set ping timeout and start timer again
+  reset_connection_check_timer(CONNCHK_PING_TIMEOUT);
+
   signal_write();
 }
 
-void Http2Session::reset_connection_check_timer() {
+void Http2Session::reset_connection_check_timer(ev_tstamp t) {
+  if (!get_config()->http2_downstream_connchk) {
+    return;
+  }
+  connchk_timer_.repeat = t;
   ev_timer_again(conn_.loop, &connchk_timer_);
 }
 
 void Http2Session::connection_alive() {
-  reset_connection_check_timer();
+  reset_connection_check_timer(CONNCHK_TIMEOUT);
 
   if (connection_check_state_ == CONNECTION_CHECK_NONE) {
     return;
   }
 
-  SSLOG(INFO, this) << "Connection alive";
+  if (LOG_ENABLED(INFO)) {
+    SSLOG(INFO, this) << "Connection alive";
+  }
+
   connection_check_state_ = CONNECTION_CHECK_NONE;
 
   submit_pending_requests();
@@ -1443,6 +1480,10 @@ void Http2Session::submit_pending_requests() {
 
 void Http2Session::set_connection_check_state(int state) {
   connection_check_state_ = state;
+}
+
+int Http2Session::get_connection_check_state() const {
+  return connection_check_state_;
 }
 
 int Http2Session::noop() { return 0; }

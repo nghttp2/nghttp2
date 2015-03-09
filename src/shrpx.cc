@@ -917,6 +917,7 @@ void fill_default_config() {
   mod_config()->downstream_response_buffer_size = 16 * 1024;
   mod_config()->no_server_push = false;
   mod_config()->host_unix = false;
+  mod_config()->http2_downstream_connchk = false;
 }
 } // namespace
 
@@ -1217,6 +1218,10 @@ HTTP/2 and SPDY:
               connection to 2**<N>-1.
               Default: )"
       << get_config()->http2_downstream_connection_window_bits << R"(
+  --backend-http2-connection-check
+              Check   HTTP/2  backend   connection  is   alive  before
+              forwarding request.   This option is useful  in unstable
+              network environment (e.g. mobile).
   --backend-no-tls
               Disable SSL/TLS on backend connections.
   --http2-no-cookie-crumbling
@@ -1489,6 +1494,7 @@ int main(int argc, char **argv) {
         {"backend-request-buffer", required_argument, &flag, 72},
         {"no-host-rewrite", no_argument, &flag, 73},
         {"no-server-push", no_argument, &flag, 74},
+        {"backend-http2-connection-check", no_argument, &flag, 75},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -1825,6 +1831,10 @@ int main(int argc, char **argv) {
       case 74:
         // --no-server-push
         cmdcfgs.emplace_back(SHRPX_OPT_NO_SERVER_PUSH, "yes");
+        break;
+      case 75:
+        // --backend-http2-connection-check
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP2_CONNECTION_CHECK, "yes");
         break;
       default:
         break;

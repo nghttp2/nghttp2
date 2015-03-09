@@ -136,6 +136,7 @@ extern const char SHRPX_OPT_TLS_CTX_PER_WORKER[];
 extern const char SHRPX_OPT_BACKEND_REQUEST_BUFFER[];
 extern const char SHRPX_OPT_BACKEND_RESPONSE_BUFFER[];
 extern const char SHRPX_OPT_NO_SERVER_PUSH[];
+extern const char SHRPX_OPT_BACKEND_HTTP2_CONNECTION_CHECK[];
 
 union sockaddr_union {
   sockaddr_storage storage;
@@ -322,6 +323,7 @@ struct Config {
   bool no_server_push;
   // true if host contains UNIX domain socket path
   bool host_unix;
+  bool http2_downstream_connchk;
 };
 
 const Config *get_config();

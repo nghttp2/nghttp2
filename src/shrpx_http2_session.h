@@ -128,14 +128,16 @@ public:
   // Initiates the connection checking if downstream connection has
   // been established and connection checking is required.
   void start_checking_connection();
-  // Resets connection check timer.  After timeout, we require
-  // connection checking.
-  void reset_connection_check_timer();
+  // Resets connection check timer to timeout |t|.  After timeout, we
+  // require connection checking.  If connection checking is already
+  // enabled, this timeout is for PING ACK timeout.
+  void reset_connection_check_timer(ev_tstamp t);
   // Signals that connection is alive.  Internally
   // reset_connection_check_timer() is called.
   void connection_alive();
   // Change connection check state.
   void set_connection_check_state(int state);
+  int get_connection_check_state() const;
 
   bool should_hard_fail() const;
 
@@ -175,6 +177,10 @@ public:
 private:
   Connection conn_;
   ev_timer settings_timer_;
+  // This timer has 2 purpose: when it first timeout, set
+  // connection_check_state_ = CONNECTION_CHECK_REQUIRED.  After
+  // connection check has started, this timer is started again and
+  // traps PING ACK timeout.
   ev_timer connchk_timer_;
   std::set<Http2DownstreamConnection *> dconns_;
   std::set<StreamData *> streams_;
