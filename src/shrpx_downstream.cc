@@ -619,7 +619,7 @@ void Downstream::rewrite_location_response_header(
     return;
   }
   std::string new_uri;
-  if (get_config()->no_host_rewrite) {
+  if (get_config()->no_host_rewrite || request_method_ == "CONNECT") {
     if (!request_http2_authority_.empty()) {
       new_uri = http2::rewrite_location_uri(
           (*hd).value, u, request_http2_authority_, request_http2_authority_,
