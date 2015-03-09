@@ -807,7 +807,9 @@ int HttpClient::on_upgrade_connect() {
     if (i < initial_headerslen) {
       continue;
     }
-    headers.emplace_back(kv.name, kv.value, kv.no_index);
+    if (kv.name.size() != 0 && kv.name[0] != ':') {
+      headers.emplace_back(kv.name, kv.value, kv.no_index);
+    }
   }
 
   req += " HTTP/1.1\r\n";
