@@ -135,6 +135,7 @@ public:
   // require connection checking.  If connection checking is already
   // enabled, this timeout is for PING ACK timeout.
   void reset_connection_check_timer(ev_tstamp t);
+  void reset_connection_check_timer_if_not_checking();
   // Signals that connection is alive.  Internally
   // reset_connection_check_timer() is called.
   void connection_alive();

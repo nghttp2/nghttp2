@@ -137,6 +137,7 @@ void writecb(struct ev_loop *loop, ev_io *w, int revents) {
     http2session->disconnect(http2session->should_hard_fail());
     return;
   }
+  http2session->reset_connection_check_timer_if_not_checking();
 }
 } // namespace
 
@@ -1470,6 +1471,14 @@ void Http2Session::start_checking_connection() {
 void Http2Session::reset_connection_check_timer(ev_tstamp t) {
   connchk_timer_.repeat = t;
   ev_timer_again(conn_.loop, &connchk_timer_);
+}
+
+void Http2Session::reset_connection_check_timer_if_not_checking() {
+  if (connection_check_state_ != CONNECTION_CHECK_NONE) {
+    return;
+  }
+
+  reset_connection_check_timer(CONNCHK_TIMEOUT);
 }
 
 void Http2Session::connection_alive() {
