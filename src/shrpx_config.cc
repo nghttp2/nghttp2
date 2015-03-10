@@ -146,8 +146,6 @@ const char SHRPX_OPT_TLS_CTX_PER_WORKER[] = "tls-ctx-per-worker";
 const char SHRPX_OPT_BACKEND_REQUEST_BUFFER[] = "backend-request-buffer";
 const char SHRPX_OPT_BACKEND_RESPONSE_BUFFER[] = "backend-response-buffer";
 const char SHRPX_OPT_NO_SERVER_PUSH[] = "no-server-push";
-const char SHRPX_OPT_BACKEND_HTTP2_CONNECTION_CHECK[] =
-    "backend-http2-connection-check";
 const char SHRPX_OPT_BACKEND_HTTP2_CONNECTIONS_PER_WORKER[] =
     "backend-http2-connections-per-worker";
 
@@ -1193,12 +1191,6 @@ int parse_config(const char *opt, const char *optarg) {
 
   if (util::strieq(opt, SHRPX_OPT_NO_SERVER_PUSH)) {
     mod_config()->no_server_push = util::strieq(optarg, "yes");
-
-    return 0;
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_BACKEND_HTTP2_CONNECTION_CHECK)) {
-    mod_config()->http2_downstream_connchk = util::strieq(optarg, "yes");
 
     return 0;
   }

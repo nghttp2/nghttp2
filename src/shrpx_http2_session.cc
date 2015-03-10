@@ -1468,9 +1468,6 @@ void Http2Session::start_checking_connection() {
 }
 
 void Http2Session::reset_connection_check_timer(ev_tstamp t) {
-  if (!get_config()->http2_downstream_connchk) {
-    return;
-  }
   connchk_timer_.repeat = t;
   ev_timer_again(conn_.loop, &connchk_timer_);
 }
