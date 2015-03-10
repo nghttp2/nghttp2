@@ -1397,10 +1397,7 @@ public:
       auto fd = accept(fd_, nullptr, nullptr);
 #endif // !HAVE_ACCEPT4
       if (fd == -1) {
-        if (errno == EAGAIN || errno == EWOULDBLOCK) {
-          break;
-        }
-        continue;
+        break;
       }
 #ifndef HAVE_ACCEPT4
       util::make_socket_nonblocking(fd);
