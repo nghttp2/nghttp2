@@ -776,7 +776,7 @@ int HttpDownstreamConnection::on_connect() {
     if (LOG_ENABLED(INFO)) {
       DLOG(INFO, this) << "downstream connect failed";
     }
-    connect_blocker->on_failure();
+
     return -1;
   }
 
