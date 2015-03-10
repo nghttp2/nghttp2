@@ -64,8 +64,6 @@ public:
   void remove_downstream(Downstream *downstream);
   Downstream *find_downstream(int32_t stream_id);
 
-  nghttp2_session *get_http2_session();
-
   int rst_stream(Downstream *downstream, uint32_t error_code);
   int terminate_session(uint32_t error_code);
   int error_reply(Downstream *downstream, unsigned int status_code);

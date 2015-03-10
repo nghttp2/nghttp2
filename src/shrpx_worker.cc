@@ -51,17 +51,20 @@ void eventcb(struct ev_loop *loop, ev_async *w, int revents) {
 Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
                ssl::CertLookupTree *cert_tree,
                const std::shared_ptr<TicketKeys> &ticket_keys)
-    : loop_(loop), sv_ssl_ctx_(sv_ssl_ctx), cl_ssl_ctx_(cl_ssl_ctx),
-      cert_tree_(cert_tree), ticket_keys_(ticket_keys),
+    : next_http2session_(0), loop_(loop), sv_ssl_ctx_(sv_ssl_ctx),
+      cl_ssl_ctx_(cl_ssl_ctx), cert_tree_(cert_tree), ticket_keys_(ticket_keys),
+      connect_blocker_(make_unique<ConnectBlocker>(loop_)),
       graceful_shutdown_(false) {
   ev_async_init(&w_, eventcb);
   w_.data = this;
   ev_async_start(loop_, &w_);
 
   if (get_config()->downstream_proto == PROTO_HTTP2) {
-    http2session_ = make_unique<Http2Session>(loop_, cl_ssl_ctx, this);
-  } else {
-    http1_connect_blocker_ = make_unique<ConnectBlocker>(loop_);
+    auto n = get_config()->http2_downstream_connections_per_worker;
+    for (; n > 0; --n) {
+      http2sessions_.push_back(make_unique<Http2Session>(
+          loop_, cl_ssl_ctx, connect_blocker_.get(), this));
+    }
   }
 }
 
@@ -185,10 +188,22 @@ WorkerStat *Worker::get_worker_stat() { return &worker_stat_; }
 
 DownstreamConnectionPool *Worker::get_dconn_pool() { return &dconn_pool_; }
 
-Http2Session *Worker::get_http2_session() const { return http2session_.get(); }
+Http2Session *Worker::next_http2_session() {
+  if (http2sessions_.empty()) {
+    return nullptr;
+  }
 
-ConnectBlocker *Worker::get_http1_connect_blocker() const {
-  return http1_connect_blocker_.get();
+  auto res = http2sessions_[next_http2session_].get();
+  ++next_http2session_;
+  if (next_http2session_ >= http2sessions_.size()) {
+    next_http2session_ = 0;
+  }
+
+  return res;
+}
+
+ConnectBlocker *Worker::get_connect_blocker() const {
+  return connect_blocker_.get();
 }
 
 struct ev_loop *Worker::get_loop() const {

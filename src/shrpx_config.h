@@ -260,6 +260,7 @@ struct Config {
   size_t http2_downstream_window_bits;
   size_t http2_upstream_connection_window_bits;
   size_t http2_downstream_connection_window_bits;
+  size_t http2_downstream_connections_per_worker;
   size_t downstream_connections_per_host;
   size_t downstream_connections_per_frontend;
   // actual size of downstream_http_proxy_addr

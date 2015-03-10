@@ -93,8 +93,7 @@ public:
   void remove_downstream_connection(DownstreamConnection *dconn);
   std::unique_ptr<DownstreamConnection> get_downstream_connection();
   SSL *get_ssl() const;
-  Http2Session *get_http2_session() const;
-  ConnectBlocker *get_http1_connect_blocker() const;
+  ConnectBlocker *get_connect_blocker() const;
   // Call this function when HTTP/2 connection header is received at
   // the start of the connection.
   void direct_http2_upgrade();

@@ -60,8 +60,6 @@ public:
   void remove_downstream(Downstream *downstream);
   Downstream *find_downstream(int32_t stream_id);
 
-  spdylay_session *get_http2_session();
-
   int rst_stream(Downstream *downstream, int status_code);
   int error_reply(Downstream *downstream, unsigned int status_code);
 

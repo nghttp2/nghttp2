@@ -821,8 +821,6 @@ Downstream *SpdyUpstream::find_downstream(int32_t stream_id) {
   return downstream_queue_.find(stream_id);
 }
 
-spdylay_session *SpdyUpstream::get_http2_session() { return session_; }
-
 // WARNING: Never call directly or indirectly spdylay_session_send or
 // spdylay_session_recv. These calls may delete downstream.
 int SpdyUpstream::on_downstream_header_complete(Downstream *downstream) {

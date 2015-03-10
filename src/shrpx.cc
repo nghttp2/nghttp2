@@ -918,6 +918,7 @@ void fill_default_config() {
   mod_config()->no_server_push = false;
   mod_config()->host_unix = false;
   mod_config()->http2_downstream_connchk = false;
+  mod_config()->http2_downstream_connections_per_worker = 0;
 }
 } // namespace
 
@@ -2062,6 +2063,11 @@ int main(int argc, char **argv) {
                          AF_UNSPEC) == -1) {
       exit(EXIT_FAILURE);
     }
+  }
+
+  if (get_config()->http2_downstream_connections_per_worker == 0) {
+    mod_config()->http2_downstream_connections_per_worker =
+        get_config()->downstream_addrs.size();
   }
 
   if (get_config()->rlimit_nofile) {

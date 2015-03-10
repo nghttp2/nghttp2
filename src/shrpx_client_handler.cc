@@ -576,6 +576,9 @@ void ClientHandler::set_should_close_after_write(bool f) {
 
 void ClientHandler::pool_downstream_connection(
     std::unique_ptr<DownstreamConnection> dconn) {
+  if (!dconn->poolable()) {
+    return;
+  }
   if (LOG_ENABLED(INFO)) {
     CLOG(INFO, this) << "Pooling downstream connection DCONN:" << dconn.get();
   }
@@ -605,7 +608,7 @@ ClientHandler::get_downstream_connection() {
     }
 
     auto dconn_pool = worker_->get_dconn_pool();
-    auto http2session = worker_->get_http2_session();
+    auto http2session = worker_->next_http2_session();
 
     if (http2session) {
       dconn = make_unique<Http2DownstreamConnection>(dconn_pool, http2session);
@@ -628,12 +631,8 @@ ClientHandler::get_downstream_connection() {
 
 SSL *ClientHandler::get_ssl() const { return conn_.tls.ssl; }
 
-Http2Session *ClientHandler::get_http2_session() const {
-  return worker_->get_http2_session();
-}
-
-ConnectBlocker *ClientHandler::get_http1_connect_blocker() const {
-  return worker_->get_http1_connect_blocker();
+ConnectBlocker *ClientHandler::get_connect_blocker() const {
+  return worker_->get_connect_blocker();
 }
 
 void ClientHandler::direct_http2_upgrade() {

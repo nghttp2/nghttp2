@@ -40,6 +40,7 @@
 #include "shrpx_ssl.h"
 #include "shrpx_http.h"
 #include "shrpx_worker.h"
+#include "shrpx_connect_blocker.h"
 #include "http2.h"
 #include "util.h"
 #include "base64.h"
@@ -140,14 +141,14 @@ void writecb(struct ev_loop *loop, ev_io *w, int revents) {
 } // namespace
 
 Http2Session::Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx,
-                           Worker *worker)
+                           ConnectBlocker *connect_blocker, Worker *worker)
     : conn_(loop, -1, nullptr, get_config()->downstream_write_timeout,
             get_config()->downstream_read_timeout, 0, 0, 0, 0, writecb, readcb,
             timeoutcb, this),
-      worker_(worker), ssl_ctx_(ssl_ctx), session_(nullptr),
-      data_pending_(nullptr), data_pendinglen_(0), addr_idx_(0),
-      state_(DISCONNECTED), connection_check_state_(CONNECTION_CHECK_NONE),
-      flow_control_(false) {
+      worker_(worker), connect_blocker_(connect_blocker), ssl_ctx_(ssl_ctx),
+      session_(nullptr), data_pending_(nullptr), data_pendinglen_(0),
+      addr_idx_(0), state_(DISCONNECTED),
+      connection_check_state_(CONNECTION_CHECK_NONE), flow_control_(false) {
 
   read_ = write_ = &Http2Session::noop;
   on_read_ = on_write_ = &Http2Session::noop;
@@ -237,6 +238,14 @@ int Http2Session::initiate_connection() {
   int rv = 0;
 
   if (state_ == DISCONNECTED) {
+    if (connect_blocker_->blocked()) {
+      if (LOG_ENABLED(INFO)) {
+        DCLOG(INFO, this)
+            << "Downstream connection was blocked by connect_blocker";
+      }
+      return -1;
+    }
+
     auto worker_stat = worker_->get_worker_stat();
     addr_idx_ = worker_stat->next_downstream;
     ++worker_stat->next_downstream;
@@ -261,6 +270,7 @@ int Http2Session::initiate_connection() {
         get_config()->downstream_http_proxy_addr.storage.ss_family);
 
     if (conn_.fd == -1) {
+      connect_blocker_->on_failure();
       return -1;
     }
 
@@ -270,6 +280,7 @@ int Http2Session::initiate_connection() {
       SSLOG(ERROR, this) << "Failed to connect to the proxy "
                          << get_config()->downstream_http_proxy_host.get()
                          << ":" << get_config()->downstream_http_proxy_port;
+      connect_blocker_->on_failure();
       return -1;
     }
 
@@ -329,6 +340,7 @@ int Http2Session::initiate_connection() {
         conn_.fd = util::create_nonblock_socket(
             downstream_addr.addr.storage.ss_family);
         if (conn_.fd == -1) {
+          connect_blocker_->on_failure();
           return -1;
         }
 
@@ -337,6 +349,7 @@ int Http2Session::initiate_connection() {
                      const_cast<sockaddr *>(&downstream_addr.addr.sa),
                      downstream_addr.addrlen);
         if (rv != 0 && errno != EINPROGRESS) {
+          connect_blocker_->on_failure();
           return -1;
         }
 
@@ -358,12 +371,14 @@ int Http2Session::initiate_connection() {
             downstream_addr.addr.storage.ss_family);
 
         if (conn_.fd == -1) {
+          connect_blocker_->on_failure();
           return -1;
         }
 
         rv = connect(conn_.fd, const_cast<sockaddr *>(&downstream_addr.addr.sa),
                      downstream_addr.addrlen);
         if (rv != 0 && errno != EINPROGRESS) {
+          connect_blocker_->on_failure();
           return -1;
         }
 
@@ -1377,7 +1392,9 @@ void Http2Session::signal_write() {
       LOG(INFO) << "Start connecting to backend server";
     }
     if (initiate_connection() != 0) {
-      SSLOG(FATAL, this) << "Could not initiate backend connection";
+      if (LOG_ENABLED(INFO)) {
+        SSLOG(INFO, this) << "Could not initiate backend connection";
+      }
       disconnect(true);
     }
     break;
@@ -1512,6 +1529,8 @@ int Http2Session::connected() {
   if (!util::check_socket_connected(conn_.fd)) {
     return -1;
   }
+
+  connect_blocker_->on_success();
 
   if (LOG_ENABLED(INFO)) {
     SSLOG(INFO, this) << "Connection established";

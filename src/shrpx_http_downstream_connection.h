@@ -59,6 +59,8 @@ public:
   virtual void on_upstream_change(Upstream *upstream);
   virtual int on_priority_change(int32_t pri) { return 0; }
 
+  virtual bool poolable() const { return true; }
+
   int on_connect();
   void signal_write();
 

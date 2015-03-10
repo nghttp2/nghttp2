@@ -130,7 +130,7 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
   }
 
   if (conn_.fd == -1) {
-    auto connect_blocker = client_handler_->get_http1_connect_blocker();
+    auto connect_blocker = client_handler_->get_connect_blocker();
 
     if (connect_blocker->blocked()) {
       if (LOG_ENABLED(INFO)) {
@@ -768,7 +768,7 @@ int HttpDownstreamConnection::on_write() {
 }
 
 int HttpDownstreamConnection::on_connect() {
-  auto connect_blocker = client_handler_->get_http1_connect_blocker();
+  auto connect_blocker = client_handler_->get_connect_blocker();
 
   if (!util::check_socket_connected(conn_.fd)) {
     conn_.wlimit.stopw();

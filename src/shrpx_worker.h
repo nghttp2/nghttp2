@@ -29,6 +29,7 @@
 
 #include <mutex>
 #include <deque>
+#include <vector>
 #include <thread>
 #ifndef NOTHREADS
 #include <future>
@@ -94,8 +95,8 @@ public:
   void set_ticket_keys(std::shared_ptr<TicketKeys> ticket_keys);
   WorkerStat *get_worker_stat();
   DownstreamConnectionPool *get_dconn_pool();
-  Http2Session *get_http2_session() const;
-  ConnectBlocker *get_http1_connect_blocker() const;
+  Http2Session *next_http2_session();
+  ConnectBlocker *get_connect_blocker() const;
   struct ev_loop *get_loop() const;
   SSL_CTX *get_sv_ssl_ctx() const;
   SSL_CTX *get_cl_ssl_ctx() const;
@@ -104,6 +105,8 @@ public:
   bool get_graceful_shutdown() const;
 
 private:
+  std::vector<std::unique_ptr<Http2Session>> http2sessions_;
+  size_t next_http2session_;
 #ifndef NOTHREADS
   std::future<void> fut_;
 #endif // NOTHREADS
@@ -121,8 +124,7 @@ private:
   ssl::CertLookupTree *cert_tree_;
 
   std::shared_ptr<TicketKeys> ticket_keys_;
-  std::unique_ptr<Http2Session> http2session_;
-  std::unique_ptr<ConnectBlocker> http1_connect_blocker_;
+  std::unique_ptr<ConnectBlocker> connect_blocker_;
 
   bool graceful_shutdown_;
 };

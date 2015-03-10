@@ -1200,8 +1200,6 @@ Downstream *Http2Upstream::find_downstream(int32_t stream_id) {
   return downstream_queue_.find(stream_id);
 }
 
-nghttp2_session *Http2Upstream::get_http2_session() { return session_; }
-
 // WARNING: Never call directly or indirectly nghttp2_session_send or
 // nghttp2_session_recv. These calls may delete downstream.
 int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
