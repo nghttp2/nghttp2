@@ -59,11 +59,11 @@ SPDY protocols and it works as so called SPDY proxy.
 With ``--frontend-no-tls`` option, SSL/TLS is turned off in frontend
 connection, so the connection gets insecure.
 
-The backend must be HTTP/1 proxy server.  nghttpx only supports
-multiple backend server addresses.  It translates incoming requests to
-HTTP/1 request to backend server.  The backend server performs real
-proxy work for each request, for example, dispatching requests to the
-origin server and caching contents.
+The backend must be HTTP/1 proxy server.  nghttpx supports multiple
+backend server addresses.  It translates incoming requests to HTTP/1
+request to backend server.  The backend server performs real proxy
+work for each request, for example, dispatching requests to the origin
+server and caching contents.
 
 For example, to make nghttpx listen to encrypted HTTP/2 requests at
 port 8443, and a backend HTTP/1 proxy server is configured to listen
@@ -124,7 +124,9 @@ HTTP/1 frontend connection can be upgraded to HTTP/2 using HTTP
 Upgrade.  To disable SSL/TLS in backend connection, use
 ``--backend-no-tls`` option.
 
-The backend connection is created one per worker (thread).
+By default, the number of backend HTTP/2 connections per worker
+(thread) is determined by number of ``-b`` option.  To adjust this
+value, use ``--backend-http2-connections-per-worker`` option.
 
 The backend server is supporsed to be a HTTP/2 web server (e.g.,
 nghttpd).  The one use-case of this mode is utilize existing HTTP/1
@@ -156,7 +158,9 @@ HTTP/1 frontend connection can be upgraded to HTTP/2 using HTTP
 Upgrade.  To disable SSL/TLS in backend connection, use
 ``--backend-no-tls`` option.
 
-The backend connection is created one per worker (thread).
+By default, the number of backend HTTP/2 connections per worker
+(thread) is determined by number of ``-b`` option.  To adjust this
+value, use ``--backend-http2-connections-per-worker`` option.
 
 The backend server must be a HTTP/2 proxy.  You can use nghttpx in
 `HTTP/2 proxy mode`_ as backend server.  The one use-case of this mode
@@ -195,6 +199,10 @@ only.
 With ``--frontend-no-tls`` option, SSL/TLS is turned off in frontend
 connection, so the connection gets insecure.  To disable SSL/TLS in
 backend connection, use ``--backend-no-tls`` option.
+
+By default, the number of backend HTTP/2 connections per worker
+(thread) is determined by number of ``-b`` option.  To adjust this
+value, use ``--backend-http2-connections-per-worker`` option.
 
 The backend server is supporsed to be a HTTP/2 web server or HTTP/2
 proxy.  If backend server is HTTP/2 proxy, use
@@ -285,11 +293,11 @@ re-open log files, send USR1 signal to nghttpx process.  It will
 re-open files specified by ``--accesslog-file`` and
 ``--errorlog-file`` options.
 
-Multiple HTTP/1 backend addresses
----------------------------------
+Multiple backend addresses
+--------------------------
 
-nghttpx supports multiple HTTP/1 backend addresses.  To specify them,
-just use ``-b`` option repeatedly.  For example, to use backend1:8080
-and backend2:8080, use command-line like this: ``-bbackend1,8080
--bbackend2,8080``.  Please note that HTTP/2 backend only supports 1
-backend address.
+nghttpx supports multiple backend addresses.  To specify them, just
+use ``-b`` option repeatedly.  For example, to use backend1:8080 and
+backend2:8080, use command-line like this: ``-bbackend1,8080
+-bbackend2,8080``.  For HTTP/2 backend, see also
+``--backend-http2-connections-per-worker`` option.
