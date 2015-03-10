@@ -1030,6 +1030,10 @@ Performance:
               Set maximum number  of simultaneous connections frontend
               accepts.  Setting 0 means unlimited.
               Default: )" << get_config()->worker_frontend_connections << R"(
+  --backend-http2-connections-per-worker=<N>
+              Set  maximum number  of HTTP/2  connections per  worker.
+              The  default  value is  0,  which  means the  number  of
+              backend addresses specified by -b option.
   --backend-http1-connections-per-host=<N>
               Set   maximum  number   of  backend   concurrent  HTTP/1
               connections per host.  This option is meaningful when -s
@@ -1493,6 +1497,7 @@ int main(int argc, char **argv) {
         {"no-host-rewrite", no_argument, &flag, 73},
         {"no-server-push", no_argument, &flag, 74},
         {"backend-http2-connection-check", no_argument, &flag, 75},
+        {"backend-http2-connections-per-worker", required_argument, &flag, 76},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -1833,6 +1838,11 @@ int main(int argc, char **argv) {
       case 75:
         // --backend-http2-connection-check
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP2_CONNECTION_CHECK, "yes");
+        break;
+      case 76:
+        // --backend-http2-connections-per-worker
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP2_CONNECTIONS_PER_WORKER,
+                             optarg);
         break;
       default:
         break;

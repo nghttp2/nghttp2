@@ -148,6 +148,8 @@ const char SHRPX_OPT_BACKEND_RESPONSE_BUFFER[] = "backend-response-buffer";
 const char SHRPX_OPT_NO_SERVER_PUSH[] = "no-server-push";
 const char SHRPX_OPT_BACKEND_HTTP2_CONNECTION_CHECK[] =
     "backend-http2-connection-check";
+const char SHRPX_OPT_BACKEND_HTTP2_CONNECTIONS_PER_WORKER[] =
+    "backend-http2-connections-per-worker";
 
 namespace {
 Config *config = nullptr;
@@ -1199,6 +1201,11 @@ int parse_config(const char *opt, const char *optarg) {
     mod_config()->http2_downstream_connchk = util::strieq(optarg, "yes");
 
     return 0;
+  }
+
+  if (util::strieq(opt, SHRPX_OPT_BACKEND_HTTP2_CONNECTIONS_PER_WORKER)) {
+    return parse_uint(&mod_config()->http2_downstream_connections_per_worker,
+                      opt, optarg);
   }
 
   if (util::strieq(opt, "conf")) {

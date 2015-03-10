@@ -137,6 +137,7 @@ extern const char SHRPX_OPT_BACKEND_REQUEST_BUFFER[];
 extern const char SHRPX_OPT_BACKEND_RESPONSE_BUFFER[];
 extern const char SHRPX_OPT_NO_SERVER_PUSH[];
 extern const char SHRPX_OPT_BACKEND_HTTP2_CONNECTION_CHECK[];
+extern const char SHRPX_OPT_BACKEND_HTTP2_CONNECTIONS_PER_WORKER[];
 
 union sockaddr_union {
   sockaddr_storage storage;
