@@ -46,6 +46,7 @@ using namespace nghttp2;
 namespace shrpx {
 
 class Http2DownstreamConnection;
+class Worker;
 
 struct StreamData {
   Http2DownstreamConnection *dconn;
@@ -53,7 +54,7 @@ struct StreamData {
 
 class Http2Session {
 public:
-  Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx);
+  Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx, Worker *worker);
   ~Http2Session();
 
   int check_cert();
@@ -143,6 +144,8 @@ public:
 
   void submit_pending_requests();
 
+  size_t get_addr_idx() const;
+
   enum {
     // Disconnected
     DISCONNECTED,
@@ -188,11 +191,14 @@ private:
   std::function<int(Http2Session &)> on_read_, on_write_;
   // Used to parse the response from HTTP proxy
   std::unique_ptr<http_parser> proxy_htp_;
+  Worker *worker_;
   // NULL if no TLS is configured
   SSL_CTX *ssl_ctx_;
   nghttp2_session *session_;
   const uint8_t *data_pending_;
   size_t data_pendinglen_;
+  // index of get_config()->downstream_addrs this object uses
+  size_t addr_idx_;
   int state_;
   int connection_check_state_;
   bool flow_control_;

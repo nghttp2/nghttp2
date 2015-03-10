@@ -98,6 +98,7 @@ public:
   ConnectBlocker *get_http1_connect_blocker() const;
   struct ev_loop *get_loop() const;
   SSL_CTX *get_sv_ssl_ctx() const;
+  SSL_CTX *get_cl_ssl_ctx() const;
 
   void set_graceful_shutdown(bool f);
   bool get_graceful_shutdown() const;

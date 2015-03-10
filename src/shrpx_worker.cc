@@ -59,7 +59,7 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
   ev_async_start(loop_, &w_);
 
   if (get_config()->downstream_proto == PROTO_HTTP2) {
-    http2session_ = make_unique<Http2Session>(loop_, cl_ssl_ctx_);
+    http2session_ = make_unique<Http2Session>(loop_, cl_ssl_ctx, this);
   } else {
     http1_connect_blocker_ = make_unique<ConnectBlocker>(loop_);
   }
@@ -196,6 +196,8 @@ struct ev_loop *Worker::get_loop() const {
 }
 
 SSL_CTX *Worker::get_sv_ssl_ctx() const { return sv_ssl_ctx_; }
+
+SSL_CTX *Worker::get_cl_ssl_ctx() const { return cl_ssl_ctx_; }
 
 void Worker::set_graceful_shutdown(bool f) { graceful_shutdown_ = f; }
 

@@ -258,15 +258,20 @@ int Http2DownstreamConnection::push_request_headers() {
                          get_config()->client_proxy ||
                          downstream_->get_request_method() == "CONNECT";
 
+  // http2session_ has already in CONNECTED state, so we can get
+  // addr_idx here.
+  auto addr_idx = http2session_->get_addr_idx();
+  auto &downstream_addr = get_config()->downstream_addrs[addr_idx];
+
   const char *authority = nullptr, *host = nullptr;
   if (!no_host_rewrite) {
     // HTTP/2 backend does not support multiple address, so we always
     // use index = 0.
     if (!downstream_->get_request_http2_authority().empty()) {
-      authority = get_config()->downstream_addrs[0].hostport.get();
+      authority = downstream_addr.hostport.get();
     }
     if (downstream_->get_request_header(http2::HD_HOST)) {
-      host = get_config()->downstream_addrs[0].hostport.get();
+      host = downstream_addr.hostport.get();
     }
   } else {
     if (!downstream_->get_request_http2_authority().empty()) {
@@ -281,7 +286,7 @@ int Http2DownstreamConnection::push_request_headers() {
   if (!authority && !host) {
     // upstream is HTTP/1.0.  We use backend server's host
     // nonetheless.
-    host = get_config()->downstream_addrs[0].hostport.get();
+    host = downstream_addr.hostport.get();
   }
 
   if (authority) {

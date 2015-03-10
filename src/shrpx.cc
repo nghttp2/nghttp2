@@ -949,13 +949,10 @@ Options:
 
 Connections:
   -b, --backend=<HOST,PORT>
-              Set backend host and port.  For HTTP/1 backend, multiple
-              backend addresses are accepted by repeating this option.
-              HTTP/2  backend   does  not  support   multiple  backend
-              addresses  and the  first occurrence  of this  option is
-              used.  UNIX domain socket  can be specified by prefixing
-              path        name        with       "unix:"        (e.g.,
-              unix:/var/run/backend.sock)
+              Set  backend  host  and   port.   The  multiple  backend
+              addresses are  accepted by repeating this  option.  UNIX
+              domain socket  can be  specified by prefixing  path name
+              with "unix:" (e.g., unix:/var/run/backend.sock)
               Default: )" << DEFAULT_DOWNSTREAM_HOST << ","
       << DEFAULT_DOWNSTREAM_PORT << R"(
   -f, --frontend=<HOST,PORT>
