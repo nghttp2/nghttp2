@@ -81,6 +81,12 @@ void AcceptHandler::accept_connection() {
       case EOPNOTSUPP:
       case ENETUNREACH:
         continue;
+      case EMFILE:
+      case ENFILE:
+        LOG(WARN) << "acceptor: running out file descriptor; disable acceptor "
+                     "temporarily";
+        conn_hnr_->disable_acceptor_temporary(30.);
+        break;
       }
 
       break;
