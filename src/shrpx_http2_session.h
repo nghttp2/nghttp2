@@ -27,7 +27,7 @@
 
 #include "shrpx.h"
 
-#include <set>
+#include <unordered_set>
 #include <memory>
 
 #include <openssl/ssl.h>
@@ -188,8 +188,8 @@ private:
   // connection check has started, this timer is started again and
   // traps PING ACK timeout.
   ev_timer connchk_timer_;
-  std::set<Http2DownstreamConnection *> dconns_;
-  std::set<StreamData *> streams_;
+  std::unordered_set<Http2DownstreamConnection *> dconns_;
+  std::unordered_set<StreamData *> streams_;
   std::function<int(Http2Session &)> read_, write_;
   std::function<int(Http2Session &)> on_read_, on_write_;
   // Used to parse the response from HTTP proxy

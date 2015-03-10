@@ -208,9 +208,9 @@ int Http2Session::disconnect(bool hard) {
   // this object.  In order to achieve this, we first swap dconns_ and
   // streams_.  Upstream::on_downstream_reset() may add
   // Http2DownstreamConnection.
-  std::set<Http2DownstreamConnection *> dconns;
+  std::unordered_set<Http2DownstreamConnection *> dconns;
   dconns.swap(dconns_);
-  std::set<StreamData *> streams;
+  std::unordered_set<StreamData *> streams;
   streams.swap(streams_);
 
   std::set<ClientHandler *> handlers;
