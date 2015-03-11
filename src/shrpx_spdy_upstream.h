@@ -58,7 +58,6 @@ public:
   virtual int downstream_error(DownstreamConnection *dconn, int events);
   Downstream *add_pending_downstream(int32_t stream_id, int32_t priority);
   void remove_downstream(Downstream *downstream);
-  Downstream *find_downstream(int32_t stream_id);
 
   int rst_stream(Downstream *downstream, int status_code);
   int error_reply(Downstream *downstream, unsigned int status_code);
@@ -82,7 +81,7 @@ public:
   int consume(int32_t stream_id, size_t len);
 
   void start_downstream(Downstream *downstream);
-  void initiate_downstream(std::unique_ptr<Downstream> downstream);
+  void initiate_downstream(Downstream *downstream);
 
 private:
   // must be put before downstream_queue_

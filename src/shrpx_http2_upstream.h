@@ -62,7 +62,6 @@ public:
 
   void add_pending_downstream(std::unique_ptr<Downstream> downstream);
   void remove_downstream(Downstream *downstream);
-  Downstream *find_downstream(int32_t stream_id);
 
   int rst_stream(Downstream *downstream, uint32_t error_code);
   int terminate_session(uint32_t error_code);
@@ -93,13 +92,15 @@ public:
   void log_response_headers(Downstream *downstream,
                             const std::vector<nghttp2_nv> &nva) const;
   void start_downstream(Downstream *downstream);
-  void initiate_downstream(std::unique_ptr<Downstream> downstream);
+  void initiate_downstream(Downstream *downstream);
 
   void submit_goaway();
   void check_shutdown();
 
   int prepare_push_promise(Downstream *downstream);
   int submit_push_promise(const std::string &path, Downstream *downstream);
+
+  int on_request_headers(Downstream *downstream, const nghttp2_frame *frame);
 
 private:
   // must be put before downstream_queue_

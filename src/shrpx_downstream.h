@@ -48,6 +48,7 @@ namespace shrpx {
 
 class Upstream;
 class DownstreamConnection;
+struct BlockedLink;
 
 class Downstream {
 public:
@@ -319,10 +320,26 @@ public:
   // true if retry attempt should not be done.
   bool no_more_retry() const;
 
+  int get_dispatch_state() const;
+  void set_dispatch_state(int s);
+
+  void attach_blocked_link(BlockedLink *l);
+  void detach_blocked_link(BlockedLink *l);
+
   enum {
     EVENT_ERROR = 0x1,
     EVENT_TIMEOUT = 0x2,
   };
+
+  enum {
+    DISPATCH_NONE,
+    DISPATCH_PENDING,
+    DISPATCH_BLOCKED,
+    DISPATCH_ACTIVE,
+    DISPATCH_FAILURE,
+  };
+
+  Downstream *dlnext, *dlprev;
 
 private:
   Headers request_headers_;
@@ -370,6 +387,9 @@ private:
   Upstream *upstream_;
   std::unique_ptr<DownstreamConnection> dconn_;
 
+  // only used by HTTP/2 or SPDY upstream
+  BlockedLink *blocked_link_;
+
   size_t request_headers_sum_;
   size_t response_headers_sum_;
 
@@ -395,6 +415,9 @@ private:
   unsigned int response_http_status_;
   int response_major_;
   int response_minor_;
+
+  // only used by HTTP/2 or SPDY upstream
+  int dispatch_state_;
 
   http2::HeaderIndex request_hdidx_;
   http2::HeaderIndex response_hdidx_;

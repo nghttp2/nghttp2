@@ -33,6 +33,7 @@
 #include "shrpx_config.h"
 #include "shrpx_error.h"
 #include "shrpx_downstream_connection.h"
+#include "shrpx_downstream_queue.h"
 #include "util.h"
 #include "http2.h"
 
@@ -106,24 +107,27 @@ void downstream_wtimeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
 
 // upstream could be nullptr for unittests
 Downstream::Downstream(Upstream *upstream, int32_t stream_id, int32_t priority)
-    : request_start_time_(std::chrono::high_resolution_clock::now()),
+    : dlnext(nullptr), dlprev(nullptr),
+      request_start_time_(std::chrono::high_resolution_clock::now()),
       request_buf_(upstream ? upstream->get_mcpool() : nullptr),
       response_buf_(upstream ? upstream->get_mcpool() : nullptr),
       request_bodylen_(0), response_bodylen_(0), response_sent_bodylen_(0),
       request_content_length_(-1), response_content_length_(-1),
-      upstream_(upstream), request_headers_sum_(0), response_headers_sum_(0),
-      request_datalen_(0), response_datalen_(0), num_retry_(0),
-      stream_id_(stream_id), priority_(priority), downstream_stream_id_(-1),
+      upstream_(upstream), blocked_link_(nullptr), request_headers_sum_(0),
+      response_headers_sum_(0), request_datalen_(0), response_datalen_(0),
+      num_retry_(0), stream_id_(stream_id), priority_(priority),
+      downstream_stream_id_(-1),
       response_rst_stream_error_code_(NGHTTP2_NO_ERROR),
       request_state_(INITIAL), request_major_(1), request_minor_(1),
       response_state_(INITIAL), response_http_status_(0), response_major_(1),
-      response_minor_(1), upgrade_request_(false), upgraded_(false),
-      http2_upgrade_seen_(false), chunked_request_(false),
-      request_connection_close_(false), request_header_key_prev_(false),
-      request_trailer_key_prev_(false), request_http2_expect_body_(false),
-      chunked_response_(false), response_connection_close_(false),
-      response_header_key_prev_(false), response_trailer_key_prev_(false),
-      expect_final_response_(false), request_pending_(false) {
+      response_minor_(1), dispatch_state_(DISPATCH_NONE),
+      upgrade_request_(false), upgraded_(false), http2_upgrade_seen_(false),
+      chunked_request_(false), request_connection_close_(false),
+      request_header_key_prev_(false), request_trailer_key_prev_(false),
+      request_http2_expect_body_(false), chunked_response_(false),
+      response_connection_close_(false), response_header_key_prev_(false),
+      response_trailer_key_prev_(false), expect_final_response_(false),
+      request_pending_(false) {
 
   ev_timer_init(&upstream_rtimer_, &upstream_rtimeoutcb, 0.,
                 get_config()->stream_read_timeout);
@@ -146,6 +150,10 @@ Downstream::Downstream(Upstream *upstream, int32_t stream_id, int32_t priority)
 Downstream::~Downstream() {
   if (LOG_ENABLED(INFO)) {
     DLOG(INFO, this) << "Deleting";
+  }
+
+  if (blocked_link_) {
+    detach_blocked_link(blocked_link_);
   }
 
   // check nullptr for unittest
@@ -1174,6 +1182,25 @@ bool Downstream::request_submission_ready() const {
   return (request_state_ == Downstream::HEADER_COMPLETE ||
           request_state_ == Downstream::MSG_COMPLETE) &&
          request_pending_ && response_state_ == Downstream::INITIAL;
+}
+
+int Downstream::get_dispatch_state() const { return dispatch_state_; }
+
+void Downstream::set_dispatch_state(int s) { dispatch_state_ = s; }
+
+void Downstream::attach_blocked_link(BlockedLink *l) {
+  assert(!blocked_link_);
+
+  l->downstream = this;
+  blocked_link_ = l;
+}
+
+void Downstream::detach_blocked_link(BlockedLink *l) {
+  assert(blocked_link_);
+  assert(l->downstream == this);
+
+  l->downstream = nullptr;
+  blocked_link_ = nullptr;
 }
 
 } // namespace shrpx

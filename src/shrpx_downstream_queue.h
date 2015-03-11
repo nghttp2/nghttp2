@@ -33,17 +33,27 @@
 #include <set>
 #include <memory>
 
+#include "template.h"
+
+using namespace nghttp2;
+
 namespace shrpx {
 
 class Downstream;
 
+// Link entry in HostEntry.blocked and downstream because downstream
+// could be deleted in anytime and we'd like to find Downstream in
+// O(1).  Downstream has field to link back to this object.
+struct BlockedLink {
+  Downstream *downstream;
+  BlockedLink *dlnext, *dlprev;
+};
+
 class DownstreamQueue {
 public:
-  typedef std::map<int32_t, std::unique_ptr<Downstream>> DownstreamMap;
-
   struct HostEntry {
     // Set of stream ID that blocked by conn_max_per_host_.
-    std::set<int32_t> blocked;
+    DList<BlockedLink> blocked;
     // The number of connections currently made to this host.
     size_t num_active;
     HostEntry();
@@ -54,52 +64,38 @@ public:
   // conn_max_per_host == 0 means no limit for downstream connection.
   DownstreamQueue(size_t conn_max_per_host = 0, bool unified_host = true);
   ~DownstreamQueue();
+  // Add |downstream| to this queue.  This is entry point for
+  // Downstream object.
   void add_pending(std::unique_ptr<Downstream> downstream);
-  void add_failure(std::unique_ptr<Downstream> downstream);
-  // Adds |downstream| to active_downstreams_, which means that
-  // downstream connection has been started.
-  void add_active(std::unique_ptr<Downstream> downstream);
-  // Adds |downstream| to blocked_downstreams_, which means that
-  // download connection was blocked because conn_max_per_host_ limit.
-  void add_blocked(std::unique_ptr<Downstream> downstream);
+  // Set |downstream| to failure state, which means that downstream
+  // failed to connect to backend.
+  void mark_failure(Downstream *downstream);
+  // Set |downstream| to active state, which means that downstream
+  // connection has started.
+  void mark_active(Downstream *downstream);
+  // Set |downstream| to blocked state, which means that download
+  // connection was blocked because conn_max_per_host_ limit.
+  void mark_blocked(Downstream *downstream);
   // Returns true if we can make downstream connection to given
   // |host|.
   bool can_activate(const std::string &host) const;
-  // Removes pending Downstream object whose stream ID is |stream_id|
-  // from pending_downstreams_ and returns it.
-  std::unique_ptr<Downstream> pop_pending(int32_t stream_id);
-  // Removes Downstream object whose stream ID is |stream_id| from
-  // either pending_downstreams_, active_downstreams_,
-  // blocked_downstreams_ or failure_downstreams_.  If a Downstream
-  // object is removed from active_downstreams_, this function may
-  // return Downstream object with the same target host in
-  // blocked_downstreams_ if its connection is now not blocked by
-  // conn_max_per_host_ limit.
-  std::unique_ptr<Downstream> remove_and_pop_blocked(int32_t stream_id);
-  // Finds Downstream object denoted by |stream_id| either in
-  // pending_downstreams_, active_downstreams_, blocked_downstreams_
-  // or failure_downstreams_.
-  Downstream *find(int32_t stream_id);
-  const DownstreamMap &get_active_downstreams() const;
+  // Removes and frees |downstream| object.  If |downstream| is in
+  // Downstream::DISPATCH_ACTIVE, this function may return Downstream
+  // object with the same target host in Downstream::DISPATCH_BLOCKED
+  // if its connection is now not blocked by conn_max_per_host_ limit.
+  Downstream *remove_and_get_blocked(Downstream *downstream);
+  Downstream *get_downstreams() const;
   HostEntry &find_host_entry(const std::string &host);
   const std::string &make_host_key(const std::string &host) const;
   const std::string &make_host_key(Downstream *downstream) const;
-
-  // Maximum number of concurrent connections to the same host.
-  size_t conn_max_per_host_;
 
 private:
   // Per target host structure to keep track of the number of
   // connections to the same host.
   std::map<std::string, HostEntry> host_entries_;
-  // Downstream objects, not processed yet
-  DownstreamMap pending_downstreams_;
-  // Downstream objects, failed to connect to downstream server
-  DownstreamMap failure_downstreams_;
-  // Downstream objects, downstream connection started
-  DownstreamMap active_downstreams_;
-  // Downstream objects, blocked by conn_max_per_host_
-  DownstreamMap blocked_downstreams_;
+  DList<Downstream> downstreams_;
+  // Maximum number of concurrent connections to the same host.
+  size_t conn_max_per_host_;
   // true if downstream host is treated as the same.  Used for reverse
   // proxying.
   bool unified_host_;

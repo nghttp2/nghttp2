@@ -132,8 +132,18 @@ template <typename T> struct DList {
     t->dlprev = t->dlnext = nullptr;
   }
 
+  bool empty() const { return head == nullptr; }
+
   T *head, *tail;
 };
+
+template <typename T> void dlist_delete_all(DList<T> &dl) {
+  for (auto e = dl.head; e;) {
+    auto next = e->dlnext;
+    delete e;
+    e = next;
+  }
+}
 
 } // namespace nghttp2
 

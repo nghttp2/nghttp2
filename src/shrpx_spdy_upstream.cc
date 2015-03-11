@@ -92,7 +92,8 @@ void on_stream_close_callback(spdylay_session *session, int32_t stream_id,
     ULOG(INFO, upstream) << "Stream stream_id=" << stream_id
                          << " is being closed";
   }
-  auto downstream = upstream->find_downstream(stream_id);
+  auto downstream = static_cast<Downstream *>(
+      spdylay_session_get_stream_user_data(session, stream_id));
   if (!downstream) {
     return;
   }
@@ -223,41 +224,37 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
 } // namespace
 
 void SpdyUpstream::start_downstream(Downstream *downstream) {
-  auto next_downstream =
-      downstream_queue_.pop_pending(downstream->get_stream_id());
-  assert(next_downstream);
-
   if (downstream_queue_.can_activate(
           downstream->get_request_http2_authority())) {
-    initiate_downstream(std::move(next_downstream));
+    initiate_downstream(downstream);
     return;
   }
 
-  downstream_queue_.add_blocked(std::move(next_downstream));
+  downstream_queue_.mark_blocked(downstream);
 }
 
-void SpdyUpstream::initiate_downstream(std::unique_ptr<Downstream> downstream) {
+void SpdyUpstream::initiate_downstream(Downstream *downstream) {
   int rv = downstream->attach_downstream_connection(
       handler_->get_downstream_connection());
   if (rv != 0) {
     // If downstream connection fails, issue RST_STREAM.
-    rst_stream(downstream.get(), SPDYLAY_INTERNAL_ERROR);
+    rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
     downstream->set_request_state(Downstream::CONNECT_FAIL);
 
-    downstream_queue_.add_failure(std::move(downstream));
+    downstream_queue_.mark_failure(downstream);
 
     return;
   }
   rv = downstream->push_request_headers();
   if (rv != 0) {
-    rst_stream(downstream.get(), SPDYLAY_INTERNAL_ERROR);
+    rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
 
-    downstream_queue_.add_failure(std::move(downstream));
+    downstream_queue_.mark_failure(downstream);
 
     return;
   }
 
-  downstream_queue_.add_active(std::move(downstream));
+  downstream_queue_.mark_active(downstream);
 }
 
 namespace {
@@ -265,7 +262,8 @@ void on_data_chunk_recv_callback(spdylay_session *session, uint8_t flags,
                                  int32_t stream_id, const uint8_t *data,
                                  size_t len, void *user_data) {
   auto upstream = static_cast<SpdyUpstream *>(user_data);
-  auto downstream = upstream->find_downstream(stream_id);
+  auto downstream = static_cast<Downstream *>(
+      spdylay_session_get_stream_user_data(session, stream_id));
 
   if (!downstream) {
     upstream->consume(stream_id, len);
@@ -323,7 +321,8 @@ namespace {
 void on_data_recv_callback(spdylay_session *session, uint8_t flags,
                            int32_t stream_id, int32_t length, void *user_data) {
   auto upstream = static_cast<SpdyUpstream *>(user_data);
-  auto downstream = upstream->find_downstream(stream_id);
+  auto downstream = static_cast<Downstream *>(
+      spdylay_session_get_stream_user_data(session, stream_id));
   if (downstream && (flags & SPDYLAY_DATA_FLAG_FIN)) {
     if (!downstream->validate_request_bodylen()) {
       upstream->rst_stream(downstream, SPDYLAY_PROTOCOL_ERROR);
@@ -351,7 +350,9 @@ void on_ctrl_not_send_callback(spdylay_session *session,
       error_code != SPDYLAY_ERR_STREAM_CLOSING) {
     // To avoid stream hanging around, issue RST_STREAM.
     auto stream_id = frame->syn_reply.stream_id;
-    auto downstream = upstream->find_downstream(stream_id);
+    // TODO Could be always nullptr
+    auto downstream = static_cast<Downstream *>(
+        spdylay_session_get_stream_user_data(session, stream_id));
     if (downstream) {
       upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
     }
@@ -797,6 +798,7 @@ int SpdyUpstream::error_reply(Downstream *downstream,
 Downstream *SpdyUpstream::add_pending_downstream(int32_t stream_id,
                                                  int32_t priority) {
   auto downstream = make_unique<Downstream>(this, stream_id, priority);
+  spdylay_session_set_stream_user_data(session_, stream_id, downstream.get());
   auto res = downstream.get();
 
   downstream_queue_.add_pending(std::move(downstream));
@@ -809,16 +811,14 @@ void SpdyUpstream::remove_downstream(Downstream *downstream) {
     handler_->write_accesslog(downstream);
   }
 
-  auto next_downstream =
-      downstream_queue_.remove_and_pop_blocked(downstream->get_stream_id());
+  spdylay_session_set_stream_user_data(session_, downstream->get_stream_id(),
+                                       nullptr);
+
+  auto next_downstream = downstream_queue_.remove_and_get_blocked(downstream);
 
   if (next_downstream) {
-    initiate_downstream(std::move(next_downstream));
+    initiate_downstream(next_downstream);
   }
-}
-
-Downstream *SpdyUpstream::find_downstream(int32_t stream_id) {
-  return downstream_queue_.find(stream_id);
 }
 
 // WARNING: Never call directly or indirectly spdylay_session_send or
@@ -1026,9 +1026,10 @@ int SpdyUpstream::on_timeout(Downstream *downstream) {
 }
 
 void SpdyUpstream::on_handler_delete() {
-  for (auto &ent : downstream_queue_.get_active_downstreams()) {
-    if (ent.second->accesslog_ready()) {
-      handler_->write_accesslog(ent.second.get());
+  for (auto d = downstream_queue_.get_downstreams(); d; d = d->dlnext) {
+    if (d->get_dispatch_state() == Downstream::DISPATCH_ACTIVE &&
+        d->accesslog_ready()) {
+      handler_->write_accesslog(d);
     }
   }
 }
@@ -1036,8 +1037,12 @@ void SpdyUpstream::on_handler_delete() {
 int SpdyUpstream::on_downstream_reset(bool no_retry) {
   int rv;
 
-  for (auto &ent : downstream_queue_.get_active_downstreams()) {
-    auto downstream = ent.second.get();
+  for (auto downstream = downstream_queue_.get_downstreams(); downstream;
+       downstream = downstream->dlnext) {
+    if (downstream->get_dispatch_state() != Downstream::DISPATCH_ACTIVE) {
+      continue;
+    }
+
     if (!downstream->request_submission_ready()) {
       rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
       downstream->pop_downstream_connection();
