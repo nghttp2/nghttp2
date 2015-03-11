@@ -74,6 +74,8 @@ public:
   int submit_rst_stream(Downstream *downstream,
                         uint32_t error_code = NGHTTP2_INTERNAL_ERROR);
 
+  Http2DownstreamConnection *dlnext, *dlprev;
+
 private:
   Http2Session *http2session_;
   StreamData *sd_;

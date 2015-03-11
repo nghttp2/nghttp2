@@ -40,6 +40,7 @@
 
 #include "shrpx_connection.h"
 #include "buffer.h"
+#include "template.h"
 
 using namespace nghttp2;
 
@@ -50,6 +51,7 @@ class Worker;
 class ConnectBlocker;
 
 struct StreamData {
+  StreamData *dlnext, *dlprev;
   Http2DownstreamConnection *dconn;
 };
 
@@ -188,8 +190,8 @@ private:
   // connection check has started, this timer is started again and
   // traps PING ACK timeout.
   ev_timer connchk_timer_;
-  std::unordered_set<Http2DownstreamConnection *> dconns_;
-  std::unordered_set<StreamData *> streams_;
+  DList<Http2DownstreamConnection> dconns_;
+  DList<StreamData> streams_;
   std::function<int(Http2Session &)> read_, write_;
   std::function<int(Http2Session &)> on_read_, on_write_;
   // Used to parse the response from HTTP proxy

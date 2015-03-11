@@ -44,7 +44,6 @@
 #include "http2.h"
 #include "util.h"
 #include "base64.h"
-#include "template.h"
 
 using namespace nghttp2;
 
@@ -208,13 +207,11 @@ int Http2Session::disconnect(bool hard) {
   // this object.  In order to achieve this, we first swap dconns_ and
   // streams_.  Upstream::on_downstream_reset() may add
   // Http2DownstreamConnection.
-  std::unordered_set<Http2DownstreamConnection *> dconns;
-  dconns.swap(dconns_);
-  std::unordered_set<StreamData *> streams;
-  streams.swap(streams_);
+  auto dconns = std::move(dconns_);
+  auto streams = std::move(streams_);
 
   std::set<ClientHandler *> handlers;
-  for (auto dc : dconns) {
+  for (auto dc = dconns.head; dc; dc = dc->dlnext) {
     if (!dc->get_client_handler()) {
       continue;
     }
@@ -226,8 +223,10 @@ int Http2Session::disconnect(bool hard) {
     }
   }
 
-  for (auto &s : streams) {
+  for (auto s = streams.head; s;) {
+    auto next = s->dlnext;
     delete s;
+    s = next;
   }
 
   return 0;
@@ -534,17 +533,17 @@ int Http2Session::downstream_connect_proxy() {
 }
 
 void Http2Session::add_downstream_connection(Http2DownstreamConnection *dconn) {
-  dconns_.insert(dconn);
+  dconns_.append(dconn);
 }
 
 void
 Http2Session::remove_downstream_connection(Http2DownstreamConnection *dconn) {
-  dconns_.erase(dconn);
+  dconns_.remove(dconn);
   dconn->detach_stream_data();
 }
 
 void Http2Session::remove_stream_data(StreamData *sd) {
-  streams_.erase(sd);
+  streams_.remove(sd);
   if (sd->dconn) {
     sd->dconn->detach_stream_data();
   }
@@ -556,6 +555,7 @@ int Http2Session::submit_request(Http2DownstreamConnection *dconn, int32_t pri,
                                  const nghttp2_data_provider *data_prd) {
   assert(state_ == CONNECTED);
   auto sd = make_unique<StreamData>();
+  sd->dlnext = sd->dlprev = nullptr;
   // TODO Specify nullptr to pri_spec for now
   auto stream_id =
       nghttp2_submit_request(session_, nullptr, nva, nvlen, data_prd, sd.get());
@@ -567,7 +567,7 @@ int Http2Session::submit_request(Http2DownstreamConnection *dconn, int32_t pri,
 
   dconn->attach_stream_data(sd.get());
   dconn->get_downstream()->set_downstream_stream_id(stream_id);
-  streams_.insert(sd.release());
+  streams_.append(sd.release());
 
   return 0;
 }
@@ -1498,7 +1498,7 @@ void Http2Session::connection_alive() {
 }
 
 void Http2Session::submit_pending_requests() {
-  for (auto dconn : dconns_) {
+  for (auto dconn = dconns_.head; dconn; dconn = dconn->dlnext) {
     auto downstream = dconn->get_downstream();
 
     if (!downstream || !downstream->request_submission_ready()) {

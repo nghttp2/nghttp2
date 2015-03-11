@@ -80,6 +80,61 @@ template <typename T, typename F> bool test_flags(T t, F flags) {
   return (t & flags) == flags;
 }
 
+// doubly linked list of element T*.  T must have field T *dlprev and
+// T *dlnext, which point to previous element and next element in the
+// list respectively.
+template <typename T> struct DList {
+  DList() : head(nullptr), tail(nullptr) {}
+
+  DList(const DList &) = delete;
+
+  DList &operator=(const DList &) = delete;
+
+  DList(DList &&other) : head(other.head), tail(other.tail) {
+    other.head = other.tail = nullptr;
+  }
+
+  DList &operator=(DList &&other) {
+    if (this == &other) {
+      return *this;
+    }
+    head = other.head;
+    tail = other.tail;
+    other.head = other.tail = nullptr;
+    return *this;
+  }
+
+  void append(T *t) {
+    if (tail) {
+      tail->dlnext = t;
+      t->dlprev = tail;
+      tail = t;
+      return;
+    }
+    head = tail = t;
+  }
+
+  void remove(T *t) {
+    auto p = t->dlprev;
+    auto n = t->dlnext;
+    if (p) {
+      p->dlnext = n;
+    }
+    if (head == t) {
+      head = n;
+    }
+    if (n) {
+      n->dlprev = p;
+    }
+    if (tail == t) {
+      tail = p;
+    }
+    t->dlprev = t->dlnext = nullptr;
+  }
+
+  T *head, *tail;
+};
+
 } // namespace nghttp2
 
 #endif // TEMPLATE_H
