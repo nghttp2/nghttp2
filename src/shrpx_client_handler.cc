@@ -363,6 +363,7 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
             get_config()->write_burst, get_config()->read_rate,
             get_config()->read_burst, writecb, readcb, timeoutcb, this),
       ipaddr_(ipaddr), port_(port), worker_(worker),
+      http2session_(worker_->next_http2_session()),
       left_connhd_len_(NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN),
       should_close_after_write_(false) {
 
@@ -608,10 +609,9 @@ ClientHandler::get_downstream_connection() {
     }
 
     auto dconn_pool = worker_->get_dconn_pool();
-    auto http2session = worker_->next_http2_session();
 
-    if (http2session) {
-      dconn = make_unique<Http2DownstreamConnection>(dconn_pool, http2session);
+    if (http2session_) {
+      dconn = make_unique<Http2DownstreamConnection>(dconn_pool, http2session_);
     } else {
       dconn = make_unique<HttpDownstreamConnection>(dconn_pool, conn_.loop);
     }
