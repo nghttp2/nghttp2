@@ -246,22 +246,29 @@ int HttpDownstreamConnection::push_request_headers() {
 
   // Assume that method and request path do not contain \r\n.
   std::string hdrs = downstream_->get_request_method();
-  hdrs += " ";
+  hdrs += ' ';
   if (downstream_->get_request_method() == "CONNECT") {
     if (authority) {
       hdrs += authority;
     } else {
       hdrs += downstream_->get_request_path();
     }
-  } else if (get_config()->http2_proxy &&
-             !downstream_->get_request_http2_scheme().empty() && authority &&
-             (downstream_->get_request_path().c_str()[0] == '/' ||
-              downstream_->get_request_path() == "*")) {
+  } else if (get_config()->http2_proxy || get_config()->client_proxy) {
     // Construct absolute-form request target because we are going to
     // send a request to a HTTP/1 proxy.
-    hdrs += downstream_->get_request_http2_scheme();
-    hdrs += "://";
-    hdrs += authority;
+    if (downstream_->get_request_http2_scheme().empty()) {
+      // this comes from HTTP/1 upstream, use http scheme.  We don't
+      // support https forward link yet.
+      hdrs += "http://";
+    } else {
+      hdrs += downstream_->get_request_http2_scheme();
+      hdrs += "://";
+    }
+    if (authority) {
+      hdrs += authority;
+    } else {
+      hdrs += host;
+    }
 
     // Server-wide OPTIONS takes following form in proxy request:
     //
@@ -273,8 +280,7 @@ int HttpDownstreamConnection::push_request_headers() {
       hdrs += downstream_->get_request_path();
     }
   } else {
-    // No proxy case. get_request_path() may be absolute-form but we
-    // don't care.
+    // No proxy case.
     hdrs += downstream_->get_request_path();
   }
   hdrs += " HTTP/1.1\r\nHost: ";

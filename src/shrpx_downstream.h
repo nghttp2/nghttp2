@@ -116,6 +116,7 @@ public:
   void add_request_header(std::string name, std::string value);
   void set_last_request_header_value(const char *data, size_t len);
 
+  void add_request_header(std::string name, std::string value, int16_t token);
   void add_request_header(const uint8_t *name, size_t namelen,
                           const uint8_t *value, size_t valuelen, bool no_index,
                           int16_t token);
@@ -152,7 +153,8 @@ public:
   // Returns HTTP/2 :scheme header field value.
   const std::string &get_request_http2_scheme() const;
   void set_request_http2_scheme(std::string scheme);
-  // Returns HTTP/2 :authority header field value.
+  // Returns HTTP/2 :authority header field value.  We also set the
+  // value retrieved from absolute-form HTTP/1 request.
   const std::string &get_request_http2_authority() const;
   void set_request_http2_authority(std::string authority);
   void set_request_major(int major);

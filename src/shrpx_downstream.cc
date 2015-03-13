@@ -390,6 +390,14 @@ void Downstream::set_last_request_header_value(const char *data, size_t len) {
                         request_headers_, data, len);
 }
 
+void Downstream::add_request_header(std::string name, std::string value,
+                                    int16_t token) {
+  http2::index_header(request_hdidx_, token, request_headers_.size());
+  request_headers_sum_ += name.size() + value.size();
+  request_headers_.emplace_back(std::move(name), std::move(value), false,
+                                token);
+}
+
 void Downstream::add_request_header(const uint8_t *name, size_t namelen,
                                     const uint8_t *value, size_t valuelen,
                                     bool no_index, int16_t token) {

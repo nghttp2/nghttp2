@@ -265,8 +265,6 @@ int Http2DownstreamConnection::push_request_headers() {
 
   const char *authority = nullptr, *host = nullptr;
   if (!no_host_rewrite) {
-    // HTTP/2 backend does not support multiple address, so we always
-    // use index = 0.
     if (!downstream_->get_request_http2_authority().empty()) {
       authority = downstream_addr.hostport.get();
     }
@@ -302,104 +300,52 @@ int Http2DownstreamConnection::push_request_headers() {
     cookies = downstream_->crumble_request_cookie();
   }
 
-  // 9 means:
+  // 8 means:
   // 1. :method
   // 2. :scheme
   // 3. :path
-  // 4. :authority (at least either :authority or host exists)
-  // 5. host
-  // 6. via (optional)
-  // 7. x-forwarded-for (optional)
-  // 8. x-forwarded-proto (optional)
-  // 9. te (optional)
+  // 4. :authority or host (at least either of them exists)
+  // 5. via (optional)
+  // 6. x-forwarded-for (optional)
+  // 7. x-forwarded-proto (optional)
+  // 8. te (optional)
   auto nva = std::vector<nghttp2_nv>();
-  nva.reserve(nheader + 9 + cookies.size());
+  nva.reserve(nheader + 8 + cookies.size());
 
   std::string via_value;
   std::string xff_value;
   std::string scheme, uri_authority, path, query;
 
-  // To reconstruct HTTP/1 status line and headers, proxy should
-  // preserve host header field. See draft-09 section 8.1.3.1.
+  nva.push_back(
+      http2::make_nv_ls(":method", downstream_->get_request_method()));
+
   if (downstream_->get_request_method() == "CONNECT") {
-    // The upstream may be HTTP/2 or HTTP/1
     if (authority) {
       nva.push_back(http2::make_nv_lc(":authority", authority));
     } else {
       nva.push_back(
           http2::make_nv_ls(":authority", downstream_->get_request_path()));
     }
-  } else if (!downstream_->get_request_http2_scheme().empty()) {
-    // Here the upstream is HTTP/2
-    nva.push_back(
-        http2::make_nv_ls(":scheme", downstream_->get_request_http2_scheme()));
-    nva.push_back(http2::make_nv_ls(":path", downstream_->get_request_path()));
+  } else {
+    if (!downstream_->get_request_http2_scheme().empty()) {
+      nva.push_back(http2::make_nv_ls(":scheme",
+                                      downstream_->get_request_http2_scheme()));
+    } else if (client_handler_->get_ssl()) {
+      nva.push_back(http2::make_nv_ll(":scheme", "https"));
+    } else {
+      nva.push_back(http2::make_nv_ll(":scheme", "http"));
+    }
+
     if (authority) {
       nva.push_back(http2::make_nv_lc(":authority", authority));
     }
-  } else {
-    // The upstream is HTTP/1
-    http_parser_url u;
-    const char *url = downstream_->get_request_path().c_str();
-    memset(&u, 0, sizeof(u));
-    rv = http_parser_parse_url(url, downstream_->get_request_path().size(), 0,
-                               &u);
-    if (rv == 0) {
-      http2::copy_url_component(scheme, &u, UF_SCHEMA, url);
-      http2::copy_url_component(uri_authority, &u, UF_HOST, url);
-      http2::copy_url_component(path, &u, UF_PATH, url);
-      http2::copy_url_component(query, &u, UF_QUERY, url);
-      if (path.empty()) {
-        if (!uri_authority.empty() &&
-            downstream_->get_request_method() == "OPTIONS") {
-          path = "*";
-        } else {
-          path = "/";
-        }
-      }
-      if (!query.empty()) {
-        path += "?";
-        path += query;
-      }
-    }
-    if (scheme.empty()) {
-      if (client_handler_->get_ssl()) {
-        nva.push_back(http2::make_nv_ll(":scheme", "https"));
-      } else {
-        nva.push_back(http2::make_nv_ll(":scheme", "http"));
-      }
-    } else {
-      nva.push_back(http2::make_nv_ls(":scheme", scheme));
-    }
-    if (path.empty()) {
-      nva.push_back(
-          http2::make_nv_ls(":path", downstream_->get_request_path()));
-    } else {
-      nva.push_back(http2::make_nv_ls(":path", path));
-    }
 
-    if (!no_host_rewrite) {
-      if (authority) {
-        nva.push_back(http2::make_nv_lc(":authority", authority));
-      }
-    } else if (!uri_authority.empty()) {
-      // TODO properly check IPv6 numeric address
-      if (uri_authority.find(":") != std::string::npos) {
-        uri_authority = "[" + uri_authority;
-        uri_authority += "]";
-      }
-      if (u.field_set & (1 << UF_PORT)) {
-        uri_authority += ":";
-        uri_authority += util::utos(u.port);
-      }
-      nva.push_back(http2::make_nv_ls(":authority", uri_authority));
-    }
+    nva.push_back(http2::make_nv_ls(":path", downstream_->get_request_path()));
   }
 
-  nva.push_back(
-      http2::make_nv_ls(":method", downstream_->get_request_method()));
-
-  if (host) {
+  // only emit host header field if :authority is not emitted.  They
+  // both must be the same value.
+  if (!authority && host) {
     nva.push_back(http2::make_nv_lc("host", host));
   }
 

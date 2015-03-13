@@ -137,6 +137,51 @@ int htp_hdr_valcb(http_parser *htp, const char *data, size_t len) {
 } // namespace
 
 namespace {
+void rewrite_request_host_path_from_uri(Downstream *downstream, const char *uri,
+                                        http_parser_url &u) {
+  assert(u.field_set & (1 << UF_HOST));
+
+  // As per https://tools.ietf.org/html/rfc7230#section-5.4, we
+  // rewrite host header field with authority component.
+  std::string authority;
+  http2::copy_url_component(authority, &u, UF_HOST, uri);
+  // TODO properly check IPv6 numeric address
+  if (authority.find(':') != std::string::npos) {
+    authority = '[' + authority;
+    authority += ']';
+  }
+  if (u.field_set & (1 << UF_PORT)) {
+    authority += ':';
+    authority += util::utos(u.port);
+  }
+  downstream->set_request_http2_authority(authority);
+
+  std::string path;
+  if (u.field_set & (1 << UF_PATH)) {
+    http2::copy_url_component(path, &u, UF_PATH, uri);
+  } else if (downstream->get_request_method() == "OPTIONS") {
+    // Server-wide OPTIONS takes following form in proxy request:
+    //
+    // OPTIONS http://example.org HTTP/1.1
+    //
+    // Notice that no slash after authority. See
+    // http://tools.ietf.org/html/rfc7230#section-5.3.4
+    downstream->set_request_path("*");
+    // we ignore query component here
+    return;
+  } else {
+    path = "/";
+  }
+  if (u.field_set & (1 << UF_QUERY)) {
+    auto &fdata = u.field_data[UF_QUERY];
+    path += '?';
+    path.append(uri + fdata.off, fdata.len);
+  }
+  downstream->set_request_path(path);
+}
+} // namespace
+
+namespace {
 int htp_hdrs_completecb(http_parser *htp) {
   int rv;
   auto upstream = static_cast<HttpsUpstream *>(htp->data);
@@ -178,17 +223,24 @@ int htp_hdrs_completecb(http_parser *htp) {
 
   downstream->inspect_http1_request();
 
-  if (get_config()->client_proxy &&
-      downstream->get_request_method() != "CONNECT") {
-    // Make sure that request path is an absolute URI.
-    http_parser_url u;
-    auto url = downstream->get_request_path().c_str();
-    memset(&u, 0, sizeof(u));
-    rv = http_parser_parse_url(url, downstream->get_request_path().size(), 0,
+  if (downstream->get_request_method() != "CONNECT") {
+    http_parser_url u{};
+    auto uri = downstream->get_request_path().c_str();
+    rv = http_parser_parse_url(uri, downstream->get_request_path().size(), 0,
                                &u);
-    if (rv != 0 || !(u.field_set & (1 << UF_SCHEMA))) {
+    if (rv != 0) {
       // Expect to respond with 400 bad request
       return -1;
+    }
+    // checking UF_HOST could be redundant, but just in case ...
+    if (!(u.field_set & (1 << UF_SCHEMA)) || !(u.field_set & (1 << UF_HOST))) {
+      if (get_config()->client_proxy) {
+        // Request URI should be absolute-form for client proxy mode
+        return -1;
+      }
+    } else {
+      rewrite_request_host_path_from_uri(downstream, uri, u);
+      // uri could be invalidated here
     }
   }
 
