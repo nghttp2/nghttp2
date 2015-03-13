@@ -450,7 +450,7 @@ HttpClient::HttpClient(const nghttp2_session_callbacks *callbacks,
                        struct ev_loop *loop, SSL_CTX *ssl_ctx)
     : session(nullptr), callbacks(callbacks), loop(loop), ssl_ctx(ssl_ctx),
       ssl(nullptr), addrs(nullptr), next_addr(nullptr), cur_addr(nullptr),
-      complete(0), settings_payloadlen(0), state(ClientState::IDLE),
+      complete(0), success(0), settings_payloadlen(0), state(ClientState::IDLE),
       upgrade_response_status_code(0), fd(-1),
       upgrade_response_complete(false) {
   ev_io_init(&wev, writecb, 0, EV_WRITE);
@@ -1744,6 +1744,7 @@ int on_frame_recv_callback2(nghttp2_session *session,
 
     if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
       req->record_response_end_time();
+      ++client->success;
     }
 
     break;
@@ -1780,6 +1781,7 @@ int on_frame_recv_callback2(nghttp2_session *session,
 
     if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
       req->record_response_end_time();
+      ++client->success;
     }
 
     break;
@@ -2101,10 +2103,9 @@ int communicate(
     }
 #endif // HAVE_JANSSON
 
-    if (!client.all_requests_processed()) {
-      std::cerr << "Some requests were not processed. total="
-                << client.reqvec.size() << ", processed=" << client.complete
-                << std::endl;
+    if (client.success != client.reqvec.size()) {
+      std::cerr << "Some requests failed. total=" << client.reqvec.size()
+                << ", success=" << client.success << std::endl;
     }
     if (config.stat) {
       print_stats(client);

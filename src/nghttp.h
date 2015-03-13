@@ -259,6 +259,9 @@ struct HttpClient {
   addrinfo *cur_addr;
   // The number of completed requests, including failed ones.
   size_t complete;
+  // The number of requests that local endpoint received END_STREAM
+  // from peer.
+  size_t success;
   // The length of settings_payload
   size_t settings_payloadlen;
   ClientState state;
