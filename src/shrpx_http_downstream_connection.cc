@@ -211,14 +211,17 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
 
 int HttpDownstreamConnection::push_request_headers() {
   const char *authority = nullptr, *host = nullptr;
+  auto downstream_hostport =
+      get_config()->downstream_addrs[addr_idx_].hostport.get();
+
   if (!get_config()->no_host_rewrite && !get_config()->http2_proxy &&
       !get_config()->client_proxy &&
       downstream_->get_request_method() != "CONNECT") {
     if (!downstream_->get_request_http2_authority().empty()) {
-      authority = get_config()->downstream_addrs[addr_idx_].hostport.get();
+      authority = downstream_hostport;
     }
     if (downstream_->get_request_header(http2::HD_HOST)) {
-      host = get_config()->downstream_addrs[addr_idx_].hostport.get();
+      host = downstream_hostport;
     }
   } else {
     if (!downstream_->get_request_http2_authority().empty()) {
@@ -233,7 +236,7 @@ int HttpDownstreamConnection::push_request_headers() {
   if (!authority && !host) {
     // upstream is HTTP/1.0.  We use backend server's host
     // nonetheless.
-    host = get_config()->downstream_addrs[addr_idx_].hostport.get();
+    host = downstream_hostport;
   }
 
   if (authority) {

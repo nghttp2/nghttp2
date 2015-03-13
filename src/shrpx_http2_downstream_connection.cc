@@ -261,15 +261,16 @@ int Http2DownstreamConnection::push_request_headers() {
   // http2session_ has already in CONNECTED state, so we can get
   // addr_idx here.
   auto addr_idx = http2session_->get_addr_idx();
-  auto &downstream_addr = get_config()->downstream_addrs[addr_idx];
+  auto downstream_hostport =
+      get_config()->downstream_addrs[addr_idx].hostport.get();
 
   const char *authority = nullptr, *host = nullptr;
   if (!no_host_rewrite) {
     if (!downstream_->get_request_http2_authority().empty()) {
-      authority = downstream_addr.hostport.get();
+      authority = downstream_hostport;
     }
     if (downstream_->get_request_header(http2::HD_HOST)) {
-      host = downstream_addr.hostport.get();
+      host = downstream_hostport;
     }
   } else {
     if (!downstream_->get_request_http2_authority().empty()) {
@@ -284,7 +285,7 @@ int Http2DownstreamConnection::push_request_headers() {
   if (!authority && !host) {
     // upstream is HTTP/1.0.  We use backend server's host
     // nonetheless.
-    host = downstream_addr.hostport.get();
+    host = downstream_hostport;
   }
 
   if (authority) {
