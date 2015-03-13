@@ -1038,8 +1038,10 @@ std::string make_hostport(const char *host, uint16_t port) {
     hostport += "]";
   }
 
-  hostport += ":";
-  hostport += utos(port);
+  if (port != 80 && port != 443) {
+    hostport += ":";
+    hostport += utos(port);
+  }
 
   return hostport;
 }

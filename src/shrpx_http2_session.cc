@@ -506,6 +506,10 @@ int Http2Session::downstream_connect_proxy() {
 
   std::string req = "CONNECT ";
   req += downstream_addr.hostport.get();
+  if (downstream_addr.port == 80 || downstream_addr.port == 443) {
+    req += ":";
+    req += util::utos(downstream_addr.port);
+  }
   req += " HTTP/1.1\r\nHost: ";
   req += downstream_addr.host.get();
   req += "\r\n";

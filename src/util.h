@@ -609,7 +609,7 @@ std::string format_duration(const std::chrono::microseconds &u);
 
 // Creates "host:port" string using given |host| and |port|.  If
 // |host| is numeric IPv6 address (e.g., ::1), it is enclosed by "["
-// and "]".
+// and "]".  If |port| is 80 or 443, port part is omitted.
 std::string make_hostport(const char *host, uint16_t port);
 
 } // namespace util
