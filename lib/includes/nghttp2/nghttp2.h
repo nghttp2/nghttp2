@@ -689,7 +689,7 @@ typedef enum {
    * trailer header fields with `nghttp2_submit_request()` or
    * `nghttp2_submit_response()`.
    */
-  NGHTTP2_DATA_FLAG_NO_END_STREAM = 0x02,
+  NGHTTP2_DATA_FLAG_NO_END_STREAM = 0x02
 } nghttp2_data_flag;
 
 /**
