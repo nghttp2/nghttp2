@@ -71,7 +71,7 @@ public:
 
   // Write response header using |status_code| (e.g., 200) and
   // additional header fields in |h|.
-  void write_head(unsigned int status_code, header_map h = {}) const;
+  void write_head(unsigned int status_code, header_map h = header_map{}) const;
 
   // Sends |data| as request body.  No further call of end() is
   // allowed.
@@ -103,7 +103,8 @@ public:
   // nullptr and error code is filled in |ec|.  Be aware that the
   // header field name given in |h| must be lower-cased.
   const response *push(boost::system::error_code &ec, std::string method,
-                       std::string raw_path_query, header_map h = {}) const;
+                       std::string raw_path_query,
+                       header_map h = header_map{}) const;
 
   // Returns status code.
   unsigned int status_code() const;

@@ -46,7 +46,7 @@ enum class response_state {
 class response_impl {
 public:
   response_impl();
-  void write_head(unsigned int status_code, header_map h = {});
+  void write_head(unsigned int status_code, header_map h = header_map{});
   void end(std::string data = "");
   void end(generator_cb cb);
   void write_trailer(header_map h);
@@ -56,7 +56,7 @@ public:
   void cancel(uint32_t error_code);
 
   response *push(boost::system::error_code &ec, std::string method,
-                 std::string raw_path_query, header_map h = {}) const;
+                 std::string raw_path_query, header_map) const;
 
   boost::asio::io_service &io_service();
 

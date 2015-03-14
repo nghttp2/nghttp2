@@ -156,7 +156,7 @@ public:
   // succeeds, or nullptr and |ec| contains error message.
   const request *submit(boost::system::error_code &ec,
                         const std::string &method, const std::string &uri,
-                        header_map h = {}) const;
+                        header_map h = header_map{}) const;
 
   // Submits request to server using |method| (e.g., "GET"), |uri|
   // (e.g., "http://localhost/") and optionally additional header
@@ -165,7 +165,7 @@ public:
   // contains error message.
   const request *submit(boost::system::error_code &ec,
                         const std::string &method, const std::string &uri,
-                        std::string data, header_map h = {}) const;
+                        std::string data, header_map h = header_map{}) const;
 
   // Submits request to server using |method| (e.g., "GET"), |uri|
   // (e.g., "http://localhost/") and optionally additional header
@@ -174,7 +174,7 @@ public:
   // nullptr and |ec| contains error message.
   const request *submit(boost::system::error_code &ec,
                         const std::string &method, const std::string &uri,
-                        generator_cb cb, header_map h = {}) const;
+                        generator_cb cb, header_map h = header_map{}) const;
 
 private:
   std::unique_ptr<session_impl> impl_;
