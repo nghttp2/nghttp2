@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPD" "1" "February 27, 2015" "0.7.5" "nghttp2"
+.TH "NGHTTPD" "1" "March 14, 2015" "0.7.7" "nghttp2"
 .SH NAME
 nghttpd \- HTTP/2 experimental server
 .
@@ -141,6 +141,14 @@ available.
 .B \-\-early\-response
 Start sending response when request HEADERS is received,
 rather than complete request is received.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-trailer=<HEADER>
+Add a trailer  header to a response.   <HEADER> must not
+include pseudo header field  (header field name starting
+with \(aq:\(aq).  The  trailer is sent only if  a response has
+body part.  Example: \fI\%\-\-trailer\fP \(aqfoo: bar\(aq.
 .UNINDENT
 .INDENT 0.0
 .TP

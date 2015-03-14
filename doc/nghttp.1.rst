@@ -67,6 +67,13 @@ OPTIONS
 
     Add a header to the requests.  Example: :option:`-H`\':method: PUT'
 
+.. option:: --trailer=<HEADER>
+
+    Add a trailer header to the requests.  <HEADER> must not
+    include pseudo header field  (header field name starting
+    with ':').  To  send trailer, one must use  :option:`-d` option to
+    send request body.  Example: :option:`--trailer` 'foo: bar'.
+
 .. option:: --cert=<CERT>
 
     Use  the specified  client certificate  file.  The  file

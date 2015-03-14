@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTP" "1" "February 27, 2015" "0.7.5" "nghttp2"
+.TH "NGHTTP" "1" "March 14, 2015" "0.7.7" "nghttp2"
 .SH NAME
 nghttp \- HTTP/2 experimental client
 .
@@ -98,6 +98,14 @@ Print statistics.
 .TP
 .B \-H, \-\-header=<HEADER>
 Add a header to the requests.  Example: \fI\%\-H\fP\(aq:method: PUT\(aq
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-trailer=<HEADER>
+Add a trailer header to the requests.  <HEADER> must not
+include pseudo header field  (header field name starting
+with \(aq:\(aq).  To  send trailer, one must use  \fI\-d\fP option to
+send request body.  Example: \fI\-\-trailer\fP \(aqfoo: bar\(aq.
 .UNINDENT
 .INDENT 0.0
 .TP

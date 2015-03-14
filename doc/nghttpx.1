@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "February 27, 2015" "0.7.5" "nghttp2"
+.TH "NGHTTPX" "1" "March 14, 2015" "0.7.7" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 experimental proxy
 .
@@ -55,13 +55,10 @@ The options are categorized into several groups.
 .INDENT 0.0
 .TP
 .B \-b, \-\-backend=<HOST,PORT>
-Set backend host and port.  For HTTP/1 backend, multiple
-backend addresses are accepted by repeating this option.
-HTTP/2  backend   does  not  support   multiple  backend
-addresses  and the  first occurrence  of this  option is
-used.  UNIX domain socket  can be specified by prefixing
-path        name        with       "unix:"        (e.g.,
-unix:/var/run/backend.sock)
+Set  backend  host  and   port.   The  multiple  backend
+addresses are  accepted by repeating this  option.  UNIX
+domain socket  can be  specified by prefixing  path name
+with "unix:" (e.g., unix:/var/run/backend.sock)
 .sp
 Default: \fB127.0.0.1,80\fP
 .UNINDENT
@@ -193,6 +190,13 @@ Set maximum number  of simultaneous connections frontend
 accepts.  Setting 0 means unlimited.
 .sp
 Default: \fB0\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-backend\-http2\-connections\-per\-worker=<N>
+Set  maximum number  of HTTP/2  connections per  worker.
+The  default  value is  0,  which  means the  number  of
+backend addresses specified by \fI\%\-b\fP option.
 .UNINDENT
 .INDENT 0.0
 .TP

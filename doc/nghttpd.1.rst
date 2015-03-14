@@ -104,6 +104,13 @@ OPTIONS
     Start sending response when request HEADERS is received,
     rather than complete request is received.
 
+.. option:: --trailer=<HEADER>
+
+    Add a trailer  header to a response.   <HEADER> must not
+    include pseudo header field  (header field name starting
+    with ':').  The  trailer is sent only if  a response has
+    body part.  Example: :option:`--trailer` 'foo: bar'.
+
 .. option:: --version
 
     Display version information and exit.

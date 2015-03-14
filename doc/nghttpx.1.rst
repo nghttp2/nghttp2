@@ -34,13 +34,10 @@ Connections
 
 .. option:: -b, --backend=<HOST,PORT>
 
-    Set backend host and port.  For HTTP/1 backend, multiple
-    backend addresses are accepted by repeating this option.
-    HTTP/2  backend   does  not  support   multiple  backend
-    addresses  and the  first occurrence  of this  option is
-    used.  UNIX domain socket  can be specified by prefixing
-    path        name        with       "unix:"        (e.g.,
-    unix:/var/run/backend.sock)
+    Set  backend  host  and   port.   The  multiple  backend
+    addresses are  accepted by repeating this  option.  UNIX
+    domain socket  can be  specified by prefixing  path name
+    with "unix:" (e.g., unix:/var/run/backend.sock)
 
     Default: ``127.0.0.1,80``
 
@@ -160,6 +157,12 @@ Performance
     accepts.  Setting 0 means unlimited.
 
     Default: ``0``
+
+.. option:: --backend-http2-connections-per-worker=<N>
+
+    Set  maximum number  of HTTP/2  connections per  worker.
+    The  default  value is  0,  which  means the  number  of
+    backend addresses specified by :option:`-b` option.
 
 .. option:: --backend-http1-connections-per-host=<N>
 
