@@ -7,7 +7,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>asio_http2.h &mdash; nghttp2 0.7.2-DEV documentation</title>
+  <title>asio_http2.h &mdash; nghttp2 0.7.8-DEV documentation</title>
   
 
   
@@ -28,8 +28,8 @@
   
 
   
-    <link rel="top" title="nghttp2 0.7.2-DEV documentation" href="index.html"/>
-        <link rel="prev" title="nghttp2ver.h" href="nghttp2ver.h.html"/> 
+    <link rel="top" title="nghttp2 0.7.8-DEV documentation" href="index.html"/>
+        <link rel="prev" title="asio_http2_client.h" href="asio_http2_client.h.html"/> 
 
   
   <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
@@ -99,30 +99,33 @@
 <li class="toctree-l1"><a class="reference internal" href="nghttp.1.html">nghttp(1)</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#options">OPTIONS:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#options">OPTIONS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="nghttpd.1.html">nghttpd(1)</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#options">OPTIONS:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#options">OPTIONS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="nghttpx.1.html">nghttpx(1)</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#options">OPTIONS:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#options">OPTIONS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#files">FILES</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#signals">SIGNALS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#server-push">SERVER PUSH</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#unix-domain-socket">UNIX DOMAIN SOCKET</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="h2load.1.html">h2load(1)</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="h2load.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="h2load.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#options">OPTIONS:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#options">OPTIONS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#output">OUTPUT</a></li>
 <li class="toctree-l2"><a class="reference internal" href="h2load.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
@@ -138,7 +141,7 @@
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#rewriting-location-header-field">Rewriting location header field</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#hot-swapping">Hot swapping</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#re-opening-log-files">Re-opening log files</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#multiple-http-1-backend-addresses">Multiple HTTP/1 backend addresses</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#multiple-backend-addresses">Multiple backend addresses</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="h2load-howto.html">h2load - HTTP/2 benchmarking tool - HOW-TO</a><ul>
@@ -152,6 +155,7 @@
 <li class="toctree-l1"><a class="reference internal" href="apiref.html">API Reference</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="apiref.html#includes">Includes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="apiref.html#remarks">Remarks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="apiref.html#http-messaging">HTTP Messaging</a></li>
 <li class="toctree-l2"><a class="reference internal" href="apiref.html#macros">Macros</a></li>
 <li class="toctree-l2"><a class="reference internal" href="apiref.html#enums">Enums</a></li>
 <li class="toctree-l2"><a class="reference internal" href="apiref.html#types-structs-unions-and-typedefs">Types (structs, unions and typedefs)</a></li>
@@ -160,6 +164,7 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="libnghttp2_asio.html">libnghttp2_asio: High level HTTP/2 C++ library</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="libnghttp2_asio.html#server-api">Server API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="libnghttp2_asio.html#client-api">Client API</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="python-apiref.html">Python API Reference</a><ul>
@@ -169,6 +174,8 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="nghttp2.h.html">nghttp2.h</a></li>
 <li class="toctree-l1"><a class="reference internal" href="nghttp2ver.h.html">nghttp2ver.h</a></li>
+<li class="toctree-l1"><a class="reference internal" href="asio_http2_server.h.html">asio_http2_server.h</a></li>
+<li class="toctree-l1"><a class="reference internal" href="asio_http2_client.h.html">asio_http2_client.h</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="">asio_http2.h</a></li>
 <li class="toctree-l1"><a class="reference external" href="https://github.com/tatsuhiro-t/nghttp2">Source</a></li>
 <li class="toctree-l1"><a class="reference external" href="https://github.com/tatsuhiro-t/nghttp2/issues">Issues</a></li>
@@ -240,205 +247,86 @@
 <span class="cp">#include &lt;string&gt;</span>
 <span class="cp">#include &lt;vector&gt;</span>
 <span class="cp">#include &lt;functional&gt;</span>
+<span class="cp">#include &lt;map&gt;</span>
+
+<span class="cp">#include &lt;boost/system/error_code.hpp&gt;</span>
+<span class="cp">#include &lt;boost/asio.hpp&gt;</span>
+<span class="cp">#include &lt;boost/asio/ssl.hpp&gt;</span>
+
+<span class="cp">#include &lt;nghttp2/nghttp2.h&gt;</span>
+
+<span class="k">namespace</span> <span class="n">boost</span> <span class="p">{</span>
+<span class="k">namespace</span> <span class="n">system</span> <span class="p">{</span>
+
+<span class="k">template</span> <span class="o">&lt;&gt;</span> <span class="k">struct</span> <span class="n">is_error_code_enum</span><span class="o">&lt;</span><span class="n">nghttp2_error</span><span class="o">&gt;</span> <span class="p">{</span>
+  <span class="n">BOOST_STATIC_CONSTANT</span><span class="p">(</span><span class="kt">bool</span><span class="p">,</span> <span class="n">value</span> <span class="o">=</span> <span class="nb">true</span><span class="p">);</span>
+<span class="p">};</span>
+
+<span class="p">}</span> <span class="c1">// namespace system</span>
+<span class="p">}</span> <span class="c1">// namespace boost</span>
 
 <span class="k">namespace</span> <span class="n">nghttp2</span> <span class="p">{</span>
 
 <span class="k">namespace</span> <span class="n">asio_http2</span> <span class="p">{</span>
 
-<span class="k">struct</span> <span class="n">header</span> <span class="p">{</span>
-  <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">name</span><span class="p">;</span>
+<span class="k">struct</span> <span class="n">header_value</span> <span class="p">{</span>
+  <span class="c1">// header field value</span>
   <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">value</span><span class="p">;</span>
+  <span class="c1">// true if the header field value is sensitive information, such as</span>
+  <span class="c1">// authorization information or short length secret cookies.  If</span>
+  <span class="c1">// true, those header fields are not indexed by HPACK (but still</span>
+  <span class="c1">// huffman-encoded), which results in lesser compression.</span>
+  <span class="kt">bool</span> <span class="n">sensitive</span><span class="p">;</span>
 <span class="p">};</span>
 
+<span class="c1">// header fields.  The header field name must be lower-cased.</span>
+<span class="k">using</span> <span class="n">header_map</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">multimap</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="p">,</span> <span class="n">header_value</span><span class="o">&gt;</span><span class="p">;</span>
+
+<span class="k">const</span> <span class="n">boost</span><span class="o">::</span><span class="n">system</span><span class="o">::</span><span class="n">error_category</span> <span class="o">&amp;</span><span class="n">nghttp2_category</span><span class="p">()</span> <span class="k">noexcept</span><span class="p">;</span>
+
+<span class="k">struct</span> <span class="n">uri_ref</span> <span class="p">{</span>
+  <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">scheme</span><span class="p">;</span>
+  <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">host</span><span class="p">;</span>
+  <span class="c1">// form after percent-encoding decoded</span>
+  <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">path</span><span class="p">;</span>
+  <span class="c1">// original path, percent-encoded</span>
+  <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">raw_path</span><span class="p">;</span>
+  <span class="c1">// original query, percent-encoded</span>
+  <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">raw_query</span><span class="p">;</span>
+  <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">fragment</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="c1">// Callback function when data is arrived.  EOF is indicated by</span>
+<span class="c1">// passing 0 to the second parameter.</span>
 <span class="k">typedef</span> <span class="n">std</span><span class="o">::</span><span class="n">function</span><span class="o">&lt;</span><span class="kt">void</span><span class="p">(</span><span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="kt">size_t</span><span class="p">)</span><span class="o">&gt;</span> <span class="n">data_cb</span><span class="p">;</span>
 <span class="k">typedef</span> <span class="n">std</span><span class="o">::</span><span class="n">function</span><span class="o">&lt;</span><span class="kt">void</span><span class="p">(</span><span class="kt">void</span><span class="p">)</span><span class="o">&gt;</span> <span class="n">void_cb</span><span class="p">;</span>
+<span class="k">typedef</span> <span class="n">std</span><span class="o">::</span><span class="n">function</span><span class="o">&lt;</span><span class="kt">void</span><span class="p">(</span><span class="k">const</span> <span class="n">boost</span><span class="o">::</span><span class="n">system</span><span class="o">::</span><span class="n">error_code</span> <span class="o">&amp;</span><span class="n">ec</span><span class="p">)</span><span class="o">&gt;</span> <span class="n">error_cb</span><span class="p">;</span>
+<span class="c1">// Callback function when request and response are finished.  The</span>
+<span class="c1">// parameter indicates the cause of closure.</span>
+<span class="k">typedef</span> <span class="n">std</span><span class="o">::</span><span class="n">function</span><span class="o">&lt;</span><span class="kt">void</span><span class="p">(</span><span class="kt">uint32_t</span><span class="p">)</span><span class="o">&gt;</span> <span class="n">close_cb</span><span class="p">;</span>
 
-<span class="c1">// Callback function to generate response body.  The implementation of</span>
-<span class="c1">// this callback must fill at most |len| bytes data to |buf|.  The</span>
-<span class="c1">// return value is pair of written bytes and bool value indicating</span>
-<span class="c1">// that this is the end of the body.  If the end of the body was</span>
-<span class="c1">// reached, return true.  If there is error and application wants to</span>
-<span class="c1">// terminate stream, return std::make_pair(-1, false).  Returning</span>
-<span class="c1">// std::make_pair(0, false) tells the library that don&#39;t call this</span>
-<span class="c1">// callback until application calls response::resume().  This is</span>
-<span class="c1">// useful when there is no data to send at the moment but there will</span>
-<span class="c1">// be more to come in near future.</span>
-<span class="k">typedef</span> <span class="n">std</span><span class="o">::</span><span class="n">function</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">pair</span><span class="o">&lt;</span><span class="kt">ssize_t</span><span class="p">,</span> <span class="kt">bool</span><span class="o">&gt;</span><span class="p">(</span><span class="kt">uint8_t</span> <span class="o">*</span><span class="n">buf</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="kt">size_t</span> <span class="n">len</span><span class="p">)</span><span class="o">&gt;</span>
-    <span class="n">read_cb</span><span class="p">;</span>
-
-<span class="k">class</span> <span class="nc">channel_impl</span><span class="p">;</span>
-
-<span class="k">class</span> <span class="nc">channel</span> <span class="p">{</span>
-<span class="k">public</span><span class="o">:</span>
-  <span class="c1">// Application must not call this directly.</span>
-  <span class="n">channel</span><span class="p">();</span>
-
-  <span class="c1">// Schedules the execution of callback |cb| in the same thread where</span>
-  <span class="c1">// request callback is called.  Therefore, it is same to use request</span>
-  <span class="c1">// or response object in |cb|.  The callbacks are executed in the</span>
-  <span class="c1">// same order they are posted though same channel object if they are</span>
-  <span class="c1">// posted from the same thread.</span>
-  <span class="kt">void</span> <span class="nf">post</span><span class="p">(</span><span class="n">void_cb</span> <span class="n">cb</span><span class="p">);</span>
-
-  <span class="c1">// Application must not call this directly.</span>
-  <span class="n">channel_impl</span> <span class="o">&amp;</span><span class="n">impl</span><span class="p">();</span>
-
-<span class="k">private</span><span class="o">:</span>
-  <span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">channel_impl</span><span class="o">&gt;</span> <span class="n">impl_</span><span class="p">;</span>
-<span class="p">};</span>
-
-<span class="k">typedef</span> <span class="n">std</span><span class="o">::</span><span class="n">function</span><span class="o">&lt;</span><span class="kt">void</span><span class="p">(</span><span class="n">channel</span> <span class="o">&amp;</span><span class="p">)</span><span class="o">&gt;</span> <span class="n">thread_cb</span><span class="p">;</span>
-
-<span class="k">namespace</span> <span class="n">server</span> <span class="p">{</span>
-
-<span class="k">class</span> <span class="nc">request_impl</span><span class="p">;</span>
-<span class="k">class</span> <span class="nc">response_impl</span><span class="p">;</span>
-
-<span class="k">class</span> <span class="nc">request</span> <span class="p">{</span>
-<span class="k">public</span><span class="o">:</span>
-  <span class="c1">// Application must not call this directly.</span>
-  <span class="n">request</span><span class="p">();</span>
-
-  <span class="c1">// Returns request headers.  The pusedo headers, which start with</span>
-  <span class="c1">// colon (;), are exluced from this list.</span>
-  <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">header</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">headers</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>
-
-  <span class="c1">// Returns method (e.g., GET).</span>
-  <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="o">&amp;</span><span class="n">method</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>
-
-  <span class="c1">// Returns scheme (e.g., https).</span>
-  <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="o">&amp;</span><span class="n">scheme</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>
-
-  <span class="c1">// Returns authority (e.g., example.org).  This could be empty</span>
-  <span class="c1">// string.  In this case, check host().</span>
-
-  <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="o">&amp;</span><span class="n">authority</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>
-  <span class="c1">// Returns host (e.g., example.org).  If host header field is not</span>
-  <span class="c1">// present, this value is copied from authority().</span>
-
-  <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="o">&amp;</span><span class="n">host</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>
-
-  <span class="c1">// Returns path (e.g., /index.html).</span>
-  <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="o">&amp;</span><span class="n">path</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>
-
-  <span class="c1">// Sets callback when chunk of request body is received.</span>
-  <span class="kt">void</span> <span class="nf">on_data</span><span class="p">(</span><span class="n">data_cb</span> <span class="n">cb</span><span class="p">);</span>
-
-  <span class="c1">// Sets callback when request was completed.</span>
-  <span class="kt">void</span> <span class="nf">on_end</span><span class="p">(</span><span class="n">void_cb</span> <span class="n">cb</span><span class="p">);</span>
-
-  <span class="c1">// Pushes resource denoted by |path| using |method|.  The additional</span>
-  <span class="c1">// headers can be given in |headers|.  request_cb will be called for</span>
-  <span class="c1">// pushed resource later on.  This function returns true if it</span>
-  <span class="c1">// succeeds, or false.</span>
-  <span class="kt">bool</span> <span class="nf">push</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">method</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">path</span><span class="p">,</span>
-            <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">header</span><span class="o">&gt;</span> <span class="n">headers</span> <span class="o">=</span> <span class="p">{});</span>
-
-  <span class="c1">// Returns true if this is pushed request.</span>
-  <span class="kt">bool</span> <span class="n">pushed</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>
-
-  <span class="c1">// Returns true if stream has been closed.</span>
-  <span class="kt">bool</span> <span class="n">closed</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>
-
-  <span class="c1">// Runs function |start| in one of background threads.  Returns true</span>
-  <span class="c1">// if scheduling task was done successfully.</span>
-  <span class="c1">//</span>
-  <span class="c1">// Since |start| is called in different thread, calling any method</span>
-  <span class="c1">// of request or response object in the callback may cause undefined</span>
-  <span class="c1">// behavior.  To safely use them, use channel::post().  A callback</span>
-  <span class="c1">// passed to channel::post() is executed in the same thread where</span>
-  <span class="c1">// request callback is called, so it is safe to use request or</span>
-  <span class="c1">// response object.  Example::</span>
-  <span class="kt">bool</span> <span class="nf">run_task</span><span class="p">(</span><span class="n">thread_cb</span> <span class="n">start</span><span class="p">);</span>
-
-  <span class="c1">// Application must not call this directly.</span>
-  <span class="n">request_impl</span> <span class="o">&amp;</span><span class="n">impl</span><span class="p">();</span>
-
-<span class="k">private</span><span class="o">:</span>
-  <span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">request_impl</span><span class="o">&gt;</span> <span class="n">impl_</span><span class="p">;</span>
-<span class="p">};</span>
-
-<span class="k">class</span> <span class="nc">response</span> <span class="p">{</span>
-<span class="k">public</span><span class="o">:</span>
-  <span class="c1">// Application must not call this directly.</span>
-  <span class="n">response</span><span class="p">();</span>
-
-  <span class="c1">// Write response header using |status_code| (e.g., 200) and</span>
-  <span class="c1">// additional headers in |headers|.</span>
-  <span class="kt">void</span> <span class="nf">write_head</span><span class="p">(</span><span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">status_code</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">header</span><span class="o">&gt;</span> <span class="n">headers</span> <span class="o">=</span> <span class="p">{});</span>
-
-  <span class="c1">// Sends |data| as request body.  No further call of end() is</span>
-  <span class="c1">// allowed.</span>
-  <span class="kt">void</span> <span class="nf">end</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">data</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">);</span>
-
-  <span class="c1">// Sets callback |cb| as a generator of the response body.  No</span>
-  <span class="c1">// further call of end() is allowed.</span>
-  <span class="kt">void</span> <span class="nf">end</span><span class="p">(</span><span class="n">read_cb</span> <span class="n">cb</span><span class="p">);</span>
-
-  <span class="c1">// Resumes deferred response.</span>
-  <span class="kt">void</span> <span class="nf">resume</span><span class="p">();</span>
-
-  <span class="c1">// Returns status code.</span>
-  <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">status_code</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>
-
-  <span class="c1">// Returns true if response has been started.</span>
-  <span class="kt">bool</span> <span class="n">started</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>
-
-  <span class="c1">// Application must not call this directly.</span>
-  <span class="n">response_impl</span> <span class="o">&amp;</span><span class="n">impl</span><span class="p">();</span>
-
-<span class="k">private</span><span class="o">:</span>
-  <span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">response_impl</span><span class="o">&gt;</span> <span class="n">impl_</span><span class="p">;</span>
-<span class="p">};</span>
-
-<span class="c1">// This is so called request callback.  Called every time request is</span>
-<span class="c1">// received.</span>
-<span class="k">typedef</span> <span class="n">std</span><span class="o">::</span><span class="n">function</span><span class="o">&lt;</span><span class="kt">void</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">request</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="p">,</span>
-                           <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">response</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="p">)</span><span class="o">&gt;</span> <span class="n">request_cb</span><span class="p">;</span>
-
-<span class="k">class</span> <span class="nc">http2_impl</span><span class="p">;</span>
-
-<span class="k">class</span> <span class="nc">http2</span> <span class="p">{</span>
-<span class="k">public</span><span class="o">:</span>
-  <span class="n">http2</span><span class="p">();</span>
-  <span class="o">~</span><span class="n">http2</span><span class="p">();</span>
-
-  <span class="c1">// Starts listening connection on given address and port.  The</span>
-  <span class="c1">// incoming requests are handled by given callback |cb|.</span>
-  <span class="kt">void</span> <span class="nf">listen</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="o">&amp;</span><span class="n">address</span><span class="p">,</span> <span class="kt">uint16_t</span> <span class="n">port</span><span class="p">,</span> <span class="n">request_cb</span> <span class="n">cb</span><span class="p">);</span>
-
-  <span class="c1">// Sets number of native threads to handle incoming HTTP request.</span>
-  <span class="c1">// It defaults to 1.</span>
-  <span class="kt">void</span> <span class="nf">num_threads</span><span class="p">(</span><span class="kt">size_t</span> <span class="n">num_threads</span><span class="p">);</span>
-
-  <span class="c1">// Sets TLS private key file and certificate file.  Both files must</span>
-  <span class="c1">// be in PEM format.</span>
-  <span class="kt">void</span> <span class="nf">tls</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">private_key_file</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">certificate_file</span><span class="p">);</span>
-
-  <span class="c1">// Sets number of background threads to run concurrent tasks (see</span>
-  <span class="c1">// request::run_task()).  It defaults to 1.  This is not the number</span>
-  <span class="c1">// of thread to handle incoming HTTP request.  For this purpose, see</span>
-  <span class="c1">// num_threads().</span>
-  <span class="kt">void</span> <span class="nf">num_concurrent_tasks</span><span class="p">(</span><span class="kt">size_t</span> <span class="n">num_concurrent_tasks</span><span class="p">);</span>
-
-  <span class="c1">// Sets the maximum length to which the queue of pending</span>
-  <span class="c1">// connections.</span>
-  <span class="kt">void</span> <span class="nf">backlog</span><span class="p">(</span><span class="kt">int</span> <span class="n">backlog</span><span class="p">);</span>
-
-<span class="k">private</span><span class="o">:</span>
-  <span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">http2_impl</span><span class="o">&gt;</span> <span class="n">impl_</span><span class="p">;</span>
-<span class="p">};</span>
-
-<span class="p">}</span> <span class="c1">// namespace server</span>
+<span class="c1">// Callback function to generate response body.  This function has the</span>
+<span class="c1">// same semantics with nghttp2_data_source_read_callback.  Just source</span>
+<span class="c1">// and user_data parameters are removed.</span>
+<span class="c1">//</span>
+<span class="c1">// Basically, write at most |len| bytes to |data| and returns the</span>
+<span class="c1">// number of bytes written.  If there is no data left to send, set</span>
+<span class="c1">// NGHTTP2_DATA_FLAG_EOF to *data_flags (e.g., *data_flags |=</span>
+<span class="c1">// NGHTTP2_DATA_FLAG_EOF).  If there is still data to send but they</span>
+<span class="c1">// are not available right now, return NGHTTP2_ERR_DEFERRED.  In case</span>
+<span class="c1">// of the error and request/response must be closed, return</span>
+<span class="c1">// NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE.</span>
+<span class="k">typedef</span> <span class="n">std</span><span class="o">::</span><span class="n">function</span><span class="o">&lt;</span>
+    <span class="kt">ssize_t</span><span class="p">(</span><span class="kt">uint8_t</span> <span class="o">*</span><span class="n">buf</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="kt">size_t</span> <span class="n">len</span><span class="p">,</span> <span class="kt">uint32_t</span> <span class="o">*</span><span class="n">data_flags</span><span class="p">)</span><span class="o">&gt;</span> <span class="n">generator_cb</span><span class="p">;</span>
 
 <span class="c1">// Convenient function to create function to read file denoted by</span>
 <span class="c1">// |path|.  This can be passed to response::end().</span>
-<span class="n">read_cb</span> <span class="n">file_reader</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="o">&amp;</span><span class="n">path</span><span class="p">);</span>
+<span class="n">generator_cb</span> <span class="nf">file_generator</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="o">&amp;</span><span class="n">path</span><span class="p">);</span>
 
-<span class="c1">// Like file_reader(const std::string&amp;), but it takes opened file</span>
+<span class="c1">// Like file_generator(const std::string&amp;), but it takes opened file</span>
 <span class="c1">// descriptor.  The passed descriptor will be closed when returned</span>
 <span class="c1">// function object is destroyed.</span>
-<span class="n">read_cb</span> <span class="nf">file_reader_from_fd</span><span class="p">(</span><span class="kt">int</span> <span class="n">fd</span><span class="p">);</span>
+<span class="n">generator_cb</span> <span class="nf">file_generator_from_fd</span><span class="p">(</span><span class="kt">int</span> <span class="n">fd</span><span class="p">);</span>
 
 <span class="c1">// Validates path so that it does not contain directory traversal</span>
 <span class="c1">// vector.  Returns true if path is safe.  The |path| must start with</span>
@@ -451,6 +339,15 @@
 
 <span class="c1">// Returns HTTP date representation of current posix time |t|.</span>
 <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">http_date</span><span class="p">(</span><span class="kt">int64_t</span> <span class="n">t</span><span class="p">);</span>
+
+<span class="c1">// Parses |uri| and extract scheme, host and service.  The service is</span>
+<span class="c1">// port component of URI (e.g., &quot;8443&quot;) if available, otherwise it is</span>
+<span class="c1">// scheme (e.g., &quot;https&quot;).</span>
+<span class="n">boost</span><span class="o">::</span><span class="n">system</span><span class="o">::</span><span class="n">error_code</span> <span class="n">host_service_from_uri</span><span class="p">(</span><span class="n">boost</span><span class="o">::</span><span class="n">system</span><span class="o">::</span><span class="n">error_code</span> <span class="o">&amp;</span><span class="n">ec</span><span class="p">,</span>
+                                                <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="o">&amp;</span><span class="n">scheme</span><span class="p">,</span>
+                                                <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="o">&amp;</span><span class="n">host</span><span class="p">,</span>
+                                                <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="o">&amp;</span><span class="n">service</span><span class="p">,</span>
+                                                <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="o">&amp;</span><span class="n">uri</span><span class="p">);</span>
 
 <span class="p">}</span> <span class="c1">// namespace asio_http2</span>
 
@@ -468,7 +365,7 @@
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
       
-        <a href="nghttp2ver.h.html" class="btn btn-neutral" title="nghttp2ver.h"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="asio_http2_client.h.html" class="btn btn-neutral" title="asio_http2_client.h"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -498,7 +395,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.7.2-DEV',
+            VERSION:'0.7.8-DEV',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  false

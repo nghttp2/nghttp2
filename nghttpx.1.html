@@ -7,7 +7,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>nghttpx(1) &mdash; nghttp2 0.7.2-DEV documentation</title>
+  <title>nghttpx(1) &mdash; nghttp2 0.7.8-DEV documentation</title>
   
 
   
@@ -28,7 +28,7 @@
   
 
   
-    <link rel="top" title="nghttp2 0.7.2-DEV documentation" href="index.html"/>
+    <link rel="top" title="nghttp2 0.7.8-DEV documentation" href="index.html"/>
         <link rel="next" title="h2load(1)" href="h2load.1.html"/>
         <link rel="prev" title="nghttpd(1)" href="nghttpd.1.html"/> 
 
@@ -100,30 +100,33 @@
 <li class="toctree-l1"><a class="reference internal" href="nghttp.1.html">nghttp(1)</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#options">OPTIONS:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#options">OPTIONS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="nghttpd.1.html">nghttpd(1)</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#options">OPTIONS:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#options">OPTIONS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
 <li class="toctree-l1 current"><a class="current reference internal" href="">nghttpx(1)</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#options">OPTIONS:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#options">OPTIONS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#files">FILES</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#signals">SIGNALS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#server-push">SERVER PUSH</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#unix-domain-socket">UNIX DOMAIN SOCKET</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#see-also">SEE ALSO</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="h2load.1.html">h2load(1)</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="h2load.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="h2load.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#options">OPTIONS:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#options">OPTIONS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#output">OUTPUT</a></li>
 <li class="toctree-l2"><a class="reference internal" href="h2load.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
@@ -139,7 +142,7 @@
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#rewriting-location-header-field">Rewriting location header field</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#hot-swapping">Hot swapping</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#re-opening-log-files">Re-opening log files</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#multiple-http-1-backend-addresses">Multiple HTTP/1 backend addresses</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#multiple-backend-addresses">Multiple backend addresses</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="h2load-howto.html">h2load - HTTP/2 benchmarking tool - HOW-TO</a><ul>
@@ -153,6 +156,7 @@
 <li class="toctree-l1"><a class="reference internal" href="apiref.html">API Reference</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="apiref.html#includes">Includes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="apiref.html#remarks">Remarks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="apiref.html#http-messaging">HTTP Messaging</a></li>
 <li class="toctree-l2"><a class="reference internal" href="apiref.html#macros">Macros</a></li>
 <li class="toctree-l2"><a class="reference internal" href="apiref.html#enums">Enums</a></li>
 <li class="toctree-l2"><a class="reference internal" href="apiref.html#types-structs-unions-and-typedefs">Types (structs, unions and typedefs)</a></li>
@@ -161,6 +165,7 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="libnghttp2_asio.html">libnghttp2_asio: High level HTTP/2 C++ library</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="libnghttp2_asio.html#server-api">Server API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="libnghttp2_asio.html#client-api">Client API</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="python-apiref.html">Python API Reference</a><ul>
@@ -170,6 +175,8 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="nghttp2.h.html">nghttp2.h</a></li>
 <li class="toctree-l1"><a class="reference internal" href="nghttp2ver.h.html">nghttp2ver.h</a></li>
+<li class="toctree-l1"><a class="reference internal" href="asio_http2_server.h.html">asio_http2_server.h</a></li>
+<li class="toctree-l1"><a class="reference internal" href="asio_http2_client.h.html">asio_http2_client.h</a></li>
 <li class="toctree-l1"><a class="reference internal" href="asio_http2.h.html">asio_http2.h</a></li>
 <li class="toctree-l1"><a class="reference external" href="https://github.com/tatsuhiro-t/nghttp2">Source</a></li>
 <li class="toctree-l1"><a class="reference external" href="https://github.com/tatsuhiro-t/nghttp2/issues">Issues</a></li>
@@ -232,18 +239,17 @@
 
 </div>
 <div class="section" id="options">
-<h2>OPTIONS:<a class="headerlink" href="#options" title="Permalink to this headline">¶</a></h2>
+<h2>OPTIONS<a class="headerlink" href="#options" title="Permalink to this headline">¶</a></h2>
 <p>The options are categorized into several groups.</p>
 <div class="section" id="connections">
-<h3>Connections:<a class="headerlink" href="#connections" title="Permalink to this headline">¶</a></h3>
+<h3>Connections<a class="headerlink" href="#connections" title="Permalink to this headline">¶</a></h3>
 <dl class="option">
 <dt id="cmdoption-b">
 <span id="cmdoption--backend"></span><tt class="descname">-b</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--backend</tt><tt class="descclassname">=&lt;HOST,PORT&gt;</tt><a class="headerlink" href="#cmdoption-b" title="Permalink to this definition">¶</a></dt>
-<dd><p>Set backend host and port.  For HTTP/1 backend, multiple
-backend addresses are accepted by repeating this option.
-HTTP/2  backend   does  not  support   multiple  backend
-addresses  and the  first occurrence  of this  option is
-used.</p>
+<dd><p>Set  backend  host  and   port.   The  multiple  backend
+addresses are  accepted by repeating this  option.  UNIX
+domain socket  can be  specified by prefixing  path name
+with &quot;unix:&quot; (e.g., unix:/var/run/backend.sock)</p>
 <p>Default: <tt class="docutils literal"><span class="pre">127.0.0.1,80</span></tt></p>
 </dd></dl>
 
@@ -251,7 +257,9 @@ used.</p>
 <dt id="cmdoption-f">
 <span id="cmdoption--frontend"></span><tt class="descname">-f</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--frontend</tt><tt class="descclassname">=&lt;HOST,PORT&gt;</tt><a class="headerlink" href="#cmdoption-f" title="Permalink to this definition">¶</a></dt>
 <dd><p>Set  frontend  host and  port.   If  &lt;HOST&gt; is  '*',  it
-assumes all addresses including both IPv4 and IPv6.</p>
+assumes  all addresses  including  both  IPv4 and  IPv6.
+UNIX domain  socket can  be specified by  prefixing path
+name with &quot;unix:&quot; (e.g., unix:/var/run/nghttpx.sock)</p>
 <p>Default: <tt class="docutils literal"><span class="pre">*,3000</span></tt></p>
 </dd></dl>
 
@@ -293,7 +301,7 @@ be     specified    by     <a class="reference internal" href="#cmdoption--backe
 
 </div>
 <div class="section" id="performance">
-<h3>Performance:<a class="headerlink" href="#performance" title="Permalink to this headline">¶</a></h3>
+<h3>Performance<a class="headerlink" href="#performance" title="Permalink to this headline">¶</a></h3>
 <dl class="option">
 <dt id="cmdoption-n">
 <span id="cmdoption--workers"></span><tt class="descname">-n</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--workers</tt><tt class="descclassname">=&lt;N&gt;</tt><a class="headerlink" href="#cmdoption-n" title="Permalink to this definition">¶</a></dt>
@@ -380,6 +388,14 @@ accepts.  Setting 0 means unlimited.</p>
 </dd></dl>
 
 <dl class="option">
+<dt id="cmdoption--backend-http2-connections-per-worker">
+<tt class="descname">--backend-http2-connections-per-worker</tt><tt class="descclassname">=&lt;N&gt;</tt><a class="headerlink" href="#cmdoption--backend-http2-connections-per-worker" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set  maximum number  of HTTP/2  connections per  worker.
+The  default  value is  0,  which  means the  number  of
+backend addresses specified by <a class="reference internal" href="#cmdoption-b"><em class="xref std std-option">-b</em></a> option.</p>
+</dd></dl>
+
+<dl class="option">
 <dt id="cmdoption--backend-http1-connections-per-host">
 <tt class="descname">--backend-http1-connections-per-host</tt><tt class="descclassname">=&lt;N&gt;</tt><a class="headerlink" href="#cmdoption--backend-http1-connections-per-host" title="Permalink to this definition">¶</a></dt>
 <dd><p>Set   maximum  number   of  backend   concurrent  HTTP/1
@@ -420,37 +436,37 @@ If 0 is given, nghttpx does not set the limit.</p>
 <dt id="cmdoption--backend-response-buffer">
 <tt class="descname">--backend-response-buffer</tt><tt class="descclassname">=&lt;SIZE&gt;</tt><a class="headerlink" href="#cmdoption--backend-response-buffer" title="Permalink to this definition">¶</a></dt>
 <dd><p>Set buffer size used to store backend response.</p>
-<p>Default: <tt class="docutils literal"><span class="pre">64K</span></tt></p>
+<p>Default: <tt class="docutils literal"><span class="pre">16K</span></tt></p>
 </dd></dl>
 
 </div>
 <div class="section" id="timeout">
-<h3>Timeout:<a class="headerlink" href="#timeout" title="Permalink to this headline">¶</a></h3>
+<h3>Timeout<a class="headerlink" href="#timeout" title="Permalink to this headline">¶</a></h3>
 <dl class="option">
 <dt id="cmdoption--frontend-http2-read-timeout">
-<tt class="descname">--frontend-http2-read-timeout</tt><tt class="descclassname">=&lt;SEC&gt;</tt><a class="headerlink" href="#cmdoption--frontend-http2-read-timeout" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">--frontend-http2-read-timeout</tt><tt class="descclassname">=&lt;DURATION&gt;</tt><a class="headerlink" href="#cmdoption--frontend-http2-read-timeout" title="Permalink to this definition">¶</a></dt>
 <dd><p>Specify  read  timeout  for  HTTP/2  and  SPDY  frontend
 connection.</p>
-<p>Default: <tt class="docutils literal"><span class="pre">180</span></tt></p>
+<p>Default: <tt class="docutils literal"><span class="pre">180s</span></tt></p>
 </dd></dl>
 
 <dl class="option">
 <dt id="cmdoption--frontend-read-timeout">
-<tt class="descname">--frontend-read-timeout</tt><tt class="descclassname">=&lt;SEC&gt;</tt><a class="headerlink" href="#cmdoption--frontend-read-timeout" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">--frontend-read-timeout</tt><tt class="descclassname">=&lt;DURATION&gt;</tt><a class="headerlink" href="#cmdoption--frontend-read-timeout" title="Permalink to this definition">¶</a></dt>
 <dd><p>Specify read timeout for HTTP/1.1 frontend connection.</p>
-<p>Default: <tt class="docutils literal"><span class="pre">180</span></tt></p>
+<p>Default: <tt class="docutils literal"><span class="pre">180s</span></tt></p>
 </dd></dl>
 
 <dl class="option">
 <dt id="cmdoption--frontend-write-timeout">
-<tt class="descname">--frontend-write-timeout</tt><tt class="descclassname">=&lt;SEC&gt;</tt><a class="headerlink" href="#cmdoption--frontend-write-timeout" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">--frontend-write-timeout</tt><tt class="descclassname">=&lt;DURATION&gt;</tt><a class="headerlink" href="#cmdoption--frontend-write-timeout" title="Permalink to this definition">¶</a></dt>
 <dd><p>Specify write timeout for all frontend connections.</p>
-<p>Default: <tt class="docutils literal"><span class="pre">30</span></tt></p>
+<p>Default: <tt class="docutils literal"><span class="pre">30s</span></tt></p>
 </dd></dl>
 
 <dl class="option">
 <dt id="cmdoption--stream-read-timeout">
-<tt class="descname">--stream-read-timeout</tt><tt class="descclassname">=&lt;SEC&gt;</tt><a class="headerlink" href="#cmdoption--stream-read-timeout" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">--stream-read-timeout</tt><tt class="descclassname">=&lt;DURATION&gt;</tt><a class="headerlink" href="#cmdoption--stream-read-timeout" title="Permalink to this definition">¶</a></dt>
 <dd><p>Specify  read timeout  for HTTP/2  and SPDY  streams.  0
 means no timeout.</p>
 <p>Default: <tt class="docutils literal"><span class="pre">0</span></tt></p>
@@ -458,7 +474,7 @@ means no timeout.</p>
 
 <dl class="option">
 <dt id="cmdoption--stream-write-timeout">
-<tt class="descname">--stream-write-timeout</tt><tt class="descclassname">=&lt;SEC&gt;</tt><a class="headerlink" href="#cmdoption--stream-write-timeout" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">--stream-write-timeout</tt><tt class="descclassname">=&lt;DURATION&gt;</tt><a class="headerlink" href="#cmdoption--stream-write-timeout" title="Permalink to this definition">¶</a></dt>
 <dd><p>Specify write  timeout for  HTTP/2 and SPDY  streams.  0
 means no timeout.</p>
 <p>Default: <tt class="docutils literal"><span class="pre">0</span></tt></p>
@@ -466,37 +482,37 @@ means no timeout.</p>
 
 <dl class="option">
 <dt id="cmdoption--backend-read-timeout">
-<tt class="descname">--backend-read-timeout</tt><tt class="descclassname">=&lt;SEC&gt;</tt><a class="headerlink" href="#cmdoption--backend-read-timeout" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">--backend-read-timeout</tt><tt class="descclassname">=&lt;DURATION&gt;</tt><a class="headerlink" href="#cmdoption--backend-read-timeout" title="Permalink to this definition">¶</a></dt>
 <dd><p>Specify read timeout for backend connection.</p>
-<p>Default: <tt class="docutils literal"><span class="pre">180</span></tt></p>
+<p>Default: <tt class="docutils literal"><span class="pre">180s</span></tt></p>
 </dd></dl>
 
 <dl class="option">
 <dt id="cmdoption--backend-write-timeout">
-<tt class="descname">--backend-write-timeout</tt><tt class="descclassname">=&lt;SEC&gt;</tt><a class="headerlink" href="#cmdoption--backend-write-timeout" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">--backend-write-timeout</tt><tt class="descclassname">=&lt;DURATION&gt;</tt><a class="headerlink" href="#cmdoption--backend-write-timeout" title="Permalink to this definition">¶</a></dt>
 <dd><p>Specify write timeout for backend connection.</p>
-<p>Default: <tt class="docutils literal"><span class="pre">30</span></tt></p>
+<p>Default: <tt class="docutils literal"><span class="pre">30s</span></tt></p>
 </dd></dl>
 
 <dl class="option">
 <dt id="cmdoption--backend-keep-alive-timeout">
-<tt class="descname">--backend-keep-alive-timeout</tt><tt class="descclassname">=&lt;SEC&gt;</tt><a class="headerlink" href="#cmdoption--backend-keep-alive-timeout" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">--backend-keep-alive-timeout</tt><tt class="descclassname">=&lt;DURATION&gt;</tt><a class="headerlink" href="#cmdoption--backend-keep-alive-timeout" title="Permalink to this definition">¶</a></dt>
 <dd><p>Specify keep-alive timeout for backend connection.</p>
-<p>Default: <tt class="docutils literal"><span class="pre">600</span></tt></p>
+<p>Default: <tt class="docutils literal"><span class="pre">2s</span></tt></p>
 </dd></dl>
 
 <dl class="option">
 <dt id="cmdoption--listener-disable-timeout">
-<tt class="descname">--listener-disable-timeout</tt><tt class="descclassname">=&lt;SEC&gt;</tt><a class="headerlink" href="#cmdoption--listener-disable-timeout" title="Permalink to this definition">¶</a></dt>
+<tt class="descname">--listener-disable-timeout</tt><tt class="descclassname">=&lt;DURATION&gt;</tt><a class="headerlink" href="#cmdoption--listener-disable-timeout" title="Permalink to this definition">¶</a></dt>
 <dd><p>After accepting  connection failed,  connection listener
-is disabled for  a given time in  seconds.  Specifying 0
+is disabled  for a given  amount of time.   Specifying 0
 disables this feature.</p>
 <p>Default: <tt class="docutils literal"><span class="pre">0</span></tt></p>
 </dd></dl>
 
 </div>
 <div class="section" id="ssl-tls">
-<h3>SSL/TLS:<a class="headerlink" href="#ssl-tls" title="Permalink to this headline">¶</a></h3>
+<h3>SSL/TLS<a class="headerlink" href="#ssl-tls" title="Permalink to this headline">¶</a></h3>
 <dl class="option">
 <dt id="cmdoption--ciphers">
 <tt class="descname">--ciphers</tt><tt class="descclassname">=&lt;SUITE&gt;</tt><a class="headerlink" href="#cmdoption--ciphers" title="Permalink to this definition">¶</a></dt>
@@ -564,7 +580,7 @@ protocol comes  first.  This  is used  in both  ALPN and
 NPN.  The parameter must be  delimited by a single comma
 only  and any  white spaces  are  treated as  a part  of
 protocol string.</p>
-<p>Default: <tt class="docutils literal"><span class="pre">h2-16,h2-14,spdy/3.1,http/1.1</span></tt></p>
+<p>Default: <tt class="docutils literal"><span class="pre">h2,h2-16,h2-14,spdy/3.1,http/1.1</span></tt></p>
 </dd></dl>
 
 <dl class="option">
@@ -642,7 +658,7 @@ session ticket key is shared across all worker threads.</p>
 
 </div>
 <div class="section" id="http-2-and-spdy">
-<h3>HTTP/2 and SPDY:<a class="headerlink" href="#http-2-and-spdy" title="Permalink to this headline">¶</a></h3>
+<h3>HTTP/2 and SPDY<a class="headerlink" href="#http-2-and-spdy" title="Permalink to this headline">¶</a></h3>
 <dl class="option">
 <dt id="cmdoption-c">
 <span id="cmdoption--http2-max-concurrent-streams"></span><tt class="descname">-c</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--http2-max-concurrent-streams</tt><tt class="descclassname">=&lt;N&gt;</tt><a class="headerlink" href="#cmdoption-c" title="Permalink to this definition">¶</a></dt>
@@ -712,9 +728,17 @@ meant for debugging purpose  and not intended to enhance
 protocol security.</p>
 </dd></dl>
 
+<dl class="option">
+<dt id="cmdoption--no-server-push">
+<tt class="descname">--no-server-push</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption--no-server-push" title="Permalink to this definition">¶</a></dt>
+<dd><p>Disable  HTTP/2  server  push.    Server  push  is  only
+supported  by default  mode and  HTTP/2 frontend.   SPDY
+frontend does not support server push.</p>
+</dd></dl>
+
 </div>
 <div class="section" id="mode">
-<h3>Mode:<a class="headerlink" href="#mode" title="Permalink to this headline">¶</a></h3>
+<h3>Mode<a class="headerlink" href="#mode" title="Permalink to this headline">¶</a></h3>
 <dl class="describe">
 <dt>
 <tt class="descname">(default mode)</tt></dt>
@@ -762,7 +786,7 @@ use as a forward proxy.</p>
 
 </div>
 <div class="section" id="logging">
-<h3>Logging:<a class="headerlink" href="#logging" title="Permalink to this headline">¶</a></h3>
+<h3>Logging<a class="headerlink" href="#logging" title="Permalink to this headline">¶</a></h3>
 <dl class="option">
 <dt id="cmdoption-L">
 <span id="cmdoption--log-level"></span><tt class="descname">-L</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--log-level</tt><tt class="descclassname">=&lt;LEVEL&gt;</tt><a class="headerlink" href="#cmdoption-L" title="Permalink to this definition">¶</a></dt>
@@ -837,7 +861,7 @@ signal to nghttpx.</p>
 
 </div>
 <div class="section" id="http">
-<h3>HTTP:<a class="headerlink" href="#http" title="Permalink to this headline">¶</a></h3>
+<h3>HTTP<a class="headerlink" href="#http" title="Permalink to this headline">¶</a></h3>
 <dl class="option">
 <dt id="cmdoption--add-x-forwarded-for">
 <tt class="descname">--add-x-forwarded-for</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption--add-x-forwarded-for" title="Permalink to this definition">¶</a></dt>
@@ -869,6 +893,15 @@ altered regardless of this option.</p>
 </dd></dl>
 
 <dl class="option">
+<dt id="cmdoption--no-host-rewrite">
+<tt class="descname">--no-host-rewrite</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption--no-host-rewrite" title="Permalink to this definition">¶</a></dt>
+<dd><p>Don't  rewrite  host  and :authority  header  fields  on
+<a class="reference internal" href="#cmdoption--http2-bridge"><em class="xref std std-option">--http2-bridge</em></a>,   <a class="reference internal" href="#cmdoption--client"><em class="xref std std-option">--client</em></a>   and  default   mode.    For
+<a class="reference internal" href="#cmdoption--http2-proxy"><em class="xref std std-option">--http2-proxy</em></a>  and  <a class="reference internal" href="#cmdoption--client-proxy"><em class="xref std std-option">--client-proxy</em></a> mode,  these  headers
+will not be altered regardless of this option.</p>
+</dd></dl>
+
+<dl class="option">
 <dt id="cmdoption--altsvc">
 <tt class="descname">--altsvc</tt><tt class="descclassname">=&lt;PROTOID,PORT[,HOST,[ORIGIN]]&gt;</tt><a class="headerlink" href="#cmdoption--altsvc" title="Permalink to this definition">¶</a></dt>
 <dd><p>Specify   protocol  ID,   port,  host   and  origin   of
@@ -891,7 +924,7 @@ Example: <a class="reference internal" href="#cmdoption--add-response-header"><e
 
 </div>
 <div class="section" id="debug">
-<h3>Debug:<a class="headerlink" href="#debug" title="Permalink to this headline">¶</a></h3>
+<h3>Debug<a class="headerlink" href="#debug" title="Permalink to this headline">¶</a></h3>
 <dl class="option">
 <dt id="cmdoption--frontend-http2-dump-request-header">
 <tt class="descname">--frontend-http2-dump-request-header</tt><tt class="descclassname">=&lt;PATH&gt;</tt><a class="headerlink" href="#cmdoption--frontend-http2-dump-request-header" title="Permalink to this definition">¶</a></dt>
@@ -922,7 +955,7 @@ is  not thread  safe and  MUST NOT  be used  with option
 
 </div>
 <div class="section" id="process">
-<h3>Process:<a class="headerlink" href="#process" title="Permalink to this headline">¶</a></h3>
+<h3>Process<a class="headerlink" href="#process" title="Permalink to this headline">¶</a></h3>
 <dl class="option">
 <dt id="cmdoption-D">
 <span id="cmdoption--daemon"></span><tt class="descname">-D</tt><tt class="descclassname"></tt><tt class="descclassname">, </tt><tt class="descname">--daemon</tt><tt class="descclassname"></tt><a class="headerlink" href="#cmdoption-D" title="Permalink to this definition">¶</a></dt>
@@ -945,7 +978,7 @@ be used to drop root privileges.</p>
 
 </div>
 <div class="section" id="misc">
-<h3>Misc:<a class="headerlink" href="#misc" title="Permalink to this headline">¶</a></h3>
+<h3>Misc<a class="headerlink" href="#misc" title="Permalink to this headline">¶</a></h3>
 <dl class="option">
 <dt id="cmdoption--conf">
 <tt class="descname">--conf</tt><tt class="descclassname">=&lt;PATH&gt;</tt><a class="headerlink" href="#cmdoption--conf" title="Permalink to this definition">¶</a></dt>
@@ -967,6 +1000,9 @@ be used to drop root privileges.</p>
 
 <p>The &lt;SIZE&gt; argument is an integer and an optional unit (e.g., 10K is
 10 * 1024).  Units are K, M and G (powers of 1024).</p>
+<p>The &lt;DURATION&gt; argument is an integer and an optional unit (e.g., 1s
+is 1 second and 500ms is 500  milliseconds).  Units are s or ms.  If
+a unit is omitted, a second is used as unit.</p>
 </div>
 </div>
 <div class="section" id="files">
@@ -1008,6 +1044,40 @@ path with same command-line arguments and environment variables.
 After new process comes up, sending SIGQUIT to the original process
 to perform hot swapping.</dd>
 </dl>
+</div>
+<div class="section" id="server-push">
+<h2>SERVER PUSH<a class="headerlink" href="#server-push" title="Permalink to this headline">¶</a></h2>
+<p>nghttpx supports HTTP/2 server push in default mode.  nghttpx looks
+for Link header field (<a class="reference external" href="http://tools.ietf.org/html/rfc5988">RFC 5988</a>) in response headers from
+backend server and extracts URI-reference with parameter
+<tt class="docutils literal"><span class="pre">rel=preload</span></tt> (see <a class="reference external" href="http://w3c.github.io/preload/#interoperability-with-http-link-header">preload</a>)
+and pushes those URIs to the frontend client. Here is a sample Link
+header field to initiate server push:</p>
+<div class="highlight-http"><div class="highlight"><pre>Link: &lt;/fonts/font.woff&gt;; rel=preload
+Link: &lt;/css/theme.css&gt;; rel=preload
+</pre></div>
+</div>
+<p>Currently, the following restrictions are applied for server push:</p>
+<ol class="arabic simple">
+<li>URI-reference must not contain authority.  If it exists, it is not
+pushed.  <tt class="docutils literal"><span class="pre">/fonts/font.woff</span></tt> and <tt class="docutils literal"><span class="pre">css/theme.css</span></tt> are eligible to
+be pushed.  <tt class="docutils literal"><span class="pre">https://example.org/fonts/font.woff</span></tt> and
+<tt class="docutils literal"><span class="pre">//example.org/css/theme.css</span></tt> are not.</li>
+<li>The associated stream must have method &quot;GET&quot; or &quot;POST&quot;.  The
+associated stream's status code must be 200.</li>
+</ol>
+<p>These limitations may be loosened in the future release.</p>
+</div>
+<div class="section" id="unix-domain-socket">
+<h2>UNIX DOMAIN SOCKET<a class="headerlink" href="#unix-domain-socket" title="Permalink to this headline">¶</a></h2>
+<p>nghttpx supports UNIX domain socket with a filename for both frontend
+and backend connections.</p>
+<p>Please note that current nghttpx implementation does not delete a
+socket with a filename.  And on start up, if nghttpx detects that the
+specified socket already exists in the file system, nghttpx first
+deletes it.  However, if SIGUSR2 is used to execute new binary and
+both old and new configurations use same filename, new binary does not
+delete the socket and continues to use it.</p>
 </div>
 <div class="section" id="see-also">
 <h2>SEE ALSO<a class="headerlink" href="#see-also" title="Permalink to this headline">¶</a></h2>
@@ -1054,7 +1124,7 @@ to perform hot swapping.</dd>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.7.2-DEV',
+            VERSION:'0.7.8-DEV',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  false

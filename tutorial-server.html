@@ -7,7 +7,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Tutorial: HTTP/2 server &mdash; nghttp2 0.7.2-DEV documentation</title>
+  <title>Tutorial: HTTP/2 server &mdash; nghttp2 0.7.8-DEV documentation</title>
   
 
   
@@ -28,7 +28,7 @@
   
 
   
-    <link rel="top" title="nghttp2 0.7.2-DEV documentation" href="index.html"/>
+    <link rel="top" title="nghttp2 0.7.8-DEV documentation" href="index.html"/>
         <link rel="next" title="Tutorial: HPACK API" href="tutorial-hpack.html"/>
         <link rel="prev" title="Tutorial: HTTP/2 client" href="tutorial-client.html"/> 
 
@@ -100,30 +100,33 @@
 <li class="toctree-l1"><a class="reference internal" href="nghttp.1.html">nghttp(1)</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#options">OPTIONS:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#options">OPTIONS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="nghttpd.1.html">nghttpd(1)</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#options">OPTIONS:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#options">OPTIONS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="nghttpx.1.html">nghttpx(1)</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#options">OPTIONS:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#options">OPTIONS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#files">FILES</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#signals">SIGNALS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#server-push">SERVER PUSH</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#unix-domain-socket">UNIX DOMAIN SOCKET</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="h2load.1.html">h2load(1)</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="h2load.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="h2load.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#options">OPTIONS:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#options">OPTIONS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#output">OUTPUT</a></li>
 <li class="toctree-l2"><a class="reference internal" href="h2load.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
@@ -139,7 +142,7 @@
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#rewriting-location-header-field">Rewriting location header field</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#hot-swapping">Hot swapping</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#re-opening-log-files">Re-opening log files</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#multiple-http-1-backend-addresses">Multiple HTTP/1 backend addresses</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#multiple-backend-addresses">Multiple backend addresses</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="h2load-howto.html">h2load - HTTP/2 benchmarking tool - HOW-TO</a><ul>
@@ -153,6 +156,7 @@
 <li class="toctree-l1"><a class="reference internal" href="apiref.html">API Reference</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="apiref.html#includes">Includes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="apiref.html#remarks">Remarks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="apiref.html#http-messaging">HTTP Messaging</a></li>
 <li class="toctree-l2"><a class="reference internal" href="apiref.html#macros">Macros</a></li>
 <li class="toctree-l2"><a class="reference internal" href="apiref.html#enums">Enums</a></li>
 <li class="toctree-l2"><a class="reference internal" href="apiref.html#types-structs-unions-and-typedefs">Types (structs, unions and typedefs)</a></li>
@@ -161,6 +165,7 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="libnghttp2_asio.html">libnghttp2_asio: High level HTTP/2 C++ library</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="libnghttp2_asio.html#server-api">Server API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="libnghttp2_asio.html#client-api">Client API</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="python-apiref.html">Python API Reference</a><ul>
@@ -170,6 +175,8 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="nghttp2.h.html">nghttp2.h</a></li>
 <li class="toctree-l1"><a class="reference internal" href="nghttp2ver.h.html">nghttp2ver.h</a></li>
+<li class="toctree-l1"><a class="reference internal" href="asio_http2_server.h.html">asio_http2_server.h</a></li>
+<li class="toctree-l1"><a class="reference internal" href="asio_http2_client.h.html">asio_http2_client.h</a></li>
 <li class="toctree-l1"><a class="reference internal" href="asio_http2.h.html">asio_http2.h</a></li>
 <li class="toctree-l1"><a class="reference external" href="https://github.com/tatsuhiro-t/nghttp2">Source</a></li>
 <li class="toctree-l1"><a class="reference external" href="https://github.com/tatsuhiro-t/nghttp2/issues">Issues</a></li>
@@ -1529,7 +1536,7 @@ is about to close and we no longer use that object.</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.7.2-DEV',
+            VERSION:'0.7.8-DEV',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  false

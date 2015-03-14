@@ -1,0 +1,504 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>asio_http2_server.h &mdash; nghttp2 0.7.8-DEV documentation</title>
+  
+
+  
+  
+
+  
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700&subset=latin,cyrillic' rel='stylesheet' type='text/css'>
+
+  
+  
+    
+
+  
+
+  
+  
+    <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  
+
+  
+    <link rel="top" title="nghttp2 0.7.8-DEV documentation" href="index.html"/>
+        <link rel="next" title="asio_http2_client.h" href="asio_http2_client.h.html"/>
+        <link rel="prev" title="nghttp2ver.h" href="nghttp2ver.h.html"/> 
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-nav-search">
+        
+          <a href="index.html" class="fa fa-home"> nghttp2</a>
+        
+        
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+        
+          
+          
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="package_README.html">nghttp2 - HTTP/2 C Library</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#development-status">Development Status</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#public-test-server">Public Test Server</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#requirements">Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#build-from-git">Build from git</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#building-documentation">Building documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#unit-tests">Unit tests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#integration-tests">Integration tests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#client-server-and-proxy-programs">Client, Server and Proxy programs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#benchmarking-tool">Benchmarking tool</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#hpack-tools">HPACK tools</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#libnghttp2-asio-high-level-http-2-c-library">libnghttp2_asio: High level HTTP/2 C++ library</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#python-bindings">Python bindings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#contribution">Contribution</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="contribute.html">Contribution Guidelines</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="contribute.html#coding-style">Coding style</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="building-android-binary.html">Building Android binary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-client.html">Tutorial: HTTP/2 client</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorial-client.html#libevent-client-c">libevent-client.c</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-server.html">Tutorial: HTTP/2 server</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorial-server.html#libevent-server-c">libevent-server.c</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial-hpack.html">Tutorial: HPACK API</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorial-hpack.html#deflating-encoding-headers">Deflating (encoding) headers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial-hpack.html#inflating-decoding-headers">Inflating (decoding) headers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial-hpack.html#deflate-c">deflate.c</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="nghttp.1.html">nghttp(1)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#synopsis">SYNOPSIS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#description">DESCRIPTION</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#options">OPTIONS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#see-also">SEE ALSO</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="nghttpd.1.html">nghttpd(1)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#synopsis">SYNOPSIS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#description">DESCRIPTION</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#options">OPTIONS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#see-also">SEE ALSO</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="nghttpx.1.html">nghttpx(1)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#synopsis">SYNOPSIS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#description">DESCRIPTION</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#options">OPTIONS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#files">FILES</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#signals">SIGNALS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#server-push">SERVER PUSH</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#unix-domain-socket">UNIX DOMAIN SOCKET</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#see-also">SEE ALSO</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="h2load.1.html">h2load(1)</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#synopsis">SYNOPSIS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#description">DESCRIPTION</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#options">OPTIONS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#output">OUTPUT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#see-also">SEE ALSO</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="nghttpx-howto.html">nghttpx - HTTP/2 proxy - HOW-TO</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#default-mode">Default mode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#http-2-proxy-mode">HTTP/2 proxy mode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#client-mode">Client mode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#client-proxy-mode">Client proxy mode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#http-2-bridge-mode">HTTP/2 bridge mode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#disable-ssl-tls">Disable SSL/TLS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#specifying-additional-ca-certificate">Specifying additional CA certificate</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#read-write-rate-limit">Read/write rate limit</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#rewriting-location-header-field">Rewriting location header field</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#hot-swapping">Hot swapping</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#re-opening-log-files">Re-opening log files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#multiple-backend-addresses">Multiple backend addresses</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="h2load-howto.html">h2load - HTTP/2 benchmarking tool - HOW-TO</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="h2load-howto.html#basic-usage">Basic Usage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load-howto.html#flow-control">Flow Control</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load-howto.html#multi-threading">Multi-Threading</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load-howto.html#selecting-protocol-for-clear-text">Selecting protocol for clear text</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load-howto.html#multiple-uris">Multiple URIs</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="apiref.html">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="apiref.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="apiref.html#remarks">Remarks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="apiref.html#http-messaging">HTTP Messaging</a></li>
+<li class="toctree-l2"><a class="reference internal" href="apiref.html#macros">Macros</a></li>
+<li class="toctree-l2"><a class="reference internal" href="apiref.html#enums">Enums</a></li>
+<li class="toctree-l2"><a class="reference internal" href="apiref.html#types-structs-unions-and-typedefs">Types (structs, unions and typedefs)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="apiref.html#functions">Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="libnghttp2_asio.html">libnghttp2_asio: High level HTTP/2 C++ library</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="libnghttp2_asio.html#server-api">Server API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="libnghttp2_asio.html#client-api">Client API</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="python-apiref.html">Python API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="python-apiref.html#hpack-api">HPACK API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="python-apiref.html#http-2-servers">HTTP/2 servers</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="nghttp2.h.html">nghttp2.h</a></li>
+<li class="toctree-l1"><a class="reference internal" href="nghttp2ver.h.html">nghttp2ver.h</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="">asio_http2_server.h</a></li>
+<li class="toctree-l1"><a class="reference internal" href="asio_http2_client.h.html">asio_http2_client.h</a></li>
+<li class="toctree-l1"><a class="reference internal" href="asio_http2.h.html">asio_http2.h</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/tatsuhiro-t/nghttp2">Source</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://github.com/tatsuhiro-t/nghttp2/issues">Issues</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://nghttp2.org/">nghttp2.org</a></li>
+</ul>
+
+          
+        
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="index.html">nghttp2</a>
+      </nav>
+
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="index.html">Docs</a> &raquo;</li>
+      
+    <li>asio_http2_server.h</li>
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document">
+            
+  <div class="section" id="asio-http2-server-h">
+<h1>asio_http2_server.h<a class="headerlink" href="#asio-http2-server-h" title="Permalink to this headline">¶</a></h1>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="cm">/*</span>
+<span class="cm"> * nghttp2 - HTTP/2 C Library</span>
+<span class="cm"> *</span>
+<span class="cm"> * Copyright (c) 2015 Tatsuhiro Tsujikawa</span>
+<span class="cm"> *</span>
+<span class="cm"> * Permission is hereby granted, free of charge, to any person obtaining</span>
+<span class="cm"> * a copy of this software and associated documentation files (the</span>
+<span class="cm"> * &quot;Software&quot;), to deal in the Software without restriction, including</span>
+<span class="cm"> * without limitation the rights to use, copy, modify, merge, publish,</span>
+<span class="cm"> * distribute, sublicense, and/or sell copies of the Software, and to</span>
+<span class="cm"> * permit persons to whom the Software is furnished to do so, subject to</span>
+<span class="cm"> * the following conditions:</span>
+<span class="cm"> *</span>
+<span class="cm"> * The above copyright notice and this permission notice shall be</span>
+<span class="cm"> * included in all copies or substantial portions of the Software.</span>
+<span class="cm"> *</span>
+<span class="cm"> * THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND,</span>
+<span class="cm"> * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF</span>
+<span class="cm"> * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND</span>
+<span class="cm"> * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE</span>
+<span class="cm"> * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION</span>
+<span class="cm"> * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION</span>
+<span class="cm"> * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</span>
+<span class="cm"> */</span>
+<span class="cp">#ifndef ASIO_HTTP2_SERVER_H</span>
+<span class="cp">#define ASIO_HTTP2_SERVER_H</span>
+
+<span class="cp">#include &lt;nghttp2/asio_http2.h&gt;</span>
+
+<span class="k">namespace</span> <span class="n">nghttp2</span> <span class="p">{</span>
+
+<span class="k">namespace</span> <span class="n">asio_http2</span> <span class="p">{</span>
+
+<span class="k">namespace</span> <span class="n">server</span> <span class="p">{</span>
+
+<span class="k">class</span> <span class="nc">request_impl</span><span class="p">;</span>
+<span class="k">class</span> <span class="nc">response_impl</span><span class="p">;</span>
+
+<span class="k">class</span> <span class="nc">request</span> <span class="p">{</span>
+<span class="k">public</span><span class="o">:</span>
+  <span class="c1">// Application must not call this directly.</span>
+  <span class="n">request</span><span class="p">();</span>
+  <span class="o">~</span><span class="n">request</span><span class="p">();</span>
+
+  <span class="c1">// Returns request header fields.  The pusedo header fields, which</span>
+  <span class="c1">// start with colon (:), are exluced from this list.</span>
+  <span class="k">const</span> <span class="n">header_map</span> <span class="o">&amp;</span><span class="n">header</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>
+
+  <span class="c1">// Returns method (e.g., GET).</span>
+  <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="o">&amp;</span><span class="n">method</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>
+
+  <span class="c1">// Returns request URI, split into components.</span>
+  <span class="k">const</span> <span class="n">uri_ref</span> <span class="o">&amp;</span><span class="n">uri</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>
+
+  <span class="c1">// Sets callback which is invoked when chunk of request body is</span>
+  <span class="c1">// received.</span>
+  <span class="kt">void</span> <span class="n">on_data</span><span class="p">(</span><span class="n">data_cb</span> <span class="n">cb</span><span class="p">)</span> <span class="k">const</span><span class="p">;</span>
+
+  <span class="c1">// Application must not call this directly.</span>
+  <span class="n">request_impl</span> <span class="o">&amp;</span><span class="n">impl</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>
+
+<span class="k">private</span><span class="o">:</span>
+  <span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">request_impl</span><span class="o">&gt;</span> <span class="n">impl_</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="k">class</span> <span class="nc">response</span> <span class="p">{</span>
+<span class="k">public</span><span class="o">:</span>
+  <span class="c1">// Application must not call this directly.</span>
+  <span class="n">response</span><span class="p">();</span>
+  <span class="o">~</span><span class="n">response</span><span class="p">();</span>
+
+  <span class="c1">// Write response header using |status_code| (e.g., 200) and</span>
+  <span class="c1">// additional header fields in |h|.</span>
+  <span class="kt">void</span> <span class="n">write_head</span><span class="p">(</span><span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">status_code</span><span class="p">,</span> <span class="n">header_map</span> <span class="n">h</span> <span class="o">=</span> <span class="n">header_map</span><span class="p">{})</span> <span class="k">const</span><span class="p">;</span>
+
+  <span class="c1">// Sends |data| as request body.  No further call of end() is</span>
+  <span class="c1">// allowed.</span>
+  <span class="kt">void</span> <span class="n">end</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">data</span> <span class="o">=</span> <span class="s">&quot;&quot;</span><span class="p">)</span> <span class="k">const</span><span class="p">;</span>
+
+  <span class="c1">// Sets callback as a generator of the response body.  No further</span>
+  <span class="c1">// call of end() is allowed.</span>
+  <span class="kt">void</span> <span class="n">end</span><span class="p">(</span><span class="n">generator_cb</span> <span class="n">cb</span><span class="p">)</span> <span class="k">const</span><span class="p">;</span>
+
+  <span class="c1">// Write trailer part.  This must be called after setting both</span>
+  <span class="c1">// NGHTTP2_DATA_FLAG_EOF and NGHTTP2_DATA_FLAG_NO_END_STREAM set in</span>
+  <span class="c1">// *data_flag parameter in generator_cb passed to end() function.</span>
+  <span class="kt">void</span> <span class="n">write_trailer</span><span class="p">(</span><span class="n">header_map</span> <span class="n">h</span><span class="p">)</span> <span class="k">const</span><span class="p">;</span>
+
+  <span class="c1">// Sets callback which is invoked when this request and response are</span>
+  <span class="c1">// finished.  After the invocation of this callback, the application</span>
+  <span class="c1">// must not access request and response object.</span>
+  <span class="kt">void</span> <span class="n">on_close</span><span class="p">(</span><span class="n">close_cb</span> <span class="n">cb</span><span class="p">)</span> <span class="k">const</span><span class="p">;</span>
+
+  <span class="c1">// Cancels this request and response with given error code.</span>
+  <span class="kt">void</span> <span class="n">cancel</span><span class="p">(</span><span class="kt">uint32_t</span> <span class="n">error_code</span> <span class="o">=</span> <span class="n">NGHTTP2_INTERNAL_ERROR</span><span class="p">)</span> <span class="k">const</span><span class="p">;</span>
+
+  <span class="c1">// Resumes deferred response.</span>
+  <span class="kt">void</span> <span class="n">resume</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>
+
+  <span class="c1">// Pushes resource denoted by |raw_path_query| using |method|.  The</span>
+  <span class="c1">// additional header fields can be given in |h|.  This function</span>
+  <span class="c1">// returns pointer to response object for promised stream, otherwise</span>
+  <span class="c1">// nullptr and error code is filled in |ec|.  Be aware that the</span>
+  <span class="c1">// header field name given in |h| must be lower-cased.</span>
+  <span class="k">const</span> <span class="n">response</span> <span class="o">*</span><span class="n">push</span><span class="p">(</span><span class="n">boost</span><span class="o">::</span><span class="n">system</span><span class="o">::</span><span class="n">error_code</span> <span class="o">&amp;</span><span class="n">ec</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">method</span><span class="p">,</span>
+                       <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">raw_path_query</span><span class="p">,</span>
+                       <span class="n">header_map</span> <span class="n">h</span> <span class="o">=</span> <span class="n">header_map</span><span class="p">{})</span> <span class="k">const</span><span class="p">;</span>
+
+  <span class="c1">// Returns status code.</span>
+  <span class="kt">unsigned</span> <span class="kt">int</span> <span class="n">status_code</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>
+
+  <span class="c1">// Returns boost::asio::io_service this response is running on.</span>
+  <span class="n">boost</span><span class="o">::</span><span class="n">asio</span><span class="o">::</span><span class="n">io_service</span> <span class="o">&amp;</span><span class="n">io_service</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>
+
+  <span class="c1">// Application must not call this directly.</span>
+  <span class="n">response_impl</span> <span class="o">&amp;</span><span class="n">impl</span><span class="p">()</span> <span class="k">const</span><span class="p">;</span>
+
+<span class="k">private</span><span class="o">:</span>
+  <span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">response_impl</span><span class="o">&gt;</span> <span class="n">impl_</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="c1">// This is so called request callback.  Called every time request is</span>
+<span class="c1">// received.  The life time of |request| and |response| objects end</span>
+<span class="c1">// when callback set by response::on_close() is called.  After that,</span>
+<span class="c1">// the application must not access to those objects.</span>
+<span class="k">typedef</span> <span class="n">std</span><span class="o">::</span><span class="n">function</span><span class="o">&lt;</span><span class="kt">void</span><span class="p">(</span><span class="k">const</span> <span class="n">request</span> <span class="o">&amp;</span><span class="p">,</span> <span class="k">const</span> <span class="n">response</span> <span class="o">&amp;</span><span class="p">)</span><span class="o">&gt;</span> <span class="n">request_cb</span><span class="p">;</span>
+
+<span class="k">class</span> <span class="nc">http2_impl</span><span class="p">;</span>
+
+<span class="k">class</span> <span class="nc">http2</span> <span class="p">{</span>
+<span class="k">public</span><span class="o">:</span>
+  <span class="n">http2</span><span class="p">();</span>
+  <span class="o">~</span><span class="n">http2</span><span class="p">();</span>
+
+  <span class="n">http2</span><span class="p">(</span><span class="n">http2</span> <span class="o">&amp;&amp;</span><span class="n">other</span><span class="p">)</span> <span class="k">noexcept</span><span class="p">;</span>
+  <span class="n">http2</span> <span class="o">&amp;</span><span class="k">operator</span><span class="o">=</span><span class="p">(</span><span class="n">http2</span> <span class="o">&amp;&amp;</span><span class="n">other</span><span class="p">)</span> <span class="k">noexcept</span><span class="p">;</span>
+
+  <span class="c1">// Starts listening connection on given address and port and serves</span>
+  <span class="c1">// incoming requests in cleartext TCP connection.</span>
+  <span class="n">boost</span><span class="o">::</span><span class="n">system</span><span class="o">::</span><span class="n">error_code</span> <span class="n">listen_and_serve</span><span class="p">(</span><span class="n">boost</span><span class="o">::</span><span class="n">system</span><span class="o">::</span><span class="n">error_code</span> <span class="o">&amp;</span><span class="n">ec</span><span class="p">,</span>
+                                             <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="o">&amp;</span><span class="n">address</span><span class="p">,</span>
+                                             <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="o">&amp;</span><span class="n">port</span><span class="p">);</span>
+
+  <span class="c1">// Starts listening connection on given address and port and serves</span>
+  <span class="c1">// incoming requests in SSL/TLS encrypted connection.</span>
+  <span class="n">boost</span><span class="o">::</span><span class="n">system</span><span class="o">::</span><span class="n">error_code</span>
+  <span class="n">listen_and_serve</span><span class="p">(</span><span class="n">boost</span><span class="o">::</span><span class="n">system</span><span class="o">::</span><span class="n">error_code</span> <span class="o">&amp;</span><span class="n">ec</span><span class="p">,</span>
+                   <span class="n">boost</span><span class="o">::</span><span class="n">asio</span><span class="o">::</span><span class="n">ssl</span><span class="o">::</span><span class="n">context</span> <span class="o">&amp;</span><span class="n">tls_context</span><span class="p">,</span>
+                   <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="o">&amp;</span><span class="n">address</span><span class="p">,</span> <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="o">&amp;</span><span class="n">port</span><span class="p">);</span>
+
+  <span class="c1">// Registers request handler |cb| with path pattern |pattern|.  This</span>
+  <span class="c1">// function will fail and returns false if same pattern has been</span>
+  <span class="c1">// already registered or |pattern| is empty string.  Otherwise</span>
+  <span class="c1">// returns true.  The pattern match rule is the same as</span>
+  <span class="c1">// net/http/ServeMux in golang.  Quoted from golang manual</span>
+  <span class="c1">// (http://golang.org/pkg/net/http/#ServeMux):</span>
+  <span class="c1">//</span>
+  <span class="c1">//   Patterns name fixed, rooted paths, like &quot;/favicon.ico&quot;, or</span>
+  <span class="c1">//   rooted subtrees, like &quot;/images/&quot; (note the trailing</span>
+  <span class="c1">//   slash). Longer patterns take precedence over shorter ones, so</span>
+  <span class="c1">//   that if there are handlers registered for both &quot;/images/&quot; and</span>
+  <span class="c1">//   &quot;/images/thumbnails/&quot;, the latter handler will be called for</span>
+  <span class="c1">//   paths beginning &quot;/images/thumbnails/&quot; and the former will</span>
+  <span class="c1">//   receive requests for any other paths in the &quot;/images/&quot; subtree.</span>
+  <span class="c1">//</span>
+  <span class="c1">//   Note that since a pattern ending in a slash names a rooted</span>
+  <span class="c1">//   subtree, the pattern &quot;/&quot; matches all paths not matched by other</span>
+  <span class="c1">//   registered patterns, not just the URL with Path == &quot;/&quot;.</span>
+  <span class="c1">//</span>
+  <span class="c1">//   Patterns may optionally begin with a host name, restricting</span>
+  <span class="c1">//   matches to URLs on that host only. Host-specific patterns take</span>
+  <span class="c1">//   precedence over general patterns, so that a handler might</span>
+  <span class="c1">//   register for the two patterns &quot;/codesearch&quot; and</span>
+  <span class="c1">//   &quot;codesearch.google.com/&quot; without also taking over requests for</span>
+  <span class="c1">//   &quot;http://www.google.com/&quot;.</span>
+  <span class="c1">//</span>
+  <span class="c1">// Just like ServeMux in golang, URL request path is sanitized and</span>
+  <span class="c1">// if they contains . or .. elements, they are redirected to an</span>
+  <span class="c1">// equivalent .- and ..-free URL.</span>
+  <span class="kt">bool</span> <span class="nf">handle</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">pattern</span><span class="p">,</span> <span class="n">request_cb</span> <span class="n">cb</span><span class="p">);</span>
+
+  <span class="c1">// Sets number of native threads to handle incoming HTTP request.</span>
+  <span class="c1">// It defaults to 1.</span>
+  <span class="kt">void</span> <span class="nf">num_threads</span><span class="p">(</span><span class="kt">size_t</span> <span class="n">num_threads</span><span class="p">);</span>
+
+  <span class="c1">// Sets the maximum length to which the queue of pending</span>
+  <span class="c1">// connections.</span>
+  <span class="kt">void</span> <span class="nf">backlog</span><span class="p">(</span><span class="kt">int</span> <span class="n">backlog</span><span class="p">);</span>
+
+<span class="k">private</span><span class="o">:</span>
+  <span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">http2_impl</span><span class="o">&gt;</span> <span class="n">impl_</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="c1">// Configures |tls_context| for server use.  This function sets couple</span>
+<span class="c1">// of OpenSSL options (disables SSLv2 and SSLv3 and compression) and</span>
+<span class="c1">// enables ECDHE ciphers.  NPN callback is also configured.</span>
+<span class="n">boost</span><span class="o">::</span><span class="n">system</span><span class="o">::</span><span class="n">error_code</span>
+<span class="n">configure_tls_context_easy</span><span class="p">(</span><span class="n">boost</span><span class="o">::</span><span class="n">system</span><span class="o">::</span><span class="n">error_code</span> <span class="o">&amp;</span><span class="n">ec</span><span class="p">,</span>
+                           <span class="n">boost</span><span class="o">::</span><span class="n">asio</span><span class="o">::</span><span class="n">ssl</span><span class="o">::</span><span class="n">context</span> <span class="o">&amp;</span><span class="n">tls_context</span><span class="p">);</span>
+
+<span class="c1">// Returns request handler to do redirect to |uri| using</span>
+<span class="c1">// |status_code|.  The |uri| appears in &quot;location&quot; header field as is.</span>
+<span class="n">request_cb</span> <span class="nf">redirect_handler</span><span class="p">(</span><span class="kt">int</span> <span class="n">status_code</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">uri</span><span class="p">);</span>
+
+<span class="c1">// Returns request handler to reply with given |status_code| and HTML</span>
+<span class="c1">// including message about status code.</span>
+<span class="n">request_cb</span> <span class="nf">status_handler</span><span class="p">(</span><span class="kt">int</span> <span class="n">status_code</span><span class="p">);</span>
+
+<span class="p">}</span> <span class="c1">// namespace server</span>
+
+<span class="p">}</span> <span class="c1">// namespace asio_http2</span>
+
+<span class="p">}</span> <span class="c1">// namespace nghttp2</span>
+
+<span class="cp">#endif </span><span class="c1">// ASIO_HTTP2_SERVER_H</span>
+</pre></div>
+</div>
+</div>
+
+
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="asio_http2_client.h.html" class="btn btn-neutral float-right" title="asio_http2_client.h">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="nghttp2ver.h.html" class="btn btn-neutral" title="nghttp2ver.h"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2012, 2015, Tatsuhiro Tsujikawa.
+    </p>
+  </div>
+
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+  
+</footer>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    <script type="text/javascript">
+        var DOCUMENTATION_OPTIONS = {
+            URL_ROOT:'./',
+            VERSION:'0.7.8-DEV',
+            COLLAPSE_INDEX:false,
+            FILE_SUFFIX:'.html',
+            HAS_SOURCE:  false
+        };
+    </script>
+      <script type="text/javascript" src="_static/jquery.js"></script>
+      <script type="text/javascript" src="_static/underscore.js"></script>
+      <script type="text/javascript" src="_static/doctools.js"></script>
+
+  
+
+  
+  
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+  
+
+  
+  
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.StickyNav.enable();
+      });
+  </script>
+   
+
+</body>
+</html>

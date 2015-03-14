@@ -7,7 +7,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>API Reference &mdash; nghttp2 0.7.2-DEV documentation</title>
+  <title>API Reference &mdash; nghttp2 0.7.8-DEV documentation</title>
   
 
   
@@ -28,7 +28,7 @@
   
 
   
-    <link rel="top" title="nghttp2 0.7.2-DEV documentation" href="index.html"/>
+    <link rel="top" title="nghttp2 0.7.8-DEV documentation" href="index.html"/>
         <link rel="next" title="libnghttp2_asio: High level HTTP/2 C++ library" href="libnghttp2_asio.html"/>
         <link rel="prev" title="h2load - HTTP/2 benchmarking tool - HOW-TO" href="h2load-howto.html"/> 
 
@@ -100,30 +100,33 @@
 <li class="toctree-l1"><a class="reference internal" href="nghttp.1.html">nghttp(1)</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#options">OPTIONS:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#options">OPTIONS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="nghttpd.1.html">nghttpd(1)</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#options">OPTIONS:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#options">OPTIONS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="nghttpx.1.html">nghttpx(1)</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#options">OPTIONS:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#options">OPTIONS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#files">FILES</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#signals">SIGNALS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#server-push">SERVER PUSH</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#unix-domain-socket">UNIX DOMAIN SOCKET</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="h2load.1.html">h2load(1)</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="h2load.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="h2load.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#options">OPTIONS:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#options">OPTIONS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#output">OUTPUT</a></li>
 <li class="toctree-l2"><a class="reference internal" href="h2load.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
@@ -139,7 +142,7 @@
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#rewriting-location-header-field">Rewriting location header field</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#hot-swapping">Hot swapping</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#re-opening-log-files">Re-opening log files</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#multiple-http-1-backend-addresses">Multiple HTTP/1 backend addresses</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#multiple-backend-addresses">Multiple backend addresses</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="h2load-howto.html">h2load - HTTP/2 benchmarking tool - HOW-TO</a><ul>
@@ -153,6 +156,7 @@
 <li class="toctree-l1 current"><a class="current reference internal" href="">API Reference</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#includes">Includes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#remarks">Remarks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#http-messaging">HTTP Messaging</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#macros">Macros</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#enums">Enums</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#types-structs-unions-and-typedefs">Types (structs, unions and typedefs)</a></li>
@@ -161,6 +165,7 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="libnghttp2_asio.html">libnghttp2_asio: High level HTTP/2 C++ library</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="libnghttp2_asio.html#server-api">Server API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="libnghttp2_asio.html#client-api">Client API</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="python-apiref.html">Python API Reference</a><ul>
@@ -170,6 +175,8 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="nghttp2.h.html">nghttp2.h</a></li>
 <li class="toctree-l1"><a class="reference internal" href="nghttp2ver.h.html">nghttp2ver.h</a></li>
+<li class="toctree-l1"><a class="reference internal" href="asio_http2_server.h.html">asio_http2_server.h</a></li>
+<li class="toctree-l1"><a class="reference internal" href="asio_http2_client.h.html">asio_http2_client.h</a></li>
 <li class="toctree-l1"><a class="reference internal" href="asio_http2.h.html">asio_http2.h</a></li>
 <li class="toctree-l1"><a class="reference external" href="https://github.com/tatsuhiro-t/nghttp2">Source</a></li>
 <li class="toctree-l1"><a class="reference external" href="https://github.com/tatsuhiro-t/nghttp2/issues">Issues</a></li>
@@ -237,6 +244,63 @@ value.  The applications are responsible to receive it before calling
 these functions if <a class="reference internal" href="#c.nghttp2_session" title="nghttp2_session"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_session</span></tt></a> is configured as server and
 <a class="reference internal" href="#c.nghttp2_option_set_recv_client_preface" title="nghttp2_option_set_recv_client_preface"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_option_set_recv_client_preface()</span></tt></a> is not used.</p>
 </div>
+<div class="section" id="http-messaging">
+<h2>HTTP Messaging<a class="headerlink" href="#http-messaging" title="Permalink to this headline">¶</a></h2>
+<p>By default, nghttp2 library checks HTTP messaging rules described in
+<a class="reference external" href="https://tools.ietf.org/html/draft-ietf-httpbis-http2-17#section-8">HTTP/2 specification, section 8</a>.
+Everything described in that section is not validated however.  We
+briefly describe what the library does in this area.  In the following
+description, without loss of generality we omit CONTINUATION frame
+since they must follow HEADERS frame and are processed atomically.  In
+other words, they are just one big HEADERS frame.  To disable these
+validations, use <a class="reference internal" href="#c.nghttp2_option_set_no_http_messaging" title="nghttp2_option_set_no_http_messaging"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_option_set_no_http_messaging()</span></tt></a>.</p>
+<p>For HTTP request, including those carried by PUSH_PROMISE, HTTP
+message starts with one HEADERS frame containing request headers.  It
+is followed by zero or more DATA frames containing request body, which
+is followed by zero or one HEADERS containing trailer headers.  The
+request headers must include &quot;:scheme&quot;, &quot;:method&quot; and &quot;:path&quot; pseudo
+header fields unless &quot;:method&quot; is not &quot;CONNECT&quot;.  &quot;:authority&quot; is
+optional, but nghttp2 requires either &quot;:authority&quot; or &quot;Host&quot; header
+field must be present.  If &quot;:method&quot; is &quot;CONNECT&quot;, the request headers
+must include &quot;:method&quot; and &quot;:authority&quot; and must omit &quot;:scheme&quot; and
+&quot;:path&quot;.</p>
+<p>For HTTP response, HTTP message starts with zero or more HEADERS
+frames containing non-final response (status code 1xx).  They are
+followed by one HEADERS frame containing final response headers
+(non-1xx).  It is followed by zero or more DATA frames containing
+response body, which is followed by zero or one HEADERS containing
+trailer headers.  The non-final and final response headers must
+contain &quot;:status&quot; pseudo header field containing 3 digits only.</p>
+<p>All request and response headers must include exactly one valid value
+for each pseudo header field.  Additionally nghttp2 requires all
+request headers must not include more than one &quot;Host&quot; header field.</p>
+<p>HTTP/2 prohibits connection-specific header fields.  The following
+header fields must not appear: &quot;Connection&quot;, &quot;Keep-Alive&quot;,
+&quot;Proxy-Connection&quot;, &quot;Transfer-Encoding&quot; and &quot;Upgrade&quot;.  Additionally,
+&quot;TE&quot; header field must not include any value other than &quot;trailers&quot;.</p>
+<p>Each header field name and value must obey the field-name and
+field-value production rules described in <a class="reference external" href="https://tools.ietf.org/html/rfc7230#section-3.2">RFC 7230, section
+3.2.</a>.
+Additionally, all field name must be lower cased.  While the pseudo
+header fields must satisfy these rules, we just ignore illegal regular
+headers (this means that these header fields are not passed to
+application callback).  This is because these illegal header fields
+are floating around in existing internet and resetting stream just
+because of this may break many web sites.  This is especially true if
+we forward to or translate from HTTP/1 traffic.</p>
+<p>With the above validations, nghttp2 library guarantees that header
+field name passed to <a class="reference internal" href="#c.nghttp2_on_header_callback" title="nghttp2_on_header_callback"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_on_header_callback()</span></tt></a> is not empty.
+Also required pseudo headers are all present and not empty.</p>
+<p>nghttp2 enforces &quot;Content-Length&quot; validation as well.  All request or
+response headers must not contain more than one &quot;Content-Length&quot;
+header field.  If &quot;Content-Length&quot; header field is present, it must be
+parsed as 64 bit signed integer.  The sum of data length in the
+following DATA frames must match with the number in &quot;Content-Length&quot;
+header field if it is present (this does not include padding bytes).</p>
+<p>Any deviation results in stream error of type PROTOCOL_ERROR.  If
+error is found in PUSH_PROMISE frame, stream error is raised against
+promised stream.</p>
+</div>
 <div class="section" id="macros">
 <h2>Macros<a class="headerlink" href="#macros" title="Permalink to this headline">¶</a></h2>
 <dl class="macro">
@@ -264,6 +328,22 @@ supports.  This identifier is used if HTTP/2 is used over TLS.</p>
 <dt id="c.NGHTTP2_PROTO_VERSION_ID_LEN">
 <tt class="descname">NGHTTP2_PROTO_VERSION_ID_LEN</tt><a class="headerlink" href="#c.NGHTTP2_PROTO_VERSION_ID_LEN" title="Permalink to this definition">¶</a></dt>
 <dd><p>The length of <a class="reference internal" href="#c.NGHTTP2_PROTO_VERSION_ID" title="NGHTTP2_PROTO_VERSION_ID"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_PROTO_VERSION_ID</span></tt></a>.</p>
+</dd></dl>
+
+<dl class="macro">
+<dt id="c.NGHTTP2_PROTO_ALPN">
+<tt class="descname">NGHTTP2_PROTO_ALPN</tt><a class="headerlink" href="#c.NGHTTP2_PROTO_ALPN" title="Permalink to this definition">¶</a></dt>
+<dd><p>The seriazlied form of ALPN protocol identifier this library
+supports.  Notice that first byte is the length of following
+protocol identifier.  This is the same wire format of <a class="reference external" href="https://tools.ietf.org/html/rfc7301">TLS ALPN
+extension</a>.  This is useful
+to process incoming ALPN tokens in wire format.</p>
+</dd></dl>
+
+<dl class="macro">
+<dt id="c.NGHTTP2_PROTO_ALPN_LEN">
+<tt class="descname">NGHTTP2_PROTO_ALPN_LEN</tt><a class="headerlink" href="#c.NGHTTP2_PROTO_ALPN_LEN" title="Permalink to this definition">¶</a></dt>
+<dd><p>The length of <a class="reference internal" href="#c.NGHTTP2_PROTO_ALPN" title="NGHTTP2_PROTO_ALPN"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_PROTO_ALPN</span></tt></a>.</p>
 </dd></dl>
 
 <dl class="macro">
@@ -589,6 +669,14 @@ The current session is closing due to a connection error or
 </dd></dl>
 
 <dl class="macro">
+<dt id="c.NGHTTP2_ERR_HTTP_HEADER">
+<tt class="descname">NGHTTP2_ERR_HTTP_HEADER</tt><a class="headerlink" href="#c.NGHTTP2_ERR_HTTP_HEADER" title="Permalink to this definition">¶</a></dt>
+<dd><p>(<tt class="docutils literal"><span class="pre">-531</span></tt>)
+Invalid HTTP header field was received and stream is going to be
+closed.</p>
+</dd></dl>
+
+<dl class="macro">
 <dt id="c.NGHTTP2_ERR_FATAL">
 <tt class="descname">NGHTTP2_ERR_FATAL</tt><a class="headerlink" href="#c.NGHTTP2_ERR_FATAL" title="Permalink to this definition">¶</a></dt>
 <dd><p>(<tt class="docutils literal"><span class="pre">-900</span></tt>)
@@ -639,7 +727,9 @@ No flag set.</p>
 <dt id="c.NGHTTP2_NV_FLAG_NO_INDEX">
 <tt class="descname">NGHTTP2_NV_FLAG_NO_INDEX</tt><a class="headerlink" href="#c.NGHTTP2_NV_FLAG_NO_INDEX" title="Permalink to this definition">¶</a></dt>
 <dd><p>(<tt class="docutils literal"><span class="pre">0x01</span></tt>)
-Indicates that this name/value pair must not be indexed.</p>
+Indicates that this name/value pair must not be indexed (&quot;Literal
+Header Field never Indexed&quot; representation must be used in HPACK
+encoding).  Other implementation calls this bit as &quot;sensitive&quot;.</p>
 </dd></dl>
 
 </dd></dl>
@@ -715,7 +805,9 @@ The WINDOW_UPDATE frame.</p>
 <dt id="c.NGHTTP2_CONTINUATION">
 <tt class="descname">NGHTTP2_CONTINUATION</tt><a class="headerlink" href="#c.NGHTTP2_CONTINUATION" title="Permalink to this definition">¶</a></dt>
 <dd><p>(<tt class="docutils literal"><span class="pre">0x09</span></tt>)
-The CONTINUATION frame.</p>
+The CONTINUATION frame.  This frame type won't be passed to any
+callbacks because the library processes this frame type and its
+preceding HEADERS/PUSH_PROMISE as a single frame.</p>
 </dd></dl>
 
 </dd></dl>
@@ -955,6 +1047,16 @@ No flag set.</p>
 Indicates EOF was sensed.</p>
 </dd></dl>
 
+<dl class="macro">
+<dt id="c.NGHTTP2_DATA_FLAG_NO_END_STREAM">
+<tt class="descname">NGHTTP2_DATA_FLAG_NO_END_STREAM</tt><a class="headerlink" href="#c.NGHTTP2_DATA_FLAG_NO_END_STREAM" title="Permalink to this definition">¶</a></dt>
+<dd><p>(<tt class="docutils literal"><span class="pre">0x02</span></tt>)
+Indicates that END_STREAM flag must not be set even if
+NGHTTP2_DATA_FLAG_EOF is set.  Usually this flag is used to send
+trailer header fields with <a class="reference internal" href="#c.nghttp2_submit_request" title="nghttp2_submit_request"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_request()</span></tt></a> or
+<a class="reference internal" href="#c.nghttp2_submit_response" title="nghttp2_submit_response"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_response()</span></tt></a>.</p>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="type">
@@ -1176,6 +1278,20 @@ The implementation of this function must read at most <em>length</em>
 bytes of data from <em>source</em> (or possibly other places) and store
 them in <em>buf</em> and return number of data stored in <em>buf</em>.  If EOF is
 reached, set <a class="reference internal" href="#c.NGHTTP2_DATA_FLAG_EOF" title="NGHTTP2_DATA_FLAG_EOF"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_DATA_FLAG_EOF</span></tt></a> flag in <em>*data_flags</em>.</p>
+<p>If this callback is set by <a class="reference internal" href="#c.nghttp2_submit_request" title="nghttp2_submit_request"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_request()</span></tt></a>,
+<a class="reference internal" href="#c.nghttp2_submit_response" title="nghttp2_submit_response"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_response()</span></tt></a> or <a class="reference internal" href="#c.nghttp2_submit_headers" title="nghttp2_submit_headers"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_headers()</span></tt></a> and
+<a class="reference internal" href="#c.nghttp2_submit_data" title="nghttp2_submit_data"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_data()</span></tt></a> with flag parameter
+<a class="reference internal" href="#c.NGHTTP2_FLAG_END_STREAM" title="NGHTTP2_FLAG_END_STREAM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_FLAG_END_STREAM</span></tt></a> set, and
+<a class="reference internal" href="#c.NGHTTP2_DATA_FLAG_EOF" title="NGHTTP2_DATA_FLAG_EOF"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_DATA_FLAG_EOF</span></tt></a> flag is set to <em>*data_flags</em>, DATA
+frame will have END_STREAM flag set.  Usually, this is expected
+behaviour and all are fine.  One exception is send trailer header
+fields.  You cannot send trailers after sending frame with
+END_STREAM set.  To avoid this problem, one can set
+<a class="reference internal" href="#c.NGHTTP2_DATA_FLAG_NO_END_STREAM" title="NGHTTP2_DATA_FLAG_NO_END_STREAM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_DATA_FLAG_NO_END_STREAM</span></tt></a> along with
+<a class="reference internal" href="#c.NGHTTP2_DATA_FLAG_EOF" title="NGHTTP2_DATA_FLAG_EOF"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_DATA_FLAG_EOF</span></tt></a> to signal the library not to set
+END_STREAM in DATA frame.  Then application can use
+<a class="reference internal" href="#c.nghttp2_submit_trailer" title="nghttp2_submit_trailer"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_trailer()</span></tt></a> to send trailers.
+<a class="reference internal" href="#c.nghttp2_submit_trailer" title="nghttp2_submit_trailer"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_trailer()</span></tt></a> can be called inside this callback.</p>
 <p>If the application wants to postpone DATA frames (e.g.,
 asynchronous I/O, or reading data blocks for long time), it is
 achieved by returning <a class="reference internal" href="#c.NGHTTP2_ERR_DEFERRED" title="NGHTTP2_ERR_DEFERRED"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_DEFERRED</span></tt></a> without reading
@@ -1814,6 +1930,8 @@ argument passed in to the call to <a class="reference internal" href="#c.nghttp2
 If nonzero is returned, it is treated as fatal error and
 <a class="reference internal" href="#c.nghttp2_session_recv" title="nghttp2_session_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_recv()</span></tt></a> and <a class="reference internal" href="#c.nghttp2_session_send" title="nghttp2_session_send"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_send()</span></tt></a> functions
 immediately return <a class="reference internal" href="#c.NGHTTP2_ERR_CALLBACK_FAILURE" title="NGHTTP2_ERR_CALLBACK_FAILURE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_CALLBACK_FAILURE</span></tt></a>.</p>
+<p><a class="reference internal" href="#c.nghttp2_session_get_stream_user_data" title="nghttp2_session_get_stream_user_data"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_get_stream_user_data()</span></tt></a> can be used to get
+associated data.</p>
 <p>To set this callback to <a class="reference internal" href="#c.nghttp2_session_callbacks" title="nghttp2_session_callbacks"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_session_callbacks</span></tt></a>, use
 <a class="reference internal" href="#c.nghttp2_session_callbacks_set_on_frame_not_send_callback" title="nghttp2_session_callbacks_set_on_frame_not_send_callback"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_callbacks_set_on_frame_not_send_callback()</span></tt></a>.</p>
 </dd></dl>
@@ -1849,6 +1967,25 @@ will be emitted by <a class="reference internal" href="#c.nghttp2_on_header_call
 or more CONTINUATION frames are involved.  But the application does
 not need to care about that because the header name/value pairs are
 emitted transparently regardless of CONTINUATION frames.</p>
+<p>The server applications probably create an object to store
+information about new stream if <tt class="docutils literal"><span class="pre">frame-&gt;hd.type</span> <span class="pre">==</span>
+<span class="pre">NGHTTP2_HEADERS</span></tt> and <tt class="docutils literal"><span class="pre">frame-&gt;headers.cat</span> <span class="pre">==</span>
+<span class="pre">NGHTTP2_HCAT_REQUEST</span></tt>.  If <em>session</em> is configured as server side,
+<tt class="docutils literal"><span class="pre">frame-&gt;headers.cat</span></tt> is either <tt class="docutils literal"><span class="pre">NGHTTP2_HCAT_REQUEST</span></tt>
+containing request headers or <tt class="docutils literal"><span class="pre">NGHTTP2_HCAT_HEADERS</span></tt> containing
+trailer headers and never get PUSH_PROMISE in this callback.</p>
+<p>For the client applications, <tt class="docutils literal"><span class="pre">frame-&gt;hd.type</span></tt> is either
+<tt class="docutils literal"><span class="pre">NGHTTP2_HEADERS</span></tt> or <tt class="docutils literal"><span class="pre">NGHTTP2_PUSH_PROMISE</span></tt>.  In case of
+<tt class="docutils literal"><span class="pre">NGHTTP2_HEADERS</span></tt>, <tt class="docutils literal"><span class="pre">frame-&gt;headers.cat</span> <span class="pre">==</span>
+<span class="pre">NGHTTP2_HCAT_RESPONSE</span></tt> means that it is the first response
+headers, but it may be non-final response which is indicated by 1xx
+status code.  In this case, there may be zero or more HEADERS frame
+with <tt class="docutils literal"><span class="pre">frame-&gt;headers.cat</span> <span class="pre">==</span> <span class="pre">NGHTTP2_HCAT_HEADERS</span></tt> which has
+non-final response code and finally client gets exactly one HEADERS
+frame with <tt class="docutils literal"><span class="pre">frame-&gt;headers.cat</span> <span class="pre">==</span> <span class="pre">NGHTTP2_HCAT_HEADERS</span></tt>
+containing final response headers (non-1xx status code).  The
+trailer headers also has <tt class="docutils literal"><span class="pre">frame-&gt;headers.cat</span> <span class="pre">==</span>
+<span class="pre">NGHTTP2_HCAT_HEADERS</span></tt> which does not containg any status code.</p>
 <p>The implementation of this function must return 0 if it succeeds or
 <a class="reference internal" href="#c.NGHTTP2_ERR_CALLBACK_FAILURE" title="NGHTTP2_ERR_CALLBACK_FAILURE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_CALLBACK_FAILURE</span></tt></a>.  If nonzero value other than
 <a class="reference internal" href="#c.NGHTTP2_ERR_CALLBACK_FAILURE" title="NGHTTP2_ERR_CALLBACK_FAILURE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_CALLBACK_FAILURE</span></tt></a> is returned, it is treated as
@@ -1869,7 +2006,8 @@ The <em>value</em> of length <em>valuelen</em> is header value.  The <em>flags</
 bitwise OR of one or more of <a class="reference internal" href="#c.nghttp2_nv_flag" title="nghttp2_nv_flag"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_nv_flag</span></tt></a>.</p>
 <p>If <a class="reference internal" href="#c.NGHTTP2_NV_FLAG_NO_INDEX" title="NGHTTP2_NV_FLAG_NO_INDEX"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_NV_FLAG_NO_INDEX</span></tt></a> is set in <em>flags</em>, the receiver
 must not index this name/value pair when forwarding it to the next
-hop.</p>
+hop.  More specifically, &quot;Literal Header Field never Indexed&quot;
+representation must be used in HPACK encoding.</p>
 <p>When this callback is invoked, <tt class="docutils literal"><span class="pre">frame-&gt;hd.type</span></tt> is either
 <a class="reference internal" href="#c.NGHTTP2_HEADERS" title="NGHTTP2_HEADERS"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_HEADERS</span></tt></a> or <a class="reference internal" href="#c.NGHTTP2_PUSH_PROMISE" title="NGHTTP2_PUSH_PROMISE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_PUSH_PROMISE</span></tt></a>.  After all
 header name/value pairs are processed with this callback, and no
@@ -1877,19 +2015,13 @@ error has been detected, <a class="reference internal" href="#c.nghttp2_on_frame
 will be invoked.  If there is an error in decompression,
 <a class="reference internal" href="#c.nghttp2_on_frame_recv_callback" title="nghttp2_on_frame_recv_callback"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_on_frame_recv_callback</span></tt></a> for the <em>frame</em> will not be
 invoked.</p>
-<p>The <em>name</em> may be <tt class="docutils literal"><span class="pre">NULL</span></tt> if the <em>namelen</em> is 0.  The same thing
-can be said about the <em>value</em>.</p>
-<p>Please note that nghttp2 library does not perform any validity
-check against the <em>name</em> and the <em>value</em>.  For example, the
-<em>namelen</em> could be 0, and/or the <em>value</em> contains <tt class="docutils literal"><span class="pre">0x0a</span></tt> or
-<tt class="docutils literal"><span class="pre">0x0d</span></tt>.  The application must check them if it matters.  The
-helper function <a class="reference internal" href="#c.nghttp2_check_header_name" title="nghttp2_check_header_name"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_check_header_name()</span></tt></a> and
-<a class="reference internal" href="#c.nghttp2_check_header_value" title="nghttp2_check_header_value"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_check_header_value()</span></tt></a> provide simple validation against
-HTTP2 header field construction rule.</p>
-<p>HTTP/2 specification requires that pseudo header fields (header
-field starting with ':') must appear in front of regular header
-fields.  The library does not validate this requirement.  The
-application must check them if it matters.</p>
+<p>The <em>value</em> may be <tt class="docutils literal"><span class="pre">NULL</span></tt> if the <em>valuelen</em> is 0.</p>
+<p>Please note that unless <a class="reference internal" href="#c.nghttp2_option_set_no_http_messaging" title="nghttp2_option_set_no_http_messaging"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_option_set_no_http_messaging()</span></tt></a> is
+used, nghttp2 library does perform validation against the <em>name</em>
+and the <em>value</em> using <a class="reference internal" href="#c.nghttp2_check_header_name" title="nghttp2_check_header_name"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_check_header_name()</span></tt></a> and
+<a class="reference internal" href="#c.nghttp2_check_header_value" title="nghttp2_check_header_value"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_check_header_value()</span></tt></a>.  In addition to this, nghttp2
+performs vaidation based on HTTP Messaging rule, which is briefly
+explained in <a class="reference internal" href="#http-messaging">HTTP Messaging</a> section.</p>
 <p>If the application uses <a class="reference internal" href="#c.nghttp2_session_mem_recv" title="nghttp2_session_mem_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_mem_recv()</span></tt></a>, it can return
 <a class="reference internal" href="#c.NGHTTP2_ERR_PAUSE" title="NGHTTP2_ERR_PAUSE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_PAUSE</span></tt></a> to make <a class="reference internal" href="#c.nghttp2_session_mem_recv" title="nghttp2_session_mem_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_mem_recv()</span></tt></a>
 return without processing further input bytes.  The memory pointed
@@ -2289,6 +2421,16 @@ connection preface.</p>
 first 24 bytes client connection preface.  If it is not a valid
 one, <a class="reference internal" href="#c.nghttp2_session_recv" title="nghttp2_session_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_recv()</span></tt></a> and <a class="reference internal" href="#c.nghttp2_session_mem_recv" title="nghttp2_session_mem_recv"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_session_mem_recv()</span></tt></a> will
 return error <a class="reference internal" href="#c.NGHTTP2_ERR_BAD_PREFACE" title="NGHTTP2_ERR_BAD_PREFACE"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_BAD_PREFACE</span></tt></a>, which is fatal error.</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="c.nghttp2_option_set_no_http_messaging">
+void <tt class="descname">nghttp2_option_set_no_http_messaging</tt><big>(</big><a class="reference internal" href="#c.nghttp2_option" title="nghttp2_option">nghttp2_option</a><em>&nbsp;*option</em>, int<em>&nbsp;val</em><big>)</big><a class="headerlink" href="#c.nghttp2_option_set_no_http_messaging" title="Permalink to this definition">¶</a></dt>
+<dd><p>By default, nghttp2 library enforces subset of HTTP Messaging rules
+described in <a class="reference external" href="https://tools.ietf.org/html/draft-ietf-httpbis-http2-17#section-8">HTTP/2 specification, section 8</a>.
+See <a class="reference internal" href="#http-messaging">HTTP Messaging</a> section for details.  For those applications
+who use nghttp2 library as non-HTTP use, give nonzero to <em>val</em> to
+disable this enforcement.</p>
 </dd></dl>
 
 <dl class="function">
@@ -3044,6 +3186,46 @@ to commit response twice.</p>
 </dd></dl>
 
 <dl class="function">
+<dt id="c.nghttp2_submit_trailer">
+int <tt class="descname">nghttp2_submit_trailer</tt><big>(</big><a class="reference internal" href="#c.nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, int32_t<em>&nbsp;stream_id</em>, const <a class="reference internal" href="#c.nghttp2_nv" title="nghttp2_nv">nghttp2_nv</a><em>&nbsp;*nva</em>, size_t<em>&nbsp;nvlen</em><big>)</big><a class="headerlink" href="#c.nghttp2_submit_trailer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Submits trailer HEADERS against the stream <em>stream_id</em>.</p>
+<p>The <em>nva</em> is an array of name/value pair <a class="reference internal" href="#c.nghttp2_nv" title="nghttp2_nv"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_nv</span></tt></a> with
+<em>nvlen</em> elements.  The application is responsible not to include
+required pseudo-header fields (header field whose name starts with
+&quot;:&quot;) in <em>nva</em>.</p>
+<p>This function creates copies of all name/value pairs in <em>nva</em>.  It
+also lower-cases all names in <em>nva</em>.  The order of elements in
+<em>nva</em> is preserved.</p>
+<p>For server, trailer must be followed by response HEADERS or
+response DATA.  The library does not check that response HEADERS
+has already sent and if <a class="reference internal" href="#c.nghttp2_submit_trailer" title="nghttp2_submit_trailer"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_trailer()</span></tt></a> is called before
+any response HEADERS submission (usually by
+<a class="reference internal" href="#c.nghttp2_submit_response" title="nghttp2_submit_response"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_response()</span></tt></a>), the content of <em>nva</em> will be sent as
+reponse headers, which will result in error.</p>
+<p>This function has the same effect with <a class="reference internal" href="#c.nghttp2_submit_headers" title="nghttp2_submit_headers"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_headers()</span></tt></a>,
+with flags = <a class="reference internal" href="#c.NGHTTP2_FLAG_END_HEADERS" title="NGHTTP2_FLAG_END_HEADERS"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_FLAG_END_HEADERS</span></tt></a> and both pri_spec and
+stream_user_data to NULL.</p>
+<p>To submit trailer after <a class="reference internal" href="#c.nghttp2_submit_response" title="nghttp2_submit_response"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_response()</span></tt></a> is called, the
+application has to specify <a class="reference internal" href="#c.nghttp2_data_provider" title="nghttp2_data_provider"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_data_provider</span></tt></a> to
+<a class="reference internal" href="#c.nghttp2_submit_response" title="nghttp2_submit_response"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_response()</span></tt></a>.  In side
+<a class="reference internal" href="#c.nghttp2_data_source_read_callback" title="nghttp2_data_source_read_callback"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_data_source_read_callback</span></tt></a>, when setting
+<a class="reference internal" href="#c.NGHTTP2_DATA_FLAG_EOF" title="NGHTTP2_DATA_FLAG_EOF"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_DATA_FLAG_EOF</span></tt></a>, also set
+<a class="reference internal" href="#c.NGHTTP2_DATA_FLAG_NO_END_STREAM" title="NGHTTP2_DATA_FLAG_NO_END_STREAM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_DATA_FLAG_NO_END_STREAM</span></tt></a>.  After that, the
+application can send trailer using <a class="reference internal" href="#c.nghttp2_submit_trailer" title="nghttp2_submit_trailer"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_trailer()</span></tt></a>.
+<a class="reference internal" href="#c.nghttp2_submit_trailer" title="nghttp2_submit_trailer"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_trailer()</span></tt></a> can be used inside
+<a class="reference internal" href="#c.nghttp2_data_source_read_callback" title="nghttp2_data_source_read_callback"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_data_source_read_callback</span></tt></a>.</p>
+<p>This function returns 0 if it succeeds and <em>stream_id</em> is -1.
+Otherwise, this function returns 0 if it succeeds, or one of the
+following negative error codes:</p>
+<dl class="docutils">
+<dt><a class="reference internal" href="#c.NGHTTP2_ERR_NOMEM" title="NGHTTP2_ERR_NOMEM"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_NOMEM</span></tt></a></dt>
+<dd>Out of memory.</dd>
+<dt><a class="reference internal" href="#c.NGHTTP2_ERR_INVALID_ARGUMENT" title="NGHTTP2_ERR_INVALID_ARGUMENT"><tt class="xref c c-macro docutils literal"><span class="pre">NGHTTP2_ERR_INVALID_ARGUMENT</span></tt></a></dt>
+<dd>The <em>stream_id</em> is 0.</dd>
+</dl>
+</dd></dl>
+
+<dl class="function">
 <dt id="c.nghttp2_submit_headers">
 int32_t <tt class="descname">nghttp2_submit_headers</tt><big>(</big><a class="reference internal" href="#c.nghttp2_session" title="nghttp2_session">nghttp2_session</a><em>&nbsp;*session</em>, uint8_t<em>&nbsp;flags</em>, int32_t<em>&nbsp;stream_id</em>, const <a class="reference internal" href="#c.nghttp2_priority_spec" title="nghttp2_priority_spec">nghttp2_priority_spec</a><em>&nbsp;*pri_spec</em>, const <a class="reference internal" href="#c.nghttp2_nv" title="nghttp2_nv">nghttp2_nv</a><em>&nbsp;*nva</em>, size_t<em>&nbsp;nvlen</em>, void<em>&nbsp;*stream_user_data</em><big>)</big><a class="headerlink" href="#c.nghttp2_submit_headers" title="Permalink to this definition">¶</a></dt>
 <dd><p>Submits HEADERS frame. The <em>flags</em> is bitwise OR of the
@@ -3239,6 +3421,8 @@ make it in reserved state.  It is available using
 access it in <a class="reference internal" href="#c.nghttp2_before_frame_send_callback" title="nghttp2_before_frame_send_callback"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_before_frame_send_callback</span></tt></a> and
 <a class="reference internal" href="#c.nghttp2_on_frame_send_callback" title="nghttp2_on_frame_send_callback"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_on_frame_send_callback</span></tt></a> of this frame.</p>
 <p>The client side is not allowed to use this function.</p>
+<p>To submit response headers and data, use
+<a class="reference internal" href="#c.nghttp2_submit_response" title="nghttp2_submit_response"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_submit_response()</span></tt></a>.</p>
 <p>This function returns assigned promised stream ID if it succeeds,
 or one of the following negative error codes:</p>
 <dl class="docutils">
@@ -3728,7 +3912,7 @@ always succeeds.</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.7.2-DEV',
+            VERSION:'0.7.8-DEV',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  false

@@ -7,7 +7,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>nghttp2.h &mdash; nghttp2 0.7.2-DEV documentation</title>
+  <title>nghttp2.h &mdash; nghttp2 0.7.8-DEV documentation</title>
   
 
   
@@ -28,7 +28,7 @@
   
 
   
-    <link rel="top" title="nghttp2 0.7.2-DEV documentation" href="index.html"/>
+    <link rel="top" title="nghttp2 0.7.8-DEV documentation" href="index.html"/>
         <link rel="next" title="nghttp2ver.h" href="nghttp2ver.h.html"/>
         <link rel="prev" title="Python API Reference" href="python-apiref.html"/> 
 
@@ -100,30 +100,33 @@
 <li class="toctree-l1"><a class="reference internal" href="nghttp.1.html">nghttp(1)</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#options">OPTIONS:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#options">OPTIONS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="nghttpd.1.html">nghttpd(1)</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#options">OPTIONS:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#options">OPTIONS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="nghttpx.1.html">nghttpx(1)</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#options">OPTIONS:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#options">OPTIONS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#files">FILES</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#signals">SIGNALS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#server-push">SERVER PUSH</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#unix-domain-socket">UNIX DOMAIN SOCKET</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="h2load.1.html">h2load(1)</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="h2load.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="h2load.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#options">OPTIONS:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#options">OPTIONS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#output">OUTPUT</a></li>
 <li class="toctree-l2"><a class="reference internal" href="h2load.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
@@ -139,7 +142,7 @@
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#rewriting-location-header-field">Rewriting location header field</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#hot-swapping">Hot swapping</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#re-opening-log-files">Re-opening log files</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#multiple-http-1-backend-addresses">Multiple HTTP/1 backend addresses</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#multiple-backend-addresses">Multiple backend addresses</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="h2load-howto.html">h2load - HTTP/2 benchmarking tool - HOW-TO</a><ul>
@@ -153,6 +156,7 @@
 <li class="toctree-l1"><a class="reference internal" href="apiref.html">API Reference</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="apiref.html#includes">Includes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="apiref.html#remarks">Remarks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="apiref.html#http-messaging">HTTP Messaging</a></li>
 <li class="toctree-l2"><a class="reference internal" href="apiref.html#macros">Macros</a></li>
 <li class="toctree-l2"><a class="reference internal" href="apiref.html#enums">Enums</a></li>
 <li class="toctree-l2"><a class="reference internal" href="apiref.html#types-structs-unions-and-typedefs">Types (structs, unions and typedefs)</a></li>
@@ -161,6 +165,7 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="libnghttp2_asio.html">libnghttp2_asio: High level HTTP/2 C++ library</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="libnghttp2_asio.html#server-api">Server API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="libnghttp2_asio.html#client-api">Client API</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="python-apiref.html">Python API Reference</a><ul>
@@ -170,6 +175,8 @@
 </li>
 <li class="toctree-l1 current"><a class="current reference internal" href="">nghttp2.h</a></li>
 <li class="toctree-l1"><a class="reference internal" href="nghttp2ver.h.html">nghttp2ver.h</a></li>
+<li class="toctree-l1"><a class="reference internal" href="asio_http2_server.h.html">asio_http2_server.h</a></li>
+<li class="toctree-l1"><a class="reference internal" href="asio_http2_client.h.html">asio_http2_client.h</a></li>
 <li class="toctree-l1"><a class="reference internal" href="asio_http2.h.html">asio_http2.h</a></li>
 <li class="toctree-l1"><a class="reference external" href="https://github.com/tatsuhiro-t/nghttp2">Source</a></li>
 <li class="toctree-l1"><a class="reference external" href="https://github.com/tatsuhiro-t/nghttp2/issues">Issues</a></li>
@@ -259,6 +266,24 @@
 <span class="cm"> * The length of :macro:`NGHTTP2_PROTO_VERSION_ID`.</span>
 <span class="cm"> */</span>
 <span class="cp">#define NGHTTP2_PROTO_VERSION_ID_LEN 5</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @macro</span>
+<span class="cm"> *</span>
+<span class="cm"> * The seriazlied form of ALPN protocol identifier this library</span>
+<span class="cm"> * supports.  Notice that first byte is the length of following</span>
+<span class="cm"> * protocol identifier.  This is the same wire format of `TLS ALPN</span>
+<span class="cm"> * extension &lt;https://tools.ietf.org/html/rfc7301&gt;`_.  This is useful</span>
+<span class="cm"> * to process incoming ALPN tokens in wire format.</span>
+<span class="cm"> */</span>
+<span class="cp">#define NGHTTP2_PROTO_ALPN &quot;\x5h2-14&quot;</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @macro</span>
+<span class="cm"> *</span>
+<span class="cm"> * The length of :macro:`NGHTTP2_PROTO_ALPN`.</span>
+<span class="cm"> */</span>
+<span class="cp">#define NGHTTP2_PROTO_ALPN_LEN (sizeof(NGHTTP2_PROTO_ALPN) - 1)</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @macro</span>
@@ -542,6 +567,11 @@
 <span class="cm">   */</span>
   <span class="n">NGHTTP2_ERR_SESSION_CLOSING</span> <span class="o">=</span> <span class="o">-</span><span class="mi">530</span><span class="p">,</span>
   <span class="cm">/**</span>
+<span class="cm">   * Invalid HTTP header field was received and stream is going to be</span>
+<span class="cm">   * closed.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_ERR_HTTP_HEADER</span> <span class="o">=</span> <span class="o">-</span><span class="mi">531</span><span class="p">,</span>
+  <span class="cm">/**</span>
 <span class="cm">   * The errors &lt; :enum:`NGHTTP2_ERR_FATAL` mean that the library is</span>
 <span class="cm">   * under unexpected condition and processing was terminated (e.g.,</span>
 <span class="cm">   * out of memory).  If application receives this error code, it must</span>
@@ -576,7 +606,9 @@
 <span class="cm">   */</span>
   <span class="n">NGHTTP2_NV_FLAG_NONE</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
   <span class="cm">/**</span>
-<span class="cm">   * Indicates that this name/value pair must not be indexed.</span>
+<span class="cm">   * Indicates that this name/value pair must not be indexed (&quot;Literal</span>
+<span class="cm">   * Header Field never Indexed&quot; representation must be used in HPACK</span>
+<span class="cm">   * encoding).  Other implementation calls this bit as &quot;sensitive&quot;.</span>
 <span class="cm">   */</span>
   <span class="n">NGHTTP2_NV_FLAG_NO_INDEX</span> <span class="o">=</span> <span class="mh">0x01</span>
 <span class="p">}</span> <span class="n">nghttp2_nv_flag</span><span class="p">;</span>
@@ -654,7 +686,9 @@
 <span class="cm">   */</span>
   <span class="n">NGHTTP2_WINDOW_UPDATE</span> <span class="o">=</span> <span class="mh">0x08</span><span class="p">,</span>
   <span class="cm">/**</span>
-<span class="cm">   * The CONTINUATION frame.</span>
+<span class="cm">   * The CONTINUATION frame.  This frame type won&#39;t be passed to any</span>
+<span class="cm">   * callbacks because the library processes this frame type and its</span>
+<span class="cm">   * preceding HEADERS/PUSH_PROMISE as a single frame.</span>
 <span class="cm">   */</span>
   <span class="n">NGHTTP2_CONTINUATION</span> <span class="o">=</span> <span class="mh">0x09</span>
 <span class="p">}</span> <span class="n">nghttp2_frame_type</span><span class="p">;</span>
@@ -868,7 +902,14 @@
   <span class="cm">/**</span>
 <span class="cm">   * Indicates EOF was sensed.</span>
 <span class="cm">   */</span>
-  <span class="n">NGHTTP2_DATA_FLAG_EOF</span> <span class="o">=</span> <span class="mh">0x01</span>
+  <span class="n">NGHTTP2_DATA_FLAG_EOF</span> <span class="o">=</span> <span class="mh">0x01</span><span class="p">,</span>
+  <span class="cm">/**</span>
+<span class="cm">   * Indicates that END_STREAM flag must not be set even if</span>
+<span class="cm">   * NGHTTP2_DATA_FLAG_EOF is set.  Usually this flag is used to send</span>
+<span class="cm">   * trailer header fields with `nghttp2_submit_request()` or</span>
+<span class="cm">   * `nghttp2_submit_response()`.</span>
+<span class="cm">   */</span>
+  <span class="n">NGHTTP2_DATA_FLAG_NO_END_STREAM</span> <span class="o">=</span> <span class="mh">0x02</span>
 <span class="p">}</span> <span class="n">nghttp2_data_flag</span><span class="p">;</span>
 
 <span class="cm">/**</span>
@@ -880,6 +921,21 @@
 <span class="cm"> * bytes of data from |source| (or possibly other places) and store</span>
 <span class="cm"> * them in |buf| and return number of data stored in |buf|.  If EOF is</span>
 <span class="cm"> * reached, set :enum:`NGHTTP2_DATA_FLAG_EOF` flag in |*data_flags|.</span>
+<span class="cm"> *</span>
+<span class="cm"> * If this callback is set by `nghttp2_submit_request()`,</span>
+<span class="cm"> * `nghttp2_submit_response()` or `nghttp2_submit_headers()` and</span>
+<span class="cm"> * `nghttp2_submit_data()` with flag parameter</span>
+<span class="cm"> * :enum:`NGHTTP2_FLAG_END_STREAM` set, and</span>
+<span class="cm"> * :enum:`NGHTTP2_DATA_FLAG_EOF` flag is set to |*data_flags|, DATA</span>
+<span class="cm"> * frame will have END_STREAM flag set.  Usually, this is expected</span>
+<span class="cm"> * behaviour and all are fine.  One exception is send trailer header</span>
+<span class="cm"> * fields.  You cannot send trailers after sending frame with</span>
+<span class="cm"> * END_STREAM set.  To avoid this problem, one can set</span>
+<span class="cm"> * :enum:`NGHTTP2_DATA_FLAG_NO_END_STREAM` along with</span>
+<span class="cm"> * :enum:`NGHTTP2_DATA_FLAG_EOF` to signal the library not to set</span>
+<span class="cm"> * END_STREAM in DATA frame.  Then application can use</span>
+<span class="cm"> * `nghttp2_submit_trailer()` to send trailers.</span>
+<span class="cm"> * `nghttp2_submit_trailer()` can be called inside this callback.</span>
 <span class="cm"> *</span>
 <span class="cm"> * If the application wants to postpone DATA frames (e.g.,</span>
 <span class="cm"> * asynchronous I/O, or reading data blocks for long time), it is</span>
@@ -1515,6 +1571,9 @@
 <span class="cm"> * `nghttp2_session_recv()` and `nghttp2_session_send()` functions</span>
 <span class="cm"> * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.</span>
 <span class="cm"> *</span>
+<span class="cm"> * `nghttp2_session_get_stream_user_data()` can be used to get</span>
+<span class="cm"> * associated data.</span>
+<span class="cm"> *</span>
 <span class="cm"> * To set this callback to :type:`nghttp2_session_callbacks`, use</span>
 <span class="cm"> * `nghttp2_session_callbacks_set_on_frame_not_send_callback()`.</span>
 <span class="cm"> */</span>
@@ -1563,6 +1622,27 @@
 <span class="cm"> * not need to care about that because the header name/value pairs are</span>
 <span class="cm"> * emitted transparently regardless of CONTINUATION frames.</span>
 <span class="cm"> *</span>
+<span class="cm"> * The server applications probably create an object to store</span>
+<span class="cm"> * information about new stream if ``frame-&gt;hd.type ==</span>
+<span class="cm"> * NGHTTP2_HEADERS`` and ``frame-&gt;headers.cat ==</span>
+<span class="cm"> * NGHTTP2_HCAT_REQUEST``.  If |session| is configured as server side,</span>
+<span class="cm"> * ``frame-&gt;headers.cat`` is either ``NGHTTP2_HCAT_REQUEST``</span>
+<span class="cm"> * containing request headers or ``NGHTTP2_HCAT_HEADERS`` containing</span>
+<span class="cm"> * trailer headers and never get PUSH_PROMISE in this callback.</span>
+<span class="cm"> *</span>
+<span class="cm"> * For the client applications, ``frame-&gt;hd.type`` is either</span>
+<span class="cm"> * ``NGHTTP2_HEADERS`` or ``NGHTTP2_PUSH_PROMISE``.  In case of</span>
+<span class="cm"> * ``NGHTTP2_HEADERS``, ``frame-&gt;headers.cat ==</span>
+<span class="cm"> * NGHTTP2_HCAT_RESPONSE`` means that it is the first response</span>
+<span class="cm"> * headers, but it may be non-final response which is indicated by 1xx</span>
+<span class="cm"> * status code.  In this case, there may be zero or more HEADERS frame</span>
+<span class="cm"> * with ``frame-&gt;headers.cat == NGHTTP2_HCAT_HEADERS`` which has</span>
+<span class="cm"> * non-final response code and finally client gets exactly one HEADERS</span>
+<span class="cm"> * frame with ``frame-&gt;headers.cat == NGHTTP2_HCAT_HEADERS``</span>
+<span class="cm"> * containing final response headers (non-1xx status code).  The</span>
+<span class="cm"> * trailer headers also has ``frame-&gt;headers.cat ==</span>
+<span class="cm"> * NGHTTP2_HCAT_HEADERS`` which does not containg any status code.</span>
+<span class="cm"> *</span>
 <span class="cm"> * The implementation of this function must return 0 if it succeeds or</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.  If nonzero value other than</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE` is returned, it is treated as</span>
@@ -1588,7 +1668,8 @@
 <span class="cm"> *</span>
 <span class="cm"> * If :enum:`NGHTTP2_NV_FLAG_NO_INDEX` is set in |flags|, the receiver</span>
 <span class="cm"> * must not index this name/value pair when forwarding it to the next</span>
-<span class="cm"> * hop.</span>
+<span class="cm"> * hop.  More specifically, &quot;Literal Header Field never Indexed&quot;</span>
+<span class="cm"> * representation must be used in HPACK encoding.</span>
 <span class="cm"> *</span>
 <span class="cm"> * When this callback is invoked, ``frame-&gt;hd.type`` is either</span>
 <span class="cm"> * :enum:`NGHTTP2_HEADERS` or :enum:`NGHTTP2_PUSH_PROMISE`.  After all</span>
@@ -1598,21 +1679,14 @@
 <span class="cm"> * :type:`nghttp2_on_frame_recv_callback` for the |frame| will not be</span>
 <span class="cm"> * invoked.</span>
 <span class="cm"> *</span>
-<span class="cm"> * The |name| may be ``NULL`` if the |namelen| is 0.  The same thing</span>
-<span class="cm"> * can be said about the |value|.</span>
+<span class="cm"> * The |value| may be ``NULL`` if the |valuelen| is 0.</span>
 <span class="cm"> *</span>
-<span class="cm"> * Please note that nghttp2 library does not perform any validity</span>
-<span class="cm"> * check against the |name| and the |value|.  For example, the</span>
-<span class="cm"> * |namelen| could be 0, and/or the |value| contains ``0x0a`` or</span>
-<span class="cm"> * ``0x0d``.  The application must check them if it matters.  The</span>
-<span class="cm"> * helper function `nghttp2_check_header_name()` and</span>
-<span class="cm"> * `nghttp2_check_header_value()` provide simple validation against</span>
-<span class="cm"> * HTTP2 header field construction rule.</span>
-<span class="cm"> *</span>
-<span class="cm"> * HTTP/2 specification requires that pseudo header fields (header</span>
-<span class="cm"> * field starting with &#39;:&#39;) must appear in front of regular header</span>
-<span class="cm"> * fields.  The library does not validate this requirement.  The</span>
-<span class="cm"> * application must check them if it matters.</span>
+<span class="cm"> * Please note that unless `nghttp2_option_set_no_http_messaging()` is</span>
+<span class="cm"> * used, nghttp2 library does perform validation against the |name|</span>
+<span class="cm"> * and the |value| using `nghttp2_check_header_name()` and</span>
+<span class="cm"> * `nghttp2_check_header_value()`.  In addition to this, nghttp2</span>
+<span class="cm"> * performs vaidation based on HTTP Messaging rule, which is briefly</span>
+<span class="cm"> * explained in `HTTP Messaging`_ section.</span>
 <span class="cm"> *</span>
 <span class="cm"> * If the application uses `nghttp2_session_mem_recv()`, it can return</span>
 <span class="cm"> * :enum:`NGHTTP2_ERR_PAUSE` to make `nghttp2_session_mem_recv()`</span>
@@ -2079,6 +2153,18 @@
 <span class="cm"> * return error :enum:`NGHTTP2_ERR_BAD_PREFACE`, which is fatal error.</span>
 <span class="cm"> */</span>
 <span class="kt">void</span> <span class="nf">nghttp2_option_set_recv_client_preface</span><span class="p">(</span><span class="n">nghttp2_option</span> <span class="o">*</span><span class="n">option</span><span class="p">,</span> <span class="kt">int</span> <span class="n">val</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
+<span class="cm"> * By default, nghttp2 library enforces subset of HTTP Messaging rules</span>
+<span class="cm"> * described in `HTTP/2 specification, section 8</span>
+<span class="cm"> * &lt;https://tools.ietf.org/html/draft-ietf-httpbis-http2-17#section-8&gt;`_.</span>
+<span class="cm"> * See `HTTP Messaging`_ section for details.  For those applications</span>
+<span class="cm"> * who use nghttp2 library as non-HTTP use, give nonzero to |val| to</span>
+<span class="cm"> * disable this enforcement.</span>
+<span class="cm"> */</span>
+<span class="kt">void</span> <span class="nf">nghttp2_option_set_no_http_messaging</span><span class="p">(</span><span class="n">nghttp2_option</span> <span class="o">*</span><span class="n">option</span><span class="p">,</span> <span class="kt">int</span> <span class="n">val</span><span class="p">);</span>
 
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
@@ -2993,6 +3079,53 @@
 <span class="cm">/**</span>
 <span class="cm"> * @function</span>
 <span class="cm"> *</span>
+<span class="cm"> * Submits trailer HEADERS against the stream |stream_id|.</span>
+<span class="cm"> *</span>
+<span class="cm"> * The |nva| is an array of name/value pair :type:`nghttp2_nv` with</span>
+<span class="cm"> * |nvlen| elements.  The application is responsible not to include</span>
+<span class="cm"> * required pseudo-header fields (header field whose name starts with</span>
+<span class="cm"> * &quot;:&quot;) in |nva|.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function creates copies of all name/value pairs in |nva|.  It</span>
+<span class="cm"> * also lower-cases all names in |nva|.  The order of elements in</span>
+<span class="cm"> * |nva| is preserved.</span>
+<span class="cm"> *</span>
+<span class="cm"> * For server, trailer must be followed by response HEADERS or</span>
+<span class="cm"> * response DATA.  The library does not check that response HEADERS</span>
+<span class="cm"> * has already sent and if `nghttp2_submit_trailer()` is called before</span>
+<span class="cm"> * any response HEADERS submission (usually by</span>
+<span class="cm"> * `nghttp2_submit_response()`), the content of |nva| will be sent as</span>
+<span class="cm"> * reponse headers, which will result in error.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function has the same effect with `nghttp2_submit_headers()`,</span>
+<span class="cm"> * with flags = :enum:`NGHTTP2_FLAG_END_HEADERS` and both pri_spec and</span>
+<span class="cm"> * stream_user_data to NULL.</span>
+<span class="cm"> *</span>
+<span class="cm"> * To submit trailer after `nghttp2_submit_response()` is called, the</span>
+<span class="cm"> * application has to specify :type:`nghttp2_data_provider` to</span>
+<span class="cm"> * `nghttp2_submit_response()`.  In side</span>
+<span class="cm"> * :type:`nghttp2_data_source_read_callback`, when setting</span>
+<span class="cm"> * :enum:`NGHTTP2_DATA_FLAG_EOF`, also set</span>
+<span class="cm"> * :enum:`NGHTTP2_DATA_FLAG_NO_END_STREAM`.  After that, the</span>
+<span class="cm"> * application can send trailer using `nghttp2_submit_trailer()`.</span>
+<span class="cm"> * `nghttp2_submit_trailer()` can be used inside</span>
+<span class="cm"> * :type:`nghttp2_data_source_read_callback`.</span>
+<span class="cm"> *</span>
+<span class="cm"> * This function returns 0 if it succeeds and |stream_id| is -1.</span>
+<span class="cm"> * Otherwise, this function returns 0 if it succeeds, or one of the</span>
+<span class="cm"> * following negative error codes:</span>
+<span class="cm"> *</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_NOMEM`</span>
+<span class="cm"> *     Out of memory.</span>
+<span class="cm"> * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`</span>
+<span class="cm"> *     The |stream_id| is 0.</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">nghttp2_submit_trailer</span><span class="p">(</span><span class="n">nghttp2_session</span> <span class="o">*</span><span class="n">session</span><span class="p">,</span> <span class="kt">int32_t</span> <span class="n">stream_id</span><span class="p">,</span>
+                           <span class="k">const</span> <span class="n">nghttp2_nv</span> <span class="o">*</span><span class="n">nva</span><span class="p">,</span> <span class="kt">size_t</span> <span class="n">nvlen</span><span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function</span>
+<span class="cm"> *</span>
 <span class="cm"> * Submits HEADERS frame. The |flags| is bitwise OR of the</span>
 <span class="cm"> * following values:</span>
 <span class="cm"> *</span>
@@ -3226,6 +3359,9 @@
 <span class="cm"> * :type:`nghttp2_on_frame_send_callback` of this frame.</span>
 <span class="cm"> *</span>
 <span class="cm"> * The client side is not allowed to use this function.</span>
+<span class="cm"> *</span>
+<span class="cm"> * To submit response headers and data, use</span>
+<span class="cm"> * `nghttp2_submit_response()`.</span>
 <span class="cm"> *</span>
 <span class="cm"> * This function returns assigned promised stream ID if it succeeds,</span>
 <span class="cm"> * or one of the following negative error codes:</span>
@@ -3849,7 +3985,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.7.2-DEV',
+            VERSION:'0.7.8-DEV',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  false

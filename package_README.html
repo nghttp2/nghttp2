@@ -7,7 +7,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>nghttp2 - HTTP/2 C Library &mdash; nghttp2 0.7.2-DEV documentation</title>
+  <title>nghttp2 - HTTP/2 C Library &mdash; nghttp2 0.7.8-DEV documentation</title>
   
 
   
@@ -28,7 +28,7 @@
   
 
   
-    <link rel="top" title="nghttp2 0.7.2-DEV documentation" href="index.html"/>
+    <link rel="top" title="nghttp2 0.7.8-DEV documentation" href="index.html"/>
         <link rel="next" title="Contribution Guidelines" href="contribute.html"/>
         <link rel="prev" title="nghttp2 - HTTP/2 C Library" href="index.html"/> 
 
@@ -100,30 +100,33 @@
 <li class="toctree-l1"><a class="reference internal" href="nghttp.1.html">nghttp(1)</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#options">OPTIONS:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#options">OPTIONS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="nghttpd.1.html">nghttpd(1)</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#options">OPTIONS:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#options">OPTIONS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="nghttpx.1.html">nghttpx(1)</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#options">OPTIONS:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#options">OPTIONS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#files">FILES</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#signals">SIGNALS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#server-push">SERVER PUSH</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#unix-domain-socket">UNIX DOMAIN SOCKET</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="h2load.1.html">h2load(1)</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="h2load.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="h2load.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#options">OPTIONS:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#options">OPTIONS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#output">OUTPUT</a></li>
 <li class="toctree-l2"><a class="reference internal" href="h2load.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
@@ -139,7 +142,7 @@
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#rewriting-location-header-field">Rewriting location header field</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#hot-swapping">Hot swapping</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#re-opening-log-files">Re-opening log files</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#multiple-http-1-backend-addresses">Multiple HTTP/1 backend addresses</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx-howto.html#multiple-backend-addresses">Multiple backend addresses</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="h2load-howto.html">h2load - HTTP/2 benchmarking tool - HOW-TO</a><ul>
@@ -153,6 +156,7 @@
 <li class="toctree-l1"><a class="reference internal" href="apiref.html">API Reference</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="apiref.html#includes">Includes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="apiref.html#remarks">Remarks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="apiref.html#http-messaging">HTTP Messaging</a></li>
 <li class="toctree-l2"><a class="reference internal" href="apiref.html#macros">Macros</a></li>
 <li class="toctree-l2"><a class="reference internal" href="apiref.html#enums">Enums</a></li>
 <li class="toctree-l2"><a class="reference internal" href="apiref.html#types-structs-unions-and-typedefs">Types (structs, unions and typedefs)</a></li>
@@ -161,6 +165,7 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="libnghttp2_asio.html">libnghttp2_asio: High level HTTP/2 C++ library</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="libnghttp2_asio.html#server-api">Server API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="libnghttp2_asio.html#client-api">Client API</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="python-apiref.html">Python API Reference</a><ul>
@@ -170,6 +175,8 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="nghttp2.h.html">nghttp2.h</a></li>
 <li class="toctree-l1"><a class="reference internal" href="nghttp2ver.h.html">nghttp2ver.h</a></li>
+<li class="toctree-l1"><a class="reference internal" href="asio_http2_server.h.html">asio_http2_server.h</a></li>
+<li class="toctree-l1"><a class="reference internal" href="asio_http2_client.h.html">asio_http2_client.h</a></li>
 <li class="toctree-l1"><a class="reference internal" href="asio_http2.h.html">asio_http2.h</a></li>
 <li class="toctree-l1"><a class="reference external" href="https://github.com/tatsuhiro-t/nghttp2">Source</a></li>
 <li class="toctree-l1"><a class="reference external" href="https://github.com/tatsuhiro-t/nghttp2/issues">Issues</a></li>
@@ -255,8 +262,9 @@ compression
 implementation.</p>
 <ul>
 <li><p class="first"><a class="reference external" href="https://nghttp2.org/">https://nghttp2.org/</a> (TLS + ALPN/NPN)</p>
-<p>NPN offer <tt class="docutils literal"><span class="pre">h2-14</span></tt>, <tt class="docutils literal"><span class="pre">spdy/3.1</span></tt> and <tt class="docutils literal"><span class="pre">http/1.1</span></tt>.</p>
-<p>This endpoint requires TLSv1.2 for HTTP/2 connection.</p>
+<p>This endpoint supports <tt class="docutils literal"><span class="pre">h2</span></tt>, <tt class="docutils literal"><span class="pre">h2-16</span></tt>, <tt class="docutils literal"><span class="pre">h2-14</span></tt>, <tt class="docutils literal"><span class="pre">spdy/3.1</span></tt>
+and <tt class="docutils literal"><span class="pre">http/1.1</span></tt> via ALPN/NPN and requires TLSv1.2 for HTTP/2
+connection.</p>
 </li>
 <li><p class="first"><a class="reference external" href="http://nghttp2.org/">http://nghttp2.org/</a> (Upgrade / Direct)</p>
 <p><tt class="docutils literal"><span class="pre">h2c-14</span></tt> and <tt class="docutils literal"><span class="pre">http/1.1</span></tt>.</p>
@@ -322,25 +330,9 @@ resource) in <tt class="docutils literal"><span class="pre">nghttp</span></tt>, 
 </ul>
 <p>If you are using Ubuntu 14.04 LTS, you need the following packages
 installed:</p>
-<ul class="simple">
-<li>make</li>
-<li>binutils</li>
-<li>autoconf</li>
-<li>automake</li>
-<li>autotools-dev</li>
-<li>libtool</li>
-<li>pkg-config</li>
-<li>zlib1g-dev</li>
-<li>libcunit1-dev</li>
-<li>libssl-dev</li>
-<li>libxml2-dev</li>
-<li>libev-dev</li>
-<li>libevent-dev</li>
-<li>libjansson-dev</li>
-<li>libjemalloc-dev</li>
-<li>cython</li>
-<li>python3.4-dev</li>
-</ul>
+<div class="highlight-c"><div class="highlight"><pre><span class="n">apt</span><span class="o">-</span><span class="n">get</span> <span class="n">install</span> <span class="n">make</span> <span class="n">binutils</span> <span class="n">autoconf</span>  <span class="n">automake</span> <span class="n">autotools</span><span class="o">-</span><span class="n">dev</span> <span class="n">libtool</span> <span class="n">pkg</span><span class="o">-</span><span class="n">config</span> <span class="n">zlib1g</span><span class="o">-</span><span class="n">dev</span> <span class="n">libcunit1</span><span class="o">-</span><span class="n">dev</span> <span class="n">libssl</span><span class="o">-</span><span class="n">dev</span> <span class="n">libxml2</span><span class="o">-</span><span class="n">dev</span> <span class="n">libev</span><span class="o">-</span><span class="n">dev</span> <span class="n">libevent</span><span class="o">-</span><span class="n">dev</span> <span class="n">libjansson</span><span class="o">-</span><span class="n">dev</span> <span class="n">libjemalloc</span><span class="o">-</span><span class="n">dev</span> <span class="n">cython</span> <span class="n">python3</span><span class="mf">.4</span><span class="o">-</span><span class="n">dev</span>
+</pre></div>
+</div>
 <p>spdylay is not packaged in Ubuntu, so you need to build it yourself:
 <a class="reference external" href="http://tatsuhiro-t.github.io/spdylay/">http://tatsuhiro-t.github.io/spdylay/</a></p>
 </div>
@@ -414,7 +406,7 @@ following command under <tt class="docutils literal"><span class="pre">integrati
 with prior knowledge, HTTP Upgrade and NPN/ALPN TLS extension.</p>
 <p>It has verbose output mode for framing information.  Here is sample
 output from <tt class="docutils literal"><span class="pre">nghttp</span></tt> client:</p>
-<div class="highlight-c"><div class="highlight"><pre>$ src/nghttp -nv https://nghttp2.org
+<div class="highlight-c"><div class="highlight"><pre>$ nghttp -nv https://nghttp2.org
 [  0.033][NPN] server offers:
           * h2-14
           * spdy/3.1
@@ -483,7 +475,7 @@ The negotiated protocol: h2-14
 </pre></div>
 </div>
 <p>The HTTP Upgrade is performed like this:</p>
-<div class="highlight-c"><div class="highlight"><pre>$ src/nghttp -nvu http://nghttp2.org
+<div class="highlight-c"><div class="highlight"><pre>$ nghttp -nvu http://nghttp2.org
 [  0.013] HTTP Upgrade request
 GET / HTTP/1.1
 Host: nghttp2.org
@@ -551,6 +543,34 @@ Upgrade: h2c-14
           (last_stream_id=0, error_code=NO_ERROR(0), opaque_data(0)=[])
 </pre></div>
 </div>
+<p>With <tt class="docutils literal"><span class="pre">-s</span></tt> option, <tt class="docutils literal"><span class="pre">nghttp</span></tt> prints out some timing information for
+requests, sorted by completion time:</p>
+<div class="highlight-c"><div class="highlight"><pre>$ nghttp -nas https://nghttp2.org/
+***** Statistics *****
+
+Request timing:
+  complete: relative time from protocol handshake to stream close
+   request: relative   time  from   protocol   handshake  to   request
+            transmission.  If &#39;*&#39; is shown, this was pushed by server.
+   process: time for request and response
+      code: HTTP status code
+      size: number  of   bytes  received  as  response   body  without
+            inflation.
+       URI: request URI
+
+sorted by &#39;complete&#39;
+
+complete  request    process  code size request path
+ +11.07ms     +120us  10.95ms  200   9K /
+ +16.77ms *  +8.80ms   7.98ms  200   8K /stylesheets/screen.css
+ +27.00ms   +11.16ms  15.84ms  200   3K /javascripts/octopress.js
+ +27.40ms   +11.16ms  16.24ms  200   3K /javascripts/modernizr-2.0.js
+ +76.14ms   +11.17ms  64.97ms  200 171K /images/posts/with-pri-blog.png
+ +88.52ms   +11.17ms  77.36ms  200 174K /images/posts/without-pri-blog.png
+</pre></div>
+</div>
+<p>With <tt class="docutils literal"><span class="pre">-r</span></tt> option, <tt class="docutils literal"><span class="pre">nghttp</span></tt> writes more detailed timing data to
+given file in HAR format.</p>
 </div>
 <div class="section" id="nghttpd-server">
 <h3>nghttpd - server<a class="headerlink" href="#nghttpd-server" title="Permalink to this headline">¶</a></h3>
@@ -562,7 +582,7 @@ HTTP/2 connection.  No HTTP Upgrade is supported.</p>
 <p><tt class="docutils literal"><span class="pre">-p</span></tt> option allows users to configure server push.</p>
 <p>Just like <tt class="docutils literal"><span class="pre">nghttp</span></tt>, it has verbose output mode for framing
 information.  Here is sample output from <tt class="docutils literal"><span class="pre">nghttpd</span></tt> server:</p>
-<div class="highlight-c"><div class="highlight"><pre>$ src/nghttpd --no-tls -v 8080
+<div class="highlight-c"><div class="highlight"><pre>$ nghttpd --no-tls -v 8080
 IPv4: listen on port 8080
 IPv6: listen on port 8080
 [id=1] [ 15.921] send SETTINGS frame &lt;length=10, flags=0x00, stream_id=0&gt;
@@ -615,7 +635,8 @@ IPv6: listen on port 8080
 <div class="section" id="nghttpx-proxy">
 <h3>nghttpx - proxy<a class="headerlink" href="#nghttpx-proxy" title="Permalink to this headline">¶</a></h3>
 <p><tt class="docutils literal"><span class="pre">nghttpx</span></tt> is a multi-threaded reverse proxy for <tt class="docutils literal"><span class="pre">h2-14</span></tt>, SPDY and
-HTTP/1.1 and powers nghttp2.org site.  It has several operation modes:</p>
+HTTP/1.1 and powers nghttp2.org site and supports HTTP/2 server push.
+It has several operation modes:</p>
 <table border="1" class="docutils">
 <colgroup>
 <col width="25%" />
@@ -671,7 +692,6 @@ SSL/TLS in the backend connection by deafult.  To disable SSL/TLS, use
 <tt class="docutils literal"><span class="pre">--backend-no-tls</span></tt> option.</p>
 <p><tt class="docutils literal"><span class="pre">nghttpx</span></tt> supports configuration file.  See <tt class="docutils literal"><span class="pre">--conf</span></tt> option and
 sample configuration file <tt class="docutils literal"><span class="pre">nghttpx.conf.sample</span></tt>.</p>
-<p><tt class="docutils literal"><span class="pre">nghttpx</span></tt> does not support server push.</p>
 <p>In the default mode, (without any of <tt class="docutils literal"><span class="pre">--http2-proxy</span></tt>,
 <tt class="docutils literal"><span class="pre">--http2-bridge</span></tt>, <tt class="docutils literal"><span class="pre">--client-proxy</span></tt> and <tt class="docutils literal"><span class="pre">--client</span></tt> options),
 <tt class="docutils literal"><span class="pre">nghttpx</span></tt> works as reverse proxy to the backend server:</p>
@@ -747,8 +767,11 @@ The SPDY support is enabled if the program was built with spdylay
 library.  The UI of <tt class="docutils literal"><span class="pre">h2load</span></tt> is heavily inspired by <tt class="docutils literal"><span class="pre">weighttp</span></tt>
 (<a class="reference external" href="https://github.com/lighttpd/weighttp">https://github.com/lighttpd/weighttp</a>).  The typical usage is as
 follows:</p>
-<div class="highlight-c"><div class="highlight"><pre>$ src/h2load -n1000 -c10 -m10 https://127.0.0.1:8443/
+<div class="highlight-c"><div class="highlight"><pre>$ h2load -n100000 -c100 -m100 https://localhost:8443/
 starting benchmark...
+spawning thread #0: 100 concurrent clients, 100000 total requests
+Protocol: TLSv1.2
+Cipher: ECDHE-RSA-AES128-GCM-SHA256
 progress: 10% done
 progress: 20% done
 progress: 30% done
@@ -760,16 +783,18 @@ progress: 80% done
 progress: 90% done
 progress: 100% done
 
-finished in 0 sec, 152 millisec and 152 microsec, 6572 req/s, 749 kbytes/s
-requests: 1000 total, 1000 started, 1000 done, 0 succeeded, 1000 failed, 0 errored
-status codes: 0 2xx, 0 3xx, 1000 4xx, 0 5xx
-traffic: 141100 bytes total, 840 bytes headers, 116000 bytes data
+finished in 7.10s, 14092 req/s, 55.67MB/s
+requests: 100000 total, 100000 started, 100000 done, 100000 succeeded, 0 failed, 0 errored
+status codes: 100000 2xx, 0 3xx, 0 4xx, 0 5xx
+traffic: 414200800 bytes total, 2723100 bytes headers, 409600000 bytes data
+                     min         max         mean         sd        +/- sd
+time for request:   283.86ms       1.46s    659.70ms    150.87ms    84.68%
 </pre></div>
 </div>
-<p>The above example issued total 1000 requests, using 10 concurrent
-clients (thus 10 HTTP/2 sessions), and maximum 10 streams per client.
-With <tt class="docutils literal"><span class="pre">-t</span></tt> option, <tt class="docutils literal"><span class="pre">h2load</span></tt> will use multiple native threads to
-avoid saturating single core on client side.</p>
+<p>The above example issued total 100000 requests, using 100 concurrent
+clients (in other words, 100 HTTP/2 sessions), and maximum 100 streams
+per client.  With <tt class="docutils literal"><span class="pre">-t</span></tt> option, <tt class="docutils literal"><span class="pre">h2load</span></tt> will use multiple native
+threads to avoid saturating single core on client side.</p>
 <div class="admonition warning">
 <p class="first admonition-title">Warning</p>
 <p class="last"><strong>Don't use this tool against publicly available servers.</strong> That is
@@ -1183,7 +1208,7 @@ corresponding header set was processed.  The format is the same as
 <p>libnghttp2_asio is C++ library built on top of libnghttp2 and provides
 high level abstraction API to build HTTP/2 applications.  It depends
 on Boost::ASIO library and OpenSSL.  Currently libnghttp2_asio
-provides server side API.</p>
+provides client and server API.</p>
 <p>libnghttp2_asio is not built by default.  Use <tt class="docutils literal"><span class="pre">--enable-asio-lib</span></tt>
 configure flag to build libnghttp2_asio.  The required Boost libraries
 are:</p>
@@ -1195,19 +1220,73 @@ are:</p>
 <p>Server API is designed to build HTTP/2 server very easily to utilize
 C++11 anonymous function and closure.  The bare minimum example of
 HTTP/2 server looks like this:</p>
-<div class="highlight-cpp"><div class="highlight"><pre><span class="cp">#include &lt;nghttp2/asio_http2.h&gt;</span>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="cp">#include &lt;nghttp2/asio_http2_server.h&gt;</span>
 
 <span class="k">using</span> <span class="k">namespace</span> <span class="n">nghttp2</span><span class="o">::</span><span class="n">asio_http2</span><span class="p">;</span>
 <span class="k">using</span> <span class="k">namespace</span> <span class="n">nghttp2</span><span class="o">::</span><span class="n">asio_http2</span><span class="o">::</span><span class="n">server</span><span class="p">;</span>
 
 <span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">argv</span><span class="p">[])</span> <span class="p">{</span>
+  <span class="n">boost</span><span class="o">::</span><span class="n">system</span><span class="o">::</span><span class="n">error_code</span> <span class="n">ec</span><span class="p">;</span>
   <span class="n">http2</span> <span class="n">server</span><span class="p">;</span>
 
-  <span class="n">server</span><span class="p">.</span><span class="n">listen</span><span class="p">(</span><span class="s">&quot;*&quot;</span><span class="p">,</span> <span class="mi">3000</span><span class="p">,</span> <span class="p">[](</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">request</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">req</span><span class="p">,</span>
-                              <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">response</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">res</span><span class="p">)</span> <span class="p">{</span>
-    <span class="n">res</span><span class="o">-&gt;</span><span class="n">write_head</span><span class="p">(</span><span class="mi">200</span><span class="p">);</span>
-    <span class="n">res</span><span class="o">-&gt;</span><span class="n">end</span><span class="p">(</span><span class="s">&quot;hello, world&quot;</span><span class="p">);</span>
+  <span class="n">server</span><span class="p">.</span><span class="n">handle</span><span class="p">(</span><span class="s">&quot;/&quot;</span><span class="p">,</span> <span class="p">[](</span><span class="k">const</span> <span class="n">request</span> <span class="o">&amp;</span><span class="n">req</span><span class="p">,</span> <span class="k">const</span> <span class="n">response</span> <span class="o">&amp;</span><span class="n">res</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">res</span><span class="p">.</span><span class="n">write_head</span><span class="p">(</span><span class="mi">200</span><span class="p">);</span>
+    <span class="n">res</span><span class="p">.</span><span class="n">end</span><span class="p">(</span><span class="s">&quot;hello, world</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">);</span>
   <span class="p">});</span>
+
+  <span class="k">if</span> <span class="p">(</span><span class="n">server</span><span class="p">.</span><span class="n">listen_and_serve</span><span class="p">(</span><span class="n">ec</span><span class="p">,</span> <span class="s">&quot;localhost&quot;</span><span class="p">,</span> <span class="s">&quot;3000&quot;</span><span class="p">))</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cerr</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;error: &quot;</span> <span class="o">&lt;&lt;</span> <span class="n">ec</span><span class="p">.</span><span class="n">message</span><span class="p">()</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Here is the sample code for client API use:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="cp">#include &lt;iostream&gt;</span>
+
+<span class="cp">#include &lt;nghttp2/asio_http2_client.h&gt;</span>
+
+<span class="k">using</span> <span class="n">boost</span><span class="o">::</span><span class="n">asio</span><span class="o">::</span><span class="n">ip</span><span class="o">::</span><span class="n">tcp</span><span class="p">;</span>
+
+<span class="k">using</span> <span class="k">namespace</span> <span class="n">nghttp2</span><span class="o">::</span><span class="n">asio_http2</span><span class="p">;</span>
+<span class="k">using</span> <span class="k">namespace</span> <span class="n">nghttp2</span><span class="o">::</span><span class="n">asio_http2</span><span class="o">::</span><span class="n">client</span><span class="p">;</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span> <span class="o">*</span><span class="n">argv</span><span class="p">[])</span> <span class="p">{</span>
+  <span class="n">boost</span><span class="o">::</span><span class="n">system</span><span class="o">::</span><span class="n">error_code</span> <span class="n">ec</span><span class="p">;</span>
+  <span class="n">boost</span><span class="o">::</span><span class="n">asio</span><span class="o">::</span><span class="n">io_service</span> <span class="n">io_service</span><span class="p">;</span>
+
+  <span class="c1">// connect to localhost:3000</span>
+  <span class="n">session</span> <span class="n">sess</span><span class="p">(</span><span class="n">io_service</span><span class="p">,</span> <span class="s">&quot;localhost&quot;</span><span class="p">,</span> <span class="s">&quot;3000&quot;</span><span class="p">);</span>
+
+  <span class="n">sess</span><span class="p">.</span><span class="n">on_connect</span><span class="p">([</span><span class="o">&amp;</span><span class="n">sess</span><span class="p">](</span><span class="n">tcp</span><span class="o">::</span><span class="n">resolver</span><span class="o">::</span><span class="n">iterator</span> <span class="n">endpoint_it</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">boost</span><span class="o">::</span><span class="n">system</span><span class="o">::</span><span class="n">error_code</span> <span class="n">ec</span><span class="p">;</span>
+
+    <span class="k">auto</span> <span class="n">req</span> <span class="o">=</span> <span class="n">sess</span><span class="p">.</span><span class="n">submit</span><span class="p">(</span><span class="n">ec</span><span class="p">,</span> <span class="s">&quot;GET&quot;</span><span class="p">,</span> <span class="s">&quot;http://localhost:3000/&quot;</span><span class="p">);</span>
+
+    <span class="n">req</span><span class="o">-&gt;</span><span class="n">on_response</span><span class="p">([](</span><span class="k">const</span> <span class="n">response</span> <span class="o">&amp;</span><span class="n">res</span><span class="p">)</span> <span class="p">{</span>
+      <span class="c1">// print status code and response header fields.</span>
+      <span class="n">std</span><span class="o">::</span><span class="n">cerr</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;HTTP/2 &quot;</span> <span class="o">&lt;&lt;</span> <span class="n">res</span><span class="p">.</span><span class="n">status_code</span><span class="p">()</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+      <span class="k">for</span> <span class="p">(</span><span class="k">auto</span> <span class="o">&amp;</span><span class="nl">kv</span> <span class="p">:</span> <span class="n">res</span><span class="p">.</span><span class="n">header</span><span class="p">())</span> <span class="p">{</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">cerr</span> <span class="o">&lt;&lt;</span> <span class="n">kv</span><span class="p">.</span><span class="n">first</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;: &quot;</span> <span class="o">&lt;&lt;</span> <span class="n">kv</span><span class="p">.</span><span class="n">second</span><span class="p">.</span><span class="n">value</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;</span><span class="se">\n</span><span class="s">&quot;</span><span class="p">;</span>
+      <span class="p">}</span>
+      <span class="n">std</span><span class="o">::</span><span class="n">cerr</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+
+      <span class="n">res</span><span class="p">.</span><span class="n">on_data</span><span class="p">([](</span><span class="k">const</span> <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">data</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="kt">size_t</span> <span class="n">len</span><span class="p">)</span> <span class="p">{</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">cerr</span><span class="p">.</span><span class="n">write</span><span class="p">(</span><span class="k">reinterpret_cast</span><span class="o">&lt;</span><span class="k">const</span> <span class="kt">char</span> <span class="o">*&gt;</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">len</span><span class="p">);</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">cerr</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+      <span class="p">});</span>
+    <span class="p">});</span>
+
+    <span class="n">req</span><span class="o">-&gt;</span><span class="n">on_close</span><span class="p">([</span><span class="o">&amp;</span><span class="n">sess</span><span class="p">](</span><span class="kt">uint32_t</span> <span class="n">error_code</span><span class="p">)</span> <span class="p">{</span>
+      <span class="c1">// shutdown session after first request was done.</span>
+      <span class="n">sess</span><span class="p">.</span><span class="n">shutdown</span><span class="p">();</span>
+    <span class="p">});</span>
+  <span class="p">});</span>
+
+  <span class="n">sess</span><span class="p">.</span><span class="n">on_error</span><span class="p">([](</span><span class="k">const</span> <span class="n">boost</span><span class="o">::</span><span class="n">system</span><span class="o">::</span><span class="n">error_code</span> <span class="o">&amp;</span><span class="n">ec</span><span class="p">)</span> <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cerr</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;error: &quot;</span> <span class="o">&lt;&lt;</span> <span class="n">ec</span><span class="p">.</span><span class="n">message</span><span class="p">()</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+  <span class="p">});</span>
+
+  <span class="n">io_service</span><span class="p">.</span><span class="n">run</span><span class="p">();</span>
 <span class="p">}</span>
 </pre></div>
 </div>
@@ -1370,7 +1449,7 @@ details.</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.7.2-DEV',
+            VERSION:'0.7.8-DEV',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  false

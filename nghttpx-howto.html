@@ -7,7 +7,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>nghttpx - HTTP/2 proxy - HOW-TO &mdash; nghttp2 0.7.2-DEV documentation</title>
+  <title>nghttpx - HTTP/2 proxy - HOW-TO &mdash; nghttp2 0.7.8-DEV documentation</title>
   
 
   
@@ -28,7 +28,7 @@
   
 
   
-    <link rel="top" title="nghttp2 0.7.2-DEV documentation" href="index.html"/>
+    <link rel="top" title="nghttp2 0.7.8-DEV documentation" href="index.html"/>
         <link rel="next" title="h2load - HTTP/2 benchmarking tool - HOW-TO" href="h2load-howto.html"/>
         <link rel="prev" title="h2load(1)" href="h2load.1.html"/> 
 
@@ -100,30 +100,33 @@
 <li class="toctree-l1"><a class="reference internal" href="nghttp.1.html">nghttp(1)</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#options">OPTIONS:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#options">OPTIONS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="nghttpd.1.html">nghttpd(1)</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#options">OPTIONS:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#options">OPTIONS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpd.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="nghttpx.1.html">nghttpx(1)</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#options">OPTIONS:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#options">OPTIONS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#files">FILES</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#signals">SIGNALS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#server-push">SERVER PUSH</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#unix-domain-socket">UNIX DOMAIN SOCKET</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="h2load.1.html">h2load(1)</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="h2load.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="h2load.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#options">OPTIONS:</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#options">OPTIONS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#output">OUTPUT</a></li>
 <li class="toctree-l2"><a class="reference internal" href="h2load.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
@@ -139,7 +142,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#rewriting-location-header-field">Rewriting location header field</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#hot-swapping">Hot swapping</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#re-opening-log-files">Re-opening log files</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#multiple-http-1-backend-addresses">Multiple HTTP/1 backend addresses</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#multiple-backend-addresses">Multiple backend addresses</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="h2load-howto.html">h2load - HTTP/2 benchmarking tool - HOW-TO</a><ul>
@@ -153,6 +156,7 @@
 <li class="toctree-l1"><a class="reference internal" href="apiref.html">API Reference</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="apiref.html#includes">Includes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="apiref.html#remarks">Remarks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="apiref.html#http-messaging">HTTP Messaging</a></li>
 <li class="toctree-l2"><a class="reference internal" href="apiref.html#macros">Macros</a></li>
 <li class="toctree-l2"><a class="reference internal" href="apiref.html#enums">Enums</a></li>
 <li class="toctree-l2"><a class="reference internal" href="apiref.html#types-structs-unions-and-typedefs">Types (structs, unions and typedefs)</a></li>
@@ -161,6 +165,7 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="libnghttp2_asio.html">libnghttp2_asio: High level HTTP/2 C++ library</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="libnghttp2_asio.html#server-api">Server API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="libnghttp2_asio.html#client-api">Client API</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="python-apiref.html">Python API Reference</a><ul>
@@ -170,6 +175,8 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="nghttp2.h.html">nghttp2.h</a></li>
 <li class="toctree-l1"><a class="reference internal" href="nghttp2ver.h.html">nghttp2ver.h</a></li>
+<li class="toctree-l1"><a class="reference internal" href="asio_http2_server.h.html">asio_http2_server.h</a></li>
+<li class="toctree-l1"><a class="reference internal" href="asio_http2_client.h.html">asio_http2_client.h</a></li>
 <li class="toctree-l1"><a class="reference internal" href="asio_http2.h.html">asio_http2.h</a></li>
 <li class="toctree-l1"><a class="reference external" href="https://github.com/tatsuhiro-t/nghttp2">Source</a></li>
 <li class="toctree-l1"><a class="reference external" href="https://github.com/tatsuhiro-t/nghttp2/issues">Issues</a></li>
@@ -259,11 +266,11 @@ called secure proxy.  If nghttpx is linked with spdylay, it supports
 SPDY protocols and it works as so called SPDY proxy.</p>
 <p>With <tt class="docutils literal"><span class="pre">--frontend-no-tls</span></tt> option, SSL/TLS is turned off in frontend
 connection, so the connection gets insecure.</p>
-<p>The backend must be HTTP/1 proxy server.  nghttpx only supports
-multiple backend server addresses.  It translates incoming requests to
-HTTP/1 request to backend server.  The backend server performs real
-proxy work for each request, for example, dispatching requests to the
-origin server and caching contents.</p>
+<p>The backend must be HTTP/1 proxy server.  nghttpx supports multiple
+backend server addresses.  It translates incoming requests to HTTP/1
+request to backend server.  The backend server performs real proxy
+work for each request, for example, dispatching requests to the origin
+server and caching contents.</p>
 <p>For example, to make nghttpx listen to encrypted HTTP/2 requests at
 port 8443, and a backend HTTP/1 proxy server is configured to listen
 to HTTP/1 request at port 8080 in the same host, run nghttpx
@@ -315,7 +322,9 @@ the backend.  User cannot enable SSL/TLS in frontend connection.</p>
 <p>HTTP/1 frontend connection can be upgraded to HTTP/2 using HTTP
 Upgrade.  To disable SSL/TLS in backend connection, use
 <tt class="docutils literal"><span class="pre">--backend-no-tls</span></tt> option.</p>
-<p>The backend connection is created one per worker (thread).</p>
+<p>By default, the number of backend HTTP/2 connections per worker
+(thread) is determined by number of <tt class="docutils literal"><span class="pre">-b</span></tt> option.  To adjust this
+value, use <tt class="docutils literal"><span class="pre">--backend-http2-connections-per-worker</span></tt> option.</p>
 <p>The backend server is supporsed to be a HTTP/2 web server (e.g.,
 nghttpd).  The one use-case of this mode is utilize existing HTTP/1
 clients to test HTTP/2 deployment.  Suppose that HTTP/2 web server
@@ -344,7 +353,9 @@ line.</p>
 <p>HTTP/1 frontend connection can be upgraded to HTTP/2 using HTTP
 Upgrade.  To disable SSL/TLS in backend connection, use
 <tt class="docutils literal"><span class="pre">--backend-no-tls</span></tt> option.</p>
-<p>The backend connection is created one per worker (thread).</p>
+<p>By default, the number of backend HTTP/2 connections per worker
+(thread) is determined by number of <tt class="docutils literal"><span class="pre">-b</span></tt> option.  To adjust this
+value, use <tt class="docutils literal"><span class="pre">--backend-http2-connections-per-worker</span></tt> option.</p>
 <p>The backend server must be a HTTP/2 proxy.  You can use nghttpx in
 <a class="reference internal" href="#http-2-proxy-mode">HTTP/2 proxy mode</a> as backend server.  The one use-case of this mode
 is utilize existing HTTP/1 clients to test HTTP/2 connections between
@@ -379,10 +390,13 @@ only.</p>
 <p>With <tt class="docutils literal"><span class="pre">--frontend-no-tls</span></tt> option, SSL/TLS is turned off in frontend
 connection, so the connection gets insecure.  To disable SSL/TLS in
 backend connection, use <tt class="docutils literal"><span class="pre">--backend-no-tls</span></tt> option.</p>
+<p>By default, the number of backend HTTP/2 connections per worker
+(thread) is determined by number of <tt class="docutils literal"><span class="pre">-b</span></tt> option.  To adjust this
+value, use <tt class="docutils literal"><span class="pre">--backend-http2-connections-per-worker</span></tt> option.</p>
 <p>The backend server is supporsed to be a HTTP/2 web server or HTTP/2
 proxy.  If backend server is HTTP/2 proxy, use
-<tt class="docutils literal"><span class="pre">--no-location-rewrite</span></tt> option to disable rewriting location header
-field.</p>
+<tt class="docutils literal"><span class="pre">--no-location-rewrite</span></tt> and <tt class="docutils literal"><span class="pre">--no-host-rewrite</span></tt> options to disable
+rewriting location, host and :authority header field.</p>
 <p>The use-case of this mode is aggregate the incoming connections to one
 HTTP/2 connection.  One backend HTTP/2 connection is created per
 worker (thread).</p>
@@ -457,13 +471,13 @@ re-open log files, send USR1 signal to nghttpx process.  It will
 re-open files specified by <tt class="docutils literal"><span class="pre">--accesslog-file</span></tt> and
 <tt class="docutils literal"><span class="pre">--errorlog-file</span></tt> options.</p>
 </div>
-<div class="section" id="multiple-http-1-backend-addresses">
-<h2>Multiple HTTP/1 backend addresses<a class="headerlink" href="#multiple-http-1-backend-addresses" title="Permalink to this headline">¶</a></h2>
-<p>nghttpx supports multiple HTTP/1 backend addresses.  To specify them,
-just use <tt class="docutils literal"><span class="pre">-b</span></tt> option repeatedly.  For example, to use backend1:8080
-and backend2:8080, use command-line like this: <tt class="docutils literal"><span class="pre">-bbackend1,8080</span>
-<span class="pre">-bbackend2,8080</span></tt>.  Please note that HTTP/2 backend only supports 1
-backend address.</p>
+<div class="section" id="multiple-backend-addresses">
+<h2>Multiple backend addresses<a class="headerlink" href="#multiple-backend-addresses" title="Permalink to this headline">¶</a></h2>
+<p>nghttpx supports multiple backend addresses.  To specify them, just
+use <tt class="docutils literal"><span class="pre">-b</span></tt> option repeatedly.  For example, to use backend1:8080 and
+backend2:8080, use command-line like this: <tt class="docutils literal"><span class="pre">-bbackend1,8080</span>
+<span class="pre">-bbackend2,8080</span></tt>.  For HTTP/2 backend, see also
+<tt class="docutils literal"><span class="pre">--backend-http2-connections-per-worker</span></tt> option.</p>
 </div>
 </div>
 
@@ -506,7 +520,7 @@ backend address.</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.7.2-DEV',
+            VERSION:'0.7.8-DEV',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  false
