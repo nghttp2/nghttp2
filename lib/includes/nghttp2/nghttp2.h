@@ -468,7 +468,9 @@ typedef enum {
    */
   NGHTTP2_WINDOW_UPDATE = 0x08,
   /**
-   * The CONTINUATION frame.
+   * The CONTINUATION frame.  This frame type won't be passed to any
+   * callbacks because the library processes this frame type and its
+   * preceding HEADERS/PUSH_PROMISE as a single frame.
    */
   NGHTTP2_CONTINUATION = 0x09
 } nghttp2_frame_type;
