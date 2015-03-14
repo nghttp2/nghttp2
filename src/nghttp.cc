@@ -2104,8 +2104,9 @@ int communicate(
 #endif // HAVE_JANSSON
 
     if (client.success != client.reqvec.size()) {
-      std::cerr << "Some requests failed. total=" << client.reqvec.size()
-                << ", success=" << client.success << std::endl;
+      std::cerr << "Some requests were not processed. total="
+                << client.reqvec.size() << ", processed=" << client.success
+                << std::endl;
     }
     if (config.stat) {
       print_stats(client);
