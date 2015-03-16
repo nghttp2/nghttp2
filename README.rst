@@ -1,30 +1,30 @@
 nghttp2 - HTTP/2 C Library
 ==========================
 
-This is an implementation of Hypertext Transfer Protocol version 2
+This is an implementation of the Hypertext Transfer Protocol version 2
 in C.
 
-The framing layer of HTTP/2 is implemented as a form of reusable C
-library.  On top of that, we have implemented HTTP/2 client, server
-and proxy.  We have also developed load test and benchmarking tool for
+The framing layer of HTTP/2 is implemented as a reusable C
+library.  On top of that, we have implemented an HTTP/2 client, server
+and proxy.  We have also developed load test and benchmarking tools for
 HTTP/2 and SPDY.
 
-HPACK encoder and decoder are available as public API.
+An HPACK encoder and decoder are available as a public API.
 
-The experimental high level C++ library is also available.
+An experimental high level C++ library is also available.
 
-We have Python binding of this libary, but we have not covered
-everything yet.
+We have Python bindings of this libary, but we do not have full
+code coverage yet.
 
 Development Status
 ------------------
 
 We started to implement h2-14
-(http://tools.ietf.org/html/draft-ietf-httpbis-http2-14), the header
+(http://tools.ietf.org/html/draft-ietf-httpbis-http2-14), and header
 compression
 (http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-09).
 
-The nghttp2 code base was forked from spdylay project.
+The nghttp2 code base was forked from the spdylay project.
 
 =========================== =======
 HTTP/2 Features             Support
@@ -37,7 +37,7 @@ Large header (CONTINUATION) Yes
 Public Test Server
 ------------------
 
-The following endpoints are available to try out nghttp2
+The following endpoints are available to try out our nghttp2
 implementation.
 
 * https://nghttp2.org/ (TLS + ALPN/NPN)
@@ -67,16 +67,16 @@ To build the documentation, you need to install:
 * sphinx (http://sphinx-doc.org/)
 
 To build and run the application programs (``nghttp``, ``nghttpd`` and
-``nghttpx``) in ``src`` directory, the following packages are
+``nghttpx``) in the ``src`` directory, the following packages are
 required:
 
 * OpenSSL >= 1.0.1
 * libev >= 4.15
 * zlib >= 1.2.3
 
-ALPN support requires unreleased version OpenSSL >= 1.0.2.
+ALPN support requires an unreleased version of OpenSSL >= 1.0.2.
 
-To enable SPDY protocol in the application program ``nghttpx`` and
+To enable the SPDY protocol in the application program ``nghttpx`` and
 ``h2load``, the following package is required:
 
 * spdylay >= 1.3.0
@@ -90,7 +90,7 @@ The HPACK tools require the following package:
 
 * jansson >= 2.5
 
-To build sources under examples directory, libevent is required:
+To build sources under the examples directory, libevent is required:
 
 * libevent-openssl >= 2.0.8
 
@@ -109,16 +109,18 @@ The Python bindings require the following packages:
 * cython >= 0.19
 * python >= 2.7
 
-If you are using Ubuntu 14.04 LTS, you need the following packages
+If you are using Ubuntu 14.04 LTS (trusty), you need the following packages
 installed::
 
-    apt-get install make binutils autoconf  automake autotools-dev libtool pkg-config zlib1g-dev libcunit1-dev libssl-dev libxml2-dev libev-dev libevent-dev libjansson-dev libjemalloc-dev cython python3.4-dev
+````
+sudo apt-get install make binutils autoconf  automake autotools-dev libtool pkg-config zlib1g-dev libcunit1-dev libssl-dev libxml2-dev libev-dev libevent-dev libjansson-dev libjemalloc-dev cython python3.4-dev
+````
 
 spdylay is not packaged in Ubuntu, so you need to build it yourself:
 http://tatsuhiro-t.github.io/spdylay/
 
-Build from git
---------------
+Building from git
+-----------------
 
 Building from git is easy, but please be sure that at least autoconf 2.68 is
 used::
@@ -129,23 +131,23 @@ used::
     $ ./configure
     $ make
 
-To compile source code, gcc >= 4.8.3 or clang >= 3.4 is required.
+To compile the source code, gcc >= 4.8.3 or clang >= 3.4 is required.
 
 .. note::
 
-   Mac OS X users may need ``--disable-threads`` configure option to
-   disable multi threading in nghttpd, nghttpx and h2load to prevent
-   them from crashing.  Patch is welcome to make multi threading work
+   Mac OS X users may need the ``--disable-threads`` configure option to
+   disable multi-threading in nghttpd, nghttpx and h2load to prevent
+   them from crashing. A patch is welcome to make multi threading work
    on Mac OS X platform.
 
-Building documentation
-----------------------
+Building the documentation
+--------------------------
 
 .. note::
 
    Documentation is still incomplete.
 
-To build documentation, run::
+To build the documentation, run::
 
     $ make html
 
@@ -164,8 +166,8 @@ Unit tests are done by simply running `make check`.
 Integration tests
 -----------------
 
-We have the integration tests for nghttpx proxy server.  The tests are
-written in `Go programming language <http://golang.org/>`_ and uses
+We have the integration tests for the nghttpx proxy server.  The tests are
+written in the `Go programming language <http://golang.org/>`_ and uses
 its testing framework.  We depend on the following libraries:
 
 * https://github.com/bradfitz/http2
@@ -182,12 +184,12 @@ To run the tests, run the following command under
 
     $ make it
 
-Inside the tests, we use port 3009 to run test subject server.
+Inside the tests, we use port 3009 to run the test subject server.
 
 Client, Server and Proxy programs
 ---------------------------------
 
-The src directory contains HTTP/2 client, server and proxy programs.
+The ``src`` directory contains the HTTP/2 client, server and proxy programs.
 
 nghttp - client
 +++++++++++++++
@@ -334,7 +336,7 @@ The HTTP Upgrade is performed like this::
     [  0.038] send GOAWAY frame <length=8, flags=0x00, stream_id=0>
               (last_stream_id=0, error_code=NO_ERROR(0), opaque_data(0)=[])
 
-With ``-s`` option, ``nghttp`` prints out some timing information for
+Using the ``-s`` option, ``nghttp`` prints out some timing information for
 requests, sorted by completion time::
 
     $ nghttp -nas https://nghttp2.org/
@@ -360,8 +362,8 @@ requests, sorted by completion time::
      +76.14ms   +11.17ms  64.97ms  200 171K /images/posts/with-pri-blog.png
      +88.52ms   +11.17ms  77.36ms  200 174K /images/posts/without-pri-blog.png
 
-With ``-r`` option, ``nghttp`` writes more detailed timing data to
-given file in HAR format.
+Using the ``-r`` option, ``nghttp`` writes more detailed timing data to
+the given file in HAR format.
 
 nghttpd - server
 ++++++++++++++++
@@ -371,13 +373,13 @@ nghttpd - server
 By default, it uses SSL/TLS connection.  Use ``--no-tls`` option to
 disable it.
 
-``nghttpd`` only accepts the HTTP/2 connection via NPN/ALPN or direct
-HTTP/2 connection.  No HTTP Upgrade is supported.
+``nghttpd`` only accepts HTTP/2 connections via NPN/ALPN or direct
+HTTP/2 connections.  No HTTP Upgrade is supported.
 
-``-p`` option allows users to configure server push.
+The ``-p`` option allows users to configure server push.
 
-Just like ``nghttp``, it has verbose output mode for framing
-information.  Here is sample output from ``nghttpd`` server::
+Just like ``nghttp``, it has a verbose output mode for framing
+information.  Here is sample output from ``nghttpd``::
 
     $ nghttpd --no-tls -v 8080
     IPv4: listen on port 8080
@@ -431,8 +433,8 @@ nghttpx - proxy
 +++++++++++++++
 
 ``nghttpx`` is a multi-threaded reverse proxy for ``h2-14``, SPDY and
-HTTP/1.1 and powers nghttp2.org site and supports HTTP/2 server push.
-It has several operation modes:
+HTTP/1.1, and powers http://nghttp2.org and supports HTTP/2 server push.
+It has several operational modes:
 
 ================== ============================ ============== =============
 Mode option        Frontend                     Backend        Note
@@ -446,19 +448,19 @@ default mode       HTTP/2, SPDY, HTTP/1.1 (TLS) HTTP/1.1       Reverse proxy
 
 The interesting mode at the moment is the default mode.  It works like
 a reverse proxy and listens for ``h2-14``, SPDY and HTTP/1.1 and can
-be deployed SSL/TLS terminator for existing web server.
+be deployed as a SSL/TLS terminator for existing web server.
 
 The default mode, ``--http2-proxy`` and ``--http2-bridge`` modes use
 SSL/TLS in the frontend connection by default.  To disable SSL/TLS,
-use ``--frontend-no-tls`` option.  If that option is used, SPDY is
-disabled in the frontend and incoming HTTP/1.1 connection can be
+use the ``--frontend-no-tls`` option.  If that option is used, SPDY is
+disabled in the frontend and incoming HTTP/1.1 connections can be
 upgraded to HTTP/2 through HTTP Upgrade.
 
 The ``--http2-bridge``, ``--client`` and ``--client-proxy`` modes use
 SSL/TLS in the backend connection by deafult.  To disable SSL/TLS, use
-``--backend-no-tls`` option.
+the ``--backend-no-tls`` option.
 
-``nghttpx`` supports configuration file.  See ``--conf`` option and
+``nghttpx`` supports a configuration file.  See the ``--conf`` option and
 sample configuration file ``nghttpx.conf.sample``.
 
 In the default mode, (without any of ``--http2-proxy``,
@@ -468,18 +470,18 @@ In the default mode, (without any of ``--http2-proxy``,
     Client <-- (HTTP/2, SPDY, HTTP/1.1) --> nghttpx <-- (HTTP/1.1) --> Web Server
                                           [reverse proxy]
 
-With ``--http2-proxy`` option, it works as so called secure proxy (aka
+With the ``--http2-proxy`` option, it works as a so called secure proxy (aka
 SPDY proxy)::
 
     Client <-- (HTTP/2, SPDY, HTTP/1.1) --> nghttpx <-- (HTTP/1.1) --> Proxy
                                            [secure proxy]          (e.g., Squid, ATS)
 
-The ``Client`` in the above needs to be configured to use
+The ``Client`` in the above example needs to be configured to use
 ``nghttpx`` as secure proxy.
 
 At the time of this writing, Chrome is the only browser which supports
-secure proxy.  The one way to configure Chrome to use secure proxy is
-create proxy.pac script like this:
+secure proxy.  One way to configure Chrome to use a secure proxy is
+to create a proxy.pac script like this:
 
 .. code-block:: javascript
 
@@ -488,7 +490,7 @@ create proxy.pac script like this:
     }
 
 ``SERVERADDR`` and ``PORT`` is the hostname/address and port of the
-machine nghttpx is running.  Please note that Chrome requires valid
+machine nghttpx is running on.  Please note that Chrome requires a valid
 certificate for secure proxy.
 
 Then run Chrome with the following arguments::
@@ -496,24 +498,24 @@ Then run Chrome with the following arguments::
     $ google-chrome --proxy-pac-url=file:///path/to/proxy.pac --use-npn
 
 With ``--http2-bridge``, it accepts HTTP/2, SPDY and HTTP/1.1
-connections and communicates with backend in HTTP/2::
+connections and communicates with the backend in HTTP/2::
 
     Client <-- (HTTP/2, SPDY, HTTP/1.1) --> nghttpx <-- (HTTP/2) --> Web or HTTP/2 Proxy etc
                                                                          (e.g., nghttpx -s)
 
-With ``--client-proxy`` option, it works as forward proxy and expects
-that the backend is HTTP/2 proxy::
+With ``--client-proxy``, it works as a forward proxy and expects
+that the backend is an HTTP/2 proxy::
 
     Client <-- (HTTP/2, HTTP/1.1) --> nghttpx <-- (HTTP/2) --> HTTP/2 Proxy
                                      [forward proxy]               (e.g., nghttpx -s)
 
-The ``Client`` needs to be configured to use nghttpx as forward
+The ``Client`` needs to be configured to use nghttpx as a forward
 proxy.  The frontend HTTP/1.1 connection can be upgraded to HTTP/2
 through HTTP Upgrade.  With the above configuration, one can use
 HTTP/1.1 client to access and test their HTTP/2 servers.
 
-With ``--client`` option, it works as reverse proxy and expects that
-the backend is HTTP/2 Web server::
+With ``--client``, it works as a reverse proxy and expects that
+the backend is an HTTP/2 Web server::
 
     Client <-- (HTTP/2, HTTP/1.1) --> nghttpx <-- (HTTP/2) --> Web Server
                                     [reverse proxy]
@@ -522,11 +524,11 @@ The frontend HTTP/1.1 connection can be upgraded to HTTP/2
 through HTTP Upgrade.
 
 For the operation modes which talk to the backend in HTTP/2 over
-SSL/TLS, the backend connections can be tunneled through HTTP proxy.
-The proxy is specified using ``--backend-http-proxy-uri`` option.  The
-following figure illustrates the example of ``--http2-bridge`` and
+SSL/TLS, the backend connections can be tunneled through an HTTP proxy.
+The proxy is specified using ``--backend-http-proxy-uri``.  The
+following figure illustrates the example of the ``--http2-bridge`` and
 ``--backend-http-proxy-uri`` options to talk to the outside HTTP/2
-proxy through HTTP proxy::
+proxy through an HTTP proxy::
 
     Client <-- (HTTP/2, SPDY, HTTP/1.1) --> nghttpx <-- (HTTP/2) --
 
@@ -537,7 +539,7 @@ Benchmarking tool
 -----------------
 
 The ``h2load`` program is a benchmarking tool for HTTP/2 and SPDY.
-The SPDY support is enabled if the program was built with spdylay
+The SPDY support is enabled if the program was built with the spdylay
 library.  The UI of ``h2load`` is heavily inspired by ``weighttp``
 (https://github.com/lighttpd/weighttp).  The typical usage is as
 follows::
@@ -565,38 +567,38 @@ follows::
                          min         max         mean         sd        +/- sd
     time for request:   283.86ms       1.46s    659.70ms    150.87ms    84.68%
 
-The above example issued total 100000 requests, using 100 concurrent
-clients (in other words, 100 HTTP/2 sessions), and maximum 100 streams
-per client.  With ``-t`` option, ``h2load`` will use multiple native
-threads to avoid saturating single core on client side.
+The above example issued total 100,000 requests, using 100 concurrent
+clients (in other words, 100 HTTP/2 sessions), and a maximum of 100 streams
+per client.  With the ``-t`` option, ``h2load`` will use multiple native
+threads to avoid saturating a single core on client side.
 
 .. warning::
 
    **Don't use this tool against publicly available servers.** That is
-   considered a DOS attack.  Please only use against your private
+   considered a DOS attack.  Please only use it against your private
    servers.
 
 HPACK tools
 -----------
 
-The ``src`` directory contains HPACK tools.  The ``deflatehd`` is a
-command-line header compression tool.  The ``inflatehd`` is
+The ``src`` directory contains the HPACK tools.  The ``deflatehd`` program is a
+command-line header compression tool.  The ``inflatehd`` program is a
 command-line header decompression tool.  Both tools read input from
-stdin and write output to stdout.  The errors are written to stderr.
-They take JSON as input and output.  We use (mostly) same JSON data
-format described at https://github.com/http2jp/hpack-test-case
+stdin and write output to stdout.  Errors are written to stderr.
+They take JSON as input and output.  We  (mostly) use the same JSON data
+format described at https://github.com/http2jp/hpack-test-case.
 
 deflatehd - header compressor
 +++++++++++++++++++++++++++++
 
-The ``deflatehd`` reads JSON data or HTTP/1-style header fields from
+The ``deflatehd`` program reads JSON data or HTTP/1-style header fields from
 stdin and outputs compressed header block in JSON.
 
-For the JSON input, the root JSON object must include ``cases`` key.
+For the JSON input, the root JSON object must include a ``cases`` key.
 Its value has to include the sequence of input header set.  They share
 the same compression context and are processed in the order they
 appear.  Each item in the sequence is a JSON object and it must
-include ``headers`` key.  Its value is an array of a JSON object,
+include a ``headers`` key.  Its value is an array of JSON objects,
 which includes exactly one name/value pair.
 
 Example:
@@ -622,8 +624,8 @@ Example:
     }
 
 
-With ``-t`` option, the program can accept more familiar HTTP/1 style
-header field block.  Each header set is delimited by empty line:
+With the ``-t`` option, the program can accept more familiar HTTP/1 style
+header field blocks.  Each header set is delimited by an empty line:
 
 Example::
 
@@ -634,29 +636,29 @@ Example::
     :method: POST
     user-agent: nghttp2
 
-The output is JSON object.  It should include ``cases`` key and its
-value is an array of JSON object, which has at least following keys:
+The output is in JSON object.  It should include a ``cases`` key and its
+value is an array of JSON objects, which has at least the following keys:
 
 seq
     The index of header set in the input.
 
 input_length
-    The sum of length of name/value pair in the input.
+    The sum of the length of the name/value pairs in the input.
 
 output_length
-    The length of compressed header block.
+    The length of the compressed header block.
 
 percentage_of_original_size
     ``input_length`` / ``output_length`` * 100
 
 wire
-    The compressed header block in hex string.
+    The compressed header block as a hex string.
 
 headers
     The input header set.
 
 header_table_size
-    The header table size adjusted before deflating header set.
+    The header table size adjusted before deflating the header set.
 
 Examples:
 
@@ -723,7 +725,7 @@ Examples:
 The output can be used as the input for ``inflatehd`` and
 ``deflatehd``.
 
-With ``-d`` option, the extra ``header_table`` key is added and its
+With the ``-d`` option, the extra ``header_table`` key is added and its
 associated value includes the state of dynamic header table after the
 corresponding header set was processed.  The value includes at least
 the following keys:
@@ -747,8 +749,8 @@ deflate_size
     ``max_deflate_size``.
 
 max_deflate_size
-    The maximum header table size encoder uses.  This can be smaller
-    than ``max_size``.  In this case, encoder only uses up to first
+    The maximum header table size the encoder uses.  This can be smaller
+    than ``max_size``.  In this case, the encoder only uses up to first
     ``max_deflate_size`` buffer.  Since the header table size is still
     ``max_size``, the encoder has to keep track of entries ouside the
     ``max_deflate_size`` but inside the ``max_size`` and make sure
@@ -911,14 +913,14 @@ Example:
 inflatehd - header decompressor
 +++++++++++++++++++++++++++++++
 
-The ``inflatehd`` reads JSON data from stdin and outputs decompressed
+The ``inflatehd`` program reads JSON data from stdin and outputs decompressed
 name/value pairs in JSON.
 
-The root JSON object must include ``cases`` key.  Its value has to
-include the sequence of compressed header block.  They share the same
+The root JSON object must include the ``cases`` key.  Its value has to
+include the sequence of compressed header blocks.  They share the same
 compression context and are processed in the order they appear.  Each
-item in the sequence is a JSON object and it must have at least
-``wire`` key.  Its value is a compressed header block in hex string.
+item in the sequence is a JSON object and it must have at least a
+``wire`` key.  Its value is a compressed header block as a hex string.
 
 Example:
 
@@ -932,17 +934,17 @@ Example:
       ]
     }
 
-The output is JSON object.  It should include ``cases`` key and its
-value is an array of JSON object, which has at least following keys:
+The output is a JSON object.  It should include a ``cases`` key and its
+value is an array of JSON objects, which has at least following keys:
 
 seq
-    The index of header set in the input.
+    The index of the header set in the input.
 
 headers
-    The JSON array includes decompressed name/value pairs.
+    A JSON array that includes decompressed name/value pairs.
 
 wire
-    The compressed header block in hex string.
+    The compressed header block as a hex string.
 
 header_table_size
     The header table size adjusted before inflating compressed header
@@ -1006,8 +1008,8 @@ Example:
 The output can be used as the input for ``deflatehd`` and
 ``inflatehd``.
 
-With ``-d`` option, the extra ``header_table`` key is added and its
-associated value includes the state of dynamic header table after the
+With the ``-d`` option, the extra ``header_table`` key is added and its
+associated value includes the state of the dynamic header table after the
 corresponding header set was processed.  The format is the same as
 ``deflatehd``.
 
@@ -1016,10 +1018,10 @@ libnghttp2_asio: High level HTTP/2 C++ library
 
 libnghttp2_asio is C++ library built on top of libnghttp2 and provides
 high level abstraction API to build HTTP/2 applications.  It depends
-on Boost::ASIO library and OpenSSL.  Currently libnghttp2_asio
-provides client and server API.
+on the Boost::ASIO library and OpenSSL.  Currently libnghttp2_asio
+provides both client and server APIs.
 
-libnghttp2_asio is not built by default.  Use ``--enable-asio-lib``
+libnghttp2_asio is not built by default.  Use the ``--enable-asio-lib``
 configure flag to build libnghttp2_asio.  The required Boost libraries
 are:
 
@@ -1027,9 +1029,9 @@ are:
 * Boost::System
 * Boost::Thread
 
-Server API is designed to build HTTP/2 server very easily to utilize
-C++11 anonymous function and closure.  The bare minimum example of
-HTTP/2 server looks like this:
+The server API is designed to build an HTTP/2 server very easily to utilize
+C++11 anonymous functions and closures.  The bare minimum example of
+an HTTP/2 server looks like this:
 
 .. code-block:: cpp
 
@@ -1052,7 +1054,7 @@ HTTP/2 server looks like this:
       }
     }
 
-Here is the sample code for client API use:
+Here is sample code to use the client API:
 
 .. code-block:: cpp
 
@@ -1109,19 +1111,19 @@ For more details, see the documentation of libnghttp2_asio.
 Python bindings
 ---------------
 
-This ``python`` directory contains nghttp2 Python bindings.  The
+The ``python`` directory contains nghttp2 Python bindings.  The
 bindings currently provide HPACK compressor and decompressor classes
-and HTTP/2 server.
+and an HTTP/2 server.
 
 The extension module is called ``nghttp2``.
 
 ``make`` will build the bindings and target Python version is
-determined by configure script.  If the detected Python version is not
-what you expect, specify a path to Python executable in ``PYTHON``
+determined by the ``configure`` script.  If the detected Python version is not
+what you expect, specify a path to Python executable in a ``PYTHON``
 variable as an argument to configure script (e.g., ``./configure
 PYTHON=/usr/bin/python3.4``).
 
-The following example code illustrates basic usage of HPACK compressor
+The following example code illustrates basic usage of the HPACK compressor
 and decompressor in Python:
 
 .. code-block:: python
@@ -1148,21 +1150,21 @@ By default, it does nothing.  It must be subclassed to handle each
 event callback method.
 
 The first callback method invoked is ``on_headers()``.  It is called
-when HEADERS frame, which includes request header fields, has arrived.
+when HEADERS frame, which includes the request header fields, has arrived.
 
-If request has request body, ``on_data(data)`` is invoked for each
+If the request has a request body, ``on_data(data)`` is invoked for each
 chunk of received data.
 
-When whole request is received, ``on_request_done()`` is invoked.
+Once the entire request is received, ``on_request_done()`` is invoked.
 
-When stream is closed, ``on_close(error_code)`` is called.
+When the stream is closed, ``on_close(error_code)`` is called.
 
-The application can send response using ``send_response()`` method.
+The application can send a response using ``send_response()`` method.
 It can be used in ``on_headers()``, ``on_data()`` or
 ``on_request_done()``.
 
-The application can push resource using ``push()`` method.  It must be
-used before ``send_response()`` call.
+The application can push resources using the ``push()`` method.  It must be
+used before the ``send_response()`` call.
 
 The following instance variables are available:
 
@@ -1232,14 +1234,15 @@ When contributing with code, you agree to put your changes and new
 code under the same license nghttp2 is already using unless stated and
 agreed otherwise.
 
-When changing existing source code, you do not alter the copyright of
+When changing existing source code, do not alter the copyright of
 the original file(s).  The copyright will still be owned by the
 original creator(s) or those who have been assigned copyright by the
 original author(s).
 
-By submitting a patch to the nghttp2 project, you are assumed to have
-the right to the code and to be allowed by your employer or whatever
-to hand over that patch/code to us.  We will credit you for your
+By submitting a patch to the nghttp2 project, you (or your employer, as
+the case may be) agree to assign the copyright of your submission to us.  
+.. the above really needs to be reworded to pass legal muster.
+We will credit you for your
 changes as far as possible, to give credit but also to keep a trace
 back to who made what changes.  Please always provide us with your
 full real name when contributing!
