@@ -1315,7 +1315,7 @@ int main(int argc, char **argv) {
   auto start = std::chrono::steady_clock::now();
 
   std::vector<std::unique_ptr<Worker>> workers;
-  workers.reserve(config.nthreads - 1);
+  workers.reserve(config.nthreads);
 
 #ifndef NOTHREADS
   std::vector<std::future<void>> futures;
