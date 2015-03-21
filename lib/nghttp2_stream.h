@@ -120,10 +120,20 @@ typedef enum {
   /* HTTP method flags */
   NGHTTP2_HTTP_FLAG_METH_CONNECT = 1 << 7,
   NGHTTP2_HTTP_FLAG_METH_HEAD = 1 << 8,
-  NGHTTP2_HTTP_FLAG_METH_ALL =
-      NGHTTP2_HTTP_FLAG_METH_CONNECT | NGHTTP2_HTTP_FLAG_METH_HEAD,
+  NGHTTP2_HTTP_FLAG_METH_OPTIONS = 1 << 9,
+  NGHTTP2_HTTP_FLAG_METH_ALL = NGHTTP2_HTTP_FLAG_METH_CONNECT |
+                               NGHTTP2_HTTP_FLAG_METH_HEAD |
+                               NGHTTP2_HTTP_FLAG_METH_OPTIONS,
+  /* :path category */
+  /* path starts with "/" */
+  NGHTTP2_HTTP_FLAG_PATH_REGULAR = 1 << 10,
+  /* path "*" */
+  NGHTTP2_HTTP_FLAG_PATH_ASTERISK = 1 << 11,
+  /* scheme */
+  /* "http" or "https" scheme */
+  NGHTTP2_HTTP_FLAG_SCHEME_HTTP = 1 << 12,
   /* set if final response is expected */
-  NGHTTP2_HTTP_FLAG_EXPECT_FINAL_RESPONSE = 1 << 9,
+  NGHTTP2_HTTP_FLAG_EXPECT_FINAL_RESPONSE = 1 << 13,
 } nghttp2_http_flag;
 
 typedef enum {

@@ -225,6 +225,18 @@ static int expect_response_body(nghttp2_stream *stream) {
          stream->status_code != 204;
 }
 
+/* For "http" or "https" URIs, OPTIONS request may have "*" in :path
+   header field to represent system-wide OPTIONS request.  Otherwise,
+   :path header field value must start with "/".  This function must
+   be called after ":method" header field was received.  This function
+   returns nonzero if path is valid.*/
+static int check_path(nghttp2_stream *stream) {
+  return (stream->http_flags & NGHTTP2_HTTP_FLAG_SCHEME_HTTP) == 0 ||
+         ((stream->http_flags & NGHTTP2_HTTP_FLAG_PATH_REGULAR) ||
+          ((stream->http_flags & NGHTTP2_HTTP_FLAG_METH_OPTIONS) &&
+           (stream->http_flags & NGHTTP2_HTTP_FLAG_PATH_ASTERISK)));
+}
+
 static int http_request_on_header(nghttp2_stream *stream, nghttp2_nv *nv,
                                   int trailer) {
   int token;
@@ -248,18 +260,34 @@ static int http_request_on_header(nghttp2_stream *stream, nghttp2_nv *nv,
     if (!check_pseudo_header(stream, nv, NGHTTP2_HTTP_FLAG__METHOD)) {
       return NGHTTP2_ERR_HTTP_HEADER;
     }
-    if (streq("HEAD", nv->value, nv->valuelen)) {
-      stream->http_flags |= NGHTTP2_HTTP_FLAG_METH_HEAD;
-    } else if (streq("CONNECT", nv->value, nv->valuelen)) {
-      if (stream->stream_id % 2 == 0) {
-        /* we won't allow CONNECT for push */
-        return NGHTTP2_ERR_HTTP_HEADER;
+    switch (nv->valuelen) {
+    case 4:
+      if (streq("HEAD", nv->value, nv->valuelen)) {
+        stream->http_flags |= NGHTTP2_HTTP_FLAG_METH_HEAD;
       }
-      stream->http_flags |= NGHTTP2_HTTP_FLAG_METH_CONNECT;
-      if (stream->http_flags &
-          (NGHTTP2_HTTP_FLAG__PATH | NGHTTP2_HTTP_FLAG__SCHEME)) {
-        return NGHTTP2_ERR_HTTP_HEADER;
+      break;
+    case 7:
+      switch (nv->value[6]) {
+      case 'T':
+        if (streq("CONNECT", nv->value, nv->valuelen)) {
+          if (stream->stream_id % 2 == 0) {
+            /* we won't allow CONNECT for push */
+            return NGHTTP2_ERR_HTTP_HEADER;
+          }
+          stream->http_flags |= NGHTTP2_HTTP_FLAG_METH_CONNECT;
+          if (stream->http_flags &
+              (NGHTTP2_HTTP_FLAG__PATH | NGHTTP2_HTTP_FLAG__SCHEME)) {
+            return NGHTTP2_ERR_HTTP_HEADER;
+          }
+        }
+        break;
+      case 'S':
+        if (streq("OPTIONS", nv->value, nv->valuelen)) {
+          stream->http_flags |= NGHTTP2_HTTP_FLAG_METH_OPTIONS;
+        }
+        break;
       }
+      break;
     }
     break;
   case NGHTTP2_TOKEN__PATH:
@@ -269,6 +297,11 @@ static int http_request_on_header(nghttp2_stream *stream, nghttp2_nv *nv,
     if (!check_pseudo_header(stream, nv, NGHTTP2_HTTP_FLAG__PATH)) {
       return NGHTTP2_ERR_HTTP_HEADER;
     }
+    if (nv->value[0] == '/') {
+      stream->http_flags |= NGHTTP2_HTTP_FLAG_PATH_REGULAR;
+    } else if (nv->valuelen == 1 && nv->value[0] == '*') {
+      stream->http_flags |= NGHTTP2_HTTP_FLAG_PATH_ASTERISK;
+    }
     break;
   case NGHTTP2_TOKEN__SCHEME:
     if (stream->http_flags & NGHTTP2_HTTP_FLAG_METH_CONNECT) {
@@ -276,6 +309,10 @@ static int http_request_on_header(nghttp2_stream *stream, nghttp2_nv *nv,
     }
     if (!check_pseudo_header(stream, nv, NGHTTP2_HTTP_FLAG__SCHEME)) {
       return NGHTTP2_ERR_HTTP_HEADER;
+    }
+    if ((nv->valuelen == 4 && memieq("http", nv->value, 4)) ||
+        (nv->valuelen == 5 && memieq("https", nv->value, 5))) {
+      stream->http_flags |= NGHTTP2_HTTP_FLAG_SCHEME_HTTP;
     }
     break;
   case NGHTTP2_TOKEN_HOST:
@@ -434,11 +471,16 @@ int nghttp2_http_on_request_headers(nghttp2_stream *stream,
       return -1;
     }
     stream->content_length = -1;
-  } else if ((stream->http_flags & NGHTTP2_HTTP_FLAG_REQ_HEADERS) !=
-                 NGHTTP2_HTTP_FLAG_REQ_HEADERS ||
-             (stream->http_flags &
-              (NGHTTP2_HTTP_FLAG__AUTHORITY | NGHTTP2_HTTP_FLAG_HOST)) == 0) {
-    return -1;
+  } else {
+    if ((stream->http_flags & NGHTTP2_HTTP_FLAG_REQ_HEADERS) !=
+            NGHTTP2_HTTP_FLAG_REQ_HEADERS ||
+        (stream->http_flags &
+         (NGHTTP2_HTTP_FLAG__AUTHORITY | NGHTTP2_HTTP_FLAG_HOST)) == 0) {
+      return -1;
+    }
+    if (!check_path(stream)) {
+      return -1;
+    }
   }
 
   if (frame->hd.type == NGHTTP2_PUSH_PROMISE) {

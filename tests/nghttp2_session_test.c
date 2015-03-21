@@ -6990,6 +6990,40 @@ static void check_nghttp2_http_recv_headers_fail(
   nghttp2_bufs_free(&bufs);
 }
 
+static void check_nghttp2_http_recv_headers_ok(
+    nghttp2_session *session, nghttp2_hd_deflater *deflater, int32_t stream_id,
+    int stream_state, const nghttp2_nv *nva, size_t nvlen) {
+  nghttp2_mem *mem;
+  ssize_t rv;
+  nghttp2_bufs bufs;
+  my_user_data *ud;
+
+  mem = nghttp2_mem_default();
+  frame_pack_bufs_init(&bufs);
+
+  ud = session->user_data;
+
+  if (stream_state != -1) {
+    nghttp2_session_open_stream(session, stream_id, NGHTTP2_STREAM_FLAG_NONE,
+                                &pri_spec_default, stream_state, NULL);
+  }
+
+  rv = pack_headers(&bufs, deflater, stream_id, NGHTTP2_FLAG_END_HEADERS, nva,
+                    nvlen, mem);
+  CU_ASSERT(0 == rv);
+
+  ud->frame_recv_cb_called = 0;
+
+  rv = nghttp2_session_mem_recv(session, bufs.head->buf.pos,
+                                nghttp2_buf_len(&bufs.head->buf));
+
+  CU_ASSERT(nghttp2_buf_len(&bufs.head->buf) == rv);
+  CU_ASSERT(NULL == nghttp2_session_get_next_ob_item(session));
+  CU_ASSERT(1 == ud->frame_recv_cb_called);
+
+  nghttp2_bufs_free(&bufs);
+}
+
 void test_nghttp2_http_mandatory_headers(void) {
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;
@@ -7046,11 +7080,24 @@ void test_nghttp2_http_mandatory_headers(void) {
       MAKE_NV(":scheme", "https"), MAKE_NV(":method", "GET"),
       MAKE_NV("foo", "\x0d\x0a"), MAKE_NV(":authority", "localhost"),
       MAKE_NV(":path", "/")};
+  const nghttp2_nv asteriskget1_reqnv[] = {
+      MAKE_NV(":path", "*"), MAKE_NV(":scheme", "https"),
+      MAKE_NV(":authority", "localhost"), MAKE_NV(":method", "GET")};
+  const nghttp2_nv asteriskget2_reqnv[] = {
+      MAKE_NV(":scheme", "https"), MAKE_NV(":authority", "localhost"),
+      MAKE_NV(":method", "GET"), MAKE_NV(":path", "*")};
+  const nghttp2_nv asteriskoptions1_reqnv[] = {
+      MAKE_NV(":path", "*"), MAKE_NV(":scheme", "https"),
+      MAKE_NV(":authority", "localhost"), MAKE_NV(":method", "OPTIONS")};
+  const nghttp2_nv asteriskoptions2_reqnv[] = {
+      MAKE_NV(":scheme", "https"), MAKE_NV(":authority", "localhost"),
+      MAKE_NV(":method", "OPTIONS"), MAKE_NV(":path", "*")};
 
   mem = nghttp2_mem_default();
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks.send_callback = null_send_callback;
+  callbacks.on_frame_recv_callback = on_frame_recv_callback;
   callbacks.on_invalid_frame_recv_callback = on_invalid_frame_recv_callback;
 
   nghttp2_session_client_new(&session, &callbacks, &ud);
@@ -7145,6 +7192,30 @@ void test_nghttp2_http_mandatory_headers(void) {
      character before all mandatory header fields are seen. */
   check_nghttp2_http_recv_headers_fail(session, &deflater, 17, -1,
                                        badhdbtw_reqnv, ARRLEN(badhdbtw_reqnv));
+
+  /* request header has "*" in :path header field while method is GET.
+     :path is received before :method */
+  check_nghttp2_http_recv_headers_fail(session, &deflater, 19, -1,
+                                       asteriskget1_reqnv,
+                                       ARRLEN(asteriskget1_reqnv));
+
+  /* request header has "*" in :path header field while method is GET.
+     :method is received before :path */
+  check_nghttp2_http_recv_headers_fail(session, &deflater, 21, -1,
+                                       asteriskget2_reqnv,
+                                       ARRLEN(asteriskget2_reqnv));
+
+  /* OPTIONS method can include "*" in :path header field.  :path is
+     received before :method. */
+  check_nghttp2_http_recv_headers_ok(session, &deflater, 23, -1,
+                                     asteriskoptions1_reqnv,
+                                     ARRLEN(asteriskoptions1_reqnv));
+
+  /* OPTIONS method can include "*" in :path header field.  :method is
+     received before :path. */
+  check_nghttp2_http_recv_headers_ok(session, &deflater, 25, -1,
+                                     asteriskoptions2_reqnv,
+                                     ARRLEN(asteriskoptions2_reqnv));
 
   nghttp2_hd_deflate_free(&deflater);
 
