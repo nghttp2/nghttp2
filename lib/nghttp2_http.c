@@ -76,7 +76,7 @@ typedef enum {
 static int lookup_token(const uint8_t *name, size_t namelen) {
   switch (namelen) {
   case 2:
-    switch (name[namelen - 1]) {
+    switch (name[1]) {
     case 'e':
       if (streq("t", name, 1)) {
         return NGHTTP2_TOKEN_TE;
@@ -85,7 +85,7 @@ static int lookup_token(const uint8_t *name, size_t namelen) {
     }
     break;
   case 4:
-    switch (name[namelen - 1]) {
+    switch (name[3]) {
     case 't':
       if (streq("hos", name, 3)) {
         return NGHTTP2_TOKEN_HOST;
@@ -94,7 +94,7 @@ static int lookup_token(const uint8_t *name, size_t namelen) {
     }
     break;
   case 5:
-    switch (name[namelen - 1]) {
+    switch (name[4]) {
     case 'h':
       if (streq(":pat", name, 4)) {
         return NGHTTP2_TOKEN__PATH;
@@ -103,7 +103,7 @@ static int lookup_token(const uint8_t *name, size_t namelen) {
     }
     break;
   case 7:
-    switch (name[namelen - 1]) {
+    switch (name[6]) {
     case 'd':
       if (streq(":metho", name, 6)) {
         return NGHTTP2_TOKEN__METHOD;
@@ -125,7 +125,7 @@ static int lookup_token(const uint8_t *name, size_t namelen) {
     }
     break;
   case 10:
-    switch (name[namelen - 1]) {
+    switch (name[9]) {
     case 'e':
       if (streq("keep-aliv", name, 9)) {
         return NGHTTP2_TOKEN_KEEP_ALIVE;
@@ -144,7 +144,7 @@ static int lookup_token(const uint8_t *name, size_t namelen) {
     }
     break;
   case 14:
-    switch (name[namelen - 1]) {
+    switch (name[13]) {
     case 'h':
       if (streq("content-lengt", name, 13)) {
         return NGHTTP2_TOKEN_CONTENT_LENGTH;
@@ -153,7 +153,7 @@ static int lookup_token(const uint8_t *name, size_t namelen) {
     }
     break;
   case 16:
-    switch (name[namelen - 1]) {
+    switch (name[15]) {
     case 'n':
       if (streq("proxy-connectio", name, 15)) {
         return NGHTTP2_TOKEN_PROXY_CONNECTION;
@@ -162,7 +162,7 @@ static int lookup_token(const uint8_t *name, size_t namelen) {
     }
     break;
   case 17:
-    switch (name[namelen - 1]) {
+    switch (name[16]) {
     case 'g':
       if (streq("transfer-encodin", name, 16)) {
         return NGHTTP2_TOKEN_TRANSFER_ENCODING;
