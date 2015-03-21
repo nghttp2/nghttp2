@@ -84,6 +84,11 @@ are floating around in existing internet and resetting stream just
 because of this may break many web sites.  This is especially true if
 we forward to or translate from HTTP/1 traffic.
 
+For "http" or "https" URIs, ":path" pseudo header fields must start
+with "/".  The only exception is OPTIONS request, in that case, "*" is
+allowed in ":path" pseudo header field to represent system-wide
+OPTIONS request.
+
 With the above validations, nghttp2 library guarantees that header
 field name passed to `nghttp2_on_header_callback()` is not empty.
 Also required pseudo headers are all present and not empty.
