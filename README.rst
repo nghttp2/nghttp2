@@ -74,7 +74,7 @@ required:
 * libev >= 4.15
 * zlib >= 1.2.3
 
-ALPN support requires an unreleased version of OpenSSL >= 1.0.2.
+ALPN support requires OpenSSL >= 1.0.2 (released 22 January 2015).
 
 To enable the SPDY protocol in the application program ``nghttpx`` and
 ``h2load``, the following package is required:
