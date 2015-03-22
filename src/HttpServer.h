@@ -59,7 +59,6 @@ struct Config {
   std::string address;
   ev_tstamp stream_read_timeout;
   ev_tstamp stream_write_timeout;
-  nghttp2_option *session_option;
   void *data_ptr;
   size_t padding;
   size_t num_worker;

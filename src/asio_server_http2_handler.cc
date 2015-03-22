@@ -268,17 +268,7 @@ int http2_handler::start() {
   nghttp2_session_callbacks_set_on_frame_not_send_callback(
       callbacks, on_frame_not_send_callback);
 
-  nghttp2_option *option;
-  rv = nghttp2_option_new(&option);
-  if (rv != 0) {
-    return -1;
-  }
-
-  auto opt_del = defer(nghttp2_option_del, option);
-
-  nghttp2_option_set_recv_client_preface(option, 1);
-
-  rv = nghttp2_session_server_new2(&session_, callbacks, this, option);
+  rv = nghttp2_session_server_new(&session_, callbacks, this);
   if (rv != 0) {
     return -1;
   }

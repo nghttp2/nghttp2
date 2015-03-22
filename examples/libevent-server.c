@@ -537,14 +537,7 @@ static int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
 }
 
 static void initialize_nghttp2_session(http2_session_data *session_data) {
-  nghttp2_option *option;
   nghttp2_session_callbacks *callbacks;
-
-  nghttp2_option_new(&option);
-
-  /* Tells nghttp2_session object that it handles client connection
-     preface */
-  nghttp2_option_set_recv_client_preface(option, 1);
 
   nghttp2_session_callbacks_new(&callbacks);
 
@@ -562,11 +555,9 @@ static void initialize_nghttp2_session(http2_session_data *session_data) {
   nghttp2_session_callbacks_set_on_begin_headers_callback(
       callbacks, on_begin_headers_callback);
 
-  nghttp2_session_server_new2(&session_data->session, callbacks, session_data,
-                              option);
+  nghttp2_session_server_new(&session_data->session, callbacks, session_data);
 
   nghttp2_session_callbacks_del(callbacks);
-  nghttp2_option_del(option);
 }
 
 /* Send HTTP/2 client connection header, which includes 24 bytes

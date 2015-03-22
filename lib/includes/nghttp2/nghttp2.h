@@ -1962,21 +1962,26 @@ nghttp2_option_set_peer_max_concurrent_streams(nghttp2_option *option,
 /**
  * @function
  *
- * By default, nghttp2 library only handles HTTP/2 frames and does not
- * recognize first 24 bytes of client connection preface.  This design
- * choice is done due to the fact that server may want to detect the
- * application protocol based on first few bytes on clear text
- * communication.  But for simple servers which only speak HTTP/2, it
- * is easier for developers if nghttp2 library takes care of client
- * connection preface.
+ * By default, nghttp2 library, if configured as server, requires
+ * first 24 bytes of client connection preface.  In most cases, this
+ * will simplify the implementation of server.  But sometimes erver
+ * may want to detect the application protocol based on first few
+ * bytes on clear text communication.
  *
- * If this option is used with nonzero |val|, nghttp2 library checks
- * first 24 bytes client connection preface.  If it is not a valid
- * one, `nghttp2_session_recv()` and `nghttp2_session_mem_recv()` will
- * return error :enum:`NGHTTP2_ERR_BAD_PREFACE`, which is fatal error.
+ * If this option is used with nonzero |val|, nghttp2 library does not
+ * handle first 24 bytes client connection preface.  It still checks
+ * following SETTINGS frame.  This means that applications should deal
+ * with 24 bytes connection preface by themselves.
+ *
+ * If this option is not used or used with zero value, if client
+ * connection preface does not match the one
+ * (:macro:`NGHTTP2_CLIENT_CONNECTION_PREFACE`) in the HTTP/2
+ * specification, `nghttp2_session_recv()` and
+ * `nghttp2_session_mem_recv()` will return error
+ * :enum:`NGHTTP2_ERR_BAD_PREFACE`, which is fatal error.
  */
 NGHTTP2_EXTERN void
-nghttp2_option_set_recv_client_preface(nghttp2_option *option, int val);
+nghttp2_option_set_no_recv_client_preface(nghttp2_option *option, int val);
 
 /**
  * @function
@@ -2296,7 +2301,8 @@ NGHTTP2_EXTERN ssize_t nghttp2_session_mem_send(nghttp2_session *session,
  * :enum:`NGHTTP2_ERR_BAD_PREFACE`
  *     Invalid client preface was detected.  This error only returns
  *     when |session| was configured as server and
- *     `nghttp2_option_set_recv_client_preface()` is used.
+ *     `nghttp2_option_set_no_recv_client_preface()` is not used with
+ *     nonzero value.
  */
 NGHTTP2_EXTERN int nghttp2_session_recv(nghttp2_session *session);
 
@@ -2331,7 +2337,8 @@ NGHTTP2_EXTERN int nghttp2_session_recv(nghttp2_session *session);
  * :enum:`NGHTTP2_ERR_BAD_PREFACE`
  *     Invalid client preface was detected.  This error only returns
  *     when |session| was configured as server and
- *     `nghttp2_option_set_recv_client_preface()` is used.
+ *     `nghttp2_option_set_no_recv_client_preface()` is not used with
+ *     nonzero value.
  */
 NGHTTP2_EXTERN ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
                                                 const uint8_t *in,

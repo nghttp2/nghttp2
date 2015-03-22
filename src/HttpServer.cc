@@ -92,16 +92,12 @@ template <typename Array> void append_nv(Stream *stream, const Array &nva) {
 } // namespace
 
 Config::Config()
-    : stream_read_timeout(60.), stream_write_timeout(60.),
-      session_option(nullptr), data_ptr(nullptr), padding(0), num_worker(1),
-      header_table_size(-1), port(0), verbose(false), daemon(false),
-      verify_client(false), no_tls(false), error_gzip(false),
-      early_response(false), hexdump(false) {
-  nghttp2_option_new(&session_option);
-  nghttp2_option_set_recv_client_preface(session_option, 1);
-}
+    : stream_read_timeout(60.), stream_write_timeout(60.), data_ptr(nullptr),
+      padding(0), num_worker(1), header_table_size(-1), port(0), verbose(false),
+      daemon(false), verify_client(false), no_tls(false), error_gzip(false),
+      early_response(false), hexdump(false) {}
 
-Config::~Config() { nghttp2_option_del(session_option); }
+Config::~Config() {}
 
 namespace {
 void stream_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
@@ -634,8 +630,7 @@ int Http2Handler::on_write() { return write_(*this); }
 int Http2Handler::connection_made() {
   int r;
 
-  r = nghttp2_session_server_new2(&session_, sessions_->get_callbacks(), this,
-                                  sessions_->get_config()->session_option);
+  r = nghttp2_session_server_new(&session_, sessions_->get_callbacks(), this);
   if (r != 0) {
     return r;
   }

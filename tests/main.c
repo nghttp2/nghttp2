@@ -41,7 +41,7 @@
 #include "nghttp2_helper_test.h"
 #include "nghttp2_buf_test.h"
 
-extern int nghttp2_enable_strict_first_settings_check;
+extern int nghttp2_enable_strict_connection_preface_check;
 
 static int init_suite1(void) { return 0; }
 
@@ -51,7 +51,7 @@ int main(int argc _U_, char *argv[] _U_) {
   CU_pSuite pSuite = NULL;
   unsigned int num_tests_failed;
 
-  nghttp2_enable_strict_first_settings_check = 0;
+  nghttp2_enable_strict_connection_preface_check = 0;
 
   /* initialize the CUnit test registry */
   if (CUE_SUCCESS != CU_initialize_registry())

@@ -314,7 +314,7 @@ static void active_outbound_item_reset(nghttp2_active_outbound_item *aob,
 
 /* This global variable exists for tests where we want to disable this
    check. */
-int nghttp2_enable_strict_first_settings_check = 1;
+int nghttp2_enable_strict_connection_preface_check = 1;
 
 static int session_new(nghttp2_session **session_ptr,
                        const nghttp2_session_callbacks *callbacks,
@@ -415,10 +415,10 @@ static int session_new(nghttp2_session **session_ptr,
           option->peer_max_concurrent_streams;
     }
 
-    if ((option->opt_set_mask & NGHTTP2_OPT_RECV_CLIENT_PREFACE) &&
-        option->recv_client_preface) {
+    if ((option->opt_set_mask & NGHTTP2_OPT_NO_RECV_CLIENT_PREFACE) &&
+        option->no_recv_client_preface) {
 
-      (*session_ptr)->opt_flags |= NGHTTP2_OPTMASK_RECV_CLIENT_PREFACE;
+      (*session_ptr)->opt_flags |= NGHTTP2_OPTMASK_NO_RECV_CLIENT_PREFACE;
     }
 
     if ((option->opt_set_mask & NGHTTP2_OPT_NO_HTTP_MESSAGING) &&
@@ -433,17 +433,17 @@ static int session_new(nghttp2_session **session_ptr,
 
   session_inbound_frame_reset(*session_ptr);
 
-  if (server &&
-      ((*session_ptr)->opt_flags & NGHTTP2_OPTMASK_RECV_CLIENT_PREFACE)) {
-
+  if (nghttp2_enable_strict_connection_preface_check) {
     nghttp2_inbound_frame *iframe = &(*session_ptr)->iframe;
 
-    iframe->state = NGHTTP2_IB_READ_CLIENT_PREFACE;
-    iframe->payloadleft = NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN;
-  } else if (nghttp2_enable_strict_first_settings_check) {
-    nghttp2_inbound_frame *iframe = &(*session_ptr)->iframe;
-
-    iframe->state = NGHTTP2_IB_READ_FIRST_SETTINGS;
+    if (server &&
+        ((*session_ptr)->opt_flags & NGHTTP2_OPTMASK_NO_RECV_CLIENT_PREFACE) ==
+            0) {
+      iframe->state = NGHTTP2_IB_READ_CLIENT_PREFACE;
+      iframe->payloadleft = NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN;
+    } else {
+      iframe->state = NGHTTP2_IB_READ_FIRST_SETTINGS;
+    }
   }
 
   return 0;
