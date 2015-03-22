@@ -734,24 +734,6 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
     }
   }
 
-  if (!get_config()->altsvcs.empty()) {
-    // Set max_age to 24hrs, which is default for alt-svc header
-    // field.
-    for (auto &altsvc : get_config()->altsvcs) {
-      rv = nghttp2_submit_altsvc(
-          session_, NGHTTP2_FLAG_NONE, 0, 86400, altsvc.port,
-          reinterpret_cast<const uint8_t *>(altsvc.protocol_id),
-          altsvc.protocol_id_len,
-          reinterpret_cast<const uint8_t *>(altsvc.host), altsvc.host_len,
-          reinterpret_cast<const uint8_t *>(altsvc.origin), altsvc.origin_len);
-
-      if (rv != 0) {
-        ULOG(ERROR, this) << "nghttp2_submit_altsvc() returned error: "
-                          << nghttp2_strerror(rv);
-      }
-    }
-  }
-
   // We wait for SETTINGS ACK at least 10 seconds.
   ev_timer_init(&settings_timer_, settings_timeout_cb, 10., 0.);
 

@@ -498,21 +498,6 @@ typedef enum {
 /**
  * @enum
  *
- * The extension frame types.
- *
- * TODO: The assigned frame types were carried from draft-12, and now
- * actually TBD.
- */
-typedef enum {
-  /**
-   * The ALTSVC extension frame.
-   */
-  NGHTTP2_EXT_ALTSVC = 0x0a
-} nghttp2_ext_frame_type;
-
-/**
- * @enum
- *
  * The flags for HTTP/2 frames.  This enum defines all flags for all
  * frames.
  */
@@ -1078,51 +1063,11 @@ typedef struct {
    * The pointer to extension payload.  The exact pointer type is
    * determined by hd.type.
    *
-   * If hd.type == :enum:`NGHTTP2_EXT_ALTSVC`, it is a pointer to
-   * :type:`nghttp2_ext_altsvc`.
+   * Currently, no extension is supported.  This is a place holder for
+   * the future extensions.
    */
   void *payload;
 } nghttp2_extension;
-
-/**
- * @struct
- *
- * The ALTSVC extension frame payload.  It has following members:
- */
-typedef struct {
-  /**
-   * Protocol ID
-   */
-  uint8_t *protocol_id;
-  /**
-   * Host
-   */
-  uint8_t *host;
-  /**
-   * Origin
-   */
-  uint8_t *origin;
-  /**
-   * The length of |protocol_id|
-   */
-  size_t protocol_id_len;
-  /**
-   * The length of |host|
-   */
-  size_t host_len;
-  /**
-   * The length of |origin|
-   */
-  size_t origin_len;
-  /**
-   * Max-Age
-   */
-  uint32_t max_age;
-  /**
-   * Port
-   */
-  uint16_t port;
-} nghttp2_ext_altsvc;
 
 /**
  * @union
@@ -3418,20 +3363,6 @@ NGHTTP2_EXTERN int nghttp2_submit_window_update(nghttp2_session *session,
                                                 uint8_t flags,
                                                 int32_t stream_id,
                                                 int32_t window_size_increment);
-
-/**
- * @function
- *
- * This function previously submits ALTSVC frame with given
- * parameters, but is deprecated and will be removed in a future
- * release.  This function does nothing and just return 0.
- */
-NGHTTP2_EXTERN int
-nghttp2_submit_altsvc(nghttp2_session *session, uint8_t flags,
-                      int32_t stream_id, uint32_t max_age, uint16_t port,
-                      const uint8_t *protocol_id, size_t protocol_id_len,
-                      const uint8_t *host, size_t host_len,
-                      const uint8_t *origin, size_t origin_len);
 
 /**
  * @function

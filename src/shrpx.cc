@@ -1342,10 +1342,10 @@ HTTP:
   --altsvc=<PROTOID,PORT[,HOST,[ORIGIN]]>
               Specify   protocol  ID,   port,  host   and  origin   of
               alternative service.  <HOST>  and <ORIGIN> are optional.
-              They are  advertised in  alt-svc header field  or HTTP/2
-              ALTSVC frame.  This option can be used multiple times to
-              specify   multiple   alternative   services.    Example:
-              --altsvc=h2,443
+              They  are advertised  in  alt-svc header  field only  in
+              HTTP/1.1  frontend.  This  option can  be used  multiple
+              times   to   specify  multiple   alternative   services.
+              Example: --altsvc=h2,443
   --add-response-header=<HEADER>
               Specify  additional  header  field to  add  to  response
               header set.   This option just appends  header field and
