@@ -71,6 +71,7 @@ struct Config {
   bool no_tls;
   bool error_gzip;
   bool early_response;
+  bool hexdump;
   Config();
   ~Config();
 };

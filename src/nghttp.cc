@@ -79,7 +79,7 @@ Config::Config()
       timeout(0.), window_bits(-1), connection_window_bits(-1), verbose(0),
       null_out(false), remote_name(false), get_assets(false), stat(false),
       upgrade(false), continuation(false), no_content_length(false),
-      no_dep(false), dep_idle(false) {
+      no_dep(false), dep_idle(false), hexdump(false) {
   nghttp2_option_new(&http2_option);
   nghttp2_option_set_peer_max_concurrent_streams(http2_option,
                                                  peer_max_concurrent_streams);
@@ -1048,6 +1048,10 @@ int HttpClient::on_connect() {
 }
 
 int HttpClient::on_read(const uint8_t *data, size_t len) {
+  if (config.hexdump) {
+    util::hexdump(stdout, data, len);
+  }
+
   auto rv = nghttp2_session_mem_recv(session, data, len);
   if (rv < 0) {
     std::cerr << "[ERROR] nghttp2_session_mem_recv() returned error: "
@@ -2421,6 +2425,8 @@ Options:
               Don't send content-length header field.
   --no-dep    Don't send dependency based priority hint to server.
   --dep-idle  Use idle streams as anchor nodes to express priority.
+  --hexdump   Output  incoming traffic  in  `hexdump  -C` format.   If
+              SSL/TLS is used, decrypted data are used.
   --version   Display version information and exit.
   -h, --help  Display this help and exit.
 
@@ -2461,6 +2467,7 @@ int main(int argc, char **argv) {
         {"no-dep", no_argument, &flag, 7},
         {"dep-idle", no_argument, &flag, 8},
         {"trailer", required_argument, &flag, 9},
+        {"hexdump", no_argument, &flag, 10},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     int c = getopt_long(argc, argv, "M:Oab:c:d:gm:np:r:hH:vst:uw:W:",
@@ -2647,6 +2654,10 @@ int main(int argc, char **argv) {
         util::inp_strlower(config.trailer.back().name);
         break;
       }
+      case 10:
+        // hexdump option
+        config.hexdump = true;
+        break;
       }
       break;
     default:

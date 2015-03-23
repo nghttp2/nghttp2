@@ -96,7 +96,7 @@ Config::Config()
       session_option(nullptr), data_ptr(nullptr), padding(0), num_worker(1),
       header_table_size(-1), port(0), verbose(false), daemon(false),
       verify_client(false), no_tls(false), error_gzip(false),
-      early_response(false) {
+      early_response(false), hexdump(false) {
   nghttp2_option_new(&session_option);
   nghttp2_option_set_recv_client_preface(session_option, 1);
 }
@@ -426,6 +426,11 @@ int Http2Handler::read_clear() {
     if (nread == 0) {
       return -1;
     }
+
+    if (get_config()->hexdump) {
+      util::hexdump(stdout, buf.data(), nread);
+    }
+
     rv = nghttp2_session_mem_recv(session_, buf.data(), nread);
     if (rv < 0) {
       if (rv != NGHTTP2_ERR_BAD_PREFACE) {
@@ -548,6 +553,11 @@ int Http2Handler::read_tls() {
     }
 
     auto nread = rv;
+
+    if (get_config()->hexdump) {
+      util::hexdump(stdout, buf.data(), nread);
+    }
+
     rv = nghttp2_session_mem_recv(session_, buf.data(), nread);
     if (rv < 0) {
       if (rv != NGHTTP2_ERR_BAD_PREFACE) {

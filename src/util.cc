@@ -1046,6 +1046,70 @@ std::string make_hostport(const char *host, uint16_t port) {
   return hostport;
 }
 
+#define NGHTTP2_SPACES                                                         \
+  "                                                                          " \
+  "     "
+
+namespace {
+void hexdump8(FILE *out, const uint8_t *first, const uint8_t *last) {
+  auto stop = std::min(first + 8, last);
+  for (auto k = first; k != stop; ++k) {
+    fprintf(out, "%02x ", *k);
+  }
+  /* each byte needs 3 spaces (2 hex value and space).  we have extra
+     space after 8 bytes */
+  fprintf(out, "%.*s", static_cast<int>((first + 8 - stop) * 3 + 1),
+          NGHTTP2_SPACES);
+}
+} // namespace
+
+void hexdump(FILE *out, const uint8_t *src, size_t len) {
+  if (len == 0) {
+    return;
+  }
+  size_t buflen = 0;
+  auto repeated = false;
+  std::array<uint8_t, 16> buf{};
+  auto end = src + len;
+  auto i = src;
+  for (;;) {
+    auto nextlen = std::min(static_cast<ptrdiff_t>(16), end - i);
+    if (nextlen == buflen &&
+        std::equal(std::begin(buf), std::begin(buf) + buflen, i)) {
+      /* as long as adjacent 16 bytes block are the same, we just
+         print single '*'. */
+      if (!repeated) {
+        repeated = true;
+        fwrite("*\n", 2, 1, out);
+      }
+      i += nextlen;
+      continue;
+    }
+    repeated = false;
+    fprintf(out, "%08lx", static_cast<unsigned long>(i - src));
+    if (i == end) {
+      fwrite("\n", 2, 1, out);
+      break;
+    }
+    fwrite("  ", 2, 1, out);
+    hexdump8(out, i, end);
+    hexdump8(out, i + 8, std::max(i + 8, end));
+    fwrite("|", 1, 1, out);
+    auto stop = std::min(i + 16, end);
+    buflen = stop - i;
+    auto p = buf.data();
+    for (; i != stop; ++i) {
+      *p++ = *i;
+      if (0x20 <= *i && *i <= 0x7e) {
+        fwrite(i, 1, 1, out);
+      } else {
+        fwrite(".", 1, 1, out);
+      }
+    }
+    fwrite("|\n", 2, 1, out);
+  }
+}
+
 } // namespace util
 
 } // namespace nghttp2

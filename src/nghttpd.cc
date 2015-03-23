@@ -145,6 +145,8 @@ Options:
               include pseudo header field  (header field name starting
               with ':').  The  trailer is sent only if  a response has
               body part.  Example: --trailer 'foo: bar'.
+  --hexdump   Output  incoming traffic  in  `hexdump  -C` format.   If
+              SSL/TLS is used, decrypted data are used.
   --version   Display version information and exit.
   -h, --help  Display this help and exit.
 
@@ -176,6 +178,7 @@ int main(int argc, char **argv) {
         {"dh-param-file", required_argument, &flag, 4},
         {"early-response", no_argument, &flag, 5},
         {"trailer", required_argument, &flag, 6},
+        {"hexdump", no_argument, &flag, 7},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     int c = getopt_long(argc, argv, "DVb:c:d:ehn:p:va:", long_options,
@@ -284,6 +287,10 @@ int main(int argc, char **argv) {
         util::inp_strlower(config.trailer.back().name);
         break;
       }
+      case 7:
+        // hexdump option
+        config.hexdump = true;
+        break;
       }
       break;
     default:

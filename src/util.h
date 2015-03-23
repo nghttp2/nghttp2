@@ -612,6 +612,9 @@ std::string format_duration(const std::chrono::microseconds &u);
 // and "]".  If |port| is 80 or 443, port part is omitted.
 std::string make_hostport(const char *host, uint16_t port);
 
+// Dumps |src| of length |len| in the format similar to `hexdump -C`.
+void hexdump(FILE *out, const uint8_t *src, size_t len);
+
 } // namespace util
 
 } // namespace nghttp2
