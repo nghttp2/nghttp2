@@ -368,6 +368,18 @@ typedef enum {
    */
   NGHTTP2_ERR_HTTP_HEADER = -531,
   /**
+   * Violation in HTTP messaging rule.
+   */
+  NGHTTP2_ERR_HTTP_MESSAGING = -532,
+  /**
+   * Stream was refused.
+   */
+  NGHTTP2_ERR_REFUSED_STREAM = -533,
+  /**
+   * Unexpected internal error, but recovered.
+   */
+  NGHTTP2_ERR_INTERNAL = -534,
+  /**
    * The errors < :enum:`NGHTTP2_ERR_FATAL` mean that the library is
    * under unexpected condition and processing was terminated (e.g.,
    * out of memory).  If application receives this error code, it must
@@ -1259,12 +1271,12 @@ typedef int (*nghttp2_on_frame_recv_callback)(nghttp2_session *session,
  * @functypedef
  *
  * Callback function invoked by `nghttp2_session_recv()` when an
- * invalid non-DATA frame is received.  The |error_code| indicates the
- * error.  It is usually one of the :enum:`nghttp2_error_code` but
- * that is not guaranteed.  When this callback function is invoked,
- * the library automatically submits either RST_STREAM or GOAWAY
- * frame.  The |user_data| pointer is the third argument passed in to
- * the call to `nghttp2_session_client_new()` or
+ * invalid non-DATA frame is received.  The error is indicated by the
+ * |lib_error_code|, which is one of the values defined in
+ * :type:`nghttp2_error`.  When this callback function is invoked, the
+ * library automatically submits either RST_STREAM or GOAWAY frame.
+ * The |user_data| pointer is the third argument passed in to the call
+ * to `nghttp2_session_client_new()` or
  * `nghttp2_session_server_new()`.
  *
  * If frame is HEADERS or PUSH_PROMISE, the ``nva`` and ``nvlen``
@@ -1280,7 +1292,7 @@ typedef int (*nghttp2_on_frame_recv_callback)(nghttp2_session *session,
  * `nghttp2_session_callbacks_set_on_invalid_frame_recv_callback()`.
  */
 typedef int (*nghttp2_on_invalid_frame_recv_callback)(
-    nghttp2_session *session, const nghttp2_frame *frame, uint32_t error_code,
+    nghttp2_session *session, const nghttp2_frame *frame, int lib_error_code,
     void *user_data);
 
 /**
@@ -3462,7 +3474,7 @@ NGHTTP2_EXTERN nghttp2_info *nghttp2_version(int least_version);
  * Returns nonzero if the :type:`nghttp2_error` library error code
  * |lib_error| is fatal.
  */
-NGHTTP2_EXTERN int nghttp2_is_fatal(int lib_error);
+NGHTTP2_EXTERN int nghttp2_is_fatal(int lib_error_code);
 
 /**
  * @function

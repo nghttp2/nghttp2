@@ -399,10 +399,11 @@ int verbose_on_frame_recv_callback(nghttp2_session *session,
 
 int verbose_on_invalid_frame_recv_callback(nghttp2_session *session,
                                            const nghttp2_frame *frame,
-                                           uint32_t error_code,
+                                           int lib_error_code,
                                            void *user_data) {
   print_timer();
-  fprintf(outfile, " [INVALID; status=%s] recv ", strstatus(error_code));
+  fprintf(outfile, " [INVALID; error=%s] recv ",
+          nghttp2_strerror(lib_error_code));
   print_frame(PRINT_RECV, frame);
   fflush(outfile);
   return 0;

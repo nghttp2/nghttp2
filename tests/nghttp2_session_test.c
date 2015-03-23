@@ -186,7 +186,7 @@ static int on_frame_recv_callback(nghttp2_session *session _U_,
 
 static int on_invalid_frame_recv_callback(nghttp2_session *session _U_,
                                           const nghttp2_frame *frame _U_,
-                                          nghttp2_error_code error_code _U_,
+                                          int lib_error_code _U_,
                                           void *user_data) {
   my_user_data *ud = (my_user_data *)user_data;
   ++ud->invalid_frame_recv_cb_called;
