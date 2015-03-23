@@ -307,7 +307,7 @@ void test_nghttp2_hd_inflate_indname_inc_eviction(void) {
   nghttp2_hd_inflater inflater;
   nghttp2_bufs bufs;
   ssize_t blocklen;
-  uint8_t value[1024];
+  uint8_t value[1025];
   nva_out out;
   nghttp2_nv nv;
   nghttp2_mem *mem;
@@ -319,8 +319,9 @@ void test_nghttp2_hd_inflate_indname_inc_eviction(void) {
   nghttp2_hd_inflate_init(&inflater, mem);
 
   memset(value, '0', sizeof(value));
+  value[sizeof(value) - 1] = '\0';
   nv.value = value;
-  nv.valuelen = sizeof(value);
+  nv.valuelen = sizeof(value) - 1;
 
   nv.flags = NGHTTP2_NV_FLAG_NONE;
 
@@ -338,7 +339,7 @@ void test_nghttp2_hd_inflate_indname_inc_eviction(void) {
   CU_ASSERT(4 == out.nvlen);
   CU_ASSERT(14 == out.nva[0].namelen);
   CU_ASSERT(0 == memcmp("accept-charset", out.nva[0].name, out.nva[0].namelen));
-  CU_ASSERT(sizeof(value) == out.nva[0].valuelen);
+  CU_ASSERT(sizeof(value) - 1 == out.nva[0].valuelen);
 
   nva_out_reset(&out, mem);
   nghttp2_bufs_reset(&bufs);
@@ -429,7 +430,7 @@ void test_nghttp2_hd_inflate_clearall_inc(void) {
   nghttp2_bufs bufs;
   ssize_t blocklen;
   nghttp2_nv nv;
-  uint8_t value[4060];
+  uint8_t value[4061];
   nva_out out;
   nghttp2_mem *mem;
 
@@ -441,8 +442,9 @@ void test_nghttp2_hd_inflate_clearall_inc(void) {
   nv.name = (uint8_t *)"alpha";
   nv.namelen = strlen((char *)nv.name);
   memset(value, '0', sizeof(value));
+  value[sizeof(value) - 1] = '\0';
   nv.value = value;
-  nv.valuelen = sizeof(value);
+  nv.valuelen = sizeof(value) - 1;
 
   nv.flags = NGHTTP2_NV_FLAG_NONE;
 
@@ -473,7 +475,7 @@ void test_nghttp2_hd_inflate_clearall_inc(void) {
 
   /* This time, 4096 bytes space required, which is just fits in the
      header table */
-  nv.valuelen = sizeof(value) - 1;
+  nv.valuelen = sizeof(value) - 2;
 
   CU_ASSERT(0 == nghttp2_hd_emit_newname_block(&bufs, &nv, 1));
 
@@ -547,7 +549,7 @@ void test_nghttp2_hd_ringbuf_reserve(void) {
   nv.name = (uint8_t *)"a";
   nv.namelen = strlen((const char *)nv.name);
   nv.valuelen = 4;
-  nv.value = mem->malloc(nv.valuelen, NULL);
+  nv.value = mem->malloc(nv.valuelen + 1, NULL);
   memset(nv.value, 0, nv.valuelen);
 
   nghttp2_hd_deflate_init2(&deflater, 8000, mem);

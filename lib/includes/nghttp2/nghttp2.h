@@ -402,21 +402,27 @@ typedef enum {
  */
 typedef struct {
   /**
-   * The |name| byte string, which is not necessarily ``NULL``
-   * terminated.
+   * The |name| byte string.  If this struct is presented from library
+   * (e.g., :type:`nghttp2_on_frame_recv_callback`), |name| is
+   * guaranteed to be NULL-terminated.  When application is
+   * constructing this struct, |name| is not required to be
+   * NULL-terminated.
    */
   uint8_t *name;
   /**
-   * The |value| byte string, which is not necessarily ``NULL``
-   * terminated.
+   * The |value| byte string.  If this struct is presented from
+   * library (e.g., :type:`nghttp2_on_frame_recv_callback`), |value|
+   * is guaranteed to be NULL-terminated.  When application is
+   * constructing this struct, |value| is not required to be
+   * NULL-terminated.
    */
   uint8_t *value;
   /**
-   * The length of the |name|.
+   * The length of the |name|, excluding terminating NULL.
    */
   size_t namelen;
   /**
-   * The length of the |value|.
+   * The length of the |value|, excluding terminating NULL.
    */
   size_t valuelen;
   /**
@@ -1461,7 +1467,11 @@ typedef int (*nghttp2_on_begin_headers_callback)(nghttp2_session *session,
  * :type:`nghttp2_on_frame_recv_callback` for the |frame| will not be
  * invoked.
  *
- * The |value| may be ``NULL`` if the |valuelen| is 0.
+ * Both |name| and |value| are guaranteed to be NULL-terminated.  The
+ * |namelen| and |valuelen| do not include terminal NULL.  If
+ * `nghttp2_option_set_no_http_messaging()` is used with nonzero
+ * value, NULL character may be included in |name| or |value| before
+ * terminating NULL.
  *
  * Please note that unless `nghttp2_option_set_no_http_messaging()` is
  * used, nghttp2 library does perform validation against the |name|

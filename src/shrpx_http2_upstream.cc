@@ -1426,11 +1426,7 @@ Http2Upstream::log_response_headers(Downstream *downstream,
                                     const std::vector<nghttp2_nv> &nva) const {
   std::stringstream ss;
   for (auto &nv : nva) {
-    ss << TTY_HTTP_HD;
-    ss.write(reinterpret_cast<const char *>(nv.name), nv.namelen);
-    ss << TTY_RST << ": ";
-    ss.write(reinterpret_cast<const char *>(nv.value), nv.valuelen);
-    ss << "\n";
+    ss << TTY_HTTP_HD << nv.name << TTY_RST << ": " << nv.value << "\n";
   }
   ULOG(INFO, this) << "HTTP response headers. stream_id="
                    << downstream->get_stream_id() << "\n" << ss.str();

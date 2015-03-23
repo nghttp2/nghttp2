@@ -314,10 +314,7 @@ void dump_nv(FILE *out, const nghttp2_nv *nva, size_t nvlen) {
 
 void dump_nv(FILE *out, const Headers &nva) {
   for (auto &nv : nva) {
-    fwrite(nv.name.c_str(), nv.name.size(), 1, out);
-    fwrite(": ", 2, 1, out);
-    fwrite(nv.value.c_str(), nv.value.size(), 1, out);
-    fwrite("\n", 1, 1, out);
+    fprintf(out, "%s: %s\n", nv.name.c_str(), nv.value.c_str());
   }
   fwrite("\n", 1, 1, out);
   fflush(out);

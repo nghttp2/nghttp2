@@ -164,11 +164,8 @@ const char *ansi_escend() { return color_output ? "\033[0m" : ""; }
 
 namespace {
 void print_nv(nghttp2_nv *nv) {
-  fprintf(outfile, "%s", ansi_esc("\033[1;34m"));
-  fwrite(nv->name, nv->namelen, 1, outfile);
-  fprintf(outfile, "%s: ", ansi_escend());
-  fwrite(nv->value, nv->valuelen, 1, outfile);
-  fprintf(outfile, "\n");
+  fprintf(outfile, "%s%s%s: %s\n", ansi_esc("\033[1;34m"), nv->name,
+          ansi_escend(), nv->value);
 }
 } // namespace
 namespace {

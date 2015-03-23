@@ -471,7 +471,9 @@ void nghttp2_nv_array_sort(nghttp2_nv *nva, size_t nvlen);
 /*
  * Copies name/value pairs from |nva|, which contains |nvlen| pairs,
  * to |*nva_ptr|, which is dynamically allocated so that all items can
- * be stored.
+ * be stored.  The resultant name and value in nghttp2_nv are
+ * guaranteed to be NULL-terminated even if the input is not
+ * null-terminated.
  *
  * The |*nva_ptr| must be freed using nghttp2_nv_array_del().
  *
