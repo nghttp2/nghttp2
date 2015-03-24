@@ -410,30 +410,22 @@ ssize_t nghttp2_bufs_remove(nghttp2_bufs *bufs, uint8_t **out) {
     len += nghttp2_buf_len(&chain->buf);
   }
 
-  if (!len) {
+  if (len == 0) {
     res = NULL;
-  } else {
-    res = nghttp2_mem_malloc(bufs->mem, len);
+    return 0;
+  }
 
-    if (res == NULL) {
-      return NGHTTP2_ERR_NOMEM;
-    }
+  res = nghttp2_mem_malloc(bufs->mem, len);
+  if (res == NULL) {
+    return NGHTTP2_ERR_NOMEM;
   }
 
   nghttp2_buf_wrap_init(&resbuf, res, len);
 
   for (chain = bufs->head; chain; chain = chain->next) {
     buf = &chain->buf;
-
-    if (resbuf.last) {
-      resbuf.last = nghttp2_cpymem(resbuf.last, buf->pos, nghttp2_buf_len(buf));
-    }
-
-    nghttp2_buf_reset(buf);
-    nghttp2_buf_shift_right(&chain->buf, bufs->offset);
+    resbuf.last = nghttp2_cpymem(resbuf.last, buf->pos, nghttp2_buf_len(buf));
   }
-
-  bufs->cur = bufs->head;
 
   *out = res;
 

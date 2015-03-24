@@ -324,8 +324,7 @@ void nghttp2_hd_huff_decode_context_init(nghttp2_hd_huff_decode_context *ctx);
  * be initialized by nghttp2_hd_huff_decode_context_init(). The result
  * will be added to |dest|. This function may expand |dest| as
  * needed. The caller is responsible to release the memory of |dest|
- * by calling nghttp2_bufs_free() or export its content using
- * nghttp2_bufs_remove().
+ * by calling nghttp2_bufs_free().
  *
  * The caller must set the |final| to nonzero if the given input is
  * the final block.

@@ -1328,6 +1328,8 @@ static int hd_inflate_remove_bufs(nghttp2_hd_inflater *inflater, nghttp2_nv *nv,
       return NGHTTP2_ERR_NOMEM;
     }
 
+    nghttp2_bufs_reset(&inflater->nvbufs);
+
     buflen = rv;
 
     if (value_only) {

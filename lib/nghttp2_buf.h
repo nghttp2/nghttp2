@@ -313,9 +313,8 @@ int nghttp2_bufs_orb_hold(nghttp2_bufs *bufs, uint8_t b);
  * function allocates the contagious memory to store all data in
  * |bufs| and assigns it to |*out|.
  *
- * On successful return, nghttp2_bufs_len(bufs) returns 0, just like
- * after calling nghttp2_bufs_reset().
-
+ * The contents of |bufs| is left unchanged.
+ *
  * This function returns the length of copied data and assigns the
  * pointer to copied data to |*out| if it succeeds, or one of the
  * following negative error codes:

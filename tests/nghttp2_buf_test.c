@@ -198,8 +198,7 @@ void test_nghttp2_bufs_remove(void) {
   CU_ASSERT(11 == outlen);
 
   CU_ASSERT(0 == memcmp("hello world", out, outlen));
-  CU_ASSERT(0 == nghttp2_bufs_len(&bufs));
-  CU_ASSERT(bufs.cur->buf.pos == bufs.cur->buf.begin);
+  CU_ASSERT(11 == nghttp2_bufs_len(&bufs));
 
   mem->free(out, NULL);
   nghttp2_bufs_free(&bufs);
