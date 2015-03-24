@@ -407,8 +407,11 @@ int Http2DownstreamConnection::push_request_headers() {
   }
 
   auto te = downstream_->get_request_header(http2::HD_TE);
-  if (te) {
-    nva.push_back(http2::make_nv_ls("te", te->value));
+  // HTTP/1 upstream request can contain keyword other than
+  // "trailers".  We just forward "trailers".
+  // TODO more strict handling required here.
+  if (te && util::strifind(te->value.c_str(), "trailers")) {
+    nva.push_back(http2::make_nv_ll("te", "trailers"));
   }
 
   if (LOG_ENABLED(INFO)) {
