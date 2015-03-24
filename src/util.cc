@@ -1071,7 +1071,8 @@ void hexdump(FILE *out, const uint8_t *src, size_t len) {
   auto end = src + len;
   auto i = src;
   for (;;) {
-    auto nextlen = std::min(static_cast<ptrdiff_t>(16), end - i);
+    auto nextlen =
+        std::min(static_cast<size_t>(16), static_cast<size_t>(end - i));
     if (nextlen == buflen &&
         std::equal(std::begin(buf), std::begin(buf) + buflen, i)) {
       // as long as adjacent 16 bytes block are the same, we just
