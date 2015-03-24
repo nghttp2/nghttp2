@@ -230,6 +230,7 @@ void copy_headers_to_nva(std::vector<nghttp2_nv> &nva, const Headers &headers) {
     case HD_KEEP_ALIVE:
     case HD_PROXY_CONNECTION:
     case HD_SERVER:
+    case HD_TE:
     case HD_TRANSFER_ENCODING:
     case HD_UPGRADE:
     case HD_VIA:

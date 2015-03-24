@@ -153,8 +153,8 @@ auto headers =
 void test_http2_copy_headers_to_nva(void) {
   std::vector<nghttp2_nv> nva;
   http2::copy_headers_to_nva(nva, headers);
-  CU_ASSERT(9 == nva.size());
-  auto ans = std::vector<int>{0, 1, 4, 5, 6, 7, 8, 9, 12};
+  CU_ASSERT(7 == nva.size());
+  auto ans = std::vector<int>{0, 1, 4, 5, 6, 7, 12};
   for (size_t i = 0; i < ans.size(); ++i) {
     check_nv(headers[ans[i]], &nva[i]);
 
