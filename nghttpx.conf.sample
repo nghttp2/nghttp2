@@ -10,7 +10,7 @@
 #
 # * The options which do not take argument in the command-line *take*
 #   argument in the configuration file. Specify 'yes' as argument
-#   (e.g., spdy-proxy=yes). If other string is given, it disables the
+#   (e.g., http2-proxy=yes). If other string is given, it disables the
 #   option.
 #
 # * To specify private key and certificate file, use private-key-file
@@ -25,5 +25,5 @@
 # backend=127.0.0.1,80
 # private-key-file=/path/to/server.key
 # certificate-file=/path/to/server.crt
-# spdy-proxy=no
+# http2-proxy=no
 # workers=1
