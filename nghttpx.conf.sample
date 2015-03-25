@@ -10,7 +10,7 @@
 #
 # * The options which do not take argument in the command-line *take*
 #   argument in the configuration file. Specify 'yes' as argument
-#   (e.g., spdy-proxy=yes). If other string is given, it disables the
+#   (e.g., http2-proxy=yes). If other string is given, it disables the
 #   option.
 #
 # * To specify private key and certificate file, use private-key-file
