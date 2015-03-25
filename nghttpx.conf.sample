@@ -25,5 +25,5 @@
 # backend=127.0.0.1,80
 # private-key-file=/path/to/server.key
 # certificate-file=/path/to/server.crt
-# spdy-proxy=no
+# http2-proxy=no
 # workers=1
