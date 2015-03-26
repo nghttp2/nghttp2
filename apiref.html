@@ -7,7 +7,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>API Reference &mdash; nghttp2 0.7.8-DEV documentation</title>
+  <title>API Reference &mdash; nghttp2 0.7.10-DEV documentation</title>
   
 
   
@@ -28,7 +28,7 @@
   
 
   
-    <link rel="top" title="nghttp2 0.7.8-DEV documentation" href="index.html"/>
+    <link rel="top" title="nghttp2 0.7.10-DEV documentation" href="index.html"/>
         <link rel="next" title="libnghttp2_asio: High level HTTP/2 C++ library" href="libnghttp2_asio.html"/>
         <link rel="prev" title="h2load - HTTP/2 benchmarking tool - HOW-TO" href="h2load-howto.html"/> 
 
@@ -66,8 +66,8 @@
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#development-status">Development Status</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#public-test-server">Public Test Server</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#requirements">Requirements</a></li>
-<li class="toctree-l2"><a class="reference internal" href="package_README.html#build-from-git">Build from git</a></li>
-<li class="toctree-l2"><a class="reference internal" href="package_README.html#building-documentation">Building documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#building-from-git">Building from git</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#building-the-documentation">Building the documentation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#unit-tests">Unit tests</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#integration-tests">Integration tests</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#client-server-and-proxy-programs">Client, Server and Proxy programs</a></li>
@@ -288,6 +288,10 @@ application callback).  This is because these illegal header fields
 are floating around in existing internet and resetting stream just
 because of this may break many web sites.  This is especially true if
 we forward to or translate from HTTP/1 traffic.</p>
+<p>For &quot;http&quot; or &quot;https&quot; URIs, &quot;:path&quot; pseudo header fields must start
+with &quot;/&quot;.  The only exception is OPTIONS request, in that case, &quot;*&quot; is
+allowed in &quot;:path&quot; pseudo header field to represent system-wide
+OPTIONS request.</p>
 <p>With the above validations, nghttp2 library guarantees that header
 field name passed to <a class="reference internal" href="#c.nghttp2_on_header_callback" title="nghttp2_on_header_callback"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_on_header_callback()</span></tt></a> is not empty.
 Also required pseudo headers are all present and not empty.</p>
@@ -1182,27 +1186,33 @@ instance implements (since age ==1)</p>
 <dl class="member">
 <dt id="c.nghttp2_nv.name">
 uint8_t *<tt class="descname">name</tt><a class="headerlink" href="#c.nghttp2_nv.name" title="Permalink to this definition">¶</a></dt>
-<dd><p>The <em>name</em> byte string, which is not necessarily <tt class="docutils literal"><span class="pre">NULL</span></tt>
-terminated.</p>
+<dd><p>The <em>name</em> byte string.  If this struct is presented from library
+(e.g., <a class="reference internal" href="#c.nghttp2_on_frame_recv_callback" title="nghttp2_on_frame_recv_callback"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_on_frame_recv_callback</span></tt></a>), <em>name</em> is
+guaranteed to be NULL-terminated.  When application is
+constructing this struct, <em>name</em> is not required to be
+NULL-terminated.</p>
 </dd></dl>
 
 <dl class="member">
 <dt id="c.nghttp2_nv.value">
 uint8_t *<tt class="descname">value</tt><a class="headerlink" href="#c.nghttp2_nv.value" title="Permalink to this definition">¶</a></dt>
-<dd><p>The <em>value</em> byte string, which is not necessarily <tt class="docutils literal"><span class="pre">NULL</span></tt>
-terminated.</p>
+<dd><p>The <em>value</em> byte string.  If this struct is presented from
+library (e.g., <a class="reference internal" href="#c.nghttp2_on_frame_recv_callback" title="nghttp2_on_frame_recv_callback"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_on_frame_recv_callback</span></tt></a>), <em>value</em>
+is guaranteed to be NULL-terminated.  When application is
+constructing this struct, <em>value</em> is not required to be
+NULL-terminated.</p>
 </dd></dl>
 
 <dl class="member">
 <dt id="c.nghttp2_nv.namelen">
 size_t <tt class="descname">namelen</tt><a class="headerlink" href="#c.nghttp2_nv.namelen" title="Permalink to this definition">¶</a></dt>
-<dd><p>The length of the <em>name</em>.</p>
+<dd><p>The length of the <em>name</em>, excluding terminating NULL.</p>
 </dd></dl>
 
 <dl class="member">
 <dt id="c.nghttp2_nv.valuelen">
 size_t <tt class="descname">valuelen</tt><a class="headerlink" href="#c.nghttp2_nv.valuelen" title="Permalink to this definition">¶</a></dt>
-<dd><p>The length of the <em>value</em>.</p>
+<dd><p>The length of the <em>value</em>, excluding terminating NULL.</p>
 </dd></dl>
 
 <dl class="member">
@@ -2015,7 +2025,11 @@ error has been detected, <a class="reference internal" href="#c.nghttp2_on_frame
 will be invoked.  If there is an error in decompression,
 <a class="reference internal" href="#c.nghttp2_on_frame_recv_callback" title="nghttp2_on_frame_recv_callback"><tt class="xref c c-type docutils literal"><span class="pre">nghttp2_on_frame_recv_callback</span></tt></a> for the <em>frame</em> will not be
 invoked.</p>
-<p>The <em>value</em> may be <tt class="docutils literal"><span class="pre">NULL</span></tt> if the <em>valuelen</em> is 0.</p>
+<p>Both <em>name</em> and <em>value</em> are guaranteed to be NULL-terminated.  The
+<em>namelen</em> and <em>valuelen</em> do not include terminal NULL.  If
+<a class="reference internal" href="#c.nghttp2_option_set_no_http_messaging" title="nghttp2_option_set_no_http_messaging"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_option_set_no_http_messaging()</span></tt></a> is used with nonzero
+value, NULL character may be included in <em>name</em> or <em>value</em> before
+terminating NULL.</p>
 <p>Please note that unless <a class="reference internal" href="#c.nghttp2_option_set_no_http_messaging" title="nghttp2_option_set_no_http_messaging"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_option_set_no_http_messaging()</span></tt></a> is
 used, nghttp2 library does perform validation against the <em>name</em>
 and the <em>value</em> using <a class="reference internal" href="#c.nghttp2_check_header_name" title="nghttp2_check_header_name"><tt class="xref c c-func docutils literal"><span class="pre">nghttp2_check_header_name()</span></tt></a> and
@@ -3912,7 +3926,7 @@ always succeeds.</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.7.8-DEV',
+            VERSION:'0.7.10-DEV',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  false

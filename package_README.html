@@ -7,7 +7,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>nghttp2 - HTTP/2 C Library &mdash; nghttp2 0.7.8-DEV documentation</title>
+  <title>nghttp2 - HTTP/2 C Library &mdash; nghttp2 0.7.10-DEV documentation</title>
   
 
   
@@ -28,7 +28,7 @@
   
 
   
-    <link rel="top" title="nghttp2 0.7.8-DEV documentation" href="index.html"/>
+    <link rel="top" title="nghttp2 0.7.10-DEV documentation" href="index.html"/>
         <link rel="next" title="Contribution Guidelines" href="contribute.html"/>
         <link rel="prev" title="nghttp2 - HTTP/2 C Library" href="index.html"/> 
 
@@ -66,8 +66,8 @@
 <li class="toctree-l2"><a class="reference internal" href="#development-status">Development Status</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#public-test-server">Public Test Server</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#requirements">Requirements</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#build-from-git">Build from git</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#building-documentation">Building documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#building-from-git">Building from git</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#building-the-documentation">Building the documentation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#unit-tests">Unit tests</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#integration-tests">Integration tests</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#client-server-and-proxy-programs">Client, Server and Proxy programs</a></li>
@@ -216,23 +216,23 @@
             
   <div class="section" id="nghttp2-http-2-c-library">
 <h1>nghttp2 - HTTP/2 C Library<a class="headerlink" href="#nghttp2-http-2-c-library" title="Permalink to this headline">¶</a></h1>
-<p>This is an implementation of Hypertext Transfer Protocol version 2
+<p>This is an implementation of the Hypertext Transfer Protocol version 2
 in C.</p>
-<p>The framing layer of HTTP/2 is implemented as a form of reusable C
-library.  On top of that, we have implemented HTTP/2 client, server
-and proxy.  We have also developed load test and benchmarking tool for
+<p>The framing layer of HTTP/2 is implemented as a reusable C
+library.  On top of that, we have implemented an HTTP/2 client, server
+and proxy.  We have also developed load test and benchmarking tools for
 HTTP/2 and SPDY.</p>
-<p>HPACK encoder and decoder are available as public API.</p>
-<p>The experimental high level C++ library is also available.</p>
-<p>We have Python binding of this libary, but we have not covered
-everything yet.</p>
+<p>An HPACK encoder and decoder are available as a public API.</p>
+<p>An experimental high level C++ library is also available.</p>
+<p>We have Python bindings of this libary, but we do not have full
+code coverage yet.</p>
 <div class="section" id="development-status">
 <h2>Development Status<a class="headerlink" href="#development-status" title="Permalink to this headline">¶</a></h2>
 <p>We started to implement h2-14
-(<a class="reference external" href="http://tools.ietf.org/html/draft-ietf-httpbis-http2-14">http://tools.ietf.org/html/draft-ietf-httpbis-http2-14</a>), the header
+(<a class="reference external" href="http://tools.ietf.org/html/draft-ietf-httpbis-http2-14">http://tools.ietf.org/html/draft-ietf-httpbis-http2-14</a>), and header
 compression
 (<a class="reference external" href="http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-09">http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-09</a>).</p>
-<p>The nghttp2 code base was forked from spdylay project.</p>
+<p>The nghttp2 code base was forked from the spdylay project.</p>
 <table border="1" class="docutils">
 <colgroup>
 <col width="79%" />
@@ -258,7 +258,7 @@ compression
 </div>
 <div class="section" id="public-test-server">
 <h2>Public Test Server<a class="headerlink" href="#public-test-server" title="Permalink to this headline">¶</a></h2>
-<p>The following endpoints are available to try out nghttp2
+<p>The following endpoints are available to try out our nghttp2
 implementation.</p>
 <ul>
 <li><p class="first"><a class="reference external" href="https://nghttp2.org/">https://nghttp2.org/</a> (TLS + ALPN/NPN)</p>
@@ -287,15 +287,15 @@ required:</p>
 <li>sphinx (<a class="reference external" href="http://sphinx-doc.org/">http://sphinx-doc.org/</a>)</li>
 </ul>
 <p>To build and run the application programs (<tt class="docutils literal"><span class="pre">nghttp</span></tt>, <tt class="docutils literal"><span class="pre">nghttpd</span></tt> and
-<tt class="docutils literal"><span class="pre">nghttpx</span></tt>) in <tt class="docutils literal"><span class="pre">src</span></tt> directory, the following packages are
+<tt class="docutils literal"><span class="pre">nghttpx</span></tt>) in the <tt class="docutils literal"><span class="pre">src</span></tt> directory, the following packages are
 required:</p>
 <ul class="simple">
 <li>OpenSSL &gt;= 1.0.1</li>
 <li>libev &gt;= 4.15</li>
 <li>zlib &gt;= 1.2.3</li>
 </ul>
-<p>ALPN support requires unreleased version OpenSSL &gt;= 1.0.2.</p>
-<p>To enable SPDY protocol in the application program <tt class="docutils literal"><span class="pre">nghttpx</span></tt> and
+<p>ALPN support requires OpenSSL &gt;= 1.0.2 (released 22 January 2015).</p>
+<p>To enable the SPDY protocol in the application program <tt class="docutils literal"><span class="pre">nghttpx</span></tt> and
 <tt class="docutils literal"><span class="pre">h2load</span></tt>, the following package is required:</p>
 <ul class="simple">
 <li>spdylay &gt;= 1.3.0</li>
@@ -309,7 +309,7 @@ resource) in <tt class="docutils literal"><span class="pre">nghttp</span></tt>, 
 <ul class="simple">
 <li>jansson &gt;= 2.5</li>
 </ul>
-<p>To build sources under examples directory, libevent is required:</p>
+<p>To build sources under the examples directory, libevent is required:</p>
 <ul class="simple">
 <li>libevent-openssl &gt;= 2.0.8</li>
 </ul>
@@ -328,16 +328,17 @@ resource) in <tt class="docutils literal"><span class="pre">nghttp</span></tt>, 
 <li>cython &gt;= 0.19</li>
 <li>python &gt;= 2.7</li>
 </ul>
-<p>If you are using Ubuntu 14.04 LTS, you need the following packages
-installed:</p>
-<div class="highlight-c"><div class="highlight"><pre><span class="n">apt</span><span class="o">-</span><span class="n">get</span> <span class="n">install</span> <span class="n">make</span> <span class="n">binutils</span> <span class="n">autoconf</span>  <span class="n">automake</span> <span class="n">autotools</span><span class="o">-</span><span class="n">dev</span> <span class="n">libtool</span> <span class="n">pkg</span><span class="o">-</span><span class="n">config</span> <span class="n">zlib1g</span><span class="o">-</span><span class="n">dev</span> <span class="n">libcunit1</span><span class="o">-</span><span class="n">dev</span> <span class="n">libssl</span><span class="o">-</span><span class="n">dev</span> <span class="n">libxml2</span><span class="o">-</span><span class="n">dev</span> <span class="n">libev</span><span class="o">-</span><span class="n">dev</span> <span class="n">libevent</span><span class="o">-</span><span class="n">dev</span> <span class="n">libjansson</span><span class="o">-</span><span class="n">dev</span> <span class="n">libjemalloc</span><span class="o">-</span><span class="n">dev</span> <span class="n">cython</span> <span class="n">python3</span><span class="mf">.4</span><span class="o">-</span><span class="n">dev</span>
+<p>If you are using Ubuntu 14.04 LTS (trusty), run the following to install the needed packages:</p>
+<div class="highlight-c"><div class="highlight"><pre><span class="n">sudo</span> <span class="n">apt</span><span class="o">-</span><span class="n">get</span> <span class="n">install</span> <span class="n">make</span> <span class="n">binutils</span> <span class="n">autoconf</span>  <span class="n">automake</span> <span class="n">autotools</span><span class="o">-</span><span class="n">dev</span> <span class="n">libtool</span> <span class="n">pkg</span><span class="o">-</span><span class="n">config</span> \
+  <span class="n">zlib1g</span><span class="o">-</span><span class="n">dev</span> <span class="n">libcunit1</span><span class="o">-</span><span class="n">dev</span> <span class="n">libssl</span><span class="o">-</span><span class="n">dev</span> <span class="n">libxml2</span><span class="o">-</span><span class="n">dev</span> <span class="n">libev</span><span class="o">-</span><span class="n">dev</span> <span class="n">libevent</span><span class="o">-</span><span class="n">dev</span> <span class="n">libjansson</span><span class="o">-</span><span class="n">dev</span> \
+  <span class="n">libjemalloc</span><span class="o">-</span><span class="n">dev</span> <span class="n">cython</span> <span class="n">python3</span><span class="mf">.4</span><span class="o">-</span><span class="n">dev</span>
 </pre></div>
 </div>
 <p>spdylay is not packaged in Ubuntu, so you need to build it yourself:
 <a class="reference external" href="http://tatsuhiro-t.github.io/spdylay/">http://tatsuhiro-t.github.io/spdylay/</a></p>
 </div>
-<div class="section" id="build-from-git">
-<h2>Build from git<a class="headerlink" href="#build-from-git" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="building-from-git">
+<h2>Building from git<a class="headerlink" href="#building-from-git" title="Permalink to this headline">¶</a></h2>
 <p>Building from git is easy, but please be sure that at least autoconf 2.68 is
 used:</p>
 <div class="highlight-c"><div class="highlight"><pre>$ autoreconf -i
@@ -347,22 +348,22 @@ $ ./configure
 $ make
 </pre></div>
 </div>
-<p>To compile source code, gcc &gt;= 4.8.3 or clang &gt;= 3.4 is required.</p>
+<p>To compile the source code, gcc &gt;= 4.8.3 or clang &gt;= 3.4 is required.</p>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
-<p class="last">Mac OS X users may need <tt class="docutils literal"><span class="pre">--disable-threads</span></tt> configure option to
-disable multi threading in nghttpd, nghttpx and h2load to prevent
-them from crashing.  Patch is welcome to make multi threading work
+<p class="last">Mac OS X users may need the <tt class="docutils literal"><span class="pre">--disable-threads</span></tt> configure option to
+disable multi-threading in nghttpd, nghttpx and h2load to prevent
+them from crashing. A patch is welcome to make multi threading work
 on Mac OS X platform.</p>
 </div>
 </div>
-<div class="section" id="building-documentation">
-<h2>Building documentation<a class="headerlink" href="#building-documentation" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="building-the-documentation">
+<h2>Building the documentation<a class="headerlink" href="#building-the-documentation" title="Permalink to this headline">¶</a></h2>
 <div class="admonition note">
 <p class="first admonition-title">Note</p>
 <p class="last">Documentation is still incomplete.</p>
 </div>
-<p>To build documentation, run:</p>
+<p>To build the documentation, run:</p>
 <div class="highlight-c"><div class="highlight"><pre>$ make html
 </pre></div>
 </div>
@@ -377,8 +378,8 @@ on Mac OS X platform.</p>
 </div>
 <div class="section" id="integration-tests">
 <h2>Integration tests<a class="headerlink" href="#integration-tests" title="Permalink to this headline">¶</a></h2>
-<p>We have the integration tests for nghttpx proxy server.  The tests are
-written in <a class="reference external" href="http://golang.org/">Go programming language</a> and uses
+<p>We have the integration tests for the nghttpx proxy server.  The tests are
+written in the <a class="reference external" href="http://golang.org/">Go programming language</a> and uses
 its testing framework.  We depend on the following libraries:</p>
 <ul class="simple">
 <li><a class="reference external" href="https://github.com/bradfitz/http2">https://github.com/bradfitz/http2</a></li>
@@ -395,11 +396,11 @@ following command under <tt class="docutils literal"><span class="pre">integrati
 <div class="highlight-c"><div class="highlight"><pre>$ make it
 </pre></div>
 </div>
-<p>Inside the tests, we use port 3009 to run test subject server.</p>
+<p>Inside the tests, we use port 3009 to run the test subject server.</p>
 </div>
 <div class="section" id="client-server-and-proxy-programs">
 <h2>Client, Server and Proxy programs<a class="headerlink" href="#client-server-and-proxy-programs" title="Permalink to this headline">¶</a></h2>
-<p>The src directory contains HTTP/2 client, server and proxy programs.</p>
+<p>The <tt class="docutils literal"><span class="pre">src</span></tt> directory contains the HTTP/2 client, server and proxy programs.</p>
 <div class="section" id="nghttp-client">
 <h3>nghttp - client<a class="headerlink" href="#nghttp-client" title="Permalink to this headline">¶</a></h3>
 <p><tt class="docutils literal"><span class="pre">nghttp</span></tt> is a HTTP/2 client.  It can connect to the HTTP/2 server
@@ -543,7 +544,7 @@ Upgrade: h2c-14
           (last_stream_id=0, error_code=NO_ERROR(0), opaque_data(0)=[])
 </pre></div>
 </div>
-<p>With <tt class="docutils literal"><span class="pre">-s</span></tt> option, <tt class="docutils literal"><span class="pre">nghttp</span></tt> prints out some timing information for
+<p>Using the <tt class="docutils literal"><span class="pre">-s</span></tt> option, <tt class="docutils literal"><span class="pre">nghttp</span></tt> prints out some timing information for
 requests, sorted by completion time:</p>
 <div class="highlight-c"><div class="highlight"><pre>$ nghttp -nas https://nghttp2.org/
 ***** Statistics *****
@@ -569,19 +570,19 @@ complete  request    process  code size request path
  +88.52ms   +11.17ms  77.36ms  200 174K /images/posts/without-pri-blog.png
 </pre></div>
 </div>
-<p>With <tt class="docutils literal"><span class="pre">-r</span></tt> option, <tt class="docutils literal"><span class="pre">nghttp</span></tt> writes more detailed timing data to
-given file in HAR format.</p>
+<p>Using the <tt class="docutils literal"><span class="pre">-r</span></tt> option, <tt class="docutils literal"><span class="pre">nghttp</span></tt> writes more detailed timing data to
+the given file in HAR format.</p>
 </div>
 <div class="section" id="nghttpd-server">
 <h3>nghttpd - server<a class="headerlink" href="#nghttpd-server" title="Permalink to this headline">¶</a></h3>
 <p><tt class="docutils literal"><span class="pre">nghttpd</span></tt> is a multi-threaded static web server.</p>
 <p>By default, it uses SSL/TLS connection.  Use <tt class="docutils literal"><span class="pre">--no-tls</span></tt> option to
 disable it.</p>
-<p><tt class="docutils literal"><span class="pre">nghttpd</span></tt> only accepts the HTTP/2 connection via NPN/ALPN or direct
-HTTP/2 connection.  No HTTP Upgrade is supported.</p>
-<p><tt class="docutils literal"><span class="pre">-p</span></tt> option allows users to configure server push.</p>
-<p>Just like <tt class="docutils literal"><span class="pre">nghttp</span></tt>, it has verbose output mode for framing
-information.  Here is sample output from <tt class="docutils literal"><span class="pre">nghttpd</span></tt> server:</p>
+<p><tt class="docutils literal"><span class="pre">nghttpd</span></tt> only accepts HTTP/2 connections via NPN/ALPN or direct
+HTTP/2 connections.  No HTTP Upgrade is supported.</p>
+<p>The <tt class="docutils literal"><span class="pre">-p</span></tt> option allows users to configure server push.</p>
+<p>Just like <tt class="docutils literal"><span class="pre">nghttp</span></tt>, it has a verbose output mode for framing
+information.  Here is sample output from <tt class="docutils literal"><span class="pre">nghttpd</span></tt>:</p>
 <div class="highlight-c"><div class="highlight"><pre>$ nghttpd --no-tls -v 8080
 IPv4: listen on port 8080
 IPv6: listen on port 8080
@@ -635,8 +636,8 @@ IPv6: listen on port 8080
 <div class="section" id="nghttpx-proxy">
 <h3>nghttpx - proxy<a class="headerlink" href="#nghttpx-proxy" title="Permalink to this headline">¶</a></h3>
 <p><tt class="docutils literal"><span class="pre">nghttpx</span></tt> is a multi-threaded reverse proxy for <tt class="docutils literal"><span class="pre">h2-14</span></tt>, SPDY and
-HTTP/1.1 and powers nghttp2.org site and supports HTTP/2 server push.
-It has several operation modes:</p>
+HTTP/1.1, and powers <a class="reference external" href="http://nghttp2.org">http://nghttp2.org</a> and supports HTTP/2 server push.
+It has several operational modes:</p>
 <table border="1" class="docutils">
 <colgroup>
 <col width="25%" />
@@ -681,16 +682,16 @@ It has several operation modes:</p>
 </table>
 <p>The interesting mode at the moment is the default mode.  It works like
 a reverse proxy and listens for <tt class="docutils literal"><span class="pre">h2-14</span></tt>, SPDY and HTTP/1.1 and can
-be deployed SSL/TLS terminator for existing web server.</p>
+be deployed as a SSL/TLS terminator for existing web server.</p>
 <p>The default mode, <tt class="docutils literal"><span class="pre">--http2-proxy</span></tt> and <tt class="docutils literal"><span class="pre">--http2-bridge</span></tt> modes use
 SSL/TLS in the frontend connection by default.  To disable SSL/TLS,
-use <tt class="docutils literal"><span class="pre">--frontend-no-tls</span></tt> option.  If that option is used, SPDY is
-disabled in the frontend and incoming HTTP/1.1 connection can be
+use the <tt class="docutils literal"><span class="pre">--frontend-no-tls</span></tt> option.  If that option is used, SPDY is
+disabled in the frontend and incoming HTTP/1.1 connections can be
 upgraded to HTTP/2 through HTTP Upgrade.</p>
 <p>The <tt class="docutils literal"><span class="pre">--http2-bridge</span></tt>, <tt class="docutils literal"><span class="pre">--client</span></tt> and <tt class="docutils literal"><span class="pre">--client-proxy</span></tt> modes use
 SSL/TLS in the backend connection by deafult.  To disable SSL/TLS, use
-<tt class="docutils literal"><span class="pre">--backend-no-tls</span></tt> option.</p>
-<p><tt class="docutils literal"><span class="pre">nghttpx</span></tt> supports configuration file.  See <tt class="docutils literal"><span class="pre">--conf</span></tt> option and
+the <tt class="docutils literal"><span class="pre">--backend-no-tls</span></tt> option.</p>
+<p><tt class="docutils literal"><span class="pre">nghttpx</span></tt> supports a configuration file.  See the <tt class="docutils literal"><span class="pre">--conf</span></tt> option and
 sample configuration file <tt class="docutils literal"><span class="pre">nghttpx.conf.sample</span></tt>.</p>
 <p>In the default mode, (without any of <tt class="docutils literal"><span class="pre">--http2-proxy</span></tt>,
 <tt class="docutils literal"><span class="pre">--http2-bridge</span></tt>, <tt class="docutils literal"><span class="pre">--client-proxy</span></tt> and <tt class="docutils literal"><span class="pre">--client</span></tt> options),
@@ -699,47 +700,47 @@ sample configuration file <tt class="docutils literal"><span class="pre">nghttpx
                                       <span class="p">[</span><span class="n">reverse</span> <span class="n">proxy</span><span class="p">]</span>
 </pre></div>
 </div>
-<p>With <tt class="docutils literal"><span class="pre">--http2-proxy</span></tt> option, it works as so called secure proxy (aka
+<p>With the <tt class="docutils literal"><span class="pre">--http2-proxy</span></tt> option, it works as a so called secure proxy (aka
 SPDY proxy):</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="n">Client</span> <span class="o">&lt;--</span> <span class="p">(</span><span class="n">HTTP</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">SPDY</span><span class="p">,</span> <span class="n">HTTP</span><span class="o">/</span><span class="mf">1.1</span><span class="p">)</span> <span class="o">--&gt;</span> <span class="n">nghttpx</span> <span class="o">&lt;--</span> <span class="p">(</span><span class="n">HTTP</span><span class="o">/</span><span class="mf">1.1</span><span class="p">)</span> <span class="o">--&gt;</span> <span class="n">Proxy</span>
                                        <span class="p">[</span><span class="n">secure</span> <span class="n">proxy</span><span class="p">]</span>          <span class="p">(</span><span class="n">e</span><span class="p">.</span><span class="n">g</span><span class="p">.,</span> <span class="n">Squid</span><span class="p">,</span> <span class="n">ATS</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>The <tt class="docutils literal"><span class="pre">Client</span></tt> in the above needs to be configured to use
+<p>The <tt class="docutils literal"><span class="pre">Client</span></tt> in the above example needs to be configured to use
 <tt class="docutils literal"><span class="pre">nghttpx</span></tt> as secure proxy.</p>
 <p>At the time of this writing, Chrome is the only browser which supports
-secure proxy.  The one way to configure Chrome to use secure proxy is
-create proxy.pac script like this:</p>
+secure proxy.  One way to configure Chrome to use a secure proxy is
+to create a proxy.pac script like this:</p>
 <div class="highlight-javascript"><div class="highlight"><pre><span class="kd">function</span> <span class="nx">FindProxyForURL</span><span class="p">(</span><span class="nx">url</span><span class="p">,</span> <span class="nx">host</span><span class="p">)</span> <span class="p">{</span>
     <span class="k">return</span> <span class="s2">&quot;HTTPS SERVERADDR:PORT&quot;</span><span class="p">;</span>
 <span class="p">}</span>
 </pre></div>
 </div>
 <p><tt class="docutils literal"><span class="pre">SERVERADDR</span></tt> and <tt class="docutils literal"><span class="pre">PORT</span></tt> is the hostname/address and port of the
-machine nghttpx is running.  Please note that Chrome requires valid
+machine nghttpx is running on.  Please note that Chrome requires a valid
 certificate for secure proxy.</p>
 <p>Then run Chrome with the following arguments:</p>
 <div class="highlight-c"><div class="highlight"><pre>$ google-chrome --proxy-pac-url=file:///path/to/proxy.pac --use-npn
 </pre></div>
 </div>
 <p>With <tt class="docutils literal"><span class="pre">--http2-bridge</span></tt>, it accepts HTTP/2, SPDY and HTTP/1.1
-connections and communicates with backend in HTTP/2:</p>
+connections and communicates with the backend in HTTP/2:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="n">Client</span> <span class="o">&lt;--</span> <span class="p">(</span><span class="n">HTTP</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">SPDY</span><span class="p">,</span> <span class="n">HTTP</span><span class="o">/</span><span class="mf">1.1</span><span class="p">)</span> <span class="o">--&gt;</span> <span class="n">nghttpx</span> <span class="o">&lt;--</span> <span class="p">(</span><span class="n">HTTP</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span> <span class="o">--&gt;</span> <span class="n">Web</span> <span class="n">or</span> <span class="n">HTTP</span><span class="o">/</span><span class="mi">2</span> <span class="n">Proxy</span> <span class="n">etc</span>
                                                                      <span class="p">(</span><span class="n">e</span><span class="p">.</span><span class="n">g</span><span class="p">.,</span> <span class="n">nghttpx</span> <span class="o">-</span><span class="n">s</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>With <tt class="docutils literal"><span class="pre">--client-proxy</span></tt> option, it works as forward proxy and expects
-that the backend is HTTP/2 proxy:</p>
+<p>With <tt class="docutils literal"><span class="pre">--client-proxy</span></tt>, it works as a forward proxy and expects
+that the backend is an HTTP/2 proxy:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="n">Client</span> <span class="o">&lt;--</span> <span class="p">(</span><span class="n">HTTP</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">HTTP</span><span class="o">/</span><span class="mf">1.1</span><span class="p">)</span> <span class="o">--&gt;</span> <span class="n">nghttpx</span> <span class="o">&lt;--</span> <span class="p">(</span><span class="n">HTTP</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span> <span class="o">--&gt;</span> <span class="n">HTTP</span><span class="o">/</span><span class="mi">2</span> <span class="n">Proxy</span>
                                  <span class="p">[</span><span class="n">forward</span> <span class="n">proxy</span><span class="p">]</span>               <span class="p">(</span><span class="n">e</span><span class="p">.</span><span class="n">g</span><span class="p">.,</span> <span class="n">nghttpx</span> <span class="o">-</span><span class="n">s</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>The <tt class="docutils literal"><span class="pre">Client</span></tt> needs to be configured to use nghttpx as forward
+<p>The <tt class="docutils literal"><span class="pre">Client</span></tt> needs to be configured to use nghttpx as a forward
 proxy.  The frontend HTTP/1.1 connection can be upgraded to HTTP/2
 through HTTP Upgrade.  With the above configuration, one can use
 HTTP/1.1 client to access and test their HTTP/2 servers.</p>
-<p>With <tt class="docutils literal"><span class="pre">--client</span></tt> option, it works as reverse proxy and expects that
-the backend is HTTP/2 Web server:</p>
+<p>With <tt class="docutils literal"><span class="pre">--client</span></tt>, it works as a reverse proxy and expects that
+the backend is an HTTP/2 Web server:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="n">Client</span> <span class="o">&lt;--</span> <span class="p">(</span><span class="n">HTTP</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">HTTP</span><span class="o">/</span><span class="mf">1.1</span><span class="p">)</span> <span class="o">--&gt;</span> <span class="n">nghttpx</span> <span class="o">&lt;--</span> <span class="p">(</span><span class="n">HTTP</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span> <span class="o">--&gt;</span> <span class="n">Web</span> <span class="n">Server</span>
                                 <span class="p">[</span><span class="n">reverse</span> <span class="n">proxy</span><span class="p">]</span>
 </pre></div>
@@ -747,11 +748,11 @@ the backend is HTTP/2 Web server:</p>
 <p>The frontend HTTP/1.1 connection can be upgraded to HTTP/2
 through HTTP Upgrade.</p>
 <p>For the operation modes which talk to the backend in HTTP/2 over
-SSL/TLS, the backend connections can be tunneled through HTTP proxy.
-The proxy is specified using <tt class="docutils literal"><span class="pre">--backend-http-proxy-uri</span></tt> option.  The
-following figure illustrates the example of <tt class="docutils literal"><span class="pre">--http2-bridge</span></tt> and
+SSL/TLS, the backend connections can be tunneled through an HTTP proxy.
+The proxy is specified using <tt class="docutils literal"><span class="pre">--backend-http-proxy-uri</span></tt>.  The
+following figure illustrates the example of the <tt class="docutils literal"><span class="pre">--http2-bridge</span></tt> and
 <tt class="docutils literal"><span class="pre">--backend-http-proxy-uri</span></tt> options to talk to the outside HTTP/2
-proxy through HTTP proxy:</p>
+proxy through an HTTP proxy:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="n">Client</span> <span class="o">&lt;--</span> <span class="p">(</span><span class="n">HTTP</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">SPDY</span><span class="p">,</span> <span class="n">HTTP</span><span class="o">/</span><span class="mf">1.1</span><span class="p">)</span> <span class="o">--&gt;</span> <span class="n">nghttpx</span> <span class="o">&lt;--</span> <span class="p">(</span><span class="n">HTTP</span><span class="o">/</span><span class="mi">2</span><span class="p">)</span> <span class="o">--</span>
 
         <span class="o">--===================---&gt;</span> <span class="n">HTTP</span><span class="o">/</span><span class="mi">2</span> <span class="n">Proxy</span>
@@ -763,7 +764,7 @@ proxy through HTTP proxy:</p>
 <div class="section" id="benchmarking-tool">
 <h2>Benchmarking tool<a class="headerlink" href="#benchmarking-tool" title="Permalink to this headline">¶</a></h2>
 <p>The <tt class="docutils literal"><span class="pre">h2load</span></tt> program is a benchmarking tool for HTTP/2 and SPDY.
-The SPDY support is enabled if the program was built with spdylay
+The SPDY support is enabled if the program was built with the spdylay
 library.  The UI of <tt class="docutils literal"><span class="pre">h2load</span></tt> is heavily inspired by <tt class="docutils literal"><span class="pre">weighttp</span></tt>
 (<a class="reference external" href="https://github.com/lighttpd/weighttp">https://github.com/lighttpd/weighttp</a>).  The typical usage is as
 follows:</p>
@@ -791,34 +792,34 @@ traffic: 414200800 bytes total, 2723100 bytes headers, 409600000 bytes data
 time for request:   283.86ms       1.46s    659.70ms    150.87ms    84.68%
 </pre></div>
 </div>
-<p>The above example issued total 100000 requests, using 100 concurrent
-clients (in other words, 100 HTTP/2 sessions), and maximum 100 streams
-per client.  With <tt class="docutils literal"><span class="pre">-t</span></tt> option, <tt class="docutils literal"><span class="pre">h2load</span></tt> will use multiple native
-threads to avoid saturating single core on client side.</p>
+<p>The above example issued total 100,000 requests, using 100 concurrent
+clients (in other words, 100 HTTP/2 sessions), and a maximum of 100 streams
+per client.  With the <tt class="docutils literal"><span class="pre">-t</span></tt> option, <tt class="docutils literal"><span class="pre">h2load</span></tt> will use multiple native
+threads to avoid saturating a single core on client side.</p>
 <div class="admonition warning">
 <p class="first admonition-title">Warning</p>
 <p class="last"><strong>Don't use this tool against publicly available servers.</strong> That is
-considered a DOS attack.  Please only use against your private
+considered a DOS attack.  Please only use it against your private
 servers.</p>
 </div>
 </div>
 <div class="section" id="hpack-tools">
 <h2>HPACK tools<a class="headerlink" href="#hpack-tools" title="Permalink to this headline">¶</a></h2>
-<p>The <tt class="docutils literal"><span class="pre">src</span></tt> directory contains HPACK tools.  The <tt class="docutils literal"><span class="pre">deflatehd</span></tt> is a
-command-line header compression tool.  The <tt class="docutils literal"><span class="pre">inflatehd</span></tt> is
+<p>The <tt class="docutils literal"><span class="pre">src</span></tt> directory contains the HPACK tools.  The <tt class="docutils literal"><span class="pre">deflatehd</span></tt> program is a
+command-line header compression tool.  The <tt class="docutils literal"><span class="pre">inflatehd</span></tt> program is a
 command-line header decompression tool.  Both tools read input from
-stdin and write output to stdout.  The errors are written to stderr.
-They take JSON as input and output.  We use (mostly) same JSON data
-format described at <a class="reference external" href="https://github.com/http2jp/hpack-test-case">https://github.com/http2jp/hpack-test-case</a></p>
+stdin and write output to stdout.  Errors are written to stderr.
+They take JSON as input and output.  We  (mostly) use the same JSON data
+format described at <a class="reference external" href="https://github.com/http2jp/hpack-test-case">https://github.com/http2jp/hpack-test-case</a>.</p>
 <div class="section" id="deflatehd-header-compressor">
 <h3>deflatehd - header compressor<a class="headerlink" href="#deflatehd-header-compressor" title="Permalink to this headline">¶</a></h3>
-<p>The <tt class="docutils literal"><span class="pre">deflatehd</span></tt> reads JSON data or HTTP/1-style header fields from
+<p>The <tt class="docutils literal"><span class="pre">deflatehd</span></tt> program reads JSON data or HTTP/1-style header fields from
 stdin and outputs compressed header block in JSON.</p>
-<p>For the JSON input, the root JSON object must include <tt class="docutils literal"><span class="pre">cases</span></tt> key.
+<p>For the JSON input, the root JSON object must include a <tt class="docutils literal"><span class="pre">cases</span></tt> key.
 Its value has to include the sequence of input header set.  They share
 the same compression context and are processed in the order they
 appear.  Each item in the sequence is a JSON object and it must
-include <tt class="docutils literal"><span class="pre">headers</span></tt> key.  Its value is an array of a JSON object,
+include a <tt class="docutils literal"><span class="pre">headers</span></tt> key.  Its value is an array of JSON objects,
 which includes exactly one name/value pair.</p>
 <p>Example:</p>
 <div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
@@ -840,8 +841,8 @@ which includes exactly one name/value pair.</p>
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>With <tt class="docutils literal"><span class="pre">-t</span></tt> option, the program can accept more familiar HTTP/1 style
-header field block.  Each header set is delimited by empty line:</p>
+<p>With the <tt class="docutils literal"><span class="pre">-t</span></tt> option, the program can accept more familiar HTTP/1 style
+header field blocks.  Each header set is delimited by an empty line:</p>
 <p>Example:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="o">:</span><span class="nl">method</span><span class="p">:</span> <span class="nl">GET</span>
 <span class="p">:</span><span class="nl">scheme</span><span class="p">:</span> <span class="nl">https</span>
@@ -851,23 +852,23 @@ header field block.  Each header set is delimited by empty line:</p>
 <span class="n">user</span><span class="o">-</span><span class="nl">agent</span><span class="p">:</span> <span class="n">nghttp2</span>
 </pre></div>
 </div>
-<p>The output is JSON object.  It should include <tt class="docutils literal"><span class="pre">cases</span></tt> key and its
-value is an array of JSON object, which has at least following keys:</p>
+<p>The output is in JSON object.  It should include a <tt class="docutils literal"><span class="pre">cases</span></tt> key and its
+value is an array of JSON objects, which has at least the following keys:</p>
 <dl class="docutils">
 <dt>seq</dt>
 <dd>The index of header set in the input.</dd>
 <dt>input_length</dt>
-<dd>The sum of length of name/value pair in the input.</dd>
+<dd>The sum of the length of the name/value pairs in the input.</dd>
 <dt>output_length</dt>
-<dd>The length of compressed header block.</dd>
+<dd>The length of the compressed header block.</dd>
 <dt>percentage_of_original_size</dt>
 <dd><tt class="docutils literal"><span class="pre">input_length</span></tt> / <tt class="docutils literal"><span class="pre">output_length</span></tt> * 100</dd>
 <dt>wire</dt>
-<dd>The compressed header block in hex string.</dd>
+<dd>The compressed header block as a hex string.</dd>
 <dt>headers</dt>
 <dd>The input header set.</dd>
 <dt>header_table_size</dt>
-<dd>The header table size adjusted before deflating header set.</dd>
+<dd>The header table size adjusted before deflating the header set.</dd>
 </dl>
 <p>Examples:</p>
 <div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
@@ -930,7 +931,7 @@ value is an array of JSON object, which has at least following keys:</p>
 </div>
 <p>The output can be used as the input for <tt class="docutils literal"><span class="pre">inflatehd</span></tt> and
 <tt class="docutils literal"><span class="pre">deflatehd</span></tt>.</p>
-<p>With <tt class="docutils literal"><span class="pre">-d</span></tt> option, the extra <tt class="docutils literal"><span class="pre">header_table</span></tt> key is added and its
+<p>With the <tt class="docutils literal"><span class="pre">-d</span></tt> option, the extra <tt class="docutils literal"><span class="pre">header_table</span></tt> key is added and its
 associated value includes the state of dynamic header table after the
 corresponding header set was processed.  The value includes at least
 the following keys:</p>
@@ -950,8 +951,8 @@ entry overhead.</dd>
 <dd>The sum of the spaces entries occupied within
 <tt class="docutils literal"><span class="pre">max_deflate_size</span></tt>.</dd>
 <dt>max_deflate_size</dt>
-<dd>The maximum header table size encoder uses.  This can be smaller
-than <tt class="docutils literal"><span class="pre">max_size</span></tt>.  In this case, encoder only uses up to first
+<dd>The maximum header table size the encoder uses.  This can be smaller
+than <tt class="docutils literal"><span class="pre">max_size</span></tt>.  In this case, the encoder only uses up to first
 <tt class="docutils literal"><span class="pre">max_deflate_size</span></tt> buffer.  Since the header table size is still
 <tt class="docutils literal"><span class="pre">max_size</span></tt>, the encoder has to keep track of entries ouside the
 <tt class="docutils literal"><span class="pre">max_deflate_size</span></tt> but inside the <tt class="docutils literal"><span class="pre">max_size</span></tt> and make sure
@@ -1112,13 +1113,13 @@ that they are no longer referenced.</dd>
 </div>
 <div class="section" id="inflatehd-header-decompressor">
 <h3>inflatehd - header decompressor<a class="headerlink" href="#inflatehd-header-decompressor" title="Permalink to this headline">¶</a></h3>
-<p>The <tt class="docutils literal"><span class="pre">inflatehd</span></tt> reads JSON data from stdin and outputs decompressed
+<p>The <tt class="docutils literal"><span class="pre">inflatehd</span></tt> program reads JSON data from stdin and outputs decompressed
 name/value pairs in JSON.</p>
-<p>The root JSON object must include <tt class="docutils literal"><span class="pre">cases</span></tt> key.  Its value has to
-include the sequence of compressed header block.  They share the same
+<p>The root JSON object must include the <tt class="docutils literal"><span class="pre">cases</span></tt> key.  Its value has to
+include the sequence of compressed header blocks.  They share the same
 compression context and are processed in the order they appear.  Each
-item in the sequence is a JSON object and it must have at least
-<tt class="docutils literal"><span class="pre">wire</span></tt> key.  Its value is a compressed header block in hex string.</p>
+item in the sequence is a JSON object and it must have at least a
+<tt class="docutils literal"><span class="pre">wire</span></tt> key.  Its value is a compressed header block as a hex string.</p>
 <p>Example:</p>
 <div class="highlight-json"><div class="highlight"><pre><span class="p">{</span>
   <span class="nt">&quot;cases&quot;</span><span class="p">:</span>
@@ -1129,15 +1130,15 @@ item in the sequence is a JSON object and it must have at least
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>The output is JSON object.  It should include <tt class="docutils literal"><span class="pre">cases</span></tt> key and its
-value is an array of JSON object, which has at least following keys:</p>
+<p>The output is a JSON object.  It should include a <tt class="docutils literal"><span class="pre">cases</span></tt> key and its
+value is an array of JSON objects, which has at least following keys:</p>
 <dl class="docutils">
 <dt>seq</dt>
-<dd>The index of header set in the input.</dd>
+<dd>The index of the header set in the input.</dd>
 <dt>headers</dt>
-<dd>The JSON array includes decompressed name/value pairs.</dd>
+<dd>A JSON array that includes decompressed name/value pairs.</dd>
 <dt>wire</dt>
-<dd>The compressed header block in hex string.</dd>
+<dd>The compressed header block as a hex string.</dd>
 <dt>header_table_size</dt>
 <dd>The header table size adjusted before inflating compressed header
 block.</dd>
@@ -1197,8 +1198,8 @@ block.</dd>
 </div>
 <p>The output can be used as the input for <tt class="docutils literal"><span class="pre">deflatehd</span></tt> and
 <tt class="docutils literal"><span class="pre">inflatehd</span></tt>.</p>
-<p>With <tt class="docutils literal"><span class="pre">-d</span></tt> option, the extra <tt class="docutils literal"><span class="pre">header_table</span></tt> key is added and its
-associated value includes the state of dynamic header table after the
+<p>With the <tt class="docutils literal"><span class="pre">-d</span></tt> option, the extra <tt class="docutils literal"><span class="pre">header_table</span></tt> key is added and its
+associated value includes the state of the dynamic header table after the
 corresponding header set was processed.  The format is the same as
 <tt class="docutils literal"><span class="pre">deflatehd</span></tt>.</p>
 </div>
@@ -1207,9 +1208,9 @@ corresponding header set was processed.  The format is the same as
 <h2>libnghttp2_asio: High level HTTP/2 C++ library<a class="headerlink" href="#libnghttp2-asio-high-level-http-2-c-library" title="Permalink to this headline">¶</a></h2>
 <p>libnghttp2_asio is C++ library built on top of libnghttp2 and provides
 high level abstraction API to build HTTP/2 applications.  It depends
-on Boost::ASIO library and OpenSSL.  Currently libnghttp2_asio
-provides client and server API.</p>
-<p>libnghttp2_asio is not built by default.  Use <tt class="docutils literal"><span class="pre">--enable-asio-lib</span></tt>
+on the Boost::ASIO library and OpenSSL.  Currently libnghttp2_asio
+provides both client and server APIs.</p>
+<p>libnghttp2_asio is not built by default.  Use the <tt class="docutils literal"><span class="pre">--enable-asio-lib</span></tt>
 configure flag to build libnghttp2_asio.  The required Boost libraries
 are:</p>
 <ul class="simple">
@@ -1217,9 +1218,9 @@ are:</p>
 <li>Boost::System</li>
 <li>Boost::Thread</li>
 </ul>
-<p>Server API is designed to build HTTP/2 server very easily to utilize
-C++11 anonymous function and closure.  The bare minimum example of
-HTTP/2 server looks like this:</p>
+<p>The server API is designed to build an HTTP/2 server very easily to utilize
+C++11 anonymous functions and closures.  The bare minimum example of
+an HTTP/2 server looks like this:</p>
 <div class="highlight-cpp"><div class="highlight"><pre><span class="cp">#include &lt;nghttp2/asio_http2_server.h&gt;</span>
 
 <span class="k">using</span> <span class="k">namespace</span> <span class="n">nghttp2</span><span class="o">::</span><span class="n">asio_http2</span><span class="p">;</span>
@@ -1240,7 +1241,7 @@ HTTP/2 server looks like this:</p>
 <span class="p">}</span>
 </pre></div>
 </div>
-<p>Here is the sample code for client API use:</p>
+<p>Here is sample code to use the client API:</p>
 <div class="highlight-cpp"><div class="highlight"><pre><span class="cp">#include &lt;iostream&gt;</span>
 
 <span class="cp">#include &lt;nghttp2/asio_http2_client.h&gt;</span>
@@ -1294,16 +1295,16 @@ HTTP/2 server looks like this:</p>
 </div>
 <div class="section" id="python-bindings">
 <h2>Python bindings<a class="headerlink" href="#python-bindings" title="Permalink to this headline">¶</a></h2>
-<p>This <tt class="docutils literal"><span class="pre">python</span></tt> directory contains nghttp2 Python bindings.  The
+<p>The <tt class="docutils literal"><span class="pre">python</span></tt> directory contains nghttp2 Python bindings.  The
 bindings currently provide HPACK compressor and decompressor classes
-and HTTP/2 server.</p>
+and an HTTP/2 server.</p>
 <p>The extension module is called <tt class="docutils literal"><span class="pre">nghttp2</span></tt>.</p>
 <p><tt class="docutils literal"><span class="pre">make</span></tt> will build the bindings and target Python version is
-determined by configure script.  If the detected Python version is not
-what you expect, specify a path to Python executable in <tt class="docutils literal"><span class="pre">PYTHON</span></tt>
+determined by the <tt class="docutils literal"><span class="pre">configure</span></tt> script.  If the detected Python version is not
+what you expect, specify a path to Python executable in a <tt class="docutils literal"><span class="pre">PYTHON</span></tt>
 variable as an argument to configure script (e.g., <tt class="docutils literal"><span class="pre">./configure</span>
 <span class="pre">PYTHON=/usr/bin/python3.4</span></tt>).</p>
-<p>The following example code illustrates basic usage of HPACK compressor
+<p>The following example code illustrates basic usage of the HPACK compressor
 and decompressor in Python:</p>
 <div class="highlight-python"><div class="highlight"><pre><span class="kn">import</span> <span class="nn">binascii</span>
 <span class="kn">import</span> <span class="nn">nghttp2</span>
@@ -1326,16 +1327,16 @@ must be a subclass of <tt class="docutils literal"><span class="pre">nghttp2.Bas
 By default, it does nothing.  It must be subclassed to handle each
 event callback method.</p>
 <p>The first callback method invoked is <tt class="docutils literal"><span class="pre">on_headers()</span></tt>.  It is called
-when HEADERS frame, which includes request header fields, has arrived.</p>
-<p>If request has request body, <tt class="docutils literal"><span class="pre">on_data(data)</span></tt> is invoked for each
+when HEADERS frame, which includes the request header fields, has arrived.</p>
+<p>If the request has a request body, <tt class="docutils literal"><span class="pre">on_data(data)</span></tt> is invoked for each
 chunk of received data.</p>
-<p>When whole request is received, <tt class="docutils literal"><span class="pre">on_request_done()</span></tt> is invoked.</p>
-<p>When stream is closed, <tt class="docutils literal"><span class="pre">on_close(error_code)</span></tt> is called.</p>
-<p>The application can send response using <tt class="docutils literal"><span class="pre">send_response()</span></tt> method.
+<p>Once the entire request is received, <tt class="docutils literal"><span class="pre">on_request_done()</span></tt> is invoked.</p>
+<p>When the stream is closed, <tt class="docutils literal"><span class="pre">on_close(error_code)</span></tt> is called.</p>
+<p>The application can send a response using <tt class="docutils literal"><span class="pre">send_response()</span></tt> method.
 It can be used in <tt class="docutils literal"><span class="pre">on_headers()</span></tt>, <tt class="docutils literal"><span class="pre">on_data()</span></tt> or
 <tt class="docutils literal"><span class="pre">on_request_done()</span></tt>.</p>
-<p>The application can push resource using <tt class="docutils literal"><span class="pre">push()</span></tt> method.  It must be
-used before <tt class="docutils literal"><span class="pre">send_response()</span></tt> call.</p>
+<p>The application can push resources using the <tt class="docutils literal"><span class="pre">push()</span></tt> method.  It must be
+used before the <tt class="docutils literal"><span class="pre">send_response()</span></tt> call.</p>
 <p>The following instance variables are available:</p>
 <dl class="docutils">
 <dt>client_address</dt>
@@ -1395,13 +1396,14 @@ project.]</p>
 <p>When contributing with code, you agree to put your changes and new
 code under the same license nghttp2 is already using unless stated and
 agreed otherwise.</p>
-<p>When changing existing source code, you do not alter the copyright of
+<p>When changing existing source code, do not alter the copyright of
 the original file(s).  The copyright will still be owned by the
 original creator(s) or those who have been assigned copyright by the
 original author(s).</p>
-<p>By submitting a patch to the nghttp2 project, you are assumed to have
-the right to the code and to be allowed by your employer or whatever
-to hand over that patch/code to us.  We will credit you for your
+<p>By submitting a patch to the nghttp2 project, you (or your employer, as
+the case may be) agree to assign the copyright of your submission to us.
+.. the above really needs to be reworded to pass legal muster.
+We will credit you for your
 changes as far as possible, to give credit but also to keep a trace
 back to who made what changes.  Please always provide us with your
 full real name when contributing!</p>
@@ -1449,7 +1451,7 @@ details.</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.7.8-DEV',
+            VERSION:'0.7.10-DEV',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  false

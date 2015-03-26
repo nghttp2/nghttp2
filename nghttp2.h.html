@@ -7,7 +7,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>nghttp2.h &mdash; nghttp2 0.7.8-DEV documentation</title>
+  <title>nghttp2.h &mdash; nghttp2 0.7.10-DEV documentation</title>
   
 
   
@@ -28,7 +28,7 @@
   
 
   
-    <link rel="top" title="nghttp2 0.7.8-DEV documentation" href="index.html"/>
+    <link rel="top" title="nghttp2 0.7.10-DEV documentation" href="index.html"/>
         <link rel="next" title="nghttp2ver.h" href="nghttp2ver.h.html"/>
         <link rel="prev" title="Python API Reference" href="python-apiref.html"/> 
 
@@ -66,8 +66,8 @@
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#development-status">Development Status</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#public-test-server">Public Test Server</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#requirements">Requirements</a></li>
-<li class="toctree-l2"><a class="reference internal" href="package_README.html#build-from-git">Build from git</a></li>
-<li class="toctree-l2"><a class="reference internal" href="package_README.html#building-documentation">Building documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#building-from-git">Building from git</a></li>
+<li class="toctree-l2"><a class="reference internal" href="package_README.html#building-the-documentation">Building the documentation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#unit-tests">Unit tests</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#integration-tests">Integration tests</a></li>
 <li class="toctree-l2"><a class="reference internal" href="package_README.html#client-server-and-proxy-programs">Client, Server and Proxy programs</a></li>
@@ -620,21 +620,27 @@
 <span class="cm"> */</span>
 <span class="k">typedef</span> <span class="k">struct</span> <span class="p">{</span>
   <span class="cm">/**</span>
-<span class="cm">   * The |name| byte string, which is not necessarily ``NULL``</span>
-<span class="cm">   * terminated.</span>
+<span class="cm">   * The |name| byte string.  If this struct is presented from library</span>
+<span class="cm">   * (e.g., :type:`nghttp2_on_frame_recv_callback`), |name| is</span>
+<span class="cm">   * guaranteed to be NULL-terminated.  When application is</span>
+<span class="cm">   * constructing this struct, |name| is not required to be</span>
+<span class="cm">   * NULL-terminated.</span>
 <span class="cm">   */</span>
   <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">name</span><span class="p">;</span>
   <span class="cm">/**</span>
-<span class="cm">   * The |value| byte string, which is not necessarily ``NULL``</span>
-<span class="cm">   * terminated.</span>
+<span class="cm">   * The |value| byte string.  If this struct is presented from</span>
+<span class="cm">   * library (e.g., :type:`nghttp2_on_frame_recv_callback`), |value|</span>
+<span class="cm">   * is guaranteed to be NULL-terminated.  When application is</span>
+<span class="cm">   * constructing this struct, |value| is not required to be</span>
+<span class="cm">   * NULL-terminated.</span>
 <span class="cm">   */</span>
   <span class="kt">uint8_t</span> <span class="o">*</span><span class="n">value</span><span class="p">;</span>
   <span class="cm">/**</span>
-<span class="cm">   * The length of the |name|.</span>
+<span class="cm">   * The length of the |name|, excluding terminating NULL.</span>
 <span class="cm">   */</span>
   <span class="kt">size_t</span> <span class="n">namelen</span><span class="p">;</span>
   <span class="cm">/**</span>
-<span class="cm">   * The length of the |value|.</span>
+<span class="cm">   * The length of the |value|, excluding terminating NULL.</span>
 <span class="cm">   */</span>
   <span class="kt">size_t</span> <span class="n">valuelen</span><span class="p">;</span>
   <span class="cm">/**</span>
@@ -1679,7 +1685,11 @@
 <span class="cm"> * :type:`nghttp2_on_frame_recv_callback` for the |frame| will not be</span>
 <span class="cm"> * invoked.</span>
 <span class="cm"> *</span>
-<span class="cm"> * The |value| may be ``NULL`` if the |valuelen| is 0.</span>
+<span class="cm"> * Both |name| and |value| are guaranteed to be NULL-terminated.  The</span>
+<span class="cm"> * |namelen| and |valuelen| do not include terminal NULL.  If</span>
+<span class="cm"> * `nghttp2_option_set_no_http_messaging()` is used with nonzero</span>
+<span class="cm"> * value, NULL character may be included in |name| or |value| before</span>
+<span class="cm"> * terminating NULL.</span>
 <span class="cm"> *</span>
 <span class="cm"> * Please note that unless `nghttp2_option_set_no_http_messaging()` is</span>
 <span class="cm"> * used, nghttp2 library does perform validation against the |name|</span>
@@ -3985,7 +3995,7 @@
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.7.8-DEV',
+            VERSION:'0.7.10-DEV',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  false
