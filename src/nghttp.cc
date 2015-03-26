@@ -2425,8 +2425,9 @@ Options:
               Don't send content-length header field.
   --no-dep    Don't send dependency based priority hint to server.
   --dep-idle  Use idle streams as anchor nodes to express priority.
-  --hexdump   Output  incoming traffic  in  `hexdump  -C` format.   If
-              SSL/TLS is used, decrypted data are used.
+  --hexdump   Display the  incoming traffic in  hexadecimal (Canonical
+              hex+ASCII display).  If SSL/TLS  is used, decrypted data
+              are used.
   --version   Display version information and exit.
   -h, --help  Display this help and exit.
 

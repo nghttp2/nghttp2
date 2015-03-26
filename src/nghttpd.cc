@@ -145,8 +145,9 @@ Options:
               include pseudo header field  (header field name starting
               with ':').  The  trailer is sent only if  a response has
               body part.  Example: --trailer 'foo: bar'.
-  --hexdump   Output  incoming traffic  in  `hexdump  -C` format.   If
-              SSL/TLS is used, decrypted data are used.
+  --hexdump   Display the  incoming traffic in  hexadecimal (Canonical
+              hex+ASCII display).  If SSL/TLS  is used, decrypted data
+              are used.
   --version   Display version information and exit.
   -h, --help  Display this help and exit.
 
