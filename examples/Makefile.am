@@ -60,7 +60,10 @@ if ENABLE_ASIO_LIB
 
 noinst_PROGRAMS += asio-sv asio-sv2 asio-cl asio-cl2
 
-ASIOCPPFLAGS = ${BOOST_CPPFLAGS} ${AM_CPPFLAGS}
+# AM_CPPFLAGS must be placed first, so that header file (e.g.,
+# nghttp2/nghttp2.h) in this package is used rather than installed
+# one.
+ASIOCPPFLAGS = ${AM_CPPFLAGS} ${BOOST_CPPFLAGS}
 ASIOLDADD = $(top_builddir)/lib/libnghttp2.la \
 	$(top_builddir)/src/libnghttp2_asio.la @JEMALLOC_LIBS@ \
 	$(top_builddir)/third-party/libhttp-parser.la \
