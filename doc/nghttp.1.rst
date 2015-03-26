@@ -147,6 +147,12 @@ OPTIONS
 
     Use idle streams as anchor nodes to express priority.
 
+.. option:: --hexdump
+
+    Display the  incoming traffic in  hexadecimal (Canonical
+    hex+ASCII display).  If SSL/TLS  is used, decrypted data
+    are used.
+
 .. option:: --version
 
     Display version information and exit.

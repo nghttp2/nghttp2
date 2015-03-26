@@ -111,6 +111,12 @@ OPTIONS
     with ':').  The  trailer is sent only if  a response has
     body part.  Example: :option:`--trailer` 'foo: bar'.
 
+.. option:: --hexdump
+
+    Display the  incoming traffic in  hexadecimal (Canonical
+    hex+ASCII display).  If SSL/TLS  is used, decrypted data
+    are used.
+
 .. option:: --version
 
     Display version information and exit.

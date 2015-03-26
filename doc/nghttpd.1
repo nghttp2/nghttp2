@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPD" "1" "March 24, 2015" "0.7.8" "nghttp2"
+.TH "NGHTTPD" "1" "March 27, 2015" "0.7.9" "nghttp2"
 .SH NAME
 nghttpd \- HTTP/2 experimental server
 .
@@ -149,6 +149,13 @@ Add a trailer  header to a response.   <HEADER> must not
 include pseudo header field  (header field name starting
 with \(aq:\(aq).  The  trailer is sent only if  a response has
 body part.  Example: \fI\%\-\-trailer\fP \(aqfoo: bar\(aq.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-hexdump
+Display the  incoming traffic in  hexadecimal (Canonical
+hex+ASCII display).  If SSL/TLS  is used, decrypted data
+are used.
 .UNINDENT
 .INDENT 0.0
 .TP

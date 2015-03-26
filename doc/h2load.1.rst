@@ -84,6 +84,11 @@ OPTIONS
 
     Default: ``h2c-14``
 
+.. option:: -d, --data=<FILE>
+
+    Post FILE to  server.  The request method  is changed to
+    POST.
+
 .. option:: -v, --verbose
 
     Output debug information.

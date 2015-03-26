@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTP" "1" "March 24, 2015" "0.7.8" "nghttp2"
+.TH "NGHTTP" "1" "March 27, 2015" "0.7.9" "nghttp2"
 .SH NAME
 nghttp \- HTTP/2 experimental client
 .
@@ -194,6 +194,13 @@ Don\(aqt send dependency based priority hint to server.
 .TP
 .B \-\-dep\-idle
 Use idle streams as anchor nodes to express priority.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-hexdump
+Display the  incoming traffic in  hexadecimal (Canonical
+hex+ASCII display).  If SSL/TLS  is used, decrypted data
+are used.
 .UNINDENT
 .INDENT 0.0
 .TP
