@@ -1178,6 +1178,12 @@ int main(int argc, char **argv) {
     exit(EXIT_FAILURE);
   }
 
+  if (config.nclients < config.nthreads) {
+    std::cerr << "-c, -t: the number of client must be greater than or equal "
+                 "to the number of threads." << std::endl;
+    exit(EXIT_FAILURE);
+  }
+
   if (config.nthreads > std::thread::hardware_concurrency()) {
     std::cerr << "-t: warning: the number of threads is greater than hardware "
               << "cores." << std::endl;
