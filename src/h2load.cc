@@ -28,6 +28,8 @@
 #include <signal.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #include <cstdio>
 #include <cassert>
@@ -57,16 +59,27 @@
 #include "util.h"
 #include "template.h"
 
+#ifndef O_BINARY
+#define O_BINARY (0)
+#endif // O_BINARY
+
 using namespace nghttp2;
 
 namespace h2load {
 
 Config::Config()
-    : addrs(nullptr), nreqs(1), nclients(1), nthreads(1),
+    : data_length(-1), addrs(nullptr), nreqs(1), nclients(1), nthreads(1),
       max_concurrent_streams(-1), window_bits(16), connection_window_bits(16),
-      no_tls_proto(PROTO_HTTP2), port(0), default_port(0), verbose(false) {}
+      no_tls_proto(PROTO_HTTP2), data_fd(-1), port(0), default_port(0),
+      verbose(false) {}
 
-Config::~Config() { freeaddrinfo(addrs); }
+Config::~Config() {
+  freeaddrinfo(addrs);
+
+  if (data_fd != -1) {
+    close(data_fd);
+  }
+}
 
 Config config;
 
@@ -95,7 +108,7 @@ void debug_nextproto_error() {
 }
 } // namespace
 
-RequestStat::RequestStat() : completed(false) {}
+RequestStat::RequestStat() : data_offset(0), completed(false) {}
 
 Stats::Stats(size_t req_todo)
     : req_todo(0), req_started(0), req_done(0), req_success(0),
@@ -987,6 +1000,9 @@ Options:
 #endif // !HAVE_SPDYLAY
   out << NGHTTP2_CLEARTEXT_PROTO_VERSION_ID << R"(
               Default: )" << NGHTTP2_CLEARTEXT_PROTO_VERSION_ID << R"(
+  -d, --data=<FILE>
+              Post FILE to  server.  The request method  is changed to
+              POST.
   -v, --verbose
               Output debug information.
   --version   Display version information and exit.
@@ -995,11 +1011,13 @@ Options:
 } // namespace
 
 int main(int argc, char **argv) {
+  std::string datafile;
   while (1) {
     static int flag = 0;
     static option long_options[] = {
         {"requests", required_argument, nullptr, 'n'},
         {"clients", required_argument, nullptr, 'c'},
+        {"data", required_argument, nullptr, 'd'},
         {"threads", required_argument, nullptr, 't'},
         {"max-concurrent-streams", required_argument, nullptr, 'm'},
         {"window-bits", required_argument, nullptr, 'w'},
@@ -1012,7 +1030,7 @@ int main(int argc, char **argv) {
         {"version", no_argument, &flag, 1},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
-    auto c = getopt_long(argc, argv, "hvW:c:m:n:p:t:w:H:i:", long_options,
+    auto c = getopt_long(argc, argv, "hvW:c:d:m:n:p:t:w:H:i:", long_options,
                          &option_index);
     if (c == -1) {
       break;
@@ -1023,6 +1041,9 @@ int main(int argc, char **argv) {
       break;
     case 'c':
       config.nclients = strtoul(optarg, nullptr, 10);
+      break;
+    case 'd':
+      datafile = optarg;
       break;
     case 't':
 #ifdef NOTHREADS
@@ -1162,6 +1183,20 @@ int main(int argc, char **argv) {
               << "cores." << std::endl;
   }
 
+  if (!datafile.empty()) {
+    config.data_fd = open(datafile.c_str(), O_RDONLY | O_BINARY);
+    if (config.data_fd == -1) {
+      std::cerr << "-d: Could not open file " << datafile << std::endl;
+      exit(EXIT_FAILURE);
+    }
+    struct stat data_stat;
+    if (fstat(config.data_fd, &data_stat) == -1) {
+      std::cerr << "-d: Could not stat file " << datafile << std::endl;
+      exit(EXIT_FAILURE);
+    }
+    config.data_length = data_stat.st_size;
+  }
+
   struct sigaction act;
   memset(&act, 0, sizeof(struct sigaction));
   act.sa_handler = SIG_IGN;
@@ -1243,7 +1278,7 @@ int main(int argc, char **argv) {
   } else {
     shared_nva.emplace_back(":authority", config.host);
   }
-  shared_nva.emplace_back(":method", "GET");
+  shared_nva.emplace_back(":method", config.data_fd == -1 ? "GET" : "POST");
 
   // list overridalbe headers
   auto override_hdrs =

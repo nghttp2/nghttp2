@@ -110,6 +110,35 @@ ssize_t send_callback(spdylay_session *session, const uint8_t *data,
 }
 } // namespace
 
+namespace {
+ssize_t file_read_callback(spdylay_session *session, int32_t stream_id,
+                           uint8_t *buf, size_t length, int *eof,
+                           spdylay_data_source *source, void *user_data) {
+  auto client = static_cast<Client *>(user_data);
+  auto config = client->worker->config;
+  auto req_stat = static_cast<RequestStat *>(
+      spdylay_session_get_stream_user_data(session, stream_id));
+
+  ssize_t nread;
+  while ((nread = pread(config->data_fd, buf, length, req_stat->data_offset)) ==
+             -1 &&
+         errno == EINTR)
+    ;
+
+  if (nread == -1) {
+    return SPDYLAY_ERR_TEMPORAL_CALLBACK_FAILURE;
+  }
+
+  req_stat->data_offset += nread;
+
+  if (nread == 0 || req_stat->data_offset == config->data_length) {
+    *eof = 1;
+  }
+
+  return nread;
+}
+} // namespace
+
 void SpdySession::on_connect() {
   spdylay_session_callbacks callbacks = {0};
   callbacks.send_callback = send_callback;
@@ -150,7 +179,10 @@ void SpdySession::submit_request(RequestStat *req_stat) {
     client_->reqidx = 0;
   }
 
-  spdylay_submit_request(session_, 0, nv.data(), nullptr, req_stat);
+  spdylay_data_provider prd{{0}, file_read_callback};
+
+  spdylay_submit_request(session_, 0, nv.data(),
+                         config->data_fd == -1 ? nullptr : &prd, req_stat);
 }
 
 int SpdySession::on_read(const uint8_t *data, size_t len) {

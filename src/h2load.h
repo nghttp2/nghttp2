@@ -60,6 +60,8 @@ struct Config {
   std::string scheme;
   std::string host;
   std::string ifile;
+  // length of upload data
+  int64_t data_length;
   addrinfo *addrs;
   size_t nreqs;
   size_t nclients;
@@ -69,6 +71,8 @@ struct Config {
   size_t window_bits;
   size_t connection_window_bits;
   enum { PROTO_HTTP2, PROTO_SPDY2, PROTO_SPDY3, PROTO_SPDY3_1 } no_tls_proto;
+  // file descriptor for upload data
+  int data_fd;
   uint16_t port;
   uint16_t default_port;
   bool verbose;
@@ -83,6 +87,8 @@ struct RequestStat {
   std::chrono::steady_clock::time_point request_time;
   // time point when stream was closed
   std::chrono::steady_clock::time_point stream_close_time;
+  // upload data length sent so far
+  int64_t data_offset;
   // true if stream was successfully closed.  This means stream was
   // not reset, but it does not mean HTTP level error (e.g., 404).
   bool completed;

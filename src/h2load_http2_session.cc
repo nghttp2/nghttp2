@@ -111,6 +111,36 @@ int before_frame_send_callback(nghttp2_session *session,
 } // namespace
 
 namespace {
+ssize_t file_read_callback(nghttp2_session *session, int32_t stream_id,
+                           uint8_t *buf, size_t length, uint32_t *data_flags,
+                           nghttp2_data_source *source, void *user_data) {
+  auto client = static_cast<Client *>(user_data);
+  auto config = client->worker->config;
+  auto req_stat = static_cast<RequestStat *>(
+      nghttp2_session_get_stream_user_data(session, stream_id));
+
+  ssize_t nread;
+  while ((nread = pread(config->data_fd, buf, length, req_stat->data_offset)) ==
+             -1 &&
+         errno == EINTR)
+    ;
+
+  if (nread == -1) {
+    return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+  }
+
+  req_stat->data_offset += nread;
+
+  if (nread == 0 || req_stat->data_offset == config->data_length) {
+    *data_flags |= NGHTTP2_DATA_FLAG_EOF;
+  }
+
+  return nread;
+}
+
+} // namespace
+
+namespace {
 ssize_t send_callback(nghttp2_session *session, const uint8_t *data,
                       size_t length, int flags, void *user_data) {
   auto client = static_cast<Client *>(user_data);
@@ -188,8 +218,11 @@ void Http2Session::submit_request(RequestStat *req_stat) {
     client_->reqidx = 0;
   }
 
-  auto stream_id = nghttp2_submit_request(session_, nullptr, nva.data(),
-                                          nva.size(), nullptr, req_stat);
+  nghttp2_data_provider prd{{0}, file_read_callback};
+
+  auto stream_id =
+      nghttp2_submit_request(session_, nullptr, nva.data(), nva.size(),
+                             config->data_fd == -1 ? nullptr : &prd, req_stat);
   assert(stream_id > 0);
 }
 
