@@ -1589,11 +1589,11 @@ int Http2Upstream::submit_push_promise(const std::string &path,
   // juse use "GET" for now
   nva.push_back(http2::make_nv_ll(":method", "GET"));
   nva.push_back(
-      http2::make_nv(":scheme", downstream->get_request_http2_scheme()));
+      http2::make_nv_ls(":scheme", downstream->get_request_http2_scheme()));
   nva.push_back(http2::make_nv_ls(":path", path));
   auto &authority = downstream->get_request_http2_authority();
   if (!authority.empty()) {
-    nva.push_back(http2::make_nv(":authority", authority));
+    nva.push_back(http2::make_nv_ls(":authority", authority));
   }
 
   for (auto &kv : downstream->get_request_headers()) {
