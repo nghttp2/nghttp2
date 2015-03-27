@@ -27,7 +27,7 @@
 
 /* Define WIN32 when build target is Win32 API (borrowed from
    libcurl) */
-#if (defined(_WIN32) || defined(__WIN32__))
+#if (defined(_WIN32) || defined(__WIN32__)) && !defined(WIN32)
 #define WIN32
 #endif
 
