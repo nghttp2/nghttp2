@@ -2,15 +2,14 @@
 # GNU Makefile for nghttp2 / MSVC.
 #
 # By G. Vanem <gvanem@yahoo.no> 2013
+# Updated 3/2015 by Remo Eichenberger @remoe
 # The MIT License apply.
 #
 
 #
 # Choose your weapons:
-#  Set 'ZLIB_ROOT' to the root of zlib.
 #  Set 'USE_CYTHON=1' to build and install the 'nghttp2.pyd' Python extension.
 #
-ZLIB_ROOT  = g:/MingW32/src/Compression/zlib-1.2.8
 USE_CYTHON = 1
 
 _VERSION   := $(shell grep AC_INIT ../configure.ac | cut -d'[' -f3 | sed -e 's/-DEV], //g')
@@ -38,7 +37,7 @@ INSTALL_HDR = $(VC_ROOT)/include
 TARGETS = nghttp2.lib  nghttp2.dll  nghttp2_imp.lib \
           nghttp2d.lib nghttp2d.dll nghttp2d_imp.lib
 
-EXT_LIBS = $(ZLIB_ROOT)/zlib.lib ws2_32.lib
+EXT_LIBS = ws2_32.lib
 
 OBJ_DIR = MSVC_obj
 
@@ -46,32 +45,34 @@ NGHTTP2_PDB_R = $(OBJ_DIR)/nghttp2.pdb
 NGHTTP2_PDB_D = $(OBJ_DIR)/nghttp2d.pdb
 
 CC       = cl
-CFLAGS   = -I./includes -I$(ZLIB_ROOT) -DHAVE_WINSOCK2_H -Dssize_t=long
+CFLAGS   = -I./includes -DHAVE_WINSOCK2_H -Dssize_t=long -D_U_=""
 
 CFLAGS_R = -nologo -MD  -W3 -Zi -Fd./$(NGHTTP2_PDB_R)
 CFLAGS_D = -nologo -MDd -W3 -Zi -Fd./$(NGHTTP2_PDB_D) \
            -Ot -D_DEBUG -GF -RTCs -RTCu # -RTCc -GS
 
-LDFLAGS = -nologo -machine:i386 -map -debug -incremental:no # -verbose
+LDFLAGS = -nologo -machine:x64 -map -debug -incremental:no # -verbose
 
-NGHTTP2_SRC = nghttp2_buf.c             \
-              nghttp2_callbacks.c       \
-              nghttp2_frame.c           \
-              nghttp2_helper.c          \
-              nghttp2_hd.c              \
-              nghttp2_hd_huffman.c      \
-              nghttp2_hd_huffman_data.c \
-              nghttp2_map.c             \
-              nghttp2_npn.c             \
-              nghttp2_option.c          \
-              nghttp2_outbound_item.c   \
-              nghttp2_priority_spec.c   \
-              nghttp2_pq.c              \
-              nghttp2_queue.c           \
-              nghttp2_session.c         \
-              nghttp2_stream.c          \
-              nghttp2_submit.c          \
-              nghttp2_version.c
+NGHTTP2_SRC = nghttp2_pq.c \
+  nghttp2_map.c \
+  nghttp2_queue.c \
+  nghttp2_frame.c \
+  nghttp2_buf.c \
+  nghttp2_stream.c \
+  nghttp2_outbound_item.c \
+  nghttp2_session.c \
+  nghttp2_submit.c \
+  nghttp2_helper.c \
+  nghttp2_npn.c \
+  nghttp2_hd.c \
+  nghttp2_hd_huffman.c \
+  nghttp2_hd_huffman_data.c \
+  nghttp2_version.c \
+  nghttp2_priority_spec.c \
+  nghttp2_option.c \
+  nghttp2_callbacks.c \
+  nghttp2_mem.c \
+  nghttp2_http.c
 
 NGHTTP2_OBJ_R = $(addprefix $(OBJ_DIR)/r_, $(notdir $(NGHTTP2_SRC:.c=.obj)))
 NGHTTP2_OBJ_D = $(addprefix $(OBJ_DIR)/d_, $(notdir $(NGHTTP2_SRC:.c=.obj)))
@@ -116,13 +117,13 @@ nghttp2d.lib: $(NGHTTP2_OBJ_D)
 	lib -nologo -out:$@ $^
 	@echo
 
-nghttp2.dll nghttp2_imp.lib: $(NGHTTP2_OBJ_R) $(OBJ_DIR)/r_nghttp2.res $(OBJ_DIR)/r_nghttp2.def
-	link $(LDFLAGS) -dll -out:nghttp2.dll -implib:nghttp2_imp.lib -def:$(OBJ_DIR)/r_nghttp2.def \
+nghttp2.dll nghttp2_imp.lib: $(NGHTTP2_OBJ_R) $(OBJ_DIR)/r_nghttp2.res 
+	link $(LDFLAGS) -dll -out:nghttp2.dll -implib:nghttp2_imp.lib \
 	     $(NGHTTP2_OBJ_R) $(OBJ_DIR)/r_nghttp2.res $(EXT_LIBS)
 	@echo
 
-nghttp2d.dll nghttp2d_imp.lib: $(NGHTTP2_OBJ_D) $(OBJ_DIR)/d_nghttp2.res $(OBJ_DIR)/d_nghttp2.def
-	link $(LDFLAGS) -dll -out:nghttp2d.dll -implib:nghttp2d_imp.lib -def:$(OBJ_DIR)/d_nghttp2.def \
+nghttp2d.dll nghttp2d_imp.lib: $(NGHTTP2_OBJ_D) $(OBJ_DIR)/d_nghttp2.res 
+	link $(LDFLAGS) -dll -out:nghttp2d.dll -implib:nghttp2d_imp.lib \
 	     $(NGHTTP2_OBJ_D) $(OBJ_DIR)/d_nghttp2.res $(EXT_LIBS)
 	@echo
 
@@ -218,24 +219,6 @@ nghttp2.rc: Makefile.MSVC
 	@echo ' /* $(GENERATED). DO NOT EDIT.' > $@
 	@echo '  */'                          >> $@
 	@echo "$$RES_FILE"                    >> $@
-
-$(OBJ_DIR)/r_nghttp2.def: Makefile.MSVC
-	@echo 'Generating $@...'
-	@echo '; $(GENERATED). DO NOT EDIT.' > $@
-	@echo ';'                           >> $@
-	@echo 'LIBRARY nghttp2.dll'         >> $@
-	@echo 'EXPORTS'                     >> $@
-	nm $(NGHTTP2_OBJ_R) | grep ' T .*_nghttp2' | sed 's/^.* _/  /' >> $@
-	@echo 'NGHTTP2_STATIC_TABLE_LENGTH DATA' >> $@
-
-$(OBJ_DIR)/d_nghttp2.def: Makefile.MSVC
-	@echo 'Generating $@...'
-	@echo '; $(GENERATED). DO NOT EDIT.' > $@
-	@echo ';'                           >> $@
-	@echo 'LIBRARY nghttp2d.dll'        >> $@
-	@echo 'EXPORTS'                     >> $@
-	nm $(NGHTTP2_OBJ_D) | grep ' T .*_nghttp2' | sed 's/^.* _/  /' >> $@
-	@echo 'NGHTTP2_STATIC_TABLE_LENGTH DATA' >> $@
 
 clean:
 	rm -f $(OBJ_DIR)/* nghttp2_imp.exp nghttp2_imp.exp \
