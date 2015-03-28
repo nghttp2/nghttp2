@@ -508,13 +508,6 @@ AC_CHECK_HEADERS([ \
   unistd.h \
 ])
 
-case "${host}" in
-  *mingw*)
-    # For ntohl, ntohs in Windows
-    AC_CHECK_HEADERS([winsock2.h])
-    ;;
-esac
-
 # Checks for typedefs, structures, and compiler characteristics.
 AC_TYPE_SIZE_T
 AC_TYPE_SSIZE_T
@@ -563,13 +556,6 @@ AX_HAVE_EPOLL([have_epoll=yes], [have_epoll=no])
 AM_CONDITIONAL([ENABLE_TINY_NGHTTPD],
                [ test "x${have_epoll}" = "xyes" &&
                  test "x${have_timerfd_create}" = "xyes"])
-
-dnl Windows library for winsock2
-case "${host}" in
-  *mingw*)
-    LIBS="$LIBS -lws2_32"
-    ;;
-esac
 
 ac_save_CFLAGS=$CFLAGS
 CFLAGS=
