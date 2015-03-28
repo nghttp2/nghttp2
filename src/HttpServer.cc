@@ -229,7 +229,7 @@ public:
         make_unique<Http2Handler>(this, fd, ssl, get_next_session_id());
     handler->setup_bev();
     if (!ssl) {
-      if (handler->on_connect() != 0) {
+      if (handler->connection_made() != 0) {
         return;
       }
     }
@@ -520,7 +520,7 @@ int Http2Handler::tls_handshake() {
   read_ = &Http2Handler::read_tls;
   write_ = &Http2Handler::write_tls;
 
-  if (on_connect() != 0) {
+  if (connection_made() != 0) {
     return -1;
   }
 
@@ -629,7 +629,7 @@ int Http2Handler::on_read() { return read_(*this); }
 
 int Http2Handler::on_write() { return write_(*this); }
 
-int Http2Handler::on_connect() {
+int Http2Handler::connection_made() {
   int r;
 
   r = nghttp2_session_server_new2(&session_, sessions_->get_callbacks(), this,

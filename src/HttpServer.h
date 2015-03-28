@@ -102,7 +102,7 @@ public:
   int setup_bev();
   int on_read();
   int on_write();
-  int on_connect();
+  int connection_made();
   int verify_npn_result();
 
   int submit_file_response(const std::string &status, Stream *stream,
