@@ -89,7 +89,7 @@ public:
 
   int resume_data(Http2DownstreamConnection *dconn);
 
-  int on_connect();
+  int connection_made();
 
   int do_read();
   int do_write();

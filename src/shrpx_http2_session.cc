@@ -1212,7 +1212,7 @@ nghttp2_session_callbacks *create_http2_downstream_callbacks() {
   return callbacks;
 }
 
-int Http2Session::on_connect() {
+int Http2Session::connection_made() {
   int rv;
 
   state_ = Http2Session::CONNECTED;
@@ -1561,7 +1561,7 @@ int Http2Session::connected() {
     return do_write();
   }
 
-  if (on_connect() != 0) {
+  if (connection_made() != 0) {
     state_ = CONNECT_FAILING;
     return -1;
   }
@@ -1657,7 +1657,7 @@ int Http2Session::tls_handshake() {
   read_ = &Http2Session::read_tls;
   write_ = &Http2Session::write_tls;
 
-  if (on_connect() != 0) {
+  if (connection_made() != 0) {
     state_ = CONNECT_FAILING;
     return -1;
   }
