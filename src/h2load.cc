@@ -143,10 +143,8 @@ void readcb(struct ev_loop *loop, ev_io *w, int revents) {
     client->fail();
     return;
   }
-  if (ev_is_active(&client->wev)) {
-    writecb(loop, &client->wev, revents);
-    // client->disconnect() and client->fail() may be called
-  }
+  writecb(loop, &client->wev, revents);
+  // client->disconnect() and client->fail() may be called
 }
 } // namespace
 
