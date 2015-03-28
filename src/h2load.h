@@ -166,8 +166,6 @@ struct Client {
   ev_io wev;
   ev_io rev;
   std::function<int(Client &)> readfn, writefn;
-  std::function<int(Client &, const uint8_t *, size_t)> on_readfn;
-  std::function<int(Client &)> on_writefn;
   Worker *worker;
   SSL *ssl;
   addrinfo *next_addr;
@@ -198,6 +196,7 @@ struct Client {
   int do_read();
   int do_write();
 
+  // low-level I/O callback functions called by do_read/do_write
   int connected();
   int read_clear();
   int write_clear();

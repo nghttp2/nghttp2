@@ -204,9 +204,6 @@ int Client::connect() {
 
   writefn = &Client::connected;
 
-  on_readfn = &Client::on_read;
-  on_writefn = &Client::on_write;
-
   ev_io_set(&rev, fd, EV_READ);
   ev_io_set(&wev, fd, EV_WRITE);
 
