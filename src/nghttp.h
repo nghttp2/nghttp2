@@ -194,8 +194,6 @@ struct HttpClient {
   int initiate_connection();
   void disconnect();
 
-  void on_connect_fail();
-
   int noop();
   int read_clear();
   int write_clear();
@@ -212,8 +210,9 @@ struct HttpClient {
   int on_read(const uint8_t *data, size_t len);
   int on_write();
 
-  int on_connect();
-  void on_request(Request *req);
+  int connection_made();
+  void connect_fail();
+  void request_done(Request *req);
 
   void signal_write();
 

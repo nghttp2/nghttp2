@@ -396,7 +396,7 @@ int submit_request(HttpClient *client, const Headers &headers, Request *req) {
   }
 
   req->stream_id = stream_id;
-  client->on_request(req);
+  client->request_done(req);
 
   req->req_nva = std::move(build_headers);
 
@@ -418,7 +418,7 @@ void writecb(struct ev_loop *loop, ev_io *w, int revents) {
   auto client = static_cast<HttpClient *>(w->data);
   auto rv = client->do_write();
   if (rv == HttpClient::ERR_CONNECT_FAIL) {
-    client->on_connect_fail();
+    client->connect_fail();
     return;
   }
   if (rv != 0) {
@@ -679,7 +679,7 @@ int HttpClient::write_clear() {
 
 int HttpClient::noop() { return 0; }
 
-void HttpClient::on_connect_fail() {
+void HttpClient::connect_fail() {
   if (state == ClientState::IDLE) {
     std::cerr << "[ERROR] Could not connect to the address "
               << util::numeric_name(cur_addr->ai_addr, cur_addr->ai_addrlen)
@@ -732,7 +732,7 @@ int HttpClient::connected() {
     return do_write();
   }
 
-  if (on_connect() != 0) {
+  if (connection_made() != 0) {
     return -1;
   }
 
@@ -882,7 +882,7 @@ int HttpClient::on_upgrade_read(const uint8_t *data, size_t len) {
   on_readfn = &HttpClient::on_read;
   on_writefn = &HttpClient::on_write;
 
-  rv = on_connect();
+  rv = connection_made();
   if (rv != 0) {
     return rv;
   }
@@ -900,7 +900,7 @@ int HttpClient::on_upgrade_read(const uint8_t *data, size_t len) {
 int HttpClient::do_read() { return readfn(*this); }
 int HttpClient::do_write() { return writefn(*this); }
 
-int HttpClient::on_connect() {
+int HttpClient::connection_made() {
   int rv;
 
   if (!need_upgrade()) {
@@ -959,7 +959,7 @@ int HttpClient::on_connect() {
     }
     if (stream_user_data) {
       stream_user_data->stream_id = 1;
-      on_request(stream_user_data);
+      request_done(stream_user_data);
     }
   }
   // Send connection header here
@@ -1120,7 +1120,7 @@ int HttpClient::tls_handshake() {
   readfn = &HttpClient::read_tls;
   writefn = &HttpClient::write_tls;
 
-  if (on_connect() != 0) {
+  if (connection_made() != 0) {
     return -1;
   }
 
@@ -1270,7 +1270,7 @@ void HttpClient::record_connect_end_time() {
   timing.connect_end_time = get_time();
 }
 
-void HttpClient::on_request(Request *req) {
+void HttpClient::request_done(Request *req) {
   if (req->pri == 0 && req->dep) {
     assert(req->dep->deps.empty());
 
@@ -1664,7 +1664,7 @@ int on_begin_headers_callback(nghttp2_session *session,
 
     nghttp2_session_set_stream_user_data(session, stream_id, req.get());
 
-    client->on_request(req.get());
+    client->request_done(req.get());
     req->record_request_start_time();
     client->reqvec.push_back(std::move(req));
 
