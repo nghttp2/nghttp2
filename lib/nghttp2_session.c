@@ -5881,15 +5881,11 @@ int nghttp2_session_want_read(nghttp2_session *session) {
 }
 
 int nghttp2_session_want_write(nghttp2_session *session) {
-  size_t num_active_streams;
-
   /* If these flag is set, we don't want to write any data. The
      application should drop the connection. */
   if (session->goaway_flags & NGHTTP2_GOAWAY_TERM_SENT) {
     return 0;
   }
-
-  num_active_streams = session_get_num_active_streams(session);
 
   /*
    * Unless termination GOAWAY is sent or received, we want to write
@@ -5904,10 +5900,6 @@ int nghttp2_session_want_write(nghttp2_session *session) {
       (nghttp2_pq_empty(&session->ob_ss_pq) ||
        session_is_outgoing_concurrent_streams_max(session))) {
     return 0;
-  }
-
-  if (num_active_streams > 0) {
-    return 1;
   }
 
   /* If there is no active streams and GOAWAY has been sent or
