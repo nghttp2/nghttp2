@@ -406,7 +406,7 @@ void Client::on_stream_close(int32_t stream_id, bool success,
 
 int Client::noop() { return 0; }
 
-int Client::on_connect() {
+int Client::connection_made() {
   if (ssl) {
     report_tls_info();
 
@@ -576,7 +576,7 @@ int Client::connected() {
   readfn = &Client::read_clear;
   writefn = &Client::write_clear;
 
-  if (on_connect() != 0) {
+  if (connection_made() != 0) {
     return -1;
   }
 
@@ -611,7 +611,7 @@ int Client::tls_handshake() {
   readfn = &Client::read_tls;
   writefn = &Client::write_tls;
 
-  if (on_connect() != 0) {
+  if (connection_made() != 0) {
     return -1;
   }
 

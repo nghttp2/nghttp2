@@ -207,8 +207,9 @@ struct Client {
 
   int on_read(const uint8_t *data, size_t len);
   int on_write();
-  int on_connect();
   int noop();
+
+  int connection_made();
 
   void on_request(int32_t stream_id);
   void on_header(int32_t stream_id, const uint8_t *name, size_t namelen,
