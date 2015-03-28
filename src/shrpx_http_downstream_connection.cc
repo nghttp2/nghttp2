@@ -114,7 +114,8 @@ HttpDownstreamConnection::HttpDownstreamConnection(
       conn_(loop, -1, nullptr, get_config()->downstream_write_timeout,
             get_config()->downstream_read_timeout, 0, 0, 0, 0, connectcb,
             readcb, timeoutcb, this),
-      ioctrl_(&conn_.rlimit), response_htp_{0}, addr_idx_(0) {}
+      ioctrl_(&conn_.rlimit), response_htp_{0}, addr_idx_(0),
+      connected_(false) {}
 
 HttpDownstreamConnection::~HttpDownstreamConnection() {
   // Downstream and DownstreamConnection may be deleted
@@ -670,6 +671,10 @@ http_parser_settings htp_hooks = {
 } // namespace
 
 int HttpDownstreamConnection::on_read() {
+  if (!connected_) {
+    return 0;
+  }
+
   ev_timer_again(conn_.loop, &conn_.rt);
   std::array<uint8_t, 8192> buf;
   int rv;
@@ -742,6 +747,10 @@ int HttpDownstreamConnection::on_read() {
 }
 
 int HttpDownstreamConnection::on_write() {
+  if (!connected_) {
+    return 0;
+  }
+
   ev_timer_again(conn_.loop, &conn_.rt);
 
   auto upstream = downstream_->get_upstream();
@@ -788,6 +797,8 @@ int HttpDownstreamConnection::on_connect() {
 
     return -1;
   }
+
+  connected_ = true;
 
   connect_blocker->on_success();
 

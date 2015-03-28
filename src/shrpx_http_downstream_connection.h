@@ -70,6 +70,7 @@ private:
   http_parser response_htp_;
   // index of get_config()->downstream_addrs this object is using
   size_t addr_idx_;
+  bool connected_;
 };
 
 } // namespace shrpx
