@@ -404,8 +404,6 @@ void Client::on_stream_close(int32_t stream_id, bool success,
   }
 }
 
-int Client::noop() { return 0; }
-
 int Client::connection_made() {
   if (ssl) {
     report_tls_info();

@@ -207,7 +207,6 @@ struct Client {
 
   int on_read(const uint8_t *data, size_t len);
   int on_write();
-  int noop();
 
   int connection_made();
 
