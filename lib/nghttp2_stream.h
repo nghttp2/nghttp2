@@ -154,6 +154,10 @@ typedef struct nghttp2_stream nghttp2_stream;
 struct nghttp2_stream {
   /* Intrusive Map */
   nghttp2_map_entry map_entry;
+  /* Content-Length of request/response body.  -1 if unknown. */
+  int64_t content_length;
+  /* Received body so far */
+  int64_t recv_content_length;
   /* pointers to form dependency tree.  If multiple streams depend on
      a stream, only one stream (left most) has non-NULL dep_prev which
      points to the stream it depends on. The remaining streams are
@@ -217,18 +221,14 @@ struct nghttp2_stream {
      NGHTTP2_STREAM_DPRI_TOP */
   int32_t sum_top_weight;
   nghttp2_stream_state state;
-  /* This is bitwise-OR of 0 or more of nghttp2_stream_flag. */
-  uint8_t flags;
-  /* Bitwise OR of zero or more nghttp2_shut_flag values */
-  uint8_t shut_flags;
-  /* Content-Length of request/response body.  -1 if unknown. */
-  int64_t content_length;
-  /* Received body so far */
-  int64_t recv_content_length;
   /* status code from remote server */
   int16_t status_code;
   /* Bitwise OR of zero or more nghttp2_http_flag values */
   uint16_t http_flags;
+  /* This is bitwise-OR of 0 or more of nghttp2_stream_flag. */
+  uint8_t flags;
+  /* Bitwise OR of zero or more nghttp2_shut_flag values */
+  uint8_t shut_flags;
 };
 
 void nghttp2_stream_init(nghttp2_stream *stream, int32_t stream_id,
