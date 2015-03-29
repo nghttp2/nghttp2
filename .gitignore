@@ -49,3 +49,4 @@ doc/contribute.rst
 python/setup.py
 python/dist
 python/MANIFEST
+integration-tests/config.go
