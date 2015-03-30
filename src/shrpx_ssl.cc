@@ -28,6 +28,11 @@
 #include <netdb.h>
 #include <netinet/tcp.h>
 #include <pthread.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#ifndef NOTHREADS
+#include <spawn.h>
+#endif // !NOTHREADS
 
 #include <vector>
 #include <string>
@@ -141,7 +146,32 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
       }
     }
   }
+  return SSL_TLSEXT_ERR_OK;
+}
+} // namespace
 
+namespace {
+int ocsp_resp_cb(SSL *ssl, void *arg) {
+  auto ssl_ctx = SSL_get_SSL_CTX(ssl);
+  auto tls_ctx_data =
+      static_cast<TLSContextData *>(SSL_CTX_get_app_data(ssl_ctx));
+  {
+    std::lock_guard<std::mutex> g(tls_ctx_data->mu);
+    auto &data = tls_ctx_data->ocsp_data;
+
+    if (!data.empty()) {
+      auto buf = static_cast<uint8_t *>(
+          CRYPTO_malloc(data.size(), __FILE__, __LINE__));
+
+      if (!buf) {
+        return SSL_TLSEXT_ERR_OK;
+      }
+
+      std::copy(std::begin(data), std::end(data), buf);
+
+      SSL_set_tlsext_status_ocsp_resp(ssl, buf, data.size());
+    }
+  }
   return SSL_TLSEXT_ERR_OK;
 }
 } // namespace
@@ -418,6 +448,7 @@ SSL_CTX *create_ssl_context(const char *private_key_file,
   }
   SSL_CTX_set_tlsext_servername_callback(ssl_ctx, servername_callback);
   SSL_CTX_set_tlsext_ticket_key_cb(ssl_ctx, ticket_key_cb);
+  SSL_CTX_set_tlsext_status_cb(ssl_ctx, ocsp_resp_cb);
   SSL_CTX_set_info_callback(ssl_ctx, info_callback);
 
   // NPN advertisement
@@ -426,6 +457,12 @@ SSL_CTX *create_ssl_context(const char *private_key_file,
   // ALPN selection callback
   SSL_CTX_set_alpn_select_cb(ssl_ctx, alpn_select_proto_cb, nullptr);
 #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
+
+  auto tls_ctx_data = new TLSContextData();
+  tls_ctx_data->cert_file = cert_file;
+
+  SSL_CTX_set_app_data(ssl_ctx, tls_ctx_data);
+
   return ssl_ctx;
 }
 
@@ -929,13 +966,16 @@ bool check_http2_requirement(SSL *ssl) {
   return true;
 }
 
-SSL_CTX *setup_server_ssl_context(CertLookupTree *cert_tree) {
+SSL_CTX *setup_server_ssl_context(std::vector<SSL_CTX *> &all_ssl_ctx,
+                                  CertLookupTree *cert_tree) {
   if (get_config()->upstream_no_tls) {
     return nullptr;
   }
 
   auto ssl_ctx = ssl::create_ssl_context(get_config()->private_key_file.get(),
                                          get_config()->cert_file.get());
+
+  all_ssl_ctx.push_back(ssl_ctx);
 
   if (get_config()->subcerts.empty()) {
     return ssl_ctx;
@@ -950,6 +990,7 @@ SSL_CTX *setup_server_ssl_context(CertLookupTree *cert_tree) {
   for (auto &keycert : get_config()->subcerts) {
     auto ssl_ctx =
         ssl::create_ssl_context(keycert.first.c_str(), keycert.second.c_str());
+    all_ssl_ctx.push_back(ssl_ctx);
     if (ssl::cert_lookup_tree_add_cert_from_file(
             cert_tree, ssl_ctx, keycert.second.c_str()) == -1) {
       LOG(FATAL) << "Failed to add sub certificate.";
@@ -982,6 +1023,114 @@ CertLookupTree *create_cert_lookup_tree() {
     return nullptr;
   }
   return new ssl::CertLookupTree();
+}
+
+namespace {
+// inspired by h2o_read_command function from h2o project:
+// https://github.com/h2o/h2o
+int exec_read_stdout(std::vector<uint8_t> &out, char *const *argv,
+                     char *const *envp) {
+#ifndef NOTHREADS
+  int rv;
+  int pfd[2];
+
+#ifdef O_CLOEXEC
+  if (pipe2(pfd, O_CLOEXEC) == -1) {
+    return -1;
+  }
+#else  // !O_CLOEXEC
+  if (pipe(pfd) == -1) {
+    return -1;
+  }
+  util::make_socket_closeonexec(pfd[0]);
+  util::make_socket_closeonexec(pfd[1]);
+#endif // !O_CLOEXEC
+
+  auto closer = defer([pfd]() {
+    close(pfd[0]);
+
+    if (pfd[1] != -1) {
+      close(pfd[1]);
+    }
+  });
+
+  // posix_spawn family functions are really interesting.  They makes
+  // fork + dup2 + execve pattern easier.
+
+  posix_spawn_file_actions_t file_actions;
+
+  if (posix_spawn_file_actions_init(&file_actions) != 0) {
+    return -1;
+  }
+
+  auto file_actions_del =
+      defer(posix_spawn_file_actions_destroy, &file_actions);
+
+  if (posix_spawn_file_actions_adddup2(&file_actions, pfd[1], 1) != 0) {
+    return -1;
+  }
+
+  if (posix_spawn_file_actions_addclose(&file_actions, pfd[0]) != 0) {
+    return -1;
+  }
+
+  pid_t pid;
+  rv = posix_spawn(&pid, argv[0], &file_actions, nullptr, argv, envp);
+  if (rv != 0) {
+    LOG(WARN) << "Cannot execute ocsp query command: " << argv[0]
+              << ", errno=" << rv;
+    return -1;
+  }
+
+  close(pfd[1]);
+  pfd[1] = -1;
+
+  std::array<uint8_t, 4096> buf;
+  for (;;) {
+    ssize_t n;
+    while ((n = read(pfd[0], buf.data(), buf.size())) == -1 && errno == EINTR)
+      ;
+
+    if (n == -1) {
+      auto error = errno;
+      LOG(WARN) << "Reading from ocsp query command failed: errno=" << error;
+      return -1;
+    }
+
+    if (n == 0) {
+      break;
+    }
+
+    std::copy_n(std::begin(buf), n, std::back_inserter(out));
+  }
+
+  int status;
+  if (waitpid(pid, &status, 0) == -1) {
+    auto error = errno;
+    LOG(WARN) << "waitpid for ocsp query command failed: errno=" << error;
+    return -1;
+  }
+
+  if (!WIFEXITED(status)) {
+    LOG(WARN) << "ocsp query command did not exit normally: " << status;
+    return -1;
+  }
+#endif // !NOTHREADS
+  return 0;
+}
+} // namespace
+
+int get_ocsp_response(std::vector<uint8_t> &out, const char *cert_file) {
+  char *const argv[] = {
+      const_cast<char *>(get_config()->fetch_ocsp_response_file.get()),
+      const_cast<char *>(cert_file), nullptr};
+  char *const envp[] = {nullptr};
+
+  if (exec_read_stdout(out, argv, envp) != 0 || out.empty()) {
+    return -1;
+  }
+
+  return 0;
 }
 
 } // namespace ssl

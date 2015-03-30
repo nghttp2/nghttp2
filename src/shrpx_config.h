@@ -137,6 +137,9 @@ extern const char SHRPX_OPT_BACKEND_REQUEST_BUFFER[];
 extern const char SHRPX_OPT_BACKEND_RESPONSE_BUFFER[];
 extern const char SHRPX_OPT_NO_SERVER_PUSH[];
 extern const char SHRPX_OPT_BACKEND_HTTP2_CONNECTIONS_PER_WORKER[];
+extern const char SHRPX_OPT_FETCH_OCSP_RESPONSE_FILE[];
+extern const char SHRPX_OPT_OCSP_UPDATE_INTERVAL[];
+extern const char SHRPX_OPT_NO_OCSP[];
 
 union sockaddr_union {
   sockaddr_storage storage;
@@ -209,6 +212,7 @@ struct Config {
   ev_tstamp stream_write_timeout;
   ev_tstamp downstream_idle_read_timeout;
   ev_tstamp listener_disable_timeout;
+  ev_tstamp ocsp_update_interval;
   // address of frontend connection.  This could be a path to UNIX
   // domain socket.  In this case, |host_unix| must be true.
   std::unique_ptr<char[]> host;
@@ -246,6 +250,7 @@ struct Config {
   std::unique_ptr<char[]> client_cert_file;
   std::unique_ptr<char[]> accesslog_file;
   std::unique_ptr<char[]> errorlog_file;
+  std::unique_ptr<char[]> fetch_ocsp_response_file;
   FILE *http2_upstream_dump_request_header;
   FILE *http2_upstream_dump_response_header;
   nghttp2_session_callbacks *http2_upstream_callbacks;
@@ -324,6 +329,7 @@ struct Config {
   bool no_server_push;
   // true if host contains UNIX domain socket path
   bool host_unix;
+  bool no_ocsp;
 };
 
 const Config *get_config();

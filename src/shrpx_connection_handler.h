@@ -32,6 +32,9 @@
 
 #include <memory>
 #include <vector>
+#ifndef NOTHREADS
+#include <future>
+#endif // !NOTHREADS
 
 #include <openssl/ssl.h>
 
@@ -48,7 +51,6 @@ class Worker;
 struct WorkerStat;
 struct TicketKeys;
 
-// TODO should be renamed as ConnectionHandler
 class ConnectionHandler {
 public:
   ConnectionHandler(struct ev_loop *loop);
@@ -77,8 +79,23 @@ public:
   void set_graceful_shutdown(bool f);
   bool get_graceful_shutdown() const;
   void join_worker();
+  // Updates OCSP response cache for all server side SSL_CTX object
+  void update_ocsp();
+  // Just like update_ocsp(), but performed in new thread.  Call
+  // handle_ocsp_completion() to handle its completion and scheduling
+  // next update.
+  void update_ocsp_async();
+  // Handles asynchronous OCSP update completion and schedules next
+  // update.
+  void handle_ocsp_completion();
+  // Waits for OCSP thread finishes if it is still running.
+  void join_ocsp_thread();
 
 private:
+#ifndef NOTHREADS
+  std::future<void> ocsp_result_;
+#endif // !NOTHREADS
+  std::vector<SSL_CTX *> all_ssl_ctx_;
   // Worker instances when multi threaded mode (-nN, N >= 2) is used.
   std::vector<std::unique_ptr<Worker>> workers_;
   // Worker instance used when single threaded mode (-n1) is used.
@@ -94,6 +111,7 @@ private:
   // acceptor for IPv6 address
   std::unique_ptr<AcceptHandler> acceptor6_;
   ev_timer disable_acceptor_timer_;
+  ev_timer ocsp_timer_;
   unsigned int worker_round_robin_cnt_;
   bool graceful_shutdown_;
 };

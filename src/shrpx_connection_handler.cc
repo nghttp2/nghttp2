@@ -58,15 +58,32 @@ void acceptor_disable_cb(struct ev_loop *loop, ev_timer *w, int revent) {
 }
 } // namespace
 
+namespace {
+void ocsp_cb(struct ev_loop *loop, ev_timer *w, int revent) {
+  auto h = static_cast<ConnectionHandler *>(w->data);
+
+  // If we are in graceful shutdown period, we won't do ocsp query.
+  if (h->get_graceful_shutdown()) {
+    return;
+  }
+
+  h->update_ocsp_async();
+}
+} // namespace
+
 ConnectionHandler::ConnectionHandler(struct ev_loop *loop)
     : single_worker_(nullptr), loop_(loop), worker_round_robin_cnt_(0),
       graceful_shutdown_(false) {
   ev_timer_init(&disable_acceptor_timer_, acceptor_disable_cb, 0., 0.);
   disable_acceptor_timer_.data = this;
+
+  ev_timer_init(&ocsp_timer_, ocsp_cb, 0., 0.);
+  ocsp_timer_.data = this;
 }
 
 ConnectionHandler::~ConnectionHandler() {
   ev_timer_stop(loop_, &disable_acceptor_timer_);
+  ev_timer_stop(loop_, &ocsp_timer_);
 }
 
 void ConnectionHandler::worker_reopen_log_files() {
@@ -95,7 +112,7 @@ void ConnectionHandler::worker_renew_ticket_keys(
 
 void ConnectionHandler::create_single_worker() {
   auto cert_tree = ssl::create_cert_lookup_tree();
-  auto sv_ssl_ctx = ssl::setup_server_ssl_context(cert_tree);
+  auto sv_ssl_ctx = ssl::setup_server_ssl_context(all_ssl_ctx_, cert_tree);
   auto cl_ssl_ctx = ssl::setup_client_ssl_context();
 
   single_worker_ = make_unique<Worker>(loop_, sv_ssl_ctx, cl_ssl_ctx, cert_tree,
@@ -111,7 +128,7 @@ void ConnectionHandler::create_worker_thread(size_t num) {
 
   if (!get_config()->tls_ctx_per_worker) {
     cert_tree = ssl::create_cert_lookup_tree();
-    sv_ssl_ctx = ssl::setup_server_ssl_context(cert_tree);
+    sv_ssl_ctx = ssl::setup_server_ssl_context(all_ssl_ctx_, cert_tree);
     cl_ssl_ctx = ssl::setup_client_ssl_context();
   }
 
@@ -120,7 +137,8 @@ void ConnectionHandler::create_worker_thread(size_t num) {
 
     if (get_config()->tls_ctx_per_worker) {
       cert_tree = ssl::create_cert_lookup_tree();
-      sv_ssl_ctx = ssl::setup_server_ssl_context(cert_tree);
+      std::vector<SSL_CTX *> all_ssl_ctx;
+      sv_ssl_ctx = ssl::setup_server_ssl_context(all_ssl_ctx, cert_tree);
       cl_ssl_ctx = ssl::setup_client_ssl_context();
     }
 
@@ -307,6 +325,82 @@ void ConnectionHandler::set_graceful_shutdown(bool f) {
 
 bool ConnectionHandler::get_graceful_shutdown() const {
   return graceful_shutdown_;
+}
+
+namespace {
+void update_ocsp_ssl_ctx(SSL_CTX *ssl_ctx) {
+  auto tls_ctx_data =
+      static_cast<ssl::TLSContextData *>(SSL_CTX_get_app_data(ssl_ctx));
+  auto cert_file = tls_ctx_data->cert_file;
+
+  std::vector<uint8_t> out;
+  if (ssl::get_ocsp_response(out, cert_file) != 0) {
+    LOG(WARN) << "ocsp update for " << cert_file << " failed";
+    return;
+  }
+
+  if (LOG_ENABLED(INFO)) {
+    LOG(INFO) << "ocsp update for " << cert_file << " finished successfully";
+  }
+
+  std::lock_guard<std::mutex> g(tls_ctx_data->mu);
+  tls_ctx_data->ocsp_data = std::move(out);
+}
+} // namespace
+
+void ConnectionHandler::update_ocsp() {
+  for (auto ssl_ctx : all_ssl_ctx_) {
+    update_ocsp_ssl_ctx(ssl_ctx);
+  }
+}
+
+void ConnectionHandler::update_ocsp_async() {
+#ifndef NOTHREADS
+  ocsp_result_ = std::async(std::launch::async, [this]() {
+    // Log files are managed per thread.  We have to open log files
+    // for this thread.  We don't reopen log files in this thread when
+    // signal is received.  This is future TODO.
+    reopen_log_files();
+    auto closer = defer([]() {
+      auto lgconf = log_config();
+      if (lgconf->accesslog_fd != -1) {
+        close(lgconf->accesslog_fd);
+      }
+      if (lgconf->errorlog_fd != -1) {
+        close(lgconf->errorlog_fd);
+      }
+    });
+
+    update_ocsp();
+  });
+#endif // !NOTHREADS
+}
+
+void ConnectionHandler::handle_ocsp_completion() {
+#ifndef NOTHREADS
+  if (!ocsp_result_.valid()) {
+    return;
+  }
+
+  if (ocsp_result_.wait_for(std::chrono::seconds(0)) !=
+      std::future_status::ready) {
+    return;
+  }
+
+  ocsp_result_.get();
+
+  ev_timer_set(&ocsp_timer_, get_config()->ocsp_update_interval, 0.);
+  ev_timer_start(loop_, &ocsp_timer_);
+#endif // !NOTHREADS
+}
+
+void ConnectionHandler::join_ocsp_thread() {
+#ifndef NOTHREADS
+  if (!ocsp_result_.valid()) {
+    return;
+  }
+  ocsp_result_.get();
+#endif // !NOTHREADS
 }
 
 } // namespace shrpx

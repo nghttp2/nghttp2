@@ -148,6 +148,9 @@ const char SHRPX_OPT_BACKEND_RESPONSE_BUFFER[] = "backend-response-buffer";
 const char SHRPX_OPT_NO_SERVER_PUSH[] = "no-server-push";
 const char SHRPX_OPT_BACKEND_HTTP2_CONNECTIONS_PER_WORKER[] =
     "backend-http2-connections-per-worker";
+const char SHRPX_OPT_FETCH_OCSP_RESPONSE_FILE[] = "fetch-ocsp-response-file";
+const char SHRPX_OPT_OCSP_UPDATE_INTERVAL[] = "ocsp-update-interval";
+const char SHRPX_OPT_NO_OCSP[] = "no-ocsp";
 
 namespace {
 Config *config = nullptr;
@@ -1198,6 +1201,22 @@ int parse_config(const char *opt, const char *optarg) {
   if (util::strieq(opt, SHRPX_OPT_BACKEND_HTTP2_CONNECTIONS_PER_WORKER)) {
     return parse_uint(&mod_config()->http2_downstream_connections_per_worker,
                       opt, optarg);
+  }
+
+  if (util::strieq(opt, SHRPX_OPT_FETCH_OCSP_RESPONSE_FILE)) {
+    mod_config()->fetch_ocsp_response_file = strcopy(optarg);
+
+    return 0;
+  }
+
+  if (util::strieq(opt, SHRPX_OPT_OCSP_UPDATE_INTERVAL)) {
+    return parse_duration(&mod_config()->ocsp_update_interval, opt, optarg);
+  }
+
+  if (util::strieq(opt, SHRPX_OPT_NO_OCSP)) {
+    mod_config()->no_ocsp = util::strieq(optarg, "yes");
+
+    return 0;
   }
 
   if (util::strieq(opt, "conf")) {

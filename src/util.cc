@@ -963,6 +963,7 @@ int64_t parse_uint(const uint8_t *s, size_t len) {
 }
 
 double parse_duration_with_unit(const char *s) {
+  constexpr auto max = std::numeric_limits<int64_t>::max();
   int64_t n;
   size_t i;
   auto len = strlen(s);
@@ -976,17 +977,36 @@ double parse_duration_with_unit(const char *s) {
   switch (s[i]) {
   case 'S':
   case 's':
+    // seconds
     if (i + 1 != len) {
       goto fail;
     }
     return static_cast<double>(n);
-    break;
   case 'M':
   case 'm':
+    if (i + 1 == len) {
+      // minutes
+      if (n > max / 60) {
+        goto fail;
+      }
+      return static_cast<double>(n) * 60;
+    }
+
     if (i + 2 != len || (s[i + 1] != 's' && s[i + 1] != 'S')) {
       goto fail;
     }
+    // milliseconds
     return static_cast<double>(n) / 1000.;
+  case 'H':
+  case 'h':
+    // hours
+    if (i + 1 != len) {
+      goto fail;
+    }
+    if (n > max / 3600) {
+      goto fail;
+    }
+    return static_cast<double>(n) * 3600;
   }
 fail:
   return std::numeric_limits<double>::infinity();
@@ -1000,7 +1020,16 @@ std::string duration_str(double t) {
   if (frac > 0) {
     return utos(static_cast<int64_t>(t * 1000)) + "ms";
   }
-  return utos(static_cast<int64_t>(t)) + "s";
+  auto v = static_cast<int64_t>(t);
+  if (v % 60) {
+    return utos(v) + "s";
+  }
+  v /= 60;
+  if (v % 60) {
+    return utos(v) + "m";
+  }
+  v /= 60;
+  return utos(v) + "h";
 }
 
 std::string format_duration(const std::chrono::microseconds &u) {

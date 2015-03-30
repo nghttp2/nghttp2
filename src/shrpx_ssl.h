@@ -28,6 +28,7 @@
 #include "shrpx.h"
 
 #include <vector>
+#include <mutex>
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -41,6 +42,18 @@ class Worker;
 class DownstreamConnectionPool;
 
 namespace ssl {
+
+// This struct stores the additional information per SSL_CTX.  This is
+// attached to SSL_CTX using SSL_CTX_set_app_data().
+struct TLSContextData {
+  // Protects ocsp_data;
+  std::mutex mu;
+  // OCSP resonse
+  std::vector<uint8_t> ocsp_data;
+
+  // Path to certificate file
+  const char *cert_file;
+};
 
 // Create server side SSL_CTX
 SSL_CTX *create_ssl_context(const char *private_key_file,
@@ -143,8 +156,10 @@ std::vector<unsigned char> set_alpn_prefs(const std::vector<char *> &protos);
 // and if upstream_no_tls is true, returns nullptr.  Otherwise
 // construct default SSL_CTX.  If subcerts are available
 // (get_config()->subcerts), caller should provide CertLookupTree
-// object as |cert_tree| parameter, otherwise SNI does not work.
-SSL_CTX *setup_server_ssl_context(CertLookupTree *cert_tree);
+// object as |cert_tree| parameter, otherwise SNI does not work.  All
+// the created SSL_CTX is stored into |all_ssl_ctx|.
+SSL_CTX *setup_server_ssl_context(std::vector<SSL_CTX *> &all_ssl_ctx,
+                                  CertLookupTree *cert_tree);
 
 // Setups client side SSL_CTX.  This function inspects get_config()
 // and if downstream_no_tls is true, returns nullptr.  Otherwise, only
@@ -154,6 +169,8 @@ SSL_CTX *setup_client_ssl_context();
 // Creates CertLookupTree.  If frontend is configured not to use TLS,
 // this function returns nullptr.
 CertLookupTree *create_cert_lookup_tree();
+
+int get_ocsp_response(std::vector<uint8_t> &out, const char *cert_file);
 
 } // namespace ssl
 

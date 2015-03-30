@@ -303,6 +303,8 @@ void test_util_parse_duration_with_unit(void) {
   CU_ASSERT(0.500 == util::parse_duration_with_unit("500ms"));
   CU_ASSERT(123. == util::parse_duration_with_unit("123S"));
   CU_ASSERT(0.500 == util::parse_duration_with_unit("500MS"));
+  CU_ASSERT(180 == util::parse_duration_with_unit("3m"));
+  CU_ASSERT(3600 * 5 == util::parse_duration_with_unit("5h"));
 
   auto err = std::numeric_limits<double>::infinity();
   // check overflow case
@@ -321,6 +323,9 @@ void test_util_duration_str(void) {
   CU_ASSERT("1s" == util::duration_str(1.));
   CU_ASSERT("500ms" == util::duration_str(0.5));
   CU_ASSERT("1500ms" == util::duration_str(1.5));
+  CU_ASSERT("2m" == util::duration_str(120.));
+  CU_ASSERT("121s" == util::duration_str(121.));
+  CU_ASSERT("1h" == util::duration_str(3600.));
 }
 
 void test_util_format_duration(void) {
