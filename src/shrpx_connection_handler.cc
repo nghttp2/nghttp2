@@ -123,24 +123,12 @@ void ConnectionHandler::create_worker_thread(size_t num) {
 #ifndef NOTHREADS
   assert(workers_.size() == 0);
 
-  SSL_CTX *sv_ssl_ctx = nullptr, *cl_ssl_ctx = nullptr;
-  ssl::CertLookupTree *cert_tree = nullptr;
-
-  if (!get_config()->tls_ctx_per_worker) {
-    cert_tree = ssl::create_cert_lookup_tree();
-    sv_ssl_ctx = ssl::setup_server_ssl_context(all_ssl_ctx_, cert_tree);
-    cl_ssl_ctx = ssl::setup_client_ssl_context();
-  }
+  auto cert_tree = ssl::create_cert_lookup_tree();
+  auto sv_ssl_ctx = ssl::setup_server_ssl_context(all_ssl_ctx_, cert_tree);
+  auto cl_ssl_ctx = ssl::setup_client_ssl_context();
 
   for (size_t i = 0; i < num; ++i) {
     auto loop = ev_loop_new(0);
-
-    if (get_config()->tls_ctx_per_worker) {
-      cert_tree = ssl::create_cert_lookup_tree();
-      std::vector<SSL_CTX *> all_ssl_ctx;
-      sv_ssl_ctx = ssl::setup_server_ssl_context(all_ssl_ctx, cert_tree);
-      cl_ssl_ctx = ssl::setup_client_ssl_context();
-    }
 
     auto worker = make_unique<Worker>(loop, sv_ssl_ctx, cl_ssl_ctx, cert_tree,
                                       ticket_keys_);

@@ -132,7 +132,6 @@ extern const char SHRPX_OPT_BACKEND_HTTP1_CONNECTIONS_PER_FRONTEND[];
 extern const char SHRPX_OPT_LISTENER_DISABLE_TIMEOUT[];
 extern const char SHRPX_OPT_TLS_TICKET_KEY_FILE[];
 extern const char SHRPX_OPT_RLIMIT_NOFILE[];
-extern const char SHRPX_OPT_TLS_CTX_PER_WORKER[];
 extern const char SHRPX_OPT_BACKEND_REQUEST_BUFFER[];
 extern const char SHRPX_OPT_BACKEND_RESPONSE_BUFFER[];
 extern const char SHRPX_OPT_NO_SERVER_PUSH[];
@@ -325,7 +324,6 @@ struct Config {
   bool upstream_frame_debug;
   bool no_location_rewrite;
   bool no_host_rewrite;
-  bool tls_ctx_per_worker;
   bool no_server_push;
   // true if host contains UNIX domain socket path
   bool host_unix;
