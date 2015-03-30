@@ -78,6 +78,7 @@ DESCRIPTION
            synopsis=synopsis, description=format_text('\n'.join(description)))
 
     in_arg = False
+    in_footer = False
 
     for line in infile:
         line = line.rstrip()
@@ -94,6 +95,14 @@ DESCRIPTION
         if in_arg:
             print ''
             in_arg = False
+
+        if line == '--':
+            in_footer = True
+            continue
+
+        if in_footer:
+            print line.strip()
+            continue
 
         if line == 'Options:':
             print 'OPTIONS'
