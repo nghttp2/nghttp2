@@ -150,11 +150,11 @@ Under Cygwin environment, to compile the applications you need to compile and in
 
 and second, you need to undefine the macro \_\_STRICT\_ANSI\_\_, if you not, the functions `fdopen`, `fileno` and `strptime` will not available.
 
-the simple command like this:
+the simple command like this::
 
-	export CFLAGS="-U__STRICT_ANSI__ -I$libev_PREFIX/include -L$libev_PREFIX/lib"
-	export CXXFLAGS=$CFLAGS
-	make
+    export CFLAGS="-U__STRICT_ANSI__ -I$libev_PREFIX/include -L$libev_PREFIX/lib"
+    export CXXFLAGS=$CFLAGS
+    make
 
 If you want to compile the applications under `examples/`, you need to remove or rename the `event.h` from libev's installation, because it conflicts with libevent's installation.
 
