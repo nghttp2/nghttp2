@@ -1,3 +1,4 @@
+# vim: ft=dockerfile:
 # Dockerfile to build nghttp2 android binary
 #
 # $ sudo docker build -t nghttp2-android - < Dockerfile.android
@@ -9,7 +10,7 @@
 #
 # $ sudo docker run -v /path/to/dest:/out nghttp2-android cp /root/build/nghttp2/src/nghttpx /out
 
-FROM ubuntu
+FROM ubuntu:trusty
 
 MAINTAINER Tatsuhiro Tsujikawa
 
@@ -29,9 +30,10 @@ RUN apt-get install -y make binutils autoconf automake autotools-dev libtool \
     genisoimage libc6-i386 lib32stdc++6
 
 WORKDIR /root/build
-RUN curl -L -O http://dl.google.com/android/ndk/android-ndk-r10c-linux-x86_64.bin
-RUN chmod a+x android-ndk-r10c-linux-x86_64.bin
-RUN ./android-ndk-r10c-linux-x86_64.bin
+RUN curl -L -O http://dl.google.com/android/ndk/android-ndk-r10c-linux-x86_64.bin && \
+    chmod a+x android-ndk-r10c-linux-x86_64.bin && \
+    ./android-ndk-r10c-linux-x86_64.bin && \
+    rm android-ndk-r10c-linux-x86_64.bin
 
 WORKDIR /root/build/android-ndk-r10c
 RUN /bin/bash build/tools/make-standalone-toolchain.sh \
@@ -57,20 +59,24 @@ RUN autoreconf -i && \
     make install
 
 WORKDIR /root/build
-RUN curl -L -O https://www.openssl.org/source/openssl-1.0.1j.tar.gz
-RUN tar xf openssl-1.0.1j.tar.gz
+RUN curl -L -O https://www.openssl.org/source/openssl-1.0.1j.tar.gz && \
+    tar xf openssl-1.0.1j.tar.gz && \
+    rm openssl-1.0.1j.tar.gz
+
 WORKDIR /root/build/openssl-1.0.1j
 RUN export CROSS_COMPILE=$TOOLCHAIN/bin/arm-linux-androideabi- && \
     ./Configure --prefix=$PREFIX android && \
     make && make install_sw
 
 WORKDIR /root/build
-RUN curl -L -O http://dist.schmorp.de/libev/libev-4.19.tar.gz
-RUN curl -L -O https://gist.github.com/tatsuhiro-t/48c45f08950f587180ed/raw/80a8f003b5d1091eae497c5995bbaa68096e739b/libev-4.19-android.patch
-RUN tar xf libev-4.19.tar.gz
+RUN curl -L -O http://dist.schmorp.de/libev/libev-4.19.tar.gz && \
+    curl -L -O https://gist.github.com/tatsuhiro-t/48c45f08950f587180ed/raw/80a8f003b5d1091eae497c5995bbaa68096e739b/libev-4.19-android.patch && \
+    tar xf libev-4.19.tar.gz && \
+    rm libev-4.19.tar.gz
+
 WORKDIR /root/build/libev-4.19
-RUN patch -p1 < ../libev-4.19-android.patch
-RUN ./configure \
+RUN patch -p1 < ../libev-4.19-android.patch && \
+    ./configure \
     --host=arm-linux-androideabi \
     --build=`dpkg-architecture -qDEB_BUILD_GNU_TYPE` \
     --prefix=$PREFIX \
