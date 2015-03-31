@@ -59,11 +59,11 @@ RUN autoreconf -i && \
     make install
 
 WORKDIR /root/build
-RUN curl -L -O https://www.openssl.org/source/openssl-1.0.1j.tar.gz && \
-    tar xf openssl-1.0.1j.tar.gz && \
-    rm openssl-1.0.1j.tar.gz
+RUN curl -L -O https://www.openssl.org/source/openssl-1.0.2a.tar.gz && \
+    tar xf openssl-1.0.2a.tar.gz && \
+    rm openssl-1.0.2a.tar.gz
 
-WORKDIR /root/build/openssl-1.0.1j
+WORKDIR /root/build/openssl-1.0.2a
 RUN export CROSS_COMPILE=$TOOLCHAIN/bin/arm-linux-androideabi- && \
     ./Configure --prefix=$PREFIX android && \
     make && make install_sw
