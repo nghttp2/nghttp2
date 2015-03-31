@@ -921,8 +921,8 @@ cdef class _HTTP2ClientSessionCore(_HTTP2SessionCoreBase):
 
         custom_headers = _encode_headers(headers)
         headers = [
-            (b':scheme', scheme.encode('utf-8')),
             (b':method', method.encode('utf-8')),
+            (b':scheme', scheme.encode('utf-8')),
             (b':authority', host.encode('utf-8')),
             (b':path', path.encode('utf-8'))
         ]
@@ -1161,16 +1161,15 @@ if asyncio:
             promised_handler.path = path.encode('utf-8')
             promised_handler._set_response_prop(status, headers, body)
 
-            if request_headers is None:
-                request_headers = []
+            headers = [
+                (b':method', promised_handler.method),
+                (b':scheme', promised_handler.scheme),
+                (b':authority', promised_handler.host),
+                (b':path', promised_handler.path)
+            ]
+            headers.extend(_encode_headers(request_headers))
 
-            request_headers = _encode_headers(request_headers)
-            request_headers.append((b':scheme', promised_handler.scheme))
-            request_headers.append((b':method', promised_handler.method))
-            request_headers.append((b':authority', promised_handler.host))
-            request_headers.append((b':path', promised_handler.path))
-
-            promised_handler.headers = request_headers
+            promised_handler.headers = headers
 
             return self.http2.push(self, promised_handler)
 
@@ -1180,9 +1179,8 @@ if asyncio:
             if headers is None:
                 headers = []
 
-            self.response_headers = _encode_headers(headers)
-            self.response_headers.append((b':status', str(status)\
-                                          .encode('utf-8')))
+            self.response_headers = [(b':status', str(status).encode('utf-8'))]
+            self.response_headers.extend(_encode_headers(headers))
 
             self.response_body = body
 
