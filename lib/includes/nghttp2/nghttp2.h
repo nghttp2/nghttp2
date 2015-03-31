@@ -2795,8 +2795,8 @@ nghttp2_priority_spec_check_default(const nghttp2_priority_spec *pri_spec);
  * use `nghttp2_priority_spec_init()`.  If |pri_spec| is not ``NULL``,
  * this function will copy its data members.
  *
- * The `pri_spec->weight` must be in [:enum:`NGHTTP2_MIN_WEIGHT`,
- * :enum:`NGHTTP2_MAX_WEIGHT`], inclusive.  If `pri_spec->weight` is
+ * The ``pri_spec->weight`` must be in [:enum:`NGHTTP2_MIN_WEIGHT`,
+ * :enum:`NGHTTP2_MAX_WEIGHT`], inclusive.  If ``pri_spec->weight`` is
  * strictly less than :enum:`NGHTTP2_MIN_WEIGHT`, it becomes
  * :enum:`NGHTTP2_MIN_WEIGHT`.  If it is strictly greater than
  * :enum:`NGHTTP2_MAX_WEIGHT`, it becomes :enum:`NGHTTP2_MAX_WEIGHT`.
@@ -2979,8 +2979,8 @@ NGHTTP2_EXTERN int nghttp2_submit_trailer(nghttp2_session *session,
  * use `nghttp2_priority_spec_init()`.  If |pri_spec| is not ``NULL``,
  * this function will copy its data members.
  *
- * The `pri_spec->weight` must be in [:enum:`NGHTTP2_MIN_WEIGHT`,
- * :enum:`NGHTTP2_MAX_WEIGHT`], inclusive.  If `pri_spec->weight` is
+ * The ``pri_spec->weight`` must be in [:enum:`NGHTTP2_MIN_WEIGHT`,
+ * :enum:`NGHTTP2_MAX_WEIGHT`], inclusive.  If ``pri_spec->weight`` is
  * strictly less than :enum:`NGHTTP2_MIN_WEIGHT`, it becomes
  * :enum:`NGHTTP2_MIN_WEIGHT`.  If it is strictly greater than
  * :enum:`NGHTTP2_MAX_WEIGHT`, it becomes :enum:`NGHTTP2_MAX_WEIGHT`.
@@ -3084,8 +3084,8 @@ NGHTTP2_EXTERN int nghttp2_submit_data(nghttp2_session *session, uint8_t flags,
  * `nghttp2_priority_spec_init()`.  This function will copy its data
  * members.
  *
- * The `pri_spec->weight` must be in [:enum:`NGHTTP2_MIN_WEIGHT`,
- * :enum:`NGHTTP2_MAX_WEIGHT`], inclusive.  If `pri_spec->weight` is
+ * The ``pri_spec->weight`` must be in [:enum:`NGHTTP2_MIN_WEIGHT`,
+ * :enum:`NGHTTP2_MAX_WEIGHT`], inclusive.  If ``pri_spec->weight`` is
  * strictly less than :enum:`NGHTTP2_MIN_WEIGHT`, it becomes
  * :enum:`NGHTTP2_MIN_WEIGHT`.  If it is strictly greater than
  * :enum:`NGHTTP2_MAX_WEIGHT`, it becomes :enum:`NGHTTP2_MAX_WEIGHT`.
