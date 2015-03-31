@@ -6,11 +6,14 @@ asio_http2_server.h.rst
 building-android-binary.rst
 conf.py
 contribute.rst
+enums.rst
 h2load-howto.rst
 index.rst
 libnghttp2_asio.rst
+macros.rst
 manual/
 nghttp2.h.rst
+nghttp2_*.rst
 nghttp2ver.h.rst
 nghttpx-howto.rst
 package_README.rst
@@ -18,3 +21,4 @@ python-apiref.rst
 tutorial-client.rst
 tutorial-hpack.rst
 tutorial-server.rst
+types.rst
