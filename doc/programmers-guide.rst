@@ -1,5 +1,5 @@
-API Reference
-=============
+Programmers' Guide
+==================
 
 Includes
 --------
@@ -31,6 +31,8 @@ do not consume client connection preface unless
 value.  The applications are responsible to receive it before calling
 these functions if :type:`nghttp2_session` is configured as server and
 `nghttp2_option_set_recv_client_preface()` is not used.
+
+.. _http-messaging:
 
 HTTP Messaging
 --------------

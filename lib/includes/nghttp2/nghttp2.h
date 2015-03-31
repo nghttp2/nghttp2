@@ -1492,7 +1492,7 @@ typedef int (*nghttp2_on_begin_headers_callback)(nghttp2_session *session,
  * and the |value| using `nghttp2_check_header_name()` and
  * `nghttp2_check_header_value()`.  In addition to this, nghttp2
  * performs vaidation based on HTTP Messaging rule, which is briefly
- * explained in `HTTP Messaging`_ section.
+ * explained in :ref:`http-messaging` section.
  *
  * If the application uses `nghttp2_session_mem_recv()`, it can return
  * :enum:`NGHTTP2_ERR_PAUSE` to make `nghttp2_session_mem_recv()`
@@ -1973,9 +1973,9 @@ nghttp2_option_set_recv_client_preface(nghttp2_option *option, int val);
  * By default, nghttp2 library enforces subset of HTTP Messaging rules
  * described in `HTTP/2 specification, section 8
  * <https://tools.ietf.org/html/draft-ietf-httpbis-http2-17#section-8>`_.
- * See `HTTP Messaging`_ section for details.  For those applications
- * who use nghttp2 library as non-HTTP use, give nonzero to |val| to
- * disable this enforcement.
+ * See :ref:`http-messaging` section for details.  For those
+ * applications who use nghttp2 library as non-HTTP use, give nonzero
+ * to |val| to disable this enforcement.
  */
 NGHTTP2_EXTERN void nghttp2_option_set_no_http_messaging(nghttp2_option *option,
                                                          int val);

@@ -28,6 +28,7 @@ Contents:
    h2load.1
    nghttpx-howto
    h2load-howto
+   programmers-guide
    apiref
    libnghttp2_asio
    python-apiref

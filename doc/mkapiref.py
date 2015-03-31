@@ -24,19 +24,21 @@
 
 # Generates API reference from C source code.
 from __future__ import print_function # At least python 2.6 is required
-import re, sys, argparse
+import re, sys, argparse, os.path
 
 class FunctionDoc:
     def __init__(self, name, content, domain):
         self.name = name
         self.content = content
         self.domain = domain
+        if self.domain == 'function':
+            self.funcname = re.search(r'(nghttp2_[^ )]+)\(', self.name).group(1)
 
     def write(self, out):
-        print('''.. {}:: {}'''.format(self.domain, self.name))
-        print('')
+        out.write('.. {}:: {}\n'.format(self.domain, self.name))
+        out.write('\n')
         for line in self.content:
-            print('    {}'.format(line))
+            out.write('    {}\n'.format(line))
 
 class StructDoc:
     def __init__(self, name, content, members, member_domain):
@@ -47,17 +49,17 @@ class StructDoc:
 
     def write(self, out):
         if self.name:
-            print('''.. type:: {}'''.format(self.name))
-            print('')
+            out.write('.. type:: {}\n'.format(self.name))
+            out.write('\n')
             for line in self.content:
-                print('    {}'.format(line))
-            print('')
+                out.write('    {}\n'.format(line))
+            out.write('\n')
             for name, content in self.members:
-                print('''    .. {}:: {}'''.format(self.member_domain, name))
-                print('')
+                out.write('    .. {}:: {}\n'.format(self.member_domain, name))
+                out.write('\n')
                 for line in content:
-                    print('''        {}'''.format(line))
-            print('')
+                    out.write('        {}\n'.format(line))
+            out.write('\n')
 
 class MacroDoc:
     def __init__(self, name, content):
@@ -65,10 +67,10 @@ class MacroDoc:
         self.content = content
 
     def write(self, out):
-        print('''.. macro:: {}'''.format(self.name))
-        print('')
+        out.write('''.. macro:: {}\n'''.format(self.name))
+        out.write('\n')
         for line in self.content:
-            print('    {}'.format(line))
+            out.write('    {}\n'.format(line))
 
 def make_api_ref(infiles):
     macros = []
@@ -93,19 +95,65 @@ def make_api_ref(infiles):
                     enums.append(process_enum(infile))
                 elif doctype == '@macro':
                     macros.append(process_macro(infile))
+    return macros, enums, types, functions
+
     alldocs = [('Macros', macros),
                ('Enums', enums),
                ('Types (structs, unions and typedefs)', types),
                ('Functions', functions)]
-    for title, docs in alldocs:
-        if not docs:
-            continue
-        print(title)
-        print('-'*len(title))
-        for doc in docs:
-            doc.write(sys.stdout)
-            print('')
-        print('')
+
+def output(
+        indexfile, macrosfile, enumsfile, typesfile, funcsdir,
+        macros, enums, types, functions):
+    indexfile.write('''
+API Reference
+=============
+
+.. toctree::
+   :maxdepth: 1
+
+   macros
+   enums
+   types
+''')
+
+    for doc in functions:
+        indexfile.write('   {}\n'.format(doc.funcname))
+
+    macrosfile.write('''
+Macros
+======
+''')
+    for doc in macros:
+        doc.write(macrosfile)
+
+    enumsfile.write('''
+Enums
+=====
+''')
+    for doc in enums:
+        doc.write(enumsfile)
+
+    typesfile.write('''
+Types (structs, unions and typedefs)
+====================================
+''')
+    for doc in types:
+        doc.write(typesfile)
+
+    for doc in functions:
+        with open(os.path.join(funcsdir, doc.funcname + '.rst'), 'w') as f:
+            f.write('''
+{funcname}
+{secul}
+
+Synopsis
+--------
+
+*#include <nghttp2/nghttp2.h>*
+
+'''.format(funcname=doc.funcname, secul='='*len(doc.funcname)))
+            doc.write(f)
 
 def process_macro(infile):
     content = read_content(infile)
@@ -199,12 +247,30 @@ def transform_content(content):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Generate API reference")
-    parser.add_argument('--header', type=argparse.FileType('r'),
-                        help='header inserted at the top of the page')
+    parser.add_argument('index', type=argparse.FileType('w'),
+                        help='index output file')
+    parser.add_argument('macros', type=argparse.FileType('w'),
+                        help='macros section output file.  The filename should be macros.rst')
+    parser.add_argument('enums', type=argparse.FileType('w'),
+                        help='enums section output file.  The filename should be enums.rst')
+    parser.add_argument('types', type=argparse.FileType('w'),
+                        help='types section output file.  The filename should be types.rst')
+    parser.add_argument('funcsdir',
+                        help='functions doc output dir')
     parser.add_argument('files', nargs='+', type=argparse.FileType('r'),
                         help='source file')
     args = parser.parse_args()
-    if args.header:
-        print(args.header.read())
+    macros = []
+    enums = []
+    types = []
+    funcs = []
     for infile in args.files:
-        make_api_ref(args.files)
+        m, e, t, f = make_api_ref(args.files)
+        macros.extend(m)
+        enums.extend(e)
+        types.extend(t)
+        funcs.extend(f)
+    funcs.sort(key=lambda x: x.funcname)
+    output(
+        args.index, args.macros, args.enums, args.types, args.funcsdir,
+        macros, enums, types, funcs)

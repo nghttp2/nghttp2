@@ -23,10 +23,109 @@
 
 man_MANS = nghttp.1 nghttpd.1 nghttpx.1 h2load.1
 
+APIDOCS= \
+	apiref.rst \
+	macros.rst \
+	enums.rst \
+	types.rst \
+	nghttp2_check_header_name.rst \
+	nghttp2_check_header_value.rst \
+	nghttp2_hd_deflate_bound.rst \
+	nghttp2_hd_deflate_change_table_size.rst \
+	nghttp2_hd_deflate_del.rst \
+	nghttp2_hd_deflate_hd.rst \
+	nghttp2_hd_deflate_new.rst \
+	nghttp2_hd_deflate_new2.rst \
+	nghttp2_hd_inflate_change_table_size.rst \
+	nghttp2_hd_inflate_del.rst \
+	nghttp2_hd_inflate_end_headers.rst \
+	nghttp2_hd_inflate_hd.rst \
+	nghttp2_hd_inflate_new.rst \
+	nghttp2_hd_inflate_new2.rst \
+	nghttp2_is_fatal.rst \
+	nghttp2_nv_compare_name.rst \
+	nghttp2_option_del.rst \
+	nghttp2_option_new.rst \
+	nghttp2_option_set_no_auto_window_update.rst \
+	nghttp2_option_set_no_http_messaging.rst \
+	nghttp2_option_set_peer_max_concurrent_streams.rst \
+	nghttp2_option_set_recv_client_preface.rst \
+	nghttp2_pack_settings_payload.rst \
+	nghttp2_priority_spec_check_default.rst \
+	nghttp2_priority_spec_default_init.rst \
+	nghttp2_priority_spec_init.rst \
+	nghttp2_select_next_protocol.rst \
+	nghttp2_session_callbacks_del.rst \
+	nghttp2_session_callbacks_new.rst \
+	nghttp2_session_callbacks_set_before_frame_send_callback.rst \
+	nghttp2_session_callbacks_set_data_source_read_length_callback.rst \
+	nghttp2_session_callbacks_set_on_begin_frame_callback.rst \
+	nghttp2_session_callbacks_set_on_begin_headers_callback.rst \
+	nghttp2_session_callbacks_set_on_data_chunk_recv_callback.rst \
+	nghttp2_session_callbacks_set_on_frame_not_send_callback.rst \
+	nghttp2_session_callbacks_set_on_frame_recv_callback.rst \
+	nghttp2_session_callbacks_set_on_frame_send_callback.rst \
+	nghttp2_session_callbacks_set_on_header_callback.rst \
+	nghttp2_session_callbacks_set_on_invalid_frame_recv_callback.rst \
+	nghttp2_session_callbacks_set_on_stream_close_callback.rst \
+	nghttp2_session_callbacks_set_recv_callback.rst \
+	nghttp2_session_callbacks_set_select_padding_callback.rst \
+	nghttp2_session_callbacks_set_send_callback.rst \
+	nghttp2_session_client_new.rst \
+	nghttp2_session_client_new2.rst \
+	nghttp2_session_client_new3.rst \
+	nghttp2_session_consume.rst \
+	nghttp2_session_del.rst \
+	nghttp2_session_get_effective_local_window_size.rst \
+	nghttp2_session_get_effective_recv_data_length.rst \
+	nghttp2_session_get_last_proc_stream_id.rst \
+	nghttp2_session_get_next_stream_id.rst \
+	nghttp2_session_get_outbound_queue_size.rst \
+	nghttp2_session_get_remote_settings.rst \
+	nghttp2_session_get_remote_window_size.rst \
+	nghttp2_session_get_stream_effective_local_window_size.rst \
+	nghttp2_session_get_stream_effective_recv_data_length.rst \
+	nghttp2_session_get_stream_local_close.rst \
+	nghttp2_session_get_stream_remote_close.rst \
+	nghttp2_session_get_stream_remote_window_size.rst \
+	nghttp2_session_get_stream_user_data.rst \
+	nghttp2_session_mem_recv.rst \
+	nghttp2_session_mem_send.rst \
+	nghttp2_session_recv.rst \
+	nghttp2_session_resume_data.rst \
+	nghttp2_session_send.rst \
+	nghttp2_session_server_new.rst \
+	nghttp2_session_server_new2.rst \
+	nghttp2_session_server_new3.rst \
+	nghttp2_session_set_next_stream_id.rst \
+	nghttp2_session_set_stream_user_data.rst \
+	nghttp2_session_terminate_session.rst \
+	nghttp2_session_terminate_session2.rst \
+	nghttp2_session_upgrade.rst \
+	nghttp2_session_want_read.rst \
+	nghttp2_session_want_write.rst \
+	nghttp2_strerror.rst \
+	nghttp2_submit_altsvc.rst \
+	nghttp2_submit_data.rst \
+	nghttp2_submit_goaway.rst \
+	nghttp2_submit_headers.rst \
+	nghttp2_submit_ping.rst \
+	nghttp2_submit_priority.rst \
+	nghttp2_submit_push_promise.rst \
+	nghttp2_submit_request.rst \
+	nghttp2_submit_response.rst \
+	nghttp2_submit_rst_stream.rst \
+	nghttp2_submit_settings.rst \
+	nghttp2_submit_shutdown_notice.rst \
+	nghttp2_submit_trailer.rst \
+	nghttp2_submit_window_update.rst \
+	nghttp2_version.rst
+
 EXTRA_DIST = \
 	mkapiref.py \
 	README.rst \
-	apiref-header.rst \
+	programmers-guide.rst \
+	$(APIDOCS) \
 	nghttp.1.rst \
 	nghttpd.1.rst \
 	nghttpx.1.rst \
@@ -102,10 +201,14 @@ help:
 apiref.rst: $(top_builddir)/lib/includes/nghttp2/nghttp2ver.h \
 	$(top_builddir)/lib/includes/nghttp2/nghttp2.h
 	$(PYTHON) $(top_srcdir)/doc/mkapiref.py \
-	--header $(top_srcdir)/doc/apiref-header.rst $^ > $@
+	$@ \
+	$(top_builddir)/doc/macros.rst \
+	$(top_builddir)/doc/enums.rst \
+	$(top_builddir)/doc/types.rst \
+	$(top_builddir)/doc/ $^
 
 clean-local:
-	-rm apiref.rst
+	-rm $(APIDOCS)
 	-rm -rf $(BUILDDIR)/*
 
 html-local: apiref.rst
