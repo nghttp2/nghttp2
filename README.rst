@@ -140,24 +140,31 @@ To compile the source code, gcc >= 4.8.3 or clang >= 3.4 is required.
    on Mac OS X platform.
 
 Notes for building on Windows (Mingw/Cygwin)
--------------------------------------------
+--------------------------------------------
 
-Under Mingw environment, you can only compile the library, it's `libnghttp2-X.dll` and `libnghttp2.a`.
+Under Mingw environment, you can only compile the library, it's
+``libnghttp2-X.dll`` and ``libnghttp2.a``.
 
-If you want to compile the applications(`h2load`, `nghttp`, `nghttpx`, `nghttpd`), you need to use the Cygwin environment.
+If you want to compile the applications(``h2load``, ``nghttp``,
+``nghttpx``, ``nghttpd``), you need to use the Cygwin environment.
 
-Under Cygwin environment, to compile the applications you need to compile and install the `libev` first.
+Under Cygwin environment, to compile the applications you need to
+compile and install the libev first.
 
-and second, you need to undefine the macro \_\_STRICT\_ANSI\_\_, if you not, the functions `fdopen`, `fileno` and `strptime` will not available.
+Secondly, you need to undefine the macro ``__STRICT_ANSI__``, if you
+not, the functions ``fdopen``, ``fileno`` and ``strptime`` will not
+available.
 
 the sample command like this::
 
-    export CFLAGS="-U__STRICT_ANSI__ -I$libev_PREFIX/include -L$libev_PREFIX/lib"
-    export CXXFLAGS=$CFLAGS
-    ./configure
-    make
+    $ export CFLAGS="-U__STRICT_ANSI__ -I$libev_PREFIX/include -L$libev_PREFIX/lib"
+    $ export CXXFLAGS=$CFLAGS
+    $ ./configure
+    $ make
 
-If you want to compile the applications under `examples/`, you need to remove or rename the `event.h` from libev's installation, because it conflicts with libevent's installation.
+If you want to compile the applications under ``examples/``, you need
+to remove or rename the ``event.h`` from libev's installation, because
+it conflicts with libevent's installation.
 
 Building the documentation
 --------------------------
