@@ -460,7 +460,14 @@ nghttpx - proxy
 
 ``nghttpx`` is a multi-threaded reverse proxy for ``h2-14``, SPDY and
 HTTP/1.1, and powers http://nghttp2.org and supports HTTP/2 server push.
-It has several operational modes:
+
+``nghttpx`` implements `important performance-oriented features
+<https://istlsfastyet.com/#server-performance>`_ in TLS, such as
+session IDs, session tickets (with automatic key rotation), OCSP
+stapling, dynamic record sizing, ALPN/NPN, forward secrecy and SPDY &
+HTTP/2.
+
+``nghttpx`` has several operational modes:
 
 ================== ============================ ============== =============
 Mode option        Frontend                     Backend        Note

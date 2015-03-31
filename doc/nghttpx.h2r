@@ -84,6 +84,17 @@ deletes it.  However, if SIGUSR2 is used to execute new binary and
 both old and new configurations use same filename, new binary does not
 delete the socket and continues to use it.
 
+OCSP STAPLING
+-------------
+
+OCSP query is done using external perl script ``fetch-ocsp-response``,
+which has been developed as part of h2o project
+(https://github.com/h2o/h2o).
+
+The script file is usually installed under
+``$(prefix)/share/nghttp2/`` directory.  The actual path to script can
+be customized using :option:`--fetch-ocsp-response-file` option.
+
 SEE ALSO
 --------
 
