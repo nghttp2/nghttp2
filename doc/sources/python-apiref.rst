@@ -259,15 +259,16 @@ HTTP/2 servers
       size.  The body generator generates response body.  It can pause
       generation of response so that it can wait for slow backend data
       generation.  When invoked, it should return tuple, byte string
-      at most size length and flag.  The flag is either ``DATA_OK``,
-      ``DATA_EOF`` or ``DATA_DEFERRED``.  For non-empty byte string
-      and it is not the last chunk of response, ``DATA_OK`` must be
+      at most size length and flag.  The flag is either
+      :py:data:`DATA_OK`, :py:data:`DATA_EOF` or
+      :py:data:`DATA_DEFERRED`.  For non-empty byte string and it is
+      not the last chunk of response, :py:data:`DATA_OK` must be
       returned as flag.  If this is the last chunk of the response
-      (byte string could be ``None``), ``DATA_EOF`` must be returned
-      as flag.  If there is no data available right now, but
+      (byte string could be ``None``), :py:data:`DATA_EOF` must be
+      returned as flag.  If there is no data available right now, but
       additional data are anticipated, return tuple (``None``,
-      ``DATA_DEFERRD``).  When data arrived, call :py:meth:`resume()`
-      and restart response body transmission.
+      :py:data:`DATA_DEFERRD`).  When data arrived, call
+      :py:meth:`resume()` and restart response body transmission.
 
       Only the body generator can pause response body generation;
       instance of :py:class:`io.IOBase` must not block.
@@ -314,6 +315,19 @@ HTTP/2 servers
       :py:meth:`send_response()` about the body generator).  It is not
       an error calling this method while response body transmission is
       not paused.
+
+.. py:data:: DATA_OK
+
+   ``DATA_OK`` indicates non empty data is generated from body generator.
+
+.. py:data:: DATA_EOF
+
+   ``DATA_EOF`` indicates the end of response body.
+
+.. py:data:: DATA_DEFERRED
+
+   ``DATA_DEFERRED`` indicates that data are not available right now
+   and response should be paused.
 
 The following example illustrates :py:class:`HTTP2Server` and
 :py:class:`BaseRequestHandler` usage:
