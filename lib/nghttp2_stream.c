@@ -119,7 +119,6 @@ static int stream_push_item(nghttp2_stream *stream, nghttp2_session *session) {
     }
     break;
   default:
-    rv = 0;
     /* should not reach here */
     assert(0);
   }
