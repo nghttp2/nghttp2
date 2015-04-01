@@ -34,6 +34,7 @@ cdef extern from 'nghttp2/nghttp2.h':
 
     ctypedef enum nghttp2_error:
         NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE
+        NGHTTP2_ERR_DEFERRED
 
     ctypedef enum nghttp2_flag:
         NGHTTP2_FLAG_NONE
@@ -281,6 +282,9 @@ cdef extern from 'nghttp2/nghttp2.h':
 
     int nghttp2_session_terminate_session(nghttp2_session *session,
                                           uint32_t error_code)
+
+    int nghttp2_session_resume_data(nghttp2_session *session,
+                                    int32_t stream_id)
 
     const char* nghttp2_strerror(int lib_error_code)
 

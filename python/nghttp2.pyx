@@ -258,19 +258,35 @@ try:
 except ImportError:
     asyncio = None
 
+# body generator flags
+DATA_OK = 0
+DATA_EOF = 1
+DATA_DEFERRED = 2
+
+class _ByteIOWrapper:
+
+    def __init__(self, b):
+        self.b = b
+
+    def generate(self, n):
+        data = self.b.read1(n)
+        if not data:
+            return None, DATA_EOF
+        return data, DATA_OK
+
 def wrap_body(body):
     if body is None:
         return body
     elif isinstance(body, str):
-        return io.BytesIO(body.encode('utf-8'))
+        return _ByteIOWrapper(io.BytesIO(body.encode('utf-8'))).generate
     elif isinstance(body, bytes):
-        return io.BytesIO(body)
+        return _ByteIOWrapper(io.BytesIO(body)).generate
     elif isinstance(body, io.IOBase):
-        return body
+        return _ByteIOWrapper(body).generate
     else:
-        raise Exception(('body must be None or instance of str or '
-                            'bytes or io.IOBase'))
-
+        # assume that callable in the form f(n) returning tuple byte
+        # string and flag.
+        return body
 
 cdef _get_stream_user_data(cnghttp2.nghttp2_session *session,
                            int32_t stream_id):
@@ -488,29 +504,39 @@ cdef int on_stream_close(cnghttp2.nghttp2_session *session,
 
     return 0
 
-cdef ssize_t server_data_source_read(cnghttp2.nghttp2_session *session,
-                                     int32_t stream_id,
-                                     uint8_t *buf, size_t length,
-                                     uint32_t *data_flags,
-                                     cnghttp2.nghttp2_data_source *source,
-                                     void *user_data):
-    cdef http2 = <_HTTP2SessionCore>user_data
-    handler = <object>source.ptr
+cdef ssize_t data_source_read(cnghttp2.nghttp2_session *session,
+                              int32_t stream_id,
+                              uint8_t *buf, size_t length,
+                              uint32_t *data_flags,
+                              cnghttp2.nghttp2_data_source *source,
+                              void *user_data):
+    cdef http2 = <_HTTP2SessionCoreBase>user_data
+    generator = <object>source.ptr
 
+    http2.enter_callback()
     try:
-        data = handler.response_body.read(length)
+        data, flag = generator(length)
     except:
         sys.stderr.write(traceback.format_exc())
         return cnghttp2.NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+    finally:
+        http2.leave_callback()
+
+    if flag == DATA_DEFERRED:
+        return cnghttp2.NGHTTP2_ERR_DEFERRED
 
     if data:
         nread = len(data)
         memcpy(buf, <uint8_t*>data, nread)
-        return nread
+    else:
+        nread = 0
 
-    data_flags[0] = cnghttp2.NGHTTP2_DATA_FLAG_EOF
+    if flag == DATA_EOF:
+        data_flags[0] = cnghttp2.NGHTTP2_DATA_FLAG_EOF
+    elif flag != DATA_OK:
+        return cnghttp2.NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE
 
-    return 0
+    return nread
 
 cdef int client_on_begin_headers(cnghttp2.nghttp2_session *session,
                                  const cnghttp2.nghttp2_frame *frame,
@@ -595,36 +621,13 @@ cdef int client_on_frame_send(cnghttp2.nghttp2_session *session,
             return 0
         http2._start_settings_timer()
 
-cdef ssize_t client_data_source_read(cnghttp2.nghttp2_session *session,
-                                     int32_t stream_id,
-                                     uint8_t *buf, size_t length,
-                                     uint32_t *data_flags,
-                                     cnghttp2.nghttp2_data_source *source,
-                                     void *user_data):
-    cdef http2 = <_HTTP2ClientSessionCore>user_data
-    body = <object>source.ptr
-
-    try:
-        data = body.read(length)
-    except:
-        sys.stderr.write(traceback.format_exc())
-        return cnghttp2.NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
-
-    if data:
-        nread = len(data)
-        memcpy(buf, <uint8_t*>data, nread)
-        return nread
-
-    data_flags[0] = cnghttp2.NGHTTP2_DATA_FLAG_EOF
-
-    return 0
-
 cdef class _HTTP2SessionCoreBase:
     cdef cnghttp2.nghttp2_session *session
     cdef transport
     cdef handler_class
     cdef handlers
     cdef settings_timer
+    cdef inside_callback
 
     def __cinit__(self, transport, handler_class=None):
         self.session = NULL
@@ -632,6 +635,7 @@ cdef class _HTTP2SessionCoreBase:
         self.handler_class = handler_class
         self.handlers = set()
         self.settings_timer = None
+        self.inside_callback = False
 
     def __dealloc__(self):
         cnghttp2.nghttp2_session_del(self.session)
@@ -667,6 +671,17 @@ cdef class _HTTP2SessionCoreBase:
            cnghttp2.nghttp2_session_want_read(self.session) == 0 and \
            cnghttp2.nghttp2_session_want_write(self.session) == 0:
             self.transport.close()
+
+    def resume(self, stream_id):
+        cnghttp2.nghttp2_session_resume_data(self.session, stream_id)
+        if not self.inside_callback:
+            self.send_data()
+
+    def enter_callback(self):
+        self.inside_callback = True
+
+    def leave_callback(self):
+        self.inside_callback = False
 
     def _make_handler(self, stream_id):
         logging.debug('_make_handler, stream_id:%s', stream_id)
@@ -815,8 +830,8 @@ cdef class _HTTP2SessionCore(_HTTP2SessionCoreBase):
         nvlen = _make_nva(&nva, handler.response_headers)
 
         if handler.response_body:
-            prd.source.ptr = <void*>handler
-            prd.read_callback = server_data_source_read
+            prd.source.ptr = <void*>handler.response_body
+            prd.read_callback = data_source_read
             prd_ptr = &prd
         else:
             prd_ptr = NULL
@@ -933,7 +948,7 @@ cdef class _HTTP2ClientSessionCore(_HTTP2SessionCoreBase):
 
         if body:
             prd.source.ptr = <void*>body
-            prd.read_callback = client_data_source_read
+            prd.read_callback = data_source_read
             prd_ptr = &prd
         else:
             prd_ptr = NULL
@@ -1095,8 +1110,26 @@ if asyncio:
             additional response headers. The :status header field is
             appended by the library. The body is the response body. It
             could be None if response body is empty. Or it must be
-            instance of either str, bytes or io.IOBase. If instance of str
-            is specified, it is encoded using UTF-8.
+            instance of either str, bytes, io.IOBase or callable,
+            called body generator, which takes one parameter,
+            size. The body generator generates response body. It can
+            pause generation of response so that it can wait for slow
+            backend data generation. When invoked, it should return
+            tuple, byte string and flag. The flag is either DATA_OK,
+            DATA_EOF and DATA_DEFERRED. For non-empty byte string and
+            it is not the last chunk of response, DATA_OK is returned
+            as flag.  If this is the last chunk of the response (byte
+            string is possibly None), DATA_EOF must be returned as
+            flag.  If there is no data available right now, but
+            additional data are anticipated, return tuple (None,
+            DATA_DEFERRD).  When data arrived, call resume() and
+            restart response body transmission.
+
+            Only the body generator can pause response body
+            generation; instance of io.IOBase must not block.
+
+            If instance of str is specified as body, it is encoded
+            using UTF-8.
 
             The headers is a list of tuple of the form (name,
             value). The name and value can be either unicode string or
@@ -1129,11 +1162,9 @@ if asyncio:
             request_headers parameter).
 
             The status is HTTP status code. The headers is additional
-            response headers. The :status header field is appended by the
-            library. The body is the response body. It could be None if
-            response body is empty. Or it must be instance of either str,
-            bytes or io.IOBase. If instance of str is specified, it is
-            encoded using UTF-8.
+            response headers. The :status header field is appended by
+            the library. The body is the response body. It has the
+            same semantics of body parameter of send_response().
 
             The headers and request_headers are a list of tuple of the
             form (name, value). The name and value can be either
@@ -1183,6 +1214,9 @@ if asyncio:
             self.response_headers.extend(_encode_headers(headers))
 
             self.response_body = body
+
+        def resume(self):
+            self.http2.resume(self.stream_id)
 
     def _encode_headers(headers):
         if not headers:
@@ -1429,6 +1463,9 @@ if asyncio:
 
             '''
             self.http2.push(push_promise, handler)
+
+        def resume(self):
+            self.http2.resume(self.stream_id)
 
     class _HTTP2ClientSession(asyncio.Protocol):
 

@@ -220,6 +220,10 @@ HTTP/2 servers
 
       This is a value of ``:path`` header field.
 
+   .. py:attribute:: headers
+
+      Request header fields.
+
    A :py:class:`BaseRequestHandler` has the following methods:
 
    .. py:method:: on_headers()
@@ -249,10 +253,27 @@ HTTP/2 servers
       Send response.  The *status* is HTTP status code.  The *headers*
       is additional response headers.  The *:status* header field will
       be appended by the library.  The *body* is the response body.
-      It could be ``None`` if response body is empty. Or it must be
-      instance of either ``str``, ``bytes`` or :py:class:`io.IOBase`.
-      If instance of ``str`` is specified, it will be encoded using
-      UTF-8.
+      It could be ``None`` if response body is empty.  Or it must be
+      instance of either ``str``, ``bytes``, :py:class:`io.IOBase` or
+      callable, called body generator, which takes one parameter,
+      size.  The body generator generates response body.  It can pause
+      generation of response so that it can wait for slow backend data
+      generation.  When invoked, it should return tuple, byte string
+      at most size length and flag.  The flag is either ``DATA_OK``,
+      ``DATA_EOF`` or ``DATA_DEFERRED``.  For non-empty byte string
+      and it is not the last chunk of response, ``DATA_OK`` must be
+      returned as flag.  If this is the last chunk of the response
+      (byte string could be ``None``), ``DATA_EOF`` must be returned
+      as flag.  If there is no data available right now, but
+      additional data are anticipated, return tuple (``None``,
+      ``DATA_DEFERRD``).  When data arrived, call :py:meth:`resume()`
+      and restart response body transmission.
+
+      Only the body generator can pause response body generation;
+      instance of :py:class:`io.IOBase` must not block.
+
+      If instance of ``str`` is specified as *body*, it will be
+      encoded using UTF-8.
 
       The *headers* is a list of tuple of the form ``(name,
       value)``. The ``name`` and ``value`` can be either byte string
@@ -273,10 +294,8 @@ HTTP/2 servers
 
       The *status* is HTTP status code.  The *headers* is additional
       response headers.  The ``:status`` header field is appended by
-      the library.  The *body* is the response body.  It could be
-      ``None`` if response body is empty.  Or it must be instance of
-      either ``str``, ``bytes`` or ``io.IOBase``.  If instance of
-      ``str`` is specified, it is encoded using UTF-8.
+      the library.  The *body* is the response body.  It has the same
+      semantics of *body* parameter of :py:meth:`send_response()`.
 
       The headers and request_headers are a list of tuple of the form
       ``(name, value)``. The ``name`` and ``value`` can be either byte
@@ -288,6 +307,14 @@ HTTP/2 servers
 
       Raises the exception if any error occurs.
 
+   .. py:method:: resume()
+
+      Signals the restarting of response body transmission paused by
+      ``DATA_DEFERRED`` from the body generator (see
+      :py:meth:`send_response()` about the body generator).  It is not
+      an error calling this method while response body transmission is
+      not paused.
+
 The following example illustrates :py:class:`HTTP2Server` and
 :py:class:`BaseRequestHandler` usage:
 
@@ -296,6 +323,7 @@ The following example illustrates :py:class:`HTTP2Server` and
     #!/usr/bin/env python
 
     import io, ssl
+
     import nghttp2
 
     class Handler(nghttp2.BaseRequestHandler):
@@ -311,9 +339,85 @@ The following example illustrates :py:class:`HTTP2Server` and
                                body=io.BytesIO(b'nghttp2-python FTW'))
 
     ctx = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
-    ctx.options = ssl.OP_ALL | ssl.OP_NO_SSLv2
+    ctx.options = ssl.OP_ALL | ssl.OP_NO_SSLv2 | ssl.OP_NO_SSLv3
     ctx.load_cert_chain('server.crt', 'server.key')
 
     # give None to ssl to make the server non-SSL/TLS
+    server = nghttp2.HTTP2Server(('127.0.0.1', 8443), Handler, ssl=ctx)
+    server.serve_forever()
+
+The following example illustrates HTTP/2 server using asynchronous
+response body generation.  This is simplified reverse proxy:
+
+.. code-block:: python
+
+    #!/usr/bin/env python
+
+    import ssl
+    import os
+    import urllib
+    import asyncio
+    import io
+
+    import nghttp2
+
+    @asyncio.coroutine
+    def get_http_header(handler, url):
+        url = urllib.parse.urlsplit(url)
+        ssl = url.scheme == 'https'
+        if url.port == None:
+            if url.scheme == 'https':
+                port = 443
+            else:
+                port = 80
+        else:
+            port = url.port
+
+        connect = asyncio.open_connection(url.hostname, port, ssl=ssl)
+        reader, writer = yield from connect
+        req = 'GET {path} HTTP/1.0\r\n\r\n'.format(path=url.path or '/')
+        writer.write(req.encode('utf-8'))
+        # skip response header fields
+        while True:
+            line = yield from reader.readline()
+            line = line.rstrip()
+            if not line:
+                break
+        # read body
+        while True:
+            b = yield from reader.read(4096)
+            if not b:
+                break
+            handler.buf.write(b)
+        writer.close()
+        handler.buf.seek(0)
+        handler.eof = True
+        handler.resume()
+
+    class Body:
+        def __init__(self, handler):
+            self.handler = handler
+            self.handler.eof = False
+            self.handler.buf = io.BytesIO()
+
+        def generate(self, n):
+            buf = self.handler.buf
+            data = buf.read1(n)
+            if not data and not self.handler.eof:
+                return None, nghttp2.DATA_DEFERRED
+            return data, nghttp2.DATA_EOF if self.handler.eof else nghttp2.DATA_OK
+
+    class Handler(nghttp2.BaseRequestHandler):
+
+        def on_headers(self):
+            body = Body(self)
+            asyncio.async(get_http_header(
+                self, 'http://localhost' + self.path.decode('utf-8')))
+            self.send_response(status=200, body=body.generate)
+
+    ctx = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+    ctx.options = ssl.OP_ALL | ssl.OP_NO_SSLv2 | ssl.OP_NO_SSLv3
+    ctx.load_cert_chain('server.crt', 'server.key')
+
     server = nghttp2.HTTP2Server(('127.0.0.1', 8443), Handler, ssl=ctx)
     server.serve_forever()
