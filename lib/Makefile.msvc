@@ -37,7 +37,7 @@ INSTALL_HDR = $(VC_ROOT)/include
 TARGETS = nghttp2.lib  nghttp2.dll  nghttp2_imp.lib \
           nghttp2d.lib nghttp2d.dll nghttp2d_imp.lib
 
-EXT_LIBS = ws2_32.lib
+EXT_LIBS = 
 
 OBJ_DIR = MSVC_obj
 
@@ -45,7 +45,7 @@ NGHTTP2_PDB_R = $(OBJ_DIR)/nghttp2.pdb
 NGHTTP2_PDB_D = $(OBJ_DIR)/nghttp2d.pdb
 
 CC       = cl
-CFLAGS   = -I./includes -DHAVE_WINSOCK2_H -Dssize_t=long -D_U_=""
+CFLAGS   = -I./includes -Dssize_t=long -D_U_=""
 
 CFLAGS_R = -nologo -MD  -W3 -Zi -Fd./$(NGHTTP2_PDB_R)
 CFLAGS_D = -nologo -MDd -W3 -Zi -Fd./$(NGHTTP2_PDB_D) \
