@@ -106,6 +106,7 @@ struct nghttp2_session_callbacks {
    * Sets callback function invoked when a frame header is received.
    */
   nghttp2_on_begin_frame_callback on_begin_frame_callback;
+  nghttp2_send_data_callback send_data_callback;
 };
 
 #endif /* NGHTTP2_CALLBACKS_H */

@@ -121,3 +121,9 @@ void nghttp2_session_callbacks_set_on_begin_frame_callback(
     nghttp2_on_begin_frame_callback on_begin_frame_callback) {
   cbs->on_begin_frame_callback = on_begin_frame_callback;
 }
+
+void nghttp2_session_callbacks_set_send_data_callback(
+    nghttp2_session_callbacks *cbs,
+    nghttp2_send_data_callback send_data_callback) {
+  cbs->send_data_callback = send_data_callback;
+}

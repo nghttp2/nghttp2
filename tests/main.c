@@ -260,6 +260,8 @@ int main(int argc _U_, char *argv[] _U_) {
                    test_nghttp2_session_cancel_reserved_remote) ||
       !CU_add_test(pSuite, "session_reset_pending_headers",
                    test_nghttp2_session_reset_pending_headers) ||
+      !CU_add_test(pSuite, "session_send_data_callback",
+                   test_nghttp2_session_send_data_callback) ||
       !CU_add_test(pSuite, "http_mandatory_headers",
                    test_nghttp2_http_mandatory_headers) ||
       !CU_add_test(pSuite, "http_content_length",

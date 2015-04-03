@@ -52,7 +52,8 @@ typedef enum {
 
 typedef enum {
   NGHTTP2_OB_POP_ITEM,
-  NGHTTP2_OB_SEND_DATA
+  NGHTTP2_OB_SEND_DATA,
+  NGHTTP2_OB_SEND_NO_COPY
 } nghttp2_outbound_state;
 
 typedef struct {

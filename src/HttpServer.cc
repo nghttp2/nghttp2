@@ -371,6 +371,8 @@ struct ev_loop *Http2Handler::get_loop() const {
   return sessions_->get_loop();
 }
 
+Http2Handler::WriteBuf *Http2Handler::get_wb() { return &wb_; }
+
 int Http2Handler::setup_bev() { return 0; }
 
 int Http2Handler::fill_wb() {
@@ -833,18 +835,9 @@ ssize_t file_read_callback(nghttp2_session *session, int32_t stream_id,
   auto hd = static_cast<Http2Handler *>(user_data);
   auto stream = hd->get_stream(stream_id);
 
-  int fd = source->fd;
-  ssize_t nread;
+  size_t nread = std::min(stream->body_left, static_cast<int64_t>(length));
 
-  while ((nread = read(fd, buf, length)) == -1 && errno == EINTR)
-    ;
-
-  if (nread == -1) {
-    remove_stream_read_timeout(stream);
-    remove_stream_write_timeout(stream);
-
-    return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
-  }
+  *data_flags |= NGHTTP2_DATA_FLAG_NO_COPY;
 
   stream->body_left -= nread;
   if (nread == 0 || stream->body_left <= 0) {
@@ -1221,6 +1214,62 @@ int hd_on_frame_send_callback(nghttp2_session *session,
 } // namespace
 
 namespace {
+int send_data_callback(nghttp2_session *session, nghttp2_frame *frame,
+                       const uint8_t *framehd, size_t length,
+                       nghttp2_data_source *source, void *user_data) {
+  auto hd = static_cast<Http2Handler *>(user_data);
+  auto stream = hd->get_stream(frame->hd.stream_id);
+
+  if (!stream) {
+    return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+  }
+
+  auto wb = hd->get_wb();
+  auto padlen = frame->data.padlen;
+
+  if (wb->wleft() < 9 + length + padlen) {
+    return NGHTTP2_ERR_WOULDBLOCK;
+  }
+
+  int fd = source->fd;
+
+  auto p = wb->last;
+
+  p = std::copy_n(framehd, 9, p);
+
+  if (padlen) {
+    *p++ = padlen - 1;
+  }
+
+  while (length) {
+    ssize_t nread;
+    while ((nread = read(fd, p, length)) == -1 && errno == EINTR)
+      ;
+
+    if (nread == -1) {
+      auto stream = hd->get_stream(frame->hd.stream_id);
+      remove_stream_read_timeout(stream);
+      remove_stream_write_timeout(stream);
+
+      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+    }
+
+    length -= nread;
+    p += nread;
+  }
+
+  if (padlen) {
+    std::fill(p, p + padlen - 1, 0);
+    p += padlen - 1;
+  }
+
+  wb->last = p;
+
+  return 0;
+}
+} // namespace
+
+namespace {
 ssize_t select_padding_callback(nghttp2_session *session,
                                 const nghttp2_frame *frame, size_t max_payload,
                                 void *user_data) {
@@ -1287,6 +1336,9 @@ void fill_callback(nghttp2_session_callbacks *callbacks, const Config *config) {
 
   nghttp2_session_callbacks_set_on_begin_headers_callback(
       callbacks, on_begin_headers_callback);
+
+  nghttp2_session_callbacks_set_send_data_callback(callbacks,
+                                                   send_data_callback);
 
   if (config->padding) {
     nghttp2_session_callbacks_set_select_padding_callback(

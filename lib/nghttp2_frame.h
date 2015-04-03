@@ -510,7 +510,8 @@ int nghttp2_iv_check(const nghttp2_settings_entry *iv, size_t niv);
  * Sets Pad Length field and flags and adjusts frame header position
  * of each buffers in |bufs|.  The number of padding is given in the
  * |padlen| including Pad Length field.  The |hd| is the frame header
- * for the serialized data.
+ * for the serialized data.  This function fills zeros padding region
+ * unless framehd_only is nonzero.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -521,6 +522,6 @@ int nghttp2_iv_check(const nghttp2_settings_entry *iv, size_t niv);
  *     The length of the resulting frame is too large.
  */
 int nghttp2_frame_add_pad(nghttp2_bufs *bufs, nghttp2_frame_hd *hd,
-                          size_t padlen);
+                          size_t padlen, int framehd_only);
 
 #endif /* NGHTTP2_FRAME_H */

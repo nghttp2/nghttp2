@@ -813,7 +813,7 @@ int nghttp2_iv_check(const nghttp2_settings_entry *iv, size_t niv) {
   return 1;
 }
 
-static void frame_set_pad(nghttp2_buf *buf, size_t padlen) {
+static void frame_set_pad(nghttp2_buf *buf, size_t padlen, int framehd_only) {
   size_t trail_padlen;
   size_t newlen;
 
@@ -828,6 +828,10 @@ static void frame_set_pad(nghttp2_buf *buf, size_t padlen) {
   newlen = (nghttp2_get_uint32(buf->pos) >> 8) + padlen;
   nghttp2_put_uint32be(buf->pos, (uint32_t)((newlen << 8) + buf->pos[3]));
 
+  if (framehd_only) {
+    return;
+  }
+
   trail_padlen = padlen - 1;
   buf->pos[NGHTTP2_FRAME_HDLEN] = trail_padlen;
 
@@ -836,12 +840,10 @@ static void frame_set_pad(nghttp2_buf *buf, size_t padlen) {
   /* extend buffers trail_padlen bytes, since we ate previous padlen -
      trail_padlen byte(s) */
   buf->last += trail_padlen;
-
-  return;
 }
 
 int nghttp2_frame_add_pad(nghttp2_bufs *bufs, nghttp2_frame_hd *hd,
-                          size_t padlen) {
+                          size_t padlen, int framehd_only) {
   nghttp2_buf *buf;
 
   if (padlen == 0) {
@@ -874,7 +876,7 @@ int nghttp2_frame_add_pad(nghttp2_bufs *bufs, nghttp2_frame_hd *hd,
 
   assert(nghttp2_buf_avail(buf) >= (ssize_t)padlen - 1);
 
-  frame_set_pad(buf, padlen);
+  frame_set_pad(buf, padlen, framehd_only);
 
   hd->length += padlen;
   hd->flags |= NGHTTP2_FLAG_PADDED;

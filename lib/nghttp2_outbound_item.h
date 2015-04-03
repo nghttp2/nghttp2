@@ -74,6 +74,10 @@ typedef struct {
    * |eof| is 0. It becomes 1 after all data were read.
    */
   uint8_t eof;
+  /**
+   * The flag to indicate that NGHTTP2_DATA_FLAG_NO_COPY is used.
+   */
+  uint8_t no_copy;
 } nghttp2_data_aux_data;
 
 typedef enum {

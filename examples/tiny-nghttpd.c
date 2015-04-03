@@ -658,19 +658,57 @@ static void stream_error(connection *conn, int32_t stream_id,
                             error_code);
 }
 
+static int send_data_callback(nghttp2_session *session _U_,
+                              nghttp2_frame *frame, const uint8_t *framehd,
+                              size_t length, nghttp2_data_source *source _U_,
+                              void *user_data) {
+  connection *conn = user_data;
+  uint8_t *p = conn->buf.last;
+  stream *strm;
+
+  strm = nghttp2_session_get_stream_user_data(session, frame->hd.stream_id);
+
+  if (!strm) {
+    return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+  }
+
+  /* We never use padding in this program */
+  assert(frame->data.padlen == 0);
+
+  if ((size_t)io_buf_left(&conn->buf) < 9 + frame->hd.length) {
+    return NGHTTP2_ERR_WOULDBLOCK;
+  }
+
+  memcpy(p, framehd, 9);
+  p += 9;
+
+  while (length) {
+    ssize_t nread;
+    while ((nread = read(strm->filefd, p, length)) == -1 && errno == EINTR)
+      ;
+    if (nread == -1) {
+      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+    }
+
+    length -= nread;
+    p += nread;
+  }
+
+  conn->buf.last = p;
+
+  return 0;
+}
+
 static ssize_t fd_read_callback(nghttp2_session *session _U_,
-                                int32_t stream_id _U_, uint8_t *buf,
+                                int32_t stream_id _U_, uint8_t *buf _U_,
                                 size_t length, uint32_t *data_flags,
                                 nghttp2_data_source *source,
                                 void *user_data _U_) {
   stream *strm = source->ptr;
-  ssize_t nread;
+  ssize_t nread = (int64_t)length < strm->fileleft ? length : strm->fileleft;
 
-  while ((nread = read(strm->filefd, buf, length)) == -1 && errno == EINTR)
-    ;
-  if (nread == -1) {
-    return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
-  }
+  *data_flags |= NGHTTP2_DATA_FLAG_NO_COPY;
+
   strm->fileleft -= nread;
   if (nread == 0 || strm->fileleft == 0) {
     if (strm->fileleft != 0) {
@@ -1274,6 +1312,8 @@ int main(int argc, char **argv) {
       shared_callbacks, on_stream_close_callback);
   nghttp2_session_callbacks_set_on_frame_not_send_callback(
       shared_callbacks, on_frame_not_send_callback);
+  nghttp2_session_callbacks_set_send_data_callback(shared_callbacks,
+                                                   send_data_callback);
 
   rv = nghttp2_option_new(&shared_option);
   if (rv != 0) {

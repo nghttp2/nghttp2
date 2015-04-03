@@ -711,7 +711,12 @@ typedef enum {
    * trailer header fields with `nghttp2_submit_request()` or
    * `nghttp2_submit_response()`.
    */
-  NGHTTP2_DATA_FLAG_NO_END_STREAM = 0x02
+  NGHTTP2_DATA_FLAG_NO_END_STREAM = 0x02,
+  /**
+   * Indicates that application will send complete DATA frame in
+   * :type:`nghttp2_send_data_callback`.
+   */
+  NGHTTP2_DATA_FLAG_NO_COPY = 0x04
 } nghttp2_data_flag;
 
 /**
@@ -723,6 +728,15 @@ typedef enum {
  * bytes of data from |source| (or possibly other places) and store
  * them in |buf| and return number of data stored in |buf|.  If EOF is
  * reached, set :enum:`NGHTTP2_DATA_FLAG_EOF` flag in |*data_flags|.
+ *
+ * Sometime it is desirable to avoid copying data into |buf| and let
+ * application to send data directly.  To achieve this, set
+ * :enum:`NGHTTP2_DATA_FLAG_NO_COPY` to |*data_flags| (and possibly
+ * other flags, just like when we do copy), and return the number of
+ * bytes to send without copying data into |buf|.  The library, seeing
+ * :enum:`NGHTTP2_DATA_FLAG_NO_COPY`, will invoke
+ * :type:`nghttp2_send_data_callback`.  The application must send
+ * complete DATA frame in that callback.
  *
  * If this callback is set by `nghttp2_submit_request()`,
  * `nghttp2_submit_response()` or `nghttp2_submit_headers()` and
@@ -1188,6 +1202,47 @@ typedef union {
 typedef ssize_t (*nghttp2_send_callback)(nghttp2_session *session,
                                          const uint8_t *data, size_t length,
                                          int flags, void *user_data);
+
+/**
+ * @functypedef
+ *
+ * Callback function invoked when :enum:`NGHTTP2_DATA_FLAG_NO_COPY` is
+ * used in :type:`nghttp2_data_source_read_callback` to send complete
+ * DATA frame.
+ *
+ * The |frame| is a DATA frame to send.  The |framehd| is the
+ * serialized frame header (9 bytes). The |length| is the length of
+ * application data to send (this does not include padding).  The
+ * |source| is the same pointer passed to
+ * :type:`nghttp2_data_source_read_callback`.
+ *
+ * The application first must send frame header |framehd| of length 9
+ * bytes.  If ``frame->padlen > 0``, send 1 byte of value
+ * ``frame->padlen - 1``.  Then send exactly |length| bytes of
+ * application data.  Finally, if ``frame->padlen > 0``, send
+ * ``frame->padlen - 1`` bytes of zero (they are padding).
+ *
+ * The application has to send complete DATA frame in this callback.
+ * If all data were written successfully, return 0.
+ *
+ * If it cannot send it all, just return
+ * :enum:`NGHTTP2_ERR_WOULDBLOCK`; the library will call this callback
+ * with the same parameters later (It is recommended to send complete
+ * DATA frame at once in this function to deal with error; if partial
+ * frame data has already sent, it is impossible to send another data
+ * in that state, and all we can do is tear down connection).  If
+ * application decided to reset this stream, return
+ * :enum:`NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE`, then the library
+ * will send RST_STREAM with INTERNAL_ERROR as error code.  The
+ * application can also return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`,
+ * which will result in connection closure.  Returning any other value
+ * is treated as :enum:`NGHTTP2_ERR_CALLBACK_FAILURE` is returned.
+ */
+typedef int (*nghttp2_send_data_callback)(nghttp2_session *session,
+                                          nghttp2_frame *frame,
+                                          const uint8_t *framehd, size_t length,
+                                          nghttp2_data_source *source,
+                                          void *user_data);
 
 /**
  * @functypedef
@@ -1786,6 +1841,17 @@ nghttp2_session_callbacks_set_data_source_read_length_callback(
 NGHTTP2_EXTERN void nghttp2_session_callbacks_set_on_begin_frame_callback(
     nghttp2_session_callbacks *cbs,
     nghttp2_on_begin_frame_callback on_begin_frame_callback);
+
+/**
+ * @function
+ *
+ * Sets callback function invoked when
+ * :enum:`NGHTTP2_DATA_FLAG_NO_COPY` is used in
+ * :type:`nghttp2_data_source_read_callback` to avoid data copy.
+ */
+NGHTTP2_EXTERN void nghttp2_session_callbacks_set_send_data_callback(
+    nghttp2_session_callbacks *cbs,
+    nghttp2_send_data_callback send_data_callback);
 
 /**
  * @functypedef

@@ -140,12 +140,16 @@ public:
 
   struct ev_loop *get_loop() const;
 
+  using WriteBuf = Buffer<65536>;
+
+  WriteBuf *get_wb();
+
 private:
   ev_io wev_;
   ev_io rev_;
   ev_timer settings_timerev_;
   std::map<int32_t, std::unique_ptr<Stream>> id2stream_;
-  Buffer<65536> wb_;
+  WriteBuf wb_;
   std::function<int(Http2Handler &)> read_, write_;
   int64_t session_id_;
   nghttp2_session *session_;

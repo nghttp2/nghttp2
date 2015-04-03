@@ -1701,7 +1701,7 @@ static int session_headers_add_pad(nghttp2_session *session,
   DEBUGF(fprintf(stderr, "send: padding selected: payloadlen=%zd, padlen=%zu\n",
                  padded_payloadlen, padlen));
 
-  rv = nghttp2_frame_add_pad(framebufs, &frame->hd, padlen);
+  rv = nghttp2_frame_add_pad(framebufs, &frame->hd, padlen, 0);
 
   if (rv != 0) {
     return rv;
@@ -2558,6 +2558,9 @@ static int session_after_frame_sent2(nghttp2_session *session) {
       return 0;
     }
 
+    /* Reset no_copy here because next write may not use this. */
+    aux_data->no_copy = 0;
+
     stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
 
     /* If session is closed or RST_STREAM was queued, we won't send
@@ -2648,6 +2651,7 @@ static int session_after_frame_sent2(nghttp2_session *session) {
 
         return 0;
       }
+
       if (rv == NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE) {
         /* Stop DATA frame chain and issue RST_STREAM to close the
            stream.  We don't return
@@ -2671,6 +2675,12 @@ static int session_after_frame_sent2(nghttp2_session *session) {
       }
       assert(rv == 0);
 
+      if (aux_data->no_copy) {
+        aob->state = NGHTTP2_OB_SEND_NO_COPY;
+      } else {
+        aob->state = NGHTTP2_OB_SEND_DATA;
+      }
+
       return 0;
     }
 
@@ -2691,6 +2701,32 @@ static int session_after_frame_sent2(nghttp2_session *session) {
   /* Unreachable */
   assert(0);
   return 0;
+}
+
+static int session_call_send_data(nghttp2_session *session,
+                                  nghttp2_outbound_item *item,
+                                  nghttp2_bufs *framebufs) {
+  int rv;
+  nghttp2_buf *buf;
+  size_t length;
+  nghttp2_frame *frame;
+  nghttp2_data_aux_data *aux_data;
+
+  buf = &framebufs->cur->buf;
+  frame = &item->frame;
+  length = frame->hd.length - frame->data.padlen;
+  aux_data = &item->aux_data.data;
+
+  rv = session->callbacks.send_data_callback(session, frame, buf->pos, length,
+                                             &aux_data->data_prd.source,
+                                             session->user_data);
+
+  if (rv == 0 || rv == NGHTTP2_ERR_WOULDBLOCK ||
+      rv == NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE) {
+    return rv;
+  }
+
+  return NGHTTP2_ERR_CALLBACK_FAILURE;
 }
 
 static ssize_t nghttp2_session_mem_send_internal(nghttp2_session *session,
@@ -2823,6 +2859,11 @@ static ssize_t nghttp2_session_mem_send_internal(nghttp2_session *session,
         }
       } else {
         DEBUGF(fprintf(stderr, "send: next frame: DATA\n"));
+
+        if (item->aux_data.data.no_copy) {
+          aob->state = NGHTTP2_OB_SEND_NO_COPY;
+          break;
+        }
       }
 
       DEBUGF(fprintf(stderr,
@@ -2873,6 +2914,60 @@ static ssize_t nghttp2_session_mem_send_internal(nghttp2_session *session,
 
       return datalen;
     }
+    case NGHTTP2_OB_SEND_NO_COPY:
+      DEBUGF(fprintf(stderr, "send: no copy DATA\n"));
+
+      rv = session_call_send_data(session, aob->item, framebufs);
+      if (nghttp2_is_fatal(rv)) {
+        return rv;
+      }
+
+      if (rv == NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE) {
+        nghttp2_stream *stream;
+        nghttp2_frame *frame;
+
+        frame = &aob->item->frame;
+
+        stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
+        if (stream) {
+          rv = nghttp2_stream_detach_item(stream, session);
+
+          if (nghttp2_is_fatal(rv)) {
+            return rv;
+          }
+
+          rv = nghttp2_session_add_rst_stream(session, frame->hd.stream_id,
+                                              NGHTTP2_INTERNAL_ERROR);
+          if (nghttp2_is_fatal(rv)) {
+            return rv;
+          }
+        }
+
+        active_outbound_item_reset(aob, mem);
+
+        break;
+      }
+
+      if (rv == NGHTTP2_ERR_WOULDBLOCK) {
+        return 0;
+      }
+
+      assert(rv == 0);
+
+      rv = session_after_frame_sent1(session);
+      if (rv < 0) {
+        assert(nghttp2_is_fatal(rv));
+        return rv;
+      }
+      rv = session_after_frame_sent2(session);
+      if (rv < 0) {
+        assert(nghttp2_is_fatal(rv));
+        return rv;
+      }
+
+      /* We have already adjusted the next state */
+
+      break;
     }
   }
 }
@@ -6223,6 +6318,17 @@ int nghttp2_session_pack_data(nghttp2_session *session, nghttp2_bufs *bufs,
     }
   }
 
+  if (data_flags & NGHTTP2_DATA_FLAG_NO_COPY) {
+    if (session->callbacks.send_data_callback == NULL) {
+      DEBUGF(fprintf(
+          stderr,
+          "NGHTTP2_DATA_FLAG_NO_COPY requires send_data_callback set\n"));
+
+      return NGHTTP2_ERR_CALLBACK_FAILURE;
+    }
+    aux_data->no_copy = 1;
+  }
+
   frame->hd.length = payloadlen;
   frame->data.padlen = 0;
 
@@ -6239,7 +6345,8 @@ int nghttp2_session_pack_data(nghttp2_session *session, nghttp2_bufs *bufs,
 
   nghttp2_frame_pack_frame_hd(buf->pos, &frame->hd);
 
-  rv = nghttp2_frame_add_pad(bufs, &frame->hd, frame->data.padlen);
+  rv = nghttp2_frame_add_pad(bufs, &frame->hd, frame->data.padlen,
+                             aux_data->no_copy);
   if (rv != 0) {
     return rv;
   }

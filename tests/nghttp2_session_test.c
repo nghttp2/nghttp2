@@ -294,6 +294,50 @@ static ssize_t no_end_stream_data_source_read_callback(
   return 0;
 }
 
+static ssize_t no_copy_data_source_read_callback(
+    nghttp2_session *session _U_, int32_t stream_id _U_, uint8_t *buf _U_,
+    size_t len, uint32_t *data_flags, nghttp2_data_source *source _U_,
+    void *user_data) {
+  my_user_data *ud = (my_user_data *)user_data;
+  size_t wlen;
+  if (len < ud->data_source_length) {
+    wlen = len;
+  } else {
+    wlen = ud->data_source_length;
+  }
+
+  ud->data_source_length -= wlen;
+
+  *data_flags |= NGHTTP2_DATA_FLAG_NO_COPY;
+
+  if (ud->data_source_length == 0) {
+    *data_flags |= NGHTTP2_DATA_FLAG_EOF;
+  }
+  return wlen;
+}
+
+static int send_data_callback(nghttp2_session *session _U_,
+                              nghttp2_frame *frame, const uint8_t *framehd,
+                              size_t length, nghttp2_data_source *source _U_,
+                              void *user_data) {
+  accumulator *acc = ((my_user_data *)user_data)->acc;
+
+  memcpy(acc->buf + acc->length, framehd, NGHTTP2_FRAME_HDLEN);
+  acc->length += NGHTTP2_FRAME_HDLEN;
+
+  if (frame->data.padlen) {
+    *(acc->buf + acc->length++) = frame->data.padlen - 1;
+  }
+
+  acc->length += length;
+
+  if (frame->data.padlen) {
+    acc->length += frame->data.padlen - 1;
+  }
+
+  return 0;
+}
+
 /* static void no_stream_user_data_stream_close_callback */
 /* (nghttp2_session *session, */
 /*  int32_t stream_id, */
@@ -2337,8 +2381,7 @@ void test_nghttp2_session_on_push_promise_received(void) {
   nghttp2_session_client_new(&session, &callbacks, &user_data);
 
   nghttp2_session_open_stream(session, 2, NGHTTP2_STREAM_FLAG_NONE,
-                              &pri_spec_default,
-                              NGHTTP2_STREAM_RESERVED, NULL);
+                              &pri_spec_default, NGHTTP2_STREAM_RESERVED, NULL);
   /* Attempt to PUSH_PROMISE against reserved (remote) stream */
   nghttp2_frame_push_promise_init(&frame.push_promise, NGHTTP2_FLAG_END_HEADERS,
                                   2, 4, NULL, 0);
@@ -2358,8 +2401,7 @@ void test_nghttp2_session_on_push_promise_received(void) {
   nghttp2_session_client_new(&session, &callbacks, &user_data);
 
   nghttp2_session_open_stream(session, 1, NGHTTP2_STREAM_FLAG_NONE,
-                              &pri_spec_default,
-                              NGHTTP2_STREAM_OPENING, NULL);
+                              &pri_spec_default, NGHTTP2_STREAM_OPENING, NULL);
 
   session->local_settings.enable_push = 0;
 
@@ -2381,8 +2423,7 @@ void test_nghttp2_session_on_push_promise_received(void) {
   nghttp2_session_client_new(&session, &callbacks, &user_data);
 
   nghttp2_session_open_stream(session, 1, NGHTTP2_STREAM_FLAG_NONE,
-                              &pri_spec_default,
-                              NGHTTP2_STREAM_OPENING, NULL);
+                              &pri_spec_default, NGHTTP2_STREAM_OPENING, NULL);
   nvlen = ARRLEN(malformed_nva);
   nghttp2_nv_array_copy(&nva, malformed_nva, nvlen, mem);
   nghttp2_frame_push_promise_init(&frame.push_promise, NGHTTP2_FLAG_END_HEADERS,
@@ -2402,8 +2443,7 @@ void test_nghttp2_session_on_push_promise_received(void) {
   nghttp2_session_client_new(&session, &callbacks, &user_data);
 
   nghttp2_session_open_stream(session, 1, NGHTTP2_STREAM_FLAG_NONE,
-                              &pri_spec_default,
-                              NGHTTP2_STREAM_OPENING, NULL);
+                              &pri_spec_default, NGHTTP2_STREAM_OPENING, NULL);
   /* Submit settings with ENABLE_PUSH = 0 (thus disabling push) */
   nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, &iv, 1);
 
@@ -2552,8 +2592,7 @@ void test_nghttp2_session_on_window_update_received(void) {
   /* Receiving WINDOW_UPDATE on reserved (remote) stream is a
      connection error */
   nghttp2_session_open_stream(session, 2, NGHTTP2_STREAM_FLAG_NONE,
-                              &pri_spec_default,
-                              NGHTTP2_STREAM_RESERVED, NULL);
+                              &pri_spec_default, NGHTTP2_STREAM_RESERVED, NULL);
 
   nghttp2_frame_window_update_init(&frame.window_update, NGHTTP2_FLAG_NONE, 2,
                                    4096);
@@ -2613,8 +2652,7 @@ void test_nghttp2_session_on_data_received(void) {
 
   /* If NGHTTP2_STREAM_CLOSING state, DATA frame is discarded. */
   nghttp2_session_open_stream(session, 4, NGHTTP2_STREAM_FLAG_NONE,
-                              &pri_spec_default,
-                              NGHTTP2_STREAM_CLOSING, NULL);
+                              &pri_spec_default, NGHTTP2_STREAM_CLOSING, NULL);
 
   frame.hd.flags = NGHTTP2_FLAG_NONE;
   frame.hd.stream_id = 4;
@@ -3644,8 +3682,7 @@ void test_nghttp2_submit_headers_push_reply(void) {
      error */
   CU_ASSERT(0 == nghttp2_session_client_new(&session, &callbacks, &ud));
   nghttp2_session_open_stream(session, 2, NGHTTP2_STREAM_FLAG_NONE,
-                              &pri_spec_default,
-                              NGHTTP2_STREAM_RESERVED, NULL);
+                              &pri_spec_default, NGHTTP2_STREAM_RESERVED, NULL);
   CU_ASSERT(0 == nghttp2_submit_headers(session, NGHTTP2_FLAG_NONE, 2, NULL,
                                         reqnv, ARRLEN(reqnv), NULL));
 
@@ -3911,8 +3948,7 @@ void test_nghttp2_submit_settings_update_local_window_size(void) {
   stream->recv_window_size = 32768;
 
   nghttp2_session_open_stream(session, 3, NGHTTP2_STREAM_FLAG_NONE,
-                              &pri_spec_default, NGHTTP2_STREAM_OPENED,
-                              NULL);
+                              &pri_spec_default, NGHTTP2_STREAM_OPENED, NULL);
 
   CU_ASSERT(0 == nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, iv, 1));
   CU_ASSERT(0 == nghttp2_session_send(session));
@@ -6946,6 +6982,51 @@ void test_nghttp2_session_reset_pending_headers(void) {
   stream = nghttp2_session_get_stream(session, stream_id);
 
   CU_ASSERT(NULL == stream);
+
+  nghttp2_session_del(session);
+}
+
+void test_nghttp2_session_send_data_callback(void) {
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  nghttp2_data_provider data_prd;
+  my_user_data ud;
+  accumulator acc;
+  nghttp2_frame_hd hd;
+
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+  callbacks.send_callback = accumulator_send_callback;
+  callbacks.send_data_callback = send_data_callback;
+
+  data_prd.read_callback = no_copy_data_source_read_callback;
+
+  acc.length = 0;
+  ud.acc = &acc;
+
+  ud.data_source_length = NGHTTP2_DATA_PAYLOADLEN * 2;
+
+  nghttp2_session_client_new(&session, &callbacks, &ud);
+
+  nghttp2_session_open_stream(session, 1, NGHTTP2_STREAM_FLAG_NONE,
+                              &pri_spec_default, NGHTTP2_STREAM_OPENING, NULL);
+
+  nghttp2_submit_data(session, NGHTTP2_FLAG_END_STREAM, 1, &data_prd);
+
+  CU_ASSERT(0 == nghttp2_session_send(session));
+
+  CU_ASSERT((NGHTTP2_FRAME_HDLEN + NGHTTP2_DATA_PAYLOADLEN) * 2 == acc.length);
+
+  nghttp2_frame_unpack_frame_hd(&hd, acc.buf);
+
+  CU_ASSERT(16384 == hd.length);
+  CU_ASSERT(NGHTTP2_DATA == hd.type);
+  CU_ASSERT(NGHTTP2_FLAG_NONE == hd.flags);
+
+  nghttp2_frame_unpack_frame_hd(&hd, acc.buf + NGHTTP2_FRAME_HDLEN + hd.length);
+
+  CU_ASSERT(16384 == hd.length);
+  CU_ASSERT(NGHTTP2_DATA == hd.type);
+  CU_ASSERT(NGHTTP2_FLAG_END_STREAM == hd.flags);
 
   nghttp2_session_del(session);
 }

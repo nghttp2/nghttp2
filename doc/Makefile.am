@@ -71,6 +71,7 @@ APIDOCS= \
 	nghttp2_session_callbacks_set_recv_callback.rst \
 	nghttp2_session_callbacks_set_select_padding_callback.rst \
 	nghttp2_session_callbacks_set_send_callback.rst \
+	nghttp2_session_callbacks_set_send_data_callback.rst \
 	nghttp2_session_client_new.rst \
 	nghttp2_session_client_new2.rst \
 	nghttp2_session_client_new3.rst \
