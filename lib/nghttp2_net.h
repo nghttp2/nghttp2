@@ -44,7 +44,13 @@
    define inline functions for those function so that we don't have
    dependeny on that lib. */
 
-static inline uint32_t htonl(uint32_t hostlong) {
+#ifdef _MSC_VER
+#define STIN static __inline
+#else
+#define STIN static inline
+#endif
+
+STIN uint32_t htonl(uint32_t hostlong) {
   uint32_t res;
   unsigned char *p = (unsigned char *)&res;
   *p++ = hostlong >> 24;
@@ -54,7 +60,7 @@ static inline uint32_t htonl(uint32_t hostlong) {
   return res;
 }
 
-static inline uint16_t htons(uint16_t hostshort) {
+STIN uint16_t htons(uint16_t hostshort) {
   uint16_t res;
   unsigned char *p = (unsigned char *)&res;
   *p++ = hostshort >> 8;
@@ -62,7 +68,7 @@ static inline uint16_t htons(uint16_t hostshort) {
   return res;
 }
 
-static inline uint32_t ntohl(uint32_t netlong) {
+STIN uint32_t ntohl(uint32_t netlong) {
   uint32_t res;
   unsigned char *p = (unsigned char *)&netlong;
   res = *p++ << 24;
@@ -72,7 +78,7 @@ static inline uint32_t ntohl(uint32_t netlong) {
   return res;
 }
 
-static inline uint16_t ntohs(uint16_t netshort) {
+STIN uint16_t ntohs(uint16_t netshort) {
   uint16_t res;
   unsigned char *p = (unsigned char *)&netshort;
   res = *p++ << 8;
