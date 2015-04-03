@@ -36,7 +36,7 @@ setup(
     author = 'Tatsuhiro Tsujikawa',
     version = '@PACKAGE_VERSION@',
     author_email = 'tatsuhiro.t@gmail.com',
-    url = 'http://tatsuhiro-t.github.io/nghttp2/',
+    url = 'https://nghttp2.org/',
     keywords = [],
     ext_modules = [Extension("nghttp2",
                              ["nghttp2.c"],
