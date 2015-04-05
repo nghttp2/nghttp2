@@ -1218,12 +1218,6 @@ int send_data_callback(nghttp2_session *session, nghttp2_frame *frame,
                        const uint8_t *framehd, size_t length,
                        nghttp2_data_source *source, void *user_data) {
   auto hd = static_cast<Http2Handler *>(user_data);
-  auto stream = hd->get_stream(frame->hd.stream_id);
-
-  if (!stream) {
-    return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
-  }
-
   auto wb = hd->get_wb();
   auto padlen = frame->data.padlen;
 

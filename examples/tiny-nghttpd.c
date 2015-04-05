@@ -660,17 +660,11 @@ static void stream_error(connection *conn, int32_t stream_id,
 
 static int send_data_callback(nghttp2_session *session _U_,
                               nghttp2_frame *frame, const uint8_t *framehd,
-                              size_t length, nghttp2_data_source *source _U_,
+                              size_t length, nghttp2_data_source *source,
                               void *user_data) {
   connection *conn = user_data;
   uint8_t *p = conn->buf.last;
-  stream *strm;
-
-  strm = nghttp2_session_get_stream_user_data(session, frame->hd.stream_id);
-
-  if (!strm) {
-    return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
-  }
+  stream *strm = source->ptr;
 
   /* We never use padding in this program */
   assert(frame->data.padlen == 0);
