@@ -763,9 +763,9 @@ int64_t to_time64(const timeval &tv) {
 }
 
 bool check_h2_is_selected(const unsigned char *proto, size_t len) {
-  return streq_l(NGHTTP2_H2, proto, len) ||
+  return streq_l(NGHTTP2_PROTO_VERSION_ID, proto, len) ||
          streq_l(NGHTTP2_H2_16, proto, len) ||
-         streq_l(NGHTTP2_PROTO_VERSION_ID, proto, len);
+         streq_l(NGHTTP2_H2_14, proto, len);
 }
 
 namespace {
@@ -785,23 +785,23 @@ bool select_h2(const unsigned char **out, unsigned char *outlen,
 
 bool select_h2(const unsigned char **out, unsigned char *outlen,
                const unsigned char *in, unsigned int inlen) {
-  return select_h2(out, outlen, in, inlen, NGHTTP2_H2_ALPN,
-                   str_size(NGHTTP2_H2_ALPN)) ||
+  return select_h2(out, outlen, in, inlen, NGHTTP2_PROTO_ALPN,
+                   str_size(NGHTTP2_PROTO_ALPN)) ||
          select_h2(out, outlen, in, inlen, NGHTTP2_H2_16_ALPN,
                    str_size(NGHTTP2_H2_16_ALPN)) ||
-         select_h2(out, outlen, in, inlen, NGHTTP2_PROTO_ALPN,
-                   str_size(NGHTTP2_PROTO_ALPN));
+         select_h2(out, outlen, in, inlen, NGHTTP2_H2_14_ALPN,
+                   str_size(NGHTTP2_H2_14_ALPN));
 }
 
 std::vector<unsigned char> get_default_alpn() {
   auto res = std::vector<unsigned char>(str_size(NGHTTP2_PROTO_ALPN) +
                                         str_size(NGHTTP2_H2_16_ALPN) +
-                                        str_size(NGHTTP2_H2_ALPN));
+                                        str_size(NGHTTP2_H2_14_ALPN));
   auto p = std::begin(res);
 
-  p = std::copy_n(NGHTTP2_H2_ALPN, str_size(NGHTTP2_H2_ALPN), p);
-  p = std::copy_n(NGHTTP2_H2_16_ALPN, str_size(NGHTTP2_H2_16_ALPN), p);
   p = std::copy_n(NGHTTP2_PROTO_ALPN, str_size(NGHTTP2_PROTO_ALPN), p);
+  p = std::copy_n(NGHTTP2_H2_16_ALPN, str_size(NGHTTP2_H2_16_ALPN), p);
+  p = std::copy_n(NGHTTP2_H2_14_ALPN, str_size(NGHTTP2_H2_14_ALPN), p);
 
   return res;
 }

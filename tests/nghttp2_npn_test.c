@@ -30,9 +30,8 @@
 #include <nghttp2/nghttp2.h>
 
 static void http2(void) {
-  const unsigned char p[] = {8,   'h', 't', 't', 'p', '/', '1', '.',
-                             '1', 5,   'h', '2', '-', '1', '4', 6,
-                             's', 'p', 'd', 'y', '/', '3'};
+  const unsigned char p[] = {8,   'h', 't', 't', 'p', '/', '1', '.', '1', 2,
+                             'h', '2', 6,   's', 'p', 'd', 'y', '/', '3'};
   unsigned char outlen;
   unsigned char *out;
   CU_ASSERT(1 == nghttp2_select_next_protocol(&out, &outlen, p, sizeof(p)));

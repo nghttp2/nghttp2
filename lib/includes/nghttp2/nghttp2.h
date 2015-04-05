@@ -55,13 +55,13 @@ extern "C" {
  * The protocol version identification string of this library
  * supports.  This identifier is used if HTTP/2 is used over TLS.
  */
-#define NGHTTP2_PROTO_VERSION_ID "h2-14"
+#define NGHTTP2_PROTO_VERSION_ID "h2"
 /**
  * @macro
  *
  * The length of :macro:`NGHTTP2_PROTO_VERSION_ID`.
  */
-#define NGHTTP2_PROTO_VERSION_ID_LEN 5
+#define NGHTTP2_PROTO_VERSION_ID_LEN 2
 
 /**
  * @macro
@@ -72,7 +72,7 @@ extern "C" {
  * extension <https://tools.ietf.org/html/rfc7301>`_.  This is useful
  * to process incoming ALPN tokens in wire format.
  */
-#define NGHTTP2_PROTO_ALPN "\x5h2-14"
+#define NGHTTP2_PROTO_ALPN "\x2h2"
 
 /**
  * @macro
@@ -88,14 +88,14 @@ extern "C" {
  * supports.  This identifier is used if HTTP/2 is used over cleartext
  * TCP.
  */
-#define NGHTTP2_CLEARTEXT_PROTO_VERSION_ID "h2c-14"
+#define NGHTTP2_CLEARTEXT_PROTO_VERSION_ID "h2c"
 
 /**
  * @macro
  *
  * The length of :macro:`NGHTTP2_CLEARTEXT_PROTO_VERSION_ID`.
  */
-#define NGHTTP2_CLEARTEXT_PROTO_VERSION_ID_LEN 6
+#define NGHTTP2_CLEARTEXT_PROTO_VERSION_ID_LEN 3
 
 struct nghttp2_session;
 /**

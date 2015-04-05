@@ -46,13 +46,13 @@
 namespace nghttp2 {
 
 // The additional HTTP/2 protocol ALPN protocol identifier we also
-// supports for our applications.  This will be removed once HTTP/2
-// specification is finalized.
+// supports for our applications to make smooth migration into final
+// h2 ALPN ID.
 #define NGHTTP2_H2_16_ALPN "\x5h2-16"
 #define NGHTTP2_H2_16 "h2-16"
 
-#define NGHTTP2_H2_ALPN "\x2h2"
-#define NGHTTP2_H2 "h2"
+#define NGHTTP2_H2_14_ALPN "\x5h2-14"
+#define NGHTTP2_H2_14 "h2-14"
 
 namespace util {
 
