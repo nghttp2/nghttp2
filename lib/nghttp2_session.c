@@ -2914,8 +2914,24 @@ static ssize_t nghttp2_session_mem_send_internal(nghttp2_session *session,
 
       return datalen;
     }
-    case NGHTTP2_OB_SEND_NO_COPY:
+    case NGHTTP2_OB_SEND_NO_COPY: {
+      nghttp2_stream *stream;
+      nghttp2_frame *frame;
+
       DEBUGF(fprintf(stderr, "send: no copy DATA\n"));
+
+      frame = &aob->item->frame;
+
+      stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
+      if (stream == NULL) {
+        DEBUGF(fprintf(
+            stderr,
+            "send: no copy DATA cancelled because stream was closed\n"));
+
+        active_outbound_item_reset(aob, mem);
+
+        break;
+      }
 
       rv = session_call_send_data(session, aob->item, framebufs);
       if (nghttp2_is_fatal(rv)) {
@@ -2923,24 +2939,16 @@ static ssize_t nghttp2_session_mem_send_internal(nghttp2_session *session,
       }
 
       if (rv == NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE) {
-        nghttp2_stream *stream;
-        nghttp2_frame *frame;
+        rv = nghttp2_stream_detach_item(stream, session);
 
-        frame = &aob->item->frame;
+        if (nghttp2_is_fatal(rv)) {
+          return rv;
+        }
 
-        stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
-        if (stream) {
-          rv = nghttp2_stream_detach_item(stream, session);
-
-          if (nghttp2_is_fatal(rv)) {
-            return rv;
-          }
-
-          rv = nghttp2_session_add_rst_stream(session, frame->hd.stream_id,
-                                              NGHTTP2_INTERNAL_ERROR);
-          if (nghttp2_is_fatal(rv)) {
-            return rv;
-          }
+        rv = nghttp2_session_add_rst_stream(session, frame->hd.stream_id,
+                                            NGHTTP2_INTERNAL_ERROR);
+        if (nghttp2_is_fatal(rv)) {
+          return rv;
         }
 
         active_outbound_item_reset(aob, mem);
@@ -2968,6 +2976,7 @@ static ssize_t nghttp2_session_mem_send_internal(nghttp2_session *session,
       /* We have already adjusted the next state */
 
       break;
+    }
     }
   }
 }
