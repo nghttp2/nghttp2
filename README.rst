@@ -19,20 +19,16 @@ code coverage yet.
 Development Status
 ------------------
 
-We started to implement h2-14
-(http://tools.ietf.org/html/draft-ietf-httpbis-http2-14), and header
-compression
-(http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-09).
+We have implemented final HTTP/2 protocol specification.  The RFC is
+not published yet, so we use draft-17 specification for HTTP/2
+(http://tools.ietf.org/html/draft-ietf-httpbis-http2-14), and draft-11
+for header compression (aka HPACK)
+(http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-11).
+These documents have been approved by IETF and no technical changes
+are made before RFC publication.
 
-The nghttp2 code base was forked from the spdylay project.
-
-=========================== =======
-HTTP/2 Features             Support
-=========================== =======
-Core frames handling        Yes
-Dependency Tree             Yes
-Large header (CONTINUATION) Yes
-=========================== =======
+The nghttp2 code base was forked from the spdylay
+(https://github.com/tatsuhiro-t/spdylay) project.
 
 Public Test Server
 ------------------
@@ -46,9 +42,9 @@ implementation.
   and ``http/1.1`` via ALPN/NPN and requires TLSv1.2 for HTTP/2
   connection.
 
-* http://nghttp2.org/ (Upgrade / Direct)
+* http://nghttp2.org/ (HTTP Upgrade and HTTP/2 Direct)
 
-  ``h2c-14`` and ``http/1.1``.
+  ``h2c`` and ``http/1.1``.
 
 Requirements
 ------------
@@ -228,10 +224,10 @@ output from ``nghttp`` client::
 
     $ nghttp -nv https://nghttp2.org
     [  0.033][NPN] server offers:
-              * h2-14
+              * h2
               * spdy/3.1
               * http/1.1
-    The negotiated protocol: h2-14
+    The negotiated protocol: h2
     [  0.068] send SETTINGS frame <length=15, flags=0x00, stream_id=0>
               (niv=3)
               [SETTINGS_MAX_CONCURRENT_STREAMS(3):100]
@@ -458,8 +454,9 @@ information.  Here is sample output from ``nghttpd``::
 nghttpx - proxy
 +++++++++++++++
 
-``nghttpx`` is a multi-threaded reverse proxy for ``h2-14``, SPDY and
-HTTP/1.1, and powers http://nghttp2.org and supports HTTP/2 server push.
+``nghttpx`` is a multi-threaded reverse proxy for HTTP/2, SPDY and
+HTTP/1.1, and powers http://nghttp2.org and supports HTTP/2 server
+push.
 
 ``nghttpx`` implements `important performance-oriented features
 <https://istlsfastyet.com/#server-performance>`_ in TLS, such as
@@ -480,8 +477,8 @@ default mode       HTTP/2, SPDY, HTTP/1.1 (TLS) HTTP/1.1       Reverse proxy
 ================== ============================ ============== =============
 
 The interesting mode at the moment is the default mode.  It works like
-a reverse proxy and listens for ``h2-14``, SPDY and HTTP/1.1 and can
-be deployed as a SSL/TLS terminator for existing web server.
+a reverse proxy and listens for HTTP/2, SPDY and HTTP/1.1 and can be
+deployed as a SSL/TLS terminator for existing web server.
 
 The default mode, ``--http2-proxy`` and ``--http2-bridge`` modes use
 SSL/TLS in the frontend connection by default.  To disable SSL/TLS,
