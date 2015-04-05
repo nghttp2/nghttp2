@@ -307,8 +307,8 @@ const char *nghttp2_strerror(int error_code) {
     return "Out of memory";
   case NGHTTP2_ERR_CALLBACK_FAILURE:
     return "The user callback function failed";
-  case NGHTTP2_ERR_BAD_PREFACE:
-    return "Received bad connection preface";
+  case NGHTTP2_ERR_BAD_CLIENT_MAGIC:
+    return "Received bad clinet magic byte string";
   default:
     return "Unknown error code";
   }

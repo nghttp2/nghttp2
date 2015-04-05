@@ -431,7 +431,7 @@ int Http2Handler::read_clear() {
 
     rv = nghttp2_session_mem_recv(session_, buf.data(), nread);
     if (rv < 0) {
-      if (rv != NGHTTP2_ERR_BAD_PREFACE) {
+      if (rv != NGHTTP2_ERR_BAD_CLIENT_MAGIC) {
         std::cerr << "nghttp2_session_mem_recv() returned error: "
                   << nghttp2_strerror(rv) << std::endl;
       }
@@ -558,7 +558,7 @@ int Http2Handler::read_tls() {
 
     rv = nghttp2_session_mem_recv(session_, buf.data(), nread);
     if (rv < 0) {
-      if (rv != NGHTTP2_ERR_BAD_PREFACE) {
+      if (rv != NGHTTP2_ERR_BAD_CLIENT_MAGIC) {
         std::cerr << "nghttp2_session_mem_recv() returned error: "
                   << nghttp2_strerror(rv) << std::endl;
       }

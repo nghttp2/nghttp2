@@ -1477,8 +1477,6 @@ if asyncio:
                    cnghttp2.NGHTTP2_PROTO_VERSION_ID:
                     self.transport.abort()
 
-            # Send preamble
-            self.transport.write(cnghttp2.NGHTTP2_CLIENT_CONNECTION_PREFACE)
             self.http2 = _HTTP2ClientSessionCore(self.transport)
 
 	    # Clear pending requests

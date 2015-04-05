@@ -194,32 +194,17 @@ typedef struct {
 /**
  * @macro
  *
- * The client connection preface.
+ * The client magic string, which is the first 24 bytes byte string of
+ * client connection preface.
  */
-#define NGHTTP2_CLIENT_CONNECTION_PREFACE "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
+#define NGHTTP2_CLIENT_MAGIC "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
 
 /**
  * @macro
  *
- * The length of :macro:`NGHTTP2_CLIENT_CONNECTION_PREFACE`.
+ * The length of :macro:`NGHTTP2_CLIENT_MAGIC`.
  */
-#define NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN 24
-
-/**
- * @macro
- *
- * The client connection header.  This macro is obsoleted by
- * NGHTTP2_CLIENT_CONNECTION_PREFACE.
- */
-#define NGHTTP2_CLIENT_CONNECTION_HEADER NGHTTP2_CLIENT_CONNECTION_PREFACE
-
-/**
- * @macro
- *
- * The length of :macro:`NGHTTP2_CLIENT_CONNECTION_HEADER`.
- */
-#define NGHTTP2_CLIENT_CONNECTION_HEADER_LEN                                   \
-  NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN
+#define NGHTTP2_CLIENT_MAGIC_LEN 24
 
 /**
  * @enum
@@ -397,10 +382,10 @@ typedef enum {
    */
   NGHTTP2_ERR_CALLBACK_FAILURE = -902,
   /**
-   * Invalid connection preface was received and further processing is
-   * not possible.
+   * Invalid client magic (see :macro:`NGHTTP2_CLIENT_MAGIC`) was
+   * received and further processing is not possible.
    */
-  NGHTTP2_ERR_BAD_PREFACE = -903
+  NGHTTP2_ERR_BAD_CLIENT_MAGIC = -903
 } nghttp2_error;
 
 /**
@@ -1975,25 +1960,22 @@ nghttp2_option_set_peer_max_concurrent_streams(nghttp2_option *option,
  * @function
  *
  * By default, nghttp2 library, if configured as server, requires
- * first 24 bytes of client connection preface.  In most cases, this
- * will simplify the implementation of server.  But sometimes erver
- * may want to detect the application protocol based on first few
- * bytes on clear text communication.
+ * first 24 bytes of client magic byte string (MAGIC).  In most cases,
+ * this will simplify the implementation of server.  But sometimes
+ * server may want to detect the application protocol based on first
+ * few bytes on clear text communication.
  *
  * If this option is used with nonzero |val|, nghttp2 library does not
- * handle first 24 bytes client connection preface.  It still checks
- * following SETTINGS frame.  This means that applications should deal
- * with 24 bytes connection preface by themselves.
+ * handle MAGIC.  It still checks following SETTINGS frame.  This
+ * means that applications should deal with MAGIC by themselves.
  *
- * If this option is not used or used with zero value, if client
- * connection preface does not match the one
- * (:macro:`NGHTTP2_CLIENT_CONNECTION_PREFACE`) in the HTTP/2
- * specification, `nghttp2_session_recv()` and
- * `nghttp2_session_mem_recv()` will return error
- * :enum:`NGHTTP2_ERR_BAD_PREFACE`, which is fatal error.
+ * If this option is not used or used with zero value, if MAGIC does
+ * not match :macro:`NGHTTP2_CLIENT_MAGIC`, `nghttp2_session_recv()`
+ * and `nghttp2_session_mem_recv()` will return error
+ * :enum:`NGHTTP2_ERR_BAD_CLIENT_MAGIC`, which is fatal error.
  */
 NGHTTP2_EXTERN void
-nghttp2_option_set_no_recv_client_preface(nghttp2_option *option, int val);
+nghttp2_option_set_no_recv_client_magic(nghttp2_option *option, int val);
 
 /**
  * @function
@@ -2310,10 +2292,10 @@ NGHTTP2_EXTERN ssize_t nghttp2_session_mem_send(nghttp2_session *session,
  *     Out of memory.
  * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`
  *     The callback function failed.
- * :enum:`NGHTTP2_ERR_BAD_PREFACE`
- *     Invalid client preface was detected.  This error only returns
+ * :enum:`NGHTTP2_ERR_BAD_CLIENT_MAGIC`
+ *     Invalid client magic was detected.  This error only returns
  *     when |session| was configured as server and
- *     `nghttp2_option_set_no_recv_client_preface()` is not used with
+ *     `nghttp2_option_set_no_recv_client_magic()` is not used with
  *     nonzero value.
  */
 NGHTTP2_EXTERN int nghttp2_session_recv(nghttp2_session *session);
@@ -2346,10 +2328,10 @@ NGHTTP2_EXTERN int nghttp2_session_recv(nghttp2_session *session);
  *     Out of memory.
  * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`
  *     The callback function failed.
- * :enum:`NGHTTP2_ERR_BAD_PREFACE`
- *     Invalid client preface was detected.  This error only returns
+ * :enum:`NGHTTP2_ERR_BAD_CLIENT_MAGIC`
+ *     Invalid client magic was detected.  This error only returns
  *     when |session| was configured as server and
- *     `nghttp2_option_set_no_recv_client_preface()` is not used with
+ *     `nghttp2_option_set_no_recv_client_magic()` is not used with
  *     nonzero value.
  */
 NGHTTP2_EXTERN ssize_t nghttp2_session_mem_recv(nghttp2_session *session,

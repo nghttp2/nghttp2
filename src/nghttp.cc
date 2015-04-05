@@ -962,9 +962,6 @@ int HttpClient::connection_made() {
       request_done(stream_user_data);
     }
   }
-  // Send connection header here
-  wb.write(NGHTTP2_CLIENT_CONNECTION_PREFACE,
-           NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN);
   // If upgrade succeeds, the SETTINGS value sent with
   // HTTP2-Settings header field has already been submitted to
   // session object.

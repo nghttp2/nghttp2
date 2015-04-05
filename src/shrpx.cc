@@ -904,7 +904,7 @@ void fill_default_config() {
 
   nghttp2_option_new(&mod_config()->http2_option);
   nghttp2_option_set_no_auto_window_update(get_config()->http2_option, 1);
-  nghttp2_option_set_no_recv_client_preface(get_config()->http2_option, 1);
+  nghttp2_option_set_no_recv_client_magic(get_config()->http2_option, 1);
 
   nghttp2_option_new(&mod_config()->http2_client_option);
   nghttp2_option_set_no_auto_window_update(get_config()->http2_client_option,

@@ -769,7 +769,7 @@ int Http2Upstream::on_read() {
   if (rb->rleft()) {
     rv = nghttp2_session_mem_recv(session_, rb->pos, rb->rleft());
     if (rv < 0) {
-      if (rv != NGHTTP2_ERR_BAD_PREFACE) {
+      if (rv != NGHTTP2_ERR_BAD_CLIENT_MAGIC) {
         ULOG(ERROR, this) << "nghttp2_session_recv() returned error: "
                           << nghttp2_strerror(rv);
       }

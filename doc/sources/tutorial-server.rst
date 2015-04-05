@@ -194,14 +194,7 @@ We initialize a nghttp2 session object which is done in
 ``initialize_nghttp2_session()``::
 
     static void initialize_nghttp2_session(http2_session_data *session_data) {
-      nghttp2_option *option;
       nghttp2_session_callbacks *callbacks;
-
-      nghttp2_option_new(&option);
-
-      /* Tells nghttp2_session object that it handles client connection
-         preface */
-      nghttp2_option_set_recv_client_preface(option, 1);
 
       nghttp2_session_callbacks_new(&callbacks);
 
@@ -219,20 +212,15 @@ We initialize a nghttp2 session object which is done in
       nghttp2_session_callbacks_set_on_begin_headers_callback(
           callbacks, on_begin_headers_callback);
 
-      nghttp2_session_server_new2(&session_data->session, callbacks, session_data,
-                                  option);
+      nghttp2_session_server_new(&session_data->session, callbacks, session_data);
 
       nghttp2_session_callbacks_del(callbacks);
-      nghttp2_option_del(option);
     }
 
 Since we are creating a server and uses options, the nghttp2 session
 object is created using `nghttp2_session_server_new2()` function.  We
 registers five callbacks for nghttp2 session object.  We'll talk about
-these callbacks later.  Our server only speaks HTTP/2.  In this case,
-we use `nghttp2_option_set_recv_client_preface()` to make
-:type:`nghttp2_session` object handle client connection preface, which
-saves some lines of application code.
+these callbacks later.
 
 After initialization of the nghttp2 session object, we are going to send
 a server connection header in ``send_server_connection_header()``::

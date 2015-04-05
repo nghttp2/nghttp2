@@ -47,10 +47,9 @@ void nghttp2_option_set_peer_max_concurrent_streams(nghttp2_option *option,
   option->peer_max_concurrent_streams = val;
 }
 
-void nghttp2_option_set_no_recv_client_preface(nghttp2_option *option,
-                                               int val) {
-  option->opt_set_mask |= NGHTTP2_OPT_NO_RECV_CLIENT_PREFACE;
-  option->no_recv_client_preface = val;
+void nghttp2_option_set_no_recv_client_magic(nghttp2_option *option, int val) {
+  option->opt_set_mask |= NGHTTP2_OPT_NO_RECV_CLIENT_MAGIC;
+  option->no_recv_client_magic = val;
 }
 
 void nghttp2_option_set_no_http_messaging(nghttp2_option *option, int val) {

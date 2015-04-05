@@ -279,8 +279,7 @@ int ClientHandler::upstream_write() {
 
 int ClientHandler::upstream_http2_connhd_read() {
   auto nread = std::min(left_connhd_len_, rb_.rleft());
-  if (memcmp(NGHTTP2_CLIENT_CONNECTION_PREFACE +
-                 NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN - left_connhd_len_,
+  if (memcmp(NGHTTP2_CLIENT_MAGIC + NGHTTP2_CLIENT_MAGIC_LEN - left_connhd_len_,
              rb_.pos, nread) != 0) {
     // There is no downgrade path here. Just drop the connection.
     if (LOG_ENABLED(INFO)) {
@@ -309,8 +308,7 @@ int ClientHandler::upstream_http2_connhd_read() {
 
 int ClientHandler::upstream_http1_connhd_read() {
   auto nread = std::min(left_connhd_len_, rb_.rleft());
-  if (memcmp(NGHTTP2_CLIENT_CONNECTION_PREFACE +
-                 NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN - left_connhd_len_,
+  if (memcmp(NGHTTP2_CLIENT_MAGIC + NGHTTP2_CLIENT_MAGIC_LEN - left_connhd_len_,
              rb_.pos, nread) != 0) {
     if (LOG_ENABLED(INFO)) {
       CLOG(INFO, this) << "This is HTTP/1.1 connection, "
@@ -318,7 +316,7 @@ int ClientHandler::upstream_http1_connhd_read() {
     }
 
     // Reset header length for later HTTP/2 upgrade
-    left_connhd_len_ = NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN;
+    left_connhd_len_ = NGHTTP2_CLIENT_MAGIC_LEN;
     on_read_ = &ClientHandler::upstream_read;
     on_write_ = &ClientHandler::upstream_write;
 
@@ -362,7 +360,7 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
             get_config()->read_burst, writecb, readcb, timeoutcb, this),
       ipaddr_(ipaddr), port_(port), worker_(worker),
       http2session_(worker_->next_http2_session()),
-      left_connhd_len_(NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN),
+      left_connhd_len_(NGHTTP2_CLIENT_MAGIC_LEN),
       should_close_after_write_(false) {
 
   ++worker_->get_worker_stat()->num_connections;

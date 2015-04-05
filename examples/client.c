@@ -528,14 +528,6 @@ static void fetch_uri(const struct URI *uri) {
   connection.ssl = ssl;
   connection.want_io = IO_NONE;
 
-  /* Send connection header in blocking I/O mode */
-  rv = SSL_write(ssl, NGHTTP2_CLIENT_CONNECTION_PREFACE,
-                 NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN);
-  if (rv <= 0) {
-    dief("SSL_write failed: could not send connection preface",
-         ERR_error_string(ERR_get_error(), NULL));
-  }
-
   /* Here make file descriptor non-block */
   make_non_block(fd);
   set_tcp_nodelay(fd);

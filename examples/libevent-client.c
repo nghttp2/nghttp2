@@ -345,8 +345,7 @@ static void send_client_connection_header(http2_session_data *session_data) {
       {NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, 100}};
   int rv;
 
-  bufferevent_write(session_data->bev, NGHTTP2_CLIENT_CONNECTION_PREFACE,
-                    NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN);
+  /* client 24 bytes magic string will be sent by nghttp2 library */
   rv = nghttp2_submit_settings(session_data->session, NGHTTP2_FLAG_NONE, iv,
                                ARRLEN(iv));
   if (rv != 0) {

@@ -314,9 +314,9 @@ static void active_outbound_item_reset(nghttp2_active_outbound_item *aob,
   aob->state = NGHTTP2_OB_POP_ITEM;
 }
 
-/* This global variable exists for tests where we want to disable this
-   check. */
-int nghttp2_enable_strict_connection_preface_check = 1;
+/* The global variable for tests where we want to disable strict
+   preface handling. */
+int nghttp2_enable_strict_preface = 1;
 
 static int session_new(nghttp2_session **session_ptr,
                        const nghttp2_session_callbacks *callbacks,
@@ -417,10 +417,10 @@ static int session_new(nghttp2_session **session_ptr,
           option->peer_max_concurrent_streams;
     }
 
-    if ((option->opt_set_mask & NGHTTP2_OPT_NO_RECV_CLIENT_PREFACE) &&
-        option->no_recv_client_preface) {
+    if ((option->opt_set_mask & NGHTTP2_OPT_NO_RECV_CLIENT_MAGIC) &&
+        option->no_recv_client_magic) {
 
-      (*session_ptr)->opt_flags |= NGHTTP2_OPTMASK_NO_RECV_CLIENT_PREFACE;
+      (*session_ptr)->opt_flags |= NGHTTP2_OPTMASK_NO_RECV_CLIENT_MAGIC;
     }
 
     if ((option->opt_set_mask & NGHTTP2_OPT_NO_HTTP_MESSAGING) &&
@@ -435,16 +435,22 @@ static int session_new(nghttp2_session **session_ptr,
 
   session_inbound_frame_reset(*session_ptr);
 
-  if (nghttp2_enable_strict_connection_preface_check) {
+  if (nghttp2_enable_strict_preface) {
     nghttp2_inbound_frame *iframe = &(*session_ptr)->iframe;
 
     if (server &&
-        ((*session_ptr)->opt_flags & NGHTTP2_OPTMASK_NO_RECV_CLIENT_PREFACE) ==
+        ((*session_ptr)->opt_flags & NGHTTP2_OPTMASK_NO_RECV_CLIENT_MAGIC) ==
             0) {
-      iframe->state = NGHTTP2_IB_READ_CLIENT_PREFACE;
-      iframe->payloadleft = NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN;
+      iframe->state = NGHTTP2_IB_READ_CLIENT_MAGIC;
+      iframe->payloadleft = NGHTTP2_CLIENT_MAGIC_LEN;
     } else {
       iframe->state = NGHTTP2_IB_READ_FIRST_SETTINGS;
+    }
+
+    if (!server) {
+      (*session_ptr)->aob.state = NGHTTP2_OB_SEND_CLIENT_MAGIC;
+      nghttp2_bufs_add(&(*session_ptr)->aob.framebufs, NGHTTP2_CLIENT_MAGIC,
+                       NGHTTP2_CLIENT_MAGIC_LEN);
     }
   }
 
@@ -2979,6 +2985,25 @@ static ssize_t nghttp2_session_mem_send_internal(nghttp2_session *session,
 
       break;
     }
+    case NGHTTP2_OB_SEND_CLIENT_MAGIC: {
+      size_t datalen;
+      nghttp2_buf *buf;
+
+      buf = &framebufs->cur->buf;
+
+      if (buf->pos == buf->last) {
+        DEBUGF(fprintf(stderr, "send: end transmission of client magic\n"));
+        active_outbound_item_reset(aob, mem);
+        break;
+      }
+
+      *data_ptr = buf->pos;
+      datalen = nghttp2_buf_len(buf);
+
+      buf->pos += datalen;
+
+      return datalen;
+    }
     }
   }
 }
@@ -2993,14 +3018,16 @@ ssize_t nghttp2_session_mem_send(nghttp2_session *session,
     return len;
   }
 
-  /* We have to call session_after_frame_sent1 here to handle stream
-     closure upon transmission of frames.  Otherwise, END_STREAM may
-     be reached to client before we call nghttp2_session_mem_send
-     again and we may get exceeding number of incoming streams. */
-  rv = session_after_frame_sent1(session);
-  if (rv < 0) {
-    assert(nghttp2_is_fatal(rv));
-    return (ssize_t)rv;
+  if (session->aob.item) {
+    /* We have to call session_after_frame_sent1 here to handle stream
+       closure upon transmission of frames.  Otherwise, END_STREAM may
+       be reached to client before we call nghttp2_session_mem_send
+       again and we may get exceeding number of incoming streams. */
+    rv = session_after_frame_sent1(session);
+    if (rv < 0) {
+      assert(nghttp2_is_fatal(rv));
+      return (ssize_t)rv;
+    }
   }
 
   return len;
@@ -4907,14 +4934,13 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
 
   for (;;) {
     switch (iframe->state) {
-    case NGHTTP2_IB_READ_CLIENT_PREFACE:
+    case NGHTTP2_IB_READ_CLIENT_MAGIC:
       readlen = nghttp2_min(inlen, iframe->payloadleft);
 
-      if (memcmp(NGHTTP2_CLIENT_CONNECTION_PREFACE +
-                     NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN -
+      if (memcmp(NGHTTP2_CLIENT_MAGIC + NGHTTP2_CLIENT_MAGIC_LEN -
                      iframe->payloadleft,
                  in, readlen) != 0) {
-        return NGHTTP2_ERR_BAD_PREFACE;
+        return NGHTTP2_ERR_BAD_CLIENT_MAGIC;
       }
 
       iframe->payloadleft -= readlen;

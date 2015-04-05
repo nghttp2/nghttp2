@@ -36,7 +36,7 @@
 #include "nghttp2_test_helper.h"
 #include "nghttp2_priority_spec.h"
 
-extern int nghttp2_enable_strict_connection_preface_check;
+extern int nghttp2_enable_strict_preface;
 
 #define OB_CTRL(ITEM) nghttp2_outbound_item_get_ctrl_frame(ITEM)
 #define OB_CTRL_TYPE(ITEM) nghttp2_outbound_item_get_ctrl_frame_type(ITEM)
@@ -6722,27 +6722,25 @@ void test_nghttp2_session_on_header_temporal_failure(void) {
   nghttp2_session_del(session);
 }
 
-void test_nghttp2_session_recv_client_preface(void) {
+void test_nghttp2_session_recv_client_magic(void) {
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;
   ssize_t rv;
   nghttp2_frame ping_frame;
   uint8_t buf[16];
 
-  /* enable global nghttp2_enable_strict_connection_preface_check
-     here */
-  nghttp2_enable_strict_connection_preface_check = 1;
+  /* enable global nghttp2_enable_strict_preface here */
+  nghttp2_enable_strict_preface = 1;
 
   memset(&callbacks, 0, sizeof(callbacks));
 
   /* Check success case */
   nghttp2_session_server_new(&session, &callbacks, NULL);
 
-  rv = nghttp2_session_mem_recv(
-      session, (const uint8_t *)NGHTTP2_CLIENT_CONNECTION_PREFACE,
-      NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN);
+  rv = nghttp2_session_mem_recv(session, (const uint8_t *)NGHTTP2_CLIENT_MAGIC,
+                                NGHTTP2_CLIENT_MAGIC_LEN);
 
-  CU_ASSERT(rv == NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN);
+  CU_ASSERT(rv == NGHTTP2_CLIENT_MAGIC_LEN);
   CU_ASSERT(NGHTTP2_IB_READ_FIRST_SETTINGS == session->iframe.state);
 
   /* Receiving PING is error because we want SETTINGS. */
@@ -6762,24 +6760,22 @@ void test_nghttp2_session_recv_client_preface(void) {
   /* Check bad case */
   nghttp2_session_server_new(&session, &callbacks, NULL);
 
-  /* Feed preface with one byte less */
-  rv = nghttp2_session_mem_recv(
-      session, (const uint8_t *)NGHTTP2_CLIENT_CONNECTION_PREFACE,
-      NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN - 1);
+  /* Feed magic with one byte less */
+  rv = nghttp2_session_mem_recv(session, (const uint8_t *)NGHTTP2_CLIENT_MAGIC,
+                                NGHTTP2_CLIENT_MAGIC_LEN - 1);
 
-  CU_ASSERT(rv == NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN - 1);
-  CU_ASSERT(NGHTTP2_IB_READ_CLIENT_PREFACE == session->iframe.state);
+  CU_ASSERT(rv == NGHTTP2_CLIENT_MAGIC_LEN - 1);
+  CU_ASSERT(NGHTTP2_IB_READ_CLIENT_MAGIC == session->iframe.state);
   CU_ASSERT(1 == session->iframe.payloadleft);
 
   rv = nghttp2_session_mem_recv(session, (const uint8_t *)"\0", 1);
 
-  CU_ASSERT(NGHTTP2_ERR_BAD_PREFACE == rv);
+  CU_ASSERT(NGHTTP2_ERR_BAD_CLIENT_MAGIC == rv);
 
   nghttp2_session_del(session);
 
-  /* disable global nghttp2_enable_strict_connection_preface_check
-     here */
-  nghttp2_enable_strict_connection_preface_check = 0;
+  /* disable global nghttp2_enable_strict_preface here */
+  nghttp2_enable_strict_preface = 0;
 }
 
 void test_nghttp2_session_delete_data_item(void) {

@@ -118,7 +118,7 @@ void test_nghttp2_session_detach_idle_stream(void);
 void test_nghttp2_session_large_dep_tree(void);
 void test_nghttp2_session_graceful_shutdown(void);
 void test_nghttp2_session_on_header_temporal_failure(void);
-void test_nghttp2_session_recv_client_preface(void);
+void test_nghttp2_session_recv_client_magic(void);
 void test_nghttp2_session_delete_data_item(void);
 void test_nghttp2_session_open_idle_stream(void);
 void test_nghttp2_session_cancel_reserved_remote(void);
