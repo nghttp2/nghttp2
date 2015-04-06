@@ -83,6 +83,8 @@ struct Connection {
   ssize_t writev_clear(struct iovec *iov, int iovcnt);
   ssize_t read_clear(void *data, size_t len);
 
+  void handle_tls_pending_read();
+
   TLSConnection tls;
   ev_io wev;
   ev_io rev;

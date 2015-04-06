@@ -35,8 +35,9 @@ void regencb(struct ev_loop *loop, ev_timer *w, int revents) {
 }
 } // namespace
 
-RateLimit::RateLimit(struct ev_loop *loop, ev_io *w, size_t rate, size_t burst)
-    : w_(w), loop_(loop), rate_(rate), burst_(burst), avail_(burst),
+RateLimit::RateLimit(struct ev_loop *loop, ev_io *w, size_t rate, size_t burst,
+                     SSL *ssl)
+    : w_(w), loop_(loop), ssl_(ssl), rate_(rate), burst_(burst), avail_(burst),
       startw_req_(false) {
   ev_timer_init(&t_, regencb, 0., 1.);
   t_.data = this;
@@ -45,9 +46,7 @@ RateLimit::RateLimit(struct ev_loop *loop, ev_io *w, size_t rate, size_t burst)
   }
 }
 
-RateLimit::~RateLimit() {
-  ev_timer_stop(loop_, &t_);
-}
+RateLimit::~RateLimit() { ev_timer_stop(loop_, &t_); }
 
 size_t RateLimit::avail() const {
   if (rate_ == 0) {
@@ -79,6 +78,7 @@ void RateLimit::regen() {
 
   if (avail_ > 0 && startw_req_) {
     ev_io_start(loop_, w_);
+    handle_tls_pending_read();
   }
 }
 
@@ -86,6 +86,7 @@ void RateLimit::startw() {
   startw_req_ = true;
   if (rate_ == 0 || avail_ > 0) {
     ev_io_start(loop_, w_);
+    handle_tls_pending_read();
     return;
   }
 }
@@ -93,6 +94,16 @@ void RateLimit::startw() {
 void RateLimit::stopw() {
   startw_req_ = false;
   ev_io_stop(loop_, w_);
+}
+
+void RateLimit::handle_tls_pending_read() {
+  if (!ssl_ || SSL_pending(ssl_) == 0) {
+    return;
+  }
+
+  // Note that ev_feed_event works without starting watcher, but we
+  // only call this function if watcher is active.
+  ev_feed_event(loop_, w_, EV_READ);
 }
 
 } // namespace shrpx

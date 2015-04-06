@@ -560,7 +560,14 @@ int ClientHandler::validate_next_proto() {
 int ClientHandler::do_read() { return read_(*this); }
 int ClientHandler::do_write() { return write_(*this); }
 
-int ClientHandler::on_read() { return on_read_(*this); }
+int ClientHandler::on_read() {
+  auto rv = on_read_(*this);
+  if (rv != 0) {
+    return rv;
+  }
+  conn_.handle_tls_pending_read();
+  return 0;
+}
 int ClientHandler::on_write() { return on_write_(*this); }
 
 const std::string &ClientHandler::get_ipaddr() const { return ipaddr_; }

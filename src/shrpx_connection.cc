@@ -41,7 +41,7 @@ Connection::Connection(struct ev_loop *loop, int fd, SSL *ssl,
                        size_t read_burst, IOCb writecb, IOCb readcb,
                        TimerCb timeoutcb, void *data)
     : tls{ssl}, wlimit(loop, &wev, write_rate, write_burst),
-      rlimit(loop, &rev, read_rate, read_burst), writecb(writecb),
+      rlimit(loop, &rev, read_rate, read_burst, ssl), writecb(writecb),
       readcb(readcb), timeoutcb(timeoutcb), loop(loop), data(data), fd(fd) {
 
   ev_io_init(&wev, writecb, fd, EV_WRITE);
@@ -301,6 +301,13 @@ ssize_t Connection::read_clear(void *data, size_t len) {
   rlimit.drain(nread);
 
   return nread;
+}
+
+void Connection::handle_tls_pending_read() {
+  if (!ev_is_active(&rev)) {
+    return;
+  }
+  rlimit.handle_tls_pending_read();
 }
 
 } // namespace shrpx
