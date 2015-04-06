@@ -49,7 +49,7 @@ APIDOCS= \
 	nghttp2_option_set_no_auto_window_update.rst \
 	nghttp2_option_set_no_http_messaging.rst \
 	nghttp2_option_set_peer_max_concurrent_streams.rst \
-	nghttp2_option_set_recv_client_preface.rst \
+	nghttp2_option_set_no_recv_client_magic.rst \
 	nghttp2_pack_settings_payload.rst \
 	nghttp2_priority_spec_check_default.rst \
 	nghttp2_priority_spec_default_init.rst \
