@@ -76,6 +76,8 @@ APIDOCS= \
 	nghttp2_session_client_new2.rst \
 	nghttp2_session_client_new3.rst \
 	nghttp2_session_consume.rst \
+	nghttp2_session_consume_connection.rst \
+	nghttp2_session_consume_stream.rst \
 	nghttp2_session_del.rst \
 	nghttp2_session_get_effective_local_window_size.rst \
 	nghttp2_session_get_effective_recv_data_length.rst \
