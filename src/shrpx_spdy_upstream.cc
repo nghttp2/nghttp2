@@ -797,7 +797,8 @@ int SpdyUpstream::error_reply(Downstream *downstream,
 
 Downstream *SpdyUpstream::add_pending_downstream(int32_t stream_id,
                                                  int32_t priority) {
-  auto downstream = make_unique<Downstream>(this, stream_id, priority);
+  auto downstream = make_unique<Downstream>(this, handler_->get_mcpool(),
+                                            stream_id, priority);
   spdylay_session_set_stream_user_data(session_, stream_id, downstream.get());
   auto res = downstream.get();
 
@@ -1079,7 +1080,5 @@ int SpdyUpstream::on_downstream_reset(bool no_retry) {
 
   return 0;
 }
-
-MemchunkPool *SpdyUpstream::get_mcpool() { return &mcpool_; }
 
 } // namespace shrpx

@@ -37,8 +37,6 @@
 #include "util.h"
 #include "template.h"
 
-using namespace nghttp2;
-
 namespace shrpx {
 
 namespace {
@@ -217,5 +215,7 @@ SSL_CTX *Worker::get_cl_ssl_ctx() const { return cl_ssl_ctx_; }
 void Worker::set_graceful_shutdown(bool f) { graceful_shutdown_ = f; }
 
 bool Worker::get_graceful_shutdown() const { return graceful_shutdown_; }
+
+MemchunkPool *Worker::get_mcpool() { return &mcpool_; }
 
 } // namespace shrpx

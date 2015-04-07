@@ -33,7 +33,7 @@
 namespace shrpx {
 
 void test_downstream_index_request_headers(void) {
-  Downstream d(nullptr, 0, 0);
+  Downstream d(nullptr, nullptr, 0, 0);
   d.add_request_header("1", "0");
   d.add_request_header("2", "1");
   d.add_request_header("Charlie", "2");
@@ -56,7 +56,7 @@ void test_downstream_index_request_headers(void) {
 }
 
 void test_downstream_index_response_headers(void) {
-  Downstream d(nullptr, 0, 0);
+  Downstream d(nullptr, nullptr, 0, 0);
   d.add_response_header("Charlie", "0");
   d.add_response_header("Alpha", "1");
   d.add_response_header("Delta", "2");
@@ -69,7 +69,7 @@ void test_downstream_index_response_headers(void) {
 }
 
 void test_downstream_get_request_header(void) {
-  Downstream d(nullptr, 0, 0);
+  Downstream d(nullptr, nullptr, 0, 0);
   d.add_request_header("alpha", "0");
   d.add_request_header(":authority", "1");
   d.add_request_header("content-length", "2");
@@ -86,7 +86,7 @@ void test_downstream_get_request_header(void) {
 }
 
 void test_downstream_get_response_header(void) {
-  Downstream d(nullptr, 0, 0);
+  Downstream d(nullptr, nullptr, 0, 0);
   d.add_response_header("alpha", "0");
   d.add_response_header(":status", "1");
   d.add_response_header("content-length", "2");
@@ -99,7 +99,7 @@ void test_downstream_get_response_header(void) {
 }
 
 void test_downstream_crumble_request_cookie(void) {
-  Downstream d(nullptr, 0, 0);
+  Downstream d(nullptr, nullptr, 0, 0);
   d.add_request_header(":method", "get");
   d.add_request_header(":path", "/");
   auto val = "alpha; bravo; ; ;; charlie;;";
@@ -122,7 +122,7 @@ void test_downstream_crumble_request_cookie(void) {
 }
 
 void test_downstream_assemble_request_cookie(void) {
-  Downstream d(nullptr, 0, 0);
+  Downstream d(nullptr, nullptr, 0, 0);
   d.add_request_header(":method", "get");
   d.add_request_header(":path", "/");
   d.add_request_header("cookie", "alpha");
@@ -135,7 +135,7 @@ void test_downstream_assemble_request_cookie(void) {
 
 void test_downstream_rewrite_location_response_header(void) {
   {
-    Downstream d(nullptr, 0, 0);
+    Downstream d(nullptr, nullptr, 0, 0);
     d.set_request_downstream_host("localhost:3000");
     d.add_request_header("host", "localhost");
     d.add_response_header("location", "http://localhost:3000/");
@@ -146,7 +146,7 @@ void test_downstream_rewrite_location_response_header(void) {
     CU_ASSERT("https://localhost/" == (*location).value);
   }
   {
-    Downstream d(nullptr, 0, 0);
+    Downstream d(nullptr, nullptr, 0, 0);
     d.set_request_downstream_host("localhost");
     d.set_request_http2_authority("localhost");
     d.add_response_header("location", "http://localhost:3000/");

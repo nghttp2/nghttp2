@@ -27,9 +27,6 @@
 
 #include "shrpx.h"
 #include "shrpx_io_control.h"
-#include "memchunk.h"
-
-using namespace nghttp2;
 
 namespace shrpx {
 
@@ -65,8 +62,6 @@ public:
   virtual void pause_read(IOCtrlReason reason) = 0;
   virtual int resume_read(IOCtrlReason reason, Downstream *downstream,
                           size_t consumed) = 0;
-
-  virtual MemchunkPool *get_mcpool() = 0;
 };
 
 } // namespace shrpx

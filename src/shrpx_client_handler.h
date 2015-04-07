@@ -36,6 +36,7 @@
 #include "shrpx_rate_limit.h"
 #include "shrpx_connection.h"
 #include "buffer.h"
+#include "memchunk.h"
 
 using namespace nghttp2;
 
@@ -92,6 +93,7 @@ public:
   void pool_downstream_connection(std::unique_ptr<DownstreamConnection> dconn);
   void remove_downstream_connection(DownstreamConnection *dconn);
   std::unique_ptr<DownstreamConnection> get_downstream_connection();
+  MemchunkPool *get_mcpool();
   SSL *get_ssl() const;
   ConnectBlocker *get_connect_blocker() const;
   // Call this function when HTTP/2 connection header is received at

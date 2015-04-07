@@ -256,8 +256,11 @@ int on_begin_headers_callback(nghttp2_session *session,
                          << frame->hd.stream_id;
   }
 
+  auto handler = upstream->get_client_handler();
+
   // TODO Use priority 0 for now
-  auto downstream = make_unique<Downstream>(upstream, frame->hd.stream_id, 0);
+  auto downstream = make_unique<Downstream>(upstream, handler->get_mcpool(),
+                                            frame->hd.stream_id, 0);
   nghttp2_session_set_stream_user_data(session, frame->hd.stream_id,
                                        downstream.get());
 
@@ -484,6 +487,7 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
     verbose_on_frame_send_callback(session, frame, user_data);
   }
   auto upstream = static_cast<Http2Upstream *>(user_data);
+  auto handler = upstream->get_client_handler();
 
   switch (frame->hd.type) {
   case NGHTTP2_SETTINGS:
@@ -492,8 +496,9 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
     }
     return 0;
   case NGHTTP2_PUSH_PROMISE: {
-    auto downstream = make_unique<Downstream>(
-        upstream, frame->push_promise.promised_stream_id, 0);
+    auto downstream =
+        make_unique<Downstream>(upstream, handler->get_mcpool(),
+                                frame->push_promise.promised_stream_id, 0);
 
     downstream->disable_upstream_rtimer();
 
@@ -1497,8 +1502,6 @@ int Http2Upstream::on_downstream_reset(bool no_retry) {
 
   return 0;
 }
-
-MemchunkPool *Http2Upstream::get_mcpool() { return &mcpool_; }
 
 int Http2Upstream::prepare_push_promise(Downstream *downstream) {
   int rv;

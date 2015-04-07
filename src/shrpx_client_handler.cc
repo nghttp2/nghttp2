@@ -404,6 +404,10 @@ ClientHandler::~ClientHandler() {
   auto worker_stat = worker_->get_worker_stat();
   --worker_stat->num_connections;
 
+  if (worker_stat->num_connections == 0) {
+    worker_->get_mcpool()->clear();
+  }
+
   ev_timer_stop(conn_.loop, &reneg_shutdown_timer_);
 
   // TODO If backend is http/2, and it is in CONNECTED state, signal
@@ -633,6 +637,8 @@ ClientHandler::get_downstream_connection() {
 
   return dconn;
 }
+
+MemchunkPool *ClientHandler::get_mcpool() { return worker_->get_mcpool(); }
 
 SSL *ClientHandler::get_ssl() const { return conn_.tls.ssl; }
 

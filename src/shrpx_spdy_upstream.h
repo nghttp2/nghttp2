@@ -74,8 +74,6 @@ public:
   virtual void on_handler_delete();
   virtual int on_downstream_reset(bool no_retry);
 
-  virtual MemchunkPool *get_mcpool();
-
   bool get_flow_control() const;
 
   int consume(int32_t stream_id, size_t len);
@@ -84,8 +82,6 @@ public:
   void initiate_downstream(Downstream *downstream);
 
 private:
-  // must be put before downstream_queue_
-  MemchunkPool mcpool_;
   DownstreamQueue downstream_queue_;
   ClientHandler *handler_;
   spdylay_session *session_;
