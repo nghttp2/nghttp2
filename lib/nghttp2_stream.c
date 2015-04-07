@@ -87,7 +87,8 @@ void nghttp2_stream_shutdown(nghttp2_stream *stream, nghttp2_shut_flag flag) {
 }
 
 static int stream_push_item(nghttp2_stream *stream, nghttp2_session *session) {
-  int rv;
+  /* This is required for Android NDK r10d */
+  int rv = 0;
   nghttp2_outbound_item *item;
 
   assert(stream->item);
