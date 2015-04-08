@@ -490,6 +490,32 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
   auto handler = upstream->get_client_handler();
 
   switch (frame->hd.type) {
+  case NGHTTP2_DATA:
+  case NGHTTP2_HEADERS: {
+    if ((frame->hd.flags & NGHTTP2_FLAG_END_STREAM) == 0) {
+      return 0;
+    }
+    // RST_STREAM if request is still incomplete.
+    auto stream_id = frame->hd.stream_id;
+    auto downstream = static_cast<Downstream *>(
+        nghttp2_session_get_stream_user_data(session, stream_id));
+
+    // For tunneling, issue RST_STREAM to finish the stream.
+    if (downstream->get_upgraded() ||
+        nghttp2_session_get_stream_remote_close(session, stream_id) == 0) {
+      if (LOG_ENABLED(INFO)) {
+        ULOG(INFO, upstream)
+            << "Send RST_STREAM to "
+            << (downstream->get_upgraded() ? "tunneled " : "")
+            << "stream stream_id=" << downstream->get_stream_id()
+            << " to finish off incomplete request";
+      }
+
+      upstream->rst_stream(downstream, NGHTTP2_NO_ERROR);
+    }
+
+    return 0;
+  }
   case NGHTTP2_SETTINGS:
     if ((frame->hd.flags & NGHTTP2_FLAG_ACK) == 0) {
       upstream->start_settings_timer();
@@ -1119,16 +1145,6 @@ ssize_t downstream_data_read_callback(nghttp2_session *session,
           }
         }
       }
-      if (nghttp2_session_get_stream_remote_close(session, stream_id) == 0) {
-        upstream->rst_stream(downstream, NGHTTP2_NO_ERROR);
-      }
-    } else {
-      // For tunneling, issue RST_STREAM to finish the stream.
-      if (LOG_ENABLED(INFO)) {
-        ULOG(INFO, upstream)
-            << "RST_STREAM to tunneled stream stream_id=" << stream_id;
-      }
-      upstream->rst_stream(downstream, NGHTTP2_NO_ERROR);
     }
   }
 
