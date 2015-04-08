@@ -29,10 +29,6 @@
 #include <netinet/tcp.h>
 #include <pthread.h>
 #include <sys/types.h>
-#include <sys/wait.h>
-#ifndef NOTHREADS
-#include <spawn.h>
-#endif // !NOTHREADS
 
 #include <vector>
 #include <string>
@@ -1023,114 +1019,6 @@ CertLookupTree *create_cert_lookup_tree() {
     return nullptr;
   }
   return new ssl::CertLookupTree();
-}
-
-namespace {
-// inspired by h2o_read_command function from h2o project:
-// https://github.com/h2o/h2o
-int exec_read_stdout(std::vector<uint8_t> &out, char *const *argv,
-                     char *const *envp) {
-#ifndef NOTHREADS
-  int rv;
-  int pfd[2];
-
-#ifdef O_CLOEXEC
-  if (pipe2(pfd, O_CLOEXEC) == -1) {
-    return -1;
-  }
-#else  // !O_CLOEXEC
-  if (pipe(pfd) == -1) {
-    return -1;
-  }
-  util::make_socket_closeonexec(pfd[0]);
-  util::make_socket_closeonexec(pfd[1]);
-#endif // !O_CLOEXEC
-
-  auto closer = defer([pfd]() {
-    close(pfd[0]);
-
-    if (pfd[1] != -1) {
-      close(pfd[1]);
-    }
-  });
-
-  // posix_spawn family functions are really interesting.  They makes
-  // fork + dup2 + execve pattern easier.
-
-  posix_spawn_file_actions_t file_actions;
-
-  if (posix_spawn_file_actions_init(&file_actions) != 0) {
-    return -1;
-  }
-
-  auto file_actions_del =
-      defer(posix_spawn_file_actions_destroy, &file_actions);
-
-  if (posix_spawn_file_actions_adddup2(&file_actions, pfd[1], 1) != 0) {
-    return -1;
-  }
-
-  if (posix_spawn_file_actions_addclose(&file_actions, pfd[0]) != 0) {
-    return -1;
-  }
-
-  pid_t pid;
-  rv = posix_spawn(&pid, argv[0], &file_actions, nullptr, argv, envp);
-  if (rv != 0) {
-    LOG(WARN) << "Cannot execute ocsp query command: " << argv[0]
-              << ", errno=" << rv;
-    return -1;
-  }
-
-  close(pfd[1]);
-  pfd[1] = -1;
-
-  std::array<uint8_t, 4096> buf;
-  for (;;) {
-    ssize_t n;
-    while ((n = read(pfd[0], buf.data(), buf.size())) == -1 && errno == EINTR)
-      ;
-
-    if (n == -1) {
-      auto error = errno;
-      LOG(WARN) << "Reading from ocsp query command failed: errno=" << error;
-      return -1;
-    }
-
-    if (n == 0) {
-      break;
-    }
-
-    std::copy_n(std::begin(buf), n, std::back_inserter(out));
-  }
-
-  int status;
-  if (waitpid(pid, &status, 0) == -1) {
-    auto error = errno;
-    LOG(WARN) << "waitpid for ocsp query command failed: errno=" << error;
-    return -1;
-  }
-
-  if (!WIFEXITED(status)) {
-    LOG(WARN) << "ocsp query command did not exit normally: " << status;
-    return -1;
-  }
-#endif // !NOTHREADS
-  return 0;
-}
-} // namespace
-
-int get_ocsp_response(std::vector<uint8_t> &out, const char *cert_file) {
-  char *const argv[] = {
-      const_cast<char *>(get_config()->fetch_ocsp_response_file.get()),
-      const_cast<char *>(cert_file), nullptr};
-  char *const envp[] = {nullptr};
-
-  if (exec_read_stdout(out, argv, envp) != 0 || out.empty()) {
-    return -1;
-  }
-
-  return 0;
 }
 
 } // namespace ssl
