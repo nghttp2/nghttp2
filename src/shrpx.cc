@@ -555,27 +555,15 @@ void graceful_shutdown_signal_cb(struct ev_loop *loop, ev_signal *w,
 
   conn_handler->graceful_shutdown_worker();
 
-  if (get_config()->num_worker == 1) {
+  if (get_config()->num_worker == 1 &&
+      conn_handler->get_single_worker()->get_worker_stat()->num_connections >
+          0) {
     return;
   }
 
   // We have accepted all pending connections.  Shutdown main event
   // loop.
   ev_break(loop);
-}
-} // namespace
-
-namespace {
-void refresh_cb(struct ev_loop *loop, ev_timer *w, int revents) {
-  auto conn_handler = static_cast<ConnectionHandler *>(w->data);
-  auto worker = conn_handler->get_single_worker();
-
-  // In multi threaded mode (get_config()->num_worker > 1), we have to
-  // wait for event notification to workers to finish.
-  if (get_config()->num_worker == 1 && conn_handler->get_graceful_shutdown() &&
-      (!worker || worker->get_worker_stat()->num_connections == 0)) {
-    ev_break(loop);
-  }
 }
 } // namespace
 
@@ -739,11 +727,6 @@ int event_loop() {
                  GRACEFUL_SHUTDOWN_SIGNAL);
   graceful_shutdown_sig.data = conn_handler.get();
   ev_signal_start(loop, &graceful_shutdown_sig);
-
-  ev_timer refresh_timer;
-  ev_timer_init(&refresh_timer, refresh_cb, 0., 1.);
-  refresh_timer.data = conn_handler.get();
-  ev_timer_again(loop, &refresh_timer);
 
   if (!get_config()->upstream_no_tls && !get_config()->no_ocsp) {
     conn_handler->proceed_next_cert_ocsp();
