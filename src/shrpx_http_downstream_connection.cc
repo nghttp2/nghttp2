@@ -720,13 +720,6 @@ int HttpDownstreamConnection::on_read() {
         http_parser_execute(&response_htp_, &htp_hooks,
                             reinterpret_cast<char *>(buf.data()), nread);
 
-    if (nproc != static_cast<size_t>(nread)) {
-      if (LOG_ENABLED(INFO)) {
-        DCLOG(INFO, this) << "nproc != nread";
-      }
-      return -1;
-    }
-
     auto htperr = HTTP_PARSER_ERRNO(&response_htp_);
 
     if (htperr != HPE_OK) {
@@ -736,6 +729,13 @@ int HttpDownstreamConnection::on_read() {
                           << http_errno_description(htperr);
       }
 
+      return -1;
+    }
+
+    if (nproc != static_cast<size_t>(nread)) {
+      if (LOG_ENABLED(INFO)) {
+        DCLOG(INFO, this) << "nproc != nread";
+      }
       return -1;
     }
 
