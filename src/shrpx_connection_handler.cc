@@ -355,7 +355,6 @@ void ConnectionHandler::cancel_ocsp_update() {
 // inspired by h2o_read_command function from h2o project:
 // https://github.com/h2o/h2o
 int ConnectionHandler::start_ocsp_update(const char *cert_file) {
-#ifndef NOTHREADS
   int rv;
   int pfd[2];
 
@@ -426,7 +425,7 @@ int ConnectionHandler::start_ocsp_update(const char *cert_file) {
 
   ev_child_set(&ocsp_.chldev, ocsp_.pid, 0);
   ev_child_start(loop_, &ocsp_.chldev);
-#endif // !NOTHREADS
+
   return 0;
 }
 

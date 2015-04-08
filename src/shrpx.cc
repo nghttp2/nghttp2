@@ -2015,12 +2015,6 @@ int main(int argc, char **argv) {
   }
 
   if (!get_config()->upstream_no_tls && !get_config()->no_ocsp) {
-#ifdef NOTHREADS
-    mod_config()->no_ocsp = true;
-    LOG(WARN)
-        << "OCSP stapling has been disabled since it requires threading but"
-           "threading disabled at build time.";
-#else  // !NOTHREADS
     struct stat buf;
     if (stat(get_config()->fetch_ocsp_response_file.get(), &buf) != 0) {
       mod_config()->no_ocsp = true;
@@ -2028,7 +2022,6 @@ int main(int argc, char **argv) {
                 << get_config()->fetch_ocsp_response_file.get()
                 << " not found.  OCSP stapling has been disabled.";
     }
-#endif // !NOTHREADS
   }
 
   if (get_config()->downstream_addrs.empty()) {
