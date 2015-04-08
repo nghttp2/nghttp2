@@ -108,7 +108,6 @@ APIDOCS= \
 	nghttp2_session_want_read.rst \
 	nghttp2_session_want_write.rst \
 	nghttp2_strerror.rst \
-	nghttp2_submit_altsvc.rst \
 	nghttp2_submit_data.rst \
 	nghttp2_submit_goaway.rst \
 	nghttp2_submit_headers.rst \
