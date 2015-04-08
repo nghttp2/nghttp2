@@ -405,7 +405,7 @@ ClientHandler::~ClientHandler() {
   --worker_stat->num_connections;
 
   if (worker_stat->num_connections == 0) {
-    worker_->get_mcpool()->clear();
+    worker_->schedule_clear_mcpool();
   }
 
   ev_timer_stop(conn_.loop, &reneg_shutdown_timer_);

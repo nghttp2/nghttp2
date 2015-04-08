@@ -108,6 +108,7 @@ public:
   bool get_graceful_shutdown() const;
 
   MemchunkPool *get_mcpool();
+  void schedule_clear_mcpool();
 
 private:
   std::vector<std::unique_ptr<Http2Session>> http2sessions_;
@@ -118,6 +119,7 @@ private:
   std::mutex m_;
   std::deque<WorkerEvent> q_;
   ev_async w_;
+  ev_timer mcpool_clear_timer_;
   MemchunkPool mcpool_;
   DownstreamConnectionPool dconn_pool_;
   WorkerStat worker_stat_;

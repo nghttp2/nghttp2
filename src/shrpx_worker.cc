@@ -46,6 +46,16 @@ void eventcb(struct ev_loop *loop, ev_async *w, int revents) {
 }
 } // namespace
 
+namespace {
+void mcpool_clear_cb(struct ev_loop *loop, ev_timer *w, int revents) {
+  auto worker = static_cast<Worker *>(w->data);
+  if (worker->get_worker_stat()->num_connections != 0) {
+    return;
+  }
+  worker->get_mcpool()->clear();
+}
+} // namespace
+
 Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
                ssl::CertLookupTree *cert_tree,
                const std::shared_ptr<TicketKeys> &ticket_keys)
@@ -57,6 +67,9 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
   w_.data = this;
   ev_async_start(loop_, &w_);
 
+  ev_timer_init(&mcpool_clear_timer_, mcpool_clear_cb, 0., 0.);
+  mcpool_clear_timer_.data = this;
+
   if (get_config()->downstream_proto == PROTO_HTTP2) {
     auto n = get_config()->http2_downstream_connections_per_worker;
     for (; n > 0; --n) {
@@ -66,7 +79,17 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
   }
 }
 
-Worker::~Worker() { ev_async_stop(loop_, &w_); }
+Worker::~Worker() {
+  ev_async_stop(loop_, &w_);
+  ev_timer_stop(loop_, &mcpool_clear_timer_);
+}
+
+void Worker::schedule_clear_mcpool() {
+  // libev manual says: "If the watcher is already active nothing will
+  // happen."  Since we don't change any timeout here, we don't have
+  // to worry about querying ev_is_active.
+  ev_timer_start(loop_, &mcpool_clear_timer_);
+}
 
 void Worker::wait() {
 #ifndef NOTHREADS
