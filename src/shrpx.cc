@@ -576,8 +576,6 @@ void refresh_cb(struct ev_loop *loop, ev_timer *w, int revents) {
       (!worker || worker->get_worker_stat()->num_connections == 0)) {
     ev_break(loop);
   }
-
-  conn_handler->handle_ocsp_completion();
 }
 } // namespace
 
@@ -748,7 +746,7 @@ int event_loop() {
   ev_timer_again(loop, &refresh_timer);
 
   if (!get_config()->upstream_no_tls && !get_config()->no_ocsp) {
-    conn_handler->update_ocsp_async();
+    conn_handler->proceed_next_cert_ocsp();
   }
 
   if (LOG_ENABLED(INFO)) {
@@ -758,7 +756,7 @@ int event_loop() {
   ev_run(loop, 0);
 
   conn_handler->join_worker();
-  conn_handler->join_ocsp_thread();
+  conn_handler->cancel_ocsp_update();
 
   return 0;
 }
@@ -2142,7 +2140,6 @@ int main(int argc, char **argv) {
   memset(&act, 0, sizeof(struct sigaction));
   act.sa_handler = SIG_IGN;
   sigaction(SIGPIPE, &act, nullptr);
-  sigaction(SIGCHLD, &act, nullptr);
 
   event_loop();
 

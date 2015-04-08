@@ -25,9 +25,14 @@
 #include "shrpx_connection_handler.h"
 
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #include <cerrno>
 #include <thread>
+#ifndef NOTHREADS
+#include <spawn.h>
+#endif // !NOTHREADS
 
 #include "shrpx_client_handler.h"
 #include "shrpx_ssl.h"
@@ -67,7 +72,23 @@ void ocsp_cb(struct ev_loop *loop, ev_timer *w, int revent) {
     return;
   }
 
-  h->update_ocsp_async();
+  h->proceed_next_cert_ocsp();
+}
+} // namespace
+
+namespace {
+void ocsp_read_cb(struct ev_loop *loop, ev_io *w, int revent) {
+  auto h = static_cast<ConnectionHandler *>(w->data);
+
+  h->read_ocsp_chunk();
+}
+} // namespace
+
+namespace {
+void ocsp_chld_cb(struct ev_loop *loop, ev_child *w, int revent) {
+  auto h = static_cast<ConnectionHandler *>(w->data);
+
+  h->handle_ocsp_complete();
 }
 } // namespace
 
@@ -79,6 +100,17 @@ ConnectionHandler::ConnectionHandler(struct ev_loop *loop)
 
   ev_timer_init(&ocsp_timer_, ocsp_cb, 0., 0.);
   ocsp_timer_.data = this;
+
+  ev_io_init(&ocsp_.rev, ocsp_read_cb, -1, EV_READ);
+  ocsp_.rev.data = this;
+
+  ev_child_init(&ocsp_.chldev, ocsp_chld_cb, 0, 0);
+  ocsp_.chldev.data = this;
+
+  ocsp_.next = 0;
+  ocsp_.fd = -1;
+
+  reset_ocsp();
 }
 
 ConnectionHandler::~ConnectionHandler() {
@@ -315,80 +347,190 @@ bool ConnectionHandler::get_graceful_shutdown() const {
   return graceful_shutdown_;
 }
 
-namespace {
-void update_ocsp_ssl_ctx(SSL_CTX *ssl_ctx) {
+void ConnectionHandler::cancel_ocsp_update() {
+  if (ocsp_.pid == 0) {
+    return;
+  }
+
+  kill(ocsp_.pid, SIGTERM);
+}
+
+// inspired by h2o_read_command function from h2o project:
+// https://github.com/h2o/h2o
+int ConnectionHandler::start_ocsp_update(const char *cert_file) {
+#ifndef NOTHREADS
+  int rv;
+  int pfd[2];
+
+  assert(!ev_is_active(&ocsp_.rev));
+  assert(!ev_is_active(&ocsp_.chldev));
+
+  char *const argv[] = {
+      const_cast<char *>(get_config()->fetch_ocsp_response_file.get()),
+      const_cast<char *>(cert_file), nullptr};
+  char *const envp[] = {nullptr};
+
+#ifdef O_CLOEXEC
+  if (pipe2(pfd, O_CLOEXEC) == -1) {
+    return -1;
+  }
+#else  // !O_CLOEXEC
+  if (pipe(pfd) == -1) {
+    return -1;
+  }
+  util::make_socket_closeonexec(pfd[0]);
+  util::make_socket_closeonexec(pfd[1]);
+#endif // !O_CLOEXEC
+
+  auto closer = defer([&pfd]() {
+    if (pfd[0] != -1) {
+      close(pfd[0]);
+    }
+
+    if (pfd[1] != -1) {
+      close(pfd[1]);
+    }
+  });
+
+  // posix_spawn family functions are really interesting.  They makes
+  // fork + dup2 + execve pattern easier.
+
+  posix_spawn_file_actions_t file_actions;
+
+  if (posix_spawn_file_actions_init(&file_actions) != 0) {
+    return -1;
+  }
+
+  auto file_actions_del =
+      defer(posix_spawn_file_actions_destroy, &file_actions);
+
+  if (posix_spawn_file_actions_adddup2(&file_actions, pfd[1], 1) != 0) {
+    return -1;
+  }
+
+  if (posix_spawn_file_actions_addclose(&file_actions, pfd[0]) != 0) {
+    return -1;
+  }
+
+  rv = posix_spawn(&ocsp_.pid, argv[0], &file_actions, nullptr, argv, envp);
+  if (rv != 0) {
+    LOG(WARN) << "Cannot execute ocsp query command: " << argv[0]
+              << ", errno=" << rv;
+    return -1;
+  }
+
+  close(pfd[1]);
+  pfd[1] = -1;
+
+  ocsp_.fd = pfd[0];
+  pfd[0] = -1;
+
+  util::make_socket_nonblocking(ocsp_.fd);
+  ev_io_set(&ocsp_.rev, ocsp_.fd, EV_READ);
+  ev_io_start(loop_, &ocsp_.rev);
+
+  ev_child_set(&ocsp_.chldev, ocsp_.pid, 0);
+  ev_child_start(loop_, &ocsp_.chldev);
+#endif // !NOTHREADS
+  return 0;
+}
+
+void ConnectionHandler::read_ocsp_chunk() {
+  std::array<uint8_t, 4096> buf;
+  for (;;) {
+    ssize_t n;
+    while ((n = read(ocsp_.fd, buf.data(), buf.size())) == -1 && errno == EINTR)
+      ;
+
+    if (n == -1) {
+      if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        return;
+      }
+      auto error = errno;
+      LOG(WARN) << "Reading from ocsp query command failed: errno=" << error;
+      ocsp_.error = error;
+
+      break;
+    }
+
+    if (n == 0) {
+      break;
+    }
+
+    std::copy_n(std::begin(buf), n, std::back_inserter(ocsp_.resp));
+  }
+
+  ev_io_stop(loop_, &ocsp_.rev);
+}
+
+void ConnectionHandler::handle_ocsp_complete() {
+  ev_io_stop(loop_, &ocsp_.rev);
+  ev_child_stop(loop_, &ocsp_.chldev);
+
+  auto rstatus = ocsp_.chldev.rstatus;
+  auto status = WEXITSTATUS(rstatus);
+  if (ocsp_.error || !WIFEXITED(rstatus) || status != 0) {
+    LOG(WARN) << "ocsp query command failed: error=" << ocsp_.error
+              << ", rstatus=" << rstatus << ", status=" << status;
+    ++ocsp_.next;
+    proceed_next_cert_ocsp();
+    return;
+  }
+
+  assert(ocsp_.next < all_ssl_ctx_.size());
+
+  auto ssl_ctx = all_ssl_ctx_[ocsp_.next];
   auto tls_ctx_data =
       static_cast<ssl::TLSContextData *>(SSL_CTX_get_app_data(ssl_ctx));
-  auto cert_file = tls_ctx_data->cert_file;
-
-  std::vector<uint8_t> out;
-  if (ssl::get_ocsp_response(out, cert_file) != 0) {
-    LOG(WARN) << "ocsp update for " << cert_file << " failed";
-    return;
-  }
 
   if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "ocsp update for " << cert_file << " finished successfully";
+    LOG(INFO) << "ocsp update for " << tls_ctx_data->cert_file
+              << " finished successfully";
   }
 
-  std::lock_guard<std::mutex> g(tls_ctx_data->mu);
-  tls_ctx_data->ocsp_data = std::move(out);
-}
-} // namespace
-
-void ConnectionHandler::update_ocsp() {
-  for (auto ssl_ctx : all_ssl_ctx_) {
-    update_ocsp_ssl_ctx(ssl_ctx);
+  {
+    std::lock_guard<std::mutex> g(tls_ctx_data->mu);
+    tls_ctx_data->ocsp_data = std::move(ocsp_.resp);
   }
-}
 
-void ConnectionHandler::update_ocsp_async() {
-#ifndef NOTHREADS
-  ocsp_result_ = std::async(std::launch::async, [this]() {
-    // Log files are managed per thread.  We have to open log files
-    // for this thread.  We don't reopen log files in this thread when
-    // signal is received.  This is future TODO.
-    reopen_log_files();
-    auto closer = defer([]() {
-      auto lgconf = log_config();
-      if (lgconf->accesslog_fd != -1) {
-        close(lgconf->accesslog_fd);
-      }
-      if (lgconf->errorlog_fd != -1) {
-        close(lgconf->errorlog_fd);
-      }
-    });
-
-    update_ocsp();
-  });
-#endif // !NOTHREADS
+  ++ocsp_.next;
+  proceed_next_cert_ocsp();
 }
 
-void ConnectionHandler::handle_ocsp_completion() {
-#ifndef NOTHREADS
-  if (!ocsp_result_.valid()) {
-    return;
+void ConnectionHandler::reset_ocsp() {
+  if (ocsp_.fd != -1) {
+    close(ocsp_.fd);
   }
 
-  if (ocsp_result_.wait_for(std::chrono::seconds(0)) !=
-      std::future_status::ready) {
-    return;
-  }
-
-  ocsp_result_.get();
-
-  ev_timer_set(&ocsp_timer_, get_config()->ocsp_update_interval, 0.);
-  ev_timer_start(loop_, &ocsp_timer_);
-#endif // !NOTHREADS
+  ocsp_.fd = -1;
+  ocsp_.pid = 0;
+  ocsp_.error = 0;
+  ocsp_.resp = std::vector<uint8_t>();
 }
 
-void ConnectionHandler::join_ocsp_thread() {
-#ifndef NOTHREADS
-  if (!ocsp_result_.valid()) {
-    return;
+void ConnectionHandler::proceed_next_cert_ocsp() {
+  for (;;) {
+    reset_ocsp();
+    if (ocsp_.next == all_ssl_ctx_.size()) {
+      ocsp_.next = 0;
+      // We have updated all ocsp response, and schedule next update.
+      ev_timer_set(&ocsp_timer_, get_config()->ocsp_update_interval, 0.);
+      ev_timer_start(loop_, &ocsp_timer_);
+      return;
+    }
+
+    auto ssl_ctx = all_ssl_ctx_[ocsp_.next];
+    auto tls_ctx_data =
+        static_cast<ssl::TLSContextData *>(SSL_CTX_get_app_data(ssl_ctx));
+    auto cert_file = tls_ctx_data->cert_file;
+
+    if (start_ocsp_update(cert_file) != 0) {
+      ++ocsp_.next;
+      continue;
+    }
+
+    break;
   }
-  ocsp_result_.get();
-#endif // !NOTHREADS
 }
 
 } // namespace shrpx

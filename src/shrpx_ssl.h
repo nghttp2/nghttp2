@@ -170,8 +170,6 @@ SSL_CTX *setup_client_ssl_context();
 // this function returns nullptr.
 CertLookupTree *create_cert_lookup_tree();
 
-int get_ocsp_response(std::vector<uint8_t> &out, const char *cert_file);
-
 } // namespace ssl
 
 } // namespace shrpx
