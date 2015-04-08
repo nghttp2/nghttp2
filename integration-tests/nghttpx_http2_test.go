@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"syscall"
 	"testing"
 )
@@ -494,7 +495,9 @@ func TestH2H1SNI(t *testing.T) {
 func TestH2H1ServerPush(t *testing.T) {
 	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
 		// only resources marked as rel=preload are pushed
-		w.Header().Add("Link", "</css/main.css>; rel=preload, </foo>, </css/theme.css>; rel=preload")
+		if !strings.HasPrefix(r.URL.Path, "/css/") {
+			w.Header().Add("Link", "</css/main.css>; rel=preload, </foo>, </css/theme.css>; rel=preload")
+		}
 	})
 	defer st.Close()
 
