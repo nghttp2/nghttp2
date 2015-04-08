@@ -522,9 +522,12 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
     }
     return 0;
   case NGHTTP2_PUSH_PROMISE: {
-    auto downstream =
-        make_unique<Downstream>(upstream, handler->get_mcpool(),
-                                frame->push_promise.promised_stream_id, 0);
+    auto promised_stream_id = frame->push_promise.promised_stream_id;
+    auto downstream = make_unique<Downstream>(upstream, handler->get_mcpool(),
+                                              promised_stream_id, 0);
+
+    nghttp2_session_set_stream_user_data(session, promised_stream_id,
+                                         downstream.get());
 
     downstream->disable_upstream_rtimer();
 
