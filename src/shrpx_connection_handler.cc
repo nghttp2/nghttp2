@@ -30,9 +30,6 @@
 
 #include <cerrno>
 #include <thread>
-#ifndef NOTHREADS
-#include <spawn.h>
-#endif // !NOTHREADS
 
 #include "shrpx_client_handler.h"
 #include "shrpx_ssl.h"
@@ -392,36 +389,34 @@ int ConnectionHandler::start_ocsp_update(const char *cert_file) {
     }
   });
 
-  // posix_spawn family functions are really interesting.  They makes
-  // fork + dup2 + execve pattern easier.
-
-  posix_spawn_file_actions_t file_actions;
-
-  if (posix_spawn_file_actions_init(&file_actions) != 0) {
+  auto pid = fork();
+  if (pid == -1) {
+    auto error = errno;
+    LOG(WARN) << "Could not execute ocsp query command: " << argv[0]
+              << ", fork() failed, errno=" << error;
     return -1;
   }
 
-  auto file_actions_del =
-      defer(posix_spawn_file_actions_destroy, &file_actions);
+  if (pid == 0) {
+    // child process
+    dup2(pfd[1], 1);
+    close(pfd[0]);
 
-  if (posix_spawn_file_actions_adddup2(&file_actions, pfd[1], 1) != 0) {
-    return -1;
+    rv = execve(argv[0], argv, envp);
+    if (rv == -1) {
+      auto error = errno;
+      LOG(WARN) << "Could not execute ocsp query command: " << argv[0]
+                << ", execve() faild, errno=" << error;
+      _Exit(EXIT_FAILURE);
+    }
+    // unreachable
   }
 
-  if (posix_spawn_file_actions_addclose(&file_actions, pfd[0]) != 0) {
-    return -1;
-  }
-
-  rv = posix_spawn(&ocsp_.pid, argv[0], &file_actions, nullptr, argv, envp);
-  if (rv != 0) {
-    LOG(WARN) << "Cannot execute ocsp query command: " << argv[0]
-              << ", errno=" << rv;
-    return -1;
-  }
-
+  // parent process
   close(pfd[1]);
   pfd[1] = -1;
 
+  ocsp_.pid = pid;
   ocsp_.fd = pfd[0];
   pfd[0] = -1;
 
