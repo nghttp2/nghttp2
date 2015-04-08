@@ -422,6 +422,7 @@ void reopen_log_signal_cb(struct ev_loop *loop, ev_signal *w, int revents) {
   }
 
   (void)reopen_log_files();
+  redirect_stderr_to_errorlog();
 
   if (get_config()->num_worker > 1) {
     conn_handler->worker_reopen_log_files();
@@ -636,6 +637,10 @@ int event_loop() {
 
     // We get new PID after successful daemon().
     mod_config()->pid = getpid();
+
+    // daemon redirects stderr file descriptor to /dev/null, so we
+    // need this.
+    redirect_stderr_to_errorlog();
   }
 
   if (get_config()->pid_file) {
@@ -1915,6 +1920,8 @@ int main(int argc, char **argv) {
     LOG(FATAL) << "Failed to open log file";
     exit(EXIT_FAILURE);
   }
+
+  redirect_stderr_to_errorlog();
 
   if (get_config()->uid != 0) {
     if (log_config()->accesslog_fd != -1 &&
