@@ -102,6 +102,11 @@ template <typename T> struct Pool {
     }
     freelist = m;
   }
+  void clear() {
+    freelist = nullptr;
+    pool = nullptr;
+    poolsize = 0;
+  }
   using value_type = T;
   std::unique_ptr<T> pool;
   T *freelist;

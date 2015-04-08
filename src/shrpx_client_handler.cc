@@ -402,6 +402,10 @@ ClientHandler::~ClientHandler() {
   auto worker_stat = worker_->get_worker_stat();
   --worker_stat->num_connections;
 
+  if (worker_stat->num_connections == 0) {
+    worker_->schedule_clear_mcpool();
+  }
+
   ev_timer_stop(conn_.loop, &reneg_shutdown_timer_);
 
   // TODO If backend is http/2, and it is in CONNECTED state, signal
@@ -556,7 +560,14 @@ int ClientHandler::validate_next_proto() {
 int ClientHandler::do_read() { return read_(*this); }
 int ClientHandler::do_write() { return write_(*this); }
 
-int ClientHandler::on_read() { return on_read_(*this); }
+int ClientHandler::on_read() {
+  auto rv = on_read_(*this);
+  if (rv != 0) {
+    return rv;
+  }
+  conn_.handle_tls_pending_read();
+  return 0;
+}
 int ClientHandler::on_write() { return on_write_(*this); }
 
 const std::string &ClientHandler::get_ipaddr() const { return ipaddr_; }
@@ -622,6 +633,8 @@ ClientHandler::get_downstream_connection() {
 
   return dconn;
 }
+
+MemchunkPool *ClientHandler::get_mcpool() { return worker_->get_mcpool(); }
 
 SSL *ClientHandler::get_ssl() const { return conn_.tls.ssl; }
 

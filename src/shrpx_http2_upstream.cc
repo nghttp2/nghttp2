@@ -256,8 +256,11 @@ int on_begin_headers_callback(nghttp2_session *session,
                          << frame->hd.stream_id;
   }
 
+  auto handler = upstream->get_client_handler();
+
   // TODO Use priority 0 for now
-  auto downstream = make_unique<Downstream>(upstream, frame->hd.stream_id, 0);
+  auto downstream = make_unique<Downstream>(upstream, handler->get_mcpool(),
+                                            frame->hd.stream_id, 0);
   nghttp2_session_set_stream_user_data(session, frame->hd.stream_id,
                                        downstream.get());
 
@@ -484,16 +487,47 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
     verbose_on_frame_send_callback(session, frame, user_data);
   }
   auto upstream = static_cast<Http2Upstream *>(user_data);
+  auto handler = upstream->get_client_handler();
 
   switch (frame->hd.type) {
+  case NGHTTP2_DATA:
+  case NGHTTP2_HEADERS: {
+    if ((frame->hd.flags & NGHTTP2_FLAG_END_STREAM) == 0) {
+      return 0;
+    }
+    // RST_STREAM if request is still incomplete.
+    auto stream_id = frame->hd.stream_id;
+    auto downstream = static_cast<Downstream *>(
+        nghttp2_session_get_stream_user_data(session, stream_id));
+
+    // For tunneling, issue RST_STREAM to finish the stream.
+    if (downstream->get_upgraded() ||
+        nghttp2_session_get_stream_remote_close(session, stream_id) == 0) {
+      if (LOG_ENABLED(INFO)) {
+        ULOG(INFO, upstream)
+            << "Send RST_STREAM to "
+            << (downstream->get_upgraded() ? "tunneled " : "")
+            << "stream stream_id=" << downstream->get_stream_id()
+            << " to finish off incomplete request";
+      }
+
+      upstream->rst_stream(downstream, NGHTTP2_NO_ERROR);
+    }
+
+    return 0;
+  }
   case NGHTTP2_SETTINGS:
     if ((frame->hd.flags & NGHTTP2_FLAG_ACK) == 0) {
       upstream->start_settings_timer();
     }
     return 0;
   case NGHTTP2_PUSH_PROMISE: {
-    auto downstream = make_unique<Downstream>(
-        upstream, frame->push_promise.promised_stream_id, 0);
+    auto promised_stream_id = frame->push_promise.promised_stream_id;
+    auto downstream = make_unique<Downstream>(upstream, handler->get_mcpool(),
+                                              promised_stream_id, 0);
+
+    nghttp2_session_set_stream_user_data(session, promised_stream_id,
+                                         downstream.get());
 
     downstream->disable_upstream_rtimer();
 
@@ -1096,16 +1130,6 @@ ssize_t downstream_data_read_callback(nghttp2_session *session,
           }
         }
       }
-      if (nghttp2_session_get_stream_remote_close(session, stream_id) == 0) {
-        upstream->rst_stream(downstream, NGHTTP2_NO_ERROR);
-      }
-    } else {
-      // For tunneling, issue RST_STREAM to finish the stream.
-      if (LOG_ENABLED(INFO)) {
-        ULOG(INFO, upstream)
-            << "RST_STREAM to tunneled stream stream_id=" << stream_id;
-      }
-      upstream->rst_stream(downstream, NGHTTP2_NO_ERROR);
     }
   }
 
@@ -1479,8 +1503,6 @@ int Http2Upstream::on_downstream_reset(bool no_retry) {
 
   return 0;
 }
-
-MemchunkPool *Http2Upstream::get_mcpool() { return &mcpool_; }
 
 int Http2Upstream::prepare_push_promise(Downstream *downstream) {
   int rv;

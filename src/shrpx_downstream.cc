@@ -106,12 +106,12 @@ void downstream_wtimeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
 } // namespace
 
 // upstream could be nullptr for unittests
-Downstream::Downstream(Upstream *upstream, int32_t stream_id, int32_t priority)
+Downstream::Downstream(Upstream *upstream, MemchunkPool *mcpool,
+                       int32_t stream_id, int32_t priority)
     : dlnext(nullptr), dlprev(nullptr),
       request_start_time_(std::chrono::high_resolution_clock::now()),
-      request_buf_(upstream ? upstream->get_mcpool() : nullptr),
-      response_buf_(upstream ? upstream->get_mcpool() : nullptr),
-      request_bodylen_(0), response_bodylen_(0), response_sent_bodylen_(0),
+      request_buf_(mcpool), response_buf_(mcpool), request_bodylen_(0),
+      response_bodylen_(0), response_sent_bodylen_(0),
       request_content_length_(-1), response_content_length_(-1),
       upstream_(upstream), blocked_link_(nullptr), request_headers_sum_(0),
       response_headers_sum_(0), request_datalen_(0), response_datalen_(0),

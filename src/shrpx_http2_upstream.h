@@ -79,8 +79,6 @@ public:
   virtual void on_handler_delete();
   virtual int on_downstream_reset(bool no_retry);
 
-  virtual MemchunkPool *get_mcpool();
-
   bool get_flow_control() const;
   // Perform HTTP/2 upgrade from |upstream|. On success, this object
   // takes ownership of the |upstream|. This function returns 0 if it
@@ -103,9 +101,7 @@ public:
   int on_request_headers(Downstream *downstream, const nghttp2_frame *frame);
 
 private:
-  // must be put before downstream_queue_
   std::unique_ptr<HttpsUpstream> pre_upstream_;
-  MemchunkPool mcpool_;
   DownstreamQueue downstream_queue_;
   ev_timer settings_timer_;
   ev_timer shutdown_timer_;

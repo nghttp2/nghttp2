@@ -76,6 +76,8 @@ APIDOCS= \
 	nghttp2_session_client_new2.rst \
 	nghttp2_session_client_new3.rst \
 	nghttp2_session_consume.rst \
+	nghttp2_session_consume_connection.rst \
+	nghttp2_session_consume_stream.rst \
 	nghttp2_session_del.rst \
 	nghttp2_session_get_effective_local_window_size.rst \
 	nghttp2_session_get_effective_recv_data_length.rst \
@@ -202,11 +204,7 @@ help:
 apiref.rst: $(top_builddir)/lib/includes/nghttp2/nghttp2ver.h \
 	$(top_builddir)/lib/includes/nghttp2/nghttp2.h
 	$(PYTHON) $(top_srcdir)/doc/mkapiref.py \
-	$@ \
-	$(top_builddir)/doc/macros.rst \
-	$(top_builddir)/doc/enums.rst \
-	$(top_builddir)/doc/types.rst \
-	$(top_builddir)/doc/ $^
+	$@ macros.rst enums.rst types.rst . $^
 
 clean-local:
 	-rm $(APIDOCS)

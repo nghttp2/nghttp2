@@ -29,21 +29,31 @@
 
 #include <ev.h>
 
+#include <openssl/ssl.h>
+
 namespace shrpx {
 
 class RateLimit {
 public:
-  RateLimit(struct ev_loop *loop, ev_io *w, size_t rate, size_t burst);
+  // We need |ssl| object to check that it has unread decrypted bytes.
+  RateLimit(struct ev_loop *loop, ev_io *w, size_t rate, size_t burst,
+            SSL *ssl = nullptr);
   ~RateLimit();
   size_t avail() const;
   void drain(size_t n);
   void regen();
   void startw();
   void stopw();
+  // Feeds event if ssl_ object has unread decrypted bytes.  This is
+  // required since it is buffered in ssl_ object, io event is not
+  // generated unless new incoming data is received.
+  void handle_tls_pending_read();
+
 private:
-  ev_io *w_;
   ev_timer t_;
+  ev_io *w_;
   struct ev_loop *loop_;
+  SSL *ssl_;
   size_t rate_;
   size_t burst_;
   size_t avail_;

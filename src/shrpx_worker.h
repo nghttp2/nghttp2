@@ -42,6 +42,9 @@
 
 #include "shrpx_config.h"
 #include "shrpx_downstream_connection_pool.h"
+#include "memchunk.h"
+
+using namespace nghttp2;
 
 namespace shrpx {
 
@@ -104,6 +107,9 @@ public:
   void set_graceful_shutdown(bool f);
   bool get_graceful_shutdown() const;
 
+  MemchunkPool *get_mcpool();
+  void schedule_clear_mcpool();
+
 private:
   std::vector<std::unique_ptr<Http2Session>> http2sessions_;
   size_t next_http2session_;
@@ -113,6 +119,8 @@ private:
   std::mutex m_;
   std::deque<WorkerEvent> q_;
   ev_async w_;
+  ev_timer mcpool_clear_timer_;
+  MemchunkPool mcpool_;
   DownstreamConnectionPool dconn_pool_;
   WorkerStat worker_stat_;
   struct ev_loop *loop_;

@@ -2673,7 +2673,11 @@ NGHTTP2_EXTERN uint32_t
  *
  * Tells the |session| that |size| bytes for a stream denoted by
  * |stream_id| were consumed by application and are ready to
- * WINDOW_UPDATE.  This function is intended to be used without
+ * WINDOW_UPDATE.  The consumed bytes are counted towards both
+ * connection and stream level WINDOW_UPDATE (see
+ * `nghttp2_session_consume_connection()` and
+ * `nghttp2_session_consume_stream()` to update consumption
+ * independently).  This function is intended to be used without
  * automatic window update (see
  * `nghttp2_option_set_no_auto_window_update()`).
  *
@@ -2689,6 +2693,47 @@ NGHTTP2_EXTERN uint32_t
  */
 NGHTTP2_EXTERN int nghttp2_session_consume(nghttp2_session *session,
                                            int32_t stream_id, size_t size);
+
+/**
+ * @function
+ *
+ * Like `nghttp2_session_consume()`, but this only tells library that
+ * |size| bytes were consumed only for connection level.  Note that
+ * HTTP/2 maintains connection and stream level flow control windows
+ * independently.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * :enum:`NGHTTP2_ERR_NOMEM`
+ *     Out of memory.
+ * :enum:`NGHTTP2_ERR_INVALID_STATE`
+ *     Automatic WINDOW_UPDATE is not disabled.
+ */
+NGHTTP2_EXTERN int nghttp2_session_consume_connection(nghttp2_session *session,
+                                                      size_t size);
+
+/**
+ * @function
+ *
+ * Like `nghttp2_session_consume()`, but this only tells library that
+ * |size| bytes were consumed only for stream denoted by |stream_id|.
+ * Note that HTTP/2 maintains connection and stream level flow control
+ * windows independently.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * :enum:`NGHTTP2_ERR_NOMEM`
+ *     Out of memory.
+ * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
+ *     The |stream_id| is 0.
+ * :enum:`NGHTTP2_ERR_INVALID_STATE`
+ *     Automatic WINDOW_UPDATE is not disabled.
+ */
+NGHTTP2_EXTERN int nghttp2_session_consume_stream(nghttp2_session *session,
+                                                  int32_t stream_id,
+                                                  size_t size);
 
 /**
  * @function
@@ -3335,6 +3380,9 @@ NGHTTP2_EXTERN int32_t
  *
  * The |flags| is currently ignored and should be
  * :enum:`NGHTTP2_FLAG_NONE`.
+ *
+ * The |stream_id| is the stream ID to send this WINDOW_UPDATE.  To
+ * send connection level WINDOW_UPDATE, specify 0 to |stream_id|.
  *
  * If the |window_size_increment| is positive, the WINDOW_UPDATE with
  * that value as window_size_increment is queued.  If the

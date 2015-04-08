@@ -52,7 +52,8 @@ struct BlockedLink;
 
 class Downstream {
 public:
-  Downstream(Upstream *upstream, int32_t stream_id, int32_t priority);
+  Downstream(Upstream *upstream, MemchunkPool *mcpool, int32_t stream_id,
+             int32_t priority);
   ~Downstream();
   void reset_upstream(Upstream *upstream);
   Upstream *get_upstream() const;

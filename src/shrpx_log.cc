@@ -324,4 +324,14 @@ int reopen_log_files() {
   return res;
 }
 
+void redirect_stderr_to_errorlog() {
+  auto lgconf = log_config();
+
+  if (get_config()->errorlog_syslog || lgconf->errorlog_fd == -1) {
+    return;
+  }
+
+  dup2(lgconf->errorlog_fd, STDERR_FILENO);
+}
+
 } // namespace shrpx

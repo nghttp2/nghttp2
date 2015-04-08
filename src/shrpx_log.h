@@ -143,6 +143,8 @@ void upstream_accesslog(const std::vector<LogFragment> &lf, LogSpec *lgsp);
 
 int reopen_log_files();
 
+void redirect_stderr_to_errorlog();
+
 } // namespace shrpx
 
 #endif // SHRPX_LOG_H
