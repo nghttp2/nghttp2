@@ -204,11 +204,7 @@ help:
 apiref.rst: $(top_builddir)/lib/includes/nghttp2/nghttp2ver.h \
 	$(top_builddir)/lib/includes/nghttp2/nghttp2.h
 	$(PYTHON) $(top_srcdir)/doc/mkapiref.py \
-	$@ \
-	$(top_builddir)/doc/macros.rst \
-	$(top_builddir)/doc/enums.rst \
-	$(top_builddir)/doc/types.rst \
-	$(top_builddir)/doc/ $^
+	$@ macros.rst enums.rst types.rst . $^
 
 clean-local:
 	-rm $(APIDOCS)
