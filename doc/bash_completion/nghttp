@@ -8,7 +8,7 @@ _nghttp()
     _get_comp_words_by_ref cur prev
     case $cur in
         -*)
-            COMPREPLY=( $( compgen -W '--verbose --no-dep --get-assets --har --header-table-size --multiply --padding --dep-idle --continuation --connection-window-bits --peer-max-concurrent-streams --timeout --data --no-content-length --version --color --cert --upgrade --remote-name --weight --help --key --null-out --window-bits --stat --header ' -- "$cur" ) )
+            COMPREPLY=( $( compgen -W '--verbose --no-dep --get-assets --har --header-table-size --multiply --padding --hexdump --dep-idle --continuation --connection-window-bits --peer-max-concurrent-streams --timeout --data --no-content-length --version --color --cert --upgrade --remote-name --trailer --weight --help --key --null-out --window-bits --stat --header ' -- "$cur" ) )
             ;;
         *)
             _filedir
