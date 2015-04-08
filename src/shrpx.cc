@@ -1315,7 +1315,8 @@ Logging:
               Default: )" << DEFAULT_ACCESSLOG_FORMAT << R"(
   --errorlog-file=<PATH>
               Set path to write error  log.  To reopen file, send USR1
-              signal to nghttpx.
+              signal  to nghttpx.   stderr will  be redirected  to the
+              error log file unless --errorlog-syslog is used.
               Default: )" << get_config()->errorlog_file.get() << R"(
   --errorlog-syslog
               Send  error log  to  syslog.  If  this  option is  used,
