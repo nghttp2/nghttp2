@@ -101,9 +101,9 @@ RUN autoreconf -i && \
     --disable-threads \
     LIBSPDYLAY_CFLAGS=-I$PREFIX/usr/local/include \
     LIBSPDYLAY_LIBS="-L$PREFIX/usr/local/lib -lspdylay" \
-    CPPFLAGS="-I$PREFIX/include" \
+    CPPFLAGS="-fPIE -I$PREFIX/include" \
     CXXFLAGS="-fno-strict-aliasing" \
     PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig" \
-    LDFLAGS="-L$PREFIX/lib" && \
+    LDFLAGS="-fPIE -pie -L$PREFIX/lib" && \
     make && \
     arm-linux-androideabi-strip src/nghttpx src/nghttpd src/nghttp
