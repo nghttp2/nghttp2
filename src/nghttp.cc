@@ -531,12 +531,13 @@ int HttpClient::initiate_connection() {
       SSL_set_fd(ssl, fd);
       SSL_set_connect_state(ssl);
 
-      // If the user overrode the host header, use that value for
-      // the SNI extension
+      // If the user overrode the :authority or host header, use that
+      // value for the SNI extension
       const char *host_string = nullptr;
-      auto i =
-          std::find_if(std::begin(config.headers), std::end(config.headers),
-                       [](const Header &nv) { return "host" == nv.name; });
+      auto i = std::find_if(std::begin(config.headers),
+                            std::end(config.headers), [](const Header &nv) {
+        return ":authority" == nv.name || "host" == nv.name;
+      });
       if (i != std::end(config.headers)) {
         host_string = (*i).value.c_str();
       } else {
