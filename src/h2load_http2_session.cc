@@ -119,7 +119,7 @@ ssize_t file_read_callback(nghttp2_session *session, int32_t stream_id,
   auto config = client->worker->config;
   auto req_stat = static_cast<RequestStat *>(
       nghttp2_session_get_stream_user_data(session, stream_id));
-
+  assert(req_stat);
   ssize_t nread;
   while ((nread = pread(config->data_fd, buf, length, req_stat->data_offset)) ==
              -1 &&

@@ -500,6 +500,10 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
     auto downstream = static_cast<Downstream *>(
         nghttp2_session_get_stream_user_data(session, stream_id));
 
+    if (!downstream) {
+      return 0;
+    }
+
     // For tunneling, issue RST_STREAM to finish the stream.
     if (downstream->get_upgraded() ||
         nghttp2_session_get_stream_remote_close(session, stream_id) == 0) {
