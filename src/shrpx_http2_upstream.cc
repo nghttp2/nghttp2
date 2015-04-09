@@ -163,6 +163,8 @@ int Http2Upstream::upgrade_upstream(HttpsUpstream *http) {
   downstream->set_request_http2_scheme(scheme);
 
   auto ptr = downstream.get();
+
+  nghttp2_session_set_stream_user_data(session_, 1, ptr);
   downstream_queue_.add_pending(std::move(downstream));
   downstream_queue_.mark_active(ptr);
 
