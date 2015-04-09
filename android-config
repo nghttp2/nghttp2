@@ -42,6 +42,6 @@ PATH=$TOOLCHAIN/bin:$PATH
     --enable-werror \
     CC=clang \
     CXX=clang++ \
-    CPPFLAGS="-I$PREFIX/include" \
+    CPPFLAGS="-fPIE -I$PREFIX/include" \
     PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig" \
-    LDFLAGS="-L$PREFIX/lib"
+    LDFLAGS="-fPIE -pie -L$PREFIX/lib"
