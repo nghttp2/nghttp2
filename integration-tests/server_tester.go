@@ -247,15 +247,16 @@ func (st *serverTester) readSpdyFrame() (spdy.Frame, error) {
 }
 
 type requestParam struct {
-	name      string              // name for this request to identify the request in log easily
-	streamID  uint32              // stream ID, automatically assigned if 0
-	method    string              // method, defaults to GET
-	scheme    string              // scheme, defaults to http
-	authority string              // authority, defaults to backend server address
-	path      string              // path, defaults to /
-	header    []hpack.HeaderField // additional request header fields
-	body      []byte              // request body
-	trailer   []hpack.HeaderField // trailer part
+	name        string              // name for this request to identify the request in log easily
+	streamID    uint32              // stream ID, automatically assigned if 0
+	method      string              // method, defaults to GET
+	scheme      string              // scheme, defaults to http
+	authority   string              // authority, defaults to backend server address
+	path        string              // path, defaults to /
+	header      []hpack.HeaderField // additional request header fields
+	body        []byte              // request body
+	trailer     []hpack.HeaderField // trailer part
+	httpUpgrade bool                // true if upgraded to HTTP/2 through HTTP Upgrade
 }
 
 // wrapper for request body to set trailer part
@@ -478,69 +479,70 @@ func (st *serverTester) http2(rp requestParam) (*serverResponse, error) {
 	streams := make(map[uint32]*serverResponse)
 	streams[id] = res
 
-	method := "GET"
-	if rp.method != "" {
-		method = rp.method
-	}
-	_ = st.enc.WriteField(pair(":method", method))
-
-	scheme := "http"
-	if rp.scheme != "" {
-		scheme = rp.scheme
-	}
-	_ = st.enc.WriteField(pair(":scheme", scheme))
-
-	authority := st.authority
-	if rp.authority != "" {
-		authority = rp.authority
-	}
-	_ = st.enc.WriteField(pair(":authority", authority))
-
-	path := "/"
-	if rp.path != "" {
-		path = rp.path
-	}
-	_ = st.enc.WriteField(pair(":path", path))
-
-	_ = st.enc.WriteField(pair("test-case", rp.name))
-
-	for _, h := range rp.header {
-		_ = st.enc.WriteField(h)
-	}
-
-	err := st.fr.WriteHeaders(http2.HeadersFrameParam{
-		StreamID:      id,
-		EndStream:     len(rp.body) == 0 && len(rp.trailer) == 0,
-		EndHeaders:    true,
-		BlockFragment: st.headerBlkBuf.Bytes(),
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	if len(rp.body) != 0 {
-		// TODO we assume rp.body fits in 1 frame
-		if err := st.fr.WriteData(id, len(rp.trailer) == 0, rp.body); err != nil {
-			return nil, err
+	if !rp.httpUpgrade {
+		method := "GET"
+		if rp.method != "" {
+			method = rp.method
 		}
-	}
+		_ = st.enc.WriteField(pair(":method", method))
 
-	if len(rp.trailer) != 0 {
-		st.headerBlkBuf.Reset()
-		for _, h := range rp.trailer {
+		scheme := "http"
+		if rp.scheme != "" {
+			scheme = rp.scheme
+		}
+		_ = st.enc.WriteField(pair(":scheme", scheme))
+
+		authority := st.authority
+		if rp.authority != "" {
+			authority = rp.authority
+		}
+		_ = st.enc.WriteField(pair(":authority", authority))
+
+		path := "/"
+		if rp.path != "" {
+			path = rp.path
+		}
+		_ = st.enc.WriteField(pair(":path", path))
+
+		_ = st.enc.WriteField(pair("test-case", rp.name))
+
+		for _, h := range rp.header {
 			_ = st.enc.WriteField(h)
 		}
+
 		err := st.fr.WriteHeaders(http2.HeadersFrameParam{
 			StreamID:      id,
-			EndStream:     true,
+			EndStream:     len(rp.body) == 0 && len(rp.trailer) == 0,
 			EndHeaders:    true,
 			BlockFragment: st.headerBlkBuf.Bytes(),
 		})
 		if err != nil {
 			return nil, err
 		}
-	}
 
+		if len(rp.body) != 0 {
+			// TODO we assume rp.body fits in 1 frame
+			if err := st.fr.WriteData(id, len(rp.trailer) == 0, rp.body); err != nil {
+				return nil, err
+			}
+		}
+
+		if len(rp.trailer) != 0 {
+			st.headerBlkBuf.Reset()
+			for _, h := range rp.trailer {
+				_ = st.enc.WriteField(h)
+			}
+			err := st.fr.WriteHeaders(http2.HeadersFrameParam{
+				StreamID:      id,
+				EndStream:     true,
+				EndHeaders:    true,
+				BlockFragment: st.headerBlkBuf.Bytes(),
+			})
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
 loop:
 	for {
 		fr, err := st.readFrame()
