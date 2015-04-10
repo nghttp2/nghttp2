@@ -838,35 +838,9 @@ int on_response_headers(Http2Session *http2session, Downstream *downstream,
     return 0;
   }
 
-  auto content_length =
-      downstream->get_response_header(http2::HD_CONTENT_LENGTH);
-  if (content_length) {
-    // libnghttp2 guarantees this can be parsed
-    auto len = util::parse_uint(content_length->value);
-    downstream->set_response_content_length(len);
-  }
-
-  if (downstream->get_response_content_length() == -1 &&
-      downstream->expect_response_body()) {
-    // Here we have response body but Content-Length is not known in
-    // advance.
-    if (downstream->get_request_major() <= 0 ||
-        (downstream->get_request_major() <= 1 &&
-         downstream->get_request_minor() <= 0)) {
-      // We simply close connection for pre-HTTP/1.1 in this case.
-      downstream->set_response_connection_close(true);
-    } else if (downstream->get_request_method() != "CONNECT") {
-      // Otherwise, use chunked encoding to keep upstream connection
-      // open.  In HTTP2, we are supporsed not to receive
-      // transfer-encoding.
-      downstream->add_response_header("transfer-encoding", "chunked",
-                                      http2::HD_TRANSFER_ENCODING);
-      downstream->set_chunked_response(true);
-    }
-  }
-
   downstream->set_response_state(Downstream::HEADER_COMPLETE);
   downstream->check_upgrade_fulfilled();
+
   if (downstream->get_upgraded()) {
     downstream->set_response_connection_close(true);
     // On upgrade sucess, both ends can send data
@@ -880,11 +854,35 @@ int on_response_headers(Http2Session *http2session, Downstream *downstream,
       SSLOG(INFO, http2session)
           << "HTTP upgrade success. stream_id=" << frame->hd.stream_id;
     }
-  } else if (downstream->get_request_method() == "CONNECT") {
-    // If request is CONNECT, terminate request body to avoid for
-    // stream to stall.
-    downstream->end_upload_data();
+  } else {
+    auto content_length =
+        downstream->get_response_header(http2::HD_CONTENT_LENGTH);
+    if (content_length) {
+      // libnghttp2 guarantees this can be parsed
+      auto len = util::parse_uint(content_length->value);
+      downstream->set_response_content_length(len);
+    }
+
+    if (downstream->get_response_content_length() == -1 &&
+        downstream->expect_response_body()) {
+      // Here we have response body but Content-Length is not known in
+      // advance.
+      if (downstream->get_request_major() <= 0 ||
+          (downstream->get_request_major() == 1 &&
+           downstream->get_request_minor() == 0)) {
+        // We simply close connection for pre-HTTP/1.1 in this case.
+        downstream->set_response_connection_close(true);
+      } else {
+        // Otherwise, use chunked encoding to keep upstream connection
+        // open.  In HTTP2, we are supporsed not to receive
+        // transfer-encoding.
+        downstream->add_response_header("transfer-encoding", "chunked",
+                                        http2::HD_TRANSFER_ENCODING);
+        downstream->set_chunked_response(true);
+      }
+    }
   }
+
   rv = upstream->on_downstream_header_complete(downstream);
   if (rv != 0) {
     http2session->submit_rst_stream(frame->hd.stream_id,
