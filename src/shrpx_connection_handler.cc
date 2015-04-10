@@ -69,6 +69,8 @@ void ocsp_cb(struct ev_loop *loop, ev_timer *w, int revent) {
     return;
   }
 
+  LOG(NOTICE) << "Start ocsp update";
+
   h->proceed_next_cert_ocsp();
 }
 } // namespace
@@ -358,6 +360,10 @@ int ConnectionHandler::start_ocsp_update(const char *cert_file) {
   int rv;
   int pfd[2];
 
+  if (LOG_ENABLED(INFO)) {
+    LOG(INFO) << "Start ocsp update for " << cert_file;
+  }
+
   assert(!ev_is_active(&ocsp_.rev));
   assert(!ev_is_active(&ocsp_.chldev));
 
@@ -391,8 +397,8 @@ int ConnectionHandler::start_ocsp_update(const char *cert_file) {
   auto pid = fork();
   if (pid == -1) {
     auto error = errno;
-    LOG(WARN) << "Could not execute ocsp query command: " << argv[0]
-              << ", fork() failed, errno=" << error;
+    LOG(WARN) << "Could not execute ocsp query command for " << cert_file
+              << ": " << argv[0] << ", fork() failed, errno=" << error;
     return -1;
   }
 
@@ -461,21 +467,22 @@ void ConnectionHandler::handle_ocsp_complete() {
   ev_io_stop(loop_, &ocsp_.rev);
   ev_child_stop(loop_, &ocsp_.chldev);
 
-  auto rstatus = ocsp_.chldev.rstatus;
-  auto status = WEXITSTATUS(rstatus);
-  if (ocsp_.error || !WIFEXITED(rstatus) || status != 0) {
-    LOG(WARN) << "ocsp query command failed: error=" << ocsp_.error
-              << ", rstatus=" << rstatus << ", status=" << status;
-    ++ocsp_.next;
-    proceed_next_cert_ocsp();
-    return;
-  }
-
   assert(ocsp_.next < all_ssl_ctx_.size());
 
   auto ssl_ctx = all_ssl_ctx_[ocsp_.next];
   auto tls_ctx_data =
       static_cast<ssl::TLSContextData *>(SSL_CTX_get_app_data(ssl_ctx));
+
+  auto rstatus = ocsp_.chldev.rstatus;
+  auto status = WEXITSTATUS(rstatus);
+  if (ocsp_.error || !WIFEXITED(rstatus) || status != 0) {
+    LOG(WARN) << "ocsp query command for " << tls_ctx_data->cert_file
+              << " failed: error=" << ocsp_.error << ", rstatus=" << rstatus
+              << ", status=" << status;
+    ++ocsp_.next;
+    proceed_next_cert_ocsp();
+    return;
+  }
 
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "ocsp update for " << tls_ctx_data->cert_file

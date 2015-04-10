@@ -417,9 +417,7 @@ namespace {
 void reopen_log_signal_cb(struct ev_loop *loop, ev_signal *w, int revents) {
   auto conn_handler = static_cast<ConnectionHandler *>(w->data);
 
-  if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "Reopening log files: main";
-  }
+  LOG(NOTICE) << "Reopening log files: main";
 
   (void)reopen_log_files();
   redirect_stderr_to_errorlog();
@@ -573,9 +571,8 @@ void renew_ticket_key_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   const auto &old_ticket_keys = conn_handler->get_ticket_keys();
 
   auto ticket_keys = std::make_shared<TicketKeys>();
-  if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "renew ticket key";
-  }
+  LOG(NOTICE) << "Renew ticket keys: main";
+
   // We store at most 2 ticket keys
   if (old_ticket_keys) {
     auto &old_keys = old_ticket_keys->keys;

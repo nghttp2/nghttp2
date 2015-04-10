@@ -160,17 +160,13 @@ void Worker::process_events() {
       break;
     }
     case RENEW_TICKET_KEYS:
-      if (LOG_ENABLED(INFO)) {
-        WLOG(INFO, this) << "Renew ticket keys: worker(" << this << ")";
-      }
+      WLOG(NOTICE, this) << "Renew ticket keys: worker(" << this << ")";
 
       ticket_keys_ = wev.ticket_keys;
 
       break;
     case REOPEN_LOG:
-      if (LOG_ENABLED(INFO)) {
-        WLOG(INFO, this) << "Reopening log files: worker(" << this << ")";
-      }
+      WLOG(NOTICE, this) << "Reopening log files: worker(" << this << ")";
 
       reopen_log_files();
 
