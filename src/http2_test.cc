@@ -628,6 +628,19 @@ void test_http2_parse_link_header(void) {
     CU_ASSERT(std::make_pair(&s[36], &s[39]) == res[0].uri);
   }
   {
+    // With loadpolicy="next", url should be ignored
+    const char s[] = R"(<url>; rel=preload; loadpolicy="next")";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(0 == res.size());
+  }
+  {
+    // url should be picked up if empty loadpolicy is specified
+    const char s[] = R"(<url>; rel=preload; loadpolicy="")";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(1 == res.size());
+    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
+  }
+  {
     // case-insensitive match
     const char s[] = R"(<url>; rel=preload; ANCHOR="#foo", <url>; )"
                      R"(REL=PRELOAD, <url>; REL="foo PRELOAD bar")";
