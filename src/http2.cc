@@ -779,11 +779,11 @@ parse_next_link_header_once(const char *first, const char *last) {
     // we expect link-param
 
     // rel can take several relations using quoted form.
-    static const char PLP[] = "rel=\"";
-    static const size_t PLPLEN = sizeof(PLP) - 1;
+    static constexpr char PLP[] = "rel=\"";
+    static constexpr size_t PLPLEN = sizeof(PLP) - 1;
 
-    static const char PLT[] = "preload";
-    static const size_t PLTLEN = sizeof(PLT) - 1;
+    static constexpr char PLT[] = "preload";
+    static constexpr size_t PLTLEN = sizeof(PLT) - 1;
     if (first + PLPLEN < last && *(first + PLPLEN - 1) == '"' &&
         std::equal(PLP, PLP + PLPLEN, first, util::CaseCmp())) {
       // we have to search preload in whitespace separated list:
@@ -828,8 +828,8 @@ parse_next_link_header_once(const char *first, const char *last) {
     }
     // we are only interested in rel=preload parameter.  Others are
     // simply skipped.
-    static const char PL[] = "rel=preload";
-    static const size_t PLLEN = sizeof(PL) - 1;
+    static constexpr char PL[] = "rel=preload";
+    static constexpr size_t PLLEN = sizeof(PL) - 1;
     if (first + PLLEN == last) {
       if (std::equal(PL, PL + PLLEN, first, util::CaseCmp())) {
         ok = true;
@@ -858,16 +858,16 @@ parse_next_link_header_once(const char *first, const char *last) {
       }
     }
     // we have to reject URI if we have nonempty anchor parameter.
-    static const char ANCHOR[] = "anchor=";
-    static const size_t ANCHORLEN = sizeof(ANCHOR) - 1;
+    static constexpr char ANCHOR[] = "anchor=";
+    static constexpr size_t ANCHORLEN = sizeof(ANCHOR) - 1;
     if (!ign && !check_link_param_empty(first, last, ANCHOR, ANCHORLEN)) {
       ign = true;
     }
 
     // reject URI if we have non-empty loadpolicy.  This could be
     // tightened up to just pick up "next" or "insert".
-    static const char LOADPOLICY[] = "loadpolicy=";
-    static const size_t LOADPOLICYLEN = sizeof(LOADPOLICY) - 1;
+    static constexpr char LOADPOLICY[] = "loadpolicy=";
+    static constexpr size_t LOADPOLICYLEN = sizeof(LOADPOLICY) - 1;
     if (!ign &&
         !check_link_param_empty(first, last, LOADPOLICY, LOADPOLICYLEN)) {
       ign = true;
