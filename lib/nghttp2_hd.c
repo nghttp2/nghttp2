@@ -639,38 +639,36 @@ static int emit_string(nghttp2_bufs *bufs, const uint8_t *str, size_t len) {
   return rv;
 }
 
-static uint8_t pack_first_byte(int inc_indexing, int no_index) {
-  if (inc_indexing) {
+static uint8_t pack_first_byte(int indexing_mode) {
+  switch (indexing_mode) {
+  case NGHTTP2_HD_WITH_INDEXING:
     return 0x40u;
-  }
-
-  if (no_index) {
+  case NGHTTP2_HD_WITHOUT_INDEXING:
+    return 0;
+  case NGHTTP2_HD_NEVER_INDEXING:
     return 0x10u;
+  default:
+    assert(0);
   }
-
-  return 0;
 }
 
 static int emit_indname_block(nghttp2_bufs *bufs, size_t idx,
-                              const nghttp2_nv *nv, int inc_indexing) {
+                              const nghttp2_nv *nv, int indexing_mode) {
   int rv;
   uint8_t *bufp;
   size_t blocklen;
   uint8_t sb[16];
   size_t prefixlen;
-  int no_index;
 
-  no_index = (nv->flags & NGHTTP2_NV_FLAG_NO_INDEX) != 0;
-
-  if (inc_indexing) {
+  if (indexing_mode == NGHTTP2_HD_WITH_INDEXING) {
     prefixlen = 6;
   } else {
     prefixlen = 4;
   }
 
   DEBUGF(fprintf(stderr, "deflatehd: emit indname index=%zu, valuelen=%zu, "
-                         "indexing=%d, no_index=%d\n",
-                 idx, nv->valuelen, inc_indexing, no_index));
+                         "indexing_mode=%d\n",
+                 idx, nv->valuelen, indexing_mode));
 
   blocklen = count_encoded_length(idx + 1, prefixlen);
 
@@ -680,7 +678,7 @@ static int emit_indname_block(nghttp2_bufs *bufs, size_t idx,
 
   bufp = sb;
 
-  *bufp = pack_first_byte(inc_indexing, no_index);
+  *bufp = pack_first_byte(indexing_mode);
 
   encode_length(bufp, idx + 1, prefixlen);
 
@@ -698,17 +696,14 @@ static int emit_indname_block(nghttp2_bufs *bufs, size_t idx,
 }
 
 static int emit_newname_block(nghttp2_bufs *bufs, const nghttp2_nv *nv,
-                              int inc_indexing) {
+                              int indexing_mode) {
   int rv;
-  int no_index;
-
-  no_index = (nv->flags & NGHTTP2_NV_FLAG_NO_INDEX) != 0;
 
   DEBUGF(fprintf(stderr, "deflatehd: emit newname namelen=%zu, valuelen=%zu, "
-                         "indexing=%d, no_index=%d\n",
-                 nv->namelen, nv->valuelen, inc_indexing, no_index));
+                         "indexing_mode=%d\n",
+                 nv->namelen, nv->valuelen, indexing_mode));
 
-  rv = nghttp2_bufs_addb(bufs, pack_first_byte(inc_indexing, no_index));
+  rv = nghttp2_bufs_addb(bufs, pack_first_byte(indexing_mode));
   if (rv != 0) {
     return rv;
   }
@@ -820,15 +815,14 @@ typedef struct {
 
 static search_result search_hd_table(nghttp2_hd_context *context,
                                      const nghttp2_nv *nv, uint32_t name_hash,
-                                     uint32_t value_hash) {
+                                     uint32_t value_hash, int indexing_mode) {
   ssize_t left = -1, right = (ssize_t)STATIC_TABLE_LENGTH;
   search_result res = {-1, 0};
   size_t i;
-  int use_index = (nv->flags & NGHTTP2_NV_FLAG_NO_INDEX) == 0;
 
   /* Search dynamic table first, so that we can find recently used
      entry first */
-  if (use_index) {
+  if (indexing_mode != NGHTTP2_HD_NEVER_INDEXING) {
     for (i = 0; i < context->hd_table.len; ++i) {
       nghttp2_hd_entry *ent = hd_ringbuf_get(&context->hd_table, i);
       if (ent->name_hash != name_hash || !name_eq(&ent->nv, nv)) {
@@ -867,8 +861,8 @@ static search_result search_hd_table(nghttp2_hd_context *context,
       if (res.index == -1) {
         res.index = (ssize_t)(static_table[i].index);
       }
-      if (use_index && ent->value_hash == value_hash &&
-          value_eq(&ent->nv, nv)) {
+      if (indexing_mode != NGHTTP2_HD_NEVER_INDEXING &&
+          ent->value_hash == value_hash && value_eq(&ent->nv, nv)) {
         res.index = (ssize_t)(static_table[i].index);
         res.name_value_match = 1;
         return res;
@@ -942,22 +936,17 @@ nghttp2_hd_entry *nghttp2_hd_table_get(nghttp2_hd_context *context,
 #define name_match(NV, NAME)                                                   \
   (nv->namelen == sizeof(NAME) - 1 && memeq(nv->name, NAME, sizeof(NAME) - 1))
 
-static int hd_deflate_should_indexing(nghttp2_hd_deflater *deflater,
+static int hd_deflate_decide_indexing(nghttp2_hd_deflater *deflater,
                                       const nghttp2_nv *nv) {
-  if ((nv->flags & NGHTTP2_NV_FLAG_NO_INDEX) ||
-      entry_room(nv->namelen, nv->valuelen) >
-          deflater->ctx.hd_table_bufsize_max * 3 / 4) {
-    return 0;
+  if (entry_room(nv->namelen, nv->valuelen) >
+          deflater->ctx.hd_table_bufsize_max * 3 / 4 ||
+      name_match(nv, ":path") || name_match(nv, "content-length") ||
+      name_match(nv, "set-cookie") || name_match(nv, "etag") ||
+      name_match(nv, "if-modified-since") || name_match(nv, "if-none-match") ||
+      name_match(nv, "location") || name_match(nv, "age")) {
+    return NGHTTP2_HD_WITHOUT_INDEXING;
   }
-#ifdef NGHTTP2_XHD
-  return !name_match(nv, NGHTTP2_XHD);
-#else  /* !NGHTTP2_XHD */
-  return !name_match(nv, ":path") && !name_match(nv, "content-length") &&
-         !name_match(nv, "set-cookie") && !name_match(nv, "etag") &&
-         !name_match(nv, "if-modified-since") &&
-         !name_match(nv, "if-none-match") && !name_match(nv, "location") &&
-         !name_match(nv, "age");
-#endif /* !NGHTTP2_XHD */
+  return NGHTTP2_HD_WITH_INDEXING;
 }
 
 static int deflate_nv(nghttp2_hd_deflater *deflater, nghttp2_bufs *bufs,
@@ -965,7 +954,7 @@ static int deflate_nv(nghttp2_hd_deflater *deflater, nghttp2_bufs *bufs,
   int rv;
   search_result res;
   ssize_t idx;
-  int incidx = 0;
+  int indexing_mode;
   uint32_t name_hash = hash(nv->name, nv->namelen);
   uint32_t value_hash = hash(nv->value, nv->valuelen);
   nghttp2_mem *mem;
@@ -974,7 +963,18 @@ static int deflate_nv(nghttp2_hd_deflater *deflater, nghttp2_bufs *bufs,
 
   mem = deflater->ctx.mem;
 
-  res = search_hd_table(&deflater->ctx, nv, name_hash, value_hash);
+  /* Don't index authorization header field since it may contain low
+     entropy secret data (e.g., id/password).  Also cookie header
+     field with less than 20 bytes value is also never indexed.  This
+     is the same criteria used in Firefox codebase. */
+  indexing_mode = name_match(nv, "authorization") ||
+                          (name_match(nv, "cookie") && nv->valuelen < 20) ||
+                          (nv->flags & NGHTTP2_NV_FLAG_NO_INDEX)
+                      ? NGHTTP2_HD_NEVER_INDEXING
+                      : hd_deflate_decide_indexing(deflater, nv);
+
+  res =
+      search_hd_table(&deflater->ctx, nv, name_hash, value_hash, indexing_mode);
 
   idx = res.index;
 
@@ -994,7 +994,7 @@ static int deflate_nv(nghttp2_hd_deflater *deflater, nghttp2_bufs *bufs,
     DEBUGF(fprintf(stderr, "deflatehd: name match index=%zd\n", res.index));
   }
 
-  if (hd_deflate_should_indexing(deflater, nv)) {
+  if (indexing_mode == NGHTTP2_HD_WITH_INDEXING) {
     nghttp2_hd_entry *new_ent;
     if (idx != -1 && idx < (ssize_t)NGHTTP2_STATIC_TABLE_LENGTH) {
       nghttp2_nv nv_indname;
@@ -1015,12 +1015,11 @@ static int deflate_nv(nghttp2_hd_deflater *deflater, nghttp2_bufs *bufs,
       nghttp2_hd_entry_free(new_ent, mem);
       nghttp2_mem_free(mem, new_ent);
     }
-    incidx = 1;
   }
   if (idx == -1) {
-    rv = emit_newname_block(bufs, nv, incidx);
+    rv = emit_newname_block(bufs, nv, indexing_mode);
   } else {
-    rv = emit_indname_block(bufs, idx, nv, incidx);
+    rv = emit_indname_block(bufs, idx, nv, indexing_mode);
   }
   if (rv != 0) {
     return rv;
@@ -1917,14 +1916,14 @@ void nghttp2_hd_inflate_del(nghttp2_hd_inflater *inflater) {
 }
 
 int nghttp2_hd_emit_indname_block(nghttp2_bufs *bufs, size_t idx,
-                                  nghttp2_nv *nv, int inc_indexing) {
+                                  nghttp2_nv *nv, int indexing_mode) {
 
-  return emit_indname_block(bufs, idx, nv, inc_indexing);
+  return emit_indname_block(bufs, idx, nv, indexing_mode);
 }
 
 int nghttp2_hd_emit_newname_block(nghttp2_bufs *bufs, nghttp2_nv *nv,
-                                  int inc_indexing) {
-  return emit_newname_block(bufs, nv, inc_indexing);
+                                  int indexing_mode) {
+  return emit_newname_block(bufs, nv, indexing_mode);
 }
 
 int nghttp2_hd_emit_table_size(nghttp2_bufs *bufs, size_t table_size) {

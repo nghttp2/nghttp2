@@ -107,6 +107,12 @@ typedef enum {
   NGHTTP2_HD_STATE_READ_VALUE
 } nghttp2_hd_inflate_state;
 
+typedef enum {
+  NGHTTP2_HD_WITH_INDEXING,
+  NGHTTP2_HD_WITHOUT_INDEXING,
+  NGHTTP2_HD_NEVER_INDEXING
+} nghttp2_hd_indexing_mode;
+
 typedef struct {
   /* dynamic header table */
   nghttp2_hd_ringbuf hd_table;
@@ -273,11 +279,11 @@ void nghttp2_hd_inflate_free(nghttp2_hd_inflater *inflater);
 
 /* For unittesting purpose */
 int nghttp2_hd_emit_indname_block(nghttp2_bufs *bufs, size_t index,
-                                  nghttp2_nv *nv, int inc_indexing);
+                                  nghttp2_nv *nv, int indexing_mode);
 
 /* For unittesting purpose */
 int nghttp2_hd_emit_newname_block(nghttp2_bufs *bufs, nghttp2_nv *nv,
-                                  int inc_indexing);
+                                  int indexing_mode);
 
 /* For unittesting purpose */
 int nghttp2_hd_emit_table_size(nghttp2_bufs *bufs, size_t table_size);

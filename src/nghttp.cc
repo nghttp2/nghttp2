@@ -2565,10 +2565,7 @@ int main(int argc, char **argv) {
                   << std::endl;
         exit(EXIT_FAILURE);
       }
-      // To test "never index" repr, don't index authorization header
-      // field unconditionally.
-      auto no_index = util::strieq_l("authorization", header);
-      config.headers.emplace_back(header, value, no_index);
+      config.headers.emplace_back(header, value, false);
       util::inp_strlower(config.headers.back().name);
       break;
     }
