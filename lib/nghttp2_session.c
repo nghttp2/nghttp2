@@ -3230,6 +3230,7 @@ static int inflate_header_block(nghttp2_session *session, nghttp2_frame *frame,
   nghttp2_stream *stream;
   nghttp2_stream *subject_stream;
   int trailer = 0;
+  int token;
 
   *readlen_ptr = 0;
   stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
@@ -3245,8 +3246,8 @@ static int inflate_header_block(nghttp2_session *session, nghttp2_frame *frame,
   DEBUGF(fprintf(stderr, "recv: decoding header block %zu bytes\n", inlen));
   for (;;) {
     inflate_flags = 0;
-    proclen = nghttp2_hd_inflate_hd(&session->hd_inflater, &nv, &inflate_flags,
-                                    in, inlen, final);
+    proclen = nghttp2_hd_inflate_hd2(&session->hd_inflater, &nv, &inflate_flags,
+                                     &token, in, inlen, final);
     if (nghttp2_is_fatal((int)proclen)) {
       return (int)proclen;
     }
@@ -3281,7 +3282,7 @@ static int inflate_header_block(nghttp2_session *session, nghttp2_frame *frame,
     if (call_header_cb && (inflate_flags & NGHTTP2_HD_INFLATE_EMIT)) {
       rv = 0;
       if (subject_stream && session_enforce_http_messaging(session)) {
-        rv = nghttp2_http_on_header(session, subject_stream, frame, &nv,
+        rv = nghttp2_http_on_header(session, subject_stream, frame, &nv, token,
                                     trailer);
         if (rv == NGHTTP2_ERR_HTTP_HEADER) {
           DEBUGF(fprintf(
