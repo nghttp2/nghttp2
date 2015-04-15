@@ -737,10 +737,16 @@ char *get_exec_path(int argc, char **const argv, const char *cwd) {
 
   if (argv0[0] == '/') {
     path = static_cast<char *>(malloc(len + 1));
+    if (path == NULL) {
+        return NULL;
+    }
     memcpy(path, argv0, len + 1);
   } else {
     auto cwdlen = strlen(cwd);
     path = static_cast<char *>(malloc(len + 1 + cwdlen + 1));
+    if (path == NULL) {
+        return NULL;
+    }
     memcpy(path, cwd, cwdlen);
     path[cwdlen] = '/';
     memcpy(path + cwdlen + 1, argv0, len + 1);

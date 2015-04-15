@@ -57,6 +57,9 @@ json_t *dump_header(const uint8_t *name, size_t namelen, const uint8_t *value,
                     size_t valuelen) {
   json_t *nv_pair = json_object();
   char *cname = malloc(namelen + 1);
+  if (cname == NULL) {
+      return NULL;
+  }
   memcpy(cname, name, namelen);
   cname[namelen] = '\0';
   json_object_set_new(nv_pair, cname, json_pack("s#", value, valuelen));
