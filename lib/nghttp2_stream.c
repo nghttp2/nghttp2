@@ -102,15 +102,13 @@ static int stream_push_item(nghttp2_stream *stream, nghttp2_session *session) {
     return 0;
   }
 
+  item->cycle = session->last_cycle;
+
   switch (item->frame.hd.type) {
   case NGHTTP2_DATA:
-    /* Penalize low weight stream */
-    item->cycle =
-        session->last_cycle + NGHTTP2_MAX_WEIGHT / stream->effective_weight;
     rv = nghttp2_pq_push(&session->ob_da_pq, item);
     break;
   case NGHTTP2_HEADERS:
-    item->cycle = session->last_cycle;
     if (stream->state == NGHTTP2_STREAM_RESERVED) {
       rv = nghttp2_pq_push(&session->ob_ss_pq, item);
     } else {
