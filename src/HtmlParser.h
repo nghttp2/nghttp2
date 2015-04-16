@@ -38,11 +38,12 @@
 
 namespace nghttp2 {
 
+// Lower value has higher priority
 enum RequestPriority {
-  REQ_PRI_HIGH = 0,
-  REQ_PRI_MEDIUM = 1,
-  REQ_PRI_LOW = 2,
-  REQ_PRI_LOWEST = 3
+  REQ_CSS = 1,
+  REQ_UNBLOCK_JS,
+  REQ_IMG,
+  REQ_OTHERS,
 };
 
 struct ParserData {

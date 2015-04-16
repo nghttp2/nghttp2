@@ -61,16 +61,32 @@
 
 namespace nghttp2 {
 
-// stream ID of anchor stream node when --dep-idle is enabled.  These
-// * portion of ANCHOR_ID_* matches RequestPriority in HtmlParser.h.
-// The stream ID = 1 is excluded since it is used as first stream in
-// upgrade case.
-enum {
-  ANCHOR_ID_HIGH = 3,
-  ANCHOR_ID_MEDIUM = 5,
-  ANCHOR_ID_LOW = 7,
-  ANCHOR_ID_LOWEST = 9,
+// The anchor stream nodes when --dep-idle is enabled.  The stream ID
+// = 1 is excluded since it is used as first stream in upgrade case.
+// We follows the same dependency anchor nodes as Firefox does.
+struct Anchor {
+  int32_t stream_id;
+  // stream ID this anchor depends on
+  int32_t dep_stream_id;
+  // .. with this weight.
+  int32_t weight;
 };
+
+// This is index into anchors.  Firefox uses ANCHOR_FOLLOWERS for html
+// file.
+enum {
+  ANCHOR_LEADERS,
+  ANCHOR_UNBLOCKED,
+  ANCHOR_BACKGROUND,
+  ANCHOR_SPECULATIVE,
+  ANCHOR_FOLLOWERS,
+};
+
+namespace {
+auto anchors = std::array<Anchor, 5>{{
+    {3, 0, 201}, {5, 0, 101}, {7, 0, 1}, {9, 7, 1}, {11, 3, 1},
+}};
+} // namespace
 
 Config::Config()
     : output_upper_thres(1024 * 1024), padding(0),
@@ -176,22 +192,27 @@ nghttp2_priority_spec Request::resolve_dep(int32_t pri) {
   }
 
   if (config.dep_idle) {
-    int32_t anchor_id = 0;
+    int32_t anchor_id;
+    int32_t weight;
     switch (pri) {
-    case REQ_PRI_HIGH:
-      anchor_id = ANCHOR_ID_HIGH;
+    case REQ_CSS:
+      anchor_id = anchors[ANCHOR_LEADERS].stream_id;
+      weight = 2;
       break;
-    case REQ_PRI_MEDIUM:
-      anchor_id = ANCHOR_ID_MEDIUM;
+    case REQ_UNBLOCK_JS:
+      anchor_id = anchors[ANCHOR_UNBLOCKED].stream_id;
+      weight = 2;
       break;
-    case REQ_PRI_LOW:
-      anchor_id = ANCHOR_ID_LOW;
+    case REQ_IMG:
+      anchor_id = anchors[ANCHOR_FOLLOWERS].stream_id;
+      weight = 12;
       break;
-    case REQ_PRI_LOWEST:
-      anchor_id = ANCHOR_ID_LOWEST;
-      break;
+    default:
+      anchor_id = anchors[ANCHOR_FOLLOWERS].stream_id;
+      weight = 2;
     }
-    nghttp2_priority_spec_init(&pri_spec, anchor_id, NGHTTP2_DEFAULT_WEIGHT, 0);
+
+    nghttp2_priority_spec_init(&pri_spec, anchor_id, weight, 0);
     return pri_spec;
   }
 
@@ -980,23 +1001,19 @@ int HttpClient::connection_made() {
   if (!config.no_dep && config.dep_idle) {
     // Create anchor stream nodes
     nghttp2_priority_spec pri_spec;
-    int32_t dep_stream_id = 0;
 
-    for (auto stream_id :
-         {ANCHOR_ID_HIGH, ANCHOR_ID_MEDIUM, ANCHOR_ID_LOW, ANCHOR_ID_LOWEST}) {
-
-      nghttp2_priority_spec_init(&pri_spec, dep_stream_id,
-                                 NGHTTP2_DEFAULT_WEIGHT, 0);
-      rv = nghttp2_submit_priority(session, NGHTTP2_FLAG_NONE, stream_id,
+    for (auto &anchor : anchors) {
+      nghttp2_priority_spec_init(&pri_spec, anchor.dep_stream_id, anchor.weight,
+                                 0);
+      rv = nghttp2_submit_priority(session, NGHTTP2_FLAG_NONE, anchor.stream_id,
                                    &pri_spec);
       if (rv != 0) {
         return -1;
       }
-
-      dep_stream_id = stream_id;
     }
 
-    rv = nghttp2_session_set_next_stream_id(session, ANCHOR_ID_LOWEST + 2);
+    rv = nghttp2_session_set_next_stream_id(
+        session, anchors[ANCHOR_FOLLOWERS].stream_id + 2);
     if (rv != 0) {
       return -1;
     }
@@ -1004,7 +1021,8 @@ int HttpClient::connection_made() {
     if (need_upgrade()) {
       // Amend the priority because we cannot send priority in
       // HTTP/1.1 Upgrade.
-      nghttp2_priority_spec_init(&pri_spec, ANCHOR_ID_HIGH, config.weight, 0);
+      auto &anchor = anchors[ANCHOR_FOLLOWERS];
+      nghttp2_priority_spec_init(&pri_spec, anchor.stream_id, config.weight, 0);
 
       rv = nghttp2_submit_priority(session, NGHTTP2_FLAG_NONE, 1, &pri_spec);
       if (rv != 0) {
@@ -1272,14 +1290,6 @@ void HttpClient::record_connect_end_time() {
 }
 
 void HttpClient::request_done(Request *req) {
-  if (req->pri == 0 && req->dep) {
-    assert(req->dep->deps.empty());
-
-    req->dep->deps.push_back(std::vector<Request *>{req});
-
-    return;
-  }
-
   if (req->stream_id % 2 == 0) {
     return;
   }
@@ -2059,7 +2069,7 @@ int communicate(
     int32_t dep_stream_id = 0;
 
     if (!config.no_dep && config.dep_idle) {
-      dep_stream_id = ANCHOR_ID_HIGH;
+      dep_stream_id = anchors[ANCHOR_FOLLOWERS].stream_id;
     }
 
     nghttp2_priority_spec_init(&pri_spec, dep_stream_id, config.weight, 0);

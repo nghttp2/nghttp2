@@ -75,22 +75,23 @@ void start_element_func(void *user_data, const xmlChar *name,
       return;
     }
     if (util::strieq(rel_attr, "shortcut icon")) {
-      add_link(parser_data, href_attr, REQ_PRI_LOWEST);
+      add_link(parser_data, href_attr, REQ_OTHERS);
     } else if (util::strieq(rel_attr, "stylesheet")) {
-      add_link(parser_data, href_attr, REQ_PRI_MEDIUM);
+      add_link(parser_data, href_attr, REQ_CSS);
     }
   } else if (util::strieq(reinterpret_cast<const char *>(name), "img")) {
     auto src_attr = get_attr(attrs, "src");
     if (!src_attr) {
       return;
     }
-    add_link(parser_data, src_attr, REQ_PRI_LOWEST);
+    add_link(parser_data, src_attr, REQ_IMG);
   } else if (util::strieq(reinterpret_cast<const char *>(name), "script")) {
     auto src_attr = get_attr(attrs, "src");
     if (!src_attr) {
       return;
     }
-    add_link(parser_data, src_attr, REQ_PRI_LOW);
+    // TODO if script is inside in head, this should be REQ_LEADERS.
+    add_link(parser_data, src_attr, REQ_UNBLOCK_JS);
   }
 }
 } // namespace
