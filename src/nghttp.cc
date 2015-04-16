@@ -2062,12 +2062,11 @@ int communicate(
       dep_stream_id = ANCHOR_ID_HIGH;
     }
 
+    nghttp2_priority_spec_init(&pri_spec, dep_stream_id, config.weight, 0);
+
     for (auto req : requests) {
       for (int i = 0; i < config.multiply; ++i) {
         auto dep = std::make_shared<Dependency>();
-        nghttp2_priority_spec_init(&pri_spec, dep_stream_id,
-                                   config.weight * (i + 1), 0);
-
         client.add_request(std::get<0>(req), std::get<1>(req), std::get<2>(req),
                            pri_spec, std::move(dep));
       }
