@@ -63,7 +63,6 @@ void nghttp2_stream_init(nghttp2_stream *stream, int32_t stream_id,
   stream->effective_weight = stream->weight;
   stream->sum_dep_weight = 0;
   stream->sum_norest_weight = 0;
-  stream->sum_top_weight = 0;
 
   stream->roots = roots;
   stream->root_prev = NULL;
@@ -174,18 +173,6 @@ int32_t nghttp2_stream_dep_distributed_effective_weight(nghttp2_stream *stream,
   return nghttp2_max(1, weight);
 }
 
-static int32_t
-stream_dep_distributed_top_effective_weight(nghttp2_stream *stream,
-                                            int32_t weight) {
-  if (stream->sum_top_weight == 0) {
-    return stream->effective_weight;
-  }
-
-  weight = stream->effective_weight * weight / stream->sum_top_weight;
-
-  return nghttp2_max(1, weight);
-}
-
 static void stream_update_dep_set_rest(nghttp2_stream *stream);
 
 /* Updates effective_weight of descendant streams in subtree of
@@ -195,10 +182,9 @@ static void stream_update_dep_effective_weight(nghttp2_stream *stream) {
   nghttp2_stream *si;
 
   DEBUGF(fprintf(stderr, "stream: update_dep_effective_weight "
-                         "stream(%p)=%d, weight=%d, sum_norest_weight=%d, "
-                         "sum_top_weight=%d\n",
+                         "stream(%p)=%d, weight=%d, sum_norest_weight=%d\n",
                  stream, stream->stream_id, stream->weight,
-                 stream->sum_norest_weight, stream->sum_top_weight));
+                 stream->sum_norest_weight));
 
   /* stream->sum_norest_weight == 0 means there is no
      NGHTTP2_STREAM_DPRI_TOP under stream */
@@ -207,47 +193,13 @@ static void stream_update_dep_effective_weight(nghttp2_stream *stream) {
     return;
   }
 
-  /* If there is no direct descendant whose dpri is
-     NGHTTP2_STREAM_DPRI_TOP, indirect descendants have the chance to
-     send data, so recursively set weight for descendants. */
-  if (stream->sum_top_weight == 0) {
-    for (si = stream->dep_next; si; si = si->sib_next) {
-      if (si->dpri != NGHTTP2_STREAM_DPRI_REST) {
-        si->effective_weight =
-            nghttp2_stream_dep_distributed_effective_weight(stream, si->weight);
-      }
-
-      stream_update_dep_effective_weight(si);
-    }
-    return;
-  }
-
-  /* If there is at least one direct descendant whose dpri is
-     NGHTTP2_STREAM_DPRI_TOP, we won't give a chance to indirect
-     descendants, since closed or blocked stream's weight is
-     distributed among its siblings */
   for (si = stream->dep_next; si; si = si->sib_next) {
-    if (si->dpri == NGHTTP2_STREAM_DPRI_TOP) {
+    if (si->dpri != NGHTTP2_STREAM_DPRI_REST) {
       si->effective_weight =
-          stream_dep_distributed_top_effective_weight(stream, si->weight);
-
-      DEBUGF(fprintf(stderr, "stream: stream=%d top eweight=%d\n",
-                     si->stream_id, si->effective_weight));
-
-      continue;
+          nghttp2_stream_dep_distributed_effective_weight(stream, si->weight);
     }
 
-    if (si->dpri == NGHTTP2_STREAM_DPRI_NO_ITEM) {
-      DEBUGF(fprintf(stderr, "stream: stream=%d no_item, ignored\n",
-                     si->stream_id));
-
-      /* Since we marked NGHTTP2_STREAM_DPRI_TOP under si, we make
-         them NGHTTP2_STREAM_DPRI_REST again. */
-      stream_update_dep_set_rest(si->dep_next);
-    } else {
-      DEBUGF(
-          fprintf(stderr, "stream: stream=%d rest, ignored\n", si->stream_id));
-    }
+    stream_update_dep_effective_weight(si);
   }
 }
 
@@ -343,25 +295,20 @@ static int stream_update_dep_queue_top(nghttp2_stream *stream,
 }
 
 /*
- * Updates stream->sum_norest_weight and stream->sum_top_weight
- * recursively.  We have to gather effective sum of weight of
- * descendants.  If stream->dpri == NGHTTP2_STREAM_DPRI_NO_ITEM, we
- * have to go deeper and check that any of its descendants has dpri
- * value of NGHTTP2_STREAM_DPRI_TOP.  If so, we have to add weight of
- * its direct descendants to stream->sum_norest_weight.  To make this
- * work, this function returns 1 if any of its descendants has dpri
- * value of NGHTTP2_STREAM_DPRI_TOP, otherwise 0.
- *
- * Calculating stream->sum_top_weight is very simple compared to
- * stream->sum_norest_weight.  It just adds up the weight of direct
- * descendants whose dpri is NGHTTP2_STREAM_DPRI_TOP.
+ * Updates stream->sum_norest_weight recursively.  We have to gather
+ * effective sum of weight of descendants.  If stream->dpri ==
+ * NGHTTP2_STREAM_DPRI_NO_ITEM, we have to go deeper and check that
+ * any of its descendants has dpri value of NGHTTP2_STREAM_DPRI_TOP.
+ * If so, we have to add weight of its direct descendants to
+ * stream->sum_norest_weight.  To make this work, this function
+ * returns 1 if any of its descendants has dpri value of
+ * NGHTTP2_STREAM_DPRI_TOP, otherwise 0.
  */
 static int stream_update_dep_sum_norest_weight(nghttp2_stream *stream) {
   nghttp2_stream *si;
   int rv;
 
   stream->sum_norest_weight = 0;
-  stream->sum_top_weight = 0;
 
   if (stream->dpri == NGHTTP2_STREAM_DPRI_TOP) {
     return 1;
@@ -378,10 +325,6 @@ static int stream_update_dep_sum_norest_weight(nghttp2_stream *stream) {
     if (stream_update_dep_sum_norest_weight(si)) {
       rv = 1;
       stream->sum_norest_weight += si->weight;
-    }
-
-    if (si->dpri == NGHTTP2_STREAM_DPRI_TOP) {
-      stream->sum_top_weight += si->weight;
     }
   }
 
