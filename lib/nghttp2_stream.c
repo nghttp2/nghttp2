@@ -354,7 +354,7 @@ static int stream_update_dep_queue_top(nghttp2_stream *stream,
  * work, this function returns 1 if any of its descendants has dpri
  * value of NGHTTP2_STREAM_DPRI_TOP, otherwise 0.
  *
- * Calculating stream->sum_top-weight is very simple compared to
+ * Calculating stream->sum_top_weight is very simple compared to
  * stream->sum_norest_weight.  It just adds up the weight of direct
  * descendants whose dpri is NGHTTP2_STREAM_DPRI_TOP.
  */
