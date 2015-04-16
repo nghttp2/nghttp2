@@ -704,7 +704,8 @@ nghttp2_stream *nghttp2_session_get_stream_raw(nghttp2_session *session,
  */
 int nghttp2_session_pack_data(nghttp2_session *session, nghttp2_bufs *bufs,
                               size_t datamax, nghttp2_frame *frame,
-                              nghttp2_data_aux_data *aux_data);
+                              nghttp2_data_aux_data *aux_data,
+                              nghttp2_stream *stream);
 
 /*
  * Returns top of outbound frame queue. This function returns NULL if
