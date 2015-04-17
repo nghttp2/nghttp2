@@ -84,6 +84,7 @@ struct Config {
   bool no_content_length;
   bool no_dep;
   bool hexdump;
+  bool no_push;
 };
 
 enum class RequestState { INITIAL, ON_REQUEST, ON_RESPONSE, ON_COMPLETE };

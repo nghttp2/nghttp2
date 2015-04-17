@@ -95,7 +95,7 @@ Config::Config()
       timeout(0.), window_bits(-1), connection_window_bits(-1), verbose(0),
       null_out(false), remote_name(false), get_assets(false), stat(false),
       upgrade(false), continuation(false), no_content_length(false),
-      no_dep(false), hexdump(false) {
+      no_dep(false), hexdump(false), no_push(false) {
   nghttp2_option_new(&http2_option);
   nghttp2_option_set_peer_max_concurrent_streams(http2_option,
                                                  peer_max_concurrent_streams);
@@ -737,6 +737,13 @@ size_t populate_settings(nghttp2_settings_entry *iv) {
     iv[niv].value = config.header_table_size;
     ++niv;
   }
+
+  if (config.no_push) {
+    iv[niv].settings_id = NGHTTP2_SETTINGS_ENABLE_PUSH;
+    iv[niv].value = 0;
+    ++niv;
+  }
+
   return niv;
 }
 } // namespace
@@ -745,7 +752,7 @@ int HttpClient::on_upgrade_connect() {
   ssize_t rv;
   record_connect_end_time();
   assert(!reqvec.empty());
-  std::array<nghttp2_settings_entry, 32> iv;
+  std::array<nghttp2_settings_entry, 16> iv;
   size_t niv = populate_settings(iv.data());
   assert(settings_payload.size() >= 8 * niv);
   rv = nghttp2_pack_settings_payload(settings_payload.data(),
@@ -2372,6 +2379,7 @@ Options:
   --hexdump   Display the  incoming traffic in  hexadecimal (Canonical
               hex+ASCII display).  If SSL/TLS  is used, decrypted data
               are used.
+  --no-push   Disable server push.
   --version   Display version information and exit.
   -h, --help  Display this help and exit.
 
@@ -2414,6 +2422,7 @@ int main(int argc, char **argv) {
         {"no-dep", no_argument, &flag, 7},
         {"trailer", required_argument, &flag, 9},
         {"hexdump", no_argument, &flag, 10},
+        {"no-push", no_argument, &flag, 11},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     int c = getopt_long(argc, argv, "M:Oab:c:d:gm:np:r:hH:vst:uw:W:",
@@ -2596,6 +2605,10 @@ int main(int argc, char **argv) {
       case 10:
         // hexdump option
         config.hexdump = true;
+        break;
+      case 11:
+        // no-push option
+        config.no_push = true;
         break;
       }
       break;
