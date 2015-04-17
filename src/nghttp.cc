@@ -1876,7 +1876,7 @@ see http://www.w3.org/TR/resource-timing/#processing-model
 
 sorted by 'complete'
 
-responseEnd requestStart  process code size request path)" << std::endl;
+id  responseEnd requestStart  process code size request path)" << std::endl;
 
   const auto &base = client.timing.connect_end_time;
   for (const auto &req : reqs) {
@@ -1888,8 +1888,9 @@ responseEnd requestStart  process code size request path)" << std::endl;
         req->timing.response_end_time - req->timing.request_start_time);
     auto pushed = req->stream_id % 2 == 0;
 
-    std::cout << std::setw(11) << ("+" + util::format_duration(response_end))
-              << " " << (pushed ? "*" : " ") << std::setw(11)
+    std::cout << std::setw(3) << req->stream_id << " " << std::setw(11)
+              << ("+" + util::format_duration(response_end)) << " "
+              << (pushed ? "*" : " ") << std::setw(11)
               << ("+" + util::format_duration(request_start)) << " "
               << std::setw(8) << util::format_duration(total) << " "
               << std::setw(4) << req->status << " " << std::setw(4)
