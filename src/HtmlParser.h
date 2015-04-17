@@ -38,8 +38,7 @@
 
 namespace nghttp2 {
 
-// Lower value has higher priority
-enum RequestPriority {
+enum ResourceType {
   REQ_CSS = 1,
   REQ_JS,
   REQ_UNBLOCK_JS,
@@ -49,7 +48,7 @@ enum RequestPriority {
 
 struct ParserData {
   std::string base_uri;
-  std::vector<std::pair<std::string, RequestPriority>> links;
+  std::vector<std::pair<std::string, ResourceType>> links;
   // > 0 if we are inside "head" element.
   int inside_head;
   ParserData(const std::string &base_uri);
@@ -62,7 +61,7 @@ public:
   HtmlParser(const std::string &base_uri);
   ~HtmlParser();
   int parse_chunk(const char *chunk, size_t size, int fin);
-  const std::vector<std::pair<std::string, RequestPriority>> &get_links() const;
+  const std::vector<std::pair<std::string, ResourceType>> &get_links() const;
   void clear_links();
 
 private:
@@ -79,14 +78,13 @@ class HtmlParser {
 public:
   HtmlParser(const std::string &base_uri) {}
   int parse_chunk(const char *chunk, size_t size, int fin) { return 0; }
-  const std::vector<std::pair<std::string, RequestPriority>> &
-  get_links() const {
+  const std::vector<std::pair<std::string, ResourceType>> &get_links() const {
     return links_;
   }
   void clear_links() {}
 
 private:
-  std::vector<std::pair<std::string, RequestPriority>> links_;
+  std::vector<std::pair<std::string, ResourceType>> links_;
 };
 
 #endif // !HAVE_LIBXML2

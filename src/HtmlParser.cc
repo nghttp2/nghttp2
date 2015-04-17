@@ -53,13 +53,13 @@ const char *get_attr(const xmlChar **attrs, const char *name) {
 } // namespace
 
 namespace {
-void add_link(ParserData *parser_data, const char *uri, RequestPriority pri) {
+void add_link(ParserData *parser_data, const char *uri, ResourceType res_type) {
   auto u = xmlBuildURI(
       reinterpret_cast<const xmlChar *>(uri),
       reinterpret_cast<const xmlChar *>(parser_data->base_uri.c_str()));
   if (u) {
     parser_data->links.push_back(
-        std::make_pair(reinterpret_cast<char *>(u), pri));
+        std::make_pair(reinterpret_cast<char *>(u), res_type));
     free(u);
   }
 }
@@ -177,7 +177,7 @@ int HtmlParser::parse_chunk_internal(const char *chunk, size_t size, int fin) {
   }
 }
 
-const std::vector<std::pair<std::string, RequestPriority>> &
+const std::vector<std::pair<std::string, ResourceType>> &
 HtmlParser::get_links() const {
   return parser_data_.links;
 }
