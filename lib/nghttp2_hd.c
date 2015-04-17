@@ -1006,6 +1006,9 @@ static uint8_t pack_first_byte(int indexing_mode) {
   default:
     assert(0);
   }
+  /* This is required to compile with android NDK r10d +
+     --enable-werror */
+  return 0;
 }
 
 static int emit_indname_block(nghttp2_bufs *bufs, size_t idx,
