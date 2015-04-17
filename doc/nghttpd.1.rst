@@ -1,4 +1,6 @@
 
+.. program:: nghttpd
+
 nghttpd(1)
 ==========
 
