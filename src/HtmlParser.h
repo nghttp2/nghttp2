@@ -41,6 +41,7 @@ namespace nghttp2 {
 // Lower value has higher priority
 enum RequestPriority {
   REQ_CSS = 1,
+  REQ_JS,
   REQ_UNBLOCK_JS,
   REQ_IMG,
   REQ_OTHERS,
@@ -49,6 +50,8 @@ enum RequestPriority {
 struct ParserData {
   std::string base_uri;
   std::vector<std::pair<std::string, RequestPriority>> links;
+  // > 0 if we are inside "head" element.
+  int inside_head;
   ParserData(const std::string &base_uri);
 };
 

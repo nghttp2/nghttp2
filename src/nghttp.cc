@@ -196,6 +196,7 @@ nghttp2_priority_spec Request::resolve_dep(int32_t pri) {
     int32_t weight;
     switch (pri) {
     case REQ_CSS:
+    case REQ_JS:
       anchor_id = anchors[ANCHOR_LEADERS].stream_id;
       weight = 2;
       break;

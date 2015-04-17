@@ -30,7 +30,8 @@
 
 namespace nghttp2 {
 
-ParserData::ParserData(const std::string &base_uri) : base_uri(base_uri) {}
+ParserData::ParserData(const std::string &base_uri)
+    : base_uri(base_uri), inside_head(0) {}
 
 HtmlParser::HtmlParser(const std::string &base_uri)
     : base_uri_(base_uri), parser_ctx_(nullptr), parser_data_(base_uri) {}
@@ -68,6 +69,9 @@ namespace {
 void start_element_func(void *user_data, const xmlChar *name,
                         const xmlChar **attrs) {
   auto parser_data = static_cast<ParserData *>(user_data);
+  if (util::strieq(reinterpret_cast<const char *>(name), "head")) {
+    ++parser_data->inside_head;
+  }
   if (util::strieq(reinterpret_cast<const char *>(name), "link")) {
     auto rel_attr = get_attr(attrs, "rel");
     auto href_attr = get_attr(attrs, "href");
@@ -90,8 +94,20 @@ void start_element_func(void *user_data, const xmlChar *name,
     if (!src_attr) {
       return;
     }
-    // TODO if script is inside in head, this should be REQ_LEADERS.
-    add_link(parser_data, src_attr, REQ_UNBLOCK_JS);
+    if (parser_data->inside_head) {
+      add_link(parser_data, src_attr, REQ_JS);
+    } else {
+      add_link(parser_data, src_attr, REQ_UNBLOCK_JS);
+    }
+  }
+}
+} // namespace
+
+namespace {
+void end_element_func(void *user_data, const xmlChar *name) {
+  auto parser_data = static_cast<ParserData *>(user_data);
+  if (util::strieq(reinterpret_cast<const char *>(name), "head")) {
+    --parser_data->inside_head;
   }
 }
 } // namespace
@@ -113,7 +129,7 @@ xmlSAXHandler saxHandler = {
     nullptr,             // startDocumentSAXFunc
     nullptr,             // endDocumentSAXFunc
     &start_element_func, // startElementSAXFunc
-    nullptr,             // endElementSAXFunc
+    &end_element_func,   // endElementSAXFunc
     nullptr,             // referenceSAXFunc
     nullptr,             // charactersSAXFunc
     nullptr,             // ignorableWhitespaceSAXFunc
