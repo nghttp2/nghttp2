@@ -2246,9 +2246,10 @@ static void session_outbound_item_schedule(nghttp2_session *session,
                                            int32_t weight) {
   size_t delta = item->frame.hd.length * NGHTTP2_MAX_WEIGHT / weight;
 
-  assert(session->last_cycle <= item->cycle);
+  if (session->last_cycle < item->cycle) {
+    session->last_cycle = item->cycle;
+  }
 
-  session->last_cycle = item->cycle;
   item->cycle = session->last_cycle + delta;
 }
 

@@ -101,7 +101,12 @@ static int stream_push_item(nghttp2_stream *stream, nghttp2_session *session) {
     return 0;
   }
 
-  item->cycle = session->last_cycle;
+  /* Penalize item by delaying scheduling according to effective
+     weight.  This will delay low priority stream, which is good.
+     OTOH, this may incur delay for high priority item.  Will see. */
+  item->cycle =
+      session->last_cycle +
+      NGHTTP2_DATA_PAYLOADLEN * NGHTTP2_MAX_WEIGHT / stream->effective_weight;
 
   switch (item->frame.hd.type) {
   case NGHTTP2_DATA:
