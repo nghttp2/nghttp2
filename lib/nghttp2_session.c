@@ -2244,12 +2244,17 @@ static int session_close_stream_on_goaway(nghttp2_session *session,
 static void session_outbound_item_schedule(nghttp2_session *session,
                                            nghttp2_outbound_item *item,
                                            int32_t weight) {
+  /* Schedule next write.  Offset proportional to the write size.
+     Stream with heavier weight is scheduled earlier. */
   size_t delta = item->frame.hd.length * NGHTTP2_MAX_WEIGHT / weight;
 
   if (session->last_cycle < item->cycle) {
     session->last_cycle = item->cycle;
   }
 
+  /* We pretend to ignore overflow given that the value range of
+     item->cycle, which is uint64_t.  nghttp2 won't explode even when
+     overflow occurs, there might be some disturbance of priority. */
   item->cycle = session->last_cycle + delta;
 }
 
