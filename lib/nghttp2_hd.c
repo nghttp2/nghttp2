@@ -1208,24 +1208,20 @@ static search_result search_hd_table(nghttp2_hd_context *context,
     }
   }
 
-  /* Search dynamic table first, so that we can find recently used
-     entry first */
-  if (indexing_mode != NGHTTP2_HD_NEVER_INDEXING) {
-    for (i = 0; i < context->hd_table.len; ++i) {
-      nghttp2_hd_entry *ent = hd_ringbuf_get(&context->hd_table, i);
-      if (ent->token != token || (token == -1 && !name_eq(&ent->nv, nv))) {
-        continue;
-      }
+  for (i = 0; i < context->hd_table.len; ++i) {
+    nghttp2_hd_entry *ent = hd_ringbuf_get(&context->hd_table, i);
+    if (ent->token != token || (token == -1 && !name_eq(&ent->nv, nv))) {
+      continue;
+    }
 
-      if (res.index == -1) {
-        res.index = (ssize_t)(i + NGHTTP2_STATIC_TABLE_LENGTH);
-      }
+    if (res.index == -1) {
+      res.index = (ssize_t)(i + NGHTTP2_STATIC_TABLE_LENGTH);
+    }
 
-      if (value_eq(&ent->nv, nv)) {
-        res.index = (ssize_t)(i + NGHTTP2_STATIC_TABLE_LENGTH);
-        res.name_value_match = 1;
-        return res;
-      }
+    if (indexing_mode != NGHTTP2_HD_NEVER_INDEXING && value_eq(&ent->nv, nv)) {
+      res.index = (ssize_t)(i + NGHTTP2_STATIC_TABLE_LENGTH);
+      res.name_value_match = 1;
+      return res;
     }
   }
 
