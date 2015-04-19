@@ -2653,7 +2653,9 @@ NGHTTP2_EXTERN uint32_t
  *
  * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
  *     The |next_stream_id| is strictly less than the value
- *     `nghttp2_session_get_next_stream_id()` returns.
+ *     `nghttp2_session_get_next_stream_id()` returns; or
+ *     |next_stream_id| is invalid (e.g., even integer for client, or
+ *     odd integer for server).
  */
 NGHTTP2_EXTERN int nghttp2_session_set_next_stream_id(nghttp2_session *session,
                                                       int32_t next_stream_id);

@@ -1,4 +1,6 @@
 
+.. program:: h2load
+
 h2load(1)
 =========
 

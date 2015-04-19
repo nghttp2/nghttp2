@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTP" "1" "April 08, 2015" "0.7.10" "nghttp2"
+.TH "NGHTTP" "1" "April 19, 2015" "0.7.12" "nghttp2"
 .SH NAME
 nghttp \- HTTP/2 experimental client
 .
@@ -104,8 +104,8 @@ Add a header to the requests.  Example: \fI\%\-H\fP\(aq:method: PUT\(aq
 .B \-\-trailer=<HEADER>
 Add a trailer header to the requests.  <HEADER> must not
 include pseudo header field  (header field name starting
-with \(aq:\(aq).  To  send trailer, one must use  \fI\-d\fP option to
-send request body.  Example: \fI\-\-trailer\fP \(aqfoo: bar\(aq.
+with \(aq:\(aq).  To  send trailer, one must use  \fI\%\-d\fP option to
+send request body.  Example: \fI\%\-\-trailer\fP \(aqfoo: bar\(aq.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -135,7 +135,7 @@ requested twice.  This option disables it too.
 .TP
 .B \-u, \-\-upgrade
 Perform HTTP Upgrade for HTTP/2.  This option is ignored
-if the request URI has https scheme.  If \fI\-d\fP is used, the
+if the request URI has https scheme.  If \fI\%\-d\fP is used, the
 HTTP upgrade request is performed with OPTIONS method.
 .UNINDENT
 .INDENT 0.0
@@ -192,15 +192,15 @@ Don\(aqt send dependency based priority hint to server.
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-\-dep\-idle
-Use idle streams as anchor nodes to express priority.
-.UNINDENT
-.INDENT 0.0
-.TP
 .B \-\-hexdump
 Display the  incoming traffic in  hexadecimal (Canonical
 hex+ASCII display).  If SSL/TLS  is used, decrypted data
 are used.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-no\-push
+Disable server push.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -215,6 +215,63 @@ Display this help and exit.
 .sp
 The <SIZE> argument is an integer and an optional unit (e.g., 10K is
 10 * 1024).  Units are K, M and G (powers of 1024).
+.SH DEPENDENCY BASED PRIORITY
+.sp
+nghttp sends priority hints to server by default unless
+\fI\%\-\-no\-dep\fP is used.  nghttp mimics the way Firefox employs to
+manages dependency using idle streams.  We follows the behaviour of
+Firefox Nightly as of April, 2015, and nghttp\(aqs behaviour is very
+static and could be different from Firefox in detail.  But reproducing
+the same behaviour of Firefox is not our goal.  The goal is provide
+the easy way to test out the dependency priority in server
+implementation.
+.sp
+When connection is established, nghttp sends 5 PRIORITY frames to idle
+streams 3, 5, 7, 9 and 11 to create "anchor" nodes in dependency
+tree:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+         +\-\-\-\-\-+
+         |id=0 |
+         +\-\-\-\-\-+
+        ^   ^   ^
+ w=201 /    |    \e w=1
+      /     |     \e
+     / w=101|      \e
+ +\-\-\-\-\-+ +\-\-\-\-\-+ +\-\-\-\-\-+
+ |id=3 | |id=5 | |id=7 |
+ +\-\-\-\-\-+ +\-\-\-\-\-+ +\-\-\-\-\-+
+    ^               ^
+w=1 |           w=1 |
+    |               |
+ +\-\-\-\-\-+         +\-\-\-\-\-+
+ |id=11|         |id=9 |
+ +\-\-\-\-\-+         +\-\-\-\-\-+
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+In the above figure, \fBid\fP means stream ID, and \fBw\fP means weight.
+The stream 0 is non\-existence stream, and forms the root of the tree.
+The stream 7 and 9 are not used for now.
+.sp
+The URIs given in the command\-line depend on stream 11 with the weight
+given in \fI\%\-p\fP option, which defaults to 16.
+.sp
+If \fI\%\-a\fP option is used, nghttp parses the resource pointed by
+URI given in command\-line as html, and extracts resource links from
+it.  When requesting those resources, nghttp uses dependency according
+to its resource type.
+.sp
+For CSS, and Javascript files inside "head" element, they depend on
+stream 3 with the weight 2.  The Javascript files outside "head"
+element depend on stream 5 with the weight 2.  The mages depend on
+stream 11 with the weight 12.  The other resources (e.g., icon) depend
+on stream 11 with the weight 2.
 .SH SEE ALSO
 .sp
 \fInghttpd(1)\fP, \fInghttpx(1)\fP, \fIh2load(1)\fP

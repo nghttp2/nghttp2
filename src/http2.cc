@@ -719,6 +719,30 @@ InputIt skip_to_right_dquote(InputIt first, InputIt last) {
 } // namespace
 
 namespace {
+// Returns true if link-param does not match pattern |pat| of length
+// |patlen| or it has empty value ("").  |pat| should be parmname
+// followed by "=".
+bool check_link_param_empty(const char *first, const char *last,
+                            const char *pat, size_t patlen) {
+  if (first + patlen <= last) {
+    if (std::equal(pat, pat + patlen, first, util::CaseCmp())) {
+      // we only accept URI if pat is followd by "" (e.g.,
+      // loadpolicy="") here.
+      if (first + patlen + 2 <= last) {
+        if (*(first + patlen) != '"' || *(first + patlen + 1) != '"') {
+          return false;
+        }
+      } else {
+        // here we got invalid production (anchor=") or anchor=?
+        return false;
+      }
+    }
+  }
+  return true;
+}
+} // namespace
+
+namespace {
 std::pair<LinkHeader, const char *>
 parse_next_link_header_once(const char *first, const char *last) {
   first = skip_to_next_field(first, last);
@@ -755,11 +779,11 @@ parse_next_link_header_once(const char *first, const char *last) {
     // we expect link-param
 
     // rel can take several relations using quoted form.
-    static const char PLP[] = "rel=\"";
-    static const size_t PLPLEN = sizeof(PLP) - 1;
+    static constexpr char PLP[] = "rel=\"";
+    static constexpr size_t PLPLEN = sizeof(PLP) - 1;
 
-    static const char PLT[] = "preload";
-    static const size_t PLTLEN = sizeof(PLT) - 1;
+    static constexpr char PLT[] = "preload";
+    static constexpr size_t PLTLEN = sizeof(PLT) - 1;
     if (first + PLPLEN < last && *(first + PLPLEN - 1) == '"' &&
         std::equal(PLP, PLP + PLPLEN, first, util::CaseCmp())) {
       // we have to search preload in whitespace separated list:
@@ -804,8 +828,8 @@ parse_next_link_header_once(const char *first, const char *last) {
     }
     // we are only interested in rel=preload parameter.  Others are
     // simply skipped.
-    static const char PL[] = "rel=preload";
-    static const size_t PLLEN = sizeof(PL) - 1;
+    static constexpr char PL[] = "rel=preload";
+    static constexpr size_t PLLEN = sizeof(PL) - 1;
     if (first + PLLEN == last) {
       if (std::equal(PL, PL + PLLEN, first, util::CaseCmp())) {
         ok = true;
@@ -834,20 +858,19 @@ parse_next_link_header_once(const char *first, const char *last) {
       }
     }
     // we have to reject URI if we have nonempty anchor parameter.
-    static const char ANCHOR[] = "anchor=";
-    static const size_t ANCHORLEN = sizeof(ANCHOR) - 1;
-    if (!ign && first + ANCHORLEN <= last) {
-      if (std::equal(ANCHOR, ANCHOR + ANCHORLEN, first, util::CaseCmp())) {
-        // we only accept URI if anchor="" here.
-        if (first + ANCHORLEN + 2 <= last) {
-          if (*(first + ANCHORLEN) != '"' || *(first + ANCHORLEN + 1) != '"') {
-            ign = true;
-          }
-        } else {
-          // here we got invalid production (anchor=") or anchor=?
-          ign = true;
-        }
-      }
+    static constexpr char ANCHOR[] = "anchor=";
+    static constexpr size_t ANCHORLEN = sizeof(ANCHOR) - 1;
+    if (!ign && !check_link_param_empty(first, last, ANCHOR, ANCHORLEN)) {
+      ign = true;
+    }
+
+    // reject URI if we have non-empty loadpolicy.  This could be
+    // tightened up to just pick up "next" or "insert".
+    static constexpr char LOADPOLICY[] = "loadpolicy=";
+    static constexpr size_t LOADPOLICYLEN = sizeof(LOADPOLICY) - 1;
+    if (!ign &&
+        !check_link_param_empty(first, last, LOADPOLICY, LOADPOLICYLEN)) {
+      ign = true;
     }
 
     auto param_first = first;

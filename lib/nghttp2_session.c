@@ -230,12 +230,7 @@ static int outbound_item_compar(const void *lhsx, const void *rhsx) {
   rhs = (const nghttp2_outbound_item *)rhsx;
 
   if (lhs->cycle == rhs->cycle) {
-    if (lhs->weight == rhs->weight) {
-      return (lhs->seq < rhs->seq) ? -1 : ((lhs->seq > rhs->seq) ? 1 : 0);
-    }
-
-    /* Larger weight has higher precedence */
-    return rhs->weight - lhs->weight;
+    return (lhs->seq < rhs->seq) ? -1 : ((lhs->seq > rhs->seq) ? 1 : 0);
   }
 
   return (lhs->cycle < rhs->cycle) ? -1 : 1;
@@ -369,7 +364,9 @@ static int session_new(nghttp2_session **session_ptr,
   nghttp2_stream_roots_init(&(*session_ptr)->roots);
 
   (*session_ptr)->next_seq = 0;
-  (*session_ptr)->last_cycle = 1;
+  /* Do +1 so that any HEADERS/DATA frames are scheduled after urgent
+     frames. */
+  (*session_ptr)->last_cycle = NGHTTP2_OB_EX_CYCLE + 1;
 
   (*session_ptr)->remote_window_size = NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE;
   (*session_ptr)->recv_window_size = 0;
@@ -702,9 +699,7 @@ nghttp2_session_reprioritize_stream(nghttp2_session *session,
 void nghttp2_session_outbound_item_init(nghttp2_session *session,
                                         nghttp2_outbound_item *item) {
   item->seq = session->next_seq++;
-  /* We use cycle for DATA only */
-  item->cycle = 0;
-  item->weight = NGHTTP2_OB_EX_WEIGHT;
+  item->cycle = NGHTTP2_OB_EX_CYCLE;
   item->queued = 0;
 
   memset(&item->aux_data, 0, sizeof(nghttp2_aux_data));
@@ -731,12 +726,12 @@ int nghttp2_session_add_item(nghttp2_session *session,
 
       break;
     case NGHTTP2_SETTINGS:
-      item->weight = NGHTTP2_OB_SETTINGS_WEIGHT;
+      item->cycle = NGHTTP2_OB_SETTINGS_CYCLE;
 
       break;
     case NGHTTP2_PING:
       /* Ping has highest priority. */
-      item->weight = NGHTTP2_OB_PING_WEIGHT;
+      item->cycle = NGHTTP2_OB_PING_CYCLE;
 
       break;
     default:
@@ -760,7 +755,6 @@ int nghttp2_session_add_item(nghttp2_session *session,
         item->queued = 1;
       } else if (stream && (stream->state == NGHTTP2_STREAM_RESERVED ||
                             item->aux_data.headers.attach_stream)) {
-        item->weight = stream->effective_weight;
         item->cycle = session->last_cycle;
 
         rv = nghttp2_stream_attach_item(stream, item, session);
@@ -798,7 +792,6 @@ int nghttp2_session_add_item(nghttp2_session *session,
     return NGHTTP2_ERR_DATA_EXIST;
   }
 
-  item->weight = stream->effective_weight;
   item->cycle = session->last_cycle;
 
   rv = nghttp2_stream_attach_item(stream, item, session);
@@ -1994,7 +1987,8 @@ static int session_prep_frame(nghttp2_session *session,
     }
 
     rv = nghttp2_session_pack_data(session, &session->aob.framebufs,
-                                   next_readmax, frame, &item->aux_data.data);
+                                   next_readmax, frame, &item->aux_data.data,
+                                   stream);
     if (rv == NGHTTP2_ERR_DEFERRED) {
       rv = nghttp2_stream_defer_item(stream, NGHTTP2_STREAM_FLAG_DEFERRED_USER,
                                      session);
@@ -2077,8 +2071,7 @@ nghttp2_session_get_next_ob_item(nghttp2_session *session) {
   headers_item = nghttp2_pq_top(&session->ob_ss_pq);
 
   if (session_is_outgoing_concurrent_streams_max(session) ||
-      item->weight > headers_item->weight ||
-      (item->weight == headers_item->weight && item->seq < headers_item->seq)) {
+      outbound_item_compar(item, headers_item) < 0) {
     return item;
   }
 
@@ -2141,8 +2134,7 @@ nghttp2_session_pop_next_ob_item(nghttp2_session *session) {
   headers_item = nghttp2_pq_top(&session->ob_ss_pq);
 
   if (session_is_outgoing_concurrent_streams_max(session) ||
-      item->weight > headers_item->weight ||
-      (item->weight == headers_item->weight && item->seq < headers_item->seq)) {
+      outbound_item_compar(item, headers_item) < 0) {
     nghttp2_pq_pop(&session->ob_pq);
 
     item->queued = 0;
@@ -2257,21 +2249,21 @@ static int session_close_stream_on_goaway(nghttp2_session *session,
   return 0;
 }
 
-static void session_outbound_item_cycle_weight(nghttp2_session *session,
-                                               nghttp2_outbound_item *item,
-                                               int32_t ini_weight) {
-  if (item->weight == NGHTTP2_MIN_WEIGHT || item->weight > ini_weight) {
+static void session_outbound_item_schedule(nghttp2_session *session,
+                                           nghttp2_outbound_item *item,
+                                           int32_t weight) {
+  /* Schedule next write.  Offset proportional to the write size.
+     Stream with heavier weight is scheduled earlier. */
+  size_t delta = item->frame.hd.length * NGHTTP2_MAX_WEIGHT / weight;
 
-    item->weight = ini_weight;
-
-    if (item->cycle == session->last_cycle) {
-      item->cycle = ++session->last_cycle;
-    } else {
-      item->cycle = session->last_cycle;
-    }
-  } else {
-    --item->weight;
+  if (session->last_cycle < item->cycle) {
+    session->last_cycle = item->cycle;
   }
+
+  /* We pretend to ignore overflow given that the value range of
+     item->cycle, which is uint64_t.  nghttp2 won't explode even when
+     overflow occurs, there might be some disturbance of priority. */
+  item->cycle = session->last_cycle + delta;
 }
 
 /*
@@ -2591,15 +2583,6 @@ static int session_after_frame_sent2(nghttp2_session *session) {
     assert(stream);
     next_item = nghttp2_session_get_next_ob_item(session);
 
-    /* Imagine we hit connection window size limit while sending DATA
-       frame.  If we decrement weight here, its stream might get
-       inferior share because the other streams' weight is not
-       decremented because of flow control. */
-    if (session->remote_window_size > 0 || stream->remote_window_size <= 0) {
-      session_outbound_item_cycle_weight(session, aob->item,
-                                         stream->effective_weight);
-    }
-
     /* If priority of this stream is higher or equal to other stream
        waiting at the top of the queue, we continue to send this
        data. */
@@ -2642,7 +2625,7 @@ static int session_after_frame_sent2(nghttp2_session *session) {
       nghttp2_bufs_reset(framebufs);
 
       rv = nghttp2_session_pack_data(session, framebufs, next_readmax, frame,
-                                     aux_data);
+                                     aux_data, stream);
       if (nghttp2_is_fatal(rv)) {
         return rv;
       }
@@ -3282,6 +3265,7 @@ static int inflate_header_block(nghttp2_session *session, nghttp2_frame *frame,
   nghttp2_stream *stream;
   nghttp2_stream *subject_stream;
   int trailer = 0;
+  int token;
 
   *readlen_ptr = 0;
   stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
@@ -3297,8 +3281,8 @@ static int inflate_header_block(nghttp2_session *session, nghttp2_frame *frame,
   DEBUGF(fprintf(stderr, "recv: decoding header block %zu bytes\n", inlen));
   for (;;) {
     inflate_flags = 0;
-    proclen = nghttp2_hd_inflate_hd(&session->hd_inflater, &nv, &inflate_flags,
-                                    in, inlen, final);
+    proclen = nghttp2_hd_inflate_hd2(&session->hd_inflater, &nv, &inflate_flags,
+                                     &token, in, inlen, final);
     if (nghttp2_is_fatal((int)proclen)) {
       return (int)proclen;
     }
@@ -3333,7 +3317,7 @@ static int inflate_header_block(nghttp2_session *session, nghttp2_frame *frame,
     if (call_header_cb && (inflate_flags & NGHTTP2_HD_INFLATE_EMIT)) {
       rv = 0;
       if (subject_stream && session_enforce_http_messaging(session)) {
-        rv = nghttp2_http_on_header(session, subject_stream, frame, &nv,
+        rv = nghttp2_http_on_header(session, subject_stream, frame, &nv, token,
                                     trailer);
         if (rv == NGHTTP2_ERR_HTTP_HEADER) {
           DEBUGF(fprintf(
@@ -6253,7 +6237,8 @@ int nghttp2_session_add_settings(nghttp2_session *session, uint8_t flags,
 
 int nghttp2_session_pack_data(nghttp2_session *session, nghttp2_bufs *bufs,
                               size_t datamax, nghttp2_frame *frame,
-                              nghttp2_data_aux_data *aux_data) {
+                              nghttp2_data_aux_data *aux_data,
+                              nghttp2_stream *stream) {
   int rv;
   uint32_t data_flags;
   ssize_t payloadlen;
@@ -6266,12 +6251,6 @@ int nghttp2_session_pack_data(nghttp2_session *session, nghttp2_bufs *bufs,
   buf = &bufs->cur->buf;
 
   if (session->callbacks.read_length_callback) {
-    nghttp2_stream *stream;
-
-    stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
-    if (!stream) {
-      return NGHTTP2_ERR_INVALID_ARGUMENT;
-    }
 
     payloadlen = session->callbacks.read_length_callback(
         session, frame->hd.type, stream->stream_id, session->remote_window_size,
@@ -6384,6 +6363,9 @@ int nghttp2_session_pack_data(nghttp2_session *session, nghttp2_bufs *bufs,
   if (rv != 0) {
     return rv;
   }
+
+  session_outbound_item_schedule(session, stream->item,
+                                 stream->effective_weight);
 
   return 0;
 }
@@ -6671,8 +6653,16 @@ int nghttp2_session_consume_stream(nghttp2_session *session, int32_t stream_id,
 
 int nghttp2_session_set_next_stream_id(nghttp2_session *session,
                                        int32_t next_stream_id) {
-  if (next_stream_id < 0 ||
+  if (next_stream_id <= 0 ||
       session->next_stream_id > (uint32_t)next_stream_id) {
+    return NGHTTP2_ERR_INVALID_ARGUMENT;
+  }
+
+  if (session->server) {
+    if (next_stream_id % 2) {
+      return NGHTTP2_ERR_INVALID_ARGUMENT;
+    }
+  } else if (next_stream_id % 2 == 0) {
     return NGHTTP2_ERR_INVALID_ARGUMENT;
   }
 

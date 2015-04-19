@@ -83,8 +83,8 @@ struct Config {
   bool continuation;
   bool no_content_length;
   bool no_dep;
-  bool dep_idle;
   bool hexdump;
+  bool no_push;
 };
 
 enum class RequestState { INITIAL, ON_REQUEST, ON_RESPONSE, ON_COMPLETE };
@@ -103,18 +103,11 @@ struct RequestTiming {
   RequestTiming() : state(RequestState::INITIAL) {}
 };
 
-struct Request;
-
-struct Dependency {
-  std::vector<std::vector<Request *>> deps;
-};
-
 struct Request {
   // For pushed request, |uri| is empty and |u| is zero-cleared.
   Request(const std::string &uri, const http_parser_url &u,
           const nghttp2_data_provider *data_prd, int64_t data_length,
-          const nghttp2_priority_spec &pri_spec,
-          std::shared_ptr<Dependency> dep, int pri = 0, int level = 0);
+          const nghttp2_priority_spec &pri_spec, int level = 0);
   ~Request();
 
   void init_inflater();
@@ -123,10 +116,6 @@ struct Request {
   int update_html_parser(const uint8_t *data, size_t len, int fin);
 
   std::string make_reqpath() const;
-
-  int32_t find_dep_stream_id(int start);
-
-  nghttp2_priority_spec resolve_dep(int32_t pri);
 
   bool is_ipv6_literal_addr() const;
 
@@ -145,7 +134,6 @@ struct Request {
   // URI without fragment
   std::string uri;
   http_parser_url u;
-  std::shared_ptr<Dependency> dep;
   nghttp2_priority_spec pri_spec;
   RequestTiming timing;
   int64_t data_length;
@@ -159,8 +147,6 @@ struct Request {
   int status;
   // Recursion level: 0: first entity, 1: entity linked from first entity
   int level;
-  // RequestPriority value defined in HtmlParser.h
-  int pri;
   http2::HeaderIndex res_hdidx;
   // used for incoming PUSH_PROMISE
   http2::HeaderIndex req_hdidx;
@@ -220,8 +206,7 @@ struct HttpClient {
   void update_hostport();
   bool add_request(const std::string &uri,
                    const nghttp2_data_provider *data_prd, int64_t data_length,
-                   const nghttp2_priority_spec &pri_spec,
-                   std::shared_ptr<Dependency> dep, int pri = 0, int level = 0);
+                   const nghttp2_priority_spec &pri_spec, int level = 0);
 
   void record_start_time();
   void record_domain_lookup_end_time();

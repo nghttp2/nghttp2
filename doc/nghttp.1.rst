@@ -1,4 +1,6 @@
 
+.. program:: nghttp
+
 nghttp(1)
 =========
 
@@ -143,15 +145,15 @@ OPTIONS
 
     Don't send dependency based priority hint to server.
 
-.. option:: --dep-idle
-
-    Use idle streams as anchor nodes to express priority.
-
 .. option:: --hexdump
 
     Display the  incoming traffic in  hexadecimal (Canonical
     hex+ASCII display).  If SSL/TLS  is used, decrypted data
     are used.
+
+.. option:: --no-push
+
+    Disable server push.
 
 .. option:: --version
 
@@ -165,6 +167,57 @@ OPTIONS
 
 The <SIZE> argument is an integer and an optional unit (e.g., 10K is
 10 * 1024).  Units are K, M and G (powers of 1024).
+
+DEPENDENCY BASED PRIORITY
+-------------------------
+
+nghttp sends priority hints to server by default unless
+:option:`--no-dep` is used.  nghttp mimics the way Firefox employs to
+manages dependency using idle streams.  We follows the behaviour of
+Firefox Nightly as of April, 2015, and nghttp's behaviour is very
+static and could be different from Firefox in detail.  But reproducing
+the same behaviour of Firefox is not our goal.  The goal is provide
+the easy way to test out the dependency priority in server
+implementation.
+
+When connection is established, nghttp sends 5 PRIORITY frames to idle
+streams 3, 5, 7, 9 and 11 to create "anchor" nodes in dependency
+tree::
+
+                      +-----+
+                      |id=0 |
+                      +-----+
+                     ^   ^   ^
+              w=201 /    |    \ w=1
+                   /     |     \
+                  / w=101|      \
+              +-----+ +-----+ +-----+
+              |id=3 | |id=5 | |id=7 |
+              +-----+ +-----+ +-----+
+                 ^               ^
+             w=1 |           w=1 |
+                 |               |
+              +-----+         +-----+
+              |id=11|         |id=9 |
+              +-----+         +-----+
+
+In the above figure, ``id`` means stream ID, and ``w`` means weight.
+The stream 0 is non-existence stream, and forms the root of the tree.
+The stream 7 and 9 are not used for now.
+
+The URIs given in the command-line depend on stream 11 with the weight
+given in :option:`-p` option, which defaults to 16.
+
+If :option:`-a` option is used, nghttp parses the resource pointed by
+URI given in command-line as html, and extracts resource links from
+it.  When requesting those resources, nghttp uses dependency according
+to its resource type.
+
+For CSS, and Javascript files inside "head" element, they depend on
+stream 3 with the weight 2.  The Javascript files outside "head"
+element depend on stream 5 with the weight 2.  The mages depend on
+stream 11 with the weight 12.  The other resources (e.g., icon) depend
+on stream 11 with the weight 2.
 
 SEE ALSO
 --------

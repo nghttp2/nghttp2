@@ -417,9 +417,7 @@ namespace {
 void reopen_log_signal_cb(struct ev_loop *loop, ev_signal *w, int revents) {
   auto conn_handler = static_cast<ConnectionHandler *>(w->data);
 
-  if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "Reopening log files: main";
-  }
+  LOG(NOTICE) << "Reopening log files: main";
 
   (void)reopen_log_files();
   redirect_stderr_to_errorlog();
@@ -555,7 +553,9 @@ void graceful_shutdown_signal_cb(struct ev_loop *loop, ev_signal *w,
 
   conn_handler->graceful_shutdown_worker();
 
-  if (get_config()->num_worker == 1) {
+  if (get_config()->num_worker == 1 &&
+      conn_handler->get_single_worker()->get_worker_stat()->num_connections >
+          0) {
     return;
   }
 
@@ -566,30 +566,13 @@ void graceful_shutdown_signal_cb(struct ev_loop *loop, ev_signal *w,
 } // namespace
 
 namespace {
-void refresh_cb(struct ev_loop *loop, ev_timer *w, int revents) {
-  auto conn_handler = static_cast<ConnectionHandler *>(w->data);
-  auto worker = conn_handler->get_single_worker();
-
-  // In multi threaded mode (get_config()->num_worker > 1), we have to
-  // wait for event notification to workers to finish.
-  if (get_config()->num_worker == 1 && conn_handler->get_graceful_shutdown() &&
-      (!worker || worker->get_worker_stat()->num_connections == 0)) {
-    ev_break(loop);
-  }
-
-  conn_handler->handle_ocsp_completion();
-}
-} // namespace
-
-namespace {
 void renew_ticket_key_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto conn_handler = static_cast<ConnectionHandler *>(w->data);
   const auto &old_ticket_keys = conn_handler->get_ticket_keys();
 
   auto ticket_keys = std::make_shared<TicketKeys>();
-  if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "renew ticket key";
-  }
+  LOG(NOTICE) << "Renew ticket keys: main";
+
   // We store at most 2 ticket keys
   if (old_ticket_keys) {
     auto &old_keys = old_ticket_keys->keys;
@@ -742,13 +725,8 @@ int event_loop() {
   graceful_shutdown_sig.data = conn_handler.get();
   ev_signal_start(loop, &graceful_shutdown_sig);
 
-  ev_timer refresh_timer;
-  ev_timer_init(&refresh_timer, refresh_cb, 0., 1.);
-  refresh_timer.data = conn_handler.get();
-  ev_timer_again(loop, &refresh_timer);
-
   if (!get_config()->upstream_no_tls && !get_config()->no_ocsp) {
-    conn_handler->update_ocsp_async();
+    conn_handler->proceed_next_cert_ocsp();
   }
 
   if (LOG_ENABLED(INFO)) {
@@ -758,7 +736,7 @@ int event_loop() {
   ev_run(loop, 0);
 
   conn_handler->join_worker();
-  conn_handler->join_ocsp_thread();
+  conn_handler->cancel_ocsp_update();
 
   return 0;
 }
@@ -2035,12 +2013,6 @@ int main(int argc, char **argv) {
   }
 
   if (!get_config()->upstream_no_tls && !get_config()->no_ocsp) {
-#ifdef NOTHREADS
-    mod_config()->no_ocsp = true;
-    LOG(WARN)
-        << "OCSP stapling has been disabled since it requires threading but"
-           "threading disabled at build time.";
-#else  // !NOTHREADS
     struct stat buf;
     if (stat(get_config()->fetch_ocsp_response_file.get(), &buf) != 0) {
       mod_config()->no_ocsp = true;
@@ -2048,7 +2020,6 @@ int main(int argc, char **argv) {
                 << get_config()->fetch_ocsp_response_file.get()
                 << " not found.  OCSP stapling has been disabled.";
     }
-#endif // !NOTHREADS
   }
 
   if (get_config()->downstream_addrs.empty()) {
@@ -2143,7 +2114,6 @@ int main(int argc, char **argv) {
   memset(&act, 0, sizeof(struct sigaction));
   act.sa_handler = SIG_IGN;
   sigaction(SIGPIPE, &act, nullptr);
-  sigaction(SIGCHLD, &act, nullptr);
 
   event_loop();
 

@@ -30,7 +30,8 @@
 
 namespace nghttp2 {
 
-ParserData::ParserData(const std::string &base_uri) : base_uri(base_uri) {}
+ParserData::ParserData(const std::string &base_uri)
+    : base_uri(base_uri), inside_head(0) {}
 
 HtmlParser::HtmlParser(const std::string &base_uri)
     : base_uri_(base_uri), parser_ctx_(nullptr), parser_data_(base_uri) {}
@@ -52,13 +53,13 @@ const char *get_attr(const xmlChar **attrs, const char *name) {
 } // namespace
 
 namespace {
-void add_link(ParserData *parser_data, const char *uri, RequestPriority pri) {
+void add_link(ParserData *parser_data, const char *uri, ResourceType res_type) {
   auto u = xmlBuildURI(
       reinterpret_cast<const xmlChar *>(uri),
       reinterpret_cast<const xmlChar *>(parser_data->base_uri.c_str()));
   if (u) {
     parser_data->links.push_back(
-        std::make_pair(reinterpret_cast<char *>(u), pri));
+        std::make_pair(reinterpret_cast<char *>(u), res_type));
     free(u);
   }
 }
@@ -68,6 +69,9 @@ namespace {
 void start_element_func(void *user_data, const xmlChar *name,
                         const xmlChar **attrs) {
   auto parser_data = static_cast<ParserData *>(user_data);
+  if (util::strieq(reinterpret_cast<const char *>(name), "head")) {
+    ++parser_data->inside_head;
+  }
   if (util::strieq(reinterpret_cast<const char *>(name), "link")) {
     auto rel_attr = get_attr(attrs, "rel");
     auto href_attr = get_attr(attrs, "href");
@@ -75,22 +79,35 @@ void start_element_func(void *user_data, const xmlChar *name,
       return;
     }
     if (util::strieq(rel_attr, "shortcut icon")) {
-      add_link(parser_data, href_attr, REQ_PRI_LOWEST);
+      add_link(parser_data, href_attr, REQ_OTHERS);
     } else if (util::strieq(rel_attr, "stylesheet")) {
-      add_link(parser_data, href_attr, REQ_PRI_MEDIUM);
+      add_link(parser_data, href_attr, REQ_CSS);
     }
   } else if (util::strieq(reinterpret_cast<const char *>(name), "img")) {
     auto src_attr = get_attr(attrs, "src");
     if (!src_attr) {
       return;
     }
-    add_link(parser_data, src_attr, REQ_PRI_LOWEST);
+    add_link(parser_data, src_attr, REQ_IMG);
   } else if (util::strieq(reinterpret_cast<const char *>(name), "script")) {
     auto src_attr = get_attr(attrs, "src");
     if (!src_attr) {
       return;
     }
-    add_link(parser_data, src_attr, REQ_PRI_LOW);
+    if (parser_data->inside_head) {
+      add_link(parser_data, src_attr, REQ_JS);
+    } else {
+      add_link(parser_data, src_attr, REQ_UNBLOCK_JS);
+    }
+  }
+}
+} // namespace
+
+namespace {
+void end_element_func(void *user_data, const xmlChar *name) {
+  auto parser_data = static_cast<ParserData *>(user_data);
+  if (util::strieq(reinterpret_cast<const char *>(name), "head")) {
+    --parser_data->inside_head;
   }
 }
 } // namespace
@@ -112,7 +129,7 @@ xmlSAXHandler saxHandler = {
     nullptr,             // startDocumentSAXFunc
     nullptr,             // endDocumentSAXFunc
     &start_element_func, // startElementSAXFunc
-    nullptr,             // endElementSAXFunc
+    &end_element_func,   // endElementSAXFunc
     nullptr,             // referenceSAXFunc
     nullptr,             // charactersSAXFunc
     nullptr,             // ignorableWhitespaceSAXFunc
@@ -160,7 +177,7 @@ int HtmlParser::parse_chunk_internal(const char *chunk, size_t size, int fin) {
   }
 }
 
-const std::vector<std::pair<std::string, RequestPriority>> &
+const std::vector<std::pair<std::string, ResourceType>> &
 HtmlParser::get_links() const {
   return parser_data_.links;
 }

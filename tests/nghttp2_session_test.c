@@ -6154,11 +6154,12 @@ void test_nghttp2_session_stream_attach_item(void) {
   CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == a->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == b->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == c->dpri);
-  CU_ASSERT(NGHTTP2_STREAM_DPRI_REST == d->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == d->dpri);
 
-  CU_ASSERT(16 * 16 / 16 == b->effective_weight);
+  CU_ASSERT(16 * 16 / 32 == b->effective_weight);
+  CU_ASSERT(16 * 16 / 32 == d->effective_weight);
 
-  CU_ASSERT(0 == dd->queued);
+  CU_ASSERT(1 == dd->queued);
 
   nghttp2_stream_detach_item(b, session);
 
@@ -6324,12 +6325,13 @@ void test_nghttp2_session_stream_attach_item_subtree(void) {
   CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == a->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == b->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == c->dpri);
-  CU_ASSERT(NGHTTP2_STREAM_DPRI_REST == d->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == d->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == e->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == f->dpri);
 
   CU_ASSERT(16 == b->effective_weight);
-  CU_ASSERT(16 * 16 / 16 == e->effective_weight);
+  CU_ASSERT(16 * 16 / 32 == e->effective_weight);
+  CU_ASSERT(16 * 16 / 32 == e->effective_weight);
 
   CU_ASSERT(32 == a->sum_norest_weight);
   CU_ASSERT(16 == c->sum_norest_weight);

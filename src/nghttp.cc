@@ -61,16 +61,32 @@
 
 namespace nghttp2 {
 
-// stream ID of anchor stream node when --dep-idle is enabled.  These
-// * portion of ANCHOR_ID_* matches RequestPriority in HtmlParser.h.
-// The stream ID = 1 is excluded since it is used as first stream in
-// upgrade case.
-enum {
-  ANCHOR_ID_HIGH = 3,
-  ANCHOR_ID_MEDIUM = 5,
-  ANCHOR_ID_LOW = 7,
-  ANCHOR_ID_LOWEST = 9,
+// The anchor stream nodes when --no-dep is not used.  The stream ID =
+// 1 is excluded since it is used as first stream in upgrade case.  We
+// follows the same dependency anchor nodes as Firefox does.
+struct Anchor {
+  int32_t stream_id;
+  // stream ID this anchor depends on
+  int32_t dep_stream_id;
+  // .. with this weight.
+  int32_t weight;
 };
+
+// This is index into anchors.  Firefox uses ANCHOR_FOLLOWERS for html
+// file.
+enum {
+  ANCHOR_LEADERS,
+  ANCHOR_UNBLOCKED,
+  ANCHOR_BACKGROUND,
+  ANCHOR_SPECULATIVE,
+  ANCHOR_FOLLOWERS,
+};
+
+namespace {
+auto anchors = std::array<Anchor, 5>{{
+    {3, 0, 201}, {5, 0, 101}, {7, 0, 1}, {9, 7, 1}, {11, 3, 1},
+}};
+} // namespace
 
 Config::Config()
     : output_upper_thres(1024 * 1024), padding(0),
@@ -79,7 +95,7 @@ Config::Config()
       timeout(0.), window_bits(-1), connection_window_bits(-1), verbose(0),
       null_out(false), remote_name(false), get_assets(false), stat(false),
       upgrade(false), continuation(false), no_content_length(false),
-      no_dep(false), dep_idle(false), hexdump(false) {
+      no_dep(false), hexdump(false), no_push(false) {
   nghttp2_option_new(&http2_option);
   nghttp2_option_set_peer_max_concurrent_streams(http2_option,
                                                  peer_max_concurrent_streams);
@@ -111,12 +127,10 @@ std::string strip_fragment(const char *raw_uri) {
 
 Request::Request(const std::string &uri, const http_parser_url &u,
                  const nghttp2_data_provider *data_prd, int64_t data_length,
-                 const nghttp2_priority_spec &pri_spec,
-                 std::shared_ptr<Dependency> dep, int pri, int level)
-    : uri(uri), u(u), dep(std::move(dep)), pri_spec(pri_spec),
-      data_length(data_length), data_offset(0), response_len(0),
-      inflater(nullptr), html_parser(nullptr), data_prd(data_prd),
-      stream_id(-1), status(0), level(level), pri(pri),
+                 const nghttp2_priority_spec &pri_spec, int level)
+    : uri(uri), u(u), pri_spec(pri_spec), data_length(data_length),
+      data_offset(0), response_len(0), inflater(nullptr), html_parser(nullptr),
+      data_prd(data_prd), stream_id(-1), status(0), level(level),
       expect_final_response(false) {
   http2::init_hdidx(res_hdidx);
   http2::init_hdidx(req_hdidx);
@@ -155,77 +169,41 @@ std::string Request::make_reqpath() const {
   return path;
 }
 
-int32_t Request::find_dep_stream_id(int start) {
-  for (auto i = start; i >= 0; --i) {
-    for (auto req : dep->deps[i]) {
-      return req->stream_id;
-    }
-  }
-  return -1;
-}
-
-nghttp2_priority_spec Request::resolve_dep(int32_t pri) {
+namespace {
+nghttp2_priority_spec resolve_dep(int res_type) {
   nghttp2_priority_spec pri_spec;
-  int exclusive = 0;
-  int32_t stream_id = -1;
-
-  nghttp2_priority_spec_default_init(&pri_spec);
 
   if (config.no_dep) {
+    nghttp2_priority_spec_default_init(&pri_spec);
+
     return pri_spec;
   }
 
-  if (config.dep_idle) {
-    int32_t anchor_id = 0;
-    switch (pri) {
-    case REQ_PRI_HIGH:
-      anchor_id = ANCHOR_ID_HIGH;
-      break;
-    case REQ_PRI_MEDIUM:
-      anchor_id = ANCHOR_ID_MEDIUM;
-      break;
-    case REQ_PRI_LOW:
-      anchor_id = ANCHOR_ID_LOW;
-      break;
-    case REQ_PRI_LOWEST:
-      anchor_id = ANCHOR_ID_LOWEST;
-      break;
-    }
-    nghttp2_priority_spec_init(&pri_spec, anchor_id, NGHTTP2_DEFAULT_WEIGHT, 0);
-    return pri_spec;
+  int32_t anchor_id;
+  int32_t weight;
+  switch (res_type) {
+  case REQ_CSS:
+  case REQ_JS:
+    anchor_id = anchors[ANCHOR_LEADERS].stream_id;
+    weight = 2;
+    break;
+  case REQ_UNBLOCK_JS:
+    anchor_id = anchors[ANCHOR_UNBLOCKED].stream_id;
+    weight = 2;
+    break;
+  case REQ_IMG:
+    anchor_id = anchors[ANCHOR_FOLLOWERS].stream_id;
+    weight = 12;
+    break;
+  default:
+    anchor_id = anchors[ANCHOR_FOLLOWERS].stream_id;
+    weight = 2;
   }
 
-  if (pri == 0) {
-    return pri_spec;
-  }
-
-  auto start = std::min(pri, (int)dep->deps.size() - 1);
-
-  for (auto i = start; i >= 0; --i) {
-    if (dep->deps[i][0]->pri < pri) {
-      stream_id = find_dep_stream_id(i);
-
-      if (i != (int)dep->deps.size() - 1) {
-        exclusive = 1;
-      }
-
-      break;
-    } else if (dep->deps[i][0]->pri == pri) {
-      stream_id = find_dep_stream_id(i - 1);
-
-      break;
-    }
-  }
-
-  if (stream_id == -1) {
-    return pri_spec;
-  }
-
-  nghttp2_priority_spec_init(&pri_spec, stream_id, NGHTTP2_DEFAULT_WEIGHT,
-                             exclusive);
-
+  nghttp2_priority_spec_init(&pri_spec, anchor_id, weight, 0);
   return pri_spec;
 }
+} // namespace
 
 bool Request::is_ipv6_literal_addr() const {
   if (util::has_uri_field(u, UF_HOST)) {
@@ -531,12 +509,13 @@ int HttpClient::initiate_connection() {
       SSL_set_fd(ssl, fd);
       SSL_set_connect_state(ssl);
 
-      // If the user overrode the host header, use that value for
-      // the SNI extension
+      // If the user overrode the :authority or host header, use that
+      // value for the SNI extension
       const char *host_string = nullptr;
-      auto i =
-          std::find_if(std::begin(config.headers), std::end(config.headers),
-                       [](const Header &nv) { return "host" == nv.name; });
+      auto i = std::find_if(std::begin(config.headers),
+                            std::end(config.headers), [](const Header &nv) {
+        return ":authority" == nv.name || "host" == nv.name;
+      });
       if (i != std::end(config.headers)) {
         host_string = (*i).value.c_str();
       } else {
@@ -758,6 +737,13 @@ size_t populate_settings(nghttp2_settings_entry *iv) {
     iv[niv].value = config.header_table_size;
     ++niv;
   }
+
+  if (config.no_push) {
+    iv[niv].settings_id = NGHTTP2_SETTINGS_ENABLE_PUSH;
+    iv[niv].value = 0;
+    ++niv;
+  }
+
   return niv;
 }
 } // namespace
@@ -766,7 +752,7 @@ int HttpClient::on_upgrade_connect() {
   ssize_t rv;
   record_connect_end_time();
   assert(!reqvec.empty());
-  std::array<nghttp2_settings_entry, 32> iv;
+  std::array<nghttp2_settings_entry, 16> iv;
   size_t niv = populate_settings(iv.data());
   assert(settings_payload.size() >= 8 * niv);
   rv = nghttp2_pack_settings_payload(settings_payload.data(),
@@ -973,26 +959,22 @@ int HttpClient::connection_made() {
       return -1;
     }
   }
-  if (!config.no_dep && config.dep_idle) {
+  if (!config.no_dep) {
     // Create anchor stream nodes
     nghttp2_priority_spec pri_spec;
-    int32_t dep_stream_id = 0;
 
-    for (auto stream_id :
-         {ANCHOR_ID_HIGH, ANCHOR_ID_MEDIUM, ANCHOR_ID_LOW, ANCHOR_ID_LOWEST}) {
-
-      nghttp2_priority_spec_init(&pri_spec, dep_stream_id,
-                                 NGHTTP2_DEFAULT_WEIGHT, 0);
-      rv = nghttp2_submit_priority(session, NGHTTP2_FLAG_NONE, stream_id,
+    for (auto &anchor : anchors) {
+      nghttp2_priority_spec_init(&pri_spec, anchor.dep_stream_id, anchor.weight,
+                                 0);
+      rv = nghttp2_submit_priority(session, NGHTTP2_FLAG_NONE, anchor.stream_id,
                                    &pri_spec);
       if (rv != 0) {
         return -1;
       }
-
-      dep_stream_id = stream_id;
     }
 
-    rv = nghttp2_session_set_next_stream_id(session, ANCHOR_ID_LOWEST + 2);
+    rv = nghttp2_session_set_next_stream_id(
+        session, anchors[ANCHOR_FOLLOWERS].stream_id + 2);
     if (rv != 0) {
       return -1;
     }
@@ -1000,7 +982,8 @@ int HttpClient::connection_made() {
     if (need_upgrade()) {
       // Amend the priority because we cannot send priority in
       // HTTP/1.1 Upgrade.
-      nghttp2_priority_spec_init(&pri_spec, ANCHOR_ID_HIGH, config.weight, 0);
+      auto &anchor = anchors[ANCHOR_FOLLOWERS];
+      nghttp2_priority_spec_init(&pri_spec, anchor.stream_id, config.weight, 0);
 
       rv = nghttp2_submit_priority(session, NGHTTP2_FLAG_NONE, 1, &pri_spec);
       if (rv != 0) {
@@ -1233,9 +1216,7 @@ void HttpClient::update_hostport() {
 bool HttpClient::add_request(const std::string &uri,
                              const nghttp2_data_provider *data_prd,
                              int64_t data_length,
-                             const nghttp2_priority_spec &pri_spec,
-                             std::shared_ptr<Dependency> dep, int pri,
-                             int level) {
+                             const nghttp2_priority_spec &pri_spec, int level) {
   http_parser_url u;
   memset(&u, 0, sizeof(u));
   if (http_parser_parse_url(uri.c_str(), uri.size(), 0, &u) != 0) {
@@ -1249,8 +1230,8 @@ bool HttpClient::add_request(const std::string &uri,
     path_cache.insert(uri);
   }
 
-  reqvec.push_back(make_unique<Request>(uri, u, data_prd, data_length, pri_spec,
-                                        std::move(dep), pri, level));
+  reqvec.push_back(
+      make_unique<Request>(uri, u, data_prd, data_length, pri_spec, level));
   return true;
 }
 
@@ -1268,36 +1249,8 @@ void HttpClient::record_connect_end_time() {
 }
 
 void HttpClient::request_done(Request *req) {
-  if (req->pri == 0 && req->dep) {
-    assert(req->dep->deps.empty());
-
-    req->dep->deps.push_back(std::vector<Request *>{req});
-
-    return;
-  }
-
   if (req->stream_id % 2 == 0) {
     return;
-  }
-
-  auto itr = std::begin(req->dep->deps);
-  for (; itr != std::end(req->dep->deps); ++itr) {
-    if ((*itr)[0]->pri == req->pri) {
-      (*itr).push_back(req);
-
-      break;
-    }
-
-    if ((*itr)[0]->pri > req->pri) {
-      auto v = std::vector<Request *>{req};
-      req->dep->deps.insert(itr, std::move(v));
-
-      break;
-    }
-  }
-
-  if (itr == std::end(req->dep->deps)) {
-    req->dep->deps.push_back(std::vector<Request *>{req});
   }
 }
 
@@ -1481,7 +1434,7 @@ void update_html_parser(HttpClient *client, Request *req, const uint8_t *data,
 
   for (auto &p : req->html_parser->get_links()) {
     auto uri = strip_fragment(p.first.c_str());
-    auto pri = p.second;
+    auto res_type = p.second;
 
     http_parser_url u;
     memset(&u, 0, sizeof(u));
@@ -1490,10 +1443,9 @@ void update_html_parser(HttpClient *client, Request *req, const uint8_t *data,
         util::fieldeq(uri.c_str(), u, req->uri.c_str(), req->u, UF_HOST) &&
         util::porteq(uri.c_str(), u, req->uri.c_str(), req->u)) {
       // No POST data for assets
-      auto pri_spec = req->resolve_dep(pri);
+      auto pri_spec = resolve_dep(res_type);
 
-      if (client->add_request(uri, nullptr, 0, pri_spec, req->dep, pri,
-                              req->level + 1)) {
+      if (client->add_request(uri, nullptr, 0, pri_spec, req->level + 1)) {
 
         submit_request(client, config.headers, client->reqvec.back().get());
       }
@@ -1656,7 +1608,7 @@ int on_begin_headers_callback(nghttp2_session *session,
 
     nghttp2_priority_spec_default_init(&pri_spec);
 
-    auto req = make_unique<Request>("", u, nullptr, 0, pri_spec, nullptr);
+    auto req = make_unique<Request>("", u, nullptr, 0, pri_spec);
     req->stream_id = stream_id;
 
     nghttp2_session_set_stream_user_data(session, stream_id, req.get());
@@ -1928,7 +1880,7 @@ see http://www.w3.org/TR/resource-timing/#processing-model
 
 sorted by 'complete'
 
-responseEnd requestStart  process code size request path)" << std::endl;
+id  responseEnd requestStart  process code size request path)" << std::endl;
 
   const auto &base = client.timing.connect_end_time;
   for (const auto &req : reqs) {
@@ -1940,8 +1892,9 @@ responseEnd requestStart  process code size request path)" << std::endl;
         req->timing.response_end_time - req->timing.request_start_time);
     auto pushed = req->stream_id % 2 == 0;
 
-    std::cout << std::setw(11) << ("+" + util::format_duration(response_end))
-              << " " << (pushed ? "*" : " ") << std::setw(11)
+    std::cout << std::setw(3) << req->stream_id << " " << std::setw(11)
+              << ("+" + util::format_duration(response_end)) << " "
+              << (pushed ? "*" : " ") << std::setw(11)
               << ("+" + util::format_duration(request_start)) << " "
               << std::setw(8) << util::format_duration(total) << " "
               << std::setw(4) << req->status << " " << std::setw(4)
@@ -2054,17 +2007,16 @@ int communicate(
     nghttp2_priority_spec pri_spec;
     int32_t dep_stream_id = 0;
 
-    if (!config.no_dep && config.dep_idle) {
-      dep_stream_id = ANCHOR_ID_HIGH;
+    if (!config.no_dep) {
+      dep_stream_id = anchors[ANCHOR_FOLLOWERS].stream_id;
     }
 
     nghttp2_priority_spec_init(&pri_spec, dep_stream_id, config.weight, 0);
 
     for (auto req : requests) {
       for (int i = 0; i < config.multiply; ++i) {
-        auto dep = std::make_shared<Dependency>();
         client.add_request(std::get<0>(req), std::get<1>(req), std::get<2>(req),
-                           pri_spec, std::move(dep));
+                           pri_spec);
       }
     }
     client.update_hostport();
@@ -2421,10 +2373,10 @@ Options:
   --no-content-length
               Don't send content-length header field.
   --no-dep    Don't send dependency based priority hint to server.
-  --dep-idle  Use idle streams as anchor nodes to express priority.
   --hexdump   Display the  incoming traffic in  hexadecimal (Canonical
               hex+ASCII display).  If SSL/TLS  is used, decrypted data
               are used.
+  --no-push   Disable server push.
   --version   Display version information and exit.
   -h, --help  Display this help and exit.
 
@@ -2465,9 +2417,9 @@ int main(int argc, char **argv) {
         {"version", no_argument, &flag, 5},
         {"no-content-length", no_argument, &flag, 6},
         {"no-dep", no_argument, &flag, 7},
-        {"dep-idle", no_argument, &flag, 8},
         {"trailer", required_argument, &flag, 9},
         {"hexdump", no_argument, &flag, 10},
+        {"no-push", no_argument, &flag, 11},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     int c = getopt_long(argc, argv, "M:Oab:c:d:gm:np:r:hH:vst:uw:W:",
@@ -2561,10 +2513,7 @@ int main(int argc, char **argv) {
                   << std::endl;
         exit(EXIT_FAILURE);
       }
-      // To test "never index" repr, don't index authorization header
-      // field unconditionally.
-      auto no_index = util::strieq_l("authorization", header);
-      config.headers.emplace_back(header, value, no_index);
+      config.headers.emplace_back(header, value, false);
       util::inp_strlower(config.headers.back().name);
       break;
     }
@@ -2626,10 +2575,6 @@ int main(int argc, char **argv) {
         // no-dep option
         config.no_dep = true;
         break;
-      case 8:
-        // dep-idle option
-        config.dep_idle = true;
-        break;
       case 9: {
         // trailer option
         auto header = optarg;
@@ -2657,6 +2602,10 @@ int main(int argc, char **argv) {
       case 10:
         // hexdump option
         config.hexdump = true;
+        break;
+      case 11:
+        // no-push option
+        config.no_push = true;
         break;
       }
       break;

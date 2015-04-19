@@ -85,10 +85,7 @@ void session_impl::connected(tcp::resolver::iterator endpoint_it) {
 }
 
 void session_impl::not_connected(const boost::system::error_code &ec) {
-  auto &error_cb = on_error();
-  if (error_cb) {
-    error_cb(ec);
-  }
+  call_error_cb(ec);
 }
 
 void session_impl::on_connect(connect_cb cb) { connect_cb_ = std::move(cb); }
@@ -98,6 +95,14 @@ void session_impl::on_error(error_cb cb) { error_cb_ = std::move(cb); }
 const connect_cb &session_impl::on_connect() const { return connect_cb_; }
 
 const error_cb &session_impl::on_error() const { return error_cb_; }
+
+void session_impl::call_error_cb(const boost::system::error_code &ec) {
+  auto &error_cb = on_error();
+  if (!error_cb) {
+    return;
+  }
+  error_cb(ec);
+}
 
 namespace {
 int on_begin_headers_callback(nghttp2_session *session,
@@ -304,10 +309,7 @@ bool session_impl::setup_session() {
 
   auto rv = nghttp2_session_client_new(&session_, callbacks, this);
   if (rv != 0) {
-    auto &error_cb = on_error();
-    if (error_cb) {
-      error_cb(make_error_code(static_cast<nghttp2_error>(rv)));
-    }
+    call_error_cb(make_error_code(static_cast<nghttp2_error>(rv)));
     return false;
   }
 
@@ -524,6 +526,7 @@ void session_impl::do_read() {
                      std::size_t bytes_transferred) {
     if (ec) {
       if (ec.value() == boost::asio::error::operation_aborted) {
+        call_error_cb(ec);
         shutdown_socket();
       }
       return;
@@ -536,6 +539,8 @@ void session_impl::do_read() {
           nghttp2_session_mem_recv(session_, rb_.data(), bytes_transferred);
 
       if (rv != static_cast<ssize_t>(bytes_transferred)) {
+        call_error_cb(make_error_code(
+            static_cast<nghttp2_error>(rv < 0 ? rv : NGHTTP2_ERR_PROTO)));
         shutdown_socket();
         return;
       }
@@ -573,6 +578,7 @@ void session_impl::do_write() {
       const uint8_t *data;
       auto n = nghttp2_session_mem_send(session_, &data);
       if (n < 0) {
+        call_error_cb(make_error_code(static_cast<nghttp2_error>(n)));
         shutdown_socket();
         return;
       }
@@ -602,6 +608,8 @@ void session_impl::do_write() {
 
   write_socket([this](const boost::system::error_code &ec, std::size_t n) {
     if (ec) {
+      call_error_cb(ec);
+      shutdown_socket();
       return;
     }
 

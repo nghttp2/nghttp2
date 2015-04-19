@@ -61,6 +61,8 @@ def help2man(infile):
         description.append(line)
 
     print '''
+.. program:: {cmdname}
+
 {cmdname}(1)
 {cmdnameunderline}
 

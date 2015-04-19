@@ -558,6 +558,39 @@ func TestH2H1RequestTrailer(t *testing.T) {
 	}
 }
 
+// TestH2H1Upgrade tests HTTP Upgrade to HTTP/2
+func TestH2H1Upgrade(t *testing.T) {
+	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {})
+	defer st.Close()
+
+	res, err := st.http1(requestParam{
+		name: "TestH2H1Upgrade",
+		header: []hpack.HeaderField{
+			pair("Connection", "Upgrade, HTTP2-Settings"),
+			pair("Upgrade", "h2c-14"),
+			pair("HTTP2-Settings", "AAMAAABkAAQAAP__"),
+		},
+	})
+
+	if err != nil {
+		t.Fatalf("Error st.http1() = %v", err)
+	}
+
+	if got, want := res.status, 101; got != want {
+		t.Errorf("res.status: %v; want %v", got, want)
+	}
+
+	res, err = st.http2(requestParam{
+		httpUpgrade: true,
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("res.status: %v; want %v", got, want)
+	}
+}
+
 // TestH2H1GracefulShutdown tests graceful shutdown.
 func TestH2H1GracefulShutdown(t *testing.T) {
 	st := newServerTester(nil, t, noopHandler)

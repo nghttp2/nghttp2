@@ -163,6 +163,8 @@ int Http2Upstream::upgrade_upstream(HttpsUpstream *http) {
   downstream->set_request_http2_scheme(scheme);
 
   auto ptr = downstream.get();
+
+  nghttp2_session_set_stream_user_data(session_, 1, ptr);
   downstream_queue_.add_pending(std::move(downstream));
   downstream_queue_.mark_active(ptr);
 
@@ -231,12 +233,6 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
 
   auto token = http2::lookup_token(name, namelen);
 
-  if (token == http2::HD_CONTENT_LENGTH) {
-    // libnghttp2 guarantees this can be parsed
-    auto len = util::parse_uint(value, valuelen);
-    downstream->set_request_content_length(len);
-  }
-
   downstream->add_request_header(name, namelen, value, valuelen,
                                  flags & NGHTTP2_NV_FLAG_NO_INDEX, token);
   return 0;
@@ -296,6 +292,14 @@ int Http2Upstream::on_request_headers(Downstream *downstream,
 
   if (get_config()->http2_upstream_dump_request_header) {
     http2::dump_nv(get_config()->http2_upstream_dump_request_header, nva);
+  }
+
+  auto content_length =
+      downstream->get_request_header(http2::HD_CONTENT_LENGTH);
+  if (content_length) {
+    // libnghttp2 guarantees this can be parsed
+    auto len = util::parse_uint(content_length->value);
+    downstream->set_request_content_length(len);
   }
 
   auto authority = downstream->get_request_header(http2::HD__AUTHORITY);
@@ -499,6 +503,10 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
     auto stream_id = frame->hd.stream_id;
     auto downstream = static_cast<Downstream *>(
         nghttp2_session_get_stream_user_data(session, stream_id));
+
+    if (!downstream) {
+      return 0;
+    }
 
     // For tunneling, issue RST_STREAM to finish the stream.
     if (downstream->get_upgraded() ||

@@ -1,19 +1,72 @@
 #!/usr/bin/env python
 
 HEADERS = [
-    ':authority',
-    ':method',
-    ':path',
-    ':scheme',
-    ':status',
-    "content-length",
-    "host",
-    "te",
-    'connection',
-    'keep-alive',
-    'proxy-connection',
-    'transfer-encoding',
-    'upgrade'
+    (':authority', 0),
+    (':method', 1),
+    (':method', 2),
+    (':path', 3),
+    (':path', 4),
+    (':scheme', 5),
+    (':scheme', 6),
+    (':status', 7),
+    (':status', 8),
+    (':status', 9),
+    (':status', 10),
+    (':status', 11),
+    (':status', 12),
+    (':status', 13),
+    ('accept-charset', 14),
+    ('accept-encoding', 15),
+    ('accept-language', 16),
+    ('accept-ranges', 17),
+    ('accept', 18),
+    ('access-control-allow-origin', 19),
+    ('age', 20),
+    ('allow', 21),
+    ('authorization', 22),
+    ('cache-control', 23),
+    ('content-disposition', 24),
+    ('content-encoding', 25),
+    ('content-language', 26),
+    ('content-length', 27),
+    ('content-location', 28),
+    ('content-range', 29),
+    ('content-type', 30),
+    ('cookie', 31),
+    ('date', 32),
+    ('etag', 33),
+    ('expect', 34),
+    ('expires', 35),
+    ('from', 36),
+    ('host', 37),
+    ('if-match', 38),
+    ('if-modified-since', 39),
+    ('if-none-match', 40),
+    ('if-range', 41),
+    ('if-unmodified-since', 42),
+    ('last-modified', 43),
+    ('link', 44),
+    ('location', 45),
+    ('max-forwards', 46),
+    ('proxy-authenticate', 47),
+    ('proxy-authorization', 48),
+    ('range', 49),
+    ('referer', 50),
+    ('refresh', 51),
+    ('retry-after', 52),
+    ('server', 53),
+    ('set-cookie', 54),
+    ('strict-transport-security', 55),
+    ('transfer-encoding', 56),
+    ('user-agent', 57),
+    ('vary', 58),
+    ('via', 59),
+    ('www-authenticate', 60),
+    ('te', None),
+    ('connection', None),
+    ('keep-alive',None),
+    ('proxy-connection', None),
+    ('upgrade', None),
 ]
 
 def to_enum_hd(k):
@@ -27,7 +80,7 @@ def to_enum_hd(k):
 
 def build_header(headers):
     res = {}
-    for k in headers:
+    for k, _ in headers:
         size = len(k)
         if size not in res:
             res[size] = {}
@@ -40,18 +93,20 @@ def build_header(headers):
     return res
 
 def gen_enum():
-    print '''\
-typedef enum {'''
-    for k in sorted(HEADERS):
-        print '''\
-  {},'''.format(to_enum_hd(k))
-    print '''\
-  NGHTTP2_TOKEN_MAXIDX,
-} nghttp2_token;'''
+    name = ''
+    print 'typedef enum {'
+    for k, token in HEADERS:
+        if token is None:
+            print '  {},'.format(to_enum_hd(k))
+        else:
+            if name != k:
+                name = k
+                print '  {} = {},'.format(to_enum_hd(k), token)
+    print '} nghttp2_token;'
 
 def gen_index_header():
     print '''\
-static int lookup_token(const uint8_t *name, size_t namelen) {
+static inline int lookup_token(const uint8_t *name, size_t namelen) {
   switch (namelen) {'''
     b = build_header(HEADERS)
     for size in sorted(b.keys()):
@@ -66,7 +121,7 @@ static int lookup_token(const uint8_t *name, size_t namelen) {
     case '{}':'''.format(c)
             for k in headers:
                 print '''\
-      if (streq("{}", name, {})) {{
+      if (lstreq("{}", name, {})) {{
         return {};
       }}'''.format(k[:-1], size - 1, to_enum_hd(k))
             print '''\

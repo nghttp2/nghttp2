@@ -33,12 +33,12 @@
 #include "nghttp2_frame.h"
 #include "nghttp2_mem.h"
 
-/* A bit higher weight for non-DATA frames */
-#define NGHTTP2_OB_EX_WEIGHT 300
-/* Higher weight for SETTINGS */
-#define NGHTTP2_OB_SETTINGS_WEIGHT 301
-/* Highest weight for PING */
-#define NGHTTP2_OB_PING_WEIGHT 302
+/* A bit higher priority for non-DATA frames */
+#define NGHTTP2_OB_EX_CYCLE 2
+/* Even more higher priority for SETTINGS frame */
+#define NGHTTP2_OB_SETTINGS_CYCLE 1
+/* Highest priority for PING frame */
+#define NGHTTP2_OB_PING_CYCLE 0
 
 /* struct used for HEADERS and PUSH_PROMISE frame */
 typedef struct {
@@ -108,12 +108,14 @@ typedef struct {
   nghttp2_frame frame;
   nghttp2_aux_data aux_data;
   int64_t seq;
-  /* Reset count of weight. See comment for last_cycle in
-     nghttp2_session.h */
+  /* The priority used in priority comparion.  Smaller is served
+     ealier.  For PING, SETTINGS and non-DATA frames (excluding
+     response HEADERS frame) have dedicated cycle value defined above.
+     For DATA frame, cycle is computed by taking into account of
+     effective weight and frame payload length previously sent, so
+     that the amount of transmission is distributed across streams
+     proportional to effective weight (inside a tree). */
   uint64_t cycle;
-  /* The priority used in priority comparion.  Larger is served
-     ealier. */
-  int32_t weight;
   /* nonzero if this object is queued. */
   uint8_t queued;
 } nghttp2_outbound_item;

@@ -97,6 +97,7 @@ protected:
 private:
   bool should_stop() const;
   bool setup_session();
+  void call_error_cb(const boost::system::error_code &ec);
 
   boost::asio::io_service &io_service_;
   tcp::resolver resolver_;

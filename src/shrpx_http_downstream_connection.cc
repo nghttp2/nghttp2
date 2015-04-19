@@ -520,6 +520,9 @@ int htp_hdrs_completecb(http_parser *htp) {
   }
 
   if (downstream->get_non_final_response()) {
+    // Reset content-length because we reuse same Downstream for the
+    // next response.
+    downstream->set_response_content_length(-1);
     // For non-final response code, we just call
     // on_downstream_header_complete() without changing response
     // state.
@@ -537,7 +540,11 @@ int htp_hdrs_completecb(http_parser *htp) {
   downstream->inspect_http1_response();
   downstream->check_upgrade_fulfilled();
   if (downstream->get_upgraded()) {
+    // content-length must be ignored for upgraded connection.
+    downstream->set_response_content_length(-1);
     downstream->set_response_connection_close(true);
+    // transfer-encoding not applied to upgraded connection
+    downstream->set_chunked_response(false);
   }
   if (upstream->on_downstream_header_complete(downstream) != 0) {
     return -1;
