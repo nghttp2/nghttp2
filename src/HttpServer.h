@@ -78,14 +78,27 @@ struct Config {
 
 class Http2Handler;
 
+struct FileEntry {
+  FileEntry(std::string path, int64_t length, int64_t mtime, int fd)
+      : path(std::move(path)), length(length), mtime(mtime), dlprev(nullptr),
+        dlnext(nullptr), fd(fd), usecount(1) {}
+  std::string path;
+  int64_t length;
+  int64_t mtime;
+  FileEntry *dlprev, *dlnext;
+  int fd;
+  int usecount;
+};
+
 struct Stream {
   Headers headers;
   Http2Handler *handler;
+  FileEntry *file_ent;
   ev_timer rtimer;
   ev_timer wtimer;
-  int64_t body_left;
+  int64_t body_length;
+  int64_t body_offset;
   int32_t stream_id;
-  int file;
   http2::HeaderIndex hdidx;
   Stream(Http2Handler *handler, int32_t stream_id);
   ~Stream();
@@ -160,14 +173,21 @@ private:
   int fd_;
 };
 
+struct StatusPage {
+  std::string status;
+  FileEntry file_ent;
+};
+
 class HttpServer {
 public:
   HttpServer(const Config *config);
   int listen();
   int run();
   const Config *get_config() const;
+  const StatusPage *get_status_page(int status) const;
 
 private:
+  std::vector<StatusPage> status_pages_;
   const Config *config_;
 };
 

@@ -57,11 +57,6 @@
 namespace nghttp2 {
 
 namespace {
-const std::string STATUS_200 = "200";
-const std::string STATUS_301 = "301";
-const std::string STATUS_304 = "304";
-const std::string STATUS_400 = "400";
-const std::string STATUS_404 = "404";
 const std::string DEFAULT_HTML = "index.html";
 const std::string NGHTTPD_SERVER = "nghttpd nghttp2/" NGHTTP2_VERSION;
 } // namespace
@@ -171,9 +166,10 @@ void fill_callback(nghttp2_session_callbacks *callbacks, const Config *config);
 
 class Sessions {
 public:
-  Sessions(struct ev_loop *loop, const Config *config, SSL_CTX *ssl_ctx)
-      : loop_(loop), config_(config), ssl_ctx_(ssl_ctx), callbacks_(nullptr),
-        next_session_id_(1), tstamp_cached_(ev_now(loop)),
+  Sessions(HttpServer *sv, struct ev_loop *loop, const Config *config,
+           SSL_CTX *ssl_ctx)
+      : sv_(sv), loop_(loop), config_(config), ssl_ctx_(ssl_ctx),
+        callbacks_(nullptr), next_session_id_(1), tstamp_cached_(ev_now(loop)),
         cached_date_(util::http_date(tstamp_cached_)) {
     nghttp2_session_callbacks_new(&callbacks_);
 
@@ -244,9 +240,37 @@ public:
     }
     return cached_date_;
   }
+  FileEntry *get_cached_fd(const std::string &path) {
+    auto i = fd_cache_.find(path);
+    if (i == std::end(fd_cache_)) {
+      return nullptr;
+    }
+    auto &ent = (*i).second;
+    ++ent.usecount;
+    return &ent;
+  }
+  FileEntry *cache_fd(const std::string &path, const FileEntry &ent) {
+    auto rv = fd_cache_.emplace(path, ent);
+    return &(*rv.first).second;
+  }
+  void release_fd(const std::string &path) {
+    auto i = fd_cache_.find(path);
+    if (i == std::end(fd_cache_)) {
+      return;
+    }
+    auto &ent = (*i).second;
+    if (--ent.usecount == 0) {
+      close(ent.fd);
+      fd_cache_.erase(i);
+    }
+  }
+  const HttpServer *get_server() const { return sv_; }
 
 private:
   std::set<Http2Handler *> handlers_;
+  // cache for file descriptors to read file.
+  std::map<std::string, FileEntry> fd_cache_;
+  HttpServer *sv_;
   struct ev_loop *loop_;
   const Config *config_;
   SSL_CTX *ssl_ctx_;
@@ -257,7 +281,8 @@ private:
 };
 
 Stream::Stream(Http2Handler *handler, int32_t stream_id)
-    : handler(handler), body_left(0), stream_id(stream_id), file(-1) {
+    : handler(handler), file_ent(nullptr), body_length(0), body_offset(0),
+      stream_id(stream_id) {
   auto config = handler->get_config();
   ev_timer_init(&rtimer, stream_timeout_cb, 0., config->stream_read_timeout);
   ev_timer_init(&wtimer, stream_timeout_cb, 0., config->stream_write_timeout);
@@ -270,8 +295,9 @@ Stream::Stream(Http2Handler *handler, int32_t stream_id)
 }
 
 Stream::~Stream() {
-  if (file != -1) {
-    close(file);
+  if (file_ent != nullptr) {
+    auto sessions = handler->get_sessions();
+    sessions->release_fd(file_ent->path);
   }
 
   auto loop = handler->get_loop();
@@ -835,12 +861,12 @@ ssize_t file_read_callback(nghttp2_session *session, int32_t stream_id,
   auto hd = static_cast<Http2Handler *>(user_data);
   auto stream = hd->get_stream(stream_id);
 
-  size_t nread = std::min(stream->body_left, static_cast<int64_t>(length));
+  auto nread = std::min(stream->body_length - stream->body_offset,
+                        static_cast<int64_t>(length));
 
   *data_flags |= NGHTTP2_DATA_FLAG_NO_COPY;
 
-  stream->body_left -= nread;
-  if (nread == 0 || stream->body_left <= 0) {
+  if (nread == 0 || stream->body_length == stream->body_offset + nread) {
     *data_flags |= NGHTTP2_DATA_FLAG_EOF;
 
     auto config = hd->get_config();
@@ -872,59 +898,27 @@ ssize_t file_read_callback(nghttp2_session *session, int32_t stream_id,
 }
 
 namespace {
-void prepare_status_response(Stream *stream, Http2Handler *hd,
-                             const std::string &status) {
-  int pipefd[2];
-  if (status == STATUS_304 || pipe(pipefd) == -1) {
-    hd->submit_response(status, stream->stream_id, 0);
-    return;
-  }
-  std::string body;
-  body.reserve(256);
-  body = "<html><head><title>";
-  body += status;
-  body += "</title></head><body><h1>";
-  body += status;
-  body += "</h1><hr><address>";
-  body += NGHTTPD_SERVER;
-  body += " at port ";
-  body += util::utos(hd->get_config()->port);
-  body += "</address>";
-  body += "</body></html>";
+void prepare_status_response(Stream *stream, Http2Handler *hd, int status) {
+  auto sessions = hd->get_sessions();
+  auto status_page = sessions->get_server()->get_status_page(status);
+  auto file_ent = &status_page->file_ent;
+
+  // we don't set stream->file_ent since we don't want to expire it.
+  stream->body_length = file_ent->length;
+  nghttp2_data_provider data_prd;
+  data_prd.source.fd = file_ent->fd;
+  data_prd.read_callback = file_read_callback;
 
   Headers headers;
-  if (hd->get_config()->error_gzip) {
-    gzFile write_fd = gzdopen(pipefd[1], "w");
-    gzwrite(write_fd, body.c_str(), body.size());
-    gzclose(write_fd);
-    headers.emplace_back("content-encoding", "gzip");
-  } else {
-    ssize_t rv;
-
-    while ((rv = write(pipefd[1], body.c_str(), body.size())) == -1 &&
-           errno == EINTR)
-      ;
-
-    if (rv != static_cast<ssize_t>(body.size())) {
-      std::cerr << "Could not write all response body: " << rv << std::endl;
-    }
-  }
-  close(pipefd[1]);
-
-  stream->file = pipefd[0];
-  stream->body_left = body.size();
-  nghttp2_data_provider data_prd;
-  data_prd.source.fd = pipefd[0];
-  data_prd.read_callback = file_read_callback;
   headers.emplace_back("content-type", "text/html; charset=UTF-8");
-  hd->submit_response(status, stream->stream_id, headers, &data_prd);
+  hd->submit_response(status_page->status, stream->stream_id, headers,
+                      &data_prd);
 }
 } // namespace
 
 namespace {
 void prepare_redirect_response(Stream *stream, Http2Handler *hd,
-                               const std::string &path,
-                               const std::string &status) {
+                               const std::string &path, int status) {
   auto scheme =
       http2::get_header(stream->hdidx, http2::HD__SCHEME, stream->headers);
   auto authority =
@@ -941,7 +935,10 @@ void prepare_redirect_response(Stream *stream, Http2Handler *hd,
 
   auto headers = Headers{{"location", redirect_url}};
 
-  hd->submit_response(status, stream->stream_id, headers, nullptr);
+  auto sessions = hd->get_sessions();
+  auto status_page = sessions->get_server()->get_status_page(status);
+
+  hd->submit_response(status_page->status, stream->stream_id, headers, nullptr);
 }
 } // namespace
 
@@ -975,7 +972,7 @@ void prepare_response(Stream *stream, Http2Handler *hd,
 
   url = util::percentDecode(url.begin(), url.end());
   if (!util::check_path(url)) {
-    prepare_status_response(stream, hd, STATUS_404);
+    prepare_status_response(stream, hd, 404);
     return;
   }
   auto push_itr = hd->get_config()->push.find(url);
@@ -992,51 +989,66 @@ void prepare_response(Stream *stream, Http2Handler *hd,
   if (path[path.size() - 1] == '/') {
     path += DEFAULT_HTML;
   }
-  int file = open(path.c_str(), O_RDONLY | O_BINARY);
-  if (file == -1) {
-    prepare_status_response(stream, hd, STATUS_404);
 
-    return;
-  }
+  auto sessions = hd->get_sessions();
+  auto file_ent = sessions->get_cached_fd(path);
 
-  struct stat buf;
+  if (file_ent == nullptr) {
+    int file = open(path.c_str(), O_RDONLY | O_BINARY);
+    if (file == -1) {
+      prepare_status_response(stream, hd, 404);
 
-  if (fstat(file, &buf) == -1) {
-    close(file);
-    prepare_status_response(stream, hd, STATUS_404);
-
-    return;
-  }
-
-  if (buf.st_mode & S_IFDIR) {
-    close(file);
-
-    if (query_pos == std::string::npos) {
-      reqpath += "/";
-    } else {
-      reqpath.insert(query_pos, "/");
+      return;
     }
 
-    prepare_redirect_response(stream, hd, reqpath, STATUS_301);
+    struct stat buf;
+
+    if (fstat(file, &buf) == -1) {
+      close(file);
+      prepare_status_response(stream, hd, 404);
+
+      return;
+    }
+
+    if (buf.st_mode & S_IFDIR) {
+      close(file);
+
+      if (query_pos == std::string::npos) {
+        reqpath += "/";
+      } else {
+        reqpath.insert(query_pos, "/");
+      }
+
+      prepare_redirect_response(stream, hd, reqpath, 301);
+
+      return;
+    }
+
+    if (last_mod_found && buf.st_mtime <= last_mod) {
+      close(file);
+      prepare_status_response(stream, hd, 304);
+
+      return;
+    }
+
+    file_ent = sessions->cache_fd(
+        path, FileEntry(path, buf.st_size, buf.st_mtime, file));
+  } else if (last_mod_found && file_ent->mtime <= last_mod) {
+    sessions->release_fd(file_ent->path);
+    prepare_status_response(stream, hd, 304);
 
     return;
   }
 
-  stream->file = file;
-  stream->body_left = buf.st_size;
+  stream->file_ent = file_ent;
+  stream->body_length = file_ent->length;
 
   nghttp2_data_provider data_prd;
 
-  data_prd.source.fd = file;
+  data_prd.source.fd = file_ent->fd;
   data_prd.read_callback = file_read_callback;
 
-  if (last_mod_found && buf.st_mtime <= last_mod) {
-    prepare_status_response(stream, hd, STATUS_304);
-
-    return;
-  }
-
-  hd->submit_file_response(STATUS_200, stream, buf.st_mtime, buf.st_size,
+  hd->submit_file_response("200", stream, file_ent->mtime, file_ent->length,
                            &data_prd);
 }
 } // namespace
@@ -1220,6 +1232,7 @@ int send_data_callback(nghttp2_session *session, nghttp2_frame *frame,
   auto hd = static_cast<Http2Handler *>(user_data);
   auto wb = hd->get_wb();
   auto padlen = frame->data.padlen;
+  auto stream = hd->get_stream(frame->hd.stream_id);
 
   if (wb->wleft() < 9 + length + padlen) {
     return NGHTTP2_ERR_WOULDBLOCK;
@@ -1237,17 +1250,18 @@ int send_data_callback(nghttp2_session *session, nghttp2_frame *frame,
 
   while (length) {
     ssize_t nread;
-    while ((nread = read(fd, p, length)) == -1 && errno == EINTR)
+    while ((nread = pread(fd, p, length, stream->body_offset)) == -1 &&
+           errno == EINTR)
       ;
 
     if (nread == -1) {
-      auto stream = hd->get_stream(frame->hd.stream_id);
       remove_stream_read_timeout(stream);
       remove_stream_write_timeout(stream);
 
       return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
     }
 
+    stream->body_offset += nread;
     length -= nread;
     p += nread;
   }
@@ -1380,7 +1394,7 @@ void run_worker(Worker *worker) {
 
 class AcceptHandler {
 public:
-  AcceptHandler(Sessions *sessions, const Config *config)
+  AcceptHandler(HttpServer *sv, Sessions *sessions, const Config *config)
       : sessions_(sessions), config_(config), next_worker_(0) {
     if (config_->num_worker == 1) {
       return;
@@ -1392,7 +1406,7 @@ public:
       auto worker = make_unique<Worker>();
       auto loop = ev_loop_new(0);
       worker->sessions =
-          make_unique<Sessions>(loop, config_, sessions_->get_ssl_ctx());
+          make_unique<Sessions>(sv, loop, config_, sessions_->get_ssl_ctx());
       ev_async_init(&worker->w, worker_acceptcb);
       worker->w.data = worker.get();
       ev_async_start(loop, &worker->w);
@@ -1476,7 +1490,61 @@ void acceptcb(struct ev_loop *loop, ev_io *w, int revents) {
 }
 } // namespace
 
-HttpServer::HttpServer(const Config *config) : config_(config) {}
+namespace {
+FileEntry make_status_body(int status, uint16_t port) {
+  std::string body;
+  body = "<html><head><title>";
+  body += http2::get_status_string(status);
+  body += "</title></head><body><h1>";
+  body += http2::get_status_string(status);
+  body += "</h1><hr><address>";
+  body += NGHTTPD_SERVER;
+  body += " at port ";
+  body += util::utos(port);
+  body += "</address>";
+  body += "</body></html>";
+
+  char tempfn[] = "/tmp/nghttpd.temp.XXXXXX";
+  int fd = mkstemp(tempfn);
+  if (fd == -1) {
+    auto error = errno;
+    std::cerr << "Could not open status response body file: errno=" << error;
+    assert(0);
+  }
+  unlink(tempfn);
+  ssize_t nwrite;
+  while ((nwrite = write(fd, body.c_str(), body.size())) == -1 &&
+         errno == EINTR)
+    ;
+  if (nwrite == -1) {
+    auto error = errno;
+    std::cerr << "Could not write status response body into file: errno="
+              << error;
+    assert(0);
+  }
+
+  return FileEntry(util::utos(status), nwrite, 0, fd);
+}
+} // namespace
+
+// index into HttpServer::status_pages_
+enum {
+  IDX_200,
+  IDX_301,
+  IDX_304,
+  IDX_400,
+  IDX_404,
+};
+
+HttpServer::HttpServer(const Config *config) : config_(config) {
+  status_pages_ = std::vector<StatusPage>{
+      {"200", make_status_body(200, config_->port)},
+      {"301", make_status_body(301, config_->port)},
+      {"304", make_status_body(304, config_->port)},
+      {"400", make_status_body(400, config_->port)},
+      {"404", make_status_body(404, config_->port)},
+  };
+}
 
 namespace {
 int next_proto_cb(SSL *s, const unsigned char **data, unsigned int *len,
@@ -1497,14 +1565,14 @@ int verify_callback(int preverify_ok, X509_STORE_CTX *ctx) {
 } // namespace
 
 namespace {
-int start_listen(struct ev_loop *loop, Sessions *sessions,
+int start_listen(HttpServer *sv, struct ev_loop *loop, Sessions *sessions,
                  const Config *config) {
   addrinfo hints;
   int r;
   bool ok = false;
   const char *addr = nullptr;
 
-  auto acceptor = std::make_shared<AcceptHandler>(sessions, config);
+  auto acceptor = std::make_shared<AcceptHandler>(sv, sessions, config);
   auto service = util::utos(config->port);
 
   memset(&hints, 0, sizeof(addrinfo));
@@ -1699,8 +1767,8 @@ int HttpServer::run() {
 
   auto loop = EV_DEFAULT;
 
-  Sessions sessions(loop, config_, ssl_ctx);
-  if (start_listen(loop, &sessions, config_) != 0) {
+  Sessions sessions(this, loop, config_, ssl_ctx);
+  if (start_listen(this, loop, &sessions, config_) != 0) {
     std::cerr << "Could not listen" << std::endl;
     return -1;
   }
@@ -1710,5 +1778,23 @@ int HttpServer::run() {
 }
 
 const Config *HttpServer::get_config() const { return config_; }
+
+const StatusPage *HttpServer::get_status_page(int status) const {
+  switch (status) {
+  case 200:
+    return &status_pages_[IDX_200];
+  case 301:
+    return &status_pages_[IDX_301];
+  case 304:
+    return &status_pages_[IDX_304];
+  case 400:
+    return &status_pages_[IDX_400];
+  case 404:
+    return &status_pages_[IDX_404];
+  default:
+    assert(0);
+  }
+  return nullptr;
+}
 
 } // namespace nghttp2
