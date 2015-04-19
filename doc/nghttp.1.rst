@@ -151,6 +151,10 @@ OPTIONS
     hex+ASCII display).  If SSL/TLS  is used, decrypted data
     are used.
 
+.. option:: --no-push
+
+    Disable server push.
+
 .. option:: --version
 
     Display version information and exit.
