@@ -50,7 +50,7 @@ boost::system::error_code
 server::listen_and_serve(boost::system::error_code &ec,
                          boost::asio::ssl::context *tls_context,
                          const std::string &address, const std::string &port,
-                         int backlog, serve_mux &mux) {
+                         int backlog, serve_mux &mux, bool asynchronous) {
   ec.clear();
 
   if (bind_and_listen(ec, address, port, backlog)) {
@@ -65,7 +65,7 @@ server::listen_and_serve(boost::system::error_code &ec,
     }
   }
 
-  io_service_pool_.run();
+  io_service_pool_.run(asynchronous);
 
   return ec;
 }
@@ -154,6 +154,16 @@ void server::start_accept(tcp::acceptor &acceptor, serve_mux &mux) {
 
     start_accept(acceptor, mux);
   });
+}
+
+void server::stop()
+{
+  io_service_pool_.stop();
+}
+
+void server::join()
+{
+  io_service_pool_.join();
 }
 
 } // namespace server

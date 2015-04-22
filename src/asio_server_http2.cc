@@ -54,15 +54,17 @@ http2 &http2::operator=(http2 &&other) noexcept {
 
 boost::system::error_code http2::listen_and_serve(boost::system::error_code &ec,
                                                   const std::string &address,
-                                                  const std::string &port) {
-  return impl_->listen_and_serve(ec, nullptr, address, port);
+                                                  const std::string &port,
+                                                  bool asynchronous) {
+  return impl_->listen_and_serve(ec, nullptr, address, port, asynchronous);
 }
 
 boost::system::error_code
 http2::listen_and_serve(boost::system::error_code &ec,
                         boost::asio::ssl::context &tls_context,
-                        const std::string &address, const std::string &port) {
-  return impl_->listen_and_serve(ec, &tls_context, address, port);
+                        const std::string &address, const std::string &port,
+                        bool asynchronous) {
+  return impl_->listen_and_serve(ec, &tls_context, address, port, asynchronous);
 }
 
 void http2::num_threads(size_t num_threads) { impl_->num_threads(num_threads); }
@@ -71,6 +73,16 @@ void http2::backlog(int backlog) { impl_->backlog(backlog); }
 
 bool http2::handle(std::string pattern, request_cb cb) {
   return impl_->handle(std::move(pattern), std::move(cb));
+}
+
+void http2::stop()
+{
+  impl_->stop();
+}
+
+void http2::join()
+{
+  return impl_->join();
 }
 
 } // namespace server
