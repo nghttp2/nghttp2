@@ -1,7 +1,6 @@
 language: cpp
 compiler:
   - clang
-#Disable gcc build for the moment...
   - gcc
 sudo: false
 addons:
@@ -9,8 +8,8 @@ addons:
     sources:
     - ubuntu-toolchain-r-test
     packages:
-    - g++-4.8
-    - libstdc++-4.8-dev
+    - g++-4.9
+    - libstdc++-4.9-dev
     - autoconf
     - automake
     - autotools-dev
@@ -26,7 +25,7 @@ addons:
     - libjemalloc-dev
 before_install:
   - $CC --version
-  - if [ "$CXX" = "g++" ]; then export CXX="g++-4.8" CC="gcc-4.8"; fi
+  - if [ "$CXX" = "g++" ]; then export CXX="g++-4.9" CC="gcc-4.9"; fi
   - $CC --version
 before_script:
   - autoreconf -i
