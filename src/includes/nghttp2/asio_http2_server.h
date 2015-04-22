@@ -136,14 +136,20 @@ public:
   http2 &operator=(http2 &&other) noexcept;
 
   // Starts listening connection on given address and port and serves
-  // incoming requests in cleartext TCP connection.
+  // incoming requests in cleartext TCP connection.  If |asynchronous|
+  // is false, this function blocks forever unless there is an error.
+  // If it is true, after server has started, this function returns
+  // immediately, and the caller should call join() to shutdown server
+  // gracefully.
   boost::system::error_code listen_and_serve(boost::system::error_code &ec,
                                              const std::string &address,
                                              const std::string &port,
                                              bool asynchronous = false);
 
   // Starts listening connection on given address and port and serves
-  // incoming requests in SSL/TLS encrypted connection.
+  // incoming requests in SSL/TLS encrypted connection.  For
+  // |asynchronous| parameter, see cleartext version
+  // |listen_and_serve|.
   boost::system::error_code
   listen_and_serve(boost::system::error_code &ec,
                    boost::asio::ssl::context &tls_context,
