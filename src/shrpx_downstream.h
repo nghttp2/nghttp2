@@ -287,7 +287,7 @@ public:
   int change_priority(int32_t pri);
 
   // Maximum buffer size for header name/value pairs.
-  static const size_t MAX_HEADERS_SUM = 32768;
+  static constexpr size_t MAX_HEADERS_SUM = 128 * 1024;
 
   bool get_rst_stream_after_end_stream() const;
   void set_rst_stream_after_end_stream(bool f);
