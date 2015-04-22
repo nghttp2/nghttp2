@@ -41,6 +41,7 @@
 
 #include <vector>
 #include <memory>
+#include <future>
 
 #include <boost/noncopyable.hpp>
 #include <boost/thread.hpp>
@@ -58,10 +59,13 @@ public:
   explicit io_service_pool(std::size_t pool_size);
 
   /// Run all io_service objects in the pool.
-  void run();
+  void run(bool asynchronous = false);
 
   /// Stop all io_service objects in the pool.
   void stop();
+
+  /// Join on all io_service objects in the pool.
+  void join();
 
   /// Get an io_service to use.
   boost::asio::io_service &get_io_service();
@@ -75,6 +79,9 @@ private:
 
   /// The next io_service to use for a connection.
   std::size_t next_io_service_;
+
+  /// Futures to all the io_service objects
+  std::vector<std::future<std::size_t>> futures_;
 };
 
 } // namespace asio_http2

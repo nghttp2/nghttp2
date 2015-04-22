@@ -45,10 +45,13 @@ public:
   boost::system::error_code
   listen_and_serve(boost::system::error_code &ec,
                    boost::asio::ssl::context *tls_context,
-                   const std::string &address, const std::string &port);
+                   const std::string &address, const std::string &port,
+                   bool asynchronous);
   void num_threads(size_t num_threads);
   void backlog(int backlog);
   bool handle(std::string pattern, request_cb cb);
+  void stop();
+  void join();
 
 private:
   std::unique_ptr<server> server_;
