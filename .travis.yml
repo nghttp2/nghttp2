@@ -2,7 +2,7 @@ language: cpp
 compiler:
   - clang
 #Disable gcc build for the moment...
-#  - gcc
+  - gcc
 sudo: false
 addons:
   apt:
