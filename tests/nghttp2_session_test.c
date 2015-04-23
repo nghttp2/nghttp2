@@ -405,6 +405,12 @@ static int on_begin_headers_callback(nghttp2_session *session _U_,
   return 0;
 }
 
+static int temporal_failure_on_begin_headers_callback(
+    nghttp2_session *session, const nghttp2_frame *frame, void *user_data) {
+  on_begin_headers_callback(session, frame, user_data);
+  return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+}
+
 static ssize_t defer_data_source_read_callback(nghttp2_session *session _U_,
                                                int32_t stream_id _U_,
                                                uint8_t *buf _U_, size_t len _U_,
@@ -7031,6 +7037,78 @@ void test_nghttp2_session_send_data_callback(void) {
   CU_ASSERT(NGHTTP2_FLAG_END_STREAM == hd.flags);
 
   nghttp2_session_del(session);
+}
+
+void test_nghttp2_session_on_begin_headers_temporal_failure(void) {
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  my_user_data ud;
+  nghttp2_bufs bufs;
+  nghttp2_mem *mem;
+  ssize_t rv;
+  nghttp2_hd_deflater deflater;
+  nghttp2_outbound_item *item;
+
+  mem = nghttp2_mem_default();
+  frame_pack_bufs_init(&bufs);
+  nghttp2_hd_deflate_init(&deflater, mem);
+
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+  callbacks.on_begin_headers_callback =
+      temporal_failure_on_begin_headers_callback;
+  callbacks.on_header_callback = on_header_callback;
+  callbacks.on_frame_recv_callback = on_frame_recv_callback;
+  callbacks.send_callback = null_send_callback;
+  nghttp2_session_server_new(&session, &callbacks, &ud);
+
+  rv = pack_headers(&bufs, &deflater, 1, NGHTTP2_FLAG_END_HEADERS, reqnv,
+                    ARRLEN(reqnv), mem);
+  CU_ASSERT(0 == rv);
+
+  ud.header_cb_called = 0;
+  ud.frame_recv_cb_called = 0;
+  rv = nghttp2_session_mem_recv(session, bufs.head->buf.pos,
+                                nghttp2_bufs_len(&bufs));
+  CU_ASSERT(nghttp2_bufs_len(&bufs) == rv);
+  CU_ASSERT(0 == ud.header_cb_called);
+  CU_ASSERT(0 == ud.frame_recv_cb_called);
+
+  item = nghttp2_session_get_next_ob_item(session);
+  CU_ASSERT(NGHTTP2_RST_STREAM == item->frame.hd.type);
+  CU_ASSERT(1 == item->frame.hd.stream_id);
+  CU_ASSERT(NGHTTP2_INTERNAL_ERROR == item->frame.rst_stream.error_code);
+
+  nghttp2_session_del(session);
+  nghttp2_hd_deflate_free(&deflater);
+
+  nghttp2_bufs_reset(&bufs);
+  /* check for PUSH_PROMISE */
+  nghttp2_hd_deflate_init(&deflater, mem);
+  nghttp2_session_client_new(&session, &callbacks, &ud);
+
+  nghttp2_session_open_stream(session, 1, NGHTTP2_STREAM_FLAG_NONE,
+                              &pri_spec_default, NGHTTP2_STREAM_OPENING, NULL);
+
+  rv = pack_push_promise(&bufs, &deflater, 1, NGHTTP2_FLAG_END_HEADERS, 2,
+                         reqnv, ARRLEN(reqnv), mem);
+  CU_ASSERT(0 == rv);
+
+  ud.header_cb_called = 0;
+  ud.frame_recv_cb_called = 0;
+  rv = nghttp2_session_mem_recv(session, bufs.head->buf.pos,
+                                nghttp2_bufs_len(&bufs));
+  CU_ASSERT(nghttp2_bufs_len(&bufs) == rv);
+  CU_ASSERT(0 == ud.header_cb_called);
+  CU_ASSERT(0 == ud.frame_recv_cb_called);
+
+  item = nghttp2_session_get_next_ob_item(session);
+  CU_ASSERT(NGHTTP2_RST_STREAM == item->frame.hd.type);
+  CU_ASSERT(2 == item->frame.hd.stream_id);
+  CU_ASSERT(NGHTTP2_INTERNAL_ERROR == item->frame.rst_stream.error_code);
+
+  nghttp2_session_del(session);
+  nghttp2_hd_deflate_free(&deflater);
+  nghttp2_bufs_free(&bufs);
 }
 
 static void check_nghttp2_http_recv_headers_fail(

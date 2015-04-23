@@ -124,6 +124,7 @@ void test_nghttp2_session_open_idle_stream(void);
 void test_nghttp2_session_cancel_reserved_remote(void);
 void test_nghttp2_session_reset_pending_headers(void);
 void test_nghttp2_session_send_data_callback(void);
+void test_nghttp2_session_on_begin_headers_temporal_failure(void);
 void test_nghttp2_http_mandatory_headers(void);
 void test_nghttp2_http_content_length(void);
 void test_nghttp2_http_content_length_mismatch(void);

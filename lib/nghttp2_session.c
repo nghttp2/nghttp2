@@ -3069,6 +3069,9 @@ static int session_call_on_begin_headers(nghttp2_session *session,
   if (session->callbacks.on_begin_headers_callback) {
     rv = session->callbacks.on_begin_headers_callback(session, frame,
                                                       session->user_data);
+    if (rv == NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE) {
+      return rv;
+    }
     if (rv != 0) {
       return NGHTTP2_ERR_CALLBACK_FAILURE;
     }
@@ -5085,6 +5088,16 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
 
         busy = 1;
 
+        if (rv == NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE) {
+          rv = nghttp2_session_add_rst_stream(
+              session, iframe->frame.hd.stream_id, NGHTTP2_INTERNAL_ERROR);
+          if (nghttp2_is_fatal(rv)) {
+            return rv;
+          }
+          iframe->state = NGHTTP2_IB_IGN_HEADER_BLOCK;
+          break;
+        }
+
         if (rv == NGHTTP2_ERR_IGN_HEADER_BLOCK) {
           iframe->state = NGHTTP2_IB_IGN_HEADER_BLOCK;
           break;
@@ -5329,6 +5342,16 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
 
         busy = 1;
 
+        if (rv == NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE) {
+          rv = nghttp2_session_add_rst_stream(
+              session, iframe->frame.hd.stream_id, NGHTTP2_INTERNAL_ERROR);
+          if (nghttp2_is_fatal(rv)) {
+            return rv;
+          }
+          iframe->state = NGHTTP2_IB_IGN_HEADER_BLOCK;
+          break;
+        }
+
         if (rv == NGHTTP2_ERR_IGN_HEADER_BLOCK) {
           iframe->state = NGHTTP2_IB_IGN_HEADER_BLOCK;
           break;
@@ -5392,6 +5415,17 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
         }
 
         busy = 1;
+
+        if (rv == NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE) {
+          rv = nghttp2_session_add_rst_stream(
+              session, iframe->frame.push_promise.promised_stream_id,
+              NGHTTP2_INTERNAL_ERROR);
+          if (nghttp2_is_fatal(rv)) {
+            return rv;
+          }
+          iframe->state = NGHTTP2_IB_IGN_HEADER_BLOCK;
+          break;
+        }
 
         if (rv == NGHTTP2_ERR_IGN_HEADER_BLOCK) {
           iframe->state = NGHTTP2_IB_IGN_HEADER_BLOCK;

@@ -1502,11 +1502,24 @@ typedef int (*nghttp2_on_stream_close_callback)(nghttp2_session *session,
  * trailer headers also has ``frame->headers.cat ==
  * NGHTTP2_HCAT_HEADERS`` which does not contain any status code.
  *
- * The implementation of this function must return 0 if it succeeds or
- * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.  If nonzero value other than
- * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE` is returned, it is treated as
- * if :enum:`NGHTTP2_ERR_CALLBACK_FAILURE` is returned.  If
- * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE` is returned,
+ * Returning :enum:`NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE` will close
+ * the stream (promised stream if frame is PUSH_PROMISE) by issuing
+ * RST_STREAM with :enum:`NGHTTP2_INTERNAL_ERROR`.  In this case,
+ * :type:`nghttp2_on_header_callback` and
+ * :type:`nghttp2_on_frame_recv_callback` will not be invoked.  If a
+ * different error code is desirable, use
+ * `nghttp2_submit_rst_stream()` with a desired error code and then
+ * return :enum:`NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE`.  Again, use
+ * `frame->push_promise.promised_stream_id` as stream_id parameter in
+ * `nghttp2_submit_rst_stream()` if frame is PUSH_PROMISE.
+ *
+ * The implementation of this function must return 0 if it succeeds.
+ * It can return :enum:`NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE` to
+ * reset the stream (promised stream if frame is PUSH_PROMISE).  For
+ * critical errors, it must return
+ * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.  If the other value is
+ * returned, it is treated as if :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`
+ * is returned.  If :enum:`NGHTTP2_ERR_CALLBACK_FAILURE` is returned,
  * `nghttp2_session_mem_recv()` function will immediately return
  * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
  *
