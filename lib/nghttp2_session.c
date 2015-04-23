@@ -5533,8 +5533,12 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
           in += hd_proclen;
           iframe->payloadleft -= hd_proclen;
 
+          /* Use promised stream ID for PUSH_PROMISE */
           rv = nghttp2_session_add_rst_stream(
-              session, iframe->frame.hd.stream_id, NGHTTP2_INTERNAL_ERROR);
+              session, iframe->frame.hd.type == NGHTTP2_PUSH_PROMISE
+                           ? iframe->frame.push_promise.promised_stream_id
+                           : iframe->frame.hd.stream_id,
+              NGHTTP2_INTERNAL_ERROR);
           if (nghttp2_is_fatal(rv)) {
             return rv;
           }
