@@ -58,7 +58,7 @@ json_t *dump_header(const uint8_t *name, size_t namelen, const uint8_t *value,
   json_t *nv_pair = json_object();
   char *cname = malloc(namelen + 1);
   if (cname == NULL) {
-      return NULL;
+    return NULL;
   }
   memcpy(cname, name, namelen);
   cname[namelen] = '\0';
