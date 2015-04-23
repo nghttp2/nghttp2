@@ -226,8 +226,9 @@ typedef enum {
    */
   NGHTTP2_ERR_UNSUPPORTED_VERSION = -503,
   /**
-   * Used as a return value from :type:`nghttp2_send_callback` and
-   * :type:`nghttp2_recv_callback` to indicate that the operation
+   * Used as a return value from :type:`nghttp2_send_callback`,
+   * :type:`nghttp2_recv_callback` and
+   * :type:`nghttp2_send_data_callback` to indicate that the operation
    * would block.
    */
   NGHTTP2_ERR_WOULDBLOCK = -504,
@@ -1217,10 +1218,10 @@ typedef ssize_t (*nghttp2_recv_callback)(nghttp2_session *session, uint8_t *buf,
 /**
  * @functypedef
  *
- * Callback function invoked by `nghttp2_session_recv()` when a frame
- * is received.  The |user_data| pointer is the third argument passed
- * in to the call to `nghttp2_session_client_new()` or
- * `nghttp2_session_server_new()`.
+ * Callback function invoked by `nghttp2_session_recv()` and
+ * `nghttp2_session_mem_recv()` when a frame is received.  The
+ * |user_data| pointer is the third argument passed in to the call to
+ * `nghttp2_session_client_new()` or `nghttp2_session_server_new()`.
  *
  * If frame is HEADERS or PUSH_PROMISE, the ``nva`` and ``nvlen``
  * member of their data structure are always ``NULL`` and 0
@@ -1255,14 +1256,14 @@ typedef int (*nghttp2_on_frame_recv_callback)(nghttp2_session *session,
 /**
  * @functypedef
  *
- * Callback function invoked by `nghttp2_session_recv()` when an
- * invalid non-DATA frame is received.  The error is indicated by the
- * |lib_error_code|, which is one of the values defined in
- * :type:`nghttp2_error`.  When this callback function is invoked, the
- * library automatically submits either RST_STREAM or GOAWAY frame.
- * The |user_data| pointer is the third argument passed in to the call
- * to `nghttp2_session_client_new()` or
- * `nghttp2_session_server_new()`.
+ * Callback function invoked by `nghttp2_session_recv()` and
+ * `nghttp2_session_mem_recv()` when an invalid non-DATA frame is
+ * received.  The error is indicated by the |lib_error_code|, which is
+ * one of the values defined in :type:`nghttp2_error`.  When this
+ * callback function is invoked, the library automatically submits
+ * either RST_STREAM or GOAWAY frame.  The |user_data| pointer is the
+ * third argument passed in to the call to
+ * `nghttp2_session_client_new()` or `nghttp2_session_server_new()`.
  *
  * If frame is HEADERS or PUSH_PROMISE, the ``nva`` and ``nvlen``
  * member of their data structure are always ``NULL`` and 0
@@ -1270,7 +1271,7 @@ typedef int (*nghttp2_on_frame_recv_callback)(nghttp2_session *session,
  *
  * The implementation of this function must return 0 if it succeeds.
  * If nonzero is returned, it is treated as fatal error and
- * `nghttp2_session_recv()` and `nghttp2_session_send()` functions
+ * `nghttp2_session_recv()` and `nghttp2_session_mem_recv()` functions
  * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
  *
  * To set this callback to :type:`nghttp2_session_callbacks`, use
@@ -1303,7 +1304,7 @@ typedef int (*nghttp2_on_invalid_frame_recv_callback)(
  * region included in the input bytes.
  *
  * The implementation of this function must return 0 if it succeeds.
- * If nonzero is returned, it is treated as fatal error and
+ * If nonzero is returned, it is treated as fatal error, and
  * `nghttp2_session_recv()` and `nghttp2_session_mem_recv()` functions
  * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
  *
@@ -1326,7 +1327,7 @@ typedef int (*nghttp2_on_data_chunk_recv_callback)(nghttp2_session *session,
  *
  * The implementation of this function must return 0 if it succeeds.
  * If nonzero is returned, it is treated as fatal error and
- * `nghttp2_session_recv()` and `nghttp2_session_send()` functions
+ * `nghttp2_session_send()` and `nghttp2_session_mem_send()` functions
  * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
  *
  * To set this callback to :type:`nghttp2_session_callbacks`, use
@@ -1345,7 +1346,7 @@ typedef int (*nghttp2_before_frame_send_callback)(nghttp2_session *session,
  *
  * The implementation of this function must return 0 if it succeeds.
  * If nonzero is returned, it is treated as fatal error and
- * `nghttp2_session_recv()` and `nghttp2_session_send()` functions
+ * `nghttp2_session_send()` and `nghttp2_session_mem_send()` functions
  * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
  *
  * To set this callback to :type:`nghttp2_session_callbacks`, use
@@ -1367,7 +1368,7 @@ typedef int (*nghttp2_on_frame_send_callback)(nghttp2_session *session,
  *
  * The implementation of this function must return 0 if it succeeds.
  * If nonzero is returned, it is treated as fatal error and
- * `nghttp2_session_recv()` and `nghttp2_session_send()` functions
+ * `nghttp2_session_send()` and `nghttp2_session_mem_send()` functions
  * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
  *
  * `nghttp2_session_get_stream_user_data()` can be used to get
@@ -1397,8 +1398,9 @@ typedef int (*nghttp2_on_frame_not_send_callback)(nghttp2_session *session,
  *
  * The implementation of this function must return 0 if it succeeds.
  * If nonzero is returned, it is treated as fatal error and
- * `nghttp2_session_recv()` and `nghttp2_session_send()` functions
- * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
+ * `nghttp2_session_recv()`, `nghttp2_session_mem_recv()`,
+ * `nghttp2_session_send()`, and `nghttp2_session_mem_send()`
+ * functions immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
  *
  * To set this callback to :type:`nghttp2_session_callbacks`, use
  * `nghttp2_session_callbacks_set_on_stream_close_callback()`.
@@ -1440,13 +1442,26 @@ typedef int (*nghttp2_on_stream_close_callback)(nghttp2_session *session,
  * frame with ``frame->headers.cat == NGHTTP2_HCAT_HEADERS``
  * containing final response headers (non-1xx status code).  The
  * trailer headers also has ``frame->headers.cat ==
- * NGHTTP2_HCAT_HEADERS`` which does not containg any status code.
+ * NGHTTP2_HCAT_HEADERS`` which does not contain any status code.
  *
- * The implementation of this function must return 0 if it succeeds or
- * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.  If nonzero value other than
- * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE` is returned, it is treated as
- * if :enum:`NGHTTP2_ERR_CALLBACK_FAILURE` is returned.  If
- * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE` is returned,
+ * Returning :enum:`NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE` will close
+ * the stream (promised stream if frame is PUSH_PROMISE) by issuing
+ * RST_STREAM with :enum:`NGHTTP2_INTERNAL_ERROR`.  In this case,
+ * :type:`nghttp2_on_header_callback` and
+ * :type:`nghttp2_on_frame_recv_callback` will not be invoked.  If a
+ * different error code is desirable, use
+ * `nghttp2_submit_rst_stream()` with a desired error code and then
+ * return :enum:`NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE`.  Again, use
+ * ``frame->push_promise.promised_stream_id`` as stream_id parameter
+ * in `nghttp2_submit_rst_stream()` if frame is PUSH_PROMISE.
+ *
+ * The implementation of this function must return 0 if it succeeds.
+ * It can return :enum:`NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE` to
+ * reset the stream (promised stream if frame is PUSH_PROMISE).  For
+ * critical errors, it must return
+ * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.  If the other value is
+ * returned, it is treated as if :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`
+ * is returned.  If :enum:`NGHTTP2_ERR_CALLBACK_FAILURE` is returned,
  * `nghttp2_session_mem_recv()` function will immediately return
  * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
  *
@@ -1501,12 +1516,15 @@ typedef int (*nghttp2_on_begin_headers_callback)(nghttp2_session *session,
  * included in the input bytes.
  *
  * Returning :enum:`NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE` will close
- * the stream by issuing RST_STREAM with
- * :enum:`NGHTTP2_INTERNAL_ERROR`.  In this case,
+ * the stream (promised stream if frame is PUSH_PROMISE) by issuing
+ * RST_STREAM with :enum:`NGHTTP2_INTERNAL_ERROR`.  In this case,
+ * :type:`nghttp2_on_header_callback` and
  * :type:`nghttp2_on_frame_recv_callback` will not be invoked.  If a
  * different error code is desirable, use
  * `nghttp2_submit_rst_stream()` with a desired error code and then
- * return :enum:`NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE`.
+ * return :enum:`NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE`.  Again, use
+ * ``frame->push_promise.promised_stream_id`` as stream_id parameter
+ * in `nghttp2_submit_rst_stream()` if frame is PUSH_PROMISE.
  *
  * The implementation of this function must return 0 if it succeeds.
  * It may return :enum:`NGHTTP2_ERR_PAUSE` or
@@ -1538,8 +1556,8 @@ typedef int (*nghttp2_on_header_callback)(nghttp2_session *session,
  * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.  Returning
  * ``frame->hd.length`` means no padding is added.  Returning
  * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE` will make
- * `nghttp2_session_send()` function immediately return
- * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
+ * `nghttp2_session_send()` and `nghttp2_session_mem_send()` functions
+ * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
  *
  * To set this callback to :type:`nghttp2_session_callbacks`, use
  * `nghttp2_session_callbacks_set_select_padding_callback()`.
@@ -1668,8 +1686,8 @@ NGHTTP2_EXTERN void nghttp2_session_callbacks_set_recv_callback(
 /**
  * @function
  *
- * Sets callback function invoked by `nghttp2_session_recv()` when a
- * frame is received.
+ * Sets callback function invoked by `nghttp2_session_recv()` and
+ * `nghttp2_session_mem_recv()` when a frame is received.
  */
 NGHTTP2_EXTERN void nghttp2_session_callbacks_set_on_frame_recv_callback(
     nghttp2_session_callbacks *cbs,
@@ -1678,8 +1696,9 @@ NGHTTP2_EXTERN void nghttp2_session_callbacks_set_on_frame_recv_callback(
 /**
  * @function
  *
- * Sets callback function invoked by `nghttp2_session_recv()` when an
- * invalid non-DATA frame is received.
+ * Sets callback function invoked by `nghttp2_session_recv()` and
+ * `nghttp2_session_mem_recv()` when an invalid non-DATA frame is
+ * received.
  */
 NGHTTP2_EXTERN void
 nghttp2_session_callbacks_set_on_invalid_frame_recv_callback(

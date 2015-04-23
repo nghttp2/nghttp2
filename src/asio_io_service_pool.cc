@@ -35,8 +35,6 @@
 //
 #include "asio_io_service_pool.h"
 
-#include <future>
-
 namespace nghttp2 {
 
 namespace asio_http2 {
@@ -56,19 +54,23 @@ io_service_pool::io_service_pool(std::size_t pool_size) : next_io_service_(0) {
   }
 }
 
-void io_service_pool::run() {
+void io_service_pool::run(bool asynchronous) {
   // Create a pool of threads to run all of the io_services.
-  auto futs = std::vector<std::future<std::size_t>>();
-
   for (std::size_t i = 0; i < io_services_.size(); ++i) {
-    futs.push_back(std::async(std::launch::async,
+    futures_.push_back(std::async(std::launch::async,
                               (size_t (boost::asio::io_service::*)(void)) &
                                   boost::asio::io_service::run,
                               io_services_[i]));
   }
 
+  if (!asynchronous) {
+    join();
+  }
+}
+
+void io_service_pool::join() {
   // Wait for all threads in the pool to exit.
-  for (auto &fut : futs) {
+  for (auto &fut : futures_) {
     fut.get();
   }
 }

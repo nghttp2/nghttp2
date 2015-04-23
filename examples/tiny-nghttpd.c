@@ -697,7 +697,8 @@ static ssize_t fd_read_callback(nghttp2_session *session _U_,
                                 nghttp2_data_source *source,
                                 void *user_data _U_) {
   stream *strm = source->ptr;
-  ssize_t nread = (int64_t)length < strm->fileleft ? length : strm->fileleft;
+  ssize_t nread =
+      (int64_t)length < strm->fileleft ? (int64_t)length : strm->fileleft;
 
   *data_flags |= NGHTTP2_DATA_FLAG_NO_COPY;
 

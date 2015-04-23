@@ -136,17 +136,25 @@ public:
   http2 &operator=(http2 &&other) noexcept;
 
   // Starts listening connection on given address and port and serves
-  // incoming requests in cleartext TCP connection.
+  // incoming requests in cleartext TCP connection.  If |asynchronous|
+  // is false, this function blocks forever unless there is an error.
+  // If it is true, after server has started, this function returns
+  // immediately, and the caller should call join() to shutdown server
+  // gracefully.
   boost::system::error_code listen_and_serve(boost::system::error_code &ec,
                                              const std::string &address,
-                                             const std::string &port);
+                                             const std::string &port,
+                                             bool asynchronous = false);
 
   // Starts listening connection on given address and port and serves
-  // incoming requests in SSL/TLS encrypted connection.
+  // incoming requests in SSL/TLS encrypted connection.  For
+  // |asynchronous| parameter, see cleartext version
+  // |listen_and_serve|.
   boost::system::error_code
   listen_and_serve(boost::system::error_code &ec,
                    boost::asio::ssl::context &tls_context,
-                   const std::string &address, const std::string &port);
+                   const std::string &address, const std::string &port,
+                   bool asynchronous = false);
 
   // Registers request handler |cb| with path pattern |pattern|.  This
   // function will fail and returns false if same pattern has been
@@ -186,6 +194,12 @@ public:
   // Sets the maximum length to which the queue of pending
   // connections.
   void backlog(int backlog);
+
+  // Gracefully stop http2 server
+  void stop();
+
+  // Join on http2 server and wait for it to fully stop
+  void join();
 
 private:
   std::unique_ptr<http2_impl> impl_;
