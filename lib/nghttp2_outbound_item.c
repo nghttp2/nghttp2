@@ -65,3 +65,32 @@ void nghttp2_outbound_item_free(nghttp2_outbound_item *item, nghttp2_mem *mem) {
     break;
   }
 }
+
+void nghttp2_outbound_queue_init(nghttp2_outbound_queue *q) {
+  q->head = q->tail = NULL;
+  q->n = 0;
+}
+
+void nghttp2_outbound_queue_push(nghttp2_outbound_queue *q,
+                                 nghttp2_outbound_item *item) {
+  if (q->tail) {
+    q->tail = q->tail->qnext = item;
+  } else {
+    q->head = q->tail = item;
+  }
+  ++q->n;
+}
+
+void nghttp2_outbound_queue_pop(nghttp2_outbound_queue *q) {
+  nghttp2_outbound_item *item;
+  if (!q->head) {
+    return;
+  }
+  item = q->head;
+  q->head = q->head->qnext;
+  item->qnext = NULL;
+  if (!q->head) {
+    q->tail = NULL;
+  }
+  --q->n;
+}

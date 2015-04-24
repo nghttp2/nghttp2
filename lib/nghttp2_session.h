@@ -142,12 +142,15 @@ typedef enum {
 struct nghttp2_session {
   nghttp2_map /* <nghttp2_stream*> */ streams;
   nghttp2_stream_roots roots;
-  /* Queue for outbound frames other than stream-creating HEADERS and
-     DATA */
-  nghttp2_pq /* <nghttp2_outbound_item*> */ ob_pq;
-  /* Queue for outbound stream-creating HEADERS frame */
-  nghttp2_pq /* <nghttp2_outbound_item*> */ ob_ss_pq;
-  /* QUeue for DATA frame */
+  /* Queue for outbound urgent frames (PING and SETTINGS) */
+  nghttp2_outbound_queue ob_urgent;
+  /* Queue for non-DATA frames */
+  nghttp2_outbound_queue ob_reg;
+  /* Queue for outbound stream-creating HEADERS (request or push
+     response) frame, which are subject to
+     SETTINGS_MAX_CONCURRENT_STREAMS limit. */
+  nghttp2_outbound_queue ob_syn;
+  /* Queue for DATA frame */
   nghttp2_pq /* <nghttp2_outbound_item*> */ ob_da_pq;
   nghttp2_active_outbound_item aob;
   nghttp2_inbound_frame iframe;
@@ -156,9 +159,6 @@ struct nghttp2_session {
   nghttp2_session_callbacks callbacks;
   /* Memory allocator */
   nghttp2_mem mem;
-  /* Sequence number of outbound frame to maintain the order of
-     enqueue if priority is equal. */
-  int64_t next_seq;
   /* Reset count of nghttp2_outbound_item's weight.  We decrements
      weight each time DATA is sent to simulate resource sharing.  We
      use priority queue and larger weight has the precedence.  If
@@ -706,12 +706,6 @@ int nghttp2_session_pack_data(nghttp2_session *session, nghttp2_bufs *bufs,
                               size_t datamax, nghttp2_frame *frame,
                               nghttp2_data_aux_data *aux_data,
                               nghttp2_stream *stream);
-
-/*
- * Returns top of outbound frame queue. This function returns NULL if
- * queue is empty.
- */
-nghttp2_outbound_item *nghttp2_session_get_ob_pq_top(nghttp2_session *session);
 
 /*
  * Pops and returns next item to send. If there is no such item,

@@ -1641,7 +1641,7 @@ void test_nghttp2_session_add_frame(void) {
   session->next_stream_id += 2;
 
   CU_ASSERT(0 == nghttp2_session_add_item(session, item));
-  CU_ASSERT(0 == nghttp2_pq_empty(&session->ob_ss_pq));
+  CU_ASSERT(NULL != nghttp2_outbound_queue_top(&session->ob_syn));
   CU_ASSERT(0 == nghttp2_session_send(session));
   CU_ASSERT(NGHTTP2_HEADERS == acc.buf[3]);
   CU_ASSERT((NGHTTP2_FLAG_END_HEADERS | NGHTTP2_FLAG_PRIORITY) == acc.buf[4]);
@@ -2484,16 +2484,16 @@ void test_nghttp2_session_on_ping_received(void) {
   CU_ASSERT(0 == nghttp2_session_on_ping_received(session, &frame));
   CU_ASSERT(1 == user_data.frame_recv_cb_called);
 
-  /* Since this ping frame has PONG flag set, no further action is
+  /* Since this ping frame has ACK flag set, no further action is
      performed. */
-  CU_ASSERT(NULL == nghttp2_session_get_ob_pq_top(session));
+  CU_ASSERT(NULL == nghttp2_outbound_queue_top(&session->ob_urgent));
 
   /* Clear the flag, and receive it again */
   frame.hd.flags = NGHTTP2_FLAG_NONE;
 
   CU_ASSERT(0 == nghttp2_session_on_ping_received(session, &frame));
   CU_ASSERT(2 == user_data.frame_recv_cb_called);
-  top = nghttp2_session_get_ob_pq_top(session);
+  top = nghttp2_outbound_queue_top(&session->ob_urgent);
   CU_ASSERT(NGHTTP2_PING == top->frame.hd.type);
   CU_ASSERT(NGHTTP2_FLAG_ACK == top->frame.hd.flags);
   CU_ASSERT(memcmp(opaque_data, top->frame.ping.opaque_data, 8) == 0);
@@ -2664,7 +2664,7 @@ void test_nghttp2_session_on_data_received(void) {
   frame.hd.stream_id = 4;
 
   CU_ASSERT(0 == nghttp2_session_on_data_received(session, &frame));
-  CU_ASSERT(NULL == nghttp2_session_get_ob_pq_top(session));
+  CU_ASSERT(NULL == nghttp2_outbound_queue_top(&session->ob_reg));
 
   /* Check INVALID_STREAM case: DATA frame with stream ID which does
      not exist. */
@@ -2672,7 +2672,7 @@ void test_nghttp2_session_on_data_received(void) {
   frame.hd.stream_id = 6;
 
   CU_ASSERT(0 == nghttp2_session_on_data_received(session, &frame));
-  top = nghttp2_session_get_ob_pq_top(session);
+  top = nghttp2_outbound_queue_top(&session->ob_reg);
   /* DATA against nonexistent stream is just ignored for now */
   CU_ASSERT(top == NULL);
   /* CU_ASSERT(NGHTTP2_RST_STREAM == top->frame.hd.type); */
@@ -4513,7 +4513,7 @@ void test_nghttp2_session_pop_next_ob_item(void) {
   CU_ASSERT(0 == nghttp2_submit_headers(session, NGHTTP2_FLAG_END_STREAM, 2,
                                         NULL, NULL, 0, NULL));
   CU_ASSERT(NULL == nghttp2_session_pop_next_ob_item(session));
-  CU_ASSERT(1 == nghttp2_pq_size(&session->ob_ss_pq));
+  CU_ASSERT(1 == nghttp2_outbound_queue_size(&session->ob_syn));
   nghttp2_session_del(session);
 }
 
@@ -4559,7 +4559,7 @@ void test_nghttp2_session_max_concurrent_streams(void) {
   CU_ASSERT(NGHTTP2_ERR_IGN_HEADER_BLOCK ==
             nghttp2_session_on_request_headers_received(session, &frame));
 
-  item = nghttp2_session_get_ob_pq_top(session);
+  item = nghttp2_outbound_queue_top(&session->ob_reg);
   CU_ASSERT(NGHTTP2_RST_STREAM == item->frame.hd.type);
   CU_ASSERT(NGHTTP2_REFUSED_STREAM == item->frame.rst_stream.error_code);
 
@@ -4572,7 +4572,7 @@ void test_nghttp2_session_max_concurrent_streams(void) {
   CU_ASSERT(NGHTTP2_ERR_IGN_HEADER_BLOCK ==
             nghttp2_session_on_request_headers_received(session, &frame));
 
-  item = nghttp2_session_get_ob_pq_top(session);
+  item = nghttp2_outbound_queue_top(&session->ob_reg);
   CU_ASSERT(NGHTTP2_GOAWAY == item->frame.hd.type);
   CU_ASSERT(NGHTTP2_PROTOCOL_ERROR == item->frame.goaway.error_code);
 
@@ -6937,7 +6937,7 @@ void test_nghttp2_session_cancel_reserved_remote(void) {
 
   /* No RST_STREAM or GOAWAY is generated since stream should be in
      NGHTTP2_STREAM_CLOSING and push response should be ignored. */
-  CU_ASSERT(0 == nghttp2_pq_size(&session->ob_pq));
+  CU_ASSERT(0 == nghttp2_outbound_queue_size(&session->ob_reg));
 
   /* Check that we can receive push response HEADERS while RST_STREAM
      is just queued. */
@@ -6960,7 +6960,7 @@ void test_nghttp2_session_cancel_reserved_remote(void) {
 
   CU_ASSERT(nghttp2_buf_len(&bufs.head->buf) == rv);
 
-  CU_ASSERT(1 == nghttp2_pq_size(&session->ob_pq));
+  CU_ASSERT(1 == nghttp2_outbound_queue_size(&session->ob_reg));
 
   nghttp2_frame_headers_free(&frame.headers, mem);
 
