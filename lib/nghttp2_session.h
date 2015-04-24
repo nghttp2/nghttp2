@@ -159,19 +159,8 @@ struct nghttp2_session {
   nghttp2_session_callbacks callbacks;
   /* Memory allocator */
   nghttp2_mem mem;
-  /* Reset count of nghttp2_outbound_item's weight.  We decrements
-     weight each time DATA is sent to simulate resource sharing.  We
-     use priority queue and larger weight has the precedence.  If
-     weight is reached to lowest weight, it resets to its initial
-     weight.  If this happens, other items which have the lower weight
-     currently but same initial weight cannot send DATA until item
-     having large weight is decreased.  To avoid this, we use this
-     cycle variable.  Initally, this is set to 1.  If weight gets
-     lowest weight, and if item's cycle == last_cycle, we increments
-     last_cycle and assigns it to item's cycle.  Otherwise, just
-     assign last_cycle.  In priority queue comparator, we first
-     compare items' cycle value.  Lower cycle value has the
-     precedence. */
+  /* Base value when we schedule next DATA frame write.  This is
+     updated when one frame was written. */
   uint64_t last_cycle;
   void *user_data;
   /* Points to the latest closed stream.  NULL if there is no closed
