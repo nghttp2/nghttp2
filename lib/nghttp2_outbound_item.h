@@ -117,6 +117,13 @@ struct nghttp2_outbound_item {
 };
 
 /*
+ * Initializes |item|.  No memory allocation is done in this function.
+ * Don't call nghttp2_outbound_item_free() until frame member is
+ * initialized.
+ */
+void nghttp2_outbound_item_init(nghttp2_outbound_item *item);
+
+/*
  * Deallocates resource for |item|. If |item| is NULL, this function
  * does nothing.
  */

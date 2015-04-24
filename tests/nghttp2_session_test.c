@@ -1627,7 +1627,7 @@ void test_nghttp2_session_add_frame(void) {
 
   item = mem->malloc(sizeof(nghttp2_outbound_item), NULL);
 
-  nghttp2_session_outbound_item_init(session, item);
+  nghttp2_outbound_item_init(item);
 
   frame = &item->frame;
 
@@ -2698,7 +2698,7 @@ void test_nghttp2_session_send_headers_start_stream(void) {
 
   item = mem->malloc(sizeof(nghttp2_outbound_item), NULL);
 
-  nghttp2_session_outbound_item_init(session, item);
+  nghttp2_outbound_item_init(item);
 
   frame = &item->frame;
 
@@ -2734,7 +2734,7 @@ void test_nghttp2_session_send_headers_reply(void) {
 
   item = mem->malloc(sizeof(nghttp2_outbound_item), NULL);
 
-  nghttp2_session_outbound_item_init(session, item);
+  nghttp2_outbound_item_init(item);
 
   frame = &item->frame;
 
@@ -2784,7 +2784,7 @@ void test_nghttp2_session_send_headers_frame_size_error(void) {
 
   item = mem->malloc(sizeof(nghttp2_outbound_item), NULL);
 
-  nghttp2_session_outbound_item_init(session, item);
+  nghttp2_outbound_item_init(item);
 
   frame = &item->frame;
 
@@ -2829,7 +2829,7 @@ void test_nghttp2_session_send_headers_push_reply(void) {
 
   item = mem->malloc(sizeof(nghttp2_outbound_item), NULL);
 
-  nghttp2_session_outbound_item_init(session, item);
+  nghttp2_outbound_item_init(item);
 
   frame = &item->frame;
 
@@ -2863,7 +2863,7 @@ void test_nghttp2_session_send_rst_stream(void) {
 
   item = mem->malloc(sizeof(nghttp2_outbound_item), NULL);
 
-  nghttp2_session_outbound_item_init(session, item);
+  nghttp2_outbound_item_init(item);
 
   frame = &item->frame;
 
@@ -2897,7 +2897,7 @@ void test_nghttp2_session_send_push_promise(void) {
 
   item = mem->malloc(sizeof(nghttp2_outbound_item), NULL);
 
-  nghttp2_session_outbound_item_init(session, item);
+  nghttp2_outbound_item_init(item);
 
   frame = &item->frame;
 
@@ -2925,7 +2925,7 @@ void test_nghttp2_session_send_push_promise(void) {
 
   item = mem->malloc(sizeof(nghttp2_outbound_item), NULL);
 
-  nghttp2_session_outbound_item_init(session, item);
+  nghttp2_outbound_item_init(item);
 
   frame = &item->frame;
 
@@ -2948,7 +2948,7 @@ void test_nghttp2_session_send_push_promise(void) {
                               &pri_spec_default, NGHTTP2_STREAM_OPENING, NULL);
   item = mem->malloc(sizeof(nghttp2_outbound_item), NULL);
 
-  nghttp2_session_outbound_item_init(session, item);
+  nghttp2_outbound_item_init(item);
 
   frame = &item->frame;
 

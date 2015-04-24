@@ -281,14 +281,6 @@ int nghttp2_session_is_my_stream_id(nghttp2_session *session,
                                     int32_t stream_id);
 
 /*
- * Initializes |item|.  No memory allocation is done in this function.
- * Don't call nghttp2_outbound_item_free() until frame member is
- * initialized.
- */
-void nghttp2_session_outbound_item_init(nghttp2_session *session,
-                                        nghttp2_outbound_item *item);
-
-/*
  * Adds |item| to the outbound queue in |session|.  When this function
  * succeeds, it takes ownership of |item|. So caller must not free it
  * on success.

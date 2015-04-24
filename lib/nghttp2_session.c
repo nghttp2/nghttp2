@@ -678,15 +678,6 @@ nghttp2_session_reprioritize_stream(nghttp2_session *session,
   return 0;
 }
 
-void nghttp2_session_outbound_item_init(nghttp2_session *session,
-                                        nghttp2_outbound_item *item) {
-  item->cycle = 0;
-  item->qnext = NULL;
-  item->queued = 0;
-
-  memset(&item->aux_data, 0, sizeof(nghttp2_aux_data));
-}
-
 int nghttp2_session_add_item(nghttp2_session *session,
                              nghttp2_outbound_item *item) {
   /* TODO Return error if stream is not found for the frame requiring
@@ -820,7 +811,7 @@ int nghttp2_session_add_rst_stream(nghttp2_session *session, int32_t stream_id,
     return NGHTTP2_ERR_NOMEM;
   }
 
-  nghttp2_session_outbound_item_init(session, item);
+  nghttp2_outbound_item_init(item);
 
   frame = &item->frame;
 
@@ -5955,7 +5946,7 @@ int nghttp2_session_add_ping(nghttp2_session *session, uint8_t flags,
     return NGHTTP2_ERR_NOMEM;
   }
 
-  nghttp2_session_outbound_item_init(session, item);
+  nghttp2_outbound_item_init(item);
 
   frame = &item->frame;
 
@@ -6004,7 +5995,7 @@ int nghttp2_session_add_goaway(nghttp2_session *session, int32_t last_stream_id,
     return NGHTTP2_ERR_NOMEM;
   }
 
-  nghttp2_session_outbound_item_init(session, item);
+  nghttp2_outbound_item_init(item);
 
   frame = &item->frame;
 
@@ -6041,7 +6032,7 @@ int nghttp2_session_add_window_update(nghttp2_session *session, uint8_t flags,
     return NGHTTP2_ERR_NOMEM;
   }
 
-  nghttp2_session_outbound_item_init(session, item);
+  nghttp2_outbound_item_init(item);
 
   frame = &item->frame;
 
@@ -6112,7 +6103,7 @@ int nghttp2_session_add_settings(nghttp2_session *session, uint8_t flags,
     session->inflight_niv = niv;
   }
 
-  nghttp2_session_outbound_item_init(session, item);
+  nghttp2_outbound_item_init(item);
 
   frame = &item->frame;
 
