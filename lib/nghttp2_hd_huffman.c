@@ -188,7 +188,7 @@ void nghttp2_hd_huff_decode_context_init(nghttp2_hd_huff_decode_context *ctx) {
 ssize_t nghttp2_hd_huff_decode(nghttp2_hd_huff_decode_context *ctx,
                                nghttp2_bufs *bufs, const uint8_t *src,
                                size_t srclen, int final) {
-  size_t i, j;
+  size_t i;
   int rv;
   size_t avail;
 
