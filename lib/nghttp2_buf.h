@@ -325,6 +325,17 @@ int nghttp2_bufs_orb_hold(nghttp2_bufs *bufs, uint8_t b);
 ssize_t nghttp2_bufs_remove(nghttp2_bufs *bufs, uint8_t **out);
 
 /*
+ * Copies all data stored in |bufs| to |out|.  This function assumes
+ * that the buffer space pointed by |out| has at least
+ * nghttp2_bufs(bufs) bytes.
+ *
+ * The contents of |bufs| is left unchanged.
+ *
+ * This function returns the length of copied data.
+ */
+size_t nghttp2_bufs_remove_copy(nghttp2_bufs *bufs, uint8_t *out);
+
+/*
  * Resets |bufs| and makes the buffers empty.
  */
 void nghttp2_bufs_reset(nghttp2_bufs *bufs);
