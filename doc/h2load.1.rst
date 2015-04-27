@@ -67,12 +67,16 @@ OPTIONS
     Sets the stream level initial window size to (2\*\*<N>)-1.
     For SPDY, 2**<N> is used instead.
 
+    Default: ``30``
+
 .. option:: -W, --connection-window-bits=<N>
 
     Sets  the  connection  level   initial  window  size  to
     (2**<N>)-1.  For SPDY, if <N>  is strictly less than 16,
     this option  is ignored.   Otherwise 2\*\*<N> is  used for
     SPDY.
+
+    Default: ``30``
 
 .. option:: -H, --header=<HEADER>
 
@@ -153,6 +157,15 @@ time for request
   +/- sd
     The fraction of the number of requests within standard deviation
     range (mean +/- sd) against total number of successful requests.
+
+FLOW CONTROL
+------------
+
+h2load sets large flow control window by default, and effectively
+disables flow control to avoid under utilization of server
+performance.  To set smaller flow control window, use :option:`-w` and
+:option:`-W` options.  For example, use ``-w16 -W16`` to set default
+window size described in HTTP/2 and SPDY protocol specification.
 
 SEE ALSO
 --------

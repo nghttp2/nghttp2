@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "H2LOAD" "1" "April 19, 2015" "0.7.12" "nghttp2"
+.TH "H2LOAD" "1" "April 27, 2015" "0.7.13-DEV" "nghttp2"
 .SH NAME
 h2load \- HTTP/2 benchmarking tool
 .
@@ -93,6 +93,8 @@ Default: \fBauto\fP
 .B \-w, \-\-window\-bits=<N>
 Sets the stream level initial window size to (2**<N>)\-1.
 For SPDY, 2**<N> is used instead.
+.sp
+Default: \fB30\fP
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -101,6 +103,8 @@ Sets  the  connection  level   initial  window  size  to
 (2**<N>)\-1.  For SPDY, if <N>  is strictly less than 16,
 this option  is ignored.   Otherwise 2**<N> is  used for
 SPDY.
+.sp
+Default: \fB30\fP
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -208,6 +212,13 @@ The fraction of the number of requests within standard deviation
 range (mean +/\- sd) against total number of successful requests.
 .UNINDENT
 .UNINDENT
+.SH FLOW CONTROL
+.sp
+h2load sets large flow control window by default, and effectively
+disables flow control to avoid under utilization of server
+performance.  To set smaller flow control window, use \fI\%\-w\fP and
+\fI\%\-W\fP options.  For example, use \fB\-w16 \-W16\fP to set default
+window size described in HTTP/2 and SPDY protocol specification.
 .SH SEE ALSO
 .sp
 \fInghttp(1)\fP, \fInghttpd(1)\fP, \fInghttpx(1)\fP
