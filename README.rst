@@ -19,13 +19,9 @@ code coverage yet.
 Development Status
 ------------------
 
-We have implemented final HTTP/2 protocol specification.  The RFC is
-not published yet, so we use draft-17 specification for HTTP/2
-(http://tools.ietf.org/html/draft-ietf-httpbis-http2-14), and draft-11
-for header compression (aka HPACK)
-(http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-11).
-These documents have been approved by IETF and no technical changes
-are made before RFC publication.
+We have implemented `RFC 7540 <https://tools.ietf.org/html/rfc7540>`_
+HTTP/2 and ``RFC 7541 <https://tools.ietf.org/html/rfc7541>`_ HPACK -
+Header Compression for HTTP/2
 
 The nghttp2 code base was forked from the spdylay
 (https://github.com/tatsuhiro-t/spdylay) project.

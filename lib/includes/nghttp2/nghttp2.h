@@ -2001,10 +2001,10 @@ nghttp2_option_set_no_recv_client_magic(nghttp2_option *option, int val);
  *
  * By default, nghttp2 library enforces subset of HTTP Messaging rules
  * described in `HTTP/2 specification, section 8
- * <https://tools.ietf.org/html/draft-ietf-httpbis-http2-17#section-8>`_.
- * See :ref:`http-messaging` section for details.  For those
- * applications who use nghttp2 library as non-HTTP use, give nonzero
- * to |val| to disable this enforcement.
+ * <https://tools.ietf.org/html/rfc7540#section-8>`_.  See
+ * :ref:`http-messaging` section for details.  For those applications
+ * who use nghttp2 library as non-HTTP use, give nonzero to |val| to
+ * disable this enforcement.
  */
 NGHTTP2_EXTERN void nghttp2_option_set_no_http_messaging(nghttp2_option *option,
                                                          int val);
@@ -3452,14 +3452,14 @@ NGHTTP2_EXTERN int nghttp2_nv_compare_name(const nghttp2_nv *lhs,
  * A helper function for dealing with NPN in client side or ALPN in
  * server side.  The |in| contains peer's protocol list in preferable
  * order.  The format of |in| is length-prefixed and not
- * null-terminated.  For example, ``HTTP-draft-04/2.0`` and
+ * null-terminated.  For example, ``h2`` and
  * ``http/1.1`` stored in |in| like this::
  *
- *     in[0] = 17
- *     in[1..17] = "HTTP-draft-04/2.0"
- *     in[18] = 8
- *     in[19..26] = "http/1.1"
- *     inlen = 27
+ *     in[0] = 2
+ *     in[1..2] = "h2"
+ *     in[3] = 8
+ *     in[4..11] = "http/1.1"
+ *     inlen = 12
  *
  * The selection algorithm is as follows:
  *
@@ -3473,12 +3473,10 @@ NGHTTP2_EXTERN int nghttp2_nv_compare_name(const nghttp2_nv *lhs,
  *    non-overlap case).  In this case, |out| and |outlen| are left
  *    untouched.
  *
- * Selecting ``HTTP-draft-04/2.0`` means that ``HTTP-draft-04/2.0`` is
- * written into |*out| and its length (which is 17) is assigned to
- * |*outlen|.
+ * Selecting ``h2`` means that ``h2`` is written into |*out| and its
+ * length (which is 2) is assigned to |*outlen|.
  *
- * For ALPN, refer to
- * https://tools.ietf.org/html/draft-ietf-tls-applayerprotoneg-05
+ * For ALPN, refer to https://tools.ietf.org/html/rfc7301
  *
  * See http://technotes.googlecode.com/git/nextprotoneg.html for more
  * details about NPN.

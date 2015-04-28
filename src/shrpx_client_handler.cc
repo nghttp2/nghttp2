@@ -644,8 +644,6 @@ ConnectBlocker *ClientHandler::get_connect_blocker() const {
 
 void ClientHandler::direct_http2_upgrade() {
   upstream_ = make_unique<Http2Upstream>(this);
-  // TODO We don't know exact h2 draft version in direct upgrade.  We
-  // just use library default for now.
   alpn_ = NGHTTP2_CLEARTEXT_PROTO_VERSION_ID;
   on_read_ = &ClientHandler::upstream_read;
 }
