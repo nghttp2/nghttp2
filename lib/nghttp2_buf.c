@@ -432,6 +432,24 @@ ssize_t nghttp2_bufs_remove(nghttp2_bufs *bufs, uint8_t **out) {
   return (ssize_t)len;
 }
 
+size_t nghttp2_bufs_remove_copy(nghttp2_bufs *bufs, uint8_t *out) {
+  size_t len;
+  nghttp2_buf_chain *chain;
+  nghttp2_buf *buf;
+  nghttp2_buf resbuf;
+
+  len = nghttp2_bufs_len(bufs);
+
+  nghttp2_buf_wrap_init(&resbuf, out, len);
+
+  for (chain = bufs->head; chain; chain = chain->next) {
+    buf = &chain->buf;
+    resbuf.last = nghttp2_cpymem(resbuf.last, buf->pos, nghttp2_buf_len(buf));
+  }
+
+  return len;
+}
+
 void nghttp2_bufs_reset(nghttp2_bufs *bufs) {
   nghttp2_buf_chain *chain, *ci;
   size_t k;

@@ -62,7 +62,7 @@ static int32_t submit_headers_shared(nghttp2_session *session, uint8_t flags,
     goto fail;
   }
 
-  nghttp2_session_outbound_item_init(session, item);
+  nghttp2_outbound_item_init(item);
 
   if (data_prd != NULL && data_prd->read_callback != NULL) {
     item->aux_data.headers.data_prd = *data_prd;
@@ -212,7 +212,7 @@ int nghttp2_submit_priority(nghttp2_session *session, uint8_t flags _U_,
     return NGHTTP2_ERR_NOMEM;
   }
 
-  nghttp2_session_outbound_item_init(session, item);
+  nghttp2_outbound_item_init(item);
 
   frame = &item->frame;
 
@@ -299,7 +299,7 @@ int32_t nghttp2_submit_push_promise(nghttp2_session *session, uint8_t flags _U_,
     return NGHTTP2_ERR_NOMEM;
   }
 
-  nghttp2_session_outbound_item_init(session, item);
+  nghttp2_outbound_item_init(item);
 
   item->aux_data.headers.stream_user_data = promised_stream_user_data;
 
@@ -444,7 +444,7 @@ int nghttp2_submit_data(nghttp2_session *session, uint8_t flags,
     return NGHTTP2_ERR_NOMEM;
   }
 
-  nghttp2_session_outbound_item_init(session, item);
+  nghttp2_outbound_item_init(item);
 
   frame = &item->frame;
   aux_data = &item->aux_data.data;

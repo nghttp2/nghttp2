@@ -101,31 +101,31 @@ static int stream_push_item(nghttp2_stream *stream, nghttp2_session *session) {
     return 0;
   }
 
-  /* Penalize item by delaying scheduling according to effective
-     weight.  This will delay low priority stream, which is good.
-     OTOH, this may incur delay for high priority item.  Will see. */
-  item->cycle =
-      session->last_cycle +
-      NGHTTP2_DATA_PAYLOADLEN * NGHTTP2_MAX_WEIGHT / stream->effective_weight;
-
   switch (item->frame.hd.type) {
   case NGHTTP2_DATA:
+    /* Penalize item by delaying scheduling according to effective
+       weight.  This will delay low priority stream, which is good.
+       OTOH, this may incur delay for high priority item.  Will
+       see. */
+    item->cycle =
+        session->last_cycle +
+        NGHTTP2_DATA_PAYLOADLEN * NGHTTP2_MAX_WEIGHT / stream->effective_weight;
+
     rv = nghttp2_pq_push(&session->ob_da_pq, item);
+    if (rv != 0) {
+      return rv;
+    }
     break;
   case NGHTTP2_HEADERS:
     if (stream->state == NGHTTP2_STREAM_RESERVED) {
-      rv = nghttp2_pq_push(&session->ob_ss_pq, item);
+      nghttp2_outbound_queue_push(&session->ob_syn, item);
     } else {
-      rv = nghttp2_pq_push(&session->ob_pq, item);
+      nghttp2_outbound_queue_push(&session->ob_reg, item);
     }
     break;
   default:
     /* should not reach here */
     assert(0);
-  }
-
-  if (rv != 0) {
-    return rv;
   }
 
   item->queued = 1;

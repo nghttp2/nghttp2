@@ -143,12 +143,15 @@ typedef enum {
 struct nghttp2_session {
   nghttp2_map /* <nghttp2_stream*> */ streams;
   nghttp2_stream_roots roots;
-  /* Queue for outbound frames other than stream-creating HEADERS and
-     DATA */
-  nghttp2_pq /* <nghttp2_outbound_item*> */ ob_pq;
-  /* Queue for outbound stream-creating HEADERS frame */
-  nghttp2_pq /* <nghttp2_outbound_item*> */ ob_ss_pq;
-  /* QUeue for DATA frame */
+  /* Queue for outbound urgent frames (PING and SETTINGS) */
+  nghttp2_outbound_queue ob_urgent;
+  /* Queue for non-DATA frames */
+  nghttp2_outbound_queue ob_reg;
+  /* Queue for outbound stream-creating HEADERS (request or push
+     response) frame, which are subject to
+     SETTINGS_MAX_CONCURRENT_STREAMS limit. */
+  nghttp2_outbound_queue ob_syn;
+  /* Queue for DATA frame */
   nghttp2_pq /* <nghttp2_outbound_item*> */ ob_da_pq;
   nghttp2_active_outbound_item aob;
   nghttp2_inbound_frame iframe;
@@ -157,22 +160,8 @@ struct nghttp2_session {
   nghttp2_session_callbacks callbacks;
   /* Memory allocator */
   nghttp2_mem mem;
-  /* Sequence number of outbound frame to maintain the order of
-     enqueue if priority is equal. */
-  int64_t next_seq;
-  /* Reset count of nghttp2_outbound_item's weight.  We decrements
-     weight each time DATA is sent to simulate resource sharing.  We
-     use priority queue and larger weight has the precedence.  If
-     weight is reached to lowest weight, it resets to its initial
-     weight.  If this happens, other items which have the lower weight
-     currently but same initial weight cannot send DATA until item
-     having large weight is decreased.  To avoid this, we use this
-     cycle variable.  Initally, this is set to 1.  If weight gets
-     lowest weight, and if item's cycle == last_cycle, we increments
-     last_cycle and assigns it to item's cycle.  Otherwise, just
-     assign last_cycle.  In priority queue comparator, we first
-     compare items' cycle value.  Lower cycle value has the
-     precedence. */
+  /* Base value when we schedule next DATA frame write.  This is
+     updated when one frame was written. */
   uint64_t last_cycle;
   void *user_data;
   /* Points to the latest closed stream.  NULL if there is no closed
@@ -291,14 +280,6 @@ typedef struct {
  */
 int nghttp2_session_is_my_stream_id(nghttp2_session *session,
                                     int32_t stream_id);
-
-/*
- * Initializes |item|.  No memory allocation is done in this function.
- * Don't call nghttp2_outbound_item_free() until frame member is
- * initialized.
- */
-void nghttp2_session_outbound_item_init(nghttp2_session *session,
-                                        nghttp2_outbound_item *item);
 
 /*
  * Adds |item| to the outbound queue in |session|.  When this function
@@ -707,12 +688,6 @@ int nghttp2_session_pack_data(nghttp2_session *session, nghttp2_bufs *bufs,
                               size_t datamax, nghttp2_frame *frame,
                               nghttp2_data_aux_data *aux_data,
                               nghttp2_stream *stream);
-
-/*
- * Returns top of outbound frame queue. This function returns NULL if
- * queue is empty.
- */
-nghttp2_outbound_item *nghttp2_session_get_ob_pq_top(nghttp2_session *session);
 
 /*
  * Pops and returns next item to send. If there is no such item,

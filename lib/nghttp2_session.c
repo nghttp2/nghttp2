@@ -223,17 +223,13 @@ nghttp2_stream *nghttp2_session_get_stream_raw(nghttp2_session *session,
   return (nghttp2_stream *)nghttp2_map_find(&session->streams, stream_id);
 }
 
-static int outbound_item_compar(const void *lhsx, const void *rhsx) {
+static int outbound_item_less(const void *lhsx, const void *rhsx) {
   const nghttp2_outbound_item *lhs, *rhs;
 
   lhs = (const nghttp2_outbound_item *)lhsx;
   rhs = (const nghttp2_outbound_item *)rhsx;
 
-  if (lhs->cycle == rhs->cycle) {
-    return (lhs->seq < rhs->seq) ? -1 : ((lhs->seq > rhs->seq) ? 1 : 0);
-  }
-
-  return (lhs->cycle < rhs->cycle) ? -1 : 1;
+  return (lhs->cycle < rhs->cycle) ? 1 : 0;
 }
 
 static void session_inbound_frame_reset(nghttp2_session *session) {
@@ -335,15 +331,7 @@ static int session_new(nghttp2_session **session_ptr,
   /* next_stream_id is initialized in either
      nghttp2_session_client_new2 or nghttp2_session_server_new2 */
 
-  rv = nghttp2_pq_init(&(*session_ptr)->ob_pq, outbound_item_compar, mem);
-  if (rv != 0) {
-    goto fail_ob_pq;
-  }
-  rv = nghttp2_pq_init(&(*session_ptr)->ob_ss_pq, outbound_item_compar, mem);
-  if (rv != 0) {
-    goto fail_ob_ss_pq;
-  }
-  rv = nghttp2_pq_init(&(*session_ptr)->ob_da_pq, outbound_item_compar, mem);
+  rv = nghttp2_pq_init(&(*session_ptr)->ob_da_pq, outbound_item_less, mem);
   if (rv != 0) {
     goto fail_ob_da_pq;
   }
@@ -362,11 +350,6 @@ static int session_new(nghttp2_session **session_ptr,
   }
 
   nghttp2_stream_roots_init(&(*session_ptr)->roots);
-
-  (*session_ptr)->next_seq = 0;
-  /* Do +1 so that any HEADERS/DATA frames are scheduled after urgent
-     frames. */
-  (*session_ptr)->last_cycle = NGHTTP2_OB_EX_CYCLE + 1;
 
   (*session_ptr)->remote_window_size = NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE;
   (*session_ptr)->recv_window_size = 0;
@@ -462,10 +445,6 @@ fail_hd_inflater:
 fail_hd_deflater:
   nghttp2_pq_free(&(*session_ptr)->ob_da_pq);
 fail_ob_da_pq:
-  nghttp2_pq_free(&(*session_ptr)->ob_ss_pq);
-fail_ob_ss_pq:
-  nghttp2_pq_free(&(*session_ptr)->ob_pq);
-fail_ob_pq:
   nghttp2_mem_free(mem, *session_ptr);
 fail_session:
   return rv;
@@ -571,6 +550,16 @@ static void ob_pq_free(nghttp2_pq *pq, nghttp2_mem *mem) {
   nghttp2_pq_free(pq);
 }
 
+static void ob_q_free(nghttp2_outbound_queue *q, nghttp2_mem *mem) {
+  nghttp2_outbound_item *item, *next;
+  for (item = q->head; item;) {
+    next = item->qnext;
+    nghttp2_outbound_item_free(item, mem);
+    nghttp2_mem_free(mem, item);
+    item = next;
+  }
+}
+
 void nghttp2_session_del(nghttp2_session *session) {
   nghttp2_mem *mem;
 
@@ -589,8 +578,9 @@ void nghttp2_session_del(nghttp2_session *session) {
   nghttp2_map_each_free(&session->streams, free_streams, session);
   nghttp2_map_free(&session->streams);
 
-  ob_pq_free(&session->ob_pq, mem);
-  ob_pq_free(&session->ob_ss_pq, mem);
+  ob_q_free(&session->ob_urgent, mem);
+  ob_q_free(&session->ob_reg, mem);
+  ob_q_free(&session->ob_syn, mem);
   ob_pq_free(&session->ob_da_pq, mem);
   active_outbound_item_reset(&session->aob, mem);
   session_inbound_frame_reset(session);
@@ -696,15 +686,6 @@ nghttp2_session_reprioritize_stream(nghttp2_session *session,
   return 0;
 }
 
-void nghttp2_session_outbound_item_init(nghttp2_session *session,
-                                        nghttp2_outbound_item *item) {
-  item->seq = session->next_seq++;
-  item->cycle = NGHTTP2_OB_EX_CYCLE;
-  item->queued = 0;
-
-  memset(&item->aux_data, 0, sizeof(nghttp2_aux_data));
-}
-
 int nghttp2_session_add_item(nghttp2_session *session,
                              nghttp2_outbound_item *item) {
   /* TODO Return error if stream is not found for the frame requiring
@@ -719,65 +700,45 @@ int nghttp2_session_add_item(nghttp2_session *session,
   if (frame->hd.type != NGHTTP2_DATA) {
 
     switch (frame->hd.type) {
-    case NGHTTP2_RST_STREAM:
-      if (stream) {
-        stream->state = NGHTTP2_STREAM_CLOSING;
-      }
-
-      break;
-    case NGHTTP2_SETTINGS:
-      item->cycle = NGHTTP2_OB_SETTINGS_CYCLE;
-
-      break;
-    case NGHTTP2_PING:
-      /* Ping has highest priority. */
-      item->cycle = NGHTTP2_OB_PING_CYCLE;
-
-      break;
-    default:
-      break;
-    }
-
-    if (frame->hd.type == NGHTTP2_HEADERS) {
+    case NGHTTP2_HEADERS:
       /* We push request HEADERS and push response HEADERS to
          dedicated queue because their transmission is affected by
          SETTINGS_MAX_CONCURRENT_STREAMS */
       /* TODO If 2 HEADERS are submitted for reserved stream, then
-         both of them are queued into ob_ss_pq, which is not
+         both of them are queued into ob_syn, which is not
          desirable. */
       if (frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
-        rv = nghttp2_pq_push(&session->ob_ss_pq, item);
-
-        if (rv != 0) {
-          return rv;
-        }
-
+        nghttp2_outbound_queue_push(&session->ob_syn, item);
         item->queued = 1;
-      } else if (stream && (stream->state == NGHTTP2_STREAM_RESERVED ||
-                            item->aux_data.headers.attach_stream)) {
-        item->cycle = session->last_cycle;
+        break;
+      }
 
+      if (stream && (stream->state == NGHTTP2_STREAM_RESERVED ||
+                     item->aux_data.headers.attach_stream)) {
         rv = nghttp2_stream_attach_item(stream, item, session);
 
         if (rv != 0) {
           return rv;
         }
-      } else {
-        rv = nghttp2_pq_push(&session->ob_pq, item);
 
-        if (rv != 0) {
-          return rv;
-        }
-
-        item->queued = 1;
-      }
-    } else {
-      rv = nghttp2_pq_push(&session->ob_pq, item);
-
-      if (rv != 0) {
-        return rv;
+        break;
       }
 
+      nghttp2_outbound_queue_push(&session->ob_reg, item);
+      item->queued = 1;
+      break;
+    case NGHTTP2_SETTINGS:
+    case NGHTTP2_PING:
+      nghttp2_outbound_queue_push(&session->ob_urgent, item);
+      item->queued = 1;
+      break;
+    case NGHTTP2_RST_STREAM:
+      if (stream) {
+        stream->state = NGHTTP2_STREAM_CLOSING;
+      }
+    /* fall through */
+    default:
+      nghttp2_outbound_queue_push(&session->ob_reg, item);
       item->queued = 1;
     }
 
@@ -792,8 +753,6 @@ int nghttp2_session_add_item(nghttp2_session *session,
     return NGHTTP2_ERR_DATA_EXIST;
   }
 
-  item->cycle = session->last_cycle;
-
   rv = nghttp2_stream_attach_item(stream, item, session);
 
   if (rv != 0) {
@@ -803,30 +762,6 @@ int nghttp2_session_add_item(nghttp2_session *session,
   return 0;
 }
 
-typedef struct {
-  int32_t stream_id;
-  uint32_t error_code;
-} nghttp2_rst_target;
-
-static int cancel_pending_request(void *pq_item, void *arg) {
-  nghttp2_outbound_item *item;
-  nghttp2_rst_target *t;
-  nghttp2_headers_aux_data *aux_data;
-
-  item = pq_item;
-  t = arg;
-  aux_data = &item->aux_data.headers;
-
-  if (item->frame.hd.stream_id != t->stream_id || aux_data->canceled) {
-    return 0;
-  }
-
-  aux_data->error_code = t->error_code;
-  aux_data->canceled = 1;
-
-  return 1;
-}
-
 int nghttp2_session_add_rst_stream(nghttp2_session *session, int32_t stream_id,
                                    uint32_t error_code) {
   int rv;
@@ -834,7 +769,6 @@ int nghttp2_session_add_rst_stream(nghttp2_session *session, int32_t stream_id,
   nghttp2_frame *frame;
   nghttp2_stream *stream;
   nghttp2_mem *mem;
-  nghttp2_rst_target t = {stream_id, error_code};
 
   mem = &session->mem;
   stream = nghttp2_session_get_stream(session, stream_id);
@@ -842,21 +776,35 @@ int nghttp2_session_add_rst_stream(nghttp2_session *session, int32_t stream_id,
     return 0;
   }
 
-  /* Cancel pending request HEADERS in ob_ss_pq if this RST_STREAM
+  /* Cancel pending request HEADERS in ob_syn if this RST_STREAM
      refers to that stream. */
   if (!session->server && nghttp2_session_is_my_stream_id(session, stream_id) &&
-      nghttp2_pq_top(&session->ob_ss_pq)) {
-    nghttp2_outbound_item *top;
+      nghttp2_outbound_queue_top(&session->ob_syn)) {
+    nghttp2_headers_aux_data *aux_data;
     nghttp2_frame *headers_frame;
 
-    top = nghttp2_pq_top(&session->ob_ss_pq);
-    headers_frame = &top->frame;
-
+    headers_frame = &nghttp2_outbound_queue_top(&session->ob_syn)->frame;
     assert(headers_frame->hd.type == NGHTTP2_HEADERS);
 
     if (headers_frame->hd.stream_id <= stream_id &&
         (uint32_t)stream_id < session->next_stream_id) {
-      if (nghttp2_pq_each(&session->ob_ss_pq, cancel_pending_request, &t)) {
+
+      for (item = session->ob_syn.head; item; item = item->qnext) {
+        aux_data = &item->aux_data.headers;
+
+        if (item->frame.hd.stream_id < stream_id) {
+          continue;
+        }
+
+        /* stream_id in ob_syn queue must be strictly increasing.  If
+           we found larger ID, then we can break here. */
+        if (item->frame.hd.stream_id > stream_id || aux_data->canceled) {
+          break;
+        }
+
+        aux_data->error_code = error_code;
+        aux_data->canceled = 1;
+
         return 0;
       }
     }
@@ -867,7 +815,7 @@ int nghttp2_session_add_rst_stream(nghttp2_session *session, int32_t stream_id,
     return NGHTTP2_ERR_NOMEM;
   }
 
-  nghttp2_session_outbound_item_init(session, item);
+  nghttp2_outbound_item_init(item);
 
   frame = &item->frame;
 
@@ -2030,123 +1978,66 @@ static int session_prep_frame(nghttp2_session *session,
   }
 }
 
-/* Used only for tests */
-nghttp2_outbound_item *nghttp2_session_get_ob_pq_top(nghttp2_session *session) {
-  return (nghttp2_outbound_item *)nghttp2_pq_top(&session->ob_pq);
-}
-
 nghttp2_outbound_item *
 nghttp2_session_get_next_ob_item(nghttp2_session *session) {
-  nghttp2_outbound_item *item, *headers_item;
+  if (nghttp2_outbound_queue_top(&session->ob_urgent)) {
+    return nghttp2_outbound_queue_top(&session->ob_urgent);
+  }
 
-  if (nghttp2_pq_empty(&session->ob_pq)) {
-    if (nghttp2_pq_empty(&session->ob_ss_pq)) {
-      if (session->remote_window_size == 0 ||
-          nghttp2_pq_empty(&session->ob_da_pq)) {
-        return NULL;
-      }
+  if (nghttp2_outbound_queue_top(&session->ob_reg)) {
+    return nghttp2_outbound_queue_top(&session->ob_reg);
+  }
 
-      return nghttp2_pq_top(&session->ob_da_pq);
+  if (!session_is_outgoing_concurrent_streams_max(session)) {
+    if (nghttp2_outbound_queue_top(&session->ob_syn)) {
+      return nghttp2_outbound_queue_top(&session->ob_syn);
     }
-
-    /* Return item only when concurrent connection limit is not
-       reached */
-    if (session_is_outgoing_concurrent_streams_max(session)) {
-      if (session->remote_window_size == 0 ||
-          nghttp2_pq_empty(&session->ob_da_pq)) {
-        return NULL;
-      }
-
-      return nghttp2_pq_top(&session->ob_da_pq);
-    }
-
-    return nghttp2_pq_top(&session->ob_ss_pq);
   }
 
-  if (nghttp2_pq_empty(&session->ob_ss_pq)) {
-    return nghttp2_pq_top(&session->ob_pq);
+  if (session->remote_window_size > 0 &&
+      !nghttp2_pq_empty(&session->ob_da_pq)) {
+    return nghttp2_pq_top(&session->ob_da_pq);
   }
 
-  item = nghttp2_pq_top(&session->ob_pq);
-  headers_item = nghttp2_pq_top(&session->ob_ss_pq);
-
-  if (session_is_outgoing_concurrent_streams_max(session) ||
-      outbound_item_compar(item, headers_item) < 0) {
-    return item;
-  }
-
-  return headers_item;
+  return NULL;
 }
 
 nghttp2_outbound_item *
 nghttp2_session_pop_next_ob_item(nghttp2_session *session) {
-  nghttp2_outbound_item *item, *headers_item;
+  nghttp2_outbound_item *item;
 
-  if (nghttp2_pq_empty(&session->ob_pq)) {
-    if (nghttp2_pq_empty(&session->ob_ss_pq)) {
-      if (session->remote_window_size == 0 ||
-          nghttp2_pq_empty(&session->ob_da_pq)) {
-        return NULL;
-      }
+  item = nghttp2_outbound_queue_top(&session->ob_urgent);
+  if (item) {
+    nghttp2_outbound_queue_pop(&session->ob_urgent);
+    item->queued = 0;
+    return item;
+  }
 
-      item = nghttp2_pq_top(&session->ob_da_pq);
-      nghttp2_pq_pop(&session->ob_da_pq);
+  item = nghttp2_outbound_queue_top(&session->ob_reg);
+  if (item) {
+    nghttp2_outbound_queue_pop(&session->ob_reg);
+    item->queued = 0;
+    return item;
+  }
 
+  if (!session_is_outgoing_concurrent_streams_max(session)) {
+    item = nghttp2_outbound_queue_top(&session->ob_syn);
+    if (item) {
+      nghttp2_outbound_queue_pop(&session->ob_syn);
       item->queued = 0;
-
       return item;
     }
+  }
 
-    /* Pop item only when concurrent connection limit is not
-       reached */
-    if (session_is_outgoing_concurrent_streams_max(session)) {
-      if (session->remote_window_size == 0 ||
-          nghttp2_pq_empty(&session->ob_da_pq)) {
-        return NULL;
-      }
-
-      item = nghttp2_pq_top(&session->ob_da_pq);
-      nghttp2_pq_pop(&session->ob_da_pq);
-
-      item->queued = 0;
-
-      return item;
-    }
-
-    item = nghttp2_pq_top(&session->ob_ss_pq);
-    nghttp2_pq_pop(&session->ob_ss_pq);
-
+  if (session->remote_window_size > 0 &&
+      !nghttp2_pq_empty(&session->ob_da_pq)) {
+    item = nghttp2_pq_top(&session->ob_da_pq);
+    nghttp2_pq_pop(&session->ob_da_pq);
     item->queued = 0;
-
     return item;
   }
 
-  if (nghttp2_pq_empty(&session->ob_ss_pq)) {
-    item = nghttp2_pq_top(&session->ob_pq);
-    nghttp2_pq_pop(&session->ob_pq);
-
-    item->queued = 0;
-
-    return item;
-  }
-
-  item = nghttp2_pq_top(&session->ob_pq);
-  headers_item = nghttp2_pq_top(&session->ob_ss_pq);
-
-  if (session_is_outgoing_concurrent_streams_max(session) ||
-      outbound_item_compar(item, headers_item) < 0) {
-    nghttp2_pq_pop(&session->ob_pq);
-
-    item->queued = 0;
-
-    return item;
-  }
-
-  nghttp2_pq_pop(&session->ob_ss_pq);
-
-  headers_item->queued = 0;
-
-  return headers_item;
+  return NULL;
 }
 
 static int session_call_before_frame_send(nghttp2_session *session,
@@ -2587,7 +2478,8 @@ static int session_after_frame_sent2(nghttp2_session *session) {
        waiting at the top of the queue, we continue to send this
        data. */
     if (stream->dpri == NGHTTP2_STREAM_DPRI_TOP &&
-        (next_item == NULL || outbound_item_compar(item, next_item) < 0)) {
+        (next_item == NULL || (next_item->frame.hd.type == NGHTTP2_DATA &&
+                               outbound_item_less(item, next_item)))) {
       size_t next_readmax;
 
       next_readmax = nghttp2_session_next_data_read(session, stream);
@@ -3291,12 +3183,12 @@ static int inflate_header_block(nghttp2_session *session, nghttp2_frame *frame,
     }
     if (proclen < 0) {
       if (session->iframe.state == NGHTTP2_IB_READ_HEADER_BLOCK) {
-        if (stream && stream->state != NGHTTP2_STREAM_CLOSING) {
+        if (subject_stream && subject_stream->state != NGHTTP2_STREAM_CLOSING) {
           /* Adding RST_STREAM here is very important. It prevents
              from invoking subsequent callbacks for the same stream
              ID. */
-          rv = nghttp2_session_add_rst_stream(session, frame->hd.stream_id,
-                                              NGHTTP2_COMPRESSION_ERROR);
+          rv = nghttp2_session_add_rst_stream(
+              session, subject_stream->stream_id, NGHTTP2_COMPRESSION_ERROR);
 
           if (nghttp2_is_fatal(rv)) {
             return rv;
@@ -6046,10 +5938,12 @@ int nghttp2_session_want_write(nghttp2_session *session) {
    * want to write them.
    */
 
-  if (session->aob.item == NULL && nghttp2_pq_empty(&session->ob_pq) &&
+  if (session->aob.item == NULL &&
+      nghttp2_outbound_queue_top(&session->ob_urgent) == NULL &&
+      nghttp2_outbound_queue_top(&session->ob_reg) == NULL &&
       (nghttp2_pq_empty(&session->ob_da_pq) ||
        session->remote_window_size == 0) &&
-      (nghttp2_pq_empty(&session->ob_ss_pq) ||
+      (nghttp2_outbound_queue_top(&session->ob_syn) == NULL ||
        session_is_outgoing_concurrent_streams_max(session))) {
     return 0;
   }
@@ -6073,7 +5967,7 @@ int nghttp2_session_add_ping(nghttp2_session *session, uint8_t flags,
     return NGHTTP2_ERR_NOMEM;
   }
 
-  nghttp2_session_outbound_item_init(session, item);
+  nghttp2_outbound_item_init(item);
 
   frame = &item->frame;
 
@@ -6122,7 +6016,7 @@ int nghttp2_session_add_goaway(nghttp2_session *session, int32_t last_stream_id,
     return NGHTTP2_ERR_NOMEM;
   }
 
-  nghttp2_session_outbound_item_init(session, item);
+  nghttp2_outbound_item_init(item);
 
   frame = &item->frame;
 
@@ -6159,7 +6053,7 @@ int nghttp2_session_add_window_update(nghttp2_session *session, uint8_t flags,
     return NGHTTP2_ERR_NOMEM;
   }
 
-  nghttp2_session_outbound_item_init(session, item);
+  nghttp2_outbound_item_init(item);
 
   frame = &item->frame;
 
@@ -6230,7 +6124,7 @@ int nghttp2_session_add_settings(nghttp2_session *session, uint8_t flags,
     session->inflight_niv = niv;
   }
 
-  nghttp2_session_outbound_item_init(session, item);
+  nghttp2_outbound_item_init(item);
 
   frame = &item->frame;
 
@@ -6450,8 +6344,9 @@ int nghttp2_session_resume_data(nghttp2_session *session, int32_t stream_id) {
 }
 
 size_t nghttp2_session_get_outbound_queue_size(nghttp2_session *session) {
-  return nghttp2_pq_size(&session->ob_pq) +
-         nghttp2_pq_size(&session->ob_ss_pq) +
+  return nghttp2_outbound_queue_size(&session->ob_urgent) +
+         nghttp2_outbound_queue_size(&session->ob_reg) +
+         nghttp2_outbound_queue_size(&session->ob_syn) +
          nghttp2_pq_size(&session->ob_da_pq);
 }
 

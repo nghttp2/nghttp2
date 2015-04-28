@@ -45,8 +45,8 @@ typedef struct {
   /* The maximum number of items this pq can store. This is
      automatically extended when length is reached to this value. */
   size_t capacity;
-  /* The compare function between items */
-  nghttp2_compar compar;
+  /* The less function between items */
+  nghttp2_less less;
 } nghttp2_pq;
 
 /*
@@ -58,7 +58,7 @@ typedef struct {
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
  */
-int nghttp2_pq_init(nghttp2_pq *pq, nghttp2_compar cmp, nghttp2_mem *mem);
+int nghttp2_pq_init(nghttp2_pq *pq, nghttp2_less less, nghttp2_mem *mem);
 
 /*
  * Deallocates any resources allocated for |pq|.  The stored items are

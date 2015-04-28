@@ -25,6 +25,15 @@
 #include "nghttp2_outbound_item.h"
 
 #include <assert.h>
+#include <string.h>
+
+void nghttp2_outbound_item_init(nghttp2_outbound_item *item) {
+  item->cycle = 0;
+  item->qnext = NULL;
+  item->queued = 0;
+
+  memset(&item->aux_data, 0, sizeof(nghttp2_aux_data));
+}
 
 void nghttp2_outbound_item_free(nghttp2_outbound_item *item, nghttp2_mem *mem) {
   nghttp2_frame *frame;
@@ -64,4 +73,33 @@ void nghttp2_outbound_item_free(nghttp2_outbound_item *item, nghttp2_mem *mem) {
     nghttp2_frame_window_update_free(&frame->window_update);
     break;
   }
+}
+
+void nghttp2_outbound_queue_init(nghttp2_outbound_queue *q) {
+  q->head = q->tail = NULL;
+  q->n = 0;
+}
+
+void nghttp2_outbound_queue_push(nghttp2_outbound_queue *q,
+                                 nghttp2_outbound_item *item) {
+  if (q->tail) {
+    q->tail = q->tail->qnext = item;
+  } else {
+    q->head = q->tail = item;
+  }
+  ++q->n;
+}
+
+void nghttp2_outbound_queue_pop(nghttp2_outbound_queue *q) {
+  nghttp2_outbound_item *item;
+  if (!q->head) {
+    return;
+  }
+  item = q->head;
+  q->head = q->head->qnext;
+  item->qnext = NULL;
+  if (!q->head) {
+    q->tail = NULL;
+  }
+  --q->n;
 }

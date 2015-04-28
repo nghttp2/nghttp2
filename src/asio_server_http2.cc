@@ -59,11 +59,9 @@ boost::system::error_code http2::listen_and_serve(boost::system::error_code &ec,
   return impl_->listen_and_serve(ec, nullptr, address, port, asynchronous);
 }
 
-boost::system::error_code
-http2::listen_and_serve(boost::system::error_code &ec,
-                        boost::asio::ssl::context &tls_context,
-                        const std::string &address, const std::string &port,
-                        bool asynchronous) {
+boost::system::error_code http2::listen_and_serve(
+    boost::system::error_code &ec, boost::asio::ssl::context &tls_context,
+    const std::string &address, const std::string &port, bool asynchronous) {
   return impl_->listen_and_serve(ec, &tls_context, address, port, asynchronous);
 }
 
@@ -75,15 +73,9 @@ bool http2::handle(std::string pattern, request_cb cb) {
   return impl_->handle(std::move(pattern), std::move(cb));
 }
 
-void http2::stop()
-{
-  impl_->stop();
-}
+void http2::stop() { impl_->stop(); }
 
-void http2::join()
-{
-  return impl_->join();
-}
+void http2::join() { return impl_->join(); }
 
 } // namespace server
 

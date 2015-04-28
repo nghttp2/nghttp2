@@ -39,7 +39,8 @@
   } while (0)
 #endif
 
-typedef int (*nghttp2_compar)(const void *lhs, const void *rhs);
+/* "less" function, return nonzero if |lhs| is less than |rhs|. */
+typedef int (*nghttp2_less)(const void *lhs, const void *rhs);
 
 /* Internal error code. They must be in the range [-499, -100],
    inclusive. */

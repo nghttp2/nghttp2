@@ -200,10 +200,27 @@ help:
 	@echo "  linkcheck  to check all external links for integrity"
 	@echo "  doctest    to run all doctests embedded in the documentation (if enabled)"
 
-apiref.rst: $(top_builddir)/lib/includes/nghttp2/nghttp2ver.h \
+apiref.rst macros.rst enums.rst types.rst: \
+	$(top_builddir)/lib/includes/nghttp2/nghttp2ver.h \
 	$(top_builddir)/lib/includes/nghttp2/nghttp2.h
 	$(PYTHON) $(top_srcdir)/doc/mkapiref.py \
 	$@ macros.rst enums.rst types.rst . $^
+
+# Inspired by
+# http://www.gnu.org/savannah-checkouts/gnu/automake/manual/html_node/Multiple-Outputs.html
+apidoc.stamp: $(top_builddir)/lib/includes/nghttp2/nghttp2ver.h \
+	$(top_builddir)/lib/includes/nghttp2/nghttp2.h
+	@rm -f apidoc.tmp
+	@touch apidoc.tmp
+	$(PYTHON) $(top_srcdir)/doc/mkapiref.py \
+	$@ macros.rst enums.rst types.rst . $^
+	@mv -f apidoc.tmp $@
+$(APIDOC): apidoc.stamp
+## Recover from the removal of $@
+	@if test -f $@; then :; else \
+	  rm -f apidoc.stamp; \
+	  $(MAKE) $(AM_MAKEFLAGS) apidoc.stamp; \
+	fi
 
 clean-local:
 	-rm $(APIDOCS)

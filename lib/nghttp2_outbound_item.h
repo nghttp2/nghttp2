@@ -33,13 +33,6 @@
 #include "nghttp2_frame.h"
 #include "nghttp2_mem.h"
 
-/* A bit higher priority for non-DATA frames */
-#define NGHTTP2_OB_EX_CYCLE 2
-/* Even more higher priority for SETTINGS frame */
-#define NGHTTP2_OB_SETTINGS_CYCLE 1
-/* Highest priority for PING frame */
-#define NGHTTP2_OB_PING_CYCLE 0
-
 /* struct used for HEADERS and PUSH_PROMISE frame */
 typedef struct {
   nghttp2_data_provider data_prd;
@@ -104,10 +97,12 @@ typedef union {
   nghttp2_goaway_aux_data goaway;
 } nghttp2_aux_data;
 
-typedef struct {
+struct nghttp2_outbound_item;
+typedef struct nghttp2_outbound_item nghttp2_outbound_item;
+
+struct nghttp2_outbound_item {
   nghttp2_frame frame;
   nghttp2_aux_data aux_data;
-  int64_t seq;
   /* The priority used in priority comparion.  Smaller is served
      ealier.  For PING, SETTINGS and non-DATA frames (excluding
      response HEADERS frame) have dedicated cycle value defined above.
@@ -116,14 +111,47 @@ typedef struct {
      that the amount of transmission is distributed across streams
      proportional to effective weight (inside a tree). */
   uint64_t cycle;
+  nghttp2_outbound_item *qnext;
   /* nonzero if this object is queued. */
   uint8_t queued;
-} nghttp2_outbound_item;
+};
+
+/*
+ * Initializes |item|.  No memory allocation is done in this function.
+ * Don't call nghttp2_outbound_item_free() until frame member is
+ * initialized.
+ */
+void nghttp2_outbound_item_init(nghttp2_outbound_item *item);
 
 /*
  * Deallocates resource for |item|. If |item| is NULL, this function
  * does nothing.
  */
 void nghttp2_outbound_item_free(nghttp2_outbound_item *item, nghttp2_mem *mem);
+
+/*
+ * queue for nghttp2_outbound_item.
+ */
+typedef struct {
+  nghttp2_outbound_item *head, *tail;
+  /* number of items in this queue. */
+  size_t n;
+} nghttp2_outbound_queue;
+
+void nghttp2_outbound_queue_init(nghttp2_outbound_queue *q);
+
+/* Pushes |item| into |q| */
+void nghttp2_outbound_queue_push(nghttp2_outbound_queue *q,
+                                 nghttp2_outbound_item *item);
+
+/* Pops |item| at the top from |q|.  If |q| is empty, nothing
+   happens. */
+void nghttp2_outbound_queue_pop(nghttp2_outbound_queue *q);
+
+/* Returns the top item. */
+#define nghttp2_outbound_queue_top(Q) ((Q)->head)
+
+/* Returns the size of the queue */
+#define nghttp2_outbound_queue_size(Q) ((Q)->n)
 
 #endif /* NGHTTP2_OUTBOUND_ITEM_H */

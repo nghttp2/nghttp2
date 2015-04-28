@@ -1730,6 +1730,42 @@ static int hd_inflate_remove_bufs(nghttp2_hd_inflater *inflater, nghttp2_nv *nv,
   return 0;
 }
 
+static int hd_inflate_remove_bufs_with_name(nghttp2_hd_inflater *inflater,
+                                            nghttp2_nv *nv,
+                                            nghttp2_hd_entry *ent_name) {
+  size_t rv;
+  size_t buflen;
+  uint8_t *buf;
+  nghttp2_mem *mem;
+
+  mem = inflater->ctx.mem;
+
+  /* Allocate buffer including name in ent_name, plus terminating
+     NULL. */
+  buflen = ent_name->nv.namelen + 1 + nghttp2_bufs_len(&inflater->nvbufs);
+
+  buf = nghttp2_mem_malloc(mem, buflen);
+  if (buf == NULL) {
+    return NGHTTP2_ERR_NOMEM;
+  }
+
+  /* Copy including terminal NULL */
+  memcpy(buf, ent_name->nv.name, ent_name->nv.namelen + 1);
+  rv = nghttp2_bufs_remove_copy(&inflater->nvbufs,
+                                buf + ent_name->nv.namelen + 1);
+  assert(ent_name->nv.namelen + 1 + rv == buflen);
+
+  nghttp2_bufs_reset(&inflater->nvbufs);
+
+  nv->name = buf;
+  nv->namelen = ent_name->nv.namelen;
+
+  nv->value = buf + nv->namelen + 1;
+  nv->valuelen = buflen - nv->namelen - 2;
+
+  return 0;
+}
+
 /*
  * Finalize literal header representation - new name- reception. If
  * header is emitted, |*nv_out| is filled with that value and 0 is
@@ -1813,11 +1849,6 @@ static int hd_inflate_commit_indname(nghttp2_hd_inflater *inflater,
 
   mem = inflater->ctx.mem;
 
-  rv = hd_inflate_remove_bufs(inflater, &nv, 1 /* value only */);
-  if (rv != 0) {
-    return NGHTTP2_ERR_NOMEM;
-  }
-
   if (inflater->no_index) {
     nv.flags = NGHTTP2_NV_FLAG_NO_INDEX;
   } else {
@@ -1826,31 +1857,33 @@ static int hd_inflate_commit_indname(nghttp2_hd_inflater *inflater,
 
   ent_name = nghttp2_hd_table_get(&inflater->ctx, inflater->index);
 
-  nv.name = ent_name->nv.name;
-  nv.namelen = ent_name->nv.namelen;
-
   if (inflater->index_required) {
     nghttp2_hd_entry *new_ent;
     uint8_t ent_flags;
-    int static_name;
 
-    ent_flags = NGHTTP2_HD_FLAG_VALUE_ALLOC | NGHTTP2_HD_FLAG_VALUE_GIFT;
-    static_name = inflater->index < NGHTTP2_STATIC_TABLE_LENGTH;
+    if (inflater->index < NGHTTP2_STATIC_TABLE_LENGTH) {
+      /* We don't copy name in static table */
+      rv = hd_inflate_remove_bufs(inflater, &nv, 1 /* value only */);
+      if (rv != 0) {
+        return NGHTTP2_ERR_NOMEM;
+      }
+      nv.name = ent_name->nv.name;
+      nv.namelen = ent_name->nv.namelen;
 
-    if (!static_name) {
-      ent_flags |= NGHTTP2_HD_FLAG_NAME_ALLOC;
-      /* For entry in static table, we must not touch ref, because it
-         is shared by threads */
-      ++ent_name->ref;
+      ent_flags = NGHTTP2_HD_FLAG_VALUE_ALLOC | NGHTTP2_HD_FLAG_VALUE_GIFT;
+    } else {
+      rv = hd_inflate_remove_bufs_with_name(inflater, &nv, ent_name);
+      if (rv != 0) {
+        return NGHTTP2_ERR_NOMEM;
+      }
+      /* nv->name and nv->value are in the same buffer. */
+      ent_flags = NGHTTP2_HD_FLAG_NAME_ALLOC | NGHTTP2_HD_FLAG_NAME_GIFT;
     }
 
     new_ent = add_hd_table_incremental(&inflater->ctx, &nv, ent_name->token,
                                        ent_flags);
 
-    if (!static_name && --ent_name->ref == 0) {
-      nghttp2_hd_entry_free(ent_name, mem);
-      nghttp2_mem_free(mem, ent_name);
-    }
+    /* At this point, ent_name might be deleted. */
 
     if (new_ent) {
       emit_indexed_header(nv_out, token_out, new_ent);
@@ -1864,6 +1897,14 @@ static int hd_inflate_commit_indname(nghttp2_hd_inflater *inflater,
 
     return NGHTTP2_ERR_NOMEM;
   }
+
+  rv = hd_inflate_remove_bufs(inflater, &nv, 1 /* value only */);
+  if (rv != 0) {
+    return NGHTTP2_ERR_NOMEM;
+  }
+
+  nv.name = ent_name->nv.name;
+  nv.namelen = ent_name->nv.namelen;
 
   emit_literal_header(nv_out, token_out, &nv);
 

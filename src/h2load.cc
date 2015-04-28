@@ -69,7 +69,7 @@ namespace h2load {
 
 Config::Config()
     : data_length(-1), addrs(nullptr), nreqs(1), nclients(1), nthreads(1),
-      max_concurrent_streams(-1), window_bits(16), connection_window_bits(16),
+      max_concurrent_streams(-1), window_bits(30), connection_window_bits(30),
       no_tls_proto(PROTO_HTTP2), data_fd(-1), port(0), default_port(0),
       verbose(false) {}
 
@@ -974,11 +974,13 @@ Options:
   -w, --window-bits=<N>
               Sets the stream level initial window size to (2**<N>)-1.
               For SPDY, 2**<N> is used instead.
+              Default: )" << config.window_bits << R"(
   -W, --connection-window-bits=<N>
               Sets  the  connection  level   initial  window  size  to
               (2**<N>)-1.  For SPDY, if <N>  is strictly less than 16,
               this option  is ignored.   Otherwise 2**<N> is  used for
               SPDY.
+              Default: )" << config.connection_window_bits << R"(
   -H, --header=<HEADER>
               Add/Override a header to the requests.
   -p, --no-tls-proto=<PROTOID>

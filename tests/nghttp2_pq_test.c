@@ -28,14 +28,14 @@
 
 #include "nghttp2_pq.h"
 
-static int pq_compar(const void *lhs, const void *rhs) {
-  return strcmp(lhs, rhs);
+static int pq_less(const void *lhs, const void *rhs) {
+  return strcmp(lhs, rhs) < 0;
 }
 
 void test_nghttp2_pq(void) {
   int i;
   nghttp2_pq pq;
-  nghttp2_pq_init(&pq, pq_compar, nghttp2_mem_default());
+  nghttp2_pq_init(&pq, pq_less, nghttp2_mem_default());
   CU_ASSERT(nghttp2_pq_empty(&pq));
   CU_ASSERT(0 == nghttp2_pq_size(&pq));
   CU_ASSERT(0 == nghttp2_pq_push(&pq, (void *)"foo"));
@@ -80,10 +80,10 @@ typedef struct {
   int val;
 } node;
 
-static int node_compar(const void *lhs, const void *rhs) {
+static int node_less(const void *lhs, const void *rhs) {
   node *ln = (node *)lhs;
   node *rn = (node *)rhs;
-  return ln->key - rn->key;
+  return ln->key < rn->key;
 }
 
 static int node_update(void *item, void *arg _U_) {
@@ -103,7 +103,7 @@ void test_nghttp2_pq_update(void) {
   node *nd;
   int ans[] = {-8, -6, -4, -2, 0, 1, 3, 5, 7, 9};
 
-  nghttp2_pq_init(&pq, node_compar, nghttp2_mem_default());
+  nghttp2_pq_init(&pq, node_less, nghttp2_mem_default());
 
   for (i = 0; i < (int)(sizeof(nodes) / sizeof(nodes[0])); ++i) {
     nodes[i].key = i;
