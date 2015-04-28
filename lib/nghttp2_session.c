@@ -3131,12 +3131,12 @@ static int inflate_header_block(nghttp2_session *session, nghttp2_frame *frame,
     }
     if (proclen < 0) {
       if (session->iframe.state == NGHTTP2_IB_READ_HEADER_BLOCK) {
-        if (stream && stream->state != NGHTTP2_STREAM_CLOSING) {
+        if (subject_stream && subject_stream->state != NGHTTP2_STREAM_CLOSING) {
           /* Adding RST_STREAM here is very important. It prevents
              from invoking subsequent callbacks for the same stream
              ID. */
-          rv = nghttp2_session_add_rst_stream(session, frame->hd.stream_id,
-                                              NGHTTP2_COMPRESSION_ERROR);
+          rv = nghttp2_session_add_rst_stream(
+              session, subject_stream->stream_id, NGHTTP2_COMPRESSION_ERROR);
 
           if (nghttp2_is_fatal(rv)) {
             return rv;
