@@ -3562,7 +3562,10 @@ NGHTTP2_EXTERN int nghttp2_nv_compare_name(const nghttp2_nv *lhs,
  *     {
  *         int rv;
  *         rv = nghttp2_select_next_protocol(out, outlen, in, inlen);
- *         if(rv == 1) {
+ *         if (rv == -1) {
+ *             return SSL_TLSEXT_ERR_NOACK;
+ *         }
+ *         if (rv == 1) {
  *             ((MyType*)arg)->http2_selected = 1;
  *         }
  *         return SSL_TLSEXT_ERR_OK;
