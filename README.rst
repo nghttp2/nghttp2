@@ -20,7 +20,7 @@ Development Status
 ------------------
 
 We have implemented `RFC 7540 <https://tools.ietf.org/html/rfc7540>`_
-HTTP/2 and ``RFC 7541 <https://tools.ietf.org/html/rfc7541>`_ HPACK -
+HTTP/2 and `RFC 7541 <https://tools.ietf.org/html/rfc7541>`_ HPACK -
 Header Compression for HTTP/2
 
 The nghttp2 code base was forked from the spdylay
