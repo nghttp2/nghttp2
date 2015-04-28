@@ -2315,8 +2315,9 @@ Options:
               filename is  dereived from URI.   If URI ends  with '/',
               'index.html'  is used  as a  filename.  Not  implemented
               yet.
-  -t, --timeout=<SEC>
-              Timeout each request after <SEC> seconds.
+  -t, --timeout=<DURATION>
+              Timeout each request after <DURATION>.  Set 0 to disable
+              timeout.
   -w, --window-bits=<N>
               Sets the stream level initial window size to 2**<N>-1.
   -W, --connection-window-bits=<N>
@@ -2386,7 +2387,12 @@ Options:
 --
 
   The <SIZE> argument is an integer and an optional unit (e.g., 10K is
-  10 * 1024).  Units are K, M and G (powers of 1024).)" << std::endl;
+  10 * 1024).  Units are K, M and G (powers of 1024).
+
+  The <DURATION> argument is an integer and an optional unit (e.g., 1s
+  is 1 second and 500ms is 500 milliseconds).  Units are h, m, s or ms
+  (hours, minutes, seconds and milliseconds, respectively).  If a unit
+  is omitted, a second is used as unit.)" << std::endl;
 }
 } // namespace
 
@@ -2472,7 +2478,11 @@ int main(int argc, char **argv) {
       ++config.verbose;
       break;
     case 't':
-      config.timeout = atoi(optarg);
+      config.timeout = util::parse_duration_with_unit(optarg);
+      if (config.timeout == std::numeric_limits<double>::infinity()) {
+        std::cerr << "-t: bad timeout value: " << optarg << std::endl;
+        exit(EXIT_FAILURE);
+      }
       break;
     case 'u':
       config.upgrade = true;
