@@ -81,7 +81,7 @@ typedef enum {
   /* indicates that this GOAWAY is just a notification for graceful
      shutdown.  No nghttp2_session.goaway_flags should be updated on
      the reaction to this frame. */
-  NGHTTP2_GOAWAY_AUX_SHUTDOWN_NOTICE = 0x2,
+  NGHTTP2_GOAWAY_AUX_SHUTDOWN_NOTICE = 0x2
 } nghttp2_goaway_aux_flag;
 
 /* struct used for GOAWAY frame */
