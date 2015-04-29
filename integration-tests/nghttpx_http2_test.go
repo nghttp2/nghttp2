@@ -558,6 +558,46 @@ func TestH2H1RequestTrailer(t *testing.T) {
 	}
 }
 
+// TestH2H1HeaderFieldBuffer tests that request with header fields
+// larger than configured buffer size is rejected.
+func TestH2H1HeaderFieldBuffer(t *testing.T) {
+	st := newServerTester([]string{"--header-field-buffer=10"}, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Fatal("execution path should not be here")
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1HeaderFieldBuffer",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.status, 431; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+}
+
+// TestH2H1HeaderFields tests that request with header fields more
+// than configured number is rejected.
+func TestH2H1HeaderFields(t *testing.T) {
+	st := newServerTester([]string{"--max-header-fields=1"}, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Fatal("execution path should not be here")
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1HeaderFields",
+		// we have at least 4 pseudo-header fields sent, and
+		// that ensures that buffer limit exceeds.
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.status, 431; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+}
+
 // TestH2H1Upgrade tests HTTP Upgrade to HTTP/2
 func TestH2H1Upgrade(t *testing.T) {
 	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {})

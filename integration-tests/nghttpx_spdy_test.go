@@ -170,6 +170,46 @@ func TestS3H1NoVia(t *testing.T) {
 	}
 }
 
+// TestS3H1HeaderFieldBuffer tests that request with header fields
+// larger than configured buffer size is rejected.
+func TestS3H1HeaderFieldBuffer(t *testing.T) {
+	st := newServerTesterTLS([]string{"--npn-list=spdy/3.1", "--header-field-buffer=10"}, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Fatal("execution path should not be here")
+	})
+	defer st.Close()
+
+	res, err := st.spdy(requestParam{
+		name: "TestS3H1HeaderFieldBuffer",
+	})
+	if err != nil {
+		t.Fatalf("Error st.spdy() = %v", err)
+	}
+	if got, want := res.spdyRstErrCode, spdy.InternalError; got != want {
+		t.Errorf("res.spdyRstErrCode: %v; want %v", got, want)
+	}
+}
+
+// TestS3H1HeaderFields tests that request with header fields more
+// than configured number is rejected.
+func TestS3H1HeaderFields(t *testing.T) {
+	st := newServerTesterTLS([]string{"--npn-list=spdy/3.1", "--max-header-fields=1"}, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Fatal("execution path should not be here")
+	})
+	defer st.Close()
+
+	res, err := st.spdy(requestParam{
+		name: "TestS3H1HeaderFields",
+		// we have at least 5 pseudo-header fields sent, and
+		// that ensures that buffer limit exceeds.
+	})
+	if err != nil {
+		t.Fatalf("Error st.spdy() = %v", err)
+	}
+	if got, want := res.spdyRstErrCode, spdy.InternalError; got != want {
+		t.Errorf("res.spdyRstErrCode: %v; want %v", got, want)
+	}
+}
+
 // TestS3H2ConnectFailure tests that server handles the situation that
 // connection attempt to HTTP/2 backend failed.
 func TestS3H2ConnectFailure(t *testing.T) {
