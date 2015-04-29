@@ -150,6 +150,8 @@ const char SHRPX_OPT_BACKEND_HTTP2_CONNECTIONS_PER_WORKER[] =
 const char SHRPX_OPT_FETCH_OCSP_RESPONSE_FILE[] = "fetch-ocsp-response-file";
 const char SHRPX_OPT_OCSP_UPDATE_INTERVAL[] = "ocsp-update-interval";
 const char SHRPX_OPT_NO_OCSP[] = "no-ocsp";
+const char SHRPX_OPT_HEADER_FIELD_BUFFER[] = "header-field-buffer";
+const char SHRPX_OPT_MAX_HEADER_FIELDS[] = "max-header-fields";
 
 namespace {
 Config *config = nullptr;
@@ -1210,6 +1212,15 @@ int parse_config(const char *opt, const char *optarg) {
     mod_config()->no_ocsp = util::strieq(optarg, "yes");
 
     return 0;
+  }
+
+  if (util::strieq(opt, SHRPX_OPT_HEADER_FIELD_BUFFER)) {
+    return parse_uint_with_unit(&mod_config()->header_field_buffer, opt,
+                                optarg);
+  }
+
+  if (util::strieq(opt, SHRPX_OPT_MAX_HEADER_FIELDS)) {
+    return parse_uint(&mod_config()->max_header_fields, opt, optarg);
   }
 
   if (util::strieq(opt, "conf")) {

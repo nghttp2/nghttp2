@@ -139,6 +139,8 @@ extern const char SHRPX_OPT_BACKEND_HTTP2_CONNECTIONS_PER_WORKER[];
 extern const char SHRPX_OPT_FETCH_OCSP_RESPONSE_FILE[];
 extern const char SHRPX_OPT_OCSP_UPDATE_INTERVAL[];
 extern const char SHRPX_OPT_NO_OCSP[];
+extern const char SHRPX_OPT_HEADER_FIELD_BUFFER[];
+extern const char SHRPX_OPT_MAX_HEADER_FIELDS[];
 
 union sockaddr_union {
   sockaddr_storage storage;
@@ -282,6 +284,8 @@ struct Config {
   size_t rlimit_nofile;
   size_t downstream_request_buffer_size;
   size_t downstream_response_buffer_size;
+  size_t header_field_buffer;
+  size_t max_header_fields;
   // Bit mask to disable SSL/TLS protocol versions.  This will be
   // passed to SSL_CTX_set_options().
   long int tls_proto_mask;
