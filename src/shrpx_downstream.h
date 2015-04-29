@@ -143,6 +143,7 @@ public:
   void set_request_method(std::string method);
   const std::string &get_request_method() const;
   void set_request_path(std::string path);
+  void add_request_headers_sum(size_t amount);
   void
   set_request_start_time(std::chrono::high_resolution_clock::time_point time);
   const std::chrono::high_resolution_clock::time_point &

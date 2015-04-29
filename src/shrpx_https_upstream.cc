@@ -78,6 +78,17 @@ namespace {
 int htp_uricb(http_parser *htp, const char *data, size_t len) {
   auto upstream = static_cast<HttpsUpstream *>(htp->data);
   auto downstream = upstream->get_downstream();
+  if (downstream->get_request_headers_sum() + len >
+      get_config()->header_field_buffer) {
+    if (LOG_ENABLED(INFO)) {
+      ULOG(INFO, upstream) << "Too large URI size="
+                           << downstream->get_request_headers_sum() + len;
+    }
+    assert(downstream->get_request_state() == Downstream::INITIAL);
+    downstream->set_request_state(Downstream::HTTP1_REQUEST_HEADER_TOO_LARGE);
+    return -1;
+  }
+  downstream->add_request_headers_sum(len);
   downstream->append_request_path(data, len);
   return 0;
 }
