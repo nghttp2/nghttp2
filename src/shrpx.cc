@@ -912,6 +912,8 @@ void fill_default_config() {
   mod_config()->fetch_ocsp_response_file =
       strcopy(PKGDATADIR "/fetch-ocsp-response");
   mod_config()->no_ocsp = false;
+  mod_config()->header_field_buffer = 64 * 1024;
+  mod_config()->max_header_fields = 100;
 }
 } // namespace
 
@@ -1336,6 +1338,16 @@ HTTP:
               won't replace anything already  set.  This option can be
               used several  times to  specify multiple  header fields.
               Example: --add-response-header="foo: bar"
+  --header-field-buffer=<SIZE>
+              Set maximum  buffer size for incoming  HTTP header field
+              list.   This is  the sum  of  header name  and value  in
+              bytes.
+              Default: )"
+      << util::utos_with_unit(get_config()->header_field_buffer) << R"(
+  --max-header-fields=<N>
+              Set maximum number of incoming HTTP header fields, which
+              appear in one request or response header field list.
+              Default: )" << get_config()->max_header_fields << R"(
 
 Debug:
   --frontend-http2-dump-request-header=<PATH>
@@ -1496,6 +1508,8 @@ int main(int argc, char **argv) {
         {"fetch-ocsp-response-file", required_argument, &flag, 77},
         {"ocsp-update-interval", required_argument, &flag, 78},
         {"no-ocsp", no_argument, &flag, 79},
+        {"header-field-buffer", required_argument, &flag, 80},
+        {"max-header-fields", required_argument, &flag, 81},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -1845,6 +1859,14 @@ int main(int argc, char **argv) {
       case 79:
         // --no-ocsp
         cmdcfgs.emplace_back(SHRPX_OPT_NO_OCSP, "yes");
+        break;
+      case 80:
+        // --header-field-buffer
+        cmdcfgs.emplace_back(SHRPX_OPT_HEADER_FIELD_BUFFER, optarg);
+        break;
+      case 81:
+        // --max-header-fields
+        cmdcfgs.emplace_back(SHRPX_OPT_MAX_HEADER_FIELDS, optarg);
         break;
       default:
         break;

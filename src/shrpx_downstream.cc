@@ -1211,4 +1211,8 @@ void Downstream::detach_blocked_link(BlockedLink *l) {
   blocked_link_ = nullptr;
 }
 
+void Downstream::add_request_headers_sum(size_t amount) {
+  request_headers_sum_ += amount;
+}
+
 } // namespace shrpx
