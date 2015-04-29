@@ -93,6 +93,9 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
       ULOG(INFO, upstream) << "Too large header block size="
                            << downstream->get_request_headers_sum() + len;
     }
+    if (downstream->get_request_state() == Downstream::INITIAL) {
+      downstream->set_request_state(Downstream::HTTP1_REQUEST_HEADER_TOO_LARGE);
+    }
     return -1;
   }
   if (downstream->get_request_state() == Downstream::INITIAL) {
@@ -105,6 +108,8 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
           ULOG(INFO, upstream) << "Too many header field num="
                                << downstream->get_request_headers().size() + 1;
         }
+        downstream->set_request_state(
+            Downstream::HTTP1_REQUEST_HEADER_TOO_LARGE);
         return -1;
       }
       downstream->add_request_header(std::string(data, len), "");
@@ -138,6 +143,9 @@ int htp_hdr_valcb(http_parser *htp, const char *data, size_t len) {
     if (LOG_ENABLED(INFO)) {
       ULOG(INFO, upstream) << "Too large header block size="
                            << downstream->get_request_headers_sum() + len;
+    }
+    if (downstream->get_request_state() == Downstream::INITIAL) {
+      downstream->set_request_state(Downstream::HTTP1_REQUEST_HEADER_TOO_LARGE);
     }
     return -1;
   }
@@ -425,9 +433,15 @@ int HttpsUpstream::on_read() {
 
     unsigned int status_code;
 
-    if (downstream &&
-        downstream->get_request_state() == Downstream::CONNECT_FAIL) {
-      status_code = 503;
+    if (downstream) {
+      if (downstream->get_request_state() == Downstream::CONNECT_FAIL) {
+        status_code = 503;
+      } else if (downstream->get_request_state() ==
+                 Downstream::HTTP1_REQUEST_HEADER_TOO_LARGE) {
+        status_code = 431;
+      } else {
+        status_code = 400;
+      }
     } else {
       status_code = 400;
     }

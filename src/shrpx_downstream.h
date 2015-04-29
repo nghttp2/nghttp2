@@ -193,6 +193,10 @@ public:
     // header contains invalid header field.  We can safely send error
     // response (502) to a client.
     MSG_BAD_HEADER,
+    // header fields in HTTP/1 request exceed the configuration limit.
+    // This state is only transitioned from INITIAL state, and solely
+    // used to signal 431 status code to the client.
+    HTTP1_REQUEST_HEADER_TOO_LARGE,
   };
   void set_request_state(int state);
   int get_request_state() const;
