@@ -190,7 +190,7 @@ typedef enum {
   NGHTTP2_TOKEN__METHOD,
   NGHTTP2_TOKEN__PATH,
   NGHTTP2_TOKEN__SCHEME,
-  NGHTTP2_TOKEN_HOST,
+  NGHTTP2_TOKEN_HOST
 } nghttp2_token;
 
 /* Inspired by h2o header lookup.  https://github.com/h2o/h2o */
