@@ -187,7 +187,7 @@ https://nghttp2.org/documentation/
 Unit tests
 ----------
 
-Unit tests are done by simply running `make check`.
+Unit tests are done by simply running ``make check``.
 
 Integration tests
 -----------------
@@ -1273,7 +1273,7 @@ original creator(s) or those who have been assigned copyright by the
 original author(s).
 
 By submitting a patch to the nghttp2 project, you (or your employer, as
-the case may be) agree to assign the copyright of your submission to us.  
+the case may be) agree to assign the copyright of your submission to us.
 .. the above really needs to be reworded to pass legal muster.
 We will credit you for your
 changes as far as possible, to give credit but also to keep a trace
