@@ -87,7 +87,7 @@ struct RequestStat {
   std::chrono::steady_clock::time_point request_time;
   // time point when stream was closed
   std::chrono::steady_clock::time_point stream_close_time;
- // upload data length sent so far
+  // upload data length sent so far
   int64_t data_offset;
   // true if stream was successfully closed.  This means stream was
   // not reset, but it does not mean HTTP level error (e.g., 404).
@@ -96,11 +96,13 @@ struct RequestStat {
 
 struct TimeStats {
   // time for request: max, min, mean and sd (standard deviation)
-  std::chrono::microseconds request_time_max, request_time_min, request_time_mean, request_time_sd;
+  std::chrono::microseconds request_time_max, request_time_min,
+      request_time_mean, request_time_sd;
   // percentage of number of requests inside mean -/+ sd
   double request_within_sd;
   // time for connect: max, min, mean and sd (standard deviation)
-  std::chrono::microseconds connect_time_max, connect_time_min, connect_time_mean, connect_time_sd;
+  std::chrono::microseconds connect_time_max, connect_time_min,
+      connect_time_mean, connect_time_sd;
   // percentage of number of connects inside mean -/+ sd
   double connect_within_sd;
   // time to first byte: max, min, mean and sd (standard deviation)
@@ -142,7 +144,7 @@ struct Stats {
   std::array<size_t, 6> status;
   // The statistics per request
   std::vector<RequestStat> req_stats;
-   // time connect starts
+  // time connect starts
   std::vector<std::chrono::steady_clock::time_point> start_times;
   // time to connect
   std::vector<std::chrono::steady_clock::time_point> connect_times;
