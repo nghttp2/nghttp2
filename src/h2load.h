@@ -96,10 +96,22 @@ struct RequestStat {
 
 struct TimeStats {
   // time for request: max, min, mean and sd (standard deviation)
-  std::chrono::microseconds time_max, time_min, time_mean, time_sd;
+  std::chrono::microseconds request_time_max, request_time_min,
+      request_time_mean, request_time_sd;
   // percentage of number of requests inside mean -/+ sd
-  double within_sd;
+  double request_within_sd;
+  // time for connect: max, min, mean and sd (standard deviation)
+  std::chrono::microseconds connect_time_max, connect_time_min,
+      connect_time_mean, connect_time_sd;
+  // percentage of number of connects inside mean -/+ sd
+  double connect_within_sd;
+  // time to first byte: max, min, mean and sd (standard deviation)
+  std::chrono::microseconds ttfb_max, ttfb_min, ttfb_mean, ttfb_sd;
+  // percentage of number of connects inside mean -/+ sd
+  double ttfb_within_sd;
 };
+
+enum TimeStatType { STAT_REQUEST, STAT_CONNECT, STAT_FIRST_BYTE };
 
 struct Stats {
   Stats(size_t req_todo);
@@ -132,6 +144,12 @@ struct Stats {
   std::array<size_t, 6> status;
   // The statistics per request
   std::vector<RequestStat> req_stats;
+  // time connect starts
+  std::vector<std::chrono::steady_clock::time_point> start_times;
+  // time to connect
+  std::vector<std::chrono::steady_clock::time_point> connect_times;
+  // time to first byte
+  std::vector<std::chrono::steady_clock::time_point> time_to_first_bytes;
 };
 
 enum ClientState { CLIENT_IDLE, CLIENT_CONNECTED };
@@ -171,6 +189,7 @@ struct Client {
   addrinfo *next_addr;
   size_t reqidx;
   ClientState state;
+  bool first_byte_received;
   // The number of requests this client has to issue.
   size_t req_todo;
   // The number of requests this client has issued so far.
@@ -215,6 +234,9 @@ struct Client {
   void on_stream_close(int32_t stream_id, bool success, RequestStat *req_stat);
 
   void record_request_time(RequestStat *req_stat);
+  void record_start_time(Stats *stat);
+  void record_connect_time(Stats *stat);
+  void record_time_to_first_byte(Stats *stat);
 
   void signal_write();
 };
