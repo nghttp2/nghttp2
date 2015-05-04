@@ -691,26 +691,26 @@ void ClientHandler::start_immediate_shutdown() {
 }
 
 void ClientHandler::write_accesslog(Downstream *downstream) {
-  LogSpec lgsp = {
-      downstream, ipaddr_.c_str(), downstream->get_request_method().c_str(),
+  upstream_accesslog(
+      get_config()->accesslog_format,
+      LogSpec{
+          downstream, ipaddr_.c_str(), downstream->get_request_method().c_str(),
 
-      downstream->get_request_path().empty()
-          ? downstream->get_request_http2_authority().c_str()
-          : downstream->get_request_path().c_str(),
+          downstream->get_request_path().empty()
+              ? downstream->get_request_http2_authority().c_str()
+              : downstream->get_request_path().c_str(),
 
-      alpn_.c_str(),
+          alpn_.c_str(),
 
-      std::chrono::system_clock::now(),          // time_now
-      downstream->get_request_start_time(),      // request_start_time
-      std::chrono::high_resolution_clock::now(), // request_end_time
+          std::chrono::system_clock::now(),          // time_now
+          downstream->get_request_start_time(),      // request_start_time
+          std::chrono::high_resolution_clock::now(), // request_end_time
 
-      downstream->get_request_major(), downstream->get_request_minor(),
-      downstream->get_response_http_status(),
-      downstream->get_response_sent_bodylen(), port_.c_str(),
-      get_config()->port, get_config()->pid,
-  };
-
-  upstream_accesslog(get_config()->accesslog_format, &lgsp);
+          downstream->get_request_major(), downstream->get_request_minor(),
+          downstream->get_response_http_status(),
+          downstream->get_response_sent_bodylen(), port_.c_str(),
+          get_config()->port, get_config()->pid,
+      });
 }
 
 void ClientHandler::write_accesslog(int major, int minor, unsigned int status,
@@ -718,20 +718,19 @@ void ClientHandler::write_accesslog(int major, int minor, unsigned int status,
   auto time_now = std::chrono::system_clock::now();
   auto highres_now = std::chrono::high_resolution_clock::now();
 
-  LogSpec lgsp = {
-      nullptr,            ipaddr_.c_str(),
-      "-", // method
-      "-", // path,
-      alpn_.c_str(),      time_now,
-      highres_now,               // request_start_time TODO is
-                                 // there a better value?
-      highres_now,               // request_end_time
-      major,              minor, // major, minor
-      status,             body_bytes_sent,   port_.c_str(),
-      get_config()->port, get_config()->pid,
-  };
-
-  upstream_accesslog(get_config()->accesslog_format, &lgsp);
+  upstream_accesslog(get_config()->accesslog_format,
+                     LogSpec{
+                         nullptr, ipaddr_.c_str(),
+                         "-", // method
+                         "-", // path,
+                         alpn_.c_str(), time_now,
+                         highres_now,  // request_start_time TODO is
+                                       // there a better value?
+                         highres_now,  // request_end_time
+                         major, minor, // major, minor
+                         status, body_bytes_sent, port_.c_str(),
+                         get_config()->port, get_config()->pid,
+                     });
 }
 
 ClientHandler::WriteBuf *ClientHandler::get_wb() { return &wb_; }

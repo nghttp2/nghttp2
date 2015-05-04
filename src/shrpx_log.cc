@@ -158,7 +158,8 @@ std::pair<OutputIterator, size_t> copy(const char *src, size_t avail,
 }
 } // namespace
 
-void upstream_accesslog(const std::vector<LogFragment> &lfv, LogSpec *lgsp) {
+void upstream_accesslog(const std::vector<LogFragment> &lfv,
+                        const LogSpec &lgsp) {
   auto lgconf = log_config();
 
   if (lgconf->accesslog_fd == -1 && !get_config()->accesslog_syslog) {
@@ -167,12 +168,12 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv, LogSpec *lgsp) {
 
   char buf[4096];
 
-  auto downstream = lgsp->downstream;
+  auto downstream = lgsp.downstream;
 
   auto p = buf;
   auto avail = sizeof(buf) - 2;
 
-  lgconf->update_tstamp(lgsp->time_now);
+  lgconf->update_tstamp(lgsp.time_now);
   auto &time_local = lgconf->time_local_str;
   auto &time_iso8601 = lgconf->time_iso8601_str;
 
@@ -182,7 +183,7 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv, LogSpec *lgsp) {
       std::tie(p, avail) = copy(lf.value.get(), avail, p);
       break;
     case SHRPX_LOGF_REMOTE_ADDR:
-      std::tie(p, avail) = copy(lgsp->remote_addr, avail, p);
+      std::tie(p, avail) = copy(lgsp.remote_addr, avail, p);
       break;
     case SHRPX_LOGF_TIME_LOCAL:
       std::tie(p, avail) = copy(time_local.c_str(), avail, p);
@@ -191,22 +192,22 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv, LogSpec *lgsp) {
       std::tie(p, avail) = copy(time_iso8601.c_str(), avail, p);
       break;
     case SHRPX_LOGF_REQUEST:
-      std::tie(p, avail) = copy(lgsp->method, avail, p);
+      std::tie(p, avail) = copy(lgsp.method, avail, p);
       std::tie(p, avail) = copy(" ", avail, p);
-      std::tie(p, avail) = copy(lgsp->path, avail, p);
+      std::tie(p, avail) = copy(lgsp.path, avail, p);
       std::tie(p, avail) = copy(" HTTP/", avail, p);
-      std::tie(p, avail) = copy(util::utos(lgsp->major).c_str(), avail, p);
-      if (lgsp->major < 2) {
+      std::tie(p, avail) = copy(util::utos(lgsp.major).c_str(), avail, p);
+      if (lgsp.major < 2) {
         std::tie(p, avail) = copy(".", avail, p);
-        std::tie(p, avail) = copy(util::utos(lgsp->minor).c_str(), avail, p);
+        std::tie(p, avail) = copy(util::utos(lgsp.minor).c_str(), avail, p);
       }
       break;
     case SHRPX_LOGF_STATUS:
-      std::tie(p, avail) = copy(util::utos(lgsp->status).c_str(), avail, p);
+      std::tie(p, avail) = copy(util::utos(lgsp.status).c_str(), avail, p);
       break;
     case SHRPX_LOGF_BODY_BYTES_SENT:
       std::tie(p, avail) =
-          copy(util::utos(lgsp->body_bytes_sent).c_str(), avail, p);
+          copy(util::utos(lgsp.body_bytes_sent).c_str(), avail, p);
       break;
     case SHRPX_LOGF_HTTP:
       if (downstream) {
@@ -221,15 +222,14 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv, LogSpec *lgsp) {
 
       break;
     case SHRPX_LOGF_REMOTE_PORT:
-      std::tie(p, avail) = copy(lgsp->remote_port, avail, p);
+      std::tie(p, avail) = copy(lgsp.remote_port, avail, p);
       break;
     case SHRPX_LOGF_SERVER_PORT:
-      std::tie(p, avail) =
-          copy(util::utos(lgsp->server_port).c_str(), avail, p);
+      std::tie(p, avail) = copy(util::utos(lgsp.server_port).c_str(), avail, p);
       break;
     case SHRPX_LOGF_REQUEST_TIME: {
       auto t = std::chrono::duration_cast<std::chrono::milliseconds>(
-                   lgsp->request_end_time - lgsp->request_start_time).count();
+                   lgsp.request_end_time - lgsp.request_start_time).count();
 
       auto frac = util::utos(t % 1000);
       auto sec = util::utos(t / 1000);
@@ -242,10 +242,10 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv, LogSpec *lgsp) {
       std::tie(p, avail) = copy(sec.c_str(), avail, p);
     } break;
     case SHRPX_LOGF_PID:
-      std::tie(p, avail) = copy(util::utos(lgsp->pid).c_str(), avail, p);
+      std::tie(p, avail) = copy(util::utos(lgsp.pid).c_str(), avail, p);
       break;
     case SHRPX_LOGF_ALPN:
-      std::tie(p, avail) = copy(lgsp->alpn, avail, p);
+      std::tie(p, avail) = copy(lgsp.alpn, avail, p);
       break;
     case SHRPX_LOGF_NONE:
       break;
