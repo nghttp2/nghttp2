@@ -1,18 +1,11 @@
 /var/log/nghttpx/*.log {
-        weekly
-        missingok
-        rotate 52
-        compress
-        delaycompress
-        notifempty
-        create 0640 www-data adm
-        sharedscripts
-        prerotate
-                if [ -d /etc/logrotate.d/httpd-prerotate ]; then \
-                        run-parts /etc/logrotate.d/httpd-prerotate; \
-                fi \
-        endscript
-        postrotate
-                [ -s /run/nghttpx.pid ] && kill -USR1 `cat /run/nghttpx.pid`
-        endscript
+  weekly
+  rotate 52
+  missingok
+  compress
+  delaycompress
+  notifempty
+  postrotate
+    killall -USR1 nghttpx 2> /dev/null || true
+  endscript
 }
