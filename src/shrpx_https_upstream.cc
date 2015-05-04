@@ -218,7 +218,12 @@ void rewrite_request_host_path_from_uri(Downstream *downstream, const char *uri,
     path += '?';
     path.append(uri + fdata.off, fdata.len);
   }
-  downstream->set_request_path(path);
+  downstream->set_request_path(std::move(path));
+  if (get_config()->http2_proxy || get_config()->client_proxy) {
+    std::string scheme;
+    http2::copy_url_component(scheme, &u, UF_SCHEMA, uri);
+    downstream->set_request_http2_scheme(std::move(scheme));
+  }
 }
 } // namespace
 
@@ -275,7 +280,7 @@ int htp_hdrs_completecb(http_parser *htp) {
     }
     // checking UF_HOST could be redundant, but just in case ...
     if (!(u.field_set & (1 << UF_SCHEMA)) || !(u.field_set & (1 << UF_HOST))) {
-      if (get_config()->client_proxy) {
+      if (get_config()->http2_proxy || get_config()->client_proxy) {
         // Request URI should be absolute-form for client proxy mode
         return -1;
       }

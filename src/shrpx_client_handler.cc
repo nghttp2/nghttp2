@@ -690,15 +690,63 @@ void ClientHandler::start_immediate_shutdown() {
   ev_timer_start(conn_.loop, &reneg_shutdown_timer_);
 }
 
+namespace {
+// Construct absolute request URI from |downstream|, mainly to log
+// request URI for proxy request (HTTP/2 proxy or client proxy).  This
+// is mostly same routine found in
+// HttpDownstreamConnection::push_request_headers(), but vastly
+// simplified since we only care about absolute URI.
+std::string construct_absolute_request_uri(Downstream *downstream) {
+  const char *authority = nullptr, *host = nullptr;
+  if (!downstream->get_request_http2_authority().empty()) {
+    authority = downstream->get_request_http2_authority().c_str();
+  }
+  auto h = downstream->get_request_header(http2::HD_HOST);
+  if (h) {
+    host = h->value.c_str();
+  }
+  if (!authority && !host) {
+    return downstream->get_request_path();
+  }
+  std::string uri;
+  if (downstream->get_request_http2_scheme().empty()) {
+    // this comes from HTTP/1 upstream without scheme.  Just use http.
+    uri += "http://";
+  } else {
+    uri += downstream->get_request_http2_scheme();
+    uri += "://";
+  }
+  if (authority) {
+    uri += authority;
+  } else {
+    uri += host;
+  }
+
+  // Server-wide OPTIONS takes following form in proxy request:
+  //
+  // OPTIONS http://example.org HTTP/1.1
+  //
+  // Notice that no slash after authority. See
+  // http://tools.ietf.org/html/rfc7230#section-5.3.4
+  if (downstream->get_request_path() != "*") {
+    uri += downstream->get_request_path();
+  }
+  return uri;
+}
+} // namespace
+
 void ClientHandler::write_accesslog(Downstream *downstream) {
   upstream_accesslog(
       get_config()->accesslog_format,
       LogSpec{
           downstream, ipaddr_.c_str(), downstream->get_request_method().c_str(),
 
-          downstream->get_request_path().empty()
-              ? downstream->get_request_http2_authority().c_str()
-              : downstream->get_request_path().c_str(),
+          (downstream->get_request_method() != "CONNECT" &&
+           (get_config()->http2_proxy || get_config()->client_proxy))
+              ? construct_absolute_request_uri(downstream).c_str()
+              : downstream->get_request_path().empty()
+                    ? downstream->get_request_http2_authority().c_str()
+                    : downstream->get_request_path().c_str(),
 
           alpn_.c_str(),
 
