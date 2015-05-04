@@ -526,7 +526,7 @@ int Client::read_clear() {
 
     if (!first_byte_received) {
       first_byte_received = true;
-      record_time_to_first_byte(&worker->stats);
+      record_ttfb(&worker->stats);
     }
   }
 
@@ -653,7 +653,7 @@ int Client::read_tls() {
 
     if (!first_byte_received) {
       first_byte_received = true;
-      record_time_to_first_byte(&worker->stats);
+      record_ttfb(&worker->stats);
     }
   }
 }
@@ -713,8 +713,8 @@ void Client::record_connect_time(Stats *stat) {
   stat->connect_times.push_back(std::chrono::steady_clock::now());
 }
 
-void Client::record_time_to_first_byte(Stats *stat) {
-  stat->time_to_first_bytes.push_back(std::chrono::steady_clock::now());
+void Client::record_ttfb(Stats *stat) {
+  stat->ttfbs.push_back(std::chrono::steady_clock::now());
 }
 
 void Client::signal_write() { ev_io_start(worker->loop, &wev); }
@@ -757,157 +757,99 @@ void Worker::run() {
 }
 
 namespace {
-double within_sd(const std::vector<std::unique_ptr<Worker>> &workers,
-                 const std::chrono::microseconds &mean,
-                 const std::chrono::microseconds &sd, size_t n,
-                 TimeStatType type) {
-  auto upper = mean.count() + sd.count();
-  auto lower = mean.count() - sd.count();
-  size_t m = 0;
-  for (const auto &w : workers) {
-    if (type == STAT_REQUEST) {
-      for (const auto &req_stat : w->stats.req_stats) {
-        if (!req_stat.completed) {
-          continue;
-        }
-        auto t = std::chrono::duration_cast<std::chrono::microseconds>(
-            req_stat.stream_close_time - req_stat.request_time);
-        if (lower <= t.count() && t.count() <= upper) {
-          ++m;
-        }
-      }
-    } else {
-      const auto &stat = w->stats;
-      for (unsigned int i = 0; i < stat.start_times.size(); i++) {
-        if (i >= stat.connect_times.size() ||
-            i >= stat.time_to_first_bytes.size()) {
-          continue; // rule out cases where we started but didn't connect or get
-                    // the first byte (errors)
-        }
-        std::chrono::microseconds t;
-        if (type == STAT_CONNECT) {
-          t = std::chrono::duration_cast<std::chrono::microseconds>(
-              stat.connect_times[i] - stat.start_times[i]);
-        } else if (type == STAT_FIRST_BYTE) {
-          t = std::chrono::duration_cast<std::chrono::microseconds>(
-              stat.time_to_first_bytes[i] - stat.start_times[i]);
-        } else {
-          return -1;
-        }
-        if (lower <= t.count() && t.count() <= upper) {
-          ++m;
-        }
-      }
-    }
+// Returns percentage of number of samples within mean +/- sd.
+template <typename Duration>
+double within_sd(const std::vector<Duration> &samples, const Duration &mean,
+                 const Duration &sd) {
+  if (samples.size() == 0) {
+    return 0.0;
   }
-  return (m / static_cast<double>(n)) * 100;
+  auto lower = mean - sd;
+  auto upper = mean + sd;
+  auto m = std::count_if(
+      std::begin(samples), std::end(samples),
+      [&lower, &upper](const Duration &t) { return lower <= t && t <= upper; });
+  return (m / static_cast<double>(samples.size())) * 100;
+}
+} // namespace
+
+namespace {
+// Computes statistics using |samples|. The min, max, mean, sd, and
+// percentage of number of samples within mean +/- sd are computed.
+template <typename Duration>
+TimeStat<Duration> compute_time_stat(const std::vector<Duration> &samples) {
+  if (samples.size() == 0) {
+    return {Duration::zero(), Duration::zero(), Duration::zero(),
+            Duration::zero(), 0.0};
+  }
+  // standard deviation calculated using Rapid calculation method:
+  // http://en.wikipedia.org/wiki/Standard_deviation#Rapid_calculation_methods
+  double a = 0, q = 0;
+  size_t n = 0;
+  int64_t sum = 0;
+  auto res = TimeStat<Duration>{Duration::max(), Duration::min()};
+  for (const auto &t : samples) {
+    ++n;
+    res.min = std::min(res.min, t);
+    res.max = std::max(res.max, t);
+    sum += t.count();
+
+    auto na = a + (t.count() - a) / n;
+    q += (t.count() - a) * (t.count() - na);
+    a = na;
+  }
+
+  res.mean = Duration(sum / n);
+  res.sd = Duration(static_cast<typename Duration::rep>(sqrt(q / n)));
+  res.within_sd = within_sd(samples, res.mean, res.sd);
+
+  return res;
 }
 } // namespace
 
 namespace {
 TimeStats
 process_time_stats(const std::vector<std::unique_ptr<Worker>> &workers) {
-  auto ts = TimeStats();
-  int64_t request_sum = 0;
-  int64_t connect_sum = 0;
-  int64_t ttfb_sum = 0;
-  size_t m = 0;
-  size_t n = 0;
-
-  ts.request_time_min = std::chrono::microseconds::max();
-  ts.request_time_max = std::chrono::microseconds::min();
-  ts.request_within_sd = 0.;
-
-  ts.connect_time_min = std::chrono::microseconds::max();
-  ts.connect_time_max = std::chrono::microseconds::min();
-  ts.connect_within_sd = 0.;
-
-  ts.ttfb_min = std::chrono::microseconds::max();
-  ts.ttfb_max = std::chrono::microseconds::min();
-  ts.ttfb_within_sd = 0.;
-
-  // standard deviation calculated using Rapid calculation method:
-  // http://en.wikipedia.org/wiki/Standard_deviation#Rapid_calculation_methods
-  double request_a = 0, request_q = 0;
-  double connect_a = 0, connect_q = 0;
-  double ttfb_a = 0, ttfb_q = 0;
+  size_t nrequest_times = 0, nttfb_times = 0;
   for (const auto &w : workers) {
-    const auto stat = w->stats;
+    nrequest_times += w->stats.req_stats.size();
+    nttfb_times += w->stats.ttfbs.size();
+  }
+
+  std::vector<std::chrono::microseconds> request_times;
+  request_times.reserve(nrequest_times);
+  std::vector<std::chrono::microseconds> connect_times, ttfb_times;
+  connect_times.reserve(nttfb_times);
+  ttfb_times.reserve(nttfb_times);
+
+  for (const auto &w : workers) {
     for (const auto &req_stat : w->stats.req_stats) {
       if (!req_stat.completed) {
         continue;
       }
-      ++n;
-      auto request_t = std::chrono::duration_cast<std::chrono::microseconds>(
-          req_stat.stream_close_time - req_stat.request_time);
-      ts.request_time_min = std::min(ts.request_time_min, request_t);
-      ts.request_time_max = std::max(ts.request_time_max, request_t);
-      request_sum += request_t.count();
-
-      auto request_na = request_a + (request_t.count() - request_a) / n;
-      request_q =
-          request_q +
-          (request_t.count() - request_a) * (request_t.count() - request_na);
-      request_a = request_na;
+      request_times.push_back(
+          std::chrono::duration_cast<std::chrono::microseconds>(
+              req_stat.stream_close_time - req_stat.request_time));
     }
-    for (unsigned int i = 0; i < stat.start_times.size(); i++) {
-      if (i >= stat.connect_times.size() ||
-          i >= stat.time_to_first_bytes.size()) {
-        continue; // rule out cases where we started but didn't connect or get
-                  // the first byte (errors)
-      }
-      ++m;
-      auto connect_t = std::chrono::duration_cast<std::chrono::microseconds>(
-          stat.connect_times[i] - stat.start_times[i]);
-      ts.connect_time_min = std::min(ts.connect_time_min, connect_t);
-      ts.connect_time_max = std::max(ts.connect_time_max, connect_t);
-      connect_sum += connect_t.count();
 
-      auto ttfb_t = std::chrono::duration_cast<std::chrono::microseconds>(
-          stat.time_to_first_bytes[i] - stat.start_times[i]);
-      ts.ttfb_min = std::min(ts.ttfb_min, ttfb_t);
-      ts.ttfb_max = std::max(ts.ttfb_max, ttfb_t);
-      ttfb_sum += ttfb_t.count();
+    const auto &stat = w->stats;
+    // rule out cases where we started but didn't connect or get the
+    // first byte (errors).  We will get connect event before FFTB.
+    assert(stat.start_times.size() >= stat.ttfbs.size());
+    assert(stat.connect_times.size() >= stat.ttfbs.size());
+    for (size_t i = 0; i < stat.ttfbs.size(); ++i) {
+      connect_times.push_back(
+          std::chrono::duration_cast<std::chrono::microseconds>(
+              stat.connect_times[i] - stat.start_times[i]));
 
-      auto connect_na = connect_a + (connect_t.count() - connect_a) / m;
-      connect_q =
-          connect_q +
-          (connect_t.count() - connect_a) * (connect_t.count() - connect_na);
-      connect_a = connect_na;
-
-      auto ttfb_na = ttfb_a + (ttfb_t.count() - ttfb_a) / m;
-      ttfb_q = ttfb_q + (ttfb_t.count() - ttfb_a) * (ttfb_t.count() - ttfb_na);
-      ttfb_a = ttfb_na;
+      ttfb_times.push_back(
+          std::chrono::duration_cast<std::chrono::microseconds>(
+              stat.ttfbs[i] - stat.start_times[i]));
     }
   }
-  if (n == 0) {
-    ts.request_time_max = ts.request_time_min =
-        std::chrono::microseconds::zero();
-    ts.connect_time_max = ts.connect_time_min =
-        std::chrono::microseconds::zero();
-    ts.ttfb_max = ts.ttfb_min = std::chrono::microseconds::zero();
-    return ts;
-  }
 
-  ts.request_time_mean = std::chrono::microseconds(request_sum / n);
-  ts.request_time_sd = std::chrono::microseconds(
-      static_cast<std::chrono::microseconds::rep>(sqrt(request_q / n)));
-
-  ts.connect_time_mean = std::chrono::microseconds(connect_sum / m);
-  ts.connect_time_sd = std::chrono::microseconds(
-      static_cast<std::chrono::microseconds::rep>(sqrt(connect_q / m)));
-
-  ts.ttfb_mean = std::chrono::microseconds(ttfb_sum / m);
-  ts.ttfb_sd = std::chrono::microseconds(
-      static_cast<std::chrono::microseconds::rep>(sqrt(ttfb_q / m)));
-
-  ts.request_within_sd = within_sd(workers, ts.request_time_mean,
-                                   ts.request_time_sd, n, STAT_REQUEST);
-  ts.connect_within_sd = within_sd(workers, ts.connect_time_mean,
-                                   ts.connect_time_sd, m, STAT_CONNECT);
-  ts.ttfb_within_sd =
-      within_sd(workers, ts.ttfb_mean, ts.ttfb_sd, m, STAT_FIRST_BYTE);
-  return ts;
+  return {compute_time_stat(request_times), compute_time_stat(connect_times),
+          compute_time_stat(ttfb_times)};
 }
 } // namespace
 
@@ -1521,7 +1463,7 @@ int main(int argc, char **argv) {
     }
   }
 
-  auto time_stats = process_time_stats(workers);
+  auto ts = process_time_stats(workers);
 
   // Requests which have not been issued due to connection errors, are
   // counted towards req_failed and req_error.
@@ -1554,32 +1496,23 @@ status codes: )" << stats.status[2] << " 2xx, " << stats.status[3] << " 3xx, "
 traffic: )" << stats.bytes_total << " bytes total, " << stats.bytes_head
             << " bytes headers, " << stats.bytes_body << R"( bytes data
                      min         max         mean         sd        +/- sd
-time for request: )" << std::setw(10)
-            << util::format_duration(time_stats.request_time_min) << "  "
-            << std::setw(10)
-            << util::format_duration(time_stats.request_time_max) << "  "
-            << std::setw(10)
-            << util::format_duration(time_stats.request_time_mean) << "  "
-            << std::setw(10)
-            << util::format_duration(time_stats.request_time_sd) << std::setw(9)
-            << util::dtos(time_stats.request_within_sd) << "%"
+time for request: )" << std::setw(10) << util::format_duration(ts.request.min)
+            << "  " << std::setw(10) << util::format_duration(ts.request.max)
+            << "  " << std::setw(10) << util::format_duration(ts.request.mean)
+            << "  " << std::setw(10) << util::format_duration(ts.request.sd)
+            << std::setw(9) << util::dtos(ts.request.within_sd) << "%"
             << "\ntime for connect: " << std::setw(10)
-            << util::format_duration(time_stats.connect_time_min) << "  "
-            << std::setw(10)
-            << util::format_duration(time_stats.connect_time_max) << "  "
-            << std::setw(10)
-            << util::format_duration(time_stats.connect_time_mean) << "  "
-            << std::setw(10)
-            << util::format_duration(time_stats.connect_time_sd) << std::setw(9)
-            << util::dtos(time_stats.connect_within_sd) << "%"
+            << util::format_duration(ts.connect.min) << "  " << std::setw(10)
+            << util::format_duration(ts.connect.max) << "  " << std::setw(10)
+            << util::format_duration(ts.connect.mean) << "  " << std::setw(10)
+            << util::format_duration(ts.connect.sd) << std::setw(9)
+            << util::dtos(ts.connect.within_sd) << "%"
             << "\ntime to 1st byte: " << std::setw(10)
-            << util::format_duration(time_stats.ttfb_min) << "  "
-            << std::setw(10) << util::format_duration(time_stats.ttfb_max)
-            << "  " << std::setw(10)
-            << util::format_duration(time_stats.ttfb_mean) << "  "
-            << std::setw(10) << util::format_duration(time_stats.ttfb_sd)
-            << std::setw(9) << util::dtos(time_stats.ttfb_within_sd) << "%"
-            << std::endl;
+            << util::format_duration(ts.ttfb.min) << "  " << std::setw(10)
+            << util::format_duration(ts.ttfb.max) << "  " << std::setw(10)
+            << util::format_duration(ts.ttfb.mean) << "  " << std::setw(10)
+            << util::format_duration(ts.ttfb.sd) << std::setw(9)
+            << util::dtos(ts.ttfb.within_sd) << "%" << std::endl;
 
   SSL_CTX_free(ssl_ctx);
 
