@@ -1,0 +1,10 @@
+[Unit]
+Description=HTTP/2 experimental proxy
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/nghttpx --errorlog-syslog
+
+[Install]
+WantedBy=multi-user.target
