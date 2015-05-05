@@ -271,9 +271,11 @@ int htp_hdrs_completecb(http_parser *htp) {
 
   if (downstream->get_request_method() != "CONNECT") {
     http_parser_url u{};
-    auto uri = downstream->get_request_path().c_str();
-    rv = http_parser_parse_url(uri, downstream->get_request_path().size(), 0,
-                               &u);
+    // make a copy of request path, since we may set request path
+    // while we are refering to original request path.
+    auto uri = downstream->get_request_path();
+    rv = http_parser_parse_url(uri.c_str(),
+                               downstream->get_request_path().size(), 0, &u);
     if (rv != 0) {
       // Expect to respond with 400 bad request
       return -1;
@@ -285,8 +287,7 @@ int htp_hdrs_completecb(http_parser *htp) {
         return -1;
       }
     } else {
-      rewrite_request_host_path_from_uri(downstream, uri, u);
-      // uri could be invalidated here
+      rewrite_request_host_path_from_uri(downstream, uri.c_str(), u);
     }
   }
 
