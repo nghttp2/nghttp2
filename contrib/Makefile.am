@@ -21,7 +21,7 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-configfiles = nghttpx-init nghttpx.service
+configfiles = nghttpx-init nghttpx.service nghttpx-upstart.conf
 
 EXTRA_DIST = $(configfiles:%=%.in) nghttpx-logrotate
 
@@ -33,7 +33,7 @@ nghttpx-init: %: $(srcdir)/%.in
 	chmod +x $@.tmp
 	mv $@.tmp $@
 
-nghttpx.service: %: $(srcdir)/%.in
+nghttpx.service nghttpx-upstart.conf: %: $(srcdir)/%.in
 	$(edit) $< > $@
 
 $(configfiles): Makefile
