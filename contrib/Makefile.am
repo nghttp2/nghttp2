@@ -21,18 +21,19 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-EXTRA_DIST = nghttpx-init.template.in nghttpx.service.template.in \
-	nghttpx-logrotate
+EXTRA_DIST = nghttpx-init.in nghttpx.service nghttpx-logrotate
 
-edit = sed -e 's|$$(bindir)|$(bindir)|g'
+edit = sed -e 's|@bindir[@]|$(bindir)|g'
 
-nghttpx-init nghttpx.service: %: $(srcdir)/%.template
+nghttpx-init: Makefile
 	rm -f $@ $@.tmp
-	$(edit) $< > $@.tmp
+	$(edit) $(srcdir)/$@.in > $@.tmp
 	chmod +x $@.tmp
 	mv $@.tmp $@
 
-all-local: nghttpx-init nghttpx.service
+nghttpx-init: $(srcdir)/nghttpx-init.in
+
+all-local: nghttpx-init
 
 clean-local:
-	-rm -f nghttpx-init nghttpx-init.tmp nghttpx.service nghttpx.service.tmp
+	-rm -f nghttpx-init nghttpx-init.tmp

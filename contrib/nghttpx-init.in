@@ -17,8 +17,8 @@
 PATH=/sbin:/usr/sbin:/bin:/usr/bin:/usr/local/bin
 DESC="HTTP/2 reverse proxy"
 NAME=nghttpx
-# Depending on the configuration, binary may be located under $(bindir)
-DAEMON=$(bindir)/$NAME
+# Depending on the configuration, binary may be located under @sbindir@
+DAEMON=@bindir@/$NAME
 PIDFILE=/var/run/$NAME.pid
 DAEMON_ARGS="--conf /etc/nghttpx/nghttpx.conf --pid-file=$PIDFILE"
 SCRIPTNAME=/etc/init.d/$NAME

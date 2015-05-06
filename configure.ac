@@ -650,8 +650,6 @@ AC_CONFIG_FILES([
   doc/asio_http2_client.h.rst
   doc/contribute.rst
   contrib/Makefile
-  contrib/nghttpx-init.template
-  contrib/nghttpx.service.template
 ])
 AC_OUTPUT
 
