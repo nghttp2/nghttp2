@@ -63,6 +63,7 @@ struct Config {
   void *data_ptr;
   size_t padding;
   size_t num_worker;
+  size_t max_concurrent_streams;
   ssize_t header_table_size;
   uint16_t port;
   bool verbose;

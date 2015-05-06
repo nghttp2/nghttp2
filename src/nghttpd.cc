@@ -88,6 +88,7 @@ void print_usage(std::ostream &out) {
 
 namespace {
 void print_help(std::ostream &out) {
+  Config config;
   print_usage(out);
   out << R"(
   <PORT>      Specify listening port number.
@@ -128,6 +129,10 @@ Options:
   -b, --padding=<N>
               Add at  most <N>  bytes to a  frame payload  as padding.
               Specify 0 to disable padding.
+  -m, --max-concurrent-streams=<N>
+              Set the maximum number of  the concurrent streams in one
+              HTTP/2 session.
+              Default: )" << config.max_concurrent_streams << R"(
   -n, --workers=<N>
               Set the number of worker threads.
               Default: 1
@@ -173,6 +178,7 @@ int main(int argc, char **argv) {
         {"header-table-size", required_argument, nullptr, 'c'},
         {"push", required_argument, nullptr, 'p'},
         {"padding", required_argument, nullptr, 'b'},
+        {"max-concurrent-streams", required_argument, nullptr, 'm'},
         {"workers", required_argument, nullptr, 'n'},
         {"error-gzip", no_argument, nullptr, 'e'},
         {"no-tls", no_argument, &flag, 1},
@@ -184,7 +190,7 @@ int main(int argc, char **argv) {
         {"hexdump", no_argument, &flag, 7},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
-    int c = getopt_long(argc, argv, "DVb:c:d:ehn:p:va:", long_options,
+    int c = getopt_long(argc, argv, "DVb:c:d:ehm:n:p:va:", long_options,
                         &option_index);
     char *end;
     if (c == -1) {
@@ -209,6 +215,16 @@ int main(int argc, char **argv) {
     case 'e':
       config.error_gzip = true;
       break;
+    case 'm': {
+      // max-concurrent-streams option
+      auto n = util::parse_uint(optarg);
+      if (n == -1) {
+        std::cerr << "-m: invalid argument: " << optarg << std::endl;
+        exit(EXIT_FAILURE);
+      }
+      config.max_concurrent_streams = n;
+      break;
+    }
     case 'n':
 #ifdef NOTHREADS
       std::cerr << "-n: WARNING: Threading disabled at build time, "
