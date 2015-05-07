@@ -1157,15 +1157,11 @@ static nghttp2_hd_entry *add_hd_table_incremental(nghttp2_hd_context *context,
 }
 
 static int name_eq(const nghttp2_nv *a, const nghttp2_nv *b) {
-  return a->namelen == b->namelen &&
-         a->name[a->namelen - 1] == b->name[a->namelen - 1] &&
-         memeq(a->name, b->name, a->namelen);
+  return a->namelen == b->namelen && memeq(a->name, b->name, a->namelen);
 }
 
 static int value_eq(const nghttp2_nv *a, const nghttp2_nv *b) {
-  return a->valuelen == b->valuelen &&
-         a->value[a->valuelen - 1] == b->value[a->valuelen - 1] &&
-         memeq(a->value, b->value, a->valuelen);
+  return a->valuelen == b->valuelen && memeq(a->value, b->value, a->valuelen);
 }
 
 typedef struct {
