@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTP" "1" "April 27, 2015" "0.7.13" "nghttp2"
+.TH "NGHTTP" "1" "May 07, 2015" "0.7.14-DEV" "nghttp2"
 .SH NAME
 nghttp \- HTTP/2 experimental client
 .
@@ -64,8 +64,9 @@ yet.
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-t, \-\-timeout=<SEC>
-Timeout each request after <SEC> seconds.
+.B \-t, \-\-timeout=<DURATION>
+Timeout each request after <DURATION>.  Set 0 to disable
+timeout.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -215,6 +216,11 @@ Display this help and exit.
 .sp
 The <SIZE> argument is an integer and an optional unit (e.g., 10K is
 10 * 1024).  Units are K, M and G (powers of 1024).
+.sp
+The <DURATION> argument is an integer and an optional unit (e.g., 1s
+is 1 second and 500ms is 500 milliseconds).  Units are h, m, s or ms
+(hours, minutes, seconds and milliseconds, respectively).  If a unit
+is omitted, a second is used as unit.
 .SH DEPENDENCY BASED PRIORITY
 .sp
 nghttp sends priority hints to server by default unless
@@ -269,7 +275,7 @@ to its resource type.
 .sp
 For CSS, and Javascript files inside "head" element, they depend on
 stream 3 with the weight 2.  The Javascript files outside "head"
-element depend on stream 5 with the weight 2.  The images depend on
+element depend on stream 5 with the weight 2.  The mages depend on
 stream 11 with the weight 12.  The other resources (e.g., icon) depend
 on stream 11 with the weight 2.
 .SH SEE ALSO

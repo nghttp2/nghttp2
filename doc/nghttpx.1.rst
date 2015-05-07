@@ -619,6 +619,21 @@ HTTP
     used several  times to  specify multiple  header fields.
     Example: :option:`--add-response-header`\="foo: bar"
 
+.. option:: --header-field-buffer=<SIZE>
+
+    Set maximum  buffer size for incoming  HTTP header field
+    list.   This is  the sum  of  header name  and value  in
+    bytes.
+
+    Default: ``64K``
+
+.. option:: --max-header-fields=<N>
+
+    Set maximum number of incoming HTTP header fields, which
+    appear in one request or response header field list.
+
+    Default: ``100``
+
 
 Debug
 ~~~~~

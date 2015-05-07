@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "April 27, 2015" "0.7.13" "nghttp2"
+.TH "NGHTTPX" "1" "May 07, 2015" "0.7.14-DEV" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 experimental proxy
 .
@@ -703,6 +703,23 @@ header set.   This option just appends  header field and
 won\(aqt replace anything already  set.  This option can be
 used several  times to  specify multiple  header fields.
 Example: \fI\%\-\-add\-response\-header\fP="foo: bar"
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-header\-field\-buffer=<SIZE>
+Set maximum  buffer size for incoming  HTTP header field
+list.   This is  the sum  of  header name  and value  in
+bytes.
+.sp
+Default: \fB64K\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-max\-header\-fields=<N>
+Set maximum number of incoming HTTP header fields, which
+appear in one request or response header field list.
+.sp
+Default: \fB100\fP
 .UNINDENT
 .SS Debug
 .INDENT 0.0

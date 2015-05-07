@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPD" "1" "April 27, 2015" "0.7.13" "nghttp2"
+.TH "NGHTTPD" "1" "May 07, 2015" "0.7.14-DEV" "nghttp2"
 .SH NAME
 nghttpd \- HTTP/2 experimental server
 .
@@ -116,6 +116,14 @@ Example: \fI\%\-p\fP/=/foo.png \fI\%\-p\fP/doc=/bar.css
 .B \-b, \-\-padding=<N>
 Add at  most <N>  bytes to a  frame payload  as padding.
 Specify 0 to disable padding.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-m, \-\-max\-concurrent\-streams=<N>
+Set the maximum number of  the concurrent streams in one
+HTTP/2 session.
+.sp
+Default: \fB100\fP
 .UNINDENT
 .INDENT 0.0
 .TP

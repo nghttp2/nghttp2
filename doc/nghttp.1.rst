@@ -38,9 +38,10 @@ OPTIONS
     'index.html'  is used  as a  filename.  Not  implemented
     yet.
 
-.. option:: -t, --timeout=<SEC>
+.. option:: -t, --timeout=<DURATION>
 
-    Timeout each request after <SEC> seconds.
+    Timeout each request after <DURATION>.  Set 0 to disable
+    timeout.
 
 .. option:: -w, --window-bits=<N>
 
@@ -167,6 +168,11 @@ OPTIONS
 
 The <SIZE> argument is an integer and an optional unit (e.g., 10K is
 10 * 1024).  Units are K, M and G (powers of 1024).
+
+The <DURATION> argument is an integer and an optional unit (e.g., 1s
+is 1 second and 500ms is 500 milliseconds).  Units are h, m, s or ms
+(hours, minutes, seconds and milliseconds, respectively).  If a unit
+is omitted, a second is used as unit.
 
 DEPENDENCY BASED PRIORITY
 -------------------------
