@@ -607,7 +607,7 @@ func TestH2H1Upgrade(t *testing.T) {
 		name: "TestH2H1Upgrade",
 		header: []hpack.HeaderField{
 			pair("Connection", "Upgrade, HTTP2-Settings"),
-			pair("Upgrade", "h2c-14"),
+			pair("Upgrade", "h2c"),
 			pair("HTTP2-Settings", "AAMAAABkAAQAAP__"),
 		},
 	})
