@@ -94,8 +94,7 @@ struct RequestStat {
   bool completed;
 };
 
-template<typename Duration>
-struct TimeStat {
+template <typename Duration> struct TimeStat {
   // min, max, mean and sd (standard deviation)
   Duration min, max, mean, sd;
   // percentage of samples inside mean -/+ sd
