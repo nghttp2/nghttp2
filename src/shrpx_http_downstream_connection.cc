@@ -582,10 +582,29 @@ int htp_hdrs_completecb(http_parser *htp) {
 namespace {
 int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
   auto downstream = static_cast<Downstream *>(htp->data);
+
+  if (downstream->get_response_headers_sum() + len >
+      get_config()->header_field_buffer) {
+    if (LOG_ENABLED(INFO)) {
+      DLOG(INFO, downstream) << "Too large header block size="
+                             << downstream->get_response_headers_sum() + len;
+    }
+    return -1;
+  }
+
   if (downstream->get_response_state() == Downstream::INITIAL) {
     if (downstream->get_response_header_key_prev()) {
       downstream->append_last_response_header_key(data, len);
     } else {
+      if (downstream->get_response_headers().size() >=
+          get_config()->max_header_fields) {
+        if (LOG_ENABLED(INFO)) {
+          DLOG(INFO, downstream)
+              << "Too many header field num="
+              << downstream->get_response_headers().size() + 1;
+        }
+        return -1;
+      }
       downstream->add_response_header(std::string(data, len), "");
     }
   } else {
@@ -593,15 +612,17 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
     if (downstream->get_response_trailer_key_prev()) {
       downstream->append_last_response_trailer_key(data, len);
     } else {
+      if (downstream->get_response_headers().size() >=
+          get_config()->max_header_fields) {
+        if (LOG_ENABLED(INFO)) {
+          DLOG(INFO, downstream)
+              << "Too many header field num="
+              << downstream->get_response_headers().size() + 1;
+        }
+        return -1;
+      }
       downstream->add_response_trailer(std::string(data, len), "");
     }
-  }
-  if (downstream->get_response_headers_sum() > Downstream::MAX_HEADERS_SUM) {
-    if (LOG_ENABLED(INFO)) {
-      DLOG(INFO, downstream) << "Too large header block size="
-                             << downstream->get_response_headers_sum();
-    }
-    return -1;
   }
   return 0;
 }
@@ -610,6 +631,14 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
 namespace {
 int htp_hdr_valcb(http_parser *htp, const char *data, size_t len) {
   auto downstream = static_cast<Downstream *>(htp->data);
+  if (downstream->get_response_headers_sum() + len >
+      get_config()->header_field_buffer) {
+    if (LOG_ENABLED(INFO)) {
+      DLOG(INFO, downstream) << "Too large header block size="
+                             << downstream->get_response_headers_sum() + len;
+    }
+    return -1;
+  }
   if (downstream->get_response_state() == Downstream::INITIAL) {
     if (downstream->get_response_header_key_prev()) {
       downstream->set_last_response_header_value(data, len);
@@ -622,13 +651,6 @@ int htp_hdr_valcb(http_parser *htp, const char *data, size_t len) {
     } else {
       downstream->append_last_response_trailer_value(data, len);
     }
-  }
-  if (downstream->get_response_headers_sum() > Downstream::MAX_HEADERS_SUM) {
-    if (LOG_ENABLED(INFO)) {
-      DLOG(INFO, downstream) << "Too large header block size="
-                             << downstream->get_response_headers_sum();
-    }
-    return -1;
   }
   return 0;
 }

@@ -47,7 +47,7 @@
 typedef enum {
   NGHTTP2_OPTMASK_NO_AUTO_WINDOW_UPDATE = 1 << 0,
   NGHTTP2_OPTMASK_NO_RECV_CLIENT_MAGIC = 1 << 1,
-  NGHTTP2_OPTMASK_NO_HTTP_MESSAGING = 1 << 2,
+  NGHTTP2_OPTMASK_NO_HTTP_MESSAGING = 1 << 2
 } nghttp2_optmask;
 
 typedef enum {
@@ -85,7 +85,7 @@ typedef enum {
   NGHTTP2_IB_READ_PAD_DATA,
   NGHTTP2_IB_READ_DATA,
   NGHTTP2_IB_IGN_DATA,
-  NGHTTP2_IB_IGN_ALL,
+  NGHTTP2_IB_IGN_ALL
 } nghttp2_inbound_state;
 
 #define NGHTTP2_INBOUND_NUM_IV 7
@@ -137,7 +137,7 @@ typedef enum {
   /* Flag means GOAWAY was sent */
   NGHTTP2_GOAWAY_SENT = 0x4,
   /* Flag means GOAWAY was received */
-  NGHTTP2_GOAWAY_RECV = 0x8,
+  NGHTTP2_GOAWAY_RECV = 0x8
 } nghttp2_goaway_flag;
 
 struct nghttp2_session {

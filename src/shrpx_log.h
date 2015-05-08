@@ -139,7 +139,8 @@ struct LogSpec {
   pid_t pid;
 };
 
-void upstream_accesslog(const std::vector<LogFragment> &lf, LogSpec *lgsp);
+void upstream_accesslog(const std::vector<LogFragment> &lf,
+                        const LogSpec &lgsp);
 
 int reopen_log_files();
 

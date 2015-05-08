@@ -88,8 +88,9 @@ template <typename Array> void append_nv(Stream *stream, const Array &nva) {
 
 Config::Config()
     : stream_read_timeout(60.), stream_write_timeout(60.), data_ptr(nullptr),
-      padding(0), num_worker(1), header_table_size(-1), port(0), verbose(false),
-      daemon(false), verify_client(false), no_tls(false), error_gzip(false),
+      padding(0), num_worker(1), max_concurrent_streams(100),
+      header_table_size(-1), port(0), verbose(false), daemon(false),
+      verify_client(false), no_tls(false), error_gzip(false),
       early_response(false), hexdump(false) {}
 
 Config::~Config() {}
@@ -657,18 +658,21 @@ int Http2Handler::connection_made() {
   int r;
 
   r = nghttp2_session_server_new(&session_, sessions_->get_callbacks(), this);
+
   if (r != 0) {
     return r;
   }
+
+  auto config = sessions_->get_config();
   std::array<nghttp2_settings_entry, 4> entry;
   size_t niv = 1;
 
   entry[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
-  entry[0].value = 100;
+  entry[0].value = config->max_concurrent_streams;
 
-  if (sessions_->get_config()->header_table_size >= 0) {
+  if (config->header_table_size >= 0) {
     entry[niv].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
-    entry[niv].value = sessions_->get_config()->header_table_size;
+    entry[niv].value = config->header_table_size;
     ++niv;
   }
   r = nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE, entry.data(), niv);

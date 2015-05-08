@@ -163,6 +163,19 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
                            << downstream->get_stream_id() << "\n" << ss.str();
     }
 
+    size_t num_headers = 0;
+    size_t header_buffer = 0;
+    for (size_t i = 0; nv[i]; i += 2) {
+      ++num_headers;
+      header_buffer += strlen(nv[i]) + strlen(nv[i + 1]);
+    }
+
+    if (header_buffer > get_config()->header_field_buffer ||
+        num_headers > get_config()->max_header_fields) {
+      upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
+      return;
+    }
+
     for (size_t i = 0; nv[i]; i += 2) {
       downstream->add_request_header(nv[i], nv[i + 1]);
     }
@@ -426,6 +439,12 @@ SpdyUpstream::SpdyUpstream(uint16_t version, ClientHandler *handler)
 
   int rv;
   rv = spdylay_session_server_new(&session_, version, &callbacks, this);
+  assert(rv == 0);
+
+  uint32_t max_buffer = 65536;
+  rv = spdylay_session_set_option(session_,
+                                  SPDYLAY_OPT_MAX_RECV_CTRL_FRAME_BUFFER,
+                                  &max_buffer, sizeof(max_buffer));
   assert(rv == 0);
 
   if (version >= SPDYLAY_PROTO_SPDY3) {

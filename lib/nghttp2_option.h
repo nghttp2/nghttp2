@@ -58,7 +58,7 @@ typedef enum {
    */
   NGHTTP2_OPT_PEER_MAX_CONCURRENT_STREAMS = 1 << 1,
   NGHTTP2_OPT_NO_RECV_CLIENT_MAGIC = 1 << 2,
-  NGHTTP2_OPT_NO_HTTP_MESSAGING = 1 << 3,
+  NGHTTP2_OPT_NO_HTTP_MESSAGING = 1 << 3
 } nghttp2_option_flag;
 
 /**

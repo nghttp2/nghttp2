@@ -733,10 +733,15 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
   auto trailer = frame->headers.cat != NGHTTP2_HCAT_RESPONSE &&
                  !downstream->get_expect_final_response();
 
-  if (downstream->get_response_headers_sum() > Downstream::MAX_HEADERS_SUM) {
+  if (downstream->get_response_headers_sum() + namelen + valuelen >
+          get_config()->header_field_buffer ||
+      downstream->get_response_headers().size() >=
+          get_config()->max_header_fields) {
     if (LOG_ENABLED(INFO)) {
-      DLOG(INFO, downstream) << "Too large header block size="
-                             << downstream->get_response_headers_sum();
+      DLOG(INFO, downstream)
+          << "Too large or many header field size="
+          << downstream->get_response_headers_sum() + namelen + valuelen
+          << ", num=" << downstream->get_response_headers().size() + 1;
     }
 
     if (trailer) {

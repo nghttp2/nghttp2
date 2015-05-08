@@ -85,6 +85,13 @@ OPTIONS
     Add at  most <N>  bytes to a  frame payload  as padding.
     Specify 0 to disable padding.
 
+.. option:: -m, --max-concurrent-streams=<N>
+
+    Set the maximum number of  the concurrent streams in one
+    HTTP/2 session.
+
+    Default: ``100``
+
 .. option:: -n, --workers=<N>
 
     Set the number of worker threads.

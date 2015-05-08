@@ -25,6 +25,7 @@
 #include "h2load_spdy_session.h"
 
 #include <cassert>
+#include <cerrno>
 
 #include "h2load.h"
 #include "util.h"

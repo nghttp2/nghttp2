@@ -1157,15 +1157,11 @@ static nghttp2_hd_entry *add_hd_table_incremental(nghttp2_hd_context *context,
 }
 
 static int name_eq(const nghttp2_nv *a, const nghttp2_nv *b) {
-  return a->namelen == b->namelen &&
-         a->name[a->namelen - 1] == b->name[a->namelen - 1] &&
-         memeq(a->name, b->name, a->namelen);
+  return a->namelen == b->namelen && memeq(a->name, b->name, a->namelen);
 }
 
 static int value_eq(const nghttp2_nv *a, const nghttp2_nv *b) {
-  return a->valuelen == b->valuelen &&
-         a->value[a->valuelen - 1] == b->value[a->valuelen - 1] &&
-         memeq(a->value, b->value, a->valuelen);
+  return a->valuelen == b->valuelen && memeq(a->value, b->value, a->valuelen);
 }
 
 typedef struct {
@@ -1733,7 +1729,9 @@ static int hd_inflate_remove_bufs(nghttp2_hd_inflater *inflater, nghttp2_nv *nv,
 static int hd_inflate_remove_bufs_with_name(nghttp2_hd_inflater *inflater,
                                             nghttp2_nv *nv,
                                             nghttp2_hd_entry *ent_name) {
+#ifndef NDEBUG
   size_t rv;
+#endif
   size_t buflen;
   uint8_t *buf;
   nghttp2_mem *mem;
@@ -1751,8 +1749,11 @@ static int hd_inflate_remove_bufs_with_name(nghttp2_hd_inflater *inflater,
 
   /* Copy including terminal NULL */
   memcpy(buf, ent_name->nv.name, ent_name->nv.namelen + 1);
-  rv = nghttp2_bufs_remove_copy(&inflater->nvbufs,
-                                buf + ent_name->nv.namelen + 1);
+#ifndef NDEBUG
+  rv =
+#endif
+  nghttp2_bufs_remove_copy(&inflater->nvbufs,
+                           buf + ent_name->nv.namelen + 1);
   assert(ent_name->nv.namelen + 1 + rv == buflen);
 
   nghttp2_bufs_reset(&inflater->nvbufs);

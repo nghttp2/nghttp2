@@ -44,10 +44,39 @@ time for request
   mean
     The mean time taken for request and response.
   sd
-    The standard deviation of the time for request and response.
+    The standard deviation of the time taken for request and response.
   +/- sd
     The fraction of the number of requests within standard deviation
     range (mean +/- sd) against total number of successful requests.
+
+time for connect
+  min
+    The minimum time taken to connect to a server.
+  max
+    The maximum time taken to connect to a server.
+  mean
+    The mean time taken to connect to a server.
+  sd
+    The standard deviation of the time taken to connect to a server.
+  +/- sd
+    The  fraction  of  the   number  of  connections  within  standard
+    deviation range (mean  +/- sd) against total  number of successful
+    connections.
+
+time for 1st byte (of (decrypted in case of TLS) application data)
+  min
+    The minimum time taken to get 1st byte from a server.
+  max
+    The maximum time taken to get 1st byte from a server.
+  mean
+    The mean time taken to get 1st byte from a server.
+  sd
+    The standard deviation of the time taken to get 1st byte from a
+    server.
+  +/- sd
+    The fraction of the number of connections within standard
+    deviation range (mean +/- sd) against total number of successful
+    connections.
 
 FLOW CONTROL
 ------------

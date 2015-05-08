@@ -78,6 +78,17 @@ namespace {
 int htp_uricb(http_parser *htp, const char *data, size_t len) {
   auto upstream = static_cast<HttpsUpstream *>(htp->data);
   auto downstream = upstream->get_downstream();
+  if (downstream->get_request_headers_sum() + len >
+      get_config()->header_field_buffer) {
+    if (LOG_ENABLED(INFO)) {
+      ULOG(INFO, upstream) << "Too large URI size="
+                           << downstream->get_request_headers_sum() + len;
+    }
+    assert(downstream->get_request_state() == Downstream::INITIAL);
+    downstream->set_request_state(Downstream::HTTP1_REQUEST_HEADER_TOO_LARGE);
+    return -1;
+  }
+  downstream->add_request_headers_sum(len);
   downstream->append_request_path(data, len);
   return 0;
 }
@@ -87,10 +98,31 @@ namespace {
 int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
   auto upstream = static_cast<HttpsUpstream *>(htp->data);
   auto downstream = upstream->get_downstream();
+  if (downstream->get_request_headers_sum() + len >
+      get_config()->header_field_buffer) {
+    if (LOG_ENABLED(INFO)) {
+      ULOG(INFO, upstream) << "Too large header block size="
+                           << downstream->get_request_headers_sum() + len;
+    }
+    if (downstream->get_request_state() == Downstream::INITIAL) {
+      downstream->set_request_state(Downstream::HTTP1_REQUEST_HEADER_TOO_LARGE);
+    }
+    return -1;
+  }
   if (downstream->get_request_state() == Downstream::INITIAL) {
     if (downstream->get_request_header_key_prev()) {
       downstream->append_last_request_header_key(data, len);
     } else {
+      if (downstream->get_request_headers().size() >=
+          get_config()->max_header_fields) {
+        if (LOG_ENABLED(INFO)) {
+          ULOG(INFO, upstream) << "Too many header field num="
+                               << downstream->get_request_headers().size() + 1;
+        }
+        downstream->set_request_state(
+            Downstream::HTTP1_REQUEST_HEADER_TOO_LARGE);
+        return -1;
+      }
       downstream->add_request_header(std::string(data, len), "");
     }
   } else {
@@ -98,15 +130,16 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
     if (downstream->get_request_trailer_key_prev()) {
       downstream->append_last_request_trailer_key(data, len);
     } else {
+      if (downstream->get_request_headers().size() >=
+          get_config()->max_header_fields) {
+        if (LOG_ENABLED(INFO)) {
+          ULOG(INFO, upstream) << "Too many header field num="
+                               << downstream->get_request_headers().size() + 1;
+        }
+        return -1;
+      }
       downstream->add_request_trailer(std::string(data, len), "");
     }
-  }
-  if (downstream->get_request_headers_sum() > Downstream::MAX_HEADERS_SUM) {
-    if (LOG_ENABLED(INFO)) {
-      ULOG(INFO, upstream) << "Too large header block size="
-                           << downstream->get_request_headers_sum();
-    }
-    return -1;
   }
   return 0;
 }
@@ -116,6 +149,17 @@ namespace {
 int htp_hdr_valcb(http_parser *htp, const char *data, size_t len) {
   auto upstream = static_cast<HttpsUpstream *>(htp->data);
   auto downstream = upstream->get_downstream();
+  if (downstream->get_request_headers_sum() + len >
+      get_config()->header_field_buffer) {
+    if (LOG_ENABLED(INFO)) {
+      ULOG(INFO, upstream) << "Too large header block size="
+                           << downstream->get_request_headers_sum() + len;
+    }
+    if (downstream->get_request_state() == Downstream::INITIAL) {
+      downstream->set_request_state(Downstream::HTTP1_REQUEST_HEADER_TOO_LARGE);
+    }
+    return -1;
+  }
   if (downstream->get_request_state() == Downstream::INITIAL) {
     if (downstream->get_request_header_key_prev()) {
       downstream->set_last_request_header_value(data, len);
@@ -128,13 +172,6 @@ int htp_hdr_valcb(http_parser *htp, const char *data, size_t len) {
     } else {
       downstream->append_last_request_trailer_value(data, len);
     }
-  }
-  if (downstream->get_request_headers_sum() > Downstream::MAX_HEADERS_SUM) {
-    if (LOG_ENABLED(INFO)) {
-      ULOG(INFO, upstream) << "Too large header block size="
-                           << downstream->get_request_headers_sum();
-    }
-    return -1;
   }
   return 0;
 }
@@ -181,7 +218,12 @@ void rewrite_request_host_path_from_uri(Downstream *downstream, const char *uri,
     path += '?';
     path.append(uri + fdata.off, fdata.len);
   }
-  downstream->set_request_path(path);
+  downstream->set_request_path(std::move(path));
+  if (get_config()->http2_proxy || get_config()->client_proxy) {
+    std::string scheme;
+    http2::copy_url_component(scheme, &u, UF_SCHEMA, uri);
+    downstream->set_request_http2_scheme(std::move(scheme));
+  }
 }
 } // namespace
 
@@ -229,22 +271,23 @@ int htp_hdrs_completecb(http_parser *htp) {
 
   if (downstream->get_request_method() != "CONNECT") {
     http_parser_url u{};
-    auto uri = downstream->get_request_path().c_str();
-    rv = http_parser_parse_url(uri, downstream->get_request_path().size(), 0,
-                               &u);
+    // make a copy of request path, since we may set request path
+    // while we are refering to original request path.
+    auto uri = downstream->get_request_path();
+    rv = http_parser_parse_url(uri.c_str(),
+                               downstream->get_request_path().size(), 0, &u);
     if (rv != 0) {
       // Expect to respond with 400 bad request
       return -1;
     }
     // checking UF_HOST could be redundant, but just in case ...
     if (!(u.field_set & (1 << UF_SCHEMA)) || !(u.field_set & (1 << UF_HOST))) {
-      if (get_config()->client_proxy) {
+      if (get_config()->http2_proxy || get_config()->client_proxy) {
         // Request URI should be absolute-form for client proxy mode
         return -1;
       }
     } else {
-      rewrite_request_host_path_from_uri(downstream, uri, u);
-      // uri could be invalidated here
+      rewrite_request_host_path_from_uri(downstream, uri.c_str(), u);
     }
   }
 
@@ -407,9 +450,15 @@ int HttpsUpstream::on_read() {
 
     unsigned int status_code;
 
-    if (downstream &&
-        downstream->get_request_state() == Downstream::CONNECT_FAIL) {
-      status_code = 503;
+    if (downstream) {
+      if (downstream->get_request_state() == Downstream::CONNECT_FAIL) {
+        status_code = 503;
+      } else if (downstream->get_request_state() ==
+                 Downstream::HTTP1_REQUEST_HEADER_TOO_LARGE) {
+        status_code = 431;
+      } else {
+        status_code = 400;
+      }
     } else {
       status_code = 400;
     }

@@ -143,6 +143,7 @@ public:
   void set_request_method(std::string method);
   const std::string &get_request_method() const;
   void set_request_path(std::string path);
+  void add_request_headers_sum(size_t amount);
   void
   set_request_start_time(std::chrono::high_resolution_clock::time_point time);
   const std::chrono::high_resolution_clock::time_point &
@@ -193,6 +194,10 @@ public:
     // header contains invalid header field.  We can safely send error
     // response (502) to a client.
     MSG_BAD_HEADER,
+    // header fields in HTTP/1 request exceed the configuration limit.
+    // This state is only transitioned from INITIAL state, and solely
+    // used to signal 431 status code to the client.
+    HTTP1_REQUEST_HEADER_TOO_LARGE,
   };
   void set_request_state(int state);
   int get_request_state() const;
@@ -285,9 +290,6 @@ public:
 
   // Change the priority of downstream
   int change_priority(int32_t pri);
-
-  // Maximum buffer size for header name/value pairs.
-  static constexpr size_t MAX_HEADERS_SUM = 128 * 1024;
 
   bool get_rst_stream_after_end_stream() const;
   void set_rst_stream_after_end_stream(bool f);

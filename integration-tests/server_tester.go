@@ -297,7 +297,19 @@ func (st *serverTester) http1(rp requestParam) (*serverResponse, error) {
 			body = cbr
 		}
 	}
-	req, err := http.NewRequest(method, st.url, body)
+
+	reqURL := st.url
+
+	if rp.path != "" {
+		u, err := url.Parse(st.url)
+		if err != nil {
+			st.t.Fatalf("Error parsing URL from st.url %v: %v", st.url, err)
+		}
+		u.Path = rp.path
+		reqURL = u.String()
+	}
+
+	req, err := http.NewRequest(method, reqURL, body)
 	if err != nil {
 		return nil, err
 	}
