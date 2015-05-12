@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPD" "1" "May 08, 2015" "0.7.14" "nghttp2"
+.TH "NGHTTPD" "1" "May 13, 2015" "0.7.15-DEV" "nghttp2"
 .SH NAME
 nghttpd \- HTTP/2 experimental server
 .
@@ -164,6 +164,11 @@ body part.  Example: \fI\%\-\-trailer\fP \(aqfoo: bar\(aq.
 Display the  incoming traffic in  hexadecimal (Canonical
 hex+ASCII display).  If SSL/TLS  is used, decrypted data
 are used.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-echo\-upload
+Send back uploaded content if method is POST or PUT.
 .UNINDENT
 .INDENT 0.0
 .TP
