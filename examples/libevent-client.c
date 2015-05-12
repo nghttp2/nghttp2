@@ -50,11 +50,11 @@
 #define ARRLEN(x) (sizeof(x) / sizeof(x[0]))
 
 typedef struct {
-  /* The NULL-terminated URI string to retreive. */
+  /* The NULL-terminated URI string to retrieve. */
   const char *uri;
   /* Parsed result of the |uri| */
   struct http_parser_url *u;
-  /* The authroity portion of the |uri|, not NULL-terminated */
+  /* The authority portion of the |uri|, not NULL-terminated */
   char *authority;
   /* The path portion of the |uri|, including query, not
      NULL-terminated */
