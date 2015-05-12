@@ -19,7 +19,7 @@ FILES
   ignored.
 
   To specify private key and certificate file which are given as
-  positional arguments in commnad-line, use ``private-key-file`` and
+  positional arguments in command-line, use ``private-key-file`` and
   ``certificate-file``.
 
   :option:`--conf` option cannot be used in the configuration file and
