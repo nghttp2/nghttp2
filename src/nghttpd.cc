@@ -153,6 +153,8 @@ Options:
   --hexdump   Display the  incoming traffic in  hexadecimal (Canonical
               hex+ASCII display).  If SSL/TLS  is used, decrypted data
               are used.
+  --echo-upload
+              Send back uploaded content if method is POST or PUT.
   --version   Display version information and exit.
   -h, --help  Display this help and exit.
 
@@ -188,6 +190,7 @@ int main(int argc, char **argv) {
         {"early-response", no_argument, &flag, 5},
         {"trailer", required_argument, &flag, 6},
         {"hexdump", no_argument, &flag, 7},
+        {"echo-upload", no_argument, &flag, 8},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     int c = getopt_long(argc, argv, "DVb:c:d:ehm:n:p:va:", long_options,
@@ -309,6 +312,10 @@ int main(int argc, char **argv) {
       case 7:
         // hexdump option
         config.hexdump = true;
+        break;
+      case 8:
+        // echo-upload option
+        config.echo_upload = true;
         break;
       }
       break;

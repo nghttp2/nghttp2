@@ -73,6 +73,7 @@ struct Config {
   bool error_gzip;
   bool early_response;
   bool hexdump;
+  bool echo_upload;
   Config();
   ~Config();
 };
@@ -101,6 +102,7 @@ struct Stream {
   int64_t body_offset;
   int32_t stream_id;
   http2::HeaderIndex hdidx;
+  bool echo_upload;
   Stream(Http2Handler *handler, int32_t stream_id);
   ~Stream();
 };

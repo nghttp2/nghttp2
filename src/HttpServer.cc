@@ -91,7 +91,8 @@ Config::Config()
       session_option(nullptr), data_ptr(nullptr), padding(0), num_worker(1),
       max_concurrent_streams(100), header_table_size(-1), port(0),
       verbose(false), daemon(false), verify_client(false), no_tls(false),
-      error_gzip(false), early_response(false), hexdump(false) {
+      error_gzip(false), early_response(false), hexdump(false),
+      echo_upload(false) {
   nghttp2_option_new(&session_option);
   nghttp2_option_set_recv_client_preface(session_option, 1);
 }
@@ -282,7 +283,7 @@ private:
 
 Stream::Stream(Http2Handler *handler, int32_t stream_id)
     : handler(handler), file_ent(nullptr), body_length(0), body_offset(0),
-      stream_id(stream_id) {
+      stream_id(stream_id), echo_upload(false) {
   auto config = handler->get_config();
   ev_timer_init(&rtimer, stream_timeout_cb, 0., config->stream_read_timeout);
   ev_timer_init(&wtimer, stream_timeout_cb, 0., config->stream_write_timeout);
@@ -919,6 +920,49 @@ void prepare_status_response(Stream *stream, Http2Handler *hd, int status) {
 } // namespace
 
 namespace {
+void prepare_echo_response(Stream *stream, Http2Handler *hd) {
+  auto length = lseek(stream->file_ent->fd, 0, SEEK_END);
+  if (length == -1) {
+    hd->submit_rst_stream(stream, NGHTTP2_INTERNAL_ERROR);
+    return;
+  }
+  stream->body_length = length;
+  if (lseek(stream->file_ent->fd, 0, SEEK_SET) == -1) {
+    hd->submit_rst_stream(stream, NGHTTP2_INTERNAL_ERROR);
+    return;
+  }
+  nghttp2_data_provider data_prd;
+  data_prd.source.fd = stream->file_ent->fd;
+  data_prd.read_callback = file_read_callback;
+
+  Headers headers;
+  headers.emplace_back("nghttpd-response", "echo");
+  headers.emplace_back("content-length", util::utos(length));
+
+  hd->submit_response("200", stream->stream_id, headers, &data_prd);
+}
+} // namespace
+
+namespace {
+bool prepare_upload_temp_store(Stream *stream, Http2Handler *hd) {
+  auto sessions = hd->get_sessions();
+
+  char tempfn[] = "/tmp/nghttpd.temp.XXXXXX";
+  auto fd = mkstemp(tempfn);
+  if (fd == -1) {
+    return false;
+  }
+  unlink(tempfn);
+  // Ordinary request never start with "echo:".  The length is 0 for
+  // now.  We will update it when we get whole request body.
+  stream->file_ent = sessions->cache_fd(std::string("echo:") + tempfn,
+                                        FileEntry(tempfn, 0, 0, fd));
+  stream->echo_upload = true;
+  return true;
+}
+} // namespace
+
+namespace {
 void prepare_redirect_response(Stream *stream, Http2Handler *hd,
                                const std::string &path, int status) {
   auto scheme =
@@ -972,8 +1016,14 @@ void prepare_response(Stream *stream, Http2Handler *hd,
     url = reqpath;
   }
 
-  url = util::percentDecode(url.begin(), url.end());
+  auto sessions = hd->get_sessions();
+
+  url = util::percentDecode(std::begin(url), std::end(url));
   if (!util::check_path(url)) {
+    if (stream->file_ent) {
+      sessions->release_fd(stream->file_ent->path);
+      stream->file_ent = nullptr;
+    }
     prepare_status_response(stream, hd, 404);
     return;
   }
@@ -987,12 +1037,18 @@ void prepare_response(Stream *stream, Http2Handler *hd,
       }
     }
   }
+
   std::string path = hd->get_config()->htdocs + url;
   if (path[path.size() - 1] == '/') {
     path += DEFAULT_HTML;
   }
 
-  auto sessions = hd->get_sessions();
+  if (stream->echo_upload) {
+    assert(stream->file_ent);
+    prepare_echo_response(stream, hd);
+    return;
+  }
+
   auto file_ent = sessions->get_cached_fd(path);
 
   if (file_ent == nullptr) {
@@ -1122,7 +1178,7 @@ int hd_on_frame_recv_callback(nghttp2_session *session,
 
     if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
       remove_stream_read_timeout(stream);
-      if (!hd->get_config()->early_response) {
+      if (stream->echo_upload || !hd->get_config()->early_response) {
         prepare_response(stream, hd);
       }
     } else {
@@ -1146,14 +1202,22 @@ int hd_on_frame_recv_callback(nghttp2_session *session,
         hd->submit_non_final_response("100", frame->hd.stream_id);
       }
 
-      if (hd->get_config()->early_response) {
+      auto &method = http2::get_header(stream->hdidx, http2::HD__METHOD,
+                                       stream->headers)->value;
+      if (hd->get_config()->echo_upload &&
+          (method == "POST" || method == "PUT")) {
+        if (!prepare_upload_temp_store(stream, hd)) {
+          hd->submit_rst_stream(stream, NGHTTP2_INTERNAL_ERROR);
+          return 0;
+        }
+      } else if (hd->get_config()->early_response) {
         prepare_response(stream, hd);
       }
     }
 
     if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
       remove_stream_read_timeout(stream);
-      if (!hd->get_config()->early_response) {
+      if (stream->echo_upload || !hd->get_config()->early_response) {
         prepare_response(stream, hd);
       }
     } else {
@@ -1299,6 +1363,21 @@ int on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
     return 0;
   }
 
+  if (stream->echo_upload) {
+    assert(stream->file_ent);
+    while (len) {
+      ssize_t n;
+      while ((n = write(stream->file_ent->fd, data, len)) == -1 &&
+             errno == EINTR)
+        ;
+      if (n == -1) {
+        hd->submit_rst_stream(stream, NGHTTP2_INTERNAL_ERROR);
+        return 0;
+      }
+      len -= n;
+      data += n;
+    }
+  }
   // TODO Handle POST
 
   add_stream_read_timeout(stream);
