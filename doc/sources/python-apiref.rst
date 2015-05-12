@@ -267,7 +267,7 @@ HTTP/2 servers
       (byte string could be ``None``), :py:data:`DATA_EOF` must be
       returned as flag.  If there is no data available right now, but
       additional data are anticipated, return tuple (``None``,
-      :py:data:`DATA_DEFERRD`).  When data arrived, call
+      :py:data:`DATA_DEFERRED`).  When data arrived, call
       :py:meth:`resume()` and restart response body transmission.
 
       Only the body generator can pause response body generation;

@@ -80,7 +80,7 @@ status code, in the above example, which is 200.  The second argument,
 which is omitted in the above example, is additional header fields to
 send.
 
-``nghttp2::asio_http2::server::response::end`` sends responde body.
+``nghttp2::asio_http2::server::response::end`` sends response body.
 In the above example, we send string "hello, world".
 
 The life time of req and res object ends after the callback set by
@@ -277,7 +277,7 @@ response header fields and response body to the console screen:
 ``boost::asio::io_service`` object and remote server address.  When
 connection is made, the callback function passed to
 ``nghttp2::asio_http2::client::on_connect`` is invoked with connected
-address as its paramter.  After this callback call, use
+address as its parameter.  After this callback call, use
 ``nghttp2::asio_http2::session::submit`` to send request to the
 server.  You can submit multiple requests at once without waiting for
 the completion of previous request.

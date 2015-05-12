@@ -13,7 +13,7 @@ An HPACK encoder and decoder are available as a public API.
 
 An experimental high level C++ library is also available.
 
-We have Python bindings of this libary, but we do not have full
+We have Python bindings of this library, but we do not have full
 code coverage yet.
 
 Development Status
@@ -490,7 +490,7 @@ disabled in the frontend and incoming HTTP/1.1 connections can be
 upgraded to HTTP/2 through HTTP Upgrade.
 
 The ``--http2-bridge``, ``--client`` and ``--client-proxy`` modes use
-SSL/TLS in the backend connection by deafult.  To disable SSL/TLS, use
+SSL/TLS in the backend connection by default.  To disable SSL/TLS, use
 the ``--backend-no-tls`` option.
 
 ``nghttpx`` supports a configuration file.  See the ``--conf`` option and
@@ -785,7 +785,7 @@ max_deflate_size
     The maximum header table size the encoder uses.  This can be smaller
     than ``max_size``.  In this case, the encoder only uses up to first
     ``max_deflate_size`` buffer.  Since the header table size is still
-    ``max_size``, the encoder has to keep track of entries ouside the
+    ``max_size``, the encoder has to keep track of entries outside the
     ``max_deflate_size`` but inside the ``max_size`` and make sure
     that they are no longer referenced.
 

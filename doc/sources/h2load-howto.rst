@@ -87,5 +87,5 @@ If multiple URIs are specified, they are used in round robin manner.
 
 .. note::
 
-    Please note that h2load uses sheme, host and port in the first URI
+    Please note that h2load uses scheme, host and port in the first URI
     and ignores those parts in the rest of the URIs.
