@@ -222,6 +222,7 @@ def process_function(domain, infile):
     func_proto = ''.join(func_proto)
     func_proto = re.sub(r';\n$', '', func_proto)
     func_proto = re.sub(r'\s+', ' ', func_proto)
+    func_proto = re.sub(r'NGHTTP2_EXTERN ', '', func_proto)
     return FunctionDoc(func_proto, content, domain)
 
 def read_content(infile):
