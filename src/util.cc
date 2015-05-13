@@ -24,15 +24,27 @@
  */
 #include "util.h"
 
+#ifdef HAVE_TIME_H
 #include <time.h>
+#endif // HAVE_TIME_H
 #include <sys/types.h>
+#ifdef HAVE_SYS_SOCKET_H
 #include <sys/socket.h>
+#endif // HAVE_SYS_SOCKET_H
+#ifdef HAVE_NETDB_H
 #include <netdb.h>
+#endif // HAVE_NETDB_H
 #include <sys/stat.h>
+#ifdef HAVE_FCNTL_H
 #include <fcntl.h>
+#endif // HAVE_FCNTL_H
+#ifdef HAVE_NETINET_IN_H
 #include <netinet/in.h>
+#endif // HAVE_NETINET_IN_H
 #include <netinet/tcp.h>
+#ifdef HAVE_ARPA_INET_H
 #include <arpa/inet.h>
+#endif // HAVE_ARPA_INET_H
 
 #include <cmath>
 #include <cerrno>

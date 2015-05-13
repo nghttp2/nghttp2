@@ -25,6 +25,10 @@
 #ifndef SHRPX_SSL_TEST_H
 #define SHRPX_SSL_TEST_H
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif // HAVE_CONFIG_H
+
 namespace shrpx {
 
 void test_shrpx_ssl_create_lookup_tree(void);

@@ -29,7 +29,9 @@
 
 #include <stdint.h>
 #include <cstdlib>
+#ifdef HAVE_SYS_TIME_H
 #include <sys/time.h>
+#endif // HAVE_SYS_TIME_H
 #include <poll.h>
 
 #include <map>

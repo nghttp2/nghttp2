@@ -25,6 +25,10 @@
 #ifndef UTIL_TEST_H
 #define UTIL_TEST_H
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif // HAVE_CONFIG_H
+
 namespace shrpx {
 
 void test_util_streq(void);

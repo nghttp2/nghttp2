@@ -30,7 +30,9 @@
 #endif // HAVE_CONFIG_H
 
 #include <sys/types.h>
+#ifdef HAVE_SYS_SOCKET_H
 #include <sys/socket.h>
+#endif // HAVE_SYS_SOCKET_H
 
 #include <cassert>
 

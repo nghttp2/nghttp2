@@ -29,10 +29,16 @@
 
 #include <stdint.h>
 #include <sys/types.h>
+#ifdef HAVE_SYS_SOCKET_H
 #include <sys/socket.h>
+#endif // HAVE_SYS_SOCKET_H
 #include <sys/un.h>
+#ifdef HAVE_NETINET_IN_H
 #include <netinet/in.h>
+#endif // HAVE_NETINET_IN_H
+#ifdef HAVE_ARPA_INET_H
 #include <arpa/inet.h>
+#endif // HAVE_ARPA_INET_H
 #include <cstdio>
 #include <vector>
 #include <memory>

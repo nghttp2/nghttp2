@@ -24,8 +24,12 @@
  */
 #include "shrpx_ssl.h"
 
+#ifdef HAVE_SYS_SOCKET_H
 #include <sys/socket.h>
+#endif // HAVE_SYS_SOCKET_H
+#ifdef HAVE_NETDB_H
 #include <netdb.h>
+#endif // HAVE_NETDB_H
 #include <netinet/tcp.h>
 #include <pthread.h>
 #include <sys/types.h>

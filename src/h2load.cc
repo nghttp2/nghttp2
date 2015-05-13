@@ -26,10 +26,14 @@
 
 #include <getopt.h>
 #include <signal.h>
+#ifdef HAVE_NETINET_IN_H
 #include <netinet/in.h>
+#endif // HAVE_NETINET_IN_H
 #include <netinet/tcp.h>
 #include <sys/stat.h>
+#ifdef HAVE_FCNTL_H
 #include <fcntl.h>
+#endif // HAVE_FCNTL_H
 
 #include <cstdio>
 #include <cassert>

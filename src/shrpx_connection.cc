@@ -24,7 +24,9 @@
  */
 #include "shrpx_connection.h"
 
+#ifdef HAVE_UNISTD_H
 #include <unistd.h>
+#endif // HAVE_UNISTD_H
 
 #include <limits>
 

@@ -25,6 +25,10 @@
 #ifndef SHRPX_DOWNSTREAM_TEST_H
 #define SHRPX_DOWNSTREAM_TEST_H
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif // HAVE_CONFIG_H
+
 namespace shrpx {
 
 void test_downstream_index_request_headers(void);

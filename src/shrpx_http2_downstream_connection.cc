@@ -24,7 +24,9 @@
  */
 #include "shrpx_http2_downstream_connection.h"
 
+#ifdef HAVE_UNISTD_H
 #include <unistd.h>
+#endif // HAVE_UNISTD_H
 
 #include "http-parser/http_parser.h"
 

@@ -25,6 +25,10 @@
 #ifndef MEMCHUNK_TEST_H
 #define MEMCHUNK_TEST_H
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif // HAVE_CONFIG_H
+
 namespace nghttp2 {
 
 void test_pool_recycle(void);

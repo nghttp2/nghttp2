@@ -24,17 +24,27 @@
  */
 #ifdef HAVE_CONFIG_H
 #include <config.h>
-#endif /* !HAVE_CONFIG_H */
+#endif /* HAVE_CONFIG_H */
 
 #include <sys/types.h>
+#ifdef HAVE_SYS_SOCKET_H
 #include <sys/socket.h>
+#endif /* HAVE_SYS_SOCKET_H */
+#ifdef HAVE_NETDB_H
 #include <netdb.h>
+#endif /* HAVE_NETDB_H */
 #include <signal.h>
+#ifdef HAVE_UNISTD_H
 #include <unistd.h>
+#endif /* HAVE_UNISTD_H */
 #include <sys/stat.h>
+#ifdef HAVE_FCNTL_H
 #include <fcntl.h>
+#endif /* HAVE_FCNTL_H */
 #include <ctype.h>
+#ifdef HAVE_NETINET_IN_H
 #include <netinet/in.h>
+#endif /* HAVE_NETINET_IN_H */
 #include <netinet/tcp.h>
 #include <err.h>
 

@@ -24,7 +24,9 @@
  */
 #include "shrpx_client_handler.h"
 
+#ifdef HAVE_UNISTD_H
 #include <unistd.h>
+#endif // HAVE_UNISTD_H
 #include <cerrno>
 
 #include "shrpx_upstream.h"

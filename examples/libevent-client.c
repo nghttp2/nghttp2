@@ -24,12 +24,18 @@
  */
 #ifdef HAVE_CONFIG_H
 #include <config.h>
-#endif /* !HAVE_CONFIG_H */
+#endif /* HAVE_CONFIG_H */
 
 #include <sys/types.h>
+#ifdef HAVE_UNISTD_H
 #include <unistd.h>
+#endif /* HAVE_UNISTD_H */
+#ifdef HAVE_SYS_SOCKET_H
 #include <sys/socket.h>
+#endif /* HAVE_SYS_SOCKET_H */
+#ifdef HAVE_NETINET_IN_H
 #include <netinet/in.h>
+#endif /* HAVE_NETINET_IN_H */
 #include <netinet/tcp.h>
 #include <err.h>
 #include <signal.h>
