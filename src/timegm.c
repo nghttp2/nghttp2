@@ -26,7 +26,7 @@
 
 #ifndef HAVE_TIMEGM
 
-#include <stdint.h>
+#include <inttypes.h>
 
 /* Counter the number of leap year in the range [0, y). The |y| is the
    year, including century (e.g., 2012) */

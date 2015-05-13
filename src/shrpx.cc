@@ -24,7 +24,6 @@
  */
 #include "shrpx.h"
 
-#include <stdint.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #ifdef HAVE_SYS_SOCKET_H
@@ -59,6 +58,7 @@
 #include <sys/resource.h>
 #include <grp.h>
 
+#include <cinttypes>
 #include <limits>
 #include <cstdlib>
 #include <iostream>

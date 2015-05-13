@@ -28,7 +28,8 @@
 #include "nghttp2_config.h"
 
 #include <sys/types.h>
-#include <stdint.h>
+
+#include <cinttypes>
 
 #include "h2load.h"
 

@@ -30,7 +30,7 @@
 #include <config.h>
 #endif /* HAVE_CONFIG_H */
 
-#include <stdint.h>
+#include <inttypes.h>
 #include <stdlib.h>
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>

@@ -27,9 +27,9 @@
 
 #include "nghttp2_config.h"
 
-#include <stdint.h>
 #include <sys/types.h>
 
+#include <cinttypes>
 #include <cstdlib>
 
 #include <string>

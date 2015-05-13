@@ -27,8 +27,7 @@
 
 #include "shrpx.h"
 
-#include <stdint.h>
-
+#include <cinttypes>
 #include <vector>
 #include <string>
 #include <memory>

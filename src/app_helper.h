@@ -27,7 +27,7 @@
 
 #include "nghttp2_config.h"
 
-#include <stdint.h>
+#include <cinttypes>
 #include <cstdlib>
 #ifdef HAVE_SYS_TIME_H
 #include <sys/time.h>

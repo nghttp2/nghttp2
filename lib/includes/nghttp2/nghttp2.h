@@ -36,7 +36,7 @@ extern "C" {
 #endif
 
 #include <stdlib.h>
-#include <stdint.h>
+#include <inttypes.h>
 #include <sys/types.h>
 
 #include <nghttp2/nghttp2ver.h>
