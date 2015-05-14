@@ -63,6 +63,26 @@ void test_nghttp2_bufs_add(void) {
   nghttp2_bufs_free(&bufs);
 }
 
+/* Test for GH-232, stack-buffer-overflow */
+void test_nghttp2_bufs_add_stack_buffer_overflow_bug(void) {
+  int rv;
+  nghttp2_bufs bufs;
+  uint8_t data[1024];
+  nghttp2_mem *mem;
+
+  mem = nghttp2_mem_default();
+
+  rv = nghttp2_bufs_init(&bufs, 100, 200, mem);
+  CU_ASSERT(0 == rv);
+
+  rv = nghttp2_bufs_add(&bufs, data, sizeof(data));
+
+  CU_ASSERT(0 == rv);
+  CU_ASSERT(sizeof(data) == nghttp2_bufs_len(&bufs));
+
+  nghttp2_bufs_free(&bufs);
+}
+
 void test_nghttp2_bufs_addb(void) {
   int rv;
   nghttp2_bufs bufs;
