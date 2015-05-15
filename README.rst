@@ -204,8 +204,8 @@ To run the tests, run the following command under
 
 Inside the tests, we use port 3009 to run the test subject server.
 
-Migration from v0.7.9 or earlier
---------------------------------
+Migration from v0.7.15 or earlier
+---------------------------------
 
 nghttp2 v1.0.0 introduced several backward incompatible changes.  In
 this section, we describe these changes and how to migrate to v1.0.0.
