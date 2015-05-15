@@ -608,10 +608,10 @@ HTTP
 
     Specify   protocol  ID,   port,  host   and  origin   of
     alternative service.  <HOST>  and <ORIGIN> are optional.
-    They are  advertised in  alt-svc header field  or HTTP/2
-    ALTSVC frame.  This option can be used multiple times to
-    specify   multiple   alternative   services.    Example:
-    :option:`--altsvc`\=h2,443
+    They  are advertised  in  alt-svc header  field only  in
+    HTTP/1.1  frontend.  This  option can  be used  multiple
+    times   to   specify  multiple   alternative   services.
+    Example: :option:`--altsvc`\=h2,443
 
 .. option:: --add-response-header=<HEADER>
 
