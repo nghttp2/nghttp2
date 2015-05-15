@@ -1114,8 +1114,8 @@ void test_nghttp2_session_recv_premature_headers(void) {
 
   nghttp2_hd_deflate_init(&deflater, mem);
 
-  rv = pack_headers(&bufs, &deflater, 1, NGHTTP2_FLAG_END_HEADERS, reqnv,
-                    ARRLEN(reqnv), mem);
+  pack_headers(&bufs, &deflater, 1, NGHTTP2_FLAG_END_HEADERS, reqnv,
+               ARRLEN(reqnv), mem);
 
   buf = &bufs.head->buf;
   /* Intentionally feed payload cutting last 1 byte off */
