@@ -51,7 +51,7 @@ bound of encoded result, use `nghttp2_hd_deflate_bound()` function::
     size_t nghttp2_hd_deflate_bound(nghttp2_hd_deflater *deflater,
                                     const nghttp2_nv *nva, size_t nvlen);
 
-Pass this function with the same paramters *deflater*, *nva* and
+Pass this function with the same parameters *deflater*, *nva* and
 *nvlen* which will be passed to `nghttp2_hd_deflate_hd()`.
 
 The subsequent call of `nghttp2_hd_deflate_hd()` will use current

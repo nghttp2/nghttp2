@@ -65,11 +65,11 @@ its stream specific data in ``http2_stream_data`` structure and the
 defined as follows::
 
     typedef struct {
-      /* The NULL-terminated URI string to retreive. */
+      /* The NULL-terminated URI string to retrieve. */
       const char *uri;
       /* Parsed result of the |uri| */
       struct http_parser_url *u;
-      /* The authroity portion of the |uri|, not NULL-terminated */
+      /* The authority portion of the |uri|, not NULL-terminated */
       char *authority;
       /* The path portion of the |uri|, including query, not
          NULL-terminated */
@@ -203,7 +203,7 @@ automatically sent by nghttp2 library.  We send SETTINGS frame in
     }
 
 Here we specify SETTINGS_MAX_CONCURRENT_STREAMS to 100, which is
-really not needed for this tiny example progoram, but we are
+really not needed for this tiny example program, but we are
 demonstrating the use of SETTINGS frame. To queue the SETTINGS frame
 for the transmission, we use `nghttp2_submit_settings()`. Note that
 `nghttp2_submit_settings()` function only queues the frame and not
@@ -387,7 +387,7 @@ After all name/value pairs are emitted for a frame,
     }
 
 In this tutorial, we are just interested in the HTTP response
-HEADERS. We check te frame type and its category (it should be
+HEADERS. We check the frame type and its category (it should be
 :macro:`NGHTTP2_HCAT_RESPONSE` for HTTP response HEADERS). Also check
 its stream ID.
 
@@ -406,7 +406,7 @@ of data is received from the remote peer::
     }
 
 In our case, a chunk of data is response body. After checking stream
-ID, we just write the recieved data to the stdout. Note that the
+ID, we just write the received data to the stdout. Note that the
 output in the terminal may be corrupted if the response body contains
 some binary data.
 

@@ -24,12 +24,18 @@
  */
 #ifdef HAVE_CONFIG_H
 #include <config.h>
-#endif /* !HAVE_CONFIG_H */
+#endif /* HAVE_CONFIG_H */
 
 #include <sys/types.h>
+#ifdef HAVE_UNISTD_H
 #include <unistd.h>
+#endif /* HAVE_UNISTD_H */
+#ifdef HAVE_SYS_SOCKET_H
 #include <sys/socket.h>
+#endif /* HAVE_SYS_SOCKET_H */
+#ifdef HAVE_NETINET_IN_H
 #include <netinet/in.h>
+#endif /* HAVE_NETINET_IN_H */
 #include <netinet/tcp.h>
 #include <err.h>
 #include <signal.h>
@@ -50,11 +56,11 @@
 #define ARRLEN(x) (sizeof(x) / sizeof(x[0]))
 
 typedef struct {
-  /* The NULL-terminated URI string to retreive. */
+  /* The NULL-terminated URI string to retrieve. */
   const char *uri;
   /* Parsed result of the |uri| */
   struct http_parser_url *u;
-  /* The authroity portion of the |uri|, not NULL-terminated */
+  /* The authority portion of the |uri|, not NULL-terminated */
   char *authority;
   /* The path portion of the |uri|, including query, not
      NULL-terminated */

@@ -28,8 +28,12 @@
 #include "nghttp2_config.h"
 
 #include <sys/types.h>
+#ifdef HAVE_SYS_SOCKET_H
 #include <sys/socket.h>
+#endif // HAVE_SYS_SOCKET_H
+#ifdef HAVE_NETDB_H
 #include <netdb.h>
+#endif // HAVE_NETDB_H
 
 #include <vector>
 #include <string>
@@ -94,8 +98,7 @@ struct RequestStat {
   bool completed;
 };
 
-template<typename Duration>
-struct TimeStat {
+template <typename Duration> struct TimeStat {
   // min, max, mean and sd (standard deviation)
   Duration min, max, mean, sd;
   // percentage of samples inside mean -/+ sd

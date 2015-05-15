@@ -26,7 +26,9 @@
 #include <config.h>
 #endif // HAVE_CONFIG_H
 
+#ifdef HAVE_UNISTD_H
 #include <unistd.h>
+#endif // HAVE_UNISTD_H
 #include <getopt.h>
 
 #include <cstdio>
@@ -96,6 +98,11 @@ static int inflate_hd(json_t *obj, nghttp2_hd_inflater *inflater, int seq) {
 
   if (wire == nullptr) {
     fprintf(stderr, "'wire' key is missing at %d\n", seq);
+    return -1;
+  }
+
+  if (!json_is_string(wire)) {
+    fprintf(stderr, "'wire' value is not string at %d\n", seq);
     return -1;
   }
 

@@ -26,6 +26,7 @@
 #define NGHTTP2_BUF_TEST_H
 
 void test_nghttp2_bufs_add(void);
+void test_nghttp2_bufs_add_stack_buffer_overflow_bug(void);
 void test_nghttp2_bufs_addb(void);
 void test_nghttp2_bufs_orb(void);
 void test_nghttp2_bufs_remove(void);

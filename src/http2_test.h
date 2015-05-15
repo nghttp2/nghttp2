@@ -25,6 +25,10 @@
 #ifndef SHRPX_HTTP2_TEST_H
 #define SHRPX_HTTP2_TEST_H
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif // HAVE_CONFIG_H
+
 namespace shrpx {
 
 void test_http2_add_header(void);

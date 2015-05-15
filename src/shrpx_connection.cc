@@ -24,7 +24,9 @@
  */
 #include "shrpx_connection.h"
 
+#ifdef HAVE_UNISTD_H
 #include <unistd.h>
+#endif // HAVE_UNISTD_H
 
 #include <limits>
 
@@ -151,13 +153,21 @@ void Connection::update_tls_warmup_writelen(size_t n) {
 }
 
 ssize_t Connection::write_tls(const void *data, size_t len) {
-  // We set SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER, so we don't have to
-  // care about parameters after SSL_ERROR_WANT_READ or
-  // SSL_ERROR_WANT_WRITE.
-  len = std::min(len, wlimit.avail());
-  len = std::min(len, get_tls_write_limit());
-  if (len == 0) {
-    return 0;
+  // SSL_write requires the same arguments (buf pointer and its
+  // length) on SSL_ERROR_WANT_READ or SSL_ERROR_WANT_WRITE.
+  // get_write_limit() may return smaller length than previously
+  // passed to SSL_write, which violates OpenSSL assumption.  To avoid
+  // this, we keep last legnth passed to SSL_write to
+  // tls.last_writelen if SSL_write indicated I/O blocking.
+  if (tls.last_writelen == 0) {
+    len = std::min(len, wlimit.avail());
+    len = std::min(len, get_tls_write_limit());
+    if (len == 0) {
+      return 0;
+    }
+  } else {
+    len = tls.last_writelen;
+    tls.last_writelen = 0;
   }
 
   auto rv = SSL_write(tls.ssl, data, len);
@@ -177,6 +187,7 @@ ssize_t Connection::write_tls(const void *data, size_t len) {
       }
       return SHRPX_ERR_NETWORK;
     case SSL_ERROR_WANT_WRITE:
+      tls.last_writelen = len;
       wlimit.startw();
       ev_timer_again(loop, &wt);
       return 0;
@@ -196,13 +207,21 @@ ssize_t Connection::write_tls(const void *data, size_t len) {
 }
 
 ssize_t Connection::read_tls(void *data, size_t len) {
-  // Although SSL_read manual says it requires the same arguments (buf
-  // pointer and its length) on SSL_ERROR_WANT_READ or
-  // SSL_ERROR_WANT_WRITE.  But after reading OpenSSL source code,
-  // there is no such requirement.
-  len = std::min(len, rlimit.avail());
-  if (len == 0) {
-    return 0;
+  // SSL_read requires the same arguments (buf pointer and its
+  // length) on SSL_ERROR_WANT_READ or SSL_ERROR_WANT_WRITE.
+  // rlimit_.avail() or rlimit_.avail() may return different length
+  // than the length previously passed to SSL_read, which violates
+  // OpenSSL assumption.  To avoid this, we keep last legnth passed
+  // to SSL_read to tls_last_readlen_ if SSL_read indicated I/O
+  // blocking.
+  if (tls.last_readlen == 0) {
+    len = std::min(len, rlimit.avail());
+    if (len == 0) {
+      return 0;
+    }
+  } else {
+    len = tls.last_readlen;
+    tls.last_readlen = 0;
   }
 
   auto rv = SSL_read(tls.ssl, data, len);
@@ -211,6 +230,7 @@ ssize_t Connection::read_tls(void *data, size_t len) {
     auto err = SSL_get_error(tls.ssl, rv);
     switch (err) {
     case SSL_ERROR_WANT_READ:
+      tls.last_readlen = len;
       return 0;
     case SSL_ERROR_WANT_WRITE:
       if (LOG_ENABLED(INFO)) {

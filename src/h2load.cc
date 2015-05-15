@@ -26,10 +26,14 @@
 
 #include <getopt.h>
 #include <signal.h>
+#ifdef HAVE_NETINET_IN_H
 #include <netinet/in.h>
+#endif // HAVE_NETINET_IN_H
 #include <netinet/tcp.h>
 #include <sys/stat.h>
+#ifdef HAVE_FCNTL_H
 #include <fcntl.h>
+#endif // HAVE_FCNTL_H
 
 #include <cstdio>
 #include <cassert>
@@ -1014,7 +1018,7 @@ Options:
               Number of native threads.
               Default: )" << config.nthreads << R"(
   -i, --input-file=<FILE>
-              Path of a file with multiple URIs are seperated by EOLs.
+              Path of a file with multiple URIs are separated by EOLs.
               This option will disable URIs getting from command-line.
               If '-' is given as <FILE>, URIs will be read from stdin.
               URIs are used  in this order for each  client.  All URIs

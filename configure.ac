@@ -25,13 +25,30 @@ dnl Do not change user variables!
 dnl http://www.gnu.org/software/automake/manual/html_node/Flag-Variables-Ordering.html
 
 AC_PREREQ(2.61)
-AC_INIT([nghttp2], [0.7.15-DEV], [t-tujikawa@users.sourceforge.net])
+AC_INIT([nghttp2], [0.7.15], [t-tujikawa@users.sourceforge.net])
+AC_USE_SYSTEM_EXTENSIONS
+
 LT_PREREQ([2.2.6])
 LT_INIT()
+
+AC_CANONICAL_BUILD
+AC_CANONICAL_HOST
+AC_CANONICAL_TARGET
+
+AM_INIT_AUTOMAKE([subdir-objects])
+# comment out for now since this requires automake 1.13 or higher and
+# travis has older one.
+# AM_EXTRA_RECURSIVE_TARGETS([it])
+
+m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
+
+AC_CONFIG_MACRO_DIR([m4])
+AC_CONFIG_HEADERS([config.h])
+
 dnl See versioning rule:
 dnl  http://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
 AC_SUBST(LT_CURRENT, 13)
-AC_SUBST(LT_REVISION, 3)
+AC_SUBST(LT_REVISION, 4)
 AC_SUBST(LT_AGE, 8)
 
 major=`echo $PACKAGE_VERSION |cut -d. -f1 | sed -e "s/[^0-9]//g"`
@@ -41,21 +58,6 @@ patch=`echo $PACKAGE_VERSION |cut -d. -f3 | cut -d- -f1 | sed -e "s/[^0-9]//g"`
 PACKAGE_VERSION_NUM=`printf "0x%02x%02x%02x" "$major" "$minor" "$patch"`
 
 AC_SUBST(PACKAGE_VERSION_NUM)
-
-AC_CANONICAL_BUILD
-AC_CANONICAL_HOST
-AC_CANONICAL_TARGET
-
-AC_CONFIG_MACRO_DIR([m4])
-
-AM_INIT_AUTOMAKE([subdir-objects])
-# comment out for now since this requires automake 1.13 or higher and
-# travis has older one.
-# AM_EXTRA_RECURSIVE_TARGETS([it])
-
-m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
-
-AC_CONFIG_HEADERS([config.h])
 
 dnl Checks for command-line options
 AC_ARG_ENABLE([werror],
@@ -129,10 +131,12 @@ AC_ARG_VAR([CYTHON], [the Cython executable])
 dnl Checks for programs
 AC_PROG_CC
 AC_PROG_CXX
+AC_PROG_CPP
 AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_MAKE_SET
-AM_PROG_CC_C_O
+AC_PROG_MKDIR_P
+
 PKG_PROG_PKG_CONFIG([0.20])
 
 if [test "x$request_python_bindings" != "xno"]; then
@@ -358,9 +362,23 @@ if test "x${request_jemalloc}" != "xno"; then
   AC_SEARCH_LIBS([malloc_stats_print], [jemalloc], [have_jemalloc=yes], [],
                  [$PTHREAD_LDFLAGS])
   LIBS=$LIBS_OLD
+
+  if test "x${have_jemalloc}" = "xyes"; then
+    jemalloc_libs=${ac_cv_search_malloc_stats_print}
+  else
+    # On Darwin, malloc_stats_print is je_malloc_stats_print
+    AC_SEARCH_LIBS([je_malloc_stats_print], [jemalloc], [have_jemalloc=yes], [],
+                   [$PTHREAD_LDFLAGS])
+    LIBS=$LIBS_OLD
+
+    if test "x${have_jemalloc}" = "xyes"; then
+      jemalloc_libs=${ac_cv_search_je_malloc_stats_print}
+    fi
+  fi
+
   if test "x${have_jemalloc}" = "xyes" &&
-     test "x${ac_cv_search_malloc_stats_print}" != "xnone required"; then
-    JEMALLOC_LIBS=${ac_cv_search_malloc_stats_print}
+     test "x${jemalloc_libs}" != "xnone required"; then
+    JEMALLOC_LIBS=${jemalloc_libs}
     AC_SUBST([JEMALLOC_LIBS])
   fi
 fi
@@ -498,12 +516,19 @@ AM_CONDITIONAL([ENABLE_FAILMALLOC], [ test "x${enable_failmalloc}" = "xyes" ])
 AC_HEADER_ASSERT
 AC_CHECK_HEADERS([ \
   arpa/inet.h \
+  fcntl.h \
+  inttypes.h \
+  limits.h \
+  netdb.h \
   netinet/in.h \
   pwd.h \
   stddef.h \
   stdint.h \
   stdlib.h \
   string.h \
+  sys/socket.h \
+  sys/time.h \
+  syslog.h \
   time.h \
   unistd.h \
 ])
@@ -515,8 +540,16 @@ AC_TYPE_UINT8_T
 AC_TYPE_UINT16_T
 AC_TYPE_UINT32_T
 AC_TYPE_UINT64_T
+AC_TYPE_INT8_T
+AC_TYPE_INT16_T
+AC_TYPE_INT32_T
+AC_TYPE_INT64_T
+AC_TYPE_OFF_T
+AC_TYPE_PID_T
+AC_TYPE_UID_T
 AC_CHECK_TYPES([ptrdiff_t])
 AC_C_BIGENDIAN
+AC_C_INLINE
 AC_SYS_LARGEFILE
 
 AC_CHECK_MEMBER([struct tm.tm_gmtoff], [have_struct_tm_tm_gmtoff=yes],
@@ -535,12 +568,34 @@ AC_CHECK_SIZEOF([int *])
 if test "x$cross_compiling" != "xyes"; then
   AC_FUNC_MALLOC
 fi
+
+AC_FUNC_CHOWN
+AC_FUNC_ERROR_AT_LINE
+AC_FUNC_FORK
+# Don't check realloc, since LeakSanitizer detects memory leak during check
+# AC_FUNC_REALLOC
+AC_FUNC_STRERROR_R
+AC_FUNC_STRNLEN
+
 AC_CHECK_FUNCS([ \
   _Exit \
   accept4 \
+  dup2 \
+  getcwd \
   getpwnam \
+  localtime_r \
+  memchr \
   memmove \
   memset \
+  socket \
+  sqrt \
+  strchr \
+  strdup \
+  strerror \
+  strndup \
+  strstr \
+  strtol \
+  strtoul \
   timegm \
 ])
 

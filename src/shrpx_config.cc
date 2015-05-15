@@ -24,13 +24,23 @@
  */
 #include "shrpx_config.h"
 
+#ifdef HAVE_PWD_H
 #include <pwd.h>
+#endif // HAVE_PWD_H
+#ifdef HAVE_NETDB_H
 #include <netdb.h>
+#endif // HAVE_NETDB_H
+#ifdef HAVE_SYSLOG_H
 #include <syslog.h>
+#endif // HAVE_SYSLOG_H
 #include <sys/types.h>
 #include <sys/stat.h>
+#ifdef HAVE_FCNTL_H
 #include <fcntl.h>
+#endif // HAVE_FCNTL_H
+#ifdef HAVE_UNISTD_H
 #include <unistd.h>
+#endif // HAVE_UNISTD_H
 
 #include <cstring>
 #include <cerrno>

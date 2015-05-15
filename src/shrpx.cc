@@ -24,25 +24,41 @@
  */
 #include "shrpx.h"
 
-#include <stdint.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#ifdef HAVE_SYS_SOCKET_H
 #include <sys/socket.h>
+#endif // HAVE_SYS_SOCKET_H
 #include <sys/un.h>
+#ifdef HAVE_NETDB_H
 #include <netdb.h>
+#endif // HAVE_NETDB_H
 #include <signal.h>
+#ifdef HAVE_NETINET_IN_H
 #include <netinet/in.h>
+#endif // HAVE_NETINET_IN_H
 #include <netinet/tcp.h>
+#ifdef HAVE_ARPA_INET_H
 #include <arpa/inet.h>
+#endif // HAVE_ARPA_INET_H
+#ifdef HAVE_UNISTD_H
 #include <unistd.h>
+#endif // HAVE_UNISTD_H
 #include <getopt.h>
+#ifdef HAVE_SYSLOG_H
 #include <syslog.h>
+#endif // HAVE_SYSLOG_H
 #include <signal.h>
+#ifdef HAVE_LIMITS_H
 #include <limits.h>
+#endif // HAVE_LIMITS_H
+#ifdef HAVE_SYS_TIME_H
 #include <sys/time.h>
+#endif // HAVE_SYS_TIME_H
 #include <sys/resource.h>
 #include <grp.h>
 
+#include <cinttypes>
 #include <limits>
 #include <cstdlib>
 #include <iostream>

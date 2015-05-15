@@ -27,8 +27,7 @@
 
 #include "shrpx.h"
 
-#include <stdint.h>
-
+#include <cinttypes>
 #include <memory>
 
 #include "http-parser/http_parser.h"

@@ -42,6 +42,10 @@ struct TLSConnection {
   SSL *ssl;
   ev_tstamp last_write_time;
   size_t warmup_writelen;
+  // length passed to SSL_write and SSL_read last time.  This is
+  // required since these functions require the exact same parameters
+  // on non-blocking I/O.
+  size_t last_writelen, last_readlen;
   bool initial_handshake_done;
   bool reneg_started;
 };

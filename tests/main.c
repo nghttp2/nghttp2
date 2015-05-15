@@ -340,6 +340,8 @@ int main(int argc _U_, char *argv[] _U_) {
       !CU_add_test(pSuite, "check_header_value",
                    test_nghttp2_check_header_value) ||
       !CU_add_test(pSuite, "bufs_add", test_nghttp2_bufs_add) ||
+      !CU_add_test(pSuite, "bufs_add_stack_buffer_overflow_bug",
+                   test_nghttp2_bufs_add_stack_buffer_overflow_bug) ||
       !CU_add_test(pSuite, "bufs_addb", test_nghttp2_bufs_addb) ||
       !CU_add_test(pSuite, "bufs_orb", test_nghttp2_bufs_orb) ||
       !CU_add_test(pSuite, "bufs_remove", test_nghttp2_bufs_remove) ||

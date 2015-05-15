@@ -25,7 +25,9 @@
 #include "shrpx_http2_session.h"
 
 #include <netinet/tcp.h>
+#ifdef HAVE_UNISTD_H
 #include <unistd.h>
+#endif // HAVE_UNISTD_H
 
 #include <vector>
 
