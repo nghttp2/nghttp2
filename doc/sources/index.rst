@@ -49,5 +49,5 @@ https://github.com/tatsuhiro-t/nghttp2/releases
 Resources
 ---------
 
-* http://tools.ietf.org/html/draft-ietf-httpbis-http2-14
-* http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-09
+* HTTP/2 https://tools.ietf.org/html/rfc7540
+* HPACK https://tools.ietf.org/html/rfc7541
