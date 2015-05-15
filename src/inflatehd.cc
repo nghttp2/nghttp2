@@ -101,6 +101,11 @@ static int inflate_hd(json_t *obj, nghttp2_hd_inflater *inflater, int seq) {
     return -1;
   }
 
+  if (!json_is_string(wire)) {
+    fprintf(stderr, "'wire' value is not string at %d\n", seq);
+    return -1;
+  }
+
   auto table_size = json_object_get(obj, "header_table_size");
 
   if (table_size) {
