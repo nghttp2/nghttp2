@@ -567,7 +567,7 @@ int htp_hdrs_completecb(http_parser *htp) {
   // Content-Length or Transfer-Encoding: chunked.  Some server send
   // 304 status code with nonzero Content-Length, but without response
   // body. See
-  // http://tools.ietf.org/html/draft-ietf-httpbis-p1-messaging-20#section-3.3
+  // https://tools.ietf.org/html/rfc7230#section-3.3
 
   // TODO It seems that the cases other than HEAD are handled by
   // http-parser.  Need test.

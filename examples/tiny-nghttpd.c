@@ -165,7 +165,6 @@ const char *docroot;
 size_t docrootlen;
 
 nghttp2_session_callbacks *shared_callbacks;
-nghttp2_option *shared_option;
 
 static int handle_accept(io_loop *loop, uint32_t events, void *ptr);
 static int handle_connection(io_loop *loop, uint32_t events, void *ptr);
@@ -400,8 +399,7 @@ static connection *connection_new(int fd) {
 
   conn = malloc(sizeof(connection));
 
-  rv = nghttp2_session_server_new2(&conn->session, shared_callbacks, conn,
-                                   shared_option);
+  rv = nghttp2_session_server_new(&conn->session, shared_callbacks, conn);
 
   if (rv != 0) {
     goto cleanup;
@@ -1322,14 +1320,6 @@ int main(int argc, char **argv) {
   nghttp2_session_callbacks_set_send_data_callback(shared_callbacks,
                                                    send_data_callback);
 
-  rv = nghttp2_option_new(&shared_option);
-  if (rv != 0) {
-    fprintf(stderr, "nghttp2_option_new: %s", nghttp2_strerror(rv));
-    exit(EXIT_FAILURE);
-  }
-
-  nghttp2_option_set_recv_client_preface(shared_option, 1);
-
   rv = io_loop_add(&loop, serv.fd, EPOLLIN, &serv);
 
   if (rv != 0) {
@@ -1346,7 +1336,6 @@ int main(int argc, char **argv) {
 
   io_loop_run(&loop, &serv);
 
-  nghttp2_option_del(shared_option);
   nghttp2_session_callbacks_del(shared_callbacks);
 
   return 0;

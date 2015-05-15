@@ -41,7 +41,7 @@
 #include "nghttp2_helper_test.h"
 #include "nghttp2_buf_test.h"
 
-extern int nghttp2_enable_strict_first_settings_check;
+extern int nghttp2_enable_strict_preface;
 
 static int init_suite1(void) { return 0; }
 
@@ -51,7 +51,7 @@ int main(int argc _U_, char *argv[] _U_) {
   CU_pSuite pSuite = NULL;
   unsigned int num_tests_failed;
 
-  nghttp2_enable_strict_first_settings_check = 0;
+  nghttp2_enable_strict_preface = 0;
 
   /* initialize the CUnit test registry */
   if (CUE_SUCCESS != CU_initialize_registry())
@@ -250,8 +250,8 @@ int main(int argc _U_, char *argv[] _U_) {
                    test_nghttp2_session_graceful_shutdown) ||
       !CU_add_test(pSuite, "session_on_header_temporal_failure",
                    test_nghttp2_session_on_header_temporal_failure) ||
-      !CU_add_test(pSuite, "session_recv_client_preface",
-                   test_nghttp2_session_recv_client_preface) ||
+      !CU_add_test(pSuite, "session_recv_client_magic",
+                   test_nghttp2_session_recv_client_magic) ||
       !CU_add_test(pSuite, "session_delete_data_item",
                    test_nghttp2_session_delete_data_item) ||
       !CU_add_test(pSuite, "session_open_idle_stream",

@@ -768,7 +768,7 @@ bool conf_exists(const char *path) {
 } // namespace
 
 namespace {
-const char *DEFAULT_NPN_LIST = "h2,h2-16," NGHTTP2_PROTO_VERSION_ID ","
+const char *DEFAULT_NPN_LIST = "h2,h2-16,h2-14,"
 #ifdef HAVE_SPDYLAY
                                "spdy/3.1,"
 #endif // HAVE_SPDYLAY
@@ -903,6 +903,7 @@ void fill_default_config() {
 
   nghttp2_option_new(&mod_config()->http2_option);
   nghttp2_option_set_no_auto_window_update(get_config()->http2_option, 1);
+  nghttp2_option_set_no_recv_client_magic(get_config()->http2_option, 1);
 
   nghttp2_option_new(&mod_config()->http2_client_option);
   nghttp2_option_set_no_auto_window_update(get_config()->http2_client_option,
@@ -1344,10 +1345,10 @@ HTTP:
   --altsvc=<PROTOID,PORT[,HOST,[ORIGIN]]>
               Specify   protocol  ID,   port,  host   and  origin   of
               alternative service.  <HOST>  and <ORIGIN> are optional.
-              They are  advertised in  alt-svc header field  or HTTP/2
-              ALTSVC frame.  This option can be used multiple times to
-              specify   multiple   alternative   services.    Example:
-              --altsvc=h2,443
+              They  are advertised  in  alt-svc header  field only  in
+              HTTP/1.1  frontend.  This  option can  be used  multiple
+              times   to   specify  multiple   alternative   services.
+              Example: --altsvc=h2,443
   --add-response-header=<HEADER>
               Specify  additional  header  field to  add  to  response
               header set.   This option just appends  header field and

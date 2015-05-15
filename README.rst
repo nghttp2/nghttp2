@@ -19,20 +19,12 @@ code coverage yet.
 Development Status
 ------------------
 
-We started to implement h2-14
-(http://tools.ietf.org/html/draft-ietf-httpbis-http2-14), and header
-compression
-(http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-09).
+We have implemented `RFC 7540 <https://tools.ietf.org/html/rfc7540>`_
+HTTP/2 and `RFC 7541 <https://tools.ietf.org/html/rfc7541>`_ HPACK -
+Header Compression for HTTP/2
 
-The nghttp2 code base was forked from the spdylay project.
-
-=========================== =======
-HTTP/2 Features             Support
-=========================== =======
-Core frames handling        Yes
-Dependency Tree             Yes
-Large header (CONTINUATION) Yes
-=========================== =======
+The nghttp2 code base was forked from the spdylay
+(https://github.com/tatsuhiro-t/spdylay) project.
 
 Public Test Server
 ------------------
@@ -46,9 +38,9 @@ implementation.
   and ``http/1.1`` via ALPN/NPN and requires TLSv1.2 for HTTP/2
   connection.
 
-* http://nghttp2.org/ (Upgrade / Direct)
+* http://nghttp2.org/ (HTTP Upgrade and HTTP/2 Direct)
 
-  ``h2c-14`` and ``http/1.1``.
+  ``h2c`` and ``http/1.1``.
 
 Requirements
 ------------
@@ -212,6 +204,104 @@ To run the tests, run the following command under
 
 Inside the tests, we use port 3009 to run the test subject server.
 
+Migration from v0.7.9 or earlier
+--------------------------------
+
+nghttp2 v1.0.0 introduced several backward incompatible changes.  In
+this section, we describe these changes and how to migrate to v1.0.0.
+
+ALPN protocol ID is now ``h2`` and ``h2c``
+++++++++++++++++++++++++++++++++++++++++++
+
+Previously we announced ``h2-14`` and ``h2c-14``.  v1.0.0 implements
+final protocol version, and we changed ALPN ID to ``h2`` and ``h2c``.
+The macros ``NGHTTP2_PROTO_VERSION_ID``,
+``NGHTTP2_PROTO_VERSION_ID_LEN``,
+``NGHTTP2_CLEARTEXT_PROTO_VERSION_ID``, and
+``NGHTTP2_CLEARTEXT_PROTO_VERSION_ID_LEN`` have been updated to
+reflect this change.
+
+Basically, existing applications do not have to do anything, just
+recompiling is enough for this change.
+
+Use word "client magic" where we use "client connection preface"
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+We use "client connection preface" to mean first 24 bytes of client
+connection preface.  This is technically not correct, since client
+connection preface is composed of 24 bytes client magic byte string
+followed by SETTINGS frame.  For clarification, we call "client magic"
+for this 24 bytes byte string and updated API.
+
+* ``NGHTTP2_CLIENT_CONNECTION_PREFACE`` was replaced with
+  ``NGHTTP2_CLIENT_MAGIC``.
+* ``NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN`` was replaced with
+  ``NGHTTP2_CLIENT_MAGIC_LEN``.
+* ``NGHTTP2_BAD_PREFACE`` was renamed as ``NGHTTP2_BAD_CLIENT_MAGIC``
+
+The alreay deprecated ``NGHTTP2_CLIENT_CONNECTION_HEADER`` and
+``NGHTTP2_CLIENT_CONNECTION_HEADER_LEN`` were removed.
+
+If application uses these macros, just replace old ones with new ones.
+Since v1.0.0, client magic is sent by library (see next subsection),
+so client application may just remove these macro use.
+
+Client magic is sent by library
++++++++++++++++++++++++++++++++
+
+Previously nghttp2 library did not send client magic, which is first
+24 bytes byte string of client connection preface, and client
+applications have to send it by themselves.  Since v1.0.0, client
+magic is sent by library via first call of ``nghttp2_session_send()``
+or ``nghttp2_session_mem_send()``.
+
+The client applications which send client magic must remove the
+relevant code.
+
+Remove HTTP Alternative Services (Alt-Svc) related code
++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Alt-Svc specification is not finalized yet.  To make our API stable,
+we have decided to remove all Alt-Svc related API from nghttp2.
+
+* ``NGHTTP2_EXT_ALTSVC`` was removed.
+* ``nghttp2_ext_altsvc`` was removed.
+
+We have already removed the functionality of Alt-Svc in v0.7 series
+and they have been essentially noop.  The application using these
+macro and struct, remove those lines.
+
+Use nghttp2_error in nghttp2_on_invalid_frame_recv_callback
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Previously ``nghttp2_on_invalid_frame_recv_cb_called`` took the
+``error_code``, defined in ``nghttp2_error_code``, as parameter.  But
+they are not detailed enough to debug.  Therefore, we decided to use
+more detailed ``nghttp2_error`` values instead.
+
+The application using this callback should update the callback
+signature.  If it treats ``error_code`` as HTTP/2 error code, update
+the code so that it is treated as ``nghttp2_error``.
+
+Receive client magic by default
++++++++++++++++++++++++++++++++
+
+Previously nghttp2 did not process client magic (24 bytes byte
+string).  To make it deal with it, we had to use
+``nghttp2_option_set_recv_client_preface()``.  Since v1.0.0, nghttp2
+processes client magic by default and
+``nghttp2_option_set_recv_client_preface()`` was removed.
+
+Some application may want to disable this behaviour, so we added
+``nghttp2_option_set_no_recv_client_magic()`` to achieve this.
+
+The application using ``nghttp2_option_set_recv_client_preface()``
+with nonzero value, just remove it.
+
+The application using ``nghttp2_option_set_recv_client_preface()``
+with zero value or not using it must use
+``nghttp2_option_set_no_recv_client_magic()`` with nonzero value.
+
 Client, Server and Proxy programs
 ---------------------------------
 
@@ -228,10 +318,10 @@ output from ``nghttp`` client::
 
     $ nghttp -nv https://nghttp2.org
     [  0.033][NPN] server offers:
-              * h2-14
+              * h2
               * spdy/3.1
               * http/1.1
-    The negotiated protocol: h2-14
+    The negotiated protocol: h2
     [  0.068] send SETTINGS frame <length=15, flags=0x00, stream_id=0>
               (niv=3)
               [SETTINGS_MAX_CONCURRENT_STREAMS(3):100]
@@ -458,8 +548,9 @@ information.  Here is sample output from ``nghttpd``::
 nghttpx - proxy
 +++++++++++++++
 
-``nghttpx`` is a multi-threaded reverse proxy for ``h2-14``, SPDY and
-HTTP/1.1, and powers http://nghttp2.org and supports HTTP/2 server push.
+``nghttpx`` is a multi-threaded reverse proxy for HTTP/2, SPDY and
+HTTP/1.1, and powers http://nghttp2.org and supports HTTP/2 server
+push.
 
 ``nghttpx`` implements `important performance-oriented features
 <https://istlsfastyet.com/#server-performance>`_ in TLS, such as
@@ -480,8 +571,8 @@ default mode       HTTP/2, SPDY, HTTP/1.1 (TLS) HTTP/1.1       Reverse proxy
 ================== ============================ ============== =============
 
 The interesting mode at the moment is the default mode.  It works like
-a reverse proxy and listens for ``h2-14``, SPDY and HTTP/1.1 and can
-be deployed as a SSL/TLS terminator for existing web server.
+a reverse proxy and listens for HTTP/2, SPDY and HTTP/1.1 and can be
+deployed as a SSL/TLS terminator for existing web server.
 
 The default mode, ``--http2-proxy`` and ``--http2-bridge`` modes use
 SSL/TLS in the frontend connection by default.  To disable SSL/TLS,

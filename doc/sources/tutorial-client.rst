@@ -184,9 +184,9 @@ its bufferevent, so it closes underlying connection as well. It also
 calls `nghttp2_session_del()` to delete nghttp2 session object.
 
 We begin HTTP/2 communication by sending client connection preface,
-which is 24 bytes magic byte sequence
-(:macro:`NGHTTP2_CLIENT_CONNECTION_PREFACE`) and SETTINGS frame.  The
-transmission of client connection header is done in
+which is 24 bytes magic byte string (:macro:`NGHTTP2_CLIENT_MAGIC`)
+followed by SETTINGS frame.  First 24 bytes magic string is
+automatically sent by nghttp2 library.  We send SETTINGS frame in
 ``send_client_connection_header()``::
 
     static void send_client_connection_header(http2_session_data *session_data) {
@@ -194,8 +194,7 @@ transmission of client connection header is done in
           {NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, 100}};
       int rv;
 
-      bufferevent_write(session_data->bev, NGHTTP2_CLIENT_CONNECTION_PREFACE,
-                        NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN);
+      /* client 24 bytes magic string will be sent by nghttp2 library */
       rv = nghttp2_submit_settings(session_data->session, NGHTTP2_FLAG_NONE, iv,
                                    ARRLEN(iv));
       if (rv != 0) {

@@ -1237,7 +1237,6 @@ if asyncio:
             logging.info('connection_made, address:%s, port:%s', address[0], address[1])
 
             self.transport = transport
-            self.connection_header = cnghttp2.NGHTTP2_CLIENT_CONNECTION_PREFACE
             sock = self.transport.get_extra_info('socket')
             sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             ssl_ctx = self.transport.get_extra_info('sslcontext')
@@ -1247,6 +1246,16 @@ if asyncio:
                 if protocol.encode('utf-8') != \
                    cnghttp2.NGHTTP2_PROTO_VERSION_ID:
                     self.transport.abort()
+                    return
+            try:
+                self.http2 = _HTTP2SessionCore\
+                             (self.transport,
+                              self.RequestHandlerClass)
+            except Exception as err:
+                sys.stderr.write(traceback.format_exc())
+                self.transport.abort()
+                return
+
 
         def connection_lost(self, exc):
             logging.info('connection_lost')
@@ -1254,28 +1263,6 @@ if asyncio:
                 self.http2 = None
 
         def data_received(self, data):
-            nread = min(len(data), len(self.connection_header))
-
-            if self.connection_header.startswith(data[:nread]):
-                data = data[nread:]
-                self.connection_header = self.connection_header[nread:]
-                if len(self.connection_header) == 0:
-                    try:
-                        self.http2 = _HTTP2SessionCore\
-                                     (self.transport,
-                                      self.RequestHandlerClass)
-                    except Exception as err:
-                        sys.stderr.write(traceback.format_exc())
-                        self.transport.abort()
-                        return
-
-                    self.data_received = self.data_received2
-                    self.resume_writing = self.resume_writing2
-                    self.data_received(data)
-            else:
-                self.transport.abort()
-
-        def data_received2(self, data):
             try:
                 self.http2.data_received(data)
             except Exception as err:
@@ -1283,7 +1270,7 @@ if asyncio:
                 self.transport.close()
                 return
 
-        def resume_writing2(self):
+        def resume_writing(self):
             try:
                 self.http2.send_data()
             except Exception as err:
@@ -1490,8 +1477,6 @@ if asyncio:
                    cnghttp2.NGHTTP2_PROTO_VERSION_ID:
                     self.transport.abort()
 
-            # Send preamble
-            self.transport.write(cnghttp2.NGHTTP2_CLIENT_CONNECTION_PREFACE)
             self.http2 = _HTTP2ClientSessionCore(self.transport)
 
 	    # Clear pending requests

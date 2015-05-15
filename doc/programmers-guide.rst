@@ -20,17 +20,15 @@ nghttp2 callback functions directly or indirectly. It will lead to the
 crash.  You can submit requests or frames in the callbacks then call
 these functions outside the callbacks.
 
-Currently, `nghttp2_session_send()` and `nghttp2_session_mem_send()`
-do not send client connection preface
-(:macro:`NGHTTP2_CLIENT_CONNECTION_PREFACE`).  The applications are
-responsible to send it before sending any HTTP/2 frames using these
-functions if :type:`nghttp2_session` is configured as client.
-Similarly, `nghttp2_session_recv()` and `nghttp2_session_mem_recv()`
-do not consume client connection preface unless
-`nghttp2_option_set_recv_client_preface()` is used with nonzero option
-value.  The applications are responsible to receive it before calling
-these functions if :type:`nghttp2_session` is configured as server and
-`nghttp2_option_set_recv_client_preface()` is not used.
+`nghttp2_session_send()` and `nghttp2_session_mem_send()` send first
+24 bytes of client magic string (MAGIC)
+(:macro:`NGHTTP2_CLIENT_MAGIC`) on client configuration.  The
+applications are responsible to send SETTINGS frame as part of
+connection preface using `nghttp2_submit_settings()`.  Similarly,
+`nghttp2_session_recv()` and `nghttp2_session_mem_recv()` consume
+MAGIC on server configuration unless
+`nghttp2_option_set_no_recv_client_magic()` is used with nonzero
+option value.
 
 .. _http-messaging:
 

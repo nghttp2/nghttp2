@@ -184,7 +184,7 @@ void test_util_select_h2(void) {
   unsigned char outlen = 0;
 
   // Check single entry and select it.
-  const unsigned char t1[] = "\x5h2-14";
+  const unsigned char t1[] = "\x2h2";
   CU_ASSERT(util::select_h2(&out, &outlen, t1, sizeof(t1) - 1));
   CU_ASSERT(
       memcmp(NGHTTP2_PROTO_VERSION_ID, out, NGHTTP2_PROTO_VERSION_ID_LEN) == 0);
@@ -198,9 +198,10 @@ void test_util_select_h2(void) {
   const unsigned char t2[] = "\x6h2-14";
   CU_ASSERT(!util::select_h2(&out, &outlen, t2, sizeof(t2) - 1));
 
-  // Check the case where h2-14 is located after bogus ID.
-  const unsigned char t3[] = "\x2h3\x5h2-14";
+  // Check the case where h2 is located after bogus ID.
+  const unsigned char t3[] = "\x2h3\x2h2";
   CU_ASSERT(util::select_h2(&out, &outlen, t3, sizeof(t3) - 1));
+
   CU_ASSERT(
       memcmp(NGHTTP2_PROTO_VERSION_ID, out, NGHTTP2_PROTO_VERSION_ID_LEN) == 0);
   CU_ASSERT(NGHTTP2_PROTO_VERSION_ID_LEN == outlen);

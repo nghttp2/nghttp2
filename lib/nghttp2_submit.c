@@ -376,15 +376,6 @@ int nghttp2_submit_window_update(nghttp2_session *session, uint8_t flags,
   return 0;
 }
 
-int nghttp2_submit_altsvc(nghttp2_session *session _U_, uint8_t flags _U_,
-                          int32_t stream_id _U_, uint32_t max_age _U_,
-                          uint16_t port _U_, const uint8_t *protocol_id _U_,
-                          size_t protocol_id_len _U_, const uint8_t *host _U_,
-                          size_t host_len _U_, const uint8_t *origin _U_,
-                          size_t origin_len _U_) {
-  return 0;
-}
-
 static uint8_t set_request_flags(const nghttp2_priority_spec *pri_spec,
                                  const nghttp2_data_provider *data_prd) {
   uint8_t flags = NGHTTP2_FLAG_NONE;

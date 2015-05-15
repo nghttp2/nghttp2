@@ -202,12 +202,6 @@ void Http2Session::on_connect() {
                                  extra_connection_window);
   }
 
-  auto &wb = client_->wb;
-  assert(wb.wleft() >= NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN);
-
-  wb.write(NGHTTP2_CLIENT_CONNECTION_PREFACE,
-           NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN);
-
   client_->signal_write();
 }
 

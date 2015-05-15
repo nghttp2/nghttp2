@@ -46,14 +46,15 @@
  */
 typedef enum {
   NGHTTP2_OPTMASK_NO_AUTO_WINDOW_UPDATE = 1 << 0,
-  NGHTTP2_OPTMASK_RECV_CLIENT_PREFACE = 1 << 1,
+  NGHTTP2_OPTMASK_NO_RECV_CLIENT_MAGIC = 1 << 1,
   NGHTTP2_OPTMASK_NO_HTTP_MESSAGING = 1 << 2
 } nghttp2_optmask;
 
 typedef enum {
   NGHTTP2_OB_POP_ITEM,
   NGHTTP2_OB_SEND_DATA,
-  NGHTTP2_OB_SEND_NO_COPY
+  NGHTTP2_OB_SEND_NO_COPY,
+  NGHTTP2_OB_SEND_CLIENT_MAGIC
 } nghttp2_outbound_state;
 
 typedef struct {
@@ -69,7 +70,7 @@ typedef struct {
 /* Internal state when receiving incoming frame */
 typedef enum {
   /* Receiving frame header */
-  NGHTTP2_IB_READ_CLIENT_PREFACE,
+  NGHTTP2_IB_READ_CLIENT_MAGIC,
   NGHTTP2_IB_READ_FIRST_SETTINGS,
   NGHTTP2_IB_READ_HEAD,
   NGHTTP2_IB_READ_NBYTE,

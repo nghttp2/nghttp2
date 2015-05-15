@@ -51,8 +51,7 @@ int verbose_on_frame_recv_callback(nghttp2_session *session,
 
 int verbose_on_invalid_frame_recv_callback(nghttp2_session *session,
                                            const nghttp2_frame *frame,
-                                           uint32_t error_code,
-                                           void *user_data);
+                                           int lib_error_code, void *user_data);
 
 int verbose_on_frame_send_callback(nghttp2_session *session,
                                    const nghttp2_frame *frame, void *user_data);

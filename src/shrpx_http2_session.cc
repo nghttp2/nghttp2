@@ -1285,13 +1285,6 @@ int Http2Session::connection_made() {
     }
   }
 
-  auto nwrite = wb_.write(NGHTTP2_CLIENT_CONNECTION_PREFACE,
-                          NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN);
-  if (nwrite != NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN) {
-    SSLOG(FATAL, this) << "buffer is too small to send connection preface";
-    return -1;
-  }
-
   auto must_terminate = !get_config()->downstream_no_tls &&
                         !ssl::check_http2_requirement(conn_.tls.ssl);
 

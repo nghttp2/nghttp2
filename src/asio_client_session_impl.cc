@@ -75,10 +75,6 @@ void session_impl::connected(tcp::resolver::iterator endpoint_it) {
 
   socket().set_option(boost::asio::ip::tcp::no_delay(true));
 
-  std::copy_n(NGHTTP2_CLIENT_CONNECTION_PREFACE,
-              NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN, std::begin(wb_));
-  wblen_ = NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN;
-
   do_write();
   do_read();
 

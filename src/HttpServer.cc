@@ -99,17 +99,13 @@ template <typename Array> void append_nv(Stream *stream, const Array &nva) {
 } // namespace
 
 Config::Config()
-    : stream_read_timeout(60.), stream_write_timeout(60.),
-      session_option(nullptr), data_ptr(nullptr), padding(0), num_worker(1),
-      max_concurrent_streams(100), header_table_size(-1), port(0),
-      verbose(false), daemon(false), verify_client(false), no_tls(false),
-      error_gzip(false), early_response(false), hexdump(false),
-      echo_upload(false) {
-  nghttp2_option_new(&session_option);
-  nghttp2_option_set_recv_client_preface(session_option, 1);
-}
+    : stream_read_timeout(60.), stream_write_timeout(60.), data_ptr(nullptr),
+      padding(0), num_worker(1), max_concurrent_streams(100),
+      header_table_size(-1), port(0), verbose(false), daemon(false),
+      verify_client(false), no_tls(false), error_gzip(false),
+      early_response(false), hexdump(false), echo_upload(false) {}
 
-Config::~Config() { nghttp2_option_del(session_option); }
+Config::~Config() {}
 
 namespace {
 void stream_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
@@ -474,7 +470,7 @@ int Http2Handler::read_clear() {
 
     rv = nghttp2_session_mem_recv(session_, buf.data(), nread);
     if (rv < 0) {
-      if (rv != NGHTTP2_ERR_BAD_PREFACE) {
+      if (rv != NGHTTP2_ERR_BAD_CLIENT_MAGIC) {
         std::cerr << "nghttp2_session_mem_recv() returned error: "
                   << nghttp2_strerror(rv) << std::endl;
       }
@@ -601,7 +597,7 @@ int Http2Handler::read_tls() {
 
     rv = nghttp2_session_mem_recv(session_, buf.data(), nread);
     if (rv < 0) {
-      if (rv != NGHTTP2_ERR_BAD_PREFACE) {
+      if (rv != NGHTTP2_ERR_BAD_CLIENT_MAGIC) {
         std::cerr << "nghttp2_session_mem_recv() returned error: "
                   << nghttp2_strerror(rv) << std::endl;
       }
@@ -673,13 +669,13 @@ int Http2Handler::on_write() { return write_(*this); }
 int Http2Handler::connection_made() {
   int r;
 
-  auto config = sessions_->get_config();
+  r = nghttp2_session_server_new(&session_, sessions_->get_callbacks(), this);
 
-  r = nghttp2_session_server_new2(&session_, sessions_->get_callbacks(), this,
-                                  config->session_option);
   if (r != 0) {
     return r;
   }
+
+  auto config = sessions_->get_config();
   std::array<nghttp2_settings_entry, 4> entry;
   size_t niv = 1;
 
