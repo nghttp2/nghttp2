@@ -326,9 +326,13 @@ void on_session_closed(Http2Handler *hd, int64_t session_id) {
 
 namespace {
 void settings_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
+  int rv;
   auto hd = static_cast<Http2Handler *>(w->data);
   hd->terminate_session(NGHTTP2_SETTINGS_TIMEOUT);
-  hd->on_write();
+  rv = hd->on_write();
+  if (rv == -1) {
+    delete_handler(hd);
+  }
 }
 } // namespace
 
