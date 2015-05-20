@@ -10,7 +10,7 @@
 #
 # $ sudo docker run -v /path/to/dest:/out nghttp2-android cp /root/build/nghttp2/src/nghttpx /out
 
-FROM ubuntu:trusty
+FROM ubuntu:vivid
 
 MAINTAINER Tatsuhiro Tsujikawa
 
@@ -30,12 +30,12 @@ RUN apt-get install -y make binutils autoconf automake autotools-dev libtool \
     genisoimage libc6-i386 lib32stdc++6
 
 WORKDIR /root/build
-RUN curl -L -O http://dl.google.com/android/ndk/android-ndk-r10c-linux-x86_64.bin && \
-    chmod a+x android-ndk-r10c-linux-x86_64.bin && \
-    ./android-ndk-r10c-linux-x86_64.bin && \
-    rm android-ndk-r10c-linux-x86_64.bin
+RUN curl -L -O http://dl.google.com/android/ndk/android-ndk-r10d-linux-x86_64.bin && \
+    chmod a+x android-ndk-r10d-linux-x86_64.bin && \
+    ./android-ndk-r10d-linux-x86_64.bin && \
+    rm android-ndk-r10d-linux-x86_64.bin
 
-WORKDIR /root/build/android-ndk-r10c
+WORKDIR /root/build/android-ndk-r10d
 RUN /bin/bash build/tools/make-standalone-toolchain.sh \
     --install-dir=$ANDROID_HOME/toolchain \
     --toolchain=arm-linux-androideabi-4.9 --llvm-version=3.5 \
@@ -84,6 +84,25 @@ RUN patch -p1 < ../libev-4.19-android.patch && \
     --enable-static \
     CPPFLAGS=-I$PREFIX/include \
     LDFLAGS=-L$PREFIX/lib && \
+    make install
+
+WORKDIR /root/build
+RUN curl -L -O http://zlib.net/zlib-1.2.8.tar.gz && \
+    tar xf zlib-1.2.8.tar.gz && \
+    rm zlib-1.2.8.tar.gz
+
+WORKDIR /root/build/zlib-1.2.8
+RUN HOST=arm-linux-androideabi \
+    CC=$HOST-gcc \
+    AR=$HOST-ar \
+    LD=$HOST-ld \
+    RANLIB=$HOST-ranlib \
+    STRIP=$HOST-strip \
+    ./configure \
+    --prefix=$PREFIX \
+    --libdir=$PREFIX/lib \
+    --includedir=$PREFIX/include \
+    --static && \
     make install
 
 WORKDIR /root/build
