@@ -257,16 +257,10 @@ case "$host" in
 esac
 
 # zlib
-if test "x$android_build" = "xyes"; then
-  # Use zlib provided by NDK
-  APPLDFLAGS="-lz $APPLDFLAGS"
-  have_zlib=yes
-else
-  PKG_CHECK_MODULES([ZLIB], [zlib >= 1.2.3], [have_zlib=yes], [have_zlib=no])
+PKG_CHECK_MODULES([ZLIB], [zlib >= 1.2.3], [have_zlib=yes], [have_zlib=no])
 
-  if test "x${have_zlib}" = "xno"; then
-    AC_MSG_NOTICE($ZLIB_PKG_ERRORS)
-  fi
+if test "x${have_zlib}" = "xno"; then
+  AC_MSG_NOTICE($ZLIB_PKG_ERRORS)
 fi
 
 # cunit
@@ -743,6 +737,7 @@ AC_MSG_NOTICE([summary of build options:
       Spdylay:        ${have_spdylay}
       Jansson:        ${have_jansson}
       Jemalloc:       ${have_jemalloc}
+      Zlib:           ${have_zlib}
       Boost CPPFLAGS: ${BOOST_CPPFLAGS}
       Boost LDFLAGS:  ${BOOST_LDFLAGS}
       Boost::ASIO:    ${BOOST_ASIO_LIB}
