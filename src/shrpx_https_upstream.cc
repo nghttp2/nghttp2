@@ -219,11 +219,10 @@ void rewrite_request_host_path_from_uri(Downstream *downstream, const char *uri,
     path.append(uri + fdata.off, fdata.len);
   }
   downstream->set_request_path(std::move(path));
-  if (get_config()->http2_proxy || get_config()->client_proxy) {
-    std::string scheme;
-    http2::copy_url_component(scheme, &u, UF_SCHEMA, uri);
-    downstream->set_request_http2_scheme(std::move(scheme));
-  }
+
+  std::string scheme;
+  http2::copy_url_component(scheme, &u, UF_SCHEMA, uri);
+  downstream->set_request_http2_scheme(std::move(scheme));
 }
 } // namespace
 
@@ -285,6 +284,12 @@ int htp_hdrs_completecb(http_parser *htp) {
       if (get_config()->http2_proxy || get_config()->client_proxy) {
         // Request URI should be absolute-form for client proxy mode
         return -1;
+      }
+
+      if (upstream->get_client_handler()->get_ssl()) {
+        downstream->set_request_http2_scheme("https");
+      } else {
+        downstream->set_request_http2_scheme("http");
       }
     } else {
       rewrite_request_host_path_from_uri(downstream, uri.c_str(), u);

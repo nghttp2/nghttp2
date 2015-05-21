@@ -260,14 +260,10 @@ int HttpDownstreamConnection::push_request_headers() {
   } else if (get_config()->http2_proxy || get_config()->client_proxy) {
     // Construct absolute-form request target because we are going to
     // send a request to a HTTP/1 proxy.
-    if (downstream_->get_request_http2_scheme().empty()) {
-      // this comes from HTTP/1 upstream, use http scheme.  We don't
-      // support https forward link yet.
-      hdrs += "http://";
-    } else {
-      hdrs += downstream_->get_request_http2_scheme();
-      hdrs += "://";
-    }
+    assert(!downstream_->get_request_http2_scheme().empty());
+    hdrs += downstream_->get_request_http2_scheme();
+    hdrs += "://";
+
     if (authority) {
       hdrs += authority;
     } else {
@@ -332,14 +328,9 @@ int HttpDownstreamConnection::push_request_headers() {
   if (!get_config()->http2_proxy && !get_config()->client_proxy &&
       downstream_->get_request_method() != "CONNECT") {
     hdrs += "X-Forwarded-Proto: ";
-    if (!downstream_->get_request_http2_scheme().empty()) {
-      hdrs += downstream_->get_request_http2_scheme();
-      hdrs += "\r\n";
-    } else if (client_handler_->get_ssl()) {
-      hdrs += "https\r\n";
-    } else {
-      hdrs += "http\r\n";
-    }
+    assert(!downstream_->get_request_http2_scheme().empty());
+    hdrs += downstream_->get_request_http2_scheme();
+    hdrs += "\r\n";
   }
   auto expect = downstream_->get_request_header(http2::HD_EXPECT);
   if (expect && !util::strifind((*expect).value.c_str(), "100-continue")) {

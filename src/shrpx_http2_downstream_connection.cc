@@ -330,14 +330,9 @@ int Http2DownstreamConnection::push_request_headers() {
           http2::make_nv_ls(":authority", downstream_->get_request_path()));
     }
   } else {
-    if (!downstream_->get_request_http2_scheme().empty()) {
-      nva.push_back(http2::make_nv_ls(":scheme",
-                                      downstream_->get_request_http2_scheme()));
-    } else if (client_handler_->get_ssl()) {
-      nva.push_back(http2::make_nv_ll(":scheme", "https"));
-    } else {
-      nva.push_back(http2::make_nv_ll(":scheme", "http"));
-    }
+    assert(!downstream_->get_request_http2_scheme().empty());
+    nva.push_back(
+        http2::make_nv_ls(":scheme", downstream_->get_request_http2_scheme()));
 
     if (authority) {
       nva.push_back(http2::make_nv_lc(":authority", authority));

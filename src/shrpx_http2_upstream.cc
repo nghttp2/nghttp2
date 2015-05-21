@@ -107,35 +107,6 @@ int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
 int Http2Upstream::upgrade_upstream(HttpsUpstream *http) {
   int rv;
 
-  // to deduce :scheme and :authority, first we have to parse request
-  // URI.
-  http_parser_url u = {};
-  auto &url = http->get_downstream()->get_request_path();
-
-  std::string scheme, authority;
-  rv = http_parser_parse_url(url.c_str(), url.size(), 0, &u);
-  if (rv == 0) {
-    http2::copy_url_component(scheme, &u, UF_SCHEMA, url.c_str());
-    http2::copy_url_component(authority, &u, UF_HOST, url.c_str());
-  }
-  if (scheme.empty()) {
-    if (handler_->get_ssl()) {
-      scheme = "https";
-    } else {
-      scheme = "http";
-    }
-  }
-  if (!authority.empty()) {
-    if (authority.find(":") != std::string::npos) {
-      authority = "[" + authority;
-      authority += "]";
-    }
-    if (u.field_set & (1 << UF_PORT)) {
-      authority += ":";
-      authority += util::utos(u.port);
-    }
-  }
-
   auto http2_settings = http->get_downstream()->get_http2_settings();
   util::to_base64(http2_settings);
 
@@ -159,8 +130,6 @@ int Http2Upstream::upgrade_upstream(HttpsUpstream *http) {
   downstream->reset_upstream_rtimer();
   downstream->set_stream_id(1);
   downstream->set_priority(0);
-  downstream->set_request_http2_authority(authority);
-  downstream->set_request_http2_scheme(scheme);
 
   auto ptr = downstream.get();
 

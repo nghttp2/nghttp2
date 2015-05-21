@@ -706,7 +706,8 @@ std::string construct_absolute_request_uri(Downstream *downstream) {
   }
   std::string uri;
   if (downstream->get_request_http2_scheme().empty()) {
-    // this comes from HTTP/1 upstream without scheme.  Just use http.
+    // We may have to log the request which lacks scheme (e.g.,
+    // http/1.1 with origin form).
     uri += "http://";
   } else {
     uri += downstream->get_request_http2_scheme();
