@@ -418,23 +418,21 @@ int Client::connection_made() {
       if (next_proto) {
         if (util::check_h2_is_selected(next_proto, next_proto_len)) {
           session = make_unique<Http2Session>(this);
-        } else {
+          break;
+        }
 #ifdef HAVE_SPDYLAY
+        else {
           auto spdy_version =
               spdylay_npn_get_version(next_proto, next_proto_len);
           if (spdy_version) {
             session = make_unique<SpdySession>(this, spdy_version);
-          } else {
-            debug_nextproto_error();
-            fail();
-            return -1;
+            break;
           }
-#else  // !HAVE_SPDYLAY
-          debug_nextproto_error();
-          fail();
-          return -1;
-#endif // !HAVE_SPDYLAY
         }
+#endif // HAVE_SPDYLAY
+
+        next_proto = nullptr;
+        break;
       }
 
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L
