@@ -972,8 +972,9 @@ bool Downstream::get_upgraded() const { return upgraded_; }
 bool Downstream::get_upgrade_request() const { return upgrade_request_; }
 
 bool Downstream::get_http2_upgrade_request() const {
-  return request_bodylen_ == 0 && http2_upgrade_seen_ &&
-         request_hdidx_[http2::HD_HTTP2_SETTINGS] != -1;
+  return http2_upgrade_seen_ &&
+         request_hdidx_[http2::HD_HTTP2_SETTINGS] != -1 &&
+         response_state_ == INITIAL;
 }
 
 namespace {
