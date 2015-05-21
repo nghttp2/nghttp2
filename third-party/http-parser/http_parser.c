@@ -1782,9 +1782,9 @@ reexecute:
 
         if (parser->flags & F_TRAILING) {
           /* End of a chunked request */
-          UPDATE_STATE(NEW_MESSAGE());
-          CALLBACK_NOTIFY(message_complete);
-          break;
+          UPDATE_STATE(s_message_done);
+          CALLBACK_NOTIFY_NOADVANCE(chunk_complete);
+          REEXECUTE();
         }
 
         UPDATE_STATE(s_headers_done);
@@ -1832,8 +1832,11 @@ reexecute:
 
         parser->nread = 0;
 
-        /* Exit, the rest of the connect is in a different protocol. */
-        if (parser->upgrade) {
+        int hasBody = parser->flags & F_CHUNKED ||
+          (parser->content_length > 0 && parser->content_length != ULLONG_MAX);
+        if (parser->upgrade && (parser->method == HTTP_CONNECT ||
+                                (parser->flags & F_SKIPBODY) || !hasBody)) {
+          /* Exit, the rest of the message is in a different protocol. */
           UPDATE_STATE(NEW_MESSAGE());
           CALLBACK_NOTIFY(message_complete);
           RETURN((p - data) + 1);
@@ -1854,8 +1857,7 @@ reexecute:
             /* Content-Length header given and non-zero */
             UPDATE_STATE(s_body_identity);
           } else {
-            if (parser->type == HTTP_REQUEST ||
-                !http_message_needs_eof(parser)) {
+            if (!http_message_needs_eof(parser)) {
               /* Assume content-length 0 - read the next */
               UPDATE_STATE(NEW_MESSAGE());
               CALLBACK_NOTIFY(message_complete);
@@ -1915,6 +1917,10 @@ reexecute:
       case s_message_done:
         UPDATE_STATE(NEW_MESSAGE());
         CALLBACK_NOTIFY(message_complete);
+        if (parser->upgrade) {
+          /* Exit, the rest of the message is in a different protocol. */
+          RETURN((p - data) + 1);
+        }
         break;
 
       case s_chunk_size_start:
@@ -1994,6 +2000,7 @@ reexecute:
         } else {
           UPDATE_STATE(s_chunk_data);
         }
+        CALLBACK_NOTIFY(chunk_header);
         break;
       }
 
@@ -2033,6 +2040,7 @@ reexecute:
         STRICT_CHECK(ch != LF);
         parser->nread = 0;
         UPDATE_STATE(s_chunk_size_start);
+        CALLBACK_NOTIFY(chunk_complete);
         break;
 
       default:
@@ -2144,13 +2152,15 @@ http_parser_settings_init(http_parser_settings *settings)
 
 const char *
 http_errno_name(enum http_errno err) {
-  assert(err < (sizeof(http_strerror_tab)/sizeof(http_strerror_tab[0])));
+  assert(((size_t) err) <
+      (sizeof(http_strerror_tab) / sizeof(http_strerror_tab[0])));
   return http_strerror_tab[err].name;
 }
 
 const char *
 http_errno_description(enum http_errno err) {
-  assert(err < (sizeof(http_strerror_tab)/sizeof(http_strerror_tab[0])));
+  assert(((size_t) err) <
+      (sizeof(http_strerror_tab) / sizeof(http_strerror_tab[0])));
   return http_strerror_tab[err].description;
 }
 
@@ -2221,6 +2231,7 @@ http_parse_host_char(enum http_host_state s, const char ch) {
 
 static int
 http_parse_host(const char * buf, struct http_parser_url *u, int found_at) {
+  assert(u->field_set & (1 << UF_HOST));
   enum http_host_state s;
 
   const char *p;
@@ -2365,7 +2376,12 @@ http_parser_parse_url(const char *buf, size_t buflen, int is_connect,
 
   /* host must be present if there is a schema */
   /* parsing http:///toto will fail */
-  if ((u->field_set & ((1 << UF_SCHEMA) | (1 << UF_HOST))) != 0) {
+  if ((u->field_set & (1 << UF_SCHEMA)) &&
+      (u->field_set & (1 << UF_HOST)) == 0) {
+    return 1;
+  }
+
+  if (u->field_set & (1 << UF_HOST)) {
     if (http_parse_host(buf, u, found_at) != 0) {
       return 1;
     }
