@@ -317,180 +317,180 @@ It has verbose output mode for framing information.  Here is sample
 output from ``nghttp`` client::
 
     $ nghttp -nv https://nghttp2.org
-    [  0.067] Connected
+    [  0.190] Connected
     The negotiated protocol: h2
-    [  0.135] send SETTINGS frame <length=12, flags=0x00, stream_id=0>
-              (niv=2)
-              [SETTINGS_MAX_CONCURRENT_STREAMS(0x03):100]
-              [SETTINGS_INITIAL_WINDOW_SIZE(0x04):65535]
-    [  0.135] send PRIORITY frame <length=5, flags=0x00, stream_id=3>
-              (dep_stream_id=0, weight=201, exclusive=0)
-    [  0.135] send PRIORITY frame <length=5, flags=0x00, stream_id=5>
-              (dep_stream_id=0, weight=101, exclusive=0)
-    [  0.135] send PRIORITY frame <length=5, flags=0x00, stream_id=7>
-              (dep_stream_id=0, weight=1, exclusive=0)
-    [  0.135] send PRIORITY frame <length=5, flags=0x00, stream_id=9>
-              (dep_stream_id=7, weight=1, exclusive=0)
-    [  0.135] send PRIORITY frame <length=5, flags=0x00, stream_id=11>
-              (dep_stream_id=3, weight=1, exclusive=0)
-    [  0.135] send HEADERS frame <length=39, flags=0x25, stream_id=13>
-              ; END_STREAM | END_HEADERS | PRIORITY
-              (padlen=0, dep_stream_id=11, weight=16, exclusive=0)
-              ; Open new stream
-              :method: GET
-              :path: /
-              :scheme: https
-              :authority: nghttp2.org
-              accept: */*
-              accept-encoding: gzip, deflate
-              user-agent: nghttp2/1.0.0-DEV
-    [  0.135] recv SETTINGS frame <length=12, flags=0x00, stream_id=0>
-              (niv=2)
-              [SETTINGS_MAX_CONCURRENT_STREAMS(0x03):100]
-              [SETTINGS_INITIAL_WINDOW_SIZE(0x04):65535]
-    [  0.135] send SETTINGS frame <length=0, flags=0x01, stream_id=0>
-              ; ACK
-              (niv=0)
-    [  0.165] recv SETTINGS frame <length=0, flags=0x01, stream_id=0>
-              ; ACK
-              (niv=0)
-    [  0.166] recv (stream_id=13) :status: 200
-    [  0.166] recv (stream_id=13) date: Fri, 15 May 2015 14:45:22 GMT
-    [  0.166] recv (stream_id=13) content-type: text/html
-    [  0.166] recv (stream_id=13) last-modified: Fri, 15 May 2015 14:20:46 GMT
-    [  0.166] recv (stream_id=13) etag: W/"555600be-1a7f"
-    [  0.166] recv (stream_id=13) link: </stylesheets/screen.css>; rel=preload; as=stylesheet
-    [  0.166] recv (stream_id=13) content-encoding: gzip
-    [  0.166] recv (stream_id=13) server: nghttpx nghttp2/1.0.0-DEV
-    [  0.166] recv (stream_id=13) via: 1.1 nghttpx
-    [  0.166] recv (stream_id=13) strict-transport-security: max-age=31536000
-    [  0.166] recv HEADERS frame <length=166, flags=0x04, stream_id=13>
-              ; END_HEADERS
-              (padlen=0)
-              ; First response header
-    [  0.166] recv (stream_id=13) :method: GET
-    [  0.166] recv (stream_id=13) :scheme: https
-    [  0.166] recv (stream_id=13) :path: /stylesheets/screen.css
-    [  0.166] recv (stream_id=13) :authority: nghttp2.org
-    [  0.166] recv (stream_id=13) accept-encoding: gzip, deflate
-    [  0.166] recv (stream_id=13) user-agent: nghttp2/1.0.0-DEV
-    [  0.166] recv PUSH_PROMISE frame <length=50, flags=0x04, stream_id=13>
-              ; END_HEADERS
-              (padlen=0, promised_stream_id=2)
-    [  0.166] recv DATA frame <length=2670, flags=0x01, stream_id=13>
-              ; END_STREAM
-    [  0.167] recv (stream_id=2) :status: 200
-    [  0.167] recv (stream_id=2) date: Fri, 15 May 2015 14:45:22 GMT
-    [  0.167] recv (stream_id=2) content-type: text/css
-    [  0.167] recv (stream_id=2) last-modified: Fri, 15 May 2015 14:20:46 GMT
-    [  0.167] recv (stream_id=2) etag: W/"555600be-9845"
-    [  0.167] recv (stream_id=2) content-encoding: gzip
-    [  0.167] recv (stream_id=2) server: nghttpx nghttp2/1.0.0-DEV
-    [  0.167] recv (stream_id=2) via: 1.1 nghttpx
-    [  0.167] recv (stream_id=2) strict-transport-security: max-age=31536000
-    [  0.167] recv HEADERS frame <length=32, flags=0x04, stream_id=2>
-              ; END_HEADERS
-              (padlen=0)
-              ; First push response header
-    [  0.196] recv DATA frame <length=8715, flags=0x01, stream_id=2>
-              ; END_STREAM
-    [  0.196] send GOAWAY frame <length=8, flags=0x00, stream_id=0>
-              (last_stream_id=2, error_code=NO_ERROR(0x00), opaque_data(0)=[])
+    [  0.212] recv SETTINGS frame <length=12, flags=0x00, stream_id=0>
+	      (niv=2)
+	      [SETTINGS_MAX_CONCURRENT_STREAMS(0x03):100]
+	      [SETTINGS_INITIAL_WINDOW_SIZE(0x04):65535]
+    [  0.212] send SETTINGS frame <length=12, flags=0x00, stream_id=0>
+	      (niv=2)
+	      [SETTINGS_MAX_CONCURRENT_STREAMS(0x03):100]
+	      [SETTINGS_INITIAL_WINDOW_SIZE(0x04):65535]
+    [  0.212] send SETTINGS frame <length=0, flags=0x01, stream_id=0>
+	      ; ACK
+	      (niv=0)
+    [  0.212] send PRIORITY frame <length=5, flags=0x00, stream_id=3>
+	      (dep_stream_id=0, weight=201, exclusive=0)
+    [  0.212] send PRIORITY frame <length=5, flags=0x00, stream_id=5>
+	      (dep_stream_id=0, weight=101, exclusive=0)
+    [  0.212] send PRIORITY frame <length=5, flags=0x00, stream_id=7>
+	      (dep_stream_id=0, weight=1, exclusive=0)
+    [  0.212] send PRIORITY frame <length=5, flags=0x00, stream_id=9>
+	      (dep_stream_id=7, weight=1, exclusive=0)
+    [  0.212] send PRIORITY frame <length=5, flags=0x00, stream_id=11>
+	      (dep_stream_id=3, weight=1, exclusive=0)
+    [  0.212] send HEADERS frame <length=39, flags=0x25, stream_id=13>
+	      ; END_STREAM | END_HEADERS | PRIORITY
+	      (padlen=0, dep_stream_id=11, weight=16, exclusive=0)
+	      ; Open new stream
+	      :method: GET
+	      :path: /
+	      :scheme: https
+	      :authority: nghttp2.org
+	      accept: */*
+	      accept-encoding: gzip, deflate
+	      user-agent: nghttp2/1.0.1-DEV
+    [  0.221] recv SETTINGS frame <length=0, flags=0x01, stream_id=0>
+	      ; ACK
+	      (niv=0)
+    [  0.221] recv (stream_id=13) :method: GET
+    [  0.221] recv (stream_id=13) :scheme: https
+    [  0.221] recv (stream_id=13) :path: /stylesheets/screen.css
+    [  0.221] recv (stream_id=13) :authority: nghttp2.org
+    [  0.221] recv (stream_id=13) accept-encoding: gzip, deflate
+    [  0.222] recv (stream_id=13) user-agent: nghttp2/1.0.1-DEV
+    [  0.222] recv PUSH_PROMISE frame <length=50, flags=0x04, stream_id=13>
+	      ; END_HEADERS
+	      (padlen=0, promised_stream_id=2)
+    [  0.222] recv (stream_id=13) :status: 200
+    [  0.222] recv (stream_id=13) date: Thu, 21 May 2015 16:38:14 GMT
+    [  0.222] recv (stream_id=13) content-type: text/html
+    [  0.222] recv (stream_id=13) last-modified: Fri, 15 May 2015 15:38:06 GMT
+    [  0.222] recv (stream_id=13) etag: W/"555612de-19f6"
+    [  0.222] recv (stream_id=13) link: </stylesheets/screen.css>; rel=preload; as=stylesheet
+    [  0.222] recv (stream_id=13) content-encoding: gzip
+    [  0.222] recv (stream_id=13) server: nghttpx nghttp2/1.0.1-DEV
+    [  0.222] recv (stream_id=13) via: 1.1 nghttpx
+    [  0.222] recv (stream_id=13) strict-transport-security: max-age=31536000
+    [  0.222] recv HEADERS frame <length=166, flags=0x04, stream_id=13>
+	      ; END_HEADERS
+	      (padlen=0)
+	      ; First response header
+    [  0.222] recv DATA frame <length=2601, flags=0x01, stream_id=13>
+	      ; END_STREAM
+    [  0.222] recv (stream_id=2) :status: 200
+    [  0.222] recv (stream_id=2) date: Thu, 21 May 2015 16:38:14 GMT
+    [  0.222] recv (stream_id=2) content-type: text/css
+    [  0.222] recv (stream_id=2) last-modified: Fri, 15 May 2015 15:38:06 GMT
+    [  0.222] recv (stream_id=2) etag: W/"555612de-9845"
+    [  0.222] recv (stream_id=2) content-encoding: gzip
+    [  0.222] recv (stream_id=2) server: nghttpx nghttp2/1.0.1-DEV
+    [  0.222] recv (stream_id=2) via: 1.1 nghttpx
+    [  0.222] recv (stream_id=2) strict-transport-security: max-age=31536000
+    [  0.222] recv HEADERS frame <length=32, flags=0x04, stream_id=2>
+	      ; END_HEADERS
+	      (padlen=0)
+	      ; First push response header
+    [  0.228] recv DATA frame <length=8715, flags=0x01, stream_id=2>
+	      ; END_STREAM
+    [  0.228] send GOAWAY frame <length=8, flags=0x00, stream_id=0>
+	      (last_stream_id=2, error_code=NO_ERROR(0x00), opaque_data(0)=[])
 
 The HTTP Upgrade is performed like so::
 
     $ nghttp -nvu http://nghttp2.org
-    [  0.137] Connected
-    [  0.137] HTTP Upgrade request
+    [  0.011] Connected
+    [  0.011] HTTP Upgrade request
     GET / HTTP/1.1
     Host: nghttp2.org
     Connection: Upgrade, HTTP2-Settings
     Upgrade: h2c
     HTTP2-Settings: AAMAAABkAAQAAP__
     Accept: */*
-    User-Agent: nghttp2/1.0.0-DEV
+    User-Agent: nghttp2/1.0.1-DEV
 
 
-    [  0.156] HTTP Upgrade response
+    [  0.018] HTTP Upgrade response
     HTTP/1.1 101 Switching Protocols
     Connection: Upgrade
     Upgrade: h2c
 
 
-    [  0.156] HTTP Upgrade success
-    [  0.157] send SETTINGS frame <length=12, flags=0x00, stream_id=0>
-              (niv=2)
-              [SETTINGS_MAX_CONCURRENT_STREAMS(0x03):100]
-              [SETTINGS_INITIAL_WINDOW_SIZE(0x04):65535]
-    [  0.157] send PRIORITY frame <length=5, flags=0x00, stream_id=3>
-              (dep_stream_id=0, weight=201, exclusive=0)
-    [  0.157] send PRIORITY frame <length=5, flags=0x00, stream_id=5>
-              (dep_stream_id=0, weight=101, exclusive=0)
-    [  0.157] send PRIORITY frame <length=5, flags=0x00, stream_id=7>
-              (dep_stream_id=0, weight=1, exclusive=0)
-    [  0.157] send PRIORITY frame <length=5, flags=0x00, stream_id=9>
-              (dep_stream_id=7, weight=1, exclusive=0)
-    [  0.157] send PRIORITY frame <length=5, flags=0x00, stream_id=11>
-              (dep_stream_id=3, weight=1, exclusive=0)
-    [  0.157] send PRIORITY frame <length=5, flags=0x00, stream_id=1>
-              (dep_stream_id=11, weight=16, exclusive=0)
-    [  0.157] recv SETTINGS frame <length=12, flags=0x00, stream_id=0>
-              (niv=2)
-              [SETTINGS_MAX_CONCURRENT_STREAMS(0x03):100]
-              [SETTINGS_INITIAL_WINDOW_SIZE(0x04):65535]
-    [  0.157] recv (stream_id=1) :status: 200
-    [  0.157] recv (stream_id=1) date: Fri, 15 May 2015 14:46:08 GMT
-    [  0.157] recv (stream_id=1) content-type: text/html
-    [  0.157] recv (stream_id=1) content-length: 6783
-    [  0.157] recv (stream_id=1) last-modified: Fri, 15 May 2015 14:20:46 GMT
-    [  0.157] recv (stream_id=1) etag: "555600be-1a7f"
-    [  0.157] recv (stream_id=1) link: </stylesheets/screen.css>; rel=preload; as=stylesheet
-    [  0.157] recv (stream_id=1) accept-ranges: bytes
-    [  0.157] recv (stream_id=1) server: nghttpx nghttp2/1.0.0-DEV
-    [  0.157] recv (stream_id=1) via: 1.1 nghttpx
-    [  0.157] recv HEADERS frame <length=157, flags=0x04, stream_id=1>
-              ; END_HEADERS
-              (padlen=0)
-              ; First response header
-    [  0.157] recv (stream_id=1) :method: GET
-    [  0.157] recv (stream_id=1) :scheme: http
-    [  0.157] recv (stream_id=1) :path: /stylesheets/screen.css
-    [  0.157] recv (stream_id=1) host: nghttp2.org
-    [  0.157] recv (stream_id=1) user-agent: nghttp2/1.0.0-DEV
-    [  0.157] recv PUSH_PROMISE frame <length=49, flags=0x04, stream_id=1>
-              ; END_HEADERS
-              (padlen=0, promised_stream_id=2)
-    [  0.157] send SETTINGS frame <length=0, flags=0x01, stream_id=0>
-              ; ACK
-              (niv=0)
-    [  0.161] recv DATA frame <length=6783, flags=0x01, stream_id=1>
-              ; END_STREAM
-    [  0.162] recv (stream_id=2) :status: 200
-    [  0.162] recv (stream_id=2) date: Fri, 15 May 2015 14:46:08 GMT
-    [  0.162] recv (stream_id=2) content-type: text/css
-    [  0.162] recv (stream_id=2) content-length: 38981
-    [  0.162] recv (stream_id=2) last-modified: Fri, 15 May 2015 14:20:46 GMT
-    [  0.162] recv (stream_id=2) etag: "555600be-9845"
-    [  0.162] recv (stream_id=2) accept-ranges: bytes
-    [  0.162] recv (stream_id=2) server: nghttpx nghttp2/1.0.0-DEV
-    [  0.162] recv (stream_id=2) via: 1.1 nghttpx
-    [  0.162] recv HEADERS frame <length=36, flags=0x04, stream_id=2>
-              ; END_HEADERS
-              (padlen=0)
-              ; First push response header
-    [  0.191] recv DATA frame <length=16384, flags=0x00, stream_id=2>
-    [  0.215] recv DATA frame <length=7952, flags=0x00, stream_id=2>
-    [  0.215] send WINDOW_UPDATE frame <length=4, flags=0x00, stream_id=0>
-              (window_size_increment=33322)
-    [  0.238] send WINDOW_UPDATE frame <length=4, flags=0x00, stream_id=2>
-              (window_size_increment=33549)
-    [  0.238] recv DATA frame <length=14645, flags=0x01, stream_id=2>
-              ; END_STREAM
-    [  0.238] recv SETTINGS frame <length=0, flags=0x01, stream_id=0>
-              ; ACK
-              (niv=0)
-    [  0.238] send GOAWAY frame <length=8, flags=0x00, stream_id=0>
-              (last_stream_id=2, error_code=NO_ERROR(0x00), opaque_data(0)=[])
+    [  0.018] HTTP Upgrade success
+    [  0.018] recv SETTINGS frame <length=12, flags=0x00, stream_id=0>
+	      (niv=2)
+	      [SETTINGS_MAX_CONCURRENT_STREAMS(0x03):100]
+	      [SETTINGS_INITIAL_WINDOW_SIZE(0x04):65535]
+    [  0.018] send SETTINGS frame <length=12, flags=0x00, stream_id=0>
+	      (niv=2)
+	      [SETTINGS_MAX_CONCURRENT_STREAMS(0x03):100]
+	      [SETTINGS_INITIAL_WINDOW_SIZE(0x04):65535]
+    [  0.018] send SETTINGS frame <length=0, flags=0x01, stream_id=0>
+	      ; ACK
+	      (niv=0)
+    [  0.018] send PRIORITY frame <length=5, flags=0x00, stream_id=3>
+	      (dep_stream_id=0, weight=201, exclusive=0)
+    [  0.018] send PRIORITY frame <length=5, flags=0x00, stream_id=5>
+	      (dep_stream_id=0, weight=101, exclusive=0)
+    [  0.018] send PRIORITY frame <length=5, flags=0x00, stream_id=7>
+	      (dep_stream_id=0, weight=1, exclusive=0)
+    [  0.018] send PRIORITY frame <length=5, flags=0x00, stream_id=9>
+	      (dep_stream_id=7, weight=1, exclusive=0)
+    [  0.018] send PRIORITY frame <length=5, flags=0x00, stream_id=11>
+	      (dep_stream_id=3, weight=1, exclusive=0)
+    [  0.018] send PRIORITY frame <length=5, flags=0x00, stream_id=1>
+	      (dep_stream_id=11, weight=16, exclusive=0)
+    [  0.019] recv (stream_id=1) :method: GET
+    [  0.019] recv (stream_id=1) :scheme: http
+    [  0.019] recv (stream_id=1) :path: /stylesheets/screen.css
+    [  0.019] recv (stream_id=1) host: nghttp2.org
+    [  0.019] recv (stream_id=1) user-agent: nghttp2/1.0.1-DEV
+    [  0.019] recv PUSH_PROMISE frame <length=49, flags=0x04, stream_id=1>
+	      ; END_HEADERS
+	      (padlen=0, promised_stream_id=2)
+    [  0.019] recv (stream_id=1) :status: 200
+    [  0.019] recv (stream_id=1) date: Thu, 21 May 2015 16:39:16 GMT
+    [  0.019] recv (stream_id=1) content-type: text/html
+    [  0.019] recv (stream_id=1) content-length: 6646
+    [  0.019] recv (stream_id=1) last-modified: Fri, 15 May 2015 15:38:06 GMT
+    [  0.019] recv (stream_id=1) etag: "555612de-19f6"
+    [  0.019] recv (stream_id=1) link: </stylesheets/screen.css>; rel=preload; as=stylesheet
+    [  0.019] recv (stream_id=1) accept-ranges: bytes
+    [  0.019] recv (stream_id=1) server: nghttpx nghttp2/1.0.1-DEV
+    [  0.019] recv (stream_id=1) via: 1.1 nghttpx
+    [  0.019] recv HEADERS frame <length=157, flags=0x04, stream_id=1>
+	      ; END_HEADERS
+	      (padlen=0)
+	      ; First response header
+    [  0.019] recv DATA frame <length=6646, flags=0x01, stream_id=1>
+	      ; END_STREAM
+    [  0.019] recv (stream_id=2) :status: 200
+    [  0.019] recv (stream_id=2) date: Thu, 21 May 2015 16:39:16 GMT
+    [  0.019] recv (stream_id=2) content-type: text/css
+    [  0.019] recv (stream_id=2) content-length: 38981
+    [  0.019] recv (stream_id=2) last-modified: Fri, 15 May 2015 15:38:06 GMT
+    [  0.019] recv (stream_id=2) etag: "555612de-9845"
+    [  0.019] recv (stream_id=2) accept-ranges: bytes
+    [  0.019] recv (stream_id=2) server: nghttpx nghttp2/1.0.1-DEV
+    [  0.019] recv (stream_id=2) via: 1.1 nghttpx
+    [  0.019] recv HEADERS frame <length=36, flags=0x04, stream_id=2>
+	      ; END_HEADERS
+	      (padlen=0)
+	      ; First push response header
+    [  0.026] recv DATA frame <length=16384, flags=0x00, stream_id=2>
+    [  0.027] recv DATA frame <length=7952, flags=0x00, stream_id=2>
+    [  0.027] send WINDOW_UPDATE frame <length=4, flags=0x00, stream_id=0>
+	      (window_size_increment=33343)
+    [  0.032] send WINDOW_UPDATE frame <length=4, flags=0x00, stream_id=2>
+	      (window_size_increment=33707)
+    [  0.032] recv DATA frame <length=14645, flags=0x01, stream_id=2>
+	      ; END_STREAM
+    [  0.032] recv SETTINGS frame <length=0, flags=0x01, stream_id=0>
+	      ; ACK
+	      (niv=0)
+    [  0.032] send GOAWAY frame <length=8, flags=0x00, stream_id=0>
+	      (last_stream_id=2, error_code=NO_ERROR(0x00), opaque_data(0)=[])
 
 Using the ``-s`` option, ``nghttp`` prints out some timing information for
 requests, sorted by completion time::
