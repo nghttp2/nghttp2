@@ -1317,13 +1317,6 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
     data_prdptr = nullptr;
   }
 
-  rv = nghttp2_submit_response(session_, downstream->get_stream_id(),
-                               nva.data(), nva.size(), data_prdptr);
-  if (rv != 0) {
-    ULOG(FATAL, this) << "nghttp2_submit_response() failed";
-    return -1;
-  }
-
   // We need some conditions that must be fulfilled to initiate server
   // push.
   //
@@ -1351,6 +1344,13 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
     if (prepare_push_promise(downstream) != 0) {
       return -1;
     }
+  }
+
+  rv = nghttp2_submit_response(session_, downstream->get_stream_id(),
+                               nva.data(), nva.size(), data_prdptr);
+  if (rv != 0) {
+    ULOG(FATAL, this) << "nghttp2_submit_response() failed";
+    return -1;
   }
 
   return 0;
