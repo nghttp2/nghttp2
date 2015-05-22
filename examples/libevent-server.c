@@ -724,10 +724,10 @@ int main(int argc, char **argv) {
   act.sa_handler = SIG_IGN;
   sigaction(SIGPIPE, &act, NULL);
 
-  OPENSSL_config(NULL);
-  OpenSSL_add_all_algorithms();
   SSL_load_error_strings();
   SSL_library_init();
+  OpenSSL_add_all_algorithms();
+  OPENSSL_config(NULL);
 
   run(argv[1], argv[2], argv[3]);
   return 0;

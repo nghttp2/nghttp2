@@ -2400,6 +2400,11 @@ Options:
 } // namespace
 
 int main(int argc, char **argv) {
+  SSL_load_error_strings();
+  SSL_library_init();
+  OpenSSL_add_all_algorithms();
+  OPENSSL_config(nullptr);
+
   bool color = false;
   while (1) {
     static int flag = 0;
@@ -2639,10 +2644,6 @@ int main(int argc, char **argv) {
   memset(&act, 0, sizeof(struct sigaction));
   act.sa_handler = SIG_IGN;
   sigaction(SIGPIPE, &act, nullptr);
-  OPENSSL_config(nullptr);
-  OpenSSL_add_all_algorithms();
-  SSL_load_error_strings();
-  SSL_library_init();
   reset_timer();
   return run(argv + optind, argc - optind);
 }

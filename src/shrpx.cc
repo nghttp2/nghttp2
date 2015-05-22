@@ -1415,6 +1415,16 @@ Misc:
 } // namespace
 
 int main(int argc, char **argv) {
+#ifndef NOTHREADS
+  nghttp2::ssl::LibsslGlobalLock lock;
+#endif // NOTHREADS
+  // Initialize OpenSSL before parsing options because we create
+  // SSL_CTX there.
+  SSL_load_error_strings();
+  SSL_library_init();
+  OpenSSL_add_all_algorithms();
+  OPENSSL_config(nullptr);
+
   Log::set_severity_level(NOTICE);
   create_config();
   fill_default_config();
@@ -1894,13 +1904,6 @@ int main(int argc, char **argv) {
     }
   }
 
-  // Initialize OpenSSL before parsing options because we create
-  // SSL_CTX there.
-  OPENSSL_config(nullptr);
-  OpenSSL_add_all_algorithms();
-  SSL_load_error_strings();
-  SSL_library_init();
-
   if (conf_exists(get_config()->conf_path.get())) {
     if (load_config(get_config()->conf_path.get()) == -1) {
       LOG(FATAL) << "Failed to load configuration from "
@@ -1924,10 +1927,6 @@ int main(int argc, char **argv) {
       exit(EXIT_FAILURE);
     }
   }
-
-#ifndef NOTHREADS
-  auto lock = make_unique<nghttp2::ssl::LibsslGlobalLock>();
-#endif // NOTHREADS
 
   if (get_config()->accesslog_syslog || get_config()->errorlog_syslog) {
     openlog("nghttpx", LOG_NDELAY | LOG_NOWAIT | LOG_PID,

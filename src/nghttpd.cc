@@ -168,6 +168,14 @@ Options:
 } // namespace
 
 int main(int argc, char **argv) {
+#ifndef NOTHREADS
+  ssl::LibsslGlobalLock lock;
+#endif // NOTHREADS
+  SSL_load_error_strings();
+  SSL_library_init();
+  OpenSSL_add_all_algorithms();
+  OPENSSL_config(nullptr);
+
   Config config;
   bool color = false;
   while (1) {
@@ -359,13 +367,6 @@ int main(int argc, char **argv) {
   memset(&act, 0, sizeof(struct sigaction));
   act.sa_handler = SIG_IGN;
   sigaction(SIGPIPE, &act, nullptr);
-  OPENSSL_config(nullptr);
-  OpenSSL_add_all_algorithms();
-  SSL_load_error_strings();
-  SSL_library_init();
-#ifndef NOTHREADS
-  ssl::LibsslGlobalLock lock;
-#endif // NOTHREADS
 
   reset_timer();
 
