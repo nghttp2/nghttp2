@@ -458,13 +458,14 @@ static void run_nghttp2_hd(void) {
   nghttp2_hd_inflater inflater;
   nghttp2_bufs bufs;
   int rv;
-  nghttp2_nv nva1[] = {MAKE_NV(":scheme", "https"),
-                       MAKE_NV(":authority", "example.org"),
-                       MAKE_NV(":path", "/slashdot"),
-                       MAKE_NV("accept-encoding", "gzip, deflate")};
+  nghttp2_nv nva1[] = {
+      MAKE_NV(":scheme", "https"), MAKE_NV(":authority", "example.org"),
+      MAKE_NV(":path", "/slashdot"),
+      MAKE_NV("accept-encoding", "gzip, deflate"), MAKE_NV("foo", "bar")};
   nghttp2_nv nva2[] = {
       MAKE_NV(":scheme", "https"), MAKE_NV(":authority", "example.org"),
-      MAKE_NV(":path", "/style.css"), MAKE_NV("cookie", "nghttp2=FTW")};
+      MAKE_NV(":path", "/style.css"), MAKE_NV("cookie", "nghttp2=FTW"),
+      MAKE_NV("foo", "bar2")};
 
   rv = frame_pack_bufs_init(&bufs);
 
