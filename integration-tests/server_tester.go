@@ -9,7 +9,7 @@ import (
 	"github.com/bradfitz/http2"
 	"github.com/bradfitz/http2/hpack"
 	"github.com/tatsuhiro-t/go-nghttp2"
-	"golang.org/x/net/spdy"
+	"github.com/tatsuhiro-t/spdy"
 	"io"
 	"io/ioutil"
 	"net"
