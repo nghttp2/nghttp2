@@ -190,7 +190,7 @@ its testing framework.  We depend on the following libraries:
 
 * https://github.com/bradfitz/http2
 * https://github.com/tatsuhiro-t/go-nghttp2
-* https://golang.org/x/net/spdy
+* https://github.com/tatsuhiro-t/spdy
 
 To download the above packages, after settings ``GOPATH``, run the
 following command under ``integration-tests`` directory::
@@ -203,6 +203,11 @@ To run the tests, run the following command under
     $ make it
 
 Inside the tests, we use port 3009 to run the test subject server.
+
+.. note::
+
+   github.com/tatsuhiro-t/spdy is a copy used to be available at
+   golang.org/x/net/spdy, but it is now gone.
 
 Migration from v0.7.15 or earlier
 ---------------------------------
