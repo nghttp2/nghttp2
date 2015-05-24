@@ -381,6 +381,12 @@ void test_http2_parse_link_header(void) {
     CU_ASSERT(0 == res.size());
   }
   {
+    // Error if link header ends with ';'
+    const char s[] = "<url>;rel=preload;, <url>";
+    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    CU_ASSERT(0 == res.size());
+  }
+  {
     // OK if input ends with ','
     const char s[] = "<url>;rel=preload,";
     auto res = http2::parse_link_header(s, sizeof(s) - 1);
@@ -396,13 +402,13 @@ void test_http2_parse_link_header(void) {
   }
   {
     // Error if url is not enclosed by <>
-    const char s[] = "url>;rel=preload;";
+    const char s[] = "url>;rel=preload";
     auto res = http2::parse_link_header(s, sizeof(s) - 1);
     CU_ASSERT(0 == res.size());
   }
   {
     // Error if url is not enclosed by <>
-    const char s[] = "<url;rel=preload;";
+    const char s[] = "<url;rel=preload";
     auto res = http2::parse_link_header(s, sizeof(s) - 1);
     CU_ASSERT(0 == res.size());
   }
