@@ -1238,7 +1238,10 @@ if asyncio:
 
             self.transport = transport
             sock = self.transport.get_extra_info('socket')
-            sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+            try:
+                sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+            except OSError as e:
+                logging.info('failed to set tcp-nodelay: %s', str(e))
             ssl_ctx = self.transport.get_extra_info('sslcontext')
             if ssl_ctx:
                 protocol = sock.selected_npn_protocol()
