@@ -332,12 +332,6 @@ int HttpDownstreamConnection::push_request_headers() {
     hdrs += downstream_->get_request_http2_scheme();
     hdrs += "\r\n";
   }
-  auto expect = downstream_->get_request_header(http2::HD_EXPECT);
-  if (expect && !util::strifind((*expect).value.c_str(), "100-continue")) {
-    hdrs += "Expect: ";
-    hdrs += (*expect).value;
-    hdrs += "\r\n";
-  }
   auto via = downstream_->get_request_header(http2::HD_VIA);
   if (get_config()->no_via) {
     if (via) {
