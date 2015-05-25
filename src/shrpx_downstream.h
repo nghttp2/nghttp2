@@ -80,10 +80,11 @@ public:
   bool request_buf_full();
   // Returns true if upgrade (HTTP Upgrade or CONNECT) is succeeded.
   void check_upgrade_fulfilled();
-  // Returns true if the request is upgrade.
+  // Returns true if the request is upgrade.  Upgrade to HTTP/2 is
+  // excluded.  For HTTP/2 Upgrade, check get_http2_upgrade_request().
   bool get_upgrade_request() const;
   // Returns true if the upgrade is succeded as a result of the call
-  // check_upgrade_fulfilled().
+  // check_upgrade_fulfilled().  HTTP/2 Upgrade is excluded.
   bool get_upgraded() const;
   // Inspects HTTP/2 request.
   void inspect_http2_request();

@@ -928,13 +928,13 @@ void Downstream::inspect_http1_request() {
   if (!upgrade_request_) {
     auto idx = request_hdidx_[http2::HD_UPGRADE];
     if (idx != -1) {
-      upgrade_request_ = true;
-
       auto &val = request_headers_[idx].value;
       // TODO Perform more strict checking for upgrade headers
       if (util::streq_l(NGHTTP2_CLEARTEXT_PROTO_VERSION_ID, val.c_str(),
                         val.size())) {
         http2_upgrade_seen_ = true;
+      } else {
+        upgrade_request_ = true;
       }
     }
   }
