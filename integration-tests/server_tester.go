@@ -10,6 +10,7 @@ import (
 	"github.com/bradfitz/http2/hpack"
 	"github.com/tatsuhiro-t/go-nghttp2"
 	"github.com/tatsuhiro-t/spdy"
+	"golang.org/x/net/websocket"
 	"io"
 	"io/ioutil"
 	"net"
@@ -66,6 +67,10 @@ func newServerTester(args []string, t *testing.T, handler http.HandlerFunc) *ser
 	return newServerTesterInternal(args, t, handler, false, nil)
 }
 
+func newServerTesterHandler(args []string, t *testing.T, handler http.Handler) *serverTester {
+	return newServerTesterInternal(args, t, handler, false, nil)
+}
+
 // newServerTester creates test context for TLS frontend connection.
 func newServerTesterTLS(args []string, t *testing.T, handler http.HandlerFunc) *serverTester {
 	return newServerTesterInternal(args, t, handler, true, nil)
@@ -79,7 +84,7 @@ func newServerTesterTLSConfig(args []string, t *testing.T, handler http.HandlerF
 
 // newServerTesterInternal creates test context.  If frontendTLS is
 // true, set up TLS frontend connection.
-func newServerTesterInternal(args []string, t *testing.T, handler http.HandlerFunc, frontendTLS bool, clientConfig *tls.Config) *serverTester {
+func newServerTesterInternal(args []string, t *testing.T, handler http.Handler, frontendTLS bool, clientConfig *tls.Config) *serverTester {
 	ts := httptest.NewUnstartedServer(handler)
 
 	backendTLS := false
@@ -277,6 +282,41 @@ func (cbr *chunkedBodyReader) Read(p []byte) (n int, err error) {
 		}
 	}
 	return cbr.body.Read(p)
+}
+
+func (st *serverTester) websocket(rp requestParam) (*serverResponse, error) {
+	urlstring := st.url + "/echo"
+
+	config, err := websocket.NewConfig(urlstring, st.url)
+	if err != nil {
+		st.t.Fatalf("websocket.NewConfig(%q, %q) returned error: %v", urlstring, st.url, err)
+	}
+
+	config.Header.Add("Test-Case", rp.name)
+	for _, h := range rp.header {
+		config.Header.Add(h.Name, h.Value)
+	}
+
+	ws, err := websocket.NewClient(config, st.conn)
+	if err != nil {
+		st.t.Fatalf("Error creating websocket client: %v", err)
+	}
+
+	if _, err := ws.Write(rp.body); err != nil {
+		st.t.Fatalf("ws.Write() returned error: %v", err)
+	}
+
+	msg := make([]byte, 1024)
+	var n int
+	if n, err = ws.Read(msg); err != nil {
+		st.t.Fatalf("ws.Read() returned error: %v", err)
+	}
+
+	res := &serverResponse{
+		body: msg[:n],
+	}
+
+	return res, nil
 }
 
 func (st *serverTester) http1(rp requestParam) (*serverResponse, error) {

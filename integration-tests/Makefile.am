@@ -38,6 +38,7 @@ itprep:
 	go get -d -v github.com/bradfitz/http2
 	go get -d -v github.com/tatsuhiro-t/go-nghttp2
 	go get -d -v github.com/tatsuhiro-t/spdy
+	go get -d -v golang.org/x/net/websocket
 
 it:
 	sh setenv go test -v

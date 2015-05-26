@@ -2,8 +2,10 @@ package nghttp2
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"github.com/bradfitz/http2/hpack"
+	"golang.org/x/net/websocket"
 	"io"
 	"net/http"
 	"syscall"
@@ -309,6 +311,26 @@ func TestH1H1HeaderFields(t *testing.T) {
 	}
 	if got, want := res.status, 431; got != want {
 		t.Errorf("status: %v; want %v", got, want)
+	}
+}
+
+// TestH1H1Websocket tests that HTTP Upgrade to WebSocket works.
+func TestH1H1Websocket(t *testing.T) {
+	st := newServerTesterHandler(nil, t, websocket.Handler(func(ws *websocket.Conn) {
+		io.Copy(ws, ws)
+	}))
+	defer st.Close()
+
+	content := []byte("hello world")
+	res, err := st.websocket(requestParam{
+		name: "TestH1H1Websocket",
+		body: content,
+	})
+	if err != nil {
+		t.Fatalf("Error st.websocket() = %v", err)
+	}
+	if got, want := res.body, content; !bytes.Equal(got, want) {
+		t.Errorf("echo: %q; want %q", got, want)
 	}
 }
 

@@ -191,6 +191,7 @@ its testing framework.  We depend on the following libraries:
 * https://github.com/bradfitz/http2
 * https://github.com/tatsuhiro-t/go-nghttp2
 * https://github.com/tatsuhiro-t/spdy
+* golang.org/x/net/websocket
 
 To download the above packages, after settings ``GOPATH``, run the
 following command under ``integration-tests`` directory::
