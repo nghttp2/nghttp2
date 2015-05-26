@@ -192,6 +192,10 @@ ssize_t inflate_hd(nghttp2_hd_inflater *inflater, nva_out *out,
       if (inflate_flags & NGHTTP2_HD_INFLATE_FINAL) {
         break;
       }
+      if ((inflate_flags & NGHTTP2_HD_INFLATE_EMIT) == 0 &&
+          nghttp2_buf_len(&bp) == 0) {
+        break;
+      }
     }
   }
 
