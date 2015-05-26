@@ -214,10 +214,10 @@ int HttpDownstreamConnection::push_request_headers() {
   const char *authority = nullptr, *host = nullptr;
   auto downstream_hostport =
       get_config()->downstream_addrs[addr_idx_].hostport.get();
+  auto connect_method = downstream_->get_request_method() == "CONNECT";
 
   if (!get_config()->no_host_rewrite && !get_config()->http2_proxy &&
-      !get_config()->client_proxy &&
-      downstream_->get_request_method() != "CONNECT") {
+      !get_config()->client_proxy && !connect_method) {
     if (!downstream_->get_request_http2_authority().empty()) {
       authority = downstream_hostport;
     }
@@ -251,7 +251,7 @@ int HttpDownstreamConnection::push_request_headers() {
   // Assume that method and request path do not contain \r\n.
   std::string hdrs = downstream_->get_request_method();
   hdrs += ' ';
-  if (downstream_->get_request_method() == "CONNECT") {
+  if (connect_method) {
     if (authority) {
       hdrs += authority;
     } else {
@@ -300,8 +300,7 @@ int HttpDownstreamConnection::push_request_headers() {
     hdrs += "\r\n";
   }
 
-  if (downstream_->get_request_method() != "CONNECT" &&
-      downstream_->get_request_http2_expect_body() &&
+  if (!connect_method && downstream_->get_request_http2_expect_body() &&
       !downstream_->get_request_header(http2::HD_CONTENT_LENGTH)) {
 
     downstream_->set_chunked_request(true);
@@ -311,6 +310,23 @@ int HttpDownstreamConnection::push_request_headers() {
   if (downstream_->get_request_connection_close()) {
     hdrs += "Connection: close\r\n";
   }
+
+  if (!connect_method && downstream_->get_upgrade_request()) {
+    auto connection = downstream_->get_request_header(http2::HD_CONNECTION);
+    if (connection) {
+      hdrs += "Connection: ";
+      hdrs += (*connection).value;
+      hdrs += "\r\n";
+    }
+
+    auto upgrade = downstream_->get_request_header(http2::HD_UPGRADE);
+    if (upgrade) {
+      hdrs += "Upgrade: ";
+      hdrs += (*upgrade).value;
+      hdrs += "\r\n";
+    }
+  }
+
   auto xff = downstream_->get_request_header(http2::HD_X_FORWARDED_FOR);
   if (get_config()->add_x_forwarded_for) {
     hdrs += "X-Forwarded-For: ";
@@ -326,7 +342,7 @@ int HttpDownstreamConnection::push_request_headers() {
     hdrs += "\r\n";
   }
   if (!get_config()->http2_proxy && !get_config()->client_proxy &&
-      downstream_->get_request_method() != "CONNECT") {
+      !connect_method) {
     hdrs += "X-Forwarded-Proto: ";
     assert(!downstream_->get_request_http2_scheme().empty());
     hdrs += downstream_->get_request_http2_scheme();
@@ -504,6 +520,10 @@ int htp_hdrs_completecb(http_parser *htp) {
     return -1;
   }
 
+  // Check upgrade before processing non-final response, since if
+  // upgrade succeeded, 101 response is treated as final in nghttpx.
+  downstream->check_upgrade_fulfilled();
+
   if (downstream->get_non_final_response()) {
     // Reset content-length because we reuse same Downstream for the
     // next response.
@@ -517,13 +537,13 @@ int htp_hdrs_completecb(http_parser *htp) {
       return -1;
     }
 
-    return 0;
+    // Ignore response body for non-final response.
+    return 1;
   }
 
   downstream->set_response_connection_close(!http_should_keep_alive(htp));
   downstream->set_response_state(Downstream::HEADER_COMPLETE);
   downstream->inspect_http1_response();
-  downstream->check_upgrade_fulfilled();
   if (downstream->get_upgraded()) {
     // content-length must be ignored for upgraded connection.
     downstream->set_response_content_length(-1);
@@ -656,6 +676,15 @@ namespace {
 int htp_msg_completecb(http_parser *htp) {
   auto downstream = static_cast<Downstream *>(htp->data);
 
+  // http-parser does not treat "200 connection established" response
+  // against CONNECT request, and in that case, this function is not
+  // called.  But if HTTP Upgrade is made (e.g., WebSocket), this
+  // function is called, and http_parser_execute() returns just after
+  // that.
+  if (downstream->get_upgraded()) {
+    return 0;
+  }
+
   if (downstream->get_non_final_response()) {
     downstream->reset_response();
 
@@ -746,16 +775,28 @@ int HttpDownstreamConnection::on_read() {
       return -1;
     }
 
-    if (nproc != static_cast<size_t>(nread)) {
-      if (LOG_ENABLED(INFO)) {
-        DCLOG(INFO, this) << "nproc != nread";
-      }
-      return -1;
-    }
-
     if (downstream_->response_buf_full()) {
       downstream_->pause_read(SHRPX_NO_BUFFER);
       return 0;
+    }
+
+    if (downstream_->get_upgraded()) {
+      if (nproc < nread) {
+        // Data from buf.data() + nproc are for upgraded protocol.
+        rv = downstream_->get_upstream()->on_downstream_body(
+            downstream_, buf.data() + nproc, nread - nproc, true);
+        if (rv != 0) {
+          return rv;
+        }
+
+        if (downstream_->response_buf_full()) {
+          downstream_->pause_read(SHRPX_NO_BUFFER);
+          return 0;
+        }
+      }
+      // call on_read(), so that we can process data left in buffer as
+      // upgrade.
+      return on_read();
     }
   }
 }

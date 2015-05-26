@@ -756,6 +756,8 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
     }
   }
 
+  auto connect_method = downstream->get_request_method() == "CONNECT";
+
   std::string hdrs = "HTTP/";
   hdrs += util::utos(downstream->get_request_major());
   hdrs += ".";
@@ -806,9 +808,24 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
       // We add this header for HTTP/1.0 or HTTP/0.9 clients
       hdrs += "Connection: Keep-Alive\r\n";
     }
-  } else if (!downstream->get_upgraded() ||
-             downstream->get_request_method() != "CONNECT") {
+  } else if (!downstream->get_upgraded()) {
     hdrs += "Connection: close\r\n";
+  }
+
+  if (!connect_method && downstream->get_upgraded()) {
+    auto connection = downstream->get_response_header(http2::HD_CONNECTION);
+    if (connection) {
+      hdrs += "Connection: ";
+      hdrs += (*connection).value;
+      hdrs += "\r\n";
+    }
+
+    auto upgrade = downstream->get_response_header(http2::HD_UPGRADE);
+    if (upgrade) {
+      hdrs += "Upgrade: ";
+      hdrs += (*upgrade).value;
+      hdrs += "\r\n";
+    }
   }
 
   if (!downstream->get_response_header(http2::HD_ALT_SVC)) {

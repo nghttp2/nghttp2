@@ -79,6 +79,7 @@ public:
   // NULL, this function always returns false.
   bool request_buf_full();
   // Returns true if upgrade (HTTP Upgrade or CONNECT) is succeeded.
+  // This should not depend on inspect_http1_response().
   void check_upgrade_fulfilled();
   // Returns true if the request is upgrade.  Upgrade to HTTP/2 is
   // excluded.  For HTTP/2 Upgrade, check get_http2_upgrade_request().
@@ -275,6 +276,8 @@ public:
   void inspect_http1_response();
   // Clears some of member variables for response.
   void reset_response();
+  // True if the response is non-final (1xx status code).  Note that
+  // if connection was upgraded, 101 status code is treated as final.
   bool get_non_final_response() const;
   void set_expect_final_response(bool f);
   bool get_expect_final_response() const;

@@ -964,7 +964,7 @@ void Downstream::reset_response() {
 }
 
 bool Downstream::get_non_final_response() const {
-  return response_http_status_ / 100 == 1;
+  return !upgraded_ && response_http_status_ / 100 == 1;
 }
 
 bool Downstream::get_upgraded() const { return upgraded_; }
