@@ -477,6 +477,16 @@ fi
 
 AM_CONDITIONAL([ENABLE_EXAMPLES], [ test "x${enable_examples}" = "xyes" ])
 
+# third-party only be built if either enable_examples or enable_app is
+# yes
+
+enable_third_party=no
+if test "x${enable_examples}" = "xyes" || test "x${enable_app}" = "xyes"; then
+  enable_third_party=yes
+fi
+
+AM_CONDITIONAL([ENABLE_THIRD_PARTY], [ test "x${enable_third_party}" = "xyes" ])
+
 # Python bindings
 enable_python_bindings=no
 if test "x${request_python_bindings}" != "xno" &&
@@ -750,4 +760,5 @@ AC_MSG_NOTICE([summary of build options:
       Examples:       ${enable_examples}
       Python bindings:${enable_python_bindings}
       Threading:      ${enable_threads}
+      Third-party:    ${enable_third_party}
 ])

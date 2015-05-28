@@ -23,10 +23,14 @@
 
 AM_CPPFLAGS = -Wall @DEFS@
 
+if ENABLE_THIRD_PARTY
+
 noinst_LTLIBRARIES = libhttp-parser.la
 libhttp_parser_la_SOURCES = \
 	http-parser/http_parser.c \
 	http-parser/http_parser.h
 
+
+endif # ENABLE_THIRD_PARTY
 
 dist_pkgdata_SCRIPTS = h2o/fetch-ocsp-response
