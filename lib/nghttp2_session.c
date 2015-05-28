@@ -307,7 +307,8 @@ static void active_outbound_item_reset(nghttp2_active_outbound_item *aob,
 
 /* The global variable for tests where we want to disable strict
    preface handling. */
-int nghttp2_enable_strict_preface = 1;
+/* Specify NGHTTP2_EXTERN, so that we can test using Win build dll. */
+NGHTTP2_EXTERN int nghttp2_enable_strict_preface = 1;
 
 static int session_new(nghttp2_session **session_ptr,
                        const nghttp2_session_callbacks *callbacks,

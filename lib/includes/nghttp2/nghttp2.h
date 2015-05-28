@@ -51,8 +51,12 @@ extern "C" {
 #ifdef NGHTTP2_STATICLIB
 #define NGHTTP2_EXTERN
 #elif defined(WIN32)
+#ifdef BUILDING_NGHTTP2
 #define NGHTTP2_EXTERN __declspec(dllexport)
-#else /* !defined(WIN32) */
+#else /* !BUILDING_NGHTTP2 */
+#define NGHTTP2_EXTERN __declspec(dllimport)
+#endif /* !BUILDING_NGHTTP2 */
+#else  /* !defined(WIN32) */
 #define NGHTTP2_EXTERN
 #endif /* !defined(WIN32) */
 

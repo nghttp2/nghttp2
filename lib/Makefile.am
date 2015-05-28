@@ -25,7 +25,8 @@ SUBDIRS = includes
 EXTRA_DIST = Makefile.msvc
 
 AM_CFLAGS = $(WARNCFLAGS)
-AM_CPPFLAGS = -I$(srcdir)/includes -I$(builddir)/includes @DEFS@
+AM_CPPFLAGS = -I$(srcdir)/includes -I$(builddir)/includes -DBUILDING_NGHTTP2 \
+	@DEFS@
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = libnghttp2.pc
