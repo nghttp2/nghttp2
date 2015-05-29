@@ -168,8 +168,6 @@ public:
     CONNECT_FAILING,
   };
 
-  static const size_t OUTBUF_MAX_THRES = 64 * 1024;
-
   enum {
     // Connection checking is not required
     CONNECTION_CHECK_NONE,

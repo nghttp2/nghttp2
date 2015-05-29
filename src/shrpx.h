@@ -44,6 +44,4 @@
 
 #define DIE() exit(EXIT_FAILURE)
 
-#define SHRPX_READ_WATERMARK (16 * 1024)
-
 #endif // SHRPX_H
