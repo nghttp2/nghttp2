@@ -298,10 +298,10 @@ int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
 #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
 namespace {
-const char *tls_names[] = {"TLSv1.2", "TLSv1.1", "TLSv1.0"};
-const size_t tls_namelen = array_size(tls_names);
-const long int tls_masks[] = {SSL_OP_NO_TLSv1_2, SSL_OP_NO_TLSv1_1,
-                              SSL_OP_NO_TLSv1};
+constexpr const char *tls_names[] = {"TLSv1.2", "TLSv1.1", "TLSv1.0"};
+constexpr size_t tls_namelen = array_size(tls_names);
+constexpr long int tls_masks[] = {SSL_OP_NO_TLSv1_2, SSL_OP_NO_TLSv1_1,
+                                  SSL_OP_NO_TLSv1};
 } // namespace
 
 long int create_tls_proto_mask(const std::vector<char *> &tls_proto_list) {

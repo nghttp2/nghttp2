@@ -59,7 +59,7 @@ class CertLookupTree;
 
 } // namespace ssl
 
-#define SHRPX_UNIX_PATH_PREFIX "unix:"
+constexpr char SHRPX_UNIX_PATH_PREFIX[] = "unix:";
 
 extern const char SHRPX_OPT_PRIVATE_KEY_FILE[];
 extern const char SHRPX_OPT_PRIVATE_KEY_PASSWD_FILE[];

@@ -69,8 +69,9 @@
 namespace nghttp2 {
 
 namespace {
-const std::string DEFAULT_HTML = "index.html";
-const std::string NGHTTPD_SERVER = "nghttpd nghttp2/" NGHTTP2_VERSION;
+// TODO could be constexpr
+constexpr char DEFAULT_HTML[] = "index.html";
+constexpr char NGHTTPD_SERVER[] = "nghttpd nghttp2/" NGHTTP2_VERSION;
 } // namespace
 
 namespace {
@@ -739,7 +740,7 @@ int Http2Handler::submit_file_response(const std::string &status,
   std::string content_length = util::utos(file_length);
   std::string last_modified_str;
   auto nva = make_array(http2::make_nv_ls(":status", status),
-                        http2::make_nv_ls("server", NGHTTPD_SERVER),
+                        http2::make_nv_ll("server", NGHTTPD_SERVER),
                         http2::make_nv_ls("content-length", content_length),
                         http2::make_nv_ll("cache-control", "max-age=3600"),
                         http2::make_nv_ls("date", sessions_->get_cached_date()),
@@ -769,7 +770,7 @@ int Http2Handler::submit_response(const std::string &status, int32_t stream_id,
   auto nva = std::vector<nghttp2_nv>();
   nva.reserve(3 + headers.size());
   nva.push_back(http2::make_nv_ls(":status", status));
-  nva.push_back(http2::make_nv_ls("server", NGHTTPD_SERVER));
+  nva.push_back(http2::make_nv_ll("server", NGHTTPD_SERVER));
   nva.push_back(http2::make_nv_ls("date", sessions_->get_cached_date()));
   for (auto &nv : headers) {
     nva.push_back(http2::make_nv(nv.name, nv.value, nv.no_index));
@@ -782,7 +783,7 @@ int Http2Handler::submit_response(const std::string &status, int32_t stream_id,
 int Http2Handler::submit_response(const std::string &status, int32_t stream_id,
                                   nghttp2_data_provider *data_prd) {
   auto nva = make_array(http2::make_nv_ls(":status", status),
-                        http2::make_nv_ls("server", NGHTTPD_SERVER));
+                        http2::make_nv_ll("server", NGHTTPD_SERVER));
   return nghttp2_submit_response(session_, stream_id, nva.data(), nva.size(),
                                  data_prd);
 }

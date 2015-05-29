@@ -109,7 +109,7 @@ nghttp2_nv make_nv(const std::string &name, const std::string &value,
 
 // Create nghttp2_nv from string literal |name| and |value|.
 template <size_t N, size_t M>
-nghttp2_nv make_nv_ll(const char (&name)[N], const char (&value)[M]) {
+constexpr nghttp2_nv make_nv_ll(const char (&name)[N], const char (&value)[M]) {
   return {(uint8_t *)name, (uint8_t *)value, N - 1, M - 1,
           NGHTTP2_NV_FLAG_NONE};
 }
