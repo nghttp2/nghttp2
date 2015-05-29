@@ -61,92 +61,109 @@ class CertLookupTree;
 
 constexpr char SHRPX_UNIX_PATH_PREFIX[] = "unix:";
 
-extern const char SHRPX_OPT_PRIVATE_KEY_FILE[];
-extern const char SHRPX_OPT_PRIVATE_KEY_PASSWD_FILE[];
-extern const char SHRPX_OPT_CERTIFICATE_FILE[];
-extern const char SHRPX_OPT_DH_PARAM_FILE[];
-extern const char SHRPX_OPT_SUBCERT[];
-extern const char SHRPX_OPT_BACKEND[];
-extern const char SHRPX_OPT_FRONTEND[];
-extern const char SHRPX_OPT_WORKERS[];
-extern const char SHRPX_OPT_HTTP2_MAX_CONCURRENT_STREAMS[];
-extern const char SHRPX_OPT_LOG_LEVEL[];
-extern const char SHRPX_OPT_DAEMON[];
-extern const char SHRPX_OPT_HTTP2_PROXY[];
-extern const char SHRPX_OPT_HTTP2_BRIDGE[];
-extern const char SHRPX_OPT_CLIENT_PROXY[];
-extern const char SHRPX_OPT_ADD_X_FORWARDED_FOR[];
-extern const char SHRPX_OPT_STRIP_INCOMING_X_FORWARDED_FOR[];
-extern const char SHRPX_OPT_NO_VIA[];
-extern const char SHRPX_OPT_FRONTEND_HTTP2_READ_TIMEOUT[];
-extern const char SHRPX_OPT_FRONTEND_READ_TIMEOUT[];
-extern const char SHRPX_OPT_FRONTEND_WRITE_TIMEOUT[];
-extern const char SHRPX_OPT_BACKEND_READ_TIMEOUT[];
-extern const char SHRPX_OPT_BACKEND_WRITE_TIMEOUT[];
-extern const char SHRPX_OPT_STREAM_READ_TIMEOUT[];
-extern const char SHRPX_OPT_STREAM_WRITE_TIMEOUT[];
-extern const char SHRPX_OPT_ACCESSLOG_FILE[];
-extern const char SHRPX_OPT_ACCESSLOG_SYSLOG[];
-extern const char SHRPX_OPT_ACCESSLOG_FORMAT[];
-extern const char SHRPX_OPT_ERRORLOG_FILE[];
-extern const char SHRPX_OPT_ERRORLOG_SYSLOG[];
-extern const char SHRPX_OPT_BACKEND_KEEP_ALIVE_TIMEOUT[];
-extern const char SHRPX_OPT_FRONTEND_HTTP2_WINDOW_BITS[];
-extern const char SHRPX_OPT_BACKEND_HTTP2_WINDOW_BITS[];
-extern const char SHRPX_OPT_FRONTEND_HTTP2_CONNECTION_WINDOW_BITS[];
-extern const char SHRPX_OPT_BACKEND_HTTP2_CONNECTION_WINDOW_BITS[];
-extern const char SHRPX_OPT_FRONTEND_NO_TLS[];
-extern const char SHRPX_OPT_BACKEND_NO_TLS[];
-extern const char SHRPX_OPT_PID_FILE[];
-extern const char SHRPX_OPT_USER[];
-extern const char SHRPX_OPT_SYSLOG_FACILITY[];
-extern const char SHRPX_OPT_BACKLOG[];
-extern const char SHRPX_OPT_CIPHERS[];
-extern const char SHRPX_OPT_CLIENT[];
-extern const char SHRPX_OPT_INSECURE[];
-extern const char SHRPX_OPT_CACERT[];
-extern const char SHRPX_OPT_BACKEND_IPV4[];
-extern const char SHRPX_OPT_BACKEND_IPV6[];
-extern const char SHRPX_OPT_BACKEND_HTTP_PROXY_URI[];
-extern const char SHRPX_OPT_BACKEND_TLS_SNI_FIELD[];
-extern const char SHRPX_OPT_READ_RATE[];
-extern const char SHRPX_OPT_READ_BURST[];
-extern const char SHRPX_OPT_WRITE_RATE[];
-extern const char SHRPX_OPT_WRITE_BURST[];
-extern const char SHRPX_OPT_WORKER_READ_RATE[];
-extern const char SHRPX_OPT_WORKER_READ_BURST[];
-extern const char SHRPX_OPT_WORKER_WRITE_RATE[];
-extern const char SHRPX_OPT_WORKER_WRITE_BURST[];
-extern const char SHRPX_OPT_NPN_LIST[];
-extern const char SHRPX_OPT_TLS_PROTO_LIST[];
-extern const char SHRPX_OPT_VERIFY_CLIENT[];
-extern const char SHRPX_OPT_VERIFY_CLIENT_CACERT[];
-extern const char SHRPX_OPT_CLIENT_PRIVATE_KEY_FILE[];
-extern const char SHRPX_OPT_CLIENT_CERT_FILE[];
-extern const char SHRPX_OPT_FRONTEND_HTTP2_DUMP_REQUEST_HEADER[];
-extern const char SHRPX_OPT_FRONTEND_HTTP2_DUMP_RESPONSE_HEADER[];
-extern const char SHRPX_OPT_HTTP2_NO_COOKIE_CRUMBLING[];
-extern const char SHRPX_OPT_FRONTEND_FRAME_DEBUG[];
-extern const char SHRPX_OPT_PADDING[];
-extern const char SHRPX_OPT_ALTSVC[];
-extern const char SHRPX_OPT_ADD_RESPONSE_HEADER[];
-extern const char SHRPX_OPT_WORKER_FRONTEND_CONNECTIONS[];
-extern const char SHRPX_OPT_NO_LOCATION_REWRITE[];
-extern const char SHRPX_OPT_NO_HOST_REWRITE[];
-extern const char SHRPX_OPT_BACKEND_HTTP1_CONNECTIONS_PER_HOST[];
-extern const char SHRPX_OPT_BACKEND_HTTP1_CONNECTIONS_PER_FRONTEND[];
-extern const char SHRPX_OPT_LISTENER_DISABLE_TIMEOUT[];
-extern const char SHRPX_OPT_TLS_TICKET_KEY_FILE[];
-extern const char SHRPX_OPT_RLIMIT_NOFILE[];
-extern const char SHRPX_OPT_BACKEND_REQUEST_BUFFER[];
-extern const char SHRPX_OPT_BACKEND_RESPONSE_BUFFER[];
-extern const char SHRPX_OPT_NO_SERVER_PUSH[];
-extern const char SHRPX_OPT_BACKEND_HTTP2_CONNECTIONS_PER_WORKER[];
-extern const char SHRPX_OPT_FETCH_OCSP_RESPONSE_FILE[];
-extern const char SHRPX_OPT_OCSP_UPDATE_INTERVAL[];
-extern const char SHRPX_OPT_NO_OCSP[];
-extern const char SHRPX_OPT_HEADER_FIELD_BUFFER[];
-extern const char SHRPX_OPT_MAX_HEADER_FIELDS[];
+constexpr char SHRPX_OPT_PRIVATE_KEY_FILE[] = "private-key-file";
+constexpr char SHRPX_OPT_PRIVATE_KEY_PASSWD_FILE[] = "private-key-passwd-file";
+constexpr char SHRPX_OPT_CERTIFICATE_FILE[] = "certificate-file";
+constexpr char SHRPX_OPT_DH_PARAM_FILE[] = "dh-param-file";
+constexpr char SHRPX_OPT_SUBCERT[] = "subcert";
+constexpr char SHRPX_OPT_BACKEND[] = "backend";
+constexpr char SHRPX_OPT_FRONTEND[] = "frontend";
+constexpr char SHRPX_OPT_WORKERS[] = "workers";
+constexpr char SHRPX_OPT_HTTP2_MAX_CONCURRENT_STREAMS[] =
+    "http2-max-concurrent-streams";
+constexpr char SHRPX_OPT_LOG_LEVEL[] = "log-level";
+constexpr char SHRPX_OPT_DAEMON[] = "daemon";
+constexpr char SHRPX_OPT_HTTP2_PROXY[] = "http2-proxy";
+constexpr char SHRPX_OPT_HTTP2_BRIDGE[] = "http2-bridge";
+constexpr char SHRPX_OPT_CLIENT_PROXY[] = "client-proxy";
+constexpr char SHRPX_OPT_ADD_X_FORWARDED_FOR[] = "add-x-forwarded-for";
+constexpr char SHRPX_OPT_STRIP_INCOMING_X_FORWARDED_FOR[] =
+    "strip-incoming-x-forwarded-for";
+constexpr char SHRPX_OPT_NO_VIA[] = "no-via";
+constexpr char SHRPX_OPT_FRONTEND_HTTP2_READ_TIMEOUT[] =
+    "frontend-http2-read-timeout";
+constexpr char SHRPX_OPT_FRONTEND_READ_TIMEOUT[] = "frontend-read-timeout";
+constexpr char SHRPX_OPT_FRONTEND_WRITE_TIMEOUT[] = "frontend-write-timeout";
+constexpr char SHRPX_OPT_BACKEND_READ_TIMEOUT[] = "backend-read-timeout";
+constexpr char SHRPX_OPT_BACKEND_WRITE_TIMEOUT[] = "backend-write-timeout";
+constexpr char SHRPX_OPT_STREAM_READ_TIMEOUT[] = "stream-read-timeout";
+constexpr char SHRPX_OPT_STREAM_WRITE_TIMEOUT[] = "stream-write-timeout";
+constexpr char SHRPX_OPT_ACCESSLOG_FILE[] = "accesslog-file";
+constexpr char SHRPX_OPT_ACCESSLOG_SYSLOG[] = "accesslog-syslog";
+constexpr char SHRPX_OPT_ACCESSLOG_FORMAT[] = "accesslog-format";
+constexpr char SHRPX_OPT_ERRORLOG_FILE[] = "errorlog-file";
+constexpr char SHRPX_OPT_ERRORLOG_SYSLOG[] = "errorlog-syslog";
+constexpr char SHRPX_OPT_BACKEND_KEEP_ALIVE_TIMEOUT[] =
+    "backend-keep-alive-timeout";
+constexpr char SHRPX_OPT_FRONTEND_HTTP2_WINDOW_BITS[] =
+    "frontend-http2-window-bits";
+constexpr char SHRPX_OPT_BACKEND_HTTP2_WINDOW_BITS[] =
+    "backend-http2-window-bits";
+constexpr char SHRPX_OPT_FRONTEND_HTTP2_CONNECTION_WINDOW_BITS[] =
+    "frontend-http2-connection-window-bits";
+constexpr char SHRPX_OPT_BACKEND_HTTP2_CONNECTION_WINDOW_BITS[] =
+    "backend-http2-connection-window-bits";
+constexpr char SHRPX_OPT_FRONTEND_NO_TLS[] = "frontend-no-tls";
+constexpr char SHRPX_OPT_BACKEND_NO_TLS[] = "backend-no-tls";
+constexpr char SHRPX_OPT_BACKEND_TLS_SNI_FIELD[] = "backend-tls-sni-field";
+constexpr char SHRPX_OPT_PID_FILE[] = "pid-file";
+constexpr char SHRPX_OPT_USER[] = "user";
+constexpr char SHRPX_OPT_SYSLOG_FACILITY[] = "syslog-facility";
+constexpr char SHRPX_OPT_BACKLOG[] = "backlog";
+constexpr char SHRPX_OPT_CIPHERS[] = "ciphers";
+constexpr char SHRPX_OPT_CLIENT[] = "client";
+constexpr char SHRPX_OPT_INSECURE[] = "insecure";
+constexpr char SHRPX_OPT_CACERT[] = "cacert";
+constexpr char SHRPX_OPT_BACKEND_IPV4[] = "backend-ipv4";
+constexpr char SHRPX_OPT_BACKEND_IPV6[] = "backend-ipv6";
+constexpr char SHRPX_OPT_BACKEND_HTTP_PROXY_URI[] = "backend-http-proxy-uri";
+constexpr char SHRPX_OPT_READ_RATE[] = "read-rate";
+constexpr char SHRPX_OPT_READ_BURST[] = "read-burst";
+constexpr char SHRPX_OPT_WRITE_RATE[] = "write-rate";
+constexpr char SHRPX_OPT_WRITE_BURST[] = "write-burst";
+constexpr char SHRPX_OPT_WORKER_READ_RATE[] = "worker-read-rate";
+constexpr char SHRPX_OPT_WORKER_READ_BURST[] = "worker-read-burst";
+constexpr char SHRPX_OPT_WORKER_WRITE_RATE[] = "worker-write-rate";
+constexpr char SHRPX_OPT_WORKER_WRITE_BURST[] = "worker-write-burst";
+constexpr char SHRPX_OPT_NPN_LIST[] = "npn-list";
+constexpr char SHRPX_OPT_TLS_PROTO_LIST[] = "tls-proto-list";
+constexpr char SHRPX_OPT_VERIFY_CLIENT[] = "verify-client";
+constexpr char SHRPX_OPT_VERIFY_CLIENT_CACERT[] = "verify-client-cacert";
+constexpr char SHRPX_OPT_CLIENT_PRIVATE_KEY_FILE[] = "client-private-key-file";
+constexpr char SHRPX_OPT_CLIENT_CERT_FILE[] = "client-cert-file";
+constexpr char SHRPX_OPT_FRONTEND_HTTP2_DUMP_REQUEST_HEADER[] =
+    "frontend-http2-dump-request-header";
+constexpr char SHRPX_OPT_FRONTEND_HTTP2_DUMP_RESPONSE_HEADER[] =
+    "frontend-http2-dump-response-header";
+constexpr char SHRPX_OPT_HTTP2_NO_COOKIE_CRUMBLING[] =
+    "http2-no-cookie-crumbling";
+constexpr char SHRPX_OPT_FRONTEND_FRAME_DEBUG[] = "frontend-frame-debug";
+constexpr char SHRPX_OPT_PADDING[] = "padding";
+constexpr char SHRPX_OPT_ALTSVC[] = "altsvc";
+constexpr char SHRPX_OPT_ADD_RESPONSE_HEADER[] = "add-response-header";
+constexpr char SHRPX_OPT_WORKER_FRONTEND_CONNECTIONS[] =
+    "worker-frontend-connections";
+constexpr char SHRPX_OPT_NO_LOCATION_REWRITE[] = "no-location-rewrite";
+constexpr char SHRPX_OPT_NO_HOST_REWRITE[] = "no-host-rewrite";
+constexpr char SHRPX_OPT_BACKEND_HTTP1_CONNECTIONS_PER_HOST[] =
+    "backend-http1-connections-per-host";
+constexpr char SHRPX_OPT_BACKEND_HTTP1_CONNECTIONS_PER_FRONTEND[] =
+    "backend-http1-connections-per-frontend";
+constexpr char SHRPX_OPT_LISTENER_DISABLE_TIMEOUT[] =
+    "listener-disable-timeout";
+constexpr char SHRPX_OPT_TLS_TICKET_KEY_FILE[] = "tls-ticket-key-file";
+constexpr char SHRPX_OPT_RLIMIT_NOFILE[] = "rlimit-nofile";
+constexpr char SHRPX_OPT_BACKEND_REQUEST_BUFFER[] = "backend-request-buffer";
+constexpr char SHRPX_OPT_BACKEND_RESPONSE_BUFFER[] = "backend-response-buffer";
+constexpr char SHRPX_OPT_NO_SERVER_PUSH[] = "no-server-push";
+constexpr char SHRPX_OPT_BACKEND_HTTP2_CONNECTIONS_PER_WORKER[] =
+    "backend-http2-connections-per-worker";
+constexpr char SHRPX_OPT_FETCH_OCSP_RESPONSE_FILE[] =
+    "fetch-ocsp-response-file";
+constexpr char SHRPX_OPT_OCSP_UPDATE_INTERVAL[] = "ocsp-update-interval";
+constexpr char SHRPX_OPT_NO_OCSP[] = "no-ocsp";
+constexpr char SHRPX_OPT_HEADER_FIELD_BUFFER[] = "header-field-buffer";
+constexpr char SHRPX_OPT_MAX_HEADER_FIELDS[] = "max-header-fields";
 
 union sockaddr_union {
   sockaddr_storage storage;
