@@ -768,25 +768,26 @@ bool conf_exists(const char *path) {
 } // namespace
 
 namespace {
-const char *DEFAULT_NPN_LIST = "h2,h2-16,h2-14,"
+constexpr char DEFAULT_NPN_LIST[] = "h2,h2-16,h2-14,"
 #ifdef HAVE_SPDYLAY
-                               "spdy/3.1,"
+                                    "spdy/3.1,"
 #endif // HAVE_SPDYLAY
-                               "http/1.1";
+                                    "http/1.1";
 } // namespace
 
 namespace {
-const char *DEFAULT_TLS_PROTO_LIST = "TLSv1.2,TLSv1.1";
+constexpr char DEFAULT_TLS_PROTO_LIST[] = "TLSv1.2,TLSv1.1";
 } // namespace
 
 namespace {
-const char *DEFAULT_ACCESSLOG_FORMAT = "$remote_addr - - [$time_local] "
-                                       "\"$request\" $status $body_bytes_sent "
-                                       "\"$http_referer\" \"$http_user_agent\"";
+constexpr char DEFAULT_ACCESSLOG_FORMAT[] =
+    R"($remote_addr - - [$time_local] )"
+    R"("$request" $status $body_bytes_sent )"
+    R"("$http_referer" "$http_user_agent")";
 } // namespace
 
 namespace {
-auto DEFAULT_DOWNSTREAM_HOST = "127.0.0.1";
+constexpr char DEFAULT_DOWNSTREAM_HOST[] = "127.0.0.1";
 int16_t DEFAULT_DOWNSTREAM_PORT = 80;
 } // namespace;
 
