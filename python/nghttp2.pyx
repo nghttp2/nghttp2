@@ -698,6 +698,7 @@ cdef class _HTTP2SessionCoreBase:
         handler.stream_id = stream_id
         handler.http2 = self
         handler.remote_address = self._get_remote_address()
+        handler.client_certificate = self._get_client_certificate()
         self.handlers.add(handler)
 
     def _rst_stream(self, stream_id,
@@ -712,6 +713,13 @@ cdef class _HTTP2SessionCoreBase:
 
     def _get_remote_address(self):
         return self.transport.get_extra_info('peername')
+
+    def _get_client_certificate(self):
+        sock = self.transport.get_extra_info('socket')
+        try:
+            return sock.getpeercert()
+        except AttributeError:
+            return None
 
     def _start_settings_timer(self):
         loop = asyncio.get_event_loop()
@@ -1030,6 +1038,9 @@ if asyncio:
           Contains a tuple of the form (host, port) referring to the client's
           address.
 
+        client_certificate
+          May contain the client certifcate in its non-binary form
+
         stream_id
           Stream ID of this stream
 
@@ -1058,6 +1069,8 @@ if asyncio:
             self.http2 = http2
             # address of the client
             self.remote_address = self.http2._get_remote_address()
+            # certificate of the client
+            self._client_certificate = self.http2._get_client_certificate()
             # :scheme header field in request
             self.scheme = None
             # :method header field in request
@@ -1074,6 +1087,10 @@ if asyncio:
         @property
         def client_address(self):
             return self.remote_address
+
+        @property
+        def client_certificate(self):
+            return self._client_certificate
 
         def on_headers(self):
 
