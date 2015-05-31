@@ -100,7 +100,8 @@ static http2_stream_data *create_http2_stream_data(const char *uri,
                  ":%u", u->port);
   }
 
-  stream_data->pathlen = 0;
+  /* If we don't have path in URI, we use "/" as path. */
+  stream_data->pathlen = 1;
   if (u->field_set & (1 << UF_PATH)) {
     stream_data->pathlen = u->field_data[UF_PATH].len;
   }
@@ -108,19 +109,22 @@ static http2_stream_data *create_http2_stream_data(const char *uri,
     /* +1 for '?' character */
     stream_data->pathlen += u->field_data[UF_QUERY].len + 1;
   }
-  if (stream_data->pathlen > 0) {
-    stream_data->path = malloc(stream_data->pathlen);
-    if (u->field_set & (1 << UF_PATH)) {
-      memcpy(stream_data->path, &uri[u->field_data[UF_PATH].off],
-             u->field_data[UF_PATH].len);
-    }
-    if (u->field_set & (1 << UF_QUERY)) {
-      memcpy(stream_data->path + u->field_data[UF_PATH].len + 1,
-             &uri[u->field_data[UF_QUERY].off], u->field_data[UF_QUERY].len);
-    }
+
+  stream_data->path = malloc(stream_data->pathlen);
+  if (u->field_set & (1 << UF_PATH)) {
+    memcpy(stream_data->path, &uri[u->field_data[UF_PATH].off],
+           u->field_data[UF_PATH].len);
   } else {
-    stream_data->path = NULL;
+    stream_data->path[0] = '/';
   }
+  if (u->field_set & (1 << UF_QUERY)) {
+    stream_data->path[stream_data->pathlen - u->field_data[UF_QUERY].len - 1] =
+        '?';
+    memcpy(stream_data->path + stream_data->pathlen -
+               u->field_data[UF_QUERY].len,
+           &uri[u->field_data[UF_QUERY].off], u->field_data[UF_QUERY].len);
+  }
+
   return stream_data;
 }
 
