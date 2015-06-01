@@ -230,20 +230,6 @@ TESTLDADD=
 # Additional libraries required for programs under src directory.
 APPLDFLAGS=
 
-LIBS_OLD=$LIBS
-# Search for dlsym function, which is used in tests. Linux needs -ldl,
-# but netbsd does not need it.
-AC_SEARCH_LIBS([dlsym], [dl])
-TESTLDADD="$LIBS $TESTLDADD"
-LIBS=$LIBS_OLD
-
-LIBS_OLD=$LIBS
-AC_SEARCH_LIBS([clock_gettime], [rt],
-               [AC_DEFINE([HAVE_CLOCK_GETTIME], [1],
-                          [Define to 1 if you have the `clock_gettime`.])])
-APPLDFLAGS="$LIBS $APPLDFLAGS"
-LIBS=$LIBS_OLD
-
 case "$host" in
   *android*)
     android_build=yes
