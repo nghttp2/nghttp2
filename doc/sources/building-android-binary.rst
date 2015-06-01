@@ -36,8 +36,9 @@ with the toolchain and installed under ``$ANDROID_HOME/usr/local``.
 We recommend to build these libraries as static library to make the
 deployment easier.  libxml2 support is currently disabled.
 
-We use zlib which comes with Android NDK, so we don't have to build it
-by ourselves.
+Although zlib comes with Android NDK, it seems not to be a part of
+public API, so we have to built it for our own.  That also provides us
+proper .pc file as a bonus.
 
 If SPDY support is required for nghttpx and h2load, build and install
 spdylay as well.
@@ -95,9 +96,40 @@ patch, to configure libev, use the following script:
 
 And run ``make install`` to build and install.
 
+To configure zlib, use the following script:
+
+.. code-block:: sh
+
+    #!/bin/sh -e
+
+    if [ -z "$ANDROID_HOME" ]; then
+        echo 'No $ANDROID_HOME specified.'
+        exit 1
+    fi
+    PREFIX=$ANDROID_HOME/usr/local
+    TOOLCHAIN=$ANDROID_HOME/toolchain
+    PATH=$TOOLCHAIN/bin:$PATH
+
+    HOST=arm-linux-androideabi
+
+    CC=$HOST-gcc \
+    AR=$HOST-ar \
+    LD=$HOST-ld \
+    RANLIB=$HOST-ranlib \
+    STRIP=$HOST-strip \
+    ./configure \
+        --prefix=$PREFIX \
+        --libdir=$PREFIX/lib \
+        --includedir=$PREFIX/include \
+        --static
+
+And run ``make install`` to build and install.
+
 To configure spdylay, use the following script:
 
 .. code-block:: sh
+
+    #!/bin/sh -e
 
     if [ -z "$ANDROID_HOME" ]; then
 	echo 'No $ANDROID_HOME specified.'
@@ -119,11 +151,7 @@ To configure spdylay, use the following script:
 	PKG_CONFIG_LIBDIR="$PREFIX/lib/pkgconfig" \
 	LDFLAGS="-L$PREFIX/lib"
 
-And run ``make install`` to build and install.  After spdylay
-installation, edit $ANDROID_HOME/usr/local/lib/pkgconfig/libspdylay.pc
-and remove the following line::
-
-    Requires.private: zlib
+And run ``make install`` to build and install.
 
 After prerequisite libraries are prepared, run ``android-config`` and
 then ``android-make`` to compile nghttp2 source files.
