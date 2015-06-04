@@ -312,7 +312,7 @@ fi
 # jansson (for src/nghttp, src/deflatehd and src/inflatehd)
 PKG_CHECK_MODULES([JANSSON], [jansson >= 2.5],
                   [have_jansson=yes], [have_jansson=no])
-if test "x${have_jansson}" == "xyes"; then
+if test "x${have_jansson}" = "xyes"; then
   AC_DEFINE([HAVE_JANSSON], [1],
             [Define to 1 if you have `libjansson` library.])
 else
