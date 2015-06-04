@@ -48,7 +48,7 @@ namespace ssl {
 struct TLSContextData {
   // Protects ocsp_data;
   std::mutex mu;
-  // OCSP resonse
+  // OCSP response
   std::vector<uint8_t> ocsp_data;
 
   // Path to certificate file
