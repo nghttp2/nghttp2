@@ -202,9 +202,9 @@ static void stream_update_dep_effective_weight(nghttp2_stream *stream) {
     if (si->dpri != NGHTTP2_STREAM_DPRI_REST) {
       si->effective_weight =
           nghttp2_stream_dep_distributed_effective_weight(stream, si->weight);
-    }
 
-    stream_update_dep_effective_weight(si);
+      stream_update_dep_effective_weight(si);
+    }
   }
 }
 
@@ -311,7 +311,6 @@ static int stream_update_dep_queue_top(nghttp2_stream *stream,
  */
 static int stream_update_dep_sum_norest_weight(nghttp2_stream *stream) {
   nghttp2_stream *si;
-  int rv;
 
   stream->sum_norest_weight = 0;
 
@@ -323,17 +322,14 @@ static int stream_update_dep_sum_norest_weight(nghttp2_stream *stream) {
     return 0;
   }
 
-  rv = 0;
-
   for (si = stream->dep_next; si; si = si->sib_next) {
 
     if (stream_update_dep_sum_norest_weight(si)) {
-      rv = 1;
       stream->sum_norest_weight += si->weight;
     }
   }
 
-  return rv;
+  return stream->sum_norest_weight > 0;
 }
 
 static int stream_update_dep_on_attach_item(nghttp2_stream *stream,
