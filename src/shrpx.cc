@@ -1350,6 +1350,12 @@ HTTP:
               HTTP/1.1  frontend.  This  option can  be used  multiple
               times   to   specify  multiple   alternative   services.
               Example: --altsvc=h2,443
+  --add-request-header=<HEADER>
+              Specify additional header field to add to request header
+              set.  This  option just  appends header field  and won't
+              replace anything  already set.  This option  can be used
+              several  times   to  specify  multiple   header  fields.
+              Example: --add-request-header="foo: bar"
   --add-response-header=<HEADER>
               Specify  additional  header  field to  add  to  response
               header set.   This option just appends  header field and
@@ -1544,6 +1550,7 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_NO_OCSP, no_argument, &flag, 79},
         {SHRPX_OPT_HEADER_FIELD_BUFFER, required_argument, &flag, 80},
         {SHRPX_OPT_MAX_HEADER_FIELDS, required_argument, &flag, 81},
+        {SHRPX_OPT_ADD_REQUEST_HEADER, required_argument, &flag, 82},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -1901,6 +1908,10 @@ int main(int argc, char **argv) {
       case 81:
         // --max-header-fields
         cmdcfgs.emplace_back(SHRPX_OPT_MAX_HEADER_FIELDS, optarg);
+        break;
+      case 82:
+        // --add-request-header
+        cmdcfgs.emplace_back(SHRPX_OPT_ADD_REQUEST_HEADER, optarg);
         break;
       default:
         break;

@@ -313,7 +313,8 @@ int Http2DownstreamConnection::push_request_headers() {
   // 7. x-forwarded-proto (optional)
   // 8. te (optional)
   auto nva = std::vector<nghttp2_nv>();
-  nva.reserve(nheader + 8 + cookies.size());
+  nva.reserve(nheader + 8 + cookies.size() +
+              get_config()->add_request_headers.size());
 
   std::string via_value;
   std::string xff_value;
@@ -409,6 +410,10 @@ int Http2DownstreamConnection::push_request_headers() {
   // TODO more strict handling required here.
   if (te && util::strifind(te->value.c_str(), "trailers")) {
     nva.push_back(http2::make_nv_ll("te", "trailers"));
+  }
+
+  for (auto &p : get_config()->add_request_headers) {
+    nva.push_back(http2::make_nv(p.first, p.second));
   }
 
   if (LOG_ENABLED(INFO)) {

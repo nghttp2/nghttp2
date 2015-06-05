@@ -997,14 +997,18 @@ int parse_config(const char *opt, const char *optarg) {
     return 0;
   }
 
-  if (util::strieq(opt, SHRPX_OPT_ADD_RESPONSE_HEADER)) {
+  if (util::strieq(opt, SHRPX_OPT_ADD_REQUEST_HEADER) ||
+      util::strieq(opt, SHRPX_OPT_ADD_RESPONSE_HEADER)) {
     auto p = parse_header(optarg);
     if (p.first.empty()) {
       LOG(ERROR) << opt << ": header field name is empty: " << optarg;
       return -1;
     }
-    mod_config()->add_response_headers.push_back(std::move(p));
-
+    if (util::strieq(opt, SHRPX_OPT_ADD_REQUEST_HEADER)) {
+      mod_config()->add_request_headers.push_back(std::move(p));
+    } else {
+      mod_config()->add_response_headers.push_back(std::move(p));
+    }
     return 0;
   }
 

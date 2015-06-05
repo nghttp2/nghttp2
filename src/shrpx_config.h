@@ -140,6 +140,7 @@ constexpr char SHRPX_OPT_HTTP2_NO_COOKIE_CRUMBLING[] =
 constexpr char SHRPX_OPT_FRONTEND_FRAME_DEBUG[] = "frontend-frame-debug";
 constexpr char SHRPX_OPT_PADDING[] = "padding";
 constexpr char SHRPX_OPT_ALTSVC[] = "altsvc";
+constexpr char SHRPX_OPT_ADD_REQUEST_HEADER[] = "add-request-header";
 constexpr char SHRPX_OPT_ADD_RESPONSE_HEADER[] = "add-response-header";
 constexpr char SHRPX_OPT_WORKER_FRONTEND_CONNECTIONS[] =
     "worker-frontend-connections";
@@ -220,6 +221,7 @@ struct Config {
   // The list of (private key file, certificate file) pair
   std::vector<std::pair<std::string, std::string>> subcerts;
   std::vector<AltSvc> altsvcs;
+  std::vector<std::pair<std::string, std::string>> add_request_headers;
   std::vector<std::pair<std::string, std::string>> add_response_headers;
   std::vector<unsigned char> alpn_prefs;
   std::vector<LogFragment> accesslog_format;
