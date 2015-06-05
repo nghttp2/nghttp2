@@ -38,7 +38,7 @@
 /*
  * Maximum number of streams in one dependency tree.
  */
-#define NGHTTP2_MAX_DEP_TREE_LENGTH 100
+#define NGHTTP2_MAX_DEP_TREE_LENGTH 120
 
 /*
  * If local peer is stream initiator:
