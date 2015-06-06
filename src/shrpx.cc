@@ -311,11 +311,15 @@ std::unique_ptr<AcceptHandler> create_acceptor(ConnectionHandler *handler,
     fd =
         socket(rp->ai_family, rp->ai_socktype | SOCK_NONBLOCK, rp->ai_protocol);
     if (fd == -1) {
+      auto error = errno;
+      LOG(WARN) << "socket() syscall failed, error=" << error;
       continue;
     }
 #else  // !SOCK_NONBLOCK
     fd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
     if (fd == -1) {
+      auto error = errno;
+      LOG(WARN) << "socket() syscall failed, error=" << error;
       continue;
     }
     util::make_socket_nonblocking(fd);
@@ -323,6 +327,10 @@ std::unique_ptr<AcceptHandler> create_acceptor(ConnectionHandler *handler,
     int val = 1;
     if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &val,
                    static_cast<socklen_t>(sizeof(val))) == -1) {
+      auto error = errno;
+      LOG(WARN)
+          << "Failed to set SO_REUSEADDR option to listener socket, error="
+          << error;
       close(fd);
       continue;
     }
@@ -331,6 +339,10 @@ std::unique_ptr<AcceptHandler> create_acceptor(ConnectionHandler *handler,
     if (family == AF_INET6) {
       if (setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &val,
                      static_cast<socklen_t>(sizeof(val))) == -1) {
+        auto error = errno;
+        LOG(WARN)
+            << "Failed to set IPV6_V6ONLY option to listener socket, error="
+            << error;
         close(fd);
         continue;
       }
@@ -345,11 +357,21 @@ std::unique_ptr<AcceptHandler> create_acceptor(ConnectionHandler *handler,
     }
 #endif // TCP_DEFER_ACCEPT
 
-    if (bind(fd, rp->ai_addr, rp->ai_addrlen) == 0 &&
-        listen(fd, get_config()->backlog) == 0) {
-      break;
+    if (bind(fd, rp->ai_addr, rp->ai_addrlen) == -1) {
+      auto error = errno;
+      LOG(WARN) << "bind() syscall failed, error=" << error;
+      close(fd);
+      continue;
     }
-    close(fd);
+
+    if (listen(fd, get_config()->backlog) == -1) {
+      auto error = errno;
+      LOG(WARN) << "listen() syscall failed, error=" << error;
+      close(fd);
+      continue;
+    }
+
+    break;
   }
 
   if (!rp) {
