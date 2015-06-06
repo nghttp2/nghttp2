@@ -32,5 +32,3 @@ libhttp_parser_la_SOURCES = \
 
 
 endif # ENABLE_THIRD_PARTY
-
-dist_pkgdata_SCRIPTS = h2o/fetch-ocsp-response
