@@ -357,6 +357,9 @@ std::unique_ptr<AcceptHandler> create_acceptor(ConnectionHandler *handler,
     }
 #endif // TCP_DEFER_ACCEPT
 
+    // When we are executing new binary, and the old binary did not
+    // bind privileged port (< 1024) for some reason, binding to those
+    // ports will fail with permission denied error.
     if (bind(fd, rp->ai_addr, rp->ai_addrlen) == -1) {
       auto error = errno;
       LOG(WARN) << "bind() syscall failed, error=" << error;
