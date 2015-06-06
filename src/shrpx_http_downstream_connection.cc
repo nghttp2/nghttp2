@@ -788,7 +788,7 @@ int HttpDownstreamConnection::on_read() {
     }
 
     if (downstream_->get_upgraded()) {
-      if (nproc < nread) {
+      if (nproc < static_cast<size_t>(nread)) {
         // Data from buf.data() + nproc are for upgraded protocol.
         rv = downstream_->get_upstream()->on_downstream_body(
             downstream_, buf.data() + nproc, nread - nproc, true);
