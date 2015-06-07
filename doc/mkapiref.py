@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 # nghttp2 - HTTP/2 C Library
 
 # Copyright (c) 2012 Tatsuhiro Tsujikawa
@@ -23,6 +24,8 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 # Generates API reference from C source code.
+
+from __future__ import unicode_literals
 from __future__ import print_function # At least python 2.6 is required
 import re, sys, argparse, os.path
 
