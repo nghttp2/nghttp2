@@ -139,8 +139,9 @@ AC_PROG_MKDIR_P
 
 PKG_PROG_PKG_CONFIG([0.20])
 
+AM_PATH_PYTHON([2.7],, [:])
+
 if [test "x$request_python_bindings" != "xno"]; then
-  AM_PATH_PYTHON([2.7],, [:])
   AX_PYTHON_DEVEL([>= '2.7'])
 fi
 
