@@ -1,7 +1,10 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 
+from __future__ import unicode_literals
+from __future__ import print_function
 import subprocess
-from StringIO import StringIO
+import io
 import re
 import sys
 import os.path
@@ -14,10 +17,10 @@ class Option:
 def get_all_options(cmd):
     opt_pattern = re.compile(r'  (?:(-.), )?(--[^\s\[=]+)(\[)?')
     proc = subprocess.Popen([cmd, "--help"], stdout=subprocess.PIPE)
-    stdoutdata, stderrdata = proc.communicate()
+    stdoutdata, _ = proc.communicate()
     cur_option = None
     opts = {}
-    for line in StringIO(stdoutdata):
+    for line in io.StringIO(stdoutdata.decode('utf-8')):
         match = opt_pattern.match(line)
         if not match:
             continue
@@ -45,7 +48,7 @@ _{name}()
         -*)
             COMPREPLY=( $( compgen -W '\
 ''')
-    for opt in opts.itervalues():
+    for opt in opts.values():
         out.write(opt.long_opt)
         out.write(' ')
 
@@ -66,8 +69,8 @@ complete -F _{name} {name}
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
-        print "Generates bash_completion using `/path/to/cmd --help'"
-        print "Usage: make_bash_completion.py /path/to/cmd"
+        print("Generates bash_completion using `/path/to/cmd --help'")
+        print("Usage: make_bash_completion.py /path/to/cmd")
         exit(1)
     name = os.path.basename(sys.argv[1])
     opts = get_all_options(sys.argv[1])
