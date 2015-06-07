@@ -883,6 +883,11 @@ cdef class _HTTP2SessionCore(_HTTP2SessionCoreBase):
 
         return promised_handler
 
+    def connection_lost(self):
+        for handler in self.handlers:
+            handler.on_close(cnghttp2.NGHTTP2_INTERNAL_ERROR)
+        self.handlers = set()
+
 cdef class _HTTP2ClientSessionCore(_HTTP2SessionCoreBase):
     def __cinit__(self, *args, **kwargs):
         cdef cnghttp2.nghttp2_session_callbacks *callbacks
@@ -1280,6 +1285,7 @@ if asyncio:
         def connection_lost(self, exc):
             logging.info('connection_lost')
             if self.http2:
+                self.http2.connection_lost()
                 self.http2 = None
 
         def data_received(self, data):
@@ -1357,7 +1363,8 @@ if asyncio:
 
         When whole response is received, on_response_done() is invoked.
 
-        When stream is closed, on_close(error_code) is called.
+        When stream is closed or underlying connection is lost,
+        on_close(error_code) is called.
 
         The application can send follow up requests using HTTP2Client.send_request() method.
 
