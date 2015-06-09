@@ -780,7 +780,7 @@ namespace {
 // percentage of number of samples within mean +/- sd are computed.
 template <typename Duration>
 TimeStat<Duration> compute_time_stat(const std::vector<Duration> &samples) {
-  if (samples.size() == 0) {
+  if (samples.empty()) {
     return {Duration::zero(), Duration::zero(), Duration::zero(),
             Duration::zero(), 0.0};
   }
