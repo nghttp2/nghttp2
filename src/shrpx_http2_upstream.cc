@@ -283,13 +283,21 @@ int Http2Upstream::on_request_headers(Downstream *downstream,
 
   // presence of mandatory header fields are guaranteed by libnghttp2.
 
+  auto method_token = http2::lookup_method_token(method->value);
+  if (method_token == -1) {
+    if (error_reply(downstream, 501) != 0) {
+      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+    }
+    return 0;
+  }
+
   // For HTTP/2 proxy, we request :authority.
-  if (method->value != "CONNECT" && get_config()->http2_proxy && !authority) {
+  if (method_token != HTTP_CONNECT && get_config()->http2_proxy && !authority) {
     rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
     return 0;
   }
 
-  downstream->set_request_method(http2::value_to_str(method));
+  downstream->set_request_method(method_token);
   downstream->set_request_http2_scheme(http2::value_to_str(scheme));
   downstream->set_request_http2_authority(http2::value_to_str(authority));
   downstream->set_request_path(http2::value_to_str(path));
@@ -521,7 +529,8 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
       auto token = http2::lookup_token(nv.name, nv.namelen);
       switch (token) {
       case http2::HD__METHOD:
-        downstream->set_request_method({nv.value, nv.value + nv.valuelen});
+        downstream->set_request_method(
+            http2::lookup_method_token(nv.value, nv.valuelen));
         break;
       case http2::HD__SCHEME:
         downstream->set_request_http2_scheme(
@@ -1307,8 +1316,8 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
       !get_config()->http2_proxy && (downstream->get_stream_id() % 2) &&
       downstream->get_response_header(http2::HD_LINK) &&
       downstream->get_response_http_status() == 200 &&
-      (downstream->get_request_method() == "GET" ||
-       downstream->get_request_method() == "POST")) {
+      (downstream->get_request_method() == HTTP_GET ||
+       downstream->get_request_method() == HTTP_POST)) {
 
     if (prepare_push_promise(downstream) != 0) {
       return -1;

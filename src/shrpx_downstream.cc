@@ -117,7 +117,7 @@ Downstream::Downstream(Upstream *upstream, MemchunkPool *mcpool,
       response_headers_sum_(0), request_datalen_(0), response_datalen_(0),
       num_retry_(0), stream_id_(stream_id), priority_(priority),
       downstream_stream_id_(-1),
-      response_rst_stream_error_code_(NGHTTP2_NO_ERROR),
+      response_rst_stream_error_code_(NGHTTP2_NO_ERROR), request_method_(-1),
       request_state_(INITIAL), request_major_(1), request_minor_(1),
       response_state_(INITIAL), response_http_status_(0), response_major_(1),
       response_minor_(1), dispatch_state_(DISPATCH_NONE),
@@ -470,13 +470,9 @@ void Downstream::append_last_request_trailer_value(const char *data,
                            request_trailers_, data, len);
 }
 
-void Downstream::set_request_method(std::string method) {
-  request_method_ = std::move(method);
-}
+void Downstream::set_request_method(int method) { request_method_ = method; }
 
-const std::string &Downstream::get_request_method() const {
-  return request_method_;
-}
+int Downstream::get_request_method() const { return request_method_; }
 
 void Downstream::set_request_path(std::string path) {
   request_path_ = std::move(path);
@@ -635,7 +631,7 @@ void Downstream::rewrite_location_response_header(
     return;
   }
   std::string new_uri;
-  if (get_config()->no_host_rewrite || request_method_ == "CONNECT") {
+  if (get_config()->no_host_rewrite || request_method_ == HTTP_CONNECT) {
     if (!request_http2_authority_.empty()) {
       new_uri = http2::rewrite_location_uri(
           (*hd).value, u, request_http2_authority_, request_http2_authority_,
@@ -900,7 +896,7 @@ void Downstream::set_priority(int32_t pri) { priority_ = pri; }
 int32_t Downstream::get_priority() const { return priority_; }
 
 void Downstream::check_upgrade_fulfilled() {
-  if (request_method_ == "CONNECT") {
+  if (request_method_ == HTTP_CONNECT) {
     upgraded_ = 200 <= response_http_status_ && response_http_status_ < 300;
 
     return;
@@ -915,13 +911,13 @@ void Downstream::check_upgrade_fulfilled() {
 }
 
 void Downstream::inspect_http2_request() {
-  if (request_method_ == "CONNECT") {
+  if (request_method_ == HTTP_CONNECT) {
     upgrade_request_ = true;
   }
 }
 
 void Downstream::inspect_http1_request() {
-  if (request_method_ == "CONNECT") {
+  if (request_method_ == HTTP_CONNECT) {
     upgrade_request_ = true;
   }
 

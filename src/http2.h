@@ -285,9 +285,18 @@ std::string path_join(const char *base_path, size_t base_pathlen,
 // true if response has body, taking into account the request method
 // and status code.
 bool expect_response_body(const std::string &method, int status_code);
+bool expect_response_body(int method_token, int status_code);
 
 // true if response has body, taking into account status code only.
 bool expect_response_body(int status_code);
+
+// Looks up method token for method name |name| of length |namelen|.
+// Only methods defined in http-parser/http-parser.h (http_method) are
+// tokenized.  If method name cannot be tokenized, returns -1.
+int lookup_method_token(const uint8_t *name, size_t namelen);
+int lookup_method_token(const std::string &name);
+
+const char *to_method_string(int method_token);
 
 } // namespace http2
 

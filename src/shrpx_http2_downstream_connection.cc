@@ -258,7 +258,7 @@ int Http2DownstreamConnection::push_request_headers() {
   auto no_host_rewrite = get_config()->no_host_rewrite ||
                          get_config()->http2_proxy ||
                          get_config()->client_proxy ||
-                         downstream_->get_request_method() == "CONNECT";
+                         downstream_->get_request_method() == HTTP_CONNECT;
 
   // http2session_ has already in CONNECTED state, so we can get
   // addr_idx here.
@@ -320,10 +320,10 @@ int Http2DownstreamConnection::push_request_headers() {
   std::string xff_value;
   std::string scheme, uri_authority, path, query;
 
-  nva.push_back(
-      http2::make_nv_ls(":method", downstream_->get_request_method()));
+  nva.push_back(http2::make_nv_lc(
+      ":method", http2::to_method_string(downstream_->get_request_method())));
 
-  if (downstream_->get_request_method() == "CONNECT") {
+  if (downstream_->get_request_method() == HTTP_CONNECT) {
     if (authority) {
       nva.push_back(http2::make_nv_lc(":authority", authority));
     } else {
@@ -376,7 +376,7 @@ int Http2DownstreamConnection::push_request_headers() {
   }
 
   if (!get_config()->http2_proxy && !get_config()->client_proxy &&
-      downstream_->get_request_method() != "CONNECT") {
+      downstream_->get_request_method() != HTTP_CONNECT) {
     // We use same protocol with :scheme header field
     if (scheme.empty()) {
       if (client_handler_->get_ssl()) {
@@ -428,7 +428,7 @@ int Http2DownstreamConnection::push_request_headers() {
       downstream_->get_request_header(http2::HD_CONTENT_LENGTH);
   // TODO check content-length: 0 case
 
-  if (downstream_->get_request_method() == "CONNECT" || chunked_encoding ||
+  if (downstream_->get_request_method() == HTTP_CONNECT || chunked_encoding ||
       content_length || downstream_->get_request_http2_expect_body()) {
     // Request-body is expected.
     nghttp2_data_provider data_prd;

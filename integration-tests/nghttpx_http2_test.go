@@ -404,6 +404,26 @@ func TestH2H1ConnectFailure(t *testing.T) {
 	}
 }
 
+// TestH2H1InvalidMethod tests that server rejects invalid method with
+// 501.
+func TestH2H1InvalidMethod(t *testing.T) {
+	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("server should not forward this request")
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name:   "TestH2H1InvalidMethod",
+		method: "get",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.status, 501; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+}
+
 // TestH2H1AssembleCookies tests that crumbled cookies in HTTP/2
 // request is assembled into 1 when forwarding to HTTP/1 backend link.
 func TestH2H1AssembleCookies(t *testing.T) {

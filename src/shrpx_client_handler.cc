@@ -736,9 +736,10 @@ void ClientHandler::write_accesslog(Downstream *downstream) {
   upstream_accesslog(
       get_config()->accesslog_format,
       LogSpec{
-          downstream, ipaddr_.c_str(), downstream->get_request_method().c_str(),
+          downstream, ipaddr_.c_str(),
+          http2::to_method_string(downstream->get_request_method()),
 
-          (downstream->get_request_method() != "CONNECT" &&
+          (downstream->get_request_method() != HTTP_CONNECT &&
            (get_config()->http2_proxy || get_config()->client_proxy))
               ? construct_absolute_request_uri(downstream).c_str()
               : downstream->get_request_path().empty()

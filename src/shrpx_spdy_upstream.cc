@@ -192,15 +192,28 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
     auto host = downstream->get_request_header(http2::HD__HOST);
     auto method = downstream->get_request_header(http2::HD__METHOD);
 
-    bool is_connect = method && "CONNECT" == method->value;
-    if (!path || !host || !method || !http2::non_empty_value(host) ||
-        !http2::non_empty_value(path) || !http2::non_empty_value(method) ||
-        (!is_connect && (!scheme || !http2::non_empty_value(scheme)))) {
-      upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
+    if (!method) {
+      upstream->rst_stream(downstream, SPDYLAY_PROTOCOL_ERROR);
       return;
     }
 
-    downstream->set_request_method(method->value);
+    auto method_token = http2::lookup_method_token(method->value);
+    if (method_token == -1) {
+      if (upstream->error_reply(downstream, 501) != 0) {
+        ULOG(FATAL, upstream) << "error_reply failed";
+      }
+      return;
+    }
+
+    auto is_connect = method_token == HTTP_CONNECT;
+    if (!path || !host || !http2::non_empty_value(host) ||
+        !http2::non_empty_value(path) ||
+        (!is_connect && (!scheme || !http2::non_empty_value(scheme)))) {
+      upstream->rst_stream(downstream, SPDYLAY_PROTOCOL_ERROR);
+      return;
+    }
+
+    downstream->set_request_method(method_token);
     if (is_connect) {
       downstream->set_request_http2_authority(path->value);
     } else {

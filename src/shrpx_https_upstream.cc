@@ -200,7 +200,7 @@ void rewrite_request_host_path_from_uri(Downstream *downstream, const char *uri,
   std::string path;
   if (u.field_set & (1 << UF_PATH)) {
     http2::copy_url_component(path, &u, UF_PATH, uri);
-  } else if (downstream->get_request_method() == "OPTIONS") {
+  } else if (downstream->get_request_method() == HTTP_OPTIONS) {
     // Server-wide OPTIONS takes following form in proxy request:
     //
     // OPTIONS http://example.org HTTP/1.1
@@ -235,8 +235,8 @@ int htp_hdrs_completecb(http_parser *htp) {
   }
   auto downstream = upstream->get_downstream();
 
-  downstream->set_request_method(
-      http_method_str((enum http_method)htp->method));
+  // We happen to have the same value for method token.
+  downstream->set_request_method(htp->method);
   downstream->set_request_major(htp->http_major);
   downstream->set_request_minor(htp->http_minor);
 
@@ -244,7 +244,7 @@ int htp_hdrs_completecb(http_parser *htp) {
 
   if (LOG_ENABLED(INFO)) {
     std::stringstream ss;
-    ss << downstream->get_request_method() << " "
+    ss << http2::to_method_string(downstream->get_request_method()) << " "
        << downstream->get_request_path() << " "
        << "HTTP/" << downstream->get_request_major() << "."
        << downstream->get_request_minor() << "\n";
@@ -268,7 +268,7 @@ int htp_hdrs_completecb(http_parser *htp) {
 
   downstream->inspect_http1_request();
 
-  if (downstream->get_request_method() != "CONNECT") {
+  if (downstream->get_request_method() != HTTP_CONNECT) {
     http_parser_url u{};
     // make a copy of request path, since we may set request path
     // while we are refering to original request path.
@@ -758,7 +758,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
     }
   }
 
-  auto connect_method = downstream->get_request_method() == "CONNECT";
+  auto connect_method = downstream->get_request_method() == HTTP_CONNECT;
 
   std::string hdrs = "HTTP/";
   hdrs += util::utos(downstream->get_request_major());

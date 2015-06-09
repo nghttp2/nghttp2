@@ -141,8 +141,8 @@ public:
   void append_last_request_trailer_key(const char *data, size_t len);
   void append_last_request_trailer_value(const char *data, size_t len);
 
-  void set_request_method(std::string method);
-  const std::string &get_request_method() const;
+  void set_request_method(int method);
+  int get_request_method() const;
   void set_request_path(std::string path);
   void add_request_headers_sum(size_t amount);
   void
@@ -360,7 +360,6 @@ private:
 
   std::chrono::high_resolution_clock::time_point request_start_time_;
 
-  std::string request_method_;
   std::string request_path_;
   std::string request_http2_scheme_;
   std::string request_http2_authority_;
@@ -415,6 +414,7 @@ private:
   // RST_STREAM error_code from downstream HTTP2 connection
   uint32_t response_rst_stream_error_code_;
 
+  int request_method_;
   int request_state_;
   int request_major_;
   int request_minor_;

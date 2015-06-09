@@ -214,7 +214,7 @@ int HttpDownstreamConnection::push_request_headers() {
   const char *authority = nullptr, *host = nullptr;
   auto downstream_hostport =
       get_config()->downstream_addrs[addr_idx_].hostport.get();
-  auto connect_method = downstream_->get_request_method() == "CONNECT";
+  auto connect_method = downstream_->get_request_method() == HTTP_CONNECT;
 
   if (!get_config()->no_host_rewrite && !get_config()->http2_proxy &&
       !get_config()->client_proxy && !connect_method) {
@@ -249,7 +249,7 @@ int HttpDownstreamConnection::push_request_headers() {
   downstream_->assemble_request_cookie();
 
   // Assume that method and request path do not contain \r\n.
-  std::string hdrs = downstream_->get_request_method();
+  std::string hdrs = http2::to_method_string(downstream_->get_request_method());
   hdrs += ' ';
   if (connect_method) {
     if (authority) {
@@ -583,7 +583,7 @@ int htp_hdrs_completecb(http_parser *htp) {
 
   // TODO It seems that the cases other than HEAD are handled by
   // http-parser.  Need test.
-  return downstream->get_request_method() == "HEAD" ||
+  return downstream->get_request_method() == HTTP_HEAD ||
                  (100 <= status && status <= 199) || status == 204 ||
                  status == 304
              ? 1
