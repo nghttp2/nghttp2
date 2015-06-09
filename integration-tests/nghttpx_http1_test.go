@@ -52,6 +52,27 @@ func TestH1H1PlainGETClose(t *testing.T) {
 	}
 }
 
+// TestH1H1InvalidMethod tests that server rejects invalid method with
+// 501 status code
+func TestH1H1InvalidMethod(t *testing.T) {
+	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("server should not forward this request")
+	})
+	defer st.Close()
+
+	res, err := st.http1(requestParam{
+		name:   "TestH1H1InvalidMethod",
+		method: "get",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http1() = %v", err)
+	}
+
+	if got, want := res.status, 501; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+}
+
 // TestH1H1MultipleRequestCL tests that server rejects request which
 // contains multiple Content-Length header fields.
 func TestH1H1MultipleRequestCL(t *testing.T) {

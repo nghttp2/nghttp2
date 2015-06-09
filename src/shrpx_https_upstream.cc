@@ -460,7 +460,9 @@ int HttpsUpstream::on_read() {
 
     unsigned int status_code;
 
-    if (downstream) {
+    if (htperr == HPE_INVALID_METHOD) {
+      status_code = 501;
+    } else if (downstream) {
       if (downstream->get_request_state() == Downstream::CONNECT_FAIL) {
         status_code = 503;
       } else if (downstream->get_request_state() ==
