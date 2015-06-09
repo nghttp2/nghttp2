@@ -801,6 +801,7 @@ TimeStat<Duration> compute_time_stat(const std::vector<Duration> &samples) {
     a = na;
   }
 
+  assert(n > 0);
   res.mean = Duration(sum / n);
   res.sd = Duration(static_cast<typename Duration::rep>(sqrt(q / n)));
   res.within_sd = within_sd(samples, res.mean, res.sd);

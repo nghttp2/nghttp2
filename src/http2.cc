@@ -832,7 +832,7 @@ parse_next_link_header_once(const char *first, const char *last) {
     static constexpr size_t PLLEN = sizeof(PL) - 1;
     if (first + PLLEN == last) {
       if (std::equal(PL, PL + PLLEN, first, util::CaseCmp())) {
-        ok = true;
+        // ok = true;
         // this is the end of sequence
         return {{{url_first, url_last}}, last};
       }
@@ -842,7 +842,7 @@ parse_next_link_header_once(const char *first, const char *last) {
         if (!std::equal(PL, PL + PLLEN, first, util::CaseCmp())) {
           break;
         }
-        ok = true;
+        // ok = true;
         // skip including ','
         first += PLLEN + 1;
         return {{{url_first, url_last}}, first};

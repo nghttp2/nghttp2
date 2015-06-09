@@ -167,6 +167,8 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
     size_t header_buffer = 0;
     for (size_t i = 0; nv[i]; i += 2) {
       ++num_headers;
+      // shut up scan-build
+      assert(nv[i + 1]);
       header_buffer += strlen(nv[i]) + strlen(nv[i + 1]);
     }
 
