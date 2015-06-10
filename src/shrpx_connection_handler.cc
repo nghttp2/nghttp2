@@ -117,6 +117,15 @@ ConnectionHandler::ConnectionHandler(struct ev_loop *loop)
 ConnectionHandler::~ConnectionHandler() {
   ev_timer_stop(loop_, &disable_acceptor_timer_);
   ev_timer_stop(loop_, &ocsp_timer_);
+
+  for (auto ssl_ctx : all_ssl_ctx_) {
+    auto tls_ctx_data =
+        static_cast<ssl::TLSContextData *>(SSL_CTX_get_app_data(ssl_ctx));
+    if (tls_ctx_data) {
+      delete tls_ctx_data;
+    }
+    SSL_CTX_free(ssl_ctx);
+  }
 }
 
 void ConnectionHandler::worker_reopen_log_files() {
@@ -148,6 +157,10 @@ void ConnectionHandler::create_single_worker() {
   auto sv_ssl_ctx = ssl::setup_server_ssl_context(all_ssl_ctx_, cert_tree);
   auto cl_ssl_ctx = ssl::setup_client_ssl_context();
 
+  if (cl_ssl_ctx) {
+    all_ssl_ctx_.push_back(cl_ssl_ctx);
+  }
+
   single_worker_ = make_unique<Worker>(loop_, sv_ssl_ctx, cl_ssl_ctx, cert_tree,
                                        ticket_keys_);
 }
@@ -159,6 +172,10 @@ void ConnectionHandler::create_worker_thread(size_t num) {
   auto cert_tree = ssl::create_cert_lookup_tree();
   auto sv_ssl_ctx = ssl::setup_server_ssl_context(all_ssl_ctx_, cert_tree);
   auto cl_ssl_ctx = ssl::setup_client_ssl_context();
+
+  if (cl_ssl_ctx) {
+    all_ssl_ctx_.push_back(cl_ssl_ctx);
+  }
 
   for (size_t i = 0; i < num; ++i) {
     auto loop = ev_loop_new(0);

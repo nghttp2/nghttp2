@@ -111,6 +111,7 @@ public:
   void proceed_next_cert_ocsp();
 
 private:
+  // Stores all SSL_CTX objects.
   std::vector<SSL_CTX *> all_ssl_ctx_;
   OCSPUpdateContext ocsp_;
   // Worker instances when multi threaded mode (-nN, N >= 2) is used.
