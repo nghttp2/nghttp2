@@ -800,6 +800,62 @@ void test_nghttp2_session_recv_data(void) {
   nghttp2_session_del(session);
 }
 
+void test_nghttp2_session_recv_data_no_auto_flow_control(void) {
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  my_user_data ud;
+  nghttp2_option *option;
+  nghttp2_frame_hd hd;
+  size_t padlen;
+  uint8_t data[8192];
+  ssize_t rv;
+  size_t sendlen;
+
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+  callbacks.send_callback = null_send_callback;
+
+  nghttp2_option_new(&option);
+  nghttp2_option_set_no_auto_window_update(option, 1);
+
+  nghttp2_session_server_new2(&session, &callbacks, &ud, option);
+
+  /* Create DATA frame with length 4KiB + 11 bytes padding*/
+  padlen = 11;
+  memset(data, 0, sizeof(data));
+  hd.length = 4096 + 1 + padlen;
+  hd.type = NGHTTP2_DATA;
+  hd.flags = NGHTTP2_FLAG_PADDED;
+  hd.stream_id = 1;
+  nghttp2_frame_pack_frame_hd(data, &hd);
+  data[NGHTTP2_FRAME_HDLEN] = padlen;
+
+  /* First create stream 1, then close it.  Check that data is
+     consumed for connection in this situation */
+  open_stream(session, 1);
+
+  /* Receive first 100 bytes */
+  sendlen = 100;
+  rv = nghttp2_session_mem_recv(session, data, sendlen);
+  CU_ASSERT((ssize_t)sendlen == rv);
+
+  /* close stream here */
+  nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, 1, NGHTTP2_NO_ERROR);
+  nghttp2_session_send(session);
+
+  /* stream 1 has been closed, and we disabled auto flow-control, so
+     data must be immediately consumed for connection. */
+  rv = nghttp2_session_mem_recv(session, data + sendlen,
+                                NGHTTP2_FRAME_HDLEN + hd.length - sendlen);
+  CU_ASSERT((ssize_t)(NGHTTP2_FRAME_HDLEN + hd.length - sendlen) == rv);
+
+  /* We already consumed pad length field (1 byte), so do +1 here */
+  CU_ASSERT((int32_t)(NGHTTP2_FRAME_HDLEN + hd.length - sendlen + 1) ==
+            session->consumed_size);
+
+  nghttp2_session_del(session);
+  nghttp2_option_del(option);
+}
+
 void test_nghttp2_session_recv_continuation(void) {
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;

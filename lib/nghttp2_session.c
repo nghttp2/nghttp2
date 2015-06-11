@@ -5760,49 +5760,58 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
           if (nghttp2_is_fatal(rv)) {
             return rv;
           }
-        }
 
-        data_readlen = inbound_frame_effective_readlen(
-            iframe, iframe->payloadleft, readlen);
+          data_readlen = inbound_frame_effective_readlen(
+              iframe, iframe->payloadleft, readlen);
 
-        padlen = readlen - data_readlen;
+          padlen = readlen - data_readlen;
 
-        if (padlen > 0) {
-          /* Padding is considered as "consumed" immediately */
-          rv = nghttp2_session_consume(session, iframe->frame.hd.stream_id,
-                                       padlen);
+          if (padlen > 0) {
+            /* Padding is considered as "consumed" immediately */
+            rv = nghttp2_session_consume(session, iframe->frame.hd.stream_id,
+                                         padlen);
+
+            if (nghttp2_is_fatal(rv)) {
+              return rv;
+            }
+          }
+
+          DEBUGF(fprintf(stderr, "recv: data_readlen=%zd\n", data_readlen));
+
+          if (data_readlen > 0) {
+            if (session_enforce_http_messaging(session)) {
+              if (nghttp2_http_on_data_chunk(stream, data_readlen) != 0) {
+                rv = nghttp2_session_add_rst_stream(session,
+                                                    iframe->frame.hd.stream_id,
+                                                    NGHTTP2_PROTOCOL_ERROR);
+                if (nghttp2_is_fatal(rv)) {
+                  return rv;
+                }
+                busy = 1;
+                iframe->state = NGHTTP2_IB_IGN_DATA;
+                break;
+              }
+            }
+            if (session->callbacks.on_data_chunk_recv_callback) {
+              rv = session->callbacks.on_data_chunk_recv_callback(
+                  session, iframe->frame.hd.flags, iframe->frame.hd.stream_id,
+                  in - readlen, data_readlen, session->user_data);
+              if (rv == NGHTTP2_ERR_PAUSE) {
+                return in - first;
+              }
+
+              if (nghttp2_is_fatal(rv)) {
+                return NGHTTP2_ERR_CALLBACK_FAILURE;
+              }
+            }
+          }
+        } else if (session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_WINDOW_UPDATE) {
+          /* stream was closed or does not exist.  Consume all data
+             for connection immediately here */
+          rv = session_update_connection_consumed_size(session, readlen);
 
           if (nghttp2_is_fatal(rv)) {
             return rv;
-          }
-        }
-
-        DEBUGF(fprintf(stderr, "recv: data_readlen=%zd\n", data_readlen));
-
-        if (stream && data_readlen > 0) {
-          if (session_enforce_http_messaging(session)) {
-            if (nghttp2_http_on_data_chunk(stream, data_readlen) != 0) {
-              rv = nghttp2_session_add_rst_stream(
-                  session, iframe->frame.hd.stream_id, NGHTTP2_PROTOCOL_ERROR);
-              if (nghttp2_is_fatal(rv)) {
-                return rv;
-              }
-              busy = 1;
-              iframe->state = NGHTTP2_IB_IGN_DATA;
-              break;
-            }
-          }
-          if (session->callbacks.on_data_chunk_recv_callback) {
-            rv = session->callbacks.on_data_chunk_recv_callback(
-                session, iframe->frame.hd.flags, iframe->frame.hd.stream_id,
-                in - readlen, data_readlen, session->user_data);
-            if (rv == NGHTTP2_ERR_PAUSE) {
-              return in - first;
-            }
-
-            if (nghttp2_is_fatal(rv)) {
-              return NGHTTP2_ERR_CALLBACK_FAILURE;
-            }
           }
         }
       }

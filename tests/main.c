@@ -80,6 +80,8 @@ int main(int argc _U_, char *argv[] _U_) {
       !CU_add_test(pSuite, "session_recv_eof", test_nghttp2_session_recv_eof) ||
       !CU_add_test(pSuite, "session_recv_data",
                    test_nghttp2_session_recv_data) ||
+      !CU_add_test(pSuite, "session_recv_data_no_auto_flow_control",
+                   test_nghttp2_session_recv_data_no_auto_flow_control) ||
       !CU_add_test(pSuite, "session_recv_continuation",
                    test_nghttp2_session_recv_continuation) ||
       !CU_add_test(pSuite, "session_recv_headers_with_priority",
