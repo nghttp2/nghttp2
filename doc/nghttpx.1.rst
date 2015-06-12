@@ -613,6 +613,14 @@ HTTP
     times   to   specify  multiple   alternative   services.
     Example: :option:`--altsvc`\=h2,443
 
+.. option:: --add-request-header=<HEADER>
+
+    Specify additional header field to add to request header
+    set.  This  option just  appends header field  and won't
+    replace anything  already set.  This option  can be used
+    several  times   to  specify  multiple   header  fields.
+    Example: :option:`--add-request-header`\="foo: bar"
+
 .. option:: --add-response-header=<HEADER>
 
     Specify  additional  header  field to  add  to  response
