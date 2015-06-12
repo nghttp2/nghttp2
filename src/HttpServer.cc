@@ -1095,7 +1095,7 @@ void prepare_response(Stream *stream, Http2Handler *hd,
       return;
     }
 
-    if (last_mod_found && buf.st_mtime <= last_mod) {
+    if (last_mod_found && static_cast<time_t>(buf.st_mtime) <= last_mod) {
       close(file);
       prepare_status_response(stream, hd, 304);
 
