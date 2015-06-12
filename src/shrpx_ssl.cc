@@ -151,27 +151,36 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
 } // namespace
 
 namespace {
+std::shared_ptr<std::vector<uint8_t>>
+get_ocsp_data(TLSContextData *tls_ctx_data) {
+  std::lock_guard<std::mutex> g(tls_ctx_data->mu);
+  return tls_ctx_data->ocsp_data;
+}
+} // namespace
+
+namespace {
 int ocsp_resp_cb(SSL *ssl, void *arg) {
   auto ssl_ctx = SSL_get_SSL_CTX(ssl);
   auto tls_ctx_data =
       static_cast<TLSContextData *>(SSL_CTX_get_app_data(ssl_ctx));
-  {
-    std::lock_guard<std::mutex> g(tls_ctx_data->mu);
-    auto &data = tls_ctx_data->ocsp_data;
 
-    if (!data.empty()) {
-      auto buf = static_cast<uint8_t *>(
-          CRYPTO_malloc(data.size(), __FILE__, __LINE__));
+  auto data = get_ocsp_data(tls_ctx_data);
 
-      if (!buf) {
-        return SSL_TLSEXT_ERR_OK;
-      }
-
-      std::copy(std::begin(data), std::end(data), buf);
-
-      SSL_set_tlsext_status_ocsp_resp(ssl, buf, data.size());
-    }
+  if (!data) {
+    return SSL_TLSEXT_ERR_OK;
   }
+
+  auto buf =
+      static_cast<uint8_t *>(CRYPTO_malloc(data->size(), __FILE__, __LINE__));
+
+  if (!buf) {
+    return SSL_TLSEXT_ERR_OK;
+  }
+
+  std::copy(std::begin(*data), std::end(*data), buf);
+
+  SSL_set_tlsext_status_ocsp_resp(ssl, buf, data->size());
+
   return SSL_TLSEXT_ERR_OK;
 }
 } // namespace

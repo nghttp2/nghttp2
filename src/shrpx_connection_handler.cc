@@ -510,7 +510,8 @@ void ConnectionHandler::handle_ocsp_complete() {
 
   {
     std::lock_guard<std::mutex> g(tls_ctx_data->mu);
-    tls_ctx_data->ocsp_data = std::move(ocsp_.resp);
+    tls_ctx_data->ocsp_data =
+        std::make_shared<std::vector<uint8_t>>(std::move(ocsp_.resp));
   }
 
   ++ocsp_.next;

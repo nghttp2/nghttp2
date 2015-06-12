@@ -49,7 +49,7 @@ struct TLSContextData {
   // Protects ocsp_data;
   std::mutex mu;
   // OCSP response
-  std::vector<uint8_t> ocsp_data;
+  std::shared_ptr<std::vector<uint8_t>> ocsp_data;
 
   // Path to certificate file
   const char *cert_file;
