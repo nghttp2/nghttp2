@@ -28,7 +28,6 @@
 #include "shrpx.h"
 
 #include <mutex>
-#include <deque>
 #include <vector>
 #include <thread>
 #ifndef NOTHREADS
@@ -117,7 +116,7 @@ private:
   std::future<void> fut_;
 #endif // NOTHREADS
   std::mutex m_;
-  std::deque<WorkerEvent> q_;
+  std::vector<WorkerEvent> q_;
   ev_async w_;
   ev_timer mcpool_clear_timer_;
   MemchunkPool mcpool_;

@@ -119,7 +119,7 @@ void Worker::send(const WorkerEvent &event) {
 }
 
 void Worker::process_events() {
-  std::deque<WorkerEvent> q;
+  std::vector<WorkerEvent> q;
   {
     std::lock_guard<std::mutex> g(m_);
     q.swap(q_);
