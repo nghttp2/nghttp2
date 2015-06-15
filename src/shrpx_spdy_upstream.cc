@@ -215,6 +215,14 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
       return;
     }
 
+    // For other than CONNECT method, path must start with "/", except
+    // for OPTIONS method, which can take "*" as path.
+    if (!is_connect && path->value[0] != '/' &&
+        (method_token != HTTP_OPTIONS || path->value != "*")) {
+      upstream->rst_stream(downstream, SPDYLAY_PROTOCOL_ERROR);
+      return;
+    }
+
     downstream->set_request_method(method_token);
     if (is_connect) {
       downstream->set_request_http2_authority(path->value);
