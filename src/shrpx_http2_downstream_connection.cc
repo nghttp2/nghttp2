@@ -316,12 +316,10 @@ int Http2DownstreamConnection::push_request_headers() {
   nva.reserve(nheader + 8 + cookies.size() +
               get_config()->add_request_headers.size());
 
-  std::string via_value;
-  std::string xff_value;
-  std::string scheme, uri_authority, path, query;
-
   nva.push_back(http2::make_nv_lc(
       ":method", http2::to_method_string(downstream_->get_request_method())));
+
+  auto &scheme = downstream_->get_request_http2_scheme();
 
   if (downstream_->get_request_method() == HTTP_CONNECT) {
     if (authority) {
@@ -331,9 +329,8 @@ int Http2DownstreamConnection::push_request_headers() {
           http2::make_nv_ls(":authority", downstream_->get_request_path()));
     }
   } else {
-    assert(!downstream_->get_request_http2_scheme().empty());
-    nva.push_back(
-        http2::make_nv_ls(":scheme", downstream_->get_request_http2_scheme()));
+    assert(!scheme.empty());
+    nva.push_back(http2::make_nv_ls(":scheme", scheme));
 
     if (authority) {
       nva.push_back(http2::make_nv_lc(":authority", authority));
@@ -362,6 +359,7 @@ int Http2DownstreamConnection::push_request_headers() {
     nva.push_back(http2::make_nv(nv.name, nv.value, nv.no_index));
   }
 
+  std::string xff_value;
   auto xff = downstream_->get_request_header(http2::HD_X_FORWARDED_FOR);
   if (get_config()->add_x_forwarded_for) {
     if (xff && !get_config()->strip_incoming_x_forwarded_for) {
@@ -378,17 +376,10 @@ int Http2DownstreamConnection::push_request_headers() {
   if (!get_config()->http2_proxy && !get_config()->client_proxy &&
       downstream_->get_request_method() != HTTP_CONNECT) {
     // We use same protocol with :scheme header field
-    if (scheme.empty()) {
-      if (client_handler_->get_ssl()) {
-        nva.push_back(http2::make_nv_ll("x-forwarded-proto", "https"));
-      } else {
-        nva.push_back(http2::make_nv_ll("x-forwarded-proto", "http"));
-      }
-    } else {
-      nva.push_back(http2::make_nv_ls("x-forwarded-proto", scheme));
-    }
+    nva.push_back(http2::make_nv_ls("x-forwarded-proto", scheme));
   }
 
+  std::string via_value;
   auto via = downstream_->get_request_header(http2::HD_VIA);
   if (get_config()->no_via) {
     if (via) {
