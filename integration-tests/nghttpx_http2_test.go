@@ -510,6 +510,28 @@ func TestH2H1SNI(t *testing.T) {
 	}
 }
 
+// TestH2H1TLSXfp tests nghttpx sends x-forwarded-proto header field
+// with http value since :scheme is http, even if the frontend
+// connection is encrypted.
+func TestH2H1TLSXfp(t *testing.T) {
+	st := newServerTesterTLS(nil, t, func(w http.ResponseWriter, r *http.Request) {
+		if got, want := r.Header.Get("x-forwarded-proto"), "http"; got != want {
+			t.Errorf("x-forwarded-proto: want %v; got %v", want, got)
+		}
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1TLSXfp",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("res.status: %v; want %v", got, want)
+	}
+}
+
 // TestH2H1ServerPush tests server push using Link header field from
 // backend server.
 func TestH2H1ServerPush(t *testing.T) {
@@ -829,5 +851,27 @@ func TestH2H2NoHostRewrite(t *testing.T) {
 	}
 	if got, want := res.header.Get("request-host"), st.frontendHost; got != want {
 		t.Errorf("request-host: %v; want %v", got, want)
+	}
+}
+
+// TestH2H2TLSXfp tests nghttpx sends x-forwarded-proto header field
+// with http value since :scheme is http, even if the frontend
+// connection is encrypted.
+func TestH2H2TLSXfp(t *testing.T) {
+	st := newServerTesterTLS([]string{"--http2-bridge"}, t, func(w http.ResponseWriter, r *http.Request) {
+		if got, want := r.Header.Get("x-forwarded-proto"), "http"; got != want {
+			t.Errorf("x-forwarded-proto: want %v; got %v", want, got)
+		}
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H2TLSXfp",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("res.status: %v; want %v", got, want)
 	}
 }
