@@ -251,6 +251,9 @@ int HttpDownstreamConnection::push_request_headers() {
   // Assume that method and request path do not contain \r\n.
   std::string hdrs = http2::to_method_string(downstream_->get_request_method());
   hdrs += ' ';
+
+  auto &scheme = downstream_->get_request_http2_scheme();
+
   if (connect_method) {
     if (authority) {
       hdrs += authority;
@@ -260,8 +263,8 @@ int HttpDownstreamConnection::push_request_headers() {
   } else if (get_config()->http2_proxy || get_config()->client_proxy) {
     // Construct absolute-form request target because we are going to
     // send a request to a HTTP/1 proxy.
-    assert(!downstream_->get_request_http2_scheme().empty());
-    hdrs += downstream_->get_request_http2_scheme();
+    assert(!scheme.empty());
+    hdrs += scheme;
     hdrs += "://";
 
     if (authority) {
@@ -344,8 +347,8 @@ int HttpDownstreamConnection::push_request_headers() {
   if (!get_config()->http2_proxy && !get_config()->client_proxy &&
       !connect_method) {
     hdrs += "X-Forwarded-Proto: ";
-    assert(!downstream_->get_request_http2_scheme().empty());
-    hdrs += downstream_->get_request_http2_scheme();
+    assert(!scheme.empty());
+    hdrs += scheme;
     hdrs += "\r\n";
   }
   auto via = downstream_->get_request_header(http2::HD_VIA);
