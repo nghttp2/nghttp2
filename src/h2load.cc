@@ -292,7 +292,8 @@ const char *get_tls_protocol(SSL *ssl) {
 
 namespace {
 void print_server_tmp_key(SSL *ssl) {
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+// libressl does not have SSL_get_server_tmp_key
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L && defined(SSL_get_server_tmp_key)
   EVP_PKEY *key;
 
   if (!SSL_get_server_tmp_key(ssl, &key)) {

@@ -142,13 +142,13 @@ def send_and_receive_ocsp(respder_fn, cmd, cert_fn, issuer_fn, ocsp_uri,
     # obtain response (without verification)
     sys.stderr.write('sending OCSP request to {}\n'.format(ocsp_uri))
     args = [
-        cmd, 'ocsp', '-issuer', issuer_fn, '-cert', cert_fn, '-url', ocsp_uri
+        cmd, 'ocsp', '-issuer', issuer_fn, '-cert', cert_fn, '-url', ocsp_uri,
+        '-noverify', '-respout', respder_fn
     ]
-    if openssl_version.lower().startswith('openssl 1.'):
+    ver = openssl_version.lower()
+    if ver.startswith('openssl 1.') or ver.startswith('libressl '):
         args.extend(['-header', 'Host', ocsp_host])
-    args.extend(['-noverify', '-respout', respder_fn])
     resp = run_openssl(args, allow_tempfail=True)
-
     return resp.decode('utf-8')
 
 
@@ -188,7 +188,7 @@ def fetch_ocsp_response(cmd, cert_fn, tempdir, issuer_fn=None):
         'fetch-ocsp-response (using {})\n'.format(openssl_version))
 
     ocsp_uri = extract_ocsp_uri(cmd, cert_fn)
-    ocsp_host = urlparse(ocsp_uri).hostname
+    ocsp_host = urlparse(ocsp_uri).netloc
 
     if not issuer_fn:
         issuer_fn = os.path.join(tempdir, 'issuer.crt')
