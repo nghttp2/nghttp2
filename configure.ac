@@ -464,11 +464,12 @@ fi
 
 AM_CONDITIONAL([ENABLE_EXAMPLES], [ test "x${enable_examples}" = "xyes" ])
 
-# third-party only be built if either enable_examples or enable_app is
-# yes
+# third-party only be built when needed
 
 enable_third_party=no
-if test "x${enable_examples}" = "xyes" || test "x${enable_app}" = "xyes"; then
+if test "x${enable_examples}" = "xyes" ||
+   test "x${enable_app}" = "xyes" ||
+   test "x${enable_asio_lib}" = "xyes"; then
   enable_third_party=yes
 fi
 
