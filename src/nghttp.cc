@@ -2255,28 +2255,34 @@ int run(char **uris, int n) {
     http_parser_url u;
     memset(&u, 0, sizeof(u));
     auto uri = strip_fragment(uris[i]);
-    if (http_parser_parse_url(uri.c_str(), uri.size(), 0, &u) == 0 &&
-        util::has_uri_field(u, UF_SCHEMA)) {
-      uint16_t port = util::has_uri_field(u, UF_PORT)
-                          ? u.port
-                          : util::get_default_port(uri.c_str(), u);
-      if (!util::fieldeq(uri.c_str(), u, UF_SCHEMA, prev_scheme.c_str()) ||
-          !util::fieldeq(uri.c_str(), u, UF_HOST, prev_host.c_str()) ||
-          port != prev_port) {
-        if (!requests.empty()) {
-          if (communicate(prev_scheme, prev_host, prev_port,
-                          std::move(requests), callbacks) != 0) {
-            ++failures;
-          }
-          requests.clear();
-        }
-        prev_scheme = util::get_uri_field(uri.c_str(), u, UF_SCHEMA);
-        prev_host = util::get_uri_field(uri.c_str(), u, UF_HOST);
-        prev_port = port;
-      }
-      requests.emplace_back(uri, data_fd == -1 ? nullptr : &data_prd,
-                            data_stat.st_size);
+    if (http_parser_parse_url(uri.c_str(), uri.size(), 0, &u) != 0) {
+      std::cerr << "[ERROR] Could not parse URI " << uri << std::endl;
+      continue;
     }
+    if (!util::has_uri_field(u, UF_SCHEMA)) {
+      std::cerr << "[ERROR] URI " << uri << " does not have scheme part"
+                << std::endl;
+      continue;
+    }
+    auto port = util::has_uri_field(u, UF_PORT)
+                    ? u.port
+                    : util::get_default_port(uri.c_str(), u);
+    if (!util::fieldeq(uri.c_str(), u, UF_SCHEMA, prev_scheme.c_str()) ||
+        !util::fieldeq(uri.c_str(), u, UF_HOST, prev_host.c_str()) ||
+        port != prev_port) {
+      if (!requests.empty()) {
+        if (communicate(prev_scheme, prev_host, prev_port, std::move(requests),
+                        callbacks) != 0) {
+          ++failures;
+        }
+        requests.clear();
+      }
+      prev_scheme = util::get_uri_field(uri.c_str(), u, UF_SCHEMA);
+      prev_host = util::get_uri_field(uri.c_str(), u, UF_HOST);
+      prev_port = port;
+    }
+    requests.emplace_back(uri, data_fd == -1 ? nullptr : &data_prd,
+                          data_stat.st_size);
   }
   if (!requests.empty()) {
     if (communicate(prev_scheme, prev_host, prev_port, std::move(requests),
