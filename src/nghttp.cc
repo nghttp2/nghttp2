@@ -176,6 +176,37 @@ std::string Request::make_reqpath() const {
 }
 
 namespace {
+// Perform special handling |host| if it is IPv6 literal and includes
+// zone ID per RFC 6874.
+std::string decode_host(std::string host) {
+  auto zone_start = std::find(std::begin(host), std::end(host), '%');
+  if (zone_start == std::end(host) ||
+      !util::ipv6_numeric_addr(
+          std::string(std::begin(host), zone_start).c_str())) {
+    return std::move(host);
+  }
+  // case: ::1%
+  if (zone_start + 1 == std::end(host)) {
+    host.pop_back();
+    return std::move(host);
+  }
+  // case: ::1%12 or ::1%1
+  if (zone_start + 3 >= std::end(host)) {
+    return std::move(host);
+  }
+  // If we see "%25", followed by more characters, then decode %25 as
+  // '%'.
+  auto zone_id_src = (*(zone_start + 1) == '2' && *(zone_start + 2) == '5')
+                         ? zone_start + 3
+                         : zone_start + 1;
+  auto zone_id = util::percentDecode(zone_id_src, std::end(host));
+  host.erase(zone_start + 1, std::end(host));
+  host += zone_id;
+  return std::move(host);
+}
+} // namespace
+
+namespace {
 nghttp2_priority_spec resolve_dep(int res_type) {
   nghttp2_priority_spec pri_spec;
 
@@ -1205,8 +1236,14 @@ void HttpClient::update_hostport() {
   scheme = util::get_uri_field(reqvec[0]->uri.c_str(), reqvec[0]->u, UF_SCHEMA);
   std::stringstream ss;
   if (reqvec[0]->is_ipv6_literal_addr()) {
+    // we may have zone ID, which must start with "%25", or "%".  RFC
+    // 6874 defines "%25" only, and just "%" is allowed for just
+    // convenience to end-user input.
+    auto host =
+        util::get_uri_field(reqvec[0]->uri.c_str(), reqvec[0]->u, UF_HOST);
+    auto end = std::find(std::begin(host), std::end(host), '%');
     ss << "[";
-    util::write_uri_field(ss, reqvec[0]->uri.c_str(), reqvec[0]->u, UF_HOST);
+    ss.write(host.c_str(), end - std::begin(host));
     ss << "]";
   } else {
     util::write_uri_field(ss, reqvec[0]->uri.c_str(), reqvec[0]->u, UF_HOST);
@@ -2269,9 +2306,9 @@ int run(char **uris, int n) {
     auto port = util::has_uri_field(u, UF_PORT)
                     ? u.port
                     : util::get_default_port(uri.c_str(), u);
+    auto host = decode_host(util::get_uri_field(uri.c_str(), u, UF_HOST));
     if (!util::fieldeq(uri.c_str(), u, UF_SCHEMA, prev_scheme.c_str()) ||
-        !util::fieldeq(uri.c_str(), u, UF_HOST, prev_host.c_str()) ||
-        port != prev_port) {
+        host != prev_host || port != prev_port) {
       if (!requests.empty()) {
         if (communicate(prev_scheme, prev_host, prev_port, std::move(requests),
                         callbacks) != 0) {
@@ -2280,7 +2317,7 @@ int run(char **uris, int n) {
         requests.clear();
       }
       prev_scheme = util::get_uri_field(uri.c_str(), u, UF_SCHEMA);
-      prev_host = util::get_uri_field(uri.c_str(), u, UF_HOST);
+      prev_host = std::move(host);
       prev_port = port;
     }
     requests.emplace_back(uri, data_fd == -1 ? nullptr : &data_prd,
