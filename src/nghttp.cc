@@ -2036,6 +2036,8 @@ int communicate(
     client.record_domain_lookup_end_time();
 
     if (client.initiate_connection() != 0) {
+      std::cerr << "[ERROR] Could not connect to " << host << ", port " << port
+                << std::endl;
       goto fin;
     }
     ev_run(loop, 0);
