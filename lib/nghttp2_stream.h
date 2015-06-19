@@ -209,13 +209,14 @@ struct nghttp2_stream {
   int32_t local_window_size;
   /* weight of this stream */
   int32_t weight;
-  /* effective weight of this stream in belonging dependency tree */
-  int32_t effective_weight;
-  /* sum of weight (not effective_weight) of direct descendants */
+  /* sum of weight of direct descendants */
   int32_t sum_dep_weight;
   /* sum of weight of direct descendants which have at least one
      descendant with dpri == NGHTTP2_STREAM_DPRI_TOP.  We use this
-     value to calculate effective weight. */
+     value to calculate effective weight.  This value is only
+     meaningful iff dpri == NGHTTP2_STREAM_DPRI_NO_ITEM and all
+     streams along the path to the root stream (follow dep_prev) have
+     NGHTTP2_STREAM_DPRI_NO_ITEM. */
   int32_t sum_norest_weight;
   nghttp2_stream_state state;
   /* status code from remote server */
@@ -325,21 +326,12 @@ int nghttp2_stream_dep_subtree_find(nghttp2_stream *stream,
 
 /*
  * Computes distributed weight of a stream of the |weight| under the
- * |stream| if |stream| is removed from a dependency tree.  The result
- * is computed using stream->weight rather than
- * stream->effective_weight.
+ * |stream| if |stream| is removed from a dependency tree.
  */
 int32_t nghttp2_stream_dep_distributed_weight(nghttp2_stream *stream,
                                               int32_t weight);
 
-/*
- * Computes effective weight of a stream of the |weight| under the
- * |stream|.  The result is computed using stream->effective_weight
- * rather than stream->weight.  This function is used to determine
- * weight in dependency tree.
- */
-int32_t nghttp2_stream_dep_distributed_effective_weight(nghttp2_stream *stream,
-                                                        int32_t weight);
+int32_t nghttp2_stream_compute_effective_weight(nghttp2_stream *stream);
 
 /*
  * Makes the |stream| depend on the |dep_stream|.  This dependency is

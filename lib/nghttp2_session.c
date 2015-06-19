@@ -6306,8 +6306,8 @@ int nghttp2_session_pack_data(nghttp2_session *session, nghttp2_bufs *bufs,
     return rv;
   }
 
-  session_outbound_item_schedule(session, stream->item,
-                                 stream->effective_weight);
+  session_outbound_item_schedule(
+      session, stream->item, nghttp2_stream_compute_effective_weight(stream));
 
   return 0;
 }

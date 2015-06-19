@@ -60,7 +60,6 @@ void nghttp2_stream_init(nghttp2_stream *stream, int32_t stream_id,
   stream->dpri = NGHTTP2_STREAM_DPRI_NO_ITEM;
   stream->num_substreams = 1;
   stream->weight = weight;
-  stream->effective_weight = stream->weight;
   stream->sum_dep_weight = 0;
   stream->sum_norest_weight = 0;
 
@@ -107,9 +106,9 @@ static int stream_push_item(nghttp2_stream *stream, nghttp2_session *session) {
        weight.  This will delay low priority stream, which is good.
        OTOH, this may incur delay for high priority item.  Will
        see. */
-    item->cycle =
-        session->last_cycle +
-        NGHTTP2_DATA_PAYLOADLEN * NGHTTP2_MAX_WEIGHT / stream->effective_weight;
+    item->cycle = session->last_cycle +
+                  NGHTTP2_DATA_PAYLOADLEN * NGHTTP2_MAX_WEIGHT /
+                      nghttp2_stream_compute_effective_weight(stream);
 
     rv = nghttp2_pq_push(&session->ob_da_pq, item);
     if (rv != 0) {
@@ -133,13 +132,6 @@ static int stream_push_item(nghttp2_stream *stream, nghttp2_session *session) {
   return 0;
 }
 
-static nghttp2_stream *stream_first_sib(nghttp2_stream *stream) {
-  for (; stream->sib_prev; stream = stream->sib_prev)
-    ;
-
-  return stream;
-}
-
 static nghttp2_stream *stream_last_sib(nghttp2_stream *stream) {
   for (; stream->sib_next; stream = stream->sib_next)
     ;
@@ -147,17 +139,12 @@ static nghttp2_stream *stream_last_sib(nghttp2_stream *stream) {
   return stream;
 }
 
-static nghttp2_stream *stream_update_dep_length(nghttp2_stream *stream,
-                                                ssize_t delta) {
+static void stream_update_dep_length(nghttp2_stream *stream, ssize_t delta) {
   stream->num_substreams += delta;
 
-  stream = stream_first_sib(stream);
-
   if (stream->dep_prev) {
-    return stream_update_dep_length(stream->dep_prev, delta);
+    stream_update_dep_length(stream->dep_prev, delta);
   }
-
-  return stream;
 }
 
 int32_t nghttp2_stream_dep_distributed_weight(nghttp2_stream *stream,
@@ -165,47 +152,6 @@ int32_t nghttp2_stream_dep_distributed_weight(nghttp2_stream *stream,
   weight = stream->weight * weight / stream->sum_dep_weight;
 
   return nghttp2_max(1, weight);
-}
-
-int32_t nghttp2_stream_dep_distributed_effective_weight(nghttp2_stream *stream,
-                                                        int32_t weight) {
-  if (stream->sum_norest_weight == 0) {
-    return stream->effective_weight;
-  }
-
-  weight = stream->effective_weight * weight / stream->sum_norest_weight;
-
-  return nghttp2_max(1, weight);
-}
-
-static void stream_update_dep_set_rest(nghttp2_stream *stream);
-
-/* Updates effective_weight of descendant streams in subtree of
-   |stream|.  We assume that stream->effective_weight is already set
-   right. */
-static void stream_update_dep_effective_weight(nghttp2_stream *stream) {
-  nghttp2_stream *si;
-
-  DEBUGF(fprintf(stderr, "stream: update_dep_effective_weight "
-                         "stream(%p)=%d, weight=%d, sum_norest_weight=%d\n",
-                 stream, stream->stream_id, stream->weight,
-                 stream->sum_norest_weight));
-
-  /* stream->sum_norest_weight == 0 means there is no
-     NGHTTP2_STREAM_DPRI_TOP under stream */
-  if (stream->dpri != NGHTTP2_STREAM_DPRI_NO_ITEM ||
-      stream->sum_norest_weight == 0) {
-    return;
-  }
-
-  for (si = stream->dep_next; si; si = si->sib_next) {
-    if (si->dpri != NGHTTP2_STREAM_DPRI_REST) {
-      si->effective_weight =
-          nghttp2_stream_dep_distributed_effective_weight(stream, si->weight);
-
-      stream_update_dep_effective_weight(si);
-    }
-  }
 }
 
 static void stream_update_dep_set_rest(nghttp2_stream *stream) {
@@ -233,14 +179,24 @@ static void stream_update_dep_set_rest(nghttp2_stream *stream) {
 
 /*
  * Performs dfs starting |stream|, search stream which can become
- * NGHTTP2_STREAM_DPRI_TOP and set its dpri.
+ * NGHTTP2_STREAM_DPRI_TOP and set its dpri.  This function also
+ * updates sum_norest_weight if stream->dpri ==
+ * NGHTTP2_STREAM_DPRI_NO_ITEM.  This function returns nonzero if
+ * stream's subtree contains at least one NGHTTP2_STRAEM_DPRI_TOP
+ * stream.
  */
-static void stream_update_dep_set_top(nghttp2_stream *stream) {
+static int stream_update_dep_set_top(nghttp2_stream *stream) {
   nghttp2_stream *si;
 
-  if (stream->dpri == NGHTTP2_STREAM_DPRI_TOP) {
-    return;
+  if (!stream) {
+    return 0;
   }
+
+  if (stream->dpri == NGHTTP2_STREAM_DPRI_TOP) {
+    return 1;
+  }
+
+  stream->sum_norest_weight = 0;
 
   if (stream->dpri == NGHTTP2_STREAM_DPRI_REST) {
     DEBUGF(
@@ -248,12 +204,16 @@ static void stream_update_dep_set_top(nghttp2_stream *stream) {
 
     stream->dpri = NGHTTP2_STREAM_DPRI_TOP;
 
-    return;
+    return 1;
   }
 
   for (si = stream->dep_next; si; si = si->sib_next) {
-    stream_update_dep_set_top(si);
+    if (stream_update_dep_set_top(si)) {
+      stream->sum_norest_weight += si->weight;
+    }
   }
+
+  return stream->sum_norest_weight > 0;
 }
 
 /*
@@ -288,6 +248,10 @@ static int stream_update_dep_queue_top(nghttp2_stream *stream,
     return 0;
   }
 
+  if (stream->sum_norest_weight == 0) {
+    return 0;
+  }
+
   for (si = stream->dep_next; si; si = si->sib_next) {
     rv = stream_update_dep_queue_top(si, session);
 
@@ -300,72 +264,108 @@ static int stream_update_dep_queue_top(nghttp2_stream *stream,
 }
 
 /*
- * Updates stream->sum_norest_weight recursively.  We have to gather
- * effective sum of weight of descendants.  If stream->dpri ==
- * NGHTTP2_STREAM_DPRI_NO_ITEM, we have to go deeper and check that
- * any of its descendants has dpri value of NGHTTP2_STREAM_DPRI_TOP.
- * If so, we have to add weight of its direct descendants to
- * stream->sum_norest_weight.  To make this work, this function
- * returns 1 if any of its descendants has dpri value of
- * NGHTTP2_STREAM_DPRI_TOP, otherwise 0.
+ * Updates stream->sum_norest_weight recursively towards root.
+ * |delta| must not be 0.  We have to gather effective sum of weight
+ * of descendants.  |delta| is added to stream->sum_norest_weight.  If
+ * stream->sum_norest_weight becomes 0, we have to update parent
+ * stream, decreasing its sum_norest_weight by stream->weight.  If
+ * stream->sum_norest_weight becomes from 0 to positive, then we have
+ * to update parent stream, increasing its sum_norest_weight by
+ * stream->weight.  Otherwise, we stop recursive call.
  */
-static int stream_update_dep_sum_norest_weight(nghttp2_stream *stream) {
-  nghttp2_stream *si;
+static void stream_update_dep_sum_norest_weight(nghttp2_stream *stream,
+                                                int32_t delta) {
+  int32_t old;
 
-  stream->sum_norest_weight = 0;
-
-  if (stream->dpri == NGHTTP2_STREAM_DPRI_TOP) {
-    return 1;
+  if (!stream) {
+    return;
   }
 
-  if (stream->dpri == NGHTTP2_STREAM_DPRI_REST) {
-    return 0;
+  assert(delta != 0);
+  assert(stream->sum_norest_weight + delta >= 0);
+
+  old = stream->sum_norest_weight;
+  stream->sum_norest_weight += delta;
+
+  if (old == 0) {
+    assert(delta > 0);
+    stream_update_dep_sum_norest_weight(stream->dep_prev, stream->weight);
+    return;
   }
 
-  for (si = stream->dep_next; si; si = si->sib_next) {
+  assert(old > 0);
 
-    if (stream_update_dep_sum_norest_weight(si)) {
-      stream->sum_norest_weight += si->weight;
+  if (stream->sum_norest_weight == 0) {
+    stream_update_dep_sum_norest_weight(stream->dep_prev, -stream->weight);
+  }
+}
+
+/*
+ * Returns stream whose dpri is NGHTTP2_STREAM_DPRI_NO_ITEM along the
+ * path following stream->dep_prev (stream's ancestors, including
+ * itself).  In other words, find stream which blocks the descendant
+ * streams.  If there is no such stream, returns NULL.
+ */
+static nghttp2_stream *stream_get_dep_blocking(nghttp2_stream *stream) {
+  for (; stream; stream = stream->dep_prev) {
+    if (stream->dpri != NGHTTP2_STREAM_DPRI_NO_ITEM) {
+      return stream;
     }
   }
-
-  return stream->sum_norest_weight > 0;
+  return NULL;
 }
 
 static int stream_update_dep_on_attach_item(nghttp2_stream *stream,
                                             nghttp2_session *session) {
-  nghttp2_stream *root_stream;
+  nghttp2_stream *blocking_stream;
+  int rv;
 
   stream->dpri = NGHTTP2_STREAM_DPRI_REST;
 
-  stream_update_dep_set_rest(stream->dep_next);
+  blocking_stream = stream_get_dep_blocking(stream->dep_prev);
 
-  root_stream = nghttp2_stream_get_dep_root(stream);
+  /* If we found REST or TOP in ascendants, we don't have to update
+     any metadata. */
+  if (blocking_stream) {
+    return 0;
+  }
 
-  DEBUGF(fprintf(stderr, "root=%p, stream=%p\n", root_stream, stream));
+  stream->dpri = NGHTTP2_STREAM_DPRI_TOP;
+  if (stream->sum_norest_weight == 0) {
+    stream_update_dep_sum_norest_weight(stream->dep_prev, stream->weight);
+  } else {
+    stream_update_dep_set_rest(stream->dep_next);
+  }
 
-  stream_update_dep_set_top(root_stream);
+  if (!stream->item->queued) {
+    DEBUGF(fprintf(stderr, "stream: stream=%d enqueue\n", stream->stream_id));
+    rv = stream_push_item(stream, session);
 
-  stream_update_dep_sum_norest_weight(root_stream);
-  stream_update_dep_effective_weight(root_stream);
+    if (rv != 0) {
+      return rv;
+    }
+  }
 
-  return stream_update_dep_queue_top(root_stream, session);
+  return 0;
 }
 
 static int stream_update_dep_on_detach_item(nghttp2_stream *stream,
                                             nghttp2_session *session) {
-  nghttp2_stream *root_stream;
+  if (stream->dpri == NGHTTP2_STREAM_DPRI_REST) {
+    stream->dpri = NGHTTP2_STREAM_DPRI_NO_ITEM;
+    return 0;
+  }
+
+  assert(stream->dpri == NGHTTP2_STREAM_DPRI_TOP);
 
   stream->dpri = NGHTTP2_STREAM_DPRI_NO_ITEM;
 
-  root_stream = nghttp2_stream_get_dep_root(stream);
+  if (stream_update_dep_set_top(stream) == 0) {
+    stream_update_dep_sum_norest_weight(stream->dep_prev, -stream->weight);
+    return 0;
+  }
 
-  stream_update_dep_set_top(root_stream);
-
-  stream_update_dep_sum_norest_weight(root_stream);
-  stream_update_dep_effective_weight(root_stream);
-
-  return stream_update_dep_queue_top(root_stream, session);
+  return stream_update_dep_queue_top(stream->dep_next, session);
 }
 
 int nghttp2_stream_attach_item(nghttp2_stream *stream,
@@ -465,22 +465,8 @@ void nghttp2_stream_promise_fulfilled(nghttp2_stream *stream) {
 }
 
 nghttp2_stream *nghttp2_stream_get_dep_root(nghttp2_stream *stream) {
-  for (;;) {
-    if (stream->sib_prev) {
-      stream = stream->sib_prev;
-
-      continue;
-    }
-
-    if (stream->dep_prev) {
-      stream = stream->dep_prev;
-
-      continue;
-    }
-
-    break;
-  }
-
+  for (; stream->dep_prev; stream = stream->dep_prev)
+    ;
   return stream;
 }
 
@@ -501,12 +487,25 @@ int nghttp2_stream_dep_subtree_find(nghttp2_stream *stream,
   return nghttp2_stream_dep_subtree_find(stream->dep_next, target);
 }
 
+int32_t nghttp2_stream_compute_effective_weight(nghttp2_stream *stream) {
+  int32_t weight;
+
+  if (!stream->dep_prev) {
+    return stream->weight;
+  }
+
+  weight = nghttp2_stream_compute_effective_weight(stream->dep_prev) *
+           stream->weight / stream->dep_prev->sum_norest_weight;
+
+  return nghttp2_max(1, weight);
+}
+
 void nghttp2_stream_dep_insert(nghttp2_stream *dep_stream,
                                nghttp2_stream *stream) {
   nghttp2_stream *si;
-  nghttp2_stream *root_stream;
+  nghttp2_stream *blocking_stream;
 
-  assert(stream->item == NULL);
+  assert(stream->dpri == NGHTTP2_STREAM_DPRI_NO_ITEM);
 
   DEBUGF(fprintf(stderr,
                  "stream: dep_insert dep_stream(%p)=%d, stream(%p)=%d\n",
@@ -515,34 +514,57 @@ void nghttp2_stream_dep_insert(nghttp2_stream *dep_stream,
   stream->sum_dep_weight = dep_stream->sum_dep_weight;
   dep_stream->sum_dep_weight = stream->weight;
 
+  blocking_stream = stream_get_dep_blocking(dep_stream);
+
+  stream->sum_norest_weight = 0;
+
   if (dep_stream->dep_next) {
+    assert(dep_stream->num_substreams >= 1);
+    /* num_substreams includes node itself */
+    stream->num_substreams = dep_stream->num_substreams;
+
     for (si = dep_stream->dep_next; si; si = si->sib_next) {
-      stream->num_substreams += si->num_substreams;
+      si->dep_prev = stream;
+      if (!blocking_stream && (si->dpri == NGHTTP2_STREAM_DPRI_TOP ||
+                               (si->dpri == NGHTTP2_STREAM_DPRI_NO_ITEM &&
+                                si->sum_norest_weight))) {
+        stream->sum_norest_weight += si->weight;
+      }
     }
 
     stream->dep_next = dep_stream->dep_next;
-    stream->dep_next->dep_prev = stream;
   }
 
   dep_stream->dep_next = stream;
   stream->dep_prev = dep_stream;
 
-  root_stream = stream_update_dep_length(dep_stream, 1);
+  if (stream->sum_norest_weight) {
+    dep_stream->sum_norest_weight = stream->weight;
+  }
 
-  stream_update_dep_sum_norest_weight(root_stream);
-  stream_update_dep_effective_weight(root_stream);
+  stream_update_dep_length(dep_stream, 1);
 
   ++stream->roots->num_streams;
 }
 
-static void link_dep(nghttp2_stream *dep_stream, nghttp2_stream *stream) {
-  dep_stream->dep_next = stream;
-  stream->dep_prev = dep_stream;
+static void set_dep_prev(nghttp2_stream *stream, nghttp2_stream *dep) {
+  for (; stream; stream = stream->sib_next) {
+    stream->dep_prev = dep;
+  }
 }
 
-static void link_sib(nghttp2_stream *prev_stream, nghttp2_stream *stream) {
-  prev_stream->sib_next = stream;
-  stream->sib_prev = prev_stream;
+static void link_dep(nghttp2_stream *dep_stream, nghttp2_stream *stream) {
+  dep_stream->dep_next = stream;
+  if (stream) {
+    stream->dep_prev = dep_stream;
+  }
+}
+
+static void link_sib(nghttp2_stream *a, nghttp2_stream *b) {
+  a->sib_next = b;
+  if (b) {
+    b->sib_prev = a;
+  }
 }
 
 static void insert_link_dep(nghttp2_stream *dep_stream,
@@ -554,8 +576,6 @@ static void insert_link_dep(nghttp2_stream *dep_stream,
   sib_next = dep_stream->dep_next;
 
   link_sib(stream, sib_next);
-
-  sib_next->dep_prev = NULL;
 
   link_dep(dep_stream, stream);
 }
@@ -574,9 +594,10 @@ static void unlink_sib(nghttp2_stream *stream) {
      *         |
      *        dep_next
      */
-    dep_next->dep_prev = NULL;
 
     link_sib(prev, dep_next);
+
+    set_dep_prev(dep_next, stream->dep_prev);
 
     if (stream->sib_next) {
       link_sib(stream_last_sib(dep_next), stream->sib_next);
@@ -613,9 +634,12 @@ static void unlink_dep(nghttp2_stream *stream) {
      */
     link_dep(prev, dep_next);
 
+    set_dep_prev(dep_next, stream->dep_prev);
+
     if (stream->sib_next) {
       link_sib(stream_last_sib(dep_next), stream->sib_next);
     }
+
   } else if (stream->sib_next) {
     /*
      * prev
@@ -634,14 +658,12 @@ static void unlink_dep(nghttp2_stream *stream) {
 
 void nghttp2_stream_dep_add(nghttp2_stream *dep_stream,
                             nghttp2_stream *stream) {
-  nghttp2_stream *root_stream;
-
-  assert(stream->item == NULL);
+  assert(stream->dpri == NGHTTP2_STREAM_DPRI_NO_ITEM);
 
   DEBUGF(fprintf(stderr, "stream: dep_add dep_stream(%p)=%d, stream(%p)=%d\n",
                  dep_stream, dep_stream->stream_id, stream, stream->stream_id));
 
-  root_stream = stream_update_dep_length(dep_stream, 1);
+  stream_update_dep_length(dep_stream, 1);
 
   dep_stream->sum_dep_weight += stream->weight;
 
@@ -651,38 +673,50 @@ void nghttp2_stream_dep_add(nghttp2_stream *dep_stream,
     insert_link_dep(dep_stream, stream);
   }
 
-  stream_update_dep_sum_norest_weight(root_stream);
-  stream_update_dep_effective_weight(root_stream);
-
   ++stream->roots->num_streams;
 }
 
 void nghttp2_stream_dep_remove(nghttp2_stream *stream) {
-  nghttp2_stream *prev, *next, *dep_prev, *si, *root_stream;
-  int32_t sum_dep_weight_delta;
+  nghttp2_stream *next, *dep_prev, *si, *blocking_stream;
+  int32_t sum_dep_weight_delta, sum_norest_weight_delta;
 
-  root_stream = NULL;
+  assert(stream->dpri == NGHTTP2_STREAM_DPRI_NO_ITEM);
 
   DEBUGF(fprintf(stderr, "stream: dep_remove stream(%p)=%d\n", stream,
                  stream->stream_id));
 
+  blocking_stream = stream_get_dep_blocking(stream->dep_prev);
+
   /* Distribute weight of |stream| to direct descendants */
   sum_dep_weight_delta = -stream->weight;
+
+  sum_norest_weight_delta = 0;
+
+  /* blocking_stream == NULL means that ascendants are all
+     NGHTTP2_STREAM_DPRI_NO_ITEM */
+  if (!blocking_stream && stream->sum_norest_weight) {
+    sum_norest_weight_delta -= stream->weight;
+  }
 
   for (si = stream->dep_next; si; si = si->sib_next) {
     si->weight = nghttp2_stream_dep_distributed_weight(stream, si->weight);
 
     sum_dep_weight_delta += si->weight;
+
+    if (!blocking_stream &&
+        (si->dpri == NGHTTP2_STREAM_DPRI_TOP ||
+         (si->dpri == NGHTTP2_STREAM_DPRI_NO_ITEM && si->sum_norest_weight))) {
+      sum_norest_weight_delta += si->weight;
+    }
   }
 
-  prev = stream_first_sib(stream);
-
-  dep_prev = prev->dep_prev;
+  dep_prev = stream->dep_prev;
 
   if (dep_prev) {
-    root_stream = stream_update_dep_length(dep_prev, -1);
+    stream_update_dep_length(dep_prev, -1);
 
     dep_prev->sum_dep_weight += sum_dep_weight_delta;
+    dep_prev->sum_norest_weight += sum_norest_weight_delta;
   }
 
   if (stream->sib_prev) {
@@ -702,22 +736,15 @@ void nghttp2_stream_dep_remove(nghttp2_stream *stream) {
       si->sib_prev = NULL;
       si->sib_next = NULL;
 
-      /* We already distributed weight of |stream| to this. */
-      si->effective_weight = si->weight;
-
       nghttp2_stream_roots_add(si->roots, si);
 
       si = next;
     }
   }
 
-  if (root_stream) {
-    stream_update_dep_sum_norest_weight(root_stream);
-    stream_update_dep_effective_weight(root_stream);
-  }
-
   stream->num_substreams = 1;
   stream->sum_dep_weight = 0;
+  stream->sum_norest_weight = 0;
 
   stream->dep_prev = NULL;
   stream->dep_next = NULL;
@@ -732,7 +759,8 @@ int nghttp2_stream_dep_insert_subtree(nghttp2_stream *dep_stream,
                                       nghttp2_session *session) {
   nghttp2_stream *last_sib;
   nghttp2_stream *dep_next;
-  nghttp2_stream *root_stream;
+  nghttp2_stream *blocking_stream;
+  nghttp2_stream *si;
   size_t delta_substreams;
 
   DEBUGF(fprintf(stderr, "stream: dep_insert_subtree dep_stream(%p)=%d "
@@ -741,7 +769,7 @@ int nghttp2_stream_dep_insert_subtree(nghttp2_stream *dep_stream,
 
   delta_substreams = stream->num_substreams;
 
-  stream_update_dep_set_rest(stream);
+  blocking_stream = stream_get_dep_blocking(dep_stream);
 
   if (dep_stream->dep_next) {
     /* dep_stream->num_substreams includes dep_stream itself */
@@ -752,7 +780,9 @@ int nghttp2_stream_dep_insert_subtree(nghttp2_stream *dep_stream,
 
     dep_next = dep_stream->dep_next;
 
-    stream_update_dep_set_rest(dep_next);
+    if (!blocking_stream && dep_stream->sum_norest_weight) {
+      stream_update_dep_set_rest(dep_next);
+    }
 
     link_dep(dep_stream, stream);
 
@@ -760,10 +790,12 @@ int nghttp2_stream_dep_insert_subtree(nghttp2_stream *dep_stream,
       last_sib = stream_last_sib(stream->dep_next);
 
       link_sib(last_sib, dep_next);
-
-      dep_next->dep_prev = NULL;
     } else {
       link_dep(stream, dep_next);
+    }
+
+    for (si = dep_next; si; si = si->sib_next) {
+      si->dep_prev = stream;
     }
   } else {
     link_dep(dep_stream, stream);
@@ -772,26 +804,32 @@ int nghttp2_stream_dep_insert_subtree(nghttp2_stream *dep_stream,
     dep_stream->sum_dep_weight = stream->weight;
   }
 
-  root_stream = stream_update_dep_length(dep_stream, delta_substreams);
+  stream_update_dep_length(dep_stream, delta_substreams);
 
-  stream_update_dep_set_top(root_stream);
+  if (blocking_stream) {
+    stream_update_dep_set_rest(stream);
 
-  stream_update_dep_sum_norest_weight(root_stream);
-  stream_update_dep_effective_weight(root_stream);
+    return 0;
+  }
 
-  return stream_update_dep_queue_top(root_stream, session);
+  if (stream_update_dep_set_top(stream) == 0) {
+    return 0;
+  }
+
+  dep_stream->sum_norest_weight = stream->weight;
+  stream_update_dep_sum_norest_weight(dep_stream->dep_prev, dep_stream->weight);
+
+  return stream_update_dep_queue_top(stream, session);
 }
 
 int nghttp2_stream_dep_add_subtree(nghttp2_stream *dep_stream,
                                    nghttp2_stream *stream,
                                    nghttp2_session *session) {
-  nghttp2_stream *root_stream;
+  nghttp2_stream *blocking_stream;
 
   DEBUGF(fprintf(stderr, "stream: dep_add_subtree dep_stream(%p)=%d "
                          "stream(%p)=%d\n",
                  dep_stream, dep_stream->stream_id, stream, stream->stream_id));
-
-  stream_update_dep_set_rest(stream);
 
   if (dep_stream->dep_next) {
     dep_stream->sum_dep_weight += stream->weight;
@@ -804,46 +842,52 @@ int nghttp2_stream_dep_add_subtree(nghttp2_stream *dep_stream,
     dep_stream->sum_dep_weight = stream->weight;
   }
 
-  root_stream = stream_update_dep_length(dep_stream, stream->num_substreams);
+  stream_update_dep_length(dep_stream, stream->num_substreams);
 
-  stream_update_dep_set_top(root_stream);
+  blocking_stream = stream_get_dep_blocking(dep_stream);
 
-  stream_update_dep_sum_norest_weight(root_stream);
-  stream_update_dep_effective_weight(root_stream);
+  if (blocking_stream) {
+    /* We cannot make any assumption for stream if its dpri is not
+       NGHTTP2_DPRI_TOP.  Just dfs under stream here. */
+    stream_update_dep_set_rest(stream);
 
-  return stream_update_dep_queue_top(root_stream, session);
+    return 0;
+  }
+
+  if (stream->dpri == NGHTTP2_STREAM_DPRI_TOP) {
+    stream_update_dep_sum_norest_weight(dep_stream, stream->weight);
+    return 0;
+  }
+
+  if (stream_update_dep_set_top(stream) == 0) {
+    return 0;
+  }
+
+  /* Newly added subtree contributes to dep_stream's
+     sum_norest_weight */
+  stream_update_dep_sum_norest_weight(dep_stream, stream->weight);
+
+  return stream_update_dep_queue_top(stream, session);
 }
 
 void nghttp2_stream_dep_remove_subtree(nghttp2_stream *stream) {
-  nghttp2_stream *prev, *next, *dep_prev, *root_stream;
+  nghttp2_stream *next, *dep_prev, *blocking_stream;
 
   DEBUGF(fprintf(stderr, "stream: dep_remove_subtree stream(%p)=%d\n", stream,
                  stream->stream_id));
 
   if (stream->sib_prev) {
-    prev = stream->sib_prev;
-
-    prev->sib_next = stream->sib_next;
-    if (prev->sib_next) {
-      prev->sib_next->sib_prev = prev;
-    }
-
-    prev = stream_first_sib(prev);
-
-    dep_prev = prev->dep_prev;
-
+    link_sib(stream->sib_prev, stream->sib_next);
+    dep_prev = stream->dep_prev;
   } else if (stream->dep_prev) {
     dep_prev = stream->dep_prev;
     next = stream->sib_next;
 
-    dep_prev->dep_next = next;
+    link_dep(dep_prev, next);
 
     if (next) {
-      next->dep_prev = dep_prev;
-
       next->sib_prev = NULL;
     }
-
   } else {
     nghttp2_stream_roots_remove(stream->roots, stream);
 
@@ -853,10 +897,15 @@ void nghttp2_stream_dep_remove_subtree(nghttp2_stream *stream) {
   if (dep_prev) {
     dep_prev->sum_dep_weight -= stream->weight;
 
-    root_stream = stream_update_dep_length(dep_prev, -stream->num_substreams);
+    stream_update_dep_length(dep_prev, -stream->num_substreams);
 
-    stream_update_dep_sum_norest_weight(root_stream);
-    stream_update_dep_effective_weight(root_stream);
+    blocking_stream = stream_get_dep_blocking(dep_prev);
+
+    if (!blocking_stream && (stream->dpri == NGHTTP2_STREAM_DPRI_TOP ||
+                             (stream->dpri == NGHTTP2_STREAM_DPRI_NO_ITEM &&
+                              stream->sum_norest_weight))) {
+      stream_update_dep_sum_norest_weight(dep_prev, -stream->weight);
+    }
   }
 
   stream->sib_prev = NULL;
@@ -871,14 +920,9 @@ int nghttp2_stream_dep_make_root(nghttp2_stream *stream,
 
   nghttp2_stream_roots_add(stream->roots, stream);
 
-  stream_update_dep_set_rest(stream);
-
-  stream->effective_weight = stream->weight;
-
-  stream_update_dep_set_top(stream);
-
-  stream_update_dep_sum_norest_weight(stream);
-  stream_update_dep_effective_weight(stream);
+  if (stream_update_dep_set_top(stream) == 0) {
+    return 0;
+  }
 
   return stream_update_dep_queue_top(stream, session);
 }
@@ -908,6 +952,13 @@ nghttp2_stream_dep_all_your_stream_are_belong_to_us(nghttp2_stream *stream,
     stream->sum_dep_weight += first->weight;
     stream->num_substreams += first->num_substreams;
 
+    if (stream->dpri != NGHTTP2_STREAM_DPRI_NO_ITEM &&
+        (first->dpri == NGHTTP2_STREAM_DPRI_TOP ||
+         (first->dpri == NGHTTP2_STREAM_DPRI_NO_ITEM &&
+          first->sum_norest_weight))) {
+      stream_update_dep_set_rest(first);
+    }
+
     for (si = first->root_next; si; si = si->root_next) {
 
       assert(si != stream);
@@ -918,7 +969,15 @@ nghttp2_stream_dep_all_your_stream_are_belong_to_us(nghttp2_stream *stream,
       stream->sum_dep_weight += si->weight;
       stream->num_substreams += si->num_substreams;
 
+      if (stream->dpri != NGHTTP2_STREAM_DPRI_NO_ITEM &&
+          (si->dpri == NGHTTP2_STREAM_DPRI_TOP ||
+           (si->dpri == NGHTTP2_STREAM_DPRI_NO_ITEM &&
+            si->sum_norest_weight))) {
+        stream_update_dep_set_rest(si);
+      }
+
       link_sib(prev, si);
+      si->dep_prev = stream;
 
       prev = si;
     }
@@ -928,8 +987,7 @@ nghttp2_stream_dep_all_your_stream_are_belong_to_us(nghttp2_stream *stream,
 
       sib_next = stream->dep_next;
 
-      sib_next->dep_prev = NULL;
-
+      first->dep_prev = stream;
       link_sib(first, sib_next);
       link_dep(stream, prev);
     } else {
