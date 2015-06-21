@@ -2163,6 +2163,22 @@ void test_nghttp2_session_on_priority_received(void) {
 
   nghttp2_frame_priority_free(&frame.priority);
   nghttp2_session_del(session);
+
+  /* Check again dep_stream_id == stream_id, and stream_id is idle */
+  nghttp2_session_server_new(&session, &callbacks, &user_data);
+
+  nghttp2_priority_spec_init(&pri_spec, 1, 16, 0);
+
+  nghttp2_frame_priority_init(&frame.priority, 1, &pri_spec);
+
+  CU_ASSERT(0 == nghttp2_session_on_priority_received(session, &frame));
+
+  item = nghttp2_session_get_next_ob_item(session);
+
+  CU_ASSERT(NGHTTP2_GOAWAY == item->frame.hd.type);
+
+  nghttp2_frame_priority_free(&frame.priority);
+  nghttp2_session_del(session);
 }
 
 void test_nghttp2_session_on_rst_stream_received(void) {

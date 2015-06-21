@@ -3674,6 +3674,11 @@ int nghttp2_session_on_priority_received(nghttp2_session *session,
                                              "PRIORITY: stream_id == 0");
   }
 
+  if (frame->priority.pri_spec.stream_id == frame->hd.stream_id) {
+    return nghttp2_session_terminate_session_with_reason(
+        session, NGHTTP2_PROTOCOL_ERROR, "depend on itself");
+  }
+
   if (!session->server) {
     /* Re-prioritization works only in server */
     return session_call_on_frame_received(session, frame);
