@@ -58,7 +58,7 @@ public:
     HostEntry();
   };
 
-  typedef std::map<std::string, HostEntry> HostEntryMap;
+  using HostEntryMap = std::map<std::string, HostEntry>;
 
   // conn_max_per_host == 0 means no limit for downstream connection.
   DownstreamQueue(size_t conn_max_per_host = 0, bool unified_host = true);

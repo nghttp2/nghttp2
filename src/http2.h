@@ -61,7 +61,7 @@ struct Header {
   bool no_index;
 };
 
-typedef std::vector<Header> Headers;
+using Headers = std::vector<Header>;
 
 namespace http2 {
 
