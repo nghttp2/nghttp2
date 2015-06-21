@@ -710,8 +710,7 @@ int event_loop() {
     }
     if (auto_tls_ticket_key) {
       // Renew ticket key every 12hrs
-      ev_timer_init(&renew_ticket_key_timer, renew_ticket_key_cb, 0.,
-                    12 * 3600.);
+      ev_timer_init(&renew_ticket_key_timer, renew_ticket_key_cb, 0., 12_h);
       renew_ticket_key_timer.data = conn_handler.get();
       ev_timer_again(loop, &renew_ticket_key_timer);
 
@@ -831,16 +830,16 @@ void fill_default_config() {
   mod_config()->cert_file = nullptr;
 
   // Read timeout for HTTP2 upstream connection
-  mod_config()->http2_upstream_read_timeout = 180.;
+  mod_config()->http2_upstream_read_timeout = 3_min;
 
   // Read timeout for non-HTTP2 upstream connection
-  mod_config()->upstream_read_timeout = 180.;
+  mod_config()->upstream_read_timeout = 3_min;
 
   // Write timeout for HTTP2/non-HTTP2 upstream connection
   mod_config()->upstream_write_timeout = 30.;
 
   // Read/Write timeouts for downstream connection
-  mod_config()->downstream_read_timeout = 180.;
+  mod_config()->downstream_read_timeout = 3_min;
   mod_config()->downstream_write_timeout = 30.;
 
   // Read timeout for HTTP/2 stream
@@ -951,7 +950,7 @@ void fill_default_config() {
   mod_config()->host_unix = false;
   mod_config()->http2_downstream_connections_per_worker = 0;
   // ocsp update interval = 14400 secs = 4 hours, borrowed from h2o
-  mod_config()->ocsp_update_interval = 14400.;
+  mod_config()->ocsp_update_interval = 4_h;
   mod_config()->fetch_ocsp_response_file =
       strcopy(PKGDATADIR "/fetch-ocsp-response");
   mod_config()->no_ocsp = false;

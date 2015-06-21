@@ -100,8 +100,8 @@ template <typename Array> void append_nv(Stream *stream, const Array &nva) {
 } // namespace
 
 Config::Config()
-    : stream_read_timeout(60.), stream_write_timeout(60.), data_ptr(nullptr),
-      padding(0), num_worker(1), max_concurrent_streams(100),
+    : stream_read_timeout(1_min), stream_write_timeout(1_min),
+      data_ptr(nullptr), padding(0), num_worker(1), max_concurrent_streams(100),
       header_table_size(-1), port(0), verbose(false), daemon(false),
       verify_client(false), no_tls(false), error_gzip(false),
       early_response(false), hexdump(false), echo_upload(false) {}

@@ -145,6 +145,8 @@ template <typename T> void dlist_delete_all(DList<T> &dl) {
   }
 }
 
+// User-defined literals for K, M, and G (powers of 1024)
+
 constexpr unsigned long long operator"" _k(unsigned long long k) {
   return k * 1024;
 }
@@ -156,6 +158,12 @@ constexpr unsigned long long operator"" _m(unsigned long long m) {
 constexpr unsigned long long operator"" _g(unsigned long long g) {
   return g * 1024 * 1024 * 1024;
 }
+
+// User-defined literals for time, converted into double in seconds
+
+constexpr double operator"" _h(unsigned long long h) { return h * 60 * 60; }
+
+constexpr double operator"" _min(unsigned long long min) { return min * 60; }
 
 } // namespace nghttp2
 
