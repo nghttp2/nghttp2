@@ -731,7 +731,8 @@ int nghttp2_session_update_local_settings(nghttp2_session *session,
 
 /*
  * Re-prioritize |stream|. The new priority specification is
- * |pri_spec|.
+ * |pri_spec|.  Caller must ensure that stream->hd.stream_id !=
+ * pri_spec->stream_id.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:

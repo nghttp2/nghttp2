@@ -601,13 +601,10 @@ nghttp2_session_reprioritize_stream(nghttp2_session *session,
   nghttp2_priority_spec pri_spec_default;
   const nghttp2_priority_spec *pri_spec = pri_spec_in;
 
+  assert(pri_spec->stream_id != stream->stream_id);
+
   if (!nghttp2_stream_in_dep_tree(stream)) {
     return 0;
-  }
-
-  if (pri_spec->stream_id == stream->stream_id) {
-    return nghttp2_session_terminate_session_with_reason(
-        session, NGHTTP2_PROTOCOL_ERROR, "depend on itself");
   }
 
   if (pri_spec->stream_id != 0) {
