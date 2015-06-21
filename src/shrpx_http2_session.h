@@ -177,7 +177,7 @@ public:
     CONNECTION_CHECK_STARTED
   };
 
-  using ReadBuf = Buffer<8192>;
+  using ReadBuf = Buffer<8_k>;
   using WriteBuf = Buffer<32768>;
 
 private:

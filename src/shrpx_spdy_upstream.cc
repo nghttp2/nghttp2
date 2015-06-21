@@ -464,7 +464,7 @@ SpdyUpstream::SpdyUpstream(uint16_t version, ClientHandler *handler)
   rv = spdylay_session_server_new(&session_, version, &callbacks, this);
   assert(rv == 0);
 
-  uint32_t max_buffer = 65536;
+  uint32_t max_buffer = 64_k;
   rv = spdylay_session_set_option(session_,
                                   SPDYLAY_OPT_MAX_RECV_CTRL_FRAME_BUFFER,
                                   &max_buffer, sizeof(max_buffer));

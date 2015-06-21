@@ -506,7 +506,7 @@ int Client::on_write() {
 }
 
 int Client::read_clear() {
-  uint8_t buf[8192];
+  uint8_t buf[8_k];
 
   for (;;) {
     ssize_t nread;
@@ -626,7 +626,7 @@ int Client::tls_handshake() {
 }
 
 int Client::read_tls() {
-  uint8_t buf[8192];
+  uint8_t buf[8_k];
 
   ERR_clear_error();
 

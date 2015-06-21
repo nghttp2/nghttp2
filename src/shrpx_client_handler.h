@@ -119,7 +119,7 @@ public:
   Worker *get_worker() const;
 
   using WriteBuf = Buffer<32768>;
-  using ReadBuf = Buffer<8192>;
+  using ReadBuf = Buffer<8_k>;
 
   WriteBuf *get_wb();
   ReadBuf *get_rb();

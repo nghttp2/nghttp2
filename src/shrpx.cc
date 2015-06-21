@@ -945,8 +945,8 @@ void fill_default_config() {
   mod_config()->downstream_connections_per_host = 8;
   mod_config()->downstream_connections_per_frontend = 0;
   mod_config()->listener_disable_timeout = 0.;
-  mod_config()->downstream_request_buffer_size = 16 * 1024;
-  mod_config()->downstream_response_buffer_size = 16 * 1024;
+  mod_config()->downstream_request_buffer_size = 16_k;
+  mod_config()->downstream_response_buffer_size = 16_k;
   mod_config()->no_server_push = false;
   mod_config()->host_unix = false;
   mod_config()->http2_downstream_connections_per_worker = 0;
@@ -955,7 +955,7 @@ void fill_default_config() {
   mod_config()->fetch_ocsp_response_file =
       strcopy(PKGDATADIR "/fetch-ocsp-response");
   mod_config()->no_ocsp = false;
-  mod_config()->header_field_buffer = 64 * 1024;
+  mod_config()->header_field_buffer = 64_k;
   mod_config()->max_header_fields = 100;
 }
 } // namespace

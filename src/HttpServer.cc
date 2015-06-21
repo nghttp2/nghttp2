@@ -453,7 +453,7 @@ int Http2Handler::fill_wb() {
 
 int Http2Handler::read_clear() {
   int rv;
-  std::array<uint8_t, 8192> buf;
+  std::array<uint8_t, 8_k> buf;
 
   for (;;) {
     ssize_t nread;
@@ -570,7 +570,7 @@ int Http2Handler::tls_handshake() {
 }
 
 int Http2Handler::read_tls() {
-  std::array<uint8_t, 8192> buf;
+  std::array<uint8_t, 8_k> buf;
 
   ERR_clear_error();
 

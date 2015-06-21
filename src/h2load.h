@@ -50,6 +50,7 @@
 
 #include "http2.h"
 #include "buffer.h"
+#include "template.h"
 
 using namespace nghttp2;
 
@@ -200,7 +201,7 @@ struct Client {
   // The number of requests this client has done so far.
   size_t req_done;
   int fd;
-  Buffer<65536> wb;
+  Buffer<64_k> wb;
 
   enum { ERR_CONNECT_FAIL = -100 };
 

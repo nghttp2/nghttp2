@@ -228,7 +228,7 @@ template <typename Memchunk> struct Memchunks {
   size_t len;
 };
 
-using Memchunk16K = Memchunk<16384>;
+using Memchunk16K = Memchunk<16_k>;
 using MemchunkPool = Pool<Memchunk16K>;
 using DefaultMemchunks = Memchunks<Memchunk16K>;
 

@@ -31,6 +31,8 @@
 
 #include <nghttp2/asio_http2_client.h>
 
+#include "template.h"
+
 namespace nghttp2 {
 namespace asio_http2 {
 namespace client {
@@ -90,8 +92,8 @@ public:
   void do_write();
 
 protected:
-  boost::array<uint8_t, 8192> rb_;
-  boost::array<uint8_t, 65536> wb_;
+  boost::array<uint8_t, 8_k> rb_;
+  boost::array<uint8_t, 64_k> wb_;
   std::size_t wblen_;
 
 private:

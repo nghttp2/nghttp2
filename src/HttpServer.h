@@ -45,6 +45,7 @@
 
 #include "http2.h"
 #include "buffer.h"
+#include "template.h"
 
 namespace nghttp2 {
 
@@ -155,7 +156,7 @@ public:
 
   struct ev_loop *get_loop() const;
 
-  using WriteBuf = Buffer<65536>;
+  using WriteBuf = Buffer<64_k>;
 
   WriteBuf *get_wb();
 

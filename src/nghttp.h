@@ -52,6 +52,7 @@
 #include "buffer.h"
 #include "http2.h"
 #include "nghttp2_gzip.h"
+#include "template.h"
 
 namespace nghttp2 {
 
@@ -68,7 +69,6 @@ struct Config {
   std::string datafile;
   std::string harfile;
   nghttp2_option *http2_option;
-  size_t output_upper_thres;
   size_t padding;
   ssize_t peer_max_concurrent_streams;
   ssize_t header_table_size;
@@ -260,7 +260,7 @@ struct HttpClient {
   // true if the response message of HTTP Upgrade request is fully
   // received. It is not relevant the upgrade succeeds, or not.
   bool upgrade_response_complete;
-  Buffer<65536> wb;
+  Buffer<64_k> wb;
   // SETTINGS payload sent as token68 in HTTP Upgrade
   std::array<uint8_t, 128> settings_payload;
 

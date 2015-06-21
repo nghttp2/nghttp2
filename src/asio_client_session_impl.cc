@@ -313,7 +313,7 @@ bool session_impl::setup_session() {
     return false;
   }
 
-  const uint32_t window_size = 256 * 1024 * 1024;
+  const uint32_t window_size = 256_m;
 
   std::array<nghttp2_settings_entry, 2> iv{
       {{NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS, 100},

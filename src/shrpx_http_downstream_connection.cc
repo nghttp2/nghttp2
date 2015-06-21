@@ -729,7 +729,7 @@ int HttpDownstreamConnection::on_read() {
   }
 
   ev_timer_again(conn_.loop, &conn_.rt);
-  std::array<uint8_t, 8192> buf;
+  std::array<uint8_t, 8_k> buf;
   int rv;
 
   if (downstream_->get_upgraded()) {

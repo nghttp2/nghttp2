@@ -49,6 +49,7 @@
 #include "asio_server_http2_handler.h"
 #include "asio_server_serve_mux.h"
 #include "util.h"
+#include "template.h"
 
 namespace nghttp2 {
 
@@ -153,9 +154,9 @@ private:
   std::shared_ptr<http2_handler> handler_;
 
   /// Buffer for incoming data.
-  boost::array<uint8_t, 8192> buffer_;
+  boost::array<uint8_t, 8_k> buffer_;
 
-  boost::array<uint8_t, 65536> outbuf_;
+  boost::array<uint8_t, 64_k> outbuf_;
 
   bool writing_;
 };

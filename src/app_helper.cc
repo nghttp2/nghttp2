@@ -58,6 +58,7 @@
 #include "app_helper.h"
 #include "util.h"
 #include "http2.h"
+#include "template.h"
 
 namespace nghttp2 {
 
@@ -463,7 +464,7 @@ ssize_t deflate_data(uint8_t *out, size_t outlen, const uint8_t *in,
                      size_t inlen) {
   int rv;
   z_stream zst;
-  uint8_t temp_out[8192];
+  uint8_t temp_out[8_k];
   auto temp_outlen = sizeof(temp_out);
 
   zst.next_in = Z_NULL;

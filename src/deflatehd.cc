@@ -49,6 +49,10 @@ extern "C" {
 #include "comp_helper.h"
 }
 
+#include "template.h"
+
+namespace nghttp2 {
+
 typedef struct {
   size_t table_size;
   size_t deflate_table_size;
@@ -122,7 +126,7 @@ static void deflate_hd(nghttp2_hd_deflater *deflater,
   ssize_t rv;
   nghttp2_bufs bufs;
 
-  nghttp2_bufs_init2(&bufs, 4096, 16, 0, nghttp2_mem_default());
+  nghttp2_bufs_init2(&bufs, 4_k, 16, 0, nghttp2_mem_default());
 
   rv = nghttp2_hd_deflate_hd_bufs(deflater, &bufs, (nghttp2_nv *)nva.data(),
                                   nva.size());
@@ -448,3 +452,7 @@ int main(int argc, char **argv) {
           output_sum, comp_ratio);
   return 0;
 }
+
+} // namespace nghttp2
+
+int main(int argc, char **argv) { return nghttp2::main(argc, argv); }

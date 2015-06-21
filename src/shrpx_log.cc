@@ -125,7 +125,7 @@ Log::~Log() {
     return;
   }
 
-  char buf[4096];
+  char buf[4_k];
   auto tty = lgconf->errorlog_tty;
 
   lgconf->update_tstamp(std::chrono::system_clock::now());
@@ -172,7 +172,7 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
     return;
   }
 
-  char buf[4096];
+  char buf[4_k];
 
   auto downstream = lgsp.downstream;
 

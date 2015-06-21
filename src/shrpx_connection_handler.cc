@@ -455,7 +455,7 @@ int ConnectionHandler::start_ocsp_update(const char *cert_file) {
 }
 
 void ConnectionHandler::read_ocsp_chunk() {
-  std::array<uint8_t, 4096> buf;
+  std::array<uint8_t, 4_k> buf;
   for (;;) {
     ssize_t n;
     while ((n = read(ocsp_.fd, buf.data(), buf.size())) == -1 && errno == EINTR)

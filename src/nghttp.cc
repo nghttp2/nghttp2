@@ -95,7 +95,7 @@ constexpr auto anchors = std::array<Anchor, 5>{{
 } // namespace
 
 Config::Config()
-    : output_upper_thres(1024 * 1024), padding(0),
+    : padding(0),
       peer_max_concurrent_streams(NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS),
       header_table_size(-1), weight(NGHTTP2_DEFAULT_WEIGHT), multiply(1),
       timeout(0.), window_bits(-1), connection_window_bits(-1), verbose(0),
@@ -362,7 +362,7 @@ int submit_request(HttpClient *client, const Headers &headers, Request *req) {
   if (config.continuation) {
     for (size_t i = 0; i < 6; ++i) {
       build_headers.emplace_back("continuation-test-" + util::utos(i + 1),
-                                 std::string(4096, '-'));
+                                 std::string(4_k, '-'));
     }
   }
   auto num_initial_headers = build_headers.size();
@@ -634,7 +634,7 @@ void HttpClient::disconnect() {
 int HttpClient::read_clear() {
   ev_timer_again(loop, &rt);
 
-  std::array<uint8_t, 8192> buf;
+  std::array<uint8_t, 8_k> buf;
 
   for (;;) {
     ssize_t nread;
@@ -1149,7 +1149,7 @@ int HttpClient::read_tls() {
 
   ERR_clear_error();
 
-  std::array<uint8_t, 8192> buf;
+  std::array<uint8_t, 8_k> buf;
   for (;;) {
     auto rv = SSL_read(ssl, buf.data(), buf.size());
 
@@ -1525,7 +1525,7 @@ int on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
 
   if (req->inflater) {
     while (len > 0) {
-      const size_t MAX_OUTLEN = 4096;
+      const size_t MAX_OUTLEN = 4_k;
       std::array<uint8_t, MAX_OUTLEN> out;
       size_t outlen = MAX_OUTLEN;
       size_t tlen = len;
@@ -2244,7 +2244,7 @@ int run(char **uris, int n) {
                     << std::endl;
         }
         while (1) {
-          std::array<char, 1024> buf;
+          std::array<char, 1_k> buf;
           ssize_t rret, wret;
           while ((rret = read(0, buf.data(), buf.size())) == -1 &&
                  errno == EINTR)
