@@ -87,9 +87,10 @@ delete the socket and continues to use it.
 OCSP STAPLING
 -------------
 
-OCSP query is done using external perl script ``fetch-ocsp-response``,
-which has been developed as part of h2o project
-(https://github.com/h2o/h2o).
+OCSP query is done using external Python script
+``fetch-ocsp-response``, which has been originally developed in Perl
+as part of h2o project (https://github.com/h2o/h2o), and was
+translated into Python.
 
 The script file is usually installed under
 ``$(prefix)/share/nghttp2/`` directory.  The actual path to script can
