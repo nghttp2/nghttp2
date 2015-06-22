@@ -1074,9 +1074,11 @@ Performance:
               backend addresses specified by -b option.
   --backend-http1-connections-per-host=<N>
               Set   maximum  number   of  backend   concurrent  HTTP/1
-              connections per host.  This option is meaningful when -s
-              option is used.  To limit  the number of connections per
-              frontend        for       default        mode,       use
+              connections per origin host.   This option is meaningful
+              when -s option  is used.  The origin  host is determined
+              by  authority  portion  of requset  URI  (or  :authority
+              header  field  for  HTTP/2).   To limit  the  number  of
+              connections   per  frontend   for   default  mode,   use
               --backend-http1-connections-per-frontend.
               Default: )" << get_config()->downstream_connections_per_host
       << R"(
