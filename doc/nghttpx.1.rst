@@ -172,9 +172,11 @@ Performance
 .. option:: --backend-http1-connections-per-host=<N>
 
     Set   maximum  number   of  backend   concurrent  HTTP/1
-    connections per host.  This option is meaningful when :option:`-s`
-    option is used.  To limit  the number of connections per
-    frontend        for       default        mode,       use
+    connections per origin host.   This option is meaningful
+    when :option:`-s` option  is used.  The origin  host is determined
+    by  authority  portion  of requset  URI  (or  :authority
+    header  field  for  HTTP/2).   To limit  the  number  of
+    connections   per  frontend   for   default  mode,   use
     :option:`--backend-http1-connections-per-frontend`\.
 
     Default: ``8``
@@ -805,9 +807,10 @@ delete the socket and continues to use it.
 OCSP STAPLING
 -------------
 
-OCSP query is done using external perl script ``fetch-ocsp-response``,
-which has been developed as part of h2o project
-(https://github.com/h2o/h2o).
+OCSP query is done using external Python script
+``fetch-ocsp-response``, which has been originally developed in Perl
+as part of h2o project (https://github.com/h2o/h2o), and was
+translated into Python.
 
 The script file is usually installed under
 ``$(prefix)/share/nghttp2/`` directory.  The actual path to script can
