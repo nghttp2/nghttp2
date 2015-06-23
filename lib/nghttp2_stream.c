@@ -356,7 +356,12 @@ static int stream_update_dep_on_detach_item(nghttp2_stream *stream,
     return 0;
   }
 
-  assert(stream->dpri == NGHTTP2_STREAM_DPRI_TOP);
+  if (stream->dpri == NGHTTP2_STREAM_DPRI_NO_ITEM) {
+    /* nghttp2_stream_defer_item() does not clear stream->item, but
+       set dpri = NGHTTP2_STREAM_DPRI_NO_ITEM.  Catch this case
+       here. */
+    return 0;
+  }
 
   stream->dpri = NGHTTP2_STREAM_DPRI_NO_ITEM;
 

@@ -7469,6 +7469,45 @@ void test_nghttp2_session_on_begin_headers_temporal_failure(void) {
   nghttp2_bufs_free(&bufs);
 }
 
+void test_nghttp2_session_defer_then_close(void) {
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  nghttp2_data_provider prd;
+  int rv;
+  const uint8_t *datap;
+  ssize_t datalen;
+  nghttp2_frame frame;
+
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+  callbacks.send_callback = null_send_callback;
+
+  nghttp2_session_client_new(&session, &callbacks, NULL);
+
+  prd.read_callback = defer_data_source_read_callback;
+
+  rv = nghttp2_submit_request(session, NULL, reqnv, ARRLEN(reqnv), &prd, NULL);
+  CU_ASSERT(rv > 0);
+
+  /* This sends HEADERS */
+  datalen = nghttp2_session_mem_send(session, &datap);
+
+  CU_ASSERT(datalen > 0);
+
+  /* This makes DATA item deferred */
+  datalen = nghttp2_session_mem_send(session, &datap);
+
+  CU_ASSERT(datalen == 0);
+
+  nghttp2_frame_rst_stream_init(&frame.rst_stream, 1, NGHTTP2_CANCEL);
+
+  /* Assertion failure; GH-264 */
+  rv = nghttp2_session_on_rst_stream_received(session, &frame);
+
+  CU_ASSERT(rv == 0);
+
+  nghttp2_session_del(session);
+}
+
 static void check_nghttp2_http_recv_headers_fail(
     nghttp2_session *session, nghttp2_hd_deflater *deflater, int32_t stream_id,
     int stream_state, const nghttp2_nv *nva, size_t nvlen) {
