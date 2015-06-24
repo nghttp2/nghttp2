@@ -543,6 +543,14 @@ void ConnectionHandler::proceed_next_cert_ocsp() {
     auto ssl_ctx = all_ssl_ctx_[ocsp_.next];
     auto tls_ctx_data =
         static_cast<ssl::TLSContextData *>(SSL_CTX_get_app_data(ssl_ctx));
+
+    // client SSL_CTX is also included in all_ssl_ctx_, but has no
+    // tls_ctx_data.
+    if (!tls_ctx_data) {
+      ++ocsp_.next;
+      continue;
+    }
+
     auto cert_file = tls_ctx_data->cert_file;
 
     if (start_ocsp_update(cert_file) != 0) {
