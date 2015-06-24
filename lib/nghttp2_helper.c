@@ -308,7 +308,7 @@ const char *nghttp2_strerror(int error_code) {
   case NGHTTP2_ERR_CALLBACK_FAILURE:
     return "The user callback function failed";
   case NGHTTP2_ERR_BAD_CLIENT_MAGIC:
-    return "Received bad clinet magic byte string";
+    return "Received bad client magic byte string";
   default:
     return "Unknown error code";
   }
