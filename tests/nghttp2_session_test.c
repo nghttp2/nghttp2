@@ -6429,6 +6429,46 @@ void test_nghttp2_session_stream_attach_item(void) {
   CU_ASSERT(0 == b->sum_norest_weight);
 
   nghttp2_session_del(session);
+
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  a = open_stream(session, 1);
+  b = open_stream_with_dep(session, 3, a);
+  c = open_stream_with_dep(session, 5, a);
+  d = open_stream_with_dep(session, 7, c);
+
+  /* a
+   * |
+   * c--b
+   * |
+   * d
+   */
+
+  da = create_data_ob_item(mem);
+  db = create_data_ob_item(mem);
+  dc = create_data_ob_item(mem);
+
+  nghttp2_stream_attach_item(a, da, session);
+  nghttp2_stream_attach_item(b, db, session);
+  nghttp2_stream_attach_item(c, dc, session);
+
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == a->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_REST == b->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_REST == c->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == d->dpri);
+
+  /* check that all children's item get queued */
+  nghttp2_stream_detach_item(a, session);
+
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == a->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == b->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == c->dpri);
+  CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == d->dpri);
+
+  CU_ASSERT(1 == db->queued);
+  CU_ASSERT(1 == dc->queued);
+
+  nghttp2_session_del(session);
 }
 
 void test_nghttp2_session_stream_attach_item_subtree(void) {

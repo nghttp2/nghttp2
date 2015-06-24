@@ -370,7 +370,7 @@ static int stream_update_dep_on_detach_item(nghttp2_stream *stream,
     return 0;
   }
 
-  return stream_update_dep_queue_top(stream->dep_next, session);
+  return stream_update_dep_queue_top(stream, session);
 }
 
 int nghttp2_stream_attach_item(nghttp2_stream *stream,
