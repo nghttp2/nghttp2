@@ -155,6 +155,8 @@ int32_t nghttp2_stream_dep_distributed_weight(nghttp2_stream *stream,
 }
 
 static void stream_update_dep_set_rest(nghttp2_stream *stream) {
+  nghttp2_stream *si;
+
   if (stream == NULL) {
     return;
   }
@@ -167,14 +169,12 @@ static void stream_update_dep_set_rest(nghttp2_stream *stream) {
 
   if (stream->dpri == NGHTTP2_STREAM_DPRI_TOP) {
     stream->dpri = NGHTTP2_STREAM_DPRI_REST;
-
-    stream_update_dep_set_rest(stream->sib_next);
-
     return;
   }
 
-  stream_update_dep_set_rest(stream->sib_next);
-  stream_update_dep_set_rest(stream->dep_next);
+  for (si = stream->dep_next; si; si = si->sib_next) {
+    stream_update_dep_set_rest(si);
+  }
 }
 
 /*
@@ -317,7 +317,7 @@ static nghttp2_stream *stream_get_dep_blocking(nghttp2_stream *stream) {
 
 static int stream_update_dep_on_attach_item(nghttp2_stream *stream,
                                             nghttp2_session *session) {
-  nghttp2_stream *blocking_stream;
+  nghttp2_stream *blocking_stream, *si;
   int rv;
 
   stream->dpri = NGHTTP2_STREAM_DPRI_REST;
@@ -334,7 +334,9 @@ static int stream_update_dep_on_attach_item(nghttp2_stream *stream,
   if (stream->sum_norest_weight == 0) {
     stream_update_dep_sum_norest_weight(stream->dep_prev, stream->weight);
   } else {
-    stream_update_dep_set_rest(stream->dep_next);
+    for (si = stream->dep_next; si; si = si->sib_next) {
+      stream_update_dep_set_rest(si);
+    }
   }
 
   if (!stream->item->queued) {
@@ -776,6 +778,10 @@ int nghttp2_stream_dep_insert_subtree(nghttp2_stream *dep_stream,
 
   blocking_stream = stream_get_dep_blocking(dep_stream);
 
+  if (blocking_stream) {
+    stream_update_dep_set_rest(stream);
+  }
+
   if (dep_stream->dep_next) {
     /* dep_stream->num_substreams includes dep_stream itself */
     stream->num_substreams += dep_stream->num_substreams - 1;
@@ -786,7 +792,9 @@ int nghttp2_stream_dep_insert_subtree(nghttp2_stream *dep_stream,
     dep_next = dep_stream->dep_next;
 
     if (!blocking_stream && dep_stream->sum_norest_weight) {
-      stream_update_dep_set_rest(dep_next);
+      for (si = dep_next; si; si = si->sib_next) {
+        stream_update_dep_set_rest(si);
+      }
     }
 
     link_dep(dep_stream, stream);
@@ -812,8 +820,6 @@ int nghttp2_stream_dep_insert_subtree(nghttp2_stream *dep_stream,
   stream_update_dep_length(dep_stream, delta_substreams);
 
   if (blocking_stream) {
-    stream_update_dep_set_rest(stream);
-
     return 0;
   }
 
