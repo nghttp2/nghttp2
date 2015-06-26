@@ -433,8 +433,8 @@ static void check_dep_prev(nghttp2_stream *stream) {
 
 #endif /* STREAM_DEP_DEBUG */
 
-static void validate_tree(nghttp2_stream *stream) {
 #ifdef STREAM_DEP_DEBUG
+static void validate_tree(nghttp2_stream *stream) {
   if (!stream) {
     return;
   }
@@ -447,8 +447,10 @@ static void validate_tree(nghttp2_stream *stream) {
   check_sum_dep(stream);
   check_sum_norest(stream);
   check_dep_prev(stream);
-#endif /* STREAM_DEP_DEBUG*/
 }
+#else /* !STREAM_DEP_DEBUG */
+static void validate_tree(nghttp2_stream *stream _U_) {}
+#endif /* !STREAM_DEP_DEBUG*/
 
 static int stream_update_dep_on_attach_item(nghttp2_stream *stream,
                                             nghttp2_session *session) {
