@@ -315,6 +315,141 @@ static nghttp2_stream *stream_get_dep_blocking(nghttp2_stream *stream) {
   return NULL;
 }
 
+#ifdef STREAM_DEP_DEBUG
+
+static size_t check_stream_num(nghttp2_stream *stream) {
+  size_t n = 1;
+  nghttp2_stream *si;
+  for (si = stream->dep_next; si; si = si->sib_next) {
+    n += check_stream_num(si);
+  }
+  if (n != stream->num_substreams) {
+    fprintf(stderr, "num_substreams = %zu; want %zu\n", n,
+            stream->num_substreams);
+
+    assert(0);
+  }
+  return n;
+}
+
+static void ensure_rest_or_no_item(nghttp2_stream *stream) {
+  nghttp2_stream *si;
+  switch (stream->dpri) {
+  case NGHTTP2_STREAM_DPRI_TOP:
+    fprintf(stderr, "NGHTTP2_STREAM_DPRI_TOP; want REST or NO_ITEM\n");
+    assert(0);
+    break;
+  case NGHTTP2_STREAM_DPRI_REST:
+  case NGHTTP2_STREAM_DPRI_NO_ITEM:
+    for (si = stream->dep_next; si; si = si->sib_next) {
+      ensure_rest_or_no_item(si);
+    }
+    break;
+  default:
+    fprintf(stderr, "invalid dpri %d\n", stream->dpri);
+    assert(0);
+  }
+}
+
+static void check_dpri(nghttp2_stream *stream) {
+  nghttp2_stream *si;
+  switch (stream->dpri) {
+  case NGHTTP2_STREAM_DPRI_TOP:
+    if (!stream->item->queued) {
+      fprintf(stderr, "stream->item->queued is not nonzero while it is in "
+                      "NGHTTP2_STREAM_DPRI_TOP\n");
+      assert(0);
+    }
+  /* fall through */
+  case NGHTTP2_STREAM_DPRI_REST:
+    for (si = stream->dep_next; si; si = si->sib_next) {
+      ensure_rest_or_no_item(si);
+    }
+    break;
+  case NGHTTP2_STREAM_DPRI_NO_ITEM:
+    for (si = stream->dep_next; si; si = si->sib_next) {
+      check_dpri(si);
+    }
+    break;
+  default:
+    fprintf(stderr, "invalid dpri %d\n", stream->dpri);
+    assert(0);
+  }
+}
+
+static void check_sum_dep(nghttp2_stream *stream) {
+  nghttp2_stream *si;
+  int32_t n = 0;
+  for (si = stream->dep_next; si; si = si->sib_next) {
+    n += si->weight;
+  }
+  if (n != stream->sum_dep_weight) {
+    fprintf(stderr, "sum_dep_weight = %d; want %d\n", n,
+            stream->sum_dep_weight);
+    assert(0);
+  }
+  for (si = stream->dep_next; si; si = si->sib_next) {
+    check_sum_dep(si);
+  }
+}
+
+static int check_sum_norest(nghttp2_stream *stream) {
+  nghttp2_stream *si;
+  int32_t n = 0;
+  switch (stream->dpri) {
+  case NGHTTP2_STREAM_DPRI_TOP:
+    return 1;
+  case NGHTTP2_STREAM_DPRI_REST:
+    return 0;
+  case NGHTTP2_STREAM_DPRI_NO_ITEM:
+    for (si = stream->dep_next; si; si = si->sib_next) {
+      if (check_sum_norest(si)) {
+        n += si->weight;
+      }
+    }
+    break;
+  default:
+    fprintf(stderr, "invalid dpri %d\n", stream->dpri);
+    assert(0);
+  }
+  if (n != stream->sum_norest_weight) {
+    fprintf(stderr, "sum_norest_weight = %d; want %d\n", n,
+            stream->sum_norest_weight);
+    assert(0);
+  }
+  return n > 0;
+}
+
+static void check_dep_prev(nghttp2_stream *stream) {
+  nghttp2_stream *si;
+  for (si = stream->dep_next; si; si = si->sib_next) {
+    if (si->dep_prev != stream) {
+      fprintf(stderr, "si->dep_prev = %p; want %p\n", si->dep_prev, stream);
+      assert(0);
+    }
+    check_dep_prev(si);
+  }
+}
+
+#endif /* STREAM_DEP_DEBUG */
+
+static void validate_tree(nghttp2_stream *stream) {
+#ifdef STREAM_DEP_DEBUG
+  if (!stream) {
+    return;
+  }
+
+  for (; stream->dep_prev; stream = stream->dep_prev)
+    ;
+
+  check_stream_num(stream);
+  check_dpri(stream);
+  check_sum_dep(stream);
+  check_sum_norest(stream);
+  check_dep_prev(stream);
+#endif /* STREAM_DEP_DEBUG*/
+}
+
 static int stream_update_dep_on_attach_item(nghttp2_stream *stream,
                                             nghttp2_session *session) {
   nghttp2_stream *blocking_stream, *si;
@@ -327,6 +462,7 @@ static int stream_update_dep_on_attach_item(nghttp2_stream *stream,
   /* If we found REST or TOP in ascendants, we don't have to update
      any metadata. */
   if (blocking_stream) {
+    validate_tree(stream);
     return 0;
   }
 
@@ -348,13 +484,17 @@ static int stream_update_dep_on_attach_item(nghttp2_stream *stream,
     }
   }
 
+  validate_tree(stream);
   return 0;
 }
 
 static int stream_update_dep_on_detach_item(nghttp2_stream *stream,
                                             nghttp2_session *session) {
+  int rv;
+
   if (stream->dpri == NGHTTP2_STREAM_DPRI_REST) {
     stream->dpri = NGHTTP2_STREAM_DPRI_NO_ITEM;
+    validate_tree(stream);
     return 0;
   }
 
@@ -362,6 +502,7 @@ static int stream_update_dep_on_detach_item(nghttp2_stream *stream,
     /* nghttp2_stream_defer_item() does not clear stream->item, but
        set dpri = NGHTTP2_STREAM_DPRI_NO_ITEM.  Catch this case
        here. */
+    validate_tree(stream);
     return 0;
   }
 
@@ -369,10 +510,18 @@ static int stream_update_dep_on_detach_item(nghttp2_stream *stream,
 
   if (stream_update_dep_set_top(stream) == 0) {
     stream_update_dep_sum_norest_weight(stream->dep_prev, -stream->weight);
+    validate_tree(stream);
     return 0;
   }
 
-  return stream_update_dep_queue_top(stream, session);
+  rv = stream_update_dep_queue_top(stream, session);
+  if (rv != 0) {
+    return rv;
+  }
+
+  validate_tree(stream);
+
+  return 0;
 }
 
 int nghttp2_stream_attach_item(nghttp2_stream *stream,
@@ -552,6 +701,8 @@ void nghttp2_stream_dep_insert(nghttp2_stream *dep_stream,
   stream_update_dep_length(dep_stream, 1);
 
   ++stream->roots->num_streams;
+
+  validate_tree(stream);
 }
 
 static void set_dep_prev(nghttp2_stream *stream, nghttp2_stream *dep) {
@@ -681,6 +832,8 @@ void nghttp2_stream_dep_add(nghttp2_stream *dep_stream,
   }
 
   ++stream->roots->num_streams;
+
+  validate_tree(stream);
 }
 
 void nghttp2_stream_dep_remove(nghttp2_stream *stream) {
@@ -728,8 +881,10 @@ void nghttp2_stream_dep_remove(nghttp2_stream *stream) {
 
   if (stream->sib_prev) {
     unlink_sib(stream);
+    validate_tree(stream->sib_prev->dep_prev);
   } else if (stream->dep_prev) {
     unlink_dep(stream);
+    validate_tree(stream->dep_prev);
   } else {
     nghttp2_stream_roots_remove(stream->roots, stream);
 
@@ -744,6 +899,8 @@ void nghttp2_stream_dep_remove(nghttp2_stream *stream) {
       si->sib_next = NULL;
 
       nghttp2_stream_roots_add(si->roots, si);
+
+      validate_tree(si);
 
       si = next;
     }
@@ -769,6 +926,7 @@ int nghttp2_stream_dep_insert_subtree(nghttp2_stream *dep_stream,
   nghttp2_stream *blocking_stream;
   nghttp2_stream *si;
   size_t delta_substreams;
+  int rv;
 
   DEBUGF(fprintf(stderr, "stream: dep_insert_subtree dep_stream(%p)=%d "
                          "stream(%p)=%d\n",
@@ -820,23 +978,33 @@ int nghttp2_stream_dep_insert_subtree(nghttp2_stream *dep_stream,
   stream_update_dep_length(dep_stream, delta_substreams);
 
   if (blocking_stream) {
+    validate_tree(dep_stream);
     return 0;
   }
 
   if (stream_update_dep_set_top(stream) == 0) {
+    validate_tree(dep_stream);
     return 0;
   }
 
   dep_stream->sum_norest_weight = stream->weight;
   stream_update_dep_sum_norest_weight(dep_stream->dep_prev, dep_stream->weight);
 
-  return stream_update_dep_queue_top(stream, session);
+  rv = stream_update_dep_queue_top(stream, session);
+  if (rv != 0) {
+    return rv;
+  }
+
+  validate_tree(dep_stream);
+
+  return 0;
 }
 
 int nghttp2_stream_dep_add_subtree(nghttp2_stream *dep_stream,
                                    nghttp2_stream *stream,
                                    nghttp2_session *session) {
   nghttp2_stream *blocking_stream;
+  int rv;
 
   DEBUGF(fprintf(stderr, "stream: dep_add_subtree dep_stream(%p)=%d "
                          "stream(%p)=%d\n",
@@ -862,15 +1030,18 @@ int nghttp2_stream_dep_add_subtree(nghttp2_stream *dep_stream,
        NGHTTP2_DPRI_TOP.  Just dfs under stream here. */
     stream_update_dep_set_rest(stream);
 
+    validate_tree(dep_stream);
     return 0;
   }
 
   if (stream->dpri == NGHTTP2_STREAM_DPRI_TOP) {
     stream_update_dep_sum_norest_weight(dep_stream, stream->weight);
+    validate_tree(dep_stream);
     return 0;
   }
 
   if (stream_update_dep_set_top(stream) == 0) {
+    validate_tree(dep_stream);
     return 0;
   }
 
@@ -878,7 +1049,14 @@ int nghttp2_stream_dep_add_subtree(nghttp2_stream *dep_stream,
      sum_norest_weight */
   stream_update_dep_sum_norest_weight(dep_stream, stream->weight);
 
-  return stream_update_dep_queue_top(stream, session);
+  rv = stream_update_dep_queue_top(stream, session);
+  if (rv != 0) {
+    return rv;
+  }
+
+  validate_tree(dep_stream);
+
+  return 0;
 }
 
 void nghttp2_stream_dep_remove_subtree(nghttp2_stream *stream) {
@@ -917,6 +1095,8 @@ void nghttp2_stream_dep_remove_subtree(nghttp2_stream *stream) {
                               stream->sum_norest_weight))) {
       stream_update_dep_sum_norest_weight(dep_prev, -stream->weight);
     }
+
+    validate_tree(dep_prev);
   }
 
   stream->sib_prev = NULL;
@@ -926,16 +1106,26 @@ void nghttp2_stream_dep_remove_subtree(nghttp2_stream *stream) {
 
 int nghttp2_stream_dep_make_root(nghttp2_stream *stream,
                                  nghttp2_session *session) {
+  int rv;
+
   DEBUGF(fprintf(stderr, "stream: dep_make_root stream(%p)=%d\n", stream,
                  stream->stream_id));
 
   nghttp2_stream_roots_add(stream->roots, stream);
 
   if (stream_update_dep_set_top(stream) == 0) {
+    validate_tree(stream);
     return 0;
   }
 
-  return stream_update_dep_queue_top(stream, session);
+  rv = stream_update_dep_queue_top(stream, session);
+  if (rv != 0) {
+    return rv;
+  }
+
+  validate_tree(stream);
+
+  return 0;
 }
 
 int
