@@ -1443,6 +1443,10 @@ void HttpClient::output_har(FILE *outfile) {
     json_object_set_new(response, "headersSize", json_integer(-1));
     json_object_set_new(response, "bodySize", json_integer(-1));
 
+    auto pushed = req->stream_id % 2 == 0;
+
+    json_object_set_new(response, "comment", json_string(pushed ? "Pushed Object" : ""));
+
     json_object_set_new(entry, "cache", json_object());
 
     auto timings = json_object();
