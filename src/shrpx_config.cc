@@ -1181,14 +1181,18 @@ const char *str_syslog_facility(int facility) {
   switch (facility) {
   case (LOG_AUTH):
     return "auth";
+#ifdef LOG_AUTHPRIV
   case (LOG_AUTHPRIV):
     return "authpriv";
+#endif // LOG_AUTHPRIV
   case (LOG_CRON):
     return "cron";
   case (LOG_DAEMON):
     return "daemon";
+#ifdef LOG_FTP
   case (LOG_FTP):
     return "ftp";
+#endif // LOG_FTP
   case (LOG_KERN):
     return "kern";
   case (LOG_LOCAL0):
@@ -1227,9 +1231,11 @@ int int_syslog_facility(const char *strfacility) {
     return LOG_AUTH;
   }
 
+#ifdef LOG_AUTHPRIV
   if (util::strieq(strfacility, "authpriv")) {
     return LOG_AUTHPRIV;
   }
+#endif // LOG_AUTHPRIV
 
   if (util::strieq(strfacility, "cron")) {
     return LOG_CRON;
@@ -1239,9 +1245,11 @@ int int_syslog_facility(const char *strfacility) {
     return LOG_DAEMON;
   }
 
+#ifdef LOG_FTP
   if (util::strieq(strfacility, "ftp")) {
     return LOG_FTP;
   }
+#endif // LOG_FTP
 
   if (util::strieq(strfacility, "kern")) {
     return LOG_KERN;

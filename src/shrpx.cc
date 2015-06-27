@@ -648,12 +648,22 @@ void renew_ticket_key_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 } // namespace
 
 namespace {
+int call_daemon() {
+#ifdef __sgi
+  return _daemonize(0, 0, 0, 0);
+#else  // !__sgi
+  return daemon(0, 0);
+#endif // !__sgi
+}
+} // namespace
+
+namespace {
 int event_loop() {
   auto loop = EV_DEFAULT;
 
   auto conn_handler = make_unique<ConnectionHandler>(loop);
   if (get_config()->daemon) {
-    if (daemon(0, 0) == -1) {
+    if (call_daemon() == -1) {
       auto error = errno;
       LOG(FATAL) << "Failed to daemonize: " << strerror(error);
       exit(EXIT_FAILURE);
