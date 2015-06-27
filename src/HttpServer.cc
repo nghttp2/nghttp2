@@ -260,7 +260,12 @@ public:
     return &ent;
   }
   FileEntry *cache_fd(const std::string &path, const FileEntry &ent) {
+#ifdef HAVE_STD_MAP_EMPLACE
     auto rv = fd_cache_.emplace(path, ent);
+#else  // !HAVE_STD_MAP_EMPLACE
+    // for gcc-4.7
+    auto rv = fd_cache_.insert(std::make_pair(path, ent));
+#endif // !HAVE_STD_MAP_EMPLACE
     return &(*rv.first).second;
   }
   void release_fd(const std::string &path) {

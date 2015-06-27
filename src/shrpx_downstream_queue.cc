@@ -64,7 +64,8 @@ DownstreamQueue::find_host_entry(const std::string &host) {
     std::tie(itr, std::ignore) = host_entries_.emplace(host, HostEntry());
 #else  // !HAVE_STD_MAP_EMPLACE
     // for g++-4.7
-    std::tie(itr, std::ignore) = host_entries_.insert({host, HostEntry()});
+    std::tie(itr, std::ignore) =
+        host_entries_.insert(std::make_pair(host, HostEntry()));
 #endif // !HAVE_STD_MAP_EMPLACE
   }
   return (*itr).second;
