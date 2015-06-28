@@ -733,6 +733,8 @@ std::string construct_absolute_request_uri(Downstream *downstream) {
 } // namespace
 
 void ClientHandler::write_accesslog(Downstream *downstream) {
+  nghttp2::ssl::TLSSessionInfo tls_info;
+
   upstream_accesslog(
       get_config()->accesslog_format,
       LogSpec{
@@ -747,6 +749,7 @@ void ClientHandler::write_accesslog(Downstream *downstream) {
                     : downstream->get_request_path().c_str(),
 
           alpn_.c_str(),
+          nghttp2::ssl::get_tls_session_info(&tls_info, conn_.tls.ssl),
 
           std::chrono::system_clock::now(),          // time_now
           downstream->get_request_start_time(),      // request_start_time
@@ -763,13 +766,16 @@ void ClientHandler::write_accesslog(int major, int minor, unsigned int status,
                                     int64_t body_bytes_sent) {
   auto time_now = std::chrono::system_clock::now();
   auto highres_now = std::chrono::high_resolution_clock::now();
+  nghttp2::ssl::TLSSessionInfo tls_info;
 
   upstream_accesslog(get_config()->accesslog_format,
                      LogSpec{
                          nullptr, ipaddr_.c_str(),
                          "-", // method
                          "-", // path,
-                         alpn_.c_str(), time_now,
+                         alpn_.c_str(), nghttp2::ssl::get_tls_session_info(
+                                            &tls_info, conn_.tls.ssl),
+                         time_now,
                          highres_now,  // request_start_time TODO is
                                        // there a better value?
                          highres_now,  // request_end_time

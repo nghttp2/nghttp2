@@ -1345,6 +1345,9 @@ Logging:
               * $alpn: ALPN identifier of the protocol which generates
                 the response.   For HTTP/1,  ALPN is  always http/1.1,
                 regardless of minor version.
+              * $ssl_cipher: cipher used for SSL/TLS connection.
+              * $ssl_protocol: protocol for SSL/TLS connection.
+              * $ssl_session_id: session ID for SSL/TLS connection.
 
               Default: )" << DEFAULT_ACCESSLOG_FORMAT << R"(
   --errorlog-file=<PATH>

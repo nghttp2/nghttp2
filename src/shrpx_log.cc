@@ -164,6 +164,24 @@ std::pair<OutputIterator, size_t> copy(const char *src, size_t avail,
 }
 } // namespace
 
+namespace {
+const char LOWER_XDIGITS[] = "0123456789abcdef";
+} // namespace
+
+namespace {
+template <typename OutputIterator>
+std::pair<OutputIterator, size_t> copy_hex_low(const uint8_t *src,
+                                               size_t srclen, size_t avail,
+                                               OutputIterator oitr) {
+  auto nwrite = std::min(srclen * 2, avail) / 2;
+  for (auto i = 0; i < nwrite; ++i) {
+    *oitr++ = LOWER_XDIGITS[src[i] >> 4];
+    *oitr++ = LOWER_XDIGITS[src[i] & 0xf];
+  }
+  return std::make_pair(oitr, avail - nwrite);
+}
+} // namespace
+
 void upstream_accesslog(const std::vector<LogFragment> &lfv,
                         const LogSpec &lgsp) {
   auto lgconf = log_config();
@@ -252,6 +270,29 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       break;
     case SHRPX_LOGF_ALPN:
       std::tie(p, avail) = copy(lgsp.alpn, avail, p);
+      break;
+    case SHRPX_LOGF_SSL_CIPHER:
+      if (!lgsp.tls_info) {
+        std::tie(p, avail) = copy("-", avail, p);
+        break;
+      }
+      std::tie(p, avail) = copy(lgsp.tls_info->cipher, avail, p);
+      break;
+    case SHRPX_LOGF_SSL_PROTOCOL:
+      if (!lgsp.tls_info) {
+        std::tie(p, avail) = copy("-", avail, p);
+        break;
+      }
+      std::tie(p, avail) = copy(lgsp.tls_info->protocol, avail, p);
+      break;
+    case SHRPX_LOGF_SSL_SESSION_ID:
+      if (!lgsp.tls_info || lgsp.tls_info->session_id_length == 0) {
+        std::tie(p, avail) = copy("-", avail, p);
+        break;
+      }
+      std::tie(p, avail) =
+          copy_hex_low(lgsp.tls_info->session_id,
+                       lgsp.tls_info->session_id_length, avail, p);
       break;
     case SHRPX_LOGF_NONE:
       break;

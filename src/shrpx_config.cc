@@ -383,6 +383,12 @@ std::vector<LogFragment> parse_log_format(const char *optarg) {
       type = SHRPX_LOGF_PID;
     } else if (util::strieq_l("$alpn", var_start, varlen)) {
       type = SHRPX_LOGF_ALPN;
+    } else if (util::strieq_l("$ssl_cipher", var_start, varlen)) {
+      type = SHRPX_LOGF_SSL_CIPHER;
+    } else if (util::strieq_l("$ssl_protocol", var_start, varlen)) {
+      type = SHRPX_LOGF_SSL_PROTOCOL;
+    } else if (util::strieq_l("$ssl_session_id", var_start, varlen)) {
+      type = SHRPX_LOGF_SSL_SESSION_ID;
     } else {
       LOG(WARN) << "Unrecognized log format variable: "
                 << std::string(var_start, varlen);

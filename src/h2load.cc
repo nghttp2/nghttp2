@@ -270,27 +270,6 @@ void Client::report_progress() {
 }
 
 namespace {
-const char *get_tls_protocol(SSL *ssl) {
-  auto session = SSL_get_session(ssl);
-
-  switch (session->ssl_version) {
-  case SSL2_VERSION:
-    return "SSLv2";
-  case SSL3_VERSION:
-    return "SSLv3";
-  case TLS1_2_VERSION:
-    return "TLSv1.2";
-  case TLS1_1_VERSION:
-    return "TLSv1.1";
-  case TLS1_VERSION:
-    return "TLSv1";
-  default:
-    return "unknown";
-  }
-}
-} // namespace
-
-namespace {
 void print_server_tmp_key(SSL *ssl) {
 // libressl does not have SSL_get_server_tmp_key
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L && defined(SSL_get_server_tmp_key)
@@ -333,7 +312,7 @@ void Client::report_tls_info() {
   if (worker->id == 0 && !worker->tls_info_report_done) {
     worker->tls_info_report_done = true;
     auto cipher = SSL_get_current_cipher(ssl);
-    std::cout << "Protocol: " << get_tls_protocol(ssl) << "\n"
+    std::cout << "Protocol: " << ssl::get_tls_protocol(ssl) << "\n"
               << "Cipher: " << SSL_CIPHER_get_name(cipher) << std::endl;
     print_server_tmp_key(ssl);
   }

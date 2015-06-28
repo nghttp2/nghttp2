@@ -78,6 +78,46 @@ LibsslGlobalLock::LibsslGlobalLock() {
 
 LibsslGlobalLock::~LibsslGlobalLock() { ssl_global_locks.clear(); }
 
+const char *get_tls_protocol(SSL *ssl) {
+  auto session = SSL_get_session(ssl);
+  if (!session) {
+    return "unknown";
+  }
+
+  switch (session->ssl_version) {
+  case SSL2_VERSION:
+    return "SSLv2";
+  case SSL3_VERSION:
+    return "SSLv3";
+  case TLS1_2_VERSION:
+    return "TLSv1.2";
+  case TLS1_1_VERSION:
+    return "TLSv1.1";
+  case TLS1_VERSION:
+    return "TLSv1";
+  default:
+    return "unknown";
+  }
+}
+
+TLSSessionInfo *get_tls_session_info(TLSSessionInfo *tls_info, SSL *ssl) {
+  if (!ssl) {
+    return nullptr;
+  }
+
+  auto session = SSL_get_session(ssl);
+  if (!session) {
+    return nullptr;
+  }
+
+  tls_info->cipher = SSL_get_cipher_name(ssl);
+  tls_info->protocol = get_tls_protocol(ssl);
+  tls_info->session_id = session->session_id;
+  tls_info->session_id_length = session->session_id_length;
+
+  return tls_info;
+}
+
 } // namespace ssl
 
 } // namespace nghttp2

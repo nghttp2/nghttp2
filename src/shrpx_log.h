@@ -35,6 +35,7 @@
 #include <chrono>
 
 #include "shrpx_log_config.h"
+#include "ssl.h"
 
 namespace shrpx {
 
@@ -115,6 +116,9 @@ enum LogFragmentType {
   SHRPX_LOGF_REQUEST_TIME,
   SHRPX_LOGF_PID,
   SHRPX_LOGF_ALPN,
+  SHRPX_LOGF_SSL_CIPHER,
+  SHRPX_LOGF_SSL_PROTOCOL,
+  SHRPX_LOGF_SSL_SESSION_ID,
 };
 
 struct LogFragment {
@@ -128,6 +132,7 @@ struct LogSpec {
   const char *method;
   const char *path;
   const char *alpn;
+  const nghttp2::ssl::TLSSessionInfo *tls_info;
   std::chrono::system_clock::time_point time_now;
   std::chrono::high_resolution_clock::time_point request_start_time;
   std::chrono::high_resolution_clock::time_point request_end_time;

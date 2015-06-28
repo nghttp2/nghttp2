@@ -22,7 +22,14 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+#ifndef SSL_H
+#define SSL_H
+
 #include "nghttp2_config.h"
+
+#include <cinttypes>
+
+#include <openssl/ssl.h>
 
 namespace nghttp2 {
 
@@ -40,6 +47,19 @@ public:
 
 extern const char *const DEFAULT_CIPHER_LIST;
 
+const char *get_tls_protocol(SSL *ssl);
+
+struct TLSSessionInfo {
+  const char *cipher;
+  const char *protocol;
+  const uint8_t *session_id;
+  size_t session_id_length;
+};
+
+TLSSessionInfo *get_tls_session_info(TLSSessionInfo *tls_info, SSL *ssl);
+
 } // namespace ssl
 
 } // namespace nghttp2
+
+#endif // SSL_H
