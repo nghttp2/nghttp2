@@ -53,6 +53,7 @@ struct TLSSessionInfo {
   const char *cipher;
   const char *protocol;
   const uint8_t *session_id;
+  bool session_reused;
   size_t session_id_length;
 };
 

@@ -294,6 +294,14 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
           copy_hex_low(lgsp.tls_info->session_id,
                        lgsp.tls_info->session_id_length, avail, p);
       break;
+    case SHRPX_LOGF_SSL_SESSION_REUSED:
+      if (!lgsp.tls_info) {
+        std::tie(p, avail) = copy("-", avail, p);
+        break;
+      }
+      std::tie(p, avail) =
+          copy(lgsp.tls_info->session_reused ? "r" : ".", avail, p);
+      break;
     case SHRPX_LOGF_NONE:
       break;
     default:

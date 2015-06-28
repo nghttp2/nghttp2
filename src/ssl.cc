@@ -114,6 +114,7 @@ TLSSessionInfo *get_tls_session_info(TLSSessionInfo *tls_info, SSL *ssl) {
   tls_info->protocol = get_tls_protocol(ssl);
   tls_info->session_id = session->session_id;
   tls_info->session_id_length = session->session_id_length;
+  tls_info->session_reused = SSL_session_reused(ssl);
 
   return tls_info;
 }

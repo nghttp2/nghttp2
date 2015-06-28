@@ -1348,6 +1348,8 @@ Logging:
               * $ssl_cipher: cipher used for SSL/TLS connection.
               * $ssl_protocol: protocol for SSL/TLS connection.
               * $ssl_session_id: session ID for SSL/TLS connection.
+              * $ssl_session_reused:  "r"   if  SSL/TLS   session  was
+                reused.  Otherwise, "."
 
               Default: )" << DEFAULT_ACCESSLOG_FORMAT << R"(
   --errorlog-file=<PATH>
