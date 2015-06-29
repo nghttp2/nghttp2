@@ -556,6 +556,8 @@ fi
 # adjustment.
 AC_CHECK_SIZEOF([int *])
 
+AC_CHECK_SIZEOF([time_t])
+
 # Checks for library functions.
 if test "x$cross_compiling" != "xyes"; then
   AC_FUNC_MALLOC
