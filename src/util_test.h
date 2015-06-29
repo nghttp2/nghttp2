@@ -53,6 +53,8 @@ void test_util_duration_str(void);
 void test_util_format_duration(void);
 void test_util_starts_with(void);
 void test_util_ends_with(void);
+void test_util_parse_http_date(void);
+void test_util_localtime_date(void);
 
 } // namespace shrpx
 

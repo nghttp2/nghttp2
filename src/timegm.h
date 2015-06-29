@@ -37,11 +37,7 @@ extern "C" {
 #include <time.h>
 #endif // HAVE_TIME_H
 
-#ifndef HAVE_TIMEGM
-
 time_t timegm(struct tm *tm);
-
-#endif /* HAVE_TIMEGM */
 
 #ifdef __cplusplus
 }

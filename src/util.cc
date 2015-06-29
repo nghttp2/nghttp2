@@ -254,7 +254,6 @@ std::string common_log_date(time_t t) {
     return "";
   }
 
-#ifdef HAVE_STRUCT_TM_TM_GMTOFF
   // Format data like this:
   // 03/Jul/2014:00:19:38 +0900
   std::string res;
@@ -276,7 +275,11 @@ std::string common_log_date(time_t t) {
   p = cpydig(p, tms.tm_sec, 2);
   *p++ = ' ';
 
+#ifdef HAVE_STRUCT_TM_TM_GMTOFF
   auto gmtoff = tms.tm_gmtoff;
+#else  // !HAVE_STRUCT_TM_TM_GMTOFF
+  auto gmtoff = timegm(&tms) - t;
+#endif // !HAVE_STRUCT_TM_TM_GMTOFF
   if (gmtoff >= 0) {
     *p++ = '+';
   } else {
@@ -288,13 +291,6 @@ std::string common_log_date(time_t t) {
   p = cpydig(p, (gmtoff % 3600) / 60, 2);
 
   return res;
-#else  // !HAVE_STRUCT_TM_TM_GMTOFF
-  char buf[32];
-
-  strftime(buf, sizeof(buf), "%d/%b/%Y:%T %z", &tms);
-
-  return buf;
-#endif // !HAVE_STRUCT_TM_TM_GMTOFF
 }
 
 std::string iso8601_date(int64_t ms) {
@@ -305,7 +301,6 @@ std::string iso8601_date(int64_t ms) {
     return "";
   }
 
-#ifdef HAVE_STRUCT_TM_TM_GMTOFF
   // Format data like this:
   // 2014-11-15T12:58:24.741Z
   // 2014-11-15T12:58:24.741+09:00
@@ -328,7 +323,11 @@ std::string iso8601_date(int64_t ms) {
   *p++ = '.';
   p = cpydig(p, ms % 1000, 3);
 
+#ifdef HAVE_STRUCT_TM_TM_GMTOFF
   auto gmtoff = tms.tm_gmtoff;
+#else  // !HAVE_STRUCT_TM_TM_GMTOFF
+  auto gmtoff = timegm(&tms) - sec;
+#endif // !HAVE_STRUCT_TM_TM_GMTOFF
   if (gmtoff == 0) {
     *p++ = 'Z';
   } else {
@@ -346,29 +345,6 @@ std::string iso8601_date(int64_t ms) {
   res.resize(p - std::begin(res));
 
   return res;
-#else  // !HAVE_STRUCT_TM_TM_GMTOFF
-  char buf[128];
-
-  auto nwrite = strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%S", &tms);
-  nwrite += snprintf(&buf[nwrite], sizeof(buf) - nwrite, ".%03d",
-                     static_cast<int>(ms % 1000));
-  auto nzone = strftime(&buf[nwrite], sizeof(buf) - nwrite, "%z", &tms);
-
-  // %z of strftime writes +hhmm or -hhmm not Z, +hh:mm or -hh:mm.  Do
-  // %nothing if nzone is not 5.  we don't know how to cope with this.
-  if (nzone == 5) {
-    if (memcmp(&buf[nwrite], "+0000", 5) == 0) {
-      // 0000 should be Z
-      memcpy(&buf[nwrite], "Z", 2);
-    } else {
-      // Move mm part to right by 1 including terminal \0
-      memmove(&buf[nwrite + 4], &buf[nwrite + 3], 3);
-      // Insert ':' between hh and mm
-      buf[nwrite + 3] = ':';
-    }
-  }
-  return buf;
-#endif // !HAVE_STRUCT_TM_TM_GMTOFF
 }
 
 time_t parse_http_date(const std::string &s) {

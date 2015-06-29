@@ -367,4 +367,30 @@ void test_util_ends_with(void) {
   CU_ASSERT(!util::iendsWith("ofoo", "fo"));
 }
 
+void test_util_parse_http_date(void) {
+  CU_ASSERT(1001939696 ==
+            util::parse_http_date("Mon, 1 Oct 2001 12:34:56 GMT"));
+}
+
+void test_util_localtime_date(void) {
+  auto tz = getenv("TZ");
+  if (tz) {
+    tz = strdup(tz);
+  }
+  setenv("TZ", ":Pacific/Auckland", 1);
+  tzset();
+
+  CU_ASSERT_STRING_EQUAL("02/Oct/2001:00:34:56 +1200",
+                         util::common_log_date(1001939696).c_str());
+  CU_ASSERT_STRING_EQUAL("2001-10-02T00:34:56.123+12:00",
+                         util::iso8601_date(1001939696000LL + 123).c_str());
+
+  if (tz) {
+    setenv("TZ", tz, 1);
+  } else {
+    unsetenv("TZ");
+  }
+  tzset();
+}
+
 } // namespace shrpx
