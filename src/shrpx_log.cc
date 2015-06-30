@@ -174,7 +174,7 @@ std::pair<OutputIterator, size_t> copy_hex_low(const uint8_t *src,
                                                size_t srclen, size_t avail,
                                                OutputIterator oitr) {
   auto nwrite = std::min(srclen * 2, avail) / 2;
-  for (auto i = 0; i < nwrite; ++i) {
+  for (auto i = 0u; i < nwrite; ++i) {
     *oitr++ = LOWER_XDIGITS[src[i] >> 4];
     *oitr++ = LOWER_XDIGITS[src[i] & 0xf];
   }
