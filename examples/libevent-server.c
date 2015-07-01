@@ -22,6 +22,16 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+#ifdef __sgi
+#define errx(exitcode, format, args...)                                        \
+  {                                                                            \
+    warnx(format, ##args);                                                     \
+    exit(exitcode);                                                            \
+  }
+#define warn(format, args...) warnx(format ": %s", ##args, strerror(errno))
+#define warnx(format, args...) fprintf(stderr, format "\n", ##args)
+#endif
+
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif /* HAVE_CONFIG_H */
@@ -46,7 +56,9 @@
 #include <netinet/in.h>
 #endif /* HAVE_NETINET_IN_H */
 #include <netinet/tcp.h>
+#ifndef __sgi
 #include <err.h>
+#endif
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -672,7 +684,7 @@ static void start_listen(struct event_base *evbase, const char *service,
 
   rv = getaddrinfo(NULL, service, &hints, &res);
   if (rv != 0) {
-    errx(1, NULL);
+    errx(1, "Could not resolve server address");
   }
   for (rp = res; rp; rp = rp->ai_next) {
     struct evconnlistener *listener;

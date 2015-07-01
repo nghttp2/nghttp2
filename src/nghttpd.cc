@@ -24,6 +24,10 @@
  */
 #include "nghttp2_config.h"
 
+#ifdef __sgi
+#define daemon _daemonize
+#endif
+
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif // HAVE_UNISTD_H
@@ -352,7 +356,11 @@ int main(int argc, char **argv) {
       std::cerr << "-d option must be specified when -D is used." << std::endl;
       exit(EXIT_FAILURE);
     }
+#ifdef __sgi
+    if (daemon(0, 0, 0, 0) == -1) {
+#else
     if (daemon(0, 0) == -1) {
+#endif
       perror("daemon");
       exit(EXIT_FAILURE);
     }

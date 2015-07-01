@@ -22,6 +22,17 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+#ifdef __sgi
+#include <string.h>
+#define errx(exitcode, format, args...)                                        \
+  {                                                                            \
+    warnx(format, ##args);                                                     \
+    exit(exitcode);                                                            \
+  }
+#define warnx(format, args...) fprintf(stderr, format "\n", ##args)
+char *strndup(const char *s, size_t size);
+#endif
+
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif /* HAVE_CONFIG_H */
@@ -37,7 +48,9 @@
 #include <netinet/in.h>
 #endif /* HAVE_NETINET_IN_H */
 #include <netinet/tcp.h>
+#ifndef __sgi
 #include <err.h>
+#endif
 #include <signal.h>
 
 #include <openssl/ssl.h>
