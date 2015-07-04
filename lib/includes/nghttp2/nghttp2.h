@@ -1523,7 +1523,7 @@ typedef int (*nghttp2_on_begin_headers_callback)(nghttp2_session *session,
  * used, nghttp2 library does perform validation against the |name|
  * and the |value| using `nghttp2_check_header_name()` and
  * `nghttp2_check_header_value()`.  In addition to this, nghttp2
- * performs vaidation based on HTTP Messaging rule, which is briefly
+ * performs validation based on HTTP Messaging rule, which is briefly
  * explained in :ref:`http-messaging` section.
  *
  * If the application uses `nghttp2_session_mem_recv()`, it can return
