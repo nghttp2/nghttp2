@@ -75,7 +75,7 @@ static int is_non_fatal(int lib_error_code) {
   return lib_error_code < 0 && lib_error_code > NGHTTP2_ERR_FATAL;
 }
 
-int nghttp2_is_fatal(int lib_error_code) {
+NGHTTP2_EXTERN int nghttp2_is_fatal(int lib_error_code) {
   return lib_error_code < NGHTTP2_ERR_FATAL;
 }
 
@@ -172,13 +172,13 @@ static int session_terminate_session(nghttp2_session *session,
   return 0;
 }
 
-int nghttp2_session_terminate_session(nghttp2_session *session,
+NGHTTP2_EXTERN int nghttp2_session_terminate_session(nghttp2_session *session,
                                       uint32_t error_code) {
   return session_terminate_session(session, session->last_proc_stream_id,
                                    error_code, NULL);
 }
 
-int nghttp2_session_terminate_session2(nghttp2_session *session,
+NGHTTP2_EXTERN int nghttp2_session_terminate_session2(nghttp2_session *session,
                                        int32_t last_stream_id,
                                        uint32_t error_code) {
   return session_terminate_session(session, last_stream_id, error_code, NULL);
@@ -6552,7 +6552,7 @@ int nghttp2_session_consume(nghttp2_session *session, int32_t stream_id,
   return 0;
 }
 
-int nghttp2_session_consume_connection(nghttp2_session *session, size_t size) {
+NGHTTP2_EXTERN int nghttp2_session_consume_connection(nghttp2_session *session, size_t size) {
   int rv;
 
   if (!(session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_WINDOW_UPDATE)) {
@@ -6568,7 +6568,7 @@ int nghttp2_session_consume_connection(nghttp2_session *session, size_t size) {
   return 0;
 }
 
-int nghttp2_session_consume_stream(nghttp2_session *session, int32_t stream_id,
+NGHTTP2_EXTERN int nghttp2_session_consume_stream(nghttp2_session *session, int32_t stream_id,
                                    size_t size) {
   int rv;
   nghttp2_stream *stream;
@@ -6596,7 +6596,7 @@ int nghttp2_session_consume_stream(nghttp2_session *session, int32_t stream_id,
   return 0;
 }
 
-int nghttp2_session_set_next_stream_id(nghttp2_session *session,
+NGHTTP2_EXTERN int nghttp2_session_set_next_stream_id(nghttp2_session *session,
                                        int32_t next_stream_id) {
   if (next_stream_id <= 0 ||
       session->next_stream_id > (uint32_t)next_stream_id) {
@@ -6615,10 +6615,10 @@ int nghttp2_session_set_next_stream_id(nghttp2_session *session,
   return 0;
 }
 
-uint32_t nghttp2_session_get_next_stream_id(nghttp2_session *session) {
+NGHTTP2_EXTERN uint32_t nghttp2_session_get_next_stream_id(nghttp2_session *session) {
   return session->next_stream_id;
 }
 
-int32_t nghttp2_session_get_last_proc_stream_id(nghttp2_session *session) {
+NGHTTP2_EXTERN int32_t nghttp2_session_get_last_proc_stream_id(nghttp2_session *session) {
   return session->last_proc_stream_id;
 }
