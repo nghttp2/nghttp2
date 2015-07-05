@@ -1274,7 +1274,7 @@ static size_t get_max_index(nghttp2_hd_context *context) {
   return context->hd_table.len + NGHTTP2_STATIC_TABLE_LENGTH - 1;
 }
 
-NGHTTP2_EXTERN nghttp2_hd_entry *nghttp2_hd_table_get(nghttp2_hd_context *context,
+nghttp2_hd_entry *nghttp2_hd_table_get(nghttp2_hd_context *context,
                                        size_t idx) {
   assert(INDEX_RANGE_VALID(context, idx));
   if (idx >= NGHTTP2_STATIC_TABLE_LENGTH) {
