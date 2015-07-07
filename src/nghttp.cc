@@ -95,7 +95,7 @@ constexpr auto anchors = std::array<Anchor, 5>{{
 } // namespace
 
 Config::Config()
-    : padding(0),
+    : padding(0), max_concurrent_streams(100),
       peer_max_concurrent_streams(NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS),
       header_table_size(-1), weight(NGHTTP2_DEFAULT_WEIGHT), multiply(1),
       timeout(0.), window_bits(-1), connection_window_bits(-1), verbose(0),
@@ -760,7 +760,7 @@ size_t populate_settings(nghttp2_settings_entry *iv) {
   size_t niv = 2;
 
   iv[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
-  iv[0].value = 100;
+  iv[0].value = config.max_concurrent_streams;
 
   iv[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
   if (config.window_bits != -1) {
@@ -2435,6 +2435,9 @@ Options:
               hex+ASCII display).  If SSL/TLS  is used, decrypted data
               are used.
   --no-push   Disable server push.
+  --max-concurrent-streams=<N>
+              The  number of  concurrent  pushed  streams this  client
+              accepts.
   --version   Display version information and exit.
   -h, --help  Display this help and exit.
 
@@ -2488,6 +2491,7 @@ int main(int argc, char **argv) {
         {"trailer", required_argument, &flag, 9},
         {"hexdump", no_argument, &flag, 10},
         {"no-push", no_argument, &flag, 11},
+        {"max-concurrent-streams", required_argument, &flag, 12},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     int c = getopt_long(argc, argv, "M:Oab:c:d:gm:np:r:hH:vst:uw:W:",
@@ -2678,6 +2682,10 @@ int main(int argc, char **argv) {
       case 11:
         // no-push option
         config.no_push = true;
+        break;
+      case 12:
+        // max-concurrent-streams option
+        config.max_concurrent_streams = strtoul(optarg, nullptr, 10);
         break;
       }
       break;

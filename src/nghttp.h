@@ -70,6 +70,7 @@ struct Config {
   std::string harfile;
   nghttp2_option *http2_option;
   size_t padding;
+  size_t max_concurrent_streams;
   ssize_t peer_max_concurrent_streams;
   ssize_t header_table_size;
   int32_t weight;
