@@ -1376,6 +1376,10 @@ void HttpClient::output_har(FILE *outfile) {
         entry, "startedDateTime",
         json_string(util::format_iso8601(request_time).c_str()));
     json_object_set_new(entry, "time", json_real(time_sum));
+    
+    auto pushed = req->stream_id % 2 == 0;
+
+    json_object_set_new(entry, "comment", json_string(pushed ? "Pushed Object" : ""));
 
     auto request = json_object();
     json_object_set_new(entry, "request", request);
@@ -1442,7 +1446,6 @@ void HttpClient::output_har(FILE *outfile) {
     json_object_set_new(response, "redirectURL", json_string(""));
     json_object_set_new(response, "headersSize", json_integer(-1));
     json_object_set_new(response, "bodySize", json_integer(-1));
-
     json_object_set_new(entry, "cache", json_object());
 
     auto timings = json_object();
@@ -1460,6 +1463,7 @@ void HttpClient::output_har(FILE *outfile) {
     json_object_set_new(timings, "receive", json_real(receive_delta));
 
     json_object_set_new(entry, "pageref", json_string(PAGE_ID));
+    json_object_set_new(entry, "connection", json_string(util::utos(req->stream_id).c_str()));
   }
 
   json_dumpf(root, outfile, JSON_PRESERVE_ORDER | JSON_INDENT(2));
