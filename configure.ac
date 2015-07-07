@@ -559,9 +559,9 @@ AC_CHECK_SIZEOF([int *])
 AC_CHECK_SIZEOF([time_t])
 
 # Checks for library functions.
-if test "x$cross_compiling" != "xyes"; then
-  AC_FUNC_MALLOC
-fi
+
+# Don't check malloc, since it does not play nicely with C++ stdlib
+# AC_FUNC_MALLOC
 
 AC_FUNC_CHOWN
 AC_FUNC_ERROR_AT_LINE
