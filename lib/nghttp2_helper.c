@@ -292,7 +292,7 @@ const char *nghttp2_strerror(int error_code) {
   case NGHTTP2_ERR_PUSH_DISABLED:
     return "Server push is disabled by peer";
   case NGHTTP2_ERR_DATA_EXIST:
-    return "DATA frame already exists";
+    return "DATA or HEADERS frame has already been submitted for the stream";
   case NGHTTP2_ERR_SESSION_CLOSING:
     return "The current session is closing";
   case NGHTTP2_ERR_HTTP_HEADER:

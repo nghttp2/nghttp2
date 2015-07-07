@@ -713,6 +713,10 @@ int nghttp2_session_add_item(nghttp2_session *session,
 
       if (stream && (stream->state == NGHTTP2_STREAM_RESERVED ||
                      item->aux_data.headers.attach_stream)) {
+        if (stream->item) {
+          return NGHTTP2_ERR_DATA_EXIST;
+        }
+
         rv = nghttp2_stream_attach_item(stream, item, session);
 
         if (rv != 0) {
