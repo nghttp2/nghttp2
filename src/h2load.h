@@ -65,6 +65,7 @@ struct Config {
   std::string scheme;
   std::string host;
   std::string ifile;
+  std::string ciphers;
   // length of upload data
   int64_t data_length;
   addrinfo *addrs;

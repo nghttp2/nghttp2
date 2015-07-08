@@ -1021,6 +1021,9 @@ Options:
               Default: )" << config.connection_window_bits << R"(
   -H, --header=<HEADER>
               Add/Override a header to the requests.
+  --ciphers=<SUITE>
+              Set allowed  cipher list.  The  format of the  string is
+              described in OpenSSL ciphers(1).
   -p, --no-tls-proto=<PROTOID>
               Specify ALPN identifier of the  protocol to be used when
               accessing http URI without SSL/TLS.)";
@@ -1069,6 +1072,7 @@ int main(int argc, char **argv) {
         {"verbose", no_argument, nullptr, 'v'},
         {"help", no_argument, nullptr, 'h'},
         {"version", no_argument, &flag, 1},
+        {"ciphers", required_argument, &flag, 2},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     auto c = getopt_long(argc, argv, "hvW:c:d:m:n:p:t:w:H:i:", long_options,
@@ -1181,6 +1185,10 @@ int main(int argc, char **argv) {
         // version option
         print_version(std::cout);
         exit(EXIT_SUCCESS);
+      case 2:
+        // ciphers option
+        config.ciphers = optarg;
+        break;
       }
       break;
     default:
@@ -1264,9 +1272,17 @@ int main(int argc, char **argv) {
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_AUTO_RETRY);
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_RELEASE_BUFFERS);
 
-  if (SSL_CTX_set_cipher_list(ssl_ctx, ssl::DEFAULT_CIPHER_LIST) == 0) {
-    std::cerr << "SSL_CTX_set_cipher_list failed: "
-              << ERR_error_string(ERR_get_error(), nullptr) << std::endl;
+  const char *ciphers;
+  if (config.ciphers.empty()) {
+    ciphers = ssl::DEFAULT_CIPHER_LIST;
+  } else {
+    ciphers = config.ciphers.c_str();
+  }
+
+  if (SSL_CTX_set_cipher_list(ssl_ctx, ciphers) == 0) {
+    std::cerr << "SSL_CTX_set_cipher_list with " << ciphers
+              << " failed: " << ERR_error_string(ERR_get_error(), nullptr)
+              << std::endl;
     exit(EXIT_FAILURE);
   }
 
