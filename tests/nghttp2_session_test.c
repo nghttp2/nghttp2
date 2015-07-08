@@ -810,6 +810,7 @@ void test_nghttp2_session_recv_data_no_auto_flow_control(void) {
   uint8_t data[8192];
   ssize_t rv;
   size_t sendlen;
+  nghttp2_stream *stream;
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks.send_callback = null_send_callback;
@@ -838,6 +839,9 @@ void test_nghttp2_session_recv_data_no_auto_flow_control(void) {
   rv = nghttp2_session_mem_recv(session, data, sendlen);
   CU_ASSERT((ssize_t)sendlen == rv);
 
+  /* We consumed pad length field (1 byte) */
+  CU_ASSERT(1 == session->consumed_size);
+
   /* close stream here */
   nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, 1, NGHTTP2_NO_ERROR);
   nghttp2_session_send(session);
@@ -851,6 +855,24 @@ void test_nghttp2_session_recv_data_no_auto_flow_control(void) {
   /* We already consumed pad length field (1 byte), so do +1 here */
   CU_ASSERT((int32_t)(NGHTTP2_FRAME_HDLEN + hd.length - sendlen + 1) ==
             session->consumed_size);
+
+  nghttp2_session_del(session);
+
+  /* Reuse DATA created previously. */
+
+  nghttp2_session_server_new2(&session, &callbacks, &ud, option);
+
+  /* Now we are expecting final response header, which means receiving
+     DATA for that stream is illegal. */
+  stream = open_stream(session, 1);
+  stream->http_flags |= NGHTTP2_HTTP_FLAG_EXPECT_FINAL_RESPONSE;
+
+  rv = nghttp2_session_mem_recv(session, data, NGHTTP2_FRAME_HDLEN + hd.length);
+  CU_ASSERT((ssize_t)(NGHTTP2_FRAME_HDLEN + hd.length) == rv);
+
+  /* Whole payload must be consumed now because HTTP messaging rule
+     was not honored. */
+  CU_ASSERT((int32_t)hd.length == session->consumed_size);
 
   nghttp2_session_del(session);
   nghttp2_option_del(option);
