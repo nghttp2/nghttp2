@@ -102,6 +102,7 @@ The Python bindings require the following packages:
 
 * cython >= 0.19
 * python >= 2.7
+* python-setuptools
 
 If you are using Ubuntu 14.04 LTS (trusty), run the following to install the needed packages::
 
