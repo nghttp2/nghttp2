@@ -588,7 +588,8 @@ void ClientHandler::pool_downstream_connection(
     return;
   }
   if (LOG_ENABLED(INFO)) {
-    CLOG(INFO, this) << "Pooling downstream connection DCONN:" << dconn.get();
+    CLOG(INFO, this) << "Pooling downstream connection DCONN:" << dconn.get()
+                     << " in group " << dconn->get_group();
   }
   dconn->set_client_handler(nullptr);
   auto dconn_pool = worker_->get_dconn_pool();
@@ -605,9 +606,44 @@ void ClientHandler::remove_downstream_connection(DownstreamConnection *dconn) {
 }
 
 std::unique_ptr<DownstreamConnection>
-ClientHandler::get_downstream_connection() {
+ClientHandler::get_downstream_connection(Downstream *downstream) {
+  size_t group;
+  auto &groups = get_config()->downstream_addr_groups;
+  auto catch_all = get_config()->downstream_addr_group_catch_all;
+
+  // Fast path.  If we have one group, it must be catch-all group.
+  // HTTP/2 and client proxy modes fall in this case.  Currently,
+  // HTTP/2 backend does not perform host-path mapping.
+  if (groups.size() == 1 || get_config()->downstream_proto == PROTO_HTTP2) {
+    group = 0;
+  } else if (downstream->get_request_method() == HTTP_CONNECT) {
+    //  We don't know how to treat CONNECT request in host-path
+    //  mapping.  It most likely appears in proxy scenario.  Since we
+    //  have dealt with proxy case already, just use catch-all group.
+    group = catch_all;
+  } else {
+    if (!downstream->get_request_http2_authority().empty()) {
+      group = match_downstream_addr_group(
+          downstream->get_request_http2_authority(),
+          downstream->get_request_path(), groups, catch_all);
+    } else {
+      auto h = downstream->get_request_header(http2::HD_HOST);
+      if (h) {
+        group = match_downstream_addr_group(
+            h->value, downstream->get_request_path(), groups, catch_all);
+      } else {
+        group = match_downstream_addr_group("", downstream->get_request_path(),
+                                            groups, catch_all);
+      }
+    }
+  }
+
+  if (LOG_ENABLED(INFO)) {
+    CLOG(INFO, this) << "Downstream address group: " << group;
+  }
+
   auto dconn_pool = worker_->get_dconn_pool();
-  auto dconn = dconn_pool->pop_downstream_connection();
+  auto dconn = dconn_pool->pop_downstream_connection(group);
 
   if (!dconn) {
     if (LOG_ENABLED(INFO)) {
@@ -620,7 +656,8 @@ ClientHandler::get_downstream_connection() {
     if (http2session_) {
       dconn = make_unique<Http2DownstreamConnection>(dconn_pool, http2session_);
     } else {
-      dconn = make_unique<HttpDownstreamConnection>(dconn_pool, conn_.loop);
+      dconn =
+          make_unique<HttpDownstreamConnection>(dconn_pool, group, conn_.loop);
     }
     dconn->set_client_handler(this);
     return dconn;

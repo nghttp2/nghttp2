@@ -57,6 +57,7 @@
 #include "http2.h"
 #include "util.h"
 #include "template.h"
+#include "base64.h"
 
 using namespace nghttp2;
 
@@ -79,9 +80,29 @@ TicketKeys::~TicketKeys() {
   }
 }
 
+DownstreamAddr::DownstreamAddr(const DownstreamAddr &other)
+    : addr(other.addr), host(other.host ? strcopy(other.host.get()) : nullptr),
+      hostport(other.hostport ? strcopy(other.hostport.get()) : nullptr),
+      addrlen(other.addrlen), port(other.port), host_unix(other.host_unix) {}
+
+DownstreamAddr &DownstreamAddr::operator=(const DownstreamAddr &other) {
+  if (this == &other) {
+    return *this;
+  }
+
+  addr = other.addr;
+  host = (other.host ? strcopy(other.host.get()) : nullptr);
+  hostport = (other.hostport ? strcopy(other.hostport.get()) : nullptr);
+  addrlen = other.addrlen;
+  port = other.port;
+  host_unix = other.host_unix;
+
+  return *this;
+}
+
 namespace {
 int split_host_port(char *host, size_t hostlen, uint16_t *port_ptr,
-                    const char *hostport) {
+                    const char *hostport, size_t hostportlen) {
   // host and port in |hostport| is separated by single ','.
   const char *p = strchr(hostport, ',');
   if (!p) {
@@ -97,12 +118,13 @@ int split_host_port(char *host, size_t hostlen, uint16_t *port_ptr,
   host[len] = '\0';
 
   errno = 0;
-  unsigned long d = strtoul(p + 1, nullptr, 10);
-  if (errno == 0 && 1 <= d && d <= std::numeric_limits<uint16_t>::max()) {
+  auto portlen = hostportlen - len - 1;
+  auto d = util::parse_uint(reinterpret_cast<const uint8_t *>(p + 1), portlen);
+  if (1 <= d && d <= std::numeric_limits<uint16_t>::max()) {
     *port_ptr = d;
     return 0;
   } else {
-    LOG(ERROR) << "Port is invalid: " << p + 1;
+    LOG(ERROR) << "Port is invalid: " << std::string(p + 1, portlen);
     return -1;
   }
 }
@@ -220,16 +242,16 @@ std::unique_ptr<char[]> strcopy(const std::string &val) {
   return strcopy(val.c_str(), val.size());
 }
 
-std::vector<char *> parse_config_str_list(const char *s) {
+std::vector<char *> parse_config_str_list(const char *s, char delim) {
   size_t len = 1;
-  for (const char *first = s, *p = nullptr; (p = strchr(first, ','));
+  for (const char *first = s, *p = nullptr; (p = strchr(first, delim));
        ++len, first = p + 1)
     ;
   auto list = std::vector<char *>(len);
   auto first = strdup(s);
   len = 0;
   for (;;) {
-    auto p = strchr(first, ',');
+    auto p = strchr(first, delim);
     if (p == nullptr) {
       break;
     }
@@ -440,30 +462,82 @@ int parse_duration(ev_tstamp *dest, const char *opt, const char *optarg) {
 }
 } // namespace
 
+namespace {
+// Parses host-path mapping patterns in |src|, and stores mappings in
+// config.  We will store each host-path pattern found in |src| with
+// |addr|.  |addr| will be copied accordingly.  Also we make a group
+// based on the pattern.  The "/" pattern is considered as catch-all.
+void parse_mapping(DownstreamAddr addr, const char *src) {
+  // This returns at least 1 element (it could be empty string).  We
+  // will append '/' to all patterns, so it becomes catch-all pattern.
+  auto mapping = parse_config_str_list(src, ':');
+  assert(!mapping.empty());
+  for (auto raw_pattern : mapping) {
+    auto done = false;
+    std::string pattern;
+    auto slash = strchr(raw_pattern, '/');
+    if (slash == nullptr) {
+      // This effectively makes empty pattern to "/".
+      pattern = raw_pattern;
+      util::inp_strlower(pattern);
+      pattern += "/";
+    } else {
+      pattern.assign(raw_pattern, slash);
+      util::inp_strlower(pattern);
+      pattern +=
+          http2::normalize_path(slash, raw_pattern + strlen(raw_pattern));
+    }
+    for (auto &g : mod_config()->downstream_addr_groups) {
+      if (g.pattern == pattern) {
+        g.addrs.push_back(addr);
+        done = true;
+        break;
+      }
+    }
+    if (done) {
+      continue;
+    }
+    DownstreamAddrGroup g(pattern);
+    g.addrs.push_back(addr);
+    mod_config()->downstream_addr_groups.push_back(std::move(g));
+  }
+  clear_config_str_list(mapping);
+}
+} // namespace
+
 int parse_config(const char *opt, const char *optarg) {
   char host[NI_MAXHOST];
   uint16_t port;
+
   if (util::strieq(opt, SHRPX_OPT_BACKEND)) {
+    auto optarglen = strlen(optarg);
+    auto pat_delim = strchr(optarg, ';');
+    if (!pat_delim) {
+      pat_delim = optarg + optarglen;
+    }
+    DownstreamAddr addr;
     if (util::istartsWith(optarg, SHRPX_UNIX_PATH_PREFIX)) {
-      DownstreamAddr addr;
       auto path = optarg + str_size(SHRPX_UNIX_PATH_PREFIX);
       addr.host = strcopy(path);
       addr.host_unix = true;
+    } else {
+      if (split_host_port(host, sizeof(host), &port, optarg,
+                          pat_delim - optarg) == -1) {
+        return -1;
+      }
 
-      mod_config()->downstream_addrs.push_back(std::move(addr));
-
-      return 0;
+      addr.host = strcopy(host);
+      addr.port = port;
     }
 
-    if (split_host_port(host, sizeof(host), &port, optarg) == -1) {
+    auto mapping = pat_delim < optarg + optarglen ? pat_delim + 1 : pat_delim;
+    // We may introduce new parameter after additional ';', so don't
+    // allow extra ';' in pattern for now.
+    if (strchr(mapping, ';') != nullptr) {
+      LOG(ERROR) << opt << ": ';' must not be used in pattern";
       return -1;
     }
-
-    DownstreamAddr addr;
-    addr.host = strcopy(host);
-    addr.port = port;
-
-    mod_config()->downstream_addrs.push_back(std::move(addr));
+    parse_mapping(std::move(addr), mapping);
 
     return 0;
   }
@@ -478,7 +552,8 @@ int parse_config(const char *opt, const char *optarg) {
       return 0;
     }
 
-    if (split_host_port(host, sizeof(host), &port, optarg) == -1) {
+    if (split_host_port(host, sizeof(host), &port, optarg, strlen(optarg)) ==
+        -1) {
       return -1;
     }
 
@@ -1320,6 +1395,119 @@ int int_syslog_facility(const char *strfacility) {
   }
 
   return -1;
+}
+
+namespace {
+bool path_match(const std::string &pattern, const std::string &path) {
+  if (pattern.back() != '/') {
+    return pattern == path;
+  }
+  return util::startsWith(path, pattern);
+}
+} // namespace
+
+namespace {
+ssize_t match(const std::string &path,
+              const std::vector<DownstreamAddrGroup> &groups) {
+  ssize_t res = -1;
+  size_t best = 0;
+  for (size_t i = 0; i < groups.size(); ++i) {
+    auto &g = groups[i];
+    auto &pattern = g.pattern;
+    if (!path_match(pattern, path)) {
+      continue;
+    }
+    if (res == -1 || best < pattern.size()) {
+      best = pattern.size();
+      res = i;
+    }
+  }
+  return res;
+}
+} // namespace
+
+namespace {
+size_t match_downstream_addr_group_host(
+    const std::string &host, const std::string &raw_path,
+    const std::vector<DownstreamAddrGroup> &groups, size_t catch_all) {
+  if (raw_path == "*") {
+    auto group = match(host + "/", groups);
+    if (group != -1) {
+      if (LOG_ENABLED(INFO)) {
+        LOG(INFO) << "Found pattern with query " << host
+                  << ", matched pattern=" << groups[group].pattern;
+      }
+      return group;
+    }
+    return catch_all;
+  }
+
+  // probably, not necessary most of the case, but just in case.
+  auto fragment = std::find(std::begin(raw_path), std::end(raw_path), '#');
+  auto query = std::find(std::begin(raw_path), fragment, '?');
+  auto path = http2::normalize_path(std::begin(raw_path), query);
+
+  if (LOG_ENABLED(INFO)) {
+    LOG(INFO) << "Perform mapping selection, using host=" << host
+              << ", path=" << path;
+  }
+
+  auto group = match(host + path, groups);
+  if (group != -1) {
+    if (LOG_ENABLED(INFO)) {
+      LOG(INFO) << "Found pattern with query " << host + path
+                << ", matched pattern=" << groups[group].pattern;
+    }
+    return group;
+  }
+
+  group = match(path, groups);
+  if (group != -1) {
+    if (LOG_ENABLED(INFO)) {
+      LOG(INFO) << "Found pattern with query " << path
+                << ", matched pattern=" << groups[group].pattern;
+    }
+    return group;
+  }
+
+  if (LOG_ENABLED(INFO)) {
+    LOG(INFO) << "None match.  Use catch-all pattern";
+  }
+  return catch_all;
+}
+} // namespace
+
+size_t match_downstream_addr_group(
+    const std::string &hostport, const std::string &raw_path,
+    const std::vector<DownstreamAddrGroup> &groups, size_t catch_all) {
+  if (hostport.empty() ||
+      std::find(std::begin(hostport), std::end(hostport), '/') !=
+          std::end(hostport)) {
+    // We use '/' specially, and if '/' is included in host, it breaks
+    // our code.  Select catch-all case.
+    return catch_all;
+  }
+  std::string host;
+  if (hostport[0] == '[') {
+    // assume this is IPv6 numeric address
+    auto p = std::find(std::begin(hostport), std::end(hostport), ']');
+    if (p == std::end(hostport)) {
+      return catch_all;
+    }
+    if (p + 1 < std::end(hostport) && *(p + 1) != ':') {
+      return catch_all;
+    }
+    host.assign(std::begin(hostport), p + 1);
+  } else {
+    auto p = std::find(std::begin(hostport), std::end(hostport), ':');
+    if (p == std::begin(hostport)) {
+      return catch_all;
+    }
+    host.assign(std::begin(hostport), p);
+  }
+
+  util::inp_strlower(host);
+  return match_downstream_addr_group_host(host, raw_path, groups, catch_all);
 }
 
 } // namespace shrpx

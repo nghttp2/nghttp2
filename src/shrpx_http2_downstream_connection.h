@@ -61,6 +61,8 @@ public:
 
   virtual void on_upstream_change(Upstream *upstream) {}
   virtual int on_priority_change(int32_t pri);
+  // Currently, HTTP/2 backend does not perform host-path mapping.
+  virtual size_t get_group() const { return 0; }
 
   // This object is not poolable because we dont' have facility to
   // migrate to another Http2Session object.

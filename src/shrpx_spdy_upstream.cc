@@ -271,7 +271,7 @@ void SpdyUpstream::start_downstream(Downstream *downstream) {
 
 void SpdyUpstream::initiate_downstream(Downstream *downstream) {
   int rv = downstream->attach_downstream_connection(
-      handler_->get_downstream_connection());
+      handler_->get_downstream_connection(downstream));
   if (rv != 0) {
     // If downstream connection fails, issue RST_STREAM.
     rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
@@ -1104,7 +1104,7 @@ int SpdyUpstream::on_downstream_reset(bool no_retry) {
     // downstream connection.
 
     rv = downstream->attach_downstream_connection(
-        handler_->get_downstream_connection());
+        handler_->get_downstream_connection(downstream));
     if (rv != 0) {
       goto fail;
     }

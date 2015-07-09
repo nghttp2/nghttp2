@@ -743,7 +743,7 @@ void get_altnames(X509 *cert, std::vector<std::string> &dns_names,
   }
 }
 
-int check_cert(SSL *ssl) {
+int check_cert(SSL *ssl, const DownstreamAddr *addr) {
   auto cert = SSL_get_peer_certificate(ssl);
   if (!cert) {
     LOG(ERROR) << "No certificate found";
@@ -760,9 +760,7 @@ int check_cert(SSL *ssl) {
   std::vector<std::string> dns_names;
   std::vector<std::string> ip_addrs;
   get_altnames(cert, dns_names, ip_addrs, common_name);
-  if (verify_hostname(get_config()->downstream_addrs[0].host.get(),
-                      &get_config()->downstream_addrs[0].addr,
-                      get_config()->downstream_addrs[0].addrlen, dns_names,
+  if (verify_hostname(addr->host.get(), &addr->addr, addr->addrlen, dns_names,
                       ip_addrs, common_name) != 0) {
     LOG(ERROR) << "Certificate verification failed: hostname does not match";
     return -1;

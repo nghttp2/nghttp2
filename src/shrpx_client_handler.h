@@ -92,7 +92,8 @@ public:
 
   void pool_downstream_connection(std::unique_ptr<DownstreamConnection> dconn);
   void remove_downstream_connection(DownstreamConnection *dconn);
-  std::unique_ptr<DownstreamConnection> get_downstream_connection();
+  std::unique_ptr<DownstreamConnection>
+  get_downstream_connection(Downstream *downstream);
   MemchunkPool *get_mcpool();
   SSL *get_ssl() const;
   ConnectBlocker *get_connect_blocker() const;

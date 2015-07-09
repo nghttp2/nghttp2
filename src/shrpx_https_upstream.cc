@@ -297,7 +297,7 @@ int htp_hdrs_completecb(http_parser *htp) {
   }
 
   rv = downstream->attach_downstream_connection(
-      upstream->get_client_handler()->get_downstream_connection());
+      upstream->get_client_handler()->get_downstream_connection(downstream));
 
   if (rv != 0) {
     downstream->set_request_state(Downstream::CONNECT_FAIL);
@@ -993,7 +993,7 @@ int HttpsUpstream::on_downstream_reset(bool no_retry) {
   }
 
   rv = downstream_->attach_downstream_connection(
-      handler_->get_downstream_connection());
+      handler_->get_downstream_connection(downstream_.get()));
   if (rv != 0) {
     goto fail;
   }

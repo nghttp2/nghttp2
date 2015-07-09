@@ -386,9 +386,13 @@ bool streq_l(const char (&a)[N], InputIt b, size_t blen) {
 
 bool strifind(const char *a, const char *b);
 
+template <typename InputIt> void inp_strlower(InputIt first, InputIt last) {
+  std::transform(first, last, first, lowcase);
+}
+
 // Lowercase |s| in place.
 inline void inp_strlower(std::string &s) {
-  std::transform(std::begin(s), std::end(s), std::begin(s), lowcase);
+  inp_strlower(std::begin(s), std::end(s));
 }
 
 // Returns string representation of |n| with 2 fractional digits.

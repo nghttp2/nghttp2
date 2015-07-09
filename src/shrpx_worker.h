@@ -55,13 +55,13 @@ class CertLookupTree;
 } // namespace ssl
 
 struct WorkerStat {
-  WorkerStat() : num_connections(0), next_downstream(0) {}
+  WorkerStat(size_t num_groups)
+      : num_connections(0), next_downstream(num_groups) {}
 
   size_t num_connections;
-  // Next downstream index in Config::downstream_addrs.  For HTTP/2
-  // downstream connections, this is always 0.  For HTTP/1, this is
+  // Next downstream index in Config::downstream_addr_groups.  This is
   // used as load balancing.
-  size_t next_downstream;
+  std::vector<size_t> next_downstream;
 };
 
 enum WorkerEventType {

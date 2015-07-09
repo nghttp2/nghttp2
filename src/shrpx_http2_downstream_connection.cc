@@ -264,7 +264,7 @@ int Http2DownstreamConnection::push_request_headers() {
   // addr_idx here.
   auto addr_idx = http2session_->get_addr_idx();
   auto downstream_hostport =
-      get_config()->downstream_addrs[addr_idx].hostport.get();
+      get_config()->downstream_addr_groups[0].addrs[addr_idx].hostport.get();
 
   const char *authority = nullptr, *host = nullptr;
   if (!no_host_rewrite) {

@@ -37,6 +37,8 @@
 
 #include "http-parser/http_parser.h"
 
+#include "util.h"
+
 namespace nghttp2 {
 
 struct Header {
@@ -297,6 +299,40 @@ int lookup_method_token(const uint8_t *name, size_t namelen);
 int lookup_method_token(const std::string &name);
 
 const char *to_method_string(int method_token);
+
+template <typename InputIt>
+std::string normalize_path(InputIt first, InputIt last) {
+  // First, decode %XX for unreserved characters, then do
+  // http2::join_path
+  std::string result;
+  // We won't find %XX if length is less than 3.
+  if (last - first < 3) {
+    result.assign(first, last);
+  } else {
+    for (; first < last - 2;) {
+      if (*first == '%') {
+        if (util::isHexDigit(*(first + 1)) && util::isHexDigit(*(first + 2))) {
+          auto c = (util::hex_to_uint(*(first + 1)) << 4) +
+                   util::hex_to_uint(*(first + 2));
+          if (util::inRFC3986UnreservedChars(c)) {
+            result += c;
+            first += 3;
+            continue;
+          }
+          result += '%';
+          result += util::upcase(*(first + 1));
+          result += util::upcase(*(first + 2));
+          first += 3;
+          continue;
+        }
+      }
+      result += *first++;
+    }
+    result.append(first, last);
+  }
+  return path_join(nullptr, 0, nullptr, 0, result.c_str(), result.size(),
+                   nullptr, 0);
+}
 
 } // namespace http2
 

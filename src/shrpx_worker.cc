@@ -61,8 +61,11 @@ void mcpool_clear_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
                ssl::CertLookupTree *cert_tree,
                const std::shared_ptr<TicketKeys> &ticket_keys)
-    : next_http2session_(0), loop_(loop), sv_ssl_ctx_(sv_ssl_ctx),
-      cl_ssl_ctx_(cl_ssl_ctx), cert_tree_(cert_tree), ticket_keys_(ticket_keys),
+    : next_http2session_(0),
+      dconn_pool_(get_config()->downstream_addr_groups.size()),
+      worker_stat_(get_config()->downstream_addr_groups.size()), loop_(loop),
+      sv_ssl_ctx_(sv_ssl_ctx), cl_ssl_ctx_(cl_ssl_ctx), cert_tree_(cert_tree),
+      ticket_keys_(ticket_keys),
       connect_blocker_(make_unique<ConnectBlocker>(loop_)),
       graceful_shutdown_(false) {
   ev_async_init(&w_, eventcb);

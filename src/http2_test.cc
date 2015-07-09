@@ -829,4 +829,31 @@ void test_http2_path_join(void) {
   }
 }
 
+void test_http2_normalize_path(void) {
+  std::string src;
+
+  src = "/alpha/bravo/../charlie";
+  CU_ASSERT("/alpha/charlie" ==
+            http2::normalize_path(std::begin(src), std::end(src)));
+
+  src = "/a%6c%70%68%61";
+  CU_ASSERT("/alpha" == http2::normalize_path(std::begin(src), std::end(src)));
+
+  src = "/alpha%2f%3a";
+  CU_ASSERT("/alpha%2F%3A" ==
+            http2::normalize_path(std::begin(src), std::end(src)));
+
+  src = "%2f";
+  CU_ASSERT("/%2F" == http2::normalize_path(std::begin(src), std::end(src)));
+
+  src = "%f";
+  CU_ASSERT("/%f" == http2::normalize_path(std::begin(src), std::end(src)));
+
+  src = "%";
+  CU_ASSERT("/%" == http2::normalize_path(std::begin(src), std::end(src)));
+
+  src = "";
+  CU_ASSERT("/" == http2::normalize_path(std::begin(src), std::end(src)));
+}
+
 } // namespace shrpx

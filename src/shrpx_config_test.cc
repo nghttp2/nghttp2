@@ -48,7 +48,7 @@ void test_shrpx_config_parse_config_str_list(void) {
   CU_ASSERT(0 == strcmp("", res[1]));
   clear_config_str_list(res);
 
-  res = parse_config_str_list(",a,,");
+  res = parse_config_str_list(":a::", ':');
   CU_ASSERT(4 == res.size());
   CU_ASSERT(0 == strcmp("", res[0]));
   CU_ASSERT(0 == strcmp("a", res[1]));
@@ -170,6 +170,70 @@ void test_shrpx_config_read_tls_ticket_key_file(void) {
             memcmp("8..............9", key->aes_key, sizeof(key->aes_key)));
   CU_ASSERT(0 ==
             memcmp("a..............b", key->hmac_key, sizeof(key->hmac_key)));
+}
+
+void test_shrpx_config_match_downstream_addr_group(void) {
+  auto groups = std::vector<DownstreamAddrGroup>{
+      {"nghttp2.org/"},
+      {"nghttp2.org/alpha/bravo/"},
+      {"nghttp2.org/alpha/charlie"},
+      {"nghttp2.org/delta%3A"},
+      {"www.nghttp2.org/"},
+      {"[::1]/"},
+  };
+
+  CU_ASSERT(0 == match_downstream_addr_group("nghttp2.org", "/", groups, 255));
+
+  // port is removed
+  CU_ASSERT(0 ==
+            match_downstream_addr_group("nghttp2.org:8080", "/", groups, 255));
+
+  // host is case-insensitive
+  CU_ASSERT(4 == match_downstream_addr_group("WWW.nghttp2.org", "/alpha",
+                                             groups, 255));
+
+  // path part is case-sensitive
+  CU_ASSERT(0 == match_downstream_addr_group("nghttp2.org", "/Alpha/bravo",
+                                             groups, 255));
+
+  // unreserved characters are decoded before matching
+  CU_ASSERT(1 == match_downstream_addr_group("nghttp2.org", "/alpha/%62ravo/",
+                                             groups, 255));
+
+  CU_ASSERT(1 == match_downstream_addr_group(
+                     "nghttp2.org", "/alpha/%62ravo/charlie", groups, 255));
+
+  CU_ASSERT(2 == match_downstream_addr_group("nghttp2.org", "/alpha/charlie",
+                                             groups, 255));
+
+  // pattern which does not end with '/' must match its entirely.  So
+  // this matches to group 0, not group 2.
+  CU_ASSERT(0 == match_downstream_addr_group("nghttp2.org", "/alpha/charlie/",
+                                             groups, 255));
+
+  // percent-encoding is normalized to upper case hex digits.
+  CU_ASSERT(3 == match_downstream_addr_group("nghttp2.org", "/delta%3a", groups,
+                                             255));
+
+  // path component is normalized before mathcing
+  CU_ASSERT(1 == match_downstream_addr_group(
+                     "nghttp2.org", "/alpha/charlie/%2e././bravo/delta/..",
+                     groups, 255));
+
+  CU_ASSERT(255 ==
+            match_downstream_addr_group("example.org", "/", groups, 255));
+
+  CU_ASSERT(255 == match_downstream_addr_group("", "/", groups, 255));
+
+  CU_ASSERT(255 == match_downstream_addr_group("foo/bar", "/", groups, 255));
+
+  // If path is "*", only match with host + "/".
+  CU_ASSERT(0 == match_downstream_addr_group("nghttp2.org", "*", groups, 255));
+
+  CU_ASSERT(5 == match_downstream_addr_group("[::1]", "/", groups, 255));
+  CU_ASSERT(5 == match_downstream_addr_group("[::1]:8080", "/", groups, 255));
+  CU_ASSERT(255 == match_downstream_addr_group("[::1", "/", groups, 255));
+  CU_ASSERT(255 == match_downstream_addr_group("[::1]8000", "/", groups, 255));
 }
 
 } // namespace shrpx

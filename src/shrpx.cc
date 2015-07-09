@@ -966,6 +966,7 @@ void fill_default_config() {
   mod_config()->no_ocsp = false;
   mod_config()->header_field_buffer = 64_k;
   mod_config()->max_header_fields = 100;
+  mod_config()->downstream_addr_group_catch_all = 0;
 }
 } // namespace
 
@@ -997,14 +998,45 @@ Options:
   The options are categorized into several groups.
 
 Connections:
-  -b, --backend=<HOST,PORT>
+  -b, --backend=<HOST>,<PORT>[;<PATTERN>[:...]]
               Set  backend  host  and   port.   The  multiple  backend
               addresses are  accepted by repeating this  option.  UNIX
               domain socket  can be  specified by prefixing  path name
-              with "unix:" (e.g., unix:/var/run/backend.sock)
+              with    "unix:"   (e.g.,    unix:/var/run/backend.sock).
+              Optionally, if <PATTERN>s are given, the backend address
+              is only used if request matches the pattern.  If -s, -p,
+              --client  or  --http2-bridge  is  used,  <PATTERN>s  are
+              ignored.  The  pattern matching  is closely  designed to
+              ServeMux in net/http package of Go programming language.
+              <PATTERN> consists  of path, host  + path or  host.  The
+              path  must starts  with "/".   If it  ends with  "/", it
+              matches to  the request path  whose prefix is  the path.
+              If it  does not  end with "/",  it performs  exact match
+              against the request path.  If host is given, it performs
+              exact match against the request  host.  If host alone is
+              given, "/"  is appended  to it, so  that it  matches all
+              paths  under the  host  (e.g., specifying  "nghttp2.org"
+              equals   to  "nghttp2.org/").    Longer  patterns   take
+              precedence  over shorter  ones,  breaking a  tie by  the
+              order  of  the  appearance  in  the  configuration.   If
+              <PATTERN>  is omitted,  "/"  is used  as pattern,  which
+              matches  all paths  (catch-all  pattern).  For  example,
+              -b'127.0.0.1,8080;nghttp2.org/httpbin/'    matches   the
+              request   host  "nghttp2.org"   and  the   request  path
+              "/httpbin/get",  but does  not  match  the request  host
+              "nghttp2.org" and  the request path  "/index.html".  The
+              multiple <PATTERN>s can be specified, delimiting them by
+              ":".                                          Specifying
+              -b'127.0.0.1,8080;nghttp2.org:www.nghttp2.org'  has  the
+              same  effect  to specify  -b'127.0.0.1,8080;nghttp2.org'
+              and  -b'127.0.0.1,8080:www.nghttp2.org'.    The  backend
+              addresses  sharing same  <PATTERN> are  grouped together
+              forming  load balancing  group.  Since  ";" and  ":" are
+              used  as delimiter,  <PATTERN>  must  not contain  these
+              characters.
               Default: )" << DEFAULT_DOWNSTREAM_HOST << ","
       << DEFAULT_DOWNSTREAM_PORT << R"(
-  -f, --frontend=<HOST,PORT>
+  -f, --frontend=<HOST>,<PORT>
               Set  frontend  host and  port.   If  <HOST> is  '*',  it
               assumes  all addresses  including  both  IPv4 and  IPv6.
               UNIX domain  socket can  be specified by  prefixing path
@@ -2118,55 +2150,97 @@ int main(int argc, char **argv) {
     }
   }
 
-  if (get_config()->downstream_addrs.empty()) {
+  if (get_config()->downstream_addr_groups.empty()) {
     DownstreamAddr addr;
     addr.host = strcopy(DEFAULT_DOWNSTREAM_HOST);
     addr.port = DEFAULT_DOWNSTREAM_PORT;
 
-    mod_config()->downstream_addrs.push_back(std::move(addr));
+    DownstreamAddrGroup g("/");
+    g.addrs.push_back(std::move(addr));
+    mod_config()->downstream_addr_groups.push_back(std::move(g));
+  } else if (get_config()->downstream_proto == PROTO_HTTP2 ||
+             get_config()->http2_proxy || get_config()->client_proxy) {
+    // We don't support host mapping in these cases.  Move all
+    // non-catch-all patterns to catch-all pattern for HTTP/2 backend
+    DownstreamAddrGroup catch_all("/");
+    for (auto &g : mod_config()->downstream_addr_groups) {
+      std::move(std::begin(g.addrs), std::end(g.addrs),
+                std::back_inserter(catch_all.addrs));
+    }
+    std::vector<DownstreamAddrGroup>().swap(
+        mod_config()->downstream_addr_groups);
+    mod_config()->downstream_addr_groups.push_back(std::move(catch_all));
   }
 
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "Resolving backend address";
   }
 
-  for (auto &addr : mod_config()->downstream_addrs) {
+  ssize_t catch_all_group = -1;
+  for (size_t i = 0; i < mod_config()->downstream_addr_groups.size(); ++i) {
+    auto &g = mod_config()->downstream_addr_groups[i];
+    if (g.pattern == "/") {
+      catch_all_group = i;
+    }
+    if (LOG_ENABLED(INFO)) {
+      LOG(INFO) << "Host-path pattern: group " << i << ": '" << g.pattern
+                << "'";
+      for (auto &addr : g.addrs) {
+        LOG(INFO) << "group " << i << " -> " << addr.host.get()
+                  << (addr.host_unix ? "" : ":" + util::utos(addr.port));
+      }
+    }
+  }
 
-    if (addr.host_unix) {
-      // for AF_UNIX socket, we use "localhost" as host for backend
-      // hostport.  This is used as Host header field to backend and
-      // not going to be passed to any syscalls.
-      addr.hostport =
-          strcopy(util::make_hostport("localhost", get_config()->port));
+  if (catch_all_group == -1) {
+    LOG(FATAL) << "-b: No catch-all backend address is configured";
+    exit(EXIT_FAILURE);
+  }
+  mod_config()->downstream_addr_group_catch_all = catch_all_group;
 
-      auto path = addr.host.get();
-      auto pathlen = strlen(path);
+  if (LOG_ENABLED(INFO)) {
+    LOG(INFO) << "Catch-all pattern is group " << catch_all_group;
+  }
 
-      if (pathlen + 1 > sizeof(addr.addr.un.sun_path)) {
-        LOG(FATAL) << "UNIX domain socket path " << path << " is too long > "
-                   << sizeof(addr.addr.un.sun_path);
-        exit(EXIT_FAILURE);
+  for (auto &g : mod_config()->downstream_addr_groups) {
+    for (auto &addr : g.addrs) {
+
+      if (addr.host_unix) {
+        // for AF_UNIX socket, we use "localhost" as host for backend
+        // hostport.  This is used as Host header field to backend and
+        // not going to be passed to any syscalls.
+        addr.hostport =
+            strcopy(util::make_hostport("localhost", get_config()->port));
+
+        auto path = addr.host.get();
+        auto pathlen = strlen(path);
+
+        if (pathlen + 1 > sizeof(addr.addr.un.sun_path)) {
+          LOG(FATAL) << "UNIX domain socket path " << path << " is too long > "
+                     << sizeof(addr.addr.un.sun_path);
+          exit(EXIT_FAILURE);
+        }
+
+        LOG(INFO) << "Use UNIX domain socket path " << path
+                  << " for backend connection";
+
+        addr.addr.un.sun_family = AF_UNIX;
+        // copy path including terminal NULL
+        std::copy_n(path, pathlen + 1, addr.addr.un.sun_path);
+        addr.addrlen = sizeof(addr.addr.un);
+
+        continue;
       }
 
-      LOG(INFO) << "Use UNIX domain socket path " << path
-                << " for backend connection";
+      addr.hostport = strcopy(util::make_hostport(addr.host.get(), addr.port));
 
-      addr.addr.un.sun_family = AF_UNIX;
-      // copy path including terminal NULL
-      std::copy_n(path, pathlen + 1, addr.addr.un.sun_path);
-      addr.addrlen = sizeof(addr.addr.un);
-
-      continue;
-    }
-
-    addr.hostport = strcopy(util::make_hostport(addr.host.get(), addr.port));
-
-    if (resolve_hostname(
-            &addr.addr, &addr.addrlen, addr.host.get(), addr.port,
-            get_config()->backend_ipv4
-                ? AF_INET
-                : (get_config()->backend_ipv6 ? AF_INET6 : AF_UNSPEC)) == -1) {
-      exit(EXIT_FAILURE);
+      if (resolve_hostname(
+              &addr.addr, &addr.addrlen, addr.host.get(), addr.port,
+              get_config()->backend_ipv4 ? AF_INET : (get_config()->backend_ipv6
+                                                          ? AF_INET6
+                                                          : AF_UNSPEC)) == -1) {
+        exit(EXIT_FAILURE);
+      }
     }
   }
 
@@ -2183,9 +2257,10 @@ int main(int argc, char **argv) {
     }
   }
 
-  if (get_config()->http2_downstream_connections_per_worker == 0) {
+  if (get_config()->downstream_proto == PROTO_HTTP2 &&
+      get_config()->http2_downstream_connections_per_worker == 0) {
     mod_config()->http2_downstream_connections_per_worker =
-        get_config()->downstream_addrs.size();
+        get_config()->downstream_addr_groups[0].addrs.size();
   }
 
   if (get_config()->rlimit_nofile) {

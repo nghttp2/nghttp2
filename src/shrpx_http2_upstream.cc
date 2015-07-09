@@ -334,7 +334,7 @@ void Http2Upstream::initiate_downstream(Downstream *downstream) {
   int rv;
 
   rv = downstream->attach_downstream_connection(
-      handler_->get_downstream_connection());
+      handler_->get_downstream_connection(downstream));
   if (rv != 0) {
     // downstream connection fails, send error page
     if (error_reply(downstream, 503) != 0) {
@@ -1476,7 +1476,7 @@ int Http2Upstream::on_downstream_reset(bool no_retry) {
     // downstream connection.
 
     rv = downstream->attach_downstream_connection(
-        handler_->get_downstream_connection());
+        handler_->get_downstream_connection(downstream));
     if (rv != 0) {
       goto fail;
     }
