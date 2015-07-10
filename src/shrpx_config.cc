@@ -511,7 +511,7 @@ int parse_config(const char *opt, const char *optarg) {
 
   if (util::strieq(opt, SHRPX_OPT_BACKEND)) {
     auto optarglen = strlen(optarg);
-    auto pat_delim = strchr(optarg, ';');
+    const char *pat_delim = strchr(optarg, ';');
     if (!pat_delim) {
       pat_delim = optarg + optarglen;
     }
