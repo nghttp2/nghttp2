@@ -518,7 +518,7 @@ int parse_config(const char *opt, const char *optarg) {
     DownstreamAddr addr;
     if (util::istartsWith(optarg, SHRPX_UNIX_PATH_PREFIX)) {
       auto path = optarg + str_size(SHRPX_UNIX_PATH_PREFIX);
-      addr.host = strcopy(path);
+      addr.host = strcopy(path, pat_delim - path);
       addr.host_unix = true;
     } else {
       if (split_host_port(host, sizeof(host), &port, optarg,
