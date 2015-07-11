@@ -207,10 +207,10 @@ libnghttp2_asio_la_LDFLAGS = -no-undefined -version-info 1:0:0
 libnghttp2_asio_la_LIBADD = \
 	$(top_builddir)/lib/libnghttp2.la \
 	$(top_builddir)/third-party/libhttp-parser.la \
+	@OPENSSL_LIBS@ \
 	${BOOST_LDFLAGS} \
 	${BOOST_ASIO_LIB} \
 	${BOOST_THREAD_LIB} \
-	${BOOST_SYSTEM_LIB} \
-	@OPENSSL_LIBS@
+	${BOOST_SYSTEM_LIB}
 
 endif # ENABLE_ASIO_LIB
