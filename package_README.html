@@ -5,16 +5,16 @@
 <!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
 <head>
   <meta charset="utf-8">
+  
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>nghttp2 - HTTP/2 C Library &mdash; nghttp2 0.7.10-DEV documentation</title>
+  <title>nghttp2 - HTTP/2 C Library &mdash; nghttp2 1.0.6-DEV documentation</title>
   
 
   
   
 
   
-  <link href='https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic|Roboto+Slab:400,700|Inconsolata:400,700&subset=latin,cyrillic' rel='stylesheet' type='text/css'>
 
   
   
@@ -28,12 +28,14 @@
   
 
   
-    <link rel="top" title="nghttp2 0.7.10-DEV documentation" href="index.html"/>
+
+  
+    <link rel="top" title="nghttp2 1.0.6-DEV documentation" href="index.html"/>
         <link rel="next" title="Contribution Guidelines" href="contribute.html"/>
         <link rel="prev" title="nghttp2 - HTTP/2 C Library" href="index.html"/> 
 
   
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/modernizr/2.6.2/modernizr.min.js"></script>
+  <script src="_static/js/modernizr.min.js"></script>
 
 </head>
 
@@ -45,8 +47,14 @@
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-nav-search">
         
-          <a href="index.html" class="fa fa-home"> nghttp2</a>
+
         
+          <a href="index.html" class="icon icon-home"> nghttp2
+        
+
+        
+        </a>
+
         
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
@@ -55,6 +63,8 @@
     <input type="hidden" name="area" value="default" />
   </form>
 </div>
+
+        
       </div>
 
       <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
@@ -67,12 +77,31 @@
 <li class="toctree-l2"><a class="reference internal" href="#public-test-server">Public Test Server</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#requirements">Requirements</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#building-from-git">Building from git</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#notes-for-building-on-windows-mingw-cygwin">Notes for building on Windows (Mingw/Cygwin)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#building-the-documentation">Building the documentation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#unit-tests">Unit tests</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#integration-tests">Integration tests</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#client-server-and-proxy-programs">Client, Server and Proxy programs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#migration-from-v0-7-15-or-earlier">Migration from v0.7.15 or earlier</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#alpn-protocol-id-is-now-h2-and-h2c">ALPN protocol ID is now <tt class="docutils literal"><span class="pre">h2</span></tt> and <tt class="docutils literal"><span class="pre">h2c</span></tt></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#use-word-client-magic-where-we-use-client-connection-preface">Use word &quot;client magic&quot; where we use &quot;client connection preface&quot;</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#client-magic-is-sent-by-library">Client magic is sent by library</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#remove-http-alternative-services-alt-svc-related-code">Remove HTTP Alternative Services (Alt-Svc) related code</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#use-nghttp2-error-in-nghttp2-on-invalid-frame-recv-callback">Use nghttp2_error in nghttp2_on_invalid_frame_recv_callback</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#receive-client-magic-by-default">Receive client magic by default</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#client-server-and-proxy-programs">Client, Server and Proxy programs</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#nghttp-client">nghttp - client</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#nghttpd-server">nghttpd - server</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#nghttpx-proxy">nghttpx - proxy</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="#benchmarking-tool">Benchmarking tool</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#hpack-tools">HPACK tools</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#hpack-tools">HPACK tools</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#deflatehd-header-compressor">deflatehd - header compressor</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#inflatehd-header-decompressor">inflatehd - header decompressor</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="#libnghttp2-asio-high-level-http-2-c-library">libnghttp2_asio: High level HTTP/2 C++ library</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#python-bindings">Python bindings</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#contribution">Contribution</a></li>
@@ -101,6 +130,7 @@
 <li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#description">DESCRIPTION</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#options">OPTIONS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#dependency-based-priority">DEPENDENCY BASED PRIORITY</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttp.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
@@ -114,11 +144,25 @@
 <li class="toctree-l1"><a class="reference internal" href="nghttpx.1.html">nghttpx(1)</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#synopsis">SYNOPSIS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#description">DESCRIPTION</a></li>
-<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#options">OPTIONS</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#options">OPTIONS</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttpx.1.html#connections">Connections</a></li>
+<li class="toctree-l3"><a class="reference internal" href="nghttpx.1.html#performance">Performance</a></li>
+<li class="toctree-l3"><a class="reference internal" href="nghttpx.1.html#timeout">Timeout</a></li>
+<li class="toctree-l3"><a class="reference internal" href="nghttpx.1.html#ssl-tls">SSL/TLS</a></li>
+<li class="toctree-l3"><a class="reference internal" href="nghttpx.1.html#http-2-and-spdy">HTTP/2 and SPDY</a></li>
+<li class="toctree-l3"><a class="reference internal" href="nghttpx.1.html#mode">Mode</a></li>
+<li class="toctree-l3"><a class="reference internal" href="nghttpx.1.html#logging">Logging</a></li>
+<li class="toctree-l3"><a class="reference internal" href="nghttpx.1.html#http">HTTP</a></li>
+<li class="toctree-l3"><a class="reference internal" href="nghttpx.1.html#debug">Debug</a></li>
+<li class="toctree-l3"><a class="reference internal" href="nghttpx.1.html#process">Process</a></li>
+<li class="toctree-l3"><a class="reference internal" href="nghttpx.1.html#misc">Misc</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#files">FILES</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#signals">SIGNALS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#server-push">SERVER PUSH</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#unix-domain-socket">UNIX DOMAIN SOCKET</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#ocsp-stapling">OCSP STAPLING</a></li>
 <li class="toctree-l2"><a class="reference internal" href="nghttpx.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
@@ -127,6 +171,7 @@
 <li class="toctree-l2"><a class="reference internal" href="h2load.1.html#description">DESCRIPTION</a></li>
 <li class="toctree-l2"><a class="reference internal" href="h2load.1.html#options">OPTIONS</a></li>
 <li class="toctree-l2"><a class="reference internal" href="h2load.1.html#output">OUTPUT</a></li>
+<li class="toctree-l2"><a class="reference internal" href="h2load.1.html#flow-control">FLOW CONTROL</a></li>
 <li class="toctree-l2"><a class="reference internal" href="h2load.1.html#see-also">SEE ALSO</a></li>
 </ul>
 </li>
@@ -153,19 +198,406 @@
 <li class="toctree-l2"><a class="reference internal" href="h2load-howto.html#multiple-uris">Multiple URIs</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="programmers-guide.html">Programmers' Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="programmers-guide.html#includes">Includes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="programmers-guide.html#remarks">Remarks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="programmers-guide.html#http-messaging">HTTP Messaging</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="apiref.html">API Reference</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="apiref.html#includes">Includes</a></li>
-<li class="toctree-l2"><a class="reference internal" href="apiref.html#remarks">Remarks</a></li>
-<li class="toctree-l2"><a class="reference internal" href="apiref.html#http-messaging">HTTP Messaging</a></li>
-<li class="toctree-l2"><a class="reference internal" href="apiref.html#macros">Macros</a></li>
-<li class="toctree-l2"><a class="reference internal" href="apiref.html#enums">Enums</a></li>
-<li class="toctree-l2"><a class="reference internal" href="apiref.html#types-structs-unions-and-typedefs">Types (structs, unions and typedefs)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="apiref.html#functions">Functions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="macros.html">Macros</a></li>
+<li class="toctree-l2"><a class="reference internal" href="enums.html">Enums</a></li>
+<li class="toctree-l2"><a class="reference internal" href="types.html">Types (structs, unions and typedefs)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_check_header_name.html">nghttp2_check_header_name</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_check_header_name.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_check_header_value.html">nghttp2_check_header_value</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_check_header_value.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_hd_deflate_bound.html">nghttp2_hd_deflate_bound</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_hd_deflate_bound.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_hd_deflate_change_table_size.html">nghttp2_hd_deflate_change_table_size</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_hd_deflate_change_table_size.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_hd_deflate_del.html">nghttp2_hd_deflate_del</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_hd_deflate_del.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_hd_deflate_hd.html">nghttp2_hd_deflate_hd</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_hd_deflate_hd.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_hd_deflate_new.html">nghttp2_hd_deflate_new</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_hd_deflate_new.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_hd_deflate_new2.html">nghttp2_hd_deflate_new2</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_hd_deflate_new2.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_hd_inflate_change_table_size.html">nghttp2_hd_inflate_change_table_size</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_hd_inflate_change_table_size.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_hd_inflate_del.html">nghttp2_hd_inflate_del</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_hd_inflate_del.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_hd_inflate_end_headers.html">nghttp2_hd_inflate_end_headers</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_hd_inflate_end_headers.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_hd_inflate_hd.html">nghttp2_hd_inflate_hd</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_hd_inflate_hd.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_hd_inflate_new.html">nghttp2_hd_inflate_new</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_hd_inflate_new.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_hd_inflate_new2.html">nghttp2_hd_inflate_new2</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_hd_inflate_new2.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_is_fatal.html">nghttp2_is_fatal</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_is_fatal.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_nv_compare_name.html">nghttp2_nv_compare_name</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_nv_compare_name.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_option_del.html">nghttp2_option_del</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_option_del.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_option_new.html">nghttp2_option_new</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_option_new.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_option_set_no_auto_window_update.html">nghttp2_option_set_no_auto_window_update</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_option_set_no_auto_window_update.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_option_set_no_http_messaging.html">nghttp2_option_set_no_http_messaging</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_option_set_no_http_messaging.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_option_set_no_recv_client_magic.html">nghttp2_option_set_no_recv_client_magic</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_option_set_no_recv_client_magic.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_option_set_peer_max_concurrent_streams.html">nghttp2_option_set_peer_max_concurrent_streams</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_option_set_peer_max_concurrent_streams.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_pack_settings_payload.html">nghttp2_pack_settings_payload</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_pack_settings_payload.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_priority_spec_check_default.html">nghttp2_priority_spec_check_default</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_priority_spec_check_default.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_priority_spec_default_init.html">nghttp2_priority_spec_default_init</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_priority_spec_default_init.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_priority_spec_init.html">nghttp2_priority_spec_init</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_priority_spec_init.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_select_next_protocol.html">nghttp2_select_next_protocol</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_select_next_protocol.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_callbacks_del.html">nghttp2_session_callbacks_del</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_callbacks_del.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_callbacks_new.html">nghttp2_session_callbacks_new</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_callbacks_new.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_callbacks_set_before_frame_send_callback.html">nghttp2_session_callbacks_set_before_frame_send_callback</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_callbacks_set_before_frame_send_callback.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_callbacks_set_data_source_read_length_callback.html">nghttp2_session_callbacks_set_data_source_read_length_callback</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_callbacks_set_data_source_read_length_callback.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_callbacks_set_on_begin_frame_callback.html">nghttp2_session_callbacks_set_on_begin_frame_callback</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_callbacks_set_on_begin_frame_callback.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_callbacks_set_on_begin_headers_callback.html">nghttp2_session_callbacks_set_on_begin_headers_callback</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_callbacks_set_on_begin_headers_callback.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_callbacks_set_on_data_chunk_recv_callback.html">nghttp2_session_callbacks_set_on_data_chunk_recv_callback</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_callbacks_set_on_data_chunk_recv_callback.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_callbacks_set_on_frame_not_send_callback.html">nghttp2_session_callbacks_set_on_frame_not_send_callback</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_callbacks_set_on_frame_not_send_callback.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_callbacks_set_on_frame_recv_callback.html">nghttp2_session_callbacks_set_on_frame_recv_callback</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_callbacks_set_on_frame_recv_callback.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_callbacks_set_on_frame_send_callback.html">nghttp2_session_callbacks_set_on_frame_send_callback</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_callbacks_set_on_frame_send_callback.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_callbacks_set_on_header_callback.html">nghttp2_session_callbacks_set_on_header_callback</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_callbacks_set_on_header_callback.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_callbacks_set_on_invalid_frame_recv_callback.html">nghttp2_session_callbacks_set_on_invalid_frame_recv_callback</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_callbacks_set_on_invalid_frame_recv_callback.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_callbacks_set_on_stream_close_callback.html">nghttp2_session_callbacks_set_on_stream_close_callback</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_callbacks_set_on_stream_close_callback.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_callbacks_set_recv_callback.html">nghttp2_session_callbacks_set_recv_callback</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_callbacks_set_recv_callback.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_callbacks_set_select_padding_callback.html">nghttp2_session_callbacks_set_select_padding_callback</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_callbacks_set_select_padding_callback.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_callbacks_set_send_callback.html">nghttp2_session_callbacks_set_send_callback</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_callbacks_set_send_callback.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_callbacks_set_send_data_callback.html">nghttp2_session_callbacks_set_send_data_callback</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_callbacks_set_send_data_callback.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_client_new.html">nghttp2_session_client_new</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_client_new.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_client_new2.html">nghttp2_session_client_new2</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_client_new2.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_client_new3.html">nghttp2_session_client_new3</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_client_new3.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_consume.html">nghttp2_session_consume</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_consume.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_consume_connection.html">nghttp2_session_consume_connection</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_consume_connection.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_consume_stream.html">nghttp2_session_consume_stream</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_consume_stream.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_del.html">nghttp2_session_del</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_del.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_get_effective_local_window_size.html">nghttp2_session_get_effective_local_window_size</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_get_effective_local_window_size.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_get_effective_recv_data_length.html">nghttp2_session_get_effective_recv_data_length</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_get_effective_recv_data_length.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_get_last_proc_stream_id.html">nghttp2_session_get_last_proc_stream_id</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_get_last_proc_stream_id.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_get_next_stream_id.html">nghttp2_session_get_next_stream_id</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_get_next_stream_id.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_get_outbound_queue_size.html">nghttp2_session_get_outbound_queue_size</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_get_outbound_queue_size.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_get_remote_settings.html">nghttp2_session_get_remote_settings</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_get_remote_settings.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_get_remote_window_size.html">nghttp2_session_get_remote_window_size</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_get_remote_window_size.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_get_stream_effective_local_window_size.html">nghttp2_session_get_stream_effective_local_window_size</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_get_stream_effective_local_window_size.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_get_stream_effective_recv_data_length.html">nghttp2_session_get_stream_effective_recv_data_length</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_get_stream_effective_recv_data_length.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_get_stream_local_close.html">nghttp2_session_get_stream_local_close</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_get_stream_local_close.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_get_stream_remote_close.html">nghttp2_session_get_stream_remote_close</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_get_stream_remote_close.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_get_stream_remote_window_size.html">nghttp2_session_get_stream_remote_window_size</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_get_stream_remote_window_size.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_get_stream_user_data.html">nghttp2_session_get_stream_user_data</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_get_stream_user_data.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_mem_recv.html">nghttp2_session_mem_recv</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_mem_recv.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_mem_send.html">nghttp2_session_mem_send</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_mem_send.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_recv.html">nghttp2_session_recv</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_recv.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_resume_data.html">nghttp2_session_resume_data</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_resume_data.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_send.html">nghttp2_session_send</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_send.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_server_new.html">nghttp2_session_server_new</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_server_new.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_server_new2.html">nghttp2_session_server_new2</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_server_new2.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_server_new3.html">nghttp2_session_server_new3</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_server_new3.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_set_next_stream_id.html">nghttp2_session_set_next_stream_id</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_set_next_stream_id.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_set_stream_user_data.html">nghttp2_session_set_stream_user_data</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_set_stream_user_data.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_terminate_session.html">nghttp2_session_terminate_session</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_terminate_session.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_terminate_session2.html">nghttp2_session_terminate_session2</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_terminate_session2.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_upgrade.html">nghttp2_session_upgrade</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_upgrade.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_want_read.html">nghttp2_session_want_read</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_want_read.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_session_want_write.html">nghttp2_session_want_write</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_session_want_write.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_strerror.html">nghttp2_strerror</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_strerror.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_submit_data.html">nghttp2_submit_data</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_submit_data.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_submit_goaway.html">nghttp2_submit_goaway</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_submit_goaway.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_submit_headers.html">nghttp2_submit_headers</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_submit_headers.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_submit_ping.html">nghttp2_submit_ping</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_submit_ping.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_submit_priority.html">nghttp2_submit_priority</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_submit_priority.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_submit_push_promise.html">nghttp2_submit_push_promise</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_submit_push_promise.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_submit_request.html">nghttp2_submit_request</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_submit_request.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_submit_response.html">nghttp2_submit_response</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_submit_response.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_submit_rst_stream.html">nghttp2_submit_rst_stream</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_submit_rst_stream.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_submit_settings.html">nghttp2_submit_settings</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_submit_settings.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_submit_shutdown_notice.html">nghttp2_submit_shutdown_notice</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_submit_shutdown_notice.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_submit_trailer.html">nghttp2_submit_trailer</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_submit_trailer.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_submit_window_update.html">nghttp2_submit_window_update</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_submit_window_update.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="nghttp2_version.html">nghttp2_version</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="nghttp2_version.html#synopsis">Synopsis</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="libnghttp2_asio.html">libnghttp2_asio: High level HTTP/2 C++ library</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="libnghttp2_asio.html#server-api">Server API</a></li>
-<li class="toctree-l2"><a class="reference internal" href="libnghttp2_asio.html#client-api">Client API</a></li>
+<li class="toctree-l2"><a class="reference internal" href="libnghttp2_asio.html#server-api">Server API</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="libnghttp2_asio.html#serving-static-files-and-enabling-ssl-tls">Serving static files and enabling SSL/TLS</a></li>
+<li class="toctree-l3"><a class="reference internal" href="libnghttp2_asio.html#server-push">Server push</a></li>
+<li class="toctree-l3"><a class="reference internal" href="libnghttp2_asio.html#enable-multi-threading">Enable multi-threading</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="libnghttp2_asio.html#client-api">Client API</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="libnghttp2_asio.html#recieve-server-push-and-enable-ssl-tls">Recieve server push and enable SSL/TLS</a></li>
+<li class="toctree-l3"><a class="reference internal" href="libnghttp2_asio.html#multiple-concurrent-requests">Multiple concurrent requests</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="python-apiref.html">Python API Reference</a><ul>
@@ -208,6 +640,8 @@
     <li>nghttp2 - HTTP/2 C Library</li>
       <li class="wy-breadcrumbs-aside">
         
+          
+        
       </li>
   </ul>
   <hr/>
@@ -224,37 +658,15 @@ and proxy.  We have also developed load test and benchmarking tools for
 HTTP/2 and SPDY.</p>
 <p>An HPACK encoder and decoder are available as a public API.</p>
 <p>An experimental high level C++ library is also available.</p>
-<p>We have Python bindings of this libary, but we do not have full
+<p>We have Python bindings of this library, but we do not have full
 code coverage yet.</p>
 <div class="section" id="development-status">
 <h2>Development Status<a class="headerlink" href="#development-status" title="Permalink to this headline">¶</a></h2>
-<p>We started to implement h2-14
-(<a class="reference external" href="http://tools.ietf.org/html/draft-ietf-httpbis-http2-14">http://tools.ietf.org/html/draft-ietf-httpbis-http2-14</a>), and header
-compression
-(<a class="reference external" href="http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-09">http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-09</a>).</p>
-<p>The nghttp2 code base was forked from the spdylay project.</p>
-<table border="1" class="docutils">
-<colgroup>
-<col width="79%" />
-<col width="21%" />
-</colgroup>
-<thead valign="bottom">
-<tr class="row-odd"><th class="head">HTTP/2 Features</th>
-<th class="head">Support</th>
-</tr>
-</thead>
-<tbody valign="top">
-<tr class="row-even"><td>Core frames handling</td>
-<td>Yes</td>
-</tr>
-<tr class="row-odd"><td>Dependency Tree</td>
-<td>Yes</td>
-</tr>
-<tr class="row-even"><td>Large header (CONTINUATION)</td>
-<td>Yes</td>
-</tr>
-</tbody>
-</table>
+<p>We have implemented <a class="reference external" href="https://tools.ietf.org/html/rfc7540">RFC 7540</a>
+HTTP/2 and <a class="reference external" href="https://tools.ietf.org/html/rfc7541">RFC 7541</a> HPACK -
+Header Compression for HTTP/2</p>
+<p>The nghttp2 code base was forked from the spdylay
+(<a class="reference external" href="https://github.com/tatsuhiro-t/spdylay">https://github.com/tatsuhiro-t/spdylay</a>) project.</p>
 </div>
 <div class="section" id="public-test-server">
 <h2>Public Test Server<a class="headerlink" href="#public-test-server" title="Permalink to this headline">¶</a></h2>
@@ -266,8 +678,8 @@ implementation.</p>
 and <tt class="docutils literal"><span class="pre">http/1.1</span></tt> via ALPN/NPN and requires TLSv1.2 for HTTP/2
 connection.</p>
 </li>
-<li><p class="first"><a class="reference external" href="http://nghttp2.org/">http://nghttp2.org/</a> (Upgrade / Direct)</p>
-<p><tt class="docutils literal"><span class="pre">h2c-14</span></tt> and <tt class="docutils literal"><span class="pre">http/1.1</span></tt>.</p>
+<li><p class="first"><a class="reference external" href="http://nghttp2.org/">http://nghttp2.org/</a> (HTTP Upgrade and HTTP/2 Direct)</p>
+<p><tt class="docutils literal"><span class="pre">h2c</span></tt> and <tt class="docutils literal"><span class="pre">http/1.1</span></tt>.</p>
 </li>
 </ul>
 </div>
@@ -294,11 +706,13 @@ required:</p>
 <li>libev &gt;= 4.15</li>
 <li>zlib &gt;= 1.2.3</li>
 </ul>
-<p>ALPN support requires OpenSSL &gt;= 1.0.2 (released 22 January 2015).</p>
+<p>ALPN support requires OpenSSL &gt;= 1.0.2 (released 22 January 2015).
+LibreSSL &gt;= 2.2.0 can be used instead of OpenSSL, but OpenSSL has more
+features than LibreSSL at the time of this writing.</p>
 <p>To enable the SPDY protocol in the application program <tt class="docutils literal"><span class="pre">nghttpx</span></tt> and
 <tt class="docutils literal"><span class="pre">h2load</span></tt>, the following package is required:</p>
 <ul class="simple">
-<li>spdylay &gt;= 1.3.0</li>
+<li>spdylay &gt;= 1.3.2</li>
 </ul>
 <p>To enable <tt class="docutils literal"><span class="pre">-a</span></tt> option (getting linked assets from the downloaded
 resource) in <tt class="docutils literal"><span class="pre">nghttp</span></tt>, the following package is required:</p>
@@ -327,6 +741,7 @@ resource) in <tt class="docutils literal"><span class="pre">nghttp</span></tt>, 
 <ul class="simple">
 <li>cython &gt;= 0.19</li>
 <li>python &gt;= 2.7</li>
+<li>python-setuptools</li>
 </ul>
 <p>If you are using Ubuntu 14.04 LTS (trusty), run the following to install the needed packages:</p>
 <div class="highlight-c"><div class="highlight"><pre><span class="n">sudo</span> <span class="n">apt</span><span class="o">-</span><span class="n">get</span> <span class="n">install</span> <span class="n">make</span> <span class="n">binutils</span> <span class="n">autoconf</span>  <span class="n">automake</span> <span class="n">autotools</span><span class="o">-</span><span class="n">dev</span> <span class="n">libtool</span> <span class="n">pkg</span><span class="o">-</span><span class="n">config</span> \
@@ -357,6 +772,28 @@ them from crashing. A patch is welcome to make multi threading work
 on Mac OS X platform.</p>
 </div>
 </div>
+<div class="section" id="notes-for-building-on-windows-mingw-cygwin">
+<h2>Notes for building on Windows (Mingw/Cygwin)<a class="headerlink" href="#notes-for-building-on-windows-mingw-cygwin" title="Permalink to this headline">¶</a></h2>
+<p>Under Mingw environment, you can only compile the library, it's
+<tt class="docutils literal"><span class="pre">libnghttp2-X.dll</span></tt> and <tt class="docutils literal"><span class="pre">libnghttp2.a</span></tt>.</p>
+<p>If you want to compile the applications(<tt class="docutils literal"><span class="pre">h2load</span></tt>, <tt class="docutils literal"><span class="pre">nghttp</span></tt>,
+<tt class="docutils literal"><span class="pre">nghttpx</span></tt>, <tt class="docutils literal"><span class="pre">nghttpd</span></tt>), you need to use the Cygwin environment.</p>
+<p>Under Cygwin environment, to compile the applications you need to
+compile and install the libev first.</p>
+<p>Secondly, you need to undefine the macro <tt class="docutils literal"><span class="pre">__STRICT_ANSI__</span></tt>, if you
+not, the functions <tt class="docutils literal"><span class="pre">fdopen</span></tt>, <tt class="docutils literal"><span class="pre">fileno</span></tt> and <tt class="docutils literal"><span class="pre">strptime</span></tt> will not
+available.</p>
+<p>the sample command like this:</p>
+<div class="highlight-c"><div class="highlight"><pre>$ export CFLAGS=&quot;-U__STRICT_ANSI__ -I$libev_PREFIX/include -L$libev_PREFIX/lib&quot;
+$ export CXXFLAGS=$CFLAGS
+$ ./configure
+$ make
+</pre></div>
+</div>
+<p>If you want to compile the applications under <tt class="docutils literal"><span class="pre">examples/</span></tt>, you need
+to remove or rename the <tt class="docutils literal"><span class="pre">event.h</span></tt> from libev's installation, because
+it conflicts with libevent's installation.</p>
+</div>
 <div class="section" id="building-the-documentation">
 <h2>Building the documentation<a class="headerlink" href="#building-the-documentation" title="Permalink to this headline">¶</a></h2>
 <div class="admonition note">
@@ -374,7 +811,7 @@ on Mac OS X platform.</p>
 </div>
 <div class="section" id="unit-tests">
 <h2>Unit tests<a class="headerlink" href="#unit-tests" title="Permalink to this headline">¶</a></h2>
-<p>Unit tests are done by simply running <tt class="xref c c-func docutils literal"><span class="pre">make</span> <span class="pre">check()</span></tt>.</p>
+<p>Unit tests are done by simply running <tt class="docutils literal"><span class="pre">make</span> <span class="pre">check</span></tt>.</p>
 </div>
 <div class="section" id="integration-tests">
 <h2>Integration tests<a class="headerlink" href="#integration-tests" title="Permalink to this headline">¶</a></h2>
@@ -384,7 +821,8 @@ its testing framework.  We depend on the following libraries:</p>
 <ul class="simple">
 <li><a class="reference external" href="https://github.com/bradfitz/http2">https://github.com/bradfitz/http2</a></li>
 <li><a class="reference external" href="https://github.com/tatsuhiro-t/go-nghttp2">https://github.com/tatsuhiro-t/go-nghttp2</a></li>
-<li><a class="reference external" href="https://golang.org/x/net/spdy">https://golang.org/x/net/spdy</a></li>
+<li><a class="reference external" href="https://github.com/tatsuhiro-t/spdy">https://github.com/tatsuhiro-t/spdy</a></li>
+<li>golang.org/x/net/websocket</li>
 </ul>
 <p>To download the above packages, after settings <tt class="docutils literal"><span class="pre">GOPATH</span></tt>, run the
 following command under <tt class="docutils literal"><span class="pre">integration-tests</span></tt> directory:</p>
@@ -397,6 +835,95 @@ following command under <tt class="docutils literal"><span class="pre">integrati
 </pre></div>
 </div>
 <p>Inside the tests, we use port 3009 to run the test subject server.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">github.com/tatsuhiro-t/spdy is a copy used to be available at
+golang.org/x/net/spdy, but it is now gone.</p>
+</div>
+</div>
+<div class="section" id="migration-from-v0-7-15-or-earlier">
+<h2>Migration from v0.7.15 or earlier<a class="headerlink" href="#migration-from-v0-7-15-or-earlier" title="Permalink to this headline">¶</a></h2>
+<p>nghttp2 v1.0.0 introduced several backward incompatible changes.  In
+this section, we describe these changes and how to migrate to v1.0.0.</p>
+<div class="section" id="alpn-protocol-id-is-now-h2-and-h2c">
+<h3>ALPN protocol ID is now <tt class="docutils literal"><span class="pre">h2</span></tt> and <tt class="docutils literal"><span class="pre">h2c</span></tt><a class="headerlink" href="#alpn-protocol-id-is-now-h2-and-h2c" title="Permalink to this headline">¶</a></h3>
+<p>Previously we announced <tt class="docutils literal"><span class="pre">h2-14</span></tt> and <tt class="docutils literal"><span class="pre">h2c-14</span></tt>.  v1.0.0 implements
+final protocol version, and we changed ALPN ID to <tt class="docutils literal"><span class="pre">h2</span></tt> and <tt class="docutils literal"><span class="pre">h2c</span></tt>.
+The macros <tt class="docutils literal"><span class="pre">NGHTTP2_PROTO_VERSION_ID</span></tt>,
+<tt class="docutils literal"><span class="pre">NGHTTP2_PROTO_VERSION_ID_LEN</span></tt>,
+<tt class="docutils literal"><span class="pre">NGHTTP2_CLEARTEXT_PROTO_VERSION_ID</span></tt>, and
+<tt class="docutils literal"><span class="pre">NGHTTP2_CLEARTEXT_PROTO_VERSION_ID_LEN</span></tt> have been updated to
+reflect this change.</p>
+<p>Basically, existing applications do not have to do anything, just
+recompiling is enough for this change.</p>
+</div>
+<div class="section" id="use-word-client-magic-where-we-use-client-connection-preface">
+<h3>Use word &quot;client magic&quot; where we use &quot;client connection preface&quot;<a class="headerlink" href="#use-word-client-magic-where-we-use-client-connection-preface" title="Permalink to this headline">¶</a></h3>
+<p>We use &quot;client connection preface&quot; to mean first 24 bytes of client
+connection preface.  This is technically not correct, since client
+connection preface is composed of 24 bytes client magic byte string
+followed by SETTINGS frame.  For clarification, we call &quot;client magic&quot;
+for this 24 bytes byte string and updated API.</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">NGHTTP2_CLIENT_CONNECTION_PREFACE</span></tt> was replaced with
+<tt class="docutils literal"><span class="pre">NGHTTP2_CLIENT_MAGIC</span></tt>.</li>
+<li><tt class="docutils literal"><span class="pre">NGHTTP2_CLIENT_CONNECTION_PREFACE_LEN</span></tt> was replaced with
+<tt class="docutils literal"><span class="pre">NGHTTP2_CLIENT_MAGIC_LEN</span></tt>.</li>
+<li><tt class="docutils literal"><span class="pre">NGHTTP2_BAD_PREFACE</span></tt> was renamed as <tt class="docutils literal"><span class="pre">NGHTTP2_BAD_CLIENT_MAGIC</span></tt></li>
+</ul>
+<p>The alreay deprecated <tt class="docutils literal"><span class="pre">NGHTTP2_CLIENT_CONNECTION_HEADER</span></tt> and
+<tt class="docutils literal"><span class="pre">NGHTTP2_CLIENT_CONNECTION_HEADER_LEN</span></tt> were removed.</p>
+<p>If application uses these macros, just replace old ones with new ones.
+Since v1.0.0, client magic is sent by library (see next subsection),
+so client application may just remove these macro use.</p>
+</div>
+<div class="section" id="client-magic-is-sent-by-library">
+<h3>Client magic is sent by library<a class="headerlink" href="#client-magic-is-sent-by-library" title="Permalink to this headline">¶</a></h3>
+<p>Previously nghttp2 library did not send client magic, which is first
+24 bytes byte string of client connection preface, and client
+applications have to send it by themselves.  Since v1.0.0, client
+magic is sent by library via first call of <tt class="docutils literal"><span class="pre">nghttp2_session_send()</span></tt>
+or <tt class="docutils literal"><span class="pre">nghttp2_session_mem_send()</span></tt>.</p>
+<p>The client applications which send client magic must remove the
+relevant code.</p>
+</div>
+<div class="section" id="remove-http-alternative-services-alt-svc-related-code">
+<h3>Remove HTTP Alternative Services (Alt-Svc) related code<a class="headerlink" href="#remove-http-alternative-services-alt-svc-related-code" title="Permalink to this headline">¶</a></h3>
+<p>Alt-Svc specification is not finalized yet.  To make our API stable,
+we have decided to remove all Alt-Svc related API from nghttp2.</p>
+<ul class="simple">
+<li><tt class="docutils literal"><span class="pre">NGHTTP2_EXT_ALTSVC</span></tt> was removed.</li>
+<li><tt class="docutils literal"><span class="pre">nghttp2_ext_altsvc</span></tt> was removed.</li>
+</ul>
+<p>We have already removed the functionality of Alt-Svc in v0.7 series
+and they have been essentially noop.  The application using these
+macro and struct, remove those lines.</p>
+</div>
+<div class="section" id="use-nghttp2-error-in-nghttp2-on-invalid-frame-recv-callback">
+<h3>Use nghttp2_error in nghttp2_on_invalid_frame_recv_callback<a class="headerlink" href="#use-nghttp2-error-in-nghttp2-on-invalid-frame-recv-callback" title="Permalink to this headline">¶</a></h3>
+<p>Previously <tt class="docutils literal"><span class="pre">nghttp2_on_invalid_frame_recv_cb_called</span></tt> took the
+<tt class="docutils literal"><span class="pre">error_code</span></tt>, defined in <tt class="docutils literal"><span class="pre">nghttp2_error_code</span></tt>, as parameter.  But
+they are not detailed enough to debug.  Therefore, we decided to use
+more detailed <tt class="docutils literal"><span class="pre">nghttp2_error</span></tt> values instead.</p>
+<p>The application using this callback should update the callback
+signature.  If it treats <tt class="docutils literal"><span class="pre">error_code</span></tt> as HTTP/2 error code, update
+the code so that it is treated as <tt class="docutils literal"><span class="pre">nghttp2_error</span></tt>.</p>
+</div>
+<div class="section" id="receive-client-magic-by-default">
+<h3>Receive client magic by default<a class="headerlink" href="#receive-client-magic-by-default" title="Permalink to this headline">¶</a></h3>
+<p>Previously nghttp2 did not process client magic (24 bytes byte
+string).  To make it deal with it, we had to use
+<tt class="docutils literal"><span class="pre">nghttp2_option_set_recv_client_preface()</span></tt>.  Since v1.0.0, nghttp2
+processes client magic by default and
+<tt class="docutils literal"><span class="pre">nghttp2_option_set_recv_client_preface()</span></tt> was removed.</p>
+<p>Some application may want to disable this behaviour, so we added
+<tt class="docutils literal"><span class="pre">nghttp2_option_set_no_recv_client_magic()</span></tt> to achieve this.</p>
+<p>The application using <tt class="docutils literal"><span class="pre">nghttp2_option_set_recv_client_preface()</span></tt>
+with nonzero value, just remove it.</p>
+<p>The application using <tt class="docutils literal"><span class="pre">nghttp2_option_set_recv_client_preface()</span></tt>
+with zero value or not using it must use
+<tt class="docutils literal"><span class="pre">nghttp2_option_set_no_recv_client_magic()</span></tt> with nonzero value.</p>
+</div>
 </div>
 <div class="section" id="client-server-and-proxy-programs">
 <h2>Client, Server and Proxy programs<a class="headerlink" href="#client-server-and-proxy-programs" title="Permalink to this headline">¶</a></h2>
@@ -408,140 +935,180 @@ with prior knowledge, HTTP Upgrade and NPN/ALPN TLS extension.</p>
 <p>It has verbose output mode for framing information.  Here is sample
 output from <tt class="docutils literal"><span class="pre">nghttp</span></tt> client:</p>
 <div class="highlight-c"><div class="highlight"><pre>$ nghttp -nv https://nghttp2.org
-[  0.033][NPN] server offers:
-          * h2-14
-          * spdy/3.1
-          * http/1.1
-The negotiated protocol: h2-14
-[  0.068] send SETTINGS frame &lt;length=15, flags=0x00, stream_id=0&gt;
-          (niv=3)
-          [SETTINGS_MAX_CONCURRENT_STREAMS(3):100]
-          [SETTINGS_INITIAL_WINDOW_SIZE(4):65535]
-          [SETTINGS_COMPRESS_DATA(5):1]
-[  0.068] send HEADERS frame &lt;length=46, flags=0x05, stream_id=1&gt;
-          ; END_STREAM | END_HEADERS
-          (padlen=0)
+[  0.190] Connected
+The negotiated protocol: h2
+[  0.212] recv SETTINGS frame &lt;length=12, flags=0x00, stream_id=0&gt;
+          (niv=2)
+          [SETTINGS_MAX_CONCURRENT_STREAMS(0x03):100]
+          [SETTINGS_INITIAL_WINDOW_SIZE(0x04):65535]
+[  0.212] send SETTINGS frame &lt;length=12, flags=0x00, stream_id=0&gt;
+          (niv=2)
+          [SETTINGS_MAX_CONCURRENT_STREAMS(0x03):100]
+          [SETTINGS_INITIAL_WINDOW_SIZE(0x04):65535]
+[  0.212] send SETTINGS frame &lt;length=0, flags=0x01, stream_id=0&gt;
+          ; ACK
+          (niv=0)
+[  0.212] send PRIORITY frame &lt;length=5, flags=0x00, stream_id=3&gt;
+          (dep_stream_id=0, weight=201, exclusive=0)
+[  0.212] send PRIORITY frame &lt;length=5, flags=0x00, stream_id=5&gt;
+          (dep_stream_id=0, weight=101, exclusive=0)
+[  0.212] send PRIORITY frame &lt;length=5, flags=0x00, stream_id=7&gt;
+          (dep_stream_id=0, weight=1, exclusive=0)
+[  0.212] send PRIORITY frame &lt;length=5, flags=0x00, stream_id=9&gt;
+          (dep_stream_id=7, weight=1, exclusive=0)
+[  0.212] send PRIORITY frame &lt;length=5, flags=0x00, stream_id=11&gt;
+          (dep_stream_id=3, weight=1, exclusive=0)
+[  0.212] send HEADERS frame &lt;length=39, flags=0x25, stream_id=13&gt;
+          ; END_STREAM | END_HEADERS | PRIORITY
+          (padlen=0, dep_stream_id=11, weight=16, exclusive=0)
           ; Open new stream
-          :authority: nghttp2.org
           :method: GET
           :path: /
           :scheme: https
+          :authority: nghttp2.org
           accept: */*
           accept-encoding: gzip, deflate
-          user-agent: nghttp2/0.4.0-DEV
-[  0.068] recv SETTINGS frame &lt;length=10, flags=0x00, stream_id=0&gt;
-          (niv=2)
-          [SETTINGS_MAX_CONCURRENT_STREAMS(3):100]
-          [SETTINGS_INITIAL_WINDOW_SIZE(4):65535]
-[  0.068] send SETTINGS frame &lt;length=0, flags=0x01, stream_id=0&gt;
+          user-agent: nghttp2/1.0.1-DEV
+[  0.221] recv SETTINGS frame &lt;length=0, flags=0x01, stream_id=0&gt;
           ; ACK
           (niv=0)
-[  0.079] recv SETTINGS frame &lt;length=0, flags=0x01, stream_id=0&gt;
-          ; ACK
-          (niv=0)
-[  0.080] (stream_id=1, noind=0) :status: 200
-[  0.080] (stream_id=1, noind=0) accept-ranges: bytes
-[  0.080] (stream_id=1, noind=0) age: 15
-[  0.080] (stream_id=1, noind=0) content-length: 40243
-[  0.080] (stream_id=1, noind=0) content-type: text/html
-[  0.080] (stream_id=1, noind=0) date: Wed, 14 May 2014 15:14:30 GMT
-[  0.080] (stream_id=1, noind=0) etag: &quot;535d0eea-9d33&quot;
-[  0.080] (stream_id=1, noind=0) last-modified: Sun, 27 Apr 2014 14:06:34 GMT
-[  0.080] (stream_id=1, noind=0) server: nginx/1.4.6 (Ubuntu)
-[  0.080] (stream_id=1, noind=0) x-varnish: 2114900538 2114900537
-[  0.080] (stream_id=1, noind=0) via: 1.1 varnish, 1.1 nghttpx
-[  0.080] (stream_id=1, noind=0) strict-transport-security: max-age=31536000
-[  0.080] recv HEADERS frame &lt;length=162, flags=0x04, stream_id=1&gt;
+[  0.221] recv (stream_id=13) :method: GET
+[  0.221] recv (stream_id=13) :scheme: https
+[  0.221] recv (stream_id=13) :path: /stylesheets/screen.css
+[  0.221] recv (stream_id=13) :authority: nghttp2.org
+[  0.221] recv (stream_id=13) accept-encoding: gzip, deflate
+[  0.222] recv (stream_id=13) user-agent: nghttp2/1.0.1-DEV
+[  0.222] recv PUSH_PROMISE frame &lt;length=50, flags=0x04, stream_id=13&gt;
+          ; END_HEADERS
+          (padlen=0, promised_stream_id=2)
+[  0.222] recv (stream_id=13) :status: 200
+[  0.222] recv (stream_id=13) date: Thu, 21 May 2015 16:38:14 GMT
+[  0.222] recv (stream_id=13) content-type: text/html
+[  0.222] recv (stream_id=13) last-modified: Fri, 15 May 2015 15:38:06 GMT
+[  0.222] recv (stream_id=13) etag: W/&quot;555612de-19f6&quot;
+[  0.222] recv (stream_id=13) link: &lt;/stylesheets/screen.css&gt;; rel=preload; as=stylesheet
+[  0.222] recv (stream_id=13) content-encoding: gzip
+[  0.222] recv (stream_id=13) server: nghttpx nghttp2/1.0.1-DEV
+[  0.222] recv (stream_id=13) via: 1.1 nghttpx
+[  0.222] recv (stream_id=13) strict-transport-security: max-age=31536000
+[  0.222] recv HEADERS frame &lt;length=166, flags=0x04, stream_id=13&gt;
           ; END_HEADERS
           (padlen=0)
           ; First response header
-[  0.080] recv DATA frame &lt;length=3786, flags=0x00, stream_id=1&gt;
-[  0.080] recv DATA frame &lt;length=4096, flags=0x00, stream_id=1&gt;
-[  0.081] recv DATA frame &lt;length=4096, flags=0x00, stream_id=1&gt;
-[  0.093] recv DATA frame &lt;length=4096, flags=0x00, stream_id=1&gt;
-[  0.093] recv DATA frame &lt;length=4096, flags=0x00, stream_id=1&gt;
-[  0.094] recv DATA frame &lt;length=4096, flags=0x00, stream_id=1&gt;
-[  0.094] recv DATA frame &lt;length=4096, flags=0x00, stream_id=1&gt;
-[  0.094] recv DATA frame &lt;length=4096, flags=0x00, stream_id=1&gt;
-[  0.096] recv DATA frame &lt;length=4096, flags=0x00, stream_id=1&gt;
-[  0.096] send WINDOW_UPDATE frame &lt;length=4, flags=0x00, stream_id=0&gt;
-          (window_size_increment=36554)
-[  0.096] send WINDOW_UPDATE frame &lt;length=4, flags=0x00, stream_id=1&gt;
-          (window_size_increment=36554)
-[  0.108] recv DATA frame &lt;length=3689, flags=0x00, stream_id=1&gt;
-[  0.108] recv DATA frame &lt;length=0, flags=0x01, stream_id=1&gt;
+[  0.222] recv DATA frame &lt;length=2601, flags=0x01, stream_id=13&gt;
           ; END_STREAM
-[  0.108] send GOAWAY frame &lt;length=8, flags=0x00, stream_id=0&gt;
-          (last_stream_id=0, error_code=NO_ERROR(0), opaque_data(0)=[])
+[  0.222] recv (stream_id=2) :status: 200
+[  0.222] recv (stream_id=2) date: Thu, 21 May 2015 16:38:14 GMT
+[  0.222] recv (stream_id=2) content-type: text/css
+[  0.222] recv (stream_id=2) last-modified: Fri, 15 May 2015 15:38:06 GMT
+[  0.222] recv (stream_id=2) etag: W/&quot;555612de-9845&quot;
+[  0.222] recv (stream_id=2) content-encoding: gzip
+[  0.222] recv (stream_id=2) server: nghttpx nghttp2/1.0.1-DEV
+[  0.222] recv (stream_id=2) via: 1.1 nghttpx
+[  0.222] recv (stream_id=2) strict-transport-security: max-age=31536000
+[  0.222] recv HEADERS frame &lt;length=32, flags=0x04, stream_id=2&gt;
+          ; END_HEADERS
+          (padlen=0)
+          ; First push response header
+[  0.228] recv DATA frame &lt;length=8715, flags=0x01, stream_id=2&gt;
+          ; END_STREAM
+[  0.228] send GOAWAY frame &lt;length=8, flags=0x00, stream_id=0&gt;
+          (last_stream_id=2, error_code=NO_ERROR(0x00), opaque_data(0)=[])
 </pre></div>
 </div>
-<p>The HTTP Upgrade is performed like this:</p>
+<p>The HTTP Upgrade is performed like so:</p>
 <div class="highlight-c"><div class="highlight"><pre>$ nghttp -nvu http://nghttp2.org
-[  0.013] HTTP Upgrade request
+[  0.011] Connected
+[  0.011] HTTP Upgrade request
 GET / HTTP/1.1
 Host: nghttp2.org
 Connection: Upgrade, HTTP2-Settings
-Upgrade: h2c-14
-HTTP2-Settings: AwAAAGQEAAD__wUAAAAB
+Upgrade: h2c
+HTTP2-Settings: AAMAAABkAAQAAP__
 Accept: */*
-User-Agent: nghttp2/0.4.0-DEV
+User-Agent: nghttp2/1.0.1-DEV
 
 
-[  0.024] HTTP Upgrade response
+[  0.018] HTTP Upgrade response
 HTTP/1.1 101 Switching Protocols
 Connection: Upgrade
-Upgrade: h2c-14
+Upgrade: h2c
 
 
-[  0.024] HTTP Upgrade success
-[  0.024] send SETTINGS frame &lt;length=15, flags=0x00, stream_id=0&gt;
-          (niv=3)
-          [SETTINGS_MAX_CONCURRENT_STREAMS(3):100]
-          [SETTINGS_INITIAL_WINDOW_SIZE(4):65535]
-          [SETTINGS_COMPRESS_DATA(5):1]
-[  0.024] recv SETTINGS frame &lt;length=10, flags=0x00, stream_id=0&gt;
+[  0.018] HTTP Upgrade success
+[  0.018] recv SETTINGS frame &lt;length=12, flags=0x00, stream_id=0&gt;
           (niv=2)
-          [SETTINGS_MAX_CONCURRENT_STREAMS(3):100]
-          [SETTINGS_INITIAL_WINDOW_SIZE(4):65535]
-[  0.024] send SETTINGS frame &lt;length=0, flags=0x01, stream_id=0&gt;
+          [SETTINGS_MAX_CONCURRENT_STREAMS(0x03):100]
+          [SETTINGS_INITIAL_WINDOW_SIZE(0x04):65535]
+[  0.018] send SETTINGS frame &lt;length=12, flags=0x00, stream_id=0&gt;
+          (niv=2)
+          [SETTINGS_MAX_CONCURRENT_STREAMS(0x03):100]
+          [SETTINGS_INITIAL_WINDOW_SIZE(0x04):65535]
+[  0.018] send SETTINGS frame &lt;length=0, flags=0x01, stream_id=0&gt;
           ; ACK
           (niv=0)
-[  0.024] (stream_id=1, noind=0) :status: 200
-[  0.024] (stream_id=1, noind=0) accept-ranges: bytes
-[  0.024] (stream_id=1, noind=0) age: 10
-[  0.024] (stream_id=1, noind=0) content-length: 40243
-[  0.024] (stream_id=1, noind=0) content-type: text/html
-[  0.024] (stream_id=1, noind=0) date: Wed, 14 May 2014 15:16:34 GMT
-[  0.024] (stream_id=1, noind=0) etag: &quot;535d0eea-9d33&quot;
-[  0.024] (stream_id=1, noind=0) last-modified: Sun, 27 Apr 2014 14:06:34 GMT
-[  0.024] (stream_id=1, noind=0) server: nginx/1.4.6 (Ubuntu)
-[  0.024] (stream_id=1, noind=0) x-varnish: 2114900541 2114900540
-[  0.024] (stream_id=1, noind=0) via: 1.1 varnish, 1.1 nghttpx
-[  0.024] recv HEADERS frame &lt;length=148, flags=0x04, stream_id=1&gt;
+[  0.018] send PRIORITY frame &lt;length=5, flags=0x00, stream_id=3&gt;
+          (dep_stream_id=0, weight=201, exclusive=0)
+[  0.018] send PRIORITY frame &lt;length=5, flags=0x00, stream_id=5&gt;
+          (dep_stream_id=0, weight=101, exclusive=0)
+[  0.018] send PRIORITY frame &lt;length=5, flags=0x00, stream_id=7&gt;
+          (dep_stream_id=0, weight=1, exclusive=0)
+[  0.018] send PRIORITY frame &lt;length=5, flags=0x00, stream_id=9&gt;
+          (dep_stream_id=7, weight=1, exclusive=0)
+[  0.018] send PRIORITY frame &lt;length=5, flags=0x00, stream_id=11&gt;
+          (dep_stream_id=3, weight=1, exclusive=0)
+[  0.018] send PRIORITY frame &lt;length=5, flags=0x00, stream_id=1&gt;
+          (dep_stream_id=11, weight=16, exclusive=0)
+[  0.019] recv (stream_id=1) :method: GET
+[  0.019] recv (stream_id=1) :scheme: http
+[  0.019] recv (stream_id=1) :path: /stylesheets/screen.css
+[  0.019] recv (stream_id=1) host: nghttp2.org
+[  0.019] recv (stream_id=1) user-agent: nghttp2/1.0.1-DEV
+[  0.019] recv PUSH_PROMISE frame &lt;length=49, flags=0x04, stream_id=1&gt;
+          ; END_HEADERS
+          (padlen=0, promised_stream_id=2)
+[  0.019] recv (stream_id=1) :status: 200
+[  0.019] recv (stream_id=1) date: Thu, 21 May 2015 16:39:16 GMT
+[  0.019] recv (stream_id=1) content-type: text/html
+[  0.019] recv (stream_id=1) content-length: 6646
+[  0.019] recv (stream_id=1) last-modified: Fri, 15 May 2015 15:38:06 GMT
+[  0.019] recv (stream_id=1) etag: &quot;555612de-19f6&quot;
+[  0.019] recv (stream_id=1) link: &lt;/stylesheets/screen.css&gt;; rel=preload; as=stylesheet
+[  0.019] recv (stream_id=1) accept-ranges: bytes
+[  0.019] recv (stream_id=1) server: nghttpx nghttp2/1.0.1-DEV
+[  0.019] recv (stream_id=1) via: 1.1 nghttpx
+[  0.019] recv HEADERS frame &lt;length=157, flags=0x04, stream_id=1&gt;
           ; END_HEADERS
           (padlen=0)
           ; First response header
-[  0.024] recv DATA frame &lt;length=3786, flags=0x00, stream_id=1&gt;
-[  0.025] recv DATA frame &lt;length=4096, flags=0x00, stream_id=1&gt;
-[  0.031] recv DATA frame &lt;length=4096, flags=0x00, stream_id=1&gt;
-[  0.031] recv DATA frame &lt;length=4096, flags=0x00, stream_id=1&gt;
-[  0.032] recv DATA frame &lt;length=4096, flags=0x00, stream_id=1&gt;
-[  0.032] recv DATA frame &lt;length=4096, flags=0x00, stream_id=1&gt;
-[  0.033] recv DATA frame &lt;length=4096, flags=0x00, stream_id=1&gt;
-[  0.033] recv DATA frame &lt;length=4096, flags=0x00, stream_id=1&gt;
-[  0.033] send WINDOW_UPDATE frame &lt;length=4, flags=0x00, stream_id=0&gt;
-          (window_size_increment=33164)
-[  0.033] send WINDOW_UPDATE frame &lt;length=4, flags=0x00, stream_id=1&gt;
-          (window_size_increment=33164)
-[  0.038] recv DATA frame &lt;length=4096, flags=0x00, stream_id=1&gt;
-[  0.038] recv DATA frame &lt;length=3689, flags=0x00, stream_id=1&gt;
-[  0.038] recv DATA frame &lt;length=0, flags=0x01, stream_id=1&gt;
+[  0.019] recv DATA frame &lt;length=6646, flags=0x01, stream_id=1&gt;
           ; END_STREAM
-[  0.038] recv SETTINGS frame &lt;length=0, flags=0x01, stream_id=0&gt;
+[  0.019] recv (stream_id=2) :status: 200
+[  0.019] recv (stream_id=2) date: Thu, 21 May 2015 16:39:16 GMT
+[  0.019] recv (stream_id=2) content-type: text/css
+[  0.019] recv (stream_id=2) content-length: 38981
+[  0.019] recv (stream_id=2) last-modified: Fri, 15 May 2015 15:38:06 GMT
+[  0.019] recv (stream_id=2) etag: &quot;555612de-9845&quot;
+[  0.019] recv (stream_id=2) accept-ranges: bytes
+[  0.019] recv (stream_id=2) server: nghttpx nghttp2/1.0.1-DEV
+[  0.019] recv (stream_id=2) via: 1.1 nghttpx
+[  0.019] recv HEADERS frame &lt;length=36, flags=0x04, stream_id=2&gt;
+          ; END_HEADERS
+          (padlen=0)
+          ; First push response header
+[  0.026] recv DATA frame &lt;length=16384, flags=0x00, stream_id=2&gt;
+[  0.027] recv DATA frame &lt;length=7952, flags=0x00, stream_id=2&gt;
+[  0.027] send WINDOW_UPDATE frame &lt;length=4, flags=0x00, stream_id=0&gt;
+          (window_size_increment=33343)
+[  0.032] send WINDOW_UPDATE frame &lt;length=4, flags=0x00, stream_id=2&gt;
+          (window_size_increment=33707)
+[  0.032] recv DATA frame &lt;length=14645, flags=0x01, stream_id=2&gt;
+          ; END_STREAM
+[  0.032] recv SETTINGS frame &lt;length=0, flags=0x01, stream_id=0&gt;
           ; ACK
           (niv=0)
-[  0.038] send GOAWAY frame &lt;length=8, flags=0x00, stream_id=0&gt;
-          (last_stream_id=0, error_code=NO_ERROR(0), opaque_data(0)=[])
+[  0.032] send GOAWAY frame &lt;length=8, flags=0x00, stream_id=0&gt;
+          (last_stream_id=2, error_code=NO_ERROR(0x00), opaque_data(0)=[])
 </pre></div>
 </div>
 <p>Using the <tt class="docutils literal"><span class="pre">-s</span></tt> option, <tt class="docutils literal"><span class="pre">nghttp</span></tt> prints out some timing information for
@@ -550,24 +1117,26 @@ requests, sorted by completion time:</p>
 ***** Statistics *****
 
 Request timing:
-  complete: relative time from protocol handshake to stream close
-   request: relative   time  from   protocol   handshake  to   request
-            transmission.  If &#39;*&#39; is shown, this was pushed by server.
-   process: time for request and response
-      code: HTTP status code
-      size: number  of   bytes  received  as  response   body  without
-            inflation.
-       URI: request URI
+  responseEnd: the  time  when  last  byte of  response  was  received
+               relative to connectEnd
+ requestStart: the time  just before  first byte  of request  was sent
+               relative  to connectEnd.   If  &#39;*&#39; is  shown, this  was
+               pushed by server.
+      process: responseEnd - requestStart
+         code: HTTP status code
+         size: number  of  bytes  received as  response  body  without
+               inflation.
+          URI: request URI
+
+see http://www.w3.org/TR/resource-timing/#processing-model
 
 sorted by &#39;complete&#39;
 
-complete  request    process  code size request path
- +11.07ms     +120us  10.95ms  200   9K /
- +16.77ms *  +8.80ms   7.98ms  200   8K /stylesheets/screen.css
- +27.00ms   +11.16ms  15.84ms  200   3K /javascripts/octopress.js
- +27.40ms   +11.16ms  16.24ms  200   3K /javascripts/modernizr-2.0.js
- +76.14ms   +11.17ms  64.97ms  200 171K /images/posts/with-pri-blog.png
- +88.52ms   +11.17ms  77.36ms  200 174K /images/posts/without-pri-blog.png
+id  responseEnd requestStart  process code size request path
+ 13    +37.19ms       +280us  36.91ms  200   2K /
+  2    +72.65ms *   +36.38ms  36.26ms  200   8K /stylesheets/screen.css
+ 17    +77.43ms     +38.67ms  38.75ms  200   3K /javascripts/octopress.js
+ 15    +78.12ms     +38.66ms  39.46ms  200   3K /javascripts/modernizr-2.0.js
 </pre></div>
 </div>
 <p>Using the <tt class="docutils literal"><span class="pre">-r</span></tt> option, <tt class="docutils literal"><span class="pre">nghttp</span></tt> writes more detailed timing data to
@@ -584,60 +1153,71 @@ HTTP/2 connections.  No HTTP Upgrade is supported.</p>
 <p>Just like <tt class="docutils literal"><span class="pre">nghttp</span></tt>, it has a verbose output mode for framing
 information.  Here is sample output from <tt class="docutils literal"><span class="pre">nghttpd</span></tt>:</p>
 <div class="highlight-c"><div class="highlight"><pre>$ nghttpd --no-tls -v 8080
-IPv4: listen on port 8080
-IPv6: listen on port 8080
-[id=1] [ 15.921] send SETTINGS frame &lt;length=10, flags=0x00, stream_id=0&gt;
+IPv4: listen 0.0.0.0:8080
+IPv6: listen :::8080
+[id=1] [  1.521] send SETTINGS frame &lt;length=6, flags=0x00, stream_id=0&gt;
+          (niv=1)
+          [SETTINGS_MAX_CONCURRENT_STREAMS(0x03):100]
+[id=1] [  1.521] recv SETTINGS frame &lt;length=12, flags=0x00, stream_id=0&gt;
           (niv=2)
-          [SETTINGS_MAX_CONCURRENT_STREAMS(3):100]
-          [SETTINGS_COMPRESS_DATA(5):1]
-[id=1] [ 15.921] recv SETTINGS frame &lt;length=15, flags=0x00, stream_id=0&gt;
-          (niv=3)
-          [SETTINGS_MAX_CONCURRENT_STREAMS(3):100]
-          [SETTINGS_INITIAL_WINDOW_SIZE(4):65535]
-          [SETTINGS_COMPRESS_DATA(5):1]
-[id=1] [ 15.921] (stream_id=1, noind=0) :authority: localhost:8080
-[id=1] [ 15.921] (stream_id=1, noind=0) :method: GET
-[id=1] [ 15.921] (stream_id=1, noind=0) :path: /
-[id=1] [ 15.921] (stream_id=1, noind=0) :scheme: http
-[id=1] [ 15.921] (stream_id=1, noind=0) accept: */*
-[id=1] [ 15.921] (stream_id=1, noind=0) accept-encoding: gzip, deflate
-[id=1] [ 15.921] (stream_id=1, noind=0) user-agent: nghttp2/0.4.0-DEV
-[id=1] [ 15.921] recv HEADERS frame &lt;length=48, flags=0x05, stream_id=1&gt;
-          ; END_STREAM | END_HEADERS
-          (padlen=0)
+          [SETTINGS_MAX_CONCURRENT_STREAMS(0x03):100]
+          [SETTINGS_INITIAL_WINDOW_SIZE(0x04):65535]
+[id=1] [  1.521] recv SETTINGS frame &lt;length=0, flags=0x01, stream_id=0&gt;
+          ; ACK
+          (niv=0)
+[id=1] [  1.521] recv PRIORITY frame &lt;length=5, flags=0x00, stream_id=3&gt;
+          (dep_stream_id=0, weight=201, exclusive=0)
+[id=1] [  1.521] recv PRIORITY frame &lt;length=5, flags=0x00, stream_id=5&gt;
+          (dep_stream_id=0, weight=101, exclusive=0)
+[id=1] [  1.521] recv PRIORITY frame &lt;length=5, flags=0x00, stream_id=7&gt;
+          (dep_stream_id=0, weight=1, exclusive=0)
+[id=1] [  1.521] recv PRIORITY frame &lt;length=5, flags=0x00, stream_id=9&gt;
+          (dep_stream_id=7, weight=1, exclusive=0)
+[id=1] [  1.521] recv PRIORITY frame &lt;length=5, flags=0x00, stream_id=11&gt;
+          (dep_stream_id=3, weight=1, exclusive=0)
+[id=1] [  1.521] recv (stream_id=13) :method: GET
+[id=1] [  1.521] recv (stream_id=13) :path: /
+[id=1] [  1.521] recv (stream_id=13) :scheme: http
+[id=1] [  1.521] recv (stream_id=13) :authority: localhost:8080
+[id=1] [  1.521] recv (stream_id=13) accept: */*
+[id=1] [  1.521] recv (stream_id=13) accept-encoding: gzip, deflate
+[id=1] [  1.521] recv (stream_id=13) user-agent: nghttp2/1.0.0-DEV
+[id=1] [  1.521] recv HEADERS frame &lt;length=41, flags=0x25, stream_id=13&gt;
+          ; END_STREAM | END_HEADERS | PRIORITY
+          (padlen=0, dep_stream_id=11, weight=16, exclusive=0)
           ; Open new stream
-[id=1] [ 15.921] recv SETTINGS frame &lt;length=0, flags=0x01, stream_id=0&gt;
+[id=1] [  1.521] send SETTINGS frame &lt;length=0, flags=0x01, stream_id=0&gt;
           ; ACK
           (niv=0)
-[id=1] [ 15.921] send SETTINGS frame &lt;length=0, flags=0x01, stream_id=0&gt;
-          ; ACK
-          (niv=0)
-[id=1] [ 15.921] send HEADERS frame &lt;length=82, flags=0x04, stream_id=1&gt;
+[id=1] [  1.521] send HEADERS frame &lt;length=86, flags=0x04, stream_id=13&gt;
           ; END_HEADERS
           (padlen=0)
           ; First response header
           :status: 200
+          server: nghttpd nghttp2/1.0.0-DEV
+          content-length: 10
           cache-control: max-age=3600
-          content-length: 612
-          date: Wed, 14 May 2014 15:19:03 GMT
-          last-modified: Sat, 08 Mar 2014 16:04:06 GMT
-          server: nghttpd nghttp2/0.4.0-DEV
-[id=1] [ 15.922] send DATA frame &lt;length=381, flags=0x20, stream_id=1&gt;
-          ; COMPRESSED
-[id=1] [ 15.922] send DATA frame &lt;length=0, flags=0x01, stream_id=1&gt;
+          date: Fri, 15 May 2015 14:49:04 GMT
+          last-modified: Tue, 30 Sep 2014 12:40:52 GMT
+[id=1] [  1.522] send DATA frame &lt;length=10, flags=0x01, stream_id=13&gt;
           ; END_STREAM
-[id=1] [ 15.922] stream_id=1 closed
-[id=1] [ 15.922] recv GOAWAY frame &lt;length=8, flags=0x00, stream_id=0&gt;
-          (last_stream_id=0, error_code=NO_ERROR(0), opaque_data(0)=[])
-[id=1] [ 15.922] closed
+[id=1] [  1.522] stream_id=13 closed
+[id=1] [  1.522] recv GOAWAY frame &lt;length=8, flags=0x00, stream_id=0&gt;
+          (last_stream_id=0, error_code=NO_ERROR(0x00), opaque_data(0)=[])
+[id=1] [  1.522] closed
 </pre></div>
 </div>
 </div>
 <div class="section" id="nghttpx-proxy">
 <h3>nghttpx - proxy<a class="headerlink" href="#nghttpx-proxy" title="Permalink to this headline">¶</a></h3>
-<p><tt class="docutils literal"><span class="pre">nghttpx</span></tt> is a multi-threaded reverse proxy for <tt class="docutils literal"><span class="pre">h2-14</span></tt>, SPDY and
-HTTP/1.1, and powers <a class="reference external" href="http://nghttp2.org">http://nghttp2.org</a> and supports HTTP/2 server push.
-It has several operational modes:</p>
+<p><tt class="docutils literal"><span class="pre">nghttpx</span></tt> is a multi-threaded reverse proxy for HTTP/2, SPDY and
+HTTP/1.1, and powers <a class="reference external" href="http://nghttp2.org">http://nghttp2.org</a> and supports HTTP/2 server
+push.</p>
+<p><tt class="docutils literal"><span class="pre">nghttpx</span></tt> implements <a class="reference external" href="https://istlsfastyet.com/#server-performance">important performance-oriented features</a> in TLS, such as
+session IDs, session tickets (with automatic key rotation), OCSP
+stapling, dynamic record sizing, ALPN/NPN, forward secrecy and SPDY &amp;
+HTTP/2.</p>
+<p><tt class="docutils literal"><span class="pre">nghttpx</span></tt> has several operational modes:</p>
 <table border="1" class="docutils">
 <colgroup>
 <col width="25%" />
@@ -681,15 +1261,15 @@ It has several operational modes:</p>
 </tbody>
 </table>
 <p>The interesting mode at the moment is the default mode.  It works like
-a reverse proxy and listens for <tt class="docutils literal"><span class="pre">h2-14</span></tt>, SPDY and HTTP/1.1 and can
-be deployed as a SSL/TLS terminator for existing web server.</p>
+a reverse proxy and listens for HTTP/2, SPDY and HTTP/1.1 and can be
+deployed as a SSL/TLS terminator for existing web server.</p>
 <p>The default mode, <tt class="docutils literal"><span class="pre">--http2-proxy</span></tt> and <tt class="docutils literal"><span class="pre">--http2-bridge</span></tt> modes use
 SSL/TLS in the frontend connection by default.  To disable SSL/TLS,
 use the <tt class="docutils literal"><span class="pre">--frontend-no-tls</span></tt> option.  If that option is used, SPDY is
 disabled in the frontend and incoming HTTP/1.1 connections can be
 upgraded to HTTP/2 through HTTP Upgrade.</p>
 <p>The <tt class="docutils literal"><span class="pre">--http2-bridge</span></tt>, <tt class="docutils literal"><span class="pre">--client</span></tt> and <tt class="docutils literal"><span class="pre">--client-proxy</span></tt> modes use
-SSL/TLS in the backend connection by deafult.  To disable SSL/TLS, use
+SSL/TLS in the backend connection by default.  To disable SSL/TLS, use
 the <tt class="docutils literal"><span class="pre">--backend-no-tls</span></tt> option.</p>
 <p><tt class="docutils literal"><span class="pre">nghttpx</span></tt> supports a configuration file.  See the <tt class="docutils literal"><span class="pre">--conf</span></tt> option and
 sample configuration file <tt class="docutils literal"><span class="pre">nghttpx.conf.sample</span></tt>.</p>
@@ -773,6 +1353,7 @@ starting benchmark...
 spawning thread #0: 100 concurrent clients, 100000 total requests
 Protocol: TLSv1.2
 Cipher: ECDHE-RSA-AES128-GCM-SHA256
+Server Temp Key: ECDH P-256 256 bits
 progress: 10% done
 progress: 20% done
 progress: 30% done
@@ -784,12 +1365,14 @@ progress: 80% done
 progress: 90% done
 progress: 100% done
 
-finished in 7.10s, 14092 req/s, 55.67MB/s
+finished in 771.26ms, 129658 req/s, 4.71MB/s
 requests: 100000 total, 100000 started, 100000 done, 100000 succeeded, 0 failed, 0 errored
 status codes: 100000 2xx, 0 3xx, 0 4xx, 0 5xx
-traffic: 414200800 bytes total, 2723100 bytes headers, 409600000 bytes data
+traffic: 3812300 bytes total, 1009900 bytes headers, 1000000 bytes data
                      min         max         mean         sd        +/- sd
-time for request:   283.86ms       1.46s    659.70ms    150.87ms    84.68%
+time for request:    25.12ms    124.55ms     51.07ms     15.36ms    84.87%
+time for connect:   208.94ms    254.67ms    241.38ms      7.95ms    63.00%
+time to 1st byte:   209.11ms    254.80ms    241.51ms      7.94ms    63.00%
 </pre></div>
 </div>
 <p>The above example issued total 100,000 requests, using 100 concurrent
@@ -954,7 +1537,7 @@ entry overhead.</dd>
 <dd>The maximum header table size the encoder uses.  This can be smaller
 than <tt class="docutils literal"><span class="pre">max_size</span></tt>.  In this case, the encoder only uses up to first
 <tt class="docutils literal"><span class="pre">max_deflate_size</span></tt> buffer.  Since the header table size is still
-<tt class="docutils literal"><span class="pre">max_size</span></tt>, the encoder has to keep track of entries ouside the
+<tt class="docutils literal"><span class="pre">max_size</span></tt>, the encoder has to keep track of entries outside the
 <tt class="docutils literal"><span class="pre">max_deflate_size</span></tt> but inside the <tt class="docutils literal"><span class="pre">max_size</span></tt> and make sure
 that they are no longer referenced.</dd>
 </dl>
@@ -1418,10 +2001,10 @@ details.</p>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="contribute.html" class="btn btn-neutral float-right" title="Contribution Guidelines">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="contribute.html" class="btn btn-neutral float-right" title="Contribution Guidelines" accesskey="n">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="index.html" class="btn btn-neutral" title="nghttp2 - HTTP/2 C Library"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="index.html" class="btn btn-neutral" title="nghttp2 - HTTP/2 C Library" accesskey="p"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -1433,10 +2016,10 @@ details.</p>
         &copy; Copyright 2012, 2015, Tatsuhiro Tsujikawa.
     </p>
   </div>
-
   Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
-  
+
 </footer>
+
         </div>
       </div>
 
@@ -1451,7 +2034,7 @@ details.</p>
     <script type="text/javascript">
         var DOCUMENTATION_OPTIONS = {
             URL_ROOT:'./',
-            VERSION:'0.7.10-DEV',
+            VERSION:'1.0.6-DEV',
             COLLAPSE_INDEX:false,
             FILE_SUFFIX:'.html',
             HAS_SOURCE:  false
