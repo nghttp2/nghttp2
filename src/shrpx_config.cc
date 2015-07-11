@@ -1398,12 +1398,19 @@ int int_syslog_facility(const char *strfacility) {
 }
 
 namespace {
-bool path_match(const std::string &pattern, const std::string &path) {
+template <typename InputIt>
+bool path_match(const std::string &pattern, const std::string &host,
+                InputIt path_first, InputIt path_last) {
   if (pattern.back() != '/') {
-    return pattern == path;
+    return pattern.size() == host.size() + (path_last - path_first) &&
+           std::equal(std::begin(host), std::end(host), std::begin(pattern)) &&
+           std::equal(path_first, path_last, std::begin(pattern) + host.size());
   }
 
-  if (util::startsWith(path, pattern)) {
+  if (pattern.size() >= host.size() &&
+      std::equal(std::begin(host), std::end(host), std::begin(pattern)) &&
+      util::startsWith(path_first, path_last, std::begin(pattern) + host.size(),
+                       std::end(pattern))) {
     return true;
   }
 
@@ -1411,20 +1418,24 @@ bool path_match(const std::string &pattern, const std::string &path) {
   // that slash, we consider they match to deal with request to the
   // directory without trailing slash.  That is if pattern is "/foo/"
   // and path is "/foo", we consider they match.
-  return util::streq(std::begin(path), path.size(), std::begin(pattern),
-                     pattern.size() - 1);
+
+  assert(!pattern.empty());
+  return pattern.size() - 1 == host.size() + (path_last - path_first) &&
+         std::equal(std::begin(host), std::end(host), std::begin(pattern)) &&
+         std::equal(path_first, path_last, std::begin(pattern) + host.size());
 }
 } // namespace
 
 namespace {
-ssize_t match(const std::string &path,
+template <typename InputIt>
+ssize_t match(const std::string &host, InputIt path_first, InputIt path_last,
               const std::vector<DownstreamAddrGroup> &groups) {
   ssize_t res = -1;
   size_t best = 0;
   for (size_t i = 0; i < groups.size(); ++i) {
     auto &g = groups[i];
     auto &pattern = g.pattern;
-    if (!path_match(pattern, path)) {
+    if (!path_match(pattern, host, path_first, path_last)) {
       continue;
     }
     if (res == -1 || best < pattern.size()) {
@@ -1437,11 +1448,13 @@ ssize_t match(const std::string &path,
 } // namespace
 
 namespace {
+template <typename InputIt>
 size_t match_downstream_addr_group_host(
-    const std::string &host, const std::string &path,
+    const std::string &host, InputIt path_first, InputIt path_last,
     const std::vector<DownstreamAddrGroup> &groups, size_t catch_all) {
-  if (path.empty() || path[0] != '/') {
-    auto group = match(host + "/", groups);
+  if (path_first == path_last || *path_first != '/') {
+    constexpr const char P[] = "/";
+    auto group = match(host, P, P + 1, groups);
     if (group != -1) {
       if (LOG_ENABLED(INFO)) {
         LOG(INFO) << "Found pattern with query " << host
@@ -1454,22 +1467,24 @@ size_t match_downstream_addr_group_host(
 
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "Perform mapping selection, using host=" << host
-              << ", path=" << path;
+              << ", path=" << std::string(path_first, path_last);
   }
 
-  auto group = match(host + path, groups);
+  auto group = match(host, path_first, path_last, groups);
   if (group != -1) {
     if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Found pattern with query " << host + path
+      LOG(INFO) << "Found pattern with query " << host
+                << std::string(path_first, path_last)
                 << ", matched pattern=" << groups[group].pattern;
     }
     return group;
   }
 
-  group = match(path, groups);
+  group = match("", path_first, path_last, groups);
   if (group != -1) {
     if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Found pattern with query " << path
+      LOG(INFO) << "Found pattern with query "
+                << std::string(path_first, path_last)
                 << ", matched pattern=" << groups[group].pattern;
     }
     return group;
@@ -1494,10 +1509,12 @@ size_t match_downstream_addr_group(
 
   auto fragment = std::find(std::begin(raw_path), std::end(raw_path), '#');
   auto query = std::find(std::begin(raw_path), fragment, '?');
-  auto path = std::string(std::begin(raw_path), query);
+  auto path_first = std::begin(raw_path);
+  auto path_last = query;
 
   if (hostport.empty()) {
-    return match_downstream_addr_group_host(hostport, path, groups, catch_all);
+    return match_downstream_addr_group_host(hostport, path_first, path_last,
+                                            groups, catch_all);
   }
 
   std::string host;
@@ -1520,7 +1537,8 @@ size_t match_downstream_addr_group(
   }
 
   util::inp_strlower(host);
-  return match_downstream_addr_group_host(host, path, groups, catch_all);
+  return match_downstream_addr_group_host(host, path_first, path_last, groups,
+                                          catch_all);
 }
 
 } // namespace shrpx
