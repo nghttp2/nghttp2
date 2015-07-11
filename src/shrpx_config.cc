@@ -467,7 +467,7 @@ namespace {
 // config.  We will store each host-path pattern found in |src| with
 // |addr|.  |addr| will be copied accordingly.  Also we make a group
 // based on the pattern.  The "/" pattern is considered as catch-all.
-void parse_mapping(DownstreamAddr addr, const char *src) {
+void parse_mapping(const DownstreamAddr &addr, const char *src) {
   // This returns at least 1 element (it could be empty string).  We
   // will append '/' to all patterns, so it becomes catch-all pattern.
   auto mapping = parse_config_str_list(src, ':');
@@ -537,7 +537,7 @@ int parse_config(const char *opt, const char *optarg) {
       LOG(ERROR) << opt << ": ';' must not be used in pattern";
       return -1;
     }
-    parse_mapping(std::move(addr), mapping);
+    parse_mapping(addr, mapping);
 
     return 0;
   }
