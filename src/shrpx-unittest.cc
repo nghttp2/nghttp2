@@ -98,6 +98,8 @@ int main(int argc, char *argv[]) {
       !CU_add_test(pSuite, "http2_path_join", shrpx::test_http2_path_join) ||
       !CU_add_test(pSuite, "http2_normalize_path",
                    shrpx::test_http2_normalize_path) ||
+      !CU_add_test(pSuite, "http2_rewrite_clean_path",
+                   shrpx::test_http2_rewrite_clean_path) ||
       !CU_add_test(pSuite, "downstream_index_request_headers",
                    shrpx::test_downstream_index_request_headers) ||
       !CU_add_test(pSuite, "downstream_index_response_headers",

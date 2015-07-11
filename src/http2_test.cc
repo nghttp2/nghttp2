@@ -856,4 +856,29 @@ void test_http2_normalize_path(void) {
   CU_ASSERT("/" == http2::normalize_path(std::begin(src), std::end(src)));
 }
 
+void test_http2_rewrite_clean_path(void) {
+  std::string src;
+
+  // unreserved characters
+  src = "/alpha/%62ravo/";
+  CU_ASSERT("/alpha/bravo/" ==
+            http2::rewrite_clean_path(std::begin(src), std::end(src)));
+
+  // percent-encoding is converted to upper case.
+  src = "/delta%3a";
+  CU_ASSERT("/delta%3A" ==
+            http2::rewrite_clean_path(std::begin(src), std::end(src)));
+
+  // path component is normalized before mathcing
+  src = "/alpha/charlie/%2e././bravo/delta/..";
+  CU_ASSERT("/alpha/bravo/" ==
+            http2::rewrite_clean_path(std::begin(src), std::end(src)));
+
+  src = "alpha%3a";
+  CU_ASSERT(src == http2::rewrite_clean_path(std::begin(src), std::end(src)));
+
+  src = "";
+  CU_ASSERT(src == http2::rewrite_clean_path(std::begin(src), std::end(src)));
+}
+
 } // namespace shrpx

@@ -300,7 +300,11 @@ int Http2Upstream::on_request_headers(Downstream *downstream,
   downstream->set_request_method(method_token);
   downstream->set_request_http2_scheme(http2::value_to_str(scheme));
   downstream->set_request_http2_authority(http2::value_to_str(authority));
-  downstream->set_request_path(http2::value_to_str(path));
+  if (path) {
+    auto &value = path->value;
+    downstream->set_request_path(
+        http2::rewrite_clean_path(std::begin(value), std::end(value)));
+  }
 
   if (!(frame->hd.flags & NGHTTP2_FLAG_END_STREAM)) {
     downstream->set_request_http2_expect_body(true);
@@ -541,7 +545,8 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
             {nv.value, nv.value + nv.valuelen});
         break;
       case http2::HD__PATH:
-        downstream->set_request_path({nv.value, nv.value + nv.valuelen});
+        downstream->set_request_path(
+            http2::rewrite_clean_path(nv.value, nv.value + nv.valuelen));
         break;
       }
       downstream->add_request_header(nv.name, nv.namelen, nv.value, nv.valuelen,

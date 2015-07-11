@@ -218,7 +218,8 @@ void rewrite_request_host_path_from_uri(Downstream *downstream, const char *uri,
     path += '?';
     path.append(uri + fdata.off, fdata.len);
   }
-  downstream->set_request_path(std::move(path));
+  downstream->set_request_path(
+      http2::rewrite_clean_path(std::begin(path), std::end(path)));
 
   std::string scheme;
   http2::copy_url_component(scheme, &u, UF_SCHEMA, uri);
@@ -285,6 +286,9 @@ int htp_hdrs_completecb(http_parser *htp) {
         // Request URI should be absolute-form for client proxy mode
         return -1;
       }
+
+      downstream->set_request_path(
+          http2::rewrite_clean_path(std::begin(uri), std::end(uri)));
 
       if (upstream->get_client_handler()->get_ssl()) {
         downstream->set_request_http2_scheme("https");

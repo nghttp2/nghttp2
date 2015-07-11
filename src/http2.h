@@ -334,6 +334,21 @@ std::string normalize_path(InputIt first, InputIt last) {
                    nullptr, 0);
 }
 
+template <typename InputIt>
+std::string rewrite_clean_path(InputIt first, InputIt last) {
+  if (first == last || *first != '/') {
+    return std::string(first, last);
+  }
+  // probably, not necessary most of the case, but just in case.
+  auto fragment = std::find(first, last, '#');
+  auto query = std::find(first, fragment, '?');
+  auto path = normalize_path(first, query);
+  if (query != fragment) {
+    path.append(query, fragment);
+  }
+  return path;
+}
+
 } // namespace http2
 
 } // namespace nghttp2

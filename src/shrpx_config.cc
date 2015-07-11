@@ -1438,9 +1438,9 @@ ssize_t match(const std::string &path,
 
 namespace {
 size_t match_downstream_addr_group_host(
-    const std::string &host, const std::string &raw_path,
+    const std::string &host, const std::string &path,
     const std::vector<DownstreamAddrGroup> &groups, size_t catch_all) {
-  if (raw_path == "*") {
+  if (path.empty() || path[0] != '/') {
     auto group = match(host + "/", groups);
     if (group != -1) {
       if (LOG_ENABLED(INFO)) {
@@ -1451,11 +1451,6 @@ size_t match_downstream_addr_group_host(
     }
     return catch_all;
   }
-
-  // probably, not necessary most of the case, but just in case.
-  auto fragment = std::find(std::begin(raw_path), std::end(raw_path), '#');
-  auto query = std::find(std::begin(raw_path), fragment, '?');
-  auto path = http2::normalize_path(std::begin(raw_path), query);
 
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "Perform mapping selection, using host=" << host
@@ -1490,13 +1485,21 @@ size_t match_downstream_addr_group_host(
 size_t match_downstream_addr_group(
     const std::string &hostport, const std::string &raw_path,
     const std::vector<DownstreamAddrGroup> &groups, size_t catch_all) {
-  if (hostport.empty() ||
-      std::find(std::begin(hostport), std::end(hostport), '/') !=
-          std::end(hostport)) {
+  if (std::find(std::begin(hostport), std::end(hostport), '/') !=
+      std::end(hostport)) {
     // We use '/' specially, and if '/' is included in host, it breaks
     // our code.  Select catch-all case.
     return catch_all;
   }
+
+  auto fragment = std::find(std::begin(raw_path), std::end(raw_path), '#');
+  auto query = std::find(std::begin(raw_path), fragment, '?');
+  auto path = std::string(std::begin(raw_path), query);
+
+  if (hostport.empty()) {
+    return match_downstream_addr_group_host(hostport, path, groups, catch_all);
+  }
+
   std::string host;
   if (hostport[0] == '[') {
     // assume this is IPv6 numeric address
@@ -1517,7 +1520,7 @@ size_t match_downstream_addr_group(
   }
 
   util::inp_strlower(host);
-  return match_downstream_addr_group_host(host, raw_path, groups, catch_all);
+  return match_downstream_addr_group_host(host, path, groups, catch_all);
 }
 
 } // namespace shrpx

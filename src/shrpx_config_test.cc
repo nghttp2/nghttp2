@@ -203,12 +203,8 @@ void test_shrpx_config_match_downstream_addr_group(void) {
   CU_ASSERT(0 == match_downstream_addr_group("nghttp2.org", "/Alpha/bravo",
                                              groups, 255));
 
-  // unreserved characters are decoded before matching
-  CU_ASSERT(1 == match_downstream_addr_group("nghttp2.org", "/alpha/%62ravo/",
-                                             groups, 255));
-
   CU_ASSERT(1 == match_downstream_addr_group(
-                     "nghttp2.org", "/alpha/%62ravo/charlie", groups, 255));
+                     "nghttp2.org", "/alpha/bravo/charlie", groups, 255));
 
   CU_ASSERT(2 == match_downstream_addr_group("nghttp2.org", "/alpha/charlie",
                                              groups, 255));
@@ -218,19 +214,12 @@ void test_shrpx_config_match_downstream_addr_group(void) {
   CU_ASSERT(0 == match_downstream_addr_group("nghttp2.org", "/alpha/charlie/",
                                              groups, 255));
 
-  // percent-encoding is normalized to upper case hex digits.
-  CU_ASSERT(3 == match_downstream_addr_group("nghttp2.org", "/delta%3a", groups,
-                                             255));
-
-  // path component is normalized before mathcing
-  CU_ASSERT(1 == match_downstream_addr_group(
-                     "nghttp2.org", "/alpha/charlie/%2e././bravo/delta/..",
-                     groups, 255));
-
   CU_ASSERT(255 ==
             match_downstream_addr_group("example.org", "/", groups, 255));
 
   CU_ASSERT(255 == match_downstream_addr_group("", "/", groups, 255));
+
+  CU_ASSERT(255 == match_downstream_addr_group("", "alpha", groups, 255));
 
   CU_ASSERT(255 == match_downstream_addr_group("foo/bar", "/", groups, 255));
 
