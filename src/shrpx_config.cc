@@ -1402,7 +1402,17 @@ bool path_match(const std::string &pattern, const std::string &path) {
   if (pattern.back() != '/') {
     return pattern == path;
   }
-  return util::startsWith(path, pattern);
+
+  if (util::startsWith(path, pattern)) {
+    return true;
+  }
+
+  // If pattern ends with '/', and pattern and path matches without
+  // that slash, we consider they match to deal with request to the
+  // directory without trailing slash.  That is if pattern is "/foo/"
+  // and path is "/foo", we consider they match.
+  return util::streq(std::begin(path), path.size(), std::begin(pattern),
+                     pattern.size() - 1);
 }
 } // namespace
 

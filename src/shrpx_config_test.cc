@@ -192,6 +192,13 @@ void test_shrpx_config_match_downstream_addr_group(void) {
   CU_ASSERT(4 == match_downstream_addr_group("WWW.nghttp2.org", "/alpha",
                                              groups, 255));
 
+  CU_ASSERT(1 == match_downstream_addr_group("nghttp2.org", "/alpha/bravo/",
+                                             groups, 255));
+
+  // /alpha/bravo also matches /alpha/bravo/
+  CU_ASSERT(1 == match_downstream_addr_group("nghttp2.org", "/alpha/bravo",
+                                             groups, 255));
+
   // path part is case-sensitive
   CU_ASSERT(0 == match_downstream_addr_group("nghttp2.org", "/Alpha/bravo",
                                              groups, 255));
