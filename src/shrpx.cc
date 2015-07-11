@@ -1022,9 +1022,10 @@ Connections:
               that  it  matches  all   paths  under  the  host  (e.g.,
               specifying "nghttp2.org" equals to "nghttp2.org/").
 
-              Longer  patterns  take  precedence  over  shorter  ones,
-              breaking a  tie by  the order of  the appearance  in the
-              configuration.
+              Patterns  with  host  take  precedence  over  path  only
+              patterns.   Then, longer  patterns take  precedence over
+              shorter  ones,  breaking  a  tie by  the  order  of  the
+              appearance in the configuration.
 
               If <PATTERN> is  omitted, "/" is used  as pattern, which
               matches  all paths  (catch-all pattern).   The catch-all
