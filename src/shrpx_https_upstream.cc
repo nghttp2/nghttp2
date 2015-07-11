@@ -218,8 +218,12 @@ void rewrite_request_host_path_from_uri(Downstream *downstream, const char *uri,
     path += '?';
     path.append(uri + fdata.off, fdata.len);
   }
-  downstream->set_request_path(
-      http2::rewrite_clean_path(std::begin(path), std::end(path)));
+  if (get_config()->http2_proxy || get_config()->client_proxy) {
+    downstream->set_request_path(std::move(path));
+  } else {
+    downstream->set_request_path(
+        http2::rewrite_clean_path(std::begin(path), std::end(path)));
+  }
 
   std::string scheme;
   http2::copy_url_component(scheme, &u, UF_SCHEMA, uri);

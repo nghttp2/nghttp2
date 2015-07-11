@@ -229,8 +229,12 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
     } else {
       downstream->set_request_http2_scheme(scheme->value);
       downstream->set_request_http2_authority(host->value);
-      downstream->set_request_path(http2::rewrite_clean_path(
-          std::begin(path->value), std::end(path->value)));
+      if (get_config()->http2_proxy || get_config()->client_proxy) {
+        downstream->set_request_path(path->value);
+      } else {
+        downstream->set_request_path(http2::rewrite_clean_path(
+            std::begin(path->value), std::end(path->value)));
+      }
     }
 
     if (!(frame->syn_stream.hd.flags & SPDYLAY_CTRL_FLAG_FIN)) {
