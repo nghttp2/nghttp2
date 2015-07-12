@@ -36,6 +36,7 @@
 #include "shrpx_config.h"
 #include "shrpx_http.h"
 #include "shrpx_worker.h"
+#include "shrpx_http2_session.h"
 #include "http2.h"
 #include "util.h"
 #include "base64.h"

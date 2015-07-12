@@ -34,6 +34,7 @@
 #include "shrpx_connect_blocker.h"
 #include "shrpx_downstream_connection_pool.h"
 #include "shrpx_worker.h"
+#include "shrpx_http2_session.h"
 #include "http2.h"
 #include "util.h"
 
@@ -142,8 +143,7 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
     }
 
     auto worker = client_handler_->get_worker();
-    auto worker_stat = worker->get_worker_stat();
-    auto &next_downstream = worker_stat->next_downstream[group_];
+    auto &next_downstream = worker->get_dgrp(group_)->next;
     auto end = next_downstream;
     auto &addrs = get_config()->downstream_addr_groups[group_].addrs;
     for (;;) {

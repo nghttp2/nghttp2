@@ -1005,22 +1005,22 @@ Connections:
               with "unix:" (e.g., unix:/var/run/backend.sock).
 
               Optionally, if <PATTERN>s are given, the backend address
-              is only used if request matches the pattern.  If -s, -p,
-              --client  or  --http2-bridge  is  used,  <PATTERN>s  are
-              ignored.  The  pattern matching  is closely  designed to
-              ServeMux in net/http package of Go programming language.
-              <PATTERN> consists  of path, host  + path or  just host.
-              The path must starts with "/".   If it ends with "/", it
-              matches to  the request path  whose prefix is  the path.
-              To  deal  with  the  request to  the  directory  without
-              trailing slash, pattern which ends with "/" also matches
-              the path if pattern == path + "/" (e.g., pattern "/foo/"
-              matches path "/foo").   If it does not end  with "/", it
-              performs exact match against  the request path.  If host
-              is given,  it performs  exact match against  the request
-              host.  If host alone is given, "/" is appended to it, so
-              that  it  matches  all   paths  under  the  host  (e.g.,
-              specifying "nghttp2.org" equals to "nghttp2.org/").
+              is only used  if request matches the pattern.   If -s or
+              -p  is  used,  <PATTERN>s   are  ignored.   The  pattern
+              matching  is closely  designed to  ServeMux in  net/http
+              package of Go  programming language.  <PATTERN> consists
+              of path, host + path or just host.  The path must starts
+              with  "/".  If  it  ends  with "/",  it  matches to  the
+              request path whose prefix is the path.  To deal with the
+              request to the directory without trailing slash, pattern
+              which ends with "/" also  matches the path if pattern ==
+              path + "/" (e.g.,  pattern "/foo/" matches path "/foo").
+              If it  does not  end with "/",  it performs  exact match
+              against the request path.  If host is given, it performs
+              exact match against the request  host.  If host alone is
+              given, "/"  is appended  to it, so  that it  matches all
+              paths  under the  host  (e.g., specifying  "nghttp2.org"
+              equals to "nghttp2.org/").
 
               Patterns  with  host  take  precedence  over  path  only
               patterns.   Then, longer  patterns take  precedence over
@@ -1130,9 +1130,14 @@ Performance:
               accepts.  Setting 0 means unlimited.
               Default: )" << get_config()->worker_frontend_connections << R"(
   --backend-http2-connections-per-worker=<N>
-              Set  maximum number  of HTTP/2  connections per  worker.
-              The  default  value is  0,  which  means the  number  of
-              backend addresses specified by -b option.
+              Set   maximum   number   of  backend   HTTP/2   physical
+              connections  per  worker.   If  pattern is  used  in  -b
+              option, this limit is applied  to each pattern group (in
+              other  words, each  pattern group  can have  maximum <N>
+              HTTP/2  connections).  The  default  value  is 0,  which
+              means  that  the value  is  adjusted  to the  number  of
+              backend addresses.  If pattern  is used, this adjustment
+              is done for each pattern group.
   --backend-http1-connections-per-host=<N>
               Set   maximum  number   of  backend   concurrent  HTTP/1
               connections per origin host.   This option is meaningful
@@ -2177,10 +2182,9 @@ int main(int argc, char **argv) {
     DownstreamAddrGroup g("/");
     g.addrs.push_back(std::move(addr));
     mod_config()->downstream_addr_groups.push_back(std::move(g));
-  } else if (get_config()->downstream_proto == PROTO_HTTP2 ||
-             get_config()->http2_proxy || get_config()->client_proxy) {
+  } else if (get_config()->http2_proxy || get_config()->client_proxy) {
     // We don't support host mapping in these cases.  Move all
-    // non-catch-all patterns to catch-all pattern for HTTP/2 backend
+    // non-catch-all patterns to catch-all pattern.
     DownstreamAddrGroup catch_all("/");
     for (auto &g : mod_config()->downstream_addr_groups) {
       std::move(std::begin(g.addrs), std::end(g.addrs),
@@ -2274,12 +2278,6 @@ int main(int argc, char **argv) {
                          AF_UNSPEC) == -1) {
       exit(EXIT_FAILURE);
     }
-  }
-
-  if (get_config()->downstream_proto == PROTO_HTTP2 &&
-      get_config()->http2_downstream_connections_per_worker == 0) {
-    mod_config()->http2_downstream_connections_per_worker =
-        get_config()->downstream_addr_groups[0].addrs.size();
   }
 
   if (get_config()->rlimit_nofile) {

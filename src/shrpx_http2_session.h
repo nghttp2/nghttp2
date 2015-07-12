@@ -58,7 +58,7 @@ struct StreamData {
 class Http2Session {
 public:
   Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx,
-               ConnectBlocker *connect_blocker, Worker *worker);
+               ConnectBlocker *connect_blocker, Worker *worker, size_t group);
   ~Http2Session();
 
   int check_cert();
@@ -151,6 +151,8 @@ public:
 
   size_t get_addr_idx() const;
 
+  size_t get_group() const;
+
   enum {
     // Disconnected
     DISCONNECTED,
@@ -203,6 +205,7 @@ private:
   size_t data_pendinglen_;
   // index of get_config()->downstream_addrs this object uses
   size_t addr_idx_;
+  size_t group_;
   int state_;
   int connection_check_state_;
   bool flow_control_;

@@ -44,7 +44,6 @@ namespace shrpx {
 
 class Upstream;
 class DownstreamConnection;
-class Http2Session;
 class HttpsUpstream;
 class ConnectBlocker;
 class DownstreamConnectionPool;
@@ -142,7 +141,6 @@ private:
   std::function<int(ClientHandler &)> read_, write_;
   std::function<int(ClientHandler &)> on_read_, on_write_;
   Worker *worker_;
-  Http2Session *http2session_;
   // The number of bytes of HTTP/2 client connection header to read
   size_t left_connhd_len_;
   bool should_close_after_write_;

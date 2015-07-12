@@ -39,6 +39,7 @@
 #include "shrpx_worker.h"
 #include "shrpx_downstream_connection_pool.h"
 #include "shrpx_downstream.h"
+#include "shrpx_http2_session.h"
 #ifdef HAVE_SPDYLAY
 #include "shrpx_spdy_upstream.h"
 #endif // HAVE_SPDYLAY
@@ -361,7 +362,6 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
             get_config()->write_burst, get_config()->read_rate,
             get_config()->read_burst, writecb, readcb, timeoutcb, this),
       ipaddr_(ipaddr), port_(port), worker_(worker),
-      http2session_(worker_->next_http2_session()),
       left_connhd_len_(NGHTTP2_CLIENT_MAGIC_LEN),
       should_close_after_write_(false) {
 
@@ -612,9 +612,8 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
   auto catch_all = get_config()->downstream_addr_group_catch_all;
 
   // Fast path.  If we have one group, it must be catch-all group.
-  // HTTP/2 and client proxy modes fall in this case.  Currently,
-  // HTTP/2 backend does not perform host-path mapping.
-  if (groups.size() == 1 || get_config()->downstream_proto == PROTO_HTTP2) {
+  // HTTP/2 and client proxy modes fall in this case.
+  if (groups.size() == 1) {
     group = 0;
   } else if (downstream->get_request_method() == HTTP_CONNECT) {
     //  We don't know how to treat CONNECT request in host-path
@@ -653,8 +652,9 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
 
     auto dconn_pool = worker_->get_dconn_pool();
 
-    if (http2session_) {
-      dconn = make_unique<Http2DownstreamConnection>(dconn_pool, http2session_);
+    if (get_config()->downstream_proto == PROTO_HTTP2) {
+      auto http2session = worker_->next_http2_session(group);
+      dconn = make_unique<Http2DownstreamConnection>(dconn_pool, http2session);
     } else {
       dconn =
           make_unique<HttpDownstreamConnection>(dconn_pool, group, conn_.loop);

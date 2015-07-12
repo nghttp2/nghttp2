@@ -53,6 +53,7 @@
 #include "shrpx_config.h"
 #include "shrpx_worker.h"
 #include "shrpx_downstream_connection_pool.h"
+#include "shrpx_http2_session.h"
 #include "util.h"
 #include "ssl.h"
 #include "template.h"
