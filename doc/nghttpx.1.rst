@@ -45,26 +45,27 @@ Connections
     with "unix:" (e.g., unix:/var/run/backend.sock).
 
     Optionally, if <PATTERN>s are given, the backend address
-    is only used if request matches the pattern.  If :option:`-s`\, :option:`-p`\,
-    :option:`--client`  or  :option:`\--http2-bridge`  is  used,  <PATTERN>s  are
-    ignored.  The  pattern matching  is closely  designed to
-    ServeMux in net/http package of Go programming language.
-    <PATTERN> consists  of path, host  + path or  just host.
-    The path must starts with "*/*".   If it ends with "*/*", it
-    matches to  the request path  whose prefix is  the path.
-    To  deal  with  the  request to  the  directory  without
-    trailing slash, pattern which ends with "*/*" also matches
-    the path if pattern == path + "*/*" (e.g., pattern "*/foo/*"
-    matches path "*/foo*").   If it does not end  with "*/*", it
-    performs exact match against  the request path.  If host
-    is given,  it performs  exact match against  the request
-    host.  If host alone is given, "*/*" is appended to it, so
-    that  it  matches  all   paths  under  the  host  (e.g.,
-    specifying "nghttp2.org" equals to "nghttp2.org/").
+    is only used  if request matches the pattern.   If :option:`-s` or
+    :option:`-p`  is  used,  <PATTERN>s   are  ignored.   The  pattern
+    matching  is closely  designed to  ServeMux in  net/http
+    package of Go  programming language.  <PATTERN> consists
+    of path, host + path or just host.  The path must starts
+    with  "*/*".  If  it  ends  with "*/*",  it  matches to  the
+    request path whose prefix is the path.  To deal with the
+    request to the directory without trailing slash, pattern
+    which ends with "*/*" also  matches the path if pattern ==
+    path + "*/*" (e.g.,  pattern "*/foo/*" matches path "*/foo*").
+    If it  does not  end with "*/*",  it performs  exact match
+    against the request path.  If host is given, it performs
+    exact match against the request  host.  If host alone is
+    given, "*/*"  is appended  to it, so  that it  matches all
+    paths  under the  host  (e.g., specifying  "nghttp2.org"
+    equals to "nghttp2.org/").
 
-    Longer  patterns  take  precedence  over  shorter  ones,
-    breaking a  tie by  the order of  the appearance  in the
-    configuration.
+    Patterns  with  host  take  precedence  over  path  only
+    patterns.   Then, longer  patterns take  precedence over
+    shorter  ones,  breaking  a  tie by  the  order  of  the
+    appearance in the configuration.
 
     If <PATTERN> is  omitted, "*/*" is used  as pattern, which
     matches  all paths  (catch-all pattern).   The catch-all
@@ -214,9 +215,14 @@ Performance
 
 .. option:: --backend-http2-connections-per-worker=<N>
 
-    Set  maximum number  of HTTP/2  connections per  worker.
-    The  default  value is  0,  which  means the  number  of
-    backend addresses specified by :option:`-b` option.
+    Set   maximum   number   of  backend   HTTP/2   physical
+    connections  per  worker.   If  pattern is  used  in  :option:`-b`
+    option, this limit is applied  to each pattern group (in
+    other  words, each  pattern group  can have  maximum <N>
+    HTTP/2  connections).  The  default  value  is 0,  which
+    means  that  the value  is  adjusted  to the  number  of
+    backend addresses.  If pattern  is used, this adjustment
+    is done for each pattern group.
 
 .. option:: --backend-http1-connections-per-host=<N>
 
@@ -753,6 +759,13 @@ Misc
     Load configuration from <PATH>.
 
     Default: ``/etc/nghttpx/nghttpx.conf``
+
+.. option:: --include=<PATH>
+
+    Load additional configurations from <PATH>.  File <PATH>
+    is  read  when  configuration  parser  encountered  this
+    option.  This option can be used multiple times, or even
+    recursively.
 
 .. option:: -v, --version
 

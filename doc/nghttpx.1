@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "July 11, 2015" "1.0.6-DEV" "nghttp2"
+.TH "NGHTTPX" "1" "July 12, 2015" "1.0.6-DEV" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 experimental proxy
 .
@@ -62,26 +62,27 @@ domain socket  can be  specified by prefixing  path name
 with "unix:" (e.g., unix:/var/run/backend.sock).
 .sp
 Optionally, if <PATTERN>s are given, the backend address
-is only used if request matches the pattern.  If \fI\%\-s\fP, \fI\%\-p\fP,
-\fI\%\-\-client\fP  or  \fI\%\-\-http2\-bridge\fP  is  used,  <PATTERN>s  are
-ignored.  The  pattern matching  is closely  designed to
-ServeMux in net/http package of Go programming language.
-<PATTERN> consists  of path, host  + path or  just host.
-The path must starts with "\fI/\fP".   If it ends with "\fI/\fP", it
-matches to  the request path  whose prefix is  the path.
-To  deal  with  the  request to  the  directory  without
-trailing slash, pattern which ends with "\fI/\fP" also matches
-the path if pattern == path + "\fI/\fP" (e.g., pattern "\fI/foo/\fP"
-matches path "\fI/foo\fP").   If it does not end  with "\fI/\fP", it
-performs exact match against  the request path.  If host
-is given,  it performs  exact match against  the request
-host.  If host alone is given, "\fI/\fP" is appended to it, so
-that  it  matches  all   paths  under  the  host  (e.g.,
-specifying "nghttp2.org" equals to "nghttp2.org/").
+is only used  if request matches the pattern.   If \fI\%\-s\fP or
+\fI\%\-p\fP  is  used,  <PATTERN>s   are  ignored.   The  pattern
+matching  is closely  designed to  ServeMux in  net/http
+package of Go  programming language.  <PATTERN> consists
+of path, host + path or just host.  The path must starts
+with  "\fI/\fP".  If  it  ends  with "\fI/\fP",  it  matches to  the
+request path whose prefix is the path.  To deal with the
+request to the directory without trailing slash, pattern
+which ends with "\fI/\fP" also  matches the path if pattern ==
+path + "\fI/\fP" (e.g.,  pattern "\fI/foo/\fP" matches path "\fI/foo\fP").
+If it  does not  end with "\fI/\fP",  it performs  exact match
+against the request path.  If host is given, it performs
+exact match against the request  host.  If host alone is
+given, "\fI/\fP"  is appended  to it, so  that it  matches all
+paths  under the  host  (e.g., specifying  "nghttp2.org"
+equals to "nghttp2.org/").
 .sp
-Longer  patterns  take  precedence  over  shorter  ones,
-breaking a  tie by  the order of  the appearance  in the
-configuration.
+Patterns  with  host  take  precedence  over  path  only
+patterns.   Then, longer  patterns take  precedence over
+shorter  ones,  breaking  a  tie by  the  order  of  the
+appearance in the configuration.
 .sp
 If <PATTERN> is  omitted, "\fI/\fP" is used  as pattern, which
 matches  all paths  (catch\-all pattern).   The catch\-all
@@ -244,9 +245,14 @@ Default: \fB0\fP
 .INDENT 0.0
 .TP
 .B \-\-backend\-http2\-connections\-per\-worker=<N>
-Set  maximum number  of HTTP/2  connections per  worker.
-The  default  value is  0,  which  means the  number  of
-backend addresses specified by \fI\%\-b\fP option.
+Set   maximum   number   of  backend   HTTP/2   physical
+connections  per  worker.   If  pattern is  used  in  \fI\%\-b\fP
+option, this limit is applied  to each pattern group (in
+other  words, each  pattern group  can have  maximum <N>
+HTTP/2  connections).  The  default  value  is 0,  which
+means  that  the value  is  adjusted  to the  number  of
+backend addresses.  If pattern  is used, this adjustment
+is done for each pattern group.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -841,6 +847,14 @@ be used to drop root privileges.
 Load configuration from <PATH>.
 .sp
 Default: \fB/etc/nghttpx/nghttpx.conf\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-include=<PATH>
+Load additional configurations from <PATH>.  File <PATH>
+is  read  when  configuration  parser  encountered  this
+option.  This option can be used multiple times, or even
+recursively.
 .UNINDENT
 .INDENT 0.0
 .TP
