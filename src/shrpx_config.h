@@ -165,6 +165,7 @@ constexpr char SHRPX_OPT_OCSP_UPDATE_INTERVAL[] = "ocsp-update-interval";
 constexpr char SHRPX_OPT_NO_OCSP[] = "no-ocsp";
 constexpr char SHRPX_OPT_HEADER_FIELD_BUFFER[] = "header-field-buffer";
 constexpr char SHRPX_OPT_MAX_HEADER_FIELDS[] = "max-header-fields";
+constexpr char SHRPX_OPT_INCLUDE[] = "include";
 
 union sockaddr_union {
   sockaddr_storage storage;

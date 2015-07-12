@@ -1219,6 +1219,10 @@ int parse_config(const char *opt, const char *optarg) {
     return parse_uint(&mod_config()->max_header_fields, opt, optarg);
   }
 
+  if (util::strieq(opt, SHRPX_OPT_INCLUDE)) {
+    return load_config(optarg);
+  }
+
   if (util::strieq(opt, "conf")) {
     LOG(WARN) << "conf: ignored";
 
@@ -1248,7 +1252,8 @@ int load_config(const char *filename) {
     for (i = 0; i < size && line[i] != '='; ++i)
       ;
     if (i == size) {
-      LOG(ERROR) << "Bad configuration format at line " << linenum;
+      LOG(ERROR) << "Bad configuration format in " << filename << " at line "
+                 << linenum;
       return -1;
     }
     line[i] = '\0';

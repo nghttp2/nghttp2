@@ -1502,6 +1502,11 @@ Misc:
   --conf=<PATH>
               Load configuration from <PATH>.
               Default: )" << get_config()->conf_path.get() << R"(
+  --include=<PATH>
+              Load additional configurations from <PATH>.  File <PATH>
+              is  read  when  configuration  parser  encountered  this
+              option.  This option can be used multiple times, or even
+              recursively.
   -v, --version
               Print version and exit.
   -h, --help  Print this help and exit.
@@ -1648,6 +1653,7 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_HEADER_FIELD_BUFFER, required_argument, &flag, 80},
         {SHRPX_OPT_MAX_HEADER_FIELDS, required_argument, &flag, 81},
         {SHRPX_OPT_ADD_REQUEST_HEADER, required_argument, &flag, 82},
+        {SHRPX_OPT_INCLUDE, required_argument, &flag, 83},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -2009,6 +2015,10 @@ int main(int argc, char **argv) {
       case 82:
         // --add-request-header
         cmdcfgs.emplace_back(SHRPX_OPT_ADD_REQUEST_HEADER, optarg);
+        break;
+      case 83:
+        // --include
+        cmdcfgs.emplace_back(SHRPX_OPT_INCLUDE, optarg);
         break;
       default:
         break;
