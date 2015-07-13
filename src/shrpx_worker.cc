@@ -83,9 +83,9 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
       if (m == 0) {
         m = get_config()->downstream_addr_groups[group].addrs.size();
       }
-      for (; m; --m) {
+      for (size_t idx = 0; idx < m; ++idx) {
         dgrp.http2sessions.push_back(make_unique<Http2Session>(
-            loop_, cl_ssl_ctx, connect_blocker_.get(), this, group));
+            loop_, cl_ssl_ctx, connect_blocker_.get(), this, group, idx));
       }
       ++group;
     }

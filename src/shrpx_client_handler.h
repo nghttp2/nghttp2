@@ -134,6 +134,7 @@ private:
   Connection conn_;
   ev_timer reneg_shutdown_timer_;
   std::unique_ptr<Upstream> upstream_;
+  std::unique_ptr<std::vector<ssize_t>> pinned_http2sessions_;
   std::string ipaddr_;
   std::string port_;
   // The ALPN identifier negotiated for this connection.

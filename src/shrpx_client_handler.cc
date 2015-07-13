@@ -361,6 +361,11 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
             get_config()->upstream_read_timeout, get_config()->write_rate,
             get_config()->write_burst, get_config()->read_rate,
             get_config()->read_burst, writecb, readcb, timeoutcb, this),
+      pinned_http2sessions_(
+          get_config()->downstream_proto == PROTO_HTTP2
+              ? make_unique<std::vector<ssize_t>>(
+                    get_config()->downstream_addr_groups.size(), -1)
+              : nullptr),
       ipaddr_(ipaddr), port_(port), worker_(worker),
       left_connhd_len_(NGHTTP2_CLIENT_MAGIC_LEN),
       should_close_after_write_(false) {
@@ -653,7 +658,15 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
     auto dconn_pool = worker_->get_dconn_pool();
 
     if (get_config()->downstream_proto == PROTO_HTTP2) {
-      auto http2session = worker_->next_http2_session(group);
+      Http2Session *http2session;
+      auto &pinned = (*pinned_http2sessions_)[group];
+      if (pinned == -1) {
+        http2session = worker_->next_http2_session(group);
+        pinned = http2session->get_index();
+      } else {
+        auto dgrp = worker_->get_dgrp(group);
+        http2session = dgrp->http2sessions[pinned].get();
+      }
       dconn = make_unique<Http2DownstreamConnection>(dconn_pool, http2session);
     } else {
       dconn =
