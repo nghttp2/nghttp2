@@ -76,6 +76,10 @@ struct Config {
   ssize_t max_concurrent_streams;
   size_t window_bits;
   size_t connection_window_bits;
+  // rate at which connections should be made
+  ssize_t rate;
+  // number of connections made
+  ssize_t nconns;
   enum { PROTO_HTTP2, PROTO_SPDY2, PROTO_SPDY3, PROTO_SPDY3_1 } no_tls_proto;
   // file descriptor for upload data
   int data_fd;
@@ -83,8 +87,17 @@ struct Config {
   uint16_t default_port;
   bool verbose;
 
+  ssize_t current_worker;
+  std::vector<std::unique_ptr<Worker>> workers;
+  SSL_CTX *ssl_ctx;
+  struct ev_loop *rate_loop;
+  ssize_t seconds;
+  ssize_t conns_remainder;
+
   Config();
   ~Config();
+
+  bool is_rate_mode();
 };
 
 struct RequestStat {
