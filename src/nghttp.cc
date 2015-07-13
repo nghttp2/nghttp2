@@ -1930,6 +1930,8 @@ sorted by 'complete'
 id  responseEnd requestStart  process code size request path)" << std::endl;
 
   const auto &base = client.timing.connect_end_time;
+  const auto &start = client.timing.start_time;
+  auto total = std::chrono::duration_cast<std::chrono::microseconds>(base - start);
   for (const auto &req : reqs) {
     auto response_end = std::chrono::duration_cast<std::chrono::microseconds>(
         req->timing.response_end_time - base);
@@ -1948,6 +1950,7 @@ id  responseEnd requestStart  process code size request path)" << std::endl;
               << util::utos_with_unit(req->response_len) << " "
               << req->make_reqpath() << std::endl;
   }
+  std::cout << "Total: " << util::format_duration(total) << std::endl;
 }
 } // namespace
 
