@@ -2030,11 +2030,13 @@ int main(int argc, char **argv) {
   }
 
   if (conf_exists(get_config()->conf_path.get())) {
-    if (load_config(get_config()->conf_path.get()) == -1) {
+    std::set<std::string> include_set;
+    if (load_config(get_config()->conf_path.get(), include_set) == -1) {
       LOG(FATAL) << "Failed to load configuration from "
                  << get_config()->conf_path.get();
       exit(EXIT_FAILURE);
     }
+    assert(include_set.empty());
   }
 
   if (argc - optind >= 2) {
@@ -2046,11 +2048,18 @@ int main(int argc, char **argv) {
   // parsing option values.
   reopen_log_files();
 
-  for (size_t i = 0, len = cmdcfgs.size(); i < len; ++i) {
-    if (parse_config(cmdcfgs[i].first, cmdcfgs[i].second) == -1) {
-      LOG(FATAL) << "Failed to parse command-line argument.";
-      exit(EXIT_FAILURE);
+  {
+    std::set<std::string> include_set;
+
+    for (size_t i = 0, len = cmdcfgs.size(); i < len; ++i) {
+      if (parse_config(cmdcfgs[i].first, cmdcfgs[i].second, include_set) ==
+          -1) {
+        LOG(FATAL) << "Failed to parse command-line argument.";
+        exit(EXIT_FAILURE);
+      }
     }
+
+    assert(include_set.empty());
   }
 
   if (get_config()->accesslog_syslog || get_config()->errorlog_syslog) {

@@ -42,6 +42,7 @@
 #include <cstdio>
 #include <vector>
 #include <memory>
+#include <set>
 
 #include <openssl/ssl.h>
 
@@ -379,13 +380,16 @@ void create_config();
 
 // Parses option name |opt| and value |optarg|.  The results are
 // stored into statically allocated Config object. This function
-// returns 0 if it succeeds, or -1.
-int parse_config(const char *opt, const char *optarg);
+// returns 0 if it succeeds, or -1.  The |included_set| contains the
+// all paths already included while processing this configuration, to
+// avoid loop in --include option.
+int parse_config(const char *opt, const char *optarg,
+                 std::set<std::string> &included_set);
 
 // Loads configurations from |filename| and stores them in statically
 // allocated Config object. This function returns 0 if it succeeds, or
-// -1.
-int load_config(const char *filename);
+// -1.  See parse_config() for |include_set|.
+int load_config(const char *filename, std::set<std::string> &include_set);
 
 // Read passwd from |filename|
 std::string read_passwd_from_file(const char *filename);

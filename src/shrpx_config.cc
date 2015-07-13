@@ -505,7 +505,8 @@ void parse_mapping(const DownstreamAddr &addr, const char *src) {
 }
 } // namespace
 
-int parse_config(const char *opt, const char *optarg) {
+int parse_config(const char *opt, const char *optarg,
+                 std::set<std::string> &included_set) {
   char host[NI_MAXHOST];
   uint16_t port;
 
@@ -1220,7 +1221,20 @@ int parse_config(const char *opt, const char *optarg) {
   }
 
   if (util::strieq(opt, SHRPX_OPT_INCLUDE)) {
-    return load_config(optarg);
+    if (included_set.count(optarg)) {
+      LOG(ERROR) << opt << ": " << optarg << " has already been included";
+      return -1;
+    }
+
+    included_set.emplace(optarg);
+    auto rv = load_config(optarg, included_set);
+    included_set.erase(optarg);
+
+    if (rv != 0) {
+      return -1;
+    }
+
+    return 0;
   }
 
   if (util::strieq(opt, "conf")) {
@@ -1234,7 +1248,7 @@ int parse_config(const char *opt, const char *optarg) {
   return -1;
 }
 
-int load_config(const char *filename) {
+int load_config(const char *filename, std::set<std::string> &include_set) {
   std::ifstream in(filename, std::ios::binary);
   if (!in) {
     LOG(ERROR) << "Could not open config file " << filename;
@@ -1258,7 +1272,7 @@ int load_config(const char *filename) {
     }
     line[i] = '\0';
     auto s = line.c_str();
-    if (parse_config(s, s + i + 1) == -1) {
+    if (parse_config(s, s + i + 1, include_set) == -1) {
       return -1;
     }
   }
