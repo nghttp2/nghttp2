@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "July 12, 2015" "1.0.6-DEV" "nghttp2"
+.TH "NGHTTPX" "1" "July 14, 2015" "1.0.6" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 experimental proxy
 .
@@ -55,7 +55,7 @@ The options are categorized into several groups.
 .SS Connections
 .INDENT 0.0
 .TP
-.B \-b, \-\-backend=<HOST>,<PORT>[;<PATTERN>[:...]]
+.B \-b, \-\-backend=(<HOST>,<PORT>|unix:<PATH>)[;<PATTERN>[:...]]
 Set  backend  host  and   port.   The  multiple  backend
 addresses are  accepted by repeating this  option.  UNIX
 domain socket  can be  specified by prefixing  path name
@@ -66,27 +66,27 @@ is only used  if request matches the pattern.   If \fI\%\-s\fP or
 \fI\%\-p\fP  is  used,  <PATTERN>s   are  ignored.   The  pattern
 matching  is closely  designed to  ServeMux in  net/http
 package of Go  programming language.  <PATTERN> consists
-of path, host + path or just host.  The path must starts
-with  "\fI/\fP".  If  it  ends  with "\fI/\fP",  it  matches to  the
-request path whose prefix is the path.  To deal with the
-request to the directory without trailing slash, pattern
-which ends with "\fI/\fP" also  matches the path if pattern ==
-path + "\fI/\fP" (e.g.,  pattern "\fI/foo/\fP" matches path "\fI/foo\fP").
-If it  does not  end with "\fI/\fP",  it performs  exact match
-against the request path.  If host is given, it performs
-exact match against the request  host.  If host alone is
-given, "\fI/\fP"  is appended  to it, so  that it  matches all
-paths  under the  host  (e.g., specifying  "nghttp2.org"
-equals to "nghttp2.org/").
+of path, host + path or  just host.  The path must start
+with "\fI/\fP".  If  it ends with "\fI/\fP", it  matches all request
+path in  its subtree.  To  deal with the request  to the
+directory without  trailing slash,  the path  which ends
+with "\fI/\fP" also matches the  request path which only lacks
+trailing \(aq\fI/\fP\(aq  (e.g., path  "\fI/foo/\fP" matches  request path
+"\fI/foo\fP").  If it does not end with "\fI/\fP", it performs exact
+match against  the request path.   If host is  given, it
+performs exact match against  the request host.  If host
+alone  is given,  "\fI/\fP"  is  appended to  it,  so that  it
+matches  all   request  paths  under  the   host  (e.g.,
+specifying "nghttp2.org" equals to "nghttp2.org/").
 .sp
-Patterns  with  host  take  precedence  over  path  only
-patterns.   Then, longer  patterns take  precedence over
+Patterns with  host take  precedence over  patterns with
+just path.   Then, longer patterns take  precedence over
 shorter  ones,  breaking  a  tie by  the  order  of  the
 appearance in the configuration.
 .sp
 If <PATTERN> is  omitted, "\fI/\fP" is used  as pattern, which
-matches  all paths  (catch\-all pattern).   The catch\-all
-backend must be given.
+matches  all  request  paths (catch\-all  pattern).   The
+catch\-all backend must be given.
 .sp
 When doing  a match, nghttpx made  some normalization to
 pattern, request host and path.  For host part, they are
@@ -104,18 +104,20 @@ The  multiple <PATTERN>s  can  be specified,  delimiting
 them            by           ":".             Specifying
 \fI\%\-b\fP\(aq127.0.0.1,8080;nghttp2.org:www.nghttp2.org\(aq  has  the
 same  effect  to specify  \fI\%\-b\fP\(aq127.0.0.1,8080;nghttp2.org\(aq
-and \fI\%\-b\fP\(aq127.0.0.1,8080:www.nghttp2.org\(aq.
+and \fI\%\-b\fP\(aq127.0.0.1,8080;www.nghttp2.org\(aq.
 .sp
 The backend addresses sharing same <PATTERN> are grouped
-together forming  load balancing  group.  Since  ";" and
-":" are  used as  delimiter, <PATTERN> must  not contain
-these characters.
+together forming  load balancing  group.
+.sp
+Since ";" and ":" are  used as delimiter, <PATTERN> must
+not  contain these  characters.  Since  ";" has  special
+meaning in shell, the option value must be quoted.
 .sp
 Default: \fB127.0.0.1,80\fP
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-f, \-\-frontend=<HOST>,<PORT>
+.B \-f, \-\-frontend=(<HOST>,<PORT>|unix:<PATH>)
 Set  frontend  host and  port.   If  <HOST> is  \(aq*\(aq,  it
 assumes  all addresses  including  both  IPv4 and  IPv6.
 UNIX domain  socket can  be specified by  prefixing path
@@ -691,6 +693,9 @@ $ssl_session_id: session ID for SSL/TLS connection.
 $ssl_session_reused:  "r"   if  SSL/TLS   session  was
 reused.  Otherwise, "."
 .UNINDENT
+.sp
+The  variable  can  be  enclosed  by  "{"  and  "}"  for
+disambiguation (e.g., ${remote_addr}).
 .sp
 Default: \fB$remote_addr \- \- [$time_local] "$request" $status $body_bytes_sent "$http_referer" "$http_user_agent"\fP
 .UNINDENT

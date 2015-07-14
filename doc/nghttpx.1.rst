@@ -37,7 +37,7 @@ The options are categorized into several groups.
 Connections
 ~~~~~~~~~~~
 
-.. option:: -b, --backend=<HOST>,<PORT>[;<PATTERN>[:...]]
+.. option:: -b, --backend=(<HOST>,<PORT>|unix:<PATH>)[;<PATTERN>[:...]]
 
     Set  backend  host  and   port.   The  multiple  backend
     addresses are  accepted by repeating this  option.  UNIX
@@ -49,27 +49,27 @@ Connections
     :option:`-p`  is  used,  <PATTERN>s   are  ignored.   The  pattern
     matching  is closely  designed to  ServeMux in  net/http
     package of Go  programming language.  <PATTERN> consists
-    of path, host + path or just host.  The path must starts
-    with  "*/*".  If  it  ends  with "*/*",  it  matches to  the
-    request path whose prefix is the path.  To deal with the
-    request to the directory without trailing slash, pattern
-    which ends with "*/*" also  matches the path if pattern ==
-    path + "*/*" (e.g.,  pattern "*/foo/*" matches path "*/foo*").
-    If it  does not  end with "*/*",  it performs  exact match
-    against the request path.  If host is given, it performs
-    exact match against the request  host.  If host alone is
-    given, "*/*"  is appended  to it, so  that it  matches all
-    paths  under the  host  (e.g., specifying  "nghttp2.org"
-    equals to "nghttp2.org/").
+    of path, host + path or  just host.  The path must start
+    with "*/*".  If  it ends with "*/*", it  matches all request
+    path in  its subtree.  To  deal with the request  to the
+    directory without  trailing slash,  the path  which ends
+    with "*/*" also matches the  request path which only lacks
+    trailing '*/*'  (e.g., path  "*/foo/*" matches  request path
+    "*/foo*").  If it does not end with "*/*", it performs exact
+    match against  the request path.   If host is  given, it
+    performs exact match against  the request host.  If host
+    alone  is given,  "*/*"  is  appended to  it,  so that  it
+    matches  all   request  paths  under  the   host  (e.g.,
+    specifying "nghttp2.org" equals to "nghttp2.org/").
 
-    Patterns  with  host  take  precedence  over  path  only
-    patterns.   Then, longer  patterns take  precedence over
+    Patterns with  host take  precedence over  patterns with
+    just path.   Then, longer patterns take  precedence over
     shorter  ones,  breaking  a  tie by  the  order  of  the
     appearance in the configuration.
 
     If <PATTERN> is  omitted, "*/*" is used  as pattern, which
-    matches  all paths  (catch-all pattern).   The catch-all
-    backend must be given.
+    matches  all  request  paths (catch-all  pattern).   The
+    catch-all backend must be given.
 
     When doing  a match, nghttpx made  some normalization to
     pattern, request host and path.  For host part, they are
@@ -87,16 +87,19 @@ Connections
     them            by           ":".             Specifying
     :option:`-b`\'127.0.0.1,8080;nghttp2.org:www.nghttp2.org'  has  the
     same  effect  to specify  :option:`-b`\'127.0.0.1,8080;nghttp2.org'
-    and :option:`-b`\'127.0.0.1,8080:www.nghttp2.org'.
+    and :option:`-b`\'127.0.0.1,8080;www.nghttp2.org'.
 
     The backend addresses sharing same <PATTERN> are grouped
-    together forming  load balancing  group.  Since  ";" and
-    ":" are  used as  delimiter, <PATTERN> must  not contain
-    these characters.
+    together forming  load balancing  group.
+
+    Since ";" and ":" are  used as delimiter, <PATTERN> must
+    not  contain these  characters.  Since  ";" has  special
+    meaning in shell, the option value must be quoted.
+
 
     Default: ``127.0.0.1,80``
 
-.. option:: -f, --frontend=<HOST>,<PORT>
+.. option:: -f, --frontend=(<HOST>,<PORT>|unix:<PATH>)
 
     Set  frontend  host and  port.   If  <HOST> is  '\*',  it
     assumes  all addresses  including  both  IPv4 and  IPv6.
@@ -610,6 +613,9 @@ Logging
     * $ssl_session_id: session ID for SSL/TLS connection.
     * $ssl_session_reused:  "r"   if  SSL/TLS   session  was
       reused.  Otherwise, "."
+
+    The  variable  can  be  enclosed  by  "{"  and  "}"  for
+    disambiguation (e.g., ${remote_addr}).
 
 
     Default: ``$remote_addr - - [$time_local] "$request" $status $body_bytes_sent "$http_referer" "$http_user_agent"``
