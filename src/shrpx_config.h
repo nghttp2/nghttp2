@@ -50,6 +50,10 @@
 
 #include <nghttp2/nghttp2.h>
 
+#include "template.h"
+
+using namespace nghttp2;
+
 namespace shrpx {
 
 struct LogFragment;
@@ -416,15 +420,23 @@ std::pair<std::string, std::string> parse_header(const char *optarg);
 
 std::vector<LogFragment> parse_log_format(const char *optarg);
 
-// Returns a copy of NULL-terminated string |val|.
-std::unique_ptr<char[]> strcopy(const char *val);
+// Returns a copy of NULL-terminated string [first, last).
+template <typename InputIt>
+std::unique_ptr<char[]> strcopy(InputIt first, InputIt last) {
+  auto res = make_unique<char[]>(last - first + 1);
+  *std::copy(first, last, res.get()) = '\0';
+  return res;
+}
 
-// Returns a copy of string |val| of length |n|.  The returned string
-// will be NULL-terminated.
-std::unique_ptr<char[]> strcopy(const char *val, size_t n);
+// Returns a copy of NULL-terminated string |val|.
+inline std::unique_ptr<char[]> strcopy(const char *val) {
+  return strcopy(val, val + strlen(val));
+}
 
 // Returns a copy of val.c_str().
-std::unique_ptr<char[]> strcopy(const std::string &val);
+inline std::unique_ptr<char[]> strcopy(const std::string &val) {
+  return strcopy(std::begin(val), std::end(val));
+}
 
 // Returns string for syslog |facility|.
 const char *str_syslog_facility(int facility);

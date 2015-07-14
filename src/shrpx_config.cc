@@ -59,8 +59,6 @@
 #include "template.h"
 #include "base64.h"
 
-using namespace nghttp2;
-
 namespace shrpx {
 
 namespace {
@@ -227,21 +225,6 @@ std::string read_passwd_from_file(const char *filename) {
   return line;
 }
 
-std::unique_ptr<char[]> strcopy(const char *val) {
-  return strcopy(val, strlen(val));
-}
-
-std::unique_ptr<char[]> strcopy(const char *val, size_t len) {
-  auto res = make_unique<char[]>(len + 1);
-  memcpy(res.get(), val, len);
-  res[len] = '\0';
-  return res;
-}
-
-std::unique_ptr<char[]> strcopy(const std::string &val) {
-  return strcopy(val.c_str(), val.size());
-}
-
 std::vector<char *> parse_config_str_list(const char *s, char delim) {
   size_t len = 1;
   for (const char *first = s, *p = nullptr; (p = strchr(first, delim));
@@ -394,7 +377,6 @@ std::vector<LogFragment> parse_log_format(const char *optarg) {
 
     auto type = SHRPX_LOGF_NONE;
     const char *value = nullptr;
-    size_t valuelen = 0;
 
     if (util::strieq_l("remote_addr", var_name, var_namelen)) {
       type = SHRPX_LOGF_REMOTE_ADDR;
@@ -411,7 +393,6 @@ std::vector<LogFragment> parse_log_format(const char *optarg) {
     } else if (util::istartsWith(var_name, var_namelen, "http_")) {
       type = SHRPX_LOGF_HTTP;
       value = var_name + sizeof("http_") - 1;
-      valuelen = var_namelen - (sizeof("http_") - 1);
     } else if (util::strieq_l("remote_port", var_name, var_namelen)) {
       type = SHRPX_LOGF_REMOTE_PORT;
     } else if (util::strieq_l("server_port", var_name, var_namelen)) {
@@ -437,9 +418,8 @@ std::vector<LogFragment> parse_log_format(const char *optarg) {
     }
 
     if (literal_start < var_start) {
-      res.push_back(
-          make_log_fragment(SHRPX_LOGF_LITERAL,
-                            strcopy(literal_start, var_start - literal_start)));
+      res.push_back(make_log_fragment(SHRPX_LOGF_LITERAL,
+                                      strcopy(literal_start, var_start)));
     }
 
     literal_start = p;
@@ -449,7 +429,8 @@ std::vector<LogFragment> parse_log_format(const char *optarg) {
       continue;
     }
 
-    res.push_back(make_log_fragment(type, strcopy(value, valuelen)));
+    res.push_back(
+        make_log_fragment(type, strcopy(value, var_name + var_namelen)));
     auto &v = res.back().value;
     for (size_t i = 0; v[i]; ++i) {
       if (v[i] == '_') {
@@ -459,8 +440,8 @@ std::vector<LogFragment> parse_log_format(const char *optarg) {
   }
 
   if (literal_start != eop) {
-    res.push_back(make_log_fragment(
-        SHRPX_LOGF_LITERAL, strcopy(literal_start, eop - literal_start)));
+    res.push_back(
+        make_log_fragment(SHRPX_LOGF_LITERAL, strcopy(literal_start, eop)));
   }
 
   return res;
@@ -537,7 +518,7 @@ int parse_config(const char *opt, const char *optarg,
     DownstreamAddr addr;
     if (util::istartsWith(optarg, SHRPX_UNIX_PATH_PREFIX)) {
       auto path = optarg + str_size(SHRPX_UNIX_PATH_PREFIX);
-      addr.host = strcopy(path, pat_delim - path);
+      addr.host = strcopy(path, pat_delim);
       addr.host_unix = true;
     } else {
       if (split_host_port(host, sizeof(host), &port, optarg,
