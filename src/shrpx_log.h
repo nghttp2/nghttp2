@@ -123,6 +123,8 @@ enum LogFragmentType {
 };
 
 struct LogFragment {
+  LogFragment(LogFragmentType type, std::unique_ptr<char[]> value = nullptr)
+      : type(type), value(std::move(value)) {}
   LogFragmentType type;
   std::unique_ptr<char[]> value;
 };

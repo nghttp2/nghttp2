@@ -324,13 +324,6 @@ int parse_int(T *dest, const char *opt, const char *optarg) {
 }
 
 namespace {
-LogFragment make_log_fragment(LogFragmentType type,
-                              std::unique_ptr<char[]> value = nullptr) {
-  return LogFragment{type, std::move(value)};
-}
-} // namespace
-
-namespace {
 bool var_token(char c) {
   return util::isAlpha(c) || util::isDigit(c) || c == '_';
 }
@@ -418,19 +411,17 @@ std::vector<LogFragment> parse_log_format(const char *optarg) {
     }
 
     if (literal_start < var_start) {
-      res.push_back(make_log_fragment(SHRPX_LOGF_LITERAL,
-                                      strcopy(literal_start, var_start)));
+      res.emplace_back(SHRPX_LOGF_LITERAL, strcopy(literal_start, var_start));
     }
 
     literal_start = p;
 
     if (value == nullptr) {
-      res.push_back(make_log_fragment(type));
+      res.emplace_back(type);
       continue;
     }
 
-    res.push_back(
-        make_log_fragment(type, strcopy(value, var_name + var_namelen)));
+    res.emplace_back(type, strcopy(value, var_name + var_namelen));
     auto &v = res.back().value;
     for (size_t i = 0; v[i]; ++i) {
       if (v[i] == '_') {
@@ -440,8 +431,7 @@ std::vector<LogFragment> parse_log_format(const char *optarg) {
   }
 
   if (literal_start != eop) {
-    res.push_back(
-        make_log_fragment(SHRPX_LOGF_LITERAL, strcopy(literal_start, eop)));
+    res.emplace_back(SHRPX_LOGF_LITERAL, strcopy(literal_start, eop));
   }
 
   return res;
