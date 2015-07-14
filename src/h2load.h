@@ -57,6 +57,7 @@ using namespace nghttp2;
 namespace h2load {
 
 class Session;
+struct Worker;
 
 struct Config {
   std::vector<std::vector<nghttp2_nv>> nva;
