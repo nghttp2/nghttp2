@@ -324,6 +324,127 @@ int parse_int(T *dest, const char *opt, const char *optarg) {
 }
 
 namespace {
+LogFragmentType log_var_lookup_token(const char *name, size_t namelen) {
+  switch (namelen) {
+  case 3:
+    switch (name[2]) {
+    case 'd':
+      if (util::strieq_l("pi", name, 2)) {
+        return SHRPX_LOGF_PID;
+      }
+      break;
+    }
+    break;
+  case 4:
+    switch (name[3]) {
+    case 'n':
+      if (util::strieq_l("alp", name, 3)) {
+        return SHRPX_LOGF_ALPN;
+      }
+      break;
+    }
+    break;
+  case 6:
+    switch (name[5]) {
+    case 's':
+      if (util::strieq_l("statu", name, 5)) {
+        return SHRPX_LOGF_STATUS;
+      }
+      break;
+    }
+    break;
+  case 7:
+    switch (name[6]) {
+    case 't':
+      if (util::strieq_l("reques", name, 6)) {
+        return SHRPX_LOGF_REQUEST;
+      }
+      break;
+    }
+    break;
+  case 10:
+    switch (name[9]) {
+    case 'l':
+      if (util::strieq_l("time_loca", name, 9)) {
+        return SHRPX_LOGF_TIME_LOCAL;
+      }
+      break;
+    case 'r':
+      if (util::strieq_l("ssl_ciphe", name, 9)) {
+        return SHRPX_LOGF_SSL_CIPHER;
+      }
+      break;
+    }
+    break;
+  case 11:
+    switch (name[10]) {
+    case 'r':
+      if (util::strieq_l("remote_add", name, 10)) {
+        return SHRPX_LOGF_REMOTE_ADDR;
+      }
+      break;
+    case 't':
+      if (util::strieq_l("remote_por", name, 10)) {
+        return SHRPX_LOGF_REMOTE_PORT;
+      }
+      if (util::strieq_l("server_por", name, 10)) {
+        return SHRPX_LOGF_SERVER_PORT;
+      }
+      break;
+    }
+    break;
+  case 12:
+    switch (name[11]) {
+    case '1':
+      if (util::strieq_l("time_iso860", name, 11)) {
+        return SHRPX_LOGF_TIME_ISO8601;
+      }
+      break;
+    case 'e':
+      if (util::strieq_l("request_tim", name, 11)) {
+        return SHRPX_LOGF_REQUEST_TIME;
+      }
+      break;
+    case 'l':
+      if (util::strieq_l("ssl_protoco", name, 11)) {
+        return SHRPX_LOGF_SSL_PROTOCOL;
+      }
+      break;
+    }
+    break;
+  case 14:
+    switch (name[13]) {
+    case 'd':
+      if (util::strieq_l("ssl_session_i", name, 13)) {
+        return SHRPX_LOGF_SSL_SESSION_ID;
+      }
+      break;
+    }
+    break;
+  case 15:
+    switch (name[14]) {
+    case 't':
+      if (util::strieq_l("body_bytes_sen", name, 14)) {
+        return SHRPX_LOGF_BODY_BYTES_SENT;
+      }
+      break;
+    }
+    break;
+  case 18:
+    switch (name[17]) {
+    case 'd':
+      if (util::strieq_l("ssl_session_reuse", name, 17)) {
+        return SHRPX_LOGF_SSL_SESSION_REUSED;
+      }
+      break;
+    }
+    break;
+  }
+  return SHRPX_LOGF_NONE;
+}
+} // namespace
+
+namespace {
 bool var_token(char c) {
   return util::isAlpha(c) || util::isDigit(c) || c == '_';
 }
@@ -368,46 +489,19 @@ std::vector<LogFragment> parse_log_format(const char *optarg) {
       var_namelen = p - var_name;
     }
 
-    auto type = SHRPX_LOGF_NONE;
     const char *value = nullptr;
 
-    if (util::strieq_l("remote_addr", var_name, var_namelen)) {
-      type = SHRPX_LOGF_REMOTE_ADDR;
-    } else if (util::strieq_l("time_local", var_name, var_namelen)) {
-      type = SHRPX_LOGF_TIME_LOCAL;
-    } else if (util::strieq_l("time_iso8601", var_name, var_namelen)) {
-      type = SHRPX_LOGF_TIME_ISO8601;
-    } else if (util::strieq_l("request", var_name, var_namelen)) {
-      type = SHRPX_LOGF_REQUEST;
-    } else if (util::strieq_l("status", var_name, var_namelen)) {
-      type = SHRPX_LOGF_STATUS;
-    } else if (util::strieq_l("body_bytes_sent", var_name, var_namelen)) {
-      type = SHRPX_LOGF_BODY_BYTES_SENT;
-    } else if (util::istartsWith(var_name, var_namelen, "http_")) {
-      type = SHRPX_LOGF_HTTP;
-      value = var_name + sizeof("http_") - 1;
-    } else if (util::strieq_l("remote_port", var_name, var_namelen)) {
-      type = SHRPX_LOGF_REMOTE_PORT;
-    } else if (util::strieq_l("server_port", var_name, var_namelen)) {
-      type = SHRPX_LOGF_SERVER_PORT;
-    } else if (util::strieq_l("request_time", var_name, var_namelen)) {
-      type = SHRPX_LOGF_REQUEST_TIME;
-    } else if (util::strieq_l("pid", var_name, var_namelen)) {
-      type = SHRPX_LOGF_PID;
-    } else if (util::strieq_l("alpn", var_name, var_namelen)) {
-      type = SHRPX_LOGF_ALPN;
-    } else if (util::strieq_l("ssl_cipher", var_name, var_namelen)) {
-      type = SHRPX_LOGF_SSL_CIPHER;
-    } else if (util::strieq_l("ssl_protocol", var_name, var_namelen)) {
-      type = SHRPX_LOGF_SSL_PROTOCOL;
-    } else if (util::strieq_l("ssl_session_id", var_name, var_namelen)) {
-      type = SHRPX_LOGF_SSL_SESSION_ID;
-    } else if (util::strieq_l("ssl_session_reused", var_name, var_namelen)) {
-      type = SHRPX_LOGF_SSL_SESSION_REUSED;
-    } else {
-      LOG(WARN) << "Unrecognized log format variable: "
-                << std::string(var_name, var_namelen);
-      continue;
+    auto type = log_var_lookup_token(var_name, var_namelen);
+
+    if (type == SHRPX_LOGF_NONE) {
+      if (util::istartsWith(var_name, var_namelen, "http_")) {
+        type = SHRPX_LOGF_HTTP;
+        value = var_name + str_size("http_");
+      } else {
+        LOG(WARN) << "Unrecognized log format variable: "
+                  << std::string(var_name, var_namelen);
+        continue;
+      }
     }
 
     if (literal_start < var_start) {
