@@ -75,8 +75,7 @@ Config::Config()
     : data_length(-1), addrs(nullptr), nreqs(1), nclients(1), nthreads(1),
       max_concurrent_streams(-1), window_bits(30), connection_window_bits(30),
       no_tls_proto(PROTO_HTTP2), data_fd(-1), port(0), default_port(0),
-      verbose(false), 
-      nconns(0), rate(0), current_worker(0) {}
+      verbose(false), nconns(0), rate(0), current_worker(0) {}
 
 Config::~Config() {
   freeaddrinfo(addrs);
@@ -86,9 +85,7 @@ Config::~Config() {
   }
 }
 
-bool Config::is_rate_mode() {    
-  return (this->rate != 0);    
-}
+bool Config::is_rate_mode() { return (this->rate != 0); }
 
 Config config;
 
@@ -975,18 +972,16 @@ void second_timeout_cb(EV_P_ ev_timer *w, int revents) {
   auto nclients_per_worker = config->rate;
   auto nreqs_per_worker = config->max_concurrent_streams * config->rate;
 
-  if(config->current_worker >= std::max(0. , (config->seconds - 1.))) {
+  if (config->current_worker >= std::max(0., (config->seconds - 1.))) {
     nclients_per_worker = config->rate + config->conns_remainder;
     nreqs_per_worker = (int)config->max_concurrent_streams *
                        (config->rate + config->conns_remainder);
     ev_timer_stop(config->rate_loop, w);
   }
 
-  config->workers.push_back(make_unique<Worker>(config->current_worker,
-                                                config->ssl_ctx,
-                                                nreqs_per_worker,
-                                                nclients_per_worker,
-                                                config));
+  config->workers.push_back(
+      make_unique<Worker>(config->current_worker, config->ssl_ctx,
+                          nreqs_per_worker, nclients_per_worker, config));
 
   config->current_worker++;
 
@@ -1068,7 +1063,8 @@ Options:
               Available protocol: )";
 #endif // !HAVE_SPDYLAY
   out << NGHTTP2_CLEARTEXT_PROTO_VERSION_ID << R"(
-              Default: )" << NGHTTP2_CLEARTEXT_PROTO_VERSION_ID << R"(
+              Default: )"
+      << NGHTTP2_CLEARTEXT_PROTO_VERSION_ID << R"(
   -d, --data=<FILE>
               Post FILE to  server.  The request method  is changed to
               POST.
@@ -1093,7 +1089,8 @@ Options:
   -v, --verbose
               Output debug information.
   --version   Display version information and exit.
-  -h, --help  Display this help and exit.)" << std::endl;
+  -h, --help  Display this help and exit.)"
+      << std::endl;
 }
 } // namespace
 
@@ -1128,8 +1125,8 @@ int main(int argc, char **argv) {
         {"num-conns", required_argument, nullptr, 'C'},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
-    auto c = getopt_long(argc, argv, "hvW:c:d:m:n:p:t:w:H:i:r:C:", 
-                         long_options, &option_index);
+    auto c = getopt_long(argc, argv, "hvW:c:d:m:n:p:t:w:H:i:r:C:", long_options,
+                         &option_index);
     if (c == -1) {
       break;
     }
@@ -1227,8 +1224,7 @@ int main(int argc, char **argv) {
       config.rate = strtoul(optarg, nullptr, 10);
       if (config.rate <= 0) {
         std::cerr << "-r: the rate at which connections are made "
-                  << "must be positive."
-                  << std::endl;
+                  << "must be positive." << std::endl;
         exit(EXIT_FAILURE);
       }
       break;
@@ -1236,8 +1232,7 @@ int main(int argc, char **argv) {
       config.nconns = strtoul(optarg, nullptr, 10);
       if (config.nconns <= 0) {
         std::cerr << "-C: the total number of connections made "
-                  << "must be positive."
-                  << std::endl;
+                  << "must be positive." << std::endl;
         exit(EXIT_FAILURE);
       }
       break;
@@ -1311,15 +1306,13 @@ int main(int argc, char **argv) {
 
   if (config.nconns < 0) {
     std::cerr << "-C: the total number of connections made "
-              << "cannot be negative."
-              << std::endl;
+              << "cannot be negative." << std::endl;
     exit(EXIT_FAILURE);
   }
 
   if (config.rate < 0) {
     std::cerr << "-r: the rate at which connections are made "
-              << "cannot be negative."
-              << std::endl;
+              << "cannot be negative." << std::endl;
     exit(EXIT_FAILURE);
   }
 
@@ -1519,8 +1512,8 @@ int main(int argc, char **argv) {
     std::cout << "spawning thread #" << (config.nthreads - 1) << ": "
               << nclients_last << " concurrent clients, " << nreqs_last
               << " total requests" << std::endl;
-    config.workers.push_back(make_unique<Worker>(config.nthreads - 1, ssl_ctx,
-                                          nreqs_last, nclients_last, &config));
+    config.workers.push_back(make_unique<Worker>(
+        config.nthreads - 1, ssl_ctx, nreqs_last, nclients_last, &config));
     config.workers.back()->run();
 
 #ifndef NOTHREADS
@@ -1528,7 +1521,7 @@ int main(int argc, char **argv) {
       fut.get();
     }
 #endif // NOTHREADS
-  } //!config.is_rate_mode()
+  } //! config.is_rate_mode()
   // if in rate mode, create a new worker each second
   else {
     // set various config values
@@ -1537,11 +1530,9 @@ int main(int argc, char **argv) {
     if ((int)config.nreqs < config.nconns) {
       config.seconds = c_time;
       config.workers.reserve(config.seconds);
-    }
-    else if (config.nconns == 0) {
+    } else if (config.nconns == 0) {
       config.seconds = n_time;
-    }
-    else {
+    } else {
       config.workers.reserve(config.seconds);
     }
 
