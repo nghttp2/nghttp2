@@ -494,12 +494,649 @@ void parse_mapping(const DownstreamAddr &addr, const char *src) {
 }
 } // namespace
 
+enum {
+  SHRPX_OPTID_ACCESSLOG_FILE,
+  SHRPX_OPTID_ACCESSLOG_FORMAT,
+  SHRPX_OPTID_ACCESSLOG_SYSLOG,
+  SHRPX_OPTID_ADD_REQUEST_HEADER,
+  SHRPX_OPTID_ADD_RESPONSE_HEADER,
+  SHRPX_OPTID_ADD_X_FORWARDED_FOR,
+  SHRPX_OPTID_ALTSVC,
+  SHRPX_OPTID_BACKEND,
+  SHRPX_OPTID_BACKEND_HTTP_PROXY_URI,
+  SHRPX_OPTID_BACKEND_HTTP1_CONNECTIONS_PER_FRONTEND,
+  SHRPX_OPTID_BACKEND_HTTP1_CONNECTIONS_PER_HOST,
+  SHRPX_OPTID_BACKEND_HTTP2_CONNECTION_WINDOW_BITS,
+  SHRPX_OPTID_BACKEND_HTTP2_CONNECTIONS_PER_WORKER,
+  SHRPX_OPTID_BACKEND_HTTP2_WINDOW_BITS,
+  SHRPX_OPTID_BACKEND_IPV4,
+  SHRPX_OPTID_BACKEND_IPV6,
+  SHRPX_OPTID_BACKEND_KEEP_ALIVE_TIMEOUT,
+  SHRPX_OPTID_BACKEND_NO_TLS,
+  SHRPX_OPTID_BACKEND_READ_TIMEOUT,
+  SHRPX_OPTID_BACKEND_REQUEST_BUFFER,
+  SHRPX_OPTID_BACKEND_RESPONSE_BUFFER,
+  SHRPX_OPTID_BACKEND_TLS_SNI_FIELD,
+  SHRPX_OPTID_BACKEND_WRITE_TIMEOUT,
+  SHRPX_OPTID_BACKLOG,
+  SHRPX_OPTID_CACERT,
+  SHRPX_OPTID_CERTIFICATE_FILE,
+  SHRPX_OPTID_CIPHERS,
+  SHRPX_OPTID_CLIENT,
+  SHRPX_OPTID_CLIENT_CERT_FILE,
+  SHRPX_OPTID_CLIENT_PRIVATE_KEY_FILE,
+  SHRPX_OPTID_CLIENT_PROXY,
+  SHRPX_OPTID_CONF,
+  SHRPX_OPTID_DAEMON,
+  SHRPX_OPTID_DH_PARAM_FILE,
+  SHRPX_OPTID_ERRORLOG_FILE,
+  SHRPX_OPTID_ERRORLOG_SYSLOG,
+  SHRPX_OPTID_FETCH_OCSP_RESPONSE_FILE,
+  SHRPX_OPTID_FRONTEND,
+  SHRPX_OPTID_FRONTEND_FRAME_DEBUG,
+  SHRPX_OPTID_FRONTEND_HTTP2_CONNECTION_WINDOW_BITS,
+  SHRPX_OPTID_FRONTEND_HTTP2_DUMP_REQUEST_HEADER,
+  SHRPX_OPTID_FRONTEND_HTTP2_DUMP_RESPONSE_HEADER,
+  SHRPX_OPTID_FRONTEND_HTTP2_READ_TIMEOUT,
+  SHRPX_OPTID_FRONTEND_HTTP2_WINDOW_BITS,
+  SHRPX_OPTID_FRONTEND_NO_TLS,
+  SHRPX_OPTID_FRONTEND_READ_TIMEOUT,
+  SHRPX_OPTID_FRONTEND_WRITE_TIMEOUT,
+  SHRPX_OPTID_HEADER_FIELD_BUFFER,
+  SHRPX_OPTID_HTTP2_BRIDGE,
+  SHRPX_OPTID_HTTP2_MAX_CONCURRENT_STREAMS,
+  SHRPX_OPTID_HTTP2_NO_COOKIE_CRUMBLING,
+  SHRPX_OPTID_HTTP2_PROXY,
+  SHRPX_OPTID_INCLUDE,
+  SHRPX_OPTID_INSECURE,
+  SHRPX_OPTID_LISTENER_DISABLE_TIMEOUT,
+  SHRPX_OPTID_LOG_LEVEL,
+  SHRPX_OPTID_MAX_HEADER_FIELDS,
+  SHRPX_OPTID_NO_HOST_REWRITE,
+  SHRPX_OPTID_NO_LOCATION_REWRITE,
+  SHRPX_OPTID_NO_OCSP,
+  SHRPX_OPTID_NO_SERVER_PUSH,
+  SHRPX_OPTID_NO_VIA,
+  SHRPX_OPTID_NPN_LIST,
+  SHRPX_OPTID_OCSP_UPDATE_INTERVAL,
+  SHRPX_OPTID_PADDING,
+  SHRPX_OPTID_PID_FILE,
+  SHRPX_OPTID_PRIVATE_KEY_FILE,
+  SHRPX_OPTID_PRIVATE_KEY_PASSWD_FILE,
+  SHRPX_OPTID_READ_BURST,
+  SHRPX_OPTID_READ_RATE,
+  SHRPX_OPTID_RLIMIT_NOFILE,
+  SHRPX_OPTID_STREAM_READ_TIMEOUT,
+  SHRPX_OPTID_STREAM_WRITE_TIMEOUT,
+  SHRPX_OPTID_STRIP_INCOMING_X_FORWARDED_FOR,
+  SHRPX_OPTID_SUBCERT,
+  SHRPX_OPTID_SYSLOG_FACILITY,
+  SHRPX_OPTID_TLS_PROTO_LIST,
+  SHRPX_OPTID_TLS_TICKET_KEY_FILE,
+  SHRPX_OPTID_USER,
+  SHRPX_OPTID_VERIFY_CLIENT,
+  SHRPX_OPTID_VERIFY_CLIENT_CACERT,
+  SHRPX_OPTID_WORKER_FRONTEND_CONNECTIONS,
+  SHRPX_OPTID_WORKER_READ_BURST,
+  SHRPX_OPTID_WORKER_READ_RATE,
+  SHRPX_OPTID_WORKER_WRITE_BURST,
+  SHRPX_OPTID_WORKER_WRITE_RATE,
+  SHRPX_OPTID_WORKERS,
+  SHRPX_OPTID_WRITE_BURST,
+  SHRPX_OPTID_WRITE_RATE,
+  SHRPX_OPTID_MAXIDX,
+};
+
+namespace {
+int option_lookup_token(const char *name, size_t namelen) {
+  switch (namelen) {
+  case 4:
+    switch (name[3]) {
+    case 'f':
+      if (util::strieq_l("con", name, 3)) {
+        return SHRPX_OPTID_CONF;
+      }
+      break;
+    case 'r':
+      if (util::strieq_l("use", name, 3)) {
+        return SHRPX_OPTID_USER;
+      }
+      break;
+    }
+    break;
+  case 6:
+    switch (name[5]) {
+    case 'a':
+      if (util::strieq_l("no-vi", name, 5)) {
+        return SHRPX_OPTID_NO_VIA;
+      }
+      break;
+    case 'c':
+      if (util::strieq_l("altsv", name, 5)) {
+        return SHRPX_OPTID_ALTSVC;
+      }
+      break;
+    case 'n':
+      if (util::strieq_l("daemo", name, 5)) {
+        return SHRPX_OPTID_DAEMON;
+      }
+      break;
+    case 't':
+      if (util::strieq_l("cacer", name, 5)) {
+        return SHRPX_OPTID_CACERT;
+      }
+      if (util::strieq_l("clien", name, 5)) {
+        return SHRPX_OPTID_CLIENT;
+      }
+      break;
+    }
+    break;
+  case 7:
+    switch (name[6]) {
+    case 'd':
+      if (util::strieq_l("backen", name, 6)) {
+        return SHRPX_OPTID_BACKEND;
+      }
+      break;
+    case 'e':
+      if (util::strieq_l("includ", name, 6)) {
+        return SHRPX_OPTID_INCLUDE;
+      }
+      break;
+    case 'g':
+      if (util::strieq_l("backlo", name, 6)) {
+        return SHRPX_OPTID_BACKLOG;
+      }
+      if (util::strieq_l("paddin", name, 6)) {
+        return SHRPX_OPTID_PADDING;
+      }
+      break;
+    case 'p':
+      if (util::strieq_l("no-ocs", name, 6)) {
+        return SHRPX_OPTID_NO_OCSP;
+      }
+      break;
+    case 's':
+      if (util::strieq_l("cipher", name, 6)) {
+        return SHRPX_OPTID_CIPHERS;
+      }
+      if (util::strieq_l("worker", name, 6)) {
+        return SHRPX_OPTID_WORKERS;
+      }
+      break;
+    case 't':
+      if (util::strieq_l("subcer", name, 6)) {
+        return SHRPX_OPTID_SUBCERT;
+      }
+      break;
+    }
+    break;
+  case 8:
+    switch (name[7]) {
+    case 'd':
+      if (util::strieq_l("fronten", name, 7)) {
+        return SHRPX_OPTID_FRONTEND;
+      }
+      break;
+    case 'e':
+      if (util::strieq_l("insecur", name, 7)) {
+        return SHRPX_OPTID_INSECURE;
+      }
+      if (util::strieq_l("pid-fil", name, 7)) {
+        return SHRPX_OPTID_PID_FILE;
+      }
+      break;
+    case 't':
+      if (util::strieq_l("npn-lis", name, 7)) {
+        return SHRPX_OPTID_NPN_LIST;
+      }
+      break;
+    }
+    break;
+  case 9:
+    switch (name[8]) {
+    case 'e':
+      if (util::strieq_l("read-rat", name, 8)) {
+        return SHRPX_OPTID_READ_RATE;
+      }
+      break;
+    case 'l':
+      if (util::strieq_l("log-leve", name, 8)) {
+        return SHRPX_OPTID_LOG_LEVEL;
+      }
+      break;
+    }
+    break;
+  case 10:
+    switch (name[9]) {
+    case 'e':
+      if (util::strieq_l("write-rat", name, 9)) {
+        return SHRPX_OPTID_WRITE_RATE;
+      }
+      break;
+    case 't':
+      if (util::strieq_l("read-burs", name, 9)) {
+        return SHRPX_OPTID_READ_BURST;
+      }
+      break;
+    }
+    break;
+  case 11:
+    switch (name[10]) {
+    case 't':
+      if (util::strieq_l("write-burs", name, 10)) {
+        return SHRPX_OPTID_WRITE_BURST;
+      }
+      break;
+    case 'y':
+      if (util::strieq_l("http2-prox", name, 10)) {
+        return SHRPX_OPTID_HTTP2_PROXY;
+      }
+      break;
+    }
+    break;
+  case 12:
+    switch (name[11]) {
+    case '4':
+      if (util::strieq_l("backend-ipv", name, 11)) {
+        return SHRPX_OPTID_BACKEND_IPV4;
+      }
+      break;
+    case '6':
+      if (util::strieq_l("backend-ipv", name, 11)) {
+        return SHRPX_OPTID_BACKEND_IPV6;
+      }
+      break;
+    case 'e':
+      if (util::strieq_l("http2-bridg", name, 11)) {
+        return SHRPX_OPTID_HTTP2_BRIDGE;
+      }
+      break;
+    case 'y':
+      if (util::strieq_l("client-prox", name, 11)) {
+        return SHRPX_OPTID_CLIENT_PROXY;
+      }
+      break;
+    }
+    break;
+  case 13:
+    switch (name[12]) {
+    case 'e':
+      if (util::strieq_l("dh-param-fil", name, 12)) {
+        return SHRPX_OPTID_DH_PARAM_FILE;
+      }
+      if (util::strieq_l("errorlog-fil", name, 12)) {
+        return SHRPX_OPTID_ERRORLOG_FILE;
+      }
+      if (util::strieq_l("rlimit-nofil", name, 12)) {
+        return SHRPX_OPTID_RLIMIT_NOFILE;
+      }
+      break;
+    case 't':
+      if (util::strieq_l("verify-clien", name, 12)) {
+        return SHRPX_OPTID_VERIFY_CLIENT;
+      }
+      break;
+    }
+    break;
+  case 14:
+    switch (name[13]) {
+    case 'e':
+      if (util::strieq_l("accesslog-fil", name, 13)) {
+        return SHRPX_OPTID_ACCESSLOG_FILE;
+      }
+      break;
+    case 'h':
+      if (util::strieq_l("no-server-pus", name, 13)) {
+        return SHRPX_OPTID_NO_SERVER_PUSH;
+      }
+      break;
+    case 's':
+      if (util::strieq_l("backend-no-tl", name, 13)) {
+        return SHRPX_OPTID_BACKEND_NO_TLS;
+      }
+      break;
+    case 't':
+      if (util::strieq_l("tls-proto-lis", name, 13)) {
+        return SHRPX_OPTID_TLS_PROTO_LIST;
+      }
+      break;
+    }
+    break;
+  case 15:
+    switch (name[14]) {
+    case 'e':
+      if (util::strieq_l("no-host-rewrit", name, 14)) {
+        return SHRPX_OPTID_NO_HOST_REWRITE;
+      }
+      break;
+    case 'g':
+      if (util::strieq_l("errorlog-syslo", name, 14)) {
+        return SHRPX_OPTID_ERRORLOG_SYSLOG;
+      }
+      break;
+    case 's':
+      if (util::strieq_l("frontend-no-tl", name, 14)) {
+        return SHRPX_OPTID_FRONTEND_NO_TLS;
+      }
+      break;
+    case 'y':
+      if (util::strieq_l("syslog-facilit", name, 14)) {
+        return SHRPX_OPTID_SYSLOG_FACILITY;
+      }
+      break;
+    }
+    break;
+  case 16:
+    switch (name[15]) {
+    case 'e':
+      if (util::strieq_l("certificate-fil", name, 15)) {
+        return SHRPX_OPTID_CERTIFICATE_FILE;
+      }
+      if (util::strieq_l("client-cert-fil", name, 15)) {
+        return SHRPX_OPTID_CLIENT_CERT_FILE;
+      }
+      if (util::strieq_l("private-key-fil", name, 15)) {
+        return SHRPX_OPTID_PRIVATE_KEY_FILE;
+      }
+      if (util::strieq_l("worker-read-rat", name, 15)) {
+        return SHRPX_OPTID_WORKER_READ_RATE;
+      }
+      break;
+    case 'g':
+      if (util::strieq_l("accesslog-syslo", name, 15)) {
+        return SHRPX_OPTID_ACCESSLOG_SYSLOG;
+      }
+      break;
+    case 't':
+      if (util::strieq_l("accesslog-forma", name, 15)) {
+        return SHRPX_OPTID_ACCESSLOG_FORMAT;
+      }
+      break;
+    }
+    break;
+  case 17:
+    switch (name[16]) {
+    case 'e':
+      if (util::strieq_l("worker-write-rat", name, 16)) {
+        return SHRPX_OPTID_WORKER_WRITE_RATE;
+      }
+      break;
+    case 's':
+      if (util::strieq_l("max-header-field", name, 16)) {
+        return SHRPX_OPTID_MAX_HEADER_FIELDS;
+      }
+      break;
+    case 't':
+      if (util::strieq_l("worker-read-burs", name, 16)) {
+        return SHRPX_OPTID_WORKER_READ_BURST;
+      }
+      break;
+    }
+    break;
+  case 18:
+    switch (name[17]) {
+    case 'r':
+      if (util::strieq_l("add-request-heade", name, 17)) {
+        return SHRPX_OPTID_ADD_REQUEST_HEADER;
+      }
+      break;
+    case 't':
+      if (util::strieq_l("worker-write-burs", name, 17)) {
+        return SHRPX_OPTID_WORKER_WRITE_BURST;
+      }
+      break;
+    }
+    break;
+  case 19:
+    switch (name[18]) {
+    case 'e':
+      if (util::strieq_l("no-location-rewrit", name, 18)) {
+        return SHRPX_OPTID_NO_LOCATION_REWRITE;
+      }
+      if (util::strieq_l("tls-ticket-key-fil", name, 18)) {
+        return SHRPX_OPTID_TLS_TICKET_KEY_FILE;
+      }
+      break;
+    case 'r':
+      if (util::strieq_l("add-response-heade", name, 18)) {
+        return SHRPX_OPTID_ADD_RESPONSE_HEADER;
+      }
+      if (util::strieq_l("add-x-forwarded-fo", name, 18)) {
+        return SHRPX_OPTID_ADD_X_FORWARDED_FOR;
+      }
+      if (util::strieq_l("header-field-buffe", name, 18)) {
+        return SHRPX_OPTID_HEADER_FIELD_BUFFER;
+      }
+      break;
+    case 't':
+      if (util::strieq_l("stream-read-timeou", name, 18)) {
+        return SHRPX_OPTID_STREAM_READ_TIMEOUT;
+      }
+      break;
+    }
+    break;
+  case 20:
+    switch (name[19]) {
+    case 'g':
+      if (util::strieq_l("frontend-frame-debu", name, 19)) {
+        return SHRPX_OPTID_FRONTEND_FRAME_DEBUG;
+      }
+      break;
+    case 'l':
+      if (util::strieq_l("ocsp-update-interva", name, 19)) {
+        return SHRPX_OPTID_OCSP_UPDATE_INTERVAL;
+      }
+      break;
+    case 't':
+      if (util::strieq_l("backend-read-timeou", name, 19)) {
+        return SHRPX_OPTID_BACKEND_READ_TIMEOUT;
+      }
+      if (util::strieq_l("stream-write-timeou", name, 19)) {
+        return SHRPX_OPTID_STREAM_WRITE_TIMEOUT;
+      }
+      if (util::strieq_l("verify-client-cacer", name, 19)) {
+        return SHRPX_OPTID_VERIFY_CLIENT_CACERT;
+      }
+      break;
+    }
+    break;
+  case 21:
+    switch (name[20]) {
+    case 'd':
+      if (util::strieq_l("backend-tls-sni-fiel", name, 20)) {
+        return SHRPX_OPTID_BACKEND_TLS_SNI_FIELD;
+      }
+      break;
+    case 't':
+      if (util::strieq_l("backend-write-timeou", name, 20)) {
+        return SHRPX_OPTID_BACKEND_WRITE_TIMEOUT;
+      }
+      if (util::strieq_l("frontend-read-timeou", name, 20)) {
+        return SHRPX_OPTID_FRONTEND_READ_TIMEOUT;
+      }
+      break;
+    }
+    break;
+  case 22:
+    switch (name[21]) {
+    case 'i':
+      if (util::strieq_l("backend-http-proxy-ur", name, 21)) {
+        return SHRPX_OPTID_BACKEND_HTTP_PROXY_URI;
+      }
+      break;
+    case 'r':
+      if (util::strieq_l("backend-request-buffe", name, 21)) {
+        return SHRPX_OPTID_BACKEND_REQUEST_BUFFER;
+      }
+      break;
+    case 't':
+      if (util::strieq_l("frontend-write-timeou", name, 21)) {
+        return SHRPX_OPTID_FRONTEND_WRITE_TIMEOUT;
+      }
+      break;
+    }
+    break;
+  case 23:
+    switch (name[22]) {
+    case 'e':
+      if (util::strieq_l("client-private-key-fil", name, 22)) {
+        return SHRPX_OPTID_CLIENT_PRIVATE_KEY_FILE;
+      }
+      if (util::strieq_l("private-key-passwd-fil", name, 22)) {
+        return SHRPX_OPTID_PRIVATE_KEY_PASSWD_FILE;
+      }
+      break;
+    case 'r':
+      if (util::strieq_l("backend-response-buffe", name, 22)) {
+        return SHRPX_OPTID_BACKEND_RESPONSE_BUFFER;
+      }
+      break;
+    }
+    break;
+  case 24:
+    switch (name[23]) {
+    case 'e':
+      if (util::strieq_l("fetch-ocsp-response-fil", name, 23)) {
+        return SHRPX_OPTID_FETCH_OCSP_RESPONSE_FILE;
+      }
+      break;
+    case 't':
+      if (util::strieq_l("listener-disable-timeou", name, 23)) {
+        return SHRPX_OPTID_LISTENER_DISABLE_TIMEOUT;
+      }
+      break;
+    }
+    break;
+  case 25:
+    switch (name[24]) {
+    case 'g':
+      if (util::strieq_l("http2-no-cookie-crumblin", name, 24)) {
+        return SHRPX_OPTID_HTTP2_NO_COOKIE_CRUMBLING;
+      }
+      break;
+    case 's':
+      if (util::strieq_l("backend-http2-window-bit", name, 24)) {
+        return SHRPX_OPTID_BACKEND_HTTP2_WINDOW_BITS;
+      }
+      break;
+    }
+    break;
+  case 26:
+    switch (name[25]) {
+    case 's':
+      if (util::strieq_l("frontend-http2-window-bit", name, 25)) {
+        return SHRPX_OPTID_FRONTEND_HTTP2_WINDOW_BITS;
+      }
+      break;
+    case 't':
+      if (util::strieq_l("backend-keep-alive-timeou", name, 25)) {
+        return SHRPX_OPTID_BACKEND_KEEP_ALIVE_TIMEOUT;
+      }
+      break;
+    }
+    break;
+  case 27:
+    switch (name[26]) {
+    case 's':
+      if (util::strieq_l("worker-frontend-connection", name, 26)) {
+        return SHRPX_OPTID_WORKER_FRONTEND_CONNECTIONS;
+      }
+      break;
+    case 't':
+      if (util::strieq_l("frontend-http2-read-timeou", name, 26)) {
+        return SHRPX_OPTID_FRONTEND_HTTP2_READ_TIMEOUT;
+      }
+      break;
+    }
+    break;
+  case 28:
+    switch (name[27]) {
+    case 's':
+      if (util::strieq_l("http2-max-concurrent-stream", name, 27)) {
+        return SHRPX_OPTID_HTTP2_MAX_CONCURRENT_STREAMS;
+      }
+      break;
+    }
+    break;
+  case 30:
+    switch (name[29]) {
+    case 'r':
+      if (util::strieq_l("strip-incoming-x-forwarded-fo", name, 29)) {
+        return SHRPX_OPTID_STRIP_INCOMING_X_FORWARDED_FOR;
+      }
+      break;
+    }
+    break;
+  case 34:
+    switch (name[33]) {
+    case 'r':
+      if (util::strieq_l("frontend-http2-dump-request-heade", name, 33)) {
+        return SHRPX_OPTID_FRONTEND_HTTP2_DUMP_REQUEST_HEADER;
+      }
+      break;
+    case 't':
+      if (util::strieq_l("backend-http1-connections-per-hos", name, 33)) {
+        return SHRPX_OPTID_BACKEND_HTTP1_CONNECTIONS_PER_HOST;
+      }
+      break;
+    }
+    break;
+  case 35:
+    switch (name[34]) {
+    case 'r':
+      if (util::strieq_l("frontend-http2-dump-response-heade", name, 34)) {
+        return SHRPX_OPTID_FRONTEND_HTTP2_DUMP_RESPONSE_HEADER;
+      }
+      break;
+    }
+    break;
+  case 36:
+    switch (name[35]) {
+    case 'r':
+      if (util::strieq_l("backend-http2-connections-per-worke", name, 35)) {
+        return SHRPX_OPTID_BACKEND_HTTP2_CONNECTIONS_PER_WORKER;
+      }
+      break;
+    case 's':
+      if (util::strieq_l("backend-http2-connection-window-bit", name, 35)) {
+        return SHRPX_OPTID_BACKEND_HTTP2_CONNECTION_WINDOW_BITS;
+      }
+      break;
+    }
+    break;
+  case 37:
+    switch (name[36]) {
+    case 's':
+      if (util::strieq_l("frontend-http2-connection-window-bit", name, 36)) {
+        return SHRPX_OPTID_FRONTEND_HTTP2_CONNECTION_WINDOW_BITS;
+      }
+      break;
+    }
+    break;
+  case 38:
+    switch (name[37]) {
+    case 'd':
+      if (util::strieq_l("backend-http1-connections-per-fronten", name, 37)) {
+        return SHRPX_OPTID_BACKEND_HTTP1_CONNECTIONS_PER_FRONTEND;
+      }
+      break;
+    }
+    break;
+  }
+  return -1;
+}
+} // namespace
+
 int parse_config(const char *opt, const char *optarg,
                  std::set<std::string> &included_set) {
   char host[NI_MAXHOST];
   uint16_t port;
 
-  if (util::strieq(opt, SHRPX_OPT_BACKEND)) {
+  auto optid = option_lookup_token(opt, strlen(opt));
+
+  switch (optid) {
+  case SHRPX_OPTID_BACKEND: {
     auto optarglen = strlen(optarg);
     const char *pat_delim = strchr(optarg, ';');
     if (!pat_delim) {
@@ -531,8 +1168,7 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   }
-
-  if (util::strieq(opt, SHRPX_OPT_FRONTEND)) {
+  case SHRPX_OPTID_FRONTEND: {
     if (util::istartsWith(optarg, SHRPX_UNIX_PATH_PREFIX)) {
       auto path = optarg + str_size(SHRPX_UNIX_PATH_PREFIX);
       mod_config()->host = strcopy(path);
@@ -553,136 +1189,88 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   }
-
-  if (util::strieq(opt, SHRPX_OPT_WORKERS)) {
+  case SHRPX_OPTID_WORKERS:
     return parse_uint(&mod_config()->num_worker, opt, optarg);
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_HTTP2_MAX_CONCURRENT_STREAMS)) {
+  case SHRPX_OPTID_HTTP2_MAX_CONCURRENT_STREAMS:
     return parse_uint(&mod_config()->http2_max_concurrent_streams, opt, optarg);
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_LOG_LEVEL)) {
+  case SHRPX_OPTID_LOG_LEVEL:
     if (Log::set_severity_level_by_name(optarg) == -1) {
       LOG(ERROR) << opt << ": Invalid severity level: " << optarg;
       return -1;
     }
 
     return 0;
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_DAEMON)) {
+  case SHRPX_OPTID_DAEMON:
     mod_config()->daemon = util::strieq(optarg, "yes");
 
     return 0;
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_HTTP2_PROXY)) {
+  case SHRPX_OPTID_HTTP2_PROXY:
     mod_config()->http2_proxy = util::strieq(optarg, "yes");
 
     return 0;
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_HTTP2_BRIDGE)) {
+  case SHRPX_OPTID_HTTP2_BRIDGE:
     mod_config()->http2_bridge = util::strieq(optarg, "yes");
 
     return 0;
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_CLIENT_PROXY)) {
+  case SHRPX_OPTID_CLIENT_PROXY:
     mod_config()->client_proxy = util::strieq(optarg, "yes");
 
     return 0;
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_ADD_X_FORWARDED_FOR)) {
+  case SHRPX_OPTID_ADD_X_FORWARDED_FOR:
     mod_config()->add_x_forwarded_for = util::strieq(optarg, "yes");
 
     return 0;
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_STRIP_INCOMING_X_FORWARDED_FOR)) {
+  case SHRPX_OPTID_STRIP_INCOMING_X_FORWARDED_FOR:
     mod_config()->strip_incoming_x_forwarded_for = util::strieq(optarg, "yes");
 
     return 0;
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_NO_VIA)) {
+  case SHRPX_OPTID_NO_VIA:
     mod_config()->no_via = util::strieq(optarg, "yes");
 
     return 0;
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_FRONTEND_HTTP2_READ_TIMEOUT)) {
+  case SHRPX_OPTID_FRONTEND_HTTP2_READ_TIMEOUT:
     return parse_duration(&mod_config()->http2_upstream_read_timeout, opt,
                           optarg);
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_FRONTEND_READ_TIMEOUT)) {
+  case SHRPX_OPTID_FRONTEND_READ_TIMEOUT:
     return parse_duration(&mod_config()->upstream_read_timeout, opt, optarg);
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_FRONTEND_WRITE_TIMEOUT)) {
+  case SHRPX_OPTID_FRONTEND_WRITE_TIMEOUT:
     return parse_duration(&mod_config()->upstream_write_timeout, opt, optarg);
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_BACKEND_READ_TIMEOUT)) {
+  case SHRPX_OPTID_BACKEND_READ_TIMEOUT:
     return parse_duration(&mod_config()->downstream_read_timeout, opt, optarg);
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_BACKEND_WRITE_TIMEOUT)) {
+  case SHRPX_OPTID_BACKEND_WRITE_TIMEOUT:
     return parse_duration(&mod_config()->downstream_write_timeout, opt, optarg);
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_STREAM_READ_TIMEOUT)) {
+  case SHRPX_OPTID_STREAM_READ_TIMEOUT:
     return parse_duration(&mod_config()->stream_read_timeout, opt, optarg);
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_STREAM_WRITE_TIMEOUT)) {
+  case SHRPX_OPTID_STREAM_WRITE_TIMEOUT:
     return parse_duration(&mod_config()->stream_write_timeout, opt, optarg);
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_ACCESSLOG_FILE)) {
+  case SHRPX_OPTID_ACCESSLOG_FILE:
     mod_config()->accesslog_file = strcopy(optarg);
 
     return 0;
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_ACCESSLOG_SYSLOG)) {
+  case SHRPX_OPTID_ACCESSLOG_SYSLOG:
     mod_config()->accesslog_syslog = util::strieq(optarg, "yes");
 
     return 0;
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_ACCESSLOG_FORMAT)) {
+  case SHRPX_OPTID_ACCESSLOG_FORMAT:
     mod_config()->accesslog_format = parse_log_format(optarg);
 
     return 0;
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_ERRORLOG_FILE)) {
+  case SHRPX_OPTID_ERRORLOG_FILE:
     mod_config()->errorlog_file = strcopy(optarg);
 
     return 0;
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_ERRORLOG_SYSLOG)) {
+  case SHRPX_OPTID_ERRORLOG_SYSLOG:
     mod_config()->errorlog_syslog = util::strieq(optarg, "yes");
 
     return 0;
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_BACKEND_KEEP_ALIVE_TIMEOUT)) {
+  case SHRPX_OPTID_BACKEND_KEEP_ALIVE_TIMEOUT:
     return parse_duration(&mod_config()->downstream_idle_read_timeout, opt,
                           optarg);
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_FRONTEND_HTTP2_WINDOW_BITS) ||
-      util::strieq(opt, SHRPX_OPT_BACKEND_HTTP2_WINDOW_BITS)) {
-
+  case SHRPX_OPTID_FRONTEND_HTTP2_WINDOW_BITS:
+  case SHRPX_OPTID_BACKEND_HTTP2_WINDOW_BITS: {
     size_t *resp;
 
-    if (util::strieq(opt, SHRPX_OPT_FRONTEND_HTTP2_WINDOW_BITS)) {
+    if (optid == SHRPX_OPTID_FRONTEND_HTTP2_WINDOW_BITS) {
       resp = &mod_config()->http2_upstream_window_bits;
     } else {
       resp = &mod_config()->http2_downstream_window_bits;
@@ -706,13 +1294,11 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   }
-
-  if (util::strieq(opt, SHRPX_OPT_FRONTEND_HTTP2_CONNECTION_WINDOW_BITS) ||
-      util::strieq(opt, SHRPX_OPT_BACKEND_HTTP2_CONNECTION_WINDOW_BITS)) {
-
+  case SHRPX_OPTID_FRONTEND_HTTP2_CONNECTION_WINDOW_BITS:
+  case SHRPX_OPTID_BACKEND_HTTP2_CONNECTION_WINDOW_BITS: {
     size_t *resp;
 
-    if (util::strieq(opt, SHRPX_OPT_FRONTEND_HTTP2_CONNECTION_WINDOW_BITS)) {
+    if (optid == SHRPX_OPTID_FRONTEND_HTTP2_CONNECTION_WINDOW_BITS) {
       resp = &mod_config()->http2_upstream_connection_window_bits;
     } else {
       resp = &mod_config()->http2_downstream_connection_window_bits;
@@ -736,32 +1322,23 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   }
-
-  if (util::strieq(opt, SHRPX_OPT_FRONTEND_NO_TLS)) {
+  case SHRPX_OPTID_FRONTEND_NO_TLS:
     mod_config()->upstream_no_tls = util::strieq(optarg, "yes");
 
     return 0;
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_BACKEND_NO_TLS)) {
+  case SHRPX_OPTID_BACKEND_NO_TLS:
     mod_config()->downstream_no_tls = util::strieq(optarg, "yes");
 
     return 0;
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_BACKEND_TLS_SNI_FIELD)) {
+  case SHRPX_OPTID_BACKEND_TLS_SNI_FIELD:
     mod_config()->backend_tls_sni_name = strcopy(optarg);
 
     return 0;
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_PID_FILE)) {
+  case SHRPX_OPTID_PID_FILE:
     mod_config()->pid_file = strcopy(optarg);
 
     return 0;
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_USER)) {
+  case SHRPX_OPTID_USER: {
     auto pwd = getpwnam(optarg);
     if (!pwd) {
       LOG(ERROR) << opt << ": failed to get uid from " << optarg << ": "
@@ -774,14 +1351,11 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   }
-
-  if (util::strieq(opt, SHRPX_OPT_PRIVATE_KEY_FILE)) {
+  case SHRPX_OPTID_PRIVATE_KEY_FILE:
     mod_config()->private_key_file = strcopy(optarg);
 
     return 0;
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_PRIVATE_KEY_PASSWD_FILE)) {
+  case SHRPX_OPTID_PRIVATE_KEY_PASSWD_FILE: {
     auto passwd = read_passwd_from_file(optarg);
     if (passwd.empty()) {
       LOG(ERROR) << opt << ": Couldn't read key file's passwd from " << optarg;
@@ -791,20 +1365,15 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   }
-
-  if (util::strieq(opt, SHRPX_OPT_CERTIFICATE_FILE)) {
+  case SHRPX_OPTID_CERTIFICATE_FILE:
     mod_config()->cert_file = strcopy(optarg);
 
     return 0;
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_DH_PARAM_FILE)) {
+  case SHRPX_OPTID_DH_PARAM_FILE:
     mod_config()->dh_param_file = strcopy(optarg);
 
     return 0;
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_SUBCERT)) {
+  case SHRPX_OPTID_SUBCERT: {
     // Private Key file and certificate file separated by ':'.
     const char *sp = strchr(optarg, ':');
     if (sp) {
@@ -815,8 +1384,7 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   }
-
-  if (util::strieq(opt, SHRPX_OPT_SYSLOG_FACILITY)) {
+  case SHRPX_OPTID_SYSLOG_FACILITY: {
     int facility = int_syslog_facility(optarg);
     if (facility == -1) {
       LOG(ERROR) << opt << ": Unknown syslog facility: " << optarg;
@@ -826,8 +1394,7 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   }
-
-  if (util::strieq(opt, SHRPX_OPT_BACKLOG)) {
+  case SHRPX_OPTID_BACKLOG: {
     int n;
     if (parse_int(&n, opt, optarg) != 0) {
       return -1;
@@ -843,44 +1410,31 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   }
-
-  if (util::strieq(opt, SHRPX_OPT_CIPHERS)) {
+  case SHRPX_OPTID_CIPHERS:
     mod_config()->ciphers = strcopy(optarg);
 
     return 0;
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_CLIENT)) {
+  case SHRPX_OPTID_CLIENT:
     mod_config()->client = util::strieq(optarg, "yes");
 
     return 0;
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_INSECURE)) {
+  case SHRPX_OPTID_INSECURE:
     mod_config()->insecure = util::strieq(optarg, "yes");
 
     return 0;
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_CACERT)) {
+  case SHRPX_OPTID_CACERT:
     mod_config()->cacert = strcopy(optarg);
 
     return 0;
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_BACKEND_IPV4)) {
+  case SHRPX_OPTID_BACKEND_IPV4:
     mod_config()->backend_ipv4 = util::strieq(optarg, "yes");
 
     return 0;
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_BACKEND_IPV6)) {
+  case SHRPX_OPTID_BACKEND_IPV6:
     mod_config()->backend_ipv6 = util::strieq(optarg, "yes");
 
     return 0;
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_BACKEND_HTTP_PROXY_URI)) {
+  case SHRPX_OPTID_BACKEND_HTTP_PROXY_URI: {
     // parse URI and get hostname, port and optionally userinfo.
     http_parser_url u;
     memset(&u, 0, sizeof(u));
@@ -916,112 +1470,71 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   }
-
-  if (util::strieq(opt, SHRPX_OPT_READ_RATE)) {
+  case SHRPX_OPTID_READ_RATE:
     return parse_uint_with_unit(&mod_config()->read_rate, opt, optarg);
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_READ_BURST)) {
+  case SHRPX_OPTID_READ_BURST:
     return parse_uint_with_unit(&mod_config()->read_burst, opt, optarg);
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_WRITE_RATE)) {
+  case SHRPX_OPTID_WRITE_RATE:
     return parse_uint_with_unit(&mod_config()->write_rate, opt, optarg);
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_WRITE_BURST)) {
+  case SHRPX_OPTID_WRITE_BURST:
     return parse_uint_with_unit(&mod_config()->write_burst, opt, optarg);
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_WORKER_READ_RATE)) {
+  case SHRPX_OPTID_WORKER_READ_RATE:
     LOG(WARN) << opt << ": not implemented yet";
     return parse_uint_with_unit(&mod_config()->worker_read_rate, opt, optarg);
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_WORKER_READ_BURST)) {
+  case SHRPX_OPTID_WORKER_READ_BURST:
     LOG(WARN) << opt << ": not implemented yet";
     return parse_uint_with_unit(&mod_config()->worker_read_burst, opt, optarg);
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_WORKER_WRITE_RATE)) {
+  case SHRPX_OPTID_WORKER_WRITE_RATE:
     LOG(WARN) << opt << ": not implemented yet";
     return parse_uint_with_unit(&mod_config()->worker_write_rate, opt, optarg);
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_WORKER_WRITE_BURST)) {
+  case SHRPX_OPTID_WORKER_WRITE_BURST:
     LOG(WARN) << opt << ": not implemented yet";
     return parse_uint_with_unit(&mod_config()->worker_write_burst, opt, optarg);
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_NPN_LIST)) {
+  case SHRPX_OPTID_NPN_LIST:
     clear_config_str_list(mod_config()->npn_list);
-
     mod_config()->npn_list = parse_config_str_list(optarg);
 
     return 0;
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_TLS_PROTO_LIST)) {
+  case SHRPX_OPTID_TLS_PROTO_LIST:
     clear_config_str_list(mod_config()->tls_proto_list);
-
     mod_config()->tls_proto_list = parse_config_str_list(optarg);
 
     return 0;
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_VERIFY_CLIENT)) {
+  case SHRPX_OPTID_VERIFY_CLIENT:
     mod_config()->verify_client = util::strieq(optarg, "yes");
 
     return 0;
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_VERIFY_CLIENT_CACERT)) {
+  case SHRPX_OPTID_VERIFY_CLIENT_CACERT:
     mod_config()->verify_client_cacert = strcopy(optarg);
 
     return 0;
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_CLIENT_PRIVATE_KEY_FILE)) {
+  case SHRPX_OPTID_CLIENT_PRIVATE_KEY_FILE:
     mod_config()->client_private_key_file = strcopy(optarg);
 
     return 0;
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_CLIENT_CERT_FILE)) {
+  case SHRPX_OPTID_CLIENT_CERT_FILE:
     mod_config()->client_cert_file = strcopy(optarg);
 
     return 0;
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_FRONTEND_HTTP2_DUMP_REQUEST_HEADER)) {
+  case SHRPX_OPTID_FRONTEND_HTTP2_DUMP_REQUEST_HEADER:
     mod_config()->http2_upstream_dump_request_header_file = strcopy(optarg);
 
     return 0;
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_FRONTEND_HTTP2_DUMP_RESPONSE_HEADER)) {
+  case SHRPX_OPTID_FRONTEND_HTTP2_DUMP_RESPONSE_HEADER:
     mod_config()->http2_upstream_dump_response_header_file = strcopy(optarg);
 
     return 0;
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_HTTP2_NO_COOKIE_CRUMBLING)) {
+  case SHRPX_OPTID_HTTP2_NO_COOKIE_CRUMBLING:
     mod_config()->http2_no_cookie_crumbling = util::strieq(optarg, "yes");
 
     return 0;
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_FRONTEND_FRAME_DEBUG)) {
+  case SHRPX_OPTID_FRONTEND_FRAME_DEBUG:
     mod_config()->upstream_frame_debug = util::strieq(optarg, "yes");
 
     return 0;
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_PADDING)) {
+  case SHRPX_OPTID_PADDING:
     return parse_uint(&mod_config()->padding, opt, optarg);
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_ALTSVC)) {
+  case SHRPX_OPTID_ALTSVC: {
     auto tokens = parse_config_str_list(optarg);
 
     if (tokens.size() < 2) {
@@ -1069,39 +1582,31 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   }
-
-  if (util::strieq(opt, SHRPX_OPT_ADD_REQUEST_HEADER) ||
-      util::strieq(opt, SHRPX_OPT_ADD_RESPONSE_HEADER)) {
+  case SHRPX_OPTID_ADD_REQUEST_HEADER:
+  case SHRPX_OPTID_ADD_RESPONSE_HEADER: {
     auto p = parse_header(optarg);
     if (p.first.empty()) {
       LOG(ERROR) << opt << ": header field name is empty: " << optarg;
       return -1;
     }
-    if (util::strieq(opt, SHRPX_OPT_ADD_REQUEST_HEADER)) {
+    if (optid == SHRPX_OPTID_ADD_REQUEST_HEADER) {
       mod_config()->add_request_headers.push_back(std::move(p));
     } else {
       mod_config()->add_response_headers.push_back(std::move(p));
     }
     return 0;
   }
-
-  if (util::strieq(opt, SHRPX_OPT_WORKER_FRONTEND_CONNECTIONS)) {
+  case SHRPX_OPTID_WORKER_FRONTEND_CONNECTIONS:
     return parse_uint(&mod_config()->worker_frontend_connections, opt, optarg);
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_NO_LOCATION_REWRITE)) {
+  case SHRPX_OPTID_NO_LOCATION_REWRITE:
     mod_config()->no_location_rewrite = util::strieq(optarg, "yes");
 
     return 0;
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_NO_HOST_REWRITE)) {
+  case SHRPX_OPTID_NO_HOST_REWRITE:
     mod_config()->no_host_rewrite = util::strieq(optarg, "yes");
 
     return 0;
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_BACKEND_HTTP1_CONNECTIONS_PER_HOST)) {
+  case SHRPX_OPTID_BACKEND_HTTP1_CONNECTIONS_PER_HOST: {
     int n;
 
     if (parse_uint(&n, opt, optarg) != 0) {
@@ -1118,22 +1623,15 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   }
-
-  if (util::strieq(opt, SHRPX_OPT_BACKEND_HTTP1_CONNECTIONS_PER_FRONTEND)) {
+  case SHRPX_OPTID_BACKEND_HTTP1_CONNECTIONS_PER_FRONTEND:
     return parse_uint(&mod_config()->downstream_connections_per_frontend, opt,
                       optarg);
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_LISTENER_DISABLE_TIMEOUT)) {
+  case SHRPX_OPTID_LISTENER_DISABLE_TIMEOUT:
     return parse_duration(&mod_config()->listener_disable_timeout, opt, optarg);
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_TLS_TICKET_KEY_FILE)) {
+  case SHRPX_OPTID_TLS_TICKET_KEY_FILE:
     mod_config()->tls_ticket_key_files.push_back(optarg);
     return 0;
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_RLIMIT_NOFILE)) {
+  case SHRPX_OPTID_RLIMIT_NOFILE: {
     int n;
 
     if (parse_uint(&n, opt, optarg) != 0) {
@@ -1150,9 +1648,8 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   }
-
-  if (util::strieq(opt, SHRPX_OPT_BACKEND_REQUEST_BUFFER) ||
-      util::strieq(opt, SHRPX_OPT_BACKEND_RESPONSE_BUFFER)) {
+  case SHRPX_OPTID_BACKEND_REQUEST_BUFFER:
+  case SHRPX_OPTID_BACKEND_RESPONSE_BUFFER: {
     size_t n;
     if (parse_uint_with_unit(&n, opt, optarg) != 0) {
       return -1;
@@ -1164,7 +1661,7 @@ int parse_config(const char *opt, const char *optarg,
       return -1;
     }
 
-    if (util::strieq(opt, SHRPX_OPT_BACKEND_REQUEST_BUFFER)) {
+    if (optid == SHRPX_OPTID_BACKEND_REQUEST_BUFFER) {
       mod_config()->downstream_request_buffer_size = n;
     } else {
       mod_config()->downstream_response_buffer_size = n;
@@ -1173,43 +1670,29 @@ int parse_config(const char *opt, const char *optarg,
     return 0;
   }
 
-  if (util::strieq(opt, SHRPX_OPT_NO_SERVER_PUSH)) {
+  case SHRPX_OPTID_NO_SERVER_PUSH:
     mod_config()->no_server_push = util::strieq(optarg, "yes");
 
     return 0;
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_BACKEND_HTTP2_CONNECTIONS_PER_WORKER)) {
+  case SHRPX_OPTID_BACKEND_HTTP2_CONNECTIONS_PER_WORKER:
     return parse_uint(&mod_config()->http2_downstream_connections_per_worker,
                       opt, optarg);
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_FETCH_OCSP_RESPONSE_FILE)) {
+  case SHRPX_OPTID_FETCH_OCSP_RESPONSE_FILE:
     mod_config()->fetch_ocsp_response_file = strcopy(optarg);
 
     return 0;
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_OCSP_UPDATE_INTERVAL)) {
+  case SHRPX_OPTID_OCSP_UPDATE_INTERVAL:
     return parse_duration(&mod_config()->ocsp_update_interval, opt, optarg);
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_NO_OCSP)) {
+  case SHRPX_OPTID_NO_OCSP:
     mod_config()->no_ocsp = util::strieq(optarg, "yes");
 
     return 0;
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_HEADER_FIELD_BUFFER)) {
+  case SHRPX_OPTID_HEADER_FIELD_BUFFER:
     return parse_uint_with_unit(&mod_config()->header_field_buffer, opt,
                                 optarg);
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_MAX_HEADER_FIELDS)) {
+  case SHRPX_OPTID_MAX_HEADER_FIELDS:
     return parse_uint(&mod_config()->max_header_fields, opt, optarg);
-  }
-
-  if (util::strieq(opt, SHRPX_OPT_INCLUDE)) {
+  case SHRPX_OPTID_INCLUDE: {
     if (included_set.count(optarg)) {
       LOG(ERROR) << opt << ": " << optarg << " has already been included";
       return -1;
@@ -1225,8 +1708,7 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   }
-
-  if (util::strieq(opt, "conf")) {
+  case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 
     return 0;
