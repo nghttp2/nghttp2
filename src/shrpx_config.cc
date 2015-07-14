@@ -370,52 +370,69 @@ std::vector<LogFragment> parse_log_format(const char *optarg) {
 
     ++p;
 
-    for (; p != eop && var_token(*p); ++p)
-      ;
+    const char *var_name;
+    size_t var_namelen;
+    if (p != eop && *p == '{') {
+      var_name = ++p;
+      for (; p != eop && var_token(*p); ++p)
+        ;
 
-    auto varlen = p - var_start;
+      if (p == eop || *p != '}') {
+        LOG(WARN) << "Missing '}' after " << std::string(var_start, p);
+        continue;
+      }
+
+      var_namelen = p - var_name;
+      ++p;
+    } else {
+      var_name = p;
+      for (; p != eop && var_token(*p); ++p)
+        ;
+
+      var_namelen = p - var_name;
+    }
 
     auto type = SHRPX_LOGF_NONE;
     const char *value = nullptr;
     size_t valuelen = 0;
 
-    if (util::strieq_l("$remote_addr", var_start, varlen)) {
+    if (util::strieq_l("remote_addr", var_name, var_namelen)) {
       type = SHRPX_LOGF_REMOTE_ADDR;
-    } else if (util::strieq_l("$time_local", var_start, varlen)) {
+    } else if (util::strieq_l("time_local", var_name, var_namelen)) {
       type = SHRPX_LOGF_TIME_LOCAL;
-    } else if (util::strieq_l("$time_iso8601", var_start, varlen)) {
+    } else if (util::strieq_l("time_iso8601", var_name, var_namelen)) {
       type = SHRPX_LOGF_TIME_ISO8601;
-    } else if (util::strieq_l("$request", var_start, varlen)) {
+    } else if (util::strieq_l("request", var_name, var_namelen)) {
       type = SHRPX_LOGF_REQUEST;
-    } else if (util::strieq_l("$status", var_start, varlen)) {
+    } else if (util::strieq_l("status", var_name, var_namelen)) {
       type = SHRPX_LOGF_STATUS;
-    } else if (util::strieq_l("$body_bytes_sent", var_start, varlen)) {
+    } else if (util::strieq_l("body_bytes_sent", var_name, var_namelen)) {
       type = SHRPX_LOGF_BODY_BYTES_SENT;
-    } else if (util::istartsWith(var_start, varlen, "$http_")) {
+    } else if (util::istartsWith(var_name, var_namelen, "http_")) {
       type = SHRPX_LOGF_HTTP;
-      value = var_start + sizeof("$http_") - 1;
-      valuelen = varlen - (sizeof("$http_") - 1);
-    } else if (util::strieq_l("$remote_port", var_start, varlen)) {
+      value = var_name + sizeof("http_") - 1;
+      valuelen = var_namelen - (sizeof("http_") - 1);
+    } else if (util::strieq_l("remote_port", var_name, var_namelen)) {
       type = SHRPX_LOGF_REMOTE_PORT;
-    } else if (util::strieq_l("$server_port", var_start, varlen)) {
+    } else if (util::strieq_l("server_port", var_name, var_namelen)) {
       type = SHRPX_LOGF_SERVER_PORT;
-    } else if (util::strieq_l("$request_time", var_start, varlen)) {
+    } else if (util::strieq_l("request_time", var_name, var_namelen)) {
       type = SHRPX_LOGF_REQUEST_TIME;
-    } else if (util::strieq_l("$pid", var_start, varlen)) {
+    } else if (util::strieq_l("pid", var_name, var_namelen)) {
       type = SHRPX_LOGF_PID;
-    } else if (util::strieq_l("$alpn", var_start, varlen)) {
+    } else if (util::strieq_l("alpn", var_name, var_namelen)) {
       type = SHRPX_LOGF_ALPN;
-    } else if (util::strieq_l("$ssl_cipher", var_start, varlen)) {
+    } else if (util::strieq_l("ssl_cipher", var_name, var_namelen)) {
       type = SHRPX_LOGF_SSL_CIPHER;
-    } else if (util::strieq_l("$ssl_protocol", var_start, varlen)) {
+    } else if (util::strieq_l("ssl_protocol", var_name, var_namelen)) {
       type = SHRPX_LOGF_SSL_PROTOCOL;
-    } else if (util::strieq_l("$ssl_session_id", var_start, varlen)) {
+    } else if (util::strieq_l("ssl_session_id", var_name, var_namelen)) {
       type = SHRPX_LOGF_SSL_SESSION_ID;
-    } else if (util::strieq_l("$ssl_session_reused", var_start, varlen)) {
+    } else if (util::strieq_l("ssl_session_reused", var_name, var_namelen)) {
       type = SHRPX_LOGF_SSL_SESSION_REUSED;
     } else {
       LOG(WARN) << "Unrecognized log format variable: "
-                << std::string(var_start, varlen);
+                << std::string(var_name, var_namelen);
       continue;
     }
 
@@ -425,19 +442,20 @@ std::vector<LogFragment> parse_log_format(const char *optarg) {
                             strcopy(literal_start, var_start - literal_start)));
     }
 
+    literal_start = p;
+
     if (value == nullptr) {
       res.push_back(make_log_fragment(type));
-    } else {
-      res.push_back(make_log_fragment(type, strcopy(value, valuelen)));
-      auto &v = res.back().value;
-      for (size_t i = 0; v[i]; ++i) {
-        if (v[i] == '_') {
-          v[i] = '-';
-        }
-      }
+      continue;
     }
 
-    literal_start = var_start + varlen;
+    res.push_back(make_log_fragment(type, strcopy(value, valuelen)));
+    auto &v = res.back().value;
+    for (size_t i = 0; v[i]; ++i) {
+      if (v[i] == '_') {
+        v[i] = '-';
+      }
+    }
   }
 
   if (literal_start != eop) {

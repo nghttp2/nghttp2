@@ -1407,6 +1407,9 @@ Logging:
               * $ssl_session_reused:  "r"   if  SSL/TLS   session  was
                 reused.  Otherwise, "."
 
+              The  variable  can  be  enclosed  by  "{"  and  "}"  for
+              disambiguation (e.g., ${remote_addr}).
+
               Default: )" << DEFAULT_ACCESSLOG_FORMAT << R"(
   --errorlog-file=<PATH>
               Set path to write error  log.  To reopen file, send USR1

@@ -95,9 +95,9 @@ void test_shrpx_config_parse_header(void) {
 }
 
 void test_shrpx_config_parse_log_format(void) {
-  auto res = parse_log_format("$remote_addr - $remote_user [$time_local] "
-                              "\"$request\" $status $body_bytes_sent "
-                              "\"$http_referer\" \"$http_user_agent\"");
+  auto res = parse_log_format(R"($remote_addr - $remote_user [$time_local] )"
+                              R"("$request" $status $body_bytes_sent )"
+                              R"("${http_referer}" "$http_user_agent")");
   CU_ASSERT(14 == res.size());
 
   CU_ASSERT(SHRPX_LOGF_REMOTE_ADDR == res[0].type);
@@ -136,6 +136,44 @@ void test_shrpx_config_parse_log_format(void) {
 
   CU_ASSERT(SHRPX_LOGF_LITERAL == res[13].type);
   CU_ASSERT(0 == strcmp("\"", res[13].value.get()));
+
+  res = parse_log_format("$");
+
+  CU_ASSERT(1 == res.size());
+
+  CU_ASSERT(SHRPX_LOGF_LITERAL == res[0].type);
+  CU_ASSERT(0 == strcmp("$", res[0].value.get()));
+
+  res = parse_log_format("${");
+
+  CU_ASSERT(1 == res.size());
+
+  CU_ASSERT(SHRPX_LOGF_LITERAL == res[0].type);
+  CU_ASSERT(0 == strcmp("${", res[0].value.get()));
+
+  res = parse_log_format("${a");
+
+  CU_ASSERT(1 == res.size());
+
+  CU_ASSERT(SHRPX_LOGF_LITERAL == res[0].type);
+  CU_ASSERT(0 == strcmp("${a", res[0].value.get()));
+
+  res = parse_log_format("${a ");
+
+  CU_ASSERT(1 == res.size());
+
+  CU_ASSERT(SHRPX_LOGF_LITERAL == res[0].type);
+  CU_ASSERT(0 == strcmp("${a ", res[0].value.get()));
+
+  res = parse_log_format("$$remote_addr");
+
+  CU_ASSERT(2 == res.size());
+
+  CU_ASSERT(SHRPX_LOGF_LITERAL == res[0].type);
+  CU_ASSERT(0 == strcmp("$", res[0].value.get()));
+
+  CU_ASSERT(SHRPX_LOGF_REMOTE_ADDR == res[1].type);
+  CU_ASSERT(nullptr == res[1].value.get());
 }
 
 void test_shrpx_config_read_tls_ticket_key_file(void) {
