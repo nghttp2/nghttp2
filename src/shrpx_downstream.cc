@@ -152,10 +152,6 @@ Downstream::~Downstream() {
     DLOG(INFO, this) << "Deleting";
   }
 
-  if (blocked_link_) {
-    detach_blocked_link(blocked_link_);
-  }
-
   // check nullptr for unittest
   if (upstream_) {
     auto loop = upstream_->get_client_handler()->get_loop();
@@ -165,6 +161,10 @@ Downstream::~Downstream() {
     ev_timer_stop(loop, &downstream_rtimer_);
     ev_timer_stop(loop, &downstream_wtimer_);
   }
+
+  // DownstreamConnection may refer to this object.  Delete it now
+  // explicitly.
+  dconn_.reset();
 
   if (LOG_ENABLED(INFO)) {
     DLOG(INFO, this) << "Deleted";
@@ -194,8 +194,6 @@ void Downstream::detach_downstream_connection() {
   handler->pool_downstream_connection(
       std::unique_ptr<DownstreamConnection>(dconn_.release()));
 }
-
-void Downstream::release_downstream_connection() { dconn_.release(); }
 
 DownstreamConnection *Downstream::get_downstream_connection() {
   return dconn_.get();
@@ -1200,12 +1198,10 @@ void Downstream::attach_blocked_link(BlockedLink *l) {
   blocked_link_ = l;
 }
 
-void Downstream::detach_blocked_link(BlockedLink *l) {
-  assert(blocked_link_);
-  assert(l->downstream == this);
-
-  l->downstream = nullptr;
+BlockedLink *Downstream::detach_blocked_link() {
+  auto link = blocked_link_;
   blocked_link_ = nullptr;
+  return link;
 }
 
 void Downstream::add_request_headers_sum(size_t amount) {

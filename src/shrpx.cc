@@ -966,6 +966,7 @@ void fill_default_config() {
   mod_config()->no_ocsp = false;
   mod_config()->header_field_buffer = 64_k;
   mod_config()->max_header_fields = 100;
+  mod_config()->downstream_addr_group_catch_all = 0;
 }
 } // namespace
 
@@ -997,14 +998,67 @@ Options:
   The options are categorized into several groups.
 
 Connections:
-  -b, --backend=<HOST,PORT>
+  -b, --backend=(<HOST>,<PORT>|unix:<PATH>)[;<PATTERN>[:...]]
               Set  backend  host  and   port.   The  multiple  backend
               addresses are  accepted by repeating this  option.  UNIX
               domain socket  can be  specified by prefixing  path name
-              with "unix:" (e.g., unix:/var/run/backend.sock)
+              with "unix:" (e.g., unix:/var/run/backend.sock).
+
+              Optionally, if <PATTERN>s are given, the backend address
+              is only used  if request matches the pattern.   If -s or
+              -p  is  used,  <PATTERN>s   are  ignored.   The  pattern
+              matching  is closely  designed to  ServeMux in  net/http
+              package of Go  programming language.  <PATTERN> consists
+              of path, host + path or  just host.  The path must start
+              with "/".  If  it ends with "/", it  matches all request
+              path in  its subtree.  To  deal with the request  to the
+              directory without  trailing slash,  the path  which ends
+              with "/" also matches the  request path which only lacks
+              trailing '/'  (e.g., path  "/foo/" matches  request path
+              "/foo").  If it does not end with "/", it performs exact
+              match against  the request path.   If host is  given, it
+              performs exact match against  the request host.  If host
+              alone  is given,  "/"  is  appended to  it,  so that  it
+              matches  all   request  paths  under  the   host  (e.g.,
+              specifying "nghttp2.org" equals to "nghttp2.org/").
+
+              Patterns with  host take  precedence over  patterns with
+              just path.   Then, longer patterns take  precedence over
+              shorter  ones,  breaking  a  tie by  the  order  of  the
+              appearance in the configuration.
+
+              If <PATTERN> is  omitted, "/" is used  as pattern, which
+              matches  all  request  paths (catch-all  pattern).   The
+              catch-all backend must be given.
+
+              When doing  a match, nghttpx made  some normalization to
+              pattern, request host and path.  For host part, they are
+              converted to lower case.  For path part, percent-encoded
+              unreserved characters  defined in RFC 3986  are decoded,
+              and any  dot-segments (".."  and ".")   are resolved and
+              removed.
+
+              For   example,   -b'127.0.0.1,8080;nghttp2.org/httpbin/'
+              matches the  request host "nghttp2.org" and  the request
+              path "/httpbin/get", but does not match the request host
+              "nghttp2.org" and the request path "/index.html".
+
+              The  multiple <PATTERN>s  can  be specified,  delimiting
+              them            by           ":".             Specifying
+              -b'127.0.0.1,8080;nghttp2.org:www.nghttp2.org'  has  the
+              same  effect  to specify  -b'127.0.0.1,8080;nghttp2.org'
+              and -b'127.0.0.1,8080;www.nghttp2.org'.
+
+              The backend addresses sharing same <PATTERN> are grouped
+              together forming  load balancing  group.
+
+              Since ";" and ":" are  used as delimiter, <PATTERN> must
+              not  contain these  characters.  Since  ";" has  special
+              meaning in shell, the option value must be quoted.
+
               Default: )" << DEFAULT_DOWNSTREAM_HOST << ","
       << DEFAULT_DOWNSTREAM_PORT << R"(
-  -f, --frontend=<HOST,PORT>
+  -f, --frontend=(<HOST>,<PORT>|unix:<PATH>)
               Set  frontend  host and  port.   If  <HOST> is  '*',  it
               assumes  all addresses  including  both  IPv4 and  IPv6.
               UNIX domain  socket can  be specified by  prefixing path
@@ -1079,9 +1133,14 @@ Performance:
               accepts.  Setting 0 means unlimited.
               Default: )" << get_config()->worker_frontend_connections << R"(
   --backend-http2-connections-per-worker=<N>
-              Set  maximum number  of HTTP/2  connections per  worker.
-              The  default  value is  0,  which  means the  number  of
-              backend addresses specified by -b option.
+              Set   maximum   number   of  backend   HTTP/2   physical
+              connections  per  worker.   If  pattern is  used  in  -b
+              option, this limit is applied  to each pattern group (in
+              other  words, each  pattern group  can have  maximum <N>
+              HTTP/2  connections).  The  default  value  is 0,  which
+              means  that  the value  is  adjusted  to the  number  of
+              backend addresses.  If pattern  is used, this adjustment
+              is done for each pattern group.
   --backend-http1-connections-per-host=<N>
               Set   maximum  number   of  backend   concurrent  HTTP/1
               connections per origin host.   This option is meaningful
@@ -1351,6 +1410,9 @@ Logging:
               * $ssl_session_reused:  "r"   if  SSL/TLS   session  was
                 reused.  Otherwise, "."
 
+              The  variable  can  be  enclosed  by  "{"  and  "}"  for
+              disambiguation (e.g., ${remote_addr}).
+
               Default: )" << DEFAULT_ACCESSLOG_FORMAT << R"(
   --errorlog-file=<PATH>
               Set path to write error  log.  To reopen file, send USR1
@@ -1446,6 +1508,11 @@ Misc:
   --conf=<PATH>
               Load configuration from <PATH>.
               Default: )" << get_config()->conf_path.get() << R"(
+  --include=<PATH>
+              Load additional configurations from <PATH>.  File <PATH>
+              is  read  when  configuration  parser  encountered  this
+              option.  This option can be used multiple times, or even
+              recursively.
   -v, --version
               Print version and exit.
   -h, --help  Print this help and exit.
@@ -1592,6 +1659,7 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_HEADER_FIELD_BUFFER, required_argument, &flag, 80},
         {SHRPX_OPT_MAX_HEADER_FIELDS, required_argument, &flag, 81},
         {SHRPX_OPT_ADD_REQUEST_HEADER, required_argument, &flag, 82},
+        {SHRPX_OPT_INCLUDE, required_argument, &flag, 83},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -1954,6 +2022,10 @@ int main(int argc, char **argv) {
         // --add-request-header
         cmdcfgs.emplace_back(SHRPX_OPT_ADD_REQUEST_HEADER, optarg);
         break;
+      case 83:
+        // --include
+        cmdcfgs.emplace_back(SHRPX_OPT_INCLUDE, optarg);
+        break;
       default:
         break;
       }
@@ -1964,11 +2036,13 @@ int main(int argc, char **argv) {
   }
 
   if (conf_exists(get_config()->conf_path.get())) {
-    if (load_config(get_config()->conf_path.get()) == -1) {
+    std::set<std::string> include_set;
+    if (load_config(get_config()->conf_path.get(), include_set) == -1) {
       LOG(FATAL) << "Failed to load configuration from "
                  << get_config()->conf_path.get();
       exit(EXIT_FAILURE);
     }
+    assert(include_set.empty());
   }
 
   if (argc - optind >= 2) {
@@ -1980,11 +2054,18 @@ int main(int argc, char **argv) {
   // parsing option values.
   reopen_log_files();
 
-  for (size_t i = 0, len = cmdcfgs.size(); i < len; ++i) {
-    if (parse_config(cmdcfgs[i].first, cmdcfgs[i].second) == -1) {
-      LOG(FATAL) << "Failed to parse command-line argument.";
-      exit(EXIT_FAILURE);
+  {
+    std::set<std::string> include_set;
+
+    for (size_t i = 0, len = cmdcfgs.size(); i < len; ++i) {
+      if (parse_config(cmdcfgs[i].first, cmdcfgs[i].second, include_set) ==
+          -1) {
+        LOG(FATAL) << "Failed to parse command-line argument.";
+        exit(EXIT_FAILURE);
+      }
     }
+
+    assert(include_set.empty());
   }
 
   if (get_config()->accesslog_syslog || get_config()->errorlog_syslog) {
@@ -2118,55 +2199,96 @@ int main(int argc, char **argv) {
     }
   }
 
-  if (get_config()->downstream_addrs.empty()) {
+  if (get_config()->downstream_addr_groups.empty()) {
     DownstreamAddr addr;
     addr.host = strcopy(DEFAULT_DOWNSTREAM_HOST);
     addr.port = DEFAULT_DOWNSTREAM_PORT;
 
-    mod_config()->downstream_addrs.push_back(std::move(addr));
+    DownstreamAddrGroup g("/");
+    g.addrs.push_back(std::move(addr));
+    mod_config()->downstream_addr_groups.push_back(std::move(g));
+  } else if (get_config()->http2_proxy || get_config()->client_proxy) {
+    // We don't support host mapping in these cases.  Move all
+    // non-catch-all patterns to catch-all pattern.
+    DownstreamAddrGroup catch_all("/");
+    for (auto &g : mod_config()->downstream_addr_groups) {
+      std::move(std::begin(g.addrs), std::end(g.addrs),
+                std::back_inserter(catch_all.addrs));
+    }
+    std::vector<DownstreamAddrGroup>().swap(
+        mod_config()->downstream_addr_groups);
+    mod_config()->downstream_addr_groups.push_back(std::move(catch_all));
   }
 
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "Resolving backend address";
   }
 
-  for (auto &addr : mod_config()->downstream_addrs) {
+  ssize_t catch_all_group = -1;
+  for (size_t i = 0; i < mod_config()->downstream_addr_groups.size(); ++i) {
+    auto &g = mod_config()->downstream_addr_groups[i];
+    if (g.pattern == "/") {
+      catch_all_group = i;
+    }
+    if (LOG_ENABLED(INFO)) {
+      LOG(INFO) << "Host-path pattern: group " << i << ": '" << g.pattern
+                << "'";
+      for (auto &addr : g.addrs) {
+        LOG(INFO) << "group " << i << " -> " << addr.host.get()
+                  << (addr.host_unix ? "" : ":" + util::utos(addr.port));
+      }
+    }
+  }
 
-    if (addr.host_unix) {
-      // for AF_UNIX socket, we use "localhost" as host for backend
-      // hostport.  This is used as Host header field to backend and
-      // not going to be passed to any syscalls.
-      addr.hostport =
-          strcopy(util::make_hostport("localhost", get_config()->port));
+  if (catch_all_group == -1) {
+    LOG(FATAL) << "-b: No catch-all backend address is configured";
+    exit(EXIT_FAILURE);
+  }
+  mod_config()->downstream_addr_group_catch_all = catch_all_group;
 
-      auto path = addr.host.get();
-      auto pathlen = strlen(path);
+  if (LOG_ENABLED(INFO)) {
+    LOG(INFO) << "Catch-all pattern is group " << catch_all_group;
+  }
 
-      if (pathlen + 1 > sizeof(addr.addr.un.sun_path)) {
-        LOG(FATAL) << "UNIX domain socket path " << path << " is too long > "
-                   << sizeof(addr.addr.un.sun_path);
-        exit(EXIT_FAILURE);
+  for (auto &g : mod_config()->downstream_addr_groups) {
+    for (auto &addr : g.addrs) {
+
+      if (addr.host_unix) {
+        // for AF_UNIX socket, we use "localhost" as host for backend
+        // hostport.  This is used as Host header field to backend and
+        // not going to be passed to any syscalls.
+        addr.hostport =
+            strcopy(util::make_hostport("localhost", get_config()->port));
+
+        auto path = addr.host.get();
+        auto pathlen = strlen(path);
+
+        if (pathlen + 1 > sizeof(addr.addr.un.sun_path)) {
+          LOG(FATAL) << "UNIX domain socket path " << path << " is too long > "
+                     << sizeof(addr.addr.un.sun_path);
+          exit(EXIT_FAILURE);
+        }
+
+        LOG(INFO) << "Use UNIX domain socket path " << path
+                  << " for backend connection";
+
+        addr.addr.un.sun_family = AF_UNIX;
+        // copy path including terminal NULL
+        std::copy_n(path, pathlen + 1, addr.addr.un.sun_path);
+        addr.addrlen = sizeof(addr.addr.un);
+
+        continue;
       }
 
-      LOG(INFO) << "Use UNIX domain socket path " << path
-                << " for backend connection";
+      addr.hostport = strcopy(util::make_hostport(addr.host.get(), addr.port));
 
-      addr.addr.un.sun_family = AF_UNIX;
-      // copy path including terminal NULL
-      std::copy_n(path, pathlen + 1, addr.addr.un.sun_path);
-      addr.addrlen = sizeof(addr.addr.un);
-
-      continue;
-    }
-
-    addr.hostport = strcopy(util::make_hostport(addr.host.get(), addr.port));
-
-    if (resolve_hostname(
-            &addr.addr, &addr.addrlen, addr.host.get(), addr.port,
-            get_config()->backend_ipv4
-                ? AF_INET
-                : (get_config()->backend_ipv6 ? AF_INET6 : AF_UNSPEC)) == -1) {
-      exit(EXIT_FAILURE);
+      if (resolve_hostname(
+              &addr.addr, &addr.addrlen, addr.host.get(), addr.port,
+              get_config()->backend_ipv4 ? AF_INET : (get_config()->backend_ipv6
+                                                          ? AF_INET6
+                                                          : AF_UNSPEC)) == -1) {
+        exit(EXIT_FAILURE);
+      }
     }
   }
 
@@ -2181,11 +2303,6 @@ int main(int argc, char **argv) {
                          AF_UNSPEC) == -1) {
       exit(EXIT_FAILURE);
     }
-  }
-
-  if (get_config()->http2_downstream_connections_per_worker == 0) {
-    mod_config()->http2_downstream_connections_per_worker =
-        get_config()->downstream_addrs.size();
   }
 
   if (get_config()->rlimit_nofile) {

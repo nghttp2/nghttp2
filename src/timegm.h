@@ -37,7 +37,7 @@ extern "C" {
 #include <time.h>
 #endif // HAVE_TIME_H
 
-time_t timegm(struct tm *tm);
+time_t nghttp2_timegm(struct tm *tm);
 
 #ifdef __cplusplus
 }

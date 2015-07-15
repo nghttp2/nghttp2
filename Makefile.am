@@ -23,6 +23,11 @@
 SUBDIRS = lib third-party src examples python tests integration-tests \
 	doc contrib script
 
+# Now with python setuptools, make uninstall will leave many files we
+# cannot easily remove (e.g., easy-install.pth).  Disable it for
+# distcheck rule.
+AM_DISTCHECK_CONFIGURE_FLAGS = --disable-python-bindings
+
 ACLOCAL_AMFLAGS = -I m4
 
 dist_doc_DATA = README.rst

@@ -142,13 +142,14 @@ void writecb(struct ev_loop *loop, ev_io *w, int revents) {
 } // namespace
 
 Http2Session::Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx,
-                           ConnectBlocker *connect_blocker, Worker *worker)
+                           ConnectBlocker *connect_blocker, Worker *worker,
+                           size_t group, size_t idx)
     : conn_(loop, -1, nullptr, get_config()->downstream_write_timeout,
             get_config()->downstream_read_timeout, 0, 0, 0, 0, writecb, readcb,
             timeoutcb, this),
       worker_(worker), connect_blocker_(connect_blocker), ssl_ctx_(ssl_ctx),
       session_(nullptr), data_pending_(nullptr), data_pendinglen_(0),
-      addr_idx_(0), state_(DISCONNECTED),
+      addr_idx_(0), group_(group), index_(idx), state_(DISCONNECTED),
       connection_check_state_(CONNECTION_CHECK_NONE), flow_control_(false) {
 
   read_ = write_ = &Http2Session::noop;
@@ -233,10 +234,16 @@ int Http2Session::disconnect(bool hard) {
   return 0;
 }
 
-int Http2Session::check_cert() { return ssl::check_cert(conn_.tls.ssl); }
+int Http2Session::check_cert() {
+  return ssl::check_cert(
+      conn_.tls.ssl,
+      &get_config()->downstream_addr_groups[group_].addrs[addr_idx_]);
+}
 
 int Http2Session::initiate_connection() {
   int rv = 0;
+
+  auto &addrs = get_config()->downstream_addr_groups[group_].addrs;
 
   if (state_ == DISCONNECTED) {
     if (connect_blocker_->blocked()) {
@@ -247,18 +254,19 @@ int Http2Session::initiate_connection() {
       return -1;
     }
 
-    auto worker_stat = worker_->get_worker_stat();
-    addr_idx_ = worker_stat->next_downstream;
-    ++worker_stat->next_downstream;
-    worker_stat->next_downstream %= get_config()->downstream_addrs.size();
+    auto &next_downstream = worker_->get_dgrp(group_)->next;
+    addr_idx_ = next_downstream;
+    if (++next_downstream >= addrs.size()) {
+      next_downstream = 0;
+    }
 
     if (LOG_ENABLED(INFO)) {
       SSLOG(INFO, this) << "Using downstream address idx=" << addr_idx_
-                        << " out of " << get_config()->downstream_addrs.size();
+                        << " out of " << addrs.size();
     }
   }
 
-  auto &downstream_addr = get_config()->downstream_addrs[addr_idx_];
+  auto &downstream_addr = addrs[addr_idx_];
 
   if (get_config()->downstream_http_proxy_host && state_ == DISCONNECTED) {
     if (LOG_ENABLED(INFO)) {
@@ -503,7 +511,8 @@ int Http2Session::downstream_connect_proxy() {
   if (LOG_ENABLED(INFO)) {
     SSLOG(INFO, this) << "Connected to the proxy";
   }
-  auto &downstream_addr = get_config()->downstream_addrs[addr_idx_];
+  auto &downstream_addr =
+      get_config()->downstream_addr_groups[group_].addrs[addr_idx_];
 
   std::string req = "CONNECT ";
   req += downstream_addr.hostport.get();
@@ -1743,5 +1752,9 @@ bool Http2Session::should_hard_fail() const {
 }
 
 size_t Http2Session::get_addr_idx() const { return addr_idx_; }
+
+size_t Http2Session::get_group() const { return group_; }
+
+size_t Http2Session::get_index() const { return index_; }
 
 } // namespace shrpx

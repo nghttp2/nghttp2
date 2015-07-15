@@ -278,7 +278,7 @@ std::string common_log_date(time_t t) {
 #ifdef HAVE_STRUCT_TM_TM_GMTOFF
   auto gmtoff = tms.tm_gmtoff;
 #else  // !HAVE_STRUCT_TM_TM_GMTOFF
-  auto gmtoff = timegm(&tms) - t;
+  auto gmtoff = nghttp2_timegm(&tms) - t;
 #endif // !HAVE_STRUCT_TM_TM_GMTOFF
   if (gmtoff >= 0) {
     *p++ = '+';
@@ -326,7 +326,7 @@ std::string iso8601_date(int64_t ms) {
 #ifdef HAVE_STRUCT_TM_TM_GMTOFF
   auto gmtoff = tms.tm_gmtoff;
 #else  // !HAVE_STRUCT_TM_TM_GMTOFF
-  auto gmtoff = timegm(&tms) - sec;
+  auto gmtoff = nghttp2_timegm(&tms) - sec;
 #endif // !HAVE_STRUCT_TM_TM_GMTOFF
   if (gmtoff == 0) {
     *p++ = 'Z';
@@ -354,7 +354,7 @@ time_t parse_http_date(const std::string &s) {
   if (r == 0) {
     return 0;
   }
-  return timegm(&tm);
+  return nghttp2_timegm(&tm);
 }
 
 namespace {

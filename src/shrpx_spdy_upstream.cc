@@ -229,7 +229,12 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
     } else {
       downstream->set_request_http2_scheme(scheme->value);
       downstream->set_request_http2_authority(host->value);
-      downstream->set_request_path(path->value);
+      if (get_config()->http2_proxy || get_config()->client_proxy) {
+        downstream->set_request_path(path->value);
+      } else {
+        downstream->set_request_path(http2::rewrite_clean_path(
+            std::begin(path->value), std::end(path->value)));
+      }
     }
 
     if (!(frame->syn_stream.hd.flags & SPDYLAY_CTRL_FLAG_FIN)) {
@@ -271,7 +276,7 @@ void SpdyUpstream::start_downstream(Downstream *downstream) {
 
 void SpdyUpstream::initiate_downstream(Downstream *downstream) {
   int rv = downstream->attach_downstream_connection(
-      handler_->get_downstream_connection());
+      handler_->get_downstream_connection(downstream));
   if (rv != 0) {
     // If downstream connection fails, issue RST_STREAM.
     rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
@@ -555,16 +560,6 @@ ClientHandler *SpdyUpstream::get_client_handler() const { return handler_; }
 int SpdyUpstream::downstream_read(DownstreamConnection *dconn) {
   auto downstream = dconn->get_downstream();
 
-  if (downstream->get_request_state() == Downstream::STREAM_CLOSED) {
-    // If upstream SPDY stream was closed, we just close downstream,
-    // because there is no consumer now. Downstream connection is also
-    // closed in this case.
-    remove_downstream(downstream);
-    // downstrea was deleted
-
-    return 0;
-  }
-
   if (downstream->get_response_state() == Downstream::MSG_RESET) {
     // The downstream stream was reset (canceled). In this case,
     // RST_STREAM to the upstream and delete downstream connection
@@ -628,14 +623,6 @@ int SpdyUpstream::downstream_eof(DownstreamConnection *dconn) {
   if (LOG_ENABLED(INFO)) {
     DCLOG(INFO, dconn) << "EOF. stream_id=" << downstream->get_stream_id();
   }
-  if (downstream->get_request_state() == Downstream::STREAM_CLOSED) {
-    // If stream was closed already, we don't need to send reply at
-    // the first place. We can delete downstream.
-    remove_downstream(downstream);
-    // downstream was deleted
-
-    return 0;
-  }
 
   // Delete downstream connection. If we don't delete it here, it will
   // be pooled in on_stream_close_callback.
@@ -679,13 +666,6 @@ int SpdyUpstream::downstream_error(DownstreamConnection *dconn, int events) {
     if (downstream->get_upgraded()) {
       DCLOG(INFO, dconn) << "Note: this is tunnel connection";
     }
-  }
-
-  if (downstream->get_request_state() == Downstream::STREAM_CLOSED) {
-    remove_downstream(downstream);
-    // downstream was deleted
-
-    return 0;
   }
 
   // Delete downstream connection. If we don't delete it here, it will
@@ -1104,7 +1084,7 @@ int SpdyUpstream::on_downstream_reset(bool no_retry) {
     // downstream connection.
 
     rv = downstream->attach_downstream_connection(
-        handler_->get_downstream_connection());
+        handler_->get_downstream_connection(downstream));
     if (rv != 0) {
       goto fail;
     }

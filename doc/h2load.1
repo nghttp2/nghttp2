@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "H2LOAD" "1" "June 27, 2015" "1.0.5" "nghttp2"
+.TH "H2LOAD" "1" "July 15, 2015" "1.1.1" "nghttp2"
 .SH NAME
 h2load \- HTTP/2 benchmarking tool
 .
@@ -110,6 +110,12 @@ Default: \fB30\fP
 .TP
 .B \-H, \-\-header=<HEADER>
 Add/Override a header to the requests.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-ciphers=<SUITE>
+Set allowed  cipher list.  The  format of the  string is
+described in OpenSSL ciphers(1).
 .UNINDENT
 .INDENT 0.0
 .TP

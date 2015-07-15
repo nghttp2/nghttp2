@@ -69,8 +69,6 @@ public:
 
   int attach_downstream_connection(std::unique_ptr<DownstreamConnection> dconn);
   void detach_downstream_connection();
-  // Releases dconn_, without freeing it.
-  void release_downstream_connection();
   DownstreamConnection *get_downstream_connection();
   // Returns dconn_ and nullifies dconn_.
   std::unique_ptr<DownstreamConnection> pop_downstream_connection();
@@ -332,7 +330,7 @@ public:
   void set_dispatch_state(int s);
 
   void attach_blocked_link(BlockedLink *l);
-  void detach_blocked_link(BlockedLink *l);
+  BlockedLink *detach_blocked_link();
 
   enum {
     EVENT_ERROR = 0x1,

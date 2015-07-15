@@ -42,12 +42,17 @@
 #include <cstdio>
 #include <vector>
 #include <memory>
+#include <set>
 
 #include <openssl/ssl.h>
 
 #include <ev.h>
 
 #include <nghttp2/nghttp2.h>
+
+#include "template.h"
+
+using namespace nghttp2;
 
 namespace shrpx {
 
@@ -165,6 +170,7 @@ constexpr char SHRPX_OPT_OCSP_UPDATE_INTERVAL[] = "ocsp-update-interval";
 constexpr char SHRPX_OPT_NO_OCSP[] = "no-ocsp";
 constexpr char SHRPX_OPT_HEADER_FIELD_BUFFER[] = "header-field-buffer";
 constexpr char SHRPX_OPT_MAX_HEADER_FIELDS[] = "max-header-fields";
+constexpr char SHRPX_OPT_INCLUDE[] = "include";
 
 union sockaddr_union {
   sockaddr_storage storage;
@@ -194,6 +200,11 @@ struct AltSvc {
 
 struct DownstreamAddr {
   DownstreamAddr() : addr{{0}}, addrlen(0), port(0), host_unix(false) {}
+  DownstreamAddr(const DownstreamAddr &other);
+  DownstreamAddr(DownstreamAddr &&) = default;
+  DownstreamAddr &operator=(const DownstreamAddr &other);
+  DownstreamAddr &operator=(DownstreamAddr &&other) = default;
+
   sockaddr_union addr;
   // backend address.  If |host_unix| is true, this is UNIX domain
   // socket path.
@@ -204,6 +215,12 @@ struct DownstreamAddr {
   uint16_t port;
   // true if |host| contains UNIX domain socket path.
   bool host_unix;
+};
+
+struct DownstreamAddrGroup {
+  DownstreamAddrGroup(std::string pattern) : pattern(std::move(pattern)) {}
+  std::string pattern;
+  std::vector<DownstreamAddr> addrs;
 };
 
 struct TicketKey {
@@ -225,7 +242,7 @@ struct Config {
   std::vector<std::pair<std::string, std::string>> add_response_headers;
   std::vector<unsigned char> alpn_prefs;
   std::vector<LogFragment> accesslog_format;
-  std::vector<DownstreamAddr> downstream_addrs;
+  std::vector<DownstreamAddrGroup> downstream_addr_groups;
   std::vector<std::string> tls_ticket_key_files;
   // binary form of http proxy host and port
   sockaddr_union downstream_http_proxy_addr;
@@ -311,6 +328,8 @@ struct Config {
   size_t downstream_response_buffer_size;
   size_t header_field_buffer;
   size_t max_header_fields;
+  // The index of catch-all group in downstream_addr_groups.
+  size_t downstream_addr_group_catch_all;
   // Bit mask to disable SSL/TLS protocol versions.  This will be
   // passed to SSL_CTX_set_options().
   long int tls_proto_mask;
@@ -365,26 +384,28 @@ void create_config();
 
 // Parses option name |opt| and value |optarg|.  The results are
 // stored into statically allocated Config object. This function
-// returns 0 if it succeeds, or -1.
-int parse_config(const char *opt, const char *optarg);
+// returns 0 if it succeeds, or -1.  The |included_set| contains the
+// all paths already included while processing this configuration, to
+// avoid loop in --include option.
+int parse_config(const char *opt, const char *optarg,
+                 std::set<std::string> &included_set);
 
 // Loads configurations from |filename| and stores them in statically
 // allocated Config object. This function returns 0 if it succeeds, or
-// -1.
-int load_config(const char *filename);
+// -1.  See parse_config() for |include_set|.
+int load_config(const char *filename, std::set<std::string> &include_set);
 
 // Read passwd from |filename|
 std::string read_passwd_from_file(const char *filename);
 
-// Parses comma delimited strings in |s| and returns the array of
-// pointers, each element points to the each substring in |s|.  The
-// |s| must be comma delimited list of strings.  The strings must be
-// delimited by a single comma and any white spaces around it are
-// treated as a part of protocol strings.  This function may modify
-// |s| and the caller must leave it as is after this call.  This
+// Parses delimited strings in |s| and returns the array of pointers,
+// each element points to the each substring in |s|.  The delimiter is
+// given by |delim.  The |s| must be comma delimited list of strings.
+// The strings must be delimited by a single comma and any white
+// spaces around it are treated as a part of protocol strings.  This
 // function copies |s| and first element in the return value points to
 // it.  It is caller's responsibility to deallocate its memory.
-std::vector<char *> parse_config_str_list(const char *s);
+std::vector<char *> parse_config_str_list(const char *s, char delim = ',');
 
 // Clears all elements of |list|, which is returned by
 // parse_config_str_list().  If list is not empty, list[0] is freed by
@@ -399,15 +420,23 @@ std::pair<std::string, std::string> parse_header(const char *optarg);
 
 std::vector<LogFragment> parse_log_format(const char *optarg);
 
-// Returns a copy of NULL-terminated string |val|.
-std::unique_ptr<char[]> strcopy(const char *val);
+// Returns a copy of NULL-terminated string [first, last).
+template <typename InputIt>
+std::unique_ptr<char[]> strcopy(InputIt first, InputIt last) {
+  auto res = make_unique<char[]>(last - first + 1);
+  *std::copy(first, last, res.get()) = '\0';
+  return res;
+}
 
-// Returns a copy of string |val| of length |n|.  The returned string
-// will be NULL-terminated.
-std::unique_ptr<char[]> strcopy(const char *val, size_t n);
+// Returns a copy of NULL-terminated string |val|.
+inline std::unique_ptr<char[]> strcopy(const char *val) {
+  return strcopy(val, val + strlen(val));
+}
 
 // Returns a copy of val.c_str().
-std::unique_ptr<char[]> strcopy(const std::string &val);
+inline std::unique_ptr<char[]> strcopy(const std::string &val) {
+  return strcopy(std::begin(val), std::end(val));
+}
 
 // Returns string for syslog |facility|.
 const char *str_syslog_facility(int facility);
@@ -422,6 +451,16 @@ FILE *open_file_for_write(const char *filename);
 // succeeds, or nullptr.
 std::unique_ptr<TicketKeys>
 read_tls_ticket_key_file(const std::vector<std::string> &files);
+
+// Selects group based on request's |hostport| and |path|.  |hostport|
+// is the value taken from :authority or host header field, and may
+// contain port.  The |path| may contain query part.  We require the
+// catch-all pattern in place, so this function always selects one
+// group.  The catch-all group index is given in |catch_all|.  All
+// patterns are given in |groups|.
+size_t match_downstream_addr_group(
+    const std::string &hostport, const std::string &path,
+    const std::vector<DownstreamAddrGroup> &groups, size_t catch_all);
 
 } // namespace shrpx
 

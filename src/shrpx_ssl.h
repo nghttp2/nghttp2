@@ -40,6 +40,7 @@ namespace shrpx {
 class ClientHandler;
 class Worker;
 class DownstreamConnectionPool;
+struct DownstreamAddr;
 
 namespace ssl {
 
@@ -68,7 +69,7 @@ ClientHandler *accept_connection(Worker *worker, int fd, sockaddr *addr,
 // Check peer's certificate against first downstream address in
 // Config::downstream_addrs.  We only consider first downstream since
 // we use this function for HTTP/2 downstream link only.
-int check_cert(SSL *ssl);
+int check_cert(SSL *ssl, const DownstreamAddr *addr);
 
 // Retrieves DNS and IP address in subjectAltNames and commonName from
 // the |cert|.
