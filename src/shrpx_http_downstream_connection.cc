@@ -205,6 +205,8 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
   ev_set_cb(&conn_.rev, readcb);
 
   conn_.rt.repeat = get_config()->downstream_read_timeout;
+  // we may set read timer cb to idle_timeoutcb.  Reset again.
+  ev_set_cb(&conn_.rt, timeoutcb);
   ev_timer_again(conn_.loop, &conn_.rt);
   // TODO we should have timeout for connection establishment
   ev_timer_again(conn_.loop, &conn_.wt);
