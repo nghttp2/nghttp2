@@ -132,6 +132,7 @@ Downstream *DownstreamQueue::remove_and_get_blocked(Downstream *downstream) {
   if (downstream->get_dispatch_state() == Downstream::DISPATCH_ACTIVE) {
     --ent.num_active;
   } else {
+    // For those downstreams deleted while in blocked state
     auto link = downstream->detach_blocked_link();
     if (link) {
       ent.blocked.remove(link);
