@@ -1408,7 +1408,7 @@ int main(int argc, char **argv) {
   if (config.max_concurrent_streams == -1) {
     config.max_concurrent_streams = reqlines.size();
   }
-  
+
   // if not in rate mode and -C is set, warn that we are ignoring it
   if (!config.is_rate_mode() && config.nconns != 0) {
     std::cerr << "-C: warning: This option can only be used with -r, and"
@@ -1416,10 +1416,10 @@ int main(int argc, char **argv) {
   }
 
   ssize_t n_time = 0;
-  ssize_t c_time = 0; 
+  ssize_t c_time = 0;
   // only care about n_time and c_time in rate mode
   if (config.is_rate_mode() && config.max_concurrent_streams != 0) {
-    n_time = (int)config.nreqs / 
+    n_time = (int)config.nreqs /
              ((int)config.rate * (int)config.max_concurrent_streams);
     c_time = (int)config.nconns / (int)config.rate;
   }
@@ -1429,20 +1429,17 @@ int main(int argc, char **argv) {
     if ((int)config.nreqs < config.nconns) {
       std::cerr << "-C, -n: warning: two different test times are being set. "
                 << std::endl;
-      std::cerr << "The test will run for "
-                << c_time
-                << " seconds." << std::endl;
-    }
-    else {
+      std::cerr << "The test will run for " << c_time << " seconds."
+                << std::endl;
+    } else {
       std::cout << "-C, -n: warning: two different test times are being set. "
                 << std::endl;
       std::cout << "The smaller of the two will be chosen and the test will "
-                << "run for "
-                << std::min(n_time, c_time)
-                << " seconds." << std::endl;
+                << "run for " << std::min(n_time, c_time) << " seconds."
+                << std::endl;
     }
   }
-  
+
   Headers shared_nva;
   shared_nva.emplace_back(":scheme", config.scheme);
   if (config.port != config.default_port) {
@@ -1555,7 +1552,7 @@ int main(int argc, char **argv) {
       fut.get();
     }
 #endif // NOTHREADS
-  } //! config.is_rate_mode()
+  }    //! config.is_rate_mode()
   // if in rate mode, create a new worker each second
   else {
     // set various config values
