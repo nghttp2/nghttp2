@@ -34,7 +34,7 @@ static int count_leap_year(int y) {
 }
 
 /* Based on the algorithm of Python 2.7 calendar.timegm. */
-time_t timegm(struct tm *tm) {
+time_t nghttp2_timegm(struct tm *tm) {
   int days;
   int num_leap_year;
   int64_t t;
