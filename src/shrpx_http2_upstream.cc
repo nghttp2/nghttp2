@@ -884,16 +884,6 @@ ClientHandler *Http2Upstream::get_client_handler() const { return handler_; }
 int Http2Upstream::downstream_read(DownstreamConnection *dconn) {
   auto downstream = dconn->get_downstream();
 
-  if (downstream->get_request_state() == Downstream::STREAM_CLOSED) {
-    // If upstream HTTP2 stream was closed, we just close downstream,
-    // because there is no consumer now. Downstream connection is also
-    // closed in this case.
-    remove_downstream(downstream);
-    // downstream was deleted
-
-    return 0;
-  }
-
   if (downstream->get_response_state() == Downstream::MSG_RESET) {
     // The downstream stream was reset (canceled). In this case,
     // RST_STREAM to the upstream and delete downstream connection
@@ -959,14 +949,6 @@ int Http2Upstream::downstream_eof(DownstreamConnection *dconn) {
   if (LOG_ENABLED(INFO)) {
     DCLOG(INFO, dconn) << "EOF. stream_id=" << downstream->get_stream_id();
   }
-  if (downstream->get_request_state() == Downstream::STREAM_CLOSED) {
-    // If stream was closed already, we don't need to send reply at
-    // the first place. We can delete downstream.
-    remove_downstream(downstream);
-    // downstream was deleted
-
-    return 0;
-  }
 
   // Delete downstream connection. If we don't delete it here, it will
   // be pooled in on_stream_close_callback.
@@ -1010,13 +992,6 @@ int Http2Upstream::downstream_error(DownstreamConnection *dconn, int events) {
     if (downstream->get_upgraded()) {
       DCLOG(INFO, dconn) << "Note: this is tunnel connection";
     }
-  }
-
-  if (downstream->get_request_state() == Downstream::STREAM_CLOSED) {
-    remove_downstream(downstream);
-    // downstream was deleted
-
-    return 0;
   }
 
   // Delete downstream connection. If we don't delete it here, it will
