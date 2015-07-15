@@ -118,13 +118,7 @@ HttpDownstreamConnection::HttpDownstreamConnection(
       ioctrl_(&conn_.rlimit), response_htp_{0}, group_(group), addr_idx_(0),
       connected_(false) {}
 
-HttpDownstreamConnection::~HttpDownstreamConnection() {
-  // Downstream and DownstreamConnection may be deleted
-  // asynchronously.
-  if (downstream_) {
-    downstream_->release_downstream_connection();
-  }
-}
+HttpDownstreamConnection::~HttpDownstreamConnection() {}
 
 int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
   if (LOG_ENABLED(INFO)) {

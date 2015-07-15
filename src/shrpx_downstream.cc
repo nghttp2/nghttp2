@@ -162,6 +162,10 @@ Downstream::~Downstream() {
     ev_timer_stop(loop, &downstream_wtimer_);
   }
 
+  // DownstreamConnection may refer to this object.  Delete it now
+  // explicitly.
+  dconn_.reset();
+
   if (LOG_ENABLED(INFO)) {
     DLOG(INFO, this) << "Deleted";
   }
@@ -190,8 +194,6 @@ void Downstream::detach_downstream_connection() {
   handler->pool_downstream_connection(
       std::unique_ptr<DownstreamConnection>(dconn_.release()));
 }
-
-void Downstream::release_downstream_connection() { dconn_.release(); }
 
 DownstreamConnection *Downstream::get_downstream_connection() {
   return dconn_.get();

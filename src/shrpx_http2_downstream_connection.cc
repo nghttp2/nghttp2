@@ -86,11 +86,7 @@ Http2DownstreamConnection::~Http2DownstreamConnection() {
     }
   }
   http2session_->remove_downstream_connection(this);
-  // Downstream and DownstreamConnection may be deleted
-  // asynchronously.
-  if (downstream_) {
-    downstream_->release_downstream_connection();
-  }
+
   if (LOG_ENABLED(INFO)) {
     DCLOG(INFO, this) << "Deleted";
   }

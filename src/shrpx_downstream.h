@@ -69,8 +69,6 @@ public:
 
   int attach_downstream_connection(std::unique_ptr<DownstreamConnection> dconn);
   void detach_downstream_connection();
-  // Releases dconn_, without freeing it.
-  void release_downstream_connection();
   DownstreamConnection *get_downstream_connection();
   // Returns dconn_ and nullifies dconn_.
   std::unique_ptr<DownstreamConnection> pop_downstream_connection();
