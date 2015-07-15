@@ -154,7 +154,8 @@ Downstream *DownstreamQueue::remove_and_get_blocked(Downstream *downstream) {
   }
 
   auto next_downstream = link->downstream;
-  next_downstream->detach_blocked_link();
+  auto link2 = next_downstream->detach_blocked_link();
+  assert(link2 == link);
   ent.blocked.remove(link);
   delete link;
   remove_host_entry_if_empty(ent, host_entries_, host);
