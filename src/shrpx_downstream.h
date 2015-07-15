@@ -332,7 +332,7 @@ public:
   void set_dispatch_state(int s);
 
   void attach_blocked_link(BlockedLink *l);
-  void detach_blocked_link(BlockedLink *l);
+  BlockedLink *detach_blocked_link();
 
   enum {
     EVENT_ERROR = 0x1,

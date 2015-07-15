@@ -131,6 +131,12 @@ Downstream *DownstreamQueue::remove_and_get_blocked(Downstream *downstream) {
 
   if (downstream->get_dispatch_state() == Downstream::DISPATCH_ACTIVE) {
     --ent.num_active;
+  } else {
+    auto link = downstream->detach_blocked_link();
+    if (link) {
+      ent.blocked.remove(link);
+      delete link;
+    }
   }
 
   if (remove_host_entry_if_empty(ent, host_entries_, host)) {
@@ -141,24 +147,19 @@ Downstream *DownstreamQueue::remove_and_get_blocked(Downstream *downstream) {
     return nullptr;
   }
 
-  for (auto link = ent.blocked.head; link;) {
-    auto next = link->dlnext;
-    if (!link->downstream) {
-      // If non-active (e.g., pending) Downstream got deleted,
-      // link->downstream is nullptr.
-      ent.blocked.remove(link);
-      delete link;
-      link = next;
-      continue;
-    }
-    auto next_downstream = link->downstream;
-    next_downstream->detach_blocked_link(link);
-    ent.blocked.remove(link);
-    delete link;
-    remove_host_entry_if_empty(ent, host_entries_, host);
-    return next_downstream;
+  auto link = ent.blocked.head;
+
+  if (!link) {
+    return nullptr;
   }
-  return nullptr;
+
+  auto next_downstream = link->downstream;
+  next_downstream->detach_blocked_link();
+  ent.blocked.remove(link);
+  delete link;
+  remove_host_entry_if_empty(ent, host_entries_, host);
+
+  return next_downstream;
 }
 
 Downstream *DownstreamQueue::get_downstreams() const {

@@ -152,10 +152,6 @@ Downstream::~Downstream() {
     DLOG(INFO, this) << "Deleting";
   }
 
-  if (blocked_link_) {
-    detach_blocked_link(blocked_link_);
-  }
-
   // check nullptr for unittest
   if (upstream_) {
     auto loop = upstream_->get_client_handler()->get_loop();
@@ -1200,12 +1196,10 @@ void Downstream::attach_blocked_link(BlockedLink *l) {
   blocked_link_ = l;
 }
 
-void Downstream::detach_blocked_link(BlockedLink *l) {
-  assert(blocked_link_);
-  assert(l->downstream == this);
-
-  l->downstream = nullptr;
+BlockedLink *Downstream::detach_blocked_link() {
+  auto link = blocked_link_;
   blocked_link_ = nullptr;
+  return link;
 }
 
 void Downstream::add_request_headers_sum(size_t amount) {
