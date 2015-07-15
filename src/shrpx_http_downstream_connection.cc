@@ -864,6 +864,8 @@ int HttpDownstreamConnection::on_connect() {
       DLOG(INFO, this) << "downstream connect failed";
     }
 
+    downstream_->set_request_state(Downstream::CONNECT_FAIL);
+
     return -1;
   }
 
