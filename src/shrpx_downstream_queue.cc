@@ -124,17 +124,14 @@ Downstream *DownstreamQueue::remove_and_get_blocked(Downstream *downstream) {
   // Delete downstream when this function returns.
   auto delptr = std::unique_ptr<Downstream>(downstream);
 
-  if (downstream->get_dispatch_state() != Downstream::DISPATCH_ACTIVE) {
-    assert(downstream->get_dispatch_state() != Downstream::DISPATCH_NONE);
-    downstreams_.remove(downstream);
-    return nullptr;
-  }
-
   downstreams_.remove(downstream);
 
   auto &host = make_host_key(downstream);
   auto &ent = find_host_entry(host);
-  --ent.num_active;
+
+  if (downstream->get_dispatch_state() == Downstream::DISPATCH_ACTIVE) {
+    --ent.num_active;
+  }
 
   if (remove_host_entry_if_empty(ent, host_entries_, host)) {
     return nullptr;
@@ -147,7 +144,10 @@ Downstream *DownstreamQueue::remove_and_get_blocked(Downstream *downstream) {
   for (auto link = ent.blocked.head; link;) {
     auto next = link->dlnext;
     if (!link->downstream) {
+      // If non-active (e.g., pending) Downstream got deleted,
+      // link->downstream is nullptr.
       ent.blocked.remove(link);
+      delete link;
       link = next;
       continue;
     }
