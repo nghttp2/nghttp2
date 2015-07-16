@@ -1556,16 +1556,14 @@ int main(int argc, char **argv) {
   // if in rate mode, create a new worker each second
   else {
     // set various config values
-    config.seconds = std::min(n_time, c_time);
-
     if ((int)config.nreqs < config.nconns) {
       config.seconds = c_time;
-      config.workers.reserve(config.seconds);
     } else if (config.nconns == 0) {
       config.seconds = n_time;
     } else {
-      config.workers.reserve(config.seconds);
+      config.seconds = std::min(n_time, c_time);
     }
+    config.workers.reserve(config.seconds);
 
     config.conns_remainder = config.nconns % config.rate;
 
