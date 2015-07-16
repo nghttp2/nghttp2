@@ -972,7 +972,7 @@ void second_timeout_cb(EV_P_ ev_timer *w, int revents) {
   auto nclients_per_worker = config->rate;
   auto nreqs_per_worker = config->max_concurrent_streams * config->rate;
 
-  if (config->current_worker >= std::max(0., (config->seconds - 1.))) {
+  if (config->current_worker >= std::max((ssize_t)0, (config->seconds - 1))) {
     nclients_per_worker = config->rate + config->conns_remainder;
     nreqs_per_worker = (int)config->max_concurrent_streams *
                        (config->rate + config->conns_remainder);
