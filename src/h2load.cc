@@ -1083,7 +1083,7 @@ Options:
               completed or failed. When the number of connections is
               0, the program will run as it normally does, creating as
               many connections as it needs in order to make the '-n'
-              requests specified. The defauly value for this option is
+              requests specified. The default value for this option is
               0. The '-n' option is not required if the '-C' option
               is being used.
   -v, --verbose
