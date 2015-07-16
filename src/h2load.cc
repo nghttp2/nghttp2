@@ -74,8 +74,8 @@ namespace h2load {
 Config::Config()
     : data_length(-1), addrs(nullptr), nreqs(1), nclients(1), nthreads(1),
       max_concurrent_streams(-1), window_bits(30), connection_window_bits(30),
-      no_tls_proto(PROTO_HTTP2), data_fd(-1), port(0), default_port(0),
-      verbose(false), nconns(0), rate(0), current_worker(0) {}
+      rate(0), nconns(0), no_tls_proto(PROTO_HTTP2), data_fd(-1), port(0), default_port(0),
+      verbose(false), current_worker(0) {}
 
 Config::~Config() {
   freeaddrinfo(addrs);
