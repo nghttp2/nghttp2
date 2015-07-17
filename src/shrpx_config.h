@@ -171,6 +171,7 @@ constexpr char SHRPX_OPT_NO_OCSP[] = "no-ocsp";
 constexpr char SHRPX_OPT_HEADER_FIELD_BUFFER[] = "header-field-buffer";
 constexpr char SHRPX_OPT_MAX_HEADER_FIELDS[] = "max-header-fields";
 constexpr char SHRPX_OPT_INCLUDE[] = "include";
+constexpr char SHRPX_OPT_TLS_TICKET_CIPHER[] = "tls-ticket-cipher";
 
 union sockaddr_union {
   sockaddr_storage storage;
@@ -224,9 +225,17 @@ struct DownstreamAddrGroup {
 };
 
 struct TicketKey {
-  uint8_t name[16];
-  uint8_t aes_key[16];
-  uint8_t hmac_key[16];
+  const EVP_CIPHER *cipher;
+  const EVP_MD *hmac;
+  size_t hmac_keylen;
+  struct {
+    // name of this ticket configuration
+    uint8_t name[16];
+    // encryption key for |cipher|
+    uint8_t enc_key[32];
+    // hmac key for |hmac|
+    uint8_t hmac_key[32];
+  } data;
 };
 
 struct TicketKeys {
@@ -300,6 +309,7 @@ struct Config {
   nghttp2_session_callbacks *http2_downstream_callbacks;
   nghttp2_option *http2_option;
   nghttp2_option *http2_client_option;
+  const EVP_CIPHER *tls_ticket_cipher;
   char **argv;
   char *cwd;
   size_t num_worker;
@@ -376,6 +386,8 @@ struct Config {
   // true if host contains UNIX domain socket path
   bool host_unix;
   bool no_ocsp;
+  // true if --tls-ticket-cipher is used
+  bool tls_ticket_cipher_given;
 };
 
 const Config *get_config();
@@ -447,10 +459,12 @@ int int_syslog_facility(const char *strfacility);
 FILE *open_file_for_write(const char *filename);
 
 // Reads TLS ticket key file in |files| and returns TicketKey which
-// stores read key data.  This function returns TicketKey if it
+// stores read key data.  The given |cipher| and |hmac| determine the
+// expected file size.  This function returns TicketKey if it
 // succeeds, or nullptr.
 std::unique_ptr<TicketKeys>
-read_tls_ticket_key_file(const std::vector<std::string> &files);
+read_tls_ticket_key_file(const std::vector<std::string> &files,
+                         const EVP_CIPHER *cipher, const EVP_MD *hmac);
 
 // Selects group based on request's |hostport| and |path|.  |hostport|
 // is the value taken from :authority or host header field, and may

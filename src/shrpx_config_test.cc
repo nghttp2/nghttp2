@@ -190,24 +190,62 @@ void test_shrpx_config_read_tls_ticket_key_file(void) {
 
   close(fd1);
   close(fd2);
-  auto ticket_keys = read_tls_ticket_key_file({file1, file2});
+  auto ticket_keys =
+      read_tls_ticket_key_file({file1, file2}, EVP_aes_128_cbc(), EVP_sha256());
   unlink(file1);
   unlink(file2);
   CU_ASSERT(ticket_keys.get() != nullptr);
   CU_ASSERT(2 == ticket_keys->keys.size());
   auto key = &ticket_keys->keys[0];
-  CU_ASSERT(0 == memcmp("0..............1", key->name, sizeof(key->name)));
   CU_ASSERT(0 ==
-            memcmp("2..............3", key->aes_key, sizeof(key->aes_key)));
-  CU_ASSERT(0 ==
-            memcmp("4..............5", key->hmac_key, sizeof(key->hmac_key)));
+            memcmp("0..............1", key->data.name, sizeof(key->data.name)));
+  CU_ASSERT(0 == memcmp("2..............3", key->data.enc_key, 16));
+  CU_ASSERT(0 == memcmp("4..............5", key->data.hmac_key, 16));
 
   key = &ticket_keys->keys[1];
-  CU_ASSERT(0 == memcmp("6..............7", key->name, sizeof(key->name)));
   CU_ASSERT(0 ==
-            memcmp("8..............9", key->aes_key, sizeof(key->aes_key)));
+            memcmp("6..............7", key->data.name, sizeof(key->data.name)));
+  CU_ASSERT(0 == memcmp("8..............9", key->data.enc_key, 16));
+  CU_ASSERT(0 == memcmp("a..............b", key->data.hmac_key, 16));
+}
+
+void test_shrpx_config_read_tls_ticket_key_file_aes_256(void) {
+  char file1[] = "/tmp/nghttpx-unittest.XXXXXX";
+  auto fd1 = mkstemp(file1);
+  assert(fd1 != -1);
+  assert(80 == write(fd1, "0..............12..............................34..."
+                          "...........................5",
+                     80));
+  char file2[] = "/tmp/nghttpx-unittest.XXXXXX";
+  auto fd2 = mkstemp(file2);
+  assert(fd2 != -1);
+  assert(80 == write(fd2, "6..............78..............................9a..."
+                          "...........................b",
+                     80));
+
+  close(fd1);
+  close(fd2);
+  auto ticket_keys =
+      read_tls_ticket_key_file({file1, file2}, EVP_aes_256_cbc(), EVP_sha256());
+  unlink(file1);
+  unlink(file2);
+  CU_ASSERT(ticket_keys.get() != nullptr);
+  CU_ASSERT(2 == ticket_keys->keys.size());
+  auto key = &ticket_keys->keys[0];
   CU_ASSERT(0 ==
-            memcmp("a..............b", key->hmac_key, sizeof(key->hmac_key)));
+            memcmp("0..............1", key->data.name, sizeof(key->data.name)));
+  CU_ASSERT(0 ==
+            memcmp("2..............................3", key->data.enc_key, 32));
+  CU_ASSERT(0 ==
+            memcmp("4..............................5", key->data.hmac_key, 32));
+
+  key = &ticket_keys->keys[1];
+  CU_ASSERT(0 ==
+            memcmp("6..............7", key->data.name, sizeof(key->data.name)));
+  CU_ASSERT(0 ==
+            memcmp("8..............................9", key->data.enc_key, 32));
+  CU_ASSERT(0 ==
+            memcmp("a..............................b", key->data.hmac_key, 32));
 }
 
 void test_shrpx_config_match_downstream_addr_group(void) {

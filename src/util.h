@@ -212,6 +212,10 @@ std::string quote_string(const std::string &target);
 
 std::string format_hex(const unsigned char *s, size_t len);
 
+template <size_t N> std::string format_hex(const unsigned char (&s)[N]) {
+  return format_hex(s, N);
+}
+
 std::string http_date(time_t t);
 
 // Returns given time |t| from epoch in Common Log format (e.g.,
