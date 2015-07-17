@@ -1432,18 +1432,17 @@ int main(int argc, char **argv) {
       std::cerr << "The test will create "
                 << (config.max_concurrent_streams * config.nconns)
                 << " total requests." << std::endl;
-    }
-    else {
+    } else {
       std::cout << "-C, -n: warning: number of requests conflict. "
                 << std::endl;
       std::cout << "The smaller of the two will be chosen and the test will "
                 << "create "
-                << std::min(config.nreqs,
-                            (size_t)(config.max_concurrent_streams * config.nconns))
+                << std::min(
+                       config.nreqs,
+                       (size_t)(config.max_concurrent_streams * config.nconns))
                 << " total requests." << std::endl;
     }
   }
-
 
   Headers shared_nva;
   shared_nva.emplace_back(":scheme", config.scheme);
