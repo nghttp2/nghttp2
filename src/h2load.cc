@@ -1427,18 +1427,23 @@ int main(int argc, char **argv) {
   if (config.is_rate_mode() && (int)config.max_concurrent_streams != 0 &&
       (n_time != c_time) && config.nreqs != 1 && config.nconns != 0) {
     if ((int)config.nreqs < config.nconns) {
-      std::cerr << "-C, -n: warning: two different test times are being set. "
+      std::cerr << "-C, -n: warning: number of requests conflict. "
                 << std::endl;
-      std::cerr << "The test will run for " << c_time << " seconds."
-                << std::endl;
-    } else {
-      std::cout << "-C, -n: warning: two different test times are being set. "
+      std::cerr << "The test will create "
+                << (config.max_concurrent_streams * config.nconns)
+                << " total requests." << std::endl;
+    }
+    else {
+      std::cout << "-C, -n: warning: number of requests conflict. "
                 << std::endl;
       std::cout << "The smaller of the two will be chosen and the test will "
-                << "run for " << std::min(n_time, c_time) << " seconds."
-                << std::endl;
+                << "create "
+                << std::min(config.nreqs,
+                            (size_t)(config.max_concurrent_streams * config.nconns))
+                << " total requests." << std::endl;
     }
   }
+
 
   Headers shared_nva;
   shared_nva.emplace_back(":scheme", config.scheme);
