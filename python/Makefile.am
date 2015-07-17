@@ -33,11 +33,12 @@ all-local: nghttp2.c
 	$(PYTHON) setup.py build
 
 install-exec-local:
-	$(PYTHON) setup.py install --prefix=$(DESTDIR)$(prefix)
+	test -d $(pyexecdir) || mkdir -p $(pyexecdir)
+	PYTHONUSERBASE=$(DESTDIR)/$(prefix) $(PYTHON) setup.py install --user
 
 uninstall-local:
 	rm -f $(DESTDIR)$(libdir)/python*/site-packages/nghttp2.so
-	rm -f $(DESTDIR)$(libdir)/python*/site-packages/python_nghttp2-*.egg-info
+	rm -f $(DESTDIR)$(libdir)/python*/site-packages/python_nghttp2-*.egg
 
 clean-local:
 	$(PYTHON) setup.py clean --all
