@@ -1063,34 +1063,32 @@ Options:
               Available protocol: )";
 #endif // !HAVE_SPDYLAY
   out << NGHTTP2_CLEARTEXT_PROTO_VERSION_ID << R"(
-              Default: )"
-      << NGHTTP2_CLEARTEXT_PROTO_VERSION_ID << R"(
+              Default: )" << NGHTTP2_CLEARTEXT_PROTO_VERSION_ID << R"(
   -d, --data=<FILE>
               Post FILE to  server.  The request method  is changed to
               POST.
   -r, --rate=<N>
-              Specified the fixed rate at which connections are
-              created. The rate must be a positive integer,
-              representing the number of connections to be made per
-              second. When the rate is 0, the program will run as it
+              Specified  the  fixed  rate  at  which  connections  are
+              created.   The   rate  must   be  a   positive  integer,
+              representing the  number of  connections to be  made per
+              second.  When the rate is 0,  the program will run as it
               normally does, creating connections at whatever variable
-              rate it wants. The default value for this option is 0.
+              rate it wants.  The default value for this option is 0.
   -C, --num-conns=<N>
-              Specifies the total number of connections to create. The
-              total number of connections must be a positive integer.
-              On each connection, '-m' requests are made. The test
-              stops once as soon as the N connections have either
-              completed or failed. When the number of connections is
+              Specifies  the total  number of  connections to  create.
+              The  total  number of  connections  must  be a  positive
+              integer.  On each connection, -m requests are made.  The
+              test stops once as soon as the N connections have either
+              completed or failed.  When  the number of connections is
               0, the program will run as it normally does, creating as
-              many connections as it needs in order to make the '-n'
-              requests specified. The default value for this option is
-              0. The '-n' option is not required if the '-C' option
-              is being used.
+              many connections  as it  needs in order  to make  the -n
+              requests specified.   The default value for  this option
+              is 0.  The -n option is not required if the -C option is
+              being used.
   -v, --verbose
               Output debug information.
   --version   Display version information and exit.
-  -h, --help  Display this help and exit.)"
-      << std::endl;
+  -h, --help  Display this help and exit.)" << std::endl;
 }
 } // namespace
 
