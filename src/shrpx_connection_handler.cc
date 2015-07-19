@@ -129,9 +129,8 @@ ConnectionHandler::~ConnectionHandler() {
 }
 
 void ConnectionHandler::worker_reopen_log_files() {
-  WorkerEvent wev;
+  WorkerEvent wev{};
 
-  memset(&wev, 0, sizeof(wev));
   wev.type = REOPEN_LOG;
 
   for (auto &worker : workers_) {
@@ -141,9 +140,8 @@ void ConnectionHandler::worker_reopen_log_files() {
 
 void ConnectionHandler::worker_renew_ticket_keys(
     const std::shared_ptr<TicketKeys> &ticket_keys) {
-  WorkerEvent wev;
+  WorkerEvent wev{};
 
-  memset(&wev, 0, sizeof(wev));
   wev.type = RENEW_TICKET_KEYS;
   wev.ticket_keys = ticket_keys;
 
@@ -216,8 +214,7 @@ void ConnectionHandler::graceful_shutdown_worker() {
     return;
   }
 
-  WorkerEvent wev;
-  memset(&wev, 0, sizeof(wev));
+  WorkerEvent wev{};
   wev.type = GRACEFUL_SHUTDOWN;
 
   if (LOG_ENABLED(INFO)) {
@@ -266,8 +263,7 @@ int ConnectionHandler::handle_connection(int fd, sockaddr *addr, int addrlen) {
     LOG(INFO) << "Dispatch connection to worker #" << idx;
   }
   ++worker_round_robin_cnt_;
-  WorkerEvent wev;
-  memset(&wev, 0, sizeof(wev));
+  WorkerEvent wev{};
   wev.type = NEW_CONNECTION;
   wev.client_fd = fd;
   memcpy(&wev.client_addr, addr, addrlen);

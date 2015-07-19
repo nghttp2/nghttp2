@@ -452,8 +452,7 @@ SpdyUpstream::SpdyUpstream(uint16_t version, ClientHandler *handler)
                     : 0,
           !get_config()->http2_proxy),
       handler_(handler), session_(nullptr) {
-  spdylay_session_callbacks callbacks;
-  memset(&callbacks, 0, sizeof(callbacks));
+  spdylay_session_callbacks callbacks{};
   callbacks.send_callback = send_callback;
   callbacks.recv_callback = recv_callback;
   callbacks.on_stream_close_callback = on_stream_close_callback;

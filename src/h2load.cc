@@ -841,9 +841,8 @@ process_time_stats(const std::vector<std::unique_ptr<Worker>> &workers) {
 namespace {
 void resolve_host() {
   int rv;
-  addrinfo hints, *res;
+  addrinfo hints{}, *res;
 
-  memset(&hints, 0, sizeof(hints));
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_protocol = 0;
@@ -906,8 +905,7 @@ std::vector<std::string> parse_uris(Iterator first, Iterator last) {
 
   // First URI is treated specially.  We use scheme, host and port of
   // this URI and ignore those in the remaining URIs if present.
-  http_parser_url u;
-  memset(&u, 0, sizeof(u));
+  http_parser_url u{};
 
   if (first == last) {
     std::cerr << "no URI available" << std::endl;
@@ -935,8 +933,7 @@ std::vector<std::string> parse_uris(Iterator first, Iterator last) {
   reqlines.push_back(get_reqline(uri, u));
 
   for (; first != last; ++first) {
-    http_parser_url u;
-    memset(&u, 0, sizeof(u));
+    http_parser_url u{};
 
     auto uri = (*first).c_str();
 
@@ -1333,8 +1330,7 @@ int main(int argc, char **argv) {
     config.data_length = data_stat.st_size;
   }
 
-  struct sigaction act;
-  memset(&act, 0, sizeof(struct sigaction));
+  struct sigaction act {};
   act.sa_handler = SIG_IGN;
   sigaction(SIGPIPE, &act, nullptr);
 

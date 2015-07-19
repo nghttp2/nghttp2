@@ -348,8 +348,7 @@ std::string iso8601_date(int64_t ms) {
 }
 
 time_t parse_http_date(const std::string &s) {
-  tm tm;
-  memset(&tm, 0, sizeof(tm));
+  tm tm{};
   char *r = strptime(s.c_str(), "%a, %d %b %Y %H:%M:%S GMT", &tm);
   if (r == 0) {
     return 0;
@@ -637,9 +636,8 @@ void write_uri_field(std::ostream &o, const char *uri, const http_parser_url &u,
 }
 
 bool numeric_host(const char *hostname) {
-  struct addrinfo hints;
   struct addrinfo *res;
-  memset(&hints, 0, sizeof(hints));
+  struct addrinfo hints {};
   hints.ai_family = AF_UNSPEC;
   hints.ai_flags = AI_NUMERICHOST;
   if (getaddrinfo(hostname, nullptr, &hints, &res)) {

@@ -621,8 +621,7 @@ void Downstream::rewrite_location_response_header(
   if (!hd) {
     return;
   }
-  http_parser_url u;
-  memset(&u, 0, sizeof(u));
+  http_parser_url u{};
   int rv =
       http_parser_parse_url((*hd).value.c_str(), (*hd).value.size(), 0, &u);
   if (rv != 0) {

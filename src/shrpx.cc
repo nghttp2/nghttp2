@@ -119,12 +119,11 @@ const int GRACEFUL_SHUTDOWN_SIGNAL = SIGQUIT;
 namespace {
 int resolve_hostname(sockaddr_union *addr, size_t *addrlen,
                      const char *hostname, uint16_t port, int family) {
-  addrinfo hints;
   int rv;
 
   auto service = util::utos(port);
-  memset(&hints, 0, sizeof(addrinfo));
 
+  addrinfo hints{};
   hints.ai_family = family;
   hints.ai_socktype = SOCK_STREAM;
 #ifdef AI_ADDRCONFIG
@@ -279,12 +278,11 @@ std::unique_ptr<AcceptHandler> create_acceptor(ConnectionHandler *handler,
     }
   }
 
-  addrinfo hints;
   int fd = -1;
   int rv;
 
   auto service = util::utos(get_config()->port);
-  memset(&hints, 0, sizeof(addrinfo));
+  addrinfo hints{};
   hints.ai_family = family;
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_flags = AI_PASSIVE;
@@ -849,7 +847,7 @@ int16_t DEFAULT_DOWNSTREAM_PORT = 80;
 
 namespace {
 void fill_default_config() {
-  memset(mod_config(), 0, sizeof(*mod_config()));
+  *mod_config() = {};
 
   mod_config()->verbose = false;
   mod_config()->daemon = false;
@@ -2359,8 +2357,7 @@ int main(int argc, char **argv) {
     reset_timer();
   }
 
-  struct sigaction act;
-  memset(&act, 0, sizeof(struct sigaction));
+  struct sigaction act {};
   act.sa_handler = SIG_IGN;
   sigaction(SIGPIPE, &act, nullptr);
 

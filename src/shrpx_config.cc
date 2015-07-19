@@ -1575,8 +1575,7 @@ int parse_config(const char *opt, const char *optarg,
     return 0;
   case SHRPX_OPTID_BACKEND_HTTP_PROXY_URI: {
     // parse URI and get hostname, port and optionally userinfo.
-    http_parser_url u;
-    memset(&u, 0, sizeof(u));
+    http_parser_url u{};
     int rv = http_parser_parse_url(optarg, strlen(optarg), 0, &u);
     if (rv == 0) {
       std::string val;

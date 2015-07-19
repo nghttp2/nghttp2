@@ -1666,7 +1666,6 @@ int verify_callback(int preverify_ok, X509_STORE_CTX *ctx) {
 namespace {
 int start_listen(HttpServer *sv, struct ev_loop *loop, Sessions *sessions,
                  const Config *config) {
-  addrinfo hints;
   int r;
   bool ok = false;
   const char *addr = nullptr;
@@ -1674,7 +1673,7 @@ int start_listen(HttpServer *sv, struct ev_loop *loop, Sessions *sessions,
   auto acceptor = std::make_shared<AcceptHandler>(sv, sessions, config);
   auto service = util::utos(config->port);
 
-  memset(&hints, 0, sizeof(addrinfo));
+  addrinfo hints{};
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_flags = AI_PASSIVE;

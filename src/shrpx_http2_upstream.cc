@@ -1482,8 +1482,7 @@ int Http2Upstream::on_downstream_reset(bool no_retry) {
 
 int Http2Upstream::prepare_push_promise(Downstream *downstream) {
   int rv;
-  http_parser_url u;
-  memset(&u, 0, sizeof(u));
+  http_parser_url u{};
   rv = http_parser_parse_url(downstream->get_request_path().c_str(),
                              downstream->get_request_path().size(), 0, &u);
   if (rv != 0) {
@@ -1513,8 +1512,7 @@ int Http2Upstream::prepare_push_promise(Downstream *downstream) {
       const char *relq = nullptr;
       size_t relqlen = 0;
 
-      http_parser_url v;
-      memset(&v, 0, sizeof(v));
+      http_parser_url v{};
       rv = http_parser_parse_url(link_url, link_urllen, 0, &v);
       if (rv != 0) {
         assert(link_urllen);
