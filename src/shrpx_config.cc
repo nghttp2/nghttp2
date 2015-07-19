@@ -144,36 +144,72 @@ bool is_secure(const char *filename) {
 } // namespace
 
 std::unique_ptr<TicketKeys>
-read_tls_ticket_key_file(const std::vector<std::string> &files) {
+read_tls_ticket_key_file(const std::vector<std::string> &files,
+                         const EVP_CIPHER *cipher, const EVP_MD *hmac) {
   auto ticket_keys = make_unique<TicketKeys>();
   auto &keys = ticket_keys->keys;
   keys.resize(files.size());
+  auto enc_keylen = EVP_CIPHER_key_length(cipher);
+  auto hmac_keylen = EVP_MD_size(hmac);
+  if (cipher == EVP_aes_128_cbc()) {
+    // backward compatibility, as a legacy of using same file format
+    // with nginx and apache.
+    hmac_keylen = 16;
+  }
+  auto expectedlen = sizeof(keys[0].data.name) + enc_keylen + hmac_keylen;
+  char buf[256];
+  assert(sizeof(buf) >= expectedlen);
+
   size_t i = 0;
   for (auto &file : files) {
+    struct stat fst {};
+
+    if (stat(file.c_str(), &fst) == -1) {
+      auto error = errno;
+      LOG(ERROR) << "tls-ticket-key-file: could not stat file " << file
+                 << ", errno=" << error;
+      return nullptr;
+    }
+
+    if (fst.st_size != expectedlen) {
+      LOG(ERROR) << "tls-ticket-key-file: the expected file size is "
+                 << expectedlen << ", the actual file size is " << fst.st_size;
+      return nullptr;
+    }
+
     std::ifstream f(file.c_str());
     if (!f) {
       LOG(ERROR) << "tls-ticket-key-file: could not open file " << file;
       return nullptr;
     }
-    char buf[48];
-    f.read(buf, sizeof(buf));
-    if (f.gcount() != sizeof(buf)) {
-      LOG(ERROR) << "tls-ticket-key-file: want to read 48 bytes but read "
-                 << f.gcount() << " bytes from " << file;
+
+    f.read(buf, expectedlen);
+    if (f.gcount() != expectedlen) {
+      LOG(ERROR) << "tls-ticket-key-file: want to read " << expectedlen
+                 << " bytes but only read " << f.gcount() << " bytes from "
+                 << file;
       return nullptr;
     }
 
     auto &key = keys[i++];
-    auto p = buf;
-    memcpy(key.name, p, sizeof(key.name));
-    p += sizeof(key.name);
-    memcpy(key.aes_key, p, sizeof(key.aes_key));
-    p += sizeof(key.aes_key);
-    memcpy(key.hmac_key, p, sizeof(key.hmac_key));
+    key.cipher = cipher;
+    key.hmac = hmac;
+    key.hmac_keylen = hmac_keylen;
 
     if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "session ticket key: " << util::format_hex(key.name,
-                                                              sizeof(key.name));
+      LOG(INFO) << "enc_keylen=" << enc_keylen
+                << ", hmac_keylen=" << key.hmac_keylen;
+    }
+
+    auto p = buf;
+    memcpy(key.data.name, p, sizeof(key.data.name));
+    p += sizeof(key.data.name);
+    memcpy(key.data.enc_key, p, enc_keylen);
+    p += enc_keylen;
+    memcpy(key.data.hmac_key, p, hmac_keylen);
+
+    if (LOG_ENABLED(INFO)) {
+      LOG(INFO) << "session ticket key: " << util::format_hex(key.data.name);
     }
   }
   return ticket_keys;
@@ -668,6 +704,7 @@ enum {
   SHRPX_OPTID_SUBCERT,
   SHRPX_OPTID_SYSLOG_FACILITY,
   SHRPX_OPTID_TLS_PROTO_LIST,
+  SHRPX_OPTID_TLS_TICKET_CIPHER,
   SHRPX_OPTID_TLS_TICKET_KEY_FILE,
   SHRPX_OPTID_USER,
   SHRPX_OPTID_VERIFY_CLIENT,
@@ -957,6 +994,11 @@ int option_lookup_token(const char *name, size_t namelen) {
     case 'e':
       if (util::strieq_l("worker-write-rat", name, 16)) {
         return SHRPX_OPTID_WORKER_WRITE_RATE;
+      }
+      break;
+    case 'r':
+      if (util::strieq_l("tls-ticket-ciphe", name, 16)) {
+        return SHRPX_OPTID_TLS_TICKET_CIPHER;
       }
       break;
     case 's':
@@ -1805,6 +1847,19 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   }
+  case SHRPX_OPTID_TLS_TICKET_CIPHER:
+    if (util::strieq(optarg, "aes-128-cbc")) {
+      mod_config()->tls_ticket_cipher = EVP_aes_128_cbc();
+    } else if (util::strieq(optarg, "aes-256-cbc")) {
+      mod_config()->tls_ticket_cipher = EVP_aes_256_cbc();
+    } else {
+      LOG(ERROR) << opt
+                 << ": unsupported cipher for ticket encryption: " << optarg;
+      return -1;
+    }
+    mod_config()->tls_ticket_cipher_given = true;
+
+    return 0;
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 

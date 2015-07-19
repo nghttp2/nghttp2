@@ -627,8 +627,21 @@ void renew_ticket_key_cb(struct ev_loop *loop, ev_timer *w, int revents) {
     ticket_keys->keys.resize(1);
   }
 
-  if (RAND_bytes(reinterpret_cast<unsigned char *>(&ticket_keys->keys[0]),
-                 sizeof(ticket_keys->keys[0])) == 0) {
+  auto &new_key = ticket_keys->keys[0];
+  new_key.cipher = get_config()->tls_ticket_cipher;
+  new_key.hmac = EVP_sha256();
+  new_key.hmac_keylen = EVP_MD_size(new_key.hmac);
+
+  assert(EVP_CIPHER_key_length(new_key.cipher) <= sizeof(new_key.data.enc_key));
+  assert(new_key.hmac_keylen <= sizeof(new_key.data.hmac_key));
+
+  if (LOG_ENABLED(INFO)) {
+    LOG(INFO) << "enc_keylen=" << EVP_CIPHER_key_length(new_key.cipher)
+              << ", hmac_keylen=" << new_key.hmac_keylen;
+  }
+
+  if (RAND_bytes(reinterpret_cast<unsigned char *>(&new_key.data),
+                 sizeof(new_key.data)) == 0) {
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "failed to renew ticket key";
     }
@@ -638,7 +651,7 @@ void renew_ticket_key_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "ticket keys generation done";
     for (auto &key : ticket_keys->keys) {
-      LOG(INFO) << "name: " << util::format_hex(key.name, sizeof(key.name));
+      LOG(INFO) << "name: " << util::format_hex(key.data.name);
     }
   }
 
@@ -709,8 +722,17 @@ int event_loop() {
   if (!get_config()->upstream_no_tls) {
     bool auto_tls_ticket_key = true;
     if (!get_config()->tls_ticket_key_files.empty()) {
-      auto ticket_keys =
-          read_tls_ticket_key_file(get_config()->tls_ticket_key_files);
+      if (!get_config()->tls_ticket_cipher_given) {
+        LOG(WARN) << "It is strongly recommended to specify "
+                     "--tls-ticket-cipher=aes-128-cbc (or "
+                     "tls-ticket-cipher=aes-128-cbc in configuration file) "
+                     "when --tls-ticket-key-file is used for the smooth "
+                     "transition when the default value of --tls-ticket-cipher "
+                     "becomes aes-256-cbc";
+      }
+      auto ticket_keys = read_tls_ticket_key_file(
+          get_config()->tls_ticket_key_files, get_config()->tls_ticket_cipher,
+          EVP_sha256());
       if (!ticket_keys) {
         LOG(WARN) << "Use internal session ticket key generator";
       } else {
@@ -967,6 +989,8 @@ void fill_default_config() {
   mod_config()->header_field_buffer = 64_k;
   mod_config()->max_header_fields = 100;
   mod_config()->downstream_addr_group_catch_all = 0;
+  mod_config()->tls_ticket_cipher = EVP_aes_128_cbc();
+  mod_config()->tls_ticket_cipher_given = false;
 }
 } // namespace
 
@@ -1278,8 +1302,11 @@ SSL/TLS:
               are treated as a part of protocol string.
               Default: )" << DEFAULT_TLS_PROTO_LIST << R"(
   --tls-ticket-key-file=<PATH>
-              Path  to file  that  contains 48  bytes  random data  to
-              construct TLS  session ticket parameters.   This options
+              Path to file that contains  random data to construct TLS
+              session ticket  parameters.  If aes-128-cbc is  given in
+              --tls-ticket-cipher,  the file  must contain  exactly 48
+              bytes.  If aes-256-cbc  is given in --tls-ticket-cipher,
+              the file  must contain  exactly 80 bytes.   This options
               can  be  used  repeatedly  to  specify  multiple  ticket
               parameters.  If several files  are given, only the first
               key is used to encrypt  TLS session tickets.  Other keys
@@ -1294,6 +1321,10 @@ SSL/TLS:
               while  opening  or  reading  a file,  key  is  generated
               automatically and  renewed every 12hrs.  At  most 2 keys
               are stored in memory.
+  --tls-ticket-cipher=<TICKET_CIPHER>
+              Specify cipher  to encrypt TLS session  ticket.  Specify
+              either   aes-128-cbc   or  aes-256-cbc.    By   default,
+              aes-128-cbc is used.
   --fetch-ocsp-response-file=<PATH>
               Path to  fetch-ocsp-response script file.  It  should be
               absolute path.
@@ -1660,6 +1691,7 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_MAX_HEADER_FIELDS, required_argument, &flag, 81},
         {SHRPX_OPT_ADD_REQUEST_HEADER, required_argument, &flag, 82},
         {SHRPX_OPT_INCLUDE, required_argument, &flag, 83},
+        {SHRPX_OPT_TLS_TICKET_CIPHER, required_argument, &flag, 84},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -2025,6 +2057,10 @@ int main(int argc, char **argv) {
       case 83:
         // --include
         cmdcfgs.emplace_back(SHRPX_OPT_INCLUDE, optarg);
+        break;
+      case 84:
+        // --tls-ticket-cipher
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_CIPHER, optarg);
         break;
       default:
         break;
