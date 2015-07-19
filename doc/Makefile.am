@@ -223,7 +223,7 @@ $(APIDOC): apidoc.stamp
 	fi
 
 clean-local:
-	-rm $(APIDOCS)
+	-rm $(APIDOCS) > /dev/null 2>&1
 	-rm -rf $(BUILDDIR)/*
 
 html-local: apiref.rst
