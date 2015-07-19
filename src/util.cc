@@ -354,7 +354,7 @@ time_t parse_http_date(const std::string &s) {
   if (r == 0) {
     return 0;
   }
-  return nghttp2_timegm(&tm);
+  return nghttp2_timegm_without_yday(&tm);
 }
 
 namespace {
