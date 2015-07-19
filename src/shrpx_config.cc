@@ -171,7 +171,7 @@ read_tls_ticket_key_file(const std::vector<std::string> &files,
       return nullptr;
     }
 
-    if (fst.st_size != expectedlen) {
+    if (static_cast<size_t>(fst.st_size) != expectedlen) {
       LOG(ERROR) << "tls-ticket-key-file: the expected file size is "
                  << expectedlen << ", the actual file size is " << fst.st_size;
       return nullptr;
@@ -184,7 +184,7 @@ read_tls_ticket_key_file(const std::vector<std::string> &files,
     }
 
     f.read(buf, expectedlen);
-    if (f.gcount() != expectedlen) {
+    if (static_cast<size_t>(f.gcount()) != expectedlen) {
       LOG(ERROR) << "tls-ticket-key-file: want to read " << expectedlen
                  << " bytes but only read " << f.gcount() << " bytes from "
                  << file;
@@ -1836,7 +1836,7 @@ int parse_config(const char *opt, const char *optarg,
       return -1;
     }
 
-    included_set.emplace(optarg);
+    included_set.insert(optarg);
     auto rv = load_config(optarg, included_set);
     included_set.erase(optarg);
 

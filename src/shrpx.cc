@@ -630,7 +630,8 @@ void renew_ticket_key_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   new_key.hmac = EVP_sha256();
   new_key.hmac_keylen = EVP_MD_size(new_key.hmac);
 
-  assert(EVP_CIPHER_key_length(new_key.cipher) <= sizeof(new_key.data.enc_key));
+  assert(static_cast<size_t>(EVP_CIPHER_key_length(new_key.cipher)) <=
+         sizeof(new_key.data.enc_key));
   assert(new_key.hmac_keylen <= sizeof(new_key.data.hmac_key));
 
   if (LOG_ENABLED(INFO)) {
