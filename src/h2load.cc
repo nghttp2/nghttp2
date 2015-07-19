@@ -1594,6 +1594,10 @@ int main(int argc, char **argv) {
     ev_init(&timeout_watcher, second_timeout_cb);
     timeout_watcher.repeat = 1.;
     ev_timer_again(rate_loop, &timeout_watcher);
+
+    // call callback so that we don't waste first 1 second.
+    second_timeout_cb(rate_loop, &timeout_watcher, 0);
+
     ev_run(rate_loop, 0);
   } // end rate mode section
 
