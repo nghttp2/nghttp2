@@ -911,16 +911,17 @@ std::vector<std::string> parse_uris(std::vector<std::string>::iterator first,
   }
 
   auto uri = (*first).c_str();
-  ++first;
 
   // First URI is treated specially.  We use scheme, host and port of
   // this URI and ignore those in the remaining URIs if present.
   http_parser_url u{};
-  if (http_parser_parse_url(uri, strlen(uri), 0, &u) != 0 ||
+  if (http_parser_parse_url(uri, (*first).size(), 0, &u) != 0 ||
       !util::has_uri_field(u, UF_SCHEMA) || !util::has_uri_field(u, UF_HOST)) {
     std::cerr << "invalid URI: " << uri << std::endl;
     exit(EXIT_FAILURE);
   }
+
+  ++first;
 
   config.scheme = util::get_uri_field(uri, u, UF_SCHEMA);
   config.host = util::get_uri_field(uri, u, UF_HOST);
@@ -938,7 +939,7 @@ std::vector<std::string> parse_uris(std::vector<std::string>::iterator first,
 
     auto uri = (*first).c_str();
 
-    if (http_parser_parse_url(uri, strlen(uri), 0, &u) != 0) {
+    if (http_parser_parse_url(uri, (*first).size(), 0, &u) != 0) {
       std::cerr << "invalid URI: " << uri << std::endl;
       exit(EXIT_FAILURE);
     }
