@@ -184,15 +184,9 @@ union sockaddr_union {
 enum shrpx_proto { PROTO_HTTP2, PROTO_HTTP };
 
 struct AltSvc {
-  AltSvc() : protocol_id_len(0), host_len(0), origin_len(0), port(0) {}
+  AltSvc() : port(0) {}
 
-  std::unique_ptr<char[]> protocol_id;
-  std::unique_ptr<char[]> host;
-  std::unique_ptr<char[]> origin;
-
-  size_t protocol_id_len;
-  size_t host_len;
-  size_t origin_len;
+  std::string protocol_id, host, origin, service;
 
   uint16_t port;
 };
@@ -251,6 +245,11 @@ struct Config {
   std::vector<LogFragment> accesslog_format;
   std::vector<DownstreamAddrGroup> downstream_addr_groups;
   std::vector<std::string> tls_ticket_key_files;
+  // list of supported NPN/ALPN protocol strings in the order of
+  // preference.
+  std::vector<std::string> npn_list;
+  // list of supported SSL/TLS protocol strings.
+  std::vector<std::string> tls_proto_list;
   // binary form of http proxy host and port
   sockaddr_union downstream_http_proxy_addr;
   ev_tstamp http2_upstream_read_timeout;
@@ -286,13 +285,6 @@ struct Config {
   // ev_token_bucket_cfg *rate_limit_cfg;
   // // Rate limit configuration per worker (thread)
   // ev_token_bucket_cfg *worker_rate_limit_cfg;
-  // list of supported NPN/ALPN protocol strings in the order of
-  // preference. The each element of this list is a NULL-terminated
-  // string.
-  std::vector<std::unique_ptr<char[]>> npn_list;
-  // list of supported SSL/TLS protocol strings. The each element of
-  // this list is a NULL-terminated string.
-  std::vector<std::unique_ptr<char[]>> tls_proto_list;
   // Path to file containing CA certificate solely used for client
   // certificate validation
   std::unique_ptr<char[]> verify_client_cacert;
@@ -413,8 +405,7 @@ template <typename T> using Range = std::pair<T, T>;
 // Parses delimited strings in |s| and returns the array of substring,
 // delimited by |delim|.  The any white spaces around substring are
 // treated as a part of substring.
-std::vector<std::unique_ptr<char[]>> parse_config_str_list(const char *s,
-                                                           char delim = ',');
+std::vector<std::string> parse_config_str_list(const char *s, char delim = ',');
 
 // Parses delimited strings in |s| and returns the array of pointers,
 // each element points to the beginning and one beyond last of

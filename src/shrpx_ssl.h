@@ -140,7 +140,7 @@ int cert_lookup_tree_add_cert_from_file(CertLookupTree *lt, SSL_CTX *ssl_ctx,
 
 // Returns true if |needle| which has |len| bytes is included in the
 // protocol list |protos|.
-bool in_proto_list(const std::vector<std::unique_ptr<char[]>> &protos,
+bool in_proto_list(const std::vector<std::string> &protos,
                    const unsigned char *needle, size_t len);
 
 // Returns true if security requirement for HTTP/2 is fulfilled.
@@ -149,11 +149,10 @@ bool check_http2_requirement(SSL *ssl);
 // Returns SSL/TLS option mask to disable SSL/TLS protocol version not
 // included in |tls_proto_list|.  The returned mask can be directly
 // passed to SSL_CTX_set_options().
-long int create_tls_proto_mask(
-    const std::vector<std::unique_ptr<char[]>> &tls_proto_list);
+long int create_tls_proto_mask(const std::vector<std::string> &tls_proto_list);
 
 std::vector<unsigned char>
-set_alpn_prefs(const std::vector<std::unique_ptr<char[]>> &protos);
+set_alpn_prefs(const std::vector<std::string> &protos);
 
 // Setups server side SSL_CTX.  This function inspects get_config()
 // and if upstream_no_tls is true, returns nullptr.  Otherwise

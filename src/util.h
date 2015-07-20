@@ -349,6 +349,10 @@ inline bool strieq(const std::string &a, const std::string &b) {
 
 bool strieq(const char *a, const char *b);
 
+inline bool strieq(const char *a, const std::string &b) {
+  return strieq(a, b.c_str(), b.size());
+}
+
 template <typename InputIt, size_t N>
 bool strieq_l(const char (&a)[N], InputIt b, size_t blen) {
   return strieq(a, N - 1, b, blen);

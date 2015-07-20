@@ -283,13 +283,12 @@ std::vector<Range<const char *>> split_config_str_list(const char *s,
   return list;
 }
 
-std::vector<std::unique_ptr<char[]>> parse_config_str_list(const char *s,
-                                                           char delim) {
+std::vector<std::string> parse_config_str_list(const char *s, char delim) {
   auto ranges = split_config_str_list(s, delim);
-  auto res = std::vector<std::unique_ptr<char[]>>();
+  auto res = std::vector<std::string>();
   res.reserve(ranges.size());
   for (const auto &range : ranges) {
-    res.push_back(strcopy(range.first, range.second));
+    res.emplace_back(range.first, range.second);
   }
   return res;
 }
@@ -1687,30 +1686,28 @@ int parse_config(const char *opt, const char *optarg,
 
     int port;
 
-    if (parse_uint(&port, opt, tokens[1].get()) != 0) {
+    if (parse_uint(&port, opt, tokens[1].c_str()) != 0) {
       return -1;
     }
 
     if (port < 1 ||
         port > static_cast<int>(std::numeric_limits<uint16_t>::max())) {
-      LOG(ERROR) << opt << ": port is invalid: " << tokens[1].get();
+      LOG(ERROR) << opt << ": port is invalid: " << tokens[1];
       return -1;
     }
 
     AltSvc altsvc;
 
-    altsvc.port = port;
-
     altsvc.protocol_id = std::move(tokens[0]);
-    altsvc.protocol_id_len = strlen(altsvc.protocol_id.get());
+
+    altsvc.port = port;
+    altsvc.service = std::move(tokens[1]);
 
     if (tokens.size() > 2) {
       altsvc.host = std::move(tokens[2]);
-      altsvc.host_len = strlen(altsvc.host.get());
 
       if (tokens.size() > 3) {
         altsvc.origin = std::move(tokens[3]);
-        altsvc.origin_len = strlen(altsvc.origin.get());
       }
     }
 
