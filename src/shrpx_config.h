@@ -269,7 +269,6 @@ struct Config {
   std::unique_ptr<char[]> private_key_passwd;
   std::unique_ptr<char[]> cert_file;
   std::unique_ptr<char[]> dh_param_file;
-  const char *server_name;
   std::unique_ptr<char[]> backend_tls_sni_name;
   std::unique_ptr<char[]> pid_file;
   std::unique_ptr<char[]> conf_path;
@@ -293,6 +292,7 @@ struct Config {
   std::unique_ptr<char[]> accesslog_file;
   std::unique_ptr<char[]> errorlog_file;
   std::unique_ptr<char[]> fetch_ocsp_response_file;
+  std::unique_ptr<char[]> user;
   FILE *http2_upstream_dump_request_header;
   FILE *http2_upstream_dump_response_header;
   nghttp2_session_callbacks *http2_upstream_callbacks;
@@ -300,6 +300,7 @@ struct Config {
   nghttp2_option *http2_option;
   nghttp2_option *http2_client_option;
   const EVP_CIPHER *tls_ticket_cipher;
+  const char *server_name;
   char **argv;
   char *cwd;
   size_t num_worker;
@@ -338,7 +339,6 @@ struct Config {
   int syslog_facility;
   int backlog;
   int argc;
-  std::unique_ptr<char[]> user;
   uid_t uid;
   gid_t gid;
   pid_t pid;
