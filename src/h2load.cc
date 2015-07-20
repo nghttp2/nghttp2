@@ -1022,10 +1022,10 @@ Options:
   -t, --threads=<N>
               Number of native threads.
               Default: )" << config.nthreads << R"(
-  -i, --input-file=<FILE>
+  -i, --input-file=<PATH>
               Path of a file with multiple URIs are separated by EOLs.
               This option will disable URIs getting from command-line.
-              If '-' is given as <FILE>, URIs will be read from stdin.
+              If '-' is given as <PATH>, URIs will be read from stdin.
               URIs are used  in this order for each  client.  All URIs
               are used, then  first URI is used and then  2nd URI, and
               so  on.  The  scheme, host  and port  in the  subsequent
@@ -1063,7 +1063,7 @@ Options:
 #endif // !HAVE_SPDYLAY
   out << NGHTTP2_CLEARTEXT_PROTO_VERSION_ID << R"(
               Default: )" << NGHTTP2_CLEARTEXT_PROTO_VERSION_ID << R"(
-  -d, --data=<FILE>
+  -d, --data=<PATH>
               Post FILE to  server.  The request method  is changed to
               POST.
   -r, --rate=<N>

@@ -2394,7 +2394,7 @@ Options:
               must be in PEM format.
   --key=<KEY> Use the  client private key  file.  The file must  be in
               PEM format.
-  -d, --data=<FILE>
+  -d, --data=<PATH>
               Post FILE to server. If '-'  is given, data will be read
               from stdin.
   -m, --multiply=<N>
@@ -2418,8 +2418,8 @@ Options:
   -b, --padding=<N>
               Add at  most <N>  bytes to a  frame payload  as padding.
               Specify 0 to disable padding.
-  -r, --har=<FILE>
-              Output HTTP  transactions <FILE> in HAR  format.  If '-'
+  -r, --har=<PATH>
+              Output HTTP  transactions <PATH> in HAR  format.  If '-'
               is given, data is written to stdout.
   --color     Force colored log output.
   --continuation
