@@ -261,35 +261,37 @@ std::string read_passwd_from_file(const char *filename) {
   return line;
 }
 
-std::vector<char *> parse_config_str_list(const char *s, char delim) {
+std::vector<Range<const char *>> split_config_str_list(const char *s,
+                                                       char delim) {
   size_t len = 1;
-  for (const char *first = s, *p = nullptr; (p = strchr(first, delim));
-       ++len, first = p + 1)
+  auto last = s + strlen(s);
+  for (const char *first = s, *d = nullptr;
+       (d = std::find(first, last, delim)) != last; ++len, first = d + 1)
     ;
-  auto list = std::vector<char *>(len);
-  auto first = strdup(s);
+
+  auto list = std::vector<Range<const char *>>(len);
+
   len = 0;
-  for (;;) {
-    auto p = strchr(first, delim);
-    if (p == nullptr) {
+  for (auto first = s;; ++len) {
+    auto stop = std::find(first, last, delim);
+    list[len] = {first, stop};
+    if (stop == last) {
       break;
     }
-    list[len++] = first;
-    *p = '\0';
-    first = p + 1;
+    first = stop + 1;
   }
-  list[len++] = first;
-
   return list;
 }
 
-void clear_config_str_list(std::vector<char *> &list) {
-  if (list.empty()) {
-    return;
+std::vector<std::unique_ptr<char[]>> parse_config_str_list(const char *s,
+                                                           char delim) {
+  auto ranges = split_config_str_list(s, delim);
+  auto res = std::vector<std::unique_ptr<char[]>>();
+  res.reserve(ranges.size());
+  for (const auto &range : ranges) {
+    res.push_back(strcopy(range.first, range.second));
   }
-
-  free(list[0]);
-  list.clear();
+  return res;
 }
 
 std::pair<std::string, std::string> parse_header(const char *optarg) {
@@ -590,22 +592,21 @@ namespace {
 void parse_mapping(const DownstreamAddr &addr, const char *src) {
   // This returns at least 1 element (it could be empty string).  We
   // will append '/' to all patterns, so it becomes catch-all pattern.
-  auto mapping = parse_config_str_list(src, ':');
+  auto mapping = split_config_str_list(src, ':');
   assert(!mapping.empty());
-  for (auto raw_pattern : mapping) {
+  for (const auto &raw_pattern : mapping) {
     auto done = false;
     std::string pattern;
-    auto slash = strchr(raw_pattern, '/');
-    if (slash == nullptr) {
+    auto slash = std::find(raw_pattern.first, raw_pattern.second, '/');
+    if (slash == raw_pattern.second) {
       // This effectively makes empty pattern to "/".
-      pattern = raw_pattern;
+      pattern.assign(raw_pattern.first, raw_pattern.second);
       util::inp_strlower(pattern);
       pattern += "/";
     } else {
-      pattern.assign(raw_pattern, slash);
+      pattern.assign(raw_pattern.first, slash);
       util::inp_strlower(pattern);
-      pattern +=
-          http2::normalize_path(slash, raw_pattern + strlen(raw_pattern));
+      pattern += http2::normalize_path(slash, raw_pattern.second);
     }
     for (auto &g : mod_config()->downstream_addr_groups) {
       if (g.pattern == pattern) {
@@ -621,7 +622,6 @@ void parse_mapping(const DownstreamAddr &addr, const char *src) {
     g.addrs.push_back(addr);
     mod_config()->downstream_addr_groups.push_back(std::move(g));
   }
-  clear_config_str_list(mapping);
 }
 } // namespace
 
@@ -1629,12 +1629,10 @@ int parse_config(const char *opt, const char *optarg,
     LOG(WARN) << opt << ": not implemented yet";
     return parse_uint_with_unit(&mod_config()->worker_write_burst, opt, optarg);
   case SHRPX_OPTID_NPN_LIST:
-    clear_config_str_list(mod_config()->npn_list);
     mod_config()->npn_list = parse_config_str_list(optarg);
 
     return 0;
   case SHRPX_OPTID_TLS_PROTO_LIST:
-    clear_config_str_list(mod_config()->tls_proto_list);
     mod_config()->tls_proto_list = parse_config_str_list(optarg);
 
     return 0;
@@ -1689,13 +1687,13 @@ int parse_config(const char *opt, const char *optarg,
 
     int port;
 
-    if (parse_uint(&port, opt, tokens[1]) != 0) {
+    if (parse_uint(&port, opt, tokens[1].get()) != 0) {
       return -1;
     }
 
     if (port < 1 ||
         port > static_cast<int>(std::numeric_limits<uint16_t>::max())) {
-      LOG(ERROR) << opt << ": port is invalid: " << tokens[1];
+      LOG(ERROR) << opt << ": port is invalid: " << tokens[1].get();
       return -1;
     }
 
@@ -1703,16 +1701,16 @@ int parse_config(const char *opt, const char *optarg,
 
     altsvc.port = port;
 
-    altsvc.protocol_id = tokens[0];
-    altsvc.protocol_id_len = strlen(altsvc.protocol_id);
+    altsvc.protocol_id = std::move(tokens[0]);
+    altsvc.protocol_id_len = strlen(altsvc.protocol_id.get());
 
     if (tokens.size() > 2) {
-      altsvc.host = tokens[2];
-      altsvc.host_len = strlen(altsvc.host);
+      altsvc.host = std::move(tokens[2]);
+      altsvc.host_len = strlen(altsvc.host.get());
 
       if (tokens.size() > 3) {
-        altsvc.origin = tokens[3];
-        altsvc.origin_len = strlen(altsvc.origin);
+        altsvc.origin = std::move(tokens[3]);
+        altsvc.origin_len = strlen(altsvc.origin.get());
       }
     }
 

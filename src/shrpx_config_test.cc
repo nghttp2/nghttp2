@@ -39,34 +39,29 @@ namespace shrpx {
 void test_shrpx_config_parse_config_str_list(void) {
   auto res = parse_config_str_list("a");
   CU_ASSERT(1 == res.size());
-  CU_ASSERT(0 == strcmp("a", res[0]));
-  clear_config_str_list(res);
+  CU_ASSERT(0 == strcmp("a", res[0].get()));
 
   res = parse_config_str_list("a,");
   CU_ASSERT(2 == res.size());
-  CU_ASSERT(0 == strcmp("a", res[0]));
-  CU_ASSERT(0 == strcmp("", res[1]));
-  clear_config_str_list(res);
+  CU_ASSERT(0 == strcmp("a", res[0].get()));
+  CU_ASSERT(0 == strcmp("", res[1].get()));
 
   res = parse_config_str_list(":a::", ':');
   CU_ASSERT(4 == res.size());
-  CU_ASSERT(0 == strcmp("", res[0]));
-  CU_ASSERT(0 == strcmp("a", res[1]));
-  CU_ASSERT(0 == strcmp("", res[2]));
-  CU_ASSERT(0 == strcmp("", res[3]));
-  clear_config_str_list(res);
+  CU_ASSERT(0 == strcmp("", res[0].get()));
+  CU_ASSERT(0 == strcmp("a", res[1].get()));
+  CU_ASSERT(0 == strcmp("", res[2].get()));
+  CU_ASSERT(0 == strcmp("", res[3].get()));
 
   res = parse_config_str_list("");
   CU_ASSERT(1 == res.size());
-  CU_ASSERT(0 == strcmp("", res[0]));
-  clear_config_str_list(res);
+  CU_ASSERT(0 == strcmp("", res[0].get()));
 
   res = parse_config_str_list("alpha,bravo,charlie");
   CU_ASSERT(3 == res.size());
-  CU_ASSERT(0 == strcmp("alpha", res[0]));
-  CU_ASSERT(0 == strcmp("bravo", res[1]));
-  CU_ASSERT(0 == strcmp("charlie", res[2]));
-  clear_config_str_list(res);
+  CU_ASSERT(0 == strcmp("alpha", res[0].get()));
+  CU_ASSERT(0 == strcmp("bravo", res[1].get()));
+  CU_ASSERT(0 == strcmp("charlie", res[2].get()));
 }
 
 void test_shrpx_config_parse_header(void) {

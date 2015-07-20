@@ -845,9 +845,10 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
       hdrs += "Alt-Svc: ";
 
       for (auto &altsvc : get_config()->altsvcs) {
-        hdrs += util::percent_encode_token(altsvc.protocol_id);
+        hdrs += util::percent_encode_token(altsvc.protocol_id.get());
         hdrs += "=\"";
-        hdrs += util::quote_string(std::string(altsvc.host, altsvc.host_len));
+        hdrs +=
+            util::quote_string(std::string(altsvc.host.get(), altsvc.host_len));
         hdrs += ":";
         hdrs += util::utos(altsvc.port);
         hdrs += "\", ";

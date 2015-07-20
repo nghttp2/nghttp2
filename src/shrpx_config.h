@@ -184,13 +184,11 @@ union sockaddr_union {
 enum shrpx_proto { PROTO_HTTP2, PROTO_HTTP };
 
 struct AltSvc {
-  AltSvc()
-      : protocol_id(nullptr), host(nullptr), origin(nullptr),
-        protocol_id_len(0), host_len(0), origin_len(0), port(0) {}
+  AltSvc() : protocol_id_len(0), host_len(0), origin_len(0), port(0) {}
 
-  char *protocol_id;
-  char *host;
-  char *origin;
+  std::unique_ptr<char[]> protocol_id;
+  std::unique_ptr<char[]> host;
+  std::unique_ptr<char[]> origin;
 
   size_t protocol_id_len;
   size_t host_len;
@@ -291,10 +289,10 @@ struct Config {
   // list of supported NPN/ALPN protocol strings in the order of
   // preference. The each element of this list is a NULL-terminated
   // string.
-  std::vector<char *> npn_list;
+  std::vector<std::unique_ptr<char[]>> npn_list;
   // list of supported SSL/TLS protocol strings. The each element of
   // this list is a NULL-terminated string.
-  std::vector<char *> tls_proto_list;
+  std::vector<std::unique_ptr<char[]>> tls_proto_list;
   // Path to file containing CA certificate solely used for client
   // certificate validation
   std::unique_ptr<char[]> verify_client_cacert;
@@ -410,19 +408,20 @@ int load_config(const char *filename, std::set<std::string> &include_set);
 // Read passwd from |filename|
 std::string read_passwd_from_file(const char *filename);
 
-// Parses delimited strings in |s| and returns the array of pointers,
-// each element points to the each substring in |s|.  The delimiter is
-// given by |delim.  The |s| must be comma delimited list of strings.
-// The strings must be delimited by a single comma and any white
-// spaces around it are treated as a part of protocol strings.  This
-// function copies |s| and first element in the return value points to
-// it.  It is caller's responsibility to deallocate its memory.
-std::vector<char *> parse_config_str_list(const char *s, char delim = ',');
+template <typename T> using Range = std::pair<T, T>;
 
-// Clears all elements of |list|, which is returned by
-// parse_config_str_list().  If list is not empty, list[0] is freed by
-// free(2).  After this call, list.empty() must be true.
-void clear_config_str_list(std::vector<char *> &list);
+// Parses delimited strings in |s| and returns the array of substring,
+// delimited by |delim|.  The any white spaces around substring are
+// treated as a part of substring.
+std::vector<std::unique_ptr<char[]>> parse_config_str_list(const char *s,
+                                                           char delim = ',');
+
+// Parses delimited strings in |s| and returns the array of pointers,
+// each element points to the beginning and one beyond last of
+// substring in |s|.  The delimiter is given by |delim|.  The any
+// white spaces around substring are treated as a part of substring.
+std::vector<Range<const char *>> split_config_str_list(const char *s,
+                                                       char delim);
 
 // Parses header field in |optarg|.  We expect header field is formed
 // like "NAME: VALUE".  We require that NAME is non empty string.  ":"

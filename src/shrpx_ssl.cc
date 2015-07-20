@@ -86,11 +86,12 @@ int verify_callback(int preverify_ok, X509_STORE_CTX *ctx) {
 }
 } // namespace
 
-std::vector<unsigned char> set_alpn_prefs(const std::vector<char *> &protos) {
+std::vector<unsigned char>
+set_alpn_prefs(const std::vector<std::unique_ptr<char[]>> &protos) {
   size_t len = 0;
 
-  for (auto proto : protos) {
-    auto n = strlen(proto);
+  for (auto &proto : protos) {
+    auto n = strlen(proto.get());
 
     if (n > 255) {
       LOG(FATAL) << "Too long ALPN identifier: " << n;
@@ -108,11 +109,11 @@ std::vector<unsigned char> set_alpn_prefs(const std::vector<char *> &protos) {
   auto out = std::vector<unsigned char>(len);
   auto ptr = out.data();
 
-  for (auto proto : protos) {
-    auto proto_len = strlen(proto);
+  for (auto &proto : protos) {
+    auto proto_len = strlen(proto.get());
 
     *ptr++ = proto_len;
-    memcpy(ptr, proto, proto_len);
+    memcpy(ptr, proto.get(), proto_len);
     ptr += proto_len;
   }
 
@@ -281,16 +282,15 @@ int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
   // We assume that get_config()->npn_list contains ALPN protocol
   // identifier sorted by preference order.  So we just break when we
   // found the first overlap.
-  for (auto target_proto_id : get_config()->npn_list) {
-    auto target_proto_len =
-        strlen(reinterpret_cast<const char *>(target_proto_id));
+  for (auto &target_proto_id : get_config()->npn_list) {
+    auto target_proto_len = strlen(target_proto_id.get());
 
     for (auto p = in, end = in + inlen; p < end;) {
       auto proto_id = p + 1;
       auto proto_len = *p;
 
       if (proto_id + proto_len <= end && target_proto_len == proto_len &&
-          memcmp(target_proto_id, proto_id, proto_len) == 0) {
+          memcmp(target_proto_id.get(), proto_id, proto_len) == 0) {
 
         *out = reinterpret_cast<const unsigned char *>(proto_id);
         *outlen = proto_len;
@@ -314,13 +314,14 @@ constexpr long int tls_masks[] = {SSL_OP_NO_TLSv1_2, SSL_OP_NO_TLSv1_1,
                                   SSL_OP_NO_TLSv1};
 } // namespace
 
-long int create_tls_proto_mask(const std::vector<char *> &tls_proto_list) {
+long int create_tls_proto_mask(
+    const std::vector<std::unique_ptr<char[]>> &tls_proto_list) {
   long int res = 0;
 
   for (size_t i = 0; i < tls_namelen; ++i) {
     size_t j;
     for (j = 0; j < tls_proto_list.size(); ++j) {
-      if (util::strieq(tls_names[i], tls_proto_list[j])) {
+      if (util::strieq(tls_names[i], tls_proto_list[j].get())) {
         break;
       }
     }
@@ -949,10 +950,10 @@ int cert_lookup_tree_add_cert_from_file(CertLookupTree *lt, SSL_CTX *ssl_ctx,
   return 0;
 }
 
-bool in_proto_list(const std::vector<char *> &protos,
+bool in_proto_list(const std::vector<std::unique_ptr<char[]>> &protos,
                    const unsigned char *needle, size_t len) {
-  for (auto proto : protos) {
-    if (strlen(proto) == len && memcmp(proto, needle, len) == 0) {
+  for (auto &proto : protos) {
+    if (strlen(proto.get()) == len && memcmp(proto.get(), needle, len) == 0) {
       return true;
     }
   }
