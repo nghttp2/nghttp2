@@ -176,7 +176,7 @@ void second_timeout_w_cb(EV_P_ ev_timer *w, int revents) {
     ++worker->nconns_made;
   }
   if (worker->current_second >= std::max((ssize_t)0, (worker->config->seconds - 1))) {
-    ev_timer_stop(worker->rate_loop, w);
+    ev_timer_stop(worker->loop, w);
   }
   ++worker->current_second;
 }
@@ -742,11 +742,10 @@ Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
 
   if (config->is_rate_mode()) {
     // create timer that will go off every second
-    ev_timer timeout_watcher;
+    //ev_timer timeout_watcher;
     timeout_watcher.data = this;
     ev_init(&timeout_watcher, second_timeout_w_cb);
     timeout_watcher.repeat = 1.;
-    ev_timer_again(rate_loop, &timeout_watcher);
   } else {
     for (size_t i = 0; i < nclients; ++i) {
       auto req_todo = nreqs_per_client;
@@ -775,7 +774,7 @@ void Worker::run() {
       }
     }
   } else {
-    ev_run(rate_loop, 0);
+    ev_timer_again(loop, &timeout_watcher);
   }
   ev_run(loop, 0);
 }
