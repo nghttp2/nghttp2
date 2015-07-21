@@ -184,6 +184,7 @@ struct Worker {
   size_t progress_interval;
   uint32_t id;
   bool tls_info_report_done;
+  struct ev_loop *rate_loop;
 
   Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t nreq_todo, size_t nclients,
          Config *config);
