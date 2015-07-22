@@ -109,19 +109,12 @@ void on_stream_close_callback(spdylay_session *session, int32_t stream_id,
     return;
   }
 
-  downstream->set_request_state(Downstream::STREAM_CLOSED);
-  if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
-    // At this point, downstream response was read
-    if (!downstream->get_upgraded() &&
-        !downstream->get_response_connection_close()) {
-      // Keep-alive
-      downstream->detach_downstream_connection();
-    }
-    upstream->remove_downstream(downstream);
-    // downstrea was deleted
-
-    return;
+  if (downstream->can_detach_downstream_connection()) {
+    // Keep-alive
+    downstream->detach_downstream_connection();
   }
+
+  downstream->set_request_state(Downstream::STREAM_CLOSED);
 
   // At this point, downstream read may be paused.
 
@@ -589,10 +582,7 @@ int SpdyUpstream::downstream_read(DownstreamConnection *dconn) {
       }
       return downstream_error(dconn, Downstream::EVENT_ERROR);
     }
-    // Detach downstream connection early so that it could be reused
-    // without hitting server's request timeout.
-    if (downstream->get_response_state() == Downstream::MSG_COMPLETE &&
-        !downstream->get_response_connection_close()) {
+    if (downstream->can_detach_downstream_connection()) {
       // Keep-alive
       downstream->detach_downstream_connection();
     }

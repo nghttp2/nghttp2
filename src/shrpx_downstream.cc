@@ -1207,4 +1207,10 @@ void Downstream::add_request_headers_sum(size_t amount) {
   request_headers_sum_ += amount;
 }
 
+bool Downstream::can_detach_downstream_connection() const {
+  return dconn_ && response_state_ == Downstream::MSG_COMPLETE &&
+         request_state_ == Downstream::MSG_COMPLETE && !upgraded_ &&
+         !response_connection_close_;
+}
+
 } // namespace shrpx
