@@ -140,6 +140,17 @@ typedef enum {
   NGHTTP2_GOAWAY_RECV = 0x8
 } nghttp2_goaway_flag;
 
+/* nghttp2_inflight_settings stores the SETTINGS entries which local
+   endpoint has sent to the remote endpoint, and has not received ACK
+   yet. */
+struct nghttp2_inflight_settings {
+  struct nghttp2_inflight_settings *next;
+  nghttp2_settings_entry *iv;
+  size_t niv;
+};
+
+typedef struct nghttp2_inflight_settings nghttp2_inflight_settings;
+
 struct nghttp2_session {
   nghttp2_map /* <nghttp2_stream*> */ streams;
   nghttp2_stream_roots roots;
@@ -176,12 +187,9 @@ struct nghttp2_session {
   /* Points to the oldest idle stream.  NULL if there is no idle
      stream.  Only used when session is initialized as erver. */
   nghttp2_stream *idle_stream_tail;
-  /* In-flight SETTINGS values. NULL does not necessarily mean there
-     is no in-flight SETTINGS. */
-  nghttp2_settings_entry *inflight_iv;
-  /* The number of entries in |inflight_iv|. -1 if there is no
-     in-flight SETTINGS. */
-  ssize_t inflight_niv;
+  /* Queue of In-flight SETTINGS values.  SETTINGS bearing ACK is not
+     considered as in-flight. */
+  nghttp2_inflight_settings *inflight_settings_head;
   /* The number of outgoing streams. This will be capped by
      remote_settings.max_concurrent_streams. */
   size_t num_outgoing_streams;

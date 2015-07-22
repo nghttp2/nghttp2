@@ -3278,10 +3278,6 @@ NGHTTP2_EXTERN int nghttp2_submit_rst_stream(nghttp2_session *session,
  * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
  *     The |iv| contains invalid value (e.g., initial window size
  *     strictly greater than (1 << 31) - 1.
- * :enum:`NGHTTP2_ERR_TOO_MANY_INFLIGHT_SETTINGS`
- *     There is already another in-flight SETTINGS.  Note that the
- *     current implementation only allows 1 in-flight SETTINGS frame
- *     without ACK flag set.
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
  */

@@ -171,6 +171,8 @@ int main(int argc _U_, char *argv[] _U_) {
                    test_nghttp2_submit_settings) ||
       !CU_add_test(pSuite, "session_submit_settings_update_local_window_size",
                    test_nghttp2_submit_settings_update_local_window_size) ||
+      !CU_add_test(pSuite, "session_submit_settings_multiple_times",
+                   test_nghttp2_submit_settings_multiple_times) ||
       !CU_add_test(pSuite, "session_submit_push_promise",
                    test_nghttp2_submit_push_promise) ||
       !CU_add_test(pSuite, "submit_window_update",
