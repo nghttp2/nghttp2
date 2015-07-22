@@ -4672,7 +4672,7 @@ static int session_on_data_received_fail_fast(nghttp2_session *session) {
   if (!stream) {
     if (session_detect_idle_stream(session, stream_id)) {
       failure_reason = "DATA: stream in idle";
-      error_code = NGHTTP2_STREAM_CLOSED;
+      error_code = NGHTTP2_PROTOCOL_ERROR;
       goto fail;
     }
     return NGHTTP2_ERR_IGN_PAYLOAD;
