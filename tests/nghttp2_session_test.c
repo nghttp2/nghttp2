@@ -4111,10 +4111,7 @@ void test_nghttp2_submit_settings_multiple_times(void) {
   nghttp2_session_callbacks callbacks;
   nghttp2_settings_entry iv[4];
   nghttp2_frame frame;
-  nghttp2_mem *mem;
   nghttp2_inflight_settings *inflight_settings;
-
-  mem = nghttp2_mem_default();
 
   memset(&callbacks, 0, sizeof(callbacks));
   callbacks.send_callback = null_send_callback;
