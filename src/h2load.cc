@@ -158,22 +158,23 @@ namespace {
 // Called every second when rate mode is being used
 void second_timeout_w_cb(EV_P_ ev_timer *w, int revents) {
   //TODO
-  std::cout << "seconf_timeout_w_cb" << std::endl;
+  //std::cout << "seconf_timeout_w_cb" << std::endl;
   auto worker = static_cast<Worker *>(w->data);
   auto nclients_per_second = worker->rate;
-  auto nclients = std::min(nclients_per_second, worker->nclients - worker->nconns_made);
+  auto conns_remaining = worker->nclients - worker->nconns_made;
+  auto nclients = std::min(nclients_per_second, conns_remaining);
 
-  std::cout << "worker rate: " << worker->rate << std::endl;
-  std::cout << "nclients- nconns_made = " << worker->nclients - worker->nconns_made << std::endl;
+  if (nclients_per_second > conns_remaining) {
+    nclients += conns_remaining;
+  }
 
-  std::cout << "nclients: " << nclients << std::endl;  
+  std::cout << "worker: " << worker->id << " rate: " << worker->rate << std::endl;
+  //std::cout << "nclients- nconns_made = " << worker->nclients - worker->nconns_made << std::endl;
+
+  std::cout << "worker: " << worker->id << " nclients: " << nclients << std::endl;  
   for (ssize_t i = 0; i < nclients; ++i) {
-    auto req_todo = worker->nreqs_per_client;
-    if (worker->nreqs_rem > 0) {
-      ++req_todo;
-      --worker->nreqs_rem;
-    }
-    std::cout << "i: " << i << "req_todo: " << req_todo << std::endl;
+    auto req_todo = worker->config->max_concurrent_streams;
+    std::cout << "worker: " << worker->id << " i: " << i << "req_todo: " << req_todo << std::endl;
     worker->clients.push_back(make_unique<Client>(worker, req_todo));
     auto &client = worker->clients.back();
     if (client->connect() != 0) {
@@ -182,10 +183,11 @@ void second_timeout_w_cb(EV_P_ ev_timer *w, int revents) {
     }
     ++worker->nconns_made;
   }
-  if (worker->current_second >= std::max((ssize_t)0, (worker->config->seconds - 1))) {
-    std::cout << "worker->current_second: " << worker->current_second << std::endl;
-    std::cout << "worker->config->seconds: " << worker->config->seconds << std::endl;
-    std::cout << "ev_timer_stop" << std::endl;
+  //if (worker->current_second >= std::max((ssize_t)0, (worker->config->seconds))) {
+  if (worker->nconns_made >= worker->nclients) {
+    std::cout << "worker: " << worker->id << " worker->current_second: " << worker->current_second << std::endl;
+    std::cout << "worker: " << worker->id << " worker->config->seconds: " << worker->config->seconds << std::endl;
+    //std::cout << "ev_timer_stop" << std::endl;
     ev_timer_stop(worker->loop, w);
   }
   ++worker->current_second;
@@ -1570,13 +1572,19 @@ int main(int argc, char **argv) {
   size_t rate_per_thread = config.rate / config.nthreads;
   ssize_t rate_per_thread_rem = config.rate % config.nthreads;
 
+  auto nclients_extra = 0;
+  auto nclients_extra_per_thread = 0;
+  auto nclients_extra_rem_per_thread = 0;
   // In rate mode, we want each Worker to create a total of
   // C/t connections. 
   if (config.is_rate_mode()) {
-    nclients_per_thread = config.nconns / (ssize_t)config.nthreads;
-    nclients_rem = config.nconns % (ssize_t)config.nthreads;
-    std::cout << "nclients_per_thread: " << nclients_per_thread << std::endl;
-    std::cout << "nclients_rem :" << nclients_rem << std::endl;
+    nclients_extra = config.nconns - (config.seconds * config.rate);
+    nclients_extra_per_thread = nclients_extra / (ssize_t)config.nthreads;
+    nclients_extra_rem_per_thread = (ssize_t)nclients_extra % (ssize_t)config.nthreads;
+
+    std::cout << "nclients_extra: " << nclients_extra << std::endl;
+    std::cout << "nclients_extra_per_thread: " << nclients_extra_per_thread << std::endl;
+    std::cout << "nclients_extra_rem_per_thread: " << nclients_extra_rem_per_thread << std::endl;
     std::cout << "SECONDS " << config.seconds << std::endl;
     std::cout << "NREQS " << config.nreqs << std::endl;
     std::cout << "N_TIME " << n_time << std::endl;
@@ -1594,8 +1602,8 @@ int main(int argc, char **argv) {
   std::vector<std::future<void>> futures;
   for (size_t i = 0; i < config.nthreads - 1; ++i) {
     auto nreqs = nreqs_per_thread + (nreqs_rem-- > 0);
-    auto nclients = nclients_per_thread + (nclients_rem-- > 0);
     auto rate = rate_per_thread + (rate_per_thread_rem-- > 0);
+    auto nclients = rate * config.seconds + nclients_extra_per_thread + (nclients_extra_rem_per_thread--);
     std::cout << "spawning thread #" << i << ": " << nclients
               << " concurrent clients, " << nreqs << " total requests"
               << std::endl;
