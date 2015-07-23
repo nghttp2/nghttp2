@@ -160,18 +160,20 @@ void second_timeout_w_cb(EV_P_ ev_timer *w, int revents) {
   //TODO
   //std::cout << "seconf_timeout_w_cb" << std::endl;
   auto worker = static_cast<Worker *>(w->data);
+  std::cout << "worker: " << worker->id << " current_second: " << worker->current_second << std::endl; 
   auto nclients_per_second = worker->rate;
   auto conns_remaining = worker->nclients - worker->nconns_made;
   auto nclients = std::min(nclients_per_second, conns_remaining);
 
   if (nclients_per_second > conns_remaining) {
-    nclients += conns_remaining;
+    //nclients += conns_remaining;
   }
 
-  std::cout << "worker: " << worker->id << " rate: " << worker->rate << std::endl;
-  //std::cout << "nclients- nconns_made = " << worker->nclients - worker->nconns_made << std::endl;
+  //std::cout << "worker: " << worker->id << " rate: " << worker->rate << std::endl;
+  std::cout << "worker: " << worker->id << " nclients - nconns_made = " << worker->nclients - worker->nconns_made << std::endl;
 
-  std::cout << "worker: " << worker->id << " nclients: " << nclients << std::endl;  
+  std::cout << "worker: " << worker->id << " nclients: " << nclients << std::endl; 
+  std::cout << "worker: " << worker->id << " nconns_made: " << worker->nconns_made << std::endl; 
   for (ssize_t i = 0; i < nclients; ++i) {
     auto req_todo = worker->config->max_concurrent_streams;
     std::cout << "worker: " << worker->id << " i: " << i << "req_todo: " << req_todo << std::endl;
@@ -183,7 +185,7 @@ void second_timeout_w_cb(EV_P_ ev_timer *w, int revents) {
     }
     ++worker->nconns_made;
   }
-  //if (worker->current_second >= std::max((ssize_t)0, (worker->config->seconds))) {
+  //if (worker->current_second >= std::max((ssize_t)0, (worker->config->seconds - 1))) {
   if (worker->nconns_made >= worker->nclients) {
     std::cout << "worker: " << worker->id << " worker->current_second: " << worker->current_second << std::endl;
     std::cout << "worker: " << worker->id << " worker->config->seconds: " << worker->config->seconds << std::endl;
@@ -1603,11 +1605,11 @@ int main(int argc, char **argv) {
   for (size_t i = 0; i < config.nthreads - 1; ++i) {
     auto nreqs = nreqs_per_thread + (nreqs_rem-- > 0);
     auto rate = rate_per_thread + (rate_per_thread_rem-- > 0);
-    std::cout << "worker: " << i << "nclients_extra_per_thread: " << nclients_extra_per_thread << std::endl;
-    std::cout << "worker: " << i << "nclients_extra_rem_per_thread: " << nclients_extra_rem_per_thread << std::endl;
-    std::cout << "worker: " << i << "config.seconds: " << config.seconds << std::endl;
-    std::cout << "worker: " << i <<  "rate: " << rate << std::endl;
-    auto nclients = rate * config.seconds + nclients_extra_per_thread + (nclients_extra_rem_per_thread-- > 0);
+    auto nclients = nclients_per_thread + (nclients_rem-- > 0);
+    if (config.is_rate_mode()) {
+      nclients = rate * config.seconds + nclients_extra_per_thread + (nclients_extra_rem_per_thread-- > 0);
+      nreqs = nclients * config.max_concurrent_streams;
+    }
     std::cout << "spawning thread #" << i << ": " << nclients
               << " concurrent clients, " << nreqs << " total requests"
               << std::endl;
@@ -1619,14 +1621,12 @@ int main(int argc, char **argv) {
   }
 #endif // NOTHREADS
 
-  std::cout << "worker: " <<  config.nthreads - 1 << "nclients_extra_per_thread: " << nclients_extra_per_thread << std::endl;
-  std::cout << "worker: " <<  config.nthreads - 1 << "nclients_extra_rem_per_thread: " << nclients_extra_rem_per_thread << std::endl;
-  std::cout << "worker: " <<  config.nthreads - 1 << "config.seconds: " << config.seconds << std::endl;
   auto nreqs_last = nreqs_per_thread + (nreqs_rem-- > 0);
   auto nclients_last = nclients_per_thread + (nclients_rem-- > 0);
   auto rate_last = rate_per_thread + (rate_per_thread_rem-- > 0);
   if (config.is_rate_mode()) {
     nclients_last = rate_last * config.seconds + nclients_extra_per_thread + (nclients_extra_rem_per_thread-- > 0);
+    nreqs_last = nclients_last * config.max_concurrent_streams;
   }
   std::cout << "spawning thread #" << (config.nthreads - 1) << ": "
             << nclients_last << " concurrent clients, " << nreqs_last
