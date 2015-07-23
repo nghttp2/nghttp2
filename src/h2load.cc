@@ -75,7 +75,7 @@ Config::Config()
     : data_length(-1), addrs(nullptr), nreqs(1), nclients(1), nthreads(1),
       max_concurrent_streams(-1), window_bits(30), connection_window_bits(30),
       rate(0), nconns(0), no_tls_proto(PROTO_HTTP2), data_fd(-1), port(0),
-      default_port(0), verbose(false), current_worker(0) {}
+      default_port(0), verbose(false) {}
 
 Config::~Config() {
   freeaddrinfo(addrs);
@@ -1537,16 +1537,17 @@ int main(int argc, char **argv) {
   if (!config.is_rate_mode() && config.nclients == 1) {
     config.nthreads = 1;
   }
+  ssize_t seconds = 0;
 
   if (config.is_rate_mode()) {
 
         // set various config values
     if ((int)config.nreqs < config.nconns) {
-      config.seconds = c_time;
+      seconds = c_time;
     } else if (config.nconns == 0) {
-      config.seconds = n_time;
+      seconds = n_time;
     } else {
-      config.seconds = std::min(n_time, c_time);
+      seconds = std::min(n_time, c_time);
     }
     config.nreqs = actual_nreqs;
   }
@@ -1566,7 +1567,7 @@ int main(int argc, char **argv) {
   // In rate mode, we want each Worker to create a total of
   // C/t connections. 
   if (config.is_rate_mode()) {
-    nclients_extra = config.nconns - (config.seconds * config.rate);
+    nclients_extra = config.nconns - (seconds * config.rate);
     nclients_extra_per_thread = nclients_extra / (ssize_t)config.nthreads;
     nclients_extra_rem_per_thread = (ssize_t)nclients_extra % (ssize_t)config.nthreads;
   }
@@ -1575,7 +1576,9 @@ int main(int argc, char **argv) {
 
   auto start = std::chrono::steady_clock::now();
 
-  config.workers.reserve(config.nthreads);
+  std::vector<std::unique_ptr<Worker>> workers;
+
+  workers.reserve(config.nthreads);
 #ifndef NOTHREADS
   std::vector<std::future<void>> futures;
   for (size_t i = 0; i < config.nthreads - 1; ++i) {
@@ -1583,15 +1586,15 @@ int main(int argc, char **argv) {
     auto rate = rate_per_thread + (rate_per_thread_rem-- > 0);
     auto nclients = nclients_per_thread + (nclients_rem-- > 0);
     if (config.is_rate_mode()) {
-      nclients = rate * config.seconds + nclients_extra_per_thread + (nclients_extra_rem_per_thread-- > 0);
+      nclients = rate * seconds + nclients_extra_per_thread + (nclients_extra_rem_per_thread-- > 0);
       nreqs = nclients * config.max_concurrent_streams;
     }
     std::cout << "spawning thread #" << i << ": " << nclients
               << " concurrent clients, " << nreqs << " total requests"
               << std::endl;
-    config.workers.push_back(
+    workers.push_back(
         make_unique<Worker>(i, ssl_ctx, nreqs, nclients, rate, &config));
-    auto &worker = config.workers.back();
+    auto &worker = workers.back();
     futures.push_back(
         std::async(std::launch::async, [&worker]() { worker->run(); }));
   }
@@ -1601,15 +1604,15 @@ int main(int argc, char **argv) {
   auto nclients_last = nclients_per_thread + (nclients_rem-- > 0);
   auto rate_last = rate_per_thread + (rate_per_thread_rem-- > 0);
   if (config.is_rate_mode()) {
-    nclients_last = rate_last * config.seconds + nclients_extra_per_thread + (nclients_extra_rem_per_thread-- > 0);
+    nclients_last = rate_last * seconds + nclients_extra_per_thread + (nclients_extra_rem_per_thread-- > 0);
     nreqs_last = nclients_last * config.max_concurrent_streams;
   }
   std::cout << "spawning thread #" << (config.nthreads - 1) << ": "
             << nclients_last << " concurrent clients, " << nreqs_last
             << " total requests" << std::endl;
-  config.workers.push_back(make_unique<Worker>(
+  workers.push_back(make_unique<Worker>(
       config.nthreads - 1, ssl_ctx, nreqs_last, nclients_last, rate_last, &config));
-  config.workers.back()->run();
+  workers.back()->run();
 
 #ifndef NOTHREADS
   for (auto &fut : futures) {
@@ -1622,7 +1625,7 @@ int main(int argc, char **argv) {
       std::chrono::duration_cast<std::chrono::microseconds>(end - start);
 
   Stats stats(0);
-  for (const auto &w : config.workers) {
+  for (const auto &w : workers) {
     const auto &s = w->stats;
 
     stats.req_todo += s.req_todo;
@@ -1641,7 +1644,7 @@ int main(int argc, char **argv) {
     }
   }
 
-  auto ts = process_time_stats(config.workers);
+  auto ts = process_time_stats(workers);
 
   // Requests which have not been issued due to connection errors, are
   // counted towards req_failed and req_error.

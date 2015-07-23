@@ -88,13 +88,6 @@ struct Config {
   uint16_t default_port;
   bool verbose;
 
-  ssize_t current_worker;
-  std::vector<std::unique_ptr<Worker>> workers;
-  SSL_CTX *ssl_ctx;
-  struct ev_loop *rate_loop;
-  ssize_t seconds;
-  ssize_t conns_remainder;
-
   Config();
   ~Config();
 
