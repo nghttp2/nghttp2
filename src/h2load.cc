@@ -1326,9 +1326,10 @@ int main(int argc, char **argv) {
     exit(EXIT_FAILURE);
   }
 
-  if (config.rate != 0 && config.nthreads != 1) {
-    std::cerr << "-r, -t: warning: the -t option will be ignored when the -r "
-              << "option is in use." << std::endl;
+  if (config.is_rate_mode() && config.rate < (ssize_t)config.nthreads) {
+    std::cerr << "-r, -t: the connection rate must be greater than or equal "
+              << "to the number of threads." << std::endl;
+    exit(EXIT_FAILURE);
   }
 
   if (!datafile.empty()) {
