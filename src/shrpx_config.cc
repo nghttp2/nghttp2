@@ -674,6 +674,7 @@ enum {
   SHRPX_OPTID_FRONTEND_READ_TIMEOUT,
   SHRPX_OPTID_FRONTEND_WRITE_TIMEOUT,
   SHRPX_OPTID_HEADER_FIELD_BUFFER,
+  SHRPX_OPTID_HOST_REWRITE,
   SHRPX_OPTID_HTTP2_BRIDGE,
   SHRPX_OPTID_HTTP2_MAX_CONCURRENT_STREAMS,
   SHRPX_OPTID_HTTP2_NO_COOKIE_CRUMBLING,
@@ -881,6 +882,9 @@ int option_lookup_token(const char *name, size_t namelen) {
       }
       break;
     case 'e':
+      if (util::strieq_l("host-rewrit", name, 11)) {
+        return SHRPX_OPTID_HOST_REWRITE;
+      }
       if (util::strieq_l("http2-bridg", name, 11)) {
         return SHRPX_OPTID_HTTP2_BRIDGE;
       }
@@ -1736,7 +1740,10 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   case SHRPX_OPTID_NO_HOST_REWRITE:
-    mod_config()->no_host_rewrite = util::strieq(optarg, "yes");
+    LOG(WARN) << SHRPX_OPT_NO_HOST_REWRITE
+              << ": deprecated.  :authority and host header fields are NOT "
+                 "altered by default.  To rewrite these headers, use "
+                 "--host-rewrite option.";
 
     return 0;
   case SHRPX_OPTID_BACKEND_HTTP1_CONNECTIONS_PER_HOST: {
@@ -1852,6 +1859,10 @@ int parse_config(const char *opt, const char *optarg,
       return -1;
     }
     mod_config()->tls_ticket_cipher_given = true;
+
+    return 0;
+  case SHRPX_OPTID_HOST_REWRITE:
+    mod_config()->no_host_rewrite = !util::strieq(optarg, "yes");
 
     return 0;
   case SHRPX_OPTID_CONF:

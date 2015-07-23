@@ -172,6 +172,7 @@ constexpr char SHRPX_OPT_HEADER_FIELD_BUFFER[] = "header-field-buffer";
 constexpr char SHRPX_OPT_MAX_HEADER_FIELDS[] = "max-header-fields";
 constexpr char SHRPX_OPT_INCLUDE[] = "include";
 constexpr char SHRPX_OPT_TLS_TICKET_CIPHER[] = "tls-ticket-cipher";
+constexpr char SHRPX_OPT_HOST_REWRITE[] = "host-rewrite";
 
 union sockaddr_union {
   sockaddr_storage storage;

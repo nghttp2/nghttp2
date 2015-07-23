@@ -995,7 +995,7 @@ void fill_default_config() {
 
   mod_config()->tls_proto_mask = 0;
   mod_config()->no_location_rewrite = false;
-  mod_config()->no_host_rewrite = false;
+  mod_config()->no_host_rewrite = true;
   mod_config()->argc = 0;
   mod_config()->argv = nullptr;
   mod_config()->downstream_connections_per_host = 8;
@@ -1498,8 +1498,8 @@ HTTP:
               --client  and  default   mode.   For  --http2-proxy  and
               --client-proxy mode,  location header field will  not be
               altered regardless of this option.
-  --no-host-rewrite
-              Don't  rewrite  host  and :authority  header  fields  on
+  --host-rewrite
+              Rewrite   host   and   :authority   header   fields   on
               --http2-bridge,   --client   and  default   mode.    For
               --http2-proxy  and  --client-proxy mode,  these  headers
               will not be altered regardless of this option.
@@ -1718,6 +1718,7 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_ADD_REQUEST_HEADER, required_argument, &flag, 82},
         {SHRPX_OPT_INCLUDE, required_argument, &flag, 83},
         {SHRPX_OPT_TLS_TICKET_CIPHER, required_argument, &flag, 84},
+        {SHRPX_OPT_HOST_REWRITE, no_argument, &flag, 85},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -2087,6 +2088,10 @@ int main(int argc, char **argv) {
       case 84:
         // --tls-ticket-cipher
         cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_CIPHER, optarg);
+        break;
+      case 85:
+        // --host-rewrite
+        cmdcfgs.emplace_back(SHRPX_OPT_HOST_REWRITE, "yes");
         break;
       default:
         break;

@@ -92,6 +92,7 @@ OPTIONS = [
     "max-header-fields",
     "include",
     "tls-ticket-cipher",
+    "host-rewrite",
     "conf",
 ]
 
