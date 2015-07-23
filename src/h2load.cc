@@ -731,11 +731,11 @@ void Client::signal_write() { ev_io_start(worker->loop, &wev); }
 Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
                ssize_t rate, Config *config)
     : stats(req_todo), loop(ev_loop_new(0)), ssl_ctx(ssl_ctx), config(config),
-      id(id), tls_info_report_done(false), rate_loop(EV_DEFAULT), current_second(0), nconns_made(0), nclients(nclients), rate(rate) {
+      id(id), tls_info_report_done(false), current_second(0), nconns_made(0), nclients(nclients), rate(rate) {
   stats.req_todo = req_todo;
   progress_interval = std::max((size_t)1, req_todo / 10);
-  nreqs_per_client = req_todo / nclients;
-  nreqs_rem = req_todo % nclients;
+  auto nreqs_per_client = req_todo / nclients;
+  auto nreqs_rem = req_todo % nclients;
 
   if (config->is_rate_mode()) {
     // create timer that will go off every second
@@ -1328,6 +1328,12 @@ int main(int argc, char **argv) {
 
   if (config.is_rate_mode() && config.rate < (ssize_t)config.nthreads) {
     std::cerr << "-r, -t: the connection rate must be greater than or equal "
+              << "to the number of threads." << std::endl;
+    exit(EXIT_FAILURE);
+  }
+
+  if (config.is_rate_mode() && config.nconns < (ssize_t)config.nthreads) {
+    std::cerr << "-C, -t: the total number of connections must be greater than or equal "
               << "to the number of threads." << std::endl;
     exit(EXIT_FAILURE);
   }

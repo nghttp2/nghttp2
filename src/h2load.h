@@ -184,12 +184,9 @@ struct Worker {
   size_t progress_interval;
   uint32_t id;
   bool tls_info_report_done;
-  struct ev_loop *rate_loop;
   ssize_t current_second;
   ssize_t nconns_made;
   ssize_t nclients;
-  ssize_t nreqs_per_client;
-  ssize_t nreqs_rem;
   ev_timer timeout_watcher;
   ssize_t rate;
 
