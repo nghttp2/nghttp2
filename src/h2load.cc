@@ -157,26 +157,13 @@ void readcb(struct ev_loop *loop, ev_io *w, int revents) {
 namespace {
 // Called every second when rate mode is being used
 void second_timeout_w_cb(EV_P_ ev_timer *w, int revents) {
-  //TODO
-  //std::cout << "seconf_timeout_w_cb" << std::endl;
   auto worker = static_cast<Worker *>(w->data);
-  std::cout << "worker: " << worker->id << " current_second: " << worker->current_second << std::endl; 
   auto nclients_per_second = worker->rate;
   auto conns_remaining = worker->nclients - worker->nconns_made;
   auto nclients = std::min(nclients_per_second, conns_remaining);
 
-  if (nclients_per_second > conns_remaining) {
-    //nclients += conns_remaining;
-  }
-
-  //std::cout << "worker: " << worker->id << " rate: " << worker->rate << std::endl;
-  std::cout << "worker: " << worker->id << " nclients - nconns_made = " << worker->nclients - worker->nconns_made << std::endl;
-
-  std::cout << "worker: " << worker->id << " nclients: " << nclients << std::endl; 
-  std::cout << "worker: " << worker->id << " nconns_made: " << worker->nconns_made << std::endl; 
   for (ssize_t i = 0; i < nclients; ++i) {
     auto req_todo = worker->config->max_concurrent_streams;
-    std::cout << "worker: " << worker->id << " i: " << i << "req_todo: " << req_todo << std::endl;
     worker->clients.push_back(make_unique<Client>(worker, req_todo));
     auto &client = worker->clients.back();
     if (client->connect() != 0) {
@@ -185,11 +172,7 @@ void second_timeout_w_cb(EV_P_ ev_timer *w, int revents) {
     }
     ++worker->nconns_made;
   }
-  //if (worker->current_second >= std::max((ssize_t)0, (worker->config->seconds - 1))) {
   if (worker->nconns_made >= worker->nclients) {
-    std::cout << "worker: " << worker->id << " worker->current_second: " << worker->current_second << std::endl;
-    std::cout << "worker: " << worker->id << " worker->config->seconds: " << worker->config->seconds << std::endl;
-    //std::cout << "ev_timer_stop" << std::endl;
     ev_timer_stop(worker->loop, w);
   }
   ++worker->current_second;
@@ -754,11 +737,8 @@ Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
   nreqs_per_client = req_todo / nclients;
   nreqs_rem = req_todo % nclients;
 
-  std::cout << "NREQS_PER_CLIENT: " << nreqs_per_client << std::endl;
-  std::cout << "NCLIENTS (in Worker): " << this->nclients << std::endl;
   if (config->is_rate_mode()) {
     // create timer that will go off every second
-    //ev_timer timeout_watcher;
     timeout_watcher.data = this;
     ev_init(&timeout_watcher, second_timeout_w_cb);
     timeout_watcher.repeat = 1.;
@@ -1448,7 +1428,6 @@ int main(int argc, char **argv) {
   ssize_t n_time = 0;
   ssize_t c_time = 0;
   size_t actual_nreqs = config.nreqs;
-  std::cout << "max_concurrent_streams: " << config.max_concurrent_streams << std::endl;
   // only care about n_time and c_time in rate mode
   if (config.is_rate_mode() && config.max_concurrent_streams != 0) {
     n_time = (int)config.nreqs /
@@ -1583,16 +1562,6 @@ int main(int argc, char **argv) {
     nclients_extra = config.nconns - (config.seconds * config.rate);
     nclients_extra_per_thread = nclients_extra / (ssize_t)config.nthreads;
     nclients_extra_rem_per_thread = (ssize_t)nclients_extra % (ssize_t)config.nthreads;
-
-    std::cout << "nclients_extra: " << nclients_extra << std::endl;
-    std::cout << "nclients_extra_per_thread: " << nclients_extra_per_thread << std::endl;
-    std::cout << "nclients_extra_rem_per_thread: " << nclients_extra_rem_per_thread << std::endl;
-    std::cout << "SECONDS " << config.seconds << std::endl;
-    std::cout << "NREQS " << config.nreqs << std::endl;
-    std::cout << "N_TIME " << n_time << std::endl;
-    std::cout << "C_TIME " << c_time << std::endl;
-
-    std::cout << "nreqs_per_thread" << nreqs_per_thread << std::endl;
   }
 
   std::cout << "starting benchmark..." << std::endl;
