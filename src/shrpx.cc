@@ -649,50 +649,39 @@ void renew_ticket_key_cb(struct ev_loop *loop, ev_timer *w, int revents) {
     auto &old_keys = old_ticket_keys->keys;
     auto &new_keys = ticket_keys->keys;
 
-    assert(old_keys.size() >= 2);
+    assert(!old_keys.empty());
 
-    new_keys.resize(std::min(13ul, old_keys.size() + 1));
-    std::copy_n(std::begin(old_keys), new_keys.size() - 2,
+    new_keys.resize(std::min(12ul, old_keys.size() + 1));
+    std::copy_n(std::begin(old_keys), new_keys.size() - 1,
                 std::begin(new_keys) + 1);
-    new_keys[0] = old_keys.back();
   } else {
-    ticket_keys->keys.resize(2);
-    if (generate_ticket_key(ticket_keys->keys[0]) != 0) {
-      if (LOG_ENABLED(INFO)) {
-        LOG(INFO) << "failed to generate ticket key";
-      }
-      conn_handler->set_ticket_keys(nullptr);
-      conn_handler->worker_renew_ticket_keys(nullptr);
-      return;
-    }
+    ticket_keys->keys.resize(1);
   }
 
-  auto &new_key = ticket_keys->keys.back();
+  auto &new_key = ticket_keys->keys[0];
 
   if (generate_ticket_key(new_key) != 0) {
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "failed to generate ticket key";
     }
     conn_handler->set_ticket_keys(nullptr);
-    conn_handler->worker_renew_ticket_keys(nullptr);
+    conn_handler->set_ticket_keys_to_worker(nullptr);
     return;
   }
 
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "ticket keys generation done";
-    assert(ticket_keys->keys.size() >= 2);
-    LOG(INFO) << "enc+dec: "
+    assert(ticket_keys->keys.size() >= 1);
+    LOG(INFO) << 0 << " enc+dec: "
               << util::format_hex(ticket_keys->keys[0].data.name);
-    for (size_t i = 1; i < ticket_keys->keys.size() - 1; ++i) {
+    for (size_t i = 1; i < ticket_keys->keys.size(); ++i) {
       auto &key = ticket_keys->keys[i];
-      LOG(INFO) << "dec: " << util::format_hex(key.data.name);
+      LOG(INFO) << i << " dec: " << util::format_hex(key.data.name);
     }
-    LOG(INFO) << "dec, next enc: "
-              << util::format_hex(ticket_keys->keys.back().data.name);
   }
 
   conn_handler->set_ticket_keys(ticket_keys);
-  conn_handler->worker_renew_ticket_keys(ticket_keys);
+  conn_handler->set_ticket_keys_to_worker(ticket_keys);
 }
 } // namespace
 

@@ -128,22 +128,17 @@ ConnectionHandler::~ConnectionHandler() {
   }
 }
 
+void ConnectionHandler::set_ticket_keys_to_worker(
+    const std::shared_ptr<TicketKeys> &ticket_keys) {
+  for (auto &worker : workers_) {
+    worker->set_ticket_keys(ticket_keys);
+  }
+}
+
 void ConnectionHandler::worker_reopen_log_files() {
   WorkerEvent wev{};
 
   wev.type = REOPEN_LOG;
-
-  for (auto &worker : workers_) {
-    worker->send(wev);
-  }
-}
-
-void ConnectionHandler::worker_renew_ticket_keys(
-    const std::shared_ptr<TicketKeys> &ticket_keys) {
-  WorkerEvent wev{};
-
-  wev.type = RENEW_TICKET_KEYS;
-  wev.ticket_keys = ticket_keys;
 
   for (auto &worker : workers_) {
     worker->send(wev);

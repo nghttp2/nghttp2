@@ -172,12 +172,6 @@ void Worker::process_events() {
 
       break;
     }
-    case RENEW_TICKET_KEYS:
-      WLOG(NOTICE, this) << "Renew ticket keys: worker(" << this << ")";
-
-      ticket_keys_ = wev.ticket_keys;
-
-      break;
     case REOPEN_LOG:
       WLOG(NOTICE, this) << "Reopening log files: worker(" << this << ")";
 
@@ -206,11 +200,13 @@ void Worker::process_events() {
 
 ssl::CertLookupTree *Worker::get_cert_lookup_tree() const { return cert_tree_; }
 
-const std::shared_ptr<TicketKeys> &Worker::get_ticket_keys() const {
+std::shared_ptr<TicketKeys> Worker::get_ticket_keys() {
+  std::lock_guard<std::mutex> g(m_);
   return ticket_keys_;
 }
 
 void Worker::set_ticket_keys(std::shared_ptr<TicketKeys> ticket_keys) {
+  std::lock_guard<std::mutex> g(m_);
   ticket_keys_ = std::move(ticket_keys);
 }
 
