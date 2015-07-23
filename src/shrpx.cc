@@ -605,53 +605,90 @@ void graceful_shutdown_signal_cb(struct ev_loop *loop, ev_signal *w,
 } // namespace
 
 namespace {
+int generate_ticket_key(TicketKey &ticket_key) {
+  ticket_key.cipher = get_config()->tls_ticket_cipher;
+  ticket_key.hmac = EVP_sha256();
+  ticket_key.hmac_keylen = EVP_MD_size(ticket_key.hmac);
+
+  assert(static_cast<size_t>(EVP_CIPHER_key_length(ticket_key.cipher)) <=
+         sizeof(ticket_key.data.enc_key));
+  assert(ticket_key.hmac_keylen <= sizeof(ticket_key.data.hmac_key));
+
+  if (LOG_ENABLED(INFO)) {
+    LOG(INFO) << "enc_keylen=" << EVP_CIPHER_key_length(ticket_key.cipher)
+              << ", hmac_keylen=" << ticket_key.hmac_keylen;
+  }
+
+  if (RAND_bytes(reinterpret_cast<unsigned char *>(&ticket_key.data),
+                 sizeof(ticket_key.data)) == 0) {
+    return -1;
+  }
+
+  return 0;
+}
+} // namespace
+
+namespace {
 void renew_ticket_key_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto conn_handler = static_cast<ConnectionHandler *>(w->data);
   const auto &old_ticket_keys = conn_handler->get_ticket_keys();
 
   auto ticket_keys = std::make_shared<TicketKeys>();
-  LOG(NOTICE) << "Renew ticket keys: main";
+  LOG(NOTICE) << "Renew new ticket keys";
 
-  // We store at most 2 ticket keys
+  // If old_ticket_keys is not empty, it should contain at least 2
+  // keys: one for encryption, and last one for the next encryption
+  // key but decryption only.  The keys in between are old keys and
+  // decryption only.  The next key is provided to ensure to mitigate
+  // possible problem when one worker encrypt new key, but one worker,
+  // which did not take the that key yet, and cannot decrypt it.
+  //
+  // We keep keys for 12 hours.  Thus the maximum ticket vector size
+  // is 12 + 1.
   if (old_ticket_keys) {
     auto &old_keys = old_ticket_keys->keys;
     auto &new_keys = ticket_keys->keys;
 
-    assert(!old_keys.empty());
+    assert(old_keys.size() >= 2);
 
-    new_keys.resize(2);
-    new_keys[1] = old_keys[0];
+    new_keys.resize(std::min(13ul, old_keys.size() + 1));
+    std::copy_n(std::begin(old_keys), new_keys.size() - 2,
+                std::begin(new_keys) + 1);
+    new_keys[0] = old_keys.back();
   } else {
-    ticket_keys->keys.resize(1);
-  }
-
-  auto &new_key = ticket_keys->keys[0];
-  new_key.cipher = get_config()->tls_ticket_cipher;
-  new_key.hmac = EVP_sha256();
-  new_key.hmac_keylen = EVP_MD_size(new_key.hmac);
-
-  assert(static_cast<size_t>(EVP_CIPHER_key_length(new_key.cipher)) <=
-         sizeof(new_key.data.enc_key));
-  assert(new_key.hmac_keylen <= sizeof(new_key.data.hmac_key));
-
-  if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "enc_keylen=" << EVP_CIPHER_key_length(new_key.cipher)
-              << ", hmac_keylen=" << new_key.hmac_keylen;
-  }
-
-  if (RAND_bytes(reinterpret_cast<unsigned char *>(&new_key.data),
-                 sizeof(new_key.data)) == 0) {
-    if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "failed to renew ticket key";
+    ticket_keys->keys.resize(2);
+    if (generate_ticket_key(ticket_keys->keys[0]) != 0) {
+      if (LOG_ENABLED(INFO)) {
+        LOG(INFO) << "failed to generate ticket key";
+      }
+      conn_handler->set_ticket_keys(nullptr);
+      conn_handler->worker_renew_ticket_keys(nullptr);
+      return;
     }
+  }
+
+  auto &new_key = ticket_keys->keys.back();
+
+  if (generate_ticket_key(new_key) != 0) {
+    if (LOG_ENABLED(INFO)) {
+      LOG(INFO) << "failed to generate ticket key";
+    }
+    conn_handler->set_ticket_keys(nullptr);
+    conn_handler->worker_renew_ticket_keys(nullptr);
     return;
   }
 
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "ticket keys generation done";
-    for (auto &key : ticket_keys->keys) {
-      LOG(INFO) << "name: " << util::format_hex(key.data.name);
+    assert(ticket_keys->keys.size() >= 2);
+    LOG(INFO) << "enc+dec: "
+              << util::format_hex(ticket_keys->keys[0].data.name);
+    for (size_t i = 1; i < ticket_keys->keys.size() - 1; ++i) {
+      auto &key = ticket_keys->keys[i];
+      LOG(INFO) << "dec: " << util::format_hex(key.data.name);
     }
+    LOG(INFO) << "dec, next enc: "
+              << util::format_hex(ticket_keys->keys.back().data.name);
   }
 
   conn_handler->set_ticket_keys(ticket_keys);
@@ -740,8 +777,8 @@ int event_loop() {
       }
     }
     if (auto_tls_ticket_key) {
-      // Renew ticket key every 12hrs
-      ev_timer_init(&renew_ticket_key_timer, renew_ticket_key_cb, 0., 12_h);
+      // Generate new ticket key every 1hr.
+      ev_timer_init(&renew_ticket_key_timer, renew_ticket_key_cb, 0., 1_h);
       renew_ticket_key_timer.data = conn_handler.get();
       ev_timer_again(loop, &renew_ticket_key_timer);
 
@@ -1317,9 +1354,10 @@ SSL/TLS:
               opening or reading given file fails, all loaded keys are
               discarded and it is treated as if none of this option is
               given.  If this option is not given or an error occurred
-              while  opening  or  reading  a file,  key  is  generated
-              automatically and  renewed every 12hrs.  At  most 2 keys
-              are stored in memory.
+              while opening or reading a  file, key is generated every
+              1 hour internally and they are valid for 12 hours.  This
+              is  recommended if  ticket key  sharing between  nghttpx
+              instances is not required.
   --tls-ticket-cipher=<TICKET_CIPHER>
               Specify cipher  to encrypt TLS session  ticket.  Specify
               either   aes-128-cbc   or  aes-256-cbc.    By   default,
