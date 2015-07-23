@@ -1601,6 +1601,10 @@ int main(int argc, char **argv) {
   create_config();
   fill_default_config();
 
+  // First open log files with default configuration, so that we can
+  // log errors/warnings while reading configuration files.
+  reopen_log_files();
+
   // We have to copy argv, since getopt_long may change its content.
   mod_config()->argc = argc;
   mod_config()->argv = new char *[argc];
@@ -2117,8 +2121,7 @@ int main(int argc, char **argv) {
     cmdcfgs.emplace_back(SHRPX_OPT_CERTIFICATE_FILE, argv[optind++]);
   }
 
-  // First open default log files to deal with errors occurred while
-  // parsing option values.
+  // Reopen log files using configurations in file
   reopen_log_files();
 
   {
