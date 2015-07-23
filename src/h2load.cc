@@ -1569,8 +1569,8 @@ int main(int argc, char **argv) {
   size_t nclients_per_thread = config.nclients / config.nthreads;
   ssize_t nclients_rem = config.nclients % config.nthreads;
 
-  size_t rate_per_thread = config.rate / config.nthreads;
-  ssize_t rate_per_thread_rem = config.rate % config.nthreads;
+  size_t rate_per_thread = config.rate / (ssize_t)config.nthreads;
+  ssize_t rate_per_thread_rem = config.rate % (ssize_t)config.nthreads;
 
   auto nclients_extra = 0;
   auto nclients_extra_per_thread = 0;
@@ -1603,7 +1603,11 @@ int main(int argc, char **argv) {
   for (size_t i = 0; i < config.nthreads - 1; ++i) {
     auto nreqs = nreqs_per_thread + (nreqs_rem-- > 0);
     auto rate = rate_per_thread + (rate_per_thread_rem-- > 0);
-    auto nclients = rate * config.seconds + nclients_extra_per_thread + (nclients_extra_rem_per_thread--);
+    std::cout << "worker: " << i << "nclients_extra_per_thread: " << nclients_extra_per_thread << std::endl;
+    std::cout << "worker: " << i << "nclients_extra_rem_per_thread: " << nclients_extra_rem_per_thread << std::endl;
+    std::cout << "worker: " << i << "config.seconds: " << config.seconds << std::endl;
+    std::cout << "worker: " << i <<  "rate: " << rate << std::endl;
+    auto nclients = rate * config.seconds + nclients_extra_per_thread + (nclients_extra_rem_per_thread-- > 0);
     std::cout << "spawning thread #" << i << ": " << nclients
               << " concurrent clients, " << nreqs << " total requests"
               << std::endl;
@@ -1615,9 +1619,15 @@ int main(int argc, char **argv) {
   }
 #endif // NOTHREADS
 
+  std::cout << "worker: " <<  config.nthreads - 1 << "nclients_extra_per_thread: " << nclients_extra_per_thread << std::endl;
+  std::cout << "worker: " <<  config.nthreads - 1 << "nclients_extra_rem_per_thread: " << nclients_extra_rem_per_thread << std::endl;
+  std::cout << "worker: " <<  config.nthreads - 1 << "config.seconds: " << config.seconds << std::endl;
   auto nreqs_last = nreqs_per_thread + (nreqs_rem-- > 0);
   auto nclients_last = nclients_per_thread + (nclients_rem-- > 0);
   auto rate_last = rate_per_thread + (rate_per_thread_rem-- > 0);
+  if (config.is_rate_mode()) {
+    nclients_last = rate_last * config.seconds + nclients_extra_per_thread + (nclients_extra_rem_per_thread-- > 0);
+  }
   std::cout << "spawning thread #" << (config.nthreads - 1) << ": "
             << nclients_last << " concurrent clients, " << nreqs_last
             << " total requests" << std::endl;
