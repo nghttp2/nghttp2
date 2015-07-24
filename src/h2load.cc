@@ -771,6 +771,9 @@ void Worker::run() {
     }
   } else {
     ev_timer_again(loop, &timeout_watcher);
+
+    // call callback so that we don't waste the first second
+    second_timeout_w_cb(loop, &timeout_watcher, 0);
   }
   ev_run(loop, 0);
 }
