@@ -1102,7 +1102,7 @@ void prepare_response(Stream *stream, Http2Handler *hd,
 
     if (last_mod_found && static_cast<time_t>(buf.st_mtime) <= last_mod) {
       close(file);
-      prepare_status_response(stream, hd, 304);
+      hd->submit_response("304", stream->stream_id, nullptr);
 
       return;
     }
@@ -1111,7 +1111,7 @@ void prepare_response(Stream *stream, Http2Handler *hd,
         path, FileEntry(path, buf.st_size, buf.st_mtime, file));
   } else if (last_mod_found && file_ent->mtime <= last_mod) {
     sessions->release_fd(file_ent->path);
-    prepare_status_response(stream, hd, 304);
+    hd->submit_response("304", stream->stream_id, nullptr);
 
     return;
   }
@@ -1630,7 +1630,6 @@ FileEntry make_status_body(int status, uint16_t port) {
 enum {
   IDX_200,
   IDX_301,
-  IDX_304,
   IDX_400,
   IDX_404,
 };
@@ -1639,7 +1638,6 @@ HttpServer::HttpServer(const Config *config) : config_(config) {
   status_pages_ = std::vector<StatusPage>{
       {"200", make_status_body(200, config_->port)},
       {"301", make_status_body(301, config_->port)},
-      {"304", make_status_body(304, config_->port)},
       {"400", make_status_body(400, config_->port)},
       {"404", make_status_body(404, config_->port)},
   };
@@ -1884,8 +1882,6 @@ const StatusPage *HttpServer::get_status_page(int status) const {
     return &status_pages_[IDX_200];
   case 301:
     return &status_pages_[IDX_301];
-  case 304:
-    return &status_pages_[IDX_304];
   case 400:
     return &status_pages_[IDX_400];
   case 404:
