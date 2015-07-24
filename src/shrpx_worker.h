@@ -54,21 +54,27 @@ namespace ssl {
 class CertLookupTree;
 } // namespace ssl
 
+struct DownstreamGroup {
+  DownstreamGroup() : next_http2session(0), next(0) {}
+
+  std::vector<std::unique_ptr<Http2Session>> http2sessions;
+  // Next index in http2sessions.
+  size_t next_http2session;
+  // Next downstream address index corresponding to
+  // Config::downstream_addr_groups[].
+  size_t next;
+};
+
 struct WorkerStat {
-  WorkerStat() : num_connections(0), next_downstream(0) {}
+  WorkerStat(size_t num_groups) : num_connections(0) {}
 
   size_t num_connections;
-  // Next downstream index in Config::downstream_addrs.  For HTTP/2
-  // downstream connections, this is always 0.  For HTTP/1, this is
-  // used as load balancing.
-  size_t next_downstream;
 };
 
 enum WorkerEventType {
   NEW_CONNECTION = 0x01,
   REOPEN_LOG = 0x02,
   GRACEFUL_SHUTDOWN = 0x03,
-  RENEW_TICKET_KEYS = 0x04,
 };
 
 struct WorkerEvent {
@@ -93,11 +99,15 @@ public:
   void send(const WorkerEvent &event);
 
   ssl::CertLookupTree *get_cert_lookup_tree() const;
-  const std::shared_ptr<TicketKeys> &get_ticket_keys() const;
+
+  // These 2 functions make a lock m_ to get/set ticket keys
+  // atomically.
+  std::shared_ptr<TicketKeys> get_ticket_keys();
   void set_ticket_keys(std::shared_ptr<TicketKeys> ticket_keys);
+
   WorkerStat *get_worker_stat();
   DownstreamConnectionPool *get_dconn_pool();
-  Http2Session *next_http2_session();
+  Http2Session *next_http2_session(size_t group);
   ConnectBlocker *get_connect_blocker() const;
   struct ev_loop *get_loop() const;
   SSL_CTX *get_sv_ssl_ctx() const;
@@ -109,9 +119,9 @@ public:
   MemchunkPool *get_mcpool();
   void schedule_clear_mcpool();
 
+  DownstreamGroup *get_dgrp(size_t group);
+
 private:
-  std::vector<std::unique_ptr<Http2Session>> http2sessions_;
-  size_t next_http2session_;
 #ifndef NOTHREADS
   std::future<void> fut_;
 #endif // NOTHREADS
@@ -122,6 +132,7 @@ private:
   MemchunkPool mcpool_;
   DownstreamConnectionPool dconn_pool_;
   WorkerStat worker_stat_;
+  std::vector<DownstreamGroup> dgrps_;
   struct ev_loop *loop_;
 
   // Following fields are shared across threads if

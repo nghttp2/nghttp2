@@ -79,6 +79,7 @@ void test_nghttp2_submit_headers_continuation(void);
 void test_nghttp2_submit_priority(void);
 void test_nghttp2_submit_settings(void);
 void test_nghttp2_submit_settings_update_local_window_size(void);
+void test_nghttp2_submit_settings_multiple_times(void);
 void test_nghttp2_submit_push_promise(void);
 void test_nghttp2_submit_window_update(void);
 void test_nghttp2_submit_window_update_local_window_size(void);

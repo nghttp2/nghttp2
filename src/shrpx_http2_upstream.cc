@@ -36,6 +36,7 @@
 #include "shrpx_config.h"
 #include "shrpx_http.h"
 #include "shrpx_worker.h"
+#include "shrpx_http2_session.h"
 #include "http2.h"
 #include "util.h"
 #include "base64.h"
@@ -73,21 +74,12 @@ int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
     return 0;
   }
 
-  downstream->set_request_state(Downstream::STREAM_CLOSED);
-
-  if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
-    // At this point, downstream response was read
-    if (!downstream->get_upgraded() &&
-        !downstream->get_response_connection_close()) {
-      // Keep-alive
-      downstream->detach_downstream_connection();
-    }
-
-    upstream->remove_downstream(downstream);
-    // downstream was deleted
-
-    return 0;
+  if (downstream->can_detach_downstream_connection()) {
+    // Keep-alive
+    downstream->detach_downstream_connection();
   }
+
+  downstream->set_request_state(Downstream::STREAM_CLOSED);
 
   // At this point, downstream read may be paused.
 
@@ -300,7 +292,15 @@ int Http2Upstream::on_request_headers(Downstream *downstream,
   downstream->set_request_method(method_token);
   downstream->set_request_http2_scheme(http2::value_to_str(scheme));
   downstream->set_request_http2_authority(http2::value_to_str(authority));
-  downstream->set_request_path(http2::value_to_str(path));
+  if (path) {
+    if (get_config()->http2_proxy || get_config()->client_proxy) {
+      downstream->set_request_path(http2::value_to_str(path));
+    } else {
+      auto &value = path->value;
+      downstream->set_request_path(
+          http2::rewrite_clean_path(std::begin(value), std::end(value)));
+    }
+  }
 
   if (!(frame->hd.flags & NGHTTP2_FLAG_END_STREAM)) {
     downstream->set_request_http2_expect_body(true);
@@ -334,7 +334,7 @@ void Http2Upstream::initiate_downstream(Downstream *downstream) {
   int rv;
 
   rv = downstream->attach_downstream_connection(
-      handler_->get_downstream_connection());
+      handler_->get_downstream_connection(downstream));
   if (rv != 0) {
     // downstream connection fails, send error page
     if (error_reply(downstream, 503) != 0) {
@@ -541,7 +541,8 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
             {nv.value, nv.value + nv.valuelen});
         break;
       case http2::HD__PATH:
-        downstream->set_request_path({nv.value, nv.value + nv.valuelen});
+        downstream->set_request_path(
+            http2::rewrite_clean_path(nv.value, nv.value + nv.valuelen));
         break;
       }
       downstream->add_request_header(nv.name, nv.namelen, nv.value, nv.valuelen,
@@ -874,16 +875,6 @@ ClientHandler *Http2Upstream::get_client_handler() const { return handler_; }
 int Http2Upstream::downstream_read(DownstreamConnection *dconn) {
   auto downstream = dconn->get_downstream();
 
-  if (downstream->get_request_state() == Downstream::STREAM_CLOSED) {
-    // If upstream HTTP2 stream was closed, we just close downstream,
-    // because there is no consumer now. Downstream connection is also
-    // closed in this case.
-    remove_downstream(downstream);
-    // downstream was deleted
-
-    return 0;
-  }
-
   if (downstream->get_response_state() == Downstream::MSG_RESET) {
     // The downstream stream was reset (canceled). In this case,
     // RST_STREAM to the upstream and delete downstream connection
@@ -915,10 +906,8 @@ int Http2Upstream::downstream_read(DownstreamConnection *dconn) {
       }
       return downstream_error(dconn, Downstream::EVENT_ERROR);
     }
-    // Detach downstream connection early so that it could be reused
-    // without hitting server's request timeout.
-    if (downstream->get_response_state() == Downstream::MSG_COMPLETE &&
-        !downstream->get_response_connection_close()) {
+
+    if (downstream->can_detach_downstream_connection()) {
       // Keep-alive
       downstream->detach_downstream_connection();
     }
@@ -948,14 +937,6 @@ int Http2Upstream::downstream_eof(DownstreamConnection *dconn) {
 
   if (LOG_ENABLED(INFO)) {
     DCLOG(INFO, dconn) << "EOF. stream_id=" << downstream->get_stream_id();
-  }
-  if (downstream->get_request_state() == Downstream::STREAM_CLOSED) {
-    // If stream was closed already, we don't need to send reply at
-    // the first place. We can delete downstream.
-    remove_downstream(downstream);
-    // downstream was deleted
-
-    return 0;
   }
 
   // Delete downstream connection. If we don't delete it here, it will
@@ -1000,13 +981,6 @@ int Http2Upstream::downstream_error(DownstreamConnection *dconn, int events) {
     if (downstream->get_upgraded()) {
       DCLOG(INFO, dconn) << "Note: this is tunnel connection";
     }
-  }
-
-  if (downstream->get_request_state() == Downstream::STREAM_CLOSED) {
-    remove_downstream(downstream);
-    // downstream was deleted
-
-    return 0;
   }
 
   // Delete downstream connection. If we don't delete it here, it will
@@ -1476,7 +1450,7 @@ int Http2Upstream::on_downstream_reset(bool no_retry) {
     // downstream connection.
 
     rv = downstream->attach_downstream_connection(
-        handler_->get_downstream_connection());
+        handler_->get_downstream_connection(downstream));
     if (rv != 0) {
       goto fail;
     }
@@ -1497,8 +1471,7 @@ int Http2Upstream::on_downstream_reset(bool no_retry) {
 
 int Http2Upstream::prepare_push_promise(Downstream *downstream) {
   int rv;
-  http_parser_url u;
-  memset(&u, 0, sizeof(u));
+  http_parser_url u{};
   rv = http_parser_parse_url(downstream->get_request_path().c_str(),
                              downstream->get_request_path().size(), 0, &u);
   if (rv != 0) {
@@ -1528,8 +1501,7 @@ int Http2Upstream::prepare_push_promise(Downstream *downstream) {
       const char *relq = nullptr;
       size_t relqlen = 0;
 
-      http_parser_url v;
-      memset(&v, 0, sizeof(v));
+      http_parser_url v{};
       rv = http_parser_parse_url(link_url, link_urllen, 0, &v);
       if (rv != 0) {
         assert(link_urllen);

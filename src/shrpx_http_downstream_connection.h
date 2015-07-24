@@ -39,7 +39,7 @@ class DownstreamConnectionPool;
 
 class HttpDownstreamConnection : public DownstreamConnection {
 public:
-  HttpDownstreamConnection(DownstreamConnectionPool *dconn_pool,
+  HttpDownstreamConnection(DownstreamConnectionPool *dconn_pool, size_t group,
                            struct ev_loop *loop);
   virtual ~HttpDownstreamConnection();
   virtual int attach_downstream(Downstream *downstream);
@@ -58,6 +58,7 @@ public:
 
   virtual void on_upstream_change(Upstream *upstream);
   virtual int on_priority_change(int32_t pri) { return 0; }
+  virtual size_t get_group() const;
 
   virtual bool poolable() const { return true; }
 
@@ -68,6 +69,7 @@ private:
   Connection conn_;
   IOControl ioctrl_;
   http_parser response_htp_;
+  size_t group_;
   // index of get_config()->downstream_addrs this object is using
   size_t addr_idx_;
   bool connected_;

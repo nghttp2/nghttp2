@@ -278,7 +278,7 @@ std::string common_log_date(time_t t) {
 #ifdef HAVE_STRUCT_TM_TM_GMTOFF
   auto gmtoff = tms.tm_gmtoff;
 #else  // !HAVE_STRUCT_TM_TM_GMTOFF
-  auto gmtoff = timegm(&tms) - t;
+  auto gmtoff = nghttp2_timegm(&tms) - t;
 #endif // !HAVE_STRUCT_TM_TM_GMTOFF
   if (gmtoff >= 0) {
     *p++ = '+';
@@ -326,7 +326,7 @@ std::string iso8601_date(int64_t ms) {
 #ifdef HAVE_STRUCT_TM_TM_GMTOFF
   auto gmtoff = tms.tm_gmtoff;
 #else  // !HAVE_STRUCT_TM_TM_GMTOFF
-  auto gmtoff = timegm(&tms) - sec;
+  auto gmtoff = nghttp2_timegm(&tms) - sec;
 #endif // !HAVE_STRUCT_TM_TM_GMTOFF
   if (gmtoff == 0) {
     *p++ = 'Z';
@@ -348,13 +348,12 @@ std::string iso8601_date(int64_t ms) {
 }
 
 time_t parse_http_date(const std::string &s) {
-  tm tm;
-  memset(&tm, 0, sizeof(tm));
+  tm tm{};
   char *r = strptime(s.c_str(), "%a, %d %b %Y %H:%M:%S GMT", &tm);
   if (r == 0) {
     return 0;
   }
-  return timegm(&tm);
+  return nghttp2_timegm_without_yday(&tm);
 }
 
 namespace {
@@ -637,9 +636,8 @@ void write_uri_field(std::ostream &o, const char *uri, const http_parser_url &u,
 }
 
 bool numeric_host(const char *hostname) {
-  struct addrinfo hints;
   struct addrinfo *res;
-  memset(&hints, 0, sizeof(hints));
+  struct addrinfo hints {};
   hints.ai_family = AF_UNSPEC;
   hints.ai_flags = AI_NUMERICHOST;
   if (getaddrinfo(hostname, nullptr, &hints, &res)) {

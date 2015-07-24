@@ -62,7 +62,13 @@ Connection::Connection(struct ev_loop *loop, int fd, SSL *ssl,
   tls.last_write_time = 0.;
 }
 
-Connection::~Connection() { disconnect(); }
+Connection::~Connection() {
+  disconnect();
+
+  if (tls.ssl) {
+    SSL_free(tls.ssl);
+  }
+}
 
 void Connection::disconnect() {
   ev_timer_stop(loop, &rt);
@@ -75,9 +81,12 @@ void Connection::disconnect() {
     SSL_set_app_data(tls.ssl, nullptr);
     SSL_set_shutdown(tls.ssl, SSL_RECEIVED_SHUTDOWN);
     ERR_clear_error();
-    SSL_shutdown(tls.ssl);
-    SSL_free(tls.ssl);
-    tls.ssl = nullptr;
+    // To reuse SSL/TLS session, we have to shutdown, and don't free
+    // tls.ssl.
+    if (SSL_shutdown(tls.ssl) != 1) {
+      SSL_free(tls.ssl);
+      tls.ssl = nullptr;
+    }
   }
 
   if (fd != -1) {

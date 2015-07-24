@@ -44,7 +44,6 @@ namespace shrpx {
 
 class Upstream;
 class DownstreamConnection;
-class Http2Session;
 class HttpsUpstream;
 class ConnectBlocker;
 class DownstreamConnectionPool;
@@ -92,7 +91,8 @@ public:
 
   void pool_downstream_connection(std::unique_ptr<DownstreamConnection> dconn);
   void remove_downstream_connection(DownstreamConnection *dconn);
-  std::unique_ptr<DownstreamConnection> get_downstream_connection();
+  std::unique_ptr<DownstreamConnection>
+  get_downstream_connection(Downstream *downstream);
   MemchunkPool *get_mcpool();
   SSL *get_ssl() const;
   ConnectBlocker *get_connect_blocker() const;
@@ -134,6 +134,7 @@ private:
   Connection conn_;
   ev_timer reneg_shutdown_timer_;
   std::unique_ptr<Upstream> upstream_;
+  std::unique_ptr<std::vector<ssize_t>> pinned_http2sessions_;
   std::string ipaddr_;
   std::string port_;
   // The ALPN identifier negotiated for this connection.
@@ -141,7 +142,6 @@ private:
   std::function<int(ClientHandler &)> read_, write_;
   std::function<int(ClientHandler &)> on_read_, on_write_;
   Worker *worker_;
-  Http2Session *http2session_;
   // The number of bytes of HTTP/2 client connection header to read
   size_t left_connhd_len_;
   bool should_close_after_write_;

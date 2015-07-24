@@ -119,12 +119,11 @@ const int GRACEFUL_SHUTDOWN_SIGNAL = SIGQUIT;
 namespace {
 int resolve_hostname(sockaddr_union *addr, size_t *addrlen,
                      const char *hostname, uint16_t port, int family) {
-  addrinfo hints;
   int rv;
 
   auto service = util::utos(port);
-  memset(&hints, 0, sizeof(addrinfo));
 
+  addrinfo hints{};
   hints.ai_family = family;
   hints.ai_socktype = SOCK_STREAM;
 #ifdef AI_ADDRCONFIG
@@ -279,12 +278,11 @@ std::unique_ptr<AcceptHandler> create_acceptor(ConnectionHandler *handler,
     }
   }
 
-  addrinfo hints;
   int fd = -1;
   int rv;
 
   auto service = util::utos(get_config()->port);
-  memset(&hints, 0, sizeof(addrinfo));
+  addrinfo hints{};
   hints.ai_family = family;
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_flags = AI_PASSIVE;
@@ -607,43 +605,87 @@ void graceful_shutdown_signal_cb(struct ev_loop *loop, ev_signal *w,
 } // namespace
 
 namespace {
+int generate_ticket_key(TicketKey &ticket_key) {
+  ticket_key.cipher = get_config()->tls_ticket_cipher;
+  ticket_key.hmac = EVP_sha256();
+  ticket_key.hmac_keylen = EVP_MD_size(ticket_key.hmac);
+
+  assert(static_cast<size_t>(EVP_CIPHER_key_length(ticket_key.cipher)) <=
+         sizeof(ticket_key.data.enc_key));
+  assert(ticket_key.hmac_keylen <= sizeof(ticket_key.data.hmac_key));
+
+  if (LOG_ENABLED(INFO)) {
+    LOG(INFO) << "enc_keylen=" << EVP_CIPHER_key_length(ticket_key.cipher)
+              << ", hmac_keylen=" << ticket_key.hmac_keylen;
+  }
+
+  if (RAND_bytes(reinterpret_cast<unsigned char *>(&ticket_key.data),
+                 sizeof(ticket_key.data)) == 0) {
+    return -1;
+  }
+
+  return 0;
+}
+} // namespace
+
+namespace {
 void renew_ticket_key_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto conn_handler = static_cast<ConnectionHandler *>(w->data);
   const auto &old_ticket_keys = conn_handler->get_ticket_keys();
 
   auto ticket_keys = std::make_shared<TicketKeys>();
-  LOG(NOTICE) << "Renew ticket keys: main";
+  LOG(NOTICE) << "Renew new ticket keys";
 
-  // We store at most 2 ticket keys
+  // If old_ticket_keys is not empty, it should contain at least 2
+  // keys: one for encryption, and last one for the next encryption
+  // key but decryption only.  The keys in between are old keys and
+  // decryption only.  The next key is provided to ensure to mitigate
+  // possible problem when one worker encrypt new key, but one worker,
+  // which did not take the that key yet, and cannot decrypt it.
+  //
+  // We keep keys for get_config()->tls_session_timeout seconds.  The
+  // default is 12 hours.  Thus the maximum ticket vector size is 12.
   if (old_ticket_keys) {
     auto &old_keys = old_ticket_keys->keys;
     auto &new_keys = ticket_keys->keys;
 
     assert(!old_keys.empty());
 
-    new_keys.resize(2);
-    new_keys[1] = old_keys[0];
+    auto max_tickets =
+        static_cast<size_t>(std::chrono::duration_cast<std::chrono::hours>(
+                                get_config()->tls_session_timeout).count());
+
+    new_keys.resize(std::min(max_tickets, old_keys.size() + 1));
+    std::copy_n(std::begin(old_keys), new_keys.size() - 1,
+                std::begin(new_keys) + 1);
   } else {
     ticket_keys->keys.resize(1);
   }
 
-  if (RAND_bytes(reinterpret_cast<unsigned char *>(&ticket_keys->keys[0]),
-                 sizeof(ticket_keys->keys[0])) == 0) {
+  auto &new_key = ticket_keys->keys[0];
+
+  if (generate_ticket_key(new_key) != 0) {
     if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "failed to renew ticket key";
+      LOG(INFO) << "failed to generate ticket key";
     }
+    conn_handler->set_ticket_keys(nullptr);
+    conn_handler->set_ticket_keys_to_worker(nullptr);
     return;
   }
 
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "ticket keys generation done";
-    for (auto &key : ticket_keys->keys) {
-      LOG(INFO) << "name: " << util::format_hex(key.name, sizeof(key.name));
+    assert(ticket_keys->keys.size() >= 1);
+    LOG(INFO) << 0 << " enc+dec: "
+              << util::format_hex(ticket_keys->keys[0].data.name);
+    for (size_t i = 1; i < ticket_keys->keys.size(); ++i) {
+      auto &key = ticket_keys->keys[i];
+      LOG(INFO) << i << " dec: " << util::format_hex(key.data.name);
     }
   }
 
   conn_handler->set_ticket_keys(ticket_keys);
-  conn_handler->worker_renew_ticket_keys(ticket_keys);
+  conn_handler->set_ticket_keys_to_worker(ticket_keys);
 }
 } // namespace
 
@@ -709,8 +751,17 @@ int event_loop() {
   if (!get_config()->upstream_no_tls) {
     bool auto_tls_ticket_key = true;
     if (!get_config()->tls_ticket_key_files.empty()) {
-      auto ticket_keys =
-          read_tls_ticket_key_file(get_config()->tls_ticket_key_files);
+      if (!get_config()->tls_ticket_cipher_given) {
+        LOG(WARN) << "It is strongly recommended to specify "
+                     "--tls-ticket-cipher=aes-128-cbc (or "
+                     "tls-ticket-cipher=aes-128-cbc in configuration file) "
+                     "when --tls-ticket-key-file is used for the smooth "
+                     "transition when the default value of --tls-ticket-cipher "
+                     "becomes aes-256-cbc";
+      }
+      auto ticket_keys = read_tls_ticket_key_file(
+          get_config()->tls_ticket_key_files, get_config()->tls_ticket_cipher,
+          EVP_sha256());
       if (!ticket_keys) {
         LOG(WARN) << "Use internal session ticket key generator";
       } else {
@@ -719,8 +770,8 @@ int event_loop() {
       }
     }
     if (auto_tls_ticket_key) {
-      // Renew ticket key every 12hrs
-      ev_timer_init(&renew_ticket_key_timer, renew_ticket_key_cb, 0., 12_h);
+      // Generate new ticket key every 1hr.
+      ev_timer_init(&renew_ticket_key_timer, renew_ticket_key_cb, 0., 1_h);
       renew_ticket_key_timer.data = conn_handler.get();
       ev_timer_again(loop, &renew_ticket_key_timer);
 
@@ -827,7 +878,7 @@ int16_t DEFAULT_DOWNSTREAM_PORT = 80;
 
 namespace {
 void fill_default_config() {
-  memset(mod_config(), 0, sizeof(*mod_config()));
+  *mod_config() = {};
 
   mod_config()->verbose = false;
   mod_config()->daemon = false;
@@ -948,7 +999,7 @@ void fill_default_config() {
 
   mod_config()->tls_proto_mask = 0;
   mod_config()->no_location_rewrite = false;
-  mod_config()->no_host_rewrite = false;
+  mod_config()->no_host_rewrite = true;
   mod_config()->argc = 0;
   mod_config()->argv = nullptr;
   mod_config()->downstream_connections_per_host = 8;
@@ -966,6 +1017,10 @@ void fill_default_config() {
   mod_config()->no_ocsp = false;
   mod_config()->header_field_buffer = 64_k;
   mod_config()->max_header_fields = 100;
+  mod_config()->downstream_addr_group_catch_all = 0;
+  mod_config()->tls_ticket_cipher = EVP_aes_128_cbc();
+  mod_config()->tls_ticket_cipher_given = false;
+  mod_config()->tls_session_timeout = std::chrono::hours(12);
 }
 } // namespace
 
@@ -997,14 +1052,67 @@ Options:
   The options are categorized into several groups.
 
 Connections:
-  -b, --backend=<HOST,PORT>
+  -b, --backend=(<HOST>,<PORT>|unix:<PATH>)[;<PATTERN>[:...]]
               Set  backend  host  and   port.   The  multiple  backend
               addresses are  accepted by repeating this  option.  UNIX
               domain socket  can be  specified by prefixing  path name
-              with "unix:" (e.g., unix:/var/run/backend.sock)
+              with "unix:" (e.g., unix:/var/run/backend.sock).
+
+              Optionally, if <PATTERN>s are given, the backend address
+              is only used  if request matches the pattern.   If -s or
+              -p  is  used,  <PATTERN>s   are  ignored.   The  pattern
+              matching  is closely  designed to  ServeMux in  net/http
+              package of Go  programming language.  <PATTERN> consists
+              of path, host + path or  just host.  The path must start
+              with "/".  If  it ends with "/", it  matches all request
+              path in  its subtree.  To  deal with the request  to the
+              directory without  trailing slash,  the path  which ends
+              with "/" also matches the  request path which only lacks
+              trailing '/'  (e.g., path  "/foo/" matches  request path
+              "/foo").  If it does not end with "/", it performs exact
+              match against  the request path.   If host is  given, it
+              performs exact match against  the request host.  If host
+              alone  is given,  "/"  is  appended to  it,  so that  it
+              matches  all   request  paths  under  the   host  (e.g.,
+              specifying "nghttp2.org" equals to "nghttp2.org/").
+
+              Patterns with  host take  precedence over  patterns with
+              just path.   Then, longer patterns take  precedence over
+              shorter  ones,  breaking  a  tie by  the  order  of  the
+              appearance in the configuration.
+
+              If <PATTERN> is  omitted, "/" is used  as pattern, which
+              matches  all  request  paths (catch-all  pattern).   The
+              catch-all backend must be given.
+
+              When doing  a match, nghttpx made  some normalization to
+              pattern, request host and path.  For host part, they are
+              converted to lower case.  For path part, percent-encoded
+              unreserved characters  defined in RFC 3986  are decoded,
+              and any  dot-segments (".."  and ".")   are resolved and
+              removed.
+
+              For   example,   -b'127.0.0.1,8080;nghttp2.org/httpbin/'
+              matches the  request host "nghttp2.org" and  the request
+              path "/httpbin/get", but does not match the request host
+              "nghttp2.org" and the request path "/index.html".
+
+              The  multiple <PATTERN>s  can  be specified,  delimiting
+              them            by           ":".             Specifying
+              -b'127.0.0.1,8080;nghttp2.org:www.nghttp2.org'  has  the
+              same  effect  to specify  -b'127.0.0.1,8080;nghttp2.org'
+              and -b'127.0.0.1,8080;www.nghttp2.org'.
+
+              The backend addresses sharing same <PATTERN> are grouped
+              together forming  load balancing  group.
+
+              Since ";" and ":" are  used as delimiter, <PATTERN> must
+              not  contain these  characters.  Since  ";" has  special
+              meaning in shell, the option value must be quoted.
+
               Default: )" << DEFAULT_DOWNSTREAM_HOST << ","
       << DEFAULT_DOWNSTREAM_PORT << R"(
-  -f, --frontend=<HOST,PORT>
+  -f, --frontend=(<HOST>,<PORT>|unix:<PATH>)
               Set  frontend  host and  port.   If  <HOST> is  '*',  it
               assumes  all addresses  including  both  IPv4 and  IPv6.
               UNIX domain  socket can  be specified by  prefixing path
@@ -1079,9 +1187,14 @@ Performance:
               accepts.  Setting 0 means unlimited.
               Default: )" << get_config()->worker_frontend_connections << R"(
   --backend-http2-connections-per-worker=<N>
-              Set  maximum number  of HTTP/2  connections per  worker.
-              The  default  value is  0,  which  means the  number  of
-              backend addresses specified by -b option.
+              Set   maximum   number   of  backend   HTTP/2   physical
+              connections  per  worker.   If  pattern is  used  in  -b
+              option, this limit is applied  to each pattern group (in
+              other  words, each  pattern group  can have  maximum <N>
+              HTTP/2  connections).  The  default  value  is 0,  which
+              means  that  the value  is  adjusted  to the  number  of
+              backend addresses.  If pattern  is used, this adjustment
+              is done for each pattern group.
   --backend-http1-connections-per-host=<N>
               Set   maximum  number   of  backend   concurrent  HTTP/1
               connections per origin host.   This option is meaningful
@@ -1219,8 +1332,11 @@ SSL/TLS:
               are treated as a part of protocol string.
               Default: )" << DEFAULT_TLS_PROTO_LIST << R"(
   --tls-ticket-key-file=<PATH>
-              Path  to file  that  contains 48  bytes  random data  to
-              construct TLS  session ticket parameters.   This options
+              Path to file that contains  random data to construct TLS
+              session ticket  parameters.  If aes-128-cbc is  given in
+              --tls-ticket-cipher,  the file  must contain  exactly 48
+              bytes.  If aes-256-cbc  is given in --tls-ticket-cipher,
+              the file  must contain  exactly 80 bytes.   This options
               can  be  used  repeatedly  to  specify  multiple  ticket
               parameters.  If several files  are given, only the first
               key is used to encrypt  TLS session tickets.  Other keys
@@ -1232,9 +1348,14 @@ SSL/TLS:
               opening or reading given file fails, all loaded keys are
               discarded and it is treated as if none of this option is
               given.  If this option is not given or an error occurred
-              while  opening  or  reading  a file,  key  is  generated
-              automatically and  renewed every 12hrs.  At  most 2 keys
-              are stored in memory.
+              while opening or reading a  file, key is generated every
+              1 hour internally and they are valid for 12 hours.  This
+              is  recommended if  ticket key  sharing between  nghttpx
+              instances is not required.
+  --tls-ticket-cipher=<TICKET_CIPHER>
+              Specify cipher  to encrypt TLS session  ticket.  Specify
+              either   aes-128-cbc   or  aes-256-cbc.    By   default,
+              aes-128-cbc is used.
   --fetch-ocsp-response-file=<PATH>
               Path to  fetch-ocsp-response script file.  It  should be
               absolute path.
@@ -1351,6 +1472,9 @@ Logging:
               * $ssl_session_reused:  "r"   if  SSL/TLS   session  was
                 reused.  Otherwise, "."
 
+              The  variable  can  be  enclosed  by  "{"  and  "}"  for
+              disambiguation (e.g., ${remote_addr}).
+
               Default: )" << DEFAULT_ACCESSLOG_FORMAT << R"(
   --errorlog-file=<PATH>
               Set path to write error  log.  To reopen file, send USR1
@@ -1379,8 +1503,8 @@ HTTP:
               --client  and  default   mode.   For  --http2-proxy  and
               --client-proxy mode,  location header field will  not be
               altered regardless of this option.
-  --no-host-rewrite
-              Don't  rewrite  host  and :authority  header  fields  on
+  --host-rewrite
+              Rewrite   host   and   :authority   header   fields   on
               --http2-bridge,   --client   and  default   mode.    For
               --http2-proxy  and  --client-proxy mode,  these  headers
               will not be altered regardless of this option.
@@ -1446,6 +1570,11 @@ Misc:
   --conf=<PATH>
               Load configuration from <PATH>.
               Default: )" << get_config()->conf_path.get() << R"(
+  --include=<PATH>
+              Load additional configurations from <PATH>.  File <PATH>
+              is  read  when  configuration  parser  encountered  this
+              option.  This option can be used multiple times, or even
+              recursively.
   -v, --version
               Print version and exit.
   -h, --help  Print this help and exit.
@@ -1476,6 +1605,10 @@ int main(int argc, char **argv) {
   Log::set_severity_level(NOTICE);
   create_config();
   fill_default_config();
+
+  // First open log files with default configuration, so that we can
+  // log errors/warnings while reading configuration files.
+  reopen_log_files();
 
   // We have to copy argv, since getopt_long may change its content.
   mod_config()->argc = argc;
@@ -1592,6 +1725,9 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_HEADER_FIELD_BUFFER, required_argument, &flag, 80},
         {SHRPX_OPT_MAX_HEADER_FIELDS, required_argument, &flag, 81},
         {SHRPX_OPT_ADD_REQUEST_HEADER, required_argument, &flag, 82},
+        {SHRPX_OPT_INCLUDE, required_argument, &flag, 83},
+        {SHRPX_OPT_TLS_TICKET_CIPHER, required_argument, &flag, 84},
+        {SHRPX_OPT_HOST_REWRITE, no_argument, &flag, 85},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -1954,6 +2090,18 @@ int main(int argc, char **argv) {
         // --add-request-header
         cmdcfgs.emplace_back(SHRPX_OPT_ADD_REQUEST_HEADER, optarg);
         break;
+      case 83:
+        // --include
+        cmdcfgs.emplace_back(SHRPX_OPT_INCLUDE, optarg);
+        break;
+      case 84:
+        // --tls-ticket-cipher
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_CIPHER, optarg);
+        break;
+      case 85:
+        // --host-rewrite
+        cmdcfgs.emplace_back(SHRPX_OPT_HOST_REWRITE, "yes");
+        break;
       default:
         break;
       }
@@ -1964,11 +2112,13 @@ int main(int argc, char **argv) {
   }
 
   if (conf_exists(get_config()->conf_path.get())) {
-    if (load_config(get_config()->conf_path.get()) == -1) {
+    std::set<std::string> include_set;
+    if (load_config(get_config()->conf_path.get(), include_set) == -1) {
       LOG(FATAL) << "Failed to load configuration from "
                  << get_config()->conf_path.get();
       exit(EXIT_FAILURE);
     }
+    assert(include_set.empty());
   }
 
   if (argc - optind >= 2) {
@@ -1976,15 +2126,21 @@ int main(int argc, char **argv) {
     cmdcfgs.emplace_back(SHRPX_OPT_CERTIFICATE_FILE, argv[optind++]);
   }
 
-  // First open default log files to deal with errors occurred while
-  // parsing option values.
+  // Reopen log files using configurations in file
   reopen_log_files();
 
-  for (size_t i = 0, len = cmdcfgs.size(); i < len; ++i) {
-    if (parse_config(cmdcfgs[i].first, cmdcfgs[i].second) == -1) {
-      LOG(FATAL) << "Failed to parse command-line argument.";
-      exit(EXIT_FAILURE);
+  {
+    std::set<std::string> include_set;
+
+    for (size_t i = 0, len = cmdcfgs.size(); i < len; ++i) {
+      if (parse_config(cmdcfgs[i].first, cmdcfgs[i].second, include_set) ==
+          -1) {
+        LOG(FATAL) << "Failed to parse command-line argument.";
+        exit(EXIT_FAILURE);
+      }
     }
+
+    assert(include_set.empty());
   }
 
   if (get_config()->accesslog_syslog || get_config()->errorlog_syslog) {
@@ -2118,55 +2274,96 @@ int main(int argc, char **argv) {
     }
   }
 
-  if (get_config()->downstream_addrs.empty()) {
+  if (get_config()->downstream_addr_groups.empty()) {
     DownstreamAddr addr;
     addr.host = strcopy(DEFAULT_DOWNSTREAM_HOST);
     addr.port = DEFAULT_DOWNSTREAM_PORT;
 
-    mod_config()->downstream_addrs.push_back(std::move(addr));
+    DownstreamAddrGroup g("/");
+    g.addrs.push_back(std::move(addr));
+    mod_config()->downstream_addr_groups.push_back(std::move(g));
+  } else if (get_config()->http2_proxy || get_config()->client_proxy) {
+    // We don't support host mapping in these cases.  Move all
+    // non-catch-all patterns to catch-all pattern.
+    DownstreamAddrGroup catch_all("/");
+    for (auto &g : mod_config()->downstream_addr_groups) {
+      std::move(std::begin(g.addrs), std::end(g.addrs),
+                std::back_inserter(catch_all.addrs));
+    }
+    std::vector<DownstreamAddrGroup>().swap(
+        mod_config()->downstream_addr_groups);
+    mod_config()->downstream_addr_groups.push_back(std::move(catch_all));
   }
 
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "Resolving backend address";
   }
 
-  for (auto &addr : mod_config()->downstream_addrs) {
+  ssize_t catch_all_group = -1;
+  for (size_t i = 0; i < mod_config()->downstream_addr_groups.size(); ++i) {
+    auto &g = mod_config()->downstream_addr_groups[i];
+    if (g.pattern == "/") {
+      catch_all_group = i;
+    }
+    if (LOG_ENABLED(INFO)) {
+      LOG(INFO) << "Host-path pattern: group " << i << ": '" << g.pattern
+                << "'";
+      for (auto &addr : g.addrs) {
+        LOG(INFO) << "group " << i << " -> " << addr.host.get()
+                  << (addr.host_unix ? "" : ":" + util::utos(addr.port));
+      }
+    }
+  }
 
-    if (addr.host_unix) {
-      // for AF_UNIX socket, we use "localhost" as host for backend
-      // hostport.  This is used as Host header field to backend and
-      // not going to be passed to any syscalls.
-      addr.hostport =
-          strcopy(util::make_hostport("localhost", get_config()->port));
+  if (catch_all_group == -1) {
+    LOG(FATAL) << "-b: No catch-all backend address is configured";
+    exit(EXIT_FAILURE);
+  }
+  mod_config()->downstream_addr_group_catch_all = catch_all_group;
 
-      auto path = addr.host.get();
-      auto pathlen = strlen(path);
+  if (LOG_ENABLED(INFO)) {
+    LOG(INFO) << "Catch-all pattern is group " << catch_all_group;
+  }
 
-      if (pathlen + 1 > sizeof(addr.addr.un.sun_path)) {
-        LOG(FATAL) << "UNIX domain socket path " << path << " is too long > "
-                   << sizeof(addr.addr.un.sun_path);
-        exit(EXIT_FAILURE);
+  for (auto &g : mod_config()->downstream_addr_groups) {
+    for (auto &addr : g.addrs) {
+
+      if (addr.host_unix) {
+        // for AF_UNIX socket, we use "localhost" as host for backend
+        // hostport.  This is used as Host header field to backend and
+        // not going to be passed to any syscalls.
+        addr.hostport =
+            strcopy(util::make_hostport("localhost", get_config()->port));
+
+        auto path = addr.host.get();
+        auto pathlen = strlen(path);
+
+        if (pathlen + 1 > sizeof(addr.addr.un.sun_path)) {
+          LOG(FATAL) << "UNIX domain socket path " << path << " is too long > "
+                     << sizeof(addr.addr.un.sun_path);
+          exit(EXIT_FAILURE);
+        }
+
+        LOG(INFO) << "Use UNIX domain socket path " << path
+                  << " for backend connection";
+
+        addr.addr.un.sun_family = AF_UNIX;
+        // copy path including terminal NULL
+        std::copy_n(path, pathlen + 1, addr.addr.un.sun_path);
+        addr.addrlen = sizeof(addr.addr.un);
+
+        continue;
       }
 
-      LOG(INFO) << "Use UNIX domain socket path " << path
-                << " for backend connection";
+      addr.hostport = strcopy(util::make_hostport(addr.host.get(), addr.port));
 
-      addr.addr.un.sun_family = AF_UNIX;
-      // copy path including terminal NULL
-      std::copy_n(path, pathlen + 1, addr.addr.un.sun_path);
-      addr.addrlen = sizeof(addr.addr.un);
-
-      continue;
-    }
-
-    addr.hostport = strcopy(util::make_hostport(addr.host.get(), addr.port));
-
-    if (resolve_hostname(
-            &addr.addr, &addr.addrlen, addr.host.get(), addr.port,
-            get_config()->backend_ipv4
-                ? AF_INET
-                : (get_config()->backend_ipv6 ? AF_INET6 : AF_UNSPEC)) == -1) {
-      exit(EXIT_FAILURE);
+      if (resolve_hostname(
+              &addr.addr, &addr.addrlen, addr.host.get(), addr.port,
+              get_config()->backend_ipv4 ? AF_INET : (get_config()->backend_ipv6
+                                                          ? AF_INET6
+                                                          : AF_UNSPEC)) == -1) {
+        exit(EXIT_FAILURE);
+      }
     }
   }
 
@@ -2181,11 +2378,6 @@ int main(int argc, char **argv) {
                          AF_UNSPEC) == -1) {
       exit(EXIT_FAILURE);
     }
-  }
-
-  if (get_config()->http2_downstream_connections_per_worker == 0) {
-    mod_config()->http2_downstream_connections_per_worker =
-        get_config()->downstream_addrs.size();
   }
 
   if (get_config()->rlimit_nofile) {
@@ -2206,8 +2398,7 @@ int main(int argc, char **argv) {
     reset_timer();
   }
 
-  struct sigaction act;
-  memset(&act, 0, sizeof(struct sigaction));
+  struct sigaction act {};
   act.sa_handler = SIG_IGN;
   sigaction(SIGPIPE, &act, nullptr);
 

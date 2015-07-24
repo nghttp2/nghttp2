@@ -61,8 +61,11 @@ void mcpool_clear_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
                ssl::CertLookupTree *cert_tree,
                const std::shared_ptr<TicketKeys> &ticket_keys)
-    : next_http2session_(0), loop_(loop), sv_ssl_ctx_(sv_ssl_ctx),
-      cl_ssl_ctx_(cl_ssl_ctx), cert_tree_(cert_tree), ticket_keys_(ticket_keys),
+    : dconn_pool_(get_config()->downstream_addr_groups.size()),
+      worker_stat_(get_config()->downstream_addr_groups.size()),
+      dgrps_(get_config()->downstream_addr_groups.size()), loop_(loop),
+      sv_ssl_ctx_(sv_ssl_ctx), cl_ssl_ctx_(cl_ssl_ctx), cert_tree_(cert_tree),
+      ticket_keys_(ticket_keys),
       connect_blocker_(make_unique<ConnectBlocker>(loop_)),
       graceful_shutdown_(false) {
   ev_async_init(&w_, eventcb);
@@ -74,9 +77,17 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
 
   if (get_config()->downstream_proto == PROTO_HTTP2) {
     auto n = get_config()->http2_downstream_connections_per_worker;
-    for (; n > 0; --n) {
-      http2sessions_.push_back(make_unique<Http2Session>(
-          loop_, cl_ssl_ctx, connect_blocker_.get(), this));
+    size_t group = 0;
+    for (auto &dgrp : dgrps_) {
+      auto m = n;
+      if (m == 0) {
+        m = get_config()->downstream_addr_groups[group].addrs.size();
+      }
+      for (size_t idx = 0; idx < m; ++idx) {
+        dgrp.http2sessions.push_back(make_unique<Http2Session>(
+            loop_, cl_ssl_ctx, connect_blocker_.get(), this, group, idx));
+      }
+      ++group;
     }
   }
 }
@@ -161,12 +172,6 @@ void Worker::process_events() {
 
       break;
     }
-    case RENEW_TICKET_KEYS:
-      WLOG(NOTICE, this) << "Renew ticket keys: worker(" << this << ")";
-
-      ticket_keys_ = wev.ticket_keys;
-
-      break;
     case REOPEN_LOG:
       WLOG(NOTICE, this) << "Reopening log files: worker(" << this << ")";
 
@@ -195,11 +200,13 @@ void Worker::process_events() {
 
 ssl::CertLookupTree *Worker::get_cert_lookup_tree() const { return cert_tree_; }
 
-const std::shared_ptr<TicketKeys> &Worker::get_ticket_keys() const {
+std::shared_ptr<TicketKeys> Worker::get_ticket_keys() {
+  std::lock_guard<std::mutex> g(m_);
   return ticket_keys_;
 }
 
 void Worker::set_ticket_keys(std::shared_ptr<TicketKeys> ticket_keys) {
+  std::lock_guard<std::mutex> g(m_);
   ticket_keys_ = std::move(ticket_keys);
 }
 
@@ -207,15 +214,17 @@ WorkerStat *Worker::get_worker_stat() { return &worker_stat_; }
 
 DownstreamConnectionPool *Worker::get_dconn_pool() { return &dconn_pool_; }
 
-Http2Session *Worker::next_http2_session() {
-  if (http2sessions_.empty()) {
+Http2Session *Worker::next_http2_session(size_t group) {
+  auto &dgrp = dgrps_[group];
+  auto &http2sessions = dgrp.http2sessions;
+  if (http2sessions.empty()) {
     return nullptr;
   }
 
-  auto res = http2sessions_[next_http2session_].get();
-  ++next_http2session_;
-  if (next_http2session_ >= http2sessions_.size()) {
-    next_http2session_ = 0;
+  auto res = http2sessions[dgrp.next_http2session].get();
+  ++dgrp.next_http2session;
+  if (dgrp.next_http2session >= http2sessions.size()) {
+    dgrp.next_http2session = 0;
   }
 
   return res;
@@ -238,5 +247,10 @@ void Worker::set_graceful_shutdown(bool f) { graceful_shutdown_ = f; }
 bool Worker::get_graceful_shutdown() const { return graceful_shutdown_; }
 
 MemchunkPool *Worker::get_mcpool() { return &mcpool_; }
+
+DownstreamGroup *Worker::get_dgrp(size_t group) {
+  assert(group < dgrps_.size());
+  return &dgrps_[group];
+}
 
 } // namespace shrpx

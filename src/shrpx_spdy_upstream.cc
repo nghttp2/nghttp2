@@ -109,19 +109,12 @@ void on_stream_close_callback(spdylay_session *session, int32_t stream_id,
     return;
   }
 
-  downstream->set_request_state(Downstream::STREAM_CLOSED);
-  if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
-    // At this point, downstream response was read
-    if (!downstream->get_upgraded() &&
-        !downstream->get_response_connection_close()) {
-      // Keep-alive
-      downstream->detach_downstream_connection();
-    }
-    upstream->remove_downstream(downstream);
-    // downstrea was deleted
-
-    return;
+  if (downstream->can_detach_downstream_connection()) {
+    // Keep-alive
+    downstream->detach_downstream_connection();
   }
+
+  downstream->set_request_state(Downstream::STREAM_CLOSED);
 
   // At this point, downstream read may be paused.
 
@@ -229,7 +222,12 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
     } else {
       downstream->set_request_http2_scheme(scheme->value);
       downstream->set_request_http2_authority(host->value);
-      downstream->set_request_path(path->value);
+      if (get_config()->http2_proxy || get_config()->client_proxy) {
+        downstream->set_request_path(path->value);
+      } else {
+        downstream->set_request_path(http2::rewrite_clean_path(
+            std::begin(path->value), std::end(path->value)));
+      }
     }
 
     if (!(frame->syn_stream.hd.flags & SPDYLAY_CTRL_FLAG_FIN)) {
@@ -271,7 +269,7 @@ void SpdyUpstream::start_downstream(Downstream *downstream) {
 
 void SpdyUpstream::initiate_downstream(Downstream *downstream) {
   int rv = downstream->attach_downstream_connection(
-      handler_->get_downstream_connection());
+      handler_->get_downstream_connection(downstream));
   if (rv != 0) {
     // If downstream connection fails, issue RST_STREAM.
     rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
@@ -447,8 +445,7 @@ SpdyUpstream::SpdyUpstream(uint16_t version, ClientHandler *handler)
                     : 0,
           !get_config()->http2_proxy),
       handler_(handler), session_(nullptr) {
-  spdylay_session_callbacks callbacks;
-  memset(&callbacks, 0, sizeof(callbacks));
+  spdylay_session_callbacks callbacks{};
   callbacks.send_callback = send_callback;
   callbacks.recv_callback = recv_callback;
   callbacks.on_stream_close_callback = on_stream_close_callback;
@@ -555,16 +552,6 @@ ClientHandler *SpdyUpstream::get_client_handler() const { return handler_; }
 int SpdyUpstream::downstream_read(DownstreamConnection *dconn) {
   auto downstream = dconn->get_downstream();
 
-  if (downstream->get_request_state() == Downstream::STREAM_CLOSED) {
-    // If upstream SPDY stream was closed, we just close downstream,
-    // because there is no consumer now. Downstream connection is also
-    // closed in this case.
-    remove_downstream(downstream);
-    // downstrea was deleted
-
-    return 0;
-  }
-
   if (downstream->get_response_state() == Downstream::MSG_RESET) {
     // The downstream stream was reset (canceled). In this case,
     // RST_STREAM to the upstream and delete downstream connection
@@ -595,10 +582,7 @@ int SpdyUpstream::downstream_read(DownstreamConnection *dconn) {
       }
       return downstream_error(dconn, Downstream::EVENT_ERROR);
     }
-    // Detach downstream connection early so that it could be reused
-    // without hitting server's request timeout.
-    if (downstream->get_response_state() == Downstream::MSG_COMPLETE &&
-        !downstream->get_response_connection_close()) {
+    if (downstream->can_detach_downstream_connection()) {
       // Keep-alive
       downstream->detach_downstream_connection();
     }
@@ -627,14 +611,6 @@ int SpdyUpstream::downstream_eof(DownstreamConnection *dconn) {
 
   if (LOG_ENABLED(INFO)) {
     DCLOG(INFO, dconn) << "EOF. stream_id=" << downstream->get_stream_id();
-  }
-  if (downstream->get_request_state() == Downstream::STREAM_CLOSED) {
-    // If stream was closed already, we don't need to send reply at
-    // the first place. We can delete downstream.
-    remove_downstream(downstream);
-    // downstream was deleted
-
-    return 0;
   }
 
   // Delete downstream connection. If we don't delete it here, it will
@@ -679,13 +655,6 @@ int SpdyUpstream::downstream_error(DownstreamConnection *dconn, int events) {
     if (downstream->get_upgraded()) {
       DCLOG(INFO, dconn) << "Note: this is tunnel connection";
     }
-  }
-
-  if (downstream->get_request_state() == Downstream::STREAM_CLOSED) {
-    remove_downstream(downstream);
-    // downstream was deleted
-
-    return 0;
   }
 
   // Delete downstream connection. If we don't delete it here, it will
@@ -1104,7 +1073,7 @@ int SpdyUpstream::on_downstream_reset(bool no_retry) {
     // downstream connection.
 
     rv = downstream->attach_downstream_connection(
-        handler_->get_downstream_connection());
+        handler_->get_downstream_connection(downstream));
     if (rv != 0) {
       goto fail;
     }
