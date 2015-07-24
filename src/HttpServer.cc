@@ -571,6 +571,12 @@ int Http2Handler::tls_handshake() {
     return -1;
   }
 
+  if (sessions_->get_config()->verbose) {
+    if (SSL_session_reused(ssl_)) {
+      std::cerr << "SSL/TLS session reused" << std::endl;
+    }
+  }
+
   return 0;
 }
 
