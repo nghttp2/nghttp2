@@ -179,6 +179,18 @@ void second_timeout_w_cb(EV_P_ ev_timer *w, int revents) {
 }
 } // namespace
 
+namespace {
+void end_timeout_cb(EV_P_ ev_timer *w, int revents) {
+  auto worker = static_cast<Worker *>(w->data);
+
+  for (auto &client : worker->clients) {
+    if (util::check_socket_connected(client->fd)) {
+      client->fail();
+    }
+  }
+}
+} // namespace
+
 Client::Client(Worker *worker, size_t req_todo)
     : worker(worker), ssl(nullptr), next_addr(config.addrs), reqidx(0),
       state(CLIENT_IDLE), first_byte_received(false), req_todo(req_todo),
@@ -737,6 +749,8 @@ Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
   auto nreqs_per_client = req_todo / nclients;
   auto nreqs_rem = req_todo % nclients;
 
+  end_watcher.data = this;
+  ev_timer_init(&end_watcher, end_timeout_cb, config->seconds + 20, 0.);
   if (config->is_rate_mode()) {
     // create timer that will go off every second
     timeout_watcher.data = this;
@@ -771,6 +785,9 @@ void Worker::run() {
     }
   } else {
     ev_timer_again(loop, &timeout_watcher);
+  }
+  if(true) {
+    ev_timer_start(loop, &end_watcher);
   }
   ev_run(loop, 0);
 }
@@ -1551,6 +1568,7 @@ int main(int argc, char **argv) {
     }
     config.nreqs = actual_nreqs;
   }
+  config.seconds = seconds;
 
   size_t nreqs_per_thread = config.nreqs / config.nthreads;
   ssize_t nreqs_rem = config.nreqs % config.nthreads;
@@ -1580,6 +1598,7 @@ int main(int argc, char **argv) {
 
   workers.reserve(config.nthreads);
 #ifndef NOTHREADS
+  std::cout << "#ifndef NOTHREADS" << std::endl;
   std::vector<std::future<void>> futures;
   for (size_t i = 0; i < config.nthreads - 1; ++i) {
     auto nreqs = nreqs_per_thread + (nreqs_rem-- > 0);
