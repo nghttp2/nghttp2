@@ -183,8 +183,8 @@ struct Worker {
   ev_timer timeout_watcher;
   ssize_t rate;
 
-  Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t nreq_todo, size_t nclients, ssize_t rate,
-         Config *config);
+  Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t nreq_todo, size_t nclients,
+         ssize_t rate, Config *config);
   ~Worker();
   Worker(Worker &&o) = default;
   void run();
