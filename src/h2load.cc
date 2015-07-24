@@ -74,8 +74,8 @@ namespace h2load {
 Config::Config()
     : data_length(-1), addrs(nullptr), nreqs(1), nclients(1), nthreads(1),
       max_concurrent_streams(-1), window_bits(30), connection_window_bits(30),
-      no_tls_proto(PROTO_HTTP2), data_fd(-1), port(0), default_port(0),
-      verbose(false) {}
+      rate(0), nconns(0), no_tls_proto(PROTO_HTTP2), data_fd(-1), port(0),
+      default_port(0), verbose(false), current_worker(0) {}
 
 Config::~Config() {
   freeaddrinfo(addrs);
@@ -84,6 +84,8 @@ Config::~Config() {
     close(data_fd);
   }
 }
+
+bool Config::is_rate_mode() { return (this->rate != 0); }
 
 Config config;
 
@@ -261,7 +263,7 @@ void Client::process_abandoned_streams() {
 }
 
 void Client::report_progress() {
-  if (worker->id == 0 &&
+  if (!worker->config->is_rate_mode() && worker->id == 0 &&
       worker->stats.req_done % worker->progress_interval == 0) {
     std::cout << "progress: "
               << worker->stats.req_done * 100 / worker->stats.req_todo
@@ -839,9 +841,8 @@ process_time_stats(const std::vector<std::unique_ptr<Worker>> &workers) {
 namespace {
 void resolve_host() {
   int rv;
-  addrinfo hints, *res;
+  addrinfo hints{}, *res;
 
-  memset(&hints, 0, sizeof(hints));
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_protocol = 0;
@@ -898,14 +899,11 @@ int client_select_next_proto_cb(SSL *ssl, unsigned char **out,
 } // namespace
 
 namespace {
-template <typename Iterator>
-std::vector<std::string> parse_uris(Iterator first, Iterator last) {
+// Use std::vector<std::string>::iterator explicitly, without that,
+// http_parser_url u{} fails with clang-3.4.
+std::vector<std::string> parse_uris(std::vector<std::string>::iterator first,
+                                    std::vector<std::string>::iterator last) {
   std::vector<std::string> reqlines;
-
-  // First URI is treated specially.  We use scheme, host and port of
-  // this URI and ignore those in the remaining URIs if present.
-  http_parser_url u;
-  memset(&u, 0, sizeof(u));
 
   if (first == last) {
     std::cerr << "no URI available" << std::endl;
@@ -913,13 +911,17 @@ std::vector<std::string> parse_uris(Iterator first, Iterator last) {
   }
 
   auto uri = (*first).c_str();
-  ++first;
 
-  if (http_parser_parse_url(uri, strlen(uri), 0, &u) != 0 ||
+  // First URI is treated specially.  We use scheme, host and port of
+  // this URI and ignore those in the remaining URIs if present.
+  http_parser_url u{};
+  if (http_parser_parse_url(uri, (*first).size(), 0, &u) != 0 ||
       !util::has_uri_field(u, UF_SCHEMA) || !util::has_uri_field(u, UF_HOST)) {
     std::cerr << "invalid URI: " << uri << std::endl;
     exit(EXIT_FAILURE);
   }
+
+  ++first;
 
   config.scheme = util::get_uri_field(uri, u, UF_SCHEMA);
   config.host = util::get_uri_field(uri, u, UF_HOST);
@@ -933,12 +935,11 @@ std::vector<std::string> parse_uris(Iterator first, Iterator last) {
   reqlines.push_back(get_reqline(uri, u));
 
   for (; first != last; ++first) {
-    http_parser_url u;
-    memset(&u, 0, sizeof(u));
+    http_parser_url u{};
 
     auto uri = (*first).c_str();
 
-    if (http_parser_parse_url(uri, strlen(uri), 0, &u) != 0) {
+    if (http_parser_parse_url(uri, (*first).size(), 0, &u) != 0) {
       std::cerr << "invalid URI: " << uri << std::endl;
       exit(EXIT_FAILURE);
     }
@@ -959,6 +960,31 @@ std::vector<std::string> read_uri_from_file(std::istream &infile) {
   }
 
   return uris;
+}
+} // namespace
+
+namespace {
+// Called every second when rate mode is being used
+void second_timeout_cb(EV_P_ ev_timer *w, int revents) {
+  auto config = static_cast<Config *>(w->data);
+
+  auto nclients_per_worker = config->rate;
+  auto nreqs_per_worker = config->max_concurrent_streams * config->rate;
+
+  if (config->current_worker >= std::max((ssize_t)0, (config->seconds - 1))) {
+    nclients_per_worker = config->rate + config->conns_remainder;
+    nreqs_per_worker = (int)config->max_concurrent_streams *
+                       (config->rate + config->conns_remainder);
+    ev_timer_stop(config->rate_loop, w);
+  }
+
+  config->workers.push_back(
+      make_unique<Worker>(config->current_worker, config->ssl_ctx,
+                          nreqs_per_worker, nclients_per_worker, config));
+
+  config->current_worker++;
+
+  config->workers.back()->run();
 }
 } // namespace
 
@@ -996,10 +1022,10 @@ Options:
   -t, --threads=<N>
               Number of native threads.
               Default: )" << config.nthreads << R"(
-  -i, --input-file=<FILE>
+  -i, --input-file=<PATH>
               Path of a file with multiple URIs are separated by EOLs.
               This option will disable URIs getting from command-line.
-              If '-' is given as <FILE>, URIs will be read from stdin.
+              If '-' is given as <PATH>, URIs will be read from stdin.
               URIs are used  in this order for each  client.  All URIs
               are used, then  first URI is used and then  2nd URI, and
               so  on.  The  scheme, host  and port  in the  subsequent
@@ -1027,6 +1053,7 @@ Options:
   -p, --no-tls-proto=<PROTOID>
               Specify ALPN identifier of the  protocol to be used when
               accessing http URI without SSL/TLS.)";
+
 #ifdef HAVE_SPDYLAY
   out << R"(
               Available protocols: spdy/2, spdy/3, spdy/3.1 and )";
@@ -1036,9 +1063,27 @@ Options:
 #endif // !HAVE_SPDYLAY
   out << NGHTTP2_CLEARTEXT_PROTO_VERSION_ID << R"(
               Default: )" << NGHTTP2_CLEARTEXT_PROTO_VERSION_ID << R"(
-  -d, --data=<FILE>
+  -d, --data=<PATH>
               Post FILE to  server.  The request method  is changed to
               POST.
+  -r, --rate=<N>
+              Specified  the  fixed  rate  at  which  connections  are
+              created.   The   rate  must   be  a   positive  integer,
+              representing the  number of  connections to be  made per
+              second.  When the rate is 0,  the program will run as it
+              normally does, creating connections at whatever variable
+              rate it wants.  The default value for this option is 0.
+  -C, --num-conns=<N>
+              Specifies  the total  number of  connections to  create.
+              The  total  number of  connections  must  be a  positive
+              integer.  On each connection, -m requests are made.  The
+              test stops once as soon as the N connections have either
+              completed or failed.  When  the number of connections is
+              0, the program will run as it normally does, creating as
+              many connections  as it  needs in order  to make  the -n
+              requests specified.   The default value for  this option
+              is 0.  The -n option is not required if the -C option is
+              being used.
   -v, --verbose
               Output debug information.
   --version   Display version information and exit.
@@ -1073,9 +1118,11 @@ int main(int argc, char **argv) {
         {"help", no_argument, nullptr, 'h'},
         {"version", no_argument, &flag, 1},
         {"ciphers", required_argument, &flag, 2},
+        {"rate", required_argument, nullptr, 'r'},
+        {"num-conns", required_argument, nullptr, 'C'},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
-    auto c = getopt_long(argc, argv, "hvW:c:d:m:n:p:t:w:H:i:", long_options,
+    auto c = getopt_long(argc, argv, "hvW:c:d:m:n:p:t:w:H:i:r:C:", long_options,
                          &option_index);
     if (c == -1) {
       break;
@@ -1170,6 +1217,22 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
       }
       break;
+    case 'r':
+      config.rate = strtoul(optarg, nullptr, 10);
+      if (config.rate <= 0) {
+        std::cerr << "-r: the rate at which connections are made "
+                  << "must be positive." << std::endl;
+        exit(EXIT_FAILURE);
+      }
+      break;
+    case 'C':
+      config.nconns = strtoul(optarg, nullptr, 10);
+      if (config.nconns <= 0) {
+        std::cerr << "-C: the total number of connections made "
+                  << "must be positive." << std::endl;
+        exit(EXIT_FAILURE);
+      }
+      break;
     case 'v':
       config.verbose = true;
       break;
@@ -1238,6 +1301,23 @@ int main(int argc, char **argv) {
               << "cores." << std::endl;
   }
 
+  if (config.nconns < 0) {
+    std::cerr << "-C: the total number of connections made "
+              << "cannot be negative." << std::endl;
+    exit(EXIT_FAILURE);
+  }
+
+  if (config.rate < 0) {
+    std::cerr << "-r: the rate at which connections are made "
+              << "cannot be negative." << std::endl;
+    exit(EXIT_FAILURE);
+  }
+
+  if (config.rate != 0 && config.nthreads != 1) {
+    std::cerr << "-r, -t: warning: the -t option will be ignored when the -r "
+              << "option is in use." << std::endl;
+  }
+
   if (!datafile.empty()) {
     config.data_fd = open(datafile.c_str(), O_RDONLY | O_BINARY);
     if (config.data_fd == -1) {
@@ -1252,8 +1332,7 @@ int main(int argc, char **argv) {
     config.data_length = data_stat.st_size;
   }
 
-  struct sigaction act;
-  memset(&act, 0, sizeof(struct sigaction));
+  struct sigaction act {};
   act.sa_handler = SIG_IGN;
   sigaction(SIGPIPE, &act, nullptr);
 
@@ -1324,6 +1403,41 @@ int main(int argc, char **argv) {
 
   if (config.max_concurrent_streams == -1) {
     config.max_concurrent_streams = reqlines.size();
+  }
+
+  // if not in rate mode and -C is set, warn that we are ignoring it
+  if (!config.is_rate_mode() && config.nconns != 0) {
+    std::cerr << "-C: warning: This option can only be used with -r, and"
+              << " will be ignored otherwise." << std::endl;
+  }
+
+  ssize_t n_time = 0;
+  ssize_t c_time = 0;
+  // only care about n_time and c_time in rate mode
+  if (config.is_rate_mode() && config.max_concurrent_streams != 0) {
+    n_time = (int)config.nreqs /
+             ((int)config.rate * (int)config.max_concurrent_streams);
+    c_time = (int)config.nconns / (int)config.rate;
+  }
+  // check to see if the two ways of determining test time conflict
+  if (config.is_rate_mode() && (int)config.max_concurrent_streams != 0 &&
+      (n_time != c_time) && config.nreqs != 1 && config.nconns != 0) {
+    if ((int)config.nreqs < config.nconns) {
+      std::cerr << "-C, -n: warning: number of requests conflict. "
+                << std::endl;
+      std::cerr << "The test will create "
+                << (config.max_concurrent_streams * config.nconns)
+                << " total requests." << std::endl;
+    } else {
+      std::cout << "-C, -n: warning: number of requests conflict. "
+                << std::endl;
+      std::cout << "The smaller of the two will be chosen and the test will "
+                << "create "
+                << std::min(
+                       config.nreqs,
+                       (size_t)(config.max_concurrent_streams * config.nconns))
+                << " total requests." << std::endl;
+    }
   }
 
   Headers shared_nva;
@@ -1405,46 +1519,92 @@ int main(int argc, char **argv) {
 
   auto start = std::chrono::steady_clock::now();
 
-  std::vector<std::unique_ptr<Worker>> workers;
-  workers.reserve(config.nthreads);
-
+  // if not in rate mode, continue making workers and clients normally
+  if (!config.is_rate_mode()) {
+    config.workers.reserve(config.nthreads);
 #ifndef NOTHREADS
-  std::vector<std::future<void>> futures;
-  for (size_t i = 0; i < config.nthreads - 1; ++i) {
-    auto nreqs = nreqs_per_thread + (nreqs_rem-- > 0);
-    auto nclients = nclients_per_thread + (nclients_rem-- > 0);
-    std::cout << "spawning thread #" << i << ": " << nclients
-              << " concurrent clients, " << nreqs << " total requests"
-              << std::endl;
-    workers.push_back(
-        make_unique<Worker>(i, ssl_ctx, nreqs, nclients, &config));
-    auto &worker = workers.back();
-    futures.push_back(
-        std::async(std::launch::async, [&worker]() { worker->run(); }));
-  }
+    std::vector<std::future<void>> futures;
+    for (size_t i = 0; i < config.nthreads - 1; ++i) {
+      auto nreqs = nreqs_per_thread + (nreqs_rem-- > 0);
+      auto nclients = nclients_per_thread + (nclients_rem-- > 0);
+      std::cout << "spawning thread #" << i << ": " << nclients
+                << " concurrent clients, " << nreqs << " total requests"
+                << std::endl;
+      config.workers.push_back(
+          make_unique<Worker>(i, ssl_ctx, nreqs, nclients, &config));
+      auto &worker = config.workers.back();
+      futures.push_back(
+          std::async(std::launch::async, [&worker]() { worker->run(); }));
+    }
 #endif // NOTHREADS
 
-  auto nreqs_last = nreqs_per_thread + (nreqs_rem-- > 0);
-  auto nclients_last = nclients_per_thread + (nclients_rem-- > 0);
-  std::cout << "spawning thread #" << (config.nthreads - 1) << ": "
-            << nclients_last << " concurrent clients, " << nreqs_last
-            << " total requests" << std::endl;
-  workers.push_back(make_unique<Worker>(config.nthreads - 1, ssl_ctx,
-                                        nreqs_last, nclients_last, &config));
-  workers.back()->run();
+    auto nreqs_last = nreqs_per_thread + (nreqs_rem-- > 0);
+    auto nclients_last = nclients_per_thread + (nclients_rem-- > 0);
+    std::cout << "spawning thread #" << (config.nthreads - 1) << ": "
+              << nclients_last << " concurrent clients, " << nreqs_last
+              << " total requests" << std::endl;
+    config.workers.push_back(make_unique<Worker>(
+        config.nthreads - 1, ssl_ctx, nreqs_last, nclients_last, &config));
+    config.workers.back()->run();
 
 #ifndef NOTHREADS
-  for (auto &fut : futures) {
-    fut.get();
-  }
+    for (auto &fut : futures) {
+      fut.get();
+    }
 #endif // NOTHREADS
+  }    //! config.is_rate_mode()
+  // if in rate mode, create a new worker each second
+  else {
+    // set various config values
+    if ((int)config.nreqs < config.nconns) {
+      config.seconds = c_time;
+    } else if (config.nconns == 0) {
+      config.seconds = n_time;
+    } else {
+      config.seconds = std::min(n_time, c_time);
+    }
+    config.workers.reserve(config.seconds);
+
+    config.conns_remainder = config.nconns % config.rate;
+
+    // config.seconds must be positive or else an exception is thrown
+    if (config.seconds <= 0) {
+      std::cerr << "Test cannot be run with current option values."
+                << " Please look at documentation for -r option for"
+                << " more information." << std::endl;
+      exit(EXIT_FAILURE);
+    }
+    config.current_worker = 0;
+
+    config.ssl_ctx = ssl_ctx;
+
+    // create timer that will go off every second
+    ev_timer timeout_watcher;
+
+    // create loop for running the timer
+    struct ev_loop *rate_loop = EV_DEFAULT;
+
+    config.rate_loop = rate_loop;
+
+    // giving the second_timeout_cb access to config
+    timeout_watcher.data = &config;
+
+    ev_init(&timeout_watcher, second_timeout_cb);
+    timeout_watcher.repeat = 1.;
+    ev_timer_again(rate_loop, &timeout_watcher);
+
+    // call callback so that we don't waste first 1 second.
+    second_timeout_cb(rate_loop, &timeout_watcher, 0);
+
+    ev_run(rate_loop, 0);
+  } // end rate mode section
 
   auto end = std::chrono::steady_clock::now();
   auto duration =
       std::chrono::duration_cast<std::chrono::microseconds>(end - start);
 
   Stats stats(0);
-  for (const auto &w : workers) {
+  for (const auto &w : config.workers) {
     const auto &s = w->stats;
 
     stats.req_todo += s.req_todo;
@@ -1463,7 +1623,7 @@ int main(int argc, char **argv) {
     }
   }
 
-  auto ts = process_time_stats(workers);
+  auto ts = process_time_stats(config.workers);
 
   // Requests which have not been issued due to connection errors, are
   // counted towards req_failed and req_error.
@@ -1476,7 +1636,7 @@ int main(int argc, char **argv) {
   //
   // [1] https://github.com/lighttpd/weighttp
   // [2] https://github.com/wg/wrk
-  size_t rps = 0;
+  double rps = 0;
   int64_t bps = 0;
   if (duration.count() > 0) {
     auto secd = static_cast<double>(duration.count()) / (1000 * 1000);

@@ -86,18 +86,17 @@ int verify_callback(int preverify_ok, X509_STORE_CTX *ctx) {
 }
 } // namespace
 
-std::vector<unsigned char> set_alpn_prefs(const std::vector<char *> &protos) {
+std::vector<unsigned char>
+set_alpn_prefs(const std::vector<std::string> &protos) {
   size_t len = 0;
 
-  for (auto proto : protos) {
-    auto n = strlen(proto);
-
-    if (n > 255) {
-      LOG(FATAL) << "Too long ALPN identifier: " << n;
+  for (const auto &proto : protos) {
+    if (proto.size() > 255) {
+      LOG(FATAL) << "Too long ALPN identifier: " << proto.size();
       DIE();
     }
 
-    len += 1 + n;
+    len += 1 + proto.size();
   }
 
   if (len > (1 << 16) - 1) {
@@ -108,12 +107,10 @@ std::vector<unsigned char> set_alpn_prefs(const std::vector<char *> &protos) {
   auto out = std::vector<unsigned char>(len);
   auto ptr = out.data();
 
-  for (auto proto : protos) {
-    auto proto_len = strlen(proto);
-
-    *ptr++ = proto_len;
-    memcpy(ptr, proto, proto_len);
-    ptr += proto_len;
+  for (const auto &proto : protos) {
+    *ptr++ = proto.size();
+    memcpy(ptr, proto.c_str(), proto.size());
+    ptr += proto.size();
   }
 
   return out;
@@ -191,7 +188,7 @@ int ticket_key_cb(SSL *ssl, unsigned char *key_name, unsigned char *iv,
                   EVP_CIPHER_CTX *ctx, HMAC_CTX *hctx, int enc) {
   auto handler = static_cast<ClientHandler *>(SSL_get_app_data(ssl));
   auto worker = handler->get_worker();
-  const auto &ticket_keys = worker->get_ticket_keys();
+  auto ticket_keys = worker->get_ticket_keys();
 
   if (!ticket_keys) {
     // No ticket keys available.
@@ -213,21 +210,21 @@ int ticket_key_cb(SSL *ssl, unsigned char *key_name, unsigned char *iv,
 
     if (LOG_ENABLED(INFO)) {
       CLOG(INFO, handler) << "encrypt session ticket key: "
-                          << util::format_hex(key.name, 16);
+                          << util::format_hex(key.data.name);
     }
 
-    memcpy(key_name, key.name, sizeof(key.name));
+    memcpy(key_name, key.data.name, sizeof(key.data.name));
 
-    EVP_EncryptInit_ex(ctx, EVP_aes_128_cbc(), nullptr, key.aes_key, iv);
-    HMAC_Init_ex(hctx, key.hmac_key, sizeof(key.hmac_key), EVP_sha256(),
-                 nullptr);
+    EVP_EncryptInit_ex(ctx, get_config()->tls_ticket_cipher, nullptr,
+                       key.data.enc_key, iv);
+    HMAC_Init_ex(hctx, key.data.hmac_key, key.hmac_keylen, key.hmac, nullptr);
     return 1;
   }
 
   size_t i;
   for (i = 0; i < keys.size(); ++i) {
     auto &key = keys[0];
-    if (memcmp(key.name, key_name, sizeof(key.name)) == 0) {
+    if (memcmp(key_name, key.data.name, sizeof(key.data.name)) == 0) {
       break;
     }
   }
@@ -246,8 +243,8 @@ int ticket_key_cb(SSL *ssl, unsigned char *key_name, unsigned char *iv,
   }
 
   auto &key = keys[i];
-  HMAC_Init_ex(hctx, key.hmac_key, sizeof(key.hmac_key), EVP_sha256(), nullptr);
-  EVP_DecryptInit_ex(ctx, EVP_aes_128_cbc(), nullptr, key.aes_key, iv);
+  HMAC_Init_ex(hctx, key.data.hmac_key, key.hmac_keylen, key.hmac, nullptr);
+  EVP_DecryptInit_ex(ctx, key.cipher, nullptr, key.data.enc_key, iv);
 
   return i == 0 ? 1 : 2;
 }
@@ -281,16 +278,14 @@ int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
   // We assume that get_config()->npn_list contains ALPN protocol
   // identifier sorted by preference order.  So we just break when we
   // found the first overlap.
-  for (auto target_proto_id : get_config()->npn_list) {
-    auto target_proto_len =
-        strlen(reinterpret_cast<const char *>(target_proto_id));
-
+  for (const auto &target_proto_id : get_config()->npn_list) {
     for (auto p = in, end = in + inlen; p < end;) {
       auto proto_id = p + 1;
       auto proto_len = *p;
 
-      if (proto_id + proto_len <= end && target_proto_len == proto_len &&
-          memcmp(target_proto_id, proto_id, proto_len) == 0) {
+      if (proto_id + proto_len <= end &&
+          util::streq(target_proto_id.c_str(), target_proto_id.size(), proto_id,
+                      proto_len)) {
 
         *out = reinterpret_cast<const unsigned char *>(proto_id);
         *outlen = proto_len;
@@ -314,7 +309,7 @@ constexpr long int tls_masks[] = {SSL_OP_NO_TLSv1_2, SSL_OP_NO_TLSv1_1,
                                   SSL_OP_NO_TLSv1};
 } // namespace
 
-long int create_tls_proto_mask(const std::vector<char *> &tls_proto_list) {
+long int create_tls_proto_mask(const std::vector<std::string> &tls_proto_list) {
   long int res = 0;
 
   for (size_t i = 0; i < tls_namelen; ++i) {
@@ -351,6 +346,7 @@ SSL_CTX *create_ssl_context(const char *private_key_file,
   const unsigned char sid_ctx[] = "shrpx";
   SSL_CTX_set_session_id_context(ssl_ctx, sid_ctx, sizeof(sid_ctx) - 1);
   SSL_CTX_set_session_cache_mode(ssl_ctx, SSL_SESS_CACHE_SERVER);
+  SSL_CTX_set_timeout(ssl_ctx, get_config()->tls_session_timeout.count());
 
   const char *ciphers;
   if (get_config()->ciphers) {
@@ -949,10 +945,10 @@ int cert_lookup_tree_add_cert_from_file(CertLookupTree *lt, SSL_CTX *ssl_ctx,
   return 0;
 }
 
-bool in_proto_list(const std::vector<char *> &protos,
+bool in_proto_list(const std::vector<std::string> &protos,
                    const unsigned char *needle, size_t len) {
-  for (auto proto : protos) {
-    if (strlen(proto) == len && memcmp(proto, needle, len) == 0) {
+  for (auto &proto : protos) {
+    if (util::streq(proto.c_str(), proto.size(), needle, len)) {
       return true;
     }
   }

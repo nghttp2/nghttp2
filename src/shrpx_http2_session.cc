@@ -320,12 +320,15 @@ int Http2Session::initiate_connection() {
       SSLOG(INFO, this) << "Connecting to downstream server";
     }
     if (ssl_ctx_) {
-      // We are establishing TLS connection.
-      conn_.tls.ssl = SSL_new(ssl_ctx_);
+      // We are establishing TLS connection.  If conn_.tls.ssl, we may
+      // reuse the previous session.
       if (!conn_.tls.ssl) {
-        SSLOG(ERROR, this) << "SSL_new() failed: "
-                           << ERR_error_string(ERR_get_error(), NULL);
-        return -1;
+        conn_.tls.ssl = SSL_new(ssl_ctx_);
+        if (!conn_.tls.ssl) {
+          SSLOG(ERROR, this) << "SSL_new() failed: "
+                             << ERR_error_string(ERR_get_error(), NULL);
+          return -1;
+        }
       }
 
       const char *sni_name = nullptr;

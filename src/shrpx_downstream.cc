@@ -621,8 +621,7 @@ void Downstream::rewrite_location_response_header(
   if (!hd) {
     return;
   }
-  http_parser_url u;
-  memset(&u, 0, sizeof(u));
+  http_parser_url u{};
   int rv =
       http_parser_parse_url((*hd).value.c_str(), (*hd).value.size(), 0, &u);
   if (rv != 0) {
@@ -1206,6 +1205,12 @@ BlockedLink *Downstream::detach_blocked_link() {
 
 void Downstream::add_request_headers_sum(size_t amount) {
   request_headers_sum_ += amount;
+}
+
+bool Downstream::can_detach_downstream_connection() const {
+  return dconn_ && response_state_ == Downstream::MSG_COMPLETE &&
+         request_state_ == Downstream::MSG_COMPLETE && !upgraded_ &&
+         !response_connection_close_;
 }
 
 } // namespace shrpx

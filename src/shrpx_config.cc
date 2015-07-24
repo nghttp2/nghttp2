@@ -144,36 +144,72 @@ bool is_secure(const char *filename) {
 } // namespace
 
 std::unique_ptr<TicketKeys>
-read_tls_ticket_key_file(const std::vector<std::string> &files) {
+read_tls_ticket_key_file(const std::vector<std::string> &files,
+                         const EVP_CIPHER *cipher, const EVP_MD *hmac) {
   auto ticket_keys = make_unique<TicketKeys>();
   auto &keys = ticket_keys->keys;
   keys.resize(files.size());
+  auto enc_keylen = EVP_CIPHER_key_length(cipher);
+  auto hmac_keylen = EVP_MD_size(hmac);
+  if (cipher == EVP_aes_128_cbc()) {
+    // backward compatibility, as a legacy of using same file format
+    // with nginx and apache.
+    hmac_keylen = 16;
+  }
+  auto expectedlen = sizeof(keys[0].data.name) + enc_keylen + hmac_keylen;
+  char buf[256];
+  assert(sizeof(buf) >= expectedlen);
+
   size_t i = 0;
   for (auto &file : files) {
+    struct stat fst {};
+
+    if (stat(file.c_str(), &fst) == -1) {
+      auto error = errno;
+      LOG(ERROR) << "tls-ticket-key-file: could not stat file " << file
+                 << ", errno=" << error;
+      return nullptr;
+    }
+
+    if (static_cast<size_t>(fst.st_size) != expectedlen) {
+      LOG(ERROR) << "tls-ticket-key-file: the expected file size is "
+                 << expectedlen << ", the actual file size is " << fst.st_size;
+      return nullptr;
+    }
+
     std::ifstream f(file.c_str());
     if (!f) {
       LOG(ERROR) << "tls-ticket-key-file: could not open file " << file;
       return nullptr;
     }
-    char buf[48];
-    f.read(buf, sizeof(buf));
-    if (f.gcount() != sizeof(buf)) {
-      LOG(ERROR) << "tls-ticket-key-file: want to read 48 bytes but read "
-                 << f.gcount() << " bytes from " << file;
+
+    f.read(buf, expectedlen);
+    if (static_cast<size_t>(f.gcount()) != expectedlen) {
+      LOG(ERROR) << "tls-ticket-key-file: want to read " << expectedlen
+                 << " bytes but only read " << f.gcount() << " bytes from "
+                 << file;
       return nullptr;
     }
 
     auto &key = keys[i++];
-    auto p = buf;
-    memcpy(key.name, p, sizeof(key.name));
-    p += sizeof(key.name);
-    memcpy(key.aes_key, p, sizeof(key.aes_key));
-    p += sizeof(key.aes_key);
-    memcpy(key.hmac_key, p, sizeof(key.hmac_key));
+    key.cipher = cipher;
+    key.hmac = hmac;
+    key.hmac_keylen = hmac_keylen;
 
     if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "session ticket key: " << util::format_hex(key.name,
-                                                              sizeof(key.name));
+      LOG(INFO) << "enc_keylen=" << enc_keylen
+                << ", hmac_keylen=" << key.hmac_keylen;
+    }
+
+    auto p = buf;
+    memcpy(key.data.name, p, sizeof(key.data.name));
+    p += sizeof(key.data.name);
+    memcpy(key.data.enc_key, p, enc_keylen);
+    p += enc_keylen;
+    memcpy(key.data.hmac_key, p, hmac_keylen);
+
+    if (LOG_ENABLED(INFO)) {
+      LOG(INFO) << "session ticket key: " << util::format_hex(key.data.name);
     }
   }
   return ticket_keys;
@@ -225,35 +261,36 @@ std::string read_passwd_from_file(const char *filename) {
   return line;
 }
 
-std::vector<char *> parse_config_str_list(const char *s, char delim) {
+std::vector<Range<const char *>> split_config_str_list(const char *s,
+                                                       char delim) {
   size_t len = 1;
-  for (const char *first = s, *p = nullptr; (p = strchr(first, delim));
-       ++len, first = p + 1)
+  auto last = s + strlen(s);
+  for (const char *first = s, *d = nullptr;
+       (d = std::find(first, last, delim)) != last; ++len, first = d + 1)
     ;
-  auto list = std::vector<char *>(len);
-  auto first = strdup(s);
+
+  auto list = std::vector<Range<const char *>>(len);
+
   len = 0;
-  for (;;) {
-    auto p = strchr(first, delim);
-    if (p == nullptr) {
+  for (auto first = s;; ++len) {
+    auto stop = std::find(first, last, delim);
+    list[len] = {first, stop};
+    if (stop == last) {
       break;
     }
-    list[len++] = first;
-    *p = '\0';
-    first = p + 1;
+    first = stop + 1;
   }
-  list[len++] = first;
-
   return list;
 }
 
-void clear_config_str_list(std::vector<char *> &list) {
-  if (list.empty()) {
-    return;
+std::vector<std::string> parse_config_str_list(const char *s, char delim) {
+  auto ranges = split_config_str_list(s, delim);
+  auto res = std::vector<std::string>();
+  res.reserve(ranges.size());
+  for (const auto &range : ranges) {
+    res.emplace_back(range.first, range.second);
   }
-
-  free(list[0]);
-  list.clear();
+  return res;
 }
 
 std::pair<std::string, std::string> parse_header(const char *optarg) {
@@ -554,22 +591,21 @@ namespace {
 void parse_mapping(const DownstreamAddr &addr, const char *src) {
   // This returns at least 1 element (it could be empty string).  We
   // will append '/' to all patterns, so it becomes catch-all pattern.
-  auto mapping = parse_config_str_list(src, ':');
+  auto mapping = split_config_str_list(src, ':');
   assert(!mapping.empty());
-  for (auto raw_pattern : mapping) {
+  for (const auto &raw_pattern : mapping) {
     auto done = false;
     std::string pattern;
-    auto slash = strchr(raw_pattern, '/');
-    if (slash == nullptr) {
+    auto slash = std::find(raw_pattern.first, raw_pattern.second, '/');
+    if (slash == raw_pattern.second) {
       // This effectively makes empty pattern to "/".
-      pattern = raw_pattern;
+      pattern.assign(raw_pattern.first, raw_pattern.second);
       util::inp_strlower(pattern);
       pattern += "/";
     } else {
-      pattern.assign(raw_pattern, slash);
+      pattern.assign(raw_pattern.first, slash);
       util::inp_strlower(pattern);
-      pattern +=
-          http2::normalize_path(slash, raw_pattern + strlen(raw_pattern));
+      pattern += http2::normalize_path(slash, raw_pattern.second);
     }
     for (auto &g : mod_config()->downstream_addr_groups) {
       if (g.pattern == pattern) {
@@ -585,7 +621,6 @@ void parse_mapping(const DownstreamAddr &addr, const char *src) {
     g.addrs.push_back(addr);
     mod_config()->downstream_addr_groups.push_back(std::move(g));
   }
-  clear_config_str_list(mapping);
 }
 } // namespace
 
@@ -639,6 +674,7 @@ enum {
   SHRPX_OPTID_FRONTEND_READ_TIMEOUT,
   SHRPX_OPTID_FRONTEND_WRITE_TIMEOUT,
   SHRPX_OPTID_HEADER_FIELD_BUFFER,
+  SHRPX_OPTID_HOST_REWRITE,
   SHRPX_OPTID_HTTP2_BRIDGE,
   SHRPX_OPTID_HTTP2_MAX_CONCURRENT_STREAMS,
   SHRPX_OPTID_HTTP2_NO_COOKIE_CRUMBLING,
@@ -668,6 +704,7 @@ enum {
   SHRPX_OPTID_SUBCERT,
   SHRPX_OPTID_SYSLOG_FACILITY,
   SHRPX_OPTID_TLS_PROTO_LIST,
+  SHRPX_OPTID_TLS_TICKET_CIPHER,
   SHRPX_OPTID_TLS_TICKET_KEY_FILE,
   SHRPX_OPTID_USER,
   SHRPX_OPTID_VERIFY_CLIENT,
@@ -845,6 +882,9 @@ int option_lookup_token(const char *name, size_t namelen) {
       }
       break;
     case 'e':
+      if (util::strieq_l("host-rewrit", name, 11)) {
+        return SHRPX_OPTID_HOST_REWRITE;
+      }
       if (util::strieq_l("http2-bridg", name, 11)) {
         return SHRPX_OPTID_HTTP2_BRIDGE;
       }
@@ -957,6 +997,11 @@ int option_lookup_token(const char *name, size_t namelen) {
     case 'e':
       if (util::strieq_l("worker-write-rat", name, 16)) {
         return SHRPX_OPTID_WORKER_WRITE_RATE;
+      }
+      break;
+    case 'r':
+      if (util::strieq_l("tls-ticket-ciphe", name, 16)) {
+        return SHRPX_OPTID_TLS_TICKET_CIPHER;
       }
       break;
     case 's':
@@ -1533,8 +1578,7 @@ int parse_config(const char *opt, const char *optarg,
     return 0;
   case SHRPX_OPTID_BACKEND_HTTP_PROXY_URI: {
     // parse URI and get hostname, port and optionally userinfo.
-    http_parser_url u;
-    memset(&u, 0, sizeof(u));
+    http_parser_url u{};
     int rv = http_parser_parse_url(optarg, strlen(optarg), 0, &u);
     if (rv == 0) {
       std::string val;
@@ -1588,12 +1632,10 @@ int parse_config(const char *opt, const char *optarg,
     LOG(WARN) << opt << ": not implemented yet";
     return parse_uint_with_unit(&mod_config()->worker_write_burst, opt, optarg);
   case SHRPX_OPTID_NPN_LIST:
-    clear_config_str_list(mod_config()->npn_list);
     mod_config()->npn_list = parse_config_str_list(optarg);
 
     return 0;
   case SHRPX_OPTID_TLS_PROTO_LIST:
-    clear_config_str_list(mod_config()->tls_proto_list);
     mod_config()->tls_proto_list = parse_config_str_list(optarg);
 
     return 0;
@@ -1648,7 +1690,7 @@ int parse_config(const char *opt, const char *optarg,
 
     int port;
 
-    if (parse_uint(&port, opt, tokens[1]) != 0) {
+    if (parse_uint(&port, opt, tokens[1].c_str()) != 0) {
       return -1;
     }
 
@@ -1660,18 +1702,16 @@ int parse_config(const char *opt, const char *optarg,
 
     AltSvc altsvc;
 
-    altsvc.port = port;
+    altsvc.protocol_id = std::move(tokens[0]);
 
-    altsvc.protocol_id = tokens[0];
-    altsvc.protocol_id_len = strlen(altsvc.protocol_id);
+    altsvc.port = port;
+    altsvc.service = std::move(tokens[1]);
 
     if (tokens.size() > 2) {
-      altsvc.host = tokens[2];
-      altsvc.host_len = strlen(altsvc.host);
+      altsvc.host = std::move(tokens[2]);
 
       if (tokens.size() > 3) {
-        altsvc.origin = tokens[3];
-        altsvc.origin_len = strlen(altsvc.origin);
+        altsvc.origin = std::move(tokens[3]);
       }
     }
 
@@ -1700,7 +1740,10 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   case SHRPX_OPTID_NO_HOST_REWRITE:
-    mod_config()->no_host_rewrite = util::strieq(optarg, "yes");
+    LOG(WARN) << SHRPX_OPT_NO_HOST_REWRITE
+              << ": deprecated.  :authority and host header fields are NOT "
+                 "altered by default.  To rewrite these headers, use "
+                 "--host-rewrite option.";
 
     return 0;
   case SHRPX_OPTID_BACKEND_HTTP1_CONNECTIONS_PER_HOST: {
@@ -1795,7 +1838,7 @@ int parse_config(const char *opt, const char *optarg,
       return -1;
     }
 
-    included_set.emplace(optarg);
+    included_set.insert(optarg);
     auto rv = load_config(optarg, included_set);
     included_set.erase(optarg);
 
@@ -1805,6 +1848,23 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   }
+  case SHRPX_OPTID_TLS_TICKET_CIPHER:
+    if (util::strieq(optarg, "aes-128-cbc")) {
+      mod_config()->tls_ticket_cipher = EVP_aes_128_cbc();
+    } else if (util::strieq(optarg, "aes-256-cbc")) {
+      mod_config()->tls_ticket_cipher = EVP_aes_256_cbc();
+    } else {
+      LOG(ERROR) << opt
+                 << ": unsupported cipher for ticket encryption: " << optarg;
+      return -1;
+    }
+    mod_config()->tls_ticket_cipher_given = true;
+
+    return 0;
+  case SHRPX_OPTID_HOST_REWRITE:
+    mod_config()->no_host_rewrite = !util::strieq(optarg, "yes");
+
+    return 0;
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 

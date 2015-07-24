@@ -332,6 +332,9 @@ public:
   void attach_blocked_link(BlockedLink *l);
   BlockedLink *detach_blocked_link();
 
+  // Returns true if downstream_connection can be detached and reused.
+  bool can_detach_downstream_connection() const;
+
   enum {
     EVENT_ERROR = 0x1,
     EVENT_TIMEOUT = 0x2,

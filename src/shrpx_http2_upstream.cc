@@ -74,21 +74,12 @@ int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
     return 0;
   }
 
-  downstream->set_request_state(Downstream::STREAM_CLOSED);
-
-  if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
-    // At this point, downstream response was read
-    if (!downstream->get_upgraded() &&
-        !downstream->get_response_connection_close()) {
-      // Keep-alive
-      downstream->detach_downstream_connection();
-    }
-
-    upstream->remove_downstream(downstream);
-    // downstream was deleted
-
-    return 0;
+  if (downstream->can_detach_downstream_connection()) {
+    // Keep-alive
+    downstream->detach_downstream_connection();
   }
+
+  downstream->set_request_state(Downstream::STREAM_CLOSED);
 
   // At this point, downstream read may be paused.
 
@@ -915,10 +906,8 @@ int Http2Upstream::downstream_read(DownstreamConnection *dconn) {
       }
       return downstream_error(dconn, Downstream::EVENT_ERROR);
     }
-    // Detach downstream connection early so that it could be reused
-    // without hitting server's request timeout.
-    if (downstream->get_response_state() == Downstream::MSG_COMPLETE &&
-        !downstream->get_response_connection_close()) {
+
+    if (downstream->can_detach_downstream_connection()) {
       // Keep-alive
       downstream->detach_downstream_connection();
     }
@@ -1482,8 +1471,7 @@ int Http2Upstream::on_downstream_reset(bool no_retry) {
 
 int Http2Upstream::prepare_push_promise(Downstream *downstream) {
   int rv;
-  http_parser_url u;
-  memset(&u, 0, sizeof(u));
+  http_parser_url u{};
   rv = http_parser_parse_url(downstream->get_request_path().c_str(),
                              downstream->get_request_path().size(), 0, &u);
   if (rv != 0) {
@@ -1513,8 +1501,7 @@ int Http2Upstream::prepare_push_promise(Downstream *downstream) {
       const char *relq = nullptr;
       size_t relqlen = 0;
 
-      http_parser_url v;
-      memset(&v, 0, sizeof(v));
+      http_parser_url v{};
       rv = http_parser_parse_url(link_url, link_urllen, 0, &v);
       if (rv != 0) {
         assert(link_urllen);

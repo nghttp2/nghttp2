@@ -119,12 +119,11 @@ const int GRACEFUL_SHUTDOWN_SIGNAL = SIGQUIT;
 namespace {
 int resolve_hostname(sockaddr_union *addr, size_t *addrlen,
                      const char *hostname, uint16_t port, int family) {
-  addrinfo hints;
   int rv;
 
   auto service = util::utos(port);
-  memset(&hints, 0, sizeof(addrinfo));
 
+  addrinfo hints{};
   hints.ai_family = family;
   hints.ai_socktype = SOCK_STREAM;
 #ifdef AI_ADDRCONFIG
@@ -279,12 +278,11 @@ std::unique_ptr<AcceptHandler> create_acceptor(ConnectionHandler *handler,
     }
   }
 
-  addrinfo hints;
   int fd = -1;
   int rv;
 
   auto service = util::utos(get_config()->port);
-  memset(&hints, 0, sizeof(addrinfo));
+  addrinfo hints{};
   hints.ai_family = family;
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_flags = AI_PASSIVE;
@@ -607,43 +605,87 @@ void graceful_shutdown_signal_cb(struct ev_loop *loop, ev_signal *w,
 } // namespace
 
 namespace {
+int generate_ticket_key(TicketKey &ticket_key) {
+  ticket_key.cipher = get_config()->tls_ticket_cipher;
+  ticket_key.hmac = EVP_sha256();
+  ticket_key.hmac_keylen = EVP_MD_size(ticket_key.hmac);
+
+  assert(static_cast<size_t>(EVP_CIPHER_key_length(ticket_key.cipher)) <=
+         sizeof(ticket_key.data.enc_key));
+  assert(ticket_key.hmac_keylen <= sizeof(ticket_key.data.hmac_key));
+
+  if (LOG_ENABLED(INFO)) {
+    LOG(INFO) << "enc_keylen=" << EVP_CIPHER_key_length(ticket_key.cipher)
+              << ", hmac_keylen=" << ticket_key.hmac_keylen;
+  }
+
+  if (RAND_bytes(reinterpret_cast<unsigned char *>(&ticket_key.data),
+                 sizeof(ticket_key.data)) == 0) {
+    return -1;
+  }
+
+  return 0;
+}
+} // namespace
+
+namespace {
 void renew_ticket_key_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto conn_handler = static_cast<ConnectionHandler *>(w->data);
   const auto &old_ticket_keys = conn_handler->get_ticket_keys();
 
   auto ticket_keys = std::make_shared<TicketKeys>();
-  LOG(NOTICE) << "Renew ticket keys: main";
+  LOG(NOTICE) << "Renew new ticket keys";
 
-  // We store at most 2 ticket keys
+  // If old_ticket_keys is not empty, it should contain at least 2
+  // keys: one for encryption, and last one for the next encryption
+  // key but decryption only.  The keys in between are old keys and
+  // decryption only.  The next key is provided to ensure to mitigate
+  // possible problem when one worker encrypt new key, but one worker,
+  // which did not take the that key yet, and cannot decrypt it.
+  //
+  // We keep keys for get_config()->tls_session_timeout seconds.  The
+  // default is 12 hours.  Thus the maximum ticket vector size is 12.
   if (old_ticket_keys) {
     auto &old_keys = old_ticket_keys->keys;
     auto &new_keys = ticket_keys->keys;
 
     assert(!old_keys.empty());
 
-    new_keys.resize(2);
-    new_keys[1] = old_keys[0];
+    auto max_tickets =
+        static_cast<size_t>(std::chrono::duration_cast<std::chrono::hours>(
+                                get_config()->tls_session_timeout).count());
+
+    new_keys.resize(std::min(max_tickets, old_keys.size() + 1));
+    std::copy_n(std::begin(old_keys), new_keys.size() - 1,
+                std::begin(new_keys) + 1);
   } else {
     ticket_keys->keys.resize(1);
   }
 
-  if (RAND_bytes(reinterpret_cast<unsigned char *>(&ticket_keys->keys[0]),
-                 sizeof(ticket_keys->keys[0])) == 0) {
+  auto &new_key = ticket_keys->keys[0];
+
+  if (generate_ticket_key(new_key) != 0) {
     if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "failed to renew ticket key";
+      LOG(INFO) << "failed to generate ticket key";
     }
+    conn_handler->set_ticket_keys(nullptr);
+    conn_handler->set_ticket_keys_to_worker(nullptr);
     return;
   }
 
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "ticket keys generation done";
-    for (auto &key : ticket_keys->keys) {
-      LOG(INFO) << "name: " << util::format_hex(key.name, sizeof(key.name));
+    assert(ticket_keys->keys.size() >= 1);
+    LOG(INFO) << 0 << " enc+dec: "
+              << util::format_hex(ticket_keys->keys[0].data.name);
+    for (size_t i = 1; i < ticket_keys->keys.size(); ++i) {
+      auto &key = ticket_keys->keys[i];
+      LOG(INFO) << i << " dec: " << util::format_hex(key.data.name);
     }
   }
 
   conn_handler->set_ticket_keys(ticket_keys);
-  conn_handler->worker_renew_ticket_keys(ticket_keys);
+  conn_handler->set_ticket_keys_to_worker(ticket_keys);
 }
 } // namespace
 
@@ -709,8 +751,17 @@ int event_loop() {
   if (!get_config()->upstream_no_tls) {
     bool auto_tls_ticket_key = true;
     if (!get_config()->tls_ticket_key_files.empty()) {
-      auto ticket_keys =
-          read_tls_ticket_key_file(get_config()->tls_ticket_key_files);
+      if (!get_config()->tls_ticket_cipher_given) {
+        LOG(WARN) << "It is strongly recommended to specify "
+                     "--tls-ticket-cipher=aes-128-cbc (or "
+                     "tls-ticket-cipher=aes-128-cbc in configuration file) "
+                     "when --tls-ticket-key-file is used for the smooth "
+                     "transition when the default value of --tls-ticket-cipher "
+                     "becomes aes-256-cbc";
+      }
+      auto ticket_keys = read_tls_ticket_key_file(
+          get_config()->tls_ticket_key_files, get_config()->tls_ticket_cipher,
+          EVP_sha256());
       if (!ticket_keys) {
         LOG(WARN) << "Use internal session ticket key generator";
       } else {
@@ -719,8 +770,8 @@ int event_loop() {
       }
     }
     if (auto_tls_ticket_key) {
-      // Renew ticket key every 12hrs
-      ev_timer_init(&renew_ticket_key_timer, renew_ticket_key_cb, 0., 12_h);
+      // Generate new ticket key every 1hr.
+      ev_timer_init(&renew_ticket_key_timer, renew_ticket_key_cb, 0., 1_h);
       renew_ticket_key_timer.data = conn_handler.get();
       ev_timer_again(loop, &renew_ticket_key_timer);
 
@@ -827,7 +878,7 @@ int16_t DEFAULT_DOWNSTREAM_PORT = 80;
 
 namespace {
 void fill_default_config() {
-  memset(mod_config(), 0, sizeof(*mod_config()));
+  *mod_config() = {};
 
   mod_config()->verbose = false;
   mod_config()->daemon = false;
@@ -948,7 +999,7 @@ void fill_default_config() {
 
   mod_config()->tls_proto_mask = 0;
   mod_config()->no_location_rewrite = false;
-  mod_config()->no_host_rewrite = false;
+  mod_config()->no_host_rewrite = true;
   mod_config()->argc = 0;
   mod_config()->argv = nullptr;
   mod_config()->downstream_connections_per_host = 8;
@@ -967,6 +1018,9 @@ void fill_default_config() {
   mod_config()->header_field_buffer = 64_k;
   mod_config()->max_header_fields = 100;
   mod_config()->downstream_addr_group_catch_all = 0;
+  mod_config()->tls_ticket_cipher = EVP_aes_128_cbc();
+  mod_config()->tls_ticket_cipher_given = false;
+  mod_config()->tls_session_timeout = std::chrono::hours(12);
 }
 } // namespace
 
@@ -1278,8 +1332,11 @@ SSL/TLS:
               are treated as a part of protocol string.
               Default: )" << DEFAULT_TLS_PROTO_LIST << R"(
   --tls-ticket-key-file=<PATH>
-              Path  to file  that  contains 48  bytes  random data  to
-              construct TLS  session ticket parameters.   This options
+              Path to file that contains  random data to construct TLS
+              session ticket  parameters.  If aes-128-cbc is  given in
+              --tls-ticket-cipher,  the file  must contain  exactly 48
+              bytes.  If aes-256-cbc  is given in --tls-ticket-cipher,
+              the file  must contain  exactly 80 bytes.   This options
               can  be  used  repeatedly  to  specify  multiple  ticket
               parameters.  If several files  are given, only the first
               key is used to encrypt  TLS session tickets.  Other keys
@@ -1291,9 +1348,14 @@ SSL/TLS:
               opening or reading given file fails, all loaded keys are
               discarded and it is treated as if none of this option is
               given.  If this option is not given or an error occurred
-              while  opening  or  reading  a file,  key  is  generated
-              automatically and  renewed every 12hrs.  At  most 2 keys
-              are stored in memory.
+              while opening or reading a  file, key is generated every
+              1 hour internally and they are valid for 12 hours.  This
+              is  recommended if  ticket key  sharing between  nghttpx
+              instances is not required.
+  --tls-ticket-cipher=<TICKET_CIPHER>
+              Specify cipher  to encrypt TLS session  ticket.  Specify
+              either   aes-128-cbc   or  aes-256-cbc.    By   default,
+              aes-128-cbc is used.
   --fetch-ocsp-response-file=<PATH>
               Path to  fetch-ocsp-response script file.  It  should be
               absolute path.
@@ -1441,8 +1503,8 @@ HTTP:
               --client  and  default   mode.   For  --http2-proxy  and
               --client-proxy mode,  location header field will  not be
               altered regardless of this option.
-  --no-host-rewrite
-              Don't  rewrite  host  and :authority  header  fields  on
+  --host-rewrite
+              Rewrite   host   and   :authority   header   fields   on
               --http2-bridge,   --client   and  default   mode.    For
               --http2-proxy  and  --client-proxy mode,  these  headers
               will not be altered regardless of this option.
@@ -1543,6 +1605,10 @@ int main(int argc, char **argv) {
   Log::set_severity_level(NOTICE);
   create_config();
   fill_default_config();
+
+  // First open log files with default configuration, so that we can
+  // log errors/warnings while reading configuration files.
+  reopen_log_files();
 
   // We have to copy argv, since getopt_long may change its content.
   mod_config()->argc = argc;
@@ -1660,6 +1726,8 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_MAX_HEADER_FIELDS, required_argument, &flag, 81},
         {SHRPX_OPT_ADD_REQUEST_HEADER, required_argument, &flag, 82},
         {SHRPX_OPT_INCLUDE, required_argument, &flag, 83},
+        {SHRPX_OPT_TLS_TICKET_CIPHER, required_argument, &flag, 84},
+        {SHRPX_OPT_HOST_REWRITE, no_argument, &flag, 85},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -2026,6 +2094,14 @@ int main(int argc, char **argv) {
         // --include
         cmdcfgs.emplace_back(SHRPX_OPT_INCLUDE, optarg);
         break;
+      case 84:
+        // --tls-ticket-cipher
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_CIPHER, optarg);
+        break;
+      case 85:
+        // --host-rewrite
+        cmdcfgs.emplace_back(SHRPX_OPT_HOST_REWRITE, "yes");
+        break;
       default:
         break;
       }
@@ -2050,8 +2126,7 @@ int main(int argc, char **argv) {
     cmdcfgs.emplace_back(SHRPX_OPT_CERTIFICATE_FILE, argv[optind++]);
   }
 
-  // First open default log files to deal with errors occurred while
-  // parsing option values.
+  // Reopen log files using configurations in file
   reopen_log_files();
 
   {
@@ -2323,8 +2398,7 @@ int main(int argc, char **argv) {
     reset_timer();
   }
 
-  struct sigaction act;
-  memset(&act, 0, sizeof(struct sigaction));
+  struct sigaction act {};
   act.sa_handler = SIG_IGN;
   sigaction(SIGPIPE, &act, nullptr);
 

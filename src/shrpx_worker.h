@@ -75,7 +75,6 @@ enum WorkerEventType {
   NEW_CONNECTION = 0x01,
   REOPEN_LOG = 0x02,
   GRACEFUL_SHUTDOWN = 0x03,
-  RENEW_TICKET_KEYS = 0x04,
 };
 
 struct WorkerEvent {
@@ -100,8 +99,12 @@ public:
   void send(const WorkerEvent &event);
 
   ssl::CertLookupTree *get_cert_lookup_tree() const;
-  const std::shared_ptr<TicketKeys> &get_ticket_keys() const;
+
+  // These 2 functions make a lock m_ to get/set ticket keys
+  // atomically.
+  std::shared_ptr<TicketKeys> get_ticket_keys();
   void set_ticket_keys(std::shared_ptr<TicketKeys> ticket_keys);
+
   WorkerStat *get_worker_stat();
   DownstreamConnectionPool *get_dconn_pool();
   Http2Session *next_http2_session(size_t group);

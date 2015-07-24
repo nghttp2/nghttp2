@@ -122,6 +122,8 @@ int main(int argc, char *argv[]) {
                    shrpx::test_shrpx_config_parse_log_format) ||
       !CU_add_test(pSuite, "config_read_tls_ticket_key_file",
                    shrpx::test_shrpx_config_read_tls_ticket_key_file) ||
+      !CU_add_test(pSuite, "config_read_tls_ticket_key_file_aes_256",
+                   shrpx::test_shrpx_config_read_tls_ticket_key_file_aes_256) ||
       !CU_add_test(pSuite, "config_match_downstream_addr_group",
                    shrpx::test_shrpx_config_match_downstream_addr_group) ||
       !CU_add_test(pSuite, "util_streq", shrpx::test_util_streq) ||
