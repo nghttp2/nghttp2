@@ -86,11 +86,7 @@ Http2DownstreamConnection::~Http2DownstreamConnection() {
     }
   }
   http2session_->remove_downstream_connection(this);
-  // Downstream and DownstreamConnection may be deleted
-  // asynchronously.
-  if (downstream_) {
-    downstream_->release_downstream_connection();
-  }
+
   if (LOG_ENABLED(INFO)) {
     DCLOG(INFO, this) << "Deleted";
   }
@@ -263,8 +259,11 @@ int Http2DownstreamConnection::push_request_headers() {
   // http2session_ has already in CONNECTED state, so we can get
   // addr_idx here.
   auto addr_idx = http2session_->get_addr_idx();
-  auto downstream_hostport =
-      get_config()->downstream_addrs[addr_idx].hostport.get();
+  auto group = http2session_->get_group();
+  auto downstream_hostport = get_config()
+                                 ->downstream_addr_groups[group]
+                                 .addrs[addr_idx]
+                                 .hostport.get();
 
   const char *authority = nullptr, *host = nullptr;
   if (!no_host_rewrite) {
@@ -555,6 +554,12 @@ int Http2DownstreamConnection::on_timeout() {
   }
 
   return submit_rst_stream(downstream_, NGHTTP2_NO_ERROR);
+}
+
+size_t Http2DownstreamConnection::get_group() const {
+  // HTTP/2 backend connections are managed by Http2Session object,
+  // and it stores group index.
+  return http2session_->get_group();
 }
 
 } // namespace shrpx

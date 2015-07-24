@@ -212,6 +212,10 @@ std::string quote_string(const std::string &target);
 
 std::string format_hex(const unsigned char *s, size_t len);
 
+template <size_t N> std::string format_hex(const unsigned char (&s)[N]) {
+  return format_hex(s, N);
+}
+
 std::string http_date(time_t t);
 
 // Returns given time |t| from epoch in Common Log format (e.g.,
@@ -345,6 +349,10 @@ inline bool strieq(const std::string &a, const std::string &b) {
 
 bool strieq(const char *a, const char *b);
 
+inline bool strieq(const char *a, const std::string &b) {
+  return strieq(a, b.c_str(), b.size());
+}
+
 template <typename InputIt, size_t N>
 bool strieq_l(const char (&a)[N], InputIt b, size_t blen) {
   return strieq(a, N - 1, b, blen);
@@ -386,9 +394,13 @@ bool streq_l(const char (&a)[N], InputIt b, size_t blen) {
 
 bool strifind(const char *a, const char *b);
 
+template <typename InputIt> void inp_strlower(InputIt first, InputIt last) {
+  std::transform(first, last, first, lowcase);
+}
+
 // Lowercase |s| in place.
 inline void inp_strlower(std::string &s) {
-  std::transform(std::begin(s), std::end(s), std::begin(s), lowcase);
+  inp_strlower(std::begin(s), std::end(s));
 }
 
 // Returns string representation of |n| with 2 fractional digits.

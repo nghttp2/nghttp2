@@ -158,6 +158,11 @@ OPTIONS
 
     Disable server push.
 
+.. option:: --max-concurrent-streams=<N>
+
+    The  number of  concurrent  pushed  streams this  client
+    accepts.
+
 .. option:: --version
 
     Display version information and exit.

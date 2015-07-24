@@ -40,6 +40,7 @@ namespace shrpx {
 class ClientHandler;
 class Worker;
 class DownstreamConnectionPool;
+struct DownstreamAddr;
 
 namespace ssl {
 
@@ -68,7 +69,7 @@ ClientHandler *accept_connection(Worker *worker, int fd, sockaddr *addr,
 // Check peer's certificate against first downstream address in
 // Config::downstream_addrs.  We only consider first downstream since
 // we use this function for HTTP/2 downstream link only.
-int check_cert(SSL *ssl);
+int check_cert(SSL *ssl, const DownstreamAddr *addr);
 
 // Retrieves DNS and IP address in subjectAltNames and commonName from
 // the |cert|.
@@ -139,7 +140,7 @@ int cert_lookup_tree_add_cert_from_file(CertLookupTree *lt, SSL_CTX *ssl_ctx,
 
 // Returns true if |needle| which has |len| bytes is included in the
 // protocol list |protos|.
-bool in_proto_list(const std::vector<char *> &protos,
+bool in_proto_list(const std::vector<std::string> &protos,
                    const unsigned char *needle, size_t len);
 
 // Returns true if security requirement for HTTP/2 is fulfilled.
@@ -148,9 +149,10 @@ bool check_http2_requirement(SSL *ssl);
 // Returns SSL/TLS option mask to disable SSL/TLS protocol version not
 // included in |tls_proto_list|.  The returned mask can be directly
 // passed to SSL_CTX_set_options().
-long int create_tls_proto_mask(const std::vector<char *> &tls_proto_list);
+long int create_tls_proto_mask(const std::vector<std::string> &tls_proto_list);
 
-std::vector<unsigned char> set_alpn_prefs(const std::vector<char *> &protos);
+std::vector<unsigned char>
+set_alpn_prefs(const std::vector<std::string> &protos);
 
 // Setups server side SSL_CTX.  This function inspects get_config()
 // and if upstream_no_tls is true, returns nullptr.  Otherwise

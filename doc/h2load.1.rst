@@ -84,6 +84,11 @@ OPTIONS
 
     Add/Override a header to the requests.
 
+.. option:: --ciphers=<SUITE>
+
+    Set allowed  cipher list.  The  format of the  string is
+    described in OpenSSL ciphers(1).
+
 .. option:: -p, --no-tls-proto=<PROTOID>
 
     Specify ALPN identifier of the  protocol to be used when

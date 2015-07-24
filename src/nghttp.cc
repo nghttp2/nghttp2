@@ -501,9 +501,8 @@ bool HttpClient::need_upgrade() const {
 
 int HttpClient::resolve_host(const std::string &host, uint16_t port) {
   int rv;
-  addrinfo hints;
   this->host = host;
-  memset(&hints, 0, sizeof(hints));
+  addrinfo hints{};
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_protocol = 0;
@@ -1260,8 +1259,7 @@ bool HttpClient::add_request(const std::string &uri,
                              const nghttp2_data_provider *data_prd,
                              int64_t data_length,
                              const nghttp2_priority_spec &pri_spec, int level) {
-  http_parser_url u;
-  memset(&u, 0, sizeof(u));
+  http_parser_url u{};
   if (http_parser_parse_url(uri.c_str(), uri.size(), 0, &u) != 0) {
     return false;
   }
@@ -1376,10 +1374,11 @@ void HttpClient::output_har(FILE *outfile) {
         entry, "startedDateTime",
         json_string(util::format_iso8601(request_time).c_str()));
     json_object_set_new(entry, "time", json_real(time_sum));
-    
+
     auto pushed = req->stream_id % 2 == 0;
 
-    json_object_set_new(entry, "comment", json_string(pushed ? "Pushed Object" : ""));
+    json_object_set_new(entry, "comment",
+                        json_string(pushed ? "Pushed Object" : ""));
 
     auto request = json_object();
     json_object_set_new(entry, "request", request);
@@ -1463,7 +1462,8 @@ void HttpClient::output_har(FILE *outfile) {
     json_object_set_new(timings, "receive", json_real(receive_delta));
 
     json_object_set_new(entry, "pageref", json_string(PAGE_ID));
-    json_object_set_new(entry, "connection", json_string(util::utos(req->stream_id).c_str()));
+    json_object_set_new(entry, "connection",
+                        json_string(util::utos(req->stream_id).c_str()));
   }
 
   json_dumpf(root, outfile, JSON_PRESERVE_ORDER | JSON_INDENT(2));
@@ -1483,8 +1483,7 @@ void update_html_parser(HttpClient *client, Request *req, const uint8_t *data,
     auto uri = strip_fragment(p.first.c_str());
     auto res_type = p.second;
 
-    http_parser_url u;
-    memset(&u, 0, sizeof(u));
+    http_parser_url u{};
     if (http_parser_parse_url(uri.c_str(), uri.size(), 0, &u) == 0 &&
         util::fieldeq(uri.c_str(), u, req->uri.c_str(), req->u, UF_SCHEMA) &&
         util::fieldeq(uri.c_str(), u, req->uri.c_str(), req->u, UF_HOST) &&
@@ -1648,8 +1647,7 @@ int on_begin_headers_callback(nghttp2_session *session,
   }
   case NGHTTP2_PUSH_PROMISE: {
     auto stream_id = frame->push_promise.promised_stream_id;
-    http_parser_url u;
-    memset(&u, 0, sizeof(u));
+    http_parser_url u{};
     // TODO Set pri and level
     nghttp2_priority_spec pri_spec;
 
@@ -1818,8 +1816,7 @@ int on_frame_recv_callback2(nghttp2_session *session,
     uri += "://";
     uri += authority->value;
     uri += path->value;
-    http_parser_url u;
-    memset(&u, 0, sizeof(u));
+    http_parser_url u{};
     if (http_parser_parse_url(uri.c_str(), uri.size(), 0, &u) != 0) {
       nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
                                 frame->push_promise.promised_stream_id,
@@ -2297,8 +2294,7 @@ int run(char **uris, int n) {
   std::vector<std::tuple<std::string, nghttp2_data_provider *, int64_t>>
       requests;
   for (int i = 0; i < n; ++i) {
-    http_parser_url u;
-    memset(&u, 0, sizeof(u));
+    http_parser_url u{};
     auto uri = strip_fragment(uris[i]);
     if (http_parser_parse_url(uri.c_str(), uri.size(), 0, &u) != 0) {
       std::cerr << "[ERROR] Could not parse URI " << uri << std::endl;
@@ -2398,7 +2394,7 @@ Options:
               must be in PEM format.
   --key=<KEY> Use the  client private key  file.  The file must  be in
               PEM format.
-  -d, --data=<FILE>
+  -d, --data=<PATH>
               Post FILE to server. If '-'  is given, data will be read
               from stdin.
   -m, --multiply=<N>
@@ -2422,8 +2418,8 @@ Options:
   -b, --padding=<N>
               Add at  most <N>  bytes to a  frame payload  as padding.
               Specify 0 to disable padding.
-  -r, --har=<FILE>
-              Output HTTP  transactions <FILE> in HAR  format.  If '-'
+  -r, --har=<PATH>
+              Output HTTP  transactions <PATH> in HAR  format.  If '-'
               is given, data is written to stdout.
   --color     Force colored log output.
   --continuation
@@ -2699,8 +2695,7 @@ int main(int argc, char **argv) {
   nghttp2_option_set_peer_max_concurrent_streams(
       config.http2_option, config.peer_max_concurrent_streams);
 
-  struct sigaction act;
-  memset(&act, 0, sizeof(struct sigaction));
+  struct sigaction act {};
   act.sa_handler = SIG_IGN;
   sigaction(SIGPIPE, &act, nullptr);
   reset_timer();

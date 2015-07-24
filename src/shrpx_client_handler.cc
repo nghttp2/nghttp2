@@ -39,6 +39,7 @@
 #include "shrpx_worker.h"
 #include "shrpx_downstream_connection_pool.h"
 #include "shrpx_downstream.h"
+#include "shrpx_http2_session.h"
 #ifdef HAVE_SPDYLAY
 #include "shrpx_spdy_upstream.h"
 #endif // HAVE_SPDYLAY
@@ -360,8 +361,12 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
             get_config()->upstream_read_timeout, get_config()->write_rate,
             get_config()->write_burst, get_config()->read_rate,
             get_config()->read_burst, writecb, readcb, timeoutcb, this),
+      pinned_http2sessions_(
+          get_config()->downstream_proto == PROTO_HTTP2
+              ? make_unique<std::vector<ssize_t>>(
+                    get_config()->downstream_addr_groups.size(), -1)
+              : nullptr),
       ipaddr_(ipaddr), port_(port), worker_(worker),
-      http2session_(worker_->next_http2_session()),
       left_connhd_len_(NGHTTP2_CLIENT_MAGIC_LEN),
       should_close_after_write_(false) {
 
@@ -588,7 +593,8 @@ void ClientHandler::pool_downstream_connection(
     return;
   }
   if (LOG_ENABLED(INFO)) {
-    CLOG(INFO, this) << "Pooling downstream connection DCONN:" << dconn.get();
+    CLOG(INFO, this) << "Pooling downstream connection DCONN:" << dconn.get()
+                     << " in group " << dconn->get_group();
   }
   dconn->set_client_handler(nullptr);
   auto dconn_pool = worker_->get_dconn_pool();
@@ -605,9 +611,43 @@ void ClientHandler::remove_downstream_connection(DownstreamConnection *dconn) {
 }
 
 std::unique_ptr<DownstreamConnection>
-ClientHandler::get_downstream_connection() {
+ClientHandler::get_downstream_connection(Downstream *downstream) {
+  size_t group;
+  auto &groups = get_config()->downstream_addr_groups;
+  auto catch_all = get_config()->downstream_addr_group_catch_all;
+
+  // Fast path.  If we have one group, it must be catch-all group.
+  // HTTP/2 and client proxy modes fall in this case.
+  if (groups.size() == 1) {
+    group = 0;
+  } else if (downstream->get_request_method() == HTTP_CONNECT) {
+    //  We don't know how to treat CONNECT request in host-path
+    //  mapping.  It most likely appears in proxy scenario.  Since we
+    //  have dealt with proxy case already, just use catch-all group.
+    group = catch_all;
+  } else {
+    if (!downstream->get_request_http2_authority().empty()) {
+      group = match_downstream_addr_group(
+          downstream->get_request_http2_authority(),
+          downstream->get_request_path(), groups, catch_all);
+    } else {
+      auto h = downstream->get_request_header(http2::HD_HOST);
+      if (h) {
+        group = match_downstream_addr_group(
+            h->value, downstream->get_request_path(), groups, catch_all);
+      } else {
+        group = match_downstream_addr_group("", downstream->get_request_path(),
+                                            groups, catch_all);
+      }
+    }
+  }
+
+  if (LOG_ENABLED(INFO)) {
+    CLOG(INFO, this) << "Downstream address group: " << group;
+  }
+
   auto dconn_pool = worker_->get_dconn_pool();
-  auto dconn = dconn_pool->pop_downstream_connection();
+  auto dconn = dconn_pool->pop_downstream_connection(group);
 
   if (!dconn) {
     if (LOG_ENABLED(INFO)) {
@@ -617,10 +657,20 @@ ClientHandler::get_downstream_connection() {
 
     auto dconn_pool = worker_->get_dconn_pool();
 
-    if (http2session_) {
-      dconn = make_unique<Http2DownstreamConnection>(dconn_pool, http2session_);
+    if (get_config()->downstream_proto == PROTO_HTTP2) {
+      Http2Session *http2session;
+      auto &pinned = (*pinned_http2sessions_)[group];
+      if (pinned == -1) {
+        http2session = worker_->next_http2_session(group);
+        pinned = http2session->get_index();
+      } else {
+        auto dgrp = worker_->get_dgrp(group);
+        http2session = dgrp->http2sessions[pinned].get();
+      }
+      dconn = make_unique<Http2DownstreamConnection>(dconn_pool, http2session);
     } else {
-      dconn = make_unique<HttpDownstreamConnection>(dconn_pool, conn_.loop);
+      dconn =
+          make_unique<HttpDownstreamConnection>(dconn_pool, group, conn_.loop);
     }
     dconn->set_client_handler(this);
     return dconn;

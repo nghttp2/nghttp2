@@ -540,6 +540,54 @@ void test_nghttp2_hd_inflate_zero_length_huffman(void) {
   nghttp2_hd_inflate_free(&inflater);
 }
 
+void test_nghttp2_hd_inflate_expect_table_size_update(void) {
+  nghttp2_hd_inflater inflater;
+  nghttp2_bufs bufs;
+  nghttp2_mem *mem;
+  /* Indexed Header: :method: GET */
+  uint8_t data[] = {0x82};
+  nva_out out;
+
+  mem = nghttp2_mem_default();
+  frame_pack_bufs_init(&bufs);
+  nva_out_init(&out);
+
+  nghttp2_bufs_add(&bufs, data, sizeof(data));
+  nghttp2_hd_inflate_init(&inflater, mem);
+  /* This will make inflater require table size update in the next
+     inflation. */
+  nghttp2_hd_inflate_change_table_size(&inflater, 4096);
+  CU_ASSERT(NGHTTP2_ERR_HEADER_COMP ==
+            inflate_hd(&inflater, &out, &bufs, 0, mem));
+
+  nva_out_reset(&out, mem);
+  nghttp2_bufs_free(&bufs);
+  nghttp2_hd_inflate_free(&inflater);
+}
+
+void test_nghttp2_hd_inflate_unexpected_table_size_update(void) {
+  nghttp2_hd_inflater inflater;
+  nghttp2_bufs bufs;
+  nghttp2_mem *mem;
+  /* Indexed Header: :method: GET, followed by table size update.
+     This violates RFC 7541. */
+  uint8_t data[] = {0x82, 0x20};
+  nva_out out;
+
+  mem = nghttp2_mem_default();
+  frame_pack_bufs_init(&bufs);
+  nva_out_init(&out);
+
+  nghttp2_bufs_add(&bufs, data, sizeof(data));
+  nghttp2_hd_inflate_init(&inflater, mem);
+  CU_ASSERT(NGHTTP2_ERR_HEADER_COMP ==
+            inflate_hd(&inflater, &out, &bufs, 0, mem));
+
+  nva_out_reset(&out, mem);
+  nghttp2_bufs_free(&bufs);
+  nghttp2_hd_inflate_free(&inflater);
+}
+
 void test_nghttp2_hd_ringbuf_reserve(void) {
   nghttp2_hd_deflater deflater;
   nghttp2_hd_inflater inflater;

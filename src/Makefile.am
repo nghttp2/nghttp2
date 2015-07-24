@@ -176,6 +176,7 @@ lib_LTLIBRARIES = libnghttp2_asio.la
 libnghttp2_asio_la_SOURCES = \
 	util.cc util.h http2.cc http2.h \
 	ssl.cc ssl.h \
+	timegm.c timegm.h \
 	asio_common.cc asio_common.h \
 	asio_io_service_pool.cc asio_io_service_pool.h \
 	asio_server_http2.cc \
@@ -207,10 +208,10 @@ libnghttp2_asio_la_LDFLAGS = -no-undefined -version-info 1:0:0
 libnghttp2_asio_la_LIBADD = \
 	$(top_builddir)/lib/libnghttp2.la \
 	$(top_builddir)/third-party/libhttp-parser.la \
+	@OPENSSL_LIBS@ \
 	${BOOST_LDFLAGS} \
 	${BOOST_ASIO_LIB} \
 	${BOOST_THREAD_LIB} \
-	${BOOST_SYSTEM_LIB} \
-	@OPENSSL_LIBS@
+	${BOOST_SYSTEM_LIB}
 
 endif # ENABLE_ASIO_LIB

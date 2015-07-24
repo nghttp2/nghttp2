@@ -22,8 +22,7 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 from setuptools import setup, Extension
-from Cython.Build import cythonize
- 
+
 LIBS = ['nghttp2']
 
 setup(
@@ -34,13 +33,13 @@ setup(
     author_email = 'tatsuhiro.t@gmail.com',
     url = 'https://nghttp2.org/',
     keywords = [],
-    ext_modules = cythonize([Extension("nghttp2",
-                             ["nghttp2.pyx"],
+    ext_modules = [Extension("nghttp2",
+                             ["nghttp2.c"],
                              include_dirs=['@top_srcdir@/lib',
                                            '@top_srcdir@/lib/includes',
                                            '@top_builddir@/lib/includes'],
                              library_dirs=['@top_builddir@/lib/.libs',
                                            '@top_builddir@'],
-                             libraries=LIBS)]),
+                             libraries=LIBS)],
     long_description='TBD'
     )

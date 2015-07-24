@@ -879,9 +879,8 @@ process_time_stats(const std::vector<std::unique_ptr<Worker>> &workers) {
 namespace {
 void resolve_host() {
   int rv;
-  addrinfo hints, *res;
+  addrinfo hints{}, *res;
 
-  memset(&hints, 0, sizeof(hints));
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_protocol = 0;
@@ -938,14 +937,11 @@ int client_select_next_proto_cb(SSL *ssl, unsigned char **out,
 } // namespace
 
 namespace {
-template <typename Iterator>
-std::vector<std::string> parse_uris(Iterator first, Iterator last) {
+// Use std::vector<std::string>::iterator explicitly, without that,
+// http_parser_url u{} fails with clang-3.4.
+std::vector<std::string> parse_uris(std::vector<std::string>::iterator first,
+                                    std::vector<std::string>::iterator last) {
   std::vector<std::string> reqlines;
-
-  // First URI is treated specially.  We use scheme, host and port of
-  // this URI and ignore those in the remaining URIs if present.
-  http_parser_url u;
-  memset(&u, 0, sizeof(u));
 
   if (first == last) {
     std::cerr << "no URI available" << std::endl;
@@ -953,13 +949,17 @@ std::vector<std::string> parse_uris(Iterator first, Iterator last) {
   }
 
   auto uri = (*first).c_str();
-  ++first;
 
-  if (http_parser_parse_url(uri, strlen(uri), 0, &u) != 0 ||
+  // First URI is treated specially.  We use scheme, host and port of
+  // this URI and ignore those in the remaining URIs if present.
+  http_parser_url u{};
+  if (http_parser_parse_url(uri, (*first).size(), 0, &u) != 0 ||
       !util::has_uri_field(u, UF_SCHEMA) || !util::has_uri_field(u, UF_HOST)) {
     std::cerr << "invalid URI: " << uri << std::endl;
     exit(EXIT_FAILURE);
   }
+
+  ++first;
 
   config.scheme = util::get_uri_field(uri, u, UF_SCHEMA);
   config.host = util::get_uri_field(uri, u, UF_HOST);
@@ -973,12 +973,11 @@ std::vector<std::string> parse_uris(Iterator first, Iterator last) {
   reqlines.push_back(get_reqline(uri, u));
 
   for (; first != last; ++first) {
-    http_parser_url u;
-    memset(&u, 0, sizeof(u));
+    http_parser_url u{};
 
     auto uri = (*first).c_str();
 
-    if (http_parser_parse_url(uri, strlen(uri), 0, &u) != 0) {
+    if (http_parser_parse_url(uri, (*first).size(), 0, &u) != 0) {
       std::cerr << "invalid URI: " << uri << std::endl;
       exit(EXIT_FAILURE);
     }
@@ -1036,10 +1035,10 @@ Options:
   -t, --threads=<N>
               Number of native threads.
               Default: )" << config.nthreads << R"(
-  -i, --input-file=<FILE>
+  -i, --input-file=<PATH>
               Path of a file with multiple URIs are separated by EOLs.
               This option will disable URIs getting from command-line.
-              If '-' is given as <FILE>, URIs will be read from stdin.
+              If '-' is given as <PATH>, URIs will be read from stdin.
               URIs are used  in this order for each  client.  All URIs
               are used, then  first URI is used and then  2nd URI, and
               so  on.  The  scheme, host  and port  in the  subsequent
@@ -1076,34 +1075,32 @@ Options:
               Available protocol: )";
 #endif // !HAVE_SPDYLAY
   out << NGHTTP2_CLEARTEXT_PROTO_VERSION_ID << R"(
-              Default: )"
-      << NGHTTP2_CLEARTEXT_PROTO_VERSION_ID << R"(
-  -d, --data=<FILE>
+              Default: )" << NGHTTP2_CLEARTEXT_PROTO_VERSION_ID << R"(
+  -d, --data=<PATH>
               Post FILE to  server.  The request method  is changed to
               POST.
   -r, --rate=<N>
-              Specified the fixed rate at which connections are
-              created. The rate must be a positive integer,
-              representing the number of connections to be made per
-              second. When the rate is 0, the program will run as it
+              Specified  the  fixed  rate  at  which  connections  are
+              created.   The   rate  must   be  a   positive  integer,
+              representing the  number of  connections to be  made per
+              second.  When the rate is 0,  the program will run as it
               normally does, creating connections at whatever variable
-              rate it wants. The default value for this option is 0.
+              rate it wants.  The default value for this option is 0.
   -C, --num-conns=<N>
-              Specifies the total number of connections to create. The
-              total number of connections must be a positive integer.
-              On each connection, '-m' requests are made. The test
-              stops once as soon as the N connections have either
-              completed or failed. When the number of connections is
+              Specifies  the total  number of  connections to  create.
+              The  total  number of  connections  must  be a  positive
+              integer.  On each connection, -m requests are made.  The
+              test stops once as soon as the N connections have either
+              completed or failed.  When  the number of connections is
               0, the program will run as it normally does, creating as
-              many connections as it needs in order to make the '-n'
-              requests specified. The default value for this option is
-              0. The '-n' option is not required if the '-C' option
-              is being used.
+              many connections  as it  needs in order  to make  the -n
+              requests specified.   The default value for  this option
+              is 0.  The -n option is not required if the -C option is
+              being used.
   -v, --verbose
               Output debug information.
   --version   Display version information and exit.
-  -h, --help  Display this help and exit.)"
-      << std::endl;
+  -h, --help  Display this help and exit.)" << std::endl;
 }
 } // namespace
 
@@ -1355,8 +1352,7 @@ int main(int argc, char **argv) {
     config.data_length = data_stat.st_size;
   }
 
-  struct sigaction act;
-  memset(&act, 0, sizeof(struct sigaction));
+  struct sigaction act {};
   act.sa_handler = SIG_IGN;
   sigaction(SIGPIPE, &act, nullptr);
 

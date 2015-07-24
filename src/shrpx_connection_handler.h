@@ -76,8 +76,9 @@ public:
   // Creates |num| Worker objects for multi threaded configuration.
   // The |num| must be strictly more than 1.
   void create_worker_thread(size_t num);
+  void
+  set_ticket_keys_to_worker(const std::shared_ptr<TicketKeys> &ticket_keys);
   void worker_reopen_log_files();
-  void worker_renew_ticket_keys(const std::shared_ptr<TicketKeys> &ticket_keys);
   void set_ticket_keys(std::shared_ptr<TicketKeys> ticket_keys);
   const std::shared_ptr<TicketKeys> &get_ticket_keys() const;
   struct ev_loop *get_loop() const;
