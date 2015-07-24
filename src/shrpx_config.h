@@ -253,6 +253,7 @@ struct Config {
   std::vector<std::string> tls_proto_list;
   // binary form of http proxy host and port
   sockaddr_union downstream_http_proxy_addr;
+  std::chrono::seconds tls_session_timeout;
   ev_tstamp http2_upstream_read_timeout;
   ev_tstamp upstream_read_timeout;
   ev_tstamp upstream_write_timeout;

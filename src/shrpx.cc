@@ -643,15 +643,19 @@ void renew_ticket_key_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   // possible problem when one worker encrypt new key, but one worker,
   // which did not take the that key yet, and cannot decrypt it.
   //
-  // We keep keys for 12 hours.  Thus the maximum ticket vector size
-  // is 12 + 1.
+  // We keep keys for get_config()->tls_session_timeout seconds.  The
+  // default is 12 hours.  Thus the maximum ticket vector size is 12.
   if (old_ticket_keys) {
     auto &old_keys = old_ticket_keys->keys;
     auto &new_keys = ticket_keys->keys;
 
     assert(!old_keys.empty());
 
-    new_keys.resize(std::min(12ul, old_keys.size() + 1));
+    auto max_tickets =
+        static_cast<size_t>(std::chrono::duration_cast<std::chrono::hours>(
+                                get_config()->tls_session_timeout).count());
+
+    new_keys.resize(std::min(max_tickets, old_keys.size() + 1));
     std::copy_n(std::begin(old_keys), new_keys.size() - 1,
                 std::begin(new_keys) + 1);
   } else {
@@ -1016,6 +1020,7 @@ void fill_default_config() {
   mod_config()->downstream_addr_group_catch_all = 0;
   mod_config()->tls_ticket_cipher = EVP_aes_128_cbc();
   mod_config()->tls_ticket_cipher_given = false;
+  mod_config()->tls_session_timeout = std::chrono::hours(12);
 }
 } // namespace
 

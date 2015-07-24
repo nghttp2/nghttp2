@@ -346,6 +346,7 @@ SSL_CTX *create_ssl_context(const char *private_key_file,
   const unsigned char sid_ctx[] = "shrpx";
   SSL_CTX_set_session_id_context(ssl_ctx, sid_ctx, sizeof(sid_ctx) - 1);
   SSL_CTX_set_session_cache_mode(ssl_ctx, SSL_SESS_CACHE_SERVER);
+  SSL_CTX_set_timeout(ssl_ctx, get_config()->tls_session_timeout.count());
 
   const char *ciphers;
   if (get_config()->ciphers) {
