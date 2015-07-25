@@ -323,12 +323,12 @@ int Http2Session::initiate_connection() {
       // We are establishing TLS connection.  If conn_.tls.ssl, we may
       // reuse the previous session.
       if (!conn_.tls.ssl) {
-        conn_.tls.ssl = SSL_new(ssl_ctx_);
-        if (!conn_.tls.ssl) {
-          SSLOG(ERROR, this) << "SSL_new() failed: "
-                             << ERR_error_string(ERR_get_error(), NULL);
+        auto ssl = ssl::create_ssl(ssl_ctx_);
+        if (!ssl) {
           return -1;
         }
+
+        conn_.set_ssl(ssl);
       }
 
       const char *sni_name = nullptr;
@@ -369,11 +369,7 @@ int Http2Session::initiate_connection() {
         ev_io_set(&conn_.wev, conn_.fd, EV_WRITE);
       }
 
-      if (SSL_set_fd(conn_.tls.ssl, conn_.fd) == 0) {
-        return -1;
-      }
-
-      SSL_set_connect_state(conn_.tls.ssl);
+      conn_.prepare_client_handshake();
     } else {
       if (state_ == DISCONNECTED) {
         // Without TLS and proxy.

@@ -704,6 +704,7 @@ enum {
   SHRPX_OPTID_SUBCERT,
   SHRPX_OPTID_SYSLOG_FACILITY,
   SHRPX_OPTID_TLS_PROTO_LIST,
+  SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED,
   SHRPX_OPTID_TLS_TICKET_CIPHER,
   SHRPX_OPTID_TLS_TICKET_KEY_FILE,
   SHRPX_OPTID_USER,
@@ -1180,6 +1181,11 @@ int option_lookup_token(const char *name, size_t namelen) {
     break;
   case 27:
     switch (name[26]) {
+    case 'd':
+      if (util::strieq_l("tls-session-cache-memcache", name, 26)) {
+        return SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED;
+      }
+      break;
     case 's':
       if (util::strieq_l("worker-frontend-connection", name, 26)) {
         return SHRPX_OPTID_WORKER_FRONTEND_CONNECTIONS;
@@ -1865,6 +1871,17 @@ int parse_config(const char *opt, const char *optarg,
     mod_config()->no_host_rewrite = !util::strieq(optarg, "yes");
 
     return 0;
+  case SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED: {
+    if (split_host_port(host, sizeof(host), &port, optarg, strlen(optarg)) ==
+        -1) {
+      return -1;
+    }
+
+    mod_config()->session_cache_memcached_host = strcopy(host);
+    mod_config()->session_cache_memcached_port = port;
+
+    return 0;
+  }
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 

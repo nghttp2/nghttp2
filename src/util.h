@@ -631,6 +631,26 @@ std::string make_hostport(const char *host, uint16_t port);
 // Dumps |src| of length |len| in the format similar to `hexdump -C`.
 void hexdump(FILE *out, const uint8_t *src, size_t len);
 
+// Copies 2 byte unsigned integer |n| in host byte order to |buf| in
+// network byte order.
+void put_uint16be(uint8_t *buf, uint16_t n);
+
+// Copies 4 byte unsigned integer |n| in host byte order to |buf| in
+// network byte order.
+void put_uint32be(uint8_t *buf, uint32_t n);
+
+// Retrieves 2 byte unsigned integer stored in |data| in network byte
+// order and returns it in host byte order.
+uint16_t get_uint16(const uint8_t *data);
+
+// Retrieves 4 byte unsigned integer stored in |data| in network byte
+// order and returns it in host byte order.
+uint32_t get_uint32(const uint8_t *data);
+
+// Retrieves 8 byte unsigned integer stored in |data| in network byte
+// order and returns it in host byte order.
+uint64_t get_uint64(const uint8_t *data);
+
 } // namespace util
 
 } // namespace nghttp2

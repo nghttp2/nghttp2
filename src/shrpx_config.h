@@ -173,6 +173,8 @@ constexpr char SHRPX_OPT_MAX_HEADER_FIELDS[] = "max-header-fields";
 constexpr char SHRPX_OPT_INCLUDE[] = "include";
 constexpr char SHRPX_OPT_TLS_TICKET_CIPHER[] = "tls-ticket-cipher";
 constexpr char SHRPX_OPT_HOST_REWRITE[] = "host-rewrite";
+constexpr char SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED[] =
+    "tls-session-cache-memcached";
 
 union sockaddr_union {
   sockaddr_storage storage;
@@ -253,6 +255,7 @@ struct Config {
   std::vector<std::string> tls_proto_list;
   // binary form of http proxy host and port
   sockaddr_union downstream_http_proxy_addr;
+  sockaddr_union session_cache_memcached_addr;
   std::chrono::seconds tls_session_timeout;
   ev_tstamp http2_upstream_read_timeout;
   ev_tstamp upstream_read_timeout;
@@ -295,6 +298,7 @@ struct Config {
   std::unique_ptr<char[]> errorlog_file;
   std::unique_ptr<char[]> fetch_ocsp_response_file;
   std::unique_ptr<char[]> user;
+  std::unique_ptr<char[]> session_cache_memcached_host;
   FILE *http2_upstream_dump_request_header;
   FILE *http2_upstream_dump_response_header;
   nghttp2_session_callbacks *http2_upstream_callbacks;
@@ -316,6 +320,7 @@ struct Config {
   size_t downstream_connections_per_frontend;
   // actual size of downstream_http_proxy_addr
   size_t downstream_http_proxy_addrlen;
+  size_t session_cache_memcached_addrlen;
   size_t read_rate;
   size_t read_burst;
   size_t write_rate;
@@ -349,6 +354,7 @@ struct Config {
   uint16_t port;
   // port in http proxy URI
   uint16_t downstream_http_proxy_port;
+  uint16_t session_cache_memcached_port;
   bool verbose;
   bool daemon;
   bool verify_client;

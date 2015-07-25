@@ -93,6 +93,7 @@ OPTIONS = [
     "include",
     "tls-ticket-cipher",
     "host-rewrite",
+    "tls-session-cache-memcached",
     "conf",
 ]
 

@@ -1365,6 +1365,10 @@ SSL/TLS:
               Default: )"
       << util::duration_str(get_config()->ocsp_update_interval) << R"(
   --no-ocsp   Disable OCSP stapling.
+  --tls-session-cache-memcached=<HOST>,<PORT>
+              Specify  address of  memcached server  to store  session
+              cache.   This  enables   shared  session  cache  between
+              multiple nghttpx instances.
 
 HTTP/2 and SPDY:
   -c, --http2-max-concurrent-streams=<N>
@@ -1728,6 +1732,7 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_INCLUDE, required_argument, &flag, 83},
         {SHRPX_OPT_TLS_TICKET_CIPHER, required_argument, &flag, 84},
         {SHRPX_OPT_HOST_REWRITE, no_argument, &flag, 85},
+        {SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED, required_argument, &flag, 86},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -2102,6 +2107,10 @@ int main(int argc, char **argv) {
         // --host-rewrite
         cmdcfgs.emplace_back(SHRPX_OPT_HOST_REWRITE, "yes");
         break;
+      case 86:
+        // --tls-session-cache-memcached
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED, optarg);
+        break;
       default:
         break;
       }
@@ -2375,6 +2384,16 @@ int main(int argc, char **argv) {
                          &mod_config()->downstream_http_proxy_addrlen,
                          get_config()->downstream_http_proxy_host.get(),
                          get_config()->downstream_http_proxy_port,
+                         AF_UNSPEC) == -1) {
+      exit(EXIT_FAILURE);
+    }
+  }
+
+  if (get_config()->session_cache_memcached_host) {
+    if (resolve_hostname(&mod_config()->session_cache_memcached_addr,
+                         &mod_config()->session_cache_memcached_addrlen,
+                         get_config()->session_cache_memcached_host.get(),
+                         get_config()->session_cache_memcached_port,
                          AF_UNSPEC) == -1) {
       exit(EXIT_FAILURE);
     }

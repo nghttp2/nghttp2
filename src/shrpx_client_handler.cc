@@ -380,7 +380,7 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
   ev_timer_again(conn_.loop, &conn_.rt);
 
   if (conn_.tls.ssl) {
-    SSL_set_app_data(conn_.tls.ssl, &conn_);
+    conn_.prepare_server_handshake();
     read_ = write_ = &ClientHandler::tls_handshake;
     on_read_ = &ClientHandler::upstream_noop;
     on_write_ = &ClientHandler::upstream_write;
@@ -847,5 +847,7 @@ RateLimit *ClientHandler::get_wlimit() { return &conn_.wlimit; }
 ev_io *ClientHandler::get_wev() { return &conn_.wev; }
 
 Worker *ClientHandler::get_worker() const { return worker_; }
+
+Connection *ClientHandler::get_connection() { return &conn_; }
 
 } // namespace shrpx
