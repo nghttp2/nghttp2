@@ -81,7 +81,7 @@ TicketKeys::~TicketKeys() {
 DownstreamAddr::DownstreamAddr(const DownstreamAddr &other)
     : addr(other.addr), host(other.host ? strcopy(other.host.get()) : nullptr),
       hostport(other.hostport ? strcopy(other.hostport.get()) : nullptr),
-      addrlen(other.addrlen), port(other.port), host_unix(other.host_unix) {}
+      port(other.port), host_unix(other.host_unix) {}
 
 DownstreamAddr &DownstreamAddr::operator=(const DownstreamAddr &other) {
   if (this == &other) {
@@ -91,7 +91,6 @@ DownstreamAddr &DownstreamAddr::operator=(const DownstreamAddr &other) {
   addr = other.addr;
   host = (other.host ? strcopy(other.host.get()) : nullptr);
   hostport = (other.hostport ? strcopy(other.hostport.get()) : nullptr);
-  addrlen = other.addrlen;
   port = other.port;
   host_unix = other.host_unix;
 

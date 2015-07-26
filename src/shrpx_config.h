@@ -184,6 +184,11 @@ union sockaddr_union {
   sockaddr_un un;
 };
 
+struct Address {
+  size_t len;
+  union sockaddr_union su;
+};
+
 enum shrpx_proto { PROTO_HTTP2, PROTO_HTTP };
 
 struct AltSvc {
@@ -195,18 +200,17 @@ struct AltSvc {
 };
 
 struct DownstreamAddr {
-  DownstreamAddr() : addr{{0}}, addrlen(0), port(0), host_unix(false) {}
+  DownstreamAddr() : addr{}, port(0), host_unix(false) {}
   DownstreamAddr(const DownstreamAddr &other);
   DownstreamAddr(DownstreamAddr &&) = default;
   DownstreamAddr &operator=(const DownstreamAddr &other);
   DownstreamAddr &operator=(DownstreamAddr &&other) = default;
 
-  sockaddr_union addr;
+  Address addr;
   // backend address.  If |host_unix| is true, this is UNIX domain
   // socket path.
   std::unique_ptr<char[]> host;
   std::unique_ptr<char[]> hostport;
-  size_t addrlen;
   // backend port.  0 if |host_unix| is true.
   uint16_t port;
   // true if |host| contains UNIX domain socket path.
@@ -254,8 +258,8 @@ struct Config {
   // list of supported SSL/TLS protocol strings.
   std::vector<std::string> tls_proto_list;
   // binary form of http proxy host and port
-  sockaddr_union downstream_http_proxy_addr;
-  sockaddr_union session_cache_memcached_addr;
+  Address downstream_http_proxy_addr;
+  Address session_cache_memcached_addr;
   std::chrono::seconds tls_session_timeout;
   ev_tstamp http2_upstream_read_timeout;
   ev_tstamp upstream_read_timeout;
@@ -318,9 +322,6 @@ struct Config {
   size_t http2_downstream_connections_per_worker;
   size_t downstream_connections_per_host;
   size_t downstream_connections_per_frontend;
-  // actual size of downstream_http_proxy_addr
-  size_t downstream_http_proxy_addrlen;
-  size_t session_cache_memcached_addrlen;
   size_t read_rate;
   size_t read_burst;
   size_t write_rate;

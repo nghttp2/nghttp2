@@ -78,8 +78,7 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
 
   if (get_config()->session_cache_memcached_host) {
     session_cache_memcached_dispatcher_ = make_unique<MemcachedDispatcher>(
-        &get_config()->session_cache_memcached_addr,
-        get_config()->session_cache_memcached_addrlen, loop);
+        &get_config()->session_cache_memcached_addr, loop);
   }
 
   if (get_config()->downstream_proto == PROTO_HTTP2) {

@@ -768,8 +768,8 @@ bool tls_hostname_match(const char *pattern, const char *hostname) {
 } // namespace
 
 namespace {
-int verify_hostname(const char *hostname, const sockaddr_union *su,
-                    size_t salen, const std::vector<std::string> &dns_names,
+int verify_hostname(const char *hostname, const Address *addr,
+                    const std::vector<std::string> &dns_names,
                     const std::vector<std::string> &ip_addrs,
                     const std::string &common_name) {
   if (util::numeric_host(hostname)) {
@@ -777,19 +777,19 @@ int verify_hostname(const char *hostname, const sockaddr_union *su,
       return util::strieq(common_name.c_str(), hostname) ? 0 : -1;
     }
     const void *saddr;
-    switch (su->storage.ss_family) {
+    switch (addr->su.storage.ss_family) {
     case AF_INET:
-      saddr = &su->in.sin_addr;
+      saddr = &addr->su.in.sin_addr;
       break;
     case AF_INET6:
-      saddr = &su->in6.sin6_addr;
+      saddr = &addr->su.in6.sin6_addr;
       break;
     default:
       return -1;
     }
     for (size_t i = 0; i < ip_addrs.size(); ++i) {
-      if (salen == ip_addrs[i].size() &&
-          memcmp(saddr, ip_addrs[i].c_str(), salen) == 0) {
+      if (addr->len == ip_addrs[i].size() &&
+          memcmp(saddr, ip_addrs[i].c_str(), addr->len) == 0) {
         return 0;
       }
     }
@@ -884,8 +884,8 @@ int check_cert(SSL *ssl, const DownstreamAddr *addr) {
   std::vector<std::string> dns_names;
   std::vector<std::string> ip_addrs;
   get_altnames(cert, dns_names, ip_addrs, common_name);
-  if (verify_hostname(addr->host.get(), &addr->addr, addr->addrlen, dns_names,
-                      ip_addrs, common_name) != 0) {
+  if (verify_hostname(addr->host.get(), &addr->addr, dns_names, ip_addrs,
+                      common_name) != 0) {
     LOG(ERROR) << "Certificate verification failed: hostname does not match";
     return -1;
   }

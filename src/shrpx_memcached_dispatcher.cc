@@ -30,10 +30,9 @@
 
 namespace shrpx {
 
-MemcachedDispatcher::MemcachedDispatcher(const sockaddr_union *addr,
-                                         size_t addrlen, struct ev_loop *loop)
-    : loop_(loop),
-      mconn_(make_unique<MemcachedConnection>(addr, addrlen, loop_)) {}
+MemcachedDispatcher::MemcachedDispatcher(const Address *addr,
+                                         struct ev_loop *loop)
+    : loop_(loop), mconn_(make_unique<MemcachedConnection>(addr, loop_)) {}
 
 MemcachedDispatcher::~MemcachedDispatcher() {}
 

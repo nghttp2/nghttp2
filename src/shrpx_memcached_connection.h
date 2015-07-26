@@ -40,7 +40,7 @@ using namespace nghttp2;
 namespace shrpx {
 
 struct MemcachedRequest;
-union sockaddr_union;
+struct Address;
 
 enum {
   MEMCACHED_PARSE_HEADER24,
@@ -93,8 +93,7 @@ constexpr uint8_t MEMCACHED_RES_MAGIC = 0x81;
 // https://code.google.com/p/memcached/wiki/MemcacheBinaryProtocol
 class MemcachedConnection {
 public:
-  MemcachedConnection(const sockaddr_union *addr, size_t addrlen,
-                      struct ev_loop *loop);
+  MemcachedConnection(const Address *addr, struct ev_loop *loop);
   ~MemcachedConnection();
 
   void disconnect();
@@ -118,8 +117,7 @@ private:
   std::deque<std::unique_ptr<MemcachedRequest>> sendq_;
   std::deque<MemcachedSendbuf> sendbufv_;
   MemcachedParseState parse_state_;
-  const sockaddr_union *addr_;
-  size_t addrlen_;
+  const Address *addr_;
   // Sum of the bytes to be transmitted in sendbufv_.
   size_t sendsum_;
   bool connected_;

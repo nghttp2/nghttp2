@@ -147,7 +147,7 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
         next_downstream = 0;
       }
 
-      conn_.fd = util::create_nonblock_socket(addr.addr.storage.ss_family);
+      conn_.fd = util::create_nonblock_socket(addr.addr.su.storage.ss_family);
 
       if (conn_.fd == -1) {
         auto error = errno;
@@ -159,7 +159,7 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
       }
 
       int rv;
-      rv = connect(conn_.fd, &addr.addr.sa, addr.addrlen);
+      rv = connect(conn_.fd, &addr.addr.su.sa, addr.addr.len);
       if (rv != 0 && errno != EINPROGRESS) {
         auto error = errno;
         DCLOG(WARN, this) << "connect() failed; errno=" << error;

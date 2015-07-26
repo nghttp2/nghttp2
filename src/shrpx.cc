@@ -117,8 +117,8 @@ const int GRACEFUL_SHUTDOWN_SIGNAL = SIGQUIT;
 #define ENV_UNIX_PATH "NGHTTP2_UNIX_PATH"
 
 namespace {
-int resolve_hostname(sockaddr_union *addr, size_t *addrlen,
-                     const char *hostname, uint16_t port, int family) {
+int resolve_hostname(Address *addr, const char *hostname, uint16_t port,
+                     int family) {
   int rv;
 
   auto service = util::utos(port);
@@ -155,8 +155,8 @@ int resolve_hostname(sockaddr_union *addr, size_t *addrlen,
               << " succeeded: " << host;
   }
 
-  memcpy(addr, res->ai_addr, res->ai_addrlen);
-  *addrlen = res->ai_addrlen;
+  memcpy(&addr->su, res->ai_addr, res->ai_addrlen);
+  addr->len = res->ai_addrlen;
   freeaddrinfo(res);
   return 0;
 }
@@ -963,7 +963,6 @@ void fill_default_config() {
   mod_config()->downstream_http_proxy_userinfo = nullptr;
   mod_config()->downstream_http_proxy_host = nullptr;
   mod_config()->downstream_http_proxy_port = 0;
-  mod_config()->downstream_http_proxy_addrlen = 0;
   mod_config()->read_rate = 0;
   mod_config()->read_burst = 0;
   mod_config()->write_rate = 0;
@@ -2347,19 +2346,19 @@ int main(int argc, char **argv) {
         auto path = addr.host.get();
         auto pathlen = strlen(path);
 
-        if (pathlen + 1 > sizeof(addr.addr.un.sun_path)) {
+        if (pathlen + 1 > sizeof(addr.addr.su.un.sun_path)) {
           LOG(FATAL) << "UNIX domain socket path " << path << " is too long > "
-                     << sizeof(addr.addr.un.sun_path);
+                     << sizeof(addr.addr.su.un.sun_path);
           exit(EXIT_FAILURE);
         }
 
         LOG(INFO) << "Use UNIX domain socket path " << path
                   << " for backend connection";
 
-        addr.addr.un.sun_family = AF_UNIX;
+        addr.addr.su.un.sun_family = AF_UNIX;
         // copy path including terminal NULL
-        std::copy_n(path, pathlen + 1, addr.addr.un.sun_path);
-        addr.addrlen = sizeof(addr.addr.un);
+        std::copy_n(path, pathlen + 1, addr.addr.su.un.sun_path);
+        addr.addr.len = sizeof(addr.addr.su.un);
 
         continue;
       }
@@ -2367,7 +2366,7 @@ int main(int argc, char **argv) {
       addr.hostport = strcopy(util::make_hostport(addr.host.get(), addr.port));
 
       if (resolve_hostname(
-              &addr.addr, &addr.addrlen, addr.host.get(), addr.port,
+              &addr.addr, addr.host.get(), addr.port,
               get_config()->backend_ipv4 ? AF_INET : (get_config()->backend_ipv6
                                                           ? AF_INET6
                                                           : AF_UNSPEC)) == -1) {
@@ -2381,7 +2380,6 @@ int main(int argc, char **argv) {
       LOG(INFO) << "Resolving backend http proxy address";
     }
     if (resolve_hostname(&mod_config()->downstream_http_proxy_addr,
-                         &mod_config()->downstream_http_proxy_addrlen,
                          get_config()->downstream_http_proxy_host.get(),
                          get_config()->downstream_http_proxy_port,
                          AF_UNSPEC) == -1) {
@@ -2391,7 +2389,6 @@ int main(int argc, char **argv) {
 
   if (get_config()->session_cache_memcached_host) {
     if (resolve_hostname(&mod_config()->session_cache_memcached_addr,
-                         &mod_config()->session_cache_memcached_addrlen,
                          get_config()->session_cache_memcached_host.get(),
                          get_config()->session_cache_memcached_port,
                          AF_UNSPEC) == -1) {

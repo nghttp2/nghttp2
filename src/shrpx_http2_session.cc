@@ -276,15 +276,15 @@ int Http2Session::initiate_connection() {
     }
 
     conn_.fd = util::create_nonblock_socket(
-        get_config()->downstream_http_proxy_addr.storage.ss_family);
+        get_config()->downstream_http_proxy_addr.su.storage.ss_family);
 
     if (conn_.fd == -1) {
       connect_blocker_->on_failure();
       return -1;
     }
 
-    rv = connect(conn_.fd, &get_config()->downstream_http_proxy_addr.sa,
-                 get_config()->downstream_http_proxy_addrlen);
+    rv = connect(conn_.fd, &get_config()->downstream_http_proxy_addr.su.sa,
+                 get_config()->downstream_http_proxy_addr.len);
     if (rv != 0 && errno != EINPROGRESS) {
       SSLOG(ERROR, this) << "Failed to connect to the proxy "
                          << get_config()->downstream_http_proxy_host.get()
@@ -350,7 +350,7 @@ int Http2Session::initiate_connection() {
         assert(conn_.fd == -1);
 
         conn_.fd = util::create_nonblock_socket(
-            downstream_addr.addr.storage.ss_family);
+            downstream_addr.addr.su.storage.ss_family);
         if (conn_.fd == -1) {
           connect_blocker_->on_failure();
           return -1;
@@ -358,8 +358,8 @@ int Http2Session::initiate_connection() {
 
         rv = connect(conn_.fd,
                      // TODO maybe not thread-safe?
-                     const_cast<sockaddr *>(&downstream_addr.addr.sa),
-                     downstream_addr.addrlen);
+                     const_cast<sockaddr *>(&downstream_addr.addr.su.sa),
+                     downstream_addr.addr.len);
         if (rv != 0 && errno != EINPROGRESS) {
           connect_blocker_->on_failure();
           return -1;
@@ -376,15 +376,16 @@ int Http2Session::initiate_connection() {
         assert(conn_.fd == -1);
 
         conn_.fd = util::create_nonblock_socket(
-            downstream_addr.addr.storage.ss_family);
+            downstream_addr.addr.su.storage.ss_family);
 
         if (conn_.fd == -1) {
           connect_blocker_->on_failure();
           return -1;
         }
 
-        rv = connect(conn_.fd, const_cast<sockaddr *>(&downstream_addr.addr.sa),
-                     downstream_addr.addrlen);
+        rv = connect(conn_.fd,
+                     const_cast<sockaddr *>(&downstream_addr.addr.su.sa),
+                     downstream_addr.addr.len);
         if (rv != 0 && errno != EINPROGRESS) {
           connect_blocker_->on_failure();
           return -1;

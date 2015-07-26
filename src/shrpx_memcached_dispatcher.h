@@ -35,12 +35,11 @@ namespace shrpx {
 
 struct MemcachedRequest;
 class MemcachedConnection;
-union sockaddr_union;
+struct Address;
 
 class MemcachedDispatcher {
 public:
-  MemcachedDispatcher(const sockaddr_union *addr, size_t addrlen,
-                      struct ev_loop *loop);
+  MemcachedDispatcher(const Address *addr, struct ev_loop *loop);
   ~MemcachedDispatcher();
 
   int add_request(std::unique_ptr<MemcachedRequest> req);

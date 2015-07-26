@@ -85,12 +85,11 @@ void connectcb(struct ev_loop *loop, ev_io *w, int revents) {
 constexpr ev_tstamp write_timeout = 10.;
 constexpr ev_tstamp read_timeout = 10.;
 
-MemcachedConnection::MemcachedConnection(const sockaddr_union *addr,
-                                         size_t addrlen, struct ev_loop *loop)
+MemcachedConnection::MemcachedConnection(const Address *addr,
+                                         struct ev_loop *loop)
     : conn_(loop, -1, nullptr, write_timeout, read_timeout, 0, 0, 0, 0,
             connectcb, readcb, timeoutcb, this),
-      parse_state_{}, addr_(addr), addrlen_(addrlen), sendsum_(0),
-      connected_(false) {}
+      parse_state_{}, addr_(addr), sendsum_(0), connected_(false) {}
 
 MemcachedConnection::~MemcachedConnection() { disconnect(); }
 
@@ -125,7 +124,7 @@ void MemcachedConnection::disconnect() {
 int MemcachedConnection::initiate_connection() {
   assert(conn_.fd == -1);
 
-  conn_.fd = util::create_nonblock_socket(addr_->storage.ss_family);
+  conn_.fd = util::create_nonblock_socket(addr_->su.storage.ss_family);
 
   if (conn_.fd == -1) {
     auto error = errno;
@@ -135,7 +134,7 @@ int MemcachedConnection::initiate_connection() {
   }
 
   int rv;
-  rv = connect(conn_.fd, &addr_->sa, addrlen_);
+  rv = connect(conn_.fd, &addr_->su.sa, addr_->len);
   if (rv != 0 && errno != EINPROGRESS) {
     auto error = errno;
     MCLOG(WARN, this) << "connect() failed; errno=" << error;
