@@ -189,21 +189,21 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
 
       break;
     }
+
+    // TODO we should have timeout for connection establishment
+    ev_timer_again(conn_.loop, &conn_.wt);
+  } else {
+    // we may set read timer cb to idle_timeoutcb.  Reset again.
+    conn_.rt.repeat = get_config()->downstream_read_timeout;
+    ev_set_cb(&conn_.rt, timeoutcb);
+    ev_timer_again(conn_.loop, &conn_.rt);
+    ev_set_cb(&conn_.rev, readcb);
   }
 
   downstream_ = downstream;
 
   http_parser_init(&response_htp_, HTTP_RESPONSE);
   response_htp_.data = downstream_;
-
-  ev_set_cb(&conn_.rev, readcb);
-
-  conn_.rt.repeat = get_config()->downstream_read_timeout;
-  // we may set read timer cb to idle_timeoutcb.  Reset again.
-  ev_set_cb(&conn_.rt, timeoutcb);
-  ev_timer_again(conn_.loop, &conn_.rt);
-  // TODO we should have timeout for connection establishment
-  ev_timer_again(conn_.loop, &conn_.wt);
 
   return 0;
 }
@@ -472,18 +472,16 @@ void HttpDownstreamConnection::detach_downstream(Downstream *downstream) {
     DCLOG(INFO, this) << "Detaching from DOWNSTREAM:" << downstream;
   }
   downstream_ = nullptr;
-  ioctrl_.force_resume_read();
-
-  conn_.rlimit.startw();
-  conn_.wlimit.stopw();
 
   ev_set_cb(&conn_.rev, idle_readcb);
-
-  ev_timer_stop(conn_.loop, &conn_.wt);
+  ioctrl_.force_resume_read();
 
   conn_.rt.repeat = get_config()->downstream_idle_read_timeout;
   ev_set_cb(&conn_.rt, idle_timeoutcb);
   ev_timer_again(conn_.loop, &conn_.rt);
+
+  conn_.wlimit.stopw();
+  ev_timer_stop(conn_.loop, &conn_.wt);
 }
 
 void HttpDownstreamConnection::pause_read(IOCtrlReason reason) {
@@ -870,6 +868,8 @@ int HttpDownstreamConnection::on_connect() {
   connect_blocker->on_success();
 
   conn_.rlimit.startw();
+  ev_timer_again(conn_.loop, &conn_.rt);
+
   ev_set_cb(&conn_.wev, writecb);
 
   return 0;
