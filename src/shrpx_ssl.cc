@@ -335,18 +335,20 @@ int ticket_key_cb(SSL *ssl, unsigned char *key_name, unsigned char *iv,
                           << util::format_hex(key.data.name);
     }
 
-    memcpy(key_name, key.data.name, sizeof(key.data.name));
+    std::copy(std::begin(key.data.name), std::end(key.data.name), key_name);
 
     EVP_EncryptInit_ex(ctx, get_config()->tls_ticket_cipher, nullptr,
-                       key.data.enc_key, iv);
-    HMAC_Init_ex(hctx, key.data.hmac_key, key.hmac_keylen, key.hmac, nullptr);
+                       key.data.enc_key.data(), iv);
+    HMAC_Init_ex(hctx, key.data.hmac_key.data(), key.hmac_keylen, key.hmac,
+                 nullptr);
     return 1;
   }
 
   size_t i;
   for (i = 0; i < keys.size(); ++i) {
     auto &key = keys[0];
-    if (memcmp(key_name, key.data.name, sizeof(key.data.name)) == 0) {
+    if (std::equal(std::begin(key.data.name), std::end(key.data.name),
+                   key_name)) {
       break;
     }
   }
@@ -365,8 +367,9 @@ int ticket_key_cb(SSL *ssl, unsigned char *key_name, unsigned char *iv,
   }
 
   auto &key = keys[i];
-  HMAC_Init_ex(hctx, key.data.hmac_key, key.hmac_keylen, key.hmac, nullptr);
-  EVP_DecryptInit_ex(ctx, key.cipher, nullptr, key.data.enc_key, iv);
+  HMAC_Init_ex(hctx, key.data.hmac_key.data(), key.hmac_keylen, key.hmac,
+               nullptr);
+  EVP_DecryptInit_ex(ctx, key.cipher, nullptr, key.data.enc_key.data(), iv);
 
   return i == 0 ? 1 : 2;
 }

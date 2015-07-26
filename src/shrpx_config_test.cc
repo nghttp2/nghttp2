@@ -192,16 +192,24 @@ void test_shrpx_config_read_tls_ticket_key_file(void) {
   CU_ASSERT(ticket_keys.get() != nullptr);
   CU_ASSERT(2 == ticket_keys->keys.size());
   auto key = &ticket_keys->keys[0];
-  CU_ASSERT(0 ==
-            memcmp("0..............1", key->data.name, sizeof(key->data.name)));
-  CU_ASSERT(0 == memcmp("2..............3", key->data.enc_key, 16));
-  CU_ASSERT(0 == memcmp("4..............5", key->data.hmac_key, 16));
+  CU_ASSERT(std::equal(std::begin(key->data.name), std::end(key->data.name),
+                       "0..............1"));
+  CU_ASSERT(std::equal(std::begin(key->data.enc_key),
+                       std::begin(key->data.enc_key) + 16, "2..............3"));
+  CU_ASSERT(std::equal(std::begin(key->data.hmac_key),
+                       std::begin(key->data.hmac_key) + 16,
+                       "4..............5"));
+  CU_ASSERT(16 == key->hmac_keylen);
 
   key = &ticket_keys->keys[1];
-  CU_ASSERT(0 ==
-            memcmp("6..............7", key->data.name, sizeof(key->data.name)));
-  CU_ASSERT(0 == memcmp("8..............9", key->data.enc_key, 16));
-  CU_ASSERT(0 == memcmp("a..............b", key->data.hmac_key, 16));
+  CU_ASSERT(std::equal(std::begin(key->data.name), std::end(key->data.name),
+                       "6..............7"));
+  CU_ASSERT(std::equal(std::begin(key->data.enc_key),
+                       std::begin(key->data.enc_key) + 16, "8..............9"));
+  CU_ASSERT(std::equal(std::begin(key->data.hmac_key),
+                       std::begin(key->data.hmac_key) + 16,
+                       "a..............b"));
+  CU_ASSERT(16 == key->hmac_keylen);
 }
 
 void test_shrpx_config_read_tls_ticket_key_file_aes_256(void) {
@@ -227,20 +235,24 @@ void test_shrpx_config_read_tls_ticket_key_file_aes_256(void) {
   CU_ASSERT(ticket_keys.get() != nullptr);
   CU_ASSERT(2 == ticket_keys->keys.size());
   auto key = &ticket_keys->keys[0];
-  CU_ASSERT(0 ==
-            memcmp("0..............1", key->data.name, sizeof(key->data.name)));
-  CU_ASSERT(0 ==
-            memcmp("2..............................3", key->data.enc_key, 32));
-  CU_ASSERT(0 ==
-            memcmp("4..............................5", key->data.hmac_key, 32));
+  CU_ASSERT(std::equal(std::begin(key->data.name), std::end(key->data.name),
+                       "0..............1"));
+  CU_ASSERT(std::equal(std::begin(key->data.enc_key),
+                       std::end(key->data.enc_key),
+                       "2..............................3"));
+  CU_ASSERT(std::equal(std::begin(key->data.hmac_key),
+                       std::end(key->data.hmac_key),
+                       "4..............................5"));
 
   key = &ticket_keys->keys[1];
-  CU_ASSERT(0 ==
-            memcmp("6..............7", key->data.name, sizeof(key->data.name)));
-  CU_ASSERT(0 ==
-            memcmp("8..............................9", key->data.enc_key, 32));
-  CU_ASSERT(0 ==
-            memcmp("a..............................b", key->data.hmac_key, 32));
+  CU_ASSERT(std::equal(std::begin(key->data.name), std::end(key->data.name),
+                       "6..............7"));
+  CU_ASSERT(std::equal(std::begin(key->data.enc_key),
+                       std::end(key->data.enc_key),
+                       "8..............................9"));
+  CU_ASSERT(std::equal(std::begin(key->data.hmac_key),
+                       std::end(key->data.hmac_key),
+                       "a..............................b"));
 }
 
 void test_shrpx_config_match_downstream_addr_group(void) {

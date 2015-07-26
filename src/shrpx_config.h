@@ -229,11 +229,11 @@ struct TicketKey {
   size_t hmac_keylen;
   struct {
     // name of this ticket configuration
-    uint8_t name[16];
+    std::array<uint8_t, 16> name;
     // encryption key for |cipher|
-    uint8_t enc_key[32];
+    std::array<uint8_t, 32> enc_key;
     // hmac key for |hmac|
-    uint8_t hmac_key[32];
+    std::array<uint8_t, 32> hmac_key;
   } data;
 };
 

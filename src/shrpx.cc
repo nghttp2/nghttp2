@@ -611,8 +611,8 @@ int generate_ticket_key(TicketKey &ticket_key) {
   ticket_key.hmac_keylen = EVP_MD_size(ticket_key.hmac);
 
   assert(static_cast<size_t>(EVP_CIPHER_key_length(ticket_key.cipher)) <=
-         sizeof(ticket_key.data.enc_key));
-  assert(ticket_key.hmac_keylen <= sizeof(ticket_key.data.hmac_key));
+         ticket_key.data.enc_key.size());
+  assert(ticket_key.hmac_keylen <= ticket_key.data.hmac_key.size());
 
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "enc_keylen=" << EVP_CIPHER_key_length(ticket_key.cipher)

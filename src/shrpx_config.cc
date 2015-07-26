@@ -155,7 +155,7 @@ read_tls_ticket_key_file(const std::vector<std::string> &files,
     // with nginx and apache.
     hmac_keylen = 16;
   }
-  auto expectedlen = sizeof(keys[0].data.name) + enc_keylen + hmac_keylen;
+  auto expectedlen = keys[0].data.name.size() + enc_keylen + hmac_keylen;
   char buf[256];
   assert(sizeof(buf) >= expectedlen);
 
@@ -201,11 +201,11 @@ read_tls_ticket_key_file(const std::vector<std::string> &files,
     }
 
     auto p = buf;
-    memcpy(key.data.name, p, sizeof(key.data.name));
-    p += sizeof(key.data.name);
-    memcpy(key.data.enc_key, p, enc_keylen);
+    std::copy_n(p, key.data.name.size(), std::begin(key.data.name));
+    p += key.data.name.size();
+    std::copy_n(p, enc_keylen, std::begin(key.data.enc_key));
     p += enc_keylen;
-    memcpy(key.data.hmac_key, p, hmac_keylen);
+    std::copy_n(p, hmac_keylen, std::begin(key.data.hmac_key));
 
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "session ticket key: " << util::format_hex(key.data.name);
