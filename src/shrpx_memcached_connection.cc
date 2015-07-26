@@ -24,6 +24,7 @@
  */
 #include "shrpx_memcached_connection.h"
 
+#include <limits.h>
 #include <sys/uio.h>
 
 #include "shrpx_memcached_request.h"

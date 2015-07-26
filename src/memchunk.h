@@ -27,6 +27,7 @@
 
 #include "nghttp2_config.h"
 
+#include <limits.h>
 #include <sys/uio.h>
 
 #include <cassert>
