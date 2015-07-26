@@ -312,6 +312,7 @@ int Connection::tls_handshake() {
     }
     return SHRPX_ERR_INPROGRESS;
   case TLS_CONN_GOT_SESSION_CACHE: {
+    // Use the same trick invented by @kazuho in h2o project
     tls.wb->reset();
     tls.rb->pos = tls.rb->begin();
 
