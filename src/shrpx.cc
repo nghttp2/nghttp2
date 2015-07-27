@@ -1505,6 +1505,11 @@ SSL/TLS:
               keys from  memcached, and  use them,  possibly replacing
               current set of keys.  It is  up to extern TLS ticket key
               generator to rotate keys frequently.
+  --tls-ticket-key-memcached-interval=<DURATION>
+              Set interval to get TLS ticket keys from memcached.
+              Default: )"
+      << util::duration_str(get_config()->tls_ticket_key_memcached_interval)
+      << R"(
 
 HTTP/2 and SPDY:
   -c, --http2-max-concurrent-streams=<N>
@@ -1870,6 +1875,8 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_HOST_REWRITE, no_argument, &flag, 85},
         {SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED, required_argument, &flag, 86},
         {SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED, required_argument, &flag, 87},
+        {SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_INTERVAL, required_argument, &flag,
+         88},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -2251,6 +2258,11 @@ int main(int argc, char **argv) {
       case 87:
         // --tls-ticket-key-memcached
         cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED, optarg);
+        break;
+      case 88:
+        // --tls-ticket-key-memcached-interval
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_INTERVAL,
+                             optarg);
         break;
       default:
         break;

@@ -707,6 +707,7 @@ enum {
   SHRPX_OPTID_TLS_TICKET_CIPHER,
   SHRPX_OPTID_TLS_TICKET_KEY_FILE,
   SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED,
+  SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_INTERVAL,
   SHRPX_OPTID_USER,
   SHRPX_OPTID_VERIFY_CLIENT,
   SHRPX_OPTID_VERIFY_CLIENT_CACERT,
@@ -1217,6 +1218,15 @@ int option_lookup_token(const char *name, size_t namelen) {
     case 'r':
       if (util::strieq_l("strip-incoming-x-forwarded-fo", name, 29)) {
         return SHRPX_OPTID_STRIP_INCOMING_X_FORWARDED_FOR;
+      }
+      break;
+    }
+    break;
+  case 33:
+    switch (name[32]) {
+    case 'l':
+      if (util::strieq_l("tls-ticket-key-memcached-interva", name, 32)) {
+        return SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_INTERVAL;
       }
       break;
     }
@@ -1898,6 +1908,9 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   }
+  case SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_INTERVAL:
+    return parse_duration(&mod_config()->tls_ticket_key_memcached_interval, opt,
+                          optarg);
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 

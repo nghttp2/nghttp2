@@ -95,6 +95,7 @@ OPTIONS = [
     "host-rewrite",
     "tls-session-cache-memcached",
     "tls-ticket-key-memcached",
+    "tls-ticket-key-memcached-interval",
     "conf",
 ]
 

@@ -177,6 +177,8 @@ constexpr char SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED[] =
     "tls-session-cache-memcached";
 constexpr char SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED[] =
     "tls-ticket-key-memcached";
+constexpr char SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_INTERVAL[] =
+    "tls-ticket-key-memcached-interval";
 
 union sockaddr_union {
   sockaddr_storage storage;
