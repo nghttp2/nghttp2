@@ -32,6 +32,7 @@
 
 #include <cerrno>
 #include <thread>
+#include <random>
 
 #include "shrpx_client_handler.h"
 #include "shrpx_ssl.h"
@@ -41,6 +42,7 @@
 #include "shrpx_connect_blocker.h"
 #include "shrpx_downstream_connection.h"
 #include "shrpx_accept_handler.h"
+#include "shrpx_memcached_dispatcher.h"
 #include "util.h"
 #include "template.h"
 
@@ -94,7 +96,9 @@ void ocsp_chld_cb(struct ev_loop *loop, ev_child *w, int revent) {
 } // namespace
 
 ConnectionHandler::ConnectionHandler(struct ev_loop *loop)
-    : single_worker_(nullptr), loop_(loop), worker_round_robin_cnt_(0),
+    : single_worker_(nullptr), loop_(loop),
+      tls_ticket_key_memcached_get_retry_count_(0),
+      tls_ticket_key_memcached_fail_count_(0), worker_round_robin_cnt_(0),
       graceful_shutdown_(false) {
   ev_timer_init(&disable_acceptor_timer_, acceptor_disable_cb, 0., 0.);
   disable_acceptor_timer_.data = this;
@@ -551,6 +555,97 @@ void ConnectionHandler::proceed_next_cert_ocsp() {
 
     break;
   }
+}
+
+void ConnectionHandler::set_tls_ticket_key_memcached_dispatcher(
+    std::unique_ptr<MemcachedDispatcher> dispatcher) {
+  tls_ticket_key_memcached_dispatcher_ = std::move(dispatcher);
+}
+
+MemcachedDispatcher *
+ConnectionHandler::get_tls_ticket_key_memcached_dispatcher() const {
+  return tls_ticket_key_memcached_dispatcher_.get();
+}
+
+namespace {
+std::random_device rd;
+} // namespace
+
+void ConnectionHandler::on_tls_ticket_key_network_error(ev_timer *w) {
+  if (++tls_ticket_key_memcached_get_retry_count_ >=
+      get_config()->tls_ticket_key_memcached_max_retry) {
+    LOG(WARN) << "Memcached: tls ticket get retry all failed "
+              << tls_ticket_key_memcached_get_retry_count_ << " times.";
+
+    on_tls_ticket_key_not_found(w);
+    return;
+  }
+
+  auto dist = std::uniform_int_distribution<int>(
+      1, std::min(60, 1 << tls_ticket_key_memcached_get_retry_count_));
+  auto t = dist(rd);
+
+  LOG(WARN)
+      << "Memcached: tls ticket get failed due to network error, retrying in "
+      << t << " seconds";
+
+  ev_timer_set(w, t, 0.);
+  ev_timer_start(loop_, w);
+}
+
+void ConnectionHandler::on_tls_ticket_key_not_found(ev_timer *w) {
+  tls_ticket_key_memcached_get_retry_count_ = 0;
+
+  if (++tls_ticket_key_memcached_fail_count_ >=
+      get_config()->tls_ticket_key_memcached_max_fail) {
+    LOG(WARN) << "Memcached: could not get tls ticket; disable tls ticket";
+
+    tls_ticket_key_memcached_fail_count_ = 0;
+
+    set_ticket_keys(nullptr);
+    set_ticket_keys_to_worker(nullptr);
+  }
+
+  LOG(WARN) << "Memcached: tls ticket get failed, schedule next";
+  schedule_next_tls_ticket_key_memcached_get(w);
+}
+
+void ConnectionHandler::on_tls_ticket_key_get_success(
+    const std::shared_ptr<TicketKeys> &ticket_keys, ev_timer *w) {
+  if (LOG_ENABLED(INFO)) {
+    LOG(INFO) << "Memcached: tls ticket get success";
+  }
+
+  tls_ticket_key_memcached_get_retry_count_ = 0;
+  tls_ticket_key_memcached_fail_count_ = 0;
+
+  schedule_next_tls_ticket_key_memcached_get(w);
+
+  if (!ticket_keys || ticket_keys->keys.empty()) {
+    LOG(WARN) << "Memcached: tls ticket keys are empty; tls ticket disabled";
+    set_ticket_keys(nullptr);
+    set_ticket_keys_to_worker(nullptr);
+    return;
+  }
+
+  if (LOG_ENABLED(INFO)) {
+    LOG(INFO) << "ticket keys get done";
+    LOG(INFO) << 0 << " enc+dec: "
+              << util::format_hex(ticket_keys->keys[0].data.name);
+    for (size_t i = 1; i < ticket_keys->keys.size(); ++i) {
+      auto &key = ticket_keys->keys[i];
+      LOG(INFO) << i << " dec: " << util::format_hex(key.data.name);
+    }
+  }
+
+  set_ticket_keys(ticket_keys);
+  set_ticket_keys_to_worker(ticket_keys);
+}
+
+void
+ConnectionHandler::schedule_next_tls_ticket_key_memcached_get(ev_timer *w) {
+  ev_timer_set(w, get_config()->tls_ticket_key_memcached_interval, 0.);
+  ev_timer_start(loop_, w);
 }
 
 } // namespace shrpx

@@ -94,6 +94,7 @@ OPTIONS = [
     "tls-ticket-cipher",
     "host-rewrite",
     "tls-session-cache-memcached",
+    "tls-ticket-key-memcached",
     "conf",
 ]
 

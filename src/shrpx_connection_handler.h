@@ -49,6 +49,7 @@ class AcceptHandler;
 class Worker;
 struct WorkerStat;
 struct TicketKeys;
+class MemcachedDispatcher;
 
 struct OCSPUpdateContext {
   // ocsp response buffer
@@ -111,6 +112,17 @@ public:
   // update.
   void proceed_next_cert_ocsp();
 
+  void set_tls_ticket_key_memcached_dispatcher(
+      std::unique_ptr<MemcachedDispatcher> dispatcher);
+
+  MemcachedDispatcher *get_tls_ticket_key_memcached_dispatcher() const;
+  void on_tls_ticket_key_network_error(ev_timer *w);
+  void on_tls_ticket_key_not_found(ev_timer *w);
+  void
+  on_tls_ticket_key_get_success(const std::shared_ptr<TicketKeys> &ticket_keys,
+                                ev_timer *w);
+  void schedule_next_tls_ticket_key_memcached_get(ev_timer *w);
+
 private:
   // Stores all SSL_CTX objects.
   std::vector<SSL_CTX *> all_ssl_ctx_;
@@ -120,6 +132,7 @@ private:
   // Worker instance used when single threaded mode (-n1) is used.
   // Otherwise, nullptr and workers_ has instances of Worker instead.
   std::unique_ptr<Worker> single_worker_;
+  std::unique_ptr<MemcachedDispatcher> tls_ticket_key_memcached_dispatcher_;
   // Current TLS session ticket keys.  Note that TLS connection does
   // not refer to this field directly.  They use TicketKeys object in
   // Worker object.
@@ -131,6 +144,8 @@ private:
   std::unique_ptr<AcceptHandler> acceptor6_;
   ev_timer disable_acceptor_timer_;
   ev_timer ocsp_timer_;
+  size_t tls_ticket_key_memcached_get_retry_count_;
+  size_t tls_ticket_key_memcached_fail_count_;
   unsigned int worker_round_robin_cnt_;
   bool graceful_shutdown_;
 };

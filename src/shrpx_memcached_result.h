@@ -32,8 +32,8 @@
 namespace shrpx {
 
 enum MemcachedStatusCode {
-  MEMCACHED_ERR_OK,
-  MEMCACHED_ERR_ERROR = 0x1001,
+  MEMCACHED_ERR_NO_ERROR,
+  MEMCACHED_ERR_EXT_NETWORK_ERROR = 0x1001,
 };
 
 struct MemcachedResult {

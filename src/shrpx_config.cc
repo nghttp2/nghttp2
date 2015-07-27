@@ -706,6 +706,7 @@ enum {
   SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED,
   SHRPX_OPTID_TLS_TICKET_CIPHER,
   SHRPX_OPTID_TLS_TICKET_KEY_FILE,
+  SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED,
   SHRPX_OPTID_USER,
   SHRPX_OPTID_VERIFY_CLIENT,
   SHRPX_OPTID_VERIFY_CLIENT_CACERT,
@@ -1138,6 +1139,11 @@ int option_lookup_token(const char *name, size_t namelen) {
     break;
   case 24:
     switch (name[23]) {
+    case 'd':
+      if (util::strieq_l("tls-ticket-key-memcache", name, 23)) {
+        return SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED;
+      }
+      break;
     case 'e':
       if (util::strieq_l("fetch-ocsp-response-fil", name, 23)) {
         return SHRPX_OPTID_FETCH_OCSP_RESPONSE_FILE;
@@ -1878,6 +1884,17 @@ int parse_config(const char *opt, const char *optarg,
 
     mod_config()->session_cache_memcached_host = strcopy(host);
     mod_config()->session_cache_memcached_port = port;
+
+    return 0;
+  }
+  case SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED: {
+    if (split_host_port(host, sizeof(host), &port, optarg, strlen(optarg)) ==
+        -1) {
+      return -1;
+    }
+
+    mod_config()->tls_ticket_key_memcached_host = strcopy(host);
+    mod_config()->tls_ticket_key_memcached_port = port;
 
     return 0;
   }

@@ -100,7 +100,7 @@ namespace {
 void clear_request(std::deque<std::unique_ptr<MemcachedRequest>> &q) {
   for (auto &req : q) {
     if (req->cb) {
-      req->cb(req.get(), MemcachedResult(MEMCACHED_ERR_ERROR));
+      req->cb(req.get(), MemcachedResult(MEMCACHED_ERR_EXT_NETWORK_ERROR));
     }
   }
   q.clear();
