@@ -708,6 +708,8 @@ enum {
   SHRPX_OPTID_TLS_TICKET_KEY_FILE,
   SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED,
   SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_INTERVAL,
+  SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_MAX_FAIL,
+  SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_MAX_RETRY,
   SHRPX_OPTID_USER,
   SHRPX_OPTID_VERIFY_CLIENT,
   SHRPX_OPTID_VERIFY_CLIENT_CACERT,
@@ -1228,6 +1230,9 @@ int option_lookup_token(const char *name, size_t namelen) {
       if (util::strieq_l("tls-ticket-key-memcached-interva", name, 32)) {
         return SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_INTERVAL;
       }
+      if (util::strieq_l("tls-ticket-key-memcached-max-fai", name, 32)) {
+        return SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_MAX_FAIL;
+      }
       break;
     }
     break;
@@ -1241,6 +1246,11 @@ int option_lookup_token(const char *name, size_t namelen) {
     case 't':
       if (util::strieq_l("backend-http1-connections-per-hos", name, 33)) {
         return SHRPX_OPTID_BACKEND_HTTP1_CONNECTIONS_PER_HOST;
+      }
+      break;
+    case 'y':
+      if (util::strieq_l("tls-ticket-key-memcached-max-retr", name, 33)) {
+        return SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_MAX_RETRY;
       }
       break;
     }
@@ -1911,6 +1921,23 @@ int parse_config(const char *opt, const char *optarg,
   case SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_INTERVAL:
     return parse_duration(&mod_config()->tls_ticket_key_memcached_interval, opt,
                           optarg);
+  case SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_MAX_RETRY: {
+    int n;
+    if (parse_uint(&n, opt, optarg) != 0) {
+      return -1;
+    }
+
+    if (n > 30) {
+      LOG(ERROR) << opt << ": must be smaller than or equal to 30";
+      return -1;
+    }
+
+    mod_config()->tls_ticket_key_memcached_max_retry = n;
+    return 0;
+  }
+  case SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_MAX_FAIL:
+    return parse_uint(&mod_config()->tls_ticket_key_memcached_max_fail, opt,
+                      optarg);
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 

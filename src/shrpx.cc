@@ -1510,6 +1510,20 @@ SSL/TLS:
               Default: )"
       << util::duration_str(get_config()->tls_ticket_key_memcached_interval)
       << R"(
+  --tls-ticket-key-memcached-max-retry=<N>
+              Set  maximum   number  of  consecutive   retries  before
+              abandoning TLS ticket key  retrieval.  If this number is
+              reached,  the  attempt  is considered  as  failure,  and
+              "failure" count  is incremented by 1,  which contributed
+              to            the            value            controlled
+              --tls-ticket-key-memcached-max-fail option.
+              Default: )" << get_config()->tls_ticket_key_memcached_max_retry
+      << R"(
+  --tls-ticket-key-memcached-max-fail=<N>
+              Set  maximum   number  of  consecutive   failure  before
+              disabling TLS ticket until next scheduled key retrieval.
+              Default: )" << get_config()->tls_ticket_key_memcached_max_fail
+      << R"(
 
 HTTP/2 and SPDY:
   -c, --http2-max-concurrent-streams=<N>
@@ -1877,6 +1891,10 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED, required_argument, &flag, 87},
         {SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_INTERVAL, required_argument, &flag,
          88},
+        {SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_MAX_RETRY, required_argument, &flag,
+         89},
+        {SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_MAX_FAIL, required_argument, &flag,
+         90},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -2262,6 +2280,16 @@ int main(int argc, char **argv) {
       case 88:
         // --tls-ticket-key-memcached-interval
         cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_INTERVAL,
+                             optarg);
+        break;
+      case 89:
+        // --tls-ticket-key-memcached-max-retry
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_MAX_RETRY,
+                             optarg);
+        break;
+      case 90:
+        // --tls-ticket-key-memcached-max-fail
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_MAX_FAIL,
                              optarg);
         break;
       default:
