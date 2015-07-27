@@ -346,7 +346,7 @@ int ticket_key_cb(SSL *ssl, unsigned char *key_name, unsigned char *iv,
 
   size_t i;
   for (i = 0; i < keys.size(); ++i) {
-    auto &key = keys[0];
+    auto &key = keys[i];
     if (std::equal(std::begin(key.data.name), std::end(key.data.name),
                    key_name)) {
       break;
