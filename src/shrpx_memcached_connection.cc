@@ -401,6 +401,14 @@ int MemcachedConnection::parse_packet() {
   return 0;
 }
 
+#define DEFAULT_WR_IOVCNT 128
+
+#if defined(IOV_MAX) && IOV_MAX < DEFAULT_WR_IOVCNT
+#define MAX_WR_IOVCNT IOV_MAX
+#else // !defined(IOV_MAX) || IOV_MAX >= DEFAULT_WR_IOVCNT
+#define MAX_WR_IOVCNT DEFAULT_WR_IOVCNT
+#endif // !defined(IOV_MAX) || IOV_MAX >= DEFAULT_WR_IOVCNT
+
 int MemcachedConnection::send_request() {
   ssize_t nwrite;
 
@@ -424,7 +432,7 @@ int MemcachedConnection::send_request() {
     }
   }
 
-  std::array<struct iovec, IOV_MAX> iov;
+  std::array<struct iovec, DEFAULT_WR_IOVCNT> iov;
   size_t iovlen = 0;
   for (auto &buf : sendbufv_) {
     if (iovlen + 2 > iov.size()) {
