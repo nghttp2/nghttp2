@@ -612,9 +612,7 @@ void ConnectionHandler::on_tls_ticket_key_not_found(ev_timer *w) {
 
 void ConnectionHandler::on_tls_ticket_key_get_success(
     const std::shared_ptr<TicketKeys> &ticket_keys, ev_timer *w) {
-  if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "Memcached: tls ticket get success";
-  }
+  LOG(NOTICE) << "Memcached: tls ticket get success";
 
   tls_ticket_key_memcached_get_retry_count_ = 0;
   tls_ticket_key_memcached_fail_count_ = 0;
