@@ -223,7 +223,7 @@ int ticket_key_cb(SSL *ssl, unsigned char *key_name, unsigned char *iv,
 
   size_t i;
   for (i = 0; i < keys.size(); ++i) {
-    auto &key = keys[0];
+    auto &key = keys[i];
     if (memcmp(key_name, key.data.name, sizeof(key.data.name)) == 0) {
       break;
     }
