@@ -532,10 +532,9 @@ int MemcachedConnection::add_request(std::unique_ptr<MemcachedRequest> req) {
     return 0;
   }
 
-  if (conn_.fd == -1) {
-    if (initiate_connection() != 0) {
-      return -1;
-    }
+  if (conn_.fd == -1 && initiate_connection() != 0) {
+    disconnect();
+    return -1;
   }
 
   return 0;
