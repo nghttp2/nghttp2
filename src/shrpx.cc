@@ -1479,23 +1479,6 @@ SSL/TLS:
               1 hour internally and they are valid for 12 hours.  This
               is  recommended if  ticket key  sharing between  nghttpx
               instances is not required.
-  --tls-ticket-cipher=<TICKET_CIPHER>
-              Specify cipher  to encrypt TLS session  ticket.  Specify
-              either   aes-128-cbc   or  aes-256-cbc.    By   default,
-              aes-128-cbc is used.
-  --fetch-ocsp-response-file=<PATH>
-              Path to  fetch-ocsp-response script file.  It  should be
-              absolute path.
-              Default: )" << get_config()->fetch_ocsp_response_file.get() << R"(
-  --ocsp-update-interval=<DURATION>
-              Set interval to update OCSP response cache.
-              Default: )"
-      << util::duration_str(get_config()->ocsp_update_interval) << R"(
-  --no-ocsp   Disable OCSP stapling.
-  --tls-session-cache-memcached=<HOST>,<PORT>
-              Specify  address of  memcached server  to store  session
-              cache.   This  enables   shared  session  cache  between
-              multiple nghttpx instances.
   --tls-ticket-key-memcached=<HOST>,<PORT>
               Specify  address of  memcached server  to store  session
               cache.   This  enables  shared TLS  ticket  key  between
@@ -1524,6 +1507,23 @@ SSL/TLS:
               disabling TLS ticket until next scheduled key retrieval.
               Default: )" << get_config()->tls_ticket_key_memcached_max_fail
       << R"(
+  --tls-ticket-cipher=<TICKET_CIPHER>
+              Specify cipher  to encrypt TLS session  ticket.  Specify
+              either   aes-128-cbc   or  aes-256-cbc.    By   default,
+              aes-128-cbc is used.
+  --fetch-ocsp-response-file=<PATH>
+              Path to  fetch-ocsp-response script file.  It  should be
+              absolute path.
+              Default: )" << get_config()->fetch_ocsp_response_file.get() << R"(
+  --ocsp-update-interval=<DURATION>
+              Set interval to update OCSP response cache.
+              Default: )"
+      << util::duration_str(get_config()->ocsp_update_interval) << R"(
+  --no-ocsp   Disable OCSP stapling.
+  --tls-session-cache-memcached=<HOST>,<PORT>
+              Specify  address of  memcached server  to store  session
+              cache.   This  enables   shared  session  cache  between
+              multiple nghttpx instances.
 
 HTTP/2 and SPDY:
   -c, --http2-max-concurrent-streams=<N>

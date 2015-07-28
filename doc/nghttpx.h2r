@@ -96,6 +96,62 @@ The script file is usually installed under
 ``$(prefix)/share/nghttp2/`` directory.  The actual path to script can
 be customized using :option:`--fetch-ocsp-response-file` option.
 
+TLS SESSION RESUMPTION
+----------------------
+
+nghttpx supports TLS session resumption through both session ID and
+session ticket.
+
+SESSION ID RESUMPTION
+~~~~~~~~~~~~~~~~~~~~~
+
+By default, session ID is shared by all worker threads.
+
+If :option:`--tls-session-cache-memcached` is given, nghttpx will
+insert serialized session data to memcached with session ID as a part
+of the key, with expiry time 12 hours.  Session timeout is set to 12
+hours.
+
+TLS SESSION TICKET RESUMPTION
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+By default, session ticket is shared by all worker threads.  The
+automatic key rotation is also enabled by default.  Every an hour, new
+encryption key is generated, and previous encryption key becomes
+decryption only key.  We set session timeout to 12 hours, and thus we
+keep at most 12 keys.
+
+If :option:`--tls-session-key-memcached` is given, encryption keys are
+retrieved from memcached.  nghttpx just reads keys from memcached; one
+has to deploy key generator program to update keys frequently (e.g.,
+every 1 hour).  The data format stored in memcached is the binary
+format described below::
+
+    +--------------+-------+----------------+
+    | VERSION (4)  |LEN (2)|KEY(48 or 80) ...
+    +--------------+-------+----------------+
+                   ^                        |
+		   |                        |
+		   +------------------------+
+                   (LEN, KEY) pair can be repeated
+
+All numbers in the above figure is bytes.  All integer fields are
+network byte order.
+
+First 4 bytes integer VERSION field, which must be 1.  The 2 bytes
+integer LEN field gives the length of following KEY field, which
+contains key.  If :option:`--tls-session-key-cipher`=aes-128-cbc is
+used, LEN must be 48.  If
+:option:`--tls-session-key-cipher`=aes-256-cbc is used, LEN must be
+80.  LEN and KEY pair can be repeated multiple times to store multiple
+keys.  The key appeared first is used as encryption key.  All the
+remaining keys are used as decryption only.
+
+If :option:`--tls-session-key-file` is given, encryption key is read
+from the given file.  In this case, nghttpx does not rotate key
+automatically.  To rotate key, one has to restart nghttpx (see
+SIGNALS).
+
 SEE ALSO
 --------
 
