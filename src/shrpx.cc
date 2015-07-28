@@ -83,6 +83,8 @@
 #include "shrpx_accept_handler.h"
 #include "shrpx_http2_upstream.h"
 #include "shrpx_http2_session.h"
+#include "shrpx_memcached_dispatcher.h"
+#include "shrpx_memcached_request.h"
 #include "util.h"
 #include "app_helper.h"
 #include "ssl.h"
@@ -117,8 +119,8 @@ const int GRACEFUL_SHUTDOWN_SIGNAL = SIGQUIT;
 #define ENV_UNIX_PATH "NGHTTP2_UNIX_PATH"
 
 namespace {
-int resolve_hostname(sockaddr_union *addr, size_t *addrlen,
-                     const char *hostname, uint16_t port, int family) {
+int resolve_hostname(Address *addr, const char *hostname, uint16_t port,
+                     int family) {
   int rv;
 
   auto service = util::utos(port);
@@ -155,8 +157,8 @@ int resolve_hostname(sockaddr_union *addr, size_t *addrlen,
               << " succeeded: " << host;
   }
 
-  memcpy(addr, res->ai_addr, res->ai_addrlen);
-  *addrlen = res->ai_addrlen;
+  memcpy(&addr->su, res->ai_addr, res->ai_addrlen);
+  addr->len = res->ai_addrlen;
   freeaddrinfo(res);
   return 0;
 }
@@ -611,8 +613,8 @@ int generate_ticket_key(TicketKey &ticket_key) {
   ticket_key.hmac_keylen = EVP_MD_size(ticket_key.hmac);
 
   assert(static_cast<size_t>(EVP_CIPHER_key_length(ticket_key.cipher)) <=
-         sizeof(ticket_key.data.enc_key));
-  assert(ticket_key.hmac_keylen <= sizeof(ticket_key.data.hmac_key));
+         ticket_key.data.enc_key.size());
+  assert(ticket_key.hmac_keylen <= ticket_key.data.hmac_key.size());
 
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "enc_keylen=" << EVP_CIPHER_key_length(ticket_key.cipher)
@@ -690,6 +692,116 @@ void renew_ticket_key_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 } // namespace
 
 namespace {
+void memcached_get_ticket_key_cb(struct ev_loop *loop, ev_timer *w,
+                                 int revents) {
+  auto conn_handler = static_cast<ConnectionHandler *>(w->data);
+  auto dispatcher = conn_handler->get_tls_ticket_key_memcached_dispatcher();
+
+  auto req = make_unique<MemcachedRequest>();
+  req->key = "nghttpx:tls-ticket-key";
+  req->op = MEMCACHED_OP_GET;
+  req->cb = [conn_handler, dispatcher, w](MemcachedRequest *req,
+                                          MemcachedResult res) {
+    switch (res.status_code) {
+    case MEMCACHED_ERR_NO_ERROR:
+      break;
+    case MEMCACHED_ERR_EXT_NETWORK_ERROR:
+      conn_handler->on_tls_ticket_key_network_error(w);
+      return;
+    default:
+      conn_handler->on_tls_ticket_key_not_found(w);
+      return;
+    }
+
+    // |version (4bytes)|len (2bytes)|key (variable length)|...
+    // (len, key) pairs are repeated as necessary.
+
+    auto &value = res.value;
+    if (value.size() < 4) {
+      LOG(WARN) << "Memcached: tls ticket key value is too small: got "
+                << value.size();
+      conn_handler->on_tls_ticket_key_not_found(w);
+      return;
+    }
+    auto p = value.data();
+    auto version = util::get_uint32(p);
+    // Currently supported version is 1.
+    if (version != 1) {
+      LOG(WARN) << "Memcached: tls ticket key version: want 1, got " << version;
+      conn_handler->on_tls_ticket_key_not_found(w);
+      return;
+    }
+
+    auto end = p + value.size();
+    p += 4;
+
+    size_t expectedlen;
+    size_t enc_keylen;
+    size_t hmac_keylen;
+    if (get_config()->tls_ticket_cipher == EVP_aes_128_cbc()) {
+      expectedlen = 48;
+      enc_keylen = 16;
+      hmac_keylen = 16;
+    } else if (get_config()->tls_ticket_cipher == EVP_aes_256_cbc()) {
+      expectedlen = 80;
+      enc_keylen = 32;
+      hmac_keylen = 32;
+    } else {
+      return;
+    }
+
+    auto ticket_keys = std::make_shared<TicketKeys>();
+
+    for (; p != end;) {
+      if (end - p < 2) {
+        LOG(WARN) << "Memcached: tls ticket key data is too small";
+        conn_handler->on_tls_ticket_key_not_found(w);
+        return;
+      }
+      auto len = util::get_uint16(p);
+      p += 2;
+      if (len != expectedlen) {
+        LOG(WARN) << "Memcached: wrong tls ticket key size: want "
+                  << expectedlen << ", got " << len;
+        conn_handler->on_tls_ticket_key_not_found(w);
+        return;
+      }
+      if (p + len > end) {
+        LOG(WARN) << "Memcached: too short tls ticket key payload: want " << len
+                  << ", got " << (end - p);
+        conn_handler->on_tls_ticket_key_not_found(w);
+        return;
+      }
+      auto key = TicketKey();
+      key.cipher = get_config()->tls_ticket_cipher;
+      key.hmac = EVP_sha256();
+      key.hmac_keylen = EVP_MD_size(key.hmac);
+
+      std::copy_n(p, key.data.name.size(), key.data.name.data());
+      p += key.data.name.size();
+
+      std::copy_n(p, enc_keylen, key.data.enc_key.data());
+      p += enc_keylen;
+
+      std::copy_n(p, hmac_keylen, key.data.hmac_key.data());
+      p += hmac_keylen;
+
+      ticket_keys->keys.push_back(std::move(key));
+    }
+
+    conn_handler->on_tls_ticket_key_get_success(ticket_keys, w);
+  };
+
+  if (LOG_ENABLED(INFO)) {
+    LOG(INFO) << "Memcached: tls ticket key get request sent";
+  }
+
+  dispatcher->add_request(std::move(req));
+}
+
+} // namespace
+
+namespace {
 int call_daemon() {
 #ifdef __sgi
   return _daemonize(0, 0, 0, 0);
@@ -749,34 +861,47 @@ int event_loop() {
 
   ev_timer renew_ticket_key_timer;
   if (!get_config()->upstream_no_tls) {
-    bool auto_tls_ticket_key = true;
-    if (!get_config()->tls_ticket_key_files.empty()) {
-      if (!get_config()->tls_ticket_cipher_given) {
-        LOG(WARN) << "It is strongly recommended to specify "
-                     "--tls-ticket-cipher=aes-128-cbc (or "
-                     "tls-ticket-cipher=aes-128-cbc in configuration file) "
-                     "when --tls-ticket-key-file is used for the smooth "
-                     "transition when the default value of --tls-ticket-cipher "
-                     "becomes aes-256-cbc";
-      }
-      auto ticket_keys = read_tls_ticket_key_file(
-          get_config()->tls_ticket_key_files, get_config()->tls_ticket_cipher,
-          EVP_sha256());
-      if (!ticket_keys) {
-        LOG(WARN) << "Use internal session ticket key generator";
-      } else {
-        conn_handler->set_ticket_keys(std::move(ticket_keys));
-        auto_tls_ticket_key = false;
-      }
-    }
-    if (auto_tls_ticket_key) {
-      // Generate new ticket key every 1hr.
-      ev_timer_init(&renew_ticket_key_timer, renew_ticket_key_cb, 0., 1_h);
-      renew_ticket_key_timer.data = conn_handler.get();
-      ev_timer_again(loop, &renew_ticket_key_timer);
+    if (get_config()->tls_ticket_key_memcached_host) {
+      conn_handler->set_tls_ticket_key_memcached_dispatcher(
+          make_unique<MemcachedDispatcher>(
+              &get_config()->tls_ticket_key_memcached_addr, loop));
 
-      // Generate first session ticket key before running workers.
-      renew_ticket_key_cb(loop, &renew_ticket_key_timer, 0);
+      ev_timer_init(&renew_ticket_key_timer, memcached_get_ticket_key_cb, 0.,
+                    0.);
+      renew_ticket_key_timer.data = conn_handler.get();
+      // Get first ticket keys.
+      memcached_get_ticket_key_cb(loop, &renew_ticket_key_timer, 0);
+    } else {
+      bool auto_tls_ticket_key = true;
+      if (!get_config()->tls_ticket_key_files.empty()) {
+        if (!get_config()->tls_ticket_cipher_given) {
+          LOG(WARN)
+              << "It is strongly recommended to specify "
+                 "--tls-ticket-cipher=aes-128-cbc (or "
+                 "tls-ticket-cipher=aes-128-cbc in configuration file) "
+                 "when --tls-ticket-key-file is used for the smooth "
+                 "transition when the default value of --tls-ticket-cipher "
+                 "becomes aes-256-cbc";
+        }
+        auto ticket_keys = read_tls_ticket_key_file(
+            get_config()->tls_ticket_key_files, get_config()->tls_ticket_cipher,
+            EVP_sha256());
+        if (!ticket_keys) {
+          LOG(WARN) << "Use internal session ticket key generator";
+        } else {
+          conn_handler->set_ticket_keys(std::move(ticket_keys));
+          auto_tls_ticket_key = false;
+        }
+      }
+      if (auto_tls_ticket_key) {
+        // Generate new ticket key every 1hr.
+        ev_timer_init(&renew_ticket_key_timer, renew_ticket_key_cb, 0., 1_h);
+        renew_ticket_key_timer.data = conn_handler.get();
+        ev_timer_again(loop, &renew_ticket_key_timer);
+
+        // Generate first session ticket key before running workers.
+        renew_ticket_key_cb(loop, &renew_ticket_key_timer, 0);
+      }
     }
   }
 
@@ -963,7 +1088,6 @@ void fill_default_config() {
   mod_config()->downstream_http_proxy_userinfo = nullptr;
   mod_config()->downstream_http_proxy_host = nullptr;
   mod_config()->downstream_http_proxy_port = 0;
-  mod_config()->downstream_http_proxy_addrlen = 0;
   mod_config()->read_rate = 0;
   mod_config()->read_burst = 0;
   mod_config()->write_rate = 0;
@@ -1021,6 +1145,9 @@ void fill_default_config() {
   mod_config()->tls_ticket_cipher = EVP_aes_128_cbc();
   mod_config()->tls_ticket_cipher_given = false;
   mod_config()->tls_session_timeout = std::chrono::hours(12);
+  mod_config()->tls_ticket_key_memcached_max_retry = 3;
+  mod_config()->tls_ticket_key_memcached_max_fail = 2;
+  mod_config()->tls_ticket_key_memcached_interval = 10_min;
 }
 } // namespace
 
@@ -1365,6 +1492,38 @@ SSL/TLS:
               Default: )"
       << util::duration_str(get_config()->ocsp_update_interval) << R"(
   --no-ocsp   Disable OCSP stapling.
+  --tls-session-cache-memcached=<HOST>,<PORT>
+              Specify  address of  memcached server  to store  session
+              cache.   This  enables   shared  session  cache  between
+              multiple nghttpx instances.
+  --tls-ticket-key-memcached=<HOST>,<PORT>
+              Specify  address of  memcached server  to store  session
+              cache.   This  enables  shared TLS  ticket  key  between
+              multiple nghttpx  instances.  nghttpx  does not  set TLS
+              ticket  key  to  memcached.   The  external  ticket  key
+              generator  is required.   nghttpx just  gets TLS  ticket
+              keys from  memcached, and  use them,  possibly replacing
+              current set of keys.  It is  up to extern TLS ticket key
+              generator to rotate keys frequently.
+  --tls-ticket-key-memcached-interval=<DURATION>
+              Set interval to get TLS ticket keys from memcached.
+              Default: )"
+      << util::duration_str(get_config()->tls_ticket_key_memcached_interval)
+      << R"(
+  --tls-ticket-key-memcached-max-retry=<N>
+              Set  maximum   number  of  consecutive   retries  before
+              abandoning TLS ticket key  retrieval.  If this number is
+              reached,  the  attempt  is considered  as  failure,  and
+              "failure" count  is incremented by 1,  which contributed
+              to            the            value            controlled
+              --tls-ticket-key-memcached-max-fail option.
+              Default: )" << get_config()->tls_ticket_key_memcached_max_retry
+      << R"(
+  --tls-ticket-key-memcached-max-fail=<N>
+              Set  maximum   number  of  consecutive   failure  before
+              disabling TLS ticket until next scheduled key retrieval.
+              Default: )" << get_config()->tls_ticket_key_memcached_max_fail
+      << R"(
 
 HTTP/2 and SPDY:
   -c, --http2-max-concurrent-streams=<N>
@@ -1728,6 +1887,14 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_INCLUDE, required_argument, &flag, 83},
         {SHRPX_OPT_TLS_TICKET_CIPHER, required_argument, &flag, 84},
         {SHRPX_OPT_HOST_REWRITE, no_argument, &flag, 85},
+        {SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED, required_argument, &flag, 86},
+        {SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED, required_argument, &flag, 87},
+        {SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_INTERVAL, required_argument, &flag,
+         88},
+        {SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_MAX_RETRY, required_argument, &flag,
+         89},
+        {SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_MAX_FAIL, required_argument, &flag,
+         90},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -2102,6 +2269,29 @@ int main(int argc, char **argv) {
         // --host-rewrite
         cmdcfgs.emplace_back(SHRPX_OPT_HOST_REWRITE, "yes");
         break;
+      case 86:
+        // --tls-session-cache-memcached
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED, optarg);
+        break;
+      case 87:
+        // --tls-ticket-key-memcached
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED, optarg);
+        break;
+      case 88:
+        // --tls-ticket-key-memcached-interval
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_INTERVAL,
+                             optarg);
+        break;
+      case 89:
+        // --tls-ticket-key-memcached-max-retry
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_MAX_RETRY,
+                             optarg);
+        break;
+      case 90:
+        // --tls-ticket-key-memcached-max-fail
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_MAX_FAIL,
+                             optarg);
+        break;
       default:
         break;
       }
@@ -2338,19 +2528,19 @@ int main(int argc, char **argv) {
         auto path = addr.host.get();
         auto pathlen = strlen(path);
 
-        if (pathlen + 1 > sizeof(addr.addr.un.sun_path)) {
+        if (pathlen + 1 > sizeof(addr.addr.su.un.sun_path)) {
           LOG(FATAL) << "UNIX domain socket path " << path << " is too long > "
-                     << sizeof(addr.addr.un.sun_path);
+                     << sizeof(addr.addr.su.un.sun_path);
           exit(EXIT_FAILURE);
         }
 
         LOG(INFO) << "Use UNIX domain socket path " << path
                   << " for backend connection";
 
-        addr.addr.un.sun_family = AF_UNIX;
+        addr.addr.su.un.sun_family = AF_UNIX;
         // copy path including terminal NULL
-        std::copy_n(path, pathlen + 1, addr.addr.un.sun_path);
-        addr.addrlen = sizeof(addr.addr.un);
+        std::copy_n(path, pathlen + 1, addr.addr.su.un.sun_path);
+        addr.addr.len = sizeof(addr.addr.su.un);
 
         continue;
       }
@@ -2358,7 +2548,7 @@ int main(int argc, char **argv) {
       addr.hostport = strcopy(util::make_hostport(addr.host.get(), addr.port));
 
       if (resolve_hostname(
-              &addr.addr, &addr.addrlen, addr.host.get(), addr.port,
+              &addr.addr, addr.host.get(), addr.port,
               get_config()->backend_ipv4 ? AF_INET : (get_config()->backend_ipv6
                                                           ? AF_INET6
                                                           : AF_UNSPEC)) == -1) {
@@ -2372,9 +2562,26 @@ int main(int argc, char **argv) {
       LOG(INFO) << "Resolving backend http proxy address";
     }
     if (resolve_hostname(&mod_config()->downstream_http_proxy_addr,
-                         &mod_config()->downstream_http_proxy_addrlen,
                          get_config()->downstream_http_proxy_host.get(),
                          get_config()->downstream_http_proxy_port,
+                         AF_UNSPEC) == -1) {
+      exit(EXIT_FAILURE);
+    }
+  }
+
+  if (get_config()->session_cache_memcached_host) {
+    if (resolve_hostname(&mod_config()->session_cache_memcached_addr,
+                         get_config()->session_cache_memcached_host.get(),
+                         get_config()->session_cache_memcached_port,
+                         AF_UNSPEC) == -1) {
+      exit(EXIT_FAILURE);
+    }
+  }
+
+  if (get_config()->tls_ticket_key_memcached_host) {
+    if (resolve_hostname(&mod_config()->tls_ticket_key_memcached_addr,
+                         get_config()->tls_ticket_key_memcached_host.get(),
+                         get_config()->tls_ticket_key_memcached_port,
                          AF_UNSPEC) == -1) {
       exit(EXIT_FAILURE);
     }

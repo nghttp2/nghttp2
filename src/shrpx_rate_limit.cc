@@ -106,4 +106,6 @@ void RateLimit::handle_tls_pending_read() {
   ev_feed_event(loop_, w_, EV_READ);
 }
 
+void RateLimit::set_ssl(SSL *ssl) { ssl_ = ssl; }
+
 } // namespace shrpx

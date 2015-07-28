@@ -1130,6 +1130,41 @@ void hexdump(FILE *out, const uint8_t *src, size_t len) {
   }
 }
 
+void put_uint16be(uint8_t *buf, uint16_t n) {
+  uint16_t x = htons(n);
+  memcpy(buf, &x, sizeof(uint16_t));
+}
+
+void put_uint32be(uint8_t *buf, uint32_t n) {
+  uint32_t x = htonl(n);
+  memcpy(buf, &x, sizeof(uint32_t));
+}
+
+uint16_t get_uint16(const uint8_t *data) {
+  uint16_t n;
+  memcpy(&n, data, sizeof(uint16_t));
+  return ntohs(n);
+}
+
+uint32_t get_uint32(const uint8_t *data) {
+  uint32_t n;
+  memcpy(&n, data, sizeof(uint32_t));
+  return ntohl(n);
+}
+
+uint64_t get_uint64(const uint8_t *data) {
+  uint64_t n = 0;
+  n += static_cast<uint64_t>(data[0]) << 56;
+  n += static_cast<uint64_t>(data[1]) << 48;
+  n += static_cast<uint64_t>(data[2]) << 40;
+  n += static_cast<uint64_t>(data[3]) << 32;
+  n += data[4] << 24;
+  n += data[5] << 16;
+  n += data[6] << 8;
+  n += data[7];
+  return n;
+}
+
 } // namespace util
 
 } // namespace nghttp2

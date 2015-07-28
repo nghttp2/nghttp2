@@ -130,6 +130,8 @@ public:
   void signal_write();
   ev_io *get_wev();
 
+  Connection *get_connection();
+
 private:
   Connection conn_;
   ev_timer reneg_shutdown_timer_;

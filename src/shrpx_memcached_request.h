@@ -22,45 +22,38 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef SHRPX_RATE_LIMIT_H
-#define SHRPX_RATE_LIMIT_H
+#ifndef SHRPX_MEMCACHED_REQUEST_H
+#define SHRPX_MEMCACHED_REQUEST_H
 
 #include "shrpx.h"
 
-#include <ev.h>
+#include <string>
+#include <vector>
+#include <memory>
 
-#include <openssl/ssl.h>
+#include "shrpx_memcached_result.h"
 
 namespace shrpx {
 
-class RateLimit {
-public:
-  // We need |ssl| object to check that it has unread decrypted bytes.
-  RateLimit(struct ev_loop *loop, ev_io *w, size_t rate, size_t burst,
-            SSL *ssl = nullptr);
-  ~RateLimit();
-  size_t avail() const;
-  void drain(size_t n);
-  void regen();
-  void startw();
-  void stopw();
-  // Feeds event if ssl_ object has unread decrypted bytes.  This is
-  // required since it is buffered in ssl_ object, io event is not
-  // generated unless new incoming data is received.
-  void handle_tls_pending_read();
-  void set_ssl(SSL *ssl);
+enum {
+  MEMCACHED_OP_GET = 0x00,
+  MEMCACHED_OP_ADD = 0x02,
+};
 
-private:
-  ev_timer t_;
-  ev_io *w_;
-  struct ev_loop *loop_;
-  SSL *ssl_;
-  size_t rate_;
-  size_t burst_;
-  size_t avail_;
-  bool startw_req_;
+struct MemcachedRequest;
+
+using MemcachedResultCallback =
+    std::function<void(MemcachedRequest *req, MemcachedResult res)>;
+
+struct MemcachedRequest {
+  std::string key;
+  std::vector<uint8_t> value;
+  MemcachedResultCallback cb;
+  uint32_t expiry;
+  int op;
+  bool canceled;
 };
 
 } // namespace shrpx
 
-#endif // SHRPX_RATE_LIMIT_H
+#endif // SHRPX_MEMCACHED_REQUEST_H

@@ -36,6 +36,7 @@
 #include "shrpx_http2_session.h"
 #include "shrpx_log_config.h"
 #include "shrpx_connect_blocker.h"
+#include "shrpx_memcached_dispatcher.h"
 #include "util.h"
 #include "template.h"
 
@@ -74,6 +75,11 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
 
   ev_timer_init(&mcpool_clear_timer_, mcpool_clear_cb, 0., 0.);
   mcpool_clear_timer_.data = this;
+
+  if (get_config()->session_cache_memcached_host) {
+    session_cache_memcached_dispatcher_ = make_unique<MemcachedDispatcher>(
+        &get_config()->session_cache_memcached_addr, loop);
+  }
 
   if (get_config()->downstream_proto == PROTO_HTTP2) {
     auto n = get_config()->http2_downstream_connections_per_worker;
@@ -251,6 +257,10 @@ MemchunkPool *Worker::get_mcpool() { return &mcpool_; }
 DownstreamGroup *Worker::get_dgrp(size_t group) {
   assert(group < dgrps_.size());
   return &dgrps_[group];
+}
+
+MemcachedDispatcher *Worker::get_session_cache_memcached_dispatcher() {
+  return session_cache_memcached_dispatcher_.get();
 }
 
 } // namespace shrpx

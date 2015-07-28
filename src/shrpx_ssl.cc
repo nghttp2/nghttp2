@@ -54,6 +54,8 @@
 #include "shrpx_worker.h"
 #include "shrpx_downstream_connection_pool.h"
 #include "shrpx_http2_session.h"
+#include "shrpx_memcached_request.h"
+#include "shrpx_memcached_dispatcher.h"
 #include "util.h"
 #include "ssl.h"
 #include "template.h"
@@ -183,6 +185,127 @@ int ocsp_resp_cb(SSL *ssl, void *arg) {
 }
 } // namespace
 
+constexpr char MEMCACHED_SESSION_CACHE_KEY_PREFIX[] =
+    "nghttpx:tls-session-cache:";
+
+namespace {
+int tls_session_new_cb(SSL *ssl, SSL_SESSION *session) {
+  auto handler = static_cast<ClientHandler *>(SSL_get_app_data(ssl));
+  auto worker = handler->get_worker();
+  auto dispatcher = worker->get_session_cache_memcached_dispatcher();
+
+  const unsigned char *id;
+  unsigned int idlen;
+
+  id = SSL_SESSION_get_id(session, &idlen);
+
+  if (LOG_ENABLED(INFO)) {
+    LOG(INFO) << "Memached: cache session, id=" << util::format_hex(id, idlen);
+  }
+
+  auto req = make_unique<MemcachedRequest>();
+  req->op = MEMCACHED_OP_ADD;
+  req->key = MEMCACHED_SESSION_CACHE_KEY_PREFIX;
+  req->key += util::format_hex(id, idlen);
+
+  auto sessionlen = i2d_SSL_SESSION(session, nullptr);
+  req->value.resize(sessionlen);
+  auto buf = &req->value[0];
+  i2d_SSL_SESSION(session, &buf);
+  req->expiry = 12_h;
+  req->cb = [](MemcachedRequest *req, MemcachedResult res) {
+    if (LOG_ENABLED(INFO)) {
+      LOG(INFO) << "Memcached: session cache done.  key=" << req->key
+                << ", status_code=" << res.status_code << ", value="
+                << std::string(std::begin(res.value), std::end(res.value));
+    }
+    if (res.status_code != 0) {
+      LOG(WARN) << "Memcached: failed to cache session key=" << req->key
+                << ", status_code=" << res.status_code << ", value="
+                << std::string(std::begin(res.value), std::end(res.value));
+    }
+  };
+  assert(!req->canceled);
+
+  dispatcher->add_request(std::move(req));
+
+  return 0;
+}
+} // namespace
+
+namespace {
+SSL_SESSION *tls_session_get_cb(SSL *ssl, unsigned char *id, int idlen,
+                                int *copy) {
+  auto handler = static_cast<ClientHandler *>(SSL_get_app_data(ssl));
+  auto worker = handler->get_worker();
+  auto dispatcher = worker->get_session_cache_memcached_dispatcher();
+  auto conn = handler->get_connection();
+
+  if (conn->tls.cached_session) {
+    if (LOG_ENABLED(INFO)) {
+      LOG(INFO) << "Memcached: found cached session, id="
+                << util::format_hex(id, idlen);
+    }
+
+    // This is required, without this, memory leak occurs.
+    *copy = 0;
+
+    auto session = conn->tls.cached_session;
+    conn->tls.cached_session = nullptr;
+    return session;
+  }
+
+  if (LOG_ENABLED(INFO)) {
+    LOG(INFO) << "Memcached: get cached session, id="
+              << util::format_hex(id, idlen);
+  }
+
+  auto req = make_unique<MemcachedRequest>();
+  req->op = MEMCACHED_OP_GET;
+  req->key = MEMCACHED_SESSION_CACHE_KEY_PREFIX;
+  req->key += util::format_hex(id, idlen);
+  req->cb = [conn](MemcachedRequest *, MemcachedResult res) {
+    if (LOG_ENABLED(INFO)) {
+      LOG(INFO) << "Memcached: returned status code " << res.status_code;
+    }
+
+    // We might stop reading, so start it again
+    conn->rlimit.startw();
+    ev_timer_again(conn->loop, &conn->rt);
+
+    conn->wlimit.startw();
+    ev_timer_again(conn->loop, &conn->wt);
+
+    conn->tls.cached_session_lookup_req = nullptr;
+    if (res.status_code != 0) {
+      conn->tls.handshake_state = TLS_CONN_CANCEL_SESSION_CACHE;
+      return;
+    }
+
+    const uint8_t *p = res.value.data();
+
+    auto session = d2i_SSL_SESSION(nullptr, &p, res.value.size());
+    if (!session) {
+      if (LOG_ENABLED(INFO)) {
+        LOG(INFO) << "cannot materialize session";
+      }
+      conn->tls.handshake_state = TLS_CONN_CANCEL_SESSION_CACHE;
+      return;
+    }
+
+    conn->tls.cached_session = session;
+    conn->tls.handshake_state = TLS_CONN_GOT_SESSION_CACHE;
+  };
+
+  conn->tls.handshake_state = TLS_CONN_WAIT_FOR_SESSION_CACHE;
+  conn->tls.cached_session_lookup_req = req.get();
+
+  dispatcher->add_request(std::move(req));
+
+  return nullptr;
+}
+} // namespace
+
 namespace {
 int ticket_key_cb(SSL *ssl, unsigned char *key_name, unsigned char *iv,
                   EVP_CIPHER_CTX *ctx, HMAC_CTX *hctx, int enc) {
@@ -213,18 +336,20 @@ int ticket_key_cb(SSL *ssl, unsigned char *key_name, unsigned char *iv,
                           << util::format_hex(key.data.name);
     }
 
-    memcpy(key_name, key.data.name, sizeof(key.data.name));
+    std::copy(std::begin(key.data.name), std::end(key.data.name), key_name);
 
     EVP_EncryptInit_ex(ctx, get_config()->tls_ticket_cipher, nullptr,
-                       key.data.enc_key, iv);
-    HMAC_Init_ex(hctx, key.data.hmac_key, key.hmac_keylen, key.hmac, nullptr);
+                       key.data.enc_key.data(), iv);
+    HMAC_Init_ex(hctx, key.data.hmac_key.data(), key.hmac_keylen, key.hmac,
+                 nullptr);
     return 1;
   }
 
   size_t i;
   for (i = 0; i < keys.size(); ++i) {
     auto &key = keys[i];
-    if (memcmp(key_name, key.data.name, sizeof(key.data.name)) == 0) {
+    if (std::equal(std::begin(key.data.name), std::end(key.data.name),
+                   key_name)) {
       break;
     }
   }
@@ -243,8 +368,9 @@ int ticket_key_cb(SSL *ssl, unsigned char *key_name, unsigned char *iv,
   }
 
   auto &key = keys[i];
-  HMAC_Init_ex(hctx, key.data.hmac_key, key.hmac_keylen, key.hmac, nullptr);
-  EVP_DecryptInit_ex(ctx, key.cipher, nullptr, key.data.enc_key, iv);
+  HMAC_Init_ex(hctx, key.data.hmac_key.data(), key.hmac_keylen, key.hmac,
+               nullptr);
+  EVP_DecryptInit_ex(ctx, key.cipher, nullptr, key.data.enc_key.data(), iv);
 
   return i == 0 ? 1 : 2;
 }
@@ -334,18 +460,23 @@ SSL_CTX *create_ssl_context(const char *private_key_file,
     DIE();
   }
 
-  auto ssl_opts = (SSL_OP_ALL & ~SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS) |
-                  SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION |
-                  SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION |
-                  SSL_OP_SINGLE_ECDH_USE | SSL_OP_SINGLE_DH_USE |
-                  SSL_OP_CIPHER_SERVER_PREFERENCE |
-                  get_config()->tls_proto_mask;
+  constexpr auto ssl_opts =
+      (SSL_OP_ALL & ~SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS) | SSL_OP_NO_SSLv2 |
+      SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION |
+      SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION | SSL_OP_SINGLE_ECDH_USE |
+      SSL_OP_SINGLE_DH_USE | SSL_OP_CIPHER_SERVER_PREFERENCE;
 
-  SSL_CTX_set_options(ssl_ctx, ssl_opts);
+  SSL_CTX_set_options(ssl_ctx, ssl_opts | get_config()->tls_proto_mask);
 
   const unsigned char sid_ctx[] = "shrpx";
   SSL_CTX_set_session_id_context(ssl_ctx, sid_ctx, sizeof(sid_ctx) - 1);
   SSL_CTX_set_session_cache_mode(ssl_ctx, SSL_SESS_CACHE_SERVER);
+
+  if (get_config()->session_cache_memcached_host) {
+    SSL_CTX_sess_set_new_cb(ssl_ctx, tls_session_new_cb);
+    SSL_CTX_sess_set_get_cb(ssl_ctx, tls_session_get_cb);
+  }
+
   SSL_CTX_set_timeout(ssl_ctx, get_config()->tls_session_timeout.count());
 
   const char *ciphers;
@@ -493,12 +624,12 @@ SSL_CTX *create_ssl_client_context() {
     DIE();
   }
 
-  auto ssl_opts = (SSL_OP_ALL & ~SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS) |
-                  SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION |
-                  SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION |
-                  get_config()->tls_proto_mask;
+  constexpr auto ssl_opts = (SSL_OP_ALL & ~SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS) |
+                            SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 |
+                            SSL_OP_NO_COMPRESSION |
+                            SSL_OP_NO_SESSION_RESUMPTION_ON_RENEGOTIATION;
 
-  SSL_CTX_set_options(ssl_ctx, ssl_opts);
+  SSL_CTX_set_options(ssl_ctx, ssl_opts | get_config()->tls_proto_mask);
 
   const char *ciphers;
   if (get_config()->ciphers) {
@@ -564,6 +695,17 @@ SSL_CTX *create_ssl_client_context() {
   return ssl_ctx;
 }
 
+SSL *create_ssl(SSL_CTX *ssl_ctx) {
+  auto ssl = SSL_new(ssl_ctx);
+  if (!ssl) {
+    LOG(ERROR) << "SSL_new() failed: " << ERR_error_string(ERR_get_error(),
+                                                           nullptr);
+    return nullptr;
+  }
+
+  return ssl;
+}
+
 ClientHandler *accept_connection(Worker *worker, int fd, sockaddr *addr,
                                  int addrlen) {
   char host[NI_MAXHOST];
@@ -586,21 +728,10 @@ ClientHandler *accept_connection(Worker *worker, int fd, sockaddr *addr,
   SSL *ssl = nullptr;
   auto ssl_ctx = worker->get_sv_ssl_ctx();
   if (ssl_ctx) {
-    ssl = SSL_new(ssl_ctx);
+    ssl = create_ssl(ssl_ctx);
     if (!ssl) {
-      LOG(ERROR) << "SSL_new() failed: " << ERR_error_string(ERR_get_error(),
-                                                             nullptr);
       return nullptr;
     }
-
-    if (SSL_set_fd(ssl, fd) == 0) {
-      LOG(ERROR) << "SSL_set_fd() failed: " << ERR_error_string(ERR_get_error(),
-                                                                nullptr);
-      SSL_free(ssl);
-      return nullptr;
-    }
-
-    SSL_set_accept_state(ssl);
   }
 
   return new ClientHandler(worker, fd, ssl, host, service);
@@ -641,8 +772,8 @@ bool tls_hostname_match(const char *pattern, const char *hostname) {
 } // namespace
 
 namespace {
-int verify_hostname(const char *hostname, const sockaddr_union *su,
-                    size_t salen, const std::vector<std::string> &dns_names,
+int verify_hostname(const char *hostname, const Address *addr,
+                    const std::vector<std::string> &dns_names,
                     const std::vector<std::string> &ip_addrs,
                     const std::string &common_name) {
   if (util::numeric_host(hostname)) {
@@ -650,19 +781,19 @@ int verify_hostname(const char *hostname, const sockaddr_union *su,
       return util::strieq(common_name.c_str(), hostname) ? 0 : -1;
     }
     const void *saddr;
-    switch (su->storage.ss_family) {
+    switch (addr->su.storage.ss_family) {
     case AF_INET:
-      saddr = &su->in.sin_addr;
+      saddr = &addr->su.in.sin_addr;
       break;
     case AF_INET6:
-      saddr = &su->in6.sin6_addr;
+      saddr = &addr->su.in6.sin6_addr;
       break;
     default:
       return -1;
     }
     for (size_t i = 0; i < ip_addrs.size(); ++i) {
-      if (salen == ip_addrs[i].size() &&
-          memcmp(saddr, ip_addrs[i].c_str(), salen) == 0) {
+      if (addr->len == ip_addrs[i].size() &&
+          memcmp(saddr, ip_addrs[i].c_str(), addr->len) == 0) {
         return 0;
       }
     }
@@ -757,8 +888,8 @@ int check_cert(SSL *ssl, const DownstreamAddr *addr) {
   std::vector<std::string> dns_names;
   std::vector<std::string> ip_addrs;
   get_altnames(cert, dns_names, ip_addrs, common_name);
-  if (verify_hostname(addr->host.get(), &addr->addr, addr->addrlen, dns_names,
-                      ip_addrs, common_name) != 0) {
+  if (verify_hostname(addr->host.get(), &addr->addr, dns_names, ip_addrs,
+                      common_name) != 0) {
     LOG(ERROR) << "Certificate verification failed: hostname does not match";
     return -1;
   }
