@@ -46,11 +46,11 @@ OPTIONS
 
     Default: ``1``
 
-.. option:: -i, --input-file=<FILE>
+.. option:: -i, --input-file=<PATH>
 
     Path of a file with multiple URIs are separated by EOLs.
     This option will disable URIs getting from command-line.
-    If '-' is given as <FILE>, URIs will be read from stdin.
+    If '-' is given as <PATH>, URIs will be read from stdin.
     URIs are used  in this order for each  client.  All URIs
     are used, then  first URI is used and then  2nd URI, and
     so  on.  The  scheme, host  and port  in the  subsequent
@@ -97,10 +97,32 @@ OPTIONS
 
     Default: ``h2c``
 
-.. option:: -d, --data=<FILE>
+.. option:: -d, --data=<PATH>
 
     Post FILE to  server.  The request method  is changed to
     POST.
+
+.. option:: -r, --rate=<N>
+
+    Specified  the  fixed  rate  at  which  connections  are
+    created.   The   rate  must   be  a   positive  integer,
+    representing the  number of  connections to be  made per
+    second.  When the rate is 0,  the program will run as it
+    normally does, creating connections at whatever variable
+    rate it wants.  The default value for this option is 0.
+
+.. option:: -C, --num-conns=<N>
+
+    Specifies  the total  number of  connections to  create.
+    The  total  number of  connections  must  be a  positive
+    integer.  On each connection, :option:`-m` requests are made.  The
+    test stops once as soon as the N connections have either
+    completed or failed.  When  the number of connections is
+    0, the program will run as it normally does, creating as
+    many connections  as it  needs in order  to make  the :option:`-n`
+    requests specified.   The default value for  this option
+    is 0.  The :option:`-n` option is not required if the :option:`\-C` option is
+    being used.
 
 .. option:: -v, --verbose
 
