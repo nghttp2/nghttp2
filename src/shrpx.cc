@@ -1488,7 +1488,9 @@ SSL/TLS:
               generator  is required.   nghttpx just  gets TLS  ticket
               keys from  memcached, and  use them,  possibly replacing
               current set of keys.  It is  up to extern TLS ticket key
-              generator to rotate keys frequently.
+              generator to  rotate keys frequently.  See  "TLS SESSION
+              TICKET RESUMPTION"  section in  manual page to  know the
+              data format in memcached entry.
   --tls-ticket-key-memcached-interval=<DURATION>
               Set interval to get TLS ticket keys from memcached.
               Default: )"
