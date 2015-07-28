@@ -608,7 +608,7 @@ void graceful_shutdown_signal_cb(struct ev_loop *loop, ev_signal *w,
 
 namespace {
 int generate_ticket_key(TicketKey &ticket_key) {
-  ticket_key.cipher = get_config()->tls_ticket_cipher;
+  ticket_key.cipher = get_config()->tls_ticket_key_cipher;
   ticket_key.hmac = EVP_sha256();
   ticket_key.hmac_keylen = EVP_MD_size(ticket_key.hmac);
 
@@ -738,11 +738,11 @@ void memcached_get_ticket_key_cb(struct ev_loop *loop, ev_timer *w,
     size_t expectedlen;
     size_t enc_keylen;
     size_t hmac_keylen;
-    if (get_config()->tls_ticket_cipher == EVP_aes_128_cbc()) {
+    if (get_config()->tls_ticket_key_cipher == EVP_aes_128_cbc()) {
       expectedlen = 48;
       enc_keylen = 16;
       hmac_keylen = 16;
-    } else if (get_config()->tls_ticket_cipher == EVP_aes_256_cbc()) {
+    } else if (get_config()->tls_ticket_key_cipher == EVP_aes_256_cbc()) {
       expectedlen = 80;
       enc_keylen = 32;
       hmac_keylen = 32;
@@ -773,7 +773,7 @@ void memcached_get_ticket_key_cb(struct ev_loop *loop, ev_timer *w,
         return;
       }
       auto key = TicketKey();
-      key.cipher = get_config()->tls_ticket_cipher;
+      key.cipher = get_config()->tls_ticket_key_cipher;
       key.hmac = EVP_sha256();
       key.hmac_keylen = EVP_MD_size(key.hmac);
 
@@ -874,18 +874,18 @@ int event_loop() {
     } else {
       bool auto_tls_ticket_key = true;
       if (!get_config()->tls_ticket_key_files.empty()) {
-        if (!get_config()->tls_ticket_cipher_given) {
+        if (!get_config()->tls_ticket_key_cipher_given) {
           LOG(WARN)
               << "It is strongly recommended to specify "
-                 "--tls-ticket-cipher=aes-128-cbc (or "
-                 "tls-ticket-cipher=aes-128-cbc in configuration file) "
+                 "--tls-ticket-key-cipher=aes-128-cbc (or "
+                 "tls-ticket-key-cipher=aes-128-cbc in configuration file) "
                  "when --tls-ticket-key-file is used for the smooth "
-                 "transition when the default value of --tls-ticket-cipher "
+                 "transition when the default value of --tls-ticket-key-cipher "
                  "becomes aes-256-cbc";
         }
         auto ticket_keys = read_tls_ticket_key_file(
-            get_config()->tls_ticket_key_files, get_config()->tls_ticket_cipher,
-            EVP_sha256());
+            get_config()->tls_ticket_key_files,
+            get_config()->tls_ticket_key_cipher, EVP_sha256());
         if (!ticket_keys) {
           LOG(WARN) << "Use internal session ticket key generator";
         } else {
@@ -1142,8 +1142,8 @@ void fill_default_config() {
   mod_config()->header_field_buffer = 64_k;
   mod_config()->max_header_fields = 100;
   mod_config()->downstream_addr_group_catch_all = 0;
-  mod_config()->tls_ticket_cipher = EVP_aes_128_cbc();
-  mod_config()->tls_ticket_cipher_given = false;
+  mod_config()->tls_ticket_key_cipher = EVP_aes_128_cbc();
+  mod_config()->tls_ticket_key_cipher_given = false;
   mod_config()->tls_session_timeout = std::chrono::hours(12);
   mod_config()->tls_ticket_key_memcached_max_retry = 3;
   mod_config()->tls_ticket_key_memcached_max_fail = 2;
@@ -1461,24 +1461,25 @@ SSL/TLS:
   --tls-ticket-key-file=<PATH>
               Path to file that contains  random data to construct TLS
               session ticket  parameters.  If aes-128-cbc is  given in
-              --tls-ticket-cipher,  the file  must contain  exactly 48
-              bytes.  If aes-256-cbc  is given in --tls-ticket-cipher,
-              the file  must contain  exactly 80 bytes.   This options
-              can  be  used  repeatedly  to  specify  multiple  ticket
-              parameters.  If several files  are given, only the first
-              key is used to encrypt  TLS session tickets.  Other keys
-              are accepted  but server  will issue new  session ticket
-              with  first  key.   This allows  session  key  rotation.
-              Please   note  that   key   rotation   does  not   occur
-              automatically.   User should  rearrange files  or change
-              options  values  and  restart  nghttpx  gracefully.   If
-              opening or reading given file fails, all loaded keys are
-              discarded and it is treated as if none of this option is
-              given.  If this option is not given or an error occurred
-              while opening or reading a  file, key is generated every
-              1 hour internally and they are valid for 12 hours.  This
-              is  recommended if  ticket key  sharing between  nghttpx
-              instances is not required.
+              --tls-ticket-key-cipher, the  file must  contain exactly
+              48    bytes.     If     aes-256-cbc    is    given    in
+              --tls-ticket-key-cipher, the  file must  contain exactly
+              80  bytes.   This  options  can be  used  repeatedly  to
+              specify  multiple ticket  parameters.  If  several files
+              are given,  only the  first key is  used to  encrypt TLS
+              session  tickets.  Other  keys are  accepted but  server
+              will  issue new  session  ticket with  first key.   This
+              allows  session  key  rotation.  Please  note  that  key
+              rotation  does  not  occur automatically.   User  should
+              rearrange  files or  change options  values and  restart
+              nghttpx gracefully.   If opening  or reading  given file
+              fails, all loaded  keys are discarded and  it is treated
+              as if none  of this option is given.  If  this option is
+              not given or an error  occurred while opening or reading
+              a file,  key is  generated every  1 hour  internally and
+              they are  valid for  12 hours.   This is  recommended if
+              ticket  key sharing  between  nghttpx  instances is  not
+              required.
   --tls-ticket-key-memcached=<HOST>,<PORT>
               Specify  address of  memcached server  to store  session
               cache.   This  enables  shared TLS  ticket  key  between
@@ -1507,7 +1508,7 @@ SSL/TLS:
               disabling TLS ticket until next scheduled key retrieval.
               Default: )" << get_config()->tls_ticket_key_memcached_max_fail
       << R"(
-  --tls-ticket-cipher=<TICKET_CIPHER>
+  --tls-ticket-key-cipher=<CIPHER>
               Specify cipher  to encrypt TLS session  ticket.  Specify
               either   aes-128-cbc   or  aes-256-cbc.    By   default,
               aes-128-cbc is used.
@@ -1885,7 +1886,7 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_MAX_HEADER_FIELDS, required_argument, &flag, 81},
         {SHRPX_OPT_ADD_REQUEST_HEADER, required_argument, &flag, 82},
         {SHRPX_OPT_INCLUDE, required_argument, &flag, 83},
-        {SHRPX_OPT_TLS_TICKET_CIPHER, required_argument, &flag, 84},
+        {SHRPX_OPT_TLS_TICKET_KEY_CIPHER, required_argument, &flag, 84},
         {SHRPX_OPT_HOST_REWRITE, no_argument, &flag, 85},
         {SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED, required_argument, &flag, 86},
         {SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED, required_argument, &flag, 87},
@@ -2262,8 +2263,8 @@ int main(int argc, char **argv) {
         cmdcfgs.emplace_back(SHRPX_OPT_INCLUDE, optarg);
         break;
       case 84:
-        // --tls-ticket-cipher
-        cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_CIPHER, optarg);
+        // --tls-ticket-key-cipher
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_CIPHER, optarg);
         break;
       case 85:
         // --host-rewrite

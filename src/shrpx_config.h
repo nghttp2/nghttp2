@@ -171,7 +171,7 @@ constexpr char SHRPX_OPT_NO_OCSP[] = "no-ocsp";
 constexpr char SHRPX_OPT_HEADER_FIELD_BUFFER[] = "header-field-buffer";
 constexpr char SHRPX_OPT_MAX_HEADER_FIELDS[] = "max-header-fields";
 constexpr char SHRPX_OPT_INCLUDE[] = "include";
-constexpr char SHRPX_OPT_TLS_TICKET_CIPHER[] = "tls-ticket-cipher";
+constexpr char SHRPX_OPT_TLS_TICKET_KEY_CIPHER[] = "tls-ticket-key-cipher";
 constexpr char SHRPX_OPT_HOST_REWRITE[] = "host-rewrite";
 constexpr char SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED[] =
     "tls-session-cache-memcached";
@@ -320,7 +320,7 @@ struct Config {
   nghttp2_session_callbacks *http2_downstream_callbacks;
   nghttp2_option *http2_option;
   nghttp2_option *http2_client_option;
-  const EVP_CIPHER *tls_ticket_cipher;
+  const EVP_CIPHER *tls_ticket_key_cipher;
   const char *server_name;
   char **argv;
   char *cwd;
@@ -403,8 +403,8 @@ struct Config {
   // true if host contains UNIX domain socket path
   bool host_unix;
   bool no_ocsp;
-  // true if --tls-ticket-cipher is used
-  bool tls_ticket_cipher_given;
+  // true if --tls-ticket-key-cipher is used
+  bool tls_ticket_key_cipher_given;
 };
 
 const Config *get_config();

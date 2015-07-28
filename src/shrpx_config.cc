@@ -704,7 +704,7 @@ enum {
   SHRPX_OPTID_SYSLOG_FACILITY,
   SHRPX_OPTID_TLS_PROTO_LIST,
   SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED,
-  SHRPX_OPTID_TLS_TICKET_CIPHER,
+  SHRPX_OPTID_TLS_TICKET_KEY_CIPHER,
   SHRPX_OPTID_TLS_TICKET_KEY_FILE,
   SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED,
   SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_INTERVAL,
@@ -1003,11 +1003,6 @@ int option_lookup_token(const char *name, size_t namelen) {
         return SHRPX_OPTID_WORKER_WRITE_RATE;
       }
       break;
-    case 'r':
-      if (util::strieq_l("tls-ticket-ciphe", name, 16)) {
-        return SHRPX_OPTID_TLS_TICKET_CIPHER;
-      }
-      break;
     case 's':
       if (util::strieq_l("max-header-field", name, 16)) {
         return SHRPX_OPTID_MAX_HEADER_FIELDS;
@@ -1092,6 +1087,11 @@ int option_lookup_token(const char *name, size_t namelen) {
     case 'd':
       if (util::strieq_l("backend-tls-sni-fiel", name, 20)) {
         return SHRPX_OPTID_BACKEND_TLS_SNI_FIELD;
+      }
+      break;
+    case 'r':
+      if (util::strieq_l("tls-ticket-key-ciphe", name, 20)) {
+        return SHRPX_OPTID_TLS_TICKET_KEY_CIPHER;
       }
       break;
     case 't':
@@ -1879,17 +1879,17 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   }
-  case SHRPX_OPTID_TLS_TICKET_CIPHER:
+  case SHRPX_OPTID_TLS_TICKET_KEY_CIPHER:
     if (util::strieq(optarg, "aes-128-cbc")) {
-      mod_config()->tls_ticket_cipher = EVP_aes_128_cbc();
+      mod_config()->tls_ticket_key_cipher = EVP_aes_128_cbc();
     } else if (util::strieq(optarg, "aes-256-cbc")) {
-      mod_config()->tls_ticket_cipher = EVP_aes_256_cbc();
+      mod_config()->tls_ticket_key_cipher = EVP_aes_256_cbc();
     } else {
       LOG(ERROR) << opt
                  << ": unsupported cipher for ticket encryption: " << optarg;
       return -1;
     }
-    mod_config()->tls_ticket_cipher_given = true;
+    mod_config()->tls_ticket_key_cipher_given = true;
 
     return 0;
   case SHRPX_OPTID_HOST_REWRITE:

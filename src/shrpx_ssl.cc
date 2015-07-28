@@ -338,7 +338,7 @@ int ticket_key_cb(SSL *ssl, unsigned char *key_name, unsigned char *iv,
 
     std::copy(std::begin(key.data.name), std::end(key.data.name), key_name);
 
-    EVP_EncryptInit_ex(ctx, get_config()->tls_ticket_cipher, nullptr,
+    EVP_EncryptInit_ex(ctx, get_config()->tls_ticket_key_cipher, nullptr,
                        key.data.enc_key.data(), iv);
     HMAC_Init_ex(hctx, key.data.hmac_key.data(), key.hmac_keylen, key.hmac,
                  nullptr);
