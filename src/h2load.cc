@@ -74,7 +74,7 @@ namespace h2load {
 Config::Config()
     : data_length(-1), addrs(nullptr), nreqs(1), nclients(1), nthreads(1),
       max_concurrent_streams(-1), window_bits(30), connection_window_bits(30),
-      rate(0), nconns(0), no_tls_proto(PROTO_HTTP2), data_fd(-1), port(0),
+      rate(0), nconns(0), padding(0), no_tls_proto(PROTO_HTTP2), data_fd(-1), port(0),
       default_port(0), verbose(false) {}
 
 Config::~Config() {
@@ -750,7 +750,7 @@ Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
   auto nreqs_rem = req_todo % nclients;
 
   end_watcher.data = this;
-  ev_timer_init(&end_watcher, end_timeout_cb, config->seconds + 20, 0.);
+  ev_timer_init(&end_watcher, end_timeout_cb, config->seconds + config->padding, 0.);
   if (config->is_rate_mode()) {
     // create timer that will go off every second
     timeout_watcher.data = this;
@@ -786,7 +786,7 @@ void Worker::run() {
   } else {
     ev_timer_again(loop, &timeout_watcher);
   }
-  if(true) {
+  if(config->padding > 0) {
     ev_timer_start(loop, &end_watcher);
   }
   ev_run(loop, 0);
@@ -1150,9 +1150,10 @@ int main(int argc, char **argv) {
         {"ciphers", required_argument, &flag, 2},
         {"rate", required_argument, nullptr, 'r'},
         {"num-conns", required_argument, nullptr, 'C'},
+        {"padding", required_argument, nullptr, 'P'},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
-    auto c = getopt_long(argc, argv, "hvW:c:d:m:n:p:t:w:H:i:r:C:", long_options,
+    auto c = getopt_long(argc, argv, "hvW:c:d:m:n:p:t:w:H:i:r:C:P:", long_options,
                          &option_index);
     if (c == -1) {
       break;
@@ -1259,6 +1260,14 @@ int main(int argc, char **argv) {
       config.nconns = strtoul(optarg, nullptr, 10);
       if (config.nconns <= 0) {
         std::cerr << "-C: the total number of connections made "
+                  << "must be positive." << std::endl;
+        exit(EXIT_FAILURE);
+      }
+      break;
+    case 'P':
+      config.padding = strtoul(optarg, nullptr, 10);
+      if (config.padding <= 0) {
+        std::cerr << "-P: the padding wait time "
                   << "must be positive." << std::endl;
         exit(EXIT_FAILURE);
       }

@@ -81,6 +81,8 @@ struct Config {
   ssize_t rate;
   // number of connections made
   ssize_t nconns;
+  // amount of time to wait after last connection is made.
+  ssize_t padding;
   enum { PROTO_HTTP2, PROTO_SPDY2, PROTO_SPDY3, PROTO_SPDY3_1 } no_tls_proto;
   // file descriptor for upload data
   int data_fd;
