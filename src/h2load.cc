@@ -174,6 +174,10 @@ void second_timeout_w_cb(EV_P_ ev_timer *w, int revents) {
   }
   if (worker->nconns_made >= worker->nclients) {
     ev_timer_stop(worker->loop, w);
+
+    if(worker->config->padding > 0) {
+      ev_timer_start(worker->loop, &worker->end_watcher);
+    }
   }
   ++worker->current_second;
 }
@@ -750,7 +754,7 @@ Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
   auto nreqs_rem = req_todo % nclients;
 
   end_watcher.data = this;
-  ev_timer_init(&end_watcher, end_timeout_cb, config->seconds + config->padding, 0.);
+  ev_timer_init(&end_watcher, end_timeout_cb, config->padding, 0.);
   if (config->is_rate_mode()) {
     // create timer that will go off every second
     timeout_watcher.data = this;
@@ -785,9 +789,6 @@ void Worker::run() {
     }
   } else {
     ev_timer_again(loop, &timeout_watcher);
-  }
-  if(config->padding > 0) {
-    ev_timer_start(loop, &end_watcher);
   }
   ev_run(loop, 0);
 }
@@ -1607,7 +1608,6 @@ int main(int argc, char **argv) {
 
   workers.reserve(config.nthreads);
 #ifndef NOTHREADS
-  std::cout << "#ifndef NOTHREADS" << std::endl;
   std::vector<std::future<void>> futures;
   for (size_t i = 0; i < config.nthreads - 1; ++i) {
     auto nreqs = nreqs_per_thread + (nreqs_rem-- > 0);
