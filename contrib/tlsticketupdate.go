@@ -84,8 +84,9 @@ func main() {
 		}
 
 		mc.Set(&memcache.Item{
-			Key:   "nghttpx:tls-ticket-key",
-			Value: buf.Bytes(),
+			Key:        "nghttpx:tls-ticket-key",
+			Value:      buf.Bytes(),
+			Expiration: int32((*interval) + 300),
 		})
 
 		select {
@@ -96,19 +97,17 @@ func main() {
 		// generate new key and append it to the last, so that
 		// we can at least decrypt TLS ticket encrypted by new
 		// key on the host which does not get new key yet.
-		new_keys := [][]byte{}
-		new_keys = append(new_keys, keys[len(keys)-1])
-		for i, key := range keys {
-			// keep at most past 11 keys as decryption
-			// only key
-			if i == len(keys)-1 || i > 11 {
-				break
-			}
-			new_keys = append(new_keys, key)
+		// keep at most past 11 keys as decryption only key
+		n := len(keys) + 1
+		if n > 13 {
+			n = 13
 		}
-		new_keys = append(new_keys, makeKey(keylen))
+		newKeys := make([][]byte, n)
+		newKeys[0] = keys[len(keys)-1]
+		copy(newKeys[1:], keys[0:n-2])
+		newKeys[n-1] = makeKey(keylen)
 
-		keys = new_keys
+		keys = newKeys
 	}
 
 }
