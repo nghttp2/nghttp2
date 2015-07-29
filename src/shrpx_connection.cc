@@ -61,7 +61,7 @@ Connection::Connection(struct ev_loop *loop, int fd, SSL *ssl,
   rt.data = this;
 
   // set 0. to double field explicitly just in case
-  tls.last_write_time = 0.;
+  tls.last_write_idle = 0.;
 
   if (ssl) {
     set_ssl(ssl);
@@ -402,7 +402,7 @@ const size_t SHRPX_WARMUP_THRESHOLD = 1 << 20;
 size_t Connection::get_tls_write_limit() {
   auto t = ev_now(loop);
 
-  if (t - tls.last_write_time > 1.) {
+  if (tls.last_write_idle >= 0. && t - tls.last_write_idle > 1.) {
     // Time out, use small record size
     tls.warmup_writelen = 0;
     return SHRPX_SMALL_WRITE_LIMIT;
@@ -418,6 +418,12 @@ size_t Connection::get_tls_write_limit() {
 void Connection::update_tls_warmup_writelen(size_t n) {
   if (tls.warmup_writelen < SHRPX_WARMUP_THRESHOLD) {
     tls.warmup_writelen += n;
+  }
+}
+
+void Connection::start_tls_write_idle() {
+  if (tls.last_write_idle < 0.) {
+    tls.last_write_idle = ev_now(loop);
   }
 }
 
@@ -439,13 +445,13 @@ ssize_t Connection::write_tls(const void *data, size_t len) {
     tls.last_writelen = 0;
   }
 
+  tls.last_write_idle = -1.;
+
   auto rv = SSL_write(tls.ssl, data, len);
 
   if (rv == 0) {
     return SHRPX_ERR_NETWORK;
   }
-
-  tls.last_write_time = ev_now(loop);
 
   if (rv < 0) {
     auto err = SSL_get_error(tls.ssl, rv);

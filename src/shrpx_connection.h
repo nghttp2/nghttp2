@@ -52,7 +52,7 @@ struct TLSConnection {
   SSL *ssl;
   SSL_SESSION *cached_session;
   MemcachedRequest *cached_session_lookup_req;
-  ev_tstamp last_write_time;
+  ev_tstamp last_write_idle;
   size_t warmup_writelen;
   // length passed to SSL_write and SSL_read last time.  This is
   // required since these functions require the exact same parameters
@@ -100,6 +100,9 @@ struct Connection {
   size_t get_tls_write_limit();
   // Updates the number of bytes written in warm up period.
   void update_tls_warmup_writelen(size_t n);
+  // Tells there is no immediate write now.  This triggers timer to
+  // determine fallback to short record size mode.
+  void start_tls_write_idle();
 
   ssize_t write_clear(const void *data, size_t len);
   ssize_t writev_clear(struct iovec *iov, int iovcnt);

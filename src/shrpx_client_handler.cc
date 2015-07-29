@@ -247,6 +247,7 @@ int ClientHandler::write_tls() {
       return -1;
     }
     if (wb_.rleft() == 0) {
+      conn_.start_tls_write_idle();
       break;
     }
   }
