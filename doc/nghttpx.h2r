@@ -125,9 +125,10 @@ keep at most 12 keys.
 If :option:`--tls-ticket-key-memcached` is given, encryption keys are
 retrieved from memcached.  nghttpx just reads keys from memcached; one
 has to deploy key generator program to update keys frequently (e.g.,
-every 1 hour).  The memcached entry key is ``nghttpx:tls-ticket-key``.
-The data format stored in memcached is the binary format described
-below::
+every 1 hour).  The example key generator tlsticketupdate.go is
+available under contrib directory in nghttp2 archive.  The memcached
+entry key is ``nghttpx:tls-ticket-key``.  The data format stored in
+memcached is the binary format described below::
 
     +--------------+-------+----------------+
     | VERSION (4)  |LEN (2)|KEY(48 or 80) ...
