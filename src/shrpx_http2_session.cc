@@ -323,7 +323,7 @@ int Http2Session::initiate_connection() {
       // We are establishing TLS connection.  If conn_.tls.ssl, we may
       // reuse the previous session.
       if (!conn_.tls.ssl) {
-        auto ssl = ssl::create_ssl(ssl_ctx_);
+        auto ssl = ssl::create_client_ssl(ssl_ctx_);
         if (!ssl) {
           return -1;
         }

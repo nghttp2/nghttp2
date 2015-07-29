@@ -319,7 +319,7 @@ int Connection::tls_handshake() {
     auto ssl_ctx = SSL_get_SSL_CTX(tls.ssl);
     SSL_free(tls.ssl);
 
-    auto ssl = ssl::create_ssl(ssl_ctx);
+    auto ssl = ssl::create_server_ssl(ssl_ctx, nullptr);
     if (!ssl) {
       return -1;
     }

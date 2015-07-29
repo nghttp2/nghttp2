@@ -695,6 +695,7 @@ SSL_CTX *create_ssl_client_context() {
   return ssl_ctx;
 }
 
+namespace {
 SSL *create_ssl(SSL_CTX *ssl_ctx) {
   auto ssl = SSL_new(ssl_ctx);
   if (!ssl) {
@@ -705,6 +706,23 @@ SSL *create_ssl(SSL_CTX *ssl_ctx) {
 
   return ssl;
 }
+} // namespace
+
+SSL *create_server_ssl(SSL_CTX *ssl_ctx, Worker *worker) {
+  auto ssl = create_ssl(ssl_ctx);
+  if (!ssl) {
+    return nullptr;
+  }
+
+  // Disable TLS session ticket if we don't have working ticket keys.
+  if (worker && !worker->get_ticket_keys()) {
+    SSL_set_options(ssl, SSL_OP_NO_TICKET);
+  }
+
+  return ssl;
+}
+
+SSL *create_client_ssl(SSL_CTX *ssl_ctx) { return create_ssl(ssl_ctx); }
 
 ClientHandler *accept_connection(Worker *worker, int fd, sockaddr *addr,
                                  int addrlen) {
@@ -728,7 +746,7 @@ ClientHandler *accept_connection(Worker *worker, int fd, sockaddr *addr,
   SSL *ssl = nullptr;
   auto ssl_ctx = worker->get_sv_ssl_ctx();
   if (ssl_ctx) {
-    ssl = create_ssl(ssl_ctx);
+    ssl = create_server_ssl(ssl_ctx, worker);
     if (!ssl) {
       return nullptr;
     }
