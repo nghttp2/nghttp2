@@ -218,6 +218,7 @@ struct Client {
   size_t req_done;
   int fd;
   Buffer<64_k> wb;
+  ev_timer end_watcher;
 
   enum { ERR_CONNECT_FAIL = -100 };
 

@@ -179,15 +179,34 @@ void second_timeout_w_cb(EV_P_ ev_timer *w, int revents) {
 }
 } // namespace
 
+namespace {
+// Called every second when rate mode is being used
+void end_timeout_cb(EV_P_ ev_timer *w, int revents) {
+  auto client = static_cast<Client *>(w->data);
+  std::cout << "in end_timeout_cb" << std::endl;
+
+  if (util::check_socket_connected(client->fd)) {
+    std::cout << "failing client" << std::endl;
+    client->fail();
+  }
+}
+} // namespace
+
 Client::Client(Worker *worker, size_t req_todo)
     : worker(worker), ssl(nullptr), next_addr(config.addrs), reqidx(0),
       state(CLIENT_IDLE), first_byte_received(false), req_todo(req_todo),
-      req_started(0), req_done(0), fd(-1) {
+      req_started(0), req_done(0), fd(-1)) {
   ev_io_init(&wev, writecb, 0, EV_WRITE);
   ev_io_init(&rev, readcb, 0, EV_READ);
 
   wev.data = this;
   rev.data = this;
+
+  if (worker->config->padding > 0) {
+    std::cout << "timer initialized with padding: " << worker->config->padding << std::endl;
+    end_watcher.data = this;
+    ev_timer_init(&end_watcher, end_timeout_cb, worker->config->padding, 0);
+  }
 }
 
 Client::~Client() { disconnect(); }
@@ -197,6 +216,11 @@ int Client::do_write() { return writefn(*this); }
 
 int Client::connect() {
   record_start_time(&worker->stats);
+  
+  if (worker->config->padding > 0) {
+    std::cout << "timer started" << std::endl;
+    ev_timer_start(worker->loop, &end_watcher);
+  }
 
   while (next_addr) {
     auto addr = next_addr;
@@ -252,6 +276,11 @@ void Client::fail() {
 }
 
 void Client::disconnect() {
+  if (worker->config->padding > 0 && ev_is_active(&end_watcher)) {
+    std::cout << "timer stopped" << std::endl;
+    ev_timer_stop(worker->loop, &end_watcher);
+  }
+
   streams.clear();
   session.reset();
   state = CLIENT_IDLE;
