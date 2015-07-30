@@ -118,7 +118,7 @@ RequestStat::RequestStat() : data_offset(0), completed(false) {}
 
 Stats::Stats(size_t req_todo)
     : req_todo(0), req_started(0), req_done(0), req_success(0),
-      req_status_success(0), req_failed(0), req_error(0), bytes_total(0),
+      req_status_success(0), req_failed(0), req_error(0), req_timedout(0), bytes_total(0),
       bytes_head(0), bytes_body(0), status(), req_stats(req_todo) {}
 
 Stream::Stream() : status_success(-1) {}
@@ -187,7 +187,7 @@ void end_timeout_cb(EV_P_ ev_timer *w, int revents) {
 
   if (util::check_socket_connected(client->fd)) {
     std::cout << "failing client" << std::endl;
-    client->fail();
+    client->timeout();
   }
 }
 } // namespace
@@ -195,7 +195,7 @@ void end_timeout_cb(EV_P_ ev_timer *w, int revents) {
 Client::Client(Worker *worker, size_t req_todo)
     : worker(worker), ssl(nullptr), next_addr(config.addrs), reqidx(0),
       state(CLIENT_IDLE), first_byte_received(false), req_todo(req_todo),
-      req_started(0), req_done(0), fd(-1)) {
+      req_started(0), req_done(0), fd(-1) {
   ev_io_init(&wev, writecb, 0, EV_WRITE);
   ev_io_init(&rev, readcb, 0, EV_READ);
 
@@ -269,6 +269,12 @@ int Client::connect() {
   return 0;
 }
 
+void Client::timeout() {
+  process_timedout_streams();
+
+  disconnect();
+}
+
 void Client::fail() {
   process_abandoned_streams();
 
@@ -304,6 +310,17 @@ void Client::submit_request() {
   auto req_stat = &worker->stats.req_stats[worker->stats.req_started++];
   session->submit_request(req_stat);
   ++req_started;
+}
+
+void Client::process_timedout_streams() {
+  auto req_timed_out = req_todo - req_done;
+
+  worker->stats.req_failed += req_timed_out;
+  worker->stats.req_error += req_timed_out;
+  worker->stats.req_done += req_timed_out;
+  worker->stats.req_timedout += req_timed_out;
+
+  req_done = req_todo;
 }
 
 void Client::process_abandoned_streams() {
@@ -1670,6 +1687,7 @@ int main(int argc, char **argv) {
     stats.req_todo += s.req_todo;
     stats.req_started += s.req_started;
     stats.req_done += s.req_done;
+    stats.req_timedout += s.req_timedout;
     stats.req_success += s.req_success;
     stats.req_status_success += s.req_status_success;
     stats.req_failed += s.req_failed;
@@ -1734,6 +1752,9 @@ time for request: )" << std::setw(10) << util::format_duration(ts.request.min)
             << util::format_duration(ts.ttfb.sd) << std::setw(9)
             << util::dtos(ts.ttfb.within_sd) << "%" << std::endl;
 
+if (config.padding > 0) {
+  std::cout << R"(requests timed out:)" << stats.req_timedout << std::endl;
+}
   SSL_CTX_free(ssl_ctx);
 
   return 0;

@@ -147,6 +147,8 @@ struct Stats {
   // The number of requests failed due to network errors. This is
   // subset of req_failed.
   size_t req_error;
+  // The number of requests that failed due to timeout.
+  size_t req_timedout;
   // The number of bytes received on the "wire". If SSL/TLS is used,
   // this is the number of decrypted bytes the application received.
   int64_t bytes_total;
@@ -227,7 +229,9 @@ struct Client {
   int connect();
   void disconnect();
   void fail();
+  void timeout();
   void submit_request();
+  void process_timedout_streams();
   void process_abandoned_streams();
   void report_progress();
   void report_tls_info();
