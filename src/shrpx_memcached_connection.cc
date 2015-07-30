@@ -27,6 +27,8 @@
 #include <limits.h>
 #include <sys/uio.h>
 
+#include <cerrno>
+
 #include "shrpx_memcached_request.h"
 #include "shrpx_memcached_result.h"
 #include "shrpx_config.h"

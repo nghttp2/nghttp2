@@ -84,5 +84,5 @@ time_t nghttp2_timegm_without_yday(struct tm *tm) {
   }
 #endif /* SIZEOF_TIME_T == 4 */
 
-  return t;
+  return (time_t)t;
 }
