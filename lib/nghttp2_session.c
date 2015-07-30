@@ -4027,12 +4027,6 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
     switch (entry->settings_id) {
     case NGHTTP2_SETTINGS_HEADER_TABLE_SIZE:
 
-      if (entry->value > NGHTTP2_MAX_HEADER_TABLE_SIZE) {
-        return session_handle_invalid_connection(
-            session, frame, NGHTTP2_ERR_HEADER_COMP,
-            "SETTINGS: too large SETTINGS_HEADER_TABLE_SIZE");
-      }
-
       rv = nghttp2_hd_deflate_change_table_size(&session->hd_deflater,
                                                 entry->value);
       if (rv != 0) {

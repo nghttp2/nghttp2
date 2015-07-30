@@ -537,10 +537,11 @@ void test_nghttp2_iv_check(void) {
   iv[1].value = 0;
   CU_ASSERT(nghttp2_iv_check(iv, 2));
 
-  /* Too large SETTINGS_HEADER_TABLE_SIZE */
+  /* Full size SETTINGS_HEADER_TABLE_SIZE (UINT32_MAX) must be
+     accepted */
   iv[1].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
   iv[1].value = UINT32_MAX;
-  CU_ASSERT(!nghttp2_iv_check(iv, 2));
+  CU_ASSERT(nghttp2_iv_check(iv, 2));
 
   /* Too small SETTINGS_MAX_FRAME_SIZE */
   iv[0].settings_id = NGHTTP2_SETTINGS_MAX_FRAME_SIZE;
