@@ -174,24 +174,8 @@ void second_timeout_w_cb(EV_P_ ev_timer *w, int revents) {
   }
   if (worker->nconns_made >= worker->nclients) {
     ev_timer_stop(worker->loop, w);
-
-    if(worker->config->padding > 0) {
-      ev_timer_start(worker->loop, &worker->end_watcher);
-    }
   }
   ++worker->current_second;
-}
-} // namespace
-
-namespace {
-void end_timeout_cb(EV_P_ ev_timer *w, int revents) {
-  auto worker = static_cast<Worker *>(w->data);
-
-  for (auto &client : worker->clients) {
-    if (util::check_socket_connected(client->fd)) {
-      client->fail();
-    }
-  }
 }
 } // namespace
 
@@ -753,8 +737,6 @@ Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
   auto nreqs_per_client = req_todo / nclients;
   auto nreqs_rem = req_todo % nclients;
 
-  end_watcher.data = this;
-  ev_timer_init(&end_watcher, end_timeout_cb, config->padding, 0.);
   if (config->is_rate_mode()) {
     // create timer that will go off every second
     timeout_watcher.data = this;

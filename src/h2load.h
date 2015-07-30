@@ -184,7 +184,6 @@ struct Worker {
   ssize_t nconns_made;
   ssize_t nclients;
   ev_timer timeout_watcher;
-  ev_timer end_watcher;
   ssize_t rate;
 
   Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t nreq_todo, size_t nclients, ssize_t rate,
