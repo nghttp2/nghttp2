@@ -26,6 +26,9 @@ dnl http://www.gnu.org/software/automake/manual/html_node/Flag-Variables-Orderin
 
 AC_PREREQ(2.61)
 AC_INIT([nghttp2], [1.1.3-DEV], [t-tujikawa@users.sourceforge.net])
+AC_CONFIG_AUX_DIR([.])
+AC_CONFIG_MACRO_DIR([m4])
+AC_CONFIG_HEADERS([config.h])
 AC_USE_SYSTEM_EXTENSIONS
 
 LT_PREREQ([2.2.6])
@@ -41,9 +44,6 @@ AM_INIT_AUTOMAKE([subdir-objects])
 # AM_EXTRA_RECURSIVE_TARGETS([it])
 
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
-
-AC_CONFIG_MACRO_DIR([m4])
-AC_CONFIG_HEADERS([config.h])
 
 dnl See versioning rule:
 dnl  http://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
