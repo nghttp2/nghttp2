@@ -7665,14 +7665,11 @@ static int submit_response_on_stream_close(nghttp2_session *session,
 void test_nghttp2_session_detach_item_from_closed_stream(void) {
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;
-  nghttp2_data_provider data_prd;
 
   memset(&callbacks, 0, sizeof(callbacks));
 
   callbacks.send_callback = null_send_callback;
   callbacks.on_stream_close_callback = submit_response_on_stream_close;
-
-  data_prd.read_callback = temporal_failure_data_source_read_callback;
 
   nghttp2_session_server_new(&session, &callbacks, NULL);
 
