@@ -270,6 +270,8 @@ int main(int argc _U_, char *argv[] _U_) {
                    test_nghttp2_session_on_begin_headers_temporal_failure) ||
       !CU_add_test(pSuite, "session_defer_then_close",
                    test_nghttp2_session_defer_then_close) ||
+      !CU_add_test(pSuite, "session_detach_item_from_closed_stream",
+                   test_nghttp2_session_detach_item_from_closed_stream) ||
       !CU_add_test(pSuite, "http_mandatory_headers",
                    test_nghttp2_http_mandatory_headers) ||
       !CU_add_test(pSuite, "http_content_length",
