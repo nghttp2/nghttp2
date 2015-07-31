@@ -76,7 +76,7 @@ Config::Config()
       max_concurrent_streams(-1), window_bits(30), connection_window_bits(30),
       rate(0), nconns(0), conn_active_timeout(0), conn_inactivity_timeout(0),
       no_tls_proto(PROTO_HTTP2), data_fd(-1), port(0), default_port(0),
-      verbose(false) {}
+      verbose(false), timing_script(false) {}
 
 Config::~Config() {
   freeaddrinfo(addrs);
@@ -87,7 +87,7 @@ Config::~Config() {
 }
 
 bool Config::is_rate_mode() const { return (this->rate != 0); }
-
+bool Config::has_base_uri() const { return (!this->base_uri.empty()); }
 Config config;
 
 namespace {
@@ -196,6 +196,51 @@ void conn_timeout_cb(EV_P_ ev_timer *w, int revents) {
     client->timeout();
   }
 }
+}//namespace
+
+namespace {
+bool check_stop_client_request_timeout(Client *client, ev_timer *w) {
+  auto nreq = client->req_todo - client->req_started;
+
+  if (nreq == 0 ||
+      client->streams.size() >= (size_t)config.max_concurrent_streams) {
+    // no more requests to make, stop timer
+    ev_timer_stop(client->worker->loop, w);
+    return true;
+  }
+
+  return false;
+}
+} // namespace
+
+namespace {
+void client_request_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
+  auto client = static_cast<Client *>(w->data);
+
+  client->submit_request();
+  client->signal_write();
+
+  if (check_stop_client_request_timeout(client, w)) {
+    return;
+  }
+
+  ev_tstamp duration =
+      config.timings[client->reqidx] - config.timings[client->reqidx - 1];
+
+  while (duration < 1e-9) {
+    client->submit_request();
+    client->signal_write();
+    if (check_stop_client_request_timeout(client, w)) {
+      return;
+    }
+
+    duration =
+        config.timings[client->reqidx] - config.timings[client->reqidx - 1];
+  }
+
+  client->request_timeout_watcher.repeat = duration;
+  ev_timer_again(client->worker->loop, &client->request_timeout_watcher);
+}
 } // namespace
 
 Client::Client(Worker *worker, size_t req_todo)
@@ -215,9 +260,15 @@ Client::Client(Worker *worker, size_t req_todo)
   ev_timer_init(&conn_active_watcher, conn_timeout_cb,
                 worker->config->conn_active_timeout, 0.);
   conn_active_watcher.data = this;
+
+  ev_timer_init(&request_timeout_watcher, client_request_timeout_cb, 0., 0.);
+  request_timeout_watcher.data = this;
 }
 
-Client::~Client() { disconnect(); }
+Client::~Client() {
+  ev_timer_stop(worker->loop, &request_timeout_watcher);
+  disconnect();
+}
 
 int Client::do_read() { return readfn(*this); }
 int Client::do_write() { return writefn(*this); }
@@ -473,9 +524,11 @@ void Client::on_stream_close(int32_t stream_id, bool success,
     return;
   }
 
-  if (req_started < req_todo) {
-    submit_request();
-    return;
+  if (!config.timing_script) {
+    if (req_started < req_todo) {
+      submit_request();
+      return;
+    }
   }
 }
 
@@ -547,13 +600,25 @@ int Client::connection_made() {
 
   record_connect_time(&worker->stats);
 
-  auto nreq =
-      std::min(req_todo - req_started, (size_t)config.max_concurrent_streams);
+  if (!config.timing_script) {
+    auto nreq =
+        std::min(req_todo - req_started, (size_t)config.max_concurrent_streams);
 
-  for (; nreq > 0; --nreq) {
-    submit_request();
+    for (; nreq > 0; --nreq) {
+      submit_request();
+    }
+  } else {
+
+    ev_tstamp duration = config.timings[reqidx];
+
+    while (duration < 1e-9) {
+      submit_request();
+      duration = config.timings[reqidx];
+    }
+
+    request_timeout_watcher.repeat = duration;
+    ev_timer_again(worker->loop, &request_timeout_watcher);
   }
-
   signal_write();
 
   return 0;
@@ -1004,6 +1069,26 @@ int client_select_next_proto_cb(SSL *ssl, unsigned char **out,
 } // namespace
 
 namespace {
+bool parse_base_uri(std::string base_uri) {
+  http_parser_url u{};
+  if (http_parser_parse_url(base_uri.c_str(), base_uri.size(), 0, &u) != 0 ||
+      !util::has_uri_field(u, UF_SCHEMA) || !util::has_uri_field(u, UF_HOST)) {
+    return false;
+  }
+
+  config.scheme = util::get_uri_field(base_uri.c_str(), u, UF_SCHEMA);
+  config.host = util::get_uri_field(base_uri.c_str(), u, UF_HOST);
+  config.default_port = util::get_default_port(base_uri.c_str(), u);
+  if (util::has_uri_field(u, UF_PORT)) {
+    config.port = u.port;
+  } else {
+    config.port = config.default_port;
+  }
+
+  return true;
+}
+} // namespace
+namespace {
 // Use std::vector<std::string>::iterator explicitly, without that,
 // http_parser_url u{} fails with clang-3.4.
 std::vector<std::string> parse_uris(std::vector<std::string>::iterator first,
@@ -1015,29 +1100,15 @@ std::vector<std::string> parse_uris(std::vector<std::string>::iterator first,
     exit(EXIT_FAILURE);
   }
 
-  auto uri = (*first).c_str();
+  if (!config.has_base_uri()) {
 
-  // First URI is treated specially.  We use scheme, host and port of
-  // this URI and ignore those in the remaining URIs if present.
-  http_parser_url u{};
-  if (http_parser_parse_url(uri, (*first).size(), 0, &u) != 0 ||
-      !util::has_uri_field(u, UF_SCHEMA) || !util::has_uri_field(u, UF_HOST)) {
-    std::cerr << "invalid URI: " << uri << std::endl;
-    exit(EXIT_FAILURE);
+    if (!parse_base_uri(*first)) {
+      std::cerr << "invalid URI: " << *first << std::endl;
+      exit(EXIT_FAILURE);
+    }
+
+    config.base_uri = *first;
   }
-
-  ++first;
-
-  config.scheme = util::get_uri_field(uri, u, UF_SCHEMA);
-  config.host = util::get_uri_field(uri, u, UF_HOST);
-  config.default_port = util::get_default_port(uri, u);
-  if (util::has_uri_field(u, UF_PORT)) {
-    config.port = u.port;
-  } else {
-    config.port = config.default_port;
-  }
-
-  reqlines.push_back(get_reqline(uri, u));
 
   for (; first != last; ++first) {
     http_parser_url u{};
@@ -1069,6 +1140,43 @@ std::vector<std::string> read_uri_from_file(std::istream &infile) {
 } // namespace
 
 namespace {
+void read_script_from_file(std::istream &infile,
+                           std::vector<ev_tstamp> &timings,
+                           std::vector<std::string> &uris) {
+  std::string script_line;
+  int line_count = 0;
+  while (std::getline(infile, script_line)) {
+    line_count++;
+    if (script_line.empty()) {
+      std::cerr << "Empty line detected at line " << line_count
+                << ". Ignoring and continuing." << std::endl;
+      continue;
+    }
+
+    std::size_t pos = script_line.find("\t");
+    if (pos == std::string::npos) {
+      std::cerr << "Invalid line format detected, no tab character at line "
+                << line_count << ". \n\t" << script_line << std::endl;
+      exit(EXIT_FAILURE);
+    }
+
+    const char *start = script_line.c_str();
+    char *end;
+    auto v = std::strtod(start, &end);
+
+    if (end == start || errno != 0) {
+      std::cerr << "Time value error at line " << line_count << ". \n\t"
+                << script_line.substr(0, pos) << std::endl;
+      exit(EXIT_FAILURE);
+    }
+
+    timings.push_back(v / 1000.0);
+    uris.push_back(script_line.substr(pos + 1, script_line.size()));
+  }
+}
+} // namespace
+
+namespace {
 void print_version(std::ostream &out) {
   out << "h2load nghttp2/" NGHTTP2_VERSION << std::endl;
 }
@@ -1093,7 +1201,8 @@ void print_help(std::ostream &out) {
               are used, then  first URI is used and then  2nd URI, and
               so  on.  The  scheme, host  and port  in the  subsequent
               URIs, if present,  are ignored.  Those in  the first URI
-              are used solely.
+              are used solely. Definition of a base URI overrides all 
+              scheme, host or port values.
 Options:
   -n, --requests=<N>
               Number of requests.
@@ -1112,7 +1221,8 @@ Options:
               are used, then  first URI is used and then  2nd URI, and
               so  on.  The  scheme, host  and port  in the  subsequent
               URIs, if present,  are ignored.  Those in  the first URI
-              are used solely.
+              are used solely. Definition of a base URI overrides all 
+              scheme, host or port values.
   -m, --max-concurrent-streams=(auto|<N>)
               Max concurrent streams to  issue per session.  If "auto"
               is given, the number of given URIs is used.
@@ -1181,6 +1291,29 @@ Options:
               wait.  When  no timeout value  is set (either  active or
               inactive),   h2load   will   keep  a   connection   open
               indefinitely, waiting for a response.
+=======
+  --timing-script-file=<PATH>
+              Path of a file containing one  or more lines separated by
+              EOLs. Each script line  is composed of  two tab-separated
+              fields. The first field  represents  the time offset from
+              the  start of  execution, expressed  as milliseconds with
+              microsecond  resolution.  The second field represents the
+              URI.   This   option  will   disable  URIs  getting  from
+              command-line.  If '-'  is given as <PATH>,  script  lines
+              will be read from stdin.  Script lines are used  in order
+              for each  client.  If  -n is  given, it must be less than
+              or equal to the number of script lines, larger values are
+              clamped  to  the   number  of  script  lines.  If  -n  is
+              not given,  the number of requests  will  default to  the
+              number of script lines. The scheme, host and port defined
+              in the  first URI  are used  solely.  Values contained in
+              other URIs, if  present, are  ignored.  Definition  of  a
+              base  URI  overrides  all  scheme, host  or port  values.
+  -B, --base-uri=<URI>
+              Specify URI from which the scheme, host and port will be 
+              used for all requests. The base URI overrides all values 
+              defined either at the command line or inside input files.
+>>>>>>> Add Timing-script and base URI support
   -v, --verbose
               Output debug information.
   --version   Display version information and exit.
@@ -1220,9 +1353,11 @@ int main(int argc, char **argv) {
         {"num-conns", required_argument, nullptr, 'C'},
         {"connection-active-timeout", required_argument, nullptr, 'T'},
         {"connection-inactivity-timeout", required_argument, nullptr, 'N'},
+        {"timing-script-file", required_argument, &flag, 3},
+        {"base-uri", required_argument, nullptr, 'B'},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
-    auto c = getopt_long(argc, argv, "hvW:c:d:m:n:p:t:w:H:i:r:C:T:N:",
+    auto c = getopt_long(argc, argv, "hvW:c:d:m:n:p:t:w:H:i:r:C:T:N:B:",
                          long_options, &option_index);
     if (c == -1) {
       break;
@@ -1298,10 +1433,9 @@ int main(int argc, char **argv) {
       util::inp_strlower(config.custom_headers.back().name);
       break;
     }
-    case 'i': {
-      config.ifile = std::string(optarg);
+    case 'i':
+      config.ifile = optarg;
       break;
-    }
     case 'p':
       if (util::strieq(NGHTTP2_CLEARTEXT_PROTO_VERSION_ID, optarg)) {
         config.no_tls_proto = Config::PROTO_HTTP2;
@@ -1350,6 +1484,13 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
       }
       break;
+    case 'B':
+      if (!parse_base_uri(optarg)) {
+        std::cerr << "invalid base URI: " << optarg << std::endl;
+        exit(EXIT_FAILURE);
+      }
+      config.base_uri = optarg;
+      break;
     case 'v':
       config.verbose = true;
       break;
@@ -1368,6 +1509,10 @@ int main(int argc, char **argv) {
       case 2:
         // ciphers option
         config.ciphers = optarg;
+        break;
+      case 3:
+        config.ifile = optarg;
+        config.timing_script = true;
         break;
       }
       break;
@@ -1515,7 +1660,11 @@ int main(int argc, char **argv) {
   } else {
     std::vector<std::string> uris;
     if (config.ifile == "-") {
-      uris = read_uri_from_file(std::cin);
+      if (!config.timing_script) {
+        uris = read_uri_from_file(std::cin);
+      } else {
+        read_script_from_file(std::cin, config.timings, uris);
+      }
     } else {
       std::ifstream infile(config.ifile);
       if (!infile) {
@@ -1523,7 +1672,23 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
       }
 
-      uris = read_uri_from_file(infile);
+      if (!config.timing_script) {
+        uris = read_uri_from_file(infile);
+      } else {
+        read_script_from_file(infile, config.timings, uris);
+        if (nreqs_set_manually) {
+          if (config.nreqs > uris.size()) {
+            std::cerr
+                << "-n: the number of requests must be less than or equal "
+                   "to the number of timing script entries. Setting number "
+                   "of requests to " << uris.size() << std::endl;
+
+            config.nreqs = uris.size();
+          }
+        } else {
+          config.nreqs = uris.size();
+        }
+      }
     }
 
     reqlines = parse_uris(std::begin(uris), std::end(uris));
@@ -1593,6 +1758,7 @@ int main(int argc, char **argv) {
     shared_nva.emplace_back(":authority", config.host);
   }
   shared_nva.emplace_back(":method", config.data_fd == -1 ? "GET" : "POST");
+  shared_nva.emplace_back("user-agent", "h2load nghttp2/" NGHTTP2_VERSION);
 
   // list overridalbe headers
   auto override_hdrs =

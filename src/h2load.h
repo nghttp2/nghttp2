@@ -62,6 +62,7 @@ struct Worker;
 struct Config {
   std::vector<std::vector<nghttp2_nv>> nva;
   std::vector<std::vector<const char *>> nv;
+  std::vector<ev_tstamp> timings;
   nghttp2::Headers custom_headers;
   std::string scheme;
   std::string host;
@@ -91,11 +92,14 @@ struct Config {
   uint16_t port;
   uint16_t default_port;
   bool verbose;
+  bool timing_script;
+  std::string base_uri;
 
   Config();
   ~Config();
 
   bool is_rate_mode() const;
+  bool has_base_uri() const;
 };
 
 struct RequestStat {
@@ -208,6 +212,7 @@ struct Client {
   std::function<int(Client &)> readfn, writefn;
   Worker *worker;
   SSL *ssl;
+  ev_timer request_timeout_watcher;
   addrinfo *next_addr;
   size_t reqidx;
   ClientState state;
