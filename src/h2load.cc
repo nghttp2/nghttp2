@@ -183,6 +183,7 @@ namespace {
 // Called every second when rate mode is being used
 void end_timeout_cb(EV_P_ ev_timer *w, int revents) {
   auto client = static_cast<Client *>(w->data);
+  ev_timer_stop(client->worker->loop, &client->end_watcher);
   std::cout << "in end_timeout_cb" << std::endl;
 
   if (util::check_socket_connected(client->fd)) {
@@ -205,7 +206,9 @@ Client::Client(Worker *worker, size_t req_todo)
   if (worker->config->padding > 0) {
     std::cout << "timer initialized with padding: " << worker->config->padding << std::endl;
     end_watcher.data = this;
-    ev_timer_init(&end_watcher, end_timeout_cb, worker->config->padding, 0);
+    //ev_timer_init(&end_watcher, end_timeout_cb, worker->config->padding, 0);
+    ev_init(&end_watcher, end_timeout_cb);
+    end_watcher.repeat = worker->config->padding;
   }
 }
 
@@ -219,7 +222,8 @@ int Client::connect() {
   
   if (worker->config->padding > 0) {
     std::cout << "timer started" << std::endl;
-    ev_timer_start(worker->loop, &end_watcher);
+    //ev_timer_start(worker->loop, &end_watcher);
+    ev_timer_again(worker->loop, &end_watcher);
   }
 
   while (next_addr) {
@@ -275,6 +279,12 @@ void Client::timeout() {
   disconnect();
 }
 
+void Client::restart_timeout() {
+  if (worker->config->padding > 0) {
+    ev_timer_again(worker->loop, &end_watcher);
+  }
+}
+
 void Client::fail() {
   process_abandoned_streams();
 
@@ -307,12 +317,18 @@ void Client::disconnect() {
 }
 
 void Client::submit_request() {
+  restart_timeout();
   auto req_stat = &worker->stats.req_stats[worker->stats.req_started++];
   session->submit_request(req_stat);
   ++req_started;
 }
 
 void Client::process_timedout_streams() {
+  for (auto req_stat : worker->stats.req_stats) {
+    if (!req_stat.completed) {
+      req_stat.stream_close_time = std::chrono::steady_clock::now();
+    }
+  }
   auto req_timed_out = req_todo - req_done;
 
   worker->stats.req_failed += req_timed_out;
@@ -382,6 +398,7 @@ void print_server_tmp_key(SSL *ssl) {
 } // namespace
 
 void Client::report_tls_info() {
+  restart_timeout();
   if (worker->id == 0 && !worker->tls_info_report_done) {
     worker->tls_info_report_done = true;
     auto cipher = SSL_get_current_cipher(ssl);
@@ -397,6 +414,7 @@ void Client::on_request(int32_t stream_id) { streams[stream_id] = Stream(); }
 
 void Client::on_header(int32_t stream_id, const uint8_t *name, size_t namelen,
                        const uint8_t *value, size_t valuelen) {
+  restart_timeout();
   auto itr = streams.find(stream_id);
   if (itr == std::end(streams)) {
     return;
@@ -461,6 +479,7 @@ void Client::on_stream_close(int32_t stream_id, bool success,
 }
 
 int Client::connection_made() {
+  restart_timeout();
   if (ssl) {
     report_tls_info();
 
@@ -541,6 +560,7 @@ int Client::connection_made() {
 }
 
 int Client::on_read(const uint8_t *data, size_t len) {
+  restart_timeout();
   auto rv = session->on_read(data, len);
   if (rv != 0) {
     return -1;
@@ -551,6 +571,7 @@ int Client::on_read(const uint8_t *data, size_t len) {
 }
 
 int Client::on_write() {
+  restart_timeout();
   if (session->on_write() != 0) {
     return -1;
   }
@@ -558,6 +579,7 @@ int Client::on_write() {
 }
 
 int Client::read_clear() {
+  restart_timeout();
   uint8_t buf[8_k];
 
   for (;;) {
@@ -589,6 +611,7 @@ int Client::read_clear() {
 }
 
 int Client::write_clear() {
+  restart_timeout();
   for (;;) {
     if (wb.rleft() > 0) {
       ssize_t nwrite;
@@ -619,6 +642,7 @@ int Client::write_clear() {
 }
 
 int Client::connected() {
+  restart_timeout();
   if (!util::check_socket_connected(fd)) {
     return ERR_CONNECT_FAIL;
   }
@@ -643,6 +667,7 @@ int Client::connected() {
 }
 
 int Client::tls_handshake() {
+  restart_timeout();
   ERR_clear_error();
 
   auto rv = SSL_do_handshake(ssl);
@@ -678,6 +703,7 @@ int Client::tls_handshake() {
 }
 
 int Client::read_tls() {
+  restart_timeout();
   uint8_t buf[8_k];
 
   ERR_clear_error();

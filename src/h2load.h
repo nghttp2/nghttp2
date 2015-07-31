@@ -230,6 +230,7 @@ struct Client {
   void disconnect();
   void fail();
   void timeout();
+  void restart_timeout();
   void submit_request();
   void process_timedout_streams();
   void process_abandoned_streams();
