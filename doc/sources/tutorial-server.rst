@@ -249,7 +249,7 @@ always consists of a SETTINGS frame.
     }
 
 In the example SETTINGS frame we've set
-SETTINGS_MAX_CONCURRENT_STREAMS to 100. ``nghttp2_submit_settings()``
+SETTINGS_MAX_CONCURRENT_STREAMS to 100. `nghttp2_submit_settings()`
 is used to queue the frame for transmission, but note it only queues
 the frame for transmission, and doesn't actually send it. All
 functions in the ``nghttp2_submit_*()`` family have this property. To
@@ -485,7 +485,7 @@ fully received::
 
 First we retrieve the ``http2_stream_data`` object associated with the
 stream in ``on_begin_headers_callback()`` using
-``nghttp2_session_get_stream_user_data()``. If the requested path
+`nghttp2_session_get_stream_user_data()`. If the requested path
 cannot be served for some reason (e.g. file is not found), we send a
 404 response using ``error_reply()``.  Otherwise, we open
 the requested file and send its content. We send the header field
