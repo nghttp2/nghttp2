@@ -81,8 +81,10 @@ struct Config {
   ssize_t rate;
   // number of connections made
   ssize_t nconns;
-  // amount of time to wait after last connection is made.
+  // amount of time to wait for activity on a given connection 
   ssize_t conn_active_timeout;
+  // amount of time to wait after the last request is made on a connection
+  ssize_t conn_inactivity_timeout;
   enum { PROTO_HTTP2, PROTO_SPDY2, PROTO_SPDY3, PROTO_SPDY3_1 } no_tls_proto;
   // file descriptor for upload data
   int data_fd;
@@ -221,6 +223,7 @@ struct Client {
   int fd;
   Buffer<64_k> wb;
   ev_timer conn_active_watcher;
+  ev_timer conn_inactivity_watcher;
 
   enum { ERR_CONNECT_FAIL = -100 };
 

@@ -74,7 +74,7 @@ namespace h2load {
 Config::Config()
     : data_length(-1), addrs(nullptr), nreqs(1), nclients(1), nthreads(1),
       max_concurrent_streams(-1), window_bits(30), connection_window_bits(30),
-      rate(0), nconns(0), conn_active_timeout(0), no_tls_proto(PROTO_HTTP2), data_fd(-1), port(0),
+      rate(0), nconns(0), conn_active_timeout(0), conn_inactivity_timeout(0), no_tls_proto(PROTO_HTTP2), data_fd(-1), port(0),
       default_port(0), verbose(false) {}
 
 Config::~Config() {
@@ -181,10 +181,10 @@ void second_timeout_w_cb(EV_P_ ev_timer *w, int revents) {
 
 namespace {
 // Called every second when rate mode is being used
-void conn_active_timeout_cb(EV_P_ ev_timer *w, int revents) {
+void conn_inactivity_timeout_cb(EV_P_ ev_timer *w, int revents) {
   auto client = static_cast<Client *>(w->data);
-  ev_timer_stop(client->worker->loop, &client->conn_active_watcher);
-  std::cout << "in conn_active_timeout_cb" << std::endl;
+  ev_timer_stop(client->worker->loop, &client->conn_inactivity_watcher);
+  std::cout << "in conn_inactivity_timeout_cb" << std::endl;
 
   if (util::check_socket_connected(client->fd)) {
     std::cout << "failing client" << std::endl;
@@ -203,12 +203,12 @@ Client::Client(Worker *worker, size_t req_todo)
   wev.data = this;
   rev.data = this;
 
-  if (worker->config->conn_active_timeout > 0) {
-    std::cout << "timer initialized with conn_active_timeout: " << worker->config->conn_active_timeout << std::endl;
-    conn_active_watcher.data = this;
-    //ev_timer_init(&conn_active_watcher, conn_active_timeout_cb, worker->config->conn_active_timeout, 0);
-    ev_init(&conn_active_watcher, conn_active_timeout_cb);
-    conn_active_watcher.repeat = worker->config->conn_active_timeout;
+  if (worker->config->conn_inactivity_timeout > 0) {
+    std::cout << "timer initialized with conn_inactivity_timeout: " << worker->config->conn_inactivity_timeout << std::endl;
+    conn_inactivity_watcher.data = this;
+    //ev_timer_init(&conn_inactivity_watcher, conn_inactivity_timeout_cb, worker->config->conn_inactivity_timeout, 0);
+    ev_init(&conn_inactivity_watcher, conn_inactivity_timeout_cb);
+    conn_inactivity_watcher.repeat = worker->config->conn_inactivity_timeout;
   }
 }
 
@@ -220,10 +220,10 @@ int Client::do_write() { return writefn(*this); }
 int Client::connect() {
   record_start_time(&worker->stats);
   
-  if (worker->config->conn_active_timeout > 0) {
+  if (worker->config->conn_inactivity_timeout > 0) {
     std::cout << "timer started" << std::endl;
-    //ev_timer_start(worker->loop, &conn_active_watcher);
-    ev_timer_again(worker->loop, &conn_active_watcher);
+    //ev_timer_start(worker->loop, &conn_inactivity_watcher);
+    ev_timer_again(worker->loop, &conn_inactivity_watcher);
   }
 
   while (next_addr) {
@@ -280,8 +280,8 @@ void Client::timeout() {
 }
 
 void Client::restart_timeout() {
-  if (worker->config->conn_active_timeout > 0) {
-    ev_timer_again(worker->loop, &conn_active_watcher);
+  if (worker->config->conn_inactivity_timeout > 0) {
+    ev_timer_again(worker->loop, &conn_inactivity_watcher);
   }
 }
 
@@ -292,9 +292,9 @@ void Client::fail() {
 }
 
 void Client::disconnect() {
-  if (worker->config->conn_active_timeout > 0 && ev_is_active(&conn_active_watcher)) {
+  if (worker->config->conn_inactivity_timeout > 0 && ev_is_active(&conn_inactivity_watcher)) {
     std::cout << "timer stopped" << std::endl;
-    ev_timer_stop(worker->loop, &conn_active_watcher);
+    ev_timer_stop(worker->loop, &conn_inactivity_watcher);
   }
 
   streams.clear();
@@ -1206,9 +1206,10 @@ int main(int argc, char **argv) {
         {"rate", required_argument, nullptr, 'r'},
         {"num-conns", required_argument, nullptr, 'C'},
         {"connection_active_timeout", required_argument, nullptr, 'T'},
+        {"connection_inactivity_timeout", required_argument, nullptr, 'N'},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
-    auto c = getopt_long(argc, argv, "hvW:c:d:m:n:p:t:w:H:i:r:C:T:", long_options,
+    auto c = getopt_long(argc, argv, "hvW:c:d:m:n:p:t:w:H:i:r:C:T:N:", long_options,
                          &option_index);
     if (c == -1) {
       break;
@@ -1323,6 +1324,14 @@ int main(int argc, char **argv) {
       config.conn_active_timeout = strtoul(optarg, nullptr, 10);
       if (config.conn_active_timeout <= 0) {
         std::cerr << "-P: the conn_active_timeout wait time "
+                  << "must be positive." << std::endl;
+        exit(EXIT_FAILURE);
+      }
+      break;
+    case 'N':
+      config.conn_inactivity_timeout = strtoul(optarg, nullptr, 10);
+      if (config.conn_inactivity_timeout <= 0) {
+        std::cerr << "-N: the conn_inactivity_timeout wait time "
                   << "must be positive." << std::endl;
         exit(EXIT_FAILURE);
       }
@@ -1778,7 +1787,7 @@ time for request: )" << std::setw(10) << util::format_duration(ts.request.min)
             << util::format_duration(ts.ttfb.sd) << std::setw(9)
             << util::dtos(ts.ttfb.within_sd) << "%" << std::endl;
 
-if (config.conn_active_timeout > 0) {
+if (config.conn_inactivity_timeout > 0) {
   std::cout << R"(requests timed out:)" << stats.req_timedout << std::endl;
 }
   SSL_CTX_free(ssl_ctx);
