@@ -82,7 +82,7 @@ struct Config {
   // number of connections made
   ssize_t nconns;
   // amount of time to wait after last connection is made.
-  ssize_t padding;
+  ssize_t conn_active_timeout;
   enum { PROTO_HTTP2, PROTO_SPDY2, PROTO_SPDY3, PROTO_SPDY3_1 } no_tls_proto;
   // file descriptor for upload data
   int data_fd;
@@ -220,7 +220,7 @@ struct Client {
   size_t req_done;
   int fd;
   Buffer<64_k> wb;
-  ev_timer end_watcher;
+  ev_timer conn_active_watcher;
 
   enum { ERR_CONNECT_FAIL = -100 };
 
