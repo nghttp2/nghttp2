@@ -186,6 +186,11 @@ void conn_inactivity_timeout_cb(EV_P_ ev_timer *w, int revents) {
   ev_timer_stop(client->worker->loop, &client->conn_inactivity_watcher);
   std::cout << "in conn_inactivity_timeout_cb" << std::endl;
 
+  if (client->worker->config->conn_active_timeout > 0 && ev_is_active(&client->conn_active_watcher)) {
+    std::cout << "active timer stopped by inactivity timer" << std::endl;
+    ev_timer_stop(client->worker->loop, &client->conn_active_watcher);
+  }
+
   if (util::check_socket_connected(client->fd)) {
     //std::cout << "failing client" << std::endl;
     client->timeout();
