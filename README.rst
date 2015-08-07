@@ -108,7 +108,7 @@ If you are using Ubuntu 14.04 LTS (trusty), run the following to install the nee
 
     sudo apt-get install make binutils autoconf  automake autotools-dev libtool pkg-config \
       zlib1g-dev libcunit1-dev libssl-dev libxml2-dev libev-dev libevent-dev libjansson-dev \
-      libjemalloc-dev cython python3.4-dev
+      libjemalloc-dev cython python3.4-dev python-setuptools
 
 spdylay is not packaged in Ubuntu, so you need to build it yourself:
 http://tatsuhiro-t.github.io/spdylay/
