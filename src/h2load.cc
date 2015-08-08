@@ -1029,16 +1029,13 @@ void print_help(std::ostream &out) {
 Options:
   -n, --requests=<N>
               Number of requests.
-              Default: )"
-      << config.nreqs << R"(
+              Default: )" << config.nreqs << R"(
   -c, --clients=<N>
               Number of concurrent clients.
-              Default: )"
-      << config.nclients << R"(
+              Default: )" << config.nclients << R"(
   -t, --threads=<N>
               Number of native threads.
-              Default: )"
-      << config.nthreads << R"(
+              Default: )" << config.nthreads << R"(
   -i, --input-file=<PATH>
               Path of a file with multiple URIs are separated by EOLs.
               This option will disable URIs getting from command-line.
@@ -1055,15 +1052,13 @@ Options:
   -w, --window-bits=<N>
               Sets the stream level initial window size to (2**<N>)-1.
               For SPDY, 2**<N> is used instead.
-              Default: )"
-      << config.window_bits << R"(
+              Default: )" << config.window_bits << R"(
   -W, --connection-window-bits=<N>
               Sets  the  connection  level   initial  window  size  to
               (2**<N>)-1.  For SPDY, if <N>  is strictly less than 16,
               this option  is ignored.   Otherwise 2**<N> is  used for
               SPDY.
-              Default: )"
-      << config.connection_window_bits << R"(
+              Default: )" << config.connection_window_bits << R"(
   -H, --header=<HEADER>
               Add/Override a header to the requests.
   --ciphers=<SUITE>
@@ -1081,8 +1076,7 @@ Options:
               Available protocol: )";
 #endif // !HAVE_SPDYLAY
   out << NGHTTP2_CLEARTEXT_PROTO_VERSION_ID << R"(
-              Default: )"
-      << NGHTTP2_CLEARTEXT_PROTO_VERSION_ID << R"(
+              Default: )" << NGHTTP2_CLEARTEXT_PROTO_VERSION_ID << R"(
   -d, --data=<PATH>
               Post FILE to  server.  The request method  is changed to
               POST.
@@ -1107,8 +1101,7 @@ Options:
   -v, --verbose
               Output debug information.
   --version   Display version information and exit.
-  -h, --help  Display this help and exit.)"
-      << std::endl;
+  -h, --help  Display this help and exit.)" << std::endl;
 }
 } // namespace
 
