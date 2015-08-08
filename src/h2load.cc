@@ -187,12 +187,10 @@ void conn_inactivity_timeout_cb(EV_P_ ev_timer *w, int revents) {
   std::cout << "in conn_inactivity_timeout_cb" << std::endl;
 
   if (client->worker->config->conn_active_timeout > 0 && ev_is_active(&client->conn_active_watcher)) {
-    std::cout << "active timer stopped by inactivity timer" << std::endl;
     ev_timer_stop(client->worker->loop, &client->conn_active_watcher);
   }
 
   if (util::check_socket_connected(client->fd)) {
-    //std::cout << "failing client" << std::endl;
     client->timeout();
   }
 }
@@ -206,12 +204,10 @@ void conn_active_timeout_cb(EV_P_ ev_timer *w, int revents) {
   std::cout << "in conn_active_timeout_cb" << std::endl;
 
   if (client->worker->config->conn_inactivity_timeout > 0 && ev_is_active(&client->conn_inactivity_watcher)) {
-    std::cout << "inactivity timer stopped by active timer" << std::endl;
     ev_timer_stop(client->worker->loop, &client->conn_inactivity_watcher);
   }
 
   if (util::check_socket_connected(client->fd)) {
-    //std::cout << "failing client" << std::endl;
     client->timeout();
   }
 }
@@ -228,14 +224,11 @@ Client::Client(Worker *worker, size_t req_todo)
   rev.data = this;
 
   if (worker->config->conn_inactivity_timeout > 0) {
-    //std::cout << "timer initialized with conn_inactivity_timeout: " << worker->config->conn_inactivity_timeout << std::endl;
     conn_inactivity_watcher.data = this;
-    //ev_timer_init(&conn_inactivity_watcher, conn_inactivity_timeout_cb, worker->config->conn_inactivity_timeout, 0);
     ev_init(&conn_inactivity_watcher, conn_inactivity_timeout_cb);
     conn_inactivity_watcher.repeat = worker->config->conn_inactivity_timeout;
   }
   if (worker->config->conn_active_timeout > 0) {
-    //std::cout << "timer initialized with conn_active_timeout: " << worker->config->conn_active_timeout << std::endl;
     conn_active_watcher.data = this;
     ev_timer_init(&conn_active_watcher, conn_active_timeout_cb, worker->config->conn_active_timeout, 0);
   }
@@ -250,8 +243,6 @@ int Client::connect() {
   record_start_time(&worker->stats);
   
   if (worker->config->conn_inactivity_timeout > 0) {
-    //std::cout << "timer started" << std::endl;
-    //ev_timer_start(worker->loop, &conn_inactivity_watcher);
     ev_timer_again(worker->loop, &conn_inactivity_watcher);
   }
 
@@ -322,12 +313,10 @@ void Client::fail() {
 
 void Client::disconnect() {
   if (worker->config->conn_inactivity_timeout > 0 && ev_is_active(&conn_inactivity_watcher)) {
-    //std::cout << "inactivity timer stopped" << std::endl;
     ev_timer_stop(worker->loop, &conn_inactivity_watcher);
   }
 
   if (worker->config->conn_active_timeout > 0 && ev_is_active(&conn_active_watcher)) {
-    //std::cout << "active timer stopped" << std::endl;
     ev_timer_stop(worker->loop, &conn_active_watcher);
   }
 
