@@ -78,9 +78,9 @@ struct Config {
   size_t window_bits;
   size_t connection_window_bits;
   // rate at which connections should be made
-  ssize_t rate;
+  size_t rate;
   // number of connections made
-  ssize_t nconns;
+  size_t nconns;
   enum { PROTO_HTTP2, PROTO_SPDY2, PROTO_SPDY3, PROTO_SPDY3_1 } no_tls_proto;
   // file descriptor for upload data
   int data_fd;
@@ -91,7 +91,7 @@ struct Config {
   Config();
   ~Config();
 
-  bool is_rate_mode();
+  bool is_rate_mode() const;
 };
 
 struct RequestStat {
@@ -177,14 +177,13 @@ struct Worker {
   size_t progress_interval;
   uint32_t id;
   bool tls_info_report_done;
-  ssize_t current_second;
-  ssize_t nconns_made;
-  ssize_t nclients;
+  size_t nconns_made;
+  size_t nclients;
+  size_t rate;
   ev_timer timeout_watcher;
-  ssize_t rate;
 
   Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t nreq_todo, size_t nclients,
-         ssize_t rate, Config *config);
+         size_t rate, Config *config);
   ~Worker();
   Worker(Worker &&o) = default;
   void run();
