@@ -104,7 +104,7 @@ OPTIONS
 
 .. option:: -r, --rate=<N>
 
-    Specified  the  fixed  rate  at  which  connections  are
+    Specifies  the  fixed  rate  at  which  connections  are
     created.   The   rate  must   be  a   positive  integer,
     representing the  number of  connections to be  made per
     second.  When the rate is 0,  the program will run as it
@@ -116,13 +116,13 @@ OPTIONS
     Specifies  the total  number of  connections to  create.
     The  total  number of  connections  must  be a  positive
     integer.  On each connection, :option:`-m` requests are made.  The
-    test stops once as soon as the N connections have either
-    completed or failed.  When  the number of connections is
-    0, the program will run as it normally does, creating as
-    many connections  as it  needs in order  to make  the :option:`-n`
-    requests specified.   The default value for  this option
-    is 0.  The :option:`-n` option is not required if the :option:`\-C` option is
-    being used.
+    test  stops once  as soon  as the  <N> connections  have
+    either  completed   or  failed.   When  the   number  of
+    connections is  0, the program  will run as  it normally
+    does, creating as many connections  as it needs in order
+    to make  the :option:`-n`  requests specified.  The  default value
+    for this option is 0.  The  :option:`-n` option is not required if
+    the :option:`-C` option is being used.
 
 .. option:: -v, --verbose
 
