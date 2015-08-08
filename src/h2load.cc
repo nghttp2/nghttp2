@@ -1333,7 +1333,8 @@ int main(int argc, char **argv) {
     exit(EXIT_FAILURE);
   }
 
-  if (config.is_rate_mode() && config.nconns < (ssize_t)config.nthreads) {
+  if (config.is_rate_mode() && config.nconns != 0 &&
+      config.nconns < (ssize_t)config.nthreads) {
     std::cerr << "-C, -t: the total number of connections must be greater than "
                  "or equal "
               << "to the number of threads." << std::endl;
@@ -1568,7 +1569,7 @@ int main(int argc, char **argv) {
   auto nclients_extra_rem_per_thread = 0;
   // In rate mode, we want each Worker to create a total of
   // C/t connections.
-  if (config.is_rate_mode()) {
+  if (config.is_rate_mode() && config.nconns > seconds * config.rate) {
     nclients_extra = config.nconns - (seconds * config.rate);
     nclients_extra_per_thread = nclients_extra / (ssize_t)config.nthreads;
     nclients_extra_rem_per_thread =
