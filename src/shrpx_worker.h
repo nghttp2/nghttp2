@@ -49,6 +49,7 @@ namespace shrpx {
 
 class Http2Session;
 class ConnectBlocker;
+class MemcachedDispatcher;
 
 namespace ssl {
 class CertLookupTree;
@@ -121,6 +122,8 @@ public:
 
   DownstreamGroup *get_dgrp(size_t group);
 
+  MemcachedDispatcher *get_session_cache_memcached_dispatcher();
+
 private:
 #ifndef NOTHREADS
   std::future<void> fut_;
@@ -133,6 +136,7 @@ private:
   DownstreamConnectionPool dconn_pool_;
   WorkerStat worker_stat_;
   std::vector<DownstreamGroup> dgrps_;
+  std::unique_ptr<MemcachedDispatcher> session_cache_memcached_dispatcher_;
   struct ev_loop *loop_;
 
   // Following fields are shared across threads if

@@ -276,15 +276,15 @@ int Http2Session::initiate_connection() {
     }
 
     conn_.fd = util::create_nonblock_socket(
-        get_config()->downstream_http_proxy_addr.storage.ss_family);
+        get_config()->downstream_http_proxy_addr.su.storage.ss_family);
 
     if (conn_.fd == -1) {
       connect_blocker_->on_failure();
       return -1;
     }
 
-    rv = connect(conn_.fd, &get_config()->downstream_http_proxy_addr.sa,
-                 get_config()->downstream_http_proxy_addrlen);
+    rv = connect(conn_.fd, &get_config()->downstream_http_proxy_addr.su.sa,
+                 get_config()->downstream_http_proxy_addr.len);
     if (rv != 0 && errno != EINPROGRESS) {
       SSLOG(ERROR, this) << "Failed to connect to the proxy "
                          << get_config()->downstream_http_proxy_host.get()
@@ -323,12 +323,12 @@ int Http2Session::initiate_connection() {
       // We are establishing TLS connection.  If conn_.tls.ssl, we may
       // reuse the previous session.
       if (!conn_.tls.ssl) {
-        conn_.tls.ssl = SSL_new(ssl_ctx_);
-        if (!conn_.tls.ssl) {
-          SSLOG(ERROR, this) << "SSL_new() failed: "
-                             << ERR_error_string(ERR_get_error(), NULL);
+        auto ssl = ssl::create_client_ssl(ssl_ctx_);
+        if (!ssl) {
           return -1;
         }
+
+        conn_.set_ssl(ssl);
       }
 
       const char *sni_name = nullptr;
@@ -350,7 +350,7 @@ int Http2Session::initiate_connection() {
         assert(conn_.fd == -1);
 
         conn_.fd = util::create_nonblock_socket(
-            downstream_addr.addr.storage.ss_family);
+            downstream_addr.addr.su.storage.ss_family);
         if (conn_.fd == -1) {
           connect_blocker_->on_failure();
           return -1;
@@ -358,8 +358,8 @@ int Http2Session::initiate_connection() {
 
         rv = connect(conn_.fd,
                      // TODO maybe not thread-safe?
-                     const_cast<sockaddr *>(&downstream_addr.addr.sa),
-                     downstream_addr.addrlen);
+                     const_cast<sockaddr *>(&downstream_addr.addr.su.sa),
+                     downstream_addr.addr.len);
         if (rv != 0 && errno != EINPROGRESS) {
           connect_blocker_->on_failure();
           return -1;
@@ -369,26 +369,23 @@ int Http2Session::initiate_connection() {
         ev_io_set(&conn_.wev, conn_.fd, EV_WRITE);
       }
 
-      if (SSL_set_fd(conn_.tls.ssl, conn_.fd) == 0) {
-        return -1;
-      }
-
-      SSL_set_connect_state(conn_.tls.ssl);
+      conn_.prepare_client_handshake();
     } else {
       if (state_ == DISCONNECTED) {
         // Without TLS and proxy.
         assert(conn_.fd == -1);
 
         conn_.fd = util::create_nonblock_socket(
-            downstream_addr.addr.storage.ss_family);
+            downstream_addr.addr.su.storage.ss_family);
 
         if (conn_.fd == -1) {
           connect_blocker_->on_failure();
           return -1;
         }
 
-        rv = connect(conn_.fd, const_cast<sockaddr *>(&downstream_addr.addr.sa),
-                     downstream_addr.addrlen);
+        rv = connect(conn_.fd,
+                     const_cast<sockaddr *>(&downstream_addr.addr.su.sa),
+                     downstream_addr.addr.len);
         if (rv != 0 && errno != EINPROGRESS) {
           connect_blocker_->on_failure();
           return -1;
@@ -1732,6 +1729,7 @@ int Http2Session::write_tls() {
       return -1;
     }
     if (wb_.rleft() == 0) {
+      conn_.start_tls_write_idle();
       break;
     }
   }

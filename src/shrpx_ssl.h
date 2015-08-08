@@ -172,6 +172,9 @@ SSL_CTX *setup_client_ssl_context();
 // this function returns nullptr.
 CertLookupTree *create_cert_lookup_tree();
 
+SSL *create_server_ssl(SSL_CTX *ssl_ctx, Worker *worker);
+SSL *create_client_ssl(SSL_CTX *ssl_ctx);
+
 } // namespace ssl
 
 } // namespace shrpx

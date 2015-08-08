@@ -51,8 +51,4 @@ if __name__ == '__main__':
 
         testdata = json.loads(input)
 
-        if 'draft' not in testdata or testdata['draft'] != 9:
-            sys.stderr.write('Not supported\n')
-            continue
-
         testsuite(json.loads(input))

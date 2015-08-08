@@ -58,7 +58,17 @@ template <size_t N> struct Buffer {
     pos += count;
     return count;
   }
+  size_t drain_reset(size_t count) {
+    count = std::min(count, rleft());
+    std::copy(pos + count, last, std::begin(buf));
+    last = std::begin(buf) + (last - (pos + count));
+    pos = std::begin(buf);
+    return count;
+  }
   void reset() { pos = last = std::begin(buf); }
+  uint8_t *begin() { return std::begin(buf); }
+  uint8_t &operator[](size_t n) { return buf[n]; }
+  const uint8_t &operator[](size_t n) const { return buf[n]; }
   std::array<uint8_t, N> buf;
   uint8_t *pos, *last;
 };

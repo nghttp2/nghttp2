@@ -65,9 +65,6 @@
 /* The number of bytes for each SETTINGS entry */
 #define NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH 6
 
-/* The maximum header table size in SETTINGS_HEADER_TABLE_SIZE */
-#define NGHTTP2_MAX_HEADER_TABLE_SIZE ((1u << 31) - 1)
-
 /* Length of priority related fields in HEADERS/PRIORITY frames */
 #define NGHTTP2_PRIORITY_SPECLEN 5
 

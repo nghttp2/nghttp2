@@ -1,25 +1,25 @@
 Tutorial: HTTP/2 client
 =========================
 
-In this tutorial, we are going to write very primitive HTTP/2
+In this tutorial, we are going to write a very primitive HTTP/2
 client. The complete source code, `libevent-client.c`_, is attached at
-the end of this page.  It also resides in examples directory in the
-archive or repository.
+the end of this page.  It also resides in the examples directory in
+the archive or repository.
 
-This simple client takes 1 argument, HTTPS URI, and retrieves the
-resource denoted by the URI. Its synopsis is like this::
+This simple client takes a single HTTPS URI and retrieves the resource
+at the URI. The synopsis is::
 
     $ libevent-client HTTPS_URI
 
 We use libevent in this tutorial to handle networking I/O.  Please
 note that nghttp2 itself does not depend on libevent.
 
-First we do some setup routine for libevent and OpenSSL library in
-function ``main()`` and ``run()``, which is not so relevant to nghttp2
-library use. The one thing you should look at is setup NPN callback.
-The NPN callback is used for the client to select the next application
-protocol over the SSL/TLS transport. In this tutorial, we use
-`nghttp2_select_next_protocol()` function to select the HTTP/2
+The client starts with some libevent and OpenSSL setup in the
+``main()`` and ``run()`` functions. This setup isn't specific to
+nghttp2, but one thing you should look at is setup of the NPN
+callback.  The NPN callback is used by the client to select the next
+application protocol over TLS. In this tutorial, we use the
+`nghttp2_select_next_protocol()` helper function to select the HTTP/2
 protocol the library supports::
 
     static int select_next_proto_cb(SSL *ssl _U_, unsigned char **out,
@@ -31,8 +31,8 @@ protocol the library supports::
       return SSL_TLSEXT_ERR_OK;
     }
 
-The callback is set to the SSL_CTX object using
-``SSL_CTX_set_next_proto_select_cb()`` function::
+The callback is added to the SSL_CTX object using
+``SSL_CTX_set_next_proto_select_cb()``::
 
     static SSL_CTX *create_ssl_ctx(void) {
       SSL_CTX *ssl_ctx;
@@ -49,8 +49,10 @@ The callback is set to the SSL_CTX object using
       return ssl_ctx;
     }
 
-We use ``http2_session_data`` structure to store the data related to
-the HTTP/2 session::
+The example client defines a couple of structs:
+
+We define and use a ``http2_session_data`` structure to store data
+related to the HTTP/2 session::
 
     typedef struct {
       nghttp2_session *session;
@@ -59,10 +61,10 @@ the HTTP/2 session::
       http2_stream_data *stream_data;
     } http2_session_data;
 
-Since this program only handles 1 URI, it uses only 1 stream. We store
-its stream specific data in ``http2_stream_data`` structure and the
-``stream_data`` points to it. The ``struct http2_stream_data`` is
-defined as follows::
+Since this program only handles one URI, it uses only one stream. We
+store the single stream's data in a ``http2_stream_data`` structure
+and the ``stream_data`` points to it. The ``http2_stream_data``
+structure is defined as follows::
 
     typedef struct {
       /* The NULL-terminated URI string to retrieve. */
@@ -82,12 +84,12 @@ defined as follows::
       int32_t stream_id;
     } http2_stream_data;
 
-We creates and initializes these structures in
+We create and initialize these structures in
 ``create_http2_session_data()`` and ``create_http2_stream_data()``
 respectively.
 
-Then we call function ``initiate_connection()`` to start connecting to
-the remote server::
+``initiate_connection()`` is called to start the connection to the
+remote server. It's defined as::
 
     static void initiate_connection(struct event_base *evbase, SSL_CTX *ssl_ctx,
                                     const char *host, uint16_t port,
@@ -110,11 +112,11 @@ the remote server::
       session_data->bev = bev;
     }
 
-We set 3 callbacks for the bufferevent: ``reacb``, ``writecb`` and
-``eventcb``.
+``initiate_connection()`` creates a bufferevent for the connection and
+sets up three callbacks: ``readcb``, ``writecb``, and ``eventcb``.
 
-The ``eventcb()`` is invoked by libevent event loop when an event
-(e.g., connection has been established, timeout, etc) happens on the
+The ``eventcb()`` is invoked by the libevent event loop when an event
+(e.g. connection has been established, timeout, etc.) occurs on the
 underlying network socket::
 
     static void eventcb(struct bufferevent *bev, short events, void *ptr) {
@@ -142,11 +144,15 @@ underlying network socket::
       delete_http2_session_data(session_data);
     }
 
-For ``BEV_EVENT_EOF``, ``BEV_EVENT_ERROR`` and ``BEV_EVENT_TIMEOUT``
-event, we just simply tear down the connection. The
-``BEV_EVENT_CONNECTED`` event is invoked when SSL/TLS handshake is
-finished successfully. We first initialize nghttp2 session object in
-``initialize_nghttp2_session()`` function::
+For ``BEV_EVENT_EOF``, ``BEV_EVENT_ERROR``, and ``BEV_EVENT_TIMEOUT``
+events, we just simply tear down the connection.
+
+The ``BEV_EVENT_CONNECTED`` event is invoked when the SSL/TLS
+handshake has completed successfully. After this we're ready to begin
+communicating via HTTP/2.
+
+The ``initialize_nghttp2_session()`` function initializes the nghttp2
+session object and several callbacks::
 
     static void initialize_nghttp2_session(http2_session_data *session_data) {
       nghttp2_session_callbacks *callbacks;
@@ -175,18 +181,19 @@ finished successfully. We first initialize nghttp2 session object in
       nghttp2_session_callbacks_del(callbacks);
     }
 
-Since we are creating client, we use `nghttp2_session_client_new()` to
-initialize nghttp2 session object.  We setup 7 callbacks for the
-nghttp2 session. We'll explain these callbacks later.
+Since we are creating a client, we use `nghttp2_session_client_new()`
+to initialize the nghttp2 session object.  The callbacks setup are
+explained later.
 
-The `delete_http2_session_data()` destroys ``session_data`` and frees
-its bufferevent, so it closes underlying connection as well. It also
-calls `nghttp2_session_del()` to delete nghttp2 session object.
+The `delete_http2_session_data()` function destroys ``session_data``
+and frees its bufferevent, so the underlying connection is closed. It
+also calls `nghttp2_session_del()` to delete the nghttp2 session
+object.
 
-We begin HTTP/2 communication by sending client connection preface,
-which is 24 bytes magic byte string (:macro:`NGHTTP2_CLIENT_MAGIC`)
-followed by SETTINGS frame.  First 24 bytes magic string is
-automatically sent by nghttp2 library.  We send SETTINGS frame in
+A HTTP/2 connection begins by sending the client connection preface,
+which is a 24 byte magic byte string (:macro:`NGHTTP2_CLIENT_MAGIC`),
+followed by a SETTINGS frame. The 24 byte magic string is sent
+automatically by nghttp2. We send the SETTINGS frame in
 ``send_client_connection_header()``::
 
     static void send_client_connection_header(http2_session_data *session_data) {
@@ -202,17 +209,17 @@ automatically sent by nghttp2 library.  We send SETTINGS frame in
       }
     }
 
-Here we specify SETTINGS_MAX_CONCURRENT_STREAMS to 100, which is
-really not needed for this tiny example program, but we are
-demonstrating the use of SETTINGS frame. To queue the SETTINGS frame
-for the transmission, we use `nghttp2_submit_settings()`. Note that
-`nghttp2_submit_settings()` function only queues the frame and not
-actually send it. All ``nghttp2_submit_*()`` family functions have
-this property. To actually send the frame, `nghttp2_session_send()` is
-used, which is described about later.
+Here we specify SETTINGS_MAX_CONCURRENT_STREAMS as 100. This is not
+needed for this tiny example program, it just demonstrates use of the
+SETTINGS frame. To queue the SETTINGS frame for transmission, we call
+`nghttp2_submit_settings()`. Note that `nghttp2_submit_settings()`
+only queues the frame for transmission, and doesn't actually send it.
+All ``nghttp2_submit_*()`` family functions have this property. To
+actually send the frame, `nghttp2_session_send()` has to be called,
+which is described (and called) later.
 
-After the transmission of client connection header, we enqueue HTTP
-request in ``submit_request()`` function::
+After the transmission of the client connection header, we enqueue the
+HTTP request in the ``submit_request()`` function::
 
     static void submit_request(http2_session_data *session_data) {
       int32_t stream_id;
@@ -236,17 +243,18 @@ request in ``submit_request()`` function::
       stream_data->stream_id = stream_id;
     }
 
-We build HTTP request header fields in ``hdrs`` which is an array of
-:type:`nghttp2_nv`. There are 4 header fields to be sent: ``:method``,
-``:scheme``, ``:authority`` and ``:path``. To queue this HTTP request,
-we use `nghttp2_submit_request()` function. The `stream_data` is
-passed in *stream_user_data* parameter. It is used in nghttp2
-callbacks which we'll describe about later.
+We build the HTTP request header fields in ``hdrs``, which is an array
+of :type:`nghttp2_nv`. There are four header fields to be sent:
+``:method``, ``:scheme``, ``:authority``, and ``:path``. To queue the
+HTTP request, we call `nghttp2_submit_request()`. The ``stream_data``
+is passed via the *stream_user_data* parameter, which is helpfully
+later passed back to callback functions.
+
 `nghttp2_submit_request()` returns the newly assigned stream ID for
-this request.
+the request.
 
 The next bufferevent callback is ``readcb()``, which is invoked when
-data is available to read in the bufferevent input buffer::
+data is available to read from the bufferevent input buffer::
 
     static void readcb(struct bufferevent *bev, void *ptr) {
       http2_session_data *session_data = (http2_session_data *)ptr;
@@ -272,12 +280,13 @@ data is available to read in the bufferevent input buffer::
       }
     }
 
-In this function, we feed all unprocessed, received data to nghttp2
-session object using `nghttp2_session_mem_recv()` function. The
+In this function we feed all unprocessed, received data to the nghttp2
+session object using the `nghttp2_session_mem_recv()` function.
 `nghttp2_session_mem_recv()` processes the received data and may
-invoke nghttp2 callbacks and also queue frames. Since there may be
-pending frames, we call ``session_send()`` function to send those
-frames. The ``session_send()`` function is defined as follows::
+invoke nghttp2 callbacks and queue frames for transmission.  Since
+there may be pending frames for transmission, we call immediately
+``session_send()`` to send them.  ``session_send()`` is defined as
+follows::
 
     static int session_send(http2_session_data *session_data) {
       int rv;
@@ -290,10 +299,10 @@ frames. The ``session_send()`` function is defined as follows::
       return 0;
     }
 
-The `nghttp2_session_send()` function serializes the frame into wire
-format and call ``send_callback()`` function of type
-:type:`nghttp2_send_callback`.  The ``send_callback()`` is defined as
-follows::
+The `nghttp2_session_send()` function serializes pending frames into
+wire format and calls the ``send_callback()`` function to send them.
+``send_callback()`` has type :type:`nghttp2_send_callback` and is
+defined as::
 
     static ssize_t send_callback(nghttp2_session *session _U_, const uint8_t *data,
                                  size_t length, int flags _U_, void *user_data) {
@@ -306,18 +315,18 @@ follows::
 Since we use bufferevent to abstract network I/O, we just write the
 data to the bufferevent object. Note that `nghttp2_session_send()`
 continues to write all frames queued so far. If we were writing the
-data to the non-blocking socket directly using ``write()`` system call
-in the ``send_callback()``, we will surely get ``EAGAIN`` or
-``EWOULDBLOCK`` since the socket has limited send buffer. If that
-happens, we can return :macro:`NGHTTP2_ERR_WOULDBLOCK` to signal the
-nghttp2 library to stop sending further data. But writing to the
-bufferevent, we have to regulate the amount data to be buffered by
-ourselves to avoid possible huge memory consumption. In this example
-client, we do not limit anything. To see how to regulate the amount of
-buffered data, see the ``send_callback()`` in the server tutorial.
+data to the non-blocking socket directly using the ``write()`` system
+call, we'd soon receive an ``EAGAIN`` or ``EWOULDBLOCK`` error, since
+sockets have a limited send buffer. If that happens, it's possible to
+return :macro:`NGHTTP2_ERR_WOULDBLOCK` to signal the nghttp2 library
+to stop sending further data. When writing to a bufferevent, you
+should regulate the amount of data written, to avoid possible huge
+memory consumption. In this example client however we don't implement
+a limit. To see how to regulate the amount of buffered data, see the
+``send_callback()`` in the server tutorial.
 
 The third bufferevent callback is ``writecb()``, which is invoked when
-all data written in the bufferevent output buffer have been sent::
+all data written in the bufferevent output buffer has been sent::
 
     static void writecb(struct bufferevent *bev _U_, void *ptr) {
       http2_session_data *session_data = (http2_session_data *)ptr;
@@ -329,25 +338,25 @@ all data written in the bufferevent output buffer have been sent::
     }
 
 As described earlier, we just write off all data in `send_callback()`,
-we have no data to write in this function. All we have to do is check
-we have to drop connection or not. The nghttp2 session object keeps
-track of reception and transmission of GOAWAY frame and other error
-conditions as well. Using these information, nghttp2 session object
-will tell whether the connection should be dropped or not. More
-specifically, both `nghttp2_session_want_read()` and
-`nghttp2_session_want_write()` return 0, we have no business in the
-connection. But since we are using bufferevent and its deferred
-callback option, the bufferevent output buffer may contain the pending
-data when the ``writecb()`` is called. To handle this situation, we
-also check whether the output buffer is empty or not. If these
-conditions are met, we drop connection.
+so there is no data to write in this function. All we have to do is
+check if the connection should be dropped or not. The nghttp2 session
+object keeps track of reception and transmission of GOAWAY frames and
+other error conditions. Using this information, the nghttp2 session
+object can state whether the connection should be dropped or not.
+More specifically, when both `nghttp2_session_want_read()` and
+`nghttp2_session_want_write()` return 0, the connection is no-longer
+required and can be closed. Since we're using bufferevent and its
+deferred callback option, the bufferevent output buffer may still
+contain pending data when the ``writecb()`` is called. To handle this
+situation, we also check whether the output buffer is empty or not. If
+all of these conditions are met, then we drop the connection.
 
-We have already described about nghttp2 callback ``send_callback()``.
-Let's describe remaining nghttp2 callbacks we setup in
+Now let's look at the remaining nghttp2 callbacks setup in the
 ``initialize_nghttp2_setup()`` function.
 
-Each request header name/value pair is emitted via
-``on_header_callback`` function::
+A server responds to the request by first sending a HEADERS frame.
+The HEADERS frame consists of response header name/value pairs, and
+the ``on_header_callback()`` is called for each name/value pair::
 
     static int on_header_callback(nghttp2_session *session _U_,
                                   const nghttp2_frame *frame, const uint8_t *name,
@@ -367,10 +376,11 @@ Each request header name/value pair is emitted via
       return 0;
     }
 
-In this tutorial, we just print the name/value pair.
+In this tutorial, we just print the name/value pairs on stdout.
 
-After all name/value pairs are emitted for a frame,
-``on_frame_recv_callback`` function is called::
+After the HEADERS frame has been fully received (and thus all response
+header name/value pairs have been received), the
+``on_frame_recv_callback()`` function is called::
 
     static int on_frame_recv_callback(nghttp2_session *session _U_,
                                       const nghttp2_frame *frame, void *user_data) {
@@ -386,13 +396,16 @@ After all name/value pairs are emitted for a frame,
       return 0;
     }
 
-In this tutorial, we are just interested in the HTTP response
-HEADERS. We check the frame type and its category (it should be
-:macro:`NGHTTP2_HCAT_RESPONSE` for HTTP response HEADERS). Also check
-its stream ID.
+``on_frame_recv_callback()`` is called for other frame types too.
 
-The ``on_data_chunk_recv_callback()`` function is invoked when a chunk
-of data is received from the remote peer::
+In this tutorial, we are just interested in the HTTP response HEADERS
+frame. We check the frame type and its category (it should be
+:macro:`NGHTTP2_HCAT_RESPONSE` for HTTP response HEADERS). We also
+check its stream ID.
+
+Next, zero or more DATA frames can be received. The
+``on_data_chunk_recv_callback()`` function is invoked when a chunk of
+data is received from the remote peer::
 
     static int on_data_chunk_recv_callback(nghttp2_session *session _U_,
                                            uint8_t flags _U_, int32_t stream_id,
@@ -405,10 +418,10 @@ of data is received from the remote peer::
       return 0;
     }
 
-In our case, a chunk of data is response body. After checking stream
-ID, we just write the received data to the stdout. Note that the
-output in the terminal may be corrupted if the response body contains
-some binary data.
+In our case, a chunk of data is HTTP response body. After checking the
+stream ID, we just write the received data to stdout. Note the output
+in the terminal may be corrupted if the response body contains some
+binary data.
 
 The ``on_stream_close_callback()`` function is invoked when the stream
 is about to close::
@@ -431,9 +444,9 @@ is about to close::
     }
 
 If the stream ID matches the one we initiated, it means that its
-stream is going to be closed. Since we have finished to get the
-resource we want (or the stream was reset by RST_STREAM from the
+stream is going to be closed. Since we have finished receiving
+resource we wanted (or the stream was reset by RST_STREAM from the
 remote peer), we call `nghttp2_session_terminate_session()` to
-commencing the closure of the HTTP/2 session gracefully. If you have
+commence closure of the HTTP/2 session gracefully. If you have
 some data associated for the stream to be closed, you may delete it
 here.

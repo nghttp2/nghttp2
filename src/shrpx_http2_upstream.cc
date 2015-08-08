@@ -1294,7 +1294,7 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
        downstream->get_request_method() == HTTP_POST)) {
 
     if (prepare_push_promise(downstream) != 0) {
-      return -1;
+      // Continue to send response even if push was failed.
     }
   }
 

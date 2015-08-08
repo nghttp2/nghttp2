@@ -76,6 +76,10 @@ class Downstream;
 #define SSLOG(SEVERITY, HTTP2)                                                 \
   (Log(SEVERITY, __FILE__, __LINE__) << "[DHTTP2:" << HTTP2 << "] ")
 
+// Memcached connection log
+#define MCLOG(SEVERITY, MCONN)                                                 \
+  (Log(SEVERITY, __FILE__, __LINE__) << "[MCONN:" << MCONN << "] ")
+
 enum SeverityLevel { INFO, NOTICE, WARN, ERROR, FATAL };
 
 class Log {

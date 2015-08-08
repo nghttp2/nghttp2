@@ -171,8 +171,18 @@ constexpr char SHRPX_OPT_NO_OCSP[] = "no-ocsp";
 constexpr char SHRPX_OPT_HEADER_FIELD_BUFFER[] = "header-field-buffer";
 constexpr char SHRPX_OPT_MAX_HEADER_FIELDS[] = "max-header-fields";
 constexpr char SHRPX_OPT_INCLUDE[] = "include";
-constexpr char SHRPX_OPT_TLS_TICKET_CIPHER[] = "tls-ticket-cipher";
+constexpr char SHRPX_OPT_TLS_TICKET_KEY_CIPHER[] = "tls-ticket-key-cipher";
 constexpr char SHRPX_OPT_HOST_REWRITE[] = "host-rewrite";
+constexpr char SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED[] =
+    "tls-session-cache-memcached";
+constexpr char SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED[] =
+    "tls-ticket-key-memcached";
+constexpr char SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_INTERVAL[] =
+    "tls-ticket-key-memcached-interval";
+constexpr char SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_MAX_RETRY[] =
+    "tls-ticket-key-memcached-max-retry";
+constexpr char SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_MAX_FAIL[] =
+    "tls-ticket-key-memcached-max-fail";
 
 union sockaddr_union {
   sockaddr_storage storage;
@@ -180,6 +190,11 @@ union sockaddr_union {
   sockaddr_in6 in6;
   sockaddr_in in;
   sockaddr_un un;
+};
+
+struct Address {
+  size_t len;
+  union sockaddr_union su;
 };
 
 enum shrpx_proto { PROTO_HTTP2, PROTO_HTTP };
@@ -193,18 +208,17 @@ struct AltSvc {
 };
 
 struct DownstreamAddr {
-  DownstreamAddr() : addr{{0}}, addrlen(0), port(0), host_unix(false) {}
+  DownstreamAddr() : addr{}, port(0), host_unix(false) {}
   DownstreamAddr(const DownstreamAddr &other);
   DownstreamAddr(DownstreamAddr &&) = default;
   DownstreamAddr &operator=(const DownstreamAddr &other);
   DownstreamAddr &operator=(DownstreamAddr &&other) = default;
 
-  sockaddr_union addr;
+  Address addr;
   // backend address.  If |host_unix| is true, this is UNIX domain
   // socket path.
   std::unique_ptr<char[]> host;
   std::unique_ptr<char[]> hostport;
-  size_t addrlen;
   // backend port.  0 if |host_unix| is true.
   uint16_t port;
   // true if |host| contains UNIX domain socket path.
@@ -223,11 +237,11 @@ struct TicketKey {
   size_t hmac_keylen;
   struct {
     // name of this ticket configuration
-    uint8_t name[16];
+    std::array<uint8_t, 16> name;
     // encryption key for |cipher|
-    uint8_t enc_key[32];
+    std::array<uint8_t, 32> enc_key;
     // hmac key for |hmac|
-    uint8_t hmac_key[32];
+    std::array<uint8_t, 32> hmac_key;
   } data;
 };
 
@@ -252,7 +266,9 @@ struct Config {
   // list of supported SSL/TLS protocol strings.
   std::vector<std::string> tls_proto_list;
   // binary form of http proxy host and port
-  sockaddr_union downstream_http_proxy_addr;
+  Address downstream_http_proxy_addr;
+  Address session_cache_memcached_addr;
+  Address tls_ticket_key_memcached_addr;
   std::chrono::seconds tls_session_timeout;
   ev_tstamp http2_upstream_read_timeout;
   ev_tstamp upstream_read_timeout;
@@ -264,6 +280,7 @@ struct Config {
   ev_tstamp downstream_idle_read_timeout;
   ev_tstamp listener_disable_timeout;
   ev_tstamp ocsp_update_interval;
+  ev_tstamp tls_ticket_key_memcached_interval;
   // address of frontend connection.  This could be a path to UNIX
   // domain socket.  In this case, |host_unix| must be true.
   std::unique_ptr<char[]> host;
@@ -295,13 +312,15 @@ struct Config {
   std::unique_ptr<char[]> errorlog_file;
   std::unique_ptr<char[]> fetch_ocsp_response_file;
   std::unique_ptr<char[]> user;
+  std::unique_ptr<char[]> session_cache_memcached_host;
+  std::unique_ptr<char[]> tls_ticket_key_memcached_host;
   FILE *http2_upstream_dump_request_header;
   FILE *http2_upstream_dump_response_header;
   nghttp2_session_callbacks *http2_upstream_callbacks;
   nghttp2_session_callbacks *http2_downstream_callbacks;
   nghttp2_option *http2_option;
   nghttp2_option *http2_client_option;
-  const EVP_CIPHER *tls_ticket_cipher;
+  const EVP_CIPHER *tls_ticket_key_cipher;
   const char *server_name;
   char **argv;
   char *cwd;
@@ -314,8 +333,6 @@ struct Config {
   size_t http2_downstream_connections_per_worker;
   size_t downstream_connections_per_host;
   size_t downstream_connections_per_frontend;
-  // actual size of downstream_http_proxy_addr
-  size_t downstream_http_proxy_addrlen;
   size_t read_rate;
   size_t read_burst;
   size_t write_rate;
@@ -333,6 +350,12 @@ struct Config {
   size_t max_header_fields;
   // The index of catch-all group in downstream_addr_groups.
   size_t downstream_addr_group_catch_all;
+  // Maximum number of retries when getting TLS ticket key from
+  // mamcached, due to network error.
+  size_t tls_ticket_key_memcached_max_retry;
+  // Maximum number of consecutive error from memcached, when this
+  // limit reached, TLS ticket is disabled.
+  size_t tls_ticket_key_memcached_max_fail;
   // Bit mask to disable SSL/TLS protocol versions.  This will be
   // passed to SSL_CTX_set_options().
   long int tls_proto_mask;
@@ -349,6 +372,8 @@ struct Config {
   uint16_t port;
   // port in http proxy URI
   uint16_t downstream_http_proxy_port;
+  uint16_t session_cache_memcached_port;
+  uint16_t tls_ticket_key_memcached_port;
   bool verbose;
   bool daemon;
   bool verify_client;
@@ -378,8 +403,8 @@ struct Config {
   // true if host contains UNIX domain socket path
   bool host_unix;
   bool no_ocsp;
-  // true if --tls-ticket-cipher is used
-  bool tls_ticket_cipher_given;
+  // true if --tls-ticket-key-cipher is used
+  bool tls_ticket_key_cipher_given;
 };
 
 const Config *get_config();

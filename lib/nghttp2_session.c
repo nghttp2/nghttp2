@@ -1780,6 +1780,12 @@ static int session_prep_frame(nghttp2_session *session,
           rv = session_predicate_headers_send(session, stream);
 
           if (rv != 0) {
+            // If stream was alreay closed,
+            // nghttp2_session_get_stream() returns NULL, but item is
+            // still attached to the stream.  Search stream including
+            // closed again.
+            stream =
+                nghttp2_session_get_stream_raw(session, frame->hd.stream_id);
             if (stream && stream->item == item) {
               int rv2;
 
@@ -1938,6 +1944,10 @@ static int session_prep_frame(nghttp2_session *session,
 
     rv = nghttp2_session_predicate_data_send(session, stream);
     if (rv != 0) {
+      // If stream was alreay closed, nghttp2_session_get_stream()
+      // returns NULL, but item is still attached to the stream.
+      // Search stream including closed again.
+      stream = nghttp2_session_get_stream_raw(session, frame->hd.stream_id);
       if (stream) {
         int rv2;
 
@@ -4026,12 +4036,6 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
 
     switch (entry->settings_id) {
     case NGHTTP2_SETTINGS_HEADER_TABLE_SIZE:
-
-      if (entry->value > NGHTTP2_MAX_HEADER_TABLE_SIZE) {
-        return session_handle_invalid_connection(
-            session, frame, NGHTTP2_ERR_HEADER_COMP,
-            "SETTINGS: too large SETTINGS_HEADER_TABLE_SIZE");
-      }
 
       rv = nghttp2_hd_deflate_change_table_size(&session->hd_deflater,
                                                 entry->value);

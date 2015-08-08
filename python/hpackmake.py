@@ -16,7 +16,6 @@ import nghttp2
 def testsuite(testdata, filename, outdir, table_size, deflate_table_size,
               simulate_table_size_change):
     res = {
-        'draft':9,
         'description': '''\
 Encoded by nghttp2. The basic encoding strategy is described in \
 http://lists.w3.org/Archives/Public/ietf-http-wg/2013JulSep/1135.html \

@@ -424,22 +424,70 @@ SSL/TLS
 
 .. option:: --tls-ticket-key-file=<PATH>
 
-    Path  to file  that  contains 48  bytes  random data  to
-    construct TLS  session ticket parameters.   This options
-    can  be  used  repeatedly  to  specify  multiple  ticket
-    parameters.  If several files  are given, only the first
-    key is used to encrypt  TLS session tickets.  Other keys
-    are accepted  but server  will issue new  session ticket
-    with  first  key.   This allows  session  key  rotation.
-    Please   note  that   key   rotation   does  not   occur
-    automatically.   User should  rearrange files  or change
-    options  values  and  restart  nghttpx  gracefully.   If
-    opening or reading given file fails, all loaded keys are
-    discarded and it is treated as if none of this option is
-    given.  If this option is not given or an error occurred
-    while  opening  or  reading  a file,  key  is  generated
-    automatically and  renewed every 12hrs.  At  most 2 keys
-    are stored in memory.
+    Path to file that contains  random data to construct TLS
+    session ticket  parameters.  If aes-128-cbc is  given in
+    :option:`--tls-ticket-key-cipher`\, the  file must  contain exactly
+    48    bytes.     If     aes-256-cbc    is    given    in
+    :option:`--tls-ticket-key-cipher`\, the  file must  contain exactly
+    80  bytes.   This  options  can be  used  repeatedly  to
+    specify  multiple ticket  parameters.  If  several files
+    are given,  only the  first key is  used to  encrypt TLS
+    session  tickets.  Other  keys are  accepted but  server
+    will  issue new  session  ticket with  first key.   This
+    allows  session  key  rotation.  Please  note  that  key
+    rotation  does  not  occur automatically.   User  should
+    rearrange  files or  change options  values and  restart
+    nghttpx gracefully.   If opening  or reading  given file
+    fails, all loaded  keys are discarded and  it is treated
+    as if none  of this option is given.  If  this option is
+    not given or an error  occurred while opening or reading
+    a file,  key is  generated every  1 hour  internally and
+    they are  valid for  12 hours.   This is  recommended if
+    ticket  key sharing  between  nghttpx  instances is  not
+    required.
+
+.. option:: --tls-ticket-key-memcached=<HOST>,<PORT>
+
+    Specify  address of  memcached server  to store  session
+    cache.   This  enables  shared TLS  ticket  key  between
+    multiple nghttpx  instances.  nghttpx  does not  set TLS
+    ticket  key  to  memcached.   The  external  ticket  key
+    generator  is required.   nghttpx just  gets TLS  ticket
+    keys from  memcached, and  use them,  possibly replacing
+    current set of keys.  It is  up to extern TLS ticket key
+    generator to  rotate keys frequently.  See  "TLS SESSION
+    TICKET RESUMPTION"  section in  manual page to  know the
+    data format in memcached entry.
+
+.. option:: --tls-ticket-key-memcached-interval=<DURATION>
+
+    Set interval to get TLS ticket keys from memcached.
+
+    Default: ``10m``
+
+.. option:: --tls-ticket-key-memcached-max-retry=<N>
+
+    Set  maximum   number  of  consecutive   retries  before
+    abandoning TLS ticket key  retrieval.  If this number is
+    reached,  the  attempt  is considered  as  failure,  and
+    "failure" count  is incremented by 1,  which contributed
+    to            the            value            controlled
+    :option:`--tls-ticket-key-memcached-max-fail` option.
+
+    Default: ``3``
+
+.. option:: --tls-ticket-key-memcached-max-fail=<N>
+
+    Set  maximum   number  of  consecutive   failure  before
+    disabling TLS ticket until next scheduled key retrieval.
+
+    Default: ``2``
+
+.. option:: --tls-ticket-key-cipher=<CIPHER>
+
+    Specify cipher  to encrypt TLS session  ticket.  Specify
+    either   aes-128-cbc   or  aes-256-cbc.    By   default,
+    aes-128-cbc is used.
 
 .. option:: --fetch-ocsp-response-file=<PATH>
 
@@ -457,6 +505,12 @@ SSL/TLS
 .. option:: --no-ocsp
 
     Disable OCSP stapling.
+
+.. option:: --tls-session-cache-memcached=<HOST>,<PORT>
+
+    Specify  address of  memcached server  to store  session
+    cache.   This  enables   shared  session  cache  between
+    multiple nghttpx instances.
 
 
 HTTP/2 and SPDY
@@ -665,9 +719,9 @@ HTTP
     :option:`--client-proxy` mode,  location header field will  not be
     altered regardless of this option.
 
-.. option:: --no-host-rewrite
+.. option:: --host-rewrite
 
-    Don't  rewrite  host  and :authority  header  fields  on
+    Rewrite   host   and   :authority   header   fields   on
     :option:`--http2-bridge`\,   :option:`--client`   and  default   mode.    For
     :option:`--http2-proxy`  and  :option:`\--client-proxy` mode,  these  headers
     will not be altered regardless of this option.
@@ -888,6 +942,64 @@ translated into Python.
 The script file is usually installed under
 ``$(prefix)/share/nghttp2/`` directory.  The actual path to script can
 be customized using :option:`--fetch-ocsp-response-file` option.
+
+TLS SESSION RESUMPTION
+----------------------
+
+nghttpx supports TLS session resumption through both session ID and
+session ticket.
+
+SESSION ID RESUMPTION
+~~~~~~~~~~~~~~~~~~~~~
+
+By default, session ID is shared by all worker threads.
+
+If :option:`--tls-session-cache-memcached` is given, nghttpx will
+insert serialized session data to memcached with
+``nghttpx:tls-session-cache:`` + lowercased hex string of session ID
+as a memcached entry key, with expiry time 12 hours.  Session timeout
+is set to 12 hours.
+
+TLS SESSION TICKET RESUMPTION
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+By default, session ticket is shared by all worker threads.  The
+automatic key rotation is also enabled by default.  Every an hour, new
+encryption key is generated, and previous encryption key becomes
+decryption only key.  We set session timeout to 12 hours, and thus we
+keep at most 12 keys.
+
+If :option:`--tls-ticket-key-memcached` is given, encryption keys are
+retrieved from memcached.  nghttpx just reads keys from memcached; one
+has to deploy key generator program to update keys frequently (e.g.,
+every 1 hour).  The memcached entry key is ``nghttpx:tls-ticket-key``.
+The data format stored in memcached is the binary format described
+below::
+
+    +--------------+-------+----------------+
+    | VERSION (4)  |LEN (2)|KEY(48 or 80) ...
+    +--------------+-------+----------------+
+                   ^                        |
+		   |                        |
+		   +------------------------+
+                   (LEN, KEY) pair can be repeated
+
+All numbers in the above figure is bytes.  All integer fields are
+network byte order.
+
+First 4 bytes integer VERSION field, which must be 1.  The 2 bytes
+integer LEN field gives the length of following KEY field, which
+contains key.  If :option:`--tls-ticket-key-cipher`\=aes-128-cbc is
+used, LEN must be 48.  If
+:option:`--tls-ticket-key-cipher`\=aes-256-cbc is used, LEN must be
+80.  LEN and KEY pair can be repeated multiple times to store multiple
+keys.  The key appeared first is used as encryption key.  All the
+remaining keys are used as decryption only.
+
+If :option:`--tls-ticket-key-file` is given, encryption key is read
+from the given file.  In this case, nghttpx does not rotate key
+automatically.  To rotate key, one has to restart nghttpx (see
+SIGNALS).
 
 SEE ALSO
 --------

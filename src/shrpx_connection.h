@@ -35,19 +35,34 @@
 
 #include "shrpx_rate_limit.h"
 #include "shrpx_error.h"
+#include "buffer.h"
 
 namespace shrpx {
 
+struct MemcachedRequest;
+
+enum {
+  TLS_CONN_NORMAL,
+  TLS_CONN_WAIT_FOR_SESSION_CACHE,
+  TLS_CONN_GOT_SESSION_CACHE,
+  TLS_CONN_CANCEL_SESSION_CACHE,
+};
+
 struct TLSConnection {
   SSL *ssl;
-  ev_tstamp last_write_time;
+  SSL_SESSION *cached_session;
+  MemcachedRequest *cached_session_lookup_req;
+  ev_tstamp last_write_idle;
   size_t warmup_writelen;
   // length passed to SSL_write and SSL_read last time.  This is
   // required since these functions require the exact same parameters
   // on non-blocking I/O.
   size_t last_writelen, last_readlen;
+  int handshake_state;
   bool initial_handshake_done;
   bool reneg_started;
+  std::unique_ptr<Buffer<16_k>> rb;
+  std::unique_ptr<Buffer<16_k>> wb;
 };
 
 template <typename T> using EVCb = void (*)(struct ev_loop *, T *, int);
@@ -63,6 +78,9 @@ struct Connection {
   ~Connection();
 
   void disconnect();
+
+  void prepare_client_handshake();
+  void prepare_server_handshake();
 
   int tls_handshake();
 
@@ -82,12 +100,17 @@ struct Connection {
   size_t get_tls_write_limit();
   // Updates the number of bytes written in warm up period.
   void update_tls_warmup_writelen(size_t n);
+  // Tells there is no immediate write now.  This triggers timer to
+  // determine fallback to short record size mode.
+  void start_tls_write_idle();
 
   ssize_t write_clear(const void *data, size_t len);
   ssize_t writev_clear(struct iovec *iov, int iovcnt);
   ssize_t read_clear(void *data, size_t len);
 
   void handle_tls_pending_read();
+
+  void set_ssl(SSL *ssl);
 
   TLSConnection tls;
   ev_io wev;

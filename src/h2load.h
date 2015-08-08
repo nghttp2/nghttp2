@@ -88,13 +88,6 @@ struct Config {
   uint16_t default_port;
   bool verbose;
 
-  ssize_t current_worker;
-  std::vector<std::unique_ptr<Worker>> workers;
-  SSL_CTX *ssl_ctx;
-  struct ev_loop *rate_loop;
-  ssize_t seconds;
-  ssize_t conns_remainder;
-
   Config();
   ~Config();
 
@@ -184,9 +177,14 @@ struct Worker {
   size_t progress_interval;
   uint32_t id;
   bool tls_info_report_done;
+  ssize_t current_second;
+  ssize_t nconns_made;
+  ssize_t nclients;
+  ev_timer timeout_watcher;
+  ssize_t rate;
 
   Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t nreq_todo, size_t nclients,
-         Config *config);
+         ssize_t rate, Config *config);
   ~Worker();
   Worker(Worker &&o) = default;
   void run();

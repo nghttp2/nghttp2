@@ -393,4 +393,13 @@ void test_util_localtime_date(void) {
   tzset();
 }
 
+void test_util_get_uint64(void) {
+  auto v = std::array<unsigned char, 8>{
+      {0x01, 0x12, 0x34, 0x56, 0x78, 0x9a, 0xab, 0xbc}};
+
+  auto n = util::get_uint64(v.data());
+
+  CU_ASSERT(0x01123456789aabbcULL == n);
+}
+
 } // namespace shrpx

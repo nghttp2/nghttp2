@@ -22,45 +22,26 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef SHRPX_RATE_LIMIT_H
-#define SHRPX_RATE_LIMIT_H
+#include "shrpx_memcached_dispatcher.h"
 
-#include "shrpx.h"
-
-#include <ev.h>
-
-#include <openssl/ssl.h>
+#include "shrpx_memcached_request.h"
+#include "shrpx_memcached_connection.h"
+#include "shrpx_config.h"
 
 namespace shrpx {
 
-class RateLimit {
-public:
-  // We need |ssl| object to check that it has unread decrypted bytes.
-  RateLimit(struct ev_loop *loop, ev_io *w, size_t rate, size_t burst,
-            SSL *ssl = nullptr);
-  ~RateLimit();
-  size_t avail() const;
-  void drain(size_t n);
-  void regen();
-  void startw();
-  void stopw();
-  // Feeds event if ssl_ object has unread decrypted bytes.  This is
-  // required since it is buffered in ssl_ object, io event is not
-  // generated unless new incoming data is received.
-  void handle_tls_pending_read();
-  void set_ssl(SSL *ssl);
+MemcachedDispatcher::MemcachedDispatcher(const Address *addr,
+                                         struct ev_loop *loop)
+    : loop_(loop), mconn_(make_unique<MemcachedConnection>(addr, loop_)) {}
 
-private:
-  ev_timer t_;
-  ev_io *w_;
-  struct ev_loop *loop_;
-  SSL *ssl_;
-  size_t rate_;
-  size_t burst_;
-  size_t avail_;
-  bool startw_req_;
-};
+MemcachedDispatcher::~MemcachedDispatcher() {}
+
+int MemcachedDispatcher::add_request(std::unique_ptr<MemcachedRequest> req) {
+  if (mconn_->add_request(std::move(req)) != 0) {
+    return -1;
+  }
+
+  return 0;
+}
 
 } // namespace shrpx
-
-#endif // SHRPX_RATE_LIMIT_H

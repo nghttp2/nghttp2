@@ -81,7 +81,7 @@ TicketKeys::~TicketKeys() {
 DownstreamAddr::DownstreamAddr(const DownstreamAddr &other)
     : addr(other.addr), host(other.host ? strcopy(other.host.get()) : nullptr),
       hostport(other.hostport ? strcopy(other.hostport.get()) : nullptr),
-      addrlen(other.addrlen), port(other.port), host_unix(other.host_unix) {}
+      port(other.port), host_unix(other.host_unix) {}
 
 DownstreamAddr &DownstreamAddr::operator=(const DownstreamAddr &other) {
   if (this == &other) {
@@ -91,7 +91,6 @@ DownstreamAddr &DownstreamAddr::operator=(const DownstreamAddr &other) {
   addr = other.addr;
   host = (other.host ? strcopy(other.host.get()) : nullptr);
   hostport = (other.hostport ? strcopy(other.hostport.get()) : nullptr);
-  addrlen = other.addrlen;
   port = other.port;
   host_unix = other.host_unix;
 
@@ -156,7 +155,7 @@ read_tls_ticket_key_file(const std::vector<std::string> &files,
     // with nginx and apache.
     hmac_keylen = 16;
   }
-  auto expectedlen = sizeof(keys[0].data.name) + enc_keylen + hmac_keylen;
+  auto expectedlen = keys[0].data.name.size() + enc_keylen + hmac_keylen;
   char buf[256];
   assert(sizeof(buf) >= expectedlen);
 
@@ -202,11 +201,11 @@ read_tls_ticket_key_file(const std::vector<std::string> &files,
     }
 
     auto p = buf;
-    memcpy(key.data.name, p, sizeof(key.data.name));
-    p += sizeof(key.data.name);
-    memcpy(key.data.enc_key, p, enc_keylen);
+    std::copy_n(p, key.data.name.size(), std::begin(key.data.name));
+    p += key.data.name.size();
+    std::copy_n(p, enc_keylen, std::begin(key.data.enc_key));
     p += enc_keylen;
-    memcpy(key.data.hmac_key, p, hmac_keylen);
+    std::copy_n(p, hmac_keylen, std::begin(key.data.hmac_key));
 
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "session ticket key: " << util::format_hex(key.data.name);
@@ -704,8 +703,13 @@ enum {
   SHRPX_OPTID_SUBCERT,
   SHRPX_OPTID_SYSLOG_FACILITY,
   SHRPX_OPTID_TLS_PROTO_LIST,
-  SHRPX_OPTID_TLS_TICKET_CIPHER,
+  SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED,
+  SHRPX_OPTID_TLS_TICKET_KEY_CIPHER,
   SHRPX_OPTID_TLS_TICKET_KEY_FILE,
+  SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED,
+  SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_INTERVAL,
+  SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_MAX_FAIL,
+  SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_MAX_RETRY,
   SHRPX_OPTID_USER,
   SHRPX_OPTID_VERIFY_CLIENT,
   SHRPX_OPTID_VERIFY_CLIENT_CACERT,
@@ -999,11 +1003,6 @@ int option_lookup_token(const char *name, size_t namelen) {
         return SHRPX_OPTID_WORKER_WRITE_RATE;
       }
       break;
-    case 'r':
-      if (util::strieq_l("tls-ticket-ciphe", name, 16)) {
-        return SHRPX_OPTID_TLS_TICKET_CIPHER;
-      }
-      break;
     case 's':
       if (util::strieq_l("max-header-field", name, 16)) {
         return SHRPX_OPTID_MAX_HEADER_FIELDS;
@@ -1090,6 +1089,11 @@ int option_lookup_token(const char *name, size_t namelen) {
         return SHRPX_OPTID_BACKEND_TLS_SNI_FIELD;
       }
       break;
+    case 'r':
+      if (util::strieq_l("tls-ticket-key-ciphe", name, 20)) {
+        return SHRPX_OPTID_TLS_TICKET_KEY_CIPHER;
+      }
+      break;
     case 't':
       if (util::strieq_l("backend-write-timeou", name, 20)) {
         return SHRPX_OPTID_BACKEND_WRITE_TIMEOUT;
@@ -1138,6 +1142,11 @@ int option_lookup_token(const char *name, size_t namelen) {
     break;
   case 24:
     switch (name[23]) {
+    case 'd':
+      if (util::strieq_l("tls-ticket-key-memcache", name, 23)) {
+        return SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED;
+      }
+      break;
     case 'e':
       if (util::strieq_l("fetch-ocsp-response-fil", name, 23)) {
         return SHRPX_OPTID_FETCH_OCSP_RESPONSE_FILE;
@@ -1180,6 +1189,11 @@ int option_lookup_token(const char *name, size_t namelen) {
     break;
   case 27:
     switch (name[26]) {
+    case 'd':
+      if (util::strieq_l("tls-session-cache-memcache", name, 26)) {
+        return SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED;
+      }
+      break;
     case 's':
       if (util::strieq_l("worker-frontend-connection", name, 26)) {
         return SHRPX_OPTID_WORKER_FRONTEND_CONNECTIONS;
@@ -1210,6 +1224,18 @@ int option_lookup_token(const char *name, size_t namelen) {
       break;
     }
     break;
+  case 33:
+    switch (name[32]) {
+    case 'l':
+      if (util::strieq_l("tls-ticket-key-memcached-interva", name, 32)) {
+        return SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_INTERVAL;
+      }
+      if (util::strieq_l("tls-ticket-key-memcached-max-fai", name, 32)) {
+        return SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_MAX_FAIL;
+      }
+      break;
+    }
+    break;
   case 34:
     switch (name[33]) {
     case 'r':
@@ -1220,6 +1246,11 @@ int option_lookup_token(const char *name, size_t namelen) {
     case 't':
       if (util::strieq_l("backend-http1-connections-per-hos", name, 33)) {
         return SHRPX_OPTID_BACKEND_HTTP1_CONNECTIONS_PER_HOST;
+      }
+      break;
+    case 'y':
+      if (util::strieq_l("tls-ticket-key-memcached-max-retr", name, 33)) {
+        return SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_MAX_RETRY;
       }
       break;
     }
@@ -1848,23 +1879,65 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   }
-  case SHRPX_OPTID_TLS_TICKET_CIPHER:
+  case SHRPX_OPTID_TLS_TICKET_KEY_CIPHER:
     if (util::strieq(optarg, "aes-128-cbc")) {
-      mod_config()->tls_ticket_cipher = EVP_aes_128_cbc();
+      mod_config()->tls_ticket_key_cipher = EVP_aes_128_cbc();
     } else if (util::strieq(optarg, "aes-256-cbc")) {
-      mod_config()->tls_ticket_cipher = EVP_aes_256_cbc();
+      mod_config()->tls_ticket_key_cipher = EVP_aes_256_cbc();
     } else {
       LOG(ERROR) << opt
                  << ": unsupported cipher for ticket encryption: " << optarg;
       return -1;
     }
-    mod_config()->tls_ticket_cipher_given = true;
+    mod_config()->tls_ticket_key_cipher_given = true;
 
     return 0;
   case SHRPX_OPTID_HOST_REWRITE:
     mod_config()->no_host_rewrite = !util::strieq(optarg, "yes");
 
     return 0;
+  case SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED: {
+    if (split_host_port(host, sizeof(host), &port, optarg, strlen(optarg)) ==
+        -1) {
+      return -1;
+    }
+
+    mod_config()->session_cache_memcached_host = strcopy(host);
+    mod_config()->session_cache_memcached_port = port;
+
+    return 0;
+  }
+  case SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED: {
+    if (split_host_port(host, sizeof(host), &port, optarg, strlen(optarg)) ==
+        -1) {
+      return -1;
+    }
+
+    mod_config()->tls_ticket_key_memcached_host = strcopy(host);
+    mod_config()->tls_ticket_key_memcached_port = port;
+
+    return 0;
+  }
+  case SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_INTERVAL:
+    return parse_duration(&mod_config()->tls_ticket_key_memcached_interval, opt,
+                          optarg);
+  case SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_MAX_RETRY: {
+    int n;
+    if (parse_uint(&n, opt, optarg) != 0) {
+      return -1;
+    }
+
+    if (n > 30) {
+      LOG(ERROR) << opt << ": must be smaller than or equal to 30";
+      return -1;
+    }
+
+    mod_config()->tls_ticket_key_memcached_max_retry = n;
+    return 0;
+  }
+  case SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_MAX_FAIL:
+    return parse_uint(&mod_config()->tls_ticket_key_memcached_max_fail, opt,
+                      optarg);
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 

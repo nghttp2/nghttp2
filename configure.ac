@@ -26,6 +26,9 @@ dnl http://www.gnu.org/software/automake/manual/html_node/Flag-Variables-Orderin
 
 AC_PREREQ(2.61)
 AC_INIT([nghttp2], [1.1.3-DEV], [t-tujikawa@users.sourceforge.net])
+AC_CONFIG_AUX_DIR([.])
+AC_CONFIG_MACRO_DIR([m4])
+AC_CONFIG_HEADERS([config.h])
 AC_USE_SYSTEM_EXTENSIONS
 
 LT_PREREQ([2.2.6])
@@ -41,9 +44,6 @@ AM_INIT_AUTOMAKE([subdir-objects])
 # AM_EXTRA_RECURSIVE_TARGETS([it])
 
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
-
-AC_CONFIG_MACRO_DIR([m4])
-AC_CONFIG_HEADERS([config.h])
 
 dnl See versioning rule:
 dnl  http://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
@@ -169,24 +169,6 @@ fi
 AX_CXX_COMPILE_STDCXX_11([noext], [optional])
 
 AC_LANG_PUSH(C++)
-
-# Check that std::chrono::steady_clock is available. In particular,
-# gcc 4.6 does not have one, but has monotonic_clock which is the old
-# name existed in the pre-standard draft. If steady_clock is not
-# available, don't define HAVE_STEADY_CLOCK and replace steady_clock
-# with monotonic_clock.
-AC_MSG_CHECKING([whether std::chrono::steady_clock is available])
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM(
-[[
-#include <chrono>
-]],
-[[
-auto tp = std::chrono::steady_clock::now();
-]])],
-    [AC_DEFINE([HAVE_STEADY_CLOCK], [1],
-               [Define to 1 if you have the `std::chrono::steady_clock`.])
-     AC_MSG_RESULT([yes])],
-    [AC_MSG_RESULT([no])])
 
 # Check that std::future is available.
 AC_MSG_CHECKING([whether std::future is available])

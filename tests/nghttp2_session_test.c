@@ -7640,6 +7640,50 @@ void test_nghttp2_session_defer_then_close(void) {
   nghttp2_session_del(session);
 }
 
+static int submit_response_on_stream_close(nghttp2_session *session,
+                                           int32_t stream_id,
+                                           uint32_t error_code _U_,
+                                           void *user_data _U_) {
+  nghttp2_data_provider data_prd;
+  data_prd.read_callback = temporal_failure_data_source_read_callback;
+
+  // Attempt to submit response or data to the stream being closed
+  switch (stream_id) {
+  case 1:
+    CU_ASSERT(0 == nghttp2_submit_response(session, stream_id, resnv,
+                                           ARRLEN(resnv), &data_prd));
+    break;
+  case 3:
+    CU_ASSERT(0 == nghttp2_submit_data(session, NGHTTP2_FLAG_NONE, stream_id,
+                                       &data_prd));
+    break;
+  }
+
+  return 0;
+}
+
+void test_nghttp2_session_detach_item_from_closed_stream(void) {
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+
+  memset(&callbacks, 0, sizeof(callbacks));
+
+  callbacks.send_callback = null_send_callback;
+  callbacks.on_stream_close_callback = submit_response_on_stream_close;
+
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  open_stream(session, 1);
+  open_stream(session, 3);
+
+  nghttp2_session_close_stream(session, 1, NGHTTP2_NO_ERROR);
+  nghttp2_session_close_stream(session, 3, NGHTTP2_NO_ERROR);
+
+  CU_ASSERT(0 == nghttp2_session_send(session));
+
+  nghttp2_session_del(session);
+}
+
 static void check_nghttp2_http_recv_headers_fail(
     nghttp2_session *session, nghttp2_hd_deflater *deflater, int32_t stream_id,
     int stream_state, const nghttp2_nv *nva, size_t nvlen) {
