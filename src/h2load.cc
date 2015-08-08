@@ -1366,7 +1366,7 @@ int main(int argc, char **argv) {
     case 'T':
       config.conn_active_timeout = strtoul(optarg, nullptr, 10);
       if (config.conn_active_timeout <= 0) {
-        std::cerr << "-P: the conn_active_timeout wait time "
+        std::cerr << "-T: the conn_active_timeout wait time "
                   << "must be positive." << std::endl;
         exit(EXIT_FAILURE);
       }
