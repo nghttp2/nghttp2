@@ -81,7 +81,7 @@ struct Config {
   size_t rate;
   // number of connections made
   size_t nconns;
-  // amount of time to wait for activity on a given connection 
+  // amount of time to wait for activity on a given connection
   ssize_t conn_active_timeout;
   // amount of time to wait after the last request is made on a connection
   ssize_t conn_inactivity_timeout;
@@ -176,7 +176,7 @@ enum ClientState { CLIENT_IDLE, CLIENT_CONNECTED };
 struct Client;
 
 struct Worker {
-  std::vector<std::unique_ptr<Client>> clients; 
+  std::vector<std::unique_ptr<Client>> clients;
   Stats stats;
   struct ev_loop *loop;
   SSL_CTX *ssl_ctx;

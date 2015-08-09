@@ -74,8 +74,9 @@ namespace h2load {
 Config::Config()
     : data_length(-1), addrs(nullptr), nreqs(1), nclients(1), nthreads(1),
       max_concurrent_streams(-1), window_bits(30), connection_window_bits(30),
-      rate(0), nconns(0), conn_active_timeout(0), conn_inactivity_timeout(0), no_tls_proto(PROTO_HTTP2), data_fd(-1), port(0),
-      default_port(0), verbose(false), seconds(0) {}
+      rate(0), nconns(0), conn_active_timeout(0), conn_inactivity_timeout(0),
+      no_tls_proto(PROTO_HTTP2), data_fd(-1), port(0), default_port(0),
+      verbose(false), seconds(0) {}
 
 Config::~Config() {
   freeaddrinfo(addrs);
@@ -118,8 +119,9 @@ RequestStat::RequestStat() : data_offset(0), completed(false) {}
 
 Stats::Stats(size_t req_todo)
     : req_todo(0), req_started(0), req_done(0), req_success(0),
-      req_status_success(0), req_failed(0), req_error(0), req_timedout(0), bytes_total(0),
-      bytes_head(0), bytes_body(0), status(), req_stats(req_todo) {}
+      req_status_success(0), req_failed(0), req_error(0), req_timedout(0),
+      bytes_total(0), bytes_head(0), bytes_body(0), status(),
+      req_stats(req_todo) {}
 
 Stream::Stream() : status_success(-1) {}
 
@@ -185,7 +187,8 @@ void conn_inactivity_timeout_cb(EV_P_ ev_timer *w, int revents) {
   ev_timer_stop(client->worker->loop, &client->conn_inactivity_watcher);
   std::cout << "in conn_inactivity_timeout_cb" << std::endl;
 
-  if (client->worker->config->conn_active_timeout > 0 && ev_is_active(&client->conn_active_watcher)) {
+  if (client->worker->config->conn_active_timeout > 0 &&
+      ev_is_active(&client->conn_active_watcher)) {
     ev_timer_stop(client->worker->loop, &client->conn_active_watcher);
   }
 
@@ -196,13 +199,15 @@ void conn_inactivity_timeout_cb(EV_P_ ev_timer *w, int revents) {
 } // namespace
 
 namespace {
-// Called a fixed amount of time after all requests have been made on a connection
+// Called a fixed amount of time after all requests have been made on a
+// connection
 void conn_active_timeout_cb(EV_P_ ev_timer *w, int revents) {
   auto client = static_cast<Client *>(w->data);
   ev_timer_stop(client->worker->loop, &client->conn_active_watcher);
   std::cout << "in conn_active_timeout_cb" << std::endl;
 
-  if (client->worker->config->conn_inactivity_timeout > 0 && ev_is_active(&client->conn_inactivity_watcher)) {
+  if (client->worker->config->conn_inactivity_timeout > 0 &&
+      ev_is_active(&client->conn_inactivity_watcher)) {
     ev_timer_stop(client->worker->loop, &client->conn_inactivity_watcher);
   }
 
@@ -229,7 +234,8 @@ Client::Client(Worker *worker, size_t req_todo)
   }
   if (worker->config->conn_active_timeout > 0) {
     conn_active_watcher.data = this;
-    ev_timer_init(&conn_active_watcher, conn_active_timeout_cb, worker->config->conn_active_timeout, 0);
+    ev_timer_init(&conn_active_watcher, conn_active_timeout_cb,
+                  worker->config->conn_active_timeout, 0);
   }
 }
 
@@ -240,7 +246,7 @@ int Client::do_write() { return writefn(*this); }
 
 int Client::connect() {
   record_start_time(&worker->stats);
-  
+
   if (worker->config->conn_inactivity_timeout > 0) {
     ev_timer_again(worker->loop, &conn_inactivity_watcher);
   }
@@ -311,11 +317,13 @@ void Client::fail() {
 }
 
 void Client::disconnect() {
-  if (worker->config->conn_inactivity_timeout > 0 && ev_is_active(&conn_inactivity_watcher)) {
+  if (worker->config->conn_inactivity_timeout > 0 &&
+      ev_is_active(&conn_inactivity_watcher)) {
     ev_timer_stop(worker->loop, &conn_inactivity_watcher);
   }
 
-  if (worker->config->conn_active_timeout > 0 && ev_is_active(&conn_active_watcher)) {
+  if (worker->config->conn_active_timeout > 0 &&
+      ev_is_active(&conn_active_watcher)) {
     ev_timer_stop(worker->loop, &conn_active_watcher);
   }
 
@@ -345,7 +353,7 @@ void Client::submit_request() {
   ++req_started;
 
   // if an active timeout is set and this is the last request to be submitted
-  // on this connection, start the active timeout. 
+  // on this connection, start the active timeout.
   if (worker->config->conn_active_timeout > 0 && req_started >= req_todo) {
     ev_timer_start(worker->loop, &conn_active_watcher);
   }
@@ -1175,7 +1183,8 @@ Options:
               Available protocol: )";
 #endif // !HAVE_SPDYLAY
   out << NGHTTP2_CLEARTEXT_PROTO_VERSION_ID << R"(
-              Default: )" << NGHTTP2_CLEARTEXT_PROTO_VERSION_ID << R"(
+              Default: )"
+      << NGHTTP2_CLEARTEXT_PROTO_VERSION_ID << R"(
   -d, --data=<PATH>
               Post FILE to  server.  The request method  is changed to
               POST.
@@ -1215,7 +1224,8 @@ Options:
   -v, --verbose
               Output debug information.
   --version   Display version information and exit.
-  -h, --help  Display this help and exit.)" << std::endl;
+  -h, --help  Display this help and exit.)"
+      << std::endl;
 }
 } // namespace
 
@@ -1252,8 +1262,8 @@ int main(int argc, char **argv) {
         {"connection_inactivity_timeout", required_argument, nullptr, 'N'},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
-    auto c = getopt_long(argc, argv, "hvW:c:d:m:n:p:t:w:H:i:r:C:T:N:", long_options,
-                         &option_index);
+    auto c = getopt_long(argc, argv, "hvW:c:d:m:n:p:t:w:H:i:r:C:T:N:",
+                         long_options, &option_index);
     if (c == -1) {
       break;
     }
@@ -1444,7 +1454,8 @@ int main(int argc, char **argv) {
 
     if (config.nclients < config.nthreads) {
       std::cerr << "-c, -t: the number of client must be greater than or equal "
-                   "to the number of threads." << std::endl;
+                   "to the number of threads."
+                << std::endl;
       exit(EXIT_FAILURE);
     }
   } else {
@@ -1835,9 +1846,9 @@ time for request: )" << std::setw(10) << util::format_duration(ts.request.min)
             << util::format_duration(ts.ttfb.sd) << std::setw(9)
             << util::dtos(ts.ttfb.within_sd) << "%" << std::endl;
 
-if (config.conn_inactivity_timeout > 0 || config.conn_active_timeout > 0) {
-  std::cout << R"(requests timed out:)" << stats.req_timedout << std::endl;
-}
+  if (config.conn_inactivity_timeout > 0 || config.conn_active_timeout > 0) {
+    std::cout << R"(requests timed out:)" << stats.req_timedout << std::endl;
+  }
   SSL_CTX_free(ssl_ctx);
 
   return 0;
