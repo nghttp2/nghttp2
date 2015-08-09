@@ -1,7 +1,7 @@
 /*
  * nghttp2 - HTTP/2 C Library
  *
- * Copyright (c) 2013 Tatsuhiro Tsujikawa
+ * Copyright (c) 2015 Tatsuhiro Tsujikawa
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -22,28 +22,29 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef NGHTTP2_HD_TEST_H
-#define NGHTTP2_HD_TEST_H
+#ifndef SHRPX_MEMCACHED_RESULT_H
+#define SHRPX_MEMCACHED_RESULT_H
 
-void test_nghttp2_hd_deflate(void);
-void test_nghttp2_hd_deflate_same_indexed_repr(void);
-void test_nghttp2_hd_inflate_indexed(void);
-void test_nghttp2_hd_inflate_indname_noinc(void);
-void test_nghttp2_hd_inflate_indname_inc(void);
-void test_nghttp2_hd_inflate_indname_inc_eviction(void);
-void test_nghttp2_hd_inflate_newname_noinc(void);
-void test_nghttp2_hd_inflate_newname_inc(void);
-void test_nghttp2_hd_inflate_clearall_inc(void);
-void test_nghttp2_hd_inflate_zero_length_huffman(void);
-void test_nghttp2_hd_inflate_expect_table_size_update(void);
-void test_nghttp2_hd_inflate_unexpected_table_size_update(void);
-void test_nghttp2_hd_ringbuf_reserve(void);
-void test_nghttp2_hd_change_table_size(void);
-void test_nghttp2_hd_deflate_inflate(void);
-void test_nghttp2_hd_no_index(void);
-void test_nghttp2_hd_deflate_bound(void);
-void test_nghttp2_hd_public_api(void);
-void test_nghttp2_hd_decode_length(void);
-void test_nghttp2_hd_huff_encode(void);
+#include "shrpx.h"
 
-#endif /* NGHTTP2_HD_TEST_H */
+#include <vector>
+
+namespace shrpx {
+
+enum MemcachedStatusCode {
+  MEMCACHED_ERR_NO_ERROR,
+  MEMCACHED_ERR_EXT_NETWORK_ERROR = 0x1001,
+};
+
+struct MemcachedResult {
+  MemcachedResult(int status_code) : status_code(status_code) {}
+  MemcachedResult(int status_code, std::vector<uint8_t> value)
+      : value(std::move(value)), status_code(status_code) {}
+
+  std::vector<uint8_t> value;
+  int status_code;
+};
+
+} // namespace shrpx
+
+#endif // SHRPX_MEMCACHED_RESULT_H

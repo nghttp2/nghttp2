@@ -21,7 +21,7 @@ SSL/TLS, the frontend also supports SPDY protocol.
 By default, this mode's frontend connection is encrypted using
 SSL/TLS.  So server's private key and certificate must be supplied to
 the command line (or through configuration file).  In this case, the
-frontend protocol selection will is done via ALPN or NPN.
+frontend protocol selection will be done via ALPN or NPN.
 
 With ``--frontend-no-tls`` option, user can turn off SSL/TLS in
 frontend connection.  In this case, SPDY protocol is not available

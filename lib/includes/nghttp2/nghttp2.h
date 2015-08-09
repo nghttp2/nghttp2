@@ -3278,10 +3278,6 @@ NGHTTP2_EXTERN int nghttp2_submit_rst_stream(nghttp2_session *session,
  * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
  *     The |iv| contains invalid value (e.g., initial window size
  *     strictly greater than (1 << 31) - 1.
- * :enum:`NGHTTP2_ERR_TOO_MANY_INFLIGHT_SETTINGS`
- *     There is already another in-flight SETTINGS.  Note that the
- *     current implementation only allows 1 in-flight SETTINGS frame
- *     without ACK flag set.
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
  */
@@ -3777,11 +3773,22 @@ NGHTTP2_EXTERN void nghttp2_hd_inflate_del(nghttp2_hd_inflater *inflater);
  * The |settings_hd_table_bufsize_max| should be the value transmitted
  * in SETTINGS_HEADER_TABLE_SIZE.
  *
+ * This function must not be called while header block is being
+ * inflated.  In other words, this function must be called after
+ * initialization of |inflater|, but before calling
+ * `nghttp2_hd_inflate_hd()`, or after
+ * `nghttp2_hd_inflate_end_headers()`.  Otherwise,
+ * `NGHTTP2_ERR_INVALID_STATE` was returned.
+ *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
  *
  * :enum:`NGHTTP2_ERR_NOMEM`
  *     Out of memory.
+ * :enum:`NGHTTP2_ERR_INVALID_STATE`
+ *     The function is called while header block is being inflated.
+ *     Probably, application missed to call
+ *     `nghttp2_hd_inflate_end_headers()`.
  */
 NGHTTP2_EXTERN int
 nghttp2_hd_inflate_change_table_size(nghttp2_hd_inflater *inflater,

@@ -89,7 +89,7 @@ OPTIONS
     Use the  client private key  file.  The file must  be in
     PEM format.
 
-.. option:: -d, --data=<FILE>
+.. option:: -d, --data=<PATH>
 
     Post FILE to server. If '-'  is given, data will be read
     from stdin.
@@ -127,9 +127,9 @@ OPTIONS
     Add at  most <N>  bytes to a  frame payload  as padding.
     Specify 0 to disable padding.
 
-.. option:: -r, --har=<FILE>
+.. option:: -r, --har=<PATH>
 
-    Output HTTP  transactions <FILE> in HAR  format.  If '-'
+    Output HTTP  transactions <PATH> in HAR  format.  If '-'
     is given, data is written to stdout.
 
 .. option:: --color
@@ -157,6 +157,11 @@ OPTIONS
 .. option:: --no-push
 
     Disable server push.
+
+.. option:: --max-concurrent-streams=<N>
+
+    The  number of  concurrent  pushed  streams this  client
+    accepts.
 
 .. option:: --version
 

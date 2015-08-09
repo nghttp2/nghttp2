@@ -400,6 +400,8 @@ enum http_host_state
   , s_http_host
   , s_http_host_v6
   , s_http_host_v6_end
+  , s_http_host_v6_zone_start
+  , s_http_host_v6_zone
   , s_http_host_port_start
   , s_http_host_port
 };
@@ -957,6 +959,8 @@ reexecute:
         parser->method = (enum http_method) 0;
         parser->index = 1;
         switch (ch) {
+          case 'A': parser->method = HTTP_ACL; break;
+          case 'B': parser->method = HTTP_BIND; break;
           case 'C': parser->method = HTTP_CONNECT; /* or COPY, CHECKOUT */ break;
           case 'D': parser->method = HTTP_DELETE; break;
           case 'G': parser->method = HTTP_GET; break;
@@ -968,10 +972,10 @@ reexecute:
           case 'P': parser->method = HTTP_POST;
             /* or PROPFIND|PROPPATCH|PUT|PATCH|PURGE */
             break;
-          case 'R': parser->method = HTTP_REPORT; break;
+          case 'R': parser->method = HTTP_REPORT; /* or REBIND */ break;
           case 'S': parser->method = HTTP_SUBSCRIBE; /* or SEARCH */ break;
           case 'T': parser->method = HTTP_TRACE; break;
-          case 'U': parser->method = HTTP_UNLOCK; /* or UNSUBSCRIBE */ break;
+          case 'U': parser->method = HTTP_UNLOCK; /* or UNSUBSCRIBE, UNBIND */ break;
           default:
             SET_ERRNO(HPE_INVALID_METHOD);
             goto error;
@@ -1027,6 +1031,13 @@ reexecute:
             SET_ERRNO(HPE_INVALID_METHOD);
             goto error;
           }
+        } else if (parser->method == HTTP_REPORT) {
+            if (parser->index == 2 && ch == 'B') {
+              parser->method = HTTP_REBIND;
+            } else {
+              SET_ERRNO(HPE_INVALID_METHOD);
+              goto error;
+            }
         } else if (parser->index == 1 && parser->method == HTTP_POST) {
           if (ch == 'R') {
             parser->method = HTTP_PROPFIND; /* or HTTP_PROPPATCH */
@@ -1049,6 +1060,8 @@ reexecute:
           } else if (parser->method == HTTP_UNLOCK) {
             if (ch == 'S') {
               parser->method = HTTP_UNSUBSCRIBE;
+            } else if(ch == 'B') {
+              parser->method = HTTP_UNBIND;
             } else {
               SET_ERRNO(HPE_INVALID_METHOD);
               goto error;
@@ -1828,11 +1841,12 @@ reexecute:
 
       case s_headers_done:
       {
+        int hasBody;
         STRICT_CHECK(ch != LF);
 
         parser->nread = 0;
 
-        int hasBody = parser->flags & F_CHUNKED ||
+        hasBody = parser->flags & F_CHUNKED ||
           (parser->content_length > 0 && parser->content_length != ULLONG_MAX);
         if (parser->upgrade && (parser->method == HTTP_CONNECT ||
                                 (parser->flags & F_SKIPBODY) || !hasBody)) {
@@ -2152,15 +2166,13 @@ http_parser_settings_init(http_parser_settings *settings)
 
 const char *
 http_errno_name(enum http_errno err) {
-  assert(((size_t) err) <
-      (sizeof(http_strerror_tab) / sizeof(http_strerror_tab[0])));
+  assert(((size_t) err) < ARRAY_SIZE(http_strerror_tab));
   return http_strerror_tab[err].name;
 }
 
 const char *
 http_errno_description(enum http_errno err) {
-  assert(((size_t) err) <
-      (sizeof(http_strerror_tab) / sizeof(http_strerror_tab[0])));
+  assert(((size_t) err) < ARRAY_SIZE(http_strerror_tab));
   return http_strerror_tab[err].description;
 }
 
@@ -2213,6 +2225,23 @@ http_parse_host_char(enum http_host_state s, const char ch) {
         return s_http_host_v6;
       }
 
+      if (s == s_http_host_v6 && ch == '%') {
+        return s_http_host_v6_zone_start;
+      }
+      break;
+
+    case s_http_host_v6_zone:
+      if (ch == ']') {
+        return s_http_host_v6_end;
+      }
+
+    /* FALLTHROUGH */
+    case s_http_host_v6_zone_start:
+      /* RFC 6874 Zone ID consists of 1*( unreserved / pct-encoded) */
+      if (IS_ALPHANUM(ch) || ch == '%' || ch == '.' || ch == '-' || ch == '_' ||
+          ch == '~') {
+        return s_http_host_v6_zone;
+      }
       break;
 
     case s_http_host_port:
@@ -2263,6 +2292,11 @@ http_parse_host(const char * buf, struct http_parser_url *u, int found_at) {
         u->field_data[UF_HOST].len++;
         break;
 
+      case s_http_host_v6_zone_start:
+      case s_http_host_v6_zone:
+        u->field_data[UF_HOST].len++;
+        break;
+
       case s_http_host_port:
         if (s != s_http_host_port) {
           u->field_data[UF_PORT].off = p - buf;
@@ -2292,6 +2326,8 @@ http_parse_host(const char * buf, struct http_parser_url *u, int found_at) {
     case s_http_host_start:
     case s_http_host_v6_start:
     case s_http_host_v6:
+    case s_http_host_v6_zone_start:
+    case s_http_host_v6_zone:
     case s_http_host_port_start:
     case s_http_userinfo:
     case s_http_userinfo_start:

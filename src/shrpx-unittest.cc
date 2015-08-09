@@ -96,6 +96,10 @@ int main(int argc, char *argv[]) {
       !CU_add_test(pSuite, "http2_parse_link_header",
                    shrpx::test_http2_parse_link_header) ||
       !CU_add_test(pSuite, "http2_path_join", shrpx::test_http2_path_join) ||
+      !CU_add_test(pSuite, "http2_normalize_path",
+                   shrpx::test_http2_normalize_path) ||
+      !CU_add_test(pSuite, "http2_rewrite_clean_path",
+                   shrpx::test_http2_rewrite_clean_path) ||
       !CU_add_test(pSuite, "downstream_index_request_headers",
                    shrpx::test_downstream_index_request_headers) ||
       !CU_add_test(pSuite, "downstream_index_response_headers",
@@ -118,6 +122,10 @@ int main(int argc, char *argv[]) {
                    shrpx::test_shrpx_config_parse_log_format) ||
       !CU_add_test(pSuite, "config_read_tls_ticket_key_file",
                    shrpx::test_shrpx_config_read_tls_ticket_key_file) ||
+      !CU_add_test(pSuite, "config_read_tls_ticket_key_file_aes_256",
+                   shrpx::test_shrpx_config_read_tls_ticket_key_file_aes_256) ||
+      !CU_add_test(pSuite, "config_match_downstream_addr_group",
+                   shrpx::test_shrpx_config_match_downstream_addr_group) ||
       !CU_add_test(pSuite, "util_streq", shrpx::test_util_streq) ||
       !CU_add_test(pSuite, "util_strieq", shrpx::test_util_strieq) ||
       !CU_add_test(pSuite, "util_inp_strlower",
@@ -156,6 +164,7 @@ int main(int argc, char *argv[]) {
                    shrpx::test_util_parse_http_date) ||
       !CU_add_test(pSuite, "util_localtime_date",
                    shrpx::test_util_localtime_date) ||
+      !CU_add_test(pSuite, "util_get_uint64", shrpx::test_util_get_uint64) ||
       !CU_add_test(pSuite, "gzip_inflate", test_nghttp2_gzip_inflate) ||
       !CU_add_test(pSuite, "buffer_write", nghttp2::test_buffer_write) ||
       !CU_add_test(pSuite, "pool_recycle", nghttp2::test_pool_recycle) ||

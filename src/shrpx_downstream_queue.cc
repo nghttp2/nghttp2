@@ -124,17 +124,21 @@ Downstream *DownstreamQueue::remove_and_get_blocked(Downstream *downstream) {
   // Delete downstream when this function returns.
   auto delptr = std::unique_ptr<Downstream>(downstream);
 
-  if (downstream->get_dispatch_state() != Downstream::DISPATCH_ACTIVE) {
-    assert(downstream->get_dispatch_state() != Downstream::DISPATCH_NONE);
-    downstreams_.remove(downstream);
-    return nullptr;
-  }
-
   downstreams_.remove(downstream);
 
   auto &host = make_host_key(downstream);
   auto &ent = find_host_entry(host);
-  --ent.num_active;
+
+  if (downstream->get_dispatch_state() == Downstream::DISPATCH_ACTIVE) {
+    --ent.num_active;
+  } else {
+    // For those downstreams deleted while in blocked state
+    auto link = downstream->detach_blocked_link();
+    if (link) {
+      ent.blocked.remove(link);
+      delete link;
+    }
+  }
 
   if (remove_host_entry_if_empty(ent, host_entries_, host)) {
     return nullptr;
@@ -144,21 +148,20 @@ Downstream *DownstreamQueue::remove_and_get_blocked(Downstream *downstream) {
     return nullptr;
   }
 
-  for (auto link = ent.blocked.head; link;) {
-    auto next = link->dlnext;
-    if (!link->downstream) {
-      ent.blocked.remove(link);
-      link = next;
-      continue;
-    }
-    auto next_downstream = link->downstream;
-    next_downstream->detach_blocked_link(link);
-    ent.blocked.remove(link);
-    delete link;
-    remove_host_entry_if_empty(ent, host_entries_, host);
-    return next_downstream;
+  auto link = ent.blocked.head;
+
+  if (!link) {
+    return nullptr;
   }
-  return nullptr;
+
+  auto next_downstream = link->downstream;
+  auto link2 = next_downstream->detach_blocked_link();
+  assert(link2 == link);
+  ent.blocked.remove(link);
+  delete link;
+  remove_host_entry_if_empty(ent, host_entries_, host);
+
+  return next_downstream;
 }
 
 Downstream *DownstreamQueue::get_downstreams() const {

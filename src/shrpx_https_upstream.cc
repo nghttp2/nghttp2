@@ -36,6 +36,7 @@
 #include "shrpx_error.h"
 #include "shrpx_log_config.h"
 #include "shrpx_worker.h"
+#include "shrpx_http2_session.h"
 #include "http2.h"
 #include "util.h"
 #include "template.h"
@@ -218,7 +219,12 @@ void rewrite_request_host_path_from_uri(Downstream *downstream, const char *uri,
     path += '?';
     path.append(uri + fdata.off, fdata.len);
   }
-  downstream->set_request_path(std::move(path));
+  if (get_config()->http2_proxy || get_config()->client_proxy) {
+    downstream->set_request_path(std::move(path));
+  } else {
+    downstream->set_request_path(
+        http2::rewrite_clean_path(std::begin(path), std::end(path)));
+  }
 
   std::string scheme;
   http2::copy_url_component(scheme, &u, UF_SCHEMA, uri);
@@ -286,6 +292,9 @@ int htp_hdrs_completecb(http_parser *htp) {
         return -1;
       }
 
+      downstream->set_request_path(
+          http2::rewrite_clean_path(std::begin(uri), std::end(uri)));
+
       if (upstream->get_client_handler()->get_ssl()) {
         downstream->set_request_http2_scheme("https");
       } else {
@@ -297,7 +306,7 @@ int htp_hdrs_completecb(http_parser *htp) {
   }
 
   rv = downstream->attach_downstream_connection(
-      upstream->get_client_handler()->get_downstream_connection());
+      upstream->get_client_handler()->get_downstream_connection(downstream));
 
   if (rv != 0) {
     downstream->set_request_state(Downstream::CONNECT_FAIL);
@@ -531,7 +540,8 @@ int HttpsUpstream::on_write() {
   // We need to postpone detachment until all data are sent so that
   // we can notify nghttp2 library all data consumed.
   if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
-    if (downstream->get_response_connection_close()) {
+    if (downstream->get_response_connection_close() ||
+        downstream->get_request_state() != Downstream::MSG_COMPLETE) {
       // Connection close
       downstream->pop_downstream_connection();
       // dconn was deleted
@@ -598,10 +608,7 @@ int HttpsUpstream::downstream_read(DownstreamConnection *dconn) {
     goto end;
   }
 
-  // Detach downstream connection early so that it could be reused
-  // without hitting server's request timeout.
-  if (downstream->get_response_state() == Downstream::MSG_COMPLETE &&
-      !downstream->get_response_connection_close()) {
+  if (downstream->can_detach_downstream_connection()) {
     // Keep-alive
     downstream->detach_downstream_connection();
   }
@@ -835,12 +842,12 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
     if (!get_config()->altsvcs.empty()) {
       hdrs += "Alt-Svc: ";
 
-      for (auto &altsvc : get_config()->altsvcs) {
+      for (const auto &altsvc : get_config()->altsvcs) {
         hdrs += util::percent_encode_token(altsvc.protocol_id);
         hdrs += "=\"";
-        hdrs += util::quote_string(std::string(altsvc.host, altsvc.host_len));
+        hdrs += util::quote_string(altsvc.host);
         hdrs += ":";
-        hdrs += util::utos(altsvc.port);
+        hdrs += altsvc.service;
         hdrs += "\", ";
       }
 
@@ -993,7 +1000,7 @@ int HttpsUpstream::on_downstream_reset(bool no_retry) {
   }
 
   rv = downstream_->attach_downstream_connection(
-      handler_->get_downstream_connection());
+      handler_->get_downstream_connection(downstream_.get()));
   if (rv != 0) {
     goto fail;
   }

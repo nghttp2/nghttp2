@@ -83,6 +83,8 @@
 #include "shrpx_accept_handler.h"
 #include "shrpx_http2_upstream.h"
 #include "shrpx_http2_session.h"
+#include "shrpx_memcached_dispatcher.h"
+#include "shrpx_memcached_request.h"
 #include "util.h"
 #include "app_helper.h"
 #include "ssl.h"
@@ -117,14 +119,13 @@ const int GRACEFUL_SHUTDOWN_SIGNAL = SIGQUIT;
 #define ENV_UNIX_PATH "NGHTTP2_UNIX_PATH"
 
 namespace {
-int resolve_hostname(sockaddr_union *addr, size_t *addrlen,
-                     const char *hostname, uint16_t port, int family) {
-  addrinfo hints;
+int resolve_hostname(Address *addr, const char *hostname, uint16_t port,
+                     int family) {
   int rv;
 
   auto service = util::utos(port);
-  memset(&hints, 0, sizeof(addrinfo));
 
+  addrinfo hints{};
   hints.ai_family = family;
   hints.ai_socktype = SOCK_STREAM;
 #ifdef AI_ADDRCONFIG
@@ -156,8 +157,8 @@ int resolve_hostname(sockaddr_union *addr, size_t *addrlen,
               << " succeeded: " << host;
   }
 
-  memcpy(addr, res->ai_addr, res->ai_addrlen);
-  *addrlen = res->ai_addrlen;
+  memcpy(&addr->su, res->ai_addr, res->ai_addrlen);
+  addr->len = res->ai_addrlen;
   freeaddrinfo(res);
   return 0;
 }
@@ -279,12 +280,11 @@ std::unique_ptr<AcceptHandler> create_acceptor(ConnectionHandler *handler,
     }
   }
 
-  addrinfo hints;
   int fd = -1;
   int rv;
 
   auto service = util::utos(get_config()->port);
-  memset(&hints, 0, sizeof(addrinfo));
+  addrinfo hints{};
   hints.ai_family = family;
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_flags = AI_PASSIVE;
@@ -607,44 +607,198 @@ void graceful_shutdown_signal_cb(struct ev_loop *loop, ev_signal *w,
 } // namespace
 
 namespace {
+int generate_ticket_key(TicketKey &ticket_key) {
+  ticket_key.cipher = get_config()->tls_ticket_key_cipher;
+  ticket_key.hmac = EVP_sha256();
+  ticket_key.hmac_keylen = EVP_MD_size(ticket_key.hmac);
+
+  assert(static_cast<size_t>(EVP_CIPHER_key_length(ticket_key.cipher)) <=
+         ticket_key.data.enc_key.size());
+  assert(ticket_key.hmac_keylen <= ticket_key.data.hmac_key.size());
+
+  if (LOG_ENABLED(INFO)) {
+    LOG(INFO) << "enc_keylen=" << EVP_CIPHER_key_length(ticket_key.cipher)
+              << ", hmac_keylen=" << ticket_key.hmac_keylen;
+  }
+
+  if (RAND_bytes(reinterpret_cast<unsigned char *>(&ticket_key.data),
+                 sizeof(ticket_key.data)) == 0) {
+    return -1;
+  }
+
+  return 0;
+}
+} // namespace
+
+namespace {
 void renew_ticket_key_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto conn_handler = static_cast<ConnectionHandler *>(w->data);
   const auto &old_ticket_keys = conn_handler->get_ticket_keys();
 
   auto ticket_keys = std::make_shared<TicketKeys>();
-  LOG(NOTICE) << "Renew ticket keys: main";
+  LOG(NOTICE) << "Renew new ticket keys";
 
-  // We store at most 2 ticket keys
+  // If old_ticket_keys is not empty, it should contain at least 2
+  // keys: one for encryption, and last one for the next encryption
+  // key but decryption only.  The keys in between are old keys and
+  // decryption only.  The next key is provided to ensure to mitigate
+  // possible problem when one worker encrypt new key, but one worker,
+  // which did not take the that key yet, and cannot decrypt it.
+  //
+  // We keep keys for get_config()->tls_session_timeout seconds.  The
+  // default is 12 hours.  Thus the maximum ticket vector size is 12.
   if (old_ticket_keys) {
     auto &old_keys = old_ticket_keys->keys;
     auto &new_keys = ticket_keys->keys;
 
     assert(!old_keys.empty());
 
-    new_keys.resize(2);
-    new_keys[1] = old_keys[0];
+    auto max_tickets =
+        static_cast<size_t>(std::chrono::duration_cast<std::chrono::hours>(
+                                get_config()->tls_session_timeout).count());
+
+    new_keys.resize(std::min(max_tickets, old_keys.size() + 1));
+    std::copy_n(std::begin(old_keys), new_keys.size() - 1,
+                std::begin(new_keys) + 1);
   } else {
     ticket_keys->keys.resize(1);
   }
 
-  if (RAND_bytes(reinterpret_cast<unsigned char *>(&ticket_keys->keys[0]),
-                 sizeof(ticket_keys->keys[0])) == 0) {
+  auto &new_key = ticket_keys->keys[0];
+
+  if (generate_ticket_key(new_key) != 0) {
     if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "failed to renew ticket key";
+      LOG(INFO) << "failed to generate ticket key";
     }
+    conn_handler->set_ticket_keys(nullptr);
+    conn_handler->set_ticket_keys_to_worker(nullptr);
     return;
   }
 
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "ticket keys generation done";
-    for (auto &key : ticket_keys->keys) {
-      LOG(INFO) << "name: " << util::format_hex(key.name, sizeof(key.name));
+    assert(ticket_keys->keys.size() >= 1);
+    LOG(INFO) << 0 << " enc+dec: "
+              << util::format_hex(ticket_keys->keys[0].data.name);
+    for (size_t i = 1; i < ticket_keys->keys.size(); ++i) {
+      auto &key = ticket_keys->keys[i];
+      LOG(INFO) << i << " dec: " << util::format_hex(key.data.name);
     }
   }
 
   conn_handler->set_ticket_keys(ticket_keys);
-  conn_handler->worker_renew_ticket_keys(ticket_keys);
+  conn_handler->set_ticket_keys_to_worker(ticket_keys);
 }
+} // namespace
+
+namespace {
+void memcached_get_ticket_key_cb(struct ev_loop *loop, ev_timer *w,
+                                 int revents) {
+  auto conn_handler = static_cast<ConnectionHandler *>(w->data);
+  auto dispatcher = conn_handler->get_tls_ticket_key_memcached_dispatcher();
+
+  auto req = make_unique<MemcachedRequest>();
+  req->key = "nghttpx:tls-ticket-key";
+  req->op = MEMCACHED_OP_GET;
+  req->cb = [conn_handler, dispatcher, w](MemcachedRequest *req,
+                                          MemcachedResult res) {
+    switch (res.status_code) {
+    case MEMCACHED_ERR_NO_ERROR:
+      break;
+    case MEMCACHED_ERR_EXT_NETWORK_ERROR:
+      conn_handler->on_tls_ticket_key_network_error(w);
+      return;
+    default:
+      conn_handler->on_tls_ticket_key_not_found(w);
+      return;
+    }
+
+    // |version (4bytes)|len (2bytes)|key (variable length)|...
+    // (len, key) pairs are repeated as necessary.
+
+    auto &value = res.value;
+    if (value.size() < 4) {
+      LOG(WARN) << "Memcached: tls ticket key value is too small: got "
+                << value.size();
+      conn_handler->on_tls_ticket_key_not_found(w);
+      return;
+    }
+    auto p = value.data();
+    auto version = util::get_uint32(p);
+    // Currently supported version is 1.
+    if (version != 1) {
+      LOG(WARN) << "Memcached: tls ticket key version: want 1, got " << version;
+      conn_handler->on_tls_ticket_key_not_found(w);
+      return;
+    }
+
+    auto end = p + value.size();
+    p += 4;
+
+    size_t expectedlen;
+    size_t enc_keylen;
+    size_t hmac_keylen;
+    if (get_config()->tls_ticket_key_cipher == EVP_aes_128_cbc()) {
+      expectedlen = 48;
+      enc_keylen = 16;
+      hmac_keylen = 16;
+    } else if (get_config()->tls_ticket_key_cipher == EVP_aes_256_cbc()) {
+      expectedlen = 80;
+      enc_keylen = 32;
+      hmac_keylen = 32;
+    } else {
+      return;
+    }
+
+    auto ticket_keys = std::make_shared<TicketKeys>();
+
+    for (; p != end;) {
+      if (end - p < 2) {
+        LOG(WARN) << "Memcached: tls ticket key data is too small";
+        conn_handler->on_tls_ticket_key_not_found(w);
+        return;
+      }
+      auto len = util::get_uint16(p);
+      p += 2;
+      if (len != expectedlen) {
+        LOG(WARN) << "Memcached: wrong tls ticket key size: want "
+                  << expectedlen << ", got " << len;
+        conn_handler->on_tls_ticket_key_not_found(w);
+        return;
+      }
+      if (p + len > end) {
+        LOG(WARN) << "Memcached: too short tls ticket key payload: want " << len
+                  << ", got " << (end - p);
+        conn_handler->on_tls_ticket_key_not_found(w);
+        return;
+      }
+      auto key = TicketKey();
+      key.cipher = get_config()->tls_ticket_key_cipher;
+      key.hmac = EVP_sha256();
+      key.hmac_keylen = EVP_MD_size(key.hmac);
+
+      std::copy_n(p, key.data.name.size(), key.data.name.data());
+      p += key.data.name.size();
+
+      std::copy_n(p, enc_keylen, key.data.enc_key.data());
+      p += enc_keylen;
+
+      std::copy_n(p, hmac_keylen, key.data.hmac_key.data());
+      p += hmac_keylen;
+
+      ticket_keys->keys.push_back(std::move(key));
+    }
+
+    conn_handler->on_tls_ticket_key_get_success(ticket_keys, w);
+  };
+
+  if (LOG_ENABLED(INFO)) {
+    LOG(INFO) << "Memcached: tls ticket key get request sent";
+  }
+
+  dispatcher->add_request(std::move(req));
+}
+
 } // namespace
 
 namespace {
@@ -707,25 +861,47 @@ int event_loop() {
 
   ev_timer renew_ticket_key_timer;
   if (!get_config()->upstream_no_tls) {
-    bool auto_tls_ticket_key = true;
-    if (!get_config()->tls_ticket_key_files.empty()) {
-      auto ticket_keys =
-          read_tls_ticket_key_file(get_config()->tls_ticket_key_files);
-      if (!ticket_keys) {
-        LOG(WARN) << "Use internal session ticket key generator";
-      } else {
-        conn_handler->set_ticket_keys(std::move(ticket_keys));
-        auto_tls_ticket_key = false;
-      }
-    }
-    if (auto_tls_ticket_key) {
-      // Renew ticket key every 12hrs
-      ev_timer_init(&renew_ticket_key_timer, renew_ticket_key_cb, 0., 12_h);
-      renew_ticket_key_timer.data = conn_handler.get();
-      ev_timer_again(loop, &renew_ticket_key_timer);
+    if (get_config()->tls_ticket_key_memcached_host) {
+      conn_handler->set_tls_ticket_key_memcached_dispatcher(
+          make_unique<MemcachedDispatcher>(
+              &get_config()->tls_ticket_key_memcached_addr, loop));
 
-      // Generate first session ticket key before running workers.
-      renew_ticket_key_cb(loop, &renew_ticket_key_timer, 0);
+      ev_timer_init(&renew_ticket_key_timer, memcached_get_ticket_key_cb, 0.,
+                    0.);
+      renew_ticket_key_timer.data = conn_handler.get();
+      // Get first ticket keys.
+      memcached_get_ticket_key_cb(loop, &renew_ticket_key_timer, 0);
+    } else {
+      bool auto_tls_ticket_key = true;
+      if (!get_config()->tls_ticket_key_files.empty()) {
+        if (!get_config()->tls_ticket_key_cipher_given) {
+          LOG(WARN)
+              << "It is strongly recommended to specify "
+                 "--tls-ticket-key-cipher=aes-128-cbc (or "
+                 "tls-ticket-key-cipher=aes-128-cbc in configuration file) "
+                 "when --tls-ticket-key-file is used for the smooth "
+                 "transition when the default value of --tls-ticket-key-cipher "
+                 "becomes aes-256-cbc";
+        }
+        auto ticket_keys = read_tls_ticket_key_file(
+            get_config()->tls_ticket_key_files,
+            get_config()->tls_ticket_key_cipher, EVP_sha256());
+        if (!ticket_keys) {
+          LOG(WARN) << "Use internal session ticket key generator";
+        } else {
+          conn_handler->set_ticket_keys(std::move(ticket_keys));
+          auto_tls_ticket_key = false;
+        }
+      }
+      if (auto_tls_ticket_key) {
+        // Generate new ticket key every 1hr.
+        ev_timer_init(&renew_ticket_key_timer, renew_ticket_key_cb, 0., 1_h);
+        renew_ticket_key_timer.data = conn_handler.get();
+        ev_timer_again(loop, &renew_ticket_key_timer);
+
+        // Generate first session ticket key before running workers.
+        renew_ticket_key_cb(loop, &renew_ticket_key_timer, 0);
+      }
     }
   }
 
@@ -827,7 +1003,7 @@ int16_t DEFAULT_DOWNSTREAM_PORT = 80;
 
 namespace {
 void fill_default_config() {
-  memset(mod_config(), 0, sizeof(*mod_config()));
+  *mod_config() = {};
 
   mod_config()->verbose = false;
   mod_config()->daemon = false;
@@ -912,7 +1088,6 @@ void fill_default_config() {
   mod_config()->downstream_http_proxy_userinfo = nullptr;
   mod_config()->downstream_http_proxy_host = nullptr;
   mod_config()->downstream_http_proxy_port = 0;
-  mod_config()->downstream_http_proxy_addrlen = 0;
   mod_config()->read_rate = 0;
   mod_config()->read_burst = 0;
   mod_config()->write_rate = 0;
@@ -948,7 +1123,7 @@ void fill_default_config() {
 
   mod_config()->tls_proto_mask = 0;
   mod_config()->no_location_rewrite = false;
-  mod_config()->no_host_rewrite = false;
+  mod_config()->no_host_rewrite = true;
   mod_config()->argc = 0;
   mod_config()->argv = nullptr;
   mod_config()->downstream_connections_per_host = 8;
@@ -966,6 +1141,13 @@ void fill_default_config() {
   mod_config()->no_ocsp = false;
   mod_config()->header_field_buffer = 64_k;
   mod_config()->max_header_fields = 100;
+  mod_config()->downstream_addr_group_catch_all = 0;
+  mod_config()->tls_ticket_key_cipher = EVP_aes_128_cbc();
+  mod_config()->tls_ticket_key_cipher_given = false;
+  mod_config()->tls_session_timeout = std::chrono::hours(12);
+  mod_config()->tls_ticket_key_memcached_max_retry = 3;
+  mod_config()->tls_ticket_key_memcached_max_fail = 2;
+  mod_config()->tls_ticket_key_memcached_interval = 10_min;
 }
 } // namespace
 
@@ -997,14 +1179,67 @@ Options:
   The options are categorized into several groups.
 
 Connections:
-  -b, --backend=<HOST,PORT>
+  -b, --backend=(<HOST>,<PORT>|unix:<PATH>)[;<PATTERN>[:...]]
               Set  backend  host  and   port.   The  multiple  backend
               addresses are  accepted by repeating this  option.  UNIX
               domain socket  can be  specified by prefixing  path name
-              with "unix:" (e.g., unix:/var/run/backend.sock)
+              with "unix:" (e.g., unix:/var/run/backend.sock).
+
+              Optionally, if <PATTERN>s are given, the backend address
+              is only used  if request matches the pattern.   If -s or
+              -p  is  used,  <PATTERN>s   are  ignored.   The  pattern
+              matching  is closely  designed to  ServeMux in  net/http
+              package of Go  programming language.  <PATTERN> consists
+              of path, host + path or  just host.  The path must start
+              with "/".  If  it ends with "/", it  matches all request
+              path in  its subtree.  To  deal with the request  to the
+              directory without  trailing slash,  the path  which ends
+              with "/" also matches the  request path which only lacks
+              trailing '/'  (e.g., path  "/foo/" matches  request path
+              "/foo").  If it does not end with "/", it performs exact
+              match against  the request path.   If host is  given, it
+              performs exact match against  the request host.  If host
+              alone  is given,  "/"  is  appended to  it,  so that  it
+              matches  all   request  paths  under  the   host  (e.g.,
+              specifying "nghttp2.org" equals to "nghttp2.org/").
+
+              Patterns with  host take  precedence over  patterns with
+              just path.   Then, longer patterns take  precedence over
+              shorter  ones,  breaking  a  tie by  the  order  of  the
+              appearance in the configuration.
+
+              If <PATTERN> is  omitted, "/" is used  as pattern, which
+              matches  all  request  paths (catch-all  pattern).   The
+              catch-all backend must be given.
+
+              When doing  a match, nghttpx made  some normalization to
+              pattern, request host and path.  For host part, they are
+              converted to lower case.  For path part, percent-encoded
+              unreserved characters  defined in RFC 3986  are decoded,
+              and any  dot-segments (".."  and ".")   are resolved and
+              removed.
+
+              For   example,   -b'127.0.0.1,8080;nghttp2.org/httpbin/'
+              matches the  request host "nghttp2.org" and  the request
+              path "/httpbin/get", but does not match the request host
+              "nghttp2.org" and the request path "/index.html".
+
+              The  multiple <PATTERN>s  can  be specified,  delimiting
+              them            by           ":".             Specifying
+              -b'127.0.0.1,8080;nghttp2.org:www.nghttp2.org'  has  the
+              same  effect  to specify  -b'127.0.0.1,8080;nghttp2.org'
+              and -b'127.0.0.1,8080;www.nghttp2.org'.
+
+              The backend addresses sharing same <PATTERN> are grouped
+              together forming  load balancing  group.
+
+              Since ";" and ":" are  used as delimiter, <PATTERN> must
+              not  contain these  characters.  Since  ";" has  special
+              meaning in shell, the option value must be quoted.
+
               Default: )" << DEFAULT_DOWNSTREAM_HOST << ","
       << DEFAULT_DOWNSTREAM_PORT << R"(
-  -f, --frontend=<HOST,PORT>
+  -f, --frontend=(<HOST>,<PORT>|unix:<PATH>)
               Set  frontend  host and  port.   If  <HOST> is  '*',  it
               assumes  all addresses  including  both  IPv4 and  IPv6.
               UNIX domain  socket can  be specified by  prefixing path
@@ -1079,9 +1314,14 @@ Performance:
               accepts.  Setting 0 means unlimited.
               Default: )" << get_config()->worker_frontend_connections << R"(
   --backend-http2-connections-per-worker=<N>
-              Set  maximum number  of HTTP/2  connections per  worker.
-              The  default  value is  0,  which  means the  number  of
-              backend addresses specified by -b option.
+              Set   maximum   number   of  backend   HTTP/2   physical
+              connections  per  worker.   If  pattern is  used  in  -b
+              option, this limit is applied  to each pattern group (in
+              other  words, each  pattern group  can have  maximum <N>
+              HTTP/2  connections).  The  default  value  is 0,  which
+              means  that  the value  is  adjusted  to the  number  of
+              backend addresses.  If pattern  is used, this adjustment
+              is done for each pattern group.
   --backend-http1-connections-per-host=<N>
               Set   maximum  number   of  backend   concurrent  HTTP/1
               connections per origin host.   This option is meaningful
@@ -1219,22 +1459,61 @@ SSL/TLS:
               are treated as a part of protocol string.
               Default: )" << DEFAULT_TLS_PROTO_LIST << R"(
   --tls-ticket-key-file=<PATH>
-              Path  to file  that  contains 48  bytes  random data  to
-              construct TLS  session ticket parameters.   This options
-              can  be  used  repeatedly  to  specify  multiple  ticket
-              parameters.  If several files  are given, only the first
-              key is used to encrypt  TLS session tickets.  Other keys
-              are accepted  but server  will issue new  session ticket
-              with  first  key.   This allows  session  key  rotation.
-              Please   note  that   key   rotation   does  not   occur
-              automatically.   User should  rearrange files  or change
-              options  values  and  restart  nghttpx  gracefully.   If
-              opening or reading given file fails, all loaded keys are
-              discarded and it is treated as if none of this option is
-              given.  If this option is not given or an error occurred
-              while  opening  or  reading  a file,  key  is  generated
-              automatically and  renewed every 12hrs.  At  most 2 keys
-              are stored in memory.
+              Path to file that contains  random data to construct TLS
+              session ticket  parameters.  If aes-128-cbc is  given in
+              --tls-ticket-key-cipher, the  file must  contain exactly
+              48    bytes.     If     aes-256-cbc    is    given    in
+              --tls-ticket-key-cipher, the  file must  contain exactly
+              80  bytes.   This  options  can be  used  repeatedly  to
+              specify  multiple ticket  parameters.  If  several files
+              are given,  only the  first key is  used to  encrypt TLS
+              session  tickets.  Other  keys are  accepted but  server
+              will  issue new  session  ticket with  first key.   This
+              allows  session  key  rotation.  Please  note  that  key
+              rotation  does  not  occur automatically.   User  should
+              rearrange  files or  change options  values and  restart
+              nghttpx gracefully.   If opening  or reading  given file
+              fails, all loaded  keys are discarded and  it is treated
+              as if none  of this option is given.  If  this option is
+              not given or an error  occurred while opening or reading
+              a file,  key is  generated every  1 hour  internally and
+              they are  valid for  12 hours.   This is  recommended if
+              ticket  key sharing  between  nghttpx  instances is  not
+              required.
+  --tls-ticket-key-memcached=<HOST>,<PORT>
+              Specify  address of  memcached server  to store  session
+              cache.   This  enables  shared TLS  ticket  key  between
+              multiple nghttpx  instances.  nghttpx  does not  set TLS
+              ticket  key  to  memcached.   The  external  ticket  key
+              generator  is required.   nghttpx just  gets TLS  ticket
+              keys from  memcached, and  use them,  possibly replacing
+              current set of keys.  It is  up to extern TLS ticket key
+              generator to  rotate keys frequently.  See  "TLS SESSION
+              TICKET RESUMPTION"  section in  manual page to  know the
+              data format in memcached entry.
+  --tls-ticket-key-memcached-interval=<DURATION>
+              Set interval to get TLS ticket keys from memcached.
+              Default: )"
+      << util::duration_str(get_config()->tls_ticket_key_memcached_interval)
+      << R"(
+  --tls-ticket-key-memcached-max-retry=<N>
+              Set  maximum   number  of  consecutive   retries  before
+              abandoning TLS ticket key  retrieval.  If this number is
+              reached,  the  attempt  is considered  as  failure,  and
+              "failure" count  is incremented by 1,  which contributed
+              to            the            value            controlled
+              --tls-ticket-key-memcached-max-fail option.
+              Default: )" << get_config()->tls_ticket_key_memcached_max_retry
+      << R"(
+  --tls-ticket-key-memcached-max-fail=<N>
+              Set  maximum   number  of  consecutive   failure  before
+              disabling TLS ticket until next scheduled key retrieval.
+              Default: )" << get_config()->tls_ticket_key_memcached_max_fail
+      << R"(
+  --tls-ticket-key-cipher=<CIPHER>
+              Specify cipher  to encrypt TLS session  ticket.  Specify
+              either   aes-128-cbc   or  aes-256-cbc.    By   default,
+              aes-128-cbc is used.
   --fetch-ocsp-response-file=<PATH>
               Path to  fetch-ocsp-response script file.  It  should be
               absolute path.
@@ -1244,6 +1523,10 @@ SSL/TLS:
               Default: )"
       << util::duration_str(get_config()->ocsp_update_interval) << R"(
   --no-ocsp   Disable OCSP stapling.
+  --tls-session-cache-memcached=<HOST>,<PORT>
+              Specify  address of  memcached server  to store  session
+              cache.   This  enables   shared  session  cache  between
+              multiple nghttpx instances.
 
 HTTP/2 and SPDY:
   -c, --http2-max-concurrent-streams=<N>
@@ -1351,6 +1634,9 @@ Logging:
               * $ssl_session_reused:  "r"   if  SSL/TLS   session  was
                 reused.  Otherwise, "."
 
+              The  variable  can  be  enclosed  by  "{"  and  "}"  for
+              disambiguation (e.g., ${remote_addr}).
+
               Default: )" << DEFAULT_ACCESSLOG_FORMAT << R"(
   --errorlog-file=<PATH>
               Set path to write error  log.  To reopen file, send USR1
@@ -1379,8 +1665,8 @@ HTTP:
               --client  and  default   mode.   For  --http2-proxy  and
               --client-proxy mode,  location header field will  not be
               altered regardless of this option.
-  --no-host-rewrite
-              Don't  rewrite  host  and :authority  header  fields  on
+  --host-rewrite
+              Rewrite   host   and   :authority   header   fields   on
               --http2-bridge,   --client   and  default   mode.    For
               --http2-proxy  and  --client-proxy mode,  these  headers
               will not be altered regardless of this option.
@@ -1446,6 +1732,11 @@ Misc:
   --conf=<PATH>
               Load configuration from <PATH>.
               Default: )" << get_config()->conf_path.get() << R"(
+  --include=<PATH>
+              Load additional configurations from <PATH>.  File <PATH>
+              is  read  when  configuration  parser  encountered  this
+              option.  This option can be used multiple times, or even
+              recursively.
   -v, --version
               Print version and exit.
   -h, --help  Print this help and exit.
@@ -1476,6 +1767,10 @@ int main(int argc, char **argv) {
   Log::set_severity_level(NOTICE);
   create_config();
   fill_default_config();
+
+  // First open log files with default configuration, so that we can
+  // log errors/warnings while reading configuration files.
+  reopen_log_files();
 
   // We have to copy argv, since getopt_long may change its content.
   mod_config()->argc = argc;
@@ -1592,6 +1887,17 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_HEADER_FIELD_BUFFER, required_argument, &flag, 80},
         {SHRPX_OPT_MAX_HEADER_FIELDS, required_argument, &flag, 81},
         {SHRPX_OPT_ADD_REQUEST_HEADER, required_argument, &flag, 82},
+        {SHRPX_OPT_INCLUDE, required_argument, &flag, 83},
+        {SHRPX_OPT_TLS_TICKET_KEY_CIPHER, required_argument, &flag, 84},
+        {SHRPX_OPT_HOST_REWRITE, no_argument, &flag, 85},
+        {SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED, required_argument, &flag, 86},
+        {SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED, required_argument, &flag, 87},
+        {SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_INTERVAL, required_argument, &flag,
+         88},
+        {SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_MAX_RETRY, required_argument, &flag,
+         89},
+        {SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_MAX_FAIL, required_argument, &flag,
+         90},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -1954,6 +2260,41 @@ int main(int argc, char **argv) {
         // --add-request-header
         cmdcfgs.emplace_back(SHRPX_OPT_ADD_REQUEST_HEADER, optarg);
         break;
+      case 83:
+        // --include
+        cmdcfgs.emplace_back(SHRPX_OPT_INCLUDE, optarg);
+        break;
+      case 84:
+        // --tls-ticket-key-cipher
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_CIPHER, optarg);
+        break;
+      case 85:
+        // --host-rewrite
+        cmdcfgs.emplace_back(SHRPX_OPT_HOST_REWRITE, "yes");
+        break;
+      case 86:
+        // --tls-session-cache-memcached
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED, optarg);
+        break;
+      case 87:
+        // --tls-ticket-key-memcached
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED, optarg);
+        break;
+      case 88:
+        // --tls-ticket-key-memcached-interval
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_INTERVAL,
+                             optarg);
+        break;
+      case 89:
+        // --tls-ticket-key-memcached-max-retry
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_MAX_RETRY,
+                             optarg);
+        break;
+      case 90:
+        // --tls-ticket-key-memcached-max-fail
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_MAX_FAIL,
+                             optarg);
+        break;
       default:
         break;
       }
@@ -1964,11 +2305,13 @@ int main(int argc, char **argv) {
   }
 
   if (conf_exists(get_config()->conf_path.get())) {
-    if (load_config(get_config()->conf_path.get()) == -1) {
+    std::set<std::string> include_set;
+    if (load_config(get_config()->conf_path.get(), include_set) == -1) {
       LOG(FATAL) << "Failed to load configuration from "
                  << get_config()->conf_path.get();
       exit(EXIT_FAILURE);
     }
+    assert(include_set.empty());
   }
 
   if (argc - optind >= 2) {
@@ -1976,15 +2319,21 @@ int main(int argc, char **argv) {
     cmdcfgs.emplace_back(SHRPX_OPT_CERTIFICATE_FILE, argv[optind++]);
   }
 
-  // First open default log files to deal with errors occurred while
-  // parsing option values.
+  // Reopen log files using configurations in file
   reopen_log_files();
 
-  for (size_t i = 0, len = cmdcfgs.size(); i < len; ++i) {
-    if (parse_config(cmdcfgs[i].first, cmdcfgs[i].second) == -1) {
-      LOG(FATAL) << "Failed to parse command-line argument.";
-      exit(EXIT_FAILURE);
+  {
+    std::set<std::string> include_set;
+
+    for (size_t i = 0, len = cmdcfgs.size(); i < len; ++i) {
+      if (parse_config(cmdcfgs[i].first, cmdcfgs[i].second, include_set) ==
+          -1) {
+        LOG(FATAL) << "Failed to parse command-line argument.";
+        exit(EXIT_FAILURE);
+      }
     }
+
+    assert(include_set.empty());
   }
 
   if (get_config()->accesslog_syslog || get_config()->errorlog_syslog) {
@@ -2118,55 +2467,96 @@ int main(int argc, char **argv) {
     }
   }
 
-  if (get_config()->downstream_addrs.empty()) {
+  if (get_config()->downstream_addr_groups.empty()) {
     DownstreamAddr addr;
     addr.host = strcopy(DEFAULT_DOWNSTREAM_HOST);
     addr.port = DEFAULT_DOWNSTREAM_PORT;
 
-    mod_config()->downstream_addrs.push_back(std::move(addr));
+    DownstreamAddrGroup g("/");
+    g.addrs.push_back(std::move(addr));
+    mod_config()->downstream_addr_groups.push_back(std::move(g));
+  } else if (get_config()->http2_proxy || get_config()->client_proxy) {
+    // We don't support host mapping in these cases.  Move all
+    // non-catch-all patterns to catch-all pattern.
+    DownstreamAddrGroup catch_all("/");
+    for (auto &g : mod_config()->downstream_addr_groups) {
+      std::move(std::begin(g.addrs), std::end(g.addrs),
+                std::back_inserter(catch_all.addrs));
+    }
+    std::vector<DownstreamAddrGroup>().swap(
+        mod_config()->downstream_addr_groups);
+    mod_config()->downstream_addr_groups.push_back(std::move(catch_all));
   }
 
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "Resolving backend address";
   }
 
-  for (auto &addr : mod_config()->downstream_addrs) {
+  ssize_t catch_all_group = -1;
+  for (size_t i = 0; i < mod_config()->downstream_addr_groups.size(); ++i) {
+    auto &g = mod_config()->downstream_addr_groups[i];
+    if (g.pattern == "/") {
+      catch_all_group = i;
+    }
+    if (LOG_ENABLED(INFO)) {
+      LOG(INFO) << "Host-path pattern: group " << i << ": '" << g.pattern
+                << "'";
+      for (auto &addr : g.addrs) {
+        LOG(INFO) << "group " << i << " -> " << addr.host.get()
+                  << (addr.host_unix ? "" : ":" + util::utos(addr.port));
+      }
+    }
+  }
 
-    if (addr.host_unix) {
-      // for AF_UNIX socket, we use "localhost" as host for backend
-      // hostport.  This is used as Host header field to backend and
-      // not going to be passed to any syscalls.
-      addr.hostport =
-          strcopy(util::make_hostport("localhost", get_config()->port));
+  if (catch_all_group == -1) {
+    LOG(FATAL) << "-b: No catch-all backend address is configured";
+    exit(EXIT_FAILURE);
+  }
+  mod_config()->downstream_addr_group_catch_all = catch_all_group;
 
-      auto path = addr.host.get();
-      auto pathlen = strlen(path);
+  if (LOG_ENABLED(INFO)) {
+    LOG(INFO) << "Catch-all pattern is group " << catch_all_group;
+  }
 
-      if (pathlen + 1 > sizeof(addr.addr.un.sun_path)) {
-        LOG(FATAL) << "UNIX domain socket path " << path << " is too long > "
-                   << sizeof(addr.addr.un.sun_path);
-        exit(EXIT_FAILURE);
+  for (auto &g : mod_config()->downstream_addr_groups) {
+    for (auto &addr : g.addrs) {
+
+      if (addr.host_unix) {
+        // for AF_UNIX socket, we use "localhost" as host for backend
+        // hostport.  This is used as Host header field to backend and
+        // not going to be passed to any syscalls.
+        addr.hostport =
+            strcopy(util::make_hostport("localhost", get_config()->port));
+
+        auto path = addr.host.get();
+        auto pathlen = strlen(path);
+
+        if (pathlen + 1 > sizeof(addr.addr.su.un.sun_path)) {
+          LOG(FATAL) << "UNIX domain socket path " << path << " is too long > "
+                     << sizeof(addr.addr.su.un.sun_path);
+          exit(EXIT_FAILURE);
+        }
+
+        LOG(INFO) << "Use UNIX domain socket path " << path
+                  << " for backend connection";
+
+        addr.addr.su.un.sun_family = AF_UNIX;
+        // copy path including terminal NULL
+        std::copy_n(path, pathlen + 1, addr.addr.su.un.sun_path);
+        addr.addr.len = sizeof(addr.addr.su.un);
+
+        continue;
       }
 
-      LOG(INFO) << "Use UNIX domain socket path " << path
-                << " for backend connection";
+      addr.hostport = strcopy(util::make_hostport(addr.host.get(), addr.port));
 
-      addr.addr.un.sun_family = AF_UNIX;
-      // copy path including terminal NULL
-      std::copy_n(path, pathlen + 1, addr.addr.un.sun_path);
-      addr.addrlen = sizeof(addr.addr.un);
-
-      continue;
-    }
-
-    addr.hostport = strcopy(util::make_hostport(addr.host.get(), addr.port));
-
-    if (resolve_hostname(
-            &addr.addr, &addr.addrlen, addr.host.get(), addr.port,
-            get_config()->backend_ipv4
-                ? AF_INET
-                : (get_config()->backend_ipv6 ? AF_INET6 : AF_UNSPEC)) == -1) {
-      exit(EXIT_FAILURE);
+      if (resolve_hostname(
+              &addr.addr, addr.host.get(), addr.port,
+              get_config()->backend_ipv4 ? AF_INET : (get_config()->backend_ipv6
+                                                          ? AF_INET6
+                                                          : AF_UNSPEC)) == -1) {
+        exit(EXIT_FAILURE);
+      }
     }
   }
 
@@ -2175,7 +2565,6 @@ int main(int argc, char **argv) {
       LOG(INFO) << "Resolving backend http proxy address";
     }
     if (resolve_hostname(&mod_config()->downstream_http_proxy_addr,
-                         &mod_config()->downstream_http_proxy_addrlen,
                          get_config()->downstream_http_proxy_host.get(),
                          get_config()->downstream_http_proxy_port,
                          AF_UNSPEC) == -1) {
@@ -2183,9 +2572,22 @@ int main(int argc, char **argv) {
     }
   }
 
-  if (get_config()->http2_downstream_connections_per_worker == 0) {
-    mod_config()->http2_downstream_connections_per_worker =
-        get_config()->downstream_addrs.size();
+  if (get_config()->session_cache_memcached_host) {
+    if (resolve_hostname(&mod_config()->session_cache_memcached_addr,
+                         get_config()->session_cache_memcached_host.get(),
+                         get_config()->session_cache_memcached_port,
+                         AF_UNSPEC) == -1) {
+      exit(EXIT_FAILURE);
+    }
+  }
+
+  if (get_config()->tls_ticket_key_memcached_host) {
+    if (resolve_hostname(&mod_config()->tls_ticket_key_memcached_addr,
+                         get_config()->tls_ticket_key_memcached_host.get(),
+                         get_config()->tls_ticket_key_memcached_port,
+                         AF_UNSPEC) == -1) {
+      exit(EXIT_FAILURE);
+    }
   }
 
   if (get_config()->rlimit_nofile) {
@@ -2206,8 +2608,7 @@ int main(int argc, char **argv) {
     reset_timer();
   }
 
-  struct sigaction act;
-  memset(&act, 0, sizeof(struct sigaction));
+  struct sigaction act {};
   act.sa_handler = SIG_IGN;
   sigaction(SIGPIPE, &act, nullptr);
 

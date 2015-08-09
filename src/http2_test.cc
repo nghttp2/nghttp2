@@ -191,8 +191,7 @@ void check_rewrite_location_uri(const std::string &want, const std::string &uri,
                                 const std::string &match_host,
                                 const std::string &req_authority,
                                 const std::string &upstream_scheme) {
-  http_parser_url u;
-  memset(&u, 0, sizeof(u));
+  http_parser_url u{};
   CU_ASSERT(0 == http_parser_parse_url(uri.c_str(), uri.size(), 0, &u));
   auto got = http2::rewrite_location_uri(uri, u, match_host, req_authority,
                                          upstream_scheme);
@@ -827,6 +826,58 @@ void test_http2_path_join(void) {
                                         sizeof(baseq) - 1, rel, sizeof(rel) - 1,
                                         nullptr, 0));
   }
+}
+
+void test_http2_normalize_path(void) {
+  std::string src;
+
+  src = "/alpha/bravo/../charlie";
+  CU_ASSERT("/alpha/charlie" ==
+            http2::normalize_path(std::begin(src), std::end(src)));
+
+  src = "/a%6c%70%68%61";
+  CU_ASSERT("/alpha" == http2::normalize_path(std::begin(src), std::end(src)));
+
+  src = "/alpha%2f%3a";
+  CU_ASSERT("/alpha%2F%3A" ==
+            http2::normalize_path(std::begin(src), std::end(src)));
+
+  src = "%2f";
+  CU_ASSERT("/%2F" == http2::normalize_path(std::begin(src), std::end(src)));
+
+  src = "%f";
+  CU_ASSERT("/%f" == http2::normalize_path(std::begin(src), std::end(src)));
+
+  src = "%";
+  CU_ASSERT("/%" == http2::normalize_path(std::begin(src), std::end(src)));
+
+  src = "";
+  CU_ASSERT("/" == http2::normalize_path(std::begin(src), std::end(src)));
+}
+
+void test_http2_rewrite_clean_path(void) {
+  std::string src;
+
+  // unreserved characters
+  src = "/alpha/%62ravo/";
+  CU_ASSERT("/alpha/bravo/" ==
+            http2::rewrite_clean_path(std::begin(src), std::end(src)));
+
+  // percent-encoding is converted to upper case.
+  src = "/delta%3a";
+  CU_ASSERT("/delta%3A" ==
+            http2::rewrite_clean_path(std::begin(src), std::end(src)));
+
+  // path component is normalized before mathcing
+  src = "/alpha/charlie/%2e././bravo/delta/..";
+  CU_ASSERT("/alpha/bravo/" ==
+            http2::rewrite_clean_path(std::begin(src), std::end(src)));
+
+  src = "alpha%3a";
+  CU_ASSERT(src == http2::rewrite_clean_path(std::begin(src), std::end(src)));
+
+  src = "";
+  CU_ASSERT(src == http2::rewrite_clean_path(std::begin(src), std::end(src)));
 }
 
 } // namespace shrpx

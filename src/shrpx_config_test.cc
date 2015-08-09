@@ -39,34 +39,29 @@ namespace shrpx {
 void test_shrpx_config_parse_config_str_list(void) {
   auto res = parse_config_str_list("a");
   CU_ASSERT(1 == res.size());
-  CU_ASSERT(0 == strcmp("a", res[0]));
-  clear_config_str_list(res);
+  CU_ASSERT("a" == res[0]);
 
   res = parse_config_str_list("a,");
   CU_ASSERT(2 == res.size());
-  CU_ASSERT(0 == strcmp("a", res[0]));
-  CU_ASSERT(0 == strcmp("", res[1]));
-  clear_config_str_list(res);
+  CU_ASSERT("a" == res[0]);
+  CU_ASSERT("" == res[1]);
 
-  res = parse_config_str_list(",a,,");
+  res = parse_config_str_list(":a::", ':');
   CU_ASSERT(4 == res.size());
-  CU_ASSERT(0 == strcmp("", res[0]));
-  CU_ASSERT(0 == strcmp("a", res[1]));
-  CU_ASSERT(0 == strcmp("", res[2]));
-  CU_ASSERT(0 == strcmp("", res[3]));
-  clear_config_str_list(res);
+  CU_ASSERT("" == res[0]);
+  CU_ASSERT("a" == res[1]);
+  CU_ASSERT("" == res[2]);
+  CU_ASSERT("" == res[3]);
 
   res = parse_config_str_list("");
   CU_ASSERT(1 == res.size());
-  CU_ASSERT(0 == strcmp("", res[0]));
-  clear_config_str_list(res);
+  CU_ASSERT("" == res[0]);
 
   res = parse_config_str_list("alpha,bravo,charlie");
   CU_ASSERT(3 == res.size());
-  CU_ASSERT(0 == strcmp("alpha", res[0]));
-  CU_ASSERT(0 == strcmp("bravo", res[1]));
-  CU_ASSERT(0 == strcmp("charlie", res[2]));
-  clear_config_str_list(res);
+  CU_ASSERT("alpha" == res[0]);
+  CU_ASSERT("bravo" == res[1]);
+  CU_ASSERT("charlie" == res[2]);
 }
 
 void test_shrpx_config_parse_header(void) {
@@ -95,9 +90,9 @@ void test_shrpx_config_parse_header(void) {
 }
 
 void test_shrpx_config_parse_log_format(void) {
-  auto res = parse_log_format("$remote_addr - $remote_user [$time_local] "
-                              "\"$request\" $status $body_bytes_sent "
-                              "\"$http_referer\" \"$http_user_agent\"");
+  auto res = parse_log_format(R"($remote_addr - $remote_user [$time_local] )"
+                              R"("$request" $status $body_bytes_sent )"
+                              R"("${http_referer}" "$http_user_agent")");
   CU_ASSERT(14 == res.size());
 
   CU_ASSERT(SHRPX_LOGF_REMOTE_ADDR == res[0].type);
@@ -136,6 +131,44 @@ void test_shrpx_config_parse_log_format(void) {
 
   CU_ASSERT(SHRPX_LOGF_LITERAL == res[13].type);
   CU_ASSERT(0 == strcmp("\"", res[13].value.get()));
+
+  res = parse_log_format("$");
+
+  CU_ASSERT(1 == res.size());
+
+  CU_ASSERT(SHRPX_LOGF_LITERAL == res[0].type);
+  CU_ASSERT(0 == strcmp("$", res[0].value.get()));
+
+  res = parse_log_format("${");
+
+  CU_ASSERT(1 == res.size());
+
+  CU_ASSERT(SHRPX_LOGF_LITERAL == res[0].type);
+  CU_ASSERT(0 == strcmp("${", res[0].value.get()));
+
+  res = parse_log_format("${a");
+
+  CU_ASSERT(1 == res.size());
+
+  CU_ASSERT(SHRPX_LOGF_LITERAL == res[0].type);
+  CU_ASSERT(0 == strcmp("${a", res[0].value.get()));
+
+  res = parse_log_format("${a ");
+
+  CU_ASSERT(1 == res.size());
+
+  CU_ASSERT(SHRPX_LOGF_LITERAL == res[0].type);
+  CU_ASSERT(0 == strcmp("${a ", res[0].value.get()));
+
+  res = parse_log_format("$$remote_addr");
+
+  CU_ASSERT(2 == res.size());
+
+  CU_ASSERT(SHRPX_LOGF_LITERAL == res[0].type);
+  CU_ASSERT(0 == strcmp("$", res[0].value.get()));
+
+  CU_ASSERT(SHRPX_LOGF_REMOTE_ADDR == res[1].type);
+  CU_ASSERT(nullptr == res[1].value.get());
 }
 
 void test_shrpx_config_read_tls_ticket_key_file(void) {
@@ -152,24 +185,134 @@ void test_shrpx_config_read_tls_ticket_key_file(void) {
 
   close(fd1);
   close(fd2);
-  auto ticket_keys = read_tls_ticket_key_file({file1, file2});
+  auto ticket_keys =
+      read_tls_ticket_key_file({file1, file2}, EVP_aes_128_cbc(), EVP_sha256());
   unlink(file1);
   unlink(file2);
   CU_ASSERT(ticket_keys.get() != nullptr);
   CU_ASSERT(2 == ticket_keys->keys.size());
   auto key = &ticket_keys->keys[0];
-  CU_ASSERT(0 == memcmp("0..............1", key->name, sizeof(key->name)));
-  CU_ASSERT(0 ==
-            memcmp("2..............3", key->aes_key, sizeof(key->aes_key)));
-  CU_ASSERT(0 ==
-            memcmp("4..............5", key->hmac_key, sizeof(key->hmac_key)));
+  CU_ASSERT(std::equal(std::begin(key->data.name), std::end(key->data.name),
+                       "0..............1"));
+  CU_ASSERT(std::equal(std::begin(key->data.enc_key),
+                       std::begin(key->data.enc_key) + 16, "2..............3"));
+  CU_ASSERT(std::equal(std::begin(key->data.hmac_key),
+                       std::begin(key->data.hmac_key) + 16,
+                       "4..............5"));
+  CU_ASSERT(16 == key->hmac_keylen);
 
   key = &ticket_keys->keys[1];
-  CU_ASSERT(0 == memcmp("6..............7", key->name, sizeof(key->name)));
+  CU_ASSERT(std::equal(std::begin(key->data.name), std::end(key->data.name),
+                       "6..............7"));
+  CU_ASSERT(std::equal(std::begin(key->data.enc_key),
+                       std::begin(key->data.enc_key) + 16, "8..............9"));
+  CU_ASSERT(std::equal(std::begin(key->data.hmac_key),
+                       std::begin(key->data.hmac_key) + 16,
+                       "a..............b"));
+  CU_ASSERT(16 == key->hmac_keylen);
+}
+
+void test_shrpx_config_read_tls_ticket_key_file_aes_256(void) {
+  char file1[] = "/tmp/nghttpx-unittest.XXXXXX";
+  auto fd1 = mkstemp(file1);
+  assert(fd1 != -1);
+  assert(80 == write(fd1, "0..............12..............................34..."
+                          "...........................5",
+                     80));
+  char file2[] = "/tmp/nghttpx-unittest.XXXXXX";
+  auto fd2 = mkstemp(file2);
+  assert(fd2 != -1);
+  assert(80 == write(fd2, "6..............78..............................9a..."
+                          "...........................b",
+                     80));
+
+  close(fd1);
+  close(fd2);
+  auto ticket_keys =
+      read_tls_ticket_key_file({file1, file2}, EVP_aes_256_cbc(), EVP_sha256());
+  unlink(file1);
+  unlink(file2);
+  CU_ASSERT(ticket_keys.get() != nullptr);
+  CU_ASSERT(2 == ticket_keys->keys.size());
+  auto key = &ticket_keys->keys[0];
+  CU_ASSERT(std::equal(std::begin(key->data.name), std::end(key->data.name),
+                       "0..............1"));
+  CU_ASSERT(std::equal(std::begin(key->data.enc_key),
+                       std::end(key->data.enc_key),
+                       "2..............................3"));
+  CU_ASSERT(std::equal(std::begin(key->data.hmac_key),
+                       std::end(key->data.hmac_key),
+                       "4..............................5"));
+
+  key = &ticket_keys->keys[1];
+  CU_ASSERT(std::equal(std::begin(key->data.name), std::end(key->data.name),
+                       "6..............7"));
+  CU_ASSERT(std::equal(std::begin(key->data.enc_key),
+                       std::end(key->data.enc_key),
+                       "8..............................9"));
+  CU_ASSERT(std::equal(std::begin(key->data.hmac_key),
+                       std::end(key->data.hmac_key),
+                       "a..............................b"));
+}
+
+void test_shrpx_config_match_downstream_addr_group(void) {
+  auto groups = std::vector<DownstreamAddrGroup>{
+      {"nghttp2.org/"},
+      {"nghttp2.org/alpha/bravo/"},
+      {"nghttp2.org/alpha/charlie"},
+      {"nghttp2.org/delta%3A"},
+      {"www.nghttp2.org/"},
+      {"[::1]/"},
+  };
+
+  CU_ASSERT(0 == match_downstream_addr_group("nghttp2.org", "/", groups, 255));
+
+  // port is removed
   CU_ASSERT(0 ==
-            memcmp("8..............9", key->aes_key, sizeof(key->aes_key)));
-  CU_ASSERT(0 ==
-            memcmp("a..............b", key->hmac_key, sizeof(key->hmac_key)));
+            match_downstream_addr_group("nghttp2.org:8080", "/", groups, 255));
+
+  // host is case-insensitive
+  CU_ASSERT(4 == match_downstream_addr_group("WWW.nghttp2.org", "/alpha",
+                                             groups, 255));
+
+  CU_ASSERT(1 == match_downstream_addr_group("nghttp2.org", "/alpha/bravo/",
+                                             groups, 255));
+
+  // /alpha/bravo also matches /alpha/bravo/
+  CU_ASSERT(1 == match_downstream_addr_group("nghttp2.org", "/alpha/bravo",
+                                             groups, 255));
+
+  // path part is case-sensitive
+  CU_ASSERT(0 == match_downstream_addr_group("nghttp2.org", "/Alpha/bravo",
+                                             groups, 255));
+
+  CU_ASSERT(1 == match_downstream_addr_group(
+                     "nghttp2.org", "/alpha/bravo/charlie", groups, 255));
+
+  CU_ASSERT(2 == match_downstream_addr_group("nghttp2.org", "/alpha/charlie",
+                                             groups, 255));
+
+  // pattern which does not end with '/' must match its entirely.  So
+  // this matches to group 0, not group 2.
+  CU_ASSERT(0 == match_downstream_addr_group("nghttp2.org", "/alpha/charlie/",
+                                             groups, 255));
+
+  CU_ASSERT(255 ==
+            match_downstream_addr_group("example.org", "/", groups, 255));
+
+  CU_ASSERT(255 == match_downstream_addr_group("", "/", groups, 255));
+
+  CU_ASSERT(255 == match_downstream_addr_group("", "alpha", groups, 255));
+
+  CU_ASSERT(255 == match_downstream_addr_group("foo/bar", "/", groups, 255));
+
+  // If path is "*", only match with host + "/".
+  CU_ASSERT(0 == match_downstream_addr_group("nghttp2.org", "*", groups, 255));
+
+  CU_ASSERT(5 == match_downstream_addr_group("[::1]", "/", groups, 255));
+  CU_ASSERT(5 == match_downstream_addr_group("[::1]:8080", "/", groups, 255));
+  CU_ASSERT(255 == match_downstream_addr_group("[::1", "/", groups, 255));
+  CU_ASSERT(255 == match_downstream_addr_group("[::1]8000", "/", groups, 255));
 }
 
 } // namespace shrpx

@@ -171,6 +171,8 @@ int main(int argc _U_, char *argv[] _U_) {
                    test_nghttp2_submit_settings) ||
       !CU_add_test(pSuite, "session_submit_settings_update_local_window_size",
                    test_nghttp2_submit_settings_update_local_window_size) ||
+      !CU_add_test(pSuite, "session_submit_settings_multiple_times",
+                   test_nghttp2_submit_settings_multiple_times) ||
       !CU_add_test(pSuite, "session_submit_push_promise",
                    test_nghttp2_submit_push_promise) ||
       !CU_add_test(pSuite, "submit_window_update",
@@ -268,6 +270,8 @@ int main(int argc _U_, char *argv[] _U_) {
                    test_nghttp2_session_on_begin_headers_temporal_failure) ||
       !CU_add_test(pSuite, "session_defer_then_close",
                    test_nghttp2_session_defer_then_close) ||
+      !CU_add_test(pSuite, "session_detach_item_from_closed_stream",
+                   test_nghttp2_session_detach_item_from_closed_stream) ||
       !CU_add_test(pSuite, "http_mandatory_headers",
                    test_nghttp2_http_mandatory_headers) ||
       !CU_add_test(pSuite, "http_content_length",
@@ -326,6 +330,10 @@ int main(int argc _U_, char *argv[] _U_) {
                    test_nghttp2_hd_inflate_clearall_inc) ||
       !CU_add_test(pSuite, "hd_inflate_zero_length_huffman",
                    test_nghttp2_hd_inflate_zero_length_huffman) ||
+      !CU_add_test(pSuite, "hd_inflate_expect_table_size_update",
+                   test_nghttp2_hd_inflate_expect_table_size_update) ||
+      !CU_add_test(pSuite, "hd_inflate_unexpected_table_size_update",
+                   test_nghttp2_hd_inflate_unexpected_table_size_update) ||
       !CU_add_test(pSuite, "hd_ringbuf_reserve",
                    test_nghttp2_hd_ringbuf_reserve) ||
       !CU_add_test(pSuite, "hd_change_table_size",

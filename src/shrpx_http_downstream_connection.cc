@@ -34,6 +34,7 @@
 #include "shrpx_connect_blocker.h"
 #include "shrpx_downstream_connection_pool.h"
 #include "shrpx_worker.h"
+#include "shrpx_http2_session.h"
 #include "http2.h"
 #include "util.h"
 
@@ -109,21 +110,15 @@ void connectcb(struct ev_loop *loop, ev_io *w, int revents) {
 } // namespace
 
 HttpDownstreamConnection::HttpDownstreamConnection(
-    DownstreamConnectionPool *dconn_pool, struct ev_loop *loop)
+    DownstreamConnectionPool *dconn_pool, size_t group, struct ev_loop *loop)
     : DownstreamConnection(dconn_pool),
       conn_(loop, -1, nullptr, get_config()->downstream_write_timeout,
             get_config()->downstream_read_timeout, 0, 0, 0, 0, connectcb,
             readcb, timeoutcb, this),
-      ioctrl_(&conn_.rlimit), response_htp_{0}, addr_idx_(0),
+      ioctrl_(&conn_.rlimit), response_htp_{0}, group_(group), addr_idx_(0),
       connected_(false) {}
 
-HttpDownstreamConnection::~HttpDownstreamConnection() {
-  // Downstream and DownstreamConnection may be deleted
-  // asynchronously.
-  if (downstream_) {
-    downstream_->release_downstream_connection();
-  }
-}
+HttpDownstreamConnection::~HttpDownstreamConnection() {}
 
 int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
   if (LOG_ENABLED(INFO)) {
@@ -142,15 +137,17 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
     }
 
     auto worker = client_handler_->get_worker();
-    auto worker_stat = worker->get_worker_stat();
-    auto end = worker_stat->next_downstream;
+    auto &next_downstream = worker->get_dgrp(group_)->next;
+    auto end = next_downstream;
+    auto &addrs = get_config()->downstream_addr_groups[group_].addrs;
     for (;;) {
-      auto i = worker_stat->next_downstream;
-      ++worker_stat->next_downstream;
-      worker_stat->next_downstream %= get_config()->downstream_addrs.size();
+      auto &addr = addrs[next_downstream];
+      auto i = next_downstream;
+      if (++next_downstream >= addrs.size()) {
+        next_downstream = 0;
+      }
 
-      conn_.fd = util::create_nonblock_socket(
-          get_config()->downstream_addrs[i].addr.storage.ss_family);
+      conn_.fd = util::create_nonblock_socket(addr.addr.su.storage.ss_family);
 
       if (conn_.fd == -1) {
         auto error = errno;
@@ -162,8 +159,7 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
       }
 
       int rv;
-      rv = connect(conn_.fd, &get_config()->downstream_addrs[i].addr.sa,
-                   get_config()->downstream_addrs[i].addrlen);
+      rv = connect(conn_.fd, &addr.addr.su.sa, addr.addr.len);
       if (rv != 0 && errno != EINPROGRESS) {
         auto error = errno;
         DCLOG(WARN, this) << "connect() failed; errno=" << error;
@@ -172,7 +168,7 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
         close(conn_.fd);
         conn_.fd = -1;
 
-        if (end == worker_stat->next_downstream) {
+        if (end == next_downstream) {
           return SHRPX_ERR_NETWORK;
         }
 
@@ -193,6 +189,15 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
 
       break;
     }
+
+    // TODO we should have timeout for connection establishment
+    ev_timer_again(conn_.loop, &conn_.wt);
+  } else {
+    // we may set read timer cb to idle_timeoutcb.  Reset again.
+    conn_.rt.repeat = get_config()->downstream_read_timeout;
+    ev_set_cb(&conn_.rt, timeoutcb);
+    ev_timer_again(conn_.loop, &conn_.rt);
+    ev_set_cb(&conn_.rev, readcb);
   }
 
   downstream_ = downstream;
@@ -200,20 +205,15 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
   http_parser_init(&response_htp_, HTTP_RESPONSE);
   response_htp_.data = downstream_;
 
-  ev_set_cb(&conn_.rev, readcb);
-
-  conn_.rt.repeat = get_config()->downstream_read_timeout;
-  ev_timer_again(conn_.loop, &conn_.rt);
-  // TODO we should have timeout for connection establishment
-  ev_timer_again(conn_.loop, &conn_.wt);
-
   return 0;
 }
 
 int HttpDownstreamConnection::push_request_headers() {
   const char *authority = nullptr, *host = nullptr;
-  auto downstream_hostport =
-      get_config()->downstream_addrs[addr_idx_].hostport.get();
+  auto downstream_hostport = get_config()
+                                 ->downstream_addr_groups[group_]
+                                 .addrs[addr_idx_]
+                                 .hostport.get();
   auto connect_method = downstream_->get_request_method() == HTTP_CONNECT;
 
   if (!get_config()->no_host_rewrite && !get_config()->http2_proxy &&
@@ -472,18 +472,16 @@ void HttpDownstreamConnection::detach_downstream(Downstream *downstream) {
     DCLOG(INFO, this) << "Detaching from DOWNSTREAM:" << downstream;
   }
   downstream_ = nullptr;
-  ioctrl_.force_resume_read();
-
-  conn_.rlimit.startw();
-  conn_.wlimit.stopw();
 
   ev_set_cb(&conn_.rev, idle_readcb);
-
-  ev_timer_stop(conn_.loop, &conn_.wt);
+  ioctrl_.force_resume_read();
 
   conn_.rt.repeat = get_config()->downstream_idle_read_timeout;
   ev_set_cb(&conn_.rt, idle_timeoutcb);
   ev_timer_again(conn_.loop, &conn_.rt);
+
+  conn_.wlimit.stopw();
+  ev_timer_stop(conn_.loop, &conn_.wt);
 }
 
 void HttpDownstreamConnection::pause_read(IOCtrlReason reason) {
@@ -860,6 +858,8 @@ int HttpDownstreamConnection::on_connect() {
       DLOG(INFO, this) << "downstream connect failed";
     }
 
+    downstream_->set_request_state(Downstream::CONNECT_FAIL);
+
     return -1;
   }
 
@@ -868,6 +868,8 @@ int HttpDownstreamConnection::on_connect() {
   connect_blocker->on_success();
 
   conn_.rlimit.startw();
+  ev_timer_again(conn_.loop, &conn_.rt);
+
   ev_set_cb(&conn_.wev, writecb);
 
   return 0;
@@ -876,5 +878,7 @@ int HttpDownstreamConnection::on_connect() {
 void HttpDownstreamConnection::on_upstream_change(Upstream *upstream) {}
 
 void HttpDownstreamConnection::signal_write() { conn_.wlimit.startw(); }
+
+size_t HttpDownstreamConnection::get_group() const { return group_; }
 
 } // namespace shrpx

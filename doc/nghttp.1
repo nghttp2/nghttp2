@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTP" "1" "June 27, 2015" "1.0.5" "nghttp2"
+.TH "NGHTTP" "1" "August 09, 2015" "1.2.0" "nghttp2"
 .SH NAME
 nghttp \- HTTP/2 experimental client
 .
@@ -122,7 +122,7 @@ PEM format.
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-d, \-\-data=<FILE>
+.B \-d, \-\-data=<PATH>
 Post FILE to server. If \(aq\-\(aq  is given, data will be read
 from stdin.
 .UNINDENT
@@ -167,8 +167,8 @@ Specify 0 to disable padding.
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-r, \-\-har=<FILE>
-Output HTTP  transactions <FILE> in HAR  format.  If \(aq\-\(aq
+.B \-r, \-\-har=<PATH>
+Output HTTP  transactions <PATH> in HAR  format.  If \(aq\-\(aq
 is given, data is written to stdout.
 .UNINDENT
 .INDENT 0.0
@@ -202,6 +202,12 @@ are used.
 .TP
 .B \-\-no\-push
 Disable server push.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-max\-concurrent\-streams=<N>
+The  number of  concurrent  pushed  streams this  client
+accepts.
 .UNINDENT
 .INDENT 0.0
 .TP

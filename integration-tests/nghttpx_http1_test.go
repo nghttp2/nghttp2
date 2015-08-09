@@ -164,7 +164,7 @@ func TestH1H1GracefulShutdown(t *testing.T) {
 
 // TestH1H1HostRewrite tests that server rewrites Host header field
 func TestH1H1HostRewrite(t *testing.T) {
-	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
+	st := newServerTester([]string{"--host-rewrite"}, t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("request-host", r.Host)
 	})
 	defer st.Close()
@@ -212,7 +212,7 @@ func TestH1H1HTTP10(t *testing.T) {
 // field using actual backend server even if --no-http-rewrite is
 // used.
 func TestH1H1HTTP10NoHostRewrite(t *testing.T) {
-	st := newServerTester([]string{"--no-host-rewrite"}, t, func(w http.ResponseWriter, r *http.Request) {
+	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("request-host", r.Host)
 	})
 	defer st.Close()
@@ -429,7 +429,7 @@ func TestH1H2HTTP10(t *testing.T) {
 // field using actual backend server even if --no-http-rewrite is
 // used.
 func TestH1H2HTTP10NoHostRewrite(t *testing.T) {
-	st := newServerTester([]string{"--http2-bridge", "--no-host-rewrite"}, t, func(w http.ResponseWriter, r *http.Request) {
+	st := newServerTester([]string{"--http2-bridge"}, t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("request-host", r.Host)
 	})
 	defer st.Close()

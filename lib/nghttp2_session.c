@@ -362,8 +362,6 @@ static int session_new(nghttp2_session **session_ptr,
   (*session_ptr)->local_last_stream_id = (1u << 31) - 1;
   (*session_ptr)->remote_last_stream_id = (1u << 31) - 1;
 
-  (*session_ptr)->inflight_niv = -1;
-
   (*session_ptr)->pending_local_max_concurrent_stream =
       NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS;
   (*session_ptr)->pending_enable_push = 1;
@@ -561,8 +559,42 @@ static void ob_q_free(nghttp2_outbound_queue *q, nghttp2_mem *mem) {
   }
 }
 
+static int inflight_settings_new(nghttp2_inflight_settings **settings_ptr,
+                                 const nghttp2_settings_entry *iv, size_t niv,
+                                 nghttp2_mem *mem) {
+  *settings_ptr = nghttp2_mem_malloc(mem, sizeof(nghttp2_inflight_settings));
+  if (!*settings_ptr) {
+    return NGHTTP2_ERR_NOMEM;
+  }
+
+  if (niv > 0) {
+    (*settings_ptr)->iv = nghttp2_frame_iv_copy(iv, niv, mem);
+    if (!(*settings_ptr)->iv) {
+      return NGHTTP2_ERR_NOMEM;
+    }
+  } else {
+    (*settings_ptr)->iv = NULL;
+  }
+
+  (*settings_ptr)->niv = niv;
+  (*settings_ptr)->next = NULL;
+
+  return 0;
+}
+
+static void inflight_settings_del(nghttp2_inflight_settings *settings,
+                                  nghttp2_mem *mem) {
+  if (!settings) {
+    return;
+  }
+
+  nghttp2_mem_free(mem, settings->iv);
+  nghttp2_mem_free(mem, settings);
+}
+
 void nghttp2_session_del(nghttp2_session *session) {
   nghttp2_mem *mem;
+  nghttp2_inflight_settings *settings;
 
   if (session == NULL) {
     return;
@@ -570,7 +602,11 @@ void nghttp2_session_del(nghttp2_session *session) {
 
   mem = &session->mem;
 
-  nghttp2_mem_free(mem, session->inflight_iv);
+  for (settings = session->inflight_settings_head; settings;) {
+    nghttp2_inflight_settings *next = settings->next;
+    inflight_settings_del(settings, mem);
+    settings = next;
+  }
 
   nghttp2_stream_roots_free(&session->roots);
 
@@ -1744,6 +1780,12 @@ static int session_prep_frame(nghttp2_session *session,
           rv = session_predicate_headers_send(session, stream);
 
           if (rv != 0) {
+            // If stream was alreay closed,
+            // nghttp2_session_get_stream() returns NULL, but item is
+            // still attached to the stream.  Search stream including
+            // closed again.
+            stream =
+                nghttp2_session_get_stream_raw(session, frame->hd.stream_id);
             if (stream && stream->item == item) {
               int rv2;
 
@@ -1902,6 +1944,10 @@ static int session_prep_frame(nghttp2_session *session,
 
     rv = nghttp2_session_predicate_data_send(session, stream);
     if (rv != 0) {
+      // If stream was alreay closed, nghttp2_session_get_stream()
+      // returns NULL, but item is still attached to the stream.
+      // Search stream including closed again.
+      stream = nghttp2_session_get_stream_raw(session, frame->hd.stream_id);
       if (stream) {
         int rv2;
 
@@ -3939,10 +3985,6 @@ int nghttp2_session_update_local_settings(nghttp2_session *session,
     }
   }
 
-  session->pending_local_max_concurrent_stream =
-      NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS;
-  session->pending_enable_push = 1;
-
   return 0;
 }
 
@@ -3951,6 +3993,7 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
   int rv;
   size_t i;
   nghttp2_mem *mem;
+  nghttp2_inflight_settings *settings;
 
   mem = &session->mem;
 
@@ -3964,15 +4007,21 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
           session, frame, NGHTTP2_ERR_FRAME_SIZE_ERROR,
           "SETTINGS: ACK and payload != 0");
     }
-    if (session->inflight_niv == -1) {
+
+    settings = session->inflight_settings_head;
+
+    if (!settings) {
       return session_handle_invalid_connection(
           session, frame, NGHTTP2_ERR_PROTO, "SETTINGS: unexpected ACK");
     }
-    rv = nghttp2_session_update_local_settings(session, session->inflight_iv,
-                                               session->inflight_niv);
-    nghttp2_mem_free(mem, session->inflight_iv);
-    session->inflight_iv = NULL;
-    session->inflight_niv = -1;
+
+    rv = nghttp2_session_update_local_settings(session, settings->iv,
+                                               settings->niv);
+
+    session->inflight_settings_head = settings->next;
+
+    inflight_settings_del(settings, mem);
+
     if (rv != 0) {
       if (nghttp2_is_fatal(rv)) {
         return rv;
@@ -3987,12 +4036,6 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
 
     switch (entry->settings_id) {
     case NGHTTP2_SETTINGS_HEADER_TABLE_SIZE:
-
-      if (entry->value > NGHTTP2_MAX_HEADER_TABLE_SIZE) {
-        return session_handle_invalid_connection(
-            session, frame, NGHTTP2_ERR_HEADER_COMP,
-            "SETTINGS: too large SETTINGS_HEADER_TABLE_SIZE");
-      }
 
       rv = nghttp2_hd_deflate_change_table_size(&session->hd_deflater,
                                                 entry->value);
@@ -4633,7 +4676,7 @@ static int session_on_data_received_fail_fast(nghttp2_session *session) {
   if (!stream) {
     if (session_detect_idle_stream(session, stream_id)) {
       failure_reason = "DATA: stream in idle";
-      error_code = NGHTTP2_STREAM_CLOSED;
+      error_code = NGHTTP2_PROTOCOL_ERROR;
       goto fail;
     }
     return NGHTTP2_ERR_IGN_PAYLOAD;
@@ -6091,6 +6134,22 @@ int nghttp2_session_add_window_update(nghttp2_session *session, uint8_t flags,
   return 0;
 }
 
+static void
+session_append_inflight_settings(nghttp2_session *session,
+                                 nghttp2_inflight_settings *settings) {
+  nghttp2_inflight_settings *i;
+
+  if (!session->inflight_settings_head) {
+    session->inflight_settings_head = settings;
+    return;
+  }
+
+  for (i = session->inflight_settings_head; i->next; i = i->next)
+    ;
+
+  i->next = settings;
+}
+
 int nghttp2_session_add_settings(nghttp2_session *session, uint8_t flags,
                                  const nghttp2_settings_entry *iv, size_t niv) {
   nghttp2_outbound_item *item;
@@ -6099,15 +6158,12 @@ int nghttp2_session_add_settings(nghttp2_session *session, uint8_t flags,
   size_t i;
   int rv;
   nghttp2_mem *mem;
+  nghttp2_inflight_settings *inflight_settings = NULL;
 
   mem = &session->mem;
 
-  if (flags & NGHTTP2_FLAG_ACK) {
-    if (niv != 0) {
-      return NGHTTP2_ERR_INVALID_ARGUMENT;
-    }
-  } else if (session->inflight_niv != -1) {
-    return NGHTTP2_ERR_TOO_MANY_INFLIGHT_SETTINGS;
+  if ((flags & NGHTTP2_FLAG_ACK) && niv != 0) {
+    return NGHTTP2_ERR_INVALID_ARGUMENT;
   }
 
   if (!nghttp2_iv_check(iv, niv)) {
@@ -6130,19 +6186,13 @@ int nghttp2_session_add_settings(nghttp2_session *session, uint8_t flags,
   }
 
   if ((flags & NGHTTP2_FLAG_ACK) == 0) {
-    if (niv > 0) {
-      session->inflight_iv = nghttp2_frame_iv_copy(iv, niv, mem);
-
-      if (session->inflight_iv == NULL) {
-        nghttp2_mem_free(mem, iv_copy);
-        nghttp2_mem_free(mem, item);
-        return NGHTTP2_ERR_NOMEM;
-      }
-    } else {
-      session->inflight_iv = NULL;
+    rv = inflight_settings_new(&inflight_settings, iv, niv, mem);
+    if (rv != 0) {
+      assert(nghttp2_is_fatal(rv));
+      nghttp2_mem_free(mem, iv_copy);
+      nghttp2_mem_free(mem, item);
+      return rv;
     }
-
-    session->inflight_niv = niv;
   }
 
   nghttp2_outbound_item_init(item);
@@ -6155,17 +6205,15 @@ int nghttp2_session_add_settings(nghttp2_session *session, uint8_t flags,
     /* The only expected error is fatal one */
     assert(nghttp2_is_fatal(rv));
 
-    if ((flags & NGHTTP2_FLAG_ACK) == 0) {
-      nghttp2_mem_free(mem, session->inflight_iv);
-      session->inflight_iv = NULL;
-      session->inflight_niv = -1;
-    }
+    inflight_settings_del(inflight_settings, mem);
 
     nghttp2_frame_settings_free(&frame->settings, mem);
     nghttp2_mem_free(mem, item);
 
     return rv;
   }
+
+  session_append_inflight_settings(session, inflight_settings);
 
   /* Extract NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS and ENABLE_PUSH
      here.  We use it to refuse the incoming stream and PUSH_PROMISE

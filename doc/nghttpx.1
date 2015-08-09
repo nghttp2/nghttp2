@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "June 27, 2015" "1.0.5" "nghttp2"
+.TH "NGHTTPX" "1" "August 09, 2015" "1.2.0" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 experimental proxy
 .
@@ -55,17 +55,69 @@ The options are categorized into several groups.
 .SS Connections
 .INDENT 0.0
 .TP
-.B \-b, \-\-backend=<HOST,PORT>
+.B \-b, \-\-backend=(<HOST>,<PORT>|unix:<PATH>)[;<PATTERN>[:...]]
 Set  backend  host  and   port.   The  multiple  backend
 addresses are  accepted by repeating this  option.  UNIX
 domain socket  can be  specified by prefixing  path name
-with "unix:" (e.g., unix:/var/run/backend.sock)
+with "unix:" (e.g., unix:/var/run/backend.sock).
+.sp
+Optionally, if <PATTERN>s are given, the backend address
+is only used  if request matches the pattern.   If \fI\%\-s\fP or
+\fI\%\-p\fP  is  used,  <PATTERN>s   are  ignored.   The  pattern
+matching  is closely  designed to  ServeMux in  net/http
+package of Go  programming language.  <PATTERN> consists
+of path, host + path or  just host.  The path must start
+with "\fI/\fP".  If  it ends with "\fI/\fP", it  matches all request
+path in  its subtree.  To  deal with the request  to the
+directory without  trailing slash,  the path  which ends
+with "\fI/\fP" also matches the  request path which only lacks
+trailing \(aq\fI/\fP\(aq  (e.g., path  "\fI/foo/\fP" matches  request path
+"\fI/foo\fP").  If it does not end with "\fI/\fP", it performs exact
+match against  the request path.   If host is  given, it
+performs exact match against  the request host.  If host
+alone  is given,  "\fI/\fP"  is  appended to  it,  so that  it
+matches  all   request  paths  under  the   host  (e.g.,
+specifying "nghttp2.org" equals to "nghttp2.org/").
+.sp
+Patterns with  host take  precedence over  patterns with
+just path.   Then, longer patterns take  precedence over
+shorter  ones,  breaking  a  tie by  the  order  of  the
+appearance in the configuration.
+.sp
+If <PATTERN> is  omitted, "\fI/\fP" is used  as pattern, which
+matches  all  request  paths (catch\-all  pattern).   The
+catch\-all backend must be given.
+.sp
+When doing  a match, nghttpx made  some normalization to
+pattern, request host and path.  For host part, they are
+converted to lower case.  For path part, percent\-encoded
+unreserved characters  defined in RFC 3986  are decoded,
+and any  dot\-segments (".."  and ".")   are resolved and
+removed.
+.sp
+For   example,   \fI\%\-b\fP\(aq127.0.0.1,8080;nghttp2.org/httpbin/\(aq
+matches the  request host "nghttp2.org" and  the request
+path "\fI/httpbin/get\fP", but does not match the request host
+"nghttp2.org" and the request path "\fI/index.html\fP".
+.sp
+The  multiple <PATTERN>s  can  be specified,  delimiting
+them            by           ":".             Specifying
+\fI\%\-b\fP\(aq127.0.0.1,8080;nghttp2.org:www.nghttp2.org\(aq  has  the
+same  effect  to specify  \fI\%\-b\fP\(aq127.0.0.1,8080;nghttp2.org\(aq
+and \fI\%\-b\fP\(aq127.0.0.1,8080;www.nghttp2.org\(aq.
+.sp
+The backend addresses sharing same <PATTERN> are grouped
+together forming  load balancing  group.
+.sp
+Since ";" and ":" are  used as delimiter, <PATTERN> must
+not  contain these  characters.  Since  ";" has  special
+meaning in shell, the option value must be quoted.
 .sp
 Default: \fB127.0.0.1,80\fP
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-f, \-\-frontend=<HOST,PORT>
+.B \-f, \-\-frontend=(<HOST>,<PORT>|unix:<PATH>)
 Set  frontend  host and  port.   If  <HOST> is  \(aq*\(aq,  it
 assumes  all addresses  including  both  IPv4 and  IPv6.
 UNIX domain  socket can  be specified by  prefixing path
@@ -195,9 +247,14 @@ Default: \fB0\fP
 .INDENT 0.0
 .TP
 .B \-\-backend\-http2\-connections\-per\-worker=<N>
-Set  maximum number  of HTTP/2  connections per  worker.
-The  default  value is  0,  which  means the  number  of
-backend addresses specified by \fI\%\-b\fP option.
+Set   maximum   number   of  backend   HTTP/2   physical
+connections  per  worker.   If  pattern is  used  in  \fI\%\-b\fP
+option, this limit is applied  to each pattern group (in
+other  words, each  pattern group  can have  maximum <N>
+HTTP/2  connections).  The  default  value  is 0,  which
+means  that  the value  is  adjusted  to the  number  of
+backend addresses.  If pattern  is used, this adjustment
+is done for each pattern group.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -418,22 +475,75 @@ Default: \fBTLSv1.2,TLSv1.1\fP
 .INDENT 0.0
 .TP
 .B \-\-tls\-ticket\-key\-file=<PATH>
-Path  to file  that  contains 48  bytes  random data  to
-construct TLS  session ticket parameters.   This options
-can  be  used  repeatedly  to  specify  multiple  ticket
-parameters.  If several files  are given, only the first
-key is used to encrypt  TLS session tickets.  Other keys
-are accepted  but server  will issue new  session ticket
-with  first  key.   This allows  session  key  rotation.
-Please   note  that   key   rotation   does  not   occur
-automatically.   User should  rearrange files  or change
-options  values  and  restart  nghttpx  gracefully.   If
-opening or reading given file fails, all loaded keys are
-discarded and it is treated as if none of this option is
-given.  If this option is not given or an error occurred
-while  opening  or  reading  a file,  key  is  generated
-automatically and  renewed every 12hrs.  At  most 2 keys
-are stored in memory.
+Path to file that contains  random data to construct TLS
+session ticket  parameters.  If aes\-128\-cbc is  given in
+\fI\%\-\-tls\-ticket\-key\-cipher\fP, the  file must  contain exactly
+48    bytes.     If     aes\-256\-cbc    is    given    in
+\fI\%\-\-tls\-ticket\-key\-cipher\fP, the  file must  contain exactly
+80  bytes.   This  options  can be  used  repeatedly  to
+specify  multiple ticket  parameters.  If  several files
+are given,  only the  first key is  used to  encrypt TLS
+session  tickets.  Other  keys are  accepted but  server
+will  issue new  session  ticket with  first key.   This
+allows  session  key  rotation.  Please  note  that  key
+rotation  does  not  occur automatically.   User  should
+rearrange  files or  change options  values and  restart
+nghttpx gracefully.   If opening  or reading  given file
+fails, all loaded  keys are discarded and  it is treated
+as if none  of this option is given.  If  this option is
+not given or an error  occurred while opening or reading
+a file,  key is  generated every  1 hour  internally and
+they are  valid for  12 hours.   This is  recommended if
+ticket  key sharing  between  nghttpx  instances is  not
+required.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-tls\-ticket\-key\-memcached=<HOST>,<PORT>
+Specify  address of  memcached server  to store  session
+cache.   This  enables  shared TLS  ticket  key  between
+multiple nghttpx  instances.  nghttpx  does not  set TLS
+ticket  key  to  memcached.   The  external  ticket  key
+generator  is required.   nghttpx just  gets TLS  ticket
+keys from  memcached, and  use them,  possibly replacing
+current set of keys.  It is  up to extern TLS ticket key
+generator to  rotate keys frequently.  See  "TLS SESSION
+TICKET RESUMPTION"  section in  manual page to  know the
+data format in memcached entry.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-tls\-ticket\-key\-memcached\-interval=<DURATION>
+Set interval to get TLS ticket keys from memcached.
+.sp
+Default: \fB10m\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-tls\-ticket\-key\-memcached\-max\-retry=<N>
+Set  maximum   number  of  consecutive   retries  before
+abandoning TLS ticket key  retrieval.  If this number is
+reached,  the  attempt  is considered  as  failure,  and
+"failure" count  is incremented by 1,  which contributed
+to            the            value            controlled
+\fI\%\-\-tls\-ticket\-key\-memcached\-max\-fail\fP option.
+.sp
+Default: \fB3\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-tls\-ticket\-key\-memcached\-max\-fail=<N>
+Set  maximum   number  of  consecutive   failure  before
+disabling TLS ticket until next scheduled key retrieval.
+.sp
+Default: \fB2\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-tls\-ticket\-key\-cipher=<CIPHER>
+Specify cipher  to encrypt TLS session  ticket.  Specify
+either   aes\-128\-cbc   or  aes\-256\-cbc.    By   default,
+aes\-128\-cbc is used.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -454,6 +564,13 @@ Default: \fB4h\fP
 .TP
 .B \-\-no\-ocsp
 Disable OCSP stapling.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-tls\-session\-cache\-memcached=<HOST>,<PORT>
+Specify  address of  memcached server  to store  session
+cache.   This  enables   shared  session  cache  between
+multiple nghttpx instances.
 .UNINDENT
 .SS HTTP/2 and SPDY
 .INDENT 0.0
@@ -626,7 +743,19 @@ $pid: PID of the running process.
 $alpn: ALPN identifier of the protocol which generates
 the response.   For HTTP/1,  ALPN is  always http/1.1,
 regardless of minor version.
+.IP \(bu 2
+$ssl_cipher: cipher used for SSL/TLS connection.
+.IP \(bu 2
+$ssl_protocol: protocol for SSL/TLS connection.
+.IP \(bu 2
+$ssl_session_id: session ID for SSL/TLS connection.
+.IP \(bu 2
+$ssl_session_reused:  "r"   if  SSL/TLS   session  was
+reused.  Otherwise, "."
 .UNINDENT
+.sp
+The  variable  can  be  enclosed  by  "{"  and  "}"  for
+disambiguation (e.g., ${remote_addr}).
 .sp
 Default: \fB$remote_addr \- \- [$time_local] "$request" $status $body_bytes_sent "$http_referer" "$http_user_agent"\fP
 .UNINDENT
@@ -681,8 +810,8 @@ altered regardless of this option.
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-\-no\-host\-rewrite
-Don\(aqt  rewrite  host  and :authority  header  fields  on
+.B \-\-host\-rewrite
+Rewrite   host   and   :authority   header   fields   on
 \fI\%\-\-http2\-bridge\fP,   \fI\%\-\-client\fP   and  default   mode.    For
 \fI\%\-\-http2\-proxy\fP  and  \fI\%\-\-client\-proxy\fP mode,  these  headers
 will not be altered regardless of this option.
@@ -783,6 +912,14 @@ be used to drop root privileges.
 Load configuration from <PATH>.
 .sp
 Default: \fB/etc/nghttpx/nghttpx.conf\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-include=<PATH>
+Load additional configurations from <PATH>.  File <PATH>
+is  read  when  configuration  parser  encountered  this
+option.  This option can be used multiple times, or even
+recursively.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -900,6 +1037,67 @@ translated into Python.
 The script file is usually installed under
 \fB$(prefix)/share/nghttp2/\fP directory.  The actual path to script can
 be customized using \fI\%\-\-fetch\-ocsp\-response\-file\fP option.
+.SH TLS SESSION RESUMPTION
+.sp
+nghttpx supports TLS session resumption through both session ID and
+session ticket.
+.SS SESSION ID RESUMPTION
+.sp
+By default, session ID is shared by all worker threads.
+.sp
+If \fI\%\-\-tls\-session\-cache\-memcached\fP is given, nghttpx will
+insert serialized session data to memcached with
+\fBnghttpx:tls\-session\-cache:\fP + lowercased hex string of session ID
+as a memcached entry key, with expiry time 12 hours.  Session timeout
+is set to 12 hours.
+.SS TLS SESSION TICKET RESUMPTION
+.sp
+By default, session ticket is shared by all worker threads.  The
+automatic key rotation is also enabled by default.  Every an hour, new
+encryption key is generated, and previous encryption key becomes
+decryption only key.  We set session timeout to 12 hours, and thus we
+keep at most 12 keys.
+.sp
+If \fI\%\-\-tls\-ticket\-key\-memcached\fP is given, encryption keys are
+retrieved from memcached.  nghttpx just reads keys from memcached; one
+has to deploy key generator program to update keys frequently (e.g.,
+every 1 hour).  The example key generator tlsticketupdate.go is
+available under contrib directory in nghttp2 archive.  The memcached
+entry key is \fBnghttpx:tls\-ticket\-key\fP\&.  The data format stored in
+memcached is the binary format described below:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
++\-\-\-\-\-\-\-\-\-\-\-\-\-\-+\-\-\-\-\-\-\-+\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-+
+| VERSION (4)  |LEN (2)|KEY(48 or 80) ...
++\-\-\-\-\-\-\-\-\-\-\-\-\-\-+\-\-\-\-\-\-\-+\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-+
+               ^                        |
+               |                        |
+               +\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-\-+
+               (LEN, KEY) pair can be repeated
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+All numbers in the above figure is bytes.  All integer fields are
+network byte order.
+.sp
+First 4 bytes integer VERSION field, which must be 1.  The 2 bytes
+integer LEN field gives the length of following KEY field, which
+contains key.  If \fI\%\-\-tls\-ticket\-key\-cipher\fP=aes\-128\-cbc is
+used, LEN must be 48.  If
+\fI\%\-\-tls\-ticket\-key\-cipher\fP=aes\-256\-cbc is used, LEN must be
+80.  LEN and KEY pair can be repeated multiple times to store multiple
+keys.  The key appeared first is used as encryption key.  All the
+remaining keys are used as decryption only.
+.sp
+If \fI\%\-\-tls\-ticket\-key\-file\fP is given, encryption key is read
+from the given file.  In this case, nghttpx does not rotate key
+automatically.  To rotate key, one has to restart nghttpx (see
+SIGNALS).
 .SH SEE ALSO
 .sp
 \fInghttp(1)\fP, \fInghttpd(1)\fP, \fIh2load(1)\fP

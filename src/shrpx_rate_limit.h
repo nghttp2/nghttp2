@@ -48,6 +48,7 @@ public:
   // required since it is buffered in ssl_ object, io event is not
   // generated unless new incoming data is received.
   void handle_tls_pending_read();
+  void set_ssl(SSL *ssl);
 
 private:
   ev_timer t_;

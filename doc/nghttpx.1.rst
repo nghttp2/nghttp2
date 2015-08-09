@@ -37,16 +37,69 @@ The options are categorized into several groups.
 Connections
 ~~~~~~~~~~~
 
-.. option:: -b, --backend=<HOST,PORT>
+.. option:: -b, --backend=(<HOST>,<PORT>|unix:<PATH>)[;<PATTERN>[:...]]
 
     Set  backend  host  and   port.   The  multiple  backend
     addresses are  accepted by repeating this  option.  UNIX
     domain socket  can be  specified by prefixing  path name
-    with "unix:" (e.g., unix:/var/run/backend.sock)
+    with "unix:" (e.g., unix:/var/run/backend.sock).
+
+    Optionally, if <PATTERN>s are given, the backend address
+    is only used  if request matches the pattern.   If :option:`-s` or
+    :option:`-p`  is  used,  <PATTERN>s   are  ignored.   The  pattern
+    matching  is closely  designed to  ServeMux in  net/http
+    package of Go  programming language.  <PATTERN> consists
+    of path, host + path or  just host.  The path must start
+    with "*/*".  If  it ends with "*/*", it  matches all request
+    path in  its subtree.  To  deal with the request  to the
+    directory without  trailing slash,  the path  which ends
+    with "*/*" also matches the  request path which only lacks
+    trailing '*/*'  (e.g., path  "*/foo/*" matches  request path
+    "*/foo*").  If it does not end with "*/*", it performs exact
+    match against  the request path.   If host is  given, it
+    performs exact match against  the request host.  If host
+    alone  is given,  "*/*"  is  appended to  it,  so that  it
+    matches  all   request  paths  under  the   host  (e.g.,
+    specifying "nghttp2.org" equals to "nghttp2.org/").
+
+    Patterns with  host take  precedence over  patterns with
+    just path.   Then, longer patterns take  precedence over
+    shorter  ones,  breaking  a  tie by  the  order  of  the
+    appearance in the configuration.
+
+    If <PATTERN> is  omitted, "*/*" is used  as pattern, which
+    matches  all  request  paths (catch-all  pattern).   The
+    catch-all backend must be given.
+
+    When doing  a match, nghttpx made  some normalization to
+    pattern, request host and path.  For host part, they are
+    converted to lower case.  For path part, percent-encoded
+    unreserved characters  defined in RFC 3986  are decoded,
+    and any  dot-segments (".."  and ".")   are resolved and
+    removed.
+
+    For   example,   :option:`-b`\'127.0.0.1,8080;nghttp2.org/httpbin/'
+    matches the  request host "nghttp2.org" and  the request
+    path "*/httpbin/get*", but does not match the request host
+    "nghttp2.org" and the request path "*/index.html*".
+
+    The  multiple <PATTERN>s  can  be specified,  delimiting
+    them            by           ":".             Specifying
+    :option:`-b`\'127.0.0.1,8080;nghttp2.org:www.nghttp2.org'  has  the
+    same  effect  to specify  :option:`-b`\'127.0.0.1,8080;nghttp2.org'
+    and :option:`-b`\'127.0.0.1,8080;www.nghttp2.org'.
+
+    The backend addresses sharing same <PATTERN> are grouped
+    together forming  load balancing  group.
+
+    Since ";" and ":" are  used as delimiter, <PATTERN> must
+    not  contain these  characters.  Since  ";" has  special
+    meaning in shell, the option value must be quoted.
+
 
     Default: ``127.0.0.1,80``
 
-.. option:: -f, --frontend=<HOST,PORT>
+.. option:: -f, --frontend=(<HOST>,<PORT>|unix:<PATH>)
 
     Set  frontend  host and  port.   If  <HOST> is  '\*',  it
     assumes  all addresses  including  both  IPv4 and  IPv6.
@@ -165,9 +218,14 @@ Performance
 
 .. option:: --backend-http2-connections-per-worker=<N>
 
-    Set  maximum number  of HTTP/2  connections per  worker.
-    The  default  value is  0,  which  means the  number  of
-    backend addresses specified by :option:`-b` option.
+    Set   maximum   number   of  backend   HTTP/2   physical
+    connections  per  worker.   If  pattern is  used  in  :option:`-b`
+    option, this limit is applied  to each pattern group (in
+    other  words, each  pattern group  can have  maximum <N>
+    HTTP/2  connections).  The  default  value  is 0,  which
+    means  that  the value  is  adjusted  to the  number  of
+    backend addresses.  If pattern  is used, this adjustment
+    is done for each pattern group.
 
 .. option:: --backend-http1-connections-per-host=<N>
 
@@ -366,22 +424,70 @@ SSL/TLS
 
 .. option:: --tls-ticket-key-file=<PATH>
 
-    Path  to file  that  contains 48  bytes  random data  to
-    construct TLS  session ticket parameters.   This options
-    can  be  used  repeatedly  to  specify  multiple  ticket
-    parameters.  If several files  are given, only the first
-    key is used to encrypt  TLS session tickets.  Other keys
-    are accepted  but server  will issue new  session ticket
-    with  first  key.   This allows  session  key  rotation.
-    Please   note  that   key   rotation   does  not   occur
-    automatically.   User should  rearrange files  or change
-    options  values  and  restart  nghttpx  gracefully.   If
-    opening or reading given file fails, all loaded keys are
-    discarded and it is treated as if none of this option is
-    given.  If this option is not given or an error occurred
-    while  opening  or  reading  a file,  key  is  generated
-    automatically and  renewed every 12hrs.  At  most 2 keys
-    are stored in memory.
+    Path to file that contains  random data to construct TLS
+    session ticket  parameters.  If aes-128-cbc is  given in
+    :option:`--tls-ticket-key-cipher`\, the  file must  contain exactly
+    48    bytes.     If     aes-256-cbc    is    given    in
+    :option:`--tls-ticket-key-cipher`\, the  file must  contain exactly
+    80  bytes.   This  options  can be  used  repeatedly  to
+    specify  multiple ticket  parameters.  If  several files
+    are given,  only the  first key is  used to  encrypt TLS
+    session  tickets.  Other  keys are  accepted but  server
+    will  issue new  session  ticket with  first key.   This
+    allows  session  key  rotation.  Please  note  that  key
+    rotation  does  not  occur automatically.   User  should
+    rearrange  files or  change options  values and  restart
+    nghttpx gracefully.   If opening  or reading  given file
+    fails, all loaded  keys are discarded and  it is treated
+    as if none  of this option is given.  If  this option is
+    not given or an error  occurred while opening or reading
+    a file,  key is  generated every  1 hour  internally and
+    they are  valid for  12 hours.   This is  recommended if
+    ticket  key sharing  between  nghttpx  instances is  not
+    required.
+
+.. option:: --tls-ticket-key-memcached=<HOST>,<PORT>
+
+    Specify  address of  memcached server  to store  session
+    cache.   This  enables  shared TLS  ticket  key  between
+    multiple nghttpx  instances.  nghttpx  does not  set TLS
+    ticket  key  to  memcached.   The  external  ticket  key
+    generator  is required.   nghttpx just  gets TLS  ticket
+    keys from  memcached, and  use them,  possibly replacing
+    current set of keys.  It is  up to extern TLS ticket key
+    generator to  rotate keys frequently.  See  "TLS SESSION
+    TICKET RESUMPTION"  section in  manual page to  know the
+    data format in memcached entry.
+
+.. option:: --tls-ticket-key-memcached-interval=<DURATION>
+
+    Set interval to get TLS ticket keys from memcached.
+
+    Default: ``10m``
+
+.. option:: --tls-ticket-key-memcached-max-retry=<N>
+
+    Set  maximum   number  of  consecutive   retries  before
+    abandoning TLS ticket key  retrieval.  If this number is
+    reached,  the  attempt  is considered  as  failure,  and
+    "failure" count  is incremented by 1,  which contributed
+    to            the            value            controlled
+    :option:`--tls-ticket-key-memcached-max-fail` option.
+
+    Default: ``3``
+
+.. option:: --tls-ticket-key-memcached-max-fail=<N>
+
+    Set  maximum   number  of  consecutive   failure  before
+    disabling TLS ticket until next scheduled key retrieval.
+
+    Default: ``2``
+
+.. option:: --tls-ticket-key-cipher=<CIPHER>
+
+    Specify cipher  to encrypt TLS session  ticket.  Specify
+    either   aes-128-cbc   or  aes-256-cbc.    By   default,
+    aes-128-cbc is used.
 
 .. option:: --fetch-ocsp-response-file=<PATH>
 
@@ -399,6 +505,12 @@ SSL/TLS
 .. option:: --no-ocsp
 
     Disable OCSP stapling.
+
+.. option:: --tls-session-cache-memcached=<HOST>,<PORT>
+
+    Specify  address of  memcached server  to store  session
+    cache.   This  enables   shared  session  cache  between
+    multiple nghttpx instances.
 
 
 HTTP/2 and SPDY
@@ -550,6 +662,14 @@ Logging
     * $alpn: ALPN identifier of the protocol which generates
       the response.   For HTTP/1,  ALPN is  always http/1.1,
       regardless of minor version.
+    * $ssl_cipher: cipher used for SSL/TLS connection.
+    * $ssl_protocol: protocol for SSL/TLS connection.
+    * $ssl_session_id: session ID for SSL/TLS connection.
+    * $ssl_session_reused:  "r"   if  SSL/TLS   session  was
+      reused.  Otherwise, "."
+
+    The  variable  can  be  enclosed  by  "{"  and  "}"  for
+    disambiguation (e.g., ${remote_addr}).
 
 
     Default: ``$remote_addr - - [$time_local] "$request" $status $body_bytes_sent "$http_referer" "$http_user_agent"``
@@ -599,9 +719,9 @@ HTTP
     :option:`--client-proxy` mode,  location header field will  not be
     altered regardless of this option.
 
-.. option:: --no-host-rewrite
+.. option:: --host-rewrite
 
-    Don't  rewrite  host  and :authority  header  fields  on
+    Rewrite   host   and   :authority   header   fields   on
     :option:`--http2-bridge`\,   :option:`--client`   and  default   mode.    For
     :option:`--http2-proxy`  and  :option:`\--client-proxy` mode,  these  headers
     will not be altered regardless of this option.
@@ -699,6 +819,13 @@ Misc
     Load configuration from <PATH>.
 
     Default: ``/etc/nghttpx/nghttpx.conf``
+
+.. option:: --include=<PATH>
+
+    Load additional configurations from <PATH>.  File <PATH>
+    is  read  when  configuration  parser  encountered  this
+    option.  This option can be used multiple times, or even
+    recursively.
 
 .. option:: -v, --version
 
@@ -815,6 +942,65 @@ translated into Python.
 The script file is usually installed under
 ``$(prefix)/share/nghttp2/`` directory.  The actual path to script can
 be customized using :option:`--fetch-ocsp-response-file` option.
+
+TLS SESSION RESUMPTION
+----------------------
+
+nghttpx supports TLS session resumption through both session ID and
+session ticket.
+
+SESSION ID RESUMPTION
+~~~~~~~~~~~~~~~~~~~~~
+
+By default, session ID is shared by all worker threads.
+
+If :option:`--tls-session-cache-memcached` is given, nghttpx will
+insert serialized session data to memcached with
+``nghttpx:tls-session-cache:`` + lowercased hex string of session ID
+as a memcached entry key, with expiry time 12 hours.  Session timeout
+is set to 12 hours.
+
+TLS SESSION TICKET RESUMPTION
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+By default, session ticket is shared by all worker threads.  The
+automatic key rotation is also enabled by default.  Every an hour, new
+encryption key is generated, and previous encryption key becomes
+decryption only key.  We set session timeout to 12 hours, and thus we
+keep at most 12 keys.
+
+If :option:`--tls-ticket-key-memcached` is given, encryption keys are
+retrieved from memcached.  nghttpx just reads keys from memcached; one
+has to deploy key generator program to update keys frequently (e.g.,
+every 1 hour).  The example key generator tlsticketupdate.go is
+available under contrib directory in nghttp2 archive.  The memcached
+entry key is ``nghttpx:tls-ticket-key``.  The data format stored in
+memcached is the binary format described below::
+
+    +--------------+-------+----------------+
+    | VERSION (4)  |LEN (2)|KEY(48 or 80) ...
+    +--------------+-------+----------------+
+                   ^                        |
+		   |                        |
+		   +------------------------+
+                   (LEN, KEY) pair can be repeated
+
+All numbers in the above figure is bytes.  All integer fields are
+network byte order.
+
+First 4 bytes integer VERSION field, which must be 1.  The 2 bytes
+integer LEN field gives the length of following KEY field, which
+contains key.  If :option:`--tls-ticket-key-cipher`\=aes-128-cbc is
+used, LEN must be 48.  If
+:option:`--tls-ticket-key-cipher`\=aes-256-cbc is used, LEN must be
+80.  LEN and KEY pair can be repeated multiple times to store multiple
+keys.  The key appeared first is used as encryption key.  All the
+remaining keys are used as decryption only.
+
+If :option:`--tls-ticket-key-file` is given, encryption key is read
+from the given file.  In this case, nghttpx does not rotate key
+automatically.  To rotate key, one has to restart nghttpx (see
+SIGNALS).
 
 SEE ALSO
 --------

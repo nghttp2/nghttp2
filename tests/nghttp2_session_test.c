@@ -2300,17 +2300,10 @@ void test_nghttp2_session_on_settings_received(void) {
   nghttp2_session_server_new(&session, &callbacks, NULL);
   nghttp2_frame_settings_init(&frame.settings, NGHTTP2_FLAG_ACK, dup_iv(iv, 1),
                               1);
-  /* Specify inflight_iv deliberately */
-  session->inflight_iv = frame.settings.iv;
-  session->inflight_niv = frame.settings.niv;
-
   CU_ASSERT(0 == nghttp2_session_on_settings_received(session, &frame, 0));
   item = nghttp2_session_get_next_ob_item(session);
   CU_ASSERT(item != NULL);
   CU_ASSERT(NGHTTP2_GOAWAY == item->frame.hd.type);
-
-  session->inflight_iv = NULL;
-  session->inflight_niv = -1;
 
   nghttp2_frame_settings_free(&frame.settings, mem);
   nghttp2_session_del(session);
@@ -4041,8 +4034,8 @@ void test_nghttp2_submit_settings(void) {
   CU_ASSERT(16 * 1024 == session->local_settings.initial_window_size);
   CU_ASSERT(0 == session->hd_inflater.ctx.hd_table_bufsize_max);
   CU_ASSERT(50 == session->local_settings.max_concurrent_streams);
-  CU_ASSERT(NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS ==
-            session->pending_local_max_concurrent_stream);
+  /* We just keep the last seen value */
+  CU_ASSERT(50 == session->pending_local_max_concurrent_stream);
 
   nghttp2_session_del(session);
 }
@@ -4111,6 +4104,83 @@ void test_nghttp2_submit_settings_update_local_window_size(void) {
 
   nghttp2_session_del(session);
   nghttp2_frame_settings_free(&ack_frame.settings, mem);
+}
+
+void test_nghttp2_submit_settings_multiple_times(void) {
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  nghttp2_settings_entry iv[4];
+  nghttp2_frame frame;
+  nghttp2_inflight_settings *inflight_settings;
+
+  memset(&callbacks, 0, sizeof(callbacks));
+  callbacks.send_callback = null_send_callback;
+
+  nghttp2_session_client_new(&session, &callbacks, NULL);
+
+  /* first SETTINGS */
+  iv[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
+  iv[0].value = 100;
+
+  iv[1].settings_id = NGHTTP2_SETTINGS_ENABLE_PUSH;
+  iv[1].value = 0;
+
+  CU_ASSERT(0 == nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, iv, 2));
+
+  inflight_settings = session->inflight_settings_head;
+
+  CU_ASSERT(NULL != inflight_settings);
+  CU_ASSERT(NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS ==
+            inflight_settings->iv[0].settings_id);
+  CU_ASSERT(100 == inflight_settings->iv[0].value);
+  CU_ASSERT(2 == inflight_settings->niv);
+  CU_ASSERT(NULL == inflight_settings->next);
+
+  CU_ASSERT(100 == session->pending_local_max_concurrent_stream);
+  CU_ASSERT(0 == session->pending_enable_push);
+
+  /* second SETTINGS */
+  iv[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
+  iv[0].value = 99;
+
+  CU_ASSERT(0 == nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, iv, 1));
+
+  inflight_settings = session->inflight_settings_head->next;
+
+  CU_ASSERT(NULL != inflight_settings);
+  CU_ASSERT(NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS ==
+            inflight_settings->iv[0].settings_id);
+  CU_ASSERT(99 == inflight_settings->iv[0].value);
+  CU_ASSERT(1 == inflight_settings->niv);
+  CU_ASSERT(NULL == inflight_settings->next);
+
+  CU_ASSERT(99 == session->pending_local_max_concurrent_stream);
+  CU_ASSERT(0 == session->pending_enable_push);
+
+  nghttp2_frame_settings_init(&frame.settings, NGHTTP2_FLAG_ACK, NULL, 0);
+
+  /* receive SETTINGS ACK */
+  CU_ASSERT(0 == nghttp2_session_on_settings_received(session, &frame, 0));
+
+  inflight_settings = session->inflight_settings_head;
+
+  /* first inflight SETTINGS was removed */
+  CU_ASSERT(NULL != inflight_settings);
+  CU_ASSERT(NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS ==
+            inflight_settings->iv[0].settings_id);
+  CU_ASSERT(99 == inflight_settings->iv[0].value);
+  CU_ASSERT(1 == inflight_settings->niv);
+  CU_ASSERT(NULL == inflight_settings->next);
+
+  CU_ASSERT(100 == session->local_settings.max_concurrent_streams);
+
+  /* receive SETTINGS ACK again */
+  CU_ASSERT(0 == nghttp2_session_on_settings_received(session, &frame, 0));
+
+  CU_ASSERT(NULL == session->inflight_settings_head);
+  CU_ASSERT(99 == session->local_settings.max_concurrent_streams);
+
+  nghttp2_session_del(session);
 }
 
 void test_nghttp2_submit_push_promise(void) {
@@ -7566,6 +7636,50 @@ void test_nghttp2_session_defer_then_close(void) {
   rv = nghttp2_session_on_rst_stream_received(session, &frame);
 
   CU_ASSERT(rv == 0);
+
+  nghttp2_session_del(session);
+}
+
+static int submit_response_on_stream_close(nghttp2_session *session,
+                                           int32_t stream_id,
+                                           uint32_t error_code _U_,
+                                           void *user_data _U_) {
+  nghttp2_data_provider data_prd;
+  data_prd.read_callback = temporal_failure_data_source_read_callback;
+
+  // Attempt to submit response or data to the stream being closed
+  switch (stream_id) {
+  case 1:
+    CU_ASSERT(0 == nghttp2_submit_response(session, stream_id, resnv,
+                                           ARRLEN(resnv), &data_prd));
+    break;
+  case 3:
+    CU_ASSERT(0 == nghttp2_submit_data(session, NGHTTP2_FLAG_NONE, stream_id,
+                                       &data_prd));
+    break;
+  }
+
+  return 0;
+}
+
+void test_nghttp2_session_detach_item_from_closed_stream(void) {
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+
+  memset(&callbacks, 0, sizeof(callbacks));
+
+  callbacks.send_callback = null_send_callback;
+  callbacks.on_stream_close_callback = submit_response_on_stream_close;
+
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  open_stream(session, 1);
+  open_stream(session, 3);
+
+  nghttp2_session_close_stream(session, 1, NGHTTP2_NO_ERROR);
+  nghttp2_session_close_stream(session, 3, NGHTTP2_NO_ERROR);
+
+  CU_ASSERT(0 == nghttp2_session_send(session));
 
   nghttp2_session_del(session);
 }

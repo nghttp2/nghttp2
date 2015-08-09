@@ -1268,7 +1268,7 @@ if asyncio:
             if ssl_ctx:
                 protocol = sock.selected_npn_protocol()
                 logging.info('npn, protocol:%s', protocol)
-                if protocol.encode('utf-8') != \
+                if protocol is None or protocol.encode('utf-8') != \
                    cnghttp2.NGHTTP2_PROTO_VERSION_ID:
                     self.transport.abort()
                     return

@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "H2LOAD" "1" "June 27, 2015" "1.0.5" "nghttp2"
+.TH "H2LOAD" "1" "August 09, 2015" "1.2.0" "nghttp2"
 .SH NAME
 h2load \- HTTP/2 benchmarking tool
 .
@@ -70,10 +70,10 @@ Default: \fB1\fP
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-i, \-\-input\-file=<FILE>
+.B \-i, \-\-input\-file=<PATH>
 Path of a file with multiple URIs are separated by EOLs.
 This option will disable URIs getting from command\-line.
-If \(aq\-\(aq is given as <FILE>, URIs will be read from stdin.
+If \(aq\-\(aq is given as <PATH>, URIs will be read from stdin.
 URIs are used  in this order for each  client.  All URIs
 are used, then  first URI is used and then  2nd URI, and
 so  on.  The  scheme, host  and port  in the  subsequent
@@ -113,6 +113,12 @@ Add/Override a header to the requests.
 .UNINDENT
 .INDENT 0.0
 .TP
+.B \-\-ciphers=<SUITE>
+Set allowed  cipher list.  The  format of the  string is
+described in OpenSSL ciphers(1).
+.UNINDENT
+.INDENT 0.0
+.TP
 .B \-p, \-\-no\-tls\-proto=<PROTOID>
 Specify ALPN identifier of the  protocol to be used when
 accessing http URI without SSL/TLS.
@@ -122,9 +128,33 @@ Default: \fBh2c\fP
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-d, \-\-data=<FILE>
+.B \-d, \-\-data=<PATH>
 Post FILE to  server.  The request method  is changed to
 POST.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-r, \-\-rate=<N>
+Specifies  the  fixed  rate  at  which  connections  are
+created.   The   rate  must   be  a   positive  integer,
+representing the  number of  connections to be  made per
+second.  When the rate is 0,  the program will run as it
+normally does, creating connections at whatever variable
+rate it wants.  The default value for this option is 0.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-C, \-\-num\-conns=<N>
+Specifies  the total  number of  connections to  create.
+The  total  number of  connections  must  be a  positive
+integer.  On each connection, \fI\%\-m\fP requests are made.  The
+test  stops once  as soon  as the  <N> connections  have
+either  completed   or  failed.   When  the   number  of
+connections is  0, the program  will run as  it normally
+does, creating as many connections  as it needs in order
+to make  the \fI\%\-n\fP  requests specified.  The  default value
+for this option is 0.  The  \fI\%\-n\fP option is not required if
+the \fI\%\-C\fP option is being used.
 .UNINDENT
 .INDENT 0.0
 .TP

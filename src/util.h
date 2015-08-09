@@ -212,6 +212,14 @@ std::string quote_string(const std::string &target);
 
 std::string format_hex(const unsigned char *s, size_t len);
 
+template <size_t N> std::string format_hex(const unsigned char (&s)[N]) {
+  return format_hex(s, N);
+}
+
+template <size_t N> std::string format_hex(const std::array<uint8_t, N> &s) {
+  return format_hex(s.data(), s.size());
+}
+
 std::string http_date(time_t t);
 
 // Returns given time |t| from epoch in Common Log format (e.g.,
@@ -345,6 +353,10 @@ inline bool strieq(const std::string &a, const std::string &b) {
 
 bool strieq(const char *a, const char *b);
 
+inline bool strieq(const char *a, const std::string &b) {
+  return strieq(a, b.c_str(), b.size());
+}
+
 template <typename InputIt, size_t N>
 bool strieq_l(const char (&a)[N], InputIt b, size_t blen) {
   return strieq(a, N - 1, b, blen);
@@ -386,9 +398,13 @@ bool streq_l(const char (&a)[N], InputIt b, size_t blen) {
 
 bool strifind(const char *a, const char *b);
 
+template <typename InputIt> void inp_strlower(InputIt first, InputIt last) {
+  std::transform(first, last, first, lowcase);
+}
+
 // Lowercase |s| in place.
 inline void inp_strlower(std::string &s) {
-  std::transform(std::begin(s), std::end(s), std::begin(s), lowcase);
+  inp_strlower(std::begin(s), std::end(s));
 }
 
 // Returns string representation of |n| with 2 fractional digits.
@@ -618,6 +634,26 @@ std::string make_hostport(const char *host, uint16_t port);
 
 // Dumps |src| of length |len| in the format similar to `hexdump -C`.
 void hexdump(FILE *out, const uint8_t *src, size_t len);
+
+// Copies 2 byte unsigned integer |n| in host byte order to |buf| in
+// network byte order.
+void put_uint16be(uint8_t *buf, uint16_t n);
+
+// Copies 4 byte unsigned integer |n| in host byte order to |buf| in
+// network byte order.
+void put_uint32be(uint8_t *buf, uint32_t n);
+
+// Retrieves 2 byte unsigned integer stored in |data| in network byte
+// order and returns it in host byte order.
+uint16_t get_uint16(const uint8_t *data);
+
+// Retrieves 4 byte unsigned integer stored in |data| in network byte
+// order and returns it in host byte order.
+uint32_t get_uint32(const uint8_t *data);
+
+// Retrieves 8 byte unsigned integer stored in |data| in network byte
+// order and returns it in host byte order.
+uint64_t get_uint64(const uint8_t *data);
 
 } // namespace util
 
