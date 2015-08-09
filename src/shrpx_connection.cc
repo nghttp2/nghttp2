@@ -303,12 +303,20 @@ int Connection::tls_handshake() {
   }
   tls.rb->write(nread);
 
+  // We have limited space for read buffer, so stop reading if it
+  // filled up.
+  if (tls.rb->wleft() == 0) {
+    rlimit.stopw();
+    ev_timer_stop(loop, &rt);
+  }
+
   switch (tls.handshake_state) {
   case TLS_CONN_WAIT_FOR_SESSION_CACHE:
-    if (tls.rb->wleft() == 0) {
-      // Input buffer is full.  Disable read until cache is returned
-      rlimit.stopw();
-      ev_timer_stop(loop, &rt);
+    if (nread > 0) {
+      if (LOG_ENABLED(INFO)) {
+        LOG(INFO) << "tls: client sent addtional data after client hello";
+      }
+      return -1;
     }
     return SHRPX_ERR_INPROGRESS;
   case TLS_CONN_GOT_SESSION_CACHE: {
@@ -317,11 +325,15 @@ int Connection::tls_handshake() {
     tls.rb->pos = tls.rb->begin();
 
     auto ssl_ctx = SSL_get_SSL_CTX(tls.ssl);
+    auto ssl_opts = SSL_get_options(tls.ssl);
     SSL_free(tls.ssl);
 
-    auto ssl = ssl::create_server_ssl(ssl_ctx, nullptr);
+    auto ssl = ssl::create_ssl(ssl_ctx);
     if (!ssl) {
       return -1;
+    }
+    if (ssl_opts & SSL_OP_NO_TICKET) {
+      SSL_set_options(ssl, SSL_OP_NO_TICKET);
     }
 
     set_ssl(ssl);
@@ -360,6 +372,8 @@ int Connection::tls_handshake() {
   }
 
   if (tls.wb->rleft()) {
+    // First write indicates that resumption stuff has done.
+    tls.handshake_state = TLS_CONN_WRITE_STARTED;
     auto nwrite = write_clear(tls.wb->pos, tls.wb->rleft());
     if (nwrite < 0) {
       if (LOG_ENABLED(INFO)) {
@@ -373,6 +387,16 @@ int Connection::tls_handshake() {
   if (tls.wb->rleft()) {
     wlimit.startw();
     ev_timer_again(loop, &wt);
+  } else {
+    tls.wb->reset();
+  }
+
+  if (tls.handshake_state == TLS_CONN_WRITE_STARTED && tls.rb->rleft() == 0) {
+    tls.rb->reset();
+
+    // We may have stopped reading
+    rlimit.startw();
+    ev_timer_again(loop, &rt);
   }
 
   if (rv != 1) {
