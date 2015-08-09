@@ -306,6 +306,15 @@ int Connection::tls_handshake() {
   // We have limited space for read buffer, so stop reading if it
   // filled up.
   if (tls.rb->wleft() == 0) {
+    if (tls.handshake_state != TLS_CONN_WRITE_STARTED) {
+      // Reading 16KiB before writing server hello is unlikely for
+      // ordinary client.
+      if (LOG_ENABLED(INFO)) {
+        LOG(INFO) << "tls: client hello is too large";
+      }
+      return -1;
+    }
+
     rlimit.stopw();
     ev_timer_stop(loop, &rt);
   }
