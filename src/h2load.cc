@@ -75,7 +75,7 @@ Config::Config()
     : data_length(-1), addrs(nullptr), nreqs(1), nclients(1), nthreads(1),
       max_concurrent_streams(-1), window_bits(30), connection_window_bits(30),
       rate(0), nconns(0), conn_active_timeout(0), conn_inactivity_timeout(0), no_tls_proto(PROTO_HTTP2), data_fd(-1), port(0),
-      default_port(0), verbose(false) {}
+      default_port(0), verbose(false), seconds(0) {}
 
 Config::~Config() {
   freeaddrinfo(addrs);
@@ -1670,7 +1670,6 @@ int main(int argc, char **argv) {
   if (!config.is_rate_mode() && config.nclients == 1) {
     config.nthreads = 1;
   }
-  ssize_t seconds = 0;
 
   if (config.is_rate_mode()) {
 
