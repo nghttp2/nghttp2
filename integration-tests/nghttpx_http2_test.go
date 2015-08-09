@@ -195,7 +195,7 @@ func TestH2H1NoVia(t *testing.T) {
 
 // TestH2H1HostRewrite tests that server rewrites host header field
 func TestH2H1HostRewrite(t *testing.T) {
-	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
+	st := newServerTester([]string{"--host-rewrite"}, t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("request-host", r.Host)
 	})
 	defer st.Close()
@@ -217,7 +217,7 @@ func TestH2H1HostRewrite(t *testing.T) {
 // TestH2H1NoHostRewrite tests that server does not rewrite host
 // header field
 func TestH2H1NoHostRewrite(t *testing.T) {
-	st := newServerTester([]string{"--no-host-rewrite"}, t, func(w http.ResponseWriter, r *http.Request) {
+	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("request-host", r.Host)
 	})
 	defer st.Close()
@@ -813,7 +813,7 @@ func TestH2H2ConnectFailure(t *testing.T) {
 
 // TestH2H2HostRewrite tests that server rewrites host header field
 func TestH2H2HostRewrite(t *testing.T) {
-	st := newServerTester([]string{"--http2-bridge"}, t, func(w http.ResponseWriter, r *http.Request) {
+	st := newServerTester([]string{"--http2-bridge", "--host-rewrite"}, t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("request-host", r.Host)
 	})
 	defer st.Close()
@@ -835,7 +835,7 @@ func TestH2H2HostRewrite(t *testing.T) {
 // TestH2H2NoHostRewrite tests that server does not rewrite host
 // header field
 func TestH2H2NoHostRewrite(t *testing.T) {
-	st := newServerTester([]string{"--http2-bridge", "--no-host-rewrite"}, t, func(w http.ResponseWriter, r *http.Request) {
+	st := newServerTester([]string{"--http2-bridge"}, t, func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("request-host", r.Host)
 	})
 	defer st.Close()

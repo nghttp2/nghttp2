@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "July 28, 2015" "1.1.3-DEV" "nghttp2"
+.TH "NGHTTPX" "1" "August 09, 2015" "1.2.0" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 experimental proxy
 .
@@ -1061,9 +1061,10 @@ keep at most 12 keys.
 If \fI\%\-\-tls\-ticket\-key\-memcached\fP is given, encryption keys are
 retrieved from memcached.  nghttpx just reads keys from memcached; one
 has to deploy key generator program to update keys frequently (e.g.,
-every 1 hour).  The memcached entry key is \fBnghttpx:tls\-ticket\-key\fP\&.
-The data format stored in memcached is the binary format described
-below:
+every 1 hour).  The example key generator tlsticketupdate.go is
+available under contrib directory in nghttp2 archive.  The memcached
+entry key is \fBnghttpx:tls\-ticket\-key\fP\&.  The data format stored in
+memcached is the binary format described below:
 .INDENT 0.0
 .INDENT 3.5
 .sp
