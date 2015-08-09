@@ -1675,15 +1675,14 @@ int main(int argc, char **argv) {
 
         // set various config values
     if ((int)config.nreqs < config.nconns) {
-      seconds = c_time;
+      config.seconds = c_time;
     } else if (config.nconns == 0) {
-      seconds = n_time;
+      config.seconds = n_time;
     } else {
-      seconds = std::min(n_time, c_time);
+      config.seconds = std::min(n_time, c_time);
     }
     config.nreqs = actual_nreqs;
   }
-  config.seconds = seconds;
 
   size_t nreqs_per_thread = config.nreqs / config.nthreads;
   ssize_t nreqs_rem = config.nreqs % config.nthreads;
@@ -1700,7 +1699,7 @@ int main(int argc, char **argv) {
   // In rate mode, we want each Worker to create a total of
   // C/t connections. 
   if (config.is_rate_mode()) {
-    nclients_extra = config.nconns - (seconds * config.rate);
+    nclients_extra = config.nconns - (config.seconds * config.rate);
     nclients_extra_per_thread = nclients_extra / (ssize_t)config.nthreads;
     nclients_extra_rem_per_thread = (ssize_t)nclients_extra % (ssize_t)config.nthreads;
   }
@@ -1719,7 +1718,7 @@ int main(int argc, char **argv) {
     auto rate = rate_per_thread + (rate_per_thread_rem-- > 0);
     auto nclients = nclients_per_thread + (nclients_rem-- > 0);
     if (config.is_rate_mode()) {
-      nclients = rate * seconds + nclients_extra_per_thread + (nclients_extra_rem_per_thread-- > 0);
+      nclients = rate * config.seconds + nclients_extra_per_thread + (nclients_extra_rem_per_thread-- > 0);
       nreqs = nclients * config.max_concurrent_streams;
     }
     std::cout << "spawning thread #" << i << ": " << nclients
@@ -1737,7 +1736,7 @@ int main(int argc, char **argv) {
   auto nclients_last = nclients_per_thread + (nclients_rem-- > 0);
   auto rate_last = rate_per_thread + (rate_per_thread_rem-- > 0);
   if (config.is_rate_mode()) {
-    nclients_last = rate_last * seconds + nclients_extra_per_thread + (nclients_extra_rem_per_thread-- > 0);
+    nclients_last = rate_last * config.seconds + nclients_extra_per_thread + (nclients_extra_rem_per_thread-- > 0);
     nreqs_last = nclients_last * config.max_concurrent_streams;
   }
   std::cout << "spawning thread #" << (config.nthreads - 1) << ": "
