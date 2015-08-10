@@ -185,7 +185,6 @@ namespace {
 void conn_inactivity_timeout_cb(EV_P_ ev_timer *w, int revents) {
   auto client = static_cast<Client *>(w->data);
   ev_timer_stop(client->worker->loop, &client->conn_inactivity_watcher);
-  std::cout << "in conn_inactivity_timeout_cb" << std::endl;
 
   if (client->worker->config->conn_active_timeout > 0 &&
       ev_is_active(&client->conn_active_watcher)) {
@@ -204,7 +203,6 @@ namespace {
 void conn_active_timeout_cb(EV_P_ ev_timer *w, int revents) {
   auto client = static_cast<Client *>(w->data);
   ev_timer_stop(client->worker->loop, &client->conn_active_watcher);
-  std::cout << "in conn_active_timeout_cb" << std::endl;
 
   if (client->worker->config->conn_inactivity_timeout > 0 &&
       ev_is_active(&client->conn_inactivity_watcher)) {
