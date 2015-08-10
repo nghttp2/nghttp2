@@ -1206,7 +1206,7 @@ Options:
               to make  the -n  requests specified.  The  default value
               for this option is 0.  The  -n option is not required if
               the -C option is being used.
-  -T, --connection_active_timeout=<N>
+  -T, --connection-active-timeout=<N>
               Specifies  the  maximum  time  that h2load is willing to 
               keep a  connection  open, regardless of  the activity on 
               said  connection.  T  must   be   a   positive  integer, 
@@ -1214,7 +1214,7 @@ Options:
               timeout value is set (either active or inactive), h2load 
               will keep a connection open indefinitely, waiting for  a 
               response.
-  -N, connection_inactivity_timeout=<N>
+  -N, connection-inactivity-timeout=<N>
               Specifies the amount of time N that h2load is willing to 
               wait to see activity on a given connection. N must be  a 
               positive integer, specifying the number  of  seconds  to 
@@ -1258,8 +1258,8 @@ int main(int argc, char **argv) {
         {"ciphers", required_argument, &flag, 2},
         {"rate", required_argument, nullptr, 'r'},
         {"num-conns", required_argument, nullptr, 'C'},
-        {"connection_active_timeout", required_argument, nullptr, 'T'},
-        {"connection_inactivity_timeout", required_argument, nullptr, 'N'},
+        {"connection-active-timeout", required_argument, nullptr, 'T'},
+        {"connection-inactivity-timeout", required_argument, nullptr, 'N'},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     auto c = getopt_long(argc, argv, "hvW:c:d:m:n:p:t:w:H:i:r:C:T:N:",
