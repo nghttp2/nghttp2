@@ -775,7 +775,7 @@ void memcached_get_ticket_key_cb(struct ev_loop *loop, ev_timer *w,
       auto key = TicketKey();
       key.cipher = get_config()->tls_ticket_key_cipher;
       key.hmac = EVP_sha256();
-      key.hmac_keylen = EVP_MD_size(key.hmac);
+      key.hmac_keylen = hmac_keylen;
 
       std::copy_n(p, key.data.name.size(), key.data.name.data());
       p += key.data.name.size();

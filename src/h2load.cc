@@ -737,11 +737,11 @@ Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
   auto nreqs_per_client = req_todo / nclients;
   auto nreqs_rem = req_todo % nclients;
 
-  if (config->is_rate_mode()) {
-    // create timer that will go off every second
-    ev_timer_init(&timeout_watcher, second_timeout_w_cb, 0., 1.);
-    timeout_watcher.data = this;
-  } else {
+  // create timer that will go off every second
+  ev_timer_init(&timeout_watcher, second_timeout_w_cb, 0., 1.);
+  timeout_watcher.data = this;
+
+  if (!config->is_rate_mode()) {
     for (size_t i = 0; i < nclients; ++i) {
       auto req_todo = nreqs_per_client;
       if (nreqs_rem > 0) {
@@ -754,6 +754,8 @@ Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
 }
 
 Worker::~Worker() {
+  ev_timer_stop(loop, &timeout_watcher);
+
   // first clear clients so that io watchers are stopped before
   // destructing ev_loop.
   clients.clear();
@@ -1113,6 +1115,7 @@ int main(int argc, char **argv) {
   OPENSSL_config(nullptr);
 
   std::string datafile;
+  bool nreqs_set_manually = false;
   while (1) {
     static int flag = 0;
     static option long_options[] = {
@@ -1142,6 +1145,7 @@ int main(int argc, char **argv) {
     switch (c) {
     case 'n':
       config.nreqs = strtoul(optarg, nullptr, 10);
+      nreqs_set_manually = true;
       break;
     case 'c':
       config.nclients = strtoul(optarg, nullptr, 10);
@@ -1320,11 +1324,24 @@ int main(int argc, char **argv) {
       exit(EXIT_FAILURE);
     }
 
+    if (nreqs_set_manually && config.rate > config.nreqs) {
+      std::cerr << "-r, -n: the connection rate must be smaller than or equal "
+                   "to the number of requests." << std::endl;
+      exit(EXIT_FAILURE);
+    }
+
     if (config.nconns != 0 && config.nconns < config.nthreads) {
       std::cerr
           << "-C, -t: the total number of connections must be greater than "
              "or equal "
           << "to the number of threads." << std::endl;
+      exit(EXIT_FAILURE);
+    }
+
+    if (config.nconns == 0 && !nreqs_set_manually) {
+      std::cerr
+          << "-r: the rate option must be used with either the -n option "
+             "or the -C option." << std::endl;
       exit(EXIT_FAILURE);
     }
   }
