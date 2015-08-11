@@ -417,6 +417,10 @@ int Connection::tls_handshake() {
 
   tls.initial_handshake_done = true;
 
+  if (tls.rb->rleft()) {
+    ev_feed_event(loop, &rev, EV_READ);
+  }
+
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "SSL/TLS handshake completed";
     if (SSL_session_reused(tls.ssl)) {
