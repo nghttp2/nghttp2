@@ -1158,7 +1158,7 @@ uint64_t get_uint64(const uint8_t *data) {
   n += static_cast<uint64_t>(data[1]) << 48;
   n += static_cast<uint64_t>(data[2]) << 40;
   n += static_cast<uint64_t>(data[3]) << 32;
-  n += data[4] << 24;
+  n += static_cast<uint64_t>(data[4]) << 24;
   n += data[5] << 16;
   n += data[6] << 8;
   n += data[7];
