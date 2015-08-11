@@ -1320,6 +1320,12 @@ int main(int argc, char **argv) {
       exit(EXIT_FAILURE);
     }
 
+    if (config.rate > config.nreqs) {
+      std::cerr << "-r, -n: the connection rate must be smaller than or equal "
+                   "to the number of requests." << std::endl;
+      exit(EXIT_FAILURE);
+    }
+
     if (config.nconns != 0 && config.nconns < config.nthreads) {
       std::cerr
           << "-C, -t: the total number of connections must be greater than "
