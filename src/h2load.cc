@@ -844,11 +844,11 @@ Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
   auto nreqs_per_client = req_todo / nclients;
   auto nreqs_rem = req_todo % nclients;
 
-  if (config->is_rate_mode()) {
-    // create timer that will go off every second
-    ev_timer_init(&timeout_watcher, second_timeout_w_cb, 0., 1.);
-    timeout_watcher.data = this;
-  } else {
+  // create timer that will go off every second
+  ev_timer_init(&timeout_watcher, second_timeout_w_cb, 0., 1.);
+  timeout_watcher.data = this;
+
+  if (!config->is_rate_mode()) {
     for (size_t i = 0; i < nclients; ++i) {
       auto req_todo = nreqs_per_client;
       if (nreqs_rem > 0) {
@@ -861,6 +861,8 @@ Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
 }
 
 Worker::~Worker() {
+  ev_timer_stop(loop, &timeout_watcher);
+
   // first clear clients so that io watchers are stopped before
   // destructing ev_loop.
   clients.clear();
@@ -1460,6 +1462,12 @@ int main(int argc, char **argv) {
     if (config.rate < config.nthreads) {
       std::cerr << "-r, -t: the connection rate must be greater than or equal "
                 << "to the number of threads." << std::endl;
+      exit(EXIT_FAILURE);
+    }
+
+    if (config.rate > config.nreqs) {
+      std::cerr << "-r, -n: the connection rate must be smaller than or equal "
+                   "to the number of requests." << std::endl;
       exit(EXIT_FAILURE);
     }
 
