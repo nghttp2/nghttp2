@@ -737,11 +737,11 @@ Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
   auto nreqs_per_client = req_todo / nclients;
   auto nreqs_rem = req_todo % nclients;
 
-  if (config->is_rate_mode()) {
-    // create timer that will go off every second
-    ev_timer_init(&timeout_watcher, second_timeout_w_cb, 0., 1.);
-    timeout_watcher.data = this;
-  } else {
+  // create timer that will go off every second
+  ev_timer_init(&timeout_watcher, second_timeout_w_cb, 0., 1.);
+  timeout_watcher.data = this;
+
+  if (!config->is_rate_mode()) {
     for (size_t i = 0; i < nclients; ++i) {
       auto req_todo = nreqs_per_client;
       if (nreqs_rem > 0) {
