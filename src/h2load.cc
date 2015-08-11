@@ -1845,7 +1845,7 @@ time for request: )" << std::setw(10) << util::format_duration(ts.request.min)
             << util::dtos(ts.ttfb.within_sd) << "%" << std::endl;
 
   if (config.conn_inactivity_timeout > 0 || config.conn_active_timeout > 0) {
-    std::cout << R"(requests timed out:)" << stats.req_timedout << std::endl;
+    std::cout << R"(requests timed out: )" << stats.req_timedout << std::endl;
   }
   SSL_CTX_free(ssl_ctx);
 
