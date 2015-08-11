@@ -754,6 +754,8 @@ Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
 }
 
 Worker::~Worker() {
+  ev_timer_stop(loop, &timeout_watcher);
+
   // first clear clients so that io watchers are stopped before
   // destructing ev_loop.
   clients.clear();
