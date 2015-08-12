@@ -666,27 +666,17 @@ void close_log_file(int &fd) {
 }
 
 int open_log_file(const char *path) {
-  if (strcmp(path, "/dev/stdout") == 0) {
+
+  if (strcmp(path, "/dev/stdout") == 0 ||
+      strcmp(path, "/proc/self/fd/1") == 0) {
     return STDOUT_FILENO;
   }
-  if (strcmp(path, "/dev/stderr") == 0) {
+
+  if (strcmp(path, "/dev/stderr") == 0 ||
+      strcmp(path, "/proc/self/fd/2") == 0) {
     return STDERR_FILENO;
   }
-#if defined(__ANDROID__) || defined(ANDROID)
-  int fd;
-
-  if (strcmp("/proc/self/fd/1", path) == 0 ||
-      strcmp("/proc/self/fd/2", path) == 0) {
-
-    // We will get permission denied error when O_APPEND is used for
-    // these paths.
-    fd =
-        open(path, O_WRONLY | O_CREAT | O_CLOEXEC, S_IRUSR | S_IWUSR | S_IRGRP);
-  } else {
-    fd = open(path, O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC,
-              S_IRUSR | S_IWUSR | S_IRGRP);
-  }
-#elif defined O_CLOEXEC
+#if defined O_CLOEXEC
 
   auto fd = open(path, O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC,
                  S_IRUSR | S_IWUSR | S_IRGRP);
