@@ -134,7 +134,8 @@ int ssl_pem_passwd_cb(char *buf, int size, int rwflag, void *user_data) {
 
 namespace {
 int servername_callback(SSL *ssl, int *al, void *arg) {
-  auto handler = static_cast<ClientHandler *>(SSL_get_app_data(ssl));
+  auto conn = static_cast<Connection *>(SSL_get_app_data(ssl));
+  auto handler = static_cast<ClientHandler *>(conn->data);
   auto worker = handler->get_worker();
   auto cert_tree = worker->get_cert_lookup_tree();
   if (cert_tree) {
@@ -190,7 +191,8 @@ constexpr char MEMCACHED_SESSION_CACHE_KEY_PREFIX[] =
 
 namespace {
 int tls_session_new_cb(SSL *ssl, SSL_SESSION *session) {
-  auto handler = static_cast<ClientHandler *>(SSL_get_app_data(ssl));
+  auto conn = static_cast<Connection *>(SSL_get_app_data(ssl));
+  auto handler = static_cast<ClientHandler *>(conn->data);
   auto worker = handler->get_worker();
   auto dispatcher = worker->get_session_cache_memcached_dispatcher();
 
@@ -236,10 +238,10 @@ int tls_session_new_cb(SSL *ssl, SSL_SESSION *session) {
 namespace {
 SSL_SESSION *tls_session_get_cb(SSL *ssl, unsigned char *id, int idlen,
                                 int *copy) {
-  auto handler = static_cast<ClientHandler *>(SSL_get_app_data(ssl));
+  auto conn = static_cast<Connection *>(SSL_get_app_data(ssl));
+  auto handler = static_cast<ClientHandler *>(conn->data);
   auto worker = handler->get_worker();
   auto dispatcher = worker->get_session_cache_memcached_dispatcher();
-  auto conn = handler->get_connection();
 
   if (conn->tls.cached_session) {
     if (LOG_ENABLED(INFO)) {
@@ -309,7 +311,8 @@ SSL_SESSION *tls_session_get_cb(SSL *ssl, unsigned char *id, int idlen,
 namespace {
 int ticket_key_cb(SSL *ssl, unsigned char *key_name, unsigned char *iv,
                   EVP_CIPHER_CTX *ctx, HMAC_CTX *hctx, int enc) {
-  auto handler = static_cast<ClientHandler *>(SSL_get_app_data(ssl));
+  auto conn = static_cast<Connection *>(SSL_get_app_data(ssl));
+  auto handler = static_cast<ClientHandler *>(conn->data);
   auto worker = handler->get_worker();
   auto ticket_keys = worker->get_ticket_keys();
 
@@ -385,7 +388,6 @@ void info_callback(const SSL *ssl, int where, int ret) {
   if (where & SSL_CB_HANDSHAKE_START) {
     auto conn = static_cast<Connection *>(SSL_get_app_data(ssl));
     if (conn && conn->tls.initial_handshake_done) {
-      // We only set SSL_get_app_data for ClientHandler for now.
       auto handler = static_cast<ClientHandler *>(conn->data);
       if (LOG_ENABLED(INFO)) {
         CLOG(INFO, handler) << "TLS renegotiation started";

@@ -850,6 +850,4 @@ ev_io *ClientHandler::get_wev() { return &conn_.wev; }
 
 Worker *ClientHandler::get_worker() const { return worker_; }
 
-Connection *ClientHandler::get_connection() { return &conn_; }
-
 } // namespace shrpx
