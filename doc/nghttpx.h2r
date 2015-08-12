@@ -96,6 +96,9 @@ The script file is usually installed under
 ``$(prefix)/share/nghttp2/`` directory.  The actual path to script can
 be customized using :option:`--fetch-ocsp-response-file` option.
 
+If OCSP query is failed, previous OCSP response, if any, is continued
+to be used.
+
 TLS SESSION RESUMPTION
 ----------------------
 
