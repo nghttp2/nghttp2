@@ -341,6 +341,13 @@ int Connection::tls_handshake() {
     auto err = SSL_get_error(tls.ssl, rv);
     switch (err) {
     case SSL_ERROR_WANT_READ:
+      if (read_buffer_full(tls.rbuf)) {
+        if (LOG_ENABLED(INFO)) {
+          LOG(INFO) << "tls: handshake message is too large";
+        }
+        return -1;
+      }
+      break;
     case SSL_ERROR_WANT_WRITE:
       break;
     default:
