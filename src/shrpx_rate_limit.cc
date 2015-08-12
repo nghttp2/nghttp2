@@ -26,6 +26,8 @@
 
 #include <limits>
 
+#include "shrpx_connection.h"
+
 namespace shrpx {
 
 namespace {
@@ -36,9 +38,9 @@ void regencb(struct ev_loop *loop, ev_timer *w, int revents) {
 } // namespace
 
 RateLimit::RateLimit(struct ev_loop *loop, ev_io *w, size_t rate, size_t burst,
-                     SSL *ssl)
-    : w_(w), loop_(loop), ssl_(ssl), rate_(rate), burst_(burst), avail_(burst),
-      startw_req_(false) {
+                     Connection *conn)
+    : w_(w), loop_(loop), conn_(conn), rate_(rate), burst_(burst),
+      avail_(burst), startw_req_(false) {
   ev_timer_init(&t_, regencb, 0., 1.);
   t_.data = this;
   if (rate_ > 0) {
@@ -97,7 +99,8 @@ void RateLimit::stopw() {
 }
 
 void RateLimit::handle_tls_pending_read() {
-  if (!ssl_ || SSL_pending(ssl_) == 0) {
+  if (!conn_ || !conn_->tls.ssl ||
+      (SSL_pending(conn_->tls.ssl) == 0 && conn_->tls.rbuf.rleft() == 0)) {
     return;
   }
 
@@ -105,7 +108,5 @@ void RateLimit::handle_tls_pending_read() {
   // only call this function if watcher is active.
   ev_feed_event(loop_, w_, EV_READ);
 }
-
-void RateLimit::set_ssl(SSL *ssl) { ssl_ = ssl; }
 
 } // namespace shrpx

@@ -144,7 +144,8 @@ void writecb(struct ev_loop *loop, ev_io *w, int revents) {
 Http2Session::Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx,
                            ConnectBlocker *connect_blocker, Worker *worker,
                            size_t group, size_t idx)
-    : conn_(loop, -1, nullptr, get_config()->downstream_write_timeout,
+    : conn_(loop, -1, nullptr, worker->get_mcpool(),
+            get_config()->downstream_write_timeout,
             get_config()->downstream_read_timeout, 0, 0, 0, 0, writecb, readcb,
             timeoutcb, this),
       worker_(worker), connect_blocker_(connect_blocker), ssl_ctx_(ssl_ctx),

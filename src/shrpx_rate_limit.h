@@ -33,28 +33,30 @@
 
 namespace shrpx {
 
+struct Connection;
+
 class RateLimit {
 public:
-  // We need |ssl| object to check that it has unread decrypted bytes.
+  // We need |conn| object to check that it has unread bytes for TLS
+  // connection.
   RateLimit(struct ev_loop *loop, ev_io *w, size_t rate, size_t burst,
-            SSL *ssl = nullptr);
+            Connection *conn = nullptr);
   ~RateLimit();
   size_t avail() const;
   void drain(size_t n);
   void regen();
   void startw();
   void stopw();
-  // Feeds event if ssl_ object has unread decrypted bytes.  This is
-  // required since it is buffered in ssl_ object, io event is not
-  // generated unless new incoming data is received.
+  // Feeds event if conn_->tls object has unread bytes.  This is
+  // required since it is buffered in conn_->tls object, io event is
+  // not generated unless new incoming data is received.
   void handle_tls_pending_read();
-  void set_ssl(SSL *ssl);
 
 private:
   ev_timer t_;
   ev_io *w_;
   struct ev_loop *loop_;
-  SSL *ssl_;
+  Connection *conn_;
   size_t rate_;
   size_t burst_;
   size_t avail_;

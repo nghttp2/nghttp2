@@ -84,6 +84,7 @@ void test_pool_recycle(void) {
 using Memchunk16 = Memchunk<16>;
 using MemchunkPool16 = Pool<Memchunk16>;
 using Memchunks16 = Memchunks<Memchunk16>;
+using PeekMemchunks16 = PeekMemchunks<Memchunk16>;
 
 void test_memchunks_append(void) {
   MemchunkPool16 pool;
@@ -194,6 +195,146 @@ void test_memchunks_recycle(void) {
 
   CU_ASSERT(nullptr != m);
   CU_ASSERT(nullptr == m->next);
+}
+
+void test_memchunks_reset(void) {
+  MemchunkPool16 pool;
+  Memchunks16 chunks(&pool);
+
+  std::array<uint8_t, 32> b{};
+
+  chunks.append(b.data(), b.size());
+
+  CU_ASSERT(32 == chunks.rleft());
+
+  chunks.reset();
+
+  CU_ASSERT(0 == chunks.rleft());
+  CU_ASSERT(nullptr == chunks.head);
+  CU_ASSERT(nullptr == chunks.tail);
+
+  auto m = pool.freelist;
+
+  CU_ASSERT(nullptr != m);
+  CU_ASSERT(nullptr != m->next);
+  CU_ASSERT(nullptr == m->next->next);
+}
+
+void test_peek_memchunks_append(void) {
+  MemchunkPool16 pool;
+  PeekMemchunks16 pchunks(&pool);
+
+  std::array<uint8_t, 32> b{{
+      '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '1', '2', '3', '4',
+      '5', '6', '7', '8', '9', '0', '1',
+  }},
+      d;
+
+  pchunks.append(b.data(), b.size());
+
+  CU_ASSERT(32 == pchunks.rleft());
+  CU_ASSERT(32 == pchunks.rleft_buffered());
+
+  CU_ASSERT(0 == pchunks.remove(nullptr, 0));
+
+  CU_ASSERT(32 == pchunks.rleft());
+  CU_ASSERT(32 == pchunks.rleft_buffered());
+
+  CU_ASSERT(12 == pchunks.remove(d.data(), 12));
+
+  CU_ASSERT(std::equal(std::begin(b), std::begin(b) + 12, std::begin(d)));
+
+  CU_ASSERT(20 == pchunks.rleft());
+  CU_ASSERT(32 == pchunks.rleft_buffered());
+
+  CU_ASSERT(20 == pchunks.remove(d.data(), d.size()));
+
+  CU_ASSERT(std::equal(std::begin(b) + 12, std::end(b), std::begin(d)));
+
+  CU_ASSERT(0 == pchunks.rleft());
+  CU_ASSERT(32 == pchunks.rleft_buffered());
+}
+
+void test_peek_memchunks_disable_peek_drain(void) {
+  MemchunkPool16 pool;
+  PeekMemchunks16 pchunks(&pool);
+
+  std::array<uint8_t, 32> b{{
+      '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '1', '2', '3', '4',
+      '5', '6', '7', '8', '9', '0', '1',
+  }},
+      d;
+
+  pchunks.append(b.data(), b.size());
+
+  CU_ASSERT(12 == pchunks.remove(d.data(), 12));
+
+  pchunks.disable_peek(true);
+
+  CU_ASSERT(!pchunks.peeking);
+  CU_ASSERT(20 == pchunks.rleft());
+  CU_ASSERT(20 == pchunks.rleft_buffered());
+
+  CU_ASSERT(20 == pchunks.remove(d.data(), d.size()));
+
+  CU_ASSERT(std::equal(std::begin(b) + 12, std::end(b), std::begin(d)));
+
+  CU_ASSERT(0 == pchunks.rleft());
+  CU_ASSERT(0 == pchunks.rleft_buffered());
+}
+
+void test_peek_memchunks_disable_peek_no_drain(void) {
+  MemchunkPool16 pool;
+  PeekMemchunks16 pchunks(&pool);
+
+  std::array<uint8_t, 32> b{{
+      '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '1', '2', '3', '4',
+      '5', '6', '7', '8', '9', '0', '1',
+  }},
+      d;
+
+  pchunks.append(b.data(), b.size());
+
+  CU_ASSERT(12 == pchunks.remove(d.data(), 12));
+
+  pchunks.disable_peek(false);
+
+  CU_ASSERT(!pchunks.peeking);
+  CU_ASSERT(32 == pchunks.rleft());
+  CU_ASSERT(32 == pchunks.rleft_buffered());
+
+  CU_ASSERT(32 == pchunks.remove(d.data(), d.size()));
+
+  CU_ASSERT(std::equal(std::begin(b), std::end(b), std::begin(d)));
+
+  CU_ASSERT(0 == pchunks.rleft());
+  CU_ASSERT(0 == pchunks.rleft_buffered());
+}
+
+void test_peek_memchunks_reset(void) {
+  MemchunkPool16 pool;
+  PeekMemchunks16 pchunks(&pool);
+
+  std::array<uint8_t, 32> b{{
+      '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '1', '2', '3', '4',
+      '5', '6', '7', '8', '9', '0', '1',
+  }},
+      d;
+
+  pchunks.append(b.data(), b.size());
+
+  CU_ASSERT(12 == pchunks.remove(d.data(), 12));
+
+  pchunks.disable_peek(true);
+  pchunks.reset();
+
+  CU_ASSERT(0 == pchunks.rleft());
+  CU_ASSERT(0 == pchunks.rleft_buffered());
+
+  CU_ASSERT(nullptr == pchunks.cur);
+  CU_ASSERT(nullptr == pchunks.cur_pos);
+  CU_ASSERT(nullptr == pchunks.cur_last);
+  CU_ASSERT(pchunks.peeking);
 }
 
 } // namespace nghttp2

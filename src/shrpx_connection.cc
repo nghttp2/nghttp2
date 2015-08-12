@@ -40,12 +40,13 @@ using namespace nghttp2;
 
 namespace shrpx {
 Connection::Connection(struct ev_loop *loop, int fd, SSL *ssl,
-                       ev_tstamp write_timeout, ev_tstamp read_timeout,
-                       size_t write_rate, size_t write_burst, size_t read_rate,
-                       size_t read_burst, IOCb writecb, IOCb readcb,
-                       TimerCb timeoutcb, void *data)
-    : tls{}, wlimit(loop, &wev, write_rate, write_burst),
-      rlimit(loop, &rev, read_rate, read_burst, ssl), writecb(writecb),
+                       MemchunkPool *mcpool, ev_tstamp write_timeout,
+                       ev_tstamp read_timeout, size_t write_rate,
+                       size_t write_burst, size_t read_rate, size_t read_burst,
+                       IOCb writecb, IOCb readcb, TimerCb timeoutcb, void *data)
+    : tls{DefaultMemchunks(mcpool), DefaultPeekMemchunks(mcpool)},
+      wlimit(loop, &wev, write_rate, write_burst),
+      rlimit(loop, &rev, read_rate, read_burst, this), writecb(writecb),
       readcb(readcb), timeoutcb(timeoutcb), loop(loop), data(data), fd(fd) {
 
   ev_io_init(&wev, writecb, fd, EV_WRITE);
@@ -83,10 +84,12 @@ void Connection::disconnect() {
 
     if (tls.cached_session) {
       SSL_SESSION_free(tls.cached_session);
+      tls.cached_session = nullptr;
     }
 
     if (tls.cached_session_lookup_req) {
       tls.cached_session_lookup_req->canceled = true;
+      tls.cached_session_lookup_req = nullptr;
     }
 
     // To reuse SSL/TLS session, we have to shutdown, and don't free
@@ -96,7 +99,15 @@ void Connection::disconnect() {
       tls.ssl = nullptr;
     }
 
-    tls = {tls.ssl};
+    tls.wbuf.reset();
+    tls.rbuf.reset();
+    tls.last_write_idle = 0.;
+    tls.warmup_writelen = 0;
+    tls.last_writelen = 0;
+    tls.last_readlen = 0;
+    tls.handshake_state = 0;
+    tls.initial_handshake_done = false;
+    tls.reneg_started = false;
   }
 
   if (fd != -1) {
@@ -114,22 +125,9 @@ void Connection::disconnect() {
   wlimit.stopw();
 }
 
-namespace {
-void allocate_buffer(Connection *conn) {
-  conn->tls.rb = make_unique<Buffer<16_k>>();
-  conn->tls.wb = make_unique<Buffer<16_k>>();
-}
-} // namespace
+void Connection::prepare_client_handshake() { SSL_set_connect_state(tls.ssl); }
 
-void Connection::prepare_client_handshake() {
-  SSL_set_connect_state(tls.ssl);
-  allocate_buffer(this);
-}
-
-void Connection::prepare_server_handshake() {
-  SSL_set_accept_state(tls.ssl);
-  allocate_buffer(this);
-}
+void Connection::prepare_server_handshake() { SSL_set_accept_state(tls.ssl); }
 
 // BIO implementation is inspired by openldap implementation:
 // http://www.openldap.org/devel/cvsweb.cgi/~checkout~/libraries/libldap/tls_o.c
@@ -140,27 +138,26 @@ int shrpx_bio_write(BIO *b, const char *buf, int len) {
   }
 
   auto conn = static_cast<Connection *>(b->ptr);
-  auto &wb = conn->tls.wb;
+  auto &wbuf = conn->tls.wbuf;
 
   BIO_clear_retry_flags(b);
 
   if (conn->tls.initial_handshake_done) {
     // After handshake finished, send |buf| of length |len| to the
     // socket directly.
-    if (wb && wb->rleft()) {
-      auto nwrite = conn->write_clear(wb->pos, wb->rleft());
+    if (wbuf.rleft()) {
+      std::array<struct iovec, 4> iov;
+      auto iovcnt = wbuf.riovec(iov.data(), iov.size());
+      auto nwrite = conn->writev_clear(iov.data(), iovcnt);
       if (nwrite < 0) {
         return -1;
       }
 
-      wb->drain(nwrite);
-      if (wb->rleft()) {
+      wbuf.drain(nwrite);
+      if (wbuf.rleft()) {
         BIO_set_retry_write(b);
         return -1;
       }
-
-      // Here delete TLS write buffer
-      wb.reset();
     }
     auto nwrite = conn->write_clear(buf, len);
     if (nwrite < 0) {
@@ -175,16 +172,9 @@ int shrpx_bio_write(BIO *b, const char *buf, int len) {
     return nwrite;
   }
 
-  auto nwrite = std::min(static_cast<size_t>(len), wb->wleft());
+  wbuf.append(buf, len);
 
-  if (nwrite == 0) {
-    BIO_set_retry_write(b);
-    return -1;
-  }
-
-  wb->write(buf, nwrite);
-
-  return nwrite;
+  return len;
 }
 } // namespace
 
@@ -195,11 +185,11 @@ int shrpx_bio_read(BIO *b, char *buf, int len) {
   }
 
   auto conn = static_cast<Connection *>(b->ptr);
-  auto &rb = conn->tls.rb;
+  auto &rbuf = conn->tls.rbuf;
 
   BIO_clear_retry_flags(b);
 
-  if (conn->tls.initial_handshake_done && !rb) {
+  if (conn->tls.initial_handshake_done && rbuf.rleft() == 0) {
     auto nread = conn->read_clear(buf, len);
     if (nread < 0) {
       return -1;
@@ -211,22 +201,12 @@ int shrpx_bio_read(BIO *b, char *buf, int len) {
     return nread;
   }
 
-  auto nread = std::min(static_cast<size_t>(len), rb->rleft());
-
-  if (nread == 0) {
-    if (conn->tls.initial_handshake_done) {
-      rb.reset();
-    }
-
+  if (rbuf.rleft() == 0) {
     BIO_set_retry_read(b);
     return -1;
   }
 
-  std::copy_n(rb->pos, nread, buf);
-
-  rb->drain(nread);
-
-  return nread;
+  return rbuf.remove(buf, len);
 }
 } // namespace
 
@@ -289,51 +269,47 @@ void Connection::set_ssl(SSL *ssl) {
   bio->ptr = this;
   SSL_set_bio(tls.ssl, bio, bio);
   SSL_set_app_data(tls.ssl, this);
-  rlimit.set_ssl(tls.ssl);
 }
+
+namespace {
+// We should buffer at least full encrypted TLS record here.
+// Theoretically, peer can send client hello in several TLS records,
+// which could exeed this limit, but it is not portable, and we don't
+// have to handle such exotic behaviour.
+bool read_buffer_full(DefaultPeekMemchunks &rbuf) {
+  return rbuf.rleft_buffered() >= 20_k;
+}
+} // namespace
 
 int Connection::tls_handshake() {
   wlimit.stopw();
   ev_timer_stop(loop, &wt);
 
-  auto nread = read_clear(tls.rb->last, tls.rb->wleft());
-  if (nread < 0) {
-    if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "tls: handshake read error";
-    }
-    return -1;
-  }
-  tls.rb->write(nread);
-
-  // We have limited space for read buffer, so stop reading if it
-  // filled up.
-  if (tls.rb->wleft() == 0) {
-    if (tls.handshake_state != TLS_CONN_WRITE_STARTED) {
-      // Reading 16KiB before writing server hello is unlikely for
-      // ordinary client.
+  if (ev_is_active(&rev)) {
+    std::array<uint8_t, 8_k> buf;
+    auto nread = read_clear(buf.data(), buf.size());
+    if (nread < 0) {
       if (LOG_ENABLED(INFO)) {
-        LOG(INFO) << "tls: client hello is too large";
+        LOG(INFO) << "tls: handshake read error";
       }
       return -1;
     }
-
-    rlimit.stopw();
-    ev_timer_stop(loop, &rt);
+    tls.rbuf.append(buf.data(), nread);
+    if (read_buffer_full(tls.rbuf)) {
+      rlimit.stopw();
+    }
   }
 
   switch (tls.handshake_state) {
   case TLS_CONN_WAIT_FOR_SESSION_CACHE:
-    if (nread > 0) {
-      if (LOG_ENABLED(INFO)) {
-        LOG(INFO) << "tls: client sent addtional data after client hello";
-      }
-      return -1;
-    }
     return SHRPX_ERR_INPROGRESS;
   case TLS_CONN_GOT_SESSION_CACHE: {
-    // Use the same trick invented by @kazuho in h2o project
-    tls.wb->reset();
-    tls.rb->pos = tls.rb->begin();
+    // Use the same trick invented by @kazuho in h2o project.
+
+    // Discard all outgoing data.
+    tls.wbuf.reset();
+    // Rewind buffered incoming data to replay client hello.
+    tls.rbuf.disable_peek(false);
 
     auto ssl_ctx = SSL_get_SSL_CTX(tls.ssl);
     auto ssl_opts = SSL_get_options(tls.ssl);
@@ -382,32 +358,33 @@ int Connection::tls_handshake() {
     return SHRPX_ERR_INPROGRESS;
   }
 
-  if (tls.wb->rleft()) {
+  if (tls.wbuf.rleft()) {
     // First write indicates that resumption stuff has done.
-    tls.handshake_state = TLS_CONN_WRITE_STARTED;
-    auto nwrite = write_clear(tls.wb->pos, tls.wb->rleft());
+    if (tls.handshake_state != TLS_CONN_WRITE_STARTED) {
+      tls.handshake_state = TLS_CONN_WRITE_STARTED;
+      // If peek has already disabled, this is noop.
+      tls.rbuf.disable_peek(true);
+    }
+    std::array<struct iovec, 4> iov;
+    auto iovcnt = tls.wbuf.riovec(iov.data(), iov.size());
+    auto nwrite = writev_clear(iov.data(), iovcnt);
     if (nwrite < 0) {
       if (LOG_ENABLED(INFO)) {
         LOG(INFO) << "tls: handshake write error";
       }
       return -1;
     }
-    tls.wb->drain(nwrite);
+    tls.wbuf.drain(nwrite);
+
+    if (tls.wbuf.rleft()) {
+      wlimit.startw();
+      ev_timer_again(loop, &wt);
+    }
   }
 
-  if (tls.wb->rleft()) {
-    wlimit.startw();
-    ev_timer_again(loop, &wt);
-  } else {
-    tls.wb->reset();
-  }
-
-  if (tls.handshake_state == TLS_CONN_WRITE_STARTED && tls.rb->rleft() == 0) {
-    tls.rb->reset();
-
+  if (!read_buffer_full(tls.rbuf)) {
     // We may have stopped reading
     rlimit.startw();
-    ev_timer_again(loop, &rt);
   }
 
   if (rv != 1) {
@@ -419,13 +396,14 @@ int Connection::tls_handshake() {
 
   tls.initial_handshake_done = true;
 
-  if (tls.rb->rleft()) {
-    ev_feed_event(loop, &rev, EV_READ);
-  }
-
-  // We may have stopped reading
+  // We have to start read watcher, since later stage of code expects
+  // this.
   rlimit.startw();
-  ev_timer_again(loop, &rt);
+
+  // We may have whole request in tls.rbuf.  This means that we don't
+  // get notified further read event.  This is especially true for
+  // HTTP/1.1.
+  handle_tls_pending_read();
 
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "SSL/TLS handshake completed";
@@ -506,8 +484,8 @@ ssize_t Connection::write_tls(const void *data, size_t len) {
       return SHRPX_ERR_NETWORK;
     case SSL_ERROR_WANT_WRITE:
       tls.last_writelen = len;
-      wlimit.startw();
-      ev_timer_again(loop, &wt);
+      // starting write watcher and timer is done in write_clear via
+      // bio.
       return 0;
     default:
       if (LOG_ENABLED(INFO)) {

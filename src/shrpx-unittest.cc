@@ -172,7 +172,16 @@ int main(int argc, char *argv[]) {
       !CU_add_test(pSuite, "memchunk_drain", nghttp2::test_memchunks_drain) ||
       !CU_add_test(pSuite, "memchunk_riovec", nghttp2::test_memchunks_riovec) ||
       !CU_add_test(pSuite, "memchunk_recycle",
-                   nghttp2::test_memchunks_recycle)) {
+                   nghttp2::test_memchunks_recycle) ||
+      !CU_add_test(pSuite, "memchunk_reset", nghttp2::test_memchunks_reset) ||
+      !CU_add_test(pSuite, "peek_memchunk_append",
+                   nghttp2::test_peek_memchunks_append) ||
+      !CU_add_test(pSuite, "peek_memchunk_disable_peek_drain",
+                   nghttp2::test_peek_memchunks_disable_peek_drain) ||
+      !CU_add_test(pSuite, "peek_memchunk_disable_peek_no_drain",
+                   nghttp2::test_peek_memchunks_disable_peek_no_drain) ||
+      !CU_add_test(pSuite, "peek_memchunk_reset",
+                   nghttp2::test_peek_memchunks_reset)) {
     CU_cleanup_registry();
     return CU_get_error();
   }
