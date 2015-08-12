@@ -77,12 +77,6 @@ Connection::~Connection() {
 }
 
 void Connection::disconnect() {
-  ev_timer_stop(loop, &rt);
-  ev_timer_stop(loop, &wt);
-
-  rlimit.stopw();
-  wlimit.stopw();
-
   if (tls.ssl) {
     SSL_set_shutdown(tls.ssl, SSL_RECEIVED_SHUTDOWN);
     ERR_clear_error();
@@ -110,6 +104,14 @@ void Connection::disconnect() {
     close(fd);
     fd = -1;
   }
+
+  // Stop watchers here because they could be activated in
+  // SSL_shutdown().
+  ev_timer_stop(loop, &rt);
+  ev_timer_stop(loop, &wt);
+
+  rlimit.stopw();
+  wlimit.stopw();
 }
 
 namespace {
