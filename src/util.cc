@@ -657,7 +657,21 @@ std::string numeric_name(const struct sockaddr *sa, socklen_t salen) {
   return host.data();
 }
 
-int reopen_log_file(const char *path) {
+
+void close_log_file(int &fd) {
+  if (fd != STDERR_FILENO && fd != STDOUT_FILENO && fd != -1) {
+    close(fd);
+  }
+  fd = -1;
+}
+
+int open_log_file(const char *path) {
+  if (strcmp(path, "/dev/stdout") == 0) {
+    return STDOUT_FILENO;
+  }
+  if (strcmp(path, "/dev/stderr") == 0) {
+    return STDERR_FILENO;
+  }
 #if defined(__ANDROID__) || defined(ANDROID)
   int fd;
 
