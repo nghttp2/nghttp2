@@ -350,7 +350,9 @@ static int session_new(nghttp2_session **session_ptr,
     goto fail_map;
   }
 
-  nghttp2_stream_roots_init(&(*session_ptr)->roots);
+  nghttp2_stream_init(&(*session_ptr)->root, 0, NGHTTP2_STREAM_FLAG_NONE,
+                      NGHTTP2_STREAM_INITIAL, NGHTTP2_DEFAULT_WEIGHT, 0, 0,
+                      NULL);
 
   (*session_ptr)->remote_window_size = NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE;
   (*session_ptr)->recv_window_size = 0;
@@ -608,7 +610,7 @@ void nghttp2_session_del(nghttp2_session *session) {
     settings = next;
   }
 
-  nghttp2_stream_roots_free(&session->roots);
+  nghttp2_stream_free(&session->root);
 
   /* Have to free streams first, so that we can check
      stream->item->queued */
@@ -633,7 +635,6 @@ nghttp2_session_reprioritize_stream(nghttp2_session *session,
                                     const nghttp2_priority_spec *pri_spec_in) {
   int rv;
   nghttp2_stream *dep_stream = NULL;
-  nghttp2_stream *root_stream;
   nghttp2_priority_spec pri_spec_default;
   const nghttp2_priority_spec *pri_spec = pri_spec_in;
 
@@ -665,32 +666,18 @@ nghttp2_session_reprioritize_stream(nghttp2_session *session,
   }
 
   if (pri_spec->stream_id == 0) {
-    nghttp2_stream_dep_remove_subtree(stream);
-
-    /* We have to update weight after removing stream from tree */
-    stream->weight = pri_spec->weight;
-
-    if (pri_spec->exclusive &&
-        session->roots.num_streams <= NGHTTP2_MAX_DEP_TREE_LENGTH) {
-
-      rv = nghttp2_stream_dep_all_your_stream_are_belong_to_us(stream, session);
-    } else {
-      rv = nghttp2_stream_dep_make_root(stream, session);
-    }
-
-    return rv;
-  }
-
-  assert(dep_stream);
-
-  if (nghttp2_stream_dep_subtree_find(stream, dep_stream)) {
+    dep_stream = &session->root;
+  } else if (nghttp2_stream_dep_subtree_find(stream, dep_stream)) {
     DEBUGF(fprintf(stderr, "stream: cycle detected, dep_stream(%p)=%d "
                            "stream(%p)=%d\n",
                    dep_stream, dep_stream->stream_id, stream,
                    stream->stream_id));
 
     nghttp2_stream_dep_remove_subtree(dep_stream);
-    nghttp2_stream_dep_make_root(dep_stream, session);
+    rv = nghttp2_stream_dep_add_subtree(&session->root, dep_stream, session);
+    if (rv != 0) {
+      return rv;
+    }
   }
 
   nghttp2_stream_dep_remove_subtree(stream);
@@ -698,19 +685,10 @@ nghttp2_session_reprioritize_stream(nghttp2_session *session,
   /* We have to update weight after removing stream from tree */
   stream->weight = pri_spec->weight;
 
-  root_stream = nghttp2_stream_get_dep_root(dep_stream);
-
-  if (root_stream->num_substreams + stream->num_substreams >
-      NGHTTP2_MAX_DEP_TREE_LENGTH) {
-    stream->weight = NGHTTP2_DEFAULT_WEIGHT;
-
-    rv = nghttp2_stream_dep_make_root(stream, session);
+  if (pri_spec->exclusive) {
+    rv = nghttp2_stream_dep_insert_subtree(dep_stream, stream, session);
   } else {
-    if (pri_spec->exclusive) {
-      rv = nghttp2_stream_dep_insert_subtree(dep_stream, stream, session);
-    } else {
-      rv = nghttp2_stream_dep_add_subtree(dep_stream, stream, session);
-    }
+    rv = nghttp2_stream_dep_add_subtree(dep_stream, stream, session);
   }
 
   if (rv != 0) {
@@ -875,7 +853,6 @@ nghttp2_stream *nghttp2_session_open_stream(nghttp2_session *session,
   int rv;
   nghttp2_stream *stream;
   nghttp2_stream *dep_stream = NULL;
-  nghttp2_stream *root_stream;
   int stream_alloc = 0;
   nghttp2_priority_spec pri_spec_default;
   nghttp2_priority_spec *pri_spec = pri_spec_in;
@@ -936,10 +913,10 @@ nghttp2_stream *nghttp2_session_open_stream(nghttp2_session *session,
     flags |= NGHTTP2_STREAM_FLAG_PUSH;
   }
 
-  nghttp2_stream_init(
-      stream, stream_id, flags, initial_state, pri_spec->weight,
-      &session->roots, session->remote_settings.initial_window_size,
-      session->local_settings.initial_window_size, stream_user_data);
+  nghttp2_stream_init(stream, stream_id, flags, initial_state, pri_spec->weight,
+                      session->remote_settings.initial_window_size,
+                      session->local_settings.initial_window_size,
+                      stream_user_data);
 
   if (stream_alloc) {
     rv = nghttp2_map_insert(&session->streams, &stream->map_entry);
@@ -980,42 +957,20 @@ nghttp2_stream *nghttp2_session_open_stream(nghttp2_session *session,
     return stream;
   }
 
-  if (pri_spec->stream_id == 0) {
-
-    ++session->roots.num_streams;
-
-    if (pri_spec->exclusive &&
-        session->roots.num_streams <= NGHTTP2_MAX_DEP_TREE_LENGTH) {
-      rv = nghttp2_stream_dep_all_your_stream_are_belong_to_us(stream, session);
-
-      /* Since no dpri is changed in dependency tree, the above
-         function call never fail. */
-      assert(rv == 0);
-    } else {
-      nghttp2_stream_roots_add(&session->roots, stream);
-    }
-
-    return stream;
-  }
-
   /* TODO Client does not have to track dependencies of streams except
      for those which have upload data.  Currently, we just track
      everything. */
 
+  if (pri_spec->stream_id == 0) {
+    dep_stream = &session->root;
+  }
+
   assert(dep_stream);
 
-  root_stream = nghttp2_stream_get_dep_root(dep_stream);
-
-  if (root_stream->num_substreams < NGHTTP2_MAX_DEP_TREE_LENGTH) {
-    if (pri_spec->exclusive) {
-      nghttp2_stream_dep_insert(dep_stream, stream);
-    } else {
-      nghttp2_stream_dep_add(dep_stream, stream);
-    }
+  if (pri_spec->exclusive) {
+    nghttp2_stream_dep_insert(dep_stream, stream);
   } else {
-    stream->weight = NGHTTP2_DEFAULT_WEIGHT;
-
-    nghttp2_stream_roots_add(&session->roots, stream);
+    nghttp2_stream_dep_add(dep_stream, stream);
   }
 
   return stream;
@@ -1107,7 +1062,9 @@ void nghttp2_session_destroy_stream(nghttp2_session *session,
 
   mem = &session->mem;
 
-  nghttp2_stream_dep_remove(stream);
+  if (nghttp2_stream_in_dep_tree(stream)) {
+    nghttp2_stream_dep_remove(stream);
+  }
 
   nghttp2_map_remove(&session->streams, stream->stream_id);
   nghttp2_stream_free(stream);
