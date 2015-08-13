@@ -989,8 +989,14 @@ int nghttp2_stream_dep_insert_subtree(nghttp2_stream *dep_stream,
     return 0;
   }
 
+  /* If dep_stream has stream whose dpri is NGHTTP2_DPRI_TOP in its
+     subtree, parent stream already accounted dep_stream->weight in
+     its sum_norest_weight */
+  if (dep_stream->sum_norest_weight == 0) {
+    stream_update_dep_sum_norest_weight(dep_stream->dep_prev,
+                                        dep_stream->weight);
+  }
   dep_stream->sum_norest_weight = stream->weight;
-  stream_update_dep_sum_norest_weight(dep_stream->dep_prev, dep_stream->weight);
 
   rv = stream_update_dep_queue_top(stream, session);
   if (rv != 0) {
