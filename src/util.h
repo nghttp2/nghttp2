@@ -516,6 +516,14 @@ bool numeric_host(const char *hostname);
 // failed, "unknown" is returned.
 std::string numeric_name(const struct sockaddr *sa, socklen_t salen);
 
+// Makes internal copy of stderr (and possibly stdout in the future),
+// which is then used as pointer to /dev/stderr or /proc/self/fd/2
+void store_original_fds();
+
+// Restores the original stderr that was stored with copy_original_fds
+// Used just before execv
+void restore_original_fds();
+
 // Closes |fd| which was returned by open_log_file (see below)
 // and sets it to -1. In the case that |fd| points to stdout or
 // stderr, or is -1, the descriptor is not closed (but still set to -1).

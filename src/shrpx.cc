@@ -564,6 +564,9 @@ void exec_binary_signal_cb(struct ev_loop *loop, ev_signal *w, int revents) {
     }
   }
 
+  // restores original stderr
+  util::restore_original_fds();
+
   if (execve(argv[0], argv.get(), envp.get()) == -1) {
     auto error = errno;
     LOG(ERROR) << "execve failed: errno=" << error;
@@ -1762,6 +1765,9 @@ int main(int argc, char **argv) {
   Log::set_severity_level(NOTICE);
   create_config();
   fill_default_config();
+
+  // make copy of stderr
+  util::store_original_fds();
 
   // First open log files with default configuration, so that we can
   // log errors/warnings while reading configuration files.
