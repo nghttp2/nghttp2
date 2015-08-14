@@ -1019,6 +1019,8 @@ namespace {
 void print_help(std::ostream &out) {
   print_usage(out);
 
+  auto config = Config();
+
   out << R"(
   <URI>       Specify URI to access.   Multiple URIs can be specified.
               URIs are used  in this order for each  client.  All URIs
