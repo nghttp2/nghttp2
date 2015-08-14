@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "August 09, 2015" "1.2.0" "nghttp2"
+.TH "NGHTTPX" "1" "August 14, 2015" "1.2.1" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 experimental proxy
 .
@@ -1037,6 +1037,9 @@ translated into Python.
 The script file is usually installed under
 \fB$(prefix)/share/nghttp2/\fP directory.  The actual path to script can
 be customized using \fI\%\-\-fetch\-ocsp\-response\-file\fP option.
+.sp
+If OCSP query is failed, previous OCSP response, if any, is continued
+to be used.
 .SH TLS SESSION RESUMPTION
 .sp
 nghttpx supports TLS session resumption through both session ID and
