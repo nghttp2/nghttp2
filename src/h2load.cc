@@ -1683,9 +1683,10 @@ int main(int argc, char **argv) {
   double rps = 0;
   int64_t bps = 0;
   if (duration.count() > 0) {
-    auto secd = static_cast<double>(duration.count()) / (1000 * 1000);
-    rps = stats.req_success / secd;
-    bps = stats.bytes_total / secd;
+    auto secd = std::chrono::duration_cast<
+        std::chrono::duration<double, std::chrono::seconds::period>>(duration);
+    rps = stats.req_success / secd.count();
+    bps = stats.bytes_total / secd.count();
   }
 
   std::cout << R"(
