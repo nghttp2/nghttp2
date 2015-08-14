@@ -127,6 +127,7 @@ Stream::Stream() : status_success(-1) {}
 
 namespace {
 void writecb(struct ev_loop *loop, ev_io *w, int revents) {
+  restart_timeout();
   auto client = static_cast<Client *>(w->data);
   auto rv = client->do_write();
   if (rv == Client::ERR_CONNECT_FAIL) {
@@ -146,6 +147,7 @@ void writecb(struct ev_loop *loop, ev_io *w, int revents) {
 
 namespace {
 void readcb(struct ev_loop *loop, ev_io *w, int revents) {
+  restart_timeout();
   auto client = static_cast<Client *>(w->data);
   if (client->do_read() != 0) {
     client->fail();
@@ -181,33 +183,14 @@ void second_timeout_w_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 } // namespace
 
 namespace {
-// Called when an a connection has been inactive for a set period of time
-void conn_inactivity_timeout_cb(EV_P_ ev_timer *w, int revents) {
-  auto client = static_cast<Client *>(w->data);
-  ev_timer_stop(client->worker->loop, &client->conn_inactivity_watcher);
-
-  if (client->worker->config->conn_active_timeout > 0 &&
-      ev_is_active(&client->conn_active_watcher)) {
-    ev_timer_stop(client->worker->loop, &client->conn_active_watcher);
-  }
-
-  if (util::check_socket_connected(client->fd)) {
-    client->timeout();
-  }
-}
-} // namespace
-
-namespace {
-// Called a fixed amount of time after all requests have been made on a
+// Called when an a connection has been inactive for a set period of time 
+// or a fixed amount of time after all requests have been made on a
 // connection
-void conn_active_timeout_cb(EV_P_ ev_timer *w, int revents) {
+void conn_timeout_cb(EV_P_ ev_timer *w, int revents) {
   auto client = static_cast<Client *>(w->data);
-  ev_timer_stop(client->worker->loop, &client->conn_active_watcher);
 
-  if (client->worker->config->conn_inactivity_timeout > 0 &&
-      ev_is_active(&client->conn_inactivity_watcher)) {
-    ev_timer_stop(client->worker->loop, &client->conn_inactivity_watcher);
-  }
+  ev_timer_stop(client->worker->loop, &client->conn_inactivity_watcher);
+  ev_timer_stop(client->worker->loop, &client->conn_active_watcher);
 
   if (util::check_socket_connected(client->fd)) {
     client->timeout();
@@ -225,16 +208,13 @@ Client::Client(Worker *worker, size_t req_todo)
   wev.data = this;
   rev.data = this;
 
-  if (worker->config->conn_inactivity_timeout > 0) {
-    conn_inactivity_watcher.data = this;
-    ev_init(&conn_inactivity_watcher, conn_inactivity_timeout_cb);
-    conn_inactivity_watcher.repeat = worker->config->conn_inactivity_timeout;
-  }
-  if (worker->config->conn_active_timeout > 0) {
-    conn_active_watcher.data = this;
-    ev_timer_init(&conn_active_watcher, conn_active_timeout_cb,
-                  worker->config->conn_active_timeout, 0);
-  }
+  conn_inactivity_watcher.data = this;
+  ev_init(&conn_inactivity_watcher, conn_timeout_cb);
+  conn_inactivity_watcher.repeat = worker->config->conn_inactivity_timeout;
+
+  conn_active_watcher.data = this;
+  ev_timer_init(&conn_active_watcher, conn_timeout_cb,
+                worker->config->conn_active_timeout, 0);
 }
 
 Client::~Client() { disconnect(); }
@@ -315,15 +295,8 @@ void Client::fail() {
 }
 
 void Client::disconnect() {
-  if (worker->config->conn_inactivity_timeout > 0 &&
-      ev_is_active(&conn_inactivity_watcher)) {
-    ev_timer_stop(worker->loop, &conn_inactivity_watcher);
-  }
-
-  if (worker->config->conn_active_timeout > 0 &&
-      ev_is_active(&conn_active_watcher)) {
-    ev_timer_stop(worker->loop, &conn_active_watcher);
-  }
+  ev_timer_stop(worker->loop, &conn_inactivity_watcher);
+  ev_timer_stop(worker->loop, &conn_active_watcher);
 
   streams.clear();
   session.reset();
@@ -345,7 +318,6 @@ void Client::disconnect() {
 }
 
 void Client::submit_request() {
-  restart_timeout();
   auto req_stat = &worker->stats.req_stats[worker->stats.req_started++];
   session->submit_request(req_stat);
   ++req_started;
@@ -432,7 +404,6 @@ void print_server_tmp_key(SSL *ssl) {
 } // namespace
 
 void Client::report_tls_info() {
-  restart_timeout();
   if (worker->id == 0 && !worker->tls_info_report_done) {
     worker->tls_info_report_done = true;
     auto cipher = SSL_get_current_cipher(ssl);
@@ -448,7 +419,6 @@ void Client::on_request(int32_t stream_id) { streams[stream_id] = Stream(); }
 
 void Client::on_header(int32_t stream_id, const uint8_t *name, size_t namelen,
                        const uint8_t *value, size_t valuelen) {
-  restart_timeout();
   auto itr = streams.find(stream_id);
   if (itr == std::end(streams)) {
     return;
@@ -513,7 +483,6 @@ void Client::on_stream_close(int32_t stream_id, bool success,
 }
 
 int Client::connection_made() {
-  restart_timeout();
   if (ssl) {
     report_tls_info();
 
@@ -594,7 +563,6 @@ int Client::connection_made() {
 }
 
 int Client::on_read(const uint8_t *data, size_t len) {
-  restart_timeout();
   auto rv = session->on_read(data, len);
   if (rv != 0) {
     return -1;
@@ -605,7 +573,6 @@ int Client::on_read(const uint8_t *data, size_t len) {
 }
 
 int Client::on_write() {
-  restart_timeout();
   if (session->on_write() != 0) {
     return -1;
   }
@@ -613,7 +580,6 @@ int Client::on_write() {
 }
 
 int Client::read_clear() {
-  restart_timeout();
   uint8_t buf[8_k];
 
   for (;;) {
@@ -645,7 +611,6 @@ int Client::read_clear() {
 }
 
 int Client::write_clear() {
-  restart_timeout();
   for (;;) {
     if (wb.rleft() > 0) {
       ssize_t nwrite;
@@ -676,7 +641,6 @@ int Client::write_clear() {
 }
 
 int Client::connected() {
-  restart_timeout();
   if (!util::check_socket_connected(fd)) {
     return ERR_CONNECT_FAIL;
   }
@@ -701,7 +665,6 @@ int Client::connected() {
 }
 
 int Client::tls_handshake() {
-  restart_timeout();
   ERR_clear_error();
 
   auto rv = SSL_do_handshake(ssl);
@@ -737,7 +700,6 @@ int Client::tls_handshake() {
 }
 
 int Client::read_tls() {
-  restart_timeout();
   uint8_t buf[8_k];
 
   ERR_clear_error();
