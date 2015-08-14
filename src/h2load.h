@@ -91,7 +91,6 @@ struct Config {
   uint16_t port;
   uint16_t default_port;
   bool verbose;
-  ssize_t seconds;
 
   Config();
   ~Config();

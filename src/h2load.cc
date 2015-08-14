@@ -76,7 +76,7 @@ Config::Config()
       max_concurrent_streams(-1), window_bits(30), connection_window_bits(30),
       rate(0), nconns(0), conn_active_timeout(0), conn_inactivity_timeout(0),
       no_tls_proto(PROTO_HTTP2), data_fd(-1), port(0), default_port(0),
-      verbose(false), seconds(0) {}
+      verbose(false) {}
 
 Config::~Config() {
   freeaddrinfo(addrs);
@@ -127,8 +127,8 @@ Stream::Stream() : status_success(-1) {}
 
 namespace {
 void writecb(struct ev_loop *loop, ev_io *w, int revents) {
-  restart_timeout();
   auto client = static_cast<Client *>(w->data);
+  client->restart_timeout();
   auto rv = client->do_write();
   if (rv == Client::ERR_CONNECT_FAIL) {
     client->disconnect();
@@ -147,8 +147,8 @@ void writecb(struct ev_loop *loop, ev_io *w, int revents) {
 
 namespace {
 void readcb(struct ev_loop *loop, ev_io *w, int revents) {
-  restart_timeout();
   auto client = static_cast<Client *>(w->data);
+  client->restart_timeout();
   if (client->do_read() != 0) {
     client->fail();
     return;
@@ -1648,16 +1648,17 @@ int main(int argc, char **argv) {
   if (!config.is_rate_mode() && config.nclients == 1) {
     config.nthreads = 1;
   }
+  ssize_t seconds = 0;
 
   if (config.is_rate_mode()) {
 
     // set various config values
     if (config.nreqs < config.nconns) {
-      config.seconds = c_time;
+      seconds = c_time;
     } else if (config.nconns == 0) {
-      config.seconds = n_time;
+      seconds = n_time;
     } else {
-      config.seconds = std::min(n_time, c_time);
+      seconds = std::min(n_time, c_time);
     }
     config.nreqs = actual_nreqs;
   }
@@ -1675,8 +1676,8 @@ int main(int argc, char **argv) {
   ssize_t nclients_extra_per_thread_rem = 0;
   // In rate mode, we want each Worker to create a total of
   // C/t connections.
-  if (config.is_rate_mode() && config.nconns > config.seconds * config.rate) {
-    auto nclients_extra = config.nconns - (config.seconds * config.rate);
+  if (config.is_rate_mode() && config.nconns > seconds * config.rate) {
+    auto nclients_extra = config.nconns - (seconds * config.rate);
     nclients_extra_per_thread = nclients_extra / config.nthreads;
     nclients_extra_per_thread_rem = nclients_extra % config.nthreads;
   }
@@ -1698,7 +1699,7 @@ int main(int argc, char **argv) {
       nclients = nclients_per_thread + (nclients_rem-- > 0);
       nreqs = nreqs_per_thread + (nreqs_rem-- > 0);
     } else {
-      nclients = rate * config.seconds + nclients_extra_per_thread +
+      nclients = rate * seconds + nclients_extra_per_thread +
                  (nclients_extra_per_thread_rem-- > 0);
       nreqs = nclients * config.max_concurrent_streams;
     }
@@ -1720,7 +1721,7 @@ int main(int argc, char **argv) {
     nclients_last = nclients_per_thread + (nclients_rem-- > 0);
     nreqs_last = nreqs_per_thread + (nreqs_rem-- > 0);
   } else {
-    nclients_last = rate_last * config.seconds + nclients_extra_per_thread +
+    nclients_last = rate_last * seconds + nclients_extra_per_thread +
                     (nclients_extra_per_thread_rem-- > 0);
     nreqs_last = nclients_last * config.max_concurrent_streams;
   }
