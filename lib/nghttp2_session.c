@@ -2038,6 +2038,11 @@ nghttp2_session_pop_next_ob_item(nghttp2_session *session) {
       !nghttp2_pq_empty(&session->ob_da_pq)) {
     item = nghttp2_pq_top(&session->ob_da_pq);
     nghttp2_pq_pop(&session->ob_da_pq);
+
+    if (nghttp2_pq_empty(&session->ob_da_pq)) {
+      session->last_cycle = 0;
+    }
+
     item->queued = 0;
     return item;
   }
@@ -2158,7 +2163,10 @@ static void session_outbound_item_schedule(nghttp2_session *session,
 
   /* We pretend to ignore overflow given that the value range of
      item->cycle, which is uint64_t.  nghttp2 won't explode even when
-     overflow occurs, there might be some disturbance of priority. */
+     overflow occurs, there might be some disturbance of priority.  We
+     also reset session->last_cycle to 0, when there is no DATA frame
+     to send (queue is empty), so the possibility of overflow is
+     generally very small. */
   item->cycle = session->last_cycle + delta;
 }
 
