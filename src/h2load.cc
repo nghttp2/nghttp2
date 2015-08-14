@@ -330,12 +330,12 @@ void Client::submit_request() {
 }
 
 void Client::process_timedout_streams() {
-  for (auto req_stat : worker->stats.req_stats) {
+  for (auto &req_stat : worker->stats.req_stats) {
     if (!req_stat.completed) {
       req_stat.stream_close_time = std::chrono::steady_clock::now();
     }
   }
-  
+
   auto req_timed_out = req_todo - req_done;
   worker->stats.req_timedout += req_timed_out;
 
