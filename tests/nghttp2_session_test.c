@@ -3187,7 +3187,7 @@ void test_nghttp2_session_reprioritize_stream(void) {
   nghttp2_session_reprioritize_stream(session, stream, &pri_spec);
 
   CU_ASSERT(10 == stream->weight);
-  CU_ASSERT(NULL == stream->dep_prev);
+  CU_ASSERT(&session->root == stream->dep_prev);
 
   /* If depenency to idle stream which is not in depdenency tree yet */
 
@@ -4473,7 +4473,7 @@ void test_nghttp2_session_open_stream(void) {
   CU_ASSERT(0 == session->num_outgoing_streams);
   CU_ASSERT(NGHTTP2_STREAM_OPENED == stream->state);
   CU_ASSERT(245 == stream->weight);
-  CU_ASSERT(NULL == stream->dep_prev);
+  CU_ASSERT(&session->root == stream->dep_prev);
   CU_ASSERT(NGHTTP2_SHUT_NONE == stream->shut_flags);
 
   stream = nghttp2_session_open_stream(session, 2, NGHTTP2_STREAM_FLAG_NONE,
@@ -4481,7 +4481,7 @@ void test_nghttp2_session_open_stream(void) {
                                        NGHTTP2_STREAM_OPENING, NULL);
   CU_ASSERT(1 == session->num_incoming_streams);
   CU_ASSERT(1 == session->num_outgoing_streams);
-  CU_ASSERT(NULL == stream->dep_prev);
+  CU_ASSERT(&session->root == stream->dep_prev);
   CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == stream->weight);
   CU_ASSERT(NGHTTP2_SHUT_NONE == stream->shut_flags);
 
@@ -4490,7 +4490,7 @@ void test_nghttp2_session_open_stream(void) {
                                        NGHTTP2_STREAM_RESERVED, NULL);
   CU_ASSERT(1 == session->num_incoming_streams);
   CU_ASSERT(1 == session->num_outgoing_streams);
-  CU_ASSERT(NULL == stream->dep_prev);
+  CU_ASSERT(&session->root == stream->dep_prev);
   CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == stream->weight);
   CU_ASSERT(NGHTTP2_SHUT_RD == stream->shut_flags);
 
@@ -4512,7 +4512,7 @@ void test_nghttp2_session_open_stream(void) {
   stream = nghttp2_session_get_stream_raw(session, 1000000007);
 
   CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == stream->weight);
-  CU_ASSERT(NULL != stream->root_next);
+  CU_ASSERT(&session->root == stream->dep_prev);
 
   /* Dependency to closed stream which is not in dependency tree */
   session->last_recv_stream_id = 7;
@@ -5603,11 +5603,13 @@ void test_nghttp2_pack_settings_payload(void) {
 void test_nghttp2_session_stream_dep_add(void) {
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;
-  nghttp2_stream *a, *b, *c, *d, *e;
+  nghttp2_stream *a, *b, *c, *d, *e, *root;
 
   memset(&callbacks, 0, sizeof(callbacks));
 
   nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  root = &session->root;
 
   a = open_stream(session, 1);
 
@@ -5622,24 +5624,17 @@ void test_nghttp2_session_stream_dep_add(void) {
    *    d
    */
 
-  CU_ASSERT(4 == a->num_substreams);
-  CU_ASSERT(1 == b->num_substreams);
-  CU_ASSERT(2 == c->num_substreams);
-  CU_ASSERT(1 == d->num_substreams);
-
   CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT * 2 == a->sum_dep_weight);
   CU_ASSERT(0 == b->sum_dep_weight);
   CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == c->sum_dep_weight);
   CU_ASSERT(0 == d->sum_dep_weight);
 
-  check_stream_dep_sib(a, NULL, b, NULL, NULL);
+  check_stream_dep_sib(a, root, b, NULL, NULL);
   check_stream_dep_sib(b, a, NULL, NULL, c);
   check_stream_dep_sib(c, a, d, b, NULL);
   check_stream_dep_sib(d, c, NULL, NULL, NULL);
 
-  CU_ASSERT(4 == session->roots.num_streams);
-  CU_ASSERT(a == session->roots.head);
-  CU_ASSERT(NULL == a->root_next);
+  CU_ASSERT(a == session->root.dep_next);
 
   e = open_stream_with_dep_excl(session, 9, a);
 
@@ -5652,27 +5647,19 @@ void test_nghttp2_session_stream_dep_add(void) {
    *    d
    */
 
-  CU_ASSERT(5 == a->num_substreams);
-  CU_ASSERT(4 == e->num_substreams);
-  CU_ASSERT(1 == b->num_substreams);
-  CU_ASSERT(2 == c->num_substreams);
-  CU_ASSERT(1 == d->num_substreams);
-
   CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == a->sum_dep_weight);
   CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT * 2 == e->sum_dep_weight);
   CU_ASSERT(0 == b->sum_dep_weight);
   CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == c->sum_dep_weight);
   CU_ASSERT(0 == d->sum_dep_weight);
 
-  check_stream_dep_sib(a, NULL, e, NULL, NULL);
+  check_stream_dep_sib(a, root, e, NULL, NULL);
   check_stream_dep_sib(e, a, b, NULL, NULL);
   check_stream_dep_sib(b, e, NULL, NULL, c);
   check_stream_dep_sib(c, e, d, b, NULL);
   check_stream_dep_sib(d, c, NULL, NULL, NULL);
 
-  CU_ASSERT(5 == session->roots.num_streams);
-  CU_ASSERT(a == session->roots.head);
-  CU_ASSERT(NULL == a->root_next);
+  CU_ASSERT(a == session->root.dep_next);
 
   nghttp2_session_del(session);
 }
@@ -5680,12 +5667,14 @@ void test_nghttp2_session_stream_dep_add(void) {
 void test_nghttp2_session_stream_dep_remove(void) {
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;
-  nghttp2_stream *a, *b, *c, *d, *e, *f;
+  nghttp2_stream *a, *b, *c, *d, *e, *f, *root;
 
   memset(&callbacks, 0, sizeof(callbacks));
 
   /* Remove root */
   nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  root = &session->root;
 
   a = open_stream(session, 1);
   b = open_stream_with_dep(session, 3, a);
@@ -5702,15 +5691,10 @@ void test_nghttp2_session_stream_dep_remove(void) {
   nghttp2_stream_dep_remove(a);
 
   /* becomes:
-   * b    c
-   *      |
-   *      d
+   * c    b
+   * |
+   * d
    */
-
-  CU_ASSERT(1 == a->num_substreams);
-  CU_ASSERT(1 == b->num_substreams);
-  CU_ASSERT(2 == c->num_substreams);
-  CU_ASSERT(1 == d->num_substreams);
 
   CU_ASSERT(0 == a->sum_dep_weight);
   CU_ASSERT(0 == b->sum_dep_weight);
@@ -5718,19 +5702,18 @@ void test_nghttp2_session_stream_dep_remove(void) {
   CU_ASSERT(0 == d->sum_dep_weight);
 
   check_stream_dep_sib(a, NULL, NULL, NULL, NULL);
-  check_stream_dep_sib(b, NULL, NULL, NULL, NULL);
-  check_stream_dep_sib(c, NULL, d, NULL, NULL);
+  check_stream_dep_sib(b, root, NULL, c, NULL);
+  check_stream_dep_sib(c, root, d, NULL, b);
   check_stream_dep_sib(d, c, NULL, NULL, NULL);
 
-  CU_ASSERT(3 == session->roots.num_streams);
-  CU_ASSERT(b == session->roots.head);
-  CU_ASSERT(c == b->root_next);
-  CU_ASSERT(NULL == c->root_next);
+  CU_ASSERT(c == session->root.dep_next);
 
   nghttp2_session_del(session);
 
   /* Remove right most stream */
   nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  root = &session->root;
 
   a = open_stream(session, 1);
   b = open_stream_with_dep(session, 3, a);
@@ -5754,29 +5737,24 @@ void test_nghttp2_session_stream_dep_remove(void) {
    * d
    */
 
-  CU_ASSERT(3 == a->num_substreams);
-  CU_ASSERT(1 == b->num_substreams);
-  CU_ASSERT(2 == c->num_substreams);
-  CU_ASSERT(1 == d->num_substreams);
-
   CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == a->sum_dep_weight);
   CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == c->sum_dep_weight);
   CU_ASSERT(0 == d->sum_dep_weight);
   CU_ASSERT(0 == b->sum_dep_weight);
 
-  check_stream_dep_sib(a, NULL, c, NULL, NULL);
+  check_stream_dep_sib(a, root, c, NULL, NULL);
   check_stream_dep_sib(b, NULL, NULL, NULL, NULL);
   check_stream_dep_sib(c, a, d, NULL, NULL);
   check_stream_dep_sib(d, c, NULL, NULL, NULL);
 
-  CU_ASSERT(3 == session->roots.num_streams);
-  CU_ASSERT(a == session->roots.head);
-  CU_ASSERT(NULL == a->root_next);
+  CU_ASSERT(a == session->root.dep_next);
 
   nghttp2_session_del(session);
 
   /* Remove left most stream */
   nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  root = &session->root;
 
   a = open_stream(session, 1);
   b = open_stream_with_dep(session, 3, a);
@@ -5799,19 +5777,13 @@ void test_nghttp2_session_stream_dep_remove(void) {
    * e--d--b
    */
 
-  CU_ASSERT(4 == a->num_substreams);
-  CU_ASSERT(1 == b->num_substreams);
-  CU_ASSERT(1 == c->num_substreams);
-  CU_ASSERT(1 == d->num_substreams);
-  CU_ASSERT(1 == e->num_substreams);
-
   CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT * 2 == a->sum_dep_weight);
   CU_ASSERT(0 == b->sum_dep_weight);
   CU_ASSERT(0 == d->sum_dep_weight);
   CU_ASSERT(0 == c->sum_dep_weight);
   CU_ASSERT(0 == e->sum_dep_weight);
 
-  check_stream_dep_sib(a, NULL, e, NULL, NULL);
+  check_stream_dep_sib(a, root, e, NULL, NULL);
   check_stream_dep_sib(b, a, NULL, d, NULL);
   check_stream_dep_sib(c, NULL, NULL, NULL, NULL);
   check_stream_dep_sib(d, a, NULL, e, b);
@@ -5821,6 +5793,8 @@ void test_nghttp2_session_stream_dep_remove(void) {
 
   /* Remove middle stream */
   nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  root = &session->root;
 
   a = open_stream(session, 1);
   b = open_stream_with_dep(session, 3, a);
@@ -5835,13 +5809,6 @@ void test_nghttp2_session_stream_dep_remove(void) {
    *    |
    *    f--e
    */
-
-  CU_ASSERT(6 == a->num_substreams);
-  CU_ASSERT(1 == b->num_substreams);
-  CU_ASSERT(3 == c->num_substreams);
-  CU_ASSERT(1 == d->num_substreams);
-  CU_ASSERT(1 == e->num_substreams);
-  CU_ASSERT(1 == f->num_substreams);
 
   CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT * 3 == a->sum_dep_weight);
   CU_ASSERT(0 == b->sum_dep_weight);
@@ -5858,13 +5825,6 @@ void test_nghttp2_session_stream_dep_remove(void) {
    * d--f--e--b
    */
 
-  CU_ASSERT(5 == a->num_substreams);
-  CU_ASSERT(1 == b->num_substreams);
-  CU_ASSERT(1 == c->num_substreams);
-  CU_ASSERT(1 == d->num_substreams);
-  CU_ASSERT(1 == e->num_substreams);
-  CU_ASSERT(1 == f->num_substreams);
-
   /* c's weight 16 is distributed evenly to e and f.  Each weight of e
      and f becomes 8. */
   CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT * 2 + 8 * 2 == a->sum_dep_weight);
@@ -5874,7 +5834,7 @@ void test_nghttp2_session_stream_dep_remove(void) {
   CU_ASSERT(0 == e->sum_dep_weight);
   CU_ASSERT(0 == f->sum_dep_weight);
 
-  check_stream_dep_sib(a, NULL, d, NULL, NULL);
+  check_stream_dep_sib(a, root, d, NULL, NULL);
   check_stream_dep_sib(b, a, NULL, e, NULL);
   check_stream_dep_sib(c, NULL, NULL, NULL, NULL);
   check_stream_dep_sib(e, a, NULL, f, b);
@@ -5887,12 +5847,14 @@ void test_nghttp2_session_stream_dep_remove(void) {
 void test_nghttp2_session_stream_dep_add_subtree(void) {
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;
-  nghttp2_stream *a, *b, *c, *d, *e, *f;
+  nghttp2_stream *a, *b, *c, *d, *e, *f, *root;
 
   memset(&callbacks, 0, sizeof(callbacks));
 
   /* dep_stream has dep_next */
   nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  root = &session->root;
 
   a = open_stream(session, 1);
   b = open_stream_with_dep(session, 3, a);
@@ -5909,6 +5871,7 @@ void test_nghttp2_session_stream_dep_add_subtree(void) {
    * d
    */
 
+  nghttp2_stream_dep_remove_subtree(e);
   nghttp2_stream_dep_add_subtree(a, e, session);
 
   /* becomes
@@ -5919,13 +5882,6 @@ void test_nghttp2_session_stream_dep_add_subtree(void) {
    * f  d
    */
 
-  CU_ASSERT(6 == a->num_substreams);
-  CU_ASSERT(1 == b->num_substreams);
-  CU_ASSERT(2 == c->num_substreams);
-  CU_ASSERT(1 == d->num_substreams);
-  CU_ASSERT(2 == e->num_substreams);
-  CU_ASSERT(1 == f->num_substreams);
-
   CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT * 3 == a->sum_dep_weight);
   CU_ASSERT(0 == b->sum_dep_weight);
   CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == c->sum_dep_weight);
@@ -5933,7 +5889,7 @@ void test_nghttp2_session_stream_dep_add_subtree(void) {
   CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == e->sum_dep_weight);
   CU_ASSERT(0 == f->sum_dep_weight);
 
-  check_stream_dep_sib(a, NULL, e, NULL, NULL);
+  check_stream_dep_sib(a, root, e, NULL, NULL);
   check_stream_dep_sib(b, a, NULL, c, NULL);
   check_stream_dep_sib(c, a, d, e, b);
   check_stream_dep_sib(d, c, NULL, NULL, NULL);
@@ -5945,6 +5901,8 @@ void test_nghttp2_session_stream_dep_add_subtree(void) {
   /* dep_stream has dep_next and now we insert subtree */
   nghttp2_session_server_new(&session, &callbacks, NULL);
 
+  root = &session->root;
+
   a = open_stream(session, 1);
   b = open_stream_with_dep(session, 3, a);
   c = open_stream_with_dep(session, 5, a);
@@ -5960,6 +5918,7 @@ void test_nghttp2_session_stream_dep_add_subtree(void) {
    * d
    */
 
+  nghttp2_stream_dep_remove_subtree(e);
   nghttp2_stream_dep_insert_subtree(a, e, session);
 
   /* becomes
@@ -5972,13 +5931,6 @@ void test_nghttp2_session_stream_dep_add_subtree(void) {
    *    d
    */
 
-  CU_ASSERT(6 == a->num_substreams);
-  CU_ASSERT(1 == b->num_substreams);
-  CU_ASSERT(2 == c->num_substreams);
-  CU_ASSERT(1 == d->num_substreams);
-  CU_ASSERT(5 == e->num_substreams);
-  CU_ASSERT(1 == f->num_substreams);
-
   CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == a->sum_dep_weight);
   CU_ASSERT(0 == b->sum_dep_weight);
   CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == c->sum_dep_weight);
@@ -5986,7 +5938,7 @@ void test_nghttp2_session_stream_dep_add_subtree(void) {
   CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT * 3 == e->sum_dep_weight);
   CU_ASSERT(0 == f->sum_dep_weight);
 
-  check_stream_dep_sib(a, NULL, e, NULL, NULL);
+  check_stream_dep_sib(a, root, e, NULL, NULL);
   check_stream_dep_sib(e, a, f, NULL, NULL);
   check_stream_dep_sib(f, e, NULL, NULL, c);
   check_stream_dep_sib(b, e, NULL, c, NULL);
@@ -5999,12 +5951,14 @@ void test_nghttp2_session_stream_dep_add_subtree(void) {
 void test_nghttp2_session_stream_dep_remove_subtree(void) {
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;
-  nghttp2_stream *a, *b, *c, *d, *e;
+  nghttp2_stream *a, *b, *c, *d, *e, *root;
 
   memset(&callbacks, 0, sizeof(callbacks));
 
   /* Remove left most stream */
   nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  root = &session->root;
 
   a = open_stream(session, 1);
   b = open_stream_with_dep(session, 3, a);
@@ -6026,17 +5980,12 @@ void test_nghttp2_session_stream_dep_remove_subtree(void) {
    * b  d
    */
 
-  CU_ASSERT(2 == a->num_substreams);
-  CU_ASSERT(1 == b->num_substreams);
-  CU_ASSERT(2 == c->num_substreams);
-  CU_ASSERT(1 == d->num_substreams);
-
   CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == a->sum_dep_weight);
   CU_ASSERT(0 == b->sum_dep_weight);
   CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == c->sum_dep_weight);
   CU_ASSERT(0 == d->sum_dep_weight);
 
-  check_stream_dep_sib(a, NULL, b, NULL, NULL);
+  check_stream_dep_sib(a, root, b, NULL, NULL);
   check_stream_dep_sib(b, a, NULL, NULL, NULL);
   check_stream_dep_sib(c, NULL, d, NULL, NULL);
   check_stream_dep_sib(d, c, NULL, NULL, NULL);
@@ -6045,6 +5994,8 @@ void test_nghttp2_session_stream_dep_remove_subtree(void) {
 
   /* Remove right most stream */
   nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  root = &session->root;
 
   a = open_stream(session, 1);
   b = open_stream_with_dep(session, 3, a);
@@ -6068,17 +6019,12 @@ void test_nghttp2_session_stream_dep_remove_subtree(void) {
    * d
    */
 
-  CU_ASSERT(3 == a->num_substreams);
-  CU_ASSERT(1 == b->num_substreams);
-  CU_ASSERT(2 == c->num_substreams);
-  CU_ASSERT(1 == d->num_substreams);
-
   CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == a->sum_dep_weight);
   CU_ASSERT(0 == b->sum_dep_weight);
   CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == c->sum_dep_weight);
   CU_ASSERT(0 == d->sum_dep_weight);
 
-  check_stream_dep_sib(a, NULL, c, NULL, NULL);
+  check_stream_dep_sib(a, root, c, NULL, NULL);
   check_stream_dep_sib(c, a, d, NULL, NULL);
   check_stream_dep_sib(d, c, NULL, NULL, NULL);
   check_stream_dep_sib(b, NULL, NULL, NULL, NULL);
@@ -6087,6 +6033,8 @@ void test_nghttp2_session_stream_dep_remove_subtree(void) {
 
   /* Remove middle stream */
   nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  root = &session->root;
 
   a = open_stream(session, 1);
   e = open_stream_with_dep(session, 9, a);
@@ -6109,19 +6057,13 @@ void test_nghttp2_session_stream_dep_remove_subtree(void) {
    * b--e  d
    */
 
-  CU_ASSERT(3 == a->num_substreams);
-  CU_ASSERT(1 == b->num_substreams);
-  CU_ASSERT(1 == e->num_substreams);
-  CU_ASSERT(2 == c->num_substreams);
-  CU_ASSERT(1 == d->num_substreams);
-
   CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT * 2 == a->sum_dep_weight);
   CU_ASSERT(0 == b->sum_dep_weight);
   CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == c->sum_dep_weight);
   CU_ASSERT(0 == d->sum_dep_weight);
   CU_ASSERT(0 == e->sum_dep_weight);
 
-  check_stream_dep_sib(a, NULL, b, NULL, NULL);
+  check_stream_dep_sib(a, root, b, NULL, NULL);
   check_stream_dep_sib(b, a, NULL, NULL, e);
   check_stream_dep_sib(e, a, NULL, b, NULL);
   check_stream_dep_sib(c, NULL, d, NULL, NULL);
@@ -6133,7 +6075,7 @@ void test_nghttp2_session_stream_dep_remove_subtree(void) {
 void test_nghttp2_session_stream_dep_all_your_stream_are_belong_to_us(void) {
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;
-  nghttp2_stream *a, *b, *c, *d;
+  nghttp2_stream *a, *b, *c, *d, *root;
   nghttp2_outbound_item *db, *dc;
   nghttp2_mem *mem;
 
@@ -6142,6 +6084,8 @@ void test_nghttp2_session_stream_dep_all_your_stream_are_belong_to_us(void) {
   memset(&callbacks, 0, sizeof(callbacks));
 
   nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  root = &session->root;
 
   a = open_stream(session, 1);
   b = open_stream_with_dep(session, 3, a);
@@ -6154,8 +6098,7 @@ void test_nghttp2_session_stream_dep_all_your_stream_are_belong_to_us(void) {
    */
 
   nghttp2_stream_dep_remove_subtree(c);
-  CU_ASSERT(0 ==
-            nghttp2_stream_dep_all_your_stream_are_belong_to_us(c, session));
+  CU_ASSERT(0 == nghttp2_stream_dep_insert_subtree(&session->root, c, session));
 
   /*
    * c
@@ -6165,10 +6108,6 @@ void test_nghttp2_session_stream_dep_all_your_stream_are_belong_to_us(void) {
    * b
    */
 
-  CU_ASSERT(3 == c->num_substreams);
-  CU_ASSERT(2 == a->num_substreams);
-  CU_ASSERT(1 == b->num_substreams);
-
   CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == c->sum_dep_weight);
   CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == a->sum_dep_weight);
   CU_ASSERT(0 == b->sum_dep_weight);
@@ -6177,13 +6116,15 @@ void test_nghttp2_session_stream_dep_all_your_stream_are_belong_to_us(void) {
   CU_ASSERT(0 == b->sum_norest_weight);
   CU_ASSERT(0 == c->sum_norest_weight);
 
-  check_stream_dep_sib(c, NULL, a, NULL, NULL);
+  check_stream_dep_sib(c, root, a, NULL, NULL);
   check_stream_dep_sib(a, c, b, NULL, NULL);
   check_stream_dep_sib(b, a, NULL, NULL, NULL);
 
   nghttp2_session_del(session);
 
   nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  root = &session->root;
 
   a = open_stream(session, 1);
   b = open_stream(session, 3);
@@ -6194,18 +6135,13 @@ void test_nghttp2_session_stream_dep_all_your_stream_are_belong_to_us(void) {
    */
 
   nghttp2_stream_dep_remove_subtree(c);
-  CU_ASSERT(0 ==
-            nghttp2_stream_dep_all_your_stream_are_belong_to_us(c, session));
+  CU_ASSERT(0 == nghttp2_stream_dep_insert_subtree(&session->root, c, session));
 
   /*
    * c
    * |
    * b--a
    */
-
-  CU_ASSERT(3 == c->num_substreams);
-  CU_ASSERT(1 == a->num_substreams);
-  CU_ASSERT(1 == b->num_substreams);
 
   CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT * 2 == c->sum_dep_weight);
   CU_ASSERT(0 == b->sum_dep_weight);
@@ -6215,13 +6151,15 @@ void test_nghttp2_session_stream_dep_all_your_stream_are_belong_to_us(void) {
   CU_ASSERT(0 == b->sum_norest_weight);
   CU_ASSERT(0 == c->sum_norest_weight);
 
-  check_stream_dep_sib(c, NULL, b, NULL, NULL);
+  check_stream_dep_sib(c, root, b, NULL, NULL);
   check_stream_dep_sib(b, c, NULL, NULL, a);
   check_stream_dep_sib(a, c, NULL, b, NULL);
 
   nghttp2_session_del(session);
 
   nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  root = &session->root;
 
   a = open_stream(session, 1);
   b = open_stream_with_dep(session, 3, a);
@@ -6235,21 +6173,15 @@ void test_nghttp2_session_stream_dep_all_your_stream_are_belong_to_us(void) {
    */
 
   nghttp2_stream_dep_remove_subtree(c);
-  CU_ASSERT(0 ==
-            nghttp2_stream_dep_all_your_stream_are_belong_to_us(c, session));
+  CU_ASSERT(0 == nghttp2_stream_dep_insert_subtree(&session->root, c, session));
 
   /*
    * c
    * |
-   * a--d
-   * |
-   * b
+   * d--a
+   *    |
+   *    b
    */
-
-  CU_ASSERT(4 == c->num_substreams);
-  CU_ASSERT(1 == d->num_substreams);
-  CU_ASSERT(2 == a->num_substreams);
-  CU_ASSERT(1 == b->num_substreams);
 
   CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT * 2 == c->sum_dep_weight);
   CU_ASSERT(0 == d->sum_dep_weight);
@@ -6261,14 +6193,16 @@ void test_nghttp2_session_stream_dep_all_your_stream_are_belong_to_us(void) {
   CU_ASSERT(0 == c->sum_norest_weight);
   CU_ASSERT(0 == d->sum_norest_weight);
 
-  check_stream_dep_sib(c, NULL, a, NULL, NULL);
-  check_stream_dep_sib(d, c, NULL, a, NULL);
-  check_stream_dep_sib(a, c, b, NULL, d);
+  check_stream_dep_sib(c, root, d, NULL, NULL);
+  check_stream_dep_sib(d, c, NULL, NULL, a);
+  check_stream_dep_sib(a, c, b, d, NULL);
   check_stream_dep_sib(b, a, NULL, NULL, NULL);
 
   nghttp2_session_del(session);
 
   nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  root = &session->root;
 
   a = open_stream(session, 1);
   b = open_stream_with_dep(session, 3, a);
@@ -6286,15 +6220,14 @@ void test_nghttp2_session_stream_dep_all_your_stream_are_belong_to_us(void) {
   nghttp2_stream_attach_item(b, db, session);
 
   nghttp2_stream_dep_remove_subtree(c);
-  CU_ASSERT(0 ==
-            nghttp2_stream_dep_all_your_stream_are_belong_to_us(c, session));
+  CU_ASSERT(0 == nghttp2_stream_dep_insert_subtree(&session->root, c, session));
 
   /*
    * c
    * |
-   * a--d
-   * |
-   * b
+   * d--a
+   *    |
+   *    b
    */
   CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == a->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == b->dpri);
@@ -6305,14 +6238,16 @@ void test_nghttp2_session_stream_dep_all_your_stream_are_belong_to_us(void) {
   CU_ASSERT(16 == c->sum_norest_weight);
   CU_ASSERT(0 == d->sum_norest_weight);
 
-  check_stream_dep_sib(c, NULL, a, NULL, NULL);
-  check_stream_dep_sib(d, c, NULL, a, NULL);
-  check_stream_dep_sib(a, c, b, NULL, d);
+  check_stream_dep_sib(c, root, d, NULL, NULL);
+  check_stream_dep_sib(d, c, NULL, NULL, a);
+  check_stream_dep_sib(a, c, b, d, NULL);
   check_stream_dep_sib(b, a, NULL, NULL, NULL);
 
   nghttp2_session_del(session);
 
   nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  root = &session->root;
 
   a = open_stream(session, 1);
   b = open_stream_with_dep(session, 3, a);
@@ -6332,15 +6267,14 @@ void test_nghttp2_session_stream_dep_all_your_stream_are_belong_to_us(void) {
   nghttp2_stream_attach_item(c, dc, session);
 
   nghttp2_stream_dep_remove_subtree(c);
-  CU_ASSERT(0 ==
-            nghttp2_stream_dep_all_your_stream_are_belong_to_us(c, session));
+  CU_ASSERT(0 == nghttp2_stream_dep_insert_subtree(&session->root, c, session));
 
   /*
    * c
    * |
-   * a--d
-   * |
-   * b
+   * d--a
+   *    |
+   *    b
    */
 
   CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == a->dpri);
@@ -6348,9 +6282,9 @@ void test_nghttp2_session_stream_dep_all_your_stream_are_belong_to_us(void) {
   CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == c->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == d->dpri);
 
-  check_stream_dep_sib(c, NULL, a, NULL, NULL);
-  check_stream_dep_sib(d, c, NULL, a, NULL);
-  check_stream_dep_sib(a, c, b, NULL, d);
+  check_stream_dep_sib(c, root, d, NULL, NULL);
+  check_stream_dep_sib(d, c, NULL, NULL, a);
+  check_stream_dep_sib(a, c, b, d, NULL);
   check_stream_dep_sib(b, a, NULL, NULL, NULL);
 
   nghttp2_session_del(session);
@@ -6581,9 +6515,8 @@ void test_nghttp2_session_stream_attach_item_subtree(void) {
   c = open_stream_with_dep(session, 5, a);
   d = open_stream_with_dep(session, 7, c);
 
-  e = open_stream(session, 9);
+  e = open_stream_with_dep_weight(session, 9, 32, &session->root);
   f = open_stream_with_dep(session, 11, e);
-  e->weight = 32;
 
   /*
    * a        e
@@ -6645,7 +6578,7 @@ void test_nghttp2_session_stream_attach_item_subtree(void) {
 
   nghttp2_stream_dep_remove_subtree(b);
 
-  nghttp2_stream_dep_make_root(b, session);
+  CU_ASSERT(0 == nghttp2_stream_dep_add_subtree(&session->root, b, session));
 
   /*
    * a       b
@@ -6671,7 +6604,7 @@ void test_nghttp2_session_stream_attach_item_subtree(void) {
 
   nghttp2_stream_dep_remove_subtree(a);
 
-  nghttp2_stream_dep_make_root(a, session);
+  CU_ASSERT(0 == nghttp2_stream_dep_add_subtree(&session->root, a, session));
 
   CU_ASSERT(NGHTTP2_STREAM_DPRI_NO_ITEM == a->dpri);
   CU_ASSERT(NGHTTP2_STREAM_DPRI_TOP == b->dpri);
@@ -6684,7 +6617,7 @@ void test_nghttp2_session_stream_attach_item_subtree(void) {
 
   nghttp2_stream_dep_remove_subtree(c);
 
-  nghttp2_stream_dep_make_root(c, session);
+  CU_ASSERT(0 == nghttp2_stream_dep_add_subtree(&session->root, c, session));
 
   /*
    * a       b     c
@@ -6766,7 +6699,7 @@ void test_nghttp2_session_stream_attach_item_subtree(void) {
   /* Remove subtree b */
 
   nghttp2_stream_dep_remove_subtree(b);
-  nghttp2_stream_dep_make_root(b, session);
+  CU_ASSERT(0 == nghttp2_stream_dep_add_subtree(&session->root, b, session));
 
   /*
    * b       a
@@ -6813,6 +6746,7 @@ void test_nghttp2_session_stream_attach_item_subtree(void) {
 
   da = create_data_ob_item(mem);
   nghttp2_stream_attach_item(a, da, session);
+  nghttp2_stream_dep_remove_subtree(a);
   nghttp2_stream_dep_add_subtree(b, a, session);
 
   /*
@@ -7039,7 +6973,7 @@ void test_nghttp2_session_large_dep_tree(void) {
   nghttp2_session_callbacks callbacks;
   size_t i;
   nghttp2_stream *dep_stream = NULL;
-  nghttp2_stream *root_stream;
+  nghttp2_stream *stream;
   int32_t stream_id;
 
   memset(&callbacks, 0, sizeof(callbacks));
@@ -7048,22 +6982,17 @@ void test_nghttp2_session_large_dep_tree(void) {
   nghttp2_session_server_new(&session, &callbacks, NULL);
 
   stream_id = 1;
-  for (i = 0; i < NGHTTP2_MAX_DEP_TREE_LENGTH; ++i) {
+  for (i = 0; i < 250; ++i) {
     dep_stream = open_stream_with_dep(session, stream_id, dep_stream);
     stream_id += 2;
   }
 
-  root_stream = nghttp2_session_get_stream(session, 1);
-
-  /* Check that last dep_stream must be part of tree */
-  CU_ASSERT(nghttp2_stream_dep_subtree_find(root_stream, dep_stream));
-
-  dep_stream = open_stream_with_dep(session, stream_id, dep_stream);
-
-  /* We exceeded NGHTTP2_MAX_DEP_TREE_LENGTH limit.  dep_stream is now
-     root node and has no descendants. */
-  CU_ASSERT(!nghttp2_stream_dep_subtree_find(root_stream, dep_stream));
-  CU_ASSERT(nghttp2_stream_in_dep_tree(dep_stream));
+  stream_id = 1;
+  for (i = 0; i < 250; ++i) {
+    stream = nghttp2_session_get_stream(session, stream_id);
+    CU_ASSERT(nghttp2_stream_dep_subtree_find(&session->root, stream));
+    CU_ASSERT(nghttp2_stream_in_dep_tree(stream));
+  }
 
   nghttp2_session_del(session);
 }

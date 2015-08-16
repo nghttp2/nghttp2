@@ -35,7 +35,7 @@
 
 #include "shrpx_rate_limit.h"
 #include "shrpx_error.h"
-#include "buffer.h"
+#include "memchunk.h"
 
 namespace shrpx {
 
@@ -50,6 +50,8 @@ enum {
 };
 
 struct TLSConnection {
+  DefaultMemchunks wbuf;
+  DefaultPeekMemchunks rbuf;
   SSL *ssl;
   SSL_SESSION *cached_session;
   MemcachedRequest *cached_session_lookup_req;
@@ -62,8 +64,6 @@ struct TLSConnection {
   int handshake_state;
   bool initial_handshake_done;
   bool reneg_started;
-  std::unique_ptr<Buffer<16_k>> rb;
-  std::unique_ptr<Buffer<16_k>> wb;
 };
 
 template <typename T> using EVCb = void (*)(struct ev_loop *, T *, int);
@@ -72,10 +72,10 @@ using IOCb = EVCb<ev_io>;
 using TimerCb = EVCb<ev_timer>;
 
 struct Connection {
-  Connection(struct ev_loop *loop, int fd, SSL *ssl, ev_tstamp write_timeout,
-             ev_tstamp read_timeout, size_t write_rate, size_t write_burst,
-             size_t read_rate, size_t read_burst, IOCb writecb, IOCb readcb,
-             TimerCb timeoutcb, void *data);
+  Connection(struct ev_loop *loop, int fd, SSL *ssl, MemchunkPool *mcpool,
+             ev_tstamp write_timeout, ev_tstamp read_timeout, size_t write_rate,
+             size_t write_burst, size_t read_rate, size_t read_burst,
+             IOCb writecb, IOCb readcb, TimerCb timeoutcb, void *data);
   ~Connection();
 
   void disconnect();

@@ -61,11 +61,13 @@ configure_tls_context_easy(boost::system::error_code &ec,
 
   SSL_CTX_set_cipher_list(ctx, ssl::DEFAULT_CIPHER_LIST);
 
+#ifndef OPENSSL_NO_EC
   auto ecdh = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
   if (ecdh) {
     SSL_CTX_set_tmp_ecdh(ctx, ecdh);
     EC_KEY_free(ecdh);
   }
+#endif /* OPENSSL_NO_EC */
 
   SSL_CTX_set_next_protos_advertised_cb(
       ctx,

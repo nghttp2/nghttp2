@@ -43,18 +43,13 @@ namespace nghttp2 {
 template <size_t N> struct Memchunk {
   Memchunk(std::unique_ptr<Memchunk> next_chunk)
       : pos(std::begin(buf)), last(pos), knext(std::move(next_chunk)),
-        kprev(nullptr), next(nullptr) {
-    if (knext) {
-      knext->kprev = this;
-    }
-  }
+        next(nullptr) {}
   size_t len() const { return last - pos; }
   size_t left() const { return std::end(buf) - last; }
   void reset() { pos = last = std::begin(buf); }
   std::array<uint8_t, N> buf;
   uint8_t *pos, *last;
   std::unique_ptr<Memchunk> knext;
-  Memchunk *kprev;
   Memchunk *next;
   static const size_t size = N;
 };
@@ -82,27 +77,6 @@ template <typename T> struct Pool {
     }
     freelist = m;
   }
-  void shrink(size_t max) {
-    auto m = freelist;
-    for (; m && poolsize > max;) {
-      auto next = m->next;
-      poolsize -= T::size;
-      auto p = m->kprev;
-      if (p) {
-        p->knext = std::move(m->knext);
-        if (p->knext) {
-          p->knext->kprev = p;
-        }
-      } else {
-        pool = std::move(m->knext);
-        if (pool) {
-          pool->kprev = nullptr;
-        }
-      }
-      m = next;
-    }
-    freelist = m;
-  }
   void clear() {
     freelist = nullptr;
     pool = nullptr;
@@ -117,6 +91,31 @@ template <typename T> struct Pool {
 template <typename Memchunk> struct Memchunks {
   Memchunks(Pool<Memchunk> *pool)
       : pool(pool), head(nullptr), tail(nullptr), len(0) {}
+  Memchunks(const Memchunks &) = delete;
+  Memchunks(Memchunks &&other)
+      : pool(other.pool), head(other.head), tail(other.head), len(other.len) {
+    // keep other.pool
+    other.head = other.tail = nullptr;
+    other.len = 0;
+  }
+  Memchunks &operator=(const Memchunks &) = delete;
+  Memchunks &operator=(Memchunks &&other) {
+    if (this == &other) {
+      return *this;
+    }
+
+    reset();
+
+    pool = other.pool;
+    head = other.head;
+    tail = other.tail;
+    len = other.len;
+
+    other.head = other.tail = nullptr;
+    other.len = 0;
+
+    return *this;
+  }
   ~Memchunks() {
     if (!pool) {
       return;
@@ -223,15 +222,142 @@ template <typename Memchunk> struct Memchunks {
     return i;
   }
   size_t rleft() const { return len; }
+  void reset() {
+    for (auto m = head; m;) {
+      auto next = m->next;
+      pool->recycle(m);
+      m = next;
+    }
+    len = 0;
+    head = tail = nullptr;
+  }
 
   Pool<Memchunk> *pool;
   Memchunk *head, *tail;
   size_t len;
 };
 
+// Wrapper around Memchunks to offer "peeking" functionality.
+template <typename Memchunk> struct PeekMemchunks {
+  PeekMemchunks(Pool<Memchunk> *pool)
+      : memchunks(pool), cur(nullptr), cur_pos(nullptr), cur_last(nullptr),
+        len(0), peeking(true) {}
+  PeekMemchunks(const PeekMemchunks &) = delete;
+  PeekMemchunks(PeekMemchunks &&other)
+      : memchunks(std::move(other.memchunks)), cur(other.cur),
+        cur_pos(other.cur_pos), cur_last(other.cur_last), len(other.len),
+        peeking(other.peeking) {
+    other.reset();
+  }
+  PeekMemchunks &operator=(const PeekMemchunks &) = delete;
+  PeekMemchunks &operator=(PeekMemchunks &&other) {
+    if (this == &other) {
+      return *this;
+    }
+
+    memchunks = std::move(other.memchunks);
+    cur = other.cur;
+    cur_pos = other.cur_pos;
+    cur_last = other.cur_last;
+    len = other.len;
+    peeking = other.peeking;
+
+    other.reset();
+
+    return *this;
+  }
+  size_t append(const void *src, size_t count) {
+    count = memchunks.append(src, count);
+    len += count;
+    return count;
+  }
+  size_t remove(void *dest, size_t count) {
+    if (!peeking) {
+      count = memchunks.remove(dest, count);
+      len -= count;
+      return count;
+    }
+
+    if (count == 0 || len == 0) {
+      return 0;
+    }
+
+    if (!cur) {
+      cur = memchunks.head;
+      cur_pos = cur->pos;
+    }
+
+    // cur_last could be updated in append
+    cur_last = cur->last;
+
+    if (cur_pos == cur_last) {
+      assert(cur->next);
+      cur = cur->next;
+    }
+
+    auto first = static_cast<uint8_t *>(dest);
+    auto last = first + count;
+
+    for (;;) {
+      auto n = std::min(last - first, cur_last - cur_pos);
+
+      first = std::copy_n(cur_pos, n, first);
+      cur_pos += n;
+      len -= n;
+
+      if (first == last) {
+        break;
+      }
+      assert(cur_pos == cur_last);
+      if (!cur->next) {
+        break;
+      }
+      cur = cur->next;
+      cur_pos = cur->pos;
+      cur_last = cur->last;
+    }
+    return first - static_cast<uint8_t *>(dest);
+  }
+  size_t rleft() const { return len; }
+  size_t rleft_buffered() const { return memchunks.rleft(); }
+  void disable_peek(bool drain) {
+    if (!peeking) {
+      return;
+    }
+    if (drain) {
+      auto n = rleft_buffered() - rleft();
+      memchunks.drain(n);
+      assert(len == memchunks.rleft());
+    } else {
+      len = memchunks.rleft();
+    }
+    cur = nullptr;
+    cur_pos = cur_last = nullptr;
+    peeking = false;
+  }
+  void reset() {
+    memchunks.reset();
+    cur = nullptr;
+    cur_pos = cur_last = nullptr;
+    len = 0;
+    peeking = true;
+  }
+  Memchunks<Memchunk> memchunks;
+  // Pointer to the Memchunk currently we are reading/writing.
+  Memchunk *cur;
+  // Region inside cur, we have processed to cur_pos.
+  uint8_t *cur_pos, *cur_last;
+  // This is the length we have left unprocessed.  len <=
+  // memchunk.rleft() must hold.
+  size_t len;
+  // true if peeking is enabled.  Initially it is true.
+  bool peeking;
+};
+
 using Memchunk16K = Memchunk<16_k>;
 using MemchunkPool = Pool<Memchunk16K>;
 using DefaultMemchunks = Memchunks<Memchunk16K>;
+using DefaultPeekMemchunks = PeekMemchunks<Memchunk16K>;
 
 #define DEFAULT_WR_IOVCNT 16
 

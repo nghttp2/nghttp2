@@ -154,9 +154,9 @@ requests
     (non-successful HTTP status code).
   errored
     The number of requests failed, except for HTTP level failures.
-    status code.  This is the subset of the number reported in
-    ``failed`` and most likely the network level failures or stream
-    was reset by RST_STREAM.
+    This is the subset of the number reported in ``failed`` and most
+    likely the network level failures or stream was reset by
+    RST_STREAM.
 
 status codes
   The number of status code h2load received.

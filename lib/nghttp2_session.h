@@ -153,7 +153,8 @@ typedef struct nghttp2_inflight_settings nghttp2_inflight_settings;
 
 struct nghttp2_session {
   nghttp2_map /* <nghttp2_stream*> */ streams;
-  nghttp2_stream_roots roots;
+  /* root of dependency tree*/
+  nghttp2_stream root;
   /* Queue for outbound urgent frames (PING and SETTINGS) */
   nghttp2_outbound_queue ob_urgent;
   /* Queue for non-DATA frames */

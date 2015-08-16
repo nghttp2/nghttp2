@@ -112,7 +112,7 @@ void connectcb(struct ev_loop *loop, ev_io *w, int revents) {
 HttpDownstreamConnection::HttpDownstreamConnection(
     DownstreamConnectionPool *dconn_pool, size_t group, struct ev_loop *loop)
     : DownstreamConnection(dconn_pool),
-      conn_(loop, -1, nullptr, get_config()->downstream_write_timeout,
+      conn_(loop, -1, nullptr, nullptr, get_config()->downstream_write_timeout,
             get_config()->downstream_read_timeout, 0, 0, 0, 0, connectcb,
             readcb, timeoutcb, this),
       ioctrl_(&conn_.rlimit), response_htp_{0}, group_(group), addr_idx_(0),

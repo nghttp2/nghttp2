@@ -36,6 +36,11 @@ void test_memchunks_append(void);
 void test_memchunks_drain(void);
 void test_memchunks_riovec(void);
 void test_memchunks_recycle(void);
+void test_memchunks_reset(void);
+void test_peek_memchunks_append(void);
+void test_peek_memchunks_disable_peek_drain(void);
+void test_peek_memchunks_disable_peek_no_drain(void);
+void test_peek_memchunks_reset(void);
 
 } // namespace nghttp2
 
