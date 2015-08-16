@@ -30,7 +30,6 @@
 #endif /* HAVE_CONFIG_H */
 
 #include <nghttp2/nghttp2.h>
-#include "nghttp2_pq.h"
 #include "nghttp2_map.h"
 #include "nghttp2_frame.h"
 #include "nghttp2_hd.h"
@@ -163,8 +162,6 @@ struct nghttp2_session {
      response) frame, which are subject to
      SETTINGS_MAX_CONCURRENT_STREAMS limit. */
   nghttp2_outbound_queue ob_syn;
-  /* Queue for DATA frame */
-  nghttp2_pq /* <nghttp2_outbound_item*> */ ob_da_pq;
   nghttp2_active_outbound_item aob;
   nghttp2_inbound_frame iframe;
   nghttp2_hd_deflater hd_deflater;
@@ -436,26 +433,43 @@ int nghttp2_session_close_stream(nghttp2_session *session, int32_t stream_id,
  * Deletes |stream| from memory.  After this function returns, stream
  * cannot be accessed.
  *
+ * This function returns 0 if it succeeds, or one the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory
  */
-void nghttp2_session_destroy_stream(nghttp2_session *session,
-                                    nghttp2_stream *stream);
+int nghttp2_session_destroy_stream(nghttp2_session *session,
+                                   nghttp2_stream *stream);
 
 /*
  * Tries to keep incoming closed stream |stream|.  Due to the
  * limitation of maximum number of streams in memory, |stream| is not
  * closed and just deleted from memory (see
  * nghttp2_session_destroy_stream).
+ *
+ * This function returns 0 if it succeeds, or one the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory
  */
-void nghttp2_session_keep_closed_stream(nghttp2_session *session,
-                                        nghttp2_stream *stream);
+int nghttp2_session_keep_closed_stream(nghttp2_session *session,
+                                       nghttp2_stream *stream);
 
 /*
  * Appends |stream| to linked list |session->idle_stream_head|.  We
  * apply fixed limit for list size.  To fit into that limit, one or
  * more oldest streams are removed from list as necessary.
+ *
+ * This function returns 0 if it succeeds, or one the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory
  */
-void nghttp2_session_keep_idle_stream(nghttp2_session *session,
-                                      nghttp2_stream *stream);
+int nghttp2_session_keep_idle_stream(nghttp2_session *session,
+                                     nghttp2_stream *stream);
 
 /*
  * Detaches |stream| from idle streams linked list.
@@ -469,15 +483,27 @@ void nghttp2_session_detach_idle_stream(nghttp2_session *session,
  * stream.  If |offset| is nonzero, it is decreased from the maximum
  * number of allowed stream when comparing number of active and closed
  * stream and the maximum number.
+ *
+ * This function returns 0 if it succeeds, or one the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory
  */
-void nghttp2_session_adjust_closed_stream(nghttp2_session *session,
-                                          ssize_t offset);
+int nghttp2_session_adjust_closed_stream(nghttp2_session *session,
+                                         ssize_t offset);
 
 /*
  * Deletes idle stream to ensure that number of idle streams is in
  * certain limit.
+ *
+ * This function returns 0 if it succeeds, or one the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_NOMEM
+ *     Out of memory
  */
-void nghttp2_session_adjust_idle_stream(nghttp2_session *session);
+int nghttp2_session_adjust_idle_stream(nghttp2_session *session);
 
 /*
  * If further receptions and transmissions over the stream |stream_id|
@@ -699,21 +725,21 @@ int nghttp2_session_pack_data(nghttp2_session *session, nghttp2_bufs *bufs,
                               nghttp2_stream *stream);
 
 /*
- * Pops and returns next item to send. If there is no such item,
+ * Pops and returns next item to send.  If there is no such item,
  * returns NULL.  This function takes into account max concurrent
- * streams. That means if session->ob_pq is empty but
- * session->ob_ss_pq has item and max concurrent streams is reached,
- * then this function returns NULL.
+ * streams.  That means if session->ob_syn has item and max concurrent
+ * streams is reached, the even if other queues contain items, then
+ * this function returns NULL.
  */
 nghttp2_outbound_item *
 nghttp2_session_pop_next_ob_item(nghttp2_session *session);
 
 /*
- * Returns next item to send. If there is no such item, this function
+ * Returns next item to send.  If there is no such item, this function
  * returns NULL.  This function takes into account max concurrent
- * streams. That means if session->ob_pq is empty but
- * session->ob_ss_pq has item and max concurrent streams is reached,
- * then this function returns NULL.
+ * streams.  That means if session->ob_syn has item and max concurrent
+ * streams is reached, the even if other queues contain items, then
+ * this function returns NULL.
  */
 nghttp2_outbound_item *
 nghttp2_session_get_next_ob_item(nghttp2_session *session);

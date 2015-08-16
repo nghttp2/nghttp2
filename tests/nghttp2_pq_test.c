@@ -28,47 +28,89 @@
 
 #include "nghttp2_pq.h"
 
+typedef struct {
+  nghttp2_pq_entry ent;
+  const char *s;
+} string_entry;
+
+static string_entry *string_entry_new(const char *s) {
+  nghttp2_mem *mem;
+  string_entry *ent;
+
+  mem = nghttp2_mem_default();
+
+  ent = nghttp2_mem_malloc(mem, sizeof(string_entry));
+  ent->s = s;
+
+  return ent;
+}
+
+static void string_entry_del(string_entry *ent) {
+  free(ent);
+}
+
 static int pq_less(const void *lhs, const void *rhs) {
-  return strcmp(lhs, rhs) < 0;
+  return strcmp(((string_entry *)lhs)->s, ((string_entry *)rhs)->s) < 0;
 }
 
 void test_nghttp2_pq(void) {
   int i;
   nghttp2_pq pq;
+  string_entry *top;
+
   nghttp2_pq_init(&pq, pq_less, nghttp2_mem_default());
   CU_ASSERT(nghttp2_pq_empty(&pq));
   CU_ASSERT(0 == nghttp2_pq_size(&pq));
-  CU_ASSERT(0 == nghttp2_pq_push(&pq, (void *)"foo"));
+  CU_ASSERT(0 == nghttp2_pq_push(&pq, &string_entry_new("foo")->ent));
   CU_ASSERT(0 == nghttp2_pq_empty(&pq));
   CU_ASSERT(1 == nghttp2_pq_size(&pq));
-  CU_ASSERT(strcmp("foo", nghttp2_pq_top(&pq)) == 0);
-  CU_ASSERT(0 == nghttp2_pq_push(&pq, (void *)"bar"));
-  CU_ASSERT(strcmp("bar", nghttp2_pq_top(&pq)) == 0);
-  CU_ASSERT(0 == nghttp2_pq_push(&pq, (void *)"baz"));
-  CU_ASSERT(strcmp("bar", nghttp2_pq_top(&pq)) == 0);
-  CU_ASSERT(0 == nghttp2_pq_push(&pq, (void *)"C"));
+  top = (string_entry *)nghttp2_pq_top(&pq);
+  CU_ASSERT(strcmp("foo", top->s) == 0);
+  CU_ASSERT(0 == nghttp2_pq_push(&pq, &string_entry_new("bar")->ent));
+  top = (string_entry *)nghttp2_pq_top(&pq);
+  CU_ASSERT(strcmp("bar", top->s) == 0);
+  CU_ASSERT(0 == nghttp2_pq_push(&pq, &string_entry_new("baz")->ent));
+  top = (string_entry *)nghttp2_pq_top(&pq);
+  CU_ASSERT(strcmp("bar", top->s) == 0);
+  CU_ASSERT(0 == nghttp2_pq_push(&pq, &string_entry_new("C")->ent));
   CU_ASSERT(4 == nghttp2_pq_size(&pq));
-  CU_ASSERT(strcmp("C", nghttp2_pq_top(&pq)) == 0);
+
+  top = (string_entry *)nghttp2_pq_top(&pq);
+  CU_ASSERT(strcmp("C", top->s) == 0);
+  string_entry_del(top);
   nghttp2_pq_pop(&pq);
+
   CU_ASSERT(3 == nghttp2_pq_size(&pq));
-  CU_ASSERT(strcmp("bar", nghttp2_pq_top(&pq)) == 0);
+
+  top = (string_entry *)nghttp2_pq_top(&pq);
+  CU_ASSERT(strcmp("bar", top->s) == 0);
   nghttp2_pq_pop(&pq);
-  CU_ASSERT(strcmp("baz", nghttp2_pq_top(&pq)) == 0);
+  string_entry_del(top);
+
+  top = (string_entry *)nghttp2_pq_top(&pq);
+  CU_ASSERT(strcmp("baz", top->s) == 0);
   nghttp2_pq_pop(&pq);
-  CU_ASSERT(strcmp("foo", nghttp2_pq_top(&pq)) == 0);
+  string_entry_del(top);
+
+  top = (string_entry *)nghttp2_pq_top(&pq);
+  CU_ASSERT(strcmp("foo", top->s) == 0);
   nghttp2_pq_pop(&pq);
+  string_entry_del(top);
+
   CU_ASSERT(nghttp2_pq_empty(&pq));
   CU_ASSERT(0 == nghttp2_pq_size(&pq));
   CU_ASSERT(NULL == nghttp2_pq_top(&pq));
 
   /* Add bunch of entry to see realloc works */
   for (i = 0; i < 10000; ++i) {
-    CU_ASSERT(0 == nghttp2_pq_push(&pq, (void *)"foo"));
+    CU_ASSERT(0 == nghttp2_pq_push(&pq, &string_entry_new("foo")->ent));
     CU_ASSERT((size_t)(i + 1) == nghttp2_pq_size(&pq));
   }
   for (i = 10000; i > 0; --i) {
-    CU_ASSERT(NULL != nghttp2_pq_top(&pq));
+    top = (string_entry *)nghttp2_pq_top(&pq);
+    CU_ASSERT(NULL != top);
     nghttp2_pq_pop(&pq);
+    string_entry_del(top);
     CU_ASSERT((size_t)(i - 1) == nghttp2_pq_size(&pq));
   }
 
@@ -76,6 +118,7 @@ void test_nghttp2_pq(void) {
 }
 
 typedef struct {
+  nghttp2_pq_entry ent;
   int key;
   int val;
 } node;
@@ -86,7 +129,7 @@ static int node_less(const void *lhs, const void *rhs) {
   return ln->key < rn->key;
 }
 
-static int node_update(void *item, void *arg _U_) {
+static int node_update(nghttp2_pq_entry *item, void *arg _U_) {
   node *nd = (node *)item;
   if ((nd->key % 2) == 0) {
     nd->key *= -1;
@@ -108,16 +151,107 @@ void test_nghttp2_pq_update(void) {
   for (i = 0; i < (int)(sizeof(nodes) / sizeof(nodes[0])); ++i) {
     nodes[i].key = i;
     nodes[i].val = i;
-    nghttp2_pq_push(&pq, &nodes[i]);
+    nghttp2_pq_push(&pq, &nodes[i].ent);
   }
 
   nghttp2_pq_update(&pq, node_update, NULL);
 
   for (i = 0; i < (int)(sizeof(nodes) / sizeof(nodes[0])); ++i) {
-    nd = nghttp2_pq_top(&pq);
+    nd = (node *)nghttp2_pq_top(&pq);
     CU_ASSERT(ans[i] == nd->key);
     nghttp2_pq_pop(&pq);
   }
+
+  nghttp2_pq_free(&pq);
+}
+
+static void push_nodes(nghttp2_pq *pq, node *dest, size_t n) {
+  size_t i;
+  for (i = 0; i < n; ++i) {
+    dest[i].key = (int)i;
+    dest[i].val = (int)i;
+    nghttp2_pq_push(pq, &dest[i].ent);
+  }
+}
+
+static void check_nodes(nghttp2_pq *pq, size_t n, int *ans_key, int *ans_val) {
+  size_t i;
+  for (i = 0; i < n; ++i) {
+    node *nd = (node *)nghttp2_pq_top(pq);
+    CU_ASSERT(ans_key[i] == nd->key);
+    CU_ASSERT(ans_val[i] == nd->val);
+    nghttp2_pq_pop(pq);
+  }
+}
+
+void test_nghttp2_pq_remove(void) {
+  nghttp2_pq pq;
+  node nodes[10];
+  int ans_key1[] = {1, 2, 3, 4, 5};
+  int ans_val1[] = {1, 2, 3, 4, 5};
+  int ans_key2[] = {0, 1, 2, 4, 5};
+  int ans_val2[] = {0, 1, 2, 4, 5};
+  int ans_key3[] = {0, 1, 2, 3, 4};
+  int ans_val3[] = {0, 1, 2, 3, 4};
+
+  nghttp2_pq_init(&pq, node_less, nghttp2_mem_default());
+
+  push_nodes(&pq, nodes, 6);
+
+  nghttp2_pq_remove(&pq, &nodes[0].ent);
+
+  check_nodes(&pq, 5, ans_key1, ans_val1);
+
+  nghttp2_pq_free(&pq);
+
+  nghttp2_pq_init(&pq, node_less, nghttp2_mem_default());
+
+  push_nodes(&pq, nodes, 6);
+
+  nghttp2_pq_remove(&pq, &nodes[3].ent);
+
+  check_nodes(&pq, 5, ans_key2, ans_val2);
+
+  nghttp2_pq_free(&pq);
+
+  nghttp2_pq_init(&pq, node_less, nghttp2_mem_default());
+
+  push_nodes(&pq, nodes, 6);
+
+  nghttp2_pq_remove(&pq, &nodes[5].ent);
+
+  check_nodes(&pq, 5, ans_key3, ans_val3);
+
+  nghttp2_pq_free(&pq);
+}
+
+void test_nghttp2_pq_increase_key(void) {
+  nghttp2_pq pq;
+  node nodes[10];
+  int ans_key1[] = {1, 2, 3, 3, 4, 5};
+  int ans_val1[] = {1, 2, 0, 3, 4, 5};
+  int ans_key2[] = {0, 1, 2, 3, 4, 6};
+  int ans_val2[] = {0, 1, 2, 3, 4, 5};
+
+  nghttp2_pq_init(&pq, node_less, nghttp2_mem_default());
+
+  push_nodes(&pq, nodes, 6);
+
+  nodes[0].key = 3;
+  nghttp2_pq_increase_key(&pq, &nodes[0].ent);
+
+  check_nodes(&pq, 6, ans_key1, ans_val1);
+
+  nghttp2_pq_free(&pq);
+
+  nghttp2_pq_init(&pq, node_less, nghttp2_mem_default());
+
+  push_nodes(&pq, nodes, 6);
+
+  nodes[5].key = 6;
+  nghttp2_pq_increase_key(&pq, &nodes[5].ent);
+
+  check_nodes(&pq, 6, ans_key2, ans_val2);
 
   nghttp2_pq_free(&pq);
 }

@@ -112,7 +112,8 @@ struct nghttp2_outbound_item {
      proportional to effective weight (inside a tree). */
   uint64_t cycle;
   nghttp2_outbound_item *qnext;
-  /* nonzero if this object is queued. */
+  /* nonzero if this object is queued, except for DATA or HEADERS
+     which are attached to stream as item. */
   uint8_t queued;
 };
 

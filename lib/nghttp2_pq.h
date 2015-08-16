@@ -35,9 +35,11 @@
 
 /* Implementation of priority queue */
 
+typedef struct { size_t index; } nghttp2_pq_entry;
+
 typedef struct {
   /* The pointer to the pointer to the item stored */
-  void **q;
+  nghttp2_pq_entry **q;
   /* Memory allocator */
   nghttp2_mem *mem;
   /* The number of items sotred */
@@ -75,13 +77,13 @@ void nghttp2_pq_free(nghttp2_pq *pq);
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
  */
-int nghttp2_pq_push(nghttp2_pq *pq, void *item);
+int nghttp2_pq_push(nghttp2_pq *pq, nghttp2_pq_entry *item);
 
 /*
  * Returns item at the top of the queue |pq|. If the queue is empty,
  * this function returns NULL.
  */
-void *nghttp2_pq_top(nghttp2_pq *pq);
+nghttp2_pq_entry *nghttp2_pq_top(nghttp2_pq *pq);
 
 /*
  * Pops item at the top of the queue |pq|. The popped item is not
@@ -99,7 +101,7 @@ int nghttp2_pq_empty(nghttp2_pq *pq);
  */
 size_t nghttp2_pq_size(nghttp2_pq *pq);
 
-typedef int (*nghttp2_pq_item_cb)(void *item, void *arg);
+typedef int (*nghttp2_pq_item_cb)(nghttp2_pq_entry *item, void *arg);
 
 /*
  * Updates each item in |pq| using function |fun| and re-construct
@@ -117,5 +119,16 @@ void nghttp2_pq_update(nghttp2_pq *pq, nghttp2_pq_item_cb fun, void *arg);
  * Otherwise this function returns 0.
  */
 int nghttp2_pq_each(nghttp2_pq *pq, nghttp2_pq_item_cb fun, void *arg);
+
+/*
+ * Performs "increase-key" operation against |item|, assuming |item|
+ * is in |pq|, and its key is already updated.
+ */
+void nghttp2_pq_increase_key(nghttp2_pq *pq, nghttp2_pq_entry *item);
+
+/*
+ * Removes |item| from priority queue.
+ */
+void nghttp2_pq_remove(nghttp2_pq *pq, nghttp2_pq_entry *item);
 
 #endif /* NGHTTP2_PQ_H */

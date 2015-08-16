@@ -24,13 +24,15 @@
  */
 #include "nghttp2_pq.h"
 
+#include <stdio.h>
+#include <assert.h>
+
+#include "nghttp2_helper.h"
+
 int nghttp2_pq_init(nghttp2_pq *pq, nghttp2_less less, nghttp2_mem *mem) {
   pq->mem = mem;
-  pq->capacity = 128;
-  pq->q = nghttp2_mem_malloc(mem, pq->capacity * sizeof(void *));
-  if (pq->q == NULL) {
-    return NGHTTP2_ERR_NOMEM;
-  }
+  pq->capacity = 0;
+  pq->q = NULL;
   pq->length = 0;
   pq->less = less;
   return 0;
@@ -42,9 +44,11 @@ void nghttp2_pq_free(nghttp2_pq *pq) {
 }
 
 static void swap(nghttp2_pq *pq, size_t i, size_t j) {
-  void *t = pq->q[i];
+  nghttp2_pq_entry *t = pq->q[i];
   pq->q[i] = pq->q[j];
+  pq->q[i]->index = i;
   pq->q[j] = t;
+  pq->q[j]->index = j;
 }
 
 static void bubble_up(nghttp2_pq *pq, size_t index) {
@@ -59,24 +63,29 @@ static void bubble_up(nghttp2_pq *pq, size_t index) {
   }
 }
 
-int nghttp2_pq_push(nghttp2_pq *pq, void *item) {
+int nghttp2_pq_push(nghttp2_pq *pq, nghttp2_pq_entry *item) {
   if (pq->capacity <= pq->length) {
     void *nq;
+    size_t ncapacity;
+
+    ncapacity = nghttp2_max(4, (pq->capacity * 2));
+
     nq = nghttp2_mem_realloc(pq->mem, pq->q,
-                             (pq->capacity * 2) * sizeof(void *));
+                             ncapacity * sizeof(nghttp2_pq_entry *));
     if (nq == NULL) {
       return NGHTTP2_ERR_NOMEM;
     }
-    pq->capacity *= 2;
+    pq->capacity = ncapacity;
     pq->q = nq;
   }
   pq->q[pq->length] = item;
+  item->index = pq->length;
   ++pq->length;
   bubble_up(pq, pq->length - 1);
   return 0;
 }
 
-void *nghttp2_pq_top(nghttp2_pq *pq) {
+nghttp2_pq_entry *nghttp2_pq_top(nghttp2_pq *pq) {
   if (pq->length == 0) {
     return NULL;
   } else {
@@ -85,11 +94,9 @@ void *nghttp2_pq_top(nghttp2_pq *pq) {
 }
 
 static void bubble_down(nghttp2_pq *pq, size_t index) {
-  size_t lchild = index * 2 + 1;
+  size_t i, j = index * 2 + 1;
   size_t minindex = index;
-  size_t i, j;
-  for (i = 0; i < 2; ++i) {
-    j = lchild + i;
+  for (i = 0; i < 2; ++i, ++j) {
     if (j >= pq->length) {
       break;
     }
@@ -106,8 +113,28 @@ static void bubble_down(nghttp2_pq *pq, size_t index) {
 void nghttp2_pq_pop(nghttp2_pq *pq) {
   if (pq->length > 0) {
     pq->q[0] = pq->q[pq->length - 1];
+    pq->q[0]->index = 0;
     --pq->length;
     bubble_down(pq, 0);
+  }
+}
+
+void nghttp2_pq_remove(nghttp2_pq *pq, nghttp2_pq_entry *item) {
+  assert(pq->q[item->index] == item);
+
+  if (item->index == pq->length - 1) {
+    --pq->length;
+    return;
+  }
+
+  pq->q[item->index] = pq->q[pq->length - 1];
+  pq->q[item->index]->index = item->index;
+  --pq->length;
+
+  if (pq->less(item, pq->q[item->index])) {
+    bubble_down(pq, item->index);
+  } else {
+    bubble_up(pq, item->index);
   }
 }
 
@@ -143,4 +170,9 @@ int nghttp2_pq_each(nghttp2_pq *pq, nghttp2_pq_item_cb fun, void *arg) {
     }
   }
   return 0;
+}
+
+void nghttp2_pq_increase_key(nghttp2_pq *pq, nghttp2_pq_entry *item) {
+  assert(pq->q[item->index] == item);
+  bubble_down(pq, item->index);
 }
