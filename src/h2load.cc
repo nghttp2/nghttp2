@@ -1788,7 +1788,8 @@ finished in )" << util::format_duration(duration) << ", " << rps << " req/s, "
 requests: )" << stats.req_todo << " total, " << stats.req_started
             << " started, " << stats.req_done << " done, "
             << stats.req_status_success << " succeeded, " << stats.req_failed
-            << " failed, " << stats.req_error << R"( errored
+            << " failed, " << stats.req_error << " errored, " 
+            << stats.req_timedout << R"( timeout
 status codes: )" << stats.status[2] << " 2xx, " << stats.status[3] << " 3xx, "
             << stats.status[4] << " 4xx, " << stats.status[5] << R"( 5xx
 traffic: )" << stats.bytes_total << " bytes total, " << stats.bytes_head
@@ -1811,10 +1812,6 @@ time for request: )" << std::setw(10) << util::format_duration(ts.request.min)
             << util::format_duration(ts.ttfb.mean) << "  " << std::setw(10)
             << util::format_duration(ts.ttfb.sd) << std::setw(9)
             << util::dtos(ts.ttfb.within_sd) << "%" << std::endl;
-
-  if (config.conn_inactivity_timeout > 0 || config.conn_active_timeout > 0) {
-    std::cout << R"(requests timed out: )" << stats.req_timedout << std::endl;
-  }
   SSL_CTX_free(ssl_ctx);
 
   return 0;
