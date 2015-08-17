@@ -793,8 +793,10 @@ int Http2Handler::submit_response(const std::string &status, int32_t stream_id,
 
 int Http2Handler::submit_response(const std::string &status, int32_t stream_id,
                                   nghttp2_data_provider *data_prd) {
-  auto nva = make_array(http2::make_nv_ls(":status", status),
-                        http2::make_nv_ll("server", NGHTTPD_SERVER));
+  auto nva =
+      make_array(http2::make_nv_ls(":status", status),
+                 http2::make_nv_ll("server", NGHTTPD_SERVER),
+                 http2::make_nv_ls("date", sessions_->get_cached_date()));
   return nghttp2_submit_response(session_, stream_id, nva.data(), nva.size(),
                                  data_prd);
 }
