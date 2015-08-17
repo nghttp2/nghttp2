@@ -52,14 +52,14 @@ static void swap(nghttp2_pq *pq, size_t i, size_t j) {
 }
 
 static void bubble_up(nghttp2_pq *pq, size_t index) {
-  if (index == 0) {
-    return;
-  } else {
-    size_t parent = (index - 1) / 2;
-    if (pq->less(pq->q[index], pq->q[parent])) {
-      swap(pq, parent, index);
-      bubble_up(pq, parent);
+  size_t parent;
+  while (index != 0) {
+    parent = (index - 1) / 2;
+    if (!pq->less(pq->q[index], pq->q[parent])) {
+      return;
     }
+    swap(pq, parent, index);
+    index = parent;
   }
 }
 
@@ -94,19 +94,23 @@ nghttp2_pq_entry *nghttp2_pq_top(nghttp2_pq *pq) {
 }
 
 static void bubble_down(nghttp2_pq *pq, size_t index) {
-  size_t i, j = index * 2 + 1;
-  size_t minindex = index;
-  for (i = 0; i < 2; ++i, ++j) {
-    if (j >= pq->length) {
-      break;
+  size_t i, j, minindex;
+  for (;;) {
+    j = index * 2 + 1;
+    minindex = index;
+    for (i = 0; i < 2; ++i, ++j) {
+      if (j >= pq->length) {
+        break;
+      }
+      if (pq->less(pq->q[j], pq->q[minindex])) {
+        minindex = j;
+      }
     }
-    if (pq->less(pq->q[j], pq->q[minindex])) {
-      minindex = j;
+    if (minindex == index) {
+      return;
     }
-  }
-  if (minindex != index) {
     swap(pq, index, minindex);
-    bubble_down(pq, minindex);
+    index = minindex;
   }
 }
 
@@ -121,6 +125,11 @@ void nghttp2_pq_pop(nghttp2_pq *pq) {
 
 void nghttp2_pq_remove(nghttp2_pq *pq, nghttp2_pq_entry *item) {
   assert(pq->q[item->index] == item);
+
+  if (item->index == 0) {
+    nghttp2_pq_pop(pq);
+    return;
+  }
 
   if (item->index == pq->length - 1) {
     --pq->length;
