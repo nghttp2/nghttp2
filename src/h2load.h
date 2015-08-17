@@ -81,6 +81,10 @@ struct Config {
   size_t rate;
   // number of connections made
   size_t nconns;
+  // amount of time to wait for activity on a given connection
+  ssize_t conn_active_timeout;
+  // amount of time to wait after the last request is made on a connection
+  ssize_t conn_inactivity_timeout;
   enum { PROTO_HTTP2, PROTO_SPDY2, PROTO_SPDY3, PROTO_SPDY3_1 } no_tls_proto;
   // file descriptor for upload data
   int data_fd;
@@ -144,6 +148,8 @@ struct Stats {
   // The number of requests failed due to network errors. This is
   // subset of req_failed.
   size_t req_error;
+  // The number of requests that failed due to timeout.
+  size_t req_timedout;
   // The number of bytes received on the "wire". If SSL/TLS is used,
   // this is the number of decrypted bytes the application received.
   int64_t bytes_total;
@@ -214,6 +220,8 @@ struct Client {
   size_t req_done;
   int fd;
   Buffer<64_k> wb;
+  ev_timer conn_active_watcher;
+  ev_timer conn_inactivity_watcher;
 
   enum { ERR_CONNECT_FAIL = -100 };
 
@@ -222,7 +230,10 @@ struct Client {
   int connect();
   void disconnect();
   void fail();
+  void timeout();
+  void restart_timeout();
   void submit_request();
+  void process_timedout_streams();
   void process_abandoned_streams();
   void report_progress();
   void report_tls_info();
