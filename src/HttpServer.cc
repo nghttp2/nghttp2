@@ -1106,23 +1106,26 @@ void prepare_response(Stream *stream, Http2Handler *hd,
       return;
     }
 
-    if (last_mod_found && static_cast<time_t>(buf.st_mtime) <= last_mod) {
-      close(file);
-      hd->submit_response("304", stream->stream_id, nullptr);
-
-      return;
-    }
-
     file_ent = sessions->cache_fd(
         path, FileEntry(path, buf.st_size, buf.st_mtime, file));
-  } else if (last_mod_found && file_ent->mtime <= last_mod) {
-    sessions->release_fd(file_ent->path);
+  }
+
+  stream->file_ent = file_ent;
+
+  if (last_mod_found && file_ent->mtime <= last_mod) {
     hd->submit_response("304", stream->stream_id, nullptr);
 
     return;
   }
 
-  stream->file_ent = file_ent;
+  auto &method = http2::get_header(stream->hdidx, http2::HD__METHOD,
+                                   stream->headers)->value;
+  if (method == "HEAD") {
+    hd->submit_file_response("200", stream, file_ent->mtime, file_ent->length,
+                             nullptr);
+    return;
+  }
+
   stream->body_length = file_ent->length;
 
   nghttp2_data_provider data_prd;
