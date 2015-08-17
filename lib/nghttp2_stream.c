@@ -36,7 +36,7 @@ static int stream_weight_less(const void *lhsx, const void *rhsx) {
   lhs = nghttp2_struct_of(lhsx, nghttp2_stream, pq_entry);
   rhs = nghttp2_struct_of(rhsx, nghttp2_stream, pq_entry);
 
-  return lhs->cycle <= rhs->cycle;
+  return lhs->cycle < rhs->cycle;
 }
 
 void nghttp2_stream_init(nghttp2_stream *stream, int32_t stream_id,
@@ -210,7 +210,8 @@ void nghttp2_stream_reschedule(nghttp2_stream *stream) {
     DEBUGF(fprintf(stderr, "stream: stream=%d obq resched cycle=%ld\n",
                    stream->stream_id, stream->cycle));
 
-    nghttp2_pq_increase_key(&dep_stream->obq, &stream->pq_entry);
+    nghttp2_pq_remove(&dep_stream->obq, &stream->pq_entry);
+    nghttp2_pq_push(&dep_stream->obq, &stream->pq_entry);
 
     dep_stream->last_writelen = stream->last_writelen;
   }
