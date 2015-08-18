@@ -131,10 +131,6 @@ typedef enum {
   NGHTTP2_HTTP_FLAG_EXPECT_FINAL_RESPONSE = 1 << 13
 } nghttp2_http_flag;
 
-struct nghttp2_stream_roots;
-
-typedef struct nghttp2_stream_roots nghttp2_stream_roots;
-
 struct nghttp2_stream;
 
 typedef struct nghttp2_stream nghttp2_stream;
