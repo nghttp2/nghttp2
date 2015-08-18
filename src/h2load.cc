@@ -208,13 +208,13 @@ Client::Client(Worker *worker, size_t req_todo)
   wev.data = this;
   rev.data = this;
 
+  ev_timer_init(&conn_inactivity_watcher, conn_timeout_cb, 0.,
+                worker->config->conn_inactivity_timeout);
   conn_inactivity_watcher.data = this;
-  ev_init(&conn_inactivity_watcher, conn_timeout_cb);
-  conn_inactivity_watcher.repeat = worker->config->conn_inactivity_timeout;
 
-  conn_active_watcher.data = this;
   ev_timer_init(&conn_active_watcher, conn_timeout_cb,
-                worker->config->conn_active_timeout, 0);
+                worker->config->conn_active_timeout, 0.);
+  conn_active_watcher.data = this;
 }
 
 Client::~Client() { disconnect(); }
