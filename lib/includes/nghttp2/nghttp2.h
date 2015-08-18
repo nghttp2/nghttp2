@@ -3907,6 +3907,134 @@ NGHTTP2_EXTERN ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
 NGHTTP2_EXTERN int
 nghttp2_hd_inflate_end_headers(nghttp2_hd_inflater *inflater);
 
+struct nghttp2_stream;
+
+/**
+ * @struct
+ *
+ * The structure to represent HTTP/2 stream.  The details of this
+ * structure are intentionally hidden from the public API.
+ */
+typedef struct nghttp2_stream nghttp2_stream;
+
+/**
+ * @function
+ *
+ * Returns pointer to :type:`nghttp2_stream` object denoted by
+ * |stream_id|.  If stream was not found, returns NULL.
+ *
+ * Returns imaginary root stream (see
+ * `nghttp2_session_get_root_stream()`) if 0 is given in |stream_id|.
+ *
+ * Unless |stream_id| == 0, the returned pointer is valid until next
+ * call of `nghttp2_session_send()`, `nghttp2_session_mem_send()`,
+ * `nghttp2_session_recv()`, and `nghttp2_session_mem_recv()`.
+ */
+nghttp2_stream *nghttp2_session_find_stream(nghttp2_session *session,
+                                            int32_t stream_id);
+
+/**
+ * @enum
+ *
+ * State of stream as described in RFC 7540.
+ */
+typedef enum {
+  /**
+   * idle state.
+   */
+  NGHTTP2_STREAM_STATE_IDLE = 1,
+  /**
+   * open state.
+   */
+  NGHTTP2_STREAM_STATE_OPEN,
+  /**
+   * reserved (local) state.
+   */
+  NGHTTP2_STREAM_STATE_RESERVED_LOCAL,
+  /**
+   * reserved (remote) state.
+   */
+  NGHTTP2_STREAM_STATE_RESERVED_REMOTE,
+  /**
+   * half closed (local) state.
+   */
+  NGHTTP2_STREAM_STATE_HALF_CLOSED_LOCAL,
+  /**
+   * half closed (remote) state.
+   */
+  NGHTTP2_STREAM_STATE_HALF_CLOSED_REMOTE,
+  /**
+   * closed state.
+   */
+  NGHTTP2_STREAM_STATE_CLOSED
+} nghttp2_stream_proto_state;
+
+/**
+ * @function
+ *
+ * Returns state of |stream|.  The root stream retrieved by
+ * `nghttp2_session_get_root_stream()` will have stream state
+ * :enum:`NGHTTP2_STREAM_STATE_IDLE`.
+ */
+nghttp2_stream_proto_state nghttp2_stream_get_state(nghttp2_stream *stream);
+
+/**
+ * @function
+ *
+ * Returns root of dependency tree, which is imaginary stream with
+ * stream ID 0.  The returned pointer is valid until |session| is
+ * freed by `nghttp2_session_del()`.
+ */
+nghttp2_stream *nghttp2_session_get_root_stream(nghttp2_session *session);
+
+/**
+ * @function
+ *
+ * Returns the parent stream of |stream| in dependency tree.  Returns
+ * NULL if there is no such stream.
+ */
+nghttp2_stream *nghttp2_stream_get_parent(nghttp2_stream *stream);
+
+int32_t nghttp2_stream_get_stream_id(nghttp2_stream *stream);
+
+/**
+ * @function
+ *
+ * Returns the next sibling stream of |stream| in dependency tree.
+ * Returns NULL if there is no such stream.
+ */
+nghttp2_stream *nghttp2_stream_get_next_sibling(nghttp2_stream *stream);
+
+/**
+ * @function
+ *
+ * Returns the previous sibling stream of |stream| in dependency tree.
+ * Returns NULL if there is no such stream.
+ */
+nghttp2_stream *nghttp2_stream_get_previous_sibling(nghttp2_stream *stream);
+
+/**
+ * @function
+ *
+ * Returns the first child stream of |stream| in dependency tree.
+ * Returns NULL if there is no such stream.
+ */
+nghttp2_stream *nghttp2_stream_get_first_child(nghttp2_stream *stream);
+
+/**
+ * @function
+ *
+ * Returns dependency weight to the parent stream of |stream|.
+ */
+int32_t nghttp2_stream_get_weight(nghttp2_stream *stream);
+
+/**
+ * @function
+ *
+ * Returns the sum of the weight for |stream|'s children.
+ */
+int32_t nghttp2_stream_get_sum_dependency_weight(nghttp2_stream *stream);
+
 #ifdef __cplusplus
 }
 #endif

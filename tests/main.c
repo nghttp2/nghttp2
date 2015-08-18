@@ -244,9 +244,13 @@ int main(int argc _U_, char *argv[] _U_) {
                    test_nghttp2_session_stream_attach_item) ||
       !CU_add_test(pSuite, "session_stream_attach_item_subtree",
                    test_nghttp2_session_stream_attach_item_subtree) ||
-      !CU_add_test(pSuite, "session_stream_keep_closed_stream",
+      !CU_add_test(pSuite, "session_stream_get_state",
+                   test_nghttp2_session_stream_get_state) ||
+      !CU_add_test(pSuite, "session_stream_get_something",
+                   test_nghttp2_session_stream_get_something) ||
+      !CU_add_test(pSuite, "session_keep_closed_stream",
                    test_nghttp2_session_keep_closed_stream) ||
-      !CU_add_test(pSuite, "session_stream_keep_idle_stream",
+      !CU_add_test(pSuite, "session_keep_idle_stream",
                    test_nghttp2_session_keep_idle_stream) ||
       !CU_add_test(pSuite, "session_detach_idle_stream",
                    test_nghttp2_session_detach_idle_stream) ||

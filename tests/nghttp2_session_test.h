@@ -114,6 +114,8 @@ void test_nghttp2_session_stream_dep_remove_subtree(void);
 void test_nghttp2_session_stream_dep_all_your_stream_are_belong_to_us(void);
 void test_nghttp2_session_stream_attach_item(void);
 void test_nghttp2_session_stream_attach_item_subtree(void);
+void test_nghttp2_session_stream_get_state(void);
+void test_nghttp2_session_stream_get_something(void);
 void test_nghttp2_session_keep_closed_stream(void);
 void test_nghttp2_session_keep_idle_stream(void);
 void test_nghttp2_session_detach_idle_stream(void);

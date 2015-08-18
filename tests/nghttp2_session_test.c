@@ -6843,6 +6843,266 @@ void test_nghttp2_session_stream_attach_item_subtree(void) {
   nghttp2_session_del(session);
 }
 
+void test_nghttp2_session_stream_get_state(void) {
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  nghttp2_mem *mem;
+  nghttp2_hd_deflater deflater;
+  nghttp2_bufs bufs;
+  nghttp2_buf *buf;
+  nghttp2_stream *stream;
+  ssize_t rv;
+  nghttp2_data_provider data_prd;
+  nghttp2_frame frame;
+
+  mem = nghttp2_mem_default();
+  frame_pack_bufs_init(&bufs);
+  memset(&data_prd, 0, sizeof(data_prd));
+
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+  callbacks.send_callback = null_send_callback;
+
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+  nghttp2_hd_deflate_init(&deflater, mem);
+
+  CU_ASSERT(NGHTTP2_STREAM_STATE_IDLE ==
+            nghttp2_stream_get_state(nghttp2_session_get_root_stream(session)));
+
+  /* stream 1 HEADERS; without END_STREAM flag set */
+  pack_headers(&bufs, &deflater, 1, NGHTTP2_FLAG_END_HEADERS, reqnv,
+               ARRLEN(reqnv), mem);
+
+  buf = &bufs.head->buf;
+  rv = nghttp2_session_mem_recv(session, buf->pos, nghttp2_buf_len(buf));
+
+  CU_ASSERT(nghttp2_buf_len(buf) == rv);
+
+  stream = nghttp2_session_find_stream(session, 1);
+
+  CU_ASSERT(NULL != stream);
+  CU_ASSERT(1 == stream->stream_id);
+  CU_ASSERT(NGHTTP2_STREAM_STATE_OPEN == nghttp2_stream_get_state(stream));
+
+  nghttp2_bufs_reset(&bufs);
+
+  /* stream 3 HEADERS; with END_STREAM flag set */
+  pack_headers(&bufs, &deflater, 3,
+               NGHTTP2_FLAG_END_HEADERS | NGHTTP2_FLAG_END_STREAM, reqnv,
+               ARRLEN(reqnv), mem);
+
+  buf = &bufs.head->buf;
+  rv = nghttp2_session_mem_recv(session, buf->pos, nghttp2_buf_len(buf));
+
+  CU_ASSERT(nghttp2_buf_len(buf) == rv);
+
+  stream = nghttp2_session_find_stream(session, 3);
+
+  CU_ASSERT(NULL != stream);
+  CU_ASSERT(3 == stream->stream_id);
+  CU_ASSERT(NGHTTP2_STREAM_STATE_HALF_CLOSED_REMOTE ==
+            nghttp2_stream_get_state(stream));
+
+  nghttp2_bufs_reset(&bufs);
+
+  /* Respond to stream 1 */
+  nghttp2_submit_response(session, 1, resnv, ARRLEN(resnv), NULL);
+
+  rv = nghttp2_session_send(session);
+
+  CU_ASSERT(0 == rv);
+
+  stream = nghttp2_session_find_stream(session, 1);
+
+  CU_ASSERT(NGHTTP2_STREAM_STATE_HALF_CLOSED_LOCAL ==
+            nghttp2_stream_get_state(stream));
+
+  /* Respond to stream 3 */
+  nghttp2_submit_response(session, 3, resnv, ARRLEN(resnv), NULL);
+
+  rv = nghttp2_session_send(session);
+
+  CU_ASSERT(0 == rv);
+
+  stream = nghttp2_session_find_stream(session, 3);
+
+  CU_ASSERT(NGHTTP2_STREAM_STATE_CLOSED == nghttp2_stream_get_state(stream));
+
+  /* stream 5 HEADERS; with END_STREAM flag set */
+  pack_headers(&bufs, &deflater, 5,
+               NGHTTP2_FLAG_END_HEADERS | NGHTTP2_FLAG_END_STREAM, reqnv,
+               ARRLEN(reqnv), mem);
+
+  buf = &bufs.head->buf;
+  rv = nghttp2_session_mem_recv(session, buf->pos, nghttp2_buf_len(buf));
+
+  CU_ASSERT(nghttp2_buf_len(buf) == rv);
+
+  nghttp2_bufs_reset(&bufs);
+
+  /* Push stream 2 associated to stream 5 */
+  rv = nghttp2_submit_push_promise(session, NGHTTP2_FLAG_NONE, 5, reqnv,
+                                   ARRLEN(reqnv), NULL);
+
+  CU_ASSERT(2 == rv);
+
+  rv = nghttp2_session_send(session);
+
+  CU_ASSERT(0 == rv);
+
+  stream = nghttp2_session_find_stream(session, 2);
+
+  CU_ASSERT(NGHTTP2_STREAM_STATE_RESERVED_LOCAL ==
+            nghttp2_stream_get_state(stream));
+
+  /* Send resposne to push stream 2 with END_STREAM set */
+  nghttp2_submit_response(session, 2, resnv, ARRLEN(resnv), NULL);
+
+  rv = nghttp2_session_send(session);
+
+  CU_ASSERT(0 == rv);
+
+  stream = nghttp2_session_find_stream(session, 2);
+
+  CU_ASSERT(NGHTTP2_STREAM_STATE_CLOSED == nghttp2_stream_get_state(stream));
+
+  /* Push stream 4 associated to stream 5 */
+  rv = nghttp2_submit_push_promise(session, NGHTTP2_FLAG_NONE, 5, reqnv,
+                                   ARRLEN(reqnv), NULL);
+
+  CU_ASSERT(4 == rv);
+
+  rv = nghttp2_session_send(session);
+
+  CU_ASSERT(0 == rv);
+
+  stream = nghttp2_session_find_stream(session, 4);
+
+  CU_ASSERT(NGHTTP2_STREAM_STATE_RESERVED_LOCAL ==
+            nghttp2_stream_get_state(stream));
+
+  /* Send response to push stream 4 without closing */
+  data_prd.read_callback = defer_data_source_read_callback;
+
+  nghttp2_submit_response(session, 4, resnv, ARRLEN(resnv), &data_prd);
+
+  rv = nghttp2_session_send(session);
+
+  CU_ASSERT(0 == rv);
+
+  stream = nghttp2_session_find_stream(session, 4);
+
+  CU_ASSERT(NGHTTP2_STREAM_STATE_HALF_CLOSED_REMOTE ==
+            nghttp2_stream_get_state(stream));
+
+  /* Create idle stream by PRIORITY frame */
+  nghttp2_frame_priority_init(&frame.priority, 7, &pri_spec_default);
+
+  rv = nghttp2_frame_pack_priority(&bufs, &frame.priority);
+
+  CU_ASSERT(0 == rv);
+
+  nghttp2_frame_priority_free(&frame.priority);
+
+  buf = &bufs.head->buf;
+  rv = nghttp2_session_mem_recv(session, buf->pos, nghttp2_buf_len(buf));
+
+  CU_ASSERT(nghttp2_buf_len(buf) == rv);
+
+  stream = nghttp2_session_find_stream(session, 7);
+
+  CU_ASSERT(NGHTTP2_STREAM_STATE_IDLE == nghttp2_stream_get_state(stream));
+
+  nghttp2_bufs_reset(&bufs);
+
+  nghttp2_hd_deflate_free(&deflater);
+  nghttp2_session_del(session);
+
+  /* Test for client side */
+
+  nghttp2_session_client_new(&session, &callbacks, NULL);
+  nghttp2_hd_deflate_init(&deflater, mem);
+
+  nghttp2_submit_request(session, NULL, reqnv, ARRLEN(reqnv), NULL, NULL);
+
+  rv = nghttp2_session_send(session);
+
+  CU_ASSERT(0 == rv);
+
+  /* Receive PUSH_PROMISE 2 associated to stream 1 */
+  pack_push_promise(&bufs, &deflater, 1, NGHTTP2_FLAG_END_HEADERS, 2, reqnv,
+                    ARRLEN(reqnv), mem);
+
+  buf = &bufs.head->buf;
+  rv = nghttp2_session_mem_recv(session, buf->pos, nghttp2_buf_len(buf));
+
+  CU_ASSERT(nghttp2_buf_len(buf) == rv);
+
+  stream = nghttp2_session_find_stream(session, 2);
+
+  CU_ASSERT(NGHTTP2_STREAM_STATE_RESERVED_REMOTE ==
+            nghttp2_stream_get_state(stream));
+
+  nghttp2_bufs_reset(&bufs);
+
+  /* Receive push response for stream 2 without END_STREAM set */
+  pack_headers(&bufs, &deflater, 2, NGHTTP2_FLAG_END_HEADERS, resnv,
+               ARRLEN(resnv), mem);
+
+  buf = &bufs.head->buf;
+  rv = nghttp2_session_mem_recv(session, buf->pos, nghttp2_buf_len(buf));
+
+  CU_ASSERT(nghttp2_buf_len(buf) == rv);
+
+  stream = nghttp2_session_find_stream(session, 2);
+
+  CU_ASSERT(NGHTTP2_STREAM_STATE_HALF_CLOSED_LOCAL ==
+            nghttp2_stream_get_state(stream));
+
+  nghttp2_bufs_reset(&bufs);
+
+  nghttp2_hd_deflate_free(&deflater);
+  nghttp2_session_del(session);
+
+  nghttp2_bufs_free(&bufs);
+}
+
+void test_nghttp2_session_stream_get_something(void) {
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  nghttp2_stream *a, *b, *c;
+
+  memset(&callbacks, 0, sizeof(callbacks));
+
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  a = open_stream(session, 1);
+
+  CU_ASSERT(nghttp2_session_get_root_stream(session) ==
+            nghttp2_stream_get_parent(a));
+  CU_ASSERT(NULL == nghttp2_stream_get_previous_sibling(a));
+  CU_ASSERT(NULL == nghttp2_stream_get_next_sibling(a));
+  CU_ASSERT(NULL == nghttp2_stream_get_first_child(a));
+
+  b = open_stream_with_dep(session, 3, a);
+  c = open_stream_with_dep_weight(session, 5, 11, a);
+
+  CU_ASSERT(a == nghttp2_stream_get_parent(c));
+  CU_ASSERT(a == nghttp2_stream_get_parent(b));
+
+  CU_ASSERT(c == nghttp2_stream_get_first_child(a));
+
+  CU_ASSERT(b == nghttp2_stream_get_next_sibling(c));
+  CU_ASSERT(c == nghttp2_stream_get_previous_sibling(b));
+
+  CU_ASSERT(27 == nghttp2_stream_get_sum_dependency_weight(a));
+
+  CU_ASSERT(11 == nghttp2_stream_get_weight(c));
+  CU_ASSERT(5 == nghttp2_stream_get_stream_id(c));
+  CU_ASSERT(0 == nghttp2_stream_get_stream_id(&session->root));
+
+  nghttp2_session_del(session);
+}
+
 void test_nghttp2_session_keep_closed_stream(void) {
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;

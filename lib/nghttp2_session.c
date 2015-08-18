@@ -338,8 +338,8 @@ static int session_new(nghttp2_session **session_ptr,
   }
 
   nghttp2_stream_init(&(*session_ptr)->root, 0, NGHTTP2_STREAM_FLAG_NONE,
-                      NGHTTP2_STREAM_INITIAL, NGHTTP2_DEFAULT_WEIGHT, 0, 0,
-                      NULL, mem);
+                      NGHTTP2_STREAM_IDLE, NGHTTP2_DEFAULT_WEIGHT, 0, 0, NULL,
+                      mem);
 
   (*session_ptr)->remote_window_size = NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE;
   (*session_ptr)->recv_window_size = 0;
@@ -6526,4 +6526,13 @@ uint32_t nghttp2_session_get_next_stream_id(nghttp2_session *session) {
 
 int32_t nghttp2_session_get_last_proc_stream_id(nghttp2_session *session) {
   return session->last_proc_stream_id;
+}
+
+nghttp2_stream *nghttp2_session_find_stream(nghttp2_session *session,
+                                            int32_t stream_id) {
+  return nghttp2_session_get_stream_raw(session, stream_id);
+}
+
+nghttp2_stream *nghttp2_session_get_root_stream(nghttp2_session *session) {
+  return &session->root;
 }

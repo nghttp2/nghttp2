@@ -79,6 +79,7 @@ APIDOCS= \
 	nghttp2_session_consume_connection.rst \
 	nghttp2_session_consume_stream.rst \
 	nghttp2_session_del.rst \
+	nghttp2_session_find_stream.rst \
 	nghttp2_session_get_effective_local_window_size.rst \
 	nghttp2_session_get_effective_recv_data_length.rst \
 	nghttp2_session_get_last_proc_stream_id.rst \
@@ -86,6 +87,7 @@ APIDOCS= \
 	nghttp2_session_get_outbound_queue_size.rst \
 	nghttp2_session_get_remote_settings.rst \
 	nghttp2_session_get_remote_window_size.rst \
+	nghttp2_session_get_root_stream.rst \
 	nghttp2_session_get_stream_effective_local_window_size.rst \
 	nghttp2_session_get_stream_effective_recv_data_length.rst \
 	nghttp2_session_get_stream_local_close.rst \
@@ -107,6 +109,13 @@ APIDOCS= \
 	nghttp2_session_upgrade.rst \
 	nghttp2_session_want_read.rst \
 	nghttp2_session_want_write.rst \
+	nghttp2_stream_get_first_child.rst \
+	nghttp2_stream_get_next_sibling.rst \
+	nghttp2_stream_get_parent.rst \
+	nghttp2_stream_get_previous_sibling.rst \
+	nghttp2_stream_get_state.rst \
+	nghttp2_stream_get_sum_dependency_weight.rst \
+	nghttp2_stream_get_weight.rst \
 	nghttp2_strerror.rst \
 	nghttp2_submit_data.rst \
 	nghttp2_submit_goaway.rst \

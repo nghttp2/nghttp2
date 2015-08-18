@@ -131,10 +131,6 @@ typedef enum {
   NGHTTP2_HTTP_FLAG_EXPECT_FINAL_RESPONSE = 1 << 13
 } nghttp2_http_flag;
 
-struct nghttp2_stream;
-
-typedef struct nghttp2_stream nghttp2_stream;
-
 struct nghttp2_stream {
   /* Intrusive Map */
   nghttp2_map_entry map_entry;

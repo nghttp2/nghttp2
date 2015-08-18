@@ -856,3 +856,61 @@ nghttp2_stream_next_outbound_item(nghttp2_stream *stream) {
     stream = nghttp2_struct_of(ent, nghttp2_stream, pq_entry);
   }
 }
+
+nghttp2_stream_proto_state nghttp2_stream_get_state(nghttp2_stream *stream) {
+  if (stream->flags & NGHTTP2_STREAM_FLAG_CLOSED) {
+    return NGHTTP2_STREAM_STATE_CLOSED;
+  }
+
+  if (stream->flags & NGHTTP2_STREAM_FLAG_PUSH) {
+    if (stream->shut_flags & NGHTTP2_SHUT_RD) {
+      return NGHTTP2_STREAM_STATE_RESERVED_LOCAL;
+    }
+
+    if (stream->shut_flags & NGHTTP2_SHUT_WR) {
+      return NGHTTP2_STREAM_STATE_RESERVED_REMOTE;
+    }
+  }
+
+  if (stream->shut_flags & NGHTTP2_SHUT_RD) {
+    return NGHTTP2_STREAM_STATE_HALF_CLOSED_REMOTE;
+  }
+
+  if (stream->shut_flags & NGHTTP2_SHUT_WR) {
+    return NGHTTP2_STREAM_STATE_HALF_CLOSED_LOCAL;
+  }
+
+  if (stream->state == NGHTTP2_STREAM_IDLE) {
+    return NGHTTP2_STREAM_STATE_IDLE;
+  }
+
+  return NGHTTP2_STREAM_STATE_OPEN;
+}
+
+nghttp2_stream *nghttp2_stream_get_parent(nghttp2_stream *stream) {
+  return stream->dep_prev;
+}
+
+nghttp2_stream *nghttp2_stream_get_next_sibling(nghttp2_stream *stream) {
+  return stream->sib_next;
+}
+
+nghttp2_stream *nghttp2_stream_get_previous_sibling(nghttp2_stream *stream) {
+  return stream->sib_prev;
+}
+
+nghttp2_stream *nghttp2_stream_get_first_child(nghttp2_stream *stream) {
+  return stream->dep_next;
+}
+
+int32_t nghttp2_stream_get_weight(nghttp2_stream *stream) {
+  return stream->weight;
+}
+
+int32_t nghttp2_stream_get_sum_dependency_weight(nghttp2_stream *stream) {
+  return stream->sum_dep_weight;
+}
+
+int32_t nghttp2_stream_get_stream_id(nghttp2_stream *stream) {
+  return stream->stream_id;
+}
