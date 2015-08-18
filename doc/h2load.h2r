@@ -20,8 +20,8 @@ requests
     likely the network level failures or stream was reset by
     RST_STREAM.
   timeout
-    The number of requests whose connection timed out before they 
-    were completed.
+    The number of requests whose connection timed out before they were
+    completed.
 
 status codes
   The number of status code h2load received.

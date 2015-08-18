@@ -75,7 +75,7 @@ Config::Config()
     : data_length(-1), addrs(nullptr), nreqs(1), nclients(1), nthreads(1),
       max_concurrent_streams(-1), window_bits(30), connection_window_bits(30),
       rate(0), nconns(0), conn_active_timeout(0), conn_inactivity_timeout(0),
-      no_tls_proto(PROTO_HTTP2), data_fd(-1), port(0), default_port(0), 
+      no_tls_proto(PROTO_HTTP2), data_fd(-1), port(0), default_port(0),
       verbose(false) {}
 
 Config::~Config() {
@@ -120,7 +120,7 @@ RequestStat::RequestStat() : data_offset(0), completed(false) {}
 Stats::Stats(size_t req_todo)
     : req_todo(0), req_started(0), req_done(0), req_success(0),
       req_status_success(0), req_failed(0), req_error(0), req_timedout(0),
-      bytes_total(0), bytes_head(0), bytes_body(0), status(), 
+      bytes_total(0), bytes_head(0), bytes_body(0), status(),
       req_stats(req_todo) {}
 
 Stream::Stream() : status_success(-1) {}
@@ -183,7 +183,7 @@ void second_timeout_w_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 } // namespace
 
 namespace {
-// Called when an a connection has been inactive for a set period of time 
+// Called when an a connection has been inactive for a set period of time
 // or a fixed amount of time after all requests have been made on a
 // connection
 void conn_timeout_cb(EV_P_ ev_timer *w, int revents) {
@@ -1144,8 +1144,7 @@ Options:
               Available protocol: )";
 #endif // !HAVE_SPDYLAY
   out << NGHTTP2_CLEARTEXT_PROTO_VERSION_ID << R"(
-              Default: )" 
-      << NGHTTP2_CLEARTEXT_PROTO_VERSION_ID << R"(
+              Default: )" << NGHTTP2_CLEARTEXT_PROTO_VERSION_ID << R"(
   -d, --data=<PATH>
               Post FILE to  server.  The request method  is changed to
               POST.
@@ -1168,25 +1167,24 @@ Options:
               for this option is 0.  The  -n option is not required if
               the -C option is being used.
   -T, --connection-active-timeout=<N>
-              Specifies  the  maximum  time  that h2load is willing to 
-              keep a  connection  open, regardless of  the activity on 
-              said  connection.  <N> must  be   a   positive  integer, 
-              specifying  the  number  of  seconds  to  wait.  When no 
-              timeout value is set (either active or inactive), h2load 
-              will keep a connection open indefinitely, waiting for  a 
+              Specifies  the maximum  time that  h2load is  willing to
+              keep a  connection open,  regardless of the  activity on
+              said  connection.   <N>  must  be  a  positive  integer,
+              specifying  the  number of  seconds  to  wait.  When  no
+              timeout value is set (either active or inactive), h2load
+              will keep a connection  open indefinitely, waiting for a
               response.
   -N, --connection-inactivity-timeout=<N>
-              Specifies the amount of time  that  h2load is willing to 
-              wait to see activity on a given connection. <N> must  be  
-              a positive integer, specifying the number of seconds  to 
-              wait.  When  no  timeout  value is set (either active or 
-              inactive),  h2load   will   keep   a   connection   open 
+              Specifies the amount  of time that h2load  is willing to
+              wait to see activity on a given connection.  <N> must be
+              a positive integer, specifying  the number of seconds to
+              wait.  When  no timeout value  is set (either  active or
+              inactive),   h2load   will   keep  a   connection   open
               indefinitely, waiting for a response.
   -v, --verbose
               Output debug information.
   --version   Display version information and exit.
-  -h, --help  Display this help and exit.)" 
-      << std::endl;
+  -h, --help  Display this help and exit.)" << std::endl;
 }
 } // namespace
 
@@ -1224,7 +1222,7 @@ int main(int argc, char **argv) {
         {"connection-inactivity-timeout", required_argument, nullptr, 'N'},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
-    auto c = getopt_long(argc, argv, "hvW:c:d:m:n:p:t:w:H:i:r:C:T:N:", 
+    auto c = getopt_long(argc, argv, "hvW:c:d:m:n:p:t:w:H:i:r:C:T:N:",
                          long_options, &option_index);
     if (c == -1) {
       break;
@@ -1442,9 +1440,8 @@ int main(int argc, char **argv) {
     }
 
     if (config.nconns == 0 && !nreqs_set_manually) {
-      std::cerr
-          << "-r: the rate option must be used with either the -n option "
-             "or the -C option." << std::endl;
+      std::cerr << "-r: the rate option must be used with either the -n option "
+                   "or the -C option." << std::endl;
       exit(EXIT_FAILURE);
     }
   }
@@ -1799,7 +1796,7 @@ finished in )" << util::format_duration(duration) << ", " << rps << " req/s, "
 requests: )" << stats.req_todo << " total, " << stats.req_started
             << " started, " << stats.req_done << " done, "
             << stats.req_status_success << " succeeded, " << stats.req_failed
-            << " failed, " << stats.req_error << " errored, " 
+            << " failed, " << stats.req_error << " errored, "
             << stats.req_timedout << R"( timeout
 status codes: )" << stats.status[2] << " 2xx, " << stats.status[3] << " 3xx, "
             << stats.status[4] << " 4xx, " << stats.status[5] << R"( 5xx
