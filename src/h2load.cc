@@ -196,7 +196,7 @@ void conn_timeout_cb(EV_P_ ev_timer *w, int revents) {
     client->timeout();
   }
 }
-}//namespace
+} // namespace
 
 namespace {
 bool check_stop_client_request_timeout(Client *client, ev_timer *w) {
@@ -1291,7 +1291,6 @@ Options:
               wait.  When  no timeout value  is set (either  active or
               inactive),   h2load   will   keep  a   connection   open
               indefinitely, waiting for a response.
-=======
   --timing-script-file=<PATH>
               Path of a file containing one  or more lines separated by
               EOLs. Each script line  is composed of  two tab-separated
@@ -1310,10 +1309,10 @@ Options:
               other URIs, if  present, are  ignored.  Definition  of  a
               base  URI  overrides  all  scheme, host  or port  values.
   -B, --base-uri=<URI>
-              Specify URI from which the scheme, host and port will be 
-              used for all requests. The base URI overrides all values 
-              defined either at the command line or inside input files.
->>>>>>> Add Timing-script and base URI support
+              Specify URI from which the scheme, host and port will be
+              used  for  all requests.   The  base  URI overrides  all
+              values  defined either  at  the command  line or  inside
+              input files.
   -v, --verbose
               Output debug information.
   --version   Display version information and exit.
