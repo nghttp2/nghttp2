@@ -1201,7 +1201,7 @@ void print_help(std::ostream &out) {
               are used, then  first URI is used and then  2nd URI, and
               so  on.  The  scheme, host  and port  in the  subsequent
               URIs, if present,  are ignored.  Those in  the first URI
-              are used solely. Definition of a base URI overrides all 
+              are used solely.  Definition of a base URI overrides all
               scheme, host or port values.
 Options:
   -n, --requests=<N>
@@ -1221,7 +1221,7 @@ Options:
               are used, then  first URI is used and then  2nd URI, and
               so  on.  The  scheme, host  and port  in the  subsequent
               URIs, if present,  are ignored.  Those in  the first URI
-              are used solely. Definition of a base URI overrides all 
+              are used solely.  Definition of a base URI overrides all
               scheme, host or port values.
   -m, --max-concurrent-streams=(auto|<N>)
               Max concurrent streams to  issue per session.  If "auto"
