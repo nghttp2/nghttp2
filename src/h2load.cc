@@ -1527,6 +1527,66 @@ int main(int argc, char **argv) {
     }
   }
 
+  if (config.nclients == 0) {
+    std::cerr << "-c: the number of clients must be strictly greater than 0."
+              << std::endl;
+    exit(EXIT_FAILURE);
+  }
+
+  std::vector<std::string> reqlines;
+
+  if (config.ifile.empty()) {
+    std::vector<std::string> uris;
+    std::copy(&argv[optind], &argv[argc], std::back_inserter(uris));
+    reqlines = parse_uris(std::begin(uris), std::end(uris));
+  } else {
+    std::vector<std::string> uris;
+    if (config.ifile == "-") {
+      if (!config.timing_script) {
+        uris = read_uri_from_file(std::cin);
+      } else {
+        read_script_from_file(std::cin, config.timings, uris);
+      }
+    } else {
+      std::ifstream infile(config.ifile);
+      if (!infile) {
+        std::cerr << "cannot read input file: " << config.ifile << std::endl;
+        exit(EXIT_FAILURE);
+      }
+
+      if (!config.timing_script) {
+        uris = read_uri_from_file(infile);
+      } else {
+        read_script_from_file(infile, config.timings, uris);
+        if (nreqs_set_manually) {
+          if (config.nreqs > uris.size()) {
+            std::cerr
+                << "-n: the number of requests must be less than or equal "
+                   "to the number of timing script entries. Setting number "
+                   "of requests to " << uris.size() << std::endl;
+
+            config.nreqs = uris.size();
+          }
+        } else {
+          // each client will execute the full script, so scale nreqs
+          config.nreqs = uris.size() * config.nclients;
+        }
+      }
+    }
+
+    reqlines = parse_uris(std::begin(uris), std::end(uris));
+  }
+
+  if (reqlines.empty()) {
+    std::cerr << "No URI given" << std::endl;
+    exit(EXIT_FAILURE);
+  }
+
+  if (config.max_concurrent_streams == -1) {
+    config.max_concurrent_streams = reqlines.size();
+  }
+
+  assert(config.max_concurrent_streams > 0);
   if (config.nreqs == 0) {
     std::cerr << "-n: the number of requests must be strictly greater than 0."
               << std::endl;
@@ -1649,60 +1709,6 @@ int main(int argc, char **argv) {
 #endif // HAVE_SPDYLAY
   SSL_CTX_set_alpn_protos(ssl_ctx, proto_list.data(), proto_list.size());
 #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
-
-  std::vector<std::string> reqlines;
-
-  if (config.ifile.empty()) {
-    std::vector<std::string> uris;
-    std::copy(&argv[optind], &argv[argc], std::back_inserter(uris));
-    reqlines = parse_uris(std::begin(uris), std::end(uris));
-  } else {
-    std::vector<std::string> uris;
-    if (config.ifile == "-") {
-      if (!config.timing_script) {
-        uris = read_uri_from_file(std::cin);
-      } else {
-        read_script_from_file(std::cin, config.timings, uris);
-      }
-    } else {
-      std::ifstream infile(config.ifile);
-      if (!infile) {
-        std::cerr << "cannot read input file: " << config.ifile << std::endl;
-        exit(EXIT_FAILURE);
-      }
-
-      if (!config.timing_script) {
-        uris = read_uri_from_file(infile);
-      } else {
-        read_script_from_file(infile, config.timings, uris);
-        if (nreqs_set_manually) {
-          if (config.nreqs > uris.size()) {
-            std::cerr
-                << "-n: the number of requests must be less than or equal "
-                   "to the number of timing script entries. Setting number "
-                   "of requests to " << uris.size() << std::endl;
-
-            config.nreqs = uris.size();
-          }
-        } else {
-          config.nreqs = uris.size();
-        }
-      }
-    }
-
-    reqlines = parse_uris(std::begin(uris), std::end(uris));
-  }
-
-  if (reqlines.empty()) {
-    std::cerr << "No URI given" << std::endl;
-    exit(EXIT_FAILURE);
-  }
-
-  if (config.max_concurrent_streams == -1) {
-    config.max_concurrent_streams = reqlines.size();
-  }
-
-  assert(config.max_concurrent_streams > 0);
 
   // if not in rate mode and -C is set, warn that we are ignoring it
   if (!config.is_rate_mode() && config.nconns != 0) {
