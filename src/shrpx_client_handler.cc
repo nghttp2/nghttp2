@@ -45,6 +45,7 @@
 #endif // HAVE_SPDYLAY
 #include "util.h"
 #include "template.h"
+#include "ssl.h"
 
 using namespace nghttp2;
 
@@ -473,7 +474,12 @@ int ClientHandler::validate_next_proto() {
 
         auto http2_upstream = make_unique<Http2Upstream>(this);
 
-        if (!ssl::check_http2_requirement(conn_.tls.ssl)) {
+        if (!nghttp2::ssl::check_http2_requirement(conn_.tls.ssl)) {
+          if (LOG_ENABLED(INFO)) {
+            LOG(INFO) << "TLSv1.2 was not negotiated. "
+                      << "HTTP/2 must not be negotiated.";
+          }
+
           rv = http2_upstream->terminate_session(NGHTTP2_INADEQUATE_SECURITY);
 
           if (rv != 0) {

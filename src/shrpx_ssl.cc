@@ -1093,23 +1093,6 @@ bool in_proto_list(const std::vector<std::string> &protos,
   return false;
 }
 
-bool check_http2_requirement(SSL *ssl) {
-  auto tls_ver = SSL_version(ssl);
-
-  switch (tls_ver) {
-  case TLS1_2_VERSION:
-    break;
-  default:
-    if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "TLSv1.2 was not negotiated. "
-                << "HTTP/2 must not be negotiated.";
-    }
-    return false;
-  }
-
-  return true;
-}
-
 SSL_CTX *setup_server_ssl_context(std::vector<SSL_CTX *> &all_ssl_ctx,
                                   CertLookupTree *cert_tree) {
   if (get_config()->upstream_no_tls) {

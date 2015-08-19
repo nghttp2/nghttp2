@@ -46,6 +46,7 @@
 #include "http2.h"
 #include "util.h"
 #include "base64.h"
+#include "ssl.h"
 
 using namespace nghttp2;
 
@@ -1296,9 +1297,13 @@ int Http2Session::connection_made() {
   }
 
   auto must_terminate = !get_config()->downstream_no_tls &&
-                        !ssl::check_http2_requirement(conn_.tls.ssl);
+                        !nghttp2::ssl::check_http2_requirement(conn_.tls.ssl);
 
   if (must_terminate) {
+    if (LOG_ENABLED(INFO)) {
+      LOG(INFO) << "TLSv1.2 was not negotiated. HTTP/2 must not be negotiated.";
+    }
+
     rv = terminate_session(NGHTTP2_INADEQUATE_SECURITY);
 
     if (rv != 0) {
