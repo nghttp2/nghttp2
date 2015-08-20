@@ -1533,6 +1533,12 @@ int main(int argc, char **argv) {
     exit(EXIT_FAILURE);
   }
 
+  if (config.timing_script && config.is_rate_mode()) {
+    std::cerr << "--timing-script, -r: these options cannot be used together."
+              << std::endl;
+    exit(EXIT_FAILURE);
+  }
+
   std::vector<std::string> reqlines;
 
   if (config.ifile.empty()) {
