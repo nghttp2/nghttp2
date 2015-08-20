@@ -564,6 +564,9 @@ void exec_binary_signal_cb(struct ev_loop *loop, ev_signal *w, int revents) {
     }
   }
 
+  // restores original stderr
+  util::restore_original_fds();
+
   if (execve(argv[0], argv.get(), envp.get()) == -1) {
     auto error = errno;
     LOG(ERROR) << "execve failed: errno=" << error;
@@ -1059,12 +1062,7 @@ void fill_default_config() {
   mod_config()->accesslog_file = nullptr;
   mod_config()->accesslog_syslog = false;
   mod_config()->accesslog_format = parse_log_format(DEFAULT_ACCESSLOG_FORMAT);
-#if defined(__ANDROID__) || defined(ANDROID)
-  // Android does not have /dev/stderr.  Use /proc/self/fd/2 instead.
-  mod_config()->errorlog_file = strcopy("/proc/self/fd/2");
-#else  // !__ANDROID__ && ANDROID
   mod_config()->errorlog_file = strcopy("/dev/stderr");
-#endif // !__ANDROID__ && ANDROID
   mod_config()->errorlog_syslog = false;
   mod_config()->conf_path = strcopy("/etc/nghttpx/nghttpx.conf");
   mod_config()->syslog_facility = LOG_DAEMON;
@@ -1767,6 +1765,9 @@ int main(int argc, char **argv) {
   Log::set_severity_level(NOTICE);
   create_config();
   fill_default_config();
+
+  // make copy of stderr
+  util::store_original_fds();
 
   // First open log files with default configuration, so that we can
   // log errors/warnings while reading configuration files.

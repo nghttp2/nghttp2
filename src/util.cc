@@ -657,22 +657,40 @@ std::string numeric_name(const struct sockaddr *sa, socklen_t salen) {
   return host.data();
 }
 
-int reopen_log_file(const char *path) {
-#if defined(__ANDROID__) || defined(ANDROID)
-  int fd;
+static int STDERR_COPY = -1;
+static int STDOUT_COPY = -1;
 
-  if (strcmp("/proc/self/fd/1", path) == 0 ||
-      strcmp("/proc/self/fd/2", path) == 0) {
+void store_original_fds() {
+  // consider dup'ing stdout too
+  STDERR_COPY = dup(STDERR_FILENO);
+  STDOUT_COPY = STDOUT_FILENO;
+  // no race here, since it is called early
+  make_socket_closeonexec(STDERR_COPY);
+}
 
-    // We will get permission denied error when O_APPEND is used for
-    // these paths.
-    fd =
-        open(path, O_WRONLY | O_CREAT | O_CLOEXEC, S_IRUSR | S_IWUSR | S_IRGRP);
-  } else {
-    fd = open(path, O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC,
-              S_IRUSR | S_IWUSR | S_IRGRP);
+void restore_original_fds() {
+  dup2(STDERR_COPY, STDERR_FILENO);
+}
+
+void close_log_file(int &fd) {
+  if (fd != STDERR_COPY && fd != STDOUT_COPY && fd != -1) {
+    close(fd);
   }
-#elif defined O_CLOEXEC
+  fd = -1;
+}
+
+int open_log_file(const char *path) {
+
+  if (strcmp(path, "/dev/stdout") == 0 ||
+      strcmp(path, "/proc/self/fd/1") == 0) {
+    return STDOUT_COPY;
+  }
+
+  if (strcmp(path, "/dev/stderr") == 0 ||
+      strcmp(path, "/proc/self/fd/2") == 0) {
+    return STDERR_COPY;
+  }
+#if defined O_CLOEXEC
 
   auto fd = open(path, O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC,
                  S_IRUSR | S_IWUSR | S_IRGRP);
