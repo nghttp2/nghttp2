@@ -326,31 +326,25 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
 
 int reopen_log_files() {
   int res = 0;
+  int new_accesslog_fd = -1;
+  int new_errorlog_fd = -1;
 
   auto lgconf = log_config();
 
-  if (lgconf->accesslog_fd != -1) {
-    close(lgconf->accesslog_fd);
-    lgconf->accesslog_fd = -1;
-  }
-
   if (!get_config()->accesslog_syslog && get_config()->accesslog_file) {
 
-    lgconf->accesslog_fd =
-        util::reopen_log_file(get_config()->accesslog_file.get());
+    new_accesslog_fd = util::open_log_file(get_config()->accesslog_file.get());
 
-    if (lgconf->accesslog_fd == -1) {
+    if (new_accesslog_fd == -1) {
       LOG(ERROR) << "Failed to open accesslog file "
                  << get_config()->accesslog_file.get();
       res = -1;
     }
   }
 
-  int new_errorlog_fd = -1;
-
   if (!get_config()->errorlog_syslog && get_config()->errorlog_file) {
 
-    new_errorlog_fd = util::reopen_log_file(get_config()->errorlog_file.get());
+    new_errorlog_fd = util::open_log_file(get_config()->errorlog_file.get());
 
     if (new_errorlog_fd == -1) {
       if (lgconf->errorlog_fd != -1) {
@@ -365,16 +359,13 @@ int reopen_log_files() {
     }
   }
 
-  if (lgconf->errorlog_fd != -1) {
-    close(lgconf->errorlog_fd);
-    lgconf->errorlog_fd = -1;
-    lgconf->errorlog_tty = false;
-  }
+  util::close_log_file(lgconf->accesslog_fd);
+  util::close_log_file(lgconf->errorlog_fd);
 
-  if (new_errorlog_fd != -1) {
-    lgconf->errorlog_fd = new_errorlog_fd;
-    lgconf->errorlog_tty = isatty(lgconf->errorlog_fd);
-  }
+  lgconf->accesslog_fd = new_accesslog_fd;
+  lgconf->errorlog_fd = new_errorlog_fd;
+  lgconf->errorlog_tty = (new_errorlog_fd == -1) ?
+    false : isatty(new_errorlog_fd);
 
   return res;
 }
