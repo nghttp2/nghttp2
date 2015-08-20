@@ -710,6 +710,10 @@ int Http2Handler::connection_made() {
 
   ev_timer_start(sessions_->get_loop(), &settings_timerev_);
 
+  if (!nghttp2::ssl::check_http2_requirement(ssl_)) {
+    terminate_session(NGHTTP2_INADEQUATE_SECURITY);
+  }
+
   return on_write();
 }
 
