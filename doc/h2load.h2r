@@ -21,7 +21,8 @@ requests
     RST_STREAM.
   timeout
     The number of requests whose connection timed out before they were
-    completed.
+    completed.   This  is  the  subset   of  the  number  reported  in
+    ``errored``.
 
 status codes
   The number of status code h2load received.
