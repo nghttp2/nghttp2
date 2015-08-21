@@ -180,8 +180,3 @@ int nghttp2_pq_each(nghttp2_pq *pq, nghttp2_pq_item_cb fun, void *arg) {
   }
   return 0;
 }
-
-void nghttp2_pq_increase_key(nghttp2_pq *pq, nghttp2_pq_entry *item) {
-  assert(pq->q[item->index] == item);
-  bubble_down(pq, item->index);
-}

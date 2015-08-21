@@ -224,34 +224,3 @@ void test_nghttp2_pq_remove(void) {
 
   nghttp2_pq_free(&pq);
 }
-
-void test_nghttp2_pq_increase_key(void) {
-  nghttp2_pq pq;
-  node nodes[10];
-  int ans_key1[] = {1, 2, 3, 3, 4, 5};
-  int ans_val1[] = {1, 2, 0, 3, 4, 5};
-  int ans_key2[] = {0, 1, 2, 3, 4, 6};
-  int ans_val2[] = {0, 1, 2, 3, 4, 5};
-
-  nghttp2_pq_init(&pq, node_less, nghttp2_mem_default());
-
-  push_nodes(&pq, nodes, 6);
-
-  nodes[0].key = 3;
-  nghttp2_pq_increase_key(&pq, &nodes[0].ent);
-
-  check_nodes(&pq, 6, ans_key1, ans_val1);
-
-  nghttp2_pq_free(&pq);
-
-  nghttp2_pq_init(&pq, node_less, nghttp2_mem_default());
-
-  push_nodes(&pq, nodes, 6);
-
-  nodes[5].key = 6;
-  nghttp2_pq_increase_key(&pq, &nodes[5].ent);
-
-  check_nodes(&pq, 6, ans_key2, ans_val2);
-
-  nghttp2_pq_free(&pq);
-}

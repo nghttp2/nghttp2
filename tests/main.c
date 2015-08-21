@@ -68,7 +68,6 @@ int main(int argc _U_, char *argv[] _U_) {
   if (!CU_add_test(pSuite, "pq", test_nghttp2_pq) ||
       !CU_add_test(pSuite, "pq_update", test_nghttp2_pq_update) ||
       !CU_add_test(pSuite, "pq_remove", test_nghttp2_pq_remove) ||
-      !CU_add_test(pSuite, "pq_increase_key", test_nghttp2_pq_increase_key) ||
       !CU_add_test(pSuite, "map", test_nghttp2_map) ||
       !CU_add_test(pSuite, "map_functional", test_nghttp2_map_functional) ||
       !CU_add_test(pSuite, "map_each_free", test_nghttp2_map_each_free) ||

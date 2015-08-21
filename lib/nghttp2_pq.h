@@ -121,12 +121,6 @@ void nghttp2_pq_update(nghttp2_pq *pq, nghttp2_pq_item_cb fun, void *arg);
 int nghttp2_pq_each(nghttp2_pq *pq, nghttp2_pq_item_cb fun, void *arg);
 
 /*
- * Performs "increase-key" operation against |item|, assuming |item|
- * is in |pq|, and its key is already updated.
- */
-void nghttp2_pq_increase_key(nghttp2_pq *pq, nghttp2_pq_entry *item);
-
-/*
  * Removes |item| from priority queue.
  */
 void nghttp2_pq_remove(nghttp2_pq *pq, nghttp2_pq_entry *item);
