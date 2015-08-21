@@ -169,11 +169,18 @@ def verify_response(cmd, tempdir, issuer_fn, respder_fn):
     ]
 
     for extra in allextra:
-        with open(verify_fn, 'wb') as f:
+        with open(verify_fn, 'w+b') as f:
             args = [cmd, 'ocsp', '-respin', respder_fn]
             args.extend(extra)
             p = subprocess.Popen(args, stdout=f, stderr=f)
             if p.wait() == 0:
+                # OpenSSL <= 1.0.1, openssl ocsp still returns exit
+                # code 0 even if verification was failed.  So check
+                # the error message in stderr output.
+                f.seek(0)
+                if f.read().decode('utf-8').find(
+                        'Response Verify Failure') != -1:
+                    continue
                 sys.stderr.write('verify OK (used: {})\n'.format(extra))
                 return True
 
@@ -200,6 +207,11 @@ def fetch_ocsp_response(cmd, cert_fn, tempdir, issuer_fn=None):
         openssl_version)
 
     sys.stderr.write('{}\n'.format(resp))
+
+    # OpenSSL 1.0.2 still returns exit code 0 even if ocsp responder
+    # returned error status (e.g., trylater(3))
+    if resp.find('Responder Error:') != -1:
+        raise Exception('responder returned error')
 
     if not verify_response(cmd, tempdir, issuer_fn, respder_fn):
         tempfail('failed to verify the response')
