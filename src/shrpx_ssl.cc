@@ -637,7 +637,7 @@ SSL_CTX *create_ssl_client_context() {
   if (get_config()->ciphers) {
     ciphers = get_config()->ciphers.get();
   } else {
-    ciphers = "HIGH:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!3DES:!MD5:!PSK";
+    ciphers = nghttp2::ssl::DEFAULT_CIPHER_LIST;
   }
   if (SSL_CTX_set_cipher_list(ssl_ctx, ciphers) == 0) {
     LOG(FATAL) << "SSL_CTX_set_cipher_list " << ciphers
