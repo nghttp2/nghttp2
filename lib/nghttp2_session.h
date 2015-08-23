@@ -66,6 +66,9 @@ typedef struct {
    nghttp2_session_recv(). */
 #define NGHTTP2_INBOUND_BUFFER_LENGTH 16384
 
+/* The default maximum number of incoming reserved streams */
+#define NGHTTP2_MAX_INCOMING_RESERVED_STREAMS 200
+
 /* Internal state when receiving incoming frame */
 typedef enum {
   /* Receiving frame header */
@@ -194,6 +197,19 @@ struct nghttp2_session {
   /* The number of incoming streams. This will be capped by
      local_settings.max_concurrent_streams. */
   size_t num_incoming_streams;
+  /* The number of incoming reserved streams.  This is the number of
+     streams in reserved (remote) state.  RFC 7540 does not limit this
+     number.  nghttp2 offers
+     nghttp2_option_set_max_reserved_remote_streams() to achieve this.
+     If it is used, num_incoming_streams is capped by
+     max_incoming_reserved_streams.  Client application should
+     consider to set this because without that server can send
+     arbitrary number of PUSH_PROMISE, and exhaust client's memory. */
+  size_t num_incoming_reserved_streams;
+  /* The maximum number of incoming reserved streams (reserved
+     (remote) state).  RST_STREAM will be sent for the pushed stream
+     which exceeds this limit. */
+  size_t max_incoming_reserved_streams;
   /* The number of closed streams still kept in |streams| hash.  The
      closed streams can be accessed through single linked list
      |closed_stream_head|.  The current implementation only keeps

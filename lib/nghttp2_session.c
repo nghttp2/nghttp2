@@ -372,6 +372,9 @@ static int session_new(nghttp2_session **session_ptr,
   init_settings(&(*session_ptr)->remote_settings);
   init_settings(&(*session_ptr)->local_settings);
 
+  (*session_ptr)->max_incoming_reserved_streams =
+      NGHTTP2_MAX_INCOMING_RESERVED_STREAMS;
+
   if (option) {
     if ((option->opt_set_mask & NGHTTP2_OPT_NO_AUTO_WINDOW_UPDATE) &&
         option->no_auto_window_update) {
@@ -383,6 +386,12 @@ static int session_new(nghttp2_session **session_ptr,
 
       (*session_ptr)->remote_settings.max_concurrent_streams =
           option->peer_max_concurrent_streams;
+    }
+
+    if (option->opt_set_mask & NGHTTP2_OPT_MAX_RESERVED_REMOTE_STREAMS) {
+
+      (*session_ptr)->max_incoming_reserved_streams =
+          option->max_reserved_remote_streams;
     }
 
     if ((option->opt_set_mask & NGHTTP2_OPT_NO_RECV_CLIENT_MAGIC) &&
@@ -910,11 +919,12 @@ nghttp2_stream *nghttp2_session_open_stream(nghttp2_session *session,
   switch (initial_state) {
   case NGHTTP2_STREAM_RESERVED:
     if (nghttp2_session_is_my_stream_id(session, stream_id)) {
-      /* half closed (remote) */
+      /* reserved (local) */
       nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
     } else {
-      /* half closed (local) */
+      /* reserved (remote) */
       nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_WR);
+      ++session->num_incoming_reserved_streams;
     }
     /* Reserved stream does not count in the concurrent streams
        limit. That is one of the DOS vector. */
@@ -1017,7 +1027,11 @@ int nghttp2_session_close_stream(nghttp2_session *session, int32_t stream_id,
 
   /* pushed streams which is not opened yet is not counted toward max
      concurrent limits */
-  if ((stream->flags & NGHTTP2_STREAM_FLAG_PUSH) == 0) {
+  if ((stream->flags & NGHTTP2_STREAM_FLAG_PUSH)) {
+    if (!nghttp2_session_is_my_stream_id(session, stream_id)) {
+      --session->num_incoming_reserved_streams;
+    }
+  } else {
     if (nghttp2_session_is_my_stream_id(session, stream_id)) {
       --session->num_outgoing_streams;
     } else {
@@ -3458,6 +3472,9 @@ int nghttp2_session_on_push_response_headers_received(nghttp2_session *session,
   }
 
   nghttp2_stream_promise_fulfilled(stream);
+  if (!nghttp2_session_is_my_stream_id(session, stream->stream_id)) {
+    --session->num_incoming_reserved_streams;
+  }
   ++session->num_incoming_streams;
   rv = session_call_on_begin_headers(session, frame);
   if (rv != 0) {
@@ -4057,7 +4074,9 @@ int nghttp2_session_on_push_promise_received(nghttp2_session *session,
   session->last_recv_stream_id = frame->push_promise.promised_stream_id;
   stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
   if (!stream || stream->state == NGHTTP2_STREAM_CLOSING ||
-      !session->pending_enable_push) {
+      !session->pending_enable_push ||
+      session->num_incoming_reserved_streams >=
+          session->max_incoming_reserved_streams) {
     if (!stream) {
       if (session_detect_idle_stream(session, frame->hd.stream_id)) {
         return session_inflate_handle_invalid_connection(

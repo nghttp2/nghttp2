@@ -56,3 +56,9 @@ void nghttp2_option_set_no_http_messaging(nghttp2_option *option, int val) {
   option->opt_set_mask |= NGHTTP2_OPT_NO_HTTP_MESSAGING;
   option->no_http_messaging = val;
 }
+
+void nghttp2_option_set_max_reserved_remote_streams(nghttp2_option *option,
+                                                    uint32_t val) {
+  option->opt_set_mask |= NGHTTP2_OPT_MAX_RESERVED_REMOTE_STREAMS;
+  option->max_reserved_remote_streams = val;
+}
