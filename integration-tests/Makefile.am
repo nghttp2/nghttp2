@@ -32,13 +32,11 @@ EXTRA_DIST = \
 	alt-server.crt \
 	setenv
 
-.PHONY: itprep it
-
-itprep:
+itprep-local:
 	go get -d -v github.com/bradfitz/http2
 	go get -d -v github.com/tatsuhiro-t/go-nghttp2
 	go get -d -v github.com/tatsuhiro-t/spdy
 	go get -d -v golang.org/x/net/websocket
 
-it:
+it-local:
 	sh setenv go test -v
