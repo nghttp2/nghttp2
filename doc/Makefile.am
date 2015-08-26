@@ -24,7 +24,6 @@
 man_MANS = nghttp.1 nghttpd.1 nghttpx.1 h2load.1
 
 APIDOCS= \
-	apiref.rst \
 	macros.rst \
 	enums.rst \
 	types.rst \
@@ -46,10 +45,11 @@ APIDOCS= \
 	nghttp2_nv_compare_name.rst \
 	nghttp2_option_del.rst \
 	nghttp2_option_new.rst \
+	nghttp2_option_set_max_reserved_remote_streams.rst \
 	nghttp2_option_set_no_auto_window_update.rst \
 	nghttp2_option_set_no_http_messaging.rst \
-	nghttp2_option_set_peer_max_concurrent_streams.rst \
 	nghttp2_option_set_no_recv_client_magic.rst \
+	nghttp2_option_set_peer_max_concurrent_streams.rst \
 	nghttp2_pack_settings_payload.rst \
 	nghttp2_priority_spec_check_default.rst \
 	nghttp2_priority_spec_default_init.rst \
@@ -209,29 +209,16 @@ help:
 	@echo "  linkcheck  to check all external links for integrity"
 	@echo "  doctest    to run all doctests embedded in the documentation (if enabled)"
 
-apiref.rst macros.rst enums.rst types.rst: \
+apiref.rst: \
 	$(top_builddir)/lib/includes/nghttp2/nghttp2ver.h \
 	$(top_builddir)/lib/includes/nghttp2/nghttp2.h
 	$(PYTHON) $(top_srcdir)/doc/mkapiref.py \
-	$@ macros.rst enums.rst types.rst . $^
+	apiref.rst macros.rst enums.rst types.rst . $^
 
-# Inspired by
-# http://www.gnu.org/savannah-checkouts/gnu/automake/manual/html_node/Multiple-Outputs.html
-apidoc.stamp: $(top_builddir)/lib/includes/nghttp2/nghttp2ver.h \
-	$(top_builddir)/lib/includes/nghttp2/nghttp2.h
-	@rm -f apidoc.tmp
-	@touch apidoc.tmp
-	$(PYTHON) $(top_srcdir)/doc/mkapiref.py \
-	$@ macros.rst enums.rst types.rst . $^
-	@mv -f apidoc.tmp $@
-$(APIDOC): apidoc.stamp
-## Recover from the removal of $@
-	@if test -f $@; then :; else \
-	  rm -f apidoc.stamp; \
-	  $(MAKE) $(AM_MAKEFLAGS) apidoc.stamp; \
-	fi
+$(APIDOCS): apiref.rst
 
 clean-local:
+	-rm -f apiref.rst
 	-rm -f $(APIDOCS)
 	-rm -rf $(BUILDDIR)/*
 
