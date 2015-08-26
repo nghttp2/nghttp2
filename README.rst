@@ -1219,6 +1219,8 @@ an HTTP/2 server looks like this:
 
 .. code-block:: cpp
 
+    #include <iostream>
+
     #include <nghttp2/asio_http2_server.h>
 
     using namespace nghttp2::asio_http2;
