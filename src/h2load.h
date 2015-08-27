@@ -62,6 +62,7 @@ struct Worker;
 struct Config {
   std::vector<std::vector<nghttp2_nv>> nva;
   std::vector<std::vector<const char *>> nv;
+  std::vector<std::string> h1reqs;
   std::vector<ev_tstamp> timings;
   nghttp2::Headers custom_headers;
   std::string scheme;
@@ -86,7 +87,13 @@ struct Config {
   ssize_t conn_active_timeout;
   // amount of time to wait after the last request is made on a connection
   ssize_t conn_inactivity_timeout;
-  enum { PROTO_HTTP2, PROTO_SPDY2, PROTO_SPDY3, PROTO_SPDY3_1 } no_tls_proto;
+  enum {
+    PROTO_HTTP2,
+    PROTO_SPDY2,
+    PROTO_SPDY3,
+    PROTO_SPDY3_1,
+    PROTO_HTTP1_1
+  } no_tls_proto;
   // file descriptor for upload data
   int data_fd;
   uint16_t port;
@@ -94,6 +101,9 @@ struct Config {
   bool verbose;
   bool timing_script;
   std::string base_uri;
+  // list of supported NPN/ALPN protocol strings in the order of
+  // preference.
+  std::vector<std::string> npn_list;
 
   Config();
   ~Config();
@@ -187,6 +197,7 @@ struct Worker {
   size_t progress_interval;
   uint32_t id;
   bool tls_info_report_done;
+  bool app_info_report_done;
   size_t nconns_made;
   size_t nclients;
   size_t rate;
@@ -227,6 +238,7 @@ struct Client {
   Buffer<64_k> wb;
   ev_timer conn_active_watcher;
   ev_timer conn_inactivity_watcher;
+  std::string selected_proto;
 
   enum { ERR_CONNECT_FAIL = -100 };
 
@@ -242,6 +254,7 @@ struct Client {
   void process_abandoned_streams();
   void report_progress();
   void report_tls_info();
+  void report_app_info();
   void terminate_session();
 
   int do_read();
@@ -263,6 +276,7 @@ struct Client {
   void on_request(int32_t stream_id);
   void on_header(int32_t stream_id, const uint8_t *name, size_t namelen,
                  const uint8_t *value, size_t valuelen);
+  void on_status_code(int32_t stream_id, uint16_t status);
   void on_stream_close(int32_t stream_id, bool success, RequestStat *req_stat);
 
   void record_request_time(RequestStat *req_stat);
