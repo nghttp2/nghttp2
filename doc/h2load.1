@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "H2LOAD" "1" "August 14, 2015" "1.2.1" "nghttp2"
+.TH "H2LOAD" "1" "August 30, 2015" "1.2.2-DEV" "nghttp2"
 .SH NAME
 h2load \- HTTP/2 benchmarking tool
 .
@@ -44,7 +44,8 @@ URIs are used  in this order for each  client.  All URIs
 are used, then  first URI is used and then  2nd URI, and
 so  on.  The  scheme, host  and port  in the  subsequent
 URIs, if present,  are ignored.  Those in  the first URI
-are used solely.
+are used solely.  Definition of a base URI overrides all
+scheme, host or port values.
 .UNINDENT
 .SH OPTIONS
 .INDENT 0.0
@@ -78,7 +79,8 @@ URIs are used  in this order for each  client.  All URIs
 are used, then  first URI is used and then  2nd URI, and
 so  on.  The  scheme, host  and port  in the  subsequent
 URIs, if present,  are ignored.  Those in  the first URI
-are used solely.
+are used solely.  Definition of a base URI overrides all
+scheme, host or port values.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -158,6 +160,55 @@ the \fI\%\-C\fP option is being used.
 .UNINDENT
 .INDENT 0.0
 .TP
+.B \-T, \-\-connection\-active\-timeout=<N>
+Specifies  the maximum  time that  h2load is  willing to
+keep a  connection open,  regardless of the  activity on
+said  connection.   <N>  must  be  a  positive  integer,
+specifying  the  number of  seconds  to  wait.  When  no
+timeout value is set (either active or inactive), h2load
+will keep a connection  open indefinitely, waiting for a
+response.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-N, \-\-connection\-inactivity\-timeout=<N>
+Specifies the amount  of time that h2load  is willing to
+wait to see activity on a given connection.  <N> must be
+a positive integer, specifying  the number of seconds to
+wait.  When  no timeout value  is set (either  active or
+inactive),   h2load   will   keep  a   connection   open
+indefinitely, waiting for a response.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-timing\-script\-file=<PATH>
+Path of a file containing one  or more lines separated by
+EOLs. Each script line  is composed of  two tab\-separated
+fields. The first field  represents  the time offset from
+the  start of  execution, expressed  as milliseconds with
+microsecond  resolution.  The second field represents the
+URI.   This   option  will   disable  URIs  getting  from
+command\-line.  If \(aq\-\(aq  is given as <PATH>,  script  lines
+will be read from stdin.  Script lines are used  in order
+for each  client.  If  \fI\%\-n\fP is  given, it must be less than
+or equal to the number of script lines, larger values are
+clamped  to  the   number  of  script  lines.  If  \fI\%\-n\fP  is
+not given,  the number of requests  will  default to  the
+number of script lines. The scheme, host and port defined
+in the  first URI  are used  solely.  Values contained in
+other URIs, if  present, are  ignored.  Definition  of  a
+base  URI  overrides  all  scheme, host  or port  values.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-B, \-\-base\-uri=<URI>
+Specify URI from which the scheme, host and port will be
+used  for  all requests.   The  base  URI overrides  all
+values  defined either  at  the command  line or  inside
+input files.
+.UNINDENT
+.INDENT 0.0
+.TP
 .B \-v, \-\-verbose
 Output debug information.
 .UNINDENT
@@ -199,6 +250,11 @@ The number of requests failed, except for HTTP level failures.
 This is the subset of the number reported in \fBfailed\fP and most
 likely the network level failures or stream was reset by
 RST_STREAM.
+.TP
+.B timeout
+The number of requests whose connection timed out before they were
+completed.   This  is  the  subset   of  the  number  reported  in
+\fBerrored\fP\&.
 .UNINDENT
 .TP
 .B status codes

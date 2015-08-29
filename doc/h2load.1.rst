@@ -23,7 +23,8 @@ benchmarking tool for HTTP/2 and SPDY server
     are used, then  first URI is used and then  2nd URI, and
     so  on.  The  scheme, host  and port  in the  subsequent
     URIs, if present,  are ignored.  Those in  the first URI
-    are used solely.
+    are used solely.  Definition of a base URI overrides all
+    scheme, host or port values.
 
 OPTIONS
 -------
@@ -55,7 +56,8 @@ OPTIONS
     are used, then  first URI is used and then  2nd URI, and
     so  on.  The  scheme, host  and port  in the  subsequent
     URIs, if present,  are ignored.  Those in  the first URI
-    are used solely.
+    are used solely.  Definition of a base URI overrides all
+    scheme, host or port values.
 
 .. option:: -m, --max-concurrent-streams=(auto|<N>)
 
@@ -124,6 +126,51 @@ OPTIONS
     for this option is 0.  The  :option:`-n` option is not required if
     the :option:`-C` option is being used.
 
+.. option:: -T, --connection-active-timeout=<N>
+
+    Specifies  the maximum  time that  h2load is  willing to
+    keep a  connection open,  regardless of the  activity on
+    said  connection.   <N>  must  be  a  positive  integer,
+    specifying  the  number of  seconds  to  wait.  When  no
+    timeout value is set (either active or inactive), h2load
+    will keep a connection  open indefinitely, waiting for a
+    response.
+
+.. option:: -N, --connection-inactivity-timeout=<N>
+
+    Specifies the amount  of time that h2load  is willing to
+    wait to see activity on a given connection.  <N> must be
+    a positive integer, specifying  the number of seconds to
+    wait.  When  no timeout value  is set (either  active or
+    inactive),   h2load   will   keep  a   connection   open
+    indefinitely, waiting for a response.
+
+.. option:: --timing-script-file=<PATH>
+
+    Path of a file containing one  or more lines separated by
+    EOLs. Each script line  is composed of  two tab-separated
+    fields. The first field  represents  the time offset from
+    the  start of  execution, expressed  as milliseconds with
+    microsecond  resolution.  The second field represents the
+    URI.   This   option  will   disable  URIs  getting  from
+    command-line.  If '-'  is given as <PATH>,  script  lines
+    will be read from stdin.  Script lines are used  in order
+    for each  client.  If  :option:`-n` is  given, it must be less than
+    or equal to the number of script lines, larger values are
+    clamped  to  the   number  of  script  lines.  If  :option:`-n`  is
+    not given,  the number of requests  will  default to  the
+    number of script lines. The scheme, host and port defined
+    in the  first URI  are used  solely.  Values contained in
+    other URIs, if  present, are  ignored.  Definition  of  a
+    base  URI  overrides  all  scheme, host  or port  values.
+
+.. option:: -B, --base-uri=<URI>
+
+    Specify URI from which the scheme, host and port will be
+    used  for  all requests.   The  base  URI overrides  all
+    values  defined either  at  the command  line or  inside
+    input files.
+
 .. option:: -v, --verbose
 
     Output debug information.
@@ -157,6 +204,10 @@ requests
     This is the subset of the number reported in ``failed`` and most
     likely the network level failures or stream was reset by
     RST_STREAM.
+  timeout
+    The number of requests whose connection timed out before they were
+    completed.   This  is  the  subset   of  the  number  reported  in
+    ``errored``.
 
 status codes
   The number of status code h2load received.
