@@ -201,17 +201,22 @@ void nghttp2_stream_reschedule(nghttp2_stream *stream) {
   dep_stream = stream->dep_prev;
 
   for (; dep_stream; stream = dep_stream, dep_stream = dep_stream->dep_prev) {
-    dep_stream->descendant_last_cycle =
-        nghttp2_max(dep_stream->descendant_last_cycle, stream->cycle);
+    if (nghttp2_pq_size(&dep_stream->obq) == 1) {
+      dep_stream->descendant_last_cycle = 0;
+      stream->cycle = 0;
+    } else {
+      dep_stream->descendant_last_cycle =
+          nghttp2_max(dep_stream->descendant_last_cycle, stream->cycle);
 
-    stream->cycle =
-        stream_next_cycle(stream, dep_stream->descendant_last_cycle);
+      stream->cycle =
+          stream_next_cycle(stream, dep_stream->descendant_last_cycle);
+
+      nghttp2_pq_remove(&dep_stream->obq, &stream->pq_entry);
+      nghttp2_pq_push(&dep_stream->obq, &stream->pq_entry);
+    }
 
     DEBUGF(fprintf(stderr, "stream: stream=%d obq resched cycle=%ld\n",
                    stream->stream_id, stream->cycle));
-
-    nghttp2_pq_remove(&dep_stream->obq, &stream->pq_entry);
-    nghttp2_pq_push(&dep_stream->obq, &stream->pq_entry);
 
     dep_stream->last_writelen = stream->last_writelen;
   }
