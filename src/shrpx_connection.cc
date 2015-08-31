@@ -35,6 +35,7 @@
 #include "shrpx_ssl.h"
 #include "shrpx_memcached_request.h"
 #include "memchunk.h"
+#include "util.h"
 
 using namespace nghttp2;
 
@@ -145,20 +146,7 @@ int shrpx_bio_write(BIO *b, const char *buf, int len) {
   if (conn->tls.initial_handshake_done) {
     // After handshake finished, send |buf| of length |len| to the
     // socket directly.
-    if (wbuf.rleft()) {
-      std::array<struct iovec, 4> iov;
-      auto iovcnt = wbuf.riovec(iov.data(), iov.size());
-      auto nwrite = conn->writev_clear(iov.data(), iovcnt);
-      if (nwrite < 0) {
-        return -1;
-      }
-
-      wbuf.drain(nwrite);
-      if (wbuf.rleft()) {
-        BIO_set_retry_write(b);
-        return -1;
-      }
-    }
+    assert(wbuf.rleft() == 0);
     auto nwrite = conn->write_clear(buf, len);
     if (nwrite < 0) {
       return -1;
@@ -300,6 +288,10 @@ int Connection::tls_handshake() {
     }
   }
 
+  if (tls.initial_handshake_done) {
+    return write_tls_pending_handshake();
+  }
+
   switch (tls.handshake_state) {
   case TLS_CONN_WAIT_FOR_SESSION_CACHE:
     return SHRPX_ERR_INPROGRESS;
@@ -365,7 +357,10 @@ int Connection::tls_handshake() {
     return SHRPX_ERR_INPROGRESS;
   }
 
-  if (tls.wbuf.rleft()) {
+  // Don't send handshake data if handshake was completed in OpenSSL
+  // routine.  We have to check HTTP/2 requirement if HTTP/2 was
+  // negotiated before sending finished message to the peer.
+  if (rv != 1 && tls.wbuf.rleft()) {
     // First write indicates that resumption stuff has done.
     if (tls.handshake_state != TLS_CONN_WRITE_STARTED) {
       tls.handshake_state = TLS_CONN_WRITE_STARTED;
@@ -401,7 +396,41 @@ int Connection::tls_handshake() {
     return SHRPX_ERR_INPROGRESS;
   }
 
+  // Handshake was done
+
+  rv = check_http2_requirement();
+  if (rv != 0) {
+    return -1;
+  }
+
+  // Just in case
+  tls.rbuf.disable_peek(true);
+
   tls.initial_handshake_done = true;
+
+  return write_tls_pending_handshake();
+}
+
+int Connection::write_tls_pending_handshake() {
+  // Send handshake data left in the buffer
+  while (tls.wbuf.rleft()) {
+    std::array<struct iovec, 4> iov;
+    auto iovcnt = tls.wbuf.riovec(iov.data(), iov.size());
+    auto nwrite = writev_clear(iov.data(), iovcnt);
+    if (nwrite < 0) {
+      if (LOG_ENABLED(INFO)) {
+        LOG(INFO) << "tls: handshake write error";
+      }
+      return -1;
+    }
+    if (nwrite == 0) {
+      wlimit.startw();
+      ev_timer_again(loop, &wt);
+
+      return SHRPX_ERR_INPROGRESS;
+    }
+    tls.wbuf.drain(nwrite);
+  }
 
   // We have to start read watcher, since later stage of code expects
   // this.
@@ -417,6 +446,31 @@ int Connection::tls_handshake() {
     if (SSL_session_reused(tls.ssl)) {
       LOG(INFO) << "SSL/TLS session reused";
     }
+  }
+
+  return 0;
+}
+
+int Connection::check_http2_requirement() {
+  const unsigned char *next_proto = nullptr;
+  unsigned int next_proto_len;
+
+  SSL_get0_next_proto_negotiated(tls.ssl, &next_proto, &next_proto_len);
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+  if (next_proto == nullptr) {
+    SSL_get0_alpn_selected(tls.ssl, &next_proto, &next_proto_len);
+  }
+#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
+  if (next_proto == nullptr ||
+      !util::check_h2_is_selected(next_proto, next_proto_len)) {
+    return 0;
+  }
+  if (!nghttp2::ssl::check_http2_requirement(tls.ssl)) {
+    if (LOG_ENABLED(INFO)) {
+      LOG(INFO) << "TLSv1.2 and/or black listed cipher suite was negotiated. "
+                   "HTTP/2 must not be used.";
+    }
+    return -1;
   }
 
   return 0;

@@ -84,6 +84,9 @@ struct Connection {
   void prepare_server_handshake();
 
   int tls_handshake();
+  int write_tls_pending_handshake();
+
+  int check_http2_requirement();
 
   // All write_* and writev_clear functions return number of bytes
   // written.  If nothing cannot be written (e.g., there is no
