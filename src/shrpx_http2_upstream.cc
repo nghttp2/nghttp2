@@ -37,6 +37,7 @@
 #include "shrpx_http.h"
 #include "shrpx_worker.h"
 #include "shrpx_http2_session.h"
+#include "shrpx_mruby.h"
 #include "http2.h"
 #include "util.h"
 #include "base64.h"
@@ -305,6 +306,13 @@ int Http2Upstream::on_request_headers(Downstream *downstream,
   if (!(frame->hd.flags & NGHTTP2_FLAG_END_STREAM)) {
     downstream->set_request_http2_expect_body(true);
   }
+
+  auto upstream = downstream->get_upstream();
+  auto handler = upstream->get_client_handler();
+  auto worker = handler->get_worker();
+  auto mruby_ctx = worker->get_mruby_context();
+
+  mruby_ctx->run_on_request_proc(downstream);
 
   downstream->inspect_http2_request();
 

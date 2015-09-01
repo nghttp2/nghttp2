@@ -690,6 +690,7 @@ enum {
   SHRPX_OPTID_NO_VIA,
   SHRPX_OPTID_NPN_LIST,
   SHRPX_OPTID_OCSP_UPDATE_INTERVAL,
+  SHRPX_OPTID_ON_REQUEST_MRUBY_FILE,
   SHRPX_OPTID_PADDING,
   SHRPX_OPTID_PID_FILE,
   SHRPX_OPTID_PRIVATE_KEY_FILE,
@@ -1087,6 +1088,11 @@ int option_lookup_token(const char *name, size_t namelen) {
     case 'd':
       if (util::strieq_l("backend-tls-sni-fiel", name, 20)) {
         return SHRPX_OPTID_BACKEND_TLS_SNI_FIELD;
+      }
+      break;
+    case 'e':
+      if (util::strieq_l("on-request-mruby-fil", name, 20)) {
+        return SHRPX_OPTID_ON_REQUEST_MRUBY_FILE;
       }
       break;
     case 'r':
@@ -1938,6 +1944,10 @@ int parse_config(const char *opt, const char *optarg,
   case SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_MAX_FAIL:
     return parse_uint(&mod_config()->tls_ticket_key_memcached_max_fail, opt,
                       optarg);
+  case SHRPX_OPTID_ON_REQUEST_MRUBY_FILE:
+    mod_config()->on_request_mruby_file = strcopy(optarg);
+
+    return 0;
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 

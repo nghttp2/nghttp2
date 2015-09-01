@@ -37,6 +37,7 @@
 #include "shrpx_log_config.h"
 #include "shrpx_worker.h"
 #include "shrpx_http2_session.h"
+#include "shrpx_mruby.h"
 #include "http2.h"
 #include "util.h"
 #include "template.h"
@@ -271,6 +272,12 @@ int htp_hdrs_completecb(http_parser *htp) {
       !downstream->get_request_header(http2::HD_HOST)) {
     return -1;
   }
+
+  auto handler = upstream->get_client_handler();
+  auto worker = handler->get_worker();
+  auto mruby_ctx = worker->get_mruby_context();
+
+  mruby_ctx->run_on_request_proc(downstream);
 
   downstream->inspect_http1_request();
 

@@ -926,9 +926,13 @@ int event_loop() {
 #endif // !NOTHREADS
 
   if (get_config()->num_worker == 1) {
-    conn_handler->create_single_worker();
+    rv = conn_handler->create_single_worker();
   } else {
-    conn_handler->create_worker_thread(get_config()->num_worker);
+    rv = conn_handler->create_worker_thread(get_config()->num_worker);
+  }
+
+  if (rv != 0) {
+    return -1;
   }
 
 #ifndef NOTHREADS
@@ -1899,6 +1903,7 @@ int main(int argc, char **argv) {
          89},
         {SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_MAX_FAIL, required_argument, &flag,
          90},
+        {SHRPX_OPT_ON_REQUEST_MRUBY_FILE, required_argument, &flag, 91},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -2296,6 +2301,10 @@ int main(int argc, char **argv) {
         cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_MAX_FAIL,
                              optarg);
         break;
+      case 91:
+        // --on-request-mruby-file
+        cmdcfgs.emplace_back(SHRPX_OPT_ON_REQUEST_MRUBY_FILE, optarg);
+        break;
       default:
         break;
       }
@@ -2613,7 +2622,9 @@ int main(int argc, char **argv) {
   act.sa_handler = SIG_IGN;
   sigaction(SIGPIPE, &act, nullptr);
 
-  event_loop();
+  if (event_loop() != 0) {
+    return -1;
+  }
 
   LOG(NOTICE) << "Shutdown momentarily";
 

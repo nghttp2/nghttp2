@@ -96,6 +96,7 @@ public:
   const std::string &get_http2_settings() const;
   // downstream request API
   const Headers &get_request_headers() const;
+  Headers &get_request_headers();
   // Crumbles (split cookie by ";") in request_headers_ and returns
   // them.  Headers::no_index is inherited.
   Headers crumble_request_cookie();
@@ -126,6 +127,8 @@ public:
   void append_last_request_header_value(const char *data, size_t len);
   // Empties request headers.
   void clear_request_headers();
+  void set_request_headers_dirty(bool f);
+  bool get_request_headers_dirty() const;
 
   size_t get_request_headers_sum() const;
 
@@ -454,6 +457,8 @@ private:
   // has not been established or should be checked before use;
   // currently used only with HTTP/2 connection.
   bool request_pending_;
+  // true if we need to execute index_request_headers()
+  bool request_headers_dirty_;
 };
 
 } // namespace shrpx

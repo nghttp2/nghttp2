@@ -73,10 +73,10 @@ public:
   ~ConnectionHandler();
   int handle_connection(int fd, sockaddr *addr, int addrlen);
   // Creates Worker object for single threaded configuration.
-  void create_single_worker();
+  int create_single_worker();
   // Creates |num| Worker objects for multi threaded configuration.
   // The |num| must be strictly more than 1.
-  void create_worker_thread(size_t num);
+  int create_worker_thread(size_t num);
   void
   set_ticket_keys_to_worker(const std::shared_ptr<TicketKeys> &ticket_keys);
   void worker_reopen_log_files();

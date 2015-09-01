@@ -98,6 +98,7 @@ OPTIONS = [
     "tls-ticket-key-memcached-interval",
     "tls-ticket-key-memcached-max-retry",
     "tls-ticket-key-memcached-max-fail",
+    "on-request-mruby-file",
     "conf",
 ]
 
