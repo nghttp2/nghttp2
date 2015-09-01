@@ -265,10 +265,7 @@ Client::Client(Worker *worker, size_t req_todo)
   request_timeout_watcher.data = this;
 }
 
-Client::~Client() {
-  ev_timer_stop(worker->loop, &request_timeout_watcher);
-  disconnect();
-}
+Client::~Client() { disconnect(); }
 
 int Client::do_read() { return readfn(*this); }
 int Client::do_write() { return writefn(*this); }
@@ -348,7 +345,7 @@ void Client::fail() {
 void Client::disconnect() {
   ev_timer_stop(worker->loop, &conn_inactivity_watcher);
   ev_timer_stop(worker->loop, &conn_active_watcher);
-
+  ev_timer_stop(worker->loop, &request_timeout_watcher);
   streams.clear();
   session.reset();
   state = CLIENT_IDLE;
