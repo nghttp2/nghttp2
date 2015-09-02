@@ -126,6 +126,7 @@ NGHTTPX_SRCS = \
 	shrpx_memcached_result.h \
 	shrpx_mruby.cc shrpx_mruby.h \
 	shrpx_mruby_module.cc shrpx_mruby_module.h \
+	shrpx_mruby_module_request.cc shrpx_mruby_module_request.h \
 	buffer.h memchunk.h template.h
 
 if HAVE_SPDYLAY

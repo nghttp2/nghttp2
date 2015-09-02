@@ -22,14 +22,12 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef SHRPX_MRUBY_MODULE_H
-#define SHRPX_MRUBY_MODULE_H
+#ifndef SHRPX_MRUBY_MODULE_REQUEST_H
+#define SHRPX_MRUBY_MODULE_REQUEST_H
 
 #include "shrpx.h"
 
 #include <mruby.h>
-
-#include "http2.h"
 
 using namespace nghttp2;
 
@@ -37,12 +35,10 @@ namespace shrpx {
 
 namespace mruby {
 
-void init_module(mrb_state *mrb);
-
-mrb_value create_headers_hash(mrb_state *mrb, const Headers &headers);
+void init_request_class(mrb_state *mrb, RClass *module);
 
 } // namespace mruby
 
 } // namespace shrpx
 
-#endif // SHRPX_MRUBY_MODULE_H
+#endif // SHRPX_MRUBY_MODULE_REQUEST_H
