@@ -44,6 +44,10 @@ mrb_value run(mrb_state *mrb, mrb_value self) {
   mrb_value b;
   mrb_get_args(mrb, "&", &b);
 
+  if (mrb_nil_p(b)) {
+    return mrb_nil_value();
+  }
+
   auto module = mrb_module_get(mrb, "Nghttpx");
   auto request_class = mrb_class_get_under(mrb, module, "Request");
   auto response_class = mrb_class_get_under(mrb, module, "Response");
@@ -57,7 +61,7 @@ mrb_value run(mrb_state *mrb, mrb_value self) {
 void init_module(mrb_state *mrb) {
   auto module = mrb_define_module(mrb, "Nghttpx");
 
-  mrb_define_class_method(mrb, module, "run", run, MRB_ARGS_BLOCK());
+  mrb_define_class_method(mrb, module, "run", run, MRB_ARGS_NONE());
 
   init_request_class(mrb, module);
   init_response_class(mrb, module);
