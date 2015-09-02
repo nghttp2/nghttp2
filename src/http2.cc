@@ -664,6 +664,15 @@ const Headers::value_type *get_header(const HeaderIndex &hdidx, int16_t token,
   return &nva[i];
 }
 
+Headers::value_type *get_header(const HeaderIndex &hdidx, int16_t token,
+                                Headers &nva) {
+  auto i = hdidx[token];
+  if (i == -1) {
+    return nullptr;
+  }
+  return &nva[i];
+}
+
 namespace {
 template <typename InputIt> InputIt skip_lws(InputIt first, InputIt last) {
   for (; first != last; ++first) {

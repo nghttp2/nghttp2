@@ -309,14 +309,20 @@ int Http2Upstream::on_request_headers(Downstream *downstream,
 
   downstream->inspect_http2_request();
 
+  downstream->set_request_state(Downstream::HEADER_COMPLETE);
+
   auto upstream = downstream->get_upstream();
   auto handler = upstream->get_client_handler();
   auto worker = handler->get_worker();
   auto mruby_ctx = worker->get_mruby_context();
 
-  mruby_ctx->run_on_request_proc(downstream);
+  if (mruby_ctx->run_on_request_proc(downstream) != 0) {
+    if (error_reply(downstream, 500) != 0) {
+      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+    }
+    return 0;
+  }
 
-  downstream->set_request_state(Downstream::HEADER_COMPLETE);
   if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
     downstream->disable_upstream_rtimer();
 

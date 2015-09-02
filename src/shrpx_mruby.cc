@@ -78,6 +78,10 @@ int run_request_proc(mrb_state *mrb, Downstream *downstream, RProc *proc) {
     downstream->index_request_headers();
   }
 
+  if (data.response_headers_dirty) {
+    downstream->index_response_headers();
+  }
+
   if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
     downstream->pop_downstream_connection();
   }

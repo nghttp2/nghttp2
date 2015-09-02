@@ -262,6 +262,9 @@ bool http2_mandatory_request_headers_presence(const HeaderIndex &hdidx);
 const Headers::value_type *get_header(const HeaderIndex &hdidx, int16_t token,
                                       const Headers &nva);
 
+Headers::value_type *get_header(const HeaderIndex &hdidx, int16_t token,
+                                Headers &nva);
+
 struct LinkHeader {
   // The region of URI is [uri.first, uri.second).
   std::pair<const char *, const char *> uri;

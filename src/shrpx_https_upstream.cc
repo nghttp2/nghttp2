@@ -273,10 +273,6 @@ int htp_hdrs_completecb(http_parser *htp) {
     return -1;
   }
 
-  auto handler = upstream->get_client_handler();
-  auto worker = handler->get_worker();
-  auto mruby_ctx = worker->get_mruby_context();
-
   downstream->inspect_http1_request();
 
   if (downstream->get_request_method() != HTTP_CONNECT) {
@@ -310,9 +306,16 @@ int htp_hdrs_completecb(http_parser *htp) {
     }
   }
 
-  mruby_ctx->run_on_request_proc(downstream);
-
   downstream->set_request_state(Downstream::HEADER_COMPLETE);
+
+  auto handler = upstream->get_client_handler();
+  auto worker = handler->get_worker();
+  auto mruby_ctx = worker->get_mruby_context();
+
+  if (mruby_ctx->run_on_request_proc(downstream) != 0) {
+    downstream->set_response_http_status(500);
+    return -1;
+  }
 
   if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
     return 0;
@@ -483,13 +486,16 @@ int HttpsUpstream::on_read() {
     if (htperr == HPE_INVALID_METHOD) {
       status_code = 501;
     } else if (downstream) {
-      if (downstream->get_request_state() == Downstream::CONNECT_FAIL) {
-        status_code = 503;
-      } else if (downstream->get_request_state() ==
-                 Downstream::HTTP1_REQUEST_HEADER_TOO_LARGE) {
-        status_code = 431;
-      } else {
-        status_code = 400;
+      status_code = downstream->get_response_http_status();
+      if (status_code == 0) {
+        if (downstream->get_request_state() == Downstream::CONNECT_FAIL) {
+          status_code = 503;
+        } else if (downstream->get_request_state() ==
+                   Downstream::HTTP1_REQUEST_HEADER_TOO_LARGE) {
+          status_code = 431;
+        } else {
+          status_code = 400;
+        }
       }
     } else {
       status_code = 400;

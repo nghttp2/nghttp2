@@ -36,6 +36,9 @@
 #include "shrpx_downstream_connection.h"
 #include "shrpx_config.h"
 #include "shrpx_http.h"
+#include "shrpx_mruby.h"
+#include "shrpx_worker.h"
+#include "shrpx_http2_session.h"
 #include "http2.h"
 #include "util.h"
 #include "template.h"
@@ -237,6 +240,19 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
     downstream->inspect_http2_request();
 
     downstream->set_request_state(Downstream::HEADER_COMPLETE);
+
+    auto handler = upstream->get_client_handler();
+    auto worker = handler->get_worker();
+    auto mruby_ctx = worker->get_mruby_context();
+
+    if (mruby_ctx->run_on_request_proc(downstream) != 0) {
+      if (upstream->error_reply(downstream, 500) != 0) {
+        ULOG(FATAL, upstream) << "error_reply failed";
+        return;
+      }
+      return;
+    }
+
     if (frame->syn_stream.hd.flags & SPDYLAY_CTRL_FLAG_FIN) {
       if (!downstream->validate_request_bodylen()) {
         upstream->rst_stream(downstream, SPDYLAY_PROTOCOL_ERROR);
@@ -245,6 +261,10 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
 
       downstream->disable_upstream_rtimer();
       downstream->set_request_state(Downstream::MSG_COMPLETE);
+    }
+
+    if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+      return;
     }
 
     upstream->start_downstream(downstream);

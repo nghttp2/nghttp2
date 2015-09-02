@@ -609,6 +609,8 @@ const Headers &Downstream::get_response_headers() const {
   return response_headers_;
 }
 
+Headers &Downstream::get_response_headers() { return response_headers_; }
+
 int Downstream::index_response_headers() {
   return index_headers(response_hdidx_, response_headers_,
                        response_content_length_);
@@ -616,6 +618,10 @@ int Downstream::index_response_headers() {
 
 const Headers::value_type *
 Downstream::get_response_header(int16_t token) const {
+  return http2::get_header(response_hdidx_, token, response_headers_);
+}
+
+Headers::value_type *Downstream::get_response_header(int16_t token) {
   return http2::get_header(response_hdidx_, token, response_headers_);
 }
 

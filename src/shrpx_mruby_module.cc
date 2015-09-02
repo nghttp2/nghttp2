@@ -33,6 +33,7 @@
 
 #include "shrpx_mruby.h"
 #include "shrpx_mruby_module_request.h"
+#include "shrpx_mruby_module_response.h"
 
 namespace shrpx {
 
@@ -45,9 +46,10 @@ mrb_value run(mrb_state *mrb, mrb_value self) {
 
   auto module = mrb_module_get(mrb, "Nghttpx");
   auto request_class = mrb_class_get_under(mrb, module, "Request");
-  auto request = mrb_obj_new(mrb, request_class, 0, nullptr);
+  auto response_class = mrb_class_get_under(mrb, module, "Response");
 
-  std::array<mrb_value, 1> args{{request}};
+  std::array<mrb_value, 2> args{{mrb_obj_new(mrb, response_class, 0, nullptr),
+                                 mrb_obj_new(mrb, request_class, 0, nullptr)}};
   return mrb_yield_argv(mrb, b, args.size(), args.data());
 }
 } // namespace
@@ -58,6 +60,7 @@ void init_module(mrb_state *mrb) {
   mrb_define_class_method(mrb, module, "run", run, MRB_ARGS_BLOCK());
 
   init_request_class(mrb, module);
+  init_response_class(mrb, module);
 }
 
 mrb_value create_headers_hash(mrb_state *mrb, const Headers &headers) {
