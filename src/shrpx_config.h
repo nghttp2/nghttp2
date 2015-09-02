@@ -184,6 +184,7 @@ constexpr char SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_MAX_RETRY[] =
 constexpr char SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_MAX_FAIL[] =
     "tls-ticket-key-memcached-max-fail";
 constexpr char SHRPX_OPT_ON_REQUEST_MRUBY_FILE[] = "on-request-mruby-file";
+constexpr char SHRPX_OPT_ON_RESPONSE_MRUBY_FILE[] = "on-response-mruby-file";
 
 union sockaddr_union {
   sockaddr_storage storage;

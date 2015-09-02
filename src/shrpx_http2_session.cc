@@ -903,9 +903,15 @@ int on_response_headers(Http2Session *http2session, Downstream *downstream,
 
   rv = upstream->on_downstream_header_complete(downstream);
   if (rv != 0) {
-    http2session->submit_rst_stream(frame->hd.stream_id,
-                                    NGHTTP2_PROTOCOL_ERROR);
-    downstream->set_response_state(Downstream::MSG_RESET);
+    // Handling early return (in other words, response was hijacked by
+    // mruby scripting).
+    if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+      http2session->submit_rst_stream(frame->hd.stream_id, NGHTTP2_CANCEL);
+    } else {
+      http2session->submit_rst_stream(frame->hd.stream_id,
+                                      NGHTTP2_INTERNAL_ERROR);
+      downstream->set_response_state(Downstream::MSG_RESET);
+    }
   }
 
   return 0;

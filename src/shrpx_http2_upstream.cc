@@ -1209,6 +1209,22 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
         downstream->get_request_http2_scheme());
   }
 
+  if (!downstream->get_non_final_response()) {
+    auto worker = handler_->get_worker();
+    auto mruby_ctx = worker->get_mruby_context();
+
+    if (mruby_ctx->run_on_response_proc(downstream) != 0) {
+      if (error_reply(downstream, 500) != 0) {
+        return -1;
+      }
+      return -1;
+    }
+
+    if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+      return -1;
+    }
+  }
+
   size_t nheader = downstream->get_response_headers().size();
   auto nva = std::vector<nghttp2_nv>();
   // 3 means :status and possible server and via header field.

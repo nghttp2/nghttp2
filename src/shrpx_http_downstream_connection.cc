@@ -774,6 +774,12 @@ int HttpDownstreamConnection::on_read() {
     auto htperr = HTTP_PARSER_ERRNO(&response_htp_);
 
     if (htperr != HPE_OK) {
+      // Handling early return (in other words, response was hijacked
+      // by mruby scripting).
+      if (downstream_->get_response_state() == Downstream::MSG_COMPLETE) {
+        return SHRPX_ERR_DCONN_CANCELED;
+      }
+
       if (LOG_ENABLED(INFO)) {
         DCLOG(INFO, this) << "HTTP parser failure: "
                           << "(" << http_errno_name(htperr) << ") "

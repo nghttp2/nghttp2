@@ -46,10 +46,13 @@ public:
   int run_on_request_proc(Downstream *downstream);
   int run_on_response_proc(Downstream *downstream);
 
+  int run_request_proc(Downstream *downstream, RProc *proc);
+
 private:
   mrb_state *mrb_;
   RProc *on_request_proc_;
   RProc *on_response_proc_;
+  bool running_;
 };
 
 struct MRubyAssocData {

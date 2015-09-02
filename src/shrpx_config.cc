@@ -691,6 +691,7 @@ enum {
   SHRPX_OPTID_NPN_LIST,
   SHRPX_OPTID_OCSP_UPDATE_INTERVAL,
   SHRPX_OPTID_ON_REQUEST_MRUBY_FILE,
+  SHRPX_OPTID_ON_RESPONSE_MRUBY_FILE,
   SHRPX_OPTID_PADDING,
   SHRPX_OPTID_PID_FILE,
   SHRPX_OPTID_PRIVATE_KEY_FILE,
@@ -1112,6 +1113,11 @@ int option_lookup_token(const char *name, size_t namelen) {
     break;
   case 22:
     switch (name[21]) {
+    case 'e':
+      if (util::strieq_l("on-response-mruby-fil", name, 21)) {
+        return SHRPX_OPTID_ON_RESPONSE_MRUBY_FILE;
+      }
+      break;
     case 'i':
       if (util::strieq_l("backend-http-proxy-ur", name, 21)) {
         return SHRPX_OPTID_BACKEND_HTTP_PROXY_URI;
@@ -1946,6 +1952,10 @@ int parse_config(const char *opt, const char *optarg,
                       optarg);
   case SHRPX_OPTID_ON_REQUEST_MRUBY_FILE:
     mod_config()->on_request_mruby_file = strcopy(optarg);
+
+    return 0;
+  case SHRPX_OPTID_ON_RESPONSE_MRUBY_FILE:
+    mod_config()->on_response_mruby_file = strcopy(optarg);
 
     return 0;
   case SHRPX_OPTID_CONF:

@@ -1904,6 +1904,7 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_MAX_FAIL, required_argument, &flag,
          90},
         {SHRPX_OPT_ON_REQUEST_MRUBY_FILE, required_argument, &flag, 91},
+        {SHRPX_OPT_ON_RESPONSE_MRUBY_FILE, required_argument, &flag, 92},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -2305,6 +2306,9 @@ int main(int argc, char **argv) {
         // --on-request-mruby-file
         cmdcfgs.emplace_back(SHRPX_OPT_ON_REQUEST_MRUBY_FILE, optarg);
         break;
+      case 92:
+        // --on-response-mruby-file
+        cmdcfgs.emplace_back(SHRPX_OPT_ON_RESPONSE_MRUBY_FILE, optarg);
       default:
         break;
       }

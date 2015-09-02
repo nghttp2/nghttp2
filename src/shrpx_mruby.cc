@@ -40,39 +40,40 @@ namespace mruby {
 MRubyContext::MRubyContext(mrb_state *mrb, RProc *on_request_proc,
                            RProc *on_response_proc)
     : mrb_(mrb), on_request_proc_(on_request_proc),
-      on_response_proc_(on_response_proc) {}
+      on_response_proc_(on_response_proc), running_(false) {}
 
 MRubyContext::~MRubyContext() { mrb_close(mrb_); }
 
-namespace {
-int run_request_proc(mrb_state *mrb, Downstream *downstream, RProc *proc) {
-  if (!proc) {
+int MRubyContext::run_request_proc(Downstream *downstream, RProc *proc) {
+  if (!proc || running_) {
     return 0;
   }
 
+  running_ = true;
+
   MRubyAssocData data{downstream};
 
-  mrb->ud = &data;
+  mrb_->ud = &data;
 
   int rv = 0;
-  auto ai = mrb_gc_arena_save(mrb);
+  auto ai = mrb_gc_arena_save(mrb_);
 
-  auto res = mrb_run(mrb, proc, mrb_top_self(mrb));
+  auto res = mrb_run(mrb_, proc, mrb_top_self(mrb_));
   (void)res;
 
-  if (mrb->exc) {
+  if (mrb_->exc) {
     rv = -1;
     auto error =
-        mrb_str_ptr(mrb_funcall(mrb, mrb_obj_value(mrb->exc), "inspect", 0));
+        mrb_str_ptr(mrb_funcall(mrb_, mrb_obj_value(mrb_->exc), "inspect", 0));
 
     LOG(ERROR) << "Exception caught while executing mruby code: "
                << error->as.heap.ptr;
-    mrb->exc = 0;
+    mrb_->exc = 0;
   }
 
-  mrb->ud = nullptr;
+  mrb_->ud = nullptr;
 
-  mrb_gc_arena_restore(mrb, ai);
+  mrb_gc_arena_restore(mrb_, ai);
 
   if (data.request_headers_dirty) {
     downstream->index_request_headers();
@@ -82,21 +83,17 @@ int run_request_proc(mrb_state *mrb, Downstream *downstream, RProc *proc) {
     downstream->index_response_headers();
   }
 
-  if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
-    downstream->pop_downstream_connection();
-  }
+  running_ = false;
 
   return rv;
 }
-} // namespace
 
 int MRubyContext::run_on_request_proc(Downstream *downstream) {
-  return run_request_proc(mrb_, downstream, on_request_proc_);
+  return run_request_proc(downstream, on_request_proc_);
 }
 
 int MRubyContext::run_on_response_proc(Downstream *downstream) {
-  // TODO not implemented yet
-  return 0;
+  return run_request_proc(downstream, on_response_proc_);
 }
 
 // Based on

@@ -865,6 +865,20 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream) {
     return 0;
   }
 
+  auto worker = handler_->get_worker();
+  auto mruby_ctx = worker->get_mruby_context();
+
+  if (mruby_ctx->run_on_response_proc(downstream) != 0) {
+    if (error_reply(downstream, 500) != 0) {
+      return -1;
+    }
+    return -1;
+  }
+
+  if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+    return -1;
+  }
+
   if (LOG_ENABLED(INFO)) {
     DLOG(INFO, downstream) << "HTTP response header completed";
   }
