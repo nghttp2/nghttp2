@@ -33,6 +33,7 @@
 #include "shrpx_mruby.h"
 #include "shrpx_mruby_module.h"
 #include "util.h"
+#include "http2.h"
 
 namespace shrpx {
 
@@ -40,6 +41,111 @@ namespace mruby {
 
 namespace {
 mrb_value request_init(mrb_state *mrb, mrb_value self) { return self; }
+} // namespace
+
+namespace {
+mrb_value request_get_http_version_major(mrb_state *mrb, mrb_value self) {
+  auto data = static_cast<MRubyAssocData *>(mrb->ud);
+  auto downstream = data->downstream;
+  return mrb_fixnum_value(downstream->get_request_major());
+}
+} // namespace
+
+namespace {
+mrb_value request_get_http_version_minor(mrb_state *mrb, mrb_value self) {
+  auto data = static_cast<MRubyAssocData *>(mrb->ud);
+  auto downstream = data->downstream;
+  return mrb_fixnum_value(downstream->get_request_minor());
+}
+} // namespace
+
+namespace {
+mrb_value request_get_method(mrb_state *mrb, mrb_value self) {
+  auto data = static_cast<MRubyAssocData *>(mrb->ud);
+  auto downstream = data->downstream;
+  auto method = http2::to_method_string(downstream->get_request_method());
+
+  return mrb_str_new_cstr(mrb, method);
+}
+} // namespace
+
+namespace {
+mrb_value request_set_method(mrb_state *mrb, mrb_value self) {
+  auto data = static_cast<MRubyAssocData *>(mrb->ud);
+  auto downstream = data->downstream;
+
+  const char *method;
+  mrb_int n;
+  mrb_get_args(mrb, "s", &method, &n);
+  if (n == 0) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "method must not be empty string");
+  }
+  auto token =
+      http2::lookup_method_token(reinterpret_cast<const uint8_t *>(method), n);
+  if (token == -1) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "method not supported");
+  }
+
+  downstream->set_request_method(token);
+
+  return self;
+}
+} // namespace
+
+namespace {
+mrb_value request_get_authority(mrb_state *mrb, mrb_value self) {
+  auto data = static_cast<MRubyAssocData *>(mrb->ud);
+  auto downstream = data->downstream;
+  auto &authority = downstream->get_request_http2_authority();
+
+  return mrb_str_new(mrb, authority.c_str(), authority.size());
+}
+} // namespace
+
+namespace {
+mrb_value request_set_authority(mrb_state *mrb, mrb_value self) {
+  auto data = static_cast<MRubyAssocData *>(mrb->ud);
+  auto downstream = data->downstream;
+
+  const char *authority;
+  mrb_int n;
+  mrb_get_args(mrb, "s", &authority, &n);
+  if (n == 0) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "authority must not be empty string");
+  }
+
+  downstream->set_request_http2_authority(std::string(authority, n));
+
+  return self;
+}
+} // namespace
+
+namespace {
+mrb_value request_get_scheme(mrb_state *mrb, mrb_value self) {
+  auto data = static_cast<MRubyAssocData *>(mrb->ud);
+  auto downstream = data->downstream;
+  auto &scheme = downstream->get_request_http2_scheme();
+
+  return mrb_str_new(mrb, scheme.c_str(), scheme.size());
+}
+} // namespace
+
+namespace {
+mrb_value request_set_scheme(mrb_state *mrb, mrb_value self) {
+  auto data = static_cast<MRubyAssocData *>(mrb->ud);
+  auto downstream = data->downstream;
+
+  const char *scheme;
+  mrb_int n;
+  mrb_get_args(mrb, "s", &scheme, &n);
+  if (n == 0) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "scheme must not be empty string");
+  }
+
+  downstream->set_request_http2_scheme(std::string(scheme, n));
+
+  return self;
+}
 } // namespace
 
 namespace {
@@ -126,6 +232,22 @@ void init_request_class(mrb_state *mrb, RClass *module) {
 
   mrb_define_method(mrb, request_class, "initialize", request_init,
                     MRB_ARGS_NONE());
+  mrb_define_method(mrb, request_class, "http_version_major",
+                    request_get_http_version_major, MRB_ARGS_NONE());
+  mrb_define_method(mrb, request_class, "http_version_minor",
+                    request_get_http_version_minor, MRB_ARGS_NONE());
+  mrb_define_method(mrb, request_class, "method", request_get_method,
+                    MRB_ARGS_NONE());
+  mrb_define_method(mrb, request_class, "method=", request_set_method,
+                    MRB_ARGS_REQ(1));
+  mrb_define_method(mrb, request_class, "authority", request_get_authority,
+                    MRB_ARGS_NONE());
+  mrb_define_method(mrb, request_class, "authority=", request_set_authority,
+                    MRB_ARGS_REQ(1));
+  mrb_define_method(mrb, request_class, "scheme", request_get_scheme,
+                    MRB_ARGS_NONE());
+  mrb_define_method(mrb, request_class, "scheme=", request_set_scheme,
+                    MRB_ARGS_REQ(1));
   mrb_define_method(mrb, request_class, "path", request_get_path,
                     MRB_ARGS_NONE());
   mrb_define_method(mrb, request_class, "path=", request_set_path,
