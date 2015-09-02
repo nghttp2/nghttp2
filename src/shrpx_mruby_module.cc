@@ -159,7 +159,7 @@ void init_headers_class(mrb_state *mrb, RClass *module, const char *name,
                     MRB_ARGS_NONE());
   mrb_define_method(mrb, headers_class, "get", get, MRB_ARGS_REQ(1));
   mrb_define_method(mrb, headers_class, "set", set, MRB_ARGS_REQ(2));
-  mrb_define_method(mrb, headers_class, "add", set, MRB_ARGS_REQ(2));
+  mrb_define_method(mrb, headers_class, "add", add, MRB_ARGS_REQ(2));
 }
 } // namespace
 
