@@ -108,7 +108,7 @@ mrb_value request_set_header(mrb_state *mrb, mrb_value self) {
           std::string(RSTRING_PTR(key), RSTRING_LEN(key)),
           std::string(RSTRING_PTR(value), RSTRING_LEN(value)));
     }
-  } else {
+  } else if (!mrb_nil_p(values)) {
     downstream->add_request_header(
         std::string(RSTRING_PTR(key), RSTRING_LEN(key)),
         std::string(RSTRING_PTR(values), RSTRING_LEN(values)));
