@@ -43,7 +43,7 @@ mrb_value request_get_path(mrb_state *mrb, mrb_value self) {
   auto downstream = static_cast<Downstream *>(mrb->ud);
   auto &path = downstream->get_request_path();
 
-  return mrb_str_new_static(mrb, path.c_str(), path.size());
+  return mrb_str_new(mrb, path.c_str(), path.size());
 }
 } // namespace
 
@@ -101,7 +101,7 @@ mrb_value request_headers_get(mrb_state *mrb, mrb_value self) {
     return mrb_nil_value();
   }
 
-  return mrb_str_new_static(mrb, hd->value.c_str(), hd->value.size());
+  return mrb_str_new(mrb, hd->value.c_str(), hd->value.size());
 }
 } // namespace
 
