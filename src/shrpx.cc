@@ -1730,6 +1730,16 @@ Process:
               Run this program as <USER>.   This option is intended to
               be used to drop root privileges.
 
+Scripting:
+  --on-request-mruby-file=<PATH>
+              Set  mruby  script  file  which will  be  executed  when
+              request  header  fields  are  completely  received  from
+              frontend.
+  --on-response-mruby-file=<PATH>
+              Set  mruby  script  file  which will  be  executed  when
+              response  header  fields  are completely  received  from
+              backend.
+
 Misc:
   --conf=<PATH>
               Load configuration from <PATH>.
