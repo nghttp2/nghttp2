@@ -43,42 +43,49 @@ MRubyContext::MRubyContext(mrb_state *mrb, RProc *on_request_proc,
 
 MRubyContext::~MRubyContext() { mrb_close(mrb_); }
 
-int MRubyContext::run_on_request_proc(Downstream *downstream) {
-  if (!on_request_proc_) {
+namespace {
+int run_request_proc(mrb_state *mrb, Downstream *downstream, RProc *proc) {
+  if (!proc) {
     return 0;
   }
 
-  mrb_->ud = downstream;
+  MRubyAssocData data{downstream};
+
+  mrb->ud = &data;
 
   int rv = 0;
-  auto ai = mrb_gc_arena_save(mrb_);
+  auto ai = mrb_gc_arena_save(mrb);
 
-  auto res = mrb_run(mrb_, on_request_proc_, mrb_top_self(mrb_));
+  auto res = mrb_run(mrb, proc, mrb_top_self(mrb));
   (void)res;
 
-  if (mrb_->exc) {
+  if (mrb->exc) {
     rv = -1;
     auto error =
-        mrb_str_ptr(mrb_funcall(mrb_, mrb_obj_value(mrb_->exc), "inspect", 0));
+        mrb_str_ptr(mrb_funcall(mrb, mrb_obj_value(mrb->exc), "inspect", 0));
 
     LOG(ERROR) << "Exception caught while executing mruby code: "
                << error->as.heap.ptr;
-    mrb_->exc = 0;
+    mrb->exc = 0;
   }
 
-  mrb_->ud = nullptr;
+  mrb->ud = nullptr;
 
-  mrb_gc_arena_restore(mrb_, ai);
+  mrb_gc_arena_restore(mrb, ai);
 
-  if (downstream->get_request_headers_dirty()) {
-    downstream->set_request_headers_dirty(false);
+  if (data.request_headers_dirty) {
     downstream->index_request_headers();
   }
 
   return rv;
 }
+} // namespace
 
-int run_on_response_proc(Downstream *downstream) {
+int MRubyContext::run_on_request_proc(Downstream *downstream) {
+  return run_request_proc(mrb_, downstream, on_request_proc_);
+}
+
+int MRubyContext::run_on_response_proc(Downstream *downstream) {
   // TODO not implemented yet
   return 0;
 }

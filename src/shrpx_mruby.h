@@ -52,6 +52,11 @@ private:
   RProc *on_response_proc_;
 };
 
+struct MRubyAssocData {
+  Downstream *downstream;
+  bool request_headers_dirty;
+};
+
 RProc *compile(mrb_state *mrb, const char *filename);
 
 std::unique_ptr<MRubyContext> create_mruby_context();

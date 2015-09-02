@@ -127,7 +127,7 @@ Downstream::Downstream(Upstream *upstream, MemchunkPool *mcpool,
       request_http2_expect_body_(false), chunked_response_(false),
       response_connection_close_(false), response_header_key_prev_(false),
       response_trailer_key_prev_(false), expect_final_response_(false),
-      request_pending_(false), request_headers_dirty_(false) {
+      request_pending_(false) {
 
   ev_timer_init(&upstream_rtimer_, &upstream_rtimeoutcb, 0.,
                 get_config()->stream_read_timeout);
@@ -1216,14 +1216,6 @@ bool Downstream::can_detach_downstream_connection() const {
   return dconn_ && response_state_ == Downstream::MSG_COMPLETE &&
          request_state_ == Downstream::MSG_COMPLETE && !upgraded_ &&
          !response_connection_close_;
-}
-
-void Downstream::set_request_headers_dirty(bool f) {
-  request_headers_dirty_ = f;
-}
-
-bool Downstream::get_request_headers_dirty() const {
-  return request_headers_dirty_;
 }
 
 } // namespace shrpx
