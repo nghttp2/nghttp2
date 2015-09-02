@@ -30,6 +30,8 @@
 #include <mruby/array.h>
 
 #include "shrpx_downstream.h"
+#include "shrpx_upstream.h"
+#include "shrpx_client_handler.h"
 #include "shrpx_mruby.h"
 #include "shrpx_mruby_module.h"
 #include "util.h"
@@ -226,6 +228,19 @@ mrb_value request_set_header(mrb_state *mrb, mrb_value self) {
 }
 } // namespace
 
+namespace {
+mrb_value request_get_remote_addr(mrb_state *mrb, mrb_value self) {
+  auto data = static_cast<MRubyAssocData *>(mrb->ud);
+  auto downstream = data->downstream;
+  auto upstream = downstream->get_upstream();
+  auto handler = upstream->get_client_handler();
+
+  auto &ipaddr = handler->get_ipaddr();
+
+  return mrb_str_new(mrb, ipaddr.c_str(), ipaddr.size());
+}
+} // namespace
+
 void init_request_class(mrb_state *mrb, RClass *module) {
   auto request_class =
       mrb_define_class_under(mrb, module, "Request", mrb->object_class);
@@ -256,6 +271,8 @@ void init_request_class(mrb_state *mrb, RClass *module) {
                     MRB_ARGS_NONE());
   mrb_define_method(mrb, request_class, "set_header", request_set_header,
                     MRB_ARGS_REQ(2));
+  mrb_define_method(mrb, request_class, "remote_addr", request_get_remote_addr,
+                    MRB_ARGS_NONE());
 }
 
 } // namespace mruby
