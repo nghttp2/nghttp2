@@ -307,6 +307,8 @@ int Http2Upstream::on_request_headers(Downstream *downstream,
     downstream->set_request_http2_expect_body(true);
   }
 
+  downstream->inspect_http2_request();
+
   auto upstream = downstream->get_upstream();
   auto handler = upstream->get_client_handler();
   auto worker = handler->get_worker();
@@ -314,13 +316,15 @@ int Http2Upstream::on_request_headers(Downstream *downstream,
 
   mruby_ctx->run_on_request_proc(downstream);
 
-  downstream->inspect_http2_request();
-
   downstream->set_request_state(Downstream::HEADER_COMPLETE);
   if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
     downstream->disable_upstream_rtimer();
 
     downstream->set_request_state(Downstream::MSG_COMPLETE);
+  }
+
+  if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+    return 0;
   }
 
   start_downstream(downstream);

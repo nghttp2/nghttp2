@@ -30,6 +30,7 @@
 #include "shrpx_downstream.h"
 #include "shrpx_config.h"
 #include "shrpx_mruby_module.h"
+#include "shrpx_downstream_connection.h"
 #include "template.h"
 
 namespace shrpx {
@@ -75,6 +76,10 @@ int run_request_proc(mrb_state *mrb, Downstream *downstream, RProc *proc) {
 
   if (data.request_headers_dirty) {
     downstream->index_request_headers();
+  }
+
+  if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+    downstream->pop_downstream_connection();
   }
 
   return rv;

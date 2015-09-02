@@ -277,8 +277,6 @@ int htp_hdrs_completecb(http_parser *htp) {
   auto worker = handler->get_worker();
   auto mruby_ctx = worker->get_mruby_context();
 
-  mruby_ctx->run_on_request_proc(downstream);
-
   downstream->inspect_http1_request();
 
   if (downstream->get_request_method() != HTTP_CONNECT) {
@@ -312,6 +310,14 @@ int htp_hdrs_completecb(http_parser *htp) {
     }
   }
 
+  mruby_ctx->run_on_request_proc(downstream);
+
+  downstream->set_request_state(Downstream::HEADER_COMPLETE);
+
+  if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+    return 0;
+  }
+
   rv = downstream->attach_downstream_connection(
       upstream->get_client_handler()->get_downstream_connection(downstream));
 
@@ -326,8 +332,6 @@ int htp_hdrs_completecb(http_parser *htp) {
   if (rv != 0) {
     return -1;
   }
-
-  downstream->set_request_state(Downstream::HEADER_COMPLETE);
 
   return 0;
 }
