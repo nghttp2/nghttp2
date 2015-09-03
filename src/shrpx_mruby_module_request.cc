@@ -168,9 +168,6 @@ mrb_value request_set_path(mrb_state *mrb, mrb_value self) {
   const char *path;
   mrb_int pathlen;
   mrb_get_args(mrb, "s", &path, &pathlen);
-  if (pathlen == 0) {
-    mrb_raise(mrb, E_RUNTIME_ERROR, "path must not be empty string");
-  }
 
   downstream->set_request_path(std::string(path, pathlen));
 
