@@ -61,7 +61,8 @@ mrb_value run(mrb_state *mrb, mrb_value self) {
 void init_module(mrb_state *mrb) {
   auto module = mrb_define_module(mrb, "Nghttpx");
 
-  mrb_define_class_method(mrb, module, "run", run, MRB_ARGS_NONE());
+  mrb_define_class_method(mrb, module, "run", run,
+                          MRB_ARGS_REQ(1) | MRB_ARGS_BLOCK());
 
   init_request_class(mrb, module);
   init_response_class(mrb, module);
