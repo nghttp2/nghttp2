@@ -379,11 +379,12 @@ AM_CONDITIONAL([HAVE_SPDYLAY], [ test "x${have_spdylay}" = "xyes" ])
 LIBS_OLD=$LIBS
 have_mruby=no
 if test "x${request_mruby}" != "xno"; then
-  AC_CHECK_LIB([mruby], [mrb_open], [have_mruby=yes], [have_mruby=no])
+  AC_CHECK_LIB([mruby], [mrb_open], [have_mruby=yes], [have_mruby=no], [-lm])
   if test "x${have_mruby}" = "xyes"; then
     AC_CHECK_HEADER([mruby.h], [have_mruby=yes], [have_mruby=no])
     if test "x${have_mruby}" = "xyes"; then
-      LIBMRUBY_LIBS=-lmruby
+      AC_DEFINE([HAVE_MRUBY], [1], [Define to 1 if you have `mruby` library.])
+      LIBMRUBY_LIBS="-lmruby -lm"
       LIBMRUBY_CFLAGS=
       AC_SUBST([LIBMRUBY_LIBS])
       AC_SUBST([LIBMRUBY_CFLAGS])
