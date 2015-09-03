@@ -265,37 +265,21 @@ int Http2DownstreamConnection::push_request_headers() {
                                  .addrs[addr_idx]
                                  .hostport.get();
 
-  const char *authority = nullptr, *host = nullptr;
-  if (!no_host_rewrite) {
-    if (!downstream_->get_request_http2_authority().empty()) {
-      authority = downstream_hostport;
-    }
-    if (downstream_->get_request_header(http2::HD_HOST)) {
-      host = downstream_hostport;
-    }
-  } else {
-    if (!downstream_->get_request_http2_authority().empty()) {
-      authority = downstream_->get_request_http2_authority().c_str();
-    }
-    auto h = downstream_->get_request_header(http2::HD_HOST);
-    if (h) {
-      host = h->value.c_str();
-    }
+  // For HTTP/1.0 request, there is no authority in request.  In that
+  // case, we use backend server's host nonetheless.
+  const char *authority = downstream_hostport;
+  auto &req_authority = downstream_->get_request_http2_authority();
+  if (no_host_rewrite && !req_authority.empty()) {
+    authority = req_authority.c_str();
   }
 
-  if (!authority && !host) {
-    // upstream is HTTP/1.0.  We use backend server's host
-    // nonetheless.
-    host = downstream_hostport;
+  if (!authority) {
+    authority = downstream_hostport;
   }
 
-  if (authority) {
-    downstream_->set_request_downstream_host(authority);
-  } else {
-    downstream_->set_request_downstream_host(host);
-  }
+  downstream_->set_request_downstream_host(authority);
 
-  size_t nheader = downstream_->get_request_headers().size();
+  auto nheader = downstream_->get_request_headers().size();
 
   Headers cookies;
   if (!get_config()->http2_no_cookie_crumbling) {
@@ -306,7 +290,7 @@ int Http2DownstreamConnection::push_request_headers() {
   // 1. :method
   // 2. :scheme
   // 3. :path
-  // 4. :authority or host (at least either of them exists)
+  // 4. :authority
   // 5. via (optional)
   // 6. x-forwarded-for (optional)
   // 7. x-forwarded-proto (optional)
@@ -320,28 +304,12 @@ int Http2DownstreamConnection::push_request_headers() {
 
   auto &scheme = downstream_->get_request_http2_scheme();
 
-  if (downstream_->get_request_method() == HTTP_CONNECT) {
-    if (authority) {
-      nva.push_back(http2::make_nv_lc(":authority", authority));
-    } else {
-      nva.push_back(
-          http2::make_nv_ls(":authority", downstream_->get_request_path()));
-    }
-  } else {
+  nva.push_back(http2::make_nv_lc(":authority", authority));
+
+  if (downstream_->get_request_method() != HTTP_CONNECT) {
     assert(!scheme.empty());
     nva.push_back(http2::make_nv_ls(":scheme", scheme));
-
-    if (authority) {
-      nva.push_back(http2::make_nv_lc(":authority", authority));
-    }
-
     nva.push_back(http2::make_nv_ls(":path", downstream_->get_request_path()));
-  }
-
-  // only emit host header field if :authority is not emitted.  They
-  // both must be the same value.
-  if (!authority && host) {
-    nva.push_back(http2::make_nv_lc("host", host));
   }
 
   http2::copy_headers_to_nva(nva, downstream_->get_request_headers());

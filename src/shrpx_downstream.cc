@@ -515,6 +515,10 @@ void Downstream::set_request_http2_authority(std::string authority) {
   request_http2_authority_ = std::move(authority);
 }
 
+void Downstream::append_request_http2_authority(const char *data, size_t len) {
+  request_http2_authority_.append(data, len);
+}
+
 void Downstream::set_request_major(int major) { request_major_ = major; }
 
 void Downstream::set_request_minor(int minor) { request_minor_ = minor; }

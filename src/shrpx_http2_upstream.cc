@@ -292,7 +292,12 @@ int Http2Upstream::on_request_headers(Downstream *downstream,
 
   downstream->set_request_method(method_token);
   downstream->set_request_http2_scheme(http2::value_to_str(scheme));
+  // nghttp2 library guarantees either :authority or host exist
+  if (!authority) {
+    authority = downstream->get_request_header(http2::HD_HOST);
+  }
   downstream->set_request_http2_authority(http2::value_to_str(authority));
+
   if (path) {
     if (get_config()->http2_proxy || get_config()->client_proxy) {
       downstream->set_request_path(http2::value_to_str(path));

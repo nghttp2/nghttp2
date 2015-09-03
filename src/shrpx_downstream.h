@@ -150,15 +150,19 @@ public:
   get_request_start_time() const;
   void append_request_path(const char *data, size_t len);
   // Returns request path. For HTTP/1.1, this is request-target. For
-  // HTTP/2, this is :path header field value.
+  // HTTP/2, this is :path header field value.  For CONNECT request,
+  // this is empty.
   const std::string &get_request_path() const;
   // Returns HTTP/2 :scheme header field value.
   const std::string &get_request_http2_scheme() const;
   void set_request_http2_scheme(std::string scheme);
-  // Returns HTTP/2 :authority header field value.  We also set the
-  // value retrieved from absolute-form HTTP/1 request.
+  // Returns :authority or host header field value.  We may deduce it
+  // from absolute-form HTTP/1 request.  We also store authority-form
+  // HTTP/1 request.  This could be empty if request comes from
+  // HTTP/1.0 without Host header field and origin-form.
   const std::string &get_request_http2_authority() const;
   void set_request_http2_authority(std::string authority);
+  void append_request_http2_authority(const char *data, size_t len);
   void set_request_major(int major);
   void set_request_minor(int minor);
   int get_request_major() const;

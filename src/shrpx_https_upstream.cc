@@ -70,8 +70,14 @@ int htp_msg_begin(http_parser *htp) {
   auto handler = upstream->get_client_handler();
 
   // TODO specify 0 as priority for now
-  upstream->attach_downstream(
-      make_unique<Downstream>(upstream, handler->get_mcpool(), 0, 0));
+  auto downstream =
+      make_unique<Downstream>(upstream, handler->get_mcpool(), 0, 0);
+
+  // We happen to have the same value for method token.
+  downstream->set_request_method(htp->method);
+
+  upstream->attach_downstream(std::move(downstream));
+
   return 0;
 }
 } // namespace
@@ -91,7 +97,12 @@ int htp_uricb(http_parser *htp, const char *data, size_t len) {
     return -1;
   }
   downstream->add_request_headers_sum(len);
-  downstream->append_request_path(data, len);
+  if (downstream->get_request_method() == HTTP_CONNECT) {
+    downstream->append_request_http2_authority(data, len);
+  } else {
+    downstream->append_request_path(data, len);
+  }
+
   return 0;
 }
 } // namespace
@@ -242,8 +253,6 @@ int htp_hdrs_completecb(http_parser *htp) {
   }
   auto downstream = upstream->get_downstream();
 
-  // We happen to have the same value for method token.
-  downstream->set_request_method(htp->method);
   downstream->set_request_major(htp->http_major);
   downstream->set_request_minor(htp->http_minor);
 
@@ -295,6 +304,11 @@ int htp_hdrs_completecb(http_parser *htp) {
 
       downstream->set_request_path(
           http2::rewrite_clean_path(std::begin(uri), std::end(uri)));
+
+      auto host = downstream->get_request_header(http2::HD_HOST);
+      if (host) {
+        downstream->set_request_http2_authority(host->value);
+      }
 
       if (upstream->get_client_handler()->get_ssl()) {
         downstream->set_request_http2_scheme("https");
