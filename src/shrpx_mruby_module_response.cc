@@ -98,7 +98,7 @@ mrb_value response_get_headers(mrb_state *mrb, mrb_value self) {
 } // namespace
 
 namespace {
-mrb_value response_set_header(mrb_state *mrb, mrb_value self) {
+mrb_value response_mod_header(mrb_state *mrb, mrb_value self, bool repl) {
   auto data = static_cast<MRubyAssocData *>(mrb->ud);
   auto downstream = data->downstream;
 
@@ -111,11 +111,13 @@ mrb_value response_set_header(mrb_state *mrb, mrb_value self) {
 
   key = mrb_funcall(mrb, key, "downcase", 0);
 
-  // making name empty will effectively delete header fields
-  for (auto &hd : downstream->get_response_headers()) {
-    if (util::streq(std::begin(hd.name), hd.name.size(), RSTRING_PTR(key),
-                    RSTRING_LEN(key))) {
-      hd.name = "";
+  if (repl) {
+    // making name empty will effectively delete header fields
+    for (auto &hd : downstream->get_response_headers()) {
+      if (util::streq(std::begin(hd.name), hd.name.size(), RSTRING_PTR(key),
+                      RSTRING_LEN(key))) {
+        hd.name = "";
+      }
     }
   }
 
@@ -134,6 +136,29 @@ mrb_value response_set_header(mrb_state *mrb, mrb_value self) {
   }
 
   data->response_headers_dirty = true;
+
+  return mrb_nil_value();
+}
+} // namespace
+
+namespace {
+mrb_value response_set_header(mrb_state *mrb, mrb_value self) {
+  return response_mod_header(mrb, self, true);
+}
+} // namespace
+
+namespace {
+mrb_value response_add_header(mrb_state *mrb, mrb_value self) {
+  return response_mod_header(mrb, self, false);
+}
+} // namespace
+
+namespace {
+mrb_value response_clear_headers(mrb_state *mrb, mrb_value self) {
+  auto data = static_cast<MRubyAssocData *>(mrb->ud);
+  auto downstream = data->downstream;
+
+  downstream->clear_response_headers();
 
   return mrb_nil_value();
 }
@@ -209,8 +234,12 @@ void init_response_class(mrb_state *mrb, RClass *module) {
                     MRB_ARGS_REQ(1));
   mrb_define_method(mrb, response_class, "headers", response_get_headers,
                     MRB_ARGS_NONE());
+  mrb_define_method(mrb, response_class, "add_header", response_add_header,
+                    MRB_ARGS_REQ(2));
   mrb_define_method(mrb, response_class, "set_header", response_set_header,
                     MRB_ARGS_REQ(2));
+  mrb_define_method(mrb, response_class, "clear_headers",
+                    response_clear_headers, MRB_ARGS_NONE());
   mrb_define_method(mrb, response_class, "return", response_return,
                     MRB_ARGS_OPT(1));
 }

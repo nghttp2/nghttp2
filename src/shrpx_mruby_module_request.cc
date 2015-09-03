@@ -184,7 +184,7 @@ mrb_value request_get_headers(mrb_state *mrb, mrb_value self) {
 } // namespace
 
 namespace {
-mrb_value request_set_header(mrb_state *mrb, mrb_value self) {
+mrb_value request_mod_header(mrb_state *mrb, mrb_value self, bool repl) {
   auto data = static_cast<MRubyAssocData *>(mrb->ud);
   auto downstream = data->downstream;
 
@@ -197,11 +197,13 @@ mrb_value request_set_header(mrb_state *mrb, mrb_value self) {
 
   key = mrb_funcall(mrb, key, "downcase", 0);
 
-  // making name empty will effectively delete header fields
-  for (auto &hd : downstream->get_request_headers()) {
-    if (util::streq(std::begin(hd.name), hd.name.size(), RSTRING_PTR(key),
-                    RSTRING_LEN(key))) {
-      hd.name = "";
+  if (repl) {
+    // making name empty will effectively delete header fields
+    for (auto &hd : downstream->get_request_headers()) {
+      if (util::streq(std::begin(hd.name), hd.name.size(), RSTRING_PTR(key),
+                      RSTRING_LEN(key))) {
+        hd.name = "";
+      }
     }
   }
 
@@ -220,6 +222,29 @@ mrb_value request_set_header(mrb_state *mrb, mrb_value self) {
   }
 
   data->request_headers_dirty = true;
+
+  return mrb_nil_value();
+}
+} // namespace
+
+namespace {
+mrb_value request_set_header(mrb_state *mrb, mrb_value self) {
+  return request_mod_header(mrb, self, true);
+}
+} // namespace
+
+namespace {
+mrb_value request_add_header(mrb_state *mrb, mrb_value self) {
+  return request_mod_header(mrb, self, false);
+}
+} // namespace
+
+namespace {
+mrb_value request_clear_headers(mrb_state *mrb, mrb_value self) {
+  auto data = static_cast<MRubyAssocData *>(mrb->ud);
+  auto downstream = data->downstream;
+
+  downstream->clear_request_headers();
 
   return mrb_nil_value();
 }
@@ -266,8 +291,12 @@ void init_request_class(mrb_state *mrb, RClass *module) {
                     MRB_ARGS_REQ(1));
   mrb_define_method(mrb, request_class, "headers", request_get_headers,
                     MRB_ARGS_NONE());
+  mrb_define_method(mrb, request_class, "add_header", request_add_header,
+                    MRB_ARGS_REQ(2));
   mrb_define_method(mrb, request_class, "set_header", request_set_header,
                     MRB_ARGS_REQ(2));
+  mrb_define_method(mrb, request_class, "clear_headers", request_clear_headers,
+                    MRB_ARGS_NONE());
   mrb_define_method(mrb, request_class, "remote_addr", request_get_remote_addr,
                     MRB_ARGS_NONE());
 }
