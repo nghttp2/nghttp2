@@ -1731,14 +1731,14 @@ Process:
               be used to drop root privileges.
 
 Scripting:
-  --on-request-mruby-file=<PATH>
+  --request-phase-file=<PATH>
               Set  mruby  script  file  which will  be  executed  when
               request  header  fields  are  completely  received  from
-              frontend.
-  --on-response-mruby-file=<PATH>
+              frontend.  This hook is called request phase hook.
+  --response-phase-file=<PATH>
               Set  mruby  script  file  which will  be  executed  when
               response  header  fields  are completely  received  from
-              backend.
+              backend.  This hook is called response phase hook.
 
 Misc:
   --conf=<PATH>
@@ -1913,8 +1913,8 @@ int main(int argc, char **argv) {
          89},
         {SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_MAX_FAIL, required_argument, &flag,
          90},
-        {SHRPX_OPT_ON_REQUEST_MRUBY_FILE, required_argument, &flag, 91},
-        {SHRPX_OPT_ON_RESPONSE_MRUBY_FILE, required_argument, &flag, 92},
+        {SHRPX_OPT_REQUEST_PHASE_FILE, required_argument, &flag, 91},
+        {SHRPX_OPT_RESPONSE_PHASE_FILE, required_argument, &flag, 92},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -2313,12 +2313,12 @@ int main(int argc, char **argv) {
                              optarg);
         break;
       case 91:
-        // --on-request-mruby-file
-        cmdcfgs.emplace_back(SHRPX_OPT_ON_REQUEST_MRUBY_FILE, optarg);
+        // --request-phase-file
+        cmdcfgs.emplace_back(SHRPX_OPT_REQUEST_PHASE_FILE, optarg);
         break;
       case 92:
-        // --on-response-mruby-file
-        cmdcfgs.emplace_back(SHRPX_OPT_ON_RESPONSE_MRUBY_FILE, optarg);
+        // --response-phase-file
+        cmdcfgs.emplace_back(SHRPX_OPT_RESPONSE_PHASE_FILE, optarg);
       default:
         break;
       }

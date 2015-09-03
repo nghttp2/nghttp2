@@ -152,8 +152,8 @@ std::unique_ptr<MRubyContext> create_mruby_context() {
 
   init_module(mrb);
 
-  auto req_file = get_config()->on_request_mruby_file.get();
-  auto res_file = get_config()->on_response_mruby_file.get();
+  auto req_file = get_config()->request_phase_file.get();
+  auto res_file = get_config()->response_phase_file.get();
 
   auto req_proc = compile(mrb, req_file);
 
