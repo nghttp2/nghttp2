@@ -366,6 +366,17 @@ int htp_msg_completecb(http_parser *htp) {
   downstream->set_request_state(Downstream::MSG_COMPLETE);
   rv = downstream->end_upload_data();
   if (rv != 0) {
+    if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+      // Here both response and request were completed.  One of the
+      // reason why end_upload_data() failed is when we sent response
+      // in request phase hook.  We only delete and proceed to the
+      // next request handling (if we don't close the connection).  We
+      // first pause parser here jsut as we normally do, and call
+      // signal_write() to run on_write().
+      http_parser_pause(htp, 1);
+
+      return 0;
+    }
     return -1;
   }
 
@@ -465,6 +476,13 @@ int HttpsUpstream::on_read() {
   auto htperr = HTTP_PARSER_ERRNO(&htp_);
 
   if (htperr == HPE_PAUSED) {
+    // We may pause parser in htp_msg_completecb when both side are
+    // completed.  Signal write, so that we can run on_write().
+    if (downstream &&
+        downstream->get_request_state() == Downstream::MSG_COMPLETE &&
+        downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+      handler_->signal_write();
+    }
     return 0;
   }
 
@@ -569,6 +587,11 @@ int HttpsUpstream::on_write() {
     // We need this if response ends before request.
     if (downstream->get_request_state() == Downstream::MSG_COMPLETE) {
       delete_downstream();
+
+      if (handler_->get_should_close_after_write()) {
+        return 0;
+      }
+
       return resume_read(SHRPX_NO_BUFFER, nullptr, 0);
     }
   }
