@@ -1138,6 +1138,61 @@ ssize_t downstream_data_read_callback(nghttp2_session *session,
 }
 } // namespace
 
+int Http2Upstream::send_reply(Downstream *downstream, const uint8_t *body,
+                              size_t bodylen) {
+  int rv;
+
+  nghttp2_data_provider data_prd, *data_prd_ptr = nullptr;
+
+  if (bodylen) {
+    data_prd.source.ptr = downstream;
+    data_prd.read_callback = downstream_data_read_callback;
+    data_prd_ptr = &data_prd;
+  }
+
+  auto status_code_str = util::utos(downstream->get_response_http_status());
+  auto &headers = downstream->get_response_headers();
+  // 2 for :status and server
+  auto nva = std::vector<nghttp2_nv>(2 + headers.size());
+  nva.push_back(http2::make_nv_ls(":status", status_code_str));
+
+  for (auto &kv : headers) {
+    if (kv.name.empty() || kv.name[0] == ':') {
+      continue;
+    }
+    switch (kv.token) {
+    case http2::HD_CONNECTION:
+    case http2::HD_KEEP_ALIVE:
+    case http2::HD_PROXY_CONNECTION:
+    case http2::HD_TE:
+    case http2::HD_TRANSFER_ENCODING:
+    case http2::HD_UPGRADE:
+      continue;
+    }
+    nva.push_back(http2::make_nv(kv.name, kv.value, kv.no_index));
+  }
+
+  if (!downstream->get_response_header(http2::HD_SERVER)) {
+    nva.push_back(http2::make_nv_lc("server", get_config()->server_name));
+  }
+
+  rv = nghttp2_submit_response(session_, downstream->get_stream_id(),
+                               nva.data(), nva.size(), data_prd_ptr);
+  if (nghttp2_is_fatal(rv)) {
+    ULOG(FATAL, this) << "nghttp2_submit_response() failed: "
+                      << nghttp2_strerror(rv);
+    return -1;
+  }
+
+  auto buf = downstream->get_response_buf();
+
+  buf->append(body, bodylen);
+
+  downstream->set_response_state(Downstream::MSG_COMPLETE);
+
+  return 0;
+}
+
 int Http2Upstream::error_reply(Downstream *downstream,
                                unsigned int status_code) {
   int rv;

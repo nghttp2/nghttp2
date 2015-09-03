@@ -62,6 +62,8 @@ public:
   virtual void pause_read(IOCtrlReason reason) = 0;
   virtual int resume_read(IOCtrlReason reason, Downstream *downstream,
                           size_t consumed) = 0;
+  virtual int send_reply(Downstream *downstream, const uint8_t *body,
+                         size_t bodylen) = 0;
 };
 
 } // namespace shrpx

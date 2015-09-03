@@ -725,6 +725,62 @@ int HttpsUpstream::downstream_error(DownstreamConnection *dconn, int events) {
   return 0;
 }
 
+int HttpsUpstream::send_reply(Downstream *downstream, const uint8_t *body,
+                              size_t bodylen) {
+  auto major = downstream->get_request_major();
+  auto minor = downstream->get_request_minor();
+
+  auto connection_close = false;
+  if (major <= 0 || (major == 1 && minor == 0)) {
+    connection_close = true;
+  } else {
+    auto c = downstream->get_response_header(http2::HD_CONNECTION);
+    if (c && util::strieq_l("close", c->value)) {
+      connection_close = true;
+    }
+  }
+
+  if (connection_close) {
+    downstream->set_response_connection_close(true);
+    handler_->set_should_close_after_write(true);
+  }
+
+  auto output = downstream->get_response_buf();
+
+  output->append("HTTP/1.1 ");
+  auto status_str =
+      http2::get_status_string(downstream->get_response_http_status());
+  output->append(status_str.c_str(), status_str.size());
+
+  for (auto &kv : downstream->get_response_headers()) {
+    if (kv.name.empty() || kv.name[0] == ':') {
+      continue;
+    }
+    auto name = kv.name;
+    http2::capitalize(name, 0);
+    output->append(name.c_str(), name.size());
+    output->append(": ");
+    output->append(kv.value.c_str(), kv.value.size());
+    output->append("\r\n");
+  }
+
+  if (!downstream->get_response_header(http2::HD_SERVER)) {
+    output->append("Server: ");
+    output->append(get_config()->server_name,
+                   strlen(get_config()->server_name));
+    output->append("\r\n");
+  }
+
+  output->append("\r\n");
+
+  output->append(body, bodylen);
+
+  downstream->add_response_sent_bodylen(bodylen);
+  downstream->set_response_state(Downstream::MSG_COMPLETE);
+
+  return 0;
+}
+
 void HttpsUpstream::error_reply(unsigned int status_code) {
   auto html = http::create_error_html(status_code);
   auto downstream = get_downstream();

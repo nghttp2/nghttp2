@@ -31,6 +31,7 @@
 
 #include "shrpx_downstream.h"
 #include "shrpx_upstream.h"
+#include "shrpx_client_handler.h"
 #include "shrpx_mruby.h"
 #include "shrpx_mruby_module.h"
 #include "util.h"
@@ -139,7 +140,7 @@ mrb_value response_set_header(mrb_state *mrb, mrb_value self) {
 } // namespace
 
 namespace {
-mrb_value response_end(mrb_state *mrb, mrb_value self) {
+mrb_value response_return(mrb_state *mrb, mrb_value self) {
   auto data = static_cast<MRubyAssocData *>(mrb->ud);
   auto downstream = data->downstream;
   int rv;
@@ -151,13 +152,8 @@ mrb_value response_end(mrb_state *mrb, mrb_value self) {
   mrb_value val;
   mrb_get_args(mrb, "|o", &val);
 
-  const char *body = nullptr;
+  const uint8_t *body = nullptr;
   size_t bodylen = 0;
-
-  if (!mrb_nil_p(val)) {
-    body = RSTRING_PTR(val);
-    bodylen = RSTRING_LEN(val);
-  }
 
   if (downstream->get_response_http_status() == 0) {
     downstream->set_response_http_status(200);
@@ -166,6 +162,11 @@ mrb_value response_end(mrb_state *mrb, mrb_value self) {
   if (data->response_headers_dirty) {
     downstream->index_response_headers();
     data->response_headers_dirty = false;
+  }
+
+  if (downstream->expect_response_body() && !mrb_nil_p(val)) {
+    body = reinterpret_cast<const uint8_t *>(RSTRING_PTR(val));
+    bodylen = RSTRING_LEN(val);
   }
 
   auto cl = downstream->get_response_header(http2::HD_CONTENT_LENGTH);
@@ -179,17 +180,14 @@ mrb_value response_end(mrb_state *mrb, mrb_value self) {
 
   auto upstream = downstream->get_upstream();
 
-  rv = upstream->on_downstream_header_complete(downstream);
+  rv = upstream->send_reply(downstream, body, bodylen);
   if (rv != 0) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "could not send response");
   }
 
-  if (downstream->expect_response_body()) {
-    auto output = downstream->get_response_buf();
-    output->append(body, bodylen);
-  }
+  auto handler = upstream->get_client_handler();
 
-  downstream->set_response_state(Downstream::MSG_COMPLETE);
+  handler->signal_write();
 
   return self;
 }
@@ -213,7 +211,8 @@ void init_response_class(mrb_state *mrb, RClass *module) {
                     MRB_ARGS_NONE());
   mrb_define_method(mrb, response_class, "set_header", response_set_header,
                     MRB_ARGS_REQ(2));
-  mrb_define_method(mrb, response_class, "end", response_end, MRB_ARGS_OPT(1));
+  mrb_define_method(mrb, response_class, "return", response_return,
+                    MRB_ARGS_OPT(1));
 }
 
 } // namespace mruby

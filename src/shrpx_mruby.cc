@@ -62,7 +62,10 @@ int MRubyContext::run_request_proc(Downstream *downstream, RProc *proc) {
   (void)res;
 
   if (mrb_->exc) {
-    rv = -1;
+    // If response has been committed, ignore error
+    if (downstream->get_response_state() != Downstream::MSG_COMPLETE) {
+      rv = -1;
+    }
     auto error =
         mrb_str_ptr(mrb_funcall(mrb_, mrb_obj_value(mrb_->exc), "inspect", 0));
 

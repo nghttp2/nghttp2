@@ -793,6 +793,69 @@ ssize_t spdy_data_read_callback(spdylay_session *session, int32_t stream_id,
 }
 } // namespace
 
+int SpdyUpstream::send_reply(Downstream *downstream, const uint8_t *body,
+                             size_t bodylen) {
+  int rv;
+
+  spdylay_data_provider data_prd, *data_prd_ptr = nullptr;
+  if (bodylen) {
+    data_prd.source.ptr = downstream;
+    data_prd.read_callback = spdy_data_read_callback;
+    data_prd_ptr = &data_prd;
+  }
+
+  auto status_string =
+      http2::get_status_string(downstream->get_response_http_status());
+
+  auto &headers = downstream->get_response_headers();
+
+  // 3 for :status, :version and server
+  auto nva = std::vector<const char *>(3 + headers.size());
+
+  nva.push_back(":status");
+  nva.push_back(status_string.c_str());
+  nva.push_back(":version");
+  nva.push_back("HTTP/1.1");
+
+  for (auto &kv : headers) {
+    if (kv.name.empty() || kv.name[0] == ':') {
+      continue;
+    }
+    switch (kv.token) {
+    case http2::HD_CONNECTION:
+    case http2::HD_KEEP_ALIVE:
+    case http2::HD_PROXY_CONNECTION:
+    case http2::HD_TRANSFER_ENCODING:
+      continue;
+    }
+    nva.push_back(kv.name.c_str());
+    nva.push_back(kv.value.c_str());
+  }
+
+  if (!downstream->get_response_header(http2::HD_SERVER)) {
+    nva.push_back("server");
+    nva.push_back(get_config()->server_name);
+  }
+
+  nva.push_back(nullptr);
+
+  rv = spdylay_submit_response(session_, downstream->get_stream_id(),
+                               nva.data(), data_prd_ptr);
+  if (rv < SPDYLAY_ERR_FATAL) {
+    ULOG(FATAL, this) << "spdylay_submit_response() failed: "
+                      << spdylay_strerror(rv);
+    return -1;
+  }
+
+  auto buf = downstream->get_response_buf();
+
+  buf->append(body, bodylen);
+
+  downstream->set_response_state(Downstream::MSG_COMPLETE);
+
+  return 0;
+}
+
 int SpdyUpstream::error_reply(Downstream *downstream,
                               unsigned int status_code) {
   int rv;
