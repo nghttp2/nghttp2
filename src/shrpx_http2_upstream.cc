@@ -927,6 +927,10 @@ int Http2Upstream::downstream_read(DownstreamConnection *dconn) {
     if (rv == SHRPX_ERR_EOF) {
       return downstream_eof(dconn);
     }
+    if (rv == SHRPX_ERR_DCONN_CANCELED) {
+      downstream->pop_downstream_connection();
+      return 0;
+    }
     if (rv != 0) {
       if (rv != SHRPX_ERR_NETWORK) {
         if (LOG_ENABLED(INFO)) {
@@ -1163,8 +1167,10 @@ int Http2Upstream::send_reply(Downstream *downstream, const uint8_t *body,
 
   auto status_code_str = util::utos(downstream->get_response_http_status());
   auto &headers = downstream->get_response_headers();
+  auto nva = std::vector<nghttp2_nv>();
   // 2 for :status and server
-  auto nva = std::vector<nghttp2_nv>(2 + headers.size());
+  nva.reserve(2 + headers.size());
+
   nva.push_back(http2::make_nv_ls(":status", status_code_str));
 
   for (auto &kv : headers) {

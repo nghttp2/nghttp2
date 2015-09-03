@@ -800,6 +800,7 @@ int HttpsUpstream::send_reply(Downstream *downstream, const uint8_t *body,
   auto status_str =
       http2::get_status_string(downstream->get_response_http_status());
   output->append(status_str.c_str(), status_str.size());
+  output->append("\r\n");
 
   for (auto &kv : downstream->get_response_headers()) {
     if (kv.name.empty() || kv.name[0] == ':') {

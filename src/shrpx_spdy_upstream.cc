@@ -600,6 +600,10 @@ int SpdyUpstream::downstream_read(DownstreamConnection *dconn) {
     if (rv == SHRPX_ERR_EOF) {
       return downstream_eof(dconn);
     }
+    if (rv == SHRPX_ERR_DCONN_CANCELED) {
+      downstream->pop_downstream_connection();
+      return 0;
+    }
     if (rv != 0) {
       if (rv != SHRPX_ERR_NETWORK) {
         if (LOG_ENABLED(INFO)) {
@@ -815,8 +819,9 @@ int SpdyUpstream::send_reply(Downstream *downstream, const uint8_t *body,
 
   auto &headers = downstream->get_response_headers();
 
+  auto nva = std::vector<const char *>();
   // 3 for :status, :version and server
-  auto nva = std::vector<const char *>(3 + headers.size());
+  nva.reserve(3 + headers.size());
 
   nva.push_back(":status");
   nva.push_back(status_string.c_str());
