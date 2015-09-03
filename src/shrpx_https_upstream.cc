@@ -199,6 +199,10 @@ void rewrite_request_host_path_from_uri(Downstream *downstream, const char *uri,
   }
   downstream->set_request_http2_authority(authority);
 
+  std::string scheme;
+  http2::copy_url_component(scheme, &u, UF_SCHEMA, uri);
+  downstream->set_request_http2_scheme(std::move(scheme));
+
   std::string path;
   if (u.field_set & (1 << UF_PATH)) {
     http2::copy_url_component(path, &u, UF_PATH, uri);
@@ -226,10 +230,6 @@ void rewrite_request_host_path_from_uri(Downstream *downstream, const char *uri,
     downstream->set_request_path(
         http2::rewrite_clean_path(std::begin(path), std::end(path)));
   }
-
-  std::string scheme;
-  http2::copy_url_component(scheme, &u, UF_SCHEMA, uri);
-  downstream->set_request_http2_scheme(std::move(scheme));
 }
 } // namespace
 
