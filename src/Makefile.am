@@ -124,21 +124,26 @@ NGHTTPX_SRCS = \
 	shrpx_memcached_connection.cc shrpx_memcached_connection.h \
 	shrpx_memcached_request.h \
 	shrpx_memcached_result.h \
-	shrpx_mruby.cc shrpx_mruby.h \
-	shrpx_mruby_module.cc shrpx_mruby_module.h \
-	shrpx_mruby_module_request.cc shrpx_mruby_module_request.h \
-	shrpx_mruby_module_response.cc shrpx_mruby_module_response.h \
 	buffer.h memchunk.h template.h
 
 if HAVE_SPDYLAY
 NGHTTPX_SRCS += shrpx_spdy_upstream.cc shrpx_spdy_upstream.h
 endif # HAVE_SPDYLAY
 
+if HAVE_MRUBY
+NGHTTPX_SRCS += \
+	shrpx_mruby.cc shrpx_mruby.h \
+	shrpx_mruby_module.cc shrpx_mruby_module.h \
+	shrpx_mruby_module_request.cc shrpx_mruby_module_request.h \
+	shrpx_mruby_module_response.cc shrpx_mruby_module_response.h
+endif # HAVE_MRUBY
+
 noinst_LIBRARIES = libnghttpx.a
 libnghttpx_a_SOURCES = ${NGHTTPX_SRCS}
 
 nghttpx_SOURCES = shrpx.cc shrpx.h
-nghttpx_LDADD = libnghttpx.a ${LDADD} -lmruby
+nghttpx_CPPFLAGS = ${AM_CPPFLAGS} @LIBMRUBY_CFLAGS@
+nghttpx_LDADD = libnghttpx.a ${LDADD} @LIBMRUBY_LIBS@
 
 if HAVE_CUNIT
 check_PROGRAMS += nghttpx-unittest
@@ -152,9 +157,10 @@ nghttpx_unittest_SOURCES = shrpx-unittest.cc \
 	nghttp2_gzip.c nghttp2_gzip.h \
 	buffer_test.cc buffer_test.h \
 	memchunk_test.cc memchunk_test.h
-nghttpx_unittest_CPPFLAGS = ${AM_CPPFLAGS}\
+nghttpx_unittest_CPPFLAGS = ${AM_CPPFLAGS} @LIBMRUBY_CFLAGS@ \
 	-DNGHTTP2_TESTS_DIR=\"$(top_srcdir)/tests\"
-nghttpx_unittest_LDADD = libnghttpx.a ${LDADD} -lmruby @CUNIT_LIBS@ @TESTLDADD@
+nghttpx_unittest_LDADD = libnghttpx.a ${LDADD} \
+	@LIBMRUBY_LIBS@ @CUNIT_LIBS@ @TESTLDADD@
 
 TESTS += nghttpx-unittest
 endif # HAVE_CUNIT

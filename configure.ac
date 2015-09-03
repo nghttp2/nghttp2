@@ -119,6 +119,11 @@ AC_ARG_WITH([spdylay],
                     [Use spdylay [default=check]])],
     [request_spdylay=$withval], [request_spdylay=check])
 
+AC_ARG_WITH([mruby],
+    [AS_HELP_STRING([--with-mruby],
+                    [Use mruby [default=check]])],
+    [request_mruby=$withval], [request_mruby=check])
+
 AC_ARG_WITH([cython],
     [AS_HELP_STRING([--with-cython=PATH],
                     [Use cython in given PATH])],
@@ -369,6 +374,30 @@ if test "x${request_spdylay}" = "xyes" &&
 fi
 
 AM_CONDITIONAL([HAVE_SPDYLAY], [ test "x${have_spdylay}" = "xyes" ])
+
+# mruby (for src/nghttpx)
+LIBS_OLD=$LIBS
+have_mruby=no
+if test "x${request_mruby}" != "xno"; then
+  AC_CHECK_LIB([mruby], [mrb_open], [have_mruby=yes], [have_mruby=no])
+  if test "x${have_mruby}" = "xyes"; then
+    AC_CHECK_HEADER([mruby.h], [have_mruby=yes], [have_mruby=no])
+    if test "x${have_mruby}" = "xyes"; then
+      LIBMRUBY_LIBS=-lmruby
+      LIBMRUBY_CFLAGS=
+      AC_SUBST([LIBMRUBY_LIBS])
+      AC_SUBST([LIBMRUBY_CFLAGS])
+    fi
+  fi
+fi
+LIBS=$LIBS_OLD
+
+if test "x${request_mruby}" = "xyes" &&
+   test "x${have_mruby}" != "xyes"; then
+  AC_MSG_ERROR([mruby was requested (--with-mruby) but not found])
+fi
+
+AM_CONDITIONAL([HAVE_MRUBY], [test "x${have_mruby}" = "xyes"])
 
 # Check Boost Asio library
 have_asio_lib=no
@@ -717,6 +746,7 @@ AC_MSG_NOTICE([summary of build options:
       Libev:          ${have_libev}
       Libevent(SSL):  ${have_libevent_openssl}
       Spdylay:        ${have_spdylay}
+      MRuby:          ${have_mruby}
       Jansson:        ${have_jansson}
       Jemalloc:       ${have_jemalloc}
       Zlib:           ${have_zlib}

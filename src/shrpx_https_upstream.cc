@@ -37,7 +37,9 @@
 #include "shrpx_log_config.h"
 #include "shrpx_worker.h"
 #include "shrpx_http2_session.h"
+#ifdef HAVE_MRUBY
 #include "shrpx_mruby.h"
+#endif // HAVE_MRUBY
 #include "http2.h"
 #include "util.h"
 #include "template.h"
@@ -328,6 +330,7 @@ int htp_hdrs_completecb(http_parser *htp) {
 
   downstream->set_request_state(Downstream::HEADER_COMPLETE);
 
+#ifdef HAVE_MRUBY
   auto handler = upstream->get_client_handler();
   auto worker = handler->get_worker();
   auto mruby_ctx = worker->get_mruby_context();
@@ -336,6 +339,7 @@ int htp_hdrs_completecb(http_parser *htp) {
     downstream->set_response_http_status(500);
     return -1;
   }
+#endif // HAVE_MRUBY
 
   // mruby hook may change method value
 
@@ -888,6 +892,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
     }
   }
 
+#ifdef HAVE_MRUBY
   if (!downstream->get_non_final_response()) {
     auto worker = handler_->get_worker();
     auto mruby_ctx = worker->get_mruby_context();
@@ -901,6 +906,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
       return -1;
     }
   }
+#endif // HAVE_MRUBY
 
   auto connect_method = downstream->get_request_method() == HTTP_CONNECT;
 

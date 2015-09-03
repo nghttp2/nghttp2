@@ -36,7 +36,9 @@
 #include "shrpx_downstream_connection.h"
 #include "shrpx_config.h"
 #include "shrpx_http.h"
+#ifdef HAVE_MRUBY
 #include "shrpx_mruby.h"
+#endif // HAVE_MRUBY
 #include "shrpx_worker.h"
 #include "shrpx_http2_session.h"
 #include "http2.h"
@@ -243,6 +245,7 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
 
     downstream->set_request_state(Downstream::HEADER_COMPLETE);
 
+#ifdef HAVE_MRUBY
     auto handler = upstream->get_client_handler();
     auto worker = handler->get_worker();
     auto mruby_ctx = worker->get_mruby_context();
@@ -254,6 +257,7 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
       }
       return;
     }
+#endif // HAVE_MRUBY
 
     if (frame->syn_stream.hd.flags & SPDYLAY_CTRL_FLAG_FIN) {
       if (!downstream->validate_request_bodylen()) {
@@ -930,6 +934,7 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream) {
     return 0;
   }
 
+#ifdef HAVE_MRUBY
   auto worker = handler_->get_worker();
   auto mruby_ctx = worker->get_mruby_context();
 
@@ -943,6 +948,7 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream) {
   if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
     return -1;
   }
+#endif // HAVE_MRUBY
 
   if (LOG_ENABLED(INFO)) {
     DLOG(INFO, downstream) << "HTTP response header completed";

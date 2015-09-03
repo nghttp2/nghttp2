@@ -160,9 +160,11 @@ int ConnectionHandler::create_single_worker() {
 
   single_worker_ = make_unique<Worker>(loop_, sv_ssl_ctx, cl_ssl_ctx, cert_tree,
                                        ticket_keys_);
+#ifdef HAVE_MRUBY
   if (single_worker_->create_mruby_context() != 0) {
     return -1;
   }
+#endif // HAVE_MRUBY
 
   return 0;
 }
@@ -184,9 +186,11 @@ int ConnectionHandler::create_worker_thread(size_t num) {
 
     auto worker = make_unique<Worker>(loop, sv_ssl_ctx, cl_ssl_ctx, cert_tree,
                                       ticket_keys_);
+#ifdef HAVE_MRUBY
     if (worker->create_mruby_context() != 0) {
       return -1;
     }
+#endif // HAVE_MRUBY
 
     workers_.push_back(std::move(worker));
 

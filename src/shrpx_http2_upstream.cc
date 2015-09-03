@@ -37,7 +37,9 @@
 #include "shrpx_http.h"
 #include "shrpx_worker.h"
 #include "shrpx_http2_session.h"
+#ifdef HAVE_MRUBY
 #include "shrpx_mruby.h"
+#endif // HAVE_MRUBY
 #include "http2.h"
 #include "util.h"
 #include "base64.h"
@@ -318,6 +320,7 @@ int Http2Upstream::on_request_headers(Downstream *downstream,
 
   downstream->set_request_state(Downstream::HEADER_COMPLETE);
 
+#ifdef HAVE_MRUBY
   auto upstream = downstream->get_upstream();
   auto handler = upstream->get_client_handler();
   auto worker = handler->get_worker();
@@ -329,6 +332,7 @@ int Http2Upstream::on_request_headers(Downstream *downstream,
     }
     return 0;
   }
+#endif // HAVE_MRUBY
 
   if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
     downstream->disable_upstream_rtimer();
@@ -1271,6 +1275,7 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
         downstream->get_request_http2_scheme());
   }
 
+#ifdef HAVE_MRUBY
   if (!downstream->get_non_final_response()) {
     auto worker = handler_->get_worker();
     auto mruby_ctx = worker->get_mruby_context();
@@ -1286,6 +1291,7 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
       return -1;
     }
   }
+#endif // HAVE_MRUBY
 
   size_t nheader = downstream->get_response_headers().size();
   auto nva = std::vector<nghttp2_nv>();
