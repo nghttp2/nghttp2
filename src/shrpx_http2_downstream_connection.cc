@@ -251,10 +251,10 @@ int Http2DownstreamConnection::push_request_headers() {
 
   downstream_->set_request_pending(false);
 
+  auto method = downstream_->get_request_method();
   auto no_host_rewrite = get_config()->no_host_rewrite ||
                          get_config()->http2_proxy ||
-                         get_config()->client_proxy ||
-                         downstream_->get_request_method() == HTTP_CONNECT;
+                         get_config()->client_proxy || method == HTTP_CONNECT;
 
   // http2session_ has already in CONNECTED state, so we can get
   // addr_idx here.
@@ -299,17 +299,23 @@ int Http2DownstreamConnection::push_request_headers() {
   nva.reserve(nheader + 8 + cookies.size() +
               get_config()->add_request_headers.size());
 
-  nva.push_back(http2::make_nv_lc(
-      ":method", http2::to_method_string(downstream_->get_request_method())));
+  nva.push_back(http2::make_nv_lc(":method", http2::to_method_string(method)));
 
   auto &scheme = downstream_->get_request_http2_scheme();
 
   nva.push_back(http2::make_nv_lc(":authority", authority));
 
-  if (downstream_->get_request_method() != HTTP_CONNECT) {
+  if (method != HTTP_CONNECT) {
     assert(!scheme.empty());
+
     nva.push_back(http2::make_nv_ls(":scheme", scheme));
-    nva.push_back(http2::make_nv_ls(":path", downstream_->get_request_path()));
+
+    auto &path = downstream_->get_request_path();
+    if (method == HTTP_OPTIONS && path.empty()) {
+      nva.push_back(http2::make_nv_ll(":path", "*"));
+    } else {
+      nva.push_back(http2::make_nv_ls(":path", path));
+    }
   }
 
   http2::copy_headers_to_nva(nva, downstream_->get_request_headers());

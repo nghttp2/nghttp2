@@ -227,6 +227,8 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
       downstream->set_request_http2_authority(host->value);
       if (get_config()->http2_proxy || get_config()->client_proxy) {
         downstream->set_request_path(path->value);
+      } else if (method_token == HTTP_OPTIONS && path->value == "*") {
+        // Server-wide OPTIONS request.  Path is empty.
       } else {
         downstream->set_request_path(http2::rewrite_clean_path(
             std::begin(path->value), std::end(path->value)));

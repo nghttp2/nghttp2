@@ -299,7 +299,9 @@ int Http2Upstream::on_request_headers(Downstream *downstream,
   downstream->set_request_http2_authority(http2::value_to_str(authority));
 
   if (path) {
-    if (get_config()->http2_proxy || get_config()->client_proxy) {
+    if (method_token == HTTP_OPTIONS && path->value == "*") {
+      // Server-wide OPTIONS request.  Path is empty.
+    } else if (get_config()->http2_proxy || get_config()->client_proxy) {
       downstream->set_request_path(http2::value_to_str(path));
     } else {
       auto &value = path->value;

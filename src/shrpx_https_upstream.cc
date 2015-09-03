@@ -224,7 +224,7 @@ void rewrite_request_host_path_from_uri(Downstream *downstream, const char *uri,
     //
     // Notice that no slash after authority. See
     // http://tools.ietf.org/html/rfc7230#section-5.3.4
-    downstream->set_request_path("*");
+    downstream->set_request_path("");
     // we ignore query component here
     return;
   } else {
@@ -258,10 +258,13 @@ int htp_hdrs_completecb(http_parser *htp) {
 
   downstream->set_request_connection_close(!http_should_keep_alive(htp));
 
+  auto method = downstream->get_request_method();
+
   if (LOG_ENABLED(INFO)) {
     std::stringstream ss;
-    ss << http2::to_method_string(downstream->get_request_method()) << " "
-       << downstream->get_request_path() << " "
+    ss << http2::to_method_string(method) << " "
+       << (method == HTTP_CONNECT ? downstream->get_request_http2_authority()
+                                  : downstream->get_request_path()) << " "
        << "HTTP/" << downstream->get_request_major() << "."
        << downstream->get_request_minor() << "\n";
     const auto &headers = downstream->get_request_headers();
@@ -284,13 +287,12 @@ int htp_hdrs_completecb(http_parser *htp) {
 
   downstream->inspect_http1_request();
 
-  if (downstream->get_request_method() != HTTP_CONNECT) {
+  if (method != HTTP_CONNECT) {
     http_parser_url u{};
     // make a copy of request path, since we may set request path
     // while we are refering to original request path.
-    auto uri = downstream->get_request_path();
-    rv = http_parser_parse_url(uri.c_str(),
-                               downstream->get_request_path().size(), 0, &u);
+    auto path = downstream->get_request_path();
+    rv = http_parser_parse_url(path.c_str(), path.size(), 0, &u);
     if (rv != 0) {
       // Expect to respond with 400 bad request
       return -1;
@@ -302,8 +304,12 @@ int htp_hdrs_completecb(http_parser *htp) {
         return -1;
       }
 
-      downstream->set_request_path(
-          http2::rewrite_clean_path(std::begin(uri), std::end(uri)));
+      if (method == HTTP_OPTIONS && path == "*") {
+        downstream->set_request_path("");
+      } else {
+        downstream->set_request_path(
+            http2::rewrite_clean_path(std::begin(path), std::end(path)));
+      }
 
       auto host = downstream->get_request_header(http2::HD_HOST);
       if (host) {
@@ -316,7 +322,7 @@ int htp_hdrs_completecb(http_parser *htp) {
         downstream->set_request_http2_scheme("http");
       }
     } else {
-      rewrite_request_host_path_from_uri(downstream, uri.c_str(), u);
+      rewrite_request_host_path_from_uri(downstream, path.c_str(), u);
     }
   }
 
@@ -330,6 +336,8 @@ int htp_hdrs_completecb(http_parser *htp) {
     downstream->set_response_http_status(500);
     return -1;
   }
+
+  // mruby hook may change method value
 
   if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
     return 0;

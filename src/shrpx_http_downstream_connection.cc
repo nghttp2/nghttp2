@@ -213,7 +213,8 @@ int HttpDownstreamConnection::push_request_headers() {
                                  ->downstream_addr_groups[group_]
                                  .addrs[addr_idx_]
                                  .hostport.get();
-  auto connect_method = downstream_->get_request_method() == HTTP_CONNECT;
+  auto method = downstream_->get_request_method();
+  auto connect_method = method == HTTP_CONNECT;
 
   // For HTTP/1.0 request, there is no authority in request.  In that
   // case, we use backend server's host nonetheless.
@@ -232,10 +233,11 @@ int HttpDownstreamConnection::push_request_headers() {
   downstream_->assemble_request_cookie();
 
   // Assume that method and request path do not contain \r\n.
-  std::string hdrs = http2::to_method_string(downstream_->get_request_method());
+  std::string hdrs = http2::to_method_string(method);
   hdrs += ' ';
 
   auto &scheme = downstream_->get_request_http2_scheme();
+  auto &path = downstream_->get_request_path();
 
   if (connect_method) {
     hdrs += authority;
@@ -246,19 +248,12 @@ int HttpDownstreamConnection::push_request_headers() {
     hdrs += scheme;
     hdrs += "://";
     hdrs += authority;
-
-    // Server-wide OPTIONS takes following form in proxy request:
-    //
-    // OPTIONS http://example.org HTTP/1.1
-    //
-    // Notice that no slash after authority. See
-    // http://tools.ietf.org/html/rfc7230#section-5.3.4
-    if (downstream_->get_request_path() != "*") {
-      hdrs += downstream_->get_request_path();
-    }
+    hdrs += path;
+  } else if (method == HTTP_OPTIONS && path.empty()) {
+    // Server-wide OPTIONS
+    hdrs += "*";
   } else {
-    // No proxy case.
-    hdrs += downstream_->get_request_path();
+    hdrs += path;
   }
   hdrs += " HTTP/1.1\r\nHost: ";
   hdrs += authority;
