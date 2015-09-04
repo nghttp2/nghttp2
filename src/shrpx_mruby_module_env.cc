@@ -75,6 +75,14 @@ mrb_value env_get_ctx(mrb_state *mrb, mrb_value self) {
 } // namespace
 
 namespace {
+mrb_value env_get_phase(mrb_state *mrb, mrb_value self) {
+  auto data = static_cast<MRubyAssocData *>(mrb->ud);
+
+  return mrb_fixnum_value(data->phase);
+}
+} // namespace
+
+namespace {
 mrb_value env_get_remote_addr(mrb_state *mrb, mrb_value self) {
   auto data = static_cast<MRubyAssocData *>(mrb->ud);
   auto downstream = data->downstream;
@@ -95,6 +103,7 @@ void init_env_class(mrb_state *mrb, RClass *module) {
   mrb_define_method(mrb, env_class, "req", env_get_req, MRB_ARGS_NONE());
   mrb_define_method(mrb, env_class, "resp", env_get_resp, MRB_ARGS_NONE());
   mrb_define_method(mrb, env_class, "ctx", env_get_ctx, MRB_ARGS_NONE());
+  mrb_define_method(mrb, env_class, "phase", env_get_phase, MRB_ARGS_NONE());
   mrb_define_method(mrb, env_class, "remote_addr", env_get_remote_addr,
                     MRB_ARGS_NONE());
 }
