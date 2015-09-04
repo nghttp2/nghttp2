@@ -107,6 +107,8 @@ mrb_value create_headers_hash(mrb_state *mrb, const Headers &headers) {
     if (hd.name.empty() || hd.name[0] == ':') {
       continue;
     }
+    auto ai = mrb_gc_arena_save(mrb);
+
     auto key = mrb_str_new(mrb, hd.name.c_str(), hd.name.size());
     auto ary = mrb_hash_get(mrb, hash, key);
     if (mrb_nil_p(ary)) {
@@ -114,6 +116,8 @@ mrb_value create_headers_hash(mrb_state *mrb, const Headers &headers) {
       mrb_hash_set(mrb, hash, key, ary);
     }
     mrb_ary_push(mrb, ary, mrb_str_new(mrb, hd.value.c_str(), hd.value.size()));
+
+    mrb_gc_arena_restore(mrb, ai);
   }
 
   return hash;
