@@ -127,6 +127,8 @@ private:
   // Stores all SSL_CTX objects.
   std::vector<SSL_CTX *> all_ssl_ctx_;
   OCSPUpdateContext ocsp_;
+  // ev_loop for each worker
+  std::vector<struct ev_loop *> worker_loops_;
   // Worker instances when multi threaded mode (-nN, N >= 2) is used.
   std::vector<std::unique_ptr<Worker>> workers_;
   // Worker instance used when single threaded mode (-n1) is used.
