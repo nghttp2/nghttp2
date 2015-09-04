@@ -27,15 +27,12 @@
 #include <mruby/variable.h>
 #include <mruby/string.h>
 #include <mruby/hash.h>
-#include <mruby/array.h>
 
 #include "shrpx_downstream.h"
 #include "shrpx_upstream.h"
 #include "shrpx_client_handler.h"
 #include "shrpx_mruby.h"
 #include "shrpx_mruby_module.h"
-#include "util.h"
-#include "http2.h"
 
 namespace shrpx {
 
