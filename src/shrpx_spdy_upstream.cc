@@ -602,6 +602,7 @@ int SpdyUpstream::downstream_read(DownstreamConnection *dconn) {
     }
     if (rv == SHRPX_ERR_DCONN_CANCELED) {
       downstream->pop_downstream_connection();
+      handler_->signal_write();
       return 0;
     }
     if (rv != 0) {
