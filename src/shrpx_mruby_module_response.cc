@@ -112,13 +112,19 @@ mrb_value response_mod_header(mrb_state *mrb, mrb_value self, bool repl) {
   key = mrb_funcall(mrb, key, "downcase", 0);
 
   if (repl) {
-    // making name empty will effectively delete header fields
-    for (auto &hd : downstream->get_response_headers()) {
+    size_t p = 0;
+    auto &headers = downstream->get_response_headers();
+    for (size_t i = 0; i < headers.size(); ++i) {
+      auto &hd = headers[i];
       if (util::streq(std::begin(hd.name), hd.name.size(), RSTRING_PTR(key),
                       RSTRING_LEN(key))) {
-        hd.name = "";
+        continue;
+      }
+      if (i != p) {
+        headers[p++] = std::move(hd);
       }
     }
+    headers.resize(p);
   }
 
   if (mrb_obj_is_instance_of(mrb, values, mrb->array_class)) {
