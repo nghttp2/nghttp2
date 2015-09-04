@@ -99,6 +99,10 @@ int MRubyContext::run_on_response_proc(Downstream *downstream) {
   return run_request_proc(downstream, on_response_proc_);
 }
 
+void MRubyContext::delete_downstream(Downstream *downstream) {
+  delete_downstream_from_module(mrb_, downstream);
+}
+
 // Based on
 // https://github.com/h2o/h2o/blob/master/lib/handler/mruby.c.  It is
 // very hard to write these kind of code because mruby has almost no
@@ -144,6 +148,13 @@ RProc *compile(mrb_state *mrb, const char *filename) {
 }
 
 std::unique_ptr<MRubyContext> create_mruby_context() {
+  auto req_file = get_config()->request_phase_file.get();
+  auto res_file = get_config()->response_phase_file.get();
+
+  if (!req_file && !res_file) {
+    return make_unique<MRubyContext>(nullptr, nullptr, nullptr);
+  }
+
   auto mrb = mrb_open();
   if (mrb == nullptr) {
     LOG(ERROR) << "mrb_open failed";
@@ -151,9 +162,6 @@ std::unique_ptr<MRubyContext> create_mruby_context() {
   }
 
   init_module(mrb);
-
-  auto req_file = get_config()->request_phase_file.get();
-  auto res_file = get_config()->response_phase_file.get();
 
   auto req_proc = compile(mrb, req_file);
 
@@ -172,6 +180,12 @@ std::unique_ptr<MRubyContext> create_mruby_context() {
   }
 
   return make_unique<MRubyContext>(mrb, req_proc, res_proc);
+}
+
+mrb_sym intern_ptr(mrb_state *mrb, void *ptr) {
+  auto p = reinterpret_cast<uintptr_t>(ptr);
+
+  return mrb_intern(mrb, reinterpret_cast<const char *>(&p), sizeof(p));
 }
 
 } // namespace mruby

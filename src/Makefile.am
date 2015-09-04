@@ -134,6 +134,7 @@ if HAVE_MRUBY
 NGHTTPX_SRCS += \
 	shrpx_mruby.cc shrpx_mruby.h \
 	shrpx_mruby_module.cc shrpx_mruby_module.h \
+	shrpx_mruby_module_env.cc shrpx_mruby_module_env.h \
 	shrpx_mruby_module_request.cc shrpx_mruby_module_request.h \
 	shrpx_mruby_module_response.cc shrpx_mruby_module_response.h
 endif # HAVE_MRUBY

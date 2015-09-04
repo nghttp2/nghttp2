@@ -34,6 +34,11 @@
 #include "shrpx_error.h"
 #include "shrpx_downstream_connection.h"
 #include "shrpx_downstream_queue.h"
+#include "shrpx_worker.h"
+#include "shrpx_http2_session.h"
+#ifdef HAVE_MRUBY
+#include "shrpx_mruby.h"
+#endif // HAVE_MRUBY
 #include "util.h"
 #include "http2.h"
 
@@ -160,6 +165,12 @@ Downstream::~Downstream() {
     ev_timer_stop(loop, &upstream_wtimer_);
     ev_timer_stop(loop, &downstream_rtimer_);
     ev_timer_stop(loop, &downstream_wtimer_);
+
+    auto handler = upstream_->get_client_handler();
+    auto worker = handler->get_worker();
+    auto mruby_ctx = worker->get_mruby_context();
+
+    mruby_ctx->delete_downstream(this);
   }
 
   // DownstreamConnection may refer to this object.  Delete it now

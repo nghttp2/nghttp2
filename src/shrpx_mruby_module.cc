@@ -32,6 +32,7 @@
 #include <mruby/array.h>
 
 #include "shrpx_mruby.h"
+#include "shrpx_mruby_module_env.h"
 #include "shrpx_mruby_module_request.h"
 #include "shrpx_mruby_module_response.h"
 
@@ -49,14 +50,40 @@ mrb_value run(mrb_state *mrb, mrb_value self) {
   }
 
   auto module = mrb_module_get(mrb, "Nghttpx");
-  auto request_class = mrb_class_get_under(mrb, module, "Request");
-  auto response_class = mrb_class_get_under(mrb, module, "Response");
 
-  std::array<mrb_value, 2> args{{mrb_obj_new(mrb, response_class, 0, nullptr),
-                                 mrb_obj_new(mrb, request_class, 0, nullptr)}};
+  auto env_sym = mrb_intern_lit(mrb, "env");
+  auto env = mrb_obj_iv_get(mrb, reinterpret_cast<RObject *>(module), env_sym);
+
+  if (mrb_nil_p(env)) {
+    auto env_class = mrb_class_get_under(mrb, module, "Env");
+    auto request_class = mrb_class_get_under(mrb, module, "Request");
+    auto response_class = mrb_class_get_under(mrb, module, "Response");
+
+    env = mrb_obj_new(mrb, env_class, 0, nullptr);
+    auto req = mrb_obj_new(mrb, request_class, 0, nullptr);
+    auto resp = mrb_obj_new(mrb, response_class, 0, nullptr);
+
+    mrb_iv_set(mrb, env, mrb_intern_lit(mrb, "req"), req);
+    mrb_iv_set(mrb, env, mrb_intern_lit(mrb, "resp"), resp);
+
+    mrb_obj_iv_set(mrb, reinterpret_cast<RObject *>(module), env_sym, env);
+  }
+
+  std::array<mrb_value, 1> args{{env}};
   return mrb_yield_argv(mrb, b, args.size(), args.data());
 }
 } // namespace
+
+void delete_downstream_from_module(mrb_state *mrb, Downstream *downstream) {
+  auto module = mrb_module_get(mrb, "Nghttpx");
+  auto env = mrb_obj_iv_get(mrb, reinterpret_cast<RObject *>(module),
+                            mrb_intern_lit(mrb, "env"));
+  if (mrb_nil_p(env)) {
+    return;
+  }
+
+  mrb_iv_remove(mrb, env, intern_ptr(mrb, downstream));
+}
 
 void init_module(mrb_state *mrb) {
   auto module = mrb_define_module(mrb, "Nghttpx");
@@ -64,6 +91,7 @@ void init_module(mrb_state *mrb) {
   mrb_define_class_method(mrb, module, "run", run,
                           MRB_ARGS_REQ(1) | MRB_ARGS_BLOCK());
 
+  init_env_class(mrb, module);
   init_request_class(mrb, module);
   init_response_class(mrb, module);
 }

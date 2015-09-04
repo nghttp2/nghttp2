@@ -22,15 +22,12 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef SHRPX_MRUBY_H
-#define SHRPX_MRUBY_H
+#ifndef SHRPX_MRUBY_MODULE_ENV_H
+#define SHRPX_MRUBY_MODULE_ENV_H
 
 #include "shrpx.h"
 
-#include <memory>
-
 #include <mruby.h>
-#include <mruby/proc.h>
 
 using namespace nghttp2;
 
@@ -38,40 +35,10 @@ namespace shrpx {
 
 namespace mruby {
 
-class MRubyContext {
-public:
-  MRubyContext(mrb_state *mrb, RProc *on_request_proc, RProc *on_response_proc);
-  ~MRubyContext();
-
-  int run_on_request_proc(Downstream *downstream);
-  int run_on_response_proc(Downstream *downstream);
-
-  int run_request_proc(Downstream *downstream, RProc *proc);
-
-  void delete_downstream(Downstream *downstream);
-
-private:
-  mrb_state *mrb_;
-  RProc *on_request_proc_;
-  RProc *on_response_proc_;
-  bool running_;
-};
-
-struct MRubyAssocData {
-  Downstream *downstream;
-  bool request_headers_dirty;
-  bool response_headers_dirty;
-};
-
-RProc *compile(mrb_state *mrb, const char *filename);
-
-std::unique_ptr<MRubyContext> create_mruby_context();
-
-// Return interned |ptr|.
-mrb_sym intern_ptr(mrb_state *mrb, void *ptr);
+void init_env_class(mrb_state *mrb, RClass *module);
 
 } // namespace mruby
 
 } // namespace shrpx
 
-#endif // SHRPX_MRUBY_H
+#endif // SHRPX_MRUBY_MODULE_ENV_H

@@ -250,19 +250,6 @@ mrb_value request_clear_headers(mrb_state *mrb, mrb_value self) {
 }
 } // namespace
 
-namespace {
-mrb_value request_get_remote_addr(mrb_state *mrb, mrb_value self) {
-  auto data = static_cast<MRubyAssocData *>(mrb->ud);
-  auto downstream = data->downstream;
-  auto upstream = downstream->get_upstream();
-  auto handler = upstream->get_client_handler();
-
-  auto &ipaddr = handler->get_ipaddr();
-
-  return mrb_str_new(mrb, ipaddr.c_str(), ipaddr.size());
-}
-} // namespace
-
 void init_request_class(mrb_state *mrb, RClass *module) {
   auto request_class =
       mrb_define_class_under(mrb, module, "Request", mrb->object_class);
@@ -296,8 +283,6 @@ void init_request_class(mrb_state *mrb, RClass *module) {
   mrb_define_method(mrb, request_class, "set_header", request_set_header,
                     MRB_ARGS_REQ(2));
   mrb_define_method(mrb, request_class, "clear_headers", request_clear_headers,
-                    MRB_ARGS_NONE());
-  mrb_define_method(mrb, request_class, "remote_addr", request_get_remote_addr,
                     MRB_ARGS_NONE());
 }
 
