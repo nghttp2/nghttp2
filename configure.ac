@@ -376,6 +376,7 @@ fi
 AM_CONDITIONAL([HAVE_SPDYLAY], [ test "x${have_spdylay}" = "xyes" ])
 
 # mruby (for src/nghttpx)
+AC_LANG_PUSH(C++)
 LIBS_OLD=$LIBS
 have_mruby=no
 if test "x${request_mruby}" != "xno"; then
@@ -392,6 +393,7 @@ if test "x${request_mruby}" != "xno"; then
   fi
 fi
 LIBS=$LIBS_OLD
+AC_LANG_POP()
 
 if test "x${request_mruby}" = "xyes" &&
    test "x${have_mruby}" != "xyes"; then
