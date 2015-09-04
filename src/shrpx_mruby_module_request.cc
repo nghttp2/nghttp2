@@ -76,6 +76,8 @@ mrb_value request_set_method(mrb_state *mrb, mrb_value self) {
   auto data = static_cast<MRubyAssocData *>(mrb->ud);
   auto downstream = data->downstream;
 
+  check_phase(mrb, data->phase, PHASE_REQUEST);
+
   const char *method;
   mrb_int n;
   mrb_get_args(mrb, "s", &method, &n);
@@ -109,6 +111,8 @@ mrb_value request_set_authority(mrb_state *mrb, mrb_value self) {
   auto data = static_cast<MRubyAssocData *>(mrb->ud);
   auto downstream = data->downstream;
 
+  check_phase(mrb, data->phase, PHASE_REQUEST);
+
   const char *authority;
   mrb_int n;
   mrb_get_args(mrb, "s", &authority, &n);
@@ -136,6 +140,8 @@ namespace {
 mrb_value request_set_scheme(mrb_state *mrb, mrb_value self) {
   auto data = static_cast<MRubyAssocData *>(mrb->ud);
   auto downstream = data->downstream;
+
+  check_phase(mrb, data->phase, PHASE_REQUEST);
 
   const char *scheme;
   mrb_int n;
@@ -165,6 +171,8 @@ mrb_value request_set_path(mrb_state *mrb, mrb_value self) {
   auto data = static_cast<MRubyAssocData *>(mrb->ud);
   auto downstream = data->downstream;
 
+  check_phase(mrb, data->phase, PHASE_REQUEST);
+
   const char *path;
   mrb_int pathlen;
   mrb_get_args(mrb, "s", &path, &pathlen);
@@ -187,6 +195,8 @@ namespace {
 mrb_value request_mod_header(mrb_state *mrb, mrb_value self, bool repl) {
   auto data = static_cast<MRubyAssocData *>(mrb->ud);
   auto downstream = data->downstream;
+
+  check_phase(mrb, data->phase, PHASE_REQUEST);
 
   mrb_value key, values;
   mrb_get_args(mrb, "oo", &key, &values);
@@ -243,6 +253,8 @@ namespace {
 mrb_value request_clear_headers(mrb_state *mrb, mrb_value self) {
   auto data = static_cast<MRubyAssocData *>(mrb->ud);
   auto downstream = data->downstream;
+
+  check_phase(mrb, data->phase, PHASE_REQUEST);
 
   downstream->clear_request_headers();
 

@@ -44,14 +44,15 @@ MRubyContext::MRubyContext(mrb_state *mrb, RProc *on_request_proc,
 
 MRubyContext::~MRubyContext() { mrb_close(mrb_); }
 
-int MRubyContext::run_request_proc(Downstream *downstream, RProc *proc) {
+int MRubyContext::run_request_proc(Downstream *downstream, RProc *proc,
+                                   int phase) {
   if (!proc || running_) {
     return 0;
   }
 
   running_ = true;
 
-  MRubyAssocData data{downstream};
+  MRubyAssocData data{downstream, phase};
 
   mrb_->ud = &data;
 
@@ -92,11 +93,11 @@ int MRubyContext::run_request_proc(Downstream *downstream, RProc *proc) {
 }
 
 int MRubyContext::run_on_request_proc(Downstream *downstream) {
-  return run_request_proc(downstream, on_request_proc_);
+  return run_request_proc(downstream, on_request_proc_, PHASE_REQUEST);
 }
 
 int MRubyContext::run_on_response_proc(Downstream *downstream) {
-  return run_request_proc(downstream, on_response_proc_);
+  return run_request_proc(downstream, on_response_proc_, PHASE_RESPONSE);
 }
 
 void MRubyContext::delete_downstream(Downstream *downstream) {
@@ -186,6 +187,12 @@ mrb_sym intern_ptr(mrb_state *mrb, void *ptr) {
   auto p = reinterpret_cast<uintptr_t>(ptr);
 
   return mrb_intern(mrb, reinterpret_cast<const char *>(&p), sizeof(p));
+}
+
+void check_phase(mrb_state *mrb, int phase, int phase_mask) {
+  if ((phase & phase_mask) == 0) {
+    mrb_raise(mrb, E_RUNTIME_ERROR, "operation was not allowed in this phase");
+  }
 }
 
 } // namespace mruby

@@ -46,7 +46,7 @@ public:
   int run_on_request_proc(Downstream *downstream);
   int run_on_response_proc(Downstream *downstream);
 
-  int run_request_proc(Downstream *downstream, RProc *proc);
+  int run_request_proc(Downstream *downstream, RProc *proc, int phase);
 
   void delete_downstream(Downstream *downstream);
 
@@ -57,8 +57,15 @@ private:
   bool running_;
 };
 
+enum {
+  PHASE_NONE = 0,
+  PHASE_REQUEST = 1,
+  PHASE_RESPONSE = 1 << 1,
+};
+
 struct MRubyAssocData {
   Downstream *downstream;
+  int phase;
   bool request_headers_dirty;
   bool response_headers_dirty;
 };
@@ -69,6 +76,10 @@ std::unique_ptr<MRubyContext> create_mruby_context();
 
 // Return interned |ptr|.
 mrb_sym intern_ptr(mrb_state *mrb, void *ptr);
+
+// Checks that |phase| is set in |phase_mask|.  If not set, raise
+// exception.
+void check_phase(mrb_state *mrb, int phase, int phase_mask);
 
 } // namespace mruby
 

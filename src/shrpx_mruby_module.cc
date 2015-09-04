@@ -90,6 +90,10 @@ void init_module(mrb_state *mrb) {
 
   mrb_define_class_method(mrb, module, "run", run,
                           MRB_ARGS_REQ(1) | MRB_ARGS_BLOCK());
+  mrb_define_const(mrb, module, "REQUEST_PHASE",
+                   mrb_fixnum_value(PHASE_REQUEST));
+  mrb_define_const(mrb, module, "RESPONSE_PHASE",
+                   mrb_fixnum_value(PHASE_RESPONSE));
 
   init_env_class(mrb, module);
   init_request_class(mrb, module);
