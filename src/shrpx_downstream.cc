@@ -166,11 +166,13 @@ Downstream::~Downstream() {
     ev_timer_stop(loop, &downstream_rtimer_);
     ev_timer_stop(loop, &downstream_wtimer_);
 
+#ifdef HAVE_MRUBY
     auto handler = upstream_->get_client_handler();
     auto worker = handler->get_worker();
     auto mruby_ctx = worker->get_mruby_context();
 
     mruby_ctx->delete_downstream(this);
+#endif // HAVE_MRUBY
   }
 
   // DownstreamConnection may refer to this object.  Delete it now
