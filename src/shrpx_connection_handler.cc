@@ -130,6 +130,13 @@ ConnectionHandler::~ConnectionHandler() {
     }
     SSL_CTX_free(ssl_ctx);
   }
+
+  // Free workers before destroying ev_loop
+  workers_.clear();
+
+  for (auto loop : worker_loops_) {
+    ev_loop_destroy(loop);
+  }
 }
 
 void ConnectionHandler::set_ticket_keys_to_worker(
@@ -193,6 +200,7 @@ int ConnectionHandler::create_worker_thread(size_t num) {
 #endif // HAVE_MRUBY
 
     workers_.push_back(std::move(worker));
+    worker_loops_.push_back(loop);
 
     if (LOG_ENABLED(INFO)) {
       LLOG(INFO, this) << "Created thread #" << workers_.size() - 1;

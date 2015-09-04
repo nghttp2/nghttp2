@@ -104,7 +104,6 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
 Worker::~Worker() {
   ev_async_stop(loop_, &w_);
   ev_timer_stop(loop_, &mcpool_clear_timer_);
-  ev_loop_destroy(loop_);
 }
 
 void Worker::schedule_clear_mcpool() {
