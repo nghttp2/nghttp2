@@ -1,3 +1,3 @@
-Nghttpx.run do |resp, req|
-  req.set_header "User-Agent", "mruby"
+Nghttpx.run do |env|
+  env.req.set_header "User-Agent", "mruby"
 end
