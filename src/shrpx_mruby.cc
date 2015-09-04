@@ -101,6 +101,9 @@ int MRubyContext::run_on_response_proc(Downstream *downstream) {
 }
 
 void MRubyContext::delete_downstream(Downstream *downstream) {
+  if (!mrb_) {
+    return;
+  }
   delete_downstream_from_module(mrb_, downstream);
 }
 
