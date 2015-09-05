@@ -1689,7 +1689,7 @@ int Http2Upstream::initiate_push(Downstream *downstream, const char *uri,
                                  size_t len) {
   int rv;
 
-  if (len == 0 ||
+  if (len == 0 || get_config()->no_server_push ||
       nghttp2_session_get_remote_settings(session_,
                                           NGHTTP2_SETTINGS_ENABLE_PUSH) == 0 ||
       get_config()->http2_proxy || get_config()->client_proxy ||
