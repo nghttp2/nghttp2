@@ -156,6 +156,11 @@ SIGNALS).
 MRUBY SCRIPTING
 ---------------
 
+.. warning::
+
+  The current mruby extension API is experimental and not frozen.  The
+  API is subject to change in the future release.
+
 nghttpx allows users to extend its capability using mruby scripts.
 nghttpx has 2 hook points to execute mruby script: request phase and
 response phase.  The request phase hook is invoked after all request
