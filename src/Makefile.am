@@ -148,7 +148,8 @@ nghttpx_CPPFLAGS = ${libnghttpx_a_CPPFLAGS}
 nghttpx_LDADD = libnghttpx.a ${LDADD}
 
 if HAVE_MRUBY
-nghttpx_CPPFLAGS += -I${top_srcdir}/third-party/mruby/include @LIBMRUBY_CFLAGS@
+libnghttpx_a_CPPFLAGS += \
+	-I${top_srcdir}/third-party/mruby/include @LIBMRUBY_CFLAGS@
 nghttpx_LDADD += -L${top_builddir}/third-party/mruby/build/lib @LIBMRUBY_LIBS@
 endif # HAVE_MRUBY
 

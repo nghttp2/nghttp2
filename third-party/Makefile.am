@@ -36,14 +36,15 @@ if HAVE_MRUBY
 
 mruby:
 	git submodule update --init
-	MRUBY_CONFIG=${srcdir}/build_config.rb \
-	BUILD_DIR=${abs_builddir}/mruby/build \
-	${srcdir}/mruby/minirake -f ${srcdir}/mruby/Rakefile
+	MRUBY_CONFIG="${srcdir}/build_config.rb" \
+	BUILD_DIR="${abs_builddir}/mruby/build" \
+	CC="${CC}" CXX="${CXX}" LD="${LD}" \
+	"${srcdir}/mruby/minirake" -f "${srcdir}/mruby/Rakefile"
 
 all-local: mruby
 
 clean-local:
-	-rm -rf ${abs_builddir}/mruby/build
+	-rm -rf "${abs_builddir}/mruby/build"
 
 endif # HAVE_MRUBY
 
