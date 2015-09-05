@@ -1286,6 +1286,8 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
   //   don't want to push for HEAD request.  Not sure other methods
   //   are also eligible for push.
   if (!get_config()->no_server_push &&
+      nghttp2_session_get_remote_settings(session_,
+                                          NGHTTP2_SETTINGS_ENABLE_PUSH) == 1 &&
       get_config()->downstream_proto == PROTO_HTTP &&
       !get_config()->http2_proxy && (downstream->get_stream_id() % 2) &&
       downstream->get_response_header(http2::HD_LINK) &&
