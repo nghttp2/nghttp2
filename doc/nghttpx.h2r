@@ -59,17 +59,12 @@ header field to initiate server push:
   Link: </fonts/font.woff>; rel=preload
   Link: </css/theme.css>; rel=preload
 
-Currently, the following restrictions are applied for server push:
+Currently, the following restriction is applied for server push:
 
-1. URI-reference must not contain authority.  If it exists, it is not
-   pushed.  ``/fonts/font.woff`` and ``css/theme.css`` are eligible to
-   be pushed.  ``https://example.org/fonts/font.woff`` and
-   ``//example.org/css/theme.css`` are not.
-
-2. The associated stream must have method "GET" or "POST".  The
+1. The associated stream must have method "GET" or "POST".  The
    associated stream's status code must be 200.
 
-These limitations may be loosened in the future release.
+This limitation may be loosened in the future release.
 
 UNIX DOMAIN SOCKET
 ------------------
