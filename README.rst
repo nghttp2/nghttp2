@@ -119,7 +119,9 @@ mruby with C++ ABI explicitly turned on, and probably need other
 mrgems, mruby is manged by git submodule under third-party/mruby
 directory.  Currently, mruby support for nghttpx is disabled by
 default.  To enable mruby support, use ``--with-mruby`` configure
-option.
+option.  Note that at the time of this writing, libmruby-dev and mruby
+packages in Debian/Ubuntu are not usable for nghttp2, since they do
+not enable C++ ABI.
 
 Building from git
 -----------------
@@ -134,6 +136,11 @@ used::
     $ make
 
 To compile the source code, gcc >= 4.8.3 or clang >= 3.4 is required.
+
+.. note::
+
+   To enable mruby support in nghttpx, use ``--with-mruby`` configure
+   option.
 
 .. note::
 
