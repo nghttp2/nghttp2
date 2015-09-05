@@ -282,6 +282,15 @@ and :rb:attr:`Nghttpx::Env#resp` respectively.
 
         Clear all existing request header fields.
 
+    .. rb:method:: push uri
+
+        Initiate to push resource identified by *uri*.  Only HTTP/2
+        protocol supports this feature.  For the other protocols, this
+        method is noop.  *uri* can be absolute URI, absolute path or
+        relative path to the current request.  For absolute or
+        relative path, scheme and authority are inherited from the
+        current request.  Currently, method is always GET.
+
 .. rb:class:: Response
 
     Object to represent response from backend server.
