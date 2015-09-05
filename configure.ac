@@ -121,8 +121,8 @@ AC_ARG_WITH([spdylay],
 
 AC_ARG_WITH([mruby],
     [AS_HELP_STRING([--with-mruby],
-                    [Use mruby [default=check]])],
-    [request_mruby=$withval], [request_mruby=check])
+                    [Use mruby [default=no]])],
+    [request_mruby=$withval], [request_mruby=no])
 
 AC_ARG_WITH([cython],
     [AS_HELP_STRING([--with-cython=PATH],
@@ -376,28 +376,14 @@ fi
 AM_CONDITIONAL([HAVE_SPDYLAY], [ test "x${have_spdylay}" = "xyes" ])
 
 # mruby (for src/nghttpx)
-AC_LANG_PUSH(C++)
-LIBS_OLD=$LIBS
-have_mruby=no
-if test "x${request_mruby}" != "xno"; then
-  AC_CHECK_LIB([mruby], [mrb_open], [have_mruby=yes], [have_mruby=no], [-lm])
-  if test "x${have_mruby}" = "xyes"; then
-    AC_CHECK_HEADER([mruby.h], [have_mruby=yes], [have_mruby=no])
-    if test "x${have_mruby}" = "xyes"; then
-      AC_DEFINE([HAVE_MRUBY], [1], [Define to 1 if you have `mruby` library.])
-      LIBMRUBY_LIBS="-lmruby -lm"
-      LIBMRUBY_CFLAGS=
-      AC_SUBST([LIBMRUBY_LIBS])
-      AC_SUBST([LIBMRUBY_CFLAGS])
-    fi
-  fi
-fi
-LIBS=$LIBS_OLD
-AC_LANG_POP()
-
-if test "x${request_mruby}" = "xyes" &&
-   test "x${have_mruby}" != "xyes"; then
-  AC_MSG_ERROR([mruby was requested (--with-mruby) but not found])
+if test "x${request_mruby}" = "xyes"; then
+  # We are going to build mruby
+  have_mruby=yes
+  AC_DEFINE([HAVE_MRUBY], [1], [Define to 1 if you have `mruby` library.])
+  LIBMRUBY_LIBS="-lmruby -lm"
+  LIBMRUBY_CFLAGS=
+  AC_SUBST([LIBMRUBY_LIBS])
+  AC_SUBST([LIBMRUBY_CFLAGS])
 fi
 
 AM_CONDITIONAL([HAVE_MRUBY], [test "x${have_mruby}" = "xyes"])

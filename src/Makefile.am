@@ -141,10 +141,13 @@ endif # HAVE_MRUBY
 
 noinst_LIBRARIES = libnghttpx.a
 libnghttpx_a_SOURCES = ${NGHTTPX_SRCS}
+libnghttpx_a_CPPFLAGS = ${AM_CPPFLAGS} \
+	-I${top_srcdir}/third-party/mruby/include @LIBMRUBY_CFLAGS@
 
 nghttpx_SOURCES = shrpx.cc shrpx.h
-nghttpx_CPPFLAGS = ${AM_CPPFLAGS} @LIBMRUBY_CFLAGS@
-nghttpx_LDADD = libnghttpx.a ${LDADD} @LIBMRUBY_LIBS@
+nghttpx_CPPFLAGS = ${libnghttpx_a_CPPFLAGS}
+nghttpx_LDADD = libnghttpx.a ${LDADD} \
+	-L${top_builddir}/third-party/mruby/build/lib @LIBMRUBY_LIBS@
 
 if HAVE_CUNIT
 check_PROGRAMS += nghttpx-unittest
@@ -158,10 +161,12 @@ nghttpx_unittest_SOURCES = shrpx-unittest.cc \
 	nghttp2_gzip.c nghttp2_gzip.h \
 	buffer_test.cc buffer_test.h \
 	memchunk_test.cc memchunk_test.h
-nghttpx_unittest_CPPFLAGS = ${AM_CPPFLAGS} @LIBMRUBY_CFLAGS@ \
+nghttpx_unittest_CPPFLAGS = ${AM_CPPFLAGS} \
+	-I${top_srcdir}/third-party/mruby/include @LIBMRUBY_CFLAGS@ \
 	-DNGHTTP2_TESTS_DIR=\"$(top_srcdir)/tests\"
 nghttpx_unittest_LDADD = libnghttpx.a ${LDADD} \
-	@LIBMRUBY_LIBS@ @CUNIT_LIBS@ @TESTLDADD@
+	-L${top_builddir}/third-party/mruby/build/lib @LIBMRUBY_LIBS@ \
+	@CUNIT_LIBS@ @TESTLDADD@
 
 TESTS += nghttpx-unittest
 endif # HAVE_CUNIT
