@@ -31,7 +31,7 @@ before_script:
   - autoreconf -i
   - automake
   - autoconf
-  - ./configure --enable-werror
+  - ./configure --enable-werror --with-mruby
 script:
   - make
   - make check
