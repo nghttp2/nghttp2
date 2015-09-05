@@ -1308,6 +1308,91 @@ const char *to_method_string(int method_token) {
   return http_method_str(static_cast<http_method>(method_token));
 }
 
+int get_pure_path_component(const char **base, size_t *baselen,
+                            const std::string &uri) {
+  int rv;
+
+  http_parser_url u{};
+  rv = http_parser_parse_url(uri.c_str(), uri.size(), 0, &u);
+  if (rv != 0) {
+    return -1;
+  }
+
+  if (u.field_set & (1 << UF_PATH)) {
+    auto &f = u.field_data[UF_PATH];
+    *base = uri.c_str() + f.off;
+    *baselen = f.len;
+
+    return 0;
+  }
+
+  *base = "/";
+  *baselen = 1;
+
+  return 0;
+}
+
+int construct_push_component(std::string &scheme, std::string &authority,
+                             std::string &path, const char *base,
+                             size_t baselen, const char *uri, size_t len) {
+  int rv;
+  const char *rel, *relq = nullptr;
+  size_t rellen, relqlen = 0;
+
+  http_parser_url u{};
+
+  rv = http_parser_parse_url(uri, len, 0, &u);
+
+  if (rv != 0) {
+    if (uri[0] == '/') {
+      return -1;
+    }
+
+    // treat link_url as relative URI.
+    auto end = std::find(uri, uri + len, '#');
+    auto q = std::find(uri, end, '?');
+
+    rel = uri;
+    rellen = q - uri;
+    if (q != end) {
+      relq = q + 1;
+      relqlen = end - relq;
+    }
+  } else {
+    if (u.field_set & (1 << UF_SCHEMA)) {
+      http2::copy_url_component(scheme, &u, UF_SCHEMA, uri);
+    }
+
+    if (u.field_set & (1 << UF_HOST)) {
+      http2::copy_url_component(authority, &u, UF_HOST, uri);
+      if (u.field_set & (1 << UF_PORT)) {
+        authority += ":";
+        authority += util::utos(u.port);
+      }
+    }
+
+    if (u.field_set & (1 << UF_PATH)) {
+      auto &f = u.field_data[UF_PATH];
+      rel = uri + f.off;
+      rellen = f.len;
+    } else {
+      rel = "/";
+      rellen = 1;
+    }
+
+    if (u.field_set & (1 << UF_QUERY)) {
+      auto &f = u.field_data[UF_QUERY];
+      relq = uri + f.off;
+      relqlen = f.len;
+    }
+  }
+
+  path =
+      http2::path_join(base, baselen, nullptr, 0, rel, rellen, relq, relqlen);
+
+  return 0;
+}
+
 } // namespace http2
 
 } // namespace nghttp2

@@ -1203,4 +1203,9 @@ int SpdyUpstream::on_downstream_reset(bool no_retry) {
   return 0;
 }
 
+int SpdyUpstream::initiate_push(Downstream *downstream, const char *uri,
+                                size_t len) {
+  return 0;
+}
+
 } // namespace shrpx

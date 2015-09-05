@@ -1160,4 +1160,9 @@ fail:
   return 0;
 }
 
+int HttpsUpstream::initiate_push(Downstream *downstream, const char *uri,
+                                 size_t len) {
+  return 0;
+}
+
 } // namespace shrpx

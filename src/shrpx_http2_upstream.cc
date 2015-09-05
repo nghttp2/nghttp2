@@ -1582,80 +1582,31 @@ int Http2Upstream::on_downstream_reset(bool no_retry) {
 
 int Http2Upstream::prepare_push_promise(Downstream *downstream) {
   int rv;
-  http_parser_url u{};
-  rv = http_parser_parse_url(downstream->get_request_path().c_str(),
-                             downstream->get_request_path().size(), 0, &u);
+  const char *base;
+  size_t baselen;
+
+  rv = http2::get_pure_path_component(&base, &baselen,
+                                      downstream->get_request_path());
   if (rv != 0) {
     return 0;
   }
-  const char *base;
-  size_t baselen;
-  if (u.field_set & (1 << UF_PATH)) {
-    auto &f = u.field_data[UF_PATH];
-    base = downstream->get_request_path().c_str() + f.off;
-    baselen = f.len;
-  } else {
-    base = "/";
-    baselen = 1;
-  }
+
   for (auto &kv : downstream->get_response_headers()) {
     if (kv.token != http2::HD_LINK) {
       continue;
     }
     for (auto &link :
          http2::parse_link_header(kv.value.c_str(), kv.value.size())) {
-      auto link_url = link.uri.first;
-      auto link_urllen = link.uri.second - link.uri.first;
 
-      const char *rel;
-      size_t rellen;
-      const char *relq = nullptr;
-      size_t relqlen = 0;
+      auto uri = link.uri.first;
+      auto len = link.uri.second - link.uri.first;
 
-      std::string authority, scheme;
-      http_parser_url v{};
-      rv = http_parser_parse_url(link_url, link_urllen, 0, &v);
+      std::string scheme, authority, path;
+
+      rv = http2::construct_push_component(scheme, authority, path, base,
+                                           baselen, uri, len);
       if (rv != 0) {
-        assert(link_urllen);
-        if (link_url[0] == '/') {
-          continue;
-        }
-        // treat link_url as relative URI.
-        auto end = std::find(link_url, link_url + link_urllen, '#');
-        auto q = std::find(link_url, end, '?');
-        rel = link_url;
-        rellen = q - link_url;
-        if (q != end) {
-          relq = q + 1;
-          relqlen = end - relq;
-        }
-      } else {
-        if (v.field_set & (1 << UF_SCHEMA)) {
-          http2::copy_url_component(scheme, &v, UF_SCHEMA, link_url);
-        }
-
-        if (v.field_set & (1 << UF_HOST)) {
-          http2::copy_url_component(authority, &v, UF_HOST, link_url);
-          if (v.field_set & (1 << UF_PORT)) {
-            authority += ":";
-            authority += util::utos(v.port);
-          }
-        }
-
-        if (v.field_set & (1 << UF_PATH)) {
-          auto &f = v.field_data[UF_PATH];
-          rel = link_url + f.off;
-          rellen = f.len;
-        } else {
-          rel = "/";
-          rellen = 1;
-        }
-
-        if (v.field_set & (1 << UF_QUERY)) {
-          auto &f = v.field_data[UF_QUERY];
-          relq = link_url + f.off;
-          relqlen = f.len;
-        }
+        continue;
       }
 
       if (scheme.empty()) {
@@ -1666,8 +1617,6 @@ int Http2Upstream::prepare_push_promise(Downstream *downstream) {
         authority = downstream->get_request_http2_authority();
       }
 
-      auto path = http2::path_join(base, baselen, nullptr, 0, rel, rellen, relq,
-                                   relqlen);
       rv = submit_push_promise(scheme, authority, path, downstream);
       if (rv != 0) {
         return -1;
@@ -1731,6 +1680,52 @@ int Http2Upstream::submit_push_promise(const std::string &scheme,
     }
     ULOG(INFO, this) << "HTTP push request headers. promised_stream_id=" << rv
                      << "\n" << ss.str();
+  }
+
+  return 0;
+}
+
+int Http2Upstream::initiate_push(Downstream *downstream, const char *uri,
+                                 size_t len) {
+  int rv;
+
+  if (len == 0 ||
+      nghttp2_session_get_remote_settings(session_,
+                                          NGHTTP2_SETTINGS_ENABLE_PUSH) == 0 ||
+      get_config()->http2_proxy || get_config()->client_proxy ||
+      (downstream->get_stream_id() % 2) == 0) {
+    return 0;
+  }
+
+  const char *base;
+  size_t baselen;
+
+  rv = http2::get_pure_path_component(&base, &baselen,
+                                      downstream->get_request_path());
+  if (rv != 0) {
+    return -1;
+  }
+
+  std::string scheme, authority, path;
+
+  rv = http2::construct_push_component(scheme, authority, path, base, baselen,
+                                       uri, len);
+  if (rv != 0) {
+    return -1;
+  }
+
+  if (scheme.empty()) {
+    scheme = downstream->get_request_http2_scheme();
+  }
+
+  if (authority.empty()) {
+    authority = downstream->get_request_http2_authority();
+  }
+
+  rv = submit_push_promise(scheme, authority, path, downstream);
+
+  if (rv != 0) {
+    return -1;
   }
 
   return 0;

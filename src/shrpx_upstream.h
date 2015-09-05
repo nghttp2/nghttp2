@@ -64,6 +64,9 @@ public:
                           size_t consumed) = 0;
   virtual int send_reply(Downstream *downstream, const uint8_t *body,
                          size_t bodylen) = 0;
+
+  virtual int initiate_push(Downstream *downstream, const char *uri,
+                            size_t len) = 0;
 };
 
 } // namespace shrpx

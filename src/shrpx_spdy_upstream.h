@@ -76,6 +76,8 @@ public:
 
   virtual int send_reply(Downstream *downstream, const uint8_t *body,
                          size_t bodylen);
+  virtual int initiate_push(Downstream *downstream, const char *uri,
+                            size_t len);
 
   bool get_flow_control() const;
 
