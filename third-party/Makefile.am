@@ -30,12 +30,13 @@ libhttp_parser_la_SOURCES = \
 	http-parser/http_parser.c \
 	http-parser/http_parser.h
 
-.PHONY: all-local clean mruby
-
 if HAVE_MRUBY
 
+EXTRA_DIST = build_config.rb mruby/*
+
+.PHONY: all-local clean mruby
+
 mruby:
-	git submodule update --init
 	MRUBY_CONFIG="${srcdir}/build_config.rb" \
 	BUILD_DIR="${abs_builddir}/mruby/build" \
 	CC="${CC}" CXX="${CXX}" LD="${LD}" \

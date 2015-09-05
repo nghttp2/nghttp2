@@ -31,6 +31,7 @@ before_script:
   - autoreconf -i
   - automake
   - autoconf
+  - git submodule update --init
   - ./configure --enable-werror --with-mruby
 script:
   - make

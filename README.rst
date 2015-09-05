@@ -139,8 +139,9 @@ To compile the source code, gcc >= 4.8.3 or clang >= 3.4 is required.
 
 .. note::
 
-   To enable mruby support in nghttpx, use ``--with-mruby`` configure
-   option.
+   To enable mruby support in nghttpx, run ``git submodule update
+   --init`` before running configure script, and use ``--with-mruby``
+   configure option.
 
 .. note::
 
