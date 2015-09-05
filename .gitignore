@@ -6,6 +6,7 @@
 *.lo
 *.m4
 *.o
+*.pyc
 .deps/
 .libs/
 INSTALL
