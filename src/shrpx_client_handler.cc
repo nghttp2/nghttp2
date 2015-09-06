@@ -382,6 +382,16 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
   conn_.rlimit.startw();
   ev_timer_again(conn_.loop, &conn_.rt);
 
+  if (get_config()->accept_proxy_protocol) {
+    read_ = write_ = &ClientHandler::read_clear;
+    on_read_ = &ClientHandler::proxy_protocol_read;
+    on_write_ = &ClientHandler::upstream_noop;
+  } else {
+    setup_upstream_io_callback();
+  }
+}
+
+void ClientHandler::setup_upstream_io_callback() {
   if (conn_.tls.ssl) {
     conn_.prepare_server_handshake();
     read_ = write_ = &ClientHandler::tls_handshake;
@@ -828,5 +838,186 @@ RateLimit *ClientHandler::get_wlimit() { return &conn_.wlimit; }
 ev_io *ClientHandler::get_wev() { return &conn_.wev; }
 
 Worker *ClientHandler::get_worker() const { return worker_; }
+
+namespace {
+ssize_t parse_proxy_line_port(const uint8_t *first, const uint8_t *last) {
+  auto p = first;
+  int32_t port = 0;
+
+  for (; p != last && util::isDigit(*p); ++p) {
+    port *= 10;
+    port += *p - '0';
+
+    if (port > 65535) {
+      return -1;
+    }
+  }
+
+  return p - first;
+}
+} // namespace
+
+int ClientHandler::proxy_protocol_read() {
+  if (LOG_ENABLED(INFO)) {
+    CLOG(INFO, this) << "PROXY-protocol: Started";
+  }
+
+  auto first = rb_.pos;
+
+  // NULL character really destroys getaddrinfo function.  We won't
+  // expect it in PROXY protocol line, so find it here.
+  auto chrs = std::array<char, 2>{{'\r', '\0'}};
+  auto end = std::find_first_of(rb_.pos, rb_.pos + rb_.rleft(),
+                                std::begin(chrs), std::end(chrs));
+  if (end + 2 > rb_.pos + rb_.rleft() || *end == '\0' || end[1] != '\n') {
+    return -1;
+  }
+
+  constexpr const char HEADER[] = "PROXY ";
+
+  if (rb_.rleft() < str_size(HEADER)) {
+    if (LOG_ENABLED(INFO)) {
+      CLOG(INFO, this) << "PROXY-protocol-v1: PROXY version 1 ID not found";
+    }
+    return -1;
+  }
+
+  if (!util::streq_l(HEADER, rb_.pos, str_size(HEADER))) {
+    if (LOG_ENABLED(INFO)) {
+      CLOG(INFO, this) << "PROXY-protocol-v1: Bad PROXY protocol version 1 ID";
+    }
+    return -1;
+  }
+
+  rb_.drain(str_size(HEADER));
+
+  int family;
+
+  if (rb_.pos[0] == 'T') {
+    if (rb_.rleft() < 5) {
+      if (LOG_ENABLED(INFO)) {
+        CLOG(INFO, this) << "PROXY-protocol-v1: INET protocol family not found";
+      }
+      return -1;
+    }
+
+    if (util::streq_l("TCP4 ", rb_.pos, 5)) {
+      family = AF_INET;
+    } else if (util::streq_l("TCP6 ", rb_.pos, 5)) {
+      family = AF_INET6;
+    } else {
+      if (LOG_ENABLED(INFO)) {
+        CLOG(INFO, this) << "PROXY-protocol-v1: Unknown INET protocol family";
+      }
+      return -1;
+    }
+
+    rb_.drain(5);
+  } else {
+    if (rb_.rleft() < 7) {
+      if (LOG_ENABLED(INFO)) {
+        CLOG(INFO, this) << "PROXY-protocol-v1: INET protocol family not found";
+      }
+      return -1;
+    }
+    if (!util::streq_l("UNKNOWN", rb_.pos, 7)) {
+      if (LOG_ENABLED(INFO)) {
+        CLOG(INFO, this) << "PROXY-protocol-v1: Unknown INET protocol family";
+      }
+      return -1;
+    }
+
+    return 0;
+  }
+
+  // source address
+  auto token_end = std::find(rb_.pos, end, ' ');
+  if (token_end == end) {
+    if (LOG_ENABLED(INFO)) {
+      CLOG(INFO, this) << "PROXY-protocol-v1: Source address not found";
+    }
+    return -1;
+  }
+
+  *token_end = '\0';
+  if (!util::numeric_host(reinterpret_cast<const char *>(rb_.pos), family)) {
+    if (LOG_ENABLED(INFO)) {
+      CLOG(INFO, this) << "PROXY-protocol-v1: Invalid source address";
+    }
+    return -1;
+  }
+
+  auto src_addr = rb_.pos;
+  auto src_addrlen = token_end - rb_.pos;
+
+  rb_.drain(token_end - rb_.pos + 1);
+
+  // destination address
+  token_end = std::find(rb_.pos, end, ' ');
+  if (token_end == end) {
+    if (LOG_ENABLED(INFO)) {
+      CLOG(INFO, this) << "PROXY-protocol-v1: Destination address not found";
+    }
+    return -1;
+  }
+
+  *token_end = '\0';
+  if (!util::numeric_host(reinterpret_cast<const char *>(rb_.pos), family)) {
+    if (LOG_ENABLED(INFO)) {
+      CLOG(INFO, this) << "PROXY-protocol-v1: Invalid destination address";
+    }
+    return -1;
+  }
+
+  // Currently we don't use destination address
+
+  rb_.drain(token_end - rb_.pos + 1);
+
+  // source port
+  auto n = parse_proxy_line_port(rb_.pos, end);
+  if (n <= 0 || *(rb_.pos + n) != ' ') {
+    if (LOG_ENABLED(INFO)) {
+      CLOG(INFO, this) << "PROXY-protocol-v1: Invalid source port";
+    }
+    return -1;
+  }
+
+  rb_.pos[n] = '\0';
+  auto src_port = rb_.pos;
+  auto src_portlen = n;
+
+  rb_.drain(n + 1);
+
+  // destination  port
+  n = parse_proxy_line_port(rb_.pos, end);
+  if (n <= 0 || rb_.pos + n != end) {
+    if (LOG_ENABLED(INFO)) {
+      CLOG(INFO, this) << "PROXY-protocol-v1: Invalid destination port";
+    }
+    return -1;
+  }
+
+  // Currently we don't use destination port
+
+  rb_.drain(end + 2 - rb_.pos);
+
+  ipaddr_.assign(src_addr, src_addr + src_addrlen);
+  port_.assign(src_port, src_port + src_portlen);
+
+  if (LOG_ENABLED(INFO)) {
+    CLOG(INFO, this) << "PROXY-protocol-v1: Finished, " << (rb_.pos - first)
+                     << " bytes read";
+  }
+
+  setup_upstream_io_callback();
+
+  // Run on_read to process data left in buffer since they are not
+  // notified further
+  if (on_read() != 0) {
+    return -1;
+  }
+
+  return 0;
+}
 
 } // namespace shrpx

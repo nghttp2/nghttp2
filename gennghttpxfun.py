@@ -100,6 +100,7 @@ OPTIONS = [
     "tls-ticket-key-memcached-max-fail",
     "request-phase-file",
     "response-phase-file",
+    "accept-proxy-protocol",
     "conf",
 ]
 

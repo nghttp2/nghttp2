@@ -636,9 +636,13 @@ void write_uri_field(std::ostream &o, const char *uri, const http_parser_url &u,
 }
 
 bool numeric_host(const char *hostname) {
+  return numeric_host(hostname, AF_UNSPEC);
+}
+
+bool numeric_host(const char *hostname, int family) {
   struct addrinfo *res;
   struct addrinfo hints {};
-  hints.ai_family = AF_UNSPEC;
+  hints.ai_family = family;
   hints.ai_flags = AI_NUMERICHOST;
   if (getaddrinfo(hostname, nullptr, &hints, &res)) {
     return false;

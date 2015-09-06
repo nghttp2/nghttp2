@@ -71,6 +71,8 @@ public:
   int upstream_http1_connhd_read();
   int upstream_write();
 
+  int proxy_protocol_read();
+
   // Performs I/O operation.  Internally calls on_read()/on_write().
   int do_read();
   int do_write();
@@ -129,6 +131,8 @@ public:
 
   void signal_write();
   ev_io *get_wev();
+
+  void setup_upstream_io_callback();
 
 private:
   Connection conn_;
