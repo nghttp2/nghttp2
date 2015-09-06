@@ -96,6 +96,7 @@ public:
   const std::string &get_http2_settings() const;
   // downstream request API
   const Headers &get_request_headers() const;
+  Headers &get_request_headers();
   // Crumbles (split cookie by ";") in request_headers_ and returns
   // them.  Headers::no_index is inherited.
   Headers crumble_request_cookie();
@@ -149,15 +150,19 @@ public:
   get_request_start_time() const;
   void append_request_path(const char *data, size_t len);
   // Returns request path. For HTTP/1.1, this is request-target. For
-  // HTTP/2, this is :path header field value.
+  // HTTP/2, this is :path header field value.  For CONNECT request,
+  // this is empty.
   const std::string &get_request_path() const;
   // Returns HTTP/2 :scheme header field value.
   const std::string &get_request_http2_scheme() const;
   void set_request_http2_scheme(std::string scheme);
-  // Returns HTTP/2 :authority header field value.  We also set the
-  // value retrieved from absolute-form HTTP/1 request.
+  // Returns :authority or host header field value.  We may deduce it
+  // from absolute-form HTTP/1 request.  We also store authority-form
+  // HTTP/1 request.  This could be empty if request comes from
+  // HTTP/1.0 without Host header field and origin-form.
   const std::string &get_request_http2_authority() const;
   void set_request_http2_authority(std::string authority);
+  void append_request_http2_authority(const char *data, size_t len);
   void set_request_major(int major);
   void set_request_minor(int minor);
   int get_request_major() const;
@@ -207,6 +212,7 @@ public:
   bool request_submission_ready() const;
   // downstream response API
   const Headers &get_response_headers() const;
+  Headers &get_response_headers();
   // Lower the response header field names and indexes response
   // headers.  If there are invalid headers (e.g., multiple
   // Content-Length with different values), returns -1.
@@ -216,6 +222,7 @@ public:
   // the beginning.  If no such header is found, returns nullptr.
   // This function must be called after response headers are indexed.
   const Headers::value_type *get_response_header(int16_t token) const;
+  Headers::value_type *get_response_header(int16_t token);
   // Rewrites the location response header field.
   void rewrite_location_response_header(const std::string &upstream_scheme);
   void add_response_header(std::string name, std::string value);

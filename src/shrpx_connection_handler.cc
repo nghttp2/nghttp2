@@ -156,7 +156,7 @@ void ConnectionHandler::worker_reopen_log_files() {
   }
 }
 
-void ConnectionHandler::create_single_worker() {
+int ConnectionHandler::create_single_worker() {
   auto cert_tree = ssl::create_cert_lookup_tree();
   auto sv_ssl_ctx = ssl::setup_server_ssl_context(all_ssl_ctx_, cert_tree);
   auto cl_ssl_ctx = ssl::setup_client_ssl_context();
@@ -167,9 +167,16 @@ void ConnectionHandler::create_single_worker() {
 
   single_worker_ = make_unique<Worker>(loop_, sv_ssl_ctx, cl_ssl_ctx, cert_tree,
                                        ticket_keys_);
+#ifdef HAVE_MRUBY
+  if (single_worker_->create_mruby_context() != 0) {
+    return -1;
+  }
+#endif // HAVE_MRUBY
+
+  return 0;
 }
 
-void ConnectionHandler::create_worker_thread(size_t num) {
+int ConnectionHandler::create_worker_thread(size_t num) {
 #ifndef NOTHREADS
   assert(workers_.size() == 0);
 
@@ -186,7 +193,12 @@ void ConnectionHandler::create_worker_thread(size_t num) {
 
     auto worker = make_unique<Worker>(loop, sv_ssl_ctx, cl_ssl_ctx, cert_tree,
                                       ticket_keys_);
-    worker->run_async();
+#ifdef HAVE_MRUBY
+    if (worker->create_mruby_context() != 0) {
+      return -1;
+    }
+#endif // HAVE_MRUBY
+
     workers_.push_back(std::move(worker));
     worker_loops_.push_back(loop);
 
@@ -194,7 +206,13 @@ void ConnectionHandler::create_worker_thread(size_t num) {
       LLOG(INFO, this) << "Created thread #" << workers_.size() - 1;
     }
   }
+
+  for (auto &worker : workers_) {
+    worker->run_async();
+  }
 #endif // NOTHREADS
+
+  return 0;
 }
 
 void ConnectionHandler::join_worker() {

@@ -98,6 +98,8 @@ OPTIONS = [
     "tls-ticket-key-memcached-interval",
     "tls-ticket-key-memcached-max-retry",
     "tls-ticket-key-memcached-max-fail",
+    "request-phase-file",
+    "response-phase-file",
     "conf",
 ]
 

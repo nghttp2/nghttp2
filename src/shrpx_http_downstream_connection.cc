@@ -209,89 +209,54 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
 }
 
 int HttpDownstreamConnection::push_request_headers() {
-  const char *authority = nullptr, *host = nullptr;
   auto downstream_hostport = get_config()
                                  ->downstream_addr_groups[group_]
                                  .addrs[addr_idx_]
                                  .hostport.get();
-  auto connect_method = downstream_->get_request_method() == HTTP_CONNECT;
+  auto method = downstream_->get_request_method();
+  auto connect_method = method == HTTP_CONNECT;
 
-  if (!get_config()->no_host_rewrite && !get_config()->http2_proxy &&
-      !get_config()->client_proxy && !connect_method) {
-    if (!downstream_->get_request_http2_authority().empty()) {
-      authority = downstream_hostport;
-    }
-    if (downstream_->get_request_header(http2::HD_HOST)) {
-      host = downstream_hostport;
-    }
-  } else {
-    if (!downstream_->get_request_http2_authority().empty()) {
-      authority = downstream_->get_request_http2_authority().c_str();
-    }
-    auto h = downstream_->get_request_header(http2::HD_HOST);
-    if (h) {
-      host = h->value.c_str();
-    }
+  // For HTTP/1.0 request, there is no authority in request.  In that
+  // case, we use backend server's host nonetheless.
+  const char *authority = downstream_hostport;
+  auto &req_authority = downstream_->get_request_http2_authority();
+  auto no_host_rewrite = get_config()->no_host_rewrite ||
+                         get_config()->http2_proxy ||
+                         get_config()->client_proxy || connect_method;
+
+  if (no_host_rewrite && !req_authority.empty()) {
+    authority = req_authority.c_str();
   }
 
-  if (!authority && !host) {
-    // upstream is HTTP/1.0.  We use backend server's host
-    // nonetheless.
-    host = downstream_hostport;
-  }
-
-  if (authority) {
-    downstream_->set_request_downstream_host(authority);
-  } else {
-    downstream_->set_request_downstream_host(host);
-  }
+  downstream_->set_request_downstream_host(authority);
 
   downstream_->assemble_request_cookie();
 
   // Assume that method and request path do not contain \r\n.
-  std::string hdrs = http2::to_method_string(downstream_->get_request_method());
+  std::string hdrs = http2::to_method_string(method);
   hdrs += ' ';
 
   auto &scheme = downstream_->get_request_http2_scheme();
+  auto &path = downstream_->get_request_path();
 
   if (connect_method) {
-    if (authority) {
-      hdrs += authority;
-    } else {
-      hdrs += downstream_->get_request_path();
-    }
+    hdrs += authority;
   } else if (get_config()->http2_proxy || get_config()->client_proxy) {
     // Construct absolute-form request target because we are going to
     // send a request to a HTTP/1 proxy.
     assert(!scheme.empty());
     hdrs += scheme;
     hdrs += "://";
-
-    if (authority) {
-      hdrs += authority;
-    } else {
-      hdrs += host;
-    }
-
-    // Server-wide OPTIONS takes following form in proxy request:
-    //
-    // OPTIONS http://example.org HTTP/1.1
-    //
-    // Notice that no slash after authority. See
-    // http://tools.ietf.org/html/rfc7230#section-5.3.4
-    if (downstream_->get_request_path() != "*") {
-      hdrs += downstream_->get_request_path();
-    }
+    hdrs += authority;
+    hdrs += path;
+  } else if (method == HTTP_OPTIONS && path.empty()) {
+    // Server-wide OPTIONS
+    hdrs += "*";
   } else {
-    // No proxy case.
-    hdrs += downstream_->get_request_path();
+    hdrs += path;
   }
   hdrs += " HTTP/1.1\r\nHost: ";
-  if (authority) {
-    hdrs += authority;
-  } else {
-    hdrs += host;
-  }
+  hdrs += authority;
   hdrs += "\r\n";
 
   http2::build_http1_headers_from_headers(hdrs,
@@ -774,6 +739,12 @@ int HttpDownstreamConnection::on_read() {
     auto htperr = HTTP_PARSER_ERRNO(&response_htp_);
 
     if (htperr != HPE_OK) {
+      // Handling early return (in other words, response was hijacked
+      // by mruby scripting).
+      if (downstream_->get_response_state() == Downstream::MSG_COMPLETE) {
+        return SHRPX_ERR_DCONN_CANCELED;
+      }
+
       if (LOG_ENABLED(INFO)) {
         DCLOG(INFO, this) << "HTTP parser failure: "
                           << "(" << http_errno_name(htperr) << ") "

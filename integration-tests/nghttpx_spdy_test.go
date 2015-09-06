@@ -230,6 +230,120 @@ func TestS3H1InvalidMethod(t *testing.T) {
 	}
 }
 
+// TestS3H1ReqPhaseSetHeader tests mruby request phase hook
+// modifies request header fields.
+func TestS3H1ReqPhaseSetHeader(t *testing.T) {
+	st := newServerTesterTLS([]string{"--npn-list=spdy/3.1", "--request-phase-file=" + testDir + "/req-set-header.rb"}, t, func(w http.ResponseWriter, r *http.Request) {
+		if got, want := r.Header.Get("User-Agent"), "mruby"; got != want {
+			t.Errorf("User-Agent = %v; want %v", got, want)
+		}
+	})
+	defer st.Close()
+
+	res, err := st.spdy(requestParam{
+		name: "TestS3H1ReqPhaseSetHeader",
+	})
+	if err != nil {
+		t.Fatalf("Error st.spdy() = %v", err)
+	}
+
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+}
+
+// TestS3H1ReqPhaseReturn tests mruby request phase hook returns
+// custom response.
+func TestS3H1ReqPhaseReturn(t *testing.T) {
+	st := newServerTesterTLS([]string{"--npn-list=spdy/3.1", "--request-phase-file=" + testDir + "/return.rb"}, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Fatalf("request should not be forwarded")
+	})
+	defer st.Close()
+
+	res, err := st.spdy(requestParam{
+		name: "TestS3H1ReqPhaseReturn",
+	})
+	if err != nil {
+		t.Fatalf("Error st.spdy() = %v", err)
+	}
+
+	if got, want := res.status, 404; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+
+	hdtests := []struct {
+		k, v string
+	}{
+		{"content-length", "11"},
+		{"from", "mruby"},
+	}
+	for _, tt := range hdtests {
+		if got, want := res.header.Get(tt.k), tt.v; got != want {
+			t.Errorf("%v = %v; want %v", tt.k, got, want)
+		}
+	}
+
+	if got, want := string(res.body), "Hello World"; got != want {
+		t.Errorf("body = %v; want %v", got, want)
+	}
+}
+
+// TestS3H1RespPhaseSetHeader tests mruby response phase hook modifies
+// response header fields.
+func TestS3H1RespPhaseSetHeader(t *testing.T) {
+	st := newServerTesterTLS([]string{"--npn-list=spdy/3.1", "--response-phase-file=" + testDir + "/resp-set-header.rb"}, t, noopHandler)
+	defer st.Close()
+
+	res, err := st.spdy(requestParam{
+		name: "TestS3H1RespPhaseSetHeader",
+	})
+	if err != nil {
+		t.Fatalf("Error st.spdy() = %v", err)
+	}
+
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+
+	if got, want := res.header.Get("alpha"), "bravo"; got != want {
+		t.Errorf("alpha = %v; want %v", got, want)
+	}
+}
+
+// TestS3H1RespPhaseReturn tests mruby response phase hook returns
+// custom response.
+func TestS3H1RespPhaseReturn(t *testing.T) {
+	st := newServerTesterTLS([]string{"--npn-list=spdy/3.1", "--response-phase-file=" + testDir + "/return.rb"}, t, noopHandler)
+	defer st.Close()
+
+	res, err := st.spdy(requestParam{
+		name: "TestS3H1RespPhaseReturn",
+	})
+	if err != nil {
+		t.Fatalf("Error st.spdy() = %v", err)
+	}
+
+	if got, want := res.status, 404; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+
+	hdtests := []struct {
+		k, v string
+	}{
+		{"content-length", "11"},
+		{"from", "mruby"},
+	}
+	for _, tt := range hdtests {
+		if got, want := res.header.Get(tt.k), tt.v; got != want {
+			t.Errorf("%v = %v; want %v", tt.k, got, want)
+		}
+	}
+
+	if got, want := string(res.body), "Hello World"; got != want {
+		t.Errorf("body = %v; want %v", got, want)
+	}
+}
+
 // TestS3H2ConnectFailure tests that server handles the situation that
 // connection attempt to HTTP/2 backend failed.
 func TestS3H2ConnectFailure(t *testing.T) {
@@ -248,5 +362,75 @@ func TestS3H2ConnectFailure(t *testing.T) {
 	want := 503
 	if got := res.status; got != want {
 		t.Errorf("status: %v; want %v", got, want)
+	}
+}
+
+// TestS3H2ReqPhaseReturn tests mruby request phase hook returns
+// custom response.
+func TestS3H2ReqPhaseReturn(t *testing.T) {
+	st := newServerTesterTLS([]string{"--npn-list=spdy/3.1", "--http2-bridge", "--request-phase-file=" + testDir + "/return.rb"}, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Fatalf("request should not be forwarded")
+	})
+	defer st.Close()
+
+	res, err := st.spdy(requestParam{
+		name: "TestS3H2ReqPhaseReturn",
+	})
+	if err != nil {
+		t.Fatalf("Error st.spdy() = %v", err)
+	}
+
+	if got, want := res.status, 404; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+
+	hdtests := []struct {
+		k, v string
+	}{
+		{"content-length", "11"},
+		{"from", "mruby"},
+	}
+	for _, tt := range hdtests {
+		if got, want := res.header.Get(tt.k), tt.v; got != want {
+			t.Errorf("%v = %v; want %v", tt.k, got, want)
+		}
+	}
+
+	if got, want := string(res.body), "Hello World"; got != want {
+		t.Errorf("body = %v; want %v", got, want)
+	}
+}
+
+// TestS3H2RespPhaseReturn tests mruby response phase hook returns
+// custom response.
+func TestS3H2RespPhaseReturn(t *testing.T) {
+	st := newServerTesterTLS([]string{"--npn-list=spdy/3.1", "--http2-bridge", "--response-phase-file=" + testDir + "/return.rb"}, t, noopHandler)
+	defer st.Close()
+
+	res, err := st.spdy(requestParam{
+		name: "TestS3H2RespPhaseReturn",
+	})
+	if err != nil {
+		t.Fatalf("Error st.spdy() = %v", err)
+	}
+
+	if got, want := res.status, 404; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+
+	hdtests := []struct {
+		k, v string
+	}{
+		{"content-length", "11"},
+		{"from", "mruby"},
+	}
+	for _, tt := range hdtests {
+		if got, want := res.header.Get(tt.k), tt.v; got != want {
+			t.Errorf("%v = %v; want %v", tt.k, got, want)
+		}
+	}
+
+	if got, want := string(res.body), "Hello World"; got != want {
+		t.Errorf("body = %v; want %v", got, want)
 	}
 }

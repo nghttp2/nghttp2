@@ -696,6 +696,8 @@ enum {
   SHRPX_OPTID_PRIVATE_KEY_PASSWD_FILE,
   SHRPX_OPTID_READ_BURST,
   SHRPX_OPTID_READ_RATE,
+  SHRPX_OPTID_REQUEST_PHASE_FILE,
+  SHRPX_OPTID_RESPONSE_PHASE_FILE,
   SHRPX_OPTID_RLIMIT_NOFILE,
   SHRPX_OPTID_STREAM_READ_TIMEOUT,
   SHRPX_OPTID_STREAM_WRITE_TIMEOUT,
@@ -1017,6 +1019,11 @@ int option_lookup_token(const char *name, size_t namelen) {
     break;
   case 18:
     switch (name[17]) {
+    case 'e':
+      if (util::strieq_l("request-phase-fil", name, 17)) {
+        return SHRPX_OPTID_REQUEST_PHASE_FILE;
+      }
+      break;
     case 'r':
       if (util::strieq_l("add-request-heade", name, 17)) {
         return SHRPX_OPTID_ADD_REQUEST_HEADER;
@@ -1034,6 +1041,9 @@ int option_lookup_token(const char *name, size_t namelen) {
     case 'e':
       if (util::strieq_l("no-location-rewrit", name, 18)) {
         return SHRPX_OPTID_NO_LOCATION_REWRITE;
+      }
+      if (util::strieq_l("response-phase-fil", name, 18)) {
+        return SHRPX_OPTID_RESPONSE_PHASE_FILE;
       }
       if (util::strieq_l("tls-ticket-key-fil", name, 18)) {
         return SHRPX_OPTID_TLS_TICKET_KEY_FILE;
@@ -1938,6 +1948,14 @@ int parse_config(const char *opt, const char *optarg,
   case SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_MAX_FAIL:
     return parse_uint(&mod_config()->tls_ticket_key_memcached_max_fail, opt,
                       optarg);
+  case SHRPX_OPTID_REQUEST_PHASE_FILE:
+    mod_config()->request_phase_file = strcopy(optarg);
+
+    return 0;
+  case SHRPX_OPTID_RESPONSE_PHASE_FILE:
+    mod_config()->response_phase_file = strcopy(optarg);
+
+    return 0;
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 

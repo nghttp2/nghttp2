@@ -926,9 +926,13 @@ int event_loop() {
 #endif // !NOTHREADS
 
   if (get_config()->num_worker == 1) {
-    conn_handler->create_single_worker();
+    rv = conn_handler->create_single_worker();
   } else {
-    conn_handler->create_worker_thread(get_config()->num_worker);
+    rv = conn_handler->create_worker_thread(get_config()->num_worker);
+  }
+
+  if (rv != 0) {
+    return -1;
   }
 
 #ifndef NOTHREADS
@@ -1726,6 +1730,16 @@ Process:
               Run this program as <USER>.   This option is intended to
               be used to drop root privileges.
 
+Scripting:
+  --request-phase-file=<PATH>
+              Set  mruby  script  file  which will  be  executed  when
+              request  header  fields  are  completely  received  from
+              frontend.  This hook is called request phase hook.
+  --response-phase-file=<PATH>
+              Set  mruby  script  file  which will  be  executed  when
+              response  header  fields  are completely  received  from
+              backend.  This hook is called response phase hook.
+
 Misc:
   --conf=<PATH>
               Load configuration from <PATH>.
@@ -1899,6 +1913,8 @@ int main(int argc, char **argv) {
          89},
         {SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_MAX_FAIL, required_argument, &flag,
          90},
+        {SHRPX_OPT_REQUEST_PHASE_FILE, required_argument, &flag, 91},
+        {SHRPX_OPT_RESPONSE_PHASE_FILE, required_argument, &flag, 92},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -2296,6 +2312,13 @@ int main(int argc, char **argv) {
         cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_MAX_FAIL,
                              optarg);
         break;
+      case 91:
+        // --request-phase-file
+        cmdcfgs.emplace_back(SHRPX_OPT_REQUEST_PHASE_FILE, optarg);
+        break;
+      case 92:
+        // --response-phase-file
+        cmdcfgs.emplace_back(SHRPX_OPT_RESPONSE_PHASE_FILE, optarg);
       default:
         break;
       }
@@ -2613,7 +2636,9 @@ int main(int argc, char **argv) {
   act.sa_handler = SIG_IGN;
   sigaction(SIGPIPE, &act, nullptr);
 
-  event_loop();
+  if (event_loop() != 0) {
+    return -1;
+  }
 
   LOG(NOTICE) << "Shutdown momentarily";
 

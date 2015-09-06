@@ -51,6 +51,14 @@ class Http2Session;
 class ConnectBlocker;
 class MemcachedDispatcher;
 
+#ifdef HAVE_MRUBY
+namespace mruby {
+
+class MRubyContext;
+
+} // namespace mruby
+#endif // HAVE_MRUBY
+
 namespace ssl {
 class CertLookupTree;
 } // namespace ssl
@@ -124,6 +132,12 @@ public:
 
   MemcachedDispatcher *get_session_cache_memcached_dispatcher();
 
+#ifdef HAVE_MRUBY
+  int create_mruby_context();
+
+  mruby::MRubyContext *get_mruby_context() const;
+#endif // HAVE_MRUBY
+
 private:
 #ifndef NOTHREADS
   std::future<void> fut_;
@@ -137,6 +151,9 @@ private:
   WorkerStat worker_stat_;
   std::vector<DownstreamGroup> dgrps_;
   std::unique_ptr<MemcachedDispatcher> session_cache_memcached_dispatcher_;
+#ifdef HAVE_MRUBY
+  std::unique_ptr<mruby::MRubyContext> mruby_ctx_;
+#endif // HAVE_MRUBY
   struct ev_loop *loop_;
 
   // Following fields are shared across threads if

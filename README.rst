@@ -113,6 +113,16 @@ If you are using Ubuntu 14.04 LTS (trusty), run the following to install the nee
 spdylay is not packaged in Ubuntu, so you need to build it yourself:
 http://tatsuhiro-t.github.io/spdylay/
 
+To enable mruby support for nghttpx, `mruby
+<https://github.com/mruby/mruby>`_ is required.  We need to build
+mruby with C++ ABI explicitly turned on, and probably need other
+mrgems, mruby is manged by git submodule under third-party/mruby
+directory.  Currently, mruby support for nghttpx is disabled by
+default.  To enable mruby support, use ``--with-mruby`` configure
+option.  Note that at the time of this writing, libmruby-dev and mruby
+packages in Debian/Ubuntu are not usable for nghttp2, since they do
+not enable C++ ABI.
+
 Building from git
 -----------------
 
@@ -126,6 +136,12 @@ used::
     $ make
 
 To compile the source code, gcc >= 4.8.3 or clang >= 3.4 is required.
+
+.. note::
+
+   To enable mruby support in nghttpx, run ``git submodule update
+   --init`` before running configure script, and use ``--with-mruby``
+   configure option.
 
 .. note::
 

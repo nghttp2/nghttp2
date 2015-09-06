@@ -1,7 +1,7 @@
 /*
  * nghttp2 - HTTP/2 C Library
  *
- * Copyright (c) 2012 Tatsuhiro Tsujikawa
+ * Copyright (c) 2015 Tatsuhiro Tsujikawa
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -22,23 +22,23 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef SHRPX_ERROR_H
-#define SHRPX_ERROR_H
+#ifndef SHRPX_MRUBY_MODULE_ENV_H
+#define SHRPX_MRUBY_MODULE_ENV_H
 
 #include "shrpx.h"
 
+#include <mruby.h>
+
+using namespace nghttp2;
+
 namespace shrpx {
 
-// Deprecated, do not use.
-enum ErrorCode {
-  SHRPX_ERR_SUCCESS = 0,
-  SHRPX_ERR_ERROR = -1,
-  SHRPX_ERR_NETWORK = -100,
-  SHRPX_ERR_EOF = -101,
-  SHRPX_ERR_INPROGRESS = -102,
-  SHRPX_ERR_DCONN_CANCELED = -103,
-};
+namespace mruby {
+
+void init_env_class(mrb_state *mrb, RClass *module);
+
+} // namespace mruby
 
 } // namespace shrpx
 
-#endif // SHRPX_ERROR_H
+#endif // SHRPX_MRUBY_MODULE_ENV_H

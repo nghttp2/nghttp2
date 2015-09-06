@@ -30,5 +30,23 @@ libhttp_parser_la_SOURCES = \
 	http-parser/http_parser.c \
 	http-parser/http_parser.h
 
+if HAVE_MRUBY
+
+EXTRA_DIST = build_config.rb mruby/*
+
+.PHONY: all-local clean mruby
+
+mruby:
+	MRUBY_CONFIG="${srcdir}/build_config.rb" \
+	BUILD_DIR="${abs_builddir}/mruby/build" \
+	CC="${CC}" CXX="${CXX}" LD="${LD}" \
+	"${srcdir}/mruby/minirake" -f "${srcdir}/mruby/Rakefile"
+
+all-local: mruby
+
+clean-local:
+	-rm -rf "${abs_builddir}/mruby/build"
+
+endif # HAVE_MRUBY
 
 endif # ENABLE_THIRD_PARTY

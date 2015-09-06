@@ -119,6 +119,11 @@ AC_ARG_WITH([spdylay],
                     [Use spdylay [default=check]])],
     [request_spdylay=$withval], [request_spdylay=check])
 
+AC_ARG_WITH([mruby],
+    [AS_HELP_STRING([--with-mruby],
+                    [Use mruby [default=no]])],
+    [request_mruby=$withval], [request_mruby=no])
+
 AC_ARG_WITH([cython],
     [AS_HELP_STRING([--with-cython=PATH],
                     [Use cython in given PATH])],
@@ -369,6 +374,19 @@ if test "x${request_spdylay}" = "xyes" &&
 fi
 
 AM_CONDITIONAL([HAVE_SPDYLAY], [ test "x${have_spdylay}" = "xyes" ])
+
+# mruby (for src/nghttpx)
+if test "x${request_mruby}" = "xyes"; then
+  # We are going to build mruby
+  have_mruby=yes
+  AC_DEFINE([HAVE_MRUBY], [1], [Define to 1 if you have `mruby` library.])
+  LIBMRUBY_LIBS="-lmruby -lm"
+  LIBMRUBY_CFLAGS=
+  AC_SUBST([LIBMRUBY_LIBS])
+  AC_SUBST([LIBMRUBY_CFLAGS])
+fi
+
+AM_CONDITIONAL([HAVE_MRUBY], [test "x${have_mruby}" = "xyes"])
 
 # Check Boost Asio library
 have_asio_lib=no
@@ -717,6 +735,7 @@ AC_MSG_NOTICE([summary of build options:
       Libev:          ${have_libev}
       Libevent(SSL):  ${have_libevent_openssl}
       Spdylay:        ${have_spdylay}
+      MRuby:          ${have_mruby}
       Jansson:        ${have_jansson}
       Jemalloc:       ${have_jemalloc}
       Zlib:           ${have_zlib}

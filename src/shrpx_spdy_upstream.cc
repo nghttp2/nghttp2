@@ -36,6 +36,11 @@
 #include "shrpx_downstream_connection.h"
 #include "shrpx_config.h"
 #include "shrpx_http.h"
+#ifdef HAVE_MRUBY
+#include "shrpx_mruby.h"
+#endif // HAVE_MRUBY
+#include "shrpx_worker.h"
+#include "shrpx_http2_session.h"
 #include "http2.h"
 #include "util.h"
 #include "template.h"
@@ -224,6 +229,8 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
       downstream->set_request_http2_authority(host->value);
       if (get_config()->http2_proxy || get_config()->client_proxy) {
         downstream->set_request_path(path->value);
+      } else if (method_token == HTTP_OPTIONS && path->value == "*") {
+        // Server-wide OPTIONS request.  Path is empty.
       } else {
         downstream->set_request_path(http2::rewrite_clean_path(
             std::begin(path->value), std::end(path->value)));
@@ -237,6 +244,21 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
     downstream->inspect_http2_request();
 
     downstream->set_request_state(Downstream::HEADER_COMPLETE);
+
+#ifdef HAVE_MRUBY
+    auto handler = upstream->get_client_handler();
+    auto worker = handler->get_worker();
+    auto mruby_ctx = worker->get_mruby_context();
+
+    if (mruby_ctx->run_on_request_proc(downstream) != 0) {
+      if (upstream->error_reply(downstream, 500) != 0) {
+        ULOG(FATAL, upstream) << "error_reply failed";
+        return;
+      }
+      return;
+    }
+#endif // HAVE_MRUBY
+
     if (frame->syn_stream.hd.flags & SPDYLAY_CTRL_FLAG_FIN) {
       if (!downstream->validate_request_bodylen()) {
         upstream->rst_stream(downstream, SPDYLAY_PROTOCOL_ERROR);
@@ -245,6 +267,10 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
 
       downstream->disable_upstream_rtimer();
       downstream->set_request_state(Downstream::MSG_COMPLETE);
+    }
+
+    if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+      return;
     }
 
     upstream->start_downstream(downstream);
@@ -574,6 +600,11 @@ int SpdyUpstream::downstream_read(DownstreamConnection *dconn) {
     if (rv == SHRPX_ERR_EOF) {
       return downstream_eof(dconn);
     }
+    if (rv == SHRPX_ERR_DCONN_CANCELED) {
+      downstream->pop_downstream_connection();
+      handler_->signal_write();
+      return 0;
+    }
     if (rv != 0) {
       if (rv != SHRPX_ERR_NETWORK) {
         if (LOG_ENABLED(INFO)) {
@@ -773,6 +804,70 @@ ssize_t spdy_data_read_callback(spdylay_session *session, int32_t stream_id,
 }
 } // namespace
 
+int SpdyUpstream::send_reply(Downstream *downstream, const uint8_t *body,
+                             size_t bodylen) {
+  int rv;
+
+  spdylay_data_provider data_prd, *data_prd_ptr = nullptr;
+  if (bodylen) {
+    data_prd.source.ptr = downstream;
+    data_prd.read_callback = spdy_data_read_callback;
+    data_prd_ptr = &data_prd;
+  }
+
+  auto status_string =
+      http2::get_status_string(downstream->get_response_http_status());
+
+  auto &headers = downstream->get_response_headers();
+
+  auto nva = std::vector<const char *>();
+  // 3 for :status, :version and server
+  nva.reserve(3 + headers.size());
+
+  nva.push_back(":status");
+  nva.push_back(status_string.c_str());
+  nva.push_back(":version");
+  nva.push_back("HTTP/1.1");
+
+  for (auto &kv : headers) {
+    if (kv.name.empty() || kv.name[0] == ':') {
+      continue;
+    }
+    switch (kv.token) {
+    case http2::HD_CONNECTION:
+    case http2::HD_KEEP_ALIVE:
+    case http2::HD_PROXY_CONNECTION:
+    case http2::HD_TRANSFER_ENCODING:
+      continue;
+    }
+    nva.push_back(kv.name.c_str());
+    nva.push_back(kv.value.c_str());
+  }
+
+  if (!downstream->get_response_header(http2::HD_SERVER)) {
+    nva.push_back("server");
+    nva.push_back(get_config()->server_name);
+  }
+
+  nva.push_back(nullptr);
+
+  rv = spdylay_submit_response(session_, downstream->get_stream_id(),
+                               nva.data(), data_prd_ptr);
+  if (rv < SPDYLAY_ERR_FATAL) {
+    ULOG(FATAL, this) << "spdylay_submit_response() failed: "
+                      << spdylay_strerror(rv);
+    return -1;
+  }
+
+  auto buf = downstream->get_response_buf();
+
+  buf->append(body, bodylen);
+
+  downstream->set_response_state(Downstream::MSG_COMPLETE);
+
+  return 0;
+}
+
 int SpdyUpstream::error_reply(Downstream *downstream,
                               unsigned int status_code) {
   int rv;
@@ -844,6 +939,22 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream) {
 
     return 0;
   }
+
+#ifdef HAVE_MRUBY
+  auto worker = handler_->get_worker();
+  auto mruby_ctx = worker->get_mruby_context();
+
+  if (mruby_ctx->run_on_response_proc(downstream) != 0) {
+    if (error_reply(downstream, 500) != 0) {
+      return -1;
+    }
+    return -1;
+  }
+
+  if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+    return -1;
+  }
+#endif // HAVE_MRUBY
 
   if (LOG_ENABLED(INFO)) {
     DLOG(INFO, downstream) << "HTTP response header completed";
@@ -1089,6 +1200,11 @@ int SpdyUpstream::on_downstream_reset(bool no_retry) {
 
   handler_->signal_write();
 
+  return 0;
+}
+
+int SpdyUpstream::initiate_push(Downstream *downstream, const char *uri,
+                                size_t len) {
   return 0;
 }
 

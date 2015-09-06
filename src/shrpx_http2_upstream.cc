@@ -37,6 +37,9 @@
 #include "shrpx_http.h"
 #include "shrpx_worker.h"
 #include "shrpx_http2_session.h"
+#ifdef HAVE_MRUBY
+#include "shrpx_mruby.h"
+#endif // HAVE_MRUBY
 #include "http2.h"
 #include "util.h"
 #include "base64.h"
@@ -291,9 +294,16 @@ int Http2Upstream::on_request_headers(Downstream *downstream,
 
   downstream->set_request_method(method_token);
   downstream->set_request_http2_scheme(http2::value_to_str(scheme));
+  // nghttp2 library guarantees either :authority or host exist
+  if (!authority) {
+    authority = downstream->get_request_header(http2::HD_HOST);
+  }
   downstream->set_request_http2_authority(http2::value_to_str(authority));
+
   if (path) {
-    if (get_config()->http2_proxy || get_config()->client_proxy) {
+    if (method_token == HTTP_OPTIONS && path->value == "*") {
+      // Server-wide OPTIONS request.  Path is empty.
+    } else if (get_config()->http2_proxy || get_config()->client_proxy) {
       downstream->set_request_path(http2::value_to_str(path));
     } else {
       auto &value = path->value;
@@ -309,10 +319,29 @@ int Http2Upstream::on_request_headers(Downstream *downstream,
   downstream->inspect_http2_request();
 
   downstream->set_request_state(Downstream::HEADER_COMPLETE);
+
+#ifdef HAVE_MRUBY
+  auto upstream = downstream->get_upstream();
+  auto handler = upstream->get_client_handler();
+  auto worker = handler->get_worker();
+  auto mruby_ctx = worker->get_mruby_context();
+
+  if (mruby_ctx->run_on_request_proc(downstream) != 0) {
+    if (error_reply(downstream, 500) != 0) {
+      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+    }
+    return 0;
+  }
+#endif // HAVE_MRUBY
+
   if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
     downstream->disable_upstream_rtimer();
 
     downstream->set_request_state(Downstream::MSG_COMPLETE);
+  }
+
+  if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+    return 0;
   }
 
   start_downstream(downstream);
@@ -558,6 +587,20 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
     // downstream is in pending queue.
     auto ptr = downstream.get();
     upstream->add_pending_downstream(std::move(downstream));
+
+#ifdef HAVE_MRUBY
+    auto worker = handler->get_worker();
+    auto mruby_ctx = worker->get_mruby_context();
+
+    if (mruby_ctx->run_on_request_proc(ptr) != 0) {
+      if (upstream->error_reply(ptr, 500) != 0) {
+        upstream->rst_stream(ptr, NGHTTP2_INTERNAL_ERROR);
+        return 0;
+      }
+      return 0;
+    }
+#endif // HAVE_MRUBY
+
     upstream->start_downstream(ptr);
 
     return 0;
@@ -898,6 +941,11 @@ int Http2Upstream::downstream_read(DownstreamConnection *dconn) {
     if (rv == SHRPX_ERR_EOF) {
       return downstream_eof(dconn);
     }
+    if (rv == SHRPX_ERR_DCONN_CANCELED) {
+      downstream->pop_downstream_connection();
+      handler_->signal_write();
+      return 0;
+    }
     if (rv != 0) {
       if (rv != SHRPX_ERR_NETWORK) {
         if (LOG_ENABLED(INFO)) {
@@ -1120,6 +1168,63 @@ ssize_t downstream_data_read_callback(nghttp2_session *session,
 }
 } // namespace
 
+int Http2Upstream::send_reply(Downstream *downstream, const uint8_t *body,
+                              size_t bodylen) {
+  int rv;
+
+  nghttp2_data_provider data_prd, *data_prd_ptr = nullptr;
+
+  if (bodylen) {
+    data_prd.source.ptr = downstream;
+    data_prd.read_callback = downstream_data_read_callback;
+    data_prd_ptr = &data_prd;
+  }
+
+  auto status_code_str = util::utos(downstream->get_response_http_status());
+  auto &headers = downstream->get_response_headers();
+  auto nva = std::vector<nghttp2_nv>();
+  // 2 for :status and server
+  nva.reserve(2 + headers.size());
+
+  nva.push_back(http2::make_nv_ls(":status", status_code_str));
+
+  for (auto &kv : headers) {
+    if (kv.name.empty() || kv.name[0] == ':') {
+      continue;
+    }
+    switch (kv.token) {
+    case http2::HD_CONNECTION:
+    case http2::HD_KEEP_ALIVE:
+    case http2::HD_PROXY_CONNECTION:
+    case http2::HD_TE:
+    case http2::HD_TRANSFER_ENCODING:
+    case http2::HD_UPGRADE:
+      continue;
+    }
+    nva.push_back(http2::make_nv(kv.name, kv.value, kv.no_index));
+  }
+
+  if (!downstream->get_response_header(http2::HD_SERVER)) {
+    nva.push_back(http2::make_nv_lc("server", get_config()->server_name));
+  }
+
+  rv = nghttp2_submit_response(session_, downstream->get_stream_id(),
+                               nva.data(), nva.size(), data_prd_ptr);
+  if (nghttp2_is_fatal(rv)) {
+    ULOG(FATAL, this) << "nghttp2_submit_response() failed: "
+                      << nghttp2_strerror(rv);
+    return -1;
+  }
+
+  auto buf = downstream->get_response_buf();
+
+  buf->append(body, bodylen);
+
+  downstream->set_response_state(Downstream::MSG_COMPLETE);
+
+  return 0;
+}
+
 int Http2Upstream::error_reply(Downstream *downstream,
                                unsigned int status_code) {
   int rv;
@@ -1190,6 +1295,24 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
     downstream->rewrite_location_response_header(
         downstream->get_request_http2_scheme());
   }
+
+#ifdef HAVE_MRUBY
+  if (!downstream->get_non_final_response()) {
+    auto worker = handler_->get_worker();
+    auto mruby_ctx = worker->get_mruby_context();
+
+    if (mruby_ctx->run_on_response_proc(downstream) != 0) {
+      if (error_reply(downstream, 500) != 0) {
+        return -1;
+      }
+      return -1;
+    }
+
+    if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
+      return -1;
+    }
+  }
+#endif // HAVE_MRUBY
 
   size_t nheader = downstream->get_response_headers().size();
   auto nva = std::vector<nghttp2_nv>();
@@ -1272,12 +1395,9 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
   // We need some conditions that must be fulfilled to initiate server
   // push.
   //
-  // * Server push is disabled for http2 proxy, since incoming headers
-  //   are mixed origins.  We don't know how to reliably determine the
-  //   authority yet.
-  //
-  // * If downstream is http/2, it is likely that PUSH_PROMISE is
-  //   coming from there, so we don't initiate PUSH_RPOMISE here.
+  // * Server push is disabled for http2 proxy or client proxy, since
+  //   incoming headers are mixed origins.  We don't know how to
+  //   reliably determine the authority yet.
   //
   // * We need 200 response code for associated resource.  This is too
   //   restrictive, we will review this later.
@@ -1288,8 +1408,8 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
   if (!get_config()->no_server_push &&
       nghttp2_session_get_remote_settings(session_,
                                           NGHTTP2_SETTINGS_ENABLE_PUSH) == 1 &&
-      get_config()->downstream_proto == PROTO_HTTP &&
-      !get_config()->http2_proxy && (downstream->get_stream_id() % 2) &&
+      !get_config()->http2_proxy && !get_config()->client_proxy &&
+      (downstream->get_stream_id() % 2) &&
       downstream->get_response_header(http2::HD_LINK) &&
       downstream->get_response_http_status() == 200 &&
       (downstream->get_request_method() == HTTP_GET ||
@@ -1473,80 +1593,31 @@ int Http2Upstream::on_downstream_reset(bool no_retry) {
 
 int Http2Upstream::prepare_push_promise(Downstream *downstream) {
   int rv;
-  http_parser_url u{};
-  rv = http_parser_parse_url(downstream->get_request_path().c_str(),
-                             downstream->get_request_path().size(), 0, &u);
+  const char *base;
+  size_t baselen;
+
+  rv = http2::get_pure_path_component(&base, &baselen,
+                                      downstream->get_request_path());
   if (rv != 0) {
     return 0;
   }
-  const char *base;
-  size_t baselen;
-  if (u.field_set & (1 << UF_PATH)) {
-    auto &f = u.field_data[UF_PATH];
-    base = downstream->get_request_path().c_str() + f.off;
-    baselen = f.len;
-  } else {
-    base = "/";
-    baselen = 1;
-  }
+
   for (auto &kv : downstream->get_response_headers()) {
     if (kv.token != http2::HD_LINK) {
       continue;
     }
     for (auto &link :
          http2::parse_link_header(kv.value.c_str(), kv.value.size())) {
-      auto link_url = link.uri.first;
-      auto link_urllen = link.uri.second - link.uri.first;
 
-      const char *rel;
-      size_t rellen;
-      const char *relq = nullptr;
-      size_t relqlen = 0;
+      auto uri = link.uri.first;
+      auto len = link.uri.second - link.uri.first;
 
-      std::string authority, scheme;
-      http_parser_url v{};
-      rv = http_parser_parse_url(link_url, link_urllen, 0, &v);
+      std::string scheme, authority, path;
+
+      rv = http2::construct_push_component(scheme, authority, path, base,
+                                           baselen, uri, len);
       if (rv != 0) {
-        assert(link_urllen);
-        if (link_url[0] == '/') {
-          continue;
-        }
-        // treat link_url as relative URI.
-        auto end = std::find(link_url, link_url + link_urllen, '#');
-        auto q = std::find(link_url, end, '?');
-        rel = link_url;
-        rellen = q - link_url;
-        if (q != end) {
-          relq = q + 1;
-          relqlen = end - relq;
-        }
-      } else {
-        if (v.field_set & (1 << UF_SCHEMA)) {
-          http2::copy_url_component(scheme, &v, UF_SCHEMA, link_url);
-        }
-
-        if (v.field_set & (1 << UF_HOST)) {
-          http2::copy_url_component(authority, &v, UF_HOST, link_url);
-          if (v.field_set & (1 << UF_PORT)) {
-            authority += ":";
-            authority += util::utos(v.port);
-          }
-        }
-
-        if (v.field_set & (1 << UF_PATH)) {
-          auto &f = v.field_data[UF_PATH];
-          rel = link_url + f.off;
-          rellen = f.len;
-        } else {
-          rel = "/";
-          rellen = 1;
-        }
-
-        if (v.field_set & (1 << UF_QUERY)) {
-          auto &f = v.field_data[UF_QUERY];
-          relq = link_url + f.off;
-          relqlen = f.len;
-        }
+        continue;
       }
 
       if (scheme.empty()) {
@@ -1557,8 +1628,6 @@ int Http2Upstream::prepare_push_promise(Downstream *downstream) {
         authority = downstream->get_request_http2_authority();
       }
 
-      auto path = http2::path_join(base, baselen, nullptr, 0, rel, rellen, relq,
-                                   relqlen);
       rv = submit_push_promise(scheme, authority, path, downstream);
       if (rv != 0) {
         return -1;
@@ -1622,6 +1691,52 @@ int Http2Upstream::submit_push_promise(const std::string &scheme,
     }
     ULOG(INFO, this) << "HTTP push request headers. promised_stream_id=" << rv
                      << "\n" << ss.str();
+  }
+
+  return 0;
+}
+
+int Http2Upstream::initiate_push(Downstream *downstream, const char *uri,
+                                 size_t len) {
+  int rv;
+
+  if (len == 0 || get_config()->no_server_push ||
+      nghttp2_session_get_remote_settings(session_,
+                                          NGHTTP2_SETTINGS_ENABLE_PUSH) == 0 ||
+      get_config()->http2_proxy || get_config()->client_proxy ||
+      (downstream->get_stream_id() % 2) == 0) {
+    return 0;
+  }
+
+  const char *base;
+  size_t baselen;
+
+  rv = http2::get_pure_path_component(&base, &baselen,
+                                      downstream->get_request_path());
+  if (rv != 0) {
+    return -1;
+  }
+
+  std::string scheme, authority, path;
+
+  rv = http2::construct_push_component(scheme, authority, path, base, baselen,
+                                       uri, len);
+  if (rv != 0) {
+    return -1;
+  }
+
+  if (scheme.empty()) {
+    scheme = downstream->get_request_http2_scheme();
+  }
+
+  if (authority.empty()) {
+    authority = downstream->get_request_http2_authority();
+  }
+
+  rv = submit_push_promise(scheme, authority, path, downstream);
+
+  if (rv != 0) {
+    return -1;
   }
 
   return 0;

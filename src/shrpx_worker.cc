@@ -37,6 +37,9 @@
 #include "shrpx_log_config.h"
 #include "shrpx_connect_blocker.h"
 #include "shrpx_memcached_dispatcher.h"
+#ifdef HAVE_MRUBY
+#include "shrpx_mruby.h"
+#endif // HAVE_MRUBY
 #include "util.h"
 #include "template.h"
 
@@ -263,5 +266,20 @@ DownstreamGroup *Worker::get_dgrp(size_t group) {
 MemcachedDispatcher *Worker::get_session_cache_memcached_dispatcher() {
   return session_cache_memcached_dispatcher_.get();
 }
+
+#ifdef HAVE_MRUBY
+int Worker::create_mruby_context() {
+  mruby_ctx_ = mruby::create_mruby_context();
+  if (!mruby_ctx_) {
+    return -1;
+  }
+
+  return 0;
+}
+
+mruby::MRubyContext *Worker::get_mruby_context() const {
+  return mruby_ctx_.get();
+}
+#endif // HAVE_MRUBY
 
 } // namespace shrpx

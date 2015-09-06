@@ -47,6 +47,8 @@ void test_http2_parse_link_header(void);
 void test_http2_path_join(void);
 void test_http2_normalize_path(void);
 void test_http2_rewrite_clean_path(void);
+void test_http2_get_pure_path_component(void);
+void test_http2_construct_push_component(void);
 
 } // namespace shrpx
 

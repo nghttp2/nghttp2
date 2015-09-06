@@ -183,6 +183,8 @@ constexpr char SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_MAX_RETRY[] =
     "tls-ticket-key-memcached-max-retry";
 constexpr char SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_MAX_FAIL[] =
     "tls-ticket-key-memcached-max-fail";
+constexpr char SHRPX_OPT_REQUEST_PHASE_FILE[] = "request-phase-file";
+constexpr char SHRPX_OPT_RESPONSE_PHASE_FILE[] = "response-phase-file";
 
 union sockaddr_union {
   sockaddr_storage storage;
@@ -314,6 +316,8 @@ struct Config {
   std::unique_ptr<char[]> user;
   std::unique_ptr<char[]> session_cache_memcached_host;
   std::unique_ptr<char[]> tls_ticket_key_memcached_host;
+  std::unique_ptr<char[]> request_phase_file;
+  std::unique_ptr<char[]> response_phase_file;
   FILE *http2_upstream_dump_request_header;
   FILE *http2_upstream_dump_response_header;
   nghttp2_session_callbacks *http2_upstream_callbacks;

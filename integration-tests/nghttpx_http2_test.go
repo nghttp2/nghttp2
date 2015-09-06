@@ -640,6 +640,120 @@ func TestH2H1HeaderFields(t *testing.T) {
 	}
 }
 
+// TestH2H1ReqPhaseSetHeader tests mruby request phase hook
+// modifies request header fields.
+func TestH2H1ReqPhaseSetHeader(t *testing.T) {
+	st := newServerTester([]string{"--request-phase-file=" + testDir + "/req-set-header.rb"}, t, func(w http.ResponseWriter, r *http.Request) {
+		if got, want := r.Header.Get("User-Agent"), "mruby"; got != want {
+			t.Errorf("User-Agent = %v; want %v", got, want)
+		}
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1ReqPhaseSetHeader",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+}
+
+// TestH2H1ReqPhaseReturn tests mruby request phase hook returns
+// custom response.
+func TestH2H1ReqPhaseReturn(t *testing.T) {
+	st := newServerTester([]string{"--request-phase-file=" + testDir + "/return.rb"}, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Fatalf("request should not be forwarded")
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1ReqPhaseReturn",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, 404; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+
+	hdtests := []struct {
+		k, v string
+	}{
+		{"content-length", "11"},
+		{"from", "mruby"},
+	}
+	for _, tt := range hdtests {
+		if got, want := res.header.Get(tt.k), tt.v; got != want {
+			t.Errorf("%v = %v; want %v", tt.k, got, want)
+		}
+	}
+
+	if got, want := string(res.body), "Hello World"; got != want {
+		t.Errorf("body = %v; want %v", got, want)
+	}
+}
+
+// TestH2H1RespPhaseSetHeader tests mruby response phase hook modifies
+// response header fields.
+func TestH2H1RespPhaseSetHeader(t *testing.T) {
+	st := newServerTester([]string{"--response-phase-file=" + testDir + "/resp-set-header.rb"}, t, noopHandler)
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1RespPhaseSetHeader",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+
+	if got, want := res.header.Get("alpha"), "bravo"; got != want {
+		t.Errorf("alpha = %v; want %v", got, want)
+	}
+}
+
+// TestH2H1RespPhaseReturn tests mruby response phase hook returns
+// custom response.
+func TestH2H1RespPhaseReturn(t *testing.T) {
+	st := newServerTester([]string{"--response-phase-file=" + testDir + "/return.rb"}, t, noopHandler)
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1RespPhaseReturn",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, 404; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+
+	hdtests := []struct {
+		k, v string
+	}{
+		{"content-length", "11"},
+		{"from", "mruby"},
+	}
+	for _, tt := range hdtests {
+		if got, want := res.header.Get(tt.k), tt.v; got != want {
+			t.Errorf("%v = %v; want %v", tt.k, got, want)
+		}
+	}
+
+	if got, want := string(res.body), "Hello World"; got != want {
+		t.Errorf("body = %v; want %v", got, want)
+	}
+}
+
 // TestH2H1Upgrade tests HTTP Upgrade to HTTP/2
 func TestH2H1Upgrade(t *testing.T) {
 	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {})
@@ -873,5 +987,75 @@ func TestH2H2TLSXfp(t *testing.T) {
 	}
 	if got, want := res.status, 200; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
+	}
+}
+
+// TestH2H2ReqPhaseReturn tests mruby request phase hook returns
+// custom response.
+func TestH2H2ReqPhaseReturn(t *testing.T) {
+	st := newServerTester([]string{"--http2-bridge", "--request-phase-file=" + testDir + "/return.rb"}, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Fatalf("request should not be forwarded")
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H2ReqPhaseReturn",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, 404; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+
+	hdtests := []struct {
+		k, v string
+	}{
+		{"content-length", "11"},
+		{"from", "mruby"},
+	}
+	for _, tt := range hdtests {
+		if got, want := res.header.Get(tt.k), tt.v; got != want {
+			t.Errorf("%v = %v; want %v", tt.k, got, want)
+		}
+	}
+
+	if got, want := string(res.body), "Hello World"; got != want {
+		t.Errorf("body = %v; want %v", got, want)
+	}
+}
+
+// TestH2H2RespPhaseReturn tests mruby response phase hook returns
+// custom response.
+func TestH2H2RespPhaseReturn(t *testing.T) {
+	st := newServerTester([]string{"--http2-bridge", "--response-phase-file=" + testDir + "/return.rb"}, t, noopHandler)
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H2RespPhaseReturn",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, 404; got != want {
+		t.Errorf("status = %v; want %v", got, want)
+	}
+
+	hdtests := []struct {
+		k, v string
+	}{
+		{"content-length", "11"},
+		{"from", "mruby"},
+	}
+	for _, tt := range hdtests {
+		if got, want := res.header.Get(tt.k), tt.v; got != want {
+			t.Errorf("%v = %v; want %v", tt.k, got, want)
+		}
+	}
+
+	if got, want := string(res.body), "Hello World"; got != want {
+		t.Errorf("body = %v; want %v", got, want)
 	}
 }

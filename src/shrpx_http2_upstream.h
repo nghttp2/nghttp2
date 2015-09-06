@@ -78,6 +78,10 @@ public:
 
   virtual void on_handler_delete();
   virtual int on_downstream_reset(bool no_retry);
+  virtual int send_reply(Downstream *downstream, const uint8_t *body,
+                         size_t bodylen);
+  virtual int initiate_push(Downstream *downstream, const char *uri,
+                            size_t len);
 
   bool get_flow_control() const;
   // Perform HTTP/2 upgrade from |upstream|. On success, this object

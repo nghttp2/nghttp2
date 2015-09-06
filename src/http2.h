@@ -262,6 +262,9 @@ bool http2_mandatory_request_headers_presence(const HeaderIndex &hdidx);
 const Headers::value_type *get_header(const HeaderIndex &hdidx, int16_t token,
                                       const Headers &nva);
 
+Headers::value_type *get_header(const HeaderIndex &hdidx, int16_t token,
+                                Headers &nva);
+
 struct LinkHeader {
   // The region of URI is [uri.first, uri.second).
   std::pair<const char *, const char *> uri;
@@ -348,6 +351,21 @@ std::string rewrite_clean_path(InputIt first, InputIt last) {
   }
   return path;
 }
+
+// Stores path component of |uri| in *base.  Its extracted length is
+// stored in *baselen.  The extracted path does not include query
+// component.  This function returns 0 if it succeeds, or -1.
+int get_pure_path_component(const char **base, size_t *baselen,
+                            const std::string &uri);
+
+// Deduces scheme, authority and path from given |uri| of length
+// |len|, and stores them in |scheme|, |authority|, and |path|
+// respectively.  If |uri| is relative path, path resolution is taken
+// palce using path given in |base| of length |baselen|.  This
+// function returns 0 if it succeeds, or -1.
+int construct_push_component(std::string &scheme, std::string &authority,
+                             std::string &path, const char *base,
+                             size_t baselen, const char *uri, size_t len);
 
 } // namespace http2
 

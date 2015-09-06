@@ -34,6 +34,11 @@
 #include "shrpx_error.h"
 #include "shrpx_downstream_connection.h"
 #include "shrpx_downstream_queue.h"
+#include "shrpx_worker.h"
+#include "shrpx_http2_session.h"
+#ifdef HAVE_MRUBY
+#include "shrpx_mruby.h"
+#endif // HAVE_MRUBY
 #include "util.h"
 #include "http2.h"
 
@@ -160,6 +165,14 @@ Downstream::~Downstream() {
     ev_timer_stop(loop, &upstream_wtimer_);
     ev_timer_stop(loop, &downstream_rtimer_);
     ev_timer_stop(loop, &downstream_wtimer_);
+
+#ifdef HAVE_MRUBY
+    auto handler = upstream_->get_client_handler();
+    auto worker = handler->get_worker();
+    auto mruby_ctx = worker->get_mruby_context();
+
+    mruby_ctx->delete_downstream(this);
+#endif // HAVE_MRUBY
   }
 
   // DownstreamConnection may refer to this object.  Delete it now
@@ -239,6 +252,8 @@ const Headers::value_type *get_header_linear(const Headers &headers,
 const Headers &Downstream::get_request_headers() const {
   return request_headers_;
 }
+
+Headers &Downstream::get_request_headers() { return request_headers_; }
 
 void Downstream::assemble_request_cookie() {
   std::string &cookie = assembled_request_cookie_;
@@ -336,6 +351,9 @@ void set_last_header_value(bool &key_prev, size_t &sum, Headers &headers,
 namespace {
 int index_headers(http2::HeaderIndex &hdidx, Headers &headers,
                   int64_t &content_length) {
+  http2::init_hdidx(hdidx);
+  content_length = -1;
+
   for (size_t i = 0; i < headers.size(); ++i) {
     auto &kv = headers[i];
     util::inp_strlower(kv.name);
@@ -510,6 +528,10 @@ void Downstream::set_request_http2_authority(std::string authority) {
   request_http2_authority_ = std::move(authority);
 }
 
+void Downstream::append_request_http2_authority(const char *data, size_t len) {
+  request_http2_authority_.append(data, len);
+}
+
 void Downstream::set_request_major(int major) { request_major_ = major; }
 
 void Downstream::set_request_minor(int minor) { request_minor_ = minor; }
@@ -604,6 +626,8 @@ const Headers &Downstream::get_response_headers() const {
   return response_headers_;
 }
 
+Headers &Downstream::get_response_headers() { return response_headers_; }
+
 int Downstream::index_response_headers() {
   return index_headers(response_hdidx_, response_headers_,
                        response_content_length_);
@@ -611,6 +635,10 @@ int Downstream::index_response_headers() {
 
 const Headers::value_type *
 Downstream::get_response_header(int16_t token) const {
+  return http2::get_header(response_hdidx_, token, response_headers_);
+}
+
+Headers::value_type *Downstream::get_response_header(int16_t token) {
   return http2::get_header(response_hdidx_, token, response_headers_);
 }
 

@@ -30,7 +30,10 @@ EXTRA_DIST = \
 	server.crt \
 	alt-server.key \
 	alt-server.crt \
-	setenv
+	setenv \
+	req-set-header.rb \
+	resp-set-header.rb \
+	return.rb
 
 itprep-local:
 	go get -d -v github.com/bradfitz/http2

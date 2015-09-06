@@ -739,41 +739,23 @@ namespace {
 // HttpDownstreamConnection::push_request_headers(), but vastly
 // simplified since we only care about absolute URI.
 std::string construct_absolute_request_uri(Downstream *downstream) {
-  const char *authority = nullptr, *host = nullptr;
-  if (!downstream->get_request_http2_authority().empty()) {
-    authority = downstream->get_request_http2_authority().c_str();
-  }
-  auto h = downstream->get_request_header(http2::HD_HOST);
-  if (h) {
-    host = h->value.c_str();
-  }
-  if (!authority && !host) {
+  auto &authority = downstream->get_request_http2_authority();
+  if (authority.empty()) {
     return downstream->get_request_path();
   }
   std::string uri;
-  if (downstream->get_request_http2_scheme().empty()) {
+  auto &scheme = downstream->get_request_http2_scheme();
+  if (scheme.empty()) {
     // We may have to log the request which lacks scheme (e.g.,
     // http/1.1 with origin form).
     uri += "http://";
   } else {
-    uri += downstream->get_request_http2_scheme();
+    uri += scheme;
     uri += "://";
   }
-  if (authority) {
-    uri += authority;
-  } else {
-    uri += host;
-  }
+  uri += authority;
+  uri += downstream->get_request_path();
 
-  // Server-wide OPTIONS takes following form in proxy request:
-  //
-  // OPTIONS http://example.org HTTP/1.1
-  //
-  // Notice that no slash after authority. See
-  // http://tools.ietf.org/html/rfc7230#section-5.3.4
-  if (downstream->get_request_path() != "*") {
-    uri += downstream->get_request_path();
-  }
   return uri;
 }
 } // namespace
@@ -787,12 +769,15 @@ void ClientHandler::write_accesslog(Downstream *downstream) {
           downstream, ipaddr_.c_str(),
           http2::to_method_string(downstream->get_request_method()),
 
-          (downstream->get_request_method() != HTTP_CONNECT &&
-           (get_config()->http2_proxy || get_config()->client_proxy))
-              ? construct_absolute_request_uri(downstream).c_str()
-              : downstream->get_request_path().empty()
-                    ? downstream->get_request_http2_authority().c_str()
-                    : downstream->get_request_path().c_str(),
+          downstream->get_request_method() == HTTP_CONNECT
+              ? downstream->get_request_http2_authority().c_str()
+              : (get_config()->http2_proxy || get_config()->client_proxy)
+                    ? construct_absolute_request_uri(downstream).c_str()
+                    : downstream->get_request_path().empty()
+                          ? downstream->get_request_method() == HTTP_OPTIONS
+                                ? "*"
+                                : "-"
+                          : downstream->get_request_path().c_str(),
 
           alpn_.c_str(),
           nghttp2::ssl::get_tls_session_info(&tls_info, conn_.tls.ssl),

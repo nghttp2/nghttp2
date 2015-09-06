@@ -880,4 +880,104 @@ void test_http2_rewrite_clean_path(void) {
   CU_ASSERT(src == http2::rewrite_clean_path(std::begin(src), std::end(src)));
 }
 
+void test_http2_get_pure_path_component(void) {
+  const char *base;
+  size_t len;
+  std::string path;
+
+  path = "/";
+  CU_ASSERT(0 == http2::get_pure_path_component(&base, &len, path));
+  CU_ASSERT(util::streq_l("/", base, len));
+
+  path = "/foo";
+  CU_ASSERT(0 == http2::get_pure_path_component(&base, &len, path));
+  CU_ASSERT(util::streq_l("/foo", base, len));
+
+  path = "https://example.org/bar";
+  CU_ASSERT(0 == http2::get_pure_path_component(&base, &len, path));
+  CU_ASSERT(util::streq_l("/bar", base, len));
+
+  path = "https://example.org/alpha?q=a";
+  CU_ASSERT(0 == http2::get_pure_path_component(&base, &len, path));
+  CU_ASSERT(util::streq_l("/alpha", base, len));
+
+  path = "https://example.org/bravo?q=a#fragment";
+  CU_ASSERT(0 == http2::get_pure_path_component(&base, &len, path));
+  CU_ASSERT(util::streq_l("/bravo", base, len));
+
+  path = "\x01\x02";
+  CU_ASSERT(-1 == http2::get_pure_path_component(&base, &len, path));
+}
+
+void test_http2_construct_push_component(void) {
+  const char *base;
+  size_t baselen;
+  std::string uri;
+  std::string scheme, authority, path;
+
+  base = "/b/";
+  baselen = 3;
+
+  uri = "https://example.org/foo";
+
+  CU_ASSERT(0 == http2::construct_push_component(scheme, authority, path, base,
+                                                 baselen, uri.c_str(),
+                                                 uri.size()));
+  CU_ASSERT("https" == scheme);
+  CU_ASSERT("example.org" == authority);
+  CU_ASSERT("/foo" == path);
+
+  scheme.clear();
+  authority.clear();
+  path.clear();
+
+  uri = "/foo/bar?q=a";
+
+  CU_ASSERT(0 == http2::construct_push_component(scheme, authority, path, base,
+                                                 baselen, uri.c_str(),
+                                                 uri.size()));
+  CU_ASSERT("" == scheme);
+  CU_ASSERT("" == authority);
+  CU_ASSERT("/foo/bar?q=a" == path);
+
+  scheme.clear();
+  authority.clear();
+  path.clear();
+
+  uri = "foo/../bar?q=a";
+
+  CU_ASSERT(0 == http2::construct_push_component(scheme, authority, path, base,
+                                                 baselen, uri.c_str(),
+                                                 uri.size()));
+  CU_ASSERT("" == scheme);
+  CU_ASSERT("" == authority);
+  CU_ASSERT("/b/bar?q=a" == path);
+
+  scheme.clear();
+  authority.clear();
+  path.clear();
+
+  uri = "";
+
+  CU_ASSERT(0 == http2::construct_push_component(scheme, authority, path, base,
+                                                 baselen, uri.c_str(),
+                                                 uri.size()));
+  CU_ASSERT("" == scheme);
+  CU_ASSERT("" == authority);
+  CU_ASSERT("/" == path);
+
+  scheme.clear();
+  authority.clear();
+  path.clear();
+
+  uri = "?q=a";
+
+  CU_ASSERT(0 == http2::construct_push_component(scheme, authority, path, base,
+                                                 baselen, uri.c_str(),
+                                                 uri.size()));
+  CU_ASSERT("" == scheme);
+  CU_ASSERT("" == authority);
+  CU_ASSERT("/b/?q=a" == path);
+}
+
 } // namespace shrpx
