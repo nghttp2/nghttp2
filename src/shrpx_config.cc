@@ -1373,7 +1373,12 @@ int parse_config(const char *opt, const char *optarg,
     return 0;
   }
   case SHRPX_OPTID_WORKERS:
+#ifdef NOTHREADS
+    LOG(WARN) << "Threading disabled at build time, no threads created.";
+    return 0;
+#else // !NOTHREADS
     return parse_uint(&mod_config()->num_worker, opt, optarg);
+#endif // !NOTHREADS
   case SHRPX_OPTID_HTTP2_MAX_CONCURRENT_STREAMS:
     return parse_uint(&mod_config()->http2_max_concurrent_streams, opt, optarg);
   case SHRPX_OPTID_LOG_LEVEL:
@@ -1949,12 +1954,20 @@ int parse_config(const char *opt, const char *optarg,
     return parse_uint(&mod_config()->tls_ticket_key_memcached_max_fail, opt,
                       optarg);
   case SHRPX_OPTID_REQUEST_PHASE_FILE:
+#ifdef HAVE_MRUBY
     mod_config()->request_phase_file = strcopy(optarg);
-
+#else  // !HAVE_MRUBY
+    LOG(WARN) << opt
+              << ": ignored because mruby support is disabled at build time.";
+#endif // !HAVE_MRUBY
     return 0;
   case SHRPX_OPTID_RESPONSE_PHASE_FILE:
+#ifdef HAVE_MRUBY
     mod_config()->response_phase_file = strcopy(optarg);
-
+#else  // !HAVE_MRUBY
+    LOG(WARN) << opt
+              << ": ignored because mruby support is disabled at build time.";
+#endif // !HAVE_MRUBY
     return 0;
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";

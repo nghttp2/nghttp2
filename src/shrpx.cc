@@ -1946,11 +1946,7 @@ int main(int argc, char **argv) {
       cmdcfgs.emplace_back(SHRPX_OPT_INSECURE, "yes");
       break;
     case 'n':
-#ifdef NOTHREADS
-      LOG(WARN) << "Threading disabled at build time, no threads created.";
-#else
       cmdcfgs.emplace_back(SHRPX_OPT_WORKERS, optarg);
-#endif // NOTHREADS
       break;
     case 'o':
       cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_FRAME_DEBUG, "yes");
