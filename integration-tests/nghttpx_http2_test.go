@@ -787,6 +787,327 @@ func TestH2H1Upgrade(t *testing.T) {
 	}
 }
 
+// TestH2H1ProxyProtocolV1TCP4 tests PROXY protocol version 1
+// containing TCP4 entry is accepted and X-Forwarded-For contains
+// advertised src address.
+func TestH2H1ProxyProtocolV1TCP4(t *testing.T) {
+	st := newServerTester([]string{"--accept-proxy-protocol", "--add-x-forwarded-for"}, t, func(w http.ResponseWriter, r *http.Request) {
+		if got, want := r.Header.Get("X-Forwarded-For"), "192.168.0.2"; got != want {
+			t.Errorf("X-Forwarded-For: %v; want %v", got, want)
+		}
+	})
+	defer st.Close()
+
+	st.conn.Write([]byte("PROXY TCP4 192.168.0.2 192.168.0.100 12345 8080\r\n"))
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1ProxyProtocolV1TCP4",
+	})
+
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, 200; got != want {
+		t.Errorf("res.status: %v; want %v", got, want)
+	}
+}
+
+// TestH2H1ProxyProtocolV1TCP6 tests PROXY protocol version 1
+// containing TCP6 entry is accepted and X-Forwarded-For contains
+// advertised src address.
+func TestH2H1ProxyProtocolV1TCP6(t *testing.T) {
+	st := newServerTester([]string{"--accept-proxy-protocol", "--add-x-forwarded-for"}, t, func(w http.ResponseWriter, r *http.Request) {
+		if got, want := r.Header.Get("X-Forwarded-For"), "2001:0db8:85a3:0000:0000:8a2e:0370:7334"; got != want {
+			t.Errorf("X-Forwarded-For: %v; want %v", got, want)
+		}
+	})
+	defer st.Close()
+
+	st.conn.Write([]byte("PROXY TCP6 2001:0db8:85a3:0000:0000:8a2e:0370:7334 ::1 12345 8080\r\n"))
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1ProxyProtocolV1TCP6",
+	})
+
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, 200; got != want {
+		t.Errorf("res.status: %v; want %v", got, want)
+	}
+}
+
+// TestH2H1ProxyProtocolV1Unknown tests PROXY protocol version 1
+// containing UNKNOWN entry is accepted.
+func TestH2H1ProxyProtocolV1Unknown(t *testing.T) {
+	st := newServerTester([]string{"--accept-proxy-protocol", "--add-x-forwarded-for"}, t, func(w http.ResponseWriter, r *http.Request) {
+		if got, notWant := r.Header.Get("X-Forwarded-For"), "192.168.0.2"; got == notWant {
+			t.Errorf("X-Forwarded-For: %v")
+		}
+	})
+	defer st.Close()
+
+	st.conn.Write([]byte("PROXY UNKNOWN 192.168.0.2 192.168.0.100 12345 8080\r\n"))
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1ProxyProtocolV1Unknown",
+	})
+
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, 200; got != want {
+		t.Errorf("res.status: %v; want %v", got, want)
+	}
+}
+
+// TestH2H1ProxyProtocolV1JustUnknown tests PROXY protocol version 1
+// containing only "PROXY UNKNOWN" is accepted.
+func TestH2H1ProxyProtocolV1JustUnknown(t *testing.T) {
+	st := newServerTester([]string{"--accept-proxy-protocol", "--add-x-forwarded-for"}, t, noopHandler)
+	defer st.Close()
+
+	st.conn.Write([]byte("PROXY UNKNOWN\r\n"))
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1ProxyProtocolV1JustUnknown",
+	})
+
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+
+	if got, want := res.status, 200; got != want {
+		t.Errorf("res.status: %v; want %v", got, want)
+	}
+}
+
+// TestH2H1ProxyProtocolV1BadLineEnd tests that PROXY protocol version
+// 1 line ending without \r\n should be rejected.
+func TestH2H1ProxyProtocolV1BadLineEnd(t *testing.T) {
+	st := newServerTester([]string{"--accept-proxy-protocol"}, t, noopHandler)
+	defer st.Close()
+
+	st.conn.Write([]byte("PROXY TCP6 ::1 ::1 12345 8080\r \n"))
+
+	_, err := st.http2(requestParam{
+		name: "TestH2H1ProxyProtocolV1BadLineEnd",
+	})
+
+	if err == nil {
+		t.Fatalf("connection was not terminated")
+	}
+}
+
+// TestH2H1ProxyProtocolV1NoEnd tests that PROXY protocol version 1
+// line containing no \r\n should be rejected.
+func TestH2H1ProxyProtocolV1NoEnd(t *testing.T) {
+	st := newServerTester([]string{"--accept-proxy-protocol"}, t, noopHandler)
+	defer st.Close()
+
+	st.conn.Write([]byte("PROXY TCP6 ::1 ::1 12345 8080"))
+
+	_, err := st.http2(requestParam{
+		name: "TestH2H1ProxyProtocolV1NoEnd",
+	})
+
+	if err == nil {
+		t.Fatalf("connection was not terminated")
+	}
+}
+
+// TestH2H1ProxyProtocolV1EmbeddedNULL tests that PROXY protocol
+// version 1 line containing NULL character should be rejected.
+func TestH2H1ProxyProtocolV1EmbeddedNULL(t *testing.T) {
+	st := newServerTester([]string{"--accept-proxy-protocol"}, t, noopHandler)
+	defer st.Close()
+
+	b := []byte("PROXY TCP6 ::1*foo ::1 12345 8080\r\n")
+	b[14] = 0
+	st.conn.Write(b)
+
+	_, err := st.http2(requestParam{
+		name: "TestH2H1ProxyProtocolV1EmbeddedNULL",
+	})
+
+	if err == nil {
+		t.Fatalf("connection was not terminated")
+	}
+}
+
+// TestH2H1ProxyProtocolV1MissingSrcPort tests that PROXY protocol
+// version 1 line without src port should be rejected.
+func TestH2H1ProxyProtocolV1MissingSrcPort(t *testing.T) {
+	st := newServerTester([]string{"--accept-proxy-protocol"}, t, noopHandler)
+	defer st.Close()
+
+	st.conn.Write([]byte("PROXY TCP6 ::1 ::1  8080\r\n"))
+
+	_, err := st.http2(requestParam{
+		name: "TestH2H1ProxyProtocolV1MissingSrcPort",
+	})
+
+	if err == nil {
+		t.Fatalf("connection was not terminated")
+	}
+}
+
+// TestH2H1ProxyProtocolV1MissingDstPort tests that PROXY protocol
+// version 1 line without dst port should be rejected.
+func TestH2H1ProxyProtocolV1MissingDstPort(t *testing.T) {
+	st := newServerTester([]string{"--accept-proxy-protocol"}, t, noopHandler)
+	defer st.Close()
+
+	st.conn.Write([]byte("PROXY TCP6 ::1 ::1 12345 \r\n"))
+
+	_, err := st.http2(requestParam{
+		name: "TestH2H1ProxyProtocolV1MissingDstPort",
+	})
+
+	if err == nil {
+		t.Fatalf("connection was not terminated")
+	}
+}
+
+// TestH2H1ProxyProtocolV1InvalidSrcPort tests that PROXY protocol
+// containing invalid src port should be rejected.
+func TestH2H1ProxyProtocolV1InvalidSrcPort(t *testing.T) {
+	st := newServerTester([]string{"--accept-proxy-protocol"}, t, noopHandler)
+	defer st.Close()
+
+	st.conn.Write([]byte("PROXY TCP6 ::1 ::1 123x 8080\r\n"))
+
+	_, err := st.http2(requestParam{
+		name: "TestH2H1ProxyProtocolV1InvalidSrcPort",
+	})
+
+	if err == nil {
+		t.Fatalf("connection was not terminated")
+	}
+}
+
+// TestH2H1ProxyProtocolV1InvalidDstPort tests that PROXY protocol
+// containing invalid dst port should be rejected.
+func TestH2H1ProxyProtocolV1InvalidDstPort(t *testing.T) {
+	st := newServerTester([]string{"--accept-proxy-protocol"}, t, noopHandler)
+	defer st.Close()
+
+	st.conn.Write([]byte("PROXY TCP6 ::1 ::1 123456 80x\r\n"))
+
+	_, err := st.http2(requestParam{
+		name: "TestH2H1ProxyProtocolV1InvalidDstPort",
+	})
+
+	if err == nil {
+		t.Fatalf("connection was not terminated")
+	}
+}
+
+// TestH2H1ProxyProtocolV1TooLargeSrcPort tests that PROXY protocol
+// containing too large src port should be rejected.
+func TestH2H1ProxyProtocolV1TooLargeSrcPort(t *testing.T) {
+	st := newServerTester([]string{"--accept-proxy-protocol"}, t, noopHandler)
+	defer st.Close()
+
+	st.conn.Write([]byte("PROXY TCP6 ::1 ::1 65536 8080\r\n"))
+
+	_, err := st.http2(requestParam{
+		name: "TestH2H1ProxyProtocolV1TooLargeSrcPort",
+	})
+
+	if err == nil {
+		t.Fatalf("connection was not terminated")
+	}
+}
+
+// TestH2H1ProxyProtocolV1TooLargeDstPort tests that PROXY protocol
+// containing too large dst port should be rejected.
+func TestH2H1ProxyProtocolV1TooLargeDstPort(t *testing.T) {
+	st := newServerTester([]string{"--accept-proxy-protocol"}, t, noopHandler)
+	defer st.Close()
+
+	st.conn.Write([]byte("PROXY TCP6 ::1 ::1 12345 65536\r\n"))
+
+	_, err := st.http2(requestParam{
+		name: "TestH2H1ProxyProtocolV1TooLargeDstPort",
+	})
+
+	if err == nil {
+		t.Fatalf("connection was not terminated")
+	}
+}
+
+// TestH2H1ProxyProtocolV1InvalidSrcAddr tests that PROXY protocol
+// containing invalid src addr should be rejected.
+func TestH2H1ProxyProtocolV1InvalidSrcAddr(t *testing.T) {
+	st := newServerTester([]string{"--accept-proxy-protocol"}, t, noopHandler)
+	defer st.Close()
+
+	st.conn.Write([]byte("PROXY TCP6 192.168.0.1 ::1 12345 8080\r\n"))
+
+	_, err := st.http2(requestParam{
+		name: "TestH2H1ProxyProtocolV1InvalidSrcAddr",
+	})
+
+	if err == nil {
+		t.Fatalf("connection was not terminated")
+	}
+}
+
+// TestH2H1ProxyProtocolV1InvalidDstAddr tests that PROXY protocol
+// containing invalid dst addr should be rejected.
+func TestH2H1ProxyProtocolV1InvalidDstAddr(t *testing.T) {
+	st := newServerTester([]string{"--accept-proxy-protocol"}, t, noopHandler)
+	defer st.Close()
+
+	st.conn.Write([]byte("PROXY TCP6 ::1 192.168.0.1 12345 8080\r\n"))
+
+	_, err := st.http2(requestParam{
+		name: "TestH2H1ProxyProtocolV1InvalidDstAddr",
+	})
+
+	if err == nil {
+		t.Fatalf("connection was not terminated")
+	}
+}
+
+// TestH2H1ProxyProtocolV1InvalidProtoFamily tests that PROXY protocol
+// containing invalid protocol family should be rejected.
+func TestH2H1ProxyProtocolV1InvalidProtoFamily(t *testing.T) {
+	st := newServerTester([]string{"--accept-proxy-protocol"}, t, noopHandler)
+	defer st.Close()
+
+	st.conn.Write([]byte("PROXY UNIX ::1 ::1 12345 8080\r\n"))
+
+	_, err := st.http2(requestParam{
+		name: "TestH2H1ProxyProtocolV1InvalidProtoFamily",
+	})
+
+	if err == nil {
+		t.Fatalf("connection was not terminated")
+	}
+}
+
+// TestH2H1ProxyProtocolV1InvalidID tests that PROXY protocol
+// containing invalid PROXY protocol version 1 ID should be rejected.
+func TestH2H1ProxyProtocolV1InvalidID(t *testing.T) {
+	st := newServerTester([]string{"--accept-proxy-protocol"}, t, noopHandler)
+	defer st.Close()
+
+	st.conn.Write([]byte("PR0XY TCP6 ::1 ::1 12345 8080\r\n"))
+
+	_, err := st.http2(requestParam{
+		name: "TestH2H1ProxyProtocolV1InvalidID",
+	})
+
+	if err == nil {
+		t.Fatalf("connection was not terminated")
+	}
+}
+
 // TestH2H1GracefulShutdown tests graceful shutdown.
 func TestH2H1GracefulShutdown(t *testing.T) {
 	st := newServerTester(nil, t, noopHandler)

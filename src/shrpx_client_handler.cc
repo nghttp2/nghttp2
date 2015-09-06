@@ -857,6 +857,18 @@ ssize_t parse_proxy_line_port(const uint8_t *first, const uint8_t *last) {
 }
 } // namespace
 
+int ClientHandler::on_proxy_protocol_finish() {
+  setup_upstream_io_callback();
+
+  // Run on_read to process data left in buffer since they are not
+  // notified further
+  if (on_read() != 0) {
+    return -1;
+  }
+
+  return 0;
+}
+
 int ClientHandler::proxy_protocol_read() {
   if (LOG_ENABLED(INFO)) {
     CLOG(INFO, this) << "PROXY-protocol: Started";
@@ -878,7 +890,7 @@ int ClientHandler::proxy_protocol_read() {
 
   constexpr const char HEADER[] = "PROXY ";
 
-  if (rb_.rleft() < str_size(HEADER)) {
+  if (end - rb_.pos < str_size(HEADER)) {
     if (LOG_ENABLED(INFO)) {
       CLOG(INFO, this) << "PROXY-protocol-v1: PROXY version 1 ID not found";
     }
@@ -897,7 +909,7 @@ int ClientHandler::proxy_protocol_read() {
   int family;
 
   if (rb_.pos[0] == 'T') {
-    if (rb_.rleft() < 5) {
+    if (end - rb_.pos < 5) {
       if (LOG_ENABLED(INFO)) {
         CLOG(INFO, this) << "PROXY-protocol-v1: INET protocol family not found";
       }
@@ -917,7 +929,7 @@ int ClientHandler::proxy_protocol_read() {
 
     rb_.drain(5);
   } else {
-    if (rb_.rleft() < 7) {
+    if (end - rb_.pos < 7) {
       if (LOG_ENABLED(INFO)) {
         CLOG(INFO, this) << "PROXY-protocol-v1: INET protocol family not found";
       }
@@ -930,7 +942,9 @@ int ClientHandler::proxy_protocol_read() {
       return -1;
     }
 
-    return 0;
+    rb_.drain(end + 2 - rb_.pos);
+
+    return on_proxy_protocol_finish();
   }
 
   // source address
@@ -1012,15 +1026,7 @@ int ClientHandler::proxy_protocol_read() {
                      << " bytes read";
   }
 
-  setup_upstream_io_callback();
-
-  // Run on_read to process data left in buffer since they are not
-  // notified further
-  if (on_read() != 0) {
-    return -1;
-  }
-
-  return 0;
+  return on_proxy_protocol_finish();
 }
 
 } // namespace shrpx
