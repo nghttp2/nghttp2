@@ -811,6 +811,22 @@ Process
     be used to drop root privileges.
 
 
+Scripting
+~~~~~~~~~
+
+.. option:: --request-phase-file=<PATH>
+
+    Set  mruby  script  file  which will  be  executed  when
+    request  header  fields  are  completely  received  from
+    frontend.  This hook is called request phase hook.
+
+.. option:: --response-phase-file=<PATH>
+
+    Set  mruby  script  file  which will  be  executed  when
+    response  header  fields  are completely  received  from
+    backend.  This hook is called response phase hook.
+
+
 Misc
 ~~~~
 
@@ -906,17 +922,12 @@ header field to initiate server push:
   Link: </fonts/font.woff>; rel=preload
   Link: </css/theme.css>; rel=preload
 
-Currently, the following restrictions are applied for server push:
+Currently, the following restriction is applied for server push:
 
-1. URI-reference must not contain authority.  If it exists, it is not
-   pushed.  ``/fonts/font.woff`` and ``css/theme.css`` are eligible to
-   be pushed.  ``https://example.org/fonts/font.woff`` and
-   ``//example.org/css/theme.css`` are not.
-
-2. The associated stream must have method "GET" or "POST".  The
+1. The associated stream must have method "GET" or "POST".  The
    associated stream's status code must be 200.
 
-These limitations may be loosened in the future release.
+This limitation may be loosened in the future release.
 
 UNIX DOMAIN SOCKET
 ------------------
@@ -1004,6 +1015,239 @@ If :option:`--tls-ticket-key-file` is given, encryption key is read
 from the given file.  In this case, nghttpx does not rotate key
 automatically.  To rotate key, one has to restart nghttpx (see
 SIGNALS).
+
+MRUBY SCRIPTING
+---------------
+
+.. warning::
+
+  The current mruby extension API is experimental and not frozen.  The
+  API is subject to change in the future release.
+
+nghttpx allows users to extend its capability using mruby scripts.
+nghttpx has 2 hook points to execute mruby script: request phase and
+response phase.  The request phase hook is invoked after all request
+header fields are received from client.  The response phase hook is
+invoked after all response header fields are received from backend
+server.  These hooks allows users to modify header fields, or common
+HTTP variables, like authority or request path, and even return custom
+response without forwarding request to backend servers.
+
+To set request phase hook, use :option:`--request-phase-file` option.
+To set response phase hook, use :option:`--response-phase-file`
+option.
+
+For request and response phase hook, user calls :rb:meth:`Nghttpx.run`
+with block.  The :rb:class:`Nghttpx::Env` is passed to the block.
+User can can access :rb:class:`Nghttpx::Request` and
+:rb:class:`Nghttpx::Response` objects via :rb:attr:`Nghttpx::Env#req`
+and :rb:attr:`Nghttpx::Env#resp` respectively.
+
+.. rb:module:: Nghttpx
+
+.. rb:classmethod:: run(&block)
+
+    Run request or response phase hook with given *block*.
+    :rb:class:`Nghttpx::Env` object is passed to the given block.
+
+.. rb:const:: REQUEST_PHASE
+
+    Constant to represent request phase.
+
+.. rb:const:: RESPONSE_PHASE
+
+    Constant to represent response phase.
+
+.. rb:class:: Env
+
+    Object to represent current request specific context.
+
+    .. rb:attr_reader:: req
+
+        Return :rb:class:`Request` object.
+
+    .. rb:attr_reader:: resp
+
+        Return :rb:class:`Response` object.
+
+    .. rb:attr_reader:: ctx
+
+        Return Ruby hash object.  It persists until request finishes.
+        So values set in request phase hoo can be retrieved in
+        response phase hook.
+
+    .. rb:attr_reader:: phase
+
+        Return the current phase.
+
+    .. rb:attr_reader:: remote_addr
+
+        Return IP address of a remote client.
+
+.. rb:class:: Request
+
+    Object to represent request from client.  The modification to
+    Request object is allowed only in request phase hook.
+
+    .. rb:attr_reader:: http_version_major
+
+        Return HTTP major version.
+
+    .. rb:attr_reader:: http_version_minor
+
+        Return HTTP minor version.
+
+    .. rb:attr_accessor:: method
+
+        HTTP method.  On assignment, copy of given value is assigned.
+        We don't accept arbitrary method name.  We will document them
+        later, but well known methods, like GET, PUT and POST, are all
+        supported.
+
+    .. rb:attr_accessor:: authority
+
+        Authority (i.e., example.org), including optional port
+        component .  On assignment, copy of given value is assigned.
+
+    .. rb:attr_accessor:: scheme
+
+        Scheme (i.e., http, https).  On assignment, copy of given
+        value is assigned.
+
+    .. rb:attr_accessor:: path
+
+        Request path, including query component (i.e., /index.html).
+        On assignment, copy of given value is assigned.  The path does
+        not include authority component of URI.
+
+    .. rb:attr_reader:: headers
+
+        Return Ruby hash containing copy of request header fields.
+        Changing values in returned hash does not change request
+        header fields actually used in request processing.  Use
+        :rb:meth:`Nghttpx::Request#add_header` or
+        :rb:meth:`Nghttpx::Request#set_header` to change request
+        header fields.
+
+    .. rb:method:: add_header(key, value)
+
+        Add header entry associated with key.  The value can be single
+        string or array of string.  It does not replace any existing
+        values associated with key.
+
+    .. rb:method:: set_header(key, value)
+
+        Set header entry associated with key.  The value can be single
+        string or array of string.  It replaces any existing values
+        associated with key.
+
+    .. rb:method:: clear_headers
+
+        Clear all existing request header fields.
+
+    .. rb:method:: push uri
+
+        Initiate to push resource identified by *uri*.  Only HTTP/2
+        protocol supports this feature.  For the other protocols, this
+        method is noop.  *uri* can be absolute URI, absolute path or
+        relative path to the current request.  For absolute or
+        relative path, scheme and authority are inherited from the
+        current request.  Currently, method is always GET.  nghttpx
+        will issue request to backend servers to fulfill this request.
+        The request and response phase hooks will be called for pushed
+        resource as well.
+
+.. rb:class:: Response
+
+    Object to represent response from backend server.
+
+    .. rb:attr_reader:: http_version_major
+
+        Return HTTP major version.
+
+    .. rb:attr_reader:: http_version_minor
+
+        Return HTTP minor version.
+
+    .. rb:attr_accessor:: status
+
+        HTTP status code.  It must be in the range [200, 999],
+        inclusive.  The non-final status code is not supported in
+        mruby scripting at the moment.
+
+    .. rb:attr_reader:: headers
+
+        Return Ruby hash containing copy of response header fields.
+        Changing values in returned hash does not change response
+        header fields actually used in response processing.  Use
+        :rb:meth:`Nghttpx::Response#add_header` or
+        :rb:meth:`Nghttpx::Response#set_header` to change response
+        header fields.
+
+    .. rb:method:: add_header(key, value)
+
+        Add header entry associated with key.  The value can be single
+        string or array of string.  It does not replace any existing
+        values associated with key.
+
+    .. rb:method:: set_header(key, value)
+
+        Set header entry associated with key.  The value can be single
+        string or array of string.  It replaces any existing values
+        associated with key.
+
+    .. rb:method:: clear_headers
+
+        Clear all existing response header fields.
+
+    .. rb:method:: return(body)
+
+        Return custom response *body* to a client.  When this method
+        is called in request phase hook, the request is not forwarded
+        to the backend, and response phase hook for this request will
+        not be invoked.  When this method is called in resonse phase
+        hook, response from backend server is canceled and discarded.
+        The status code and response header fields should be set
+        before using this method.  To set status code, use :rb:meth To
+        set response header fields, use
+        :rb:attr:`Nghttpx::Response#status`.  If status code is not
+        set, 200 is used.  :rb:meth:`Nghttpx::Response#add_header` and
+        :rb:meth:`Nghttpx::Response#set_header`.  When this method is
+        invoked in response phase hook, the response headers are
+        filled with the ones received from backend server.  To send
+        completely custom header fields, first call
+        :rb:meth:`Nghttpx::Response#clear_headers` to erase all
+        existing header fields, and then add required header fields.
+        It is an error to call this method twice for a given request.
+
+MRUBY EXAMPLES
+~~~~~~~~~~~~~~
+
+Modify requet path:
+
+.. code-block:: ruby
+
+    Nghttpx.run do |env|
+      env.req.path = "/apps#{env.req.path}"
+    end
+
+Note that the file containing the above script must be set with
+:option:`--request-phase-file` option since we modify request path.
+
+Restrict permission of viewing a content to a specific client
+addresses:
+
+.. code-block:: ruby
+
+    Nghttpx.run do |env|
+      allowed_clients = ["127.0.0.1", "::1"]
+
+      if env.req.path.start_with?("/log/") &&
+         !allowed_clients.include?(env.remote_addr) then
+        env.resp.status = 404
+        env.resp.return "permission denied"
+      end
+    end
 
 SEE ALSO
 --------

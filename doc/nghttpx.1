@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "August 30, 2015" "1.3.0" "nghttp2"
+.TH "NGHTTPX" "1" "September 06, 2015" "1.3.1-DEV" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 experimental proxy
 .
@@ -905,6 +905,21 @@ Set path to save PID of this program.
 Run this program as <USER>.   This option is intended to
 be used to drop root privileges.
 .UNINDENT
+.SS Scripting
+.INDENT 0.0
+.TP
+.B \-\-request\-phase\-file=<PATH>
+Set  mruby  script  file  which will  be  executed  when
+request  header  fields  are  completely  received  from
+frontend.  This hook is called request phase hook.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-response\-phase\-file=<PATH>
+Set  mruby  script  file  which will  be  executed  when
+response  header  fields  are completely  received  from
+backend.  This hook is called response phase hook.
+.UNINDENT
 .SS Misc
 .INDENT 0.0
 .TP
@@ -1003,19 +1018,14 @@ Link: </css/theme.css>; rel=preload
 .UNINDENT
 .UNINDENT
 .sp
-Currently, the following restrictions are applied for server push:
+Currently, the following restriction is applied for server push:
 .INDENT 0.0
 .IP 1. 3
-URI\-reference must not contain authority.  If it exists, it is not
-pushed.  \fB/fonts/font.woff\fP and \fBcss/theme.css\fP are eligible to
-be pushed.  \fBhttps://example.org/fonts/font.woff\fP and
-\fB//example.org/css/theme.css\fP are not.
-.IP 2. 3
 The associated stream must have method "GET" or "POST".  The
 associated stream\(aqs status code must be 200.
 .UNINDENT
 .sp
-These limitations may be loosened in the future release.
+This limitation may be loosened in the future release.
 .SH UNIX DOMAIN SOCKET
 .sp
 nghttpx supports UNIX domain socket with a filename for both frontend
@@ -1101,6 +1111,278 @@ If \fI\%\-\-tls\-ticket\-key\-file\fP is given, encryption key is read
 from the given file.  In this case, nghttpx does not rotate key
 automatically.  To rotate key, one has to restart nghttpx (see
 SIGNALS).
+.SH MRUBY SCRIPTING
+.sp
+\fBWARNING:\fP
+.INDENT 0.0
+.INDENT 3.5
+The current mruby extension API is experimental and not frozen.  The
+API is subject to change in the future release.
+.UNINDENT
+.UNINDENT
+.sp
+nghttpx allows users to extend its capability using mruby scripts.
+nghttpx has 2 hook points to execute mruby script: request phase and
+response phase.  The request phase hook is invoked after all request
+header fields are received from client.  The response phase hook is
+invoked after all response header fields are received from backend
+server.  These hooks allows users to modify header fields, or common
+HTTP variables, like authority or request path, and even return custom
+response without forwarding request to backend servers.
+.sp
+To set request phase hook, use \fI\%\-\-request\-phase\-file\fP option.
+To set response phase hook, use \fI\%\-\-response\-phase\-file\fP
+option.
+.sp
+For request and response phase hook, user calls \fI\%Nghttpx.run\fP
+with block.  The \fI\%Nghttpx::Env\fP is passed to the block.
+User can can access \fI\%Nghttpx::Request\fP and
+\fI\%Nghttpx::Response\fP objects via \fI\%Nghttpx::Env#req\fP
+and \fI\%Nghttpx::Env#resp\fP respectively.
+.INDENT 0.0
+.TP
+.B classmethod .Nghttpx.run(&block)
+Run request or response phase hook with given \fIblock\fP\&.
+\fI\%Nghttpx::Env\fP object is passed to the given block.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B Nghttpx::REQUEST_PHASE
+Constant to represent request phase.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B Nghttpx::RESPONSE_PHASE
+Constant to represent response phase.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B class Nghttpx::Env
+Object to represent current request specific context.
+.INDENT 7.0
+.TP
+.B attribute [R] req
+Return \fI\%Request\fP object.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B attribute [R] resp
+Return \fI\%Response\fP object.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B attribute [R] ctx
+Return Ruby hash object.  It persists until request finishes.
+So values set in request phase hoo can be retrieved in
+response phase hook.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B attribute [R] phase
+Return the current phase.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B attribute [R] remote_addr
+Return IP address of a remote client.
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B class Nghttpx::Request
+Object to represent request from client.  The modification to
+Request object is allowed only in request phase hook.
+.INDENT 7.0
+.TP
+.B attribute [R] http_version_major
+Return HTTP major version.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B attribute [R] http_version_minor
+Return HTTP minor version.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B attribute [R/W] method
+HTTP method.  On assignment, copy of given value is assigned.
+We don\(aqt accept arbitrary method name.  We will document them
+later, but well known methods, like GET, PUT and POST, are all
+supported.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B attribute [R/W] authority
+Authority (i.e., example.org), including optional port
+component .  On assignment, copy of given value is assigned.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B attribute [R/W] scheme
+Scheme (i.e., http, https).  On assignment, copy of given
+value is assigned.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B attribute [R/W] path
+Request path, including query component (i.e., /index.html).
+On assignment, copy of given value is assigned.  The path does
+not include authority component of URI.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B attribute [R] headers
+Return Ruby hash containing copy of request header fields.
+Changing values in returned hash does not change request
+header fields actually used in request processing.  Use
+\fI\%Nghttpx::Request#add_header\fP or
+\fI\%Nghttpx::Request#set_header\fP to change request
+header fields.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B add_header(key, value)
+Add header entry associated with key.  The value can be single
+string or array of string.  It does not replace any existing
+values associated with key.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B set_header(key, value)
+Set header entry associated with key.  The value can be single
+string or array of string.  It replaces any existing values
+associated with key.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B clear_headers()
+Clear all existing request header fields.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B push uri
+Initiate to push resource identified by \fIuri\fP\&.  Only HTTP/2
+protocol supports this feature.  For the other protocols, this
+method is noop.  \fIuri\fP can be absolute URI, absolute path or
+relative path to the current request.  For absolute or
+relative path, scheme and authority are inherited from the
+current request.  Currently, method is always GET.  nghttpx
+will issue request to backend servers to fulfill this request.
+The request and response phase hooks will be called for pushed
+resource as well.
+.UNINDENT
+.UNINDENT
+.INDENT 0.0
+.TP
+.B class Nghttpx::Response
+Object to represent response from backend server.
+.INDENT 7.0
+.TP
+.B attribute [R] http_version_major
+Return HTTP major version.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B attribute [R] http_version_minor
+Return HTTP minor version.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B attribute [R/W] status
+HTTP status code.  It must be in the range [200, 999],
+inclusive.  The non\-final status code is not supported in
+mruby scripting at the moment.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B attribute [R] headers
+Return Ruby hash containing copy of response header fields.
+Changing values in returned hash does not change response
+header fields actually used in response processing.  Use
+\fI\%Nghttpx::Response#add_header\fP or
+\fI\%Nghttpx::Response#set_header\fP to change response
+header fields.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B add_header(key, value)
+Add header entry associated with key.  The value can be single
+string or array of string.  It does not replace any existing
+values associated with key.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B set_header(key, value)
+Set header entry associated with key.  The value can be single
+string or array of string.  It replaces any existing values
+associated with key.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B clear_headers()
+Clear all existing response header fields.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B return(body)
+Return custom response \fIbody\fP to a client.  When this method
+is called in request phase hook, the request is not forwarded
+to the backend, and response phase hook for this request will
+not be invoked.  When this method is called in resonse phase
+hook, response from backend server is canceled and discarded.
+The status code and response header fields should be set
+before using this method.  To set status code, use :rb:meth To
+set response header fields, use
+\fI\%Nghttpx::Response#status\fP\&.  If status code is not
+set, 200 is used.  \fI\%Nghttpx::Response#add_header\fP and
+\fI\%Nghttpx::Response#set_header\fP\&.  When this method is
+invoked in response phase hook, the response headers are
+filled with the ones received from backend server.  To send
+completely custom header fields, first call
+\fI\%Nghttpx::Response#clear_headers\fP to erase all
+existing header fields, and then add required header fields.
+It is an error to call this method twice for a given request.
+.UNINDENT
+.UNINDENT
+.SS MRUBY EXAMPLES
+.sp
+Modify requet path:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+Nghttpx.run do |env|
+  env.req.path = "/apps#{env.req.path}"
+end
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+Note that the file containing the above script must be set with
+\fI\%\-\-request\-phase\-file\fP option since we modify request path.
+.sp
+Restrict permission of viewing a content to a specific client
+addresses:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+Nghttpx.run do |env|
+  allowed_clients = ["127.0.0.1", "::1"]
+
+  if env.req.path.start_with?("/log/") &&
+     !allowed_clients.include?(env.remote_addr) then
+    env.resp.status = 404
+    env.resp.return "permission denied"
+  end
+end
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
 .SH SEE ALSO
 .sp
 \fInghttp(1)\fP, \fInghttpd(1)\fP, \fIh2load(1)\fP
