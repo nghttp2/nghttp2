@@ -587,6 +587,20 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
     // downstream is in pending queue.
     auto ptr = downstream.get();
     upstream->add_pending_downstream(std::move(downstream));
+
+#ifdef HAVE_MRUBY
+    auto worker = handler->get_worker();
+    auto mruby_ctx = worker->get_mruby_context();
+
+    if (mruby_ctx->run_on_request_proc(ptr) != 0) {
+      if (upstream->error_reply(ptr, 500) != 0) {
+        upstream->rst_stream(ptr, NGHTTP2_INTERNAL_ERROR);
+        return 0;
+      }
+      return 0;
+    }
+#endif // HAVE_MRUBY
+
     upstream->start_downstream(ptr);
 
     return 0;

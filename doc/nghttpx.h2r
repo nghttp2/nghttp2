@@ -289,7 +289,10 @@ and :rb:attr:`Nghttpx::Env#resp` respectively.
         method is noop.  *uri* can be absolute URI, absolute path or
         relative path to the current request.  For absolute or
         relative path, scheme and authority are inherited from the
-        current request.  Currently, method is always GET.
+        current request.  Currently, method is always GET.  nghttpx
+        will issue request to backend servers to fulfill this request.
+        The request and response phase hooks will be called for pushed
+        resource as well.
 
 .. rb:class:: Response
 
