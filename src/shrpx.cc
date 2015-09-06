@@ -1268,6 +1268,8 @@ Connections:
               timeouts when connecting and  making CONNECT request can
               be     specified    by     --backend-read-timeout    and
               --backend-write-timeout options.
+  --accept-proxy-protocol
+              Accept PROXY protocol version 1 on frontend connection.
 
 Performance:
   -n, --workers=<N>
