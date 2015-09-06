@@ -2315,6 +2315,7 @@ int main(int argc, char **argv) {
       case 92:
         // --response-phase-file
         cmdcfgs.emplace_back(SHRPX_OPT_RESPONSE_PHASE_FILE, optarg);
+        break;
       default:
         break;
       }
