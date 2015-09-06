@@ -870,6 +870,9 @@ int ClientHandler::proxy_protocol_read() {
   auto end = std::find_first_of(rb_.pos, rb_.pos + rb_.rleft(),
                                 std::begin(chrs), std::end(chrs));
   if (end + 2 > rb_.pos + rb_.rleft() || *end == '\0' || end[1] != '\n') {
+    if (LOG_ENABLED(INFO)) {
+      CLOG(INFO, this) << "PROXY-protocol-v1: No ending CR LF sequence found";
+    }
     return -1;
   }
 
