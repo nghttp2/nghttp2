@@ -158,11 +158,15 @@ std::string joinPath(InputIterator first, InputIterator last) {
   return strjoin(elements.begin(), elements.end(), "/");
 }
 
-bool isAlpha(const char c);
+inline bool isAlpha(const char c) {
+  return ('A' <= c && c <= 'Z') || ('a' <= c && c <= 'z');
+}
 
-bool isDigit(const char c);
+inline bool isDigit(const char c) { return '0' <= c && c <= '9'; }
 
-bool isHexDigit(const char c);
+inline bool isHexDigit(const char c) {
+  return isDigit(c) || ('A' <= c && c <= 'F') || ('a' <= c && c <= 'f');
+}
 
 bool inRFC3986UnreservedChars(const char c);
 

@@ -66,16 +66,6 @@ const char DEFAULT_STRIP_CHARSET[] = "\r\n\t ";
 
 const char UPPER_XDIGITS[] = "0123456789ABCDEF";
 
-bool isAlpha(const char c) {
-  return ('A' <= c && c <= 'Z') || ('a' <= c && c <= 'z');
-}
-
-bool isDigit(const char c) { return '0' <= c && c <= '9'; }
-
-bool isHexDigit(const char c) {
-  return isDigit(c) || ('A' <= c && c <= 'F') || ('a' <= c && c <= 'f');
-}
-
 bool inRFC3986UnreservedChars(const char c) {
   static const char unreserved[] = {'-', '.', '_', '~'};
   return isAlpha(c) || isDigit(c) ||
