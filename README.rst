@@ -121,7 +121,11 @@ directory.  Currently, mruby support for nghttpx is disabled by
 default.  To enable mruby support, use ``--with-mruby`` configure
 option.  Note that at the time of this writing, libmruby-dev and mruby
 packages in Debian/Ubuntu are not usable for nghttp2, since they do
-not enable C++ ABI.
+not enable C++ ABI.  To build mruby, the following packages are
+required:
+
+* ruby
+* bison
 
 Building from git
 -----------------
