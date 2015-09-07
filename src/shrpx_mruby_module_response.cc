@@ -180,8 +180,9 @@ mrb_value response_return(mrb_state *mrb, mrb_value self) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "response has already been committed");
   }
 
-  mrb_value val;
-  mrb_get_args(mrb, "|o", &val);
+  const char *val;
+  mrb_int vallen;
+  mrb_get_args(mrb, "|s", &val, &vallen);
 
   const uint8_t *body = nullptr;
   size_t bodylen = 0;
@@ -195,9 +196,9 @@ mrb_value response_return(mrb_state *mrb, mrb_value self) {
     data->response_headers_dirty = false;
   }
 
-  if (downstream->expect_response_body() && !mrb_nil_p(val)) {
-    body = reinterpret_cast<const uint8_t *>(RSTRING_PTR(val));
-    bodylen = RSTRING_LEN(val);
+  if (downstream->expect_response_body() && vallen > 0) {
+    body = reinterpret_cast<const uint8_t *>(val);
+    bodylen = vallen;
   }
 
   auto cl = downstream->get_response_header(http2::HD_CONTENT_LENGTH);
