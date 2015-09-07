@@ -210,6 +210,14 @@ mrb_value response_return(mrb_state *mrb, mrb_value self) {
   }
   downstream->set_response_content_length(bodylen);
 
+  auto date = downstream->get_response_header(http2::HD_DATE);
+  if (!date) {
+    auto lgconf = log_config();
+    lgconf->update_tstamp(std::chrono::system_clock::now());
+    downstream->add_response_header("date", lgconf->time_http_str,
+                                    http2::HD_DATE);
+  }
+
   auto upstream = downstream->get_upstream();
 
   rv = upstream->send_reply(downstream, body, bodylen);

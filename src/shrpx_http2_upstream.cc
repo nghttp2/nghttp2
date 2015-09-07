@@ -1238,13 +1238,17 @@ int Http2Upstream::error_reply(Downstream *downstream,
   data_prd.source.ptr = downstream;
   data_prd.read_callback = downstream_data_read_callback;
 
+  auto lgconf = log_config();
+  lgconf->update_tstamp(std::chrono::system_clock::now());
+
   auto content_length = util::utos(html.size());
   auto status_code_str = util::utos(status_code);
   auto nva =
       make_array(http2::make_nv_ls(":status", status_code_str),
                  http2::make_nv_ll("content-type", "text/html; charset=UTF-8"),
                  http2::make_nv_lc("server", get_config()->server_name),
-                 http2::make_nv_ls("content-length", content_length));
+                 http2::make_nv_ls("content-length", content_length),
+                 http2::make_nv_ls("date", lgconf->time_http_str));
 
   rv = nghttp2_submit_response(session_, downstream->get_stream_id(),
                                nva.data(), nva.size(), &data_prd);

@@ -64,6 +64,7 @@ LogConfig::update_tstamp(const std::chrono::system_clock::time_point &now) {
 
   time_local_str = util::format_common_log(now);
   time_iso8601_str = util::format_iso8601(now);
+  time_http_str = util::format_http_date(now);
 }
 
 } // namespace shrpx

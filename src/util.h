@@ -588,6 +588,13 @@ template <typename T> std::string format_iso8601(const T &tp) {
   return iso8601_date(t.count());
 }
 
+// Returns given time |tp| in HTTP date format.
+template <typename T> std::string format_http_date(const T &tp) {
+  auto t =
+      std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch());
+  return http_date(t.count());
+}
+
 // Return the system precision of the template parameter |Clock| as
 // a nanosecond value of type |Rep|
 template <typename Clock, typename Rep> Rep clock_precision() {

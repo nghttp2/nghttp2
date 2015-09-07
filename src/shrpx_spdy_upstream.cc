@@ -881,6 +881,9 @@ int SpdyUpstream::error_reply(Downstream *downstream,
   data_prd.source.ptr = downstream;
   data_prd.read_callback = spdy_data_read_callback;
 
+  auto lgconf = log_config();
+  lgconf->update_tstamp(std::chrono::system_clock::now());
+
   std::string content_length = util::utos(html.size());
   std::string status_string = http2::get_status_string(status_code);
   const char *nv[] = {":status",        status_string.c_str(),
@@ -888,6 +891,7 @@ int SpdyUpstream::error_reply(Downstream *downstream,
                       "content-type",   "text/html; charset=UTF-8",
                       "server",         get_config()->server_name,
                       "content-length", content_length.c_str(),
+                      "date",           lgconf->time_http_str.c_str(),
                       nullptr};
 
   rv = spdylay_submit_response(session_, downstream->get_stream_id(), nv,

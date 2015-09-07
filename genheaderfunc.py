@@ -28,6 +28,7 @@ HEADERS = [
     "accept-language",
     "cache-control",
     "user-agent",
+    "date",
     # disallowed h1 headers
     'connection',
     'keep-alive',

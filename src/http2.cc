@@ -414,6 +414,11 @@ int lookup_token(const uint8_t *name, size_t namelen) {
     break;
   case 4:
     switch (name[3]) {
+    case 'e':
+      if (util::streq_l("dat", name, 3)) {
+        return HD_DATE;
+      }
+      break;
     case 'k':
       if (util::streq_l("lin", name, 3)) {
         return HD_LINK;
