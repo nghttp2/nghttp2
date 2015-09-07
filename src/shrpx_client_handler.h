@@ -56,6 +56,7 @@ public:
                 const char *port);
   ~ClientHandler();
 
+  int noop();
   // Performs clear text I/O
   int read_clear();
   int write_clear();

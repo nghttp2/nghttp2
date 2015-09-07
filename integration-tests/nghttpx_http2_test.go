@@ -885,6 +885,23 @@ func TestH2H1ProxyProtocolV1JustUnknown(t *testing.T) {
 	}
 }
 
+// TestH2H1ProxyProtocolV1TooLongLine tests PROXY protocol version 1
+// line longer than 107 bytes must be rejected
+func TestH2H1ProxyProtocolV1TooLongLine(t *testing.T) {
+	st := newServerTester([]string{"--accept-proxy-protocol", "--add-x-forwarded-for"}, t, noopHandler)
+	defer st.Close()
+
+	st.conn.Write([]byte("PROXY UNKNOWN ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff 65535 655350\r\n"))
+
+	_, err := st.http2(requestParam{
+		name: "TestH2H1ProxyProtocolV1TooLongLine",
+	})
+
+	if err == nil {
+		t.Fatalf("connection was not terminated")
+	}
+}
+
 // TestH2H1ProxyProtocolV1BadLineEnd tests that PROXY protocol version
 // 1 line ending without \r\n should be rejected.
 func TestH2H1ProxyProtocolV1BadLineEnd(t *testing.T) {
@@ -999,6 +1016,24 @@ func TestH2H1ProxyProtocolV1InvalidDstPort(t *testing.T) {
 
 	_, err := st.http2(requestParam{
 		name: "TestH2H1ProxyProtocolV1InvalidDstPort",
+	})
+
+	if err == nil {
+		t.Fatalf("connection was not terminated")
+	}
+}
+
+// TestH2H1ProxyProtocolV1LeadingZeroPort tests that PROXY protocol
+// version 1 line with non zero port with leading zero should be
+// rejected.
+func TestH2H1ProxyProtocolV1LeadingZeroPort(t *testing.T) {
+	st := newServerTester([]string{"--accept-proxy-protocol"}, t, noopHandler)
+	defer st.Close()
+
+	st.conn.Write([]byte("PROXY TCP6 ::1 ::1 03000 8080\r\n"))
+
+	_, err := st.http2(requestParam{
+		name: "TestH2H1ProxyProtocolV1LeadingZeroPort",
 	})
 
 	if err == nil {

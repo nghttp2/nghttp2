@@ -104,6 +104,8 @@ void writecb(struct ev_loop *loop, ev_io *w, int revents) {
 }
 } // namespace
 
+int ClientHandler::noop() { return 0; }
+
 int ClientHandler::read_clear() {
   ev_timer_again(conn_.loop, &conn_.rt);
 
@@ -383,7 +385,8 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
   ev_timer_again(conn_.loop, &conn_.rt);
 
   if (get_config()->accept_proxy_protocol) {
-    read_ = write_ = &ClientHandler::read_clear;
+    read_ = &ClientHandler::read_clear;
+    write_ = &ClientHandler::noop;
     on_read_ = &ClientHandler::proxy_protocol_read;
     on_write_ = &ClientHandler::upstream_noop;
   } else {
@@ -844,6 +847,17 @@ ssize_t parse_proxy_line_port(const uint8_t *first, const uint8_t *last) {
   auto p = first;
   int32_t port = 0;
 
+  if (p == last) {
+    return -1;
+  }
+
+  if (*p == '0') {
+    if (p + 1 != last && util::isDigit(*(p + 1))) {
+      return -1;
+    }
+    return 1;
+  }
+
   for (; p != last && util::isDigit(*p); ++p) {
     port *= 10;
     port += *p - '0';
@@ -869,6 +883,7 @@ int ClientHandler::on_proxy_protocol_finish() {
   return 0;
 }
 
+// http://www.haproxy.org/download/1.5/doc/proxy-protocol.txt
 int ClientHandler::proxy_protocol_read() {
   if (LOG_ENABLED(INFO)) {
     CLOG(INFO, this) << "PROXY-protocol: Started";
@@ -876,17 +891,36 @@ int ClientHandler::proxy_protocol_read() {
 
   auto first = rb_.pos;
 
-  // NULL character really destroys getaddrinfo function.  We won't
-  // expect it in PROXY protocol line, so find it here.
-  auto chrs = std::array<char, 2>{{'\r', '\0'}};
-  auto end = std::find_first_of(rb_.pos, rb_.pos + rb_.rleft(),
-                                std::begin(chrs), std::end(chrs));
-  if (end + 2 > rb_.pos + rb_.rleft() || *end == '\0' || end[1] != '\n') {
+  // NULL character really destroys functions which expects NULL
+  // terminated string.  We won't expect it in PROXY protocol line, so
+  // find it here.
+  auto chrs = std::array<char, 2>{{'\n', '\0'}};
+
+  constexpr size_t MAX_PROXY_LINELEN = 107;
+
+  auto bufend = rb_.pos + std::min(MAX_PROXY_LINELEN, rb_.rleft());
+
+  auto end =
+      std::find_first_of(rb_.pos, bufend, std::begin(chrs), std::end(chrs));
+
+  if (end == bufend) {
+    if (rb_.rleft() >= MAX_PROXY_LINELEN) {
+      if (LOG_ENABLED(INFO)) {
+        CLOG(INFO, this) << "PROXY-protocol-v1: No ending CR LF sequence found";
+      }
+      return -1;
+    }
+    return 0;
+  }
+
+  if (*end == '\0' || end == rb_.pos || *(end - 1) != '\r') {
     if (LOG_ENABLED(INFO)) {
       CLOG(INFO, this) << "PROXY-protocol-v1: No ending CR LF sequence found";
     }
     return -1;
   }
+
+  --end;
 
   constexpr const char HEADER[] = "PROXY ";
 
@@ -916,11 +950,21 @@ int ClientHandler::proxy_protocol_read() {
       return -1;
     }
 
-    if (util::streq_l("TCP4 ", rb_.pos, 5)) {
+    if (rb_.pos[1] != 'C' || rb_.pos[2] != 'P') {
+      if (LOG_ENABLED(INFO)) {
+        CLOG(INFO, this) << "PROXY-protocol-v1: Unknown INET protocol family";
+      }
+      return -1;
+    }
+
+    switch (rb_.pos[3]) {
+    case '4':
       family = AF_INET;
-    } else if (util::streq_l("TCP6 ", rb_.pos, 5)) {
+      break;
+    case '6':
       family = AF_INET6;
-    } else {
+      break;
+    default:
       if (LOG_ENABLED(INFO)) {
         CLOG(INFO, this) << "PROXY-protocol-v1: Unknown INET protocol family";
       }
