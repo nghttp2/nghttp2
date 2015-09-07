@@ -626,15 +626,16 @@ void write_uri_field(std::ostream &o, const char *uri, const http_parser_url &u,
 }
 
 bool numeric_host(const char *hostname) {
-  struct addrinfo *res;
-  struct addrinfo hints {};
-  hints.ai_family = AF_UNSPEC;
-  hints.ai_flags = AI_NUMERICHOST;
-  if (getaddrinfo(hostname, nullptr, &hints, &res)) {
-    return false;
-  }
-  freeaddrinfo(res);
-  return true;
+  return numeric_host(hostname, AF_INET) || numeric_host(hostname, AF_INET6);
+}
+
+bool numeric_host(const char *hostname, int family) {
+  int rv;
+  std::array<uint8_t, sizeof(struct in6_addr)> dst;
+
+  rv = inet_pton(family, hostname, dst.data());
+
+  return rv == 1;
 }
 
 std::string numeric_name(const struct sockaddr *sa, socklen_t salen) {

@@ -56,6 +56,7 @@ public:
                 const char *port);
   ~ClientHandler();
 
+  int noop();
   // Performs clear text I/O
   int read_clear();
   int write_clear();
@@ -70,6 +71,9 @@ public:
   int upstream_http2_connhd_read();
   int upstream_http1_connhd_read();
   int upstream_write();
+
+  int proxy_protocol_read();
+  int on_proxy_protocol_finish();
 
   // Performs I/O operation.  Internally calls on_read()/on_write().
   int do_read();
@@ -129,6 +133,8 @@ public:
 
   void signal_write();
   ev_io *get_wev();
+
+  void setup_upstream_io_callback();
 
 private:
   Connection conn_;

@@ -185,6 +185,7 @@ constexpr char SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_MAX_FAIL[] =
     "tls-ticket-key-memcached-max-fail";
 constexpr char SHRPX_OPT_REQUEST_PHASE_FILE[] = "request-phase-file";
 constexpr char SHRPX_OPT_RESPONSE_PHASE_FILE[] = "response-phase-file";
+constexpr char SHRPX_OPT_ACCEPT_PROXY_PROTOCOL[] = "accept-proxy-protocol";
 
 union sockaddr_union {
   sockaddr_storage storage;
@@ -409,6 +410,7 @@ struct Config {
   bool no_ocsp;
   // true if --tls-ticket-key-cipher is used
   bool tls_ticket_key_cipher_given;
+  bool accept_proxy_protocol;
 };
 
 const Config *get_config();

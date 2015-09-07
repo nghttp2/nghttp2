@@ -516,6 +516,8 @@ void write_uri_field(std::ostream &o, const char *uri, const http_parser_url &u,
 
 bool numeric_host(const char *hostname);
 
+bool numeric_host(const char *hostname, int family);
+
 // Returns numeric address string of |addr|.  If getnameinfo() is
 // failed, "unknown" is returned.
 std::string numeric_name(const struct sockaddr *sa, socklen_t salen);

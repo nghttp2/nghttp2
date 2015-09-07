@@ -1268,6 +1268,8 @@ Connections:
               timeouts when connecting and  making CONNECT request can
               be     specified    by     --backend-read-timeout    and
               --backend-write-timeout options.
+  --accept-proxy-protocol
+              Accept PROXY protocol version 1 on frontend connection.
 
 Performance:
   -n, --workers=<N>
@@ -1915,6 +1917,7 @@ int main(int argc, char **argv) {
          90},
         {SHRPX_OPT_REQUEST_PHASE_FILE, required_argument, &flag, 91},
         {SHRPX_OPT_RESPONSE_PHASE_FILE, required_argument, &flag, 92},
+        {SHRPX_OPT_ACCEPT_PROXY_PROTOCOL, no_argument, &flag, 93},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -2315,6 +2318,10 @@ int main(int argc, char **argv) {
       case 92:
         // --response-phase-file
         cmdcfgs.emplace_back(SHRPX_OPT_RESPONSE_PHASE_FILE, optarg);
+        break;
+      case 93:
+        // --accept-proxy-protocol
+        cmdcfgs.emplace_back(SHRPX_OPT_ACCEPT_PROXY_PROTOCOL, "yes");
         break;
       default:
         break;
