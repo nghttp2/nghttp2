@@ -40,6 +40,8 @@ mruby:
 	MRUBY_CONFIG="${srcdir}/build_config.rb" \
 	BUILD_DIR="${abs_builddir}/mruby/build" \
 	CC="${CC}" CXX="${CXX}" LD="${LD}" \
+	CFLAGS="${CPPFLAGS} ${CFLAGS}" CXXFLAGS="${CPPFLAGS} ${CXXFLAGS}" \
+	LDFLAGS="${LDFLAGS}" \
 	"${srcdir}/mruby/minirake" -f "${srcdir}/mruby/Rakefile"
 
 all-local: mruby
