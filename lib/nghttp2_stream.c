@@ -78,7 +78,7 @@ void nghttp2_stream_init(nghttp2_stream *stream, int32_t stream_id,
   stream->queued = 0;
   stream->descendant_last_cycle = 0;
   stream->cycle = 0;
-  stream->last_writelen = 0;
+  stream->last_writelen = NGHTTP2_DATA_PAYLOADLEN;
 }
 
 void nghttp2_stream_free(nghttp2_stream *stream) {
