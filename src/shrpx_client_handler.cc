@@ -903,17 +903,7 @@ int ClientHandler::proxy_protocol_read() {
   auto end =
       std::find_first_of(rb_.pos, bufend, std::begin(chrs), std::end(chrs));
 
-  if (end == bufend) {
-    if (rb_.rleft() >= MAX_PROXY_LINELEN) {
-      if (LOG_ENABLED(INFO)) {
-        CLOG(INFO, this) << "PROXY-protocol-v1: No ending CR LF sequence found";
-      }
-      return -1;
-    }
-    return 0;
-  }
-
-  if (*end == '\0' || end == rb_.pos || *(end - 1) != '\r') {
+  if (end == bufend || *end == '\0' || end == rb_.pos || *(end - 1) != '\r') {
     if (LOG_ENABLED(INFO)) {
       CLOG(INFO, this) << "PROXY-protocol-v1: No ending CR LF sequence found";
     }
