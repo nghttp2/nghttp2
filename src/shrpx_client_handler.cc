@@ -914,7 +914,7 @@ int ClientHandler::proxy_protocol_read() {
 
   constexpr const char HEADER[] = "PROXY ";
 
-  if (end - rb_.pos < str_size(HEADER)) {
+  if (static_cast<size_t>(end - rb_.pos) < str_size(HEADER)) {
     if (LOG_ENABLED(INFO)) {
       CLOG(INFO, this) << "PROXY-protocol-v1: PROXY version 1 ID not found";
     }
