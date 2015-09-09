@@ -376,6 +376,7 @@ fi
 AM_CONDITIONAL([HAVE_SPDYLAY], [ test "x${have_spdylay}" = "xyes" ])
 
 # mruby (for src/nghttpx)
+have_mruby=no
 if test "x${request_mruby}" = "xyes"; then
   # We are going to build mruby
   have_mruby=yes
