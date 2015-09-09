@@ -113,7 +113,7 @@ static int stream_subtree_active(nghttp2_stream *stream) {
  */
 static uint64_t stream_next_cycle(nghttp2_stream *stream, uint64_t last_cycle) {
   return last_cycle +
-         stream->last_writelen * NGHTTP2_MAX_WEIGHT / stream->weight;
+         (stream->last_writelen + 1) * NGHTTP2_MAX_WEIGHT / stream->weight;
 }
 
 static int stream_obq_push(nghttp2_stream *dep_stream, nghttp2_stream *stream) {
