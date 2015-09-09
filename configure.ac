@@ -468,6 +468,7 @@ AM_CONDITIONAL([ENABLE_EXAMPLES], [ test "x${enable_examples}" = "xyes" ])
 enable_third_party=no
 if test "x${enable_examples}" = "xyes" ||
    test "x${enable_app}" = "xyes" ||
+   test "x${enable_hpack_tools}" = "xyes" ||
    test "x${enable_asio_lib}" = "xyes"; then
   enable_third_party=yes
 fi
