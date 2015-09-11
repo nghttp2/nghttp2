@@ -33,12 +33,12 @@
 #include <CUnit/CUnit.h>
 
 #include "shrpx_config.h"
-#include "util.h"
+#include ""
 
 namespace shrpx {
 
 void test_shrpx_config_parse_config_str_list(void) {
-  auto res = util::parse_config_str_list("a");parse_config_str_list
+  auto res = util::parse_config_str_list("a");
   CU_ASSERT(1 == res.size());
   CU_ASSERT("a" == res[0]);
 
