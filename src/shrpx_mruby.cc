@@ -42,7 +42,11 @@ MRubyContext::MRubyContext(mrb_state *mrb, RProc *on_request_proc,
     : mrb_(mrb), on_request_proc_(on_request_proc),
       on_response_proc_(on_response_proc), running_(false) {}
 
-MRubyContext::~MRubyContext() { mrb_close(mrb_); }
+MRubyContext::~MRubyContext() {
+  if (mrb_) {
+    mrb_close(mrb_);
+  }
+}
 
 int MRubyContext::run_request_proc(Downstream *downstream, RProc *proc,
                                    int phase) {
