@@ -774,7 +774,6 @@ bool select_proto(const unsigned char **out, unsigned char *outlen,
                const unsigned char *in, unsigned int inlen, const char *key,
                unsigned int keylen) {
   for (auto p = in, end = in + inlen; p + keylen <= end; p += *p + 1) {
-    std::cout << "p " << p << " key " << key << std::endl;
     if (std::equal(key, key + keylen, p)) {
       *out = p + 1;
       *outlen = *p;
