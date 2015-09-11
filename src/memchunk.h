@@ -136,6 +136,7 @@ template <typename Memchunk> struct Memchunks {
       tail = tail->next;
     }
     *tail->last++ = c;
+    ++len;
     return 1;
   }
   size_t append(const void *src, size_t count) {
