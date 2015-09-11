@@ -130,8 +130,7 @@ template <typename Memchunk> struct Memchunks {
   size_t append(char c) {
     if (!tail) {
       head = tail = pool->get();
-    }
-    if (tail->left() == 0) {
+    } else if (tail->left() == 0) {
       tail->next = pool->get();
       tail = tail->next;
     }
