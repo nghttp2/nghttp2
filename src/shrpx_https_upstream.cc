@@ -797,20 +797,17 @@ int HttpsUpstream::send_reply(Downstream *downstream, const uint8_t *body,
   auto output = downstream->get_response_buf();
 
   output->append("HTTP/1.1 ");
-  auto status_str =
-      http2::get_status_string(downstream->get_response_http_status());
-  output->append(status_str.c_str(), status_str.size());
+  output->append(
+      http2::get_status_string(downstream->get_response_http_status()));
   output->append("\r\n");
 
   for (auto &kv : downstream->get_response_headers()) {
     if (kv.name.empty() || kv.name[0] == ':') {
       continue;
     }
-    auto name = kv.name;
-    http2::capitalize(name, 0);
-    output->append(name.c_str(), name.size());
+    http2::capitalize(output, kv.name);
     output->append(": ");
-    output->append(kv.value.c_str(), kv.value.size());
+    output->append(kv.value);
     output->append("\r\n");
   }
 
@@ -889,6 +886,17 @@ std::unique_ptr<Downstream> HttpsUpstream::pop_downstream() {
   return std::unique_ptr<Downstream>(downstream_.release());
 }
 
+namespace {
+void write_altsvc(DefaultMemchunks *buf, const AltSvc &altsvc) {
+  buf->append(util::percent_encode_token(altsvc.protocol_id));
+  buf->append("=\"");
+  buf->append(util::quote_string(altsvc.host));
+  buf->append(":");
+  buf->append(altsvc.service);
+  buf->append("\"");
+}
+} // namespace
+
 int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
   if (LOG_ENABLED(INFO)) {
     if (downstream->get_non_final_response()) {
@@ -916,13 +924,15 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
 
   auto connect_method = downstream->get_request_method() == HTTP_CONNECT;
 
-  std::string hdrs = "HTTP/";
-  hdrs += util::utos(downstream->get_request_major());
-  hdrs += ".";
-  hdrs += util::utos(downstream->get_request_minor());
-  hdrs += " ";
-  hdrs += http2::get_status_string(downstream->get_response_http_status());
-  hdrs += "\r\n";
+  auto buf = downstream->get_response_buf();
+
+  buf->append("HTTP/");
+  buf->append(util::utos(downstream->get_request_major()));
+  buf->append(".");
+  buf->append(util::utos(downstream->get_request_minor()));
+  buf->append(" ");
+  buf->append(http2::get_status_string(downstream->get_response_http_status()));
+  buf->append("\r\n");
 
   if (!get_config()->http2_proxy && !get_config()->client_proxy &&
       !get_config()->no_location_rewrite) {
@@ -930,19 +940,15 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
         get_client_handler()->get_upstream_scheme());
   }
 
-  http2::build_http1_headers_from_headers(hdrs,
+  http2::build_http1_headers_from_headers(buf,
                                           downstream->get_response_headers());
 
-  auto output = downstream->get_response_buf();
-
   if (downstream->get_non_final_response()) {
-    hdrs += "\r\n";
+    buf->append("\r\n");
 
     if (LOG_ENABLED(INFO)) {
-      log_response_headers(hdrs);
+      log_response_headers(buf);
     }
-
-    output->append(hdrs.c_str(), hdrs.size());
 
     downstream->clear_response_headers();
 
@@ -964,92 +970,86 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
     if (downstream->get_request_major() <= 0 ||
         downstream->get_request_minor() <= 0) {
       // We add this header for HTTP/1.0 or HTTP/0.9 clients
-      hdrs += "Connection: Keep-Alive\r\n";
+      buf->append("Connection: Keep-Alive\r\n");
     }
   } else if (!downstream->get_upgraded()) {
-    hdrs += "Connection: close\r\n";
+    buf->append("Connection: close\r\n");
   }
 
   if (!connect_method && downstream->get_upgraded()) {
     auto connection = downstream->get_response_header(http2::HD_CONNECTION);
     if (connection) {
-      hdrs += "Connection: ";
-      hdrs += (*connection).value;
-      hdrs += "\r\n";
+      buf->append("Connection: ");
+      buf->append((*connection).value);
+      buf->append("\r\n");
     }
 
     auto upgrade = downstream->get_response_header(http2::HD_UPGRADE);
     if (upgrade) {
-      hdrs += "Upgrade: ";
-      hdrs += (*upgrade).value;
-      hdrs += "\r\n";
+      buf->append("Upgrade: ");
+      buf->append((*upgrade).value);
+      buf->append("\r\n");
     }
   }
 
   if (!downstream->get_response_header(http2::HD_ALT_SVC)) {
     // We won't change or alter alt-svc from backend for now
     if (!get_config()->altsvcs.empty()) {
-      hdrs += "Alt-Svc: ";
+      buf->append("Alt-Svc: ");
 
-      for (const auto &altsvc : get_config()->altsvcs) {
-        hdrs += util::percent_encode_token(altsvc.protocol_id);
-        hdrs += "=\"";
-        hdrs += util::quote_string(altsvc.host);
-        hdrs += ":";
-        hdrs += altsvc.service;
-        hdrs += "\", ";
+      auto &altsvcs = get_config()->altsvcs;
+      write_altsvc(buf, altsvcs[0]);
+      for (size_t i = 1; i < altsvcs.size(); ++i) {
+        buf->append(", ");
+        write_altsvc(buf, altsvcs[i]);
       }
-
-      hdrs[hdrs.size() - 2] = '\r';
-      hdrs[hdrs.size() - 1] = '\n';
+      buf->append("\r\n");
     }
   }
 
   if (!get_config()->http2_proxy && !get_config()->client_proxy) {
-    hdrs += "Server: ";
-    hdrs += get_config()->server_name;
-    hdrs += "\r\n";
+    buf->append("Server: ");
+    buf->append(get_config()->server_name, strlen(get_config()->server_name));
+    buf->append("\r\n");
   } else {
     auto server = downstream->get_response_header(http2::HD_SERVER);
     if (server) {
-      hdrs += "Server: ";
-      hdrs += (*server).value;
-      hdrs += "\r\n";
+      buf->append("Server: ");
+      buf->append((*server).value);
+      buf->append("\r\n");
     }
   }
 
   auto via = downstream->get_response_header(http2::HD_VIA);
   if (get_config()->no_via) {
     if (via) {
-      hdrs += "Via: ";
-      hdrs += (*via).value;
-      hdrs += "\r\n";
+      buf->append("Via: ");
+      buf->append((*via).value);
+      buf->append("\r\n");
     }
   } else {
-    hdrs += "Via: ";
+    buf->append("Via: ");
     if (via) {
-      hdrs += (*via).value;
-      hdrs += ", ";
+      buf->append((*via).value);
+      buf->append(", ");
     }
-    hdrs += http::create_via_header_value(downstream->get_response_major(),
-                                          downstream->get_response_minor());
-    hdrs += "\r\n";
+    buf->append(http::create_via_header_value(
+        downstream->get_response_major(), downstream->get_response_minor()));
+    buf->append("\r\n");
   }
 
   for (auto &p : get_config()->add_response_headers) {
-    hdrs += p.first;
-    hdrs += ": ";
-    hdrs += p.second;
-    hdrs += "\r\n";
+    buf->append(p.first);
+    buf->append(": ");
+    buf->append(p.second);
+    buf->append("\r\n");
   }
 
-  hdrs += "\r\n";
+  buf->append("\r\n");
 
   if (LOG_ENABLED(INFO)) {
-    log_response_headers(hdrs);
+    log_response_headers(buf);
   }
-
-  output->append(hdrs.c_str(), hdrs.size());
 
   return 0;
 }
@@ -1085,9 +1085,7 @@ int HttpsUpstream::on_downstream_body_complete(Downstream *downstream) {
       output->append("0\r\n\r\n");
     } else {
       output->append("0\r\n");
-      std::string trailer_part;
-      http2::build_http1_headers_from_headers(trailer_part, trailers);
-      output->append(trailer_part.c_str(), trailer_part.size());
+      http2::build_http1_headers_from_headers(output, trailers);
       output->append("\r\n");
     }
   }
@@ -1114,16 +1112,15 @@ int HttpsUpstream::on_downstream_abort_request(Downstream *downstream,
   return 0;
 }
 
-void HttpsUpstream::log_response_headers(const std::string &hdrs) const {
-  const char *hdrp;
+void HttpsUpstream::log_response_headers(DefaultMemchunks *buf) const {
   std::string nhdrs;
-  if (log_config()->errorlog_tty) {
-    nhdrs = http::colorizeHeaders(hdrs.c_str());
-    hdrp = nhdrs.c_str();
-  } else {
-    hdrp = hdrs.c_str();
+  for (auto chunk = buf->head; chunk; chunk = chunk->next) {
+    nhdrs.append(chunk->pos, chunk->last);
   }
-  ULOG(INFO, this) << "HTTP response headers\n" << hdrp;
+  if (log_config()->errorlog_tty) {
+    nhdrs = http::colorizeHeaders(nhdrs.c_str());
+  }
+  ULOG(INFO, this) << "HTTP response headers\n" << nhdrs;
 }
 
 void HttpsUpstream::on_handler_delete() {

@@ -167,17 +167,19 @@ void test_http2_copy_headers_to_nva(void) {
 }
 
 void test_http2_build_http1_headers_from_headers(void) {
-  std::string hdrs;
-  http2::build_http1_headers_from_headers(hdrs, headers);
-  CU_ASSERT(hdrs == "Alpha: 0\r\n"
-                    "Bravo: 1\r\n"
-                    "Delta: 4\r\n"
-                    "Expect: 5\r\n"
-                    "Foxtrot: 6\r\n"
-                    "Tango: 7\r\n"
-                    "Te: 8\r\n"
-                    "Te: 9\r\n"
-                    "Zulu: 12\r\n");
+  MemchunkPool pool;
+  DefaultMemchunks buf(&pool);
+  http2::build_http1_headers_from_headers(&buf, headers);
+  auto hdrs = std::string(buf.head->pos, buf.head->last);
+  CU_ASSERT("Alpha: 0\r\n"
+            "Bravo: 1\r\n"
+            "Delta: 4\r\n"
+            "Expect: 5\r\n"
+            "Foxtrot: 6\r\n"
+            "Tango: 7\r\n"
+            "Te: 8\r\n"
+            "Te: 9\r\n"
+            "Zulu: 12\r\n" == hdrs);
 }
 
 void test_http2_lws(void) {

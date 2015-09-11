@@ -80,7 +80,7 @@ public:
                             size_t len);
 
   void reset_current_header_length();
-  void log_response_headers(const std::string &hdrs) const;
+  void log_response_headers(DefaultMemchunks *buf) const;
 
 private:
   ClientHandler *handler_;

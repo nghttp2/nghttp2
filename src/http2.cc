@@ -132,13 +132,13 @@ std::string get_status_string(unsigned int status_code) {
   }
 }
 
-void capitalize(std::string &s, size_t offset) {
-  s[offset] = util::upcase(s[offset]);
-  for (size_t i = offset + 1, eoi = s.size(); i < eoi; ++i) {
+void capitalize(DefaultMemchunks *buf, const std::string &s) {
+  buf->append(util::upcase(s[0]));
+  for (size_t i = 1; i < s.size(); ++i) {
     if (s[i - 1] == '-') {
-      s[i] = util::upcase(s[i]);
+      buf->append(util::upcase(s[i]));
     } else {
-      s[i] = util::lowcase(s[i]);
+      buf->append(s[i]);
     }
   }
 }
@@ -242,7 +242,7 @@ void copy_headers_to_nva(std::vector<nghttp2_nv> &nva, const Headers &headers) {
   }
 }
 
-void build_http1_headers_from_headers(std::string &hdrs,
+void build_http1_headers_from_headers(DefaultMemchunks *buf,
                                       const Headers &headers) {
   for (auto &kv : headers) {
     if (kv.name.empty() || kv.name[0] == ':') {
@@ -262,11 +262,10 @@ void build_http1_headers_from_headers(std::string &hdrs,
     case HD_X_FORWARDED_PROTO:
       continue;
     }
-    hdrs += kv.name;
-    capitalize(hdrs, hdrs.size() - kv.name.size());
-    hdrs += ": ";
-    hdrs += kv.value;
-    hdrs += "\r\n";
+    capitalize(buf, kv.name);
+    buf->append(": ");
+    buf->append(kv.value);
+    buf->append("\r\n");
   }
 }
 

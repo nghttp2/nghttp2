@@ -38,6 +38,7 @@
 #include "http-parser/http_parser.h"
 
 #include "util.h"
+#include "memchunk.h"
 
 namespace nghttp2 {
 
@@ -69,7 +70,7 @@ namespace http2 {
 
 std::string get_status_string(unsigned int status_code);
 
-void capitalize(std::string &s, size_t offset);
+void capitalize(DefaultMemchunks *buf, const std::string &s);
 
 // Returns true if |value| is LWS
 bool lws(const char *value);
@@ -137,11 +138,11 @@ nghttp2_nv make_nv_ls(const char (&name)[N], const std::string &value) {
 // which require special handling (i.e. via), are not copied.
 void copy_headers_to_nva(std::vector<nghttp2_nv> &nva, const Headers &headers);
 
-// Appends HTTP/1.1 style header lines to |hdrs| from headers in
+// Appends HTTP/1.1 style header lines to |buf| from headers in
 // |headers|.  |headers| must be indexed before this call (its
 // element's token field is assigned).  Certain headers, which
 // requires special handling (i.e. via and cookie), are not appended.
-void build_http1_headers_from_headers(std::string &hdrs,
+void build_http1_headers_from_headers(DefaultMemchunks *buf,
                                       const Headers &headers);
 
 // Return positive window_size_increment if WINDOW_UPDATE should be

@@ -35,6 +35,7 @@
 #include <memory>
 #include <array>
 #include <algorithm>
+#include <string>
 
 #include "template.h"
 
@@ -126,6 +127,17 @@ template <typename Memchunk> struct Memchunks {
       m = next;
     }
   }
+  size_t append(char c) {
+    if (!tail) {
+      head = tail = pool->get();
+    }
+    if (tail->left() == 0) {
+      tail->next = pool->get();
+      tail = tail->next;
+    }
+    *tail->last++ = c;
+    return 1;
+  }
   size_t append(const void *src, size_t count) {
     if (count == 0) {
       return 0;
@@ -156,6 +168,7 @@ template <typename Memchunk> struct Memchunks {
   template <size_t N> size_t append(const char (&s)[N]) {
     return append(s, N - 1);
   }
+  size_t append(const std::string &s) { return append(s.c_str(), s.size()); }
   size_t remove(void *dest, size_t count) {
     if (!tail || count == 0) {
       return 0;
