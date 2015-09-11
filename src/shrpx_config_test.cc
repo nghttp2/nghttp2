@@ -33,7 +33,7 @@
 #include <CUnit/CUnit.h>
 
 #include "shrpx_config.h"
-#include ""
+#include "util.h"
 
 namespace shrpx {
 
