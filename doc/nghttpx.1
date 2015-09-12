@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "September 06, 2015" "1.3.1-DEV" "nghttp2"
+.TH "NGHTTPX" "1" "September 12, 2015" "1.3.1" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 experimental proxy
 .
@@ -157,6 +157,11 @@ handshake with  the downstream through the  tunnel.  The
 timeouts when connecting and  making CONNECT request can
 be     specified    by     \fI\%\-\-backend\-read\-timeout\fP    and
 \fI\%\-\-backend\-write\-timeout\fP options.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-accept\-proxy\-protocol
+Accept PROXY protocol version 1 on frontend connection.
 .UNINDENT
 .SS Performance
 .INDENT 0.0
