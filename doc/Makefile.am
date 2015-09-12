@@ -151,6 +151,9 @@ EXTRA_DIST = \
 	sources/python-apiref.rst \
 	sources/building-android-binary.rst \
 	sources/contribute.rst \
+	_exts/sphinxcontrib/LICENSE.rubydomain \
+	_exts/sphinxcontrib/__init__.py \
+	_exts/sphinxcontrib/rubydomain.py \
 	_themes/sphinx_rtd_theme/__init__.py \
 	_themes/sphinx_rtd_theme/breadcrumbs.html \
 	_themes/sphinx_rtd_theme/footer.html \
