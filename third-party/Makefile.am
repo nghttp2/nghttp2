@@ -39,6 +39,7 @@ EXTRA_DIST = build_config.rb mruby/*
 mruby:
 	MRUBY_CONFIG="${srcdir}/build_config.rb" \
 	BUILD_DIR="${abs_builddir}/mruby/build" \
+	INSTALL_DIR="${abs_builddir}/mruby/build/install/bin" \
 	CC="${CC}" CXX="${CXX}" LD="${LD}" \
 	CFLAGS="${CPPFLAGS} ${CFLAGS}" CXXFLAGS="${CPPFLAGS} ${CXXFLAGS}" \
 	LDFLAGS="${LDFLAGS}" \
