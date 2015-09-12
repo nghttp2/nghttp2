@@ -70,6 +70,10 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
                       reinterpret_cast<const uint8_t *>(value), strlen(value));
   }
   client->worker->stats.bytes_head += frame->syn_reply.hd.length;
+
+  if (frame->syn_stream.hd.flags & SPDYLAY_CTRL_FLAG_FIN) {
+    client->record_ttfb();
+  }
 }
 } // namespace
 
@@ -78,6 +82,8 @@ void on_data_chunk_recv_callback(spdylay_session *session, uint8_t flags,
                                  int32_t stream_id, const uint8_t *data,
                                  size_t len, void *user_data) {
   auto client = static_cast<Client *>(user_data);
+
+  client->record_ttfb();
   client->worker->stats.bytes_body += len;
 
   auto spdy_session = static_cast<SpdySession *>(client->session.get());

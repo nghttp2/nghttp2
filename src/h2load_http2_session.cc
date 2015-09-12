@@ -64,6 +64,9 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
     return 0;
   }
   client->worker->stats.bytes_head += frame->hd.length;
+  if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
+    client->record_ttfb();
+  }
   return 0;
 }
 } // namespace
@@ -73,6 +76,7 @@ int on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
                                 int32_t stream_id, const uint8_t *data,
                                 size_t len, void *user_data) {
   auto client = static_cast<Client *>(user_data);
+  client->record_ttfb();
   client->worker->stats.bytes_body += len;
   return 0;
 }
