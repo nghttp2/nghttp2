@@ -912,8 +912,9 @@ int event_loop() {
   // After that, we drop the root privileges if needed.
   drop_privileges();
 
-#ifndef NOTHREADS
   int rv;
+
+#ifndef NOTHREADS
   sigset_t signals;
   sigemptyset(&signals);
   sigaddset(&signals, REOPEN_LOG_SIGNAL);
