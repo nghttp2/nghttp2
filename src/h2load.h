@@ -282,7 +282,7 @@ struct Client {
   void record_request_time(RequestStat *req_stat);
   void record_start_time(Stats *stat);
   void record_connect_time(Stats *stat);
-  void record_ttfb(Stats *stat);
+  void record_ttfb();
 
   void signal_write();
 };

@@ -705,11 +705,6 @@ int Client::read_clear() {
     if (on_read(buf, nread) != 0) {
       return -1;
     }
-
-    if (!first_byte_received) {
-      first_byte_received = true;
-      record_ttfb(&worker->stats);
-    }
   }
 
   return 0;
@@ -832,11 +827,6 @@ int Client::read_tls() {
     if (on_read(buf, rv) != 0) {
       return -1;
     }
-
-    if (!first_byte_received) {
-      first_byte_received = true;
-      record_ttfb(&worker->stats);
-    }
   }
 }
 
@@ -895,8 +885,13 @@ void Client::record_connect_time(Stats *stat) {
   stat->connect_times.push_back(std::chrono::steady_clock::now());
 }
 
-void Client::record_ttfb(Stats *stat) {
-  stat->ttfbs.push_back(std::chrono::steady_clock::now());
+void Client::record_ttfb() {
+  if (first_byte_received) {
+    return;
+  }
+  first_byte_received = true;
+
+  worker->stats.ttfbs.push_back(std::chrono::steady_clock::now());
 }
 
 void Client::signal_write() { ev_io_start(worker->loop, &wev); }
