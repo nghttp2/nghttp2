@@ -952,6 +952,7 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream) {
     if (error_reply(downstream, 500) != 0) {
       return -1;
     }
+    // Returning -1 will signal deletion of dconn.
     return -1;
   }
 
