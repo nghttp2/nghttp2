@@ -137,6 +137,10 @@ Connections
     be     specified    by     :option:`--backend-read-timeout`    and
     :option:`--backend-write-timeout` options.
 
+.. option:: --accept-proxy-protocol
+
+    Accept PROXY protocol version 1 on frontend connection.
+
 
 Performance
 ~~~~~~~~~~~
