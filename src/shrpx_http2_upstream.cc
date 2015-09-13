@@ -1648,7 +1648,8 @@ int Http2Upstream::submit_push_promise(const std::string &scheme,
                                        Downstream *downstream) {
   int rv;
   std::vector<nghttp2_nv> nva;
-  nva.reserve(downstream->get_request_headers().size());
+  // 4 for :method, :scheme, :path and :authority
+  nva.reserve(4 + downstream->get_request_headers().size());
 
   // juse use "GET" for now
   nva.push_back(http2::make_nv_ll(":method", "GET"));
