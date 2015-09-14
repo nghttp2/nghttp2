@@ -81,6 +81,17 @@ int htp_msg_completecb(http_parser *htp) {
 } // namespace
 
 namespace {
+int htp_body_cb(http_parser *htp, const char *data, size_t len) {
+  auto session = static_cast<Http1Session *>(htp->data);
+  auto client = session->get_client();
+
+  client->record_ttfb();
+
+  return 0;
+}
+} // namespace
+
+namespace {
 http_parser_settings htp_hooks = {
     htp_msg_begincb,   // http_cb      on_message_begin;
     nullptr,           // http_data_cb on_url;
@@ -88,7 +99,7 @@ http_parser_settings htp_hooks = {
     nullptr,           // http_data_cb on_header_field;
     nullptr,           // http_data_cb on_header_value;
     nullptr,           // http_cb      on_headers_complete;
-    nullptr,           // http_data_cb on_body;
+    htp_body_cb,       // http_data_cb on_body;
     htp_msg_completecb // http_cb      on_message_complete;
 };
 } // namespace
