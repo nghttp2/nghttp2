@@ -205,8 +205,7 @@ void nghttp2_stream_reschedule(nghttp2_stream *stream) {
       dep_stream->descendant_last_cycle = 0;
       stream->cycle = 0;
     } else {
-      dep_stream->descendant_last_cycle =
-          nghttp2_max(dep_stream->descendant_last_cycle, stream->cycle);
+      dep_stream->descendant_last_cycle = stream->cycle;
 
       stream->cycle =
           stream_next_cycle(stream, dep_stream->descendant_last_cycle);
