@@ -412,4 +412,32 @@ void test_util_get_uint64(void) {
   }
 }
 
+void test_util_parse_config_str_list(void) {
+  auto res = util::parse_config_str_list("a");
+  CU_ASSERT(1 == res.size());
+  CU_ASSERT("a" == res[0]);
+
+  res = util::parse_config_str_list("a,");
+  CU_ASSERT(2 == res.size());
+  CU_ASSERT("a" == res[0]);
+  CU_ASSERT("" == res[1]);
+
+  res = util::parse_config_str_list(":a::", ':');
+  CU_ASSERT(4 == res.size());
+  CU_ASSERT("" == res[0]);
+  CU_ASSERT("a" == res[1]);
+  CU_ASSERT("" == res[2]);
+  CU_ASSERT("" == res[3]);
+
+  res = util::parse_config_str_list("");
+  CU_ASSERT(1 == res.size());
+  CU_ASSERT("" == res[0]);
+
+  res = util::parse_config_str_list("alpha,bravo,charlie");
+  CU_ASSERT(3 == res.size());
+  CU_ASSERT("alpha" == res[0]);
+  CU_ASSERT("bravo" == res[1]);
+  CU_ASSERT("charlie" == res[2]);
+}
+
 } // namespace shrpx

@@ -1,7 +1,7 @@
 /*
  * nghttp2 - HTTP/2 C Library
  *
- * Copyright (c) 2014 Tatsuhiro Tsujikawa
+ * Copyright (c) 2015 British Broadcasting Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -22,21 +22,37 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef SHRPX_CONFIG_TEST_H
-#define SHRPX_CONFIG_TEST_H
+#ifndef H2LOAD_HTTP1_SESSION_H
+#define H2LOAD_HTTP1_SESSION_H
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif // HAVE_CONFIG_H
+#include "h2load_session.h"
 
-namespace shrpx {
+#include <nghttp2/nghttp2.h>
 
-void test_shrpx_config_parse_header(void);
-void test_shrpx_config_parse_log_format(void);
-void test_shrpx_config_read_tls_ticket_key_file(void);
-void test_shrpx_config_read_tls_ticket_key_file_aes_256(void);
-void test_shrpx_config_match_downstream_addr_group(void);
+namespace h2load {
 
-} // namespace shrpx
+struct Client;
 
-#endif // SHRPX_CONFIG_TEST_H
+class Http1Session : public Session {
+public:
+  Http1Session(Client *client);
+  virtual ~Http1Session();
+  virtual void on_connect();
+  virtual void submit_request(RequestStat *req_stat);
+  virtual int on_read(const uint8_t *data, size_t len);
+  virtual int on_write();
+  virtual void terminate();
+  Client *get_client();
+  int32_t stream_req_counter_;
+  int32_t stream_resp_counter_;
+  std::unordered_map<int32_t, RequestStat *> req_stats_;
+
+private:
+  Client *client_;
+  http_parser htp_;
+  bool complete_;
+};
+
+} // namespace h2load
+
+#endif // H2LOAD_HTTP1_SESSION_H

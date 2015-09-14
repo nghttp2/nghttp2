@@ -118,8 +118,6 @@ int main(int argc, char *argv[]) {
                    shrpx::test_downstream_assemble_request_cookie) ||
       !CU_add_test(pSuite, "downstream_rewrite_location_response_header",
                    shrpx::test_downstream_rewrite_location_response_header) ||
-      !CU_add_test(pSuite, "config_parse_config_str_list",
-                   shrpx::test_shrpx_config_parse_config_str_list) ||
       !CU_add_test(pSuite, "config_parse_header",
                    shrpx::test_shrpx_config_parse_header) ||
       !CU_add_test(pSuite, "config_parse_log_format",
@@ -169,6 +167,8 @@ int main(int argc, char *argv[]) {
       !CU_add_test(pSuite, "util_localtime_date",
                    shrpx::test_util_localtime_date) ||
       !CU_add_test(pSuite, "util_get_uint64", shrpx::test_util_get_uint64) ||
+      !CU_add_test(pSuite, "util_parse_config_str_list",
+                   shrpx::test_util_parse_config_str_list) ||
       !CU_add_test(pSuite, "gzip_inflate", test_nghttp2_gzip_inflate) ||
       !CU_add_test(pSuite, "buffer_write", nghttp2::test_buffer_write) ||
       !CU_add_test(pSuite, "pool_recycle", nghttp2::test_pool_recycle) ||
