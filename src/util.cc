@@ -770,7 +770,7 @@ bool check_h2_is_selected(const unsigned char *proto, size_t len) {
 }
 
 namespace {
-bool select_h2(const unsigned char **out, unsigned char *outlen,
+bool select_proto(const unsigned char **out, unsigned char *outlen,
                const unsigned char *in, unsigned int inlen, const char *key,
                unsigned int keylen) {
   for (auto p = in, end = in + inlen; p + keylen <= end; p += *p + 1) {
@@ -786,12 +786,23 @@ bool select_h2(const unsigned char **out, unsigned char *outlen,
 
 bool select_h2(const unsigned char **out, unsigned char *outlen,
                const unsigned char *in, unsigned int inlen) {
-  return select_h2(out, outlen, in, inlen, NGHTTP2_PROTO_ALPN,
+  return select_proto(out, outlen, in, inlen, NGHTTP2_PROTO_ALPN,
                    str_size(NGHTTP2_PROTO_ALPN)) ||
-         select_h2(out, outlen, in, inlen, NGHTTP2_H2_16_ALPN,
+         select_proto(out, outlen, in, inlen, NGHTTP2_H2_16_ALPN,
                    str_size(NGHTTP2_H2_16_ALPN)) ||
-         select_h2(out, outlen, in, inlen, NGHTTP2_H2_14_ALPN,
+         select_proto(out, outlen, in, inlen, NGHTTP2_H2_14_ALPN,
                    str_size(NGHTTP2_H2_14_ALPN));
+}
+
+bool select_protocol(const unsigned char **out, unsigned char *outlen,
+               const unsigned char *in, unsigned int inlen, std::vector<std::string> proto_list) {
+  for (const auto &proto : proto_list) {
+    if (select_proto(out, outlen, in, inlen, proto.c_str(), static_cast<unsigned int>(proto.size()))) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 std::vector<unsigned char> get_default_alpn() {
@@ -804,6 +815,39 @@ std::vector<unsigned char> get_default_alpn() {
   p = std::copy_n(NGHTTP2_H2_16_ALPN, str_size(NGHTTP2_H2_16_ALPN), p);
   p = std::copy_n(NGHTTP2_H2_14_ALPN, str_size(NGHTTP2_H2_14_ALPN), p);
 
+  return res;
+}
+
+
+std::vector<Range<const char *>> split_config_str_list(const char *s,
+                                                       char delim) {
+  size_t len = 1;
+  auto last = s + strlen(s);
+  for (const char *first = s, *d = nullptr;
+       (d = std::find(first, last, delim)) != last; ++len, first = d + 1)
+    ;
+
+  auto list = std::vector<Range<const char *>>(len);
+
+  len = 0;
+  for (auto first = s;; ++len) {
+    auto stop = std::find(first, last, delim);
+    list[len] = {first, stop};
+    if (stop == last) {
+      break;
+    }
+    first = stop + 1;
+  }
+  return list;
+}
+
+std::vector<std::string> parse_config_str_list(const char *s, char delim) {
+  auto ranges = split_config_str_list(s, delim);
+  auto res = std::vector<std::string>();
+  res.reserve(ranges.size());
+  for (const auto &range : ranges) {
+    res.emplace_back(range.first, range.second);
+  }
   return res;
 }
 

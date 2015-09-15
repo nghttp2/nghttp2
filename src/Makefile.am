@@ -86,7 +86,8 @@ h2load_SOURCES = util.cc util.h \
 	timegm.c timegm.h \
 	ssl.cc ssl.h \
 	h2load_session.h \
-	h2load_http2_session.cc h2load_http2_session.h
+	h2load_http2_session.cc h2load_http2_session.h \
+	h2load_http1_session.cc h2load_http1_session.h
 
 if HAVE_SPDYLAY
 h2load_SOURCES += h2load_spdy_session.cc h2load_spdy_session.h

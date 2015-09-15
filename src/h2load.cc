@@ -54,6 +54,7 @@
 
 #include "http-parser/http_parser.h"
 
+#include "h2load_http1_session.h"
 #include "h2load_http2_session.h"
 #ifdef HAVE_SPDYLAY
 #include "h2load_spdy_session.h"
@@ -89,31 +90,6 @@ Config::~Config() {
 bool Config::is_rate_mode() const { return (this->rate != 0); }
 bool Config::has_base_uri() const { return (!this->base_uri.empty()); }
 Config config;
-
-namespace {
-void debug(const char *format, ...) {
-  if (config.verbose) {
-    fprintf(stderr, "[DEBUG] ");
-    va_list ap;
-    va_start(ap, format);
-    vfprintf(stderr, format, ap);
-    va_end(ap);
-  }
-}
-} // namespace
-
-namespace {
-void debug_nextproto_error() {
-#ifdef HAVE_SPDYLAY
-  debug("no supported protocol was negotiated, expected: %s, "
-        "spdy/2, spdy/3, spdy/3.1\n",
-        NGHTTP2_PROTO_VERSION_ID);
-#else  // !HAVE_SPDYLAY
-  debug("no supported protocol was negotiated, expected: %s\n",
-        NGHTTP2_PROTO_VERSION_ID);
-#endif // !HAVE_SPDYLAY
-}
-} // namespace
 
 RequestStat::RequestStat() : data_offset(0), completed(false) {}
 
@@ -452,9 +428,16 @@ void Client::report_tls_info() {
   if (worker->id == 0 && !worker->tls_info_report_done) {
     worker->tls_info_report_done = true;
     auto cipher = SSL_get_current_cipher(ssl);
-    std::cout << "Protocol: " << ssl::get_tls_protocol(ssl) << "\n"
+    std::cout << "TLS Protocol: " << ssl::get_tls_protocol(ssl) << "\n"
               << "Cipher: " << SSL_CIPHER_get_name(cipher) << std::endl;
     print_server_tmp_key(ssl);
+  }
+}
+
+void Client::report_app_info() {
+  if (worker->id == 0 && !worker->app_info_report_done) {
+    worker->app_info_report_done = true;
+    std::cout << "Application protocol: " << selected_proto << std::endl;
   }
 }
 
@@ -500,6 +483,27 @@ void Client::on_header(int32_t stream_id, const uint8_t *name, size_t namelen,
   }
 }
 
+void Client::on_status_code(int32_t stream_id, uint16_t status) {
+  auto itr = streams.find(stream_id);
+  if (itr == std::end(streams)) {
+    return;
+  }
+  auto &stream = (*itr).second;
+
+  if (status >= 200 && status < 300) {
+    ++worker->stats.status[2];
+    stream.status_success = 1;
+  } else if (status < 400) {
+    ++worker->stats.status[3];
+    stream.status_success = 1;
+  } else if (status < 600) {
+    ++worker->stats.status[status / 100];
+    stream.status_success = 0;
+  } else {
+    stream.status_success = 0;
+  }
+}
+
 void Client::on_stream_close(int32_t stream_id, bool success,
                              RequestStat *req_stat) {
   req_stat->stream_close_time = std::chrono::steady_clock::now();
@@ -541,6 +545,9 @@ int Client::connection_made() {
         if (util::check_h2_is_selected(next_proto, next_proto_len)) {
           session = make_unique<Http2Session>(this);
           break;
+        } else if (util::streq_l(NGHTTP2_H1_1, next_proto, next_proto_len)) {
+          session = make_unique<Http1Session>(this);
+          break;
         }
 #ifdef HAVE_SPDYLAY
         else {
@@ -559,20 +566,59 @@ int Client::connection_made() {
 
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L
       SSL_get0_alpn_selected(ssl, &next_proto, &next_proto_len);
+      auto proto = std::string(reinterpret_cast<const char *>(next_proto),
+                               next_proto_len);
+
+      if (proto.empty()) {
+        std::cout
+            << "No protocol negotiated. Fallback behaviour may be activated"
+            << std::endl;
+        break;
+      } else {
+        selected_proto = proto;
+        report_app_info();
+      }
 #else  // OPENSSL_VERSION_NUMBER < 0x10002000L
       break;
 #endif // OPENSSL_VERSION_NUMBER < 0x10002000L
     }
 
     if (!next_proto) {
-      debug_nextproto_error();
-      fail();
-      return -1;
+      for (const auto &proto : config.npn_list) {
+        if (std::equal(NGHTTP2_H1_1_ALPN,
+                       NGHTTP2_H1_1_ALPN + str_size(NGHTTP2_H1_1_ALPN),
+                       proto.c_str())) {
+          std::cout
+              << "Server does not support NPN/ALPN. Falling back to HTTP/1.1."
+              << std::endl;
+          session = make_unique<Http1Session>(this);
+          break;
+        }
+      }
+
+      if (!session) {
+        std::cout
+            << "No supported protocol was negotiated. Supported protocols were:"
+            << std::endl;
+        for (const auto &proto : config.npn_list) {
+          std::cout << proto.substr(1) << std::endl;
+        }
+        disconnect();
+        exit(EXIT_FAILURE);
+        return -1;
+      }
     }
   } else {
     switch (config.no_tls_proto) {
     case Config::PROTO_HTTP2:
       session = make_unique<Http2Session>(this);
+      selected_proto = NGHTTP2_CLEARTEXT_PROTO_VERSION_ID;
+      report_app_info();
+      break;
+    case Config::PROTO_HTTP1_1:
+      session = make_unique<Http1Session>(this);
+      selected_proto = NGHTTP2_H1_1;
+      report_app_info();
       break;
 #ifdef HAVE_SPDYLAY
     case Config::PROTO_SPDY2:
@@ -853,7 +899,7 @@ void Client::signal_write() { ev_io_start(worker->loop, &wev); }
 Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
                size_t rate, Config *config)
     : stats(req_todo), loop(ev_loop_new(0)), ssl_ctx(ssl_ctx), config(config),
-      id(id), tls_info_report_done(false), nconns_made(0), nclients(nclients),
+      id(id), tls_info_report_done(false), app_info_report_done(false), nconns_made(0), nclients(nclients),
       rate(rate) {
   stats.req_todo = req_todo;
   progress_interval = std::max(static_cast<size_t>(1), req_todo / 10);
@@ -1047,16 +1093,15 @@ namespace {
 int client_select_next_proto_cb(SSL *ssl, unsigned char **out,
                                 unsigned char *outlen, const unsigned char *in,
                                 unsigned int inlen, void *arg) {
-  if (util::select_h2(const_cast<const unsigned char **>(out), outlen, in,
-                      inlen)) {
+  if (util::select_protocol(const_cast<const unsigned char **>(out), outlen, in,
+                            inlen, config.npn_list)) {
     return SSL_TLSEXT_ERR_OK;
+  } else if (inlen == 0) {
+    std::cout
+        << "Server does not support NPN. Fallback behaviour may be activated."
+        << std::endl;
   }
-#ifdef HAVE_SPDYLAY
-  if (spdylay_select_next_protocol(out, outlen, in, inlen) > 0) {
-    return SSL_TLSEXT_ERR_OK;
-  }
-#endif
-  return SSL_TLSEXT_ERR_NOACK;
+  return SSL_TLSEXT_ERR_OK;
 }
 } // namespace
 
@@ -1187,6 +1232,14 @@ benchmarking tool for HTTP/2 and SPDY server)" << std::endl;
 } // namespace
 
 namespace {
+constexpr char DEFAULT_NPN_LIST[] = "h2,h2-16,h2-14,"
+#ifdef HAVE_SPDYLAY
+                                    "spdy/3.1,spdy/3,spdy/2"
+#endif // HAVE_SPDYLAY
+                                    "http/1.1";
+} // namespace
+
+namespace {
 void print_help(std::ostream &out) {
   print_usage(out);
 
@@ -1310,6 +1363,14 @@ Options:
               used  for  all requests.   The  base  URI overrides  all
               values  defined either  at  the command  line or  inside
               input files.
+  --npn-list=<LIST>
+              Comma delimited list of  ALPN protocol identifier sorted
+              in the  order of preference.  That  means most desirable
+              protocol comes  first.  This  is used  in both  ALPN and
+              NPN.  The parameter must be  delimited by a single comma
+              only  and any  white spaces  are  treated as  a part  of
+              protocol string.
+              Default: )" << DEFAULT_NPN_LIST << R"(
   -v, --verbose
               Output debug information.
   --version   Display version information and exit.
@@ -1351,6 +1412,7 @@ int main(int argc, char **argv) {
         {"connection-inactivity-timeout", required_argument, nullptr, 'N'},
         {"timing-script-file", required_argument, &flag, 3},
         {"base-uri", required_argument, nullptr, 'B'},
+        {"npn-list", required_argument, &flag, 4},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     auto c = getopt_long(argc, argv, "hvW:c:d:m:n:p:t:w:H:i:r:C:T:N:B:",
@@ -1435,6 +1497,8 @@ int main(int argc, char **argv) {
     case 'p':
       if (util::strieq(NGHTTP2_CLEARTEXT_PROTO_VERSION_ID, optarg)) {
         config.no_tls_proto = Config::PROTO_HTTP2;
+      } else if (util::strieq(NGHTTP2_H1_1, optarg)) {
+        config.no_tls_proto = Config::PROTO_HTTP1_1;
 #ifdef HAVE_SPDYLAY
       } else if (util::strieq("spdy/2", optarg)) {
         config.no_tls_proto = Config::PROTO_SPDY2;
@@ -1507,9 +1571,13 @@ int main(int argc, char **argv) {
         config.ciphers = optarg;
         break;
       case 3:
+        // timing-script option
         config.ifile = optarg;
         config.timing_script = true;
         break;
+      case 4:
+        // npn-list option
+        config.npn_list = util::parse_config_str_list(optarg);
       }
       break;
     default:
@@ -1534,6 +1602,15 @@ int main(int argc, char **argv) {
     std::cerr << "--timing-script, -r: these options cannot be used together."
               << std::endl;
     exit(EXIT_FAILURE);
+  }
+
+  if (config.npn_list.empty()) {
+    config.npn_list = util::parse_config_str_list(DEFAULT_NPN_LIST);
+  }
+
+  // serialize the APLN tokens
+  for (auto &proto : config.npn_list) {
+    proto.insert(proto.begin(), static_cast<unsigned char>(proto.size()));
   }
 
   std::vector<std::string> reqlines;
@@ -1704,12 +1781,11 @@ int main(int argc, char **argv) {
                                    nullptr);
 
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L
-  auto proto_list = util::get_default_alpn();
-#ifdef HAVE_SPDYLAY
-  static const char spdy_proto_list[] = "\x8spdy/3.1\x6spdy/3\x6spdy/2";
-  std::copy_n(spdy_proto_list, sizeof(spdy_proto_list) - 1,
-              std::back_inserter(proto_list));
-#endif // HAVE_SPDYLAY
+  std::vector<unsigned char> proto_list;
+  for (const auto &proto : config.npn_list) {
+    std::copy_n(proto.c_str(), proto.size(), std::back_inserter(proto_list));
+  }
+
   SSL_CTX_set_alpn_protos(ssl_ctx, proto_list.data(), proto_list.size());
 #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
@@ -1757,6 +1833,7 @@ int main(int argc, char **argv) {
     }
   }
 
+  std::string user_agent = "h2load nghttp2/" NGHTTP2_VERSION;
   Headers shared_nva;
   shared_nva.emplace_back(":scheme", config.scheme);
   if (config.port != config.default_port) {
@@ -1766,7 +1843,7 @@ int main(int argc, char **argv) {
     shared_nva.emplace_back(":authority", config.host);
   }
   shared_nva.emplace_back(":method", config.data_fd == -1 ? "GET" : "POST");
-  shared_nva.emplace_back("user-agent", "h2load nghttp2/" NGHTTP2_VERSION);
+  shared_nva.emplace_back("user-agent", user_agent);
 
   // list overridalbe headers
   auto override_hdrs =
@@ -1789,6 +1866,17 @@ int main(int argc, char **argv) {
   }
 
   for (auto &req : reqlines) {
+    // For HTTP/1.1
+    std::string h1req;
+    h1req = config.data_fd == -1 ? "GET" : "POST";
+    h1req += " " + req;
+    h1req += " HTTP/1.1\r\n";
+    h1req += "Host: " + config.host + "\r\n";
+    h1req += "User-Agent: " + user_agent + "\r\n";
+    h1req += "Accept: */*\r\n";
+    h1req += "\r\n";
+    config.h1reqs.push_back(h1req);
+
     // For nghttp2
     std::vector<nghttp2_nv> nva;
 

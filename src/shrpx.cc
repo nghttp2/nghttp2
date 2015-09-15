@@ -2437,11 +2437,11 @@ int main(int argc, char **argv) {
   }
 
   if (get_config()->npn_list.empty()) {
-    mod_config()->npn_list = parse_config_str_list(DEFAULT_NPN_LIST);
+    mod_config()->npn_list = util::parse_config_str_list(DEFAULT_NPN_LIST);
   }
   if (get_config()->tls_proto_list.empty()) {
     mod_config()->tls_proto_list =
-        parse_config_str_list(DEFAULT_TLS_PROTO_LIST);
+        util::parse_config_str_list(DEFAULT_TLS_PROTO_LIST);
   }
 
   mod_config()->tls_proto_mask =
