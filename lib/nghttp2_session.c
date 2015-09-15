@@ -1733,14 +1733,6 @@ static int session_prep_frame(nghttp2_session *session,
 
       aux_data = &item->aux_data.headers;
 
-      estimated_payloadlen = session_estimate_headers_payload(
-          session, frame->headers.nva, frame->headers.nvlen,
-          NGHTTP2_PRIORITY_SPECLEN);
-
-      if (estimated_payloadlen > NGHTTP2_MAX_HEADERSLEN) {
-        return NGHTTP2_ERR_FRAME_SIZE_ERROR;
-      }
-
       if (frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
         /* initial HEADERS, which opens stream */
         nghttp2_stream *stream;
@@ -1754,6 +1746,14 @@ static int session_prep_frame(nghttp2_session *session,
           return NGHTTP2_ERR_NOMEM;
         }
 
+        estimated_payloadlen = session_estimate_headers_payload(
+            session, frame->headers.nva, frame->headers.nvlen,
+            NGHTTP2_PRIORITY_SPECLEN);
+
+        if (estimated_payloadlen > NGHTTP2_MAX_HEADERSLEN) {
+          return NGHTTP2_ERR_FRAME_SIZE_ERROR;
+        }
+
         rv = session_predicate_request_headers_send(session, item);
         if (rv != 0) {
           return rv;
@@ -1764,6 +1764,14 @@ static int session_prep_frame(nghttp2_session *session,
         }
       } else {
         nghttp2_stream *stream;
+
+        estimated_payloadlen = session_estimate_headers_payload(
+            session, frame->headers.nva, frame->headers.nvlen,
+            NGHTTP2_PRIORITY_SPECLEN);
+
+        if (estimated_payloadlen > NGHTTP2_MAX_HEADERSLEN) {
+          return NGHTTP2_ERR_FRAME_SIZE_ERROR;
+        }
 
         stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
 
