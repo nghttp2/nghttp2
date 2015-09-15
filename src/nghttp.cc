@@ -1861,6 +1861,23 @@ int before_frame_send_callback(nghttp2_session *session,
 } // namespace
 
 namespace {
+int on_frame_not_send_callback(nghttp2_session *session,
+                               const nghttp2_frame *frame, int lib_error_code,
+                               void *user_data) {
+  if (frame->hd.type != NGHTTP2_HEADERS ||
+      frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
+    return 0;
+  }
+  auto req = static_cast<Request *>(
+      nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
+  std::cerr << "[ERROR] request " << req->uri
+            << " failed: " << nghttp2_strerror(lib_error_code) << std::endl;
+
+  return 0;
+}
+} // namespace
+
+namespace {
 int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
                              uint32_t error_code, void *user_data) {
   auto client = get_client(user_data);
@@ -2211,6 +2228,9 @@ int run(char **uris, int n) {
 
   nghttp2_session_callbacks_set_before_frame_send_callback(
       callbacks, before_frame_send_callback);
+
+  nghttp2_session_callbacks_set_on_frame_not_send_callback(
+      callbacks, on_frame_not_send_callback);
 
   nghttp2_session_callbacks_set_send_callback(callbacks, send_callback);
 
