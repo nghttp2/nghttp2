@@ -1868,8 +1868,13 @@ int on_frame_not_send_callback(nghttp2_session *session,
       frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
     return 0;
   }
+
   auto req = static_cast<Request *>(
       nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
+  if (!req) {
+    return 0;
+  }
+
   std::cerr << "[ERROR] request " << req->uri
             << " failed: " << nghttp2_strerror(lib_error_code) << std::endl;
 
