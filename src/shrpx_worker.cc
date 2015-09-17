@@ -183,7 +183,8 @@ void Worker::process_events() {
       break;
     }
     case REOPEN_LOG:
-      WLOG(NOTICE, this) << "Reopening log files: worker(" << this << ")";
+      WLOG(NOTICE, this) << "Reopening log files: worker process (thread "
+                         << this << ")";
 
       reopen_log_files();
 
