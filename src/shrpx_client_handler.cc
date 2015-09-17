@@ -872,6 +872,11 @@ ssize_t parse_proxy_line_port(const uint8_t *first, const uint8_t *last) {
 } // namespace
 
 int ClientHandler::on_proxy_protocol_finish() {
+  if (conn_.tls.ssl) {
+    conn_.tls.rbuf.append(rb_.pos, rb_.rleft());
+    rb_.reset();
+  }
+
   setup_upstream_io_callback();
 
   // Run on_read to process data left in buffer since they are not
