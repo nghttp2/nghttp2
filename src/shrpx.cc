@@ -48,7 +48,6 @@
 #ifdef HAVE_SYSLOG_H
 #include <syslog.h>
 #endif // HAVE_SYSLOG_H
-#include <signal.h>
 #ifdef HAVE_LIMITS_H
 #include <limits.h>
 #endif // HAVE_LIMITS_H
@@ -56,7 +55,6 @@
 #include <sys/time.h>
 #endif // HAVE_SYS_TIME_H
 #include <sys/resource.h>
-#include <grp.h>
 
 #include <cinttypes>
 #include <limits>
@@ -69,22 +67,19 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/conf.h>
-#include <openssl/rand.h>
 
 #include <ev.h>
 
 #include <nghttp2/nghttp2.h>
 
 #include "shrpx_config.h"
-#include "shrpx_connection_handler.h"
 #include "shrpx_ssl.h"
 #include "shrpx_log_config.h"
 #include "shrpx_worker.h"
-#include "shrpx_accept_handler.h"
 #include "shrpx_http2_upstream.h"
 #include "shrpx_http2_session.h"
-#include "shrpx_memcached_dispatcher.h"
-#include "shrpx_memcached_request.h"
+#include "shrpx_worker_process.h"
+#include "shrpx_process.h"
 #include "util.h"
 #include "app_helper.h"
 #include "ssl.h"
@@ -95,12 +90,6 @@ extern char **environ;
 using namespace nghttp2;
 
 namespace shrpx {
-
-namespace {
-const int REOPEN_LOG_SIGNAL = SIGUSR1;
-const int EXEC_BINARY_SIGNAL = SIGUSR2;
-const int GRACEFUL_SHUTDOWN_SIGNAL = SIGQUIT;
-} // namespace
 
 // Environment variables to tell new binary the listening socket's
 // file descriptors.  They are not close-on-exec.
@@ -117,6 +106,34 @@ const int GRACEFUL_SHUTDOWN_SIGNAL = SIGQUIT;
 // Environment variable to tell new binary the UNIX domain socket
 // path.
 #define ENV_UNIX_PATH "NGHTTP2_UNIX_PATH"
+
+struct SignalServer {
+  SignalServer()
+      : ipc_fd{{-1, -1}}, server_fd(-1), server_fd6(-1),
+        worker_process_pid(-1) {}
+  ~SignalServer() {
+    if (server_fd6 != -1) {
+      close(server_fd6);
+    }
+    if (server_fd != -1) {
+      close(server_fd);
+    }
+    if (ipc_fd[0] != -1) {
+      close(ipc_fd[0]);
+    }
+    if (ipc_fd[1] != -1) {
+      shutdown(ipc_fd[1], SHUT_WR);
+      close(ipc_fd[1]);
+    }
+  }
+
+  std::array<int, 2> ipc_fd;
+  // server socket, either IPv4 or UNIX domain
+  int server_fd;
+  // server socket IPv6
+  int server_fd6;
+  pid_t worker_process_pid;
+};
 
 namespace {
 int resolve_hostname(Address *addr, const char *hostname, uint16_t port,
@@ -140,14 +157,14 @@ int resolve_hostname(Address *addr, const char *hostname, uint16_t port,
     return -1;
   }
 
+  auto res_d = defer(freeaddrinfo, res);
+
   char host[NI_MAXHOST];
   rv = getnameinfo(res->ai_addr, res->ai_addrlen, host, sizeof(host), 0, 0,
                    NI_NUMERICHOST);
   if (rv != 0) {
     LOG(FATAL) << "Address resolution for " << hostname
                << " failed: " << gai_strerror(rv);
-
-    freeaddrinfo(res);
 
     return -1;
   }
@@ -159,27 +176,206 @@ int resolve_hostname(Address *addr, const char *hostname, uint16_t port,
 
   memcpy(&addr->su, res->ai_addr, res->ai_addrlen);
   addr->len = res->ai_addrlen;
-  freeaddrinfo(res);
+
   return 0;
 }
 } // namespace
 
 namespace {
-void close_env_fd(std::initializer_list<const char *> envnames) {
-  for (auto envname : envnames) {
-    auto envfd = getenv(envname);
-    if (!envfd) {
-      continue;
+void save_pid() {
+  std::ofstream out(get_config()->pid_file.get(), std::ios::binary);
+  out << get_config()->pid << "\n";
+  out.close();
+  if (!out) {
+    LOG(ERROR) << "Could not save PID to file " << get_config()->pid_file.get();
+    exit(EXIT_FAILURE);
+  }
+
+  if (get_config()->uid != 0) {
+    if (chown(get_config()->pid_file.get(), get_config()->uid,
+              get_config()->gid) == -1) {
+      auto error = errno;
+      LOG(WARN) << "Changing owner of pid file " << get_config()->pid_file.get()
+                << " failed: " << strerror(error);
     }
-    auto fd = strtol(envfd, nullptr, 10);
-    close(fd);
   }
 }
 } // namespace
 
 namespace {
-std::unique_ptr<AcceptHandler>
-create_unix_domain_acceptor(ConnectionHandler *handler) {
+void exec_binary(SignalServer *ssv) {
+  LOG(NOTICE) << "Executing new binary";
+
+  auto pid = fork();
+
+  if (pid == -1) {
+    auto error = errno;
+    LOG(ERROR) << "fork() failed errno=" << error;
+    return;
+  }
+
+  if (pid != 0) {
+    return;
+  }
+
+  auto exec_path = util::get_exec_path(get_config()->argc, get_config()->argv,
+                                       get_config()->cwd);
+
+  if (!exec_path) {
+    LOG(ERROR) << "Could not resolve the executable path";
+    return;
+  }
+
+  auto argv = make_unique<char *[]>(get_config()->argc + 1);
+
+  argv[0] = exec_path;
+  for (int i = 1; i < get_config()->argc; ++i) {
+    argv[i] = get_config()->argv[i];
+  }
+  argv[get_config()->argc] = nullptr;
+
+  size_t envlen = 0;
+  for (char **p = environ; *p; ++p, ++envlen)
+    ;
+  // 3 for missing (fd4, fd6 and port) or (unix fd and unix path)
+  auto envp = make_unique<char *[]>(envlen + 3 + 1);
+  size_t envidx = 0;
+
+  std::string fd, fd6, path, port;
+
+  if (get_config()->host_unix) {
+    fd = ENV_UNIX_FD "=";
+    fd += util::utos(ssv->server_fd);
+    envp[envidx++] = &fd[0];
+
+    path = ENV_UNIX_PATH "=";
+    path += get_config()->host.get();
+    envp[envidx++] = &path[0];
+  } else {
+    if (ssv->server_fd) {
+      fd = ENV_LISTENER4_FD "=";
+      fd += util::utos(ssv->server_fd);
+      envp[envidx++] = &fd[0];
+    }
+
+    if (ssv->server_fd6) {
+      fd6 = ENV_LISTENER6_FD "=";
+      fd6 += util::utos(ssv->server_fd6);
+      envp[envidx++] = &fd6[0];
+    }
+
+    port = ENV_PORT "=";
+    port += util::utos(get_config()->port);
+    envp[envidx++] = &port[0];
+  }
+
+  for (size_t i = 0; i < envlen; ++i) {
+    if (util::startsWith(environ[i], ENV_LISTENER4_FD) ||
+        util::startsWith(environ[i], ENV_LISTENER6_FD) ||
+        util::startsWith(environ[i], ENV_PORT) ||
+        util::startsWith(environ[i], ENV_UNIX_FD) ||
+        util::startsWith(environ[i], ENV_UNIX_PATH)) {
+      continue;
+    }
+
+    envp[envidx++] = environ[i];
+  }
+
+  envp[envidx++] = nullptr;
+
+  if (LOG_ENABLED(INFO)) {
+    LOG(INFO) << "cmdline";
+    for (int i = 0; argv[i]; ++i) {
+      LOG(INFO) << i << ": " << argv[i];
+    }
+    LOG(INFO) << "environ";
+    for (int i = 0; envp[i]; ++i) {
+      LOG(INFO) << i << ": " << envp[i];
+    }
+  }
+
+  // restores original stderr
+  util::restore_original_fds();
+
+  if (execve(argv[0], argv.get(), envp.get()) == -1) {
+    auto error = errno;
+    LOG(ERROR) << "execve failed: errno=" << error;
+    _Exit(EXIT_FAILURE);
+  }
+}
+} // namespace
+
+namespace {
+void ipc_send(SignalServer *ssv, uint8_t ipc_event) {
+  ssize_t nwrite;
+  while ((nwrite = write(ssv->ipc_fd[1], &ipc_event, 1)) == -1 &&
+         errno == EINTR)
+    ;
+
+  if (nwrite < 0) {
+    auto error = errno;
+    LOG(ERROR) << "Could not send IPC event to worker process: "
+               << strerror(error);
+    return;
+  }
+
+  if (nwrite == 0) {
+    LOG(ERROR) << "Could not send IPC event due to pipe overflow";
+    return;
+  }
+}
+} // namespace
+
+namespace {
+void reopen_log(SignalServer *ssv) {
+  LOG(NOTICE) << "Reopening log files: master process";
+
+  (void)reopen_log_files();
+  redirect_stderr_to_errorlog();
+  ipc_send(ssv, SHRPX_IPC_REOPEN_LOG);
+}
+} // namespace
+
+namespace {
+void signal_cb(struct ev_loop *loop, ev_signal *w, int revents) {
+  auto ssv = static_cast<SignalServer *>(w->data);
+  if (ssv->worker_process_pid == -1) {
+    ev_break(loop);
+    return;
+  }
+
+  switch (w->signum) {
+  case REOPEN_LOG_SIGNAL:
+    reopen_log(ssv);
+    return;
+  case EXEC_BINARY_SIGNAL:
+    exec_binary(ssv);
+    return;
+  case GRACEFUL_SHUTDOWN_SIGNAL:
+    ipc_send(ssv, SHRPX_IPC_GRACEFUL_SHUTDOWN);
+    return;
+  default:
+    kill(ssv->worker_process_pid, w->signum);
+    ev_break(loop);
+    return;
+  }
+}
+} // namespace
+
+namespace {
+void worker_process_child_cb(struct ev_loop *loop, ev_child *w, int revents) {
+  LOG(NOTICE) << "Worker process (" << w->rpid << ") exited "
+              << (WIFEXITED(w->rstatus) ? "normally" : "abnormally")
+              << " with status " << std::hex << w->rstatus << std::oct
+              << "; exit status " << WEXITSTATUS(w->rstatus) << "; signal "
+              << (WIFSIGNALED(w->rstatus) ? WTERMSIG(w->rstatus) : 0);
+
+  ev_break(loop);
+}
+} // namespace
+
+namespace {
+int create_unix_domain_server_socket() {
   auto path = get_config()->host.get();
   auto pathlen = strlen(path);
   {
@@ -191,7 +387,7 @@ create_unix_domain_acceptor(ConnectionHandler *handler) {
       if (util::streq(envpath, path)) {
         LOG(NOTICE) << "Listening on UNIX domain socket " << path;
 
-        return make_unique<AcceptHandler>(fd, handler);
+        return fd;
       }
 
       LOG(WARN) << "UNIX domain socket path was changed between old binary ("
@@ -203,12 +399,12 @@ create_unix_domain_acceptor(ConnectionHandler *handler) {
 #ifdef SOCK_NONBLOCK
   auto fd = socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0);
   if (fd == -1) {
-    return nullptr;
+    return -1;
   }
 #else  // !SOCK_NONBLOCK
   auto fd = socket(AF_UNIX, SOCK_STREAM, 0);
   if (fd == -1) {
-    return nullptr;
+    return -1;
   }
   util::make_socket_nonblocking(fd);
 #endif // !SOCK_NONBLOCK
@@ -216,7 +412,7 @@ create_unix_domain_acceptor(ConnectionHandler *handler) {
   if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &val,
                  static_cast<socklen_t>(sizeof(val))) == -1) {
     close(fd);
-    return nullptr;
+    return -1;
   }
 
   sockaddr_union addr;
@@ -225,7 +421,7 @@ create_unix_domain_acceptor(ConnectionHandler *handler) {
     LOG(FATAL) << "UNIX domain socket path " << path << " is too long > "
                << sizeof(addr.un.sun_path);
     close(fd);
-    return nullptr;
+    return -1;
   }
   // copy path including terminal NULL
   std::copy_n(path, pathlen + 1, addr.un.sun_path);
@@ -237,25 +433,24 @@ create_unix_domain_acceptor(ConnectionHandler *handler) {
     auto error = errno;
     LOG(FATAL) << "Failed to bind UNIX domain socket, error=" << error;
     close(fd);
-    return nullptr;
+    return -1;
   }
 
   if (listen(fd, get_config()->backlog) != 0) {
     auto error = errno;
     LOG(FATAL) << "Failed to listen to UNIX domain socket, error=" << error;
     close(fd);
-    return nullptr;
+    return -1;
   }
 
   LOG(NOTICE) << "Listening on UNIX domain socket " << path;
 
-  return make_unique<AcceptHandler>(fd, handler);
+  return fd;
 }
 } // namespace
 
 namespace {
-std::unique_ptr<AcceptHandler> create_acceptor(ConnectionHandler *handler,
-                                               int family) {
+int create_tcp_server_socket(int family) {
   {
     auto envfd =
         getenv(family == AF_INET ? ENV_LISTENER4_FD : ENV_LISTENER6_FD);
@@ -271,7 +466,7 @@ std::unique_ptr<AcceptHandler> create_acceptor(ConnectionHandler *handler,
       if (port == get_config()->port) {
         LOG(NOTICE) << "Listening on port " << get_config()->port;
 
-        return make_unique<AcceptHandler>(fd, handler);
+        return fd;
       }
 
       LOG(WARN) << "Port was changed between old binary (" << port
@@ -304,8 +499,11 @@ std::unique_ptr<AcceptHandler> create_acceptor(ConnectionHandler *handler,
                 << " address for " << get_config()->host.get() << ": "
                 << gai_strerror(rv);
     }
-    return nullptr;
+    return -1;
   }
+
+  auto res_d = defer(freeaddrinfo, res);
+
   for (rp = res; rp; rp = rp->ai_next) {
 #ifdef SOCK_NONBLOCK
     fd =
@@ -381,427 +579,25 @@ std::unique_ptr<AcceptHandler> create_acceptor(ConnectionHandler *handler,
     LOG(WARN) << "Listening " << (family == AF_INET ? "IPv4" : "IPv6")
               << " socket failed";
 
-    freeaddrinfo(res);
-
-    return nullptr;
+    return -1;
   }
 
   char host[NI_MAXHOST];
   rv = getnameinfo(rp->ai_addr, rp->ai_addrlen, host, sizeof(host), nullptr, 0,
                    NI_NUMERICHOST);
 
-  freeaddrinfo(res);
-
   if (rv != 0) {
     LOG(WARN) << gai_strerror(rv);
 
     close(fd);
 
-    return nullptr;
+    return -1;
   }
 
   LOG(NOTICE) << "Listening on " << host << ", port " << get_config()->port;
 
-  return make_unique<AcceptHandler>(fd, handler);
+  return fd;
 }
-} // namespace
-
-namespace {
-void drop_privileges() {
-  if (getuid() == 0 && get_config()->uid != 0) {
-    if (initgroups(get_config()->user.get(), get_config()->gid) != 0) {
-      auto error = errno;
-      LOG(FATAL) << "Could not change supplementary groups: "
-                 << strerror(error);
-      exit(EXIT_FAILURE);
-    }
-    if (setgid(get_config()->gid) != 0) {
-      auto error = errno;
-      LOG(FATAL) << "Could not change gid: " << strerror(error);
-      exit(EXIT_FAILURE);
-    }
-    if (setuid(get_config()->uid) != 0) {
-      auto error = errno;
-      LOG(FATAL) << "Could not change uid: " << strerror(error);
-      exit(EXIT_FAILURE);
-    }
-    if (setuid(0) != -1) {
-      LOG(FATAL) << "Still have root privileges?";
-      exit(EXIT_FAILURE);
-    }
-  }
-}
-} // namespace
-
-namespace {
-void save_pid() {
-  std::ofstream out(get_config()->pid_file.get(), std::ios::binary);
-  out << get_config()->pid << "\n";
-  out.close();
-  if (!out) {
-    LOG(ERROR) << "Could not save PID to file " << get_config()->pid_file.get();
-    exit(EXIT_FAILURE);
-  }
-
-  if (get_config()->uid != 0) {
-    if (chown(get_config()->pid_file.get(), get_config()->uid,
-              get_config()->gid) == -1) {
-      auto error = errno;
-      LOG(WARN) << "Changing owner of pid file " << get_config()->pid_file.get()
-                << " failed: " << strerror(error);
-    }
-  }
-}
-} // namespace
-
-namespace {
-void reopen_log_signal_cb(struct ev_loop *loop, ev_signal *w, int revents) {
-  auto conn_handler = static_cast<ConnectionHandler *>(w->data);
-
-  LOG(NOTICE) << "Reopening log files: main";
-
-  (void)reopen_log_files();
-  redirect_stderr_to_errorlog();
-
-  if (get_config()->num_worker > 1) {
-    conn_handler->worker_reopen_log_files();
-  }
-}
-} // namespace
-
-namespace {
-void exec_binary_signal_cb(struct ev_loop *loop, ev_signal *w, int revents) {
-  auto conn_handler = static_cast<ConnectionHandler *>(w->data);
-
-  LOG(NOTICE) << "Executing new binary";
-
-  auto pid = fork();
-
-  if (pid == -1) {
-    auto error = errno;
-    LOG(ERROR) << "fork() failed errno=" << error;
-    return;
-  }
-
-  if (pid != 0) {
-    return;
-  }
-
-  auto exec_path = util::get_exec_path(get_config()->argc, get_config()->argv,
-                                       get_config()->cwd);
-
-  if (!exec_path) {
-    LOG(ERROR) << "Could not resolve the executable path";
-    return;
-  }
-
-  auto argv = make_unique<char *[]>(get_config()->argc + 1);
-
-  argv[0] = exec_path;
-  for (int i = 1; i < get_config()->argc; ++i) {
-    argv[i] = strdup(get_config()->argv[i]);
-  }
-  argv[get_config()->argc] = nullptr;
-
-  size_t envlen = 0;
-  for (char **p = environ; *p; ++p, ++envlen)
-    ;
-  // 3 for missing (fd4, fd6 and port) or (unix fd and unix path)
-  auto envp = make_unique<char *[]>(envlen + 3 + 1);
-  size_t envidx = 0;
-
-  if (get_config()->host_unix) {
-    auto acceptor = conn_handler->get_acceptor();
-    std::string fd = ENV_UNIX_FD "=";
-    fd += util::utos(acceptor->get_fd());
-    envp[envidx++] = strdup(fd.c_str());
-
-    std::string path = ENV_UNIX_PATH "=";
-    path += get_config()->host.get();
-    envp[envidx++] = strdup(path.c_str());
-  } else {
-    auto acceptor4 = conn_handler->get_acceptor();
-    if (acceptor4) {
-      std::string fd4 = ENV_LISTENER4_FD "=";
-      fd4 += util::utos(acceptor4->get_fd());
-      envp[envidx++] = strdup(fd4.c_str());
-    }
-
-    auto acceptor6 = conn_handler->get_acceptor6();
-    if (acceptor6) {
-      std::string fd6 = ENV_LISTENER6_FD "=";
-      fd6 += util::utos(acceptor6->get_fd());
-      envp[envidx++] = strdup(fd6.c_str());
-    }
-
-    std::string port = ENV_PORT "=";
-    port += util::utos(get_config()->port);
-    envp[envidx++] = strdup(port.c_str());
-  }
-
-  for (size_t i = 0; i < envlen; ++i) {
-    if (util::startsWith(environ[i], ENV_LISTENER4_FD) ||
-        util::startsWith(environ[i], ENV_LISTENER6_FD) ||
-        util::startsWith(environ[i], ENV_PORT) ||
-        util::startsWith(environ[i], ENV_UNIX_FD) ||
-        util::startsWith(environ[i], ENV_UNIX_PATH)) {
-      continue;
-    }
-
-    envp[envidx++] = environ[i];
-  }
-
-  envp[envidx++] = nullptr;
-
-  if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "cmdline";
-    for (int i = 0; argv[i]; ++i) {
-      LOG(INFO) << i << ": " << argv[i];
-    }
-    LOG(INFO) << "environ";
-    for (int i = 0; envp[i]; ++i) {
-      LOG(INFO) << i << ": " << envp[i];
-    }
-  }
-
-  // restores original stderr
-  util::restore_original_fds();
-
-  if (execve(argv[0], argv.get(), envp.get()) == -1) {
-    auto error = errno;
-    LOG(ERROR) << "execve failed: errno=" << error;
-    _Exit(EXIT_FAILURE);
-  }
-}
-} // namespace
-
-namespace {
-void graceful_shutdown_signal_cb(struct ev_loop *loop, ev_signal *w,
-                                 int revents) {
-  auto conn_handler = static_cast<ConnectionHandler *>(w->data);
-
-  if (conn_handler->get_graceful_shutdown()) {
-    return;
-  }
-
-  LOG(NOTICE) << "Graceful shutdown signal received";
-
-  conn_handler->set_graceful_shutdown(true);
-
-  conn_handler->disable_acceptor();
-
-  // After disabling accepting new connection, disptach incoming
-  // connection in backlog.
-
-  conn_handler->accept_pending_connection();
-
-  conn_handler->graceful_shutdown_worker();
-
-  if (get_config()->num_worker == 1 &&
-      conn_handler->get_single_worker()->get_worker_stat()->num_connections >
-          0) {
-    return;
-  }
-
-  // We have accepted all pending connections.  Shutdown main event
-  // loop.
-  ev_break(loop);
-}
-} // namespace
-
-namespace {
-int generate_ticket_key(TicketKey &ticket_key) {
-  ticket_key.cipher = get_config()->tls_ticket_key_cipher;
-  ticket_key.hmac = EVP_sha256();
-  ticket_key.hmac_keylen = EVP_MD_size(ticket_key.hmac);
-
-  assert(static_cast<size_t>(EVP_CIPHER_key_length(ticket_key.cipher)) <=
-         ticket_key.data.enc_key.size());
-  assert(ticket_key.hmac_keylen <= ticket_key.data.hmac_key.size());
-
-  if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "enc_keylen=" << EVP_CIPHER_key_length(ticket_key.cipher)
-              << ", hmac_keylen=" << ticket_key.hmac_keylen;
-  }
-
-  if (RAND_bytes(reinterpret_cast<unsigned char *>(&ticket_key.data),
-                 sizeof(ticket_key.data)) == 0) {
-    return -1;
-  }
-
-  return 0;
-}
-} // namespace
-
-namespace {
-void renew_ticket_key_cb(struct ev_loop *loop, ev_timer *w, int revents) {
-  auto conn_handler = static_cast<ConnectionHandler *>(w->data);
-  const auto &old_ticket_keys = conn_handler->get_ticket_keys();
-
-  auto ticket_keys = std::make_shared<TicketKeys>();
-  LOG(NOTICE) << "Renew new ticket keys";
-
-  // If old_ticket_keys is not empty, it should contain at least 2
-  // keys: one for encryption, and last one for the next encryption
-  // key but decryption only.  The keys in between are old keys and
-  // decryption only.  The next key is provided to ensure to mitigate
-  // possible problem when one worker encrypt new key, but one worker,
-  // which did not take the that key yet, and cannot decrypt it.
-  //
-  // We keep keys for get_config()->tls_session_timeout seconds.  The
-  // default is 12 hours.  Thus the maximum ticket vector size is 12.
-  if (old_ticket_keys) {
-    auto &old_keys = old_ticket_keys->keys;
-    auto &new_keys = ticket_keys->keys;
-
-    assert(!old_keys.empty());
-
-    auto max_tickets =
-        static_cast<size_t>(std::chrono::duration_cast<std::chrono::hours>(
-                                get_config()->tls_session_timeout).count());
-
-    new_keys.resize(std::min(max_tickets, old_keys.size() + 1));
-    std::copy_n(std::begin(old_keys), new_keys.size() - 1,
-                std::begin(new_keys) + 1);
-  } else {
-    ticket_keys->keys.resize(1);
-  }
-
-  auto &new_key = ticket_keys->keys[0];
-
-  if (generate_ticket_key(new_key) != 0) {
-    if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "failed to generate ticket key";
-    }
-    conn_handler->set_ticket_keys(nullptr);
-    conn_handler->set_ticket_keys_to_worker(nullptr);
-    return;
-  }
-
-  if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "ticket keys generation done";
-    assert(ticket_keys->keys.size() >= 1);
-    LOG(INFO) << 0 << " enc+dec: "
-              << util::format_hex(ticket_keys->keys[0].data.name);
-    for (size_t i = 1; i < ticket_keys->keys.size(); ++i) {
-      auto &key = ticket_keys->keys[i];
-      LOG(INFO) << i << " dec: " << util::format_hex(key.data.name);
-    }
-  }
-
-  conn_handler->set_ticket_keys(ticket_keys);
-  conn_handler->set_ticket_keys_to_worker(ticket_keys);
-}
-} // namespace
-
-namespace {
-void memcached_get_ticket_key_cb(struct ev_loop *loop, ev_timer *w,
-                                 int revents) {
-  auto conn_handler = static_cast<ConnectionHandler *>(w->data);
-  auto dispatcher = conn_handler->get_tls_ticket_key_memcached_dispatcher();
-
-  auto req = make_unique<MemcachedRequest>();
-  req->key = "nghttpx:tls-ticket-key";
-  req->op = MEMCACHED_OP_GET;
-  req->cb = [conn_handler, dispatcher, w](MemcachedRequest *req,
-                                          MemcachedResult res) {
-    switch (res.status_code) {
-    case MEMCACHED_ERR_NO_ERROR:
-      break;
-    case MEMCACHED_ERR_EXT_NETWORK_ERROR:
-      conn_handler->on_tls_ticket_key_network_error(w);
-      return;
-    default:
-      conn_handler->on_tls_ticket_key_not_found(w);
-      return;
-    }
-
-    // |version (4bytes)|len (2bytes)|key (variable length)|...
-    // (len, key) pairs are repeated as necessary.
-
-    auto &value = res.value;
-    if (value.size() < 4) {
-      LOG(WARN) << "Memcached: tls ticket key value is too small: got "
-                << value.size();
-      conn_handler->on_tls_ticket_key_not_found(w);
-      return;
-    }
-    auto p = value.data();
-    auto version = util::get_uint32(p);
-    // Currently supported version is 1.
-    if (version != 1) {
-      LOG(WARN) << "Memcached: tls ticket key version: want 1, got " << version;
-      conn_handler->on_tls_ticket_key_not_found(w);
-      return;
-    }
-
-    auto end = p + value.size();
-    p += 4;
-
-    size_t expectedlen;
-    size_t enc_keylen;
-    size_t hmac_keylen;
-    if (get_config()->tls_ticket_key_cipher == EVP_aes_128_cbc()) {
-      expectedlen = 48;
-      enc_keylen = 16;
-      hmac_keylen = 16;
-    } else if (get_config()->tls_ticket_key_cipher == EVP_aes_256_cbc()) {
-      expectedlen = 80;
-      enc_keylen = 32;
-      hmac_keylen = 32;
-    } else {
-      return;
-    }
-
-    auto ticket_keys = std::make_shared<TicketKeys>();
-
-    for (; p != end;) {
-      if (end - p < 2) {
-        LOG(WARN) << "Memcached: tls ticket key data is too small";
-        conn_handler->on_tls_ticket_key_not_found(w);
-        return;
-      }
-      auto len = util::get_uint16(p);
-      p += 2;
-      if (len != expectedlen) {
-        LOG(WARN) << "Memcached: wrong tls ticket key size: want "
-                  << expectedlen << ", got " << len;
-        conn_handler->on_tls_ticket_key_not_found(w);
-        return;
-      }
-      if (p + len > end) {
-        LOG(WARN) << "Memcached: too short tls ticket key payload: want " << len
-                  << ", got " << (end - p);
-        conn_handler->on_tls_ticket_key_not_found(w);
-        return;
-      }
-      auto key = TicketKey();
-      key.cipher = get_config()->tls_ticket_key_cipher;
-      key.hmac = EVP_sha256();
-      key.hmac_keylen = hmac_keylen;
-
-      std::copy_n(p, key.data.name.size(), key.data.name.data());
-      p += key.data.name.size();
-
-      std::copy_n(p, enc_keylen, key.data.enc_key.data());
-      p += enc_keylen;
-
-      std::copy_n(p, hmac_keylen, key.data.hmac_key.data());
-      p += hmac_keylen;
-
-      ticket_keys->keys.push_back(std::move(key));
-    }
-
-    conn_handler->on_tls_ticket_key_get_success(ticket_keys, w);
-  };
-
-  if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "Memcached: tls ticket key get request sent";
-  }
-
-  dispatcher->add_request(std::move(req));
-}
-
 } // namespace
 
 namespace {
@@ -815,15 +611,54 @@ int call_daemon() {
 } // namespace
 
 namespace {
-int event_loop() {
-  auto loop = EV_DEFAULT;
+void close_env_fd(std::initializer_list<const char *> envnames) {
+  for (auto envname : envnames) {
+    auto envfd = getenv(envname);
+    if (!envfd) {
+      continue;
+    }
+    auto fd = strtol(envfd, nullptr, 10);
+    close(fd);
+  }
+}
+} // namespace
 
-  auto conn_handler = make_unique<ConnectionHandler>(loop);
+namespace {
+pid_t fork_worker_process(SignalServer *ssv) {
+  int rv;
+  auto pid = fork();
+
+  if (pid == -1) {
+    return -1;
+  }
+
+  if (pid == 0) {
+    close(ssv->ipc_fd[1]);
+    WorkerProcessConfig wpconf{ssv->ipc_fd[0], ssv->server_fd, ssv->server_fd6};
+    rv = worker_process_event_loop(&wpconf);
+    if (rv != 0) {
+      LOG(ERROR) << "Worker process returned error";
+    }
+    return 0;
+  }
+
+  close(ssv->ipc_fd[0]);
+
+  LOG(NOTICE) << "Worker process (" << pid << ") spawned";
+
+  return pid;
+}
+} // namespace
+
+namespace {
+int event_loop() {
+  int rv;
+
   if (get_config()->daemon) {
     if (call_daemon() == -1) {
       auto error = errno;
       LOG(FATAL) << "Failed to daemonize: " << strerror(error);
-      exit(EXIT_FAILURE);
+      return -1;
     }
 
     // We get new PID after successful daemon().
@@ -838,139 +673,75 @@ int event_loop() {
     save_pid();
   }
 
-  if (get_config()->host_unix) {
-    close_env_fd({ENV_LISTENER4_FD, ENV_LISTENER6_FD});
-    auto acceptor = create_unix_domain_acceptor(conn_handler.get());
-    if (!acceptor) {
-      LOG(FATAL) << "Failed to listen on UNIX domain socket "
-                 << get_config()->host.get();
-      exit(EXIT_FAILURE);
-    }
+  SignalServer ssv;
 
-    conn_handler->set_acceptor(std::move(acceptor));
-  } else {
-    close_env_fd({ENV_UNIX_FD});
-    auto acceptor6 = create_acceptor(conn_handler.get(), AF_INET6);
-    auto acceptor4 = create_acceptor(conn_handler.get(), AF_INET);
-    if (!acceptor6 && !acceptor4) {
-      LOG(FATAL) << "Failed to listen on address " << get_config()->host.get()
-                 << ", port " << get_config()->port;
-      exit(EXIT_FAILURE);
-    }
-
-    conn_handler->set_acceptor(std::move(acceptor4));
-    conn_handler->set_acceptor6(std::move(acceptor6));
-  }
-
-  ev_timer renew_ticket_key_timer;
-  if (!get_config()->upstream_no_tls) {
-    if (get_config()->tls_ticket_key_memcached_host) {
-      conn_handler->set_tls_ticket_key_memcached_dispatcher(
-          make_unique<MemcachedDispatcher>(
-              &get_config()->tls_ticket_key_memcached_addr, loop));
-
-      ev_timer_init(&renew_ticket_key_timer, memcached_get_ticket_key_cb, 0.,
-                    0.);
-      renew_ticket_key_timer.data = conn_handler.get();
-      // Get first ticket keys.
-      memcached_get_ticket_key_cb(loop, &renew_ticket_key_timer, 0);
-    } else {
-      bool auto_tls_ticket_key = true;
-      if (!get_config()->tls_ticket_key_files.empty()) {
-        if (!get_config()->tls_ticket_key_cipher_given) {
-          LOG(WARN)
-              << "It is strongly recommended to specify "
-                 "--tls-ticket-key-cipher=aes-128-cbc (or "
-                 "tls-ticket-key-cipher=aes-128-cbc in configuration file) "
-                 "when --tls-ticket-key-file is used for the smooth "
-                 "transition when the default value of --tls-ticket-key-cipher "
-                 "becomes aes-256-cbc";
-        }
-        auto ticket_keys = read_tls_ticket_key_file(
-            get_config()->tls_ticket_key_files,
-            get_config()->tls_ticket_key_cipher, EVP_sha256());
-        if (!ticket_keys) {
-          LOG(WARN) << "Use internal session ticket key generator";
-        } else {
-          conn_handler->set_ticket_keys(std::move(ticket_keys));
-          auto_tls_ticket_key = false;
-        }
-      }
-      if (auto_tls_ticket_key) {
-        // Generate new ticket key every 1hr.
-        ev_timer_init(&renew_ticket_key_timer, renew_ticket_key_cb, 0., 1_h);
-        renew_ticket_key_timer.data = conn_handler.get();
-        ev_timer_again(loop, &renew_ticket_key_timer);
-
-        // Generate first session ticket key before running workers.
-        renew_ticket_key_cb(loop, &renew_ticket_key_timer, 0);
-      }
-    }
-  }
-
-  // ListenHandler loads private key, and we listen on a priveleged port.
-  // After that, we drop the root privileges if needed.
-  drop_privileges();
-
-  int rv;
-
-#ifndef NOTHREADS
-  sigset_t signals;
-  sigemptyset(&signals);
-  sigaddset(&signals, REOPEN_LOG_SIGNAL);
-  sigaddset(&signals, EXEC_BINARY_SIGNAL);
-  sigaddset(&signals, GRACEFUL_SHUTDOWN_SIGNAL);
-  rv = pthread_sigmask(SIG_BLOCK, &signals, nullptr);
-  if (rv != 0) {
-    LOG(ERROR) << "Blocking signals failed: " << strerror(rv);
-  }
-#endif // !NOTHREADS
-
-  if (get_config()->num_worker == 1) {
-    rv = conn_handler->create_single_worker();
-  } else {
-    rv = conn_handler->create_worker_thread(get_config()->num_worker);
-  }
-
-  if (rv != 0) {
+  rv = pipe(ssv.ipc_fd.data());
+  if (rv == -1) {
+    auto error = errno;
+    LOG(WARN) << "Failed to create pipe to communicate worker process: "
+              << strerror(error);
     return -1;
   }
 
-#ifndef NOTHREADS
-  rv = pthread_sigmask(SIG_UNBLOCK, &signals, nullptr);
-  if (rv != 0) {
-    LOG(ERROR) << "Unblocking signals failed: " << strerror(rv);
+  util::make_socket_nonblocking(ssv.ipc_fd[0]);
+  util::make_socket_nonblocking(ssv.ipc_fd[1]);
+
+  auto loop = EV_DEFAULT;
+
+  if (get_config()->host_unix) {
+    close_env_fd({ENV_LISTENER4_FD, ENV_LISTENER6_FD});
+    auto fd = create_unix_domain_server_socket();
+    if (fd == -1) {
+      LOG(FATAL) << "Failed to listen on UNIX domain socket "
+                 << get_config()->host.get();
+      return -1;
+    }
+
+    ssv.server_fd = fd;
+  } else {
+    close_env_fd({ENV_UNIX_FD});
+    auto fd6 = create_tcp_server_socket(AF_INET6);
+    auto fd4 = create_tcp_server_socket(AF_INET);
+    if (fd6 == -1 && fd4 == -1) {
+      LOG(FATAL) << "Failed to listen on address " << get_config()->host.get()
+                 << ", port " << get_config()->port;
+      return -1;
+    }
+
+    ssv.server_fd = fd4;
+    ssv.server_fd6 = fd6;
   }
-#endif // !NOTHREADS
 
-  ev_signal reopen_log_sig;
-  ev_signal_init(&reopen_log_sig, reopen_log_signal_cb, REOPEN_LOG_SIGNAL);
-  reopen_log_sig.data = conn_handler.get();
-  ev_signal_start(loop, &reopen_log_sig);
+  auto pid = fork_worker_process(&ssv);
 
-  ev_signal exec_bin_sig;
-  ev_signal_init(&exec_bin_sig, exec_binary_signal_cb, EXEC_BINARY_SIGNAL);
-  exec_bin_sig.data = conn_handler.get();
-  ev_signal_start(loop, &exec_bin_sig);
-
-  ev_signal graceful_shutdown_sig;
-  ev_signal_init(&graceful_shutdown_sig, graceful_shutdown_signal_cb,
-                 GRACEFUL_SHUTDOWN_SIGNAL);
-  graceful_shutdown_sig.data = conn_handler.get();
-  ev_signal_start(loop, &graceful_shutdown_sig);
-
-  if (!get_config()->upstream_no_tls && !get_config()->no_ocsp) {
-    conn_handler->proceed_next_cert_ocsp();
+  switch (pid) {
+  case -1:
+    return -1;
+  case 0:
+    // worker process (child)
+    return 0;
   }
 
-  if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "Entering event loop";
+  ssv.worker_process_pid = pid;
+
+  auto signals =
+      std::array<int, 5>{{REOPEN_LOG_SIGNAL, EXEC_BINARY_SIGNAL,
+                          GRACEFUL_SHUTDOWN_SIGNAL, SIGINT, SIGTERM}};
+  auto sigevs = std::array<ev_signal, signals.size()>();
+
+  for (size_t i = 0; i < signals.size(); ++i) {
+    auto sigev = &sigevs[i];
+    ev_signal_init(sigev, signal_cb, signals[i]);
+    sigev->data = &ssv;
+    ev_signal_start(loop, sigev);
   }
+
+  ev_child worker_process_childev;
+  ev_child_init(&worker_process_childev, worker_process_child_cb, pid, 0);
+  worker_process_childev.data = nullptr;
+  ev_child_start(loop, &worker_process_childev);
 
   ev_run(loop, 0);
-
-  conn_handler->join_worker();
-  conn_handler->cancel_ocsp_update();
 
   return 0;
 }
@@ -1789,6 +1560,8 @@ int main(int argc, char **argv) {
   // First open log files with default configuration, so that we can
   // log errors/warnings while reading configuration files.
   reopen_log_files();
+
+  mod_config()->original_argv = argv;
 
   // We have to copy argv, since getopt_long may change its content.
   mod_config()->argc = argc;

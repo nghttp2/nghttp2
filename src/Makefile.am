@@ -125,6 +125,8 @@ NGHTTPX_SRCS = \
 	shrpx_memcached_connection.cc shrpx_memcached_connection.h \
 	shrpx_memcached_request.h \
 	shrpx_memcached_result.h \
+	shrpx_worker_process.cc shrpx_worker_process.h \
+	shrpx_process.h \
 	buffer.h memchunk.h template.h
 
 if HAVE_SPDYLAY

@@ -327,6 +327,7 @@ struct Config {
   nghttp2_option *http2_client_option;
   const EVP_CIPHER *tls_ticket_key_cipher;
   const char *server_name;
+  char **original_argv;
   char **argv;
   char *cwd;
   size_t num_worker;
