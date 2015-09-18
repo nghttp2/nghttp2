@@ -260,37 +260,6 @@ std::string read_passwd_from_file(const char *filename) {
   return line;
 }
 
-std::vector<Range<const char *>> split_config_str_list(const char *s,
-                                                       char delim) {
-  size_t len = 1;
-  auto last = s + strlen(s);
-  for (const char *first = s, *d = nullptr;
-       (d = std::find(first, last, delim)) != last; ++len, first = d + 1)
-    ;
-
-  auto list = std::vector<Range<const char *>>(len);
-
-  len = 0;
-  for (auto first = s;; ++len) {
-    auto stop = std::find(first, last, delim);
-    list[len] = {first, stop};
-    if (stop == last) {
-      break;
-    }
-    first = stop + 1;
-  }
-  return list;
-}
-
-std::vector<std::string> parse_config_str_list(const char *s, char delim) {
-  auto ranges = split_config_str_list(s, delim);
-  auto res = std::vector<std::string>();
-  res.reserve(ranges.size());
-  for (const auto &range : ranges) {
-    res.emplace_back(range.first, range.second);
-  }
-  return res;
-}
 
 std::pair<std::string, std::string> parse_header(const char *optarg) {
   // We skip possible ":" at the start of optarg.
@@ -590,7 +559,7 @@ namespace {
 void parse_mapping(const DownstreamAddr &addr, const char *src) {
   // This returns at least 1 element (it could be empty string).  We
   // will append '/' to all patterns, so it becomes catch-all pattern.
-  auto mapping = split_config_str_list(src, ':');
+  auto mapping = util::split_config_str_list(src, ':');
   assert(!mapping.empty());
   for (const auto &raw_pattern : mapping) {
     auto done = false;
@@ -1684,11 +1653,11 @@ int parse_config(const char *opt, const char *optarg,
     LOG(WARN) << opt << ": not implemented yet";
     return parse_uint_with_unit(&mod_config()->worker_write_burst, opt, optarg);
   case SHRPX_OPTID_NPN_LIST:
-    mod_config()->npn_list = parse_config_str_list(optarg);
+    mod_config()->npn_list = util::parse_config_str_list(optarg);
 
     return 0;
   case SHRPX_OPTID_TLS_PROTO_LIST:
-    mod_config()->tls_proto_list = parse_config_str_list(optarg);
+    mod_config()->tls_proto_list = util::parse_config_str_list(optarg);
 
     return 0;
   case SHRPX_OPTID_VERIFY_CLIENT:
@@ -1726,7 +1695,7 @@ int parse_config(const char *opt, const char *optarg,
   case SHRPX_OPTID_PADDING:
     return parse_uint(&mod_config()->padding, opt, optarg);
   case SHRPX_OPTID_ALTSVC: {
-    auto tokens = parse_config_str_list(optarg);
+    auto tokens = util::parse_config_str_list(optarg);
 
     if (tokens.size() < 2) {
       // Requires at least protocol_id and port
