@@ -230,7 +230,7 @@ void exec_binary(SignalServer *ssv) {
 
   argv[0] = exec_path;
   for (int i = 1; i < get_config()->argc; ++i) {
-    argv[i] = strdup(get_config()->argv[i]);
+    argv[i] = get_config()->argv[i];
   }
   argv[get_config()->argc] = nullptr;
 
@@ -241,30 +241,32 @@ void exec_binary(SignalServer *ssv) {
   auto envp = make_unique<char *[]>(envlen + 3 + 1);
   size_t envidx = 0;
 
-  if (get_config()->host_unix) {
-    std::string fd = ENV_UNIX_FD "=";
-    fd += util::utos(ssv->server_fd);
-    envp[envidx++] = strdup(fd.c_str());
+  std::string fd, fd6, path, port;
 
-    std::string path = ENV_UNIX_PATH "=";
+  if (get_config()->host_unix) {
+    fd = ENV_UNIX_FD "=";
+    fd += util::utos(ssv->server_fd);
+    envp[envidx++] = &fd[0];
+
+    path = ENV_UNIX_PATH "=";
     path += get_config()->host.get();
-    envp[envidx++] = strdup(path.c_str());
+    envp[envidx++] = &path[0];
   } else {
     if (ssv->server_fd) {
-      std::string fd4 = ENV_LISTENER4_FD "=";
-      fd4 += util::utos(ssv->server_fd);
-      envp[envidx++] = strdup(fd4.c_str());
+      fd = ENV_LISTENER4_FD "=";
+      fd += util::utos(ssv->server_fd);
+      envp[envidx++] = &fd[0];
     }
 
     if (ssv->server_fd6) {
-      std::string fd6 = ENV_LISTENER6_FD "=";
+      fd6 = ENV_LISTENER6_FD "=";
       fd6 += util::utos(ssv->server_fd6);
-      envp[envidx++] = strdup(fd6.c_str());
+      envp[envidx++] = &fd6[0];
     }
 
-    std::string port = ENV_PORT "=";
+    port = ENV_PORT "=";
     port += util::utos(get_config()->port);
-    envp[envidx++] = strdup(port.c_str());
+    envp[envidx++] = &port[0];
   }
 
   for (size_t i = 0; i < envlen; ++i) {
