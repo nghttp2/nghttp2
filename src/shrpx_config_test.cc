@@ -36,34 +36,6 @@
 
 namespace shrpx {
 
-void test_shrpx_config_parse_config_str_list(void) {
-  auto res = parse_config_str_list("a");
-  CU_ASSERT(1 == res.size());
-  CU_ASSERT("a" == res[0]);
-
-  res = parse_config_str_list("a,");
-  CU_ASSERT(2 == res.size());
-  CU_ASSERT("a" == res[0]);
-  CU_ASSERT("" == res[1]);
-
-  res = parse_config_str_list(":a::", ':');
-  CU_ASSERT(4 == res.size());
-  CU_ASSERT("" == res[0]);
-  CU_ASSERT("a" == res[1]);
-  CU_ASSERT("" == res[2]);
-  CU_ASSERT("" == res[3]);
-
-  res = parse_config_str_list("");
-  CU_ASSERT(1 == res.size());
-  CU_ASSERT("" == res[0]);
-
-  res = parse_config_str_list("alpha,bravo,charlie");
-  CU_ASSERT(3 == res.size());
-  CU_ASSERT("alpha" == res[0]);
-  CU_ASSERT("bravo" == res[1]);
-  CU_ASSERT("charlie" == res[2]);
-}
-
 void test_shrpx_config_parse_header(void) {
   auto p = parse_header("a: b");
   CU_ASSERT("a" == p.first);
