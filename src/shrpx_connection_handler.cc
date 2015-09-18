@@ -202,9 +202,7 @@ int ConnectionHandler::create_worker_thread(size_t num) {
     workers_.push_back(std::move(worker));
     worker_loops_.push_back(loop);
 
-    if (LOG_ENABLED(INFO)) {
-      LLOG(INFO, this) << "Created thread #" << workers_.size() - 1;
-    }
+    LLOG(NOTICE, this) << "Created worker thread #" << workers_.size() - 1;
   }
 
   for (auto &worker : workers_) {
