@@ -1232,11 +1232,11 @@ benchmarking tool for HTTP/2 and SPDY server)" << std::endl;
 } // namespace
 
 namespace {
-constexpr char DEFAULT_NPN_LIST[] = "h2,h2-16,h2-14,"
+constexpr char DEFAULT_NPN_LIST[] = "h2,h2-16,h2-14"
 #ifdef HAVE_SPDYLAY
-                                    "spdy/3.1,spdy/3,spdy/2"
+                                    ",spdy/3.1,spdy/3,spdy/2"
 #endif // HAVE_SPDYLAY
-                                    "http/1.1";
+                                    ",http/1.1";
 } // namespace
 
 namespace {
@@ -1303,8 +1303,8 @@ Options:
   out << R"(
               Available protocols: )";
 #endif // !HAVE_SPDYLAY
-  out << NGHTTP2_CLEARTEXT_PROTO_VERSION_ID << R"( and )" << NGHTTP2_H1_1
-      << R"( 
+  out << NGHTTP2_CLEARTEXT_PROTO_VERSION_ID << R"( and
+              )" << NGHTTP2_H1_1 << R"(
               Default: )" << NGHTTP2_CLEARTEXT_PROTO_VERSION_ID << R"(
   -d, --data=<PATH>
               Post FILE to  server.  The request method  is changed to
