@@ -66,7 +66,8 @@ To configure OpenSSL, use the following script:
     export CROSS_COMPILE=$TOOLCHAIN/bin/arm-linux-androideabi-
     ./Configure --prefix=$PREFIX android
 
-And run ``make install`` to build and install.
+And run ``make install_sw`` to build and install without
+documentation.
 
 We cannot compile libev without modification.  Apply `this patch
 <https://gist.github.com/tatsuhiro-t/48c45f08950f587180ed>`_ before
