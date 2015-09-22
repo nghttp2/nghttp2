@@ -704,6 +704,16 @@ int event_loop() {
     }
 
     ssv.server_fd = fd;
+
+    if (get_config()->uid != 0) {
+      // fd is not associated to inode, so we cannot use fchown(2)
+      // here.  https://lkml.org/lkml/2004/11/1/84
+      if (chown_to_running_user(get_config()->host.get()) == -1) {
+        auto error = errno;
+        LOG(WARN) << "Changing owner of UNIX domain socket "
+                  << get_config()->host.get() << " failed: " << strerror(error);
+      }
+    }
   } else {
     close_env_fd({ENV_UNIX_FD});
     auto fd6 = create_tcp_server_socket(AF_INET6);
