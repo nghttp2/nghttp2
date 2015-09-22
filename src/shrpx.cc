@@ -183,6 +183,12 @@ int resolve_hostname(Address *addr, const char *hostname, uint16_t port,
 } // namespace
 
 namespace {
+int chown_to_running_user(const char *path) {
+  return chown(path, get_config()->uid, get_config()->gid);
+}
+} // namespace
+
+namespace {
 void save_pid() {
   std::ofstream out(get_config()->pid_file.get(), std::ios::binary);
   out << get_config()->pid << "\n";
@@ -193,8 +199,7 @@ void save_pid() {
   }
 
   if (get_config()->uid != 0) {
-    if (chown(get_config()->pid_file.get(), get_config()->uid,
-              get_config()->gid) == -1) {
+    if (chown_to_running_user(get_config()->pid_file.get()) == -1) {
       auto error = errno;
       LOG(WARN) << "Changing owner of pid file " << get_config()->pid_file.get()
                 << " failed: " << strerror(error);
@@ -2181,7 +2186,7 @@ int main(int argc, char **argv) {
     mod_config()->http2_upstream_dump_request_header = f;
 
     if (get_config()->uid != 0) {
-      if (chown(path, get_config()->uid, get_config()->gid) == -1) {
+      if (chown_to_running_user(path) == -1) {
         auto error = errno;
         LOG(WARN) << "Changing owner of http2 upstream request header file "
                   << path << " failed: " << strerror(error);
@@ -2202,7 +2207,7 @@ int main(int argc, char **argv) {
     mod_config()->http2_upstream_dump_response_header = f;
 
     if (get_config()->uid != 0) {
-      if (chown(path, get_config()->uid, get_config()->gid) == -1) {
+      if (chown_to_running_user(path) == -1) {
         auto error = errno;
         LOG(WARN) << "Changing owner of http2 upstream response header file"
                   << " " << path << " failed: " << strerror(error);
