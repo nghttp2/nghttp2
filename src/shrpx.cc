@@ -689,8 +689,11 @@ int event_loop() {
     return -1;
   }
 
-  util::make_socket_nonblocking(ssv.ipc_fd[0]);
-  util::make_socket_nonblocking(ssv.ipc_fd[1]);
+  for (int i = 0; i < 2; ++i) {
+    auto fd = ssv.ipc_fd[i];
+    util::make_socket_nonblocking(fd);
+    util::make_socket_closeonexec(fd);
+  }
 
   auto loop = EV_DEFAULT;
 
