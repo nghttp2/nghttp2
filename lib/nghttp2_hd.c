@@ -506,7 +506,7 @@ int nghttp2_hd_entry_init(nghttp2_hd_entry *ent, uint8_t flags, uint8_t *name,
   if ((flags & NGHTTP2_HD_FLAG_NAME_ALLOC) &&
       (flags & NGHTTP2_HD_FLAG_NAME_GIFT) == 0) {
     if (namelen == 0) {
-      flags &= ~NGHTTP2_HD_FLAG_NAME_ALLOC;
+      flags = (uint8_t)(flags & ~NGHTTP2_HD_FLAG_NAME_ALLOC);
       ent->nv.name = (uint8_t *)"";
     } else {
       /* copy including terminating NULL byte */
@@ -522,7 +522,7 @@ int nghttp2_hd_entry_init(nghttp2_hd_entry *ent, uint8_t flags, uint8_t *name,
   if ((flags & NGHTTP2_HD_FLAG_VALUE_ALLOC) &&
       (flags & NGHTTP2_HD_FLAG_VALUE_GIFT) == 0) {
     if (valuelen == 0) {
-      flags &= ~NGHTTP2_HD_FLAG_VALUE_ALLOC;
+      flags = (uint8_t)(flags & ~NGHTTP2_HD_FLAG_VALUE_ALLOC);
       ent->nv.value = (uint8_t *)"";
     } else {
       /* copy including terminating NULL byte */
@@ -877,7 +877,7 @@ static int emit_literal_header(nghttp2_nv *nv_out, int *token_out,
 }
 
 static size_t count_encoded_length(size_t n, size_t prefix) {
-  size_t k = (1 << prefix) - 1;
+  size_t k = (size_t)((1 << prefix) - 1);
   size_t len = 0;
 
   if (n < k) {
@@ -894,21 +894,23 @@ static size_t count_encoded_length(size_t n, size_t prefix) {
 }
 
 static size_t encode_length(uint8_t *buf, size_t n, size_t prefix) {
-  size_t k = (1 << prefix) - 1;
+  size_t k = (size_t)((1 << prefix) - 1);
   uint8_t *begin = buf;
 
-  *buf &= ~k;
+  *buf = (uint8_t)(*buf & ~k);
 
   if (n < k) {
-    *buf |= n;
+    *buf = (uint8_t)(*buf | n);
     return 1;
   }
 
-  *buf++ |= k;
+  *buf = (uint8_t)(*buf | k);
+  ++buf;
+
   n -= k;
 
   for (; n >= 128; n >>= 7) {
-    *buf++ = (1 << 7) | (n & 0x7f);
+    *buf++ = (uint8_t)((1 << 7) | (n & 0x7f));
   }
 
   *buf++ = (uint8_t)n;
@@ -936,7 +938,7 @@ static size_t encode_length(uint8_t *buf, size_t n, size_t prefix) {
 static ssize_t decode_length(uint32_t *res, size_t *shift_ptr, int *final,
                              uint32_t initial, size_t shift, uint8_t *in,
                              uint8_t *last, size_t prefix) {
-  uint32_t k = (1 << prefix) - 1;
+  uint32_t k = (uint8_t)((1 << prefix) - 1);
   uint32_t n = initial;
   uint8_t *start = in;
 

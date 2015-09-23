@@ -300,12 +300,15 @@ int nghttp2_bufs_orb_hold(nghttp2_bufs *bufs, uint8_t b);
 
 #define nghttp2_bufs_fast_orb(BUFS, B)                                         \
   do {                                                                         \
-    *(BUFS)->cur->buf.last++ |= B;                                             \
+    uint8_t **p = &(BUFS)->cur->buf.last;                                      \
+    **p = (uint8_t)(**p | (B));                                                \
+    ++(*p);                                                                    \
   } while (0)
 
 #define nghttp2_bufs_fast_orb_hold(BUFS, B)                                    \
   do {                                                                         \
-    *(BUFS)->cur->buf.last |= B;                                               \
+    uint8_t *p = (BUFS)->cur->buf.last;                                        \
+    *p = (uint8_t)(*p | (B));                                                  \
   } while (0)
 
 /*

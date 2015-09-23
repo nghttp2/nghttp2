@@ -328,7 +328,7 @@ static int send_data_callback(nghttp2_session *session _U_,
   acc->length += NGHTTP2_FRAME_HDLEN;
 
   if (frame->data.padlen) {
-    *(acc->buf + acc->length++) = (uint8_t)frame->data.padlen - 1;
+    *(acc->buf + acc->length++) = (uint8_t)(frame->data.padlen - 1);
   }
 
   acc->length += length;
@@ -927,7 +927,7 @@ void test_nghttp2_session_recv_continuation(void) {
   datalen = NGHTTP2_FRAME_HDLEN + 1;
   buf->pos += NGHTTP2_FRAME_HDLEN + 1;
 
-  nghttp2_put_uint32be(data, (1 << 8) + data[3]);
+  nghttp2_put_uint32be(data, (uint32_t)((1 << 8) + data[3]));
 
   /* First CONTINUATION, 2 bytes */
   nghttp2_frame_hd_init(&cont_hd, 2, NGHTTP2_CONTINUATION, NGHTTP2_FLAG_NONE,
@@ -1099,7 +1099,7 @@ void test_nghttp2_session_recv_headers_with_priority(void) {
   buf = &bufs.head->buf;
   /* Make payload shorter than required length to store priority
      group */
-  nghttp2_put_uint32be(buf->pos, (4 << 8) + buf->pos[3]);
+  nghttp2_put_uint32be(buf->pos, (uint32_t)((4 << 8) + buf->pos[3]));
 
   ud.frame_recv_cb_called = 0;
 

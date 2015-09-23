@@ -2276,7 +2276,7 @@ static int session_after_frame_sent1(nghttp2_session *session) {
         break;
       }
       case NGHTTP2_HCAT_PUSH_RESPONSE:
-        stream->flags &= ~NGHTTP2_STREAM_FLAG_PUSH;
+        stream->flags = (uint8_t)(stream->flags & ~NGHTTP2_STREAM_FLAG_PUSH);
         ++session->num_outgoing_streams;
       /* Fall through */
       case NGHTTP2_HCAT_RESPONSE:
@@ -2372,9 +2372,9 @@ static int session_after_frame_sent1(nghttp2_session *session) {
     /* We update flow control window after a frame was completely
        sent. This is possible because we choose payload length not to
        exceed the window */
-    session->remote_window_size -= frame->hd.length;
+    session->remote_window_size -= (int32_t)frame->hd.length;
     if (stream) {
-      stream->remote_window_size -= frame->hd.length;
+      stream->remote_window_size -= (int32_t)frame->hd.length;
     }
 
     if (stream && aux_data->eof) {
@@ -4374,7 +4374,7 @@ static int adjust_recv_window_size(int32_t *recv_window_size_ptr, size_t delta,
       *recv_window_size_ptr > NGHTTP2_MAX_WINDOW_SIZE - (int32_t)delta) {
     return -1;
   }
-  *recv_window_size_ptr += delta;
+  *recv_window_size_ptr += (int32_t)delta;
   return 0;
 }
 
@@ -4474,7 +4474,7 @@ static int session_update_consumed_size(nghttp2_session *session,
                                              NGHTTP2_FLOW_CONTROL_ERROR);
   }
 
-  *consumed_size_ptr += delta_size;
+  *consumed_size_ptr += (int32_t)delta_size;
 
   /* recv_window_size may be smaller than consumed_size, because it
      may be decreased by negative value with
@@ -4681,7 +4681,7 @@ static ssize_t inbound_frame_compute_pad(nghttp2_inbound_frame *iframe) {
   size_t padlen;
 
   /* 1 for Pad Length field */
-  padlen = iframe->sbuf.pos[0] + 1;
+  padlen = (size_t)(iframe->sbuf.pos[0] + 1);
 
   DEBUGF(fprintf(stderr, "recv: padlen=%zu\n", padlen));
 
@@ -5580,7 +5580,8 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
 
       /* CONTINUATION won't bear NGHTTP2_PADDED flag */
 
-      iframe->frame.hd.flags |= cont_hd.flags & NGHTTP2_FLAG_END_HEADERS;
+      iframe->frame.hd.flags = (uint8_t)(
+          iframe->frame.hd.flags | (cont_hd.flags & NGHTTP2_FLAG_END_HEADERS));
       iframe->frame.hd.length += cont_hd.length;
 
       busy = 1;

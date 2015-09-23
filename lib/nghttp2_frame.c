@@ -219,7 +219,7 @@ static int frame_pack_headers_shared(nghttp2_bufs *bufs,
      CONTINUATION frame is involved. Remove END_HEADERS flag from the
      first frame. */
   if (bufs->head != bufs->cur) {
-    hd.flags &= ~NGHTTP2_FLAG_END_HEADERS;
+    hd.flags = (uint8_t)(hd.flags & ~NGHTTP2_FLAG_END_HEADERS);
   }
 
   buf->pos -= NGHTTP2_FRAME_HDLEN;

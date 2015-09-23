@@ -487,7 +487,7 @@ void test_nghttp2_nv_array_copy(void) {
   CU_ASSERT(0 == rv);
   CU_ASSERT(nva[0].namelen == 5);
   CU_ASSERT(0 == memcmp("alpha", nva[0].name, 5));
-  CU_ASSERT(nva[0].valuelen = 5);
+  CU_ASSERT(nva[0].valuelen == 5);
   CU_ASSERT(0 == memcmp("bravo", nva[0].value, 5));
   CU_ASSERT(nva[1].namelen == 7);
   CU_ASSERT(0 == memcmp("charlie", nva[1].name, 7));

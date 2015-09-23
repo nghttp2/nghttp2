@@ -32,7 +32,7 @@
 #include "nghttp2_helper.h"
 
 static uint8_t downcase(uint8_t c) {
-  return 'A' <= c && c <= 'Z' ? (c - 'A' + 'a') : c;
+  return 'A' <= c && c <= 'Z' ? (uint8_t)(c - 'A' + 'a') : c;
 }
 
 static int memieq(const void *a, const void *b, size_t n) {
@@ -90,7 +90,7 @@ static int check_pseudo_header(nghttp2_stream *stream, const nghttp2_nv *nv,
   if (lws(nv->value, nv->valuelen)) {
     return 0;
   }
-  stream->http_flags |= flag;
+  stream->http_flags = (uint16_t)(stream->http_flags | flag);
   return 1;
 }
 
@@ -368,14 +368,16 @@ int nghttp2_http_on_response_headers(nghttp2_stream *stream) {
 
   if (stream->status_code / 100 == 1) {
     /* non-final response */
-    stream->http_flags = (stream->http_flags & NGHTTP2_HTTP_FLAG_METH_ALL) |
-                         NGHTTP2_HTTP_FLAG_EXPECT_FINAL_RESPONSE;
+    stream->http_flags =
+        (uint16_t)((stream->http_flags & NGHTTP2_HTTP_FLAG_METH_ALL) |
+                   NGHTTP2_HTTP_FLAG_EXPECT_FINAL_RESPONSE);
     stream->content_length = -1;
     stream->status_code = -1;
     return 0;
   }
 
-  stream->http_flags &= ~NGHTTP2_HTTP_FLAG_EXPECT_FINAL_RESPONSE;
+  stream->http_flags =
+      (uint16_t)(stream->http_flags & ~NGHTTP2_HTTP_FLAG_EXPECT_FINAL_RESPONSE);
 
   if (!expect_response_body(stream)) {
     stream->content_length = 0;
@@ -409,7 +411,7 @@ int nghttp2_http_on_remote_end_stream(nghttp2_stream *stream) {
 }
 
 int nghttp2_http_on_data_chunk(nghttp2_stream *stream, size_t n) {
-  stream->recv_content_length += n;
+  stream->recv_content_length += (int64_t)n;
 
   if ((stream->http_flags & NGHTTP2_HTTP_FLAG_EXPECT_FINAL_RESPONSE) ||
       (stream->content_length != -1 &&

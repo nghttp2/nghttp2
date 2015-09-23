@@ -312,13 +312,13 @@ static int ends_with(const char *s, const char *sub) {
 /* Returns int value of hex string character |c| */
 static uint8_t hex_to_uint(uint8_t c) {
   if ('0' <= c && c <= '9') {
-    return c - '0';
+    return (uint8_t)(c - '0');
   }
   if ('A' <= c && c <= 'F') {
-    return c - 'A' + 10;
+    return (uint8_t)(c - 'A' + 10);
   }
   if ('a' <= c && c <= 'f') {
-    return c - 'a' + 10;
+    return (uint8_t)(c - 'a' + 10);
   }
   return 0;
 }
@@ -340,7 +340,7 @@ static char *percent_decode(const uint8_t *value, size_t valuelen) {
         continue;
       }
       res[j++] =
-          (char)(hex_to_uint(value[i + 1]) << 4) + hex_to_uint(value[i + 2]);
+          (char)((hex_to_uint(value[i + 1]) << 4) + hex_to_uint(value[i + 2]));
       i += 3;
     }
     memcpy(&res[j], &value[i], 2);

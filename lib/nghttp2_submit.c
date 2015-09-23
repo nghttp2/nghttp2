@@ -71,8 +71,9 @@ static int32_t submit_headers_shared(nghttp2_session *session, uint8_t flags,
   item->aux_data.headers.stream_user_data = stream_user_data;
   item->aux_data.headers.attach_stream = attach_stream;
 
-  flags_copy = (flags & (NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_PRIORITY)) |
-               NGHTTP2_FLAG_END_HEADERS;
+  flags_copy =
+      (uint8_t)((flags & (NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_PRIORITY)) |
+                NGHTTP2_FLAG_END_HEADERS);
 
   if (stream_id == -1) {
     if (session->next_stream_id > INT32_MAX) {

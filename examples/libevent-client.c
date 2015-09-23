@@ -120,7 +120,7 @@ static http2_stream_data *create_http2_stream_data(const char *uri,
   }
   if (u->field_set & (1 << UF_QUERY)) {
     /* +1 for '?' character */
-    stream_data->pathlen += u->field_data[UF_QUERY].len + 1;
+    stream_data->pathlen += (size_t)(u->field_data[UF_QUERY].len + 1);
   }
 
   stream_data->path = malloc(stream_data->pathlen);

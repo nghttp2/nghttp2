@@ -248,7 +248,7 @@ static char *cpydig(char *buf, int n, size_t len) {
 
   p = buf + len - 1;
   do {
-    *p-- = (n % 10) + '0';
+    *p-- = (char)((n % 10) + '0');
     n /= 10;
   } while (p >= buf);
 
@@ -319,7 +319,7 @@ static size_t utos(char *buf, size_t len, uint64_t n) {
 
   buf += nwrite - 1;
   do {
-    *buf-- = (n % 10) + '0';
+    *buf-- = (char)((n % 10) + '0');
     n /= 10;
   } while (n);
 

@@ -1201,21 +1201,24 @@ void test_nghttp2_hd_public_api(void) {
 }
 
 static size_t encode_length(uint8_t *buf, uint64_t n, size_t prefix) {
-  size_t k = (1 << prefix) - 1;
+  size_t k = (size_t)((1 << prefix) - 1);
   size_t len = 0;
-  *buf &= ~k;
+  *buf = (uint8_t)(*buf & ~k);
   if (n >= k) {
-    *buf++ |= k;
+    *buf = (uint8_t)(*buf | k);
+    ++buf;
     n -= k;
     ++len;
   } else {
-    *buf++ |= n;
+    *buf = (uint8_t)(*buf | n);
+    ++buf;
     return 1;
   }
   do {
     ++len;
     if (n >= 128) {
-      *buf++ = (1 << 7) | (n & 0x7f);
+      *buf = (uint8_t)((1 << 7) | (n & 0x7f));
+      ++buf;
       n >>= 7;
     } else {
       *buf++ = (uint8_t)n;

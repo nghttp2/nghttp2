@@ -89,7 +89,7 @@ void nghttp2_stream_free(nghttp2_stream *stream) {
 }
 
 void nghttp2_stream_shutdown(nghttp2_stream *stream, nghttp2_shut_flag flag) {
-  stream->shut_flags |= flag;
+  stream->shut_flags = (uint8_t)(stream->shut_flags | flag);
 }
 
 /*
@@ -424,7 +424,7 @@ int nghttp2_stream_detach_item(nghttp2_stream *stream) {
                  stream->stream_id, stream->item));
 
   stream->item = NULL;
-  stream->flags &= ~NGHTTP2_STREAM_FLAG_DEFERRED_ALL;
+  stream->flags = (uint8_t)(stream->flags & ~NGHTTP2_STREAM_FLAG_DEFERRED_ALL);
 
   return stream_update_dep_on_detach_item(stream);
 }
@@ -446,7 +446,7 @@ int nghttp2_stream_resume_deferred_item(nghttp2_stream *stream, uint8_t flags) {
   DEBUGF(fprintf(stderr, "stream: stream=%d resume item=%p flags=%02x\n",
                  stream->stream_id, stream->item, flags));
 
-  stream->flags &= ~flags;
+  stream->flags = (uint8_t)(stream->flags & ~flags);
 
   if (stream->flags & NGHTTP2_STREAM_FLAG_DEFERRED_ALL) {
     return 0;
@@ -495,7 +495,7 @@ int nghttp2_stream_update_local_initial_window_size(
 
 void nghttp2_stream_promise_fulfilled(nghttp2_stream *stream) {
   stream->state = NGHTTP2_STREAM_OPENED;
-  stream->flags &= ~NGHTTP2_STREAM_FLAG_PUSH;
+  stream->flags = (uint8_t)(stream->flags & ~NGHTTP2_STREAM_FLAG_PUSH);
 }
 
 int nghttp2_stream_dep_find_ancestor(nghttp2_stream *stream,
