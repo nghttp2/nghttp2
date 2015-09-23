@@ -721,11 +721,11 @@ ClientHandler *accept_connection(Worker *worker, int fd, sockaddr *addr,
     return nullptr;
   }
 
-  int val = 1;
-  rv = setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, reinterpret_cast<char *>(&val),
-                  sizeof(val));
-  if (rv == -1) {
-    LOG(WARN) << "Setting option TCP_NODELAY failed: errno=" << errno;
+  if (addr->sa_family != AF_UNIX) {
+    rv = util::make_socket_nodelay(fd);
+    if (rv == -1) {
+      LOG(WARN) << "Setting option TCP_NODELAY failed: errno=" << errno;
+    }
   }
   SSL *ssl = nullptr;
   auto ssl_ctx = worker->get_sv_ssl_ctx();
