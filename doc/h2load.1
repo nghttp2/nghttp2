@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "H2LOAD" "1" "September 16, 2015" "1.3.2" "nghttp2"
+.TH "H2LOAD" "1" "September 24, 2015" "1.3.3" "nghttp2"
 .SH NAME
 h2load \- HTTP/2 benchmarking tool
 .
@@ -124,7 +124,8 @@ described in OpenSSL ciphers(1).
 .B \-p, \-\-no\-tls\-proto=<PROTOID>
 Specify ALPN identifier of the  protocol to be used when
 accessing http URI without SSL/TLS.
-Available protocols: spdy/2, spdy/3, spdy/3.1 and h2c
+Available protocols: spdy/2, spdy/3, spdy/3.1, h2c and
+http/1.1
 .sp
 Default: \fBh2c\fP
 .UNINDENT
@@ -206,6 +207,18 @@ Specify URI from which the scheme, host and port will be
 used  for  all requests.   The  base  URI overrides  all
 values  defined either  at  the command  line or  inside
 input files.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-npn\-list=<LIST>
+Comma delimited list of  ALPN protocol identifier sorted
+in the  order of preference.  That  means most desirable
+protocol comes  first.  This  is used  in both  ALPN and
+NPN.  The parameter must be  delimited by a single comma
+only  and any  white spaces  are  treated as  a part  of
+protocol string.
+.sp
+Default: \fBh2,h2\-16,h2\-14,spdy/3.1,spdy/3,spdy/2,http/1.1\fP
 .UNINDENT
 .INDENT 0.0
 .TP

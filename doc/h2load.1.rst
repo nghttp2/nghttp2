@@ -95,7 +95,8 @@ OPTIONS
 
     Specify ALPN identifier of the  protocol to be used when
     accessing http URI without SSL/TLS.
-    Available protocols: spdy/2, spdy/3, spdy/3.1 and h2c
+    Available protocols: spdy/2, spdy/3, spdy/3.1, h2c and
+    http/1.1
 
     Default: ``h2c``
 
@@ -170,6 +171,17 @@ OPTIONS
     used  for  all requests.   The  base  URI overrides  all
     values  defined either  at  the command  line or  inside
     input files.
+
+.. option:: --npn-list=<LIST>
+
+    Comma delimited list of  ALPN protocol identifier sorted
+    in the  order of preference.  That  means most desirable
+    protocol comes  first.  This  is used  in both  ALPN and
+    NPN.  The parameter must be  delimited by a single comma
+    only  and any  white spaces  are  treated as  a part  of
+    protocol string.
+
+    Default: ``h2,h2-16,h2-14,spdy/3.1,spdy/3,spdy/2,http/1.1``
 
 .. option:: -v, --verbose
 
