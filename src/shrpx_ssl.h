@@ -35,6 +35,10 @@
 
 #include <ev.h>
 
+#ifdef HAVE_NEVERBLEED
+#include <neverbleed.h>
+#endif // HAVE_NEVERBLEED
+
 namespace shrpx {
 
 class ClientHandler;
@@ -57,8 +61,12 @@ struct TLSContextData {
 };
 
 // Create server side SSL_CTX
-SSL_CTX *create_ssl_context(const char *private_key_file,
-                            const char *cert_file);
+SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file
+#ifdef HAVE_NEVERBLEED
+                            ,
+                            neverbleed_t *nb
+#endif // HAVE_NEVERBLEED
+                            );
 
 // Create client side SSL_CTX
 SSL_CTX *create_ssl_client_context();
@@ -161,7 +169,12 @@ set_alpn_prefs(const std::vector<std::string> &protos);
 // object as |cert_tree| parameter, otherwise SNI does not work.  All
 // the created SSL_CTX is stored into |all_ssl_ctx|.
 SSL_CTX *setup_server_ssl_context(std::vector<SSL_CTX *> &all_ssl_ctx,
-                                  CertLookupTree *cert_tree);
+                                  CertLookupTree *cert_tree
+#ifdef HAVE_NEVERBLEED
+                                  ,
+                                  neverbleed_t *nb
+#endif // HAVE_NEVERBLEED
+                                  );
 
 // Setups client side SSL_CTX.  This function inspects get_config()
 // and if downstream_no_tls is true, returns nullptr.  Otherwise, only

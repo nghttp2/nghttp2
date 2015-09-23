@@ -456,8 +456,12 @@ long int create_tls_proto_mask(const std::vector<std::string> &tls_proto_list) {
   return res;
 }
 
-SSL_CTX *create_ssl_context(const char *private_key_file,
-                            const char *cert_file) {
+SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file
+#ifdef HAVE_NEVERBLEED
+                            ,
+                            neverbleed_t *nb
+#endif // HAVE_NEVERBLEED
+                            ) {
   auto ssl_ctx = SSL_CTX_new(SSLv23_server_method());
   if (!ssl_ctx) {
     LOG(FATAL) << ERR_error_string(ERR_get_error(), nullptr);
@@ -543,12 +547,22 @@ SSL_CTX *create_ssl_context(const char *private_key_file,
     SSL_CTX_set_default_passwd_cb(ssl_ctx, ssl_pem_passwd_cb);
     SSL_CTX_set_default_passwd_cb_userdata(ssl_ctx, (void *)get_config());
   }
+
+#ifndef HAVE_NEVERBLEED
   if (SSL_CTX_use_PrivateKey_file(ssl_ctx, private_key_file,
                                   SSL_FILETYPE_PEM) != 1) {
     LOG(FATAL) << "SSL_CTX_use_PrivateKey_file failed: "
                << ERR_error_string(ERR_get_error(), nullptr);
+  }
+#else  // HAVE_NEVERBLEED
+  std::array<char, NEVERBLEED_ERRBUF_SIZE> errbuf;
+  if (neverbleed_load_private_key_file(nb, ssl_ctx, private_key_file,
+                                       errbuf.data()) != 1) {
+    LOG(FATAL) << "neverbleed_load_private_key_file failed: " << errbuf.data();
     DIE();
   }
+#endif // HAVE_NEVERBLEED
+
   if (SSL_CTX_use_certificate_chain_file(ssl_ctx, cert_file) != 1) {
     LOG(FATAL) << "SSL_CTX_use_certificate_file failed: "
                << ERR_error_string(ERR_get_error(), nullptr);
@@ -1096,13 +1110,23 @@ bool in_proto_list(const std::vector<std::string> &protos,
 }
 
 SSL_CTX *setup_server_ssl_context(std::vector<SSL_CTX *> &all_ssl_ctx,
-                                  CertLookupTree *cert_tree) {
+                                  CertLookupTree *cert_tree
+#ifdef HAVE_NEVERBLEED
+                                  ,
+                                  neverbleed_t *nb
+#endif // HAVE_NEVERBLEED
+                                  ) {
   if (get_config()->upstream_no_tls) {
     return nullptr;
   }
 
   auto ssl_ctx = ssl::create_ssl_context(get_config()->private_key_file.get(),
-                                         get_config()->cert_file.get());
+                                         get_config()->cert_file.get()
+#ifdef HAVE_NEVERBLEED
+                                         ,
+                                         nb
+#endif // HAVE_NEVERBLEED
+                                         );
 
   all_ssl_ctx.push_back(ssl_ctx);
 
@@ -1118,7 +1142,12 @@ SSL_CTX *setup_server_ssl_context(std::vector<SSL_CTX *> &all_ssl_ctx,
 
   for (auto &keycert : get_config()->subcerts) {
     auto ssl_ctx =
-        ssl::create_ssl_context(keycert.first.c_str(), keycert.second.c_str());
+        ssl::create_ssl_context(keycert.first.c_str(), keycert.second.c_str()
+#ifdef HAVE_NEVERBLEED
+                                ,
+                                nb
+#endif // HAVE_NEVERBLEED
+                                );
     all_ssl_ctx.push_back(ssl_ctx);
     if (ssl::cert_lookup_tree_add_cert_from_file(
             cert_tree, ssl_ctx, keycert.second.c_str()) == -1) {

@@ -408,26 +408,9 @@ void signal_cb(struct ev_loop *loop, ev_signal *w, int revents) {
 
 namespace {
 void worker_process_child_cb(struct ev_loop *loop, ev_child *w, int revents) {
-  std::string signalstr;
-  if (WIFSIGNALED(w->rstatus)) {
-    signalstr += "; signal ";
-    auto sig = WTERMSIG(w->rstatus);
-    auto s = strsignal(sig);
-    if (s) {
-      signalstr += s;
-      signalstr += "(";
-    } else {
-      signalstr += "UNKNOWN(";
-    }
-    signalstr += util::utos(sig);
-    signalstr += ")";
-  }
+  log_chld(w->rpid, w->rstatus, "Worker process");
 
-  LOG(NOTICE) << "Worker process (" << w->rpid << ") exited "
-              << (WIFEXITED(w->rstatus) ? "normally" : "abnormally")
-              << " with status " << std::hex << w->rstatus << std::oct
-              << "; exit status " << WEXITSTATUS(w->rstatus)
-              << (signalstr.empty() ? "" : signalstr.c_str());
+  ev_child_stop(loop, w);
 
   ev_break(loop);
 }
@@ -744,7 +727,7 @@ pid_t fork_worker_process(SignalServer *ssv) {
 
   close(ssv->ipc_fd[0]);
 
-  LOG(NOTICE) << "Worker process (" << pid << ") spawned";
+  LOG(NOTICE) << "Worker process [" << pid << "] spawned";
 
   return pid;
 }

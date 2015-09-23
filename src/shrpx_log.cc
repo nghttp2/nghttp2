@@ -370,6 +370,29 @@ int reopen_log_files() {
   return res;
 }
 
+void log_chld(pid_t pid, int rstatus, const char *msg) {
+  std::string signalstr;
+  if (WIFSIGNALED(rstatus)) {
+    signalstr += "; signal ";
+    auto sig = WTERMSIG(rstatus);
+    auto s = strsignal(sig);
+    if (s) {
+      signalstr += s;
+      signalstr += "(";
+    } else {
+      signalstr += "UNKNOWN(";
+    }
+    signalstr += util::utos(sig);
+    signalstr += ")";
+  }
+
+  LOG(NOTICE) << msg << ": [" << pid << "] exited "
+              << (WIFEXITED(rstatus) ? "normally" : "abnormally")
+              << " with status " << std::hex << rstatus << std::oct
+              << "; exit status " << WEXITSTATUS(rstatus)
+              << (signalstr.empty() ? "" : signalstr.c_str());
+}
+
 void redirect_stderr_to_errorlog() {
   auto lgconf = log_config();
 
