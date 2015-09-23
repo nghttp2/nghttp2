@@ -205,6 +205,8 @@ func (st *serverTester) Close() {
 	if st.cmd != nil {
 		st.cmd.Process.Kill()
 		st.cmd.Wait()
+		// workaround to unreliable Process.Signal()
+		time.Sleep(150 * time.Millisecond)
 	}
 	if st.ts != nil {
 		st.ts.Close()

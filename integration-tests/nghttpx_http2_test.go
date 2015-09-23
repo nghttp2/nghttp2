@@ -11,6 +11,7 @@ import (
 	"strings"
 	"syscall"
 	"testing"
+	"time"
 )
 
 // TestH2H1PlainGET tests whether simple HTTP/2 GET request works.
@@ -1175,6 +1176,7 @@ func TestH2H1GracefulShutdown(t *testing.T) {
 
 	// send SIGQUIT signal to nghttpx to perform graceful shutdown
 	st.cmd.Process.Signal(syscall.SIGQUIT)
+	time.Sleep(150 * time.Millisecond)
 
 	// after signal, finish request body
 	if err := st.fr.WriteData(1, true, nil); err != nil {

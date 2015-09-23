@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"syscall"
 	"testing"
+	"time"
 )
 
 // TestH1H1PlainGET tests whether simple HTTP/1 GET request works.
@@ -140,6 +141,7 @@ func TestH1H1GracefulShutdown(t *testing.T) {
 	}
 
 	st.cmd.Process.Signal(syscall.SIGQUIT)
+	time.Sleep(150 * time.Millisecond)
 
 	res, err = st.http1(requestParam{
 		name: "TestH1H1GracefulShutdown-2",
