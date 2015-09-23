@@ -5169,8 +5169,7 @@ void test_nghttp2_session_flow_control_data_with_padding_recv(void) {
 
   /* Create DATA frame */
   memset(data, 0, sizeof(data));
-  nghttp2_frame_hd_init(&hd, 357, NGHTTP2_DATA,
-                        NGHTTP2_FLAG_END_STREAM | NGHTTP2_FLAG_PADDED, 1);
+  nghttp2_frame_hd_init(&hd, 357, NGHTTP2_DATA, NGHTTP2_FLAG_PADDED, 1);
 
   nghttp2_frame_pack_frame_hd(data, &hd);
   /* Set Pad Length field, which itself is padding */
@@ -5184,6 +5183,58 @@ void test_nghttp2_session_flow_control_data_with_padding_recv(void) {
   CU_ASSERT((int32_t)hd.length == stream->recv_window_size);
   CU_ASSERT(256 == session->consumed_size);
   CU_ASSERT(256 == stream->consumed_size);
+  CU_ASSERT(357 == session->recv_window_size);
+  CU_ASSERT(357 == stream->recv_window_size);
+
+  /* Receive the same DATA frame, but in 2 parts: first 9 + 1 + 102
+     bytes which includes 1st padding byte, and remainder */
+  CU_ASSERT((ssize_t)(NGHTTP2_FRAME_HDLEN + 103) ==
+            nghttp2_session_mem_recv(session, data, NGHTTP2_FRAME_HDLEN + 103));
+  CU_ASSERT(258 == session->consumed_size);
+  CU_ASSERT(258 == stream->consumed_size);
+  CU_ASSERT(460 == session->recv_window_size);
+  CU_ASSERT(460 == stream->recv_window_size);
+
+  /* 357 - 103 = 254 bytes left */
+  CU_ASSERT(254 == nghttp2_session_mem_recv(session, data, 254));
+  CU_ASSERT(512 == session->consumed_size);
+  CU_ASSERT(512 == stream->consumed_size);
+  CU_ASSERT(714 == session->recv_window_size);
+  CU_ASSERT(714 == stream->recv_window_size);
+
+  /* Receive the same DATA frame, but in 2 parts: first 9 = 1 + 101
+     bytes which only includes data without padding, 2nd part is
+     padding only */
+  CU_ASSERT((ssize_t)(NGHTTP2_FRAME_HDLEN + 102) ==
+            nghttp2_session_mem_recv(session, data, NGHTTP2_FRAME_HDLEN + 102));
+  CU_ASSERT(513 == session->consumed_size);
+  CU_ASSERT(513 == stream->consumed_size);
+  CU_ASSERT(816 == session->recv_window_size);
+  CU_ASSERT(816 == stream->recv_window_size);
+
+  /* 357 - 102 = 255 bytes left */
+  CU_ASSERT(255 == nghttp2_session_mem_recv(session, data, 255));
+  CU_ASSERT(768 == session->consumed_size);
+  CU_ASSERT(768 == stream->consumed_size);
+  CU_ASSERT(1071 == session->recv_window_size);
+  CU_ASSERT(1071 == stream->recv_window_size);
+
+  /* Receive the same DATA frame, but in 2 parts: first 9 = 1 + 50
+     bytes which includes byte up to middle of data, 2nd part is the
+     remainder */
+  CU_ASSERT((ssize_t)(NGHTTP2_FRAME_HDLEN + 51) ==
+            nghttp2_session_mem_recv(session, data, NGHTTP2_FRAME_HDLEN + 51));
+  CU_ASSERT(769 == session->consumed_size);
+  CU_ASSERT(769 == stream->consumed_size);
+  CU_ASSERT(1122 == session->recv_window_size);
+  CU_ASSERT(1122 == stream->recv_window_size);
+
+  /* 357 - 51 = 306 bytes left */
+  CU_ASSERT(306 == nghttp2_session_mem_recv(session, data, 306));
+  CU_ASSERT(1024 == session->consumed_size);
+  CU_ASSERT(1024 == stream->consumed_size);
+  CU_ASSERT(1428 == session->recv_window_size);
+  CU_ASSERT(1428 == stream->recv_window_size);
 
   nghttp2_session_del(session);
 }
