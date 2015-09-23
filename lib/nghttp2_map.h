@@ -35,7 +35,7 @@
 
 /* Implementation of unordered map */
 
-typedef uint32_t key_type;
+typedef int32_t key_type;
 
 typedef struct nghttp2_map_entry {
   struct nghttp2_map_entry *next;
@@ -49,8 +49,8 @@ typedef struct nghttp2_map_entry {
 typedef struct {
   nghttp2_map_entry **table;
   nghttp2_mem *mem;
-  size_t tablelen;
   size_t size;
+  uint32_t tablelen;
 } nghttp2_map;
 
 /*

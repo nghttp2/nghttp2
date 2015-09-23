@@ -80,7 +80,7 @@ static ssize_t huff_encode_sym(nghttp2_bufs *bufs, size_t *avail_ptr,
 
   /* fast path, since most code is less than 8 */
   if (nbits < 8) {
-    nghttp2_bufs_fast_addb_hold(bufs, code);
+    nghttp2_bufs_fast_addb_hold(bufs, (uint8_t)code);
     *avail_ptr = nghttp2_bufs_cur_avail(bufs);
     return (ssize_t)(8 - nbits);
   }
@@ -92,22 +92,22 @@ static ssize_t huff_encode_sym(nghttp2_bufs *bufs, size_t *avail_ptr,
   }
 
   if (nbits > 16) {
-    nghttp2_bufs_fast_addb(bufs, code >> 16);
+    nghttp2_bufs_fast_addb(bufs, (uint8_t)(code >> 16));
     nbits -= 8;
   }
 
   if (nbits > 8) {
-    nghttp2_bufs_fast_addb(bufs, code >> 8);
+    nghttp2_bufs_fast_addb(bufs, (uint8_t)(code >> 8));
     nbits -= 8;
   }
 
   if (nbits == 8) {
-    nghttp2_bufs_fast_addb(bufs, code);
+    nghttp2_bufs_fast_addb(bufs, (uint8_t)code);
     *avail_ptr = nghttp2_bufs_cur_avail(bufs);
     return 8;
   }
 
-  nghttp2_bufs_fast_addb_hold(bufs, code);
+  nghttp2_bufs_fast_addb_hold(bufs, (uint8_t)code);
   *avail_ptr = nghttp2_bufs_cur_avail(bufs);
   return (ssize_t)(8 - nbits);
 }
@@ -145,7 +145,7 @@ int nghttp2_hd_huff_encode(nghttp2_bufs *bufs, const uint8_t *src,
         avail = nghttp2_bufs_cur_avail(bufs);
       }
     }
-    rembits = huff_encode_sym(bufs, &avail, rembits, sym);
+    rembits = huff_encode_sym(bufs, &avail, (size_t)rembits, sym);
     if (rembits < 0) {
       return (int)rembits;
     }

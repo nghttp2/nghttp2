@@ -62,18 +62,18 @@ static void data_feed_init(data_feed *df, nghttp2_bufs *bufs) {
 static ssize_t null_send_callback(nghttp2_session *session _U_,
                                   const uint8_t *data _U_, size_t len,
                                   int flags _U_, void *user_data _U_) {
-  return len;
+  return (ssize_t)len;
 }
 
 static ssize_t data_feed_recv_callback(nghttp2_session *session _U_,
                                        uint8_t *data, size_t len, int flags _U_,
                                        void *user_data) {
   data_feed *df = ((my_user_data *)user_data)->df;
-  size_t avail = df->datalimit - df->datamark;
+  size_t avail = (size_t)(df->datalimit - df->datamark);
   size_t wlen = nghttp2_min(avail, len);
   memcpy(data, df->datamark, wlen);
   df->datamark += wlen;
-  return wlen;
+  return (ssize_t)wlen;
 }
 
 static ssize_t fixed_length_data_source_read_callback(
@@ -91,7 +91,7 @@ static ssize_t fixed_length_data_source_read_callback(
   if (ud->data_source_length == 0) {
     *data_flags = NGHTTP2_DATA_FLAG_EOF;
   }
-  return wlen;
+  return (ssize_t)wlen;
 }
 
 #define TEST_FAILMALLOC_RUN(FUN)                                               \
@@ -230,7 +230,7 @@ static void run_nghttp2_session_recv(void) {
   data_feed df;
   int rv;
   nghttp2_nv *nva;
-  ssize_t nvlen;
+  size_t nvlen;
 
   rv = frame_pack_bufs_init(&bufs);
 
@@ -334,7 +334,7 @@ static void run_nghttp2_frame_pack_headers(void) {
                      MAKE_NV(":scheme", "https")};
   int rv;
   nghttp2_nv *nva;
-  ssize_t nvlen;
+  size_t nvlen;
 
   rv = frame_pack_bufs_init(&bufs);
 

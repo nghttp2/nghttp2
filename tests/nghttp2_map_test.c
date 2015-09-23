@@ -93,7 +93,7 @@ void test_nghttp2_map(void) {
 static void shuffle(int *a, int n) {
   int i;
   for (i = n - 1; i >= 1; --i) {
-    size_t j = (int)((double)(i + 1) * rand() / (RAND_MAX + 1.0));
+    size_t j = (size_t)((double)(i + 1) * rand() / (RAND_MAX + 1.0));
     int t = a[j];
     a[j] = a[i];
     a[i] = t;
@@ -103,8 +103,8 @@ static void shuffle(int *a, int n) {
 static int eachfun(nghttp2_map_entry *entry _U_, void *ptr _U_) { return 0; }
 
 #define NUM_ENT 6000
-strentry arr[NUM_ENT];
-int order[NUM_ENT];
+static strentry arr[NUM_ENT];
+static int order[NUM_ENT];
 
 void test_nghttp2_map_functional(void) {
   nghttp2_map map;

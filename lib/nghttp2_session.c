@@ -297,10 +297,7 @@ static void active_outbound_item_reset(nghttp2_active_outbound_item *aob,
   aob->state = NGHTTP2_OB_POP_ITEM;
 }
 
-/* The global variable for tests where we want to disable strict
-   preface handling. */
-/* Specify NGHTTP2_EXTERN, so that we can test using Win build dll. */
-NGHTTP2_EXTERN int nghttp2_enable_strict_preface = 1;
+int nghttp2_enable_strict_preface = 1;
 
 static int session_new(nghttp2_session **session_ptr,
                        const nghttp2_session_callbacks *callbacks,
@@ -904,8 +901,8 @@ nghttp2_stream *nghttp2_session_open_stream(nghttp2_session *session,
   }
 
   nghttp2_stream_init(stream, stream_id, flags, initial_state, pri_spec->weight,
-                      session->remote_settings.initial_window_size,
-                      session->local_settings.initial_window_size,
+                      (int32_t)session->remote_settings.initial_window_size,
+                      (int32_t)session->local_settings.initial_window_size,
                       stream_user_data, mem);
 
   if (stream_alloc) {
@@ -1160,7 +1157,7 @@ void nghttp2_session_detach_idle_stream(nghttp2_session *session,
 }
 
 int nghttp2_session_adjust_closed_stream(nghttp2_session *session,
-                                         ssize_t offset) {
+                                         size_t offset) {
   size_t num_stream_max;
   int rv;
 
@@ -1642,7 +1639,7 @@ static ssize_t session_call_select_padding(nghttp2_session *session,
   ssize_t rv;
 
   if (frame->hd.length >= max_payloadlen) {
-    return frame->hd.length;
+    return (ssize_t)frame->hd.length;
   }
 
   if (session->callbacks.select_padding_callback) {
@@ -1658,7 +1655,7 @@ static ssize_t session_call_select_padding(nghttp2_session *session,
     }
     return rv;
   }
-  return frame->hd.length;
+  return (ssize_t)frame->hd.length;
 }
 
 /* Add padding to HEADERS or PUSH_PROMISE. We use
@@ -1686,7 +1683,7 @@ static int session_headers_add_pad(nghttp2_session *session,
     return (int)padded_payloadlen;
   }
 
-  padlen = padded_payloadlen - frame->hd.length;
+  padlen = (size_t)padded_payloadlen - frame->hd.length;
 
   DEBUGF(fprintf(stderr, "send: padding selected: payloadlen=%zd, padlen=%zu\n",
                  padded_payloadlen, padlen));
@@ -2714,7 +2711,7 @@ static ssize_t nghttp2_session_mem_send_internal(nghttp2_session *session,
          everything, we will adjust it. */
       buf->pos += datalen;
 
-      return datalen;
+      return (ssize_t)datalen;
     }
     case NGHTTP2_OB_SEND_NO_COPY: {
       nghttp2_stream *stream;
@@ -2796,7 +2793,7 @@ static ssize_t nghttp2_session_mem_send_internal(nghttp2_session *session,
 
       buf->pos += datalen;
 
-      return datalen;
+      return (ssize_t)datalen;
     }
     }
   }
@@ -2840,8 +2837,8 @@ int nghttp2_session_send(nghttp2_session *session) {
     if (datalen <= 0) {
       return (int)datalen;
     }
-    sentlen = session->callbacks.send_callback(session, data, datalen, 0,
-                                               session->user_data);
+    sentlen = session->callbacks.send_callback(session, data, (size_t)datalen,
+                                               0, session->user_data);
     if (sentlen < 0) {
       if (sentlen == NGHTTP2_ERR_WOULDBLOCK) {
         /* Transmission canceled. Rewind the offset */
@@ -2954,7 +2951,7 @@ static int session_handle_frame_size_error(nghttp2_session *session,
   return nghttp2_session_terminate_session(session, NGHTTP2_FRAME_SIZE_ERROR);
 }
 
-static int get_error_code_from_lib_error_code(int lib_error_code) {
+static uint32_t get_error_code_from_lib_error_code(int lib_error_code) {
   switch (lib_error_code) {
   case NGHTTP2_ERR_STREAM_CLOSED:
     return NGHTTP2_STREAM_CLOSED;
@@ -3123,8 +3120,8 @@ static int inflate_header_block(nghttp2_session *session, nghttp2_frame *frame,
       return NGHTTP2_ERR_HEADER_COMP;
     }
     in += proclen;
-    inlen -= proclen;
-    *readlen_ptr += proclen;
+    inlen -= (size_t)proclen;
+    *readlen_ptr += (size_t)proclen;
 
     DEBUGF(fprintf(stderr, "recv: proclen=%zd\n", proclen));
 
@@ -3729,7 +3726,7 @@ session_update_remote_initial_window_size(nghttp2_session *session,
 
   arg.session = session;
   arg.new_window_size = new_initial_window_size;
-  arg.old_window_size = session->remote_settings.initial_window_size;
+  arg.old_window_size = (int32_t)session->remote_settings.initial_window_size;
 
   return nghttp2_map_each(&session->streams,
                           update_remote_initial_window_size_func, &arg);
@@ -3806,7 +3803,7 @@ int nghttp2_session_update_local_settings(nghttp2_session *session,
   int rv;
   size_t i;
   int32_t new_initial_window_size = -1;
-  int32_t header_table_size = -1;
+  uint32_t header_table_size = 0;
   uint8_t header_table_size_seen = 0;
   /* Use the value last seen. */
   for (i = 0; i < niv; ++i) {
@@ -3816,7 +3813,7 @@ int nghttp2_session_update_local_settings(nghttp2_session *session,
       header_table_size = iv[i].value;
       break;
     case NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE:
-      new_initial_window_size = iv[i].value;
+      new_initial_window_size = (int32_t)iv[i].value;
       break;
     }
   }
@@ -3830,7 +3827,7 @@ int nghttp2_session_update_local_settings(nghttp2_session *session,
   if (new_initial_window_size != -1) {
     rv = session_update_local_initial_window_size(
         session, new_initial_window_size,
-        session->local_settings.initial_window_size);
+        (int32_t)session->local_settings.initial_window_size);
     if (rv != 0) {
       return rv;
     }
@@ -3957,7 +3954,8 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
             "SETTINGS: too large SETTINGS_INITIAL_WINDOW_SIZE");
       }
 
-      rv = session_update_remote_initial_window_size(session, entry->value);
+      rv = session_update_remote_initial_window_size(session,
+                                                     (int32_t)entry->value);
 
       if (nghttp2_is_fatal(rv)) {
         return rv;
@@ -4608,7 +4606,8 @@ static size_t inbound_frame_buf_read(nghttp2_inbound_frame *iframe,
                                      const uint8_t *in, const uint8_t *last) {
   size_t readlen;
 
-  readlen = nghttp2_min(last - in, nghttp2_buf_mark_avail(&iframe->sbuf));
+  readlen =
+      nghttp2_min((size_t)(last - in), nghttp2_buf_mark_avail(&iframe->sbuf));
 
   iframe->sbuf.last = nghttp2_cpymem(iframe->sbuf.last, in, readlen);
 
@@ -4693,7 +4692,7 @@ static ssize_t inbound_frame_compute_pad(nghttp2_inbound_frame *iframe) {
 
   iframe->padlen = padlen;
 
-  return padlen;
+  return (ssize_t)padlen;
 }
 
 /*
@@ -4713,11 +4712,10 @@ static ssize_t inbound_frame_effective_readlen(nghttp2_inbound_frame *iframe,
     padlen = trail_padlen - payloadleft;
     if (readlen < padlen) {
       return -1;
-    } else {
-      return readlen - padlen;
     }
+    return (ssize_t)(readlen - padlen);
   }
-  return readlen;
+  return (ssize_t)(readlen);
 }
 
 ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
@@ -4781,7 +4779,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
           return rv;
         }
 
-        return inlen;
+        return (ssize_t)inlen;
       }
 
       iframe->state = NGHTTP2_IB_READ_HEAD;
@@ -5159,7 +5157,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
             iframe->state = NGHTTP2_IB_IGN_PAYLOAD;
             break;
           }
-          iframe->frame.headers.padlen = padlen;
+          iframe->frame.headers.padlen = (size_t)padlen;
 
           pri_fieldlen = nghttp2_frame_priority_len(iframe->frame.hd.flags);
 
@@ -5237,7 +5235,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
             break;
           }
 
-          iframe->frame.push_promise.padlen = padlen;
+          iframe->frame.push_promise.padlen = (size_t)padlen;
 
           if (iframe->payloadleft < 4) {
             busy = 1;
@@ -5353,9 +5351,10 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
                            iframe->payloadleft - data_readlen == trail_padlen));
 
         rv = inflate_header_block(
-            session, &iframe->frame, &hd_proclen, (uint8_t *)in, data_readlen,
+            session, &iframe->frame, &hd_proclen, (uint8_t *)in,
+            (size_t)data_readlen,
             (iframe->frame.hd.flags & NGHTTP2_FLAG_END_HEADERS) &&
-                iframe->payloadleft - data_readlen == trail_padlen,
+                iframe->payloadleft - (size_t)data_readlen == trail_padlen,
             iframe->state == NGHTTP2_IB_READ_HEADER_BLOCK);
 
         if (nghttp2_is_fatal(rv)) {
@@ -5652,7 +5651,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
         break;
       }
 
-      iframe->frame.data.padlen = padlen;
+      iframe->frame.data.padlen = (size_t)padlen;
 
       iframe->state = NGHTTP2_IB_READ_DATA;
 
@@ -5694,12 +5693,17 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
         data_readlen = inbound_frame_effective_readlen(
             iframe, iframe->payloadleft, readlen);
 
-        padlen = readlen - data_readlen;
+        if (data_readlen == -1) {
+          /* everything is padding */
+          data_readlen = 0;
+        }
+
+        padlen = (ssize_t)readlen - data_readlen;
 
         if (padlen > 0) {
           /* Padding is considered as "consumed" immediately */
           rv = nghttp2_session_consume(session, iframe->frame.hd.stream_id,
-                                       padlen);
+                                       (size_t)padlen);
 
           if (nghttp2_is_fatal(rv)) {
             return rv;
@@ -5710,11 +5714,11 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
 
         if (data_readlen > 0) {
           if (session_enforce_http_messaging(session)) {
-            if (nghttp2_http_on_data_chunk(stream, data_readlen) != 0) {
+            if (nghttp2_http_on_data_chunk(stream, (size_t)data_readlen) != 0) {
               if (session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_WINDOW_UPDATE) {
                 /* Consume all data for connection immediately here */
-                rv = session_update_connection_consumed_size(session,
-                                                             data_readlen);
+                rv = session_update_connection_consumed_size(
+                    session, (size_t)data_readlen);
 
                 if (nghttp2_is_fatal(rv)) {
                   return rv;
@@ -5734,7 +5738,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
           if (session->callbacks.on_data_chunk_recv_callback) {
             rv = session->callbacks.on_data_chunk_recv_callback(
                 session, iframe->frame.hd.flags, iframe->frame.hd.stream_id,
-                in - readlen, data_readlen, session->user_data);
+                in - readlen, (size_t)data_readlen, session->user_data);
             if (rv == NGHTTP2_ERR_PAUSE) {
               return in - first;
             }
@@ -5795,7 +5799,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
 
       break;
     case NGHTTP2_IB_IGN_ALL:
-      return inlen;
+      return (ssize_t)inlen;
     }
 
     if (!busy && in == last) {
@@ -5816,7 +5820,7 @@ int nghttp2_session_recv(nghttp2_session *session) {
     ssize_t readlen;
     readlen = session_recv(session, buf, sizeof(buf));
     if (readlen > 0) {
-      ssize_t proclen = nghttp2_session_mem_recv(session, buf, readlen);
+      ssize_t proclen = nghttp2_session_mem_recv(session, buf, (size_t)readlen);
       if (proclen < 0) {
         return (int)proclen;
       }
@@ -6104,7 +6108,7 @@ int nghttp2_session_add_settings(nghttp2_session *session, uint8_t flags,
 
   for (i = niv; i > 0; --i) {
     if (iv[i - 1].settings_id == NGHTTP2_SETTINGS_ENABLE_PUSH) {
-      session->pending_enable_push = iv[i - 1].value;
+      session->pending_enable_push = (uint8_t)iv[i - 1].value;
       break;
     }
   }
@@ -6147,17 +6151,17 @@ int nghttp2_session_pack_data(nghttp2_session *session, nghttp2_bufs *bufs,
       return NGHTTP2_ERR_CALLBACK_FAILURE;
     }
 
-    if (payloadlen > nghttp2_buf_avail(buf)) {
+    if ((size_t)payloadlen > nghttp2_buf_avail(buf)) {
       /* Resize the current buffer(s).  The reason why we do +1 for
          buffer size is for possible padding field. */
       rv = nghttp2_bufs_realloc(&session->aob.framebufs,
-                                NGHTTP2_FRAME_HDLEN + 1 + payloadlen);
+                                (size_t)(NGHTTP2_FRAME_HDLEN + 1 + payloadlen));
 
       if (rv != 0) {
         DEBUGF(fprintf(stderr, "send: realloc buffer failed rv=%d", rv));
         /* If reallocation failed, old buffers are still in tact.  So
            use safe limit. */
-        payloadlen = datamax;
+        payloadlen = (ssize_t)datamax;
 
         DEBUGF(
             fprintf(stderr, "send: use safe limit payloadlen=%zd", payloadlen));
@@ -6171,7 +6175,7 @@ int nghttp2_session_pack_data(nghttp2_session *session, nghttp2_bufs *bufs,
   }
 
   /* Current max DATA length is less then buffer chunk size */
-  assert(nghttp2_buf_avail(buf) >= (ssize_t)datamax);
+  assert(nghttp2_buf_avail(buf) >= datamax);
 
   data_flags = NGHTTP2_DATA_FLAG_NONE;
   payloadlen = aux_data->data_prd.read_callback(
@@ -6219,7 +6223,7 @@ int nghttp2_session_pack_data(nghttp2_session *session, nghttp2_bufs *bufs,
     aux_data->no_copy = 1;
   }
 
-  frame->hd.length = payloadlen;
+  frame->hd.length = (size_t)payloadlen;
   frame->data.padlen = 0;
 
   max_payloadlen = nghttp2_min(datamax, frame->hd.length + NGHTTP2_MAX_PADLEN);
@@ -6231,7 +6235,7 @@ int nghttp2_session_pack_data(nghttp2_session *session, nghttp2_bufs *bufs,
     return (int)padded_payloadlen;
   }
 
-  frame->data.padlen = padded_payloadlen - payloadlen;
+  frame->data.padlen = (size_t)(padded_payloadlen - payloadlen);
 
   nghttp2_frame_pack_frame_hd(buf->pos, &frame->hd);
 
@@ -6543,7 +6547,7 @@ int nghttp2_session_set_next_stream_id(nghttp2_session *session,
     return NGHTTP2_ERR_INVALID_ARGUMENT;
   }
 
-  session->next_stream_id = next_stream_id;
+  session->next_stream_id = (uint32_t)next_stream_id;
   return 0;
 }
 

@@ -49,7 +49,7 @@ void nghttp2_map_free(nghttp2_map *map) {
 void nghttp2_map_each_free(nghttp2_map *map,
                            int (*func)(nghttp2_map_entry *entry, void *ptr),
                            void *ptr) {
-  size_t i;
+  uint32_t i;
   for (i = 0; i < map->tablelen; ++i) {
     nghttp2_map_entry *entry;
     for (entry = map->table[i]; entry;) {
@@ -65,7 +65,7 @@ int nghttp2_map_each(nghttp2_map *map,
                      int (*func)(nghttp2_map_entry *entry, void *ptr),
                      void *ptr) {
   int rv;
-  size_t i;
+  uint32_t i;
   for (i = 0; i < map->tablelen; ++i) {
     nghttp2_map_entry *entry;
     for (entry = map->table[i]; entry; entry = entry->next) {
@@ -85,15 +85,16 @@ void nghttp2_map_entry_init(nghttp2_map_entry *entry, key_type key) {
 
 /* Same hash function in android HashMap source code. */
 /* The |mod| must be power of 2 */
-static int32_t hash(int32_t h, size_t mod) {
+static uint32_t hash(int32_t key, uint32_t mod) {
+  uint32_t h = (uint32_t)key;
   h ^= (h >> 20) ^ (h >> 12);
   h ^= (h >> 7) ^ (h >> 4);
   return h & (mod - 1);
 }
 
-static int insert(nghttp2_map_entry **table, size_t tablelen,
+static int insert(nghttp2_map_entry **table, uint32_t tablelen,
                   nghttp2_map_entry *entry) {
-  int32_t h = hash(entry->key, tablelen);
+  uint32_t h = hash(entry->key, tablelen);
   if (table[h] == NULL) {
     table[h] = entry;
   } else {
@@ -111,8 +112,8 @@ static int insert(nghttp2_map_entry **table, size_t tablelen,
 }
 
 /* new_tablelen must be power of 2 */
-static int resize(nghttp2_map *map, size_t new_tablelen) {
-  size_t i;
+static int resize(nghttp2_map *map, uint32_t new_tablelen) {
+  uint32_t i;
   nghttp2_map_entry **new_table;
 
   new_table =
@@ -156,7 +157,7 @@ int nghttp2_map_insert(nghttp2_map *map, nghttp2_map_entry *new_entry) {
 }
 
 nghttp2_map_entry *nghttp2_map_find(nghttp2_map *map, key_type key) {
-  int32_t h;
+  uint32_t h;
   nghttp2_map_entry *entry;
   h = hash(key, map->tablelen);
   for (entry = map->table[h]; entry; entry = entry->next) {
@@ -168,7 +169,7 @@ nghttp2_map_entry *nghttp2_map_find(nghttp2_map *map, key_type key) {
 }
 
 int nghttp2_map_remove(nghttp2_map *map, key_type key) {
-  int32_t h;
+  uint32_t h;
   nghttp2_map_entry *entry, *prev;
   h = hash(key, map->tablelen);
   prev = NULL;

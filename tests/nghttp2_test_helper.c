@@ -165,9 +165,9 @@ ssize_t inflate_hd(nghttp2_hd_inflater *inflater, nva_out *out,
     bp = *buf;
 
     if (offset) {
-      ssize_t n;
+      size_t n;
 
-      n = nghttp2_min((ssize_t)offset, nghttp2_buf_len(&bp));
+      n = nghttp2_min(offset, nghttp2_buf_len(&bp));
       bp.pos += n;
       offset -= n;
     }
@@ -182,7 +182,7 @@ ssize_t inflate_hd(nghttp2_hd_inflater *inflater, nva_out *out,
       }
 
       bp.pos += rv;
-      processed += rv;
+      processed += (size_t)rv;
 
       if (inflate_flags & NGHTTP2_HD_INFLATE_EMIT) {
         if (out) {
@@ -201,11 +201,11 @@ ssize_t inflate_hd(nghttp2_hd_inflater *inflater, nva_out *out,
 
   nghttp2_hd_inflate_end_headers(inflater);
 
-  return processed;
+  return (ssize_t)processed;
 }
 
 int pack_headers(nghttp2_bufs *bufs, nghttp2_hd_deflater *deflater,
-                 int32_t stream_id, int flags, const nghttp2_nv *nva,
+                 int32_t stream_id, uint8_t flags, const nghttp2_nv *nva,
                  size_t nvlen, nghttp2_mem *mem) {
   nghttp2_nv *dnva;
   nghttp2_frame frame;
@@ -223,8 +223,9 @@ int pack_headers(nghttp2_bufs *bufs, nghttp2_hd_deflater *deflater,
 }
 
 int pack_push_promise(nghttp2_bufs *bufs, nghttp2_hd_deflater *deflater,
-                      int32_t stream_id, int flags, int32_t promised_stream_id,
-                      const nghttp2_nv *nva, size_t nvlen, nghttp2_mem *mem) {
+                      int32_t stream_id, uint8_t flags,
+                      int32_t promised_stream_id, const nghttp2_nv *nva,
+                      size_t nvlen, nghttp2_mem *mem) {
   nghttp2_nv *dnva;
   nghttp2_frame frame;
   int rv;

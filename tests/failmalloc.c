@@ -69,7 +69,7 @@ int main(int argc _U_, char *argv[] _U_) {
   num_tests_failed = CU_get_number_of_tests_failed();
   CU_cleanup_registry();
   if (CU_get_error() == CUE_SUCCESS) {
-    return num_tests_failed;
+    return (int)num_tests_failed;
   } else {
     printf("CUnit Error: %s\n", CU_get_error_msg());
     return CU_get_error();

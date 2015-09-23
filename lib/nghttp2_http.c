@@ -31,7 +31,7 @@
 #include "nghttp2_hd.h"
 #include "nghttp2_helper.h"
 
-static char downcase(char c) {
+static uint8_t downcase(uint8_t c) {
   return 'A' <= c && c <= 'Z' ? (c - 'A' + 'a') : c;
 }
 
@@ -243,7 +243,7 @@ static int http_response_on_header(nghttp2_stream *stream, nghttp2_nv *nv,
     if (nv->valuelen != 3) {
       return NGHTTP2_ERR_HTTP_HEADER;
     }
-    stream->status_code = parse_uint(nv->value, nv->valuelen);
+    stream->status_code = (int16_t)parse_uint(nv->value, nv->valuelen);
     if (stream->status_code == -1) {
       return NGHTTP2_ERR_HTTP_HEADER;
     }
@@ -301,7 +301,7 @@ int nghttp2_http_on_header(nghttp2_session *session, nghttp2_stream *stream,
     }
     /* header field name must be lower-cased without exception */
     for (i = 0; i < nv->namelen; ++i) {
-      char c = nv->name[i];
+      uint8_t c = nv->name[i];
       if ('A' <= c && c <= 'Z') {
         return NGHTTP2_ERR_HTTP_HEADER;
       }

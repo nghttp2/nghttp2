@@ -44,7 +44,7 @@ void nghttp2_stream_init(nghttp2_stream *stream, int32_t stream_id,
                          int32_t weight, int32_t remote_initial_window_size,
                          int32_t local_initial_window_size,
                          void *stream_user_data, nghttp2_mem *mem) {
-  nghttp2_map_entry_init(&stream->map_entry, stream_id);
+  nghttp2_map_entry_init(&stream->map_entry, (key_type)stream_id);
   nghttp2_pq_init(&stream->obq, stream_weight_less, mem);
 
   stream->stream_id = stream_id;
@@ -113,7 +113,8 @@ static int stream_subtree_active(nghttp2_stream *stream) {
  */
 static uint64_t stream_next_cycle(nghttp2_stream *stream, uint64_t last_cycle) {
   return last_cycle +
-         (stream->last_writelen + 1) * NGHTTP2_MAX_WEIGHT / stream->weight;
+         (stream->last_writelen + 1) * NGHTTP2_MAX_WEIGHT /
+             (uint32_t)stream->weight;
 }
 
 static int stream_obq_push(nghttp2_stream *dep_stream, nghttp2_stream *stream) {

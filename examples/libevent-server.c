@@ -220,7 +220,8 @@ static http2_session_data *create_http2_session_data(app_context *app_ctx,
   session_data->bev = bufferevent_openssl_socket_new(
       app_ctx->evbase, fd, ssl, BUFFEREVENT_SSL_ACCEPTING,
       BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
-  rv = getnameinfo(addr, addrlen, host, sizeof(host), NULL, 0, NI_NUMERICHOST);
+  rv = getnameinfo(addr, (socklen_t)addrlen, host, sizeof(host), NULL, 0,
+                   NI_NUMERICHOST);
   if (rv != 0) {
     session_data->client_addr = strdup("(unknown)");
   } else {
@@ -275,7 +276,7 @@ static int session_recv(http2_session_data *session_data) {
     warnx("Fatal error: %s", nghttp2_strerror((int)readlen));
     return -1;
   }
-  if (evbuffer_drain(input, readlen) != 0) {
+  if (evbuffer_drain(input, (size_t)readlen) != 0) {
     warnx("Fatal error: evbuffer_drain failed");
     return -1;
   }
@@ -295,7 +296,7 @@ static ssize_t send_callback(nghttp2_session *session _U_, const uint8_t *data,
     return NGHTTP2_ERR_WOULDBLOCK;
   }
   bufferevent_write(bev, data, length);
-  return length;
+  return (ssize_t)length;
 }
 
 /* Returns nonzero if the string |s| ends with the substring |sub| */
@@ -335,10 +336,11 @@ static char *percent_decode(const uint8_t *value, size_t valuelen) {
     for (i = 0, j = 0; i < valuelen - 2;) {
       if (value[i] != '%' || !isxdigit(value[i + 1]) ||
           !isxdigit(value[i + 2])) {
-        res[j++] = value[i++];
+        res[j++] = (char)value[i++];
         continue;
       }
-      res[j++] = (hex_to_uint(value[i + 1]) << 4) + hex_to_uint(value[i + 2]);
+      res[j++] =
+          (char)(hex_to_uint(value[i + 1]) << 4) + hex_to_uint(value[i + 2]);
       i += 3;
     }
     memcpy(&res[j], &value[i], 2);
@@ -383,8 +385,8 @@ static int send_response(nghttp2_session *session, int32_t stream_id,
   return 0;
 }
 
-const char ERROR_HTML[] = "<html><head><title>404</title></head>"
-                          "<body><h1>404 Not Found</h1></body></html>";
+static const char ERROR_HTML[] = "<html><head><title>404</title></head>"
+                                 "<body><h1>404 Not Found</h1></body></html>";
 
 static int error_reply(nghttp2_session *session,
                        http2_stream_data *stream_data) {
@@ -690,7 +692,7 @@ static void start_listen(struct event_base *evbase, const char *service,
     struct evconnlistener *listener;
     listener = evconnlistener_new_bind(
         evbase, acceptcb, app_ctx, LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE,
-        16, rp->ai_addr, rp->ai_addrlen);
+        16, rp->ai_addr, (int)rp->ai_addrlen);
     if (listener) {
       freeaddrinfo(res);
 

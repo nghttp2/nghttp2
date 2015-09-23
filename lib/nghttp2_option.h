@@ -82,15 +82,15 @@ struct nghttp2_option {
   /**
    * NGHTTP2_OPT_NO_AUTO_WINDOW_UPDATE
    */
-  uint8_t no_auto_window_update;
+  int no_auto_window_update;
   /**
    * NGHTTP2_OPT_NO_RECV_CLIENT_MAGIC
    */
-  uint8_t no_recv_client_magic;
+  int no_recv_client_magic;
   /**
    * NGHTTP2_OPT_NO_HTTP_MESSAGING
    */
-  uint8_t no_http_messaging;
+  int no_http_messaging;
 };
 
 #endif /* NGHTTP2_OPTION_H */

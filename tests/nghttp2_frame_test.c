@@ -75,9 +75,9 @@ void test_nghttp2_frame_pack_headers() {
   nghttp2_bufs bufs;
   nghttp2_nv *nva;
   nghttp2_priority_spec pri_spec;
-  ssize_t nvlen;
+  size_t nvlen;
   nva_out out;
-  ssize_t hdblocklen;
+  size_t hdblocklen;
   int rv;
   nghttp2_mem *mem;
 
@@ -112,7 +112,7 @@ void test_nghttp2_frame_pack_headers() {
   CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == oframe.pri_spec.weight);
 
   hdblocklen = nghttp2_bufs_len(&bufs) - NGHTTP2_FRAME_HDLEN;
-  CU_ASSERT(hdblocklen ==
+  CU_ASSERT((ssize_t)hdblocklen ==
             inflate_hd(&inflater, &out, &bufs, NGHTTP2_FRAME_HDLEN, mem));
 
   CU_ASSERT(7 == out.nvlen);
@@ -146,7 +146,7 @@ void test_nghttp2_frame_pack_headers() {
 
   hdblocklen = nghttp2_bufs_len(&bufs) - NGHTTP2_FRAME_HDLEN -
                nghttp2_frame_priority_len(oframe.hd.flags);
-  CU_ASSERT(hdblocklen ==
+  CU_ASSERT((ssize_t)hdblocklen ==
             inflate_hd(&inflater, &out, &bufs,
                        NGHTTP2_FRAME_HDLEN +
                            nghttp2_frame_priority_len(oframe.hd.flags),
@@ -317,9 +317,9 @@ void test_nghttp2_frame_pack_push_promise() {
   nghttp2_push_promise frame, oframe;
   nghttp2_bufs bufs;
   nghttp2_nv *nva;
-  ssize_t nvlen;
+  size_t nvlen;
   nva_out out;
-  ssize_t hdblocklen;
+  size_t hdblocklen;
   int rv;
   nghttp2_mem *mem;
 
@@ -346,7 +346,7 @@ void test_nghttp2_frame_pack_push_promise() {
   CU_ASSERT((1U << 31) - 1 == oframe.promised_stream_id);
 
   hdblocklen = nghttp2_bufs_len(&bufs) - NGHTTP2_FRAME_HDLEN - 4;
-  CU_ASSERT(hdblocklen ==
+  CU_ASSERT((ssize_t)hdblocklen ==
             inflate_hd(&inflater, &out, &bufs, NGHTTP2_FRAME_HDLEN + 4, mem));
 
   CU_ASSERT(7 == out.nvlen);
@@ -402,7 +402,7 @@ void test_nghttp2_frame_pack_goaway() {
   rv = nghttp2_frame_pack_goaway(&bufs, &frame);
 
   CU_ASSERT(0 == rv);
-  CU_ASSERT((ssize_t)(NGHTTP2_FRAME_HDLEN + 8 + opaque_data_len) ==
+  CU_ASSERT(NGHTTP2_FRAME_HDLEN + 8 + opaque_data_len ==
             nghttp2_bufs_len(&bufs));
   CU_ASSERT(0 == unpack_framebuf((nghttp2_frame *)&oframe, &bufs));
   check_frame_header(24, NGHTTP2_GOAWAY, NGHTTP2_FLAG_NONE, 0, &oframe.hd);

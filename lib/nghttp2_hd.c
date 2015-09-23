@@ -1457,7 +1457,7 @@ static int deflate_nv(nghttp2_hd_deflater *deflater, nghttp2_bufs *bufs,
 
     DEBUGF(fprintf(stderr, "deflatehd: name/value match index=%zd\n", idx));
 
-    rv = emit_indexed_block(bufs, idx);
+    rv = emit_indexed_block(bufs, (size_t)idx);
     if (rv != 0) {
       return rv;
     }
@@ -1474,7 +1474,8 @@ static int deflate_nv(nghttp2_hd_deflater *deflater, nghttp2_bufs *bufs,
     if (idx != -1 && idx < (ssize_t)NGHTTP2_STATIC_TABLE_LENGTH) {
       nghttp2_nv nv_indname;
       nv_indname = *nv;
-      nv_indname.name = nghttp2_hd_table_get(&deflater->ctx, idx)->nv.name;
+      nv_indname.name =
+          nghttp2_hd_table_get(&deflater->ctx, (size_t)idx)->nv.name;
       new_ent = add_hd_table_incremental(&deflater->ctx, &nv_indname, token,
                                          NGHTTP2_HD_FLAG_VALUE_ALLOC,
                                          &deflater->map, hash);
@@ -1495,7 +1496,7 @@ static int deflate_nv(nghttp2_hd_deflater *deflater, nghttp2_bufs *bufs,
   if (idx == -1) {
     rv = emit_newname_block(bufs, nv, indexing_mode);
   } else {
-    rv = emit_indname_block(bufs, idx, nv, indexing_mode);
+    rv = emit_indname_block(bufs, (size_t)idx, nv, indexing_mode);
   }
   if (rv != 0) {
     return rv;
@@ -1731,7 +1732,7 @@ static ssize_t hd_inflate_read_huff(nghttp2_hd_inflater *inflater,
     final = 1;
   }
   readlen = nghttp2_hd_huff_decode(&inflater->huff_decode_ctx, bufs, in,
-                                   last - in, final);
+                                   (size_t)(last - in), final);
 
   if (readlen < 0) {
     DEBUGF(fprintf(stderr, "inflatehd: huffman decoding failed\n"));
@@ -1805,7 +1806,7 @@ static int hd_inflate_remove_bufs(nghttp2_hd_inflater *inflater, nghttp2_nv *nv,
 
     nghttp2_bufs_reset(&inflater->nvbufs);
 
-    buflen = rv;
+    buflen = (size_t)rv;
 
     if (value_only) {
       /* we don't use this value, so no need to NULL-terminate */

@@ -81,9 +81,9 @@
 #define array_size(a) (sizeof((a)) / sizeof((a)[0]))
 
 /* Returns the length of remaning data in buffer */
-#define io_buf_len(iobuf) ((iobuf)->last - (iobuf)->pos)
+#define io_buf_len(iobuf) ((size_t)((iobuf)->last - (iobuf)->pos))
 /* Returns the space buffer can still accept */
-#define io_buf_left(iobuf) ((iobuf)->end - (iobuf)->last)
+#define io_buf_left(iobuf) ((size_t)((iobuf)->end - (iobuf)->last))
 
 typedef struct {
   /* beginning of buffer */
@@ -160,11 +160,11 @@ typedef struct {
 } timer;
 
 /* document root */
-const char *docroot;
+static const char *docroot;
 /* length of docroot */
-size_t docrootlen;
+static size_t docrootlen;
 
-nghttp2_session_callbacks *shared_callbacks;
+static nghttp2_session_callbacks *shared_callbacks;
 
 static int handle_accept(io_loop *loop, uint32_t events, void *ptr);
 static int handle_connection(io_loop *loop, uint32_t events, void *ptr);
@@ -289,11 +289,11 @@ static size_t http_date(char *buf, time_t t) {
   memcpy(p, " GMT", 4);
   p += 4;
 
-  return p - buf;
+  return (size_t)(p - buf);
 }
 
 static char date[29];
-static char datelen;
+static size_t datelen;
 
 static void update_date() { datelen = http_date(date, time(NULL)); }
 
@@ -694,7 +694,7 @@ static int send_data_callback(nghttp2_session *session _U_,
       return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
     }
 
-    length -= nread;
+    length -= (size_t)nread;
     p += nread;
   }
 
@@ -730,7 +730,7 @@ static ssize_t resbuf_read_callback(nghttp2_session *session _U_,
                                     nghttp2_data_source *source,
                                     void *user_data _U_) {
   stream *strm = source->ptr;
-  size_t left = strm->res_end - strm->res_begin;
+  size_t left = (size_t)(strm->res_end - strm->res_begin);
   size_t nwrite = length < left ? length : left;
 
   memcpy(buf, strm->res_begin, nwrite);
@@ -740,7 +740,7 @@ static ssize_t resbuf_read_callback(nghttp2_session *session _U_,
     *data_flags |= NGHTTP2_DATA_FLAG_EOF;
   }
 
-  return nwrite;
+  return (ssize_t)nwrite;
 }
 
 static int hex_digit(char c) {
@@ -750,14 +750,14 @@ static int hex_digit(char c) {
 
 static unsigned int hex_to_uint(char c) {
   if (c <= '9') {
-    return c - '0';
+    return (unsigned int)(c - '0');
   }
 
   if (c <= 'F') {
-    return c - 'A' + 10;
+    return (unsigned int)(c - 'A' + 10);
   }
 
-  return c - 'a' + 10;
+  return (unsigned int)(c - 'a' + 10);
 }
 
 static void percent_decode(io_buf *buf, const char *s) {
@@ -767,12 +767,13 @@ static void percent_decode(io_buf *buf, const char *s) {
     }
 
     if (*s == '%' && hex_digit(*(s + 1)) && hex_digit(*(s + 2))) {
-      *buf->last++ = (hex_to_uint(*(s + 1)) << 4) + hex_to_uint(*(s + 2));
+      *buf->last++ =
+          (uint8_t)((hex_to_uint(*(s + 1)) << 4) + hex_to_uint(*(s + 2)));
       s += 2;
       continue;
     }
 
-    *buf->last++ = *s;
+    *buf->last++ = (uint8_t)*s;
   }
 }
 
@@ -807,7 +808,7 @@ static int make_path(io_buf *pathbuf, const char *req, size_t reqlen _U_) {
 
   *pathbuf->last++ = '\0';
 
-  if (!check_path((const char *)p, pathbuf->last - 1 - p)) {
+  if (!check_path((const char *)p, (size_t)(pathbuf->last - 1 - p))) {
 
     return -1;
   }
@@ -958,7 +959,8 @@ static int process_request(stream *strm, connection *conn) {
   strm->fileleft = stbuf.st_size;
 
   lastmodlen = http_date(lastmod, stbuf.st_mtim.tv_sec);
-  contentlengthlen = utos(contentlength, sizeof(contentlength), stbuf.st_size);
+  contentlengthlen =
+      utos(contentlength, sizeof(contentlength), (uint64_t)stbuf.st_size);
 
   nva[nvlen].value = (uint8_t *)contentlength;
   nva[nvlen].valuelen = contentlengthlen;
@@ -1149,7 +1151,7 @@ static int do_read(connection *conn) {
       return -1;
     }
 
-    nproc = nghttp2_session_mem_recv(conn->session, buf, nread);
+    nproc = nghttp2_session_mem_recv(conn->session, buf, (size_t)nread);
 
     if (nproc < 0) {
       return -1;
@@ -1204,13 +1206,13 @@ static int do_write(connection *conn) {
         break;
       }
 
-      if (io_buf_left(&conn->buf) < n) {
+      if (io_buf_left(&conn->buf) < (size_t)n) {
         conn->cache = b;
-        conn->cachelen = n;
+        conn->cachelen = (size_t)n;
         break;
       }
 
-      io_buf_add(&conn->buf, b, n);
+      io_buf_add(&conn->buf, b, (size_t)n);
     }
   }
 }

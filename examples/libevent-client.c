@@ -109,8 +109,8 @@ static http2_stream_data *create_http2_stream_data(const char *uri,
          u->field_data[UF_HOST].len);
   if (u->field_set & (1 << UF_PORT)) {
     stream_data->authoritylen +=
-        snprintf(stream_data->authority + u->field_data[UF_HOST].len, extra,
-                 ":%u", u->port);
+        (size_t)snprintf(stream_data->authority + u->field_data[UF_HOST].len,
+                         extra, ":%u", u->port);
   }
 
   /* If we don't have path in URI, we use "/" as path. */
@@ -203,7 +203,7 @@ static ssize_t send_callback(nghttp2_session *session _U_, const uint8_t *data,
   http2_session_data *session_data = (http2_session_data *)user_data;
   struct bufferevent *bev = session_data->bev;
   bufferevent_write(bev, data, length);
-  return length;
+  return (ssize_t)length;
 }
 
 /* nghttp2_on_header_callback: Called when nghttp2 library emits
@@ -440,7 +440,7 @@ static void readcb(struct bufferevent *bev, void *ptr) {
     delete_http2_session_data(session_data);
     return;
   }
-  if (evbuffer_drain(input, readlen) != 0) {
+  if (evbuffer_drain(input, (size_t)readlen) != 0) {
     warnx("Fatal error: evbuffer_drain failed");
     delete_http2_session_data(session_data);
     return;

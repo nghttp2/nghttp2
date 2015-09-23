@@ -38,18 +38,19 @@ json_t *dump_header_table(nghttp2_hd_context *context) {
   for (i = 0; i < context->hd_table.len; ++i) {
     nghttp2_hd_entry *ent = nghttp2_hd_table_get(context, i);
     json_t *outent = json_object();
-    json_object_set_new(outent, "index", json_integer(i + 1));
+    json_object_set_new(outent, "index", json_integer((json_int_t)(i + 1)));
     dump_val(outent, "name", ent->nv.name, ent->nv.namelen);
     dump_val(outent, "value", ent->nv.value, ent->nv.valuelen);
-    json_object_set_new(outent, "size",
-                        json_integer(ent->nv.namelen + ent->nv.valuelen +
-                                     NGHTTP2_HD_ENTRY_OVERHEAD));
+    json_object_set_new(outent, "size", json_integer((json_int_t)(
+                                            ent->nv.namelen + ent->nv.valuelen +
+                                            NGHTTP2_HD_ENTRY_OVERHEAD)));
     json_array_append_new(entries, outent);
   }
   json_object_set_new(obj, "entries", entries);
-  json_object_set_new(obj, "size", json_integer(context->hd_table_bufsize));
-  json_object_set_new(obj, "max_size",
-                      json_integer(context->hd_table_bufsize_max));
+  json_object_set_new(obj, "size",
+                      json_integer((json_int_t)(context->hd_table_bufsize)));
+  json_object_set_new(obj, "max_size", json_integer((json_int_t)(
+                                           context->hd_table_bufsize_max)));
   return obj;
 }
 

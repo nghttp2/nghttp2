@@ -129,7 +129,7 @@ static void deflate(nghttp2_hd_deflater *deflater,
     exit(EXIT_FAILURE);
   }
 
-  outlen = rv;
+  outlen = (size_t)rv;
 
   printf("\nDeflate (%zu byte(s), ratio %.02f):\n\n", outlen,
          sum == 0 ? 0 : (double)outlen / sum);
@@ -180,7 +180,7 @@ int inflate_header_block(nghttp2_hd_inflater *inflater, uint8_t *in,
       return -1;
     }
 
-    proclen = rv;
+    proclen = (size_t)rv;
 
     in += proclen;
     inlen -= proclen;

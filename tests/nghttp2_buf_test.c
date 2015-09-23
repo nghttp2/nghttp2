@@ -104,8 +104,8 @@ void test_nghttp2_bufs_addb(void) {
     rv = nghttp2_bufs_addb(&bufs, 254);
 
     CU_ASSERT(0 == rv);
-    CU_ASSERT(i + 2 == nghttp2_buf_len(&bufs.cur->buf));
-    CU_ASSERT(i + 2 == nghttp2_bufs_len(&bufs));
+    CU_ASSERT((size_t)(i + 2) == nghttp2_buf_len(&bufs.cur->buf));
+    CU_ASSERT((size_t)(i + 2) == nghttp2_bufs_len(&bufs));
     CU_ASSERT(254 == *(bufs.cur->buf.last - 1));
     CU_ASSERT(bufs.cur == bufs.head);
   }
@@ -217,7 +217,7 @@ void test_nghttp2_bufs_remove(void) {
   outlen = nghttp2_bufs_remove(&bufs, &out);
   CU_ASSERT(11 == outlen);
 
-  CU_ASSERT(0 == memcmp("hello world", out, outlen));
+  CU_ASSERT(0 == memcmp("hello world", out, (size_t)outlen));
   CU_ASSERT(11 == nghttp2_bufs_len(&bufs));
 
   mem->free(out, NULL);
@@ -228,7 +228,7 @@ void test_nghttp2_bufs_reset(void) {
   int rv;
   nghttp2_bufs bufs;
   nghttp2_buf_chain *ci;
-  ssize_t offset = 9;
+  size_t offset = 9;
   nghttp2_mem *mem;
 
   mem = nghttp2_mem_default();
@@ -253,7 +253,7 @@ void test_nghttp2_bufs_reset(void) {
   CU_ASSERT(bufs.cur == bufs.head);
 
   for (ci = bufs.head; ci; ci = ci->next) {
-    CU_ASSERT(offset == ci->buf.pos - ci->buf.begin);
+    CU_ASSERT((ssize_t)offset == ci->buf.pos - ci->buf.begin);
     CU_ASSERT(ci->buf.pos == ci->buf.last);
   }
 

@@ -40,6 +40,11 @@
 #include "nghttp2_callbacks.h"
 #include "nghttp2_mem.h"
 
+/* The global variable for tests where we want to disable strict
+   preface handling. */
+/* Specify NGHTTP2_EXTERN, so that we can test using Win build dll. */
+NGHTTP2_EXTERN extern int nghttp2_enable_strict_preface;
+
 /*
  * Option flags.
  */
@@ -507,7 +512,7 @@ void nghttp2_session_detach_idle_stream(nghttp2_session *session,
  *     Out of memory
  */
 int nghttp2_session_adjust_closed_stream(nghttp2_session *session,
-                                         ssize_t offset);
+                                         size_t offset);
 
 /*
  * Deletes idle stream to ensure that number of idle streams is in
