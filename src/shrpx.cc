@@ -372,7 +372,7 @@ namespace {
 void worker_process_child_cb(struct ev_loop *loop, ev_child *w, int revents) {
   std::string signalstr;
   if (WIFSIGNALED(w->rstatus)) {
-    signalstr += ";signal ";
+    signalstr += "; signal ";
     auto sig = WTERMSIG(w->rstatus);
     auto s = strsignal(sig);
     if (s) {
