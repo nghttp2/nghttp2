@@ -132,7 +132,7 @@ libevent's ``struct evconnlistener`` is used for this purpose::
         struct evconnlistener *listener;
         listener = evconnlistener_new_bind(
             evbase, acceptcb, app_ctx, LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE,
-            16, rp->ai_addr, rp->ai_addrlen);
+            16, rp->ai_addr, (int)rp->ai_addrlen);
         if (listener) {
           freeaddrinfo(res);
 
@@ -272,7 +272,7 @@ this pending data. To process the received data, we call the
         warnx("Fatal error: %s", nghttp2_strerror((int)readlen));
         return -1;
       }
-      if (evbuffer_drain(input, readlen) != 0) {
+      if (evbuffer_drain(input, (size_t)readlen) != 0) {
         warnx("Fatal error: evbuffer_drain failed");
         return -1;
       }
@@ -316,7 +316,7 @@ follows::
         return NGHTTP2_ERR_WOULDBLOCK;
       }
       bufferevent_write(bev, data, length);
-      return length;
+      return (ssize_t)length;
     }
 
 Since we use bufferevent to abstract network I/O, we just write the

@@ -269,7 +269,7 @@ data is available to read from the bufferevent input buffer::
         delete_http2_session_data(session_data);
         return;
       }
-      if (evbuffer_drain(input, readlen) != 0) {
+      if (evbuffer_drain(input, (size_t)readlen) != 0) {
         warnx("Fatal error: evbuffer_drain failed");
         delete_http2_session_data(session_data);
         return;
@@ -309,7 +309,7 @@ defined as::
       http2_session_data *session_data = (http2_session_data *)user_data;
       struct bufferevent *bev = session_data->bev;
       bufferevent_write(bev, data, length);
-      return length;
+      return (ssize_t)length;
     }
 
 Since we use bufferevent to abstract network I/O, we just write the
