@@ -157,7 +157,8 @@ int nghttp2_hd_huff_encode(nghttp2_bufs *bufs, const uint8_t *src,
     const nghttp2_huff_sym *sym = &huff_sym_table[256];
     assert(avail);
     /* Caution we no longer adjust avail here */
-    nghttp2_bufs_fast_orb(bufs, (uint8_t)(sym->code >> (sym->nbits - rembits)));
+    nghttp2_bufs_fast_orb(
+        bufs, (uint8_t)(sym->code >> (sym->nbits - (size_t)rembits)));
   }
 
   return 0;

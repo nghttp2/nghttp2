@@ -1321,7 +1321,8 @@ static search_result search_hd_table(nghttp2_hd_context *context,
     return res;
   }
 
-  res.index = context->next_seq - 1 - ent->seq + NGHTTP2_STATIC_TABLE_LENGTH;
+  res.index =
+      (ssize_t)(context->next_seq - 1 - ent->seq + NGHTTP2_STATIC_TABLE_LENGTH);
 
   if (exact_match) {
     res.name_value_match = 1;
