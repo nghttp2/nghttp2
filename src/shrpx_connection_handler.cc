@@ -454,7 +454,7 @@ int ConnectionHandler::start_ocsp_update(const char *cert_file) {
       auto error = errno;
       LOG(FATAL) << "Unblocking all signals failed: " << strerror(error);
 
-      exit(EXIT_FAILURE);
+      _Exit(EXIT_FAILURE);
     }
 
     dup2(pfd[1], 1);
@@ -465,7 +465,7 @@ int ConnectionHandler::start_ocsp_update(const char *cert_file) {
       auto error = errno;
       LOG(ERROR) << "Could not execute ocsp query command: " << argv[0]
                  << ", execve() faild, errno=" << error;
-      exit(EXIT_FAILURE);
+      _Exit(EXIT_FAILURE);
     }
     // unreachable
   }
@@ -482,7 +482,7 @@ int ConnectionHandler::start_ocsp_update(const char *cert_file) {
     auto error = errno;
     LOG(FATAL) << "Restoring all signals failed: " << strerror(error);
 
-    exit(EXIT_FAILURE);
+    _Exit(EXIT_FAILURE);
   }
 
   if (pid == -1) {

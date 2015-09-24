@@ -42,6 +42,6 @@
 #define _Exit(status) _exit(status)
 #endif // !HAVE__EXIT
 
-#define DIE() exit(EXIT_FAILURE)
+#define DIE() _Exit(EXIT_FAILURE)
 
 #endif // SHRPX_H

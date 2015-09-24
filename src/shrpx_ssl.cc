@@ -88,6 +88,8 @@ int verify_callback(int preverify_ok, X509_STORE_CTX *ctx) {
 }
 } // namespace
 
+// This function is meant be called from master process, hence the
+// call exit(3).
 std::vector<unsigned char>
 set_alpn_prefs(const std::vector<std::string> &protos) {
   size_t len = 0;
@@ -95,7 +97,7 @@ set_alpn_prefs(const std::vector<std::string> &protos) {
   for (const auto &proto : protos) {
     if (proto.size() > 255) {
       LOG(FATAL) << "Too long ALPN identifier: " << proto.size();
-      DIE();
+      exit(EXIT_FAILURE);
     }
 
     len += 1 + proto.size();
@@ -103,7 +105,7 @@ set_alpn_prefs(const std::vector<std::string> &protos) {
 
   if (len > (1 << 16) - 1) {
     LOG(FATAL) << "Too long ALPN identifier list: " << len;
-    DIE();
+    exit(EXIT_FAILURE);
   }
 
   auto out = std::vector<unsigned char>(len);

@@ -244,6 +244,8 @@ void exec_binary(SignalServer *ssv) {
     return;
   }
 
+  // child process
+
   shrpx_signal_unset_master_proc_ign_handler();
 
   rv = shrpx_signal_unblock_all();
@@ -251,7 +253,7 @@ void exec_binary(SignalServer *ssv) {
     auto error = errno;
     LOG(ERROR) << "Unblocking all signals failed: " << strerror(error);
 
-    exit(EXIT_FAILURE);
+    _Exit(EXIT_FAILURE);
   }
 
   auto exec_path = util::get_exec_path(get_config()->argc, get_config()->argv,
@@ -259,7 +261,7 @@ void exec_binary(SignalServer *ssv) {
 
   if (!exec_path) {
     LOG(ERROR) << "Could not resolve the executable path";
-    exit(EXIT_FAILURE);
+    _Exit(EXIT_FAILURE);
   }
 
   auto argv = make_unique<char *[]>(get_config()->argc + 1);
@@ -336,7 +338,7 @@ void exec_binary(SignalServer *ssv) {
   if (execve(argv[0], argv.get(), envp.get()) == -1) {
     auto error = errno;
     LOG(ERROR) << "execve failed: errno=" << error;
-    exit(EXIT_FAILURE);
+    _Exit(EXIT_FAILURE);
   }
 }
 } // namespace
@@ -699,7 +701,7 @@ pid_t fork_worker_process(SignalServer *ssv) {
       auto error = errno;
       LOG(FATAL) << "Unblocking all signals failed: " << strerror(error);
 
-      exit(EXIT_FAILURE);
+      _Exit(EXIT_FAILURE);
     }
 
     close(ssv->ipc_fd[1]);
@@ -708,10 +710,10 @@ pid_t fork_worker_process(SignalServer *ssv) {
     if (rv != 0) {
       LOG(FATAL) << "Worker process returned error";
 
-      exit(EXIT_FAILURE);
+      _Exit(EXIT_FAILURE);
     }
 
-    exit(EXIT_SUCCESS);
+    _Exit(EXIT_SUCCESS);
   }
 
   // parent process
