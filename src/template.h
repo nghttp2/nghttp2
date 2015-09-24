@@ -45,10 +45,15 @@ make_unique(size_t size) {
   return std::unique_ptr<T>(new typename std::remove_extent<T>::type[size]());
 }
 
-template <typename T, typename... Rest>
-std::array<T, sizeof...(Rest)+1> make_array(T &&t, Rest &&... rest) {
-  return std::array<T, sizeof...(Rest)+1>{
-      {std::forward<T>(t), std::forward<Rest>(rest)...}};
+// std::forward is conexpr since C++14
+template <typename... T>
+constexpr std::array<
+    typename std::decay<typename std::common_type<T...>::type>::type,
+    sizeof...(T)>
+make_array(T &&... t) {
+  return std::array<
+      typename std::decay<typename std::common_type<T...>::type>::type,
+      sizeof...(T)>{{std::forward<T>(t)...}};
 }
 
 template <typename T, size_t N> constexpr size_t array_size(T (&)[N]) {
