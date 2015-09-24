@@ -34,11 +34,12 @@ namespace shrpx {
 
 int shrpx_signal_block_all(sigset_t *oldset) {
   sigset_t newset;
-  int rv;
 
   sigfillset(&newset);
 
 #ifndef NOTHREADS
+  int rv;
+
   rv = pthread_sigmask(SIG_SETMASK, &newset, oldset);
 
   if (rv != 0) {
@@ -48,17 +49,18 @@ int shrpx_signal_block_all(sigset_t *oldset) {
 
   return 0;
 #else  // NOTHREADS
-  return sigprocmask(SIG_SETMASK, &newset, &oldset);
+  return sigprocmask(SIG_SETMASK, &newset, oldset);
 #endif // NOTHREADS
 }
 
 int shrpx_signal_unblock_all() {
   sigset_t newset;
-  int rv;
 
   sigemptyset(&newset);
 
 #ifndef NOTHREADS
+  int rv;
+
   rv = pthread_sigmask(SIG_SETMASK, &newset, nullptr);
 
   if (rv != 0) {
@@ -73,9 +75,9 @@ int shrpx_signal_unblock_all() {
 }
 
 int shrpx_signal_set(sigset_t *set) {
+#ifndef NOTHREADS
   int rv;
 
-#ifndef NOTHREADS
   rv = pthread_sigmask(SIG_SETMASK, set, nullptr);
 
   if (rv != 0) {
