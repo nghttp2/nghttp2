@@ -83,19 +83,6 @@ do_stop()
 	return "$RETVAL"
 }
 
-#
-# Function that sends a SIGHUP to the daemon/service
-#
-do_reload() {
-	#
-	# If the daemon can reload its configuration without
-	# restarting (for example, when it is sent a SIGHUP),
-	# then implement that here.
-	#
-	start-stop-daemon --stop --signal 1 --quiet --pidfile $PIDFILE --name $NAME
-	return 0
-}
-
 case "$1" in
   start)
 	[ "$VERBOSE" != no ] && log_daemon_msg "Starting $DESC" "$NAME"
@@ -114,34 +101,38 @@ case "$1" in
 	esac
 	;;
   status)
-       status_of_proc "$DAEMON" "$NAME" && exit 0 || exit $?
-       ;;
+	status_of_proc "$DAEMON" "$NAME" && exit 0 || exit $?
+	;;
   upgrade)
-        log_daemon_msg "Upgrade $DESC" "$NAME"
-        pid=`pidofproc -p $PIDFILE $NAME`
-        case "$?" in
-                0) echo "Sending USR2 signal to $pid"
-                   kill -USR2 $pid
-                   echo "Waiting for new binary..."
-                   sleep 5
-                   echo "Sending QUIT signal to $pid"
-                   kill -QUIT $pid
-                   log_end_msg 0
-                   ;;
-                *) echo "pidofproc() failed"
-                   log_end_msg 1
-                   ;;
-        esac
-        ;;
-  #reload|force-reload)
-	#
-	# If do_reload() is not implemented then leave this commented out
-	# and leave 'force-reload' as an alias for 'restart'.
-	#
-	#log_daemon_msg "Reloading $DESC" "$NAME"
-	#do_reload
-	#log_end_msg $?
-	#;;
+	log_daemon_msg "Upgrading $DESC" "$NAME"
+	oldpid=`pidofproc -p $PIDFILE $NAME`
+	case "$?" in
+		0)
+			log_progress_msg "Sending SIGUSR2 to $oldpid..."
+			kill -USR2 $oldpid
+			log_progress_msg "Waiting for new binary..."
+			for i in 1 2 3 4 5 ; do
+				sleep 1
+				newpid=`pidofproc -p $PIDFILE $NAME`
+				if [ "$newpid" != "$oldpid" ] ; then
+					break
+				fi
+			done
+			if [ "$newpid" != "$oldpid" ] ; then
+				log_progress_msg "Sending SIGQUIT to $oldpid..."
+				kill -QUIT $oldpid
+				log_end_msg 0
+			else
+				log_progress_msg "New binary failed to start"
+				log_end_msg 1
+			fi
+			;;
+		*)
+			log_progress_msg "pidofproc() failed"
+			log_end_msg 1
+		;;
+	esac
+	;;
   restart|force-reload)
 	#
 	# If the "reload" option is implemented then remove the
