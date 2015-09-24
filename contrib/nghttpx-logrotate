@@ -6,6 +6,6 @@
   delaycompress
   notifempty
   postrotate
-    killall -USR1 nghttpx 2> /dev/null || true
+    [ -s /var/run/nghttpx.pid ] && kill -USR1 `cat /var/run/nghttpx.pid` 2> /dev/null || true
   endscript
 }
