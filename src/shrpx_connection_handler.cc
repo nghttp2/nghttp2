@@ -43,6 +43,7 @@
 #include "shrpx_downstream_connection.h"
 #include "shrpx_accept_handler.h"
 #include "shrpx_memcached_dispatcher.h"
+#include "shrpx_signal.h"
 #include "util.h"
 #include "template.h"
 
@@ -432,30 +433,62 @@ int ConnectionHandler::start_ocsp_update(const char *cert_file) {
     }
   });
 
-  auto pid = fork();
-  if (pid == -1) {
+  sigset_t oldset;
+
+  rv = shrpx_signal_block_all(&oldset);
+  if (rv != 0) {
     auto error = errno;
-    LOG(WARN) << "Could not execute ocsp query command for " << cert_file
-              << ": " << argv[0] << ", fork() failed, errno=" << error;
+    LOG(ERROR) << "Blocking all signals failed: " << strerror(error);
+
     return -1;
   }
 
+  auto pid = fork();
+
   if (pid == 0) {
     // child process
+    shrpx_signal_unset_worker_proc_ign_handler();
+
+    rv = shrpx_signal_unblock_all();
+    if (rv != 0) {
+      auto error = errno;
+      LOG(FATAL) << "Unblocking all signals failed: " << strerror(error);
+
+      exit(EXIT_FAILURE);
+    }
+
     dup2(pfd[1], 1);
     close(pfd[0]);
 
     rv = execve(argv[0], argv, envp);
     if (rv == -1) {
       auto error = errno;
-      LOG(WARN) << "Could not execute ocsp query command: " << argv[0]
-                << ", execve() faild, errno=" << error;
-      _Exit(EXIT_FAILURE);
+      LOG(ERROR) << "Could not execute ocsp query command: " << argv[0]
+                 << ", execve() faild, errno=" << error;
+      exit(EXIT_FAILURE);
     }
     // unreachable
   }
 
   // parent process
+  if (pid == -1) {
+    auto error = errno;
+    LOG(ERROR) << "Could not execute ocsp query command for " << cert_file
+               << ": " << argv[0] << ", fork() failed, errno=" << error;
+  }
+
+  rv = shrpx_signal_set(&oldset);
+  if (rv != 0) {
+    auto error = errno;
+    LOG(FATAL) << "Restoring all signals failed: " << strerror(error);
+
+    exit(EXIT_FAILURE);
+  }
+
+  if (pid == -1) {
+    return -1;
+  }
+
   close(pfd[1]);
   pfd[1] = -1;
 

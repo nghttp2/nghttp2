@@ -422,23 +422,36 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
 
   int rv;
 
-  // It is good to ignore these control signals since user may use
-  // "killall .. nghttpx".  We don't want catch this signal in worker
-  // process.
-  struct sigaction act {};
-  act.sa_handler = SIG_IGN;
-  sigaction(REOPEN_LOG_SIGNAL, &act, nullptr);
-  sigaction(EXEC_BINARY_SIGNAL, &act, nullptr);
-  sigaction(GRACEFUL_SHUTDOWN_SIGNAL, &act, nullptr);
-
   if (get_config()->num_worker == 1) {
     rv = conn_handler.create_single_worker();
+    if (rv != 0) {
+      return -1;
+    }
   } else {
-    rv = conn_handler.create_worker_thread(get_config()->num_worker);
-  }
+#ifndef NOTHREADS
+    sigset_t set;
+    sigemptyset(&set);
+    sigaddset(&set, SIGCHLD);
 
-  if (rv != 0) {
-    return -1;
+    rv = pthread_sigmask(SIG_BLOCK, &set, nullptr);
+    if (rv != 0) {
+      LOG(ERROR) << "Blocking SIGCHLD failed: " << strerror(rv);
+      return -1;
+    }
+#endif // !NOTHREADS
+
+    rv = conn_handler.create_worker_thread(get_config()->num_worker);
+    if (rv != 0) {
+      return -1;
+    }
+
+#ifndef NOTHREADS
+    rv = pthread_sigmask(SIG_UNBLOCK, &set, nullptr);
+    if (rv != 0) {
+      LOG(ERROR) << "Unblocking SIGCHLD failed: " << strerror(rv);
+      return -1;
+    }
+#endif // !NOTHREADS
   }
 
   drop_privileges();
