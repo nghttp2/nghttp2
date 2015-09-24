@@ -713,6 +713,8 @@ pid_t fork_worker_process(SignalServer *ssv) {
       _Exit(EXIT_FAILURE);
     }
 
+    LOG(NOTICE) << "Worker process shutting down momentarily";
+
     _Exit(EXIT_SUCCESS);
   }
 
