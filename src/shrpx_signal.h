@@ -22,16 +22,38 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef SHRPX_PROCESS_H
-#define SHRPX_PROCESS_H
+#ifndef SHRPX_SIGNAL_H
+#define SHRPX_SIGNAL_H
 
 #include "shrpx.h"
 
+#include <signal.h>
+
 namespace shrpx {
 
-constexpr uint8_t SHRPX_IPC_REOPEN_LOG = 1;
-constexpr uint8_t SHRPX_IPC_GRACEFUL_SHUTDOWN = 2;
+constexpr int REOPEN_LOG_SIGNAL = SIGUSR1;
+constexpr int EXEC_BINARY_SIGNAL = SIGUSR2;
+constexpr int GRACEFUL_SHUTDOWN_SIGNAL = SIGQUIT;
+
+// Blocks all signals.  The previous signal mask is stored into
+// |oldset| if it is not nullptr.  This function returns 0 if it
+// succeeds, or -1.  The errno will indicate the error.
+int shrpx_signal_block_all(sigset_t *oldset);
+
+// Unblocks all signals.  This function returns 0 if it succeeds, or
+// -1.  The errno will indicate the error.
+int shrpx_signal_unblock_all();
+
+// Sets signal mask |set|.  This function returns 0 if it succeeds, or
+// -1.  The errno will indicate the error.
+int shrpx_signal_set(sigset_t *set);
+
+void shrpx_signal_set_master_proc_ign_handler();
+void shrpx_signal_unset_master_proc_ign_handler();
+
+void shrpx_signal_set_worker_proc_ign_handler();
+void shrpx_signal_unset_worker_proc_ign_handler();
 
 } // namespace shrpx
 
-#endif // SHRPX_PROCESS_H
+#endif // SHRPX_SIGNAL_H

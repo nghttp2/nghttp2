@@ -81,6 +81,7 @@
 #include "shrpx_http2_session.h"
 #include "shrpx_worker_process.h"
 #include "shrpx_process.h"
+#include "shrpx_signal.h"
 #include "util.h"
 #include "app_helper.h"
 #include "ssl.h"
@@ -210,18 +211,47 @@ void save_pid() {
 
 namespace {
 void exec_binary(SignalServer *ssv) {
+  int rv;
+  sigset_t oldset;
+
   LOG(NOTICE) << "Executing new binary";
 
-  auto pid = fork();
-
-  if (pid == -1) {
+  rv = shrpx_signal_block_all(&oldset);
+  if (rv != 0) {
     auto error = errno;
-    LOG(ERROR) << "fork() failed errno=" << error;
+    LOG(ERROR) << "Blocking all signals failed: " << strerror(error);
+
     return;
   }
 
+  auto pid = fork();
+
   if (pid != 0) {
+    if (pid == -1) {
+      auto error = errno;
+      LOG(ERROR) << "fork() failed errno=" << error;
+    }
+
+    rv = shrpx_signal_set(&oldset);
+
+    if (rv != 0) {
+      auto error = errno;
+      LOG(FATAL) << "Restoring signal mask failed: " << strerror(error);
+
+      exit(EXIT_FAILURE);
+    }
+
     return;
+  }
+
+  shrpx_signal_unset_master_proc_ign_handler();
+
+  rv = shrpx_signal_unblock_all();
+  if (rv != 0) {
+    auto error = errno;
+    LOG(ERROR) << "Unblocking all signals failed: " << strerror(error);
+
+    exit(EXIT_FAILURE);
   }
 
   auto exec_path = util::get_exec_path(get_config()->argc, get_config()->argv,
@@ -229,7 +259,7 @@ void exec_binary(SignalServer *ssv) {
 
   if (!exec_path) {
     LOG(ERROR) << "Could not resolve the executable path";
-    return;
+    exit(EXIT_FAILURE);
   }
 
   auto argv = make_unique<char *[]>(get_config()->argc + 1);
@@ -306,7 +336,7 @@ void exec_binary(SignalServer *ssv) {
   if (execve(argv[0], argv.get(), envp.get()) == -1) {
     auto error = errno;
     LOG(ERROR) << "execve failed: errno=" << error;
-    _Exit(EXIT_FAILURE);
+    exit(EXIT_FAILURE);
   }
 }
 } // namespace
@@ -647,20 +677,59 @@ void close_env_fd(std::initializer_list<const char *> envnames) {
 namespace {
 pid_t fork_worker_process(SignalServer *ssv) {
   int rv;
-  auto pid = fork();
+  sigset_t oldset;
 
-  if (pid == -1) {
+  rv = shrpx_signal_block_all(&oldset);
+  if (rv != 0) {
+    auto error = errno;
+    LOG(ERROR) << "Blocking all signals failed: " << strerror(error);
+
     return -1;
   }
 
+  auto pid = fork();
+
   if (pid == 0) {
+    ev_loop_fork(EV_DEFAULT);
+
+    shrpx_signal_set_worker_proc_ign_handler();
+
+    rv = shrpx_signal_unblock_all();
+    if (rv != 0) {
+      auto error = errno;
+      LOG(FATAL) << "Unblocking all signals failed: " << strerror(error);
+
+      exit(EXIT_FAILURE);
+    }
+
     close(ssv->ipc_fd[1]);
     WorkerProcessConfig wpconf{ssv->ipc_fd[0], ssv->server_fd, ssv->server_fd6};
     rv = worker_process_event_loop(&wpconf);
     if (rv != 0) {
-      LOG(ERROR) << "Worker process returned error";
+      LOG(FATAL) << "Worker process returned error";
+
+      exit(EXIT_FAILURE);
     }
-    return 0;
+
+    exit(EXIT_SUCCESS);
+  }
+
+  // parent process
+  if (pid == -1) {
+    auto error = errno;
+    LOG(ERROR) << "Could not spawn worker process: " << strerror(error);
+  }
+
+  rv = shrpx_signal_set(&oldset);
+  if (rv != 0) {
+    auto error = errno;
+    LOG(FATAL) << "Restoring signal mask failed: " << strerror(error);
+
+    exit(EXIT_FAILURE);
+  }
+
+  if (pid == -1) {
+    return -1;
   }
 
   close(ssv->ipc_fd[0]);
@@ -674,6 +743,8 @@ pid_t fork_worker_process(SignalServer *ssv) {
 namespace {
 int event_loop() {
   int rv;
+
+  shrpx_signal_set_master_proc_ign_handler();
 
   if (get_config()->daemon) {
     if (call_daemon() == -1) {
@@ -710,8 +781,6 @@ int event_loop() {
     util::make_socket_closeonexec(fd);
   }
 
-  auto loop = EV_DEFAULT;
-
   if (get_config()->host_unix) {
     close_env_fd({ENV_LISTENER4_FD, ENV_LISTENER6_FD});
     auto fd = create_unix_domain_server_socket();
@@ -746,19 +815,17 @@ int event_loop() {
     ssv.server_fd6 = fd6;
   }
 
+  auto loop = EV_DEFAULT;
+
   auto pid = fork_worker_process(&ssv);
 
-  switch (pid) {
-  case -1:
+  if (pid == -1) {
     return -1;
-  case 0:
-    // worker process (child)
-    return 0;
   }
 
   ssv.worker_process_pid = pid;
 
-  auto signals =
+  constexpr auto signals =
       std::array<int, 5>{{REOPEN_LOG_SIGNAL, EXEC_BINARY_SIGNAL,
                           GRACEFUL_SHUTDOWN_SIGNAL, SIGINT, SIGTERM}};
   auto sigevs = std::array<ev_signal, signals.size()>();
@@ -2443,10 +2510,6 @@ int main(int argc, char **argv) {
     }
     reset_timer();
   }
-
-  struct sigaction act {};
-  act.sa_handler = SIG_IGN;
-  sigaction(SIGPIPE, &act, nullptr);
 
   if (event_loop() != 0) {
     return -1;
