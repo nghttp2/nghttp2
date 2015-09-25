@@ -2370,6 +2370,8 @@ int main(int argc, char **argv) {
 
     DownstreamAddrGroup g("/");
     g.addrs.push_back(std::move(addr));
+    mod_config()->router.add_route(g.pattern.get(), 1,
+                                   get_config()->downstream_addr_groups.size());
     mod_config()->downstream_addr_groups.push_back(std::move(g));
   } else if (get_config()->http2_proxy || get_config()->client_proxy) {
     // We don't support host mapping in these cases.  Move all
@@ -2381,6 +2383,9 @@ int main(int argc, char **argv) {
     }
     std::vector<DownstreamAddrGroup>().swap(
         mod_config()->downstream_addr_groups);
+    // maybe not necessary?
+    mod_config()->router.add_route(catch_all.pattern.get(), 1,
+                                   get_config()->downstream_addr_groups.size());
     mod_config()->downstream_addr_groups.push_back(std::move(catch_all));
   }
 
@@ -2391,11 +2396,11 @@ int main(int argc, char **argv) {
   ssize_t catch_all_group = -1;
   for (size_t i = 0; i < mod_config()->downstream_addr_groups.size(); ++i) {
     auto &g = mod_config()->downstream_addr_groups[i];
-    if (g.pattern == "/") {
+    if (util::streq(g.pattern.get(), "/")) {
       catch_all_group = i;
     }
     if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Host-path pattern: group " << i << ": '" << g.pattern
+      LOG(INFO) << "Host-path pattern: group " << i << ": '" << g.pattern.get()
                 << "'";
       for (auto &addr : g.addrs) {
         LOG(INFO) << "group " << i << " -> " << addr.host.get()

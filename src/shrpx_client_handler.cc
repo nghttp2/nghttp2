@@ -635,18 +635,20 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
     //  have dealt with proxy case already, just use catch-all group.
     group = catch_all;
   } else {
+    auto &router = get_config()->router;
     if (!downstream->get_request_http2_authority().empty()) {
       group = match_downstream_addr_group(
-          downstream->get_request_http2_authority(),
+          router, downstream->get_request_http2_authority(),
           downstream->get_request_path(), groups, catch_all);
     } else {
       auto h = downstream->get_request_header(http2::HD_HOST);
       if (h) {
-        group = match_downstream_addr_group(
-            h->value, downstream->get_request_path(), groups, catch_all);
-      } else {
-        group = match_downstream_addr_group("", downstream->get_request_path(),
+        group = match_downstream_addr_group(router, h->value,
+                                            downstream->get_request_path(),
                                             groups, catch_all);
+      } else {
+        group = match_downstream_addr_group(
+            router, "", downstream->get_request_path(), groups, catch_all);
       }
     }
   }

@@ -50,6 +50,7 @@
 
 #include <nghttp2/nghttp2.h>
 
+#include "shrpx_router.h"
 #include "template.h"
 
 using namespace nghttp2;
@@ -229,8 +230,13 @@ struct DownstreamAddr {
 };
 
 struct DownstreamAddrGroup {
-  DownstreamAddrGroup(std::string pattern) : pattern(std::move(pattern)) {}
-  std::string pattern;
+  DownstreamAddrGroup(const std::string &pattern) : pattern(strcopy(pattern)) {}
+  DownstreamAddrGroup(const DownstreamAddrGroup &other);
+  DownstreamAddrGroup(DownstreamAddrGroup &&) = default;
+  DownstreamAddrGroup &operator=(const DownstreamAddrGroup &other);
+  DownstreamAddrGroup &operator=(DownstreamAddrGroup &&) = default;
+
+  std::unique_ptr<char[]> pattern;
   std::vector<DownstreamAddr> addrs;
 };
 
@@ -272,6 +278,7 @@ struct Config {
   Address downstream_http_proxy_addr;
   Address session_cache_memcached_addr;
   Address tls_ticket_key_memcached_addr;
+  Router router;
   std::chrono::seconds tls_session_timeout;
   ev_tstamp http2_upstream_read_timeout;
   ev_tstamp upstream_read_timeout;
@@ -442,24 +449,6 @@ std::pair<std::string, std::string> parse_header(const char *optarg);
 
 std::vector<LogFragment> parse_log_format(const char *optarg);
 
-// Returns a copy of NULL-terminated string [first, last).
-template <typename InputIt>
-std::unique_ptr<char[]> strcopy(InputIt first, InputIt last) {
-  auto res = make_unique<char[]>(last - first + 1);
-  *std::copy(first, last, res.get()) = '\0';
-  return res;
-}
-
-// Returns a copy of NULL-terminated string |val|.
-inline std::unique_ptr<char[]> strcopy(const char *val) {
-  return strcopy(val, val + strlen(val));
-}
-
-// Returns a copy of val.c_str().
-inline std::unique_ptr<char[]> strcopy(const std::string &val) {
-  return strcopy(std::begin(val), std::end(val));
-}
-
 // Returns string for syslog |facility|.
 const char *str_syslog_facility(int facility);
 
@@ -483,7 +472,7 @@ read_tls_ticket_key_file(const std::vector<std::string> &files,
 // group.  The catch-all group index is given in |catch_all|.  All
 // patterns are given in |groups|.
 size_t match_downstream_addr_group(
-    const std::string &hostport, const std::string &path,
+    const Router &router, const std::string &hostport, const std::string &path,
     const std::vector<DownstreamAddrGroup> &groups, size_t catch_all);
 
 } // namespace shrpx

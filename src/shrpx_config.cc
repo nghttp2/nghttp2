@@ -79,9 +79,9 @@ TicketKeys::~TicketKeys() {
 }
 
 DownstreamAddr::DownstreamAddr(const DownstreamAddr &other)
-    : addr(other.addr), host(other.host ? strcopy(other.host.get()) : nullptr),
-      hostport(other.hostport ? strcopy(other.hostport.get()) : nullptr),
-      port(other.port), host_unix(other.host_unix) {}
+    : addr(other.addr), host(strcopy(other.host)),
+      hostport(strcopy(other.hostport)), port(other.port),
+      host_unix(other.host_unix) {}
 
 DownstreamAddr &DownstreamAddr::operator=(const DownstreamAddr &other) {
   if (this == &other) {
@@ -89,10 +89,25 @@ DownstreamAddr &DownstreamAddr::operator=(const DownstreamAddr &other) {
   }
 
   addr = other.addr;
-  host = (other.host ? strcopy(other.host.get()) : nullptr);
-  hostport = (other.hostport ? strcopy(other.hostport.get()) : nullptr);
+  host = strcopy(other.host);
+  hostport = strcopy(other.hostport);
   port = other.port;
   host_unix = other.host_unix;
+
+  return *this;
+}
+
+DownstreamAddrGroup::DownstreamAddrGroup(const DownstreamAddrGroup &other)
+    : pattern(strcopy(other.pattern)), addrs(other.addrs) {}
+
+DownstreamAddrGroup &DownstreamAddrGroup::
+operator=(const DownstreamAddrGroup &other) {
+  if (this == &other) {
+    return *this;
+  }
+
+  pattern = strcopy(other.pattern);
+  addrs = other.addrs;
 
   return *this;
 }
@@ -259,7 +274,6 @@ std::string read_passwd_from_file(const char *filename) {
   std::getline(in, line);
   return line;
 }
-
 
 std::pair<std::string, std::string> parse_header(const char *optarg) {
   // We skip possible ":" at the start of optarg.
@@ -576,7 +590,7 @@ void parse_mapping(const DownstreamAddr &addr, const char *src) {
       pattern += http2::normalize_path(slash, raw_pattern.second);
     }
     for (auto &g : mod_config()->downstream_addr_groups) {
-      if (g.pattern == pattern) {
+      if (g.pattern.get() == pattern) {
         g.addrs.push_back(addr);
         done = true;
         break;
@@ -587,6 +601,10 @@ void parse_mapping(const DownstreamAddr &addr, const char *src) {
     }
     DownstreamAddrGroup g(pattern);
     g.addrs.push_back(addr);
+
+    mod_config()->router.add_route(g.pattern.get(), strlen(g.pattern.get()),
+                                   get_config()->downstream_addr_groups.size());
+
     mod_config()->downstream_addr_groups.push_back(std::move(g));
   }
 }
@@ -2128,67 +2146,17 @@ int int_syslog_facility(const char *strfacility) {
 }
 
 namespace {
-template <typename InputIt>
-bool path_match(const std::string &pattern, const std::string &host,
-                InputIt path_first, InputIt path_last) {
-  if (pattern.back() != '/') {
-    return pattern.size() == host.size() + (path_last - path_first) &&
-           std::equal(std::begin(host), std::end(host), std::begin(pattern)) &&
-           std::equal(path_first, path_last, std::begin(pattern) + host.size());
-  }
-
-  if (pattern.size() >= host.size() &&
-      std::equal(std::begin(host), std::end(host), std::begin(pattern)) &&
-      util::startsWith(path_first, path_last, std::begin(pattern) + host.size(),
-                       std::end(pattern))) {
-    return true;
-  }
-
-  // If pattern ends with '/', and pattern and path matches without
-  // that slash, we consider they match to deal with request to the
-  // directory without trailing slash.  That is if pattern is "/foo/"
-  // and path is "/foo", we consider they match.
-
-  assert(!pattern.empty());
-  return pattern.size() - 1 == host.size() + (path_last - path_first) &&
-         std::equal(std::begin(host), std::end(host), std::begin(pattern)) &&
-         std::equal(path_first, path_last, std::begin(pattern) + host.size());
-}
-} // namespace
-
-namespace {
-template <typename InputIt>
-ssize_t match(const std::string &host, InputIt path_first, InputIt path_last,
-              const std::vector<DownstreamAddrGroup> &groups) {
-  ssize_t res = -1;
-  size_t best = 0;
-  for (size_t i = 0; i < groups.size(); ++i) {
-    auto &g = groups[i];
-    auto &pattern = g.pattern;
-    if (!path_match(pattern, host, path_first, path_last)) {
-      continue;
-    }
-    if (res == -1 || best < pattern.size()) {
-      best = pattern.size();
-      res = i;
-    }
-  }
-  return res;
-}
-} // namespace
-
-namespace {
-template <typename InputIt>
-size_t match_downstream_addr_group_host(
-    const std::string &host, InputIt path_first, InputIt path_last,
-    const std::vector<DownstreamAddrGroup> &groups, size_t catch_all) {
-  if (path_first == path_last || *path_first != '/') {
-    constexpr const char P[] = "/";
-    auto group = match(host, P, P + 1, groups);
+size_t
+match_downstream_addr_group_host(const Router &router, const std::string &host,
+                                 const char *path, size_t pathlen,
+                                 const std::vector<DownstreamAddrGroup> &groups,
+                                 size_t catch_all) {
+  if (pathlen == 0 || *path != '/') {
+    auto group = router.match(host, "/", 1);
     if (group != -1) {
       if (LOG_ENABLED(INFO)) {
         LOG(INFO) << "Found pattern with query " << host
-                  << ", matched pattern=" << groups[group].pattern;
+                  << ", matched pattern=" << groups[group].pattern.get();
       }
       return group;
     }
@@ -2197,25 +2165,24 @@ size_t match_downstream_addr_group_host(
 
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "Perform mapping selection, using host=" << host
-              << ", path=" << std::string(path_first, path_last);
+              << ", path=" << std::string(path, pathlen);
   }
 
-  auto group = match(host, path_first, path_last, groups);
+  auto group = router.match(host, path, pathlen);
   if (group != -1) {
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "Found pattern with query " << host
-                << std::string(path_first, path_last)
-                << ", matched pattern=" << groups[group].pattern;
+                << std::string(path, pathlen)
+                << ", matched pattern=" << groups[group].pattern.get();
     }
     return group;
   }
 
-  group = match("", path_first, path_last, groups);
+  group = router.match("", path, pathlen);
   if (group != -1) {
     if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Found pattern with query "
-                << std::string(path_first, path_last)
-                << ", matched pattern=" << groups[group].pattern;
+      LOG(INFO) << "Found pattern with query " << std::string(path, pathlen)
+                << ", matched pattern=" << groups[group].pattern.get();
     }
     return group;
   }
@@ -2227,9 +2194,11 @@ size_t match_downstream_addr_group_host(
 }
 } // namespace
 
-size_t match_downstream_addr_group(
-    const std::string &hostport, const std::string &raw_path,
-    const std::vector<DownstreamAddrGroup> &groups, size_t catch_all) {
+size_t
+match_downstream_addr_group(const Router &router, const std::string &hostport,
+                            const std::string &raw_path,
+                            const std::vector<DownstreamAddrGroup> &groups,
+                            size_t catch_all) {
   if (std::find(std::begin(hostport), std::end(hostport), '/') !=
       std::end(hostport)) {
     // We use '/' specially, and if '/' is included in host, it breaks
@@ -2239,11 +2208,11 @@ size_t match_downstream_addr_group(
 
   auto fragment = std::find(std::begin(raw_path), std::end(raw_path), '#');
   auto query = std::find(std::begin(raw_path), fragment, '?');
-  auto path_first = std::begin(raw_path);
-  auto path_last = query;
+  auto path = raw_path.c_str();
+  auto pathlen = query - std::begin(raw_path);
 
   if (hostport.empty()) {
-    return match_downstream_addr_group_host(hostport, path_first, path_last,
+    return match_downstream_addr_group_host(router, hostport, path, pathlen,
                                             groups, catch_all);
   }
 
@@ -2267,7 +2236,7 @@ size_t match_downstream_addr_group(
   }
 
   util::inp_strlower(host);
-  return match_downstream_addr_group_host(host, path_first, path_last, groups,
+  return match_downstream_addr_group_host(router, host, path, pathlen, groups,
                                           catch_all);
 }
 

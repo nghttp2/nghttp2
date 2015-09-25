@@ -170,6 +170,31 @@ constexpr double operator"" _h(unsigned long long h) { return h * 60 * 60; }
 
 constexpr double operator"" _min(unsigned long long min) { return min * 60; }
 
+// Returns a copy of NULL-terminated string [first, last).
+template <typename InputIt>
+std::unique_ptr<char[]> strcopy(InputIt first, InputIt last) {
+  auto res = make_unique<char[]>(last - first + 1);
+  *std::copy(first, last, res.get()) = '\0';
+  return res;
+}
+
+// Returns a copy of NULL-terminated string |val|.
+inline std::unique_ptr<char[]> strcopy(const char *val) {
+  return strcopy(val, val + strlen(val));
+}
+
+// Returns a copy of val.c_str().
+inline std::unique_ptr<char[]> strcopy(const std::string &val) {
+  return strcopy(std::begin(val), std::end(val));
+}
+
+inline std::unique_ptr<char[]> strcopy(const std::unique_ptr<char[]> &val) {
+  if (!val) {
+    return nullptr;
+  }
+  return strcopy(val.get());
+}
+
 } // namespace nghttp2
 
 #endif // TEMPLATE_H

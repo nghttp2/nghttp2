@@ -128,6 +128,7 @@ NGHTTPX_SRCS = \
 	shrpx_worker_process.cc shrpx_worker_process.h \
 	shrpx_process.h \
 	shrpx_signal.cc shrpx_signal.h \
+	shrpx_router.cc shrpx_router.h \
 	buffer.h memchunk.h template.h
 
 if HAVE_SPDYLAY
