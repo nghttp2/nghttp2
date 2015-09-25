@@ -442,7 +442,8 @@ void nghttp2_frame_window_update_free(nghttp2_window_update *frame);
 /*
  * Returns the number of padding bytes after payload.  The total
  * padding length is given in the |padlen|.  The returned value does
- * not include the Pad Length field.
+ * not include the Pad Length field.  If |padlen| is 0, this function
+ * returns 0, regardless of frame->hd.flags.
  */
 size_t nghttp2_frame_trail_padlen(nghttp2_frame *frame, size_t padlen);
 

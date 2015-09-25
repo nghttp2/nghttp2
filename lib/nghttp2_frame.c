@@ -165,6 +165,13 @@ void nghttp2_frame_window_update_init(nghttp2_window_update *frame,
 void nghttp2_frame_window_update_free(nghttp2_window_update *frame _U_) {}
 
 size_t nghttp2_frame_trail_padlen(nghttp2_frame *frame, size_t padlen) {
+  /* We have iframe->padlen == 0, but iframe->frame.hd.flags may have
+     NGHTTP2_FLAG_PADDED set.  This happens when receiving
+     CONTINUATION frame, since we don't reset flags after HEADERS was
+     received. */
+  if (padlen == 0) {
+    return 0;
+  }
   return padlen - ((frame->hd.flags & NGHTTP2_FLAG_PADDED) > 0);
 }
 

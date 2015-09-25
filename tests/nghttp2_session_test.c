@@ -964,6 +964,63 @@ void test_nghttp2_session_recv_continuation(void) {
   nghttp2_hd_deflate_free(&deflater);
   nghttp2_session_del(session);
 
+  /* HEADERS with padding followed by CONTINUATION */
+  nghttp2_session_server_new(&session, &callbacks, &ud);
+
+  nghttp2_hd_deflate_init(&deflater, mem);
+
+  nvlen = ARRLEN(reqnv);
+  nghttp2_nv_array_copy(&nva, reqnv, nvlen, mem);
+  nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_NONE, 1,
+                             NGHTTP2_HCAT_HEADERS, NULL, nva, nvlen);
+
+  nghttp2_bufs_reset(&bufs);
+  rv = nghttp2_frame_pack_headers(&bufs, &frame.headers, &deflater);
+
+  CU_ASSERT(0 == rv);
+
+  nghttp2_frame_headers_free(&frame.headers, mem);
+
+  /* make sure that all data is in the first buf */
+  buf = &bufs.head->buf;
+  assert(nghttp2_bufs_len(&bufs) == nghttp2_buf_len(buf));
+
+  /* HEADERS payload is 3 byte (1 for padding field, 1 for padding) */
+  memcpy(data, buf->pos, NGHTTP2_FRAME_HDLEN);
+  nghttp2_put_uint32be(data, (uint32_t)((3 << 8) + data[3]));
+  data[4] |= NGHTTP2_FLAG_PADDED;
+  /* padding field */
+  data[NGHTTP2_FRAME_HDLEN] = 1;
+  data[NGHTTP2_FRAME_HDLEN + 1] = buf->pos[NGHTTP2_FRAME_HDLEN];
+  /* padding */
+  data[NGHTTP2_FRAME_HDLEN + 2] = 0;
+  datalen = NGHTTP2_FRAME_HDLEN + 3;
+  buf->pos += NGHTTP2_FRAME_HDLEN + 1;
+
+  /* CONTINUATION, rest of the bytes */
+  nghttp2_frame_hd_init(&cont_hd, nghttp2_buf_len(buf), NGHTTP2_CONTINUATION,
+                        NGHTTP2_FLAG_END_HEADERS, 1);
+  nghttp2_frame_pack_frame_hd(data + datalen, &cont_hd);
+  datalen += NGHTTP2_FRAME_HDLEN;
+
+  memcpy(data + datalen, buf->pos, cont_hd.length);
+  datalen += cont_hd.length;
+  buf->pos += cont_hd.length;
+
+  CU_ASSERT(0 == nghttp2_buf_len(buf));
+
+  ud.header_cb_called = 0;
+  ud.begin_frame_cb_called = 0;
+
+  rv = nghttp2_session_mem_recv(session, data, datalen);
+
+  CU_ASSERT((ssize_t)datalen == rv);
+  CU_ASSERT(4 == ud.header_cb_called);
+  CU_ASSERT(2 == ud.begin_frame_cb_called);
+
+  nghttp2_hd_deflate_free(&deflater);
+  nghttp2_session_del(session);
+
   /* Expecting CONTINUATION, but get the other frame */
   nghttp2_session_server_new(&session, &callbacks, &ud);
 
