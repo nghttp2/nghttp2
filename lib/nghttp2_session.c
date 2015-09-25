@@ -5326,6 +5326,8 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
     case NGHTTP2_IB_READ_HEADER_BLOCK:
     case NGHTTP2_IB_IGN_HEADER_BLOCK: {
       ssize_t data_readlen;
+      size_t trail_padlen;
+      int final;
 #ifdef DEBUGBUILD
       if (iframe->state == NGHTTP2_IB_READ_HEADER_BLOCK) {
         fprintf(stderr, "recv: [IB_READ_HEADER_BLOCK]\n");
@@ -5341,22 +5343,20 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
 
       data_readlen = inbound_frame_effective_readlen(
           iframe, iframe->payloadleft - readlen, readlen);
-      if (data_readlen >= 0) {
-        size_t trail_padlen;
-        size_t hd_proclen = 0;
-        trail_padlen =
-            nghttp2_frame_trail_padlen(&iframe->frame, iframe->padlen);
-        DEBUGF(fprintf(stderr, "recv: block final=%d\n",
-                       (iframe->frame.hd.flags & NGHTTP2_FLAG_END_HEADERS) &&
-                           iframe->payloadleft - (size_t)data_readlen ==
-                               trail_padlen));
+      trail_padlen = nghttp2_frame_trail_padlen(&iframe->frame, iframe->padlen);
 
-        rv = inflate_header_block(
-            session, &iframe->frame, &hd_proclen, (uint8_t *)in,
-            (size_t)data_readlen,
-            (iframe->frame.hd.flags & NGHTTP2_FLAG_END_HEADERS) &&
-                iframe->payloadleft - (size_t)data_readlen == trail_padlen,
-            iframe->state == NGHTTP2_IB_READ_HEADER_BLOCK);
+      final = (iframe->frame.hd.flags & NGHTTP2_FLAG_END_HEADERS) &&
+              iframe->payloadleft - (size_t)data_readlen == trail_padlen;
+
+      if (data_readlen > 0 || (data_readlen == 0 && final)) {
+        size_t hd_proclen = 0;
+
+        DEBUGF(fprintf(stderr, "recv: block final=%d\n", final));
+
+        rv =
+            inflate_header_block(session, &iframe->frame, &hd_proclen,
+                                 (uint8_t *)in, (size_t)data_readlen, final,
+                                 iframe->state == NGHTTP2_IB_READ_HEADER_BLOCK);
 
         if (nghttp2_is_fatal(rv)) {
           return rv;
