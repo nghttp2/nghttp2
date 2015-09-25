@@ -5348,7 +5348,8 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
             nghttp2_frame_trail_padlen(&iframe->frame, iframe->padlen);
         DEBUGF(fprintf(stderr, "recv: block final=%d\n",
                        (iframe->frame.hd.flags & NGHTTP2_FLAG_END_HEADERS) &&
-                           iframe->payloadleft - data_readlen == trail_padlen));
+                           iframe->payloadleft - (size_t)data_readlen ==
+                               trail_padlen));
 
         rv = inflate_header_block(
             session, &iframe->frame, &hd_proclen, (uint8_t *)in,
