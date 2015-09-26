@@ -635,7 +635,11 @@ int select_next_proto_cb(SSL *ssl, unsigned char **out, unsigned char *outlen,
 }
 } // namespace
 
-SSL_CTX *create_ssl_client_context() {
+SSL_CTX *create_ssl_client_context(
+#ifdef HAVE_NEVERBLEED
+    neverbleed_t *nb
+#endif // HAVE_NEVERBLEED
+    ) {
   auto ssl_ctx = SSL_CTX_new(SSLv23_client_method());
   if (!ssl_ctx) {
     LOG(FATAL) << ERR_error_string(ERR_get_error(), nullptr);
@@ -681,6 +685,7 @@ SSL_CTX *create_ssl_client_context() {
   }
 
   if (get_config()->client_private_key_file) {
+#ifndef HAVE_NEVERBLEED
     if (SSL_CTX_use_PrivateKey_file(ssl_ctx,
                                     get_config()->client_private_key_file.get(),
                                     SSL_FILETYPE_PEM) != 1) {
@@ -689,6 +694,16 @@ SSL_CTX *create_ssl_client_context() {
                  << ERR_error_string(ERR_get_error(), nullptr);
       DIE();
     }
+#else  // HAVE_NEVERBLEED
+    std::array<char, NEVERBLEED_ERRBUF_SIZE> errbuf;
+    if (neverbleed_load_private_key_file(
+            nb, ssl_ctx, get_config()->client_private_key_file.get(),
+            errbuf.data()) != 1) {
+      LOG(FATAL) << "neverbleed_load_private_key_file failed: "
+                 << errbuf.data();
+      DIE();
+    }
+#endif // HAVE_NEVERBLEED
   }
   if (get_config()->client_cert_file) {
     if (SSL_CTX_use_certificate_chain_file(
@@ -1165,15 +1180,28 @@ SSL_CTX *setup_server_ssl_context(std::vector<SSL_CTX *> &all_ssl_ctx,
   return ssl_ctx;
 }
 
-SSL_CTX *setup_client_ssl_context() {
+bool downstream_tls_enabled() {
   if (get_config()->client_mode) {
-    return get_config()->downstream_no_tls ? nullptr
-                                           : ssl::create_ssl_client_context();
+    return !get_config()->downstream_no_tls;
   }
 
-  return get_config()->http2_bridge && !get_config()->downstream_no_tls
-             ? ssl::create_ssl_client_context()
-             : nullptr;
+  return get_config()->http2_bridge && !get_config()->downstream_no_tls;
+}
+
+SSL_CTX *setup_client_ssl_context(
+#ifdef HAVE_NEVERBLEED
+    neverbleed_t *nb
+#endif // HAVE_NEVERBLEED
+    ) {
+  if (!downstream_tls_enabled()) {
+    return nullptr;
+  }
+
+  return ssl::create_ssl_client_context(
+#ifdef HAVE_NEVERBLEED
+      nb
+#endif // HAVE_NEVERBLEED
+      );
 }
 
 CertLookupTree *create_cert_lookup_tree() {

@@ -48,6 +48,7 @@
 #include "shrpx_memcached_dispatcher.h"
 #include "shrpx_memcached_request.h"
 #include "shrpx_process.h"
+#include "shrpx_ssl.h"
 #include "util.h"
 #include "app_helper.h"
 #include "template.h"
@@ -84,7 +85,9 @@ void drop_privileges(
       exit(EXIT_FAILURE);
     }
 #ifdef HAVE_NEVERBLEED
-    neverbleed_setuidgid(nb, get_config()->user.get(), 1);
+    if (nb) {
+      neverbleed_setuidgid(nb, get_config()->user.get(), 1);
+    }
 #endif // HAVE_NEVERBLEED
   }
 }
@@ -400,8 +403,8 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
   }
 
 #ifdef HAVE_NEVERBLEED
-  std::array<char, NEVERBLEED_ERRBUF_SIZE> errbuf;
-  {
+  if (!get_config()->upstream_no_tls || ssl::downstream_tls_enabled()) {
+    std::array<char, NEVERBLEED_ERRBUF_SIZE> errbuf;
     auto nb = make_unique<neverbleed_t>();
     if (neverbleed_init(nb.get(), errbuf.data()) != 0) {
       LOG(FATAL) << "neverbleed_init failed: " << errbuf.data();
@@ -416,9 +419,11 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
   auto nb = conn_handler.get_neverbleed();
 
   ev_child nb_childev;
-  ev_child_init(&nb_childev, nb_child_cb, nb->daemon_pid, 0);
-  nb_childev.data = nullptr;
-  ev_child_start(loop, &nb_childev);
+  if (nb) {
+    ev_child_init(&nb_childev, nb_child_cb, nb->daemon_pid, 0);
+    nb_childev.data = nullptr;
+    ev_child_start(loop, &nb_childev);
+  }
 
 #endif // HAVE_NEVERBLEED
 
