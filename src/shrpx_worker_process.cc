@@ -110,6 +110,10 @@ void graceful_shutdown(ConnectionHandler *conn_handler) {
 
   // We have accepted all pending connections.  Shutdown main event
   // loop.
+
+  // TODO this makes IPC from master process impossible.  Perhaps, we
+  // should keep alive default loop, and break it once all connections
+  // are terminated somehow.
   ev_break(conn_handler->get_loop());
 }
 } // namespace
