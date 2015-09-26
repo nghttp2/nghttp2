@@ -24,6 +24,8 @@
  */
 #include "shrpx_router.h"
 
+#include <algorithm>
+
 #include "shrpx_config.h"
 
 namespace shrpx {
