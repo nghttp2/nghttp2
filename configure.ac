@@ -124,6 +124,11 @@ AC_ARG_WITH([mruby],
                     [Use mruby [default=no]])],
     [request_mruby=$withval], [request_mruby=no])
 
+AC_ARG_WITH([neverbleed],
+    [AS_HELP_STRING([--with-neverbleed],
+                    [Use neverbleed [default=no]])],
+    [request_neverbleed=$withval], [request_neverbleed=no])
+
 AC_ARG_WITH([cython],
     [AS_HELP_STRING([--with-cython=PATH],
                     [Use cython in given PATH])],
@@ -390,6 +395,15 @@ if test "x${request_mruby}" = "xyes"; then
 fi
 
 AM_CONDITIONAL([HAVE_MRUBY], [test "x${have_mruby}" = "xyes"])
+
+# neverbleed (for src/nghttpx)
+have_neverbleed=no
+if test "x${request_neverbleed}" = "xyes"; then
+  have_neverbleed=yes
+  AC_DEFINE([HAVE_NEVERBLEED], [1], [Define to 1 if you have `neverbleed` library.])
+fi
+
+AM_CONDITIONAL([HAVE_NEVERBLEED], [test "x${have_neverbleed}" = "xyes"])
 
 # Check Boost Asio library
 have_asio_lib=no
@@ -755,6 +769,7 @@ AC_MSG_NOTICE([summary of build options:
       Libevent(SSL):  ${have_libevent_openssl}
       Spdylay:        ${have_spdylay}
       MRuby:          ${have_mruby}
+      Neverbleed:     ${have_neverbleed}
       Jansson:        ${have_jansson}
       Jemalloc:       ${have_jemalloc}
       Zlib:           ${have_zlib}

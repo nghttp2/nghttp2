@@ -156,6 +156,10 @@ void upstream_accesslog(const std::vector<LogFragment> &lf,
 
 int reopen_log_files();
 
+// Logs message when process whose pid is |pid| and exist status is
+// |rstatus| exited.  The |msg| is prepended to the log message.
+void log_chld(pid_t pid, int rstatus, const char *msg);
+
 void redirect_stderr_to_errorlog();
 
 } // namespace shrpx

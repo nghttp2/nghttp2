@@ -159,7 +159,12 @@ void ConnectionHandler::worker_reopen_log_files() {
 
 int ConnectionHandler::create_single_worker() {
   auto cert_tree = ssl::create_cert_lookup_tree();
-  auto sv_ssl_ctx = ssl::setup_server_ssl_context(all_ssl_ctx_, cert_tree);
+  auto sv_ssl_ctx = ssl::setup_server_ssl_context(all_ssl_ctx_, cert_tree
+#ifdef HAVE_NEVERBLEED
+                                                  ,
+                                                  nb_.get()
+#endif // HAVE_NEVERBLEED
+                                                  );
   auto cl_ssl_ctx = ssl::setup_client_ssl_context();
 
   if (cl_ssl_ctx) {
@@ -182,7 +187,12 @@ int ConnectionHandler::create_worker_thread(size_t num) {
   assert(workers_.size() == 0);
 
   auto cert_tree = ssl::create_cert_lookup_tree();
-  auto sv_ssl_ctx = ssl::setup_server_ssl_context(all_ssl_ctx_, cert_tree);
+  auto sv_ssl_ctx = ssl::setup_server_ssl_context(all_ssl_ctx_, cert_tree
+#ifdef HAVE_NEVERBLEED
+                                                  ,
+                                                  nb_.get()
+#endif // HAVE_NEVERBLEED
+                                                  );
   auto cl_ssl_ctx = ssl::setup_client_ssl_context();
 
   if (cl_ssl_ctx) {
@@ -702,5 +712,14 @@ ConnectionHandler::schedule_next_tls_ticket_key_memcached_get(ev_timer *w) {
   ev_timer_set(w, get_config()->tls_ticket_key_memcached_interval, 0.);
   ev_timer_start(loop_, w);
 }
+
+#ifdef HAVE_NEVERBLEED
+void ConnectionHandler::set_neverbleed(std::unique_ptr<neverbleed_t> nb) {
+  nb_ = std::move(nb);
+}
+
+neverbleed_t *ConnectionHandler::get_neverbleed() const { return nb_.get(); }
+
+#endif // HAVE_NEVERBLEED
 
 } // namespace shrpx
