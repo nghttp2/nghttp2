@@ -509,12 +509,14 @@ int nghttp2_hd_entry_init(nghttp2_hd_entry *ent, uint8_t flags, uint8_t *name,
       flags = (uint8_t)(flags & ~NGHTTP2_HD_FLAG_NAME_ALLOC);
       ent->nv.name = (uint8_t *)"";
     } else {
-      /* copy including terminating NULL byte */
-      ent->nv.name = nghttp2_memdup(name, namelen + 1, mem);
+      /* name may not be NULL terminated on compression. */
+      ent->nv.name = nghttp2_mem_malloc(mem, namelen + 1);
       if (ent->nv.name == NULL) {
         rv = NGHTTP2_ERR_NOMEM;
         goto fail;
       }
+      memcpy(ent->nv.name, name, namelen);
+      ent->nv.name[namelen] = '\0';
     }
   } else {
     ent->nv.name = name;
@@ -525,12 +527,14 @@ int nghttp2_hd_entry_init(nghttp2_hd_entry *ent, uint8_t flags, uint8_t *name,
       flags = (uint8_t)(flags & ~NGHTTP2_HD_FLAG_VALUE_ALLOC);
       ent->nv.value = (uint8_t *)"";
     } else {
-      /* copy including terminating NULL byte */
-      ent->nv.value = nghttp2_memdup(value, valuelen + 1, mem);
+      /* value may not be NULL terminated on compression. */
+      ent->nv.value = nghttp2_mem_malloc(mem, valuelen + 1);
       if (ent->nv.value == NULL) {
         rv = NGHTTP2_ERR_NOMEM;
         goto fail2;
       }
+      memcpy(ent->nv.value, value, valuelen);
+      ent->nv.value[valuelen] = '\0';
     }
   } else {
     ent->nv.value = value;
@@ -1429,7 +1433,8 @@ static int deflate_nv(nghttp2_hd_deflater *deflater, nghttp2_bufs *bufs,
   nghttp2_mem *mem;
   uint32_t hash;
 
-  DEBUGF(fprintf(stderr, "deflatehd: deflating %s: %s\n", nv->name, nv->value));
+  DEBUGF(fprintf(stderr, "deflatehd: deflating %.*s: %.*s\n", (int)nv->namelen,
+                 nv->name, (int)nv->valuelen, nv->value));
 
   mem = deflater->ctx.mem;
 
