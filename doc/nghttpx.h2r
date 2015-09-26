@@ -44,15 +44,18 @@ SIGUSR2
 
 .. note::
 
-  nghttpx consists of 2 processes: one process for processing these
-  signals, and another one for processing requests.  The former spawns
-  the latter.  The former is called master process, and the latter is
-  called worker process.  The above signal must be sent to the master
-  process.  If the worker process receives one of them, it is ignored.
-  This behaviour of worker process may change in the future release.
-  In other words, in the future release, worker process may terminate
-  upon the reception of these signals.  Therefore these signals should
-  not be sent to the worker process.
+  nghttpx consists of multiple processes: one process for processing
+  these signals, and another one for processing requests.  The former
+  spawns the latter.  The former is called master process, and the
+  latter is called worker process.  If neverbleed is enabled, the
+  worker process spawns neverbleed daemon process which does RSA key
+  processing.  The above signal must be sent to the master process.
+  If the other processes received one of them, it is ignored.  This
+  behaviour of these processes may change in the future release.  In
+  other words, in the future release, the processes other than master
+  process may terminate upon the reception of these signals.
+  Therefore these signals should not be sent to the processes other
+  than master process.
 
 SERVER PUSH
 -----------
