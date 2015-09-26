@@ -127,6 +127,12 @@ required:
 * ruby
 * bison
 
+nghttpx supports `neverbleed <https://github.com/h2o/neverbleed>`_,
+privilege separation engine for OpenSSL / LibreSSL.  In short, it
+minimizes the risk of private key leakage when serious bug like
+Heartbleed is exploited.  The neverbleed is disabled by default.  To
+enable it, use ``--with-neverbleed`` configure option.
+
 Building from git
 -----------------
 
