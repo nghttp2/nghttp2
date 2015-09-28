@@ -604,7 +604,6 @@ int Client::connection_made() {
           std::cout << proto.substr(1) << std::endl;
         }
         disconnect();
-        exit(EXIT_FAILURE);
         return -1;
       }
     }
