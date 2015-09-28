@@ -818,9 +818,8 @@ int event_loop() {
 
   ssv.worker_process_pid = pid;
 
-  constexpr auto signals =
-      std::array<int, 5>{{REOPEN_LOG_SIGNAL, EXEC_BINARY_SIGNAL,
-                          GRACEFUL_SHUTDOWN_SIGNAL, SIGINT, SIGTERM}};
+  constexpr auto signals = std::array<int, 3>{
+      {REOPEN_LOG_SIGNAL, EXEC_BINARY_SIGNAL, GRACEFUL_SHUTDOWN_SIGNAL}};
   auto sigevs = std::array<ev_signal, signals.size()>();
 
   for (size_t i = 0; i < signals.size(); ++i) {
