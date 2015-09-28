@@ -128,9 +128,11 @@ ConnectionHandler::ConnectionHandler(struct ev_loop *loop)
 }
 
 ConnectionHandler::~ConnectionHandler() {
+  ev_child_stop(loop_, &ocsp_.chldev);
   ev_async_stop(loop_, &thread_join_asyncev_);
-  ev_timer_stop(loop_, &disable_acceptor_timer_);
+  ev_io_stop(loop_, &ocsp_.rev);
   ev_timer_stop(loop_, &ocsp_timer_);
+  ev_timer_stop(loop_, &disable_acceptor_timer_);
 
   for (auto ssl_ctx : all_ssl_ctx_) {
     auto tls_ctx_data =
