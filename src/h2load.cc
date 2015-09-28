@@ -108,6 +108,8 @@ void writecb(struct ev_loop *loop, ev_io *w, int revents) {
   auto rv = client->do_write();
   if (rv == Client::ERR_CONNECT_FAIL) {
     client->disconnect();
+    // Try next address
+    client->current_addr = nullptr;
     rv = client->connect();
     if (rv != 0) {
       client->fail();
@@ -220,9 +222,10 @@ void client_request_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 } // namespace
 
 Client::Client(Worker *worker, size_t req_todo)
-    : worker(worker), ssl(nullptr), next_addr(config.addrs), reqidx(0),
-      state(CLIENT_IDLE), first_byte_received(false), req_todo(req_todo),
-      req_started(0), req_done(0), fd(-1) {
+    : worker(worker), ssl(nullptr), next_addr(config.addrs),
+      current_addr(nullptr), reqidx(0), state(CLIENT_IDLE),
+      first_byte_received(false), req_todo(req_todo), req_started(0),
+      req_done(0), fd(-1), new_connection_requested(false) {
   ev_io_init(&wev, writecb, 0, EV_WRITE);
   ev_io_init(&rev, readcb, 0, EV_READ);
 
@@ -246,48 +249,67 @@ Client::~Client() { disconnect(); }
 int Client::do_read() { return readfn(*this); }
 int Client::do_write() { return writefn(*this); }
 
+int Client::make_socket(addrinfo *addr) {
+  fd = util::create_nonblock_socket(addr->ai_family);
+  if (fd == -1) {
+    return -1;
+  }
+  if (config.scheme == "https") {
+    ssl = SSL_new(worker->ssl_ctx);
+
+    auto config = worker->config;
+
+    if (!util::numeric_host(config->host.c_str())) {
+      SSL_set_tlsext_host_name(ssl, config->host.c_str());
+    }
+
+    SSL_set_fd(ssl, fd);
+    SSL_set_connect_state(ssl);
+  }
+
+  auto rv = ::connect(fd, addr->ai_addr, addr->ai_addrlen);
+  if (rv != 0 && errno != EINPROGRESS) {
+    if (ssl) {
+      SSL_free(ssl);
+      ssl = nullptr;
+    }
+    close(fd);
+    fd = -1;
+    return -1;
+  }
+  return 0;
+}
+
 int Client::connect() {
+  int rv;
+
   record_start_time(&worker->stats);
 
   if (worker->config->conn_inactivity_timeout > 0) {
     ev_timer_again(worker->loop, &conn_inactivity_watcher);
   }
 
-  while (next_addr) {
-    auto addr = next_addr;
-    next_addr = next_addr->ai_next;
-    fd = util::create_nonblock_socket(addr->ai_family);
+  if (current_addr) {
+    rv = make_socket(current_addr);
+    if (rv == -1) {
+      return -1;
+    }
+  } else {
+    addrinfo *addr;
+    while (next_addr) {
+      addr = next_addr;
+      next_addr = next_addr->ai_next;
+      rv = make_socket(addr);
+      if (rv == 0) {
+        break;
+      }
+    }
+
     if (fd == -1) {
-      continue;
-    }
-    if (config.scheme == "https") {
-      ssl = SSL_new(worker->ssl_ctx);
-
-      auto config = worker->config;
-
-      if (!util::numeric_host(config->host.c_str())) {
-        SSL_set_tlsext_host_name(ssl, config->host.c_str());
-      }
-
-      SSL_set_fd(ssl, fd);
-      SSL_set_connect_state(ssl);
+      return -1;
     }
 
-    auto rv = ::connect(fd, addr->ai_addr, addr->ai_addrlen);
-    if (rv != 0 && errno != EINPROGRESS) {
-      if (ssl) {
-        SSL_free(ssl);
-        ssl = nullptr;
-      }
-      close(fd);
-      fd = -1;
-      continue;
-    }
-    break;
-  }
-
-  if (fd == -1) {
-    return -1;
+    current_addr = addr;
   }
 
   writefn = &Client::connected;
@@ -313,9 +335,19 @@ void Client::restart_timeout() {
 }
 
 void Client::fail() {
-  process_abandoned_streams();
-
   disconnect();
+
+  if (new_connection_requested) {
+    new_connection_requested = false;
+
+    // Keep using current address
+    if (connect() == 0) {
+      return;
+    }
+    std::cerr << "client could not connect to host" << std::endl;
+  }
+
+  process_abandoned_streams();
 }
 
 void Client::disconnect() {
@@ -505,7 +537,7 @@ void Client::on_status_code(int32_t stream_id, uint16_t status) {
 }
 
 void Client::on_stream_close(int32_t stream_id, bool success,
-                             RequestStat *req_stat) {
+                             RequestStat *req_stat, bool final) {
   req_stat->stream_close_time = std::chrono::steady_clock::now();
   if (success) {
     req_stat->completed = true;
@@ -525,7 +557,7 @@ void Client::on_stream_close(int32_t stream_id, bool success,
     return;
   }
 
-  if (!config.timing_script) {
+  if (!config.timing_script && !final) {
     if (req_started < req_todo) {
       submit_request();
       return;

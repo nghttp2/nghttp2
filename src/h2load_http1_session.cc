@@ -71,10 +71,23 @@ int htp_msg_completecb(http_parser *htp) {
   auto session = static_cast<Http1Session *>(htp->data);
   auto client = session->get_client();
 
+  auto final = http_should_keep_alive(htp) == 0;
   client->on_stream_close(session->stream_resp_counter_, true,
-                          session->req_stats_[session->stream_resp_counter_]);
+                          session->req_stats_[session->stream_resp_counter_],
+                          final);
 
   session->stream_resp_counter_ += 2;
+
+  if (final) {
+    http_parser_pause(htp, 1);
+    // Connection is going down.  If we have still request to do,
+    // create new connection and keep on doing the job.
+    if (client->req_started < client->req_todo) {
+      client->try_new_connection();
+    }
+
+    return 0;
+  }
 
   return 0;
 }
@@ -156,6 +169,11 @@ int Http1Session::on_read(const uint8_t *data, size_t len) {
   }
 
   auto htperr = HTTP_PARSER_ERRNO(&htp_);
+
+  if (htperr == HPE_PAUSED) {
+    // pause is done only when connection: close is requested
+    return -1;
+  }
 
   if (htperr != HPE_OK) {
     std::cerr << "[ERROR] HTTP parse error: "
