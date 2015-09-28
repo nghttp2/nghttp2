@@ -34,6 +34,9 @@
 
 #include <memory>
 #include <vector>
+#ifndef NOTHREADS
+#include <future>
+#endif // NOTHREADS
 
 #include <openssl/ssl.h>
 
@@ -158,6 +161,10 @@ private:
 #endif // HAVE_NEVERBLEED
   ev_timer disable_acceptor_timer_;
   ev_timer ocsp_timer_;
+  ev_async thread_join_asyncev_;
+#ifndef NOTHREADS
+  std::future<void> thread_join_fut_;
+#endif // NOTHREADS
   size_t tls_ticket_key_memcached_get_retry_count_;
   size_t tls_ticket_key_memcached_fail_count_;
   unsigned int worker_round_robin_cnt_;

@@ -112,19 +112,14 @@ void graceful_shutdown(ConnectionHandler *conn_handler) {
 
   conn_handler->graceful_shutdown_worker();
 
-  if (get_config()->num_worker == 1 &&
-      conn_handler->get_single_worker()->get_worker_stat()->num_connections >
-          0) {
+  if (get_config()->num_worker == 1) {
+    if (conn_handler->get_single_worker()->get_worker_stat()->num_connections ==
+        0) {
+      ev_break(conn_handler->get_loop());
+    }
+
     return;
   }
-
-  // We have accepted all pending connections.  Shutdown main event
-  // loop.
-
-  // TODO this makes IPC from master process impossible.  Perhaps, we
-  // should keep alive default loop, and break it once all connections
-  // are terminated somehow.
-  ev_break(conn_handler->get_loop());
 }
 } // namespace
 
@@ -527,7 +522,6 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
 
   ev_run(loop, 0);
 
-  conn_handler.join_worker();
   conn_handler.cancel_ocsp_update();
 
 #ifdef HAVE_NEVERBLEED
