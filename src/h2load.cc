@@ -927,6 +927,8 @@ void Client::record_ttfb() {
 
 void Client::signal_write() { ev_io_start(worker->loop, &wev); }
 
+void Client::try_new_connection() { new_connection_requested = true; }
+
 Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
                size_t rate, Config *config)
     : stats(req_todo), loop(ev_loop_new(0)), ssl_ctx(ssl_ctx), config(config),
