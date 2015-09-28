@@ -157,8 +157,7 @@ void ipc_readcb(struct ev_loop *loop, ev_io *w, int revents) {
   if (nread == 0) {
     // IPC socket closed.  Perform immediate shutdown.
     LOG(FATAL) << "IPC socket is closed.  Perform immediate shutdown.";
-    ev_break(conn_handler->get_loop());
-    return;
+    _Exit(EXIT_FAILURE);
   }
 
   for (ssize_t i = 0; i < nread; ++i) {
