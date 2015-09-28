@@ -244,7 +244,13 @@ Client::Client(Worker *worker, size_t req_todo)
   request_timeout_watcher.data = this;
 }
 
-Client::~Client() { disconnect(); }
+Client::~Client() {
+  disconnect();
+
+  if (ssl) {
+    SSL_free(ssl);
+  }
+}
 
 int Client::do_read() { return readfn(*this); }
 int Client::do_write() { return writefn(*this); }
@@ -255,7 +261,9 @@ int Client::make_socket(addrinfo *addr) {
     return -1;
   }
   if (config.scheme == "https") {
-    ssl = SSL_new(worker->ssl_ctx);
+    if (!ssl) {
+      ssl = SSL_new(worker->ssl_ctx);
+    }
 
     auto config = worker->config;
 
@@ -362,9 +370,11 @@ void Client::disconnect() {
   if (ssl) {
     SSL_set_shutdown(ssl, SSL_RECEIVED_SHUTDOWN);
     ERR_clear_error();
-    SSL_shutdown(ssl);
-    SSL_free(ssl);
-    ssl = nullptr;
+
+    if (SSL_shutdown(ssl) != 1) {
+      SSL_free(ssl);
+      ssl = nullptr;
+    }
   }
   if (fd != -1) {
     shutdown(fd, SHUT_WR);
