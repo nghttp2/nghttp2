@@ -303,7 +303,7 @@ int Client::connect() {
       return -1;
     }
   } else {
-    addrinfo *addr;
+    addrinfo *addr = nullptr;
     while (next_addr) {
       addr = next_addr;
       next_addr = next_addr->ai_next;
@@ -316,6 +316,8 @@ int Client::connect() {
     if (fd == -1) {
       return -1;
     }
+
+    assert(addr);
 
     current_addr = addr;
   }

@@ -27,6 +27,7 @@
 
 #include "nghttp2_config.h"
 
+#include <cstring>
 #include <memory>
 #include <array>
 #include <functional>
