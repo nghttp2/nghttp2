@@ -50,7 +50,6 @@
 #endif // HAVE_SPDYLAY
 
 #include <openssl/err.h>
-#include <openssl/conf.h>
 
 #include "http-parser/http_parser.h"
 

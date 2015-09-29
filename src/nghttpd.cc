@@ -43,7 +43,6 @@
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
-#include <openssl/conf.h>
 #include <nghttp2/nghttp2.h>
 
 #include "app_helper.h"

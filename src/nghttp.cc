@@ -48,7 +48,6 @@
 #include <tuple>
 
 #include <openssl/err.h>
-#include <openssl/conf.h>
 
 #ifdef HAVE_JANSSON
 #include <jansson.h>

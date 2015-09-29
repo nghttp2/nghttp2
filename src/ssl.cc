@@ -30,6 +30,7 @@
 #include <iostream>
 
 #include <openssl/crypto.h>
+#include <openssl/conf.h>
 
 namespace nghttp2 {
 
