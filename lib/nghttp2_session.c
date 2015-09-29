@@ -141,6 +141,15 @@ static int session_detect_idle_stream(nghttp2_session *session,
   return 0;
 }
 
+static void session_on_flooding_detected(nghttp2_session *session) {
+  /* If we found flooding, we might not send GOAWAY since peer might
+     not read at all.  So we just set these flags to pretend that
+     GOAWAY is sent, so that nghttp2_session_want_read() and
+     nghttp2_session_want_write() return 0. */
+  session->goaway_flags |= NGHTTP2_GOAWAY_TERM_ON_SEND |
+                           NGHTTP2_GOAWAY_TERM_SENT | NGHTTP2_GOAWAY_SENT;
+}
+
 static int session_terminate_session(nghttp2_session *session,
                                      int32_t last_stream_id,
                                      uint32_t error_code, const char *reason) {
@@ -1853,6 +1862,11 @@ static int session_prep_frame(nghttp2_session *session,
                                     &frame->rst_stream);
       break;
     case NGHTTP2_SETTINGS: {
+      if (frame->hd.flags & NGHTTP2_FLAG_ACK) {
+        assert(session->obq_flood_counter_ > 0);
+        --session->obq_flood_counter_;
+      }
+
       rv = nghttp2_frame_pack_settings(&session->aob.framebufs,
                                        &frame->settings);
       if (rv != 0) {
@@ -1914,6 +1928,11 @@ static int session_prep_frame(nghttp2_session *session,
       break;
     }
     case NGHTTP2_PING:
+      if (frame->hd.flags & NGHTTP2_FLAG_ACK) {
+        assert(session->obq_flood_counter_ > 0);
+        --session->obq_flood_counter_;
+      }
+
       if (session_is_closing(session)) {
         return NGHTTP2_ERR_SESSION_CLOSING;
       }
@@ -5908,6 +5927,13 @@ int nghttp2_session_add_ping(nghttp2_session *session, uint8_t flags,
   nghttp2_mem *mem;
 
   mem = &session->mem;
+
+  if ((flags & NGHTTP2_FLAG_ACK) &&
+      session->obq_flood_counter_ >= NGHTTP2_MAX_OBQ_FLOOD_ITEM) {
+    session_on_flooding_detected(session);
+    return NGHTTP2_ERR_FLOODING_DETECTED;
+  }
+
   item = nghttp2_mem_malloc(mem, sizeof(nghttp2_outbound_item));
   if (item == NULL) {
     return NGHTTP2_ERR_NOMEM;
@@ -5926,6 +5952,11 @@ int nghttp2_session_add_ping(nghttp2_session *session, uint8_t flags,
     nghttp2_mem_free(mem, item);
     return rv;
   }
+
+  if (flags & NGHTTP2_FLAG_ACK) {
+    ++session->obq_flood_counter_;
+  }
+
   return 0;
 }
 
@@ -6044,8 +6075,15 @@ int nghttp2_session_add_settings(nghttp2_session *session, uint8_t flags,
 
   mem = &session->mem;
 
-  if ((flags & NGHTTP2_FLAG_ACK) && niv != 0) {
-    return NGHTTP2_ERR_INVALID_ARGUMENT;
+  if (flags & NGHTTP2_FLAG_ACK) {
+    if (niv != 0) {
+      return NGHTTP2_ERR_INVALID_ARGUMENT;
+    }
+
+    if (session->obq_flood_counter_ >= NGHTTP2_MAX_OBQ_FLOOD_ITEM) {
+      session_on_flooding_detected(session);
+      return NGHTTP2_ERR_FLOODING_DETECTED;
+    }
   }
 
   if (!nghttp2_iv_check(iv, niv)) {
@@ -6093,6 +6131,10 @@ int nghttp2_session_add_settings(nghttp2_session *session, uint8_t flags,
     nghttp2_mem_free(mem, item);
 
     return rv;
+  }
+
+  if (flags & NGHTTP2_FLAG_ACK) {
+    ++session->obq_flood_counter_;
   }
 
   session_append_inflight_settings(session, inflight_settings);
