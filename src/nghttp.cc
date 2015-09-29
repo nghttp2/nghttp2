@@ -1110,11 +1110,7 @@ int HttpClient::tls_handshake() {
 
   auto rv = SSL_do_handshake(ssl);
 
-  if (rv == 0) {
-    return -1;
-  }
-
-  if (rv < 0) {
+  if (rv <= 0) {
     auto err = SSL_get_error(ssl, rv);
     switch (err) {
     case SSL_ERROR_WANT_READ:
@@ -1152,11 +1148,7 @@ int HttpClient::read_tls() {
   for (;;) {
     auto rv = SSL_read(ssl, buf.data(), buf.size());
 
-    if (rv == 0) {
-      return -1;
-    }
-
-    if (rv < 0) {
+    if (rv <= 0) {
       auto err = SSL_get_error(ssl, rv);
       switch (err) {
       case SSL_ERROR_WANT_READ:
@@ -1184,11 +1176,7 @@ int HttpClient::write_tls() {
     if (wb.rleft() > 0) {
       auto rv = SSL_write(ssl, wb.pos, wb.rleft());
 
-      if (rv == 0) {
-        return -1;
-      }
-
-      if (rv < 0) {
+      if (rv <= 0) {
         auto err = SSL_get_error(ssl, rv);
         switch (err) {
         case SSL_ERROR_WANT_READ:
@@ -2475,10 +2463,7 @@ Options:
 } // namespace
 
 int main(int argc, char **argv) {
-  SSL_load_error_strings();
-  SSL_library_init();
-  OpenSSL_add_all_algorithms();
-  OPENSSL_config(nullptr);
+  ssl::libssl_init();
 
   bool color = false;
   while (1) {

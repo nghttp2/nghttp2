@@ -29,8 +29,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <CUnit/Basic.h>
-#include <openssl/ssl.h>
-#include <openssl/err.h>
 // include test cases' include files here
 #include "shrpx_ssl_test.h"
 #include "shrpx_downstream_test.h"
@@ -41,6 +39,7 @@
 #include "buffer_test.h"
 #include "memchunk_test.h"
 #include "shrpx_config.h"
+#include "ssl.h"
 
 static int init_suite1(void) { return 0; }
 
@@ -50,9 +49,7 @@ int main(int argc, char *argv[]) {
   CU_pSuite pSuite = NULL;
   unsigned int num_tests_failed;
 
-  OpenSSL_add_all_algorithms();
-  SSL_load_error_strings();
-  SSL_library_init();
+  nghttp2::ssl::libssl_init();
 
   shrpx::create_config();
 

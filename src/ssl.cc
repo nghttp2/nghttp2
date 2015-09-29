@@ -695,6 +695,14 @@ bool check_http2_requirement(SSL *ssl) {
   return true;
 }
 
+void libssl_init() {
+#ifndef OPENSSL_IS_BORINGSSL
+  OPENSSL_config(nullptr);
+#endif // OPENSSL_IS_BORINGSSL
+  SSL_load_error_strings();
+  SSL_library_init();
+}
+
 } // namespace ssl
 
 } // namespace nghttp2

@@ -153,6 +153,7 @@ int servername_callback(SSL *ssl, int *al, void *arg) {
 }
 } // namespace
 
+#ifndef OPENSSL_IS_BORINGSSL
 namespace {
 std::shared_ptr<std::vector<uint8_t>>
 get_ocsp_data(TLSContextData *tls_ctx_data) {
@@ -187,6 +188,7 @@ int ocsp_resp_cb(SSL *ssl, void *arg) {
   return SSL_TLSEXT_ERR_OK;
 }
 } // namespace
+#endif // OPENSSL_IS_BORINGSSL
 
 constexpr char MEMCACHED_SESSION_CACHE_KEY_PREFIX[] =
     "nghttpx:tls-session-cache:";
@@ -604,7 +606,9 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file
   }
   SSL_CTX_set_tlsext_servername_callback(ssl_ctx, servername_callback);
   SSL_CTX_set_tlsext_ticket_key_cb(ssl_ctx, ticket_key_cb);
+#ifndef OPENSSL_IS_BORINGSSL
   SSL_CTX_set_tlsext_status_cb(ssl_ctx, ocsp_resp_cb);
+#endif // OPENSSL_IS_BORINGSSL
   SSL_CTX_set_info_callback(ssl_ctx, info_callback);
 
   // NPN advertisement

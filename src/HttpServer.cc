@@ -539,11 +539,7 @@ int Http2Handler::tls_handshake() {
 
   auto rv = SSL_do_handshake(ssl_);
 
-  if (rv == 0) {
-    return -1;
-  }
-
-  if (rv < 0) {
+  if (rv <= 0) {
     auto err = SSL_get_error(ssl_, rv);
     switch (err) {
     case SSL_ERROR_WANT_READ:
@@ -588,11 +584,7 @@ int Http2Handler::read_tls() {
   for (;;) {
     auto rv = SSL_read(ssl_, buf.data(), buf.size());
 
-    if (rv == 0) {
-      return -1;
-    }
-
-    if (rv < 0) {
+    if (rv <= 0) {
       auto err = SSL_get_error(ssl_, rv);
       switch (err) {
       case SSL_ERROR_WANT_READ:
@@ -634,11 +626,7 @@ int Http2Handler::write_tls() {
     if (wb_.rleft() > 0) {
       auto rv = SSL_write(ssl_, wb_.pos, wb_.rleft());
 
-      if (rv == 0) {
-        return -1;
-      }
-
-      if (rv < 0) {
+      if (rv <= 0) {
         auto err = SSL_get_error(ssl_, rv);
         switch (err) {
         case SSL_ERROR_WANT_READ:

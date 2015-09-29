@@ -36,7 +36,8 @@ AM_CPPFLAGS = \
 LDADD = $(top_builddir)/lib/libnghttp2.la \
 	$(top_builddir)/third-party/libhttp-parser.la \
 	@LIBEVENT_OPENSSL_LIBS@ \
-	@OPENSSL_LIBS@
+	@OPENSSL_LIBS@ \
+	@APPLDFLAGS@
 
 noinst_PROGRAMS = client libevent-client libevent-server deflate
 

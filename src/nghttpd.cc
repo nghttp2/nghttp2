@@ -172,13 +172,11 @@ Options:
 } // namespace
 
 int main(int argc, char **argv) {
+  ssl::libssl_init();
+
 #ifndef NOTHREADS
   ssl::LibsslGlobalLock lock;
 #endif // NOTHREADS
-  SSL_load_error_strings();
-  SSL_library_init();
-  OpenSSL_add_all_algorithms();
-  OPENSSL_config(nullptr);
 
   Config config;
   bool color = false;

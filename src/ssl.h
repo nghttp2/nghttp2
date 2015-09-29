@@ -67,6 +67,9 @@ TLSSessionInfo *get_tls_session_info(TLSSessionInfo *tls_info, SSL *ssl);
 //    described in RFC 7540.
 bool check_http2_requirement(SSL *ssl);
 
+// Initializes OpenSSL library
+void libssl_init();
+
 } // namespace ssl
 
 } // namespace nghttp2

@@ -538,11 +538,7 @@ ssize_t Connection::write_tls(const void *data, size_t len) {
 
   auto rv = SSL_write(tls.ssl, data, len);
 
-  if (rv == 0) {
-    return SHRPX_ERR_NETWORK;
-  }
-
-  if (rv < 0) {
+  if (rv <= 0) {
     auto err = SSL_get_error(tls.ssl, rv);
     switch (err) {
     case SSL_ERROR_WANT_READ:

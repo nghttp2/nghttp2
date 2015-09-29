@@ -1633,15 +1633,11 @@ Misc:
 } // namespace
 
 int main(int argc, char **argv) {
+  nghttp2::ssl::libssl_init();
+
 #ifndef NOTHREADS
   nghttp2::ssl::LibsslGlobalLock lock;
 #endif // NOTHREADS
-  // Initialize OpenSSL before parsing options because we create
-  // SSL_CTX there.
-  SSL_load_error_strings();
-  SSL_library_init();
-  OpenSSL_add_all_algorithms();
-  OPENSSL_config(nullptr);
 
   Log::set_severity_level(NOTICE);
   create_config();

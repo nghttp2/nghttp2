@@ -53,6 +53,8 @@
 #include <signal.h>
 #include <stdio.h>
 #include <assert.h>
+#include <string.h>
+#include <errno.h>
 
 #include <nghttp2/nghttp2.h>
 
@@ -692,10 +694,11 @@ int main(int argc, char **argv) {
   act.sa_handler = SIG_IGN;
   sigaction(SIGPIPE, &act, 0);
 
+#ifndef OPENSSL_IS_BORINGSSL
+  OPENSSL_config(NULL);
+#endif /* OPENSSL_IS_BORINGSSL */
   SSL_load_error_strings();
   SSL_library_init();
-  OpenSSL_add_all_algorithms();
-  OPENSSL_config(NULL);
 
   rv = parse_uri(&uri, argv[1]);
   if (rv != 0) {

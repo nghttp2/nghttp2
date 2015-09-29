@@ -810,11 +810,7 @@ int Client::tls_handshake() {
 
   auto rv = SSL_do_handshake(ssl);
 
-  if (rv == 0) {
-    return -1;
-  }
-
-  if (rv < 0) {
+  if (rv <= 0) {
     auto err = SSL_get_error(ssl, rv);
     switch (err) {
     case SSL_ERROR_WANT_READ:
@@ -848,11 +844,7 @@ int Client::read_tls() {
   for (;;) {
     auto rv = SSL_read(ssl, buf, sizeof(buf));
 
-    if (rv == 0) {
-      return -1;
-    }
-
-    if (rv < 0) {
+    if (rv <= 0) {
       auto err = SSL_get_error(ssl, rv);
       switch (err) {
       case SSL_ERROR_WANT_READ:
@@ -878,11 +870,7 @@ int Client::write_tls() {
     if (wb.rleft() > 0) {
       auto rv = SSL_write(ssl, wb.pos, wb.rleft());
 
-      if (rv == 0) {
-        return -1;
-      }
-
-      if (rv < 0) {
+      if (rv <= 0) {
         auto err = SSL_get_error(ssl, rv);
         switch (err) {
         case SSL_ERROR_WANT_READ:
@@ -1423,13 +1411,11 @@ Options:
 } // namespace
 
 int main(int argc, char **argv) {
+  ssl::libssl_init();
+
 #ifndef NOTHREADS
   ssl::LibsslGlobalLock lock;
 #endif // NOTHREADS
-  SSL_load_error_strings();
-  SSL_library_init();
-  OpenSSL_add_all_algorithms();
-  OPENSSL_config(nullptr);
 
   std::string datafile;
   bool nreqs_set_manually = false;
