@@ -141,15 +141,6 @@ static int session_detect_idle_stream(nghttp2_session *session,
   return 0;
 }
 
-static void session_on_flooding_detected(nghttp2_session *session) {
-  /* If we found flooding, we might not send GOAWAY since peer might
-     not read at all.  So we just set these flags to pretend that
-     GOAWAY is sent, so that nghttp2_session_want_read() and
-     nghttp2_session_want_write() return 0. */
-  session->goaway_flags |= NGHTTP2_GOAWAY_TERM_ON_SEND |
-                           NGHTTP2_GOAWAY_TERM_SENT | NGHTTP2_GOAWAY_SENT;
-}
-
 static int session_terminate_session(nghttp2_session *session,
                                      int32_t last_stream_id,
                                      uint32_t error_code, const char *reason) {
@@ -5930,8 +5921,7 @@ int nghttp2_session_add_ping(nghttp2_session *session, uint8_t flags,
 
   if ((flags & NGHTTP2_FLAG_ACK) &&
       session->obq_flood_counter_ >= NGHTTP2_MAX_OBQ_FLOOD_ITEM) {
-    session_on_flooding_detected(session);
-    return NGHTTP2_ERR_FLOODING_DETECTED;
+    return NGHTTP2_ERR_FLOODED;
   }
 
   item = nghttp2_mem_malloc(mem, sizeof(nghttp2_outbound_item));
@@ -6081,8 +6071,7 @@ int nghttp2_session_add_settings(nghttp2_session *session, uint8_t flags,
     }
 
     if (session->obq_flood_counter_ >= NGHTTP2_MAX_OBQ_FLOOD_ITEM) {
-      session_on_flooding_detected(session);
-      return NGHTTP2_ERR_FLOODING_DETECTED;
+      return NGHTTP2_ERR_FLOODED;
     }
   }
 

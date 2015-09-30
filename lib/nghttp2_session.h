@@ -367,7 +367,7 @@ int nghttp2_session_add_rst_stream(nghttp2_session *session, int32_t stream_id,
  *
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
- * NGHTTP2_ERR_FLOODING_DETECTED
+ * NGHTTP2_ERR_FLOODED
  *     There are too many items in outbound queue; this only happens
  *     if NGHTTP2_FLAG_ACK is set in |flags|
  */
@@ -417,7 +417,7 @@ int nghttp2_session_add_window_update(nghttp2_session *session, uint8_t flags,
  *
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
- * NGHTTP2_ERR_FLOODING_DETECTED
+ * NGHTTP2_ERR_FLOODED
  *     There are too many items in outbound queue; this only happens
  *     if NGHTTP2_FLAG_ACK is set in |flags|
  */
@@ -643,6 +643,9 @@ int nghttp2_session_on_rst_stream_received(nghttp2_session *session,
  *     Out of memory
  * NGHTTP2_ERR_CALLBACK_FAILURE
  *     The read_callback failed
+ * NGHTTP2_ERR_FLOODED
+ *     There are too many items in outbound queue, and this is most
+ *     likely caused by misbehaviour of peer.
  */
 int nghttp2_session_on_settings_received(nghttp2_session *session,
                                          nghttp2_frame *frame, int noack);
@@ -676,6 +679,9 @@ int nghttp2_session_on_push_promise_received(nghttp2_session *session,
  *     Out of memory.
  * NGHTTP2_ERR_CALLBACK_FAILURE
  *   The callback function failed.
+ * NGHTTP2_ERR_FLOODED
+ *     There are too many items in outbound queue, and this is most
+ *     likely caused by misbehaviour of peer.
  */
 int nghttp2_session_on_ping_received(nghttp2_session *session,
                                      nghttp2_frame *frame);

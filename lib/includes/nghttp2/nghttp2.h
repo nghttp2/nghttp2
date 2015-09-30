@@ -399,7 +399,16 @@ typedef enum {
    * Invalid client magic (see :macro:`NGHTTP2_CLIENT_MAGIC`) was
    * received and further processing is not possible.
    */
-  NGHTTP2_ERR_BAD_CLIENT_MAGIC = -903
+  NGHTTP2_ERR_BAD_CLIENT_MAGIC = -903,
+  /**
+   * Possible flooding by peer was detected in this HTTP/2 session.
+   * Flooding is measured by how many PING and SETTINGS frames with
+   * ACK flag set are queued for transmission.  These frames are
+   * response for the peer initiated frames, and peer can cause memory
+   * exhaustion on server side to send these frames forever and does
+   * not read network.
+   */
+  NGHTTP2_ERR_FLOODED = -904
 } nghttp2_error;
 
 /**
@@ -2366,6 +2375,9 @@ NGHTTP2_EXTERN ssize_t nghttp2_session_mem_send(nghttp2_session *session,
  *     when |session| was configured as server and
  *     `nghttp2_option_set_no_recv_client_magic()` is not used with
  *     nonzero value.
+ * :enum:`NGHTTP2_ERR_FLOODED`
+ *     Flooding was detected in this HTTP/2 session, and it must be
+ *     closed.  This is most likely caused by misbehaviour of peer.
  */
 NGHTTP2_EXTERN int nghttp2_session_recv(nghttp2_session *session);
 
@@ -2402,6 +2414,9 @@ NGHTTP2_EXTERN int nghttp2_session_recv(nghttp2_session *session);
  *     when |session| was configured as server and
  *     `nghttp2_option_set_no_recv_client_magic()` is not used with
  *     nonzero value.
+ * :enum:`NGHTTP2_ERR_FLOODED`
+ *     Flooding was detected in this HTTP/2 session, and it must be
+ *     closed.  This is most likely caused by misbehaviour of peer.
  */
 NGHTTP2_EXTERN ssize_t nghttp2_session_mem_recv(nghttp2_session *session,
                                                 const uint8_t *in,

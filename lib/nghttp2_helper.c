@@ -294,6 +294,9 @@ const char *nghttp2_strerror(int error_code) {
     return "The user callback function failed";
   case NGHTTP2_ERR_BAD_CLIENT_MAGIC:
     return "Received bad client magic byte string";
+  case NGHTTP2_ERR_FLOODED:
+    return "Flooding was detected in this HTTP/2 session, and it must be "
+           "closed";
   default:
     return "Unknown error code";
   }

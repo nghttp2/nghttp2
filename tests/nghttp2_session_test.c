@@ -8097,6 +8097,7 @@ void test_nghttp2_session_flooding(void) {
   nghttp2_buf *buf;
   nghttp2_frame frame;
   nghttp2_mem *mem;
+  size_t i;
 
   mem = nghttp2_mem_default();
 
@@ -8113,20 +8114,14 @@ void test_nghttp2_session_flooding(void) {
 
   buf = &bufs.head->buf;
 
-  for (int i = 0; i < NGHTTP2_MAX_OBQ_FLOOD_ITEM; ++i) {
+  for (i = 0; i < NGHTTP2_MAX_OBQ_FLOOD_ITEM; ++i) {
     CU_ASSERT(
         (ssize_t)nghttp2_buf_len(buf) ==
         nghttp2_session_mem_recv(session, buf->pos, nghttp2_buf_len(buf)));
   }
 
-  CU_ASSERT(1 == nghttp2_session_want_read(session));
-  CU_ASSERT(1 == nghttp2_session_want_write(session));
-
-  CU_ASSERT((ssize_t)nghttp2_buf_len(buf) ==
+  CU_ASSERT(NGHTTP2_ERR_FLOODED ==
             nghttp2_session_mem_recv(session, buf->pos, nghttp2_buf_len(buf)));
-
-  CU_ASSERT(0 == nghttp2_session_want_read(session));
-  CU_ASSERT(0 == nghttp2_session_want_write(session));
 
   nghttp2_session_del(session);
 
@@ -8141,20 +8136,14 @@ void test_nghttp2_session_flooding(void) {
 
   buf = &bufs.head->buf;
 
-  for (int i = 0; i < NGHTTP2_MAX_OBQ_FLOOD_ITEM; ++i) {
+  for (i = 0; i < NGHTTP2_MAX_OBQ_FLOOD_ITEM; ++i) {
     CU_ASSERT(
         (ssize_t)nghttp2_buf_len(buf) ==
         nghttp2_session_mem_recv(session, buf->pos, nghttp2_buf_len(buf)));
   }
 
-  CU_ASSERT(1 == nghttp2_session_want_read(session));
-  CU_ASSERT(1 == nghttp2_session_want_write(session));
-
-  CU_ASSERT((ssize_t)nghttp2_buf_len(buf) ==
+  CU_ASSERT(NGHTTP2_ERR_FLOODED ==
             nghttp2_session_mem_recv(session, buf->pos, nghttp2_buf_len(buf)));
-
-  CU_ASSERT(0 == nghttp2_session_want_read(session));
-  CU_ASSERT(0 == nghttp2_session_want_write(session));
 
   nghttp2_session_del(session);
   nghttp2_bufs_free(&bufs);
