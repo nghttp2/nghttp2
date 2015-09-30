@@ -2377,6 +2377,7 @@ int main(int argc, char **argv) {
     std::vector<DownstreamAddrGroup>().swap(
         mod_config()->downstream_addr_groups);
     // maybe not necessary?
+    mod_config()->router = Router();
     mod_config()->router.add_route(catch_all.pattern.get(), 1,
                                    get_config()->downstream_addr_groups.size());
     mod_config()->downstream_addr_groups.push_back(std::move(catch_all));
