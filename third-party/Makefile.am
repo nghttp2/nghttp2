@@ -32,6 +32,8 @@ libhttp_parser_la_SOURCES = \
 
 if HAVE_NEVERBLEED
 noinst_LTLIBRARIES += libneverbleed.la
+libneverbleed_la_CPPFLAGS = @OPENSSL_CFLAGS@
+libneverbleed_la_LIBADD = @OPENSSL_LIBS@
 libneverbleed_la_SOURCES = neverbleed/neverbleed.c neverbleed/neverbleed.h
 endif # HAVE_NEVERBLEED
 
