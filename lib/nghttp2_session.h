@@ -291,6 +291,10 @@ struct nghttp2_session {
   /* Flags indicating GOAWAY is sent and/or recieved. The flags are
      composed by bitwise OR-ing nghttp2_goaway_flag. */
   uint8_t goaway_flags;
+  /* This flag is used to reduce excessive queuing of WINDOW_UPDATE to
+     this session.  The nonzero does not necessarily mean
+     WINDOW_UPDATE is not queued. */
+  uint8_t window_update_queued;
 };
 
 /* Struct used when updating initial window size of each active

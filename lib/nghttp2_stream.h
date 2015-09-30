@@ -206,6 +206,10 @@ struct nghttp2_stream {
   uint64_t cycle;
   /* Last written length of frame payload */
   size_t last_writelen;
+  /* This flag is used to reduce excessive queuing of WINDOW_UPDATE to
+     this stream.  The nonzero does not necessarily mean WINDOW_UPDATE
+     is not queued. */
+  uint8_t window_update_queued;
 };
 
 void nghttp2_stream_init(nghttp2_stream *stream, int32_t stream_id,

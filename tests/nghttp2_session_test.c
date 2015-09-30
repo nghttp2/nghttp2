@@ -690,6 +690,7 @@ void test_nghttp2_session_recv_data(void) {
   callbacks.send_callback = null_send_callback;
   callbacks.on_data_chunk_recv_callback = on_data_chunk_recv_callback;
   callbacks.on_frame_recv_callback = on_frame_recv_callback;
+  callbacks.on_frame_send_callback = on_frame_send_callback;
 
   nghttp2_session_client_new(&session, &callbacks, &ud);
 
@@ -797,6 +798,68 @@ void test_nghttp2_session_recv_data(void) {
   CU_ASSERT(NGHTTP2_PROTOCOL_ERROR == item->frame.goaway.error_code);
 
   nghttp2_session_del(session);
+
+  /* Check window_update_queued flag in both session and stream */
+  nghttp2_session_server_new(&session, &callbacks, &ud);
+
+  hd.length = 4096;
+  hd.type = NGHTTP2_DATA;
+  hd.flags = NGHTTP2_FLAG_NONE;
+  hd.stream_id = 1;
+  nghttp2_frame_pack_frame_hd(data, &hd);
+
+  stream = open_stream(session, 1);
+
+  /* Send 32767 bytes of DATA.  In our current flow control algorithm,
+     it triggers first WINDOW_UPDATE of window_size_increment
+     32767. */
+  for (i = 0; i < 7; ++i) {
+    rv = nghttp2_session_mem_recv(session, data, NGHTTP2_FRAME_HDLEN + 4096);
+    CU_ASSERT(NGHTTP2_FRAME_HDLEN + 4096 == rv);
+  }
+
+  hd.length = 4095;
+  nghttp2_frame_pack_frame_hd(data, &hd);
+  rv = nghttp2_session_mem_recv(session, data, NGHTTP2_FRAME_HDLEN + 4095);
+  CU_ASSERT(NGHTTP2_FRAME_HDLEN + 4095 == rv);
+
+  /* Now 2 WINDOW_UPDATEs for session and stream should be queued. */
+  CU_ASSERT(0 == stream->recv_window_size);
+  CU_ASSERT(0 == session->recv_window_size);
+  CU_ASSERT(1 == stream->window_update_queued);
+  CU_ASSERT(1 == session->window_update_queued);
+
+  /* Then send 32768 bytes of DATA.  Since we have not sent queued
+     WINDOW_UDPATE frame, recv_window_size should not be decreased */
+  hd.length = 4096;
+  nghttp2_frame_pack_frame_hd(data, &hd);
+
+  for (i = 0; i < 8; ++i) {
+    rv = nghttp2_session_mem_recv(session, data, NGHTTP2_FRAME_HDLEN + 4096);
+    CU_ASSERT(NGHTTP2_FRAME_HDLEN + 4096 == rv);
+  }
+
+  /* WINDOW_UPDATE is blocked for session and stream, so
+     recv_window_size must not be decreased. */
+  CU_ASSERT(32768 == stream->recv_window_size);
+  CU_ASSERT(32768 == session->recv_window_size);
+  CU_ASSERT(1 == stream->window_update_queued);
+  CU_ASSERT(1 == session->window_update_queued);
+
+  ud.frame_send_cb_called = 0;
+
+  /* This sends queued WINDOW_UPDATES.  And then check
+     recv_window_size, and queue WINDOW_UPDATEs for both session and
+     stream, and send them at once. */
+  CU_ASSERT(0 == nghttp2_session_send(session));
+
+  CU_ASSERT(4 == ud.frame_send_cb_called);
+  CU_ASSERT(0 == stream->recv_window_size);
+  CU_ASSERT(0 == session->recv_window_size);
+  CU_ASSERT(0 == stream->window_update_queued);
+  CU_ASSERT(0 == session->window_update_queued);
+
+  nghttp2_session_del(session);
 }
 
 void test_nghttp2_session_recv_data_no_auto_flow_control(void) {
@@ -810,9 +873,11 @@ void test_nghttp2_session_recv_data_no_auto_flow_control(void) {
   ssize_t rv;
   size_t sendlen;
   nghttp2_stream *stream;
+  size_t i;
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks.send_callback = null_send_callback;
+  callbacks.on_frame_send_callback = on_frame_send_callback;
 
   nghttp2_option_new(&option);
   nghttp2_option_set_no_auto_window_update(option, 1);
@@ -872,6 +937,73 @@ void test_nghttp2_session_recv_data_no_auto_flow_control(void) {
   /* Whole payload must be consumed now because HTTP messaging rule
      was not honored. */
   CU_ASSERT((int32_t)hd.length == session->consumed_size);
+
+  nghttp2_session_del(session);
+
+  /* Check window_update_queued flag in both session and stream */
+  nghttp2_session_server_new2(&session, &callbacks, &ud, option);
+
+  stream = open_stream(session, 1);
+
+  hd.length = 4096;
+  hd.type = NGHTTP2_DATA;
+  hd.flags = NGHTTP2_FLAG_NONE;
+  hd.stream_id = 1;
+  nghttp2_frame_pack_frame_hd(data, &hd);
+
+  /* Receive up to 65535 bytes of DATA */
+  for (i = 0; i < 15; ++i) {
+    rv = nghttp2_session_mem_recv(session, data, NGHTTP2_FRAME_HDLEN + 4096);
+    CU_ASSERT(NGHTTP2_FRAME_HDLEN + 4096 == rv);
+  }
+
+  hd.length = 4095;
+  nghttp2_frame_pack_frame_hd(data, &hd);
+
+  rv = nghttp2_session_mem_recv(session, data, NGHTTP2_FRAME_HDLEN + 4095);
+  CU_ASSERT(NGHTTP2_FRAME_HDLEN + 4095 == rv);
+
+  CU_ASSERT(65535 == session->recv_window_size);
+  CU_ASSERT(65535 == stream->recv_window_size);
+
+  /* The first call of nghttp2_session_consume_connection() will queue
+     WINDOW_UPDATE.  Next call does not. */
+  nghttp2_session_consume_connection(session, 32767);
+  nghttp2_session_consume_connection(session, 32768);
+
+  CU_ASSERT(32768 == session->recv_window_size);
+  CU_ASSERT(65535 == stream->recv_window_size);
+  CU_ASSERT(1 == session->window_update_queued);
+  CU_ASSERT(0 == stream->window_update_queued);
+
+  ud.frame_send_cb_called = 0;
+
+  /* This will send WINDOW_UPDATE, and check whether we should send
+     WINDOW_UPDATE, and queue and send it at once. */
+  CU_ASSERT(0 == nghttp2_session_send(session));
+  CU_ASSERT(0 == session->recv_window_size);
+  CU_ASSERT(65535 == stream->recv_window_size);
+  CU_ASSERT(0 == session->window_update_queued);
+  CU_ASSERT(0 == stream->window_update_queued);
+  CU_ASSERT(2 == ud.frame_send_cb_called);
+
+  /* Do the same for stream */
+  nghttp2_session_consume_stream(session, 1, 32767);
+  nghttp2_session_consume_stream(session, 1, 32768);
+
+  CU_ASSERT(0 == session->recv_window_size);
+  CU_ASSERT(32768 == stream->recv_window_size);
+  CU_ASSERT(0 == session->window_update_queued);
+  CU_ASSERT(1 == stream->window_update_queued);
+
+  ud.frame_send_cb_called = 0;
+
+  CU_ASSERT(0 == nghttp2_session_send(session));
+  CU_ASSERT(0 == session->recv_window_size);
+  CU_ASSERT(0 == stream->recv_window_size);
+  CU_ASSERT(0 == session->window_update_queued);
+  CU_ASSERT(0 == stream->window_update_queued);
+  CU_ASSERT(2 == ud.frame_send_cb_called);
 
   nghttp2_session_del(session);
   nghttp2_option_del(option);
