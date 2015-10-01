@@ -27,6 +27,9 @@
 
 #include "shrpx.h"
 #include "shrpx_io_control.h"
+#include "memchunk.h"
+
+using namespace nghttp2;
 
 namespace shrpx {
 
@@ -67,6 +70,10 @@ public:
 
   virtual int initiate_push(Downstream *downstream, const char *uri,
                             size_t len) = 0;
+
+  // Returns response buffer of Downstream directly.  This exists for
+  // optimization purpose for cleartext HttpsUpstream.
+  virtual DefaultMemchunks *get_response_buf() const { return nullptr; }
 };
 
 } // namespace shrpx

@@ -164,6 +164,47 @@ int ClientHandler::write_clear() {
   return 0;
 }
 
+int ClientHandler::writev_clear() {
+  ev_timer_again(conn_.loop, &conn_.rt);
+
+  auto buf = upstream_->get_response_buf();
+  if (!buf) {
+    conn_.wlimit.stopw();
+    ev_timer_stop(conn_.loop, &conn_.wt);
+
+    return 0;
+  }
+
+  for (;;) {
+    if (buf->rleft() > 0) {
+      std::array<iovec, 2> iov;
+      auto iovcnt = buf->riovec(iov.data(), iov.size());
+      auto nwrite = conn_.writev_clear(iov.data(), iovcnt);
+      if (nwrite == 0) {
+        return 0;
+      }
+      if (nwrite < 0) {
+        return -1;
+      }
+      buf->drain(nwrite);
+      continue;
+    }
+    if (on_write() != 0) {
+      return -1;
+    }
+    // buf may be destroyed inside on_write()
+    buf = upstream_->get_response_buf();
+    if (!buf || buf->rleft() == 0) {
+      break;
+    }
+  }
+
+  conn_.wlimit.stopw();
+  ev_timer_stop(conn_.loop, &conn_.wt);
+
+  return 0;
+}
+
 int ClientHandler::tls_handshake() {
   ev_timer_again(conn_.loop, &conn_.rt);
 
@@ -188,7 +229,12 @@ int ClientHandler::tls_handshake() {
   }
 
   read_ = &ClientHandler::read_tls;
-  write_ = &ClientHandler::write_tls;
+
+  if (alpn_ == "http/1.1") {
+    write_ = &ClientHandler::writev_tls;
+  } else {
+    write_ = &ClientHandler::write_tls;
+  }
 
   return 0;
 }
@@ -261,6 +307,57 @@ int ClientHandler::write_tls() {
   return 0;
 }
 
+int ClientHandler::writev_tls() {
+  ev_timer_again(conn_.loop, &conn_.rt);
+
+  auto buf = upstream_->get_response_buf();
+  if (!buf) {
+    conn_.wlimit.stopw();
+    ev_timer_stop(conn_.loop, &conn_.wt);
+
+    return 0;
+  }
+
+  ERR_clear_error();
+
+  for (;;) {
+    if (buf->rleft() > 0) {
+      iovec iov;
+      auto iovcnt = buf->riovec(&iov, 1);
+      if (iovcnt == 0) {
+        return 0;
+      }
+
+      auto nwrite = conn_.write_tls(iov.iov_base, iov.iov_len);
+
+      if (nwrite == 0) {
+        return 0;
+      }
+
+      if (nwrite < 0) {
+        return -1;
+      }
+
+      buf->drain(nwrite);
+
+      continue;
+    }
+    if (on_write() != 0) {
+      return -1;
+    }
+    buf = upstream_->get_response_buf();
+    if (!buf || buf->rleft() == 0) {
+      conn_.start_tls_write_idle();
+      break;
+    }
+  }
+
+  conn_.wlimit.stopw();
+  ev_timer_stop(conn_.loop, &conn_.wt);
+
+  return 0;
+}
+
 int ClientHandler::upstream_noop() { return 0; }
 
 int ClientHandler::upstream_read() {
@@ -277,7 +374,9 @@ int ClientHandler::upstream_write() {
     return -1;
   }
 
-  if (get_should_close_after_write() && wb_.rleft() == 0) {
+  if (get_should_close_after_write() && wb_.rleft() == 0 &&
+      (!upstream_->get_response_buf() ||
+       upstream_->get_response_buf()->rleft() == 0)) {
     return -1;
   }
 
@@ -407,7 +506,7 @@ void ClientHandler::setup_upstream_io_callback() {
     upstream_ = make_unique<HttpsUpstream>(this);
     alpn_ = "http/1.1";
     read_ = &ClientHandler::read_clear;
-    write_ = &ClientHandler::write_clear;
+    write_ = &ClientHandler::writev_clear;
     on_read_ = &ClientHandler::upstream_http1_connhd_read;
     on_write_ = &ClientHandler::upstream_noop;
   }
@@ -709,6 +808,7 @@ void ClientHandler::direct_http2_upgrade() {
   upstream_ = make_unique<Http2Upstream>(this);
   alpn_ = NGHTTP2_CLEARTEXT_PROTO_VERSION_ID;
   on_read_ = &ClientHandler::upstream_read;
+  write_ = &ClientHandler::write_clear;
 }
 
 int ClientHandler::perform_http2_upgrade(HttpsUpstream *http) {
@@ -723,6 +823,7 @@ int ClientHandler::perform_http2_upgrade(HttpsUpstream *http) {
   // support aliasing for h2, but we just use library default for now.
   alpn_ = NGHTTP2_CLEARTEXT_PROTO_VERSION_ID;
   on_read_ = &ClientHandler::upstream_http2_connhd_read;
+  write_ = &ClientHandler::write_clear;
 
   static char res[] = "HTTP/1.1 101 Switching Protocols\r\n"
                       "Connection: Upgrade\r\n"

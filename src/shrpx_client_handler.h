@@ -60,11 +60,13 @@ public:
   // Performs clear text I/O
   int read_clear();
   int write_clear();
+  int writev_clear();
   // Performs TLS handshake
   int tls_handshake();
   // Performs TLS I/O
   int read_tls();
   int write_tls();
+  int writev_tls();
 
   int upstream_noop();
   int upstream_read();

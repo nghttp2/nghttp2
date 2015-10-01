@@ -571,10 +571,6 @@ int HttpsUpstream::on_write() {
   if (!downstream) {
     return 0;
   }
-  auto wb = handler_->get_wb();
-  if (wb->wleft() == 0) {
-    return 0;
-  }
 
   auto dconn = downstream->get_downstream_connection();
   auto output = downstream->get_response_buf();
@@ -591,10 +587,7 @@ int HttpsUpstream::on_write() {
     }
   }
 
-  auto n = output->remove(wb->last, wb->wleft());
-  wb->write(n);
-
-  if (wb->rleft() > 0) {
+  if (output->rleft() > 0) {
     return 0;
   }
 
@@ -1165,6 +1158,14 @@ fail:
 int HttpsUpstream::initiate_push(Downstream *downstream, const char *uri,
                                  size_t len) {
   return 0;
+}
+
+DefaultMemchunks *HttpsUpstream::get_response_buf() const {
+  if (!downstream_) {
+    return nullptr;
+  }
+
+  return downstream_->get_response_buf();
 }
 
 } // namespace shrpx
