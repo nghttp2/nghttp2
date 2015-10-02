@@ -53,8 +53,7 @@ namespace {
 ssize_t send_callback(spdylay_session *session, const uint8_t *data, size_t len,
                       int flags, void *user_data) {
   auto upstream = static_cast<SpdyUpstream *>(user_data);
-  auto handler = upstream->get_client_handler();
-  auto wb = handler->get_wb();
+  auto wb = upstream->get_response_buf();
 
   if (wb->wleft() == 0) {
     return SPDYLAY_ERR_WOULDBLOCK;
@@ -555,6 +554,10 @@ int SpdyUpstream::on_read() {
 int SpdyUpstream::on_write() {
   int rv = 0;
 
+  if (wb_.rleft() == 0) {
+    wb_.reset();
+  }
+
   rv = spdylay_session_send(session_);
   if (rv != 0) {
     ULOG(ERROR, this) << "spdylay_session_send() returned error: "
@@ -563,8 +566,7 @@ int SpdyUpstream::on_write() {
   }
 
   if (spdylay_session_want_read(session_) == 0 &&
-      spdylay_session_want_write(session_) == 0 &&
-      handler_->get_wb()->rleft() == 0) {
+      spdylay_session_want_write(session_) == 0 && wb_.rleft() == 0) {
     if (LOG_ENABLED(INFO)) {
       ULOG(INFO, this) << "No more read/write for this SPDY session";
     }
@@ -1212,5 +1214,22 @@ int SpdyUpstream::initiate_push(Downstream *downstream, const char *uri,
                                 size_t len) {
   return 0;
 }
+
+int SpdyUpstream::response_riovec(struct iovec *iov, int iovcnt) const {
+  if (iovcnt == 0 || wb_.rleft() == 0) {
+    return 0;
+  }
+
+  iov->iov_base = wb_.pos;
+  iov->iov_len = wb_.rleft();
+
+  return 1;
+}
+
+void SpdyUpstream::response_drain(size_t n) { wb_.drain(n); }
+
+bool SpdyUpstream::response_empty() const { return wb_.rleft() == 0; }
+
+SpdyUpstream::WriteBuffer *SpdyUpstream::get_response_buf() { return &wb_; }
 
 } // namespace shrpx

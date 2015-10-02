@@ -36,6 +36,7 @@
 #include "shrpx_upstream.h"
 #include "shrpx_downstream_queue.h"
 #include "memchunk.h"
+#include "buffer.h"
 
 using namespace nghttp2;
 
@@ -82,6 +83,11 @@ public:
                          size_t bodylen);
   virtual int initiate_push(Downstream *downstream, const char *uri,
                             size_t len);
+  virtual int response_riovec(struct iovec *iov, int iovcnt) const;
+  virtual void response_drain(size_t n);
+  virtual bool response_empty() const;
+
+  void response_write(void *data, size_t len);
 
   bool get_flow_control() const;
   // Perform HTTP/2 upgrade from |upstream|. On success, this object
@@ -106,7 +112,10 @@ public:
 
   int on_request_headers(Downstream *downstream, const nghttp2_frame *frame);
 
+  using WriteBuffer = Buffer<32_k>;
+
 private:
+  WriteBuffer wb_;
   std::unique_ptr<HttpsUpstream> pre_upstream_;
   DownstreamQueue downstream_queue_;
   ev_timer settings_timer_;

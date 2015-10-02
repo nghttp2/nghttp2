@@ -852,9 +852,8 @@ int Http2Upstream::on_read() {
     rlimit->startw();
   }
 
-  auto wb = handler_->get_wb();
   if (nghttp2_session_want_read(session_) == 0 &&
-      nghttp2_session_want_write(session_) == 0 && wb->rleft() == 0) {
+      nghttp2_session_want_write(session_) == 0 && wb_.rleft() == 0) {
     if (LOG_ENABLED(INFO)) {
       ULOG(INFO, this) << "No more read/write for this HTTP2 session";
     }
@@ -867,11 +866,13 @@ int Http2Upstream::on_read() {
 
 // After this function call, downstream may be deleted.
 int Http2Upstream::on_write() {
-  auto wb = handler_->get_wb();
+  if (wb_.rleft() == 0) {
+    wb_.reset();
+  }
 
   if (data_pending_) {
-    auto n = std::min(wb->wleft(), data_pendinglen_);
-    wb->write(data_pending_, n);
+    auto n = std::min(wb_.wleft(), data_pendinglen_);
+    wb_.write(data_pending_, n);
     if (n < data_pendinglen_) {
       data_pending_ += n;
       data_pendinglen_ -= n;
@@ -894,7 +895,7 @@ int Http2Upstream::on_write() {
     if (datalen == 0) {
       break;
     }
-    auto n = wb->write(data, datalen);
+    auto n = wb_.write(data, datalen);
     if (n < static_cast<decltype(n)>(datalen)) {
       data_pending_ = data + n;
       data_pendinglen_ = datalen - n;
@@ -903,7 +904,7 @@ int Http2Upstream::on_write() {
   }
 
   if (nghttp2_session_want_read(session_) == 0 &&
-      nghttp2_session_want_write(session_) == 0 && wb->rleft() == 0) {
+      nghttp2_session_want_write(session_) == 0 && wb_.rleft() == 0) {
     if (LOG_ENABLED(INFO)) {
       ULOG(INFO, this) << "No more read/write for this HTTP2 session";
     }
@@ -1753,6 +1754,25 @@ int Http2Upstream::initiate_push(Downstream *downstream, const char *uri,
   }
 
   return 0;
+}
+
+int Http2Upstream::response_riovec(struct iovec *iov, int iovcnt) const {
+  if (iovcnt == 0 || wb_.rleft() == 0) {
+    return 0;
+  }
+
+  iov->iov_base = wb_.pos;
+  iov->iov_len = wb_.rleft();
+
+  return 1;
+}
+
+void Http2Upstream::response_drain(size_t n) { wb_.drain(n); }
+
+bool Http2Upstream::response_empty() const { return wb_.rleft() == 0; }
+
+void Http2Upstream::response_write(void *data, size_t len) {
+  wb_.write(data, len);
 }
 
 } // namespace shrpx

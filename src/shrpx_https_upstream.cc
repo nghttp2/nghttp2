@@ -1160,12 +1160,34 @@ int HttpsUpstream::initiate_push(Downstream *downstream, const char *uri,
   return 0;
 }
 
-DefaultMemchunks *HttpsUpstream::get_response_buf() const {
+int HttpsUpstream::response_riovec(struct iovec *iov, int iovcnt) const {
   if (!downstream_) {
-    return nullptr;
+    return 0;
   }
 
-  return downstream_->get_response_buf();
+  auto buf = downstream_->get_response_buf();
+
+  return buf->riovec(iov, iovcnt);
+}
+
+void HttpsUpstream::response_drain(size_t n) {
+  if (!downstream_) {
+    return;
+  }
+
+  auto buf = downstream_->get_response_buf();
+
+  buf->drain(n);
+}
+
+bool HttpsUpstream::response_empty() const {
+  if (!downstream_) {
+    return true;
+  }
+
+  auto buf = downstream_->get_response_buf();
+
+  return buf->rleft() == 0;
 }
 
 } // namespace shrpx
