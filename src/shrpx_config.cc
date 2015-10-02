@@ -649,6 +649,7 @@ enum {
   SHRPX_OPTID_DH_PARAM_FILE,
   SHRPX_OPTID_ERRORLOG_FILE,
   SHRPX_OPTID_ERRORLOG_SYSLOG,
+  SHRPX_OPTID_FASTOPEN,
   SHRPX_OPTID_FETCH_OCSP_RESPONSE_FILE,
   SHRPX_OPTID_FRONTEND,
   SHRPX_OPTID_FRONTEND_FRAME_DEBUG,
@@ -812,6 +813,11 @@ int option_lookup_token(const char *name, size_t namelen) {
       }
       if (util::strieq_l("pid-fil", name, 7)) {
         return SHRPX_OPTID_PID_FILE;
+      }
+      break;
+    case 'n':
+      if (util::strieq_l("fastope", name, 7)) {
+        return SHRPX_OPTID_FASTOPEN;
       }
       break;
     case 't':
@@ -1444,6 +1450,21 @@ int parse_config(const char *opt, const char *optarg,
     mod_config()->errorlog_syslog = util::strieq(optarg, "yes");
 
     return 0;
+  case SHRPX_OPTID_FASTOPEN: {
+    int n;
+    if (parse_int(&n, opt, optarg) != 0) {
+      return -1;
+    }
+
+    if (n < 0) {
+      LOG(ERROR) << opt << ": " << optarg << " is not allowed";
+      return -1;
+    }
+
+    mod_config()->fastopen = n;
+
+    return 0;
+  }  
   case SHRPX_OPTID_BACKEND_KEEP_ALIVE_TIMEOUT:
     return parse_duration(&mod_config()->downstream_idle_read_timeout, opt,
                           optarg);

@@ -107,6 +107,19 @@ namespace shrpx {
 // path.
 #define ENV_UNIX_PATH "NGHTTP2_UNIX_PATH"
 
+#ifndef _KERNEL_FASTOPEN
+#define _KERNEL_FASTOPEN
+// conditional define for TCP_FASTOPEN mostly on ubuntu
+#ifndef TCP_FASTOPEN
+#define TCP_FASTOPEN   23
+#endif
+
+// conditional define for SOL_TCP mostly on ubuntu
+#ifndef SOL_TCP
+#define SOL_TCP 6
+#endif
+#endif
+
 struct SignalServer {
   SignalServer()
       : ipc_fd{{-1, -1}}, server_fd(-1), server_fd6(-1),
@@ -605,6 +618,14 @@ int create_tcp_server_socket(int family) {
       continue;
     }
 
+    if(get_config()->fastopen > 0) {
+      val = get_config()->fastopen;
+      if (setsockopt(fd, SOL_TCP, TCP_FASTOPEN, &val,
+                   static_cast<socklen_t>(sizeof(val))) == -1) {
+        LOG(WARN) << "Failed to set TCP_FASTOPEN option to listener socket";
+      }
+    }
+
     if (listen(fd, get_config()->backlog) == -1) {
       auto error = errno;
       LOG(WARN) << "listen() syscall failed, error=" << error;
@@ -1009,6 +1030,7 @@ void fill_default_config() {
   mod_config()->tls_ticket_key_memcached_max_retry = 3;
   mod_config()->tls_ticket_key_memcached_max_fail = 2;
   mod_config()->tls_ticket_key_memcached_interval = 10_min;
+  mod_config()->fastopen = 0;
 }
 } // namespace
 
@@ -1217,7 +1239,14 @@ Performance:
               Default: )"
       << util::utos_with_unit(get_config()->downstream_response_buffer_size)
       << R"(
-
+  --fastopen=<N>
+              enables “TCP Fast Open” for the listening socket 
+              and limits the maximum length for the queue of connections 
+              that have not yet completed the three-way handshake.
+              If value is 0 then fast open is disabled.
+              Default: )"
+      << util::utos_with_unit(get_config()->fastopen)
+      << R"(
 Timeout:
   --frontend-http2-read-timeout=<DURATION>
               Specify  read  timeout  for  HTTP/2  and  SPDY  frontend
@@ -1775,6 +1804,7 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_REQUEST_PHASE_FILE, required_argument, &flag, 91},
         {SHRPX_OPT_RESPONSE_PHASE_FILE, required_argument, &flag, 92},
         {SHRPX_OPT_ACCEPT_PROXY_PROTOCOL, no_argument, &flag, 93},
+        {SHRPX_OPT_FASTOPEN, required_argument, &flag, 94},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -2179,6 +2209,10 @@ int main(int argc, char **argv) {
       case 93:
         // --accept-proxy-protocol
         cmdcfgs.emplace_back(SHRPX_OPT_ACCEPT_PROXY_PROTOCOL, "yes");
+        break;
+      case 94:
+        // --fastopen
+        cmdcfgs.emplace_back(SHRPX_OPT_FASTOPEN, optarg);
         break;
       default:
         break;

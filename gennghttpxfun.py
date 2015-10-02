@@ -102,6 +102,7 @@ OPTIONS = [
     "response-phase-file",
     "accept-proxy-protocol",
     "conf",
+    "fastopen",
 ]
 
 LOGVARS = [
