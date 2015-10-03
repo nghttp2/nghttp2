@@ -689,8 +689,10 @@ int send_data_callback(nghttp2_session *session, nghttp2_frame *frame,
     return NGHTTP2_ERR_CALLBACK_FAILURE;
   }
 
-  if (nwrite > 0) {
-    downstream->add_response_sent_bodylen(nwrite);
+  // We have to add length here, so that we can log this amount of
+  // data transferred.
+  if (length > 0) {
+    downstream->add_response_sent_bodylen(length);
   }
 
   return nwrite < length ? NGHTTP2_ERR_PAUSE : 0;
@@ -948,15 +950,10 @@ int Http2Upstream::on_write() {
       wb_.write(nwrite);
       data_pendinglen_ -= nwrite;
 
-      if (pending_data_downstream_) {
-        if (nwrite > 0 &&
-            pending_data_downstream_->resume_read(SHRPX_NO_BUFFER, nwrite) !=
-                0) {
+      if (pending_data_downstream_ && nwrite > 0) {
+        if (pending_data_downstream_->resume_read(SHRPX_NO_BUFFER, nwrite) !=
+            0) {
           return -1;
-        }
-
-        if (nwrite > 0) {
-          pending_data_downstream_->add_response_sent_bodylen(nwrite);
         }
       }
 
