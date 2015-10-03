@@ -1199,18 +1199,22 @@ typedef ssize_t (*nghttp2_send_callback)(nghttp2_session *session,
  * The application has to send complete DATA frame in this callback.
  * If all data were written successfully, return 0.
  *
- * If it cannot send it all, just return
+ * If it cannot send any data at all, just return
  * :enum:`NGHTTP2_ERR_WOULDBLOCK`; the library will call this callback
  * with the same parameters later (It is recommended to send complete
  * DATA frame at once in this function to deal with error; if partial
  * frame data has already sent, it is impossible to send another data
- * in that state, and all we can do is tear down connection).  If
- * application decided to reset this stream, return
- * :enum:`NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE`, then the library
- * will send RST_STREAM with INTERNAL_ERROR as error code.  The
- * application can also return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`,
- * which will result in connection closure.  Returning any other value
- * is treated as :enum:`NGHTTP2_ERR_CALLBACK_FAILURE` is returned.
+ * in that state, and all we can do is tear down connection).  When
+ * data is fully processed, but application wants to make
+ * `nghttp2_session_mem_send()` or `nghttp2_session_send()` return
+ * immediately without processing next frames, return
+ * :enum:`NGHTTP2_ERR_PAUSE`.  If application decided to reset this
+ * stream, return :enum:`NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE`, then
+ * the library will send RST_STREAM with INTERNAL_ERROR as error code.
+ * The application can also return
+ * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`, which will result in
+ * connection closure.  Returning any other value is treated as
+ * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE` is returned.
  */
 typedef int (*nghttp2_send_data_callback)(nghttp2_session *session,
                                           nghttp2_frame *frame,
