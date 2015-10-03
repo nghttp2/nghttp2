@@ -71,11 +71,7 @@ template <typename T> struct Pool {
     return pool.get();
   }
   void recycle(T *m) {
-    if (freelist) {
-      m->next = freelist;
-    } else {
-      m->next = nullptr;
-    }
+    m->next = freelist;
     freelist = m;
   }
   void clear() {
