@@ -36,7 +36,7 @@
 #include "shrpx_upstream.h"
 #include "shrpx_downstream_queue.h"
 #include "memchunk.h"
-#include "util.h"
+#include "buffer.h"
 
 namespace shrpx {
 
@@ -78,6 +78,9 @@ public:
                          size_t bodylen);
   virtual int initiate_push(Downstream *downstream, const char *uri,
                             size_t len);
+  virtual int response_riovec(struct iovec *iov, int iovcnt) const;
+  virtual void response_drain(size_t n);
+  virtual bool response_empty() const;
 
   bool get_flow_control() const;
 
@@ -86,7 +89,12 @@ public:
   void start_downstream(Downstream *downstream);
   void initiate_downstream(Downstream *downstream);
 
+  using WriteBuffer = Buffer<32_k>;
+
+  WriteBuffer *get_response_buf();
+
 private:
+  WriteBuffer wb_;
   DownstreamQueue downstream_queue_;
   ClientHandler *handler_;
   spdylay_session *session_;

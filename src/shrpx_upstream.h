@@ -71,9 +71,11 @@ public:
   virtual int initiate_push(Downstream *downstream, const char *uri,
                             size_t len) = 0;
 
-  // Returns response buffer of Downstream directly.  This exists for
-  // optimization purpose for cleartext HttpsUpstream.
-  virtual DefaultMemchunks *get_response_buf() const { return nullptr; }
+  // Fills response data in |iov| whose capacity is |iovcnt|.  Returns
+  // the number of iovs filled.
+  virtual int response_riovec(struct iovec *iov, int iovcnt) const = 0;
+  virtual void response_drain(size_t n) = 0;
+  virtual bool response_empty() const = 0;
 };
 
 } // namespace shrpx

@@ -135,68 +135,30 @@ int ClientHandler::read_clear() {
 }
 
 int ClientHandler::write_clear() {
+  std::array<iovec, 2> iov;
+
   ev_timer_again(conn_.loop, &conn_.rt);
 
   for (;;) {
-    if (wb_.rleft() > 0) {
-      auto nwrite = conn_.write_clear(wb_.pos, wb_.rleft());
-      if (nwrite == 0) {
-        return 0;
-      }
-      if (nwrite < 0) {
-        return -1;
-      }
-      wb_.drain(nwrite);
-      continue;
-    }
-    wb_.reset();
     if (on_write() != 0) {
       return -1;
     }
-    if (wb_.rleft() == 0) {
+
+    auto iovcnt = upstream_->response_riovec(iov.data(), iov.size());
+    if (iovcnt == 0) {
       break;
     }
-  }
 
-  conn_.wlimit.stopw();
-  ev_timer_stop(conn_.loop, &conn_.wt);
-
-  return 0;
-}
-
-int ClientHandler::writev_clear() {
-  ev_timer_again(conn_.loop, &conn_.rt);
-
-  auto buf = upstream_->get_response_buf();
-  if (!buf) {
-    conn_.wlimit.stopw();
-    ev_timer_stop(conn_.loop, &conn_.wt);
-
-    return 0;
-  }
-
-  for (;;) {
-    if (buf->rleft() > 0) {
-      std::array<iovec, 2> iov;
-      auto iovcnt = buf->riovec(iov.data(), iov.size());
-      auto nwrite = conn_.writev_clear(iov.data(), iovcnt);
-      if (nwrite == 0) {
-        return 0;
-      }
-      if (nwrite < 0) {
-        return -1;
-      }
-      buf->drain(nwrite);
-      continue;
-    }
-    if (on_write() != 0) {
+    auto nwrite = conn_.writev_clear(iov.data(), iovcnt);
+    if (nwrite < 0) {
       return -1;
     }
-    // buf may be destroyed inside on_write()
-    buf = upstream_->get_response_buf();
-    if (!buf || buf->rleft() == 0) {
-      break;
+
+    if (nwrite == 0) {
+      return 0;
     }
+
+    upstream_->response_drain(nwrite);
   }
 
   conn_.wlimit.stopw();
@@ -229,12 +191,7 @@ int ClientHandler::tls_handshake() {
   }
 
   read_ = &ClientHandler::read_tls;
-
-  if (alpn_ == "http/1.1") {
-    write_ = &ClientHandler::writev_tls;
-  } else {
-    write_ = &ClientHandler::write_tls;
-  }
+  write_ = &ClientHandler::write_tls;
 
   return 0;
 }
@@ -271,85 +228,33 @@ int ClientHandler::read_tls() {
 }
 
 int ClientHandler::write_tls() {
+  struct iovec iov;
+
   ev_timer_again(conn_.loop, &conn_.rt);
 
   ERR_clear_error();
 
   for (;;) {
-    if (wb_.rleft() > 0) {
-      auto nwrite = conn_.write_tls(wb_.pos, wb_.rleft());
-
-      if (nwrite == 0) {
-        return 0;
-      }
-
-      if (nwrite < 0) {
-        return -1;
-      }
-
-      wb_.drain(nwrite);
-
-      continue;
-    }
-    wb_.reset();
     if (on_write() != 0) {
       return -1;
     }
-    if (wb_.rleft() == 0) {
+
+    auto iovcnt = upstream_->response_riovec(&iov, 1);
+    if (iovcnt == 0) {
       conn_.start_tls_write_idle();
       break;
     }
-  }
 
-  conn_.wlimit.stopw();
-  ev_timer_stop(conn_.loop, &conn_.wt);
-
-  return 0;
-}
-
-int ClientHandler::writev_tls() {
-  ev_timer_again(conn_.loop, &conn_.rt);
-
-  auto buf = upstream_->get_response_buf();
-  if (!buf) {
-    conn_.wlimit.stopw();
-    ev_timer_stop(conn_.loop, &conn_.wt);
-
-    return 0;
-  }
-
-  ERR_clear_error();
-
-  for (;;) {
-    if (buf->rleft() > 0) {
-      iovec iov;
-      auto iovcnt = buf->riovec(&iov, 1);
-      if (iovcnt == 0) {
-        return 0;
-      }
-
-      auto nwrite = conn_.write_tls(iov.iov_base, iov.iov_len);
-
-      if (nwrite == 0) {
-        return 0;
-      }
-
-      if (nwrite < 0) {
-        return -1;
-      }
-
-      buf->drain(nwrite);
-
-      continue;
-    }
-    if (on_write() != 0) {
+    auto nwrite = conn_.write_tls(iov.iov_base, iov.iov_len);
+    if (nwrite < 0) {
       return -1;
     }
-    buf = upstream_->get_response_buf();
-    if (!buf || buf->rleft() == 0) {
-      conn_.start_tls_write_idle();
-      break;
+
+    if (nwrite == 0) {
+      return 0;
     }
+
+    upstream_->response_drain(nwrite);
   }
 
   conn_.wlimit.stopw();
@@ -374,9 +279,7 @@ int ClientHandler::upstream_write() {
     return -1;
   }
 
-  if (get_should_close_after_write() && wb_.rleft() == 0 &&
-      (!upstream_->get_response_buf() ||
-       upstream_->get_response_buf()->rleft() == 0)) {
+  if (get_should_close_after_write() && upstream_->response_empty()) {
     return -1;
   }
 
@@ -506,7 +409,7 @@ void ClientHandler::setup_upstream_io_callback() {
     upstream_ = make_unique<HttpsUpstream>(this);
     alpn_ = "http/1.1";
     read_ = &ClientHandler::read_clear;
-    write_ = &ClientHandler::writev_clear;
+    write_ = &ClientHandler::write_clear;
     on_read_ = &ClientHandler::upstream_http1_connhd_read;
     on_write_ = &ClientHandler::upstream_noop;
   }
@@ -818,7 +721,6 @@ int ClientHandler::perform_http2_upgrade(HttpsUpstream *http) {
   }
   // http pointer is now owned by upstream.
   upstream_.release();
-  upstream_ = std::move(upstream);
   // TODO We might get other version id in HTTP2-settings, if we
   // support aliasing for h2, but we just use library default for now.
   alpn_ = NGHTTP2_CLEARTEXT_PROTO_VERSION_ID;
@@ -829,7 +731,9 @@ int ClientHandler::perform_http2_upgrade(HttpsUpstream *http) {
                       "Connection: Upgrade\r\n"
                       "Upgrade: " NGHTTP2_CLEARTEXT_PROTO_VERSION_ID "\r\n"
                       "\r\n";
-  wb_.write(res, sizeof(res) - 1);
+  upstream->get_response_buf()->write(res, sizeof(res) - 1);
+  upstream_ = std::move(upstream);
+
   signal_write();
   return 0;
 }
@@ -931,8 +835,6 @@ void ClientHandler::write_accesslog(int major, int minor, unsigned int status,
                          get_config()->port, get_config()->pid,
                      });
 }
-
-ClientHandler::WriteBuf *ClientHandler::get_wb() { return &wb_; }
 
 ClientHandler::ReadBuf *ClientHandler::get_rb() { return &rb_; }
 

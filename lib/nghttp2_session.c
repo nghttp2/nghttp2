@@ -2610,12 +2610,15 @@ static int session_call_send_data(nghttp2_session *session,
                                              &aux_data->data_prd.source,
                                              session->user_data);
 
-  if (rv == 0 || rv == NGHTTP2_ERR_WOULDBLOCK ||
-      rv == NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE) {
+  switch (rv) {
+  case 0:
+  case NGHTTP2_ERR_WOULDBLOCK:
+  case NGHTTP2_ERR_PAUSE:
+  case NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE:
     return rv;
+  default:
+    return NGHTTP2_ERR_CALLBACK_FAILURE;
   }
-
-  return NGHTTP2_ERR_CALLBACK_FAILURE;
 }
 
 static ssize_t nghttp2_session_mem_send_internal(nghttp2_session *session,
@@ -2790,6 +2793,7 @@ static ssize_t nghttp2_session_mem_send_internal(nghttp2_session *session,
     case NGHTTP2_OB_SEND_NO_COPY: {
       nghttp2_stream *stream;
       nghttp2_frame *frame;
+      int pause;
 
       DEBUGF(fprintf(stderr, "send: no copy DATA\n"));
 
@@ -2833,7 +2837,7 @@ static ssize_t nghttp2_session_mem_send_internal(nghttp2_session *session,
         return 0;
       }
 
-      assert(rv == 0);
+      pause = (rv == NGHTTP2_ERR_PAUSE);
 
       rv = session_after_frame_sent1(session);
       if (rv < 0) {
@@ -2847,6 +2851,10 @@ static ssize_t nghttp2_session_mem_send_internal(nghttp2_session *session,
       }
 
       /* We have already adjusted the next state */
+
+      if (pause) {
+        return 0;
+      }
 
       break;
     }

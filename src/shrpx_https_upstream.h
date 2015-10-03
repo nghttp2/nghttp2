@@ -78,7 +78,9 @@ public:
                          size_t bodylen);
   virtual int initiate_push(Downstream *downstream, const char *uri,
                             size_t len);
-  virtual DefaultMemchunks *get_response_buf() const;
+  virtual int response_riovec(struct iovec *iov, int iovcnt) const;
+  virtual void response_drain(size_t n);
+  virtual bool response_empty() const;
 
   void reset_current_header_length();
   void log_response_headers(DefaultMemchunks *buf) const;

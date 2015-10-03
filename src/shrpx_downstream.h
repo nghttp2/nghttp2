@@ -342,6 +342,8 @@ public:
   // Returns true if downstream_connection can be detached and reused.
   bool can_detach_downstream_connection() const;
 
+  DefaultMemchunks pop_response_buf();
+
   enum {
     EVENT_ERROR = 0x1,
     EVENT_TIMEOUT = 0x2,
