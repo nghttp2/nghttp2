@@ -1241,4 +1241,8 @@ bool Downstream::can_detach_downstream_connection() const {
          !response_connection_close_;
 }
 
+DefaultMemchunks Downstream::pop_response_buf() {
+  return std::move(response_buf_);
+}
+
 } // namespace shrpx

@@ -87,8 +87,6 @@ public:
   virtual void response_drain(size_t n);
   virtual bool response_empty() const;
 
-  void response_write(void *data, size_t len);
-
   bool get_flow_control() const;
   // Perform HTTP/2 upgrade from |upstream|. On success, this object
   // takes ownership of the |upstream|. This function returns 0 if it
@@ -114,6 +112,10 @@ public:
 
   using WriteBuffer = Buffer<32_k>;
 
+  WriteBuffer *get_response_buf();
+
+  void set_pending_data_downstream(Downstream *downstream, size_t n);
+
 private:
   WriteBuffer wb_;
   std::unique_ptr<HttpsUpstream> pre_upstream_;
@@ -121,9 +123,26 @@ private:
   ev_timer settings_timer_;
   ev_timer shutdown_timer_;
   ev_prepare prep_;
+  // A response buffer used to belong to Downstream object.  This is
+  // moved here when response is partially written to wb_ in
+  // send_data_callback, but before writing them all, Downstream
+  // object was destroyed.  On destruction of Downstream,
+  // pending_data_downstream_ becomes nullptr.
+  DefaultMemchunks pending_response_buf_;
+  // Downstream object whose DATA frame payload is partillay written
+  // to wb_ in send_data_callback.  This field exists to keep track of
+  // its lifetime.  When it is destroyed, its response buffer is
+  // transferred to pending_response_buf_, and this field becomes
+  // nullptr.
+  Downstream *pending_data_downstream_;
   ClientHandler *handler_;
   nghttp2_session *session_;
   const uint8_t *data_pending_;
+  // The length of lending data to be written into wb_.  If
+  // data_pending_ is not nullptr, data_pending_ points to the data to
+  // write.  Otherwise, pending_data_downstream_->get_response_buf()
+  // if pending_data_downstream_ is not nullptr, or
+  // pending_response_buf_ holds data to write.
   size_t data_pendinglen_;
   bool flow_control_;
   bool shutdown_handled_;

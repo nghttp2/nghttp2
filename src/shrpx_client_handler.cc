@@ -731,7 +731,7 @@ int ClientHandler::perform_http2_upgrade(HttpsUpstream *http) {
                       "Connection: Upgrade\r\n"
                       "Upgrade: " NGHTTP2_CLEARTEXT_PROTO_VERSION_ID "\r\n"
                       "\r\n";
-  upstream->response_write(res, sizeof(res) - 1);
+  upstream->get_response_buf()->write(res, sizeof(res) - 1);
   upstream_ = std::move(upstream);
 
   signal_write();
