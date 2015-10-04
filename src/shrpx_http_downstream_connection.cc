@@ -455,7 +455,8 @@ void HttpDownstreamConnection::pause_read(IOCtrlReason reason) {
 
 int HttpDownstreamConnection::resume_read(IOCtrlReason reason,
                                           size_t consumed) {
-  if (downstream_->get_response_buf()->rleft() == 0) {
+  if (downstream_->get_response_buf()->rleft() <=
+      get_config()->downstream_request_buffer_size / 2) {
     ioctrl_.resume_read(reason);
   }
 

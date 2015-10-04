@@ -648,10 +648,15 @@ int on_frame_not_send_callback(nghttp2_session *session,
 } // namespace
 
 void Http2Upstream::set_pending_data_downstream(Downstream *downstream,
-                                                size_t n) {
+                                                size_t n, size_t padlen) {
   pending_data_downstream_ = downstream;
   data_pendinglen_ = n;
+  padding_pendinglen_ = padlen;
 }
+
+namespace {
+constexpr auto PADDING = std::array<uint8_t, 256>{};
+} // namespace
 
 namespace {
 int send_data_callback(nghttp2_session *session, nghttp2_frame *frame,
@@ -663,12 +668,26 @@ int send_data_callback(nghttp2_session *session, nghttp2_frame *frame,
 
   auto wb = upstream->get_response_buf();
 
-  if (wb->wleft() < 9) {
-    return NGHTTP2_ERR_WOULDBLOCK;
+  size_t padlen;
+
+  if (frame->data.padlen == 0) {
+    if (wb->wleft() < 9) {
+      return NGHTTP2_ERR_WOULDBLOCK;
+    }
+
+    wb->write(framehd, 9);
+    padlen = 0;
+  } else {
+    if (wb->wleft() < 10) {
+      return NGHTTP2_ERR_WOULDBLOCK;
+    }
+
+    wb->write(framehd, 9);
+    padlen = frame->data.padlen - 1;
+    *wb->last++ = padlen;
   }
 
-  wb->write(framehd, 9);
-
+  size_t npadwrite = 0;
   auto nwrite = std::min(length, wb->wleft());
   body->remove(wb->last, nwrite);
   wb->write(nwrite);
@@ -677,8 +696,16 @@ int send_data_callback(nghttp2_session *session, nghttp2_frame *frame,
     // libnghttp2 that we wrote everything, so downstream could be
     // deleted.  We handle this situation in
     // Http2Upstream::remove_downstream().
-    upstream->set_pending_data_downstream(downstream, length - nwrite);
+    upstream->set_pending_data_downstream(downstream, length - nwrite, padlen);
+  } else if (padlen > 0) {
+    npadwrite = std::min(padlen, wb->wleft());
+    wb->write(PADDING.data(), npadwrite);
+
+    if (npadwrite < padlen) {
+      upstream->set_pending_data_downstream(nullptr, 0, padlen - npadwrite);
+    }
   }
+
   if (wb->rleft() == 0) {
     downstream->disable_upstream_wtimer();
   } else {
@@ -695,7 +722,7 @@ int send_data_callback(nghttp2_session *session, nghttp2_frame *frame,
     downstream->add_response_sent_bodylen(length);
   }
 
-  return nwrite < length ? NGHTTP2_ERR_PAUSE : 0;
+  return (nwrite < length || npadwrite < padlen) ? NGHTTP2_ERR_PAUSE : 0;
 }
 } // namespace
 
@@ -821,7 +848,8 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
           !get_config()->http2_proxy),
       pending_response_buf_(handler->get_worker()->get_mcpool()),
       pending_data_downstream_(nullptr), handler_(handler), session_(nullptr),
-      data_pending_(nullptr), data_pendinglen_(0), shutdown_handled_(false) {
+      data_pending_(nullptr), data_pendinglen_(0), padding_pendinglen_(0),
+      shutdown_handled_(false) {
 
   int rv;
 
@@ -968,6 +996,16 @@ int Http2Upstream::on_write() {
         // response data.
         body->reset();
       }
+    }
+  }
+
+  if (padding_pendinglen_ > 0) {
+    auto nwrite = std::min(wb_.wleft(), padding_pendinglen_);
+    wb_.write(PADDING.data(), nwrite);
+    padding_pendinglen_ -= nwrite;
+
+    if (padding_pendinglen_ > 0) {
+      return 0;
     }
   }
 

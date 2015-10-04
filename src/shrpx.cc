@@ -972,10 +972,6 @@ void fill_default_config() {
   mod_config()->padding = 0;
   mod_config()->worker_frontend_connections = 0;
 
-  mod_config()->http2_upstream_callbacks = create_http2_upstream_callbacks();
-  mod_config()->http2_downstream_callbacks =
-      create_http2_downstream_callbacks();
-
   nghttp2_option_new(&mod_config()->http2_option);
   nghttp2_option_set_no_auto_window_update(get_config()->http2_option, 1);
   nghttp2_option_set_no_recv_client_magic(get_config()->http2_option, 1);
@@ -2502,6 +2498,10 @@ int main(int argc, char **argv) {
     }
     reset_timer();
   }
+
+  mod_config()->http2_upstream_callbacks = create_http2_upstream_callbacks();
+  mod_config()->http2_downstream_callbacks =
+      create_http2_downstream_callbacks();
 
   if (event_loop() != 0) {
     return -1;

@@ -114,7 +114,8 @@ public:
 
   WriteBuffer *get_response_buf();
 
-  void set_pending_data_downstream(Downstream *downstream, size_t n);
+  void set_pending_data_downstream(Downstream *downstream, size_t n,
+                                   size_t padlen);
 
 private:
   WriteBuffer wb_;
@@ -144,6 +145,7 @@ private:
   // if pending_data_downstream_ is not nullptr, or
   // pending_response_buf_ holds data to write.
   size_t data_pendinglen_;
+  size_t padding_pendinglen_;
   bool flow_control_;
   bool shutdown_handled_;
 };
