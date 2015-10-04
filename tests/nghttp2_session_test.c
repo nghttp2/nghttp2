@@ -36,8 +36,6 @@
 #include "nghttp2_test_helper.h"
 #include "nghttp2_priority_spec.h"
 
-extern int nghttp2_enable_strict_preface;
-
 #define OB_CTRL(ITEM) nghttp2_outbound_item_get_ctrl_frame(ITEM)
 #define OB_CTRL_TYPE(ITEM) nghttp2_outbound_item_get_ctrl_frame_type(ITEM)
 #define OB_DATA(ITEM) nghttp2_outbound_item_get_data_frame(ITEM)

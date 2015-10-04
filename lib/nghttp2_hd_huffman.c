@@ -30,9 +30,6 @@
 
 #include "nghttp2_hd.h"
 
-extern const nghttp2_huff_sym huff_sym_table[];
-extern const nghttp2_huff_decode huff_decode_table[][16];
-
 /*
  * Encodes huffman code |sym| into |*dest_ptr|, whose least |rembits|
  * bits are not filled yet.  The |rembits| must be in range [1, 8],
