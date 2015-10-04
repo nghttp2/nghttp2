@@ -1191,10 +1191,10 @@ typedef ssize_t (*nghttp2_send_callback)(nghttp2_session *session,
  * :type:`nghttp2_data_source_read_callback`.
  *
  * The application first must send frame header |framehd| of length 9
- * bytes.  If ``frame->padlen > 0``, send 1 byte of value
- * ``frame->padlen - 1``.  Then send exactly |length| bytes of
- * application data.  Finally, if ``frame->padlen > 0``, send
- * ``frame->padlen - 1`` bytes of zero (they are padding).
+ * bytes.  If ``frame->data.padlen > 0``, send 1 byte of value
+ * ``frame->data.padlen - 1``.  Then send exactly |length| bytes of
+ * application data.  Finally, if ``frame->data.padlen > 1``, send
+ * ``frame->data.padlen - 1`` bytes of zero as padding.
  *
  * The application has to send complete DATA frame in this callback.
  * If all data were written successfully, return 0.
