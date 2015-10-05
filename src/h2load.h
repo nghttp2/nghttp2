@@ -81,6 +81,7 @@ struct Config {
   size_t connection_window_bits;
   // rate at which connections should be made
   size_t rate;
+  ev_tstamp rate_period;
   // number of connections made
   size_t nconns;
   // amount of time to wait for activity on a given connection
