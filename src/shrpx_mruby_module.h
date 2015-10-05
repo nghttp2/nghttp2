@@ -39,7 +39,7 @@ class Downstream;
 
 namespace mruby {
 
-void init_module(mrb_state *mrb);
+mrb_value init_module(mrb_state *mrb);
 
 void delete_downstream_from_module(mrb_state *mrb, Downstream *downstream);
 

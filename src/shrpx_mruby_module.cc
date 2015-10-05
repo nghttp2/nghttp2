@@ -41,36 +41,21 @@ namespace shrpx {
 namespace mruby {
 
 namespace {
-mrb_value run(mrb_state *mrb, mrb_value self) {
-  mrb_value b;
-  mrb_get_args(mrb, "&", &b);
-
-  if (mrb_nil_p(b)) {
-    return mrb_nil_value();
-  }
-
+mrb_value create_env(mrb_state *mrb) {
   auto module = mrb_module_get(mrb, "Nghttpx");
 
-  auto env_sym = mrb_intern_lit(mrb, "env");
-  auto env = mrb_obj_iv_get(mrb, reinterpret_cast<RObject *>(module), env_sym);
+  auto env_class = mrb_class_get_under(mrb, module, "Env");
+  auto request_class = mrb_class_get_under(mrb, module, "Request");
+  auto response_class = mrb_class_get_under(mrb, module, "Response");
 
-  if (mrb_nil_p(env)) {
-    auto env_class = mrb_class_get_under(mrb, module, "Env");
-    auto request_class = mrb_class_get_under(mrb, module, "Request");
-    auto response_class = mrb_class_get_under(mrb, module, "Response");
+  auto env = mrb_obj_new(mrb, env_class, 0, nullptr);
+  auto req = mrb_obj_new(mrb, request_class, 0, nullptr);
+  auto resp = mrb_obj_new(mrb, response_class, 0, nullptr);
 
-    env = mrb_obj_new(mrb, env_class, 0, nullptr);
-    auto req = mrb_obj_new(mrb, request_class, 0, nullptr);
-    auto resp = mrb_obj_new(mrb, response_class, 0, nullptr);
+  mrb_iv_set(mrb, env, mrb_intern_lit(mrb, "req"), req);
+  mrb_iv_set(mrb, env, mrb_intern_lit(mrb, "resp"), resp);
 
-    mrb_iv_set(mrb, env, mrb_intern_lit(mrb, "req"), req);
-    mrb_iv_set(mrb, env, mrb_intern_lit(mrb, "resp"), resp);
-
-    mrb_obj_iv_set(mrb, reinterpret_cast<RObject *>(module), env_sym, env);
-  }
-
-  std::array<mrb_value, 1> args{{env}};
-  return mrb_yield_argv(mrb, b, args.size(), args.data());
+  return env;
 }
 } // namespace
 
@@ -85,11 +70,9 @@ void delete_downstream_from_module(mrb_state *mrb, Downstream *downstream) {
   mrb_iv_remove(mrb, env, intern_ptr(mrb, downstream));
 }
 
-void init_module(mrb_state *mrb) {
+mrb_value init_module(mrb_state *mrb) {
   auto module = mrb_define_module(mrb, "Nghttpx");
 
-  mrb_define_class_method(mrb, module, "run", run,
-                          MRB_ARGS_REQ(1) | MRB_ARGS_BLOCK());
   mrb_define_const(mrb, module, "REQUEST_PHASE",
                    mrb_fixnum_value(PHASE_REQUEST));
   mrb_define_const(mrb, module, "RESPONSE_PHASE",
@@ -98,6 +81,8 @@ void init_module(mrb_state *mrb) {
   init_env_class(mrb, module);
   init_request_class(mrb, module);
   init_response_class(mrb, module);
+
+  return create_env(mrb);
 }
 
 mrb_value create_headers_hash(mrb_state *mrb, const Headers &headers) {

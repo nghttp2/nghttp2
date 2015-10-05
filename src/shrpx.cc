@@ -1801,8 +1801,7 @@ int main(int argc, char **argv) {
          89},
         {SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_MAX_FAIL, required_argument, &flag,
          90},
-        {SHRPX_OPT_REQUEST_PHASE_FILE, required_argument, &flag, 91},
-        {SHRPX_OPT_RESPONSE_PHASE_FILE, required_argument, &flag, 92},
+        {SHRPX_OPT_MRUBY_FILE, required_argument, &flag, 91},
         {SHRPX_OPT_ACCEPT_PROXY_PROTOCOL, no_argument, &flag, 93},
         {SHRPX_OPT_FASTOPEN, required_argument, &flag, 94},
         {nullptr, 0, nullptr, 0}};
@@ -2199,12 +2198,8 @@ int main(int argc, char **argv) {
                              optarg);
         break;
       case 91:
-        // --request-phase-file
-        cmdcfgs.emplace_back(SHRPX_OPT_REQUEST_PHASE_FILE, optarg);
-        break;
-      case 92:
-        // --response-phase-file
-        cmdcfgs.emplace_back(SHRPX_OPT_RESPONSE_PHASE_FILE, optarg);
+        // --mruby-file
+        cmdcfgs.emplace_back(SHRPX_OPT_MRUBY_FILE, optarg);
         break;
       case 93:
         // --accept-proxy-protocol

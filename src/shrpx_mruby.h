@@ -40,21 +40,20 @@ namespace mruby {
 
 class MRubyContext {
 public:
-  MRubyContext(mrb_state *mrb, RProc *on_request_proc, RProc *on_response_proc);
+  MRubyContext(mrb_state *mrb, mrb_value app, mrb_value env);
   ~MRubyContext();
 
   int run_on_request_proc(Downstream *downstream);
   int run_on_response_proc(Downstream *downstream);
 
-  int run_request_proc(Downstream *downstream, RProc *proc, int phase);
+  int run_app(Downstream *downstream, int phase);
 
   void delete_downstream(Downstream *downstream);
 
 private:
   mrb_state *mrb_;
-  RProc *on_request_proc_;
-  RProc *on_response_proc_;
-  bool running_;
+  mrb_value app_;
+  mrb_value env_;
 };
 
 enum {
@@ -72,7 +71,7 @@ struct MRubyAssocData {
 
 RProc *compile(mrb_state *mrb, const char *filename);
 
-std::unique_ptr<MRubyContext> create_mruby_context();
+std::unique_ptr<MRubyContext> create_mruby_context(const char *filename);
 
 // Return interned |ptr|.
 mrb_sym intern_ptr(mrb_state *mrb, void *ptr);
