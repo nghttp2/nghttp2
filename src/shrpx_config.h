@@ -187,6 +187,7 @@ constexpr char SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_MAX_FAIL[] =
 constexpr char SHRPX_OPT_REQUEST_PHASE_FILE[] = "request-phase-file";
 constexpr char SHRPX_OPT_RESPONSE_PHASE_FILE[] = "response-phase-file";
 constexpr char SHRPX_OPT_ACCEPT_PROXY_PROTOCOL[] = "accept-proxy-protocol";
+constexpr char SHRPX_OPT_FASTOPEN[] = "fastopen";
 
 union sockaddr_union {
   sockaddr_storage storage;
@@ -377,6 +378,7 @@ struct Config {
   int syslog_facility;
   int backlog;
   int argc;
+  int fastopen;
   uid_t uid;
   gid_t gid;
   pid_t pid;
