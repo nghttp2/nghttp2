@@ -74,9 +74,9 @@ namespace h2load {
 Config::Config()
     : data_length(-1), addrs(nullptr), nreqs(1), nclients(1), nthreads(1),
       max_concurrent_streams(-1), window_bits(30), connection_window_bits(30),
-      rate(0), nconns(0), conn_active_timeout(0), conn_inactivity_timeout(0),
-      no_tls_proto(PROTO_HTTP2), data_fd(-1), port(0), default_port(0),
-      verbose(false), timing_script(false) {}
+      rate(0), rate_period(1.0), nconns(0), conn_active_timeout(0),
+      conn_inactivity_timeout(0), no_tls_proto(PROTO_HTTP2), data_fd(-1),
+      port(0), default_port(0), verbose(false), timing_script(false) {}
 
 Config::~Config() {
   freeaddrinfo(addrs);
@@ -136,8 +136,8 @@ void readcb(struct ev_loop *loop, ev_io *w, int revents) {
 } // namespace
 
 namespace {
-// Called every second when rate mode is being used
-void second_timeout_w_cb(struct ev_loop *loop, ev_timer *w, int revents) {
+// Called every rate_period when rate mode is being used
+void rate_period_timeout_w_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto worker = static_cast<Worker *>(w->data);
   auto nclients_per_second = worker->rate;
   auto conns_remaining = worker->nclients - worker->nconns_made;
@@ -938,8 +938,9 @@ Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
   auto nreqs_per_client = req_todo / nclients;
   auto nreqs_rem = req_todo % nclients;
 
-  // create timer that will go off every second
-  ev_timer_init(&timeout_watcher, second_timeout_w_cb, 0., 1.);
+  // create timer that will go off every rate_period
+  ev_timer_init(&timeout_watcher, rate_period_timeout_w_cb, 0.,
+                config->rate_period);
   timeout_watcher.data = this;
 
   if (!config->is_rate_mode()) {
@@ -974,8 +975,8 @@ void Worker::run() {
   } else {
     ev_timer_again(loop, &timeout_watcher);
 
-    // call callback so that we don't waste the first second
-    second_timeout_w_cb(loop, &timeout_watcher, 0);
+    // call callback so that we don't waste the first rate_period
+    rate_period_timeout_w_cb(loop, &timeout_watcher, 0);
   }
   ev_run(loop, 0);
 }
@@ -1345,9 +1346,16 @@ Options:
               Specifies  the  fixed  rate  at  which  connections  are
               created.   The   rate  must   be  a   positive  integer,
               representing the  number of  connections to be  made per
-              second.  When the rate is 0,  the program will run as it
-              normally does, creating connections at whatever variable
-              rate it wants.  The default value for this option is 0.
+              rate period. When the rate is 0, the program will run as
+              it  normally  does,  creating  connections  at  whatever
+              variable  rate  it  wants.  The  default  value for this
+              option is 0.
+  --rate-period=<N>
+              Specifies the time period  between creating connections.
+              The  period  must be a positive  number  greater than or
+              equal to 1.0,  representing the length of  the period in
+              seconds.  This option is  ignored if the rate  option is
+              not used. The default value for this option is 1.0.
   -C, --num-conns=<N>
               Specifies  the total  number of  connections to  create.
               The  total  number of  connections  must  be a  positive
@@ -1444,6 +1452,7 @@ int main(int argc, char **argv) {
         {"timing-script-file", required_argument, &flag, 3},
         {"base-uri", required_argument, nullptr, 'B'},
         {"npn-list", required_argument, &flag, 4},
+        {"rate-period", required_argument, &flag, 5},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     auto c = getopt_long(argc, argv, "hvW:c:d:m:n:p:t:w:H:i:r:C:T:N:B:",
@@ -1610,6 +1619,25 @@ int main(int argc, char **argv) {
         // npn-list option
         config.npn_list = util::parse_config_str_list(optarg);
         break;
+      case 5: {
+        // rate-period
+        const char *start = optarg;
+        char *end;
+        errno = 0;
+        auto v = std::strtod(start, &end);
+
+        if (v < 1.0 || !std::isfinite(v) || end == start || errno != 0) {
+          auto error = errno;
+          std::cerr << "Rate period value error " << optarg << std::endl;
+          if (error != 0) {
+            std::cerr << "\n\t" << strerror(error) << std::endl;
+          }
+          exit(EXIT_FAILURE);
+        }
+
+        config.rate_period = v;
+        break;
+      }
       }
       break;
     default:
@@ -1626,12 +1654,6 @@ int main(int argc, char **argv) {
 
   if (config.nclients == 0) {
     std::cerr << "-c: the number of clients must be strictly greater than 0."
-              << std::endl;
-    exit(EXIT_FAILURE);
-  }
-
-  if (config.timing_script && config.is_rate_mode()) {
-    std::cerr << "--timing-script, -r: these options cannot be used together."
               << std::endl;
     exit(EXIT_FAILURE);
   }
@@ -1996,14 +2018,28 @@ int main(int argc, char **argv) {
     if (!config.is_rate_mode()) {
       nclients = nclients_per_thread + (nclients_rem-- > 0);
       nreqs = nreqs_per_thread + (nreqs_rem-- > 0);
+
+      std::cout << "spawning thread #" << i << ": " << nclients
+                << " concurrent clients, " << nreqs << " total requests"
+                << std::endl;
     } else {
       nclients = rate * seconds + nclients_extra_per_thread +
                  (nclients_extra_per_thread_rem-- > 0);
       nreqs = nclients * config.max_concurrent_streams;
+
+      std::stringstream rate_report;
+      if (nclients >= config.rate) {
+        rate_report << "Up to " << config.rate
+                    << " client(s) will be created every "
+                    << std::setprecision(3) << config.rate_period
+                    << " seconds. ";
+      }
+
+      std::cout << "spawning thread #" << i << ": " << nclients
+                << " total client(s). " << rate_report.str() << nreqs
+                << " total requests" << std::endl;
     }
-    std::cout << "spawning thread #" << i << ": " << nclients
-              << " concurrent clients, " << nreqs << " total requests"
-              << std::endl;
+
     workers.push_back(
         make_unique<Worker>(i, ssl_ctx, nreqs, nclients, rate, &config));
     auto &worker = workers.back();
@@ -2018,14 +2054,27 @@ int main(int argc, char **argv) {
   if (!config.is_rate_mode()) {
     nclients_last = nclients_per_thread + (nclients_rem-- > 0);
     nreqs_last = nreqs_per_thread + (nreqs_rem-- > 0);
+
+    std::cout << "spawning thread #" << (config.nthreads - 1) << ": "
+              << nclients_last << " concurrent clients, " << nreqs_last
+              << " total requests" << std::endl;
   } else {
     nclients_last = rate_last * seconds + nclients_extra_per_thread +
                     (nclients_extra_per_thread_rem-- > 0);
     nreqs_last = nclients_last * config.max_concurrent_streams;
+
+    std::stringstream rate_report;
+    if (nclients_last >= config.rate) {
+      rate_report << "Up to " << config.rate
+                  << " client(s) will be created every " << std::setprecision(3)
+                  << config.rate_period << " seconds. ";
+    }
+
+    std::cout << "spawning thread #" << (config.nthreads - 1) << ": "
+              << nclients_last << " total client(s). " << rate_report.str()
+              << nreqs_last << " total requests" << std::endl;
   }
-  std::cout << "spawning thread #" << (config.nthreads - 1) << ": "
-            << nclients_last << " concurrent clients, " << nreqs_last
-            << " total requests" << std::endl;
+
   workers.push_back(make_unique<Worker>(config.nthreads - 1, ssl_ctx,
                                         nreqs_last, nclients_last, rate_last,
                                         &config));
