@@ -1745,12 +1745,12 @@ int main(int argc, char **argv) {
 
   if (config.nreqs < config.nclients) {
     std::cerr << "-n, -c: the number of requests must be greater than or "
-              << "equal to the concurrent clients." << std::endl;
+              << "equal to the clients." << std::endl;
     exit(EXIT_FAILURE);
   }
 
   if (config.nclients < config.nthreads) {
-    std::cerr << "-c, -t: the number of client must be greater than or equal "
+    std::cerr << "-c, -t: the number of clients must be greater than or equal "
                  "to the number of threads." << std::endl;
     exit(EXIT_FAILURE);
   }
@@ -1943,9 +1943,8 @@ int main(int argc, char **argv) {
 
     std::stringstream rate_report;
     if (config.is_rate_mode() && nclients > config.rate) {
-      rate_report << "Up to " << config.rate
-                  << " client(s) will be created every " << std::setprecision(3)
-                  << config.rate_period << " seconds. ";
+      rate_report << "Up to " << rate << " client(s) will be created every "
+                  << std::setprecision(3) << config.rate_period << " seconds. ";
     }
 
     std::cout << "spawning thread #" << i << ": " << nclients
@@ -1970,7 +1969,7 @@ int main(int argc, char **argv) {
     auto nreqs_last = nreqs_per_thread;
     std::stringstream rate_report;
     if (config.is_rate_mode() && nclients_last > config.rate) {
-      rate_report << "Up to " << config.rate
+      rate_report << "Up to " << rate_last
                   << " client(s) will be created every " << std::setprecision(3)
                   << config.rate_period << " seconds. ";
     }
