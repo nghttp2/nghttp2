@@ -1388,13 +1388,17 @@ Options:
               used in order for each client.   If -n is given, it must
               be  less than  or equal  to the  number of  script lines
               multiplied by number of  clients (see -c option), larger
-              values are clamped  to the latter.  If -n  is not given,
-              the number  of requests  will default  to the  number of
-              script  lines  multiplied  by number  of  clients.   The
-              scheme, host and port defined  in the first URI are used
-              solely.  Values contained in other URIs, if present, are
-              ignored.  Definition of a base URI overrides all scheme,
-              host or port values.
+              values are clamped to the latter.  The multiplication is
+              done in  order to mimic  -n option semantics  where each
+              client does -n / -c  requests.  With this timing script,
+              we'd like  to make each  client issue whole  sequence of
+              URIs if -n is not given.  If -n is not given, the number
+              of requests will  default to the number  of script lines
+              multiplied by  number of clients.  The  scheme, host and
+              port defined in  the first URI are  used solely.  Values
+              contained  in  other  URIs,  if  present,  are  ignored.
+              Definition of a  base URI overrides all  scheme, host or
+              port values.
   -B, --base-uri=<URI>
               Specify URI from which the scheme, host and port will be
               used  for  all requests.   The  base  URI overrides  all
