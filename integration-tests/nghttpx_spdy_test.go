@@ -1,7 +1,7 @@
 package nghttp2
 
 import (
-	"github.com/bradfitz/http2/hpack"
+	"golang.org/x/net/http2/hpack"
 	"github.com/tatsuhiro-t/spdy"
 	"net/http"
 	"testing"

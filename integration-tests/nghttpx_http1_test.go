@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"github.com/bradfitz/http2/hpack"
+	"golang.org/x/net/http2/hpack"
 	"golang.org/x/net/websocket"
 	"io"
 	"net/http"

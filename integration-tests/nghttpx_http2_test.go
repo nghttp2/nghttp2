@@ -3,8 +3,8 @@ package nghttp2
 import (
 	"crypto/tls"
 	"fmt"
-	"github.com/bradfitz/http2"
-	"github.com/bradfitz/http2/hpack"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/hpack"
 	"io"
 	"io/ioutil"
 	"net/http"
