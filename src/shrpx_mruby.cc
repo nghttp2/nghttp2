@@ -37,10 +37,8 @@ namespace shrpx {
 
 namespace mruby {
 
-MRubyContext::MRubyContext(mrb_state *mrb, RProc *on_request_proc,
-                           RProc *on_response_proc)
-    : mrb_(mrb), on_request_proc_(on_request_proc),
-      on_response_proc_(on_response_proc), running_(false) {}
+MRubyContext::MRubyContext(mrb_state *mrb, mrb_value app, mrb_value env)
+    : mrb_(mrb), app_(std::move(app)), env_(std::move(env)) {}
 
 MRubyContext::~MRubyContext() {
   if (mrb_) {
@@ -48,13 +46,10 @@ MRubyContext::~MRubyContext() {
   }
 }
 
-int MRubyContext::run_request_proc(Downstream *downstream, RProc *proc,
-                                   int phase) {
-  if (!proc || running_) {
+int MRubyContext::run_app(Downstream *downstream, int phase) {
+  if (!mrb_) {
     return 0;
   }
-
-  running_ = true;
 
   MRubyAssocData data{downstream, phase};
 
@@ -62,8 +57,27 @@ int MRubyContext::run_request_proc(Downstream *downstream, RProc *proc,
 
   int rv = 0;
   auto ai = mrb_gc_arena_save(mrb_);
+  auto ai_d = defer([ai, this]() { mrb_gc_arena_restore(mrb_, ai); });
 
-  auto res = mrb_run(mrb_, proc, mrb_top_self(mrb_));
+  const char *method;
+  switch (phase) {
+  case PHASE_REQUEST:
+    if (!mrb_respond_to(mrb_, app_, mrb_intern_lit(mrb_, "on_req"))) {
+      return 0;
+    }
+    method = "on_req";
+    break;
+  case PHASE_RESPONSE:
+    if (!mrb_respond_to(mrb_, app_, mrb_intern_lit(mrb_, "on_resp"))) {
+      return 0;
+    }
+    method = "on_resp";
+    break;
+  default:
+    assert(0);
+  }
+
+  auto res = mrb_funcall(mrb_, app_, method, 1, env_);
   (void)res;
 
   if (mrb_->exc) {
@@ -71,17 +85,15 @@ int MRubyContext::run_request_proc(Downstream *downstream, RProc *proc,
     if (downstream->get_response_state() != Downstream::MSG_COMPLETE) {
       rv = -1;
     }
-    auto error =
-        mrb_str_ptr(mrb_funcall(mrb_, mrb_obj_value(mrb_->exc), "inspect", 0));
+
+    auto exc = mrb_obj_value(mrb_->exc);
+    auto inspect = mrb_inspect(mrb_, exc);
 
     LOG(ERROR) << "Exception caught while executing mruby code: "
-               << error->as.heap.ptr;
-    mrb_->exc = 0;
+               << mrb_str_to_cstr(mrb_, inspect);
   }
 
   mrb_->ud = nullptr;
-
-  mrb_gc_arena_restore(mrb_, ai);
 
   if (data.request_headers_dirty) {
     downstream->index_request_headers();
@@ -91,17 +103,15 @@ int MRubyContext::run_request_proc(Downstream *downstream, RProc *proc,
     downstream->index_response_headers();
   }
 
-  running_ = false;
-
   return rv;
 }
 
 int MRubyContext::run_on_request_proc(Downstream *downstream) {
-  return run_request_proc(downstream, on_request_proc_, PHASE_REQUEST);
+  return run_app(downstream, PHASE_REQUEST);
 }
 
 int MRubyContext::run_on_response_proc(Downstream *downstream) {
-  return run_request_proc(downstream, on_response_proc_, PHASE_RESPONSE);
+  return run_app(downstream, PHASE_RESPONSE);
 }
 
 void MRubyContext::delete_downstream(Downstream *downstream) {
@@ -110,6 +120,26 @@ void MRubyContext::delete_downstream(Downstream *downstream) {
   }
   delete_downstream_from_module(mrb_, downstream);
 }
+
+namespace {
+mrb_value instantiate_app(mrb_state *mrb, RProc *proc) {
+  mrb->ud = nullptr;
+
+  auto res = mrb_run(mrb, proc, mrb_top_self(mrb));
+
+  if (mrb->exc) {
+    auto exc = mrb_obj_value(mrb->exc);
+    auto inspect = mrb_inspect(mrb, exc);
+
+    LOG(ERROR) << "Exception caught while executing mruby code: "
+               << mrb_str_to_cstr(mrb, inspect);
+
+    return mrb_nil_value();
+  }
+
+  return res;
+}
+} // namespace
 
 // Based on
 // https://github.com/h2o/h2o/blob/master/lib/handler/mruby.c.  It is
@@ -155,12 +185,9 @@ RProc *compile(mrb_state *mrb, const char *filename) {
   return proc;
 }
 
-std::unique_ptr<MRubyContext> create_mruby_context() {
-  auto req_file = get_config()->request_phase_file.get();
-  auto res_file = get_config()->response_phase_file.get();
-
-  if (!req_file && !res_file) {
-    return make_unique<MRubyContext>(nullptr, nullptr, nullptr);
+std::unique_ptr<MRubyContext> create_mruby_context(const char *filename) {
+  if (!filename) {
+    return make_unique<MRubyContext>(nullptr, mrb_nil_value(), mrb_nil_value());
   }
 
   auto mrb = mrb_open();
@@ -169,25 +196,34 @@ std::unique_ptr<MRubyContext> create_mruby_context() {
     return nullptr;
   }
 
-  init_module(mrb);
+  auto ai = mrb_gc_arena_save(mrb);
 
-  auto req_proc = compile(mrb, req_file);
+  auto req_proc = compile(mrb, filename);
 
-  if (req_file && !req_proc) {
-    LOG(ERROR) << "Could not compile mruby code " << req_file;
+  if (!req_proc) {
+    mrb_gc_arena_restore(mrb, ai);
+    LOG(ERROR) << "Could not compile mruby code " << filename;
     mrb_close(mrb);
     return nullptr;
   }
 
-  auto res_proc = compile(mrb, res_file);
+  auto env = init_module(mrb);
 
-  if (res_file && !res_proc) {
-    LOG(ERROR) << "Could not compile mruby code " << res_file;
+  auto app = instantiate_app(mrb, req_proc);
+  if (mrb_nil_p(app)) {
+    mrb_gc_arena_restore(mrb, ai);
+    LOG(ERROR) << "Could not instantiate mruby app from " << filename;
     mrb_close(mrb);
     return nullptr;
   }
 
-  return make_unique<MRubyContext>(mrb, req_proc, res_proc);
+  mrb_gc_arena_restore(mrb, ai);
+
+  // TODO These are not necessary, because we retain app and env?
+  mrb_gc_protect(mrb, env);
+  mrb_gc_protect(mrb, app);
+
+  return make_unique<MRubyContext>(mrb, std::move(app), std::move(env));
 }
 
 mrb_sym intern_ptr(mrb_state *mrb, void *ptr) {

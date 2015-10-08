@@ -360,7 +360,7 @@ func TestH1H1Websocket(t *testing.T) {
 // TestH1H1ReqPhaseSetHeader tests mruby request phase hook
 // modifies request header fields.
 func TestH1H1ReqPhaseSetHeader(t *testing.T) {
-	st := newServerTester([]string{"--request-phase-file=" + testDir + "/req-set-header.rb"}, t, func(w http.ResponseWriter, r *http.Request) {
+	st := newServerTester([]string{"--mruby-file=" + testDir + "/req-set-header.rb"}, t, func(w http.ResponseWriter, r *http.Request) {
 		if got, want := r.Header.Get("User-Agent"), "mruby"; got != want {
 			t.Errorf("User-Agent = %v; want %v", got, want)
 		}
@@ -382,7 +382,7 @@ func TestH1H1ReqPhaseSetHeader(t *testing.T) {
 // TestH1H1ReqPhaseReturn tests mruby request phase hook returns
 // custom response.
 func TestH1H1ReqPhaseReturn(t *testing.T) {
-	st := newServerTester([]string{"--request-phase-file=" + testDir + "/return.rb"}, t, func(w http.ResponseWriter, r *http.Request) {
+	st := newServerTester([]string{"--mruby-file=" + testDir + "/req-return.rb"}, t, func(w http.ResponseWriter, r *http.Request) {
 		t.Fatalf("request should not be forwarded")
 	})
 	defer st.Close()
@@ -401,7 +401,7 @@ func TestH1H1ReqPhaseReturn(t *testing.T) {
 	hdtests := []struct {
 		k, v string
 	}{
-		{"content-length", "11"},
+		{"content-length", "20"},
 		{"from", "mruby"},
 	}
 	for _, tt := range hdtests {
@@ -410,7 +410,7 @@ func TestH1H1ReqPhaseReturn(t *testing.T) {
 		}
 	}
 
-	if got, want := string(res.body), "Hello World"; got != want {
+	if got, want := string(res.body), "Hello World from req"; got != want {
 		t.Errorf("body = %v; want %v", got, want)
 	}
 }
@@ -418,7 +418,7 @@ func TestH1H1ReqPhaseReturn(t *testing.T) {
 // TestH1H1RespPhaseSetHeader tests mruby response phase hook modifies
 // response header fields.
 func TestH1H1RespPhaseSetHeader(t *testing.T) {
-	st := newServerTester([]string{"--response-phase-file=" + testDir + "/resp-set-header.rb"}, t, noopHandler)
+	st := newServerTester([]string{"--mruby-file=" + testDir + "/resp-set-header.rb"}, t, noopHandler)
 	defer st.Close()
 
 	res, err := st.http1(requestParam{
@@ -440,7 +440,7 @@ func TestH1H1RespPhaseSetHeader(t *testing.T) {
 // TestH1H1RespPhaseReturn tests mruby response phase hook returns
 // custom response.
 func TestH1H1RespPhaseReturn(t *testing.T) {
-	st := newServerTester([]string{"--response-phase-file=" + testDir + "/return.rb"}, t, noopHandler)
+	st := newServerTester([]string{"--mruby-file=" + testDir + "/resp-return.rb"}, t, noopHandler)
 	defer st.Close()
 
 	res, err := st.http1(requestParam{
@@ -457,7 +457,7 @@ func TestH1H1RespPhaseReturn(t *testing.T) {
 	hdtests := []struct {
 		k, v string
 	}{
-		{"content-length", "11"},
+		{"content-length", "21"},
 		{"from", "mruby"},
 	}
 	for _, tt := range hdtests {
@@ -466,7 +466,7 @@ func TestH1H1RespPhaseReturn(t *testing.T) {
 		}
 	}
 
-	if got, want := string(res.body), "Hello World"; got != want {
+	if got, want := string(res.body), "Hello World from resp"; got != want {
 		t.Errorf("body = %v; want %v", got, want)
 	}
 }
@@ -667,7 +667,7 @@ func TestH1H2NoVia(t *testing.T) {
 // TestH1H2ReqPhaseReturn tests mruby request phase hook returns
 // custom response.
 func TestH1H2ReqPhaseReturn(t *testing.T) {
-	st := newServerTester([]string{"--http2-bridge", "--request-phase-file=" + testDir + "/return.rb"}, t, func(w http.ResponseWriter, r *http.Request) {
+	st := newServerTester([]string{"--http2-bridge", "--mruby-file=" + testDir + "/req-return.rb"}, t, func(w http.ResponseWriter, r *http.Request) {
 		t.Fatalf("request should not be forwarded")
 	})
 	defer st.Close()
@@ -686,7 +686,7 @@ func TestH1H2ReqPhaseReturn(t *testing.T) {
 	hdtests := []struct {
 		k, v string
 	}{
-		{"content-length", "11"},
+		{"content-length", "20"},
 		{"from", "mruby"},
 	}
 	for _, tt := range hdtests {
@@ -695,7 +695,7 @@ func TestH1H2ReqPhaseReturn(t *testing.T) {
 		}
 	}
 
-	if got, want := string(res.body), "Hello World"; got != want {
+	if got, want := string(res.body), "Hello World from req"; got != want {
 		t.Errorf("body = %v; want %v", got, want)
 	}
 }
@@ -703,7 +703,7 @@ func TestH1H2ReqPhaseReturn(t *testing.T) {
 // TestH1H2RespPhaseReturn tests mruby response phase hook returns
 // custom response.
 func TestH1H2RespPhaseReturn(t *testing.T) {
-	st := newServerTester([]string{"--http2-bridge", "--response-phase-file=" + testDir + "/return.rb"}, t, noopHandler)
+	st := newServerTester([]string{"--http2-bridge", "--mruby-file=" + testDir + "/resp-return.rb"}, t, noopHandler)
 	defer st.Close()
 
 	res, err := st.http1(requestParam{
@@ -720,7 +720,7 @@ func TestH1H2RespPhaseReturn(t *testing.T) {
 	hdtests := []struct {
 		k, v string
 	}{
-		{"content-length", "11"},
+		{"content-length", "21"},
 		{"from", "mruby"},
 	}
 	for _, tt := range hdtests {
@@ -729,7 +729,7 @@ func TestH1H2RespPhaseReturn(t *testing.T) {
 		}
 	}
 
-	if got, want := string(res.body), "Hello World"; got != want {
+	if got, want := string(res.body), "Hello World from resp"; got != want {
 		t.Errorf("body = %v; want %v", got, want)
 	}
 }

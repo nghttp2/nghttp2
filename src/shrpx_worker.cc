@@ -270,7 +270,8 @@ MemcachedDispatcher *Worker::get_session_cache_memcached_dispatcher() {
 
 #ifdef HAVE_MRUBY
 int Worker::create_mruby_context() {
-  mruby_ctx_ = mruby::create_mruby_context();
+  auto mruby_file = get_config()->mruby_file.get();
+  mruby_ctx_ = mruby::create_mruby_context(mruby_file);
   if (!mruby_ctx_) {
     return -1;
   }
