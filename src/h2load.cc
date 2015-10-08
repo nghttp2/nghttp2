@@ -74,7 +74,7 @@ namespace h2load {
 Config::Config()
     : data_length(-1), addrs(nullptr), nreqs(1), nclients(1), nthreads(1),
       max_concurrent_streams(-1), window_bits(30), connection_window_bits(30),
-      rate(0), rate_period(1.0), nconns(0), conn_active_timeout(0),
+      rate(0), rate_period(1.0), conn_active_timeout(0),
       conn_inactivity_timeout(0), no_tls_proto(PROTO_HTTP2), data_fd(-1),
       port(0), default_port(0), verbose(false), timing_script(false) {}
 
@@ -144,7 +144,11 @@ void rate_period_timeout_w_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto nclients = std::min(nclients_per_second, conns_remaining);
 
   for (size_t i = 0; i < nclients; ++i) {
-    auto req_todo = worker->config->max_concurrent_streams;
+    auto req_todo = worker->nreqs_per_client;
+    if (worker->nreqs_rem > 0) {
+      ++req_todo;
+      --worker->nreqs_rem;
+    }
     worker->clients.push_back(make_unique<Client>(worker, req_todo));
     auto &client = worker->clients.back();
     if (client->connect() != 0) {
@@ -932,11 +936,10 @@ Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
                size_t rate, Config *config)
     : stats(req_todo), loop(ev_loop_new(0)), ssl_ctx(ssl_ctx), config(config),
       id(id), tls_info_report_done(false), app_info_report_done(false),
-      nconns_made(0), nclients(nclients), rate(rate) {
+      nconns_made(0), nclients(nclients), nreqs_per_client(req_todo / nclients),
+      nreqs_rem(req_todo % nclients), rate(rate) {
   stats.req_todo = req_todo;
   progress_interval = std::max(static_cast<size_t>(1), req_todo / 10);
-  auto nreqs_per_client = req_todo / nclients;
-  auto nreqs_rem = req_todo % nclients;
 
   // create timer that will go off every rate_period
   ev_timer_init(&timeout_watcher, rate_period_timeout_w_cb, 0.,
@@ -1291,7 +1294,8 @@ Options:
               Number of requests.
               Default: )" << config.nreqs << R"(
   -c, --clients=<N>
-              Number of concurrent clients.
+              Number  of concurrent  clients.   With  -r option,  this
+              specifies the maximum number of connections to be made.
               Default: )" << config.nclients << R"(
   -t, --threads=<N>
               Number of native threads.
@@ -1346,27 +1350,17 @@ Options:
               Specifies  the  fixed  rate  at  which  connections  are
               created.   The   rate  must   be  a   positive  integer,
               representing the  number of  connections to be  made per
-              rate period. When the rate is 0, the program will run as
-              it  normally  does,  creating  connections  at  whatever
-              variable  rate  it  wants.  The  default  value for this
-              option is 0.
+              rate period.   The maximum  number of connections  to be
+              made is  given in -c  option.  When  the rate is  0, the
+              program  will   run  as   it  normally   does,  creating
+              connections  at whatever  variable rate  it wants.   The
+              default value for this option is 0.
   --rate-period=<N>
               Specifies the time period  between creating connections.
               The  period  must be a positive  number  greater than or
               equal to 1.0,  representing the length of  the period in
               seconds.  This option is  ignored if the rate  option is
               not used. The default value for this option is 1.0.
-  -C, --num-conns=<N>
-              Specifies  the total  number of  connections to  create.
-              The  total  number of  connections  must  be a  positive
-              integer.  On each connection, -m requests are made.  The
-              test  stops once  as soon  as the  <N> connections  have
-              either  completed   or  failed.   When  the   number  of
-              connections is  0, the program  will run as  it normally
-              does, creating as many connections  as it needs in order
-              to make  the -n  requests specified.  The  default value
-              for this option is 0.  The  -n option is not required if
-              the -C option is being used.
   -T, --connection-active-timeout=<N>
               Specifies  the maximum  time that  h2load is  willing to
               keep a  connection open,  regardless of the  activity on
@@ -1383,22 +1377,24 @@ Options:
               inactive),   h2load   will   keep  a   connection   open
               indefinitely, waiting for a response.
   --timing-script-file=<PATH>
-              Path of a file containing one  or more lines separated by
-              EOLs. Each script line  is composed of  two tab-separated
-              fields. The first field  represents  the time offset from
-              the start of execution,  expressed as a positive value of
-              milliseconds  with  microsecond  resolution.  The  second
-              field represents the URI.  This option will disable  URIs
-              getting  from  command-line.  If '-'  is given as <PATH>,
-              script  lines  will be read from stdin.  Script lines are
-              used in order for each client. If -n is given, it must be
-              less than or equal to the number of script lines,  larger
-              values are clamped to the number of script lines.  If  -n
-              is not given,  the number of requests will default to the
-              number of script lines. The scheme, host and port defined
-              in the  first URI  are used  solely.  Values contained in
-              other URIs, if  present, are  ignored.  Definition  of  a
-              base  URI  overrides  all  scheme, host  or port  values.
+              Path of a file containing one or more lines separated by
+              EOLs. Each script line  is composed of two tab-separated
+              fields. The first field  represents the time offset from
+              the start of execution, expressed as a positive value of
+              milliseconds  with microsecond  resolution.  The  second
+              field represents the URI.  This option will disable URIs
+              getting from  command-line.  If '-' is  given as <PATH>,
+              script lines will be read  from stdin.  Script lines are
+              used in order for each client.   If -n is given, it must
+              be  less than  or equal  to the  number of  script lines
+              multiplied by number of  clients (see -c option), larger
+              values are clamped  to the latter.  If -n  is not given,
+              the number  of requests  will default  to the  number of
+              script  lines  multiplied  by number  of  clients.   The
+              scheme, host and port defined  in the first URI are used
+              solely.  Values contained in other URIs, if present, are
+              ignored.  Definition of a base URI overrides all scheme,
+              host or port values.
   -B, --base-uri=<URI>
               Specify URI from which the scheme, host and port will be
               used  for  all requests.   The  base  URI overrides  all
@@ -1446,7 +1442,6 @@ int main(int argc, char **argv) {
         {"version", no_argument, &flag, 1},
         {"ciphers", required_argument, &flag, 2},
         {"rate", required_argument, nullptr, 'r'},
-        {"num-conns", required_argument, nullptr, 'C'},
         {"connection-active-timeout", required_argument, nullptr, 'T'},
         {"connection-inactivity-timeout", required_argument, nullptr, 'N'},
         {"timing-script-file", required_argument, &flag, 3},
@@ -1455,7 +1450,7 @@ int main(int argc, char **argv) {
         {"rate-period", required_argument, &flag, 5},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
-    auto c = getopt_long(argc, argv, "hvW:c:d:m:n:p:t:w:H:i:r:C:T:N:B:",
+    auto c = getopt_long(argc, argv, "hvW:c:d:m:n:p:t:w:H:i:r:T:N:B:",
                          long_options, &option_index);
     if (c == -1) {
       break;
@@ -1556,14 +1551,6 @@ int main(int argc, char **argv) {
       config.rate = strtoul(optarg, nullptr, 10);
       if (config.rate == 0) {
         std::cerr << "-r: the rate at which connections are made "
-                  << "must be positive." << std::endl;
-        exit(EXIT_FAILURE);
-      }
-      break;
-    case 'C':
-      config.nconns = strtoul(optarg, nullptr, 10);
-      if (config.nconns == 0) {
-        std::cerr << "-C: the total number of connections made "
                   << "must be positive." << std::endl;
         exit(EXIT_FAILURE);
       }
@@ -1675,36 +1662,44 @@ int main(int argc, char **argv) {
     reqlines = parse_uris(std::begin(uris), std::end(uris));
   } else {
     std::vector<std::string> uris;
-    if (config.ifile == "-") {
-      if (!config.timing_script) {
+    if (!config.timing_script) {
+      if (config.ifile == "-") {
         uris = read_uri_from_file(std::cin);
       } else {
-        read_script_from_file(std::cin, config.timings, uris);
+        std::ifstream infile(config.ifile);
+        if (!infile) {
+          std::cerr << "cannot read input file: " << config.ifile << std::endl;
+          exit(EXIT_FAILURE);
+        }
+
+        uris = read_uri_from_file(infile);
       }
     } else {
-      std::ifstream infile(config.ifile);
-      if (!infile) {
-        std::cerr << "cannot read input file: " << config.ifile << std::endl;
-        exit(EXIT_FAILURE);
+      if (config.ifile == "-") {
+        read_script_from_file(std::cin, config.timings, uris);
+      } else {
+        std::ifstream infile(config.ifile);
+        if (!infile) {
+          std::cerr << "cannot read input file: " << config.ifile << std::endl;
+          exit(EXIT_FAILURE);
+        }
+
+        read_script_from_file(infile, config.timings, uris);
       }
 
-      if (!config.timing_script) {
-        uris = read_uri_from_file(infile);
-      } else {
-        read_script_from_file(infile, config.timings, uris);
-        if (nreqs_set_manually) {
-          if (config.nreqs > uris.size()) {
-            std::cerr
-                << "-n: the number of requests must be less than or equal "
-                   "to the number of timing script entries. Setting number "
-                   "of requests to " << uris.size() << std::endl;
+      // each client will execute the full script, so scale nreqs
+      auto min_nreqs = uris.size() * config.nclients;
+      if (nreqs_set_manually) {
+        if (config.nreqs > min_nreqs) {
+          std::cerr << "-n: the number of requests must be less than or equal "
+                       "to the number of timing script entries * number of "
+                       "clients. Setting number "
+                       "of requests to " << min_nreqs << std::endl;
 
-            config.nreqs = uris.size();
-          }
-        } else {
-          // each client will execute the full script, so scale nreqs
-          config.nreqs = uris.size() * config.nclients;
+          config.nreqs = min_nreqs;
         }
+      } else {
+        config.nreqs = min_nreqs;
       }
     }
 
@@ -1744,42 +1739,28 @@ int main(int argc, char **argv) {
               << "cores." << std::endl;
   }
 
-  if (!config.is_rate_mode()) {
-    if (config.nreqs < config.nclients) {
-      std::cerr << "-n, -c: the number of requests must be greater than or "
-                << "equal to the concurrent clients." << std::endl;
-      exit(EXIT_FAILURE);
-    }
+  if (config.nreqs < config.nclients) {
+    std::cerr << "-n, -c: the number of requests must be greater than or "
+              << "equal to the concurrent clients." << std::endl;
+    exit(EXIT_FAILURE);
+  }
 
-    if (config.nclients < config.nthreads) {
-      std::cerr << "-c, -t: the number of client must be greater than or equal "
-                   "to the number of threads." << std::endl;
-      exit(EXIT_FAILURE);
-    }
-  } else {
+  if (config.nclients < config.nthreads) {
+    std::cerr << "-c, -t: the number of client must be greater than or equal "
+                 "to the number of threads." << std::endl;
+    exit(EXIT_FAILURE);
+  }
+
+  if (config.is_rate_mode()) {
     if (config.rate < config.nthreads) {
       std::cerr << "-r, -t: the connection rate must be greater than or equal "
                 << "to the number of threads." << std::endl;
       exit(EXIT_FAILURE);
     }
 
-    if (nreqs_set_manually && config.rate > config.nreqs) {
-      std::cerr << "-r, -n: the connection rate must be smaller than or equal "
-                   "to the number of requests." << std::endl;
-      exit(EXIT_FAILURE);
-    }
-
-    if (config.nconns != 0 && config.nconns < config.nthreads) {
-      std::cerr
-          << "-C, -t: the total number of connections must be greater than "
-             "or equal "
-          << "to the number of threads." << std::endl;
-      exit(EXIT_FAILURE);
-    }
-
-    if (config.nconns == 0 && !nreqs_set_manually) {
-      std::cerr << "-r: the rate option must be used with either the -n option "
-                   "or the -C option." << std::endl;
+    if (config.rate > config.nclients) {
+      std::cerr << "-r, -c: the connection rate must be smaller than or equal "
+                   "to the number of clients." << std::endl;
       exit(EXIT_FAILURE);
     }
   }
@@ -1842,50 +1823,6 @@ int main(int argc, char **argv) {
 
   SSL_CTX_set_alpn_protos(ssl_ctx, proto_list.data(), proto_list.size());
 #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
-
-  // if not in rate mode and -C is set, warn that we are ignoring it
-  if (!config.is_rate_mode() && config.nconns != 0) {
-    std::cerr << "-C: warning: This option can only be used with -r, and"
-              << " will be ignored otherwise." << std::endl;
-  }
-
-  size_t n_time = 0;
-  size_t c_time = 0;
-  size_t actual_nreqs = config.nreqs;
-  // only care about n_time and c_time in rate mode
-  if (config.is_rate_mode()) {
-    n_time = config.nreqs / (config.rate * config.max_concurrent_streams);
-    c_time = config.nconns / config.rate;
-
-    // check to see if the two ways of determining test time conflict
-    if (n_time != c_time && config.nconns != 0) {
-      if (config.nreqs != 1) {
-        if (config.nreqs < config.nconns) {
-          std::cerr << "-C, -n: warning: number of requests conflict. "
-                    << std::endl;
-          std::cerr << "The test will create "
-                    << (config.max_concurrent_streams * config.nconns)
-                    << " total requests." << std::endl;
-          actual_nreqs = config.max_concurrent_streams * config.nconns;
-        } else {
-          std::cout << "-C, -n: warning: number of requests conflict. "
-                    << std::endl;
-          std::cout
-              << "The smaller of the two will be chosen and the test will "
-              << "create "
-              << std::min(config.nreqs,
-                          static_cast<size_t>(config.max_concurrent_streams *
-                                              config.nconns))
-              << " total requests." << std::endl;
-          actual_nreqs = std::min(
-              config.nreqs, static_cast<size_t>(config.max_concurrent_streams *
-                                                config.nreqs));
-        }
-      } else {
-        actual_nreqs = config.max_concurrent_streams * config.nconns;
-      }
-    }
-  }
 
   std::string user_agent = "h2load nghttp2/" NGHTTP2_VERSION;
   Headers shared_nva;
@@ -1965,24 +1902,6 @@ int main(int argc, char **argv) {
 
   resolve_host();
 
-  if (!config.is_rate_mode() && config.nclients == 1) {
-    config.nthreads = 1;
-  }
-  ssize_t seconds = 0;
-
-  if (config.is_rate_mode()) {
-
-    // set various config values
-    if (config.nreqs < config.nconns) {
-      seconds = c_time;
-    } else if (config.nconns == 0) {
-      seconds = n_time;
-    } else {
-      seconds = std::min(n_time, c_time);
-    }
-    config.nreqs = actual_nreqs;
-  }
-
   size_t nreqs_per_thread = config.nreqs / config.nthreads;
   ssize_t nreqs_rem = config.nreqs % config.nthreads;
 
@@ -1991,16 +1910,6 @@ int main(int argc, char **argv) {
 
   size_t rate_per_thread = config.rate / config.nthreads;
   ssize_t rate_per_thread_rem = config.rate % config.nthreads;
-
-  size_t nclients_extra_per_thread = 0;
-  ssize_t nclients_extra_per_thread_rem = 0;
-  // In rate mode, we want each Worker to create a total of
-  // C/t connections.
-  if (config.is_rate_mode() && config.nconns > seconds * config.rate) {
-    auto nclients_extra = config.nconns - (seconds * config.rate);
-    nclients_extra_per_thread = nclients_extra / config.nthreads;
-    nclients_extra_per_thread_rem = nclients_extra % config.nthreads;
-  }
 
   std::cout << "starting benchmark..." << std::endl;
 
@@ -2012,33 +1921,32 @@ int main(int argc, char **argv) {
 #ifndef NOTHREADS
   std::vector<std::future<void>> futures;
   for (size_t i = 0; i < config.nthreads - 1; ++i) {
-    auto rate = rate_per_thread + (rate_per_thread_rem-- > 0);
-    size_t nreqs;
-    size_t nclients;
-    if (!config.is_rate_mode()) {
-      nclients = nclients_per_thread + (nclients_rem-- > 0);
-      nreqs = nreqs_per_thread + (nreqs_rem-- > 0);
-
-      std::cout << "spawning thread #" << i << ": " << nclients
-                << " concurrent clients, " << nreqs << " total requests"
-                << std::endl;
-    } else {
-      nclients = rate * seconds + nclients_extra_per_thread +
-                 (nclients_extra_per_thread_rem-- > 0);
-      nreqs = nclients * config.max_concurrent_streams;
-
-      std::stringstream rate_report;
-      if (nclients >= config.rate) {
-        rate_report << "Up to " << config.rate
-                    << " client(s) will be created every "
-                    << std::setprecision(3) << config.rate_period
-                    << " seconds. ";
-      }
-
-      std::cout << "spawning thread #" << i << ": " << nclients
-                << " total client(s). " << rate_report.str() << nreqs
-                << " total requests" << std::endl;
+    auto rate = rate_per_thread;
+    if (rate_per_thread_rem > 0) {
+      --rate_per_thread_rem;
+      ++rate;
     }
+    auto nclients = nclients_per_thread;
+    if (nclients_rem > 0) {
+      --nclients_rem;
+      ++nclients;
+    }
+    auto nreqs = nreqs_per_thread;
+    if (nreqs_rem > 0) {
+      --nreqs_rem;
+      ++nreqs;
+    }
+
+    std::stringstream rate_report;
+    if (config.is_rate_mode() && nclients > config.rate) {
+      rate_report << "Up to " << config.rate
+                  << " client(s) will be created every " << std::setprecision(3)
+                  << config.rate_period << " seconds. ";
+    }
+
+    std::cout << "spawning thread #" << i << ": " << nclients
+              << " total client(s). " << rate_report.str() << nreqs
+              << " total requests" << std::endl;
 
     workers.push_back(
         make_unique<Worker>(i, ssl_ctx, nreqs, nclients, rate, &config));
@@ -2048,23 +1956,16 @@ int main(int argc, char **argv) {
   }
 #endif // NOTHREADS
 
-  auto rate_last = rate_per_thread + (rate_per_thread_rem-- > 0);
-  size_t nclients_last;
-  size_t nreqs_last;
-  if (!config.is_rate_mode()) {
-    nclients_last = nclients_per_thread + (nclients_rem-- > 0);
-    nreqs_last = nreqs_per_thread + (nreqs_rem-- > 0);
+  assert(rate_per_thread_rem == 0);
+  assert(nclients_rem == 0);
+  assert(nreqs_rem == 0);
 
-    std::cout << "spawning thread #" << (config.nthreads - 1) << ": "
-              << nclients_last << " concurrent clients, " << nreqs_last
-              << " total requests" << std::endl;
-  } else {
-    nclients_last = rate_last * seconds + nclients_extra_per_thread +
-                    (nclients_extra_per_thread_rem-- > 0);
-    nreqs_last = nclients_last * config.max_concurrent_streams;
-
+  {
+    auto rate_last = rate_per_thread;
+    auto nclients_last = nclients_per_thread;
+    auto nreqs_last = nreqs_per_thread;
     std::stringstream rate_report;
-    if (nclients_last >= config.rate) {
+    if (config.is_rate_mode() && nclients_last > config.rate) {
       rate_report << "Up to " << config.rate
                   << " client(s) will be created every " << std::setprecision(3)
                   << config.rate_period << " seconds. ";
@@ -2073,11 +1974,12 @@ int main(int argc, char **argv) {
     std::cout << "spawning thread #" << (config.nthreads - 1) << ": "
               << nclients_last << " total client(s). " << rate_report.str()
               << nreqs_last << " total requests" << std::endl;
+
+    workers.push_back(make_unique<Worker>(config.nthreads - 1, ssl_ctx,
+                                          nreqs_last, nclients_last, rate_last,
+                                          &config));
   }
 
-  workers.push_back(make_unique<Worker>(config.nthreads - 1, ssl_ctx,
-                                        nreqs_last, nclients_last, rate_last,
-                                        &config));
   workers.back()->run();
 
 #ifndef NOTHREADS
