@@ -1354,10 +1354,13 @@ Options:
               created.   The   rate  must   be  a   positive  integer,
               representing the  number of  connections to be  made per
               rate period.   The maximum  number of connections  to be
-              made is  given in -c  option.  When  the rate is  0, the
-              program  will   run  as   it  normally   does,  creating
-              connections  at whatever  variable rate  it wants.   The
-              default value for this option is 0.
+              made  is  given  in  -c   option.   This  rate  will  be
+              distributed among  threads as  evenly as  possible.  For
+              example,  with   -t2  and   -r4,  each  thread   gets  2
+              connections per period.  When the rate is 0, the program
+              will run  as it  normally does, creating  connections at
+              whatever variable rate it  wants.  The default value for
+              this option is 0.
   --rate-period=<N>
               Specifies the time period  between creating connections.
               The  period  must be a positive  number  greater than or
