@@ -1255,6 +1255,24 @@ void read_script_from_file(std::istream &infile,
 } // namespace
 
 namespace {
+std::unique_ptr<Worker> create_worker(uint32_t id, SSL_CTX *ssl_ctx,
+                                      size_t nreqs, size_t nclients,
+                                      size_t rate) {
+  std::stringstream rate_report;
+  if (config.is_rate_mode() && nclients > rate) {
+    rate_report << "Up to " << rate << " client(s) will be created every "
+                << std::setprecision(3) << config.rate_period << " seconds. ";
+  }
+
+  std::cout << "spawning thread #" << id << ": " << nclients
+            << " total client(s). " << rate_report.str() << nreqs
+            << " total requests" << std::endl;
+
+  return make_unique<Worker>(id, ssl_ctx, nreqs, nclients, rate, &config);
+}
+} // namespace
+
+namespace {
 void print_version(std::ostream &out) {
   out << "h2load nghttp2/" NGHTTP2_VERSION << std::endl;
 }
@@ -1905,6 +1923,12 @@ int main(int argc, char **argv) {
 
   resolve_host();
 
+  std::cout << "starting benchmark..." << std::endl;
+
+  std::vector<std::unique_ptr<Worker>> workers;
+  workers.reserve(config.nthreads);
+
+#ifndef NOTHREADS
   size_t nreqs_per_thread = 0;
   ssize_t nreqs_rem = 0;
 
@@ -1919,16 +1943,12 @@ int main(int argc, char **argv) {
   size_t rate_per_thread = config.rate / config.nthreads;
   ssize_t rate_per_thread_rem = config.rate % config.nthreads;
 
-  std::cout << "starting benchmark..." << std::endl;
+  std::mutex mu;
+  std::condition_variable cv;
+  auto ready = false;
 
-  auto start = std::chrono::steady_clock::now();
-
-  std::vector<std::unique_ptr<Worker>> workers;
-
-  workers.reserve(config.nthreads);
-#ifndef NOTHREADS
   std::vector<std::future<void>> futures;
-  for (size_t i = 0; i < config.nthreads - 1; ++i) {
+  for (size_t i = 0; i < config.nthreads; ++i) {
     auto rate = rate_per_thread;
     if (rate_per_thread_rem > 0) {
       --rate_per_thread_rem;
@@ -1955,55 +1975,41 @@ int main(int argc, char **argv) {
       }
     }
 
-    std::stringstream rate_report;
-    if (config.is_rate_mode() && nclients > rate) {
-      rate_report << "Up to " << rate << " client(s) will be created every "
-                  << std::setprecision(3) << config.rate_period << " seconds. ";
-    }
-
-    std::cout << "spawning thread #" << i << ": " << nclients
-              << " total client(s). " << rate_report.str() << nreqs
-              << " total requests" << std::endl;
-
-    workers.push_back(
-        make_unique<Worker>(i, ssl_ctx, nreqs, nclients, rate, &config));
+    workers.push_back(create_worker(i, ssl_ctx, nreqs, nclients, rate));
     auto &worker = workers.back();
     futures.push_back(
-        std::async(std::launch::async, [&worker]() { worker->run(); }));
+        std::async(std::launch::async, [&worker, &mu, &cv, &ready]() {
+          {
+            std::unique_lock<std::mutex> ulk(mu);
+            cv.wait(ulk, [&ready] { return ready; });
+          }
+          worker->run();
+        }));
   }
-#endif // NOTHREADS
-
-  assert(rate_per_thread_rem == 0);
-  assert(nclients_rem == 0);
-  assert(nreqs_rem == 0);
 
   {
-    auto rate_last = rate_per_thread;
-    auto nclients_last = nclients_per_thread;
-    auto nreqs_last =
-        config.timing_script ? config.nreqs * nclients_last : nreqs_per_thread;
-    std::stringstream rate_report;
-    if (config.is_rate_mode() && nclients_last > rate_last) {
-      rate_report << "Up to " << rate_last
-                  << " client(s) will be created every " << std::setprecision(3)
-                  << config.rate_period << " seconds. ";
-    }
-
-    std::cout << "spawning thread #" << (config.nthreads - 1) << ": "
-              << nclients_last << " total client(s). " << rate_report.str()
-              << nreqs_last << " total requests" << std::endl;
-
-    workers.push_back(make_unique<Worker>(config.nthreads - 1, ssl_ctx,
-                                          nreqs_last, nclients_last, rate_last,
-                                          &config));
+    std::lock_guard<std::mutex> lg(mu);
+    ready = true;
+    cv.notify_all();
   }
 
-  workers.back()->run();
+  auto start = std::chrono::steady_clock::now();
 
-#ifndef NOTHREADS
   for (auto &fut : futures) {
     fut.get();
   }
+
+#else  // NOTHREADS
+  auto rate = config.rate;
+  auto nclients = config.nclients;
+  auto nreqs =
+      config.timing_script ? config.nreqs * config.nclients : config.nreqs;
+
+  workers.push_back(create_worker(0, ssl_ctx, nreqs, nclients, rate));
+
+  auto start = std::chrono::steady_clock::now();
+
+  workers.back()->run();
 #endif // NOTHREADS
 
   auto end = std::chrono::steady_clock::now();
