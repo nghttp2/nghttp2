@@ -1953,7 +1953,7 @@ int main(int argc, char **argv) {
     }
 
     std::stringstream rate_report;
-    if (config.is_rate_mode() && nclients > config.rate) {
+    if (config.is_rate_mode() && nclients > rate) {
       rate_report << "Up to " << rate << " client(s) will be created every "
                   << std::setprecision(3) << config.rate_period << " seconds. ";
     }
@@ -1980,7 +1980,7 @@ int main(int argc, char **argv) {
     auto nreqs_last =
         config.timing_script ? config.nreqs * nclients_last : nreqs_per_thread;
     std::stringstream rate_report;
-    if (config.is_rate_mode() && nclients_last > config.rate) {
+    if (config.is_rate_mode() && nclients_last > rate_last) {
       rate_report << "Up to " << rate_last
                   << " client(s) will be created every " << std::setprecision(3)
                   << config.rate_period << " seconds. ";
