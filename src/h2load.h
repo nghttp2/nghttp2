@@ -82,8 +82,6 @@ struct Config {
   // rate at which connections should be made
   size_t rate;
   ev_tstamp rate_period;
-  // number of connections made
-  size_t nconns;
   // amount of time to wait for activity on a given connection
   ssize_t conn_active_timeout;
   // amount of time to wait after the last request is made on a connection
@@ -200,7 +198,12 @@ struct Worker {
   bool tls_info_report_done;
   bool app_info_report_done;
   size_t nconns_made;
+  // number of clients this worker handles
   size_t nclients;
+  // number of requests each client issues
+  size_t nreqs_per_client;
+  // at most nreqs_rem clients get an extra request
+  size_t nreqs_rem;
   size_t rate;
   ev_timer timeout_watcher;
 
