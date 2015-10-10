@@ -127,3 +127,21 @@ void nghttp2_session_callbacks_set_send_data_callback(
     nghttp2_send_data_callback send_data_callback) {
   cbs->send_data_callback = send_data_callback;
 }
+
+void nghttp2_session_callbacks_set_pack_extension_callback(
+    nghttp2_session_callbacks *cbs,
+    nghttp2_pack_extension_callback pack_extension_callback) {
+  cbs->pack_extension_callback = pack_extension_callback;
+}
+
+void nghttp2_session_callbacks_set_unpack_extension_callback(
+    nghttp2_session_callbacks *cbs,
+    nghttp2_unpack_extension_callback unpack_extension_callback) {
+  cbs->unpack_extension_callback = unpack_extension_callback;
+}
+
+void nghttp2_session_callbacks_set_on_extension_chunk_recv_callback(
+    nghttp2_session_callbacks *cbs,
+    nghttp2_on_extension_chunk_recv_callback on_extension_chunk_recv_callback) {
+  cbs->on_extension_chunk_recv_callback = on_extension_chunk_recv_callback;
+}

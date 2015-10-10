@@ -72,6 +72,9 @@ void nghttp2_outbound_item_free(nghttp2_outbound_item *item, nghttp2_mem *mem) {
   case NGHTTP2_WINDOW_UPDATE:
     nghttp2_frame_window_update_free(&frame->window_update);
     break;
+  default:
+    nghttp2_frame_extension_free(&frame->ext);
+    break;
   }
 }
 

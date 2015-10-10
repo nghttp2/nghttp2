@@ -184,6 +184,15 @@ void nghttp2_frame_data_init(nghttp2_data *frame, uint8_t flags,
 
 void nghttp2_frame_data_free(nghttp2_data *frame _U_) {}
 
+void nghttp2_frame_extension_init(nghttp2_extension *frame, uint8_t type,
+                                  uint8_t flags, int32_t stream_id,
+                                  void *payload) {
+  nghttp2_frame_hd_init(&frame->hd, 0, type, flags, stream_id);
+  frame->payload = payload;
+}
+
+void nghttp2_frame_extension_free(nghttp2_extension *frame _U_) {}
+
 size_t nghttp2_frame_priority_len(uint8_t flags) {
   if (flags & NGHTTP2_FLAG_PRIORITY) {
     return NGHTTP2_PRIORITY_SPECLEN;

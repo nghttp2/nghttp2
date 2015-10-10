@@ -1718,6 +1718,44 @@ static size_t session_estimate_headers_payload(nghttp2_session *session,
          additional;
 }
 
+static int session_pack_extension(nghttp2_session *session, nghttp2_bufs *bufs,
+                                  nghttp2_frame *frame) {
+  ssize_t rv;
+  uint8_t flags;
+  nghttp2_buf *buf;
+  size_t buflen;
+  size_t framelen;
+
+  assert(session->callbacks.pack_extension_callback);
+
+  flags = frame->hd.flags;
+  buf = &bufs->head->buf;
+  buflen = nghttp2_min(nghttp2_buf_avail(buf), NGHTTP2_MAX_PAYLOADLEN);
+
+  rv = session->callbacks.pack_extension_callback(
+      session, &flags, buf->last, buflen, frame, session->user_data);
+  if (rv == NGHTTP2_ERR_CANCEL) {
+    return (int)rv;
+  }
+
+  if (rv < 0 || (size_t)rv > buflen) {
+    return NGHTTP2_ERR_CALLBACK_FAILURE;
+  }
+
+  framelen = (size_t)rv;
+
+  frame->hd.flags = flags;
+  frame->hd.length = framelen;
+
+  assert(buf->pos == buf->last);
+  buf->last += framelen;
+  buf->pos -= NGHTTP2_FRAME_HDLEN;
+
+  nghttp2_frame_pack_frame_hd(buf->pos, &frame->hd);
+
+  return 0;
+}
+
 /*
  * This function serializes frame for transmission.
  *
@@ -1956,8 +1994,18 @@ static int session_prep_frame(nghttp2_session *session,
       nghttp2_frame_pack_window_update(&session->aob.framebufs,
                                        &frame->window_update);
       break;
+    case NGHTTP2_CONTINUATION:
+      /* We never handle CONTINUATION here. */
+      assert(0);
+      break;
     default:
-      return NGHTTP2_ERR_INVALID_ARGUMENT;
+      /* extension frame */
+      rv = session_pack_extension(session, &session->aob.framebufs, frame);
+      if (rv != 0) {
+        return rv;
+      }
+
+      break;
     }
     return 0;
   } else {
@@ -3013,6 +3061,47 @@ static int session_call_on_header(nghttp2_session *session,
       return NGHTTP2_ERR_CALLBACK_FAILURE;
     }
   }
+  return 0;
+}
+
+static int
+session_call_on_extension_chunk_recv_callback(nghttp2_session *session,
+                                              const uint8_t *data, size_t len) {
+  int rv;
+  nghttp2_inbound_frame *iframe = &session->iframe;
+  nghttp2_frame *frame = &iframe->frame;
+
+  if (session->callbacks.on_extension_chunk_recv_callback) {
+    rv = session->callbacks.on_extension_chunk_recv_callback(
+        session, &frame->hd, data, len, session->user_data);
+    if (rv == NGHTTP2_ERR_CANCEL) {
+      return rv;
+    }
+    if (rv != 0) {
+      return NGHTTP2_ERR_CALLBACK_FAILURE;
+    }
+  }
+
+  return 0;
+}
+
+static int session_call_unpack_extension_callback(nghttp2_session *session) {
+  int rv;
+  nghttp2_inbound_frame *iframe = &session->iframe;
+  nghttp2_frame *frame = &iframe->frame;
+  void *payload = NULL;
+
+  rv = session->callbacks.unpack_extension_callback(
+      session, &payload, &frame->hd, session->user_data);
+  if (rv == NGHTTP2_ERR_CANCEL) {
+    return rv;
+  }
+  if (rv != 0) {
+    return NGHTTP2_ERR_CALLBACK_FAILURE;
+  }
+
+  frame->ext.payload = payload;
+
   return 0;
 }
 
@@ -4383,6 +4472,24 @@ static int session_process_window_update_frame(nghttp2_session *session) {
   return nghttp2_session_on_window_update_received(session, frame);
 }
 
+static int session_process_extension_frame(nghttp2_session *session) {
+  int rv;
+  nghttp2_inbound_frame *iframe = &session->iframe;
+  nghttp2_frame *frame = &iframe->frame;
+
+  rv = session_call_unpack_extension_callback(session);
+  if (nghttp2_is_fatal(rv)) {
+    return rv;
+  }
+
+  /* This handles the case where rv == NGHTTP2_ERR_CANCEL as well */
+  if (rv != 0) {
+    return 0;
+  }
+
+  return session_call_on_frame_received(session, frame);
+}
+
 int nghttp2_session_on_data_received(nghttp2_session *session,
                                      nghttp2_frame *frame) {
   int rv = 0;
@@ -5184,11 +5291,19 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
       default:
         DEBUGF(fprintf(stderr, "recv: unknown frame\n"));
 
-        /* Silently ignore unknown frame type. */
+        if (!session->callbacks.unpack_extension_callback) {
+          /* Silently ignore unknown frame type. */
+
+          busy = 1;
+
+          iframe->state = NGHTTP2_IB_IGN_PAYLOAD;
+
+          break;
+        }
 
         busy = 1;
 
-        iframe->state = NGHTTP2_IB_IGN_PAYLOAD;
+        iframe->state = NGHTTP2_IB_READ_EXTENSION_PAYLOAD;
 
         break;
       }
@@ -5886,6 +6001,44 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
       break;
     case NGHTTP2_IB_IGN_ALL:
       return (ssize_t)inlen;
+    case NGHTTP2_IB_READ_EXTENSION_PAYLOAD:
+      DEBUGF(fprintf(stderr, "recv: [IB_READ_EXTENSION_PAYLOAD]\n"));
+
+      readlen = inbound_frame_payload_readlen(iframe, in, last);
+      iframe->payloadleft -= readlen;
+      in += readlen;
+
+      DEBUGF(fprintf(stderr, "recv: readlen=%zu, payloadleft=%zu\n", readlen,
+                     iframe->payloadleft));
+
+      if (readlen > 0) {
+        rv = session_call_on_extension_chunk_recv_callback(
+            session, in - readlen, readlen);
+        if (nghttp2_is_fatal(rv)) {
+          return rv;
+        }
+
+        if (rv != 0) {
+          busy = 1;
+
+          iframe->state = NGHTTP2_IB_IGN_PAYLOAD;
+
+          break;
+        }
+      }
+
+      if (iframe->payloadleft > 0) {
+        break;
+      }
+
+      rv = session_process_extension_frame(session);
+      if (nghttp2_is_fatal(rv)) {
+        return rv;
+      }
+
+      session_inbound_frame_reset(session);
+
+      break;
     }
 
     if (!busy && in == last) {
