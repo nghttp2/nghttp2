@@ -1379,12 +1379,12 @@ Options:
               will run  as it  normally does, creating  connections at
               whatever variable rate it  wants.  The default value for
               this option is 0.
-  --rate-period=<N>
-              Specifies the time period  between creating connections.
-              The  period  must be a positive  number  greater than or
-              equal to 1.0,  representing the length of  the period in
-              seconds.  This option is  ignored if the rate  option is
-              not used. The default value for this option is 1.0.
+  --rate-period=<DURATION>
+              Specifies the time  period between creating connections.
+              The period  must be a positive  number, representing the
+              length of the period in time.  This option is ignored if
+              the rate option is not used.  The default value for this
+              option is 1s.
   -T, --connection-active-timeout=<N>
               Specifies  the maximum  time that  h2load is  willing to
               keep a  connection open,  regardless of the  activity on
@@ -1434,7 +1434,14 @@ Options:
   -v, --verbose
               Output debug information.
   --version   Display version information and exit.
-  -h, --help  Display this help and exit.)" << std::endl;
+  -h, --help  Display this help and exit.
+
+--
+
+  The <DURATION> argument is an integer and an optional unit (e.g., 1s
+  is 1 second and 500ms is 500 milliseconds).  Units are h, m, s or ms
+  (hours, minutes, seconds and milliseconds, respectively).  If a unit
+  is omitted, a second is used as unit.)" << std::endl;
 }
 } // namespace
 
@@ -1629,25 +1636,14 @@ int main(int argc, char **argv) {
         // npn-list option
         config.npn_list = util::parse_config_str_list(optarg);
         break;
-      case 5: {
+      case 5:
         // rate-period
-        const char *start = optarg;
-        char *end;
-        errno = 0;
-        auto v = std::strtod(start, &end);
-
-        if (v < 1.0 || !std::isfinite(v) || end == start || errno != 0) {
-          auto error = errno;
-          std::cerr << "Rate period value error " << optarg << std::endl;
-          if (error != 0) {
-            std::cerr << "\n\t" << strerror(error) << std::endl;
-          }
+        config.rate_period = util::parse_duration_with_unit(optarg);
+        if (!std::isfinite(config.rate_period)) {
+          std::cerr << "--rate-period: value error " << optarg << std::endl;
           exit(EXIT_FAILURE);
         }
-
-        config.rate_period = v;
         break;
-      }
       }
       break;
     default:
