@@ -1401,22 +1401,23 @@ Options:
               inactive),   h2load   will   keep  a   connection   open
               indefinitely, waiting for a response.
   --timing-script-file=<PATH>
-              Path of a file containing one  or more lines separated by
-              EOLs. Each script line  is composed of  two tab-separated
-              fields. The first field  represents  the time offset from
-              the start of execution,  expressed as a positive value of
-              milliseconds  with  microsecond  resolution.  The  second
-              field represents the URI.  This option will disable  URIs
-              getting  from  command-line.  If '-'  is given as <PATH>,
-              script  lines  will be read from stdin.  Script lines are
-              used in order for each client. If -n is given, it must be
-              less than or equal to the number of script lines,  larger
-              values are clamped to the number of script lines.  If  -n
-              is not given,  the number of requests will default to the
-              number of script lines. The scheme, host and port defined
-              in the  first URI  are used  solely.  Values contained in
-              other URIs, if  present, are  ignored.  Definition  of  a
-              base  URI  overrides  all  scheme, host  or port  values.
+              Path of a file containing one or more lines separated by
+              EOLs.  Each script line is composed of two tab-separated
+              fields.  The first field represents the time offset from
+              the start of execution, expressed as a positive value of
+              milliseconds  with microsecond  resolution.  The  second
+              field represents the URI.  This option will disable URIs
+              getting from  command-line.  If '-' is  given as <PATH>,
+              script lines will be read  from stdin.  Script lines are
+              used in order for each client.   If -n is given, it must
+              be less  than or  equal to the  number of  script lines,
+              larger values are clamped to the number of script lines.
+              If -n is not given,  the number of requests will default
+              to the  number of  script lines.   The scheme,  host and
+              port defined in  the first URI are  used solely.  Values
+              contained  in  other  URIs,  if  present,  are  ignored.
+              Definition of a  base URI overrides all  scheme, host or
+              port values.
   -B, --base-uri=<URI>
               Specify URI from which the scheme, host and port will be
               used  for  all requests.   The  base  URI overrides  all
