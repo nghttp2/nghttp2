@@ -83,9 +83,9 @@ struct Config {
   size_t rate;
   ev_tstamp rate_period;
   // amount of time to wait for activity on a given connection
-  ssize_t conn_active_timeout;
+  ev_tstamp conn_active_timeout;
   // amount of time to wait after the last request is made on a connection
-  ssize_t conn_inactivity_timeout;
+  ev_tstamp conn_inactivity_timeout;
   enum {
     PROTO_HTTP2,
     PROTO_SPDY2,
