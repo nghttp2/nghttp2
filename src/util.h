@@ -659,9 +659,10 @@ int64_t parse_uint(const std::string &s);
 // Parses NULL terminated string |s| as unsigned integer and returns
 // the parsed integer casted to double.  If |s| ends with "s", the
 // parsed value's unit is a second.  If |s| ends with "ms", the unit
-// is millisecond.  If none of them are given, the unit is second.
-// This function returns std::numeric_limits<double>::infinity() if
-// error occurs.
+// is millisecond.  Similarly, it also supports 'm' and 'h' for
+// minutes and hours respectively.  If none of them are given, the
+// unit is second.  This function returns
+// std::numeric_limits<double>::infinity() if error occurs.
 double parse_duration_with_unit(const char *s);
 
 // Returns string representation of time duration |t|.  If t has
