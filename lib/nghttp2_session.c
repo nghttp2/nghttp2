@@ -1940,15 +1940,6 @@ static int session_prep_frame(nghttp2_session *session,
       }
       nghttp2_frame_pack_ping(&session->aob.framebufs, &frame->ping);
       break;
-    case NGHTTP2_WINDOW_UPDATE: {
-      rv = session_predicate_window_update_send(session, frame->hd.stream_id);
-      if (rv != 0) {
-        return rv;
-      }
-      nghttp2_frame_pack_window_update(&session->aob.framebufs,
-                                       &frame->window_update);
-      break;
-    }
     case NGHTTP2_GOAWAY:
       rv = nghttp2_frame_pack_goaway(&session->aob.framebufs, &frame->goaway);
       if (rv != 0) {
@@ -1956,6 +1947,14 @@ static int session_prep_frame(nghttp2_session *session,
       }
       session->local_last_stream_id = frame->goaway.last_stream_id;
 
+      break;
+    case NGHTTP2_WINDOW_UPDATE:
+      rv = session_predicate_window_update_send(session, frame->hd.stream_id);
+      if (rv != 0) {
+        return rv;
+      }
+      nghttp2_frame_pack_window_update(&session->aob.framebufs,
+                                       &frame->window_update);
       break;
     default:
       return NGHTTP2_ERR_INVALID_ARGUMENT;
