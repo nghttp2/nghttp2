@@ -1261,7 +1261,7 @@ std::unique_ptr<Worker> create_worker(uint32_t id, SSL_CTX *ssl_ctx,
   std::stringstream rate_report;
   if (config.is_rate_mode() && nclients > rate) {
     rate_report << "Up to " << rate << " client(s) will be created every "
-                << std::setprecision(3) << config.rate_period << " seconds. ";
+                << util::duration_str(config.rate_period) << " ";
   }
 
   std::cout << "spawning thread #" << id << ": " << nclients
