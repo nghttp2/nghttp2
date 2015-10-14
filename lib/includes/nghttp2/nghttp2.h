@@ -2189,6 +2189,21 @@ nghttp2_option_set_max_reserved_remote_streams(nghttp2_option *option,
 /**
  * @function
  *
+ * Set extension frame type the application is willing to handle with
+ * user defined callbacks (see
+ * :type:`nghttp2_on_extension_chunk_recv_callback` and
+ * :type:`nghttp2_unpack_extension_callback`).  The |type| is
+ * extension frame type, and must be strictly greater than 0x9.
+ * Otherwise, this function does nothing.  The application does not
+ * have to call this function if it just sends extension frames.
+ */
+NGHTTP2_EXTERN void
+nghttp2_option_set_user_recv_extension_type(nghttp2_option *option,
+                                            uint8_t type);
+
+/**
+ * @function
+ *
  * Initializes |*session_ptr| for client use.  The all members of
  * |callbacks| are copied to |*session_ptr|.  Therefore |*session_ptr|
  * does not store |callbacks|.  The |user_data| is an arbitrary user

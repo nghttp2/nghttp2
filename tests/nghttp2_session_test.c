@@ -1769,6 +1769,7 @@ void test_nghttp2_session_recv_extension(void) {
   nghttp2_mem *mem;
   const char data[] = "Hello World!";
   ssize_t rv;
+  nghttp2_option *option;
 
   mem = nghttp2_mem_default();
 
@@ -1778,6 +1779,9 @@ void test_nghttp2_session_recv_extension(void) {
   callbacks.unpack_extension_callback = unpack_extension_callback;
   callbacks.on_frame_recv_callback = on_frame_recv_callback;
 
+  nghttp2_option_new(&option);
+  nghttp2_option_set_user_recv_extension_type(option, 111);
+
   nghttp2_buf_init2(&ud.scratchbuf, 4096, mem);
   nghttp2_buf_init2(&buf, 4096, mem);
 
@@ -1786,7 +1790,7 @@ void test_nghttp2_session_recv_extension(void) {
   buf.last += NGHTTP2_FRAME_HDLEN;
   buf.last = nghttp2_cpymem(buf.last, data, sizeof(data));
 
-  nghttp2_session_client_new(&session, &callbacks, &ud);
+  nghttp2_session_client_new2(&session, &callbacks, &ud, option);
 
   nghttp2_frame_hd_init(&ud.recv_frame_hd, 0, 0, 0, 0);
   rv = nghttp2_session_mem_recv(session, buf.pos, nghttp2_buf_len(&buf));
@@ -1805,7 +1809,7 @@ void test_nghttp2_session_recv_extension(void) {
   callbacks.on_extension_chunk_recv_callback =
       cancel_on_extension_chunk_recv_callback;
 
-  nghttp2_session_server_new(&session, &callbacks, &ud);
+  nghttp2_session_server_new2(&session, &callbacks, &ud, option);
 
   ud.frame_recv_cb_called = 0;
   rv = nghttp2_session_mem_recv(session, buf.pos, nghttp2_buf_len(&buf));
@@ -1821,7 +1825,7 @@ void test_nghttp2_session_recv_extension(void) {
   callbacks.on_extension_chunk_recv_callback = on_extension_chunk_recv_callback;
   callbacks.unpack_extension_callback = cancel_unpack_extension_callback;
 
-  nghttp2_session_server_new(&session, &callbacks, &ud);
+  nghttp2_session_server_new2(&session, &callbacks, &ud, option);
 
   ud.frame_recv_cb_called = 0;
   rv = nghttp2_session_mem_recv(session, buf.pos, nghttp2_buf_len(&buf));
@@ -1833,6 +1837,8 @@ void test_nghttp2_session_recv_extension(void) {
 
   nghttp2_buf_free(&buf, mem);
   nghttp2_buf_free(&ud.scratchbuf, mem);
+
+  nghttp2_option_del(option);
 }
 
 void test_nghttp2_session_continue(void) {

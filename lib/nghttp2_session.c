@@ -402,6 +402,11 @@ static int session_new(nghttp2_session **session_ptr,
 
       (*session_ptr)->opt_flags |= NGHTTP2_OPTMASK_NO_HTTP_MESSAGING;
     }
+
+    if (option->opt_set_mask & NGHTTP2_OPT_USER_RECV_EXT_TYPES) {
+      memcpy((*session_ptr)->user_recv_ext_types, option->user_recv_ext_types,
+             sizeof((*session_ptr)->user_recv_ext_types));
+    }
   }
 
   (*session_ptr)->callbacks = *callbacks;
@@ -5291,7 +5296,9 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
       default:
         DEBUGF(fprintf(stderr, "recv: unknown frame\n"));
 
-        if (!session->callbacks.unpack_extension_callback) {
+        if (!session->callbacks.unpack_extension_callback ||
+            (session->user_recv_ext_types[iframe->frame.hd.type / 8] &
+             (1 << (7 - (iframe->frame.hd.type & 0x7)))) == 0) {
           /* Silently ignore unknown frame type. */
 
           busy = 1;

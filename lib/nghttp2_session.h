@@ -296,6 +296,12 @@ struct nghttp2_session {
      this session.  The nonzero does not necessarily mean
      WINDOW_UPDATE is not queued. */
   uint8_t window_update_queued;
+  /* Bitfield of extension frame types that application is willing to
+     receive.  First most significant 10 bits are standard frame types
+     and not used.  If bit is set, it indicates that incoming frame
+     with that type is passed to user defined callbacks, otherwise
+     they are ignored. */
+  uint8_t user_recv_ext_types[32];
 };
 
 /* Struct used when updating initial window size of each active
