@@ -75,9 +75,6 @@ int htp_msg_begin(http_parser *htp) {
   auto downstream =
       make_unique<Downstream>(upstream, handler->get_mcpool(), 0, 0);
 
-  // We happen to have the same value for method token.
-  downstream->set_request_method(htp->method);
-
   upstream->attach_downstream(std::move(downstream));
 
   return 0;
@@ -88,6 +85,10 @@ namespace {
 int htp_uricb(http_parser *htp, const char *data, size_t len) {
   auto upstream = static_cast<HttpsUpstream *>(htp->data);
   auto downstream = upstream->get_downstream();
+
+  // We happen to have the same value for method token.
+  downstream->set_request_method(htp->method);
+
   if (downstream->get_request_headers_sum() + len >
       get_config()->header_field_buffer) {
     if (LOG_ENABLED(INFO)) {
