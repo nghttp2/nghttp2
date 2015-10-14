@@ -1240,11 +1240,11 @@ Performance:
       << util::utos_with_unit(get_config()->downstream_response_buffer_size)
       << R"(
   --fastopen=<N>
-              enables “TCP Fast Open” for the listening socket 
-              and limits the maximum length for the queue of connections 
-              that have not yet completed the three-way handshake.
-              If value is 0 then fast open is disabled.
-              Default: )" << util::utos_with_unit(get_config()->fastopen) << R"(
+              Enables  "TCP Fast  Open" for  the listening  socket and
+              limits the  maximum length for the  queue of connections
+              that have not yet completed the three-way handshake.  If
+              value is 0 then fast open is disabled.
+              Default: )" << get_config()->fastopen << R"(
 Timeout:
   --frontend-http2-read-timeout=<DURATION>
               Specify  read  timeout  for  HTTP/2  and  SPDY  frontend
