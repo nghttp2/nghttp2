@@ -349,6 +349,12 @@ int Connection::tls_handshake() {
       break;
     case SSL_ERROR_WANT_WRITE:
       break;
+    case SSL_ERROR_SSL:
+      if (LOG_ENABLED(INFO)) {
+        LOG(INFO) << "tls: handshake libssl error: "
+                  << ERR_error_string(ERR_get_error(), nullptr);
+      }
+      return SHRPX_ERR_NETWORK;
     default:
       if (LOG_ENABLED(INFO)) {
         LOG(INFO) << "tls: handshake libssl error " << err;
@@ -551,6 +557,12 @@ ssize_t Connection::write_tls(const void *data, size_t len) {
       // starting write watcher and timer is done in write_clear via
       // bio.
       return 0;
+    case SSL_ERROR_SSL:
+      if (LOG_ENABLED(INFO)) {
+        LOG(INFO) << "SSL_write: " << ERR_error_string(ERR_get_error(),
+                                                       nullptr);
+      }
+      return SHRPX_ERR_NETWORK;
     default:
       if (LOG_ENABLED(INFO)) {
         LOG(INFO) << "SSL_write: SSL_get_error returned " << err;
@@ -599,6 +611,11 @@ ssize_t Connection::read_tls(void *data, size_t len) {
       return SHRPX_ERR_NETWORK;
     case SSL_ERROR_ZERO_RETURN:
       return SHRPX_ERR_EOF;
+    case SSL_ERROR_SSL:
+      if (LOG_ENABLED(INFO)) {
+        LOG(INFO) << "SSL_read: " << ERR_error_string(ERR_get_error(), nullptr);
+      }
+      return SHRPX_ERR_NETWORK;
     default:
       if (LOG_ENABLED(INFO)) {
         LOG(INFO) << "SSL_read: SSL_get_error returned " << err;
