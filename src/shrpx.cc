@@ -111,7 +111,7 @@ namespace shrpx {
 #define _KERNEL_FASTOPEN
 // conditional define for TCP_FASTOPEN mostly on ubuntu
 #ifndef TCP_FASTOPEN
-#define TCP_FASTOPEN   23
+#define TCP_FASTOPEN 23
 #endif
 
 // conditional define for SOL_TCP mostly on ubuntu
@@ -618,10 +618,10 @@ int create_tcp_server_socket(int family) {
       continue;
     }
 
-    if(get_config()->fastopen > 0) {
+    if (get_config()->fastopen > 0) {
       val = get_config()->fastopen;
       if (setsockopt(fd, SOL_TCP, TCP_FASTOPEN, &val,
-                   static_cast<socklen_t>(sizeof(val))) == -1) {
+                     static_cast<socklen_t>(sizeof(val))) == -1) {
         LOG(WARN) << "Failed to set TCP_FASTOPEN option to listener socket";
       }
     }
@@ -1244,9 +1244,7 @@ Performance:
               and limits the maximum length for the queue of connections 
               that have not yet completed the three-way handshake.
               If value is 0 then fast open is disabled.
-              Default: )"
-      << util::utos_with_unit(get_config()->fastopen)
-      << R"(
+              Default: )" << util::utos_with_unit(get_config()->fastopen) << R"(
 Timeout:
   --frontend-http2-read-timeout=<DURATION>
               Specify  read  timeout  for  HTTP/2  and  SPDY  frontend
