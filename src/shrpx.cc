@@ -1346,7 +1346,10 @@ SSL/TLS:
               and   TLSv1.0.    The   name   matching   is   done   in
               case-insensitive   manner.    The  parameter   must   be
               delimited by  a single comma  only and any  white spaces
-              are treated as a part of protocol string.
+              are  treated  as a  part  of  protocol string.   If  the
+              protocol list advertised by client does not overlap this
+              list,  you  will  receive  the  error  message  "unknown
+              protocol".
               Default: )" << DEFAULT_TLS_PROTO_LIST << R"(
   --tls-ticket-key-file=<PATH>
               Path to file that contains  random data to construct TLS
