@@ -72,9 +72,8 @@ command-line like this::
 
     $ nghttpx -s -f'*,8443' -b127.0.0.1,8080 /path/to/server.key /path/to/server.crt
 
-At the time of this writing, Firefox nightly supports HTTP/2 proxy.
-Chromium can use nghttpx as secure (SPDY) proxy and will support
-HTTP/2 proxy in the near future.
+At the time of this writing, Firefox nightly and Chromium v46 can use
+nghttpx as HTTP/2 proxy.
 
 To make Firefox nightly or Chromium use nghttpx as HTTP/2 or SPDY
 proxy, user has to create proxy.pac script file like this:
