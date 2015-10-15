@@ -72,11 +72,11 @@ command-line like this::
 
     $ nghttpx -s -f'*,8443' -b127.0.0.1,8080 /path/to/server.key /path/to/server.crt
 
-At the time of this writing, Firefox nightly and Chromium v46 can use
+At the time of this writing, Firefox 41 and Chromium v46 can use
 nghttpx as HTTP/2 proxy.
 
-To make Firefox nightly or Chromium use nghttpx as HTTP/2 or SPDY
-proxy, user has to create proxy.pac script file like this:
+To make Firefox or Chromium use nghttpx as HTTP/2 or SPDY proxy, user
+has to create proxy.pac script file like this:
 
 .. code-block:: javascript
 
@@ -85,11 +85,11 @@ proxy, user has to create proxy.pac script file like this:
     }
 
 ``SERVERADDR`` and ``PORT`` is the hostname/address and port of the
-machine nghttpx is running.  Please note that both Firefox nightly and
+machine nghttpx is running.  Please note that both Firefox and
 Chromium require valid certificate for secure proxy.
 
-For Firefox nightly, open Preference window and select Advanced then
-click Network tab.  Clicking Connection Settings button will show the
+For Firefox, open Preference window and select Advanced then click
+Network tab.  Clicking Connection Settings button will show the
 dialog.  Select "Automatic proxy configuration URL" and enter the path
 to proxy.pac file, something like this::
 
