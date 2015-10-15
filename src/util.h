@@ -579,7 +579,8 @@ bool select_h2(const unsigned char **out, unsigned char *outlen,
 // present in |in| of length inlen.  Returns true if identifier is
 // selected.
 bool select_protocol(const unsigned char **out, unsigned char *outlen,
-               const unsigned char *in, unsigned int inlen, std::vector<std::string> proto_list);
+                     const unsigned char *in, unsigned int inlen,
+                     std::vector<std::string> proto_list);
 
 // Returns default ALPN protocol list, which only contains supported
 // HTTP/2 protocol identifier.

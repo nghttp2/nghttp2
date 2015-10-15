@@ -1458,7 +1458,7 @@ int parse_config(const char *opt, const char *optarg,
     mod_config()->fastopen = n;
 
     return 0;
-  }  
+  }
   case SHRPX_OPTID_BACKEND_KEEP_ALIVE_TIMEOUT:
     return parse_duration(&mod_config()->downstream_idle_read_timeout, opt,
                           optarg);

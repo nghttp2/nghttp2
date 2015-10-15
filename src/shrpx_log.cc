@@ -364,8 +364,8 @@ int reopen_log_files() {
 
   lgconf->accesslog_fd = new_accesslog_fd;
   lgconf->errorlog_fd = new_errorlog_fd;
-  lgconf->errorlog_tty = (new_errorlog_fd == -1) ?
-    false : isatty(new_errorlog_fd);
+  lgconf->errorlog_tty =
+      (new_errorlog_fd == -1) ? false : isatty(new_errorlog_fd);
 
   return res;
 }
