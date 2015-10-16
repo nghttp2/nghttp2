@@ -1682,6 +1682,11 @@ int main(int argc, char **argv) {
 
   for (int i = 0; i < argc; ++i) {
     mod_config()->argv[i] = strdup(argv[i]);
+    if (mod_config()->argv[i] == nullptr) {
+      auto error = errno;
+      LOG(FATAL) << "failed to copy argv: " << strerror(error);
+      exit(EXIT_FAILURE);
+    }
   }
 
   mod_config()->cwd = getcwd(nullptr, 0);

@@ -97,8 +97,14 @@ void signal_set_handler(void (*handler)(int), Signals &&sigs) {
   struct sigaction act {};
   act.sa_handler = handler;
   sigemptyset(&act.sa_mask);
+  int rv;
   for (auto sig : sigs) {
-    sigaction(sig, &act, nullptr);
+    rv = sigaction(sig, &act, nullptr);
+    if (rv != 0) {
+      auto error = errno;
+      LOG(WARN) << "sigaction() with signal " << sig
+                << " failed: errno=" << error;
+    }
   }
 }
 } // namespace
