@@ -382,29 +382,6 @@ fi
 
 AM_CONDITIONAL([HAVE_SPDYLAY], [ test "x${have_spdylay}" = "xyes" ])
 
-# mruby (for src/nghttpx)
-have_mruby=no
-if test "x${request_mruby}" = "xyes"; then
-  # We are going to build mruby
-  have_mruby=yes
-  AC_DEFINE([HAVE_MRUBY], [1], [Define to 1 if you have `mruby` library.])
-  LIBMRUBY_LIBS="-lmruby -lm"
-  LIBMRUBY_CFLAGS=
-  AC_SUBST([LIBMRUBY_LIBS])
-  AC_SUBST([LIBMRUBY_CFLAGS])
-fi
-
-AM_CONDITIONAL([HAVE_MRUBY], [test "x${have_mruby}" = "xyes"])
-
-# neverbleed (for src/nghttpx)
-have_neverbleed=no
-if test "x${request_neverbleed}" = "xyes"; then
-  have_neverbleed=yes
-  AC_DEFINE([HAVE_NEVERBLEED], [1], [Define to 1 if you have `neverbleed` library.])
-fi
-
-AM_CONDITIONAL([HAVE_NEVERBLEED], [test "x${have_neverbleed}" = "xyes"])
-
 # Check Boost Asio library
 have_asio_lib=no
 
@@ -483,14 +460,35 @@ AM_CONDITIONAL([ENABLE_EXAMPLES], [ test "x${enable_examples}" = "xyes" ])
 # third-party only be built when needed
 
 enable_third_party=no
+have_mruby=no
+have_neverbleed=no
 if test "x${enable_examples}" = "xyes" ||
    test "x${enable_app}" = "xyes" ||
    test "x${enable_hpack_tools}" = "xyes" ||
    test "x${enable_asio_lib}" = "xyes"; then
   enable_third_party=yes
+
+  # mruby (for src/nghttpx)
+  if test "x${request_mruby}" = "xyes"; then
+    # We are going to build mruby
+    have_mruby=yes
+    AC_DEFINE([HAVE_MRUBY], [1], [Define to 1 if you have `mruby` library.])
+    LIBMRUBY_LIBS="-lmruby -lm"
+    LIBMRUBY_CFLAGS=
+    AC_SUBST([LIBMRUBY_LIBS])
+    AC_SUBST([LIBMRUBY_CFLAGS])
+  fi
+
+  # neverbleed (for src/nghttpx)
+  if test "x${request_neverbleed}" = "xyes"; then
+    have_neverbleed=yes
+    AC_DEFINE([HAVE_NEVERBLEED], [1], [Define to 1 if you have `neverbleed` library.])
+  fi
 fi
 
 AM_CONDITIONAL([ENABLE_THIRD_PARTY], [ test "x${enable_third_party}" = "xyes" ])
+AM_CONDITIONAL([HAVE_MRUBY], [test "x${have_mruby}" = "xyes"])
+AM_CONDITIONAL([HAVE_NEVERBLEED], [test "x${have_neverbleed}" = "xyes"])
 
 # Python bindings
 enable_python_bindings=no
@@ -738,20 +736,27 @@ AC_OUTPUT
 
 AC_MSG_NOTICE([summary of build options:
 
-    Version:        ${VERSION} shared $LT_CURRENT:$LT_REVISION:$LT_AGE
-    Host type:      ${host}
-    Install prefix: ${prefix}
-    C compiler:     ${CC}
-    CFLAGS:         ${CFLAGS}
-    WARNCFLAGS:     ${WARNCFLAGS}
-    LDFLAGS:        ${LDFLAGS}
-    LIBS:           ${LIBS}
-    CPPFLAGS:       ${CPPFLAGS}
-    C preprocessor: ${CPP}
-    C++ compiler:   ${CXX}
-    CXXFLAGS:       ${CXXFLAGS}
-    CXXCPP:         ${CXXCPP}
-    Library types:  Shared=${enable_shared}, Static=${enable_static}
+    Package version: ${VERSION}
+    Library version: $LT_CURRENT:$LT_REVISION:$LT_AGE
+    Install prefix:  ${prefix}
+    System types:
+      Build:         ${build}
+      Host:          ${host}
+      Target:        ${target}
+    Compiler:
+      C compiler:     ${CC}
+      CFLAGS:         ${CFLAGS}
+      LDFLAGS:        ${LDFLAGS}
+      C++ compiler:   ${CXX}
+      CXXFLAGS:       ${CXXFLAGS}
+      CXXCPP:         ${CXXCPP}
+      C preprocessor: ${CPP}
+      CPPFLAGS:       ${CPPFLAGS}
+      WARNCFLAGS:     ${WARNCFLAGS}
+      LIBS:           ${LIBS}
+    Library:
+      Shared:         ${enable_shared}
+      Static:         ${enable_static}
     Python:
       Python:         ${PYTHON}
       PYTHON_VERSION: ${PYTHON_VERSION}
@@ -761,24 +766,26 @@ AC_MSG_NOTICE([summary of build options:
       PYTHON_LDFLAGS: ${PYTHON_LDFLAGS}
       Cython:         ${CYTHON}
     Test:
-      CUnit:          ${have_cunit}
+      CUnit:          ${have_cunit} (CFLAGS='${CUNIT_CFLAGS}' LIBS='${CUNIT_LIBS}')
       Failmalloc:     ${enable_failmalloc}
     Libs:
-      OpenSSL:        ${have_openssl}
-      Libxml2:        ${have_libxml2}
-      Libev:          ${have_libev}
-      Libevent(SSL):  ${have_libevent_openssl}
-      Spdylay:        ${have_spdylay}
-      MRuby:          ${have_mruby}
-      Neverbleed:     ${have_neverbleed}
-      Jansson:        ${have_jansson}
-      Jemalloc:       ${have_jemalloc}
-      Zlib:           ${have_zlib}
+      OpenSSL:        ${have_openssl} (CFLAGS='${OPENSSL_CFLAGS}' LIBS='${OPENSSL_LIBS}')
+      Libxml2:        ${have_libxml2} (CFLAGS='${XML_CPPFLAGS}' LIBS='${XML_LIBS}')
+      Libev:          ${have_libev} (CFLAGS='${LIBEV_CFLAGS}' LIBS='${LIBEV_LIBS}')
+      Libevent(SSL):  ${have_libevent_openssl} (CFLAGS='${LIBEVENT_OPENSSL_CFLAGS}' LIBS='${LIBEVENT_OPENSSL_LIBS}')
+      Spdylay:        ${have_spdylay} (CFLAGS='${LIBSPDYLAY_CFLAGS}' LIBS='${LIBSPDYLAY_LIBS}')
+      Jansson:        ${have_jansson} (CFLAGS='${JANSSON_CFLAGS}' LIBS='${JANSSON_LIBS}')
+      Jemalloc:       ${have_jemalloc} (LIBS='${JEMALLOC_LIBS}')
+      Zlib:           ${have_zlib} (CFLAGS='${ZLIB_CFLAGS}' LIBS='${ZLIB_LIBS}')
       Boost CPPFLAGS: ${BOOST_CPPFLAGS}
       Boost LDFLAGS:  ${BOOST_LDFLAGS}
       Boost::ASIO:    ${BOOST_ASIO_LIB}
       Boost::System:  ${BOOST_SYSTEM_LIB}
       Boost::Thread:  ${BOOST_THREAD_LIB}
+    Third-party:
+      http-parser:    ${enable_third_party}
+      MRuby:          ${have_mruby} (CFLAGS='${LIBMRUBY_CFLAGS}' LIBS='${LIBMRUBY_LIBS}')
+      Neverbleed:     ${have_neverbleed}
     Features:
       Applications:   ${enable_app}
       HPACK tools:    ${enable_hpack_tools}
@@ -786,5 +793,4 @@ AC_MSG_NOTICE([summary of build options:
       Examples:       ${enable_examples}
       Python bindings:${enable_python_bindings}
       Threading:      ${enable_threads}
-      Third-party:    ${enable_third_party}
 ])
