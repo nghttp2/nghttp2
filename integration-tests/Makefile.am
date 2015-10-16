@@ -33,7 +33,8 @@ EXTRA_DIST = \
 	setenv \
 	req-set-header.rb \
 	resp-set-header.rb \
-	return.rb
+	req-return.rb \
+	resp-return.rb
 
 itprep-local:
 	go get -d -v golang.org/x/net/http2
