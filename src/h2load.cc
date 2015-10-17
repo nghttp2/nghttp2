@@ -1918,6 +1918,13 @@ int main(int argc, char **argv) {
     config.nv.push_back(std::move(cva));
   }
 
+  // Don't DOS our server!
+  if (config.host == "nghttp2.org") {
+    std::cerr << "Using h2load against public server " << config.host
+              << " should be prohibited." << std::endl;
+    exit(EXIT_FAILURE);
+  }
+
   resolve_host();
 
   std::cout << "starting benchmark..." << std::endl;
