@@ -455,4 +455,15 @@ int main(int argc, char **argv) {
 
 } // namespace nghttp2
 
-int main(int argc, char **argv) { return nghttp2::main(argc, argv); }
+int main(int argc, char **argv) {
+  try {
+    return nghttp2::main(argc, argv);
+  } catch (std::bad_alloc &) {
+    fputs("Out of memory\n", stderr);
+  } catch (std::exception &x) {
+    fputs("Exception caught: ", stderr);
+    fputs(x.what(), stderr);
+    fputs("\n", stderr);
+  }
+  return EXIT_FAILURE;
+}

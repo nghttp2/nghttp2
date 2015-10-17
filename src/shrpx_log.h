@@ -37,48 +37,51 @@
 #include "shrpx_log_config.h"
 #include "ssl.h"
 
-namespace shrpx {
-
-class Downstream;
-
 #define ENABLE_LOG 1
 
-#define LOG_ENABLED(SEVERITY) (ENABLE_LOG && Log::log_enabled(SEVERITY))
+#define LOG_ENABLED(SEVERITY) (ENABLE_LOG && shrpx::Log::log_enabled(SEVERITY))
 
-#define LOG(SEVERITY) Log(SEVERITY, __FILE__, __LINE__)
+#define LOG(SEVERITY) shrpx::Log(SEVERITY, __FILE__, __LINE__)
 
 // Listener log
 #define LLOG(SEVERITY, LISTEN)                                                 \
-  (Log(SEVERITY, __FILE__, __LINE__) << "[LISTEN:" << LISTEN << "] ")
+  (shrpx::Log(SEVERITY, __FILE__, __LINE__) << "[LISTEN:" << LISTEN << "] ")
 
 // Worker log
 #define WLOG(SEVERITY, WORKER)                                                 \
-  (Log(SEVERITY, __FILE__, __LINE__) << "[WORKER:" << WORKER << "] ")
+  (shrpx::Log(SEVERITY, __FILE__, __LINE__) << "[WORKER:" << WORKER << "] ")
 
 // ClientHandler log
 #define CLOG(SEVERITY, CLIENT_HANDLER)                                         \
-  (Log(SEVERITY, __FILE__, __LINE__) << "[CLIENT_HANDLER:" << CLIENT_HANDLER   \
-                                     << "] ")
+  (shrpx::Log(SEVERITY, __FILE__, __LINE__)                                    \
+   << "[CLIENT_HANDLER:" << CLIENT_HANDLER << "] ")
 
 // Upstream log
 #define ULOG(SEVERITY, UPSTREAM)                                               \
-  (Log(SEVERITY, __FILE__, __LINE__) << "[UPSTREAM:" << UPSTREAM << "] ")
+  (shrpx::Log(SEVERITY, __FILE__, __LINE__) << "[UPSTREAM:" << UPSTREAM        \
+                                            << "]"                             \
+                                               " ")
 
 // Downstream log
 #define DLOG(SEVERITY, DOWNSTREAM)                                             \
-  (Log(SEVERITY, __FILE__, __LINE__) << "[DOWNSTREAM:" << DOWNSTREAM << "] ")
+  (shrpx::Log(SEVERITY, __FILE__, __LINE__) << "[DOWNSTREAM:" << DOWNSTREAM    \
+                                            << "] ")
 
 // Downstream connection log
 #define DCLOG(SEVERITY, DCONN)                                                 \
-  (Log(SEVERITY, __FILE__, __LINE__) << "[DCONN:" << DCONN << "] ")
+  (shrpx::Log(SEVERITY, __FILE__, __LINE__) << "[DCONN:" << DCONN << "] ")
 
 // Downstream HTTP2 session log
 #define SSLOG(SEVERITY, HTTP2)                                                 \
-  (Log(SEVERITY, __FILE__, __LINE__) << "[DHTTP2:" << HTTP2 << "] ")
+  (shrpx::Log(SEVERITY, __FILE__, __LINE__) << "[DHTTP2:" << HTTP2 << "] ")
 
 // Memcached connection log
 #define MCLOG(SEVERITY, MCONN)                                                 \
-  (Log(SEVERITY, __FILE__, __LINE__) << "[MCONN:" << MCONN << "] ")
+  (shrpx::Log(SEVERITY, __FILE__, __LINE__) << "[MCONN:" << MCONN << "] ")
+
+namespace shrpx {
+
+class Downstream;
 
 enum SeverityLevel { INFO, NOTICE, WARN, ERROR, FATAL };
 
