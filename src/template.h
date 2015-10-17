@@ -209,7 +209,7 @@ inline int run_app(std::function<int(int, char **)> app, int argc,
     fputs(x.what(), stderr);
     fputs("\n", stderr);
   } catch (...) {
-    fputs("Custom exception caught\n", stderr);
+    fputs("Unknown exception caught\n", stderr);
   }
   return EXIT_FAILURE;
 }
