@@ -28,6 +28,8 @@
 #include "nghttp2_config.h"
 
 #include <cstring>
+#include <cstdio>
+#include <cstdlib>
 #include <memory>
 #include <array>
 #include <functional>
@@ -194,6 +196,22 @@ inline std::unique_ptr<char[]> strcopy(const std::unique_ptr<char[]> &val) {
     return nullptr;
   }
   return strcopy(val.get());
+}
+
+inline int run_app(std::function<int(int, char **)> app, int argc,
+                   char **argv) {
+  try {
+    return app(argc, argv);
+  } catch (const std::bad_alloc &) {
+    fputs("Out of memory\n", stderr);
+  } catch (const std::exception &x) {
+    fputs("Exception caught: ", stderr);
+    fputs(x.what(), stderr);
+    fputs("\n", stderr);
+  } catch (...) {
+    fputs("Custom exception caught\n", stderr);
+  }
+  return EXIT_FAILURE;
 }
 
 } // namespace nghttp2
