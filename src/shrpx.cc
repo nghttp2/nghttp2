@@ -910,13 +910,13 @@ void fill_default_config() {
   mod_config()->http2_upstream_read_timeout = 3_min;
 
   // Read timeout for non-HTTP2 upstream connection
-  mod_config()->upstream_read_timeout = 3_min;
+  mod_config()->upstream_read_timeout = 1_min;
 
   // Write timeout for HTTP2/non-HTTP2 upstream connection
   mod_config()->upstream_write_timeout = 30.;
 
   // Read/Write timeouts for downstream connection
-  mod_config()->downstream_read_timeout = 3_min;
+  mod_config()->downstream_read_timeout = 1_min;
   mod_config()->downstream_write_timeout = 30.;
 
   // Read timeout for HTTP/2 stream
