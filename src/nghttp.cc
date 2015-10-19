@@ -2356,7 +2356,7 @@ void print_version(std::ostream &out) {
 namespace {
 void print_usage(std::ostream &out) {
   out << R"(Usage: nghttp [OPTIONS]... <URI>...
-HTTP/2 experimental client)" << std::endl;
+HTTP/2 client)" << std::endl;
 }
 } // namespace
 

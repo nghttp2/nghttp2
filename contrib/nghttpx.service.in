@@ -1,5 +1,5 @@
 [Unit]
-Description=HTTP/2 experimental proxy
+Description=HTTP/2 proxy
 After=network.target
 
 [Service]

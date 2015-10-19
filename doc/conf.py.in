@@ -244,12 +244,9 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('nghttp.1', 'nghttp', u'HTTP/2 experimental client',
-     [u'Tatsuhiro Tsujikawa'], 1),
-    ('nghttpd.1', 'nghttpd', u'HTTP/2 experimental server',
-     [u'Tatsuhiro Tsujikawa'], 1),
-    ('nghttpx.1', 'nghttpx', u'HTTP/2 experimental proxy',
-     [u'Tatsuhiro Tsujikawa'], 1),
+    ('nghttp.1', 'nghttp', u'HTTP/2 client', [u'Tatsuhiro Tsujikawa'], 1),
+    ('nghttpd.1', 'nghttpd', u'HTTP/2 server', [u'Tatsuhiro Tsujikawa'], 1),
+    ('nghttpx.1', 'nghttpx', u'HTTP/2 proxy', [u'Tatsuhiro Tsujikawa'], 1),
     ('h2load.1', 'h2load', u'HTTP/2 benchmarking tool',
      [u'Tatsuhiro Tsujikawa'], 1)
 ]
