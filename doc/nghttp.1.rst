@@ -14,7 +14,7 @@ SYNOPSIS
 DESCRIPTION
 -----------
 
-HTTP/2 experimental client
+HTTP/2 client
 
 .. describe:: <URI>
 

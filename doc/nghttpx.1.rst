@@ -272,6 +272,14 @@ Performance
 
     Default: ``16K``
 
+.. option:: --fastopen=<N>
+
+    Enables  "TCP Fast  Open" for  the listening  socket and
+    limits the  maximum length for the  queue of connections
+    that have not yet completed the three-way handshake.  If
+    value is 0 then fast open is disabled.
+
+    Default: ``0``
 
 Timeout
 ~~~~~~~
@@ -287,7 +295,7 @@ Timeout
 
     Specify read timeout for HTTP/1.1 frontend connection.
 
-    Default: ``3m``
+    Default: ``1m``
 
 .. option:: --frontend-write-timeout=<DURATION>
 
@@ -313,7 +321,7 @@ Timeout
 
     Specify read timeout for backend connection.
 
-    Default: ``3m``
+    Default: ``1m``
 
 .. option:: --backend-write-timeout=<DURATION>
 
@@ -422,7 +430,10 @@ SSL/TLS
     and   TLSv1.0.    The   name   matching   is   done   in
     case-insensitive   manner.    The  parameter   must   be
     delimited by  a single comma  only and any  white spaces
-    are treated as a part of protocol string.
+    are  treated  as a  part  of  protocol string.   If  the
+    protocol list advertised by client does not overlap this
+    list,  you  will  receive  the  error  message  "unknown
+    protocol".
 
     Default: ``TLSv1.2,TLSv1.1``
 
@@ -911,15 +922,18 @@ SIGUSR2
 
 .. note::
 
-  nghttpx consists of 2 processes: one process for processing these
-  signals, and another one for processing requests.  The former spawns
-  the latter.  The former is called master process, and the latter is
-  called worker process.  The above signal must be sent to the master
-  process.  If the worker process receives one of them, it is ignored.
-  This behaviour of worker process may change in the future release.
-  In other words, in the future release, worker process may terminate
-  upon the reception of these signals.  Therefore these signals should
-  not be sent to the worker process.
+  nghttpx consists of multiple processes: one process for processing
+  these signals, and another one for processing requests.  The former
+  spawns the latter.  The former is called master process, and the
+  latter is called worker process.  If neverbleed is enabled, the
+  worker process spawns neverbleed daemon process which does RSA key
+  processing.  The above signal must be sent to the master process.
+  If the other processes received one of them, it is ignored.  This
+  behaviour of these processes may change in the future release.  In
+  other words, in the future release, the processes other than master
+  process may terminate upon the reception of these signals.
+  Therefore these signals should not be sent to the processes other
+  than master process.
 
 SERVER PUSH
 -----------
@@ -1049,22 +1063,19 @@ server.  These hooks allows users to modify header fields, or common
 HTTP variables, like authority or request path, and even return custom
 response without forwarding request to backend servers.
 
-To set request phase hook, use :option:`--request-phase-file` option.
-To set response phase hook, use :option:`--response-phase-file`
-option.
-
-For request and response phase hook, user calls :rb:meth:`Nghttpx.run`
-with block.  The :rb:class:`Nghttpx::Env` is passed to the block.
-User can can access :rb:class:`Nghttpx::Request` and
-:rb:class:`Nghttpx::Response` objects via :rb:attr:`Nghttpx::Env#req`
-and :rb:attr:`Nghttpx::Env#resp` respectively.
+To specify mruby script file, use :option:`--mruby-file` option.  The
+script will be evaluated once per thread on startup, and it must
+instantiate object and evaluate it as the return value (e.g.,
+``App.new``).  This object is called app object.  If app object
+defines ``on_req`` method, it is called with :rb:class:`Nghttpx::Env`
+object on request hook.  Similarly, if app object defines ``on_resp``
+method, it is called with :rb:class:`Nghttpx::Env` object on response
+hook.  For each method invocation, user can can access
+:rb:class:`Nghttpx::Request` and :rb:class:`Nghttpx::Response` objects
+via :rb:attr:`Nghttpx::Env#req` and :rb:attr:`Nghttpx::Env#resp`
+respectively.
 
 .. rb:module:: Nghttpx
-
-.. rb:classmethod:: run(&block)
-
-    Run request or response phase hook with given *block*.
-    :rb:class:`Nghttpx::Env` object is passed to the given block.
 
 .. rb:const:: REQUEST_PHASE
 
@@ -1243,27 +1254,34 @@ Modify requet path:
 
 .. code-block:: ruby
 
-    Nghttpx.run do |env|
-      env.req.path = "/apps#{env.req.path}"
+    class App
+      def on_req(env)
+        env.req.path = "/apps#{env.req.path}"
+      end
     end
 
-Note that the file containing the above script must be set with
-:option:`--request-phase-file` option since we modify request path.
+    App.new
+
+Don't forget to instantiate and evaluate object at the last line.
 
 Restrict permission of viewing a content to a specific client
 addresses:
 
 .. code-block:: ruby
 
-    Nghttpx.run do |env|
-      allowed_clients = ["127.0.0.1", "::1"]
+    class App
+      def on_req(env)
+        allowed_clients = ["127.0.0.1", "::1"]
 
-      if env.req.path.start_with?("/log/") &&
-         !allowed_clients.include?(env.remote_addr) then
-        env.resp.status = 404
-        env.resp.return "permission denied"
+        if env.req.path.start_with?("/log/") &&
+           !allowed_clients.include?(env.remote_addr) then
+          env.resp.status = 404
+          env.resp.return "permission denied"
+        end
       end
     end
+
+    App.new
 
 SEE ALSO
 --------
