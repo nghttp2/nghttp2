@@ -901,7 +901,14 @@ nghttp2_stream *nghttp2_session_open_stream(nghttp2_session *session,
       }
     } else if (!dep_stream || !nghttp2_stream_in_dep_tree(dep_stream)) {
       /* If dep_stream is not part of dependency tree, stream will get
-         default priority. */
+         default priority.  This handles the case when
+         pri_spec->stream_id == stream_id.  This happens because we
+         don't check pri_spec->stream_id against new stream ID in
+         nghttp2_submit_request.  This also handles the case when idle
+         stream created by PRIORITY frame was opened.  Somehow we
+         first remove the idle stream from dependency tree.  This is
+         done to simplify code base, but ideally we should retain old
+         dependency.  But I'm not sure this adds values. */
       nghttp2_priority_spec_default_init(&pri_spec_default);
       pri_spec = &pri_spec_default;
     }
