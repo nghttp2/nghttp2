@@ -1031,6 +1031,8 @@ void fill_default_config() {
   mod_config()->tls_ticket_key_memcached_max_fail = 2;
   mod_config()->tls_ticket_key_memcached_interval = 10_min;
   mod_config()->fastopen = 0;
+  mod_config()->tls_dyn_rec_warmup_threshold = 1_m;
+  mod_config()->tls_dyn_rec_idle_timeout = 1.;
 }
 } // namespace
 
@@ -1420,6 +1422,27 @@ SSL/TLS:
               Specify  address of  memcached server  to store  session
               cache.   This  enables   shared  session  cache  between
               multiple nghttpx instances.
+  --tls-dyn-rec-warmup-threshold=<SIZE>
+              Specify the threshold  size for  TLS dynamic record size
+              behaviour. During  a  TLS  session,  after the threshold
+              number of bytes have  been  written, the TLS record size
+              will be increased  to the maximum allowed (16K). The max
+              record size will continue  to  be used on the active TLS
+              session. After tls-dyn-rec-idle-timeout has elapsed, the
+              record size  is  reduced  to  1300  bytes.  Specify 0 to
+              always use the maximum  record  size, regardless of idle
+              period.  This  behaviour   applies   to  all  TLS  based
+              frontends, and TLS HTTP/2 backends.
+              Default: )"
+      << util::utos_with_unit(get_config()->tls_dyn_rec_warmup_threshold)
+      << R"(
+  --tls-dyn-rec-idle-timeout=<DURATION>
+              Specify TLS dynamic record  size  behaviour timeout. See
+              tls-dyn-rec-warmup-threshold  for more information. This
+              behaviour applies to all  TLS  based  frontends, and TLS
+              HTTP/2 backends.
+              Default: )"
+      << util::duration_str(get_config()->tls_dyn_rec_idle_timeout) << R"(
 
 HTTP/2 and SPDY:
   -c, --http2-max-concurrent-streams=<N>
@@ -1810,6 +1833,8 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_MRUBY_FILE, required_argument, &flag, 91},
         {SHRPX_OPT_ACCEPT_PROXY_PROTOCOL, no_argument, &flag, 93},
         {SHRPX_OPT_FASTOPEN, required_argument, &flag, 94},
+        {SHRPX_OPT_TLS_DYN_REC_WARMUP_THRESHOLD, required_argument, &flag, 95},
+        {SHRPX_OPT_TLS_DYN_REC_IDLE_TIMEOUT, required_argument, &flag, 96},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -2214,6 +2239,14 @@ int main(int argc, char **argv) {
       case 94:
         // --fastopen
         cmdcfgs.emplace_back(SHRPX_OPT_FASTOPEN, optarg);
+        break;
+      case 95:
+        // --tls-dyn-rec-warmup-threshold
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_DYN_REC_WARMUP_THRESHOLD, optarg);
+        break;
+      case 96:
+        // --tls-dyn-rec-idle-timeout
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_DYN_REC_IDLE_TIMEOUT, optarg);
         break;
       default:
         break;
