@@ -33,6 +33,7 @@
 #include <memory>
 #include <array>
 #include <functional>
+#include <typeinfo>
 
 namespace nghttp2 {
 
@@ -205,9 +206,7 @@ inline int run_app(std::function<int(int, char **)> app, int argc,
   } catch (const std::bad_alloc &) {
     fputs("Out of memory\n", stderr);
   } catch (const std::exception &x) {
-    fputs("Exception caught: ", stderr);
-    fputs(x.what(), stderr);
-    fputs("\n", stderr);
+    fprintf(stderr, "Caught %s:\n%s\n", typeid(x).name(), x.what());
   } catch (...) {
     fputs("Unknown exception caught\n", stderr);
   }
