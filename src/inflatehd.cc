@@ -41,15 +41,10 @@
 
 #include <jansson.h>
 
-extern "C" {
-
-#include "nghttp2_hd.h"
-#include "nghttp2_frame.h"
-
-#include "comp_helper.h"
-}
+#include <nghttp2/nghttp2.h>
 
 #include "template.h"
+#include "comp_helper.h"
 
 namespace nghttp2 {
 
@@ -80,12 +75,15 @@ static void to_json(nghttp2_hd_inflater *inflater, json_t *headers,
   json_object_set_new(obj, "seq", json_integer(seq));
   json_object_set(obj, "wire", wire);
   json_object_set(obj, "headers", headers);
-  if (old_settings_table_size != inflater->settings_hd_table_bufsize_max) {
+  auto max_dyn_table_size =
+      nghttp2_hd_inflate_get_max_dynamic_table_size(inflater);
+  if (old_settings_table_size != max_dyn_table_size) {
     json_object_set_new(obj, "header_table_size",
-                        json_integer(inflater->settings_hd_table_bufsize_max));
+                        json_integer(max_dyn_table_size));
   }
   if (config.dump_header_table) {
-    json_object_set_new(obj, "header_table", dump_header_table(&inflater->ctx));
+    json_object_set_new(obj, "header_table",
+                        dump_inflate_header_table(inflater));
   }
   json_dumpf(obj, stdout, JSON_INDENT(2) | JSON_PRESERVE_ORDER);
   json_decref(obj);
@@ -96,7 +94,8 @@ static int inflate_hd(json_t *obj, nghttp2_hd_inflater *inflater, int seq) {
   ssize_t rv;
   nghttp2_nv nv;
   int inflate_flags;
-  size_t old_settings_table_size = inflater->settings_hd_table_bufsize_max;
+  size_t old_settings_table_size =
+      nghttp2_hd_inflate_get_max_dynamic_table_size(inflater);
 
   auto wire = json_object_get(obj, "wire");
 

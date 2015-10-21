@@ -2498,3 +2498,60 @@ ssize_t nghttp2_hd_decode_length(uint32_t *res, size_t *shift_ptr, int *final,
                                  uint8_t *last, size_t prefix) {
   return decode_length(res, shift_ptr, final, initial, shift, in, last, prefix);
 }
+
+static size_t hd_get_num_table_entries(nghttp2_hd_context *context) {
+  return context->hd_table.len + NGHTTP2_STATIC_TABLE_LENGTH;
+}
+
+static const nghttp2_nv *hd_get_table_entry(nghttp2_hd_context *context,
+                                            size_t idx) {
+  if (idx == 0) {
+    return NULL;
+  }
+
+  --idx;
+
+  if (!INDEX_RANGE_VALID(context, idx)) {
+    return NULL;
+  }
+
+  return &nghttp2_hd_table_get(context, idx)->nv;
+}
+
+size_t nghttp2_hd_deflate_get_num_table_entries(nghttp2_hd_deflater *deflater) {
+  return hd_get_num_table_entries(&deflater->ctx);
+}
+
+const nghttp2_nv *
+nghttp2_hd_deflate_get_table_entry(nghttp2_hd_deflater *deflater, size_t idx) {
+  return hd_get_table_entry(&deflater->ctx, idx);
+}
+
+size_t
+nghttp2_hd_deflate_get_dynamic_table_size(nghttp2_hd_deflater *deflater) {
+  return deflater->ctx.hd_table_bufsize;
+}
+
+size_t
+nghttp2_hd_deflate_get_max_dynamic_table_size(nghttp2_hd_deflater *deflater) {
+  return deflater->ctx.hd_table_bufsize_max;
+}
+
+size_t nghttp2_hd_inflate_get_num_table_entries(nghttp2_hd_inflater *inflater) {
+  return hd_get_num_table_entries(&inflater->ctx);
+}
+
+const nghttp2_nv *
+nghttp2_hd_inflate_get_table_entry(nghttp2_hd_inflater *inflater, size_t idx) {
+  return hd_get_table_entry(&inflater->ctx, idx);
+}
+
+size_t
+nghttp2_hd_inflate_get_dynamic_table_size(nghttp2_hd_inflater *inflater) {
+  return inflater->ctx.hd_table_bufsize;
+}
+
+size_t
+nghttp2_hd_inflate_get_max_dynamic_table_size(nghttp2_hd_inflater *inflater) {
+  return inflater->ctx.hd_table_bufsize_max;
+}

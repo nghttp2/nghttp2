@@ -677,6 +677,11 @@ CFLAGS=$ac_save_CFLAGS
 
 AC_SUBST([WARNCFLAGS])
 
+EXTRACFLAG=
+AX_CHECK_COMPILE_FLAG([-fvisibility=hidden], [EXTRACFLAG="-fvisibility=hidden"])
+
+AC_SUBST([EXTRACFLAG])
+
 if test "x$debug" != "xno"; then
     AC_DEFINE([DEBUGBUILD], [1], [Define to 1 to enable debug output.])
 fi
@@ -753,6 +758,7 @@ AC_MSG_NOTICE([summary of build options:
       C preprocessor: ${CPP}
       CPPFLAGS:       ${CPPFLAGS}
       WARNCFLAGS:     ${WARNCFLAGS}
+      EXTRACFLAG:     ${EXTRACFLAG}
       LIBS:           ${LIBS}
     Library:
       Shared:         ${enable_shared}

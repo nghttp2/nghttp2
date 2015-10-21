@@ -24,7 +24,7 @@ SUBDIRS = includes
 
 EXTRA_DIST = Makefile.msvc
 
-AM_CFLAGS = $(WARNCFLAGS)
+AM_CFLAGS = $(WARNCFLAGS) $(EXTRACFLAG)
 AM_CPPFLAGS = -I$(srcdir)/includes -I$(builddir)/includes -DBUILDING_NGHTTP2 \
 	@DEFS@
 

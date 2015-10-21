@@ -31,7 +31,7 @@ import logging
 DEFAULT_HEADER_TABLE_SIZE = cnghttp2.NGHTTP2_DEFAULT_HEADER_TABLE_SIZE
 DEFLATE_MAX_HEADER_TABLE_SIZE = 4096
 
-HD_ENTRY_OVERHEAD = cnghttp2.NGHTTP2_HD_ENTRY_OVERHEAD
+HD_ENTRY_OVERHEAD = 32
 
 class HDTableEntry:
 
@@ -43,18 +43,6 @@ class HDTableEntry:
 
     def space(self):
         return self.namelen + self.valuelen + HD_ENTRY_OVERHEAD
-
-cdef _get_hd_table(cnghttp2.nghttp2_hd_context *ctx):
-    cdef int length = ctx.hd_table.len
-    cdef cnghttp2.nghttp2_hd_entry *entry
-    res = []
-    for i in range(length):
-        entry = cnghttp2.nghttp2_hd_table_get(ctx, i)
-        k = _get_pybytes(entry.nv.name, entry.nv.namelen)
-        v = _get_pybytes(entry.nv.value, entry.nv.valuelen)
-        res.append(HDTableEntry(k, entry.nv.namelen,
-                                v, entry.nv.valuelen))
-    return res
 
 cdef _get_pybytes(uint8_t *b, uint16_t blen):
     return b[:blen]
@@ -157,7 +145,16 @@ cdef class HDDeflater:
 
     def get_hd_table(self):
         '''Returns copy of current dynamic header table.'''
-        return _get_hd_table(&self._deflater.ctx)
+        cdef size_t length = cnghttp2.nghttp2_hd_deflate_get_num_table_entries(
+            self._deflater)
+        cdef const cnghttp2.nghttp2_nv *nv
+        res = []
+        for i in range(62, length + 1):
+            nv = cnghttp2.nghttp2_hd_deflate_get_table_entry(self._deflater, i)
+            k = _get_pybytes(nv.name, nv.namelen)
+            v = _get_pybytes(nv.value, nv.valuelen)
+            res.append(HDTableEntry(k, nv.namelen, v, nv.valuelen))
+        return res
 
 cdef class HDInflater:
     '''Performs header decompression.
@@ -224,7 +221,16 @@ cdef class HDInflater:
 
     def get_hd_table(self):
         '''Returns copy of current dynamic header table.'''
-        return _get_hd_table(&self._inflater.ctx)
+        cdef size_t length = cnghttp2.nghttp2_hd_inflate_get_num_table_entries(
+            self._inflater)
+        cdef const cnghttp2.nghttp2_nv *nv
+        res = []
+        for i in range(62, length + 1):
+            nv = cnghttp2.nghttp2_hd_inflate_get_table_entry(self._inflater, i)
+            k = _get_pybytes(nv.name, nv.namelen)
+            v = _get_pybytes(nv.value, nv.valuelen)
+            res.append(HDTableEntry(k, nv.namelen, v, nv.valuelen))
+        return res
 
 cdef _strerror(int liberror_code):
     return cnghttp2.nghttp2_strerror(liberror_code).decode('utf-8')

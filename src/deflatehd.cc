@@ -41,15 +41,10 @@
 
 #include <jansson.h>
 
-extern "C" {
-
-#include "nghttp2_hd.h"
-#include "nghttp2_frame.h"
-
-#include "comp_helper.h"
-}
+#include <nghttp2/nghttp2.h>
 
 #include "template.h"
+#include "comp_helper.h"
 
 namespace nghttp2 {
 
@@ -80,30 +75,23 @@ static void to_hex(char *dest, const uint8_t *src, size_t len) {
   }
 }
 
-static void output_to_json(nghttp2_hd_deflater *deflater, nghttp2_bufs *bufs,
-                           size_t inputlen, const std::vector<nghttp2_nv> &nva,
-                           int seq) {
-  auto len = nghttp2_bufs_len(bufs);
-  auto hex = std::vector<char>(len * 2);
+static void output_to_json(nghttp2_hd_deflater *deflater, const uint8_t *buf,
+                           size_t buflen, size_t inputlen,
+                           const std::vector<nghttp2_nv> &nva, int seq) {
+  auto hex = std::vector<char>(buflen * 2);
   auto obj = json_object();
-  auto comp_ratio = inputlen == 0 ? 0.0 : (double)len / inputlen * 100;
+  auto comp_ratio = inputlen == 0 ? 0.0 : (double)buflen / inputlen * 100;
 
   json_object_set_new(obj, "seq", json_integer(seq));
   json_object_set_new(obj, "input_length", json_integer(inputlen));
-  json_object_set_new(obj, "output_length", json_integer(len));
+  json_object_set_new(obj, "output_length", json_integer(buflen));
   json_object_set_new(obj, "percentage_of_original_size",
                       json_real(comp_ratio));
 
-  auto hexp = hex.data();
-  for (auto ci = bufs->head; ci; ci = ci->next) {
-    auto buf = &ci->buf;
-    to_hex(hexp, buf->pos, nghttp2_buf_len(buf));
-    hexp += nghttp2_buf_len(buf);
-  }
-
-  if (len == 0) {
+  if (buflen == 0) {
     json_object_set_new(obj, "wire", json_string(""));
   } else {
+    to_hex(hex.data(), buf, buflen);
     json_object_set_new(obj, "wire", json_pack("s#", hex.data(), hex.size()));
   }
   json_object_set_new(obj, "headers", dump_headers(nva.data(), nva.size()));
@@ -113,7 +101,8 @@ static void output_to_json(nghttp2_hd_deflater *deflater, nghttp2_bufs *bufs,
                         json_integer(config.table_size));
   }
   if (config.dump_header_table) {
-    json_object_set_new(obj, "header_table", dump_header_table(&deflater->ctx));
+    json_object_set_new(obj, "header_table",
+                        dump_deflate_header_table(deflater));
   }
   json_dumpf(obj, stdout, JSON_PRESERVE_ORDER | JSON_INDENT(2));
   printf("\n");
@@ -124,22 +113,19 @@ static void deflate_hd(nghttp2_hd_deflater *deflater,
                        const std::vector<nghttp2_nv> &nva, size_t inputlen,
                        int seq) {
   ssize_t rv;
-  nghttp2_bufs bufs;
+  std::array<uint8_t, 64_k> buf;
 
-  nghttp2_bufs_init2(&bufs, 4_k, 16, 0, nghttp2_mem_default());
-
-  rv = nghttp2_hd_deflate_hd_bufs(deflater, &bufs, (nghttp2_nv *)nva.data(),
-                                  nva.size());
+  rv = nghttp2_hd_deflate_hd(deflater, buf.data(), buf.size(),
+                             (nghttp2_nv *)nva.data(), nva.size());
   if (rv < 0) {
     fprintf(stderr, "deflate failed with error code %zd at %d\n", rv, seq);
     exit(EXIT_FAILURE);
   }
 
   input_sum += inputlen;
-  output_sum += nghttp2_bufs_len(&bufs);
+  output_sum += rv;
 
-  output_to_json(deflater, &bufs, inputlen, nva, seq);
-  nghttp2_bufs_free(&bufs);
+  output_to_json(deflater, buf.data(), rv, inputlen, nva, seq);
 }
 
 static int deflate_hd_json(json_t *obj, nghttp2_hd_deflater *deflater,
@@ -394,8 +380,8 @@ static struct option long_options[] = {
 int main(int argc, char **argv) {
   char *end;
 
-  config.table_size = NGHTTP2_HD_DEFAULT_MAX_BUFFER_SIZE;
-  config.deflate_table_size = NGHTTP2_HD_DEFAULT_MAX_DEFLATE_BUFFER_SIZE;
+  config.table_size = 4_k;
+  config.deflate_table_size = 4_k;
   config.http1text = 0;
   config.dump_header_table = 0;
   while (1) {

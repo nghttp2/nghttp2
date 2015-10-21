@@ -57,7 +57,11 @@ extern "C" {
 #define NGHTTP2_EXTERN __declspec(dllimport)
 #endif /* !BUILDING_NGHTTP2 */
 #else  /* !defined(WIN32) */
+#ifdef BUILDING_NGHTTP2
+#define NGHTTP2_EXTERN __attribute__((visibility("default")))
+#else /* !BUILDING_NGHTTP2 */
 #define NGHTTP2_EXTERN
+#endif /* !BUILDING_NGHTTP2 */
 #endif /* !defined(WIN32) */
 
 /**
@@ -3753,6 +3757,48 @@ NGHTTP2_EXTERN size_t nghttp2_hd_deflate_bound(nghttp2_hd_deflater *deflater,
                                                const nghttp2_nv *nva,
                                                size_t nvlen);
 
+/**
+ * @function
+ *
+ * Returns the number of entries that header table of |deflater|
+ * contains.  This is the sum of the number of static table and
+ * dynamic table, so the return value is at least 61.
+ */
+NGHTTP2_EXTERN
+size_t nghttp2_hd_deflate_get_num_table_entries(nghttp2_hd_deflater *deflater);
+
+/**
+ * @function
+ *
+ * Returns the table entry denoted by |idx| from header table of
+ * |deflater|.  The |idx| is 1-based, and idx=1 returns first entry of
+ * static table.  idx=62 returns first entry of dynamic table if it
+ * exists.  Specifying idx=0 is error, and this function returns NULL.
+ * If |idx| is strictly greater than the number of entries the tables
+ * contain, this function returns NULL.
+ */
+NGHTTP2_EXTERN
+const nghttp2_nv *
+nghttp2_hd_deflate_get_table_entry(nghttp2_hd_deflater *deflater, size_t idx);
+
+/**
+ * @function
+ *
+ * Returns the used dynamic table size, including the overhead 32
+ * bytes per entry described in RFC 7541.
+ */
+NGHTTP2_EXTERN
+size_t nghttp2_hd_deflate_get_dynamic_table_size(nghttp2_hd_deflater *deflater);
+
+/**
+ * @function
+ *
+ * Returns the maximum dynamic table size.
+ */
+NGHTTP2_EXTERN
+size_t
+nghttp2_hd_deflate_get_max_dynamic_table_size(nghttp2_hd_deflater *deflater);
+
 struct nghttp2_hd_inflater;
 
 /**
@@ -3944,6 +3990,48 @@ NGHTTP2_EXTERN ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
  */
 NGHTTP2_EXTERN int
 nghttp2_hd_inflate_end_headers(nghttp2_hd_inflater *inflater);
+
+/**
+ * @function
+ *
+ * Returns the number of entries that header table of |inflater|
+ * contains.  This is the sum of the number of static table and
+ * dynamic table, so the return value is at least 61.
+ */
+NGHTTP2_EXTERN
+size_t nghttp2_hd_inflate_get_num_table_entries(nghttp2_hd_inflater *inflater);
+
+/**
+ * @function
+ *
+ * Returns the table entry denoted by |idx| from header table of
+ * |inflater|.  The |idx| is 1-based, and idx=1 returns first entry of
+ * static table.  idx=62 returns first entry of dynamic table if it
+ * exists.  Specifying idx=0 is error, and this function returns NULL.
+ * If |idx| is strictly greater than the number of entries the tables
+ * contain, this function returns NULL.
+ */
+NGHTTP2_EXTERN
+const nghttp2_nv *
+nghttp2_hd_inflate_get_table_entry(nghttp2_hd_inflater *inflater, size_t idx);
+
+/**
+ * @function
+ *
+ * Returns the used dynamic table size, including the overhead 32
+ * bytes per entry described in RFC 7541.
+ */
+NGHTTP2_EXTERN
+size_t nghttp2_hd_inflate_get_dynamic_table_size(nghttp2_hd_inflater *inflater);
+
+/**
+ * @function
+ *
+ * Returns the maximum dynamic table size.
+ */
+NGHTTP2_EXTERN
+size_t
+nghttp2_hd_inflate_get_max_dynamic_table_size(nghttp2_hd_inflater *inflater);
 
 struct nghttp2_stream;
 

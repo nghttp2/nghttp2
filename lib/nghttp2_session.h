@@ -42,8 +42,7 @@
 
 /* The global variable for tests where we want to disable strict
    preface handling. */
-/* Specify NGHTTP2_EXTERN, so that we can test using Win build dll. */
-NGHTTP2_EXTERN extern int nghttp2_enable_strict_preface;
+extern int nghttp2_enable_strict_preface;
 
 /*
  * Option flags.
