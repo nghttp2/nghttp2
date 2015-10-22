@@ -102,6 +102,8 @@ OPTIONS = [
     "accept-proxy-protocol",
     "conf",
     "fastopen",
+    "tls-dyn-rec-warmup-threshold",
+    "tls-dyn-rec-idle-timeout"
 ]
 
 LOGVARS = [
