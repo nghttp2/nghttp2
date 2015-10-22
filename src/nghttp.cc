@@ -182,16 +182,16 @@ std::string decode_host(std::string host) {
   if (zone_start == std::end(host) ||
       !util::ipv6_numeric_addr(
           std::string(std::begin(host), zone_start).c_str())) {
-    return std::move(host);
+    return host;
   }
   // case: ::1%
   if (zone_start + 1 == std::end(host)) {
     host.pop_back();
-    return std::move(host);
+    return host;
   }
   // case: ::1%12 or ::1%1
   if (zone_start + 3 >= std::end(host)) {
-    return std::move(host);
+    return host;
   }
   // If we see "%25", followed by more characters, then decode %25 as
   // '%'.
@@ -201,7 +201,7 @@ std::string decode_host(std::string host) {
   auto zone_id = util::percentDecode(zone_id_src, std::end(host));
   host.erase(zone_start + 1, std::end(host));
   host += zone_id;
-  return std::move(host);
+  return host;
 }
 } // namespace
 
