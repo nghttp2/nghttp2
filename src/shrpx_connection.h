@@ -75,7 +75,9 @@ struct Connection {
   Connection(struct ev_loop *loop, int fd, SSL *ssl, MemchunkPool *mcpool,
              ev_tstamp write_timeout, ev_tstamp read_timeout, size_t write_rate,
              size_t write_burst, size_t read_rate, size_t read_burst,
-             IOCb writecb, IOCb readcb, TimerCb timeoutcb, void *data);
+             IOCb writecb, IOCb readcb, TimerCb timeoutcb, void *data,
+             size_t tls_dyn_rec_warmup_threshold,
+             ev_tstamp tls_dyn_rec_idle_timeout);
   ~Connection();
 
   void disconnect();
@@ -129,6 +131,8 @@ struct Connection {
   struct ev_loop *loop;
   void *data;
   int fd;
+  size_t tls_dyn_rec_warmup_threshold;
+  ev_tstamp tls_dyn_rec_idle_timeout;
 };
 
 } // namespace shrpx
