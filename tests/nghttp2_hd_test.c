@@ -563,13 +563,79 @@ void test_nghttp2_hd_inflate_expect_table_size_update(void) {
   nghttp2_hd_inflate_init(&inflater, mem);
   /* This will make inflater require table size update in the next
      inflation. */
+  nghttp2_hd_inflate_change_table_size(&inflater, 4095);
   nghttp2_hd_inflate_change_table_size(&inflater, 4096);
   CU_ASSERT(NGHTTP2_ERR_HEADER_COMP ==
             inflate_hd(&inflater, &out, &bufs, 0, mem));
 
   nva_out_reset(&out, mem);
-  nghttp2_bufs_free(&bufs);
   nghttp2_hd_inflate_free(&inflater);
+
+  /* This does not require for encoder to emit table size update since
+   * size is not changed. */
+  nghttp2_hd_inflate_init(&inflater, mem);
+  nghttp2_hd_inflate_change_table_size(&inflater, 4096);
+  CU_ASSERT((ssize_t)nghttp2_bufs_len(&bufs) ==
+            inflate_hd(&inflater, &out, &bufs, 0, mem));
+
+  nva_out_reset(&out, mem);
+  nghttp2_hd_inflate_free(&inflater);
+
+  /* This does not require for encodre to emit table size update since
+     new size is larger than current size. */
+  nghttp2_hd_inflate_init(&inflater, mem);
+  nghttp2_hd_inflate_change_table_size(&inflater, 4097);
+  CU_ASSERT((ssize_t)nghttp2_bufs_len(&bufs) ==
+            inflate_hd(&inflater, &out, &bufs, 0, mem));
+
+  nva_out_reset(&out, mem);
+  nghttp2_hd_inflate_free(&inflater);
+
+  /* Received table size is strictly larger than minimum table size */
+  nghttp2_hd_inflate_init(&inflater, mem);
+  nghttp2_hd_inflate_change_table_size(&inflater, 111);
+  nghttp2_hd_inflate_change_table_size(&inflater, 4096);
+
+  nghttp2_bufs_reset(&bufs);
+  nghttp2_hd_emit_table_size(&bufs, 112);
+
+  CU_ASSERT(NGHTTP2_ERR_HEADER_COMP ==
+            inflate_hd(&inflater, &out, &bufs, 0, mem));
+
+  nva_out_reset(&out, mem);
+  nghttp2_hd_inflate_free(&inflater);
+
+  /* Receiving 2 table size updates, min and last value */
+  nghttp2_hd_inflate_init(&inflater, mem);
+  nghttp2_hd_inflate_change_table_size(&inflater, 111);
+  nghttp2_hd_inflate_change_table_size(&inflater, 4096);
+
+  nghttp2_bufs_reset(&bufs);
+  nghttp2_hd_emit_table_size(&bufs, 111);
+  nghttp2_hd_emit_table_size(&bufs, 4096);
+
+  CU_ASSERT((ssize_t)nghttp2_bufs_len(&bufs) ==
+            inflate_hd(&inflater, &out, &bufs, 0, mem));
+
+  nva_out_reset(&out, mem);
+  nghttp2_hd_inflate_free(&inflater);
+
+  /* 2nd update is larger than last value */
+  nghttp2_hd_inflate_init(&inflater, mem);
+  nghttp2_hd_inflate_change_table_size(&inflater, 111);
+  nghttp2_hd_inflate_change_table_size(&inflater, 4095);
+
+  nghttp2_bufs_reset(&bufs);
+  nghttp2_hd_emit_table_size(&bufs, 111);
+  nghttp2_hd_emit_table_size(&bufs, 4096);
+
+  CU_ASSERT(NGHTTP2_ERR_HEADER_COMP ==
+            inflate_hd(&inflater, &out, &bufs, 0, mem));
+
+  nva_out_reset(&out, mem);
+  nghttp2_hd_inflate_free(&inflater);
+
+  nghttp2_bufs_free(&bufs);
 }
 
 void test_nghttp2_hd_inflate_unexpected_table_size_update(void) {

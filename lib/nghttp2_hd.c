@@ -800,6 +800,7 @@ int nghttp2_hd_inflate_init(nghttp2_hd_inflater *inflater, nghttp2_mem *mem) {
   }
 
   inflater->settings_hd_table_bufsize_max = NGHTTP2_HD_DEFAULT_MAX_BUFFER_SIZE;
+  inflater->min_hd_table_bufsize_max = UINT32_MAX;
 
   inflater->ent_keep = NULL;
   inflater->nv_keep = NULL;
@@ -1383,9 +1384,24 @@ int nghttp2_hd_inflate_change_table_size(nghttp2_hd_inflater *inflater,
     return NGHTTP2_ERR_INVALID_STATE;
   }
 
-  inflater->state = NGHTTP2_HD_STATE_EXPECT_TABLE_SIZE;
+  /* It seems that encoder is not required to send dynamic table size
+     update if the table size is not changed after applying
+     SETTINGS_HEADER_TABLE_SIZE.  RFC 7541 is ambiguous here, but this
+     is the intention of the editor.  If new maximum table size is
+     strictly smaller than the current negotiated maximum size,
+     encoder must send dynamic table size update.  In other cases, we
+     cannot expect it to do so. */
+  if (inflater->ctx.hd_table_bufsize_max > settings_hd_table_bufsize_max) {
+    inflater->state = NGHTTP2_HD_STATE_EXPECT_TABLE_SIZE;
+    /* Remember minimum value, and validate that encoder sends the
+       value less than or equal to this. */
+    inflater->min_hd_table_bufsize_max = settings_hd_table_bufsize_max;
+  }
+
   inflater->settings_hd_table_bufsize_max = settings_hd_table_bufsize_max;
+
   inflater->ctx.hd_table_bufsize_max = settings_hd_table_bufsize_max;
+
   hd_context_shrink_table_size(&inflater->ctx, NULL);
   return 0;
 }
@@ -2136,8 +2152,10 @@ ssize_t nghttp2_hd_inflate_hd2(nghttp2_hd_inflater *inflater,
       break;
     case NGHTTP2_HD_STATE_READ_TABLE_SIZE:
       rfin = 0;
-      rv = hd_inflate_read_len(inflater, &rfin, in, last, 5,
-                               inflater->settings_hd_table_bufsize_max);
+      rv = hd_inflate_read_len(
+          inflater, &rfin, in, last, 5,
+          nghttp2_min(inflater->min_hd_table_bufsize_max,
+                      inflater->settings_hd_table_bufsize_max));
       if (rv < 0) {
         goto fail;
       }
@@ -2146,6 +2164,7 @@ ssize_t nghttp2_hd_inflate_hd2(nghttp2_hd_inflater *inflater,
         goto almost_ok;
       }
       DEBUGF(fprintf(stderr, "inflatehd: table_size=%zu\n", inflater->left));
+      inflater->min_hd_table_bufsize_max = UINT32_MAX;
       inflater->ctx.hd_table_bufsize_max = inflater->left;
       hd_context_shrink_table_size(&inflater->ctx, NULL);
       inflater->state = NGHTTP2_HD_STATE_INFLATE_START;
@@ -2403,7 +2422,8 @@ ssize_t nghttp2_hd_inflate_hd2(nghttp2_hd_inflater *inflater,
   if (in_final) {
     DEBUGF(fprintf(stderr, "inflatehd: in_final set\n"));
 
-    if (inflater->state != NGHTTP2_HD_STATE_OPCODE) {
+    if (inflater->state != NGHTTP2_HD_STATE_OPCODE &&
+        inflater->state != NGHTTP2_HD_STATE_INFLATE_START) {
       DEBUGF(fprintf(stderr, "inflatehd: unacceptable state=%d\n",
                      inflater->state));
       rv = NGHTTP2_ERR_HEADER_COMP;
@@ -2415,7 +2435,7 @@ ssize_t nghttp2_hd_inflate_hd2(nghttp2_hd_inflater *inflater,
   return (ssize_t)(in - first);
 
 almost_ok:
-  if (in_final && inflater->state != NGHTTP2_HD_STATE_OPCODE) {
+  if (in_final) {
     DEBUGF(fprintf(stderr, "inflatehd: input ended prematurely\n"));
 
     rv = NGHTTP2_ERR_HEADER_COMP;
