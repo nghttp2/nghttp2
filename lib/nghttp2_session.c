@@ -3892,13 +3892,17 @@ int nghttp2_session_update_local_settings(nghttp2_session *session,
   size_t i;
   int32_t new_initial_window_size = -1;
   uint32_t header_table_size = 0;
+  uint32_t min_header_table_size = UINT32_MAX;
   uint8_t header_table_size_seen = 0;
-  /* Use the value last seen. */
+  /* For NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE, use the value last
+     seen.  For NGHTTP2_SETTINGS_HEADER_TABLE_SIZE, use both minimum
+     value and last seen value. */
   for (i = 0; i < niv; ++i) {
     switch (iv[i].settings_id) {
     case NGHTTP2_SETTINGS_HEADER_TABLE_SIZE:
       header_table_size_seen = 1;
       header_table_size = iv[i].value;
+      min_header_table_size = nghttp2_min(min_header_table_size, iv[i].value);
       break;
     case NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE:
       new_initial_window_size = (int32_t)iv[i].value;
@@ -3906,6 +3910,14 @@ int nghttp2_session_update_local_settings(nghttp2_session *session,
     }
   }
   if (header_table_size_seen) {
+    if (min_header_table_size < header_table_size) {
+      rv = nghttp2_hd_inflate_change_table_size(&session->hd_inflater,
+                                                min_header_table_size);
+      if (rv != 0) {
+        return rv;
+      }
+    }
+
     rv = nghttp2_hd_inflate_change_table_size(&session->hd_inflater,
                                               header_table_size);
     if (rv != 0) {
