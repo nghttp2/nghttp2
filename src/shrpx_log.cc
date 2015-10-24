@@ -34,6 +34,8 @@
 #include <inttypes.h>
 #endif // HAVE_INTTYPES_H
 
+#include <sys/wait.h>
+
 #include <cerrno>
 #include <cstdio>
 #include <cstring>
