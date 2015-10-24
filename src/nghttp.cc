@@ -94,13 +94,15 @@ constexpr auto anchors = std::array<Anchor, 5>{{
 } // namespace
 
 Config::Config()
-    : padding(0), max_concurrent_streams(100),
+    : header_table_size(-1),
+      min_header_table_size(std::numeric_limits<uint32_t>::max()), padding(0),
+      max_concurrent_streams(100),
       peer_max_concurrent_streams(NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS),
-      header_table_size(-1), weight(NGHTTP2_DEFAULT_WEIGHT), multiply(1),
-      timeout(0.), window_bits(-1), connection_window_bits(-1), verbose(0),
-      null_out(false), remote_name(false), get_assets(false), stat(false),
-      upgrade(false), continuation(false), no_content_length(false),
-      no_dep(false), hexdump(false), no_push(false) {
+      weight(NGHTTP2_DEFAULT_WEIGHT), multiply(1), timeout(0.), window_bits(-1),
+      connection_window_bits(-1), verbose(0), null_out(false),
+      remote_name(false), get_assets(false), stat(false), upgrade(false),
+      continuation(false), no_content_length(false), no_dep(false),
+      hexdump(false), no_push(false) {
   nghttp2_option_new(&http2_option);
   nghttp2_option_set_peer_max_concurrent_streams(http2_option,
                                                  peer_max_concurrent_streams);
@@ -768,6 +770,12 @@ size_t populate_settings(nghttp2_settings_entry *iv) {
   }
 
   if (config.header_table_size >= 0) {
+    if (config.min_header_table_size < config.header_table_size) {
+      iv[niv].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
+      iv[niv].value = config.min_header_table_size;
+      ++niv;
+    }
+
     iv[niv].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
     iv[niv].value = config.header_table_size;
     ++niv;
@@ -2426,7 +2434,12 @@ Options:
               remote endpoint as if it  is received in SETTINGS frame.
               The default is large enough as it is seen as unlimited.
   -c, --header-table-size=<SIZE>
-              Specify decoder header table size.
+              Specify decoder  header table  size.  If this  option is
+              used  multiple times,  and the  minimum value  among the
+              given values except  for last one is  strictly less than
+              the last  value, that minimum  value is set  in SETTINGS
+              frame  payload  before  the   last  value,  to  simulate
+              multiple header table size change.
   -b, --padding=<N>
               Add at  most <N>  bytes to a  frame payload  as padding.
               Specify 0 to disable padding.
@@ -2622,6 +2635,8 @@ int main(int argc, char **argv) {
         std::cerr << "-c: Bad option value: " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
+      config.min_header_table_size =
+          std::min(config.min_header_table_size, config.header_table_size);
       break;
     case '?':
       util::show_candidates(argv[optind - 1], long_options);
