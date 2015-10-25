@@ -49,7 +49,7 @@ make_unique(size_t size) {
   return std::unique_ptr<T>(new typename std::remove_extent<T>::type[size]());
 }
 
-// std::forward is conexpr since C++14
+// std::forward is constexpr since C++14
 template <typename... T>
 constexpr std::array<
     typename std::decay<typename std::common_type<T...>::type>::type,
