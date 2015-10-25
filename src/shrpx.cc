@@ -1434,8 +1434,7 @@ SSL/TLS:
               period.  This  behaviour   applies   to  all  TLS  based
               frontends, and TLS HTTP/2 backends.
               Default: )"
-      << util::utos_with_unit(get_config()->tls_dyn_rec_warmup_threshold)
-      << R"(
+      << util::utos_with_unit(get_config()->tls_dyn_rec_warmup_threshold) << R"(
   --tls-dyn-rec-idle-timeout=<DURATION>
               Specify TLS dynamic record  size  behaviour timeout. See
               tls-dyn-rec-warmup-threshold  for more information. This

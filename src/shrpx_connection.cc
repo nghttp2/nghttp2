@@ -500,7 +500,7 @@ const size_t SHRPX_SMALL_WRITE_LIMIT = 1300;
 size_t Connection::get_tls_write_limit() {
 
   if (tls_dyn_rec_warmup_threshold == 0) {
-      return std::numeric_limits<ssize_t>::max();
+    return std::numeric_limits<ssize_t>::max();
   }
 
   auto t = ev_now(loop);
