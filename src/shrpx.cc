@@ -1644,14 +1644,8 @@ Process:
               be used to drop root privileges.
 
 Scripting:
-  --request-phase-file=<PATH>
-              Set  mruby  script  file  which will  be  executed  when
-              request  header  fields  are  completely  received  from
-              frontend.  This hook is called request phase hook.
-  --response-phase-file=<PATH>
-              Set  mruby  script  file  which will  be  executed  when
-              response  header  fields  are completely  received  from
-              backend.  This hook is called response phase hook.
+  --mruby-file=<PATH>
+              Set mruby script file
 
 Misc:
   --conf=<PATH>
