@@ -4056,8 +4056,8 @@ typedef struct nghttp2_stream nghttp2_stream;
  * call of `nghttp2_session_send()`, `nghttp2_session_mem_send()`,
  * `nghttp2_session_recv()`, and `nghttp2_session_mem_recv()`.
  */
-nghttp2_stream *nghttp2_session_find_stream(nghttp2_session *session,
-                                            int32_t stream_id);
+NGHTTP2_EXTERN nghttp2_stream *
+nghttp2_session_find_stream(nghttp2_session *session, int32_t stream_id);
 
 /**
  * @enum
@@ -4102,7 +4102,8 @@ typedef enum {
  * `nghttp2_session_get_root_stream()` will have stream state
  * :enum:`NGHTTP2_STREAM_STATE_IDLE`.
  */
-nghttp2_stream_proto_state nghttp2_stream_get_state(nghttp2_stream *stream);
+NGHTTP2_EXTERN nghttp2_stream_proto_state
+    nghttp2_stream_get_state(nghttp2_stream *stream);
 
 /**
  * @function
@@ -4111,7 +4112,8 @@ nghttp2_stream_proto_state nghttp2_stream_get_state(nghttp2_stream *stream);
  * stream ID 0.  The returned pointer is valid until |session| is
  * freed by `nghttp2_session_del()`.
  */
-nghttp2_stream *nghttp2_session_get_root_stream(nghttp2_session *session);
+NGHTTP2_EXTERN nghttp2_stream *
+nghttp2_session_get_root_stream(nghttp2_session *session);
 
 /**
  * @function
@@ -4119,9 +4121,10 @@ nghttp2_stream *nghttp2_session_get_root_stream(nghttp2_session *session);
  * Returns the parent stream of |stream| in dependency tree.  Returns
  * NULL if there is no such stream.
  */
-nghttp2_stream *nghttp2_stream_get_parent(nghttp2_stream *stream);
+NGHTTP2_EXTERN nghttp2_stream *
+nghttp2_stream_get_parent(nghttp2_stream *stream);
 
-int32_t nghttp2_stream_get_stream_id(nghttp2_stream *stream);
+NGHTTP2_EXTERN int32_t nghttp2_stream_get_stream_id(nghttp2_stream *stream);
 
 /**
  * @function
@@ -4129,7 +4132,8 @@ int32_t nghttp2_stream_get_stream_id(nghttp2_stream *stream);
  * Returns the next sibling stream of |stream| in dependency tree.
  * Returns NULL if there is no such stream.
  */
-nghttp2_stream *nghttp2_stream_get_next_sibling(nghttp2_stream *stream);
+NGHTTP2_EXTERN nghttp2_stream *
+nghttp2_stream_get_next_sibling(nghttp2_stream *stream);
 
 /**
  * @function
@@ -4137,7 +4141,8 @@ nghttp2_stream *nghttp2_stream_get_next_sibling(nghttp2_stream *stream);
  * Returns the previous sibling stream of |stream| in dependency tree.
  * Returns NULL if there is no such stream.
  */
-nghttp2_stream *nghttp2_stream_get_previous_sibling(nghttp2_stream *stream);
+NGHTTP2_EXTERN nghttp2_stream *
+nghttp2_stream_get_previous_sibling(nghttp2_stream *stream);
 
 /**
  * @function
@@ -4145,21 +4150,23 @@ nghttp2_stream *nghttp2_stream_get_previous_sibling(nghttp2_stream *stream);
  * Returns the first child stream of |stream| in dependency tree.
  * Returns NULL if there is no such stream.
  */
-nghttp2_stream *nghttp2_stream_get_first_child(nghttp2_stream *stream);
+NGHTTP2_EXTERN nghttp2_stream *
+nghttp2_stream_get_first_child(nghttp2_stream *stream);
 
 /**
  * @function
  *
  * Returns dependency weight to the parent stream of |stream|.
  */
-int32_t nghttp2_stream_get_weight(nghttp2_stream *stream);
+NGHTTP2_EXTERN int32_t nghttp2_stream_get_weight(nghttp2_stream *stream);
 
 /**
  * @function
  *
  * Returns the sum of the weight for |stream|'s children.
  */
-int32_t nghttp2_stream_get_sum_dependency_weight(nghttp2_stream *stream);
+NGHTTP2_EXTERN int32_t
+    nghttp2_stream_get_sum_dependency_weight(nghttp2_stream *stream);
 
 #ifdef __cplusplus
 }
