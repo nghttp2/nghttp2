@@ -208,7 +208,9 @@ https://nghttp2.org/documentation/
 Unit tests
 ----------
 
-Unit tests are done by simply running ``make check``.
+Unit tests are done by simply running ``make check``.  Currently,
+static library (enabled by default, see ``--enable-static`` configure
+option) is required to run tests.
 
 Integration tests
 -----------------
