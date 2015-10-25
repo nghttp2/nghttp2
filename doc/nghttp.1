@@ -1,8 +1,8 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTP" "1" "October 20, 2015" "1.3.5-DEV" "nghttp2"
+.TH "NGHTTP" "1" "October 25, 2015" "1.4.0" "nghttp2"
 .SH NAME
-nghttp \- HTTP/2 experimental client
+nghttp \- HTTP/2 client
 .
 .nr rst2man-indent-level 0
 .
@@ -157,7 +157,12 @@ The default is large enough as it is seen as unlimited.
 .INDENT 0.0
 .TP
 .B \-c, \-\-header\-table\-size=<SIZE>
-Specify decoder header table size.
+Specify decoder  header table  size.  If this  option is
+used  multiple times,  and the  minimum value  among the
+given values except  for last one is  strictly less than
+the last  value, that minimum  value is set  in SETTINGS
+frame  payload  before  the   last  value,  to  simulate
+multiple header table size change.
 .UNINDENT
 .INDENT 0.0
 .TP

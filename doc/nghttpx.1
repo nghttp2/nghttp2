@@ -1,8 +1,8 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "October 20, 2015" "1.3.5-DEV" "nghttp2"
+.TH "NGHTTPX" "1" "October 25, 2015" "1.4.0" "nghttp2"
 .SH NAME
-nghttpx \- HTTP/2 experimental proxy
+nghttpx \- HTTP/2 proxy
 .
 .nr rst2man-indent-level 0
 .
@@ -590,6 +590,32 @@ Specify  address of  memcached server  to store  session
 cache.   This  enables   shared  session  cache  between
 multiple nghttpx instances.
 .UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-tls\-dyn\-rec\-warmup\-threshold=<SIZE>
+Specify the  threshold size for TLS  dynamic record size
+behaviour.  During  a TLS  session, after  the threshold
+number of bytes  have been written, the  TLS record size
+will be increased to the maximum allowed (16K).  The max
+record size will  continue to be used on  the active TLS
+session.  After  \fI\%\-\-tls\-dyn\-rec\-idle\-timeout\fP has elapsed,
+the record size is reduced  to 1300 bytes.  Specify 0 to
+always use  the maximum record size,  regardless of idle
+period.   This  behaviour  applies   to  all  TLS  based
+frontends, and TLS HTTP/2 backends.
+.sp
+Default: \fB1M\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-tls\-dyn\-rec\-idle\-timeout=<DURATION>
+Specify TLS dynamic record  size behaviour timeout.  See
+\fI\%\-\-tls\-dyn\-rec\-warmup\-threshold\fP  for   more  information.
+This behaviour  applies to all TLS  based frontends, and
+TLS HTTP/2 backends.
+.sp
+Default: \fB1s\fP
+.UNINDENT
 .SS HTTP/2 and SPDY
 .INDENT 0.0
 .TP
@@ -926,17 +952,8 @@ be used to drop root privileges.
 .SS Scripting
 .INDENT 0.0
 .TP
-.B \-\-request\-phase\-file=<PATH>
-Set  mruby  script  file  which will  be  executed  when
-request  header  fields  are  completely  received  from
-frontend.  This hook is called request phase hook.
-.UNINDENT
-.INDENT 0.0
-.TP
-.B \-\-response\-phase\-file=<PATH>
-Set  mruby  script  file  which will  be  executed  when
-response  header  fields  are completely  received  from
-backend.  This hook is called response phase hook.
+.B \-\-mruby\-file=<PATH>
+Set mruby script file
 .UNINDENT
 .SS Misc
 .INDENT 0.0
@@ -1166,7 +1183,7 @@ server.  These hooks allows users to modify header fields, or common
 HTTP variables, like authority or request path, and even return custom
 response without forwarding request to backend servers.
 .sp
-To specify mruby script file, use \fB\-\-mruby\-file\fP option.  The
+To specify mruby script file, use \fI\%\-\-mruby\-file\fP option.  The
 script will be evaluated once per thread on startup, and it must
 instantiate object and evaluate it as the return value (e.g.,
 \fBApp.new\fP).  This object is called app object.  If app object
