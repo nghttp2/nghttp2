@@ -32,12 +32,20 @@ APIDOCS= \
 	nghttp2_hd_deflate_bound.rst \
 	nghttp2_hd_deflate_change_table_size.rst \
 	nghttp2_hd_deflate_del.rst \
+	nghttp2_hd_deflate_get_dynamic_table_size.rst \
+	nghttp2_hd_deflate_get_max_dynamic_table_size.rst \
+	nghttp2_hd_deflate_get_num_table_entries.rst \
+	nghttp2_hd_deflate_get_table_entry.rst \
 	nghttp2_hd_deflate_hd.rst \
 	nghttp2_hd_deflate_new.rst \
 	nghttp2_hd_deflate_new2.rst \
 	nghttp2_hd_inflate_change_table_size.rst \
 	nghttp2_hd_inflate_del.rst \
 	nghttp2_hd_inflate_end_headers.rst \
+	nghttp2_hd_inflate_get_dynamic_table_size.rst \
+	nghttp2_hd_inflate_get_max_dynamic_table_size.rst \
+	nghttp2_hd_inflate_get_num_table_entries.rst \
+	nghttp2_hd_inflate_get_table_entry.rst \
 	nghttp2_hd_inflate_hd.rst \
 	nghttp2_hd_inflate_new.rst \
 	nghttp2_hd_inflate_new2.rst \
