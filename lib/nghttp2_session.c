@@ -2400,8 +2400,6 @@ static int session_after_frame_sent1(nghttp2_session *session) {
       break;
     }
     case NGHTTP2_WINDOW_UPDATE:
-      rv = 0;
-
       if (frame->hd.stream_id == 0) {
         session->window_update_queued = 0;
         if (session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_WINDOW_UPDATE) {
