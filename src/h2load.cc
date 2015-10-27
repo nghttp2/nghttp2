@@ -586,51 +586,37 @@ int Client::connection_made() {
 
     const unsigned char *next_proto = nullptr;
     unsigned int next_proto_len;
+
     SSL_get0_next_proto_negotiated(ssl, &next_proto, &next_proto_len);
-    for (int i = 0; i < 2; ++i) {
-      if (next_proto) {
-        if (util::check_h2_is_selected(next_proto, next_proto_len)) {
-          session = make_unique<Http2Session>(this);
-          break;
-        } else if (util::streq_l(NGHTTP2_H1_1, next_proto, next_proto_len)) {
-          session = make_unique<Http1Session>(this);
-          break;
-        }
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+    if (next_proto == nullptr) {
+      SSL_get0_alpn_selected(ssl, &next_proto, &next_proto_len);
+    }
+#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
+
+    next_proto = nullptr;
+    if (next_proto) {
+      if (util::check_h2_is_selected(next_proto, next_proto_len)) {
+        session = make_unique<Http2Session>(this);
+      } else if (util::streq_l(NGHTTP2_H1_1, next_proto, next_proto_len)) {
+        session = make_unique<Http1Session>(this);
+      }
 #ifdef HAVE_SPDYLAY
-        else {
-          auto spdy_version =
-              spdylay_npn_get_version(next_proto, next_proto_len);
-          if (spdy_version) {
-            session = make_unique<SpdySession>(this, spdy_version);
-            break;
-          }
+      else {
+        auto spdy_version = spdylay_npn_get_version(next_proto, next_proto_len);
+        if (spdy_version) {
+          session = make_unique<SpdySession>(this, spdy_version);
         }
+      }
 #endif // HAVE_SPDYLAY
 
-        next_proto = nullptr;
-        break;
-      }
+      // Just assign next_proto to selected_proto anyway to show the
+      // negotiation result.
+      selected_proto.assign(next_proto, next_proto + next_proto_len);
+    } else {
+      std::cout << "No protocol negotiated. Fallback behaviour may be activated"
+                << std::endl;
 
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L
-      SSL_get0_alpn_selected(ssl, &next_proto, &next_proto_len);
-      auto proto = std::string(reinterpret_cast<const char *>(next_proto),
-                               next_proto_len);
-
-      if (proto.empty()) {
-        std::cout
-            << "No protocol negotiated. Fallback behaviour may be activated"
-            << std::endl;
-        break;
-      } else {
-        selected_proto = proto;
-        report_app_info();
-      }
-#else  // OPENSSL_VERSION_NUMBER < 0x10002000L
-      break;
-#endif // OPENSSL_VERSION_NUMBER < 0x10002000L
-    }
-
-    if (!next_proto) {
       for (const auto &proto : config.npn_list) {
         if (std::equal(NGHTTP2_H1_1_ALPN,
                        NGHTTP2_H1_1_ALPN + str_size(NGHTTP2_H1_1_ALPN),
@@ -639,48 +625,56 @@ int Client::connection_made() {
               << "Server does not support NPN/ALPN. Falling back to HTTP/1.1."
               << std::endl;
           session = make_unique<Http1Session>(this);
+          selected_proto = NGHTTP2_H1_1;
           break;
         }
       }
+    }
 
-      if (!session) {
-        std::cout
-            << "No supported protocol was negotiated. Supported protocols were:"
-            << std::endl;
-        for (const auto &proto : config.npn_list) {
-          std::cout << proto.substr(1) << std::endl;
-        }
-        disconnect();
-        return -1;
+    if (!selected_proto.empty()) {
+      report_app_info();
+    }
+
+    if (!session) {
+      std::cout
+          << "No supported protocol was negotiated. Supported protocols were:"
+          << std::endl;
+      for (const auto &proto : config.npn_list) {
+        std::cout << proto.substr(1) << std::endl;
       }
+      disconnect();
+      return -1;
     }
   } else {
     switch (config.no_tls_proto) {
     case Config::PROTO_HTTP2:
       session = make_unique<Http2Session>(this);
       selected_proto = NGHTTP2_CLEARTEXT_PROTO_VERSION_ID;
-      report_app_info();
       break;
     case Config::PROTO_HTTP1_1:
       session = make_unique<Http1Session>(this);
       selected_proto = NGHTTP2_H1_1;
-      report_app_info();
       break;
 #ifdef HAVE_SPDYLAY
     case Config::PROTO_SPDY2:
       session = make_unique<SpdySession>(this, SPDYLAY_PROTO_SPDY2);
+      selected_proto = "spdy/2";
       break;
     case Config::PROTO_SPDY3:
       session = make_unique<SpdySession>(this, SPDYLAY_PROTO_SPDY3);
+      selected_proto = "spdy/3";
       break;
     case Config::PROTO_SPDY3_1:
       session = make_unique<SpdySession>(this, SPDYLAY_PROTO_SPDY3_1);
+      selected_proto = "spdy/3.1";
       break;
 #endif // HAVE_SPDYLAY
     default:
       // unreachable
       assert(0);
     }
+
+    report_app_info();
   }
 
   state = CLIENT_CONNECTED;
