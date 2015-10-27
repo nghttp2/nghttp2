@@ -695,6 +695,9 @@ if test "x$threads" != "xyes" ||
     AC_DEFINE([NOTHREADS], [1], [Define to 1 if you want to disable threads.])
 fi
 
+# propagate $enable_static to tests/Makefile.am
+AM_CONDITIONAL([ENABLE_STATIC], [test "x$enable_static" = "xyes"])
+
 AC_SUBST([TESTLDADD])
 AC_SUBST([APPLDFLAGS])
 
