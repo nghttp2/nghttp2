@@ -515,8 +515,16 @@ std::vector<LogFragment> parse_log_format(const char *optarg) {
 
     if (type == SHRPX_LOGF_NONE) {
       if (util::istartsWith(var_name, var_namelen, "http_")) {
-        type = SHRPX_LOGF_HTTP;
-        value = var_name + str_size("http_");
+        if (util::streq("host", var_name + str_size("http_"),
+                        var_namelen - str_size("http_"))) {
+          // Special handling of host header field.  We will use
+          // :authority header field if host header is missing.  This
+          // is a typical case in HTTP/2.
+          type = SHRPX_LOGF_AUTHORITY;
+        } else {
+          type = SHRPX_LOGF_HTTP;
+          value = var_name + str_size("http_");
+        }
       } else {
         LOG(WARN) << "Unrecognized log format variable: "
                   << std::string(var_name, var_namelen);
