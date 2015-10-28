@@ -850,7 +850,9 @@ int HttpDownstreamConnection::on_connect() {
 
 void HttpDownstreamConnection::on_upstream_change(Upstream *upstream) {}
 
-void HttpDownstreamConnection::signal_write() { conn_.wlimit.startw(); }
+void HttpDownstreamConnection::signal_write() {
+  ev_feed_event(conn_.loop, &conn_.wev, EV_WRITE);
+}
 
 size_t HttpDownstreamConnection::get_group() const { return group_; }
 
