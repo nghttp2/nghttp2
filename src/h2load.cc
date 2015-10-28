@@ -594,7 +594,6 @@ int Client::connection_made() {
     }
 #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
-    next_proto = nullptr;
     if (next_proto) {
       if (util::check_h2_is_selected(next_proto, next_proto_len)) {
         session = make_unique<Http2Session>(this);
