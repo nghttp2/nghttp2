@@ -52,6 +52,7 @@
 #include <cstdio>
 #include <cstring>
 #include <iostream>
+#include <fstream>
 
 #include <nghttp2/nghttp2.h>
 
@@ -1215,6 +1216,43 @@ uint64_t get_uint64(const uint8_t *data) {
   n += data[6] << 8;
   n += data[7];
   return n;
+}
+
+std::map<std::string, std::string> read_mime_types(const char *filename) {
+  std::map<std::string, std::string> res;
+
+  std::ifstream infile(filename);
+  if (!infile) {
+    std::cerr << "Could not open mime types file: " << filename << std::endl;
+    return res;
+  }
+
+  auto delim_pred = [](char c) { return c == ' ' || c == '\t'; };
+
+  std::string line;
+  while (std::getline(infile, line)) {
+    if (line.empty() || line[0] == '#') {
+      continue;
+    }
+
+    auto type_end = std::find_if(std::begin(line), std::end(line), delim_pred);
+    if (type_end == std::begin(line)) {
+      continue;
+    }
+
+    auto ext_end = type_end;
+    for (;;) {
+      auto ext_start = std::find_if_not(ext_end, std::end(line), delim_pred);
+      if (ext_start == std::end(line)) {
+        break;
+      }
+      ext_end = std::find_if(ext_start, std::end(line), delim_pred);
+      res.emplace(std::string(ext_start, ext_end),
+                  std::string(std::begin(line), type_end));
+    }
+  }
+
+  return res;
 }
 
 } // namespace util

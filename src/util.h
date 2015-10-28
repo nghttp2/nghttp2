@@ -44,6 +44,7 @@
 #include <sstream>
 #include <memory>
 #include <chrono>
+#include <map>
 
 #include "http-parser/http_parser.h"
 
@@ -705,6 +706,8 @@ uint32_t get_uint32(const uint8_t *data);
 // Retrieves 8 byte unsigned integer stored in |data| in network byte
 // order and returns it in host byte order.
 uint64_t get_uint64(const uint8_t *data);
+
+std::map<std::string, std::string> read_mime_types(const char *filename);
 
 } // namespace util
 
