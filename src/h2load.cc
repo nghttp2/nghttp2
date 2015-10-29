@@ -560,10 +560,15 @@ void Client::on_stream_close(int32_t stream_id, bool success,
   }
   ++worker->stats.req_done;
   ++req_done;
-  if (success && streams[stream_id].status_success == 1) {
-    ++worker->stats.req_status_success;
+  if (success) {
+    if (streams[stream_id].status_success == 1) {
+      ++worker->stats.req_status_success;
+    } else {
+      ++worker->stats.req_failed;
+    }
   } else {
     ++worker->stats.req_failed;
+    ++worker->stats.req_error;
   }
   report_progress();
   streams.erase(stream_id);
