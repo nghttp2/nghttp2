@@ -209,7 +209,7 @@ void Http2Session::on_connect() {
   client_->signal_write();
 }
 
-void Http2Session::submit_request(RequestStat *req_stat) {
+int Http2Session::submit_request(RequestStat *req_stat) {
   auto config = client_->worker->config;
   auto &nva = config->nva[client_->reqidx++];
 
@@ -222,7 +222,11 @@ void Http2Session::submit_request(RequestStat *req_stat) {
   auto stream_id =
       nghttp2_submit_request(session_, nullptr, nva.data(), nva.size(),
                              config->data_fd == -1 ? nullptr : &prd, req_stat);
-  assert(stream_id > 0);
+  if (stream_id < 0) {
+    return -1;
+  }
+
+  return 0;
 }
 
 int Http2Session::on_read(const uint8_t *data, size_t len) {

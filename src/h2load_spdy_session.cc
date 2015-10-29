@@ -178,7 +178,8 @@ void SpdySession::on_connect() {
   client_->signal_write();
 }
 
-void SpdySession::submit_request(RequestStat *req_stat) {
+int SpdySession::submit_request(RequestStat *req_stat) {
+  int rv;
   auto config = client_->worker->config;
   auto &nv = config->nv[client_->reqidx++];
 
@@ -188,8 +189,14 @@ void SpdySession::submit_request(RequestStat *req_stat) {
 
   spdylay_data_provider prd{{0}, file_read_callback};
 
-  spdylay_submit_request(session_, 0, nv.data(),
-                         config->data_fd == -1 ? nullptr : &prd, req_stat);
+  rv = spdylay_submit_request(session_, 0, nv.data(),
+                              config->data_fd == -1 ? nullptr : &prd, req_stat);
+
+  if (rv != 0) {
+    return -1;
+  }
+
+  return 0;
 }
 
 int SpdySession::on_read(const uint8_t *data, size_t len) {

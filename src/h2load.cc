@@ -198,7 +198,11 @@ namespace {
 void client_request_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto client = static_cast<Client *>(w->data);
 
-  client->submit_request();
+  if (client->submit_request() != 0) {
+    ev_timer_stop(client->worker->loop, w);
+    client->process_request_failure();
+    return;
+  }
   client->signal_write();
 
   if (check_stop_client_request_timeout(client, w)) {
@@ -209,7 +213,11 @@ void client_request_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
       config.timings[client->reqidx] - config.timings[client->reqidx - 1];
 
   while (duration < 1e-9) {
-    client->submit_request();
+    if (client->submit_request() != 0) {
+      ev_timer_stop(client->worker->loop, w);
+      client->process_request_failure();
+      return;
+    }
     client->signal_write();
     if (check_stop_client_request_timeout(client, w)) {
       return;
@@ -388,9 +396,13 @@ void Client::disconnect() {
   }
 }
 
-void Client::submit_request() {
+int Client::submit_request() {
   auto req_stat = &worker->stats.req_stats[worker->stats.req_started++];
-  session->submit_request(req_stat);
+
+  if (session->submit_request(req_stat) != 0) {
+    return -1;
+  }
+
   ++req_started;
 
   // if an active timeout is set and this is the last request to be submitted
@@ -398,6 +410,8 @@ void Client::submit_request() {
   if (worker->config->conn_active_timeout > 0. && req_started >= req_todo) {
     ev_timer_start(worker->loop, &conn_active_watcher);
   }
+
+  return 0;
 }
 
 void Client::process_timedout_streams() {
@@ -421,6 +435,21 @@ void Client::process_abandoned_streams() {
   worker->stats.req_done += req_abandoned;
 
   req_done = req_todo;
+}
+
+void Client::process_request_failure() {
+  auto req_abandoned = req_todo - req_started;
+
+  worker->stats.req_failed += req_abandoned;
+  worker->stats.req_error += req_abandoned;
+  worker->stats.req_done += req_abandoned;
+
+  req_done += req_abandoned;
+
+  if (req_done == req_todo) {
+    terminate_session();
+    return;
+  }
 }
 
 void Client::report_progress() {
@@ -488,7 +517,11 @@ void Client::report_app_info() {
   }
 }
 
-void Client::terminate_session() { session->terminate(); }
+void Client::terminate_session() {
+  session->terminate();
+  // http1 session needs writecb to tear down session.
+  signal_write();
+}
 
 void Client::on_request(int32_t stream_id) { streams[stream_id] = Stream(); }
 
@@ -579,7 +612,9 @@ void Client::on_stream_close(int32_t stream_id, bool success,
 
   if (!config.timing_script && !final) {
     if (req_started < req_todo) {
-      submit_request();
+      if (submit_request() != 0) {
+        process_request_failure();
+      }
       return;
     }
   }
@@ -692,14 +727,20 @@ int Client::connection_made() {
         std::min(req_todo - req_started, (size_t)config.max_concurrent_streams);
 
     for (; nreq > 0; --nreq) {
-      submit_request();
+      if (submit_request() != 0) {
+        process_request_failure();
+        break;
+      }
     }
   } else {
 
     ev_tstamp duration = config.timings[reqidx];
 
     while (duration < 1e-9) {
-      submit_request();
+      if (submit_request() != 0) {
+        process_request_failure();
+        break;
+      }
       duration = config.timings[reqidx];
     }
 

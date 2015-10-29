@@ -260,7 +260,8 @@ struct Client {
   void fail();
   void timeout();
   void restart_timeout();
-  void submit_request();
+  int submit_request();
+  void process_request_failure();
   void process_timedout_streams();
   void process_abandoned_streams();
   void report_progress();
