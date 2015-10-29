@@ -44,6 +44,7 @@
 #include <sstream>
 #include <memory>
 #include <chrono>
+#include <map>
 
 #include "http-parser/http_parser.h"
 
@@ -579,7 +580,8 @@ bool select_h2(const unsigned char **out, unsigned char *outlen,
 // present in |in| of length inlen.  Returns true if identifier is
 // selected.
 bool select_protocol(const unsigned char **out, unsigned char *outlen,
-               const unsigned char *in, unsigned int inlen, std::vector<std::string> proto_list);
+                     const unsigned char *in, unsigned int inlen,
+                     std::vector<std::string> proto_list);
 
 // Returns default ALPN protocol list, which only contains supported
 // HTTP/2 protocol identifier.
@@ -659,9 +661,10 @@ int64_t parse_uint(const std::string &s);
 // Parses NULL terminated string |s| as unsigned integer and returns
 // the parsed integer casted to double.  If |s| ends with "s", the
 // parsed value's unit is a second.  If |s| ends with "ms", the unit
-// is millisecond.  If none of them are given, the unit is second.
-// This function returns std::numeric_limits<double>::infinity() if
-// error occurs.
+// is millisecond.  Similarly, it also supports 'm' and 'h' for
+// minutes and hours respectively.  If none of them are given, the
+// unit is second.  This function returns
+// std::numeric_limits<double>::infinity() if error occurs.
 double parse_duration_with_unit(const char *s);
 
 // Returns string representation of time duration |t|.  If t has
@@ -703,6 +706,12 @@ uint32_t get_uint32(const uint8_t *data);
 // Retrieves 8 byte unsigned integer stored in |data| in network byte
 // order and returns it in host byte order.
 uint64_t get_uint64(const uint8_t *data);
+
+// Reads mime types file (see /etc/mime.types), and stores extension
+// -> MIME type map in |res|.  This function returns 0 if it succeeds,
+// or -1.
+int read_mime_types(std::map<std::string, std::string> &res,
+                    const char *filename);
 
 } // namespace util
 

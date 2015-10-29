@@ -57,7 +57,11 @@ extern "C" {
 #define NGHTTP2_EXTERN __declspec(dllimport)
 #endif /* !BUILDING_NGHTTP2 */
 #else  /* !defined(WIN32) */
+#ifdef BUILDING_NGHTTP2
+#define NGHTTP2_EXTERN __attribute__((visibility("default")))
+#else /* !BUILDING_NGHTTP2 */
 #define NGHTTP2_EXTERN
+#endif /* !BUILDING_NGHTTP2 */
 #endif /* !defined(WIN32) */
 
 /**
@@ -3616,6 +3620,23 @@ NGHTTP2_EXTERN int32_t
 /**
  * @function
  *
+ * Returns nonzero if new request can be sent from local endpoint.
+ *
+ * This function return 0 if request is not allowed for this session.
+ * There are several reasons why request is not allowed.  Some of the
+ * reasons are: session is server; stream ID has been spent; GOAWAY
+ * has been sent or received.
+ *
+ * The application can call `nghttp2_submit_request()` without
+ * consulting this function.  In that case, `nghttp2_submit_request()`
+ * may return error.  Or, request is failed to sent, and
+ * :type:`nghttp2_on_stream_close_callback` is called.
+ */
+NGHTTP2_EXTERN int nghttp2_session_request_allowed(nghttp2_session *session);
+
+/**
+ * @function
+ *
  * Submits WINDOW_UPDATE frame.
  *
  * The |flags| is currently ignored and should be
@@ -3922,6 +3943,48 @@ NGHTTP2_EXTERN size_t nghttp2_hd_deflate_bound(nghttp2_hd_deflater *deflater,
                                                const nghttp2_nv *nva,
                                                size_t nvlen);
 
+/**
+ * @function
+ *
+ * Returns the number of entries that header table of |deflater|
+ * contains.  This is the sum of the number of static table and
+ * dynamic table, so the return value is at least 61.
+ */
+NGHTTP2_EXTERN
+size_t nghttp2_hd_deflate_get_num_table_entries(nghttp2_hd_deflater *deflater);
+
+/**
+ * @function
+ *
+ * Returns the table entry denoted by |idx| from header table of
+ * |deflater|.  The |idx| is 1-based, and idx=1 returns first entry of
+ * static table.  idx=62 returns first entry of dynamic table if it
+ * exists.  Specifying idx=0 is error, and this function returns NULL.
+ * If |idx| is strictly greater than the number of entries the tables
+ * contain, this function returns NULL.
+ */
+NGHTTP2_EXTERN
+const nghttp2_nv *
+nghttp2_hd_deflate_get_table_entry(nghttp2_hd_deflater *deflater, size_t idx);
+
+/**
+ * @function
+ *
+ * Returns the used dynamic table size, including the overhead 32
+ * bytes per entry described in RFC 7541.
+ */
+NGHTTP2_EXTERN
+size_t nghttp2_hd_deflate_get_dynamic_table_size(nghttp2_hd_deflater *deflater);
+
+/**
+ * @function
+ *
+ * Returns the maximum dynamic table size.
+ */
+NGHTTP2_EXTERN
+size_t
+nghttp2_hd_deflate_get_max_dynamic_table_size(nghttp2_hd_deflater *deflater);
+
 struct nghttp2_hd_inflater;
 
 /**
@@ -4114,6 +4177,48 @@ NGHTTP2_EXTERN ssize_t nghttp2_hd_inflate_hd(nghttp2_hd_inflater *inflater,
 NGHTTP2_EXTERN int
 nghttp2_hd_inflate_end_headers(nghttp2_hd_inflater *inflater);
 
+/**
+ * @function
+ *
+ * Returns the number of entries that header table of |inflater|
+ * contains.  This is the sum of the number of static table and
+ * dynamic table, so the return value is at least 61.
+ */
+NGHTTP2_EXTERN
+size_t nghttp2_hd_inflate_get_num_table_entries(nghttp2_hd_inflater *inflater);
+
+/**
+ * @function
+ *
+ * Returns the table entry denoted by |idx| from header table of
+ * |inflater|.  The |idx| is 1-based, and idx=1 returns first entry of
+ * static table.  idx=62 returns first entry of dynamic table if it
+ * exists.  Specifying idx=0 is error, and this function returns NULL.
+ * If |idx| is strictly greater than the number of entries the tables
+ * contain, this function returns NULL.
+ */
+NGHTTP2_EXTERN
+const nghttp2_nv *
+nghttp2_hd_inflate_get_table_entry(nghttp2_hd_inflater *inflater, size_t idx);
+
+/**
+ * @function
+ *
+ * Returns the used dynamic table size, including the overhead 32
+ * bytes per entry described in RFC 7541.
+ */
+NGHTTP2_EXTERN
+size_t nghttp2_hd_inflate_get_dynamic_table_size(nghttp2_hd_inflater *inflater);
+
+/**
+ * @function
+ *
+ * Returns the maximum dynamic table size.
+ */
+NGHTTP2_EXTERN
+size_t
+nghttp2_hd_inflate_get_max_dynamic_table_size(nghttp2_hd_inflater *inflater);
+
 struct nghttp2_stream;
 
 /**
@@ -4137,8 +4242,8 @@ typedef struct nghttp2_stream nghttp2_stream;
  * call of `nghttp2_session_send()`, `nghttp2_session_mem_send()`,
  * `nghttp2_session_recv()`, and `nghttp2_session_mem_recv()`.
  */
-nghttp2_stream *nghttp2_session_find_stream(nghttp2_session *session,
-                                            int32_t stream_id);
+NGHTTP2_EXTERN nghttp2_stream *
+nghttp2_session_find_stream(nghttp2_session *session, int32_t stream_id);
 
 /**
  * @enum
@@ -4183,7 +4288,8 @@ typedef enum {
  * `nghttp2_session_get_root_stream()` will have stream state
  * :enum:`NGHTTP2_STREAM_STATE_IDLE`.
  */
-nghttp2_stream_proto_state nghttp2_stream_get_state(nghttp2_stream *stream);
+NGHTTP2_EXTERN nghttp2_stream_proto_state
+    nghttp2_stream_get_state(nghttp2_stream *stream);
 
 /**
  * @function
@@ -4192,7 +4298,8 @@ nghttp2_stream_proto_state nghttp2_stream_get_state(nghttp2_stream *stream);
  * stream ID 0.  The returned pointer is valid until |session| is
  * freed by `nghttp2_session_del()`.
  */
-nghttp2_stream *nghttp2_session_get_root_stream(nghttp2_session *session);
+NGHTTP2_EXTERN nghttp2_stream *
+nghttp2_session_get_root_stream(nghttp2_session *session);
 
 /**
  * @function
@@ -4200,9 +4307,10 @@ nghttp2_stream *nghttp2_session_get_root_stream(nghttp2_session *session);
  * Returns the parent stream of |stream| in dependency tree.  Returns
  * NULL if there is no such stream.
  */
-nghttp2_stream *nghttp2_stream_get_parent(nghttp2_stream *stream);
+NGHTTP2_EXTERN nghttp2_stream *
+nghttp2_stream_get_parent(nghttp2_stream *stream);
 
-int32_t nghttp2_stream_get_stream_id(nghttp2_stream *stream);
+NGHTTP2_EXTERN int32_t nghttp2_stream_get_stream_id(nghttp2_stream *stream);
 
 /**
  * @function
@@ -4210,7 +4318,8 @@ int32_t nghttp2_stream_get_stream_id(nghttp2_stream *stream);
  * Returns the next sibling stream of |stream| in dependency tree.
  * Returns NULL if there is no such stream.
  */
-nghttp2_stream *nghttp2_stream_get_next_sibling(nghttp2_stream *stream);
+NGHTTP2_EXTERN nghttp2_stream *
+nghttp2_stream_get_next_sibling(nghttp2_stream *stream);
 
 /**
  * @function
@@ -4218,7 +4327,8 @@ nghttp2_stream *nghttp2_stream_get_next_sibling(nghttp2_stream *stream);
  * Returns the previous sibling stream of |stream| in dependency tree.
  * Returns NULL if there is no such stream.
  */
-nghttp2_stream *nghttp2_stream_get_previous_sibling(nghttp2_stream *stream);
+NGHTTP2_EXTERN nghttp2_stream *
+nghttp2_stream_get_previous_sibling(nghttp2_stream *stream);
 
 /**
  * @function
@@ -4226,21 +4336,23 @@ nghttp2_stream *nghttp2_stream_get_previous_sibling(nghttp2_stream *stream);
  * Returns the first child stream of |stream| in dependency tree.
  * Returns NULL if there is no such stream.
  */
-nghttp2_stream *nghttp2_stream_get_first_child(nghttp2_stream *stream);
+NGHTTP2_EXTERN nghttp2_stream *
+nghttp2_stream_get_first_child(nghttp2_stream *stream);
 
 /**
  * @function
  *
  * Returns dependency weight to the parent stream of |stream|.
  */
-int32_t nghttp2_stream_get_weight(nghttp2_stream *stream);
+NGHTTP2_EXTERN int32_t nghttp2_stream_get_weight(nghttp2_stream *stream);
 
 /**
  * @function
  *
  * Returns the sum of the weight for |stream|'s children.
  */
-int32_t nghttp2_stream_get_sum_dependency_weight(nghttp2_stream *stream);
+NGHTTP2_EXTERN int32_t
+    nghttp2_stream_get_sum_dependency_weight(nghttp2_stream *stream);
 
 #ifdef __cplusplus
 }

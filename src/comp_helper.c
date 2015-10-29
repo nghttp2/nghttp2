@@ -29,28 +29,69 @@ static void dump_val(json_t *jent, const char *key, uint8_t *val, size_t len) {
   json_object_set_new(jent, key, json_pack("s#", val, len));
 }
 
-json_t *dump_header_table(nghttp2_hd_context *context) {
+#define NGHTTP2_HD_ENTRY_OVERHEAD 32
+
+json_t *dump_deflate_header_table(nghttp2_hd_deflater *deflater) {
   json_t *obj, *entries;
   size_t i;
+  size_t len = nghttp2_hd_deflate_get_num_table_entries(deflater);
 
   obj = json_object();
   entries = json_array();
-  for (i = 0; i < context->hd_table.len; ++i) {
-    nghttp2_hd_entry *ent = nghttp2_hd_table_get(context, i);
+  /* The first index of dynamic table is 62 */
+  for (i = 62; i <= len; ++i) {
+    const nghttp2_nv *nv = nghttp2_hd_deflate_get_table_entry(deflater, i);
     json_t *outent = json_object();
-    json_object_set_new(outent, "index", json_integer((json_int_t)(i + 1)));
-    dump_val(outent, "name", ent->nv.name, ent->nv.namelen);
-    dump_val(outent, "value", ent->nv.value, ent->nv.valuelen);
-    json_object_set_new(outent, "size", json_integer((json_int_t)(
-                                            ent->nv.namelen + ent->nv.valuelen +
-                                            NGHTTP2_HD_ENTRY_OVERHEAD)));
+    json_object_set_new(outent, "index", json_integer((json_int_t)i));
+    dump_val(outent, "name", nv->name, nv->namelen);
+    dump_val(outent, "value", nv->value, nv->valuelen);
+    json_object_set_new(outent, "size",
+                        json_integer((json_int_t)(nv->namelen + nv->valuelen +
+                                                  NGHTTP2_HD_ENTRY_OVERHEAD)));
     json_array_append_new(entries, outent);
   }
   json_object_set_new(obj, "entries", entries);
-  json_object_set_new(obj, "size",
-                      json_integer((json_int_t)(context->hd_table_bufsize)));
-  json_object_set_new(obj, "max_size", json_integer((json_int_t)(
-                                           context->hd_table_bufsize_max)));
+  json_object_set_new(
+      obj, "size",
+      json_integer(
+          (json_int_t)nghttp2_hd_deflate_get_dynamic_table_size(deflater)));
+  json_object_set_new(
+      obj, "max_size",
+      json_integer(
+          (json_int_t)nghttp2_hd_deflate_get_max_dynamic_table_size(deflater)));
+
+  return obj;
+}
+
+json_t *dump_inflate_header_table(nghttp2_hd_inflater *inflater) {
+  json_t *obj, *entries;
+  size_t i;
+  size_t len = nghttp2_hd_inflate_get_num_table_entries(inflater);
+
+  obj = json_object();
+  entries = json_array();
+  /* The first index of dynamic table is 62 */
+  for (i = 62; i <= len; ++i) {
+    const nghttp2_nv *nv = nghttp2_hd_inflate_get_table_entry(inflater, i);
+    json_t *outent = json_object();
+    json_object_set_new(outent, "index", json_integer((json_int_t)i));
+    dump_val(outent, "name", nv->name, nv->namelen);
+    dump_val(outent, "value", nv->value, nv->valuelen);
+    json_object_set_new(outent, "size",
+                        json_integer((json_int_t)(nv->namelen + nv->valuelen +
+                                                  NGHTTP2_HD_ENTRY_OVERHEAD)));
+    json_array_append_new(entries, outent);
+  }
+  json_object_set_new(obj, "entries", entries);
+  json_object_set_new(
+      obj, "size",
+      json_integer(
+          (json_int_t)nghttp2_hd_inflate_get_dynamic_table_size(inflater)));
+  json_object_set_new(
+      obj, "max_size",
+      json_integer(
+          (json_int_t)nghttp2_hd_inflate_get_max_dynamic_table_size(inflater)));
+
   return obj;
 }
 

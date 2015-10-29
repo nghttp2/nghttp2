@@ -515,8 +515,16 @@ std::vector<LogFragment> parse_log_format(const char *optarg) {
 
     if (type == SHRPX_LOGF_NONE) {
       if (util::istartsWith(var_name, var_namelen, "http_")) {
-        type = SHRPX_LOGF_HTTP;
-        value = var_name + str_size("http_");
+        if (util::streq("host", var_name + str_size("http_"),
+                        var_namelen - str_size("http_"))) {
+          // Special handling of host header field.  We will use
+          // :authority header field if host header is missing.  This
+          // is a typical case in HTTP/2.
+          type = SHRPX_LOGF_AUTHORITY;
+        } else {
+          type = SHRPX_LOGF_HTTP;
+          value = var_name + str_size("http_");
+        }
       } else {
         LOG(WARN) << "Unrecognized log format variable: "
                   << std::string(var_name, var_namelen);
@@ -692,6 +700,8 @@ enum {
   SHRPX_OPTID_STRIP_INCOMING_X_FORWARDED_FOR,
   SHRPX_OPTID_SUBCERT,
   SHRPX_OPTID_SYSLOG_FACILITY,
+  SHRPX_OPTID_TLS_DYN_REC_IDLE_TIMEOUT,
+  SHRPX_OPTID_TLS_DYN_REC_WARMUP_THRESHOLD,
   SHRPX_OPTID_TLS_PROTO_LIST,
   SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED,
   SHRPX_OPTID_TLS_TICKET_KEY_CIPHER,
@@ -1159,6 +1169,9 @@ int option_lookup_token(const char *name, size_t namelen) {
       if (util::strieq_l("listener-disable-timeou", name, 23)) {
         return SHRPX_OPTID_LISTENER_DISABLE_TIMEOUT;
       }
+      if (util::strieq_l("tls-dyn-rec-idle-timeou", name, 23)) {
+        return SHRPX_OPTID_TLS_DYN_REC_IDLE_TIMEOUT;
+      }
       break;
     }
     break;
@@ -1211,6 +1224,11 @@ int option_lookup_token(const char *name, size_t namelen) {
     break;
   case 28:
     switch (name[27]) {
+    case 'd':
+      if (util::strieq_l("tls-dyn-rec-warmup-threshol", name, 27)) {
+        return SHRPX_OPTID_TLS_DYN_REC_WARMUP_THRESHOLD;
+      }
+      break;
     case 's':
       if (util::strieq_l("http2-max-concurrent-stream", name, 27)) {
         return SHRPX_OPTID_HTTP2_MAX_CONCURRENT_STREAMS;
@@ -1458,7 +1476,7 @@ int parse_config(const char *opt, const char *optarg,
     mod_config()->fastopen = n;
 
     return 0;
-  }  
+  }
   case SHRPX_OPTID_BACKEND_KEEP_ALIVE_TIMEOUT:
     return parse_duration(&mod_config()->downstream_idle_read_timeout, opt,
                           optarg);
@@ -1961,6 +1979,20 @@ int parse_config(const char *opt, const char *optarg,
   case SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_MAX_FAIL:
     return parse_uint(&mod_config()->tls_ticket_key_memcached_max_fail, opt,
                       optarg);
+  case SHRPX_OPTID_TLS_DYN_REC_WARMUP_THRESHOLD: {
+    size_t n;
+    if (parse_uint_with_unit(&n, opt, optarg) != 0) {
+      return -1;
+    }
+
+    mod_config()->tls_dyn_rec_warmup_threshold = n;
+
+    return 0;
+  }
+
+  case SHRPX_OPTID_TLS_DYN_REC_IDLE_TIMEOUT:
+    return parse_duration(&mod_config()->tls_dyn_rec_idle_timeout, opt, optarg);
+
   case SHRPX_OPTID_MRUBY_FILE:
 #ifdef HAVE_MRUBY
     mod_config()->mruby_file = strcopy(optarg);

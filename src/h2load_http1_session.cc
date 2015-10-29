@@ -140,7 +140,7 @@ http_parser_settings htp_hooks = {
 
 void Http1Session::on_connect() { client_->signal_write(); }
 
-void Http1Session::submit_request(RequestStat *req_stat) {
+int Http1Session::submit_request(RequestStat *req_stat) {
   auto config = client_->worker->config;
   auto req = config->h1reqs[client_->reqidx];
   client_->reqidx++;
@@ -158,6 +158,8 @@ void Http1Session::submit_request(RequestStat *req_stat) {
 
   // increment for next request
   stream_req_counter_ += 2;
+
+  return 0;
 }
 
 int Http1Session::on_read(const uint8_t *data, size_t len) {

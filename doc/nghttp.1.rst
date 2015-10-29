@@ -14,7 +14,7 @@ SYNOPSIS
 DESCRIPTION
 -----------
 
-HTTP/2 experimental client
+HTTP/2 client
 
 .. describe:: <URI>
 
@@ -120,7 +120,12 @@ OPTIONS
 
 .. option:: -c, --header-table-size=<SIZE>
 
-    Specify decoder header table size.
+    Specify decoder  header table  size.  If this  option is
+    used  multiple times,  and the  minimum value  among the
+    given values except  for last one is  strictly less than
+    the last  value, that minimum  value is set  in SETTINGS
+    frame  payload  before  the   last  value,  to  simulate
+    multiple header table size change.
 
 .. option:: -b, --padding=<N>
 

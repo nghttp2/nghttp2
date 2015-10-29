@@ -27,13 +27,19 @@
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
-#endif // HAVE_CONFIG_H
+#endif /* HAVE_CONFIG_H */
 
 #include <jansson.h>
 
-#include "nghttp2_hd.h"
+#include <nghttp2/nghttp2.h>
 
-json_t *dump_header_table(nghttp2_hd_context *context);
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+json_t *dump_deflate_header_table(nghttp2_hd_deflater *deflater);
+
+json_t *dump_inflate_header_table(nghttp2_hd_inflater *inflater);
 
 json_t *dump_header(const uint8_t *name, size_t namelen, const uint8_t *value,
                     size_t vlauelen);
@@ -44,4 +50,8 @@ void output_json_header(void);
 
 void output_json_footer(void);
 
-#endif // NGHTTP2_COMP_HELPER_H
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* NGHTTP2_COMP_HELPER_H */

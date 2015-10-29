@@ -31,13 +31,17 @@ OPTIONS
 
 .. option:: -n, --requests=<N>
 
-    Number of requests.
+    Number of  requests across all  clients.  If it  is used
+    with :option:`--timing-script-file` option,  this option specifies
+    the number of requests  each client performs rather than
+    the number of requests across all clients.
 
     Default: ``1``
 
 .. option:: -c, --clients=<N>
 
-    Number of concurrent clients.
+    Number  of concurrent  clients.   With  :option:`-r` option,  this
+    specifies the maximum number of connections to be made.
 
     Default: ``1``
 
@@ -110,60 +114,61 @@ OPTIONS
     Specifies  the  fixed  rate  at  which  connections  are
     created.   The   rate  must   be  a   positive  integer,
     representing the  number of  connections to be  made per
-    second.  When the rate is 0,  the program will run as it
-    normally does, creating connections at whatever variable
-    rate it wants.  The default value for this option is 0.
+    rate period.   The maximum  number of connections  to be
+    made  is  given  in  :option:`-c`   option.   This  rate  will  be
+    distributed among  threads as  evenly as  possible.  For
+    example,  with   :option:`-t2`  and   :option:`\-r4`,  each  thread   gets  2
+    connections per period.  When the rate is 0, the program
+    will run  as it  normally does, creating  connections at
+    whatever variable rate it  wants.  The default value for
+    this option is 0.
 
-.. option:: -C, --num-conns=<N>
+.. option:: --rate-period=<DURATION>
 
-    Specifies  the total  number of  connections to  create.
-    The  total  number of  connections  must  be a  positive
-    integer.  On each connection, :option:`-m` requests are made.  The
-    test  stops once  as soon  as the  <N> connections  have
-    either  completed   or  failed.   When  the   number  of
-    connections is  0, the program  will run as  it normally
-    does, creating as many connections  as it needs in order
-    to make  the :option:`-n`  requests specified.  The  default value
-    for this option is 0.  The  :option:`-n` option is not required if
-    the :option:`-C` option is being used.
+    Specifies the time  period between creating connections.
+    The period  must be a positive  number, representing the
+    length of the period in time.  This option is ignored if
+    the rate option is not used.  The default value for this
+    option is 1s.
 
-.. option:: -T, --connection-active-timeout=<N>
+.. option:: -T, --connection-active-timeout=<DURATION>
 
     Specifies  the maximum  time that  h2load is  willing to
     keep a  connection open,  regardless of the  activity on
-    said  connection.   <N>  must  be  a  positive  integer,
-    specifying  the  number of  seconds  to  wait.  When  no
-    timeout value is set (either active or inactive), h2load
-    will keep a connection  open indefinitely, waiting for a
+    said connection.  <DURATION> must be a positive integer,
+    specifying the amount of time  to wait.  When no timeout
+    value is  set (either  active or inactive),  h2load will
+    keep  a  connection  open indefinitely,  waiting  for  a
     response.
 
-.. option:: -N, --connection-inactivity-timeout=<N>
+.. option:: -N, --connection-inactivity-timeout=<DURATION>
 
     Specifies the amount  of time that h2load  is willing to
-    wait to see activity on a given connection.  <N> must be
-    a positive integer, specifying  the number of seconds to
-    wait.  When  no timeout value  is set (either  active or
-    inactive),   h2load   will   keep  a   connection   open
+    wait to see activity  on a given connection.  <DURATION>
+    must  be a  positive integer,  specifying the  amount of
+    time  to wait.   When no  timeout value  is set  (either
+    active or inactive), h2load  will keep a connection open
     indefinitely, waiting for a response.
 
 .. option:: --timing-script-file=<PATH>
 
-    Path of a file containing one  or more lines separated by
-    EOLs. Each script line  is composed of  two tab-separated
-    fields. The first field  represents  the time offset from
-    the start of execution,  expressed as a positive value of
-    milliseconds  with  microsecond  resolution.  The  second
-    field represents the URI.  This option will disable  URIs
-    getting  from  command-line.  If '-'  is given as <PATH>,
-    script  lines  will be read from stdin.  Script lines are
-    used in order for each client. If :option:`-n` is given, it must be
-    less than or equal to the number of script lines,  larger
-    values are clamped to the number of script lines.  If  :option:`-n`
-    is not given,  the number of requests will default to the
-    number of script lines. The scheme, host and port defined
-    in the  first URI  are used  solely.  Values contained in
-    other URIs, if  present, are  ignored.  Definition  of  a
-    base  URI  overrides  all  scheme, host  or port  values.
+    Path of a file containing one or more lines separated by
+    EOLs.  Each script line is composed of two tab-separated
+    fields.  The first field represents the time offset from
+    the start of execution, expressed as a positive value of
+    milliseconds  with microsecond  resolution.  The  second
+    field represents the URI.  This option will disable URIs
+    getting from  command-line.  If '-' is  given as <PATH>,
+    script lines will be read  from stdin.  Script lines are
+    used in order for each client.   If :option:`-n` is given, it must
+    be less  than or  equal to the  number of  script lines,
+    larger values are clamped to the number of script lines.
+    If :option:`-n` is not given,  the number of requests will default
+    to the  number of  script lines.   The scheme,  host and
+    port defined in  the first URI are  used solely.  Values
+    contained  in  other  URIs,  if  present,  are  ignored.
+    Definition of a  base URI overrides all  scheme, host or
+    port values.
 
 .. option:: -B, --base-uri=<URI>
 
@@ -194,6 +199,13 @@ OPTIONS
 .. option:: -h, --help
 
     Display this help and exit.
+
+
+
+The <DURATION> argument is an integer and an optional unit (e.g., 1s
+is 1 second and 500ms is 500 milliseconds).  Units are h, m, s or ms
+(hours, minutes, seconds and milliseconds, respectively).  If a unit
+is omitted, a second is used as unit.
 
 OUTPUT
 ------

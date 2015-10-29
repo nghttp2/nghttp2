@@ -319,6 +319,18 @@ void add_header(bool &key_prev, size_t &sum, Headers &headers, std::string name,
 } // namespace
 
 namespace {
+void add_header(size_t &sum, Headers &headers, const uint8_t *name,
+                size_t namelen, const uint8_t *value, size_t valuelen,
+                bool no_index, int16_t token) {
+  sum += namelen + valuelen;
+  headers.emplace_back(
+      std::string(reinterpret_cast<const char *>(name), namelen),
+      std::string(reinterpret_cast<const char *>(value), valuelen), no_index,
+      token);
+}
+} // namespace
+
+namespace {
 void append_last_header_key(bool key_prev, size_t &sum, Headers &headers,
                             const char *data, size_t len) {
   assert(key_prev);
@@ -418,9 +430,8 @@ void Downstream::add_request_header(const uint8_t *name, size_t namelen,
                                     const uint8_t *value, size_t valuelen,
                                     bool no_index, int16_t token) {
   http2::index_header(request_hdidx_, token, request_headers_.size());
-  request_headers_sum_ += namelen + valuelen;
-  http2::add_header(request_headers_, name, namelen, value, valuelen, no_index,
-                    token);
+  add_header(request_headers_sum_, request_headers_, name, namelen, value,
+             valuelen, no_index, token);
 }
 
 bool Downstream::get_request_header_key_prev() const {
@@ -452,9 +463,8 @@ void Downstream::add_request_trailer(const uint8_t *name, size_t namelen,
                                      bool no_index, int16_t token) {
   // we never index trailer part.  Header size limit should be applied
   // to all request header fields combined.
-  request_headers_sum_ += namelen + valuelen;
-  http2::add_header(request_trailers_, name, namelen, value, valuelen, no_index,
-                    -1);
+  add_header(request_headers_sum_, request_trailers_, name, namelen, value,
+             valuelen, no_index, -1);
 }
 
 const Headers &Downstream::get_request_trailers() const {
@@ -722,9 +732,8 @@ void Downstream::add_response_header(const uint8_t *name, size_t namelen,
                                      const uint8_t *value, size_t valuelen,
                                      bool no_index, int16_t token) {
   http2::index_header(response_hdidx_, token, response_headers_.size());
-  response_headers_sum_ += namelen + valuelen;
-  http2::add_header(response_headers_, name, namelen, value, valuelen, no_index,
-                    token);
+  add_header(response_headers_sum_, response_headers_, name, namelen, value,
+             valuelen, no_index, token);
 }
 
 bool Downstream::get_response_header_key_prev() const {
@@ -758,9 +767,8 @@ const Headers &Downstream::get_response_trailers() const {
 void Downstream::add_response_trailer(const uint8_t *name, size_t namelen,
                                       const uint8_t *value, size_t valuelen,
                                       bool no_index, int16_t token) {
-  response_headers_sum_ += namelen + valuelen;
-  http2::add_header(response_trailers_, name, namelen, value, valuelen,
-                    no_index, -1);
+  add_header(response_headers_sum_, response_trailers_, name, namelen, value,
+             valuelen, no_index, -1);
 }
 
 unsigned int Downstream::get_response_http_status() const {

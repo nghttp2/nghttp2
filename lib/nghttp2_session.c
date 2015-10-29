@@ -906,7 +906,14 @@ nghttp2_stream *nghttp2_session_open_stream(nghttp2_session *session,
       }
     } else if (!dep_stream || !nghttp2_stream_in_dep_tree(dep_stream)) {
       /* If dep_stream is not part of dependency tree, stream will get
-         default priority. */
+         default priority.  This handles the case when
+         pri_spec->stream_id == stream_id.  This happens because we
+         don't check pri_spec->stream_id against new stream ID in
+         nghttp2_submit_request.  This also handles the case when idle
+         stream created by PRIORITY frame was opened.  Somehow we
+         first remove the idle stream from dependency tree.  This is
+         done to simplify code base, but ideally we should retain old
+         dependency.  But I'm not sure this adds values. */
       nghttp2_priority_spec_default_init(&pri_spec_default);
       pri_spec = &pri_spec_default;
     }
@@ -1318,6 +1325,12 @@ static int session_predicate_for_stream_send(nghttp2_session *session,
     return NGHTTP2_ERR_STREAM_SHUT_WR;
   }
   return 0;
+}
+
+int nghttp2_session_request_allowed(nghttp2_session *session) {
+  return !session->server && session->next_stream_id <= INT32_MAX &&
+         (session->goaway_flags &
+          (NGHTTP2_GOAWAY_TERM_ON_SEND | NGHTTP2_GOAWAY_RECV)) == 0;
 }
 
 /*
@@ -2446,8 +2459,6 @@ static int session_after_frame_sent1(nghttp2_session *session) {
       break;
     }
     case NGHTTP2_WINDOW_UPDATE:
-      rv = 0;
-
       if (frame->hd.stream_id == 0) {
         session->window_update_queued = 0;
         if (session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_WINDOW_UPDATE) {
@@ -2733,6 +2744,10 @@ static ssize_t nghttp2_session_mem_send_internal(nghttp2_session *session,
             opened_stream_id = item->frame.hd.stream_id;
             if (item->aux_data.headers.canceled) {
               error_code = item->aux_data.headers.error_code;
+            } else {
+              /* Set error_code to REFUSED_STREAM so that application
+                 can send request again. */
+              error_code = NGHTTP2_REFUSED_STREAM;
             }
           }
           break;
@@ -3979,13 +3994,17 @@ int nghttp2_session_update_local_settings(nghttp2_session *session,
   size_t i;
   int32_t new_initial_window_size = -1;
   uint32_t header_table_size = 0;
+  uint32_t min_header_table_size = UINT32_MAX;
   uint8_t header_table_size_seen = 0;
-  /* Use the value last seen. */
+  /* For NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE, use the value last
+     seen.  For NGHTTP2_SETTINGS_HEADER_TABLE_SIZE, use both minimum
+     value and last seen value. */
   for (i = 0; i < niv; ++i) {
     switch (iv[i].settings_id) {
     case NGHTTP2_SETTINGS_HEADER_TABLE_SIZE:
       header_table_size_seen = 1;
       header_table_size = iv[i].value;
+      min_header_table_size = nghttp2_min(min_header_table_size, iv[i].value);
       break;
     case NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE:
       new_initial_window_size = (int32_t)iv[i].value;
@@ -3993,6 +4012,14 @@ int nghttp2_session_update_local_settings(nghttp2_session *session,
     }
   }
   if (header_table_size_seen) {
+    if (min_header_table_size < header_table_size) {
+      rv = nghttp2_hd_inflate_change_table_size(&session->hd_inflater,
+                                                min_header_table_size);
+      if (rv != 0) {
+        return rv;
+      }
+    }
+
     rv = nghttp2_hd_inflate_change_table_size(&session->hd_inflater,
                                               header_table_size);
     if (rv != 0) {

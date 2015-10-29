@@ -111,7 +111,7 @@ namespace shrpx {
 #define _KERNEL_FASTOPEN
 // conditional define for TCP_FASTOPEN mostly on ubuntu
 #ifndef TCP_FASTOPEN
-#define TCP_FASTOPEN   23
+#define TCP_FASTOPEN 23
 #endif
 
 // conditional define for SOL_TCP mostly on ubuntu
@@ -618,10 +618,10 @@ int create_tcp_server_socket(int family) {
       continue;
     }
 
-    if(get_config()->fastopen > 0) {
+    if (get_config()->fastopen > 0) {
       val = get_config()->fastopen;
       if (setsockopt(fd, SOL_TCP, TCP_FASTOPEN, &val,
-                   static_cast<socklen_t>(sizeof(val))) == -1) {
+                     static_cast<socklen_t>(sizeof(val))) == -1) {
         LOG(WARN) << "Failed to set TCP_FASTOPEN option to listener socket";
       }
     }
@@ -910,13 +910,13 @@ void fill_default_config() {
   mod_config()->http2_upstream_read_timeout = 3_min;
 
   // Read timeout for non-HTTP2 upstream connection
-  mod_config()->upstream_read_timeout = 3_min;
+  mod_config()->upstream_read_timeout = 1_min;
 
   // Write timeout for HTTP2/non-HTTP2 upstream connection
   mod_config()->upstream_write_timeout = 30.;
 
   // Read/Write timeouts for downstream connection
-  mod_config()->downstream_read_timeout = 3_min;
+  mod_config()->downstream_read_timeout = 1_min;
   mod_config()->downstream_write_timeout = 30.;
 
   // Read timeout for HTTP/2 stream
@@ -1031,6 +1031,8 @@ void fill_default_config() {
   mod_config()->tls_ticket_key_memcached_max_fail = 2;
   mod_config()->tls_ticket_key_memcached_interval = 10_min;
   mod_config()->fastopen = 0;
+  mod_config()->tls_dyn_rec_warmup_threshold = 1_m;
+  mod_config()->tls_dyn_rec_idle_timeout = 1.;
 }
 } // namespace
 
@@ -1240,13 +1242,11 @@ Performance:
       << util::utos_with_unit(get_config()->downstream_response_buffer_size)
       << R"(
   --fastopen=<N>
-              enables “TCP Fast Open” for the listening socket 
-              and limits the maximum length for the queue of connections 
-              that have not yet completed the three-way handshake.
-              If value is 0 then fast open is disabled.
-              Default: )"
-      << util::utos_with_unit(get_config()->fastopen)
-      << R"(
+              Enables  "TCP Fast  Open" for  the listening  socket and
+              limits the  maximum length for the  queue of connections
+              that have not yet completed the three-way handshake.  If
+              value is 0 then fast open is disabled.
+              Default: )" << get_config()->fastopen << R"(
 Timeout:
   --frontend-http2-read-timeout=<DURATION>
               Specify  read  timeout  for  HTTP/2  and  SPDY  frontend
@@ -1348,7 +1348,10 @@ SSL/TLS:
               and   TLSv1.0.    The   name   matching   is   done   in
               case-insensitive   manner.    The  parameter   must   be
               delimited by  a single comma  only and any  white spaces
-              are treated as a part of protocol string.
+              are  treated  as a  part  of  protocol string.   If  the
+              protocol list advertised by client does not overlap this
+              list,  you  will  receive  the  error  message  "unknown
+              protocol".
               Default: )" << DEFAULT_TLS_PROTO_LIST << R"(
   --tls-ticket-key-file=<PATH>
               Path to file that contains  random data to construct TLS
@@ -1419,6 +1422,26 @@ SSL/TLS:
               Specify  address of  memcached server  to store  session
               cache.   This  enables   shared  session  cache  between
               multiple nghttpx instances.
+  --tls-dyn-rec-warmup-threshold=<SIZE>
+              Specify the  threshold size for TLS  dynamic record size
+              behaviour.  During  a TLS  session, after  the threshold
+              number of bytes  have been written, the  TLS record size
+              will be increased to the maximum allowed (16K).  The max
+              record size will  continue to be used on  the active TLS
+              session.  After  --tls-dyn-rec-idle-timeout has elapsed,
+              the record size is reduced  to 1300 bytes.  Specify 0 to
+              always use  the maximum record size,  regardless of idle
+              period.   This  behaviour  applies   to  all  TLS  based
+              frontends, and TLS HTTP/2 backends.
+              Default: )"
+      << util::utos_with_unit(get_config()->tls_dyn_rec_warmup_threshold) << R"(
+  --tls-dyn-rec-idle-timeout=<DURATION>
+              Specify TLS dynamic record  size behaviour timeout.  See
+              --tls-dyn-rec-warmup-threshold  for   more  information.
+              This behaviour  applies to all TLS  based frontends, and
+              TLS HTTP/2 backends.
+              Default: )"
+      << util::duration_str(get_config()->tls_dyn_rec_idle_timeout) << R"(
 
 HTTP/2 and SPDY:
   -c, --http2-max-concurrent-streams=<N>
@@ -1621,14 +1644,8 @@ Process:
               be used to drop root privileges.
 
 Scripting:
-  --request-phase-file=<PATH>
-              Set  mruby  script  file  which will  be  executed  when
-              request  header  fields  are  completely  received  from
-              frontend.  This hook is called request phase hook.
-  --response-phase-file=<PATH>
-              Set  mruby  script  file  which will  be  executed  when
-              response  header  fields  are completely  received  from
-              backend.  This hook is called response phase hook.
+  --mruby-file=<PATH>
+              Set mruby script file
 
 Misc:
   --conf=<PATH>
@@ -1681,6 +1698,11 @@ int main(int argc, char **argv) {
 
   for (int i = 0; i < argc; ++i) {
     mod_config()->argv[i] = strdup(argv[i]);
+    if (mod_config()->argv[i] == nullptr) {
+      auto error = errno;
+      LOG(FATAL) << "failed to copy argv: " << strerror(error);
+      exit(EXIT_FAILURE);
+    }
   }
 
   mod_config()->cwd = getcwd(nullptr, 0);
@@ -1804,6 +1826,8 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_MRUBY_FILE, required_argument, &flag, 91},
         {SHRPX_OPT_ACCEPT_PROXY_PROTOCOL, no_argument, &flag, 93},
         {SHRPX_OPT_FASTOPEN, required_argument, &flag, 94},
+        {SHRPX_OPT_TLS_DYN_REC_WARMUP_THRESHOLD, required_argument, &flag, 95},
+        {SHRPX_OPT_TLS_DYN_REC_IDLE_TIMEOUT, required_argument, &flag, 96},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -2209,6 +2233,14 @@ int main(int argc, char **argv) {
         // --fastopen
         cmdcfgs.emplace_back(SHRPX_OPT_FASTOPEN, optarg);
         break;
+      case 95:
+        // --tls-dyn-rec-warmup-threshold
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_DYN_REC_WARMUP_THRESHOLD, optarg);
+        break;
+      case 96:
+        // --tls-dyn-rec-idle-timeout
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_DYN_REC_IDLE_TIMEOUT, optarg);
+        break;
       default:
         break;
       }
@@ -2545,4 +2577,4 @@ int main(int argc, char **argv) {
 
 } // namespace shrpx
 
-int main(int argc, char **argv) { return shrpx::main(argc, argv); }
+int main(int argc, char **argv) { return run_app(shrpx::main, argc, argv); }

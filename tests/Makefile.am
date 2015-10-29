@@ -49,7 +49,15 @@ HFILES = nghttp2_pq_test.h nghttp2_map_test.h nghttp2_queue_test.h \
 
 main_SOURCES = $(HFILES) $(OBJECTS)
 
-main_LDADD = ${top_builddir}/lib/libnghttp2.la @CUNIT_LIBS@ @TESTLDADD@
+if ENABLE_STATIC
+main_LDADD = ${top_builddir}/lib/libnghttp2.la
+else
+# With static lib disabled and symbol hiding enabled, we have to link object
+# files directly because the tests use symbols not included in public API.
+main_LDADD = ${top_builddir}/lib/.libs/*.o
+endif
+
+main_LDADD += @CUNIT_LIBS@ @TESTLDADD@
 main_LDFLAGS = -static
 
 if ENABLE_FAILMALLOC

@@ -367,7 +367,9 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
             get_config()->upstream_write_timeout,
             get_config()->upstream_read_timeout, get_config()->write_rate,
             get_config()->write_burst, get_config()->read_rate,
-            get_config()->read_burst, writecb, readcb, timeoutcb, this),
+            get_config()->read_burst, writecb, readcb, timeoutcb, this,
+            get_config()->tls_dyn_rec_warmup_threshold,
+            get_config()->tls_dyn_rec_idle_timeout),
       pinned_http2sessions_(
           get_config()->downstream_proto == PROTO_HTTP2
               ? make_unique<std::vector<ssize_t>>(

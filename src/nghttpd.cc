@@ -87,7 +87,7 @@ void print_version(std::ostream &out) {
 namespace {
 void print_usage(std::ostream &out) {
   out << "Usage: nghttpd [OPTION]... <PORT> [<PRIVATE_KEY> <CERT>]\n"
-      << "HTTP/2 experimental server" << std::endl;
+      << "HTTP/2 server" << std::endl;
 }
 } // namespace
 
@@ -160,6 +160,10 @@ Options:
               are used.
   --echo-upload
               Send back uploaded content if method is POST or PUT.
+  --mime-types-file=<PATH>
+              Path  to file  that contains  MIME media  types and  the
+              extensions that represent them.
+              Default: )" << config.mime_types_file << R"(
   --version   Display version information and exit.
   -h, --help  Display this help and exit.
 
@@ -179,6 +183,8 @@ int main(int argc, char **argv) {
 
   Config config;
   bool color = false;
+  auto mime_types_file_set_manually = false;
+
   while (1) {
     static int flag = 0;
     static option long_options[] = {
@@ -202,6 +208,7 @@ int main(int argc, char **argv) {
         {"trailer", required_argument, &flag, 6},
         {"hexdump", no_argument, &flag, 7},
         {"echo-upload", no_argument, &flag, 8},
+        {"mime-types-file", required_argument, &flag, 9},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     int c = getopt_long(argc, argv, "DVb:c:d:ehm:n:p:va:", long_options,
@@ -328,6 +335,11 @@ int main(int argc, char **argv) {
         // echo-upload option
         config.echo_upload = true;
         break;
+      case 9:
+        // mime-types-file option
+        mime_types_file_set_manually = true;
+        config.mime_types_file = optarg;
+        break;
       }
       break;
     default:
@@ -366,6 +378,14 @@ int main(int argc, char **argv) {
     config.htdocs = "./";
   }
 
+  if (util::read_mime_types(config.mime_types,
+                            config.mime_types_file.c_str()) != 0) {
+    if (mime_types_file_set_manually) {
+      std::cerr << "--mime-types-file: Could not open mime types file: "
+                << config.mime_types_file << std::endl;
+    }
+  }
+
   set_color_output(color || isatty(fileno(stdout)));
 
   struct sigaction act {};
@@ -383,4 +403,6 @@ int main(int argc, char **argv) {
 
 } // namespace nghttp2
 
-int main(int argc, char **argv) { return nghttp2::main(argc, argv); }
+int main(int argc, char **argv) {
+  return nghttp2::run_app(nghttp2::main, argc, argv);
+}

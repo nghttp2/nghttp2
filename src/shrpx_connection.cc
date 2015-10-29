@@ -44,11 +44,15 @@ Connection::Connection(struct ev_loop *loop, int fd, SSL *ssl,
                        MemchunkPool *mcpool, ev_tstamp write_timeout,
                        ev_tstamp read_timeout, size_t write_rate,
                        size_t write_burst, size_t read_rate, size_t read_burst,
-                       IOCb writecb, IOCb readcb, TimerCb timeoutcb, void *data)
+                       IOCb writecb, IOCb readcb, TimerCb timeoutcb, void *data,
+                       size_t tls_dyn_rec_warmup_threshold,
+                       ev_tstamp tls_dyn_rec_idle_timeout)
     : tls{DefaultMemchunks(mcpool), DefaultPeekMemchunks(mcpool)},
       wlimit(loop, &wev, write_rate, write_burst),
       rlimit(loop, &rev, read_rate, read_burst, this), writecb(writecb),
-      readcb(readcb), timeoutcb(timeoutcb), loop(loop), data(data), fd(fd) {
+      readcb(readcb), timeoutcb(timeoutcb), loop(loop), data(data), fd(fd),
+      tls_dyn_rec_warmup_threshold(tls_dyn_rec_warmup_threshold),
+      tls_dyn_rec_idle_timeout(tls_dyn_rec_idle_timeout) {
 
   ev_io_init(&wev, writecb, fd, EV_WRITE);
   ev_io_init(&rev, readcb, fd, EV_READ);
@@ -349,6 +353,12 @@ int Connection::tls_handshake() {
       break;
     case SSL_ERROR_WANT_WRITE:
       break;
+    case SSL_ERROR_SSL:
+      if (LOG_ENABLED(INFO)) {
+        LOG(INFO) << "tls: handshake libssl error: "
+                  << ERR_error_string(ERR_get_error(), nullptr);
+      }
+      return SHRPX_ERR_NETWORK;
     default:
       if (LOG_ENABLED(INFO)) {
         LOG(INFO) << "tls: handshake libssl error " << err;
@@ -485,19 +495,24 @@ int Connection::check_http2_requirement() {
 
 namespace {
 const size_t SHRPX_SMALL_WRITE_LIMIT = 1300;
-const size_t SHRPX_WARMUP_THRESHOLD = 1 << 20;
 } // namespace
 
 size_t Connection::get_tls_write_limit() {
+
+  if (tls_dyn_rec_warmup_threshold == 0) {
+    return std::numeric_limits<ssize_t>::max();
+  }
+
   auto t = ev_now(loop);
 
-  if (tls.last_write_idle >= 0. && t - tls.last_write_idle > 1.) {
+  if (tls.last_write_idle >= 0. &&
+      t - tls.last_write_idle > tls_dyn_rec_idle_timeout) {
     // Time out, use small record size
     tls.warmup_writelen = 0;
     return SHRPX_SMALL_WRITE_LIMIT;
   }
 
-  if (tls.warmup_writelen >= SHRPX_WARMUP_THRESHOLD) {
+  if (tls.warmup_writelen >= tls_dyn_rec_warmup_threshold) {
     return std::numeric_limits<ssize_t>::max();
   }
 
@@ -505,7 +520,7 @@ size_t Connection::get_tls_write_limit() {
 }
 
 void Connection::update_tls_warmup_writelen(size_t n) {
-  if (tls.warmup_writelen < SHRPX_WARMUP_THRESHOLD) {
+  if (tls.warmup_writelen < tls_dyn_rec_warmup_threshold) {
     tls.warmup_writelen += n;
   }
 }
@@ -551,6 +566,12 @@ ssize_t Connection::write_tls(const void *data, size_t len) {
       // starting write watcher and timer is done in write_clear via
       // bio.
       return 0;
+    case SSL_ERROR_SSL:
+      if (LOG_ENABLED(INFO)) {
+        LOG(INFO) << "SSL_write: " << ERR_error_string(ERR_get_error(),
+                                                       nullptr);
+      }
+      return SHRPX_ERR_NETWORK;
     default:
       if (LOG_ENABLED(INFO)) {
         LOG(INFO) << "SSL_write: SSL_get_error returned " << err;
@@ -599,6 +620,11 @@ ssize_t Connection::read_tls(void *data, size_t len) {
       return SHRPX_ERR_NETWORK;
     case SSL_ERROR_ZERO_RETURN:
       return SHRPX_ERR_EOF;
+    case SSL_ERROR_SSL:
+      if (LOG_ENABLED(INFO)) {
+        LOG(INFO) << "SSL_read: " << ERR_error_string(ERR_get_error(), nullptr);
+      }
+      return SHRPX_ERR_NETWORK;
     default:
       if (LOG_ENABLED(INFO)) {
         LOG(INFO) << "SSL_read: SSL_get_error returned " << err;

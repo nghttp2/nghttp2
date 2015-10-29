@@ -42,8 +42,7 @@
 
 /* The global variable for tests where we want to disable strict
    preface handling. */
-/* Specify NGHTTP2_EXTERN, so that we can test using Win build dll. */
-NGHTTP2_EXTERN extern int nghttp2_enable_strict_preface;
+extern int nghttp2_enable_strict_preface;
 
 /*
  * Option flags.
@@ -82,7 +81,7 @@ typedef struct {
    response frames are stacked up, which leads to memory exhaustion.
    The value selected here is arbitrary, but safe value and if we have
    these frames in this number, it is considered suspicious. */
-#define NGHTTP2_MAX_OBQ_FLOOD_ITEM 1000
+#define NGHTTP2_MAX_OBQ_FLOOD_ITEM 10000
 
 /* Internal state when receiving incoming frame */
 typedef enum {

@@ -1,11 +1,10 @@
 [Unit]
-Description=HTTP/2 experimental proxy
+Description=HTTP/2 proxy
 After=network.target
 
 [Service]
 Type=forking
 ExecStart=@bindir@/nghttpx --conf=/etc/nghttpx/nghttpx.conf --pid-file=/run/nghttpx.pid --daemon
-PIDFile=/run/nghttpx.pid
 
 [Install]
 WantedBy=multi-user.target

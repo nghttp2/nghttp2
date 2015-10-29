@@ -52,6 +52,7 @@
 #include <cstdio>
 #include <cstring>
 #include <iostream>
+#include <fstream>
 
 #include <nghttp2/nghttp2.h>
 
@@ -659,9 +660,7 @@ void store_original_fds() {
   make_socket_closeonexec(STDERR_COPY);
 }
 
-void restore_original_fds() {
-  dup2(STDERR_COPY, STDERR_FILENO);
-}
+void restore_original_fds() { dup2(STDERR_COPY, STDERR_FILENO); }
 
 void close_log_file(int &fd) {
   if (fd != STDERR_COPY && fd != STDOUT_COPY && fd != -1) {
@@ -771,8 +770,8 @@ bool check_h2_is_selected(const unsigned char *proto, size_t len) {
 
 namespace {
 bool select_proto(const unsigned char **out, unsigned char *outlen,
-               const unsigned char *in, unsigned int inlen, const char *key,
-               unsigned int keylen) {
+                  const unsigned char *in, unsigned int inlen, const char *key,
+                  unsigned int keylen) {
   for (auto p = in, end = in + inlen; p + keylen <= end; p += *p + 1) {
     if (std::equal(key, key + keylen, p)) {
       *out = p + 1;
@@ -787,17 +786,19 @@ bool select_proto(const unsigned char **out, unsigned char *outlen,
 bool select_h2(const unsigned char **out, unsigned char *outlen,
                const unsigned char *in, unsigned int inlen) {
   return select_proto(out, outlen, in, inlen, NGHTTP2_PROTO_ALPN,
-                   str_size(NGHTTP2_PROTO_ALPN)) ||
+                      str_size(NGHTTP2_PROTO_ALPN)) ||
          select_proto(out, outlen, in, inlen, NGHTTP2_H2_16_ALPN,
-                   str_size(NGHTTP2_H2_16_ALPN)) ||
+                      str_size(NGHTTP2_H2_16_ALPN)) ||
          select_proto(out, outlen, in, inlen, NGHTTP2_H2_14_ALPN,
-                   str_size(NGHTTP2_H2_14_ALPN));
+                      str_size(NGHTTP2_H2_14_ALPN));
 }
 
 bool select_protocol(const unsigned char **out, unsigned char *outlen,
-               const unsigned char *in, unsigned int inlen, std::vector<std::string> proto_list) {
+                     const unsigned char *in, unsigned int inlen,
+                     std::vector<std::string> proto_list) {
   for (const auto &proto : proto_list) {
-    if (select_proto(out, outlen, in, inlen, proto.c_str(), static_cast<unsigned int>(proto.size()))) {
+    if (select_proto(out, outlen, in, inlen, proto.c_str(),
+                     static_cast<unsigned int>(proto.size()))) {
       return true;
     }
   }
@@ -817,7 +818,6 @@ std::vector<unsigned char> get_default_alpn() {
 
   return res;
 }
-
 
 std::vector<Range<const char *>> split_config_str_list(const char *s,
                                                        char delim) {
@@ -1216,6 +1216,41 @@ uint64_t get_uint64(const uint8_t *data) {
   n += data[6] << 8;
   n += data[7];
   return n;
+}
+
+int read_mime_types(std::map<std::string, std::string> &res,
+                    const char *filename) {
+  std::ifstream infile(filename);
+  if (!infile) {
+    return -1;
+  }
+
+  auto delim_pred = [](char c) { return c == ' ' || c == '\t'; };
+
+  std::string line;
+  while (std::getline(infile, line)) {
+    if (line.empty() || line[0] == '#') {
+      continue;
+    }
+
+    auto type_end = std::find_if(std::begin(line), std::end(line), delim_pred);
+    if (type_end == std::begin(line)) {
+      continue;
+    }
+
+    auto ext_end = type_end;
+    for (;;) {
+      auto ext_start = std::find_if_not(ext_end, std::end(line), delim_pred);
+      if (ext_start == std::end(line)) {
+        break;
+      }
+      ext_end = std::find_if(ext_start, std::end(line), delim_pred);
+      res.emplace(std::string(ext_start, ext_end),
+                  std::string(std::begin(line), type_end));
+    }
+  }
+
+  return 0;
 }
 
 } // namespace util

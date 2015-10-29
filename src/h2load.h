@@ -83,9 +83,9 @@ struct Config {
   size_t rate;
   ev_tstamp rate_period;
   // amount of time to wait for activity on a given connection
-  ssize_t conn_active_timeout;
+  ev_tstamp conn_active_timeout;
   // amount of time to wait after the last request is made on a connection
-  ssize_t conn_inactivity_timeout;
+  ev_tstamp conn_inactivity_timeout;
   enum {
     PROTO_HTTP2,
     PROTO_SPDY2,
@@ -260,7 +260,8 @@ struct Client {
   void fail();
   void timeout();
   void restart_timeout();
-  void submit_request();
+  int submit_request();
+  void process_request_failure();
   void process_timedout_streams();
   void process_abandoned_streams();
   void report_progress();
@@ -290,6 +291,9 @@ struct Client {
   void on_header(int32_t stream_id, const uint8_t *name, size_t namelen,
                  const uint8_t *value, size_t valuelen);
   void on_status_code(int32_t stream_id, uint16_t status);
+  // |success| == true means that the request/response was exchanged
+  // |successfully, but it does not mean response carried successful
+  // |HTTP status code.
   void on_stream_close(int32_t stream_id, bool success, RequestStat *req_stat,
                        bool final = false);
 

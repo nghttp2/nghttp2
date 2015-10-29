@@ -100,11 +100,12 @@ template <typename Array> void append_nv(Stream *stream, const Array &nva) {
 } // namespace
 
 Config::Config()
-    : stream_read_timeout(1_min), stream_write_timeout(1_min),
-      data_ptr(nullptr), padding(0), num_worker(1), max_concurrent_streams(100),
-      header_table_size(-1), port(0), verbose(false), daemon(false),
-      verify_client(false), no_tls(false), error_gzip(false),
-      early_response(false), hexdump(false), echo_upload(false) {}
+    : mime_types_file("/etc/mime.types"), stream_read_timeout(1_min),
+      stream_write_timeout(1_min), data_ptr(nullptr), padding(0), num_worker(1),
+      max_concurrent_streams(100), header_table_size(-1), port(0),
+      verbose(false), daemon(false), verify_client(false), no_tls(false),
+      error_gzip(false), early_response(false), hexdump(false),
+      echo_upload(false) {}
 
 Config::~Config() {}
 
@@ -739,6 +740,7 @@ int Http2Handler::verify_npn_result() {
 int Http2Handler::submit_file_response(const std::string &status,
                                        Stream *stream, time_t last_modified,
                                        off_t file_length,
+                                       const std::string *content_type,
                                        nghttp2_data_provider *data_prd) {
   std::string content_length = util::utos(file_length);
   std::string last_modified_str;
@@ -747,11 +749,15 @@ int Http2Handler::submit_file_response(const std::string &status,
                         http2::make_nv_ls("content-length", content_length),
                         http2::make_nv_ll("cache-control", "max-age=3600"),
                         http2::make_nv_ls("date", sessions_->get_cached_date()),
-                        http2::make_nv_ll("", ""), http2::make_nv_ll("", ""));
+                        http2::make_nv_ll("", ""), http2::make_nv_ll("", ""),
+                        http2::make_nv_ll("", ""));
   size_t nvlen = 5;
   if (last_modified != 0) {
     last_modified_str = util::http_date(last_modified);
     nva[nvlen++] = http2::make_nv_ls("last-modified", last_modified_str);
+  }
+  if (content_type) {
+    nva[nvlen++] = http2::make_nv_ls("content-type", *content_type);
   }
   auto &trailer = get_config()->trailer;
   std::string trailer_names;
@@ -974,7 +980,7 @@ bool prepare_upload_temp_store(Stream *stream, Http2Handler *hd) {
   // Ordinary request never start with "echo:".  The length is 0 for
   // now.  We will update it when we get whole request body.
   stream->file_ent = sessions->cache_fd(std::string("echo:") + tempfn,
-                                        FileEntry(tempfn, 0, 0, fd));
+                                        FileEntry(tempfn, 0, 0, fd, nullptr));
   stream->echo_upload = true;
   return true;
 }
@@ -1100,8 +1106,28 @@ void prepare_response(Stream *stream, Http2Handler *hd,
       return;
     }
 
+    const std::string *content_type = nullptr;
+
+    if (path[path.size() - 1] == '/') {
+      static const std::string TEXT_HTML = "text/html";
+      content_type = &TEXT_HTML;
+    } else {
+      auto ext = path.c_str() + path.size() - 1;
+      for (; path.c_str() < ext && *ext != '.' && *ext != '/'; --ext)
+        ;
+      if (*ext == '.') {
+        ++ext;
+
+        const auto &mime_types = hd->get_config()->mime_types;
+        auto content_type_itr = mime_types.find(ext);
+        if (content_type_itr != std::end(mime_types)) {
+          content_type = &(*content_type_itr).second;
+        }
+      }
+    }
+
     file_ent = sessions->cache_fd(
-        path, FileEntry(path, buf.st_size, buf.st_mtime, file));
+        path, FileEntry(path, buf.st_size, buf.st_mtime, file, content_type));
   }
 
   stream->file_ent = file_ent;
@@ -1116,7 +1142,7 @@ void prepare_response(Stream *stream, Http2Handler *hd,
                                    stream->headers)->value;
   if (method == "HEAD") {
     hd->submit_file_response("200", stream, file_ent->mtime, file_ent->length,
-                             nullptr);
+                             file_ent->content_type, nullptr);
     return;
   }
 
@@ -1128,7 +1154,7 @@ void prepare_response(Stream *stream, Http2Handler *hd,
   data_prd.read_callback = file_read_callback;
 
   hd->submit_file_response("200", stream, file_ent->mtime, file_ent->length,
-                           &data_prd);
+                           file_ent->content_type, &data_prd);
 }
 } // namespace
 
@@ -1625,7 +1651,7 @@ FileEntry make_status_body(int status, uint16_t port) {
     assert(0);
   }
 
-  return FileEntry(util::utos(status), nwrite, 0, fd);
+  return FileEntry(util::utos(status), nwrite, 0, fd, nullptr);
 }
 } // namespace
 
@@ -1671,7 +1697,7 @@ int start_listen(HttpServer *sv, struct ev_loop *loop, Sessions *sessions,
   bool ok = false;
   const char *addr = nullptr;
 
-  auto acceptor = std::make_shared<AcceptHandler>(sv, sessions, config);
+  std::shared_ptr<AcceptHandler> acceptor;
   auto service = util::utos(config->port);
 
   addrinfo hints{};
@@ -1715,6 +1741,9 @@ int start_listen(HttpServer *sv, struct ev_loop *loop, Sessions *sessions,
     }
 #endif // IPV6_V6ONLY
     if (bind(fd, rp->ai_addr, rp->ai_addrlen) == 0 && listen(fd, 1000) == 0) {
+      if (!acceptor) {
+        acceptor = std::make_shared<AcceptHandler>(sv, sessions, config);
+      }
       new ListenEventHandler(sessions, fd, acceptor);
 
       if (config->verbose) {
@@ -1870,6 +1899,9 @@ int HttpServer::run() {
   Sessions sessions(this, loop, config_, ssl_ctx);
   if (start_listen(this, loop, &sessions, config_) != 0) {
     std::cerr << "Could not listen" << std::endl;
+    if (ssl_ctx) {
+      SSL_CTX_free(ssl_ctx);
+    }
     return -1;
   }
 

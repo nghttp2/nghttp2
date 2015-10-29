@@ -187,6 +187,10 @@ constexpr char SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_MAX_FAIL[] =
 constexpr char SHRPX_OPT_MRUBY_FILE[] = "mruby-file";
 constexpr char SHRPX_OPT_ACCEPT_PROXY_PROTOCOL[] = "accept-proxy-protocol";
 constexpr char SHRPX_OPT_FASTOPEN[] = "fastopen";
+constexpr char SHRPX_OPT_TLS_DYN_REC_WARMUP_THRESHOLD[] =
+    "tls-dyn-rec-warmup-threshold";
+constexpr char SHRPX_OPT_TLS_DYN_REC_IDLE_TIMEOUT[] =
+    "tls-dyn-rec-idle-timeout";
 
 union sockaddr_union {
   sockaddr_storage storage;
@@ -419,6 +423,8 @@ struct Config {
   // true if --tls-ticket-key-cipher is used
   bool tls_ticket_key_cipher_given;
   bool accept_proxy_protocol;
+  size_t tls_dyn_rec_warmup_threshold;
+  ev_tstamp tls_dyn_rec_idle_timeout;
 };
 
 const Config *get_config();

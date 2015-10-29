@@ -4348,13 +4348,16 @@ void test_nghttp2_submit_settings(void) {
   iv[2].value = 50;
 
   iv[3].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
-  iv[3].value = 0;
+  iv[3].value = 111;
 
   iv[4].settings_id = UNKNOWN_ID;
   iv[4].value = 999;
 
-  iv[5].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
-  iv[5].value = (uint32_t)NGHTTP2_MAX_WINDOW_SIZE + 1;
+  iv[5].settings_id = NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
+  iv[5].value = 1023;
+
+  iv[6].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
+  iv[6].value = (uint32_t)NGHTTP2_MAX_WINDOW_SIZE + 1;
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks.send_callback = null_send_callback;
@@ -4362,7 +4365,7 @@ void test_nghttp2_submit_settings(void) {
   nghttp2_session_server_new(&session, &callbacks, &ud);
 
   CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT ==
-            nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, iv, 6));
+            nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, iv, 7));
 
   /* Make sure that local settings are not changed */
   CU_ASSERT(NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS ==
@@ -4371,14 +4374,14 @@ void test_nghttp2_submit_settings(void) {
             session->local_settings.initial_window_size);
 
   /* Now sends without 6th one */
-  CU_ASSERT(0 == nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, iv, 5));
+  CU_ASSERT(0 == nghttp2_submit_settings(session, NGHTTP2_FLAG_NONE, iv, 6));
 
   item = nghttp2_session_get_next_ob_item(session);
 
   CU_ASSERT(NGHTTP2_SETTINGS == item->frame.hd.type);
 
   frame = &item->frame;
-  CU_ASSERT(5 == frame->settings.niv);
+  CU_ASSERT(6 == frame->settings.niv);
   CU_ASSERT(5 == frame->settings.iv[0].value);
   CU_ASSERT(NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS ==
             frame->settings.iv[0].settings_id);
@@ -4401,7 +4404,8 @@ void test_nghttp2_submit_settings(void) {
   nghttp2_frame_settings_free(&ack_frame.settings, mem);
 
   CU_ASSERT(16 * 1024 == session->local_settings.initial_window_size);
-  CU_ASSERT(0 == session->hd_inflater.ctx.hd_table_bufsize_max);
+  CU_ASSERT(1023 == session->hd_inflater.ctx.hd_table_bufsize_max);
+  CU_ASSERT(111 == session->hd_inflater.min_hd_table_bufsize_max);
   CU_ASSERT(50 == session->local_settings.max_concurrent_streams);
   /* We just keep the last seen value */
   CU_ASSERT(50 == session->pending_local_max_concurrent_stream);

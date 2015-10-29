@@ -316,30 +316,20 @@ cdef extern from 'nghttp2/nghttp2.h':
 
     int nghttp2_hd_inflate_end_headers(nghttp2_hd_inflater *inflater)
 
-cdef extern from 'nghttp2_hd.h':
-
-    # This is macro
-    int NGHTTP2_HD_ENTRY_OVERHEAD
-
     ctypedef enum nghttp2_hd_inflate_flag:
         NGHTTP2_HD_INFLATE_EMIT
         NGHTTP2_HD_INFLATE_FINAL
 
-    ctypedef struct nghttp2_hd_entry:
-        nghttp2_nv nv
-        uint8_t flags
-
-    ctypedef struct nghttp2_hd_ringbuf:
-        size_t len
-
-    ctypedef struct nghttp2_hd_context:
-        nghttp2_hd_ringbuf hd_table
-
     ctypedef struct nghttp2_hd_deflater:
-        nghttp2_hd_context ctx
+        pass
 
     ctypedef struct nghttp2_hd_inflater:
-        nghttp2_hd_context ctx
+        pass
 
-    nghttp2_hd_entry* nghttp2_hd_table_get(nghttp2_hd_context *context,
-                                           size_t index)
+    size_t nghttp2_hd_deflate_get_num_table_entries(nghttp2_hd_deflater *deflater)
+
+    const nghttp2_nv * nghttp2_hd_deflate_get_table_entry(nghttp2_hd_deflater *deflater, size_t idx)
+
+    size_t nghttp2_hd_inflate_get_num_table_entries(nghttp2_hd_inflater *inflater)
+
+    const nghttp2_nv *nghttp2_hd_inflate_get_table_entry(nghttp2_hd_inflater *inflater, size_t idx)

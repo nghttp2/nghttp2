@@ -74,8 +74,8 @@ namespace h2load {
 Config::Config()
     : data_length(-1), addrs(nullptr), nreqs(1), nclients(1), nthreads(1),
       max_concurrent_streams(-1), window_bits(30), connection_window_bits(30),
-      rate(0), rate_period(1.0), conn_active_timeout(0),
-      conn_inactivity_timeout(0), no_tls_proto(PROTO_HTTP2), data_fd(-1),
+      rate(0), rate_period(1.0), conn_active_timeout(0.),
+      conn_inactivity_timeout(0.), no_tls_proto(PROTO_HTTP2), data_fd(-1),
       port(0), default_port(0), verbose(false), timing_script(false) {}
 
 Config::~Config() {
@@ -198,7 +198,11 @@ namespace {
 void client_request_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto client = static_cast<Client *>(w->data);
 
-  client->submit_request();
+  if (client->submit_request() != 0) {
+    ev_timer_stop(client->worker->loop, w);
+    client->process_request_failure();
+    return;
+  }
   client->signal_write();
 
   if (check_stop_client_request_timeout(client, w)) {
@@ -209,7 +213,11 @@ void client_request_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
       config.timings[client->reqidx] - config.timings[client->reqidx - 1];
 
   while (duration < 1e-9) {
-    client->submit_request();
+    if (client->submit_request() != 0) {
+      ev_timer_stop(client->worker->loop, w);
+      client->process_request_failure();
+      return;
+    }
     client->signal_write();
     if (check_stop_client_request_timeout(client, w)) {
       return;
@@ -296,7 +304,7 @@ int Client::connect() {
 
   record_start_time(&worker->stats);
 
-  if (worker->config->conn_inactivity_timeout > 0) {
+  if (worker->config->conn_inactivity_timeout > 0.) {
     ev_timer_again(worker->loop, &conn_inactivity_watcher);
   }
 
@@ -342,7 +350,7 @@ void Client::timeout() {
 }
 
 void Client::restart_timeout() {
-  if (worker->config->conn_inactivity_timeout > 0) {
+  if (worker->config->conn_inactivity_timeout > 0.) {
     ev_timer_again(worker->loop, &conn_inactivity_watcher);
   }
 }
@@ -388,16 +396,22 @@ void Client::disconnect() {
   }
 }
 
-void Client::submit_request() {
+int Client::submit_request() {
   auto req_stat = &worker->stats.req_stats[worker->stats.req_started++];
-  session->submit_request(req_stat);
+
+  if (session->submit_request(req_stat) != 0) {
+    return -1;
+  }
+
   ++req_started;
 
   // if an active timeout is set and this is the last request to be submitted
   // on this connection, start the active timeout.
-  if (worker->config->conn_active_timeout > 0 && req_started >= req_todo) {
+  if (worker->config->conn_active_timeout > 0. && req_started >= req_todo) {
     ev_timer_start(worker->loop, &conn_active_watcher);
   }
+
+  return 0;
 }
 
 void Client::process_timedout_streams() {
@@ -421,6 +435,21 @@ void Client::process_abandoned_streams() {
   worker->stats.req_done += req_abandoned;
 
   req_done = req_todo;
+}
+
+void Client::process_request_failure() {
+  auto req_abandoned = req_todo - req_started;
+
+  worker->stats.req_failed += req_abandoned;
+  worker->stats.req_error += req_abandoned;
+  worker->stats.req_done += req_abandoned;
+
+  req_done += req_abandoned;
+
+  if (req_done == req_todo) {
+    terminate_session();
+    return;
+  }
 }
 
 void Client::report_progress() {
@@ -488,7 +517,11 @@ void Client::report_app_info() {
   }
 }
 
-void Client::terminate_session() { session->terminate(); }
+void Client::terminate_session() {
+  session->terminate();
+  // http1 session needs writecb to tear down session.
+  signal_write();
+}
 
 void Client::on_request(int32_t stream_id) { streams[stream_id] = Stream(); }
 
@@ -560,10 +593,15 @@ void Client::on_stream_close(int32_t stream_id, bool success,
   }
   ++worker->stats.req_done;
   ++req_done;
-  if (success && streams[stream_id].status_success == 1) {
-    ++worker->stats.req_status_success;
+  if (success) {
+    if (streams[stream_id].status_success == 1) {
+      ++worker->stats.req_status_success;
+    } else {
+      ++worker->stats.req_failed;
+    }
   } else {
     ++worker->stats.req_failed;
+    ++worker->stats.req_error;
   }
   report_progress();
   streams.erase(stream_id);
@@ -574,7 +612,9 @@ void Client::on_stream_close(int32_t stream_id, bool success,
 
   if (!config.timing_script && !final) {
     if (req_started < req_todo) {
-      submit_request();
+      if (submit_request() != 0) {
+        process_request_failure();
+      }
       return;
     }
   }
@@ -586,51 +626,36 @@ int Client::connection_made() {
 
     const unsigned char *next_proto = nullptr;
     unsigned int next_proto_len;
+
     SSL_get0_next_proto_negotiated(ssl, &next_proto, &next_proto_len);
-    for (int i = 0; i < 2; ++i) {
-      if (next_proto) {
-        if (util::check_h2_is_selected(next_proto, next_proto_len)) {
-          session = make_unique<Http2Session>(this);
-          break;
-        } else if (util::streq_l(NGHTTP2_H1_1, next_proto, next_proto_len)) {
-          session = make_unique<Http1Session>(this);
-          break;
-        }
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+    if (next_proto == nullptr) {
+      SSL_get0_alpn_selected(ssl, &next_proto, &next_proto_len);
+    }
+#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
+
+    if (next_proto) {
+      if (util::check_h2_is_selected(next_proto, next_proto_len)) {
+        session = make_unique<Http2Session>(this);
+      } else if (util::streq_l(NGHTTP2_H1_1, next_proto, next_proto_len)) {
+        session = make_unique<Http1Session>(this);
+      }
 #ifdef HAVE_SPDYLAY
-        else {
-          auto spdy_version =
-              spdylay_npn_get_version(next_proto, next_proto_len);
-          if (spdy_version) {
-            session = make_unique<SpdySession>(this, spdy_version);
-            break;
-          }
+      else {
+        auto spdy_version = spdylay_npn_get_version(next_proto, next_proto_len);
+        if (spdy_version) {
+          session = make_unique<SpdySession>(this, spdy_version);
         }
+      }
 #endif // HAVE_SPDYLAY
 
-        next_proto = nullptr;
-        break;
-      }
+      // Just assign next_proto to selected_proto anyway to show the
+      // negotiation result.
+      selected_proto.assign(next_proto, next_proto + next_proto_len);
+    } else {
+      std::cout << "No protocol negotiated. Fallback behaviour may be activated"
+                << std::endl;
 
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L
-      SSL_get0_alpn_selected(ssl, &next_proto, &next_proto_len);
-      auto proto = std::string(reinterpret_cast<const char *>(next_proto),
-                               next_proto_len);
-
-      if (proto.empty()) {
-        std::cout
-            << "No protocol negotiated. Fallback behaviour may be activated"
-            << std::endl;
-        break;
-      } else {
-        selected_proto = proto;
-        report_app_info();
-      }
-#else  // OPENSSL_VERSION_NUMBER < 0x10002000L
-      break;
-#endif // OPENSSL_VERSION_NUMBER < 0x10002000L
-    }
-
-    if (!next_proto) {
       for (const auto &proto : config.npn_list) {
         if (std::equal(NGHTTP2_H1_1_ALPN,
                        NGHTTP2_H1_1_ALPN + str_size(NGHTTP2_H1_1_ALPN),
@@ -639,48 +664,56 @@ int Client::connection_made() {
               << "Server does not support NPN/ALPN. Falling back to HTTP/1.1."
               << std::endl;
           session = make_unique<Http1Session>(this);
+          selected_proto = NGHTTP2_H1_1;
           break;
         }
       }
+    }
 
-      if (!session) {
-        std::cout
-            << "No supported protocol was negotiated. Supported protocols were:"
-            << std::endl;
-        for (const auto &proto : config.npn_list) {
-          std::cout << proto.substr(1) << std::endl;
-        }
-        disconnect();
-        return -1;
+    if (!selected_proto.empty()) {
+      report_app_info();
+    }
+
+    if (!session) {
+      std::cout
+          << "No supported protocol was negotiated. Supported protocols were:"
+          << std::endl;
+      for (const auto &proto : config.npn_list) {
+        std::cout << proto.substr(1) << std::endl;
       }
+      disconnect();
+      return -1;
     }
   } else {
     switch (config.no_tls_proto) {
     case Config::PROTO_HTTP2:
       session = make_unique<Http2Session>(this);
       selected_proto = NGHTTP2_CLEARTEXT_PROTO_VERSION_ID;
-      report_app_info();
       break;
     case Config::PROTO_HTTP1_1:
       session = make_unique<Http1Session>(this);
       selected_proto = NGHTTP2_H1_1;
-      report_app_info();
       break;
 #ifdef HAVE_SPDYLAY
     case Config::PROTO_SPDY2:
       session = make_unique<SpdySession>(this, SPDYLAY_PROTO_SPDY2);
+      selected_proto = "spdy/2";
       break;
     case Config::PROTO_SPDY3:
       session = make_unique<SpdySession>(this, SPDYLAY_PROTO_SPDY3);
+      selected_proto = "spdy/3";
       break;
     case Config::PROTO_SPDY3_1:
       session = make_unique<SpdySession>(this, SPDYLAY_PROTO_SPDY3_1);
+      selected_proto = "spdy/3.1";
       break;
 #endif // HAVE_SPDYLAY
     default:
       // unreachable
       assert(0);
     }
+
+    report_app_info();
   }
 
   state = CLIENT_CONNECTED;
@@ -694,14 +727,20 @@ int Client::connection_made() {
         std::min(req_todo - req_started, (size_t)config.max_concurrent_streams);
 
     for (; nreq > 0; --nreq) {
-      submit_request();
+      if (submit_request() != 0) {
+        process_request_failure();
+        break;
+      }
     }
   } else {
 
     ev_tstamp duration = config.timings[reqidx];
 
     while (duration < 1e-9) {
-      submit_request();
+      if (submit_request() != 0) {
+        process_request_failure();
+        break;
+      }
       duration = config.timings[reqidx];
     }
 
@@ -1261,7 +1300,7 @@ std::unique_ptr<Worker> create_worker(uint32_t id, SSL_CTX *ssl_ctx,
   std::stringstream rate_report;
   if (config.is_rate_mode() && nclients > rate) {
     rate_report << "Up to " << rate << " client(s) will be created every "
-                << std::setprecision(3) << config.rate_period << " seconds. ";
+                << util::duration_str(config.rate_period) << " ";
   }
 
   std::cout << "spawning thread #" << id << ": " << nclients
@@ -1379,26 +1418,26 @@ Options:
               will run  as it  normally does, creating  connections at
               whatever variable rate it  wants.  The default value for
               this option is 0.
-  --rate-period=<N>
-              Specifies the time period  between creating connections.
-              The  period  must be a positive  number  greater than or
-              equal to 1.0,  representing the length of  the period in
-              seconds.  This option is  ignored if the rate  option is
-              not used. The default value for this option is 1.0.
-  -T, --connection-active-timeout=<N>
+  --rate-period=<DURATION>
+              Specifies the time  period between creating connections.
+              The period  must be a positive  number, representing the
+              length of the period in time.  This option is ignored if
+              the rate option is not used.  The default value for this
+              option is 1s.
+  -T, --connection-active-timeout=<DURATION>
               Specifies  the maximum  time that  h2load is  willing to
               keep a  connection open,  regardless of the  activity on
-              said  connection.   <N>  must  be  a  positive  integer,
-              specifying  the  number of  seconds  to  wait.  When  no
-              timeout value is set (either active or inactive), h2load
-              will keep a connection  open indefinitely, waiting for a
+              said connection.  <DURATION> must be a positive integer,
+              specifying the amount of time  to wait.  When no timeout
+              value is  set (either  active or inactive),  h2load will
+              keep  a  connection  open indefinitely,  waiting  for  a
               response.
-  -N, --connection-inactivity-timeout=<N>
+  -N, --connection-inactivity-timeout=<DURATION>
               Specifies the amount  of time that h2load  is willing to
-              wait to see activity on a given connection.  <N> must be
-              a positive integer, specifying  the number of seconds to
-              wait.  When  no timeout value  is set (either  active or
-              inactive),   h2load   will   keep  a   connection   open
+              wait to see activity  on a given connection.  <DURATION>
+              must  be a  positive integer,  specifying the  amount of
+              time  to wait.   When no  timeout value  is set  (either
+              active or inactive), h2load  will keep a connection open
               indefinitely, waiting for a response.
   --timing-script-file=<PATH>
               Path of a file containing one or more lines separated by
@@ -1434,7 +1473,14 @@ Options:
   -v, --verbose
               Output debug information.
   --version   Display version information and exit.
-  -h, --help  Display this help and exit.)" << std::endl;
+  -h, --help  Display this help and exit.
+
+--
+
+  The <DURATION> argument is an integer and an optional unit (e.g., 1s
+  is 1 second and 500ms is 500 milliseconds).  Units are h, m, s or ms
+  (hours, minutes, seconds and milliseconds, respectively).  If a unit
+  is omitted, a second is used as unit.)" << std::endl;
 }
 } // namespace
 
@@ -1579,18 +1625,18 @@ int main(int argc, char **argv) {
       }
       break;
     case 'T':
-      config.conn_active_timeout = strtoul(optarg, nullptr, 10);
-      if (config.conn_active_timeout <= 0) {
-        std::cerr << "-T: the conn_active_timeout wait time "
-                  << "must be positive." << std::endl;
+      config.conn_active_timeout = util::parse_duration_with_unit(optarg);
+      if (!std::isfinite(config.conn_active_timeout)) {
+        std::cerr << "-T: bad value for the conn_active_timeout wait time: "
+                  << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
       break;
     case 'N':
-      config.conn_inactivity_timeout = strtoul(optarg, nullptr, 10);
-      if (config.conn_inactivity_timeout <= 0) {
-        std::cerr << "-N: the conn_inactivity_timeout wait time "
-                  << "must be positive." << std::endl;
+      config.conn_inactivity_timeout = util::parse_duration_with_unit(optarg);
+      if (!std::isfinite(config.conn_inactivity_timeout)) {
+        std::cerr << "-N: bad value for the conn_inactivity_timeout wait time: "
+                  << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
       break;
@@ -1629,25 +1675,14 @@ int main(int argc, char **argv) {
         // npn-list option
         config.npn_list = util::parse_config_str_list(optarg);
         break;
-      case 5: {
+      case 5:
         // rate-period
-        const char *start = optarg;
-        char *end;
-        errno = 0;
-        auto v = std::strtod(start, &end);
-
-        if (v < 1.0 || !std::isfinite(v) || end == start || errno != 0) {
-          auto error = errno;
-          std::cerr << "Rate period value error " << optarg << std::endl;
-          if (error != 0) {
-            std::cerr << "\n\t" << strerror(error) << std::endl;
-          }
+        config.rate_period = util::parse_duration_with_unit(optarg);
+        if (!std::isfinite(config.rate_period)) {
+          std::cerr << "--rate-period: value error " << optarg << std::endl;
           exit(EXIT_FAILURE);
         }
-
-        config.rate_period = v;
         break;
-      }
       }
       break;
     default:
@@ -1920,6 +1955,13 @@ int main(int argc, char **argv) {
     cva.push_back(nullptr);
 
     config.nv.push_back(std::move(cva));
+  }
+
+  // Don't DOS our server!
+  if (config.host == "nghttp2.org") {
+    std::cerr << "Using h2load against public server " << config.host
+              << " should be prohibited." << std::endl;
+    exit(EXIT_FAILURE);
   }
 
   resolve_host();

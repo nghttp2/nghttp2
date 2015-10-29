@@ -28,9 +28,12 @@
 #include "nghttp2_config.h"
 
 #include <cstring>
+#include <cstdio>
+#include <cstdlib>
 #include <memory>
 #include <array>
 #include <functional>
+#include <typeinfo>
 
 namespace nghttp2 {
 
@@ -46,7 +49,7 @@ make_unique(size_t size) {
   return std::unique_ptr<T>(new typename std::remove_extent<T>::type[size]());
 }
 
-// std::forward is conexpr since C++14
+// std::forward is constexpr since C++14
 template <typename... T>
 constexpr std::array<
     typename std::decay<typename std::common_type<T...>::type>::type,
@@ -194,6 +197,20 @@ inline std::unique_ptr<char[]> strcopy(const std::unique_ptr<char[]> &val) {
     return nullptr;
   }
   return strcopy(val.get());
+}
+
+inline int run_app(std::function<int(int, char **)> app, int argc,
+                   char **argv) {
+  try {
+    return app(argc, argv);
+  } catch (const std::bad_alloc &) {
+    fputs("Out of memory\n", stderr);
+  } catch (const std::exception &x) {
+    fprintf(stderr, "Caught %s:\n%s\n", typeid(x).name(), x.what());
+  } catch (...) {
+    fputs("Unknown exception caught\n", stderr);
+  }
+  return EXIT_FAILURE;
 }
 
 } // namespace nghttp2

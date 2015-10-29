@@ -14,7 +14,7 @@ SYNOPSIS
 DESCRIPTION
 -----------
 
-HTTP/2 experimental server
+HTTP/2 server
 
 .. describe:: <PORT>
 

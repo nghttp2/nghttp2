@@ -34,6 +34,8 @@
 #include <inttypes.h>
 #endif // HAVE_INTTYPES_H
 
+#include <sys/wait.h>
+
 #include <cerrno>
 #include <cstdio>
 #include <cstring>
@@ -156,11 +158,35 @@ Log::~Log() {
 
 namespace {
 template <typename OutputIterator>
-std::pair<OutputIterator, size_t> copy(const char *src, size_t avail,
-                                       OutputIterator oitr) {
-  auto nwrite = std::min(strlen(src), avail);
+std::pair<OutputIterator, size_t> copy(const char *src, size_t srclen,
+                                       size_t avail, OutputIterator oitr) {
+  auto nwrite = std::min(srclen, avail);
   auto noitr = std::copy_n(src, nwrite, oitr);
   return std::make_pair(noitr, avail - nwrite);
+}
+} // namespace
+
+namespace {
+template <typename OutputIterator>
+std::pair<OutputIterator, size_t> copy(const char *src, size_t avail,
+                                       OutputIterator oitr) {
+  return copy(src, strlen(src), avail, oitr);
+}
+} // namespace
+
+namespace {
+template <typename OutputIterator>
+std::pair<OutputIterator, size_t> copy(const std::string &src, size_t avail,
+                                       OutputIterator oitr) {
+  return copy(src.c_str(), src.size(), avail, oitr);
+}
+} // namespace
+
+namespace {
+template <size_t N, typename OutputIterator>
+std::pair<OutputIterator, size_t> copy_l(const char (&src)[N], size_t avail,
+                                         OutputIterator oitr) {
+  return copy(src, N - 1, avail, oitr);
 }
 } // namespace
 
@@ -210,46 +236,57 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       std::tie(p, avail) = copy(lgsp.remote_addr, avail, p);
       break;
     case SHRPX_LOGF_TIME_LOCAL:
-      std::tie(p, avail) = copy(time_local.c_str(), avail, p);
+      std::tie(p, avail) = copy(time_local, avail, p);
       break;
     case SHRPX_LOGF_TIME_ISO8601:
-      std::tie(p, avail) = copy(time_iso8601.c_str(), avail, p);
+      std::tie(p, avail) = copy(time_iso8601, avail, p);
       break;
     case SHRPX_LOGF_REQUEST:
       std::tie(p, avail) = copy(lgsp.method, avail, p);
-      std::tie(p, avail) = copy(" ", avail, p);
+      std::tie(p, avail) = copy_l(" ", avail, p);
       std::tie(p, avail) = copy(lgsp.path, avail, p);
-      std::tie(p, avail) = copy(" HTTP/", avail, p);
-      std::tie(p, avail) = copy(util::utos(lgsp.major).c_str(), avail, p);
+      std::tie(p, avail) = copy_l(" HTTP/", avail, p);
+      std::tie(p, avail) = copy(util::utos(lgsp.major), avail, p);
       if (lgsp.major < 2) {
-        std::tie(p, avail) = copy(".", avail, p);
-        std::tie(p, avail) = copy(util::utos(lgsp.minor).c_str(), avail, p);
+        std::tie(p, avail) = copy_l(".", avail, p);
+        std::tie(p, avail) = copy(util::utos(lgsp.minor), avail, p);
       }
       break;
     case SHRPX_LOGF_STATUS:
-      std::tie(p, avail) = copy(util::utos(lgsp.status).c_str(), avail, p);
+      std::tie(p, avail) = copy(util::utos(lgsp.status), avail, p);
       break;
     case SHRPX_LOGF_BODY_BYTES_SENT:
-      std::tie(p, avail) =
-          copy(util::utos(lgsp.body_bytes_sent).c_str(), avail, p);
+      std::tie(p, avail) = copy(util::utos(lgsp.body_bytes_sent), avail, p);
       break;
     case SHRPX_LOGF_HTTP:
       if (downstream) {
         auto hd = downstream->get_request_header(lf.value.get());
         if (hd) {
-          std::tie(p, avail) = copy((*hd).value.c_str(), avail, p);
+          std::tie(p, avail) = copy((*hd).value, avail, p);
           break;
         }
       }
 
-      std::tie(p, avail) = copy("-", avail, p);
+      std::tie(p, avail) = copy_l("-", avail, p);
+
+      break;
+    case SHRPX_LOGF_AUTHORITY:
+      if (downstream) {
+        auto &authority = downstream->get_request_http2_authority();
+        if (!authority.empty()) {
+          std::tie(p, avail) = copy(authority, avail, p);
+          break;
+        }
+      }
+
+      std::tie(p, avail) = copy_l("-", avail, p);
 
       break;
     case SHRPX_LOGF_REMOTE_PORT:
       std::tie(p, avail) = copy(lgsp.remote_port, avail, p);
       break;
     case SHRPX_LOGF_SERVER_PORT:
-      std::tie(p, avail) = copy(util::utos(lgsp.server_port).c_str(), avail, p);
+      std::tie(p, avail) = copy(util::utos(lgsp.server_port), avail, p);
       break;
     case SHRPX_LOGF_REQUEST_TIME: {
       auto t = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -263,31 +300,31 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       sec += ".";
       sec += frac;
 
-      std::tie(p, avail) = copy(sec.c_str(), avail, p);
+      std::tie(p, avail) = copy(sec, avail, p);
     } break;
     case SHRPX_LOGF_PID:
-      std::tie(p, avail) = copy(util::utos(lgsp.pid).c_str(), avail, p);
+      std::tie(p, avail) = copy(util::utos(lgsp.pid), avail, p);
       break;
     case SHRPX_LOGF_ALPN:
       std::tie(p, avail) = copy(lgsp.alpn, avail, p);
       break;
     case SHRPX_LOGF_SSL_CIPHER:
       if (!lgsp.tls_info) {
-        std::tie(p, avail) = copy("-", avail, p);
+        std::tie(p, avail) = copy_l("-", avail, p);
         break;
       }
       std::tie(p, avail) = copy(lgsp.tls_info->cipher, avail, p);
       break;
     case SHRPX_LOGF_SSL_PROTOCOL:
       if (!lgsp.tls_info) {
-        std::tie(p, avail) = copy("-", avail, p);
+        std::tie(p, avail) = copy_l("-", avail, p);
         break;
       }
       std::tie(p, avail) = copy(lgsp.tls_info->protocol, avail, p);
       break;
     case SHRPX_LOGF_SSL_SESSION_ID:
       if (!lgsp.tls_info || lgsp.tls_info->session_id_length == 0) {
-        std::tie(p, avail) = copy("-", avail, p);
+        std::tie(p, avail) = copy_l("-", avail, p);
         break;
       }
       std::tie(p, avail) =
@@ -296,11 +333,11 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       break;
     case SHRPX_LOGF_SSL_SESSION_REUSED:
       if (!lgsp.tls_info) {
-        std::tie(p, avail) = copy("-", avail, p);
+        std::tie(p, avail) = copy_l("-", avail, p);
         break;
       }
       std::tie(p, avail) =
-          copy(lgsp.tls_info->session_reused ? "r" : ".", avail, p);
+          copy_l(lgsp.tls_info->session_reused ? "r" : ".", avail, p);
       break;
     case SHRPX_LOGF_NONE:
       break;
@@ -364,8 +401,8 @@ int reopen_log_files() {
 
   lgconf->accesslog_fd = new_accesslog_fd;
   lgconf->errorlog_fd = new_errorlog_fd;
-  lgconf->errorlog_tty = (new_errorlog_fd == -1) ?
-    false : isatty(new_errorlog_fd);
+  lgconf->errorlog_tty =
+      (new_errorlog_fd == -1) ? false : isatty(new_errorlog_fd);
 
   return res;
 }
