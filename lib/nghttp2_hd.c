@@ -1262,9 +1262,6 @@ add_hd_table_incremental(nghttp2_hd_context *context, const nghttp2_nv *nv,
     new_ent->seq = context->next_seq++;
     new_ent->hash = hash;
 
-    DEBUGF(fprintf(stderr, "deflatehd: indexed at %zu\n",
-                   context->hd_table.len + NGHTTP2_STATIC_TABLE_LENGTH));
-
     if (map) {
       hd_map_insert(map, new_ent);
     }
