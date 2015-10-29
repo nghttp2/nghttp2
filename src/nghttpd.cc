@@ -183,6 +183,8 @@ int main(int argc, char **argv) {
 
   Config config;
   bool color = false;
+  auto mime_types_file_set_manually = false;
+
   while (1) {
     static int flag = 0;
     static option long_options[] = {
@@ -335,6 +337,7 @@ int main(int argc, char **argv) {
         break;
       case 9:
         // mime-types-file option
+        mime_types_file_set_manually = true;
         config.mime_types_file = optarg;
         break;
       }
@@ -375,7 +378,13 @@ int main(int argc, char **argv) {
     config.htdocs = "./";
   }
 
-  config.mime_types = util::read_mime_types(config.mime_types_file.c_str());
+  if (util::read_mime_types(config.mime_types,
+                            config.mime_types_file.c_str()) != 0) {
+    if (mime_types_file_set_manually) {
+      std::cerr << "--mime-types-file: Could not open mime types file: "
+                << config.mime_types_file << std::endl;
+    }
+  }
 
   set_color_output(color || isatty(fileno(stdout)));
 

@@ -1218,13 +1218,11 @@ uint64_t get_uint64(const uint8_t *data) {
   return n;
 }
 
-std::map<std::string, std::string> read_mime_types(const char *filename) {
-  std::map<std::string, std::string> res;
-
+int read_mime_types(std::map<std::string, std::string> &res,
+                    const char *filename) {
   std::ifstream infile(filename);
   if (!infile) {
-    std::cerr << "Could not open mime types file: " << filename << std::endl;
-    return res;
+    return -1;
   }
 
   auto delim_pred = [](char c) { return c == ' ' || c == '\t'; };
@@ -1252,7 +1250,7 @@ std::map<std::string, std::string> read_mime_types(const char *filename) {
     }
   }
 
-  return res;
+  return 0;
 }
 
 } // namespace util

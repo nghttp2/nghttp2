@@ -707,7 +707,11 @@ uint32_t get_uint32(const uint8_t *data);
 // order and returns it in host byte order.
 uint64_t get_uint64(const uint8_t *data);
 
-std::map<std::string, std::string> read_mime_types(const char *filename);
+// Reads mime types file (see /etc/mime.types), and stores extension
+// -> MIME type map in |res|.  This function returns 0 if it succeeds,
+// or -1.
+int read_mime_types(std::map<std::string, std::string> &res,
+                    const char *filename);
 
 } // namespace util
 
