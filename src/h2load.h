@@ -290,6 +290,9 @@ struct Client {
   void on_header(int32_t stream_id, const uint8_t *name, size_t namelen,
                  const uint8_t *value, size_t valuelen);
   void on_status_code(int32_t stream_id, uint16_t status);
+  // |success| == true means that the request/response was exchanged
+  // |successfully, but it does not mean response carried successful
+  // |HTTP status code.
   void on_stream_close(int32_t stream_id, bool success, RequestStat *req_stat,
                        bool final = false);
 
