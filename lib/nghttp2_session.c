@@ -1322,6 +1322,12 @@ static int session_predicate_for_stream_send(nghttp2_session *session,
   return 0;
 }
 
+int nghttp2_session_request_allowed(nghttp2_session *session) {
+  return !session->server && session->next_stream_id <= INT32_MAX &&
+         (session->goaway_flags &
+          (NGHTTP2_GOAWAY_TERM_ON_SEND | NGHTTP2_GOAWAY_RECV)) == 0;
+}
+
 /*
  * This function checks request HEADERS frame, which opens stream, can
  * be sent at this time.
@@ -2685,6 +2691,10 @@ static ssize_t nghttp2_session_mem_send_internal(nghttp2_session *session,
             opened_stream_id = item->frame.hd.stream_id;
             if (item->aux_data.headers.canceled) {
               error_code = item->aux_data.headers.error_code;
+            } else {
+              /* Set error_code to REFUSED_STREAM so that application
+                 can send request again. */
+              error_code = NGHTTP2_REFUSED_STREAM;
             }
           }
           break;
