@@ -3494,7 +3494,8 @@ NGHTTP2_EXTERN int32_t
  * may return error.  Or, request is failed to sent, and
  * :type:`nghttp2_on_stream_close_callback` is called.
  */
-NGHTTP2_EXTERN int nghttp2_session_request_allowed(nghttp2_session *session);
+NGHTTP2_EXTERN int
+nghttp2_session_check_request_allowed(nghttp2_session *session);
 
 /**
  * @function

@@ -1322,7 +1322,7 @@ static int session_predicate_for_stream_send(nghttp2_session *session,
   return 0;
 }
 
-int nghttp2_session_request_allowed(nghttp2_session *session) {
+int nghttp2_session_check_request_allowed(nghttp2_session *session) {
   return !session->server && session->next_stream_id <= INT32_MAX &&
          (session->goaway_flags &
           (NGHTTP2_GOAWAY_TERM_ON_SEND | NGHTTP2_GOAWAY_RECV)) == 0;

@@ -210,7 +210,7 @@ void Http2Session::on_connect() {
 }
 
 int Http2Session::submit_request(RequestStat *req_stat) {
-  if (nghttp2_session_request_allowed(session_) == 0) {
+  if (nghttp2_session_check_request_allowed(session_) == 0) {
     return -1;
   }
 
