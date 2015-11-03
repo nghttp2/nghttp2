@@ -99,6 +99,7 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
   auto client = session->get_client();
 
   client->worker->stats.bytes_head += len;
+  client->worker->stats.bytes_head_decomp += len;
   return 0;
 }
 } // namespace
@@ -109,6 +110,7 @@ int htp_hdr_valcb(http_parser *htp, const char *data, size_t len) {
   auto client = session->get_client();
 
   client->worker->stats.bytes_head += len;
+  client->worker->stats.bytes_head_decomp += len;
   return 0;
 }
 } // namespace

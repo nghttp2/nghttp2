@@ -95,8 +95,8 @@ RequestStat::RequestStat() : data_offset(0), completed(false) {}
 Stats::Stats(size_t req_todo)
     : req_todo(0), req_started(0), req_done(0), req_success(0),
       req_status_success(0), req_failed(0), req_error(0), req_timedout(0),
-      bytes_total(0), bytes_head(0), bytes_body(0), status(),
-      req_stats(req_todo) {}
+      bytes_total(0), bytes_head(0), bytes_head_decomp(0), bytes_body(0),
+      status(), req_stats(req_todo) {}
 
 Stream::Stream() : status_success(-1) {}
 
@@ -2073,6 +2073,7 @@ int main(int argc, char **argv) {
     stats.req_error += s.req_error;
     stats.bytes_total += s.bytes_total;
     stats.bytes_head += s.bytes_head;
+    stats.bytes_head_decomp += s.bytes_head_decomp;
     stats.bytes_body += s.bytes_body;
 
     for (size_t i = 0; i < stats.status.size(); ++i) {
@@ -2102,7 +2103,13 @@ int main(int argc, char **argv) {
     bps = stats.bytes_total / secd.count();
   }
 
-  std::cout << R"(
+  double header_space_savings = 0.;
+  if (stats.bytes_head_decomp > 0) {
+    header_space_savings =
+        1. - static_cast<double>(stats.bytes_head) / stats.bytes_head_decomp;
+  }
+
+  std::cout << std::fixed << std::setprecision(2) << R"(
 finished in )" << util::format_duration(duration) << ", " << rps << " req/s, "
             << util::utos_with_funit(bps) << R"(B/s
 requests: )" << stats.req_todo << " total, " << stats.req_started
@@ -2113,7 +2120,8 @@ requests: )" << stats.req_todo << " total, " << stats.req_started
 status codes: )" << stats.status[2] << " 2xx, " << stats.status[3] << " 3xx, "
             << stats.status[4] << " 4xx, " << stats.status[5] << R"( 5xx
 traffic: )" << stats.bytes_total << " bytes total, " << stats.bytes_head
-            << " bytes headers, " << stats.bytes_body << R"( bytes data
+            << " bytes headers (space savings " << header_space_savings * 100
+            << "%), " << stats.bytes_body << R"( bytes data
                      min         max         mean         sd        +/- sd
 time for request: )" << std::setw(10) << util::format_duration(ts.request.min)
             << "  " << std::setw(10) << util::format_duration(ts.request.max)

@@ -166,8 +166,12 @@ struct Stats {
   // The number of bytes received on the "wire". If SSL/TLS is used,
   // this is the number of decrypted bytes the application received.
   int64_t bytes_total;
-  // The number of bytes received in HEADERS frame payload.
+  // The number of bytes received for header fields.  This is
+  // compressed version.
   int64_t bytes_head;
+  // The number of bytes received for header fields after they are
+  // decompressed.
+  int64_t bytes_head_decomp;
   // The number of bytes received in DATA frame.
   int64_t bytes_body;
   // The number of each HTTP status category, status[i] is status code

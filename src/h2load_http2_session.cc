@@ -51,6 +51,7 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
     return 0;
   }
   client->on_header(frame->hd.stream_id, name, namelen, value, valuelen);
+  client->worker->stats.bytes_head_decomp += namelen + valuelen;
   return 0;
 }
 } // namespace
@@ -63,7 +64,9 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
       frame->headers.cat != NGHTTP2_HCAT_RESPONSE) {
     return 0;
   }
-  client->worker->stats.bytes_head += frame->hd.length;
+  client->worker->stats.bytes_head +=
+      frame->hd.length - frame->headers.padlen -
+      ((frame->hd.flags & NGHTTP2_FLAG_PRIORITY) ? 5 : 0);
   if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
     client->record_ttfb();
   }
