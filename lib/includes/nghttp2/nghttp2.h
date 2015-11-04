@@ -430,7 +430,19 @@ typedef enum {
    * Header Field never Indexed" representation must be used in HPACK
    * encoding).  Other implementation calls this bit as "sensitive".
    */
-  NGHTTP2_NV_FLAG_NO_INDEX = 0x01
+  NGHTTP2_NV_FLAG_NO_INDEX = 0x01,
+  /**
+   * This flag is set solely by application.  If this flag is set, the
+   * library does not make a copy of header field name.  This could
+   * improve performance.
+   */
+  NGHTTP2_NV_FLAG_NO_COPY_NAME = 0x02,
+  /**
+   * This flag is set solely by application.  If this flag is set, the
+   * library does not make a copy of header field value.  This could
+   * improve performance.
+   */
+  NGHTTP2_NV_FLAG_NO_COPY_VALUE = 0x04
 } nghttp2_nv_flag;
 
 /**
@@ -442,17 +454,27 @@ typedef struct {
   /**
    * The |name| byte string.  If this struct is presented from library
    * (e.g., :type:`nghttp2_on_frame_recv_callback`), |name| is
-   * guaranteed to be NULL-terminated.  When application is
-   * constructing this struct, |name| is not required to be
+   * guaranteed to be NULL-terminated.  For some callbacks
+   * (:type:`nghttp2_before_frame_send_callback`,
+   * :type:`nghttp2_on_frame_send_callback`, and
+   * :type:`nghttp2_on_frame_not_send_callback`), it may not be
+   * NULL-terminated if header field is passed from application with
+   * the flag :enum:`NGHTTP2_NV_FLAG_NO_COPY_NAME`).  When application
+   * is constructing this struct, |name| is not required to be
    * NULL-terminated.
    */
   uint8_t *name;
   /**
    * The |value| byte string.  If this struct is presented from
    * library (e.g., :type:`nghttp2_on_frame_recv_callback`), |value|
-   * is guaranteed to be NULL-terminated.  When application is
-   * constructing this struct, |value| is not required to be
-   * NULL-terminated.
+   * is guaranteed to be NULL-terminated.  For some callbacks
+   * (:type:`nghttp2_before_frame_send_callback`,
+   * :type:`nghttp2_on_frame_send_callback`, and
+   * :type:`nghttp2_on_frame_not_send_callback`), it may not be
+   * NULL-terminated if header field is passed from application with
+   * the flag :enum:`NGHTTP2_NV_FLAG_NO_COPY_VALUE`).  When
+   * application is constructing this struct, |value| is not required
+   * to be NULL-terminated.
    */
   uint8_t *value;
   /**
@@ -2960,7 +2982,15 @@ nghttp2_priority_spec_check_default(const nghttp2_priority_spec *pri_spec);
  *
  * This function creates copies of all name/value pairs in |nva|.  It
  * also lower-cases all names in |nva|.  The order of elements in
- * |nva| is preserved.
+ * |nva| is preserved.  For header fields with
+ * :enum:`NGHTTP2_NV_FLAG_NO_COPY_NAME` and
+ * :enum:`NGHTTP2_NV_FLAG_NO_COPY_VALUE` are set, header field name
+ * and value are not copied respectively.  With
+ * :enum:`NGHTTP2_NV_FLAG_NO_COPY_NAME`, application is responsible to
+ * pass header field name in lowercase.  The application should
+ * maintain the references to them until
+ * :type:`nghttp2_on_frame_send_callback` or
+ * :type:`nghttp2_on_frame_not_send_callback` is called.
  *
  * HTTP/2 specification has requirement about header fields in the
  * request HEADERS.  See the specification for more details.
@@ -3016,7 +3046,15 @@ NGHTTP2_EXTERN int32_t
  *
  * This function creates copies of all name/value pairs in |nva|.  It
  * also lower-cases all names in |nva|.  The order of elements in
- * |nva| is preserved.
+ * |nva| is preserved.  For header fields with
+ * :enum:`NGHTTP2_NV_FLAG_NO_COPY_NAME` and
+ * :enum:`NGHTTP2_NV_FLAG_NO_COPY_VALUE` are set, header field name
+ * and value are not copied respectively.  With
+ * :enum:`NGHTTP2_NV_FLAG_NO_COPY_NAME`, application is responsible to
+ * pass header field name in lowercase.  The application should
+ * maintain the references to them until
+ * :type:`nghttp2_on_frame_send_callback` or
+ * :type:`nghttp2_on_frame_not_send_callback` is called.
  *
  * HTTP/2 specification has requirement about header fields in the
  * response HEADERS.  See the specification for more details.
@@ -3073,7 +3111,15 @@ nghttp2_submit_response(nghttp2_session *session, int32_t stream_id,
  *
  * This function creates copies of all name/value pairs in |nva|.  It
  * also lower-cases all names in |nva|.  The order of elements in
- * |nva| is preserved.
+ * |nva| is preserved.  For header fields with
+ * :enum:`NGHTTP2_NV_FLAG_NO_COPY_NAME` and
+ * :enum:`NGHTTP2_NV_FLAG_NO_COPY_VALUE` are set, header field name
+ * and value are not copied respectively.  With
+ * :enum:`NGHTTP2_NV_FLAG_NO_COPY_NAME`, application is responsible to
+ * pass header field name in lowercase.  The application should
+ * maintain the references to them until
+ * :type:`nghttp2_on_frame_send_callback` or
+ * :type:`nghttp2_on_frame_not_send_callback` is called.
  *
  * For server, trailer must be followed by response HEADERS or
  * response DATA.  The library does not check that response HEADERS
@@ -3149,7 +3195,15 @@ NGHTTP2_EXTERN int nghttp2_submit_trailer(nghttp2_session *session,
  *
  * This function creates copies of all name/value pairs in |nva|.  It
  * also lower-cases all names in |nva|.  The order of elements in
- * |nva| is preserved.
+ * |nva| is preserved.  For header fields with
+ * :enum:`NGHTTP2_NV_FLAG_NO_COPY_NAME` and
+ * :enum:`NGHTTP2_NV_FLAG_NO_COPY_VALUE` are set, header field name
+ * and value are not copied respectively.  With
+ * :enum:`NGHTTP2_NV_FLAG_NO_COPY_NAME`, application is responsible to
+ * pass header field name in lowercase.  The application should
+ * maintain the references to them until
+ * :type:`nghttp2_on_frame_send_callback` or
+ * :type:`nghttp2_on_frame_not_send_callback` is called.
  *
  * The |stream_user_data| is a pointer to an arbitrary data which is
  * associated to the stream this frame will open.  Therefore it is
@@ -3347,7 +3401,15 @@ NGHTTP2_EXTERN int nghttp2_submit_settings(nghttp2_session *session,
  *
  * This function creates copies of all name/value pairs in |nva|.  It
  * also lower-cases all names in |nva|.  The order of elements in
- * |nva| is preserved.
+ * |nva| is preserved.  For header fields with
+ * :enum:`NGHTTP2_NV_FLAG_NO_COPY_NAME` and
+ * :enum:`NGHTTP2_NV_FLAG_NO_COPY_VALUE` are set, header field name
+ * and value are not copied respectively.  With
+ * :enum:`NGHTTP2_NV_FLAG_NO_COPY_NAME`, application is responsible to
+ * pass header field name in lowercase.  The application should
+ * maintain the references to them until
+ * :type:`nghttp2_on_frame_send_callback` or
+ * :type:`nghttp2_on_frame_not_send_callback` is called.
  *
  * The |promised_stream_user_data| is a pointer to an arbitrary data
  * which is associated to the promised stream this frame will open and
