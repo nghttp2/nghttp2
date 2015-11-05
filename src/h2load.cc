@@ -1171,12 +1171,11 @@ int client_select_next_proto_cb(SSL *ssl, unsigned char **out,
   if (util::select_protocol(const_cast<const unsigned char **>(out), outlen, in,
                             inlen, config.npn_list)) {
     return SSL_TLSEXT_ERR_OK;
-  } else if (inlen == 0) {
-    std::cout
-        << "Server does not support NPN. Fallback behaviour may be activated."
-        << std::endl;
   }
-  return SSL_TLSEXT_ERR_OK;
+
+  // OpenSSL will terminate handshake with fatal alert if we return
+  // NOACK.  So there is no way to fallback.
+  return SSL_TLSEXT_ERR_NOACK;
 }
 } // namespace
 
