@@ -150,6 +150,9 @@ Downstream::Downstream(Upstream *upstream, MemchunkPool *mcpool,
 
   http2::init_hdidx(request_hdidx_);
   http2::init_hdidx(response_hdidx_);
+
+  request_headers_.reserve(16);
+  response_headers_.reserve(32);
 }
 
 Downstream::~Downstream() {
