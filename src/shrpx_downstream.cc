@@ -277,8 +277,33 @@ void Downstream::assemble_request_cookie() {
   }
 }
 
-Headers Downstream::crumble_request_cookie() {
-  Headers cookie_hdrs;
+size_t Downstream::count_crumble_request_cookie() {
+  size_t n = 0;
+  for (auto &kv : request_headers_) {
+    if (kv.name.size() != 6 || kv.name[5] != 'e' ||
+        !util::streq_l("cooki", kv.name.c_str(), 5)) {
+      continue;
+    }
+    size_t last = kv.value.size();
+
+    for (size_t j = 0; j < last;) {
+      j = kv.value.find_first_not_of("\t ;", j);
+      if (j == std::string::npos) {
+        break;
+      }
+
+      j = kv.value.find(';', j);
+      if (j == std::string::npos) {
+        j = last;
+      }
+
+      ++n;
+    }
+  }
+  return n;
+}
+
+void Downstream::crumble_request_cookie(std::vector<nghttp2_nv> &nva) {
   for (auto &kv : request_headers_) {
     if (kv.name.size() != 6 || kv.name[5] != 'e' ||
         !util::streq_l("cooki", kv.name.c_str(), 5)) {
@@ -298,11 +323,13 @@ Headers Downstream::crumble_request_cookie() {
         j = last;
       }
 
-      cookie_hdrs.push_back(
-          Header("cookie", kv.value.substr(first, j - first), kv.no_index));
+      nva.push_back({(uint8_t *)"cookie", (uint8_t *)kv.value.c_str() + first,
+                     str_size("cookie"), j - first,
+                     (uint8_t)(NGHTTP2_NV_FLAG_NO_COPY_NAME |
+                               NGHTTP2_NV_FLAG_NO_COPY_VALUE |
+                               (kv.no_index ? NGHTTP2_NV_FLAG_NO_INDEX : 0))});
     }
   }
-  return cookie_hdrs;
 }
 
 const std::string &Downstream::get_assembled_request_cookie() const {

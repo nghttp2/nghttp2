@@ -97,9 +97,11 @@ public:
   // downstream request API
   const Headers &get_request_headers() const;
   Headers &get_request_headers();
-  // Crumbles (split cookie by ";") in request_headers_ and returns
-  // them.  Headers::no_index is inherited.
-  Headers crumble_request_cookie();
+  // Count number of crumbled cookies
+  size_t count_crumble_request_cookie();
+  // Crumbles (split cookie by ";") in request_headers_ and adds them
+  // in |nva|.  Headers::no_index is inherited.
+  void crumble_request_cookie(std::vector<nghttp2_nv> &nva);
   void assemble_request_cookie();
   const std::string &get_assembled_request_cookie() const;
   // Lower the request header field names and indexes request headers.
