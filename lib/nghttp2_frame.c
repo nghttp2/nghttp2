@@ -770,10 +770,7 @@ int nghttp2_nv_array_copy(nghttp2_nv **nva_ptr, const nghttp2_nv *nva,
   }
 
   p = *nva_ptr;
-
-  if (buflen > sizeof(nghttp2_nv) * nvlen) {
-    data = (uint8_t *)(*nva_ptr) + sizeof(nghttp2_nv) * nvlen;
-  }
+  data = (uint8_t *)(*nva_ptr) + sizeof(nghttp2_nv) * nvlen;
 
   for (i = 0; i < nvlen; ++i) {
     p->flags = nva[i].flags;
