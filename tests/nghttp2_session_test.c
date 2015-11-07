@@ -9250,8 +9250,8 @@ void test_nghttp2_http_push_promise(void) {
 void test_nghttp2_http_head_method_upgrade_workaround(void) {
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;
-  const nghttp2_nv resnv[] = {MAKE_NV(":status", "200"),
-                              MAKE_NV("content-length", "1000000007")};
+  const nghttp2_nv cl_resnv[] = {MAKE_NV(":status", "200"),
+                                 MAKE_NV("content-length", "1000000007")};
   nghttp2_bufs bufs;
   nghttp2_hd_deflater deflater;
   nghttp2_mem *mem;
@@ -9270,8 +9270,8 @@ void test_nghttp2_http_head_method_upgrade_workaround(void) {
 
   nghttp2_session_upgrade(session, NULL, 0, NULL);
 
-  rv = pack_headers(&bufs, &deflater, 1, NGHTTP2_FLAG_END_HEADERS, resnv,
-                    ARRLEN(resnv), mem);
+  rv = pack_headers(&bufs, &deflater, 1, NGHTTP2_FLAG_END_HEADERS, cl_resnv,
+                    ARRLEN(cl_resnv), mem);
 
   CU_ASSERT(0 == rv);
 
