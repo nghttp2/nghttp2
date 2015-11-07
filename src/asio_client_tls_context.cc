@@ -56,6 +56,12 @@ configure_tls_context(boost::system::error_code &ec,
 
   SSL_CTX_set_next_proto_select_cb(ctx, client_select_next_proto_cb, nullptr);
 
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+  auto proto_list = util::get_default_alpn();
+
+  SSL_CTX_set_alpn_protos(ctx, proto_list.data(), proto_list.size());
+#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
+
   return ec;
 }
 

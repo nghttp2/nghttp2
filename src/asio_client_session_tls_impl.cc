@@ -23,6 +23,7 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 #include "asio_client_session_tls_impl.h"
+#include "asio_common.h"
 
 namespace nghttp2 {
 namespace asio_http2 {
@@ -59,6 +60,13 @@ void session_tls_impl::start_connect(tcp::resolver::iterator endpoint_it) {
             not_connected(ec);
             return;
           }
+
+          if (!tls_h2_negotiated(socket_)) {
+            not_connected(
+                make_error_code(NGHTTP2_ASIO_ERR_TLS_NO_APP_PROTO_NEGOTIATED));
+            return;
+          }
+
           connected(endpoint_it);
         });
   });

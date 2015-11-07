@@ -37,6 +37,7 @@
 #include "asio_server.h"
 
 #include "asio_server_connection.h"
+#include "asio_common.h"
 #include "util.h"
 
 namespace nghttp2 {
@@ -130,9 +131,15 @@ void server::start_accept(boost::asio::ssl::context &tls_context,
       new_connection->socket().async_handshake(
           boost::asio::ssl::stream_base::server,
           [new_connection](const boost::system::error_code &e) {
-            if (!e) {
-              new_connection->start();
+            if (e) {
+              return;
             }
+
+            if (!tls_h2_negotiated(new_connection->socket())) {
+              return;
+            }
+
+            new_connection->start();
           });
     }
 

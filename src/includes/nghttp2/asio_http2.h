@@ -38,16 +38,6 @@
 
 #include <nghttp2/nghttp2.h>
 
-namespace boost {
-namespace system {
-
-template <> struct is_error_code_enum<nghttp2_error> {
-  BOOST_STATIC_CONSTANT(bool, value = true);
-};
-
-} // namespace system
-} // namespace boost
-
 namespace nghttp2 {
 
 namespace asio_http2 {
@@ -132,8 +122,29 @@ boost::system::error_code host_service_from_uri(boost::system::error_code &ec,
                                                 std::string &service,
                                                 const std::string &uri);
 
+enum nghttp2_asio_error {
+  NGHTTP2_ASIO_ERR_NO_ERROR = 0,
+  NGHTTP2_ASIO_ERR_TLS_NO_APP_PROTO_NEGOTIATED = 1,
+};
+
 } // namespace asio_http2
 
 } // namespace nghttp2
+
+namespace boost {
+
+namespace system {
+
+template <> struct is_error_code_enum<nghttp2_error> {
+  BOOST_STATIC_CONSTANT(bool, value = true);
+};
+
+template <> struct is_error_code_enum<nghttp2::asio_http2::nghttp2_asio_error> {
+  BOOST_STATIC_CONSTANT(bool, value = true);
+};
+
+} // namespace system
+
+} // namespace boost
 
 #endif // ASIO_HTTP2_H
