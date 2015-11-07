@@ -6559,6 +6559,16 @@ int nghttp2_session_upgrade(nghttp2_session *session,
     nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_WR);
     session->next_stream_id += 2;
   }
+  /* We have no information about request header fields when Upgrade
+     was happened.  So we don't know the request method here.  If
+     request method is HEAD, we have a trouble because we may have
+     nonzero content-length header field in response headers, and we
+     will going to check it against the actual DATA frames, but we may
+     get mismatch because HEAD response body must be empty.  We will
+     add new version of nghttp2_session_upgrade with the parameter to
+     pass the request method information so that we can handle this
+     situation properly. */
+  stream->http_flags |= NGHTTP2_HTTP_FLAG_METH_UPGRADE_WORKAROUND;
   return 0;
 }
 
