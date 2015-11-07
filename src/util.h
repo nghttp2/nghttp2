@@ -404,6 +404,10 @@ bool streq_l(const char (&a)[N], InputIt b, size_t blen) {
   return streq(a, N - 1, b, blen);
 }
 
+template <size_t N> bool streq_l(const char (&a)[N], const std::string &b) {
+  return streq(a, N - 1, std::begin(b), b.size());
+}
+
 bool strifind(const char *a, const char *b);
 
 template <typename InputIt> void inp_strlower(InputIt first, InputIt last) {

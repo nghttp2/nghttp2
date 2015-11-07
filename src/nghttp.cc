@@ -815,7 +815,7 @@ int HttpClient::on_upgrade_connect() {
   } else {
     auto meth = std::find_if(
         std::begin(config.headers), std::end(config.headers),
-        [](const Header &kv) { return util::strieq_l(":method", kv.name); });
+        [](const Header &kv) { return util::streq_l(":method", kv.name); });
 
     if (meth == std::end(config.headers)) {
       req = "GET ";
@@ -988,8 +988,18 @@ int HttpClient::connection_made() {
     if (!reqvec[0]->data_prd) {
       stream_user_data = reqvec[0].get();
     }
-    rv = nghttp2_session_upgrade(session, settings_payload.data(),
-                                 settings_payloadlen, stream_user_data);
+    // If HEAD is used, that is only when user specified it with -H
+    // option.
+    auto head_request =
+        stream_user_data &&
+        std::find_if(std::begin(config.headers), std::end(config.headers),
+                     [](const Header &kv) {
+          return util::streq_l(":method", kv.name) &&
+                 util::streq_l("HEAD", kv.value);
+        }) != std::end(config.headers);
+    rv = nghttp2_session_upgrade2(session, settings_payload.data(),
+                                  settings_payloadlen, head_request,
+                                  stream_user_data);
     if (rv != 0) {
       std::cerr << "[ERROR] nghttp2_session_upgrade() returned error: "
                 << nghttp2_strerror(rv) << std::endl;
