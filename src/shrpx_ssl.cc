@@ -930,7 +930,10 @@ int check_cert(SSL *ssl, const DownstreamAddr *addr) {
   std::vector<std::string> dns_names;
   std::vector<std::string> ip_addrs;
   get_altnames(cert, dns_names, ip_addrs, common_name);
-  if (verify_hostname(addr->host.get(), &addr->addr, dns_names, ip_addrs,
+  auto hostname = get_config()->backend_tls_sni_name
+                      ? get_config()->backend_tls_sni_name.get()
+                      : addr->host.get();
+  if (verify_hostname(hostname, &addr->addr, dns_names, ip_addrs,
                       common_name) != 0) {
     LOG(ERROR) << "Certificate verification failed: hostname does not match";
     return -1;
