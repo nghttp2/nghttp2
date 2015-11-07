@@ -59,7 +59,7 @@ void test_nghttp2_session_send_headers_push_reply(void);
 void test_nghttp2_session_send_rst_stream(void);
 void test_nghttp2_session_send_push_promise(void);
 void test_nghttp2_session_is_my_stream_id(void);
-void test_nghttp2_session_upgrade(void);
+void test_nghttp2_session_upgrade2(void);
 void test_nghttp2_session_reprioritize_stream(void);
 void test_nghttp2_session_reprioritize_stream_with_idle_stream_dep(void);
 void test_nghttp2_submit_data(void);

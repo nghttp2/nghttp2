@@ -3331,7 +3331,7 @@ void test_nghttp2_session_is_my_stream_id(void) {
   nghttp2_session_del(session);
 }
 
-void test_nghttp2_session_upgrade(void) {
+void test_nghttp2_session_upgrade2(void) {
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;
   uint8_t settings_payload[128];
@@ -3351,8 +3351,8 @@ void test_nghttp2_session_upgrade(void) {
 
   /* Check client side */
   nghttp2_session_client_new(&session, &callbacks, NULL);
-  CU_ASSERT(0 == nghttp2_session_upgrade(session, settings_payload,
-                                         settings_payloadlen, &callbacks));
+  CU_ASSERT(0 == nghttp2_session_upgrade2(session, settings_payload,
+                                          settings_payloadlen, 0, &callbacks));
   stream = nghttp2_session_get_stream(session, 1);
   CU_ASSERT(stream != NULL);
   CU_ASSERT(&callbacks == stream->stream_user_data);
@@ -3367,16 +3367,16 @@ void test_nghttp2_session_upgrade(void) {
             item->frame.settings.iv[1].settings_id);
   CU_ASSERT(4095 == item->frame.settings.iv[1].value);
 
-  /* Call nghttp2_session_upgrade() again is error */
+  /* Call nghttp2_session_upgrade2() again is error */
   CU_ASSERT(NGHTTP2_ERR_PROTO ==
-            nghttp2_session_upgrade(session, settings_payload,
-                                    settings_payloadlen, &callbacks));
+            nghttp2_session_upgrade2(session, settings_payload,
+                                     settings_payloadlen, 0, &callbacks));
   nghttp2_session_del(session);
 
   /* Check server side */
   nghttp2_session_server_new(&session, &callbacks, NULL);
-  CU_ASSERT(0 == nghttp2_session_upgrade(session, settings_payload,
-                                         settings_payloadlen, &callbacks));
+  CU_ASSERT(0 == nghttp2_session_upgrade2(session, settings_payload,
+                                          settings_payloadlen, 0, &callbacks));
   stream = nghttp2_session_get_stream(session, 1);
   CU_ASSERT(stream != NULL);
   CU_ASSERT(NULL == stream->stream_user_data);
@@ -3384,10 +3384,10 @@ void test_nghttp2_session_upgrade(void) {
   CU_ASSERT(NULL == nghttp2_session_get_next_ob_item(session));
   CU_ASSERT(1 == session->remote_settings.max_concurrent_streams);
   CU_ASSERT(4095 == session->remote_settings.initial_window_size);
-  /* Call nghttp2_session_upgrade() again is error */
+  /* Call nghttp2_session_upgrade2() again is error */
   CU_ASSERT(NGHTTP2_ERR_PROTO ==
-            nghttp2_session_upgrade(session, settings_payload,
-                                    settings_payloadlen, &callbacks));
+            nghttp2_session_upgrade2(session, settings_payload,
+                                     settings_payloadlen, 0, &callbacks));
   nghttp2_session_del(session);
 
   /* Empty SETTINGS is OK */
@@ -3395,8 +3395,8 @@ void test_nghttp2_session_upgrade(void) {
       settings_payload, sizeof(settings_payload), NULL, 0);
 
   nghttp2_session_client_new(&session, &callbacks, NULL);
-  CU_ASSERT(0 == nghttp2_session_upgrade(session, settings_payload,
-                                         settings_payloadlen, NULL));
+  CU_ASSERT(0 == nghttp2_session_upgrade2(session, settings_payload,
+                                          settings_payloadlen, 0, NULL));
   nghttp2_session_del(session);
 }
 
