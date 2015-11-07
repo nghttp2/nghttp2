@@ -137,6 +137,7 @@ struct Request {
 
   Headers res_nva;
   Headers req_nva;
+  std::string method;
   // URI without fragment
   std::string uri;
   http_parser_url u;

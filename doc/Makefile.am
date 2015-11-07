@@ -116,6 +116,7 @@ APIDOCS= \
 	nghttp2_session_terminate_session.rst \
 	nghttp2_session_terminate_session2.rst \
 	nghttp2_session_upgrade.rst \
+	nghttp2_session_upgrade2.rst \
 	nghttp2_session_want_read.rst \
 	nghttp2_session_want_write.rst \
 	nghttp2_stream_get_first_child.rst \

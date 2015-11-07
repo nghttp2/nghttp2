@@ -138,7 +138,7 @@ int main(int argc _U_, char *argv[] _U_) {
                    test_nghttp2_session_send_push_promise) ||
       !CU_add_test(pSuite, "session_is_my_stream_id",
                    test_nghttp2_session_is_my_stream_id) ||
-      !CU_add_test(pSuite, "session_upgrade", test_nghttp2_session_upgrade) ||
+      !CU_add_test(pSuite, "session_upgrade2", test_nghttp2_session_upgrade2) ||
       !CU_add_test(pSuite, "session_reprioritize_stream",
                    test_nghttp2_session_reprioritize_stream) ||
       !CU_add_test(

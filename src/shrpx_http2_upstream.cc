@@ -108,9 +108,10 @@ int Http2Upstream::upgrade_upstream(HttpsUpstream *http) {
   auto settings_payload =
       base64::decode(std::begin(http2_settings), std::end(http2_settings));
 
-  rv = nghttp2_session_upgrade(
+  rv = nghttp2_session_upgrade2(
       session_, reinterpret_cast<const uint8_t *>(settings_payload.c_str()),
-      settings_payload.size(), nullptr);
+      settings_payload.size(),
+      http->get_downstream()->get_request_method() == HTTP_HEAD, nullptr);
   if (rv != 0) {
     if (LOG_ENABLED(INFO)) {
       ULOG(INFO, this) << "nghttp2_session_upgrade() returned error: "
