@@ -1213,7 +1213,7 @@ Performance:
               Set   maximum  number   of  backend   concurrent  HTTP/1
               connections per origin host.   This option is meaningful
               when -s option  is used.  The origin  host is determined
-              by  authority  portion  of requset  URI  (or  :authority
+              by  authority  portion  of request  URI  (or  :authority
               header  field  for  HTTP/2).   To limit  the  number  of
               connections   per  frontend   for   default  mode,   use
               --backend-http1-connections-per-frontend.
