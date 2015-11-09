@@ -236,7 +236,7 @@ Performance
     Set   maximum  number   of  backend   concurrent  HTTP/1
     connections per origin host.   This option is meaningful
     when :option:`-s` option  is used.  The origin  host is determined
-    by  authority  portion  of requset  URI  (or  :authority
+    by  authority  portion  of request  URI  (or  :authority
     header  field  for  HTTP/2).   To limit  the  number  of
     connections   per  frontend   for   default  mode,   use
     :option:`--backend-http1-connections-per-frontend`\.
@@ -1248,7 +1248,7 @@ respectively.
         Return custom response *body* to a client.  When this method
         is called in request phase hook, the request is not forwarded
         to the backend, and response phase hook for this request will
-        not be invoked.  When this method is called in resonse phase
+        not be invoked.  When this method is called in response phase
         hook, response from backend server is canceled and discarded.
         The status code and response header fields should be set
         before using this method.  To set status code, use :rb:meth To
@@ -1266,7 +1266,7 @@ respectively.
 MRUBY EXAMPLES
 ~~~~~~~~~~~~~~
 
-Modify requet path:
+Modify request path:
 
 .. code-block:: ruby
 

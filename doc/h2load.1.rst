@@ -239,7 +239,7 @@ status codes
 traffic
   total
     The number of bytes received from the server "on the wire".  If
-    requests were made via TLS, this value is the number of decrpyted
+    requests were made via TLS, this value is the number of decrypted
     bytes.
   headers
     The number of response header bytes from the server without
