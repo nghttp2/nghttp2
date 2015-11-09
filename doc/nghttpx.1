@@ -267,7 +267,7 @@ is done for each pattern group.
 Set   maximum  number   of  backend   concurrent  HTTP/1
 connections per origin host.   This option is meaningful
 when \fI\%\-s\fP option  is used.  The origin  host is determined
-by  authority  portion  of requset  URI  (or  :authority
+by  authority  portion  of request  URI  (or  :authority
 header  field  for  HTTP/2).   To limit  the  number  of
 connections   per  frontend   for   default  mode,   use
 \fI\%\-\-backend\-http1\-connections\-per\-frontend\fP\&.
@@ -1377,7 +1377,7 @@ Clear all existing response header fields.
 Return custom response \fIbody\fP to a client.  When this method
 is called in request phase hook, the request is not forwarded
 to the backend, and response phase hook for this request will
-not be invoked.  When this method is called in resonse phase
+not be invoked.  When this method is called in response phase
 hook, response from backend server is canceled and discarded.
 The status code and response header fields should be set
 before using this method.  To set status code, use :rb:meth To
@@ -1395,7 +1395,7 @@ It is an error to call this method twice for a given request.
 .UNINDENT
 .SS MRUBY EXAMPLES
 .sp
-Modify requet path:
+Modify request path:
 .INDENT 0.0
 .INDENT 3.5
 .sp
