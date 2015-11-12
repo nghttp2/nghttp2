@@ -120,10 +120,10 @@ void test_downstream_crumble_request_cookie(void) {
   Headers cookies;
   std::transform(std::begin(nva), std::end(nva), std::back_inserter(cookies),
                  [](const nghttp2_nv &nv) {
-    return Header(std::string(nv.name, nv.name + nv.namelen),
-                  std::string(nv.value, nv.value + nv.valuelen),
-                  nv.flags & NGHTTP2_NV_FLAG_NO_INDEX);
-  });
+                   return Header(std::string(nv.name, nv.name + nv.namelen),
+                                 std::string(nv.value, nv.value + nv.valuelen),
+                                 nv.flags & NGHTTP2_NV_FLAG_NO_INDEX);
+                 });
 
   Headers ans = {{"cookie", "alpha"},
                  {"cookie", "bravo"},

@@ -553,8 +553,8 @@ void Http2Session::add_downstream_connection(Http2DownstreamConnection *dconn) {
   dconns_.append(dconn);
 }
 
-void
-Http2Session::remove_downstream_connection(Http2DownstreamConnection *dconn) {
+void Http2Session::remove_downstream_connection(
+    Http2DownstreamConnection *dconn) {
   dconns_.remove(dconn);
   dconn->detach_stream_data();
 }

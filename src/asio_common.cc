@@ -90,8 +90,9 @@ generator_cb string_generator(std::string data) {
 }
 
 generator_cb deferred_generator() {
-  return [](uint8_t *buf, size_t len,
-            uint32_t *data_flags) { return NGHTTP2_ERR_DEFERRED; };
+  return [](uint8_t *buf, size_t len, uint32_t *data_flags) {
+    return NGHTTP2_ERR_DEFERRED;
+  };
 }
 
 template <typename F, typename... T>
@@ -114,20 +115,20 @@ generator_cb file_generator_from_fd(int fd) {
 
   return [fd, d](uint8_t *buf, size_t len, uint32_t *data_flags)
       -> generator_cb::result_type {
-    ssize_t n;
-    while ((n = read(fd, buf, len)) == -1 && errno == EINTR)
-      ;
+        ssize_t n;
+        while ((n = read(fd, buf, len)) == -1 && errno == EINTR)
+          ;
 
-    if (n == -1) {
-      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
-    }
+        if (n == -1) {
+          return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+        }
 
-    if (n == 0) {
-      *data_flags |= NGHTTP2_DATA_FLAG_EOF;
-    }
+        if (n == 0) {
+          *data_flags |= NGHTTP2_DATA_FLAG_EOF;
+        }
 
-    return n;
-  };
+        return n;
+      };
 }
 
 bool check_path(const std::string &path) { return util::check_path(path); }

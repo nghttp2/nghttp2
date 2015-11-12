@@ -52,8 +52,8 @@ static LogConfig *config = new LogConfig();
 LogConfig *log_config(void) { return config; }
 #endif // NOTHREADS
 
-void
-LogConfig::update_tstamp(const std::chrono::system_clock::time_point &now) {
+void LogConfig::update_tstamp(
+    const std::chrono::system_clock::time_point &now) {
   auto t0 = std::chrono::system_clock::to_time_t(time_str_updated_);
   auto t1 = std::chrono::system_clock::to_time_t(now);
   if (t0 == t1) {

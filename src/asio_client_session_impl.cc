@@ -59,13 +59,13 @@ void session_impl::start_resolve(const std::string &host,
   resolver_.async_resolve({host, service},
                           [this](const boost::system::error_code &ec,
                                  tcp::resolver::iterator endpoint_it) {
-    if (ec) {
-      not_connected(ec);
-      return;
-    }
+                            if (ec) {
+                              not_connected(ec);
+                              return;
+                            }
 
-    start_connect(endpoint_it);
-  });
+                            start_connect(endpoint_it);
+                          });
 }
 
 void session_impl::connected(tcp::resolver::iterator endpoint_it) {
@@ -462,9 +462,9 @@ const request *session_impl::submit(boost::system::error_code &ec,
         [](nghttp2_session *session, int32_t stream_id, uint8_t *buf,
            size_t length, uint32_t *data_flags, nghttp2_data_source *source,
            void *user_data) -> ssize_t {
-      auto strm = static_cast<stream *>(source->ptr);
-      return strm->request().impl().call_on_read(buf, length, data_flags);
-    };
+          auto strm = static_cast<stream *>(source->ptr);
+          return strm->request().impl().call_on_read(buf, length, data_flags);
+        };
     prdptr = &prd;
   }
 

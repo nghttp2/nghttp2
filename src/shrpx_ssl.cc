@@ -1145,7 +1145,7 @@ SSL_CTX *setup_server_ssl_context(std::vector<SSL_CTX *> &all_ssl_ctx,
   auto ssl_ctx = ssl::create_ssl_context(get_config()->private_key_file.get(),
                                          get_config()->cert_file.get()
 #ifdef HAVE_NEVERBLEED
-                                         ,
+                                             ,
                                          nb
 #endif // HAVE_NEVERBLEED
                                          );
@@ -1166,7 +1166,7 @@ SSL_CTX *setup_server_ssl_context(std::vector<SSL_CTX *> &all_ssl_ctx,
     auto ssl_ctx =
         ssl::create_ssl_context(keycert.first.c_str(), keycert.second.c_str()
 #ifdef HAVE_NEVERBLEED
-                                ,
+                                                           ,
                                 nb
 #endif // HAVE_NEVERBLEED
                                 );

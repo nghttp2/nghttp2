@@ -45,31 +45,31 @@ session_tls_impl::session_tls_impl(boost::asio::io_service &io_service,
 session_tls_impl::~session_tls_impl() {}
 
 void session_tls_impl::start_connect(tcp::resolver::iterator endpoint_it) {
-  boost::asio::async_connect(socket(), endpoint_it,
-                             [this](const boost::system::error_code &ec,
+  boost::asio::async_connect(
+      socket(), endpoint_it, [this](const boost::system::error_code &ec,
                                     tcp::resolver::iterator endpoint_it) {
-    if (ec) {
-      not_connected(ec);
-      return;
-    }
+        if (ec) {
+          not_connected(ec);
+          return;
+        }
 
-    socket_.async_handshake(
-        boost::asio::ssl::stream_base::client,
-        [this, endpoint_it](const boost::system::error_code &ec) {
-          if (ec) {
-            not_connected(ec);
-            return;
-          }
+        socket_.async_handshake(
+            boost::asio::ssl::stream_base::client,
+            [this, endpoint_it](const boost::system::error_code &ec) {
+              if (ec) {
+                not_connected(ec);
+                return;
+              }
 
-          if (!tls_h2_negotiated(socket_)) {
-            not_connected(
-                make_error_code(NGHTTP2_ASIO_ERR_TLS_NO_APP_PROTO_NEGOTIATED));
-            return;
-          }
+              if (!tls_h2_negotiated(socket_)) {
+                not_connected(make_error_code(
+                    NGHTTP2_ASIO_ERR_TLS_NO_APP_PROTO_NEGOTIATED));
+                return;
+              }
 
-          connected(endpoint_it);
-        });
-  });
+              connected(endpoint_it);
+            });
+      });
 }
 
 tcp::socket &session_tls_impl::socket() { return socket_.next_layer(); }

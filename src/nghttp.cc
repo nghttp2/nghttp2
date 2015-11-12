@@ -89,8 +89,7 @@ enum {
 
 namespace {
 constexpr auto anchors = std::array<Anchor, 5>{{
-    {3, 0, 201}, {5, 0, 101}, {7, 0, 1}, {9, 7, 1}, {11, 3, 1},
-}};
+    {3, 0, 201}, {5, 0, 101}, {7, 0, 1}, {9, 7, 1}, {11, 3, 1}, }};
 } // namespace
 
 Config::Config()
@@ -554,10 +553,11 @@ int HttpClient::initiate_connection() {
       // If the user overrode the :authority or host header, use that
       // value for the SNI extension
       const char *host_string = nullptr;
-      auto i = std::find_if(std::begin(config.headers),
-                            std::end(config.headers), [](const Header &nv) {
-        return ":authority" == nv.name || "host" == nv.name;
-      });
+      auto i =
+          std::find_if(std::begin(config.headers), std::end(config.headers),
+                       [](const Header &nv) {
+                         return ":authority" == nv.name || "host" == nv.name;
+                       });
       if (i != std::end(config.headers)) {
         host_string = (*i).value.c_str();
       } else {
@@ -1933,12 +1933,12 @@ void print_stats(const HttpClient &client) {
 
   std::sort(std::begin(reqs), std::end(reqs),
             [](const Request *lhs, const Request *rhs) {
-    const auto &ltiming = lhs->timing;
-    const auto &rtiming = rhs->timing;
-    return ltiming.response_end_time < rtiming.response_end_time ||
-           (ltiming.response_end_time == rtiming.response_end_time &&
-            ltiming.request_start_time < rtiming.request_start_time);
-  });
+              const auto &ltiming = lhs->timing;
+              const auto &rtiming = rhs->timing;
+              return ltiming.response_end_time < rtiming.response_end_time ||
+                     (ltiming.response_end_time == rtiming.response_end_time &&
+                      ltiming.request_start_time < rtiming.request_start_time);
+            });
 
   std::cout << R"(
 Request timing:
@@ -2027,7 +2027,8 @@ namespace {
 int communicate(
     const std::string &scheme, const std::string &host, uint16_t port,
     std::vector<std::tuple<std::string, nghttp2_data_provider *, int64_t>>
-        requests, const nghttp2_session_callbacks *callbacks) {
+        requests,
+    const nghttp2_session_callbacks *callbacks) {
   int result = 0;
   auto loop = EV_DEFAULT;
   SSL_CTX *ssl_ctx = nullptr;

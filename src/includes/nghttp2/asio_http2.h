@@ -89,8 +89,8 @@ typedef std::function<void(uint32_t)> close_cb;
 // are not available right now, return NGHTTP2_ERR_DEFERRED.  In case
 // of the error and request/response must be closed, return
 // NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE.
-typedef std::function<
-    ssize_t(uint8_t *buf, std::size_t len, uint32_t *data_flags)> generator_cb;
+typedef std::function<ssize_t(uint8_t *buf, std::size_t len,
+                              uint32_t *data_flags)> generator_cb;
 
 // Convenient function to create function to read file denoted by
 // |path|.  This can be passed to response::end().

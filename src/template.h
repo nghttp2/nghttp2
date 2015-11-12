@@ -60,11 +60,11 @@ make_array(T &&... t) {
       sizeof...(T)>{{std::forward<T>(t)...}};
 }
 
-template <typename T, size_t N> constexpr size_t array_size(T (&)[N]) {
+template <typename T, size_t N> constexpr size_t array_size(T(&)[N]) {
   return N;
 }
 
-template <typename T, size_t N> constexpr size_t str_size(T (&)[N]) {
+template <typename T, size_t N> constexpr size_t str_size(T(&)[N]) {
   return N - 1;
 }
 
@@ -76,8 +76,8 @@ template <typename F, typename... T> struct Defer {
   Defer(Defer &&o) : f(std::move(o.f)) {}
   ~Defer() { f(); }
 
-  using ResultType = typename std::result_of<
-      typename std::decay<F>::type(typename std::decay<T>::type...)>::type;
+  using ResultType = typename std::result_of<typename std::decay<F>::type(
+      typename std::decay<T>::type...)>::type;
   std::function<ResultType()> f;
 };
 

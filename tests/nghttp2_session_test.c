@@ -8401,9 +8401,9 @@ void test_nghttp2_http_mandatory_headers(void) {
       MAKE_NV(":authority", "localhost"), MAKE_NV(":path", "/"),
       MAKE_NV("content-length", "-1")};
   const nghttp2_nv dupcl_reqnv[] = {
-      MAKE_NV(":scheme", "https"),        MAKE_NV(":method", "POST"),
+      MAKE_NV(":scheme", "https"), MAKE_NV(":method", "POST"),
       MAKE_NV(":authority", "localhost"), MAKE_NV(":path", "/"),
-      MAKE_NV("content-length", "0"),     MAKE_NV("content-length", "0")};
+      MAKE_NV("content-length", "0"), MAKE_NV("content-length", "0")};
   const nghttp2_nv badhd_reqnv[] = {
       MAKE_NV(":scheme", "https"), MAKE_NV(":method", "GET"),
       MAKE_NV(":authority", "localhost"), MAKE_NV(":path", "/"),
@@ -8996,8 +8996,8 @@ void test_nghttp2_http_ignore_regular_header(void) {
   my_user_data ud;
   const nghttp2_nv bad_reqnv[] = {
       MAKE_NV(":authority", "localhost"), MAKE_NV(":scheme", "https"),
-      MAKE_NV(":path", "/"),              MAKE_NV(":method", "GET"),
-      MAKE_NV("foo", "\x0zzz"),           MAKE_NV("bar", "buzz"),
+      MAKE_NV(":path", "/"), MAKE_NV(":method", "GET"),
+      MAKE_NV("foo", "\x0zzz"), MAKE_NV("bar", "buzz"),
   };
   const nghttp2_nv bad_ansnv[] = {
       MAKE_NV(":authority", "localhost"), MAKE_NV(":scheme", "https"),

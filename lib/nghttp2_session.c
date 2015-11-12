@@ -610,10 +610,9 @@ void nghttp2_session_del(nghttp2_session *session) {
   nghttp2_mem_free(mem, session);
 }
 
-int
-nghttp2_session_reprioritize_stream(nghttp2_session *session,
-                                    nghttp2_stream *stream,
-                                    const nghttp2_priority_spec *pri_spec_in) {
+int nghttp2_session_reprioritize_stream(
+    nghttp2_session *session, nghttp2_stream *stream,
+    const nghttp2_priority_spec *pri_spec_in) {
   int rv;
   nghttp2_stream *dep_stream = NULL;
   nghttp2_priority_spec pri_spec_default;

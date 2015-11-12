@@ -2339,8 +2339,8 @@ NGHTTP2_EXTERN int nghttp2_session_send(nghttp2_session *session);
  *   buffer up small chunks of data as necessary to avoid this
  *   situation.
  */
-NGHTTP2_EXTERN ssize_t nghttp2_session_mem_send(nghttp2_session *session,
-                                                const uint8_t **data_ptr);
+NGHTTP2_EXTERN ssize_t
+nghttp2_session_mem_send(nghttp2_session *session, const uint8_t **data_ptr);
 
 /**
  * @function
@@ -2538,7 +2538,7 @@ nghttp2_session_set_stream_user_data(nghttp2_session *session,
  * include the deferred DATA frames.
  */
 NGHTTP2_EXTERN size_t
-    nghttp2_session_get_outbound_queue_size(nghttp2_session *session);
+nghttp2_session_get_outbound_queue_size(nghttp2_session *session);
 
 /**
  * @function
@@ -2554,8 +2554,9 @@ NGHTTP2_EXTERN size_t
  *
  * This function returns -1 if it fails.
  */
-NGHTTP2_EXTERN int32_t nghttp2_session_get_stream_effective_recv_data_length(
-    nghttp2_session *session, int32_t stream_id);
+NGHTTP2_EXTERN int32_t
+nghttp2_session_get_stream_effective_recv_data_length(nghttp2_session *session,
+                                                      int32_t stream_id);
 
 /**
  * @function
@@ -2567,8 +2568,9 @@ NGHTTP2_EXTERN int32_t nghttp2_session_get_stream_effective_recv_data_length(
  *
  * This function returns -1 if it fails.
  */
-NGHTTP2_EXTERN int32_t nghttp2_session_get_stream_effective_local_window_size(
-    nghttp2_session *session, int32_t stream_id);
+NGHTTP2_EXTERN int32_t
+nghttp2_session_get_stream_effective_local_window_size(nghttp2_session *session,
+                                                       int32_t stream_id);
 
 /**
  * @function
@@ -2585,7 +2587,7 @@ NGHTTP2_EXTERN int32_t nghttp2_session_get_stream_effective_local_window_size(
  * This function returns -1 if it fails.
  */
 NGHTTP2_EXTERN int32_t
-    nghttp2_session_get_effective_recv_data_length(nghttp2_session *session);
+nghttp2_session_get_effective_recv_data_length(nghttp2_session *session);
 
 /**
  * @function
@@ -2598,7 +2600,7 @@ NGHTTP2_EXTERN int32_t
  * This function returns -1 if it fails.
  */
 NGHTTP2_EXTERN int32_t
-    nghttp2_session_get_effective_local_window_size(nghttp2_session *session);
+nghttp2_session_get_effective_local_window_size(nghttp2_session *session);
 
 /**
  * @function
@@ -2615,8 +2617,8 @@ NGHTTP2_EXTERN int32_t
  * This function returns -1 if it fails.
  */
 NGHTTP2_EXTERN int32_t
-    nghttp2_session_get_stream_remote_window_size(nghttp2_session *session,
-                                                  int32_t stream_id);
+nghttp2_session_get_stream_remote_window_size(nghttp2_session *session,
+                                              int32_t stream_id);
 
 /**
  * @function
@@ -2626,7 +2628,7 @@ NGHTTP2_EXTERN int32_t
  * This function always succeeds.
  */
 NGHTTP2_EXTERN int32_t
-    nghttp2_session_get_remote_window_size(nghttp2_session *session);
+nghttp2_session_get_remote_window_size(nghttp2_session *session);
 
 /**
  * @function
@@ -2752,8 +2754,8 @@ NGHTTP2_EXTERN int nghttp2_submit_shutdown_notice(nghttp2_session *session);
  * :enum:`nghttp2_settings_id`.
  */
 NGHTTP2_EXTERN uint32_t
-    nghttp2_session_get_remote_settings(nghttp2_session *session,
-                                        nghttp2_settings_id id);
+nghttp2_session_get_remote_settings(nghttp2_session *session,
+                                    nghttp2_settings_id id);
 
 /**
  * @function
@@ -2782,7 +2784,7 @@ NGHTTP2_EXTERN int nghttp2_session_set_next_stream_id(nghttp2_session *session,
  * function returns 1 << 31.
  */
 NGHTTP2_EXTERN uint32_t
-    nghttp2_session_get_next_stream_id(nghttp2_session *session);
+nghttp2_session_get_next_stream_id(nghttp2_session *session);
 
 /**
  * @function
@@ -2970,8 +2972,8 @@ NGHTTP2_EXTERN int nghttp2_session_upgrade2(nghttp2_session *session,
  *     The provided |buflen| size is too small to hold the output.
  */
 NGHTTP2_EXTERN ssize_t
-    nghttp2_pack_settings_payload(uint8_t *buf, size_t buflen,
-                                  const nghttp2_settings_entry *iv, size_t niv);
+nghttp2_pack_settings_payload(uint8_t *buf, size_t buflen,
+                              const nghttp2_settings_entry *iv, size_t niv);
 
 /**
  * @function
@@ -3082,11 +3084,11 @@ nghttp2_priority_spec_check_default(const nghttp2_priority_spec *pri_spec);
  *
  */
 NGHTTP2_EXTERN int32_t
-    nghttp2_submit_request(nghttp2_session *session,
-                           const nghttp2_priority_spec *pri_spec,
-                           const nghttp2_nv *nva, size_t nvlen,
-                           const nghttp2_data_provider *data_prd,
-                           void *stream_user_data);
+nghttp2_submit_request(nghttp2_session *session,
+                       const nghttp2_priority_spec *pri_spec,
+                       const nghttp2_nv *nva, size_t nvlen,
+                       const nghttp2_data_provider *data_prd,
+                       void *stream_user_data);
 
 /**
  * @function
@@ -3297,11 +3299,10 @@ NGHTTP2_EXTERN int nghttp2_submit_trailer(nghttp2_session *session,
  *
  */
 NGHTTP2_EXTERN int32_t
-    nghttp2_submit_headers(nghttp2_session *session, uint8_t flags,
-                           int32_t stream_id,
-                           const nghttp2_priority_spec *pri_spec,
-                           const nghttp2_nv *nva, size_t nvlen,
-                           void *stream_user_data);
+nghttp2_submit_headers(nghttp2_session *session, uint8_t flags,
+                       int32_t stream_id, const nghttp2_priority_spec *pri_spec,
+                       const nghttp2_nv *nva, size_t nvlen,
+                       void *stream_user_data);
 
 /**
  * @function
@@ -3504,9 +3505,9 @@ NGHTTP2_EXTERN int nghttp2_submit_settings(nghttp2_session *session,
  *
  */
 NGHTTP2_EXTERN int32_t
-    nghttp2_submit_push_promise(nghttp2_session *session, uint8_t flags,
-                                int32_t stream_id, const nghttp2_nv *nva,
-                                size_t nvlen, void *promised_stream_user_data);
+nghttp2_submit_push_promise(nghttp2_session *session, uint8_t flags,
+                            int32_t stream_id, const nghttp2_nv *nva,
+                            size_t nvlen, void *promised_stream_user_data);
 
 /**
  * @function
@@ -3595,7 +3596,7 @@ NGHTTP2_EXTERN int nghttp2_submit_goaway(nghttp2_session *session,
  * This function always succeeds.
  */
 NGHTTP2_EXTERN int32_t
-    nghttp2_session_get_last_proc_stream_id(nghttp2_session *session);
+nghttp2_session_get_last_proc_stream_id(nghttp2_session *session);
 
 /**
  * @function
@@ -3880,8 +3881,8 @@ nghttp2_hd_deflate_change_table_size(nghttp2_hd_deflater *deflater,
  *     The provided |buflen| size is too small to hold the output.
  */
 NGHTTP2_EXTERN ssize_t
-    nghttp2_hd_deflate_hd(nghttp2_hd_deflater *deflater, uint8_t *buf,
-                          size_t buflen, const nghttp2_nv *nva, size_t nvlen);
+nghttp2_hd_deflate_hd(nghttp2_hd_deflater *deflater, uint8_t *buf,
+                      size_t buflen, const nghttp2_nv *nva, size_t nvlen);
 
 /**
  * @function
@@ -4239,7 +4240,7 @@ typedef enum {
  * :enum:`NGHTTP2_STREAM_STATE_IDLE`.
  */
 NGHTTP2_EXTERN nghttp2_stream_proto_state
-    nghttp2_stream_get_state(nghttp2_stream *stream);
+nghttp2_stream_get_state(nghttp2_stream *stream);
 
 /**
  * @function
@@ -4302,7 +4303,7 @@ NGHTTP2_EXTERN int32_t nghttp2_stream_get_weight(nghttp2_stream *stream);
  * Returns the sum of the weight for |stream|'s children.
  */
 NGHTTP2_EXTERN int32_t
-    nghttp2_stream_get_sum_dependency_weight(nghttp2_stream *stream);
+nghttp2_stream_get_sum_dependency_weight(nghttp2_stream *stream);
 
 #ifdef __cplusplus
 }

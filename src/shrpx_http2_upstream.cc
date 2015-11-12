@@ -1391,8 +1391,8 @@ int Http2Upstream::error_reply(Downstream *downstream,
   return 0;
 }
 
-void
-Http2Upstream::add_pending_downstream(std::unique_ptr<Downstream> downstream) {
+void Http2Upstream::add_pending_downstream(
+    std::unique_ptr<Downstream> downstream) {
   downstream_queue_.add_pending(std::move(downstream));
 }
 
@@ -1670,9 +1670,8 @@ int Http2Upstream::consume(int32_t stream_id, size_t len) {
   return 0;
 }
 
-void
-Http2Upstream::log_response_headers(Downstream *downstream,
-                                    const std::vector<nghttp2_nv> &nva) const {
+void Http2Upstream::log_response_headers(
+    Downstream *downstream, const std::vector<nghttp2_nv> &nva) const {
   std::stringstream ss;
   for (auto &nv : nva) {
     ss << TTY_HTTP_HD << nv.name << TTY_RST << ": " << nv.value << "\n";
