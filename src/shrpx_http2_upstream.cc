@@ -1471,9 +1471,9 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
     nva.push_back(http2::make_nv_ls(":status", response_status));
   }
 
-  http2::copy_headers_to_nva_nocopy(nva, downstream->get_response_headers());
-
   if (downstream->get_non_final_response()) {
+    http2::copy_headers_to_nva(nva, downstream->get_response_headers());
+
     if (LOG_ENABLED(INFO)) {
       log_response_headers(downstream, nva);
     }
@@ -1491,6 +1491,8 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
 
     return 0;
   }
+
+  http2::copy_headers_to_nva_nocopy(nva, downstream->get_response_headers());
 
   if (!get_config()->http2_proxy && !get_config()->client_proxy) {
     nva.push_back(
