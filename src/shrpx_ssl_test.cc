@@ -43,13 +43,12 @@ void test_shrpx_ssl_create_lookup_tree(void) {
       SSL_CTX_new(SSLv23_method()), SSL_CTX_new(SSLv23_method()),
       SSL_CTX_new(SSLv23_method()), SSL_CTX_new(SSLv23_method())};
 
-  const char *hostnames[] = {"example.com",      "www.example.org",
-                             "*www.example.org", "x*.host.domain",
-                             "*yy.host.domain",  "nghttp2.sourceforge.net",
-                             "sourceforge.net",
-                             "sourceforge.net", // duplicate
-                             "*.foo.bar",       // oo.bar is suffix of *.foo.bar
-                             "oo.bar"};
+  const char *hostnames[] = {
+      "example.com", "www.example.org", "*www.example.org", "x*.host.domain",
+      "*yy.host.domain", "nghttp2.sourceforge.net", "sourceforge.net",
+      "sourceforge.net", // duplicate
+      "*.foo.bar",       // oo.bar is suffix of *.foo.bar
+      "oo.bar"};
   int num = array_size(ctxs);
   for (int i = 0; i < num; ++i) {
     tree->add_cert(ctxs[i], hostnames[i], strlen(hostnames[i]));

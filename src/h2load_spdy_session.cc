@@ -65,11 +65,18 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
   for (auto p = frame->syn_reply.nv; *p; p += 2) {
     auto name = *p;
     auto value = *(p + 1);
+    auto namelen = strlen(name);
+    auto valuelen = strlen(value);
     client->on_header(frame->syn_reply.stream_id,
-                      reinterpret_cast<const uint8_t *>(name), strlen(name),
-                      reinterpret_cast<const uint8_t *>(value), strlen(value));
+                      reinterpret_cast<const uint8_t *>(name), namelen,
+                      reinterpret_cast<const uint8_t *>(value), valuelen);
+    client->worker->stats.bytes_head_decomp += namelen + valuelen;
   }
-  client->worker->stats.bytes_head += frame->syn_reply.hd.length;
+
+  // Strictly speaking, we have to subtract 2 (unused field) if SPDY
+  // version is 2.  But it is already deprecated, and we don't do
+  // extra work for it.
+  client->worker->stats.bytes_head += frame->syn_reply.hd.length - 4;
 
   if (frame->syn_stream.hd.flags & SPDYLAY_CTRL_FLAG_FIN) {
     client->record_ttfb();

@@ -175,12 +175,12 @@ int ConnectionHandler::create_single_worker() {
                                                   ,
                                                   nb_.get()
 #endif // HAVE_NEVERBLEED
-                                                  );
+                                                      );
   auto cl_ssl_ctx = ssl::setup_client_ssl_context(
 #ifdef HAVE_NEVERBLEED
       nb_.get()
 #endif // HAVE_NEVERBLEED
-      );
+          );
 
   if (cl_ssl_ctx) {
     all_ssl_ctx_.push_back(cl_ssl_ctx);
@@ -207,12 +207,12 @@ int ConnectionHandler::create_worker_thread(size_t num) {
                                                   ,
                                                   nb_.get()
 #endif // HAVE_NEVERBLEED
-                                                  );
+                                                      );
   auto cl_ssl_ctx = ssl::setup_client_ssl_context(
 #ifdef HAVE_NEVERBLEED
       nb_.get()
 #endif // HAVE_NEVERBLEED
-      );
+          );
 
   if (cl_ssl_ctx) {
     all_ssl_ctx_.push_back(cl_ssl_ctx);
@@ -401,8 +401,8 @@ void ConnectionHandler::accept_pending_connection() {
   }
 }
 
-void
-ConnectionHandler::set_ticket_keys(std::shared_ptr<TicketKeys> ticket_keys) {
+void ConnectionHandler::set_ticket_keys(
+    std::shared_ptr<TicketKeys> ticket_keys) {
   ticket_keys_ = std::move(ticket_keys);
   if (single_worker_) {
     single_worker_->set_ticket_keys(ticket_keys_);
@@ -740,8 +740,8 @@ void ConnectionHandler::on_tls_ticket_key_get_success(
   set_ticket_keys_to_worker(ticket_keys);
 }
 
-void
-ConnectionHandler::schedule_next_tls_ticket_key_memcached_get(ev_timer *w) {
+void ConnectionHandler::schedule_next_tls_ticket_key_memcached_get(
+    ev_timer *w) {
   ev_timer_set(w, get_config()->tls_ticket_key_memcached_interval, 0.);
   ev_timer_start(loop_, w);
 }

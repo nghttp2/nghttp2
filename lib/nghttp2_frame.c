@@ -750,19 +750,24 @@ void nghttp2_nv_array_sort(nghttp2_nv *nva, size_t nvlen) {
 int nghttp2_nv_array_copy(nghttp2_nv **nva_ptr, const nghttp2_nv *nva,
                           size_t nvlen, nghttp2_mem *mem) {
   size_t i;
-  uint8_t *data;
+  uint8_t *data = NULL;
   size_t buflen = 0;
   nghttp2_nv *p;
-
-  for (i = 0; i < nvlen; ++i) {
-    /* + 2 for null-termination */
-    buflen += nva[i].namelen + nva[i].valuelen + 2;
-  }
 
   if (nvlen == 0) {
     *nva_ptr = NULL;
 
     return 0;
+  }
+
+  for (i = 0; i < nvlen; ++i) {
+    /* + 1 for null-termination */
+    if ((nva[i].flags & NGHTTP2_NV_FLAG_NO_COPY_NAME) == 0) {
+      buflen += nva[i].namelen + 1;
+    }
+    if ((nva[i].flags & NGHTTP2_NV_FLAG_NO_COPY_VALUE) == 0) {
+      buflen += nva[i].valuelen + 1;
+    }
   }
 
   buflen += sizeof(nghttp2_nv) * nvlen;
@@ -779,17 +784,29 @@ int nghttp2_nv_array_copy(nghttp2_nv **nva_ptr, const nghttp2_nv *nva,
   for (i = 0; i < nvlen; ++i) {
     p->flags = nva[i].flags;
 
-    memcpy(data, nva[i].name, nva[i].namelen);
-    p->name = data;
-    p->namelen = nva[i].namelen;
-    data[p->namelen] = '\0';
-    nghttp2_downcase(p->name, p->namelen);
-    data += nva[i].namelen + 1;
-    memcpy(data, nva[i].value, nva[i].valuelen);
-    p->value = data;
-    p->valuelen = nva[i].valuelen;
-    data[p->valuelen] = '\0';
-    data += nva[i].valuelen + 1;
+    if (nva[i].flags & NGHTTP2_NV_FLAG_NO_COPY_NAME) {
+      p->name = nva[i].name;
+      p->namelen = nva[i].namelen;
+    } else {
+      memcpy(data, nva[i].name, nva[i].namelen);
+      p->name = data;
+      p->namelen = nva[i].namelen;
+      data[p->namelen] = '\0';
+      nghttp2_downcase(p->name, p->namelen);
+      data += nva[i].namelen + 1;
+    }
+
+    if (nva[i].flags & NGHTTP2_NV_FLAG_NO_COPY_VALUE) {
+      p->value = nva[i].value;
+      p->valuelen = nva[i].valuelen;
+    } else {
+      memcpy(data, nva[i].value, nva[i].valuelen);
+      p->value = data;
+      p->valuelen = nva[i].valuelen;
+      data[p->valuelen] = '\0';
+      data += nva[i].valuelen + 1;
+    }
+
     ++p;
   }
   return 0;

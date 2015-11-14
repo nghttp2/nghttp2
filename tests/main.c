@@ -140,7 +140,7 @@ int main(int argc _U_, char *argv[] _U_) {
                    test_nghttp2_session_send_push_promise) ||
       !CU_add_test(pSuite, "session_is_my_stream_id",
                    test_nghttp2_session_is_my_stream_id) ||
-      !CU_add_test(pSuite, "session_upgrade", test_nghttp2_session_upgrade) ||
+      !CU_add_test(pSuite, "session_upgrade2", test_nghttp2_session_upgrade2) ||
       !CU_add_test(pSuite, "session_reprioritize_stream",
                    test_nghttp2_session_reprioritize_stream) ||
       !CU_add_test(
@@ -301,6 +301,8 @@ int main(int argc _U_, char *argv[] _U_) {
                    test_nghttp2_http_record_request_method) ||
       !CU_add_test(pSuite, "http_push_promise",
                    test_nghttp2_http_push_promise) ||
+      !CU_add_test(pSuite, "http_head_method_upgrade_workaround",
+                   test_nghttp2_http_head_method_upgrade_workaround) ||
       !CU_add_test(pSuite, "frame_pack_headers",
                    test_nghttp2_frame_pack_headers) ||
       !CU_add_test(pSuite, "frame_pack_headers_frame_too_large",

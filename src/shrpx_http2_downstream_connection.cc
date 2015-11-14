@@ -205,6 +205,8 @@ ssize_t http2_data_read_callback(nghttp2_session *session, int32_t stream_id,
     if (!trailers.empty()) {
       std::vector<nghttp2_nv> nva;
       nva.reserve(trailers.size());
+      // We cannot use nocopy version, since nva may be touched after
+      // Downstream object is deleted.
       http2::copy_headers_to_nva(nva, trailers);
       if (!nva.empty()) {
         rv = nghttp2_submit_trailer(session, stream_id, nva.data(), nva.size());
@@ -273,17 +275,13 @@ int Http2DownstreamConnection::push_request_headers() {
     authority = req_authority.c_str();
   }
 
-  if (!authority) {
-    authority = downstream_hostport;
-  }
-
   downstream_->set_request_downstream_host(authority);
 
   auto nheader = downstream_->get_request_headers().size();
 
-  Headers cookies;
+  size_t num_cookies = 0;
   if (!get_config()->http2_no_cookie_crumbling) {
-    cookies = downstream_->crumble_request_cookie();
+    num_cookies = downstream_->count_crumble_request_cookie();
   }
 
   // 8 means:
@@ -296,29 +294,30 @@ int Http2DownstreamConnection::push_request_headers() {
   // 7. x-forwarded-proto (optional)
   // 8. te (optional)
   auto nva = std::vector<nghttp2_nv>();
-  nva.reserve(nheader + 8 + cookies.size() +
+  nva.reserve(nheader + 8 + num_cookies +
               get_config()->add_request_headers.size());
 
-  nva.push_back(http2::make_nv_lc(":method", http2::to_method_string(method)));
+  nva.push_back(
+      http2::make_nv_lc_nocopy(":method", http2::to_method_string(method)));
 
   auto &scheme = downstream_->get_request_http2_scheme();
 
-  nva.push_back(http2::make_nv_lc(":authority", authority));
+  nva.push_back(http2::make_nv_lc_nocopy(":authority", authority));
 
   if (method != HTTP_CONNECT) {
     assert(!scheme.empty());
 
-    nva.push_back(http2::make_nv_ls(":scheme", scheme));
+    nva.push_back(http2::make_nv_ls_nocopy(":scheme", scheme));
 
     auto &path = downstream_->get_request_path();
     if (method == HTTP_OPTIONS && path.empty()) {
       nva.push_back(http2::make_nv_ll(":path", "*"));
     } else {
-      nva.push_back(http2::make_nv_ls(":path", path));
+      nva.push_back(http2::make_nv_ls_nocopy(":path", path));
     }
   }
 
-  http2::copy_headers_to_nva(nva, downstream_->get_request_headers());
+  http2::copy_headers_to_nva_nocopy(nva, downstream_->get_request_headers());
 
   bool chunked_encoding = false;
   auto transfer_encoding =
@@ -328,8 +327,8 @@ int Http2DownstreamConnection::push_request_headers() {
     chunked_encoding = true;
   }
 
-  for (auto &nv : cookies) {
-    nva.push_back(http2::make_nv(nv.name, nv.value, nv.no_index));
+  if (!get_config()->http2_no_cookie_crumbling) {
+    downstream_->crumble_request_cookie(nva);
   }
 
   std::string xff_value;
@@ -343,20 +342,20 @@ int Http2DownstreamConnection::push_request_headers() {
         downstream_->get_upstream()->get_client_handler()->get_ipaddr();
     nva.push_back(http2::make_nv_ls("x-forwarded-for", xff_value));
   } else if (xff && !get_config()->strip_incoming_x_forwarded_for) {
-    nva.push_back(http2::make_nv_ls("x-forwarded-for", (*xff).value));
+    nva.push_back(http2::make_nv_ls_nocopy("x-forwarded-for", (*xff).value));
   }
 
   if (!get_config()->http2_proxy && !get_config()->client_proxy &&
       downstream_->get_request_method() != HTTP_CONNECT) {
     // We use same protocol with :scheme header field
-    nva.push_back(http2::make_nv_ls("x-forwarded-proto", scheme));
+    nva.push_back(http2::make_nv_ls_nocopy("x-forwarded-proto", scheme));
   }
 
   std::string via_value;
   auto via = downstream_->get_request_header(http2::HD_VIA);
   if (get_config()->no_via) {
     if (via) {
-      nva.push_back(http2::make_nv_ls("via", (*via).value));
+      nva.push_back(http2::make_nv_ls_nocopy("via", (*via).value));
     }
   } else {
     if (via) {
@@ -377,7 +376,7 @@ int Http2DownstreamConnection::push_request_headers() {
   }
 
   for (auto &p : get_config()->add_request_headers) {
-    nva.push_back(http2::make_nv(p.first, p.second));
+    nva.push_back(http2::make_nv_nocopy(p.first, p.second));
   }
 
   if (LOG_ENABLED(INFO)) {

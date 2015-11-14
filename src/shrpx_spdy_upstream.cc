@@ -888,13 +888,11 @@ int SpdyUpstream::error_reply(Downstream *downstream,
 
   std::string content_length = util::utos(html.size());
   std::string status_string = http2::get_status_string(status_code);
-  const char *nv[] = {":status",        status_string.c_str(),
-                      ":version",       "http/1.1",
-                      "content-type",   "text/html; charset=UTF-8",
-                      "server",         get_config()->server_name,
-                      "content-length", content_length.c_str(),
-                      "date",           lgconf->time_http_str.c_str(),
-                      nullptr};
+  const char *nv[] = {":status", status_string.c_str(), ":version", "http/1.1",
+                      "content-type", "text/html; charset=UTF-8", "server",
+                      get_config()->server_name, "content-length",
+                      content_length.c_str(), "date",
+                      lgconf->time_http_str.c_str(), nullptr};
 
   rv = spdylay_submit_response(session_, downstream->get_stream_id(), nv,
                                &data_prd);

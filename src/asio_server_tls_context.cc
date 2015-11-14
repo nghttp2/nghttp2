@@ -42,6 +42,19 @@ std::vector<unsigned char> &get_alpn_token() {
 }
 } // namespace
 
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+namespace {
+int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
+                         unsigned char *outlen, const unsigned char *in,
+                         unsigned int inlen, void *arg) {
+  if (!util::select_h2(out, outlen, in, inlen)) {
+    return SSL_TLSEXT_ERR_NOACK;
+  }
+  return SSL_TLSEXT_ERR_OK;
+}
+} // namespace
+#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
+
 boost::system::error_code
 configure_tls_context_easy(boost::system::error_code &ec,
                            boost::asio::ssl::context &tls_context) {
@@ -80,6 +93,11 @@ configure_tls_context_easy(boost::system::error_code &ec,
         return SSL_TLSEXT_ERR_OK;
       },
       nullptr);
+
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+  // ALPN selection callback
+  SSL_CTX_set_alpn_select_cb(ctx, alpn_select_proto_cb, nullptr);
+#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
   return ec;
 }

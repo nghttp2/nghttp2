@@ -39,6 +39,8 @@ namespace asio_http2 {
 
 boost::system::error_code make_error_code(nghttp2_error ev);
 
+boost::system::error_code make_error_code(nghttp2_asio_error ev);
+
 generator_cb string_generator(std::string data);
 
 // Returns generator_cb, which just returns NGHTTP2_ERR_DEFERRED
@@ -57,6 +59,12 @@ void split_path(uri_ref &dst, InputIt first, InputIt last) {
   dst.raw_path.assign(first, path_last);
   dst.raw_query.assign(query_first, last);
 }
+
+using boost::asio::ip::tcp;
+
+using ssl_socket = boost::asio::ssl::stream<tcp::socket>;
+
+bool tls_h2_negotiated(ssl_socket &socket);
 
 } // namespace asio_http2
 

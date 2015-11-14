@@ -36,7 +36,7 @@ OPTIONS
 .. option:: -O, --remote-name
 
     Save  download  data  in  the  current  directory.   The
-    filename is  dereived from URI.   If URI ends  with '*/*',
+    filename is  derived from  URI.  If  URI ends  with '*/*',
     'index.html'  is used  as a  filename.  Not  implemented
     yet.
 

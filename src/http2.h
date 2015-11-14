@@ -70,6 +70,10 @@ namespace http2 {
 
 std::string get_status_string(unsigned int status_code);
 
+// Returns string version of |status_code|.  This function can handle
+// only predefined status code.  Otherwise, returns nullptr.
+const char *stringify_status(unsigned int status_code);
+
 void capitalize(DefaultMemchunks *buf, const std::string &s);
 
 // Returns true if |value| is LWS
@@ -110,26 +114,41 @@ bool non_empty_value(const Headers::value_type *nv);
 nghttp2_nv make_nv(const std::string &name, const std::string &value,
                    bool no_index = false);
 
+nghttp2_nv make_nv_nocopy(const std::string &name, const std::string &value,
+                          bool no_index = false);
+
 // Create nghttp2_nv from string literal |name| and |value|.
 template <size_t N, size_t M>
-constexpr nghttp2_nv make_nv_ll(const char (&name)[N], const char (&value)[M]) {
+constexpr nghttp2_nv make_nv_ll(const char(&name)[N], const char(&value)[M]) {
   return {(uint8_t *)name, (uint8_t *)value, N - 1, M - 1,
-          NGHTTP2_NV_FLAG_NONE};
+          NGHTTP2_NV_FLAG_NO_COPY_NAME | NGHTTP2_NV_FLAG_NO_COPY_VALUE};
 }
 
 // Create nghttp2_nv from string literal |name| and c-string |value|.
 template <size_t N>
-nghttp2_nv make_nv_lc(const char (&name)[N], const char *value) {
+nghttp2_nv make_nv_lc(const char(&name)[N], const char *value) {
   return {(uint8_t *)name, (uint8_t *)value, N - 1, strlen(value),
-          NGHTTP2_NV_FLAG_NONE};
+          NGHTTP2_NV_FLAG_NO_COPY_NAME};
+}
+
+template <size_t N>
+nghttp2_nv make_nv_lc_nocopy(const char(&name)[N], const char *value) {
+  return {(uint8_t *)name, (uint8_t *)value, N - 1, strlen(value),
+          NGHTTP2_NV_FLAG_NO_COPY_NAME | NGHTTP2_NV_FLAG_NO_COPY_VALUE};
 }
 
 // Create nghttp2_nv from string literal |name| and std::string
 // |value|.
 template <size_t N>
-nghttp2_nv make_nv_ls(const char (&name)[N], const std::string &value) {
+nghttp2_nv make_nv_ls(const char(&name)[N], const std::string &value) {
   return {(uint8_t *)name, (uint8_t *)value.c_str(), N - 1, value.size(),
-          NGHTTP2_NV_FLAG_NONE};
+          NGHTTP2_NV_FLAG_NO_COPY_NAME};
+}
+
+template <size_t N>
+nghttp2_nv make_nv_ls_nocopy(const char(&name)[N], const std::string &value) {
+  return {(uint8_t *)name, (uint8_t *)value.c_str(), N - 1, value.size(),
+          NGHTTP2_NV_FLAG_NO_COPY_NAME | NGHTTP2_NV_FLAG_NO_COPY_VALUE};
 }
 
 // Appends headers in |headers| to |nv|.  |headers| must be indexed
@@ -137,6 +156,11 @@ nghttp2_nv make_nv_ls(const char (&name)[N], const std::string &value) {
 // headers, including disallowed headers in HTTP/2 spec and headers
 // which require special handling (i.e. via), are not copied.
 void copy_headers_to_nva(std::vector<nghttp2_nv> &nva, const Headers &headers);
+
+// Just like copy_headers_to_nva(), but this adds
+// NGHTTP2_NV_FLAG_NO_COPY_NAME and NGHTTP2_NV_FLAG_NO_COPY_VALUE.
+void copy_headers_to_nva_nocopy(std::vector<nghttp2_nv> &nva,
+                                const Headers &headers);
 
 // Appends HTTP/1.1 style header lines to |buf| from headers in
 // |headers|.  |headers| must be indexed before this call (its

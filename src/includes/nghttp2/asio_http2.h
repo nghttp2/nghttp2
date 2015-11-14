@@ -38,16 +38,6 @@
 
 #include <nghttp2/nghttp2.h>
 
-namespace boost {
-namespace system {
-
-template <> struct is_error_code_enum<nghttp2_error> {
-  BOOST_STATIC_CONSTANT(bool, value = true);
-};
-
-} // namespace system
-} // namespace boost
-
 namespace nghttp2 {
 
 namespace asio_http2 {
@@ -99,8 +89,8 @@ typedef std::function<void(uint32_t)> close_cb;
 // are not available right now, return NGHTTP2_ERR_DEFERRED.  In case
 // of the error and request/response must be closed, return
 // NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE.
-typedef std::function<
-    ssize_t(uint8_t *buf, std::size_t len, uint32_t *data_flags)> generator_cb;
+typedef std::function<ssize_t(uint8_t *buf, std::size_t len,
+                              uint32_t *data_flags)> generator_cb;
 
 // Convenient function to create function to read file denoted by
 // |path|.  This can be passed to response::end().
@@ -132,8 +122,29 @@ boost::system::error_code host_service_from_uri(boost::system::error_code &ec,
                                                 std::string &service,
                                                 const std::string &uri);
 
+enum nghttp2_asio_error {
+  NGHTTP2_ASIO_ERR_NO_ERROR = 0,
+  NGHTTP2_ASIO_ERR_TLS_NO_APP_PROTO_NEGOTIATED = 1,
+};
+
 } // namespace asio_http2
 
 } // namespace nghttp2
+
+namespace boost {
+
+namespace system {
+
+template <> struct is_error_code_enum<nghttp2_error> {
+  BOOST_STATIC_CONSTANT(bool, value = true);
+};
+
+template <> struct is_error_code_enum<nghttp2::asio_http2::nghttp2_asio_error> {
+  BOOST_STATIC_CONSTANT(bool, value = true);
+};
+
+} // namespace system
+
+} // namespace boost
 
 #endif // ASIO_HTTP2_H

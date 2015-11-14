@@ -89,8 +89,7 @@ enum {
 
 namespace {
 constexpr auto anchors = std::array<Anchor, 5>{{
-    {3, 0, 201}, {5, 0, 101}, {7, 0, 1}, {9, 7, 1}, {11, 3, 1},
-}};
+    {3, 0, 201}, {5, 0, 101}, {7, 0, 1}, {9, 7, 1}, {11, 3, 1}, }};
 } // namespace
 
 Config::Config()
@@ -392,6 +391,11 @@ int submit_request(HttpClient *client, const Headers &headers, Request *req) {
     nva.push_back(http2::make_nv(kv.name, kv.value, kv.no_index));
   }
 
+  auto method = http2::get_header(build_headers, ":method");
+  assert(method);
+
+  req->method = method->value;
+
   std::string trailer_names;
   if (!config.trailer.empty()) {
     trailer_names = config.trailer[0].name;
@@ -549,10 +553,11 @@ int HttpClient::initiate_connection() {
       // If the user overrode the :authority or host header, use that
       // value for the SNI extension
       const char *host_string = nullptr;
-      auto i = std::find_if(std::begin(config.headers),
-                            std::end(config.headers), [](const Header &nv) {
-        return ":authority" == nv.name || "host" == nv.name;
-      });
+      auto i =
+          std::find_if(std::begin(config.headers), std::end(config.headers),
+                       [](const Header &nv) {
+                         return ":authority" == nv.name || "host" == nv.name;
+                       });
       if (i != std::end(config.headers)) {
         host_string = (*i).value.c_str();
       } else {
@@ -808,27 +813,42 @@ int HttpClient::on_upgrade_connect() {
       base64::encode(std::begin(settings_payload),
                      std::begin(settings_payload) + settings_payloadlen);
   util::to_token68(token68);
+
   std::string req;
   if (reqvec[0]->data_prd) {
     // If the request contains upload data, use OPTIONS * to upgrade
     req = "OPTIONS *";
   } else {
-    req = "GET ";
+    auto meth = std::find_if(
+        std::begin(config.headers), std::end(config.headers),
+        [](const Header &kv) { return util::streq_l(":method", kv.name); });
+
+    if (meth == std::end(config.headers)) {
+      req = "GET ";
+      reqvec[0]->method = "GET";
+    } else {
+      req = (*meth).value;
+      req += " ";
+      reqvec[0]->method = (*meth).value;
+    }
     req += reqvec[0]->make_reqpath();
   }
 
-  auto headers = Headers{{"Host", hostport},
-                         {"Connection", "Upgrade, HTTP2-Settings"},
-                         {"Upgrade", NGHTTP2_CLEARTEXT_PROTO_VERSION_ID},
-                         {"HTTP2-Settings", token68},
-                         {"Accept", "*/*"},
-                         {"User-Agent", "nghttp2/" NGHTTP2_VERSION}};
+  auto headers = Headers{{"host", hostport},
+                         {"connection", "Upgrade, HTTP2-Settings"},
+                         {"upgrade", NGHTTP2_CLEARTEXT_PROTO_VERSION_ID},
+                         {"http2-settings", token68},
+                         {"accept", "*/*"},
+                         {"user-agent", "nghttp2/" NGHTTP2_VERSION}};
   auto initial_headerslen = headers.size();
 
   for (auto &kv : config.headers) {
     size_t i;
+    if (kv.name.empty() || kv.name[0] == ':') {
+      continue;
+    }
     for (i = 0; i < initial_headerslen; ++i) {
-      if (util::strieq(kv.name, headers[i].name)) {
+      if (kv.name == headers[i].name) {
         headers[i].value = kv.value;
         break;
       }
@@ -836,9 +856,7 @@ int HttpClient::on_upgrade_connect() {
     if (i < initial_headerslen) {
       continue;
     }
-    if (kv.name.size() != 0 && kv.name[0] != ':') {
-      headers.emplace_back(kv.name, kv.value, kv.no_index);
-    }
+    headers.emplace_back(kv.name, kv.value, kv.no_index);
   }
 
   req += " HTTP/1.1\r\n";
@@ -858,9 +876,10 @@ int HttpClient::on_upgrade_connect() {
     std::cout << " HTTP Upgrade request\n" << req << std::endl;
   }
 
-  // record request time if this is GET request
   if (!reqvec[0]->data_prd) {
+    // record request time if this is a part of real request.
     reqvec[0]->record_request_start_time();
+    reqvec[0]->req_nva = std::move(headers);
   }
 
   on_writefn = &HttpClient::noop;
@@ -979,8 +998,12 @@ int HttpClient::connection_made() {
     if (!reqvec[0]->data_prd) {
       stream_user_data = reqvec[0].get();
     }
-    rv = nghttp2_session_upgrade(session, settings_payload.data(),
-                                 settings_payloadlen, stream_user_data);
+    // If HEAD is used, that is only when user specified it with -H
+    // option.
+    auto head_request = stream_user_data && stream_user_data->method == "HEAD";
+    rv = nghttp2_session_upgrade2(session, settings_payload.data(),
+                                  settings_payloadlen, head_request,
+                                  stream_user_data);
     if (rv != 0) {
       std::cerr << "[ERROR] nghttp2_session_upgrade() returned error: "
                 << nghttp2_strerror(rv) << std::endl;
@@ -1378,13 +1401,6 @@ void HttpClient::output_har(FILE *outfile) {
     auto request = json_object();
     json_object_set_new(entry, "request", request);
 
-    auto method_ptr = http2::get_header(req->req_nva, ":method");
-
-    const char *method = "GET";
-    if (method_ptr) {
-      method = (*method_ptr).value.c_str();
-    }
-
     auto req_headers = json_array();
     json_object_set_new(request, "headers", req_headers);
 
@@ -1396,7 +1412,7 @@ void HttpClient::output_har(FILE *outfile) {
       json_object_set_new(hd, "value", json_string(nv.value.c_str()));
     }
 
-    json_object_set_new(request, "method", json_string(method));
+    json_object_set_new(request, "method", json_string(req->method.c_str()));
     json_object_set_new(request, "url", json_string(req->uri.c_str()));
     json_object_set_new(request, "httpVersion", json_string("HTTP/2.0"));
     json_object_set_new(request, "cookies", json_array());
@@ -1917,12 +1933,12 @@ void print_stats(const HttpClient &client) {
 
   std::sort(std::begin(reqs), std::end(reqs),
             [](const Request *lhs, const Request *rhs) {
-    const auto &ltiming = lhs->timing;
-    const auto &rtiming = rhs->timing;
-    return ltiming.response_end_time < rtiming.response_end_time ||
-           (ltiming.response_end_time == rtiming.response_end_time &&
-            ltiming.request_start_time < rtiming.request_start_time);
-  });
+              const auto &ltiming = lhs->timing;
+              const auto &rtiming = rhs->timing;
+              return ltiming.response_end_time < rtiming.response_end_time ||
+                     (ltiming.response_end_time == rtiming.response_end_time &&
+                      ltiming.request_start_time < rtiming.request_start_time);
+            });
 
   std::cout << R"(
 Request timing:
@@ -2011,7 +2027,8 @@ namespace {
 int communicate(
     const std::string &scheme, const std::string &host, uint16_t port,
     std::vector<std::tuple<std::string, nghttp2_data_provider *, int64_t>>
-        requests, const nghttp2_session_callbacks *callbacks) {
+        requests,
+    const nghttp2_session_callbacks *callbacks) {
   int result = 0;
   auto loop = EV_DEFAULT;
   SSL_CTX *ssl_ctx = nullptr;
@@ -2382,7 +2399,7 @@ Options:
               Discard downloaded data.
   -O, --remote-name
               Save  download  data  in  the  current  directory.   The
-              filename is  dereived from URI.   If URI ends  with '/',
+              filename is  derived from  URI.  If  URI ends  with '/',
               'index.html'  is used  as a  filename.  Not  implemented
               yet.
   -t, --timeout=<DURATION>

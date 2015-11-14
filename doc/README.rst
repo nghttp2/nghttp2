@@ -22,7 +22,7 @@ starts with ``/**``. In other words, it only processes the comment
 block starting ``/**``. The comment block must end with ``*/``. The
 ``mkapiref.py`` requires that which type of the object this comment
 block refers to.  To specify the type of the object, the next line
-must contain the so-caled action keyword.  Currently, the following
+must contain the so-called action keyword.  Currently, the following
 action keywords are supported: ``@function``, ``@functypedef``,
 ``@enum``, ``@struct`` and ``@union``. The following sections
 describes each action keyword.

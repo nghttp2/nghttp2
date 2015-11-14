@@ -220,7 +220,7 @@ std::string quote_string(const std::string &target);
 
 std::string format_hex(const unsigned char *s, size_t len);
 
-template <size_t N> std::string format_hex(const unsigned char (&s)[N]) {
+template <size_t N> std::string format_hex(const unsigned char(&s)[N]) {
   return format_hex(s, N);
 }
 
@@ -366,11 +366,11 @@ inline bool strieq(const char *a, const std::string &b) {
 }
 
 template <typename InputIt, size_t N>
-bool strieq_l(const char (&a)[N], InputIt b, size_t blen) {
+bool strieq_l(const char(&a)[N], InputIt b, size_t blen) {
   return strieq(a, N - 1, b, blen);
 }
 
-template <size_t N> bool strieq_l(const char (&a)[N], const std::string &b) {
+template <size_t N> bool strieq_l(const char(&a)[N], const std::string &b) {
   return strieq(a, N - 1, std::begin(b), b.size());
 }
 
@@ -400,8 +400,12 @@ inline bool streq(const char *a, const char *b) {
 }
 
 template <typename InputIt, size_t N>
-bool streq_l(const char (&a)[N], InputIt b, size_t blen) {
+bool streq_l(const char(&a)[N], InputIt b, size_t blen) {
   return streq(a, N - 1, b, blen);
+}
+
+template <size_t N> bool streq_l(const char(&a)[N], const std::string &b) {
+  return streq(a, N - 1, std::begin(b), b.size());
 }
 
 bool strifind(const char *a, const char *b);

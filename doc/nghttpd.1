@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPD" "1" "October 25, 2015" "1.4.0" "nghttp2"
+.TH "NGHTTPD" "1" "November 12, 2015" "1.4.1-DEV" "nghttp2"
 .SH NAME
 nghttpd \- HTTP/2 server
 .
@@ -169,6 +169,14 @@ are used.
 .TP
 .B \-\-echo\-upload
 Send back uploaded content if method is POST or PUT.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-mime\-types\-file=<PATH>
+Path  to file  that contains  MIME media  types and  the
+extensions that represent them.
+.sp
+Default: \fB/etc/mime.types\fP
 .UNINDENT
 .INDENT 0.0
 .TP

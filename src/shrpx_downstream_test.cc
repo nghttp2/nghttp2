@@ -108,13 +108,29 @@ void test_downstream_crumble_request_cookie(void) {
       reinterpret_cast<const uint8_t *>(val), strlen(val), true, -1);
   d.add_request_header("cookie", ";delta");
   d.add_request_header("cookie", "echo");
-  auto cookies = d.crumble_request_cookie();
+
+  std::vector<nghttp2_nv> nva;
+  d.crumble_request_cookie(nva);
+
+  auto num_cookies = d.count_crumble_request_cookie();
+
+  CU_ASSERT(5 == nva.size());
+  CU_ASSERT(5 == num_cookies);
+
+  Headers cookies;
+  std::transform(std::begin(nva), std::end(nva), std::back_inserter(cookies),
+                 [](const nghttp2_nv &nv) {
+                   return Header(std::string(nv.name, nv.name + nv.namelen),
+                                 std::string(nv.value, nv.value + nv.valuelen),
+                                 nv.flags & NGHTTP2_NV_FLAG_NO_INDEX);
+                 });
 
   Headers ans = {{"cookie", "alpha"},
                  {"cookie", "bravo"},
                  {"cookie", "charlie"},
                  {"cookie", "delta"},
                  {"cookie", "echo"}};
+
   CU_ASSERT(ans == cookies);
   CU_ASSERT(cookies[0].no_index);
   CU_ASSERT(cookies[1].no_index);

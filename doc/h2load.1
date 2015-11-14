@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "H2LOAD" "1" "October 25, 2015" "1.4.0" "nghttp2"
+.TH "H2LOAD" "1" "November 12, 2015" "1.4.1-DEV" "nghttp2"
 .SH NAME
 h2load \- HTTP/2 benchmarking tool
 .
@@ -288,14 +288,18 @@ The number of status code h2load received.
 .TP
 .B total
 The number of bytes received from the server "on the wire".  If
-requests were made via TLS, this value is the number of decrpyted
+requests were made via TLS, this value is the number of decrypted
 bytes.
 .TP
 .B headers
-The number of response header bytes from the server without
-decompression.  For HTTP/2, this is the sum of the payload of
-HEADERS frame.  For SPDY, this is the sum of the payload of
-SYN_REPLY frame.
+The  number  of response  header  bytes  from the  server  without
+decompression.  The  \fBspace savings\fP shows efficiency  of header
+compression.  Let \fBdecompressed(headers)\fP to the number of bytes
+used for header fields after decompression.  The \fBspace savings\fP
+is calculated  by (1 \- \fBheaders\fP  / \fBdecompressed(headers)\fP) *
+100.  For HTTP/1.1, this is usually  0.00%, since it does not have
+header compression.  For HTTP/2 and SPDY, it shows some insightful
+numbers.
 .TP
 .B data
 The number of response body bytes received from the server.

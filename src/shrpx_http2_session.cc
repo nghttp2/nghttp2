@@ -553,8 +553,8 @@ void Http2Session::add_downstream_connection(Http2DownstreamConnection *dconn) {
   dconns_.append(dconn);
 }
 
-void
-Http2Session::remove_downstream_connection(Http2DownstreamConnection *dconn) {
+void Http2Session::remove_downstream_connection(
+    Http2DownstreamConnection *dconn) {
   dconns_.remove(dconn);
   dconn->detach_stream_data();
 }
@@ -1569,17 +1569,17 @@ int Http2Session::connected() {
 
   conn_.rlimit.startw();
 
-  if (conn_.tls.ssl) {
-    read_ = &Http2Session::tls_handshake;
-    write_ = &Http2Session::tls_handshake;
-
-    return do_write();
-  }
-
   read_ = &Http2Session::read_clear;
   write_ = &Http2Session::write_clear;
 
   if (state_ == PROXY_CONNECTING) {
+    return do_write();
+  }
+
+  if (conn_.tls.ssl) {
+    read_ = &Http2Session::tls_handshake;
+    write_ = &Http2Session::tls_handshake;
+
     return do_write();
   }
 

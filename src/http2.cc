@@ -132,6 +132,108 @@ std::string get_status_string(unsigned int status_code) {
   }
 }
 
+const char *stringify_status(unsigned int status_code) {
+  switch (status_code) {
+  case 100:
+    return "100";
+  case 101:
+    return "101";
+  case 200:
+    return "200";
+  case 201:
+    return "201";
+  case 202:
+    return "202";
+  case 203:
+    return "203";
+  case 204:
+    return "204";
+  case 205:
+    return "205";
+  case 206:
+    return "206";
+  case 300:
+    return "300";
+  case 301:
+    return "301";
+  case 302:
+    return "302";
+  case 303:
+    return "303";
+  case 304:
+    return "304";
+  case 305:
+    return "305";
+  // case 306: return "306";
+  case 307:
+    return "307";
+  case 308:
+    return "308";
+  case 400:
+    return "400";
+  case 401:
+    return "401";
+  case 402:
+    return "402";
+  case 403:
+    return "403";
+  case 404:
+    return "404";
+  case 405:
+    return "405";
+  case 406:
+    return "406";
+  case 407:
+    return "407";
+  case 408:
+    return "408";
+  case 409:
+    return "409";
+  case 410:
+    return "410";
+  case 411:
+    return "411";
+  case 412:
+    return "412";
+  case 413:
+    return "413";
+  case 414:
+    return "414";
+  case 415:
+    return "415";
+  case 416:
+    return "416";
+  case 417:
+    return "417";
+  case 421:
+    return "421";
+  case 426:
+    return "426";
+  case 428:
+    return "428";
+  case 429:
+    return "429";
+  case 431:
+    return "431";
+  case 500:
+    return "500";
+  case 501:
+    return "501";
+  case 502:
+    return "502";
+  case 503:
+    return "503";
+  case 504:
+    return "504";
+  case 505:
+    return "505";
+  case 511:
+    return "511";
+  default:
+    return nullptr;
+  }
+}
+
 void capitalize(DefaultMemchunks *buf, const std::string &s) {
   buf->append(util::upcase(s[0]));
   for (size_t i = 1; i < s.size(); ++i) {
@@ -207,17 +309,34 @@ bool non_empty_value(const Headers::value_type *nv) {
   return nv && !nv->value.empty();
 }
 
-nghttp2_nv make_nv(const std::string &name, const std::string &value,
-                   bool no_index) {
+namespace {
+nghttp2_nv make_nv_internal(const std::string &name, const std::string &value,
+                            bool no_index, uint8_t nv_flags) {
   uint8_t flags;
 
-  flags = no_index ? NGHTTP2_NV_FLAG_NO_INDEX : NGHTTP2_NV_FLAG_NONE;
+  flags =
+      nv_flags | (no_index ? NGHTTP2_NV_FLAG_NO_INDEX : NGHTTP2_NV_FLAG_NONE);
 
   return {(uint8_t *)name.c_str(), (uint8_t *)value.c_str(), name.size(),
           value.size(), flags};
 }
+} // namespace
 
-void copy_headers_to_nva(std::vector<nghttp2_nv> &nva, const Headers &headers) {
+nghttp2_nv make_nv(const std::string &name, const std::string &value,
+                   bool no_index) {
+  return make_nv_internal(name, value, no_index, NGHTTP2_NV_FLAG_NONE);
+}
+
+nghttp2_nv make_nv_nocopy(const std::string &name, const std::string &value,
+                          bool no_index) {
+  return make_nv_internal(name, value, no_index,
+                          NGHTTP2_NV_FLAG_NO_COPY_NAME |
+                              NGHTTP2_NV_FLAG_NO_COPY_VALUE);
+}
+
+namespace {
+void copy_headers_to_nva_internal(std::vector<nghttp2_nv> &nva,
+                                  const Headers &headers, uint8_t nv_flags) {
   for (auto &kv : headers) {
     if (kv.name.empty() || kv.name[0] == ':') {
       continue;
@@ -238,8 +357,19 @@ void copy_headers_to_nva(std::vector<nghttp2_nv> &nva, const Headers &headers) {
     case HD_X_FORWARDED_PROTO:
       continue;
     }
-    nva.push_back(make_nv(kv.name, kv.value, kv.no_index));
+    nva.push_back(make_nv_internal(kv.name, kv.value, kv.no_index, nv_flags));
   }
+}
+} // namespace
+
+void copy_headers_to_nva(std::vector<nghttp2_nv> &nva, const Headers &headers) {
+  copy_headers_to_nva_internal(nva, headers, NGHTTP2_NV_FLAG_NONE);
+}
+
+void copy_headers_to_nva_nocopy(std::vector<nghttp2_nv> &nva,
+                                const Headers &headers) {
+  copy_headers_to_nva_internal(nva, headers, NGHTTP2_NV_FLAG_NO_COPY_NAME |
+                                                 NGHTTP2_NV_FLAG_NO_COPY_VALUE);
 }
 
 void build_http1_headers_from_headers(DefaultMemchunks *buf,

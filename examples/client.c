@@ -459,12 +459,11 @@ static void ctl_poll(struct pollfd *pollfd, struct Connection *connection) {
 static void submit_request(struct Connection *connection, struct Request *req) {
   int32_t stream_id;
   /* Make sure that the last item is NULL */
-  const nghttp2_nv nva[] = {MAKE_NV(":method", "GET"),
-                            MAKE_NV_CS(":path", req->path),
-                            MAKE_NV(":scheme", "https"),
-                            MAKE_NV_CS(":authority", req->hostport),
-                            MAKE_NV("accept", "*/*"),
-                            MAKE_NV("user-agent", "nghttp2/" NGHTTP2_VERSION)};
+  const nghttp2_nv nva[] = {
+      MAKE_NV(":method", "GET"), MAKE_NV_CS(":path", req->path),
+      MAKE_NV(":scheme", "https"), MAKE_NV_CS(":authority", req->hostport),
+      MAKE_NV("accept", "*/*"),
+      MAKE_NV("user-agent", "nghttp2/" NGHTTP2_VERSION)};
 
   stream_id = nghttp2_submit_request(connection->session, NULL, nva,
                                      sizeof(nva) / sizeof(nva[0]), NULL, req);

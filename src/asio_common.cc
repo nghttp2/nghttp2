@@ -48,6 +48,31 @@ boost::system::error_code make_error_code(nghttp2_error ev) {
   return boost::system::error_code(static_cast<int>(ev), nghttp2_category());
 }
 
+class nghttp2_asio_category_impl : public boost::system::error_category {
+public:
+  const char *name() const noexcept { return "nghttp2_asio"; }
+  std::string message(int ev) const {
+    switch (ev) {
+    case NGHTTP2_ASIO_ERR_NO_ERROR:
+      return "no error";
+    case NGHTTP2_ASIO_ERR_TLS_NO_APP_PROTO_NEGOTIATED:
+      return "tls: no application protocol negotiated";
+    default:
+      return "unknown";
+    }
+  }
+};
+
+const boost::system::error_category &nghttp2_asio_category() noexcept {
+  static nghttp2_asio_category_impl cat;
+  return cat;
+}
+
+boost::system::error_code make_error_code(nghttp2_asio_error ev) {
+  return boost::system::error_code(static_cast<int>(ev),
+                                   nghttp2_asio_category());
+}
+
 generator_cb string_generator(std::string data) {
   auto strio = std::make_shared<std::pair<std::string, size_t>>(std::move(data),
                                                                 data.size());
@@ -65,8 +90,9 @@ generator_cb string_generator(std::string data) {
 }
 
 generator_cb deferred_generator() {
-  return [](uint8_t *buf, size_t len,
-            uint32_t *data_flags) { return NGHTTP2_ERR_DEFERRED; };
+  return [](uint8_t *buf, size_t len, uint32_t *data_flags) {
+    return NGHTTP2_ERR_DEFERRED;
+  };
 }
 
 template <typename F, typename... T>
@@ -89,20 +115,20 @@ generator_cb file_generator_from_fd(int fd) {
 
   return [fd, d](uint8_t *buf, size_t len, uint32_t *data_flags)
       -> generator_cb::result_type {
-    ssize_t n;
-    while ((n = read(fd, buf, len)) == -1 && errno == EINTR)
-      ;
+        ssize_t n;
+        while ((n = read(fd, buf, len)) == -1 && errno == EINTR)
+          ;
 
-    if (n == -1) {
-      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
-    }
+        if (n == -1) {
+          return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+        }
 
-    if (n == 0) {
-      *data_flags |= NGHTTP2_DATA_FLAG_EOF;
-    }
+        if (n == 0) {
+          *data_flags |= NGHTTP2_DATA_FLAG_EOF;
+        }
 
-    return n;
-  };
+        return n;
+      };
 }
 
 bool check_path(const std::string &path) { return util::check_path(path); }
@@ -142,6 +168,24 @@ boost::system::error_code host_service_from_uri(boost::system::error_code &ec,
   }
 
   return ec;
+}
+
+bool tls_h2_negotiated(ssl_socket &socket) {
+  auto ssl = socket.native_handle();
+
+  const unsigned char *next_proto = nullptr;
+  unsigned int next_proto_len = 0;
+
+  SSL_get0_next_proto_negotiated(ssl, &next_proto, &next_proto_len);
+  if (next_proto == nullptr) {
+    SSL_get0_alpn_selected(ssl, &next_proto, &next_proto_len);
+  }
+
+  if (next_proto == nullptr) {
+    return false;
+  }
+
+  return util::check_h2_is_selected(next_proto, next_proto_len);
 }
 
 } // namespace asio_http2

@@ -433,15 +433,15 @@ std::string format_hex(const unsigned char *s, size_t len) {
 void to_token68(std::string &base64str) {
   std::transform(std::begin(base64str), std::end(base64str),
                  std::begin(base64str), [](char c) {
-    switch (c) {
-    case '+':
-      return '-';
-    case '/':
-      return '_';
-    default:
-      return c;
-    }
-  });
+                   switch (c) {
+                   case '+':
+                     return '-';
+                   case '/':
+                     return '_';
+                   default:
+                     return c;
+                   }
+                 });
   base64str.erase(std::find(std::begin(base64str), std::end(base64str), '='),
                   std::end(base64str));
 }
@@ -449,15 +449,15 @@ void to_token68(std::string &base64str) {
 void to_base64(std::string &token68str) {
   std::transform(std::begin(token68str), std::end(token68str),
                  std::begin(token68str), [](char c) {
-    switch (c) {
-    case '-':
-      return '+';
-    case '_':
-      return '/';
-    default:
-      return c;
-    }
-  });
+                   switch (c) {
+                   case '-':
+                     return '+';
+                   case '_':
+                     return '/';
+                   default:
+                     return c;
+                   }
+                 });
   if (token68str.size() & 0x3) {
     token68str.append(4 - (token68str.size() & 0x3), '=');
   }

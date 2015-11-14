@@ -45,9 +45,7 @@ static string_entry *string_entry_new(const char *s) {
   return ent;
 }
 
-static void string_entry_del(string_entry *ent) {
-  free(ent);
-}
+static void string_entry_del(string_entry *ent) { free(ent); }
 
 static int pq_less(const void *lhs, const void *rhs) {
   return strcmp(((string_entry *)lhs)->s, ((string_entry *)rhs)->s) < 0;

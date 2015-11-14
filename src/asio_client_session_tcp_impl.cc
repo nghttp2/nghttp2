@@ -41,13 +41,13 @@ void session_tcp_impl::start_connect(tcp::resolver::iterator endpoint_it) {
   boost::asio::async_connect(socket_, endpoint_it,
                              [this](const boost::system::error_code &ec,
                                     tcp::resolver::iterator endpoint_it) {
-    if (ec) {
-      not_connected(ec);
-      return;
-    }
+                               if (ec) {
+                                 not_connected(ec);
+                                 return;
+                               }
 
-    connected(endpoint_it);
-  });
+                               connected(endpoint_it);
+                             });
 }
 
 tcp::socket &session_tcp_impl::socket() { return socket_; }

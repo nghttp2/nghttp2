@@ -132,6 +132,13 @@ OPTIONS
 
     Send back uploaded content if method is POST or PUT.
 
+.. option:: --mime-types-file=<PATH>
+
+    Path  to file  that contains  MIME media  types and  the
+    extensions that represent them.
+
+    Default: ``/etc/mime.types``
+
 .. option:: --version
 
     Display version information and exit.
