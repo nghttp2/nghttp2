@@ -87,6 +87,14 @@ public:
   virtual void response_drain(size_t n);
   virtual bool response_empty() const;
 
+  virtual Downstream *on_downstream_push_promise(Downstream *downstream,
+                                                 int32_t promised_stream_id);
+  virtual int
+  on_downstream_push_promise_complete(Downstream *downstream,
+                                      Downstream *promised_downstream);
+  virtual bool push_enabled() const;
+  virtual void cancel_premature_downstream(Downstream *promised_downstream);
+
   bool get_flow_control() const;
   // Perform HTTP/2 upgrade from |upstream|. On success, this object
   // takes ownership of the |upstream|. This function returns 0 if it

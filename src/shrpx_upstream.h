@@ -76,6 +76,28 @@ public:
   virtual int response_riovec(struct iovec *iov, int iovcnt) const = 0;
   virtual void response_drain(size_t n) = 0;
   virtual bool response_empty() const = 0;
+
+  // Called when PUSH_PROMISE was started in downstream.  The
+  // associated downstream is given as |downstream|.  The promised
+  // stream ID is given as |promised_stream_id|.  If upstream supports
+  // server push for the corresponding upstream connection, it should
+  // return Downstream object for pushed stream.  Otherwise, returns
+  // nullptr.
+  virtual Downstream *
+  on_downstream_push_promise(Downstream *downstream,
+                             int32_t promised_stream_id) = 0;
+  // Called when PUSH_PROMISE frame was completely received in
+  // downstream.  The associated downstream is given as |downstream|.
+  // This function returns 0 if it succeeds, or -1.
+  virtual int
+  on_downstream_push_promise_complete(Downstream *downstream,
+                                      Downstream *promised_downstream) = 0;
+  // Returns true if server push is enabled in upstream connection.
+  virtual bool push_enabled() const = 0;
+  // Cancels promised downstream.  This function is called when
+  // PUSH_PROMISE for |promised_downstream| is not submitted to
+  // upstream session.
+  virtual void cancel_premature_downstream(Downstream *promised_downstream) = 0;
 };
 
 } // namespace shrpx

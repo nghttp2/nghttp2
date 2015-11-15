@@ -1480,9 +1480,14 @@ HTTP/2 and SPDY:
               meant for debugging purpose  and not intended to enhance
               protocol security.
   --no-server-push
-              Disable  HTTP/2  server  push.    Server  push  is  only
-              supported  by default  mode and  HTTP/2 frontend.   SPDY
-              frontend does not support server push.
+              Disable HTTP/2 server push.  Server push is supported by
+              default mode and HTTP/2  frontend via Link header field.
+              It is  also supported if  both frontend and  backend are
+              HTTP/2 (which implies  --http2-bridge or --client mode).
+              In  this  case,  server  push from  backend  session  is
+              relayed  to frontend,  and server  push via  Link header
+              field is  also supported.   HTTP SPDY frontend  does not
+              support server push.
 
 Mode:
   (default mode)

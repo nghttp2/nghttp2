@@ -120,7 +120,8 @@ bool remove_host_entry_if_empty(const DownstreamQueue::HostEntry &ent,
 }
 } // namespace
 
-Downstream *DownstreamQueue::remove_and_get_blocked(Downstream *downstream) {
+Downstream *DownstreamQueue::remove_and_get_blocked(Downstream *downstream,
+                                                    bool next_blocked) {
   // Delete downstream when this function returns.
   auto delptr = std::unique_ptr<Downstream>(downstream);
 
@@ -144,7 +145,7 @@ Downstream *DownstreamQueue::remove_and_get_blocked(Downstream *downstream) {
     return nullptr;
   }
 
-  if (ent.num_active >= conn_max_per_host_) {
+  if (!next_blocked || ent.num_active >= conn_max_per_host_) {
     return nullptr;
   }
 
