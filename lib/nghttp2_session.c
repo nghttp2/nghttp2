@@ -1415,6 +1415,9 @@ static int session_predicate_response_headers_send(nghttp2_session *session,
  *   RST_STREAM was queued for this stream.
  * NGHTTP2_ERR_SESSION_CLOSING
  *   This session is closing.
+ * NGHTTP2_ERR_START_STREAM_NOT_ALLOWED
+ *   New stream cannot be created because GOAWAY is already sent or
+ *   received.
  */
 static int
 session_predicate_push_response_headers_send(nghttp2_session *session,
@@ -1431,6 +1434,9 @@ session_predicate_push_response_headers_send(nghttp2_session *session,
   }
   if (stream->state == NGHTTP2_STREAM_CLOSING) {
     return NGHTTP2_ERR_STREAM_CLOSING;
+  }
+  if (session->goaway_flags & NGHTTP2_GOAWAY_RECV) {
+    return NGHTTP2_ERR_START_STREAM_NOT_ALLOWED;
   }
   return 0;
 }
@@ -1795,40 +1801,41 @@ static int session_prep_frame(nghttp2_session *session,
 
         stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
 
-        if (session_predicate_push_response_headers_send(session, stream) ==
-            0) {
-          frame->headers.cat = NGHTTP2_HCAT_PUSH_RESPONSE;
+        if (stream && stream->state == NGHTTP2_STREAM_RESERVED) {
+          rv = session_predicate_push_response_headers_send(session, stream);
+          if (rv == 0) {
+            frame->headers.cat = NGHTTP2_HCAT_PUSH_RESPONSE;
 
-          if (aux_data->stream_user_data) {
-            stream->stream_user_data = aux_data->stream_user_data;
+            if (aux_data->stream_user_data) {
+              stream->stream_user_data = aux_data->stream_user_data;
+            }
           }
         } else if (session_predicate_response_headers_send(session, stream) ==
                    0) {
           frame->headers.cat = NGHTTP2_HCAT_RESPONSE;
+          rv = 0;
         } else {
           frame->headers.cat = NGHTTP2_HCAT_HEADERS;
 
           rv = session_predicate_headers_send(session, stream);
+        }
 
-          if (rv != 0) {
-            // If stream was alreay closed,
-            // nghttp2_session_get_stream() returns NULL, but item is
-            // still attached to the stream.  Search stream including
-            // closed again.
-            stream =
-                nghttp2_session_get_stream_raw(session, frame->hd.stream_id);
-            if (stream && stream->item == item) {
-              int rv2;
+        if (rv != 0) {
+          // If stream was alreay closed, nghttp2_session_get_stream()
+          // returns NULL, but item is still attached to the stream.
+          // Search stream including closed again.
+          stream = nghttp2_session_get_stream_raw(session, frame->hd.stream_id);
+          if (stream && stream->item == item) {
+            int rv2;
 
-              rv2 = nghttp2_stream_detach_item(stream);
+            rv2 = nghttp2_stream_detach_item(stream);
 
-              if (nghttp2_is_fatal(rv2)) {
-                return rv2;
-              }
+            if (nghttp2_is_fatal(rv2)) {
+              return rv2;
             }
-
-            return rv;
           }
+
+          return rv;
         }
       }
 
