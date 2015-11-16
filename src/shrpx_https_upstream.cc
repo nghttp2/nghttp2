@@ -1191,4 +1191,20 @@ bool HttpsUpstream::response_empty() const {
   return buf->rleft() == 0;
 }
 
+Downstream *
+HttpsUpstream::on_downstream_push_promise(Downstream *downstream,
+                                          int32_t promised_stream_id) {
+  return nullptr;
+}
+
+int HttpsUpstream::on_downstream_push_promise_complete(
+    Downstream *downstream, Downstream *promised_downstream) {
+  return -1;
+}
+
+bool HttpsUpstream::push_enabled() const { return false; }
+
+void HttpsUpstream::cancel_premature_downstream(
+    Downstream *promised_downstream) {}
+
 } // namespace shrpx

@@ -543,6 +543,13 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
     return 0;
   case NGHTTP2_PUSH_PROMISE: {
     auto promised_stream_id = frame->push_promise.promised_stream_id;
+
+    if (nghttp2_session_get_stream_user_data(session, promised_stream_id)) {
+      // In case of push from backend, downstream object was already
+      // created.
+      return 0;
+    }
+
     auto downstream = make_unique<Downstream>(upstream, handler->get_mcpool(),
                                               promised_stream_id, 0);
 
@@ -1712,6 +1719,7 @@ int Http2Upstream::on_downstream_reset(bool no_retry) {
     }
 
     if (!downstream->request_submission_ready()) {
+      // pushed stream is handled here
       rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
       downstream->pop_downstream_connection();
       continue;
@@ -1853,15 +1861,18 @@ int Http2Upstream::submit_push_promise(const std::string &scheme,
   return 0;
 }
 
+bool Http2Upstream::push_enabled() const {
+  return !(get_config()->no_server_push ||
+           nghttp2_session_get_remote_settings(
+               session_, NGHTTP2_SETTINGS_ENABLE_PUSH) == 0 ||
+           get_config()->http2_proxy || get_config()->client_proxy);
+}
+
 int Http2Upstream::initiate_push(Downstream *downstream, const char *uri,
                                  size_t len) {
   int rv;
 
-  if (len == 0 || get_config()->no_server_push ||
-      nghttp2_session_get_remote_settings(session_,
-                                          NGHTTP2_SETTINGS_ENABLE_PUSH) == 0 ||
-      get_config()->http2_proxy || get_config()->client_proxy ||
-      (downstream->get_stream_id() % 2) == 0) {
+  if (len == 0 || !push_enabled() || (downstream->get_stream_id() % 2)) {
     return 0;
   }
 
@@ -1915,5 +1926,59 @@ void Http2Upstream::response_drain(size_t n) { wb_.drain(n); }
 bool Http2Upstream::response_empty() const { return wb_.rleft() == 0; }
 
 Http2Upstream::WriteBuffer *Http2Upstream::get_response_buf() { return &wb_; }
+
+Downstream *
+Http2Upstream::on_downstream_push_promise(Downstream *downstream,
+                                          int32_t promised_stream_id) {
+  // promised_stream_id is for backend HTTP/2 session, not for
+  // frontend.
+  auto promised_downstream =
+      make_unique<Downstream>(this, handler_->get_mcpool(), 0, 0);
+  promised_downstream->set_downstream_stream_id(promised_stream_id);
+
+  promised_downstream->disable_upstream_rtimer();
+
+  promised_downstream->set_request_major(2);
+  promised_downstream->set_request_minor(0);
+
+  auto ptr = promised_downstream.get();
+  add_pending_downstream(std::move(promised_downstream));
+  downstream_queue_.mark_active(ptr);
+
+  return ptr;
+}
+
+int Http2Upstream::on_downstream_push_promise_complete(
+    Downstream *downstream, Downstream *promised_downstream) {
+  std::vector<nghttp2_nv> nva;
+
+  auto &headers = promised_downstream->get_request_headers();
+
+  nva.reserve(headers.size());
+
+  for (auto &kv : headers) {
+    nva.push_back(http2::make_nv_nocopy(kv.name, kv.value, kv.no_index));
+  }
+
+  auto promised_stream_id = nghttp2_submit_push_promise(
+      session_, NGHTTP2_FLAG_NONE, downstream->get_stream_id(), nva.data(),
+      nva.size(), promised_downstream);
+  if (promised_stream_id < 0) {
+    return -1;
+  }
+
+  promised_downstream->set_stream_id(promised_stream_id);
+
+  return 0;
+}
+
+void Http2Upstream::cancel_premature_downstream(
+    Downstream *promised_downstream) {
+  if (LOG_ENABLED(INFO)) {
+    ULOG(INFO, this) << "Remove premature promised stream "
+                     << promised_downstream;
+  }
+  downstream_queue_.remove_and_get_blocked(promised_downstream, false);
+}
 
 } // namespace shrpx

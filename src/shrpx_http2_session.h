@@ -156,6 +156,11 @@ public:
 
   size_t get_index() const;
 
+  int handle_downstream_push_promise(Downstream *downstream,
+                                     int32_t promised_stream_id);
+  int handle_downstream_push_promise_complete(Downstream *downstream,
+                                              Downstream *promised_downstream);
+
   enum {
     // Disconnected
     DISCONNECTED,

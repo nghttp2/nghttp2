@@ -1230,4 +1230,20 @@ bool SpdyUpstream::response_empty() const { return wb_.rleft() == 0; }
 
 SpdyUpstream::WriteBuffer *SpdyUpstream::get_response_buf() { return &wb_; }
 
+Downstream *
+SpdyUpstream::on_downstream_push_promise(Downstream *downstream,
+                                         int32_t promised_stream_id) {
+  return nullptr;
+}
+
+int SpdyUpstream::on_downstream_push_promise_complete(
+    Downstream *downstream, Downstream *promised_downstream) {
+  return -1;
+}
+
+bool SpdyUpstream::push_enabled() const { return false; }
+
+void SpdyUpstream::cancel_premature_downstream(
+    Downstream *promised_downstream) {}
+
 } // namespace shrpx
