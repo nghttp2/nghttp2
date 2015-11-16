@@ -1798,7 +1798,6 @@ int Http2Upstream::submit_push_promise(const std::string &scheme,
                                        const std::string &authority,
                                        const std::string &path,
                                        Downstream *downstream) {
-  int rv;
   std::vector<nghttp2_nv> nva;
   // 4 for :method, :scheme, :path and :authority
   nva.reserve(4 + downstream->get_request_headers().size());
@@ -1827,16 +1826,16 @@ int Http2Upstream::submit_push_promise(const std::string &scheme,
     }
   }
 
-  rv = nghttp2_submit_push_promise(session_, NGHTTP2_FLAG_NONE,
-                                   downstream->get_stream_id(), nva.data(),
-                                   nva.size(), nullptr);
+  auto promised_stream_id = nghttp2_submit_push_promise(
+      session_, NGHTTP2_FLAG_NONE, downstream->get_stream_id(), nva.data(),
+      nva.size(), nullptr);
 
-  if (rv < 0) {
+  if (promised_stream_id < 0) {
     if (LOG_ENABLED(INFO)) {
       ULOG(INFO, this) << "nghttp2_submit_push_promise() failed: "
-                       << nghttp2_strerror(rv);
+                       << nghttp2_strerror(promised_stream_id);
     }
-    if (nghttp2_is_fatal(rv)) {
+    if (nghttp2_is_fatal(promised_stream_id)) {
       return -1;
     }
     return 0;
@@ -1847,8 +1846,8 @@ int Http2Upstream::submit_push_promise(const std::string &scheme,
     for (auto &nv : nva) {
       ss << TTY_HTTP_HD << nv.name << TTY_RST << ": " << nv.value << "\n";
     }
-    ULOG(INFO, this) << "HTTP push request headers. promised_stream_id=" << rv
-                     << "\n" << ss.str();
+    ULOG(INFO, this) << "HTTP push request headers. promised_stream_id="
+                     << promised_stream_id << "\n" << ss.str();
   }
 
   return 0;
