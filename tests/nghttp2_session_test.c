@@ -2632,7 +2632,7 @@ void test_nghttp2_session_on_push_promise_received(void) {
   item = nghttp2_session_get_next_ob_item(session);
   CU_ASSERT(NGHTTP2_RST_STREAM == item->frame.hd.type);
   CU_ASSERT(6 == item->frame.hd.stream_id);
-  CU_ASSERT(NGHTTP2_REFUSED_STREAM == item->frame.rst_stream.error_code);
+  CU_ASSERT(NGHTTP2_CANCEL == item->frame.rst_stream.error_code);
   CU_ASSERT(0 == nghttp2_session_send(session));
 
   /* Attempt to PUSH_PROMISE against non-existent stream */
@@ -2806,7 +2806,7 @@ void test_nghttp2_session_on_push_promise_received(void) {
   item = nghttp2_session_get_next_ob_item(session);
 
   CU_ASSERT(NGHTTP2_RST_STREAM == item->frame.hd.type);
-  CU_ASSERT(NGHTTP2_REFUSED_STREAM == item->frame.rst_stream.error_code);
+  CU_ASSERT(NGHTTP2_CANCEL == item->frame.rst_stream.error_code);
 
   nghttp2_frame_push_promise_free(&frame.push_promise, mem);
   nghttp2_session_del(session);

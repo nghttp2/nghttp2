@@ -4196,9 +4196,8 @@ int nghttp2_session_on_push_promise_received(nghttp2_session *session,
             session, frame, NGHTTP2_ERR_PROTO, "PUSH_PROMISE: stream in idle");
       }
     }
-    rv = nghttp2_session_add_rst_stream(session,
-                                        frame->push_promise.promised_stream_id,
-                                        NGHTTP2_REFUSED_STREAM);
+    rv = nghttp2_session_add_rst_stream(
+        session, frame->push_promise.promised_stream_id, NGHTTP2_CANCEL);
     if (rv != 0) {
       return rv;
     }
