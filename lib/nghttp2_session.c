@@ -2200,16 +2200,19 @@ static int session_close_stream_on_goaway(nghttp2_session *session,
   nghttp2_stream *stream, *next_stream;
   nghttp2_close_stream_on_goaway_arg arg = {session, NULL, last_stream_id,
                                             incoming};
+  uint32_t error_code;
 
   rv = nghttp2_map_each(&session->streams, find_stream_on_goaway_func, &arg);
   assert(rv == 0);
+
+  error_code =
+      session->server && incoming ? NGHTTP2_REFUSED_STREAM : NGHTTP2_CANCEL;
 
   stream = arg.head;
   while (stream) {
     next_stream = stream->closed_next;
     stream->closed_next = NULL;
-    rv = nghttp2_session_close_stream(session, stream->stream_id,
-                                      NGHTTP2_REFUSED_STREAM);
+    rv = nghttp2_session_close_stream(session, stream->stream_id, error_code);
 
     /* stream may be deleted here */
 
