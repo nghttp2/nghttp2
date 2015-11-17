@@ -435,8 +435,7 @@ static int on_stream_close_callback(nghttp2_session *session _U_,
 }
 
 static ssize_t pack_extension_callback(nghttp2_session *session _U_,
-                                       uint8_t *flags _U_, uint8_t *buf,
-                                       size_t len _U_,
+                                       uint8_t *buf, size_t len _U_,
                                        const nghttp2_frame *frame,
                                        void *user_data _U_) {
   nghttp2_buf *p = frame->ext.payload;

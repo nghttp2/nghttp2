@@ -1747,11 +1747,9 @@ typedef int (*nghttp2_unpack_extension_callback)(nghttp2_session *session,
  * extension payload in its wire format.  The frame header will be
  * packed by library.  Application must pack payload only.
  * frame->ext.payload is the object passed to
- * `nghttp2_submit_extension()` as payload parameter.  The |*flags| is
- * initialized to the flags parameter passed in
- * `nghttp2_submit_extension()`.  Application can modify flags value
- * if it wants.  Application must pack extension payload to the |buf|
- * of its capacity |len| bytes.
+ * `nghttp2_submit_extension()` as payload parameter.  Application
+ * must pack extension payload to the |buf| of its capacity |len|
+ * bytes.
  *
  * The implementation of this function returns the number of bytes
  * written into |buf| when it succeeds.
@@ -1770,8 +1768,7 @@ typedef int (*nghttp2_unpack_extension_callback)(nghttp2_session *session,
  * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
  */
 typedef ssize_t (*nghttp2_pack_extension_callback)(nghttp2_session *session,
-                                                   uint8_t *flags, uint8_t *buf,
-                                                   size_t len,
+                                                   uint8_t *buf, size_t len,
                                                    const nghttp2_frame *frame,
                                                    void *user_data);
 
