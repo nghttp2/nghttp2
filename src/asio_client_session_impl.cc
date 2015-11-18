@@ -525,7 +525,7 @@ void session_impl::do_read() {
   read_socket([this](const boost::system::error_code &ec,
                      std::size_t bytes_transferred) {
     if (ec) {
-      if (ec.value() == boost::asio::error::operation_aborted) {
+      if (!should_stop()) {
         call_error_cb(ec);
         shutdown_socket();
       }
