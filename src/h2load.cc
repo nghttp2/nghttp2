@@ -1893,8 +1893,8 @@ int main(int argc, char **argv) {
   shared_nva.emplace_back("user-agent", user_agent);
 
   // list overridalbe headers
-  auto override_hdrs =
-      make_array<std::string>(":authority", ":host", ":method", ":scheme");
+  auto override_hdrs = make_array<std::string>(":authority", ":host", ":method",
+                                               ":scheme", "user-agent");
 
   for (auto &kv : config.custom_headers) {
     if (std::find(std::begin(override_hdrs), std::end(override_hdrs),
@@ -1912,20 +1912,44 @@ int main(int argc, char **argv) {
     }
   }
 
+  auto method_it =
+      std::find_if(std::begin(shared_nva), std::end(shared_nva),
+                   [](const Header &nv) { return nv.name == ":method"; });
+  assert(method_it != std::end(shared_nva));
+
+  config.h1reqs.reserve(reqlines.size());
+  config.nva.reserve(reqlines.size());
+  config.nv.reserve(reqlines.size());
+
   for (auto &req : reqlines) {
     // For HTTP/1.1
-    std::string h1req;
-    h1req = config.data_fd == -1 ? "GET" : "POST";
-    h1req += " " + req;
+    auto h1req = (*method_it).value;
+    h1req += " ";
+    h1req += req;
     h1req += " HTTP/1.1\r\n";
-    h1req += "Host: " + config.host + "\r\n";
-    h1req += "User-Agent: " + user_agent + "\r\n";
-    h1req += "Accept: */*\r\n";
+    for (auto &nv : shared_nva) {
+      if (nv.name == ":authority") {
+        h1req += "Host: ";
+        h1req += nv.value;
+        h1req += "\r\n";
+        continue;
+      }
+      if (nv.name[0] == ':') {
+        continue;
+      }
+      h1req += nv.name;
+      h1req += ": ";
+      h1req += nv.value;
+      h1req += "\r\n";
+    }
     h1req += "\r\n";
-    config.h1reqs.push_back(h1req);
+
+    config.h1reqs.push_back(std::move(h1req));
 
     // For nghttp2
     std::vector<nghttp2_nv> nva;
+    // 1 for :path
+    nva.reserve(1 + shared_nva.size());
 
     nva.push_back(http2::make_nv_ls(":path", req));
 
@@ -1937,6 +1961,8 @@ int main(int argc, char **argv) {
 
     // For spdylay
     std::vector<const char *> cva;
+    // 2 for :path and :version, 1 for terminal nullptr
+    cva.reserve(2 * (2 + shared_nva.size()) + 1);
 
     cva.push_back(":path");
     cva.push_back(req.c_str());
