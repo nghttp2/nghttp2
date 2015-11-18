@@ -83,14 +83,15 @@ struct Config {
 class Http2Handler;
 
 struct FileEntry {
+  // To close fd immediately when nothing refers to this entry, give 0
+  // to |usecount|.
   FileEntry(std::string path, int64_t length, int64_t mtime, int fd,
-            const std::string *content_type)
-      : path(std::move(path)), length(length), mtime(mtime), dlprev(nullptr),
-        dlnext(nullptr), content_type(content_type), fd(fd), usecount(1) {}
+            const std::string *content_type, int usecount = 1)
+      : path(std::move(path)), length(length), mtime(mtime),
+        content_type(content_type), fd(fd), usecount(usecount) {}
   std::string path;
   int64_t length;
   int64_t mtime;
-  FileEntry *dlprev, *dlnext;
   const std::string *content_type;
   int fd;
   int usecount;

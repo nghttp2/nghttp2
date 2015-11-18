@@ -175,6 +175,14 @@ namespace {
 void fill_callback(nghttp2_session_callbacks *callbacks, const Config *config);
 } // namespace
 
+namespace {
+constexpr ev_tstamp RELEASE_FD_TIMEOUT = 2.;
+} // namespace
+
+namespace {
+void release_fd_cb(struct ev_loop *loop, ev_timer *w, int revents);
+} // namespace
+
 class Sessions {
 public:
   Sessions(HttpServer *sv, struct ev_loop *loop, const Config *config,
@@ -185,15 +193,24 @@ public:
     nghttp2_session_callbacks_new(&callbacks_);
 
     fill_callback(callbacks_, config_);
+
+    ev_timer_init(&release_fd_timer_, release_fd_cb, 0., RELEASE_FD_TIMEOUT);
+    release_fd_timer_.data = this;
   }
   ~Sessions() {
+    ev_timer_stop(loop_, &release_fd_timer_);
     for (auto handler : handlers_) {
       delete handler;
     }
     nghttp2_session_callbacks_del(callbacks_);
   }
   void add_handler(Http2Handler *handler) { handlers_.insert(handler); }
-  void remove_handler(Http2Handler *handler) { handlers_.erase(handler); }
+  void remove_handler(Http2Handler *handler) {
+    handlers_.erase(handler);
+    if (handlers_.empty() && !fd_cache_.empty()) {
+      ev_timer_again(loop_, &release_fd_timer_);
+    }
+  }
   SSL_CTX *get_ssl_ctx() const { return ssl_ctx_; }
   SSL *ssl_session_new(int fd) {
     SSL *ssl = SSL_new(ssl_ctx_);
@@ -275,12 +292,33 @@ public:
       return;
     }
     auto &ent = (*i).second;
-    if (--ent.usecount == 0) {
+    if (ent.usecount == 0) {
+      // temporary fd, close it immediately
       close(ent.fd);
       fd_cache_.erase(i);
+
+      return;
+    }
+
+    --ent.usecount;
+
+    // We use timer to close file descriptor and delete the entry from
+    // cache.  The timer will be started when there is no handler.
+  }
+  void release_unused_fd() {
+    for (auto i = std::begin(fd_cache_); i != std::end(fd_cache_);) {
+      auto &ent = (*i).second;
+      if (ent.usecount != 0) {
+        ++i;
+        continue;
+      }
+
+      close(ent.fd);
+      i = fd_cache_.erase(i);
     }
   }
   const HttpServer *get_server() const { return sv_; }
+  bool handlers_empty() const { return handlers_.empty(); }
 
 private:
   std::set<Http2Handler *> handlers_;
@@ -291,10 +329,25 @@ private:
   const Config *config_;
   SSL_CTX *ssl_ctx_;
   nghttp2_session_callbacks *callbacks_;
+  ev_timer release_fd_timer_;
   int64_t next_session_id_;
   ev_tstamp tstamp_cached_;
   std::string cached_date_;
 };
+
+namespace {
+void release_fd_cb(struct ev_loop *loop, ev_timer *w, int revents) {
+  auto sessions = static_cast<Sessions *>(w->data);
+
+  ev_timer_stop(loop, w);
+
+  if (!sessions->handlers_empty()) {
+    return;
+  }
+
+  sessions->release_unused_fd();
+}
+} // namespace
 
 Stream::Stream(Http2Handler *handler, int32_t stream_id)
     : handler(handler), file_ent(nullptr), body_length(0), body_offset(0),
@@ -979,8 +1032,9 @@ bool prepare_upload_temp_store(Stream *stream, Http2Handler *hd) {
   unlink(tempfn);
   // Ordinary request never start with "echo:".  The length is 0 for
   // now.  We will update it when we get whole request body.
-  stream->file_ent = sessions->cache_fd(std::string("echo:") + tempfn,
-                                        FileEntry(tempfn, 0, 0, fd, nullptr));
+  auto path = std::string("echo:") + tempfn;
+  stream->file_ent =
+      sessions->cache_fd(path, FileEntry(path, 0, 0, fd, nullptr, 0));
   stream->echo_upload = true;
   return true;
 }
