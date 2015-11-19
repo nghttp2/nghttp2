@@ -166,6 +166,7 @@ static void stream_obq_remove(nghttp2_stream *stream) {
     stream->queued = 0;
     stream->cycle = 0;
     stream->descendant_last_cycle = 0;
+    stream->last_writelen = 0;
 
     if (stream_subtree_active(dep_stream)) {
       return;
