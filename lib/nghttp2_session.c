@@ -660,6 +660,11 @@ int nghttp2_session_reprioritize_stream(
     }
   }
 
+  if (dep_stream == stream->dep_prev && !pri_spec->exclusive) {
+    stream->weight = pri_spec->weight;
+    return 0;
+  }
+
   nghttp2_stream_dep_remove_subtree(stream);
 
   /* We have to update weight after removing stream from tree */
