@@ -183,6 +183,43 @@ namespace {
 void release_fd_cb(struct ev_loop *loop, ev_timer *w, int revents);
 } // namespace
 
+namespace {
+constexpr ev_tstamp FILE_ENTRY_MAX_AGE = 10.;
+} // namespace
+
+namespace {
+constexpr size_t FILE_ENTRY_EVICT_THRES = 2048;
+} // namespace
+
+namespace {
+bool need_validation_file_entry(const FileEntry *ent, ev_tstamp now) {
+  return ent->last_valid + FILE_ENTRY_MAX_AGE < now;
+}
+} // namespace
+
+namespace {
+bool validate_file_entry(FileEntry *ent, ev_tstamp now) {
+  struct stat stbuf;
+  int rv;
+
+  rv = fstat(ent->fd, &stbuf);
+  if (rv != 0) {
+    ent->stale = true;
+    return false;
+  }
+
+  if (stbuf.st_nlink == 0 || ent->mtime != stbuf.st_mtime) {
+    ent->stale = true;
+    return false;
+  }
+
+  ent->mtime = stbuf.st_mtime;
+  ent->last_valid = now;
+
+  return true;
+}
+} // namespace
+
 class Sessions {
 public:
   Sessions(HttpServer *sv, struct ev_loop *loop, const Config *config,
@@ -269,13 +306,38 @@ public:
     return cached_date_;
   }
   FileEntry *get_cached_fd(const std::string &path) {
-    auto i = fd_cache_.find(path);
-    if (i == std::end(fd_cache_)) {
+    auto range = fd_cache_.equal_range(path);
+    if (range.first == range.second) {
       return nullptr;
     }
-    auto &ent = (*i).second;
-    ++ent.usecount;
-    return &ent;
+
+    auto now = ev_now(loop_);
+
+    for (auto it = range.first; it != range.second;) {
+      auto &ent = (*it).second;
+      if (ent.stale) {
+        ++it;
+        continue;
+      }
+      if (need_validation_file_entry(&ent, now) &&
+          !validate_file_entry(&ent, now)) {
+        if (ent.usecount == 0) {
+          fd_cache_lru_.remove(&ent);
+          close(ent.fd);
+          it = fd_cache_.erase(it);
+          continue;
+        }
+        ++it;
+        continue;
+      }
+
+      fd_cache_lru_.remove(&ent);
+      fd_cache_lru_.append(&ent);
+
+      ++ent.usecount;
+      return &ent;
+    }
+    return nullptr;
   }
   FileEntry *cache_fd(const std::string &path, const FileEntry &ent) {
 #ifdef HAVE_STD_MAP_EMPLACE
@@ -284,23 +346,31 @@ public:
     // for gcc-4.7
     auto rv = fd_cache_.insert(std::make_pair(path, ent));
 #endif // !HAVE_STD_MAP_EMPLACE
-    return &(*rv.first).second;
+    auto &res = (*rv).second;
+    res.it = rv;
+    fd_cache_lru_.append(&res);
+
+    while (fd_cache_.size() > FILE_ENTRY_EVICT_THRES) {
+      auto ent = fd_cache_lru_.head;
+      if (ent->usecount) {
+        break;
+      }
+      fd_cache_lru_.remove(ent);
+      close(ent->fd);
+      fd_cache_.erase(ent->it);
+    }
+
+    return &res;
   }
-  void release_fd(const std::string &path) {
-    auto i = fd_cache_.find(path);
-    if (i == std::end(fd_cache_)) {
+  void release_fd(FileEntry *target) {
+    --target->usecount;
+
+    if (target->usecount == 0 && target->stale) {
+      fd_cache_lru_.remove(target);
+      close(target->fd);
+      fd_cache_.erase(target->it);
       return;
     }
-    auto &ent = (*i).second;
-    if (ent.usecount == 0) {
-      // temporary fd, close it immediately
-      close(ent.fd);
-      fd_cache_.erase(i);
-
-      return;
-    }
-
-    --ent.usecount;
 
     // We use timer to close file descriptor and delete the entry from
     // cache.  The timer will be started when there is no handler.
@@ -313,6 +383,7 @@ public:
         continue;
       }
 
+      fd_cache_lru_.remove(&ent);
       close(ent.fd);
       i = fd_cache_.erase(i);
     }
@@ -323,7 +394,8 @@ public:
 private:
   std::set<Http2Handler *> handlers_;
   // cache for file descriptors to read file.
-  std::map<std::string, FileEntry> fd_cache_;
+  std::multimap<std::string, FileEntry> fd_cache_;
+  DList<FileEntry> fd_cache_lru_;
   HttpServer *sv_;
   struct ev_loop *loop_;
   const Config *config_;
@@ -366,7 +438,7 @@ Stream::Stream(Http2Handler *handler, int32_t stream_id)
 Stream::~Stream() {
   if (file_ent != nullptr) {
     auto sessions = handler->get_sessions();
-    sessions->release_fd(file_ent->path);
+    sessions->release_fd(file_ent);
   }
 
   auto loop = handler->get_loop();
@@ -1034,7 +1106,7 @@ bool prepare_upload_temp_store(Stream *stream, Http2Handler *hd) {
   // now.  We will update it when we get whole request body.
   auto path = std::string("echo:") + tempfn;
   stream->file_ent =
-      sessions->cache_fd(path, FileEntry(path, 0, 0, fd, nullptr, 0));
+      sessions->cache_fd(path, FileEntry(path, 0, 0, fd, nullptr, 0, true));
   stream->echo_upload = true;
   return true;
 }
@@ -1104,7 +1176,7 @@ void prepare_response(Stream *stream, Http2Handler *hd,
   url = util::percentDecode(std::begin(url), std::end(url));
   if (!util::check_path(url)) {
     if (stream->file_ent) {
-      sessions->release_fd(stream->file_ent->path);
+      sessions->release_fd(stream->file_ent);
       stream->file_ent = nullptr;
     }
     prepare_status_response(stream, hd, 404);
@@ -1186,7 +1258,8 @@ void prepare_response(Stream *stream, Http2Handler *hd,
     }
 
     file_ent = sessions->cache_fd(
-        path, FileEntry(path, buf.st_size, buf.st_mtime, file, content_type));
+        path, FileEntry(path, buf.st_size, buf.st_mtime, file, content_type,
+                        ev_now(sessions->get_loop())));
   }
 
   stream->file_ent = file_ent;
@@ -1710,7 +1783,7 @@ FileEntry make_status_body(int status, uint16_t port) {
     assert(0);
   }
 
-  return FileEntry(util::utos(status), nwrite, 0, fd, nullptr);
+  return FileEntry(util::utos(status), nwrite, 0, fd, nullptr, 0);
 }
 } // namespace
 
