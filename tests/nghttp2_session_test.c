@@ -3447,6 +3447,15 @@ void test_nghttp2_session_reprioritize_stream(void) {
   CU_ASSERT(128 == stream->weight);
   CU_ASSERT(dep_stream == stream->dep_prev);
 
+  /* Change weight again to test short-path case */
+  pri_spec.weight = 100;
+
+  nghttp2_session_reprioritize_stream(session, stream, &pri_spec);
+
+  CU_ASSERT(100 == stream->weight);
+  CU_ASSERT(dep_stream == stream->dep_prev);
+  CU_ASSERT(100 == dep_stream->sum_dep_weight);
+
   /* Test circular dependency; stream 1 is first removed and becomes
      root.  Then stream 3 depends on it. */
   nghttp2_priority_spec_init(&pri_spec, 1, 1, 0);

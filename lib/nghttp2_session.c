@@ -661,6 +661,7 @@ int nghttp2_session_reprioritize_stream(
   }
 
   if (dep_stream == stream->dep_prev && !pri_spec->exclusive) {
+    dep_stream->sum_dep_weight += pri_spec->weight - stream->weight;
     stream->weight = pri_spec->weight;
     return 0;
   }
