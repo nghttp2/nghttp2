@@ -6771,3 +6771,24 @@ nghttp2_stream *nghttp2_session_get_root_stream(nghttp2_session *session) {
 int nghttp2_session_check_server_session(nghttp2_session *session) {
   return session->server;
 }
+
+int nghttp2_session_change_stream_priority(
+    nghttp2_session *session, int32_t stream_id,
+    const nghttp2_priority_spec *pri_spec) {
+  nghttp2_stream *stream;
+  nghttp2_priority_spec pri_spec_copy;
+
+  if (stream_id == pri_spec->stream_id) {
+    return NGHTTP2_ERR_INVALID_ARGUMENT;
+  }
+
+  stream = nghttp2_session_get_stream_raw(session, stream_id);
+  if (!stream) {
+    return NGHTTP2_ERR_INVALID_ARGUMENT;
+  }
+
+  pri_spec_copy = *pri_spec;
+  nghttp2_priority_spec_normalize_weight(&pri_spec_copy);
+
+  return nghttp2_session_reprioritize_stream(session, stream, &pri_spec_copy);
+}

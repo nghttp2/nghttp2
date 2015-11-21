@@ -2856,6 +2856,40 @@ NGHTTP2_EXTERN int nghttp2_session_consume_stream(nghttp2_session *session,
 /**
  * @function
  *
+ * Changes priority of existing stream denoted by |stream_id|.  The
+ * new priority specification is |pri_spec|.
+ *
+ * The priority is changed silently and instantly, and no PRIORITY
+ * frame will be sent to notify the peer of this change.  This
+ * function may be useful for server to change the priority of pushed
+ * stream.
+ *
+ * If |session| is initialized as server, and ``pri_spec->stream_id``
+ * points to the idle stream, the idle stream is created if it does
+ * not exist.  The created idle stream will depend on root stream
+ * (stream 0) with weight 16.
+ *
+ * If stream denoted by ``pri_spec->stream_id`` is not found, we use
+ * default priority instead of given |pri_spec|.  That is make stream
+ * depend on root stream with weight 16.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * :enum:`NGHTTP2_ERR_NOMEM`
+ *     Out of memory.
+ * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
+ *     Attempted to depend on itself; no stream exist for the given
+ *     |stream_id|.
+ */
+NGHTTP2_EXTERN int
+nghttp2_session_change_stream_priority(nghttp2_session *session,
+                                       int32_t stream_id,
+                                       const nghttp2_priority_spec *pri_spec);
+
+/**
+ * @function
+ *
  * Performs post-process of HTTP Upgrade request.  This function can
  * be called from both client and server, but the behavior is very
  * different in each other.
