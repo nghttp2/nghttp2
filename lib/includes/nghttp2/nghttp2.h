@@ -3619,6 +3619,14 @@ nghttp2_session_check_request_allowed(nghttp2_session *session);
 /**
  * @function
  *
+ * Returns nonzero if |session| is initialized as server side session.
+ */
+NGHTTP2_EXTERN int
+nghttp2_session_check_server_session(nghttp2_session *session);
+
+/**
+ * @function
+ *
  * Submits WINDOW_UPDATE frame.
  *
  * The |flags| is currently ignored and should be

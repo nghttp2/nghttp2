@@ -6767,3 +6767,7 @@ nghttp2_stream *nghttp2_session_find_stream(nghttp2_session *session,
 nghttp2_stream *nghttp2_session_get_root_stream(nghttp2_session *session) {
   return &session->root;
 }
+
+int nghttp2_session_check_server_session(nghttp2_session *session) {
+  return session->server;
+}
