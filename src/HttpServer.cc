@@ -1070,8 +1070,13 @@ namespace {
 void prepare_response(Stream *stream, Http2Handler *hd,
                       bool allow_push = true) {
   int rv;
-  auto reqpath =
-      http2::get_header(stream->hdidx, http2::HD__PATH, stream->headers)->value;
+  auto pathhdr =
+      http2::get_header(stream->hdidx, http2::HD__PATH, stream->headers);
+  if (!pathhdr) {
+    prepare_status_response(stream, hd, 405);
+    return;
+  }
+  auto reqpath = pathhdr->value;
   auto ims =
       get_header(stream->hdidx, http2::HD_IF_MODIFIED_SINCE, stream->headers);
 
@@ -1715,6 +1720,7 @@ enum {
   IDX_301,
   IDX_400,
   IDX_404,
+  IDX_405,
 };
 
 HttpServer::HttpServer(const Config *config) : config_(config) {
@@ -1723,6 +1729,7 @@ HttpServer::HttpServer(const Config *config) : config_(config) {
       {"301", make_status_body(301, config_->port)},
       {"400", make_status_body(400, config_->port)},
       {"404", make_status_body(404, config_->port)},
+      {"405", make_status_body(405, config_->port)},
   };
 }
 
@@ -1975,6 +1982,8 @@ const StatusPage *HttpServer::get_status_page(int status) const {
     return &status_pages_[IDX_400];
   case 404:
     return &status_pages_[IDX_404];
+  case 405:
+    return &status_pages_[IDX_405];
   default:
     assert(0);
   }
