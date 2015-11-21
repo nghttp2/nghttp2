@@ -541,10 +541,9 @@ cdef ssize_t data_source_read(cnghttp2.nghttp2_session *session,
         data_flags[0] = cnghttp2.NGHTTP2_DATA_FLAG_EOF
         if cnghttp2.nghttp2_session_check_server_session(session):
             # Send RST_STREAM if remote is not closed yet
-            cstrm = cnghttp2.nghttp2_session_find_stream(session, stream_id)
-            state = cnghttp2.nghttp2_stream_get_state(cstrm)
-            if state == cnghttp2.NGHTTP2_STREAM_STATE_OPEN:
-                http2._rst_stream(stream_id)
+            if cnghttp2.nghttp2_session_get_stream_remote_close(
+                    session, stream_id) == 0:
+                http2._rst_stream(stream_id, cnghttp2.NGHTTP2_NO_ERROR)
     elif flag != DATA_OK:
         return cnghttp2.NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE
 

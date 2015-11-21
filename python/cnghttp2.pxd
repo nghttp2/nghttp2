@@ -290,15 +290,7 @@ cdef extern from 'nghttp2/nghttp2.h':
 
     int nghttp2_session_check_server_session(nghttp2_session *session)
 
-    ctypedef struct nghttp2_stream:
-        pass
-
-    nghttp2_stream *nghttp2_session_find_stream(nghttp2_session *session, int32_t stream_id)
-
-    ctypedef enum nghttp2_stream_proto_state:
-        NGHTTP2_STREAM_STATE_OPEN
-
-    nghttp2_stream_proto_state nghttp2_stream_get_state(nghttp2_stream *stream)
+    int nghttp2_session_get_stream_remote_close(nghttp2_session *session, int32_t stream_id)
 
     int nghttp2_hd_deflate_new(nghttp2_hd_deflater **deflater_ptr,
                                size_t deflate_hd_table_bufsize_max)
