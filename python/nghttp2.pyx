@@ -473,6 +473,13 @@ cdef int server_on_frame_send(cnghttp2.nghttp2_session *session,
         if (frame.hd.flags & cnghttp2.NGHTTP2_FLAG_ACK) != 0:
             return 0
         http2._start_settings_timer()
+    elif frame.hd.type == cnghttp2.NGHTTP2_HEADERS:
+        if (frame.hd.flags & cnghttp2.NGHTTP2_FLAG_END_STREAM) and \
+           cnghttp2.nghttp2_session_check_server_session(session):
+            # Send RST_STREAM if remote is not closed yet
+            if cnghttp2.nghttp2_session_get_stream_remote_close(
+                    session, frame.hd.stream_id) == 0:
+                http2._rst_stream(frame.hd.stream_id, cnghttp2.NGHTTP2_NO_ERROR)
 
 cdef int server_on_frame_not_send(cnghttp2.nghttp2_session *session,
                                   const cnghttp2.nghttp2_frame *frame,
