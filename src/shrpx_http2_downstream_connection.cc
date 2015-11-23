@@ -67,14 +67,8 @@ Http2DownstreamConnection::~Http2DownstreamConnection() {
       error_code = NGHTTP2_INTERNAL_ERROR;
     }
 
-    if (downstream_->get_downstream_stream_id() != -1) {
-      if (LOG_ENABLED(INFO)) {
-        DCLOG(INFO, this) << "Submit RST_STREAM for DOWNSTREAM:" << downstream_
-                          << ", stream_id="
-                          << downstream_->get_downstream_stream_id()
-                          << ", error_code=" << error_code;
-      }
-
+    if (http2session_->get_state() == Http2Session::CONNECTED &&
+        downstream_->get_downstream_stream_id() != -1) {
       submit_rst_stream(downstream_, error_code);
 
       http2session_->consume(downstream_->get_downstream_stream_id(),
@@ -143,7 +137,8 @@ int Http2DownstreamConnection::submit_rst_stream(Downstream *downstream,
       if (LOG_ENABLED(INFO)) {
         DCLOG(INFO, this) << "Submit RST_STREAM for DOWNSTREAM:" << downstream
                           << ", stream_id="
-                          << downstream->get_downstream_stream_id();
+                          << downstream->get_downstream_stream_id()
+                          << ", error_code=" << error_code;
       }
       rv = http2session_->submit_rst_stream(
           downstream->get_downstream_stream_id(), error_code);
