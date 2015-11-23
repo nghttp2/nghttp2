@@ -90,7 +90,7 @@ struct FileEntry {
         last_valid(last_valid), content_type(content_type), dlnext(nullptr),
         dlprev(nullptr), fd(fd), usecount(1), stale(stale) {}
   std::string path;
-  std::multimap<std::string, FileEntry>::iterator it;
+  std::multimap<std::string, std::unique_ptr<FileEntry>>::iterator it;
   int64_t length;
   int64_t mtime;
   ev_tstamp last_valid;
