@@ -31,4 +31,12 @@
 
 #include <nghttp2/nghttp2.h>
 
+/*
+ * This function normalizes pri_spec->weight if it is out of range.
+ * If pri_spec->weight is less than NGHTTP2_MIN_WEIGHT, it is set to
+ * NGHTTP2_MIN_WEIGHT.  If pri_spec->weight is larger than
+ * NGHTTP2_MAX_WEIGHT, it is set to NGHTTP2_MAX_WEIGHT.
+ */
+void nghttp2_priority_spec_normalize_weight(nghttp2_priority_spec *pri_spec);
+
 #endif /* NGHTTP2_PRIORITY_SPEC_H */
