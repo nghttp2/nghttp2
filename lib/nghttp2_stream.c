@@ -207,6 +207,11 @@ void nghttp2_stream_reschedule(nghttp2_stream *stream) {
       dep_stream->descendant_last_cycle = 0;
       stream->cycle = 0;
     } else {
+      /* We update descendant_last_cycle here, and we don't do it when
+         no data is written for stream.  This effectively means that
+         we treat these streams as if they are not scheduled at all.
+         This does not cause disruption in scheduling machinery.  It
+         just makes new streams scheduled a bit early. */
       dep_stream->descendant_last_cycle = stream->cycle;
 
       stream->cycle =

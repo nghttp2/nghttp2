@@ -661,6 +661,13 @@ int nghttp2_session_reprioritize_stream(
   }
 
   if (dep_stream == stream->dep_prev && !pri_spec->exclusive) {
+    /* This is minor optimization when just weight is changed.
+       Currently, we don't reschedule stream in this case, since we
+       don't retain enough information to do that
+       (descendant_last_cycle we used to schedule it).  This means new
+       weight is only applied in the next scheduling, and if weight is
+       drastically increased, library is not responding very quickly.
+       If this is really an issue, we will do workaround for this. */
     dep_stream->sum_dep_weight += pri_spec->weight - stream->weight;
     stream->weight = pri_spec->weight;
     return 0;
