@@ -742,11 +742,16 @@ int Client::connection_made() {
         break;
       }
       duration = config.timings[reqidx];
-      if(reqidx == 0) //if reqidx wraps around back to 0, we uses up all lines and should break
+      if (reqidx == 0) {
+        // if reqidx wraps around back to 0, we uses up all lines and
+        // should break
         break;
+      }
     }
 
-    if (duration >= 1e-9) { //double check since we may have break due to reqidx wraps around back to 0
+    if (duration >= 1e-9) {
+      // double check since we may have break due to reqidx wraps
+      // around back to 0
       request_timeout_watcher.repeat = duration;
       ev_timer_again(worker->loop, &request_timeout_watcher);
     }
