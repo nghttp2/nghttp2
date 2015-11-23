@@ -8319,6 +8319,41 @@ void test_nghttp2_session_flooding(void) {
   nghttp2_bufs_free(&bufs);
 }
 
+void test_nghttp2_session_change_stream_priority(void) {
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  nghttp2_stream *stream1, *stream2, *stream3;
+  nghttp2_priority_spec pri_spec;
+  int rv;
+
+  memset(&callbacks, 0, sizeof(callbacks));
+
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  stream1 = open_stream(session, 1);
+  stream3 = open_stream_with_dep_weight(session, 3, 199, stream1);
+  stream2 = open_stream_with_dep_weight(session, 2, 101, stream3);
+
+  nghttp2_priority_spec_init(&pri_spec, 1, 256, 0);
+
+  rv = nghttp2_session_change_stream_priority(session, 2, &pri_spec);
+
+  CU_ASSERT(0 == rv);
+
+  CU_ASSERT(stream1 == stream2->dep_prev);
+  CU_ASSERT(256 == stream2->weight);
+
+  /* Cannot change stream which does not exist */
+  rv = nghttp2_session_change_stream_priority(session, 5, &pri_spec);
+  CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT == rv);
+
+  /* It is an error to depend on itself */
+  rv = nghttp2_session_change_stream_priority(session, 1, &pri_spec);
+  CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT == rv);
+
+  nghttp2_session_del(session);
+}
+
 static void check_nghttp2_http_recv_headers_fail(
     nghttp2_session *session, nghttp2_hd_deflater *deflater, int32_t stream_id,
     int stream_state, const nghttp2_nv *nva, size_t nvlen) {

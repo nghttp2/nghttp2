@@ -133,6 +133,7 @@ void test_nghttp2_session_on_begin_headers_temporal_failure(void);
 void test_nghttp2_session_defer_then_close(void);
 void test_nghttp2_session_detach_item_from_closed_stream(void);
 void test_nghttp2_session_flooding(void);
+void test_nghttp2_session_change_stream_priority(void);
 void test_nghttp2_http_mandatory_headers(void);
 void test_nghttp2_http_content_length(void);
 void test_nghttp2_http_content_length_mismatch(void);
