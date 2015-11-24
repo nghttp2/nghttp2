@@ -7439,6 +7439,34 @@ void test_nghttp2_session_stream_get_something(void) {
   nghttp2_session_del(session);
 }
 
+void test_nghttp2_session_find_stream(void) {
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  nghttp2_stream *stream;
+
+  memset(&callbacks, 0, sizeof(callbacks));
+
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  open_stream(session, 1);
+
+  stream = nghttp2_session_find_stream(session, 1);
+
+  CU_ASSERT(NULL != stream);
+  CU_ASSERT(1 == stream->stream_id);
+
+  stream = nghttp2_session_find_stream(session, 0);
+
+  CU_ASSERT(&session->root == stream);
+  CU_ASSERT(0 == stream->stream_id);
+
+  stream = nghttp2_session_find_stream(session, 2);
+
+  CU_ASSERT(NULL == stream);
+
+  nghttp2_session_del(session);
+}
+
 void test_nghttp2_session_keep_closed_stream(void) {
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;

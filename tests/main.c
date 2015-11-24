@@ -251,6 +251,8 @@ int main(int argc _U_, char *argv[] _U_) {
                    test_nghttp2_session_stream_get_state) ||
       !CU_add_test(pSuite, "session_stream_get_something",
                    test_nghttp2_session_stream_get_something) ||
+      !CU_add_test(pSuite, "session_find_stream",
+                   test_nghttp2_session_find_stream) ||
       !CU_add_test(pSuite, "session_keep_closed_stream",
                    test_nghttp2_session_keep_closed_stream) ||
       !CU_add_test(pSuite, "session_keep_idle_stream",
