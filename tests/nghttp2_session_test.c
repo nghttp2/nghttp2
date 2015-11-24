@@ -8379,6 +8379,10 @@ void test_nghttp2_session_change_stream_priority(void) {
   rv = nghttp2_session_change_stream_priority(session, 1, &pri_spec);
   CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT == rv);
 
+  /* It is an error to change priority of root stream (0) */
+  rv = nghttp2_session_change_stream_priority(session, 0, &pri_spec);
+  CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT == rv);
+
   nghttp2_session_del(session);
 }
 

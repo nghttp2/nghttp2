@@ -6789,7 +6789,7 @@ int nghttp2_session_change_stream_priority(
   nghttp2_stream *stream;
   nghttp2_priority_spec pri_spec_copy;
 
-  if (stream_id == pri_spec->stream_id) {
+  if (stream_id == 0 || stream_id == pri_spec->stream_id) {
     return NGHTTP2_ERR_INVALID_ARGUMENT;
   }
 
