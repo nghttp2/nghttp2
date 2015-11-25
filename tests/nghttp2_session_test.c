@@ -7657,13 +7657,12 @@ void test_nghttp2_session_large_dep_tree(void) {
   nghttp2_session_server_new(&session, &callbacks, NULL);
 
   stream_id = 1;
-  for (i = 0; i < 250; ++i) {
+  for (i = 0; i < 250; ++i, stream_id += 2) {
     dep_stream = open_stream_with_dep(session, stream_id, dep_stream);
-    stream_id += 2;
   }
 
   stream_id = 1;
-  for (i = 0; i < 250; ++i) {
+  for (i = 0; i < 250; ++i, stream_id += 2) {
     stream = nghttp2_session_get_stream(session, stream_id);
     CU_ASSERT(nghttp2_stream_dep_find_ancestor(stream, &session->root));
     CU_ASSERT(nghttp2_stream_in_dep_tree(stream));
