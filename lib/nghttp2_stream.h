@@ -206,6 +206,11 @@ struct nghttp2_stream {
   uint64_t descendant_last_cycle;
   /* Next scheduled time to sent item */
   uint64_t cycle;
+  /* Next seq used for direct descendant streams */
+  uint64_t descendant_next_seq;
+  /* Secondary key for prioritization to break a tie for cycle.  This
+     value is monotonically increased for single parent stream. */
+  uint64_t seq;
   /* Last written length of frame payload */
   size_t last_writelen;
   /* This flag is used to reduce excessive queuing of WINDOW_UPDATE to
