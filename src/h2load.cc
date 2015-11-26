@@ -1490,6 +1490,9 @@ Options:
               only  and any  white spaces  are  treated as  a part  of
               protocol string.
               Default: )" << DEFAULT_NPN_LIST << R"(
+  --h1        Short        hand         for        --npn-list=http/1.1
+              --no-tls-proto=http/1.1,    which   effectively    force
+              http/1.1 for both http and https URI.
   -v, --verbose
               Output debug information.
   --version   Display version information and exit.
@@ -1537,6 +1540,7 @@ int main(int argc, char **argv) {
         {"base-uri", required_argument, nullptr, 'B'},
         {"npn-list", required_argument, &flag, 4},
         {"rate-period", required_argument, &flag, 5},
+        {"h1", no_argument, &flag, 6},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     auto c = getopt_long(argc, argv, "hvW:c:d:m:n:p:t:w:H:i:r:T:N:B:",
@@ -1702,6 +1706,11 @@ int main(int argc, char **argv) {
           std::cerr << "--rate-period: value error " << optarg << std::endl;
           exit(EXIT_FAILURE);
         }
+        break;
+      case 6:
+        // --h1
+        config.npn_list = util::parse_config_str_list("http/1.1");
+        config.no_tls_proto = Config::PROTO_HTTP1_1;
         break;
       }
       break;
