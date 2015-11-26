@@ -51,7 +51,15 @@ Http1Session::~Http1Session() {}
 
 namespace {
 // HTTP response message begin
-int htp_msg_begincb(http_parser *htp) { return 0; }
+int htp_msg_begincb(http_parser *htp) {
+  auto session = static_cast<Http1Session *>(htp->data);
+
+  if (session->stream_resp_counter_ >= session->stream_req_counter_) {
+    return -1;
+  }
+
+  return 0;
+}
 } // namespace
 
 namespace {

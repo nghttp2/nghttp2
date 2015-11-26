@@ -360,12 +360,23 @@ void Client::fail() {
 
   if (new_connection_requested) {
     new_connection_requested = false;
+    if (req_started < req_todo) {
+      // At the moment, we don't have a facility to re-start request
+      // already in in-flight.  Make them fail.
+      auto req_abandoned = req_started - req_done;
 
-    // Keep using current address
-    if (connect() == 0) {
-      return;
+      worker->stats.req_failed += req_abandoned;
+      worker->stats.req_error += req_abandoned;
+      worker->stats.req_done += req_abandoned;
+
+      req_done = req_started;
+
+      // Keep using current address
+      if (connect() == 0) {
+        return;
+      }
+      std::cerr << "client could not connect to host" << std::endl;
     }
-    std::cerr << "client could not connect to host" << std::endl;
   }
 
   process_abandoned_streams();
@@ -377,6 +388,7 @@ void Client::disconnect() {
   ev_timer_stop(worker->loop, &request_timeout_watcher);
   streams.clear();
   session.reset();
+  wb.reset();
   state = CLIENT_IDLE;
   ev_io_stop(worker->loop, &wev);
   ev_io_stop(worker->loop, &rev);
