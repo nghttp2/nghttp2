@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "H2LOAD" "1" "November 12, 2015" "1.4.1-DEV" "nghttp2"
+.TH "H2LOAD" "1" "November 26, 2015" "1.5.0" "nghttp2"
 .SH NAME
 h2load \- HTTP/2 benchmarking tool
 .
@@ -224,6 +224,13 @@ only  and any  white spaces  are  treated as  a part  of
 protocol string.
 .sp
 Default: \fBh2,h2\-16,h2\-14,spdy/3.1,spdy/3,spdy/2,http/1.1\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-h1
+Short        hand         for        \fI\%\-\-npn\-list\fP=http/1.1
+\fI\%\-\-no\-tls\-proto\fP=http/1.1,    which   effectively    force
+http/1.1 for both http and https URI.
 .UNINDENT
 .INDENT 0.0
 .TP

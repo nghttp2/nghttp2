@@ -188,6 +188,12 @@ OPTIONS
 
     Default: ``h2,h2-16,h2-14,spdy/3.1,spdy/3,spdy/2,http/1.1``
 
+.. option:: --h1
+
+    Short        hand         for        :option:`--npn-list`\=http/1.1
+    :option:`--no-tls-proto`\=http/1.1,    which   effectively    force
+    http/1.1 for both http and https URI.
+
 .. option:: -v, --verbose
 
     Output debug information.

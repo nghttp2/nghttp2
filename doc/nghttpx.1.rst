@@ -613,9 +613,14 @@ HTTP/2 and SPDY
 
 .. option:: --no-server-push
 
-    Disable  HTTP/2  server  push.    Server  push  is  only
-    supported  by default  mode and  HTTP/2 frontend.   SPDY
-    frontend does not support server push.
+    Disable HTTP/2 server push.  Server push is supported by
+    default mode and HTTP/2  frontend via Link header field.
+    It is  also supported if  both frontend and  backend are
+    HTTP/2 (which implies  :option:`--http2-bridge` or :option:`\--client` mode).
+    In  this  case,  server  push from  backend  session  is
+    relayed  to frontend,  and server  push via  Link header
+    field is  also supported.   HTTP SPDY frontend  does not
+    support server push.
 
 
 Mode
@@ -954,8 +959,8 @@ SIGUSR2
 SERVER PUSH
 -----------
 
-nghttpx supports HTTP/2 server push in default mode.  nghttpx looks
-for Link header field (`RFC 5988
+nghttpx supports HTTP/2 server push in default mode with Link header
+field.  nghttpx looks for Link header field (`RFC 5988
 <http://tools.ietf.org/html/rfc5988>`_) in response headers from
 backend server and extracts URI-reference with parameter
 ``rel=preload`` (see `preload
@@ -974,6 +979,14 @@ Currently, the following restriction is applied for server push:
    associated stream's status code must be 200.
 
 This limitation may be loosened in the future release.
+
+nghttpx also supports server push if both frontend and backend are
+HTTP/2 (which implies :option:`--http2-bridge` or :option:`--client`).
+In this case, in addition to server push via Link header field, server
+push from backend is relayed to frontend HTTP/2 session.
+
+HTTP/2 server push will be disabled if :option:`--http2-proxy` or
+:option:`--client-proxy` is used.
 
 UNIX DOMAIN SOCKET
 ------------------

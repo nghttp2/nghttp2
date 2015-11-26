@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "November 12, 2015" "1.4.1-DEV" "nghttp2"
+.TH "NGHTTPX" "1" "November 26, 2015" "1.5.0" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 proxy
 .
@@ -685,9 +685,14 @@ protocol security.
 .INDENT 0.0
 .TP
 .B \-\-no\-server\-push
-Disable  HTTP/2  server  push.    Server  push  is  only
-supported  by default  mode and  HTTP/2 frontend.   SPDY
-frontend does not support server push.
+Disable HTTP/2 server push.  Server push is supported by
+default mode and HTTP/2  frontend via Link header field.
+It is  also supported if  both frontend and  backend are
+HTTP/2 (which implies  \fI\%\-\-http2\-bridge\fP or \fI\%\-\-client\fP mode).
+In  this  case,  server  push from  backend  session  is
+relayed  to frontend,  and server  push via  Link header
+field is  also supported.   HTTP SPDY frontend  does not
+support server push.
 .UNINDENT
 .SS Mode
 .INDENT 0.0
@@ -1053,8 +1058,8 @@ than master process.
 .UNINDENT
 .SH SERVER PUSH
 .sp
-nghttpx supports HTTP/2 server push in default mode.  nghttpx looks
-for Link header field (\fI\%RFC 5988\fP) in response headers from
+nghttpx supports HTTP/2 server push in default mode with Link header
+field.  nghttpx looks for Link header field (\fI\%RFC 5988\fP) in response headers from
 backend server and extracts URI\-reference with parameter
 \fBrel=preload\fP (see \fI\%preload\fP)
 and pushes those URIs to the frontend client. Here is a sample Link
@@ -1079,6 +1084,14 @@ associated stream\(aqs status code must be 200.
 .UNINDENT
 .sp
 This limitation may be loosened in the future release.
+.sp
+nghttpx also supports server push if both frontend and backend are
+HTTP/2 (which implies \fI\%\-\-http2\-bridge\fP or \fI\%\-\-client\fP).
+In this case, in addition to server push via Link header field, server
+push from backend is relayed to frontend HTTP/2 session.
+.sp
+HTTP/2 server push will be disabled if \fI\%\-\-http2\-proxy\fP or
+\fI\%\-\-client\-proxy\fP is used.
 .SH UNIX DOMAIN SOCKET
 .sp
 nghttpx supports UNIX domain socket with a filename for both frontend
