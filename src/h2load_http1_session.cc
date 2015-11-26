@@ -152,7 +152,7 @@ void Http1Session::on_connect() { client_->signal_write(); }
 
 int Http1Session::submit_request(RequestStat *req_stat) {
   auto config = client_->worker->config;
-  auto req = config->h1reqs[client_->reqidx];
+  const auto &req = config->h1reqs[client_->reqidx];
   client_->reqidx++;
 
   if (client_->reqidx == config->h1reqs.size()) {
