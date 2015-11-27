@@ -340,7 +340,8 @@ std::string normalize_path(InputIt first, InputIt last) {
   } else {
     for (; first < last - 2;) {
       if (*first == '%') {
-        if (util::isHexDigit(*(first + 1)) && util::isHexDigit(*(first + 2))) {
+        if (util::is_hex_digit(*(first + 1)) &&
+            util::is_hex_digit(*(first + 2))) {
           auto c = (util::hex_to_uint(*(first + 1)) << 4) +
                    util::hex_to_uint(*(first + 2));
           if (util::in_rfc3986_unreserved_chars(c)) {

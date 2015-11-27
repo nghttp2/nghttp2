@@ -67,7 +67,7 @@ const char UPPER_XDIGITS[] = "0123456789ABCDEF";
 
 bool in_rfc3986_unreserved_chars(const char c) {
   static constexpr const char unreserved[] = {'-', '.', '_', '~'};
-  return isAlpha(c) || isDigit(c) ||
+  return is_alpha(c) || is_digit(c) ||
          std::find(std::begin(unreserved), std::end(unreserved), c) !=
              std::end(unreserved);
 }
@@ -120,7 +120,7 @@ bool in_token(char c) {
   static constexpr const char extra[] = {'!',  '#', '$', '%', '&',
                                          '\'', '*', '+', '-', '.',
                                          '^',  '_', '`', '|', '~'};
-  return isAlpha(c) || isDigit(c) ||
+  return is_alpha(c) || is_digit(c) ||
          std::find(std::begin(extra), std::end(extra), c) != std::end(extra);
 }
 

@@ -471,7 +471,7 @@ LogFragmentType log_var_lookup_token(const char *name, size_t namelen) {
 
 namespace {
 bool var_token(char c) {
-  return util::isAlpha(c) || util::isDigit(c) || c == '_';
+  return util::is_alpha(c) || util::is_digit(c) || c == '_';
 }
 } // namespace
 

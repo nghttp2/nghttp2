@@ -64,14 +64,14 @@ constexpr const char NGHTTP2_H1_1[] = "http/1.1";
 
 namespace util {
 
-inline bool isAlpha(const char c) {
+inline bool is_alpha(const char c) {
   return ('A' <= c && c <= 'Z') || ('a' <= c && c <= 'z');
 }
 
-inline bool isDigit(const char c) { return '0' <= c && c <= '9'; }
+inline bool is_digit(const char c) { return '0' <= c && c <= '9'; }
 
-inline bool isHexDigit(const char c) {
-  return isDigit(c) || ('A' <= c && c <= 'F') || ('a' <= c && c <= 'f');
+inline bool is_hex_digit(const char c) {
+  return is_digit(c) || ('A' <= c && c <= 'F') || ('a' <= c && c <= 'f');
 }
 
 bool in_rfc3986_unreserved_chars(const char c);
@@ -84,7 +84,7 @@ bool in_token(char c);
 bool in_attr_char(char c);
 
 // Returns integer corresponding to hex notation |c|.  It is undefined
-// if isHexDigit(c) is false.
+// if is_hex_digit(c) is false.
 uint32_t hex_to_uint(char c);
 
 std::string percent_encode(const unsigned char *target, size_t len);
@@ -99,8 +99,8 @@ std::string percent_decode(InputIt first, InputIt last) {
   std::string result;
   for (; first != last; ++first) {
     if (*first == '%') {
-      if (first + 1 != last && first + 2 != last && isHexDigit(*(first + 1)) &&
-          isHexDigit(*(first + 2))) {
+      if (first + 1 != last && first + 2 != last &&
+          is_hex_digit(*(first + 1)) && is_hex_digit(*(first + 2))) {
         result += (hex_to_uint(*(first + 1)) << 4) + hex_to_uint(*(first + 2));
         first += 2;
         continue;
