@@ -147,15 +147,15 @@ void test_util_percent_encode_path(void) {
 void test_util_percent_decode(void) {
   {
     std::string s = "%66%6F%6f%62%61%72";
-    CU_ASSERT("foobar" == util::percentDecode(std::begin(s), std::end(s)));
+    CU_ASSERT("foobar" == util::percent_decode(std::begin(s), std::end(s)));
   }
   {
     std::string s = "%66%6";
-    CU_ASSERT("f%6" == util::percentDecode(std::begin(s), std::end(s)));
+    CU_ASSERT("f%6" == util::percent_decode(std::begin(s), std::end(s)));
   }
   {
     std::string s = "%66%";
-    CU_ASSERT("f%" == util::percentDecode(std::begin(s), std::end(s)));
+    CU_ASSERT("f%" == util::percent_decode(std::begin(s), std::end(s)));
   }
 }
 

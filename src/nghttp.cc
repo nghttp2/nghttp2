@@ -199,7 +199,7 @@ std::string decode_host(std::string host) {
   auto zone_id_src = (*(zone_start + 1) == '2' && *(zone_start + 2) == '5')
                          ? zone_start + 3
                          : zone_start + 1;
-  auto zone_id = util::percentDecode(zone_id_src, std::end(host));
+  auto zone_id = util::percent_decode(zone_id_src, std::end(host));
   host.erase(zone_start + 1, std::end(host));
   host += zone_id;
   return host;

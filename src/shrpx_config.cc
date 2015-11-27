@@ -1664,7 +1664,7 @@ int parse_config(const char *opt, const char *optarg,
         // Surprisingly, u.field_set & UF_USERINFO is nonzero even if
         // userinfo component is empty string.
         if (!val.empty()) {
-          val = util::percentDecode(val.begin(), val.end());
+          val = util::percent_decode(std::begin(val), std::end(val));
           mod_config()->downstream_http_proxy_userinfo = strcopy(val);
         }
       }

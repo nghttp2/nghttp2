@@ -64,104 +64,6 @@ constexpr const char NGHTTP2_H1_1[] = "http/1.1";
 
 namespace util {
 
-extern const char DEFAULT_STRIP_CHARSET[];
-
-template <typename InputIterator>
-std::pair<InputIterator, InputIterator>
-stripIter(InputIterator first, InputIterator last,
-          const char *chars = DEFAULT_STRIP_CHARSET) {
-  for (; first != last && strchr(chars, *first) != 0; ++first)
-    ;
-  if (first == last) {
-    return std::make_pair(first, last);
-  }
-  InputIterator left = last - 1;
-  for (; left != first && strchr(chars, *left) != 0; --left)
-    ;
-  return std::make_pair(first, left + 1);
-}
-
-template <typename InputIterator, typename OutputIterator>
-OutputIterator splitIter(InputIterator first, InputIterator last,
-                         OutputIterator out, char delim, bool doStrip = false,
-                         bool allowEmpty = false) {
-  for (InputIterator i = first; i != last;) {
-    InputIterator j = std::find(i, last, delim);
-    std::pair<InputIterator, InputIterator> p(i, j);
-    if (doStrip) {
-      p = stripIter(i, j);
-    }
-    if (allowEmpty || p.first != p.second) {
-      *out++ = p;
-    }
-    i = j;
-    if (j != last) {
-      ++i;
-    }
-  }
-  if (allowEmpty && (first == last || *(last - 1) == delim)) {
-    *out++ = std::make_pair(last, last);
-  }
-  return out;
-}
-
-template <typename InputIterator, typename OutputIterator>
-OutputIterator split(InputIterator first, InputIterator last,
-                     OutputIterator out, char delim, bool doStrip = false,
-                     bool allowEmpty = false) {
-  for (InputIterator i = first; i != last;) {
-    InputIterator j = std::find(i, last, delim);
-    std::pair<InputIterator, InputIterator> p(i, j);
-    if (doStrip) {
-      p = stripIter(i, j);
-    }
-    if (allowEmpty || p.first != p.second) {
-      *out++ = std::string(p.first, p.second);
-    }
-    i = j;
-    if (j != last) {
-      ++i;
-    }
-  }
-  if (allowEmpty && (first == last || *(last - 1) == delim)) {
-    *out++ = std::string(last, last);
-  }
-  return out;
-}
-
-template <typename InputIterator, typename DelimiterType>
-std::string strjoin(InputIterator first, InputIterator last,
-                    const DelimiterType &delim) {
-  std::string result;
-  if (first == last) {
-    return result;
-  }
-  InputIterator beforeLast = last - 1;
-  for (; first != beforeLast; ++first) {
-    result += *first;
-    result += delim;
-  }
-  result += *beforeLast;
-  return result;
-}
-
-template <typename InputIterator>
-std::string joinPath(InputIterator first, InputIterator last) {
-  std::vector<std::string> elements;
-  for (; first != last; ++first) {
-    if (*first == "..") {
-      if (!elements.empty()) {
-        elements.pop_back();
-      }
-    } else if (*first == ".") {
-      // do nothing
-    } else {
-      elements.push_back(*first);
-    }
-  }
-  return strjoin(elements.begin(), elements.end(), "/");
-}
-
 inline bool isAlpha(const char c) {
   return ('A' <= c && c <= 'Z') || ('a' <= c && c <= 'z');
 }
@@ -172,7 +74,7 @@ inline bool isHexDigit(const char c) {
   return isDigit(c) || ('A' <= c && c <= 'F') || ('a' <= c && c <= 'f');
 }
 
-bool inRFC3986UnreservedChars(const char c);
+bool in_rfc3986_unreserved_chars(const char c);
 
 bool in_rfc3986_sub_delims(const char c);
 
@@ -185,15 +87,15 @@ bool in_attr_char(char c);
 // if isHexDigit(c) is false.
 uint32_t hex_to_uint(char c);
 
-std::string percentEncode(const unsigned char *target, size_t len);
+std::string percent_encode(const unsigned char *target, size_t len);
 
-std::string percentEncode(const std::string &target);
+std::string percent_encode(const std::string &target);
 
 // percent-encode path component of URI |s|.
 std::string percent_encode_path(const std::string &s);
 
 template <typename InputIt>
-std::string percentDecode(InputIt first, InputIt last) {
+std::string percent_decode(InputIt first, InputIt last) {
   std::string result;
   for (; first != last; ++first) {
     if (*first == '%') {

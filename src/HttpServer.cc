@@ -1174,7 +1174,7 @@ void prepare_response(Stream *stream, Http2Handler *hd,
 
   auto sessions = hd->get_sessions();
 
-  url = util::percentDecode(std::begin(url), std::end(url));
+  url = util::percent_decode(std::begin(url), std::end(url));
   if (!util::check_path(url)) {
     if (stream->file_ent) {
       sessions->release_fd(stream->file_ent);

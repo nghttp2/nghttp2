@@ -63,11 +63,9 @@ namespace nghttp2 {
 
 namespace util {
 
-const char DEFAULT_STRIP_CHARSET[] = "\r\n\t ";
-
 const char UPPER_XDIGITS[] = "0123456789ABCDEF";
 
-bool inRFC3986UnreservedChars(const char c) {
+bool in_rfc3986_unreserved_chars(const char c) {
   static constexpr const char unreserved[] = {'-', '.', '_', '~'};
   return isAlpha(c) || isDigit(c) ||
          std::find(std::begin(unreserved), std::end(unreserved), c) !=
@@ -81,12 +79,12 @@ bool in_rfc3986_sub_delims(const char c) {
          std::end(sub_delims);
 }
 
-std::string percentEncode(const unsigned char *target, size_t len) {
+std::string percent_encode(const unsigned char *target, size_t len) {
   std::string dest;
   for (size_t i = 0; i < len; ++i) {
     unsigned char c = target[i];
 
-    if (inRFC3986UnreservedChars(c)) {
+    if (in_rfc3986_unreserved_chars(c)) {
       dest += c;
     } else {
       dest += '%';
@@ -97,15 +95,16 @@ std::string percentEncode(const unsigned char *target, size_t len) {
   return dest;
 }
 
-std::string percentEncode(const std::string &target) {
-  return percentEncode(reinterpret_cast<const unsigned char *>(target.c_str()),
-                       target.size());
+std::string percent_encode(const std::string &target) {
+  return percent_encode(reinterpret_cast<const unsigned char *>(target.c_str()),
+                        target.size());
 }
 
 std::string percent_encode_path(const std::string &s) {
   std::string dest;
   for (auto c : s) {
-    if (inRFC3986UnreservedChars(c) || in_rfc3986_sub_delims(c) || c == '/') {
+    if (in_rfc3986_unreserved_chars(c) || in_rfc3986_sub_delims(c) ||
+        c == '/') {
       dest += c;
       continue;
     }
