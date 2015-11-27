@@ -660,7 +660,7 @@ int nghttp2_session_reprioritize_stream(
     }
   }
 
-  if (dep_stream == stream->dep_prev && !pri_spec->exclusive) {
+  if (dep_stream && dep_stream == stream->dep_prev && !pri_spec->exclusive) {
     /* This is minor optimization when just weight is changed.
        Currently, we don't reschedule stream in this case, since we
        don't retain enough information to do that
