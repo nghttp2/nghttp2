@@ -3292,9 +3292,7 @@ static int inflate_header_block(nghttp2_session *session, nghttp2_frame *frame,
 }
 
 /*
- * Decompress header blocks of incoming request HEADERS and also call
- * additional callbacks. This function can be called again if this
- * function returns NGHTTP2_ERR_PAUSE.
+ * Call this function when HEADERS frame was completely received.
  *
  * This function returns 0 if it succeeds, or one of negative error
  * codes:
@@ -3304,69 +3302,20 @@ static int inflate_header_block(nghttp2_session *session, nghttp2_frame *frame,
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
  */
-int nghttp2_session_end_request_headers_received(nghttp2_session *session _U_,
-                                                 nghttp2_frame *frame,
-                                                 nghttp2_stream *stream) {
-  if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
-    nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
-  }
-  /* Here we assume that stream is not shutdown in NGHTTP2_SHUT_WR */
-  return 0;
-}
-
-/*
- * Decompress header blocks of incoming (push-)response HEADERS and
- * also call additional callbacks. This function can be called again
- * if this function returns NGHTTP2_ERR_PAUSE.
- *
- * This function returns 0 if it succeeds, or one of negative error
- * codes:
- *
- * NGHTTP2_ERR_CALLBACK_FAILURE
- *     The callback function failed.
- * NGHTTP2_ERR_NOMEM
- *     Out of memory.
- */
-int nghttp2_session_end_response_headers_received(nghttp2_session *session,
-                                                  nghttp2_frame *frame,
-                                                  nghttp2_stream *stream) {
+static int session_end_stream_headers_received(nghttp2_session *session,
+                                               nghttp2_frame *frame,
+                                               nghttp2_stream *stream) {
   int rv;
-  if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
-    /* This is the last frame of this stream, so disallow
-       further receptions. */
-    nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
-    rv = nghttp2_session_close_stream_if_shut_rdwr(session, stream);
-    if (nghttp2_is_fatal(rv)) {
-      return rv;
-    }
+  if ((frame->hd.flags & NGHTTP2_FLAG_END_STREAM) == 0) {
+    return 0;
   }
-  return 0;
-}
 
-/*
- * Decompress header blocks of incoming HEADERS and also call
- * additional callbacks. This function can be called again if this
- * function returns NGHTTP2_ERR_PAUSE.
- *
- * This function returns 0 if it succeeds, or one of negative error
- * codes:
- *
- * NGHTTP2_ERR_CALLBACK_FAILURE
- *     The callback function failed.
- * NGHTTP2_ERR_NOMEM
- *     Out of memory.
- */
-int nghttp2_session_end_headers_received(nghttp2_session *session,
-                                         nghttp2_frame *frame,
-                                         nghttp2_stream *stream) {
-  int rv;
-  if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
-    nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
-    rv = nghttp2_session_close_stream_if_shut_rdwr(session, stream);
-    if (nghttp2_is_fatal(rv)) {
-      return rv;
-    }
+  nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
+  rv = nghttp2_session_close_stream_if_shut_rdwr(session, stream);
+  if (nghttp2_is_fatal(rv)) {
+    return rv;
   }
+
   return 0;
 }
 
@@ -3447,19 +3396,7 @@ static int session_after_header_block_received(nghttp2_session *session) {
     return 0;
   }
 
-  switch (frame->headers.cat) {
-  case NGHTTP2_HCAT_REQUEST:
-    return nghttp2_session_end_request_headers_received(session, frame, stream);
-  case NGHTTP2_HCAT_RESPONSE:
-  case NGHTTP2_HCAT_PUSH_RESPONSE:
-    return nghttp2_session_end_response_headers_received(session, frame,
-                                                         stream);
-  case NGHTTP2_HCAT_HEADERS:
-    return nghttp2_session_end_headers_received(session, frame, stream);
-  default:
-    assert(0);
-  }
-  return 0;
+  return session_end_stream_headers_received(session, frame, stream);
 }
 
 int nghttp2_session_on_request_headers_received(nghttp2_session *session,

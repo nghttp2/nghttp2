@@ -33,6 +33,7 @@ void test_nghttp2_session_recv_data(void);
 void test_nghttp2_session_recv_data_no_auto_flow_control(void);
 void test_nghttp2_session_recv_continuation(void);
 void test_nghttp2_session_recv_headers_with_priority(void);
+void test_nghttp2_session_recv_headers_early_response(void);
 void test_nghttp2_session_recv_premature_headers(void);
 void test_nghttp2_session_recv_unknown_frame(void);
 void test_nghttp2_session_recv_unexpected_continuation(void);

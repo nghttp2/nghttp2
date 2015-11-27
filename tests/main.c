@@ -87,6 +87,8 @@ int main(int argc _U_, char *argv[] _U_) {
                    test_nghttp2_session_recv_continuation) ||
       !CU_add_test(pSuite, "session_recv_headers_with_priority",
                    test_nghttp2_session_recv_headers_with_priority) ||
+      !CU_add_test(pSuite, "session_recv_headers_early_response",
+                   test_nghttp2_session_recv_headers_early_response) ||
       !CU_add_test(pSuite, "session_recv_premature_headers",
                    test_nghttp2_session_recv_premature_headers) ||
       !CU_add_test(pSuite, "session_recv_unknown_frame",
