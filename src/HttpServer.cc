@@ -1228,7 +1228,7 @@ void prepare_response(Stream *stream, Http2Handler *hd,
       close(file);
 
       if (query_pos == std::string::npos) {
-        reqpath += "/";
+        reqpath += '/';
       } else {
         reqpath.insert(query_pos, "/");
       }

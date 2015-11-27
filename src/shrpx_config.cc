@@ -596,7 +596,7 @@ void parse_mapping(const DownstreamAddr &addr, const char *src) {
       // This effectively makes empty pattern to "/".
       pattern.assign(raw_pattern.first, raw_pattern.second);
       util::inp_strlower(pattern);
-      pattern += "/";
+      pattern += '/';
     } else {
       pattern.assign(raw_pattern.first, slash);
       util::inp_strlower(pattern);

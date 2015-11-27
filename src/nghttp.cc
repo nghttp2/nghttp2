@@ -168,7 +168,7 @@ std::string Request::make_reqpath() const {
                          ? util::get_uri_field(uri.c_str(), u, UF_PATH)
                          : "/";
   if (util::has_uri_field(u, UF_QUERY)) {
-    path += "?";
+    path += '?';
     path.append(uri.c_str() + u.field_data[UF_QUERY].off,
                 u.field_data[UF_QUERY].len);
   }
@@ -828,7 +828,7 @@ int HttpClient::on_upgrade_connect() {
       reqvec[0]->method = "GET";
     } else {
       req = (*meth).value;
-      req += " ";
+      req += ' ';
       reqvec[0]->method = (*meth).value;
     }
     req += reqvec[0]->make_reqpath();

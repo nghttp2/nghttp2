@@ -83,7 +83,7 @@ request_cb serve_mux::handler(request_impl &req) const {
       auto new_uri = util::percent_encode_path(clean_path);
       auto &uref = req.uri();
       if (!uref.raw_query.empty()) {
-        new_uri += "?";
+        new_uri += '?';
         new_uri += uref.raw_query;
       }
 

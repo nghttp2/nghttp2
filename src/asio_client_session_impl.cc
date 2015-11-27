@@ -420,10 +420,10 @@ const request *session_impl::submit(boost::system::error_code &ec,
 
   if (util::ipv6_numeric_addr(uref.host.c_str())) {
     uref.host = "[" + uref.host;
-    uref.host += "]";
+    uref.host += ']';
   }
   if (u.field_set & (1 << UF_PORT)) {
-    uref.host += ":";
+    uref.host += ':';
     uref.host += util::utos(u.port);
   }
 
@@ -435,7 +435,7 @@ const request *session_impl::submit(boost::system::error_code &ec,
 
   auto path = uref.raw_path;
   if (u.field_set & (1 << UF_QUERY)) {
-    path += "?";
+    path += '?';
     path += uref.raw_query;
   }
 

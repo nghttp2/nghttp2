@@ -89,7 +89,7 @@ std::string percentEncode(const unsigned char *target, size_t len) {
     if (inRFC3986UnreservedChars(c)) {
       dest += c;
     } else {
-      dest += "%";
+      dest += '%';
       dest += UPPER_XDIGITS[c >> 4];
       dest += UPPER_XDIGITS[(c & 0x0f)];
     }
@@ -110,7 +110,7 @@ std::string percent_encode_path(const std::string &s) {
       continue;
     }
 
-    dest += "%";
+    dest += '%';
     dest += UPPER_XDIGITS[(c >> 4) & 0x0f];
     dest += UPPER_XDIGITS[(c & 0x0f)];
   }
@@ -141,7 +141,7 @@ std::string percent_encode_token(const std::string &target) {
     if (c != '%' && in_token(c)) {
       dest += c;
     } else {
-      dest += "%";
+      dest += '%';
       dest += UPPER_XDIGITS[c >> 4];
       dest += UPPER_XDIGITS[(c & 0x0f)];
     }
@@ -712,7 +712,7 @@ std::string ascii_dump(const uint8_t *data, size_t len) {
     if (c >= 0x20 && c < 0x7f) {
       res += c;
     } else {
-      res += ".";
+      res += '.';
     }
   }
 
@@ -1103,17 +1103,17 @@ std::string make_hostport(const char *host, uint16_t port) {
   std::string hostport;
 
   if (ipv6) {
-    hostport += "[";
+    hostport += '[';
   }
 
   hostport += host;
 
   if (ipv6) {
-    hostport += "]";
+    hostport += ']';
   }
 
   if (port != 80 && port != 443) {
-    hostport += ":";
+    hostport += ':';
     hostport += utos(port);
   }
 

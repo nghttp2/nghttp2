@@ -55,7 +55,7 @@ std::string create_via_header_value(int major, int minor) {
   std::string hdrs;
   hdrs += static_cast<char>(major + '0');
   if (major < 2) {
-    hdrs += ".";
+    hdrs += '.';
     hdrs += static_cast<char>(minor + '0');
   }
   hdrs += " nghttpx";

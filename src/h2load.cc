@@ -1177,7 +1177,7 @@ std::string get_reqline(const char *uri, const http_parser_url &u) {
   }
 
   if (util::has_uri_field(u, UF_QUERY)) {
-    reqline += "?";
+    reqline += '?';
     reqline += util::get_uri_field(uri, u, UF_QUERY);
   }
 
@@ -1954,7 +1954,7 @@ int main(int argc, char **argv) {
   for (auto &req : reqlines) {
     // For HTTP/1.1
     auto h1req = (*method_it).value;
-    h1req += " ";
+    h1req += ' ';
     h1req += req;
     h1req += " HTTP/1.1\r\n";
     for (auto &nv : shared_nva) {
