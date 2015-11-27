@@ -4886,7 +4886,7 @@ void test_nghttp2_session_open_stream(void) {
                                        NGHTTP2_STREAM_RESERVED, NULL);
   CU_ASSERT(0 == session->num_incoming_streams);
   CU_ASSERT(0 == session->num_outgoing_streams);
-  CU_ASSERT(NULL == stream->dep_prev);
+  CU_ASSERT(&session->root == stream->dep_prev);
   CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == stream->weight);
   CU_ASSERT(NGHTTP2_SHUT_WR == stream->shut_flags);
 

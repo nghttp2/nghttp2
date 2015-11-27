@@ -973,15 +973,6 @@ nghttp2_stream *nghttp2_session_open_stream(nghttp2_session *session,
     }
   }
 
-  /* We don't have to track dependency of received reserved stream */
-  if (stream->shut_flags & NGHTTP2_SHUT_WR) {
-    return stream;
-  }
-
-  /* TODO Client does not have to track dependencies of streams except
-     for those which have upload data.  Currently, we just track
-     everything. */
-
   if (pri_spec->stream_id == 0) {
     dep_stream = &session->root;
   }
