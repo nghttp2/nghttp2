@@ -521,8 +521,8 @@ void show_candidates(const char *unkopt, option *options) {
     }
     // Use cost 0 for suffix match, but match at least 3 characters
     if (unkoptlen >= 3 &&
-        iendsWith(options[i].name, options[i].name + optnamelen, unkopt,
-                  unkopt + unkoptlen)) {
+        iends_with(options[i].name, options[i].name + optnamelen, unkopt,
+                   unkopt + unkoptlen)) {
       cands.emplace_back(0, options[i].name);
       continue;
     }
@@ -754,7 +754,7 @@ bool check_path(const std::string &path) {
          path.find('\\') == std::string::npos &&
          path.find("/../") == std::string::npos &&
          path.find("/./") == std::string::npos &&
-         !util::endsWith(path, "/..") && !util::endsWith(path, "/.");
+         !util::ends_with(path, "/..") && !util::ends_with(path, "/.");
 }
 
 int64_t to_time64(const timeval &tv) {

@@ -212,29 +212,29 @@ bool istarts_with(InputIt a, size_t an, const char *b) {
 bool istarts_with(const char *a, const char *b);
 
 template <typename InputIterator1, typename InputIterator2>
-bool endsWith(InputIterator1 first1, InputIterator1 last1,
-              InputIterator2 first2, InputIterator2 last2) {
+bool ends_with(InputIterator1 first1, InputIterator1 last1,
+               InputIterator2 first2, InputIterator2 last2) {
   if (last1 - first1 < last2 - first2) {
     return false;
   }
   return std::equal(first2, last2, last1 - (last2 - first2));
 }
 
-inline bool endsWith(const std::string &a, const std::string &b) {
-  return endsWith(std::begin(a), std::end(a), std::begin(b), std::end(b));
+inline bool ends_with(const std::string &a, const std::string &b) {
+  return ends_with(std::begin(a), std::end(a), std::begin(b), std::end(b));
 }
 
 template <typename InputIterator1, typename InputIterator2>
-bool iendsWith(InputIterator1 first1, InputIterator1 last1,
-               InputIterator2 first2, InputIterator2 last2) {
+bool iends_with(InputIterator1 first1, InputIterator1 last1,
+                InputIterator2 first2, InputIterator2 last2) {
   if (last1 - first1 < last2 - first2) {
     return false;
   }
   return std::equal(first2, last2, last1 - (last2 - first2), CaseCmp());
 }
 
-inline bool iendsWith(const std::string &a, const std::string &b) {
-  return iendsWith(std::begin(a), std::end(a), std::begin(b), std::end(b));
+inline bool iends_with(const std::string &a, const std::string &b) {
+  return iends_with(std::begin(a), std::end(a), std::begin(b), std::end(b));
 }
 
 int strcompare(const char *a, const uint8_t *b, size_t n);

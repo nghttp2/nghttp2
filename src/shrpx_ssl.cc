@@ -808,8 +808,8 @@ bool tls_hostname_match(const char *pattern, const char *hostname) {
     return false;
   }
   return util::istarts_with(hostname, hnLeftLabelEnd, pattern, ptWildcard) &&
-         util::iendsWith(hostname, hnLeftLabelEnd, ptWildcard + 1,
-                         ptLeftLabelEnd);
+         util::iends_with(hostname, hnLeftLabelEnd, ptWildcard + 1,
+                          ptLeftLabelEnd);
 }
 } // namespace
 
