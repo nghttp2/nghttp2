@@ -519,7 +519,7 @@ std::vector<LogFragment> parse_log_format(const char *optarg) {
     auto type = log_var_lookup_token(var_name, var_namelen);
 
     if (type == SHRPX_LOGF_NONE) {
-      if (util::istartsWith(var_name, var_namelen, "http_")) {
+      if (util::istarts_with(var_name, var_namelen, "http_")) {
         if (util::streq("host", var_name + str_size("http_"),
                         var_namelen - str_size("http_"))) {
           // Special handling of host header field.  We will use
@@ -1342,7 +1342,7 @@ int parse_config(const char *opt, const char *optarg,
       pat_delim = optarg + optarglen;
     }
     DownstreamAddr addr;
-    if (util::istartsWith(optarg, SHRPX_UNIX_PATH_PREFIX)) {
+    if (util::istarts_with(optarg, SHRPX_UNIX_PATH_PREFIX)) {
       auto path = optarg + str_size(SHRPX_UNIX_PATH_PREFIX);
       addr.host = strcopy(path, pat_delim);
       addr.host_unix = true;
@@ -1368,7 +1368,7 @@ int parse_config(const char *opt, const char *optarg,
     return 0;
   }
   case SHRPX_OPTID_FRONTEND: {
-    if (util::istartsWith(optarg, SHRPX_UNIX_PATH_PREFIX)) {
+    if (util::istarts_with(optarg, SHRPX_UNIX_PATH_PREFIX)) {
       auto path = optarg + str_size(SHRPX_UNIX_PATH_PREFIX);
       mod_config()->host = strcopy(path);
       mod_config()->port = 0;

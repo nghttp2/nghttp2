@@ -353,7 +353,7 @@ void streq_advance(const char **ap, const char **bp) {
 }
 } // namespace
 
-bool istartsWith(const char *a, const char *b) {
+bool istarts_with(const char *a, const char *b) {
   if (!a || !b) {
     return false;
   }
@@ -509,8 +509,8 @@ void show_candidates(const char *unkopt, option *options) {
   for (size_t i = 0; options[i].name != nullptr; ++i) {
     auto optnamelen = strlen(options[i].name);
     // Use cost 0 for prefix match
-    if (istartsWith(options[i].name, options[i].name + optnamelen, unkopt,
-                    unkopt + unkoptlen)) {
+    if (istarts_with(options[i].name, options[i].name + optnamelen, unkopt,
+                     unkopt + unkoptlen)) {
       if (optnamelen == static_cast<size_t>(unkoptlen)) {
         // Exact match, then we don't show any condidates.
         return;

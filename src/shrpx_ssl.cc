@@ -792,7 +792,7 @@ bool tls_hostname_match(const char *pattern, const char *hostname) {
   // Don't attempt to match a presented identifier where the wildcard
   // character is embedded within an A-label.
   if (ptLeftLabelEnd == 0 || strchr(ptLeftLabelEnd + 1, '.') == 0 ||
-      ptLeftLabelEnd < ptWildcard || util::istartsWith(pattern, "xn--")) {
+      ptLeftLabelEnd < ptWildcard || util::istarts_with(pattern, "xn--")) {
     wildcardEnabled = false;
   }
   if (!wildcardEnabled) {
@@ -807,7 +807,7 @@ bool tls_hostname_match(const char *pattern, const char *hostname) {
   if (hnLeftLabelEnd - hostname < ptLeftLabelEnd - pattern) {
     return false;
   }
-  return util::istartsWith(hostname, hnLeftLabelEnd, pattern, ptWildcard) &&
+  return util::istarts_with(hostname, hnLeftLabelEnd, pattern, ptWildcard) &&
          util::iendsWith(hostname, hnLeftLabelEnd, ptWildcard + 1,
                          ptLeftLabelEnd);
 }

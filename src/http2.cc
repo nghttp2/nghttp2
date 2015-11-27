@@ -454,8 +454,8 @@ std::string rewrite_location_uri(const std::string &uri,
     return "";
   }
   auto field = &u.field_data[UF_HOST];
-  if (!util::startsWith(std::begin(match_host), std::end(match_host),
-                        &uri[field->off], &uri[field->off] + field->len) ||
+  if (!util::starts_with(std::begin(match_host), std::end(match_host),
+                         &uri[field->off], &uri[field->off] + field->len) ||
       (match_host.size() != field->len && match_host[field->len] != ':')) {
     return "";
   }

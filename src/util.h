@@ -169,20 +169,20 @@ inline char lowcase(char c) {
 }
 
 template <typename InputIterator1, typename InputIterator2>
-bool startsWith(InputIterator1 first1, InputIterator1 last1,
-                InputIterator2 first2, InputIterator2 last2) {
+bool starts_with(InputIterator1 first1, InputIterator1 last1,
+                 InputIterator2 first2, InputIterator2 last2) {
   if (last1 - first1 < last2 - first2) {
     return false;
   }
   return std::equal(first2, last2, first1);
 }
 
-inline bool startsWith(const std::string &a, const std::string &b) {
-  return startsWith(std::begin(a), std::end(a), std::begin(b), std::end(b));
+inline bool starts_with(const std::string &a, const std::string &b) {
+  return starts_with(std::begin(a), std::end(a), std::begin(b), std::end(b));
 }
 
-inline bool startsWith(const char *a, const char *b) {
-  return startsWith(a, a + strlen(a), b, b + strlen(b));
+inline bool starts_with(const char *a, const char *b) {
+  return starts_with(a, a + strlen(a), b, b + strlen(b));
 }
 
 struct CaseCmp {
@@ -192,24 +192,24 @@ struct CaseCmp {
 };
 
 template <typename InputIterator1, typename InputIterator2>
-bool istartsWith(InputIterator1 first1, InputIterator1 last1,
-                 InputIterator2 first2, InputIterator2 last2) {
+bool istarts_with(InputIterator1 first1, InputIterator1 last1,
+                  InputIterator2 first2, InputIterator2 last2) {
   if (last1 - first1 < last2 - first2) {
     return false;
   }
   return std::equal(first2, last2, first1, CaseCmp());
 }
 
-inline bool istartsWith(const std::string &a, const std::string &b) {
-  return istartsWith(std::begin(a), std::end(a), std::begin(b), std::end(b));
+inline bool istarts_with(const std::string &a, const std::string &b) {
+  return istarts_with(std::begin(a), std::end(a), std::begin(b), std::end(b));
 }
 
 template <typename InputIt>
-bool istartsWith(InputIt a, size_t an, const char *b) {
-  return istartsWith(a, a + an, b, b + strlen(b));
+bool istarts_with(InputIt a, size_t an, const char *b) {
+  return istarts_with(a, a + an, b, b + strlen(b));
 }
 
-bool istartsWith(const char *a, const char *b);
+bool istarts_with(const char *a, const char *b);
 
 template <typename InputIterator1, typename InputIterator2>
 bool endsWith(InputIterator1 first1, InputIterator1 last1,

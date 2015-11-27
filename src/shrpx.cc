@@ -325,11 +325,11 @@ void exec_binary(SignalServer *ssv) {
   }
 
   for (size_t i = 0; i < envlen; ++i) {
-    if (util::startsWith(environ[i], ENV_LISTENER4_FD) ||
-        util::startsWith(environ[i], ENV_LISTENER6_FD) ||
-        util::startsWith(environ[i], ENV_PORT) ||
-        util::startsWith(environ[i], ENV_UNIX_FD) ||
-        util::startsWith(environ[i], ENV_UNIX_PATH)) {
+    if (util::starts_with(environ[i], ENV_LISTENER4_FD) ||
+        util::starts_with(environ[i], ENV_LISTENER6_FD) ||
+        util::starts_with(environ[i], ENV_PORT) ||
+        util::starts_with(environ[i], ENV_UNIX_FD) ||
+        util::starts_with(environ[i], ENV_UNIX_PATH)) {
       continue;
     }
 

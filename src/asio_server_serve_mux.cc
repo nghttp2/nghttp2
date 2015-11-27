@@ -108,7 +108,7 @@ bool path_match(const std::string &pattern, const std::string &path) {
   if (pattern.back() != '/') {
     return pattern == path;
   }
-  return util::startsWith(path, pattern);
+  return util::starts_with(path, pattern);
 }
 } // namespace
 

@@ -344,15 +344,15 @@ void test_util_format_duration(void) {
 }
 
 void test_util_starts_with(void) {
-  CU_ASSERT(util::startsWith("foo", "foo"));
-  CU_ASSERT(util::startsWith("fooo", "foo"));
-  CU_ASSERT(util::startsWith("ofoo", ""));
-  CU_ASSERT(!util::startsWith("ofoo", "foo"));
+  CU_ASSERT(util::starts_with("foo", "foo"));
+  CU_ASSERT(util::starts_with("fooo", "foo"));
+  CU_ASSERT(util::starts_with("ofoo", ""));
+  CU_ASSERT(!util::starts_with("ofoo", "foo"));
 
-  CU_ASSERT(util::istartsWith("FOO", "fOO"));
-  CU_ASSERT(util::startsWith("ofoo", ""));
-  CU_ASSERT(util::istartsWith("fOOo", "Foo"));
-  CU_ASSERT(!util::istartsWith("ofoo", "foo"));
+  CU_ASSERT(util::istarts_with("FOO", "fOO"));
+  CU_ASSERT(util::starts_with("ofoo", ""));
+  CU_ASSERT(util::istarts_with("fOOo", "Foo"));
+  CU_ASSERT(!util::istarts_with("ofoo", "foo"));
 }
 
 void test_util_ends_with(void) {
