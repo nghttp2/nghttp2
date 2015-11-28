@@ -2869,9 +2869,9 @@ NGHTTP2_EXTERN int nghttp2_session_consume_stream(nghttp2_session *session,
  * not exist.  The created idle stream will depend on root stream
  * (stream 0) with weight 16.
  *
- * If stream denoted by ``pri_spec->stream_id`` is not found, we use
- * default priority instead of given |pri_spec|.  That is make stream
- * depend on root stream with weight 16.
+ * Otherwise, if stream denoted by ``pri_spec->stream_id`` is not
+ * found, we use default priority instead of given |pri_spec|.  That
+ * is make stream depend on root stream with weight 16.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
