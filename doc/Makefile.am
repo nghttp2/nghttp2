@@ -86,6 +86,7 @@ APIDOCS= \
 	nghttp2_session_consume.rst \
 	nghttp2_session_consume_connection.rst \
 	nghttp2_session_consume_stream.rst \
+	nghttp2_session_create_idle_stream.rst \
 	nghttp2_session_del.rst \
 	nghttp2_session_find_stream.rst \
 	nghttp2_session_get_effective_local_window_size.rst \

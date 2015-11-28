@@ -8464,6 +8464,77 @@ void test_nghttp2_session_change_stream_priority(void) {
   nghttp2_session_del(session);
 }
 
+void test_nghttp2_session_create_idle_stream(void) {
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  nghttp2_stream *stream2, *stream4, *stream8, *stream10;
+  nghttp2_priority_spec pri_spec;
+  int rv;
+
+  memset(&callbacks, 0, sizeof(callbacks));
+
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  stream2 = open_stream(session, 2);
+
+  nghttp2_priority_spec_init(&pri_spec, 2, 111, 1);
+
+  rv = nghttp2_session_create_idle_stream(session, 4, &pri_spec);
+
+  CU_ASSERT(0 == rv);
+
+  stream4 = nghttp2_session_get_stream_raw(session, 4);
+
+  CU_ASSERT(4 == stream4->stream_id);
+  CU_ASSERT(111 == stream4->weight);
+  CU_ASSERT(stream2 == stream4->dep_prev);
+  CU_ASSERT(stream4 == stream2->dep_next);
+
+  /* If pri_spec->stream_id does not exist, and it is idle stream, it
+     is created too */
+  nghttp2_priority_spec_init(&pri_spec, 8, 109, 0);
+
+  rv = nghttp2_session_create_idle_stream(session, 8, &pri_spec);
+
+  CU_ASSERT(0 == rv);
+
+  stream8 = nghttp2_session_get_stream_raw(session, 8);
+  stream10 = nghttp2_session_get_stream_raw(session, 10);
+
+  CU_ASSERT(8 == stream8->stream_id);
+  CU_ASSERT(109 == stream8->weight);
+  CU_ASSERT(10 == stream10->stream_id);
+  CU_ASSERT(16 == stream10->weight);
+  CU_ASSERT(stream10 == stream8->dep_prev);
+  CU_ASSERT(&session->root == stream10->dep_prev);
+
+  /* It is an error to attempt to create already existing idle
+     stream */
+  rv = nghttp2_session_create_idle_stream(session, 4, &pri_spec);
+
+  CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT == rv);
+
+  /* It is an error to depend on itself */
+  pri_spec.stream_id = 6;
+
+  rv = nghttp2_session_create_idle_stream(session, 6, &pri_spec);
+  CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT == rv);
+
+  /* It is an error to create root stream (0) as idle stream */
+  rv = nghttp2_session_create_idle_stream(session, 0, &pri_spec);
+  CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT == rv);
+
+  /* It is an error to create non-idle stream */
+  session->next_stream_id = 20;
+  pri_spec.stream_id = 2;
+
+  rv = nghttp2_session_create_idle_stream(session, 18, &pri_spec);
+
+  CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT == rv);
+
+  nghttp2_session_del(session);
+}
+
 static void check_nghttp2_http_recv_headers_fail(
     nghttp2_session *session, nghttp2_hd_deflater *deflater, int32_t stream_id,
     int stream_state, const nghttp2_nv *nva, size_t nvlen) {
