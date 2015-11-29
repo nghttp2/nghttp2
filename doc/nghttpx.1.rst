@@ -1048,7 +1048,9 @@ has to deploy key generator program to update keys frequently (e.g.,
 every 1 hour).  The example key generator tlsticketupdate.go is
 available under contrib directory in nghttp2 archive.  The memcached
 entry key is ``nghttpx:tls-ticket-key``.  The data format stored in
-memcached is the binary format described below::
+memcached is the binary format described below:
+
+.. code-block:: text
 
     +--------------+-------+----------------+
     | VERSION (4)  |LEN (2)|KEY(48 or 80) ...
