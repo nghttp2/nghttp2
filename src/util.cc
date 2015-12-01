@@ -1244,8 +1244,13 @@ int read_mime_types(std::map<std::string, std::string> &res,
         break;
       }
       ext_end = std::find_if(ext_start, std::end(line), delim_pred);
+#ifdef HAVE_STD_MAP_EMPLACE
       res.emplace(std::string(ext_start, ext_end),
                   std::string(std::begin(line), type_end));
+#else  // !HAVE_STD_MAP_EMPLACE
+      res.insert(std::make_pair(std::string(ext_start, ext_end),
+                                std::string(std::begin(line), type_end)));
+#endif // !HAVE_STD_MAP_EMPLACE
     }
   }
 
