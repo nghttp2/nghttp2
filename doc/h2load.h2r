@@ -86,6 +86,21 @@ time for 1st byte (of (decrypted in case of TLS) application data)
     deviation range (mean +/- sd) against total number of successful
     connections.
 
+req/s (client)
+  min
+    The minimum request per second among all clients.
+  max
+    The maximum request per second among all clients.
+  mean
+    The mean request per second among all clients.
+  sd
+    The standard deviation of request per second among all clients.
+    server.
+  +/- sd
+    The fraction of the number of connections within standard
+    deviation range (mean +/- sd) against total number of successful
+    connections.
+
 FLOW CONTROL
 ------------
 

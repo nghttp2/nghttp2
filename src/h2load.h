@@ -125,6 +125,18 @@ struct RequestStat {
 };
 
 struct ClientStat {
+  // time client started (i.e., first connect starts)
+  std::chrono::steady_clock::time_point client_start_time;
+  // time client end (i.e., client somehow processed all requests it
+  // is responsible for, and disconnected)
+  std::chrono::steady_clock::time_point client_end_time;
+  // The number of requests completed successfull, but not necessarily
+  // means successful HTTP status code.
+  size_t req_success;
+
+  // The following 3 numbers are overwritten each time when connection
+  // is made.
+
   // time connect starts
   std::chrono::steady_clock::time_point connect_start_time;
   // time to connect
@@ -133,23 +145,23 @@ struct ClientStat {
   std::chrono::steady_clock::time_point ttfb;
 };
 
-template <typename Duration> struct TimeStat {
+struct SDStat {
   // min, max, mean and sd (standard deviation)
-  Duration min, max, mean, sd;
+  double min, max, mean, sd;
   // percentage of samples inside mean -/+ sd
   double within_sd;
 };
 
-struct TimeStats {
+struct SDStats {
   // time for request
-  TimeStat<std::chrono::microseconds> request;
+  SDStat request;
   // time for connect
-  TimeStat<std::chrono::microseconds> connect;
+  SDStat connect;
   // time to first byte (TTFB)
-  TimeStat<std::chrono::microseconds> ttfb;
+  SDStat ttfb;
+  // request per second for each client
+  SDStat rps;
 };
-
-enum TimeStatType { STAT_REQUEST, STAT_CONNECT, STAT_FIRST_BYTE };
 
 struct Stats {
   Stats(size_t req_todo, size_t nclients);
@@ -314,6 +326,8 @@ struct Client {
   void record_connect_time();
   void record_ttfb();
   void clear_connect_times();
+  void record_client_start_time();
+  void record_client_end_time();
 
   void signal_write();
 };

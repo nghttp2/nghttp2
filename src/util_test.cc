@@ -341,6 +341,15 @@ void test_util_format_duration(void) {
             util::format_duration(std::chrono::microseconds(1000000)));
   CU_ASSERT("1.05s" ==
             util::format_duration(std::chrono::microseconds(1050000)));
+
+  CU_ASSERT("0us" == util::format_duration(0.));
+  CU_ASSERT("999us" == util::format_duration(0.000999));
+  CU_ASSERT("1.00ms" == util::format_duration(0.001));
+  CU_ASSERT("1.09ms" == util::format_duration(0.00109));
+  CU_ASSERT("1.01ms" == util::format_duration(0.001009));
+  CU_ASSERT("999.99ms" == util::format_duration(0.99999));
+  CU_ASSERT("1.00s" == util::format_duration(1.));
+  CU_ASSERT("1.05s" == util::format_duration(1.05));
 }
 
 void test_util_starts_with(void) {

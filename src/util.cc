@@ -1092,6 +1092,20 @@ std::string format_duration(const std::chrono::microseconds &u) {
   return dtos(static_cast<double>(t) / d) + unit;
 }
 
+std::string format_duration(double t) {
+  const char *unit = "us";
+  if (t >= 1.) {
+    unit = "s";
+  } else if (t >= 0.001) {
+    t *= 1000.;
+    unit = "ms";
+  } else {
+    t *= 1000000.;
+    return utos(static_cast<int64_t>(t)) + unit;
+  }
+  return dtos(t) + unit;
+}
+
 std::string dtos(double n) {
   auto f = utos(static_cast<int64_t>(round(100. * n)) % 100);
   return utos(static_cast<int64_t>(n)) + "." + (f.size() == 1 ? "0" : "") + f;

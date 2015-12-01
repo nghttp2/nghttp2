@@ -309,6 +309,7 @@ int Client::make_socket(addrinfo *addr) {
 int Client::connect() {
   int rv;
 
+  record_client_start_time();
   clear_connect_times();
   record_connect_start_time();
 
@@ -391,6 +392,8 @@ void Client::fail() {
 }
 
 void Client::disconnect() {
+  record_client_end_time();
+
   ev_timer_stop(worker->loop, &conn_inactivity_watcher);
   ev_timer_stop(worker->loop, &conn_active_watcher);
   ev_timer_stop(worker->loop, &request_timeout_watcher);
@@ -610,6 +613,8 @@ void Client::on_stream_close(int32_t stream_id, bool success,
   if (success) {
     req_stat->completed = true;
     ++worker->stats.req_success;
+    auto &cstat = worker->stats.client_stats[id];
+    ++cstat.req_success;
   }
   ++worker->stats.req_done;
   ++req_done;
@@ -1006,6 +1011,26 @@ void Client::clear_connect_times() {
   cstat.ttfb = std::chrono::steady_clock::time_point();
 }
 
+void Client::record_client_start_time() {
+  auto &cstat = worker->stats.client_stats[id];
+
+  // Record start time only once at the very first connection is going
+  // to be made.
+  if (recorded(cstat.client_start_time)) {
+    return;
+  }
+
+  cstat.client_start_time = std::chrono::steady_clock::now();
+}
+
+void Client::record_client_end_time() {
+  auto &cstat = worker->stats.client_stats[id];
+
+  // Unlike client_start_time, we overwrite client_end_time.  This
+  // handles multiple connect/disconnect for HTTP/1.1 benchmark.
+  cstat.client_end_time = std::chrono::steady_clock::now();
+}
+
 void Client::signal_write() { ev_io_start(worker->loop, &wev); }
 
 void Client::try_new_connection() { new_connection_requested = true; }
@@ -1065,9 +1090,7 @@ void Worker::run() {
 
 namespace {
 // Returns percentage of number of samples within mean +/- sd.
-template <typename Duration>
-double within_sd(const std::vector<Duration> &samples, const Duration &mean,
-                 const Duration &sd) {
+double within_sd(const std::vector<double> &samples, double mean, double sd) {
   if (samples.size() == 0) {
     return 0.0;
   }
@@ -1075,7 +1098,7 @@ double within_sd(const std::vector<Duration> &samples, const Duration &mean,
   auto upper = mean + sd;
   auto m = std::count_if(
       std::begin(samples), std::end(samples),
-      [&lower, &upper](const Duration &t) { return lower <= t && t <= upper; });
+      [&lower, &upper](double t) { return lower <= t && t <= upper; });
   return (m / static_cast<double>(samples.size())) * 100;
 }
 } // namespace
@@ -1083,32 +1106,31 @@ double within_sd(const std::vector<Duration> &samples, const Duration &mean,
 namespace {
 // Computes statistics using |samples|. The min, max, mean, sd, and
 // percentage of number of samples within mean +/- sd are computed.
-template <typename Duration>
-TimeStat<Duration> compute_time_stat(const std::vector<Duration> &samples) {
+SDStat compute_time_stat(const std::vector<double> &samples) {
   if (samples.empty()) {
-    return {Duration::zero(), Duration::zero(), Duration::zero(),
-            Duration::zero(), 0.0};
+    return {0.0, 0.0, 0.0, 0.0, 0.0};
   }
   // standard deviation calculated using Rapid calculation method:
   // http://en.wikipedia.org/wiki/Standard_deviation#Rapid_calculation_methods
   double a = 0, q = 0;
   size_t n = 0;
-  int64_t sum = 0;
-  auto res = TimeStat<Duration>{Duration::max(), Duration::min()};
+  double sum = 0;
+  auto res = SDStat{std::numeric_limits<double>::max(),
+                    std::numeric_limits<double>::min()};
   for (const auto &t : samples) {
     ++n;
     res.min = std::min(res.min, t);
     res.max = std::max(res.max, t);
-    sum += t.count();
+    sum += t;
 
-    auto na = a + (t.count() - a) / n;
-    q += (t.count() - a) * (t.count() - na);
+    auto na = a + (t - a) / n;
+    q += (t - a) * (t - na);
     a = na;
   }
 
   assert(n > 0);
-  res.mean = Duration(sum / n);
-  res.sd = Duration(static_cast<typename Duration::rep>(sqrt(q / n)));
+  res.mean = sum / n;
+  res.sd = sqrt(q / n);
   res.within_sd = within_sd(samples, res.mean, res.sd);
 
   return res;
@@ -1116,19 +1138,20 @@ TimeStat<Duration> compute_time_stat(const std::vector<Duration> &samples) {
 } // namespace
 
 namespace {
-TimeStats
+SDStats
 process_time_stats(const std::vector<std::unique_ptr<Worker>> &workers) {
   size_t nrequest_times = 0;
   for (const auto &w : workers) {
     nrequest_times += w->stats.req_stats.size();
   }
 
-  std::vector<std::chrono::microseconds> request_times;
+  std::vector<double> request_times;
   request_times.reserve(nrequest_times);
 
-  std::vector<std::chrono::microseconds> connect_times, ttfb_times;
+  std::vector<double> connect_times, ttfb_times, rps_values;
   connect_times.reserve(config.nclients);
   ttfb_times.reserve(config.nclients);
+  rps_values.reserve(config.nclients);
 
   for (const auto &w : workers) {
     for (const auto &req_stat : w->stats.req_stats) {
@@ -1136,13 +1159,22 @@ process_time_stats(const std::vector<std::unique_ptr<Worker>> &workers) {
         continue;
       }
       request_times.push_back(
-          std::chrono::duration_cast<std::chrono::microseconds>(
-              req_stat.stream_close_time - req_stat.request_time));
+          std::chrono::duration_cast<std::chrono::duration<double>>(
+              req_stat.stream_close_time - req_stat.request_time).count());
     }
 
     const auto &stat = w->stats;
 
     for (const auto &cstat : stat.client_stats) {
+      if (recorded(cstat.client_start_time) &&
+          recorded(cstat.client_end_time)) {
+        auto t = std::chrono::duration_cast<std::chrono::duration<double>>(
+                     cstat.client_end_time - cstat.client_start_time).count();
+        if (t > 1e-9) {
+          rps_values.push_back(cstat.req_success / t);
+        }
+      }
+
       // We will get connect event before FFTB.
       if (!recorded(cstat.connect_start_time) ||
           !recorded(cstat.connect_time)) {
@@ -1150,21 +1182,21 @@ process_time_stats(const std::vector<std::unique_ptr<Worker>> &workers) {
       }
 
       connect_times.push_back(
-          std::chrono::duration_cast<std::chrono::microseconds>(
-              cstat.connect_time - cstat.connect_start_time));
+          std::chrono::duration_cast<std::chrono::duration<double>>(
+              cstat.connect_time - cstat.connect_start_time).count());
 
       if (!recorded(cstat.ttfb)) {
         continue;
       }
 
       ttfb_times.push_back(
-          std::chrono::duration_cast<std::chrono::microseconds>(
-              cstat.ttfb - cstat.connect_start_time));
+          std::chrono::duration_cast<std::chrono::duration<double>>(
+              cstat.ttfb - cstat.connect_start_time).count());
     }
   }
 
   return {compute_time_stat(request_times), compute_time_stat(connect_times),
-          compute_time_stat(ttfb_times)};
+          compute_time_stat(ttfb_times), compute_time_stat(rps_values)};
 }
 } // namespace
 
@@ -2220,7 +2252,11 @@ time for request: )" << std::setw(10) << util::format_duration(ts.request.min)
             << util::format_duration(ts.ttfb.max) << "  " << std::setw(10)
             << util::format_duration(ts.ttfb.mean) << "  " << std::setw(10)
             << util::format_duration(ts.ttfb.sd) << std::setw(9)
-            << util::dtos(ts.ttfb.within_sd) << "%" << std::endl;
+            << util::dtos(ts.ttfb.within_sd) << "%"
+            << "\nreq/s (client)  : " << std::setw(10) << ts.rps.min << "  "
+            << std::setw(10) << ts.rps.max << "  " << std::setw(10)
+            << ts.rps.mean << "  " << std::setw(10) << ts.rps.sd << std::setw(9)
+            << util::dtos(ts.rps.within_sd) << "%" << std::endl;
 
   SSL_CTX_free(ssl_ctx);
 

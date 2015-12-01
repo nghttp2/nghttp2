@@ -585,6 +585,9 @@ std::string duration_str(double t);
 // fractional digits follow.
 std::string format_duration(const std::chrono::microseconds &u);
 
+// Just like above, but this takes |t| as seconds.
+std::string format_duration(double t);
+
 // Creates "host:port" string using given |host| and |port|.  If
 // |host| is numeric IPv6 address (e.g., ::1), it is enclosed by "["
 // and "]".  If |port| is 80 or 443, port part is omitted.
