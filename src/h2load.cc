@@ -71,6 +71,12 @@ using namespace nghttp2;
 
 namespace h2load {
 
+namespace {
+bool recorded(const std::chrono::steady_clock::time_point &t) {
+  return std::chrono::steady_clock::duration::zero() != t.time_since_epoch();
+}
+} // namespace
+
 Config::Config()
     : data_length(-1), addrs(nullptr), nreqs(1), nclients(1), nthreads(1),
       max_concurrent_streams(-1), window_bits(30), connection_window_bits(30),
@@ -92,11 +98,11 @@ Config config;
 
 RequestStat::RequestStat() : data_offset(0), completed(false) {}
 
-Stats::Stats(size_t req_todo)
+Stats::Stats(size_t req_todo, size_t nclients)
     : req_todo(0), req_started(0), req_done(0), req_success(0),
       req_status_success(0), req_failed(0), req_error(0), req_timedout(0),
       bytes_total(0), bytes_head(0), bytes_head_decomp(0), bytes_body(0),
-      status(), req_stats(req_todo) {}
+      status(), req_stats(req_todo), client_stats(nclients) {}
 
 Stream::Stream() : status_success(-1) {}
 
@@ -149,7 +155,8 @@ void rate_period_timeout_w_cb(struct ev_loop *loop, ev_timer *w, int revents) {
       ++req_todo;
       --worker->nreqs_rem;
     }
-    worker->clients.push_back(make_unique<Client>(worker, req_todo));
+    worker->clients.push_back(
+        make_unique<Client>(worker->next_client_id++, worker, req_todo));
     auto &client = worker->clients.back();
     if (client->connect() != 0) {
       std::cerr << "client could not connect to host" << std::endl;
@@ -232,11 +239,11 @@ void client_request_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 }
 } // namespace
 
-Client::Client(Worker *worker, size_t req_todo)
+Client::Client(uint32_t id, Worker *worker, size_t req_todo)
     : worker(worker), ssl(nullptr), next_addr(config.addrs),
-      current_addr(nullptr), reqidx(0), state(CLIENT_IDLE),
-      first_byte_received(false), req_todo(req_todo), req_started(0),
-      req_done(0), fd(-1), new_connection_requested(false) {
+      current_addr(nullptr), reqidx(0), state(CLIENT_IDLE), req_todo(req_todo),
+      req_started(0), req_done(0), id(id), fd(-1),
+      new_connection_requested(false) {
   ev_io_init(&wev, writecb, 0, EV_WRITE);
   ev_io_init(&rev, readcb, 0, EV_READ);
 
@@ -302,7 +309,8 @@ int Client::make_socket(addrinfo *addr) {
 int Client::connect() {
   int rv;
 
-  record_start_time(&worker->stats);
+  clear_connect_times();
+  record_connect_start_time();
 
   if (worker->config->conn_inactivity_timeout > 0.) {
     ev_timer_again(worker->loop, &conn_inactivity_watcher);
@@ -732,7 +740,7 @@ int Client::connection_made() {
 
   session->on_connect();
 
-  record_connect_time(&worker->stats);
+  record_connect_time();
 
   if (!config.timing_script) {
     auto nreq =
@@ -971,21 +979,31 @@ void Client::record_request_time(RequestStat *req_stat) {
   req_stat->request_time = std::chrono::steady_clock::now();
 }
 
-void Client::record_start_time(Stats *stat) {
-  stat->start_times.push_back(std::chrono::steady_clock::now());
+void Client::record_connect_start_time() {
+  auto &cstat = worker->stats.client_stats[id];
+  cstat.connect_start_time = std::chrono::steady_clock::now();
 }
 
-void Client::record_connect_time(Stats *stat) {
-  stat->connect_times.push_back(std::chrono::steady_clock::now());
+void Client::record_connect_time() {
+  auto &cstat = worker->stats.client_stats[id];
+  cstat.connect_time = std::chrono::steady_clock::now();
 }
 
 void Client::record_ttfb() {
-  if (first_byte_received) {
+  auto &cstat = worker->stats.client_stats[id];
+  if (recorded(cstat.ttfb)) {
     return;
   }
-  first_byte_received = true;
 
-  worker->stats.ttfbs.push_back(std::chrono::steady_clock::now());
+  cstat.ttfb = std::chrono::steady_clock::now();
+}
+
+void Client::clear_connect_times() {
+  auto &cstat = worker->stats.client_stats[id];
+
+  cstat.connect_start_time = std::chrono::steady_clock::time_point();
+  cstat.connect_time = std::chrono::steady_clock::time_point();
+  cstat.ttfb = std::chrono::steady_clock::time_point();
 }
 
 void Client::signal_write() { ev_io_start(worker->loop, &wev); }
@@ -994,10 +1012,11 @@ void Client::try_new_connection() { new_connection_requested = true; }
 
 Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
                size_t rate, Config *config)
-    : stats(req_todo), loop(ev_loop_new(0)), ssl_ctx(ssl_ctx), config(config),
-      id(id), tls_info_report_done(false), app_info_report_done(false),
-      nconns_made(0), nclients(nclients), nreqs_per_client(req_todo / nclients),
-      nreqs_rem(req_todo % nclients), rate(rate) {
+    : stats(req_todo, nclients), loop(ev_loop_new(0)), ssl_ctx(ssl_ctx),
+      config(config), id(id), tls_info_report_done(false),
+      app_info_report_done(false), nconns_made(0), nclients(nclients),
+      nreqs_per_client(req_todo / nclients), nreqs_rem(req_todo % nclients),
+      rate(rate), next_client_id(0) {
   stats.req_todo = req_todo;
   progress_interval = std::max(static_cast<size_t>(1), req_todo / 10);
 
@@ -1013,7 +1032,7 @@ Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
         ++req_todo;
         --nreqs_rem;
       }
-      clients.push_back(make_unique<Client>(this, req_todo));
+      clients.push_back(make_unique<Client>(next_client_id++, this, req_todo));
     }
   }
 }
@@ -1099,17 +1118,17 @@ TimeStat<Duration> compute_time_stat(const std::vector<Duration> &samples) {
 namespace {
 TimeStats
 process_time_stats(const std::vector<std::unique_ptr<Worker>> &workers) {
-  size_t nrequest_times = 0, nttfb_times = 0;
+  size_t nrequest_times = 0;
   for (const auto &w : workers) {
     nrequest_times += w->stats.req_stats.size();
-    nttfb_times += w->stats.ttfbs.size();
   }
 
   std::vector<std::chrono::microseconds> request_times;
   request_times.reserve(nrequest_times);
+
   std::vector<std::chrono::microseconds> connect_times, ttfb_times;
-  connect_times.reserve(nttfb_times);
-  ttfb_times.reserve(nttfb_times);
+  connect_times.reserve(config.nclients);
+  ttfb_times.reserve(config.nclients);
 
   for (const auto &w : workers) {
     for (const auto &req_stat : w->stats.req_stats) {
@@ -1122,18 +1141,25 @@ process_time_stats(const std::vector<std::unique_ptr<Worker>> &workers) {
     }
 
     const auto &stat = w->stats;
-    // rule out cases where we started but didn't connect or get the
-    // first byte (errors).  We will get connect event before FFTB.
-    assert(stat.start_times.size() >= stat.ttfbs.size());
-    assert(stat.connect_times.size() >= stat.ttfbs.size());
-    for (size_t i = 0; i < stat.ttfbs.size(); ++i) {
+
+    for (const auto &cstat : stat.client_stats) {
+      // We will get connect event before FFTB.
+      if (!recorded(cstat.connect_start_time) ||
+          !recorded(cstat.connect_time)) {
+        continue;
+      }
+
       connect_times.push_back(
           std::chrono::duration_cast<std::chrono::microseconds>(
-              stat.connect_times[i] - stat.start_times[i]));
+              cstat.connect_time - cstat.connect_start_time));
+
+      if (!recorded(cstat.ttfb)) {
+        continue;
+      }
 
       ttfb_times.push_back(
           std::chrono::duration_cast<std::chrono::microseconds>(
-              stat.ttfbs[i] - stat.start_times[i]));
+              cstat.ttfb - cstat.connect_start_time));
     }
   }
 
@@ -2114,7 +2140,7 @@ int main(int argc, char **argv) {
   auto duration =
       std::chrono::duration_cast<std::chrono::microseconds>(end - start);
 
-  Stats stats(0);
+  Stats stats(0, 0);
   for (const auto &w : workers) {
     const auto &s = w->stats;
 
