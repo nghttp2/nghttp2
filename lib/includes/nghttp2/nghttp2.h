@@ -3573,14 +3573,20 @@ NGHTTP2_EXTERN int nghttp2_submit_settings(nghttp2_session *session,
  * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
  *     The |stream_id| is 0; The |stream_id| does not designate stream
  *     that peer initiated.
+ * :enum:`NGHTTP2_ERR_STREAM_CLOSED`
+ *     The stream was alreay closed; or the |stream_id| is invalid.
  *
  * .. warning::
  *
  *   This function returns assigned promised stream ID if it succeeds.
- *   But that stream is not opened yet.  The application must not
- *   submit frame to that stream ID before
- *   :type:`nghttp2_before_frame_send_callback` is called for this
- *   frame.
+ *   As of 1.16.0, stream object for pushed resource is created when
+ *   this function succeeds.  In that case, the application can submit
+ *   push response for the promised frame.
+ *
+ *   In 1.15.0 or prior versions, pushed stream is not opened yet when
+ *   this function succeeds.  The application must not submit frame to
+ *   that stream ID before :type:`nghttp2_before_frame_send_callback`
+ *   is called for this frame.
  *
  */
 NGHTTP2_EXTERN int32_t

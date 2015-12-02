@@ -334,7 +334,7 @@ int nghttp2_session_is_my_stream_id(nghttp2_session *session,
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
  * NGHTTP2_ERR_STREAM_CLOSED
- *     Stream already closed (DATA frame only)
+ *     Stream already closed (DATA and PUSH_PROMISE frame only)
  */
 int nghttp2_session_add_item(nghttp2_session *session,
                              nghttp2_outbound_item *item);
