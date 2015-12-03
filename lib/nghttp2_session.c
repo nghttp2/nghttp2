@@ -372,6 +372,9 @@ static int session_new(nghttp2_session **session_ptr,
   (*session_ptr)->max_incoming_reserved_streams =
       NGHTTP2_MAX_INCOMING_RESERVED_STREAMS;
 
+  /* Limit max outgoing concurrent streams to sensible value */
+  (*session_ptr)->remote_settings.max_concurrent_streams = 100;
+
   if (option) {
     if ((option->opt_set_mask & NGHTTP2_OPT_NO_AUTO_WINDOW_UPDATE) &&
         option->no_auto_window_update) {

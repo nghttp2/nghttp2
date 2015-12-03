@@ -95,8 +95,7 @@ constexpr auto anchors = std::array<Anchor, 5>{{
 Config::Config()
     : header_table_size(-1),
       min_header_table_size(std::numeric_limits<uint32_t>::max()), padding(0),
-      max_concurrent_streams(100),
-      peer_max_concurrent_streams(NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS),
+      max_concurrent_streams(100), peer_max_concurrent_streams(100),
       weight(NGHTTP2_DEFAULT_WEIGHT), multiply(1), timeout(0.), window_bits(-1),
       connection_window_bits(-1), verbose(0), null_out(false),
       remote_name(false), get_assets(false), stat(false), upgrade(false),
