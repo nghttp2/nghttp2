@@ -146,6 +146,15 @@ struct nghttp2_stream {
   int64_t content_length;
   /* Received body so far */
   int64_t recv_content_length;
+  /* Base last_cycle for direct descendent streams. */
+  uint64_t descendant_last_cycle;
+  /* Next scheduled time to sent item */
+  uint64_t cycle;
+  /* Next seq used for direct descendant streams */
+  uint64_t descendant_next_seq;
+  /* Secondary key for prioritization to break a tie for cycle.  This
+     value is monotonically increased for single parent stream. */
+  uint64_t seq;
   /* pointers to form dependency tree.  If multiple streams depend on
      a stream, only one stream (left most) has non-NULL dep_prev which
      points to the stream it depends on. The remaining streams are
@@ -164,6 +173,8 @@ struct nghttp2_stream {
   void *stream_user_data;
   /* Item to send */
   nghttp2_outbound_item *item;
+  /* Last written length of frame payload */
+  size_t last_writelen;
   /* stream ID */
   int32_t stream_id;
   /* Current remote window size. This value is computed against the
@@ -202,17 +213,6 @@ struct nghttp2_stream {
      then its ancestors, except for root, are also queued.  This
      invariant may break in fatal error condition. */
   uint8_t queued;
-  /* Base last_cycle for direct descendent streams. */
-  uint64_t descendant_last_cycle;
-  /* Next scheduled time to sent item */
-  uint64_t cycle;
-  /* Next seq used for direct descendant streams */
-  uint64_t descendant_next_seq;
-  /* Secondary key for prioritization to break a tie for cycle.  This
-     value is monotonically increased for single parent stream. */
-  uint64_t seq;
-  /* Last written length of frame payload */
-  size_t last_writelen;
   /* This flag is used to reduce excessive queuing of WINDOW_UPDATE to
      this stream.  The nonzero does not necessarily mean WINDOW_UPDATE
      is not queued. */
