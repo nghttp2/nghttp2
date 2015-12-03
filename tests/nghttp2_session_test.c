@@ -7378,7 +7378,8 @@ void test_nghttp2_session_stream_get_state(void) {
 
   stream = nghttp2_session_find_stream(session, 2);
 
-  CU_ASSERT(NGHTTP2_STREAM_STATE_CLOSED == nghttp2_stream_get_state(stream));
+  /* At server, pushed stream object is not retained after closed */
+  CU_ASSERT(NULL == stream);
 
   /* Push stream 4 associated to stream 5 */
   rv = nghttp2_submit_push_promise(session, NGHTTP2_FLAG_NONE, 5, reqnv,
@@ -7598,6 +7599,22 @@ void test_nghttp2_session_keep_closed_stream(void) {
   CU_ASSERT(0 == session->num_closed_streams);
   CU_ASSERT(NULL == session->closed_stream_tail);
   CU_ASSERT(NULL == session->closed_stream_head);
+
+  nghttp2_session_close_stream(session, 3, NGHTTP2_NO_ERROR);
+
+  CU_ASSERT(1 == session->num_closed_streams);
+  CU_ASSERT(3 == session->closed_stream_head->stream_id);
+
+  /* server initiated stream is not counted to max concurrent limit */
+  open_stream(session, 2);
+
+  CU_ASSERT(1 == session->num_closed_streams);
+  CU_ASSERT(3 == session->closed_stream_head->stream_id);
+
+  nghttp2_session_close_stream(session, 2, NGHTTP2_NO_ERROR);
+
+  CU_ASSERT(1 == session->num_closed_streams);
+  CU_ASSERT(3 == session->closed_stream_head->stream_id);
 
   nghttp2_session_del(session);
 }

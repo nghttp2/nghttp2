@@ -190,11 +190,13 @@ struct nghttp2_session {
      updated when one frame was written. */
   uint64_t last_cycle;
   void *user_data;
-  /* Points to the latest closed stream.  NULL if there is no closed
-     stream.  Only used when session is initialized as server. */
+  /* Points to the latest incoming closed stream.  NULL if there is no
+     closed stream.  Only used when session is initialized as
+     server. */
   nghttp2_stream *closed_stream_head;
-  /* Points to the oldest closed stream.  NULL if there is no closed
-     stream.  Only used when session is initialized as server. */
+  /* Points to the oldest incoming closed stream.  NULL if there is no
+     closed stream.  Only used when session is initialized as
+     server. */
   nghttp2_stream *closed_stream_tail;
   /* Points to the latest idle stream.  NULL if there is no idle
      stream.  Only used when session is initialized as server .*/

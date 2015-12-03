@@ -1023,6 +1023,7 @@ int nghttp2_session_close_stream(nghttp2_session *session, int32_t stream_id,
   int rv;
   nghttp2_stream *stream;
   nghttp2_mem *mem;
+  int is_my_stream_id;
 
   mem = &session->mem;
   stream = nghttp2_session_get_stream(session, stream_id);
@@ -1070,14 +1071,16 @@ int nghttp2_session_close_stream(nghttp2_session *session, int32_t stream_id,
     }
   }
 
+  is_my_stream_id = nghttp2_session_is_my_stream_id(session, stream_id);
+
   /* pushed streams which is not opened yet is not counted toward max
      concurrent limits */
   if ((stream->flags & NGHTTP2_STREAM_FLAG_PUSH)) {
-    if (!nghttp2_session_is_my_stream_id(session, stream_id)) {
+    if (!is_my_stream_id) {
       --session->num_incoming_reserved_streams;
     }
   } else {
-    if (nghttp2_session_is_my_stream_id(session, stream_id)) {
+    if (is_my_stream_id) {
       --session->num_outgoing_streams;
     } else {
       --session->num_incoming_streams;
@@ -1087,7 +1090,8 @@ int nghttp2_session_close_stream(nghttp2_session *session, int32_t stream_id,
   /* Closes both directions just in case they are not closed yet */
   stream->flags |= NGHTTP2_STREAM_FLAG_CLOSED;
 
-  if (session->server && nghttp2_stream_in_dep_tree(stream)) {
+  if (session->server && !is_my_stream_id &&
+      nghttp2_stream_in_dep_tree(stream)) {
     /* On server side, retain stream at most MAX_CONCURRENT_STREAMS
        combined with the current active incoming streams to make
        dependency tree work better. */
