@@ -2448,7 +2448,7 @@ Options:
   -M, --peer-max-concurrent-streams=<N>
               Use  <N>  as  SETTINGS_MAX_CONCURRENT_STREAMS  value  of
               remote endpoint as if it  is received in SETTINGS frame.
-              The default is large enough as it is seen as unlimited.
+              Default: 100
   -c, --header-table-size=<SIZE>
               Specify decoder  header table  size.  If this  option is
               used  multiple times,  and the  minimum value  among the
