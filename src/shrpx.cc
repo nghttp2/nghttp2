@@ -325,11 +325,11 @@ void exec_binary(SignalServer *ssv) {
   }
 
   for (size_t i = 0; i < envlen; ++i) {
-    if (util::startsWith(environ[i], ENV_LISTENER4_FD) ||
-        util::startsWith(environ[i], ENV_LISTENER6_FD) ||
-        util::startsWith(environ[i], ENV_PORT) ||
-        util::startsWith(environ[i], ENV_UNIX_FD) ||
-        util::startsWith(environ[i], ENV_UNIX_PATH)) {
+    if (util::starts_with(environ[i], ENV_LISTENER4_FD) ||
+        util::starts_with(environ[i], ENV_LISTENER6_FD) ||
+        util::starts_with(environ[i], ENV_PORT) ||
+        util::starts_with(environ[i], ENV_UNIX_FD) ||
+        util::starts_with(environ[i], ENV_UNIX_PATH)) {
       continue;
     }
 
@@ -1480,9 +1480,14 @@ HTTP/2 and SPDY:
               meant for debugging purpose  and not intended to enhance
               protocol security.
   --no-server-push
-              Disable  HTTP/2  server  push.    Server  push  is  only
-              supported  by default  mode and  HTTP/2 frontend.   SPDY
-              frontend does not support server push.
+              Disable HTTP/2 server push.  Server push is supported by
+              default mode and HTTP/2  frontend via Link header field.
+              It is  also supported if  both frontend and  backend are
+              HTTP/2 (which implies  --http2-bridge or --client mode).
+              In  this  case,  server  push from  backend  session  is
+              relayed  to frontend,  and server  push via  Link header
+              field is  also supported.   HTTP SPDY frontend  does not
+              support server push.
 
 Mode:
   (default mode)

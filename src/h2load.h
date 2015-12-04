@@ -124,26 +124,47 @@ struct RequestStat {
   bool completed;
 };
 
-template <typename Duration> struct TimeStat {
+struct ClientStat {
+  // time client started (i.e., first connect starts)
+  std::chrono::steady_clock::time_point client_start_time;
+  // time client end (i.e., client somehow processed all requests it
+  // is responsible for, and disconnected)
+  std::chrono::steady_clock::time_point client_end_time;
+  // The number of requests completed successfull, but not necessarily
+  // means successful HTTP status code.
+  size_t req_success;
+
+  // The following 3 numbers are overwritten each time when connection
+  // is made.
+
+  // time connect starts
+  std::chrono::steady_clock::time_point connect_start_time;
+  // time to connect
+  std::chrono::steady_clock::time_point connect_time;
+  // time to first byte (TTFB)
+  std::chrono::steady_clock::time_point ttfb;
+};
+
+struct SDStat {
   // min, max, mean and sd (standard deviation)
-  Duration min, max, mean, sd;
+  double min, max, mean, sd;
   // percentage of samples inside mean -/+ sd
   double within_sd;
 };
 
-struct TimeStats {
+struct SDStats {
   // time for request
-  TimeStat<std::chrono::microseconds> request;
+  SDStat request;
   // time for connect
-  TimeStat<std::chrono::microseconds> connect;
+  SDStat connect;
   // time to first byte (TTFB)
-  TimeStat<std::chrono::microseconds> ttfb;
+  SDStat ttfb;
+  // request per second for each client
+  SDStat rps;
 };
 
-enum TimeStatType { STAT_REQUEST, STAT_CONNECT, STAT_FIRST_BYTE };
-
 struct Stats {
-  Stats(size_t req_todo);
+  Stats(size_t req_todo, size_t nclients);
   // The total number of requests
   size_t req_todo;
   // The number of requests issued so far
@@ -179,12 +200,8 @@ struct Stats {
   std::array<size_t, 6> status;
   // The statistics per request
   std::vector<RequestStat> req_stats;
-  // time connect starts
-  std::vector<std::chrono::steady_clock::time_point> start_times;
-  // time to connect
-  std::vector<std::chrono::steady_clock::time_point> connect_times;
-  // time to first byte (TTFB)
-  std::vector<std::chrono::steady_clock::time_point> ttfbs;
+  // THe statistics per client
+  std::vector<ClientStat> client_stats;
 };
 
 enum ClientState { CLIENT_IDLE, CLIENT_CONNECTED };
@@ -210,6 +227,8 @@ struct Worker {
   size_t nreqs_rem;
   size_t rate;
   ev_timer timeout_watcher;
+  // The next client ID this worker assigns
+  uint32_t next_client_id;
 
   Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t nreq_todo, size_t nclients,
          size_t rate, Config *config);
@@ -240,13 +259,14 @@ struct Client {
   addrinfo *current_addr;
   size_t reqidx;
   ClientState state;
-  bool first_byte_received;
   // The number of requests this client has to issue.
   size_t req_todo;
   // The number of requests this client has issued so far.
   size_t req_started;
   // The number of requests this client has done so far.
   size_t req_done;
+  // The client id per worker
+  uint32_t id;
   int fd;
   Buffer<64_k> wb;
   ev_timer conn_active_watcher;
@@ -256,7 +276,7 @@ struct Client {
 
   enum { ERR_CONNECT_FAIL = -100 };
 
-  Client(Worker *worker, size_t req_todo);
+  Client(uint32_t id, Worker *worker, size_t req_todo);
   ~Client();
   int make_socket(addrinfo *addr);
   int connect();
@@ -302,9 +322,12 @@ struct Client {
                        bool final = false);
 
   void record_request_time(RequestStat *req_stat);
-  void record_start_time(Stats *stat);
-  void record_connect_time(Stats *stat);
+  void record_connect_start_time();
+  void record_connect_time();
   void record_ttfb();
+  void clear_connect_times();
+  void record_client_start_time();
+  void record_client_end_time();
 
   void signal_write();
 };

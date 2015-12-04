@@ -288,6 +288,10 @@ cdef extern from 'nghttp2/nghttp2.h':
 
     const char* nghttp2_strerror(int lib_error_code)
 
+    int nghttp2_session_check_server_session(nghttp2_session *session)
+
+    int nghttp2_session_get_stream_remote_close(nghttp2_session *session, int32_t stream_id)
+
     int nghttp2_hd_deflate_new(nghttp2_hd_deflater **deflater_ptr,
                                size_t deflate_hd_table_bufsize_max)
 

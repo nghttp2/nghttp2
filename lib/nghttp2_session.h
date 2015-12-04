@@ -191,11 +191,13 @@ struct nghttp2_session {
      updated when one frame was written. */
   uint64_t last_cycle;
   void *user_data;
-  /* Points to the latest closed stream.  NULL if there is no closed
-     stream.  Only used when session is initialized as server. */
+  /* Points to the latest incoming closed stream.  NULL if there is no
+     closed stream.  Only used when session is initialized as
+     server. */
   nghttp2_stream *closed_stream_head;
-  /* Points to the oldest closed stream.  NULL if there is no closed
-     stream.  Only used when session is initialized as server. */
+  /* Points to the oldest incoming closed stream.  NULL if there is no
+     closed stream.  Only used when session is initialized as
+     server. */
   nghttp2_stream *closed_stream_tail;
   /* Points to the latest idle stream.  NULL if there is no idle
      stream.  Only used when session is initialized as server .*/
@@ -341,7 +343,7 @@ int nghttp2_session_is_my_stream_id(nghttp2_session *session,
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
  * NGHTTP2_ERR_STREAM_CLOSED
- *     Stream already closed (DATA frame only)
+ *     Stream already closed (DATA and PUSH_PROMISE frame only)
  */
 int nghttp2_session_add_item(nghttp2_session *session,
                              nghttp2_outbound_item *item);
@@ -566,18 +568,6 @@ int nghttp2_session_adjust_idle_stream(nghttp2_session *session);
  */
 int nghttp2_session_close_stream_if_shut_rdwr(nghttp2_session *session,
                                               nghttp2_stream *stream);
-
-int nghttp2_session_end_request_headers_received(nghttp2_session *session,
-                                                 nghttp2_frame *frame,
-                                                 nghttp2_stream *stream);
-
-int nghttp2_session_end_response_headers_received(nghttp2_session *session,
-                                                  nghttp2_frame *frame,
-                                                  nghttp2_stream *stream);
-
-int nghttp2_session_end_headers_received(nghttp2_session *session,
-                                         nghttp2_frame *frame,
-                                         nghttp2_stream *stream);
 
 int nghttp2_session_on_request_headers_received(nghttp2_session *session,
                                                 nghttp2_frame *frame);

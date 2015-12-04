@@ -87,6 +87,8 @@ int main(int argc _U_, char *argv[] _U_) {
                    test_nghttp2_session_recv_continuation) ||
       !CU_add_test(pSuite, "session_recv_headers_with_priority",
                    test_nghttp2_session_recv_headers_with_priority) ||
+      !CU_add_test(pSuite, "session_recv_headers_early_response",
+                   test_nghttp2_session_recv_headers_early_response) ||
       !CU_add_test(pSuite, "session_recv_premature_headers",
                    test_nghttp2_session_recv_premature_headers) ||
       !CU_add_test(pSuite, "session_recv_unknown_frame",
@@ -161,6 +163,8 @@ int main(int argc _U_, char *argv[] _U_) {
                    test_nghttp2_submit_response_with_data) ||
       !CU_add_test(pSuite, "submit_response_without_data",
                    test_nghttp2_submit_response_without_data) ||
+      !CU_add_test(pSuite, "Submit_response_push_response",
+                   test_nghttp2_submit_response_push_response) ||
       !CU_add_test(pSuite, "submit_trailer", test_nghttp2_submit_trailer) ||
       !CU_add_test(pSuite, "submit_headers_start_stream",
                    test_nghttp2_submit_headers_start_stream) ||
@@ -252,6 +256,8 @@ int main(int argc _U_, char *argv[] _U_) {
                    test_nghttp2_session_stream_get_state) ||
       !CU_add_test(pSuite, "session_stream_get_something",
                    test_nghttp2_session_stream_get_something) ||
+      !CU_add_test(pSuite, "session_find_stream",
+                   test_nghttp2_session_find_stream) ||
       !CU_add_test(pSuite, "session_keep_closed_stream",
                    test_nghttp2_session_keep_closed_stream) ||
       !CU_add_test(pSuite, "session_keep_idle_stream",
@@ -283,6 +289,8 @@ int main(int argc _U_, char *argv[] _U_) {
       !CU_add_test(pSuite, "session_detach_item_from_closed_stream",
                    test_nghttp2_session_detach_item_from_closed_stream) ||
       !CU_add_test(pSuite, "session_flooding", test_nghttp2_session_flooding) ||
+      !CU_add_test(pSuite, "session_change_stream_priority",
+                   test_nghttp2_session_change_stream_priority) ||
       !CU_add_test(pSuite, "http_mandatory_headers",
                    test_nghttp2_http_mandatory_headers) ||
       !CU_add_test(pSuite, "http_content_length",

@@ -471,7 +471,7 @@ LogFragmentType log_var_lookup_token(const char *name, size_t namelen) {
 
 namespace {
 bool var_token(char c) {
-  return util::isAlpha(c) || util::isDigit(c) || c == '_';
+  return util::is_alpha(c) || util::is_digit(c) || c == '_';
 }
 } // namespace
 
@@ -519,7 +519,7 @@ std::vector<LogFragment> parse_log_format(const char *optarg) {
     auto type = log_var_lookup_token(var_name, var_namelen);
 
     if (type == SHRPX_LOGF_NONE) {
-      if (util::istartsWith(var_name, var_namelen, "http_")) {
+      if (util::istarts_with(var_name, var_namelen, "http_")) {
         if (util::streq("host", var_name + str_size("http_"),
                         var_namelen - str_size("http_"))) {
           // Special handling of host header field.  We will use
@@ -596,7 +596,7 @@ void parse_mapping(const DownstreamAddr &addr, const char *src) {
       // This effectively makes empty pattern to "/".
       pattern.assign(raw_pattern.first, raw_pattern.second);
       util::inp_strlower(pattern);
-      pattern += "/";
+      pattern += '/';
     } else {
       pattern.assign(raw_pattern.first, slash);
       util::inp_strlower(pattern);
@@ -1342,7 +1342,7 @@ int parse_config(const char *opt, const char *optarg,
       pat_delim = optarg + optarglen;
     }
     DownstreamAddr addr;
-    if (util::istartsWith(optarg, SHRPX_UNIX_PATH_PREFIX)) {
+    if (util::istarts_with(optarg, SHRPX_UNIX_PATH_PREFIX)) {
       auto path = optarg + str_size(SHRPX_UNIX_PATH_PREFIX);
       addr.host = strcopy(path, pat_delim);
       addr.host_unix = true;
@@ -1368,7 +1368,7 @@ int parse_config(const char *opt, const char *optarg,
     return 0;
   }
   case SHRPX_OPTID_FRONTEND: {
-    if (util::istartsWith(optarg, SHRPX_UNIX_PATH_PREFIX)) {
+    if (util::istarts_with(optarg, SHRPX_UNIX_PATH_PREFIX)) {
       auto path = optarg + str_size(SHRPX_UNIX_PATH_PREFIX);
       mod_config()->host = strcopy(path);
       mod_config()->port = 0;
@@ -1664,7 +1664,7 @@ int parse_config(const char *opt, const char *optarg,
         // Surprisingly, u.field_set & UF_USERINFO is nonzero even if
         // userinfo component is empty string.
         if (!val.empty()) {
-          val = util::percentDecode(val.begin(), val.end());
+          val = util::percent_decode(std::begin(val), std::end(val));
           mod_config()->downstream_http_proxy_userinfo = strcopy(val);
         }
       }

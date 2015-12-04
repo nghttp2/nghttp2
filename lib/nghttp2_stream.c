@@ -30,13 +30,14 @@
 #include "nghttp2_session.h"
 #include "nghttp2_helper.h"
 
-static int stream_weight_less(const void *lhsx, const void *rhsx) {
+static int stream_less(const void *lhsx, const void *rhsx) {
   const nghttp2_stream *lhs, *rhs;
 
   lhs = nghttp2_struct_of(lhsx, nghttp2_stream, pq_entry);
   rhs = nghttp2_struct_of(rhsx, nghttp2_stream, pq_entry);
 
-  return lhs->cycle < rhs->cycle;
+  return lhs->cycle < rhs->cycle ||
+         (lhs->cycle == rhs->cycle && lhs->seq < rhs->seq);
 }
 
 void nghttp2_stream_init(nghttp2_stream *stream, int32_t stream_id,
@@ -45,7 +46,7 @@ void nghttp2_stream_init(nghttp2_stream *stream, int32_t stream_id,
                          int32_t local_initial_window_size,
                          void *stream_user_data, nghttp2_mem *mem) {
   nghttp2_map_entry_init(&stream->map_entry, (key_type)stream_id);
-  nghttp2_pq_init(&stream->obq, stream_weight_less, mem);
+  nghttp2_pq_init(&stream->obq, stream_less, mem);
 
   stream->stream_id = stream_id;
   stream->flags = flags;
@@ -79,6 +80,8 @@ void nghttp2_stream_init(nghttp2_stream *stream, int32_t stream_id,
   stream->queued = 0;
   stream->descendant_last_cycle = 0;
   stream->cycle = 0;
+  stream->descendant_next_seq = 0;
+  stream->seq = 0;
   stream->last_writelen = 0;
 }
 
@@ -124,6 +127,7 @@ static int stream_obq_push(nghttp2_stream *dep_stream, nghttp2_stream *stream) {
        stream = dep_stream, dep_stream = dep_stream->dep_prev) {
     stream->cycle =
         stream_next_cycle(stream, dep_stream->descendant_last_cycle);
+    stream->seq = dep_stream->descendant_next_seq++;
 
     DEBUGF(fprintf(stderr, "stream: stream=%d obq push cycle=%ld\n",
                    stream->stream_id, stream->cycle));
@@ -166,6 +170,7 @@ static void stream_obq_remove(nghttp2_stream *stream) {
     stream->queued = 0;
     stream->cycle = 0;
     stream->descendant_last_cycle = 0;
+    stream->last_writelen = 0;
 
     if (stream_subtree_active(dep_stream)) {
       return;
@@ -206,12 +211,19 @@ void nghttp2_stream_reschedule(nghttp2_stream *stream) {
       dep_stream->descendant_last_cycle = 0;
       stream->cycle = 0;
     } else {
+      /* We update descendant_last_cycle here, and we don't do it when
+         no data is written for stream.  This effectively means that
+         we treat these streams as if they are not scheduled at all.
+         This does not cause disruption in scheduling machinery.  It
+         just makes new streams scheduled a bit early. */
       dep_stream->descendant_last_cycle = stream->cycle;
+
+      nghttp2_pq_remove(&dep_stream->obq, &stream->pq_entry);
 
       stream->cycle =
           stream_next_cycle(stream, dep_stream->descendant_last_cycle);
+      stream->seq = dep_stream->descendant_next_seq++;
 
-      nghttp2_pq_remove(&dep_stream->obq, &stream->pq_entry);
       nghttp2_pq_push(&dep_stream->obq, &stream->pq_entry);
     }
 

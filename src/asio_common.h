@@ -55,7 +55,7 @@ void split_path(uri_ref &dst, InputIt first, InputIt last) {
   } else {
     query_first = path_last + 1;
   }
-  dst.path = util::percentDecode(first, path_last);
+  dst.path = util::percent_decode(first, path_last);
   dst.raw_path.assign(first, path_last);
   dst.raw_query.assign(query_first, last);
 }

@@ -27,12 +27,26 @@ before_install:
   - $CC --version
   - if [ "$CXX" = "g++" ]; then export CXX="g++-4.9" CC="gcc-4.9"; fi
   - $CC --version
+  - go version
 before_script:
+  # First build spdylay, since integration tests require it.
+  # spdylay is going to be built under third-party/spdylay
+  - cd third-party
+  - git clone https://github.com/tatsuhiro-t/spdylay.git
+  - cd spdylay
   - autoreconf -i
-  - automake
-  - autoconf
+  - ./configure --disable-src --disable-examples
+  - make check
+  - export SPDYLAY_HOME=$PWD
+  - cd ../..
+  # Now build nghttp2
+  - autoreconf -i
   - git submodule update --init
-  - ./configure --enable-werror --with-mruby
+  - ./configure --enable-werror --with-mruby --with-neverbleed LIBSPDYLAY_CFLAGS="-I$SPDYLAY_HOME/lib/includes" LIBSPDYLAY_LIBS="-L$SPDYLAY_HOME/lib/.libs -lspdylay"
 script:
   - make
   - make check
+  - cd integration-tests
+  - export GOPATH="$PWD/integration-tests/golang"
+  - make itprep-local
+  - make it-local

@@ -95,8 +95,7 @@ constexpr auto anchors = std::array<Anchor, 5>{{
 Config::Config()
     : header_table_size(-1),
       min_header_table_size(std::numeric_limits<uint32_t>::max()), padding(0),
-      max_concurrent_streams(100),
-      peer_max_concurrent_streams(NGHTTP2_INITIAL_MAX_CONCURRENT_STREAMS),
+      max_concurrent_streams(100), peer_max_concurrent_streams(100),
       weight(NGHTTP2_DEFAULT_WEIGHT), multiply(1), timeout(0.), window_bits(-1),
       connection_window_bits(-1), verbose(0), null_out(false),
       remote_name(false), get_assets(false), stat(false), upgrade(false),
@@ -168,7 +167,7 @@ std::string Request::make_reqpath() const {
                          ? util::get_uri_field(uri.c_str(), u, UF_PATH)
                          : "/";
   if (util::has_uri_field(u, UF_QUERY)) {
-    path += "?";
+    path += '?';
     path.append(uri.c_str() + u.field_data[UF_QUERY].off,
                 u.field_data[UF_QUERY].len);
   }
@@ -199,7 +198,7 @@ std::string decode_host(std::string host) {
   auto zone_id_src = (*(zone_start + 1) == '2' && *(zone_start + 2) == '5')
                          ? zone_start + 3
                          : zone_start + 1;
-  auto zone_id = util::percentDecode(zone_id_src, std::end(host));
+  auto zone_id = util::percent_decode(zone_id_src, std::end(host));
   host.erase(zone_start + 1, std::end(host));
   host += zone_id;
   return host;
@@ -828,7 +827,7 @@ int HttpClient::on_upgrade_connect() {
       reqvec[0]->method = "GET";
     } else {
       req = (*meth).value;
-      req += " ";
+      req += ' ';
       reqvec[0]->method = (*meth).value;
     }
     req += reqvec[0]->make_reqpath();
@@ -2449,7 +2448,7 @@ Options:
   -M, --peer-max-concurrent-streams=<N>
               Use  <N>  as  SETTINGS_MAX_CONCURRENT_STREAMS  value  of
               remote endpoint as if it  is received in SETTINGS frame.
-              The default is large enough as it is seen as unlimited.
+              Default: 100
   -c, --header-table-size=<SIZE>
               Specify decoder  header table  size.  If this  option is
               used  multiple times,  and the  minimum value  among the

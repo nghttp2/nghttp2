@@ -134,7 +134,7 @@ generator_cb file_generator_from_fd(int fd) {
 bool check_path(const std::string &path) { return util::check_path(path); }
 
 std::string percent_decode(const std::string &s) {
-  return util::percentDecode(std::begin(s), std::end(s));
+  return util::percent_decode(std::begin(s), std::end(s));
 }
 
 std::string http_date(int64_t t) { return util::http_date(t); }
@@ -177,9 +177,11 @@ bool tls_h2_negotiated(ssl_socket &socket) {
   unsigned int next_proto_len = 0;
 
   SSL_get0_next_proto_negotiated(ssl, &next_proto, &next_proto_len);
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
   if (next_proto == nullptr) {
     SSL_get0_alpn_selected(ssl, &next_proto, &next_proto_len);
   }
+#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
   if (next_proto == nullptr) {
     return false;

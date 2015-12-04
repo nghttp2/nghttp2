@@ -297,7 +297,7 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       if (frac.size() < 3) {
         frac = std::string(3 - frac.size(), '0') + frac;
       }
-      sec += ".";
+      sec += '.';
       sec += frac;
 
       std::tie(p, avail) = copy(sec, avail, p);
@@ -415,12 +415,12 @@ void log_chld(pid_t pid, int rstatus, const char *msg) {
     auto s = strsignal(sig);
     if (s) {
       signalstr += s;
-      signalstr += "(";
+      signalstr += '(';
     } else {
       signalstr += "UNKNOWN(";
     }
     signalstr += util::utos(sig);
-    signalstr += ")";
+    signalstr += ')';
   }
 
   LOG(NOTICE) << msg << ": [" << pid << "] exited "

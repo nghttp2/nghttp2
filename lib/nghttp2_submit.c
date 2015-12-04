@@ -117,14 +117,6 @@ fail2:
   return rv;
 }
 
-static void adjust_priority_spec_weight(nghttp2_priority_spec *pri_spec) {
-  if (pri_spec->weight < NGHTTP2_MIN_WEIGHT) {
-    pri_spec->weight = NGHTTP2_MIN_WEIGHT;
-  } else if (pri_spec->weight > NGHTTP2_MAX_WEIGHT) {
-    pri_spec->weight = NGHTTP2_MAX_WEIGHT;
-  }
-}
-
 static int32_t submit_headers_shared_nva(nghttp2_session *session,
                                          uint8_t flags, int32_t stream_id,
                                          const nghttp2_priority_spec *pri_spec,
@@ -141,7 +133,7 @@ static int32_t submit_headers_shared_nva(nghttp2_session *session,
 
   if (pri_spec) {
     copy_pri_spec = *pri_spec;
-    adjust_priority_spec_weight(&copy_pri_spec);
+    nghttp2_priority_spec_normalize_weight(&copy_pri_spec);
   } else {
     nghttp2_priority_spec_default_init(&copy_pri_spec);
   }
@@ -206,7 +198,7 @@ int nghttp2_submit_priority(nghttp2_session *session, uint8_t flags _U_,
 
   copy_pri_spec = *pri_spec;
 
-  adjust_priority_spec_weight(&copy_pri_spec);
+  nghttp2_priority_spec_normalize_weight(&copy_pri_spec);
 
   item = nghttp2_mem_malloc(mem, sizeof(nghttp2_outbound_item));
 

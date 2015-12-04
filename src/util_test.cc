@@ -147,15 +147,15 @@ void test_util_percent_encode_path(void) {
 void test_util_percent_decode(void) {
   {
     std::string s = "%66%6F%6f%62%61%72";
-    CU_ASSERT("foobar" == util::percentDecode(std::begin(s), std::end(s)));
+    CU_ASSERT("foobar" == util::percent_decode(std::begin(s), std::end(s)));
   }
   {
     std::string s = "%66%6";
-    CU_ASSERT("f%6" == util::percentDecode(std::begin(s), std::end(s)));
+    CU_ASSERT("f%6" == util::percent_decode(std::begin(s), std::end(s)));
   }
   {
     std::string s = "%66%";
-    CU_ASSERT("f%" == util::percentDecode(std::begin(s), std::end(s)));
+    CU_ASSERT("f%" == util::percent_decode(std::begin(s), std::end(s)));
   }
 }
 
@@ -341,30 +341,39 @@ void test_util_format_duration(void) {
             util::format_duration(std::chrono::microseconds(1000000)));
   CU_ASSERT("1.05s" ==
             util::format_duration(std::chrono::microseconds(1050000)));
+
+  CU_ASSERT("0us" == util::format_duration(0.));
+  CU_ASSERT("999us" == util::format_duration(0.000999));
+  CU_ASSERT("1.00ms" == util::format_duration(0.001));
+  CU_ASSERT("1.09ms" == util::format_duration(0.00109));
+  CU_ASSERT("1.01ms" == util::format_duration(0.001009));
+  CU_ASSERT("999.99ms" == util::format_duration(0.99999));
+  CU_ASSERT("1.00s" == util::format_duration(1.));
+  CU_ASSERT("1.05s" == util::format_duration(1.05));
 }
 
 void test_util_starts_with(void) {
-  CU_ASSERT(util::startsWith("foo", "foo"));
-  CU_ASSERT(util::startsWith("fooo", "foo"));
-  CU_ASSERT(util::startsWith("ofoo", ""));
-  CU_ASSERT(!util::startsWith("ofoo", "foo"));
+  CU_ASSERT(util::starts_with("foo", "foo"));
+  CU_ASSERT(util::starts_with("fooo", "foo"));
+  CU_ASSERT(util::starts_with("ofoo", ""));
+  CU_ASSERT(!util::starts_with("ofoo", "foo"));
 
-  CU_ASSERT(util::istartsWith("FOO", "fOO"));
-  CU_ASSERT(util::startsWith("ofoo", ""));
-  CU_ASSERT(util::istartsWith("fOOo", "Foo"));
-  CU_ASSERT(!util::istartsWith("ofoo", "foo"));
+  CU_ASSERT(util::istarts_with("FOO", "fOO"));
+  CU_ASSERT(util::starts_with("ofoo", ""));
+  CU_ASSERT(util::istarts_with("fOOo", "Foo"));
+  CU_ASSERT(!util::istarts_with("ofoo", "foo"));
 }
 
 void test_util_ends_with(void) {
-  CU_ASSERT(util::endsWith("foo", "foo"));
-  CU_ASSERT(util::endsWith("foo", ""));
-  CU_ASSERT(util::endsWith("ofoo", "foo"));
-  CU_ASSERT(!util::endsWith("ofoo", "fo"));
+  CU_ASSERT(util::ends_with("foo", "foo"));
+  CU_ASSERT(util::ends_with("foo", ""));
+  CU_ASSERT(util::ends_with("ofoo", "foo"));
+  CU_ASSERT(!util::ends_with("ofoo", "fo"));
 
-  CU_ASSERT(util::iendsWith("fOo", "Foo"));
-  CU_ASSERT(util::iendsWith("foo", ""));
-  CU_ASSERT(util::iendsWith("oFoo", "fOO"));
-  CU_ASSERT(!util::iendsWith("ofoo", "fo"));
+  CU_ASSERT(util::iends_with("fOo", "Foo"));
+  CU_ASSERT(util::iends_with("foo", ""));
+  CU_ASSERT(util::iends_with("oFoo", "fOO"));
+  CU_ASSERT(!util::iends_with("ofoo", "fo"));
 }
 
 void test_util_parse_http_date(void) {

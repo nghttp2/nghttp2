@@ -79,10 +79,12 @@ public:
   // |host|.
   bool can_activate(const std::string &host) const;
   // Removes and frees |downstream| object.  If |downstream| is in
-  // Downstream::DISPATCH_ACTIVE, this function may return Downstream
-  // object with the same target host in Downstream::DISPATCH_BLOCKED
-  // if its connection is now not blocked by conn_max_per_host_ limit.
-  Downstream *remove_and_get_blocked(Downstream *downstream);
+  // Downstream::DISPATCH_ACTIVE, and |next_blocked| is true, this
+  // function may return Downstream object with the same target host
+  // in Downstream::DISPATCH_BLOCKED if its connection is now not
+  // blocked by conn_max_per_host_ limit.
+  Downstream *remove_and_get_blocked(Downstream *downstream,
+                                     bool next_blocked = true);
   Downstream *get_downstreams() const;
   HostEntry &find_host_entry(const std::string &host);
   const std::string &make_host_key(const std::string &host) const;

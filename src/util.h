@@ -64,115 +64,17 @@ constexpr const char NGHTTP2_H1_1[] = "http/1.1";
 
 namespace util {
 
-extern const char DEFAULT_STRIP_CHARSET[];
-
-template <typename InputIterator>
-std::pair<InputIterator, InputIterator>
-stripIter(InputIterator first, InputIterator last,
-          const char *chars = DEFAULT_STRIP_CHARSET) {
-  for (; first != last && strchr(chars, *first) != 0; ++first)
-    ;
-  if (first == last) {
-    return std::make_pair(first, last);
-  }
-  InputIterator left = last - 1;
-  for (; left != first && strchr(chars, *left) != 0; --left)
-    ;
-  return std::make_pair(first, left + 1);
-}
-
-template <typename InputIterator, typename OutputIterator>
-OutputIterator splitIter(InputIterator first, InputIterator last,
-                         OutputIterator out, char delim, bool doStrip = false,
-                         bool allowEmpty = false) {
-  for (InputIterator i = first; i != last;) {
-    InputIterator j = std::find(i, last, delim);
-    std::pair<InputIterator, InputIterator> p(i, j);
-    if (doStrip) {
-      p = stripIter(i, j);
-    }
-    if (allowEmpty || p.first != p.second) {
-      *out++ = p;
-    }
-    i = j;
-    if (j != last) {
-      ++i;
-    }
-  }
-  if (allowEmpty && (first == last || *(last - 1) == delim)) {
-    *out++ = std::make_pair(last, last);
-  }
-  return out;
-}
-
-template <typename InputIterator, typename OutputIterator>
-OutputIterator split(InputIterator first, InputIterator last,
-                     OutputIterator out, char delim, bool doStrip = false,
-                     bool allowEmpty = false) {
-  for (InputIterator i = first; i != last;) {
-    InputIterator j = std::find(i, last, delim);
-    std::pair<InputIterator, InputIterator> p(i, j);
-    if (doStrip) {
-      p = stripIter(i, j);
-    }
-    if (allowEmpty || p.first != p.second) {
-      *out++ = std::string(p.first, p.second);
-    }
-    i = j;
-    if (j != last) {
-      ++i;
-    }
-  }
-  if (allowEmpty && (first == last || *(last - 1) == delim)) {
-    *out++ = std::string(last, last);
-  }
-  return out;
-}
-
-template <typename InputIterator, typename DelimiterType>
-std::string strjoin(InputIterator first, InputIterator last,
-                    const DelimiterType &delim) {
-  std::string result;
-  if (first == last) {
-    return result;
-  }
-  InputIterator beforeLast = last - 1;
-  for (; first != beforeLast; ++first) {
-    result += *first;
-    result += delim;
-  }
-  result += *beforeLast;
-  return result;
-}
-
-template <typename InputIterator>
-std::string joinPath(InputIterator first, InputIterator last) {
-  std::vector<std::string> elements;
-  for (; first != last; ++first) {
-    if (*first == "..") {
-      if (!elements.empty()) {
-        elements.pop_back();
-      }
-    } else if (*first == ".") {
-      // do nothing
-    } else {
-      elements.push_back(*first);
-    }
-  }
-  return strjoin(elements.begin(), elements.end(), "/");
-}
-
-inline bool isAlpha(const char c) {
+inline bool is_alpha(const char c) {
   return ('A' <= c && c <= 'Z') || ('a' <= c && c <= 'z');
 }
 
-inline bool isDigit(const char c) { return '0' <= c && c <= '9'; }
+inline bool is_digit(const char c) { return '0' <= c && c <= '9'; }
 
-inline bool isHexDigit(const char c) {
-  return isDigit(c) || ('A' <= c && c <= 'F') || ('a' <= c && c <= 'f');
+inline bool is_hex_digit(const char c) {
+  return is_digit(c) || ('A' <= c && c <= 'F') || ('a' <= c && c <= 'f');
 }
 
-bool inRFC3986UnreservedChars(const char c);
+bool in_rfc3986_unreserved_chars(const char c);
 
 bool in_rfc3986_sub_delims(const char c);
 
@@ -182,23 +84,23 @@ bool in_token(char c);
 bool in_attr_char(char c);
 
 // Returns integer corresponding to hex notation |c|.  It is undefined
-// if isHexDigit(c) is false.
+// if is_hex_digit(c) is false.
 uint32_t hex_to_uint(char c);
 
-std::string percentEncode(const unsigned char *target, size_t len);
+std::string percent_encode(const unsigned char *target, size_t len);
 
-std::string percentEncode(const std::string &target);
+std::string percent_encode(const std::string &target);
 
 // percent-encode path component of URI |s|.
 std::string percent_encode_path(const std::string &s);
 
 template <typename InputIt>
-std::string percentDecode(InputIt first, InputIt last) {
+std::string percent_decode(InputIt first, InputIt last) {
   std::string result;
   for (; first != last; ++first) {
     if (*first == '%') {
-      if (first + 1 != last && first + 2 != last && isHexDigit(*(first + 1)) &&
-          isHexDigit(*(first + 2))) {
+      if (first + 1 != last && first + 2 != last &&
+          is_hex_digit(*(first + 1)) && is_hex_digit(*(first + 2))) {
         result += (hex_to_uint(*(first + 1)) << 4) + hex_to_uint(*(first + 2));
         first += 2;
         continue;
@@ -267,20 +169,20 @@ inline char lowcase(char c) {
 }
 
 template <typename InputIterator1, typename InputIterator2>
-bool startsWith(InputIterator1 first1, InputIterator1 last1,
-                InputIterator2 first2, InputIterator2 last2) {
+bool starts_with(InputIterator1 first1, InputIterator1 last1,
+                 InputIterator2 first2, InputIterator2 last2) {
   if (last1 - first1 < last2 - first2) {
     return false;
   }
   return std::equal(first2, last2, first1);
 }
 
-inline bool startsWith(const std::string &a, const std::string &b) {
-  return startsWith(std::begin(a), std::end(a), std::begin(b), std::end(b));
+inline bool starts_with(const std::string &a, const std::string &b) {
+  return starts_with(std::begin(a), std::end(a), std::begin(b), std::end(b));
 }
 
-inline bool startsWith(const char *a, const char *b) {
-  return startsWith(a, a + strlen(a), b, b + strlen(b));
+inline bool starts_with(const char *a, const char *b) {
+  return starts_with(a, a + strlen(a), b, b + strlen(b));
 }
 
 struct CaseCmp {
@@ -290,49 +192,49 @@ struct CaseCmp {
 };
 
 template <typename InputIterator1, typename InputIterator2>
-bool istartsWith(InputIterator1 first1, InputIterator1 last1,
-                 InputIterator2 first2, InputIterator2 last2) {
+bool istarts_with(InputIterator1 first1, InputIterator1 last1,
+                  InputIterator2 first2, InputIterator2 last2) {
   if (last1 - first1 < last2 - first2) {
     return false;
   }
   return std::equal(first2, last2, first1, CaseCmp());
 }
 
-inline bool istartsWith(const std::string &a, const std::string &b) {
-  return istartsWith(std::begin(a), std::end(a), std::begin(b), std::end(b));
+inline bool istarts_with(const std::string &a, const std::string &b) {
+  return istarts_with(std::begin(a), std::end(a), std::begin(b), std::end(b));
 }
 
 template <typename InputIt>
-bool istartsWith(InputIt a, size_t an, const char *b) {
-  return istartsWith(a, a + an, b, b + strlen(b));
+bool istarts_with(InputIt a, size_t an, const char *b) {
+  return istarts_with(a, a + an, b, b + strlen(b));
 }
 
-bool istartsWith(const char *a, const char *b);
+bool istarts_with(const char *a, const char *b);
 
 template <typename InputIterator1, typename InputIterator2>
-bool endsWith(InputIterator1 first1, InputIterator1 last1,
-              InputIterator2 first2, InputIterator2 last2) {
+bool ends_with(InputIterator1 first1, InputIterator1 last1,
+               InputIterator2 first2, InputIterator2 last2) {
   if (last1 - first1 < last2 - first2) {
     return false;
   }
   return std::equal(first2, last2, last1 - (last2 - first2));
 }
 
-inline bool endsWith(const std::string &a, const std::string &b) {
-  return endsWith(std::begin(a), std::end(a), std::begin(b), std::end(b));
+inline bool ends_with(const std::string &a, const std::string &b) {
+  return ends_with(std::begin(a), std::end(a), std::begin(b), std::end(b));
 }
 
 template <typename InputIterator1, typename InputIterator2>
-bool iendsWith(InputIterator1 first1, InputIterator1 last1,
-               InputIterator2 first2, InputIterator2 last2) {
+bool iends_with(InputIterator1 first1, InputIterator1 last1,
+                InputIterator2 first2, InputIterator2 last2) {
   if (last1 - first1 < last2 - first2) {
     return false;
   }
   return std::equal(first2, last2, last1 - (last2 - first2), CaseCmp());
 }
 
-inline bool iendsWith(const std::string &a, const std::string &b) {
-  return iendsWith(std::begin(a), std::end(a), std::begin(b), std::end(b));
+inline bool iends_with(const std::string &a, const std::string &b) {
+  return iends_with(std::begin(a), std::end(a), std::begin(b), std::end(b));
 }
 
 int strcompare(const char *a, const uint8_t *b, size_t n);
@@ -682,6 +584,9 @@ std::string duration_str(double t);
 // The unit which is equal to or less than |t| is used and 2
 // fractional digits follow.
 std::string format_duration(const std::chrono::microseconds &u);
+
+// Just like above, but this takes |t| as seconds.
+std::string format_duration(double t);
 
 // Creates "host:port" string using given |host| and |port|.  If
 // |host| is numeric IPv6 address (e.g., ::1), it is enclosed by "["

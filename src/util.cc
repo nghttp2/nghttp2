@@ -63,32 +63,31 @@ namespace nghttp2 {
 
 namespace util {
 
-const char DEFAULT_STRIP_CHARSET[] = "\r\n\t ";
-
 const char UPPER_XDIGITS[] = "0123456789ABCDEF";
 
-bool inRFC3986UnreservedChars(const char c) {
-  static const char unreserved[] = {'-', '.', '_', '~'};
-  return isAlpha(c) || isDigit(c) ||
-         std::find(&unreserved[0], &unreserved[4], c) != &unreserved[4];
+bool in_rfc3986_unreserved_chars(const char c) {
+  static constexpr const char unreserved[] = {'-', '.', '_', '~'};
+  return is_alpha(c) || is_digit(c) ||
+         std::find(std::begin(unreserved), std::end(unreserved), c) !=
+             std::end(unreserved);
 }
 
 bool in_rfc3986_sub_delims(const char c) {
-  static const char sub_delims[] = {'!', '$', '&', '\'', '(', ')',
-                                    '*', '+', ',', ';',  '='};
+  static constexpr const char sub_delims[] = {'!', '$', '&', '\'', '(', ')',
+                                              '*', '+', ',', ';',  '='};
   return std::find(std::begin(sub_delims), std::end(sub_delims), c) !=
          std::end(sub_delims);
 }
 
-std::string percentEncode(const unsigned char *target, size_t len) {
+std::string percent_encode(const unsigned char *target, size_t len) {
   std::string dest;
   for (size_t i = 0; i < len; ++i) {
     unsigned char c = target[i];
 
-    if (inRFC3986UnreservedChars(c)) {
+    if (in_rfc3986_unreserved_chars(c)) {
       dest += c;
     } else {
-      dest += "%";
+      dest += '%';
       dest += UPPER_XDIGITS[c >> 4];
       dest += UPPER_XDIGITS[(c & 0x0f)];
     }
@@ -96,20 +95,21 @@ std::string percentEncode(const unsigned char *target, size_t len) {
   return dest;
 }
 
-std::string percentEncode(const std::string &target) {
-  return percentEncode(reinterpret_cast<const unsigned char *>(target.c_str()),
-                       target.size());
+std::string percent_encode(const std::string &target) {
+  return percent_encode(reinterpret_cast<const unsigned char *>(target.c_str()),
+                        target.size());
 }
 
 std::string percent_encode_path(const std::string &s) {
   std::string dest;
   for (auto c : s) {
-    if (inRFC3986UnreservedChars(c) || in_rfc3986_sub_delims(c) || c == '/') {
+    if (in_rfc3986_unreserved_chars(c) || in_rfc3986_sub_delims(c) ||
+        c == '/') {
       dest += c;
       continue;
     }
 
-    dest += "%";
+    dest += '%';
     dest += UPPER_XDIGITS[(c >> 4) & 0x0f];
     dest += UPPER_XDIGITS[(c & 0x0f)];
   }
@@ -117,18 +117,17 @@ std::string percent_encode_path(const std::string &s) {
 }
 
 bool in_token(char c) {
-  static const char extra[] = {'!', '#', '$', '%', '&', '\'', '*', '+',
-                               '-', '.', '^', '_', '`', '|',  '~'};
-
-  return isAlpha(c) || isDigit(c) ||
-         std::find(&extra[0], &extra[sizeof(extra)], c) !=
-             &extra[sizeof(extra)];
+  static constexpr const char extra[] = {'!',  '#', '$', '%', '&',
+                                         '\'', '*', '+', '-', '.',
+                                         '^',  '_', '`', '|', '~'};
+  return is_alpha(c) || is_digit(c) ||
+         std::find(std::begin(extra), std::end(extra), c) != std::end(extra);
 }
 
 bool in_attr_char(char c) {
-  static const char bad[] = {'*', '\'', '%'};
+  static constexpr const char bad[] = {'*', '\'', '%'};
   return util::in_token(c) &&
-         std::find(std::begin(bad), std::end(bad) - 1, c) == std::end(bad) - 1;
+         std::find(std::begin(bad), std::end(bad), c) == std::end(bad);
 }
 
 std::string percent_encode_token(const std::string &target) {
@@ -141,7 +140,7 @@ std::string percent_encode_token(const std::string &target) {
     if (c != '%' && in_token(c)) {
       dest += c;
     } else {
-      dest += "%";
+      dest += '%';
       dest += UPPER_XDIGITS[c >> 4];
       dest += UPPER_XDIGITS[(c & 0x0f)];
     }
@@ -354,7 +353,7 @@ void streq_advance(const char **ap, const char **bp) {
 }
 } // namespace
 
-bool istartsWith(const char *a, const char *b) {
+bool istarts_with(const char *a, const char *b) {
   if (!a || !b) {
     return false;
   }
@@ -510,8 +509,8 @@ void show_candidates(const char *unkopt, option *options) {
   for (size_t i = 0; options[i].name != nullptr; ++i) {
     auto optnamelen = strlen(options[i].name);
     // Use cost 0 for prefix match
-    if (istartsWith(options[i].name, options[i].name + optnamelen, unkopt,
-                    unkopt + unkoptlen)) {
+    if (istarts_with(options[i].name, options[i].name + optnamelen, unkopt,
+                     unkopt + unkoptlen)) {
       if (optnamelen == static_cast<size_t>(unkoptlen)) {
         // Exact match, then we don't show any condidates.
         return;
@@ -522,8 +521,8 @@ void show_candidates(const char *unkopt, option *options) {
     }
     // Use cost 0 for suffix match, but match at least 3 characters
     if (unkoptlen >= 3 &&
-        iendsWith(options[i].name, options[i].name + optnamelen, unkopt,
-                  unkopt + unkoptlen)) {
+        iends_with(options[i].name, options[i].name + optnamelen, unkopt,
+                   unkopt + unkoptlen)) {
       cands.emplace_back(0, options[i].name);
       continue;
     }
@@ -712,7 +711,7 @@ std::string ascii_dump(const uint8_t *data, size_t len) {
     if (c >= 0x20 && c < 0x7f) {
       res += c;
     } else {
-      res += ".";
+      res += '.';
     }
   }
 
@@ -755,7 +754,7 @@ bool check_path(const std::string &path) {
          path.find('\\') == std::string::npos &&
          path.find("/../") == std::string::npos &&
          path.find("/./") == std::string::npos &&
-         !util::endsWith(path, "/..") && !util::endsWith(path, "/.");
+         !util::ends_with(path, "/..") && !util::ends_with(path, "/.");
 }
 
 int64_t to_time64(const timeval &tv) {
@@ -1093,6 +1092,20 @@ std::string format_duration(const std::chrono::microseconds &u) {
   return dtos(static_cast<double>(t) / d) + unit;
 }
 
+std::string format_duration(double t) {
+  const char *unit = "us";
+  if (t >= 1.) {
+    unit = "s";
+  } else if (t >= 0.001) {
+    t *= 1000.;
+    unit = "ms";
+  } else {
+    t *= 1000000.;
+    return utos(static_cast<int64_t>(t)) + unit;
+  }
+  return dtos(t) + unit;
+}
+
 std::string dtos(double n) {
   auto f = utos(static_cast<int64_t>(round(100. * n)) % 100);
   return utos(static_cast<int64_t>(n)) + "." + (f.size() == 1 ? "0" : "") + f;
@@ -1103,17 +1116,17 @@ std::string make_hostport(const char *host, uint16_t port) {
   std::string hostport;
 
   if (ipv6) {
-    hostport += "[";
+    hostport += '[';
   }
 
   hostport += host;
 
   if (ipv6) {
-    hostport += "]";
+    hostport += ']';
   }
 
   if (port != 80 && port != 443) {
-    hostport += ":";
+    hostport += ':';
     hostport += utos(port);
   }
 
@@ -1245,8 +1258,13 @@ int read_mime_types(std::map<std::string, std::string> &res,
         break;
       }
       ext_end = std::find_if(ext_start, std::end(line), delim_pred);
+#ifdef HAVE_STD_MAP_EMPLACE
       res.emplace(std::string(ext_start, ext_end),
                   std::string(std::begin(line), type_end));
+#else  // !HAVE_STD_MAP_EMPLACE
+      res.insert(std::make_pair(std::string(ext_start, ext_end),
+                                std::string(std::begin(line), type_end)));
+#endif // !HAVE_STD_MAP_EMPLACE
     }
   }
 
