@@ -419,7 +419,8 @@ int nghttp2_stream_in_dep_tree(nghttp2_stream *stream);
 void nghttp2_stream_reschedule(nghttp2_stream *stream);
 
 /*
- * Returns a stream which has highest priority.
+ * Returns a stream which has highest priority, updating
+ * descendant_last_cycle of selected stream's ancestors.
  */
 nghttp2_outbound_item *
 nghttp2_stream_next_outbound_item(nghttp2_stream *stream);

@@ -207,25 +207,13 @@ void nghttp2_stream_reschedule(nghttp2_stream *stream) {
   dep_stream = stream->dep_prev;
 
   for (; dep_stream; stream = dep_stream, dep_stream = dep_stream->dep_prev) {
-    if (nghttp2_pq_size(&dep_stream->obq) == 1) {
-      dep_stream->descendant_last_cycle = 0;
-      stream->cycle = 0;
-    } else {
-      /* We update descendant_last_cycle here, and we don't do it when
-         no data is written for stream.  This effectively means that
-         we treat these streams as if they are not scheduled at all.
-         This does not cause disruption in scheduling machinery.  It
-         just makes new streams scheduled a bit early. */
-      dep_stream->descendant_last_cycle = stream->cycle;
+    nghttp2_pq_remove(&dep_stream->obq, &stream->pq_entry);
 
-      nghttp2_pq_remove(&dep_stream->obq, &stream->pq_entry);
+    stream->cycle =
+        stream_next_cycle(stream, dep_stream->descendant_last_cycle);
+    stream->seq = dep_stream->descendant_next_seq++;
 
-      stream->cycle =
-          stream_next_cycle(stream, dep_stream->descendant_last_cycle);
-      stream->seq = dep_stream->descendant_next_seq++;
-
-      nghttp2_pq_push(&dep_stream->obq, &stream->pq_entry);
-    }
+    nghttp2_pq_push(&dep_stream->obq, &stream->pq_entry);
 
     DEBUGF(fprintf(stderr, "stream: stream=%d obq resched cycle=%ld\n",
                    stream->stream_id, stream->cycle));
@@ -861,9 +849,15 @@ int nghttp2_stream_in_dep_tree(nghttp2_stream *stream) {
 nghttp2_outbound_item *
 nghttp2_stream_next_outbound_item(nghttp2_stream *stream) {
   nghttp2_pq_entry *ent;
+  nghttp2_stream *si;
 
   for (;;) {
     if (stream_active(stream)) {
+      /* Update ascendant's descendant_last_cycle here, so that we can
+         assure that new stream is scheduled based on it. */
+      for (si = stream; si->dep_prev; si = si->dep_prev) {
+        si->dep_prev->descendant_last_cycle = si->cycle;
+      }
       return stream->item;
     }
     ent = nghttp2_pq_top(&stream->obq);
