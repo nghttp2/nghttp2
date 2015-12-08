@@ -123,7 +123,7 @@ static void stream_next_cycle(nghttp2_stream *stream, uint64_t last_cycle) {
       stream->last_writelen * NGHTTP2_MAX_WEIGHT + stream->pending_penalty;
 
   stream->cycle = last_cycle + penalty / (uint32_t)stream->weight;
-  stream->pending_penalty = penalty % (uint32_t)stream->weight;
+  stream->pending_penalty = (uint32_t)(penalty % (uint32_t)stream->weight);
 }
 
 static int stream_obq_push(nghttp2_stream *dep_stream, nghttp2_stream *stream) {
@@ -258,9 +258,10 @@ void nghttp2_stream_change_weight(nghttp2_stream *stream, int32_t weight) {
 
   /* Compute old stream->pending_penalty we used to calculate
      stream->cycle */
-  stream->pending_penalty = (stream->pending_penalty + (uint32_t)old_weight -
-                             (wlen_penalty % (uint32_t)old_weight)) %
-                            (uint32_t)old_weight;
+  stream->pending_penalty =
+      (uint32_t)((stream->pending_penalty + (uint32_t)old_weight -
+                  (wlen_penalty % (uint32_t)old_weight)) %
+                 (uint32_t)old_weight);
 
   last_cycle = stream->cycle -
                (wlen_penalty + stream->pending_penalty) / (uint32_t)old_weight;
