@@ -197,6 +197,8 @@ struct nghttp2_stream {
   int32_t local_window_size;
   /* weight of this stream */
   int32_t weight;
+  /* This is unpaid penalty (offset) when calculating cycle. */
+  uint32_t pending_penalty;
   /* sum of weight of direct descendants */
   int32_t sum_dep_weight;
   nghttp2_stream_state state;
