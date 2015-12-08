@@ -50,6 +50,7 @@ public:
   bool handle(std::string pattern, request_cb cb);
   void stop();
   void join();
+  std::vector<std::shared_ptr<boost::asio::io_service>> &get_io_services();
 
 private:
   std::unique_ptr<server> server_;

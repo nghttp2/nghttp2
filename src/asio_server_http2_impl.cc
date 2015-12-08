@@ -59,6 +59,10 @@ void http2_impl::stop() { return server_->stop(); }
 
 void http2_impl::join() { return server_->join(); }
 
+std::vector<std::shared_ptr<boost::asio::io_service>> &http2_impl::get_io_services() {
+  return server_->get_io_services();
+}
+
 } // namespace server
 
 } // namespace asio_http2
