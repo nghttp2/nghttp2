@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "H2LOAD" "1" "November 29, 2015" "1.5.1-DEV" "nghttp2"
+.TH "H2LOAD" "1" "December 08, 2015" "1.5.1-DEV" "nghttp2"
 .SH NAME
 h2load \- HTTP/2 benchmarking tool
 .
@@ -367,6 +367,28 @@ The mean time taken to get 1st byte from a server.
 .TP
 .B sd
 The standard deviation of the time taken to get 1st byte from a
+server.
+.TP
+.B +/\- sd
+The fraction of the number of connections within standard
+deviation range (mean +/\- sd) against total number of successful
+connections.
+.UNINDENT
+.TP
+.B req/s (client)
+.INDENT 7.0
+.TP
+.B min
+The minimum request per second among all clients.
+.TP
+.B max
+The maximum request per second among all clients.
+.TP
+.B mean
+The mean request per second among all clients.
+.TP
+.B sd
+The standard deviation of request per second among all clients.
 server.
 .TP
 .B +/\- sd
