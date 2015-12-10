@@ -70,6 +70,9 @@ public:
   /// Get an io_service to use.
   boost::asio::io_service &get_io_service();
 
+  /// Get access to all io_service objects.
+  const std::vector<std::shared_ptr<boost::asio::io_service>> &get_io_services() const;
+
 private:
   /// The pool of io_services.
   std::vector<std::shared_ptr<boost::asio::io_service>> io_services_;
