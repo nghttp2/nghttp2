@@ -4121,15 +4121,16 @@ int nghttp2_session_on_push_promise_received(nghttp2_session *session,
     return session_inflate_handle_invalid_connection(
         session, frame, NGHTTP2_ERR_PROTO, "PUSH_PROMISE: push disabled");
   }
-  if (session->goaway_flags) {
-    /* We just dicard PUSH_PROMISE after GOAWAY is sent or
-       received. */
-    return NGHTTP2_ERR_IGN_HEADER_BLOCK;
-  }
 
   if (!nghttp2_session_is_my_stream_id(session, frame->hd.stream_id)) {
     return session_inflate_handle_invalid_connection(
         session, frame, NGHTTP2_ERR_PROTO, "PUSH_PROMISE: invalid stream_id");
+  }
+
+  if (session->goaway_flags) {
+    /* We just dicard PUSH_PROMISE after GOAWAY is sent or
+       received. */
+    return NGHTTP2_ERR_IGN_HEADER_BLOCK;
   }
 
   if (!session_is_new_peer_stream_id(session,
