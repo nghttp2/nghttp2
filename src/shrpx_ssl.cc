@@ -41,6 +41,7 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 #include <openssl/rand.h>
+#include <openssl/dh.h>
 
 #include <nghttp2/nghttp2.h>
 

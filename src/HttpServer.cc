@@ -53,6 +53,7 @@
 #include <deque>
 
 #include <openssl/err.h>
+#include <openssl/dh.h>
 
 #include <zlib.h>
 
