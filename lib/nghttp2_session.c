@@ -1321,6 +1321,15 @@ int nghttp2_session_close_stream_if_shut_rdwr(nghttp2_session *session,
 }
 
 /*
+ * Returns nonzero if local endpoint allows reception of new stream
+ * from remote.
+ */
+static int session_allow_incoming_new_stream(nghttp2_session *session) {
+  return (session->goaway_flags &
+          (NGHTTP2_GOAWAY_TERM_ON_SEND | NGHTTP2_GOAWAY_SENT)) == 0;
+}
+
+/*
  * This function returns nonzero if session is closing.
  */
 static int session_is_closing(nghttp2_session *session) {
@@ -3438,15 +3447,15 @@ int nghttp2_session_on_request_headers_received(nghttp2_session *session,
   }
   session->last_recv_stream_id = frame->hd.stream_id;
 
-  if (session->goaway_flags & NGHTTP2_GOAWAY_SENT) {
-    /* We just ignore stream after GOAWAY was queued */
-    return NGHTTP2_ERR_IGN_HEADER_BLOCK;
-  }
-
   if (session_is_incoming_concurrent_streams_max(session)) {
     return session_inflate_handle_invalid_connection(
         session, frame, NGHTTP2_ERR_PROTO,
         "request HEADERS: max concurrent streams exceeded");
+  }
+
+  if (!session_allow_incoming_new_stream(session)) {
+    /* We just ignore stream after GOAWAY was sent */
+    return NGHTTP2_ERR_IGN_HEADER_BLOCK;
   }
 
   if (frame->headers.pri_spec.stream_id == frame->hd.stream_id) {
@@ -3513,16 +3522,18 @@ int nghttp2_session_on_push_response_headers_received(nghttp2_session *session,
         session, frame, NGHTTP2_ERR_PROTO,
         "push response HEADERS: stream_id == 0");
   }
-  if (session->goaway_flags) {
-    /* We don't accept new stream after GOAWAY is sent or received. */
-    return NGHTTP2_ERR_IGN_HEADER_BLOCK;
-  }
 
   if (session_is_incoming_concurrent_streams_max(session)) {
     return session_inflate_handle_invalid_connection(
         session, frame, NGHTTP2_ERR_PROTO,
         "push response HEADERS: max concurrent streams exceeded");
   }
+
+  if (!session_allow_incoming_new_stream(session)) {
+    /* We don't accept new stream after GOAWAY was sent. */
+    return NGHTTP2_ERR_IGN_HEADER_BLOCK;
+  }
+
   if (session_is_incoming_concurrent_streams_pending_max(session)) {
     return session_inflate_handle_invalid_stream(session, frame,
                                                  NGHTTP2_ERR_REFUSED_STREAM);
@@ -4127,9 +4138,8 @@ int nghttp2_session_on_push_promise_received(nghttp2_session *session,
         session, frame, NGHTTP2_ERR_PROTO, "PUSH_PROMISE: invalid stream_id");
   }
 
-  if (session->goaway_flags) {
-    /* We just dicard PUSH_PROMISE after GOAWAY is sent or
-       received. */
+  if (!session_allow_incoming_new_stream(session)) {
+    /* We just discard PUSH_PROMISE after GOAWAY was sent */
     return NGHTTP2_ERR_IGN_HEADER_BLOCK;
   }
 
