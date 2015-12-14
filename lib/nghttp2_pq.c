@@ -44,11 +44,13 @@ void nghttp2_pq_free(nghttp2_pq *pq) {
 }
 
 static void swap(nghttp2_pq *pq, size_t i, size_t j) {
-  nghttp2_pq_entry *t = pq->q[i];
-  pq->q[i] = pq->q[j];
-  pq->q[i]->index = i;
-  pq->q[j] = t;
-  pq->q[j]->index = j;
+  nghttp2_pq_entry *a = pq->q[i];
+  nghttp2_pq_entry *b = pq->q[j];
+
+  pq->q[i] = b;
+  b->index = i;
+  pq->q[j] = a;
+  a->index = j;
 }
 
 static void bubble_up(nghttp2_pq *pq, size_t index) {
