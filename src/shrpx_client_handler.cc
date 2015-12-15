@@ -729,10 +729,11 @@ int ClientHandler::perform_http2_upgrade(HttpsUpstream *http) {
   on_read_ = &ClientHandler::upstream_http2_connhd_read;
   write_ = &ClientHandler::write_clear;
 
-  static char res[] = "HTTP/1.1 101 Switching Protocols\r\n"
-                      "Connection: Upgrade\r\n"
-                      "Upgrade: " NGHTTP2_CLEARTEXT_PROTO_VERSION_ID "\r\n"
-                      "\r\n";
+  static constexpr char res[] =
+      "HTTP/1.1 101 Switching Protocols\r\n"
+      "Connection: Upgrade\r\n"
+      "Upgrade: " NGHTTP2_CLEARTEXT_PROTO_VERSION_ID "\r\n"
+      "\r\n";
   upstream->get_response_buf()->write(res, sizeof(res) - 1);
   upstream_ = std::move(upstream);
 
