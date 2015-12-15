@@ -409,11 +409,6 @@ int htp_msg_completecb(http_parser *htp) {
 
   if (handler->get_http2_upgrade_allowed() &&
       downstream->get_http2_upgrade_request() &&
-      // we may write non-final header in response_buf, in this case,
-      // response_state is still INITIAL.  So don't upgrade in this
-      // case, otherwise we end up send this non-final header as
-      // response body in HTTP/2 upstream.
-      downstream->get_response_buf()->rleft() == 0 &&
       handler->perform_http2_upgrade(upstream) != 0) {
     if (LOG_ENABLED(INFO)) {
       ULOG(INFO, upstream) << "HTTP Upgrade to HTTP/2 failed";
