@@ -3633,6 +3633,8 @@ static int session_process_headers_frame(nghttp2_session *session) {
       return nghttp2_session_on_response_headers_received(session, frame,
                                                           stream);
     }
+    /* This handles the case when server received HEADERS for stream
+       in reserved stream from client.  That is protocol error. */
     frame->headers.cat = NGHTTP2_HCAT_HEADERS;
     return nghttp2_session_on_headers_received(session, frame, stream);
   }
