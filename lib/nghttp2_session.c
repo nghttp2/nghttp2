@@ -3725,10 +3725,10 @@ int nghttp2_session_on_rst_stream_received(nghttp2_session *session,
       return session_handle_invalid_connection(
           session, frame, NGHTTP2_ERR_PROTO, "RST_STREAM: stream in idle");
     }
+  } else {
+    /* We may use stream->shut_flags for strict error checking. */
+    nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
   }
-
-  /* We may use stream->shut_flags for strict error checking. */
-  nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
 
   rv = session_call_on_frame_received(session, frame);
   if (rv != 0) {
