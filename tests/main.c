@@ -128,6 +128,8 @@ int main(int argc _U_, char *argv[] _U_) {
                    test_nghttp2_session_on_window_update_received) ||
       !CU_add_test(pSuite, "session_on_data_received",
                    test_nghttp2_session_on_data_received) ||
+      !CU_add_test(pSuite, "session_on_data_received_fail_fast",
+                   test_nghttp2_session_on_data_received_fail_fast) ||
       !CU_add_test(pSuite, "session_send_headers_start_stream",
                    test_nghttp2_session_send_headers_start_stream) ||
       !CU_add_test(pSuite, "session_send_headers_reply",

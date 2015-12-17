@@ -2249,6 +2249,25 @@ void test_nghttp2_session_on_request_headers_received(void) {
   nghttp2_frame_headers_free(&frame.headers, mem);
 
   nghttp2_session_del(session);
+
+  nghttp2_session_server_new(&session, &callbacks, &user_data);
+
+  /* HEADERS to closed stream */
+  stream = open_stream(session, 1);
+  session->last_recv_stream_id = 1;
+  nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
+  nghttp2_session_close_stream(session, 1, NGHTTP2_NO_ERROR);
+
+  nghttp2_frame_headers_init(&frame.headers, NGHTTP2_FLAG_END_HEADERS, 1,
+                             NGHTTP2_HCAT_REQUEST, NULL, NULL, 0);
+
+  CU_ASSERT(NGHTTP2_ERR_IGN_HEADER_BLOCK ==
+            nghttp2_session_on_request_headers_received(session, &frame));
+  CU_ASSERT(session->goaway_flags & NGHTTP2_GOAWAY_TERM_ON_SEND);
+
+  nghttp2_frame_headers_free(&frame.headers, mem);
+
+  nghttp2_session_del(session);
 }
 
 void test_nghttp2_session_on_response_headers_received(void) {
@@ -2742,14 +2761,20 @@ void test_nghttp2_session_on_push_promise_received(void) {
   CU_ASSERT(1 == session->num_incoming_reserved_streams);
   CU_ASSERT(NULL == nghttp2_session_get_stream(session, 4));
   item = nghttp2_session_get_next_ob_item(session);
-  CU_ASSERT(NGHTTP2_RST_STREAM == item->frame.hd.type);
-  CU_ASSERT(4 == item->frame.hd.stream_id);
-  CU_ASSERT(NGHTTP2_PROTOCOL_ERROR == item->frame.rst_stream.error_code);
+  CU_ASSERT(NGHTTP2_GOAWAY == item->frame.hd.type);
+  CU_ASSERT(NGHTTP2_STREAM_CLOSED == item->frame.goaway.error_code);
   CU_ASSERT(0 == nghttp2_session_send(session));
   CU_ASSERT(4 == session->last_recv_stream_id);
 
+  nghttp2_session_del(session);
+
+  nghttp2_session_client_new(&session, &callbacks, &user_data);
+
+  stream = nghttp2_session_open_stream(session, 1, NGHTTP2_STREAM_FLAG_NONE,
+                                       &pri_spec_default,
+                                       NGHTTP2_STREAM_OPENING, NULL);
+
   /* Attempt to PUSH_PROMISE against stream in closing state */
-  stream->shut_flags = NGHTTP2_SHUT_NONE;
   stream->state = NGHTTP2_STREAM_CLOSING;
   frame.push_promise.promised_stream_id = 6;
 
@@ -2759,7 +2784,7 @@ void test_nghttp2_session_on_push_promise_received(void) {
             nghttp2_session_on_push_promise_received(session, &frame));
 
   CU_ASSERT(0 == user_data.begin_headers_cb_called);
-  CU_ASSERT(1 == session->num_incoming_reserved_streams);
+  CU_ASSERT(0 == session->num_incoming_reserved_streams);
   CU_ASSERT(NULL == nghttp2_session_get_stream(session, 6));
   item = nghttp2_session_get_next_ob_item(session);
   CU_ASSERT(NGHTTP2_RST_STREAM == item->frame.hd.type);
@@ -2767,7 +2792,7 @@ void test_nghttp2_session_on_push_promise_received(void) {
   CU_ASSERT(NGHTTP2_CANCEL == item->frame.rst_stream.error_code);
   CU_ASSERT(0 == nghttp2_session_send(session));
 
-  /* Attempt to PUSH_PROMISE against non-existent stream */
+  /* Attempt to PUSH_PROMISE against idle stream */
   frame.hd.stream_id = 3;
   frame.push_promise.promised_stream_id = 8;
 
@@ -2777,7 +2802,7 @@ void test_nghttp2_session_on_push_promise_received(void) {
             nghttp2_session_on_push_promise_received(session, &frame));
 
   CU_ASSERT(0 == user_data.begin_headers_cb_called);
-  CU_ASSERT(1 == session->num_incoming_reserved_streams);
+  CU_ASSERT(0 == session->num_incoming_reserved_streams);
   CU_ASSERT(NULL == nghttp2_session_get_stream(session, 8));
   item = nghttp2_session_get_next_ob_item(session);
   CU_ASSERT(NGHTTP2_GOAWAY == item->frame.hd.type);
@@ -3157,6 +3182,53 @@ void test_nghttp2_session_on_data_received(void) {
   CU_ASSERT(top == NULL);
   /* CU_ASSERT(NGHTTP2_RST_STREAM == top->frame.hd.type); */
   /* CU_ASSERT(NGHTTP2_PROTOCOL_ERROR == top->frame.rst_stream.error_code); */
+
+  nghttp2_session_del(session);
+}
+
+void test_nghttp2_session_on_data_received_fail_fast(void) {
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  uint8_t buf[9];
+  nghttp2_stream *stream;
+  nghttp2_frame_hd hd;
+  nghttp2_outbound_item *item;
+
+  memset(&callbacks, 0, sizeof(callbacks));
+
+  nghttp2_frame_hd_init(&hd, 0, NGHTTP2_DATA, NGHTTP2_FLAG_NONE, 1);
+  nghttp2_frame_pack_frame_hd(buf, &hd);
+
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  /* DATA to closed (remote) */
+  stream = open_stream(session, 1);
+  nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
+
+  CU_ASSERT((ssize_t)sizeof(buf) ==
+            nghttp2_session_mem_recv(session, buf, sizeof(buf)));
+
+  item = nghttp2_session_get_next_ob_item(session);
+
+  CU_ASSERT(NULL != item);
+  CU_ASSERT(NGHTTP2_GOAWAY == item->frame.hd.type);
+
+  nghttp2_session_del(session);
+
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  /* DATA to closed stream with explicit closed (remote) */
+  stream = open_stream(session, 1);
+  nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
+  nghttp2_session_close_stream(session, 1, NGHTTP2_NO_ERROR);
+
+  CU_ASSERT((ssize_t)sizeof(buf) ==
+            nghttp2_session_mem_recv(session, buf, sizeof(buf)));
+
+  item = nghttp2_session_get_next_ob_item(session);
+
+  CU_ASSERT(NULL != item);
+  CU_ASSERT(NGHTTP2_GOAWAY == item->frame.hd.type);
 
   nghttp2_session_del(session);
 }

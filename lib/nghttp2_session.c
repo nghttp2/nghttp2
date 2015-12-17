@@ -3443,6 +3443,12 @@ int nghttp2_session_on_request_headers_received(nghttp2_session *session,
           "request HEADERS: invalid stream_id");
     }
 
+    stream = nghttp2_session_get_stream_raw(session, frame->hd.stream_id);
+    if (stream && (stream->shut_flags & NGHTTP2_SHUT_RD)) {
+      return session_inflate_handle_invalid_connection(
+          session, frame, NGHTTP2_ERR_STREAM_CLOSED, "HEADERS: stream closed");
+    }
+
     return NGHTTP2_ERR_IGN_HEADER_BLOCK;
   }
   session->last_recv_stream_id = frame->hd.stream_id;
@@ -3720,6 +3726,9 @@ int nghttp2_session_on_rst_stream_received(nghttp2_session *session,
           session, frame, NGHTTP2_ERR_PROTO, "RST_STREAM: stream in idle");
     }
   }
+
+  /* We may use stream->shut_flags for strict error checking. */
+  nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_RD);
 
   rv = session_call_on_frame_received(session, frame);
   if (rv != 0) {
@@ -4165,7 +4174,11 @@ int nghttp2_session_on_push_promise_received(nghttp2_session *session,
         return session_inflate_handle_invalid_connection(
             session, frame, NGHTTP2_ERR_PROTO, "PUSH_PROMISE: stream in idle");
       }
+
+      /* Currently, client does not retain closed stream, so we don't
+         check NGHTTP2_SHUT_RD condition here. */
     }
+
     rv = nghttp2_session_add_rst_stream(
         session, frame->push_promise.promised_stream_id, NGHTTP2_CANCEL);
     if (rv != 0) {
@@ -4173,25 +4186,13 @@ int nghttp2_session_on_push_promise_received(nghttp2_session *session,
     }
     return NGHTTP2_ERR_IGN_HEADER_BLOCK;
   }
+
   if (stream->shut_flags & NGHTTP2_SHUT_RD) {
-    if (session->callbacks.on_invalid_frame_recv_callback) {
-      if (session->callbacks.on_invalid_frame_recv_callback(
-              session, frame, NGHTTP2_PROTOCOL_ERROR, session->user_data) !=
-          0) {
-        return NGHTTP2_ERR_CALLBACK_FAILURE;
-      }
-    }
-    rv = nghttp2_session_add_rst_stream(session,
-                                        frame->push_promise.promised_stream_id,
-                                        NGHTTP2_PROTOCOL_ERROR);
-    if (rv != 0) {
-      return rv;
-    }
-    return NGHTTP2_ERR_IGN_HEADER_BLOCK;
+    return session_inflate_handle_invalid_connection(
+        session, frame, NGHTTP2_ERR_STREAM_CLOSED,
+        "PUSH_PROMISE: stream closed");
   }
 
-  /* TODO It is unclear reserved stream dpeneds on associated
-     stream with or without exclusive flag set */
   nghttp2_priority_spec_init(&pri_spec, stream->stream_id,
                              NGHTTP2_DEFAULT_WEIGHT, 0);
 
@@ -4632,6 +4633,14 @@ static int session_on_data_received_fail_fast(nghttp2_session *session) {
       error_code = NGHTTP2_PROTOCOL_ERROR;
       goto fail;
     }
+
+    stream = nghttp2_session_get_stream_raw(session, stream_id);
+    if (stream && (stream->shut_flags & NGHTTP2_SHUT_RD)) {
+      failure_reason = "DATA: stream closed";
+      error_code = NGHTTP2_STREAM_CLOSED;
+      goto fail;
+    }
+
     return NGHTTP2_ERR_IGN_PAYLOAD;
   }
   if (stream->shut_flags & NGHTTP2_SHUT_RD) {
