@@ -338,16 +338,6 @@ static int send_data_callback(nghttp2_session *session _U_,
   return 0;
 }
 
-/* static void no_stream_user_data_stream_close_callback */
-/* (nghttp2_session *session, */
-/*  int32_t stream_id, */
-/*  nghttp2_error_code error_code, */
-/*  void *user_data) */
-/* { */
-/*   my_user_data* my_data = (my_user_data*)user_data; */
-/*   ++my_data->stream_close_cb_called; */
-/* } */
-
 static ssize_t block_count_send_callback(nghttp2_session *session _U_,
                                          const uint8_t *data _U_, size_t len,
                                          int flags _U_, void *user_data) {
@@ -5247,38 +5237,6 @@ void test_nghttp2_session_max_concurrent_streams(void) {
 
   nghttp2_frame_headers_free(&frame.headers, mem);
   nghttp2_session_del(session);
-}
-
-/*
- * Check that on_stream_close_callback is called when server pushed
- * HEADERS have NGHTTP2_FLAG_END_STREAM.
- */
-void test_nghttp2_session_stream_close_on_headers_push(void) {
-  /* nghttp2_session *session; */
-  /* nghttp2_session_callbacks callbacks; */
-  /* const char *nv[] = { NULL }; */
-  /* my_user_data ud; */
-  /* nghttp2_frame frame; */
-
-  /* memset(&callbacks, 0, sizeof(nghttp2_session_callbacks)); */
-  /* callbacks.on_stream_close_callback = */
-  /*   no_stream_user_data_stream_close_callback; */
-  /* ud.stream_close_cb_called = 0; */
-
-  /* nghttp2_session_client_new(&session, NGHTTP2_PROTO_SPDY2, &callbacks, &ud);
-   */
-  /* nghttp2_session_open_stream(session, 1, NGHTTP2_CTRL_FLAG_NONE, 3, */
-  /*                             NGHTTP2_STREAM_OPENING, NULL); */
-  /* nghttp2_frame_syn_stream_init(&frame.syn_stream, NGHTTP2_PROTO_SPDY2, */
-  /*                               NGHTTP2_CTRL_FLAG_FIN | */
-  /*                               NGHTTP2_CTRL_FLAG_UNIDIRECTIONAL, */
-  /*                               2, 1, 3, dup_nv(nv)); */
-
-  /* CU_ASSERT(0 == nghttp2_session_on_request_headers_received(session,
-   * &frame)); */
-
-  /* nghttp2_frame_syn_stream_free(&frame.syn_stream); */
-  /* nghttp2_session_del(session); */
 }
 
 void test_nghttp2_session_stop_data_with_rst_stream(void) {

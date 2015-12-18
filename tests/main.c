@@ -206,8 +206,6 @@ int main(int argc _U_, char *argv[] _U_) {
                    test_nghttp2_session_reply_fail) ||
       !CU_add_test(pSuite, "session_max_concurrent_streams",
                    test_nghttp2_session_max_concurrent_streams) ||
-      !CU_add_test(pSuite, "session_stream_close_on_headers_push",
-                   test_nghttp2_session_stream_close_on_headers_push) ||
       !CU_add_test(pSuite, "session_stop_data_with_rst_stream",
                    test_nghttp2_session_stop_data_with_rst_stream) ||
       !CU_add_test(pSuite, "session_defer_data",

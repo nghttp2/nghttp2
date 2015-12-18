@@ -95,7 +95,6 @@ void test_nghttp2_session_get_next_ob_item(void);
 void test_nghttp2_session_pop_next_ob_item(void);
 void test_nghttp2_session_reply_fail(void);
 void test_nghttp2_session_max_concurrent_streams(void);
-void test_nghttp2_session_stream_close_on_headers_push(void);
 void test_nghttp2_session_stop_data_with_rst_stream(void);
 void test_nghttp2_session_defer_data(void);
 void test_nghttp2_session_flow_control(void);
