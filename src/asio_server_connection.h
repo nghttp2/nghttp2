@@ -70,8 +70,9 @@ public:
 
   /// Start the first asynchronous operation for the connection.
   void start() {
-    handler_ = std::make_shared<http2_handler>(socket_.get_io_service(),
-                                               [this]() { do_write(); }, mux_);
+    handler_ = std::make_shared<http2_handler>(
+        socket_.get_io_service(), socket_.lowest_layer().remote_endpoint(),
+        [this]() { do_write(); }, mux_);
     if (handler_->start() != 0) {
       return;
     }

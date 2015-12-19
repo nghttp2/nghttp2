@@ -28,6 +28,7 @@
 #include "nghttp2_config.h"
 
 #include <nghttp2/asio_http2_server.h>
+#include <boost/asio/ip/tcp.hpp>
 
 namespace nghttp2 {
 namespace asio_http2 {
@@ -54,12 +55,16 @@ public:
   void stream(class stream *s);
   void call_on_data(const uint8_t *data, std::size_t len);
 
+  const boost::asio::ip::tcp::endpoint &remote_endpoint() const;
+  void remote_endpoint(boost::asio::ip::tcp::endpoint ep);
+
 private:
   class stream *strm_;
   header_map header_;
   std::string method_;
   uri_ref uri_;
   data_cb on_data_cb_;
+  boost::asio::ip::tcp::endpoint remote_ep_;
 };
 
 } // namespace server

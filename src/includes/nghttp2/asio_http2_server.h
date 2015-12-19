@@ -59,6 +59,9 @@ public:
   // Application must not call this directly.
   request_impl &impl() const;
 
+  // Returns the remote endpoint of the request
+  const boost::asio::ip::tcp::endpoint &remote_endpoint() const;
+
 private:
   std::unique_ptr<request_impl> impl_;
 };
