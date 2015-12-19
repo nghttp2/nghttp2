@@ -90,7 +90,7 @@ public:
 
   boost::asio::io_service &io_service();
 
-  boost::asio::ip::tcp::endpoint remote_endpoint();
+  const boost::asio::ip::tcp::endpoint &remote_endpoint();
 
   const std::string &http_date();
 

@@ -54,7 +54,7 @@ void request_impl::call_on_data(const uint8_t *data, std::size_t len) {
   }
 }
 
-boost::asio::ip::tcp::endpoint request_impl::remote_endpoint() const {
+const boost::asio::ip::tcp::endpoint &request_impl::remote_endpoint() const {
   return remote_ep_;
 }
 

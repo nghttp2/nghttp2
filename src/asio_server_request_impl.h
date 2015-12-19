@@ -55,7 +55,7 @@ public:
   void stream(class stream *s);
   void call_on_data(const uint8_t *data, std::size_t len);
 
-  boost::asio::ip::tcp::endpoint remote_endpoint() const;
+  const boost::asio::ip::tcp::endpoint &remote_endpoint() const;
   void remote_endpoint(boost::asio::ip::tcp::endpoint ep);
 
 private:

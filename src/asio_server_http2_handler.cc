@@ -453,7 +453,9 @@ response *http2_handler::push_promise(boost::system::error_code &ec,
 
 boost::asio::io_service &http2_handler::io_service() { return io_service_; }
 
-boost::asio::ip::tcp::endpoint http2_handler::remote_endpoint() { return remote_ep_; }
+const boost::asio::ip::tcp::endpoint &http2_handler::remote_endpoint() {
+  return remote_ep_;
+}
 
 callback_guard::callback_guard(http2_handler &h) : handler(h) {
   handler.enter_callback();

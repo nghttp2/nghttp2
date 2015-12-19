@@ -50,7 +50,7 @@ void request::on_data(data_cb cb) const {
 
 request_impl &request::impl() const { return *impl_; }
 
-boost::asio::ip::tcp::endpoint request::remote_endpoint() const {
+const boost::asio::ip::tcp::endpoint &request::remote_endpoint() const {
   return impl_->remote_endpoint();
 }
 
