@@ -88,7 +88,7 @@ time for 1st byte (of (decrypted in case of TLS) application data)
     deviation range (mean +/- sd) against total number of successful
     connections.
 
-req/s (client)
+req/s
   min
     The minimum request per second among all clients.
   max
