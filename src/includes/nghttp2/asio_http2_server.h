@@ -205,7 +205,8 @@ public:
   void join();
 
   // Get access to the io_service objects.
-  const std::vector<std::shared_ptr<boost::asio::io_service>> &get_io_services() const;
+  const std::vector<std::shared_ptr<boost::asio::io_service>> &
+  get_io_services() const;
 
 private:
   std::unique_ptr<http2_impl> impl_;

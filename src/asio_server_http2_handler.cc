@@ -136,7 +136,7 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
       break;
     }
 
-    auto& req = strm->request().impl();
+    auto &req = strm->request().impl();
     req.remote_endpoint(handler->remote_endpoint());
 
     handler->call_on_request(*strm);

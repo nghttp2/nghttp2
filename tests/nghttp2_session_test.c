@@ -1449,8 +1449,7 @@ void test_nghttp2_session_server_recv_push_response(void) {
   nghttp2_hd_deflate_init(&deflater, mem);
 
   nghttp2_session_open_stream(session, 2, NGHTTP2_STREAM_FLAG_NONE,
-                              &pri_spec_default,
-                              NGHTTP2_STREAM_RESERVED, NULL);
+                              &pri_spec_default, NGHTTP2_STREAM_RESERVED, NULL);
 
   nvlen = ARRLEN(resnv);
   nghttp2_nv_array_copy(&nva, resnv, nvlen, mem);

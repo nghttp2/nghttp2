@@ -74,7 +74,8 @@ public:
   void stop();
 
   /// Get access to all io_service objects.
-  const std::vector<std::shared_ptr<boost::asio::io_service>> &get_io_services() const;
+  const std::vector<std::shared_ptr<boost::asio::io_service>> &
+  get_io_services() const;
 
 private:
   /// Initiate an asynchronous accept operation.
