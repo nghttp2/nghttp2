@@ -3593,15 +3593,9 @@ int nghttp2_session_on_headers_received(nghttp2_session *session,
         return rv;
       }
       return 0;
-    } else if (stream->state == NGHTTP2_STREAM_CLOSING) {
-      /* This is race condition. NGHTTP2_STREAM_CLOSING indicates
-         that we queued RST_STREAM but it has not been sent. It will
-         eventually sent, so we just ignore this frame. */
-      return NGHTTP2_ERR_IGN_HEADER_BLOCK;
-    } else {
-      return session_inflate_handle_invalid_stream(session, frame,
-                                                   NGHTTP2_ERR_PROTO);
     }
+
+    return NGHTTP2_ERR_IGN_HEADER_BLOCK;
   }
   /* If this is remote peer initiated stream, it is OK unless it
      has sent END_STREAM frame already. But if stream is in
