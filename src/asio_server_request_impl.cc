@@ -59,7 +59,7 @@ const boost::asio::ip::tcp::endpoint &request_impl::remote_endpoint() const {
 }
 
 void request_impl::remote_endpoint(boost::asio::ip::tcp::endpoint ep) {
-  remote_ep_ = ep;
+  remote_ep_ = std::move(ep);
 }
 
 } // namespace server
