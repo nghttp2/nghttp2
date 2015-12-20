@@ -3437,7 +3437,7 @@ int nghttp2_session_on_request_headers_received(nghttp2_session *session,
        PROTOCOL_ERROR.  But we could get trailer HEADERS after we have
        sent RST_STREAM to this stream and peer have not received it.
        Then connection error is too harsh.  It means that we only use
-       connection error if stream ID refers idle stream.  OTherwise we
+       connection error if stream ID refers idle stream.  Therwise we
        just ignore HEADERS for now. */
     if (frame->hd.stream_id == 0 ||
         nghttp2_session_is_my_stream_id(session, frame->hd.stream_id)) {
