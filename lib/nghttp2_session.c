@@ -3534,6 +3534,12 @@ int nghttp2_session_on_push_response_headers_received(nghttp2_session *session,
         "push response HEADERS: stream_id == 0");
   }
 
+  if (session->server) {
+    return session_inflate_handle_invalid_connection(
+        session, frame, NGHTTP2_ERR_PROTO,
+        "HEADERS: no HEADERS allowed from client in reserved state");
+  }
+
   if (session_is_incoming_concurrent_streams_max(session)) {
     return session_inflate_handle_invalid_connection(
         session, frame, NGHTTP2_ERR_PROTO,
@@ -3569,14 +3575,6 @@ int nghttp2_session_on_headers_received(nghttp2_session *session,
   if (frame->hd.stream_id == 0) {
     return session_inflate_handle_invalid_connection(
         session, frame, NGHTTP2_ERR_PROTO, "HEADERS: stream_id == 0");
-  }
-  if (stream->state == NGHTTP2_STREAM_RESERVED) {
-    /* reserved. The valid push response HEADERS is processed by
-       nghttp2_session_on_push_response_headers_received(). This
-       generic HEADERS is called invalid cases for HEADERS against
-       reserved state. */
-    return session_inflate_handle_invalid_connection(
-        session, frame, NGHTTP2_ERR_PROTO, "HEADERS: stream in reserved");
   }
   if ((stream->shut_flags & NGHTTP2_SHUT_RD)) {
     /* half closed (remote): from the spec:
@@ -3634,22 +3632,18 @@ static int session_process_headers_frame(nghttp2_session *session) {
     return nghttp2_session_on_request_headers_received(session, frame);
   }
 
-  if (nghttp2_session_is_my_stream_id(session, frame->hd.stream_id)) {
-    if (stream->state == NGHTTP2_STREAM_OPENING) {
-      frame->headers.cat = NGHTTP2_HCAT_RESPONSE;
-      return nghttp2_session_on_response_headers_received(session, frame,
-                                                          stream);
-    }
-    /* This handles the case when server received HEADERS for stream
-       in reserved stream from client.  That is protocol error. */
-    frame->headers.cat = NGHTTP2_HCAT_HEADERS;
-    return nghttp2_session_on_headers_received(session, frame, stream);
-  }
   if (stream->state == NGHTTP2_STREAM_RESERVED) {
     frame->headers.cat = NGHTTP2_HCAT_PUSH_RESPONSE;
     return nghttp2_session_on_push_response_headers_received(session, frame,
                                                              stream);
   }
+
+  if (stream->state == NGHTTP2_STREAM_OPENING &&
+      nghttp2_session_is_my_stream_id(session, frame->hd.stream_id)) {
+    frame->headers.cat = NGHTTP2_HCAT_RESPONSE;
+    return nghttp2_session_on_response_headers_received(session, frame, stream);
+  }
+
   frame->headers.cat = NGHTTP2_HCAT_HEADERS;
   return nghttp2_session_on_headers_received(session, frame, stream);
 }
