@@ -3509,9 +3509,11 @@ int nghttp2_session_on_response_headers_received(nghttp2_session *session,
        If an endpoint receives additional frames for a stream that is
        in this state it MUST respond with a stream error (Section
        5.4.2) of type STREAM_CLOSED.
+
+       We go further, and make it connection error.
     */
-    return session_inflate_handle_invalid_stream(session, frame,
-                                                 NGHTTP2_ERR_STREAM_CLOSED);
+    return session_inflate_handle_invalid_connection(
+        session, frame, NGHTTP2_ERR_STREAM_CLOSED, "HEADERS: stream closed");
   }
   stream->state = NGHTTP2_STREAM_OPENED;
   rv = session_call_on_begin_headers(session, frame);
@@ -3582,9 +3584,11 @@ int nghttp2_session_on_headers_received(nghttp2_session *session,
        If an endpoint receives additional frames for a stream that is
        in this state it MUST respond with a stream error (Section
        5.4.2) of type STREAM_CLOSED.
+
+       we go further, and make it connection error.
     */
-    return session_inflate_handle_invalid_stream(session, frame,
-                                                 NGHTTP2_ERR_STREAM_CLOSED);
+    return session_inflate_handle_invalid_connection(
+        session, frame, NGHTTP2_ERR_STREAM_CLOSED, "HEADERS: stream closed");
   }
   if (nghttp2_session_is_my_stream_id(session, frame->hd.stream_id)) {
     if (stream->state == NGHTTP2_STREAM_OPENED) {
@@ -4304,8 +4308,9 @@ session_on_connection_window_update_received(nghttp2_session *session,
                                              nghttp2_frame *frame) {
   /* Handle connection-level flow control */
   if (frame->window_update.window_size_increment == 0) {
-    return session_handle_invalid_connection(session, frame, NGHTTP2_ERR_PROTO,
-                                             NULL);
+    return session_handle_invalid_connection(
+        session, frame, NGHTTP2_ERR_PROTO,
+        "WINDOW_UPDATE: window_size_increment == 0");
   }
 
   if (NGHTTP2_MAX_WINDOW_SIZE - frame->window_update.window_size_increment <
@@ -4335,7 +4340,9 @@ static int session_on_stream_window_update_received(nghttp2_session *session,
         session, frame, NGHTTP2_ERR_PROTO, "WINDOW_UPADATE to reserved stream");
   }
   if (frame->window_update.window_size_increment == 0) {
-    return session_handle_invalid_stream(session, frame, NGHTTP2_ERR_PROTO);
+    return session_handle_invalid_connection(
+        session, frame, NGHTTP2_ERR_PROTO,
+        "WINDOW_UPDATE: window_size_increment == 0");
   }
   if (NGHTTP2_MAX_WINDOW_SIZE - frame->window_update.window_size_increment <
       stream->remote_window_size) {
