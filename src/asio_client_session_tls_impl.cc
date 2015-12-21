@@ -38,8 +38,6 @@ session_tls_impl::session_tls_impl(boost::asio::io_service &io_service,
   // ssl::context::set_verify_mode(boost::asio::ssl::verify_peer) is
   // not used, which is what we want.
   socket_.set_verify_callback(boost::asio::ssl::rfc2818_verification(host));
-
-  start_resolve(host, service);
 }
 
 session_tls_impl::~session_tls_impl() {}
@@ -85,7 +83,8 @@ void session_tls_impl::write_socket(
 }
 
 void session_tls_impl::shutdown_socket() {
-  socket_.async_shutdown([](const boost::system::error_code &ec) {});
+  boost::system::error_code ignored_ec;
+  socket_.lowest_layer().close(ignored_ec);
 }
 
 } // namespace client

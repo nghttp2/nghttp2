@@ -144,6 +144,12 @@ public:
   // and session is terminated.
   void on_error(error_cb cb) const;
 
+  // Sets connect timeout, which defaults to 60 seconds.
+  void connect_timeout(const boost::posix_time::time_duration &t);
+
+  // Sets read timeout, which defaults to 60 seconds.
+  void read_timeout(const boost::posix_time::time_duration &t);
+
   // Shutdowns connection.
   void shutdown() const;
 
@@ -177,7 +183,7 @@ public:
                         generator_cb cb, header_map h = header_map{}) const;
 
 private:
-  std::unique_ptr<session_impl> impl_;
+  std::shared_ptr<session_impl> impl_;
 };
 
 // configure |tls_ctx| for client use.  Currently, we just set NPN
