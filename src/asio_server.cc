@@ -44,8 +44,12 @@ namespace nghttp2 {
 namespace asio_http2 {
 namespace server {
 
-server::server(std::size_t io_service_pool_size)
-    : io_service_pool_(io_service_pool_size) {}
+server::server(std::size_t io_service_pool_size,
+               const boost::posix_time::time_duration &tls_handshake_timeout,
+               const boost::posix_time::time_duration &read_timeout)
+    : io_service_pool_(io_service_pool_size),
+      tls_handshake_timeout_(tls_handshake_timeout),
+      read_timeout_(read_timeout) {}
 
 boost::system::error_code
 server::listen_and_serve(boost::system::error_code &ec,
@@ -121,7 +125,8 @@ boost::system::error_code server::bind_and_listen(boost::system::error_code &ec,
 void server::start_accept(boost::asio::ssl::context &tls_context,
                           tcp::acceptor &acceptor, serve_mux &mux) {
   auto new_connection = std::make_shared<connection<ssl_socket>>(
-      mux, io_service_pool_.get_io_service(), tls_context);
+      mux, tls_handshake_timeout_, read_timeout_,
+      io_service_pool_.get_io_service(), tls_context);
 
   acceptor.async_accept(
       new_connection->socket().lowest_layer(),
@@ -130,14 +135,17 @@ void server::start_accept(boost::asio::ssl::context &tls_context,
         if (!e) {
           new_connection->socket().lowest_layer().set_option(
               tcp::no_delay(true));
+          new_connection->start_tls_handshake_deadline();
           new_connection->socket().async_handshake(
               boost::asio::ssl::stream_base::server,
               [new_connection](const boost::system::error_code &e) {
                 if (e) {
+                  new_connection->stop();
                   return;
                 }
 
                 if (!tls_h2_negotiated(new_connection->socket())) {
+                  new_connection->stop();
                   return;
                 }
 
@@ -151,13 +159,15 @@ void server::start_accept(boost::asio::ssl::context &tls_context,
 
 void server::start_accept(tcp::acceptor &acceptor, serve_mux &mux) {
   auto new_connection = std::make_shared<connection<tcp::socket>>(
-      mux, io_service_pool_.get_io_service());
+      mux, tls_handshake_timeout_, read_timeout_,
+      io_service_pool_.get_io_service());
 
   acceptor.async_accept(
       new_connection->socket(), [this, &acceptor, &mux, new_connection](
                                     const boost::system::error_code &e) {
         if (!e) {
           new_connection->socket().set_option(tcp::no_delay(true));
+          new_connection->start_read_deadline();
           new_connection->start();
         }
 

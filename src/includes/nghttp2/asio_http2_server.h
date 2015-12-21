@@ -198,6 +198,12 @@ public:
   // connections.
   void backlog(int backlog);
 
+  // Sets TLS handshake timeout, which defaults to 60 seconds.
+  void tls_handshake_timeout(const boost::posix_time::time_duration &t);
+
+  // Sets read timeout, which defaults to 60 seconds.
+  void read_timeout(const boost::posix_time::time_duration &t);
+
   // Gracefully stop http2 server
   void stop();
 
