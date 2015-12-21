@@ -718,20 +718,6 @@ int nghttp2_session_add_item(nghttp2_session *session,
         break;
       }
 
-      if (stream && item->aux_data.headers.attach_stream) {
-        if (stream->item) {
-          return NGHTTP2_ERR_DATA_EXIST;
-        }
-
-        rv = nghttp2_stream_attach_item(stream, item);
-
-        if (rv != 0) {
-          return rv;
-        }
-
-        break;
-      }
-
       nghttp2_outbound_queue_push(&session->ob_reg, item);
       item->queued = 1;
       break;
