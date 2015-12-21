@@ -527,8 +527,9 @@ void session_impl::do_read() {
     if (ec) {
       if (!should_stop()) {
         call_error_cb(ec);
-        shutdown_socket();
       }
+      shutdown_socket();
+
       return;
     }
 
