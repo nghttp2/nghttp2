@@ -7634,7 +7634,7 @@ void test_nghttp2_session_keep_closed_stream(void) {
   nghttp2_session_callbacks callbacks;
   const size_t max_concurrent_streams = 5;
   nghttp2_settings_entry iv = {NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS,
-                               max_concurrent_streams};
+                               (uint32_t)max_concurrent_streams};
   size_t i;
 
   memset(&callbacks, 0, sizeof(callbacks));
@@ -7709,7 +7709,7 @@ void test_nghttp2_session_keep_idle_stream(void) {
   nghttp2_session_callbacks callbacks;
   const size_t max_concurrent_streams = 1;
   nghttp2_settings_entry iv = {NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS,
-                               max_concurrent_streams};
+                               (uint32_t)max_concurrent_streams};
   int i;
   int32_t stream_id;
 
