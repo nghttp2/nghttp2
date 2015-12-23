@@ -64,12 +64,14 @@ void drop_privileges(
 #endif // HAVE_NEVERBLEED
     ) {
   if (getuid() == 0 && get_config()->uid != 0) {
+#ifdef HAVE_INITGROUPS
     if (initgroups(get_config()->user.get(), get_config()->gid) != 0) {
       auto error = errno;
       LOG(FATAL) << "Could not change supplementary groups: "
                  << strerror(error);
       exit(EXIT_FAILURE);
     }
+#endif // HAVE_INITGROUPS
     if (setgid(get_config()->gid) != 0) {
       auto error = errno;
       LOG(FATAL) << "Could not change gid: " << strerror(error);

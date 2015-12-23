@@ -604,6 +604,7 @@ AC_CHECK_FUNCS([ \
   dup2 \
   getcwd \
   getpwnam \
+  initgroups \
   localtime_r \
   memchr \
   memmove \
