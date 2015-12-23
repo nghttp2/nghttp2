@@ -8642,6 +8642,57 @@ void test_nghttp2_session_create_idle_stream(void) {
   nghttp2_session_del(session);
 }
 
+void test_nghttp2_session_repeated_priority_change(void) {
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  nghttp2_frame frame;
+  nghttp2_priority_spec pri_spec;
+  int32_t stream_id, last_stream_id;
+  int32_t max_streams = 20;
+
+  memset(&callbacks, 0, sizeof(callbacks));
+
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  session->local_settings.max_concurrent_streams = (uint32_t)max_streams;
+
+  /* 1 -> 0 */
+  nghttp2_priority_spec_init(&pri_spec, 0, 16, 0);
+  nghttp2_frame_priority_init(&frame.priority, 1, &pri_spec);
+
+  CU_ASSERT(0 == nghttp2_session_on_priority_received(session, &frame));
+
+  nghttp2_frame_priority_free(&frame.priority);
+
+  last_stream_id = max_streams * 2 + 1;
+
+  for (stream_id = 3; stream_id < last_stream_id; stream_id += 2) {
+    /* 1 -> stream_id */
+    nghttp2_priority_spec_init(&pri_spec, stream_id, 16, 0);
+    nghttp2_frame_priority_init(&frame.priority, 1, &pri_spec);
+
+    CU_ASSERT(0 == nghttp2_session_on_priority_received(session, &frame));
+
+    nghttp2_frame_priority_free(&frame.priority);
+  }
+
+  CU_ASSERT(20 == session->num_idle_streams);
+  CU_ASSERT(1 == session->idle_stream_head->stream_id);
+
+  /* 1 -> last_stream_id */
+  nghttp2_priority_spec_init(&pri_spec, last_stream_id, 16, 0);
+  nghttp2_frame_priority_init(&frame.priority, 1, &pri_spec);
+
+  CU_ASSERT(0 == nghttp2_session_on_priority_received(session, &frame));
+
+  nghttp2_frame_priority_free(&frame.priority);
+
+  CU_ASSERT(20 == session->num_idle_streams);
+  CU_ASSERT(3 == session->idle_stream_head->stream_id);
+
+  nghttp2_session_del(session);
+}
+
 static void check_nghttp2_http_recv_headers_fail(
     nghttp2_session *session, nghttp2_hd_deflater *deflater, int32_t stream_id,
     int stream_state, const nghttp2_nv *nva, size_t nvlen) {
