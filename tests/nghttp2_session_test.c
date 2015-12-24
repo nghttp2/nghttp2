@@ -8535,7 +8535,7 @@ void test_nghttp2_session_flooding(void) {
 void test_nghttp2_session_change_stream_priority(void) {
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;
-  nghttp2_stream *stream1, *stream2, *stream3;
+  nghttp2_stream *stream1, *stream2, *stream3, *stream5;
   nghttp2_priority_spec pri_spec;
   int rv;
 
@@ -8567,6 +8567,41 @@ void test_nghttp2_session_change_stream_priority(void) {
   /* It is an error to change priority of root stream (0) */
   rv = nghttp2_session_change_stream_priority(session, 0, &pri_spec);
   CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT == rv);
+
+  /* Depends on the non-existing idle stream.  This creates that idle
+     stream. */
+  nghttp2_priority_spec_init(&pri_spec, 5, 9, 1);
+
+  rv = nghttp2_session_change_stream_priority(session, 2, &pri_spec);
+
+  CU_ASSERT(0 == rv);
+
+  stream5 = nghttp2_session_get_stream_raw(session, 5);
+
+  CU_ASSERT(NULL != stream5);
+  CU_ASSERT(&session->root == stream5->dep_prev);
+  CU_ASSERT(stream5 == stream2->dep_prev);
+  CU_ASSERT(9 == stream2->weight);
+
+  nghttp2_session_del(session);
+
+  /* Check that this works in client session too */
+  nghttp2_session_client_new(&session, &callbacks, NULL);
+
+  stream1 = open_stream(session, 1);
+
+  nghttp2_priority_spec_init(&pri_spec, 5, 9, 1);
+
+  rv = nghttp2_session_change_stream_priority(session, 1, &pri_spec);
+
+  CU_ASSERT(0 == rv);
+
+  stream5 = nghttp2_session_get_stream_raw(session, 5);
+
+  CU_ASSERT(NULL != stream5);
+  CU_ASSERT(&session->root == stream5->dep_prev);
+  CU_ASSERT(stream5 == stream1->dep_prev);
+  CU_ASSERT(9 == stream1->weight);
 
   nghttp2_session_del(session);
 }
@@ -8640,6 +8675,27 @@ void test_nghttp2_session_create_idle_stream(void) {
   CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT == rv);
 
   nghttp2_session_del(session);
+
+  /* Check that this works in client session too */
+  nghttp2_session_client_new(&session, &callbacks, NULL);
+
+  nghttp2_priority_spec_init(&pri_spec, 4, 99, 1);
+
+  rv = nghttp2_session_create_idle_stream(session, 2, &pri_spec);
+
+  CU_ASSERT(0 == rv);
+
+  stream4 = nghttp2_session_get_stream_raw(session, 4);
+  stream2 = nghttp2_session_get_stream_raw(session, 2);
+
+  CU_ASSERT(NULL != stream4);
+  CU_ASSERT(NULL != stream2);
+  CU_ASSERT(&session->root == stream4->dep_prev);
+  CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == stream4->weight);
+  CU_ASSERT(stream4 == stream2->dep_prev);
+  CU_ASSERT(99 == stream2->weight);
+
+  nghttp2_session_del(session);
 }
 
 void test_nghttp2_session_repeated_priority_change(void) {
@@ -8688,6 +8744,54 @@ void test_nghttp2_session_repeated_priority_change(void) {
   nghttp2_frame_priority_free(&frame.priority);
 
   CU_ASSERT(20 == session->num_idle_streams);
+  CU_ASSERT(3 == session->idle_stream_head->stream_id);
+
+  nghttp2_session_del(session);
+}
+
+void test_nghttp2_session_repeated_priority_submission(void) {
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  nghttp2_priority_spec pri_spec;
+  int32_t stream_id, last_stream_id;
+  uint32_t max_streams = NGHTTP2_MIN_IDLE_STREAMS;
+
+  memset(&callbacks, 0, sizeof(callbacks));
+
+  callbacks.send_callback = null_send_callback;
+
+  nghttp2_session_client_new(&session, &callbacks, NULL);
+
+  session->local_settings.max_concurrent_streams = max_streams;
+
+  /* 1 -> 0 */
+  nghttp2_priority_spec_init(&pri_spec, 0, 16, 0);
+
+  CU_ASSERT(0 ==
+            nghttp2_submit_priority(session, NGHTTP2_FLAG_NONE, 1, &pri_spec));
+
+  last_stream_id = (int32_t)(max_streams * 2 + 1);
+
+  for (stream_id = 3; stream_id < last_stream_id; stream_id += 2) {
+    /* 1 -> stream_id */
+    nghttp2_priority_spec_init(&pri_spec, stream_id, 16, 0);
+
+    CU_ASSERT(
+        0 == nghttp2_submit_priority(session, NGHTTP2_FLAG_NONE, 1, &pri_spec));
+  }
+
+  CU_ASSERT(0 == nghttp2_session_send(session));
+  CU_ASSERT(max_streams == session->num_idle_streams);
+  CU_ASSERT(1 == session->idle_stream_head->stream_id);
+
+  /* 1 -> last_stream_id */
+  nghttp2_priority_spec_init(&pri_spec, last_stream_id, 16, 0);
+
+  CU_ASSERT(0 ==
+            nghttp2_submit_priority(session, NGHTTP2_FLAG_NONE, 1, &pri_spec));
+
+  CU_ASSERT(0 == nghttp2_session_send(session));
+  CU_ASSERT(max_streams == session->num_idle_streams);
   CU_ASSERT(3 == session->idle_stream_head->stream_id);
 
   nghttp2_session_del(session);

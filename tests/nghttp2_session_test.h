@@ -139,6 +139,7 @@ void test_nghttp2_session_flooding(void);
 void test_nghttp2_session_change_stream_priority(void);
 void test_nghttp2_session_create_idle_stream(void);
 void test_nghttp2_session_repeated_priority_change(void);
+void test_nghttp2_session_repeated_priority_submission(void);
 void test_nghttp2_http_mandatory_headers(void);
 void test_nghttp2_http_content_length(void);
 void test_nghttp2_http_content_length_mismatch(void);

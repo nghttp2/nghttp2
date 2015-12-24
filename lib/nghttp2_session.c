@@ -630,7 +630,7 @@ int nghttp2_session_reprioritize_stream(
   if (pri_spec->stream_id != 0) {
     dep_stream = nghttp2_session_get_stream_raw(session, pri_spec->stream_id);
 
-    if (session->server && !dep_stream &&
+    if (!dep_stream &&
         session_detect_idle_stream(session, pri_spec->stream_id)) {
 
       nghttp2_priority_spec_default_init(&pri_spec_default);
@@ -899,7 +899,7 @@ nghttp2_stream *nghttp2_session_open_stream(nghttp2_session *session,
   if (pri_spec->stream_id != 0) {
     dep_stream = nghttp2_session_get_stream_raw(session, pri_spec->stream_id);
 
-    if (session->server && !dep_stream &&
+    if (!dep_stream &&
         session_detect_idle_stream(session, pri_spec->stream_id)) {
       /* Depends on idle stream, which does not exist in memory.
          Assign default priority for it. */
@@ -964,7 +964,6 @@ nghttp2_stream *nghttp2_session_open_stream(nghttp2_session *session,
   case NGHTTP2_STREAM_IDLE:
     /* Idle stream does not count toward the concurrent streams limit.
        This is used as anchor node in dependency tree. */
-    assert(session->server);
     nghttp2_session_keep_idle_stream(session, stream);
     break;
   default:
@@ -2357,14 +2356,22 @@ static int session_after_frame_sent1(nghttp2_session *session) {
       stream = nghttp2_session_get_stream_raw(session, frame->hd.stream_id);
 
       if (!stream) {
-        break;
-      }
+        if (!session_detect_idle_stream(session, frame->hd.stream_id)) {
+          break;
+        }
 
-      rv = nghttp2_session_reprioritize_stream(session, stream,
-                                               &frame->priority.pri_spec);
-
-      if (nghttp2_is_fatal(rv)) {
-        return rv;
+        stream = nghttp2_session_open_stream(
+            session, frame->hd.stream_id, NGHTTP2_FLAG_NONE,
+            &frame->priority.pri_spec, NGHTTP2_STREAM_IDLE, NULL);
+        if (!stream) {
+          return NGHTTP2_ERR_NOMEM;
+        }
+      } else {
+        rv = nghttp2_session_reprioritize_stream(session, stream,
+                                                 &frame->priority.pri_spec);
+        if (nghttp2_is_fatal(rv)) {
+          return rv;
+        }
       }
 
       rv = nghttp2_session_adjust_idle_stream(session);
