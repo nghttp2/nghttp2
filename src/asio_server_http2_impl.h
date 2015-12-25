@@ -53,7 +53,7 @@ public:
   void stop();
   void join();
   const std::vector<std::shared_ptr<boost::asio::io_service>> &
-  get_io_services() const;
+  io_services() const;
 
 private:
   std::unique_ptr<server> server_;
