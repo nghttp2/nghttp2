@@ -291,7 +291,6 @@ std::pair<std::string, std::string> parse_header(const char *optarg) {
   auto p = std::make_pair(std::string(optarg, colon),
                           std::string(value, strlen(value)));
   util::inp_strlower(p.first);
-  util::inp_strlower(p.second);
 
   return p;
 }
