@@ -8638,8 +8638,10 @@ void test_nghttp2_session_create_idle_stream(void) {
   nghttp2_stream *stream2, *stream4, *stream8, *stream10;
   nghttp2_priority_spec pri_spec;
   int rv;
+  int i;
 
   memset(&callbacks, 0, sizeof(callbacks));
+  callbacks.send_callback = null_send_callback;
 
   nghttp2_session_server_new(&session, &callbacks, NULL);
 
@@ -8720,6 +8722,50 @@ void test_nghttp2_session_create_idle_stream(void) {
   CU_ASSERT(NGHTTP2_DEFAULT_WEIGHT == stream4->weight);
   CU_ASSERT(stream4 == stream2->dep_prev);
   CU_ASSERT(99 == stream2->weight);
+
+  nghttp2_session_del(session);
+
+  /* Check that idle stream is reduced when nghttp2_session_send() is
+     called. */
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  session->local_settings.max_concurrent_streams = 30;
+
+  nghttp2_priority_spec_init(&pri_spec, 0, 16, 0);
+  for (i = 0; i < 100; ++i) {
+    rv = nghttp2_session_create_idle_stream(session, i * 2 + 1, &pri_spec);
+
+    CU_ASSERT(0 == rv);
+
+    nghttp2_priority_spec_init(&pri_spec, i * 2 + 1, 16, 0);
+  }
+
+  CU_ASSERT(100 == session->num_idle_streams);
+  CU_ASSERT(0 == nghttp2_session_send(session));
+  CU_ASSERT(30 == session->num_idle_streams);
+  CU_ASSERT(141 == session->idle_stream_head->stream_id);
+
+  nghttp2_session_del(session);
+
+  /* Check that idle stream is reduced when nghttp2_session_mem_recv() is
+     called. */
+  nghttp2_session_client_new(&session, &callbacks, NULL);
+
+  session->local_settings.max_concurrent_streams = 30;
+
+  nghttp2_priority_spec_init(&pri_spec, 0, 16, 0);
+  for (i = 0; i < 100; ++i) {
+    rv = nghttp2_session_create_idle_stream(session, i * 2 + 1, &pri_spec);
+
+    CU_ASSERT(0 == rv);
+
+    nghttp2_priority_spec_init(&pri_spec, i * 2 + 1, 16, 0);
+  }
+
+  CU_ASSERT(100 == session->num_idle_streams);
+  CU_ASSERT(0 == nghttp2_session_mem_recv(session, NULL, 0));
+  CU_ASSERT(30 == session->num_idle_streams);
+  CU_ASSERT(141 == session->idle_stream_head->stream_id);
 
   nghttp2_session_del(session);
 }
