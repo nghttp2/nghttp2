@@ -46,8 +46,7 @@ void test_shrpx_config_parse_header(void) {
   CU_ASSERT("b" == p.second);
 
   p = parse_header(":a: b");
-  CU_ASSERT(":a" == p.first);
-  CU_ASSERT("b" == p.second);
+  CU_ASSERT(p.first.empty());
 
   p = parse_header("a: :b");
   CU_ASSERT("a" == p.first);
@@ -59,6 +58,12 @@ void test_shrpx_config_parse_header(void) {
   p = parse_header("alpha: bravo charlie");
   CU_ASSERT("alpha" == p.first);
   CU_ASSERT("bravo charlie" == p.second);
+
+  p = parse_header("a,: b");
+  CU_ASSERT(p.first.empty());
+
+  p = parse_header("a: b\x0a");
+  CU_ASSERT(p.first.empty());
 }
 
 void test_shrpx_config_parse_log_format(void) {
