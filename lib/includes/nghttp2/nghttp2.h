@@ -3161,6 +3161,9 @@ nghttp2_priority_spec_check_default(const nghttp2_priority_spec *pri_spec);
  * :enum:`NGHTTP2_ERR_STREAM_ID_NOT_AVAILABLE`
  *     No stream ID is available because maximum stream ID was
  *     reached.
+ * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
+ *     Trying to depend on itself (new stream ID equals
+ *     ``pri_spec->stream_id``).
  *
  * .. warning::
  *
@@ -3371,7 +3374,8 @@ NGHTTP2_EXTERN int nghttp2_submit_trailer(nghttp2_session *session,
  *     No stream ID is available because maximum stream ID was
  *     reached.
  * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
- *     The |stream_id| is 0.
+ *     The |stream_id| is 0; or trying to depend on itself (stream ID
+ *     equals ``pri_spec->stream_id``).
  * :enum:`NGHTTP2_ERR_DATA_EXIST`
  *     DATA or HEADERS has been already submitted and not fully
  *     processed yet.  This happens if stream denoted by |stream_id|

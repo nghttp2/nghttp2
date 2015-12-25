@@ -55,6 +55,16 @@ static int32_t submit_headers_shared(nghttp2_session *session, uint8_t flags,
     goto fail;
   }
 
+  if (stream_id == -1) {
+    if ((int32_t)session->next_stream_id == pri_spec->stream_id) {
+      rv = NGHTTP2_ERR_INVALID_ARGUMENT;
+      goto fail;
+    }
+  } else if (stream_id == pri_spec->stream_id) {
+    rv = NGHTTP2_ERR_INVALID_ARGUMENT;
+    goto fail;
+  }
+
   item = nghttp2_mem_malloc(mem, sizeof(nghttp2_outbound_item));
   if (item == NULL) {
     rv = NGHTTP2_ERR_NOMEM;

@@ -3965,6 +3965,7 @@ void test_nghttp2_submit_request_without_data(void) {
   nva_out out;
   nghttp2_bufs bufs;
   nghttp2_mem *mem;
+  nghttp2_priority_spec pri_spec;
 
   mem = nghttp2_mem_default();
   frame_pack_bufs_init(&bufs);
@@ -3998,6 +3999,15 @@ void test_nghttp2_submit_request_without_data(void) {
 
   nghttp2_bufs_free(&bufs);
   nghttp2_hd_inflate_free(&inflater);
+
+  /* Try to depend on itself is error */
+  nghttp2_priority_spec_init(&pri_spec, (int32_t)session->next_stream_id, 16,
+                             0);
+
+  CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT ==
+            nghttp2_submit_request(session, &pri_spec, reqnv, ARRLEN(reqnv),
+                                   NULL, NULL));
+
   nghttp2_session_del(session);
 }
 
@@ -4289,6 +4299,7 @@ void test_nghttp2_submit_headers(void) {
   nva_out out;
   nghttp2_bufs bufs;
   nghttp2_mem *mem;
+  nghttp2_priority_spec pri_spec;
 
   mem = nghttp2_mem_default();
   frame_pack_bufs_init(&bufs);
@@ -4343,6 +4354,21 @@ void test_nghttp2_submit_headers(void) {
   nghttp2_frame_headers_free(&frame.headers, mem);
 
   nghttp2_hd_inflate_free(&inflater);
+
+  /* Try to depend on itself */
+  nghttp2_priority_spec_init(&pri_spec, 3, 16, 0);
+
+  CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT ==
+            nghttp2_submit_headers(session, NGHTTP2_FLAG_NONE, 3, &pri_spec,
+                                   reqnv, ARRLEN(reqnv), NULL));
+
+  session->next_stream_id = 5;
+  nghttp2_priority_spec_init(&pri_spec, 5, 16, 0);
+
+  CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT ==
+            nghttp2_submit_headers(session, NGHTTP2_FLAG_NONE, -1, &pri_spec,
+                                   reqnv, ARRLEN(reqnv), NULL));
+
   nghttp2_session_del(session);
 }
 
