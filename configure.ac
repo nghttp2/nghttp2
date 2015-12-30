@@ -255,6 +255,11 @@ if test "x${have_zlib}" = "xno"; then
   AC_MSG_NOTICE($ZLIB_PKG_ERRORS)
 fi
 
+# dl: openssl requires libdl when it is statically linked.
+LIBS_OLD=$LIBS
+AC_SEARCH_LIBS([dlopen], [dl], [APPLDFLAGS="-ldl $APPLDFLAGS"], [], [])
+LIBS=$LIBS_OLD
+
 # cunit
 PKG_CHECK_MODULES([CUNIT], [cunit >= 2.1], [have_cunit=yes], [have_cunit=no])
 # If pkg-config does not find cunit, check it using AC_CHECK_LIB.  We
