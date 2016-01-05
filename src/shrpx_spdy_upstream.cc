@@ -169,6 +169,8 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
       header_buffer += strlen(nv[i]) + strlen(nv[i + 1]);
     }
 
+    // spdy does not define usage of trailer fields, and we ignores
+    // them.
     if (header_buffer > get_config()->header_field_buffer ||
         num_headers > get_config()->max_header_fields) {
       upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);

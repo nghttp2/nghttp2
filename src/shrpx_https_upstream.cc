@@ -146,7 +146,8 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
     if (downstream->get_request_trailer_key_prev()) {
       downstream->append_last_request_trailer_key(data, len);
     } else {
-      if (downstream->get_request_headers().size() >=
+      if (downstream->get_request_headers().size() +
+              downstream->get_request_trailers().size() >=
           get_config()->max_header_fields) {
         if (LOG_ENABLED(INFO)) {
           ULOG(INFO, upstream) << "Too many header field num="
