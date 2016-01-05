@@ -1823,7 +1823,7 @@ static int session_prep_frame(nghttp2_session *session,
         }
 
         if (rv != 0) {
-          // If stream was alreay closed, nghttp2_session_get_stream()
+          // If stream was already closed, nghttp2_session_get_stream()
           // returns NULL, but item is still attached to the stream.
           // Search stream including closed again.
           stream = nghttp2_session_get_stream_raw(session, frame->hd.stream_id);
@@ -1975,7 +1975,7 @@ static int session_prep_frame(nghttp2_session *session,
 
     rv = nghttp2_session_predicate_data_send(session, stream);
     if (rv != 0) {
-      // If stream was alreay closed, nghttp2_session_get_stream()
+      // If stream was already closed, nghttp2_session_get_stream()
       // returns NULL, but item is still attached to the stream.
       // Search stream including closed again.
       stream = nghttp2_session_get_stream_raw(session, frame->hd.stream_id);

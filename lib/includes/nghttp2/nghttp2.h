@@ -3275,7 +3275,7 @@ nghttp2_submit_response(nghttp2_session *session, int32_t stream_id,
  * has already sent and if `nghttp2_submit_trailer()` is called before
  * any response HEADERS submission (usually by
  * `nghttp2_submit_response()`), the content of |nva| will be sent as
- * reponse headers, which will result in error.
+ * response headers, which will result in error.
  *
  * This function has the same effect with `nghttp2_submit_headers()`,
  * with flags = :enum:`NGHTTP2_FLAG_END_HEADERS` and both pri_spec and
@@ -3418,7 +3418,7 @@ nghttp2_submit_headers(nghttp2_session *session, uint8_t flags,
  * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
  *     The |stream_id| is 0.
  * :enum:`NGHTTP2_ERR_STREAM_CLOSED`
- *     The stream was alreay closed; or the |stream_id| is invalid.
+ *     The stream was already closed; or the |stream_id| is invalid.
  *
  * .. note::
  *
@@ -3587,7 +3587,7 @@ NGHTTP2_EXTERN int nghttp2_submit_settings(nghttp2_session *session,
  *     The |stream_id| is 0; The |stream_id| does not designate stream
  *     that peer initiated.
  * :enum:`NGHTTP2_ERR_STREAM_CLOSED`
- *     The stream was alreay closed; or the |stream_id| is invalid.
+ *     The stream was already closed; or the |stream_id| is invalid.
  *
  * .. warning::
  *
@@ -4174,7 +4174,7 @@ typedef enum {
  * :enum:`NGHTTP2_ERR_HEADER_COMP`
  *     Inflation process has failed.
  * :enum:`NGHTTP2_ERR_BUFFER_ERROR`
- *     The heder field name or value is too large.
+ *     The header field name or value is too large.
  *
  * Example follows::
  *
