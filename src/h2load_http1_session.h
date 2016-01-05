@@ -38,14 +38,13 @@ public:
   Http1Session(Client *client);
   virtual ~Http1Session();
   virtual void on_connect();
-  virtual int submit_request(RequestStat *req_stat);
+  virtual int submit_request();
   virtual int on_read(const uint8_t *data, size_t len);
   virtual int on_write();
   virtual void terminate();
   Client *get_client();
   int32_t stream_req_counter_;
   int32_t stream_resp_counter_;
-  std::unordered_map<int32_t, RequestStat *> req_stats_;
 
 private:
   Client *client_;

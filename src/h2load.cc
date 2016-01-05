@@ -98,11 +98,15 @@ Config config;
 
 RequestStat::RequestStat() : data_offset(0), completed(false) {}
 
+constexpr size_t MAX_STATS = 1000000;
+
 Stats::Stats(size_t req_todo, size_t nclients)
     : req_todo(0), req_started(0), req_done(0), req_success(0),
       req_status_success(0), req_failed(0), req_error(0), req_timedout(0),
       bytes_total(0), bytes_head(0), bytes_head_decomp(0), bytes_body(0),
-      status(), req_stats(req_todo), client_stats(nclients) {}
+      status(), client_stats(nclients) {
+  req_stats.reserve(std::min(req_todo, MAX_STATS));
+}
 
 Stream::Stream() : status_success(-1) {}
 
@@ -420,9 +424,8 @@ void Client::disconnect() {
 }
 
 int Client::submit_request() {
-  auto req_stat = &worker->stats.req_stats[worker->stats.req_started++];
-
-  if (session->submit_request(req_stat) != 0) {
+  ++worker->stats.req_started;
+  if (session->submit_request() != 0) {
     return -1;
   }
 
@@ -607,8 +610,12 @@ void Client::on_status_code(int32_t stream_id, uint16_t status) {
   }
 }
 
-void Client::on_stream_close(int32_t stream_id, bool success,
-                             RequestStat *req_stat, bool final) {
+void Client::on_stream_close(int32_t stream_id, bool success, bool final) {
+  auto req_stat = get_req_stat(stream_id);
+  if (!req_stat) {
+    return;
+  }
+
   req_stat->stream_close_time = std::chrono::steady_clock::now();
   if (success) {
     req_stat->completed = true;
@@ -628,6 +635,12 @@ void Client::on_stream_close(int32_t stream_id, bool success,
     ++worker->stats.req_failed;
     ++worker->stats.req_error;
   }
+
+  if (req_stat->completed &&
+      (worker->stats.req_done % worker->request_times_sampling_step) == 0) {
+    worker->sample_req_stat(req_stat);
+  }
+
   report_progress();
   streams.erase(stream_id);
   if (req_done == req_todo) {
@@ -643,6 +656,15 @@ void Client::on_stream_close(int32_t stream_id, bool success,
       return;
     }
   }
+}
+
+RequestStat *Client::get_req_stat(int32_t stream_id) {
+  auto it = streams.find(stream_id);
+  if (it == std::end(streams)) {
+    return nullptr;
+  }
+
+  return &(*it).second.req_stat;
 }
 
 int Client::connection_made() {
@@ -750,7 +772,6 @@ int Client::connection_made() {
   if (!config.timing_script) {
     auto nreq =
         std::min(req_todo - req_started, (size_t)config.max_concurrent_streams);
-
     for (; nreq > 0; --nreq) {
       if (submit_request() != 0) {
         process_request_failure();
@@ -1060,6 +1081,10 @@ Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
       clients.push_back(make_unique<Client>(next_client_id++, this, req_todo));
     }
   }
+
+  auto request_times_max_stats = std::min(req_todo, MAX_STATS);
+  request_times_sampling_step =
+      (req_todo + request_times_max_stats - 1) / request_times_max_stats;
 }
 
 Worker::~Worker() {
@@ -1088,6 +1113,11 @@ void Worker::run() {
   ev_run(loop, 0);
 }
 
+void Worker::sample_req_stat(RequestStat *req_stat) {
+  stats.req_stats.push_back(*req_stat);
+  assert(stats.req_stats.size() <= MAX_STATS);
+}
+
 namespace {
 // Returns percentage of number of samples within mean +/- sd.
 double within_sd(const std::vector<double> &samples, double mean, double sd) {
@@ -1106,12 +1136,15 @@ double within_sd(const std::vector<double> &samples, double mean, double sd) {
 namespace {
 // Computes statistics using |samples|. The min, max, mean, sd, and
 // percentage of number of samples within mean +/- sd are computed.
-SDStat compute_time_stat(const std::vector<double> &samples) {
+// If |sampling| is true, this computes sample variance.  Otherwise,
+// population variance.
+SDStat compute_time_stat(const std::vector<double> &samples,
+                         bool sampling = false) {
   if (samples.empty()) {
     return {0.0, 0.0, 0.0, 0.0, 0.0};
   }
   // standard deviation calculated using Rapid calculation method:
-  // http://en.wikipedia.org/wiki/Standard_deviation#Rapid_calculation_methods
+  // https://en.wikipedia.org/wiki/Standard_deviation#Rapid_calculation_methods
   double a = 0, q = 0;
   size_t n = 0;
   double sum = 0;
@@ -1130,7 +1163,7 @@ SDStat compute_time_stat(const std::vector<double> &samples) {
 
   assert(n > 0);
   res.mean = sum / n;
-  res.sd = sqrt(q / n);
+  res.sd = sqrt(q / (sampling && n > 1 ? n - 1 : n));
   res.within_sd = within_sd(samples, res.mean, res.sd);
 
   return res;
@@ -1140,9 +1173,13 @@ SDStat compute_time_stat(const std::vector<double> &samples) {
 namespace {
 SDStats
 process_time_stats(const std::vector<std::unique_ptr<Worker>> &workers) {
+  auto request_times_sampling = false;
   size_t nrequest_times = 0;
   for (const auto &w : workers) {
     nrequest_times += w->stats.req_stats.size();
+    if (w->request_times_sampling_step != 1) {
+      request_times_sampling = true;
+    }
   }
 
   std::vector<double> request_times;
@@ -1195,8 +1232,9 @@ process_time_stats(const std::vector<std::unique_ptr<Worker>> &workers) {
     }
   }
 
-  return {compute_time_stat(request_times), compute_time_stat(connect_times),
-          compute_time_stat(ttfb_times), compute_time_stat(rps_values)};
+  return {compute_time_stat(request_times, request_times_sampling),
+          compute_time_stat(connect_times), compute_time_stat(ttfb_times),
+          compute_time_stat(rps_values)};
 }
 } // namespace
 

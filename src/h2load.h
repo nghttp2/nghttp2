@@ -226,6 +226,9 @@ struct Worker {
   // at most nreqs_rem clients get an extra request
   size_t nreqs_rem;
   size_t rate;
+  // every successful request_times_sampling_step-th request's
+  // req_stat will get sampled.
+  size_t request_times_sampling_step;
   ev_timer timeout_watcher;
   // The next client ID this worker assigns
   uint32_t next_client_id;
@@ -235,9 +238,11 @@ struct Worker {
   ~Worker();
   Worker(Worker &&o) = default;
   void run();
+  void sample_req_stat(RequestStat *req_stat);
 };
 
 struct Stream {
+  RequestStat req_stat;
   int status_success;
   Stream();
 };
@@ -318,8 +323,12 @@ struct Client {
   // |success| == true means that the request/response was exchanged
   // |successfully, but it does not mean response carried successful
   // |HTTP status code.
-  void on_stream_close(int32_t stream_id, bool success, RequestStat *req_stat,
-                       bool final = false);
+  void on_stream_close(int32_t stream_id, bool success, bool final = false);
+  // Returns RequestStat for |stream_id|.  This function must be
+  // called after on_request(stream_id), and before
+  // on_stream_close(stream_id, ...).  Otherwise, this will return
+  // nullptr.
+  RequestStat *get_req_stat(int32_t stream_id);
 
   void record_request_time(RequestStat *req_stat);
   void record_connect_start_time();

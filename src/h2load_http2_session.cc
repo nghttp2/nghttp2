@@ -89,12 +89,25 @@ namespace {
 int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
                              uint32_t error_code, void *user_data) {
   auto client = static_cast<Client *>(user_data);
-  auto req_stat = static_cast<RequestStat *>(
-      nghttp2_session_get_stream_user_data(session, stream_id));
-  if (!req_stat) {
+  client->on_stream_close(stream_id, error_code == NGHTTP2_NO_ERROR);
+
+  return 0;
+}
+} // namespace
+
+namespace {
+int on_frame_not_send_callback(nghttp2_session *session,
+                               const nghttp2_frame *frame, int lib_error_code,
+                               void *user_data) {
+  if (frame->hd.type != NGHTTP2_HEADERS ||
+      frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
     return 0;
   }
-  client->on_stream_close(stream_id, error_code == NGHTTP2_NO_ERROR, req_stat);
+
+  auto client = static_cast<Client *>(user_data);
+  // request was not sent.  Mark it as error.
+  client->on_stream_close(frame->hd.stream_id, false);
+
   return 0;
 }
 } // namespace
@@ -108,9 +121,7 @@ int before_frame_send_callback(nghttp2_session *session,
   }
 
   auto client = static_cast<Client *>(user_data);
-  client->on_request(frame->hd.stream_id);
-  auto req_stat = static_cast<RequestStat *>(
-      nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
+  auto req_stat = client->get_req_stat(frame->hd.stream_id);
   assert(req_stat);
   client->record_request_time(req_stat);
 
@@ -124,8 +135,7 @@ ssize_t file_read_callback(nghttp2_session *session, int32_t stream_id,
                            nghttp2_data_source *source, void *user_data) {
   auto client = static_cast<Client *>(user_data);
   auto config = client->worker->config;
-  auto req_stat = static_cast<RequestStat *>(
-      nghttp2_session_get_stream_user_data(session, stream_id));
+  auto req_stat = client->get_req_stat(stream_id);
   assert(req_stat);
   ssize_t nread;
   while ((nread = pread(config->data_fd, buf, length, req_stat->data_offset)) ==
@@ -183,6 +193,9 @@ void Http2Session::on_connect() {
   nghttp2_session_callbacks_set_on_header_callback(callbacks,
                                                    on_header_callback);
 
+  nghttp2_session_callbacks_set_on_frame_not_send_callback(
+      callbacks, on_frame_not_send_callback);
+
   nghttp2_session_callbacks_set_before_frame_send_callback(
       callbacks, before_frame_send_callback);
 
@@ -212,7 +225,7 @@ void Http2Session::on_connect() {
   client_->signal_write();
 }
 
-int Http2Session::submit_request(RequestStat *req_stat) {
+int Http2Session::submit_request() {
   if (nghttp2_session_check_request_allowed(session_) == 0) {
     return -1;
   }
@@ -228,10 +241,12 @@ int Http2Session::submit_request(RequestStat *req_stat) {
 
   auto stream_id =
       nghttp2_submit_request(session_, nullptr, nva.data(), nva.size(),
-                             config->data_fd == -1 ? nullptr : &prd, req_stat);
+                             config->data_fd == -1 ? nullptr : &prd, nullptr);
   if (stream_id < 0) {
     return -1;
   }
+
+  client_->on_request(stream_id);
 
   return 0;
 }
