@@ -238,6 +238,8 @@ struct Worker {
   Worker(Worker &&o) = default;
   void run();
   void sample_req_stat(RequestStat *req_stat);
+  void report_progress();
+  void report_rate_progress();
 };
 
 struct Stream {
@@ -292,7 +294,6 @@ struct Client {
   void process_request_failure();
   void process_timedout_streams();
   void process_abandoned_streams();
-  void report_progress();
   void report_tls_info();
   void report_app_info();
   void terminate_session();

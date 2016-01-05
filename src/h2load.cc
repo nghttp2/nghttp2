@@ -173,6 +173,7 @@ void rate_period_timeout_w_cb(struct ev_loop *loop, ev_timer *w, int revents) {
     } else {
       client.release();
     }
+    worker->report_rate_progress();
   }
   if (worker->nconns_made >= worker->nclients) {
     ev_timer_stop(worker->loop, w);
@@ -484,15 +485,6 @@ void Client::process_request_failure() {
   }
 }
 
-void Client::report_progress() {
-  if (!worker->config->is_rate_mode() && worker->id == 0 &&
-      worker->stats.req_done % worker->progress_interval == 0) {
-    std::cout << "progress: "
-              << worker->stats.req_done * 100 / worker->stats.req_todo
-              << "% done" << std::endl;
-  }
-}
-
 namespace {
 void print_server_tmp_key(SSL *ssl) {
 // libressl does not have SSL_get_server_tmp_key
@@ -647,7 +639,7 @@ void Client::on_stream_close(int32_t stream_id, bool success, bool final) {
     worker->sample_req_stat(req_stat);
   }
 
-  report_progress();
+  worker->report_progress();
   streams.erase(stream_id);
   if (req_done == req_todo) {
     terminate_session();
@@ -1070,7 +1062,11 @@ Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
       nreqs_per_client(req_todo / nclients), nreqs_rem(req_todo % nclients),
       rate(rate), next_client_id(0) {
   stats.req_todo = req_todo;
-  progress_interval = std::max(static_cast<size_t>(1), req_todo / 10);
+  if (!config->is_rate_mode()) {
+    progress_interval = std::max(static_cast<size_t>(1), req_todo / 10);
+  } else {
+    progress_interval = std::max(static_cast<size_t>(1), nclients / 10);
+  }
 
   // create timer that will go off every rate_period
   ev_timer_init(&timeout_watcher, rate_period_timeout_w_cb, 0.,
@@ -1115,6 +1111,24 @@ void Worker::run() {
 void Worker::sample_req_stat(RequestStat *req_stat) {
   stats.req_stats.push_back(*req_stat);
   assert(stats.req_stats.size() <= MAX_STATS);
+}
+
+void Worker::report_progress() {
+  if (id != 0 || config->is_rate_mode() || stats.req_done % progress_interval) {
+    return;
+  }
+
+  std::cout << "progress: " << stats.req_done * 100 / stats.req_todo << "% done"
+            << std::endl;
+}
+
+void Worker::report_rate_progress() {
+  if (id != 0 || nconns_made % progress_interval) {
+    return;
+  }
+
+  std::cout << "progress: " << nconns_made * 100 / nclients
+            << "% of clients started" << std::endl;
 }
 
 namespace {
