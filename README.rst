@@ -274,7 +274,7 @@ for this 24 bytes byte string and updated API.
   ``NGHTTP2_CLIENT_MAGIC_LEN``.
 * ``NGHTTP2_BAD_PREFACE`` was renamed as ``NGHTTP2_BAD_CLIENT_MAGIC``
 
-The alreay deprecated ``NGHTTP2_CLIENT_CONNECTION_HEADER`` and
+The already deprecated ``NGHTTP2_CLIENT_CONNECTION_HEADER`` and
 ``NGHTTP2_CLIENT_CONNECTION_HEADER_LEN`` were removed.
 
 If application uses these macros, just replace old ones with new ones.
