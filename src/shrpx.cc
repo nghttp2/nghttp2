@@ -1610,14 +1610,15 @@ HTTP:
               used several  times to  specify multiple  header fields.
               Example: --add-response-header="foo: bar"
   --header-field-buffer=<SIZE>
-              Set maximum  buffer size for incoming  HTTP header field
-              list.   This is  the sum  of  header name  and value  in
+              Set maximum buffer size for incoming HTTP request header
+              field list.  This is the sum of header name and value in
               bytes.
               Default: )"
       << util::utos_with_unit(get_config()->header_field_buffer) << R"(
   --max-header-fields=<N>
-              Set maximum number of incoming HTTP header fields, which
-              appear in one request or response header field list.
+              Set  maximum  number  of incoming  HTTP  request  header
+              fields, which  appear in one request  or response header
+              field list.
               Default: )" << get_config()->max_header_fields << R"(
 
 Debug:
