@@ -209,7 +209,6 @@ enum ClientState { CLIENT_IDLE, CLIENT_CONNECTED };
 struct Client;
 
 struct Worker {
-  std::vector<std::unique_ptr<Client>> clients;
   Stats stats;
   struct ev_loop *loop;
   SSL_CTX *ssl_ctx;

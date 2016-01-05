@@ -122,12 +122,14 @@ void writecb(struct ev_loop *loop, ev_io *w, int revents) {
     rv = client->connect();
     if (rv != 0) {
       client->fail();
+      delete client;
       return;
     }
     return;
   }
   if (rv != 0) {
     client->fail();
+    delete client;
   }
 }
 } // namespace
@@ -138,6 +140,7 @@ void readcb(struct ev_loop *loop, ev_io *w, int revents) {
   client->restart_timeout();
   if (client->do_read() != 0) {
     client->fail();
+    delete client;
     return;
   }
   writecb(loop, &client->wev, revents);
@@ -159,14 +162,17 @@ void rate_period_timeout_w_cb(struct ev_loop *loop, ev_timer *w, int revents) {
       ++req_todo;
       --worker->nreqs_rem;
     }
-    worker->clients.push_back(
-        make_unique<Client>(worker->next_client_id++, worker, req_todo));
-    auto &client = worker->clients.back();
+    auto client =
+        make_unique<Client>(worker->next_client_id++, worker, req_todo);
+
+    ++worker->nconns_made;
+
     if (client->connect() != 0) {
       std::cerr << "client could not connect to host" << std::endl;
       client->fail();
+    } else {
+      client.release();
     }
-    ++worker->nconns_made;
   }
   if (worker->nconns_made >= worker->nclients) {
     ev_timer_stop(worker->loop, w);
@@ -1071,17 +1077,6 @@ Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
                 config->rate_period);
   timeout_watcher.data = this;
 
-  if (!config->is_rate_mode()) {
-    for (size_t i = 0; i < nclients; ++i) {
-      auto req_todo = nreqs_per_client;
-      if (nreqs_rem > 0) {
-        ++req_todo;
-        --nreqs_rem;
-      }
-      clients.push_back(make_unique<Client>(next_client_id++, this, req_todo));
-    }
-  }
-
   auto request_times_max_stats = std::min(req_todo, MAX_STATS);
   request_times_sampling_step =
       (req_todo + request_times_max_stats - 1) / request_times_max_stats;
@@ -1089,19 +1084,23 @@ Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
 
 Worker::~Worker() {
   ev_timer_stop(loop, &timeout_watcher);
-
-  // first clear clients so that io watchers are stopped before
-  // destructing ev_loop.
-  clients.clear();
   ev_loop_destroy(loop);
 }
 
 void Worker::run() {
   if (!config->is_rate_mode()) {
-    for (auto &client : clients) {
+    for (size_t i = 0; i < nclients; ++i) {
+      auto req_todo = nreqs_per_client;
+      if (nreqs_rem > 0) {
+        ++req_todo;
+        --nreqs_rem;
+      }
+      auto client = make_unique<Client>(next_client_id++, this, req_todo);
       if (client->connect() != 0) {
         std::cerr << "client could not connect to host" << std::endl;
         client->fail();
+      } else {
+        client.release();
       }
     }
   } else {
