@@ -112,7 +112,6 @@ struct Config {
 };
 
 struct RequestStat {
-  RequestStat();
   // time point when request was sent
   std::chrono::steady_clock::time_point request_time;
   // time point when stream was closed

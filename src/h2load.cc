@@ -97,8 +97,6 @@ bool Config::is_rate_mode() const { return (this->rate != 0); }
 bool Config::has_base_uri() const { return (!this->base_uri.empty()); }
 Config config;
 
-RequestStat::RequestStat() : data_offset(0), completed(false) {}
-
 constexpr size_t MAX_STATS = 1000000;
 
 Stats::Stats(size_t req_todo, size_t nclients)
@@ -110,7 +108,7 @@ Stats::Stats(size_t req_todo, size_t nclients)
   client_stats.reserve(std::min(nclients, MAX_STATS));
 }
 
-Stream::Stream() : status_success(-1) {}
+Stream::Stream() : req_stat{}, status_success(-1) {}
 
 namespace {
 std::random_device rd;
