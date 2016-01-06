@@ -1538,10 +1538,11 @@ Options:
               URIs, if present,  are ignored.  Those in  the first URI
               are used solely.  Definition of a base URI overrides all
               scheme, host or port values.
-  -m, --max-concurrent-streams=(auto|<N>)
-              Max concurrent streams to  issue per session.  If "auto"
-              is given, the number of given URIs is used.
-              Default: auto
+  -m, --max-concurrent-streams=<N>
+              Max  concurrent  streams  to issue  per  session.   When
+              http/1.1  is used,  this  specifies the  number of  HTTP
+              pipelining requests in-flight.
+              Default: 1
   -w, --window-bits=<N>
               Sets the stream level initial window size to (2**<N>)-1.
               For SPDY, 2**<N> is used instead.
@@ -1716,11 +1717,7 @@ int main(int argc, char **argv) {
 #endif // NOTHREADS
       break;
     case 'm':
-      if (util::strieq("auto", optarg)) {
-        config.max_concurrent_streams = -1;
-      } else {
-        config.max_concurrent_streams = strtoul(optarg, nullptr, 10);
-      }
+      config.max_concurrent_streams = strtoul(optarg, nullptr, 10);
       break;
     case 'w':
     case 'W': {
@@ -1943,11 +1940,6 @@ int main(int argc, char **argv) {
     exit(EXIT_FAILURE);
   }
 
-  if (config.max_concurrent_streams == -1) {
-    config.max_concurrent_streams = reqlines.size();
-  }
-
-  assert(config.max_concurrent_streams > 0);
   if (config.nreqs == 0) {
     std::cerr << "-n: the number of requests must be strictly greater than 0."
               << std::endl;
