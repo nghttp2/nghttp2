@@ -44,6 +44,7 @@
 #include <chrono>
 #include <thread>
 #include <future>
+#include <random>
 
 #ifdef HAVE_SPDYLAY
 #include <spdylay/spdylay.h>
@@ -109,6 +110,42 @@ Stats::Stats(size_t req_todo, size_t nclients)
 }
 
 Stream::Stream() : status_success(-1) {}
+
+namespace {
+std::random_device rd;
+} // namespace
+
+namespace {
+std::mt19937 gen(rd());
+} // namespace
+
+namespace {
+void sampling_init(Sampling &smp, size_t total, size_t max_samples) {
+  smp.n = 0;
+
+  if (total <= max_samples) {
+    smp.interval = 0.;
+    smp.point = 0.;
+    return;
+  }
+
+  smp.interval = static_cast<double>(total) / max_samples;
+
+  std::uniform_real_distribution<> dis(0., smp.interval);
+
+  smp.point = dis(gen);
+}
+} // namespace
+
+namespace {
+bool sampling_should_pick(Sampling &smp) {
+  return smp.interval == 0. || smp.n == ceil(smp.point);
+}
+} // namespace
+
+namespace {
+void sampling_advance_point(Sampling &smp) { smp.point += smp.interval; }
+} // namespace
 
 namespace {
 void writecb(struct ev_loop *loop, ev_io *w, int revents) {
@@ -620,24 +657,27 @@ void Client::on_stream_close(int32_t stream_id, bool success, bool final) {
     ++worker->stats.req_success;
     auto &cstat = worker->stats.client_stats[id];
     ++cstat.req_success;
-  }
-  ++worker->stats.req_done;
-  ++req_done;
-  if (success) {
+
     if (streams[stream_id].status_success == 1) {
       ++worker->stats.req_status_success;
     } else {
       ++worker->stats.req_failed;
     }
+
+    if (sampling_should_pick(worker->request_times_smp)) {
+      sampling_advance_point(worker->request_times_smp);
+      worker->sample_req_stat(req_stat);
+    }
+
+    // Count up in successful cases only
+    ++worker->request_times_smp.n;
   } else {
     ++worker->stats.req_failed;
     ++worker->stats.req_error;
   }
 
-  if (req_stat->completed &&
-      (worker->stats.req_done % worker->request_times_sampling_step) == 0) {
-    worker->sample_req_stat(req_stat);
-  }
+  ++worker->stats.req_done;
+  ++req_done;
 
   worker->report_progress();
   streams.erase(stream_id);
@@ -1073,9 +1113,7 @@ Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
                 config->rate_period);
   timeout_watcher.data = this;
 
-  auto request_times_max_stats = std::min(req_todo, MAX_STATS);
-  request_times_sampling_step =
-      (req_todo + request_times_max_stats - 1) / request_times_max_stats;
+  sampling_init(request_times_smp, req_todo, MAX_STATS);
 }
 
 Worker::~Worker() {
@@ -1190,7 +1228,7 @@ process_time_stats(const std::vector<std::unique_ptr<Worker>> &workers) {
   size_t nrequest_times = 0;
   for (const auto &w : workers) {
     nrequest_times += w->stats.req_stats.size();
-    if (w->request_times_sampling_step != 1) {
+    if (w->request_times_smp.interval != 0.) {
       request_times_sampling = true;
     }
   }
