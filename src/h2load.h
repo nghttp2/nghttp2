@@ -222,6 +222,7 @@ struct Sampling {
 struct Worker {
   Stats stats;
   Sampling request_times_smp;
+  Sampling client_smp;
   struct ev_loop *loop;
   SSL_CTX *ssl_ctx;
   Config *config;
@@ -247,6 +248,7 @@ struct Worker {
   Worker(Worker &&o) = default;
   void run();
   void sample_req_stat(RequestStat *req_stat);
+  void sample_client_stat(ClientStat *cstat);
   void report_progress();
   void report_rate_progress();
 };
@@ -259,6 +261,7 @@ struct Stream {
 
 struct Client {
   std::unordered_map<int32_t, Stream> streams;
+  ClientStat cstat;
   std::unique_ptr<Session> session;
   ev_io wev;
   ev_io rev;
