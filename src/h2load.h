@@ -237,12 +237,14 @@ struct Worker {
   // at most nreqs_rem clients get an extra request
   size_t nreqs_rem;
   size_t rate;
+  // maximum number of samples in this worker thread
+  size_t max_samples;
   ev_timer timeout_watcher;
   // The next client ID this worker assigns
   uint32_t next_client_id;
 
   Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t nreq_todo, size_t nclients,
-         size_t rate, Config *config);
+         size_t rate, size_t max_samples, Config *config);
   ~Worker();
   Worker(Worker &&o) = default;
   void run();
