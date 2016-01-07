@@ -97,15 +97,17 @@ bool Config::is_rate_mode() const { return (this->rate != 0); }
 bool Config::has_base_uri() const { return (!this->base_uri.empty()); }
 Config config;
 
-constexpr size_t MAX_STATS = 1000000;
+namespace {
+constexpr size_t MAX_SAMPLES = 1000000;
+} // namespace
 
 Stats::Stats(size_t req_todo, size_t nclients)
     : req_todo(0), req_started(0), req_done(0), req_success(0),
       req_status_success(0), req_failed(0), req_error(0), req_timedout(0),
       bytes_total(0), bytes_head(0), bytes_head_decomp(0), bytes_body(0),
       status() {
-  req_stats.reserve(std::min(req_todo, MAX_STATS));
-  client_stats.reserve(std::min(nclients, MAX_STATS));
+  req_stats.reserve(std::min(req_todo, MAX_SAMPLES));
+  client_stats.reserve(std::min(nclients, MAX_SAMPLES));
 }
 
 Stream::Stream() : req_stat{}, status_success(-1) {}
@@ -1108,8 +1110,8 @@ Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
                 config->rate_period);
   timeout_watcher.data = this;
 
-  sampling_init(request_times_smp, req_todo, MAX_STATS);
-  sampling_init(client_smp, nclients, MAX_STATS);
+  sampling_init(request_times_smp, req_todo, MAX_SAMPLES);
+  sampling_init(client_smp, nclients, MAX_SAMPLES);
 }
 
 Worker::~Worker() {
@@ -1144,12 +1146,12 @@ void Worker::run() {
 
 void Worker::sample_req_stat(RequestStat *req_stat) {
   stats.req_stats.push_back(*req_stat);
-  assert(stats.req_stats.size() <= MAX_STATS);
+  assert(stats.req_stats.size() <= MAX_SAMPLES);
 }
 
 void Worker::sample_client_stat(ClientStat *cstat) {
   stats.client_stats.push_back(*cstat);
-  assert(stats.client_stats.size() <= MAX_STATS);
+  assert(stats.client_stats.size() <= MAX_SAMPLES);
 }
 
 void Worker::report_progress() {
