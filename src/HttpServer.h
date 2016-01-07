@@ -76,6 +76,7 @@ struct Config {
   bool early_response;
   bool hexdump;
   bool echo_upload;
+  bool no_content_length;
   Config();
   ~Config();
 };
