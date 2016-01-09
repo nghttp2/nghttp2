@@ -164,6 +164,8 @@ Options:
               Path  to file  that contains  MIME media  types and  the
               extensions that represent them.
               Default: )" << config.mime_types_file << R"(
+  --no-content-length
+              Don't send content-length header field.
   --version   Display version information and exit.
   -h, --help  Display this help and exit.
 
@@ -209,6 +211,7 @@ int main(int argc, char **argv) {
         {"hexdump", no_argument, &flag, 7},
         {"echo-upload", no_argument, &flag, 8},
         {"mime-types-file", required_argument, &flag, 9},
+        {"no-content-length", no_argument, &flag, 10},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     int c = getopt_long(argc, argv, "DVb:c:d:ehm:n:p:va:", long_options,
@@ -339,6 +342,10 @@ int main(int argc, char **argv) {
         // mime-types-file option
         mime_types_file_set_manually = true;
         config.mime_types_file = optarg;
+        break;
+      case 10:
+        // no-content-length option
+        config.no_content_length = true;
         break;
       }
       break;

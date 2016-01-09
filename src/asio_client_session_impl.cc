@@ -40,8 +40,10 @@ namespace client {
 
 session_impl::session_impl(boost::asio::io_service &io_service)
     : wblen_(0), io_service_(io_service), resolver_(io_service),
-      session_(nullptr), data_pending_(nullptr), data_pendinglen_(0),
-      writing_(false), inside_callback_(false) {}
+      deadline_(io_service), connect_timeout_(boost::posix_time::seconds(60)),
+      read_timeout_(boost::posix_time::seconds(60)), session_(nullptr),
+      data_pending_(nullptr), data_pendinglen_(0), writing_(false),
+      inside_callback_(false), stopped_(false) {}
 
 session_impl::~session_impl() {
   // finish up all active stream
@@ -56,9 +58,13 @@ session_impl::~session_impl() {
 
 void session_impl::start_resolve(const std::string &host,
                                  const std::string &service) {
+  deadline_.expires_from_now(connect_timeout_);
+
+  auto self = this->shared_from_this();
+
   resolver_.async_resolve({host, service},
-                          [this](const boost::system::error_code &ec,
-                                 tcp::resolver::iterator endpoint_it) {
+                          [this, self](const boost::system::error_code &ec,
+                                       tcp::resolver::iterator endpoint_it) {
                             if (ec) {
                               not_connected(ec);
                               return;
@@ -66,6 +72,25 @@ void session_impl::start_resolve(const std::string &host,
 
                             start_connect(endpoint_it);
                           });
+
+  deadline_.async_wait(std::bind(&session_impl::handle_deadline, self));
+}
+
+void session_impl::handle_deadline() {
+  if (stopped_) {
+    return;
+  }
+
+  if (deadline_.expires_at() <=
+      boost::asio::deadline_timer::traits_type::now()) {
+    call_error_cb(boost::asio::error::timed_out);
+    stop();
+    deadline_.expires_at(boost::posix_time::pos_infin);
+    return;
+  }
+
+  deadline_.async_wait(
+      std::bind(&session_impl::handle_deadline, this->shared_from_this()));
 }
 
 void session_impl::connected(tcp::resolver::iterator endpoint_it) {
@@ -86,6 +111,7 @@ void session_impl::connected(tcp::resolver::iterator endpoint_it) {
 
 void session_impl::not_connected(const boost::system::error_code &ec) {
   call_error_cb(ec);
+  stop();
 }
 
 void session_impl::on_connect(connect_cb cb) { connect_cb_ = std::move(cb); }
@@ -97,6 +123,9 @@ const connect_cb &session_impl::on_connect() const { return connect_cb_; }
 const error_cb &session_impl::on_error() const { return error_cb_; }
 
 void session_impl::call_error_cb(const boost::system::error_code &ec) {
+  if (stopped_) {
+    return;
+  }
   auto &error_cb = on_error();
   if (!error_cb) {
     return;
@@ -350,12 +379,20 @@ int session_impl::write_trailer(stream &strm, header_map h) {
 }
 
 void session_impl::cancel(stream &strm, uint32_t error_code) {
+  if (stopped_) {
+    return;
+  }
+
   nghttp2_submit_rst_stream(session_, NGHTTP2_FLAG_NONE, strm.stream_id(),
                             error_code);
   signal_write();
 }
 
 void session_impl::resume(stream &strm) {
+  if (stopped_) {
+    return;
+  }
+
   nghttp2_session_resume_data(session_, strm.stream_id());
   signal_write();
 }
@@ -395,6 +432,11 @@ const request *session_impl::submit(boost::system::error_code &ec,
                                     const std::string &uri, generator_cb cb,
                                     header_map h) {
   ec.clear();
+
+  if (stopped_) {
+    ec = make_error_code(static_cast<nghttp2_error>(NGHTTP2_INTERNAL_ERROR));
+    return nullptr;
+  }
 
   http_parser_url u{};
   // TODO Handle CONNECT method
@@ -485,6 +527,10 @@ const request *session_impl::submit(boost::system::error_code &ec,
 }
 
 void session_impl::shutdown() {
+  if (stopped_) {
+    return;
+  }
+
   nghttp2_session_terminate_session(session_, NGHTTP2_NO_ERROR);
   signal_write();
 }
@@ -522,13 +568,21 @@ void session_impl::leave_callback() {
 }
 
 void session_impl::do_read() {
-  read_socket([this](const boost::system::error_code &ec,
-                     std::size_t bytes_transferred) {
+  if (stopped_) {
+    return;
+  }
+
+  deadline_.expires_from_now(read_timeout_);
+
+  auto self = this->shared_from_this();
+
+  read_socket([this, self](const boost::system::error_code &ec,
+                           std::size_t bytes_transferred) {
     if (ec) {
       if (!should_stop()) {
         call_error_cb(ec);
-        shutdown_socket();
       }
+      stop();
       return;
     }
 
@@ -541,7 +595,7 @@ void session_impl::do_read() {
       if (rv != static_cast<ssize_t>(bytes_transferred)) {
         call_error_cb(make_error_code(
             static_cast<nghttp2_error>(rv < 0 ? rv : NGHTTP2_ERR_PROTO)));
-        shutdown_socket();
+        stop();
         return;
       }
     }
@@ -549,7 +603,7 @@ void session_impl::do_read() {
     do_write();
 
     if (should_stop()) {
-      shutdown_socket();
+      stop();
       return;
     }
 
@@ -558,6 +612,10 @@ void session_impl::do_read() {
 }
 
 void session_impl::do_write() {
+  if (stopped_) {
+    return;
+  }
+
   if (writing_) {
     return;
   }
@@ -579,7 +637,7 @@ void session_impl::do_write() {
       auto n = nghttp2_session_mem_send(session_, &data);
       if (n < 0) {
         call_error_cb(make_error_code(static_cast<nghttp2_error>(n)));
-        shutdown_socket();
+        stop();
         return;
       }
 
@@ -601,23 +659,51 @@ void session_impl::do_write() {
   }
 
   if (wblen_ == 0) {
+    if (should_stop()) {
+      stop();
+    }
     return;
   }
 
   writing_ = true;
 
-  write_socket([this](const boost::system::error_code &ec, std::size_t n) {
-    if (ec) {
-      call_error_cb(ec);
-      shutdown_socket();
-      return;
-    }
+  // Reset read deadline here, because normally client is sending
+  // something, it does not expect timeout while doing it.
+  deadline_.expires_from_now(read_timeout_);
 
-    wblen_ = 0;
-    writing_ = false;
+  auto self = this->shared_from_this();
 
-    do_write();
-  });
+  write_socket(
+      [this, self](const boost::system::error_code &ec, std::size_t n) {
+        if (ec) {
+          call_error_cb(ec);
+          stop();
+          return;
+        }
+
+        wblen_ = 0;
+        writing_ = false;
+
+        do_write();
+      });
+}
+
+void session_impl::stop() {
+  if (stopped_) {
+    return;
+  }
+
+  shutdown_socket();
+  deadline_.cancel();
+  stopped_ = true;
+}
+
+void session_impl::connect_timeout(const boost::posix_time::time_duration &t) {
+  connect_timeout_ = t;
+}
+
+void session_impl::read_timeout(const boost::posix_time::time_duration &t) {
+  read_timeout_ = t;
 }
 
 } // namespace client

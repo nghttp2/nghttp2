@@ -73,6 +73,10 @@ typedef struct {
 /* The default maximum number of incoming reserved streams */
 #define NGHTTP2_MAX_INCOMING_RESERVED_STREAMS 200
 
+/* Even if we have less SETTINGS_MAX_CONCURRENT_STREAMS than this
+   number, we keep NGHTTP2_MIN_IDLE_STREAMS streams in idle state */
+#define NGHTTP2_MIN_IDLE_STREAMS 16
+
 /* The maximum number of items in outbound queue, which is considered
    as flooding caused by peer.  All frames are not considered here.
    We only consider PING + ACK and SETTINGS + ACK.  This is because
@@ -450,6 +454,11 @@ int nghttp2_session_add_settings(nghttp2_session *session, uint8_t flags,
  *
  * This function returns a pointer to created new stream object, or
  * NULL.
+ *
+ * This function adjusts neither the number of closed streams or idle
+ * streams.  The caller should manually call
+ * nghttp2_session_adjust_closed_stream() or
+ * nghttp2_session_adjust_idle_stream() respectively.
  */
 nghttp2_stream *nghttp2_session_open_stream(nghttp2_session *session,
                                             int32_t stream_id, uint8_t flags,
@@ -498,29 +507,17 @@ int nghttp2_session_destroy_stream(nghttp2_session *session,
  * limitation of maximum number of streams in memory, |stream| is not
  * closed and just deleted from memory (see
  * nghttp2_session_destroy_stream).
- *
- * This function returns 0 if it succeeds, or one the following
- * negative error codes:
- *
- * NGHTTP2_ERR_NOMEM
- *     Out of memory
  */
-int nghttp2_session_keep_closed_stream(nghttp2_session *session,
-                                       nghttp2_stream *stream);
+void nghttp2_session_keep_closed_stream(nghttp2_session *session,
+                                        nghttp2_stream *stream);
 
 /*
  * Appends |stream| to linked list |session->idle_stream_head|.  We
  * apply fixed limit for list size.  To fit into that limit, one or
  * more oldest streams are removed from list as necessary.
- *
- * This function returns 0 if it succeeds, or one the following
- * negative error codes:
- *
- * NGHTTP2_ERR_NOMEM
- *     Out of memory
  */
-int nghttp2_session_keep_idle_stream(nghttp2_session *session,
-                                     nghttp2_stream *stream);
+void nghttp2_session_keep_idle_stream(nghttp2_session *session,
+                                      nghttp2_stream *stream);
 
 /*
  * Detaches |stream| from idle streams linked list.
@@ -531,9 +528,7 @@ void nghttp2_session_detach_idle_stream(nghttp2_session *session,
 /*
  * Deletes closed stream to ensure that number of incoming streams
  * including active and closed is in the maximum number of allowed
- * stream.  If |offset| is nonzero, it is decreased from the maximum
- * number of allowed stream when comparing number of active and closed
- * stream and the maximum number.
+ * stream.
  *
  * This function returns 0 if it succeeds, or one the following
  * negative error codes:
@@ -541,8 +536,7 @@ void nghttp2_session_detach_idle_stream(nghttp2_session *session,
  * NGHTTP2_ERR_NOMEM
  *     Out of memory
  */
-int nghttp2_session_adjust_closed_stream(nghttp2_session *session,
-                                         size_t offset);
+int nghttp2_session_adjust_closed_stream(nghttp2_session *session);
 
 /*
  * Deletes idle stream to ensure that number of idle streams is in
@@ -813,6 +807,9 @@ int nghttp2_session_update_local_settings(nghttp2_session *session,
  * Re-prioritize |stream|. The new priority specification is
  * |pri_spec|.  Caller must ensure that stream->hd.stream_id !=
  * pri_spec->stream_id.
+ *
+ * This function does not adjust the number of idle streams.  The
+ * caller should call nghttp2_session_adjust_idle_stream() later.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:

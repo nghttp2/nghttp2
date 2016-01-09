@@ -213,6 +213,8 @@ is 1 second and 500ms is 500 milliseconds).  Units are h, m, s or ms
 (hours, minutes, seconds and milliseconds, respectively).  If a unit
 is omitted, a second is used as unit.
 
+.. _h2load-1-output:
+
 OUTPUT
 ------
 
@@ -295,6 +297,21 @@ time for 1st byte (of (decrypted in case of TLS) application data)
     The mean time taken to get 1st byte from a server.
   sd
     The standard deviation of the time taken to get 1st byte from a
+    server.
+  +/- sd
+    The fraction of the number of connections within standard
+    deviation range (mean +/- sd) against total number of successful
+    connections.
+
+req/s
+  min
+    The minimum request per second among all clients.
+  max
+    The maximum request per second among all clients.
+  mean
+    The mean request per second among all clients.
+  sd
+    The standard deviation of request per second among all clients.
     server.
   +/- sd
     The fraction of the number of connections within standard

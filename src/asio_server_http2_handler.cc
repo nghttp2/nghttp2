@@ -136,6 +136,9 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
       break;
     }
 
+    auto &req = strm->request().impl();
+    req.remote_endpoint(handler->remote_endpoint());
+
     handler->call_on_request(*strm);
 
     if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
@@ -225,8 +228,9 @@ int on_frame_not_send_callback(nghttp2_session *session,
 } // namespace
 
 http2_handler::http2_handler(boost::asio::io_service &io_service,
+                             boost::asio::ip::tcp::endpoint ep,
                              connection_write writefun, serve_mux &mux)
-    : writefun_(writefun), mux_(mux), io_service_(io_service),
+    : writefun_(writefun), mux_(mux), io_service_(io_service), remote_ep_(ep),
       session_(nullptr), buf_(nullptr), buflen_(0), inside_callback_(false),
       tstamp_cached_(time(nullptr)),
       formatted_date_(util::http_date(tstamp_cached_)) {}
@@ -448,6 +452,10 @@ response *http2_handler::push_promise(boost::system::error_code &ec,
 }
 
 boost::asio::io_service &http2_handler::io_service() { return io_service_; }
+
+const boost::asio::ip::tcp::endpoint &http2_handler::remote_endpoint() {
+  return remote_ep_;
+}
 
 callback_guard::callback_guard(http2_handler &h) : handler(h) {
   handler.enter_callback();

@@ -41,7 +41,7 @@ class stream;
 
 using boost::asio::ip::tcp;
 
-class session_impl {
+class session_impl : public std::enable_shared_from_this<session_impl> {
 public:
   session_impl(boost::asio::io_service &io_service);
   virtual ~session_impl();
@@ -91,6 +91,11 @@ public:
   void do_read();
   void do_write();
 
+  void connect_timeout(const boost::posix_time::time_duration &t);
+  void read_timeout(const boost::posix_time::time_duration &t);
+
+  void stop();
+
 protected:
   boost::array<uint8_t, 8_k> rb_;
   boost::array<uint8_t, 64_k> wb_;
@@ -100,6 +105,7 @@ private:
   bool should_stop() const;
   bool setup_session();
   void call_error_cb(const boost::system::error_code &ec);
+  void handle_deadline();
 
   boost::asio::io_service &io_service_;
   tcp::resolver resolver_;
@@ -109,6 +115,10 @@ private:
   connect_cb connect_cb_;
   error_cb error_cb_;
 
+  boost::asio::deadline_timer deadline_;
+  boost::posix_time::time_duration connect_timeout_;
+  boost::posix_time::time_duration read_timeout_;
+
   nghttp2_session *session_;
 
   const uint8_t *data_pending_;
@@ -116,6 +126,7 @@ private:
 
   bool writing_;
   bool inside_callback_;
+  bool stopped_;
 };
 
 } // namespace client

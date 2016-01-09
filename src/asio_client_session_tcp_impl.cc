@@ -31,9 +31,7 @@ namespace client {
 session_tcp_impl::session_tcp_impl(boost::asio::io_service &io_service,
                                    const std::string &host,
                                    const std::string &service)
-    : session_impl(io_service), socket_(io_service) {
-  start_resolve(host, service);
-}
+    : session_impl(io_service), socket_(io_service) {}
 
 session_tcp_impl::~session_tcp_impl() {}
 
@@ -62,7 +60,10 @@ void session_tcp_impl::write_socket(
   boost::asio::async_write(socket_, boost::asio::buffer(wb_, wblen_), h);
 }
 
-void session_tcp_impl::shutdown_socket() { socket_.close(); }
+void session_tcp_impl::shutdown_socket() {
+  boost::system::error_code ignored_ec;
+  socket_.close(ignored_ec);
+}
 
 } // namespace client
 } // namespace asio_http2

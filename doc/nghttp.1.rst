@@ -116,7 +116,8 @@ OPTIONS
 
     Use  <N>  as  SETTINGS_MAX_CONCURRENT_STREAMS  value  of
     remote endpoint as if it  is received in SETTINGS frame.
-    The default is large enough as it is seen as unlimited.
+
+    Default: ``100``
 
 .. option:: -c, --header-table-size=<SIZE>
 

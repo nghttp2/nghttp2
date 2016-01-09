@@ -54,6 +54,14 @@ void request_impl::call_on_data(const uint8_t *data, std::size_t len) {
   }
 }
 
+const boost::asio::ip::tcp::endpoint &request_impl::remote_endpoint() const {
+  return remote_ep_;
+}
+
+void request_impl::remote_endpoint(boost::asio::ip::tcp::endpoint ep) {
+  remote_ep_ = std::move(ep);
+}
+
 } // namespace server
 } // namespace asio_http2
 } // namespace nghttp2

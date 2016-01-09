@@ -89,6 +89,8 @@ int main(int argc _U_, char *argv[] _U_) {
                    test_nghttp2_session_recv_headers_with_priority) ||
       !CU_add_test(pSuite, "session_recv_headers_early_response",
                    test_nghttp2_session_recv_headers_early_response) ||
+      !CU_add_test(pSuite, "session_server_recv_push_response",
+                   test_nghttp2_session_server_recv_push_response) ||
       !CU_add_test(pSuite, "session_recv_premature_headers",
                    test_nghttp2_session_recv_premature_headers) ||
       !CU_add_test(pSuite, "session_recv_unknown_frame",
@@ -128,6 +130,8 @@ int main(int argc _U_, char *argv[] _U_) {
                    test_nghttp2_session_on_window_update_received) ||
       !CU_add_test(pSuite, "session_on_data_received",
                    test_nghttp2_session_on_data_received) ||
+      !CU_add_test(pSuite, "session_on_data_received_fail_fast",
+                   test_nghttp2_session_on_data_received_fail_fast) ||
       !CU_add_test(pSuite, "session_send_headers_start_stream",
                    test_nghttp2_session_send_headers_start_stream) ||
       !CU_add_test(pSuite, "session_send_headers_reply",
@@ -205,8 +209,6 @@ int main(int argc _U_, char *argv[] _U_) {
                    test_nghttp2_session_reply_fail) ||
       !CU_add_test(pSuite, "session_max_concurrent_streams",
                    test_nghttp2_session_max_concurrent_streams) ||
-      !CU_add_test(pSuite, "session_stream_close_on_headers_push",
-                   test_nghttp2_session_stream_close_on_headers_push) ||
       !CU_add_test(pSuite, "session_stop_data_with_rst_stream",
                    test_nghttp2_session_stop_data_with_rst_stream) ||
       !CU_add_test(pSuite, "session_defer_data",
@@ -291,6 +293,10 @@ int main(int argc _U_, char *argv[] _U_) {
       !CU_add_test(pSuite, "session_flooding", test_nghttp2_session_flooding) ||
       !CU_add_test(pSuite, "session_change_stream_priority",
                    test_nghttp2_session_change_stream_priority) ||
+      !CU_add_test(pSuite, "session_repeated_priority_change",
+                   test_nghttp2_session_repeated_priority_change) ||
+      !CU_add_test(pSuite, "session_repeated_priority_submission",
+                   test_nghttp2_session_repeated_priority_submission) ||
       !CU_add_test(pSuite, "http_mandatory_headers",
                    test_nghttp2_http_mandatory_headers) ||
       !CU_add_test(pSuite, "http_content_length",

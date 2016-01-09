@@ -92,6 +92,11 @@ boost::asio::io_service &io_service_pool::get_io_service() {
   return io_service;
 }
 
+const std::vector<std::shared_ptr<boost::asio::io_service>> &
+io_service_pool::io_services() const {
+  return io_services_;
+}
+
 } // namespace asio_http2
 
 } // namespace nghttp2

@@ -80,12 +80,7 @@ LibsslGlobalLock::LibsslGlobalLock() {
 LibsslGlobalLock::~LibsslGlobalLock() { ssl_global_locks.clear(); }
 
 const char *get_tls_protocol(SSL *ssl) {
-  auto session = SSL_get_session(ssl);
-  if (!session) {
-    return "unknown";
-  }
-
-  switch (session->ssl_version) {
+  switch (SSL_version(ssl)) {
   case SSL2_VERSION:
     return "SSLv2";
   case SSL3_VERSION:
@@ -113,9 +108,11 @@ TLSSessionInfo *get_tls_session_info(TLSSessionInfo *tls_info, SSL *ssl) {
 
   tls_info->cipher = SSL_get_cipher_name(ssl);
   tls_info->protocol = get_tls_protocol(ssl);
-  tls_info->session_id = session->session_id;
-  tls_info->session_id_length = session->session_id_length;
   tls_info->session_reused = SSL_session_reused(ssl);
+
+  unsigned int session_id_length;
+  tls_info->session_id = SSL_SESSION_get_id(session, &session_id_length);
+  tls_info->session_id_length = session_id_length;
 
   return tls_info;
 }

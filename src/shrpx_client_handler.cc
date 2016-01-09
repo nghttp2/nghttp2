@@ -718,6 +718,34 @@ void ClientHandler::direct_http2_upgrade() {
 
 int ClientHandler::perform_http2_upgrade(HttpsUpstream *http) {
   auto upstream = make_unique<Http2Upstream>(this);
+
+  auto output = upstream->get_response_buf();
+
+  // We might have written non-final header in response_buf, in this
+  // case, response_state is still INITIAL.  If this non-final header
+  // and upgrade header fit in output buffer, do upgrade.  Otherwise,
+  // to avoid to send this non-final header as response body in HTTP/2
+  // upstream, fail upgrade.
+  auto downstream = http->get_downstream();
+  auto input = downstream->get_response_buf();
+
+  static constexpr char res[] =
+      "HTTP/1.1 101 Switching Protocols\r\n"
+      "Connection: Upgrade\r\n"
+      "Upgrade: " NGHTTP2_CLEARTEXT_PROTO_VERSION_ID "\r\n"
+      "\r\n";
+
+  auto required_size = str_size(res) + input->rleft();
+
+  if (output->wleft() < required_size) {
+    if (LOG_ENABLED(INFO)) {
+      CLOG(INFO, this)
+          << "HTTP Upgrade failed because of insufficient buffer space: need "
+          << required_size << ", available " << output->wleft();
+    }
+    return -1;
+  }
+
   if (upstream->upgrade_upstream(http) != 0) {
     return -1;
   }
@@ -729,11 +757,11 @@ int ClientHandler::perform_http2_upgrade(HttpsUpstream *http) {
   on_read_ = &ClientHandler::upstream_http2_connhd_read;
   write_ = &ClientHandler::write_clear;
 
-  static char res[] = "HTTP/1.1 101 Switching Protocols\r\n"
-                      "Connection: Upgrade\r\n"
-                      "Upgrade: " NGHTTP2_CLEARTEXT_PROTO_VERSION_ID "\r\n"
-                      "\r\n";
-  upstream->get_response_buf()->write(res, sizeof(res) - 1);
+  auto nread =
+      downstream->get_response_buf()->remove(output->last, output->wleft());
+  output->write(nread);
+
+  output->write(res, str_size(res));
   upstream_ = std::move(upstream);
 
   signal_write();

@@ -53,6 +53,7 @@
 #include <deque>
 
 #include <openssl/err.h>
+#include <openssl/dh.h>
 
 #include <zlib.h>
 
@@ -105,7 +106,7 @@ Config::Config()
       max_concurrent_streams(100), header_table_size(-1), port(0),
       verbose(false), daemon(false), verify_client(false), no_tls(false),
       error_gzip(false), early_response(false), hexdump(false),
-      echo_upload(false) {}
+      echo_upload(false), no_content_length(false) {}
 
 Config::~Config() {}
 
@@ -872,12 +873,14 @@ int Http2Handler::submit_file_response(const std::string &status,
   std::string last_modified_str;
   auto nva = make_array(http2::make_nv_ls(":status", status),
                         http2::make_nv_ll("server", NGHTTPD_SERVER),
-                        http2::make_nv_ls("content-length", content_length),
                         http2::make_nv_ll("cache-control", "max-age=3600"),
                         http2::make_nv_ls("date", sessions_->get_cached_date()),
                         http2::make_nv_ll("", ""), http2::make_nv_ll("", ""),
-                        http2::make_nv_ll("", ""));
-  size_t nvlen = 5;
+                        http2::make_nv_ll("", ""), http2::make_nv_ll("", ""));
+  size_t nvlen = 4;
+  if (!get_config()->no_content_length) {
+    nva[nvlen++] = http2::make_nv_ls("content-length", content_length);
+  }
   if (last_modified != 0) {
     last_modified_str = util::http_date(last_modified);
     nva[nvlen++] = http2::make_nv_ls("last-modified", last_modified_str);
@@ -1087,7 +1090,9 @@ void prepare_echo_response(Stream *stream, Http2Handler *hd) {
 
   Headers headers;
   headers.emplace_back("nghttpd-response", "echo");
-  headers.emplace_back("content-length", util::utos(length));
+  if (!hd->get_config()->no_content_length) {
+    headers.emplace_back("content-length", util::utos(length));
+  }
 
   hd->submit_response("200", stream->stream_id, headers, &data_prd);
 }

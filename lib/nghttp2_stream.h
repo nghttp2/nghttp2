@@ -197,6 +197,8 @@ struct nghttp2_stream {
   int32_t local_window_size;
   /* weight of this stream */
   int32_t weight;
+  /* This is unpaid penalty (offset) when calculating cycle. */
+  uint32_t pending_penalty;
   /* sum of weight of direct descendants */
   int32_t sum_dep_weight;
   nghttp2_stream_state state;
@@ -419,7 +421,14 @@ int nghttp2_stream_in_dep_tree(nghttp2_stream *stream);
 void nghttp2_stream_reschedule(nghttp2_stream *stream);
 
 /*
- * Returns a stream which has highest priority.
+ * Changes |stream|'s weight to |weight|.  If |stream| is queued, it
+ * will be rescheduled based on new weight.
+ */
+void nghttp2_stream_change_weight(nghttp2_stream *stream, int32_t weight);
+
+/*
+ * Returns a stream which has highest priority, updating
+ * descendant_last_cycle of selected stream's ancestors.
  */
 nghttp2_outbound_item *
 nghttp2_stream_next_outbound_item(nghttp2_stream *stream);

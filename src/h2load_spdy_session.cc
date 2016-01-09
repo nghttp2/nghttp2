@@ -48,9 +48,7 @@ void before_ctrl_send_callback(spdylay_session *session,
     return;
   }
   client->on_request(frame->syn_stream.stream_id);
-  auto req_stat =
-      static_cast<RequestStat *>(spdylay_session_get_stream_user_data(
-          session, frame->syn_stream.stream_id));
+  auto req_stat = client->get_req_stat(frame->syn_stream.stream_id);
   client->record_request_time(req_stat);
 }
 } // namespace
@@ -104,9 +102,7 @@ void on_stream_close_callback(spdylay_session *session, int32_t stream_id,
                               spdylay_status_code status_code,
                               void *user_data) {
   auto client = static_cast<Client *>(user_data);
-  auto req_stat = static_cast<RequestStat *>(
-      spdylay_session_get_stream_user_data(session, stream_id));
-  client->on_stream_close(stream_id, status_code == SPDYLAY_OK, req_stat);
+  client->on_stream_close(stream_id, status_code == SPDYLAY_OK);
 }
 } // namespace
 
@@ -130,8 +126,7 @@ ssize_t file_read_callback(spdylay_session *session, int32_t stream_id,
                            spdylay_data_source *source, void *user_data) {
   auto client = static_cast<Client *>(user_data);
   auto config = client->worker->config;
-  auto req_stat = static_cast<RequestStat *>(
-      spdylay_session_get_stream_user_data(session, stream_id));
+  auto req_stat = client->get_req_stat(stream_id);
 
   ssize_t nread;
   while ((nread = pread(config->data_fd, buf, length, req_stat->data_offset)) ==
@@ -185,7 +180,7 @@ void SpdySession::on_connect() {
   client_->signal_write();
 }
 
-int SpdySession::submit_request(RequestStat *req_stat) {
+int SpdySession::submit_request() {
   int rv;
   auto config = client_->worker->config;
   auto &nv = config->nv[client_->reqidx++];
@@ -197,7 +192,7 @@ int SpdySession::submit_request(RequestStat *req_stat) {
   spdylay_data_provider prd{{0}, file_read_callback};
 
   rv = spdylay_submit_request(session_, 0, nv.data(),
-                              config->data_fd == -1 ? nullptr : &prd, req_stat);
+                              config->data_fd == -1 ? nullptr : &prd, nullptr);
 
   if (rv != 0) {
     return -1;

@@ -44,4 +44,8 @@
 
 #define DIE() _Exit(EXIT_FAILURE)
 
+#if defined(HAVE_DECL_INITGROUPS) && !HAVE_DECL_INITGROUPS
+inline int initgroups(const char *user, gid_t group) { return 0; }
+#endif // defined(HAVE_DECL_INITGROUPS) && !HAVE_DECL_INITGROUPS
+
 #endif // SHRPX_H

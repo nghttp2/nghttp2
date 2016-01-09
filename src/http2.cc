@@ -113,6 +113,8 @@ std::string get_status_string(unsigned int status_code) {
     return "429 Too Many Requests";
   case 431:
     return "431 Request Header Fields Too Large";
+  case 451:
+    return "451 Unavailable For Legal Reasons";
   case 500:
     return "500 Internal Server Error";
   case 501:
@@ -215,6 +217,8 @@ const char *stringify_status(unsigned int status_code) {
     return "429";
   case 431:
     return "431";
+  case 451:
+    return "451";
   case 500:
     return "500";
   case 501:

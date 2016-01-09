@@ -43,9 +43,6 @@ typedef struct {
   /* nonzero if request HEADERS is canceled.  The error code is stored
      in |error_code|. */
   uint8_t canceled;
-  /* nonzero if this item should be attached to stream object to make
-     it under priority control */
-  uint8_t attach_stream;
 } nghttp2_headers_aux_data;
 
 /* struct used for DATA frame */

@@ -59,6 +59,9 @@ public:
   // Application must not call this directly.
   request_impl &impl() const;
 
+  // Returns the remote endpoint of the request
+  const boost::asio::ip::tcp::endpoint &remote_endpoint() const;
+
 private:
   std::unique_ptr<request_impl> impl_;
 };
@@ -195,11 +198,21 @@ public:
   // connections.
   void backlog(int backlog);
 
+  // Sets TLS handshake timeout, which defaults to 60 seconds.
+  void tls_handshake_timeout(const boost::posix_time::time_duration &t);
+
+  // Sets read timeout, which defaults to 60 seconds.
+  void read_timeout(const boost::posix_time::time_duration &t);
+
   // Gracefully stop http2 server
   void stop();
 
   // Join on http2 server and wait for it to fully stop
   void join();
+
+  // Get access to the io_service objects.
+  const std::vector<std::shared_ptr<boost::asio::io_service>> &
+  io_services() const;
 
 private:
   std::unique_ptr<http2_impl> impl_;

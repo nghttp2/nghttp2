@@ -146,7 +146,8 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
     if (downstream->get_request_trailer_key_prev()) {
       downstream->append_last_request_trailer_key(data, len);
     } else {
-      if (downstream->get_request_headers().size() >=
+      if (downstream->get_request_headers().size() +
+              downstream->get_request_trailers().size() >=
           get_config()->max_header_fields) {
         if (LOG_ENABLED(INFO)) {
           ULOG(INFO, upstream) << "Too many header field num="
@@ -409,11 +410,6 @@ int htp_msg_completecb(http_parser *htp) {
 
   if (handler->get_http2_upgrade_allowed() &&
       downstream->get_http2_upgrade_request() &&
-      // we may write non-final header in response_buf, in this case,
-      // response_state is still INITIAL.  So don't upgrade in this
-      // case, otherwise we end up send this non-final header as
-      // response body in HTTP/2 upstream.
-      downstream->get_response_buf()->rleft() == 0 &&
       handler->perform_http2_upgrade(upstream) != 0) {
     if (LOG_ENABLED(INFO)) {
       ULOG(INFO, upstream) << "HTTP Upgrade to HTTP/2 failed";

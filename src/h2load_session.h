@@ -41,7 +41,7 @@ public:
   // Called when the connection was made.
   virtual void on_connect() = 0;
   // Called when one request must be issued.
-  virtual int submit_request(RequestStat *req_stat) = 0;
+  virtual int submit_request() = 0;
   // Called when incoming bytes are available. The subclass has to
   // return the number of bytes read.
   virtual int on_read(const uint8_t *data, size_t len) = 0;

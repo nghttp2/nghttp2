@@ -39,12 +39,16 @@ using boost::asio::ip::tcp;
 
 session::session(boost::asio::io_service &io_service, const std::string &host,
                  const std::string &service)
-    : impl_(make_unique<session_tcp_impl>(io_service, host, service)) {}
+    : impl_(std::make_shared<session_tcp_impl>(io_service, host, service)) {
+  impl_->start_resolve(host, service);
+}
 
 session::session(boost::asio::io_service &io_service,
                  boost::asio::ssl::context &tls_ctx, const std::string &host,
                  const std::string &service)
-    : impl_(make_unique<session_tls_impl>(io_service, tls_ctx, host, service)) {
+    : impl_(std::make_shared<session_tls_impl>(io_service, tls_ctx, host,
+                                               service)) {
+  impl_->start_resolve(host, service);
 }
 
 session::~session() {}
@@ -91,6 +95,14 @@ const request *session::submit(boost::system::error_code &ec,
                                const std::string &uri, generator_cb cb,
                                header_map h) const {
   return impl_->submit(ec, method, uri, std::move(cb), std::move(h));
+}
+
+void session::connect_timeout(const boost::posix_time::time_duration &t) {
+  impl_->connect_timeout(t);
+}
+
+void session::read_timeout(const boost::posix_time::time_duration &t) {
+  impl_->read_timeout(t);
 }
 
 } // namespace client

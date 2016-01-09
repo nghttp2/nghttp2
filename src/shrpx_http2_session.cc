@@ -757,26 +757,6 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
     auto trailer = frame->headers.cat == NGHTTP2_HCAT_HEADERS &&
                    !downstream->get_expect_final_response();
 
-    if (downstream->get_response_headers_sum() + namelen + valuelen >
-            get_config()->header_field_buffer ||
-        downstream->get_response_headers().size() >=
-            get_config()->max_header_fields) {
-      if (LOG_ENABLED(INFO)) {
-        DLOG(INFO, downstream)
-            << "Too large or many header field size="
-            << downstream->get_response_headers_sum() + namelen + valuelen
-            << ", num=" << downstream->get_response_headers().size() + 1;
-      }
-
-      if (trailer) {
-        // we don't care trailer part exceeds header size limit; just
-        // discard it.
-        return 0;
-      }
-
-      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
-    }
-
     if (trailer) {
       // just store header fields for trailer part
       downstream->add_response_trailer(name, namelen, value, valuelen,
@@ -802,21 +782,6 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
     auto promised_downstream = promised_sd->dconn->get_downstream();
 
     assert(promised_downstream);
-
-    if (promised_downstream->get_request_headers_sum() + namelen + valuelen >
-            get_config()->header_field_buffer ||
-        promised_downstream->get_request_headers().size() >=
-            get_config()->max_header_fields) {
-      if (LOG_ENABLED(INFO)) {
-        DLOG(INFO, promised_downstream)
-            << "Too large or many header field size="
-            << promised_downstream->get_request_headers_sum() + namelen +
-                   valuelen << ", num="
-            << promised_downstream->get_request_headers().size() + 1;
-      }
-
-      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
-    }
 
     auto token = http2::lookup_token(name, namelen);
     promised_downstream->add_request_header(name, namelen, value, valuelen,

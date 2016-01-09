@@ -80,6 +80,7 @@ void nghttp2_stream_init(nghttp2_stream *stream, int32_t stream_id,
   stream->queued = 0;
   stream->descendant_last_cycle = 0;
   stream->cycle = 0;
+  stream->pending_penalty = 0;
   stream->descendant_next_seq = 0;
   stream->seq = 0;
   stream->last_writelen = 0;
@@ -115,9 +116,14 @@ static int stream_subtree_active(nghttp2_stream *stream) {
 /*
  * Returns next cycle for |stream|.
  */
-static uint64_t stream_next_cycle(nghttp2_stream *stream, uint64_t last_cycle) {
-  return last_cycle +
-         stream->last_writelen * NGHTTP2_MAX_WEIGHT / (uint32_t)stream->weight;
+static void stream_next_cycle(nghttp2_stream *stream, uint64_t last_cycle) {
+  size_t penalty;
+
+  penalty =
+      stream->last_writelen * NGHTTP2_MAX_WEIGHT + stream->pending_penalty;
+
+  stream->cycle = last_cycle + penalty / (uint32_t)stream->weight;
+  stream->pending_penalty = (uint32_t)(penalty % (uint32_t)stream->weight);
 }
 
 static int stream_obq_push(nghttp2_stream *dep_stream, nghttp2_stream *stream) {
@@ -125,8 +131,7 @@ static int stream_obq_push(nghttp2_stream *dep_stream, nghttp2_stream *stream) {
 
   for (; dep_stream && !stream->queued;
        stream = dep_stream, dep_stream = dep_stream->dep_prev) {
-    stream->cycle =
-        stream_next_cycle(stream, dep_stream->descendant_last_cycle);
+    stream_next_cycle(stream, dep_stream->descendant_last_cycle);
     stream->seq = dep_stream->descendant_next_seq++;
 
     DEBUGF(fprintf(stderr, "stream: stream=%d obq push cycle=%ld\n",
@@ -169,6 +174,7 @@ static void stream_obq_remove(nghttp2_stream *stream) {
 
     stream->queued = 0;
     stream->cycle = 0;
+    stream->pending_penalty = 0;
     stream->descendant_last_cycle = 0;
     stream->last_writelen = 0;
 
@@ -207,31 +213,73 @@ void nghttp2_stream_reschedule(nghttp2_stream *stream) {
   dep_stream = stream->dep_prev;
 
   for (; dep_stream; stream = dep_stream, dep_stream = dep_stream->dep_prev) {
-    if (nghttp2_pq_size(&dep_stream->obq) == 1) {
-      dep_stream->descendant_last_cycle = 0;
-      stream->cycle = 0;
-    } else {
-      /* We update descendant_last_cycle here, and we don't do it when
-         no data is written for stream.  This effectively means that
-         we treat these streams as if they are not scheduled at all.
-         This does not cause disruption in scheduling machinery.  It
-         just makes new streams scheduled a bit early. */
-      dep_stream->descendant_last_cycle = stream->cycle;
+    nghttp2_pq_remove(&dep_stream->obq, &stream->pq_entry);
 
-      nghttp2_pq_remove(&dep_stream->obq, &stream->pq_entry);
+    stream_next_cycle(stream, dep_stream->descendant_last_cycle);
+    stream->seq = dep_stream->descendant_next_seq++;
 
-      stream->cycle =
-          stream_next_cycle(stream, dep_stream->descendant_last_cycle);
-      stream->seq = dep_stream->descendant_next_seq++;
-
-      nghttp2_pq_push(&dep_stream->obq, &stream->pq_entry);
-    }
+    nghttp2_pq_push(&dep_stream->obq, &stream->pq_entry);
 
     DEBUGF(fprintf(stderr, "stream: stream=%d obq resched cycle=%ld\n",
                    stream->stream_id, stream->cycle));
 
     dep_stream->last_writelen = stream->last_writelen;
   }
+}
+
+void nghttp2_stream_change_weight(nghttp2_stream *stream, int32_t weight) {
+  nghttp2_stream *dep_stream;
+  uint64_t last_cycle;
+  int32_t old_weight;
+  size_t wlen_penalty;
+
+  if (stream->weight == weight) {
+    return;
+  }
+
+  old_weight = stream->weight;
+  stream->weight = weight;
+
+  dep_stream = stream->dep_prev;
+
+  if (!dep_stream) {
+    return;
+  }
+
+  dep_stream->sum_dep_weight += weight - old_weight;
+
+  if (!stream->queued) {
+    return;
+  }
+
+  nghttp2_pq_remove(&dep_stream->obq, &stream->pq_entry);
+
+  wlen_penalty = stream->last_writelen * NGHTTP2_MAX_WEIGHT;
+
+  /* Compute old stream->pending_penalty we used to calculate
+     stream->cycle */
+  stream->pending_penalty =
+      (uint32_t)((stream->pending_penalty + (uint32_t)old_weight -
+                  (wlen_penalty % (uint32_t)old_weight)) %
+                 (uint32_t)old_weight);
+
+  last_cycle = stream->cycle -
+               (wlen_penalty + stream->pending_penalty) / (uint32_t)old_weight;
+
+  /* Now we have old stream->pending_penalty and new stream->weight in
+     place */
+  stream_next_cycle(stream, last_cycle);
+
+  if (stream->cycle < dep_stream->descendant_last_cycle) {
+    stream->cycle = dep_stream->descendant_last_cycle;
+  }
+
+  /* Continue to use same stream->seq */
+
+  nghttp2_pq_push(&dep_stream->obq, &stream->pq_entry);
+
+  DEBUGF(fprintf(stderr, "stream: stream=%d obq resched cycle=%ld\n",
+                 stream->stream_id, stream->cycle));
 }
 
 static nghttp2_stream *stream_last_sib(nghttp2_stream *stream) {
@@ -861,9 +909,15 @@ int nghttp2_stream_in_dep_tree(nghttp2_stream *stream) {
 nghttp2_outbound_item *
 nghttp2_stream_next_outbound_item(nghttp2_stream *stream) {
   nghttp2_pq_entry *ent;
+  nghttp2_stream *si;
 
   for (;;) {
     if (stream_active(stream)) {
+      /* Update ascendant's descendant_last_cycle here, so that we can
+         assure that new stream is scheduled based on it. */
+      for (si = stream; si->dep_prev; si = si->dep_prev) {
+        si->dep_prev->descendant_last_cycle = si->cycle;
+      }
       return stream->item;
     }
     ent = nghttp2_pq_top(&stream->obq);
