@@ -5059,14 +5059,13 @@ void test_nghttp2_session_pop_next_ob_item(void) {
   nghttp2_session_callbacks callbacks;
   nghttp2_outbound_item *item;
   nghttp2_priority_spec pri_spec;
-  nghttp2_stream *stream;
   nghttp2_mem *mem;
 
   mem = nghttp2_mem_default();
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks.send_callback = null_send_callback;
 
-  nghttp2_session_server_new(&session, &callbacks, NULL);
+  nghttp2_session_client_new(&session, &callbacks, NULL);
   session->remote_settings.max_concurrent_streams = 1;
 
   CU_ASSERT(NULL == nghttp2_session_pop_next_ob_item(session));
@@ -5091,27 +5090,13 @@ void test_nghttp2_session_pop_next_ob_item(void) {
 
   /* Incoming stream does not affect the number of outgoing max
      concurrent streams. */
-  nghttp2_session_open_stream(session, 1, NGHTTP2_STREAM_FLAG_NONE,
-                              &pri_spec_default, NGHTTP2_STREAM_OPENING, NULL);
+  open_recv_stream(session, 4);
   /* In-flight outgoing stream */
-  nghttp2_session_open_stream(session, 4, NGHTTP2_STREAM_FLAG_NONE,
-                              &pri_spec_default, NGHTTP2_STREAM_OPENING, NULL);
+  open_sent_stream(session, 1);
 
   nghttp2_priority_spec_init(&pri_spec, 0, NGHTTP2_MAX_WEIGHT, 0);
 
   nghttp2_submit_request(session, &pri_spec, NULL, 0, NULL, NULL);
-  nghttp2_submit_response(session, 1, NULL, 0, NULL);
-
-  item = nghttp2_session_pop_next_ob_item(session);
-  CU_ASSERT(NGHTTP2_HEADERS == item->frame.hd.type);
-  CU_ASSERT(1 == item->frame.hd.stream_id);
-
-  stream = nghttp2_session_get_stream(session, 1);
-
-  nghttp2_stream_detach_item(stream);
-
-  nghttp2_outbound_item_free(item, mem);
-  mem->free(item, NULL);
 
   CU_ASSERT(NULL == nghttp2_session_pop_next_ob_item(session));
 
@@ -5127,8 +5112,7 @@ void test_nghttp2_session_pop_next_ob_item(void) {
   /* Check that push reply HEADERS are queued into ob_ss_pq */
   nghttp2_session_server_new(&session, &callbacks, NULL);
   session->remote_settings.max_concurrent_streams = 0;
-  nghttp2_session_open_stream(session, 2, NGHTTP2_STREAM_FLAG_NONE,
-                              &pri_spec_default, NGHTTP2_STREAM_RESERVED, NULL);
+  open_sent_stream2(session, 2, NGHTTP2_STREAM_RESERVED);
   CU_ASSERT(0 == nghttp2_submit_headers(session, NGHTTP2_FLAG_END_STREAM, 2,
                                         NULL, NULL, 0, NULL));
   CU_ASSERT(NULL == nghttp2_session_pop_next_ob_item(session));
