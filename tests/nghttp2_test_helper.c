@@ -306,3 +306,119 @@ nghttp2_outbound_item *create_data_ob_item(nghttp2_mem *mem) {
 
   return item;
 }
+
+nghttp2_stream *open_sent_stream(nghttp2_session *session, int32_t stream_id) {
+  nghttp2_priority_spec pri_spec;
+
+  nghttp2_priority_spec_init(&pri_spec, 0, NGHTTP2_DEFAULT_WEIGHT, 0);
+  return open_sent_stream3(session, stream_id, NGHTTP2_FLAG_NONE, &pri_spec,
+                           NGHTTP2_STREAM_OPENED, NULL);
+}
+
+nghttp2_stream *open_sent_stream2(nghttp2_session *session, int32_t stream_id,
+                                  nghttp2_stream_state initial_state) {
+  nghttp2_priority_spec pri_spec;
+
+  nghttp2_priority_spec_init(&pri_spec, 0, NGHTTP2_DEFAULT_WEIGHT, 0);
+  return open_sent_stream3(session, stream_id, NGHTTP2_FLAG_NONE, &pri_spec,
+                           initial_state, NULL);
+}
+
+nghttp2_stream *open_sent_stream3(nghttp2_session *session, int32_t stream_id,
+                                  uint8_t flags,
+                                  nghttp2_priority_spec *pri_spec_in,
+                                  nghttp2_stream_state initial_state,
+                                  void *stream_user_data) {
+  nghttp2_stream *stream;
+
+  assert(nghttp2_session_is_my_stream_id(session, stream_id));
+
+  stream = nghttp2_session_open_stream(session, stream_id, flags, pri_spec_in,
+                                       initial_state, stream_user_data);
+  session->sent_stream_id = nghttp2_max(session->sent_stream_id, stream_id);
+  session->next_stream_id =
+      nghttp2_max(session->next_stream_id, (uint32_t)stream_id + 2);
+
+  return stream;
+}
+
+nghttp2_stream *open_sent_stream_with_dep(nghttp2_session *session,
+                                          int32_t stream_id,
+                                          nghttp2_stream *dep_stream) {
+  return open_sent_stream_with_dep_weight(session, stream_id,
+                                          NGHTTP2_DEFAULT_WEIGHT, dep_stream);
+}
+
+nghttp2_stream *open_sent_stream_with_dep_weight(nghttp2_session *session,
+                                                 int32_t stream_id,
+                                                 int32_t weight,
+                                                 nghttp2_stream *dep_stream) {
+  nghttp2_stream *stream;
+
+  assert(nghttp2_session_is_my_stream_id(session, stream_id));
+
+  stream = open_stream_with_all(session, stream_id, weight, 0, dep_stream);
+
+  session->sent_stream_id = nghttp2_max(session->sent_stream_id, stream_id);
+  session->next_stream_id =
+      nghttp2_max(session->next_stream_id, (uint32_t)stream_id + 2);
+
+  return stream;
+}
+
+nghttp2_stream *open_recv_stream(nghttp2_session *session, int32_t stream_id) {
+  nghttp2_priority_spec pri_spec;
+
+  nghttp2_priority_spec_init(&pri_spec, 0, NGHTTP2_DEFAULT_WEIGHT, 0);
+  return open_recv_stream3(session, stream_id, NGHTTP2_FLAG_NONE, &pri_spec,
+                           NGHTTP2_STREAM_OPENED, NULL);
+}
+
+nghttp2_stream *open_recv_stream2(nghttp2_session *session, int32_t stream_id,
+                                  nghttp2_stream_state initial_state) {
+  nghttp2_priority_spec pri_spec;
+
+  nghttp2_priority_spec_init(&pri_spec, 0, NGHTTP2_DEFAULT_WEIGHT, 0);
+  return open_recv_stream3(session, stream_id, NGHTTP2_FLAG_NONE, &pri_spec,
+                           initial_state, NULL);
+}
+
+nghttp2_stream *open_recv_stream3(nghttp2_session *session, int32_t stream_id,
+                                  uint8_t flags,
+                                  nghttp2_priority_spec *pri_spec_in,
+                                  nghttp2_stream_state initial_state,
+                                  void *stream_user_data) {
+  nghttp2_stream *stream;
+
+  assert(!nghttp2_session_is_my_stream_id(session, stream_id));
+
+  stream = nghttp2_session_open_stream(session, stream_id, flags, pri_spec_in,
+                                       initial_state, stream_user_data);
+  session->last_recv_stream_id =
+      nghttp2_max(session->last_recv_stream_id, stream_id);
+
+  return stream;
+}
+
+nghttp2_stream *open_recv_stream_with_dep(nghttp2_session *session,
+                                          int32_t stream_id,
+                                          nghttp2_stream *dep_stream) {
+  return open_recv_stream_with_dep_weight(session, stream_id,
+                                          NGHTTP2_DEFAULT_WEIGHT, dep_stream);
+}
+
+nghttp2_stream *open_recv_stream_with_dep_weight(nghttp2_session *session,
+                                                 int32_t stream_id,
+                                                 int32_t weight,
+                                                 nghttp2_stream *dep_stream) {
+  nghttp2_stream *stream;
+
+  assert(!nghttp2_session_is_my_stream_id(session, stream_id));
+
+  stream = open_stream_with_all(session, stream_id, weight, 0, dep_stream);
+
+  session->last_recv_stream_id =
+      nghttp2_max(session->last_recv_stream_id, stream_id);
+
+  return stream;
+}

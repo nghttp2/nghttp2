@@ -110,4 +110,49 @@ nghttp2_stream *open_stream_with_dep_excl(nghttp2_session *session,
 
 nghttp2_outbound_item *create_data_ob_item(nghttp2_mem *mem);
 
+/* Opens stream.  This stream is assumed to be sent from |session|,
+   and session->sent_stream_id and session->next_stream_id will be
+   adjusted accordingly. */
+nghttp2_stream *open_sent_stream(nghttp2_session *session, int32_t stream_id);
+
+nghttp2_stream *open_sent_stream2(nghttp2_session *session, int32_t stream_id,
+                                  nghttp2_stream_state initial_state);
+
+nghttp2_stream *open_sent_stream3(nghttp2_session *session, int32_t stream_id,
+                                  uint8_t flags,
+                                  nghttp2_priority_spec *pri_spec_in,
+                                  nghttp2_stream_state initial_state,
+                                  void *stream_user_data);
+
+nghttp2_stream *open_sent_stream_with_dep(nghttp2_session *session,
+                                          int32_t stream_id,
+                                          nghttp2_stream *dep_stream);
+
+nghttp2_stream *open_sent_stream_with_dep_weight(nghttp2_session *session,
+                                                 int32_t stream_id,
+                                                 int32_t weight,
+                                                 nghttp2_stream *dep_stream);
+
+/* Opens stream.  This stream is assumed to be received by |session|,
+   and session->last_recv_stream_id will be adjusted accordingly. */
+nghttp2_stream *open_recv_stream(nghttp2_session *session, int32_t stream_id);
+
+nghttp2_stream *open_recv_stream2(nghttp2_session *session, int32_t stream_id,
+                                  nghttp2_stream_state initial_state);
+
+nghttp2_stream *open_recv_stream3(nghttp2_session *session, int32_t stream_id,
+                                  uint8_t flags,
+                                  nghttp2_priority_spec *pri_spec_in,
+                                  nghttp2_stream_state initial_state,
+                                  void *stream_user_data);
+
+nghttp2_stream *open_recv_stream_with_dep(nghttp2_session *session,
+                                          int32_t stream_id,
+                                          nghttp2_stream *dep_stream);
+
+nghttp2_stream *open_recv_stream_with_dep_weight(nghttp2_session *session,
+                                                 int32_t stream_id,
+                                                 int32_t weight,
+                                                 nghttp2_stream *dep_stream);
+
 #endif /* NGHTTP2_TEST_HELPER_H */
