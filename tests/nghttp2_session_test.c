@@ -3897,6 +3897,15 @@ void test_nghttp2_submit_request_with_data(void) {
   CU_ASSERT(0 == ud.data_source_length);
 
   nghttp2_session_del(session);
+
+  /* nghttp2_submit_request() with server session is error */
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  CU_ASSERT(NGHTTP2_ERR_PROTO == nghttp2_submit_request(session, NULL, reqnv,
+                                                        ARRLEN(reqnv), NULL,
+                                                        NULL));
+
+  nghttp2_session_del(session);
 }
 
 void test_nghttp2_submit_request_without_data(void) {
@@ -3982,6 +3991,19 @@ void test_nghttp2_submit_response_with_data(void) {
                   mem);
   CU_ASSERT(0 == nghttp2_session_send(session));
   CU_ASSERT(0 == ud.data_source_length);
+
+  nghttp2_session_del(session);
+
+  /* Various error cases */
+  nghttp2_session_client_new(&session, &callbacks, NULL);
+
+  /* Calling nghttp2_submit_response() with client session is error */
+  CU_ASSERT(NGHTTP2_ERR_PROTO ==
+            nghttp2_submit_response(session, 1, resnv, ARRLEN(resnv), NULL));
+
+  /* Stream ID <= 0 is error */
+  CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT ==
+            nghttp2_submit_response(session, 0, resnv, ARRLEN(resnv), NULL));
 
   nghttp2_session_del(session);
 }
@@ -4114,6 +4136,18 @@ void test_nghttp2_submit_trailer(void) {
   nghttp2_bufs_free(&bufs);
   nghttp2_frame_headers_free(&frame.headers, mem);
   nghttp2_hd_inflate_free(&inflater);
+  nghttp2_session_del(session);
+
+  /* Specifying stream ID <= 0 is error */
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+  open_recv_stream(session, 1);
+
+  CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT ==
+            nghttp2_submit_trailer(session, 0, trailernv, ARRLEN(trailernv)));
+
+  CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT ==
+            nghttp2_submit_trailer(session, -1, trailernv, ARRLEN(trailernv)));
+
   nghttp2_session_del(session);
 }
 
@@ -4303,6 +4337,22 @@ void test_nghttp2_submit_headers(void) {
   CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT ==
             nghttp2_submit_headers(session, NGHTTP2_FLAG_NONE, -1, &pri_spec,
                                    reqnv, ARRLEN(reqnv), NULL));
+
+  nghttp2_session_del(session);
+
+  /* Error cases with invalid stream ID */
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  /* Sending nghttp2_submit_headers() with stream_id == 1 and server
+     session is error */
+  CU_ASSERT(NGHTTP2_ERR_PROTO ==
+            nghttp2_submit_headers(session, NGHTTP2_FLAG_NONE, -1, NULL, reqnv,
+                                   ARRLEN(reqnv), NULL));
+
+  /* Sending stream ID <= 0 is error */
+  CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT ==
+            nghttp2_submit_headers(session, NGHTTP2_FLAG_NONE, 0, NULL, resnv,
+                                   ARRLEN(resnv), NULL));
 
   nghttp2_session_del(session);
 }
@@ -4642,7 +4692,12 @@ void test_nghttp2_submit_push_promise(void) {
   /* submit PUSH_PROMISE while associated stream is not opened */
   CU_ASSERT(NGHTTP2_ERR_STREAM_CLOSED ==
             nghttp2_submit_push_promise(session, NGHTTP2_FLAG_NONE, 3, reqnv,
-                                        ARRLEN(reqnv), &ud));
+                                        ARRLEN(reqnv), NULL));
+
+  /* Stream ID <= 0 is error */
+  CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT ==
+            nghttp2_submit_push_promise(session, NGHTTP2_FLAG_NONE, 0, reqnv,
+                                        ARRLEN(reqnv), NULL));
 
   nghttp2_session_del(session);
 }
@@ -4850,18 +4905,9 @@ void test_nghttp2_submit_invalid_nv(void) {
 
   CU_ASSERT(0 == nghttp2_session_server_new(&session, &callbacks, NULL));
 
-  /* nghttp2_submit_request */
-  CU_ASSERT(0 < nghttp2_submit_request(session, NULL, empty_name_nv,
-                                       ARRLEN(empty_name_nv), NULL, NULL));
-
   /* nghttp2_submit_response */
   CU_ASSERT(0 == nghttp2_submit_response(session, 2, empty_name_nv,
                                          ARRLEN(empty_name_nv), NULL));
-
-  /* nghttp2_submit_headers */
-  CU_ASSERT(0 < nghttp2_submit_headers(session, NGHTTP2_FLAG_NONE, -1, NULL,
-                                       empty_name_nv, ARRLEN(empty_name_nv),
-                                       NULL));
 
   /* nghttp2_submit_push_promise */
   open_recv_stream(session, 1);
@@ -4869,6 +4915,19 @@ void test_nghttp2_submit_invalid_nv(void) {
   CU_ASSERT(0 < nghttp2_submit_push_promise(session, NGHTTP2_FLAG_NONE, 1,
                                             empty_name_nv,
                                             ARRLEN(empty_name_nv), NULL));
+
+  nghttp2_session_del(session);
+
+  CU_ASSERT(0 == nghttp2_session_client_new(&session, &callbacks, NULL));
+
+  /* nghttp2_submit_request */
+  CU_ASSERT(0 < nghttp2_submit_request(session, NULL, empty_name_nv,
+                                       ARRLEN(empty_name_nv), NULL, NULL));
+
+  /* nghttp2_submit_headers */
+  CU_ASSERT(0 < nghttp2_submit_headers(session, NGHTTP2_FLAG_NONE, -1, NULL,
+                                       empty_name_nv, ARRLEN(empty_name_nv),
+                                       NULL));
 
   nghttp2_session_del(session);
 }
