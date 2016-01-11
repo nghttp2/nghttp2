@@ -554,6 +554,10 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
     auto downstream = make_unique<Downstream>(upstream, handler->get_mcpool(),
                                               promised_stream_id, 0);
 
+    // As long as we use nghttp2_session_mem_send(), setting stream
+    // user data here should not fail.  This is because this callback
+    // is called just after frame was serialized.  So no worries about
+    // hanging Downstream.
     nghttp2_session_set_stream_user_data(session, promised_stream_id,
                                          downstream.get());
 
