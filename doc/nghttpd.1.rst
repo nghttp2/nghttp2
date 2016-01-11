@@ -139,6 +139,10 @@ OPTIONS
 
     Default: ``/etc/mime.types``
 
+.. option:: --no-content-length
+
+    Don't send content-length header field.
+
 .. option:: --version
 
     Display version information and exit.
