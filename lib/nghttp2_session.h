@@ -247,6 +247,10 @@ struct nghttp2_session {
   size_t obq_flood_counter_;
   /* Next Stream ID. Made unsigned int to detect >= (1 << 31). */
   uint32_t next_stream_id;
+  /* The last stream ID this session initiated.  For client session,
+     this is the last stream ID it has sent.  For server session, it
+     is the last promised stream ID sent in PUSH_PROMISE. */
+  int32_t sent_stream_id;
   /* The largest stream ID received so far */
   int32_t last_recv_stream_id;
   /* The largest stream ID which has been processed in some way. This

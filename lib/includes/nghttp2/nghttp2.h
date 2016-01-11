@@ -3299,6 +3299,8 @@ nghttp2_priority_spec_check_default(const nghttp2_priority_spec *pri_spec);
  * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
  *     Trying to depend on itself (new stream ID equals
  *     ``pri_spec->stream_id``).
+ * :enum:`NGHTTP2_ERR_PROTO`
+ *     The |session| is server session.
  *
  * .. warning::
  *
@@ -3371,6 +3373,8 @@ nghttp2_submit_request(nghttp2_session *session,
  *     processed yet.  Normally, this does not happen, but when
  *     application wrongly calls `nghttp2_submit_response()` twice,
  *     this may happen.
+ * :enum:`NGHTTP2_ERR_PROTO`
+ *     The |session| is client session.
  *
  * .. warning::
  *
@@ -3515,6 +3519,8 @@ NGHTTP2_EXTERN int nghttp2_submit_trailer(nghttp2_session *session,
  *     DATA or HEADERS has been already submitted and not fully
  *     processed yet.  This happens if stream denoted by |stream_id|
  *     is in reserved state.
+ * :enum:`NGHTTP2_ERR_PROTO`
+ *     The |stream_id| is -1, and |session| is server session.
  *
  * .. warning::
  *

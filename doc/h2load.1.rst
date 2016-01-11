@@ -63,12 +63,13 @@ OPTIONS
     are used solely.  Definition of a base URI overrides all
     scheme, host or port values.
 
-.. option:: -m, --max-concurrent-streams=(auto|<N>)
+.. option:: -m, --max-concurrent-streams=<N>
 
-    Max concurrent streams to  issue per session.  If "auto"
-    is given, the number of given URIs is used.
+    Max  concurrent  streams  to issue  per  session.   When
+    http/1.1  is used,  this  specifies the  number of  HTTP
+    pipelining requests in-flight.
 
-    Default: ``auto``
+    Default: ``1``
 
 .. option:: -w, --window-bits=<N>
 
