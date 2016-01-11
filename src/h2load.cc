@@ -2329,9 +2329,13 @@ requests: )" << stats.req_todo << " total, " << stats.req_started
             << stats.req_timedout << R"( timeout
 status codes: )" << stats.status[2] << " 2xx, " << stats.status[3] << " 3xx, "
             << stats.status[4] << " 4xx, " << stats.status[5] << R"( 5xx
-traffic: )" << stats.bytes_total << " bytes total, " << stats.bytes_head
-            << " bytes headers (space savings " << header_space_savings * 100
-            << "%), " << stats.bytes_body << R"( bytes data
+traffic: )" << util::utos_with_funit(stats.bytes_total) << "B ("
+            << stats.bytes_total << ") total, "
+            << util::utos_with_funit(stats.bytes_head) << "B ("
+            << stats.bytes_head << ") headers (space savings "
+            << header_space_savings * 100 << "%), "
+            << util::utos_with_funit(stats.bytes_body) << "B ("
+            << stats.bytes_body << R"() data
                      min         max         mean         sd        +/- sd
 time for request: )" << std::setw(10) << util::format_duration(ts.request.min)
             << "  " << std::setw(10) << util::format_duration(ts.request.max)
