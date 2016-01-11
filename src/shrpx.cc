@@ -1234,13 +1234,11 @@ Performance:
   --backend-request-buffer=<SIZE>
               Set buffer size used to store backend request.
               Default: )"
-      << util::utos_with_unit(get_config()->downstream_request_buffer_size)
-      << R"(
+      << util::utos_unit(get_config()->downstream_request_buffer_size) << R"(
   --backend-response-buffer=<SIZE>
               Set buffer size used to store backend response.
               Default: )"
-      << util::utos_with_unit(get_config()->downstream_response_buffer_size)
-      << R"(
+      << util::utos_unit(get_config()->downstream_response_buffer_size) << R"(
   --fastopen=<N>
               Enables  "TCP Fast  Open" for  the listening  socket and
               limits the  maximum length for the  queue of connections
@@ -1434,7 +1432,7 @@ SSL/TLS:
               period.   This  behaviour  applies   to  all  TLS  based
               frontends, and TLS HTTP/2 backends.
               Default: )"
-      << util::utos_with_unit(get_config()->tls_dyn_rec_warmup_threshold) << R"(
+      << util::utos_unit(get_config()->tls_dyn_rec_warmup_threshold) << R"(
   --tls-dyn-rec-idle-timeout=<DURATION>
               Specify TLS dynamic record  size behaviour timeout.  See
               --tls-dyn-rec-warmup-threshold  for   more  information.
@@ -1613,8 +1611,8 @@ HTTP:
               Set maximum buffer size for incoming HTTP request header
               field list.  This is the sum of header name and value in
               bytes.
-              Default: )"
-      << util::utos_with_unit(get_config()->header_field_buffer) << R"(
+              Default: )" << util::utos_unit(get_config()->header_field_buffer)
+      << R"(
   --max-header-fields=<N>
               Set  maximum  number  of incoming  HTTP  request  header
               fields, which  appear in one request  or response header

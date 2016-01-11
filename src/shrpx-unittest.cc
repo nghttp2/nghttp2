@@ -144,10 +144,8 @@ int main(int argc, char *argv[]) {
       !CU_add_test(pSuite, "util_select_h2", shrpx::test_util_select_h2) ||
       !CU_add_test(pSuite, "util_ipv6_numeric_addr",
                    shrpx::test_util_ipv6_numeric_addr) ||
-      !CU_add_test(pSuite, "util_utos_with_unit",
-                   shrpx::test_util_utos_with_unit) ||
-      !CU_add_test(pSuite, "util_utos_with_funit",
-                   shrpx::test_util_utos_with_funit) ||
+      !CU_add_test(pSuite, "util_utos_unit", shrpx::test_util_utos_unit) ||
+      !CU_add_test(pSuite, "util_utos_funit", shrpx::test_util_utos_funit) ||
       !CU_add_test(pSuite, "util_parse_uint_with_unit",
                    shrpx::test_util_parse_uint_with_unit) ||
       !CU_add_test(pSuite, "util_parse_uint", shrpx::test_util_parse_uint) ||

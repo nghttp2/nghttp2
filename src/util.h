@@ -342,7 +342,7 @@ template <typename T> std::string utos(T n) {
   return res;
 }
 
-template <typename T> std::string utos_with_unit(T n) {
+template <typename T> std::string utos_unit(T n) {
   char u = 0;
   if (n >= (1 << 30)) {
     u = 'G';
@@ -360,8 +360,8 @@ template <typename T> std::string utos_with_unit(T n) {
   return utos(n) + u;
 }
 
-// Like utos_with_unit(), but 2 digits fraction part is followed.
-template <typename T> std::string utos_with_funit(T n) {
+// Like utos_unit(), but 2 digits fraction part is followed.
+template <typename T> std::string utos_funit(T n) {
   char u = 0;
   int b = 0;
   if (n >= (1 << 30)) {

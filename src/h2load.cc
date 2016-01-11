@@ -2321,7 +2321,7 @@ int main(int argc, char **argv) {
 
   std::cout << std::fixed << std::setprecision(2) << R"(
 finished in )" << util::format_duration(duration) << ", " << rps << " req/s, "
-            << util::utos_with_funit(bps) << R"(B/s
+            << util::utos_funit(bps) << R"(B/s
 requests: )" << stats.req_todo << " total, " << stats.req_started
             << " started, " << stats.req_done << " done, "
             << stats.req_status_success << " succeeded, " << stats.req_failed
@@ -2329,13 +2329,12 @@ requests: )" << stats.req_todo << " total, " << stats.req_started
             << stats.req_timedout << R"( timeout
 status codes: )" << stats.status[2] << " 2xx, " << stats.status[3] << " 3xx, "
             << stats.status[4] << " 4xx, " << stats.status[5] << R"( 5xx
-traffic: )" << util::utos_with_funit(stats.bytes_total) << "B ("
-            << stats.bytes_total << ") total, "
-            << util::utos_with_funit(stats.bytes_head) << "B ("
+traffic: )" << util::utos_funit(stats.bytes_total) << "B (" << stats.bytes_total
+            << ") total, " << util::utos_funit(stats.bytes_head) << "B ("
             << stats.bytes_head << ") headers (space savings "
             << header_space_savings * 100 << "%), "
-            << util::utos_with_funit(stats.bytes_body) << "B ("
-            << stats.bytes_body << R"() data
+            << util::utos_funit(stats.bytes_body) << "B (" << stats.bytes_body
+            << R"() data
                      min         max         mean         sd        +/- sd
 time for request: )" << std::setw(10) << util::format_duration(ts.request.min)
             << "  " << std::setw(10) << util::format_duration(ts.request.max)

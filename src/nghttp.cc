@@ -1974,7 +1974,7 @@ id  responseEnd requestStart  process code size request path)" << std::endl;
               << ("+" + util::format_duration(request_start)) << " "
               << std::setw(8) << util::format_duration(total) << " "
               << std::setw(4) << req->status << " " << std::setw(4)
-              << util::utos_with_unit(req->response_len) << " "
+              << util::utos_unit(req->response_len) << " "
               << req->make_reqpath() << std::endl;
   }
 }

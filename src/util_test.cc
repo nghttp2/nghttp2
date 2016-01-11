@@ -234,28 +234,28 @@ void test_util_ipv6_numeric_addr(void) {
   CU_ASSERT(!util::ipv6_numeric_addr("localhost"));
 }
 
-void test_util_utos_with_unit(void) {
-  CU_ASSERT("0" == util::utos_with_unit(0));
-  CU_ASSERT("1023" == util::utos_with_unit(1023));
-  CU_ASSERT("1K" == util::utos_with_unit(1024));
-  CU_ASSERT("1K" == util::utos_with_unit(1025));
-  CU_ASSERT("1M" == util::utos_with_unit(1 << 20));
-  CU_ASSERT("1G" == util::utos_with_unit(1 << 30));
-  CU_ASSERT("1024G" == util::utos_with_unit(1LL << 40));
+void test_util_utos_unit(void) {
+  CU_ASSERT("0" == util::utos_unit(0));
+  CU_ASSERT("1023" == util::utos_unit(1023));
+  CU_ASSERT("1K" == util::utos_unit(1024));
+  CU_ASSERT("1K" == util::utos_unit(1025));
+  CU_ASSERT("1M" == util::utos_unit(1 << 20));
+  CU_ASSERT("1G" == util::utos_unit(1 << 30));
+  CU_ASSERT("1024G" == util::utos_unit(1LL << 40));
 }
 
-void test_util_utos_with_funit(void) {
-  CU_ASSERT("0" == util::utos_with_funit(0));
-  CU_ASSERT("1023" == util::utos_with_funit(1023));
-  CU_ASSERT("1.00K" == util::utos_with_funit(1024));
-  CU_ASSERT("1.00K" == util::utos_with_funit(1025));
-  CU_ASSERT("1.09K" == util::utos_with_funit(1119));
-  CU_ASSERT("1.27K" == util::utos_with_funit(1300));
-  CU_ASSERT("1.00M" == util::utos_with_funit(1 << 20));
-  CU_ASSERT("1.18M" == util::utos_with_funit(1234567));
-  CU_ASSERT("1.00G" == util::utos_with_funit(1 << 30));
-  CU_ASSERT("4492450797.23G" == util::utos_with_funit(4823732313248234343LL));
-  CU_ASSERT("1024.00G" == util::utos_with_funit(1LL << 40));
+void test_util_utos_funit(void) {
+  CU_ASSERT("0" == util::utos_funit(0));
+  CU_ASSERT("1023" == util::utos_funit(1023));
+  CU_ASSERT("1.00K" == util::utos_funit(1024));
+  CU_ASSERT("1.00K" == util::utos_funit(1025));
+  CU_ASSERT("1.09K" == util::utos_funit(1119));
+  CU_ASSERT("1.27K" == util::utos_funit(1300));
+  CU_ASSERT("1.00M" == util::utos_funit(1 << 20));
+  CU_ASSERT("1.18M" == util::utos_funit(1234567));
+  CU_ASSERT("1.00G" == util::utos_funit(1 << 30));
+  CU_ASSERT("4492450797.23G" == util::utos_funit(4823732313248234343LL));
+  CU_ASSERT("1024.00G" == util::utos_funit(1LL << 40));
 }
 
 void test_util_parse_uint_with_unit(void) {
