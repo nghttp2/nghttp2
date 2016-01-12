@@ -6569,6 +6569,7 @@ static int nghttp2_session_upgrade_internal(nghttp2_session *session,
     session->last_proc_stream_id = 1;
   } else {
     nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_WR);
+    session->sent_stream_id = 1;
     session->next_stream_id += 2;
   }
   return 0;
