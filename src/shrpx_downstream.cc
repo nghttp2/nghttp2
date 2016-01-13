@@ -339,7 +339,7 @@ void add_header(size_t &sum, Headers &headers, const uint8_t *name,
 } // namespace
 
 namespace {
-void append_last_header_key(bool key_prev, size_t &sum, Headers &headers,
+void append_last_header_key(bool &key_prev, size_t &sum, Headers &headers,
                             const char *data, size_t len) {
   assert(key_prev);
   sum += len;
@@ -349,7 +349,7 @@ void append_last_header_key(bool key_prev, size_t &sum, Headers &headers,
 } // namespace
 
 namespace {
-void append_last_header_value(bool key_prev, size_t &sum, Headers &headers,
+void append_last_header_value(bool &key_prev, size_t &sum, Headers &headers,
                               const char *data, size_t len) {
   key_prev = false;
   sum += len;
