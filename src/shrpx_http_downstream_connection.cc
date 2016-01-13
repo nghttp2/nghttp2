@@ -233,8 +233,6 @@ int HttpDownstreamConnection::push_request_headers() {
 
   downstream_->set_request_downstream_host(authority);
 
-  downstream_->assemble_request_cookie();
-
   auto buf = downstream_->get_request_buf();
 
   // Assume that method and request path do not contain \r\n.
@@ -264,9 +262,10 @@ int HttpDownstreamConnection::push_request_headers() {
 
   http2::build_http1_headers_from_headers(buf, req.fs.headers());
 
-  if (!downstream_->get_assembled_request_cookie().empty()) {
+  auto cookie = downstream_->assemble_request_cookie();
+  if (!cookie.empty()) {
     buf->append("Cookie: ");
-    buf->append(downstream_->get_assembled_request_cookie());
+    buf->append(cookie);
     buf->append("\r\n");
   }
 

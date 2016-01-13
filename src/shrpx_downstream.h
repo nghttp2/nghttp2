@@ -221,8 +221,9 @@ public:
   // Crumbles (split cookie by ";") in request_headers_ and adds them
   // in |nva|.  Headers::no_index is inherited.
   void crumble_request_cookie(std::vector<nghttp2_nv> &nva);
-  void assemble_request_cookie();
-  const std::string &get_assembled_request_cookie() const;
+  // Assembles request cookies.  The opposite operation against
+  // crumble_request_cookie().
+  std::string assemble_request_cookie() const;
 
   void
   set_request_start_time(std::chrono::high_resolution_clock::time_point time);
@@ -379,7 +380,6 @@ private:
   // location header field to decide the location should be rewritten
   // or not.
   std::string request_downstream_host_;
-  std::string assembled_request_cookie_;
 
   DefaultMemchunks request_buf_;
   DefaultMemchunks response_buf_;

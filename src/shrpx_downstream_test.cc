@@ -120,8 +120,7 @@ void test_downstream_assemble_request_cookie(void) {
   req.fs.add_header("cookie", "bravo;");
   req.fs.add_header("cookie", "charlie; ");
   req.fs.add_header("cookie", "delta;;");
-  d.assemble_request_cookie();
-  CU_ASSERT("alpha; bravo; charlie; delta" == d.get_assembled_request_cookie());
+  CU_ASSERT("alpha; bravo; charlie; delta" == d.assemble_request_cookie());
 }
 
 void test_downstream_rewrite_location_response_header(void) {

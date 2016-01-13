@@ -238,8 +238,8 @@ const Headers::value_type *get_header_linear(const Headers &headers,
 }
 } // namespace
 
-void Downstream::assemble_request_cookie() {
-  std::string &cookie = assembled_request_cookie_;
+std::string Downstream::assemble_request_cookie() const {
+  std::string cookie;
   cookie = "";
   for (auto &kv : req_.fs.headers()) {
     if (kv.name.size() != 6 || kv.name[5] != 'e' ||
@@ -258,6 +258,8 @@ void Downstream::assemble_request_cookie() {
   if (cookie.size() >= 2) {
     cookie.erase(cookie.size() - 2);
   }
+
+  return cookie;
 }
 
 size_t Downstream::count_crumble_request_cookie() {
@@ -313,10 +315,6 @@ void Downstream::crumble_request_cookie(std::vector<nghttp2_nv> &nva) {
                                (kv.no_index ? NGHTTP2_NV_FLAG_NO_INDEX : 0))});
     }
   }
-}
-
-const std::string &Downstream::get_assembled_request_cookie() const {
-  return assembled_request_cookie_;
 }
 
 namespace {
