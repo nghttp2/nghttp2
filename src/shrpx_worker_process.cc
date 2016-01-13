@@ -391,7 +391,7 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
     conn_handler.set_acceptor6(
         make_unique<AcceptHandler>(wpconf->server_fd6, &conn_handler));
   }
-  if (wpconf->server_fd != 1) {
+  if (wpconf->server_fd != -1) {
     conn_handler.set_acceptor(
         make_unique<AcceptHandler>(wpconf->server_fd, &conn_handler));
   }
