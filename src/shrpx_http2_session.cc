@@ -783,10 +783,11 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
 
     assert(promised_downstream);
 
+    auto &promised_req = promised_downstream->request();
+
     auto token = http2::lookup_token(name, namelen);
-    promised_downstream->add_request_header(name, namelen, value, valuelen,
-                                            flags & NGHTTP2_NV_FLAG_NO_INDEX,
-                                            token);
+    promised_req.fs.add_header(name, namelen, value, valuelen,
+                               flags & NGHTTP2_NV_FLAG_NO_INDEX, token);
     return 0;
   }
   }
@@ -855,6 +856,7 @@ int on_response_headers(Http2Session *http2session, Downstream *downstream,
   int rv;
 
   auto upstream = downstream->get_upstream();
+  const auto &req = downstream->request();
 
   auto &nva = downstream->get_response_headers();
 
@@ -927,9 +929,7 @@ int on_response_headers(Http2Session *http2session, Downstream *downstream,
         downstream->expect_response_body()) {
       // Here we have response body but Content-Length is not known in
       // advance.
-      if (downstream->get_request_major() <= 0 ||
-          (downstream->get_request_major() == 1 &&
-           downstream->get_request_minor() == 0)) {
+      if (req.http_major <= 0 || (req.http_major == 1 && req.http_minor == 0)) {
         // We simply close connection for pre-HTTP/1.1 in this case.
         downstream->set_response_connection_close(true);
       } else {
@@ -1892,14 +1892,15 @@ int Http2Session::handle_downstream_push_promise(Downstream *downstream,
 
 int Http2Session::handle_downstream_push_promise_complete(
     Downstream *downstream, Downstream *promised_downstream) {
-  auto authority =
-      promised_downstream->get_request_header(http2::HD__AUTHORITY);
-  auto path = promised_downstream->get_request_header(http2::HD__PATH);
-  auto method = promised_downstream->get_request_header(http2::HD__METHOD);
-  auto scheme = promised_downstream->get_request_header(http2::HD__SCHEME);
+  auto &promised_req = promised_downstream->request();
+
+  auto authority = promised_req.fs.header(http2::HD__AUTHORITY);
+  auto path = promised_req.fs.header(http2::HD__PATH);
+  auto method = promised_req.fs.header(http2::HD__METHOD);
+  auto scheme = promised_req.fs.header(http2::HD__SCHEME);
 
   if (!authority) {
-    authority = promised_downstream->get_request_header(http2::HD_HOST);
+    authority = promised_req.fs.header(http2::HD_HOST);
   }
 
   auto method_token = http2::lookup_method_token(method->value);
@@ -1914,17 +1915,16 @@ int Http2Session::handle_downstream_push_promise_complete(
   // TODO Rewrite authority if we enabled rewrite host.  But we
   // really don't know how to rewrite host.  Should we use the same
   // host in associated stream?
-  promised_downstream->set_request_http2_authority(
-      http2::value_to_str(authority));
-  promised_downstream->set_request_method(method_token);
+  promised_req.authority = http2::value_to_str(authority);
+  promised_req.method = method_token;
   // libnghttp2 ensures that we don't have CONNECT method in
   // PUSH_PROMISE, and guarantees that :scheme exists.
-  promised_downstream->set_request_http2_scheme(http2::value_to_str(scheme));
+  promised_req.scheme = http2::value_to_str(scheme);
 
   // For server-wide OPTIONS request, path is empty.
   if (method_token != HTTP_OPTIONS || path->value != "*") {
-    promised_downstream->set_request_path(http2::rewrite_clean_path(
-        std::begin(path->value), std::end(path->value)));
+    promised_req.path = http2::rewrite_clean_path(std::begin(path->value),
+                                                  std::end(path->value));
   }
 
   promised_downstream->inspect_http2_request();

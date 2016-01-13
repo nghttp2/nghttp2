@@ -147,6 +147,8 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
     auto downstream = upstream->add_pending_downstream(
         frame->syn_stream.stream_id, frame->syn_stream.pri);
 
+    auto &req = downstream->request();
+
     downstream->reset_upstream_rtimer();
 
     auto nv = frame->syn_stream.nv;
@@ -178,20 +180,20 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
     }
 
     for (size_t i = 0; nv[i]; i += 2) {
-      downstream->add_request_header(nv[i], nv[i + 1]);
+      req.fs.add_header(nv[i], nv[i + 1]);
     }
 
-    if (downstream->index_request_headers() != 0) {
+    if (req.fs.index_headers() != 0) {
       if (upstream->error_reply(downstream, 400) != 0) {
         ULOG(FATAL, upstream) << "error_reply failed";
       }
       return;
     }
 
-    auto path = downstream->get_request_header(http2::HD__PATH);
-    auto scheme = downstream->get_request_header(http2::HD__SCHEME);
-    auto host = downstream->get_request_header(http2::HD__HOST);
-    auto method = downstream->get_request_header(http2::HD__METHOD);
+    auto path = req.fs.header(http2::HD__PATH);
+    auto scheme = req.fs.header(http2::HD__SCHEME);
+    auto host = req.fs.header(http2::HD__HOST);
+    auto method = req.fs.header(http2::HD__METHOD);
 
     if (!method) {
       upstream->rst_stream(downstream, SPDYLAY_PROTOCOL_ERROR);
@@ -222,24 +224,24 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
       return;
     }
 
-    downstream->set_request_method(method_token);
+    req.method = method_token;
     if (is_connect) {
-      downstream->set_request_http2_authority(path->value);
+      req.authority = path->value;
     } else {
-      downstream->set_request_http2_scheme(scheme->value);
-      downstream->set_request_http2_authority(host->value);
+      req.scheme = scheme->value;
+      req.authority = host->value;
       if (get_config()->http2_proxy || get_config()->client_proxy) {
-        downstream->set_request_path(path->value);
+        req.path = path->value;
       } else if (method_token == HTTP_OPTIONS && path->value == "*") {
         // Server-wide OPTIONS request.  Path is empty.
       } else {
-        downstream->set_request_path(http2::rewrite_clean_path(
-            std::begin(path->value), std::end(path->value)));
+        req.path = http2::rewrite_clean_path(std::begin(path->value),
+                                             std::end(path->value));
       }
     }
 
     if (!(frame->syn_stream.hd.flags & SPDYLAY_CTRL_FLAG_FIN)) {
-      downstream->set_request_http2_expect_body(true);
+      req.http2_expect_body = true;
     }
 
     downstream->inspect_http2_request();
@@ -285,8 +287,7 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
 } // namespace
 
 void SpdyUpstream::start_downstream(Downstream *downstream) {
-  if (downstream_queue_.can_activate(
-          downstream->get_request_http2_authority())) {
+  if (downstream_queue_.can_activate(downstream->request().authority)) {
     initiate_downstream(downstream);
     return;
   }
@@ -946,6 +947,8 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream) {
     return 0;
   }
 
+  const auto &req = downstream->request();
+
 #ifdef HAVE_MRUBY
   auto worker = handler_->get_worker();
   auto mruby_ctx = worker->get_mruby_context();
@@ -969,8 +972,7 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream) {
 
   if (!get_config()->http2_proxy && !get_config()->client_proxy &&
       !get_config()->no_location_rewrite) {
-    downstream->rewrite_location_response_header(
-        downstream->get_request_http2_scheme());
+    downstream->rewrite_location_response_header(req.scheme);
   }
   size_t nheader = downstream->get_response_headers().size();
   // 8 means server, :status, :version and possible via header field.

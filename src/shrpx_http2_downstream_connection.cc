@@ -165,6 +165,7 @@ ssize_t http2_data_read_callback(nghttp2_session *session, int32_t stream_id,
     // on the priority, DATA frame may come first.
     return NGHTTP2_ERR_DEFERRED;
   }
+  const auto &req = downstream->request();
   auto input = downstream->get_request_buf();
   auto nread = input->remove(buf, length);
   auto input_empty = input->rleft() == 0;
@@ -190,13 +191,13 @@ ssize_t http2_data_read_callback(nghttp2_session *session, int32_t stream_id,
       // If connection is upgraded, don't set EOF flag, since HTTP/1
       // will set MSG_COMPLETE to request state after upgrade response
       // header is seen.
-      (!downstream->get_upgrade_request() ||
+      (!req.upgrade_request ||
        (downstream->get_response_state() == Downstream::HEADER_COMPLETE &&
         !downstream->get_upgraded()))) {
 
     *data_flags |= NGHTTP2_DATA_FLAG_EOF;
 
-    auto &trailers = downstream->get_request_trailers();
+    const auto &trailers = req.fs.trailers();
     if (!trailers.empty()) {
       std::vector<nghttp2_nv> nva;
       nva.reserve(trailers.size());
@@ -248,10 +249,11 @@ int Http2DownstreamConnection::push_request_headers() {
 
   downstream_->set_request_pending(false);
 
-  auto method = downstream_->get_request_method();
-  auto no_host_rewrite = get_config()->no_host_rewrite ||
-                         get_config()->http2_proxy ||
-                         get_config()->client_proxy || method == HTTP_CONNECT;
+  const auto &req = downstream_->request();
+
+  auto no_host_rewrite =
+      get_config()->no_host_rewrite || get_config()->http2_proxy ||
+      get_config()->client_proxy || req.method == HTTP_CONNECT;
 
   // http2session_ has already in CONNECTED state, so we can get
   // addr_idx here.
@@ -265,14 +267,11 @@ int Http2DownstreamConnection::push_request_headers() {
   // For HTTP/1.0 request, there is no authority in request.  In that
   // case, we use backend server's host nonetheless.
   const char *authority = downstream_hostport;
-  auto &req_authority = downstream_->get_request_http2_authority();
-  if (no_host_rewrite && !req_authority.empty()) {
-    authority = req_authority.c_str();
+  if (no_host_rewrite && !req.authority.empty()) {
+    authority = req.authority.c_str();
   }
 
   downstream_->set_request_downstream_host(authority);
-
-  auto nheader = downstream_->get_request_headers().size();
 
   size_t num_cookies = 0;
   if (!get_config()->http2_no_cookie_crumbling) {
@@ -289,34 +288,30 @@ int Http2DownstreamConnection::push_request_headers() {
   // 7. x-forwarded-proto (optional)
   // 8. te (optional)
   auto nva = std::vector<nghttp2_nv>();
-  nva.reserve(nheader + 8 + num_cookies +
+  nva.reserve(req.fs.headers().size() + 8 + num_cookies +
               get_config()->add_request_headers.size());
 
   nva.push_back(
-      http2::make_nv_lc_nocopy(":method", http2::to_method_string(method)));
-
-  auto &scheme = downstream_->get_request_http2_scheme();
+      http2::make_nv_lc_nocopy(":method", http2::to_method_string(req.method)));
 
   nva.push_back(http2::make_nv_lc_nocopy(":authority", authority));
 
-  if (method != HTTP_CONNECT) {
-    assert(!scheme.empty());
+  if (req.method != HTTP_CONNECT) {
+    assert(!req.scheme.empty());
 
-    nva.push_back(http2::make_nv_ls_nocopy(":scheme", scheme));
+    nva.push_back(http2::make_nv_ls_nocopy(":scheme", req.scheme));
 
-    auto &path = downstream_->get_request_path();
-    if (method == HTTP_OPTIONS && path.empty()) {
+    if (req.method == HTTP_OPTIONS && req.path.empty()) {
       nva.push_back(http2::make_nv_ll(":path", "*"));
     } else {
-      nva.push_back(http2::make_nv_ls_nocopy(":path", path));
+      nva.push_back(http2::make_nv_ls_nocopy(":path", req.path));
     }
   }
 
-  http2::copy_headers_to_nva_nocopy(nva, downstream_->get_request_headers());
+  http2::copy_headers_to_nva_nocopy(nva, req.fs.headers());
 
   bool chunked_encoding = false;
-  auto transfer_encoding =
-      downstream_->get_request_header(http2::HD_TRANSFER_ENCODING);
+  auto transfer_encoding = req.fs.header(http2::HD_TRANSFER_ENCODING);
   if (transfer_encoding &&
       util::strieq_l("chunked", (*transfer_encoding).value)) {
     chunked_encoding = true;
@@ -327,7 +322,7 @@ int Http2DownstreamConnection::push_request_headers() {
   }
 
   std::string xff_value;
-  auto xff = downstream_->get_request_header(http2::HD_X_FORWARDED_FOR);
+  auto xff = req.fs.header(http2::HD_X_FORWARDED_FOR);
   if (get_config()->add_x_forwarded_for) {
     if (xff && !get_config()->strip_incoming_x_forwarded_for) {
       xff_value = (*xff).value;
@@ -341,13 +336,13 @@ int Http2DownstreamConnection::push_request_headers() {
   }
 
   if (!get_config()->http2_proxy && !get_config()->client_proxy &&
-      downstream_->get_request_method() != HTTP_CONNECT) {
+      req.method != HTTP_CONNECT) {
     // We use same protocol with :scheme header field
-    nva.push_back(http2::make_nv_ls_nocopy("x-forwarded-proto", scheme));
+    nva.push_back(http2::make_nv_ls_nocopy("x-forwarded-proto", req.scheme));
   }
 
   std::string via_value;
-  auto via = downstream_->get_request_header(http2::HD_VIA);
+  auto via = req.fs.header(http2::HD_VIA);
   if (get_config()->no_via) {
     if (via) {
       nva.push_back(http2::make_nv_ls_nocopy("via", (*via).value));
@@ -357,12 +352,11 @@ int Http2DownstreamConnection::push_request_headers() {
       via_value = (*via).value;
       via_value += ", ";
     }
-    via_value += http::create_via_header_value(
-        downstream_->get_request_major(), downstream_->get_request_minor());
+    via_value += http::create_via_header_value(req.http_major, req.http_minor);
     nva.push_back(http2::make_nv_ls("via", via_value));
   }
 
-  auto te = downstream_->get_request_header(http2::HD_TE);
+  auto te = req.fs.header(http2::HD_TE);
   // HTTP/1 upstream request can contain keyword other than
   // "trailers".  We just forward "trailers".
   // TODO more strict handling required here.
@@ -382,12 +376,11 @@ int Http2DownstreamConnection::push_request_headers() {
     DCLOG(INFO, this) << "HTTP request headers\n" << ss.str();
   }
 
-  auto content_length =
-      downstream_->get_request_header(http2::HD_CONTENT_LENGTH);
+  auto content_length = req.fs.header(http2::HD_CONTENT_LENGTH);
   // TODO check content-length: 0 case
 
-  if (downstream_->get_request_method() == HTTP_CONNECT || chunked_encoding ||
-      content_length || downstream_->get_request_http2_expect_body()) {
+  if (req.method == HTTP_CONNECT || chunked_encoding || content_length ||
+      req.http2_expect_body) {
     // Request-body is expected.
     nghttp2_data_provider data_prd;
     data_prd.source.ptr = this;

@@ -220,6 +220,11 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
 
   auto downstream = lgsp.downstream;
 
+  const Request *req = nullptr;
+  if (downstream) {
+    req = &downstream->request();
+  }
+
   auto p = buf;
   auto avail = sizeof(buf) - 2;
 
@@ -259,8 +264,8 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       std::tie(p, avail) = copy(util::utos(lgsp.body_bytes_sent), avail, p);
       break;
     case SHRPX_LOGF_HTTP:
-      if (downstream) {
-        auto hd = downstream->get_request_header(lf.value.get());
+      if (req) {
+        auto hd = req->fs.header(lf.value.get());
         if (hd) {
           std::tie(p, avail) = copy((*hd).value, avail, p);
           break;
@@ -271,10 +276,9 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
 
       break;
     case SHRPX_LOGF_AUTHORITY:
-      if (downstream) {
-        auto &authority = downstream->get_request_http2_authority();
-        if (!authority.empty()) {
-          std::tie(p, avail) = copy(authority, avail, p);
+      if (req) {
+        if (!req->authority.empty()) {
+          std::tie(p, avail) = copy(req->authority, avail, p);
           break;
         }
       }

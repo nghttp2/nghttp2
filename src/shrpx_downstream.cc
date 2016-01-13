@@ -117,22 +117,17 @@ Downstream::Downstream(Upstream *upstream, MemchunkPool *mcpool,
       request_start_time_(std::chrono::high_resolution_clock::now()),
       request_buf_(mcpool), response_buf_(mcpool), request_bodylen_(0),
       response_bodylen_(0), response_sent_bodylen_(0),
-      request_content_length_(-1), response_content_length_(-1),
-      upstream_(upstream), blocked_link_(nullptr), request_headers_sum_(0),
+      response_content_length_(-1), upstream_(upstream), blocked_link_(nullptr),
       response_headers_sum_(0), request_datalen_(0), response_datalen_(0),
       num_retry_(0), stream_id_(stream_id), priority_(priority),
       downstream_stream_id_(-1),
-      response_rst_stream_error_code_(NGHTTP2_NO_ERROR), request_method_(-1),
-      request_state_(INITIAL), request_major_(1), request_minor_(1),
-      response_state_(INITIAL), response_http_status_(0), response_major_(1),
-      response_minor_(1), dispatch_state_(DISPATCH_NONE),
-      upgrade_request_(false), upgraded_(false), http2_upgrade_seen_(false),
-      chunked_request_(false), request_connection_close_(false),
-      request_header_key_prev_(false), request_trailer_key_prev_(false),
-      request_http2_expect_body_(false), chunked_response_(false),
-      response_connection_close_(false), response_header_key_prev_(false),
-      response_trailer_key_prev_(false), expect_final_response_(false),
-      request_pending_(false) {
+      response_rst_stream_error_code_(NGHTTP2_NO_ERROR),
+      request_state_(INITIAL), response_state_(INITIAL),
+      response_http_status_(0), response_major_(1), response_minor_(1),
+      dispatch_state_(DISPATCH_NONE), upgraded_(false), chunked_request_(false),
+      chunked_response_(false), response_connection_close_(false),
+      response_header_key_prev_(false), response_trailer_key_prev_(false),
+      expect_final_response_(false), request_pending_(false) {
 
   ev_timer_init(&upstream_rtimer_, &upstream_rtimeoutcb, 0.,
                 get_config()->stream_read_timeout);
@@ -148,10 +143,8 @@ Downstream::Downstream(Upstream *upstream, MemchunkPool *mcpool,
   downstream_rtimer_.data = this;
   downstream_wtimer_.data = this;
 
-  http2::init_hdidx(request_hdidx_);
   http2::init_hdidx(response_hdidx_);
 
-  request_headers_.reserve(16);
   response_headers_.reserve(32);
 }
 
@@ -252,16 +245,10 @@ const Headers::value_type *get_header_linear(const Headers &headers,
 }
 } // namespace
 
-const Headers &Downstream::get_request_headers() const {
-  return request_headers_;
-}
-
-Headers &Downstream::get_request_headers() { return request_headers_; }
-
 void Downstream::assemble_request_cookie() {
   std::string &cookie = assembled_request_cookie_;
   cookie = "";
-  for (auto &kv : request_headers_) {
+  for (auto &kv : req_.fs.headers()) {
     if (kv.name.size() != 6 || kv.name[5] != 'e' ||
         !util::streq_l("cooki", kv.name.c_str(), 5)) {
       continue;
@@ -282,7 +269,7 @@ void Downstream::assemble_request_cookie() {
 
 size_t Downstream::count_crumble_request_cookie() {
   size_t n = 0;
-  for (auto &kv : request_headers_) {
+  for (auto &kv : req_.fs.headers()) {
     if (kv.name.size() != 6 || kv.name[5] != 'e' ||
         !util::streq_l("cooki", kv.name.c_str(), 5)) {
       continue;
@@ -307,7 +294,7 @@ size_t Downstream::count_crumble_request_cookie() {
 }
 
 void Downstream::crumble_request_cookie(std::vector<nghttp2_nv> &nva) {
-  for (auto &kv : request_headers_) {
+  for (auto &kv : req_.fs.headers()) {
     if (kv.name.size() != 6 || kv.name[5] != 'e' ||
         !util::streq_l("cooki", kv.name.c_str(), 5)) {
       continue;
@@ -424,122 +411,112 @@ int index_headers(http2::HeaderIndex &hdidx, Headers &headers,
 }
 } // namespace
 
-int Downstream::index_request_headers() {
-  return index_headers(request_hdidx_, request_headers_,
-                       request_content_length_);
+int FieldStore::index_headers() {
+  http2::init_hdidx(hdidx_);
+  content_length = -1;
+
+  for (size_t i = 0; i < headers_.size(); ++i) {
+    auto &kv = headers_[i];
+    util::inp_strlower(kv.name);
+
+    auto token = http2::lookup_token(
+        reinterpret_cast<const uint8_t *>(kv.name.c_str()), kv.name.size());
+    if (token < 0) {
+      continue;
+    }
+
+    kv.token = token;
+    http2::index_header(hdidx_, token, i);
+
+    if (token == http2::HD_CONTENT_LENGTH) {
+      auto len = util::parse_uint(kv.value);
+      if (len == -1) {
+        return -1;
+      }
+      if (content_length != -1) {
+        return -1;
+      }
+      content_length = len;
+    }
+  }
+  return 0;
 }
 
-const Headers::value_type *Downstream::get_request_header(int16_t token) const {
-  return http2::get_header(request_hdidx_, token, request_headers_);
+const Headers::value_type *FieldStore::header(int16_t token) const {
+  return http2::get_header(hdidx_, token, headers_);
 }
 
-const Headers::value_type *
-Downstream::get_request_header(const std::string &name) const {
-  return get_header_linear(request_headers_, name);
+const Headers::value_type *FieldStore::header(const std::string &name) const {
+  return get_header_linear(headers_, name);
 }
 
-void Downstream::add_request_header(std::string name, std::string value) {
-  add_header(request_header_key_prev_, request_headers_sum_, request_headers_,
-             std::move(name), std::move(value));
+void FieldStore::add_header(std::string name, std::string value) {
+  shrpx::add_header(header_key_prev_, buffer_size_, headers_, std::move(name),
+                    std::move(value));
 }
 
-void Downstream::set_last_request_header_value(const char *data, size_t len) {
-  set_last_header_value(request_header_key_prev_, request_headers_sum_,
-                        request_headers_, data, len);
+void FieldStore::set_last_header_value(const char *data, size_t len) {
+  shrpx::set_last_header_value(header_key_prev_, buffer_size_, headers_, data,
+                               len);
 }
 
-void Downstream::add_request_header(std::string name, std::string value,
-                                    int16_t token) {
-  http2::index_header(request_hdidx_, token, request_headers_.size());
-  request_headers_sum_ += name.size() + value.size();
-  request_headers_.emplace_back(std::move(name), std::move(value), false,
-                                token);
+void FieldStore::add_header(std::string name, std::string value,
+                            int16_t token) {
+  http2::index_header(hdidx_, token, headers_.size());
+  buffer_size_ += name.size() + value.size();
+  headers_.emplace_back(std::move(name), std::move(value), false, token);
 }
 
-void Downstream::add_request_header(const uint8_t *name, size_t namelen,
-                                    const uint8_t *value, size_t valuelen,
-                                    bool no_index, int16_t token) {
-  http2::index_header(request_hdidx_, token, request_headers_.size());
-  add_header(request_headers_sum_, request_headers_, name, namelen, value,
-             valuelen, no_index, token);
+void FieldStore::add_header(const uint8_t *name, size_t namelen,
+                            const uint8_t *value, size_t valuelen,
+                            bool no_index, int16_t token) {
+  http2::index_header(hdidx_, token, headers_.size());
+  shrpx::add_header(buffer_size_, headers_, name, namelen, value, valuelen,
+                    no_index, token);
 }
 
-bool Downstream::get_request_header_key_prev() const {
-  return request_header_key_prev_;
+void FieldStore::append_last_header_key(const char *data, size_t len) {
+  shrpx::append_last_header_key(header_key_prev_, buffer_size_, headers_, data,
+                                len);
 }
 
-void Downstream::append_last_request_header_key(const char *data, size_t len) {
-  append_last_header_key(request_header_key_prev_, request_headers_sum_,
-                         request_headers_, data, len);
+void FieldStore::append_last_header_value(const char *data, size_t len) {
+  shrpx::append_last_header_value(header_key_prev_, buffer_size_, headers_,
+                                  data, len);
 }
 
-void Downstream::append_last_request_header_value(const char *data,
-                                                  size_t len) {
-  append_last_header_value(request_header_key_prev_, request_headers_sum_,
-                           request_headers_, data, len);
+void FieldStore::clear_headers() {
+  headers_.clear();
+  http2::init_hdidx(hdidx_);
 }
 
-void Downstream::clear_request_headers() {
-  Headers().swap(request_headers_);
-  http2::init_hdidx(request_hdidx_);
+void FieldStore::add_trailer(const uint8_t *name, size_t namelen,
+                             const uint8_t *value, size_t valuelen,
+                             bool no_index, int16_t token) {
+  // we never index trailer fields.  Header size limit should be
+  // applied to all header and trailer fields combined.
+  shrpx::add_header(buffer_size_, trailers_, name, namelen, value, valuelen,
+                    no_index, -1);
 }
 
-size_t Downstream::get_request_headers_sum() const {
-  return request_headers_sum_;
+void FieldStore::add_trailer(std::string name, std::string value) {
+  shrpx::add_header(trailer_key_prev_, buffer_size_, trailers_, std::move(name),
+                    std::move(value));
 }
 
-void Downstream::add_request_trailer(const uint8_t *name, size_t namelen,
-                                     const uint8_t *value, size_t valuelen,
-                                     bool no_index, int16_t token) {
-  // we never index trailer part.  Header size limit should be applied
-  // to all request header fields combined.
-  add_header(request_headers_sum_, request_trailers_, name, namelen, value,
-             valuelen, no_index, -1);
+void FieldStore::set_last_trailer_value(const char *data, size_t len) {
+  shrpx::set_last_header_value(trailer_key_prev_, buffer_size_, trailers_, data,
+                               len);
 }
 
-const Headers &Downstream::get_request_trailers() const {
-  return request_trailers_;
+void FieldStore::append_last_trailer_key(const char *data, size_t len) {
+  shrpx::append_last_header_key(trailer_key_prev_, buffer_size_, trailers_,
+                                data, len);
 }
 
-void Downstream::add_request_trailer(std::string name, std::string value) {
-  add_header(request_trailer_key_prev_, request_headers_sum_, request_trailers_,
-             std::move(name), std::move(value));
-}
-
-void Downstream::set_last_request_trailer_value(const char *data, size_t len) {
-  set_last_header_value(request_trailer_key_prev_, request_headers_sum_,
-                        request_trailers_, data, len);
-}
-
-bool Downstream::get_request_trailer_key_prev() const {
-  return request_trailer_key_prev_;
-}
-
-void Downstream::append_last_request_trailer_key(const char *data, size_t len) {
-  append_last_header_key(request_trailer_key_prev_, request_headers_sum_,
-                         request_trailers_, data, len);
-}
-
-void Downstream::append_last_request_trailer_value(const char *data,
-                                                   size_t len) {
-  append_last_header_value(request_trailer_key_prev_, request_headers_sum_,
-                           request_trailers_, data, len);
-}
-
-void Downstream::set_request_method(int method) { request_method_ = method; }
-
-int Downstream::get_request_method() const { return request_method_; }
-
-void Downstream::set_request_path(std::string path) {
-  request_path_ = std::move(path);
-}
-
-void Downstream::append_request_path(const char *data, size_t len) {
-  request_path_.append(data, len);
-}
-
-const std::string &Downstream::get_request_path() const {
-  return request_path_;
+void FieldStore::append_last_trailer_value(const char *data, size_t len) {
+  shrpx::append_last_header_value(trailer_key_prev_, buffer_size_, trailers_,
+                                  data, len);
 }
 
 void Downstream::set_request_start_time(
@@ -551,34 +528,6 @@ const std::chrono::high_resolution_clock::time_point &
 Downstream::get_request_start_time() const {
   return request_start_time_;
 }
-
-const std::string &Downstream::get_request_http2_scheme() const {
-  return request_http2_scheme_;
-}
-
-void Downstream::set_request_http2_scheme(std::string scheme) {
-  request_http2_scheme_ = std::move(scheme);
-}
-
-const std::string &Downstream::get_request_http2_authority() const {
-  return request_http2_authority_;
-}
-
-void Downstream::set_request_http2_authority(std::string authority) {
-  request_http2_authority_ = std::move(authority);
-}
-
-void Downstream::append_request_http2_authority(const char *data, size_t len) {
-  request_http2_authority_.append(data, len);
-}
-
-void Downstream::set_request_major(int major) { request_major_ = major; }
-
-void Downstream::set_request_minor(int minor) { request_minor_ = minor; }
-
-int Downstream::get_request_major() const { return request_major_; }
-
-int Downstream::get_request_minor() const { return request_minor_; }
 
 void Downstream::reset_upstream(Upstream *upstream) {
   upstream_ = upstream;
@@ -600,22 +549,6 @@ int Downstream::get_request_state() const { return request_state_; }
 bool Downstream::get_chunked_request() const { return chunked_request_; }
 
 void Downstream::set_chunked_request(bool f) { chunked_request_ = f; }
-
-bool Downstream::get_request_connection_close() const {
-  return request_connection_close_;
-}
-
-void Downstream::set_request_connection_close(bool f) {
-  request_connection_close_ = f;
-}
-
-bool Downstream::get_request_http2_expect_body() const {
-  return request_http2_expect_body_;
-}
-
-void Downstream::set_request_http2_expect_body(bool f) {
-  request_http2_expect_body_ = f;
-}
 
 bool Downstream::request_buf_full() {
   if (dconn_) {
@@ -696,14 +629,13 @@ void Downstream::rewrite_location_response_header(
     return;
   }
   std::string new_uri;
-  if (get_config()->no_host_rewrite || request_method_ == HTTP_CONNECT) {
-    if (!request_http2_authority_.empty()) {
-      new_uri = http2::rewrite_location_uri(
-          (*hd).value, u, request_http2_authority_, request_http2_authority_,
-          upstream_scheme);
+  if (get_config()->no_host_rewrite || req_.method == HTTP_CONNECT) {
+    if (!req_.authority.empty()) {
+      new_uri = http2::rewrite_location_uri((*hd).value, u, req_.authority,
+                                            req_.authority, upstream_scheme);
     }
     if (new_uri.empty()) {
-      auto host = get_request_header(http2::HD_HOST);
+      auto host = req_.fs.header(http2::HD_HOST);
       if (host) {
         new_uri = http2::rewrite_location_uri((*hd).value, u, (*host).value,
                                               (*host).value, upstream_scheme);
@@ -718,12 +650,12 @@ void Downstream::rewrite_location_response_header(
     if (request_downstream_host_.empty()) {
       return;
     }
-    if (!request_http2_authority_.empty()) {
-      new_uri = http2::rewrite_location_uri(
-          (*hd).value, u, request_downstream_host_, request_http2_authority_,
-          upstream_scheme);
+    if (!req_.authority.empty()) {
+      new_uri =
+          http2::rewrite_location_uri((*hd).value, u, request_downstream_host_,
+                                      req_.authority, upstream_scheme);
     } else {
-      auto host = get_request_header(http2::HD_HOST);
+      auto host = req_.fs.header(http2::HD_HOST);
       if (host) {
         new_uri = http2::rewrite_location_uri((*hd).value, u,
                                               request_downstream_host_,
@@ -912,23 +844,15 @@ void Downstream::set_response_content_length(int64_t len) {
   response_content_length_ = len;
 }
 
-int64_t Downstream::get_request_content_length() const {
-  return request_content_length_;
-}
-
-void Downstream::set_request_content_length(int64_t len) {
-  request_content_length_ = len;
-}
-
 bool Downstream::validate_request_bodylen() const {
-  if (request_content_length_ == -1) {
+  if (req_.fs.content_length == -1) {
     return true;
   }
 
-  if (request_content_length_ != request_bodylen_) {
+  if (req_.fs.content_length != request_bodylen_) {
     if (LOG_ENABLED(INFO)) {
       DLOG(INFO, this) << "request invalid bodylen: content-length="
-                       << request_content_length_
+                       << req_.fs.content_length
                        << ", received=" << request_bodylen_;
     }
     return false;
@@ -959,7 +883,7 @@ void Downstream::set_priority(int32_t pri) { priority_ = pri; }
 int32_t Downstream::get_priority() const { return priority_; }
 
 void Downstream::check_upgrade_fulfilled() {
-  if (request_method_ == HTTP_CONNECT) {
+  if (req_.method == HTTP_CONNECT) {
     upgraded_ = 200 <= response_http_status_ && response_http_status_ < 300;
 
     return;
@@ -967,40 +891,40 @@ void Downstream::check_upgrade_fulfilled() {
 
   if (response_http_status_ == 101) {
     // TODO Do more strict checking for upgrade headers
-    upgraded_ = upgrade_request_;
+    upgraded_ = req_.upgrade_request;
 
     return;
   }
 }
 
 void Downstream::inspect_http2_request() {
-  if (request_method_ == HTTP_CONNECT) {
-    upgrade_request_ = true;
+  if (req_.method == HTTP_CONNECT) {
+    req_.upgrade_request = true;
   }
 }
 
 void Downstream::inspect_http1_request() {
-  if (request_method_ == HTTP_CONNECT) {
-    upgrade_request_ = true;
+  if (req_.method == HTTP_CONNECT) {
+    req_.upgrade_request = true;
   }
 
-  if (!upgrade_request_) {
-    auto idx = request_hdidx_[http2::HD_UPGRADE];
-    if (idx != -1) {
-      auto &val = request_headers_[idx].value;
+  if (!req_.upgrade_request) {
+    auto upgrade = req_.fs.header(http2::HD_UPGRADE);
+    if (upgrade) {
+      const auto &val = upgrade->value;
       // TODO Perform more strict checking for upgrade headers
       if (util::streq_l(NGHTTP2_CLEARTEXT_PROTO_VERSION_ID, val.c_str(),
                         val.size())) {
-        http2_upgrade_seen_ = true;
+        req_.http2_upgrade_seen = true;
       } else {
-        upgrade_request_ = true;
+        req_.upgrade_request = true;
       }
     }
   }
-  auto idx = request_hdidx_[http2::HD_TRANSFER_ENCODING];
-  if (idx != -1) {
-    request_content_length_ = -1;
-    if (util::strifind(request_headers_[idx].value.c_str(), "chunked")) {
+  auto transfer_encoding = req_.fs.header(http2::HD_TRANSFER_ENCODING);
+  if (transfer_encoding) {
+    req_.fs.content_length = -1;
+    if (util::strifind(transfer_encoding->value.c_str(), "chunked")) {
       chunked_request_ = true;
     }
   }
@@ -1028,11 +952,8 @@ bool Downstream::get_non_final_response() const {
 
 bool Downstream::get_upgraded() const { return upgraded_; }
 
-bool Downstream::get_upgrade_request() const { return upgrade_request_; }
-
 bool Downstream::get_http2_upgrade_request() const {
-  return http2_upgrade_seen_ &&
-         request_hdidx_[http2::HD_HTTP2_SETTINGS] != -1 &&
+  return req_.http2_upgrade_seen && req_.fs.header(http2::HD_HTTP2_SETTINGS) &&
          response_state_ == INITIAL;
 }
 
@@ -1041,11 +962,11 @@ const std::string EMPTY;
 } // namespace
 
 const std::string &Downstream::get_http2_settings() const {
-  auto idx = request_hdidx_[http2::HD_HTTP2_SETTINGS];
-  if (idx == -1) {
+  auto http2_settings = req_.fs.header(http2::HD_HTTP2_SETTINGS);
+  if (!http2_settings) {
     return EMPTY;
   }
-  return request_headers_[idx].value;
+  return http2_settings->value;
 }
 
 void Downstream::set_downstream_stream_id(int32_t stream_id) {
@@ -1093,7 +1014,7 @@ size_t Downstream::get_response_datalen() const { return response_datalen_; }
 void Downstream::reset_response_datalen() { response_datalen_ = 0; }
 
 bool Downstream::expect_response_body() const {
-  return http2::expect_response_body(request_method_, response_http_status_);
+  return http2::expect_response_body(req_.method, response_http_status_);
 }
 
 namespace {
@@ -1105,13 +1026,6 @@ bool pseudo_header_allowed(const Headers &headers) {
   return headers.back().name.c_str()[0] == ':';
 }
 } // namespace
-
-bool Downstream::request_pseudo_header_allowed(int16_t token) const {
-  if (!pseudo_header_allowed(request_headers_)) {
-    return false;
-  }
-  return http2::check_http2_request_pseudo_header(request_hdidx_, token);
-}
 
 bool Downstream::response_pseudo_header_allowed(int16_t token) const {
   if (!pseudo_header_allowed(response_headers_)) {
@@ -1267,10 +1181,6 @@ BlockedLink *Downstream::detach_blocked_link() {
   auto link = blocked_link_;
   blocked_link_ = nullptr;
   return link;
-}
-
-void Downstream::add_request_headers_sum(size_t amount) {
-  request_headers_sum_ += amount;
 }
 
 bool Downstream::can_detach_downstream_connection() const {

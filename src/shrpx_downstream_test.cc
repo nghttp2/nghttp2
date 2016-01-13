@@ -33,16 +33,16 @@
 namespace shrpx {
 
 void test_downstream_index_request_headers(void) {
-  Downstream d(nullptr, nullptr, 0, 0);
-  d.add_request_header("1", "0");
-  d.add_request_header("2", "1");
-  d.add_request_header("Charlie", "2");
-  d.add_request_header("Alpha", "3");
-  d.add_request_header("Delta", "4");
-  d.add_request_header("BravO", "5");
-  d.add_request_header(":method", "6");
-  d.add_request_header(":authority", "7");
-  d.index_request_headers();
+  Request req;
+  req.fs.add_header("1", "0");
+  req.fs.add_header("2", "1");
+  req.fs.add_header("Charlie", "2");
+  req.fs.add_header("Alpha", "3");
+  req.fs.add_header("Delta", "4");
+  req.fs.add_header("BravO", "5");
+  req.fs.add_header(":method", "6");
+  req.fs.add_header(":authority", "7");
+  req.fs.index_headers();
 
   auto ans = Headers{{"1", "0"},
                      {"2", "1"},
@@ -52,7 +52,7 @@ void test_downstream_index_request_headers(void) {
                      {"bravo", "5"},
                      {":method", "6"},
                      {":authority", "7"}};
-  CU_ASSERT(ans == d.get_request_headers());
+  CU_ASSERT(ans == req.fs.headers());
 }
 
 void test_downstream_index_response_headers(void) {
@@ -69,20 +69,19 @@ void test_downstream_index_response_headers(void) {
 }
 
 void test_downstream_get_request_header(void) {
-  Downstream d(nullptr, nullptr, 0, 0);
-  d.add_request_header("alpha", "0");
-  d.add_request_header(":authority", "1");
-  d.add_request_header("content-length", "2");
-  d.index_request_headers();
+  Request req;
+  req.fs.add_header("alpha", "0");
+  req.fs.add_header(":authority", "1");
+  req.fs.add_header("content-length", "2");
+  req.fs.index_headers();
 
   // By token
-  CU_ASSERT(Header(":authority", "1") ==
-            *d.get_request_header(http2::HD__AUTHORITY));
-  CU_ASSERT(nullptr == d.get_request_header(http2::HD__METHOD));
+  CU_ASSERT(Header(":authority", "1") == *req.fs.header(http2::HD__AUTHORITY));
+  CU_ASSERT(nullptr == req.fs.header(http2::HD__METHOD));
 
   // By name
-  CU_ASSERT(Header("alpha", "0") == *d.get_request_header("alpha"));
-  CU_ASSERT(nullptr == d.get_request_header("bravo"));
+  CU_ASSERT(Header("alpha", "0") == *req.fs.header("alpha"));
+  CU_ASSERT(nullptr == req.fs.header("bravo"));
 }
 
 void test_downstream_get_response_header(void) {
@@ -100,14 +99,15 @@ void test_downstream_get_response_header(void) {
 
 void test_downstream_crumble_request_cookie(void) {
   Downstream d(nullptr, nullptr, 0, 0);
-  d.add_request_header(":method", "get");
-  d.add_request_header(":path", "/");
+  auto &req = d.request();
+  req.fs.add_header(":method", "get");
+  req.fs.add_header(":path", "/");
   auto val = "alpha; bravo; ; ;; charlie;;";
-  d.add_request_header(
+  req.fs.add_header(
       reinterpret_cast<const uint8_t *>("cookie"), sizeof("cookie") - 1,
       reinterpret_cast<const uint8_t *>(val), strlen(val), true, -1);
-  d.add_request_header("cookie", ";delta");
-  d.add_request_header("cookie", "echo");
+  req.fs.add_header("cookie", ";delta");
+  req.fs.add_header("cookie", "echo");
 
   std::vector<nghttp2_nv> nva;
   d.crumble_request_cookie(nva);
@@ -139,12 +139,13 @@ void test_downstream_crumble_request_cookie(void) {
 
 void test_downstream_assemble_request_cookie(void) {
   Downstream d(nullptr, nullptr, 0, 0);
-  d.add_request_header(":method", "get");
-  d.add_request_header(":path", "/");
-  d.add_request_header("cookie", "alpha");
-  d.add_request_header("cookie", "bravo;");
-  d.add_request_header("cookie", "charlie; ");
-  d.add_request_header("cookie", "delta;;");
+  auto &req = d.request();
+  req.fs.add_header(":method", "get");
+  req.fs.add_header(":path", "/");
+  req.fs.add_header("cookie", "alpha");
+  req.fs.add_header("cookie", "bravo;");
+  req.fs.add_header("cookie", "charlie; ");
+  req.fs.add_header("cookie", "delta;;");
   d.assemble_request_cookie();
   CU_ASSERT("alpha; bravo; charlie; delta" == d.get_assembled_request_cookie());
 }
@@ -152,10 +153,11 @@ void test_downstream_assemble_request_cookie(void) {
 void test_downstream_rewrite_location_response_header(void) {
   {
     Downstream d(nullptr, nullptr, 0, 0);
+    auto &req = d.request();
     d.set_request_downstream_host("localhost:3000");
-    d.add_request_header("host", "localhost");
+    req.fs.add_header("host", "localhost");
     d.add_response_header("location", "http://localhost:3000/");
-    d.index_request_headers();
+    req.fs.index_headers();
     d.index_response_headers();
     d.rewrite_location_response_header("https");
     auto location = d.get_response_header(http2::HD_LOCATION);
@@ -163,8 +165,9 @@ void test_downstream_rewrite_location_response_header(void) {
   }
   {
     Downstream d(nullptr, nullptr, 0, 0);
+    auto &req = d.request();
     d.set_request_downstream_host("localhost");
-    d.set_request_http2_authority("localhost");
+    req.authority = "localhost";
     d.add_response_header("location", "http://localhost:3000/");
     d.index_response_headers();
     d.rewrite_location_response_header("https");

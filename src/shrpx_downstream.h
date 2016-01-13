@@ -49,6 +49,116 @@ class Upstream;
 class DownstreamConnection;
 struct BlockedLink;
 
+class FieldStore {
+public:
+  FieldStore(size_t headers_initial_capacity)
+      : content_length(-1), buffer_size_(0), header_key_prev_(false),
+        trailer_key_prev_(false) {
+    http2::init_hdidx(hdidx_);
+    headers_.reserve(headers_initial_capacity);
+  }
+
+  const Headers &headers() const { return headers_; }
+  const Headers &trailers() const { return trailers_; }
+
+  Headers &headers() { return headers_; }
+
+  const void add_extra_buffer_size(size_t n) { buffer_size_ += n; }
+  size_t buffer_size() const { return buffer_size_; }
+
+  size_t num_fields() const { return headers_.size() + trailers_.size(); }
+
+  // Returns pointer to the header field with the name |name|.  If
+  // multiple header have |name| as name, return last occurrence from
+  // the beginning.  If no such header is found, returns nullptr.
+  // This function must be called after headers are indexed
+  const Headers::value_type *header(int16_t token) const;
+  // Returns pointer to the header field with the name |name|.  If no
+  // such header is found, returns nullptr.
+  const Headers::value_type *header(const std::string &name) const;
+
+  void add_header(std::string name, std::string value);
+  void add_header(std::string name, std::string value, int16_t token);
+  void add_header(const uint8_t *name, size_t namelen, const uint8_t *value,
+                  size_t valuelen, bool no_index, int16_t token);
+
+  void append_last_header_key(const char *data, size_t len);
+  void append_last_header_value(const char *data, size_t len);
+  void set_last_header_value(const char *data, size_t len);
+
+  bool header_key_prev() const { return header_key_prev_; }
+
+  // Lower the header field names and indexes header fields.  If there
+  // is any invalid headers (e.g., multiple Content-Length having
+  // different values), returns -1.
+  int index_headers();
+
+  // Empties headers.
+  void clear_headers();
+
+  void add_trailer(const uint8_t *name, size_t namelen, const uint8_t *value,
+                   size_t valuelen, bool no_index, int16_t token);
+  void add_trailer(std::string name, std::string value);
+
+  void append_last_trailer_key(const char *data, size_t len);
+  void append_last_trailer_value(const char *data, size_t len);
+
+  void set_last_trailer_value(const char *data, size_t len);
+
+  bool trailer_key_prev() const { return trailer_key_prev_; }
+
+  // content-length, -1 if it is unknown.
+  int64_t content_length;
+
+private:
+  Headers headers_;
+  // trailer fields.  For HTTP/1.1, trailer fields are only included
+  // with chunked encoding.  For HTTP/2, there is no such limit.
+  Headers trailers_;
+  http2::HeaderIndex hdidx_;
+  // Sum of the length of name and value in headers_ and trailers_.
+  // This could also be increased by add_extra_buffer_size() to take
+  // into account for request URI in case of HTTP/1.x request.
+  size_t buffer_size_;
+  bool header_key_prev_;
+  bool trailer_key_prev_;
+};
+
+struct Request {
+  Request()
+      : fs(16), method(-1), http_major(1), http_minor(1),
+        upgrade_request(false), http2_upgrade_seen(false),
+        connection_close(false), http2_expect_body(false) {}
+
+  FieldStore fs;
+  // Request scheme.  For HTTP/2, this is :scheme header field value.
+  // For HTTP/1.1, this is deduced from URI or connection.
+  std::string scheme;
+  // Request authority.  This is HTTP/2 :authority header field value
+  // or host header field value.  We may deduce it from absolute-form
+  // HTTP/1 request.  We also store authority-form HTTP/1 request.
+  // This could be empty if request comes from HTTP/1.0 without Host
+  // header field and origin-form.
+  std::string authority;
+  // Request path, including query component.  For HTTP/1.1, this is
+  // request-target.  For HTTP/2, this is :path header field value.
+  // For CONNECT request, this is empty.
+  std::string path;
+  int method;
+  // HTTP major and minor version
+  int http_major, http_minor;
+  // Returns true if the request is HTTP upgrade (HTTP Upgrade or
+  // CONNECT method).  Upgrade to HTTP/2 is excluded.  For HTTP/2
+  // Upgrade, check get_http2_upgrade_request().
+  bool upgrade_request;
+  // true if h2c is seen in Upgrade header field.
+  bool http2_upgrade_seen;
+  bool connection_close;
+  // true if this is HTTP/2, and request body is expected.  Note that
+  // we don't take into account HTTP method here.
+  bool http2_expect_body;
+};
+
 class Downstream {
 public:
   Downstream(Upstream *upstream, MemchunkPool *mcpool, int32_t stream_id,
@@ -79,9 +189,6 @@ public:
   // Returns true if upgrade (HTTP Upgrade or CONNECT) is succeeded.
   // This should not depend on inspect_http1_response().
   void check_upgrade_fulfilled();
-  // Returns true if the request is upgrade.  Upgrade to HTTP/2 is
-  // excluded.  For HTTP/2 Upgrade, check get_http2_upgrade_request().
-  bool get_upgrade_request() const;
   // Returns true if the upgrade is succeded as a result of the call
   // check_upgrade_fulfilled().  HTTP/2 Upgrade is excluded.
   bool get_upgraded() const;
@@ -94,9 +201,11 @@ public:
   bool get_http2_upgrade_request() const;
   // Returns the value of HTTP2-Settings request header field.
   const std::string &get_http2_settings() const;
+
   // downstream request API
-  const Headers &get_request_headers() const;
-  Headers &get_request_headers();
+  const Request &request() const { return req_; }
+  Request &request() { return req_; }
+
   // Count number of crumbled cookies
   size_t count_crumble_request_cookie();
   // Crumbles (split cookie by ";") in request_headers_ and adds them
@@ -104,78 +213,14 @@ public:
   void crumble_request_cookie(std::vector<nghttp2_nv> &nva);
   void assemble_request_cookie();
   const std::string &get_assembled_request_cookie() const;
-  // Lower the request header field names and indexes request headers.
-  // If there is any invalid headers (e.g., multiple Content-Length
-  // having different values), returns -1.
-  int index_request_headers();
-  // Returns pointer to the request header with the name |name|.  If
-  // multiple header have |name| as name, return last occurrence from
-  // the beginning.  If no such header is found, returns nullptr.
-  // This function must be called after headers are indexed
-  const Headers::value_type *get_request_header(int16_t token) const;
-  // Returns pointer to the request header with the name |name|.  If
-  // no such header is found, returns nullptr.
-  const Headers::value_type *get_request_header(const std::string &name) const;
-  void add_request_header(std::string name, std::string value);
-  void set_last_request_header_value(const char *data, size_t len);
 
-  void add_request_header(std::string name, std::string value, int16_t token);
-  void add_request_header(const uint8_t *name, size_t namelen,
-                          const uint8_t *value, size_t valuelen, bool no_index,
-                          int16_t token);
-
-  bool get_request_header_key_prev() const;
-  void append_last_request_header_key(const char *data, size_t len);
-  void append_last_request_header_value(const char *data, size_t len);
-  // Empties request headers.
-  void clear_request_headers();
-
-  size_t get_request_headers_sum() const;
-
-  const Headers &get_request_trailers() const;
-  void add_request_trailer(const uint8_t *name, size_t namelen,
-                           const uint8_t *value, size_t valuelen, bool no_index,
-                           int16_t token);
-  void add_request_trailer(std::string name, std::string value);
-  void set_last_request_trailer_value(const char *data, size_t len);
-  bool get_request_trailer_key_prev() const;
-  void append_last_request_trailer_key(const char *data, size_t len);
-  void append_last_request_trailer_value(const char *data, size_t len);
-
-  void set_request_method(int method);
-  int get_request_method() const;
-  void set_request_path(std::string path);
-  void add_request_headers_sum(size_t amount);
   void
   set_request_start_time(std::chrono::high_resolution_clock::time_point time);
   const std::chrono::high_resolution_clock::time_point &
   get_request_start_time() const;
-  void append_request_path(const char *data, size_t len);
-  // Returns request path. For HTTP/1.1, this is request-target. For
-  // HTTP/2, this is :path header field value.  For CONNECT request,
-  // this is empty.
-  const std::string &get_request_path() const;
-  // Returns HTTP/2 :scheme header field value.
-  const std::string &get_request_http2_scheme() const;
-  void set_request_http2_scheme(std::string scheme);
-  // Returns :authority or host header field value.  We may deduce it
-  // from absolute-form HTTP/1 request.  We also store authority-form
-  // HTTP/1 request.  This could be empty if request comes from
-  // HTTP/1.0 without Host header field and origin-form.
-  const std::string &get_request_http2_authority() const;
-  void set_request_http2_authority(std::string authority);
-  void append_request_http2_authority(const char *data, size_t len);
-  void set_request_major(int major);
-  void set_request_minor(int minor);
-  int get_request_major() const;
-  int get_request_minor() const;
   int push_request_headers();
   bool get_chunked_request() const;
   void set_chunked_request(bool f);
-  bool get_request_connection_close() const;
-  void set_request_connection_close(bool f);
-  bool get_request_http2_expect_body() const;
-  void set_request_http2_expect_body(bool f);
   int push_upload_data_chunk(const uint8_t *data, size_t datalen);
   int end_upload_data();
   size_t get_request_datalen() const;
@@ -184,9 +229,6 @@ public:
   // Validates that received request body length and content-length
   // matches.
   bool validate_request_bodylen() const;
-  int64_t get_request_content_length() const;
-  void set_request_content_length(int64_t len);
-  bool request_pseudo_header_allowed(int16_t token) const;
   void set_request_downstream_host(std::string host);
   bool expect_response_body() const;
   enum {
@@ -362,19 +404,16 @@ public:
   Downstream *dlnext, *dlprev;
 
 private:
-  Headers request_headers_;
+  Request req_;
+
   Headers response_headers_;
 
   // trailer part.  For HTTP/1.1, trailer part is only included with
   // chunked encoding.  For HTTP/2, there is no such limit.
-  Headers request_trailers_;
   Headers response_trailers_;
 
   std::chrono::high_resolution_clock::time_point request_start_time_;
 
-  std::string request_path_;
-  std::string request_http2_scheme_;
-  std::string request_http2_authority_;
   // host we requested to downstream.  This is used to rewrite
   // location header field to decide the location should be rewritten
   // or not.
@@ -398,8 +437,6 @@ private:
   // the length of response body sent to upstream client
   int64_t response_sent_bodylen_;
 
-  // content-length of request body, -1 if it is unknown.
-  int64_t request_content_length_;
   // content-length of response body, -1 if it is unknown.
   int64_t response_content_length_;
 
@@ -409,7 +446,6 @@ private:
   // only used by HTTP/2 or SPDY upstream
   BlockedLink *blocked_link_;
 
-  size_t request_headers_sum_;
   size_t response_headers_sum_;
 
   // The number of bytes not consumed by the application yet.
@@ -426,10 +462,7 @@ private:
   // RST_STREAM error_code from downstream HTTP2 connection
   uint32_t response_rst_stream_error_code_;
 
-  int request_method_;
   int request_state_;
-  int request_major_;
-  int request_minor_;
 
   int response_state_;
   unsigned int response_http_status_;
@@ -439,22 +472,12 @@ private:
   // only used by HTTP/2 or SPDY upstream
   int dispatch_state_;
 
-  http2::HeaderIndex request_hdidx_;
   http2::HeaderIndex response_hdidx_;
 
-  // true if the request contains upgrade token (HTTP Upgrade or
-  // CONNECT)
-  bool upgrade_request_;
   // true if the connection is upgraded (HTTP Upgrade or CONNECT)
   bool upgraded_;
 
-  bool http2_upgrade_seen_;
-
   bool chunked_request_;
-  bool request_connection_close_;
-  bool request_header_key_prev_;
-  bool request_trailer_key_prev_;
-  bool request_http2_expect_body_;
 
   bool chunked_response_;
   bool response_connection_close_;
