@@ -629,30 +629,30 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
   auto &groups = get_config()->downstream_addr_groups;
   auto catch_all = get_config()->downstream_addr_group_catch_all;
 
+  const auto &req = downstream->request();
+
   // Fast path.  If we have one group, it must be catch-all group.
   // HTTP/2 and client proxy modes fall in this case.
   if (groups.size() == 1) {
     group = 0;
-  } else if (downstream->get_request_method() == HTTP_CONNECT) {
+  } else if (req.method == HTTP_CONNECT) {
     //  We don't know how to treat CONNECT request in host-path
     //  mapping.  It most likely appears in proxy scenario.  Since we
     //  have dealt with proxy case already, just use catch-all group.
     group = catch_all;
   } else {
     auto &router = get_config()->router;
-    if (!downstream->get_request_http2_authority().empty()) {
-      group = match_downstream_addr_group(
-          router, downstream->get_request_http2_authority(),
-          downstream->get_request_path(), groups, catch_all);
+    if (!req.authority.empty()) {
+      group = match_downstream_addr_group(router, req.authority, req.path,
+                                          groups, catch_all);
     } else {
-      auto h = downstream->get_request_header(http2::HD_HOST);
+      auto h = req.fs.header(http2::HD_HOST);
       if (h) {
-        group = match_downstream_addr_group(router, h->value,
-                                            downstream->get_request_path(),
-                                            groups, catch_all);
+        group = match_downstream_addr_group(router, h->value, req.path, groups,
+                                            catch_all);
       } else {
-        group = match_downstream_addr_group(
-            router, "", downstream->get_request_path(), groups, catch_all);
+        group = match_downstream_addr_group(router, "", req.path, groups,
+                                            catch_all);
       }
     }
   }
@@ -783,28 +783,27 @@ void ClientHandler::start_immediate_shutdown() {
 }
 
 namespace {
-// Construct absolute request URI from |downstream|, mainly to log
+// Construct absolute request URI from |Request|, mainly to log
 // request URI for proxy request (HTTP/2 proxy or client proxy).  This
 // is mostly same routine found in
 // HttpDownstreamConnection::push_request_headers(), but vastly
 // simplified since we only care about absolute URI.
-std::string construct_absolute_request_uri(Downstream *downstream) {
-  auto &authority = downstream->get_request_http2_authority();
-  if (authority.empty()) {
-    return downstream->get_request_path();
+std::string construct_absolute_request_uri(const Request &req) {
+  if (req.authority.empty()) {
+    return req.path;
   }
+
   std::string uri;
-  auto &scheme = downstream->get_request_http2_scheme();
-  if (scheme.empty()) {
+  if (req.scheme.empty()) {
     // We may have to log the request which lacks scheme (e.g.,
     // http/1.1 with origin form).
     uri += "http://";
   } else {
-    uri += scheme;
+    uri += req.scheme;
     uri += "://";
   }
-  uri += authority;
-  uri += downstream->get_request_path();
+  uri += req.authority;
+  uri += req.path;
 
   return uri;
 }
@@ -812,22 +811,20 @@ std::string construct_absolute_request_uri(Downstream *downstream) {
 
 void ClientHandler::write_accesslog(Downstream *downstream) {
   nghttp2::ssl::TLSSessionInfo tls_info;
+  const auto &req = downstream->request();
+  const auto &resp = downstream->response();
 
   upstream_accesslog(
       get_config()->accesslog_format,
       LogSpec{
-          downstream, ipaddr_.c_str(),
-          http2::to_method_string(downstream->get_request_method()),
+          downstream, ipaddr_.c_str(), http2::to_method_string(req.method),
 
-          downstream->get_request_method() == HTTP_CONNECT
-              ? downstream->get_request_http2_authority().c_str()
+          req.method == HTTP_CONNECT
+              ? req.authority.c_str()
               : (get_config()->http2_proxy || get_config()->client_proxy)
-                    ? construct_absolute_request_uri(downstream).c_str()
-                    : downstream->get_request_path().empty()
-                          ? downstream->get_request_method() == HTTP_OPTIONS
-                                ? "*"
-                                : "-"
-                          : downstream->get_request_path().c_str(),
+                    ? construct_absolute_request_uri(req).c_str()
+                    : req.path.empty() ? req.method == HTTP_OPTIONS ? "*" : "-"
+                                       : req.path.c_str(),
 
           alpn_.c_str(),
           nghttp2::ssl::get_tls_session_info(&tls_info, conn_.tls.ssl),
@@ -836,8 +833,7 @@ void ClientHandler::write_accesslog(Downstream *downstream) {
           downstream->get_request_start_time(),      // request_start_time
           std::chrono::high_resolution_clock::now(), // request_end_time
 
-          downstream->get_request_major(), downstream->get_request_minor(),
-          downstream->get_response_http_status(),
+          req.http_major, req.http_minor, resp.http_status,
           downstream->get_response_sent_bodylen(), port_.c_str(),
           get_config()->port, get_config()->pid,
       });

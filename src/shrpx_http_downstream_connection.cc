@@ -54,9 +54,10 @@ void timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto downstream = dconn->get_downstream();
   auto upstream = downstream->get_upstream();
   auto handler = upstream->get_client_handler();
+  auto &resp = downstream->response();
 
   // Do this so that dconn is not pooled
-  downstream->set_response_connection_close(true);
+  resp.connection_close = true;
 
   if (upstream->downstream_error(dconn, Downstream::EVENT_TIMEOUT) != 0) {
     delete handler;
@@ -214,85 +215,80 @@ int HttpDownstreamConnection::push_request_headers() {
                                  ->downstream_addr_groups[group_]
                                  .addrs[addr_idx_]
                                  .hostport.get();
-  auto method = downstream_->get_request_method();
-  auto connect_method = method == HTTP_CONNECT;
+  const auto &req = downstream_->request();
+
+  auto connect_method = req.method == HTTP_CONNECT;
 
   // For HTTP/1.0 request, there is no authority in request.  In that
   // case, we use backend server's host nonetheless.
   const char *authority = downstream_hostport;
-  auto &req_authority = downstream_->get_request_http2_authority();
   auto no_host_rewrite = get_config()->no_host_rewrite ||
                          get_config()->http2_proxy ||
                          get_config()->client_proxy || connect_method;
 
-  if (no_host_rewrite && !req_authority.empty()) {
-    authority = req_authority.c_str();
+  if (no_host_rewrite && !req.authority.empty()) {
+    authority = req.authority.c_str();
   }
   auto authoritylen = strlen(authority);
 
   downstream_->set_request_downstream_host(authority);
 
-  downstream_->assemble_request_cookie();
-
   auto buf = downstream_->get_request_buf();
 
   // Assume that method and request path do not contain \r\n.
-  auto meth = http2::to_method_string(method);
+  auto meth = http2::to_method_string(req.method);
   buf->append(meth, strlen(meth));
   buf->append(" ");
-
-  auto &scheme = downstream_->get_request_http2_scheme();
-  auto &path = downstream_->get_request_path();
 
   if (connect_method) {
     buf->append(authority, authoritylen);
   } else if (get_config()->http2_proxy || get_config()->client_proxy) {
     // Construct absolute-form request target because we are going to
     // send a request to a HTTP/1 proxy.
-    assert(!scheme.empty());
-    buf->append(scheme);
+    assert(!req.scheme.empty());
+    buf->append(req.scheme);
     buf->append("://");
     buf->append(authority, authoritylen);
-    buf->append(path);
-  } else if (method == HTTP_OPTIONS && path.empty()) {
+    buf->append(req.path);
+  } else if (req.method == HTTP_OPTIONS && req.path.empty()) {
     // Server-wide OPTIONS
     buf->append("*");
   } else {
-    buf->append(path);
+    buf->append(req.path);
   }
   buf->append(" HTTP/1.1\r\nHost: ");
   buf->append(authority, authoritylen);
   buf->append("\r\n");
 
-  http2::build_http1_headers_from_headers(buf,
-                                          downstream_->get_request_headers());
+  http2::build_http1_headers_from_headers(buf, req.fs.headers());
 
-  if (!downstream_->get_assembled_request_cookie().empty()) {
+  auto cookie = downstream_->assemble_request_cookie();
+  if (!cookie.empty()) {
     buf->append("Cookie: ");
-    buf->append(downstream_->get_assembled_request_cookie());
+    buf->append(cookie);
     buf->append("\r\n");
   }
 
-  if (!connect_method && downstream_->get_request_http2_expect_body() &&
-      !downstream_->get_request_header(http2::HD_CONTENT_LENGTH)) {
+  if (!connect_method && req.http2_expect_body &&
+      !req.fs.header(http2::HD_CONTENT_LENGTH)) {
 
     downstream_->set_chunked_request(true);
     buf->append("Transfer-Encoding: chunked\r\n");
   }
 
-  if (downstream_->get_request_connection_close()) {
+  if (req.connection_close) {
     buf->append("Connection: close\r\n");
   }
 
-  if (!connect_method && downstream_->get_upgrade_request()) {
-    auto connection = downstream_->get_request_header(http2::HD_CONNECTION);
+  if (!connect_method && req.upgrade_request) {
+    auto connection = req.fs.header(http2::HD_CONNECTION);
     if (connection) {
       buf->append("Connection: ");
       buf->append((*connection).value);
       buf->append("\r\n");
     }
 
-    auto upgrade = downstream_->get_request_header(http2::HD_UPGRADE);
+    auto upgrade = req.fs.header(http2::HD_UPGRADE);
     if (upgrade) {
       buf->append("Upgrade: ");
       buf->append((*upgrade).value);
@@ -300,7 +296,7 @@ int HttpDownstreamConnection::push_request_headers() {
     }
   }
 
-  auto xff = downstream_->get_request_header(http2::HD_X_FORWARDED_FOR);
+  auto xff = req.fs.header(http2::HD_X_FORWARDED_FOR);
   if (get_config()->add_x_forwarded_for) {
     buf->append("X-Forwarded-For: ");
     if (xff && !get_config()->strip_incoming_x_forwarded_for) {
@@ -317,11 +313,11 @@ int HttpDownstreamConnection::push_request_headers() {
   if (!get_config()->http2_proxy && !get_config()->client_proxy &&
       !connect_method) {
     buf->append("X-Forwarded-Proto: ");
-    assert(!scheme.empty());
-    buf->append(scheme);
+    assert(!req.scheme.empty());
+    buf->append(req.scheme);
     buf->append("\r\n");
   }
-  auto via = downstream_->get_request_header(http2::HD_VIA);
+  auto via = req.fs.header(http2::HD_VIA);
   if (get_config()->no_via) {
     if (via) {
       buf->append("Via: ");
@@ -334,8 +330,7 @@ int HttpDownstreamConnection::push_request_headers() {
       buf->append((*via).value);
       buf->append(", ");
     }
-    buf->append(http::create_via_header_value(
-        downstream_->get_request_major(), downstream_->get_request_minor()));
+    buf->append(http::create_via_header_value(req.http_major, req.http_minor));
     buf->append("\r\n");
   }
 
@@ -392,8 +387,10 @@ int HttpDownstreamConnection::end_upload_data() {
     return 0;
   }
 
+  const auto &req = downstream_->request();
+
   auto output = downstream_->get_request_buf();
-  auto &trailers = downstream_->get_request_trailers();
+  const auto &trailers = req.fs.trailers();
   if (trailers.empty()) {
     output->append("0\r\n\r\n");
   } else {
@@ -484,13 +481,15 @@ namespace {
 int htp_hdrs_completecb(http_parser *htp) {
   auto downstream = static_cast<Downstream *>(htp->data);
   auto upstream = downstream->get_upstream();
+  const auto &req = downstream->request();
+  auto &resp = downstream->response();
   int rv;
 
-  downstream->set_response_http_status(htp->status_code);
-  downstream->set_response_major(htp->http_major);
-  downstream->set_response_minor(htp->http_minor);
+  resp.http_status = htp->status_code;
+  resp.http_major = htp->http_major;
+  resp.http_minor = htp->http_minor;
 
-  if (downstream->index_response_headers() != 0) {
+  if (resp.fs.index_headers() != 0) {
     downstream->set_response_state(Downstream::MSG_BAD_HEADER);
     return -1;
   }
@@ -502,7 +501,7 @@ int htp_hdrs_completecb(http_parser *htp) {
   if (downstream->get_non_final_response()) {
     // Reset content-length because we reuse same Downstream for the
     // next response.
-    downstream->set_response_content_length(-1);
+    resp.fs.content_length = -1;
     // For non-final response code, we just call
     // on_downstream_header_complete() without changing response
     // state.
@@ -516,13 +515,13 @@ int htp_hdrs_completecb(http_parser *htp) {
     return 1;
   }
 
-  downstream->set_response_connection_close(!http_should_keep_alive(htp));
+  resp.connection_close = !http_should_keep_alive(htp);
   downstream->set_response_state(Downstream::HEADER_COMPLETE);
   downstream->inspect_http1_response();
   if (downstream->get_upgraded()) {
     // content-length must be ignored for upgraded connection.
-    downstream->set_response_content_length(-1);
-    downstream->set_response_connection_close(true);
+    resp.fs.content_length = -1;
+    resp.connection_close = true;
     // transfer-encoding not applied to upgraded connection
     downstream->set_chunked_response(false);
   }
@@ -542,7 +541,7 @@ int htp_hdrs_completecb(http_parser *htp) {
     }
   }
 
-  unsigned int status = downstream->get_response_http_status();
+  auto status = resp.http_status;
   // Ignore the response body. HEAD response may contain
   // Content-Length or Transfer-Encoding: chunked.  Some server send
   // 304 status code with nonzero Content-Length, but without response
@@ -551,9 +550,8 @@ int htp_hdrs_completecb(http_parser *htp) {
 
   // TODO It seems that the cases other than HEAD are handled by
   // http-parser.  Need test.
-  return downstream->get_request_method() == HTTP_HEAD ||
-                 (100 <= status && status <= 199) || status == 204 ||
-                 status == 304
+  return req.method == HTTP_HEAD || (100 <= status && status <= 199) ||
+                 status == 204 || status == 304
              ? 1
              : 0;
 }
@@ -562,18 +560,20 @@ int htp_hdrs_completecb(http_parser *htp) {
 namespace {
 int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
   auto downstream = static_cast<Downstream *>(htp->data);
+  auto &resp = downstream->response();
+
   if (downstream->get_response_state() == Downstream::INITIAL) {
-    if (downstream->get_response_header_key_prev()) {
-      downstream->append_last_response_header_key(data, len);
+    if (resp.fs.header_key_prev()) {
+      resp.fs.append_last_header_key(data, len);
     } else {
-      downstream->add_response_header(std::string(data, len), "");
+      resp.fs.add_header(std::string(data, len), "");
     }
   } else {
     // trailer part
-    if (downstream->get_response_trailer_key_prev()) {
-      downstream->append_last_response_trailer_key(data, len);
+    if (resp.fs.trailer_key_prev()) {
+      resp.fs.append_last_trailer_key(data, len);
     } else {
-      downstream->add_response_trailer(std::string(data, len), "");
+      resp.fs.add_trailer(std::string(data, len), "");
     }
   }
   return 0;
@@ -583,18 +583,12 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
 namespace {
 int htp_hdr_valcb(http_parser *htp, const char *data, size_t len) {
   auto downstream = static_cast<Downstream *>(htp->data);
+  auto &resp = downstream->response();
+
   if (downstream->get_response_state() == Downstream::INITIAL) {
-    if (downstream->get_response_header_key_prev()) {
-      downstream->set_last_response_header_value(data, len);
-    } else {
-      downstream->append_last_response_header_value(data, len);
-    }
+    resp.fs.append_last_header_value(data, len);
   } else {
-    if (downstream->get_response_trailer_key_prev()) {
-      downstream->set_last_response_trailer_value(data, len);
-    } else {
-      downstream->append_last_response_trailer_value(data, len);
-    }
+    resp.fs.append_last_trailer_value(data, len);
   }
   return 0;
 }

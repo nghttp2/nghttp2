@@ -31,10 +31,8 @@
 
 namespace shrpx {
 
-void test_downstream_index_request_headers(void);
-void test_downstream_index_response_headers(void);
-void test_downstream_get_request_header(void);
-void test_downstream_get_response_header(void);
+void test_downstream_field_store_index_headers(void);
+void test_downstream_field_store_header(void);
 void test_downstream_crumble_request_cookie(void);
 void test_downstream_assemble_request_cookie(void);
 void test_downstream_rewrite_location_response_header(void);

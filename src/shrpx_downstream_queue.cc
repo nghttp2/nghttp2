@@ -79,7 +79,7 @@ DownstreamQueue::make_host_key(const std::string &host) const {
 
 const std::string &
 DownstreamQueue::make_host_key(Downstream *downstream) const {
-  return make_host_key(downstream->get_request_http2_authority());
+  return make_host_key(downstream->request().authority);
 }
 
 void DownstreamQueue::mark_active(Downstream *downstream) {
