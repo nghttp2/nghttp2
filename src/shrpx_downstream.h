@@ -84,7 +84,6 @@ public:
 
   void append_last_header_key(const char *data, size_t len);
   void append_last_header_value(const char *data, size_t len);
-  void set_last_header_value(const char *data, size_t len);
 
   bool header_key_prev() const { return header_key_prev_; }
 
@@ -102,8 +101,6 @@ public:
 
   void append_last_trailer_key(const char *data, size_t len);
   void append_last_trailer_value(const char *data, size_t len);
-
-  void set_last_trailer_value(const char *data, size_t len);
 
   bool trailer_key_prev() const { return trailer_key_prev_; }
 

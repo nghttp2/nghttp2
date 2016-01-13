@@ -360,7 +360,7 @@ void append_last_header_key(bool key_prev, size_t &sum, Headers &headers,
 namespace {
 void append_last_header_value(bool key_prev, size_t &sum, Headers &headers,
                               const char *data, size_t len) {
-  assert(!key_prev);
+  key_prev = false;
   sum += len;
   auto &item = headers.back();
   item.value.append(data, len);
@@ -455,11 +455,6 @@ void FieldStore::add_header(std::string name, std::string value) {
                     std::move(value));
 }
 
-void FieldStore::set_last_header_value(const char *data, size_t len) {
-  shrpx::set_last_header_value(header_key_prev_, buffer_size_, headers_, data,
-                               len);
-}
-
 void FieldStore::add_header(std::string name, std::string value,
                             int16_t token) {
   http2::index_header(hdidx_, token, headers_.size());
@@ -502,11 +497,6 @@ void FieldStore::add_trailer(const uint8_t *name, size_t namelen,
 void FieldStore::add_trailer(std::string name, std::string value) {
   shrpx::add_header(trailer_key_prev_, buffer_size_, trailers_, std::move(name),
                     std::move(value));
-}
-
-void FieldStore::set_last_trailer_value(const char *data, size_t len) {
-  shrpx::set_last_header_value(trailer_key_prev_, buffer_size_, trailers_, data,
-                               len);
 }
 
 void FieldStore::append_last_trailer_key(const char *data, size_t len) {

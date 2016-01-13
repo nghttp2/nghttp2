@@ -179,17 +179,9 @@ int htp_hdr_valcb(http_parser *htp, const char *data, size_t len) {
     return -1;
   }
   if (downstream->get_request_state() == Downstream::INITIAL) {
-    if (req.fs.header_key_prev()) {
-      req.fs.set_last_header_value(data, len);
-    } else {
-      req.fs.append_last_header_value(data, len);
-    }
+    req.fs.append_last_header_value(data, len);
   } else {
-    if (req.fs.trailer_key_prev()) {
-      req.fs.set_last_trailer_value(data, len);
-    } else {
-      req.fs.append_last_trailer_value(data, len);
-    }
+    req.fs.append_last_trailer_value(data, len);
   }
   return 0;
 }
