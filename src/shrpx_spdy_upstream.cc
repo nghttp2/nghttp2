@@ -820,10 +820,11 @@ int SpdyUpstream::send_reply(Downstream *downstream, const uint8_t *body,
     data_prd_ptr = &data_prd;
   }
 
-  auto status_string =
-      http2::get_status_string(downstream->get_response_http_status());
+  const auto &resp = downstream->response();
 
-  auto &headers = downstream->get_response_headers();
+  auto status_string = http2::get_status_string(resp.http_status);
+
+  const auto &headers = resp.fs.headers();
 
   auto nva = std::vector<const char *>();
   // 3 for :status, :version and server
@@ -849,7 +850,7 @@ int SpdyUpstream::send_reply(Downstream *downstream, const uint8_t *body,
     nva.push_back(kv.value.c_str());
   }
 
-  if (!downstream->get_response_header(http2::HD_SERVER)) {
+  if (!resp.fs.header(http2::HD_SERVER)) {
     nva.push_back("server");
     nva.push_back(get_config()->server_name);
   }
@@ -876,8 +877,10 @@ int SpdyUpstream::send_reply(Downstream *downstream, const uint8_t *body,
 int SpdyUpstream::error_reply(Downstream *downstream,
                               unsigned int status_code) {
   int rv;
+  auto &resp = downstream->response();
+
   auto html = http::create_error_html(status_code);
-  downstream->set_response_http_status(status_code);
+  resp.http_status = status_code;
   auto body = downstream->get_response_buf();
   body->append(html.c_str(), html.size());
   downstream->set_response_state(Downstream::MSG_COMPLETE);
@@ -938,11 +941,13 @@ void SpdyUpstream::remove_downstream(Downstream *downstream) {
 // WARNING: Never call directly or indirectly spdylay_session_send or
 // spdylay_session_recv. These calls may delete downstream.
 int SpdyUpstream::on_downstream_header_complete(Downstream *downstream) {
+  auto &resp = downstream->response();
+
   if (downstream->get_non_final_response()) {
     // SPDY does not support non-final response.  We could send it
     // with HEADERS and final response in SYN_REPLY, but it is not
     // official way.
-    downstream->clear_response_headers();
+    resp.fs.clear_headers();
 
     return 0;
   }
@@ -974,20 +979,20 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream) {
       !get_config()->no_location_rewrite) {
     downstream->rewrite_location_response_header(req.scheme);
   }
-  size_t nheader = downstream->get_response_headers().size();
+
   // 8 means server, :status, :version and possible via header field.
   auto nv = make_unique<const char *[]>(
-      nheader * 2 + 8 + get_config()->add_response_headers.size() * 2 + 1);
+      resp.fs.headers().size() * 2 + 8 +
+      get_config()->add_response_headers.size() * 2 + 1);
 
   size_t hdidx = 0;
   std::string via_value;
-  std::string status_string =
-      http2::get_status_string(downstream->get_response_http_status());
+  auto status_string = http2::get_status_string(resp.http_status);
   nv[hdidx++] = ":status";
   nv[hdidx++] = status_string.c_str();
   nv[hdidx++] = ":version";
   nv[hdidx++] = "HTTP/1.1";
-  for (auto &hd : downstream->get_response_headers()) {
+  for (auto &hd : resp.fs.headers()) {
     if (hd.name.empty() || hd.name.c_str()[0] == ':') {
       continue;
     }
@@ -1009,14 +1014,14 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream) {
     nv[hdidx++] = "server";
     nv[hdidx++] = get_config()->server_name;
   } else {
-    auto server = downstream->get_response_header(http2::HD_SERVER);
+    auto server = resp.fs.header(http2::HD_SERVER);
     if (server) {
       nv[hdidx++] = "server";
       nv[hdidx++] = server->value.c_str();
     }
   }
 
-  auto via = downstream->get_response_header(http2::HD_VIA);
+  auto via = resp.fs.header(http2::HD_VIA);
   if (get_config()->no_via) {
     if (via) {
       nv[hdidx++] = "via";
@@ -1027,8 +1032,8 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream) {
       via_value = via->value;
       via_value += ", ";
     }
-    via_value += http::create_via_header_value(
-        downstream->get_response_major(), downstream->get_response_minor());
+    via_value +=
+        http::create_via_header_value(resp.http_major, resp.http_minor);
     nv[hdidx++] = "via";
     nv[hdidx++] = via_value.c_str();
   }
@@ -1086,9 +1091,11 @@ int SpdyUpstream::on_downstream_body_complete(Downstream *downstream) {
     DLOG(INFO, downstream) << "HTTP response completed";
   }
 
+  auto &resp = downstream->response();
+
   if (!downstream->validate_response_bodylen()) {
     rst_stream(downstream, SPDYLAY_PROTOCOL_ERROR);
-    downstream->set_response_connection_close(true);
+    resp.connection_close = true;
     return 0;
   }
 

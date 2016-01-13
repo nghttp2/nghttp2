@@ -73,6 +73,7 @@ public:
   // the beginning.  If no such header is found, returns nullptr.
   // This function must be called after headers are indexed
   const Headers::value_type *header(int16_t token) const;
+  Headers::value_type *header(int16_t token);
   // Returns pointer to the header field with the name |name|.  If no
   // such header is found, returns nullptr.
   const Headers::value_type *header(const std::string &name) const;
@@ -154,6 +155,18 @@ struct Request {
   // true if this is HTTP/2, and request body is expected.  Note that
   // we don't take into account HTTP method here.
   bool http2_expect_body;
+};
+
+struct Response {
+  Response()
+      : fs(32), http_status(0), http_major(1), http_minor(1),
+        connection_close(false) {}
+
+  FieldStore fs;
+  // HTTP status code
+  unsigned int http_status;
+  int http_major, http_minor;
+  bool connection_close;
 };
 
 class Downstream {
@@ -251,58 +264,17 @@ public:
   bool get_request_pending() const;
   // Returns true if request is ready to be submitted to downstream.
   bool request_submission_ready() const;
+
   // downstream response API
-  const Headers &get_response_headers() const;
-  Headers &get_response_headers();
-  // Lower the response header field names and indexes response
-  // headers.  If there are invalid headers (e.g., multiple
-  // Content-Length with different values), returns -1.
-  int index_response_headers();
-  // Returns pointer to the response header with the name |name|.  If
-  // multiple header have |name| as name, return last occurrence from
-  // the beginning.  If no such header is found, returns nullptr.
-  // This function must be called after response headers are indexed.
-  const Headers::value_type *get_response_header(int16_t token) const;
-  Headers::value_type *get_response_header(int16_t token);
+  const Response &response() const { return resp_; }
+  Response &response() { return resp_; }
+
   // Rewrites the location response header field.
   void rewrite_location_response_header(const std::string &upstream_scheme);
-  void add_response_header(std::string name, std::string value);
-  void set_last_response_header_value(const char *data, size_t len);
 
-  void add_response_header(std::string name, std::string value, int16_t token);
-  void add_response_header(const uint8_t *name, size_t namelen,
-                           const uint8_t *value, size_t valuelen, bool no_index,
-                           int16_t token);
-
-  bool get_response_header_key_prev() const;
-  void append_last_response_header_key(const char *data, size_t len);
-  void append_last_response_header_value(const char *data, size_t len);
-  // Empties response headers.
-  void clear_response_headers();
-
-  size_t get_response_headers_sum() const;
-
-  const Headers &get_response_trailers() const;
-  void add_response_trailer(const uint8_t *name, size_t namelen,
-                            const uint8_t *value, size_t valuelen,
-                            bool no_index, int16_t token);
-  void add_response_trailer(std::string name, std::string value);
-  void set_last_response_trailer_value(const char *data, size_t len);
-  bool get_response_trailer_key_prev() const;
-  void append_last_response_trailer_key(const char *data, size_t len);
-  void append_last_response_trailer_value(const char *data, size_t len);
-
-  unsigned int get_response_http_status() const;
-  void set_response_http_status(unsigned int status);
-  void set_response_major(int major);
-  void set_response_minor(int minor);
-  int get_response_major() const;
-  int get_response_minor() const;
-  int get_response_version() const;
   bool get_chunked_response() const;
   void set_chunked_response(bool f);
-  bool get_response_connection_close() const;
-  void set_response_connection_close(bool f);
+
   void set_response_state(int state);
   int get_response_state() const;
   DefaultMemchunks *get_response_buf();
@@ -311,8 +283,6 @@ public:
   int64_t get_response_bodylen() const;
   void add_response_sent_bodylen(size_t amount);
   int64_t get_response_sent_bodylen() const;
-  int64_t get_response_content_length() const;
-  void set_response_content_length(int64_t len);
   // Validates that received response body length and content-length
   // matches.
   bool validate_response_bodylen() const;
@@ -331,7 +301,6 @@ public:
   void dec_response_datalen(size_t len);
   size_t get_response_datalen() const;
   void reset_response_datalen();
-  bool response_pseudo_header_allowed(int16_t token) const;
 
   // Call this method when there is incoming data in downstream
   // connection.
@@ -402,12 +371,7 @@ public:
 
 private:
   Request req_;
-
-  Headers response_headers_;
-
-  // trailer part.  For HTTP/1.1, trailer part is only included with
-  // chunked encoding.  For HTTP/2, there is no such limit.
-  Headers response_trailers_;
+  Response resp_;
 
   std::chrono::high_resolution_clock::time_point request_start_time_;
 
@@ -434,16 +398,11 @@ private:
   // the length of response body sent to upstream client
   int64_t response_sent_bodylen_;
 
-  // content-length of response body, -1 if it is unknown.
-  int64_t response_content_length_;
-
   Upstream *upstream_;
   std::unique_ptr<DownstreamConnection> dconn_;
 
   // only used by HTTP/2 or SPDY upstream
   BlockedLink *blocked_link_;
-
-  size_t response_headers_sum_;
 
   // The number of bytes not consumed by the application yet.
   size_t request_datalen_;
@@ -460,26 +419,17 @@ private:
   uint32_t response_rst_stream_error_code_;
 
   int request_state_;
-
   int response_state_;
-  unsigned int response_http_status_;
-  int response_major_;
-  int response_minor_;
 
   // only used by HTTP/2 or SPDY upstream
   int dispatch_state_;
-
-  http2::HeaderIndex response_hdidx_;
 
   // true if the connection is upgraded (HTTP Upgrade or CONNECT)
   bool upgraded_;
 
   bool chunked_request_;
-
   bool chunked_response_;
-  bool response_connection_close_;
-  bool response_header_key_prev_;
-  bool response_trailer_key_prev_;
+
   bool expect_final_response_;
   // true if downstream request is pending because backend connection
   // has not been established or should be checked before use;

@@ -812,6 +812,7 @@ std::string construct_absolute_request_uri(const Request &req) {
 void ClientHandler::write_accesslog(Downstream *downstream) {
   nghttp2::ssl::TLSSessionInfo tls_info;
   const auto &req = downstream->request();
+  const auto &resp = downstream->response();
 
   upstream_accesslog(
       get_config()->accesslog_format,
@@ -832,8 +833,7 @@ void ClientHandler::write_accesslog(Downstream *downstream) {
           downstream->get_request_start_time(),      // request_start_time
           std::chrono::high_resolution_clock::now(), // request_end_time
 
-          req.http_major, req.http_minor,
-          downstream->get_response_http_status(),
+          req.http_major, req.http_minor, resp.http_status,
           downstream->get_response_sent_bodylen(), port_.c_str(),
           get_config()->port, get_config()->pid,
       });

@@ -247,6 +247,7 @@ int htp_hdrs_completecb(http_parser *htp) {
   }
   auto downstream = upstream->get_downstream();
   auto &req = downstream->request();
+  auto &resp = downstream->response();
 
   req.http_major = htp->http_major;
   req.http_minor = htp->http_minor;
@@ -325,7 +326,7 @@ int htp_hdrs_completecb(http_parser *htp) {
   auto mruby_ctx = worker->get_mruby_context();
 
   if (mruby_ctx->run_on_request_proc(downstream) != 0) {
-    downstream->set_response_http_status(500);
+    resp.http_status = 500;
     return -1;
   }
 #endif // HAVE_MRUBY
@@ -514,7 +515,7 @@ int HttpsUpstream::on_read() {
     if (htperr == HPE_INVALID_METHOD) {
       status_code = 501;
     } else if (downstream) {
-      status_code = downstream->get_response_http_status();
+      status_code = downstream->response().http_status;
       if (status_code == 0) {
         if (downstream->get_request_state() == Downstream::CONNECT_FAIL) {
           status_code = 503;
@@ -558,6 +559,7 @@ int HttpsUpstream::on_write() {
 
   auto dconn = downstream->get_downstream_connection();
   auto output = downstream->get_response_buf();
+  const auto &resp = downstream->response();
 
   if (output->rleft() == 0 && dconn &&
       downstream->get_response_state() != Downstream::MSG_COMPLETE) {
@@ -578,7 +580,7 @@ int HttpsUpstream::on_write() {
   // We need to postpone detachment until all data are sent so that
   // we can notify nghttp2 library all data consumed.
   if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
-    if (downstream->get_response_connection_close() ||
+    if (resp.connection_close ||
         downstream->get_request_state() != Downstream::MSG_COMPLETE) {
       // Connection close
       downstream->pop_downstream_connection();
@@ -754,30 +756,30 @@ int HttpsUpstream::downstream_error(DownstreamConnection *dconn, int events) {
 int HttpsUpstream::send_reply(Downstream *downstream, const uint8_t *body,
                               size_t bodylen) {
   const auto &req = downstream->request();
+  auto &resp = downstream->response();
 
   auto connection_close = false;
   if (req.http_major <= 0 || (req.http_major == 1 && req.http_minor == 0)) {
     connection_close = true;
   } else {
-    auto c = downstream->get_response_header(http2::HD_CONNECTION);
+    auto c = resp.fs.header(http2::HD_CONNECTION);
     if (c && util::strieq_l("close", c->value)) {
       connection_close = true;
     }
   }
 
   if (connection_close) {
-    downstream->set_response_connection_close(true);
+    resp.connection_close = true;
     handler_->set_should_close_after_write(true);
   }
 
   auto output = downstream->get_response_buf();
 
   output->append("HTTP/1.1 ");
-  output->append(
-      http2::get_status_string(downstream->get_response_http_status()));
+  output->append(http2::get_status_string(resp.http_status));
   output->append("\r\n");
 
-  for (auto &kv : downstream->get_response_headers()) {
+  for (auto &kv : resp.fs.headers()) {
     if (kv.name.empty() || kv.name[0] == ':') {
       continue;
     }
@@ -787,7 +789,7 @@ int HttpsUpstream::send_reply(Downstream *downstream, const uint8_t *body,
     output->append("\r\n");
   }
 
-  if (!downstream->get_response_header(http2::HD_SERVER)) {
+  if (!resp.fs.header(http2::HD_SERVER)) {
     output->append("Server: ");
     output->append(get_config()->server_name,
                    strlen(get_config()->server_name));
@@ -814,10 +816,12 @@ void HttpsUpstream::error_reply(unsigned int status_code) {
     downstream = get_downstream();
   }
 
-  downstream->set_response_http_status(status_code);
+  auto &resp = downstream->response();
+
+  resp.http_status = status_code;
   // we are going to close connection for both frontend and backend in
   // error condition.  This is safest option.
-  downstream->set_response_connection_close(true);
+  resp.connection_close = true;
   handler_->set_should_close_after_write(true);
 
   auto output = downstream->get_response_buf();
@@ -883,6 +887,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
   }
 
   const auto &req = downstream->request();
+  auto &resp = downstream->response();
 
 #ifdef HAVE_MRUBY
   if (!downstream->get_non_final_response()) {
@@ -909,7 +914,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
   buf->append(".");
   buf->append(util::utos(req.http_minor));
   buf->append(" ");
-  buf->append(http2::get_status_string(downstream->get_response_http_status()));
+  buf->append(http2::get_status_string(resp.http_status));
   buf->append("\r\n");
 
   if (!get_config()->http2_proxy && !get_config()->client_proxy &&
@@ -918,8 +923,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
         get_client_handler()->get_upstream_scheme());
   }
 
-  http2::build_http1_headers_from_headers(buf,
-                                          downstream->get_response_headers());
+  http2::build_http1_headers_from_headers(buf, resp.fs.headers());
 
   if (downstream->get_non_final_response()) {
     buf->append("\r\n");
@@ -928,7 +932,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
       log_response_headers(buf);
     }
 
-    downstream->clear_response_headers();
+    resp.fs.clear_headers();
 
     return 0;
   }
@@ -938,12 +942,12 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
   // after graceful shutdown commenced, add connection: close header
   // field.
   if (worker->get_graceful_shutdown()) {
-    downstream->set_response_connection_close(true);
+    resp.connection_close = true;
   }
 
   // We check downstream->get_response_connection_close() in case when
   // the Content-Length is not available.
-  if (!req.connection_close && !downstream->get_response_connection_close()) {
+  if (!req.connection_close && !resp.connection_close) {
     if (req.http_major <= 0 || req.http_minor <= 0) {
       // We add this header for HTTP/1.0 or HTTP/0.9 clients
       buf->append("Connection: Keep-Alive\r\n");
@@ -953,14 +957,14 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
   }
 
   if (!connect_method && downstream->get_upgraded()) {
-    auto connection = downstream->get_response_header(http2::HD_CONNECTION);
+    auto connection = resp.fs.header(http2::HD_CONNECTION);
     if (connection) {
       buf->append("Connection: ");
       buf->append((*connection).value);
       buf->append("\r\n");
     }
 
-    auto upgrade = downstream->get_response_header(http2::HD_UPGRADE);
+    auto upgrade = resp.fs.header(http2::HD_UPGRADE);
     if (upgrade) {
       buf->append("Upgrade: ");
       buf->append((*upgrade).value);
@@ -968,7 +972,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
     }
   }
 
-  if (!downstream->get_response_header(http2::HD_ALT_SVC)) {
+  if (!resp.fs.header(http2::HD_ALT_SVC)) {
     // We won't change or alter alt-svc from backend for now
     if (!get_config()->altsvcs.empty()) {
       buf->append("Alt-Svc: ");
@@ -988,7 +992,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
     buf->append(get_config()->server_name, strlen(get_config()->server_name));
     buf->append("\r\n");
   } else {
-    auto server = downstream->get_response_header(http2::HD_SERVER);
+    auto server = resp.fs.header(http2::HD_SERVER);
     if (server) {
       buf->append("Server: ");
       buf->append((*server).value);
@@ -996,7 +1000,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
     }
   }
 
-  auto via = downstream->get_response_header(http2::HD_VIA);
+  auto via = resp.fs.header(http2::HD_VIA);
   if (get_config()->no_via) {
     if (via) {
       buf->append("Via: ");
@@ -1009,8 +1013,8 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
       buf->append((*via).value);
       buf->append(", ");
     }
-    buf->append(http::create_via_header_value(
-        downstream->get_response_major(), downstream->get_response_minor()));
+    buf->append(
+        http::create_via_header_value(resp.http_major, resp.http_minor));
     buf->append("\r\n");
   }
 
@@ -1055,10 +1059,11 @@ int HttpsUpstream::on_downstream_body(Downstream *downstream,
 
 int HttpsUpstream::on_downstream_body_complete(Downstream *downstream) {
   const auto &req = downstream->request();
+  auto &resp = downstream->response();
 
   if (downstream->get_chunked_response()) {
     auto output = downstream->get_response_buf();
-    auto &trailers = downstream->get_response_trailers();
+    const auto &trailers = resp.fs.trailers();
     if (trailers.empty()) {
       output->append("0\r\n\r\n");
     } else {
@@ -1072,10 +1077,10 @@ int HttpsUpstream::on_downstream_body_complete(Downstream *downstream) {
   }
 
   if (!downstream->validate_response_bodylen()) {
-    downstream->set_response_connection_close(true);
+    resp.connection_close = true;
   }
 
-  if (req.connection_close || downstream->get_response_connection_close()) {
+  if (req.connection_close || resp.connection_close) {
     auto handler = get_client_handler();
     handler->set_should_close_after_write(true);
   }

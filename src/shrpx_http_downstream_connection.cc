@@ -54,9 +54,10 @@ void timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto downstream = dconn->get_downstream();
   auto upstream = downstream->get_upstream();
   auto handler = upstream->get_client_handler();
+  auto &resp = downstream->response();
 
   // Do this so that dconn is not pooled
-  downstream->set_response_connection_close(true);
+  resp.connection_close = true;
 
   if (upstream->downstream_error(dconn, Downstream::EVENT_TIMEOUT) != 0) {
     delete handler;
@@ -482,13 +483,14 @@ int htp_hdrs_completecb(http_parser *htp) {
   auto downstream = static_cast<Downstream *>(htp->data);
   auto upstream = downstream->get_upstream();
   const auto &req = downstream->request();
+  auto &resp = downstream->response();
   int rv;
 
-  downstream->set_response_http_status(htp->status_code);
-  downstream->set_response_major(htp->http_major);
-  downstream->set_response_minor(htp->http_minor);
+  resp.http_status = htp->status_code;
+  resp.http_major = htp->http_major;
+  resp.http_minor = htp->http_minor;
 
-  if (downstream->index_response_headers() != 0) {
+  if (resp.fs.index_headers() != 0) {
     downstream->set_response_state(Downstream::MSG_BAD_HEADER);
     return -1;
   }
@@ -500,7 +502,7 @@ int htp_hdrs_completecb(http_parser *htp) {
   if (downstream->get_non_final_response()) {
     // Reset content-length because we reuse same Downstream for the
     // next response.
-    downstream->set_response_content_length(-1);
+    resp.fs.content_length = -1;
     // For non-final response code, we just call
     // on_downstream_header_complete() without changing response
     // state.
@@ -514,13 +516,13 @@ int htp_hdrs_completecb(http_parser *htp) {
     return 1;
   }
 
-  downstream->set_response_connection_close(!http_should_keep_alive(htp));
+  resp.connection_close = !http_should_keep_alive(htp);
   downstream->set_response_state(Downstream::HEADER_COMPLETE);
   downstream->inspect_http1_response();
   if (downstream->get_upgraded()) {
     // content-length must be ignored for upgraded connection.
-    downstream->set_response_content_length(-1);
-    downstream->set_response_connection_close(true);
+    resp.fs.content_length = -1;
+    resp.connection_close = true;
     // transfer-encoding not applied to upgraded connection
     downstream->set_chunked_response(false);
   }
@@ -540,7 +542,7 @@ int htp_hdrs_completecb(http_parser *htp) {
     }
   }
 
-  unsigned int status = downstream->get_response_http_status();
+  auto status = resp.http_status;
   // Ignore the response body. HEAD response may contain
   // Content-Length or Transfer-Encoding: chunked.  Some server send
   // 304 status code with nonzero Content-Length, but without response
@@ -559,18 +561,20 @@ int htp_hdrs_completecb(http_parser *htp) {
 namespace {
 int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
   auto downstream = static_cast<Downstream *>(htp->data);
+  auto &resp = downstream->response();
+
   if (downstream->get_response_state() == Downstream::INITIAL) {
-    if (downstream->get_response_header_key_prev()) {
-      downstream->append_last_response_header_key(data, len);
+    if (resp.fs.header_key_prev()) {
+      resp.fs.append_last_header_key(data, len);
     } else {
-      downstream->add_response_header(std::string(data, len), "");
+      resp.fs.add_header(std::string(data, len), "");
     }
   } else {
     // trailer part
-    if (downstream->get_response_trailer_key_prev()) {
-      downstream->append_last_response_trailer_key(data, len);
+    if (resp.fs.trailer_key_prev()) {
+      resp.fs.append_last_trailer_key(data, len);
     } else {
-      downstream->add_response_trailer(std::string(data, len), "");
+      resp.fs.add_trailer(std::string(data, len), "");
     }
   }
   return 0;
@@ -580,18 +584,12 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
 namespace {
 int htp_hdr_valcb(http_parser *htp, const char *data, size_t len) {
   auto downstream = static_cast<Downstream *>(htp->data);
+  auto &resp = downstream->response();
+
   if (downstream->get_response_state() == Downstream::INITIAL) {
-    if (downstream->get_response_header_key_prev()) {
-      downstream->set_last_response_header_value(data, len);
-    } else {
-      downstream->append_last_response_header_value(data, len);
-    }
+    resp.fs.append_last_header_value(data, len);
   } else {
-    if (downstream->get_response_trailer_key_prev()) {
-      downstream->set_last_response_trailer_value(data, len);
-    } else {
-      downstream->append_last_response_trailer_value(data, len);
-    }
+    resp.fs.append_last_trailer_value(data, len);
   }
   return 0;
 }

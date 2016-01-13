@@ -101,14 +101,10 @@ int main(int argc, char *argv[]) {
                    shrpx::test_http2_get_pure_path_component) ||
       !CU_add_test(pSuite, "http2_construct_push_component",
                    shrpx::test_http2_construct_push_component) ||
-      !CU_add_test(pSuite, "downstream_index_request_headers",
-                   shrpx::test_downstream_index_request_headers) ||
-      !CU_add_test(pSuite, "downstream_index_response_headers",
-                   shrpx::test_downstream_index_response_headers) ||
-      !CU_add_test(pSuite, "downstream_get_request_header",
-                   shrpx::test_downstream_get_request_header) ||
-      !CU_add_test(pSuite, "downstream_get_response_header",
-                   shrpx::test_downstream_get_response_header) ||
+      !CU_add_test(pSuite, "downstream_field_store_index_headers",
+                   shrpx::test_downstream_field_store_index_headers) ||
+      !CU_add_test(pSuite, "downstream_field_store_header",
+                   shrpx::test_downstream_field_store_header) ||
       !CU_add_test(pSuite, "downstream_crumble_request_cookie",
                    shrpx::test_downstream_crumble_request_cookie) ||
       !CU_add_test(pSuite, "downstream_assemble_request_cookie",

@@ -752,6 +752,8 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
     return 0;
   }
 
+  auto &resp = downstream->response();
+
   switch (frame->hd.type) {
   case NGHTTP2_HEADERS: {
     auto trailer = frame->headers.cat == NGHTTP2_HCAT_HEADERS &&
@@ -759,15 +761,15 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
 
     if (trailer) {
       // just store header fields for trailer part
-      downstream->add_response_trailer(name, namelen, value, valuelen,
-                                       flags & NGHTTP2_NV_FLAG_NO_INDEX, -1);
+      resp.fs.add_trailer(name, namelen, value, valuelen,
+                          flags & NGHTTP2_NV_FLAG_NO_INDEX, -1);
       return 0;
     }
 
     auto token = http2::lookup_token(name, namelen);
 
-    downstream->add_response_header(name, namelen, value, valuelen,
-                                    flags & NGHTTP2_NV_FLAG_NO_INDEX, token);
+    resp.fs.add_header(name, namelen, value, valuelen,
+                       flags & NGHTTP2_NV_FLAG_NO_INDEX, token);
     return 0;
   }
   case NGHTTP2_PUSH_PROMISE: {
@@ -857,18 +859,19 @@ int on_response_headers(Http2Session *http2session, Downstream *downstream,
 
   auto upstream = downstream->get_upstream();
   const auto &req = downstream->request();
+  auto &resp = downstream->response();
 
-  auto &nva = downstream->get_response_headers();
+  auto &nva = resp.fs.headers();
 
   downstream->set_expect_final_response(false);
 
-  auto status = downstream->get_response_header(http2::HD__STATUS);
+  auto status = resp.fs.header(http2::HD__STATUS);
   // libnghttp2 guarantees this exists and can be parsed
   auto status_code = http2::parse_http_status_code(status->value);
 
-  downstream->set_response_http_status(status_code);
-  downstream->set_response_major(2);
-  downstream->set_response_minor(0);
+  resp.http_status = status_code;
+  resp.http_major = 2;
+  resp.http_minor = 0;
 
   if (LOG_ENABLED(INFO)) {
     std::stringstream ss;
@@ -904,7 +907,7 @@ int on_response_headers(Http2Session *http2session, Downstream *downstream,
   downstream->check_upgrade_fulfilled();
 
   if (downstream->get_upgraded()) {
-    downstream->set_response_connection_close(true);
+    resp.connection_close = true;
     // On upgrade sucess, both ends can send data
     if (upstream->resume_read(SHRPX_NO_BUFFER, downstream, 0) != 0) {
       // If resume_read fails, just drop connection. Not ideal.
@@ -917,27 +920,24 @@ int on_response_headers(Http2Session *http2session, Downstream *downstream,
           << "HTTP upgrade success. stream_id=" << frame->hd.stream_id;
     }
   } else {
-    auto content_length =
-        downstream->get_response_header(http2::HD_CONTENT_LENGTH);
+    auto content_length = resp.fs.header(http2::HD_CONTENT_LENGTH);
     if (content_length) {
       // libnghttp2 guarantees this can be parsed
-      auto len = util::parse_uint(content_length->value);
-      downstream->set_response_content_length(len);
+      resp.fs.content_length = util::parse_uint(content_length->value);
     }
 
-    if (downstream->get_response_content_length() == -1 &&
-        downstream->expect_response_body()) {
+    if (resp.fs.content_length == -1 && downstream->expect_response_body()) {
       // Here we have response body but Content-Length is not known in
       // advance.
       if (req.http_major <= 0 || (req.http_major == 1 && req.http_minor == 0)) {
         // We simply close connection for pre-HTTP/1.1 in this case.
-        downstream->set_response_connection_close(true);
+        resp.connection_close = true;
       } else {
         // Otherwise, use chunked encoding to keep upstream connection
         // open.  In HTTP2, we are supporsed not to receive
         // transfer-encoding.
-        downstream->add_response_header("transfer-encoding", "chunked",
-                                        http2::HD_TRANSFER_ENCODING);
+        resp.fs.add_header("transfer-encoding", "chunked",
+                           http2::HD_TRANSFER_ENCODING);
         downstream->set_chunked_response(true);
       }
     }

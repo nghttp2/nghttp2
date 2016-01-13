@@ -100,7 +100,7 @@ int MRubyContext::run_app(Downstream *downstream, int phase) {
   }
 
   if (data.response_headers_dirty) {
-    downstream->index_response_headers();
+    downstream->response().fs.index_headers();
   }
 
   return rv;
