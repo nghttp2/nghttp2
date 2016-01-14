@@ -124,7 +124,7 @@ private:
 
 struct Request {
   Request()
-      : fs(16), method(-1), http_major(1), http_minor(1),
+      : fs(16), recv_body_length(0), method(-1), http_major(1), http_minor(1),
         upgrade_request(false), http2_upgrade_seen(false),
         connection_close(false), http2_expect_body(false) {}
 
@@ -142,6 +142,8 @@ struct Request {
   // request-target.  For HTTP/2, this is :path header field value.
   // For CONNECT request, this is empty.
   std::string path;
+  // the length of request body received so far
+  int64_t recv_body_length;
   int method;
   // HTTP major and minor version
   int http_major, http_minor;
@@ -239,7 +241,7 @@ public:
   void reset_request_datalen();
   // Validates that received request body length and content-length
   // matches.
-  bool validate_request_bodylen() const;
+  bool validate_request_recv_body_length() const;
   void set_request_downstream_host(std::string host);
   bool expect_response_body() const;
   enum {
@@ -390,8 +392,6 @@ private:
   ev_timer downstream_rtimer_;
   ev_timer downstream_wtimer_;
 
-  // the length of request body received so far
-  int64_t request_bodylen_;
   // the length of response body received so far
   int64_t response_bodylen_;
 

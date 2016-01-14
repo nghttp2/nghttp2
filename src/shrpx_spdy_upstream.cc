@@ -263,7 +263,7 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
 #endif // HAVE_MRUBY
 
     if (frame->syn_stream.hd.flags & SPDYLAY_CTRL_FLAG_FIN) {
-      if (!downstream->validate_request_bodylen()) {
+      if (!downstream->validate_request_recv_body_length()) {
         upstream->rst_stream(downstream, SPDYLAY_PROTOCOL_ERROR);
         return;
       }
@@ -386,7 +386,7 @@ void on_data_recv_callback(spdylay_session *session, uint8_t flags,
   auto downstream = static_cast<Downstream *>(
       spdylay_session_get_stream_user_data(session, stream_id));
   if (downstream && (flags & SPDYLAY_DATA_FLAG_FIN)) {
-    if (!downstream->validate_request_bodylen()) {
+    if (!downstream->validate_request_recv_body_length()) {
       upstream->rst_stream(downstream, SPDYLAY_PROTOCOL_ERROR);
       return;
     }
