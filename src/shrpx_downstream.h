@@ -407,29 +407,31 @@ private:
 
   // only used by HTTP/2 or SPDY upstream
   BlockedLink *blocked_link_;
-
+  // How many times we tried in backend connection
   size_t num_retry_;
-
+  // The stream ID in frontend connection
   int32_t stream_id_;
+  // The priority value in frontend connection, currently not used in
+  // a meaningful way.
   int32_t priority_;
   // stream ID in backend connection
   int32_t downstream_stream_id_;
-
   // RST_STREAM error_code from downstream HTTP2 connection
   uint32_t response_rst_stream_error_code_;
-
+  // request state
   int request_state_;
+  // response state
   int response_state_;
-
   // only used by HTTP/2 or SPDY upstream
   int dispatch_state_;
-
-  // true if the connection is upgraded (HTTP Upgrade or CONNECT)
+  // true if the connection is upgraded (HTTP Upgrade or CONNECT),
+  // excluding upgrade to HTTP/2.
   bool upgraded_;
-
+  // true if backend request uses chunked transfer-encoding
   bool chunked_request_;
+  // true if response to client uses chunked transfer-encoding
   bool chunked_response_;
-
+  // true if we have not got final response code
   bool expect_final_response_;
   // true if downstream request is pending because backend connection
   // has not been established or should be checked before use;
