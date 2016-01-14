@@ -71,10 +71,12 @@ Http2DownstreamConnection::~Http2DownstreamConnection() {
         downstream_->get_downstream_stream_id() != -1) {
       submit_rst_stream(downstream_, error_code);
 
-      http2session_->consume(downstream_->get_downstream_stream_id(),
-                             downstream_->get_response_datalen());
+      auto &resp = downstream_->response();
 
-      downstream_->reset_response_datalen();
+      http2session_->consume(downstream_->get_downstream_stream_id(),
+                             resp.unconsumed_body_length);
+
+      resp.unconsumed_body_length = 0;
 
       http2session_->signal_write();
     }
@@ -105,15 +107,18 @@ void Http2DownstreamConnection::detach_downstream(Downstream *downstream) {
   if (LOG_ENABLED(INFO)) {
     DCLOG(INFO, this) << "Detaching from DOWNSTREAM:" << downstream;
   }
+
+  auto &resp = downstream_->response();
+
   if (submit_rst_stream(downstream) == 0) {
     http2session_->signal_write();
   }
 
   if (downstream_->get_downstream_stream_id() != -1) {
     http2session_->consume(downstream_->get_downstream_stream_id(),
-                           downstream_->get_response_datalen());
+                           resp.unconsumed_body_length);
 
-    downstream_->reset_response_datalen();
+    resp.unconsumed_body_length = 0;
 
     http2session_->signal_write();
   }
@@ -449,8 +454,6 @@ int Http2DownstreamConnection::resume_read(IOCtrlReason reason,
   }
 
   if (consumed > 0) {
-    assert(downstream_->get_response_datalen() >= consumed);
-
     rv = http2session_->consume(downstream_->get_downstream_stream_id(),
                                 consumed);
 
@@ -458,7 +461,9 @@ int Http2DownstreamConnection::resume_read(IOCtrlReason reason,
       return -1;
     }
 
-    downstream_->dec_response_datalen(consumed);
+    auto &resp = downstream_->response();
+
+    resp.unconsumed_body_length -= consumed;
 
     http2session_->signal_write();
   }

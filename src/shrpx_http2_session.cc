@@ -1180,6 +1180,7 @@ int on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
   auto &resp = downstream->response();
 
   resp.recv_body_length += len;
+  resp.unconsumed_body_length += len;
 
   auto upstream = downstream->get_upstream();
   rv = upstream->on_downstream_body(downstream, data, len, false);
@@ -1192,8 +1193,6 @@ int on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
 
     downstream->set_response_state(Downstream::MSG_RESET);
   }
-
-  downstream->add_response_datalen(len);
 
   call_downstream_readcb(http2session, downstream);
   return 0;

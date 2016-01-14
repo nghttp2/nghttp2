@@ -563,8 +563,8 @@ int HttpsUpstream::on_write() {
 
   if (output->rleft() == 0 && dconn &&
       downstream->get_response_state() != Downstream::MSG_COMPLETE) {
-    if (downstream->resume_read(SHRPX_NO_BUFFER,
-                                downstream->get_response_datalen()) != 0) {
+    if (downstream->resume_read(SHRPX_NO_BUFFER, resp.unconsumed_body_length) !=
+        0) {
       return -1;
     }
 
@@ -601,8 +601,7 @@ int HttpsUpstream::on_write() {
     }
   }
 
-  return downstream->resume_read(SHRPX_NO_BUFFER,
-                                 downstream->get_response_datalen());
+  return downstream->resume_read(SHRPX_NO_BUFFER, resp.unconsumed_body_length);
 }
 
 int HttpsUpstream::on_event() { return 0; }

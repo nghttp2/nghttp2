@@ -116,9 +116,8 @@ Downstream::Downstream(Upstream *upstream, MemchunkPool *mcpool,
     : dlnext(nullptr), dlprev(nullptr),
       request_start_time_(std::chrono::high_resolution_clock::now()),
       request_buf_(mcpool), response_buf_(mcpool), response_sent_bodylen_(0),
-      upstream_(upstream), blocked_link_(nullptr), response_datalen_(0),
-      num_retry_(0), stream_id_(stream_id), priority_(priority),
-      downstream_stream_id_(-1),
+      upstream_(upstream), blocked_link_(nullptr), num_retry_(0),
+      stream_id_(stream_id), priority_(priority), downstream_stream_id_(-1),
       response_rst_stream_error_code_(NGHTTP2_NO_ERROR),
       request_state_(INITIAL), response_state_(INITIAL),
       dispatch_state_(DISPATCH_NONE), upgraded_(false), chunked_request_(false),
@@ -784,17 +783,6 @@ void Downstream::set_expect_final_response(bool f) {
 bool Downstream::get_expect_final_response() const {
   return expect_final_response_;
 }
-
-void Downstream::add_response_datalen(size_t len) { response_datalen_ += len; }
-
-void Downstream::dec_response_datalen(size_t len) {
-  assert(response_datalen_ >= len);
-  response_datalen_ -= len;
-}
-
-size_t Downstream::get_response_datalen() const { return response_datalen_; }
-
-void Downstream::reset_response_datalen() { response_datalen_ = 0; }
 
 bool Downstream::expect_response_body() const {
   return http2::expect_response_body(req_.method, resp_.http_status);

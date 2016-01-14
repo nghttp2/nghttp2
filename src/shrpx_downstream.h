@@ -169,12 +169,20 @@ struct Request {
 
 struct Response {
   Response()
-      : fs(32), recv_body_length(0), http_status(0), http_major(1),
-        http_minor(1), connection_close(false) {}
+      : fs(32), recv_body_length(0), unconsumed_body_length(0), http_status(0),
+        http_major(1), http_minor(1), connection_close(false) {}
+
+  void consume(size_t len) {
+    assert(unconsumed_body_length >= len);
+    unconsumed_body_length -= len;
+  }
 
   FieldStore fs;
   // the length of response body received so far
   int64_t recv_body_length;
+  // The number of bytes not consumed by the application yet.  This is
+  // mainly for HTTP/2 backend.
+  size_t unconsumed_body_length;
   // HTTP status code
   unsigned int http_status;
   int http_major, http_minor;
@@ -305,10 +313,6 @@ public:
   bool get_non_final_response() const;
   void set_expect_final_response(bool f);
   bool get_expect_final_response() const;
-  void add_response_datalen(size_t len);
-  void dec_response_datalen(size_t len);
-  size_t get_response_datalen() const;
-  void reset_response_datalen();
 
   // Call this method when there is incoming data in downstream
   // connection.
@@ -405,9 +409,6 @@ private:
 
   // only used by HTTP/2 or SPDY upstream
   BlockedLink *blocked_link_;
-
-  // The number of bytes not consumed by the application yet.
-  size_t response_datalen_;
 
   size_t num_retry_;
 
