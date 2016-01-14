@@ -116,9 +116,9 @@ Downstream::Downstream(Upstream *upstream, MemchunkPool *mcpool,
     : dlnext(nullptr), dlprev(nullptr),
       request_start_time_(std::chrono::high_resolution_clock::now()),
       request_buf_(mcpool), response_buf_(mcpool), response_sent_bodylen_(0),
-      upstream_(upstream), blocked_link_(nullptr), request_datalen_(0),
-      response_datalen_(0), num_retry_(0), stream_id_(stream_id),
-      priority_(priority), downstream_stream_id_(-1),
+      upstream_(upstream), blocked_link_(nullptr), response_datalen_(0),
+      num_retry_(0), stream_id_(stream_id), priority_(priority),
+      downstream_stream_id_(-1),
       response_rst_stream_error_code_(NGHTTP2_NO_ERROR),
       request_state_(INITIAL), response_state_(INITIAL),
       dispatch_state_(DISPATCH_NONE), upgraded_(false), chunked_request_(false),
@@ -522,7 +522,7 @@ int Downstream::push_upload_data_chunk(const uint8_t *data, size_t datalen) {
     return -1;
   }
 
-  request_datalen_ += datalen;
+  req_.unconsumed_body_length += datalen;
 
   return 0;
 }
@@ -784,15 +784,6 @@ void Downstream::set_expect_final_response(bool f) {
 bool Downstream::get_expect_final_response() const {
   return expect_final_response_;
 }
-
-size_t Downstream::get_request_datalen() const { return request_datalen_; }
-
-void Downstream::dec_request_datalen(size_t len) {
-  assert(request_datalen_ >= len);
-  request_datalen_ -= len;
-}
-
-void Downstream::reset_request_datalen() { request_datalen_ = 0; }
 
 void Downstream::add_response_datalen(size_t len) { response_datalen_ += len; }
 

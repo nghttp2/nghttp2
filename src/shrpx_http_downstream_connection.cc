@@ -773,8 +773,10 @@ int HttpDownstreamConnection::on_write() {
   ev_timer_stop(conn_.loop, &conn_.wt);
 
   if (input->rleft() == 0) {
+    auto &req = downstream_->request();
+
     upstream->resume_read(SHRPX_NO_BUFFER, downstream_,
-                          downstream_->get_request_datalen());
+                          req.unconsumed_body_length);
   }
 
   return 0;

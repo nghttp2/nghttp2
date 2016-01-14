@@ -102,9 +102,11 @@ void on_stream_close_callback(spdylay_session *session, int32_t stream_id,
     return;
   }
 
-  upstream->consume(stream_id, downstream->get_request_datalen());
+  auto &req = downstream->request();
 
-  downstream->reset_request_datalen();
+  upstream->consume(stream_id, req.unconsumed_body_length);
+
+  req.unconsumed_body_length = 0;
 
   if (downstream->get_request_state() == Downstream::CONNECT_FAIL) {
     upstream->remove_downstream(downstream);
@@ -1112,13 +1114,13 @@ void SpdyUpstream::pause_read(IOCtrlReason reason) {}
 int SpdyUpstream::resume_read(IOCtrlReason reason, Downstream *downstream,
                               size_t consumed) {
   if (get_flow_control()) {
-    assert(downstream->get_request_datalen() >= consumed);
-
     if (consume(downstream->get_stream_id(), consumed) != 0) {
       return -1;
     }
 
-    downstream->dec_request_datalen(consumed);
+    auto &req = downstream->request();
+
+    req.consume(consumed);
   }
 
   handler_->signal_write();

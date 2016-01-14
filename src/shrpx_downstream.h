@@ -124,9 +124,15 @@ private:
 
 struct Request {
   Request()
-      : fs(16), recv_body_length(0), method(-1), http_major(1), http_minor(1),
-        upgrade_request(false), http2_upgrade_seen(false),
-        connection_close(false), http2_expect_body(false) {}
+      : fs(16), recv_body_length(0), unconsumed_body_length(0), method(-1),
+        http_major(1), http_minor(1), upgrade_request(false),
+        http2_upgrade_seen(false), connection_close(false),
+        http2_expect_body(false) {}
+
+  void consume(size_t len) {
+    assert(unconsumed_body_length >= len);
+    unconsumed_body_length -= len;
+  }
 
   FieldStore fs;
   // Request scheme.  For HTTP/2, this is :scheme header field value.
@@ -144,6 +150,8 @@ struct Request {
   std::string path;
   // the length of request body received so far
   int64_t recv_body_length;
+  // The number of bytes not consumed by the application yet.
+  size_t unconsumed_body_length;
   int method;
   // HTTP major and minor version
   int http_major, http_minor;
@@ -238,9 +246,6 @@ public:
   void set_chunked_request(bool f);
   int push_upload_data_chunk(const uint8_t *data, size_t datalen);
   int end_upload_data();
-  size_t get_request_datalen() const;
-  void dec_request_datalen(size_t len);
-  void reset_request_datalen();
   // Validates that received request body length and content-length
   // matches.
   bool validate_request_recv_body_length() const;
@@ -402,7 +407,6 @@ private:
   BlockedLink *blocked_link_;
 
   // The number of bytes not consumed by the application yet.
-  size_t request_datalen_;
   size_t response_datalen_;
 
   size_t num_retry_;
