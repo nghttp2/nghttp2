@@ -1177,7 +1177,9 @@ int on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
 
   downstream->reset_downstream_rtimer();
 
-  downstream->add_response_bodylen(len);
+  auto &resp = downstream->response();
+
+  resp.recv_body_length += len;
 
   auto upstream = downstream->get_upstream();
   rv = upstream->on_downstream_body(downstream, data, len, false);

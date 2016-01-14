@@ -115,10 +115,10 @@ Downstream::Downstream(Upstream *upstream, MemchunkPool *mcpool,
                        int32_t stream_id, int32_t priority)
     : dlnext(nullptr), dlprev(nullptr),
       request_start_time_(std::chrono::high_resolution_clock::now()),
-      request_buf_(mcpool), response_buf_(mcpool), response_bodylen_(0),
-      response_sent_bodylen_(0), upstream_(upstream), blocked_link_(nullptr),
-      request_datalen_(0), response_datalen_(0), num_retry_(0),
-      stream_id_(stream_id), priority_(priority), downstream_stream_id_(-1),
+      request_buf_(mcpool), response_buf_(mcpool), response_sent_bodylen_(0),
+      upstream_(upstream), blocked_link_(nullptr), request_datalen_(0),
+      response_datalen_(0), num_retry_(0), stream_id_(stream_id),
+      priority_(priority), downstream_stream_id_(-1),
       response_rst_stream_error_code_(NGHTTP2_NO_ERROR),
       request_state_(INITIAL), response_state_(INITIAL),
       dispatch_state_(DISPATCH_NONE), upgraded_(false), chunked_request_(false),
@@ -628,12 +628,6 @@ bool Downstream::response_buf_full() {
   }
 }
 
-void Downstream::add_response_bodylen(size_t amount) {
-  response_bodylen_ += amount;
-}
-
-int64_t Downstream::get_response_bodylen() const { return response_bodylen_; }
-
 void Downstream::add_response_sent_bodylen(size_t amount) {
   response_sent_bodylen_ += amount;
 }
@@ -659,16 +653,16 @@ bool Downstream::validate_request_recv_body_length() const {
   return true;
 }
 
-bool Downstream::validate_response_bodylen() const {
+bool Downstream::validate_response_recv_body_length() const {
   if (!expect_response_body() || resp_.fs.content_length == -1) {
     return true;
   }
 
-  if (resp_.fs.content_length != response_bodylen_) {
+  if (resp_.fs.content_length != resp_.recv_body_length) {
     if (LOG_ENABLED(INFO)) {
       DLOG(INFO, this) << "response invalid bodylen: content-length="
                        << resp_.fs.content_length
-                       << ", received=" << response_bodylen_;
+                       << ", received=" << resp_.recv_body_length;
     }
     return false;
   }

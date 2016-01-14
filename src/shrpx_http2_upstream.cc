@@ -1624,7 +1624,7 @@ int Http2Upstream::on_downstream_body_complete(Downstream *downstream) {
 
   auto &resp = downstream->response();
 
-  if (!downstream->validate_response_bodylen()) {
+  if (!downstream->validate_response_recv_body_length()) {
     rst_stream(downstream, NGHTTP2_PROTOCOL_ERROR);
     resp.connection_close = true;
     return 0;

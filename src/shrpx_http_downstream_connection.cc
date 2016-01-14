@@ -597,8 +597,9 @@ int htp_hdr_valcb(http_parser *htp, const char *data, size_t len) {
 namespace {
 int htp_bodycb(http_parser *htp, const char *data, size_t len) {
   auto downstream = static_cast<Downstream *>(htp->data);
+  auto &resp = downstream->response();
 
-  downstream->add_response_bodylen(len);
+  resp.recv_body_length += len;
 
   return downstream->get_upstream()->on_downstream_body(
       downstream, reinterpret_cast<const uint8_t *>(data), len, true);

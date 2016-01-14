@@ -1076,7 +1076,7 @@ int HttpsUpstream::on_downstream_body_complete(Downstream *downstream) {
     DLOG(INFO, downstream) << "HTTP response completed";
   }
 
-  if (!downstream->validate_response_bodylen()) {
+  if (!downstream->validate_response_recv_body_length()) {
     resp.connection_close = true;
   }
 

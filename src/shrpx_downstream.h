@@ -161,10 +161,12 @@ struct Request {
 
 struct Response {
   Response()
-      : fs(32), http_status(0), http_major(1), http_minor(1),
-        connection_close(false) {}
+      : fs(32), recv_body_length(0), http_status(0), http_major(1),
+        http_minor(1), connection_close(false) {}
 
   FieldStore fs;
+  // the length of response body received so far
+  int64_t recv_body_length;
   // HTTP status code
   unsigned int http_status;
   int http_major, http_minor;
@@ -282,13 +284,11 @@ public:
   int get_response_state() const;
   DefaultMemchunks *get_response_buf();
   bool response_buf_full();
-  void add_response_bodylen(size_t amount);
-  int64_t get_response_bodylen() const;
   void add_response_sent_bodylen(size_t amount);
   int64_t get_response_sent_bodylen() const;
   // Validates that received response body length and content-length
   // matches.
-  bool validate_response_bodylen() const;
+  bool validate_response_recv_body_length() const;
   uint32_t get_response_rst_stream_error_code() const;
   void set_response_rst_stream_error_code(uint32_t error_code);
   // Inspects HTTP/1 response.  This checks tranfer-encoding etc.
@@ -391,9 +391,6 @@ private:
 
   ev_timer downstream_rtimer_;
   ev_timer downstream_wtimer_;
-
-  // the length of response body received so far
-  int64_t response_bodylen_;
 
   // the length of response body sent to upstream client
   int64_t response_sent_bodylen_;
