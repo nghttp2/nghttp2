@@ -677,9 +677,7 @@ void Downstream::inspect_http2_request() {
 void Downstream::inspect_http1_request() {
   if (req_.method == HTTP_CONNECT) {
     req_.upgrade_request = true;
-  }
-
-  if (!req_.upgrade_request) {
+  } else {
     auto upgrade = req_.fs.header(http2::HD_UPGRADE);
     if (upgrade) {
       const auto &val = upgrade->value;
