@@ -191,15 +191,12 @@ struct Response {
 
 class Downstream {
 public:
-  Downstream(Upstream *upstream, MemchunkPool *mcpool, int32_t stream_id,
-             int32_t priority);
+  Downstream(Upstream *upstream, MemchunkPool *mcpool, int32_t stream_id);
   ~Downstream();
   void reset_upstream(Upstream *upstream);
   Upstream *get_upstream() const;
   void set_stream_id(int32_t stream_id);
   int32_t get_stream_id() const;
-  void set_priority(int32_t pri);
-  int32_t get_priority() const;
   void pause_read(IOCtrlReason reason);
   int resume_read(IOCtrlReason reason, size_t consumed);
   void force_resume_read();
@@ -316,12 +313,6 @@ public:
   // connection.
   int on_read();
 
-  // Change the priority of downstream
-  int change_priority(int32_t pri);
-
-  bool get_rst_stream_after_end_stream() const;
-  void set_rst_stream_after_end_stream(bool f);
-
   // Resets upstream read timer.  If it is active, timeout value is
   // reset.  If it is not active, timer will be started.
   void reset_upstream_rtimer();
@@ -411,9 +402,6 @@ private:
   size_t num_retry_;
   // The stream ID in frontend connection
   int32_t stream_id_;
-  // The priority value in frontend connection, currently not used in
-  // a meaningful way.
-  int32_t priority_;
   // stream ID in backend connection
   int32_t downstream_stream_id_;
   // RST_STREAM error_code from downstream HTTP2 connection

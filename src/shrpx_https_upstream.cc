@@ -71,9 +71,7 @@ int htp_msg_begin(http_parser *htp) {
 
   auto handler = upstream->get_client_handler();
 
-  // TODO specify 0 as priority for now
-  auto downstream =
-      make_unique<Downstream>(upstream, handler->get_mcpool(), 0, 0);
+  auto downstream = make_unique<Downstream>(upstream, handler->get_mcpool(), 0);
 
   upstream->attach_downstream(std::move(downstream));
 
@@ -810,8 +808,7 @@ void HttpsUpstream::error_reply(unsigned int status_code) {
   auto downstream = get_downstream();
 
   if (!downstream) {
-    attach_downstream(
-        make_unique<Downstream>(this, handler_->get_mcpool(), 1, 1));
+    attach_downstream(make_unique<Downstream>(this, handler_->get_mcpool(), 1));
     downstream = get_downstream();
   }
 

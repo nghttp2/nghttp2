@@ -72,7 +72,7 @@ void test_downstream_field_store_header(void) {
 }
 
 void test_downstream_crumble_request_cookie(void) {
-  Downstream d(nullptr, nullptr, 0, 0);
+  Downstream d(nullptr, nullptr, 0);
   auto &req = d.request();
   req.fs.add_header(":method", "get");
   req.fs.add_header(":path", "/");
@@ -112,7 +112,7 @@ void test_downstream_crumble_request_cookie(void) {
 }
 
 void test_downstream_assemble_request_cookie(void) {
-  Downstream d(nullptr, nullptr, 0, 0);
+  Downstream d(nullptr, nullptr, 0);
   auto &req = d.request();
   req.fs.add_header(":method", "get");
   req.fs.add_header(":path", "/");
@@ -125,7 +125,7 @@ void test_downstream_assemble_request_cookie(void) {
 
 void test_downstream_rewrite_location_response_header(void) {
   {
-    Downstream d(nullptr, nullptr, 0, 0);
+    Downstream d(nullptr, nullptr, 0);
     auto &req = d.request();
     auto &resp = d.response();
     d.set_request_downstream_host("localhost:3000");
@@ -138,7 +138,7 @@ void test_downstream_rewrite_location_response_header(void) {
     CU_ASSERT("https://localhost/" == (*location).value);
   }
   {
-    Downstream d(nullptr, nullptr, 0, 0);
+    Downstream d(nullptr, nullptr, 0);
     auto &req = d.request();
     auto &resp = d.response();
     d.set_request_downstream_host("localhost");

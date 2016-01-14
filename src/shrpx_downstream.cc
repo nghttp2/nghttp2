@@ -112,12 +112,12 @@ void downstream_wtimeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
 
 // upstream could be nullptr for unittests
 Downstream::Downstream(Upstream *upstream, MemchunkPool *mcpool,
-                       int32_t stream_id, int32_t priority)
+                       int32_t stream_id)
     : dlnext(nullptr), dlprev(nullptr), response_sent_body_length(0),
       request_start_time_(std::chrono::high_resolution_clock::now()),
       request_buf_(mcpool), response_buf_(mcpool), upstream_(upstream),
       blocked_link_(nullptr), num_retry_(0), stream_id_(stream_id),
-      priority_(priority), downstream_stream_id_(-1),
+      downstream_stream_id_(-1),
       response_rst_stream_error_code_(NGHTTP2_NO_ERROR),
       request_state_(INITIAL), response_state_(INITIAL),
       dispatch_state_(DISPATCH_NONE), upgraded_(false), chunked_request_(false),
@@ -604,14 +604,6 @@ int Downstream::on_read() {
   return dconn_->on_read();
 }
 
-int Downstream::change_priority(int32_t pri) {
-  if (!dconn_) {
-    DLOG(INFO, this) << "dconn_ is NULL";
-    return -1;
-  }
-  return dconn_->on_priority_change(pri);
-}
-
 void Downstream::set_response_state(int state) { response_state_ = state; }
 
 int Downstream::get_response_state() const { return response_state_; }
@@ -660,10 +652,6 @@ bool Downstream::validate_response_recv_body_length() const {
 
   return true;
 }
-
-void Downstream::set_priority(int32_t pri) { priority_ = pri; }
-
-int32_t Downstream::get_priority() const { return priority_; }
 
 void Downstream::check_upgrade_fulfilled() {
   if (req_.method == HTTP_CONNECT) {

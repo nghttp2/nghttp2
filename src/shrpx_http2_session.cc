@@ -567,7 +567,7 @@ void Http2Session::remove_stream_data(StreamData *sd) {
   delete sd;
 }
 
-int Http2Session::submit_request(Http2DownstreamConnection *dconn, int32_t pri,
+int Http2Session::submit_request(Http2DownstreamConnection *dconn,
                                  const nghttp2_nv *nva, size_t nvlen,
                                  const nghttp2_data_provider *data_prd) {
   assert(state_ == CONNECTED);
@@ -599,30 +599,6 @@ int Http2Session::submit_rst_stream(int32_t stream_id, uint32_t error_code) {
                                      error_code);
   if (rv != 0) {
     SSLOG(FATAL, this) << "nghttp2_submit_rst_stream() failed: "
-                       << nghttp2_strerror(rv);
-    return -1;
-  }
-  return 0;
-}
-
-int Http2Session::submit_priority(Http2DownstreamConnection *dconn,
-                                  int32_t pri) {
-  assert(state_ == CONNECTED);
-  if (!dconn) {
-    return 0;
-  }
-  int rv;
-
-  // TODO Disabled temporarily
-
-  // rv = nghttp2_submit_priority(session_, NGHTTP2_FLAG_NONE,
-  //                              dconn->get_downstream()->
-  //                              get_downstream_stream_id(), pri);
-
-  rv = 0;
-
-  if (rv < NGHTTP2_ERR_FATAL) {
-    SSLOG(FATAL, this) << "nghttp2_submit_priority() failed: "
                        << nghttp2_strerror(rv);
     return -1;
   }

@@ -146,8 +146,8 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
                            << frame->syn_stream.stream_id;
     }
 
-    auto downstream = upstream->add_pending_downstream(
-        frame->syn_stream.stream_id, frame->syn_stream.pri);
+    auto downstream =
+        upstream->add_pending_downstream(frame->syn_stream.stream_id);
 
     auto &req = downstream->request();
 
@@ -913,10 +913,9 @@ int SpdyUpstream::error_reply(Downstream *downstream,
   return 0;
 }
 
-Downstream *SpdyUpstream::add_pending_downstream(int32_t stream_id,
-                                                 int32_t priority) {
-  auto downstream = make_unique<Downstream>(this, handler_->get_mcpool(),
-                                            stream_id, priority);
+Downstream *SpdyUpstream::add_pending_downstream(int32_t stream_id) {
+  auto downstream =
+      make_unique<Downstream>(this, handler_->get_mcpool(), stream_id);
   spdylay_session_set_stream_user_data(session_, stream_id, downstream.get());
   auto res = downstream.get();
 
