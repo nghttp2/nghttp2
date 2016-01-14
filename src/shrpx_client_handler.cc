@@ -834,7 +834,7 @@ void ClientHandler::write_accesslog(Downstream *downstream) {
           std::chrono::high_resolution_clock::now(), // request_end_time
 
           req.http_major, req.http_minor, resp.http_status,
-          downstream->get_response_sent_bodylen(), port_.c_str(),
+          downstream->response_sent_body_length, port_.c_str(),
           get_config()->port, get_config()->pid,
       });
 }

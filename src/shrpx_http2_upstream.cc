@@ -728,9 +728,7 @@ int send_data_callback(nghttp2_session *session, nghttp2_frame *frame,
 
   // We have to add length here, so that we can log this amount of
   // data transferred.
-  if (length > 0) {
-    downstream->add_response_sent_bodylen(length);
-  }
+  downstream->response_sent_body_length += length;
 
   return (nwrite < length || npadwrite < padlen) ? NGHTTP2_ERR_PAUSE : 0;
 }

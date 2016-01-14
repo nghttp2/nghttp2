@@ -804,7 +804,7 @@ ssize_t spdy_data_read_callback(spdylay_session *session, int32_t stream_id,
   }
 
   if (nread > 0) {
-    downstream->add_response_sent_bodylen(nread);
+    downstream->response_sent_body_length += nread;
   }
 
   return nread;

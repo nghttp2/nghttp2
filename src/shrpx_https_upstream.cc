@@ -799,7 +799,7 @@ int HttpsUpstream::send_reply(Downstream *downstream, const uint8_t *body,
 
   output->append(body, bodylen);
 
-  downstream->add_response_sent_bodylen(bodylen);
+  downstream->response_sent_body_length += bodylen;
   downstream->set_response_state(Downstream::MSG_COMPLETE);
 
   return 0;
@@ -842,7 +842,7 @@ void HttpsUpstream::error_reply(unsigned int status_code) {
                  "charset=UTF-8\r\nConnection: close\r\n\r\n");
   output->append(html.c_str(), html.size());
 
-  downstream->add_response_sent_bodylen(html.size());
+  downstream->response_sent_body_length += html.size();
   downstream->set_response_state(Downstream::MSG_COMPLETE);
 }
 
@@ -1048,7 +1048,7 @@ int HttpsUpstream::on_downstream_body(Downstream *downstream,
   }
   output->append(data, len);
 
-  downstream->add_response_sent_bodylen(len);
+  downstream->response_sent_body_length += len;
 
   if (downstream->get_chunked_response()) {
     output->append("\r\n");

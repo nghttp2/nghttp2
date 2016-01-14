@@ -297,8 +297,6 @@ public:
   int get_response_state() const;
   DefaultMemchunks *get_response_buf();
   bool response_buf_full();
-  void add_response_sent_bodylen(size_t amount);
-  int64_t get_response_sent_bodylen() const;
   // Validates that received response body length and content-length
   // matches.
   bool validate_response_recv_body_length() const;
@@ -381,6 +379,9 @@ public:
 
   Downstream *dlnext, *dlprev;
 
+  // the length of response body sent to upstream client
+  int64_t response_sent_body_length;
+
 private:
   Request req_;
   Response resp_;
@@ -400,9 +401,6 @@ private:
 
   ev_timer downstream_rtimer_;
   ev_timer downstream_wtimer_;
-
-  // the length of response body sent to upstream client
-  int64_t response_sent_bodylen_;
 
   Upstream *upstream_;
   std::unique_ptr<DownstreamConnection> dconn_;

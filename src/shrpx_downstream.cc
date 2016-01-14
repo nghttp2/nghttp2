@@ -113,11 +113,11 @@ void downstream_wtimeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
 // upstream could be nullptr for unittests
 Downstream::Downstream(Upstream *upstream, MemchunkPool *mcpool,
                        int32_t stream_id, int32_t priority)
-    : dlnext(nullptr), dlprev(nullptr),
+    : dlnext(nullptr), dlprev(nullptr), response_sent_body_length(0),
       request_start_time_(std::chrono::high_resolution_clock::now()),
-      request_buf_(mcpool), response_buf_(mcpool), response_sent_bodylen_(0),
-      upstream_(upstream), blocked_link_(nullptr), num_retry_(0),
-      stream_id_(stream_id), priority_(priority), downstream_stream_id_(-1),
+      request_buf_(mcpool), response_buf_(mcpool), upstream_(upstream),
+      blocked_link_(nullptr), num_retry_(0), stream_id_(stream_id),
+      priority_(priority), downstream_stream_id_(-1),
       response_rst_stream_error_code_(NGHTTP2_NO_ERROR),
       request_state_(INITIAL), response_state_(INITIAL),
       dispatch_state_(DISPATCH_NONE), upgraded_(false), chunked_request_(false),
@@ -625,14 +625,6 @@ bool Downstream::response_buf_full() {
   } else {
     return false;
   }
-}
-
-void Downstream::add_response_sent_bodylen(size_t amount) {
-  response_sent_bodylen_ += amount;
-}
-
-int64_t Downstream::get_response_sent_bodylen() const {
-  return response_sent_bodylen_;
 }
 
 bool Downstream::validate_request_recv_body_length() const {
