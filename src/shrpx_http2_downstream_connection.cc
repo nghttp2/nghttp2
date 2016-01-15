@@ -283,7 +283,7 @@ int Http2DownstreamConnection::push_request_headers() {
     num_cookies = downstream_->count_crumble_request_cookie();
   }
 
-  // 8 means:
+  // 9 means:
   // 1. :method
   // 2. :scheme
   // 3. :path
@@ -292,8 +292,9 @@ int Http2DownstreamConnection::push_request_headers() {
   // 6. x-forwarded-for (optional)
   // 7. x-forwarded-proto (optional)
   // 8. te (optional)
+  // 9. forwarded (optional)
   auto nva = std::vector<nghttp2_nv>();
-  nva.reserve(req.fs.headers().size() + 8 + num_cookies +
+  nva.reserve(req.fs.headers().size() + 9 + num_cookies +
               get_config()->add_request_headers.size());
 
   nva.push_back(
@@ -326,6 +327,44 @@ int Http2DownstreamConnection::push_request_headers() {
     downstream_->crumble_request_cookie(nva);
   }
 
+  auto upstream = downstream_->get_upstream();
+  auto handler = upstream->get_client_handler();
+
+  std::string forwarded_value;
+
+  auto fwd = get_config()->strip_incoming_forwarded
+                 ? nullptr
+                 : req.fs.header(http2::HD_FORWARDED);
+
+  if (get_config()->forwarded_params) {
+    auto params = get_config()->forwarded_params;
+
+    if (get_config()->http2_proxy || get_config()->client_proxy ||
+        req.method == HTTP_CONNECT) {
+      params &= ~FORWARDED_PROTO;
+    }
+
+    auto value = http::create_forwarded(params, handler->get_forwarded_by(),
+                                        handler->get_forwarded_for(),
+                                        req.authority, req.scheme);
+    if (fwd || !value.empty()) {
+      if (fwd) {
+        forwarded_value = fwd->value;
+
+        if (!value.empty()) {
+          forwarded_value += ", ";
+        }
+      }
+
+      forwarded_value += value;
+
+      nva.push_back(http2::make_nv_ls("forwarded", forwarded_value));
+    }
+  } else if (fwd) {
+    nva.push_back(http2::make_nv_ls_nocopy("forwarded", fwd->value));
+    forwarded_value = fwd->value;
+  }
+
   std::string xff_value;
   auto xff = req.fs.header(http2::HD_X_FORWARDED_FOR);
   if (get_config()->add_x_forwarded_for) {
@@ -333,8 +372,7 @@ int Http2DownstreamConnection::push_request_headers() {
       xff_value = (*xff).value;
       xff_value += ", ";
     }
-    xff_value +=
-        downstream_->get_upstream()->get_client_handler()->get_ipaddr();
+    xff_value += upstream->get_client_handler()->get_ipaddr();
     nva.push_back(http2::make_nv_ls("x-forwarded-for", xff_value));
   } else if (xff && !get_config()->strip_incoming_x_forwarded_for) {
     nva.push_back(http2::make_nv_ls_nocopy("x-forwarded-for", (*xff).value));
