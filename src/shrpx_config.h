@@ -306,6 +306,10 @@ struct Config {
   // obfuscated value used in "by" parameter of Forwarded header
   // field.
   std::string forwarded_by_obfuscated;
+  // obfuscated value used in "for" parameter of Forwarded header
+  // field.  This is only used when user defined static obfuscated
+  // string is provided.
+  std::string forwarded_for_obfuscated;
   std::chrono::seconds tls_session_timeout;
   ev_tstamp http2_upstream_read_timeout;
   ev_tstamp upstream_read_timeout;

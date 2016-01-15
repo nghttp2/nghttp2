@@ -2576,7 +2576,8 @@ int main(int argc, char **argv) {
     }
   }
 
-  if (get_config()->forwarded_by_node_type == FORWARDED_NODE_OBFUSCATED) {
+  if (get_config()->forwarded_by_node_type == FORWARDED_NODE_OBFUSCATED &&
+      get_config()->forwarded_by_obfuscated.empty()) {
     std::random_device rd;
     std::mt19937 gen(rd());
     auto &dst = mod_config()->forwarded_by_obfuscated;

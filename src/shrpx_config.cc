@@ -638,7 +638,18 @@ int parse_forwarded_node_type(const std::string &optarg) {
     return FORWARDED_NODE_IP;
   }
 
-  return -1;
+  if (optarg.size() < 2 || optarg[0] != '_') {
+    return -1;
+  }
+
+  if (std::find_if_not(std::begin(optarg), std::end(optarg), [](char c) {
+        return util::is_alpha(c) || util::is_digit(c) || c == '.' || c == '_' ||
+               c == '-';
+      }) != std::end(optarg)) {
+    return -1;
+  }
+
+  return FORWARDED_NODE_OBFUSCATED;
 }
 } // namespace
 
@@ -2083,7 +2094,8 @@ int parse_config(const char *opt, const char *optarg,
     auto type = parse_forwarded_node_type(optarg);
 
     if (type == -1) {
-      LOG(ERROR) << opt << ": unknown node type " << optarg;
+      LOG(ERROR) << opt << ": unknown node type or illegal obfuscated string "
+                 << optarg;
       return -1;
     }
 
@@ -2091,10 +2103,16 @@ int parse_config(const char *opt, const char *optarg,
     case SHRPX_OPTID_FORWARDED_BY:
       mod_config()->forwarded_by_node_type =
           static_cast<shrpx_forwarded_node_type>(type);
+      if (optarg[0] == '_') {
+        mod_config()->forwarded_by_obfuscated = optarg;
+      }
       break;
     case SHRPX_OPTID_FORWARDED_FOR:
       mod_config()->forwarded_for_node_type =
           static_cast<shrpx_forwarded_node_type>(type);
+      if (optarg[0] == '_') {
+        mod_config()->forwarded_for_obfuscated = optarg;
+      }
       break;
     }
 
