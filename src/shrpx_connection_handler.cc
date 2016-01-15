@@ -102,8 +102,12 @@ void thread_join_async_cb(struct ev_loop *loop, ev_async *w, int revent) {
 }
 } // namespace
 
+namespace {
+std::random_device rd;
+} // namespace
+
 ConnectionHandler::ConnectionHandler(struct ev_loop *loop)
-    : single_worker_(nullptr), loop_(loop),
+    : gen_(rd()), single_worker_(nullptr), loop_(loop),
       tls_ticket_key_memcached_get_retry_count_(0),
       tls_ticket_key_memcached_fail_count_(0), worker_round_robin_cnt_(0),
       graceful_shutdown_(false) {
@@ -667,10 +671,6 @@ ConnectionHandler::get_tls_ticket_key_memcached_dispatcher() const {
   return tls_ticket_key_memcached_dispatcher_.get();
 }
 
-namespace {
-std::random_device rd;
-} // namespace
-
 void ConnectionHandler::on_tls_ticket_key_network_error(ev_timer *w) {
   if (++tls_ticket_key_memcached_get_retry_count_ >=
       get_config()->tls_ticket_key_memcached_max_retry) {
@@ -683,7 +683,7 @@ void ConnectionHandler::on_tls_ticket_key_network_error(ev_timer *w) {
 
   auto dist = std::uniform_int_distribution<int>(
       1, std::min(60, 1 << tls_ticket_key_memcached_get_retry_count_));
-  auto t = dist(rd);
+  auto t = dist(gen_);
 
   LOG(WARN)
       << "Memcached: tls ticket get failed due to network error, retrying in "
