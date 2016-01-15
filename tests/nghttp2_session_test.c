@@ -3484,6 +3484,14 @@ void test_nghttp2_session_upgrade2(void) {
   nghttp2_settings_entry iv[16];
   nghttp2_stream *stream;
   nghttp2_outbound_item *item;
+  ssize_t rv;
+  nghttp2_bufs bufs;
+  nghttp2_buf *buf;
+  nghttp2_hd_deflater deflater;
+  nghttp2_mem *mem;
+
+  mem = nghttp2_mem_default();
+  frame_pack_bufs_init(&bufs);
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks.send_callback = null_send_callback;
@@ -3498,6 +3506,7 @@ void test_nghttp2_session_upgrade2(void) {
   nghttp2_session_client_new(&session, &callbacks, NULL);
   CU_ASSERT(0 == nghttp2_session_upgrade2(session, settings_payload,
                                           settings_payloadlen, 0, &callbacks));
+  CU_ASSERT(1 == session->sent_stream_id);
   stream = nghttp2_session_get_stream(session, 1);
   CU_ASSERT(stream != NULL);
   CU_ASSERT(&callbacks == stream->stream_user_data);
@@ -3518,10 +3527,39 @@ void test_nghttp2_session_upgrade2(void) {
                                      settings_payloadlen, 0, &callbacks));
   nghttp2_session_del(session);
 
+  /* Make sure that response from server can be received */
+  nghttp2_session_client_new(&session, &callbacks, NULL);
+
+  CU_ASSERT(0 == nghttp2_session_upgrade2(session, settings_payload,
+                                          settings_payloadlen, 0, &callbacks));
+
+  stream = nghttp2_session_get_stream(session, 1);
+
+  CU_ASSERT(NGHTTP2_STREAM_OPENING == stream->state);
+
+  nghttp2_hd_deflate_init(&deflater, mem);
+  rv = pack_headers(&bufs, &deflater, 1, NGHTTP2_FLAG_END_HEADERS, resnv,
+                    ARRLEN(resnv), mem);
+
+  CU_ASSERT(0 == rv);
+
+  buf = &bufs.head->buf;
+
+  rv = nghttp2_session_mem_recv(session, buf->pos, nghttp2_buf_len(buf));
+
+  CU_ASSERT(rv == (ssize_t)nghttp2_buf_len(buf));
+  CU_ASSERT(NGHTTP2_STREAM_OPENED == stream->state);
+
+  nghttp2_hd_deflate_free(&deflater);
+  nghttp2_session_del(session);
+
+  nghttp2_bufs_reset(&bufs);
+
   /* Check server side */
   nghttp2_session_server_new(&session, &callbacks, NULL);
   CU_ASSERT(0 == nghttp2_session_upgrade2(session, settings_payload,
                                           settings_payloadlen, 0, &callbacks));
+  CU_ASSERT(1 == session->last_recv_stream_id);
   stream = nghttp2_session_get_stream(session, 1);
   CU_ASSERT(stream != NULL);
   CU_ASSERT(NULL == stream->stream_user_data);
@@ -3543,6 +3581,7 @@ void test_nghttp2_session_upgrade2(void) {
   CU_ASSERT(0 == nghttp2_session_upgrade2(session, settings_payload,
                                           settings_payloadlen, 0, NULL));
   nghttp2_session_del(session);
+  nghttp2_bufs_free(&bufs);
 }
 
 void test_nghttp2_session_reprioritize_stream(void) {
