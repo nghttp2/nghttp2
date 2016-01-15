@@ -64,6 +64,7 @@
 #include <fstream>
 #include <vector>
 #include <initializer_list>
+#include <random>
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -1832,6 +1833,10 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_FASTOPEN, required_argument, &flag, 94},
         {SHRPX_OPT_TLS_DYN_REC_WARMUP_THRESHOLD, required_argument, &flag, 95},
         {SHRPX_OPT_TLS_DYN_REC_IDLE_TIMEOUT, required_argument, &flag, 96},
+        {SHRPX_OPT_ADD_FORWARDED, required_argument, &flag, 97},
+        {SHRPX_OPT_STRIP_INCOMING_FORWARDED, no_argument, &flag, 98},
+        {SHRPX_OPT_FORWARDED_BY, required_argument, &flag, 99},
+        {SHRPX_OPT_FORWARDED_FOR, required_argument, &flag, 100},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -2245,6 +2250,22 @@ int main(int argc, char **argv) {
         // --tls-dyn-rec-idle-timeout
         cmdcfgs.emplace_back(SHRPX_OPT_TLS_DYN_REC_IDLE_TIMEOUT, optarg);
         break;
+      case 97:
+        // --add-forwarded
+        cmdcfgs.emplace_back(SHRPX_OPT_ADD_FORWARDED, optarg);
+        break;
+      case 98:
+        // --strip-incoming-forwarded
+        cmdcfgs.emplace_back(SHRPX_OPT_STRIP_INCOMING_FORWARDED, "yes");
+        break;
+      case 99:
+        // --forwarded-by
+        cmdcfgs.emplace_back(SHRPX_OPT_FORWARDED_BY, optarg);
+        break;
+      case 100:
+        // --forwarded-for
+        cmdcfgs.emplace_back(SHRPX_OPT_FORWARDED_FOR, optarg);
+        break;
       default:
         break;
       }
@@ -2553,6 +2574,14 @@ int main(int argc, char **argv) {
       auto error = errno;
       LOG(WARN) << "Setting rlimit-nofile failed: " << strerror(error);
     }
+  }
+
+  if (get_config()->forwarded_by_node_type == FORWARDED_NODE_OBFUSCATED) {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    auto &dst = mod_config()->forwarded_by_obfuscated;
+    dst = "_";
+    dst += util::random_alpha_digit(gen, SHRPX_OBFUSCATED_NODE_LENGTH);
   }
 
   if (get_config()->upstream_frame_debug) {

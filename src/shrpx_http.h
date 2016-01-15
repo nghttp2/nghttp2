@@ -39,6 +39,10 @@ std::string create_error_html(unsigned int status_code);
 
 std::string create_via_header_value(int major, int minor);
 
+std::string create_forwarded(int params, const std::string &node_by,
+                             const std::string &node_for,
+                             const std::string &host, const std::string &proto);
+
 // Adds ANSI color codes to HTTP headers |hdrs|.
 std::string colorizeHeaders(const char *hdrs);
 

@@ -29,6 +29,7 @@
 
 #include <mutex>
 #include <vector>
+#include <random>
 #include <thread>
 #ifndef NOTHREADS
 #include <future>
@@ -132,6 +133,8 @@ public:
 
   MemcachedDispatcher *get_session_cache_memcached_dispatcher();
 
+  std::mt19937 &get_randgen();
+
 #ifdef HAVE_MRUBY
   int create_mruby_context();
 
@@ -144,6 +147,7 @@ private:
 #endif // NOTHREADS
   std::mutex m_;
   std::vector<WorkerEvent> q_;
+  std::mt19937 randgen_;
   ev_async w_;
   ev_timer mcpool_clear_timer_;
   MemchunkPool mcpool_;

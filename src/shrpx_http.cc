@@ -62,6 +62,41 @@ std::string create_via_header_value(int major, int minor) {
   return hdrs;
 }
 
+std::string create_forwarded(int params, const std::string &node_by,
+                             const std::string &node_for,
+                             const std::string &host,
+                             const std::string &proto) {
+  std::string res;
+  if ((params & FORWARDED_BY) && !node_by.empty()) {
+    res += "by=\"";
+    res += node_by;
+    res += "\";";
+  }
+  if ((params & FORWARDED_FOR) && !node_for.empty()) {
+    res += "for=\"";
+    res += node_for;
+    res += "\";";
+  }
+  if ((params & FORWARDED_HOST) && !host.empty()) {
+    res += "host=\"";
+    res += host;
+    res += "\";";
+  }
+  if ((params & FORWARDED_PROTO) && !proto.empty()) {
+    res += "proto=\"";
+    res += proto;
+    res += "\";";
+  }
+
+  if (res.empty()) {
+    return res;
+  }
+
+  res.erase(res.size() - 1);
+
+  return res;
+}
+
 std::string colorizeHeaders(const char *hdrs) {
   std::string nhdrs;
   const char *p = strchr(hdrs, '\n');

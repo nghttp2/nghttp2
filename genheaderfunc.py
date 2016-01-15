@@ -17,6 +17,7 @@ HEADERS = [
     "http2-settings",
     "server",
     "via",
+    "forwarded",
     "x-forwarded-for",
     "x-forwarded-proto",
     "alt-svc",

@@ -103,7 +103,11 @@ OPTIONS = [
     "conf",
     "fastopen",
     "tls-dyn-rec-warmup-threshold",
-    "tls-dyn-rec-idle-timeout"
+    "tls-dyn-rec-idle-timeout",
+    "add-forwarded",
+    "strip-incoming-forwarded",
+    "forwarded-by",
+    "forwarded-for"
 ]
 
 LOGVARS = [

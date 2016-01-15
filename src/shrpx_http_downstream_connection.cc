@@ -296,6 +296,41 @@ int HttpDownstreamConnection::push_request_headers() {
     }
   }
 
+  auto upstream = downstream_->get_upstream();
+  auto handler = upstream->get_client_handler();
+
+  auto fwd = get_config()->strip_incoming_forwarded
+                 ? nullptr
+                 : req.fs.header(http2::HD_FORWARDED);
+  if (get_config()->forwarded_params) {
+    auto params = get_config()->forwarded_params;
+
+    if (get_config()->http2_proxy || get_config()->client_proxy ||
+        connect_method) {
+      params &= ~FORWARDED_PROTO;
+    }
+
+    auto value = http::create_forwarded(params, handler->get_forwarded_by(),
+                                        handler->get_forwarded_for(),
+                                        req.authority, req.scheme);
+    if (fwd || !value.empty()) {
+      buf->append("Forwarded: ");
+      if (fwd) {
+        buf->append(fwd->value);
+
+        if (!value.empty()) {
+          buf->append(", ");
+        }
+      }
+      buf->append(value);
+      buf->append("\r\n");
+    }
+  } else if (fwd) {
+    buf->append("Forwarded: ");
+    buf->append(fwd->value);
+    buf->append("\r\n");
+  }
+
   auto xff = req.fs.header(http2::HD_X_FORWARDED_FOR);
   if (get_config()->add_x_forwarded_for) {
     buf->append("X-Forwarded-For: ");
