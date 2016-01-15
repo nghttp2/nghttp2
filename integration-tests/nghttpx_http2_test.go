@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"regexp"
 	"strings"
 	"syscall"
 	"testing"
@@ -120,6 +121,147 @@ func TestH2H1StripAddXff(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
+	}
+}
+
+// TestH2H1AddForwardedObfuscated tests that server generates
+// Forwarded header field with obfuscated "by" and "for" parameters.
+func TestH2H1AddForwardedObfuscated(t *testing.T) {
+	st := newServerTester([]string{"--add-forwarded=by,for,host,proto"}, t, func(w http.ResponseWriter, r *http.Request) {
+		pattern := fmt.Sprintf(`by="_[^"]+";for="_[^"]+";host="127.0.0.1:%v";proto="http"`, serverPort)
+		validFwd := regexp.MustCompile(pattern)
+		got := r.Header.Get("Forwarded")
+
+		if !validFwd.MatchString(got) {
+			t.Errorf("Forwarded = %v; want pattern %v", got, pattern)
+		}
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1AddForwardedObfuscated",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+}
+
+// TestH2H1AddForwardedByIP tests that server generates Forwarded header
+// field with IP address in "by" parameter.
+func TestH2H1AddForwardedByIP(t *testing.T) {
+	st := newServerTester([]string{"--add-forwarded=by,for,host,proto", "--forwarded-by=ip", "--forwarded-for=_bravo"}, t, func(w http.ResponseWriter, r *http.Request) {
+		want := fmt.Sprintf(`by="127.0.0.1:%v";for="_bravo";host="127.0.0.1:%v";proto="http"`, serverPort, serverPort)
+		if got := r.Header.Get("Forwarded"); got != want {
+			t.Errorf("Forwarded = %v; want %v", got, want)
+		}
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1AddForwardedByIP",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+}
+
+// TestH2H1AddForwardedForIP tests that server generates Forwarded header
+// field with IP address in "for" parameters.
+func TestH2H1AddForwardedForIP(t *testing.T) {
+	st := newServerTester([]string{"--add-forwarded=by,for,host,proto", "--forwarded-by=_alpha", "--forwarded-for=ip"}, t, func(w http.ResponseWriter, r *http.Request) {
+		want := fmt.Sprintf(`by="_alpha";for="127.0.0.1";host="127.0.0.1:%v";proto="http"`, serverPort)
+		if got := r.Header.Get("Forwarded"); got != want {
+			t.Errorf("Forwarded = %v; want %v", got, want)
+		}
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1AddForwardedForIP",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+}
+
+// TestH2H1AddForwardedMerge tests that server generates Forwarded
+// header field with IP address in "by" and "for" parameters.  The
+// generated values must be appended to the existing value.
+func TestH2H1AddForwardedMerge(t *testing.T) {
+	st := newServerTester([]string{"--add-forwarded=proto"}, t, func(w http.ResponseWriter, r *http.Request) {
+		if got, want := r.Header.Get("Forwarded"), `host=foo, proto="http"`; got != want {
+			t.Errorf("Forwarded = %v; want %v", got, want)
+		}
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1AddForwardedMerge",
+		header: []hpack.HeaderField{
+			pair("forwarded", "host=foo"),
+		},
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+}
+
+// TestH2H1AddForwardedStrip tests that server generates Forwarded
+// header field with IP address in "by" and "for" parameters.  The
+// generated values must not include the existing value.
+func TestH2H1AddForwardedStrip(t *testing.T) {
+	st := newServerTester([]string{"--strip-incoming-forwarded", "--add-forwarded=proto"}, t, func(w http.ResponseWriter, r *http.Request) {
+		if got, want := r.Header.Get("Forwarded"), `proto="http"`; got != want {
+			t.Errorf("Forwarded = %v; want %v", got, want)
+		}
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1AddForwardedStrip",
+		header: []hpack.HeaderField{
+			pair("forwarded", "host=foo"),
+		},
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+}
+
+// TestH2H1AddForwardedStatic tests that server generates Forwarded
+// header field with the given static obfuscated strings for "by" and
+// "for" parameters.
+func TestH2H1AddForwardedStatic(t *testing.T) {
+	st := newServerTester([]string{"--add-forwarded=by,for", "--forwarded-by=_alpha", "--forwarded-for=_bravo"}, t, func(w http.ResponseWriter, r *http.Request) {
+		if got, want := r.Header.Get("Forwarded"), `by="_alpha";for="_bravo"`; got != want {
+			t.Errorf("Forwarded = %v; want %v", got, want)
+		}
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1AddForwardedStatic",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status: %v; want %v", got, want)
 	}
 }
 
@@ -1345,6 +1487,60 @@ func TestH2H2TLSXfp(t *testing.T) {
 	}
 	if got, want := res.status, 200; got != want {
 		t.Errorf("res.status: %v; want %v", got, want)
+	}
+}
+
+// TestH2H2AddForwarded tests that server generates Forwarded header
+// field using static obfuscated "by" and "for" parameter, and
+// existing Forwarded header field.
+func TestH2H2AddForwarded(t *testing.T) {
+	st := newServerTesterTLS([]string{"--http2-bridge", "--add-forwarded=by,for,host,proto", "--forwarded-by=_alpha", "--forwarded-for=_bravo"}, t, func(w http.ResponseWriter, r *http.Request) {
+		want := fmt.Sprintf(`host=foo, by="_alpha";for="_bravo";host="127.0.0.1:%v";proto="https"`, serverPort)
+		if got := r.Header.Get("Forwarded"); got != want {
+			t.Errorf("Forwarded = %v; want %v", got, want)
+		}
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name:   "TestH2H2AddForwarded",
+		scheme: "https",
+		header: []hpack.HeaderField{
+			pair("forwarded", "host=foo"),
+		},
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+}
+
+// TestH2H2AddForwardedStrip tests that server generates Forwarded
+// header field using static obfuscated "by" and "for" parameter, and
+// existing Forwarded header field stripped.
+func TestH2H2AddForwardedStrip(t *testing.T) {
+	st := newServerTesterTLS([]string{"--http2-bridge", "--strip-incoming-forwarded", "--add-forwarded=by,for,host,proto", "--forwarded-by=_alpha", "--forwarded-for=_bravo"}, t, func(w http.ResponseWriter, r *http.Request) {
+		want := fmt.Sprintf(`by="_alpha";for="_bravo";host="127.0.0.1:%v";proto="https"`, serverPort)
+		if got := r.Header.Get("Forwarded"); got != want {
+			t.Errorf("Forwarded = %v; want %v", got, want)
+		}
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name:   "TestH2H2AddForwardedStrip",
+		scheme: "https",
+		header: []hpack.HeaderField{
+			pair("forwarded", "host=foo"),
+		},
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status: %v; want %v", got, want)
 	}
 }
 
