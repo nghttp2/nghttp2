@@ -2061,6 +2061,7 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   case SHRPX_OPTID_ADD_FORWARDED:
+    mod_config()->forwarded_params = FORWARDED_NONE;
     for (const auto &param : util::parse_config_str_list(optarg)) {
       if (util::strieq(param, "by")) {
         mod_config()->forwarded_params |= FORWARDED_BY;
@@ -2105,6 +2106,8 @@ int parse_config(const char *opt, const char *optarg,
           static_cast<shrpx_forwarded_node_type>(type);
       if (optarg[0] == '_') {
         mod_config()->forwarded_by_obfuscated = optarg;
+      } else {
+        mod_config()->forwarded_by_obfuscated = "";
       }
       break;
     case SHRPX_OPTID_FORWARDED_FOR:
@@ -2112,6 +2115,8 @@ int parse_config(const char *opt, const char *optarg,
           static_cast<shrpx_forwarded_node_type>(type);
       if (optarg[0] == '_') {
         mod_config()->forwarded_for_obfuscated = optarg;
+      } else {
+        mod_config()->forwarded_for_obfuscated = "";
       }
       break;
     }
