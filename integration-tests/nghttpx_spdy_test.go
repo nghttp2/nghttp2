@@ -1,8 +1,8 @@
 package nghttp2
 
 import (
-	"golang.org/x/net/http2/hpack"
 	"github.com/tatsuhiro-t/spdy"
+	"golang.org/x/net/http2/hpack"
 	"net/http"
 	"testing"
 )
@@ -226,6 +226,46 @@ func TestS3H1InvalidMethod(t *testing.T) {
 		t.Fatalf("Error st.spdy() = %v", err)
 	}
 	if got, want := res.status, 501; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+}
+
+// TestS3H1BadHost tests that server rejects request including bad
+// character in :host header field.
+func TestS3H1BadHost(t *testing.T) {
+	st := newServerTesterTLS([]string{"--npn-list=spdy/3.1"}, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("server should not forward this request")
+	})
+	defer st.Close()
+
+	res, err := st.spdy(requestParam{
+		name:      "TestS3H1BadHost",
+		authority: `foo\bar`,
+	})
+	if err != nil {
+		t.Fatalf("Error st.spdy() = %v", err)
+	}
+	if got, want := res.status, 400; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+}
+
+// TestS3H1BadScheme tests that server rejects request including bad
+// character in :scheme header field.
+func TestS3H1BadScheme(t *testing.T) {
+	st := newServerTesterTLS([]string{"--npn-list=spdy/3.1"}, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("server should not forward this request")
+	})
+	defer st.Close()
+
+	res, err := st.spdy(requestParam{
+		name:   "TestS3H1BadScheme",
+		scheme: `http*`,
+	})
+	if err != nil {
+		t.Fatalf("Error st.spdy() = %v", err)
+	}
+	if got, want := res.status, 400; got != want {
 		t.Errorf("status: %v; want %v", got, want)
 	}
 }

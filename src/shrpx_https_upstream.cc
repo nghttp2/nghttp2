@@ -271,9 +271,22 @@ int htp_hdrs_completecb(http_parser *htp) {
     return -1;
   }
 
-  if (req.http_major == 1 && req.http_minor == 1 &&
-      !req.fs.header(http2::HD_HOST)) {
+  auto host = req.fs.header(http2::HD_HOST);
+
+  if (req.http_major == 1 && req.http_minor == 1 && !host) {
     return -1;
+  }
+
+  if (host) {
+    const auto &value = host->value;
+    // Not allow at least '"' or '\' in host.  They are illegal in
+    // authority component, also they cause headaches when we put them
+    // in quoted-string.
+    if (std::find_if(std::begin(value), std::end(value), [](char c) {
+          return c == '"' || c == '\\';
+        }) != std::end(value)) {
+      return -1;
+    }
   }
 
   downstream->inspect_http1_request();
@@ -301,7 +314,6 @@ int htp_hdrs_completecb(http_parser *htp) {
         req.path = http2::rewrite_clean_path(std::begin(path), std::end(path));
       }
 
-      auto host = req.fs.header(http2::HD_HOST);
       if (host) {
         req.authority = host->value;
       }

@@ -606,6 +606,46 @@ func TestH2H1InvalidMethod(t *testing.T) {
 	}
 }
 
+// TestH2H1BadAuthority tests that server rejects request including
+// bad characters in :authority header field.
+func TestH2H1BadAuthority(t *testing.T) {
+	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("server should not forward this request")
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1BadAuthority",
+		authority: `foo\bar`,
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.errCode, http2.ErrCodeProtocol; got != want {
+		t.Errorf("res.errCode: %v; want %v", got, want)
+	}
+}
+
+// TestH2H1BadScheme tests that server rejects request including
+// bad characters in :scheme header field.
+func TestH2H1BadScheme(t *testing.T) {
+	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("server should not forward this request")
+	})
+	defer st.Close()
+
+	res, err := st.http2(requestParam{
+		name: "TestH2H1BadScheme",
+		scheme: "http*",
+	})
+	if err != nil {
+		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.errCode, http2.ErrCodeProtocol; got != want {
+		t.Errorf("res.errCode: %v; want %v", got, want)
+	}
+}
+
 // TestH2H1AssembleCookies tests that crumbled cookies in HTTP/2
 // request is assembled into 1 when forwarding to HTTP/1 backend link.
 func TestH2H1AssembleCookies(t *testing.T) {
