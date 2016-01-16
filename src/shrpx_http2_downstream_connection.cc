@@ -287,7 +287,7 @@ int Http2DownstreamConnection::push_request_headers() {
   // 1. :method
   // 2. :scheme
   // 3. :path
-  // 4. :authority
+  // 4. :authority (or host)
   // 5. via (optional)
   // 6. x-forwarded-for (optional)
   // 7. x-forwarded-proto (optional)
@@ -300,8 +300,6 @@ int Http2DownstreamConnection::push_request_headers() {
   nva.push_back(
       http2::make_nv_lc_nocopy(":method", http2::to_method_string(req.method)));
 
-  nva.push_back(http2::make_nv_lc_nocopy(":authority", authority));
-
   if (req.method != HTTP_CONNECT) {
     assert(!req.scheme.empty());
 
@@ -312,6 +310,14 @@ int Http2DownstreamConnection::push_request_headers() {
     } else {
       nva.push_back(http2::make_nv_ls_nocopy(":path", req.path));
     }
+
+    if (!req.no_authority) {
+      nva.push_back(http2::make_nv_lc_nocopy(":authority", authority));
+    } else {
+      nva.push_back(http2::make_nv_lc_nocopy("host", authority));
+    }
+  } else {
+    nva.push_back(http2::make_nv_lc_nocopy(":authority", authority));
   }
 
   http2::copy_headers_to_nva_nocopy(nva, req.fs.headers());

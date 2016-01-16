@@ -298,6 +298,7 @@ int Http2Upstream::on_request_headers(Downstream *downstream,
 
   // nghttp2 library guarantees either :authority or host exist
   if (!authority) {
+    req.no_authority = true;
     authority = req.fs.header(http2::HD_HOST);
   }
 

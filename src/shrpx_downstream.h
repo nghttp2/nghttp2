@@ -127,7 +127,7 @@ struct Request {
       : fs(16), recv_body_length(0), unconsumed_body_length(0), method(-1),
         http_major(1), http_minor(1), upgrade_request(false),
         http2_upgrade_seen(false), connection_close(false),
-        http2_expect_body(false) {}
+        http2_expect_body(false), no_authority(false) {}
 
   void consume(size_t len) {
     assert(unconsumed_body_length >= len);
@@ -165,6 +165,10 @@ struct Request {
   // true if this is HTTP/2, and request body is expected.  Note that
   // we don't take into account HTTP method here.
   bool http2_expect_body;
+  // true if request does not have any information about authority.
+  // This happens when: For HTTP/2 request, :authority is missing.
+  // For HTTP/1 request, origin or asterisk form is used.
+  bool no_authority;
 };
 
 struct Response {

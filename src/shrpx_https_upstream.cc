@@ -308,6 +308,8 @@ int htp_hdrs_completecb(http_parser *htp) {
         return -1;
       }
 
+      req.no_authority = true;
+
       if (method == HTTP_OPTIONS && path == "*") {
         req.path = "";
       } else {
