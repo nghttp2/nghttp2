@@ -1577,6 +1577,40 @@ HTTP:
   --strip-incoming-x-forwarded-for
               Strip X-Forwarded-For  header field from  inbound client
               requests.
+  --add-forwarded=<LIST>
+              Append RFC  7239 Forwarded header field  with parameters
+              specified in comma delimited list <LIST>.  The supported
+              parameters  are "by",  "for", "host",  and "proto".   By
+              default,  the value  of  "by" and  "for" parameters  are
+              obfuscated     string.     See     --forwarded-by    and
+              --forwarded-for options respectively.  Note that nghttpx
+              does  not  translate non-standard  X-Forwarded-*  header
+              fields into Forwarded header field, and vice versa.
+  --strip-incoming-forwarded
+              Strip  Forwarded   header  field  from   inbound  client
+              requests.
+  --forwarded-by=(obfuscated|ip|<VALUE>)
+              Specify the parameter value sent out with "by" parameter
+              of Forwarded  header field.   If "obfuscated"  is given,
+              the string is randomly generated at startup.  If "ip" is
+              given,   the  interface   address  of   the  connection,
+              including  port number,  is  sent  with "by"  parameter.
+              User can also specify the static obfuscated string.  The
+              limitation is  that it  must starts  with "_",  and only
+              consists of  character set [A-Za-z0-9._-],  as described
+              in RFC 7239.
+              Default: obfuscated
+  --forwarded-for=(obfuscated|ip|<VALUE>)
+              Specify  the   parameter  value  sent  out   with  "for"
+              parameter of Forwarded header field.  If "obfuscated" is
+              given, the string is  randomly generated for each client
+              connection.  If "ip" is given, the remote client address
+              of  the connection,  without port  number, is  sent with
+              "for"  parameter.   User  can also  specify  the  static
+              obfuscated  string.   The  limitation is  that  it  must
+              starts  with "_",  and  only consists  of character  set
+              [A-Za-z0-9._-], as described in RFC 7239.
+              Default: obfuscated
   --no-via    Don't append to  Via header field.  If  Via header field
               is received, it is left unaltered.
   --no-location-rewrite
