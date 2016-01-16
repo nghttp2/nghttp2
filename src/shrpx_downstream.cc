@@ -540,56 +540,25 @@ void Downstream::rewrite_location_response_header(
   if (!hd) {
     return;
   }
+
+  if (request_downstream_host_.empty() || req_.authority.empty()) {
+    return;
+  }
+
   http_parser_url u{};
-  int rv =
-      http_parser_parse_url((*hd).value.c_str(), (*hd).value.size(), 0, &u);
+  auto rv = http_parser_parse_url(hd->value.c_str(), hd->value.size(), 0, &u);
   if (rv != 0) {
     return;
   }
-  std::string new_uri;
-  if (get_config()->no_host_rewrite || req_.method == HTTP_CONNECT) {
-    if (!req_.authority.empty()) {
-      new_uri = http2::rewrite_location_uri((*hd).value, u, req_.authority,
-                                            req_.authority, upstream_scheme);
-    }
-    if (new_uri.empty()) {
-      auto host = req_.fs.header(http2::HD_HOST);
-      if (host) {
-        new_uri = http2::rewrite_location_uri((*hd).value, u, (*host).value,
-                                              (*host).value, upstream_scheme);
-      } else if (!request_downstream_host_.empty()) {
-        new_uri = http2::rewrite_location_uri(
-            (*hd).value, u, request_downstream_host_, "", upstream_scheme);
-      } else {
-        return;
-      }
-    }
-  } else {
-    if (request_downstream_host_.empty()) {
-      return;
-    }
-    if (!req_.authority.empty()) {
-      new_uri =
-          http2::rewrite_location_uri((*hd).value, u, request_downstream_host_,
-                                      req_.authority, upstream_scheme);
-    } else {
-      auto host = req_.fs.header(http2::HD_HOST);
-      if (host) {
-        new_uri = http2::rewrite_location_uri((*hd).value, u,
-                                              request_downstream_host_,
-                                              (*host).value, upstream_scheme);
-      } else {
-        new_uri = http2::rewrite_location_uri(
-            (*hd).value, u, request_downstream_host_, "", upstream_scheme);
-      }
-    }
-  }
+
+  auto new_uri = http2::rewrite_location_uri(
+      hd->value, u, request_downstream_host_, req_.authority, upstream_scheme);
 
   if (new_uri.empty()) {
     return;
   }
 
-  (*hd).value = std::move(new_uri);
+  hd->value = std::move(new_uri);
 }
 
 bool Downstream::get_chunked_response() const { return chunked_response_; }

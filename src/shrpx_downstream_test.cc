@@ -124,31 +124,16 @@ void test_downstream_assemble_request_cookie(void) {
 }
 
 void test_downstream_rewrite_location_response_header(void) {
-  {
-    Downstream d(nullptr, nullptr, 0);
-    auto &req = d.request();
-    auto &resp = d.response();
-    d.set_request_downstream_host("localhost:3000");
-    req.fs.add_header("host", "localhost");
-    resp.fs.add_header("location", "http://localhost:3000/");
-    req.fs.index_headers();
-    resp.fs.index_headers();
-    d.rewrite_location_response_header("https");
-    auto location = resp.fs.header(http2::HD_LOCATION);
-    CU_ASSERT("https://localhost/" == (*location).value);
-  }
-  {
-    Downstream d(nullptr, nullptr, 0);
-    auto &req = d.request();
-    auto &resp = d.response();
-    d.set_request_downstream_host("localhost");
-    req.authority = "localhost";
-    resp.fs.add_header("location", "http://localhost:3000/");
-    resp.fs.index_headers();
-    d.rewrite_location_response_header("https");
-    auto location = resp.fs.header(http2::HD_LOCATION);
-    CU_ASSERT("https://localhost/" == (*location).value);
-  }
+  Downstream d(nullptr, nullptr, 0);
+  auto &req = d.request();
+  auto &resp = d.response();
+  d.set_request_downstream_host("localhost2");
+  req.authority = "localhost:8443";
+  resp.fs.add_header("location", "http://localhost2:3000/");
+  resp.fs.index_headers();
+  d.rewrite_location_response_header("https");
+  auto location = resp.fs.header(http2::HD_LOCATION);
+  CU_ASSERT("https://localhost:8443/" == (*location).value);
 }
 
 } // namespace shrpx
