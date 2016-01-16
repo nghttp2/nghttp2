@@ -45,11 +45,14 @@ func TestH2H1AddXff(t *testing.T) {
 	})
 	defer st.Close()
 
-	_, err := st.http2(requestParam{
+	res, err := st.http2(requestParam{
 		name: "TestH2H1AddXff",
 	})
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status = %v; want %v", got, want)
 	}
 }
 
@@ -65,7 +68,7 @@ func TestH2H1AddXff2(t *testing.T) {
 	})
 	defer st.Close()
 
-	_, err := st.http2(requestParam{
+	res, err := st.http2(requestParam{
 		name: "TestH2H1AddXff2",
 		header: []hpack.HeaderField{
 			pair("x-forwarded-for", "host"),
@@ -73,6 +76,9 @@ func TestH2H1AddXff2(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status = %v; want %v", got, want)
 	}
 }
 
@@ -86,7 +92,7 @@ func TestH2H1StripXff(t *testing.T) {
 	})
 	defer st.Close()
 
-	_, err := st.http2(requestParam{
+	res, err := st.http2(requestParam{
 		name: "TestH2H1StripXff1",
 		header: []hpack.HeaderField{
 			pair("x-forwarded-for", "host"),
@@ -94,6 +100,9 @@ func TestH2H1StripXff(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status = %v; want %v", got, want)
 	}
 }
 
@@ -113,7 +122,7 @@ func TestH2H1StripAddXff(t *testing.T) {
 	})
 	defer st.Close()
 
-	_, err := st.http2(requestParam{
+	res, err := st.http2(requestParam{
 		name: "TestH2H1StripAddXff",
 		header: []hpack.HeaderField{
 			pair("x-forwarded-for", "host"),
@@ -121,6 +130,9 @@ func TestH2H1StripAddXff(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status = %v; want %v", got, want)
 	}
 }
 
@@ -471,13 +483,16 @@ func TestH2H1ChunkedRequestBody(t *testing.T) {
 	})
 	defer st.Close()
 
-	_, err := st.http2(requestParam{
+	res, err := st.http2(requestParam{
 		name:   "TestH2H1ChunkedRequestBody",
 		method: "POST",
 		body:   []byte("foo"),
 	})
 	if err != nil {
 		t.Fatalf("Error st.http2() = %v", err)
+	}
+	if got, want := res.status, 200; got != want {
+		t.Errorf("status = %v; want %v", got, want)
 	}
 }
 
