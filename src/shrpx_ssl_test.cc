@@ -115,4 +115,37 @@ void test_shrpx_ssl_cert_lookup_tree_add_cert_from_file(void) {
   SSL_CTX_free(ssl_ctx);
 }
 
+template <size_t N, size_t M>
+bool tls_hostname_match_wrapper(const char(&pattern)[N],
+                                const char(&hostname)[M]) {
+  return ssl::tls_hostname_match(pattern, N, hostname, M);
+}
+
+void test_shrpx_ssl_tls_hostname_match(void) {
+  CU_ASSERT(tls_hostname_match_wrapper("example.com", "example.com"));
+  CU_ASSERT(tls_hostname_match_wrapper("example.com", "EXAMPLE.com"));
+
+  // check wildcard
+  CU_ASSERT(tls_hostname_match_wrapper("*.example.com", "www.example.com"));
+  CU_ASSERT(tls_hostname_match_wrapper("*w.example.com", "www.example.com"));
+  CU_ASSERT(tls_hostname_match_wrapper("www*.example.com", "www1.example.com"));
+  CU_ASSERT(
+      tls_hostname_match_wrapper("www*.example.com", "WWW12.EXAMPLE.com"));
+  // at least 2 dots are required after '*'
+  CU_ASSERT(!tls_hostname_match_wrapper("*.com", "example.com"));
+  CU_ASSERT(!tls_hostname_match_wrapper("*", "example.com"));
+  // '*' must be in left most label
+  CU_ASSERT(
+      !tls_hostname_match_wrapper("blog.*.example.com", "blog.my.example.com"));
+  // prefix is wrong
+  CU_ASSERT(
+      !tls_hostname_match_wrapper("client*.example.com", "server.example.com"));
+  // '*' must match at least one character
+  CU_ASSERT(!tls_hostname_match_wrapper("www*.example.com", "www.example.com"));
+
+  CU_ASSERT(!tls_hostname_match_wrapper("example.com", "nghttp2.org"));
+  CU_ASSERT(!tls_hostname_match_wrapper("www.example.com", "example.com"));
+  CU_ASSERT(!tls_hostname_match_wrapper("example.com", "www.example.com"));
+}
+
 } // namespace shrpx

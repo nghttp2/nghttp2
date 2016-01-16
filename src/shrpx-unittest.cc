@@ -69,6 +69,8 @@ int main(int argc, char *argv[]) {
                    shrpx::test_shrpx_ssl_create_lookup_tree) ||
       !CU_add_test(pSuite, "ssl_cert_lookup_tree_add_cert_from_file",
                    shrpx::test_shrpx_ssl_cert_lookup_tree_add_cert_from_file) ||
+      !CU_add_test(pSuite, "ssl_tls_hostname_match",
+                   shrpx::test_shrpx_ssl_tls_hostname_match) ||
       !CU_add_test(pSuite, "http2_add_header", shrpx::test_http2_add_header) ||
       !CU_add_test(pSuite, "http2_get_header", shrpx::test_http2_get_header) ||
       !CU_add_test(pSuite, "http2_copy_headers_to_nva",

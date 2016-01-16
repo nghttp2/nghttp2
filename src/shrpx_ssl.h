@@ -108,10 +108,16 @@ void get_altnames(X509 *cert, std::vector<std::string> &dns_names,
 // them. If there is a match, its SSL_CTX is returned. If none
 // matches, query is continued to the next character.
 
+struct WildcardCert {
+  SSL_CTX *ssl_ctx;
+  char *hostname;
+  size_t hostnamelen;
+};
+
 struct CertNode {
   // list of wildcard domain name and its SSL_CTX pair, the wildcard
   // '*' appears in this position.
-  std::vector<std::pair<char *, SSL_CTX *>> wildcard_certs;
+  std::vector<WildcardCert> wildcard_certs;
   // Next CertNode index of CertLookupTree::nodes
   std::vector<std::unique_ptr<CertNode>> next;
   // SSL_CTX for exact match
@@ -197,6 +203,13 @@ SSL *create_ssl(SSL_CTX *ssl_ctx);
 
 // Returns true if SSL/TLS is enabled on downstream
 bool downstream_tls_enabled();
+
+// Performs TLS hostname match.  |pattern| of length |plen| can
+// contain wildcard character '*', which matches prefix of target
+// hostname.  There are several restrictions to make wildcard work.
+// The matching algorithm is based on RFC 6125.
+bool tls_hostname_match(const char *pattern, size_t plen, const char *hostname,
+                        size_t hlen);
 
 } // namespace ssl
 

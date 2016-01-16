@@ -258,6 +258,15 @@ bool strieq(InputIt1 a, size_t alen, InputIt2 b, size_t blen) {
   return std::equal(a, a + alen, b, CaseCmp());
 }
 
+template <typename InputIt1, typename InputIt2>
+bool strieq(InputIt1 first1, InputIt1 last1, InputIt2 first2, InputIt2 last2) {
+  if (std::distance(first1, last1) != std::distance(first2, last2)) {
+    return false;
+  }
+
+  return std::equal(first1, last1, first2, CaseCmp());
+}
+
 inline bool strieq(const std::string &a, const std::string &b) {
   return strieq(std::begin(a), a.size(), std::begin(b), b.size());
 }
