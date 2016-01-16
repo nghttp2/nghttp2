@@ -338,7 +338,7 @@ int Http2Session::initiate_connection() {
       if (get_config()->backend_tls_sni_name) {
         sni_name = get_config()->backend_tls_sni_name.get();
       } else {
-        sni_name = downstream_addr.host.get();
+        sni_name = downstream_addr.host.c_str();
       }
 
       if (sni_name && !util::numeric_host(sni_name)) {
@@ -518,13 +518,13 @@ int Http2Session::downstream_connect_proxy() {
       get_config()->downstream_addr_groups[group_].addrs[addr_idx_];
 
   std::string req = "CONNECT ";
-  req += downstream_addr.hostport.get();
+  req.append(downstream_addr.hostport.c_str(), downstream_addr.hostport.size());
   if (downstream_addr.port == 80 || downstream_addr.port == 443) {
     req += ':';
     req += util::utos(downstream_addr.port);
   }
   req += " HTTP/1.1\r\nHost: ";
-  req += downstream_addr.host.get();
+  req.append(downstream_addr.host.c_str(), downstream_addr.host.size());
   req += "\r\n";
   if (get_config()->downstream_http_proxy_userinfo) {
     req += "Proxy-Authorization: Basic ";

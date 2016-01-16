@@ -151,6 +151,12 @@ nghttp2_nv make_nv_ls_nocopy(const char(&name)[N], const std::string &value) {
           NGHTTP2_NV_FLAG_NO_COPY_NAME | NGHTTP2_NV_FLAG_NO_COPY_VALUE};
 }
 
+template <size_t N>
+nghttp2_nv make_nv_ls_nocopy(const char(&name)[N], const StringAdaptor &value) {
+  return {(uint8_t *)name, (uint8_t *)value.c_str(), N - 1, value.size(),
+          NGHTTP2_NV_FLAG_NO_COPY_NAME | NGHTTP2_NV_FLAG_NO_COPY_VALUE};
+}
+
 // Appends headers in |headers| to |nv|.  |headers| must be indexed
 // before this call (its element's token field is assigned).  Certain
 // headers, including disallowed headers in HTTP/2 spec and headers

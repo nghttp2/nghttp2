@@ -2474,7 +2474,7 @@ int main(int argc, char **argv) {
 
   if (get_config()->downstream_addr_groups.empty()) {
     DownstreamAddr addr;
-    addr.host = strcopy(DEFAULT_DOWNSTREAM_HOST);
+    addr.host = VString(DEFAULT_DOWNSTREAM_HOST);
     addr.port = DEFAULT_DOWNSTREAM_PORT;
 
     DownstreamAddrGroup g("/");
@@ -2513,7 +2513,7 @@ int main(int argc, char **argv) {
       LOG(INFO) << "Host-path pattern: group " << i << ": '" << g.pattern.get()
                 << "'";
       for (auto &addr : g.addrs) {
-        LOG(INFO) << "group " << i << " -> " << addr.host.get()
+        LOG(INFO) << "group " << i << " -> " << addr.host.c_str()
                   << (addr.host_unix ? "" : ":" + util::utos(addr.port));
       }
     }
@@ -2537,10 +2537,10 @@ int main(int argc, char **argv) {
         // hostport.  This is used as Host header field to backend and
         // not going to be passed to any syscalls.
         addr.hostport =
-            strcopy(util::make_hostport("localhost", get_config()->port));
+            VString(util::make_hostport("localhost", get_config()->port));
 
-        auto path = addr.host.get();
-        auto pathlen = strlen(path);
+        auto path = addr.host.c_str();
+        auto pathlen = addr.host.size();
 
         if (pathlen + 1 > sizeof(addr.addr.su.un.sun_path)) {
           LOG(FATAL) << "UNIX domain socket path " << path << " is too long > "
@@ -2559,10 +2559,11 @@ int main(int argc, char **argv) {
         continue;
       }
 
-      addr.hostport = strcopy(util::make_hostport(addr.host.get(), addr.port));
+      addr.hostport =
+          VString(util::make_hostport(addr.host.c_str(), addr.port));
 
       if (resolve_hostname(
-              &addr.addr, addr.host.get(), addr.port,
+              &addr.addr, addr.host.c_str(), addr.port,
               get_config()->backend_ipv4 ? AF_INET : (get_config()->backend_ipv6
                                                           ? AF_INET6
                                                           : AF_UNSPEC)) == -1) {

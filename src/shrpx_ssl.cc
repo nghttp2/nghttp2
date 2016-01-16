@@ -973,7 +973,7 @@ int check_cert(SSL *ssl, const DownstreamAddr *addr) {
   }
   auto hostname = get_config()->backend_tls_sni_name
                       ? get_config()->backend_tls_sni_name.get()
-                      : addr->host.get();
+                      : addr->host.c_str();
   if (verify_hostname(cert, hostname, strlen(hostname), &addr->addr) != 0) {
     LOG(ERROR) << "Certificate verification failed: hostname does not match";
     return -1;

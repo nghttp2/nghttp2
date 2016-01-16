@@ -199,6 +199,47 @@ inline std::unique_ptr<char[]> strcopy(const std::unique_ptr<char[]> &val) {
   return strcopy(val.get());
 }
 
+struct VString {
+  VString() : len(0) {}
+  VString(const char *s, size_t slen) : base(strcopy(s)), len(slen) {}
+  VString(const char *s) : base(strcopy(s)), len(strlen(s)) {}
+  VString(const std::string &s) : base(strcopy(s)), len(s.size()) {}
+  template <typename InputIt>
+  VString(InputIt first, InputIt last)
+      : base(strcopy(first, last)), len(std::distance(first, last)) {}
+  VString(const VString &other) : base(strcopy(other.base)), len(other.len) {}
+  VString(VString &&) = default;
+  VString &operator=(const VString &other) {
+    if (this == &other) {
+      return *this;
+    }
+    base = strcopy(other.base);
+    len = other.len;
+    return *this;
+  }
+  VString &operator=(VString &&other) = default;
+
+  const char *c_str() const { return base.get(); }
+  size_t size() const { return len; }
+
+  std::unique_ptr<char[]> base;
+  size_t len;
+};
+
+struct StringAdaptor {
+  template <typename T>
+  StringAdaptor(const T &s)
+      : base(s.c_str()), len(s.size()) {}
+
+  const char *c_str() const { return base; }
+  size_t size() const { return len; }
+
+  std::string str() const { return std::string(base, len); }
+
+  const char *base;
+  size_t len;
+};
+
 inline int run_app(std::function<int(int, char **)> app, int argc,
                    char **argv) {
   try {

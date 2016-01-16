@@ -264,19 +264,18 @@ int Http2DownstreamConnection::push_request_headers() {
   // addr_idx here.
   auto addr_idx = http2session_->get_addr_idx();
   auto group = http2session_->get_group();
-  auto downstream_hostport = get_config()
-                                 ->downstream_addr_groups[group]
-                                 .addrs[addr_idx]
-                                 .hostport.get();
+  const auto &downstream_hostport =
+      get_config()->downstream_addr_groups[group].addrs[addr_idx].hostport;
 
   // For HTTP/1.0 request, there is no authority in request.  In that
   // case, we use backend server's host nonetheless.
-  const char *authority = downstream_hostport;
+  auto authority = StringAdaptor(downstream_hostport);
+
   if (no_host_rewrite && !req.authority.empty()) {
-    authority = req.authority.c_str();
+    authority = req.authority;
   }
 
-  downstream_->set_request_downstream_host(authority);
+  downstream_->set_request_downstream_host(authority.str());
 
   size_t num_cookies = 0;
   if (!get_config()->http2_no_cookie_crumbling) {
@@ -312,12 +311,12 @@ int Http2DownstreamConnection::push_request_headers() {
     }
 
     if (!req.no_authority) {
-      nva.push_back(http2::make_nv_lc_nocopy(":authority", authority));
+      nva.push_back(http2::make_nv_ls_nocopy(":authority", authority));
     } else {
-      nva.push_back(http2::make_nv_lc_nocopy("host", authority));
+      nva.push_back(http2::make_nv_ls_nocopy("host", authority));
     }
   } else {
-    nva.push_back(http2::make_nv_lc_nocopy(":authority", authority));
+    nva.push_back(http2::make_nv_ls_nocopy(":authority", authority));
   }
 
   http2::copy_headers_to_nva_nocopy(nva, req.fs.headers());

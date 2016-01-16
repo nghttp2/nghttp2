@@ -245,8 +245,8 @@ struct DownstreamAddr {
   Address addr;
   // backend address.  If |host_unix| is true, this is UNIX domain
   // socket path.
-  std::unique_ptr<char[]> host;
-  std::unique_ptr<char[]> hostport;
+  VString host;
+  VString hostport;
   // backend port.  0 if |host_unix| is true.
   uint16_t port;
   // true if |host| contains UNIX domain socket path.
