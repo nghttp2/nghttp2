@@ -199,6 +199,10 @@ inline std::unique_ptr<char[]> strcopy(const std::unique_ptr<char[]> &val) {
   return strcopy(val.get());
 }
 
+// VString represents string.  It has c_str() and size() functions to
+// mimic std::string.  It manages buffer by itself.  Just like
+// std::string, c_str() returns NULL-terminated string, but NULL
+// character may appear before the final terminal NULL.
 struct VString {
   VString() : len(0) {}
   VString(const char *s, size_t slen) : base(strcopy(s)), len(slen) {}
@@ -226,6 +230,11 @@ struct VString {
   size_t len;
 };
 
+// StringAdaptor behaves like simple string, but it does not own
+// pointer.  When it is default constructed, it has empty string.  You
+// can freely copy or move around this struct, but never free its
+// pointer.  str() function can be used to export the content as
+// std::string.
 struct StringAdaptor {
   StringAdaptor() : base(""), len(0) {}
   template <typename T>
