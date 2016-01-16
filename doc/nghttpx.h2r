@@ -13,6 +13,22 @@ FILES
   ``=`` between option name and value.  Don't put extra leading or
   trailing spaces.
 
+  When specifying arguments including characters which have special
+  meaning to a shell, we usually use quotes so that shell does not
+  interpret them.  When writing this configuration file, quotes for
+  this purpose must not be used.  For example, specify additional
+  request header field, do this:
+
+  .. code-block:: text
+
+    add-request-header=foo: bar
+
+  instead of:
+
+  .. code-block:: text
+
+    add-request-header="foo: bar"
+
   The options which do not take argument in the command-line *take*
   argument in the configuration file.  Specify ``yes`` as an argument
   (e.g., ``http2-proxy=yes``).  If other string is given, it is
