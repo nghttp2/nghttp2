@@ -331,16 +331,19 @@ int HttpDownstreamConnection::push_request_headers() {
     buf->append("\r\n");
   }
 
-  auto xff = req.fs.header(http2::HD_X_FORWARDED_FOR);
+  auto xff = get_config()->strip_incoming_x_forwarded_for
+                 ? nullptr
+                 : req.fs.header(http2::HD_X_FORWARDED_FOR);
+
   if (get_config()->add_x_forwarded_for) {
     buf->append("X-Forwarded-For: ");
-    if (xff && !get_config()->strip_incoming_x_forwarded_for) {
+    if (xff) {
       buf->append((*xff).value);
       buf->append(", ");
     }
     buf->append(client_handler_->get_ipaddr());
     buf->append("\r\n");
-  } else if (xff && !get_config()->strip_incoming_x_forwarded_for) {
+  } else if (xff) {
     buf->append("X-Forwarded-For: ");
     buf->append((*xff).value);
     buf->append("\r\n");

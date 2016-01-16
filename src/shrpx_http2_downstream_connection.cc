@@ -366,15 +366,18 @@ int Http2DownstreamConnection::push_request_headers() {
   }
 
   std::string xff_value;
-  auto xff = req.fs.header(http2::HD_X_FORWARDED_FOR);
+  auto xff = get_config()->strip_incoming_x_forwarded_for
+                 ? nullptr
+                 : req.fs.header(http2::HD_X_FORWARDED_FOR);
+
   if (get_config()->add_x_forwarded_for) {
-    if (xff && !get_config()->strip_incoming_x_forwarded_for) {
+    if (xff) {
       xff_value = (*xff).value;
       xff_value += ", ";
     }
     xff_value += upstream->get_client_handler()->get_ipaddr();
     nva.push_back(http2::make_nv_ls("x-forwarded-for", xff_value));
-  } else if (xff && !get_config()->strip_incoming_x_forwarded_for) {
+  } else if (xff) {
     nva.push_back(http2::make_nv_ls_nocopy("x-forwarded-for", (*xff).value));
   }
 
