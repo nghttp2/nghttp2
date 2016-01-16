@@ -185,6 +185,66 @@ func TestH1H1HostRewrite(t *testing.T) {
 	}
 }
 
+// TestH1H1BadHost tests that server rejects request including bad
+// characters in host header field.
+func TestH1H1BadHost(t *testing.T) {
+	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("server should not forward this request")
+	})
+	defer st.Close()
+
+	if _, err := io.WriteString(st.conn, "GET / HTTP/1.1\r\nTest-Case: TestH1H1HBadHost\r\nHost: foo\"bar\r\n\r\n"); err != nil {
+		t.Fatalf("Error io.WriteString() = %v", err)
+	}
+	resp, err := http.ReadResponse(bufio.NewReader(st.conn), nil)
+	if err != nil {
+		t.Fatalf("Error http.ReadResponse() = %v", err)
+	}
+	if got, want := resp.StatusCode, 400; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+}
+
+// TestH1H1BadAuthority tests that server rejects request including
+// bad characters in authority component of requset URI.
+func TestH1H1BadAuthority(t *testing.T) {
+	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("server should not forward this request")
+	})
+	defer st.Close()
+
+	if _, err := io.WriteString(st.conn, "GET http://foo\"bar/ HTTP/1.1\r\nTest-Case: TestH1H1HBadAuthority\r\nHost: foobar\r\n\r\n"); err != nil {
+		t.Fatalf("Error io.WriteString() = %v", err)
+	}
+	resp, err := http.ReadResponse(bufio.NewReader(st.conn), nil)
+	if err != nil {
+		t.Fatalf("Error http.ReadResponse() = %v", err)
+	}
+	if got, want := resp.StatusCode, 400; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+}
+
+// TestH1H1BadScheme tests that server rejects request including
+// bad characters in scheme component of requset URI.
+func TestH1H1BadScheme(t *testing.T) {
+	st := newServerTester(nil, t, func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("server should not forward this request")
+	})
+	defer st.Close()
+
+	if _, err := io.WriteString(st.conn, "GET http*://example.com/ HTTP/1.1\r\nTest-Case: TestH1H1HBadScheme\r\nHost: example.com\r\n\r\n"); err != nil {
+		t.Fatalf("Error io.WriteString() = %v", err)
+	}
+	resp, err := http.ReadResponse(bufio.NewReader(st.conn), nil)
+	if err != nil {
+		t.Fatalf("Error http.ReadResponse() = %v", err)
+	}
+	if got, want := resp.StatusCode, 400; got != want {
+		t.Errorf("status: %v; want %v", got, want)
+	}
+}
+
 // TestH1H1HTTP10 tests that server can accept HTTP/1.0 request
 // without Host header field
 func TestH1H1HTTP10(t *testing.T) {

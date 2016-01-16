@@ -218,6 +218,27 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
       return;
     }
 
+    if (std::find_if(std::begin(host->value), std::end(host->value),
+                     [](char c) { return c == '"' || c == '\\'; }) !=
+        std::end(host->value)) {
+      if (upstream->error_reply(downstream, 400) != 0) {
+        ULOG(FATAL, upstream) << "error_reply failed";
+      }
+      return;
+    }
+
+    if (scheme) {
+      for (auto c : scheme->value) {
+        if (!(util::is_alpha(c) || util::is_digit(c) || c == '+' || c == '-' ||
+              c == '.')) {
+          if (upstream->error_reply(downstream, 400) != 0) {
+            ULOG(FATAL, upstream) << "error_reply failed";
+          }
+          return;
+        }
+      }
+    }
+
     // For other than CONNECT method, path must start with "/", except
     // for OPTIONS method, which can take "*" as path.
     if (!is_connect && path->value[0] != '/' &&
