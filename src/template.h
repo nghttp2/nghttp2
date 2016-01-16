@@ -227,9 +227,11 @@ struct VString {
 };
 
 struct StringAdaptor {
+  StringAdaptor() : base(""), len(0) {}
   template <typename T>
   StringAdaptor(const T &s)
       : base(s.c_str()), len(s.size()) {}
+  StringAdaptor(const char *s) : base(s), len(strlen(s)) {}
 
   const char *c_str() const { return base; }
   size_t size() const { return len; }

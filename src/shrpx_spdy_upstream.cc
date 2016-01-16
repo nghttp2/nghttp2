@@ -875,7 +875,7 @@ int SpdyUpstream::send_reply(Downstream *downstream, const uint8_t *body,
 
   if (!resp.fs.header(http2::HD_SERVER)) {
     nva.push_back("server");
-    nva.push_back(get_config()->server_name);
+    nva.push_back(get_config()->server_name.c_str());
   }
 
   nva.push_back(nullptr);
@@ -919,7 +919,7 @@ int SpdyUpstream::error_reply(Downstream *downstream,
   std::string status_string = http2::get_status_string(status_code);
   const char *nv[] = {":status", status_string.c_str(), ":version", "http/1.1",
                       "content-type", "text/html; charset=UTF-8", "server",
-                      get_config()->server_name, "content-length",
+                      get_config()->server_name.c_str(), "content-length",
                       content_length.c_str(), "date",
                       lgconf->time_http_str.c_str(), nullptr};
 
@@ -1034,7 +1034,7 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream) {
 
   if (!get_config()->http2_proxy && !get_config()->client_proxy) {
     nv[hdidx++] = "server";
-    nv[hdidx++] = get_config()->server_name;
+    nv[hdidx++] = get_config()->server_name.c_str();
   } else {
     auto server = resp.fs.header(http2::HD_SERVER);
     if (server) {

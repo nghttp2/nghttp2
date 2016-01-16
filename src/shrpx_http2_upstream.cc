@@ -1337,7 +1337,7 @@ int Http2Upstream::send_reply(Downstream *downstream, const uint8_t *body,
 
   if (!resp.fs.header(http2::HD_SERVER)) {
     nva.push_back(
-        http2::make_nv_lc_nocopy("server", get_config()->server_name));
+        http2::make_nv_ls_nocopy("server", get_config()->server_name));
   }
 
   rv = nghttp2_submit_response(session_, downstream->get_stream_id(),
@@ -1386,7 +1386,7 @@ int Http2Upstream::error_reply(Downstream *downstream,
           : http2::make_nv_ls(":status",
                               (status_code_str = util::utos(status_code))),
       http2::make_nv_ll("content-type", "text/html; charset=UTF-8"),
-      http2::make_nv_lc_nocopy("server", get_config()->server_name),
+      http2::make_nv_ls_nocopy("server", get_config()->server_name),
       http2::make_nv_ls("content-length", content_length),
       http2::make_nv_ls("date", lgconf->time_http_str));
 
@@ -1507,7 +1507,7 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
 
   if (!get_config()->http2_proxy && !get_config()->client_proxy) {
     nva.push_back(
-        http2::make_nv_lc_nocopy("server", get_config()->server_name));
+        http2::make_nv_ls_nocopy("server", get_config()->server_name));
   } else {
     auto server = resp.fs.header(http2::HD_SERVER);
     if (server) {

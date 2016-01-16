@@ -802,8 +802,8 @@ int HttpsUpstream::send_reply(Downstream *downstream, const uint8_t *body,
 
   if (!resp.fs.header(http2::HD_SERVER)) {
     output->append("Server: ");
-    output->append(get_config()->server_name,
-                   strlen(get_config()->server_name));
+    const auto &server_name = get_config()->server_name;
+    output->append(server_name.c_str(), server_name.size());
     output->append("\r\n");
   }
 
@@ -840,7 +840,8 @@ void HttpsUpstream::error_reply(unsigned int status_code) {
   auto status_str = http2::get_status_string(status_code);
   output->append(status_str.c_str(), status_str.size());
   output->append("\r\nServer: ");
-  output->append(get_config()->server_name, strlen(get_config()->server_name));
+  const auto &server_name = get_config()->server_name;
+  output->append(server_name.c_str(), server_name.size());
   output->append("\r\nContent-Length: ");
   auto cl = util::utos(html.size());
   output->append(cl.c_str(), cl.size());
@@ -999,7 +1000,8 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
 
   if (!get_config()->http2_proxy && !get_config()->client_proxy) {
     buf->append("Server: ");
-    buf->append(get_config()->server_name, strlen(get_config()->server_name));
+    const auto &server_name = get_config()->server_name;
+    buf->append(server_name.c_str(), server_name.size());
     buf->append("\r\n");
   } else {
     auto server = resp.fs.header(http2::HD_SERVER);

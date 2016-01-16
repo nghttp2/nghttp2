@@ -1039,7 +1039,7 @@ void fill_default_config() {
 
 namespace {
 void print_version(std::ostream &out) {
-  out << get_config()->server_name << std::endl;
+  out << get_config()->server_name.c_str() << std::endl;
 }
 } // namespace
 

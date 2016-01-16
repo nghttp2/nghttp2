@@ -311,6 +311,7 @@ struct Config {
   // string is provided.
   std::string forwarded_for_obfuscated;
   std::string backend_tls_sni_name;
+  StringAdaptor server_name;
   std::chrono::seconds tls_session_timeout;
   ev_tstamp http2_upstream_read_timeout;
   ev_tstamp upstream_read_timeout;
@@ -363,7 +364,6 @@ struct Config {
   nghttp2_option *http2_option;
   nghttp2_option *http2_client_option;
   const EVP_CIPHER *tls_ticket_key_cipher;
-  const char *server_name;
   char **original_argv;
   char **argv;
   char *cwd;
