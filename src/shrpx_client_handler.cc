@@ -27,6 +27,13 @@
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif // HAVE_UNISTD_H
+#ifdef HAVE_SYS_SOCKET_H
+#include <sys/socket.h>
+#endif // HAVE_SYS_SOCKET_H
+#ifdef HAVE_NETDB_H
+#include <netdb.h>
+#endif // HAVE_NETDB_H
+
 #include <cerrno>
 
 #include "shrpx_upstream.h"
@@ -395,6 +402,17 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
     on_write_ = &ClientHandler::upstream_noop;
   } else {
     setup_upstream_io_callback();
+  }
+
+  if ((get_config()->forwarded_params & FORWARDED_FOR) &&
+      get_config()->forwarded_for_node_type == FORWARDED_NODE_OBFUSCATED) {
+    if (get_config()->forwarded_for_obfuscated.empty()) {
+      forwarded_for_obfuscated_ = "_";
+      forwarded_for_obfuscated_ += util::random_alpha_digit(
+          worker_->get_randgen(), SHRPX_OBFUSCATED_NODE_LENGTH);
+    } else {
+      forwarded_for_obfuscated_ = get_config()->forwarded_for_obfuscated;
+    }
   }
 }
 
@@ -1097,6 +1115,52 @@ int ClientHandler::proxy_protocol_read() {
   }
 
   return on_proxy_protocol_finish();
+}
+
+const std::string &ClientHandler::get_forwarded_by() {
+  if (get_config()->forwarded_by_node_type == FORWARDED_NODE_OBFUSCATED) {
+    return get_config()->forwarded_by_obfuscated;
+  }
+  if (!local_hostport_.empty()) {
+    return local_hostport_;
+  }
+
+  int rv;
+  sockaddr_union su;
+  socklen_t addrlen = sizeof(su);
+
+  rv = getsockname(conn_.fd, &su.sa, &addrlen);
+  if (rv != 0) {
+    return local_hostport_;
+  }
+
+  char host[NI_MAXHOST];
+  rv = getnameinfo(&su.sa, addrlen, host, sizeof(host), nullptr, 0,
+                   NI_NUMERICHOST);
+  if (rv != 0) {
+    return local_hostport_;
+  }
+
+  if (su.storage.ss_family == AF_INET6) {
+    local_hostport_ = "[";
+    local_hostport_ += host;
+    local_hostport_ += "]:";
+  } else {
+    local_hostport_ = host;
+    local_hostport_ += ':';
+  }
+
+  local_hostport_ += util::utos(get_config()->port);
+
+  return local_hostport_;
+}
+
+const std::string &ClientHandler::get_forwarded_for() const {
+  if (get_config()->forwarded_for_node_type == FORWARDED_NODE_OBFUSCATED) {
+    return forwarded_for_obfuscated_;
+  }
+
+  return ipaddr_;
 }
 
 } // namespace shrpx

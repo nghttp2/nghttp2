@@ -64,6 +64,7 @@
 #include <fstream>
 #include <vector>
 #include <initializer_list>
+#include <random>
 
 #include <openssl/ssl.h>
 #include <openssl/err.h>
@@ -1576,6 +1577,40 @@ HTTP:
   --strip-incoming-x-forwarded-for
               Strip X-Forwarded-For  header field from  inbound client
               requests.
+  --add-forwarded=<LIST>
+              Append RFC  7239 Forwarded header field  with parameters
+              specified in comma delimited list <LIST>.  The supported
+              parameters  are "by",  "for", "host",  and "proto".   By
+              default,  the value  of  "by" and  "for" parameters  are
+              obfuscated     string.     See     --forwarded-by    and
+              --forwarded-for options respectively.  Note that nghttpx
+              does  not  translate non-standard  X-Forwarded-*  header
+              fields into Forwarded header field, and vice versa.
+  --strip-incoming-forwarded
+              Strip  Forwarded   header  field  from   inbound  client
+              requests.
+  --forwarded-by=(obfuscated|ip|<VALUE>)
+              Specify the parameter value sent out with "by" parameter
+              of Forwarded  header field.   If "obfuscated"  is given,
+              the string is randomly generated at startup.  If "ip" is
+              given,   the  interface   address  of   the  connection,
+              including  port number,  is  sent  with "by"  parameter.
+              User can also specify the static obfuscated string.  The
+              limitation is  that it  must starts  with "_",  and only
+              consists of  character set [A-Za-z0-9._-],  as described
+              in RFC 7239.
+              Default: obfuscated
+  --forwarded-for=(obfuscated|ip|<VALUE>)
+              Specify  the   parameter  value  sent  out   with  "for"
+              parameter of Forwarded header field.  If "obfuscated" is
+              given, the string is  randomly generated for each client
+              connection.  If "ip" is given, the remote client address
+              of  the connection,  without port  number, is  sent with
+              "for"  parameter.   User  can also  specify  the  static
+              obfuscated  string.   The  limitation is  that  it  must
+              starts  with "_",  and  only consists  of character  set
+              [A-Za-z0-9._-], as described in RFC 7239.
+              Default: obfuscated
   --no-via    Don't append to  Via header field.  If  Via header field
               is received, it is left unaltered.
   --no-location-rewrite
@@ -1832,6 +1867,10 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_FASTOPEN, required_argument, &flag, 94},
         {SHRPX_OPT_TLS_DYN_REC_WARMUP_THRESHOLD, required_argument, &flag, 95},
         {SHRPX_OPT_TLS_DYN_REC_IDLE_TIMEOUT, required_argument, &flag, 96},
+        {SHRPX_OPT_ADD_FORWARDED, required_argument, &flag, 97},
+        {SHRPX_OPT_STRIP_INCOMING_FORWARDED, no_argument, &flag, 98},
+        {SHRPX_OPT_FORWARDED_BY, required_argument, &flag, 99},
+        {SHRPX_OPT_FORWARDED_FOR, required_argument, &flag, 100},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -2245,6 +2284,22 @@ int main(int argc, char **argv) {
         // --tls-dyn-rec-idle-timeout
         cmdcfgs.emplace_back(SHRPX_OPT_TLS_DYN_REC_IDLE_TIMEOUT, optarg);
         break;
+      case 97:
+        // --add-forwarded
+        cmdcfgs.emplace_back(SHRPX_OPT_ADD_FORWARDED, optarg);
+        break;
+      case 98:
+        // --strip-incoming-forwarded
+        cmdcfgs.emplace_back(SHRPX_OPT_STRIP_INCOMING_FORWARDED, "yes");
+        break;
+      case 99:
+        // --forwarded-by
+        cmdcfgs.emplace_back(SHRPX_OPT_FORWARDED_BY, optarg);
+        break;
+      case 100:
+        // --forwarded-for
+        cmdcfgs.emplace_back(SHRPX_OPT_FORWARDED_FOR, optarg);
+        break;
       default:
         break;
       }
@@ -2553,6 +2608,15 @@ int main(int argc, char **argv) {
       auto error = errno;
       LOG(WARN) << "Setting rlimit-nofile failed: " << strerror(error);
     }
+  }
+
+  if (get_config()->forwarded_by_node_type == FORWARDED_NODE_OBFUSCATED &&
+      get_config()->forwarded_by_obfuscated.empty()) {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    auto &dst = mod_config()->forwarded_by_obfuscated;
+    dst = "_";
+    dst += util::random_alpha_digit(gen, SHRPX_OBFUSCATED_NODE_LENGTH);
   }
 
   if (get_config()->upstream_frame_debug) {

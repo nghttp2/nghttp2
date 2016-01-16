@@ -191,6 +191,13 @@ constexpr char SHRPX_OPT_TLS_DYN_REC_WARMUP_THRESHOLD[] =
     "tls-dyn-rec-warmup-threshold";
 constexpr char SHRPX_OPT_TLS_DYN_REC_IDLE_TIMEOUT[] =
     "tls-dyn-rec-idle-timeout";
+constexpr char SHRPX_OPT_ADD_FORWARDED[] = "add-forwarded";
+constexpr char SHRPX_OPT_STRIP_INCOMING_FORWARDED[] =
+    "strip-incoming-forwarded";
+constexpr static char SHRPX_OPT_FORWARDED_BY[] = "forwarded-by";
+constexpr char SHRPX_OPT_FORWARDED_FOR[] = "forwarded-for";
+
+constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
 union sockaddr_union {
   sockaddr_storage storage;
@@ -206,6 +213,19 @@ struct Address {
 };
 
 enum shrpx_proto { PROTO_HTTP2, PROTO_HTTP };
+
+enum shrpx_forwarded_param {
+  FORWARDED_NONE = 0,
+  FORWARDED_BY = 0x1,
+  FORWARDED_FOR = 0x2,
+  FORWARDED_HOST = 0x4,
+  FORWARDED_PROTO = 0x8,
+};
+
+enum shrpx_forwarded_node_type {
+  FORWARDED_NODE_OBFUSCATED,
+  FORWARDED_NODE_IP,
+};
 
 struct AltSvc {
   AltSvc() : port(0) {}
@@ -283,6 +303,13 @@ struct Config {
   Address session_cache_memcached_addr;
   Address tls_ticket_key_memcached_addr;
   Router router;
+  // obfuscated value used in "by" parameter of Forwarded header
+  // field.
+  std::string forwarded_by_obfuscated;
+  // obfuscated value used in "for" parameter of Forwarded header
+  // field.  This is only used when user defined static obfuscated
+  // string is provided.
+  std::string forwarded_for_obfuscated;
   std::chrono::seconds tls_session_timeout;
   ev_tstamp http2_upstream_read_timeout;
   ev_tstamp upstream_read_timeout;
@@ -377,6 +404,14 @@ struct Config {
   long int tls_proto_mask;
   // downstream protocol; this will be determined by given options.
   shrpx_proto downstream_proto;
+  // bitwise-OR of one or more of shrpx_forwarded_param values.
+  uint32_t forwarded_params;
+  // type of value recorded in "by" parameter of Forwarded header
+  // field.
+  shrpx_forwarded_node_type forwarded_by_node_type;
+  // type of value recorded in "for" parameter of Forwarded header
+  // field.
+  shrpx_forwarded_node_type forwarded_for_node_type;
   int syslog_facility;
   int backlog;
   int argc;
@@ -399,6 +434,7 @@ struct Config {
   bool client_proxy;
   bool add_x_forwarded_for;
   bool strip_incoming_x_forwarded_for;
+  bool strip_incoming_forwarded;
   bool no_via;
   bool upstream_no_tls;
   bool downstream_no_tls;

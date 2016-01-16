@@ -45,6 +45,7 @@
 #include <memory>
 #include <chrono>
 #include <map>
+#include <random>
 
 #include "http-parser/http_parser.h"
 
@@ -621,6 +622,18 @@ uint64_t get_uint64(const uint8_t *data);
 // or -1.
 int read_mime_types(std::map<std::string, std::string> &res,
                     const char *filename);
+
+template <typename Generator>
+std::string random_alpha_digit(Generator &gen, size_t len) {
+  std::string res;
+  res.reserve(len);
+  std::uniform_int_distribution<> dis(0, 26 * 2 + 10 - 1);
+  for (; len > 0; --len) {
+    res += "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"[dis(
+        gen)];
+  }
+  return res;
+}
 
 } // namespace util
 

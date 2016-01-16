@@ -62,10 +62,14 @@ void mcpool_clear_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 }
 } // namespace
 
+namespace {
+std::random_device rd;
+} // namespace
+
 Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
                ssl::CertLookupTree *cert_tree,
                const std::shared_ptr<TicketKeys> &ticket_keys)
-    : dconn_pool_(get_config()->downstream_addr_groups.size()),
+    : randgen_(rd()), dconn_pool_(get_config()->downstream_addr_groups.size()),
       worker_stat_(get_config()->downstream_addr_groups.size()),
       dgrps_(get_config()->downstream_addr_groups.size()), loop_(loop),
       sv_ssl_ctx_(sv_ssl_ctx), cl_ssl_ctx_(cl_ssl_ctx), cert_tree_(cert_tree),
@@ -267,6 +271,8 @@ DownstreamGroup *Worker::get_dgrp(size_t group) {
 MemcachedDispatcher *Worker::get_session_cache_memcached_dispatcher() {
   return session_cache_memcached_dispatcher_.get();
 }
+
+std::mt19937 &Worker::get_randgen() { return randgen_; }
 
 #ifdef HAVE_MRUBY
 int Worker::create_mruby_context() {
