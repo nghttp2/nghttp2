@@ -187,6 +187,10 @@ inline std::unique_ptr<char[]> strcopy(const char *val) {
   return strcopy(val, val + strlen(val));
 }
 
+inline std::unique_ptr<char[]> strcopy(const char *val, size_t n) {
+  return strcopy(val, val + n);
+}
+
 // Returns a copy of val.c_str().
 inline std::unique_ptr<char[]> strcopy(const std::string &val) {
   return strcopy(std::begin(val), std::end(val));
@@ -199,26 +203,35 @@ inline std::unique_ptr<char[]> strcopy(const std::unique_ptr<char[]> &val) {
   return strcopy(val.get());
 }
 
+inline std::unique_ptr<char[]> strcopy(const std::unique_ptr<char[]> &val,
+                                       size_t n) {
+  if (!val) {
+    return nullptr;
+  }
+  return strcopy(val.get(), val.get() + n);
+}
+
 // VString represents string.  It has c_str() and size() functions to
 // mimic std::string.  It manages buffer by itself.  Just like
 // std::string, c_str() returns NULL-terminated string, but NULL
 // character may appear before the final terminal NULL.
 struct VString {
   VString() : len(0) {}
-  VString(const char *s, size_t slen) : base(strcopy(s)), len(slen) {}
-  VString(const char *s) : base(strcopy(s)), len(strlen(s)) {}
-  VString(const std::string &s) : base(strcopy(s)), len(s.size()) {}
+  VString(const char *s, size_t slen) : len(slen), base(strcopy(s, len)) {}
+  VString(const char *s) : len(strlen(s)), base(strcopy(s, len)) {}
+  VString(const std::string &s) : len(s.size()), base(strcopy(s)) {}
   template <typename InputIt>
   VString(InputIt first, InputIt last)
-      : base(strcopy(first, last)), len(std::distance(first, last)) {}
-  VString(const VString &other) : base(strcopy(other.base)), len(other.len) {}
+      : len(std::distance(first, last)), base(strcopy(first, last)) {}
+  VString(const VString &other)
+      : len(other.len), base(strcopy(other.base, other.len)) {}
   VString(VString &&) = default;
   VString &operator=(const VString &other) {
     if (this == &other) {
       return *this;
     }
-    base = strcopy(other.base);
     len = other.len;
+    base = strcopy(other.base, other.len);
     return *this;
   }
   VString &operator=(VString &&other) = default;
@@ -226,8 +239,8 @@ struct VString {
   const char *c_str() const { return base.get(); }
   size_t size() const { return len; }
 
-  std::unique_ptr<char[]> base;
   size_t len;
+  std::unique_ptr<char[]> base;
 };
 
 // StringAdaptor behaves like simple string, but it does not own
