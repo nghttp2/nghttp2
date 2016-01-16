@@ -310,6 +310,7 @@ struct Config {
   // field.  This is only used when user defined static obfuscated
   // string is provided.
   std::string forwarded_for_obfuscated;
+  std::string backend_tls_sni_name;
   std::chrono::seconds tls_session_timeout;
   ev_tstamp http2_upstream_read_timeout;
   ev_tstamp upstream_read_timeout;
@@ -329,7 +330,6 @@ struct Config {
   std::unique_ptr<char[]> private_key_passwd;
   std::unique_ptr<char[]> cert_file;
   std::unique_ptr<char[]> dh_param_file;
-  std::unique_ptr<char[]> backend_tls_sni_name;
   std::unique_ptr<char[]> pid_file;
   std::unique_ptr<char[]> conf_path;
   std::unique_ptr<char[]> ciphers;

@@ -971,10 +971,11 @@ int check_cert(SSL *ssl, const DownstreamAddr *addr) {
                << X509_verify_cert_error_string(verify_res);
     return -1;
   }
-  auto hostname = get_config()->backend_tls_sni_name
-                      ? get_config()->backend_tls_sni_name.get()
-                      : addr->host.c_str();
-  if (verify_hostname(cert, hostname, strlen(hostname), &addr->addr) != 0) {
+  auto hostname = !get_config()->backend_tls_sni_name.empty()
+                      ? StringAdaptor(get_config()->backend_tls_sni_name)
+                      : StringAdaptor(addr->host);
+  if (verify_hostname(cert, hostname.c_str(), hostname.size(), &addr->addr) !=
+      0) {
     LOG(ERROR) << "Certificate verification failed: hostname does not match";
     return -1;
   }

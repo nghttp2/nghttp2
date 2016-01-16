@@ -1599,7 +1599,7 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   case SHRPX_OPTID_BACKEND_TLS_SNI_FIELD:
-    mod_config()->backend_tls_sni_name = strcopy(optarg);
+    mod_config()->backend_tls_sni_name = optarg;
 
     return 0;
   case SHRPX_OPTID_PID_FILE:

@@ -335,8 +335,8 @@ int Http2Session::initiate_connection() {
       }
 
       const char *sni_name = nullptr;
-      if (get_config()->backend_tls_sni_name) {
-        sni_name = get_config()->backend_tls_sni_name.get();
+      if (!get_config()->backend_tls_sni_name.empty()) {
+        sni_name = get_config()->backend_tls_sni_name.c_str();
       } else {
         sni_name = downstream_addr.host.c_str();
       }
