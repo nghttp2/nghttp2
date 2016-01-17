@@ -341,10 +341,6 @@ struct Config {
   std::unique_ptr<char[]> downstream_http_proxy_host;
   std::unique_ptr<char[]> http2_upstream_dump_request_header_file;
   std::unique_ptr<char[]> http2_upstream_dump_response_header_file;
-  // // Rate limit configuration per connection
-  // ev_token_bucket_cfg *rate_limit_cfg;
-  // // Rate limit configuration per worker (thread)
-  // ev_token_bucket_cfg *worker_rate_limit_cfg;
   // Path to file containing CA certificate solely used for client
   // certificate validation
   std::unique_ptr<char[]> verify_client_cacert;
