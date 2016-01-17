@@ -869,7 +869,7 @@ int verify_numeric_hostname(X509 *cert, const char *hostname, size_t hlen,
       X509_get_ext_d2i(cert, NID_subject_alt_name, nullptr, nullptr));
   if (altnames) {
     auto altnames_deleter = defer(GENERAL_NAMES_free, altnames);
-    auto n = sk_GENERAL_NAME_num(altnames);
+    size_t n = sk_GENERAL_NAME_num(altnames);
     for (size_t i = 0; i < n; ++i) {
       auto altname = sk_GENERAL_NAME_value(altnames, i);
       if (altname->type != GEN_IPADD) {
@@ -880,7 +880,7 @@ int verify_numeric_hostname(X509 *cert, const char *hostname, size_t hlen,
       if (!ip_addr) {
         continue;
       }
-      auto ip_addrlen = altname->d.iPAddress->length;
+      size_t ip_addrlen = altname->d.iPAddress->length;
 
       if (addr->len == ip_addrlen && memcmp(saddr, ip_addr, ip_addrlen) == 0) {
         return 0;
@@ -917,7 +917,7 @@ int verify_hostname(X509 *cert, const char *hostname, size_t hlen,
       X509_get_ext_d2i(cert, NID_subject_alt_name, nullptr, nullptr));
   if (altnames) {
     auto altnames_deleter = defer(GENERAL_NAMES_free, altnames);
-    auto n = sk_GENERAL_NAME_num(altnames);
+    size_t n = sk_GENERAL_NAME_num(altnames);
     for (size_t i = 0; i < n; ++i) {
       auto altname = sk_GENERAL_NAME_value(altnames, i);
       if (altname->type != GEN_DNS) {
@@ -1158,7 +1158,7 @@ int cert_lookup_tree_add_cert_from_file(CertLookupTree *lt, SSL_CTX *ssl_ctx,
       X509_get_ext_d2i(cert, NID_subject_alt_name, nullptr, nullptr));
   if (altnames) {
     auto altnames_deleter = defer(GENERAL_NAMES_free, altnames);
-    auto n = sk_GENERAL_NAME_num(altnames);
+    size_t n = sk_GENERAL_NAME_num(altnames);
     for (size_t i = 0; i < n; ++i) {
       auto altname = sk_GENERAL_NAME_value(altnames, i);
       if (altname->type != GEN_DNS) {
