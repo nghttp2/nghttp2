@@ -281,6 +281,8 @@ public:
 
   const char *c_str() const { return base; }
   size_type size() const { return len; }
+  bool empty() const { return len == 0; }
+  const_reference operator[](size_type pos) const { return *(base + pos); }
 
 private:
   size_type len;
@@ -323,6 +325,7 @@ public:
 
   const char *c_str() const { return base; }
   size_type size() const { return len; }
+  bool empty() const { return len == 0; }
 
   std::string str() const { return std::string(base, len); }
 

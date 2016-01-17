@@ -38,11 +38,13 @@ void test_template_immutable_string(void) {
 
   CU_ASSERT("" == null);
   CU_ASSERT(0 == null.size());
+  CU_ASSERT(null.empty());
 
   ImmutableString from_cstr("alpha");
 
   CU_ASSERT(0 == strcmp("alpha", from_cstr.c_str()));
   CU_ASSERT(5 == from_cstr.size());
+  CU_ASSERT(!from_cstr.empty());
   CU_ASSERT("alpha" == from_cstr);
   CU_ASSERT(from_cstr == "alpha");
   CU_ASSERT(std::string("alpha") == from_cstr);
@@ -95,6 +97,14 @@ void test_template_immutable_string(void) {
   CU_ASSERT("delt" != eq);
   CU_ASSERT(eq != "delta1");
   CU_ASSERT(eq != "delt");
+
+  // operator[]
+  ImmutableString br_op("foxtrot");
+
+  CU_ASSERT('f' == br_op[0]);
+  CU_ASSERT('o' == br_op[1]);
+  CU_ASSERT('t' == br_op[6]);
+  CU_ASSERT('\0' == br_op[7]);
 }
 
 void test_template_string_ref(void) {
