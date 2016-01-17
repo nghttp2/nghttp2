@@ -87,6 +87,14 @@ void test_template_immutable_string(void) {
 
   CU_ASSERT("bravo" == from_lit);
   CU_ASSERT(5 == from_lit.size());
+
+  // equality
+  ImmutableString eq("delta");
+
+  CU_ASSERT("delta1" != eq);
+  CU_ASSERT("delt" != eq);
+  CU_ASSERT(eq != "delta1");
+  CU_ASSERT(eq != "delt");
 }
 
 void test_template_string_ref(void) {

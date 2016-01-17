@@ -342,6 +342,22 @@ inline bool operator==(const char *lhs, const StringRef &rhs) {
   return rhs == lhs;
 }
 
+inline bool operator!=(const StringRef &lhs, const std::string &rhs) {
+  return !(lhs == rhs);
+}
+
+inline bool operator!=(const std::string &lhs, const StringRef &rhs) {
+  return !(rhs == lhs);
+}
+
+inline bool operator!=(const StringRef &lhs, const char *rhs) {
+  return !(lhs == rhs);
+}
+
+inline bool operator!=(const char *lhs, const StringRef &rhs) {
+  return !(rhs == lhs);
+}
+
 inline int run_app(std::function<int(int, char **)> app, int argc,
                    char **argv) {
   try {
