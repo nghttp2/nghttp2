@@ -50,20 +50,16 @@ void test_template_immutable_string(void) {
   CU_ASSERT(std::string("alpha") == from_cstr);
   CU_ASSERT(from_cstr == std::string("alpha"));
 
-  ImmutableString from_uniq(strcopy("charlie"));
-
-  CU_ASSERT("charlie" == from_uniq);
-  CU_ASSERT(7 == from_uniq.size());
-
   // copy constructor
-  ImmutableString copy = from_uniq;
+  ImmutableString src("charlie");
+  ImmutableString copy = src;
 
   CU_ASSERT("charlie" == copy);
   CU_ASSERT(7 == copy.size());
 
   // copy assignment
   ImmutableString copy2;
-  copy2 = from_uniq;
+  copy2 = src;
 
   CU_ASSERT("charlie" == copy2);
   CU_ASSERT(7 == copy2.size());

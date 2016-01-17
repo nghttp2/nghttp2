@@ -232,10 +232,6 @@ public:
   ImmutableString(const char *s, size_t slen)
       : len(slen), base(copystr(s, len)) {}
   ImmutableString(const char *s) : len(strlen(s)), base(copystr(s, len)) {}
-  ImmutableString(std::unique_ptr<char[]> s)
-      : len(strlen(s.get())), base(len == 0 ? "" : s.release()) {}
-  ImmutableString(std::unique_ptr<char[]> s, size_t slen)
-      : len(slen), base(len == 0 ? "" : s.release()) {}
   ImmutableString(const std::string &s)
       : len(s.size()), base(copystr(s.c_str(), s.size())) {}
   template <typename InputIt>
