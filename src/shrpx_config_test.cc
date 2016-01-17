@@ -151,7 +151,7 @@ void test_shrpx_config_parse_log_format(void) {
   CU_ASSERT("$" == res[0].value);
 
   CU_ASSERT(SHRPX_LOGF_REMOTE_ADDR == res[1].type);
-  CU_ASSERT(nullptr == res[1].value.c_str());
+  CU_ASSERT("" == res[1].value);
 }
 
 void test_shrpx_config_read_tls_ticket_key_file(void) {

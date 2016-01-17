@@ -230,46 +230,50 @@ public:
 
   ImmutableString() : len(0), base("") {}
   ImmutableString(const char *s, size_t slen)
-      : len(slen), holder(strcopy(s, len)), base(holder.get()) {}
-  ImmutableString(const char *s)
-      : len(strlen(s)), holder(strcopy(s, len)), base(holder.get()) {}
+      : len(slen), base(copystr(s, len)) {}
+  ImmutableString(const char *s) : len(strlen(s)), base(copystr(s, len)) {}
   ImmutableString(std::unique_ptr<char[]> s)
-      : len(strlen(s.get())), holder(std::move(s)), base(holder.get()) {}
+      : len(strlen(s.get())), base(len == 0 ? "" : s.release()) {}
   ImmutableString(std::unique_ptr<char[]> s, size_t slen)
-      : len(slen), holder(std::move(s)), base(holder.get()) {}
+      : len(slen), base(len == 0 ? "" : s.release()) {}
   ImmutableString(const std::string &s)
-      : len(s.size()), holder(strcopy(s)), base(holder.get()) {}
+      : len(s.size()), base(copystr(s.c_str(), s.size())) {}
   template <typename InputIt>
   ImmutableString(InputIt first, InputIt last)
-      : len(std::distance(first, last)), holder(strcopy(first, last)),
-        base(holder.get()) {}
+      : len(std::distance(first, last)), base(copystr(first, len)) {}
   ImmutableString(const ImmutableString &other)
-      : len(other.len), holder(strcopy(other.holder, other.len)),
-        base(holder.get()) {}
-  ImmutableString(ImmutableString &&other) noexcept
-      : len(other.len),
-        holder(std::move(other.holder)),
-        base(holder.get()) {
+      : len(other.len), base(copystr(other.base, other.len)) {}
+  ImmutableString(ImmutableString &&other) noexcept : len(other.len),
+                                                      base(other.base) {
     other.len = 0;
     other.base = "";
+  }
+  ~ImmutableString() {
+    if (len) {
+      delete[] base;
+    }
   }
 
   ImmutableString &operator=(const ImmutableString &other) {
     if (this == &other) {
       return *this;
     }
+    if (len) {
+      delete[] base;
+    }
     len = other.len;
-    holder = strcopy(other.holder, other.len);
-    base = holder.get();
+    base = copystr(other.base, other.len);
     return *this;
   }
   ImmutableString &operator=(ImmutableString &&other) noexcept {
     if (this == &other) {
       return *this;
     }
+    if (len) {
+      delete[] base;
+    }
     len = other.len;
-    holder = std::move(other.holder);
-    base = holder.get();
+    base = other.base;
     other.len = 0;
     other.base = "";
     return *this;
@@ -285,8 +289,16 @@ public:
   const_reference operator[](size_type pos) const { return *(base + pos); }
 
 private:
+  const char *copystr(const char *s, size_t slen) {
+    if (slen == 0) {
+      return "";
+    }
+    auto res = new char[slen + 1];
+    *std::copy_n(s, slen, res) = '\0';
+    return res;
+  }
+
   size_type len;
-  std::unique_ptr<char[]> holder;
   const char *base;
 };
 
