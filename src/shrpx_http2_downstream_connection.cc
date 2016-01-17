@@ -269,7 +269,7 @@ int Http2DownstreamConnection::push_request_headers() {
 
   // For HTTP/1.0 request, there is no authority in request.  In that
   // case, we use backend server's host nonetheless.
-  auto authority = StringAdaptor(downstream_hostport);
+  auto authority = StringRef(downstream_hostport);
 
   if (no_host_rewrite && !req.authority.empty()) {
     authority = req.authority;

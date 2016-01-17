@@ -184,7 +184,7 @@ std::pair<OutputIterator, size_t> copy(const std::string &src, size_t avail,
 
 namespace {
 template <typename OutputIterator>
-std::pair<OutputIterator, size_t> copy(const StringAdaptor &src, size_t avail,
+std::pair<OutputIterator, size_t> copy(const StringRef &src, size_t avail,
                                        OutputIterator oitr) {
   return copy(src.c_str(), src.size(), avail, oitr);
 }

@@ -245,8 +245,8 @@ struct DownstreamAddr {
   Address addr;
   // backend address.  If |host_unix| is true, this is UNIX domain
   // socket path.
-  VString host;
-  VString hostport;
+  ImmutableString host;
+  ImmutableString hostport;
   // backend port.  0 if |host_unix| is true.
   uint16_t port;
   // true if |host| contains UNIX domain socket path.
@@ -311,7 +311,7 @@ struct Config {
   // string is provided.
   std::string forwarded_for_obfuscated;
   std::string backend_tls_sni_name;
-  StringAdaptor server_name;
+  StringRef server_name;
   std::chrono::seconds tls_session_timeout;
   ev_tstamp http2_upstream_read_timeout;
   ev_tstamp upstream_read_timeout;

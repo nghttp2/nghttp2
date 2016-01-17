@@ -211,22 +211,25 @@ inline std::unique_ptr<char[]> strcopy(const std::unique_ptr<char[]> &val,
   return strcopy(val.get(), val.get() + n);
 }
 
-// VString represents string.  It has c_str() and size() functions to
-// mimic std::string.  It manages buffer by itself.  Just like
-// std::string, c_str() returns NULL-terminated string, but NULL
-// character may appear before the final terminal NULL.
-struct VString {
-  VString() : len(0) {}
-  VString(const char *s, size_t slen) : len(slen), base(strcopy(s, len)) {}
-  VString(const char *s) : len(strlen(s)), base(strcopy(s, len)) {}
-  VString(const std::string &s) : len(s.size()), base(strcopy(s)) {}
+// ImmutableString represents string that is immutable unlike
+// std::string.  It has c_str() and size() functions to mimic
+// std::string.  It manages buffer by itself.  Just like std::string,
+// c_str() returns NULL-terminated string, but NULL character may
+// appear before the final terminal NULL.
+class ImmutableString {
+public:
+  ImmutableString() : len(0) {}
+  ImmutableString(const char *s, size_t slen)
+      : len(slen), base(strcopy(s, len)) {}
+  ImmutableString(const char *s) : len(strlen(s)), base(strcopy(s, len)) {}
+  ImmutableString(const std::string &s) : len(s.size()), base(strcopy(s)) {}
   template <typename InputIt>
-  VString(InputIt first, InputIt last)
+  ImmutableString(InputIt first, InputIt last)
       : len(std::distance(first, last)), base(strcopy(first, last)) {}
-  VString(const VString &other)
+  ImmutableString(const ImmutableString &other)
       : len(other.len), base(strcopy(other.base, other.len)) {}
-  VString(VString &&) = default;
-  VString &operator=(const VString &other) {
+  ImmutableString(ImmutableString &&) = default;
+  ImmutableString &operator=(const ImmutableString &other) {
     if (this == &other) {
       return *this;
     }
@@ -234,30 +237,36 @@ struct VString {
     base = strcopy(other.base, other.len);
     return *this;
   }
-  VString &operator=(VString &&other) = default;
+  ImmutableString &operator=(ImmutableString &&other) = default;
+
+  template <size_t N> static ImmutableString from_lit(const char(&s)[N]) {
+    return ImmutableString(s, N - 1);
+  }
 
   const char *c_str() const { return base.get(); }
   size_t size() const { return len; }
 
+private:
   size_t len;
   std::unique_ptr<char[]> base;
 };
 
-// StringAdaptor behaves like simple string, but it does not own
-// pointer.  When it is default constructed, it has empty string.  You
-// can freely copy or move around this struct, but never free its
-// pointer.  str() function can be used to export the content as
-// std::string.
-struct StringAdaptor {
-  StringAdaptor() : base(""), len(0) {}
+// StringRef is a reference to a string owned by something else.  So
+// it behaves like simple string, but it does not own pointer.  When
+// it is default constructed, it has empty string.  You can freely
+// copy or move around this struct, but never free its pointer.  str()
+// function can be used to export the content as std::string.
+class StringRef {
+public:
+  StringRef() : base(""), len(0) {}
   template <typename T>
-  StringAdaptor(const T &s)
+  StringRef(const T &s)
       : base(s.c_str()), len(s.size()) {}
-  StringAdaptor(const char *s) : base(s), len(strlen(s)) {}
-  StringAdaptor(const char *s, size_t n) : base(s), len(n) {}
+  StringRef(const char *s) : base(s), len(strlen(s)) {}
+  StringRef(const char *s, size_t n) : base(s), len(n) {}
 
-  template <size_t N> static StringAdaptor from_lit(const char(&s)[N]) {
-    return StringAdaptor(s, N - 1);
+  template <size_t N> static StringRef from_lit(const char(&s)[N]) {
+    return StringRef(s, N - 1);
   }
 
   const char *c_str() const { return base; }
@@ -265,6 +274,7 @@ struct StringAdaptor {
 
   std::string str() const { return std::string(base, len); }
 
+private:
   const char *base;
   size_t len;
 };

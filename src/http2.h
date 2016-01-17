@@ -152,7 +152,7 @@ nghttp2_nv make_nv_ls_nocopy(const char(&name)[N], const std::string &value) {
 }
 
 template <size_t N>
-nghttp2_nv make_nv_ls_nocopy(const char(&name)[N], const StringAdaptor &value) {
+nghttp2_nv make_nv_ls_nocopy(const char(&name)[N], const StringRef &value) {
   return {(uint8_t *)name, (uint8_t *)value.c_str(), N - 1, value.size(),
           NGHTTP2_NV_FLAG_NO_COPY_NAME | NGHTTP2_NV_FLAG_NO_COPY_VALUE};
 }

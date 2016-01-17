@@ -1393,7 +1393,7 @@ int parse_config(const char *opt, const char *optarg,
     DownstreamAddr addr;
     if (util::istarts_with(optarg, SHRPX_UNIX_PATH_PREFIX)) {
       auto path = optarg + str_size(SHRPX_UNIX_PATH_PREFIX);
-      addr.host = VString(path, pat_delim);
+      addr.host = ImmutableString(path, pat_delim);
       addr.host_unix = true;
     } else {
       if (split_host_port(host, sizeof(host), &port, optarg,
@@ -1401,7 +1401,7 @@ int parse_config(const char *opt, const char *optarg,
         return -1;
       }
 
-      addr.host = VString(host);
+      addr.host = ImmutableString(host);
       addr.port = port;
     }
 

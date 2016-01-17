@@ -843,8 +843,8 @@ void ClientHandler::write_accesslog(Downstream *downstream) {
                     ? construct_absolute_request_uri(req)
                     : req.path.empty()
                           ? req.method == HTTP_OPTIONS
-                                ? StringAdaptor::from_lit("*")
-                                : StringAdaptor::from_lit("-")
+                                ? StringRef::from_lit("*")
+                                : StringRef::from_lit("-")
                           : req.path,
 
           alpn_, nghttp2::ssl::get_tls_session_info(&tls_info, conn_.tls.ssl),
@@ -869,8 +869,8 @@ void ClientHandler::write_accesslog(int major, int minor, unsigned int status,
       get_config()->accesslog_format,
       LogSpec{
           nullptr, ipaddr_,
-          StringAdaptor::from_lit("-"), // method
-          StringAdaptor::from_lit("-"), // path,
+          StringRef::from_lit("-"), // method
+          StringRef::from_lit("-"), // path,
           alpn_, nghttp2::ssl::get_tls_session_info(&tls_info, conn_.tls.ssl),
           time_now,
           highres_now,  // request_start_time TODO is

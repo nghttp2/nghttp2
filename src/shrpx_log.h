@@ -142,10 +142,10 @@ struct LogFragment {
 
 struct LogSpec {
   Downstream *downstream;
-  StringAdaptor remote_addr;
-  StringAdaptor method;
-  StringAdaptor path;
-  StringAdaptor alpn;
+  StringRef remote_addr;
+  StringRef method;
+  StringRef path;
+  StringRef alpn;
   const nghttp2::ssl::TLSSessionInfo *tls_info;
   std::chrono::system_clock::time_point time_now;
   std::chrono::high_resolution_clock::time_point request_start_time;
@@ -153,7 +153,7 @@ struct LogSpec {
   int major, minor;
   unsigned int status;
   int64_t body_bytes_sent;
-  StringAdaptor remote_port;
+  StringRef remote_port;
   uint16_t server_port;
   pid_t pid;
 };

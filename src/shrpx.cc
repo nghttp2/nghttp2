@@ -2474,7 +2474,7 @@ int main(int argc, char **argv) {
 
   if (get_config()->downstream_addr_groups.empty()) {
     DownstreamAddr addr;
-    addr.host = VString(DEFAULT_DOWNSTREAM_HOST);
+    addr.host = ImmutableString::from_lit(DEFAULT_DOWNSTREAM_HOST);
     addr.port = DEFAULT_DOWNSTREAM_PORT;
 
     DownstreamAddrGroup g("/");
@@ -2536,8 +2536,8 @@ int main(int argc, char **argv) {
         // for AF_UNIX socket, we use "localhost" as host for backend
         // hostport.  This is used as Host header field to backend and
         // not going to be passed to any syscalls.
-        addr.hostport =
-            VString(util::make_hostport("localhost", get_config()->port));
+        addr.hostport = ImmutableString(
+            util::make_hostport("localhost", get_config()->port));
 
         auto path = addr.host.c_str();
         auto pathlen = addr.host.size();
@@ -2560,7 +2560,7 @@ int main(int argc, char **argv) {
       }
 
       addr.hostport =
-          VString(util::make_hostport(addr.host.c_str(), addr.port));
+          ImmutableString(util::make_hostport(addr.host.c_str(), addr.port));
 
       if (resolve_hostname(
               &addr.addr, addr.host.c_str(), addr.port,
