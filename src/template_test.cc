@@ -36,7 +36,7 @@ namespace nghttp2 {
 void test_template_immutable_string(void) {
   ImmutableString null;
 
-  CU_ASSERT(nullptr == null.c_str());
+  CU_ASSERT("" == null);
   CU_ASSERT(0 == null.size());
 
   ImmutableString from_cstr("alpha");
@@ -71,7 +71,7 @@ void test_template_immutable_string(void) {
 
   CU_ASSERT("charlie" == move);
   CU_ASSERT(7 == move.size());
-  CU_ASSERT(nullptr == copy.c_str());
+  CU_ASSERT("" == copy);
   CU_ASSERT(0 == copy.size());
 
   // move assignment
@@ -79,7 +79,7 @@ void test_template_immutable_string(void) {
 
   CU_ASSERT("alpha" == move);
   CU_ASSERT(5 == move.size());
-  CU_ASSERT(nullptr == from_cstr.c_str());
+  CU_ASSERT("" == from_cstr);
   CU_ASSERT(0 == from_cstr.size());
 
   // from string literal

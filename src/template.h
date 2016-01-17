@@ -215,10 +215,7 @@ inline std::unique_ptr<char[]> strcopy(const std::unique_ptr<char[]> &val,
 // std::string.  It has c_str() and size() functions to mimic
 // std::string.  It manages buffer by itself.  Just like std::string,
 // c_str() returns NULL-terminated string, but NULL character may
-// appear before the final terminal NULL.  The crucial difference
-// between this and std::string is that when ImmutableString is
-// default constructed, c_str() returns nullptr, whereas std::string
-// will return non nullptr.  Both size() returns 0.
+// appear before the final terminal NULL.
 class ImmutableString {
 public:
   using traits_type = std::char_traits<char>;
@@ -231,24 +228,30 @@ public:
   using const_pointer = const value_type *;
   using const_iterator = const_pointer;
 
-  ImmutableString() : len(0) {}
+  ImmutableString() : len(0), base("") {}
   ImmutableString(const char *s, size_t slen)
-      : len(slen), base(strcopy(s, len)) {}
-  ImmutableString(const char *s) : len(strlen(s)), base(strcopy(s, len)) {}
+      : len(slen), holder(strcopy(s, len)), base(holder.get()) {}
+  ImmutableString(const char *s)
+      : len(strlen(s)), holder(strcopy(s, len)), base(holder.get()) {}
   ImmutableString(std::unique_ptr<char[]> s)
-      : len(strlen(s.get())), base(std::move(s)) {}
+      : len(strlen(s.get())), holder(std::move(s)), base(holder.get()) {}
   ImmutableString(std::unique_ptr<char[]> s, size_t slen)
-      : len(slen), base(std::move(s)) {}
-  ImmutableString(const std::string &s) : len(s.size()), base(strcopy(s)) {}
+      : len(slen), holder(std::move(s)), base(holder.get()) {}
+  ImmutableString(const std::string &s)
+      : len(s.size()), holder(strcopy(s)), base(holder.get()) {}
   template <typename InputIt>
   ImmutableString(InputIt first, InputIt last)
-      : len(std::distance(first, last)), base(strcopy(first, last)) {}
+      : len(std::distance(first, last)), holder(strcopy(first, last)),
+        base(holder.get()) {}
   ImmutableString(const ImmutableString &other)
-      : len(other.len), base(strcopy(other.base, other.len)) {}
+      : len(other.len), holder(strcopy(other.holder, other.len)),
+        base(holder.get()) {}
   ImmutableString(ImmutableString &&other) noexcept
       : len(other.len),
-        base(std::move(other.base)) {
+        holder(std::move(other.holder)),
+        base(holder.get()) {
     other.len = 0;
+    other.base = "";
   }
 
   ImmutableString &operator=(const ImmutableString &other) {
@@ -256,7 +259,8 @@ public:
       return *this;
     }
     len = other.len;
-    base = strcopy(other.base, other.len);
+    holder = strcopy(other.holder, other.len);
+    base = holder.get();
     return *this;
   }
   ImmutableString &operator=(ImmutableString &&other) noexcept {
@@ -264,8 +268,10 @@ public:
       return *this;
     }
     len = other.len;
-    base = std::move(other.base);
+    holder = std::move(other.holder);
+    base = holder.get();
     other.len = 0;
+    other.base = "";
     return *this;
   }
 
@@ -273,12 +279,13 @@ public:
     return ImmutableString(s, N - 1);
   }
 
-  const char *c_str() const { return base.get(); }
+  const char *c_str() const { return base; }
   size_type size() const { return len; }
 
 private:
   size_type len;
-  std::unique_ptr<char[]> base;
+  std::unique_ptr<char[]> holder;
+  const char *base;
 };
 
 // StringRef is a reference to a string owned by something else.  So
