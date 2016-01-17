@@ -271,27 +271,24 @@ int Http2Session::initiate_connection() {
 
   auto &downstream_addr = addrs[addr_idx_];
 
-  if (get_config()->downstream_http_proxy_host && state_ == DISCONNECTED) {
+  const auto &proxy = get_config()->downstream_http_proxy;
+  if (!proxy.host.empty() && state_ == DISCONNECTED) {
     if (LOG_ENABLED(INFO)) {
-      SSLOG(INFO, this) << "Connecting to the proxy "
-                        << get_config()->downstream_http_proxy_host.get() << ":"
-                        << get_config()->downstream_http_proxy_port;
+      SSLOG(INFO, this) << "Connecting to the proxy " << proxy.host << ":"
+                        << proxy.port;
     }
 
-    conn_.fd = util::create_nonblock_socket(
-        get_config()->downstream_http_proxy_addr.su.storage.ss_family);
+    conn_.fd = util::create_nonblock_socket(proxy.addr.su.storage.ss_family);
 
     if (conn_.fd == -1) {
       connect_blocker_->on_failure();
       return -1;
     }
 
-    rv = connect(conn_.fd, &get_config()->downstream_http_proxy_addr.su.sa,
-                 get_config()->downstream_http_proxy_addr.len);
+    rv = connect(conn_.fd, &proxy.addr.su.sa, proxy.addr.len);
     if (rv != 0 && errno != EINPROGRESS) {
-      SSLOG(ERROR, this) << "Failed to connect to the proxy "
-                         << get_config()->downstream_http_proxy_host.get()
-                         << ":" << get_config()->downstream_http_proxy_port;
+      SSLOG(ERROR, this) << "Failed to connect to the proxy " << proxy.host
+                         << ":" << proxy.port;
       connect_blocker_->on_failure();
       return -1;
     }
@@ -523,12 +520,10 @@ int Http2Session::downstream_connect_proxy() {
   req += " HTTP/1.1\r\nHost: ";
   req.append(downstream_addr.host.c_str(), downstream_addr.host.size());
   req += "\r\n";
-  if (get_config()->downstream_http_proxy_userinfo) {
+  const auto &proxy = get_config()->downstream_http_proxy;
+  if (!proxy.userinfo.empty()) {
     req += "Proxy-Authorization: Basic ";
-    size_t len = strlen(get_config()->downstream_http_proxy_userinfo.get());
-    req += base64::encode(get_config()->downstream_http_proxy_userinfo.get(),
-                          get_config()->downstream_http_proxy_userinfo.get() +
-                              len);
+    req += base64::encode(std::begin(proxy.userinfo), std::end(proxy.userinfo));
     req += "\r\n";
   }
   req += "\r\n";

@@ -972,8 +972,6 @@ void fill_default_config() {
   mod_config()->pid = getpid();
   mod_config()->backend_ipv4 = false;
   mod_config()->backend_ipv6 = false;
-  mod_config()->downstream_http_proxy_userinfo = nullptr;
-  mod_config()->downstream_http_proxy_host = nullptr;
   mod_config()->downstream_http_proxy_port = 0;
   mod_config()->read_rate = 0;
   mod_config()->read_burst = 0;
@@ -2572,13 +2570,12 @@ int main(int argc, char **argv) {
     }
   }
 
-  if (get_config()->downstream_http_proxy_host) {
+  auto &proxy = mod_config()->downstream_http_proxy;
+  if (!proxy.host.empty()) {
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "Resolving backend http proxy address";
     }
-    if (resolve_hostname(&mod_config()->downstream_http_proxy_addr,
-                         get_config()->downstream_http_proxy_host.get(),
-                         get_config()->downstream_http_proxy_port,
+    if (resolve_hostname(&proxy.addr, proxy.host.c_str(), proxy.port,
                          AF_UNSPEC) == -1) {
       exit(EXIT_FAILURE);
     }

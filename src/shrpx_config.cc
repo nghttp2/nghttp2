@@ -1705,6 +1705,10 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   case SHRPX_OPTID_BACKEND_HTTP_PROXY_URI: {
+    auto &proxy = mod_config()->downstream_http_proxy;
+    // Reset here so that multiple option occurrence does not merge
+    // the results.
+    proxy = {};
     // parse URI and get hostname, port and optionally userinfo.
     http_parser_url u{};
     int rv = http_parser_parse_url(optarg, strlen(optarg), 0, &u);
@@ -1715,19 +1719,17 @@ int parse_config(const char *opt, const char *optarg,
         // Surprisingly, u.field_set & UF_USERINFO is nonzero even if
         // userinfo component is empty string.
         if (!val.empty()) {
-          val = util::percent_decode(std::begin(val), std::end(val));
-          mod_config()->downstream_http_proxy_userinfo = strcopy(val);
+          proxy.userinfo = util::percent_decode(std::begin(val), std::end(val));
         }
       }
       if (u.field_set & UF_HOST) {
-        http2::copy_url_component(val, &u, UF_HOST, optarg);
-        mod_config()->downstream_http_proxy_host = strcopy(val);
+        http2::copy_url_component(proxy.host, &u, UF_HOST, optarg);
       } else {
         LOG(ERROR) << opt << ": no hostname specified";
         return -1;
       }
       if (u.field_set & UF_PORT) {
-        mod_config()->downstream_http_proxy_port = u.port;
+        proxy.port = u.port;
       } else {
         LOG(ERROR) << opt << ": no port specified";
         return -1;
