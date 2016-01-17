@@ -34,6 +34,7 @@
 #include <array>
 #include <functional>
 #include <typeinfo>
+#include <algorithm>
 
 namespace nghttp2 {
 
