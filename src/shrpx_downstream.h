@@ -76,7 +76,7 @@ public:
   Headers::value_type *header(int16_t token);
   // Returns pointer to the header field with the name |name|.  If no
   // such header is found, returns nullptr.
-  const Headers::value_type *header(const std::string &name) const;
+  const Headers::value_type *header(const StringRef &name) const;
 
   void add_header(std::string name, std::string value);
   void add_header(std::string name, std::string value, int16_t token);

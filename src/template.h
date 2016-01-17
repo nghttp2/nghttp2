@@ -218,6 +218,16 @@ inline std::unique_ptr<char[]> strcopy(const std::unique_ptr<char[]> &val,
 // appear before the final terminal NULL.
 class ImmutableString {
 public:
+  using traits_type = std::char_traits<char>;
+  using value_type = traits_type::char_type;
+  using allocator_type = std::allocator<char>;
+  using size_type = std::allocator_traits<allocator_type>::size_type;
+  using difference_type =
+      std::allocator_traits<allocator_type>::difference_type;
+  using const_reference = const value_type &;
+  using const_pointer = const value_type *;
+  using const_iterator = const_pointer;
+
   ImmutableString() : len(0) {}
   ImmutableString(const char *s, size_t slen)
       : len(slen), base(strcopy(s, len)) {}
@@ -244,10 +254,10 @@ public:
   }
 
   const char *c_str() const { return base.get(); }
-  size_t size() const { return len; }
+  size_type size() const { return len; }
 
 private:
-  size_t len;
+  size_type len;
   std::unique_ptr<char[]> base;
 };
 
@@ -258,10 +268,19 @@ private:
 // function can be used to export the content as std::string.
 class StringRef {
 public:
+  using traits_type = std::char_traits<char>;
+  using value_type = traits_type::char_type;
+  using allocator_type = std::allocator<char>;
+  using size_type = std::allocator_traits<allocator_type>::size_type;
+  using difference_type =
+      std::allocator_traits<allocator_type>::difference_type;
+  using const_reference = const value_type &;
+  using const_pointer = const value_type *;
+  using const_iterator = const_pointer;
+
   StringRef() : base(""), len(0) {}
-  template <typename T>
-  StringRef(const T &s)
-      : base(s.c_str()), len(s.size()) {}
+  StringRef(const std::string &s) : base(s.c_str()), len(s.size()) {}
+  StringRef(const ImmutableString &s) : base(s.c_str()), len(s.size()) {}
   StringRef(const char *s) : base(s), len(strlen(s)) {}
   StringRef(const char *s, size_t n) : base(s), len(n) {}
 
@@ -269,15 +288,30 @@ public:
     return StringRef(s, N - 1);
   }
 
+  const_iterator begin() const { return base; };
+  const_iterator cbegin() const { return base; };
+
+  const_iterator end() const { return base + len; };
+  const_iterator cend() const { return base + len; };
+
   const char *c_str() const { return base; }
-  size_t size() const { return len; }
+  size_type size() const { return len; }
 
   std::string str() const { return std::string(base, len); }
 
 private:
   const char *base;
-  size_t len;
+  size_type len;
 };
+
+inline bool operator==(const StringRef &lhs, const std::string &rhs) {
+  return lhs.size() == rhs.size() &&
+         std::equal(std::begin(lhs), std::end(lhs), std::begin(rhs));
+}
+
+inline bool operator==(const std::string &lhs, const StringRef &rhs) {
+  return rhs == lhs;
+}
 
 inline int run_app(std::function<int(int, char **)> app, int argc,
                    char **argv) {
