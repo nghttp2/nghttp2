@@ -36,6 +36,9 @@
 
 #include "shrpx_log_config.h"
 #include "ssl.h"
+#include "template.h"
+
+using namespace nghttp2;
 
 #define ENABLE_LOG 1
 
@@ -139,10 +142,10 @@ struct LogFragment {
 
 struct LogSpec {
   Downstream *downstream;
-  const char *remote_addr;
-  const char *method;
-  const char *path;
-  const char *alpn;
+  StringAdaptor remote_addr;
+  StringAdaptor method;
+  StringAdaptor path;
+  StringAdaptor alpn;
   const nghttp2::ssl::TLSSessionInfo *tls_info;
   std::chrono::system_clock::time_point time_now;
   std::chrono::high_resolution_clock::time_point request_start_time;
@@ -150,7 +153,7 @@ struct LogSpec {
   int major, minor;
   unsigned int status;
   int64_t body_bytes_sent;
-  const char *remote_port;
+  StringAdaptor remote_port;
   uint16_t server_port;
   pid_t pid;
 };

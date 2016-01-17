@@ -835,25 +835,27 @@ void ClientHandler::write_accesslog(Downstream *downstream) {
   upstream_accesslog(
       get_config()->accesslog_format,
       LogSpec{
-          downstream, ipaddr_.c_str(), http2::to_method_string(req.method),
+          downstream, ipaddr_, http2::to_method_string(req.method),
 
           req.method == HTTP_CONNECT
-              ? req.authority.c_str()
+              ? req.authority
               : (get_config()->http2_proxy || get_config()->client_proxy)
-                    ? construct_absolute_request_uri(req).c_str()
-                    : req.path.empty() ? req.method == HTTP_OPTIONS ? "*" : "-"
-                                       : req.path.c_str(),
+                    ? construct_absolute_request_uri(req)
+                    : req.path.empty()
+                          ? req.method == HTTP_OPTIONS
+                                ? StringAdaptor::from_lit("*")
+                                : StringAdaptor::from_lit("-")
+                          : req.path,
 
-          alpn_.c_str(),
-          nghttp2::ssl::get_tls_session_info(&tls_info, conn_.tls.ssl),
+          alpn_, nghttp2::ssl::get_tls_session_info(&tls_info, conn_.tls.ssl),
 
           std::chrono::system_clock::now(),          // time_now
           downstream->get_request_start_time(),      // request_start_time
           std::chrono::high_resolution_clock::now(), // request_end_time
 
           req.http_major, req.http_minor, resp.http_status,
-          downstream->response_sent_body_length, port_.c_str(),
-          get_config()->port, get_config()->pid,
+          downstream->response_sent_body_length, port_, get_config()->port,
+          get_config()->pid,
       });
 }
 
@@ -863,21 +865,20 @@ void ClientHandler::write_accesslog(int major, int minor, unsigned int status,
   auto highres_now = std::chrono::high_resolution_clock::now();
   nghttp2::ssl::TLSSessionInfo tls_info;
 
-  upstream_accesslog(get_config()->accesslog_format,
-                     LogSpec{
-                         nullptr, ipaddr_.c_str(),
-                         "-", // method
-                         "-", // path,
-                         alpn_.c_str(), nghttp2::ssl::get_tls_session_info(
-                                            &tls_info, conn_.tls.ssl),
-                         time_now,
-                         highres_now,  // request_start_time TODO is
-                                       // there a better value?
-                         highres_now,  // request_end_time
-                         major, minor, // major, minor
-                         status, body_bytes_sent, port_.c_str(),
-                         get_config()->port, get_config()->pid,
-                     });
+  upstream_accesslog(
+      get_config()->accesslog_format,
+      LogSpec{
+          nullptr, ipaddr_,
+          StringAdaptor::from_lit("-"), // method
+          StringAdaptor::from_lit("-"), // path,
+          alpn_, nghttp2::ssl::get_tls_session_info(&tls_info, conn_.tls.ssl),
+          time_now,
+          highres_now,  // request_start_time TODO is
+                        // there a better value?
+          highres_now,  // request_end_time
+          major, minor, // major, minor
+          status, body_bytes_sent, port_, get_config()->port, get_config()->pid,
+      });
 }
 
 ClientHandler::ReadBuf *ClientHandler::get_rb() { return &rb_; }

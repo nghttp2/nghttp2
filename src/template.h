@@ -254,6 +254,11 @@ struct StringAdaptor {
   StringAdaptor(const T &s)
       : base(s.c_str()), len(s.size()) {}
   StringAdaptor(const char *s) : base(s), len(strlen(s)) {}
+  StringAdaptor(const char *s, size_t n) : base(s), len(n) {}
+
+  template <size_t N> static StringAdaptor from_lit(const char(&s)[N]) {
+    return StringAdaptor(s, N - 1);
+  }
 
   const char *c_str() const { return base; }
   size_t size() const { return len; }
