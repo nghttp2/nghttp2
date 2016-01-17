@@ -215,7 +215,10 @@ inline std::unique_ptr<char[]> strcopy(const std::unique_ptr<char[]> &val,
 // std::string.  It has c_str() and size() functions to mimic
 // std::string.  It manages buffer by itself.  Just like std::string,
 // c_str() returns NULL-terminated string, but NULL character may
-// appear before the final terminal NULL.
+// appear before the final terminal NULL.  The crucial difference
+// between this and std::string is that when ImmutableString is
+// default constructed, c_str() returns nullptr, whereas std::string
+// will return non nullptr.  Both size() returns 0.
 class ImmutableString {
 public:
   using traits_type = std::char_traits<char>;
@@ -232,13 +235,22 @@ public:
   ImmutableString(const char *s, size_t slen)
       : len(slen), base(strcopy(s, len)) {}
   ImmutableString(const char *s) : len(strlen(s)), base(strcopy(s, len)) {}
+  ImmutableString(std::unique_ptr<char[]> s)
+      : len(strlen(s.get())), base(std::move(s)) {}
+  ImmutableString(std::unique_ptr<char[]> s, size_t slen)
+      : len(slen), base(std::move(s)) {}
   ImmutableString(const std::string &s) : len(s.size()), base(strcopy(s)) {}
   template <typename InputIt>
   ImmutableString(InputIt first, InputIt last)
       : len(std::distance(first, last)), base(strcopy(first, last)) {}
   ImmutableString(const ImmutableString &other)
       : len(other.len), base(strcopy(other.base, other.len)) {}
-  ImmutableString(ImmutableString &&) = default;
+  ImmutableString(ImmutableString &&other) noexcept
+      : len(other.len),
+        base(std::move(other.base)) {
+    other.len = 0;
+  }
+
   ImmutableString &operator=(const ImmutableString &other) {
     if (this == &other) {
       return *this;
@@ -247,7 +259,15 @@ public:
     base = strcopy(other.base, other.len);
     return *this;
   }
-  ImmutableString &operator=(ImmutableString &&other) = default;
+  ImmutableString &operator=(ImmutableString &&other) noexcept {
+    if (this == &other) {
+      return *this;
+    }
+    len = other.len;
+    base = std::move(other.base);
+    other.len = 0;
+    return *this;
+  }
 
   template <size_t N> static ImmutableString from_lit(const char(&s)[N]) {
     return ImmutableString(s, N - 1);
@@ -310,6 +330,15 @@ inline bool operator==(const StringRef &lhs, const std::string &rhs) {
 }
 
 inline bool operator==(const std::string &lhs, const StringRef &rhs) {
+  return rhs == lhs;
+}
+
+inline bool operator==(const StringRef &lhs, const char *rhs) {
+  return lhs.size() == strlen(rhs) &&
+         std::equal(std::begin(lhs), std::end(lhs), rhs);
+}
+
+inline bool operator==(const char *lhs, const StringRef &rhs) {
   return rhs == lhs;
 }
 

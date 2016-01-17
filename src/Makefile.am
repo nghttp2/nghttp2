@@ -174,7 +174,8 @@ nghttpx_unittest_SOURCES = shrpx-unittest.cc \
 	nghttp2_gzip_test.c nghttp2_gzip_test.h \
 	nghttp2_gzip.c nghttp2_gzip.h \
 	buffer_test.cc buffer_test.h \
-	memchunk_test.cc memchunk_test.h
+	memchunk_test.cc memchunk_test.h \
+	template_test.cc template_test.h
 nghttpx_unittest_CPPFLAGS = ${AM_CPPFLAGS} \
 	-DNGHTTP2_TESTS_DIR=\"$(top_srcdir)/tests\"
 nghttpx_unittest_LDADD = libnghttpx.a ${LDADD} @CUNIT_LIBS@ @TESTLDADD@

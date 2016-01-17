@@ -38,6 +38,7 @@
 #include "nghttp2_gzip_test.h"
 #include "buffer_test.h"
 #include "memchunk_test.h"
+#include "template_test.h"
 #include "shrpx_config.h"
 #include "ssl.h"
 
@@ -178,7 +179,11 @@ int main(int argc, char *argv[]) {
       !CU_add_test(pSuite, "peek_memchunk_disable_peek_no_drain",
                    nghttp2::test_peek_memchunks_disable_peek_no_drain) ||
       !CU_add_test(pSuite, "peek_memchunk_reset",
-                   nghttp2::test_peek_memchunks_reset)) {
+                   nghttp2::test_peek_memchunks_reset) ||
+      !CU_add_test(pSuite, "template_immutable_string",
+                   nghttp2::test_template_immutable_string) ||
+      !CU_add_test(pSuite, "template_string_ref",
+                   nghttp2::test_template_string_ref)) {
     CU_cleanup_registry();
     return CU_get_error();
   }
