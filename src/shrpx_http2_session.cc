@@ -334,18 +334,15 @@ int Http2Session::initiate_connection() {
         conn_.set_ssl(ssl);
       }
 
-      const char *sni_name = nullptr;
-      if (!get_config()->backend_tls_sni_name.empty()) {
-        sni_name = get_config()->backend_tls_sni_name.c_str();
-      } else {
-        sni_name = downstream_addr.host.c_str();
-      }
+      StringRef sni_name = !get_config()->backend_tls_sni_name.empty()
+                               ? get_config()->backend_tls_sni_name
+                               : downstream_addr.host;
 
-      if (sni_name && !util::numeric_host(sni_name)) {
+      if (!util::numeric_host(sni_name.c_str())) {
         // TLS extensions: SNI. There is no documentation about the return
         // code for this function (actually this is macro wrapping SSL_ctrl
         // at the time of this writing).
-        SSL_set_tlsext_host_name(conn_.tls.ssl, sni_name);
+        SSL_set_tlsext_host_name(conn_.tls.ssl, sni_name.c_str());
       }
       // If state_ == PROXY_CONNECTED, we has connected to the proxy
       // using conn_.fd and tunnel has been established.

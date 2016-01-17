@@ -238,14 +238,14 @@ int HttpDownstreamConnection::push_request_headers() {
   buf->append(" ");
 
   if (connect_method) {
-    buf->append(authority.c_str(), authority.size());
+    buf->append(authority);
   } else if (get_config()->http2_proxy || get_config()->client_proxy) {
     // Construct absolute-form request target because we are going to
     // send a request to a HTTP/1 proxy.
     assert(!req.scheme.empty());
     buf->append(req.scheme);
     buf->append("://");
-    buf->append(authority.c_str(), authority.size());
+    buf->append(authority);
     buf->append(req.path);
   } else if (req.method == HTTP_OPTIONS && req.path.empty()) {
     // Server-wide OPTIONS
@@ -254,7 +254,7 @@ int HttpDownstreamConnection::push_request_headers() {
     buf->append(req.path);
   }
   buf->append(" HTTP/1.1\r\nHost: ");
-  buf->append(authority.c_str(), authority.size());
+  buf->append(authority);
   buf->append("\r\n");
 
   http2::build_http1_headers_from_headers(buf, req.fs.headers());
@@ -402,7 +402,7 @@ int HttpDownstreamConnection::push_upload_data_chunk(const uint8_t *data,
 
   if (chunked) {
     auto chunk_size_hex = util::utox(datalen);
-    output->append(chunk_size_hex.c_str(), chunk_size_hex.size());
+    output->append(chunk_size_hex);
     output->append("\r\n");
   }
 

@@ -905,7 +905,7 @@ int SpdyUpstream::error_reply(Downstream *downstream,
   auto html = http::create_error_html(status_code);
   resp.http_status = status_code;
   auto body = downstream->get_response_buf();
-  body->append(html.c_str(), html.size());
+  body->append(html);
   downstream->set_response_state(Downstream::MSG_COMPLETE);
 
   spdylay_data_provider data_prd;

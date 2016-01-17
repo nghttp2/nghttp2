@@ -802,8 +802,7 @@ int HttpsUpstream::send_reply(Downstream *downstream, const uint8_t *body,
 
   if (!resp.fs.header(http2::HD_SERVER)) {
     output->append("Server: ");
-    const auto &server_name = get_config()->server_name;
-    output->append(server_name.c_str(), server_name.size());
+    output->append(get_config()->server_name);
     output->append("\r\n");
   }
 
@@ -838,21 +837,21 @@ void HttpsUpstream::error_reply(unsigned int status_code) {
 
   output->append("HTTP/1.1 ");
   auto status_str = http2::get_status_string(status_code);
-  output->append(status_str.c_str(), status_str.size());
+  output->append(status_str);
   output->append("\r\nServer: ");
   const auto &server_name = get_config()->server_name;
-  output->append(server_name.c_str(), server_name.size());
+  output->append(server_name);
   output->append("\r\nContent-Length: ");
   auto cl = util::utos(html.size());
-  output->append(cl.c_str(), cl.size());
+  output->append(cl);
   output->append("\r\nDate: ");
   auto lgconf = log_config();
   lgconf->update_tstamp(std::chrono::system_clock::now());
   auto &date = lgconf->time_http_str;
-  output->append(date.c_str(), date.size());
+  output->append(date);
   output->append("\r\nContent-Type: text/html; "
                  "charset=UTF-8\r\nConnection: close\r\n\r\n");
-  output->append(html.c_str(), html.size());
+  output->append(html);
 
   downstream->response_sent_body_length += html.size();
   downstream->set_response_state(Downstream::MSG_COMPLETE);
@@ -1000,8 +999,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
 
   if (!get_config()->http2_proxy && !get_config()->client_proxy) {
     buf->append("Server: ");
-    const auto &server_name = get_config()->server_name;
-    buf->append(server_name.c_str(), server_name.size());
+    buf->append(get_config()->server_name);
     buf->append("\r\n");
   } else {
     auto server = resp.fs.header(http2::HD_SERVER);
@@ -1054,10 +1052,8 @@ int HttpsUpstream::on_downstream_body(Downstream *downstream,
   }
   auto output = downstream->get_response_buf();
   if (downstream->get_chunked_response()) {
-    auto chunk_size_hex = util::utox(len);
-    chunk_size_hex += "\r\n";
-
-    output->append(chunk_size_hex.c_str(), chunk_size_hex.size());
+    output->append(util::utox(len));
+    output->append("\r\n");
   }
   output->append(data, len);
 
