@@ -662,7 +662,7 @@ void Downstream::inspect_http1_request() {
   auto transfer_encoding = req_.fs.header(http2::HD_TRANSFER_ENCODING);
   if (transfer_encoding) {
     req_.fs.content_length = -1;
-    if (util::strifind(transfer_encoding->value.c_str(), "chunked")) {
+    if (util::iends_with_l(transfer_encoding->value, "chunked")) {
       chunked_request_ = true;
     }
   }
@@ -672,7 +672,7 @@ void Downstream::inspect_http1_response() {
   auto transfer_encoding = resp_.fs.header(http2::HD_TRANSFER_ENCODING);
   if (transfer_encoding) {
     resp_.fs.content_length = -1;
-    if (util::strifind(transfer_encoding->value.c_str(), "chunked")) {
+    if (util::iends_with_l(transfer_encoding->value, "chunked")) {
       chunked_response_ = true;
     }
   }

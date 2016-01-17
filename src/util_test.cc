@@ -374,6 +374,9 @@ void test_util_ends_with(void) {
   CU_ASSERT(util::iends_with("foo", ""));
   CU_ASSERT(util::iends_with("oFoo", "fOO"));
   CU_ASSERT(!util::iends_with("ofoo", "fo"));
+
+  CU_ASSERT(util::iends_with_l("oFoo", "fOO"));
+  CU_ASSERT(!util::iends_with_l("ofoo", "fo"));
 }
 
 void test_util_parse_http_date(void) {

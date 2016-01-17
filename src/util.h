@@ -238,6 +238,10 @@ inline bool iends_with(const std::string &a, const std::string &b) {
   return iends_with(std::begin(a), std::end(a), std::begin(b), std::end(b));
 }
 
+template <size_t N> bool iends_with_l(const std::string &a, const char(&b)[N]) {
+  return iends_with(std::begin(a), std::end(a), b, b + N - 1);
+}
+
 int strcompare(const char *a, const uint8_t *b, size_t n);
 
 template <typename InputIt> bool strieq(const char *a, InputIt b, size_t bn) {
