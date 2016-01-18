@@ -217,10 +217,12 @@ int HttpDownstreamConnection::push_request_headers() {
 
   auto connect_method = req.method == HTTP_CONNECT;
 
+  auto &httpconf = get_config()->http;
+
   // For HTTP/1.0 request, there is no authority in request.  In that
   // case, we use backend server's host nonetheless.
   auto authority = StringRef(downstream_hostport);
-  auto no_host_rewrite = get_config()->no_host_rewrite ||
+  auto no_host_rewrite = httpconf.no_host_rewrite ||
                          get_config()->http2_proxy ||
                          get_config()->client_proxy || connect_method;
 
@@ -296,11 +298,13 @@ int HttpDownstreamConnection::push_request_headers() {
   auto upstream = downstream_->get_upstream();
   auto handler = upstream->get_client_handler();
 
-  auto fwd = get_config()->strip_incoming_forwarded
-                 ? nullptr
-                 : req.fs.header(http2::HD_FORWARDED);
-  if (get_config()->forwarded_params) {
-    auto params = get_config()->forwarded_params;
+  auto &fwdconf = httpconf.forwarded;
+
+  auto fwd =
+      fwdconf.strip_incoming ? nullptr : req.fs.header(http2::HD_FORWARDED);
+
+  if (fwdconf.params) {
+    auto params = fwdconf.params;
 
     if (get_config()->http2_proxy || get_config()->client_proxy ||
         connect_method) {
@@ -328,11 +332,12 @@ int HttpDownstreamConnection::push_request_headers() {
     buf->append("\r\n");
   }
 
-  auto xff = get_config()->strip_incoming_x_forwarded_for
-                 ? nullptr
-                 : req.fs.header(http2::HD_X_FORWARDED_FOR);
+  auto &xffconf = httpconf.xff;
 
-  if (get_config()->add_x_forwarded_for) {
+  auto xff = xffconf.strip_incoming ? nullptr
+                                    : req.fs.header(http2::HD_X_FORWARDED_FOR);
+
+  if (xffconf.add) {
     buf->append("X-Forwarded-For: ");
     if (xff) {
       buf->append((*xff).value);
@@ -353,7 +358,7 @@ int HttpDownstreamConnection::push_request_headers() {
     buf->append("\r\n");
   }
   auto via = req.fs.header(http2::HD_VIA);
-  if (get_config()->no_via) {
+  if (httpconf.no_via) {
     if (via) {
       buf->append("Via: ");
       buf->append((*via).value);
@@ -369,7 +374,7 @@ int HttpDownstreamConnection::push_request_headers() {
     buf->append("\r\n");
   }
 
-  for (auto &p : get_config()->add_request_headers) {
+  for (auto &p : httpconf.add_request_headers) {
     buf->append(p.first);
     buf->append(": ");
     buf->append(p.second);

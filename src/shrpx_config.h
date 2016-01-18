@@ -289,6 +289,7 @@ struct HttpProxy {
   std::string host;
   // userinfo in http proxy URI, not percent-encoded form
   std::string userinfo;
+  // port in http proxy URI
   uint16_t port;
 };
 
@@ -371,23 +372,76 @@ struct TLSConfig {
   bool insecure;
 };
 
-struct Config {
+struct HttpConfig {
+  struct {
+    // obfuscated value used in "by" parameter of Forwarded header
+    // field.
+    std::string by_obfuscated;
+    // obfuscated value used in "for" parameter of Forwarded header
+    // field.  This is only used when user defined static obfuscated
+    // string is provided.
+    std::string for_obfuscated;
+    // bitwise-OR of one or more of shrpx_forwarded_param values.
+    uint32_t params;
+    // type of value recorded in "by" parameter of Forwarded header
+    // field.
+    shrpx_forwarded_node_type by_node_type;
+    // type of value recorded in "for" parameter of Forwarded header
+    // field.
+    shrpx_forwarded_node_type for_node_type;
+    bool strip_incoming;
+  } forwarded;
+  struct {
+    bool add;
+    bool strip_incoming;
+  } xff;
   std::vector<AltSvc> altsvcs;
   std::vector<std::pair<std::string, std::string>> add_request_headers;
   std::vector<std::pair<std::string, std::string>> add_response_headers;
+  StringRef server_name;
+  size_t header_field_buffer;
+  size_t max_header_fields;
+  bool no_via;
+  bool no_location_rewrite;
+  bool no_host_rewrite;
+};
+
+struct Http2Config {
+  struct {
+    struct {
+      struct {
+        std::unique_ptr<char[]> request_header_file;
+        std::unique_ptr<char[]> response_header_file;
+        FILE *request_header;
+        FILE *response_header;
+      } dump;
+      bool frame_debug;
+    } debug;
+    nghttp2_option *option;
+    nghttp2_session_callbacks *callbacks;
+    size_t window_bits;
+    size_t connection_window_bits;
+  } upstream;
+  struct {
+    nghttp2_option *option;
+    nghttp2_session_callbacks *callbacks;
+    size_t window_bits;
+    size_t connection_window_bits;
+    size_t connections_per_worker;
+  } downstream;
+  size_t max_concurrent_streams;
+  bool no_cookie_crumbling;
+  bool no_server_push;
+};
+
+struct Config {
   std::vector<LogFragment> accesslog_format;
   std::vector<DownstreamAddrGroup> downstream_addr_groups;
   Router router;
   HttpProxy downstream_http_proxy;
+  HttpConfig http;
+  Http2Config http2;
   TLSConfig tls;
-  // obfuscated value used in "by" parameter of Forwarded header
-  // field.
-  std::string forwarded_by_obfuscated;
-  // obfuscated value used in "for" parameter of Forwarded header
-  // field.  This is only used when user defined static obfuscated
-  // string is provided.
-  std::string forwarded_for_obfuscated;
-  StringRef server_name;
   ev_tstamp http2_upstream_read_timeout;
   ev_tstamp upstream_read_timeout;
   ev_tstamp upstream_write_timeout;
@@ -402,28 +456,14 @@ struct Config {
   std::unique_ptr<char[]> host;
   std::unique_ptr<char[]> pid_file;
   std::unique_ptr<char[]> conf_path;
-  std::unique_ptr<char[]> http2_upstream_dump_request_header_file;
-  std::unique_ptr<char[]> http2_upstream_dump_response_header_file;
   std::unique_ptr<char[]> accesslog_file;
   std::unique_ptr<char[]> errorlog_file;
   std::unique_ptr<char[]> user;
   std::unique_ptr<char[]> mruby_file;
-  FILE *http2_upstream_dump_request_header;
-  FILE *http2_upstream_dump_response_header;
-  nghttp2_session_callbacks *http2_upstream_callbacks;
-  nghttp2_session_callbacks *http2_downstream_callbacks;
-  nghttp2_option *http2_option;
-  nghttp2_option *http2_client_option;
   char **original_argv;
   char **argv;
   char *cwd;
   size_t num_worker;
-  size_t http2_max_concurrent_streams;
-  size_t http2_upstream_window_bits;
-  size_t http2_downstream_window_bits;
-  size_t http2_upstream_connection_window_bits;
-  size_t http2_downstream_connection_window_bits;
-  size_t http2_downstream_connections_per_worker;
   size_t downstream_connections_per_host;
   size_t downstream_connections_per_frontend;
   size_t read_rate;
@@ -439,20 +479,10 @@ struct Config {
   size_t rlimit_nofile;
   size_t downstream_request_buffer_size;
   size_t downstream_response_buffer_size;
-  size_t header_field_buffer;
-  size_t max_header_fields;
   // The index of catch-all group in downstream_addr_groups.
   size_t downstream_addr_group_catch_all;
   // downstream protocol; this will be determined by given options.
   shrpx_proto downstream_proto;
-  // bitwise-OR of one or more of shrpx_forwarded_param values.
-  uint32_t forwarded_params;
-  // type of value recorded in "by" parameter of Forwarded header
-  // field.
-  shrpx_forwarded_node_type forwarded_by_node_type;
-  // type of value recorded in "for" parameter of Forwarded header
-  // field.
-  shrpx_forwarded_node_type forwarded_for_node_type;
   int syslog_facility;
   int backlog;
   int argc;
@@ -463,17 +493,11 @@ struct Config {
   // frontend listening port.  0 if frontend listens on UNIX domain
   // socket, in this case |host_unix| must be true.
   uint16_t port;
-  // port in http proxy URI
-  uint16_t downstream_http_proxy_port;
   bool verbose;
   bool daemon;
   bool http2_proxy;
   bool http2_bridge;
   bool client_proxy;
-  bool add_x_forwarded_for;
-  bool strip_incoming_x_forwarded_for;
-  bool strip_incoming_forwarded;
-  bool no_via;
   bool upstream_no_tls;
   bool downstream_no_tls;
   // Send accesslog to syslog, ignoring accesslog_file.
@@ -485,11 +509,6 @@ struct Config {
   bool client_mode;
   bool backend_ipv4;
   bool backend_ipv6;
-  bool http2_no_cookie_crumbling;
-  bool upstream_frame_debug;
-  bool no_location_rewrite;
-  bool no_host_rewrite;
-  bool no_server_push;
   // true if host contains UNIX domain socket path
   bool host_unix;
   bool accept_proxy_protocol;

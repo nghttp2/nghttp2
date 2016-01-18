@@ -154,7 +154,7 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
                        const uint8_t *name, size_t namelen,
                        const uint8_t *value, size_t valuelen, uint8_t flags,
                        void *user_data) {
-  if (get_config()->upstream_frame_debug) {
+  if (get_config()->http2.upstream.debug.frame_debug) {
     verbose_on_header_callback(session, frame, name, namelen, value, valuelen,
                                flags, user_data);
   }
@@ -170,9 +170,11 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
 
   auto &req = downstream->request();
 
+  auto &httpconf = get_config()->http;
+
   if (req.fs.buffer_size() + namelen + valuelen >
-          get_config()->header_field_buffer ||
-      req.fs.num_fields() >= get_config()->max_header_fields) {
+          httpconf.header_field_buffer ||
+      req.fs.num_fields() >= httpconf.max_header_fields) {
     if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
       return 0;
     }
@@ -263,8 +265,10 @@ int Http2Upstream::on_request_headers(Downstream *downstream,
                      << downstream->get_stream_id() << "\n" << ss.str();
   }
 
-  if (get_config()->http2_upstream_dump_request_header) {
-    http2::dump_nv(get_config()->http2_upstream_dump_request_header, nva);
+  auto &dump = get_config()->http2.upstream.debug.dump;
+
+  if (dump.request_header) {
+    http2::dump_nv(dump.request_header, nva);
   }
 
   auto content_length = req.fs.header(http2::HD_CONTENT_LENGTH);
@@ -398,7 +402,7 @@ void Http2Upstream::initiate_downstream(Downstream *downstream) {
 namespace {
 int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
                            void *user_data) {
-  if (get_config()->upstream_frame_debug) {
+  if (get_config()->http2.upstream.debug.frame_debug) {
     verbose_on_frame_recv_callback(session, frame, user_data);
   }
   auto upstream = static_cast<Http2Upstream *>(user_data);
@@ -500,7 +504,7 @@ int on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
 namespace {
 int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
                            void *user_data) {
-  if (get_config()->upstream_frame_debug) {
+  if (get_config()->http2.upstream.debug.frame_debug) {
     verbose_on_frame_send_callback(session, frame, user_data);
   }
   auto upstream = static_cast<Http2Upstream *>(user_data);
@@ -860,9 +864,10 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
 
   int rv;
 
-  rv = nghttp2_session_server_new2(&session_,
-                                   get_config()->http2_upstream_callbacks, this,
-                                   get_config()->http2_option);
+  auto &http2conf = get_config()->http2;
+
+  rv = nghttp2_session_server_new2(&session_, http2conf.upstream.callbacks,
+                                   this, http2conf.upstream.option);
 
   assert(rv == 0);
 
@@ -871,10 +876,10 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
   // TODO Maybe call from outside?
   std::array<nghttp2_settings_entry, 2> entry;
   entry[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
-  entry[0].value = get_config()->http2_max_concurrent_streams;
+  entry[0].value = http2conf.max_concurrent_streams;
 
   entry[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
-  entry[1].value = (1 << get_config()->http2_upstream_window_bits) - 1;
+  entry[1].value = (1 << http2conf.upstream.window_bits) - 1;
 
   rv = nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE, entry.data(),
                                entry.size());
@@ -883,9 +888,9 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
                       << nghttp2_strerror(rv);
   }
 
-  if (get_config()->http2_upstream_connection_window_bits > 16) {
-    int32_t delta = (1 << get_config()->http2_upstream_connection_window_bits) -
-                    1 - NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE;
+  if (http2conf.upstream.connection_window_bits > 16) {
+    int32_t delta = (1 << http2conf.upstream.connection_window_bits) - 1 -
+                    NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE;
     rv = nghttp2_submit_window_update(session_, NGHTTP2_FLAG_NONE, 0, delta);
 
     if (rv != 0) {
@@ -1337,7 +1342,7 @@ int Http2Upstream::send_reply(Downstream *downstream, const uint8_t *body,
 
   if (!resp.fs.header(http2::HD_SERVER)) {
     nva.push_back(
-        http2::make_nv_ls_nocopy("server", get_config()->server_name));
+        http2::make_nv_ls_nocopy("server", get_config()->http.server_name));
   }
 
   rv = nghttp2_submit_response(session_, downstream->get_stream_id(),
@@ -1386,7 +1391,7 @@ int Http2Upstream::error_reply(Downstream *downstream,
           : http2::make_nv_ls(":status",
                               (status_code_str = util::utos(status_code))),
       http2::make_nv_ll("content-type", "text/html; charset=UTF-8"),
-      http2::make_nv_ls_nocopy("server", get_config()->server_name),
+      http2::make_nv_ls_nocopy("server", get_config()->http.server_name),
       http2::make_nv_ls("content-length", content_length),
       http2::make_nv_ls("date", lgconf->time_http_str));
 
@@ -1442,8 +1447,10 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
     }
   }
 
+  auto &httpconf = get_config()->http;
+
   if (!get_config()->http2_proxy && !get_config()->client_proxy &&
-      !get_config()->no_location_rewrite) {
+      !httpconf.no_location_rewrite) {
     downstream->rewrite_location_response_header(req.scheme);
   }
 
@@ -1470,7 +1477,7 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
   // 4 means :status and possible server, via and x-http2-push header
   // field.
   nva.reserve(resp.fs.headers().size() + 4 +
-              get_config()->add_response_headers.size());
+              httpconf.add_response_headers.size());
   std::string via_value;
   std::string response_status;
 
@@ -1506,8 +1513,7 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
   http2::copy_headers_to_nva_nocopy(nva, resp.fs.headers());
 
   if (!get_config()->http2_proxy && !get_config()->client_proxy) {
-    nva.push_back(
-        http2::make_nv_ls_nocopy("server", get_config()->server_name));
+    nva.push_back(http2::make_nv_ls_nocopy("server", httpconf.server_name));
   } else {
     auto server = resp.fs.header(http2::HD_SERVER);
     if (server) {
@@ -1516,7 +1522,7 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
   }
 
   auto via = resp.fs.header(http2::HD_VIA);
-  if (get_config()->no_via) {
+  if (httpconf.no_via) {
     if (via) {
       nva.push_back(http2::make_nv_ls_nocopy("via", (*via).value));
     }
@@ -1530,7 +1536,7 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
     nva.push_back(http2::make_nv_ls("via", via_value));
   }
 
-  for (auto &p : get_config()->add_response_headers) {
+  for (auto &p : httpconf.add_response_headers) {
     nva.push_back(http2::make_nv_nocopy(p.first, p.second));
   }
 
@@ -1544,9 +1550,11 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
     log_response_headers(downstream, nva);
   }
 
-  if (get_config()->http2_upstream_dump_response_header) {
-    http2::dump_nv(get_config()->http2_upstream_dump_response_header,
-                   nva.data(), nva.size());
+  auto &http2conf = get_config()->http2;
+
+  if (http2conf.upstream.debug.dump.response_header) {
+    http2::dump_nv(http2conf.upstream.debug.dump.response_header, nva.data(),
+                   nva.size());
   }
 
   nghttp2_data_provider data_prd;
@@ -1574,7 +1582,7 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
   // * We requires GET or POST for associated resource.  Probably we
   //   don't want to push for HEAD request.  Not sure other methods
   //   are also eligible for push.
-  if (!get_config()->no_server_push &&
+  if (!http2conf.no_server_push &&
       nghttp2_session_get_remote_settings(session_,
                                           NGHTTP2_SETTINGS_ENABLE_PUSH) == 1 &&
       !get_config()->http2_proxy && !get_config()->client_proxy &&
@@ -1875,7 +1883,7 @@ int Http2Upstream::submit_push_promise(const std::string &scheme,
 }
 
 bool Http2Upstream::push_enabled() const {
-  return !(get_config()->no_server_push ||
+  return !(get_config()->http2.no_server_push ||
            nghttp2_session_get_remote_settings(
                session_, NGHTTP2_SETTINGS_ENABLE_PUSH) == 0 ||
            get_config()->http2_proxy || get_config()->client_proxy);

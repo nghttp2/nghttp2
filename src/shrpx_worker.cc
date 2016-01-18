@@ -91,7 +91,7 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
   }
 
   if (get_config()->downstream_proto == PROTO_HTTP2) {
-    auto n = get_config()->http2_downstream_connections_per_worker;
+    auto n = get_config()->http2.downstream.connections_per_worker;
     size_t group = 0;
     for (auto &dgrp : dgrps_) {
       auto m = n;

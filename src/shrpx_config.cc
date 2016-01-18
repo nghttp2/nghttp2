@@ -1447,7 +1447,7 @@ int parse_config(const char *opt, const char *optarg,
     return parse_uint(&mod_config()->num_worker, opt, optarg);
 #endif // !NOTHREADS
   case SHRPX_OPTID_HTTP2_MAX_CONCURRENT_STREAMS:
-    return parse_uint(&mod_config()->http2_max_concurrent_streams, opt, optarg);
+    return parse_uint(&mod_config()->http2.max_concurrent_streams, opt, optarg);
   case SHRPX_OPTID_LOG_LEVEL:
     if (Log::set_severity_level_by_name(optarg) == -1) {
       LOG(ERROR) << opt << ": Invalid severity level: " << optarg;
@@ -1472,15 +1472,15 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   case SHRPX_OPTID_ADD_X_FORWARDED_FOR:
-    mod_config()->add_x_forwarded_for = util::strieq(optarg, "yes");
+    mod_config()->http.xff.add = util::strieq(optarg, "yes");
 
     return 0;
   case SHRPX_OPTID_STRIP_INCOMING_X_FORWARDED_FOR:
-    mod_config()->strip_incoming_x_forwarded_for = util::strieq(optarg, "yes");
+    mod_config()->http.xff.strip_incoming = util::strieq(optarg, "yes");
 
     return 0;
   case SHRPX_OPTID_NO_VIA:
-    mod_config()->no_via = util::strieq(optarg, "yes");
+    mod_config()->http.no_via = util::strieq(optarg, "yes");
 
     return 0;
   case SHRPX_OPTID_FRONTEND_HTTP2_READ_TIMEOUT:
@@ -1541,9 +1541,9 @@ int parse_config(const char *opt, const char *optarg,
     size_t *resp;
 
     if (optid == SHRPX_OPTID_FRONTEND_HTTP2_WINDOW_BITS) {
-      resp = &mod_config()->http2_upstream_window_bits;
+      resp = &mod_config()->http2.upstream.window_bits;
     } else {
-      resp = &mod_config()->http2_downstream_window_bits;
+      resp = &mod_config()->http2.downstream.window_bits;
     }
 
     errno = 0;
@@ -1569,9 +1569,9 @@ int parse_config(const char *opt, const char *optarg,
     size_t *resp;
 
     if (optid == SHRPX_OPTID_FRONTEND_HTTP2_CONNECTION_WINDOW_BITS) {
-      resp = &mod_config()->http2_upstream_connection_window_bits;
+      resp = &mod_config()->http2.upstream.connection_window_bits;
     } else {
-      resp = &mod_config()->http2_downstream_connection_window_bits;
+      resp = &mod_config()->http2.downstream.connection_window_bits;
     }
 
     errno = 0;
@@ -1786,19 +1786,22 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   case SHRPX_OPTID_FRONTEND_HTTP2_DUMP_REQUEST_HEADER:
-    mod_config()->http2_upstream_dump_request_header_file = strcopy(optarg);
+    mod_config()->http2.upstream.debug.dump.request_header_file =
+        strcopy(optarg);
 
     return 0;
   case SHRPX_OPTID_FRONTEND_HTTP2_DUMP_RESPONSE_HEADER:
-    mod_config()->http2_upstream_dump_response_header_file = strcopy(optarg);
+    mod_config()->http2.upstream.debug.dump.response_header_file =
+        strcopy(optarg);
 
     return 0;
   case SHRPX_OPTID_HTTP2_NO_COOKIE_CRUMBLING:
-    mod_config()->http2_no_cookie_crumbling = util::strieq(optarg, "yes");
+    mod_config()->http2.no_cookie_crumbling = util::strieq(optarg, "yes");
 
     return 0;
   case SHRPX_OPTID_FRONTEND_FRAME_DEBUG:
-    mod_config()->upstream_frame_debug = util::strieq(optarg, "yes");
+    mod_config()->http2.upstream.debug.frame_debug =
+        util::strieq(optarg, "yes");
 
     return 0;
   case SHRPX_OPTID_PADDING:
@@ -1845,7 +1848,7 @@ int parse_config(const char *opt, const char *optarg,
       }
     }
 
-    mod_config()->altsvcs.push_back(std::move(altsvc));
+    mod_config()->http.altsvcs.push_back(std::move(altsvc));
 
     return 0;
   }
@@ -1857,16 +1860,16 @@ int parse_config(const char *opt, const char *optarg,
       return -1;
     }
     if (optid == SHRPX_OPTID_ADD_REQUEST_HEADER) {
-      mod_config()->add_request_headers.push_back(std::move(p));
+      mod_config()->http.add_request_headers.push_back(std::move(p));
     } else {
-      mod_config()->add_response_headers.push_back(std::move(p));
+      mod_config()->http.add_response_headers.push_back(std::move(p));
     }
     return 0;
   }
   case SHRPX_OPTID_WORKER_FRONTEND_CONNECTIONS:
     return parse_uint(&mod_config()->worker_frontend_connections, opt, optarg);
   case SHRPX_OPTID_NO_LOCATION_REWRITE:
-    mod_config()->no_location_rewrite = util::strieq(optarg, "yes");
+    mod_config()->http.no_location_rewrite = util::strieq(optarg, "yes");
 
     return 0;
   case SHRPX_OPTID_NO_HOST_REWRITE:
@@ -1941,11 +1944,11 @@ int parse_config(const char *opt, const char *optarg,
   }
 
   case SHRPX_OPTID_NO_SERVER_PUSH:
-    mod_config()->no_server_push = util::strieq(optarg, "yes");
+    mod_config()->http2.no_server_push = util::strieq(optarg, "yes");
 
     return 0;
   case SHRPX_OPTID_BACKEND_HTTP2_CONNECTIONS_PER_WORKER:
-    return parse_uint(&mod_config()->http2_downstream_connections_per_worker,
+    return parse_uint(&mod_config()->http2.downstream.connections_per_worker,
                       opt, optarg);
   case SHRPX_OPTID_FETCH_OCSP_RESPONSE_FILE:
     mod_config()->tls.ocsp.fetch_ocsp_response_file = strcopy(optarg);
@@ -1958,10 +1961,10 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   case SHRPX_OPTID_HEADER_FIELD_BUFFER:
-    return parse_uint_with_unit(&mod_config()->header_field_buffer, opt,
+    return parse_uint_with_unit(&mod_config()->http.header_field_buffer, opt,
                                 optarg);
   case SHRPX_OPTID_MAX_HEADER_FIELDS:
-    return parse_uint(&mod_config()->max_header_fields, opt, optarg);
+    return parse_uint(&mod_config()->http.max_header_fields, opt, optarg);
   case SHRPX_OPTID_INCLUDE: {
     if (included_set.count(optarg)) {
       LOG(ERROR) << opt << ": " << optarg << " has already been included";
@@ -1992,7 +1995,7 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   case SHRPX_OPTID_HOST_REWRITE:
-    mod_config()->no_host_rewrite = !util::strieq(optarg, "yes");
+    mod_config()->http.no_host_rewrite = !util::strieq(optarg, "yes");
 
     return 0;
   case SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED: {
@@ -2065,23 +2068,24 @@ int parse_config(const char *opt, const char *optarg,
     mod_config()->accept_proxy_protocol = util::strieq(optarg, "yes");
 
     return 0;
-  case SHRPX_OPTID_ADD_FORWARDED:
-    mod_config()->forwarded_params = FORWARDED_NONE;
+  case SHRPX_OPTID_ADD_FORWARDED: {
+    auto &fwdconf = mod_config()->http.forwarded;
+    fwdconf.params = FORWARDED_NONE;
     for (const auto &param : util::parse_config_str_list(optarg)) {
       if (util::strieq(param, "by")) {
-        mod_config()->forwarded_params |= FORWARDED_BY;
+        fwdconf.params |= FORWARDED_BY;
         continue;
       }
       if (util::strieq(param, "for")) {
-        mod_config()->forwarded_params |= FORWARDED_FOR;
+        fwdconf.params |= FORWARDED_FOR;
         continue;
       }
       if (util::strieq(param, "host")) {
-        mod_config()->forwarded_params |= FORWARDED_HOST;
+        fwdconf.params |= FORWARDED_HOST;
         continue;
       }
       if (util::strieq(param, "proto")) {
-        mod_config()->forwarded_params |= FORWARDED_PROTO;
+        fwdconf.params |= FORWARDED_PROTO;
         continue;
       }
 
@@ -2091,8 +2095,9 @@ int parse_config(const char *opt, const char *optarg,
     }
 
     return 0;
+  }
   case SHRPX_OPTID_STRIP_INCOMING_FORWARDED:
-    mod_config()->strip_incoming_forwarded = util::strieq(optarg, "yes");
+    mod_config()->http.forwarded.strip_incoming = util::strieq(optarg, "yes");
 
     return 0;
   case SHRPX_OPTID_FORWARDED_BY:
@@ -2105,23 +2110,23 @@ int parse_config(const char *opt, const char *optarg,
       return -1;
     }
 
+    auto &fwdconf = mod_config()->http.forwarded;
+
     switch (optid) {
     case SHRPX_OPTID_FORWARDED_BY:
-      mod_config()->forwarded_by_node_type =
-          static_cast<shrpx_forwarded_node_type>(type);
+      fwdconf.by_node_type = static_cast<shrpx_forwarded_node_type>(type);
       if (optarg[0] == '_') {
-        mod_config()->forwarded_by_obfuscated = optarg;
+        fwdconf.by_obfuscated = optarg;
       } else {
-        mod_config()->forwarded_by_obfuscated = "";
+        fwdconf.by_obfuscated = "";
       }
       break;
     case SHRPX_OPTID_FORWARDED_FOR:
-      mod_config()->forwarded_for_node_type =
-          static_cast<shrpx_forwarded_node_type>(type);
+      fwdconf.for_node_type = static_cast<shrpx_forwarded_node_type>(type);
       if (optarg[0] == '_') {
-        mod_config()->forwarded_for_obfuscated = optarg;
+        fwdconf.for_obfuscated = optarg;
       } else {
-        mod_config()->forwarded_for_obfuscated = "";
+        fwdconf.for_obfuscated = "";
       }
       break;
     }

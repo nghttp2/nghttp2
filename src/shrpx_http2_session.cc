@@ -1309,9 +1309,10 @@ int Http2Session::connection_made() {
     }
   }
 
-  rv = nghttp2_session_client_new2(&session_,
-                                   get_config()->http2_downstream_callbacks,
-                                   this, get_config()->http2_client_option);
+  auto &http2conf = get_config()->http2;
+
+  rv = nghttp2_session_client_new2(&session_, http2conf.downstream.callbacks,
+                                   this, http2conf.downstream.option);
 
   if (rv != 0) {
     return -1;
@@ -1322,12 +1323,12 @@ int Http2Session::connection_made() {
   std::array<nghttp2_settings_entry, 3> entry;
   size_t nentry = 2;
   entry[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
-  entry[0].value = get_config()->http2_max_concurrent_streams;
+  entry[0].value = http2conf.max_concurrent_streams;
 
   entry[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
-  entry[1].value = (1 << get_config()->http2_downstream_window_bits) - 1;
+  entry[1].value = (1 << http2conf.downstream.window_bits) - 1;
 
-  if (get_config()->no_server_push || get_config()->http2_proxy ||
+  if (http2conf.no_server_push || get_config()->http2_proxy ||
       get_config()->client_proxy) {
     entry[nentry].settings_id = NGHTTP2_SETTINGS_ENABLE_PUSH;
     entry[nentry].value = 0;
@@ -1340,10 +1341,10 @@ int Http2Session::connection_made() {
     return -1;
   }
 
-  if (get_config()->http2_downstream_connection_window_bits > 16) {
-    int32_t delta =
-        (1 << get_config()->http2_downstream_connection_window_bits) - 1 -
-        NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE;
+  auto connection_window_bits = http2conf.downstream.connection_window_bits;
+  if (connection_window_bits > 16) {
+    int32_t delta = (1 << connection_window_bits) - 1 -
+                    NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE;
     rv = nghttp2_submit_window_update(session_, NGHTTP2_FLAG_NONE, 0, delta);
     if (rv != 0) {
       return -1;

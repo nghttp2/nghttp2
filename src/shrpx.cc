@@ -900,7 +900,6 @@ void fill_default_config() {
   mod_config()->verbose = false;
   mod_config()->daemon = false;
 
-  mod_config()->server_name = "nghttpx nghttp2/" NGHTTP2_VERSION;
   mod_config()->host = strcopy("*");
   mod_config()->port = 3000;
 
@@ -926,25 +925,10 @@ void fill_default_config() {
   // Timeout for pooled (idle) connections
   mod_config()->downstream_idle_read_timeout = 2.;
 
-  // window bits for HTTP/2 and SPDY upstream/downstream connection
-  // per stream. 2**16-1 = 64KiB-1, which is HTTP/2 default. Please
-  // note that SPDY/3 default is 64KiB.
-  mod_config()->http2_upstream_window_bits = 16;
-  mod_config()->http2_downstream_window_bits = 16;
-
-  // HTTP/2 SPDY/3.1 has connection-level flow control. The default
-  // window size for HTTP/2 is 64KiB - 1. SPDY/3's default is 64KiB
-  mod_config()->http2_upstream_connection_window_bits = 16;
-  mod_config()->http2_downstream_connection_window_bits = 16;
-
   mod_config()->upstream_no_tls = false;
   mod_config()->downstream_no_tls = false;
 
   mod_config()->num_worker = 1;
-  mod_config()->http2_max_concurrent_streams = 100;
-  mod_config()->add_x_forwarded_for = false;
-  mod_config()->strip_incoming_x_forwarded_for = false;
-  mod_config()->no_via = false;
   mod_config()->accesslog_file = nullptr;
   mod_config()->accesslog_syslog = false;
   mod_config()->accesslog_format = parse_log_format(DEFAULT_ACCESSLOG_FORMAT);
@@ -966,7 +950,6 @@ void fill_default_config() {
   mod_config()->pid = getpid();
   mod_config()->backend_ipv4 = false;
   mod_config()->backend_ipv6 = false;
-  mod_config()->downstream_http_proxy_port = 0;
   mod_config()->read_rate = 0;
   mod_config()->read_burst = 0;
   mod_config()->write_rate = 0;
@@ -975,25 +958,9 @@ void fill_default_config() {
   mod_config()->worker_read_burst = 0;
   mod_config()->worker_write_rate = 0;
   mod_config()->worker_write_burst = 0;
-  mod_config()->http2_upstream_dump_request_header = nullptr;
-  mod_config()->http2_upstream_dump_response_header = nullptr;
-  mod_config()->http2_no_cookie_crumbling = false;
-  mod_config()->upstream_frame_debug = false;
   mod_config()->padding = 0;
   mod_config()->worker_frontend_connections = 0;
 
-  nghttp2_option_new(&mod_config()->http2_option);
-  nghttp2_option_set_no_auto_window_update(get_config()->http2_option, 1);
-  nghttp2_option_set_no_recv_client_magic(get_config()->http2_option, 1);
-
-  nghttp2_option_new(&mod_config()->http2_client_option);
-  nghttp2_option_set_no_auto_window_update(get_config()->http2_client_option,
-                                           1);
-  nghttp2_option_set_peer_max_concurrent_streams(
-      get_config()->http2_client_option, 100);
-
-  mod_config()->no_location_rewrite = false;
-  mod_config()->no_host_rewrite = true;
   mod_config()->argc = 0;
   mod_config()->argv = nullptr;
   mod_config()->downstream_connections_per_host = 8;
@@ -1001,11 +968,7 @@ void fill_default_config() {
   mod_config()->listener_disable_timeout = 0.;
   mod_config()->downstream_request_buffer_size = 16_k;
   mod_config()->downstream_response_buffer_size = 16_k;
-  mod_config()->no_server_push = false;
   mod_config()->host_unix = false;
-  mod_config()->http2_downstream_connections_per_worker = 0;
-  mod_config()->header_field_buffer = 64_k;
-  mod_config()->max_header_fields = 100;
   mod_config()->downstream_addr_group_catch_all = 0;
   mod_config()->fastopen = 0;
 
@@ -1040,12 +1003,57 @@ void fill_default_config() {
     tlsconf.tls_proto_mask = 0;
     tlsconf.insecure = false;
   }
+
+  auto &httpconf = mod_config()->http;
+  {
+    auto &xffconf = httpconf.xff;
+    xffconf.add = false;
+    xffconf.strip_incoming = false;
+  }
+
+  httpconf.server_name = "nghttpx nghttp2/" NGHTTP2_VERSION;
+  httpconf.no_via = false;
+  httpconf.no_location_rewrite = false;
+  httpconf.no_host_rewrite = true;
+  httpconf.header_field_buffer = 64_k;
+  httpconf.max_header_fields = 100;
+
+  auto &http2conf = mod_config()->http2;
+  {
+    auto &upstreamconf = http2conf.upstream;
+    // window bits for HTTP/2 and SPDY upstream connection per
+    // stream. 2**16-1 = 64KiB-1, which is HTTP/2 default. Please note
+    // that SPDY/3 default is 64KiB.
+    upstreamconf.window_bits = 16;
+    // HTTP/2 SPDY/3.1 has connection-level flow control. The default
+    // window size for HTTP/2 is 64KiB - 1. SPDY/3's default is 64KiB
+    upstreamconf.connection_window_bits = 16;
+
+    nghttp2_option_new(&upstreamconf.option);
+    nghttp2_option_set_no_auto_window_update(upstreamconf.option, 1);
+    nghttp2_option_set_no_recv_client_magic(upstreamconf.option, 1);
+  }
+  {
+    auto &downstreamconf = http2conf.downstream;
+    downstreamconf.window_bits = 16;
+    downstreamconf.connection_window_bits = 16;
+    downstreamconf.connections_per_worker = 0;
+
+    nghttp2_option_new(&downstreamconf.option);
+    nghttp2_option_set_no_auto_window_update(downstreamconf.option, 1);
+    nghttp2_option_set_peer_max_concurrent_streams(downstreamconf.option, 100);
+  }
+
+  http2conf.max_concurrent_streams = 100;
+  http2conf.no_cookie_crumbling = false;
+  http2conf.no_server_push = false;
 }
+
 } // namespace
 
 namespace {
 void print_version(std::ostream &out) {
-  out << get_config()->server_name.c_str() << std::endl;
+  out << get_config()->http.server_name.c_str() << std::endl;
 }
 } // namespace
 
@@ -1450,29 +1458,29 @@ HTTP/2 and SPDY:
   -c, --http2-max-concurrent-streams=<N>
               Set the maximum number of  the concurrent streams in one
               HTTP/2 and SPDY session.
-              Default: )" << get_config()->http2_max_concurrent_streams << R"(
+              Default: )" << get_config()->http2.max_concurrent_streams << R"(
   --frontend-http2-window-bits=<N>
               Sets the  per-stream initial window size  of HTTP/2 SPDY
               frontend connection.  For HTTP/2,  the size is 2**<N>-1.
               For SPDY, the size is 2**<N>.
-              Default: )" << get_config()->http2_upstream_window_bits << R"(
+              Default: )" << get_config()->http2.upstream.window_bits << R"(
   --frontend-http2-connection-window-bits=<N>
               Sets the  per-connection window size of  HTTP/2 and SPDY
               frontend   connection.    For   HTTP/2,  the   size   is
               2**<N>-1. For SPDY, the size is 2**<N>.
-              Default: )" << get_config()->http2_upstream_connection_window_bits
+              Default: )" << get_config()->http2.upstream.connection_window_bits
       << R"(
   --frontend-no-tls
               Disable SSL/TLS on frontend connections.
   --backend-http2-window-bits=<N>
               Sets  the   initial  window   size  of   HTTP/2  backend
               connection to 2**<N>-1.
-              Default: )" << get_config()->http2_downstream_window_bits << R"(
+              Default: )" << get_config()->http2.downstream.window_bits << R"(
   --backend-http2-connection-window-bits=<N>
               Sets the  per-connection window  size of  HTTP/2 backend
               connection to 2**<N>-1.
               Default: )"
-      << get_config()->http2_downstream_connection_window_bits << R"(
+      << get_config()->http2.downstream.connection_window_bits << R"(
   --backend-no-tls
               Disable SSL/TLS on backend connections.
   --http2-no-cookie-crumbling
@@ -1650,13 +1658,13 @@ HTTP:
               Set maximum buffer size for incoming HTTP request header
               field list.  This is the sum of header name and value in
               bytes.
-              Default: )" << util::utos_unit(get_config()->header_field_buffer)
-      << R"(
+              Default: )"
+      << util::utos_unit(get_config()->http.header_field_buffer) << R"(
   --max-header-fields=<N>
               Set  maximum  number  of incoming  HTTP  request  header
               fields, which  appear in one request  or response header
               field list.
-              Default: )" << get_config()->max_header_fields << R"(
+              Default: )" << get_config()->http.max_header_fields << R"(
 
 Debug:
   --frontend-http2-dump-request-header=<PATH>
@@ -2374,44 +2382,49 @@ int main(int argc, char **argv) {
     }
   }
 
-  if (get_config()->http2_upstream_dump_request_header_file) {
-    auto path = get_config()->http2_upstream_dump_request_header_file.get();
-    auto f = open_file_for_write(path);
+  auto &http2conf = mod_config()->http2;
+  {
+    auto &dumpconf = http2conf.upstream.debug.dump;
 
-    if (f == nullptr) {
-      LOG(FATAL) << "Failed to open http2 upstream request header file: "
-                 << path;
-      exit(EXIT_FAILURE);
-    }
+    if (dumpconf.request_header_file) {
+      auto path = dumpconf.request_header_file.get();
+      auto f = open_file_for_write(path);
 
-    mod_config()->http2_upstream_dump_request_header = f;
+      if (f == nullptr) {
+        LOG(FATAL) << "Failed to open http2 upstream request header file: "
+                   << path;
+        exit(EXIT_FAILURE);
+      }
 
-    if (get_config()->uid != 0) {
-      if (chown_to_running_user(path) == -1) {
-        auto error = errno;
-        LOG(WARN) << "Changing owner of http2 upstream request header file "
-                  << path << " failed: " << strerror(error);
+      dumpconf.request_header = f;
+
+      if (get_config()->uid != 0) {
+        if (chown_to_running_user(path) == -1) {
+          auto error = errno;
+          LOG(WARN) << "Changing owner of http2 upstream request header file "
+                    << path << " failed: " << strerror(error);
+        }
       }
     }
-  }
 
-  if (get_config()->http2_upstream_dump_response_header_file) {
-    auto path = get_config()->http2_upstream_dump_response_header_file.get();
-    auto f = open_file_for_write(path);
+    if (dumpconf.response_header_file) {
+      auto path = dumpconf.response_header_file.get();
+      auto f = open_file_for_write(path);
 
-    if (f == nullptr) {
-      LOG(FATAL) << "Failed to open http2 upstream response header file: "
-                 << path;
-      exit(EXIT_FAILURE);
-    }
+      if (f == nullptr) {
+        LOG(FATAL) << "Failed to open http2 upstream response header file: "
+                   << path;
+        exit(EXIT_FAILURE);
+      }
 
-    mod_config()->http2_upstream_dump_response_header = f;
+      dumpconf.response_header = f;
 
-    if (get_config()->uid != 0) {
-      if (chown_to_running_user(path) == -1) {
-        auto error = errno;
-        LOG(WARN) << "Changing owner of http2 upstream response header file"
-                  << " " << path << " failed: " << strerror(error);
+      if (get_config()->uid != 0) {
+        if (chown_to_running_user(path) == -1) {
+          auto error = errno;
+          LOG(WARN) << "Changing owner of http2 upstream response header file"
+                    << " " << path << " failed: " << strerror(error);
+        }
       }
     }
   }
@@ -2617,16 +2630,18 @@ int main(int argc, char **argv) {
     }
   }
 
-  if (get_config()->forwarded_by_node_type == FORWARDED_NODE_OBFUSCATED &&
-      get_config()->forwarded_by_obfuscated.empty()) {
+  auto &fwdconf = mod_config()->http.forwarded;
+
+  if (fwdconf.by_node_type == FORWARDED_NODE_OBFUSCATED &&
+      fwdconf.by_obfuscated.empty()) {
     std::random_device rd;
     std::mt19937 gen(rd());
-    auto &dst = mod_config()->forwarded_by_obfuscated;
+    auto &dst = fwdconf.by_obfuscated;
     dst = "_";
     dst += util::random_alpha_digit(gen, SHRPX_OBFUSCATED_NODE_LENGTH);
   }
 
-  if (get_config()->upstream_frame_debug) {
+  if (get_config()->http2.upstream.debug.frame_debug) {
     // To make it sync to logging
     set_output(stderr);
     if (isatty(fileno(stdout))) {
@@ -2635,8 +2650,8 @@ int main(int argc, char **argv) {
     reset_timer();
   }
 
-  mod_config()->http2_upstream_callbacks = create_http2_upstream_callbacks();
-  mod_config()->http2_downstream_callbacks =
+  mod_config()->http2.upstream.callbacks = create_http2_upstream_callbacks();
+  mod_config()->http2.downstream.callbacks =
       create_http2_downstream_callbacks();
 
   if (event_loop() != 0) {

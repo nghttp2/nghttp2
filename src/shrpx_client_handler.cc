@@ -404,14 +404,16 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
     setup_upstream_io_callback();
   }
 
-  if ((get_config()->forwarded_params & FORWARDED_FOR) &&
-      get_config()->forwarded_for_node_type == FORWARDED_NODE_OBFUSCATED) {
-    if (get_config()->forwarded_for_obfuscated.empty()) {
+  auto &fwdconf = get_config()->http.forwarded;
+
+  if ((fwdconf.params & FORWARDED_FOR) &&
+      fwdconf.for_node_type == FORWARDED_NODE_OBFUSCATED) {
+    if (fwdconf.for_obfuscated.empty()) {
       forwarded_for_obfuscated_ = "_";
       forwarded_for_obfuscated_ += util::random_alpha_digit(
           worker_->get_randgen(), SHRPX_OBFUSCATED_NODE_LENGTH);
     } else {
-      forwarded_for_obfuscated_ = get_config()->forwarded_for_obfuscated;
+      forwarded_for_obfuscated_ = fwdconf.for_obfuscated;
     }
   }
 }
@@ -1120,8 +1122,10 @@ int ClientHandler::proxy_protocol_read() {
 }
 
 const std::string &ClientHandler::get_forwarded_by() {
-  if (get_config()->forwarded_by_node_type == FORWARDED_NODE_OBFUSCATED) {
-    return get_config()->forwarded_by_obfuscated;
+  auto &fwdconf = get_config()->http.forwarded;
+
+  if (fwdconf.by_node_type == FORWARDED_NODE_OBFUSCATED) {
+    return fwdconf.by_obfuscated;
   }
   if (!local_hostport_.empty()) {
     return local_hostport_;
@@ -1158,7 +1162,7 @@ const std::string &ClientHandler::get_forwarded_by() {
 }
 
 const std::string &ClientHandler::get_forwarded_for() const {
-  if (get_config()->forwarded_for_node_type == FORWARDED_NODE_OBFUSCATED) {
+  if (get_config()->http.forwarded.for_node_type == FORWARDED_NODE_OBFUSCATED) {
     return forwarded_for_obfuscated_;
   }
 
