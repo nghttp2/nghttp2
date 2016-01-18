@@ -1601,7 +1601,7 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   case SHRPX_OPTID_BACKEND_TLS_SNI_FIELD:
-    mod_config()->backend_tls_sni_name = optarg;
+    mod_config()->tls.backend_sni_name = optarg;
 
     return 0;
   case SHRPX_OPTID_PID_FILE:
@@ -1622,7 +1622,7 @@ int parse_config(const char *opt, const char *optarg,
     return 0;
   }
   case SHRPX_OPTID_PRIVATE_KEY_FILE:
-    mod_config()->private_key_file = strcopy(optarg);
+    mod_config()->tls.private_key_file = strcopy(optarg);
 
     return 0;
   case SHRPX_OPTID_PRIVATE_KEY_PASSWD_FILE: {
@@ -1631,16 +1631,16 @@ int parse_config(const char *opt, const char *optarg,
       LOG(ERROR) << opt << ": Couldn't read key file's passwd from " << optarg;
       return -1;
     }
-    mod_config()->private_key_passwd = strcopy(passwd);
+    mod_config()->tls.private_key_passwd = strcopy(passwd);
 
     return 0;
   }
   case SHRPX_OPTID_CERTIFICATE_FILE:
-    mod_config()->cert_file = strcopy(optarg);
+    mod_config()->tls.cert_file = strcopy(optarg);
 
     return 0;
   case SHRPX_OPTID_DH_PARAM_FILE:
-    mod_config()->dh_param_file = strcopy(optarg);
+    mod_config()->tls.dh_param_file = strcopy(optarg);
 
     return 0;
   case SHRPX_OPTID_SUBCERT: {
@@ -1649,7 +1649,7 @@ int parse_config(const char *opt, const char *optarg,
     if (sp) {
       std::string keyfile(optarg, sp);
       // TODO Do we need private key for subcert?
-      mod_config()->subcerts.emplace_back(keyfile, sp + 1);
+      mod_config()->tls.subcerts.emplace_back(keyfile, sp + 1);
     }
 
     return 0;
@@ -1681,7 +1681,7 @@ int parse_config(const char *opt, const char *optarg,
     return 0;
   }
   case SHRPX_OPTID_CIPHERS:
-    mod_config()->ciphers = strcopy(optarg);
+    mod_config()->tls.ciphers = strcopy(optarg);
 
     return 0;
   case SHRPX_OPTID_CLIENT:
@@ -1689,11 +1689,11 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   case SHRPX_OPTID_INSECURE:
-    mod_config()->insecure = util::strieq(optarg, "yes");
+    mod_config()->tls.insecure = util::strieq(optarg, "yes");
 
     return 0;
   case SHRPX_OPTID_CACERT:
-    mod_config()->cacert = strcopy(optarg);
+    mod_config()->tls.cacert = strcopy(optarg);
 
     return 0;
   case SHRPX_OPTID_BACKEND_IPV4:
@@ -1762,27 +1762,27 @@ int parse_config(const char *opt, const char *optarg,
     LOG(WARN) << opt << ": not implemented yet";
     return parse_uint_with_unit(&mod_config()->worker_write_burst, opt, optarg);
   case SHRPX_OPTID_NPN_LIST:
-    mod_config()->npn_list = util::parse_config_str_list(optarg);
+    mod_config()->tls.npn_list = util::parse_config_str_list(optarg);
 
     return 0;
   case SHRPX_OPTID_TLS_PROTO_LIST:
-    mod_config()->tls_proto_list = util::parse_config_str_list(optarg);
+    mod_config()->tls.tls_proto_list = util::parse_config_str_list(optarg);
 
     return 0;
   case SHRPX_OPTID_VERIFY_CLIENT:
-    mod_config()->verify_client = util::strieq(optarg, "yes");
+    mod_config()->tls.client_verify.enabled = util::strieq(optarg, "yes");
 
     return 0;
   case SHRPX_OPTID_VERIFY_CLIENT_CACERT:
-    mod_config()->verify_client_cacert = strcopy(optarg);
+    mod_config()->tls.client_verify.cacert = strcopy(optarg);
 
     return 0;
   case SHRPX_OPTID_CLIENT_PRIVATE_KEY_FILE:
-    mod_config()->client_private_key_file = strcopy(optarg);
+    mod_config()->tls.client.private_key_file = strcopy(optarg);
 
     return 0;
   case SHRPX_OPTID_CLIENT_CERT_FILE:
-    mod_config()->client_cert_file = strcopy(optarg);
+    mod_config()->tls.client.cert_file = strcopy(optarg);
 
     return 0;
   case SHRPX_OPTID_FRONTEND_HTTP2_DUMP_REQUEST_HEADER:
@@ -1899,7 +1899,7 @@ int parse_config(const char *opt, const char *optarg,
   case SHRPX_OPTID_LISTENER_DISABLE_TIMEOUT:
     return parse_duration(&mod_config()->listener_disable_timeout, opt, optarg);
   case SHRPX_OPTID_TLS_TICKET_KEY_FILE:
-    mod_config()->tls_ticket_key_files.push_back(optarg);
+    mod_config()->tls.ticket.files.push_back(optarg);
     return 0;
   case SHRPX_OPTID_RLIMIT_NOFILE: {
     int n;
@@ -1948,13 +1948,13 @@ int parse_config(const char *opt, const char *optarg,
     return parse_uint(&mod_config()->http2_downstream_connections_per_worker,
                       opt, optarg);
   case SHRPX_OPTID_FETCH_OCSP_RESPONSE_FILE:
-    mod_config()->fetch_ocsp_response_file = strcopy(optarg);
+    mod_config()->tls.ocsp.fetch_ocsp_response_file = strcopy(optarg);
 
     return 0;
   case SHRPX_OPTID_OCSP_UPDATE_INTERVAL:
-    return parse_duration(&mod_config()->ocsp_update_interval, opt, optarg);
+    return parse_duration(&mod_config()->tls.ocsp.update_interval, opt, optarg);
   case SHRPX_OPTID_NO_OCSP:
-    mod_config()->no_ocsp = util::strieq(optarg, "yes");
+    mod_config()->tls.ocsp.disabled = util::strieq(optarg, "yes");
 
     return 0;
   case SHRPX_OPTID_HEADER_FIELD_BUFFER:
@@ -1980,15 +1980,15 @@ int parse_config(const char *opt, const char *optarg,
   }
   case SHRPX_OPTID_TLS_TICKET_KEY_CIPHER:
     if (util::strieq(optarg, "aes-128-cbc")) {
-      mod_config()->tls_ticket_key_cipher = EVP_aes_128_cbc();
+      mod_config()->tls.ticket.cipher = EVP_aes_128_cbc();
     } else if (util::strieq(optarg, "aes-256-cbc")) {
-      mod_config()->tls_ticket_key_cipher = EVP_aes_256_cbc();
+      mod_config()->tls.ticket.cipher = EVP_aes_256_cbc();
     } else {
       LOG(ERROR) << opt
                  << ": unsupported cipher for ticket encryption: " << optarg;
       return -1;
     }
-    mod_config()->tls_ticket_key_cipher_given = true;
+    mod_config()->tls.ticket.cipher_given = true;
 
     return 0;
   case SHRPX_OPTID_HOST_REWRITE:
@@ -2001,8 +2001,9 @@ int parse_config(const char *opt, const char *optarg,
       return -1;
     }
 
-    mod_config()->session_cache_memcached_host = strcopy(host);
-    mod_config()->session_cache_memcached_port = port;
+    auto &memcachedconf = mod_config()->tls.session_cache.memcached;
+    memcachedconf.host = strcopy(host);
+    memcachedconf.port = port;
 
     return 0;
   }
@@ -2012,13 +2013,14 @@ int parse_config(const char *opt, const char *optarg,
       return -1;
     }
 
-    mod_config()->tls_ticket_key_memcached_host = strcopy(host);
-    mod_config()->tls_ticket_key_memcached_port = port;
+    auto &memcachedconf = mod_config()->tls.ticket.memcached;
+    memcachedconf.host = strcopy(host);
+    memcachedconf.port = port;
 
     return 0;
   }
   case SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_INTERVAL:
-    return parse_duration(&mod_config()->tls_ticket_key_memcached_interval, opt,
+    return parse_duration(&mod_config()->tls.ticket.memcached.interval, opt,
                           optarg);
   case SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_MAX_RETRY: {
     int n;
@@ -2031,11 +2033,11 @@ int parse_config(const char *opt, const char *optarg,
       return -1;
     }
 
-    mod_config()->tls_ticket_key_memcached_max_retry = n;
+    mod_config()->tls.ticket.memcached.max_retry = n;
     return 0;
   }
   case SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_MAX_FAIL:
-    return parse_uint(&mod_config()->tls_ticket_key_memcached_max_fail, opt,
+    return parse_uint(&mod_config()->tls.ticket.memcached.max_fail, opt,
                       optarg);
   case SHRPX_OPTID_TLS_DYN_REC_WARMUP_THRESHOLD: {
     size_t n;
@@ -2043,13 +2045,13 @@ int parse_config(const char *opt, const char *optarg,
       return -1;
     }
 
-    mod_config()->tls_dyn_rec_warmup_threshold = n;
+    mod_config()->tls.dyn_rec.warmup_threshold = n;
 
     return 0;
   }
 
   case SHRPX_OPTID_TLS_DYN_REC_IDLE_TIMEOUT:
-    return parse_duration(&mod_config()->tls_dyn_rec_idle_timeout, opt, optarg);
+    return parse_duration(&mod_config()->tls.dyn_rec.idle_timeout, opt, optarg);
 
   case SHRPX_OPTID_MRUBY_FILE:
 #ifdef HAVE_MRUBY

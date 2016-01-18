@@ -903,9 +903,6 @@ void fill_default_config() {
   mod_config()->server_name = "nghttpx nghttp2/" NGHTTP2_VERSION;
   mod_config()->host = strcopy("*");
   mod_config()->port = 3000;
-  mod_config()->private_key_file = nullptr;
-  mod_config()->private_key_passwd = nullptr;
-  mod_config()->cert_file = nullptr;
 
   // Read timeout for HTTP2 upstream connection
   mod_config()->http2_upstream_read_timeout = 3_min;
@@ -957,14 +954,11 @@ void fill_default_config() {
   mod_config()->syslog_facility = LOG_DAEMON;
   // Default accept() backlog
   mod_config()->backlog = 512;
-  mod_config()->ciphers = nullptr;
   mod_config()->http2_proxy = false;
   mod_config()->http2_bridge = false;
   mod_config()->client_proxy = false;
   mod_config()->client = false;
   mod_config()->client_mode = false;
-  mod_config()->insecure = false;
-  mod_config()->cacert = nullptr;
   mod_config()->pid_file = nullptr;
   mod_config()->user = nullptr;
   mod_config()->uid = 0;
@@ -981,10 +975,6 @@ void fill_default_config() {
   mod_config()->worker_read_burst = 0;
   mod_config()->worker_write_rate = 0;
   mod_config()->worker_write_burst = 0;
-  mod_config()->verify_client = false;
-  mod_config()->verify_client_cacert = nullptr;
-  mod_config()->client_private_key_file = nullptr;
-  mod_config()->client_cert_file = nullptr;
   mod_config()->http2_upstream_dump_request_header = nullptr;
   mod_config()->http2_upstream_dump_response_header = nullptr;
   mod_config()->http2_no_cookie_crumbling = false;
@@ -1002,7 +992,6 @@ void fill_default_config() {
   nghttp2_option_set_peer_max_concurrent_streams(
       get_config()->http2_client_option, 100);
 
-  mod_config()->tls_proto_mask = 0;
   mod_config()->no_location_rewrite = false;
   mod_config()->no_host_rewrite = true;
   mod_config()->argc = 0;
@@ -1015,23 +1004,42 @@ void fill_default_config() {
   mod_config()->no_server_push = false;
   mod_config()->host_unix = false;
   mod_config()->http2_downstream_connections_per_worker = 0;
-  // ocsp update interval = 14400 secs = 4 hours, borrowed from h2o
-  mod_config()->ocsp_update_interval = 4_h;
-  mod_config()->fetch_ocsp_response_file =
-      strcopy(PKGDATADIR "/fetch-ocsp-response");
-  mod_config()->no_ocsp = false;
   mod_config()->header_field_buffer = 64_k;
   mod_config()->max_header_fields = 100;
   mod_config()->downstream_addr_group_catch_all = 0;
-  mod_config()->tls_ticket_key_cipher = EVP_aes_128_cbc();
-  mod_config()->tls_ticket_key_cipher_given = false;
-  mod_config()->tls_session_timeout = std::chrono::hours(12);
-  mod_config()->tls_ticket_key_memcached_max_retry = 3;
-  mod_config()->tls_ticket_key_memcached_max_fail = 2;
-  mod_config()->tls_ticket_key_memcached_interval = 10_min;
   mod_config()->fastopen = 0;
-  mod_config()->tls_dyn_rec_warmup_threshold = 1_m;
-  mod_config()->tls_dyn_rec_idle_timeout = 1.;
+
+  auto &tlsconf = mod_config()->tls;
+  {
+    auto &ticketconf = tlsconf.ticket;
+    ticketconf.cipher = EVP_aes_128_cbc();
+    ticketconf.cipher_given = false;
+
+    {
+      auto &memcachedconf = ticketconf.memcached;
+      memcachedconf.max_retry = 3;
+      memcachedconf.max_fail = 2;
+      memcachedconf.interval = 10_min;
+    }
+
+    auto &ocspconf = tlsconf.ocsp;
+    // ocsp update interval = 14400 secs = 4 hours, borrowed from h2o
+    ocspconf.update_interval = 4_h;
+    ocspconf.fetch_ocsp_response_file =
+        strcopy(PKGDATADIR "/fetch-ocsp-response");
+    ocspconf.disabled = false;
+
+    auto &client_verify = tlsconf.client_verify;
+    client_verify.enabled = false;
+
+    auto &dyn_recconf = tlsconf.dyn_rec;
+    dyn_recconf.warmup_threshold = 1_m;
+    dyn_recconf.idle_timeout = 1.;
+
+    tlsconf.session_timeout = std::chrono::hours(12);
+    tlsconf.tls_proto_mask = 0;
+    tlsconf.insecure = false;
+  }
 }
 } // namespace
 
@@ -1386,8 +1394,7 @@ SSL/TLS:
   --tls-ticket-key-memcached-interval=<DURATION>
               Set interval to get TLS ticket keys from memcached.
               Default: )"
-      << util::duration_str(get_config()->tls_ticket_key_memcached_interval)
-      << R"(
+      << util::duration_str(get_config()->tls.ticket.memcached.interval) << R"(
   --tls-ticket-key-memcached-max-retry=<N>
               Set  maximum   number  of  consecutive   retries  before
               abandoning TLS ticket key  retrieval.  If this number is
@@ -1395,13 +1402,11 @@ SSL/TLS:
               "failure" count  is incremented by 1,  which contributed
               to            the            value            controlled
               --tls-ticket-key-memcached-max-fail option.
-              Default: )" << get_config()->tls_ticket_key_memcached_max_retry
-      << R"(
+              Default: )" << get_config()->tls.ticket.memcached.max_retry << R"(
   --tls-ticket-key-memcached-max-fail=<N>
               Set  maximum   number  of  consecutive   failure  before
               disabling TLS ticket until next scheduled key retrieval.
-              Default: )" << get_config()->tls_ticket_key_memcached_max_fail
-      << R"(
+              Default: )" << get_config()->tls.ticket.memcached.max_fail << R"(
   --tls-ticket-key-cipher=<CIPHER>
               Specify cipher  to encrypt TLS session  ticket.  Specify
               either   aes-128-cbc   or  aes-256-cbc.    By   default,
@@ -1409,11 +1414,12 @@ SSL/TLS:
   --fetch-ocsp-response-file=<PATH>
               Path to  fetch-ocsp-response script file.  It  should be
               absolute path.
-              Default: )" << get_config()->fetch_ocsp_response_file.get() << R"(
+              Default: )"
+      << get_config()->tls.ocsp.fetch_ocsp_response_file.get() << R"(
   --ocsp-update-interval=<DURATION>
               Set interval to update OCSP response cache.
               Default: )"
-      << util::duration_str(get_config()->ocsp_update_interval) << R"(
+      << util::duration_str(get_config()->tls.ocsp.update_interval) << R"(
   --no-ocsp   Disable OCSP stapling.
   --tls-session-cache-memcached=<HOST>,<PORT>
               Specify  address of  memcached server  to store  session
@@ -1431,14 +1437,14 @@ SSL/TLS:
               period.   This  behaviour  applies   to  all  TLS  based
               frontends, and TLS HTTP/2 backends.
               Default: )"
-      << util::utos_unit(get_config()->tls_dyn_rec_warmup_threshold) << R"(
+      << util::utos_unit(get_config()->tls.dyn_rec.warmup_threshold) << R"(
   --tls-dyn-rec-idle-timeout=<DURATION>
               Specify TLS dynamic record  size behaviour timeout.  See
               --tls-dyn-rec-warmup-threshold  for   more  information.
               This behaviour  applies to all TLS  based frontends, and
               TLS HTTP/2 backends.
               Default: )"
-      << util::duration_str(get_config()->tls_dyn_rec_idle_timeout) << R"(
+      << util::duration_str(get_config()->tls.dyn_rec.idle_timeout) << R"(
 
 HTTP/2 and SPDY:
   -c, --http2-max-concurrent-streams=<N>
@@ -2410,18 +2416,19 @@ int main(int argc, char **argv) {
     }
   }
 
-  if (get_config()->npn_list.empty()) {
-    mod_config()->npn_list = util::parse_config_str_list(DEFAULT_NPN_LIST);
+  auto &tlsconf = mod_config()->tls;
+
+  if (tlsconf.npn_list.empty()) {
+    tlsconf.npn_list = util::parse_config_str_list(DEFAULT_NPN_LIST);
   }
-  if (get_config()->tls_proto_list.empty()) {
-    mod_config()->tls_proto_list =
+  if (tlsconf.tls_proto_list.empty()) {
+    tlsconf.tls_proto_list =
         util::parse_config_str_list(DEFAULT_TLS_PROTO_LIST);
   }
 
-  mod_config()->tls_proto_mask =
-      ssl::create_tls_proto_mask(get_config()->tls_proto_list);
+  tlsconf.tls_proto_mask = ssl::create_tls_proto_mask(tlsconf.tls_proto_list);
 
-  mod_config()->alpn_prefs = ssl::set_alpn_prefs(get_config()->npn_list);
+  tlsconf.alpn_prefs = ssl::set_alpn_prefs(tlsconf.npn_list);
 
   if (get_config()->backend_ipv4 && get_config()->backend_ipv6) {
     LOG(FATAL) << "--backend-ipv4 and --backend-ipv6 cannot be used at the "
@@ -2454,18 +2461,18 @@ int main(int argc, char **argv) {
   }
 
   if (!get_config()->upstream_no_tls &&
-      (!get_config()->private_key_file || !get_config()->cert_file)) {
+      (!tlsconf.private_key_file || !tlsconf.cert_file)) {
     print_usage(std::cerr);
     LOG(FATAL) << "Too few arguments";
     exit(EXIT_FAILURE);
   }
 
-  if (!get_config()->upstream_no_tls && !get_config()->no_ocsp) {
+  if (!get_config()->upstream_no_tls && !tlsconf.ocsp.disabled) {
     struct stat buf;
-    if (stat(get_config()->fetch_ocsp_response_file.get(), &buf) != 0) {
-      mod_config()->no_ocsp = true;
+    if (stat(tlsconf.ocsp.fetch_ocsp_response_file.get(), &buf) != 0) {
+      tlsconf.ocsp.disabled = true;
       LOG(WARN) << "--fetch-ocsp-response-file: "
-                << get_config()->fetch_ocsp_response_file.get()
+                << tlsconf.ocsp.fetch_ocsp_response_file.get()
                 << " not found.  OCSP stapling has been disabled.";
     }
   }
@@ -2581,21 +2588,23 @@ int main(int argc, char **argv) {
     }
   }
 
-  if (get_config()->session_cache_memcached_host) {
-    if (resolve_hostname(&mod_config()->session_cache_memcached_addr,
-                         get_config()->session_cache_memcached_host.get(),
-                         get_config()->session_cache_memcached_port,
-                         AF_UNSPEC) == -1) {
-      exit(EXIT_FAILURE);
+  {
+    auto &memcachedconf = tlsconf.session_cache.memcached;
+    if (memcachedconf.host) {
+      if (resolve_hostname(&memcachedconf.addr, memcachedconf.host.get(),
+                           memcachedconf.port, AF_UNSPEC) == -1) {
+        exit(EXIT_FAILURE);
+      }
     }
   }
 
-  if (get_config()->tls_ticket_key_memcached_host) {
-    if (resolve_hostname(&mod_config()->tls_ticket_key_memcached_addr,
-                         get_config()->tls_ticket_key_memcached_host.get(),
-                         get_config()->tls_ticket_key_memcached_port,
-                         AF_UNSPEC) == -1) {
-      exit(EXIT_FAILURE);
+  {
+    auto &memcachedconf = tlsconf.ticket.memcached;
+    if (memcachedconf.host) {
+      if (resolve_hostname(&memcachedconf.addr, memcachedconf.host.get(),
+                           memcachedconf.port, AF_UNSPEC) == -1) {
+        exit(EXIT_FAILURE);
+      }
     }
   }
 

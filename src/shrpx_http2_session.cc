@@ -148,8 +148,8 @@ Http2Session::Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx,
     : conn_(loop, -1, nullptr, worker->get_mcpool(),
             get_config()->downstream_write_timeout,
             get_config()->downstream_read_timeout, 0, 0, 0, 0, writecb, readcb,
-            timeoutcb, this, get_config()->tls_dyn_rec_warmup_threshold,
-            get_config()->tls_dyn_rec_idle_timeout),
+            timeoutcb, this, get_config()->tls.dyn_rec.warmup_threshold,
+            get_config()->tls.dyn_rec.idle_timeout),
       worker_(worker), connect_blocker_(connect_blocker), ssl_ctx_(ssl_ctx),
       session_(nullptr), data_pending_(nullptr), data_pendinglen_(0),
       addr_idx_(0), group_(group), index_(idx), state_(DISCONNECTED),
@@ -331,8 +331,8 @@ int Http2Session::initiate_connection() {
         conn_.set_ssl(ssl);
       }
 
-      StringRef sni_name = !get_config()->backend_tls_sni_name.empty()
-                               ? get_config()->backend_tls_sni_name
+      StringRef sni_name = !get_config()->tls.backend_sni_name.empty()
+                               ? get_config()->tls.backend_sni_name
                                : downstream_addr.host;
 
       if (!util::numeric_host(sni_name.c_str())) {
@@ -1718,7 +1718,7 @@ int Http2Session::tls_handshake() {
     SSLOG(INFO, this) << "SSL/TLS handshake completed";
   }
 
-  if (!get_config()->downstream_no_tls && !get_config()->insecure &&
+  if (!get_config()->downstream_no_tls && !get_config()->tls.insecure &&
       check_cert() != 0) {
     return -1;
   }

@@ -83,9 +83,11 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
   ev_timer_init(&mcpool_clear_timer_, mcpool_clear_cb, 0., 0.);
   mcpool_clear_timer_.data = this;
 
-  if (get_config()->session_cache_memcached_host) {
+  auto &session_cacheconf = get_config()->tls.session_cache;
+
+  if (session_cacheconf.memcached.host) {
     session_cache_memcached_dispatcher_ = make_unique<MemcachedDispatcher>(
-        &get_config()->session_cache_memcached_addr, loop);
+        &session_cacheconf.memcached.addr, loop);
   }
 
   if (get_config()->downstream_proto == PROTO_HTTP2) {

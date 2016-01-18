@@ -375,8 +375,8 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
             get_config()->upstream_read_timeout, get_config()->write_rate,
             get_config()->write_burst, get_config()->read_rate,
             get_config()->read_burst, writecb, readcb, timeoutcb, this,
-            get_config()->tls_dyn_rec_warmup_threshold,
-            get_config()->tls_dyn_rec_idle_timeout),
+            get_config()->tls.dyn_rec.warmup_threshold,
+            get_config()->tls.dyn_rec.idle_timeout),
       pinned_http2sessions_(
           get_config()->downstream_proto == PROTO_HTTP2
               ? make_unique<std::vector<ssize_t>>(
@@ -521,7 +521,8 @@ int ClientHandler::validate_next_proto() {
     CLOG(INFO, this) << "The negotiated next protocol: " << proto;
   }
 
-  if (!ssl::in_proto_list(get_config()->npn_list, next_proto, next_proto_len)) {
+  if (!ssl::in_proto_list(get_config()->tls.npn_list, next_proto,
+                          next_proto_len)) {
     if (LOG_ENABLED(INFO)) {
       CLOG(INFO, this) << "The negotiated protocol is not supported";
     }

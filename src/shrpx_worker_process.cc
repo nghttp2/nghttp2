@@ -170,7 +170,7 @@ void ipc_readcb(struct ev_loop *loop, ev_io *w, int revents) {
 
 namespace {
 int generate_ticket_key(TicketKey &ticket_key) {
-  ticket_key.cipher = get_config()->tls_ticket_key_cipher;
+  ticket_key.cipher = get_config()->tls.ticket.cipher;
   ticket_key.hmac = EVP_sha256();
   ticket_key.hmac_keylen = EVP_MD_size(ticket_key.hmac);
 
@@ -217,7 +217,7 @@ void renew_ticket_key_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 
     auto max_tickets =
         static_cast<size_t>(std::chrono::duration_cast<std::chrono::hours>(
-                                get_config()->tls_session_timeout).count());
+                                get_config()->tls.session_timeout).count());
 
     new_keys.resize(std::min(max_tickets, old_keys.size() + 1));
     std::copy_n(std::begin(old_keys), new_keys.size() - 1,
@@ -297,14 +297,16 @@ void memcached_get_ticket_key_cb(struct ev_loop *loop, ev_timer *w,
     auto end = p + value.size();
     p += 4;
 
+    auto &ticketconf = get_config()->tls.ticket;
+
     size_t expectedlen;
     size_t enc_keylen;
     size_t hmac_keylen;
-    if (get_config()->tls_ticket_key_cipher == EVP_aes_128_cbc()) {
+    if (ticketconf.cipher == EVP_aes_128_cbc()) {
       expectedlen = 48;
       enc_keylen = 16;
       hmac_keylen = 16;
-    } else if (get_config()->tls_ticket_key_cipher == EVP_aes_256_cbc()) {
+    } else if (ticketconf.cipher == EVP_aes_256_cbc()) {
       expectedlen = 80;
       enc_keylen = 32;
       hmac_keylen = 32;
@@ -335,7 +337,7 @@ void memcached_get_ticket_key_cb(struct ev_loop *loop, ev_timer *w,
         return;
       }
       auto key = TicketKey();
-      key.cipher = get_config()->tls_ticket_key_cipher;
+      key.cipher = ticketconf.cipher;
       key.hmac = EVP_sha256();
       key.hmac_keylen = hmac_keylen;
 
@@ -423,10 +425,11 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
 
   ev_timer renew_ticket_key_timer;
   if (!get_config()->upstream_no_tls) {
-    if (get_config()->tls_ticket_key_memcached_host) {
+    auto &ticketconf = get_config()->tls.ticket;
+
+    if (ticketconf.memcached.host) {
       conn_handler.set_tls_ticket_key_memcached_dispatcher(
-          make_unique<MemcachedDispatcher>(
-              &get_config()->tls_ticket_key_memcached_addr, loop));
+          make_unique<MemcachedDispatcher>(&ticketconf.memcached.addr, loop));
 
       ev_timer_init(&renew_ticket_key_timer, memcached_get_ticket_key_cb, 0.,
                     0.);
@@ -435,8 +438,8 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
       memcached_get_ticket_key_cb(loop, &renew_ticket_key_timer, 0);
     } else {
       bool auto_tls_ticket_key = true;
-      if (!get_config()->tls_ticket_key_files.empty()) {
-        if (!get_config()->tls_ticket_key_cipher_given) {
+      if (!ticketconf.files.empty()) {
+        if (!ticketconf.cipher_given) {
           LOG(WARN)
               << "It is strongly recommended to specify "
                  "--tls-ticket-key-cipher=aes-128-cbc (or "
@@ -446,8 +449,7 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
                  "becomes aes-256-cbc";
         }
         auto ticket_keys = read_tls_ticket_key_file(
-            get_config()->tls_ticket_key_files,
-            get_config()->tls_ticket_key_cipher, EVP_sha256());
+            ticketconf.files, ticketconf.cipher, EVP_sha256());
         if (!ticket_keys) {
           LOG(WARN) << "Use internal session ticket key generator";
         } else {
@@ -512,7 +514,7 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
   ipcev.data = &conn_handler;
   ev_io_start(loop, &ipcev);
 
-  if (!get_config()->upstream_no_tls && !get_config()->no_ocsp) {
+  if (!get_config()->upstream_no_tls && !get_config()->tls.ocsp.disabled) {
     conn_handler.proceed_next_cert_ocsp();
   }
 

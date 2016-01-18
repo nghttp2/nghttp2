@@ -450,7 +450,7 @@ int ConnectionHandler::start_ocsp_update(const char *cert_file) {
   assert(!ev_is_active(&ocsp_.chldev));
 
   char *const argv[] = {
-      const_cast<char *>(get_config()->fetch_ocsp_response_file.get()),
+      const_cast<char *>(get_config()->tls.ocsp.fetch_ocsp_response_file.get()),
       const_cast<char *>(cert_file), nullptr};
   char *const envp[] = {nullptr};
 
@@ -634,7 +634,7 @@ void ConnectionHandler::proceed_next_cert_ocsp() {
     if (ocsp_.next == all_ssl_ctx_.size()) {
       ocsp_.next = 0;
       // We have updated all ocsp response, and schedule next update.
-      ev_timer_set(&ocsp_timer_, get_config()->ocsp_update_interval, 0.);
+      ev_timer_set(&ocsp_timer_, get_config()->tls.ocsp.update_interval, 0.);
       ev_timer_start(loop_, &ocsp_timer_);
       return;
     }
@@ -673,7 +673,7 @@ ConnectionHandler::get_tls_ticket_key_memcached_dispatcher() const {
 
 void ConnectionHandler::on_tls_ticket_key_network_error(ev_timer *w) {
   if (++tls_ticket_key_memcached_get_retry_count_ >=
-      get_config()->tls_ticket_key_memcached_max_retry) {
+      get_config()->tls.ticket.memcached.max_retry) {
     LOG(WARN) << "Memcached: tls ticket get retry all failed "
               << tls_ticket_key_memcached_get_retry_count_ << " times.";
 
@@ -697,7 +697,7 @@ void ConnectionHandler::on_tls_ticket_key_not_found(ev_timer *w) {
   tls_ticket_key_memcached_get_retry_count_ = 0;
 
   if (++tls_ticket_key_memcached_fail_count_ >=
-      get_config()->tls_ticket_key_memcached_max_fail) {
+      get_config()->tls.ticket.memcached.max_fail) {
     LOG(WARN) << "Memcached: could not get tls ticket; disable tls ticket";
 
     tls_ticket_key_memcached_fail_count_ = 0;
@@ -742,7 +742,7 @@ void ConnectionHandler::on_tls_ticket_key_get_success(
 
 void ConnectionHandler::schedule_next_tls_ticket_key_memcached_get(
     ev_timer *w) {
-  ev_timer_set(w, get_config()->tls_ticket_key_memcached_interval, 0.);
+  ev_timer_set(w, get_config()->tls.ticket.memcached.interval, 0.);
   ev_timer_start(loop_, w);
 }
 
