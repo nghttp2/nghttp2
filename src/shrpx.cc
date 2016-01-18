@@ -1723,6 +1723,345 @@ Misc:
 }
 } // namespace
 
+namespace {
+void process_options(
+    int argc, char **argv,
+    std::vector<std::pair<const char *, const char *>> &cmdcfgs) {
+  if (conf_exists(get_config()->conf_path.get())) {
+    std::set<std::string> include_set;
+    if (load_config(get_config()->conf_path.get(), include_set) == -1) {
+      LOG(FATAL) << "Failed to load configuration from "
+                 << get_config()->conf_path.get();
+      exit(EXIT_FAILURE);
+    }
+    assert(include_set.empty());
+  }
+
+  if (argc - optind >= 2) {
+    cmdcfgs.emplace_back(SHRPX_OPT_PRIVATE_KEY_FILE, argv[optind++]);
+    cmdcfgs.emplace_back(SHRPX_OPT_CERTIFICATE_FILE, argv[optind++]);
+  }
+
+  // Reopen log files using configurations in file
+  reopen_log_files();
+
+  {
+    std::set<std::string> include_set;
+
+    for (size_t i = 0, len = cmdcfgs.size(); i < len; ++i) {
+      if (parse_config(cmdcfgs[i].first, cmdcfgs[i].second, include_set) ==
+          -1) {
+        LOG(FATAL) << "Failed to parse command-line argument.";
+        exit(EXIT_FAILURE);
+      }
+    }
+
+    assert(include_set.empty());
+  }
+
+  if (get_config()->accesslog_syslog || get_config()->errorlog_syslog) {
+    openlog("nghttpx", LOG_NDELAY | LOG_NOWAIT | LOG_PID,
+            get_config()->syslog_facility);
+  }
+
+  if (reopen_log_files() != 0) {
+    LOG(FATAL) << "Failed to open log file";
+    exit(EXIT_FAILURE);
+  }
+
+  redirect_stderr_to_errorlog();
+
+  if (get_config()->uid != 0) {
+    if (log_config()->accesslog_fd != -1 &&
+        fchown(log_config()->accesslog_fd, get_config()->uid,
+               get_config()->gid) == -1) {
+      auto error = errno;
+      LOG(WARN) << "Changing owner of access log file failed: "
+                << strerror(error);
+    }
+    if (log_config()->errorlog_fd != -1 &&
+        fchown(log_config()->errorlog_fd, get_config()->uid,
+               get_config()->gid) == -1) {
+      auto error = errno;
+      LOG(WARN) << "Changing owner of error log file failed: "
+                << strerror(error);
+    }
+  }
+
+  auto &http2conf = mod_config()->http2;
+  {
+    auto &dumpconf = http2conf.upstream.debug.dump;
+
+    if (dumpconf.request_header_file) {
+      auto path = dumpconf.request_header_file.get();
+      auto f = open_file_for_write(path);
+
+      if (f == nullptr) {
+        LOG(FATAL) << "Failed to open http2 upstream request header file: "
+                   << path;
+        exit(EXIT_FAILURE);
+      }
+
+      dumpconf.request_header = f;
+
+      if (get_config()->uid != 0) {
+        if (chown_to_running_user(path) == -1) {
+          auto error = errno;
+          LOG(WARN) << "Changing owner of http2 upstream request header file "
+                    << path << " failed: " << strerror(error);
+        }
+      }
+    }
+
+    if (dumpconf.response_header_file) {
+      auto path = dumpconf.response_header_file.get();
+      auto f = open_file_for_write(path);
+
+      if (f == nullptr) {
+        LOG(FATAL) << "Failed to open http2 upstream response header file: "
+                   << path;
+        exit(EXIT_FAILURE);
+      }
+
+      dumpconf.response_header = f;
+
+      if (get_config()->uid != 0) {
+        if (chown_to_running_user(path) == -1) {
+          auto error = errno;
+          LOG(WARN) << "Changing owner of http2 upstream response header file"
+                    << " " << path << " failed: " << strerror(error);
+        }
+      }
+    }
+  }
+
+  auto &tlsconf = mod_config()->tls;
+
+  if (tlsconf.npn_list.empty()) {
+    tlsconf.npn_list = util::parse_config_str_list(DEFAULT_NPN_LIST);
+  }
+  if (tlsconf.tls_proto_list.empty()) {
+    tlsconf.tls_proto_list =
+        util::parse_config_str_list(DEFAULT_TLS_PROTO_LIST);
+  }
+
+  tlsconf.tls_proto_mask = ssl::create_tls_proto_mask(tlsconf.tls_proto_list);
+
+  tlsconf.alpn_prefs = ssl::set_alpn_prefs(tlsconf.npn_list);
+
+  if (get_config()->backend_ipv4 && get_config()->backend_ipv6) {
+    LOG(FATAL) << "--backend-ipv4 and --backend-ipv6 cannot be used at the "
+               << "same time.";
+    exit(EXIT_FAILURE);
+  }
+
+  if (get_config()->worker_frontend_connections == 0) {
+    mod_config()->worker_frontend_connections =
+        std::numeric_limits<size_t>::max();
+  }
+
+  if (get_config()->http2_proxy + get_config()->http2_bridge +
+          get_config()->client_proxy + get_config()->client >
+      1) {
+    LOG(FATAL) << "--http2-proxy, --http2-bridge, --client-proxy and --client "
+               << "cannot be used at the same time.";
+    exit(EXIT_FAILURE);
+  }
+
+  if (get_config()->client || get_config()->client_proxy) {
+    mod_config()->client_mode = true;
+    mod_config()->upstream_no_tls = true;
+  }
+
+  if (get_config()->client_mode || get_config()->http2_bridge) {
+    mod_config()->downstream_proto = PROTO_HTTP2;
+  } else {
+    mod_config()->downstream_proto = PROTO_HTTP;
+  }
+
+  if (!get_config()->upstream_no_tls &&
+      (!tlsconf.private_key_file || !tlsconf.cert_file)) {
+    print_usage(std::cerr);
+    LOG(FATAL) << "Too few arguments";
+    exit(EXIT_FAILURE);
+  }
+
+  if (!get_config()->upstream_no_tls && !tlsconf.ocsp.disabled) {
+    struct stat buf;
+    if (stat(tlsconf.ocsp.fetch_ocsp_response_file.get(), &buf) != 0) {
+      tlsconf.ocsp.disabled = true;
+      LOG(WARN) << "--fetch-ocsp-response-file: "
+                << tlsconf.ocsp.fetch_ocsp_response_file.get()
+                << " not found.  OCSP stapling has been disabled.";
+    }
+  }
+
+  if (get_config()->downstream_addr_groups.empty()) {
+    DownstreamAddr addr;
+    addr.host = ImmutableString::from_lit(DEFAULT_DOWNSTREAM_HOST);
+    addr.port = DEFAULT_DOWNSTREAM_PORT;
+
+    DownstreamAddrGroup g("/");
+    g.addrs.push_back(std::move(addr));
+    mod_config()->router.add_route(g.pattern.get(), 1,
+                                   get_config()->downstream_addr_groups.size());
+    mod_config()->downstream_addr_groups.push_back(std::move(g));
+  } else if (get_config()->http2_proxy || get_config()->client_proxy) {
+    // We don't support host mapping in these cases.  Move all
+    // non-catch-all patterns to catch-all pattern.
+    DownstreamAddrGroup catch_all("/");
+    for (auto &g : mod_config()->downstream_addr_groups) {
+      std::move(std::begin(g.addrs), std::end(g.addrs),
+                std::back_inserter(catch_all.addrs));
+    }
+    std::vector<DownstreamAddrGroup>().swap(
+        mod_config()->downstream_addr_groups);
+    // maybe not necessary?
+    mod_config()->router = Router();
+    mod_config()->router.add_route(catch_all.pattern.get(), 1,
+                                   get_config()->downstream_addr_groups.size());
+    mod_config()->downstream_addr_groups.push_back(std::move(catch_all));
+  }
+
+  if (LOG_ENABLED(INFO)) {
+    LOG(INFO) << "Resolving backend address";
+  }
+
+  ssize_t catch_all_group = -1;
+  for (size_t i = 0; i < mod_config()->downstream_addr_groups.size(); ++i) {
+    auto &g = mod_config()->downstream_addr_groups[i];
+    if (util::streq(g.pattern.get(), "/")) {
+      catch_all_group = i;
+    }
+    if (LOG_ENABLED(INFO)) {
+      LOG(INFO) << "Host-path pattern: group " << i << ": '" << g.pattern.get()
+                << "'";
+      for (auto &addr : g.addrs) {
+        LOG(INFO) << "group " << i << " -> " << addr.host.c_str()
+                  << (addr.host_unix ? "" : ":" + util::utos(addr.port));
+      }
+    }
+  }
+
+  if (catch_all_group == -1) {
+    LOG(FATAL) << "-b: No catch-all backend address is configured";
+    exit(EXIT_FAILURE);
+  }
+  mod_config()->downstream_addr_group_catch_all = catch_all_group;
+
+  if (LOG_ENABLED(INFO)) {
+    LOG(INFO) << "Catch-all pattern is group " << catch_all_group;
+  }
+
+  for (auto &g : mod_config()->downstream_addr_groups) {
+    for (auto &addr : g.addrs) {
+
+      if (addr.host_unix) {
+        // for AF_UNIX socket, we use "localhost" as host for backend
+        // hostport.  This is used as Host header field to backend and
+        // not going to be passed to any syscalls.
+        addr.hostport = ImmutableString(
+            util::make_hostport("localhost", get_config()->port));
+
+        auto path = addr.host.c_str();
+        auto pathlen = addr.host.size();
+
+        if (pathlen + 1 > sizeof(addr.addr.su.un.sun_path)) {
+          LOG(FATAL) << "UNIX domain socket path " << path << " is too long > "
+                     << sizeof(addr.addr.su.un.sun_path);
+          exit(EXIT_FAILURE);
+        }
+
+        LOG(INFO) << "Use UNIX domain socket path " << path
+                  << " for backend connection";
+
+        addr.addr.su.un.sun_family = AF_UNIX;
+        // copy path including terminal NULL
+        std::copy_n(path, pathlen + 1, addr.addr.su.un.sun_path);
+        addr.addr.len = sizeof(addr.addr.su.un);
+
+        continue;
+      }
+
+      addr.hostport =
+          ImmutableString(util::make_hostport(addr.host.c_str(), addr.port));
+
+      if (resolve_hostname(
+              &addr.addr, addr.host.c_str(), addr.port,
+              get_config()->backend_ipv4 ? AF_INET : (get_config()->backend_ipv6
+                                                          ? AF_INET6
+                                                          : AF_UNSPEC)) == -1) {
+        exit(EXIT_FAILURE);
+      }
+    }
+  }
+
+  auto &proxy = mod_config()->downstream_http_proxy;
+  if (!proxy.host.empty()) {
+    if (LOG_ENABLED(INFO)) {
+      LOG(INFO) << "Resolving backend http proxy address";
+    }
+    if (resolve_hostname(&proxy.addr, proxy.host.c_str(), proxy.port,
+                         AF_UNSPEC) == -1) {
+      exit(EXIT_FAILURE);
+    }
+  }
+
+  {
+    auto &memcachedconf = tlsconf.session_cache.memcached;
+    if (memcachedconf.host) {
+      if (resolve_hostname(&memcachedconf.addr, memcachedconf.host.get(),
+                           memcachedconf.port, AF_UNSPEC) == -1) {
+        exit(EXIT_FAILURE);
+      }
+    }
+  }
+
+  {
+    auto &memcachedconf = tlsconf.ticket.memcached;
+    if (memcachedconf.host) {
+      if (resolve_hostname(&memcachedconf.addr, memcachedconf.host.get(),
+                           memcachedconf.port, AF_UNSPEC) == -1) {
+        exit(EXIT_FAILURE);
+      }
+    }
+  }
+
+  if (get_config()->rlimit_nofile) {
+    struct rlimit lim = {static_cast<rlim_t>(get_config()->rlimit_nofile),
+                         static_cast<rlim_t>(get_config()->rlimit_nofile)};
+    if (setrlimit(RLIMIT_NOFILE, &lim) != 0) {
+      auto error = errno;
+      LOG(WARN) << "Setting rlimit-nofile failed: " << strerror(error);
+    }
+  }
+
+  auto &fwdconf = mod_config()->http.forwarded;
+
+  if (fwdconf.by_node_type == FORWARDED_NODE_OBFUSCATED &&
+      fwdconf.by_obfuscated.empty()) {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    auto &dst = fwdconf.by_obfuscated;
+    dst = "_";
+    dst += util::random_alpha_digit(gen, SHRPX_OBFUSCATED_NODE_LENGTH);
+  }
+
+  if (get_config()->http2.upstream.debug.frame_debug) {
+    // To make it sync to logging
+    set_output(stderr);
+    if (isatty(fileno(stdout))) {
+      set_color_output(true);
+    }
+    reset_timer();
+  }
+
+  mod_config()->http2.upstream.callbacks = create_http2_upstream_callbacks();
+  mod_config()->http2.downstream.callbacks =
+      create_http2_downstream_callbacks();
+}
+} // namespace
+
 int main(int argc, char **argv) {
   nghttp2::ssl::libssl_init();
 
@@ -2321,338 +2660,7 @@ int main(int argc, char **argv) {
     }
   }
 
-  if (conf_exists(get_config()->conf_path.get())) {
-    std::set<std::string> include_set;
-    if (load_config(get_config()->conf_path.get(), include_set) == -1) {
-      LOG(FATAL) << "Failed to load configuration from "
-                 << get_config()->conf_path.get();
-      exit(EXIT_FAILURE);
-    }
-    assert(include_set.empty());
-  }
-
-  if (argc - optind >= 2) {
-    cmdcfgs.emplace_back(SHRPX_OPT_PRIVATE_KEY_FILE, argv[optind++]);
-    cmdcfgs.emplace_back(SHRPX_OPT_CERTIFICATE_FILE, argv[optind++]);
-  }
-
-  // Reopen log files using configurations in file
-  reopen_log_files();
-
-  {
-    std::set<std::string> include_set;
-
-    for (size_t i = 0, len = cmdcfgs.size(); i < len; ++i) {
-      if (parse_config(cmdcfgs[i].first, cmdcfgs[i].second, include_set) ==
-          -1) {
-        LOG(FATAL) << "Failed to parse command-line argument.";
-        exit(EXIT_FAILURE);
-      }
-    }
-
-    assert(include_set.empty());
-  }
-
-  if (get_config()->accesslog_syslog || get_config()->errorlog_syslog) {
-    openlog("nghttpx", LOG_NDELAY | LOG_NOWAIT | LOG_PID,
-            get_config()->syslog_facility);
-  }
-
-  if (reopen_log_files() != 0) {
-    LOG(FATAL) << "Failed to open log file";
-    exit(EXIT_FAILURE);
-  }
-
-  redirect_stderr_to_errorlog();
-
-  if (get_config()->uid != 0) {
-    if (log_config()->accesslog_fd != -1 &&
-        fchown(log_config()->accesslog_fd, get_config()->uid,
-               get_config()->gid) == -1) {
-      auto error = errno;
-      LOG(WARN) << "Changing owner of access log file failed: "
-                << strerror(error);
-    }
-    if (log_config()->errorlog_fd != -1 &&
-        fchown(log_config()->errorlog_fd, get_config()->uid,
-               get_config()->gid) == -1) {
-      auto error = errno;
-      LOG(WARN) << "Changing owner of error log file failed: "
-                << strerror(error);
-    }
-  }
-
-  auto &http2conf = mod_config()->http2;
-  {
-    auto &dumpconf = http2conf.upstream.debug.dump;
-
-    if (dumpconf.request_header_file) {
-      auto path = dumpconf.request_header_file.get();
-      auto f = open_file_for_write(path);
-
-      if (f == nullptr) {
-        LOG(FATAL) << "Failed to open http2 upstream request header file: "
-                   << path;
-        exit(EXIT_FAILURE);
-      }
-
-      dumpconf.request_header = f;
-
-      if (get_config()->uid != 0) {
-        if (chown_to_running_user(path) == -1) {
-          auto error = errno;
-          LOG(WARN) << "Changing owner of http2 upstream request header file "
-                    << path << " failed: " << strerror(error);
-        }
-      }
-    }
-
-    if (dumpconf.response_header_file) {
-      auto path = dumpconf.response_header_file.get();
-      auto f = open_file_for_write(path);
-
-      if (f == nullptr) {
-        LOG(FATAL) << "Failed to open http2 upstream response header file: "
-                   << path;
-        exit(EXIT_FAILURE);
-      }
-
-      dumpconf.response_header = f;
-
-      if (get_config()->uid != 0) {
-        if (chown_to_running_user(path) == -1) {
-          auto error = errno;
-          LOG(WARN) << "Changing owner of http2 upstream response header file"
-                    << " " << path << " failed: " << strerror(error);
-        }
-      }
-    }
-  }
-
-  auto &tlsconf = mod_config()->tls;
-
-  if (tlsconf.npn_list.empty()) {
-    tlsconf.npn_list = util::parse_config_str_list(DEFAULT_NPN_LIST);
-  }
-  if (tlsconf.tls_proto_list.empty()) {
-    tlsconf.tls_proto_list =
-        util::parse_config_str_list(DEFAULT_TLS_PROTO_LIST);
-  }
-
-  tlsconf.tls_proto_mask = ssl::create_tls_proto_mask(tlsconf.tls_proto_list);
-
-  tlsconf.alpn_prefs = ssl::set_alpn_prefs(tlsconf.npn_list);
-
-  if (get_config()->backend_ipv4 && get_config()->backend_ipv6) {
-    LOG(FATAL) << "--backend-ipv4 and --backend-ipv6 cannot be used at the "
-               << "same time.";
-    exit(EXIT_FAILURE);
-  }
-
-  if (get_config()->worker_frontend_connections == 0) {
-    mod_config()->worker_frontend_connections =
-        std::numeric_limits<size_t>::max();
-  }
-
-  if (get_config()->http2_proxy + get_config()->http2_bridge +
-          get_config()->client_proxy + get_config()->client >
-      1) {
-    LOG(FATAL) << "--http2-proxy, --http2-bridge, --client-proxy and --client "
-               << "cannot be used at the same time.";
-    exit(EXIT_FAILURE);
-  }
-
-  if (get_config()->client || get_config()->client_proxy) {
-    mod_config()->client_mode = true;
-    mod_config()->upstream_no_tls = true;
-  }
-
-  if (get_config()->client_mode || get_config()->http2_bridge) {
-    mod_config()->downstream_proto = PROTO_HTTP2;
-  } else {
-    mod_config()->downstream_proto = PROTO_HTTP;
-  }
-
-  if (!get_config()->upstream_no_tls &&
-      (!tlsconf.private_key_file || !tlsconf.cert_file)) {
-    print_usage(std::cerr);
-    LOG(FATAL) << "Too few arguments";
-    exit(EXIT_FAILURE);
-  }
-
-  if (!get_config()->upstream_no_tls && !tlsconf.ocsp.disabled) {
-    struct stat buf;
-    if (stat(tlsconf.ocsp.fetch_ocsp_response_file.get(), &buf) != 0) {
-      tlsconf.ocsp.disabled = true;
-      LOG(WARN) << "--fetch-ocsp-response-file: "
-                << tlsconf.ocsp.fetch_ocsp_response_file.get()
-                << " not found.  OCSP stapling has been disabled.";
-    }
-  }
-
-  if (get_config()->downstream_addr_groups.empty()) {
-    DownstreamAddr addr;
-    addr.host = ImmutableString::from_lit(DEFAULT_DOWNSTREAM_HOST);
-    addr.port = DEFAULT_DOWNSTREAM_PORT;
-
-    DownstreamAddrGroup g("/");
-    g.addrs.push_back(std::move(addr));
-    mod_config()->router.add_route(g.pattern.get(), 1,
-                                   get_config()->downstream_addr_groups.size());
-    mod_config()->downstream_addr_groups.push_back(std::move(g));
-  } else if (get_config()->http2_proxy || get_config()->client_proxy) {
-    // We don't support host mapping in these cases.  Move all
-    // non-catch-all patterns to catch-all pattern.
-    DownstreamAddrGroup catch_all("/");
-    for (auto &g : mod_config()->downstream_addr_groups) {
-      std::move(std::begin(g.addrs), std::end(g.addrs),
-                std::back_inserter(catch_all.addrs));
-    }
-    std::vector<DownstreamAddrGroup>().swap(
-        mod_config()->downstream_addr_groups);
-    // maybe not necessary?
-    mod_config()->router = Router();
-    mod_config()->router.add_route(catch_all.pattern.get(), 1,
-                                   get_config()->downstream_addr_groups.size());
-    mod_config()->downstream_addr_groups.push_back(std::move(catch_all));
-  }
-
-  if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "Resolving backend address";
-  }
-
-  ssize_t catch_all_group = -1;
-  for (size_t i = 0; i < mod_config()->downstream_addr_groups.size(); ++i) {
-    auto &g = mod_config()->downstream_addr_groups[i];
-    if (util::streq(g.pattern.get(), "/")) {
-      catch_all_group = i;
-    }
-    if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Host-path pattern: group " << i << ": '" << g.pattern.get()
-                << "'";
-      for (auto &addr : g.addrs) {
-        LOG(INFO) << "group " << i << " -> " << addr.host.c_str()
-                  << (addr.host_unix ? "" : ":" + util::utos(addr.port));
-      }
-    }
-  }
-
-  if (catch_all_group == -1) {
-    LOG(FATAL) << "-b: No catch-all backend address is configured";
-    exit(EXIT_FAILURE);
-  }
-  mod_config()->downstream_addr_group_catch_all = catch_all_group;
-
-  if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "Catch-all pattern is group " << catch_all_group;
-  }
-
-  for (auto &g : mod_config()->downstream_addr_groups) {
-    for (auto &addr : g.addrs) {
-
-      if (addr.host_unix) {
-        // for AF_UNIX socket, we use "localhost" as host for backend
-        // hostport.  This is used as Host header field to backend and
-        // not going to be passed to any syscalls.
-        addr.hostport = ImmutableString(
-            util::make_hostport("localhost", get_config()->port));
-
-        auto path = addr.host.c_str();
-        auto pathlen = addr.host.size();
-
-        if (pathlen + 1 > sizeof(addr.addr.su.un.sun_path)) {
-          LOG(FATAL) << "UNIX domain socket path " << path << " is too long > "
-                     << sizeof(addr.addr.su.un.sun_path);
-          exit(EXIT_FAILURE);
-        }
-
-        LOG(INFO) << "Use UNIX domain socket path " << path
-                  << " for backend connection";
-
-        addr.addr.su.un.sun_family = AF_UNIX;
-        // copy path including terminal NULL
-        std::copy_n(path, pathlen + 1, addr.addr.su.un.sun_path);
-        addr.addr.len = sizeof(addr.addr.su.un);
-
-        continue;
-      }
-
-      addr.hostport =
-          ImmutableString(util::make_hostport(addr.host.c_str(), addr.port));
-
-      if (resolve_hostname(
-              &addr.addr, addr.host.c_str(), addr.port,
-              get_config()->backend_ipv4 ? AF_INET : (get_config()->backend_ipv6
-                                                          ? AF_INET6
-                                                          : AF_UNSPEC)) == -1) {
-        exit(EXIT_FAILURE);
-      }
-    }
-  }
-
-  auto &proxy = mod_config()->downstream_http_proxy;
-  if (!proxy.host.empty()) {
-    if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Resolving backend http proxy address";
-    }
-    if (resolve_hostname(&proxy.addr, proxy.host.c_str(), proxy.port,
-                         AF_UNSPEC) == -1) {
-      exit(EXIT_FAILURE);
-    }
-  }
-
-  {
-    auto &memcachedconf = tlsconf.session_cache.memcached;
-    if (memcachedconf.host) {
-      if (resolve_hostname(&memcachedconf.addr, memcachedconf.host.get(),
-                           memcachedconf.port, AF_UNSPEC) == -1) {
-        exit(EXIT_FAILURE);
-      }
-    }
-  }
-
-  {
-    auto &memcachedconf = tlsconf.ticket.memcached;
-    if (memcachedconf.host) {
-      if (resolve_hostname(&memcachedconf.addr, memcachedconf.host.get(),
-                           memcachedconf.port, AF_UNSPEC) == -1) {
-        exit(EXIT_FAILURE);
-      }
-    }
-  }
-
-  if (get_config()->rlimit_nofile) {
-    struct rlimit lim = {static_cast<rlim_t>(get_config()->rlimit_nofile),
-                         static_cast<rlim_t>(get_config()->rlimit_nofile)};
-    if (setrlimit(RLIMIT_NOFILE, &lim) != 0) {
-      auto error = errno;
-      LOG(WARN) << "Setting rlimit-nofile failed: " << strerror(error);
-    }
-  }
-
-  auto &fwdconf = mod_config()->http.forwarded;
-
-  if (fwdconf.by_node_type == FORWARDED_NODE_OBFUSCATED &&
-      fwdconf.by_obfuscated.empty()) {
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    auto &dst = fwdconf.by_obfuscated;
-    dst = "_";
-    dst += util::random_alpha_digit(gen, SHRPX_OBFUSCATED_NODE_LENGTH);
-  }
-
-  if (get_config()->http2.upstream.debug.frame_debug) {
-    // To make it sync to logging
-    set_output(stderr);
-    if (isatty(fileno(stdout))) {
-      set_color_output(true);
-    }
-    reset_timer();
-  }
-
-  mod_config()->http2.upstream.callbacks = create_http2_upstream_callbacks();
-  mod_config()->http2.downstream.callbacks =
-      create_http2_downstream_callbacks();
+  process_options(argc, argv, cmdcfgs);
 
   if (event_loop() != 0) {
     return -1;
