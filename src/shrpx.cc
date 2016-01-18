@@ -929,13 +929,7 @@ void fill_default_config() {
   mod_config()->downstream_no_tls = false;
 
   mod_config()->num_worker = 1;
-  mod_config()->accesslog_file = nullptr;
-  mod_config()->accesslog_syslog = false;
-  mod_config()->accesslog_format = parse_log_format(DEFAULT_ACCESSLOG_FORMAT);
-  mod_config()->errorlog_file = strcopy("/dev/stderr");
-  mod_config()->errorlog_syslog = false;
   mod_config()->conf_path = strcopy("/etc/nghttpx/nghttpx.conf");
-  mod_config()->syslog_facility = LOG_DAEMON;
   // Default accept() backlog
   mod_config()->backlog = 512;
   mod_config()->http2_proxy = false;
@@ -1047,6 +1041,19 @@ void fill_default_config() {
   http2conf.max_concurrent_streams = 100;
   http2conf.no_cookie_crumbling = false;
   http2conf.no_server_push = false;
+
+  auto &loggingconf = mod_config()->logging;
+  {
+    auto &accessconf = loggingconf.access;
+    accessconf.syslog = false;
+    accessconf.format = parse_log_format(DEFAULT_ACCESSLOG_FORMAT);
+
+    auto &errorconf = loggingconf.error;
+    errorconf.file = strcopy("/dev/stderr");
+    errorconf.syslog = false;
+  }
+
+  loggingconf.syslog_facility = LOG_DAEMON;
 }
 
 } // namespace
@@ -1573,14 +1580,14 @@ Logging:
               Set path to write error  log.  To reopen file, send USR1
               signal  to nghttpx.   stderr will  be redirected  to the
               error log file unless --errorlog-syslog is used.
-              Default: )" << get_config()->errorlog_file.get() << R"(
+              Default: )" << get_config()->logging.error.file.get() << R"(
   --errorlog-syslog
               Send  error log  to  syslog.  If  this  option is  used,
               --errorlog-file option is ignored.
   --syslog-facility=<FACILITY>
               Set syslog facility to <FACILITY>.
-              Default: )" << str_syslog_facility(get_config()->syslog_facility)
-      << R"(
+              Default: )"
+      << str_syslog_facility(get_config()->logging.syslog_facility) << R"(
 
 HTTP:
   --add-x-forwarded-for
@@ -1759,9 +1766,11 @@ void process_options(
     assert(include_set.empty());
   }
 
-  if (get_config()->accesslog_syslog || get_config()->errorlog_syslog) {
+  auto &loggingconf = get_config()->logging;
+
+  if (loggingconf.access.syslog || loggingconf.error.syslog) {
     openlog("nghttpx", LOG_NDELAY | LOG_NOWAIT | LOG_PID,
-            get_config()->syslog_facility);
+            loggingconf.syslog_facility);
   }
 
   if (reopen_log_files() != 0) {

@@ -1499,23 +1499,23 @@ int parse_config(const char *opt, const char *optarg,
   case SHRPX_OPTID_STREAM_WRITE_TIMEOUT:
     return parse_duration(&mod_config()->stream_write_timeout, opt, optarg);
   case SHRPX_OPTID_ACCESSLOG_FILE:
-    mod_config()->accesslog_file = strcopy(optarg);
+    mod_config()->logging.access.file = strcopy(optarg);
 
     return 0;
   case SHRPX_OPTID_ACCESSLOG_SYSLOG:
-    mod_config()->accesslog_syslog = util::strieq(optarg, "yes");
+    mod_config()->logging.access.syslog = util::strieq(optarg, "yes");
 
     return 0;
   case SHRPX_OPTID_ACCESSLOG_FORMAT:
-    mod_config()->accesslog_format = parse_log_format(optarg);
+    mod_config()->logging.access.format = parse_log_format(optarg);
 
     return 0;
   case SHRPX_OPTID_ERRORLOG_FILE:
-    mod_config()->errorlog_file = strcopy(optarg);
+    mod_config()->logging.error.file = strcopy(optarg);
 
     return 0;
   case SHRPX_OPTID_ERRORLOG_SYSLOG:
-    mod_config()->errorlog_syslog = util::strieq(optarg, "yes");
+    mod_config()->logging.error.syslog = util::strieq(optarg, "yes");
 
     return 0;
   case SHRPX_OPTID_FASTOPEN: {
@@ -1660,7 +1660,7 @@ int parse_config(const char *opt, const char *optarg,
       LOG(ERROR) << opt << ": Unknown syslog facility: " << optarg;
       return -1;
     }
-    mod_config()->syslog_facility = facility;
+    mod_config()->logging.syslog_facility = facility;
 
     return 0;
   }

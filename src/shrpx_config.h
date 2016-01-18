@@ -434,14 +434,29 @@ struct Http2Config {
   bool no_server_push;
 };
 
+struct LoggingConfig {
+  struct {
+    std::vector<LogFragment> format;
+    std::unique_ptr<char[]> file;
+    // Send accesslog to syslog, ignoring accesslog_file.
+    bool syslog;
+  } access;
+  struct {
+    std::unique_ptr<char[]> file;
+    // Send errorlog to syslog, ignoring errorlog_file.
+    bool syslog;
+  } error;
+  int syslog_facility;
+};
+
 struct Config {
-  std::vector<LogFragment> accesslog_format;
   std::vector<DownstreamAddrGroup> downstream_addr_groups;
   Router router;
   HttpProxy downstream_http_proxy;
   HttpConfig http;
   Http2Config http2;
   TLSConfig tls;
+  LoggingConfig logging;
   ev_tstamp http2_upstream_read_timeout;
   ev_tstamp upstream_read_timeout;
   ev_tstamp upstream_write_timeout;
@@ -456,8 +471,6 @@ struct Config {
   std::unique_ptr<char[]> host;
   std::unique_ptr<char[]> pid_file;
   std::unique_ptr<char[]> conf_path;
-  std::unique_ptr<char[]> accesslog_file;
-  std::unique_ptr<char[]> errorlog_file;
   std::unique_ptr<char[]> user;
   std::unique_ptr<char[]> mruby_file;
   char **original_argv;
@@ -483,7 +496,6 @@ struct Config {
   size_t downstream_addr_group_catch_all;
   // downstream protocol; this will be determined by given options.
   shrpx_proto downstream_proto;
-  int syslog_facility;
   int backlog;
   int argc;
   int fastopen;
@@ -500,10 +512,6 @@ struct Config {
   bool client_proxy;
   bool upstream_no_tls;
   bool downstream_no_tls;
-  // Send accesslog to syslog, ignoring accesslog_file.
-  bool accesslog_syslog;
-  // Send errorlog to syslog, ignoring errorlog_file.
-  bool errorlog_syslog;
   bool client;
   // true if --client or --client-proxy are enabled.
   bool client_mode;

@@ -836,7 +836,7 @@ void ClientHandler::write_accesslog(Downstream *downstream) {
   const auto &resp = downstream->response();
 
   upstream_accesslog(
-      get_config()->accesslog_format,
+      get_config()->logging.access.format,
       LogSpec{
           downstream, ipaddr_, http2::to_method_string(req.method),
 
@@ -869,7 +869,7 @@ void ClientHandler::write_accesslog(int major, int minor, unsigned int status,
   nghttp2::ssl::TLSSessionInfo tls_info;
 
   upstream_accesslog(
-      get_config()->accesslog_format,
+      get_config()->logging.access.format,
       LogSpec{
           nullptr, ipaddr_,
           StringRef::from_lit("-"), // method
