@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "H2LOAD" "1" "January 11, 2016" "1.6.1-DEV" "nghttp2"
+.TH "H2LOAD" "1" "January 19, 2016" "1.6.1-DEV" "nghttp2"
 .SH NAME
 h2load \- HTTP/2 benchmarking tool
 .
@@ -208,11 +208,16 @@ port values.
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-B, \-\-base\-uri=<URI>
+.B \-B, \-\-base\-uri=(<URI>|unix:<PATH>)
 Specify URI from which the scheme, host and port will be
 used  for  all requests.   The  base  URI overrides  all
 values  defined either  at  the command  line or  inside
-input files.
+input files.  If argument  starts with "unix:", then the
+rest  of the  argument will  be treated  as UNIX  domain
+socket path.   The connection is made  through that path
+instead of TCP.   In this case, scheme  is inferred from
+the first  URI appeared  in the  command line  or inside
+input files as usual.
 .UNINDENT
 .INDENT 0.0
 .TP

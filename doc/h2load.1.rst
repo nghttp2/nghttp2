@@ -171,12 +171,17 @@ OPTIONS
     Definition of a  base URI overrides all  scheme, host or
     port values.
 
-.. option:: -B, --base-uri=<URI>
+.. option:: -B, --base-uri=(<URI>|unix:<PATH>)
 
     Specify URI from which the scheme, host and port will be
     used  for  all requests.   The  base  URI overrides  all
     values  defined either  at  the command  line or  inside
-    input files.
+    input files.  If argument  starts with "unix:", then the
+    rest  of the  argument will  be treated  as UNIX  domain
+    socket path.   The connection is made  through that path
+    instead of TCP.   In this case, scheme  is inferred from
+    the first  URI appeared  in the  command line  or inside
+    input files as usual.
 
 .. option:: --npn-list=<LIST>
 
