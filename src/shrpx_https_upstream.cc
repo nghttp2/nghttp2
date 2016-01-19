@@ -246,7 +246,6 @@ int htp_hdrs_completecb(http_parser *htp) {
   }
   auto downstream = upstream->get_downstream();
   auto &req = downstream->request();
-  auto &resp = downstream->response();
 
   req.http_major = htp->http_major;
   req.http_minor = htp->http_minor;
@@ -337,6 +336,8 @@ int htp_hdrs_completecb(http_parser *htp) {
   auto handler = upstream->get_client_handler();
   auto worker = handler->get_worker();
   auto mruby_ctx = worker->get_mruby_context();
+
+  auto &resp = downstream->response();
 
   if (mruby_ctx->run_on_request_proc(downstream) != 0) {
     resp.http_status = 500;
