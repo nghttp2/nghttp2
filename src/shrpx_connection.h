@@ -73,10 +73,10 @@ using TimerCb = EVCb<ev_timer>;
 
 struct Connection {
   Connection(struct ev_loop *loop, int fd, SSL *ssl, MemchunkPool *mcpool,
-             ev_tstamp write_timeout, ev_tstamp read_timeout, size_t write_rate,
-             size_t write_burst, size_t read_rate, size_t read_burst,
-             IOCb writecb, IOCb readcb, TimerCb timeoutcb, void *data,
-             size_t tls_dyn_rec_warmup_threshold,
+             ev_tstamp write_timeout, ev_tstamp read_timeout,
+             const RateLimitConfig &write_limit,
+             const RateLimitConfig &read_limit, IOCb writecb, IOCb readcb,
+             TimerCb timeoutcb, void *data, size_t tls_dyn_rec_warmup_threshold,
              ev_tstamp tls_dyn_rec_idle_timeout);
   ~Connection();
 

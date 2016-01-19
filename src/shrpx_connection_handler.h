@@ -98,7 +98,7 @@ public:
   AcceptHandler *get_acceptor6() const;
   void enable_acceptor();
   void disable_acceptor();
-  void disable_acceptor_temporary(ev_tstamp t);
+  void sleep_acceptor(ev_tstamp t);
   void accept_pending_connection();
   void graceful_shutdown_worker();
   void set_graceful_shutdown(bool f);

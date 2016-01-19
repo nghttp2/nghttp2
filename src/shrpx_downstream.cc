@@ -124,14 +124,16 @@ Downstream::Downstream(Upstream *upstream, MemchunkPool *mcpool,
       chunked_response_(false), expect_final_response_(false),
       request_pending_(false) {
 
+  auto &timeoutconf = get_config()->http2.timeout;
+
   ev_timer_init(&upstream_rtimer_, &upstream_rtimeoutcb, 0.,
-                get_config()->stream_read_timeout);
+                timeoutconf.stream_read);
   ev_timer_init(&upstream_wtimer_, &upstream_wtimeoutcb, 0.,
-                get_config()->stream_write_timeout);
+                timeoutconf.stream_write);
   ev_timer_init(&downstream_rtimer_, &downstream_rtimeoutcb, 0.,
-                get_config()->stream_read_timeout);
+                timeoutconf.stream_read);
   ev_timer_init(&downstream_wtimer_, &downstream_wtimeoutcb, 0.,
-                get_config()->stream_write_timeout);
+                timeoutconf.stream_write);
 
   upstream_rtimer_.data = this;
   upstream_wtimer_.data = this;
@@ -491,7 +493,8 @@ void Downstream::set_chunked_request(bool f) { chunked_request_ = f; }
 
 bool Downstream::request_buf_full() {
   if (dconn_) {
-    return request_buf_.rleft() >= get_config()->downstream_request_buffer_size;
+    return request_buf_.rleft() >=
+           get_config()->conn.downstream.request_buffer_size;
   } else {
     return false;
   }
@@ -582,7 +585,7 @@ DefaultMemchunks *Downstream::get_response_buf() { return &response_buf_; }
 bool Downstream::response_buf_full() {
   if (dconn_) {
     return response_buf_.rleft() >=
-           get_config()->downstream_response_buffer_size;
+           get_config()->conn.downstream.response_buffer_size;
   } else {
     return false;
   }
@@ -764,7 +767,7 @@ void disable_timer(struct ev_loop *loop, ev_timer *w) {
 } // namespace
 
 void Downstream::reset_upstream_rtimer() {
-  if (get_config()->stream_read_timeout == 0.) {
+  if (get_config()->http2.timeout.stream_read == 0.) {
     return;
   }
   auto loop = upstream_->get_client_handler()->get_loop();
@@ -773,16 +776,18 @@ void Downstream::reset_upstream_rtimer() {
 
 void Downstream::reset_upstream_wtimer() {
   auto loop = upstream_->get_client_handler()->get_loop();
-  if (get_config()->stream_write_timeout != 0.) {
+  auto &timeoutconf = get_config()->http2.timeout;
+
+  if (timeoutconf.stream_write != 0.) {
     reset_timer(loop, &upstream_wtimer_);
   }
-  if (get_config()->stream_read_timeout != 0.) {
+  if (timeoutconf.stream_read != 0.) {
     try_reset_timer(loop, &upstream_rtimer_);
   }
 }
 
 void Downstream::ensure_upstream_wtimer() {
-  if (get_config()->stream_write_timeout == 0.) {
+  if (get_config()->http2.timeout.stream_write == 0.) {
     return;
   }
   auto loop = upstream_->get_client_handler()->get_loop();
@@ -790,7 +795,7 @@ void Downstream::ensure_upstream_wtimer() {
 }
 
 void Downstream::disable_upstream_rtimer() {
-  if (get_config()->stream_read_timeout == 0.) {
+  if (get_config()->http2.timeout.stream_read == 0.) {
     return;
   }
   auto loop = upstream_->get_client_handler()->get_loop();
@@ -798,7 +803,7 @@ void Downstream::disable_upstream_rtimer() {
 }
 
 void Downstream::disable_upstream_wtimer() {
-  if (get_config()->stream_write_timeout == 0.) {
+  if (get_config()->http2.timeout.stream_write == 0.) {
     return;
   }
   auto loop = upstream_->get_client_handler()->get_loop();
@@ -806,7 +811,7 @@ void Downstream::disable_upstream_wtimer() {
 }
 
 void Downstream::reset_downstream_rtimer() {
-  if (get_config()->stream_read_timeout == 0.) {
+  if (get_config()->http2.timeout.stream_read == 0.) {
     return;
   }
   auto loop = upstream_->get_client_handler()->get_loop();
@@ -815,16 +820,18 @@ void Downstream::reset_downstream_rtimer() {
 
 void Downstream::reset_downstream_wtimer() {
   auto loop = upstream_->get_client_handler()->get_loop();
-  if (get_config()->stream_write_timeout != 0.) {
+  auto &timeoutconf = get_config()->http2.timeout;
+
+  if (timeoutconf.stream_write != 0.) {
     reset_timer(loop, &downstream_wtimer_);
   }
-  if (get_config()->stream_read_timeout != 0.) {
+  if (timeoutconf.stream_read != 0.) {
     try_reset_timer(loop, &downstream_rtimer_);
   }
 }
 
 void Downstream::ensure_downstream_wtimer() {
-  if (get_config()->stream_write_timeout == 0.) {
+  if (get_config()->http2.timeout.stream_write == 0.) {
     return;
   }
   auto loop = upstream_->get_client_handler()->get_loop();
@@ -832,7 +839,7 @@ void Downstream::ensure_downstream_wtimer() {
 }
 
 void Downstream::disable_downstream_rtimer() {
-  if (get_config()->stream_read_timeout == 0.) {
+  if (get_config()->http2.timeout.stream_read == 0.) {
     return;
   }
   auto loop = upstream_->get_client_handler()->get_loop();
@@ -840,7 +847,7 @@ void Downstream::disable_downstream_rtimer() {
 }
 
 void Downstream::disable_downstream_wtimer() {
-  if (get_config()->stream_write_timeout == 0.) {
+  if (get_config()->http2.timeout.stream_write == 0.) {
     return;
   }
   auto loop = upstream_->get_client_handler()->get_loop();

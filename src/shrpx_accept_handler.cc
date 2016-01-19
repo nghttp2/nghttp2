@@ -87,7 +87,7 @@ void AcceptHandler::accept_connection() {
       case ENFILE:
         LOG(WARN) << "acceptor: running out file descriptor; disable acceptor "
                      "temporarily";
-        conn_hnr_->disable_acceptor_temporary(30.);
+        conn_hnr_->sleep_acceptor(get_config()->conn.listener.timeout.sleep);
         break;
       }
 

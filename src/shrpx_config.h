@@ -289,178 +289,263 @@ struct HttpProxy {
   std::string host;
   // userinfo in http proxy URI, not percent-encoded form
   std::string userinfo;
+  // port in http proxy URI
   uint16_t port;
 };
 
-struct Config {
+struct TLSConfig {
+  // RFC 5077 Session ticket related configurations
+  struct {
+    struct {
+      Address addr;
+      uint16_t port;
+      std::unique_ptr<char[]> host;
+      ev_tstamp interval;
+      // Maximum number of retries when getting TLS ticket key from
+      // mamcached, due to network error.
+      size_t max_retry;
+      // Maximum number of consecutive error from memcached, when this
+      // limit reached, TLS ticket is disabled.
+      size_t max_fail;
+    } memcached;
+    std::vector<std::string> files;
+    const EVP_CIPHER *cipher;
+    // true if --tls-ticket-key-cipher is used
+    bool cipher_given;
+  } ticket;
+
+  // Session cache related configurations
+  struct {
+    struct {
+      Address addr;
+      uint16_t port;
+      std::unique_ptr<char[]> host;
+    } memcached;
+  } session_cache;
+
+  // Dynamic record sizing configurations
+  struct {
+    size_t warmup_threshold;
+    ev_tstamp idle_timeout;
+  } dyn_rec;
+
+  // OCSP realted configurations
+  struct {
+    ev_tstamp update_interval;
+    std::unique_ptr<char[]> fetch_ocsp_response_file;
+    bool disabled;
+  } ocsp;
+
+  // Client verification configurations
+  struct {
+    // Path to file containing CA certificate solely used for client
+    // certificate validation
+    std::unique_ptr<char[]> cacert;
+    bool enabled;
+  } client_verify;
+
+  // Client private key and certificate used in backend connections.
+  struct {
+    std::unique_ptr<char[]> private_key_file;
+    std::unique_ptr<char[]> cert_file;
+  } client;
+
   // The list of (private key file, certificate file) pair
   std::vector<std::pair<std::string, std::string>> subcerts;
-  std::vector<AltSvc> altsvcs;
-  std::vector<std::pair<std::string, std::string>> add_request_headers;
-  std::vector<std::pair<std::string, std::string>> add_response_headers;
   std::vector<unsigned char> alpn_prefs;
-  std::vector<LogFragment> accesslog_format;
-  std::vector<DownstreamAddrGroup> downstream_addr_groups;
-  std::vector<std::string> tls_ticket_key_files;
   // list of supported NPN/ALPN protocol strings in the order of
   // preference.
   std::vector<std::string> npn_list;
   // list of supported SSL/TLS protocol strings.
   std::vector<std::string> tls_proto_list;
-  Address session_cache_memcached_addr;
-  Address tls_ticket_key_memcached_addr;
-  Router router;
-  HttpProxy downstream_http_proxy;
-  // obfuscated value used in "by" parameter of Forwarded header
-  // field.
-  std::string forwarded_by_obfuscated;
-  // obfuscated value used in "for" parameter of Forwarded header
-  // field.  This is only used when user defined static obfuscated
-  // string is provided.
-  std::string forwarded_for_obfuscated;
-  std::string backend_tls_sni_name;
-  StringRef server_name;
-  std::chrono::seconds tls_session_timeout;
-  ev_tstamp http2_upstream_read_timeout;
-  ev_tstamp upstream_read_timeout;
-  ev_tstamp upstream_write_timeout;
-  ev_tstamp downstream_read_timeout;
-  ev_tstamp downstream_write_timeout;
-  ev_tstamp stream_read_timeout;
-  ev_tstamp stream_write_timeout;
-  ev_tstamp downstream_idle_read_timeout;
-  ev_tstamp listener_disable_timeout;
-  ev_tstamp ocsp_update_interval;
-  ev_tstamp tls_ticket_key_memcached_interval;
-  // address of frontend connection.  This could be a path to UNIX
-  // domain socket.  In this case, |host_unix| must be true.
-  std::unique_ptr<char[]> host;
+  // Bit mask to disable SSL/TLS protocol versions.  This will be
+  // passed to SSL_CTX_set_options().
+  long int tls_proto_mask;
+  std::string backend_sni_name;
+  std::chrono::seconds session_timeout;
   std::unique_ptr<char[]> private_key_file;
   std::unique_ptr<char[]> private_key_passwd;
   std::unique_ptr<char[]> cert_file;
   std::unique_ptr<char[]> dh_param_file;
-  std::unique_ptr<char[]> pid_file;
-  std::unique_ptr<char[]> conf_path;
   std::unique_ptr<char[]> ciphers;
   std::unique_ptr<char[]> cacert;
-  std::unique_ptr<char[]> http2_upstream_dump_request_header_file;
-  std::unique_ptr<char[]> http2_upstream_dump_response_header_file;
-  // Path to file containing CA certificate solely used for client
-  // certificate validation
-  std::unique_ptr<char[]> verify_client_cacert;
-  std::unique_ptr<char[]> client_private_key_file;
-  std::unique_ptr<char[]> client_cert_file;
-  std::unique_ptr<char[]> accesslog_file;
-  std::unique_ptr<char[]> errorlog_file;
-  std::unique_ptr<char[]> fetch_ocsp_response_file;
+  bool insecure;
+};
+
+struct HttpConfig {
+  struct {
+    // obfuscated value used in "by" parameter of Forwarded header
+    // field.
+    std::string by_obfuscated;
+    // obfuscated value used in "for" parameter of Forwarded header
+    // field.  This is only used when user defined static obfuscated
+    // string is provided.
+    std::string for_obfuscated;
+    // bitwise-OR of one or more of shrpx_forwarded_param values.
+    uint32_t params;
+    // type of value recorded in "by" parameter of Forwarded header
+    // field.
+    shrpx_forwarded_node_type by_node_type;
+    // type of value recorded in "for" parameter of Forwarded header
+    // field.
+    shrpx_forwarded_node_type for_node_type;
+    bool strip_incoming;
+  } forwarded;
+  struct {
+    bool add;
+    bool strip_incoming;
+  } xff;
+  std::vector<AltSvc> altsvcs;
+  std::vector<std::pair<std::string, std::string>> add_request_headers;
+  std::vector<std::pair<std::string, std::string>> add_response_headers;
+  StringRef server_name;
+  size_t header_field_buffer;
+  size_t max_header_fields;
+  bool no_via;
+  bool no_location_rewrite;
+  bool no_host_rewrite;
+};
+
+struct Http2Config {
+  struct {
+    struct {
+      struct {
+        std::unique_ptr<char[]> request_header_file;
+        std::unique_ptr<char[]> response_header_file;
+        FILE *request_header;
+        FILE *response_header;
+      } dump;
+      bool frame_debug;
+    } debug;
+    nghttp2_option *option;
+    nghttp2_session_callbacks *callbacks;
+    size_t window_bits;
+    size_t connection_window_bits;
+  } upstream;
+  struct {
+    nghttp2_option *option;
+    nghttp2_session_callbacks *callbacks;
+    size_t window_bits;
+    size_t connection_window_bits;
+    size_t connections_per_worker;
+  } downstream;
+  struct {
+    ev_tstamp stream_read;
+    ev_tstamp stream_write;
+  } timeout;
+  size_t max_concurrent_streams;
+  bool no_cookie_crumbling;
+  bool no_server_push;
+};
+
+struct LoggingConfig {
+  struct {
+    std::vector<LogFragment> format;
+    std::unique_ptr<char[]> file;
+    // Send accesslog to syslog, ignoring accesslog_file.
+    bool syslog;
+  } access;
+  struct {
+    std::unique_ptr<char[]> file;
+    // Send errorlog to syslog, ignoring errorlog_file.
+    bool syslog;
+  } error;
+  int syslog_facility;
+};
+
+struct RateLimitConfig {
+  size_t rate;
+  size_t burst;
+};
+
+struct ConnectionConfig {
+  struct {
+    struct {
+      ev_tstamp sleep;
+    } timeout;
+    // address of frontend connection.  This could be a path to UNIX
+    // domain socket.  In this case, |host_unix| must be true.
+    std::unique_ptr<char[]> host;
+    // frontend listening port.  0 if frontend listens on UNIX domain
+    // socket, in this case |host_unix| must be true.
+    uint16_t port;
+    // true if host contains UNIX domain socket path
+    bool host_unix;
+    int backlog;
+    // TCP fastopen.  If this is positive, it is passed to
+    // setsockopt() along with TCP_FASTOPEN.
+    int fastopen;
+  } listener;
+
+  struct {
+    struct {
+      ev_tstamp http2_read;
+      ev_tstamp read;
+      ev_tstamp write;
+    } timeout;
+    struct {
+      RateLimitConfig read;
+      RateLimitConfig write;
+    } ratelimit;
+    size_t worker_connections;
+    bool no_tls;
+    bool accept_proxy_protocol;
+  } upstream;
+
+  struct {
+    struct {
+      ev_tstamp read;
+      ev_tstamp write;
+      ev_tstamp idle_read;
+    } timeout;
+    std::vector<DownstreamAddrGroup> addr_groups;
+    // The index of catch-all group in downstream_addr_groups.
+    size_t addr_group_catch_all;
+    size_t connections_per_host;
+    size_t connections_per_frontend;
+    size_t request_buffer_size;
+    size_t response_buffer_size;
+    // downstream protocol; this will be determined by given options.
+    shrpx_proto proto;
+    bool no_tls;
+    // true if IPv4 only; ipv4 and ipv6 are mutually exclusive; and
+    // (ipv4 && ipv6) must be false.
+    bool ipv4;
+    // true if IPv6 only
+    bool ipv6;
+  } downstream;
+};
+
+struct Config {
+  Router router;
+  HttpProxy downstream_http_proxy;
+  HttpConfig http;
+  Http2Config http2;
+  TLSConfig tls;
+  LoggingConfig logging;
+  ConnectionConfig conn;
+  std::unique_ptr<char[]> pid_file;
+  std::unique_ptr<char[]> conf_path;
   std::unique_ptr<char[]> user;
-  std::unique_ptr<char[]> session_cache_memcached_host;
-  std::unique_ptr<char[]> tls_ticket_key_memcached_host;
   std::unique_ptr<char[]> mruby_file;
-  FILE *http2_upstream_dump_request_header;
-  FILE *http2_upstream_dump_response_header;
-  nghttp2_session_callbacks *http2_upstream_callbacks;
-  nghttp2_session_callbacks *http2_downstream_callbacks;
-  nghttp2_option *http2_option;
-  nghttp2_option *http2_client_option;
-  const EVP_CIPHER *tls_ticket_key_cipher;
   char **original_argv;
   char **argv;
   char *cwd;
   size_t num_worker;
-  size_t http2_max_concurrent_streams;
-  size_t http2_upstream_window_bits;
-  size_t http2_downstream_window_bits;
-  size_t http2_upstream_connection_window_bits;
-  size_t http2_downstream_connection_window_bits;
-  size_t http2_downstream_connections_per_worker;
-  size_t downstream_connections_per_host;
-  size_t downstream_connections_per_frontend;
-  size_t read_rate;
-  size_t read_burst;
-  size_t write_rate;
-  size_t write_burst;
-  size_t worker_read_rate;
-  size_t worker_read_burst;
-  size_t worker_write_rate;
-  size_t worker_write_burst;
   size_t padding;
-  size_t worker_frontend_connections;
   size_t rlimit_nofile;
-  size_t downstream_request_buffer_size;
-  size_t downstream_response_buffer_size;
-  size_t header_field_buffer;
-  size_t max_header_fields;
-  // The index of catch-all group in downstream_addr_groups.
-  size_t downstream_addr_group_catch_all;
-  // Maximum number of retries when getting TLS ticket key from
-  // mamcached, due to network error.
-  size_t tls_ticket_key_memcached_max_retry;
-  // Maximum number of consecutive error from memcached, when this
-  // limit reached, TLS ticket is disabled.
-  size_t tls_ticket_key_memcached_max_fail;
-  // Bit mask to disable SSL/TLS protocol versions.  This will be
-  // passed to SSL_CTX_set_options().
-  long int tls_proto_mask;
-  // downstream protocol; this will be determined by given options.
-  shrpx_proto downstream_proto;
-  // bitwise-OR of one or more of shrpx_forwarded_param values.
-  uint32_t forwarded_params;
-  // type of value recorded in "by" parameter of Forwarded header
-  // field.
-  shrpx_forwarded_node_type forwarded_by_node_type;
-  // type of value recorded in "for" parameter of Forwarded header
-  // field.
-  shrpx_forwarded_node_type forwarded_for_node_type;
-  int syslog_facility;
-  int backlog;
   int argc;
-  int fastopen;
   uid_t uid;
   gid_t gid;
   pid_t pid;
-  // frontend listening port.  0 if frontend listens on UNIX domain
-  // socket, in this case |host_unix| must be true.
-  uint16_t port;
-  // port in http proxy URI
-  uint16_t downstream_http_proxy_port;
-  uint16_t session_cache_memcached_port;
-  uint16_t tls_ticket_key_memcached_port;
   bool verbose;
   bool daemon;
-  bool verify_client;
   bool http2_proxy;
   bool http2_bridge;
   bool client_proxy;
-  bool add_x_forwarded_for;
-  bool strip_incoming_x_forwarded_for;
-  bool strip_incoming_forwarded;
-  bool no_via;
-  bool upstream_no_tls;
-  bool downstream_no_tls;
-  // Send accesslog to syslog, ignoring accesslog_file.
-  bool accesslog_syslog;
-  // Send errorlog to syslog, ignoring errorlog_file.
-  bool errorlog_syslog;
   bool client;
   // true if --client or --client-proxy are enabled.
   bool client_mode;
-  bool insecure;
-  bool backend_ipv4;
-  bool backend_ipv6;
-  bool http2_no_cookie_crumbling;
-  bool upstream_frame_debug;
-  bool no_location_rewrite;
-  bool no_host_rewrite;
-  bool no_server_push;
-  // true if host contains UNIX domain socket path
-  bool host_unix;
-  bool no_ocsp;
-  // true if --tls-ticket-key-cipher is used
-  bool tls_ticket_key_cipher_given;
-  bool accept_proxy_protocol;
-  size_t tls_dyn_rec_warmup_threshold;
-  ev_tstamp tls_dyn_rec_idle_timeout;
 };
 
 const Config *get_config();

@@ -42,15 +42,17 @@ using namespace nghttp2;
 namespace shrpx {
 Connection::Connection(struct ev_loop *loop, int fd, SSL *ssl,
                        MemchunkPool *mcpool, ev_tstamp write_timeout,
-                       ev_tstamp read_timeout, size_t write_rate,
-                       size_t write_burst, size_t read_rate, size_t read_burst,
-                       IOCb writecb, IOCb readcb, TimerCb timeoutcb, void *data,
+                       ev_tstamp read_timeout,
+                       const RateLimitConfig &write_limit,
+                       const RateLimitConfig &read_limit, IOCb writecb,
+                       IOCb readcb, TimerCb timeoutcb, void *data,
                        size_t tls_dyn_rec_warmup_threshold,
                        ev_tstamp tls_dyn_rec_idle_timeout)
     : tls{DefaultMemchunks(mcpool), DefaultPeekMemchunks(mcpool)},
-      wlimit(loop, &wev, write_rate, write_burst),
-      rlimit(loop, &rev, read_rate, read_burst, this), writecb(writecb),
-      readcb(readcb), timeoutcb(timeoutcb), loop(loop), data(data), fd(fd),
+      wlimit(loop, &wev, write_limit.rate, write_limit.burst),
+      rlimit(loop, &rev, read_limit.rate, read_limit.burst, this),
+      writecb(writecb), readcb(readcb), timeoutcb(timeoutcb), loop(loop),
+      data(data), fd(fd),
       tls_dyn_rec_warmup_threshold(tls_dyn_rec_warmup_threshold),
       tls_dyn_rec_idle_timeout(tls_dyn_rec_idle_timeout) {
 

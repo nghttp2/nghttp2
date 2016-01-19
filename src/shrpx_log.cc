@@ -109,12 +109,14 @@ Log::~Log() {
 
   auto lgconf = log_config();
 
+  auto &errorconf = get_config()->logging.error;
+
   if (!log_enabled(severity_) ||
-      (lgconf->errorlog_fd == -1 && !get_config()->errorlog_syslog)) {
+      (lgconf->errorlog_fd == -1 && !errorconf.syslog)) {
     return;
   }
 
-  if (get_config()->errorlog_syslog) {
+  if (errorconf.syslog) {
     if (severity_ == NOTICE) {
       syslog(severity_to_syslog_level(severity_), "[%s] %s",
              SEVERITY_STR[severity_], stream_.str().c_str());
@@ -219,8 +221,9 @@ std::pair<OutputIterator, size_t> copy_hex_low(const uint8_t *src,
 void upstream_accesslog(const std::vector<LogFragment> &lfv,
                         const LogSpec &lgsp) {
   auto lgconf = log_config();
+  auto &accessconf = get_config()->logging.access;
 
-  if (lgconf->accesslog_fd == -1 && !get_config()->accesslog_syslog) {
+  if (lgconf->accesslog_fd == -1 && !accessconf.syslog) {
     return;
   }
 
@@ -360,7 +363,7 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
 
   *p = '\0';
 
-  if (get_config()->accesslog_syslog) {
+  if (accessconf.syslog) {
     syslog(LOG_INFO, "%s", buf);
 
     return;
@@ -379,29 +382,27 @@ int reopen_log_files() {
   int new_errorlog_fd = -1;
 
   auto lgconf = log_config();
+  auto &accessconf = get_config()->logging.access;
+  auto &errorconf = get_config()->logging.error;
 
-  if (!get_config()->accesslog_syslog && get_config()->accesslog_file) {
-
-    new_accesslog_fd = util::open_log_file(get_config()->accesslog_file.get());
+  if (!accessconf.syslog && accessconf.file) {
+    new_accesslog_fd = util::open_log_file(accessconf.file.get());
 
     if (new_accesslog_fd == -1) {
-      LOG(ERROR) << "Failed to open accesslog file "
-                 << get_config()->accesslog_file.get();
+      LOG(ERROR) << "Failed to open accesslog file " << accessconf.file.get();
       res = -1;
     }
   }
 
-  if (!get_config()->errorlog_syslog && get_config()->errorlog_file) {
-
-    new_errorlog_fd = util::open_log_file(get_config()->errorlog_file.get());
+  if (!errorconf.syslog && errorconf.file) {
+    new_errorlog_fd = util::open_log_file(errorconf.file.get());
 
     if (new_errorlog_fd == -1) {
       if (lgconf->errorlog_fd != -1) {
-        LOG(ERROR) << "Failed to open errorlog file "
-                   << get_config()->errorlog_file.get();
+        LOG(ERROR) << "Failed to open errorlog file " << errorconf.file.get();
       } else {
-        std::cerr << "Failed to open errorlog file "
-                  << get_config()->errorlog_file.get() << std::endl;
+        std::cerr << "Failed to open errorlog file " << errorconf.file.get()
+                  << std::endl;
       }
 
       res = -1;
@@ -444,8 +445,9 @@ void log_chld(pid_t pid, int rstatus, const char *msg) {
 
 void redirect_stderr_to_errorlog() {
   auto lgconf = log_config();
+  auto &errorconf = get_config()->logging.error;
 
-  if (get_config()->errorlog_syslog || lgconf->errorlog_fd == -1) {
+  if (errorconf.syslog || lgconf->errorlog_fd == -1) {
     return;
   }
 

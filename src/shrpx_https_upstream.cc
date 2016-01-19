@@ -88,7 +88,7 @@ int htp_uricb(http_parser *htp, const char *data, size_t len) {
   // We happen to have the same value for method token.
   req.method = htp->method;
 
-  if (req.fs.buffer_size() + len > get_config()->header_field_buffer) {
+  if (req.fs.buffer_size() + len > get_config()->http.header_field_buffer) {
     if (LOG_ENABLED(INFO)) {
       ULOG(INFO, upstream) << "Too large URI size="
                            << req.fs.buffer_size() + len;
@@ -115,8 +115,9 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
   auto upstream = static_cast<HttpsUpstream *>(htp->data);
   auto downstream = upstream->get_downstream();
   auto &req = downstream->request();
+  auto &httpconf = get_config()->http;
 
-  if (req.fs.buffer_size() + len > get_config()->header_field_buffer) {
+  if (req.fs.buffer_size() + len > httpconf.header_field_buffer) {
     if (LOG_ENABLED(INFO)) {
       ULOG(INFO, upstream) << "Too large header block size="
                            << req.fs.buffer_size() + len;
@@ -130,7 +131,7 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
     if (req.fs.header_key_prev()) {
       req.fs.append_last_header_key(data, len);
     } else {
-      if (req.fs.num_fields() >= get_config()->max_header_fields) {
+      if (req.fs.num_fields() >= httpconf.max_header_fields) {
         if (LOG_ENABLED(INFO)) {
           ULOG(INFO, upstream)
               << "Too many header field num=" << req.fs.num_fields() + 1;
@@ -146,7 +147,7 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
     if (req.fs.trailer_key_prev()) {
       req.fs.append_last_trailer_key(data, len);
     } else {
-      if (req.fs.num_fields() >= get_config()->max_header_fields) {
+      if (req.fs.num_fields() >= httpconf.max_header_fields) {
         if (LOG_ENABLED(INFO)) {
           ULOG(INFO, upstream)
               << "Too many header field num=" << req.fs.num_fields() + 1;
@@ -166,7 +167,7 @@ int htp_hdr_valcb(http_parser *htp, const char *data, size_t len) {
   auto downstream = upstream->get_downstream();
   auto &req = downstream->request();
 
-  if (req.fs.buffer_size() + len > get_config()->header_field_buffer) {
+  if (req.fs.buffer_size() + len > get_config()->http.header_field_buffer) {
     if (LOG_ENABLED(INFO)) {
       ULOG(INFO, upstream) << "Too large header block size="
                            << req.fs.buffer_size() + len;
@@ -802,7 +803,7 @@ int HttpsUpstream::send_reply(Downstream *downstream, const uint8_t *body,
 
   if (!resp.fs.header(http2::HD_SERVER)) {
     output->append("Server: ");
-    output->append(get_config()->server_name);
+    output->append(get_config()->http.server_name);
     output->append("\r\n");
   }
 
@@ -839,8 +840,7 @@ void HttpsUpstream::error_reply(unsigned int status_code) {
   auto status_str = http2::get_status_string(status_code);
   output->append(status_str);
   output->append("\r\nServer: ");
-  const auto &server_name = get_config()->server_name;
-  output->append(server_name);
+  output->append(get_config()->http.server_name);
   output->append("\r\nContent-Length: ");
   auto cl = util::utos(html.size());
   output->append(cl);
@@ -927,8 +927,10 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
   buf->append(http2::get_status_string(resp.http_status));
   buf->append("\r\n");
 
+  auto &httpconf = get_config()->http;
+
   if (!get_config()->http2_proxy && !get_config()->client_proxy &&
-      !get_config()->no_location_rewrite) {
+      !httpconf.no_location_rewrite) {
     downstream->rewrite_location_response_header(
         get_client_handler()->get_upstream_scheme());
   }
@@ -984,10 +986,10 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
 
   if (!resp.fs.header(http2::HD_ALT_SVC)) {
     // We won't change or alter alt-svc from backend for now
-    if (!get_config()->altsvcs.empty()) {
+    if (!httpconf.altsvcs.empty()) {
       buf->append("Alt-Svc: ");
 
-      auto &altsvcs = get_config()->altsvcs;
+      auto &altsvcs = httpconf.altsvcs;
       write_altsvc(buf, altsvcs[0]);
       for (size_t i = 1; i < altsvcs.size(); ++i) {
         buf->append(", ");
@@ -999,7 +1001,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
 
   if (!get_config()->http2_proxy && !get_config()->client_proxy) {
     buf->append("Server: ");
-    buf->append(get_config()->server_name);
+    buf->append(httpconf.server_name);
     buf->append("\r\n");
   } else {
     auto server = resp.fs.header(http2::HD_SERVER);
@@ -1011,7 +1013,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
   }
 
   auto via = resp.fs.header(http2::HD_VIA);
-  if (get_config()->no_via) {
+  if (httpconf.no_via) {
     if (via) {
       buf->append("Via: ");
       buf->append((*via).value);
@@ -1028,7 +1030,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
     buf->append("\r\n");
   }
 
-  for (auto &p : get_config()->add_response_headers) {
+  for (auto &p : httpconf.add_response_headers) {
     buf->append(p.first);
     buf->append(": ");
     buf->append(p.second);

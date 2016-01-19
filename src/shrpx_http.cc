@@ -44,10 +44,10 @@ std::string create_error_html(unsigned int status_code) {
   res += "</title><body><h1>";
   res += status;
   res += "</h1><footer>";
-  const auto &server_name = get_config()->server_name;
+  const auto &server_name = get_config()->http.server_name;
   res.append(server_name.c_str(), server_name.size());
   res += " at port ";
-  res += util::utos(get_config()->port);
+  res += util::utos(get_config()->conn.listener.port);
   res += "</footer></body></html>";
   return res;
 }

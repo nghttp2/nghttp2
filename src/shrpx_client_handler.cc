@@ -371,16 +371,16 @@ int ClientHandler::upstream_http1_connhd_read() {
 ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
                              const char *ipaddr, const char *port)
     : conn_(worker->get_loop(), fd, ssl, worker->get_mcpool(),
-            get_config()->upstream_write_timeout,
-            get_config()->upstream_read_timeout, get_config()->write_rate,
-            get_config()->write_burst, get_config()->read_rate,
-            get_config()->read_burst, writecb, readcb, timeoutcb, this,
-            get_config()->tls_dyn_rec_warmup_threshold,
-            get_config()->tls_dyn_rec_idle_timeout),
+            get_config()->conn.upstream.timeout.write,
+            get_config()->conn.upstream.timeout.read,
+            get_config()->conn.upstream.ratelimit.write,
+            get_config()->conn.upstream.ratelimit.read, writecb, readcb,
+            timeoutcb, this, get_config()->tls.dyn_rec.warmup_threshold,
+            get_config()->tls.dyn_rec.idle_timeout),
       pinned_http2sessions_(
-          get_config()->downstream_proto == PROTO_HTTP2
+          get_config()->conn.downstream.proto == PROTO_HTTP2
               ? make_unique<std::vector<ssize_t>>(
-                    get_config()->downstream_addr_groups.size(), -1)
+                    get_config()->conn.downstream.addr_groups.size(), -1)
               : nullptr),
       ipaddr_(ipaddr), port_(port), worker_(worker),
       left_connhd_len_(NGHTTP2_CLIENT_MAGIC_LEN),
@@ -395,7 +395,7 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
   conn_.rlimit.startw();
   ev_timer_again(conn_.loop, &conn_.rt);
 
-  if (get_config()->accept_proxy_protocol) {
+  if (get_config()->conn.upstream.accept_proxy_protocol) {
     read_ = &ClientHandler::read_clear;
     write_ = &ClientHandler::noop;
     on_read_ = &ClientHandler::proxy_protocol_read;
@@ -404,14 +404,16 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
     setup_upstream_io_callback();
   }
 
-  if ((get_config()->forwarded_params & FORWARDED_FOR) &&
-      get_config()->forwarded_for_node_type == FORWARDED_NODE_OBFUSCATED) {
-    if (get_config()->forwarded_for_obfuscated.empty()) {
+  auto &fwdconf = get_config()->http.forwarded;
+
+  if ((fwdconf.params & FORWARDED_FOR) &&
+      fwdconf.for_node_type == FORWARDED_NODE_OBFUSCATED) {
+    if (fwdconf.for_obfuscated.empty()) {
       forwarded_for_obfuscated_ = "_";
       forwarded_for_obfuscated_ += util::random_alpha_digit(
           worker_->get_randgen(), SHRPX_OBFUSCATED_NODE_LENGTH);
     } else {
-      forwarded_for_obfuscated_ = get_config()->forwarded_for_obfuscated;
+      forwarded_for_obfuscated_ = fwdconf.for_obfuscated;
     }
   }
 }
@@ -521,7 +523,8 @@ int ClientHandler::validate_next_proto() {
     CLOG(INFO, this) << "The negotiated next protocol: " << proto;
   }
 
-  if (!ssl::in_proto_list(get_config()->npn_list, next_proto, next_proto_len)) {
+  if (!ssl::in_proto_list(get_config()->tls.npn_list, next_proto,
+                          next_proto_len)) {
     if (LOG_ENABLED(INFO)) {
       CLOG(INFO, this) << "The negotiated protocol is not supported";
     }
@@ -644,8 +647,9 @@ void ClientHandler::remove_downstream_connection(DownstreamConnection *dconn) {
 std::unique_ptr<DownstreamConnection>
 ClientHandler::get_downstream_connection(Downstream *downstream) {
   size_t group;
-  auto &groups = get_config()->downstream_addr_groups;
-  auto catch_all = get_config()->downstream_addr_group_catch_all;
+  auto &downstreamconf = get_config()->conn.downstream;
+  auto &groups = downstreamconf.addr_groups;
+  auto catch_all = downstreamconf.addr_group_catch_all;
 
   const auto &req = downstream->request();
 
@@ -690,7 +694,7 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
 
     auto dconn_pool = worker_->get_dconn_pool();
 
-    if (get_config()->downstream_proto == PROTO_HTTP2) {
+    if (downstreamconf.proto == PROTO_HTTP2) {
       Http2Session *http2session;
       auto &pinned = (*pinned_http2sessions_)[group];
       if (pinned == -1) {
@@ -833,7 +837,7 @@ void ClientHandler::write_accesslog(Downstream *downstream) {
   const auto &resp = downstream->response();
 
   upstream_accesslog(
-      get_config()->accesslog_format,
+      get_config()->logging.access.format,
       LogSpec{
           downstream, ipaddr_, http2::to_method_string(req.method),
 
@@ -854,8 +858,8 @@ void ClientHandler::write_accesslog(Downstream *downstream) {
           std::chrono::high_resolution_clock::now(), // request_end_time
 
           req.http_major, req.http_minor, resp.http_status,
-          downstream->response_sent_body_length, port_, get_config()->port,
-          get_config()->pid,
+          downstream->response_sent_body_length, port_,
+          get_config()->conn.listener.port, get_config()->pid,
       });
 }
 
@@ -866,7 +870,7 @@ void ClientHandler::write_accesslog(int major, int minor, unsigned int status,
   nghttp2::ssl::TLSSessionInfo tls_info;
 
   upstream_accesslog(
-      get_config()->accesslog_format,
+      get_config()->logging.access.format,
       LogSpec{
           nullptr, ipaddr_,
           StringRef::from_lit("-"), // method
@@ -877,7 +881,8 @@ void ClientHandler::write_accesslog(int major, int minor, unsigned int status,
                         // there a better value?
           highres_now,  // request_end_time
           major, minor, // major, minor
-          status, body_bytes_sent, port_, get_config()->port, get_config()->pid,
+          status, body_bytes_sent, port_, get_config()->conn.listener.port,
+          get_config()->pid,
       });
 }
 
@@ -1119,8 +1124,10 @@ int ClientHandler::proxy_protocol_read() {
 }
 
 const std::string &ClientHandler::get_forwarded_by() {
-  if (get_config()->forwarded_by_node_type == FORWARDED_NODE_OBFUSCATED) {
-    return get_config()->forwarded_by_obfuscated;
+  auto &fwdconf = get_config()->http.forwarded;
+
+  if (fwdconf.by_node_type == FORWARDED_NODE_OBFUSCATED) {
+    return fwdconf.by_obfuscated;
   }
   if (!local_hostport_.empty()) {
     return local_hostport_;
@@ -1151,13 +1158,13 @@ const std::string &ClientHandler::get_forwarded_by() {
     local_hostport_ += ':';
   }
 
-  local_hostport_ += util::utos(get_config()->port);
+  local_hostport_ += util::utos(get_config()->conn.listener.port);
 
   return local_hostport_;
 }
 
 const std::string &ClientHandler::get_forwarded_for() const {
-  if (get_config()->forwarded_for_node_type == FORWARDED_NODE_OBFUSCATED) {
+  if (get_config()->http.forwarded.for_node_type == FORWARDED_NODE_OBFUSCATED) {
     return forwarded_for_obfuscated_;
   }
 

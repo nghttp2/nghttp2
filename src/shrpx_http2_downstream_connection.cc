@@ -256,8 +256,11 @@ int Http2DownstreamConnection::push_request_headers() {
 
   const auto &req = downstream_->request();
 
+  auto &httpconf = get_config()->http;
+  auto &http2conf = get_config()->http2;
+
   auto no_host_rewrite =
-      get_config()->no_host_rewrite || get_config()->http2_proxy ||
+      httpconf.no_host_rewrite || get_config()->http2_proxy ||
       get_config()->client_proxy || req.method == HTTP_CONNECT;
 
   // http2session_ has already in CONNECTED state, so we can get
@@ -265,7 +268,7 @@ int Http2DownstreamConnection::push_request_headers() {
   auto addr_idx = http2session_->get_addr_idx();
   auto group = http2session_->get_group();
   const auto &downstream_hostport =
-      get_config()->downstream_addr_groups[group].addrs[addr_idx].hostport;
+      get_config()->conn.downstream.addr_groups[group].addrs[addr_idx].hostport;
 
   // For HTTP/1.0 request, there is no authority in request.  In that
   // case, we use backend server's host nonetheless.
@@ -278,7 +281,7 @@ int Http2DownstreamConnection::push_request_headers() {
   downstream_->set_request_downstream_host(authority.str());
 
   size_t num_cookies = 0;
-  if (!get_config()->http2_no_cookie_crumbling) {
+  if (!http2conf.no_cookie_crumbling) {
     num_cookies = downstream_->count_crumble_request_cookie();
   }
 
@@ -294,7 +297,7 @@ int Http2DownstreamConnection::push_request_headers() {
   // 9. forwarded (optional)
   auto nva = std::vector<nghttp2_nv>();
   nva.reserve(req.fs.headers().size() + 9 + num_cookies +
-              get_config()->add_request_headers.size());
+              httpconf.add_request_headers.size());
 
   nva.push_back(
       http2::make_nv_lc_nocopy(":method", http2::to_method_string(req.method)));
@@ -328,7 +331,7 @@ int Http2DownstreamConnection::push_request_headers() {
     chunked_encoding = true;
   }
 
-  if (!get_config()->http2_no_cookie_crumbling) {
+  if (!http2conf.no_cookie_crumbling) {
     downstream_->crumble_request_cookie(nva);
   }
 
@@ -337,12 +340,13 @@ int Http2DownstreamConnection::push_request_headers() {
 
   std::string forwarded_value;
 
-  auto fwd = get_config()->strip_incoming_forwarded
-                 ? nullptr
-                 : req.fs.header(http2::HD_FORWARDED);
+  auto &fwdconf = httpconf.forwarded;
 
-  if (get_config()->forwarded_params) {
-    auto params = get_config()->forwarded_params;
+  auto fwd =
+      fwdconf.strip_incoming ? nullptr : req.fs.header(http2::HD_FORWARDED);
+
+  if (fwdconf.params) {
+    auto params = fwdconf.params;
 
     if (get_config()->http2_proxy || get_config()->client_proxy ||
         req.method == HTTP_CONNECT) {
@@ -370,12 +374,14 @@ int Http2DownstreamConnection::push_request_headers() {
     forwarded_value = fwd->value;
   }
 
-  std::string xff_value;
-  auto xff = get_config()->strip_incoming_x_forwarded_for
-                 ? nullptr
-                 : req.fs.header(http2::HD_X_FORWARDED_FOR);
+  auto &xffconf = httpconf.xff;
 
-  if (get_config()->add_x_forwarded_for) {
+  auto xff = xffconf.strip_incoming ? nullptr
+                                    : req.fs.header(http2::HD_X_FORWARDED_FOR);
+
+  std::string xff_value;
+
+  if (xffconf.add) {
     if (xff) {
       xff_value = (*xff).value;
       xff_value += ", ";
@@ -394,7 +400,7 @@ int Http2DownstreamConnection::push_request_headers() {
 
   std::string via_value;
   auto via = req.fs.header(http2::HD_VIA);
-  if (get_config()->no_via) {
+  if (httpconf.no_via) {
     if (via) {
       nva.push_back(http2::make_nv_ls_nocopy("via", (*via).value));
     }
@@ -415,7 +421,7 @@ int Http2DownstreamConnection::push_request_headers() {
     nva.push_back(http2::make_nv_ll("te", "trailers"));
   }
 
-  for (auto &p : get_config()->add_request_headers) {
+  for (auto &p : httpconf.add_request_headers) {
     nva.push_back(http2::make_nv_nocopy(p.first, p.second));
   }
 

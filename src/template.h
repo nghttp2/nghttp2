@@ -171,9 +171,17 @@ constexpr unsigned long long operator"" _g(unsigned long long g) {
 
 // User-defined literals for time, converted into double in seconds
 
+// hours
 constexpr double operator"" _h(unsigned long long h) { return h * 60 * 60; }
 
+// minutes
 constexpr double operator"" _min(unsigned long long min) { return min * 60; }
+
+// seconds
+constexpr double operator"" _s(unsigned long long s) { return s; }
+
+// milliseconds
+constexpr double operator"" _ms(unsigned long long ms) { return ms / 1000.; }
 
 // Returns a copy of NULL-terminated string [first, last).
 template <typename InputIt>

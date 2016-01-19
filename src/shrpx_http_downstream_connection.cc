@@ -113,10 +113,11 @@ void connectcb(struct ev_loop *loop, ev_io *w, int revents) {
 HttpDownstreamConnection::HttpDownstreamConnection(
     DownstreamConnectionPool *dconn_pool, size_t group, struct ev_loop *loop)
     : DownstreamConnection(dconn_pool),
-      conn_(loop, -1, nullptr, nullptr, get_config()->downstream_write_timeout,
-            get_config()->downstream_read_timeout, 0, 0, 0, 0, connectcb,
-            readcb, timeoutcb, this, get_config()->tls_dyn_rec_warmup_threshold,
-            get_config()->tls_dyn_rec_idle_timeout),
+      conn_(loop, -1, nullptr, nullptr,
+            get_config()->conn.downstream.timeout.write,
+            get_config()->conn.downstream.timeout.read, {}, {}, connectcb,
+            readcb, timeoutcb, this, get_config()->tls.dyn_rec.warmup_threshold,
+            get_config()->tls.dyn_rec.idle_timeout),
       ioctrl_(&conn_.rlimit), response_htp_{0}, group_(group), addr_idx_(0),
       connected_(false) {}
 
@@ -126,6 +127,8 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
   if (LOG_ENABLED(INFO)) {
     DCLOG(INFO, this) << "Attaching to DOWNSTREAM:" << downstream;
   }
+
+  auto &downstreamconf = get_config()->conn.downstream;
 
   if (conn_.fd == -1) {
     auto connect_blocker = client_handler_->get_connect_blocker();
@@ -141,7 +144,7 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
     auto worker = client_handler_->get_worker();
     auto &next_downstream = worker->get_dgrp(group_)->next;
     auto end = next_downstream;
-    auto &addrs = get_config()->downstream_addr_groups[group_].addrs;
+    auto &addrs = downstreamconf.addr_groups[group_].addrs;
     for (;;) {
       auto &addr = addrs[next_downstream];
       auto i = next_downstream;
@@ -196,7 +199,7 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
     ev_timer_again(conn_.loop, &conn_.wt);
   } else {
     // we may set read timer cb to idle_timeoutcb.  Reset again.
-    conn_.rt.repeat = get_config()->downstream_read_timeout;
+    conn_.rt.repeat = downstreamconf.timeout.read;
     ev_set_cb(&conn_.rt, timeoutcb);
     ev_timer_again(conn_.loop, &conn_.rt);
     ev_set_cb(&conn_.rev, readcb);
@@ -211,16 +214,20 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
 }
 
 int HttpDownstreamConnection::push_request_headers() {
-  const auto &downstream_hostport =
-      get_config()->downstream_addr_groups[group_].addrs[addr_idx_].hostport;
+  const auto &downstream_hostport = get_config()
+                                        ->conn.downstream.addr_groups[group_]
+                                        .addrs[addr_idx_]
+                                        .hostport;
   const auto &req = downstream_->request();
 
   auto connect_method = req.method == HTTP_CONNECT;
 
+  auto &httpconf = get_config()->http;
+
   // For HTTP/1.0 request, there is no authority in request.  In that
   // case, we use backend server's host nonetheless.
   auto authority = StringRef(downstream_hostport);
-  auto no_host_rewrite = get_config()->no_host_rewrite ||
+  auto no_host_rewrite = httpconf.no_host_rewrite ||
                          get_config()->http2_proxy ||
                          get_config()->client_proxy || connect_method;
 
@@ -296,11 +303,13 @@ int HttpDownstreamConnection::push_request_headers() {
   auto upstream = downstream_->get_upstream();
   auto handler = upstream->get_client_handler();
 
-  auto fwd = get_config()->strip_incoming_forwarded
-                 ? nullptr
-                 : req.fs.header(http2::HD_FORWARDED);
-  if (get_config()->forwarded_params) {
-    auto params = get_config()->forwarded_params;
+  auto &fwdconf = httpconf.forwarded;
+
+  auto fwd =
+      fwdconf.strip_incoming ? nullptr : req.fs.header(http2::HD_FORWARDED);
+
+  if (fwdconf.params) {
+    auto params = fwdconf.params;
 
     if (get_config()->http2_proxy || get_config()->client_proxy ||
         connect_method) {
@@ -328,11 +337,12 @@ int HttpDownstreamConnection::push_request_headers() {
     buf->append("\r\n");
   }
 
-  auto xff = get_config()->strip_incoming_x_forwarded_for
-                 ? nullptr
-                 : req.fs.header(http2::HD_X_FORWARDED_FOR);
+  auto &xffconf = httpconf.xff;
 
-  if (get_config()->add_x_forwarded_for) {
+  auto xff = xffconf.strip_incoming ? nullptr
+                                    : req.fs.header(http2::HD_X_FORWARDED_FOR);
+
+  if (xffconf.add) {
     buf->append("X-Forwarded-For: ");
     if (xff) {
       buf->append((*xff).value);
@@ -353,7 +363,7 @@ int HttpDownstreamConnection::push_request_headers() {
     buf->append("\r\n");
   }
   auto via = req.fs.header(http2::HD_VIA);
-  if (get_config()->no_via) {
+  if (httpconf.no_via) {
     if (via) {
       buf->append("Via: ");
       buf->append((*via).value);
@@ -369,7 +379,7 @@ int HttpDownstreamConnection::push_request_headers() {
     buf->append("\r\n");
   }
 
-  for (auto &p : get_config()->add_request_headers) {
+  for (auto &p : httpconf.add_request_headers) {
     buf->append(p.first);
     buf->append(": ");
     buf->append(p.second);
@@ -474,7 +484,7 @@ void HttpDownstreamConnection::detach_downstream(Downstream *downstream) {
   ev_set_cb(&conn_.rev, idle_readcb);
   ioctrl_.force_resume_read();
 
-  conn_.rt.repeat = get_config()->downstream_idle_read_timeout;
+  conn_.rt.repeat = get_config()->conn.downstream.timeout.idle_read;
   ev_set_cb(&conn_.rt, idle_timeoutcb);
   ev_timer_again(conn_.loop, &conn_.rt);
 
@@ -489,7 +499,7 @@ void HttpDownstreamConnection::pause_read(IOCtrlReason reason) {
 int HttpDownstreamConnection::resume_read(IOCtrlReason reason,
                                           size_t consumed) {
   if (downstream_->get_response_buf()->rleft() <=
-      get_config()->downstream_request_buffer_size / 2) {
+      get_config()->conn.downstream.request_buffer_size / 2) {
     ioctrl_.resume_read(reason);
   }
 

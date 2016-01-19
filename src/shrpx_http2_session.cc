@@ -146,10 +146,10 @@ Http2Session::Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx,
                            ConnectBlocker *connect_blocker, Worker *worker,
                            size_t group, size_t idx)
     : conn_(loop, -1, nullptr, worker->get_mcpool(),
-            get_config()->downstream_write_timeout,
-            get_config()->downstream_read_timeout, 0, 0, 0, 0, writecb, readcb,
-            timeoutcb, this, get_config()->tls_dyn_rec_warmup_threshold,
-            get_config()->tls_dyn_rec_idle_timeout),
+            get_config()->conn.downstream.timeout.write,
+            get_config()->conn.downstream.timeout.read, {}, {}, writecb, readcb,
+            timeoutcb, this, get_config()->tls.dyn_rec.warmup_threshold,
+            get_config()->tls.dyn_rec.idle_timeout),
       worker_(worker), connect_blocker_(connect_blocker), ssl_ctx_(ssl_ctx),
       session_(nullptr), data_pending_(nullptr), data_pendinglen_(0),
       addr_idx_(0), group_(group), index_(idx), state_(DISCONNECTED),
@@ -240,13 +240,13 @@ int Http2Session::disconnect(bool hard) {
 int Http2Session::check_cert() {
   return ssl::check_cert(
       conn_.tls.ssl,
-      &get_config()->downstream_addr_groups[group_].addrs[addr_idx_]);
+      &get_config()->conn.downstream.addr_groups[group_].addrs[addr_idx_]);
 }
 
 int Http2Session::initiate_connection() {
   int rv = 0;
 
-  auto &addrs = get_config()->downstream_addr_groups[group_].addrs;
+  auto &addrs = get_config()->conn.downstream.addr_groups[group_].addrs;
 
   if (state_ == DISCONNECTED) {
     if (connect_blocker_->blocked()) {
@@ -331,8 +331,8 @@ int Http2Session::initiate_connection() {
         conn_.set_ssl(ssl);
       }
 
-      StringRef sni_name = !get_config()->backend_tls_sni_name.empty()
-                               ? get_config()->backend_tls_sni_name
+      StringRef sni_name = !get_config()->tls.backend_sni_name.empty()
+                               ? get_config()->tls.backend_sni_name
                                : downstream_addr.host;
 
       if (!util::numeric_host(sni_name.c_str())) {
@@ -509,7 +509,7 @@ int Http2Session::downstream_connect_proxy() {
     SSLOG(INFO, this) << "Connected to the proxy";
   }
   auto &downstream_addr =
-      get_config()->downstream_addr_groups[group_].addrs[addr_idx_];
+      get_config()->conn.downstream.addr_groups[group_].addrs[addr_idx_];
 
   std::string req = "CONNECT ";
   req.append(downstream_addr.hostport.c_str(), downstream_addr.hostport.size());
@@ -1309,9 +1309,10 @@ int Http2Session::connection_made() {
     }
   }
 
-  rv = nghttp2_session_client_new2(&session_,
-                                   get_config()->http2_downstream_callbacks,
-                                   this, get_config()->http2_client_option);
+  auto &http2conf = get_config()->http2;
+
+  rv = nghttp2_session_client_new2(&session_, http2conf.downstream.callbacks,
+                                   this, http2conf.downstream.option);
 
   if (rv != 0) {
     return -1;
@@ -1322,12 +1323,12 @@ int Http2Session::connection_made() {
   std::array<nghttp2_settings_entry, 3> entry;
   size_t nentry = 2;
   entry[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
-  entry[0].value = get_config()->http2_max_concurrent_streams;
+  entry[0].value = http2conf.max_concurrent_streams;
 
   entry[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
-  entry[1].value = (1 << get_config()->http2_downstream_window_bits) - 1;
+  entry[1].value = (1 << http2conf.downstream.window_bits) - 1;
 
-  if (get_config()->no_server_push || get_config()->http2_proxy ||
+  if (http2conf.no_server_push || get_config()->http2_proxy ||
       get_config()->client_proxy) {
     entry[nentry].settings_id = NGHTTP2_SETTINGS_ENABLE_PUSH;
     entry[nentry].value = 0;
@@ -1340,17 +1341,17 @@ int Http2Session::connection_made() {
     return -1;
   }
 
-  if (get_config()->http2_downstream_connection_window_bits > 16) {
-    int32_t delta =
-        (1 << get_config()->http2_downstream_connection_window_bits) - 1 -
-        NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE;
+  auto connection_window_bits = http2conf.downstream.connection_window_bits;
+  if (connection_window_bits > 16) {
+    int32_t delta = (1 << connection_window_bits) - 1 -
+                    NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE;
     rv = nghttp2_submit_window_update(session_, NGHTTP2_FLAG_NONE, 0, delta);
     if (rv != 0) {
       return -1;
     }
   }
 
-  auto must_terminate = !get_config()->downstream_no_tls &&
+  auto must_terminate = !get_config()->conn.downstream.no_tls &&
                         !nghttp2::ssl::check_http2_requirement(conn_.tls.ssl);
 
   if (must_terminate) {
@@ -1718,7 +1719,7 @@ int Http2Session::tls_handshake() {
     SSLOG(INFO, this) << "SSL/TLS handshake completed";
   }
 
-  if (!get_config()->downstream_no_tls && !get_config()->insecure &&
+  if (!get_config()->conn.downstream.no_tls && !get_config()->tls.insecure &&
       check_cert() != 0) {
     return -1;
   }
