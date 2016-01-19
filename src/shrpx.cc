@@ -1591,7 +1591,7 @@ HTTP:
               given,   the  interface   address  of   the  connection,
               including  port number,  is  sent  with "by"  parameter.
               User can also specify the static obfuscated string.  The
-              limitation is  that it  must starts  with "_",  and only
+              limitation  is that  it must  start with  "_", and  only
               consists of  character set [A-Za-z0-9._-],  as described
               in RFC 7239.
               Default: obfuscated
@@ -1602,8 +1602,8 @@ HTTP:
               connection.  If "ip" is given, the remote client address
               of  the connection,  without port  number, is  sent with
               "for"  parameter.   User  can also  specify  the  static
-              obfuscated  string.   The  limitation is  that  it  must
-              starts  with "_",  and  only consists  of character  set
+              obfuscated string.  The limitation is that it must start
+              with   "_",  and   only   consists   of  character   set
               [A-Za-z0-9._-], as described in RFC 7239.
               Default: obfuscated
   --no-via    Don't append to  Via header field.  If  Via header field
