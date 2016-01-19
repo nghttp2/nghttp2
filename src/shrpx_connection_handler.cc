@@ -385,7 +385,7 @@ void ConnectionHandler::disable_acceptor() {
   }
 }
 
-void ConnectionHandler::disable_acceptor_temporary(ev_tstamp t) {
+void ConnectionHandler::sleep_acceptor(ev_tstamp t) {
   if (t == 0. || ev_is_active(&disable_acceptor_timer_)) {
     return;
   }

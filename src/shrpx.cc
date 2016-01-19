@@ -1032,6 +1032,7 @@ void fill_default_config() {
       // Default accept() backlog
       listenerconf.backlog = 512;
       listenerconf.host_unix = false;
+      listenerconf.timeout.sleep = 30_s;
     }
   }
 
