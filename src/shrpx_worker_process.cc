@@ -398,8 +398,10 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
         make_unique<AcceptHandler>(wpconf->server_fd, &conn_handler));
   }
 
+  auto &upstreamconf = get_config()->conn.upstream;
+
 #ifdef HAVE_NEVERBLEED
-  if (!get_config()->upstream_no_tls || ssl::downstream_tls_enabled()) {
+  if (!upstreamconf.no_tls || ssl::downstream_tls_enabled()) {
     std::array<char, NEVERBLEED_ERRBUF_SIZE> errbuf;
     auto nb = make_unique<neverbleed_t>();
     if (neverbleed_init(nb.get(), errbuf.data()) != 0) {
@@ -422,8 +424,6 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
   }
 
 #endif // HAVE_NEVERBLEED
-
-  auto &upstreamconf = get_config()->conn.upstream;
 
   ev_timer renew_ticket_key_timer;
   if (!upstreamconf.no_tls) {
