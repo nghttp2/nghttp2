@@ -905,31 +905,14 @@ namespace {
 void fill_default_config() {
   *mod_config() = {};
 
-  mod_config()->verbose = false;
-  mod_config()->daemon = false;
-
   mod_config()->num_worker = 1;
   mod_config()->conf_path = strcopy("/etc/nghttpx/nghttpx.conf");
-  mod_config()->http2_proxy = false;
-  mod_config()->http2_bridge = false;
-  mod_config()->client_proxy = false;
-  mod_config()->client = false;
-  mod_config()->client_mode = false;
-  mod_config()->pid_file = nullptr;
-  mod_config()->user = nullptr;
-  mod_config()->uid = 0;
-  mod_config()->gid = 0;
   mod_config()->pid = getpid();
-  mod_config()->padding = 0;
-
-  mod_config()->argc = 0;
-  mod_config()->argv = nullptr;
 
   auto &tlsconf = mod_config()->tls;
   {
     auto &ticketconf = tlsconf.ticket;
     ticketconf.cipher = EVP_aes_128_cbc();
-    ticketconf.cipher_given = false;
 
     {
       auto &memcachedconf = ticketconf.memcached;
@@ -943,45 +926,22 @@ void fill_default_config() {
     ocspconf.update_interval = 4_h;
     ocspconf.fetch_ocsp_response_file =
         strcopy(PKGDATADIR "/fetch-ocsp-response");
-    ocspconf.disabled = false;
-
-    auto &client_verify = tlsconf.client_verify;
-    client_verify.enabled = false;
 
     auto &dyn_recconf = tlsconf.dyn_rec;
     dyn_recconf.warmup_threshold = 1_m;
-    dyn_recconf.idle_timeout = 1.;
+    dyn_recconf.idle_timeout = 1_s;
 
     tlsconf.session_timeout = std::chrono::hours(12);
-    tlsconf.tls_proto_mask = 0;
-    tlsconf.insecure = false;
   }
 
   auto &httpconf = mod_config()->http;
-  {
-    auto &xffconf = httpconf.xff;
-    xffconf.add = false;
-    xffconf.strip_incoming = false;
-  }
-
   httpconf.server_name = "nghttpx nghttp2/" NGHTTP2_VERSION;
-  httpconf.no_via = false;
-  httpconf.no_location_rewrite = false;
   httpconf.no_host_rewrite = true;
   httpconf.header_field_buffer = 64_k;
   httpconf.max_header_fields = 100;
 
   auto &http2conf = mod_config()->http2;
   {
-    auto &timeoutconf = http2conf.timeout;
-    {
-      // Read timeout for HTTP/2 stream
-      timeoutconf.stream_read = 0.;
-
-      // Write timeout for HTTP/2 stream
-      timeoutconf.stream_write = 0.;
-    }
-
     auto &upstreamconf = http2conf.upstream;
     // window bits for HTTP/2 and SPDY upstream connection per
     // stream. 2**16-1 = 64KiB-1, which is HTTP/2 default. Please note
@@ -995,11 +955,11 @@ void fill_default_config() {
     nghttp2_option_set_no_auto_window_update(upstreamconf.option, 1);
     nghttp2_option_set_no_recv_client_magic(upstreamconf.option, 1);
   }
+
   {
     auto &downstreamconf = http2conf.downstream;
     downstreamconf.window_bits = 16;
     downstreamconf.connection_window_bits = 16;
-    downstreamconf.connections_per_worker = 0;
 
     nghttp2_option_new(&downstreamconf.option);
     nghttp2_option_set_no_auto_window_update(downstreamconf.option, 1);
@@ -1007,18 +967,14 @@ void fill_default_config() {
   }
 
   http2conf.max_concurrent_streams = 100;
-  http2conf.no_cookie_crumbling = false;
-  http2conf.no_server_push = false;
 
   auto &loggingconf = mod_config()->logging;
   {
     auto &accessconf = loggingconf.access;
-    accessconf.syslog = false;
     accessconf.format = parse_log_format(DEFAULT_ACCESSLOG_FORMAT);
 
     auto &errorconf = loggingconf.error;
     errorconf.file = strcopy("/dev/stderr");
-    errorconf.syslog = false;
   }
 
   loggingconf.syslog_facility = LOG_DAEMON;
@@ -1031,7 +987,6 @@ void fill_default_config() {
       listenerconf.port = 3000;
       // Default accept() backlog
       listenerconf.backlog = 512;
-      listenerconf.host_unix = false;
       listenerconf.timeout.sleep = 30_s;
     }
   }
@@ -1047,10 +1002,8 @@ void fill_default_config() {
       timeoutconf.read = 1_min;
 
       // Write timeout for HTTP2/non-HTTP2 upstream connection
-      timeoutconf.write = 30.;
+      timeoutconf.write = 30_s;
     }
-
-    upstreamconf.no_tls = false;
   }
 
   {
@@ -1059,14 +1012,11 @@ void fill_default_config() {
       auto &timeoutconf = downstreamconf.timeout;
       // Read/Write timeouts for downstream connection
       timeoutconf.read = 1_min;
-      timeoutconf.write = 30.;
+      timeoutconf.write = 30_s;
       // Timeout for pooled (idle) connections
-      timeoutconf.idle_read = 2.;
+      timeoutconf.idle_read = 2_s;
     }
 
-    downstreamconf.no_tls = false;
-    downstreamconf.ipv4 = false;
-    downstreamconf.ipv6 = false;
     downstreamconf.connections_per_host = 8;
     downstreamconf.request_buffer_size = 16_k;
     downstreamconf.response_buffer_size = 16_k;
