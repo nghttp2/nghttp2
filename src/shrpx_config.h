@@ -429,6 +429,10 @@ struct Http2Config {
     size_t connection_window_bits;
     size_t connections_per_worker;
   } downstream;
+  struct {
+    ev_tstamp stream_read;
+    ev_tstamp stream_write;
+  } timeout;
   size_t max_concurrent_streams;
   bool no_cookie_crumbling;
   bool no_server_push;
@@ -449,26 +453,77 @@ struct LoggingConfig {
   int syslog_facility;
 };
 
+struct RateLimitConfig {
+  size_t rate;
+  size_t burst;
+};
+
+struct ConnectionConfig {
+  struct {
+    struct {
+      ev_tstamp sleep;
+    } timeout;
+    // address of frontend connection.  This could be a path to UNIX
+    // domain socket.  In this case, |host_unix| must be true.
+    std::unique_ptr<char[]> host;
+    // frontend listening port.  0 if frontend listens on UNIX domain
+    // socket, in this case |host_unix| must be true.
+    uint16_t port;
+    // true if host contains UNIX domain socket path
+    bool host_unix;
+    int backlog;
+    // TCP fastopen.  If this is positive, it is passed to
+    // setsockopt() along with TCP_FASTOPEN.
+    int fastopen;
+  } listener;
+
+  struct {
+    struct {
+      ev_tstamp http2_read;
+      ev_tstamp read;
+      ev_tstamp write;
+    } timeout;
+    struct {
+      RateLimitConfig read;
+      RateLimitConfig write;
+    } ratelimit;
+    size_t worker_connections;
+    bool no_tls;
+    bool accept_proxy_protocol;
+  } upstream;
+
+  struct {
+    struct {
+      ev_tstamp read;
+      ev_tstamp write;
+      ev_tstamp idle_read;
+    } timeout;
+    std::vector<DownstreamAddrGroup> addr_groups;
+    // The index of catch-all group in downstream_addr_groups.
+    size_t addr_group_catch_all;
+    size_t connections_per_host;
+    size_t connections_per_frontend;
+    size_t request_buffer_size;
+    size_t response_buffer_size;
+    // downstream protocol; this will be determined by given options.
+    shrpx_proto proto;
+    bool no_tls;
+    // true if IPv4 only; ipv4 and ipv6 are mutually exclusive; and
+    // (ipv4 && ipv6) must be false.
+    bool ipv4;
+    // true if IPv6 only
+    bool ipv6;
+  } downstream;
+};
+
 struct Config {
-  std::vector<DownstreamAddrGroup> downstream_addr_groups;
   Router router;
   HttpProxy downstream_http_proxy;
   HttpConfig http;
   Http2Config http2;
   TLSConfig tls;
   LoggingConfig logging;
-  ev_tstamp http2_upstream_read_timeout;
-  ev_tstamp upstream_read_timeout;
-  ev_tstamp upstream_write_timeout;
-  ev_tstamp downstream_read_timeout;
-  ev_tstamp downstream_write_timeout;
-  ev_tstamp stream_read_timeout;
-  ev_tstamp stream_write_timeout;
-  ev_tstamp downstream_idle_read_timeout;
-  ev_tstamp listener_disable_timeout;
-  // address of frontend connection.  This could be a path to UNIX
-  // domain socket.  In this case, |host_unix| must be true.
-  std::unique_ptr<char[]> host;
+  ConnectionConfig conn;
   std::unique_ptr<char[]> pid_file;
   std::unique_ptr<char[]> conf_path;
   std::unique_ptr<char[]> user;
@@ -477,49 +532,20 @@ struct Config {
   char **argv;
   char *cwd;
   size_t num_worker;
-  size_t downstream_connections_per_host;
-  size_t downstream_connections_per_frontend;
-  size_t read_rate;
-  size_t read_burst;
-  size_t write_rate;
-  size_t write_burst;
-  size_t worker_read_rate;
-  size_t worker_read_burst;
-  size_t worker_write_rate;
-  size_t worker_write_burst;
   size_t padding;
-  size_t worker_frontend_connections;
   size_t rlimit_nofile;
-  size_t downstream_request_buffer_size;
-  size_t downstream_response_buffer_size;
-  // The index of catch-all group in downstream_addr_groups.
-  size_t downstream_addr_group_catch_all;
-  // downstream protocol; this will be determined by given options.
-  shrpx_proto downstream_proto;
-  int backlog;
   int argc;
-  int fastopen;
   uid_t uid;
   gid_t gid;
   pid_t pid;
-  // frontend listening port.  0 if frontend listens on UNIX domain
-  // socket, in this case |host_unix| must be true.
-  uint16_t port;
   bool verbose;
   bool daemon;
   bool http2_proxy;
   bool http2_bridge;
   bool client_proxy;
-  bool upstream_no_tls;
-  bool downstream_no_tls;
   bool client;
   // true if --client or --client-proxy are enabled.
   bool client_mode;
-  bool backend_ipv4;
-  bool backend_ipv6;
-  // true if host contains UNIX domain socket path
-  bool host_unix;
-  bool accept_proxy_protocol;
 };
 
 const Config *get_config();

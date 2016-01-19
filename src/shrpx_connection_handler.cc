@@ -300,13 +300,13 @@ int ConnectionHandler::handle_connection(int fd, sockaddr *addr, int addrlen) {
   }
 
   if (get_config()->num_worker == 1) {
-
+    auto &upstreamconf = get_config()->conn.upstream;
     if (single_worker_->get_worker_stat()->num_connections >=
-        get_config()->worker_frontend_connections) {
+        upstreamconf.worker_connections) {
 
       if (LOG_ENABLED(INFO)) {
         LLOG(INFO, this) << "Too many connections >="
-                         << get_config()->worker_frontend_connections;
+                         << upstreamconf.worker_connections;
       }
 
       close(fd);

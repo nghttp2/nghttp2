@@ -594,6 +594,8 @@ void parse_mapping(const DownstreamAddr &addr, const char *src) {
   // will append '/' to all patterns, so it becomes catch-all pattern.
   auto mapping = util::split_config_str_list(src, ':');
   assert(!mapping.empty());
+  auto &addr_groups = mod_config()->conn.downstream.addr_groups;
+
   for (const auto &raw_pattern : mapping) {
     auto done = false;
     std::string pattern;
@@ -608,7 +610,7 @@ void parse_mapping(const DownstreamAddr &addr, const char *src) {
       util::inp_strlower(pattern);
       pattern += http2::normalize_path(slash, raw_pattern.second);
     }
-    for (auto &g : mod_config()->downstream_addr_groups) {
+    for (auto &g : addr_groups) {
       if (g.pattern.get() == pattern) {
         g.addrs.push_back(addr);
         done = true;
@@ -622,9 +624,9 @@ void parse_mapping(const DownstreamAddr &addr, const char *src) {
     g.addrs.push_back(addr);
 
     mod_config()->router.add_route(g.pattern.get(), strlen(g.pattern.get()),
-                                   get_config()->downstream_addr_groups.size());
+                                   addr_groups.size());
 
-    mod_config()->downstream_addr_groups.push_back(std::move(g));
+    addr_groups.push_back(std::move(g));
   }
 }
 } // namespace
@@ -1419,11 +1421,13 @@ int parse_config(const char *opt, const char *optarg,
     return 0;
   }
   case SHRPX_OPTID_FRONTEND: {
+    auto &listenerconf = mod_config()->conn.listener;
+
     if (util::istarts_with(optarg, SHRPX_UNIX_PATH_PREFIX)) {
       auto path = optarg + str_size(SHRPX_UNIX_PATH_PREFIX);
-      mod_config()->host = strcopy(path);
-      mod_config()->port = 0;
-      mod_config()->host_unix = true;
+      listenerconf.host = strcopy(path);
+      listenerconf.port = 0;
+      listenerconf.host_unix = true;
 
       return 0;
     }
@@ -1433,9 +1437,9 @@ int parse_config(const char *opt, const char *optarg,
       return -1;
     }
 
-    mod_config()->host = strcopy(host);
-    mod_config()->port = port;
-    mod_config()->host_unix = false;
+    listenerconf.host = strcopy(host);
+    listenerconf.port = port;
+    listenerconf.host_unix = false;
 
     return 0;
   }
@@ -1484,20 +1488,26 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   case SHRPX_OPTID_FRONTEND_HTTP2_READ_TIMEOUT:
-    return parse_duration(&mod_config()->http2_upstream_read_timeout, opt,
+    return parse_duration(&mod_config()->conn.upstream.timeout.http2_read, opt,
                           optarg);
   case SHRPX_OPTID_FRONTEND_READ_TIMEOUT:
-    return parse_duration(&mod_config()->upstream_read_timeout, opt, optarg);
+    return parse_duration(&mod_config()->conn.upstream.timeout.read, opt,
+                          optarg);
   case SHRPX_OPTID_FRONTEND_WRITE_TIMEOUT:
-    return parse_duration(&mod_config()->upstream_write_timeout, opt, optarg);
+    return parse_duration(&mod_config()->conn.upstream.timeout.write, opt,
+                          optarg);
   case SHRPX_OPTID_BACKEND_READ_TIMEOUT:
-    return parse_duration(&mod_config()->downstream_read_timeout, opt, optarg);
+    return parse_duration(&mod_config()->conn.downstream.timeout.read, opt,
+                          optarg);
   case SHRPX_OPTID_BACKEND_WRITE_TIMEOUT:
-    return parse_duration(&mod_config()->downstream_write_timeout, opt, optarg);
+    return parse_duration(&mod_config()->conn.downstream.timeout.write, opt,
+                          optarg);
   case SHRPX_OPTID_STREAM_READ_TIMEOUT:
-    return parse_duration(&mod_config()->stream_read_timeout, opt, optarg);
+    return parse_duration(&mod_config()->http2.timeout.stream_read, opt,
+                          optarg);
   case SHRPX_OPTID_STREAM_WRITE_TIMEOUT:
-    return parse_duration(&mod_config()->stream_write_timeout, opt, optarg);
+    return parse_duration(&mod_config()->http2.timeout.stream_write, opt,
+                          optarg);
   case SHRPX_OPTID_ACCESSLOG_FILE:
     mod_config()->logging.access.file = strcopy(optarg);
 
@@ -1529,12 +1539,12 @@ int parse_config(const char *opt, const char *optarg,
       return -1;
     }
 
-    mod_config()->fastopen = n;
+    mod_config()->conn.listener.fastopen = n;
 
     return 0;
   }
   case SHRPX_OPTID_BACKEND_KEEP_ALIVE_TIMEOUT:
-    return parse_duration(&mod_config()->downstream_idle_read_timeout, opt,
+    return parse_duration(&mod_config()->conn.downstream.timeout.idle_read, opt,
                           optarg);
   case SHRPX_OPTID_FRONTEND_HTTP2_WINDOW_BITS:
   case SHRPX_OPTID_BACKEND_HTTP2_WINDOW_BITS: {
@@ -1593,11 +1603,11 @@ int parse_config(const char *opt, const char *optarg,
     return 0;
   }
   case SHRPX_OPTID_FRONTEND_NO_TLS:
-    mod_config()->upstream_no_tls = util::strieq(optarg, "yes");
+    mod_config()->conn.upstream.no_tls = util::strieq(optarg, "yes");
 
     return 0;
   case SHRPX_OPTID_BACKEND_NO_TLS:
-    mod_config()->downstream_no_tls = util::strieq(optarg, "yes");
+    mod_config()->conn.downstream.no_tls = util::strieq(optarg, "yes");
 
     return 0;
   case SHRPX_OPTID_BACKEND_TLS_SNI_FIELD:
@@ -1676,7 +1686,7 @@ int parse_config(const char *opt, const char *optarg,
       return -1;
     }
 
-    mod_config()->backlog = n;
+    mod_config()->conn.listener.backlog = n;
 
     return 0;
   }
@@ -1697,11 +1707,11 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   case SHRPX_OPTID_BACKEND_IPV4:
-    mod_config()->backend_ipv4 = util::strieq(optarg, "yes");
+    mod_config()->conn.downstream.ipv4 = util::strieq(optarg, "yes");
 
     return 0;
   case SHRPX_OPTID_BACKEND_IPV6:
-    mod_config()->backend_ipv6 = util::strieq(optarg, "yes");
+    mod_config()->conn.downstream.ipv6 = util::strieq(optarg, "yes");
 
     return 0;
   case SHRPX_OPTID_BACKEND_HTTP_PROXY_URI: {
@@ -1742,25 +1752,29 @@ int parse_config(const char *opt, const char *optarg,
     return 0;
   }
   case SHRPX_OPTID_READ_RATE:
-    return parse_uint_with_unit(&mod_config()->read_rate, opt, optarg);
+    return parse_uint_with_unit(
+        &mod_config()->conn.upstream.ratelimit.read.rate, opt, optarg);
   case SHRPX_OPTID_READ_BURST:
-    return parse_uint_with_unit(&mod_config()->read_burst, opt, optarg);
+    return parse_uint_with_unit(
+        &mod_config()->conn.upstream.ratelimit.read.burst, opt, optarg);
   case SHRPX_OPTID_WRITE_RATE:
-    return parse_uint_with_unit(&mod_config()->write_rate, opt, optarg);
+    return parse_uint_with_unit(
+        &mod_config()->conn.upstream.ratelimit.write.rate, opt, optarg);
   case SHRPX_OPTID_WRITE_BURST:
-    return parse_uint_with_unit(&mod_config()->write_burst, opt, optarg);
+    return parse_uint_with_unit(
+        &mod_config()->conn.upstream.ratelimit.write.burst, opt, optarg);
   case SHRPX_OPTID_WORKER_READ_RATE:
     LOG(WARN) << opt << ": not implemented yet";
-    return parse_uint_with_unit(&mod_config()->worker_read_rate, opt, optarg);
+    return 0;
   case SHRPX_OPTID_WORKER_READ_BURST:
     LOG(WARN) << opt << ": not implemented yet";
-    return parse_uint_with_unit(&mod_config()->worker_read_burst, opt, optarg);
+    return 0;
   case SHRPX_OPTID_WORKER_WRITE_RATE:
     LOG(WARN) << opt << ": not implemented yet";
-    return parse_uint_with_unit(&mod_config()->worker_write_rate, opt, optarg);
+    return 0;
   case SHRPX_OPTID_WORKER_WRITE_BURST:
     LOG(WARN) << opt << ": not implemented yet";
-    return parse_uint_with_unit(&mod_config()->worker_write_burst, opt, optarg);
+    return 0;
   case SHRPX_OPTID_NPN_LIST:
     mod_config()->tls.npn_list = util::parse_config_str_list(optarg);
 
@@ -1867,7 +1881,8 @@ int parse_config(const char *opt, const char *optarg,
     return 0;
   }
   case SHRPX_OPTID_WORKER_FRONTEND_CONNECTIONS:
-    return parse_uint(&mod_config()->worker_frontend_connections, opt, optarg);
+    return parse_uint(&mod_config()->conn.upstream.worker_connections, opt,
+                      optarg);
   case SHRPX_OPTID_NO_LOCATION_REWRITE:
     mod_config()->http.no_location_rewrite = util::strieq(optarg, "yes");
 
@@ -1892,15 +1907,16 @@ int parse_config(const char *opt, const char *optarg,
       return -1;
     }
 
-    mod_config()->downstream_connections_per_host = n;
+    mod_config()->conn.downstream.connections_per_host = n;
 
     return 0;
   }
   case SHRPX_OPTID_BACKEND_HTTP1_CONNECTIONS_PER_FRONTEND:
-    return parse_uint(&mod_config()->downstream_connections_per_frontend, opt,
-                      optarg);
+    return parse_uint(&mod_config()->conn.downstream.connections_per_frontend,
+                      opt, optarg);
   case SHRPX_OPTID_LISTENER_DISABLE_TIMEOUT:
-    return parse_duration(&mod_config()->listener_disable_timeout, opt, optarg);
+    return parse_duration(&mod_config()->conn.listener.timeout.sleep, opt,
+                          optarg);
   case SHRPX_OPTID_TLS_TICKET_KEY_FILE:
     mod_config()->tls.ticket.files.push_back(optarg);
     return 0;
@@ -1935,9 +1951,9 @@ int parse_config(const char *opt, const char *optarg,
     }
 
     if (optid == SHRPX_OPTID_BACKEND_REQUEST_BUFFER) {
-      mod_config()->downstream_request_buffer_size = n;
+      mod_config()->conn.downstream.request_buffer_size = n;
     } else {
-      mod_config()->downstream_response_buffer_size = n;
+      mod_config()->conn.downstream.response_buffer_size = n;
     }
 
     return 0;
@@ -2065,7 +2081,8 @@ int parse_config(const char *opt, const char *optarg,
 #endif // !HAVE_MRUBY
     return 0;
   case SHRPX_OPTID_ACCEPT_PROXY_PROTOCOL:
-    mod_config()->accept_proxy_protocol = util::strieq(optarg, "yes");
+    mod_config()->conn.upstream.accept_proxy_protocol =
+        util::strieq(optarg, "yes");
 
     return 0;
   case SHRPX_OPTID_ADD_FORWARDED: {

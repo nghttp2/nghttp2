@@ -268,7 +268,7 @@ int Http2DownstreamConnection::push_request_headers() {
   auto addr_idx = http2session_->get_addr_idx();
   auto group = http2session_->get_group();
   const auto &downstream_hostport =
-      get_config()->downstream_addr_groups[group].addrs[addr_idx].hostport;
+      get_config()->conn.downstream.addr_groups[group].addrs[addr_idx].hostport;
 
   // For HTTP/1.0 request, there is no authority in request.  In that
   // case, we use backend server's host nonetheless.

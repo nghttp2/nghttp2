@@ -1214,7 +1214,7 @@ SSL_CTX *setup_server_ssl_context(std::vector<SSL_CTX *> &all_ssl_ctx,
                                   neverbleed_t *nb
 #endif // HAVE_NEVERBLEED
                                   ) {
-  if (get_config()->upstream_no_tls) {
+  if (get_config()->conn.upstream.no_tls) {
     return nullptr;
   }
 
@@ -1266,11 +1266,13 @@ SSL_CTX *setup_server_ssl_context(std::vector<SSL_CTX *> &all_ssl_ctx,
 }
 
 bool downstream_tls_enabled() {
+  auto no_tls = get_config()->conn.downstream.no_tls;
+
   if (get_config()->client_mode) {
-    return !get_config()->downstream_no_tls;
+    return !no_tls;
   }
 
-  return get_config()->http2_bridge && !get_config()->downstream_no_tls;
+  return get_config()->http2_bridge && !no_tls;
 }
 
 SSL_CTX *setup_client_ssl_context(
@@ -1290,7 +1292,8 @@ SSL_CTX *setup_client_ssl_context(
 }
 
 CertLookupTree *create_cert_lookup_tree() {
-  if (get_config()->upstream_no_tls || get_config()->tls.subcerts.empty()) {
+  if (get_config()->conn.upstream.no_tls ||
+      get_config()->tls.subcerts.empty()) {
     return nullptr;
   }
   return new ssl::CertLookupTree();

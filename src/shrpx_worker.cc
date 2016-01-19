@@ -69,9 +69,10 @@ std::random_device rd;
 Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
                ssl::CertLookupTree *cert_tree,
                const std::shared_ptr<TicketKeys> &ticket_keys)
-    : randgen_(rd()), dconn_pool_(get_config()->downstream_addr_groups.size()),
-      worker_stat_(get_config()->downstream_addr_groups.size()),
-      dgrps_(get_config()->downstream_addr_groups.size()), loop_(loop),
+    : randgen_(rd()),
+      dconn_pool_(get_config()->conn.downstream.addr_groups.size()),
+      worker_stat_(get_config()->conn.downstream.addr_groups.size()),
+      dgrps_(get_config()->conn.downstream.addr_groups.size()), loop_(loop),
       sv_ssl_ctx_(sv_ssl_ctx), cl_ssl_ctx_(cl_ssl_ctx), cert_tree_(cert_tree),
       ticket_keys_(ticket_keys),
       connect_blocker_(make_unique<ConnectBlocker>(loop_)),
@@ -90,13 +91,15 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
         &session_cacheconf.memcached.addr, loop);
   }
 
-  if (get_config()->downstream_proto == PROTO_HTTP2) {
+  auto &downstreamconf = get_config()->conn.downstream;
+
+  if (downstreamconf.proto == PROTO_HTTP2) {
     auto n = get_config()->http2.downstream.connections_per_worker;
     size_t group = 0;
     for (auto &dgrp : dgrps_) {
       auto m = n;
       if (m == 0) {
-        m = get_config()->downstream_addr_groups[group].addrs.size();
+        m = downstreamconf.addr_groups[group].addrs.size();
       }
       for (size_t idx = 0; idx < m; ++idx) {
         dgrp.http2sessions.push_back(make_unique<Http2Session>(
@@ -151,6 +154,9 @@ void Worker::process_events() {
     std::lock_guard<std::mutex> g(m_);
     q.swap(q_);
   }
+
+  auto worker_connections = get_config()->conn.upstream.worker_connections;
+
   for (auto &wev : q) {
     switch (wev.type) {
     case NEW_CONNECTION: {
@@ -159,12 +165,10 @@ void Worker::process_events() {
                          << ", addrlen=" << wev.client_addrlen;
       }
 
-      if (worker_stat_.num_connections >=
-          get_config()->worker_frontend_connections) {
+      if (worker_stat_.num_connections >= worker_connections) {
 
         if (LOG_ENABLED(INFO)) {
-          WLOG(INFO, this) << "Too many connections >= "
-                           << get_config()->worker_frontend_connections;
+          WLOG(INFO, this) << "Too many connections >= " << worker_connections;
         }
 
         close(wev.client_fd);

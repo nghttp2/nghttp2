@@ -494,9 +494,9 @@ uint32_t infer_upstream_rst_stream_status_code(uint32_t downstream_error_code) {
 SpdyUpstream::SpdyUpstream(uint16_t version, ClientHandler *handler)
     : downstream_queue_(
           get_config()->http2_proxy
-              ? get_config()->downstream_connections_per_host
-              : get_config()->downstream_proto == PROTO_HTTP
-                    ? get_config()->downstream_connections_per_frontend
+              ? get_config()->conn.downstream.connections_per_host
+              : get_config()->conn.downstream.proto == PROTO_HTTP
+                    ? get_config()->conn.downstream.connections_per_frontend
                     : 0,
           !get_config()->http2_proxy),
       handler_(handler), session_(nullptr) {
@@ -558,7 +558,7 @@ SpdyUpstream::SpdyUpstream(uint16_t version, ClientHandler *handler)
   }
 
   handler_->reset_upstream_read_timeout(
-      get_config()->http2_upstream_read_timeout);
+      get_config()->conn.upstream.timeout.http2_read);
 
   handler_->signal_write();
 }

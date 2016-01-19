@@ -146,8 +146,8 @@ Http2Session::Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx,
                            ConnectBlocker *connect_blocker, Worker *worker,
                            size_t group, size_t idx)
     : conn_(loop, -1, nullptr, worker->get_mcpool(),
-            get_config()->downstream_write_timeout,
-            get_config()->downstream_read_timeout, 0, 0, 0, 0, writecb, readcb,
+            get_config()->conn.downstream.timeout.write,
+            get_config()->conn.downstream.timeout.read, {}, {}, writecb, readcb,
             timeoutcb, this, get_config()->tls.dyn_rec.warmup_threshold,
             get_config()->tls.dyn_rec.idle_timeout),
       worker_(worker), connect_blocker_(connect_blocker), ssl_ctx_(ssl_ctx),
@@ -240,13 +240,13 @@ int Http2Session::disconnect(bool hard) {
 int Http2Session::check_cert() {
   return ssl::check_cert(
       conn_.tls.ssl,
-      &get_config()->downstream_addr_groups[group_].addrs[addr_idx_]);
+      &get_config()->conn.downstream.addr_groups[group_].addrs[addr_idx_]);
 }
 
 int Http2Session::initiate_connection() {
   int rv = 0;
 
-  auto &addrs = get_config()->downstream_addr_groups[group_].addrs;
+  auto &addrs = get_config()->conn.downstream.addr_groups[group_].addrs;
 
   if (state_ == DISCONNECTED) {
     if (connect_blocker_->blocked()) {
@@ -509,7 +509,7 @@ int Http2Session::downstream_connect_proxy() {
     SSLOG(INFO, this) << "Connected to the proxy";
   }
   auto &downstream_addr =
-      get_config()->downstream_addr_groups[group_].addrs[addr_idx_];
+      get_config()->conn.downstream.addr_groups[group_].addrs[addr_idx_];
 
   std::string req = "CONNECT ";
   req.append(downstream_addr.hostport.c_str(), downstream_addr.hostport.size());
@@ -1351,7 +1351,7 @@ int Http2Session::connection_made() {
     }
   }
 
-  auto must_terminate = !get_config()->downstream_no_tls &&
+  auto must_terminate = !get_config()->conn.downstream.no_tls &&
                         !nghttp2::ssl::check_http2_requirement(conn_.tls.ssl);
 
   if (must_terminate) {
@@ -1719,7 +1719,7 @@ int Http2Session::tls_handshake() {
     SSLOG(INFO, this) << "SSL/TLS handshake completed";
   }
 
-  if (!get_config()->downstream_no_tls && !get_config()->tls.insecure &&
+  if (!get_config()->conn.downstream.no_tls && !get_config()->tls.insecure &&
       check_cert() != 0) {
     return -1;
   }

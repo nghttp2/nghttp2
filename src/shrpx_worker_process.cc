@@ -423,8 +423,10 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
 
 #endif // HAVE_NEVERBLEED
 
+  auto &upstreamconf = get_config()->conn.upstream;
+
   ev_timer renew_ticket_key_timer;
-  if (!get_config()->upstream_no_tls) {
+  if (!upstreamconf.no_tls) {
     auto &ticketconf = get_config()->tls.ticket;
 
     if (ticketconf.memcached.host) {
@@ -514,7 +516,7 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
   ipcev.data = &conn_handler;
   ev_io_start(loop, &ipcev);
 
-  if (!get_config()->upstream_no_tls && !get_config()->tls.ocsp.disabled) {
+  if (!upstreamconf.no_tls && !get_config()->tls.ocsp.disabled) {
     conn_handler.proceed_next_cert_ocsp();
   }
 

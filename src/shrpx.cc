@@ -299,13 +299,15 @@ void exec_binary(SignalServer *ssv) {
 
   std::string fd, fd6, path, port;
 
-  if (get_config()->host_unix) {
+  auto &listenerconf = get_config()->conn.listener;
+
+  if (listenerconf.host_unix) {
     fd = ENV_UNIX_FD "=";
     fd += util::utos(ssv->server_fd);
     envp[envidx++] = &fd[0];
 
     path = ENV_UNIX_PATH "=";
-    path += get_config()->host.get();
+    path += listenerconf.host.get();
     envp[envidx++] = &path[0];
   } else {
     if (ssv->server_fd) {
@@ -321,7 +323,7 @@ void exec_binary(SignalServer *ssv) {
     }
 
     port = ENV_PORT "=";
-    port += util::utos(get_config()->port);
+    port += util::utos(listenerconf.port);
     envp[envidx++] = &port[0];
   }
 
@@ -430,7 +432,9 @@ void worker_process_child_cb(struct ev_loop *loop, ev_child *w, int revents) {
 
 namespace {
 int create_unix_domain_server_socket() {
-  auto path = get_config()->host.get();
+  auto &listenerconf = get_config()->conn.listener;
+
+  auto path = listenerconf.host.get();
   auto pathlen = strlen(path);
   {
     auto envfd = getenv(ENV_UNIX_FD);
@@ -490,7 +494,7 @@ int create_unix_domain_server_socket() {
     return -1;
   }
 
-  if (listen(fd, get_config()->backlog) != 0) {
+  if (listen(fd, listenerconf.backlog) != 0) {
     auto error = errno;
     LOG(FATAL) << "Failed to listen to UNIX domain socket, error=" << error;
     close(fd);
@@ -505,6 +509,8 @@ int create_unix_domain_server_socket() {
 
 namespace {
 int create_tcp_server_socket(int family) {
+  auto &listenerconf = get_config()->conn.listener;
+
   {
     auto envfd =
         getenv(family == AF_INET ? ENV_LISTENER4_FD : ENV_LISTENER6_FD);
@@ -517,14 +523,14 @@ int create_tcp_server_socket(int family) {
       // Only do this iff NGHTTPX_PORT == get_config()->port.
       // Otherwise, close fd, and create server socket as usual.
 
-      if (port == get_config()->port) {
-        LOG(NOTICE) << "Listening on port " << get_config()->port;
+      if (port == listenerconf.port) {
+        LOG(NOTICE) << "Listening on port " << listenerconf.port;
 
         return fd;
       }
 
       LOG(WARN) << "Port was changed between old binary (" << port
-                << ") and new binary (" << get_config()->port << ")";
+                << ") and new binary (" << listenerconf.port << ")";
       close(fd);
     }
   }
@@ -532,7 +538,7 @@ int create_tcp_server_socket(int family) {
   int fd = -1;
   int rv;
 
-  auto service = util::utos(get_config()->port);
+  auto service = util::utos(listenerconf.port);
   addrinfo hints{};
   hints.ai_family = family;
   hints.ai_socktype = SOCK_STREAM;
@@ -541,16 +547,16 @@ int create_tcp_server_socket(int family) {
   hints.ai_flags |= AI_ADDRCONFIG;
 #endif // AI_ADDRCONFIG
 
-  auto node = strcmp("*", get_config()->host.get()) == 0
+  auto node = strcmp("*", listenerconf.host.get()) == 0
                   ? nullptr
-                  : get_config()->host.get();
+                  : listenerconf.host.get();
 
   addrinfo *res, *rp;
   rv = getaddrinfo(node, service.c_str(), &hints, &res);
   if (rv != 0) {
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "Unable to get IPv" << (family == AF_INET ? "4" : "6")
-                << " address for " << get_config()->host.get() << ": "
+                << " address for " << listenerconf.host.get() << ": "
                 << gai_strerror(rv);
     }
     return -1;
@@ -619,15 +625,15 @@ int create_tcp_server_socket(int family) {
       continue;
     }
 
-    if (get_config()->fastopen > 0) {
-      val = get_config()->fastopen;
+    if (listenerconf.fastopen > 0) {
+      val = listenerconf.fastopen;
       if (setsockopt(fd, SOL_TCP, TCP_FASTOPEN, &val,
                      static_cast<socklen_t>(sizeof(val))) == -1) {
         LOG(WARN) << "Failed to set TCP_FASTOPEN option to listener socket";
       }
     }
 
-    if (listen(fd, get_config()->backlog) == -1) {
+    if (listen(fd, listenerconf.backlog) == -1) {
       auto error = errno;
       LOG(WARN) << "listen() syscall failed, error=" << error;
       close(fd);
@@ -656,7 +662,7 @@ int create_tcp_server_socket(int family) {
     return -1;
   }
 
-  LOG(NOTICE) << "Listening on " << host << ", port " << get_config()->port;
+  LOG(NOTICE) << "Listening on " << host << ", port " << listenerconf.port;
 
   return fd;
 }
@@ -794,12 +800,14 @@ int event_loop() {
     util::make_socket_closeonexec(fd);
   }
 
-  if (get_config()->host_unix) {
+  auto &listenerconf = get_config()->conn.listener;
+
+  if (listenerconf.host_unix) {
     close_env_fd({ENV_LISTENER4_FD, ENV_LISTENER6_FD});
     auto fd = create_unix_domain_server_socket();
     if (fd == -1) {
       LOG(FATAL) << "Failed to listen on UNIX domain socket "
-                 << get_config()->host.get();
+                 << listenerconf.host.get();
       return -1;
     }
 
@@ -808,10 +816,10 @@ int event_loop() {
     if (get_config()->uid != 0) {
       // fd is not associated to inode, so we cannot use fchown(2)
       // here.  https://lkml.org/lkml/2004/11/1/84
-      if (chown_to_running_user(get_config()->host.get()) == -1) {
+      if (chown_to_running_user(listenerconf.host.get()) == -1) {
         auto error = errno;
         LOG(WARN) << "Changing owner of UNIX domain socket "
-                  << get_config()->host.get() << " failed: " << strerror(error);
+                  << listenerconf.host.get() << " failed: " << strerror(error);
       }
     }
   } else {
@@ -819,8 +827,8 @@ int event_loop() {
     auto fd6 = create_tcp_server_socket(AF_INET6);
     auto fd4 = create_tcp_server_socket(AF_INET);
     if (fd6 == -1 && fd4 == -1) {
-      LOG(FATAL) << "Failed to listen on address " << get_config()->host.get()
-                 << ", port " << get_config()->port;
+      LOG(FATAL) << "Failed to listen on address " << listenerconf.host.get()
+                 << ", port " << listenerconf.port;
       return -1;
     }
 
@@ -900,38 +908,8 @@ void fill_default_config() {
   mod_config()->verbose = false;
   mod_config()->daemon = false;
 
-  mod_config()->host = strcopy("*");
-  mod_config()->port = 3000;
-
-  // Read timeout for HTTP2 upstream connection
-  mod_config()->http2_upstream_read_timeout = 3_min;
-
-  // Read timeout for non-HTTP2 upstream connection
-  mod_config()->upstream_read_timeout = 1_min;
-
-  // Write timeout for HTTP2/non-HTTP2 upstream connection
-  mod_config()->upstream_write_timeout = 30.;
-
-  // Read/Write timeouts for downstream connection
-  mod_config()->downstream_read_timeout = 1_min;
-  mod_config()->downstream_write_timeout = 30.;
-
-  // Read timeout for HTTP/2 stream
-  mod_config()->stream_read_timeout = 0.;
-
-  // Write timeout for HTTP/2 stream
-  mod_config()->stream_write_timeout = 0.;
-
-  // Timeout for pooled (idle) connections
-  mod_config()->downstream_idle_read_timeout = 2.;
-
-  mod_config()->upstream_no_tls = false;
-  mod_config()->downstream_no_tls = false;
-
   mod_config()->num_worker = 1;
   mod_config()->conf_path = strcopy("/etc/nghttpx/nghttpx.conf");
-  // Default accept() backlog
-  mod_config()->backlog = 512;
   mod_config()->http2_proxy = false;
   mod_config()->http2_bridge = false;
   mod_config()->client_proxy = false;
@@ -942,29 +920,10 @@ void fill_default_config() {
   mod_config()->uid = 0;
   mod_config()->gid = 0;
   mod_config()->pid = getpid();
-  mod_config()->backend_ipv4 = false;
-  mod_config()->backend_ipv6 = false;
-  mod_config()->read_rate = 0;
-  mod_config()->read_burst = 0;
-  mod_config()->write_rate = 0;
-  mod_config()->write_burst = 0;
-  mod_config()->worker_read_rate = 0;
-  mod_config()->worker_read_burst = 0;
-  mod_config()->worker_write_rate = 0;
-  mod_config()->worker_write_burst = 0;
   mod_config()->padding = 0;
-  mod_config()->worker_frontend_connections = 0;
 
   mod_config()->argc = 0;
   mod_config()->argv = nullptr;
-  mod_config()->downstream_connections_per_host = 8;
-  mod_config()->downstream_connections_per_frontend = 0;
-  mod_config()->listener_disable_timeout = 0.;
-  mod_config()->downstream_request_buffer_size = 16_k;
-  mod_config()->downstream_response_buffer_size = 16_k;
-  mod_config()->host_unix = false;
-  mod_config()->downstream_addr_group_catch_all = 0;
-  mod_config()->fastopen = 0;
 
   auto &tlsconf = mod_config()->tls;
   {
@@ -1014,6 +973,15 @@ void fill_default_config() {
 
   auto &http2conf = mod_config()->http2;
   {
+    auto &timeoutconf = http2conf.timeout;
+    {
+      // Read timeout for HTTP/2 stream
+      timeoutconf.stream_read = 0.;
+
+      // Write timeout for HTTP/2 stream
+      timeoutconf.stream_write = 0.;
+    }
+
     auto &upstreamconf = http2conf.upstream;
     // window bits for HTTP/2 and SPDY upstream connection per
     // stream. 2**16-1 = 64KiB-1, which is HTTP/2 default. Please note
@@ -1054,6 +1022,54 @@ void fill_default_config() {
   }
 
   loggingconf.syslog_facility = LOG_DAEMON;
+
+  auto &connconf = mod_config()->conn;
+  {
+    auto &listenerconf = connconf.listener;
+    {
+      listenerconf.host = strcopy("*");
+      listenerconf.port = 3000;
+      // Default accept() backlog
+      listenerconf.backlog = 512;
+      listenerconf.host_unix = false;
+    }
+  }
+
+  {
+    auto &upstreamconf = connconf.upstream;
+    {
+      auto &timeoutconf = upstreamconf.timeout;
+      // Read timeout for HTTP2 upstream connection
+      timeoutconf.http2_read = 3_min;
+
+      // Read timeout for non-HTTP2 upstream connection
+      timeoutconf.read = 1_min;
+
+      // Write timeout for HTTP2/non-HTTP2 upstream connection
+      timeoutconf.write = 30.;
+    }
+
+    upstreamconf.no_tls = false;
+  }
+
+  {
+    auto &downstreamconf = connconf.downstream;
+    {
+      auto &timeoutconf = downstreamconf.timeout;
+      // Read/Write timeouts for downstream connection
+      timeoutconf.read = 1_min;
+      timeoutconf.write = 30.;
+      // Timeout for pooled (idle) connections
+      timeoutconf.idle_read = 2.;
+    }
+
+    downstreamconf.no_tls = false;
+    downstreamconf.ipv4 = false;
+    downstreamconf.ipv6 = false;
+    downstreamconf.connections_per_host = 8;
+    downstreamconf.request_buffer_size = 16_k;
+    downstreamconf.response_buffer_size = 16_k;
+  }
 }
 
 } // namespace
@@ -1151,11 +1167,11 @@ Connections:
               assumes  all addresses  including  both  IPv4 and  IPv6.
               UNIX domain  socket can  be specified by  prefixing path
               name with "unix:" (e.g., unix:/var/run/nghttpx.sock)
-              Default: )" << get_config()->host.get() << ","
-      << get_config()->port << R"(
+              Default: )" << get_config()->conn.listener.host.get() << ","
+      << get_config()->conn.listener.port << R"(
   --backlog=<N>
               Set listen backlog size.
-              Default: )" << get_config()->backlog << R"(
+              Default: )" << get_config()->conn.listener.backlog << R"(
   --backend-ipv4
               Resolve backend hostname to IPv4 address only.
   --backend-ipv6
@@ -1183,45 +1199,50 @@ Performance:
   --read-rate=<SIZE>
               Set maximum  average read  rate on  frontend connection.
               Setting 0 to this option means read rate is unlimited.
-              Default: )" << get_config()->read_rate << R"(
+              Default: )" << get_config()->conn.upstream.ratelimit.read.rate
+      << R"(
   --read-burst=<SIZE>
               Set  maximum read  burst  size  on frontend  connection.
               Setting  0  to this  option  means  read burst  size  is
               unlimited.
-              Default: )" << get_config()->read_burst << R"(
+              Default: )" << get_config()->conn.upstream.ratelimit.read.burst
+      << R"(
   --write-rate=<SIZE>
               Set maximum  average write rate on  frontend connection.
               Setting 0 to this option means write rate is unlimited.
-              Default: )" << get_config()->write_rate << R"(
+              Default: )" << get_config()->conn.upstream.ratelimit.write.rate
+      << R"(
   --write-burst=<SIZE>
               Set  maximum write  burst size  on frontend  connection.
               Setting  0 to  this  option means  write  burst size  is
               unlimited.
-              Default: )" << get_config()->write_burst << R"(
+              Default: )" << get_config()->conn.upstream.ratelimit.write.burst
+      << R"(
   --worker-read-rate=<SIZE>
               Set maximum average read rate on frontend connection per
               worker.  Setting  0 to  this option  means read  rate is
               unlimited.  Not implemented yet.
-              Default: )" << get_config()->worker_read_rate << R"(
+              Default: 0
   --worker-read-burst=<SIZE>
               Set maximum  read burst size on  frontend connection per
               worker.  Setting 0 to this  option means read burst size
               is unlimited.  Not implemented yet.
-              Default: )" << get_config()->worker_read_burst << R"(
+              Default: 0
   --worker-write-rate=<SIZE>
               Set maximum  average write  rate on  frontend connection
               per worker.  Setting  0 to this option  means write rate
               is unlimited.  Not implemented yet.
-              Default: )" << get_config()->worker_write_rate << R"(
+              Default: 0
   --worker-write-burst=<SIZE>
               Set maximum write burst  size on frontend connection per
               worker.  Setting 0 to this option means write burst size
               is unlimited.  Not implemented yet.
-              Default: )" << get_config()->worker_write_burst << R"(
+              Default: 0
   --worker-frontend-connections=<N>
               Set maximum number  of simultaneous connections frontend
               accepts.  Setting 0 means unlimited.
-              Default: )" << get_config()->worker_frontend_connections << R"(
+              Default: )" << get_config()->conn.upstream.worker_connections
+      << R"(
   --backend-http2-connections-per-worker=<N>
               Set   maximum   number   of  backend   HTTP/2   physical
               connections  per  worker.   If  pattern is  used  in  -b
@@ -1239,7 +1260,7 @@ Performance:
               header  field  for  HTTP/2).   To limit  the  number  of
               connections   per  frontend   for   default  mode,   use
               --backend-http1-connections-per-frontend.
-              Default: )" << get_config()->downstream_connections_per_host
+              Default: )" << get_config()->conn.downstream.connections_per_host
       << R"(
   --backend-http1-connections-per-frontend=<N>
               Set   maximum  number   of  backend   concurrent  HTTP/1
@@ -1247,8 +1268,8 @@ Performance:
               default mode.   0 means unlimited.  To  limit the number
               of connections  per host for  HTTP/2 or SPDY  proxy mode
               (-s option), use --backend-http1-connections-per-host.
-              Default: )" << get_config()->downstream_connections_per_frontend
-      << R"(
+              Default: )"
+      << get_config()->conn.downstream.connections_per_frontend << R"(
   --rlimit-nofile=<N>
               Set maximum number of open files (RLIMIT_NOFILE) to <N>.
               If 0 is given, nghttpx does not set the limit.
@@ -1256,59 +1277,63 @@ Performance:
   --backend-request-buffer=<SIZE>
               Set buffer size used to store backend request.
               Default: )"
-      << util::utos_unit(get_config()->downstream_request_buffer_size) << R"(
+      << util::utos_unit(get_config()->conn.downstream.request_buffer_size)
+      << R"(
   --backend-response-buffer=<SIZE>
               Set buffer size used to store backend response.
               Default: )"
-      << util::utos_unit(get_config()->downstream_response_buffer_size) << R"(
+      << util::utos_unit(get_config()->conn.downstream.response_buffer_size)
+      << R"(
   --fastopen=<N>
               Enables  "TCP Fast  Open" for  the listening  socket and
               limits the  maximum length for the  queue of connections
               that have not yet completed the three-way handshake.  If
               value is 0 then fast open is disabled.
-              Default: )" << get_config()->fastopen << R"(
+              Default: )" << get_config()->conn.listener.fastopen << R"(
 Timeout:
   --frontend-http2-read-timeout=<DURATION>
               Specify  read  timeout  for  HTTP/2  and  SPDY  frontend
               connection.
               Default: )"
-      << util::duration_str(get_config()->http2_upstream_read_timeout) << R"(
+      << util::duration_str(get_config()->conn.upstream.timeout.http2_read)
+      << R"(
   --frontend-read-timeout=<DURATION>
               Specify read timeout for HTTP/1.1 frontend connection.
               Default: )"
-      << util::duration_str(get_config()->upstream_read_timeout) << R"(
+      << util::duration_str(get_config()->conn.upstream.timeout.read) << R"(
   --frontend-write-timeout=<DURATION>
               Specify write timeout for all frontend connections.
               Default: )"
-      << util::duration_str(get_config()->upstream_write_timeout) << R"(
+      << util::duration_str(get_config()->conn.upstream.timeout.write) << R"(
   --stream-read-timeout=<DURATION>
               Specify  read timeout  for HTTP/2  and SPDY  streams.  0
               means no timeout.
               Default: )"
-      << util::duration_str(get_config()->stream_read_timeout) << R"(
+      << util::duration_str(get_config()->http2.timeout.stream_read) << R"(
   --stream-write-timeout=<DURATION>
               Specify write  timeout for  HTTP/2 and SPDY  streams.  0
               means no timeout.
               Default: )"
-      << util::duration_str(get_config()->stream_write_timeout) << R"(
+      << util::duration_str(get_config()->http2.timeout.stream_write) << R"(
   --backend-read-timeout=<DURATION>
               Specify read timeout for backend connection.
               Default: )"
-      << util::duration_str(get_config()->downstream_read_timeout) << R"(
+      << util::duration_str(get_config()->conn.downstream.timeout.read) << R"(
   --backend-write-timeout=<DURATION>
               Specify write timeout for backend connection.
               Default: )"
-      << util::duration_str(get_config()->downstream_write_timeout) << R"(
+      << util::duration_str(get_config()->conn.downstream.timeout.write) << R"(
   --backend-keep-alive-timeout=<DURATION>
               Specify keep-alive timeout for backend connection.
               Default: )"
-      << util::duration_str(get_config()->downstream_idle_read_timeout) << R"(
+      << util::duration_str(get_config()->conn.downstream.timeout.idle_read)
+      << R"(
   --listener-disable-timeout=<DURATION>
               After accepting  connection failed,  connection listener
               is disabled  for a given  amount of time.   Specifying 0
               disables this feature.
               Default: )"
-      << util::duration_str(get_config()->listener_disable_timeout) << R"(
+      << util::duration_str(get_config()->conn.listener.timeout.sleep) << R"(
 
 SSL/TLS:
   --ciphers=<SUITE>
@@ -1858,15 +1883,18 @@ void process_options(
 
   tlsconf.alpn_prefs = ssl::set_alpn_prefs(tlsconf.npn_list);
 
-  if (get_config()->backend_ipv4 && get_config()->backend_ipv6) {
+  auto &listenerconf = mod_config()->conn.listener;
+  auto &upstreamconf = mod_config()->conn.upstream;
+  auto &downstreamconf = mod_config()->conn.downstream;
+
+  if (downstreamconf.ipv4 && downstreamconf.ipv6) {
     LOG(FATAL) << "--backend-ipv4 and --backend-ipv6 cannot be used at the "
                << "same time.";
     exit(EXIT_FAILURE);
   }
 
-  if (get_config()->worker_frontend_connections == 0) {
-    mod_config()->worker_frontend_connections =
-        std::numeric_limits<size_t>::max();
+  if (upstreamconf.worker_connections == 0) {
+    upstreamconf.worker_connections = std::numeric_limits<size_t>::max();
   }
 
   if (get_config()->http2_proxy + get_config()->http2_bridge +
@@ -1879,23 +1907,23 @@ void process_options(
 
   if (get_config()->client || get_config()->client_proxy) {
     mod_config()->client_mode = true;
-    mod_config()->upstream_no_tls = true;
+    upstreamconf.no_tls = true;
   }
 
   if (get_config()->client_mode || get_config()->http2_bridge) {
-    mod_config()->downstream_proto = PROTO_HTTP2;
+    downstreamconf.proto = PROTO_HTTP2;
   } else {
-    mod_config()->downstream_proto = PROTO_HTTP;
+    downstreamconf.proto = PROTO_HTTP;
   }
 
-  if (!get_config()->upstream_no_tls &&
+  if (!upstreamconf.no_tls &&
       (!tlsconf.private_key_file || !tlsconf.cert_file)) {
     print_usage(std::cerr);
     LOG(FATAL) << "Too few arguments";
     exit(EXIT_FAILURE);
   }
 
-  if (!get_config()->upstream_no_tls && !tlsconf.ocsp.disabled) {
+  if (!upstreamconf.no_tls && !tlsconf.ocsp.disabled) {
     struct stat buf;
     if (stat(tlsconf.ocsp.fetch_ocsp_response_file.get(), &buf) != 0) {
       tlsconf.ocsp.disabled = true;
@@ -1905,31 +1933,31 @@ void process_options(
     }
   }
 
-  if (get_config()->downstream_addr_groups.empty()) {
+  auto &addr_groups = downstreamconf.addr_groups;
+
+  if (addr_groups.empty()) {
     DownstreamAddr addr;
     addr.host = ImmutableString::from_lit(DEFAULT_DOWNSTREAM_HOST);
     addr.port = DEFAULT_DOWNSTREAM_PORT;
 
     DownstreamAddrGroup g("/");
     g.addrs.push_back(std::move(addr));
-    mod_config()->router.add_route(g.pattern.get(), 1,
-                                   get_config()->downstream_addr_groups.size());
-    mod_config()->downstream_addr_groups.push_back(std::move(g));
+    mod_config()->router.add_route(g.pattern.get(), 1, addr_groups.size());
+    addr_groups.push_back(std::move(g));
   } else if (get_config()->http2_proxy || get_config()->client_proxy) {
     // We don't support host mapping in these cases.  Move all
     // non-catch-all patterns to catch-all pattern.
     DownstreamAddrGroup catch_all("/");
-    for (auto &g : mod_config()->downstream_addr_groups) {
+    for (auto &g : addr_groups) {
       std::move(std::begin(g.addrs), std::end(g.addrs),
                 std::back_inserter(catch_all.addrs));
     }
-    std::vector<DownstreamAddrGroup>().swap(
-        mod_config()->downstream_addr_groups);
+    std::vector<DownstreamAddrGroup>().swap(addr_groups);
     // maybe not necessary?
     mod_config()->router = Router();
     mod_config()->router.add_route(catch_all.pattern.get(), 1,
-                                   get_config()->downstream_addr_groups.size());
-    mod_config()->downstream_addr_groups.push_back(std::move(catch_all));
+                                   addr_groups.size());
+    addr_groups.push_back(std::move(catch_all));
   }
 
   if (LOG_ENABLED(INFO)) {
@@ -1937,8 +1965,8 @@ void process_options(
   }
 
   ssize_t catch_all_group = -1;
-  for (size_t i = 0; i < mod_config()->downstream_addr_groups.size(); ++i) {
-    auto &g = mod_config()->downstream_addr_groups[i];
+  for (size_t i = 0; i < addr_groups.size(); ++i) {
+    auto &g = addr_groups[i];
     if (util::streq(g.pattern.get(), "/")) {
       catch_all_group = i;
     }
@@ -1956,13 +1984,14 @@ void process_options(
     LOG(FATAL) << "-b: No catch-all backend address is configured";
     exit(EXIT_FAILURE);
   }
-  mod_config()->downstream_addr_group_catch_all = catch_all_group;
+
+  downstreamconf.addr_group_catch_all = catch_all_group;
 
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "Catch-all pattern is group " << catch_all_group;
   }
 
-  for (auto &g : mod_config()->downstream_addr_groups) {
+  for (auto &g : addr_groups) {
     for (auto &addr : g.addrs) {
 
       if (addr.host_unix) {
@@ -1970,7 +1999,7 @@ void process_options(
         // hostport.  This is used as Host header field to backend and
         // not going to be passed to any syscalls.
         addr.hostport = ImmutableString(
-            util::make_hostport("localhost", get_config()->port));
+            util::make_hostport("localhost", listenerconf.port));
 
         auto path = addr.host.c_str();
         auto pathlen = addr.host.size();
@@ -1997,9 +2026,9 @@ void process_options(
 
       if (resolve_hostname(
               &addr.addr, addr.host.c_str(), addr.port,
-              get_config()->backend_ipv4 ? AF_INET : (get_config()->backend_ipv6
-                                                          ? AF_INET6
-                                                          : AF_UNSPEC)) == -1) {
+              downstreamconf.ipv4
+                  ? AF_INET
+                  : (downstreamconf.ipv6 ? AF_INET6 : AF_UNSPEC)) == -1) {
         exit(EXIT_FAILURE);
       }
     }
