@@ -86,7 +86,11 @@ Config::Config()
       port(0), default_port(0), verbose(false), timing_script(false) {}
 
 Config::~Config() {
-  freeaddrinfo(addrs);
+  if (base_uri_unix) {
+    delete addrs;
+  } else {
+    freeaddrinfo(addrs);
+  }
 
   if (data_fd != -1) {
     close(data_fd);
@@ -1301,6 +1305,18 @@ process_time_stats(const std::vector<std::unique_ptr<Worker>> &workers) {
 
 namespace {
 void resolve_host() {
+  if (config.base_uri_unix) {
+    auto res = make_unique<addrinfo>();
+    res->ai_family = config.unix_addr.sun_family;
+    res->ai_socktype = SOCK_STREAM;
+    res->ai_addrlen = sizeof(config.unix_addr);
+    res->ai_addr =
+        static_cast<struct sockaddr *>(static_cast<void *>(&config.unix_addr));
+
+    config.addrs = res.release();
+    return;
+  };
+
   int rv;
   addrinfo hints{}, *res;
 
@@ -1355,6 +1371,10 @@ int client_select_next_proto_cb(SSL *ssl, unsigned char **out,
   // NOACK.  So there is no way to fallback.
   return SSL_TLSEXT_ERR_NOACK;
 }
+} // namespace
+
+namespace {
+constexpr char UNIX_PATH_PREFIX[] = "unix:";
 } // namespace
 
 namespace {
@@ -1636,11 +1656,16 @@ Options:
               contained  in  other  URIs,  if  present,  are  ignored.
               Definition of a  base URI overrides all  scheme, host or
               port values.
-  -B, --base-uri=<URI>
+  -B, --base-uri=(<URI>|unix:<PATH>)
               Specify URI from which the scheme, host and port will be
               used  for  all requests.   The  base  URI overrides  all
               values  defined either  at  the command  line or  inside
-              input files.
+              input files.  If argument  starts with "unix:", then the
+              rest  of the  argument will  be treated  as UNIX  domain
+              socket path.   The connection is made  through that path
+              instead of TCP.   In this case, scheme  is inferred from
+              the first  URI appeared  in the  command line  or inside
+              input files as usual.
   --npn-list=<LIST>
               Comma delimited list of  ALPN protocol identifier sorted
               in the  order of preference.  That  means most desirable
@@ -1819,13 +1844,40 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
       }
       break;
-    case 'B':
+    case 'B': {
+      config.base_uri = "";
+      config.base_uri_unix = false;
+
+      if (util::istarts_with_l(optarg, UNIX_PATH_PREFIX)) {
+        // UNIX domain socket path
+        sockaddr_un un;
+
+        auto path = optarg + str_size(UNIX_PATH_PREFIX);
+        auto pathlen = strlen(optarg) - str_size(UNIX_PATH_PREFIX);
+
+        if (pathlen == 0 || pathlen + 1 > sizeof(un.sun_path)) {
+          std::cerr << "--base-uri: invalid UNIX domain socket path: " << optarg
+                    << std::endl;
+          exit(EXIT_FAILURE);
+        }
+
+        config.base_uri_unix = true;
+
+        auto &unix_addr = config.unix_addr;
+        std::copy_n(path, pathlen + 1, unix_addr.sun_path);
+        unix_addr.sun_family = AF_UNIX;
+
+        break;
+      }
+
       if (!parse_base_uri(optarg)) {
-        std::cerr << "invalid base URI: " << optarg << std::endl;
+        std::cerr << "--base-uri: invalid base URI: " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
+
       config.base_uri = optarg;
       break;
+    }
     case 'v':
       config.verbose = true;
       break;

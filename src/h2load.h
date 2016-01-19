@@ -34,6 +34,7 @@
 #ifdef HAVE_NETDB_H
 #include <netdb.h>
 #endif // HAVE_NETDB_H
+#include <sys/un.h>
 
 #include <vector>
 #include <string>
@@ -100,6 +101,11 @@ struct Config {
   bool verbose;
   bool timing_script;
   std::string base_uri;
+  // true if UNIX domain socket is used.  In this case, base_uri is
+  // not used in usual way.
+  bool base_uri_unix;
+  // used when UNIX domain socket is used (base_uri_unix is true).
+  sockaddr_un unix_addr;
   // list of supported NPN/ALPN protocol strings in the order of
   // preference.
   std::vector<std::string> npn_list;
