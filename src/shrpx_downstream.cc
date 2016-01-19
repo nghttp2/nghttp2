@@ -698,14 +698,10 @@ bool Downstream::get_http2_upgrade_request() const {
          response_state_ == INITIAL;
 }
 
-namespace {
-const std::string EMPTY;
-} // namespace
-
 const std::string &Downstream::get_http2_settings() const {
   auto http2_settings = req_.fs.header(http2::HD_HTTP2_SETTINGS);
   if (!http2_settings) {
-    return EMPTY;
+    return EMPTY_STRING;
   }
   return http2_settings->value;
 }

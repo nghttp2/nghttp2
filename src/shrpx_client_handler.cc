@@ -1133,6 +1133,13 @@ const std::string &ClientHandler::get_forwarded_by() {
     return local_hostport_;
   }
 
+  auto &listenerconf = get_config()->conn.listener;
+
+  // For UNIX domain socket listener, just return empty string.
+  if (listenerconf.host_unix) {
+    return local_hostport_;
+  }
+
   int rv;
   sockaddr_union su;
   socklen_t addrlen = sizeof(su);
@@ -1158,7 +1165,7 @@ const std::string &ClientHandler::get_forwarded_by() {
     local_hostport_ += ':';
   }
 
-  local_hostport_ += util::utos(get_config()->conn.listener.port);
+  local_hostport_ += util::utos(listenerconf.port);
 
   return local_hostport_;
 }
@@ -1166,6 +1173,10 @@ const std::string &ClientHandler::get_forwarded_by() {
 const std::string &ClientHandler::get_forwarded_for() const {
   if (get_config()->http.forwarded.for_node_type == FORWARDED_NODE_OBFUSCATED) {
     return forwarded_for_obfuscated_;
+  }
+
+  if (get_config()->conn.listener.host_unix) {
+    return EMPTY_STRING;
   }
 
   return ipaddr_;

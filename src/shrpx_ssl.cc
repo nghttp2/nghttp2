@@ -751,15 +751,19 @@ ClientHandler *accept_connection(Worker *worker, int fd, sockaddr *addr,
   char host[NI_MAXHOST];
   char service[NI_MAXSERV];
   int rv;
-  rv = getnameinfo(addr, addrlen, host, sizeof(host), service, sizeof(service),
-                   NI_NUMERICHOST | NI_NUMERICSERV);
-  if (rv != 0) {
-    LOG(ERROR) << "getnameinfo() failed: " << gai_strerror(rv);
 
-    return nullptr;
-  }
+  if (addr->sa_family == AF_UNIX) {
+    std::copy_n("localhost", sizeof("localhost"), host);
+    service[0] = '\0';
+  } else {
+    rv = getnameinfo(addr, addrlen, host, sizeof(host), service,
+                     sizeof(service), NI_NUMERICHOST | NI_NUMERICSERV);
+    if (rv != 0) {
+      LOG(ERROR) << "getnameinfo() failed: " << gai_strerror(rv);
 
-  if (addr->sa_family != AF_UNIX) {
+      return nullptr;
+    }
+
     rv = util::make_socket_nodelay(fd);
     if (rv == -1) {
       LOG(WARN) << "Setting option TCP_NODELAY failed: errno=" << errno;
