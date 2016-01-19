@@ -212,6 +212,11 @@ bool istarts_with(InputIt a, size_t an, const char *b) {
 
 bool istarts_with(const char *a, const char *b);
 
+template <size_t N>
+bool istarts_with_l(const std::string &a, const char(&b)[N]) {
+  return istarts_with(std::begin(a), std::end(a), b, b + N - 1);
+}
+
 template <typename InputIterator1, typename InputIterator2>
 bool ends_with(InputIterator1 first1, InputIterator1 last1,
                InputIterator2 first2, InputIterator2 last2) {

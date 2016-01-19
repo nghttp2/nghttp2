@@ -362,6 +362,9 @@ void test_util_starts_with(void) {
   CU_ASSERT(util::starts_with("ofoo", ""));
   CU_ASSERT(util::istarts_with("fOOo", "Foo"));
   CU_ASSERT(!util::istarts_with("ofoo", "foo"));
+
+  CU_ASSERT(util::istarts_with_l("fOOo", "Foo"));
+  CU_ASSERT(!util::istarts_with_l("ofoo", "foo"));
 }
 
 void test_util_ends_with(void) {
