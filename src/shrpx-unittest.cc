@@ -39,6 +39,7 @@
 #include "buffer_test.h"
 #include "memchunk_test.h"
 #include "template_test.h"
+#include "shrpx_http_test.h"
 #include "shrpx_config.h"
 #include "ssl.h"
 
@@ -124,6 +125,8 @@ int main(int argc, char *argv[]) {
                    shrpx::test_shrpx_config_read_tls_ticket_key_file_aes_256) ||
       !CU_add_test(pSuite, "config_match_downstream_addr_group",
                    shrpx::test_shrpx_config_match_downstream_addr_group) ||
+      !CU_add_test(pSuite, "http_create_forwarded",
+                   shrpx::test_shrpx_http_create_forwarded) ||
       !CU_add_test(pSuite, "util_streq", shrpx::test_util_streq) ||
       !CU_add_test(pSuite, "util_strieq", shrpx::test_util_strieq) ||
       !CU_add_test(pSuite, "util_inp_strlower",

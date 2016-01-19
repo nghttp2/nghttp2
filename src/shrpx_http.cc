@@ -69,24 +69,43 @@ std::string create_forwarded(int params, const std::string &node_by,
                              const std::string &proto) {
   std::string res;
   if ((params & FORWARDED_BY) && !node_by.empty()) {
-    res += "by=\"";
-    res += node_by;
-    res += "\";";
+    // This must be quoted-string unless it is obfuscated version
+    // (which starts with "_"), since ':' is not allowed in token.
+    // ':' is used to separate host and port.
+    if (node_by[0] == '_') {
+      res += "by=";
+      res += node_by;
+      res += ";";
+    } else {
+      res += "by=\"";
+      res += node_by;
+      res += "\";";
+    }
   }
   if ((params & FORWARDED_FOR) && !node_for.empty()) {
-    res += "for=\"";
-    res += node_for;
-    res += "\";";
+    // We only quote IPv6 literal address only, which starts with '['.
+    if (node_for[0] == '[') {
+      res += "for=\"";
+      res += node_for;
+      res += "\";";
+    } else {
+      res += "for=";
+      res += node_for;
+      res += ";";
+    }
   }
   if ((params & FORWARDED_HOST) && !host.empty()) {
+    // Just be quoted to skip checking characters.
     res += "host=\"";
     res += host;
     res += "\";";
   }
   if ((params & FORWARDED_PROTO) && !proto.empty()) {
-    res += "proto=\"";
+    // Scheme production rule only allow characters which are all in
+    // token.
+    res += "proto=";
     res += proto;
-    res += "\";";
+    res += ";";
   }
 
   if (res.empty()) {
