@@ -1241,21 +1241,10 @@ ssize_t downstream_data_read_callback(nghttp2_session *session,
                                       void *user_data) {
   int rv;
   auto downstream = static_cast<Downstream *>(source->ptr);
-  auto upstream = static_cast<Http2Upstream *>(downstream->get_upstream());
   auto body = downstream->get_response_buf();
   assert(body);
 
-  auto dconn = downstream->get_downstream_connection();
   const auto &resp = downstream->response();
-
-  if (body->rleft() == 0 && dconn &&
-      downstream->get_response_state() != Downstream::MSG_COMPLETE) {
-    // Try to read more if buffer is empty.  This will help small
-    // buffer and make priority handling a bit better.
-    if (upstream->downstream_read(dconn) != 0) {
-      return NGHTTP2_ERR_CALLBACK_FAILURE;
-    }
-  }
 
   auto nread = std::min(body->rleft(), length);
   auto body_empty = body->rleft() == nread;

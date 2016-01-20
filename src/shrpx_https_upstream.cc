@@ -571,21 +571,8 @@ int HttpsUpstream::on_write() {
     return 0;
   }
 
-  auto dconn = downstream->get_downstream_connection();
   auto output = downstream->get_response_buf();
   const auto &resp = downstream->response();
-
-  if (output->rleft() == 0 && dconn &&
-      downstream->get_response_state() != Downstream::MSG_COMPLETE) {
-    if (downstream->resume_read(SHRPX_NO_BUFFER, resp.unconsumed_body_length) !=
-        0) {
-      return -1;
-    }
-
-    if (downstream_read(dconn) != 0) {
-      return -1;
-    }
-  }
 
   if (output->rleft() > 0) {
     return 0;
