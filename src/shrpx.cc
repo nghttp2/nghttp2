@@ -1020,7 +1020,7 @@ void fill_default_config() {
 
     downstreamconf.connections_per_host = 8;
     downstreamconf.request_buffer_size = 16_k;
-    downstreamconf.response_buffer_size = 16_k;
+    downstreamconf.response_buffer_size = 128_k;
   }
 }
 

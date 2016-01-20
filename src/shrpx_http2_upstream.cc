@@ -555,18 +555,19 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
       return 0;
     }
 
-    auto downstream = make_unique<Downstream>(upstream, handler->get_mcpool(),
-                                              promised_stream_id);
-    auto &req = downstream->request();
+    auto promised_downstream = make_unique<Downstream>(
+        upstream, handler->get_mcpool(), promised_stream_id);
+    auto &req = promised_downstream->request();
 
     // As long as we use nghttp2_session_mem_send(), setting stream
     // user data here should not fail.  This is because this callback
     // is called just after frame was serialized.  So no worries about
     // hanging Downstream.
     nghttp2_session_set_stream_user_data(session, promised_stream_id,
-                                         downstream.get());
+                                         promised_downstream.get());
 
-    downstream->disable_upstream_rtimer();
+    promised_downstream->set_assoc_stream_id(frame->hd.stream_id);
+    promised_downstream->disable_upstream_rtimer();
 
     req.http_major = 2;
     req.http_minor = 0;
@@ -592,14 +593,14 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
                         nv.flags & NGHTTP2_NV_FLAG_NO_INDEX, token);
     }
 
-    downstream->inspect_http2_request();
+    promised_downstream->inspect_http2_request();
 
-    downstream->set_request_state(Downstream::MSG_COMPLETE);
+    promised_downstream->set_request_state(Downstream::MSG_COMPLETE);
 
     // a bit weird but start_downstream() expects that given
     // downstream is in pending queue.
-    auto ptr = downstream.get();
-    upstream->add_pending_downstream(std::move(downstream));
+    auto ptr = promised_downstream.get();
+    upstream->add_pending_downstream(std::move(promised_downstream));
 
 #ifdef HAVE_MRUBY
     auto worker = handler->get_worker();
@@ -1499,6 +1500,13 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
     return 0;
   }
 
+  if (downstream->get_assoc_stream_id() != -1) {
+    rv = adjust_pushed_stream_priority(downstream);
+    if (rv != 0) {
+      return -1;
+    }
+  }
+
   http2::copy_headers_to_nva_nocopy(nva, resp.fs.headers());
 
   if (!get_config()->http2_proxy && !get_config()->client_proxy) {
@@ -1606,6 +1614,66 @@ int Http2Upstream::on_downstream_body(Downstream *downstream,
     nghttp2_session_resume_data(session_, downstream->get_stream_id());
 
     downstream->ensure_upstream_wtimer();
+  }
+
+  return 0;
+}
+
+int Http2Upstream::adjust_pushed_stream_priority(Downstream *downstream) {
+  int rv;
+
+  // We only change pushed stream.  The pushed stream has
+  // assoc_stream_id which is not -1.
+  auto assoc_stream_id = downstream->get_assoc_stream_id();
+  auto stream_id = downstream->get_stream_id();
+
+  auto assoc_stream = nghttp2_session_find_stream(session_, assoc_stream_id);
+  auto stream = nghttp2_session_find_stream(session_, stream_id);
+
+  // By default, downstream depends on assoc_stream.  If its
+  // relationship is changed, then we don't change priority.
+  if (!assoc_stream || assoc_stream != nghttp2_stream_get_parent(stream)) {
+    return 0;
+  }
+
+  // We are going to make stream depend on dep_stream which is the
+  // parent stream of assoc_stream, if the content-type of stream
+  // indicates javascript or css.
+  auto dep_stream = nghttp2_stream_get_parent(assoc_stream);
+  if (!dep_stream) {
+    return 0;
+  }
+
+  const auto &resp = downstream->response();
+  auto ct = resp.fs.header(http2::HD_CONTENT_TYPE);
+  if (!ct) {
+    return 0;
+  }
+
+  if (!util::istarts_with_l(ct->value, "application/javascript") &&
+      !util::istarts_with_l(ct->value, "text/css")) {
+    return 0;
+  }
+
+  auto dep_stream_id = nghttp2_stream_get_stream_id(dep_stream);
+  auto weight = nghttp2_stream_get_weight(assoc_stream);
+
+  nghttp2_priority_spec pri_spec;
+  nghttp2_priority_spec_init(&pri_spec, dep_stream_id, weight, 0);
+
+  rv = nghttp2_session_change_stream_priority(session_, stream_id, &pri_spec);
+  if (nghttp2_is_fatal(rv)) {
+    ULOG(FATAL, this) << "nghttp2_session_change_stream_priority() failed: "
+                      << nghttp2_strerror(rv);
+    return -1;
+  }
+
+  if (rv == 0) {
+    if (LOG_ENABLED(INFO)) {
+      ULOG(INFO, this) << "Changed pushed stream priority: pushed stream("
+                       << stream_id << ") now depends on stream("
+                       << dep_stream_id << ") with weight " << weight;
+    }
   }
 
   return 0;
@@ -1953,6 +2021,8 @@ Http2Upstream::on_downstream_push_promise(Downstream *downstream,
   auto &promised_req = promised_downstream->request();
 
   promised_downstream->set_downstream_stream_id(promised_stream_id);
+  // Set associated stream in frontend
+  promised_downstream->set_assoc_stream_id(downstream->get_stream_id());
 
   promised_downstream->disable_upstream_rtimer();
 

@@ -125,6 +125,10 @@ public:
   void set_pending_data_downstream(Downstream *downstream, size_t n,
                                    size_t padlen);
 
+  // Changes stream priority of |downstream|, which is assumed to be a
+  // pushed stream.
+  int adjust_pushed_stream_priority(Downstream *downstream);
+
 private:
   WriteBuffer wb_;
   std::unique_ptr<HttpsUpstream> pre_upstream_;

@@ -117,7 +117,7 @@ Downstream::Downstream(Upstream *upstream, MemchunkPool *mcpool,
       request_start_time_(std::chrono::high_resolution_clock::now()),
       request_buf_(mcpool), response_buf_(mcpool), upstream_(upstream),
       blocked_link_(nullptr), num_retry_(0), stream_id_(stream_id),
-      downstream_stream_id_(-1),
+      assoc_stream_id_(-1), downstream_stream_id_(-1),
       response_rst_stream_error_code_(NGHTTP2_NO_ERROR),
       request_state_(INITIAL), response_state_(INITIAL),
       dispatch_state_(DISPATCH_NONE), upgraded_(false), chunked_request_(false),
@@ -896,5 +896,11 @@ bool Downstream::can_detach_downstream_connection() const {
 DefaultMemchunks Downstream::pop_response_buf() {
   return std::move(response_buf_);
 }
+
+void Downstream::set_assoc_stream_id(int32_t stream_id) {
+  assoc_stream_id_ = stream_id;
+}
+
+int32_t Downstream::get_assoc_stream_id() const { return assoc_stream_id_; }
 
 } // namespace shrpx

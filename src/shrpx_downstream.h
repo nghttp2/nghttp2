@@ -201,6 +201,8 @@ public:
   Upstream *get_upstream() const;
   void set_stream_id(int32_t stream_id);
   int32_t get_stream_id() const;
+  void set_assoc_stream_id(int32_t stream_id);
+  int32_t get_assoc_stream_id() const;
   void pause_read(IOCtrlReason reason);
   int resume_read(IOCtrlReason reason, size_t consumed);
   void force_resume_read();
@@ -406,6 +408,9 @@ private:
   size_t num_retry_;
   // The stream ID in frontend connection
   int32_t stream_id_;
+  // The associated stream ID in frontend connection if this is pushed
+  // stream.
+  int32_t assoc_stream_id_;
   // stream ID in backend connection
   int32_t downstream_stream_id_;
   // RST_STREAM error_code from downstream HTTP2 connection

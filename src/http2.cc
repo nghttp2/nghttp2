@@ -673,6 +673,15 @@ int lookup_token(const uint8_t *name, size_t namelen) {
       break;
     }
     break;
+  case 12:
+    switch (name[11]) {
+    case 'e':
+      if (util::streq_l("content-typ", name, 11)) {
+        return HD_CONTENT_TYPE;
+      }
+      break;
+    }
+    break;
   case 13:
     switch (name[12]) {
     case 'l':
