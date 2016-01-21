@@ -107,8 +107,7 @@ OPTIONS = [
     "add-forwarded",
     "strip-incoming-forwarded",
     "forwarded-by",
-    "forwarded-for",
-    "curves"
+    "forwarded-for"
 ]
 
 LOGVARS = [

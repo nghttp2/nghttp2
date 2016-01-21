@@ -694,7 +694,6 @@ enum {
   SHRPX_OPTID_CLIENT_PRIVATE_KEY_FILE,
   SHRPX_OPTID_CLIENT_PROXY,
   SHRPX_OPTID_CONF,
-  SHRPX_OPTID_CURVES,
   SHRPX_OPTID_DAEMON,
   SHRPX_OPTID_DH_PARAM_FILE,
   SHRPX_OPTID_ERRORLOG_FILE,
@@ -802,11 +801,6 @@ int option_lookup_token(const char *name, size_t namelen) {
     case 'n':
       if (util::strieq_l("daemo", name, 5)) {
         return SHRPX_OPTID_DAEMON;
-      }
-      break;
-    case 's':
-      if (util::strieq_l("curve", name, 5)) {
-        return SHRPX_OPTID_CURVES;
       }
       break;
     case 't':
@@ -2158,13 +2152,6 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   }
-  case SHRPX_OPTID_CURVES:
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L
-    mod_config()->tls.curves = optarg;
-#else  // OPENSSL_VERSION_NUMBER < 0x10002000L
-    LOG(WARN) << opt << ": this option requires OpenSSL >= 1.0.2.";
-#endif // OPENSSL_VERSION_NUMBER < 0x10002000L
-    return 0;
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 
