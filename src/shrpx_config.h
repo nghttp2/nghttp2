@@ -379,12 +379,9 @@ struct TLSConfig {
 struct HttpConfig {
   struct {
     // obfuscated value used in "by" parameter of Forwarded header
-    // field.
-    std::string by_obfuscated;
-    // obfuscated value used in "for" parameter of Forwarded header
     // field.  This is only used when user defined static obfuscated
     // string is provided.
-    std::string for_obfuscated;
+    std::string by_obfuscated;
     // bitwise-OR of one or more of shrpx_forwarded_param values.
     uint32_t params;
     // type of value recorded in "by" parameter of Forwarded header

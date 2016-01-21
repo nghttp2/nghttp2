@@ -2123,7 +2123,8 @@ int parse_config(const char *opt, const char *optarg,
   case SHRPX_OPTID_FORWARDED_FOR: {
     auto type = parse_forwarded_node_type(optarg);
 
-    if (type == -1) {
+    if (type == -1 ||
+        (optid == SHRPX_OPTID_FORWARDED_FOR && optarg[0] == '_')) {
       LOG(ERROR) << opt << ": unknown node type or illegal obfuscated string "
                  << optarg;
       return -1;
@@ -2142,11 +2143,6 @@ int parse_config(const char *opt, const char *optarg,
       break;
     case SHRPX_OPTID_FORWARDED_FOR:
       fwdconf.for_node_type = static_cast<shrpx_forwarded_node_type>(type);
-      if (optarg[0] == '_') {
-        fwdconf.for_obfuscated = optarg;
-      } else {
-        fwdconf.for_obfuscated = "";
-      }
       break;
     }
 

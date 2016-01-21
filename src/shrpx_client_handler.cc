@@ -408,13 +408,9 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
 
   if ((fwdconf.params & FORWARDED_FOR) &&
       fwdconf.for_node_type == FORWARDED_NODE_OBFUSCATED) {
-    if (fwdconf.for_obfuscated.empty()) {
-      forwarded_for_obfuscated_ = "_";
-      forwarded_for_obfuscated_ += util::random_alpha_digit(
-          worker_->get_randgen(), SHRPX_OBFUSCATED_NODE_LENGTH);
-    } else {
-      forwarded_for_obfuscated_ = fwdconf.for_obfuscated;
-    }
+    forwarded_for_obfuscated_ = "_";
+    forwarded_for_obfuscated_ += util::random_alpha_digit(
+        worker_->get_randgen(), SHRPX_OBFUSCATED_NODE_LENGTH);
   }
 }
 
