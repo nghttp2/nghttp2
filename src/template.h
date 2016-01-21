@@ -288,6 +288,12 @@ public:
     return ImmutableString(s, N - 1);
   }
 
+  const_iterator begin() const { return base; };
+  const_iterator cbegin() const { return base; };
+
+  const_iterator end() const { return base + len; };
+  const_iterator cend() const { return base + len; };
+
   const char *c_str() const { return base; }
   size_type size() const { return len; }
   bool empty() const { return len == 0; }
@@ -307,6 +313,40 @@ private:
   const char *base;
 };
 
+inline bool operator==(const ImmutableString &lhs, const std::string &rhs) {
+  return lhs.size() == rhs.size() &&
+         std::equal(std::begin(lhs), std::end(lhs), std::begin(rhs));
+}
+
+inline bool operator==(const std::string &lhs, const ImmutableString &rhs) {
+  return rhs == lhs;
+}
+
+inline bool operator==(const ImmutableString &lhs, const char *rhs) {
+  return lhs.size() == strlen(rhs) &&
+         std::equal(std::begin(lhs), std::end(lhs), rhs);
+}
+
+inline bool operator==(const char *lhs, const ImmutableString &rhs) {
+  return rhs == lhs;
+}
+
+inline bool operator!=(const ImmutableString &lhs, const std::string &rhs) {
+  return !(lhs == rhs);
+}
+
+inline bool operator!=(const std::string &lhs, const ImmutableString &rhs) {
+  return !(rhs == lhs);
+}
+
+inline bool operator!=(const ImmutableString &lhs, const char *rhs) {
+  return !(lhs == rhs);
+}
+
+inline bool operator!=(const char *lhs, const ImmutableString &rhs) {
+  return !(rhs == lhs);
+}
+
 // StringRef is a reference to a string owned by something else.  So
 // it behaves like simple string, but it does not own pointer.  When
 // it is default constructed, it has empty string.  You can freely
@@ -325,8 +365,9 @@ public:
   using const_iterator = const_pointer;
 
   StringRef() : base(""), len(0) {}
-  StringRef(const std::string &s) : base(s.c_str()), len(s.size()) {}
-  StringRef(const ImmutableString &s) : base(s.c_str()), len(s.size()) {}
+  explicit StringRef(const std::string &s) : base(s.c_str()), len(s.size()) {}
+  explicit StringRef(const ImmutableString &s)
+      : base(s.c_str()), len(s.size()) {}
   StringRef(const char *s) : base(s), len(strlen(s)) {}
   StringRef(const char *s, size_t n) : base(s), len(n) {}
 

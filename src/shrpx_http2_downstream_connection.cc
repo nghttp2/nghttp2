@@ -275,7 +275,7 @@ int Http2DownstreamConnection::push_request_headers() {
   auto authority = StringRef(downstream_hostport);
 
   if (no_host_rewrite && !req.authority.empty()) {
-    authority = req.authority;
+    authority = StringRef(req.authority);
   }
 
   downstream_->set_request_downstream_host(authority.str());
