@@ -175,7 +175,12 @@ void server::start_accept(tcp::acceptor &acceptor, serve_mux &mux) {
       });
 }
 
-void server::stop() { io_service_pool_.stop(); }
+void server::stop() {
+  io_service_pool_.stop();
+  for (auto &acceptor : acceptors_) {
+    acceptor.close();
+  }
+}
 
 void server::join() { io_service_pool_.join(); }
 
