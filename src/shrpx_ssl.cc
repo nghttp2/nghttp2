@@ -506,13 +506,28 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file
   }
 
 #ifndef OPENSSL_NO_EC
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+  auto conf_ctx = SSL_CONF_CTX_new();
 
-  // Disabled SSL_CTX_set_ecdh_auto, because computational cost of
-  // chosen curve is much higher than P-256.
+  SSL_CONF_CTX_set_flags(conf_ctx, SSL_CONF_FLAG_SERVER | SSL_CONF_FLAG_FILE);
+  SSL_CONF_CTX_set_ssl_ctx(conf_ctx, ssl_ctx);
 
-  // #if OPENSSL_VERSION_NUMBER >= 0x10002000L
-  //   SSL_CTX_set_ecdh_auto(ssl_ctx, 1);
-  // #else // OPENSSL_VERSION_NUBMER < 0x10002000L
+  if (!tlsconf.curves.empty()) {
+    if (SSL_CONF_cmd(conf_ctx, "Curves", tlsconf.curves.c_str()) != 2) {
+      LOG(FATAL) << "Setting named curves failed: "
+                 << ERR_error_string(ERR_get_error(), nullptr);
+      DIE();
+    }
+  }
+
+  if (SSL_CONF_CTX_finish(conf_ctx) == 0) {
+    LOG(FATAL) << "Configuring SSL_CTX failed: "
+               << ERR_error_string(ERR_get_error(), nullptr);
+    DIE();
+  }
+
+  SSL_CONF_CTX_free(conf_ctx);
+#else  // OPENSSL_VERSION_NUBMER < 0x10002000L
   // Use P-256, which is sufficiently secure at the time of this
   // writing.
   auto ecdh = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
@@ -523,7 +538,7 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file
   }
   SSL_CTX_set_tmp_ecdh(ssl_ctx, ecdh);
   EC_KEY_free(ecdh);
-// #endif // OPENSSL_VERSION_NUBMER < 0x10002000L
+#endif // OPENSSL_VERSION_NUBMER < 0x10002000L
 
 #endif // OPENSSL_NO_EC
 
