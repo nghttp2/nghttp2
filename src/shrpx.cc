@@ -731,7 +731,7 @@ pid_t fork_worker_process(SignalServer *ssv) {
     LOG(NOTICE) << "Worker process shutting down momentarily";
 
     // call exit(...) instead of _Exit to get leak sanitizer report
-    exit(EXIT_SUCCESS);
+    _Exit(EXIT_SUCCESS);
   }
 
   // parent process
