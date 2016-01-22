@@ -352,7 +352,6 @@ if test "x${request_jemalloc}" != "xno"; then
   LIBS_OLD=$LIBS
   AC_SEARCH_LIBS([malloc_stats_print], [jemalloc], [have_jemalloc=yes], [],
                  [$PTHREAD_LDFLAGS])
-  LIBS=$LIBS_OLD
 
   if test "x${have_jemalloc}" = "xyes"; then
     jemalloc_libs=${ac_cv_search_malloc_stats_print}
@@ -360,12 +359,13 @@ if test "x${request_jemalloc}" != "xno"; then
     # On Darwin, malloc_stats_print is je_malloc_stats_print
     AC_SEARCH_LIBS([je_malloc_stats_print], [jemalloc], [have_jemalloc=yes], [],
                    [$PTHREAD_LDFLAGS])
-    LIBS=$LIBS_OLD
 
     if test "x${have_jemalloc}" = "xyes"; then
       jemalloc_libs=${ac_cv_search_je_malloc_stats_print}
     fi
   fi
+
+  LIBS=$LIBS_OLD
 
   if test "x${have_jemalloc}" = "xyes" &&
      test "x${jemalloc_libs}" != "xnone required"; then
