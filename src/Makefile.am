@@ -27,9 +27,9 @@ check_PROGRAMS =
 TESTS =
 
 AM_CFLAGS = $(WARNCFLAGS)
+AM_CXXFLAGS = $(WARNCXXFLAGS)
 AM_CPPFLAGS = \
 	-DPKGDATADIR='"$(pkgdatadir)"' \
-	-Wall \
 	-I$(top_srcdir)/lib/includes \
 	-I$(top_builddir)/lib/includes \
 	-I$(top_srcdir)/lib \

@@ -643,9 +643,13 @@ AM_CONDITIONAL([ENABLE_TINY_NGHTTPD],
                  test "x${have_timerfd_create}" = "xyes"])
 
 ac_save_CFLAGS=$CFLAGS
+ac_save_CXXFLAGS=$CXXFLAGS
+
 CFLAGS=
+CXXFLAGS=
 
 if test "x$werror" != "xno"; then
+    # For C compiler
     AX_CHECK_COMPILE_FLAG([-Wall], [CFLAGS="$CFLAGS -Wall"])
     AX_CHECK_COMPILE_FLAG([-Wextra], [CFLAGS="$CFLAGS -Wextra"])
     AX_CHECK_COMPILE_FLAG([-Werror], [CFLAGS="$CFLAGS -Werror"])
@@ -691,12 +695,23 @@ if test "x$werror" != "xno"; then
     AX_CHECK_COMPILE_FLAG([-Wredundant-decls], [CFLAGS="$CFLAGS -Wredundant-decls"])
     # Only work with Clang for the moment
     AX_CHECK_COMPILE_FLAG([-Wheader-guard], [CFLAGS="$CFLAGS -Wheader-guard"])
+
+    # For C++ compiler
+    AC_LANG_PUSH(C++)
+    AX_CHECK_COMPILE_FLAG([-Wall], [CXXFLAGS="$CXXFLAGS -Wall"])
+    AX_CHECK_COMPILE_FLAG([-Werror], [CXXFLAGS="$CXXFLAGS -Werror"])
+    AX_CHECK_COMPILE_FLAG([-Wformat-security], [CXXFLAGS="$CXXFLAGS -Wformat-security"])
+    AC_LANG_POP()
 fi
 
 WARNCFLAGS=$CFLAGS
+WARNCXXFLAGS=$CXXFLAGS
+
 CFLAGS=$ac_save_CFLAGS
+CXXFLAGS=$ac_save_CXXFLAGS
 
 AC_SUBST([WARNCFLAGS])
+AC_SUBST([WARNCXXFLAGS])
 
 EXTRACFLAG=
 AX_CHECK_COMPILE_FLAG([-fvisibility=hidden], [EXTRACFLAG="-fvisibility=hidden"])
