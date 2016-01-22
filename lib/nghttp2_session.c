@@ -3779,8 +3779,8 @@ static int update_remote_initial_window_size_func(nghttp2_map_entry *entry,
   rv = nghttp2_stream_update_remote_initial_window_size(
       stream, arg->new_window_size, arg->old_window_size);
   if (rv != 0) {
-    return nghttp2_session_terminate_session(arg->session,
-                                             NGHTTP2_FLOW_CONTROL_ERROR);
+    return nghttp2_session_add_rst_stream(arg->session, stream->stream_id,
+                                          NGHTTP2_FLOW_CONTROL_ERROR);
   }
 
   /* If window size gets positive, push deferred DATA frame to
@@ -3831,8 +3831,8 @@ static int update_local_initial_window_size_func(nghttp2_map_entry *entry,
   rv = nghttp2_stream_update_local_initial_window_size(
       stream, arg->new_window_size, arg->old_window_size);
   if (rv != 0) {
-    return nghttp2_session_terminate_session(arg->session,
-                                             NGHTTP2_FLOW_CONTROL_ERROR);
+    return nghttp2_session_add_rst_stream(arg->session, stream->stream_id,
+                                          NGHTTP2_FLOW_CONTROL_ERROR);
   }
   if (!(arg->session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_WINDOW_UPDATE) &&
       stream->window_update_queued == 0 &&
