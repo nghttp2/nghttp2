@@ -2667,6 +2667,44 @@ void test_nghttp2_session_on_settings_received(void) {
 
   nghttp2_frame_settings_free(&frame.settings, mem);
   nghttp2_session_del(session);
+
+  /* Check the case where stream window size overflows */
+  nghttp2_session_server_new(&session, &callbacks, NULL);
+
+  stream1 = open_recv_stream(session, 1);
+
+  /* This will increment window size by 1 */
+  nghttp2_frame_window_update_init(&frame.window_update, NGHTTP2_FLAG_NONE, 1,
+                                   1);
+
+  CU_ASSERT(0 == nghttp2_session_on_window_update_received(session, &frame));
+
+  nghttp2_frame_window_update_free(&frame.window_update);
+
+  iv[0].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
+  iv[0].value = NGHTTP2_MAX_WINDOW_SIZE;
+
+  nghttp2_frame_settings_init(&frame.settings, NGHTTP2_FLAG_NONE, dup_iv(iv, 1),
+                              1);
+
+  /* Now window size gets NGHTTP2_MAX_WINDOW_SIZE + 1, which is
+     unacceptable situation in protocol spec. */
+  CU_ASSERT(0 == nghttp2_session_on_settings_received(session, &frame, 0));
+
+  nghttp2_frame_settings_free(&frame.settings, mem);
+
+  item = nghttp2_session_get_next_ob_item(session);
+
+  CU_ASSERT(NULL != item);
+  CU_ASSERT(NGHTTP2_SETTINGS == item->frame.hd.type);
+
+  item = nghttp2_outbound_queue_top(&session->ob_reg);
+
+  CU_ASSERT(NULL != item);
+  CU_ASSERT(NGHTTP2_RST_STREAM == item->frame.hd.type);
+  CU_ASSERT(NGHTTP2_STREAM_CLOSING == stream1->state);
+
+  nghttp2_session_del(session);
 }
 
 void test_nghttp2_session_on_push_promise_received(void) {
