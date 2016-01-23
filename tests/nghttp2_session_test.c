@@ -2194,7 +2194,7 @@ void test_nghttp2_session_on_request_headers_received(void) {
   nghttp2_session_client_new(&session, &callbacks, &user_data);
 
   session->next_stream_id = 5;
-  session->sent_stream_id = 3;
+  session->last_sent_stream_id = 3;
 
   /* Stream ID which is not idle and not in stream map is just
      ignored */
@@ -3544,7 +3544,7 @@ void test_nghttp2_session_upgrade2(void) {
   nghttp2_session_client_new(&session, &callbacks, NULL);
   CU_ASSERT(0 == nghttp2_session_upgrade2(session, settings_payload,
                                           settings_payloadlen, 0, &callbacks));
-  CU_ASSERT(1 == session->sent_stream_id);
+  CU_ASSERT(1 == session->last_sent_stream_id);
   stream = nghttp2_session_get_stream(session, 1);
   CU_ASSERT(stream != NULL);
   CU_ASSERT(&callbacks == stream->stream_user_data);

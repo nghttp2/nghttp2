@@ -130,7 +130,7 @@ static int session_detect_idle_stream(nghttp2_session *session,
                                       int32_t stream_id) {
   /* Assume that stream object with stream_id does not exist */
   if (nghttp2_session_is_my_stream_id(session, stream_id)) {
-    if (session->sent_stream_id < stream_id) {
+    if (session->last_sent_stream_id < stream_id) {
       return 1;
     }
     return 0;
@@ -1872,8 +1872,8 @@ static int session_prep_frame(nghttp2_session *session,
                      nghttp2_bufs_len(&session->aob.framebufs)));
 
       if (frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
-        assert(session->sent_stream_id < frame->hd.stream_id);
-        session->sent_stream_id = frame->hd.stream_id;
+        assert(session->last_sent_stream_id < frame->hd.stream_id);
+        session->last_sent_stream_id = frame->hd.stream_id;
       }
 
       break;
@@ -1945,9 +1945,9 @@ static int session_prep_frame(nghttp2_session *session,
         return rv;
       }
 
-      assert(session->sent_stream_id + 2 <=
+      assert(session->last_sent_stream_id + 2 <=
              frame->push_promise.promised_stream_id);
-      session->sent_stream_id = frame->push_promise.promised_stream_id;
+      session->last_sent_stream_id = frame->push_promise.promised_stream_id;
 
       break;
     }
@@ -6569,7 +6569,7 @@ static int nghttp2_session_upgrade_internal(nghttp2_session *session,
     session->last_proc_stream_id = 1;
   } else {
     nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_WR);
-    session->sent_stream_id = 1;
+    session->last_sent_stream_id = 1;
     session->next_stream_id += 2;
   }
   return 0;

@@ -111,8 +111,8 @@ nghttp2_stream *open_stream_with_dep_excl(nghttp2_session *session,
 nghttp2_outbound_item *create_data_ob_item(nghttp2_mem *mem);
 
 /* Opens stream.  This stream is assumed to be sent from |session|,
-   and session->sent_stream_id and session->next_stream_id will be
-   adjusted accordingly. */
+   and session->last_sent_stream_id and session->next_stream_id will
+   be adjusted accordingly. */
 nghttp2_stream *open_sent_stream(nghttp2_session *session, int32_t stream_id);
 
 nghttp2_stream *open_sent_stream2(nghttp2_session *session, int32_t stream_id,

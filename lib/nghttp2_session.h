@@ -249,7 +249,7 @@ struct nghttp2_session {
   /* The last stream ID this session initiated.  For client session,
      this is the last stream ID it has sent.  For server session, it
      is the last promised stream ID sent in PUSH_PROMISE. */
-  int32_t sent_stream_id;
+  int32_t last_sent_stream_id;
   /* The largest stream ID received so far */
   int32_t last_recv_stream_id;
   /* The largest stream ID which has been processed in some way. This

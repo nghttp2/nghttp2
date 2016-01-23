@@ -335,7 +335,8 @@ nghttp2_stream *open_sent_stream3(nghttp2_session *session, int32_t stream_id,
 
   stream = nghttp2_session_open_stream(session, stream_id, flags, pri_spec_in,
                                        initial_state, stream_user_data);
-  session->sent_stream_id = nghttp2_max(session->sent_stream_id, stream_id);
+  session->last_sent_stream_id =
+      nghttp2_max(session->last_sent_stream_id, stream_id);
   session->next_stream_id =
       nghttp2_max(session->next_stream_id, (uint32_t)stream_id + 2);
 
@@ -359,7 +360,8 @@ nghttp2_stream *open_sent_stream_with_dep_weight(nghttp2_session *session,
 
   stream = open_stream_with_all(session, stream_id, weight, 0, dep_stream);
 
-  session->sent_stream_id = nghttp2_max(session->sent_stream_id, stream_id);
+  session->last_sent_stream_id =
+      nghttp2_max(session->last_sent_stream_id, stream_id);
   session->next_stream_id =
       nghttp2_max(session->next_stream_id, (uint32_t)stream_id + 2);
 
