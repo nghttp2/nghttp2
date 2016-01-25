@@ -270,7 +270,7 @@ Performance
 
     Set buffer size used to store backend response.
 
-    Default: ``16K``
+    Default: ``128K``
 
 .. option:: --fastopen=<N>
 
@@ -775,23 +775,20 @@ HTTP
     given,   the  interface   address  of   the  connection,
     including  port number,  is  sent  with "by"  parameter.
     User can also specify the static obfuscated string.  The
-    limitation is  that it  must starts  with "_",  and only
+    limitation  is that  it must  start with  "_", and  only
     consists of  character set [A-Za-z0-9._-],  as described
     in RFC 7239.
 
     Default: ``obfuscated``
 
-.. option:: --forwarded-for=(obfuscated|ip|<VALUE>)
+.. option:: --forwarded-for=(obfuscated|ip)
 
     Specify  the   parameter  value  sent  out   with  "for"
     parameter of Forwarded header field.  If "obfuscated" is
     given, the string is  randomly generated for each client
     connection.  If "ip" is given, the remote client address
     of  the connection,  without port  number, is  sent with
-    "for"  parameter.   User  can also  specify  the  static
-    obfuscated  string.   The  limitation is  that  it  must
-    starts  with "_",  and  only consists  of character  set
-    [A-Za-z0-9._-], as described in RFC 7239.
+    "for" parameter.
 
     Default: ``obfuscated``
 
