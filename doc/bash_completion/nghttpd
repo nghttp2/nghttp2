@@ -8,7 +8,7 @@ _nghttpd()
     _get_comp_words_by_ref cur prev
     case $cur in
         -*)
-            COMPREPLY=( $( compgen -W '--mime-types-file --error-gzip --push --header-table-size --trailer --htdocs --address --padding --verbose --version --help --hexdump --dh-param-file --daemon --verify-client --echo-upload --workers --no-tls --color --early-response --max-concurrent-streams ' -- "$cur" ) )
+            COMPREPLY=( $( compgen -W '--htdocs --verbose --daemon --echo-upload --error-gzip --push --header-table-size --padding --hexdump --max-concurrent-streams --no-tls --mime-types-file --no-content-length --workers --version --color --early-response --dh-param-file --trailer --address --verify-client --help ' -- "$cur" ) )
             ;;
         *)
             _filedir
