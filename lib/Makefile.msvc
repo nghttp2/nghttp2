@@ -15,7 +15,7 @@ THIS_MAKEFILE := $(lastword $(MAKEFILE_LIST))
 USE_CYTHON := 1
 #USE_CYTHON := 0
 
-_VERSION    := $(shell grep AC_INIT ../configure.ac | cut -d'[' -f3 | sed -e 's/-DEV], //g')
+_VERSION    := $(shell grep AC_INIT ../configure.ac | cut -d'[' -f3 | sed -r -e 's/(-DEV)?], //g')
 _VERSION   	:= $(subst ., ,$(_VERSION))
 VER_MAJOR  	:= $(word 1,$(_VERSION))
 VER_MINOR  	:= $(word 2,$(_VERSION))
