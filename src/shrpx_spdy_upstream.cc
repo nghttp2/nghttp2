@@ -50,18 +50,22 @@ using namespace nghttp2;
 namespace shrpx {
 
 namespace {
+constexpr size_t MAX_BUFFER_SIZE = 32_k;
+} // namespace
+
+namespace {
 ssize_t send_callback(spdylay_session *session, const uint8_t *data, size_t len,
                       int flags, void *user_data) {
   auto upstream = static_cast<SpdyUpstream *>(user_data);
   auto wb = upstream->get_response_buf();
 
-  if (wb->wleft() == 0) {
+  if (wb->rleft() >= MAX_BUFFER_SIZE) {
     return SPDYLAY_ERR_WOULDBLOCK;
   }
 
-  auto nread = wb->write(data, len);
+  wb->append(data, len);
 
-  return nread;
+  return len;
 }
 } // namespace
 
@@ -492,7 +496,8 @@ uint32_t infer_upstream_rst_stream_status_code(uint32_t downstream_error_code) {
 } // namespace
 
 SpdyUpstream::SpdyUpstream(uint16_t version, ClientHandler *handler)
-    : downstream_queue_(
+    : wb_(handler->get_worker()->get_mcpool()),
+      downstream_queue_(
           get_config()->http2_proxy
               ? get_config()->conn.downstream.connections_per_host
               : get_config()->conn.downstream.proto == PROTO_HTTP
@@ -586,8 +591,8 @@ int SpdyUpstream::on_read() {
 int SpdyUpstream::on_write() {
   int rv = 0;
 
-  if (wb_.rleft() == 0) {
-    wb_.reset();
+  if (wb_.rleft() >= MAX_BUFFER_SIZE) {
+    return 0;
   }
 
   rv = spdylay_session_send(session_);
@@ -1248,17 +1253,14 @@ int SpdyUpstream::response_riovec(struct iovec *iov, int iovcnt) const {
     return 0;
   }
 
-  iov->iov_base = wb_.pos;
-  iov->iov_len = wb_.rleft();
-
-  return 1;
+  return wb_.riovec(iov, iovcnt);
 }
 
 void SpdyUpstream::response_drain(size_t n) { wb_.drain(n); }
 
 bool SpdyUpstream::response_empty() const { return wb_.rleft() == 0; }
 
-SpdyUpstream::WriteBuffer *SpdyUpstream::get_response_buf() { return &wb_; }
+DefaultMemchunks *SpdyUpstream::get_response_buf() { return &wb_; }
 
 Downstream *
 SpdyUpstream::on_downstream_push_promise(Downstream *downstream,

@@ -97,12 +97,10 @@ public:
   void start_downstream(Downstream *downstream);
   void initiate_downstream(Downstream *downstream);
 
-  using WriteBuffer = Buffer<32_k>;
-
-  WriteBuffer *get_response_buf();
+  DefaultMemchunks *get_response_buf();
 
 private:
-  WriteBuffer wb_;
+  DefaultMemchunks wb_;
   DownstreamQueue downstream_queue_;
   ClientHandler *handler_;
   spdylay_session *session_;

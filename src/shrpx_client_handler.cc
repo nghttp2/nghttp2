@@ -761,17 +761,6 @@ int ClientHandler::perform_http2_upgrade(HttpsUpstream *http) {
       "Upgrade: " NGHTTP2_CLEARTEXT_PROTO_VERSION_ID "\r\n"
       "\r\n";
 
-  auto required_size = str_size(res) + input->rleft();
-
-  if (output->wleft() < required_size) {
-    if (LOG_ENABLED(INFO)) {
-      CLOG(INFO, this)
-          << "HTTP Upgrade failed because of insufficient buffer space: need "
-          << required_size << ", available " << output->wleft();
-    }
-    return -1;
-  }
-
   if (upstream->upgrade_upstream(http) != 0) {
     return -1;
   }
@@ -783,11 +772,8 @@ int ClientHandler::perform_http2_upgrade(HttpsUpstream *http) {
   on_read_ = &ClientHandler::upstream_http2_connhd_read;
   write_ = &ClientHandler::write_clear;
 
-  auto nread =
-      downstream->get_response_buf()->remove(output->last, output->wleft());
-  output->write(nread);
-
-  output->write(res, str_size(res));
+  input->remove(*output, input->rleft());
+  output->append(res, str_size(res));
   upstream_ = std::move(upstream);
 
   signal_write();

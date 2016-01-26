@@ -41,6 +41,14 @@
 
 namespace nghttp2 {
 
+#define DEFAULT_WR_IOVCNT 16
+
+#if defined(IOV_MAX) && IOV_MAX < DEFAULT_WR_IOVCNT
+#define MAX_WR_IOVCNT IOV_MAX
+#else // !defined(IOV_MAX) || IOV_MAX >= DEFAULT_WR_IOVCNT
+#define MAX_WR_IOVCNT DEFAULT_WR_IOVCNT
+#endif // !defined(IOV_MAX) || IOV_MAX >= DEFAULT_WR_IOVCNT
+
 template <size_t N> struct Memchunk {
   Memchunk(std::unique_ptr<Memchunk> next_chunk)
       : pos(std::begin(buf)), last(pos), knext(std::move(next_chunk)),
@@ -198,6 +206,36 @@ template <typename Memchunk> struct Memchunks {
     }
 
     return first - static_cast<uint8_t *>(dest);
+  }
+  size_t remove(Memchunks &dest, size_t count) {
+    if (!tail || count == 0) {
+      return 0;
+    }
+
+    auto left = count;
+    auto m = head;
+
+    while (m) {
+      auto next = m->next;
+      auto n = std::min(left, m->len());
+
+      assert(m->len());
+      dest.append(m->pos, n);
+      m->pos += n;
+      len -= n;
+      left -= n;
+      if (m->len() > 0) {
+        break;
+      }
+      pool->recycle(m);
+      m = next;
+    }
+    head = m;
+    if (head == nullptr) {
+      tail = nullptr;
+    }
+
+    return count - left;
   }
   size_t drain(size_t count) {
     auto ndata = count;
@@ -373,14 +411,6 @@ using Memchunk16K = Memchunk<16_k>;
 using MemchunkPool = Pool<Memchunk16K>;
 using DefaultMemchunks = Memchunks<Memchunk16K>;
 using DefaultPeekMemchunks = PeekMemchunks<Memchunk16K>;
-
-#define DEFAULT_WR_IOVCNT 16
-
-#if defined(IOV_MAX) && IOV_MAX < DEFAULT_WR_IOVCNT
-#define MAX_WR_IOVCNT IOV_MAX
-#else // !defined(IOV_MAX) || IOV_MAX >= DEFAULT_WR_IOVCNT
-#define MAX_WR_IOVCNT DEFAULT_WR_IOVCNT
-#endif // !defined(IOV_MAX) || IOV_MAX >= DEFAULT_WR_IOVCNT
 
 inline int limit_iovec(struct iovec *iov, int iovcnt, size_t max) {
   if (max == 0) {
