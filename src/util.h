@@ -98,19 +98,24 @@ std::string percent_encode_path(const std::string &s);
 template <typename InputIt>
 std::string percent_decode(InputIt first, InputIt last) {
   std::string result;
+  result.resize(last - first);
+  auto p = std::begin(result);
   for (; first != last; ++first) {
-    if (*first == '%') {
-      if (first + 1 != last && first + 2 != last &&
-          is_hex_digit(*(first + 1)) && is_hex_digit(*(first + 2))) {
-        result += (hex_to_uint(*(first + 1)) << 4) + hex_to_uint(*(first + 2));
-        first += 2;
-        continue;
-      }
-      result += *first;
+    if (*first != '%') {
+      *p++ = *first;
       continue;
     }
-    result += *first;
+
+    if (first + 1 != last && first + 2 != last && is_hex_digit(*(first + 1)) &&
+        is_hex_digit(*(first + 2))) {
+      *p++ = (hex_to_uint(*(first + 1)) << 4) + hex_to_uint(*(first + 2));
+      first += 2;
+      continue;
+    }
+
+    *p++ = *first;
   }
+  result.resize(p - std::begin(result));
   return result;
 }
 

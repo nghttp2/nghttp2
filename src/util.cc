@@ -131,20 +131,24 @@ bool in_attr_char(char c) {
 }
 
 std::string percent_encode_token(const std::string &target) {
-  auto len = target.size();
   std::string dest;
 
-  for (size_t i = 0; i < len; ++i) {
-    unsigned char c = target[i];
+  dest.resize(target.size() * 3);
+  auto p = std::begin(dest);
+
+  for (auto first = std::begin(target); first != std::end(target); ++first) {
+    uint8_t c = *first;
 
     if (c != '%' && in_token(c)) {
-      dest += c;
-    } else {
-      dest += '%';
-      dest += UPPER_XDIGITS[c >> 4];
-      dest += UPPER_XDIGITS[(c & 0x0f)];
+      *p++ = c;
+      continue;
     }
+
+    *p++ = '%';
+    *p++ = UPPER_XDIGITS[c >> 4];
+    *p++ = UPPER_XDIGITS[(c & 0x0f)];
   }
+  dest.resize(p - std::begin(dest));
   return dest;
 }
 
