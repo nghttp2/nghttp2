@@ -40,6 +40,7 @@
 #include "memchunk_test.h"
 #include "template_test.h"
 #include "shrpx_http_test.h"
+#include "base64_test.h"
 #include "shrpx_config.h"
 #include "ssl.h"
 
@@ -186,7 +187,9 @@ int main(int argc, char *argv[]) {
       !CU_add_test(pSuite, "template_immutable_string",
                    nghttp2::test_template_immutable_string) ||
       !CU_add_test(pSuite, "template_string_ref",
-                   nghttp2::test_template_string_ref)) {
+                   nghttp2::test_template_string_ref) ||
+      !CU_add_test(pSuite, "base64_encode", nghttp2::test_base64_encode) ||
+      !CU_add_test(pSuite, "base64_decode", nghttp2::test_base64_decode)) {
     CU_cleanup_registry();
     return CU_get_error();
   }
