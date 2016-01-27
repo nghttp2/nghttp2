@@ -909,6 +909,21 @@ int Http2Handler::verify_npn_result() {
   return -1;
 }
 
+namespace {
+std::string make_trailer_header_value(const Headers &trailer) {
+  if (trailer.empty()) {
+    return "";
+  }
+
+  auto trailer_names = trailer[0].name;
+  for (size_t i = 1; i < trailer.size(); ++i) {
+    trailer_names += ", ";
+    trailer_names += trailer[i].name;
+  }
+  return trailer_names;
+}
+} // namespace
+
 int Http2Handler::submit_file_response(const std::string &status,
                                        Stream *stream, time_t last_modified,
                                        off_t file_length,
@@ -933,14 +948,8 @@ int Http2Handler::submit_file_response(const std::string &status,
   if (content_type) {
     nva[nvlen++] = http2::make_nv_ls("content-type", *content_type);
   }
-  auto &trailer = get_config()->trailer;
-  std::string trailer_names;
-  if (!trailer.empty()) {
-    trailer_names = trailer[0].name;
-    for (size_t i = 1; i < trailer.size(); ++i) {
-      trailer_names += ", ";
-      trailer_names += trailer[i].name;
-    }
+  auto trailer_names = make_trailer_header_value(get_config()->trailer);
+  if (!trailer_names.empty()) {
     nva[nvlen++] = http2::make_nv_ls("trailer", trailer_names);
   }
   return nghttp2_submit_response(session_, stream->stream_id, nva.data(), nvlen,
@@ -951,10 +960,19 @@ int Http2Handler::submit_response(const std::string &status, int32_t stream_id,
                                   const Headers &headers,
                                   nghttp2_data_provider *data_prd) {
   auto nva = std::vector<nghttp2_nv>();
-  nva.reserve(3 + headers.size());
+  nva.reserve(4 + headers.size());
   nva.push_back(http2::make_nv_ls(":status", status));
   nva.push_back(http2::make_nv_ll("server", NGHTTPD_SERVER));
   nva.push_back(http2::make_nv_ls("date", sessions_->get_cached_date()));
+
+  std::string trailer_names;
+  if (data_prd) {
+    trailer_names = make_trailer_header_value(get_config()->trailer);
+    if (!trailer_names.empty()) {
+      nva.push_back(http2::make_nv_ls("trailer", trailer_names));
+    }
+  }
+
   for (auto &nv : headers) {
     nva.push_back(http2::make_nv(nv.name, nv.value, nv.no_index));
   }
@@ -965,11 +983,21 @@ int Http2Handler::submit_response(const std::string &status, int32_t stream_id,
 
 int Http2Handler::submit_response(const std::string &status, int32_t stream_id,
                                   nghttp2_data_provider *data_prd) {
-  auto nva =
-      make_array(http2::make_nv_ls(":status", status),
-                 http2::make_nv_ll("server", NGHTTPD_SERVER),
-                 http2::make_nv_ls("date", sessions_->get_cached_date()));
-  return nghttp2_submit_response(session_, stream_id, nva.data(), nva.size(),
+  auto nva = make_array(http2::make_nv_ls(":status", status),
+                        http2::make_nv_ll("server", NGHTTPD_SERVER),
+                        http2::make_nv_ls("date", sessions_->get_cached_date()),
+                        http2::make_nv_ll("", ""));
+  size_t nvlen = 3;
+
+  std::string trailer_names;
+  if (data_prd) {
+    trailer_names = make_trailer_header_value(get_config()->trailer);
+    if (!trailer_names.empty()) {
+      nva[nvlen++] = http2::make_nv_ls("trailer", trailer_names);
+    }
+  }
+
+  return nghttp2_submit_response(session_, stream_id, nva.data(), nvlen,
                                  data_prd);
 }
 
