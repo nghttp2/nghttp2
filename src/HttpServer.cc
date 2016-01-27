@@ -109,6 +109,8 @@ Config::Config()
       num_worker(1),
       max_concurrent_streams(100),
       header_table_size(-1),
+      window_bits(-1),
+      connection_window_bits(-1),
       port(0),
       verbose(false),
       daemon(false),
@@ -845,9 +847,26 @@ int Http2Handler::connection_made() {
     entry[niv].value = config->header_table_size;
     ++niv;
   }
+
+  if (config->window_bits != -1) {
+    entry[niv].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
+    entry[niv].value = (1 << config->window_bits) - 1;
+    ++niv;
+  }
+
   r = nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE, entry.data(), niv);
   if (r != 0) {
     return r;
+  }
+
+  if (config->connection_window_bits != -1) {
+    r = nghttp2_submit_window_update(
+        session_, NGHTTP2_FLAG_NONE, 0,
+        (1 << config->connection_window_bits) - 1 -
+            NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE);
+    if (r != 0) {
+      return r;
+    }
   }
 
   ev_timer_start(sessions_->get_loop(), &settings_timerev_);

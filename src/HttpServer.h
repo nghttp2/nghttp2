@@ -67,6 +67,8 @@ struct Config {
   size_t num_worker;
   size_t max_concurrent_streams;
   ssize_t header_table_size;
+  int window_bits;
+  int connection_window_bits;
   uint16_t port;
   bool verbose;
   bool daemon;
