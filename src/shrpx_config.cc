@@ -81,8 +81,11 @@ TicketKeys::~TicketKeys() {
 }
 
 DownstreamAddr::DownstreamAddr(const DownstreamAddr &other)
-    : addr(other.addr), host(other.host), hostport(other.hostport),
-      port(other.port), host_unix(other.host_unix) {}
+    : addr(other.addr),
+      host(other.host),
+      hostport(other.hostport),
+      port(other.port),
+      host_unix(other.host_unix) {}
 
 DownstreamAddr &DownstreamAddr::operator=(const DownstreamAddr &other) {
   if (this == &other) {

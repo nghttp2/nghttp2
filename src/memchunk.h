@@ -51,7 +51,9 @@ namespace nghttp2 {
 
 template <size_t N> struct Memchunk {
   Memchunk(std::unique_ptr<Memchunk> next_chunk)
-      : pos(std::begin(buf)), last(pos), knext(std::move(next_chunk)),
+      : pos(std::begin(buf)),
+        last(pos),
+        knext(std::move(next_chunk)),
         next(nullptr) {}
   size_t len() const { return last - pos; }
   size_t left() const { return std::end(buf) - last; }
@@ -290,8 +292,12 @@ template <typename Memchunk> struct Memchunks {
 // Wrapper around Memchunks to offer "peeking" functionality.
 template <typename Memchunk> struct PeekMemchunks {
   PeekMemchunks(Pool<Memchunk> *pool)
-      : memchunks(pool), cur(nullptr), cur_pos(nullptr), cur_last(nullptr),
-        len(0), peeking(true) {}
+      : memchunks(pool),
+        cur(nullptr),
+        cur_pos(nullptr),
+        cur_last(nullptr),
+        len(0),
+        peeking(true) {}
   PeekMemchunks(const PeekMemchunks &) = delete;
   PeekMemchunks(PeekMemchunks &&other) noexcept
       : memchunks(std::move(other.memchunks)),

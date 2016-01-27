@@ -39,11 +39,18 @@ namespace asio_http2 {
 namespace client {
 
 session_impl::session_impl(boost::asio::io_service &io_service)
-    : wblen_(0), io_service_(io_service), resolver_(io_service),
-      deadline_(io_service), connect_timeout_(boost::posix_time::seconds(60)),
-      read_timeout_(boost::posix_time::seconds(60)), session_(nullptr),
-      data_pending_(nullptr), data_pendinglen_(0), writing_(false),
-      inside_callback_(false), stopped_(false) {}
+    : wblen_(0),
+      io_service_(io_service),
+      resolver_(io_service),
+      deadline_(io_service),
+      connect_timeout_(boost::posix_time::seconds(60)),
+      read_timeout_(boost::posix_time::seconds(60)),
+      session_(nullptr),
+      data_pending_(nullptr),
+      data_pendinglen_(0),
+      writing_(false),
+      inside_callback_(false),
+      stopped_(false) {}
 
 session_impl::~session_impl() {
   // finish up all active stream

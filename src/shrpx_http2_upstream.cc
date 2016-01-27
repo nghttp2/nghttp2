@@ -826,7 +826,9 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
                     ? get_config()->conn.downstream.connections_per_frontend
                     : 0,
           !get_config()->http2_proxy),
-      handler_(handler), session_(nullptr), shutdown_handled_(false) {
+      handler_(handler),
+      session_(nullptr),
+      shutdown_handled_(false) {
 
   int rv;
 

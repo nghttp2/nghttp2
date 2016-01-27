@@ -118,7 +118,10 @@ HttpDownstreamConnection::HttpDownstreamConnection(
             get_config()->conn.downstream.timeout.read, {}, {}, connectcb,
             readcb, timeoutcb, this, get_config()->tls.dyn_rec.warmup_threshold,
             get_config()->tls.dyn_rec.idle_timeout),
-      ioctrl_(&conn_.rlimit), response_htp_{0}, group_(group), addr_idx_(0),
+      ioctrl_(&conn_.rlimit),
+      response_htp_{0},
+      group_(group),
+      addr_idx_(0),
       connected_(false) {}
 
 HttpDownstreamConnection::~HttpDownstreamConnection() {}

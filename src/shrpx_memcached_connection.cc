@@ -94,7 +94,10 @@ MemcachedConnection::MemcachedConnection(const Address *addr,
                                          struct ev_loop *loop)
     : conn_(loop, -1, nullptr, nullptr, write_timeout, read_timeout, {}, {},
             connectcb, readcb, timeoutcb, this, 0, 0.),
-      parse_state_{}, addr_(addr), sendsum_(0), connected_(false) {}
+      parse_state_{},
+      addr_(addr),
+      sendsum_(0),
+      connected_(false) {}
 
 MemcachedConnection::~MemcachedConnection() { disconnect(); }
 

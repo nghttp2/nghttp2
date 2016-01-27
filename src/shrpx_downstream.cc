@@ -113,15 +113,26 @@ void downstream_wtimeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
 // upstream could be nullptr for unittests
 Downstream::Downstream(Upstream *upstream, MemchunkPool *mcpool,
                        int32_t stream_id)
-    : dlnext(nullptr), dlprev(nullptr), response_sent_body_length(0),
+    : dlnext(nullptr),
+      dlprev(nullptr),
+      response_sent_body_length(0),
       request_start_time_(std::chrono::high_resolution_clock::now()),
-      request_buf_(mcpool), response_buf_(mcpool), upstream_(upstream),
-      blocked_link_(nullptr), num_retry_(0), stream_id_(stream_id),
-      assoc_stream_id_(-1), downstream_stream_id_(-1),
+      request_buf_(mcpool),
+      response_buf_(mcpool),
+      upstream_(upstream),
+      blocked_link_(nullptr),
+      num_retry_(0),
+      stream_id_(stream_id),
+      assoc_stream_id_(-1),
+      downstream_stream_id_(-1),
       response_rst_stream_error_code_(NGHTTP2_NO_ERROR),
-      request_state_(INITIAL), response_state_(INITIAL),
-      dispatch_state_(DISPATCH_NONE), upgraded_(false), chunked_request_(false),
-      chunked_response_(false), expect_final_response_(false),
+      request_state_(INITIAL),
+      response_state_(INITIAL),
+      dispatch_state_(DISPATCH_NONE),
+      upgraded_(false),
+      chunked_request_(false),
+      chunked_response_(false),
+      expect_final_response_(false),
       request_pending_(false) {
 
   auto &timeoutconf = get_config()->http2.timeout;

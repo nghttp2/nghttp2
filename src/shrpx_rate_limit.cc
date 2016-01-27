@@ -39,8 +39,13 @@ void regencb(struct ev_loop *loop, ev_timer *w, int revents) {
 
 RateLimit::RateLimit(struct ev_loop *loop, ev_io *w, size_t rate, size_t burst,
                      Connection *conn)
-    : w_(w), loop_(loop), conn_(conn), rate_(rate), burst_(burst),
-      avail_(burst), startw_req_(false) {
+    : w_(w),
+      loop_(loop),
+      conn_(conn),
+      rate_(rate),
+      burst_(burst),
+      avail_(burst),
+      startw_req_(false) {
   ev_timer_init(&t_, regencb, 0., 1.);
   t_.data = this;
   if (rate_ > 0) {

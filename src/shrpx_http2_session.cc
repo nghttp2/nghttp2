@@ -150,10 +150,18 @@ Http2Session::Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx,
             get_config()->conn.downstream.timeout.read, {}, {}, writecb, readcb,
             timeoutcb, this, get_config()->tls.dyn_rec.warmup_threshold,
             get_config()->tls.dyn_rec.idle_timeout),
-      worker_(worker), connect_blocker_(connect_blocker), ssl_ctx_(ssl_ctx),
-      session_(nullptr), data_pending_(nullptr), data_pendinglen_(0),
-      addr_idx_(0), group_(group), index_(idx), state_(DISCONNECTED),
-      connection_check_state_(CONNECTION_CHECK_NONE), flow_control_(false) {
+      worker_(worker),
+      connect_blocker_(connect_blocker),
+      ssl_ctx_(ssl_ctx),
+      session_(nullptr),
+      data_pending_(nullptr),
+      data_pendinglen_(0),
+      addr_idx_(0),
+      group_(group),
+      index_(idx),
+      state_(DISCONNECTED),
+      connection_check_state_(CONNECTION_CHECK_NONE),
+      flow_control_(false) {
 
   read_ = write_ = &Http2Session::noop;
   on_read_ = on_write_ = &Http2Session::noop;

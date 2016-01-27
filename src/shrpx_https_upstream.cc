@@ -49,7 +49,8 @@ using namespace nghttp2;
 namespace shrpx {
 
 HttpsUpstream::HttpsUpstream(ClientHandler *handler)
-    : handler_(handler), current_header_length_(0),
+    : handler_(handler),
+      current_header_length_(0),
       ioctrl_(handler->get_rlimit()) {
   http_parser_init(&htp_, HTTP_REQUEST);
   htp_.data = this;

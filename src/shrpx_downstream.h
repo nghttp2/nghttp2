@@ -52,7 +52,9 @@ struct BlockedLink;
 class FieldStore {
 public:
   FieldStore(size_t headers_initial_capacity)
-      : content_length(-1), buffer_size_(0), header_key_prev_(false),
+      : content_length(-1),
+        buffer_size_(0),
+        header_key_prev_(false),
         trailer_key_prev_(false) {
     http2::init_hdidx(hdidx_);
     headers_.reserve(headers_initial_capacity);
@@ -124,10 +126,17 @@ private:
 
 struct Request {
   Request()
-      : fs(16), recv_body_length(0), unconsumed_body_length(0), method(-1),
-        http_major(1), http_minor(1), upgrade_request(false),
-        http2_upgrade_seen(false), connection_close(false),
-        http2_expect_body(false), no_authority(false) {}
+      : fs(16),
+        recv_body_length(0),
+        unconsumed_body_length(0),
+        method(-1),
+        http_major(1),
+        http_minor(1),
+        upgrade_request(false),
+        http2_upgrade_seen(false),
+        connection_close(false),
+        http2_expect_body(false),
+        no_authority(false) {}
 
   void consume(size_t len) {
     assert(unconsumed_body_length >= len);
@@ -173,8 +182,13 @@ struct Request {
 
 struct Response {
   Response()
-      : fs(32), recv_body_length(0), unconsumed_body_length(0), http_status(0),
-        http_major(1), http_minor(1), connection_close(false) {}
+      : fs(32),
+        recv_body_length(0),
+        unconsumed_body_length(0),
+        http_status(0),
+        http_major(1),
+        http_minor(1),
+        connection_close(false) {}
 
   void consume(size_t len) {
     assert(unconsumed_body_length >= len);

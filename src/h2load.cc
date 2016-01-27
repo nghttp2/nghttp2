@@ -79,11 +79,24 @@ bool recorded(const std::chrono::steady_clock::time_point &t) {
 } // namespace
 
 Config::Config()
-    : data_length(-1), addrs(nullptr), nreqs(1), nclients(1), nthreads(1),
-      max_concurrent_streams(-1), window_bits(30), connection_window_bits(30),
-      rate(0), rate_period(1.0), conn_active_timeout(0.),
-      conn_inactivity_timeout(0.), no_tls_proto(PROTO_HTTP2), data_fd(-1),
-      port(0), default_port(0), verbose(false), timing_script(false) {}
+    : data_length(-1),
+      addrs(nullptr),
+      nreqs(1),
+      nclients(1),
+      nthreads(1),
+      max_concurrent_streams(-1),
+      window_bits(30),
+      connection_window_bits(30),
+      rate(0),
+      rate_period(1.0),
+      conn_active_timeout(0.),
+      conn_inactivity_timeout(0.),
+      no_tls_proto(PROTO_HTTP2),
+      data_fd(-1),
+      port(0),
+      default_port(0),
+      verbose(false),
+      timing_script(false) {}
 
 Config::~Config() {
   if (base_uri_unix) {
@@ -106,9 +119,18 @@ constexpr size_t MAX_SAMPLES = 1000000;
 } // namespace
 
 Stats::Stats(size_t req_todo, size_t nclients)
-    : req_todo(req_todo), req_started(0), req_done(0), req_success(0),
-      req_status_success(0), req_failed(0), req_error(0), req_timedout(0),
-      bytes_total(0), bytes_head(0), bytes_head_decomp(0), bytes_body(0),
+    : req_todo(req_todo),
+      req_started(0),
+      req_done(0),
+      req_success(0),
+      req_status_success(0),
+      req_failed(0),
+      req_error(0),
+      req_timedout(0),
+      bytes_total(0),
+      bytes_head(0),
+      bytes_head_decomp(0),
+      bytes_body(0),
       status() {}
 
 Stream::Stream() : req_stat{}, status_success(-1) {}
@@ -290,9 +312,18 @@ void client_request_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 } // namespace
 
 Client::Client(uint32_t id, Worker *worker, size_t req_todo)
-    : cstat{}, worker(worker), ssl(nullptr), next_addr(config.addrs),
-      current_addr(nullptr), reqidx(0), state(CLIENT_IDLE), req_todo(req_todo),
-      req_started(0), req_done(0), id(id), fd(-1),
+    : cstat{},
+      worker(worker),
+      ssl(nullptr),
+      next_addr(config.addrs),
+      current_addr(nullptr),
+      reqidx(0),
+      state(CLIENT_IDLE),
+      req_todo(req_todo),
+      req_started(0),
+      req_done(0),
+      id(id),
+      fd(-1),
       new_connection_requested(false) {
   ev_io_init(&wev, writecb, 0, EV_WRITE);
   ev_io_init(&rev, readcb, 0, EV_READ);
@@ -1094,11 +1125,20 @@ void Client::try_new_connection() { new_connection_requested = true; }
 
 Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
                size_t rate, size_t max_samples, Config *config)
-    : stats(req_todo, nclients), loop(ev_loop_new(0)), ssl_ctx(ssl_ctx),
-      config(config), id(id), tls_info_report_done(false),
-      app_info_report_done(false), nconns_made(0), nclients(nclients),
-      nreqs_per_client(req_todo / nclients), nreqs_rem(req_todo % nclients),
-      rate(rate), max_samples(max_samples), next_client_id(0) {
+    : stats(req_todo, nclients),
+      loop(ev_loop_new(0)),
+      ssl_ctx(ssl_ctx),
+      config(config),
+      id(id),
+      tls_info_report_done(false),
+      app_info_report_done(false),
+      nconns_made(0),
+      nclients(nclients),
+      nreqs_per_client(req_todo / nclients),
+      nreqs_rem(req_todo % nclients),
+      rate(rate),
+      max_samples(max_samples),
+      next_client_id(0) {
   if (!config->is_rate_mode()) {
     progress_interval = std::max(static_cast<size_t>(1), req_todo / 10);
   } else {

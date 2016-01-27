@@ -38,7 +38,8 @@ namespace asio_http2 {
 namespace server {
 
 http2_impl::http2_impl()
-    : num_threads_(1), backlog_(-1),
+    : num_threads_(1),
+      backlog_(-1),
       tls_handshake_timeout_(boost::posix_time::seconds(60)),
       read_timeout_(boost::posix_time::seconds(60)) {}
 

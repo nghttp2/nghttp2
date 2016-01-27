@@ -504,7 +504,8 @@ SpdyUpstream::SpdyUpstream(uint16_t version, ClientHandler *handler)
                     ? get_config()->conn.downstream.connections_per_frontend
                     : 0,
           !get_config()->http2_proxy),
-      handler_(handler), session_(nullptr) {
+      handler_(handler),
+      session_(nullptr) {
   spdylay_session_callbacks callbacks{};
   callbacks.send_callback = send_callback;
   callbacks.recv_callback = recv_callback;

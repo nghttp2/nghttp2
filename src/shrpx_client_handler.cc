@@ -390,7 +390,9 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
               ? make_unique<std::vector<ssize_t>>(
                     get_config()->conn.downstream.addr_groups.size(), -1)
               : nullptr),
-      ipaddr_(ipaddr), port_(port), worker_(worker),
+      ipaddr_(ipaddr),
+      port_(port),
+      worker_(worker),
       left_connhd_len_(NGHTTP2_CLIENT_MAGIC_LEN),
       should_close_after_write_(false) {
 

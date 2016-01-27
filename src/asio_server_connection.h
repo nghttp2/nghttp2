@@ -69,10 +69,13 @@ public:
       const boost::posix_time::time_duration &tls_handshake_timeout,
       const boost::posix_time::time_duration &read_timeout,
       SocketArgs &&... args)
-      : socket_(std::forward<SocketArgs>(args)...), mux_(mux),
+      : socket_(std::forward<SocketArgs>(args)...),
+        mux_(mux),
         deadline_(socket_.get_io_service()),
         tls_handshake_timeout_(tls_handshake_timeout),
-        read_timeout_(read_timeout), writing_(false), stopped_(false) {}
+        read_timeout_(read_timeout),
+        writing_(false),
+        stopped_(false) {}
 
   /// Start the first asynchronous operation for the connection.
   void start() {

@@ -45,7 +45,9 @@ namespace nghttp2 {
 struct Header {
   Header(std::string name, std::string value, bool no_index = false,
          int16_t token = -1)
-      : name(std::move(name)), value(std::move(value)), token(token),
+      : name(std::move(name)),
+        value(std::move(value)),
+        token(token),
         no_index(no_index) {}
 
   Header() : token(-1), no_index(false) {}

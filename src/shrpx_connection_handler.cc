@@ -107,9 +107,12 @@ std::random_device rd;
 } // namespace
 
 ConnectionHandler::ConnectionHandler(struct ev_loop *loop)
-    : gen_(rd()), single_worker_(nullptr), loop_(loop),
+    : gen_(rd()),
+      single_worker_(nullptr),
+      loop_(loop),
       tls_ticket_key_memcached_get_retry_count_(0),
-      tls_ticket_key_memcached_fail_count_(0), worker_round_robin_cnt_(0),
+      tls_ticket_key_memcached_fail_count_(0),
+      worker_round_robin_cnt_(0),
       graceful_shutdown_(false) {
   ev_timer_init(&disable_acceptor_timer_, acceptor_disable_cb, 0., 0.);
   disable_acceptor_timer_.data = this;

@@ -230,8 +230,14 @@ int on_frame_not_send_callback(nghttp2_session *session,
 http2_handler::http2_handler(boost::asio::io_service &io_service,
                              boost::asio::ip::tcp::endpoint ep,
                              connection_write writefun, serve_mux &mux)
-    : writefun_(writefun), mux_(mux), io_service_(io_service), remote_ep_(ep),
-      session_(nullptr), buf_(nullptr), buflen_(0), inside_callback_(false),
+    : writefun_(writefun),
+      mux_(mux),
+      io_service_(io_service),
+      remote_ep_(ep),
+      session_(nullptr),
+      buf_(nullptr),
+      buflen_(0),
+      inside_callback_(false),
       tstamp_cached_(time(nullptr)),
       formatted_date_(util::http_date(tstamp_cached_)) {}
 

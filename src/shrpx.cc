@@ -123,7 +123,9 @@ namespace shrpx {
 
 struct SignalServer {
   SignalServer()
-      : ipc_fd{{-1, -1}}, server_fd(-1), server_fd6(-1),
+      : ipc_fd{{-1, -1}},
+        server_fd(-1),
+        server_fd6(-1),
         worker_process_pid(-1) {}
   ~SignalServer() {
     if (server_fd6 != -1) {

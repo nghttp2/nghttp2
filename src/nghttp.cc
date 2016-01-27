@@ -94,13 +94,26 @@ constexpr auto anchors = std::array<Anchor, 5>{{
 
 Config::Config()
     : header_table_size(-1),
-      min_header_table_size(std::numeric_limits<uint32_t>::max()), padding(0),
-      max_concurrent_streams(100), peer_max_concurrent_streams(100),
-      weight(NGHTTP2_DEFAULT_WEIGHT), multiply(1), timeout(0.), window_bits(-1),
-      connection_window_bits(-1), verbose(0), null_out(false),
-      remote_name(false), get_assets(false), stat(false), upgrade(false),
-      continuation(false), no_content_length(false), no_dep(false),
-      hexdump(false), no_push(false) {
+      min_header_table_size(std::numeric_limits<uint32_t>::max()),
+      padding(0),
+      max_concurrent_streams(100),
+      peer_max_concurrent_streams(100),
+      weight(NGHTTP2_DEFAULT_WEIGHT),
+      multiply(1),
+      timeout(0.),
+      window_bits(-1),
+      connection_window_bits(-1),
+      verbose(0),
+      null_out(false),
+      remote_name(false),
+      get_assets(false),
+      stat(false),
+      upgrade(false),
+      continuation(false),
+      no_content_length(false),
+      no_dep(false),
+      hexdump(false),
+      no_push(false) {
   nghttp2_option_new(&http2_option);
   nghttp2_option_set_peer_max_concurrent_streams(http2_option,
                                                  peer_max_concurrent_streams);
@@ -133,9 +146,18 @@ std::string strip_fragment(const char *raw_uri) {
 Request::Request(const std::string &uri, const http_parser_url &u,
                  const nghttp2_data_provider *data_prd, int64_t data_length,
                  const nghttp2_priority_spec &pri_spec, int level)
-    : uri(uri), u(u), pri_spec(pri_spec), data_length(data_length),
-      data_offset(0), response_len(0), inflater(nullptr), html_parser(nullptr),
-      data_prd(data_prd), stream_id(-1), status(0), level(level),
+    : uri(uri),
+      u(u),
+      pri_spec(pri_spec),
+      data_length(data_length),
+      data_offset(0),
+      response_len(0),
+      inflater(nullptr),
+      html_parser(nullptr),
+      data_prd(data_prd),
+      stream_id(-1),
+      status(0),
+      level(level),
       expect_final_response(false) {
   http2::init_hdidx(res_hdidx);
   http2::init_hdidx(req_hdidx);
@@ -467,10 +489,20 @@ void settings_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 
 HttpClient::HttpClient(const nghttp2_session_callbacks *callbacks,
                        struct ev_loop *loop, SSL_CTX *ssl_ctx)
-    : session(nullptr), callbacks(callbacks), loop(loop), ssl_ctx(ssl_ctx),
-      ssl(nullptr), addrs(nullptr), next_addr(nullptr), cur_addr(nullptr),
-      complete(0), success(0), settings_payloadlen(0), state(ClientState::IDLE),
-      upgrade_response_status_code(0), fd(-1),
+    : session(nullptr),
+      callbacks(callbacks),
+      loop(loop),
+      ssl_ctx(ssl_ctx),
+      ssl(nullptr),
+      addrs(nullptr),
+      next_addr(nullptr),
+      cur_addr(nullptr),
+      complete(0),
+      success(0),
+      settings_payloadlen(0),
+      state(ClientState::IDLE),
+      upgrade_response_status_code(0),
+      fd(-1),
       upgrade_response_complete(false) {
   ev_io_init(&wev, writecb, 0, EV_WRITE);
   ev_io_init(&rev, readcb, 0, EV_READ);

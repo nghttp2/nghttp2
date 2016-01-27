@@ -46,8 +46,11 @@ namespace shrpx {
 
 Http2DownstreamConnection::Http2DownstreamConnection(
     DownstreamConnectionPool *dconn_pool, Http2Session *http2session)
-    : DownstreamConnection(dconn_pool), dlnext(nullptr), dlprev(nullptr),
-      http2session_(http2session), sd_(nullptr) {}
+    : DownstreamConnection(dconn_pool),
+      dlnext(nullptr),
+      dlprev(nullptr),
+      http2session_(http2session),
+      sd_(nullptr) {}
 
 Http2DownstreamConnection::~Http2DownstreamConnection() {
   if (LOG_ENABLED(INFO)) {
