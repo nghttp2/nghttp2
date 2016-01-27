@@ -760,11 +760,6 @@ int HttpDownstreamConnection::on_read() {
       return -1;
     }
 
-    if (downstream_->response_buf_full()) {
-      downstream_->pause_read(SHRPX_NO_BUFFER);
-      return 0;
-    }
-
     if (downstream_->get_upgraded()) {
       if (nproc < static_cast<size_t>(nread)) {
         // Data from buf.data() + nproc are for upgraded protocol.
@@ -782,6 +777,11 @@ int HttpDownstreamConnection::on_read() {
       // call on_read(), so that we can process data left in buffer as
       // upgrade.
       return on_read();
+    }
+
+    if (downstream_->response_buf_full()) {
+      downstream_->pause_read(SHRPX_NO_BUFFER);
+      return 0;
     }
   }
 }
