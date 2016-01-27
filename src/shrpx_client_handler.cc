@@ -127,6 +127,10 @@ int ClientHandler::read_clear() {
       return 0;
     }
 
+    if (!ev_is_active(&conn_.rev)) {
+      return 0;
+    }
+
     auto nread = conn_.read_clear(rb_.last, rb_.wleft());
 
     if (nread == 0) {
@@ -217,6 +221,10 @@ int ClientHandler::read_tls() {
       rb_.reset();
     } else if (rb_.wleft() == 0) {
       conn_.rlimit.stopw();
+      return 0;
+    }
+
+    if (!ev_is_active(&conn_.rev)) {
       return 0;
     }
 
