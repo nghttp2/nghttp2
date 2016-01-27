@@ -1,0 +1,5 @@
+#!/bin/sh -e
+
+git submodule update --init
+./configure --with-mruby --with-neverbleed --enable-asio-lib
+make -j3 distcheck DISTCHECK_CONFIGURE_FLAGS="--with-mruby --with-neverbleed --enable-asio-lib --enable-werror"
