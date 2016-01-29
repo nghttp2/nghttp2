@@ -1462,3 +1462,16 @@ full real name when contributing!
 See `Contribution Guidelines
 <https://nghttp2.org/documentation/contribute.html>`_ for more
 details.
+
+Release schedule
+----------------
+
+In general, we follow [Semantic Versioning](http://semver.org/).  We
+release MINOR version update every month, and usually we ship it
+around 25th day of every month.
+
+We may release PATCH releases between the regular releases, mainly for
+severe security bug fixes.
+
+We have no plan to break API compatibility changes involving soname
+bump, so MAJOR version will stay 1 for the foreseeable future.
