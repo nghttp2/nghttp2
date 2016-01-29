@@ -1466,7 +1466,7 @@ details.
 Release schedule
 ----------------
 
-In general, we follow [Semantic Versioning](http://semver.org/).  We
+In general, we follow `Semantic Versioning <http://semver.org/>`_.  We
 release MINOR version update every month, and usually we ship it
 around 25th day of every month.
 
