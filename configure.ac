@@ -189,9 +189,19 @@ else
 d])
 fi
 
+ac_save_CXXFLAGS="$CXXFLAGS"
+CXXFLAGS=
+
 AX_CXX_COMPILE_STDCXX_11([noext], [optional])
 
+CXX1XCXXFLAGS="$CXXFLAGS"
+CXXFLAGS="$ac_save_CXXFLAGS"
+AC_SUBST([CXX1XCXXFLAGS])
+
 AC_LANG_PUSH(C++)
+
+ac_save_CXXFLAGS="$CXXFLAGS"
+CXXFLAGS="$CXXFLAGS $CXX1XCXXFLAGS"
 
 # Check that std::future is available.
 AC_MSG_CHECKING([whether std::future is available])
@@ -225,6 +235,8 @@ std::map<int, int>().emplace(1, 2);
      AC_MSG_RESULT([yes])],
     [have_std_map_emplace=no
      AC_MSG_RESULT([no])])
+
+CXXFLAGS=$ac_save_CXXFLAGS
 
 AC_LANG_POP()
 
@@ -797,6 +809,7 @@ AC_MSG_NOTICE([summary of build options:
       C preprocessor: ${CPP}
       CPPFLAGS:       ${CPPFLAGS}
       WARNCFLAGS:     ${WARNCFLAGS}
+      CXX1XCXXFLAGS:  ${CXX1XCXXFLAGS}
       EXTRACFLAG:     ${EXTRACFLAG}
       LIBS:           ${LIBS}
     Library:

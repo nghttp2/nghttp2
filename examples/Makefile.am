@@ -24,7 +24,7 @@
 if ENABLE_EXAMPLES
 
 AM_CFLAGS = $(WARNCFLAGS)
-AM_CXXFLAGS = $(WARNCXXFLAGS)
+AM_CXXFLAGS = $(WARNCXXFLAGS) $(CXX1XCXXFLAGS)
 AM_CPPFLAGS = \
 	-I$(top_srcdir)/lib/includes \
 	-I$(top_builddir)/lib/includes \
