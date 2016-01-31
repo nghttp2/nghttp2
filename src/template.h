@@ -35,6 +35,7 @@
 #include <functional>
 #include <typeinfo>
 #include <algorithm>
+#include <ostream>
 
 namespace nghttp2 {
 
@@ -317,6 +318,11 @@ private:
   const char *base;
 };
 
+inline bool operator==(const ImmutableString &lhs, const ImmutableString &rhs) {
+  return lhs.size() == rhs.size() &&
+         std::equal(std::begin(lhs), std::end(lhs), std::begin(rhs));
+}
+
 inline bool operator==(const ImmutableString &lhs, const std::string &rhs) {
   return lhs.size() == rhs.size() &&
          std::equal(std::begin(lhs), std::end(lhs), std::begin(rhs));
@@ -335,6 +341,10 @@ inline bool operator==(const char *lhs, const ImmutableString &rhs) {
   return rhs == lhs;
 }
 
+inline bool operator!=(const ImmutableString &lhs, const ImmutableString &rhs) {
+  return !(lhs == rhs);
+}
+
 inline bool operator!=(const ImmutableString &lhs, const std::string &rhs) {
   return !(lhs == rhs);
 }
@@ -349,6 +359,15 @@ inline bool operator!=(const ImmutableString &lhs, const char *rhs) {
 
 inline bool operator!=(const char *lhs, const ImmutableString &rhs) {
   return !(rhs == lhs);
+}
+
+inline std::ostream &operator<<(std::ostream &o, const ImmutableString &s) {
+  return o.write(s.c_str(), s.size());
+}
+
+inline std::string &operator+=(std::string &lhs, const ImmutableString &rhs) {
+  lhs.append(rhs.c_str(), rhs.size());
+  return lhs;
 }
 
 // StringRef is a reference to a string owned by something else.  So
@@ -374,7 +393,9 @@ public:
       : base(s.c_str()), len(s.size()) {}
   StringRef(const char *s) : base(s), len(strlen(s)) {}
   StringRef(const char *s, size_t n) : base(s), len(n) {}
-
+  template <typename InputIt>
+  StringRef(InputIt first, InputIt last)
+      : base(first), len(std::distance(first, last)) {}
   template <size_t N> static StringRef from_lit(const char(&s)[N]) {
     return StringRef(s, N - 1);
   }
@@ -388,6 +409,7 @@ public:
   const char *c_str() const { return base; }
   size_type size() const { return len; }
   bool empty() const { return len == 0; }
+  const_reference operator[](size_type pos) const { return *(base + pos); }
 
   std::string str() const { return std::string(base, len); }
 
@@ -428,6 +450,15 @@ inline bool operator!=(const StringRef &lhs, const char *rhs) {
 
 inline bool operator!=(const char *lhs, const StringRef &rhs) {
   return !(rhs == lhs);
+}
+
+inline std::ostream &operator<<(std::ostream &o, const StringRef &s) {
+  return o.write(s.c_str(), s.size());
+}
+
+inline std::string &operator+=(std::string &lhs, const StringRef &rhs) {
+  lhs.append(rhs.c_str(), rhs.size());
+  return lhs;
 }
 
 inline int run_app(std::function<int(int, char **)> app, int argc,

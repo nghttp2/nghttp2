@@ -45,6 +45,7 @@ class ClientHandler;
 class Worker;
 class DownstreamConnectionPool;
 struct DownstreamAddr;
+struct FrontendAddr;
 
 namespace ssl {
 
@@ -76,7 +77,7 @@ SSL_CTX *create_ssl_client_context(
     );
 
 ClientHandler *accept_connection(Worker *worker, int fd, sockaddr *addr,
-                                 int addrlen);
+                                 int addrlen, const FrontendAddr *faddr);
 
 // Check peer's certificate against first downstream address in
 // Config::downstream_addrs.  We only consider first downstream since

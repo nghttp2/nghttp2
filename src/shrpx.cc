@@ -92,21 +92,29 @@ using namespace nghttp2;
 
 namespace shrpx {
 
-// Environment variables to tell new binary the listening socket's
-// file descriptors.  They are not close-on-exec.
+// Deprecated: Environment variables to tell new binary the listening
+// socket's file descriptors.  They are not close-on-exec.
 #define ENV_LISTENER4_FD "NGHTTPX_LISTENER4_FD"
 #define ENV_LISTENER6_FD "NGHTTPX_LISTENER6_FD"
 
-// Environment variable to tell new binary the port number the current
-// binary is listening to.
+// Deprecated: Environment variable to tell new binary the port number
+// the current binary is listening to.
 #define ENV_PORT "NGHTTPX_PORT"
 
-// Environment variable to tell new binary the listening socket's file
-// descriptor if frontend listens UNIX domain socket.
+// Deprecated: Environment variable to tell new binary the listening
+// socket's file descriptor if frontend listens UNIX domain socket.
 #define ENV_UNIX_FD "NGHTTP2_UNIX_FD"
-// Environment variable to tell new binary the UNIX domain socket
-// path.
+// Deprecated: Environment variable to tell new binary the UNIX domain
+// socket path.
 #define ENV_UNIX_PATH "NGHTTP2_UNIX_PATH"
+
+// Prefix of environment variables to tell new binary the listening
+// socket's file descriptor.  They are not close-on-exec.  For TCP
+// socket, the value must be comma separated 2 parameters: tcp,<FD>.
+// <FD> is file descriptor.  For UNIX domain socket, the value must be
+// comma separated 3 parameters: unix,<FD>,<PATH>.  <FD> is file
+// descriptor.  <PATH> is a path to UNIX domain socket.
+constexpr char ENV_ACCEPT_PREFIX[] = "NGHTTPX_ACCEPT_";
 
 #ifndef _KERNEL_FASTOPEN
 #define _KERNEL_FASTOPEN
@@ -122,18 +130,8 @@ namespace shrpx {
 #endif
 
 struct SignalServer {
-  SignalServer()
-      : ipc_fd{{-1, -1}},
-        server_fd(-1),
-        server_fd6(-1),
-        worker_process_pid(-1) {}
+  SignalServer() : ipc_fd{{-1, -1}}, worker_process_pid(-1) {}
   ~SignalServer() {
-    if (server_fd6 != -1) {
-      close(server_fd6);
-    }
-    if (server_fd != -1) {
-      close(server_fd);
-    }
     if (ipc_fd[0] != -1) {
       close(ipc_fd[0]);
     }
@@ -144,10 +142,6 @@ struct SignalServer {
   }
 
   std::array<int, 2> ipc_fd;
-  // server socket, either IPv4 or UNIX domain
-  int server_fd;
-  // server socket IPv6
-  int server_fd6;
   pid_t worker_process_pid;
 };
 
@@ -295,42 +289,35 @@ void exec_binary(SignalServer *ssv) {
   size_t envlen = 0;
   for (char **p = environ; *p; ++p, ++envlen)
     ;
-  // 3 for missing (fd4, fd6 and port) or (unix fd and unix path)
-  auto envp = make_unique<char *[]>(envlen + 3 + 1);
-  size_t envidx = 0;
-
-  std::string fd, fd6, path, port;
 
   auto &listenerconf = get_config()->conn.listener;
 
-  if (listenerconf.host_unix) {
-    fd = ENV_UNIX_FD "=";
-    fd += util::utos(ssv->server_fd);
-    envp[envidx++] = &fd[0];
+  auto envp = make_unique<char *[]>(envlen + listenerconf.addrs.size() + 1);
+  size_t envidx = 0;
 
-    path = ENV_UNIX_PATH "=";
-    path += listenerconf.host.get();
-    envp[envidx++] = &path[0];
-  } else {
-    if (ssv->server_fd) {
-      fd = ENV_LISTENER4_FD "=";
-      fd += util::utos(ssv->server_fd);
-      envp[envidx++] = &fd[0];
+  std::vector<ImmutableString> fd_envs;
+  for (size_t i = 0; i < listenerconf.addrs.size(); ++i) {
+    auto &addr = listenerconf.addrs[i];
+    std::string s = ENV_ACCEPT_PREFIX;
+    s += util::utos(i + 1);
+    s += '=';
+    if (addr.host_unix) {
+      s += "unix,";
+      s += util::utos(addr.fd);
+      s += ',';
+      s += addr.host;
+    } else {
+      s += "tcp,";
+      s += util::utos(addr.fd);
     }
 
-    if (ssv->server_fd6) {
-      fd6 = ENV_LISTENER6_FD "=";
-      fd6 += util::utos(ssv->server_fd6);
-      envp[envidx++] = &fd6[0];
-    }
-
-    port = ENV_PORT "=";
-    port += util::utos(listenerconf.port);
-    envp[envidx++] = &port[0];
+    fd_envs.emplace_back(s);
+    envp[envidx++] = const_cast<char *>(fd_envs.back().c_str());
   }
 
   for (size_t i = 0; i < envlen; ++i) {
-    if (util::starts_with(environ[i], ENV_LISTENER4_FD) ||
+    if (util::starts_with(environ[i], ENV_ACCEPT_PREFIX) ||
+        util::starts_with(environ[i], ENV_LISTENER4_FD) ||
         util::starts_with(environ[i], ENV_LISTENER6_FD) ||
         util::starts_with(environ[i], ENV_PORT) ||
         util::starts_with(environ[i], ENV_UNIX_FD) ||
@@ -432,38 +419,45 @@ void worker_process_child_cb(struct ev_loop *loop, ev_child *w, int revents) {
 }
 } // namespace
 
+struct InheritedAddr {
+  // IP address if TCP socket.  Otherwise, UNIX domain socket path.
+  ImmutableString host;
+  uint16_t port;
+  // true if UNIX domain socket path
+  bool host_unix;
+  int fd;
+  bool used;
+};
+
 namespace {
-int create_unix_domain_server_socket() {
-  auto &listenerconf = get_config()->conn.listener;
+int create_unix_domain_server_socket(FrontendAddr &faddr,
+                                     std::vector<InheritedAddr> &iaddrs) {
+  auto found = std::find_if(
+      std::begin(iaddrs), std::end(iaddrs), [&faddr](const InheritedAddr &ia) {
+        return !ia.used && ia.host_unix && ia.host == faddr.host;
+      });
 
-  auto path = listenerconf.host.get();
-  auto pathlen = strlen(path);
-  {
-    auto envfd = getenv(ENV_UNIX_FD);
-    auto envpath = getenv(ENV_UNIX_PATH);
-    if (envfd && envpath) {
-      auto fd = strtoul(envfd, nullptr, 10);
+  if (found != std::end(iaddrs)) {
+    LOG(NOTICE) << "Listening on UNIX domain socket " << faddr.host;
+    (*found).used = true;
+    faddr.fd = (*found).fd;
+    faddr.hostport = "localhost";
 
-      if (util::streq(envpath, path)) {
-        LOG(NOTICE) << "Listening on UNIX domain socket " << path;
-
-        return fd;
-      }
-
-      LOG(WARN) << "UNIX domain socket path was changed between old binary ("
-                << envpath << ") and new binary (" << path << ")";
-      close(fd);
-    }
+    return 0;
   }
 
 #ifdef SOCK_NONBLOCK
   auto fd = socket(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0);
   if (fd == -1) {
+    auto error = errno;
+    LOG(WARN) << "socket() syscall failed: " << strerror(error);
     return -1;
   }
 #else  // !SOCK_NONBLOCK
   auto fd = socket(AF_UNIX, SOCK_STREAM, 0);
   if (fd == -1) {
+    auto error = errno;
+    LOG(WARN) << "socket() syscall failed: " << strerror(error);
     return -1;
   }
   util::make_socket_nonblocking(fd);
@@ -471,115 +465,122 @@ int create_unix_domain_server_socket() {
   int val = 1;
   if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &val,
                  static_cast<socklen_t>(sizeof(val))) == -1) {
+    auto error = errno;
+    LOG(WARN) << "Failed to set SO_REUSEADDR option to listener socket: "
+              << strerror(error);
     close(fd);
     return -1;
   }
 
   sockaddr_union addr;
   addr.un.sun_family = AF_UNIX;
-  if (pathlen + 1 > sizeof(addr.un.sun_path)) {
-    LOG(FATAL) << "UNIX domain socket path " << path << " is too long > "
+  if (faddr.host.size() + 1 > sizeof(addr.un.sun_path)) {
+    LOG(FATAL) << "UNIX domain socket path " << faddr.host << " is too long > "
                << sizeof(addr.un.sun_path);
     close(fd);
     return -1;
   }
   // copy path including terminal NULL
-  std::copy_n(path, pathlen + 1, addr.un.sun_path);
+  std::copy_n(faddr.host.c_str(), faddr.host.size() + 1, addr.un.sun_path);
 
   // unlink (remove) already existing UNIX domain socket path
-  unlink(path);
+  unlink(faddr.host.c_str());
 
   if (bind(fd, &addr.sa, sizeof(addr.un)) != 0) {
     auto error = errno;
-    LOG(FATAL) << "Failed to bind UNIX domain socket, error=" << error;
+    LOG(FATAL) << "Failed to bind UNIX domain socket: " << strerror(error);
     close(fd);
     return -1;
   }
+
+  auto &listenerconf = get_config()->conn.listener;
 
   if (listen(fd, listenerconf.backlog) != 0) {
     auto error = errno;
-    LOG(FATAL) << "Failed to listen to UNIX domain socket, error=" << error;
+    LOG(FATAL) << "Failed to listen to UNIX domain socket: " << strerror(error);
     close(fd);
     return -1;
   }
 
-  LOG(NOTICE) << "Listening on UNIX domain socket " << path;
+  LOG(NOTICE) << "Listening on UNIX domain socket " << faddr.host;
 
-  return fd;
+  faddr.fd = fd;
+  faddr.hostport = "localhost";
+
+  return 0;
 }
 } // namespace
 
 namespace {
-int create_tcp_server_socket(int family) {
-  auto &listenerconf = get_config()->conn.listener;
-
-  {
-    auto envfd =
-        getenv(family == AF_INET ? ENV_LISTENER4_FD : ENV_LISTENER6_FD);
-    auto envport = getenv(ENV_PORT);
-
-    if (envfd && envport) {
-      auto fd = strtoul(envfd, nullptr, 10);
-      auto port = strtoul(envport, nullptr, 10);
-
-      // Only do this iff NGHTTPX_PORT == get_config()->port.
-      // Otherwise, close fd, and create server socket as usual.
-
-      if (port == listenerconf.port) {
-        LOG(NOTICE) << "Listening on port " << listenerconf.port;
-
-        return fd;
-      }
-
-      LOG(WARN) << "Port was changed between old binary (" << port
-                << ") and new binary (" << listenerconf.port << ")";
-      close(fd);
-    }
-  }
-
+int create_tcp_server_socket(FrontendAddr &faddr,
+                             std::vector<InheritedAddr> &iaddrs) {
   int fd = -1;
   int rv;
 
-  auto service = util::utos(listenerconf.port);
+  auto &listenerconf = get_config()->conn.listener;
+
+  auto service = util::utos(faddr.port);
   addrinfo hints{};
-  hints.ai_family = family;
+  hints.ai_family = faddr.family;
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_flags = AI_PASSIVE;
 #ifdef AI_ADDRCONFIG
   hints.ai_flags |= AI_ADDRCONFIG;
 #endif // AI_ADDRCONFIG
 
-  auto node = strcmp("*", listenerconf.host.get()) == 0
-                  ? nullptr
-                  : listenerconf.host.get();
+  auto node = faddr.host == "*" ? nullptr : faddr.host.c_str();
 
   addrinfo *res, *rp;
   rv = getaddrinfo(node, service.c_str(), &hints, &res);
   if (rv != 0) {
     if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Unable to get IPv" << (family == AF_INET ? "4" : "6")
-                << " address for " << listenerconf.host.get() << ": "
-                << gai_strerror(rv);
+      LOG(INFO) << "Unable to get IPv" << (faddr.family == AF_INET ? "4" : "6")
+                << " address for " << faddr.host << ", port " << faddr.port
+                << ": " << gai_strerror(rv);
     }
     return -1;
   }
 
   auto res_d = defer(freeaddrinfo, res);
 
+  std::array<char, NI_MAXHOST> host;
+
   for (rp = res; rp; rp = rp->ai_next) {
+
+    rv = getnameinfo(rp->ai_addr, rp->ai_addrlen, host.data(), host.size(),
+                     nullptr, 0, NI_NUMERICHOST);
+
+    if (rv != 0) {
+      LOG(WARN) << "getnameinfo() failed: " << gai_strerror(rv);
+      continue;
+    }
+
+    auto found = std::find_if(std::begin(iaddrs), std::end(iaddrs),
+                              [&host, &faddr](const InheritedAddr &ia) {
+                                return !ia.used && !ia.host_unix &&
+                                       ia.host == host.data() &&
+                                       ia.port == faddr.port;
+                              });
+
+    if (found != std::end(iaddrs)) {
+      (*found).used = true;
+      fd = (*found).fd;
+      break;
+    }
+
 #ifdef SOCK_NONBLOCK
     fd =
         socket(rp->ai_family, rp->ai_socktype | SOCK_NONBLOCK, rp->ai_protocol);
     if (fd == -1) {
       auto error = errno;
-      LOG(WARN) << "socket() syscall failed, error=" << error;
+      LOG(WARN) << "socket() syscall failed: " << strerror(error);
       continue;
     }
 #else  // !SOCK_NONBLOCK
     fd = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
     if (fd == -1) {
       auto error = errno;
-      LOG(WARN) << "socket() syscall failed, error=" << error;
+      LOG(WARN) << "socket() syscall failed: " << strerror(error);
       continue;
     }
     util::make_socket_nonblocking(fd);
@@ -588,21 +589,19 @@ int create_tcp_server_socket(int family) {
     if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &val,
                    static_cast<socklen_t>(sizeof(val))) == -1) {
       auto error = errno;
-      LOG(WARN)
-          << "Failed to set SO_REUSEADDR option to listener socket, error="
-          << error;
+      LOG(WARN) << "Failed to set SO_REUSEADDR option to listener socket: "
+                << strerror(error);
       close(fd);
       continue;
     }
 
 #ifdef IPV6_V6ONLY
-    if (family == AF_INET6) {
+    if (faddr.family == AF_INET6) {
       if (setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &val,
                      static_cast<socklen_t>(sizeof(val))) == -1) {
         auto error = errno;
-        LOG(WARN)
-            << "Failed to set IPV6_V6ONLY option to listener socket, error="
-            << error;
+        LOG(WARN) << "Failed to set IPV6_V6ONLY option to listener socket: "
+                  << strerror(error);
         close(fd);
         continue;
       }
@@ -613,7 +612,9 @@ int create_tcp_server_socket(int family) {
     val = 3;
     if (setsockopt(fd, IPPROTO_TCP, TCP_DEFER_ACCEPT, &val,
                    static_cast<socklen_t>(sizeof(val))) == -1) {
-      LOG(WARN) << "Failed to set TCP_DEFER_ACCEPT option to listener socket";
+      auto error = errno;
+      LOG(WARN) << "Failed to set TCP_DEFER_ACCEPT option to listener socket: "
+                << strerror(error);
     }
 #endif // TCP_DEFER_ACCEPT
 
@@ -622,7 +623,7 @@ int create_tcp_server_socket(int family) {
     // ports will fail with permission denied error.
     if (bind(fd, rp->ai_addr, rp->ai_addrlen) == -1) {
       auto error = errno;
-      LOG(WARN) << "bind() syscall failed, error=" << error;
+      LOG(WARN) << "bind() syscall failed: " << strerror(error);
       close(fd);
       continue;
     }
@@ -631,13 +632,15 @@ int create_tcp_server_socket(int family) {
       val = listenerconf.fastopen;
       if (setsockopt(fd, SOL_TCP, TCP_FASTOPEN, &val,
                      static_cast<socklen_t>(sizeof(val))) == -1) {
-        LOG(WARN) << "Failed to set TCP_FASTOPEN option to listener socket";
+        auto error = errno;
+        LOG(WARN) << "Failed to set TCP_FASTOPEN option to listener socket: "
+                  << strerror(error);
       }
     }
 
     if (listen(fd, listenerconf.backlog) == -1) {
       auto error = errno;
-      LOG(WARN) << "listen() syscall failed, error=" << error;
+      LOG(WARN) << "listen() syscall failed: " << strerror(error);
       close(fd);
       continue;
     }
@@ -646,27 +649,200 @@ int create_tcp_server_socket(int family) {
   }
 
   if (!rp) {
-    LOG(WARN) << "Listening " << (family == AF_INET ? "IPv4" : "IPv6")
+    LOG(WARN) << "Listening " << (faddr.family == AF_INET ? "IPv4" : "IPv6")
               << " socket failed";
 
     return -1;
   }
 
-  char host[NI_MAXHOST];
-  rv = getnameinfo(rp->ai_addr, rp->ai_addrlen, host, sizeof(host), nullptr, 0,
-                   NI_NUMERICHOST);
+  faddr.fd = fd;
+  faddr.hostport = util::make_hostport(host.data(), faddr.port);
 
-  if (rv != 0) {
-    LOG(WARN) << gai_strerror(rv);
+  LOG(NOTICE) << "Listening on " << faddr.hostport;
 
-    close(fd);
+  return 0;
+}
+} // namespace
 
-    return -1;
+namespace {
+int create_acceptor_socket() {
+  int rv;
+
+  auto &listenerconf = mod_config()->conn.listener;
+
+  std::vector<InheritedAddr> iaddrs;
+
+  {
+    // Upgrade from 1.7.0 or earlier
+    auto portenv = getenv(ENV_PORT);
+    if (portenv) {
+      size_t i = 1;
+      for (auto env_name : {ENV_LISTENER4_FD, ENV_LISTENER6_FD}) {
+        auto fdenv = getenv(env_name);
+        if (fdenv) {
+          std::string name = ENV_ACCEPT_PREFIX;
+          name += util::utos(i);
+          std::string value = "tcp,";
+          value += fdenv;
+          setenv(name.c_str(), value.c_str(), 0);
+          ++i;
+        }
+      }
+    } else {
+      auto pathenv = getenv(ENV_UNIX_PATH);
+      auto fdenv = getenv(ENV_UNIX_FD);
+      if (pathenv && fdenv) {
+        std::string name = ENV_ACCEPT_PREFIX;
+        name += '1';
+        std::string value = "unix,";
+        value += fdenv;
+        value += ',';
+        value += pathenv;
+        setenv(name.c_str(), value.c_str(), 0);
+      }
+    }
   }
 
-  LOG(NOTICE) << "Listening on " << host << ", port " << listenerconf.port;
+  for (size_t i = 1;; ++i) {
+    std::string name = ENV_ACCEPT_PREFIX;
+    name += util::utos(i);
+    auto env = getenv(name.c_str());
+    if (!env) {
+      break;
+    }
 
-  return fd;
+    if (LOG_ENABLED(INFO)) {
+      LOG(INFO) << "Read env " << name << "=" << env;
+    }
+
+    auto end_type = strchr(env, ',');
+    if (!end_type) {
+      continue;
+    }
+
+    auto type = StringRef(env, end_type);
+    auto value = end_type + 1;
+
+    if (type == "unix") {
+      auto endfd = strchr(value, ',');
+      if (!endfd) {
+        continue;
+      }
+      auto fd = util::parse_uint(reinterpret_cast<const uint8_t *>(value),
+                                 endfd - value);
+      if (fd == -1) {
+        LOG(WARN) << "Could not parse file descriptor from "
+                  << std::string(value, endfd - value);
+        continue;
+      }
+
+      auto path = endfd + 1;
+      if (strlen(path) == 0) {
+        LOG(WARN) << "Empty UNIX domain socket path (fd=" << fd << ")";
+        close(fd);
+        continue;
+      }
+
+      if (LOG_ENABLED(INFO)) {
+        LOG(INFO) << "Inherit UNIX domain socket fd=" << fd
+                  << ", path=" << path;
+      }
+
+      InheritedAddr addr{};
+      addr.host = path;
+      addr.host_unix = true;
+      addr.fd = static_cast<int>(fd);
+      iaddrs.push_back(std::move(addr));
+    }
+
+    if (type == "tcp") {
+      auto fd = util::parse_uint(value);
+      if (fd == -1) {
+        LOG(WARN) << "Could not parse file descriptor from " << value;
+        continue;
+      }
+
+      sockaddr_union su;
+      socklen_t salen = sizeof(su);
+
+      if (getsockname(fd, &su.sa, &salen) != 0) {
+        auto error = errno;
+        LOG(WARN) << "getsockname() syscall failed (fd=" << fd
+                  << "): " << strerror(error);
+        close(fd);
+        continue;
+      }
+
+      uint16_t port;
+
+      switch (su.storage.ss_family) {
+      case AF_INET:
+        port = ntohs(su.in.sin_port);
+        break;
+      case AF_INET6:
+        port = ntohs(su.in6.sin6_port);
+        break;
+      default:
+        close(fd);
+        continue;
+      }
+
+      std::array<char, NI_MAXHOST> host;
+      rv = getnameinfo(&su.sa, salen, host.data(), host.size(), nullptr, 0,
+                       NI_NUMERICHOST);
+      if (rv != 0) {
+        LOG(WARN) << "getnameinfo() failed (fd=" << fd
+                  << "): " << gai_strerror(rv);
+        close(fd);
+        continue;
+      }
+
+      if (LOG_ENABLED(INFO)) {
+        LOG(INFO) << "Inherit TCP socket fd=" << fd
+                  << ", address=" << host.data() << ", port=" << port;
+      }
+
+      InheritedAddr addr{};
+      addr.host = host.data();
+      addr.port = static_cast<uint16_t>(port);
+      addr.fd = static_cast<int>(fd);
+      iaddrs.push_back(std::move(addr));
+      continue;
+    }
+  }
+
+  for (auto &addr : listenerconf.addrs) {
+    if (addr.host_unix) {
+      if (create_unix_domain_server_socket(addr, iaddrs) != 0) {
+        return -1;
+      }
+
+      if (get_config()->uid != 0) {
+        // fd is not associated to inode, so we cannot use fchown(2)
+        // here.  https://lkml.org/lkml/2004/11/1/84
+        if (chown_to_running_user(addr.host.c_str()) == -1) {
+          auto error = errno;
+          LOG(WARN) << "Changing owner of UNIX domain socket " << addr.host
+                    << " failed: " << strerror(error);
+        }
+      }
+      continue;
+    }
+
+    if (create_tcp_server_socket(addr, iaddrs) != 0) {
+      return -1;
+    }
+  }
+
+  for (auto &ia : iaddrs) {
+    if (ia.used) {
+      continue;
+    }
+
+    close(ia.fd);
+  }
+
+  return 0;
 }
 } // namespace
 
@@ -677,19 +853,6 @@ int call_daemon() {
 #else  // !__sgi
   return daemon(0, 0);
 #endif // !__sgi
-}
-} // namespace
-
-namespace {
-void close_env_fd(std::initializer_list<const char *> envnames) {
-  for (auto envname : envnames) {
-    auto envfd = getenv(envname);
-    if (!envfd) {
-      continue;
-    }
-    auto fd = strtol(envfd, nullptr, 10);
-    close(fd);
-  }
 }
 } // namespace
 
@@ -722,7 +885,7 @@ pid_t fork_worker_process(SignalServer *ssv) {
     }
 
     close(ssv->ipc_fd[1]);
-    WorkerProcessConfig wpconf{ssv->ipc_fd[0], ssv->server_fd, ssv->server_fd6};
+    WorkerProcessConfig wpconf{ssv->ipc_fd[0]};
     rv = worker_process_event_loop(&wpconf);
     if (rv != 0) {
       LOG(FATAL) << "Worker process returned error";
@@ -803,40 +966,8 @@ int event_loop() {
     util::make_socket_closeonexec(fd);
   }
 
-  auto &listenerconf = get_config()->conn.listener;
-
-  if (listenerconf.host_unix) {
-    close_env_fd({ENV_LISTENER4_FD, ENV_LISTENER6_FD});
-    auto fd = create_unix_domain_server_socket();
-    if (fd == -1) {
-      LOG(FATAL) << "Failed to listen on UNIX domain socket "
-                 << listenerconf.host.get();
-      return -1;
-    }
-
-    ssv.server_fd = fd;
-
-    if (get_config()->uid != 0) {
-      // fd is not associated to inode, so we cannot use fchown(2)
-      // here.  https://lkml.org/lkml/2004/11/1/84
-      if (chown_to_running_user(listenerconf.host.get()) == -1) {
-        auto error = errno;
-        LOG(WARN) << "Changing owner of UNIX domain socket "
-                  << listenerconf.host.get() << " failed: " << strerror(error);
-      }
-    }
-  } else {
-    close_env_fd({ENV_UNIX_FD});
-    auto fd6 = create_tcp_server_socket(AF_INET6);
-    auto fd4 = create_tcp_server_socket(AF_INET);
-    if (fd6 == -1 && fd4 == -1) {
-      LOG(FATAL) << "Failed to listen on address " << listenerconf.host.get()
-                 << ", port " << listenerconf.port;
-      return -1;
-    }
-
-    ssv.server_fd = fd4;
-    ssv.server_fd6 = fd6;
+  if (create_acceptor_socket() != 0) {
+    return -1;
   }
 
   auto loop = EV_DEFAULT;
@@ -986,8 +1117,6 @@ void fill_default_config() {
   {
     auto &listenerconf = connconf.listener;
     {
-      listenerconf.host = strcopy("*");
-      listenerconf.port = 3000;
       // Default accept() backlog
       listenerconf.backlog = 512;
       listenerconf.timeout.sleep = 30_s;
@@ -1120,9 +1249,10 @@ Connections:
               Set  frontend  host and  port.   If  <HOST> is  '*',  it
               assumes  all addresses  including  both  IPv4 and  IPv6.
               UNIX domain  socket can  be specified by  prefixing path
-              name with "unix:" (e.g., unix:/var/run/nghttpx.sock)
-              Default: )" << get_config()->conn.listener.host.get() << ","
-      << get_config()->conn.listener.port << R"(
+              name  with  "unix:" (e.g.,  unix:/var/run/nghttpx.sock).
+              This  option can  be used  multiple times  to listen  to
+              multiple addresses.
+              Default: *,3000
   --backlog=<N>
               Set listen backlog size.
               Default: )" << get_config()->conn.listener.backlog << R"(
@@ -1838,6 +1968,13 @@ void process_options(
   auto &upstreamconf = mod_config()->conn.upstream;
   auto &downstreamconf = mod_config()->conn.downstream;
 
+  if (listenerconf.addrs.empty()) {
+    FrontendAddr addr;
+    addr.host = "*";
+    addr.port = 3000;
+    listenerconf.addrs.push_back(std::move(addr));
+  }
+
   if (downstreamconf.ipv4 && downstreamconf.ipv6) {
     LOG(FATAL) << "--backend-ipv4 and --backend-ipv6 cannot be used at the "
                << "same time.";
@@ -1949,8 +2086,7 @@ void process_options(
         // for AF_UNIX socket, we use "localhost" as host for backend
         // hostport.  This is used as Host header field to backend and
         // not going to be passed to any syscalls.
-        addr.hostport = ImmutableString(
-            util::make_hostport("localhost", listenerconf.port));
+        addr.hostport = "localhost";
 
         auto path = addr.host.c_str();
         auto pathlen = addr.host.size();

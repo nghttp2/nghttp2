@@ -747,7 +747,7 @@ SSL *create_ssl(SSL_CTX *ssl_ctx) {
 }
 
 ClientHandler *accept_connection(Worker *worker, int fd, sockaddr *addr,
-                                 int addrlen) {
+                                 int addrlen, const FrontendAddr *faddr) {
   char host[NI_MAXHOST];
   char service[NI_MAXSERV];
   int rv;
@@ -783,7 +783,7 @@ ClientHandler *accept_connection(Worker *worker, int fd, sockaddr *addr,
     }
   }
 
-  return new ClientHandler(worker, fd, ssl, host, service);
+  return new ClientHandler(worker, fd, ssl, host, service, faddr);
 }
 
 bool tls_hostname_match(const char *pattern, size_t plen, const char *hostname,

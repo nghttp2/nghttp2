@@ -389,13 +389,8 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
 
   ConnectionHandler conn_handler(loop);
 
-  if (wpconf->server_fd6 != -1) {
-    conn_handler.set_acceptor6(
-        make_unique<AcceptHandler>(wpconf->server_fd6, &conn_handler));
-  }
-  if (wpconf->server_fd != -1) {
-    conn_handler.set_acceptor(
-        make_unique<AcceptHandler>(wpconf->server_fd, &conn_handler));
+  for (auto &addr : get_config()->conn.listener.addrs) {
+    conn_handler.add_acceptor(make_unique<AcceptHandler>(&addr, &conn_handler));
   }
 
   auto &upstreamconf = get_config()->conn.upstream;

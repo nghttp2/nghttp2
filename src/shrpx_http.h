@@ -42,7 +42,7 @@ std::string create_via_header_value(int major, int minor);
 // Returns generated RFC 7239 Forwarded header field value.  The
 // |params| is bitwise-OR of zero or more of shrpx_forwarded_param
 // defined in shrpx_config.h.
-std::string create_forwarded(int params, const std::string &node_by,
+std::string create_forwarded(int params, const StringRef &node_by,
                              const std::string &node_for,
                              const std::string &host, const std::string &proto);
 

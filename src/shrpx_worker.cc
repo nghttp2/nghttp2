@@ -179,8 +179,9 @@ void Worker::process_events() {
         break;
       }
 
-      auto client_handler = ssl::accept_connection(
-          this, wev.client_fd, &wev.client_addr.sa, wev.client_addrlen);
+      auto client_handler =
+          ssl::accept_connection(this, wev.client_fd, &wev.client_addr.sa,
+                                 wev.client_addrlen, wev.faddr);
       if (!client_handler) {
         if (LOG_ENABLED(INFO)) {
           WLOG(ERROR, this) << "ClientHandler creation failed";

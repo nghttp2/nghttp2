@@ -297,7 +297,8 @@ void ConnectionHandler::graceful_shutdown_worker() {
 #endif // NOTHREADS
 }
 
-int ConnectionHandler::handle_connection(int fd, sockaddr *addr, int addrlen) {
+int ConnectionHandler::handle_connection(int fd, sockaddr *addr, int addrlen,
+                                         const FrontendAddr *faddr) {
   if (LOG_ENABLED(INFO)) {
     LLOG(INFO, this) << "Accepted connection. fd=" << fd;
   }
@@ -317,7 +318,7 @@ int ConnectionHandler::handle_connection(int fd, sockaddr *addr, int addrlen) {
     }
 
     auto client =
-        ssl::accept_connection(single_worker_.get(), fd, addr, addrlen);
+        ssl::accept_connection(single_worker_.get(), fd, addr, addrlen, faddr);
     if (!client) {
       LLOG(ERROR, this) << "ClientHandler creation failed";
 
@@ -338,6 +339,7 @@ int ConnectionHandler::handle_connection(int fd, sockaddr *addr, int addrlen) {
   wev.client_fd = fd;
   memcpy(&wev.client_addr, addr, addrlen);
   wev.client_addrlen = addrlen;
+  wev.faddr = faddr;
 
   workers_[idx]->send(wev);
 
@@ -352,39 +354,19 @@ Worker *ConnectionHandler::get_single_worker() const {
   return single_worker_.get();
 }
 
-void ConnectionHandler::set_acceptor(std::unique_ptr<AcceptHandler> h) {
-  acceptor_ = std::move(h);
-}
-
-AcceptHandler *ConnectionHandler::get_acceptor() const {
-  return acceptor_.get();
-}
-
-void ConnectionHandler::set_acceptor6(std::unique_ptr<AcceptHandler> h) {
-  acceptor6_ = std::move(h);
-}
-
-AcceptHandler *ConnectionHandler::get_acceptor6() const {
-  return acceptor6_.get();
+void ConnectionHandler::add_acceptor(std::unique_ptr<AcceptHandler> h) {
+  acceptors_.push_back(std::move(h));
 }
 
 void ConnectionHandler::enable_acceptor() {
-  if (acceptor_) {
-    acceptor_->enable();
-  }
-
-  if (acceptor6_) {
-    acceptor6_->enable();
+  for (auto &a : acceptors_) {
+    a->enable();
   }
 }
 
 void ConnectionHandler::disable_acceptor() {
-  if (acceptor_) {
-    acceptor_->disable();
-  }
-
-  if (acceptor6_) {
-    acceptor6_->disable();
+  for (auto &a : acceptors_) {
+    a->disable();
   }
 }
 
@@ -400,11 +382,8 @@ void ConnectionHandler::sleep_acceptor(ev_tstamp t) {
 }
 
 void ConnectionHandler::accept_pending_connection() {
-  if (acceptor_) {
-    acceptor_->accept_connection();
-  }
-  if (acceptor6_) {
-    acceptor6_->accept_connection();
+  for (auto &a : acceptors_) {
+    a->accept_connection();
   }
 }
 

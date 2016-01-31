@@ -239,6 +239,24 @@ struct AltSvc {
   uint16_t port;
 };
 
+struct FrontendAddr {
+  // The frontend address (e.g., FQDN, hostname, IP address).  If
+  // |host_unix| is true, this is UNIX domain socket path.
+  ImmutableString host;
+  // For TCP socket, this is <IP address>:<PORT>.  For IPv6 address,
+  // address is surrounded by square brackets.  If socket is UNIX
+  // domain socket, this is "localhost".
+  ImmutableString hostport;
+  // frontend port.  0 if |host_unix| is true.
+  uint16_t port;
+  // For TCP socket, this is either AF_INET or AF_INET6.  For UNIX
+  // domain socket, this is 0.
+  int family;
+  // true if |host| contains UNIX domain socket path.
+  bool host_unix;
+  int fd;
+};
+
 struct DownstreamAddr {
   DownstreamAddr() : addr{}, port(0), host_unix(false) {}
   DownstreamAddr(const DownstreamAddr &other);
@@ -464,14 +482,8 @@ struct ConnectionConfig {
     struct {
       ev_tstamp sleep;
     } timeout;
-    // address of frontend connection.  This could be a path to UNIX
-    // domain socket.  In this case, |host_unix| must be true.
-    std::unique_ptr<char[]> host;
-    // frontend listening port.  0 if frontend listens on UNIX domain
-    // socket, in this case |host_unix| must be true.
-    uint16_t port;
-    // true if host contains UNIX domain socket path
-    bool host_unix;
+    // address of frontend acceptors
+    std::vector<FrontendAddr> addrs;
     int backlog;
     // TCP fastopen.  If this is positive, it is passed to
     // setsockopt() along with TCP_FASTOPEN.

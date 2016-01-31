@@ -377,7 +377,8 @@ int ClientHandler::upstream_http1_connhd_read() {
 }
 
 ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
-                             const char *ipaddr, const char *port)
+                             const char *ipaddr, const char *port,
+                             const FrontendAddr *faddr)
     : conn_(worker->get_loop(), fd, ssl, worker->get_mcpool(),
             get_config()->conn.upstream.timeout.write,
             get_config()->conn.upstream.timeout.read,
@@ -392,6 +393,7 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
               : nullptr),
       ipaddr_(ipaddr),
       port_(port),
+      faddr_(faddr),
       worker_(worker),
       left_connhd_len_(NGHTTP2_CLIENT_MAGIC_LEN),
       should_close_after_write_(false) {
@@ -851,8 +853,8 @@ void ClientHandler::write_accesslog(Downstream *downstream) {
           std::chrono::high_resolution_clock::now(), // request_end_time
 
           req.http_major, req.http_minor, resp.http_status,
-          downstream->response_sent_body_length, StringRef(port_),
-          get_config()->conn.listener.port, get_config()->pid,
+          downstream->response_sent_body_length, StringRef(port_), faddr_->port,
+          get_config()->pid,
       });
 }
 
@@ -875,7 +877,7 @@ void ClientHandler::write_accesslog(int major, int minor, unsigned int status,
                          highres_now,  // request_end_time
                          major, minor, // major, minor
                          status, body_bytes_sent, StringRef(port_),
-                         get_config()->conn.listener.port, get_config()->pid,
+                         faddr_->port, get_config()->pid,
                      });
 }
 
@@ -1116,60 +1118,19 @@ int ClientHandler::proxy_protocol_read() {
   return on_proxy_protocol_finish();
 }
 
-const std::string &ClientHandler::get_forwarded_by() {
+StringRef ClientHandler::get_forwarded_by() {
   auto &fwdconf = get_config()->http.forwarded;
 
   if (fwdconf.by_node_type == FORWARDED_NODE_OBFUSCATED) {
-    return fwdconf.by_obfuscated;
-  }
-  if (!local_hostport_.empty()) {
-    return local_hostport_;
+    return StringRef(fwdconf.by_obfuscated);
   }
 
-  auto &listenerconf = get_config()->conn.listener;
-
-  // For UNIX domain socket listener, just return empty string.
-  if (listenerconf.host_unix) {
-    return local_hostport_;
-  }
-
-  int rv;
-  sockaddr_union su;
-  socklen_t addrlen = sizeof(su);
-
-  rv = getsockname(conn_.fd, &su.sa, &addrlen);
-  if (rv != 0) {
-    return local_hostport_;
-  }
-
-  char host[NI_MAXHOST];
-  rv = getnameinfo(&su.sa, addrlen, host, sizeof(host), nullptr, 0,
-                   NI_NUMERICHOST);
-  if (rv != 0) {
-    return local_hostport_;
-  }
-
-  if (su.storage.ss_family == AF_INET6) {
-    local_hostport_ = "[";
-    local_hostport_ += host;
-    local_hostport_ += "]:";
-  } else {
-    local_hostport_ = host;
-    local_hostport_ += ':';
-  }
-
-  local_hostport_ += util::utos(listenerconf.port);
-
-  return local_hostport_;
+  return StringRef(faddr_->hostport);
 }
 
 const std::string &ClientHandler::get_forwarded_for() const {
   if (get_config()->http.forwarded.for_node_type == FORWARDED_NODE_OBFUSCATED) {
     return forwarded_for_obfuscated_;
-  }
-
-  if (get_config()->conn.listener.host_unix) {
-    return EMPTY_STRING;
   }
 
   return ipaddr_;

@@ -1428,11 +1428,15 @@ int parse_config(const char *opt, const char *optarg,
   case SHRPX_OPTID_FRONTEND: {
     auto &listenerconf = mod_config()->conn.listener;
 
+    FrontendAddr addr{};
+    addr.fd = -1;
+
     if (util::istarts_with(optarg, SHRPX_UNIX_PATH_PREFIX)) {
       auto path = optarg + str_size(SHRPX_UNIX_PATH_PREFIX);
-      listenerconf.host = strcopy(path);
-      listenerconf.port = 0;
-      listenerconf.host_unix = true;
+      addr.host = ImmutableString(path);
+      addr.host_unix = true;
+
+      listenerconf.addrs.push_back(std::move(addr));
 
       return 0;
     }
@@ -1442,9 +1446,26 @@ int parse_config(const char *opt, const char *optarg,
       return -1;
     }
 
-    listenerconf.host = strcopy(host);
-    listenerconf.port = port;
-    listenerconf.host_unix = false;
+    addr.host = ImmutableString(host);
+    addr.port = port;
+
+    if (util::numeric_host(host, AF_INET)) {
+      addr.family = AF_INET;
+      listenerconf.addrs.push_back(std::move(addr));
+      return 0;
+    }
+
+    if (util::numeric_host(host, AF_INET6)) {
+      addr.family = AF_INET6;
+      listenerconf.addrs.push_back(std::move(addr));
+      return 0;
+    }
+
+    addr.family = AF_INET;
+    listenerconf.addrs.push_back(addr);
+
+    addr.family = AF_INET6;
+    listenerconf.addrs.push_back(std::move(addr));
 
     return 0;
   }

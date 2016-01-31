@@ -26,6 +26,7 @@
 
 #include <cstring>
 #include <iostream>
+#include <sstream>
 
 #include <CUnit/CUnit.h>
 
@@ -101,6 +102,34 @@ void test_template_immutable_string(void) {
   CU_ASSERT('o' == br_op[1]);
   CU_ASSERT('t' == br_op[6]);
   CU_ASSERT('\0' == br_op[7]);
+
+  // operator==(const ImmutableString &, const ImmutableString &)
+  {
+    ImmutableString a("foo");
+    ImmutableString b("foo");
+    ImmutableString c("fo");
+
+    CU_ASSERT(a == b);
+    CU_ASSERT(a != c);
+    CU_ASSERT(c != b);
+  }
+
+  // operator<<
+  {
+    ImmutableString a("foo");
+    std::stringstream ss;
+    ss << a;
+
+    CU_ASSERT("foo" == ss.str());
+  }
+
+  // operator +=(std::string &, const ImmutableString &)
+  {
+    std::string a = "alpha";
+    a += ImmutableString("bravo");
+
+    CU_ASSERT("alphabravo" == a);
+  }
 }
 
 void test_template_string_ref(void) {
@@ -145,6 +174,31 @@ void test_template_string_ref(void) {
 
   CU_ASSERT("delta" == cstrnref);
   CU_ASSERT(5 == cstrnref.size());
+
+  // operator[]
+  StringRef br_op("foxtrot");
+
+  CU_ASSERT('f' == br_op[0]);
+  CU_ASSERT('o' == br_op[1]);
+  CU_ASSERT('t' == br_op[6]);
+  CU_ASSERT('\0' == br_op[7]);
+
+  // operator<<
+  {
+    StringRef a("foo");
+    std::stringstream ss;
+    ss << a;
+
+    CU_ASSERT("foo" == ss.str());
+  }
+
+  // operator +=(std::string &, const StringRef &)
+  {
+    std::string a = "alpha";
+    a += StringRef("bravo");
+
+    CU_ASSERT("alphabravo" == a);
+  }
 }
 
 } // namespace nghttp2
