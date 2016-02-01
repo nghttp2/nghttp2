@@ -68,9 +68,10 @@ std::string create_forwarded(int params, const StringRef &node_by,
   std::string res;
   if ((params & FORWARDED_BY) && !node_by.empty()) {
     // This must be quoted-string unless it is obfuscated version
-    // (which starts with "_"), since ':' is not allowed in token.
-    // ':' is used to separate host and port.
-    if (node_by[0] == '_') {
+    // (which starts with "_") or some special value (e.g.,
+    // "localhost" for UNIX domain socket), since ':' is not allowed
+    // in token.  ':' is used to separate host and port.
+    if (node_by[0] == '_' || node_by[0] == 'l') {
       res += "by=";
       res += node_by;
       res += ";";
