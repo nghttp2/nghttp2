@@ -783,7 +783,8 @@ ClientHandler *accept_connection(Worker *worker, int fd, sockaddr *addr,
     }
   }
 
-  return new ClientHandler(worker, fd, ssl, host, service, faddr);
+  return new ClientHandler(worker, fd, ssl, host, service, addr->sa_family,
+                           faddr);
 }
 
 bool tls_hostname_match(const char *pattern, size_t plen, const char *hostname,

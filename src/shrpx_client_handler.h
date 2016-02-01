@@ -53,7 +53,7 @@ struct WorkerStat;
 class ClientHandler {
 public:
   ClientHandler(Worker *worker, int fd, SSL *ssl, const char *ipaddr,
-                const char *port, const FrontendAddr *faddr);
+                const char *port, int family, const FrontendAddr *faddr);
   ~ClientHandler();
 
   int noop();
@@ -152,9 +152,9 @@ private:
   std::string port_;
   // The ALPN identifier negotiated for this connection.
   std::string alpn_;
-  // The obfuscated version of client address used in "for" parameter
-  // of Forwarded header field.
-  std::string forwarded_for_obfuscated_;
+  // The client address used in "for" parameter of Forwarded header
+  // field.
+  std::string forwarded_for_;
   std::function<int(ClientHandler &)> read_, write_;
   std::function<int(ClientHandler &)> on_read_, on_write_;
   // Address of frontend listening socket

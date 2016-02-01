@@ -377,7 +377,7 @@ int ClientHandler::upstream_http1_connhd_read() {
 }
 
 ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
-                             const char *ipaddr, const char *port,
+                             const char *ipaddr, const char *port, int family,
                              const FrontendAddr *faddr)
     : conn_(worker->get_loop(), fd, ssl, worker->get_mcpool(),
             get_config()->conn.upstream.timeout.write,
@@ -418,11 +418,19 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
 
   auto &fwdconf = get_config()->http.forwarded;
 
-  if ((fwdconf.params & FORWARDED_FOR) &&
-      fwdconf.for_node_type == FORWARDED_NODE_OBFUSCATED) {
-    forwarded_for_obfuscated_ = "_";
-    forwarded_for_obfuscated_ += util::random_alpha_digit(
-        worker_->get_randgen(), SHRPX_OBFUSCATED_NODE_LENGTH);
+  if (fwdconf.params & FORWARDED_FOR) {
+    if (fwdconf.for_node_type == FORWARDED_NODE_OBFUSCATED) {
+      forwarded_for_ = "_";
+      forwarded_for_ += util::random_alpha_digit(worker_->get_randgen(),
+                                                 SHRPX_OBFUSCATED_NODE_LENGTH);
+    } else if (family == AF_INET6) {
+      forwarded_for_ = "[";
+      forwarded_for_ += ipaddr_;
+      forwarded_for_ += ']';
+    } else {
+      // family == AF_INET or family == AF_UNIX
+      forwarded_for_ = ipaddr_;
+    }
   }
 }
 
@@ -1129,11 +1137,7 @@ StringRef ClientHandler::get_forwarded_by() {
 }
 
 const std::string &ClientHandler::get_forwarded_for() const {
-  if (get_config()->http.forwarded.for_node_type == FORWARDED_NODE_OBFUSCATED) {
-    return forwarded_for_obfuscated_;
-  }
-
-  return ipaddr_;
+  return forwarded_for_;
 }
 
 } // namespace shrpx
