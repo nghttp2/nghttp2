@@ -1722,11 +1722,12 @@ HTTP:
               of Forwarded  header field.   If "obfuscated"  is given,
               the string is randomly generated at startup.  If "ip" is
               given,   the  interface   address  of   the  connection,
-              including  port number,  is  sent  with "by"  parameter.
-              User can also specify the static obfuscated string.  The
-              limitation  is that  it must  start with  "_", and  only
-              consists of  character set [A-Za-z0-9._-],  as described
-              in RFC 7239.
+              including port number, is  sent with "by" parameter.  In
+              case of UNIX domain  socket, "localhost" is used instead
+              of address and  port.  User can also  specify the static
+              obfuscated string.  The limitation is that it must start
+              with   "_",  and   only   consists   of  character   set
+              [A-Za-z0-9._-], as described in RFC 7239.
               Default: obfuscated
   --forwarded-for=(obfuscated|ip)
               Specify  the   parameter  value  sent  out   with  "for"
@@ -1734,7 +1735,8 @@ HTTP:
               given, the string is  randomly generated for each client
               connection.  If "ip" is given, the remote client address
               of  the connection,  without port  number, is  sent with
-              "for" parameter.
+              "for"  parameter.   In  case   of  UNIX  domain  socket,
+              "localhost" is used instead of address.
               Default: obfuscated
   --no-via    Don't append to  Via header field.  If  Via header field
               is received, it is left unaltered.
