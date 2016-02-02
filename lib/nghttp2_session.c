@@ -1291,7 +1291,9 @@ static int session_allow_incoming_new_stream(nghttp2_session *session) {
  * This function returns nonzero if session is closing.
  */
 static int session_is_closing(nghttp2_session *session) {
-  return (session->goaway_flags & NGHTTP2_GOAWAY_TERM_ON_SEND) != 0;
+  return (session->goaway_flags & NGHTTP2_GOAWAY_TERM_ON_SEND) != 0 ||
+         (nghttp2_session_want_read(session) == 0 &&
+          nghttp2_session_want_write(session) == 0);
 }
 
 /*
@@ -1322,8 +1324,8 @@ static int session_predicate_for_stream_send(nghttp2_session *session,
 
 int nghttp2_session_check_request_allowed(nghttp2_session *session) {
   return !session->server && session->next_stream_id <= INT32_MAX &&
-         (session->goaway_flags &
-          (NGHTTP2_GOAWAY_TERM_ON_SEND | NGHTTP2_GOAWAY_RECV)) == 0;
+         (session->goaway_flags & NGHTTP2_GOAWAY_RECV) == 0 &&
+         !session_is_closing(session);
 }
 
 /*
@@ -1345,10 +1347,11 @@ static int session_predicate_request_headers_send(nghttp2_session *session,
   if (item->aux_data.headers.canceled) {
     return NGHTTP2_ERR_STREAM_CLOSING;
   }
-  /* If we are terminating session (NGHTTP2_GOAWAY_TERM_ON_SEND) or
-     GOAWAY was received from peer, new request is not allowed. */
-  if (session->goaway_flags &
-      (NGHTTP2_GOAWAY_TERM_ON_SEND | NGHTTP2_GOAWAY_RECV)) {
+  /* If we are terminating session (NGHTTP2_GOAWAY_TERM_ON_SEND),
+     GOAWAY was received from peer, or session is about to close, new
+     request is not allowed. */
+  if ((session->goaway_flags & NGHTTP2_GOAWAY_RECV) ||
+      session_is_closing(session)) {
     return NGHTTP2_ERR_START_STREAM_NOT_ALLOWED;
   }
   return 0;
@@ -1903,6 +1906,13 @@ static int session_prep_frame(nghttp2_session *session,
       if (frame->hd.flags & NGHTTP2_FLAG_ACK) {
         assert(session->obq_flood_counter_ > 0);
         --session->obq_flood_counter_;
+        /* When session is about to close, don't send SETTINGS ACK.
+           We are required to send SETTINGS without ACK though; for
+           example, we have to send SETTINGS as a part of connection
+           preface. */
+        if (session_is_closing(session)) {
+          return NGHTTP2_ERR_SESSION_CLOSING;
+        }
       }
 
       rv = nghttp2_frame_pack_settings(&session->aob.framebufs,
