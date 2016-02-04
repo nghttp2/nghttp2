@@ -105,6 +105,13 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
     }
   // fall through
   default:
+    if (req.header_buffer_size() + namelen + valuelen > 64_k) {
+      nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, frame->hd.stream_id,
+                                NGHTTP2_INTERNAL_ERROR);
+      break;
+    }
+    req.update_header_buffer_size(namelen + valuelen);
+
     req.header().emplace(std::string(name, name + namelen),
                          header_value{std::string(value, value + valuelen),
                                       (flags & NGHTTP2_NV_FLAG_NO_INDEX) != 0});
