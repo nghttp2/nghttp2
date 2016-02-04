@@ -150,6 +150,7 @@ struct Request {
   nghttp2_gzip *inflater;
   HtmlParser *html_parser;
   const nghttp2_data_provider *data_prd;
+  size_t header_buffer_size;
   int32_t stream_id;
   int status;
   // Recursion level: 0: first entity, 1: entity linked from first entity
