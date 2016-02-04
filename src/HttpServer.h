@@ -110,6 +110,9 @@ struct Stream {
   ev_timer wtimer;
   int64_t body_length;
   int64_t body_offset;
+  // Total amount of bytes (sum of name and value length) used in
+  // headers.
+  size_t header_buffer_size;
   int32_t stream_id;
   http2::HeaderIndex hdidx;
   bool echo_upload;

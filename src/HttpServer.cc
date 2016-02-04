@@ -425,7 +425,7 @@ void release_fd_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 
 Stream::Stream(Http2Handler *handler, int32_t stream_id)
     : handler(handler), file_ent(nullptr), body_length(0), body_offset(0),
-      stream_id(stream_id), echo_upload(false) {
+      header_buffer_size(0), stream_id(stream_id), echo_upload(false) {
   auto config = handler->get_config();
   ev_timer_init(&rtimer, stream_timeout_cb, 0., config->stream_read_timeout);
   ev_timer_init(&wtimer, stream_timeout_cb, 0., config->stream_write_timeout);
@@ -1315,6 +1315,13 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
   if (!stream) {
     return 0;
   }
+
+  if (stream->header_buffer_size + namelen + valuelen > 64_k) {
+    hd->submit_rst_stream(stream, NGHTTP2_INTERNAL_ERROR);
+    return 0;
+  }
+
+  stream->header_buffer_size += namelen + valuelen;
 
   auto token = http2::lookup_token(name, namelen);
 
