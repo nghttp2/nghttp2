@@ -181,8 +181,8 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
 
     // spdy does not define usage of trailer fields, and we ignores
     // them.
-    if (header_buffer > httpconf.header_field_buffer ||
-        num_headers > httpconf.max_header_fields) {
+    if (header_buffer > httpconf.request_header_field_buffer ||
+        num_headers > httpconf.max_request_header_fields) {
       upstream->rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
       return;
     }

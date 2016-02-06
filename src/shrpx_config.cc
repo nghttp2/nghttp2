@@ -726,6 +726,7 @@ enum {
   SHRPX_OPTID_LISTENER_DISABLE_TIMEOUT,
   SHRPX_OPTID_LOG_LEVEL,
   SHRPX_OPTID_MAX_HEADER_FIELDS,
+  SHRPX_OPTID_MAX_REQUEST_HEADER_FIELDS,
   SHRPX_OPTID_MAX_RESPONSE_HEADER_FIELDS,
   SHRPX_OPTID_MRUBY_FILE,
   SHRPX_OPTID_NO_HOST_REWRITE,
@@ -742,6 +743,7 @@ enum {
   SHRPX_OPTID_PRIVATE_KEY_PASSWD_FILE,
   SHRPX_OPTID_READ_BURST,
   SHRPX_OPTID_READ_RATE,
+  SHRPX_OPTID_REQUEST_HEADER_FIELD_BUFFER,
   SHRPX_OPTID_RESPONSE_HEADER_FIELD_BUFFER,
   SHRPX_OPTID_RLIMIT_NOFILE,
   SHRPX_OPTID_STREAM_READ_TIMEOUT,
@@ -1252,6 +1254,9 @@ int option_lookup_token(const char *name, size_t namelen) {
       if (util::strieq_l("backend-http2-window-bit", name, 24)) {
         return SHRPX_OPTID_BACKEND_HTTP2_WINDOW_BITS;
       }
+      if (util::strieq_l("max-request-header-field", name, 24)) {
+        return SHRPX_OPTID_MAX_REQUEST_HEADER_FIELDS;
+      }
       break;
     }
     break;
@@ -1280,6 +1285,11 @@ int option_lookup_token(const char *name, size_t namelen) {
     case 'd':
       if (util::strieq_l("tls-session-cache-memcache", name, 26)) {
         return SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED;
+      }
+      break;
+    case 'r':
+      if (util::strieq_l("request-header-field-buffe", name, 26)) {
+        return SHRPX_OPTID_REQUEST_HEADER_FIELD_BUFFER;
       }
       break;
     case 's':
@@ -2017,10 +2027,18 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   case SHRPX_OPTID_HEADER_FIELD_BUFFER:
-    return parse_uint_with_unit(&mod_config()->http.header_field_buffer, opt,
-                                optarg);
+    LOG(WARN) << opt
+              << ": deprecated.  Use request-header-field-buffer instead.";
+  // fall through
+  case SHRPX_OPTID_REQUEST_HEADER_FIELD_BUFFER:
+    return parse_uint_with_unit(&mod_config()->http.request_header_field_buffer,
+                                opt, optarg);
   case SHRPX_OPTID_MAX_HEADER_FIELDS:
-    return parse_uint(&mod_config()->http.max_header_fields, opt, optarg);
+    LOG(WARN) << opt << ": deprecated.  Use max-request-header-fields instead.";
+  // fall through
+  case SHRPX_OPTID_MAX_REQUEST_HEADER_FIELDS:
+    return parse_uint(&mod_config()->http.max_request_header_fields, opt,
+                      optarg);
   case SHRPX_OPTID_RESPONSE_HEADER_FIELD_BUFFER:
     return parse_uint_with_unit(
         &mod_config()->http.response_header_field_buffer, opt, optarg);

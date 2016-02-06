@@ -88,8 +88,6 @@ OPTIONS = [
     "fetch-ocsp-response-file",
     "ocsp-update-interval",
     "no-ocsp",
-    "header-field-buffer",
-    "max-header-fields",
     "include",
     "tls-ticket-key-cipher",
     "host-rewrite",
@@ -110,6 +108,10 @@ OPTIONS = [
     "forwarded-for",
     "response-header-field-buffer",
     "max-response-header-fields",
+    "request-header-field-buffer",
+    "max-request-header-fields",
+    "header-field-buffer",
+    "max-header-fields",
     "no-http2-cipher-black-list"
 ]
 

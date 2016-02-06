@@ -196,6 +196,10 @@ constexpr char SHRPX_OPT_STRIP_INCOMING_FORWARDED[] =
     "strip-incoming-forwarded";
 constexpr static char SHRPX_OPT_FORWARDED_BY[] = "forwarded-by";
 constexpr char SHRPX_OPT_FORWARDED_FOR[] = "forwarded-for";
+constexpr char SHRPX_OPT_REQUEST_HEADER_FIELD_BUFFER[] =
+    "request-header-field-buffer";
+constexpr char SHRPX_OPT_MAX_REQUEST_HEADER_FIELDS[] =
+    "max-request-header-fields";
 constexpr char SHRPX_OPT_RESPONSE_HEADER_FIELD_BUFFER[] =
     "response-header-field-buffer";
 constexpr char SHRPX_OPT_MAX_RESPONSE_HEADER_FIELDS[] =
@@ -425,8 +429,8 @@ struct HttpConfig {
   std::vector<std::pair<std::string, std::string>> add_request_headers;
   std::vector<std::pair<std::string, std::string>> add_response_headers;
   StringRef server_name;
-  size_t header_field_buffer;
-  size_t max_header_fields;
+  size_t request_header_field_buffer;
+  size_t max_request_header_fields;
   size_t response_header_field_buffer;
   size_t max_response_header_fields;
   bool no_via;

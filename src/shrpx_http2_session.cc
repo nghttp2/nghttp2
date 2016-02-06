@@ -784,8 +784,8 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
 
     // We use request header limit for PUSH_PROMISE
     if (promised_req.fs.buffer_size() + namelen + valuelen >
-            httpconf.header_field_buffer ||
-        promised_req.fs.num_fields() >= httpconf.max_header_fields) {
+            httpconf.request_header_field_buffer ||
+        promised_req.fs.num_fields() >= httpconf.max_request_header_fields) {
       if (LOG_ENABLED(INFO)) {
         DLOG(INFO, downstream)
             << "Too large or many header field size="

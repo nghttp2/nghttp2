@@ -177,8 +177,8 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
   auto &httpconf = get_config()->http;
 
   if (req.fs.buffer_size() + namelen + valuelen >
-          httpconf.header_field_buffer ||
-      req.fs.num_fields() >= httpconf.max_header_fields) {
+          httpconf.request_header_field_buffer ||
+      req.fs.num_fields() >= httpconf.max_request_header_fields) {
     if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
       return 0;
     }

@@ -1071,8 +1071,8 @@ void fill_default_config() {
   auto &httpconf = mod_config()->http;
   httpconf.server_name = "nghttpx nghttp2/" NGHTTP2_VERSION;
   httpconf.no_host_rewrite = true;
-  httpconf.header_field_buffer = 64_k;
-  httpconf.max_header_fields = 100;
+  httpconf.request_header_field_buffer = 64_k;
+  httpconf.max_request_header_fields = 100;
   httpconf.response_header_field_buffer = 64_k;
   httpconf.max_response_header_fields = 500;
 
@@ -1775,18 +1775,18 @@ HTTP:
               won't replace anything already  set.  This option can be
               used several  times to  specify multiple  header fields.
               Example: --add-response-header="foo: bar"
-  --header-field-buffer=<SIZE>
+  --request-header-field-buffer=<SIZE>
               Set maximum buffer size for incoming HTTP request header
               field list.  This is the sum of header name and value in
               bytes.   If  trailer  fields  exist,  they  are  counted
               towards this number.
               Default: )"
-      << util::utos_unit(get_config()->http.header_field_buffer) << R"(
-  --max-header-fields=<N>
+      << util::utos_unit(get_config()->http.request_header_field_buffer) << R"(
+  --max-request-header-fields=<N>
               Set  maximum  number  of incoming  HTTP  request  header
               fields.   If  trailer  fields exist,  they  are  counted
               towards this number.
-              Default: )" << get_config()->http.max_header_fields << R"(
+              Default: )" << get_config()->http.max_request_header_fields << R"(
   --response-header-field-buffer=<SIZE>
               Set  maximum  buffer  size for  incoming  HTTP  response
               header field list.   This is the sum of  header name and
@@ -2372,6 +2372,8 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_RESPONSE_HEADER_FIELD_BUFFER, required_argument, &flag, 101},
         {SHRPX_OPT_MAX_RESPONSE_HEADER_FIELDS, required_argument, &flag, 102},
         {SHRPX_OPT_NO_HTTP2_CIPHER_BLACK_LIST, no_argument, &flag, 103},
+        {SHRPX_OPT_REQUEST_HEADER_FIELD_BUFFER, required_argument, &flag, 104},
+        {SHRPX_OPT_MAX_REQUEST_HEADER_FIELDS, required_argument, &flag, 105},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -2812,6 +2814,14 @@ int main(int argc, char **argv) {
       case 103:
         // --no-http2-cipher-black-list
         cmdcfgs.emplace_back(SHRPX_OPT_NO_HTTP2_CIPHER_BLACK_LIST, "yes");
+        break;
+      case 104:
+        // --request-header-field-buffer
+        cmdcfgs.emplace_back(SHRPX_OPT_REQUEST_HEADER_FIELD_BUFFER, optarg);
+        break;
+      case 105:
+        // --max-request-header-fields
+        cmdcfgs.emplace_back(SHRPX_OPT_MAX_REQUEST_HEADER_FIELDS, optarg);
         break;
       default:
         break;

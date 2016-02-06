@@ -89,7 +89,8 @@ int htp_uricb(http_parser *htp, const char *data, size_t len) {
   // We happen to have the same value for method token.
   req.method = htp->method;
 
-  if (req.fs.buffer_size() + len > get_config()->http.header_field_buffer) {
+  if (req.fs.buffer_size() + len >
+      get_config()->http.request_header_field_buffer) {
     if (LOG_ENABLED(INFO)) {
       ULOG(INFO, upstream) << "Too large URI size="
                            << req.fs.buffer_size() + len;
@@ -118,7 +119,7 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
   auto &req = downstream->request();
   auto &httpconf = get_config()->http;
 
-  if (req.fs.buffer_size() + len > httpconf.header_field_buffer) {
+  if (req.fs.buffer_size() + len > httpconf.request_header_field_buffer) {
     if (LOG_ENABLED(INFO)) {
       ULOG(INFO, upstream) << "Too large header block size="
                            << req.fs.buffer_size() + len;
@@ -132,7 +133,7 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
     if (req.fs.header_key_prev()) {
       req.fs.append_last_header_key(data, len);
     } else {
-      if (req.fs.num_fields() >= httpconf.max_header_fields) {
+      if (req.fs.num_fields() >= httpconf.max_request_header_fields) {
         if (LOG_ENABLED(INFO)) {
           ULOG(INFO, upstream)
               << "Too many header field num=" << req.fs.num_fields() + 1;
@@ -148,7 +149,7 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
     if (req.fs.trailer_key_prev()) {
       req.fs.append_last_trailer_key(data, len);
     } else {
-      if (req.fs.num_fields() >= httpconf.max_header_fields) {
+      if (req.fs.num_fields() >= httpconf.max_request_header_fields) {
         if (LOG_ENABLED(INFO)) {
           ULOG(INFO, upstream)
               << "Too many header field num=" << req.fs.num_fields() + 1;
@@ -168,7 +169,8 @@ int htp_hdr_valcb(http_parser *htp, const char *data, size_t len) {
   auto downstream = upstream->get_downstream();
   auto &req = downstream->request();
 
-  if (req.fs.buffer_size() + len > get_config()->http.header_field_buffer) {
+  if (req.fs.buffer_size() + len >
+      get_config()->http.request_header_field_buffer) {
     if (LOG_ENABLED(INFO)) {
       ULOG(INFO, upstream) << "Too large header block size="
                            << req.fs.buffer_size() + len;
