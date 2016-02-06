@@ -268,9 +268,16 @@ if test "x${have_zlib}" = "xno"; then
 fi
 
 # dl: openssl requires libdl when it is statically linked.
-save_LIBS=$LIBS
-AC_SEARCH_LIBS([dlopen], [dl], [APPLDFLAGS="-ldl $APPLDFLAGS"], [], [])
-LIBS=$save_LIBS
+case "${host_os}" in
+  *bsd*)
+    # dlopen is in libc on *BSD
+    ;;
+  *)
+    save_LIBS=$LIBS
+    AC_SEARCH_LIBS([dlopen], [dl], [APPLDFLAGS="-ldl $APPLDFLAGS"], [], [])
+    LIBS=$save_LIBS
+    ;;
+esac
 
 # cunit
 PKG_CHECK_MODULES([CUNIT], [cunit >= 2.1], [have_cunit=yes], [have_cunit=no])
