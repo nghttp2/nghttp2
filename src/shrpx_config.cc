@@ -729,6 +729,7 @@ enum {
   SHRPX_OPTID_MAX_RESPONSE_HEADER_FIELDS,
   SHRPX_OPTID_MRUBY_FILE,
   SHRPX_OPTID_NO_HOST_REWRITE,
+  SHRPX_OPTID_NO_HTTP2_CIPHER_BLACK_LIST,
   SHRPX_OPTID_NO_LOCATION_REWRITE,
   SHRPX_OPTID_NO_OCSP,
   SHRPX_OPTID_NO_SERVER_PUSH,
@@ -1267,6 +1268,9 @@ int option_lookup_token(const char *name, size_t namelen) {
     case 't':
       if (util::strieq_l("backend-keep-alive-timeou", name, 25)) {
         return SHRPX_OPTID_BACKEND_KEEP_ALIVE_TIMEOUT;
+      }
+      if (util::strieq_l("no-http2-cipher-black-lis", name, 25)) {
+        return SHRPX_OPTID_NO_HTTP2_CIPHER_BLACK_LIST;
       }
       break;
     }
@@ -2188,6 +2192,10 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   }
+  case SHRPX_OPTID_NO_HTTP2_CIPHER_BLACK_LIST:
+    mod_config()->tls.no_http2_cipher_black_list = util::strieq(optarg, "yes");
+
+    return 0;
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 

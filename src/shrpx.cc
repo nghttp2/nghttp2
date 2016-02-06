@@ -1571,6 +1571,10 @@ SSL/TLS:
               TLS HTTP/2 backends.
               Default: )"
       << util::duration_str(get_config()->tls.dyn_rec.idle_timeout) << R"(
+  --no-http2-cipher-black-list
+              Allow black  listed cipher  suite on  HTTP/2 connection.
+              See  https://tools.ietf.org/html/rfc7540#appendix-A  for
+              the complete HTTP/2 cipher suites black list.
 
 HTTP/2 and SPDY:
   -c, --http2-max-concurrent-streams=<N>
@@ -2367,6 +2371,7 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_FORWARDED_FOR, required_argument, &flag, 100},
         {SHRPX_OPT_RESPONSE_HEADER_FIELD_BUFFER, required_argument, &flag, 101},
         {SHRPX_OPT_MAX_RESPONSE_HEADER_FIELDS, required_argument, &flag, 102},
+        {SHRPX_OPT_NO_HTTP2_CIPHER_BLACK_LIST, no_argument, &flag, 103},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -2803,6 +2808,10 @@ int main(int argc, char **argv) {
       case 102:
         // --max-response-header-fields
         cmdcfgs.emplace_back(SHRPX_OPT_MAX_RESPONSE_HEADER_FIELDS, optarg);
+        break;
+      case 103:
+        // --no-http2-cipher-black-list
+        cmdcfgs.emplace_back(SHRPX_OPT_NO_HTTP2_CIPHER_BLACK_LIST, "yes");
         break;
       default:
         break;

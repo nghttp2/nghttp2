@@ -488,10 +488,17 @@ int Connection::check_http2_requirement() {
       !util::check_h2_is_selected(next_proto, next_proto_len)) {
     return 0;
   }
-  if (!nghttp2::ssl::check_http2_requirement(tls.ssl)) {
+  if (!nghttp2::ssl::check_http2_tls_version(tls.ssl)) {
     if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "TLSv1.2 and/or black listed cipher suite was negotiated. "
-                   "HTTP/2 must not be used.";
+      LOG(INFO) << "TLSv1.2 was not negotiated.  HTTP/2 must not be used.";
+    }
+    return -1;
+  }
+  if (!get_config()->tls.no_http2_cipher_black_list &&
+      nghttp2::ssl::check_http2_cipher_black_list(tls.ssl)) {
+    if (LOG_ENABLED(INFO)) {
+      LOG(INFO) << "The negotiated cipher suite is in HTTP/2 cipher suite "
+                   "black list.  HTTP/2 must not be used.";
     }
     return -1;
   }

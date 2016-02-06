@@ -109,7 +109,8 @@ OPTIONS = [
     "forwarded-by",
     "forwarded-for",
     "response-header-field-buffer",
-    "max-response-header-fields"
+    "max-response-header-fields",
+    "no-http2-cipher-black-list"
 ]
 
 LOGVARS = [

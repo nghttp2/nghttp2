@@ -200,6 +200,8 @@ constexpr char SHRPX_OPT_RESPONSE_HEADER_FIELD_BUFFER[] =
     "response-header-field-buffer";
 constexpr char SHRPX_OPT_MAX_RESPONSE_HEADER_FIELDS[] =
     "max-response-header-fields";
+constexpr char SHRPX_OPT_NO_HTTP2_CIPHER_BLACK_LIST[] =
+    "no-http2-cipher-black-list";
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -396,6 +398,7 @@ struct TLSConfig {
   std::unique_ptr<char[]> ciphers;
   std::unique_ptr<char[]> cacert;
   bool insecure;
+  bool no_http2_cipher_black_list;
 };
 
 struct HttpConfig {

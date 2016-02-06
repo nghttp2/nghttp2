@@ -397,19 +397,10 @@ enum {
   TLS_PSK_WITH_AES_256_CCM_8 = 0xC0A9u,
 };
 
-bool check_http2_requirement(SSL *ssl) {
-  auto tls_ver = SSL_version(ssl);
-
-  switch (tls_ver) {
-  case TLS1_2_VERSION:
-    break;
-  default:
-    return false;
-  }
-
+bool check_http2_cipher_black_list(SSL *ssl) {
   auto cipher = SSL_get_current_cipher(ssl);
 
-  // Cipher suites in RFC 7540 balck list are not allowed in HTTP/2.
+  // Cipher suites in RFC 7540 black list are not allowed in HTTP/2.
   switch (SSL_CIPHER_get_id(cipher) & 0xffffu) {
   case TLS_NULL_WITH_NULL_NULL:
   case TLS_RSA_WITH_NULL_MD5:
@@ -687,10 +678,20 @@ bool check_http2_requirement(SSL *ssl) {
   case TLS_PSK_WITH_AES_256_CCM:
   case TLS_PSK_WITH_AES_128_CCM_8:
   case TLS_PSK_WITH_AES_256_CCM_8:
-    return false;
+    return true;
   }
 
-  return true;
+  return false;
+}
+
+bool check_http2_tls_version(SSL *ssl) {
+  auto tls_ver = SSL_version(ssl);
+
+  return tls_ver == TLS1_2_VERSION;
+}
+
+bool check_http2_requirement(SSL *ssl) {
+  return check_http2_tls_version(ssl) && !check_http2_cipher_black_list(ssl);
 }
 
 void libssl_init() {
