@@ -29,11 +29,11 @@ namespace nghttp2 {
 namespace asio_http2 {
 namespace client {
 
-session_tls_impl::session_tls_impl(boost::asio::io_service &io_service,
-                                   boost::asio::ssl::context &tls_ctx,
-                                   const std::string &host,
-                                   const std::string &service)
-    : session_impl(io_service), socket_(io_service, tls_ctx) {
+session_tls_impl::session_tls_impl(
+    boost::asio::io_service &io_service, boost::asio::ssl::context &tls_ctx,
+    const std::string &host, const std::string &service,
+    const boost::posix_time::time_duration &connect_timeout)
+    : session_impl(io_service, connect_timeout), socket_(io_service, tls_ctx) {
   // this callback setting is no effect is
   // ssl::context::set_verify_mode(boost::asio::ssl::verify_peer) is
   // not used, which is what we want.
@@ -46,6 +46,10 @@ void session_tls_impl::start_connect(tcp::resolver::iterator endpoint_it) {
   boost::asio::async_connect(
       socket(), endpoint_it, [this](const boost::system::error_code &ec,
                                     tcp::resolver::iterator endpoint_it) {
+        if (stopped()) {
+          return;
+        }
+
         if (ec) {
           not_connected(ec);
           return;
@@ -54,6 +58,10 @@ void session_tls_impl::start_connect(tcp::resolver::iterator endpoint_it) {
         socket_.async_handshake(
             boost::asio::ssl::stream_base::client,
             [this, endpoint_it](const boost::system::error_code &ec) {
+              if (stopped()) {
+                return;
+              }
+
               if (ec) {
                 not_connected(ec);
                 return;

@@ -41,7 +41,8 @@ class session_tls_impl : public session_impl {
 public:
   session_tls_impl(boost::asio::io_service &io_service,
                    boost::asio::ssl::context &tls_ctx, const std::string &host,
-                   const std::string &service);
+                   const std::string &service,
+                   const boost::posix_time::time_duration &connect_timeout);
   virtual ~session_tls_impl();
 
   virtual void start_connect(tcp::resolver::iterator endpoint_it);
