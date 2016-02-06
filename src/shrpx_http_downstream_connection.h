@@ -62,13 +62,12 @@ public:
 
   virtual bool poolable() const { return true; }
 
-  ssize_t read_clear(uint8_t *buf, size_t buflen);
-  ssize_t write_clear(struct iovec *iov, size_t iovlen);
-  ssize_t read_tls(uint8_t *buf, size_t buflen);
-  ssize_t write_tls(struct iovec *iov, size_t iovlen);
+  int read_clear();
+  int write_clear();
+  int read_tls();
+  int write_tls();
 
-  int do_read();
-  int do_write();
+  int process_input(const uint8_t *data, size_t datalen);
   int tls_handshake();
 
   int connected();
@@ -79,10 +78,6 @@ public:
 private:
   Connection conn_;
   std::function<int(HttpDownstreamConnection &)> do_read_, do_write_;
-  std::function<ssize_t(HttpDownstreamConnection &, uint8_t *buf,
-                        size_t buflen)> read_;
-  std::function<ssize_t(HttpDownstreamConnection &, struct iovec *iov,
-                        size_t iovlen)> write_;
   Worker *worker_;
   // nullptr if TLS is not used.
   SSL_CTX *ssl_ctx_;
@@ -91,7 +86,6 @@ private:
   size_t group_;
   // index of get_config()->downstream_addrs this object is using
   size_t addr_idx_;
-  bool connected_;
 };
 
 } // namespace shrpx
