@@ -116,6 +116,12 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
 Worker::~Worker() {
   ev_async_stop(loop_, &w_);
   ev_timer_stop(loop_, &mcpool_clear_timer_);
+
+  for (auto &p : cl_tls_session_cache_) {
+    for (auto session : p.second) {
+      SSL_SESSION_free(session);
+    }
+  }
 }
 
 void Worker::schedule_clear_mcpool() {
@@ -299,5 +305,51 @@ mruby::MRubyContext *Worker::get_mruby_context() const {
   return mruby_ctx_.get();
 }
 #endif // HAVE_MRUBY
+
+void Worker::cache_cl_tls_session(const DownstreamAddr *addr,
+                                  SSL_SESSION *session) {
+  if (cl_tls_session_order_.size() >= 10000) {
+    auto addrkey = cl_tls_session_order_.front();
+    cl_tls_session_order_.pop_front();
+    auto it = cl_tls_session_cache_.find(addrkey);
+    assert(it != std::end(cl_tls_session_cache_));
+    auto &v = (*it).second;
+    assert(!v.empty());
+    auto sess = v.front();
+    SSL_SESSION_free(sess);
+    v.pop_front();
+    if (v.empty()) {
+      cl_tls_session_cache_.erase(it);
+    }
+  }
+
+  cl_tls_session_order_.push_back(addr);
+  auto it = cl_tls_session_cache_.find(addr);
+  if (it == std::end(cl_tls_session_cache_)) {
+    std::tie(it, std::ignore) =
+        cl_tls_session_cache_.emplace(addr, std::deque<SSL_SESSION *>());
+  }
+  (*it).second.push_back(session);
+}
+
+SSL_SESSION *Worker::reuse_cl_tls_session(const DownstreamAddr *addr) {
+  auto it = cl_tls_session_cache_.find(addr);
+  if (it == std::end(cl_tls_session_cache_)) {
+    return nullptr;
+  }
+
+  assert((*it).first == cl_tls_session_order_.back());
+
+  auto &v = (*it).second;
+  assert(!v.empty());
+  auto session = v.back();
+  v.pop_back();
+  if (v.empty()) {
+    cl_tls_session_cache_.erase(it);
+  }
+  cl_tls_session_order_.pop_back();
+
+  return session;
+}
 
 } // namespace shrpx

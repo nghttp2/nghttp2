@@ -30,6 +30,8 @@
 #include <mutex>
 #include <vector>
 #include <random>
+#include <unordered_map>
+#include <deque>
 #include <thread>
 #ifndef NOTHREADS
 #include <future>
@@ -143,6 +145,9 @@ public:
   mruby::MRubyContext *get_mruby_context() const;
 #endif // HAVE_MRUBY
 
+  void cache_cl_tls_session(const DownstreamAddr *addr, SSL_SESSION *session);
+  SSL_SESSION *reuse_cl_tls_session(const DownstreamAddr *addr);
+
 private:
 #ifndef NOTHREADS
   std::future<void> fut_;
@@ -156,6 +161,9 @@ private:
   DownstreamConnectionPool dconn_pool_;
   WorkerStat worker_stat_;
   std::vector<DownstreamGroup> dgrps_;
+  std::unordered_map<const DownstreamAddr *, std::deque<SSL_SESSION *>>
+      cl_tls_session_cache_;
+  std::deque<const DownstreamAddr *> cl_tls_session_order_;
   std::unique_ptr<MemcachedDispatcher> session_cache_memcached_dispatcher_;
 #ifdef HAVE_MRUBY
   std::unique_ptr<mruby::MRubyContext> mruby_ctx_;

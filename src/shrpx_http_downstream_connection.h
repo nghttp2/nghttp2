@@ -36,12 +36,12 @@
 namespace shrpx {
 
 class DownstreamConnectionPool;
+class Worker;
 
 class HttpDownstreamConnection : public DownstreamConnection {
 public:
   HttpDownstreamConnection(DownstreamConnectionPool *dconn_pool, size_t group,
-                           struct ev_loop *loop, SSL_CTX *ssl_ctx,
-                           MemchunkPool *mcpool);
+                           struct ev_loop *loop, Worker *worker);
   virtual ~HttpDownstreamConnection();
   virtual int attach_downstream(Downstream *downstream);
   virtual void detach_downstream(Downstream *downstream);
@@ -83,6 +83,7 @@ private:
                         size_t buflen)> read_;
   std::function<ssize_t(HttpDownstreamConnection &, struct iovec *iov,
                         size_t iovlen)> write_;
+  Worker *worker_;
   // nullptr if TLS is not used.
   SSL_CTX *ssl_ctx_;
   IOControl ioctrl_;

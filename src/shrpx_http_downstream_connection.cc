@@ -113,23 +113,34 @@ void connectcb(struct ev_loop *loop, ev_io *w, int revents) {
 
 HttpDownstreamConnection::HttpDownstreamConnection(
     DownstreamConnectionPool *dconn_pool, size_t group, struct ev_loop *loop,
-    SSL_CTX *ssl_ctx, MemchunkPool *mcpool)
+    Worker *worker)
     : DownstreamConnection(dconn_pool),
-      conn_(loop, -1, nullptr, mcpool,
+      conn_(loop, -1, nullptr, worker->get_mcpool(),
             get_config()->conn.downstream.timeout.write,
             get_config()->conn.downstream.timeout.read, {}, {}, connectcb,
             readcb, timeoutcb, this, get_config()->tls.dyn_rec.warmup_threshold,
             get_config()->tls.dyn_rec.idle_timeout),
       do_read_(&HttpDownstreamConnection::noop),
       do_write_(&HttpDownstreamConnection::noop),
-      ssl_ctx_(ssl_ctx),
+      worker_(worker),
+      ssl_ctx_(worker->get_cl_ssl_ctx()),
       ioctrl_(&conn_.rlimit),
       response_htp_{0},
       group_(group),
       addr_idx_(0),
       connected_(false) {}
 
-HttpDownstreamConnection::~HttpDownstreamConnection() {}
+HttpDownstreamConnection::~HttpDownstreamConnection() {
+  if (conn_.tls.ssl) {
+    auto session = SSL_get1_session(conn_.tls.ssl);
+    if (session) {
+      auto &downstreamconf = get_config()->conn.downstream;
+      auto &addr = downstreamconf.addr_groups[group_].addrs[addr_idx_];
+
+      worker_->cache_cl_tls_session(&addr, session);
+    }
+  }
+}
 
 int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
   if (LOG_ENABLED(INFO)) {
@@ -149,22 +160,16 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
       return -1;
     }
 
-    // TODO This does not do any good, since once connection is
-    // dropped, HttpDownstreamConnection is destroyed.  We need to
-    // cache SSL session somewhere, possibly worker scope cache.
     if (ssl_ctx_) {
-      if (!conn_.tls.ssl) {
-        auto ssl = ssl::create_ssl(ssl_ctx_);
-        if (!ssl) {
-          return -1;
-        }
-
-        conn_.set_ssl(ssl);
+      auto ssl = ssl::create_ssl(ssl_ctx_);
+      if (!ssl) {
+        return -1;
       }
+
+      conn_.set_ssl(ssl);
     }
 
-    auto worker = client_handler_->get_worker();
-    auto &next_downstream = worker->get_dgrp(group_)->next;
+    auto &next_downstream = worker_->get_dgrp(group_)->next;
     auto end = next_downstream;
     auto &addrs = downstreamconf.addr_groups[group_].addrs;
     for (;;) {
@@ -215,6 +220,12 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
                             : StringRef(addrs[i].host);
         if (!util::numeric_host(sni_name.c_str())) {
           SSL_set_tlsext_host_name(conn_.tls.ssl, sni_name.c_str());
+        }
+
+        auto session = worker_->reuse_cl_tls_session(&addrs[i]);
+        if (session) {
+          SSL_set_session(conn_.tls.ssl, session);
+          SSL_SESSION_free(session);
         }
 
         conn_.prepare_client_handshake();
