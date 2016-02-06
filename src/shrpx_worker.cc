@@ -308,7 +308,14 @@ mruby::MRubyContext *Worker::get_mruby_context() const {
 
 void Worker::cache_cl_tls_session(const DownstreamAddr *addr,
                                   SSL_SESSION *session) {
-  if (cl_tls_session_order_.size() >= 10000) {
+  auto &tlsconf = get_config()->tls;
+
+  auto max = tlsconf.backend_session_cache_per_worker;
+  if (max == 0) {
+    return;
+  }
+
+  if (cl_tls_session_order_.size() >= max) {
     auto addrkey = cl_tls_session_order_.front();
     cl_tls_session_order_.pop_front();
     auto it = cl_tls_session_cache_.find(addrkey);

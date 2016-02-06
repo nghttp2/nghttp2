@@ -1046,8 +1046,6 @@ void fill_default_config() {
   auto &tlsconf = mod_config()->tls;
   {
     auto &ticketconf = tlsconf.ticket;
-    ticketconf.cipher = EVP_aes_128_cbc();
-
     {
       auto &memcachedconf = ticketconf.memcached;
       memcachedconf.max_retry = 3;
@@ -1055,18 +1053,25 @@ void fill_default_config() {
       memcachedconf.interval = 10_min;
     }
 
+    ticketconf.cipher = EVP_aes_128_cbc();
+  }
+
+  {
     auto &ocspconf = tlsconf.ocsp;
     // ocsp update interval = 14400 secs = 4 hours, borrowed from h2o
     ocspconf.update_interval = 4_h;
     ocspconf.fetch_ocsp_response_file =
         strcopy(PKGDATADIR "/fetch-ocsp-response");
+  }
 
+  {
     auto &dyn_recconf = tlsconf.dyn_rec;
     dyn_recconf.warmup_threshold = 1_m;
     dyn_recconf.idle_timeout = 1_s;
-
-    tlsconf.session_timeout = std::chrono::hours(12);
   }
+
+  tlsconf.session_timeout = std::chrono::hours(12);
+  tlsconf.backend_session_cache_per_worker = 10000;
 
   auto &httpconf = mod_config()->http;
   httpconf.server_name = "nghttpx nghttp2/" NGHTTP2_VERSION;
@@ -1579,6 +1584,11 @@ SSL/TLS:
               Allow black  listed cipher  suite on  HTTP/2 connection.
               See  https://tools.ietf.org/html/rfc7540#appendix-A  for
               the complete HTTP/2 cipher suites black list.
+  --backend-tls-session-cache-per-worker=<N>
+              Set  the maximum  number  of backend  TLS session  cache
+              stored per worker.
+              Default: )" << get_config()->tls.backend_session_cache_per_worker
+      << R"(
 
 HTTP/2 and SPDY:
   -c, --http2-max-concurrent-streams=<N>
@@ -2384,6 +2394,8 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_REQUEST_HEADER_FIELD_BUFFER, required_argument, &flag, 104},
         {SHRPX_OPT_MAX_REQUEST_HEADER_FIELDS, required_argument, &flag, 105},
         {SHRPX_OPT_BACKEND_HTTP1_TLS, no_argument, &flag, 106},
+        {SHRPX_OPT_BACKEND_TLS_SESSION_CACHE_PER_WORKER, required_argument,
+         &flag, 107},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -2836,6 +2848,11 @@ int main(int argc, char **argv) {
       case 106:
         // --backend-http1-tls
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP1_TLS, "yes");
+        break;
+      case 107:
+        // --backend-tls-session-cache-per-worker
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_TLS_SESSION_CACHE_PER_WORKER,
+                             optarg);
         break;
       default:
         break;
