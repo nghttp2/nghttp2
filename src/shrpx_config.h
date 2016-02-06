@@ -206,6 +206,7 @@ constexpr char SHRPX_OPT_MAX_RESPONSE_HEADER_FIELDS[] =
     "max-response-header-fields";
 constexpr char SHRPX_OPT_NO_HTTP2_CIPHER_BLACK_LIST[] =
     "no-http2-cipher-black-list";
+constexpr char SHRPX_OPT_BACKEND_HTTP1_TLS[] = "backend-http1-tls";
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -534,6 +535,7 @@ struct ConnectionConfig {
     // downstream protocol; this will be determined by given options.
     shrpx_proto proto;
     bool no_tls;
+    bool http1_tls;
     // true if IPv4 only; ipv4 and ipv6 are mutually exclusive; and
     // (ipv4 && ipv6) must be false.
     bool ipv4;

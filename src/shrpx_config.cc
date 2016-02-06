@@ -676,6 +676,7 @@ enum {
   SHRPX_OPTID_BACKEND_HTTP_PROXY_URI,
   SHRPX_OPTID_BACKEND_HTTP1_CONNECTIONS_PER_FRONTEND,
   SHRPX_OPTID_BACKEND_HTTP1_CONNECTIONS_PER_HOST,
+  SHRPX_OPTID_BACKEND_HTTP1_TLS,
   SHRPX_OPTID_BACKEND_HTTP2_CONNECTION_WINDOW_BITS,
   SHRPX_OPTID_BACKEND_HTTP2_CONNECTIONS_PER_WORKER,
   SHRPX_OPTID_BACKEND_HTTP2_WINDOW_BITS,
@@ -1077,6 +1078,9 @@ int option_lookup_token(const char *name, size_t namelen) {
       }
       break;
     case 's':
+      if (util::strieq_l("backend-http1-tl", name, 16)) {
+        return SHRPX_OPTID_BACKEND_HTTP1_TLS;
+      }
       if (util::strieq_l("max-header-field", name, 16)) {
         return SHRPX_OPTID_MAX_HEADER_FIELDS;
       }
@@ -2212,6 +2216,10 @@ int parse_config(const char *opt, const char *optarg,
   }
   case SHRPX_OPTID_NO_HTTP2_CIPHER_BLACK_LIST:
     mod_config()->tls.no_http2_cipher_black_list = util::strieq(optarg, "yes");
+
+    return 0;
+  case SHRPX_OPTID_BACKEND_HTTP1_TLS:
+    mod_config()->conn.downstream.http1_tls = util::strieq(optarg, "yes");
 
     return 0;
   case SHRPX_OPTID_CONF:

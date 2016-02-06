@@ -722,8 +722,9 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
       }
       dconn = make_unique<Http2DownstreamConnection>(dconn_pool, http2session);
     } else {
-      dconn =
-          make_unique<HttpDownstreamConnection>(dconn_pool, group, conn_.loop);
+      dconn = make_unique<HttpDownstreamConnection>(
+          dconn_pool, group, conn_.loop, worker_->get_cl_ssl_ctx(),
+          worker_->get_mcpool());
     }
     dconn->set_client_handler(this);
     return dconn;

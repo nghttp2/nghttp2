@@ -1277,6 +1277,10 @@ Connections:
               --backend-write-timeout options.
   --accept-proxy-protocol
               Accept PROXY protocol version 1 on frontend connection.
+  --backend-no-tls
+              Disable SSL/TLS on backend connections.
+  --backend-http1-tls
+              Enable SSL/TLS on backend HTTP/1 connections.
 
 Performance:
   -n, --workers=<N>
@@ -1603,8 +1607,6 @@ HTTP/2 and SPDY:
               connection to 2**<N>-1.
               Default: )"
       << get_config()->http2.downstream.connection_window_bits << R"(
-  --backend-no-tls
-              Disable SSL/TLS on backend connections.
   --http2-no-cookie-crumbling
               Don't crumble cookie header field.
   --padding=<N>
@@ -2029,6 +2031,10 @@ void process_options(
     downstreamconf.proto = PROTO_HTTP;
   }
 
+  if (downstreamconf.proto == PROTO_HTTP && !downstreamconf.http1_tls) {
+    downstreamconf.no_tls = true;
+  }
+
   if (!upstreamconf.no_tls &&
       (!tlsconf.private_key_file || !tlsconf.cert_file)) {
     print_usage(std::cerr);
@@ -2377,6 +2383,7 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_NO_HTTP2_CIPHER_BLACK_LIST, no_argument, &flag, 103},
         {SHRPX_OPT_REQUEST_HEADER_FIELD_BUFFER, required_argument, &flag, 104},
         {SHRPX_OPT_MAX_REQUEST_HEADER_FIELDS, required_argument, &flag, 105},
+        {SHRPX_OPT_BACKEND_HTTP1_TLS, no_argument, &flag, 106},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -2825,6 +2832,10 @@ int main(int argc, char **argv) {
       case 105:
         // --max-request-header-fields
         cmdcfgs.emplace_back(SHRPX_OPT_MAX_REQUEST_HEADER_FIELDS, optarg);
+        break;
+      case 106:
+        // --backend-http1-tls
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP1_TLS, "yes");
         break;
       default:
         break;

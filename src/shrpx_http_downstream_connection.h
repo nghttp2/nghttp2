@@ -40,7 +40,8 @@ class DownstreamConnectionPool;
 class HttpDownstreamConnection : public DownstreamConnection {
 public:
   HttpDownstreamConnection(DownstreamConnectionPool *dconn_pool, size_t group,
-                           struct ev_loop *loop);
+                           struct ev_loop *loop, SSL_CTX *ssl_ctx,
+                           MemchunkPool *mcpool);
   virtual ~HttpDownstreamConnection();
   virtual int attach_downstream(Downstream *downstream);
   virtual void detach_downstream(Downstream *downstream);
@@ -61,11 +62,29 @@ public:
 
   virtual bool poolable() const { return true; }
 
-  int on_connect();
+  ssize_t read_clear(uint8_t *buf, size_t buflen);
+  ssize_t write_clear(struct iovec *iov, size_t iovlen);
+  ssize_t read_tls(uint8_t *buf, size_t buflen);
+  ssize_t write_tls(struct iovec *iov, size_t iovlen);
+
+  int do_read();
+  int do_write();
+  int tls_handshake();
+
+  int connected();
   void signal_write();
+
+  int noop();
 
 private:
   Connection conn_;
+  std::function<int(HttpDownstreamConnection &)> do_read_, do_write_;
+  std::function<ssize_t(HttpDownstreamConnection &, uint8_t *buf,
+                        size_t buflen)> read_;
+  std::function<ssize_t(HttpDownstreamConnection &, struct iovec *iov,
+                        size_t iovlen)> write_;
+  // nullptr if TLS is not used.
+  SSL_CTX *ssl_ctx_;
   IOControl ioctrl_;
   http_parser response_htp_;
   size_t group_;
