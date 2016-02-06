@@ -1991,9 +1991,12 @@ void process_options(
   auto &downstreamconf = mod_config()->conn.downstream;
 
   if (listenerconf.addrs.empty()) {
-    FrontendAddr addr;
+    FrontendAddr addr{};
     addr.host = "*";
     addr.port = 3000;
+    addr.family = AF_INET;
+    listenerconf.addrs.push_back(addr);
+    addr.family = AF_INET6;
     listenerconf.addrs.push_back(std::move(addr));
   }
 
