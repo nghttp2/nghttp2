@@ -196,6 +196,10 @@ constexpr char SHRPX_OPT_STRIP_INCOMING_FORWARDED[] =
     "strip-incoming-forwarded";
 constexpr static char SHRPX_OPT_FORWARDED_BY[] = "forwarded-by";
 constexpr char SHRPX_OPT_FORWARDED_FOR[] = "forwarded-for";
+constexpr char SHRPX_OPT_RESPONSE_HEADER_FIELD_BUFFER[] =
+    "response-header-field-buffer";
+constexpr char SHRPX_OPT_MAX_RESPONSE_HEADER_FIELDS[] =
+    "max-response-header-fields";
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -420,6 +424,8 @@ struct HttpConfig {
   StringRef server_name;
   size_t header_field_buffer;
   size_t max_header_fields;
+  size_t response_header_field_buffer;
+  size_t max_response_header_fields;
   bool no_via;
   bool no_location_rewrite;
   bool no_host_rewrite;

@@ -726,6 +726,7 @@ enum {
   SHRPX_OPTID_LISTENER_DISABLE_TIMEOUT,
   SHRPX_OPTID_LOG_LEVEL,
   SHRPX_OPTID_MAX_HEADER_FIELDS,
+  SHRPX_OPTID_MAX_RESPONSE_HEADER_FIELDS,
   SHRPX_OPTID_MRUBY_FILE,
   SHRPX_OPTID_NO_HOST_REWRITE,
   SHRPX_OPTID_NO_LOCATION_REWRITE,
@@ -740,6 +741,7 @@ enum {
   SHRPX_OPTID_PRIVATE_KEY_PASSWD_FILE,
   SHRPX_OPTID_READ_BURST,
   SHRPX_OPTID_READ_RATE,
+  SHRPX_OPTID_RESPONSE_HEADER_FIELD_BUFFER,
   SHRPX_OPTID_RLIMIT_NOFILE,
   SHRPX_OPTID_STREAM_READ_TIMEOUT,
   SHRPX_OPTID_STREAM_WRITE_TIMEOUT,
@@ -1258,6 +1260,9 @@ int option_lookup_token(const char *name, size_t namelen) {
       if (util::strieq_l("frontend-http2-window-bit", name, 25)) {
         return SHRPX_OPTID_FRONTEND_HTTP2_WINDOW_BITS;
       }
+      if (util::strieq_l("max-response-header-field", name, 25)) {
+        return SHRPX_OPTID_MAX_RESPONSE_HEADER_FIELDS;
+      }
       break;
     case 't':
       if (util::strieq_l("backend-keep-alive-timeou", name, 25)) {
@@ -1290,6 +1295,11 @@ int option_lookup_token(const char *name, size_t namelen) {
     case 'd':
       if (util::strieq_l("tls-dyn-rec-warmup-threshol", name, 27)) {
         return SHRPX_OPTID_TLS_DYN_REC_WARMUP_THRESHOLD;
+      }
+      break;
+    case 'r':
+      if (util::strieq_l("response-header-field-buffe", name, 27)) {
+        return SHRPX_OPTID_RESPONSE_HEADER_FIELD_BUFFER;
       }
       break;
     case 's':
@@ -2007,6 +2017,12 @@ int parse_config(const char *opt, const char *optarg,
                                 optarg);
   case SHRPX_OPTID_MAX_HEADER_FIELDS:
     return parse_uint(&mod_config()->http.max_header_fields, opt, optarg);
+  case SHRPX_OPTID_RESPONSE_HEADER_FIELD_BUFFER:
+    return parse_uint_with_unit(
+        &mod_config()->http.response_header_field_buffer, opt, optarg);
+  case SHRPX_OPTID_MAX_RESPONSE_HEADER_FIELDS:
+    return parse_uint(&mod_config()->http.max_response_header_fields, opt,
+                      optarg);
   case SHRPX_OPTID_INCLUDE: {
     if (included_set.count(optarg)) {
       LOG(ERROR) << opt << ": " << optarg << " has already been included";

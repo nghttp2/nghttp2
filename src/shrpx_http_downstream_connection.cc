@@ -606,14 +606,56 @@ int htp_hdrs_completecb(http_parser *htp) {
 } // namespace
 
 namespace {
+int ensure_header_field_buffer(const Downstream *downstream,
+                               const HttpConfig &httpconf, size_t len) {
+  auto &resp = downstream->response();
+
+  if (resp.fs.buffer_size() + len > httpconf.response_header_field_buffer) {
+    if (LOG_ENABLED(INFO)) {
+      DLOG(INFO, downstream) << "Too large header header field size="
+                             << resp.fs.buffer_size() + len;
+    }
+    return -1;
+  }
+
+  return 0;
+}
+} // namespace
+
+namespace {
+int ensure_max_header_fields(const Downstream *downstream,
+                             const HttpConfig &httpconf) {
+  auto &resp = downstream->response();
+
+  if (resp.fs.num_fields() >= httpconf.max_response_header_fields) {
+    if (LOG_ENABLED(INFO)) {
+      DLOG(INFO, downstream)
+          << "Too many header field num=" << resp.fs.num_fields() + 1;
+    }
+    return -1;
+  }
+
+  return 0;
+}
+} // namespace
+
+namespace {
 int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
   auto downstream = static_cast<Downstream *>(htp->data);
   auto &resp = downstream->response();
+  auto &httpconf = get_config()->http;
+
+  if (ensure_header_field_buffer(downstream, httpconf, len) != 0) {
+    return -1;
+  }
 
   if (downstream->get_response_state() == Downstream::INITIAL) {
     if (resp.fs.header_key_prev()) {
       resp.fs.append_last_header_key(data, len);
     } else {
+      if (ensure_max_header_fields(downstream, httpconf) != 0) {
+        return -1;
+      }
       resp.fs.add_header(std::string(data, len), "");
     }
   } else {
@@ -621,6 +663,12 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
     if (resp.fs.trailer_key_prev()) {
       resp.fs.append_last_trailer_key(data, len);
     } else {
+      if (ensure_max_header_fields(downstream, httpconf) != 0) {
+        // Could not ignore this trailer field easily, since we may
+        // get its value in htp_hdr_valcb, and it will be added to
+        // wrong place or crash if trailer fields are currently empty.
+        return -1;
+      }
       resp.fs.add_trailer(std::string(data, len), "");
     }
   }
@@ -632,6 +680,11 @@ namespace {
 int htp_hdr_valcb(http_parser *htp, const char *data, size_t len) {
   auto downstream = static_cast<Downstream *>(htp->data);
   auto &resp = downstream->response();
+  auto &httpconf = get_config()->http;
+
+  if (ensure_header_field_buffer(downstream, httpconf, len) != 0) {
+    return -1;
+  }
 
   if (downstream->get_response_state() == Downstream::INITIAL) {
     resp.fs.append_last_header_value(data, len);

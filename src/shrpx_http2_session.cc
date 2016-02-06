@@ -729,11 +729,30 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
   }
 
   auto &resp = downstream->response();
+  auto &httpconf = get_config()->http;
 
   switch (frame->hd.type) {
   case NGHTTP2_HEADERS: {
     auto trailer = frame->headers.cat == NGHTTP2_HCAT_HEADERS &&
                    !downstream->get_expect_final_response();
+
+    if (resp.fs.buffer_size() + namelen + valuelen >
+            httpconf.response_header_field_buffer ||
+        resp.fs.num_fields() >= httpconf.max_response_header_fields) {
+      if (LOG_ENABLED(INFO)) {
+        DLOG(INFO, downstream) << "Too large or many header field size="
+                               << resp.fs.buffer_size() + namelen + valuelen
+                               << ", num=" << resp.fs.num_fields() + 1;
+      }
+
+      if (trailer) {
+        // We don't care trailer part exceeds header size limit; just
+        // discard it.
+        return 0;
+      }
+
+      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+    }
 
     if (trailer) {
       // just store header fields for trailer part
@@ -762,6 +781,20 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
     assert(promised_downstream);
 
     auto &promised_req = promised_downstream->request();
+
+    // We use request header limit for PUSH_PROMISE
+    if (promised_req.fs.buffer_size() + namelen + valuelen >
+            httpconf.header_field_buffer ||
+        promised_req.fs.num_fields() >= httpconf.max_header_fields) {
+      if (LOG_ENABLED(INFO)) {
+        DLOG(INFO, downstream)
+            << "Too large or many header field size="
+            << promised_req.fs.buffer_size() + namelen + valuelen
+            << ", num=" << promised_req.fs.num_fields() + 1;
+      }
+
+      return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
+    }
 
     auto token = http2::lookup_token(name, namelen);
     promised_req.fs.add_header(name, namelen, value, valuelen,

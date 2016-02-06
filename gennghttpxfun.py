@@ -107,7 +107,9 @@ OPTIONS = [
     "add-forwarded",
     "strip-incoming-forwarded",
     "forwarded-by",
-    "forwarded-for"
+    "forwarded-for",
+    "response-header-field-buffer",
+    "max-response-header-fields"
 ]
 
 LOGVARS = [

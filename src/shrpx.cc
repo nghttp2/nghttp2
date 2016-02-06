@@ -1073,6 +1073,8 @@ void fill_default_config() {
   httpconf.no_host_rewrite = true;
   httpconf.header_field_buffer = 64_k;
   httpconf.max_header_fields = 100;
+  httpconf.response_header_field_buffer = 64_k;
+  httpconf.max_response_header_fields = 500;
 
   auto &http2conf = mod_config()->http2;
   {
@@ -1772,14 +1774,28 @@ HTTP:
   --header-field-buffer=<SIZE>
               Set maximum buffer size for incoming HTTP request header
               field list.  This is the sum of header name and value in
-              bytes.
+              bytes.   If  trailer  fields  exist,  they  are  counted
+              towards this number.
               Default: )"
       << util::utos_unit(get_config()->http.header_field_buffer) << R"(
   --max-header-fields=<N>
               Set  maximum  number  of incoming  HTTP  request  header
-              fields, which  appear in one request  or response header
-              field list.
+              fields.   If  trailer  fields exist,  they  are  counted
+              towards this number.
               Default: )" << get_config()->http.max_header_fields << R"(
+  --response-header-field-buffer=<SIZE>
+              Set  maximum  buffer  size for  incoming  HTTP  response
+              header field list.   This is the sum of  header name and
+              value  in  bytes.  If  trailer  fields  exist, they  are
+              counted towards this number.
+              Default: )"
+      << util::utos_unit(get_config()->http.response_header_field_buffer) << R"(
+  --max-response-header-fields=<N>
+              Set  maximum number  of  incoming  HTTP response  header
+              fields.   If  trailer  fields exist,  they  are  counted
+              towards this number.
+              Default: )" << get_config()->http.max_response_header_fields
+      << R"(
 
 Debug:
   --frontend-http2-dump-request-header=<PATH>
@@ -2349,6 +2365,8 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_STRIP_INCOMING_FORWARDED, no_argument, &flag, 98},
         {SHRPX_OPT_FORWARDED_BY, required_argument, &flag, 99},
         {SHRPX_OPT_FORWARDED_FOR, required_argument, &flag, 100},
+        {SHRPX_OPT_RESPONSE_HEADER_FIELD_BUFFER, required_argument, &flag, 101},
+        {SHRPX_OPT_MAX_RESPONSE_HEADER_FIELDS, required_argument, &flag, 102},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -2777,6 +2795,14 @@ int main(int argc, char **argv) {
       case 100:
         // --forwarded-for
         cmdcfgs.emplace_back(SHRPX_OPT_FORWARDED_FOR, optarg);
+        break;
+      case 101:
+        // --response-header-field-buffer
+        cmdcfgs.emplace_back(SHRPX_OPT_RESPONSE_HEADER_FIELD_BUFFER, optarg);
+        break;
+      case 102:
+        // --max-response-header-fields
+        cmdcfgs.emplace_back(SHRPX_OPT_MAX_RESPONSE_HEADER_FIELDS, optarg);
         break;
       default:
         break;
