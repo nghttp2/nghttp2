@@ -62,8 +62,6 @@ public:
                size_t idx);
   ~Http2Session();
 
-  int check_cert();
-
   // If hard is true, all pending requests are abandoned and
   // associated ClientHandlers will be deleted.
   int disconnect(bool hard = false);
@@ -147,7 +145,7 @@ public:
 
   void submit_pending_requests();
 
-  size_t get_addr_idx() const;
+  const DownstreamAddr *get_addr() const;
 
   size_t get_group() const;
 
@@ -205,11 +203,11 @@ private:
   ConnectBlocker *connect_blocker_;
   // NULL if no TLS is configured
   SSL_CTX *ssl_ctx_;
+  // Address of remote endpoint
+  const DownstreamAddr *addr_;
   nghttp2_session *session_;
   const uint8_t *data_pending_;
   size_t data_pendinglen_;
-  // index of get_config()->downstream_addrs this object uses
-  size_t addr_idx_;
   size_t group_;
   // index inside group, this is used to pin frontend to certain
   // HTTP/2 backend for better throughput.

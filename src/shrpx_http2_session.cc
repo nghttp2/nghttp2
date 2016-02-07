@@ -153,10 +153,10 @@ Http2Session::Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx,
       worker_(worker),
       connect_blocker_(connect_blocker),
       ssl_ctx_(ssl_ctx),
+      addr_(nullptr),
       session_(nullptr),
       data_pending_(nullptr),
       data_pendinglen_(0),
-      addr_idx_(0),
       group_(group),
       index_(idx),
       state_(DISCONNECTED),
@@ -202,7 +202,7 @@ int Http2Session::disconnect(bool hard) {
 
   conn_.disconnect();
 
-  addr_idx_ = 0;
+  addr_ = nullptr;
 
   if (proxy_htp_) {
     proxy_htp_.reset();
@@ -245,12 +245,6 @@ int Http2Session::disconnect(bool hard) {
   return 0;
 }
 
-int Http2Session::check_cert() {
-  return ssl::check_cert(
-      conn_.tls.ssl,
-      &get_config()->conn.downstream.addr_groups[group_].addrs[addr_idx_]);
-}
-
 int Http2Session::initiate_connection() {
   int rv = 0;
 
@@ -266,18 +260,17 @@ int Http2Session::initiate_connection() {
     }
 
     auto &next_downstream = worker_->get_dgrp(group_)->next;
-    addr_idx_ = next_downstream;
+    addr_ = &addrs[next_downstream];
+
+    if (LOG_ENABLED(INFO)) {
+      SSLOG(INFO, this) << "Using downstream address idx=" << next_downstream
+                        << " out of " << addrs.size();
+    }
+
     if (++next_downstream >= addrs.size()) {
       next_downstream = 0;
     }
-
-    if (LOG_ENABLED(INFO)) {
-      SSLOG(INFO, this) << "Using downstream address idx=" << addr_idx_
-                        << " out of " << addrs.size();
-    }
   }
-
-  auto &downstream_addr = addrs[addr_idx_];
 
   const auto &proxy = get_config()->downstream_http_proxy;
   if (!proxy.host.empty() && state_ == DISCONNECTED) {
@@ -341,7 +334,7 @@ int Http2Session::initiate_connection() {
 
       auto sni_name = !get_config()->tls.backend_sni_name.empty()
                           ? StringRef(get_config()->tls.backend_sni_name)
-                          : StringRef(downstream_addr.host);
+                          : StringRef(addr_->host);
 
       if (!util::numeric_host(sni_name.c_str())) {
         // TLS extensions: SNI. There is no documentation about the return
@@ -354,8 +347,8 @@ int Http2Session::initiate_connection() {
       if (state_ == DISCONNECTED) {
         assert(conn_.fd == -1);
 
-        conn_.fd = util::create_nonblock_socket(
-            downstream_addr.addr.su.storage.ss_family);
+        conn_.fd =
+            util::create_nonblock_socket(addr_->addr.su.storage.ss_family);
         if (conn_.fd == -1) {
           connect_blocker_->on_failure();
           return -1;
@@ -363,8 +356,8 @@ int Http2Session::initiate_connection() {
 
         rv = connect(conn_.fd,
                      // TODO maybe not thread-safe?
-                     const_cast<sockaddr *>(&downstream_addr.addr.su.sa),
-                     downstream_addr.addr.len);
+                     const_cast<sockaddr *>(&addr_->addr.su.sa),
+                     addr_->addr.len);
         if (rv != 0 && errno != EINPROGRESS) {
           connect_blocker_->on_failure();
           return -1;
@@ -380,17 +373,16 @@ int Http2Session::initiate_connection() {
         // Without TLS and proxy.
         assert(conn_.fd == -1);
 
-        conn_.fd = util::create_nonblock_socket(
-            downstream_addr.addr.su.storage.ss_family);
+        conn_.fd =
+            util::create_nonblock_socket(addr_->addr.su.storage.ss_family);
 
         if (conn_.fd == -1) {
           connect_blocker_->on_failure();
           return -1;
         }
 
-        rv = connect(conn_.fd,
-                     const_cast<sockaddr *>(&downstream_addr.addr.su.sa),
-                     downstream_addr.addr.len);
+        rv = connect(conn_.fd, const_cast<sockaddr *>(&addr_->addr.su.sa),
+                     addr_->addr.len);
         if (rv != 0 && errno != EINPROGRESS) {
           connect_blocker_->on_failure();
           return -1;
@@ -516,17 +508,15 @@ int Http2Session::downstream_connect_proxy() {
   if (LOG_ENABLED(INFO)) {
     SSLOG(INFO, this) << "Connected to the proxy";
   }
-  auto &downstream_addr =
-      get_config()->conn.downstream.addr_groups[group_].addrs[addr_idx_];
 
   std::string req = "CONNECT ";
-  req.append(downstream_addr.hostport.c_str(), downstream_addr.hostport.size());
-  if (downstream_addr.port == 80 || downstream_addr.port == 443) {
+  req.append(addr_->hostport.c_str(), addr_->hostport.size());
+  if (addr_->port == 80 || addr_->port == 443) {
     req += ':';
-    req += util::utos(downstream_addr.port);
+    req += util::utos(addr_->port);
   }
   req += " HTTP/1.1\r\nHost: ";
-  req.append(downstream_addr.host.c_str(), downstream_addr.host.size());
+  req += addr_->host;
   req += "\r\n";
   const auto &proxy = get_config()->downstream_http_proxy;
   if (!proxy.userinfo.empty()) {
@@ -1761,7 +1751,7 @@ int Http2Session::tls_handshake() {
   }
 
   if (!get_config()->conn.downstream.no_tls && !get_config()->tls.insecure &&
-      check_cert() != 0) {
+      ssl::check_cert(conn_.tls.ssl, addr_) != 0) {
     return -1;
   }
 
@@ -1854,7 +1844,7 @@ bool Http2Session::should_hard_fail() const {
   }
 }
 
-size_t Http2Session::get_addr_idx() const { return addr_idx_; }
+const DownstreamAddr *Http2Session::get_addr() const { return addr_; }
 
 size_t Http2Session::get_group() const { return group_; }
 

@@ -81,11 +81,11 @@ private:
   Worker *worker_;
   // nullptr if TLS is not used.
   SSL_CTX *ssl_ctx_;
+  // Address of remote endpoint
+  const DownstreamAddr *addr_;
   IOControl ioctrl_;
   http_parser response_htp_;
   size_t group_;
-  // index of get_config()->downstream_addrs this object is using
-  size_t addr_idx_;
 };
 
 } // namespace shrpx

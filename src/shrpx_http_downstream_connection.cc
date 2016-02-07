@@ -124,19 +124,16 @@ HttpDownstreamConnection::HttpDownstreamConnection(
       do_write_(&HttpDownstreamConnection::noop),
       worker_(worker),
       ssl_ctx_(worker->get_cl_ssl_ctx()),
+      addr_(nullptr),
       ioctrl_(&conn_.rlimit),
       response_htp_{0},
-      group_(group),
-      addr_idx_(0) {}
+      group_(group) {}
 
 HttpDownstreamConnection::~HttpDownstreamConnection() {
   if (conn_.tls.ssl) {
     auto session = SSL_get1_session(conn_.tls.ssl);
     if (session) {
-      auto &downstreamconf = get_config()->conn.downstream;
-      auto &addr = downstreamconf.addr_groups[group_].addrs[addr_idx_];
-
-      worker_->cache_downstream_tls_session(&addr, session);
+      worker_->cache_downstream_tls_session(addr_, session);
     }
   }
 }
@@ -173,7 +170,7 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
     auto &addrs = downstreamconf.addr_groups[group_].addrs;
     for (;;) {
       auto &addr = addrs[next_downstream];
-      auto i = next_downstream;
+
       if (++next_downstream >= addrs.size()) {
         next_downstream = 0;
       }
@@ -211,17 +208,17 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
         DCLOG(INFO, this) << "Connecting to downstream server";
       }
 
-      addr_idx_ = i;
+      addr_ = &addr;
 
       if (ssl_ctx_) {
         auto sni_name = !get_config()->tls.backend_sni_name.empty()
                             ? StringRef(get_config()->tls.backend_sni_name)
-                            : StringRef(addrs[i].host);
+                            : StringRef(addr_->host);
         if (!util::numeric_host(sni_name.c_str())) {
           SSL_set_tlsext_host_name(conn_.tls.ssl, sni_name.c_str());
         }
 
-        auto session = worker_->reuse_downstream_tls_session(&addrs[i]);
+        auto session = worker_->reuse_downstream_tls_session(addr_);
         if (session) {
           SSL_set_session(conn_.tls.ssl, session);
           SSL_SESSION_free(session);
@@ -257,10 +254,7 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
 }
 
 int HttpDownstreamConnection::push_request_headers() {
-  const auto &downstream_hostport = get_config()
-                                        ->conn.downstream.addr_groups[group_]
-                                        .addrs[addr_idx_]
-                                        .hostport;
+  const auto &downstream_hostport = addr_->hostport;
   const auto &req = downstream_->request();
 
   auto connect_method = req.method == HTTP_CONNECT;
@@ -870,9 +864,7 @@ int HttpDownstreamConnection::tls_handshake() {
   }
 
   if (!get_config()->tls.insecure &&
-      ssl::check_cert(conn_.tls.ssl, &get_config()
-                                          ->conn.downstream.addr_groups[group_]
-                                          .addrs[addr_idx_]) != 0) {
+      ssl::check_cert(conn_.tls.ssl, addr_) != 0) {
     return -1;
   }
 
