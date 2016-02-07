@@ -66,15 +66,15 @@ namespace util {
 const char UPPER_XDIGITS[] = "0123456789ABCDEF";
 
 bool in_rfc3986_unreserved_chars(const char c) {
-  static constexpr const char unreserved[] = {'-', '.', '_', '~'};
+  static constexpr char unreserved[] = {'-', '.', '_', '~'};
   return is_alpha(c) || is_digit(c) ||
          std::find(std::begin(unreserved), std::end(unreserved), c) !=
              std::end(unreserved);
 }
 
 bool in_rfc3986_sub_delims(const char c) {
-  static constexpr const char sub_delims[] = {'!', '$', '&', '\'', '(', ')',
-                                              '*', '+', ',', ';',  '='};
+  static constexpr char sub_delims[] = {'!', '$', '&', '\'', '(', ')',
+                                        '*', '+', ',', ';',  '='};
   return std::find(std::begin(sub_delims), std::end(sub_delims), c) !=
          std::end(sub_delims);
 }
@@ -117,15 +117,14 @@ std::string percent_encode_path(const std::string &s) {
 }
 
 bool in_token(char c) {
-  static constexpr const char extra[] = {'!',  '#', '$', '%', '&',
-                                         '\'', '*', '+', '-', '.',
-                                         '^',  '_', '`', '|', '~'};
+  static constexpr char extra[] = {'!', '#', '$', '%', '&', '\'', '*', '+',
+                                   '-', '.', '^', '_', '`', '|',  '~'};
   return is_alpha(c) || is_digit(c) ||
          std::find(std::begin(extra), std::end(extra), c) != std::end(extra);
 }
 
 bool in_attr_char(char c) {
-  static constexpr const char bad[] = {'*', '\'', '%'};
+  static constexpr char bad[] = {'*', '\'', '%'};
   return util::in_token(c) &&
          std::find(std::begin(bad), std::end(bad), c) == std::end(bad);
 }

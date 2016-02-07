@@ -54,14 +54,14 @@ namespace nghttp2 {
 // The additional HTTP/2 protocol ALPN protocol identifier we also
 // supports for our applications to make smooth migration into final
 // h2 ALPN ID.
-constexpr const char NGHTTP2_H2_16_ALPN[] = "\x5h2-16";
-constexpr const char NGHTTP2_H2_16[] = "h2-16";
+constexpr char NGHTTP2_H2_16_ALPN[] = "\x5h2-16";
+constexpr char NGHTTP2_H2_16[] = "h2-16";
 
-constexpr const char NGHTTP2_H2_14_ALPN[] = "\x5h2-14";
-constexpr const char NGHTTP2_H2_14[] = "h2-14";
+constexpr char NGHTTP2_H2_14_ALPN[] = "\x5h2-14";
+constexpr char NGHTTP2_H2_14[] = "h2-14";
 
-constexpr const char NGHTTP2_H1_1_ALPN[] = "\x8http/1.1";
-constexpr const char NGHTTP2_H1_1[] = "http/1.1";
+constexpr char NGHTTP2_H1_1_ALPN[] = "\x8http/1.1";
+constexpr char NGHTTP2_H1_1[] = "http/1.1";
 
 namespace util {
 

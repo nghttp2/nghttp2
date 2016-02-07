@@ -975,7 +975,7 @@ int ClientHandler::proxy_protocol_read() {
 
   --end;
 
-  constexpr const char HEADER[] = "PROXY ";
+  constexpr char HEADER[] = "PROXY ";
 
   if (static_cast<size_t>(end - rb_.pos) < str_size(HEADER)) {
     if (LOG_ENABLED(INFO)) {
