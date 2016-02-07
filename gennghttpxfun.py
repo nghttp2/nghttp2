@@ -112,7 +112,9 @@ OPTIONS = [
     "max-request-header-fields",
     "header-field-buffer",
     "max-header-fields",
-    "no-http2-cipher-black-list"
+    "no-http2-cipher-black-list",
+    "backend-http1-tls",
+    "backend-tls-session-cache-per-worker"
 ]
 
 LOGVARS = [

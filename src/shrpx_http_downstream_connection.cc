@@ -35,6 +35,7 @@
 #include "shrpx_downstream_connection_pool.h"
 #include "shrpx_worker.h"
 #include "shrpx_http2_session.h"
+#include "shrpx_ssl.h"
 #include "http2.h"
 #include "util.h"
 
@@ -100,7 +101,7 @@ void connectcb(struct ev_loop *loop, ev_io *w, int revents) {
   auto downstream = dconn->get_downstream();
   auto upstream = downstream->get_upstream();
   auto handler = upstream->get_client_handler();
-  if (dconn->on_connect() != 0) {
+  if (dconn->connected() != 0) {
     if (upstream->on_downstream_abort_request(downstream, 503) != 0) {
       delete handler;
     }
@@ -111,20 +112,34 @@ void connectcb(struct ev_loop *loop, ev_io *w, int revents) {
 } // namespace
 
 HttpDownstreamConnection::HttpDownstreamConnection(
-    DownstreamConnectionPool *dconn_pool, size_t group, struct ev_loop *loop)
+    DownstreamConnectionPool *dconn_pool, size_t group, struct ev_loop *loop,
+    Worker *worker)
     : DownstreamConnection(dconn_pool),
-      conn_(loop, -1, nullptr, nullptr,
+      conn_(loop, -1, nullptr, worker->get_mcpool(),
             get_config()->conn.downstream.timeout.write,
             get_config()->conn.downstream.timeout.read, {}, {}, connectcb,
             readcb, timeoutcb, this, get_config()->tls.dyn_rec.warmup_threshold,
             get_config()->tls.dyn_rec.idle_timeout),
+      do_read_(&HttpDownstreamConnection::noop),
+      do_write_(&HttpDownstreamConnection::noop),
+      worker_(worker),
+      ssl_ctx_(worker->get_cl_ssl_ctx()),
       ioctrl_(&conn_.rlimit),
       response_htp_{0},
       group_(group),
-      addr_idx_(0),
-      connected_(false) {}
+      addr_idx_(0) {}
 
-HttpDownstreamConnection::~HttpDownstreamConnection() {}
+HttpDownstreamConnection::~HttpDownstreamConnection() {
+  if (conn_.tls.ssl) {
+    auto session = SSL_get1_session(conn_.tls.ssl);
+    if (session) {
+      auto &downstreamconf = get_config()->conn.downstream;
+      auto &addr = downstreamconf.addr_groups[group_].addrs[addr_idx_];
+
+      worker_->cache_downstream_tls_session(&addr, session);
+    }
+  }
+}
 
 int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
   if (LOG_ENABLED(INFO)) {
@@ -144,8 +159,16 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
       return -1;
     }
 
-    auto worker = client_handler_->get_worker();
-    auto &next_downstream = worker->get_dgrp(group_)->next;
+    if (ssl_ctx_) {
+      auto ssl = ssl::create_ssl(ssl_ctx_);
+      if (!ssl) {
+        return -1;
+      }
+
+      conn_.set_ssl(ssl);
+    }
+
+    auto &next_downstream = worker_->get_dgrp(group_)->next;
     auto end = next_downstream;
     auto &addrs = downstreamconf.addr_groups[group_].addrs;
     for (;;) {
@@ -189,6 +212,23 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
       }
 
       addr_idx_ = i;
+
+      if (ssl_ctx_) {
+        auto sni_name = !get_config()->tls.backend_sni_name.empty()
+                            ? StringRef(get_config()->tls.backend_sni_name)
+                            : StringRef(addrs[i].host);
+        if (!util::numeric_host(sni_name.c_str())) {
+          SSL_set_tlsext_host_name(conn_.tls.ssl, sni_name.c_str());
+        }
+
+        auto session = worker_->reuse_downstream_tls_session(&addrs[i]);
+        if (session) {
+          SSL_set_session(conn_.tls.ssl, session);
+          SSL_SESSION_free(session);
+        }
+
+        conn_.prepare_client_handshake();
+      }
 
       ev_io_set(&conn_.wev, conn_.fd, EV_WRITE);
       ev_io_set(&conn_.rev, conn_.fd, EV_READ);
@@ -748,44 +788,13 @@ http_parser_settings htp_hooks = {
 };
 } // namespace
 
-int HttpDownstreamConnection::on_read() {
-  if (!connected_) {
-    return 0;
-  }
-
+int HttpDownstreamConnection::read_clear() {
   ev_timer_again(conn_.loop, &conn_.rt);
   std::array<uint8_t, 8_k> buf;
   int rv;
 
-  if (downstream_->get_upgraded()) {
-    // For upgraded connection, just pass data to the upstream.
-    for (;;) {
-      auto nread = conn_.read_clear(buf.data(), buf.size());
-
-      if (nread == 0) {
-        return 0;
-      }
-
-      if (nread < 0) {
-        return nread;
-      }
-
-      rv = downstream_->get_upstream()->on_downstream_body(
-          downstream_, buf.data(), nread, true);
-      if (rv != 0) {
-        return rv;
-      }
-
-      if (downstream_->response_buf_full()) {
-        downstream_->pause_read(SHRPX_NO_BUFFER);
-        return 0;
-      }
-    }
-  }
-
   for (;;) {
     auto nread = conn_.read_clear(buf.data(), buf.size());
-
     if (nread == 0) {
       return 0;
     }
@@ -794,59 +803,18 @@ int HttpDownstreamConnection::on_read() {
       return nread;
     }
 
-    auto nproc =
-        http_parser_execute(&response_htp_, &htp_hooks,
-                            reinterpret_cast<char *>(buf.data()), nread);
-
-    auto htperr = HTTP_PARSER_ERRNO(&response_htp_);
-
-    if (htperr != HPE_OK) {
-      // Handling early return (in other words, response was hijacked
-      // by mruby scripting).
-      if (downstream_->get_response_state() == Downstream::MSG_COMPLETE) {
-        return SHRPX_ERR_DCONN_CANCELED;
-      }
-
-      if (LOG_ENABLED(INFO)) {
-        DCLOG(INFO, this) << "HTTP parser failure: "
-                          << "(" << http_errno_name(htperr) << ") "
-                          << http_errno_description(htperr);
-      }
-
-      return -1;
+    rv = process_input(buf.data(), nread);
+    if (rv != 0) {
+      return rv;
     }
 
-    if (downstream_->get_upgraded()) {
-      if (nproc < static_cast<size_t>(nread)) {
-        // Data from buf.data() + nproc are for upgraded protocol.
-        rv = downstream_->get_upstream()->on_downstream_body(
-            downstream_, buf.data() + nproc, nread - nproc, true);
-        if (rv != 0) {
-          return rv;
-        }
-
-        if (downstream_->response_buf_full()) {
-          downstream_->pause_read(SHRPX_NO_BUFFER);
-          return 0;
-        }
-      }
-      // call on_read(), so that we can process data left in buffer as
-      // upgrade.
-      return on_read();
-    }
-
-    if (downstream_->response_buf_full()) {
-      downstream_->pause_read(SHRPX_NO_BUFFER);
+    if (!ev_is_active(&conn_.rev)) {
       return 0;
     }
   }
 }
 
-int HttpDownstreamConnection::on_write() {
-  if (!connected_) {
-    return 0;
-  }
-
+int HttpDownstreamConnection::write_clear() {
   ev_timer_again(conn_.loop, &conn_.rt);
 
   auto upstream = downstream_->get_upstream();
@@ -883,7 +851,172 @@ int HttpDownstreamConnection::on_write() {
   return 0;
 }
 
-int HttpDownstreamConnection::on_connect() {
+int HttpDownstreamConnection::tls_handshake() {
+  ERR_clear_error();
+
+  ev_timer_again(conn_.loop, &conn_.rt);
+
+  auto rv = conn_.tls_handshake();
+  if (rv == SHRPX_ERR_INPROGRESS) {
+    return 0;
+  }
+
+  if (rv < 0) {
+    return rv;
+  }
+
+  if (LOG_ENABLED(INFO)) {
+    DCLOG(INFO, this) << "SSL/TLS handshake completed";
+  }
+
+  if (!get_config()->tls.insecure &&
+      ssl::check_cert(conn_.tls.ssl, &get_config()
+                                          ->conn.downstream.addr_groups[group_]
+                                          .addrs[addr_idx_]) != 0) {
+    return -1;
+  }
+
+  do_read_ = &HttpDownstreamConnection::read_tls;
+  do_write_ = &HttpDownstreamConnection::write_tls;
+
+  // TODO Check negotiated ALPN
+
+  return on_write();
+}
+
+int HttpDownstreamConnection::read_tls() {
+  ERR_clear_error();
+
+  ev_timer_again(conn_.loop, &conn_.rt);
+  std::array<uint8_t, 8_k> buf;
+  int rv;
+
+  for (;;) {
+    auto nread = conn_.read_tls(buf.data(), buf.size());
+    if (nread == 0) {
+      return 0;
+    }
+
+    if (nread < 0) {
+      return nread;
+    }
+
+    rv = process_input(buf.data(), nread);
+    if (rv != 0) {
+      return rv;
+    }
+
+    if (!ev_is_active(&conn_.rev)) {
+      return 0;
+    }
+  }
+}
+
+int HttpDownstreamConnection::write_tls() {
+  ERR_clear_error();
+
+  ev_timer_again(conn_.loop, &conn_.rt);
+
+  auto upstream = downstream_->get_upstream();
+  auto input = downstream_->get_request_buf();
+
+  struct iovec iov;
+
+  while (input->rleft() > 0) {
+    auto iovcnt = input->riovec(&iov, 1);
+    assert(iovcnt == 1);
+    auto nwrite = conn_.write_tls(iov.iov_base, iov.iov_len);
+
+    if (nwrite == 0) {
+      return 0;
+    }
+
+    if (nwrite < 0) {
+      return nwrite;
+    }
+
+    input->drain(nwrite);
+  }
+
+  conn_.wlimit.stopw();
+  ev_timer_stop(conn_.loop, &conn_.wt);
+
+  if (input->rleft() == 0) {
+    auto &req = downstream_->request();
+
+    upstream->resume_read(SHRPX_NO_BUFFER, downstream_,
+                          req.unconsumed_body_length);
+  }
+
+  return 0;
+}
+
+int HttpDownstreamConnection::process_input(const uint8_t *data,
+                                            size_t datalen) {
+  int rv;
+
+  if (downstream_->get_upgraded()) {
+    // For upgraded connection, just pass data to the upstream.
+    rv = downstream_->get_upstream()->on_downstream_body(downstream_, data,
+                                                         datalen, true);
+    if (rv != 0) {
+      return rv;
+    }
+
+    if (downstream_->response_buf_full()) {
+      downstream_->pause_read(SHRPX_NO_BUFFER);
+      return 0;
+    }
+  }
+
+  auto nproc =
+      http_parser_execute(&response_htp_, &htp_hooks,
+                          reinterpret_cast<const char *>(data), datalen);
+
+  auto htperr = HTTP_PARSER_ERRNO(&response_htp_);
+
+  if (htperr != HPE_OK) {
+    // Handling early return (in other words, response was hijacked by
+    // mruby scripting).
+    if (downstream_->get_response_state() == Downstream::MSG_COMPLETE) {
+      return SHRPX_ERR_DCONN_CANCELED;
+    }
+
+    if (LOG_ENABLED(INFO)) {
+      DCLOG(INFO, this) << "HTTP parser failure: "
+                        << "(" << http_errno_name(htperr) << ") "
+                        << http_errno_description(htperr);
+    }
+
+    return -1;
+  }
+
+  if (downstream_->get_upgraded()) {
+    if (nproc < datalen) {
+      // Data from data + nproc are for upgraded protocol.
+      rv = downstream_->get_upstream()->on_downstream_body(
+          downstream_, data + nproc, datalen - nproc, true);
+      if (rv != 0) {
+        return rv;
+      }
+
+      if (downstream_->response_buf_full()) {
+        downstream_->pause_read(SHRPX_NO_BUFFER);
+        return 0;
+      }
+    }
+    return 0;
+  }
+
+  if (downstream_->response_buf_full()) {
+    downstream_->pause_read(SHRPX_NO_BUFFER);
+    return 0;
+  }
+
+  return 0;
+}
+
+int HttpDownstreamConnection::connected() {
   auto connect_blocker = client_handler_->get_connect_blocker();
 
   if (!util::check_socket_connected(conn_.fd)) {
@@ -898,17 +1031,32 @@ int HttpDownstreamConnection::on_connect() {
     return -1;
   }
 
-  connected_ = true;
+  if (LOG_ENABLED(INFO)) {
+    DLOG(INFO, this) << "Connected to downstream host";
+  }
 
   connect_blocker->on_success();
 
   conn_.rlimit.startw();
-  ev_timer_again(conn_.loop, &conn_.rt);
 
   ev_set_cb(&conn_.wev, writecb);
 
+  if (conn_.tls.ssl) {
+    do_read_ = &HttpDownstreamConnection::tls_handshake;
+    do_write_ = &HttpDownstreamConnection::tls_handshake;
+
+    return 0;
+  }
+
+  do_read_ = &HttpDownstreamConnection::read_clear;
+  do_write_ = &HttpDownstreamConnection::write_clear;
+
   return 0;
 }
+
+int HttpDownstreamConnection::on_read() { return do_read_(*this); }
+
+int HttpDownstreamConnection::on_write() { return do_write_(*this); }
 
 void HttpDownstreamConnection::on_upstream_change(Upstream *upstream) {}
 
@@ -917,5 +1065,7 @@ void HttpDownstreamConnection::signal_write() {
 }
 
 size_t HttpDownstreamConnection::get_group() const { return group_; }
+
+int HttpDownstreamConnection::noop() { return 0; }
 
 } // namespace shrpx

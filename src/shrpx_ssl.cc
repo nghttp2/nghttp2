@@ -628,15 +628,33 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file
 }
 
 namespace {
-int select_next_proto_cb(SSL *ssl, unsigned char **out, unsigned char *outlen,
-                         const unsigned char *in, unsigned int inlen,
-                         void *arg) {
+int select_h2_next_proto_cb(SSL *ssl, unsigned char **out,
+                            unsigned char *outlen, const unsigned char *in,
+                            unsigned int inlen, void *arg) {
   if (!util::select_h2(const_cast<const unsigned char **>(out), outlen, in,
                        inlen)) {
     return SSL_TLSEXT_ERR_NOACK;
   }
 
   return SSL_TLSEXT_ERR_OK;
+}
+} // namespace
+
+namespace {
+int select_h1_next_proto_cb(SSL *ssl, unsigned char **out,
+                            unsigned char *outlen, const unsigned char *in,
+                            unsigned int inlen, void *arg) {
+  auto end = in + inlen;
+  for (; in < end;) {
+    if (util::streq_l(NGHTTP2_H1_1_ALPN, in, in[0] + 1)) {
+      *out = const_cast<unsigned char *>(in) + 1;
+      *outlen = in[0];
+      return SSL_TLSEXT_ERR_OK;
+    }
+    in += in[0] + 1;
+  }
+
+  return SSL_TLSEXT_ERR_NOACK;
 }
 } // namespace
 
@@ -722,15 +740,29 @@ SSL_CTX *create_ssl_client_context(
       DIE();
     }
   }
-  // NPN selection callback
-  SSL_CTX_set_next_proto_select_cb(ssl_ctx, select_next_proto_cb, nullptr);
+
+  auto &downstreamconf = get_config()->conn.downstream;
+
+  if (downstreamconf.proto == PROTO_HTTP2) {
+    // NPN selection callback
+    SSL_CTX_set_next_proto_select_cb(ssl_ctx, select_h2_next_proto_cb, nullptr);
 
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L
-  // ALPN advertisement; We only advertise HTTP/2
-  auto proto_list = util::get_default_alpn();
+    // ALPN advertisement; We only advertise HTTP/2
+    auto proto_list = util::get_default_alpn();
 
-  SSL_CTX_set_alpn_protos(ssl_ctx, proto_list.data(), proto_list.size());
+    SSL_CTX_set_alpn_protos(ssl_ctx, proto_list.data(), proto_list.size());
 #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
+  } else {
+    // NPN selection callback
+    SSL_CTX_set_next_proto_select_cb(ssl_ctx, select_h1_next_proto_cb, nullptr);
+
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+    SSL_CTX_set_alpn_protos(
+        ssl_ctx, reinterpret_cast<const unsigned char *>(NGHTTP2_H1_1_ALPN),
+        str_size(NGHTTP2_H1_1_ALPN));
+#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
+  }
 
   return ssl_ctx;
 }
@@ -1270,15 +1302,7 @@ SSL_CTX *setup_server_ssl_context(std::vector<SSL_CTX *> &all_ssl_ctx,
   return ssl_ctx;
 }
 
-bool downstream_tls_enabled() {
-  auto no_tls = get_config()->conn.downstream.no_tls;
-
-  if (get_config()->client_mode) {
-    return !no_tls;
-  }
-
-  return get_config()->http2_bridge && !no_tls;
-}
+bool downstream_tls_enabled() { return !get_config()->conn.downstream.no_tls; }
 
 SSL_CTX *setup_client_ssl_context(
 #ifdef HAVE_NEVERBLEED

@@ -1046,8 +1046,6 @@ void fill_default_config() {
   auto &tlsconf = mod_config()->tls;
   {
     auto &ticketconf = tlsconf.ticket;
-    ticketconf.cipher = EVP_aes_128_cbc();
-
     {
       auto &memcachedconf = ticketconf.memcached;
       memcachedconf.max_retry = 3;
@@ -1055,18 +1053,25 @@ void fill_default_config() {
       memcachedconf.interval = 10_min;
     }
 
+    ticketconf.cipher = EVP_aes_128_cbc();
+  }
+
+  {
     auto &ocspconf = tlsconf.ocsp;
     // ocsp update interval = 14400 secs = 4 hours, borrowed from h2o
     ocspconf.update_interval = 4_h;
     ocspconf.fetch_ocsp_response_file =
         strcopy(PKGDATADIR "/fetch-ocsp-response");
+  }
 
+  {
     auto &dyn_recconf = tlsconf.dyn_rec;
     dyn_recconf.warmup_threshold = 1_m;
     dyn_recconf.idle_timeout = 1_s;
-
-    tlsconf.session_timeout = std::chrono::hours(12);
   }
+
+  tlsconf.session_timeout = std::chrono::hours(12);
+  tlsconf.downstream_session_cache_per_worker = 10000;
 
   auto &httpconf = mod_config()->http;
   httpconf.server_name = "nghttpx nghttp2/" NGHTTP2_VERSION;
@@ -1277,6 +1282,16 @@ Connections:
               --backend-write-timeout options.
   --accept-proxy-protocol
               Accept PROXY protocol version 1 on frontend connection.
+  --backend-no-tls
+              Disable  SSL/TLS  on  backend connections.   For  HTTP/2
+              backend  connections, TLS  is enabled  by default.   For
+              HTTP/1 backend connections, TLS  is disabled by default,
+              and can  be enabled  by --backend-http1-tls  option.  If
+              both  --backend-no-tls  and --backend-http1-tls  options
+              are used, --backend-no-tls has the precedence.
+  --backend-http1-tls
+              Enable SSL/TLS on backend  HTTP/1 connections.  See also
+              --backend-no-tls option.
 
 Performance:
   -n, --workers=<N>
@@ -1426,16 +1441,14 @@ SSL/TLS:
               Set allowed  cipher list.  The  format of the  string is
               described in OpenSSL ciphers(1).
   -k, --insecure
-              Don't  verify   backend  server's  certificate   if  -p,
-              --client    or    --http2-bridge     are    given    and
-              --backend-no-tls is not given.
+              Don't  verify backend  server's  certificate  if TLS  is
+              enabled for backend connections.
   --cacert=<PATH>
-              Set path to trusted CA  certificate file if -p, --client
-              or --http2-bridge are given  and --backend-no-tls is not
-              given.  The file must be  in PEM format.  It can contain
-              multiple  certificates.    If  the  linked   OpenSSL  is
-              configured to  load system  wide certificates,  they are
-              loaded at startup regardless of this option.
+              Set path to trusted CA  certificate file used in backend
+              TLS connections.   The file must  be in PEM  format.  It
+              can  contain  multiple   certificates.   If  the  linked
+              OpenSSL is configured to  load system wide certificates,
+              they are loaded at startup regardless of this option.
   --private-key-passwd-file=<PATH>
               Path  to file  that contains  password for  the server's
               private key.   If none is  given and the private  key is
@@ -1575,6 +1588,11 @@ SSL/TLS:
               Allow black  listed cipher  suite on  HTTP/2 connection.
               See  https://tools.ietf.org/html/rfc7540#appendix-A  for
               the complete HTTP/2 cipher suites black list.
+  --backend-tls-session-cache-per-worker=<N>
+              Set  the maximum  number  of backend  TLS session  cache
+              stored per worker.
+              Default: )"
+      << get_config()->tls.downstream_session_cache_per_worker << R"(
 
 HTTP/2 and SPDY:
   -c, --http2-max-concurrent-streams=<N>
@@ -1603,8 +1621,6 @@ HTTP/2 and SPDY:
               connection to 2**<N>-1.
               Default: )"
       << get_config()->http2.downstream.connection_window_bits << R"(
-  --backend-no-tls
-              Disable SSL/TLS on backend connections.
   --http2-no-cookie-crumbling
               Don't crumble cookie header field.
   --padding=<N>
@@ -2029,6 +2045,10 @@ void process_options(
     downstreamconf.proto = PROTO_HTTP;
   }
 
+  if (downstreamconf.proto == PROTO_HTTP && !downstreamconf.http1_tls) {
+    downstreamconf.no_tls = true;
+  }
+
   if (!upstreamconf.no_tls &&
       (!tlsconf.private_key_file || !tlsconf.cert_file)) {
     print_usage(std::cerr);
@@ -2377,6 +2397,9 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_NO_HTTP2_CIPHER_BLACK_LIST, no_argument, &flag, 103},
         {SHRPX_OPT_REQUEST_HEADER_FIELD_BUFFER, required_argument, &flag, 104},
         {SHRPX_OPT_MAX_REQUEST_HEADER_FIELDS, required_argument, &flag, 105},
+        {SHRPX_OPT_BACKEND_HTTP1_TLS, no_argument, &flag, 106},
+        {SHRPX_OPT_BACKEND_TLS_SESSION_CACHE_PER_WORKER, required_argument,
+         &flag, 107},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -2825,6 +2848,15 @@ int main(int argc, char **argv) {
       case 105:
         // --max-request-header-fields
         cmdcfgs.emplace_back(SHRPX_OPT_MAX_REQUEST_HEADER_FIELDS, optarg);
+        break;
+      case 106:
+        // --backend-http1-tls
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP1_TLS, "yes");
+        break;
+      case 107:
+        // --backend-tls-session-cache-per-worker
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_TLS_SESSION_CACHE_PER_WORKER,
+                             optarg);
         break;
       default:
         break;

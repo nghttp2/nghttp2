@@ -206,6 +206,9 @@ constexpr char SHRPX_OPT_MAX_RESPONSE_HEADER_FIELDS[] =
     "max-response-header-fields";
 constexpr char SHRPX_OPT_NO_HTTP2_CIPHER_BLACK_LIST[] =
     "no-http2-cipher-black-list";
+constexpr char SHRPX_OPT_BACKEND_HTTP1_TLS[] = "backend-http1-tls";
+constexpr char SHRPX_OPT_BACKEND_TLS_SESSION_CACHE_PER_WORKER[] =
+    "backend-tls-session-cache-per-worker";
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -390,6 +393,7 @@ struct TLSConfig {
   std::vector<std::string> npn_list;
   // list of supported SSL/TLS protocol strings.
   std::vector<std::string> tls_proto_list;
+  size_t downstream_session_cache_per_worker;
   // Bit mask to disable SSL/TLS protocol versions.  This will be
   // passed to SSL_CTX_set_options().
   long int tls_proto_mask;
@@ -534,6 +538,7 @@ struct ConnectionConfig {
     // downstream protocol; this will be determined by given options.
     shrpx_proto proto;
     bool no_tls;
+    bool http1_tls;
     // true if IPv4 only; ipv4 and ipv6 are mutually exclusive; and
     // (ipv4 && ipv6) must be false.
     bool ipv4;
