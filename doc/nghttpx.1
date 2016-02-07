@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "January 25, 2016" "1.7.0" "nghttp2"
+.TH "NGHTTPX" "1" "February 07, 2016" "1.8.0-DEV" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 proxy
 .
@@ -121,7 +121,9 @@ Default: \fB127.0.0.1,80\fP
 Set  frontend  host and  port.   If  <HOST> is  \(aq*\(aq,  it
 assumes  all addresses  including  both  IPv4 and  IPv6.
 UNIX domain  socket can  be specified by  prefixing path
-name with "unix:" (e.g., unix:/var/run/nghttpx.sock)
+name  with  "unix:" (e.g.,  unix:/var/run/nghttpx.sock).
+This  option can  be used  multiple times  to listen  to
+multiple addresses.
 .sp
 Default: \fB*,3000\fP
 .UNINDENT
@@ -162,6 +164,22 @@ be     specified    by     \fI\%\-\-backend\-read\-timeout\fP    and
 .TP
 .B \-\-accept\-proxy\-protocol
 Accept PROXY protocol version 1 on frontend connection.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-backend\-no\-tls
+Disable  SSL/TLS  on  backend connections.   For  HTTP/2
+backend  connections, TLS  is enabled  by default.   For
+HTTP/1 backend connections, TLS  is disabled by default,
+and can  be enabled  by \fI\%\-\-backend\-http1\-tls\fP  option.  If
+both  \fI\%\-\-backend\-no\-tls\fP  and \fI\%\-\-backend\-http1\-tls\fP  options
+are used, \fI\%\-\-backend\-no\-tls\fP has the precedence.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-backend\-http1\-tls
+Enable SSL/TLS on backend  HTTP/1 connections.  See also
+\fI\%\-\-backend\-no\-tls\fP option.
 .UNINDENT
 .SS Performance
 .INDENT 0.0
@@ -396,19 +414,17 @@ described in OpenSSL ciphers(1).
 .INDENT 0.0
 .TP
 .B \-k, \-\-insecure
-Don\(aqt  verify   backend  server\(aqs  certificate   if  \fI\%\-p\fP,
-\fI\%\-\-client\fP    or    \fI\%\-\-http2\-bridge\fP     are    given    and
-\fI\%\-\-backend\-no\-tls\fP is not given.
+Don\(aqt  verify backend  server\(aqs  certificate  if TLS  is
+enabled for backend connections.
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-\-cacert=<PATH>
-Set path to trusted CA  certificate file if \fI\%\-p\fP, \fI\%\-\-client\fP
-or \fI\%\-\-http2\-bridge\fP are given  and \fI\%\-\-backend\-no\-tls\fP is not
-given.  The file must be  in PEM format.  It can contain
-multiple  certificates.    If  the  linked   OpenSSL  is
-configured to  load system  wide certificates,  they are
-loaded at startup regardless of this option.
+Set path to trusted CA  certificate file used in backend
+TLS connections.   The file must  be in PEM  format.  It
+can  contain  multiple   certificates.   If  the  linked
+OpenSSL is configured to  load system wide certificates,
+they are loaded at startup regardless of this option.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -616,6 +632,21 @@ TLS HTTP/2 backends.
 .sp
 Default: \fB1s\fP
 .UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-no\-http2\-cipher\-black\-list
+Allow black  listed cipher  suite on  HTTP/2 connection.
+See  \fI\%https://tools.ietf.org/html/rfc7540#appendix\-A\fP  for
+the complete HTTP/2 cipher suites black list.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-backend\-tls\-session\-cache\-per\-worker=<N>
+Set  the maximum  number  of backend  TLS session  cache
+stored per worker.
+.sp
+Default: \fB10000\fP
+.UNINDENT
 .SS HTTP/2 and SPDY
 .INDENT 0.0
 .TP
@@ -663,11 +694,6 @@ Sets the  per\-connection window  size of  HTTP/2 backend
 connection to 2**<N>\-1.
 .sp
 Default: \fB16\fP
-.UNINDENT
-.INDENT 0.0
-.TP
-.B \-\-backend\-no\-tls
-Disable SSL/TLS on backend connections.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -868,11 +894,12 @@ Specify the parameter value sent out with "by" parameter
 of Forwarded  header field.   If "obfuscated"  is given,
 the string is randomly generated at startup.  If "ip" is
 given,   the  interface   address  of   the  connection,
-including  port number,  is  sent  with "by"  parameter.
-User can also specify the static obfuscated string.  The
-limitation  is that  it must  start with  "_", and  only
-consists of  character set [A\-Za\-z0\-9._\-],  as described
-in RFC 7239.
+including port number, is  sent with "by" parameter.  In
+case of UNIX domain  socket, "localhost" is used instead
+of address and  port.  User can also  specify the static
+obfuscated string.  The limitation is that it must start
+with   "_",  and   only   consists   of  character   set
+[A\-Za\-z0\-9._\-], as described in RFC 7239.
 .sp
 Default: \fBobfuscated\fP
 .UNINDENT
@@ -884,7 +911,8 @@ parameter of Forwarded header field.  If "obfuscated" is
 given, the string is  randomly generated for each client
 connection.  If "ip" is given, the remote client address
 of  the connection,  without port  number, is  sent with
-"for" parameter.
+"for"  parameter.   In  case   of  UNIX  domain  socket,
+"localhost" is used instead of address.
 .sp
 Default: \fBobfuscated\fP
 .UNINDENT
@@ -940,21 +968,41 @@ Example: \fI\%\-\-add\-response\-header\fP="foo: bar"
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-\-header\-field\-buffer=<SIZE>
+.B \-\-request\-header\-field\-buffer=<SIZE>
 Set maximum buffer size for incoming HTTP request header
 field list.  This is the sum of header name and value in
-bytes.
+bytes.   If  trailer  fields  exist,  they  are  counted
+towards this number.
 .sp
 Default: \fB64K\fP
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-\-max\-header\-fields=<N>
+.B \-\-max\-request\-header\-fields=<N>
 Set  maximum  number  of incoming  HTTP  request  header
-fields, which  appear in one request  or response header
-field list.
+fields.   If  trailer  fields exist,  they  are  counted
+towards this number.
 .sp
 Default: \fB100\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-response\-header\-field\-buffer=<SIZE>
+Set  maximum  buffer  size for  incoming  HTTP  response
+header field list.   This is the sum of  header name and
+value  in  bytes.  If  trailer  fields  exist, they  are
+counted towards this number.
+.sp
+Default: \fB64K\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-max\-response\-header\-fields=<N>
+Set  maximum number  of  incoming  HTTP response  header
+fields.   If  trailer  fields exist,  they  are  counted
+towards this number.
+.sp
+Default: \fB500\fP
 .UNINDENT
 .SS Debug
 .INDENT 0.0

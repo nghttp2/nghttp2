@@ -104,7 +104,9 @@ Connections
     Set  frontend  host and  port.   If  <HOST> is  '\*',  it
     assumes  all addresses  including  both  IPv4 and  IPv6.
     UNIX domain  socket can  be specified by  prefixing path
-    name with "unix:" (e.g., unix:/var/run/nghttpx.sock)
+    name  with  "unix:" (e.g.,  unix:/var/run/nghttpx.sock).
+    This  option can  be used  multiple times  to listen  to
+    multiple addresses.
 
     Default: ``*,3000``
 
@@ -140,6 +142,20 @@ Connections
 .. option:: --accept-proxy-protocol
 
     Accept PROXY protocol version 1 on frontend connection.
+
+.. option:: --backend-no-tls
+
+    Disable  SSL/TLS  on  backend connections.   For  HTTP/2
+    backend  connections, TLS  is enabled  by default.   For
+    HTTP/1 backend connections, TLS  is disabled by default,
+    and can  be enabled  by :option:`--backend-http1-tls`  option.  If
+    both  :option:`--backend-no-tls`  and :option:`\--backend-http1-tls`  options
+    are used, :option:`--backend-no-tls` has the precedence.
+
+.. option:: --backend-http1-tls
+
+    Enable SSL/TLS on backend  HTTP/1 connections.  See also
+    :option:`--backend-no-tls` option.
 
 
 Performance
@@ -354,18 +370,16 @@ SSL/TLS
 
 .. option:: -k, --insecure
 
-    Don't  verify   backend  server's  certificate   if  :option:`-p`\,
-    :option:`--client`    or    :option:`\--http2-bridge`     are    given    and
-    :option:`--backend-no-tls` is not given.
+    Don't  verify backend  server's  certificate  if TLS  is
+    enabled for backend connections.
 
 .. option:: --cacert=<PATH>
 
-    Set path to trusted CA  certificate file if :option:`-p`\, :option:`--client`
-    or :option:`--http2-bridge` are given  and :option:`\--backend-no-tls` is not
-    given.  The file must be  in PEM format.  It can contain
-    multiple  certificates.    If  the  linked   OpenSSL  is
-    configured to  load system  wide certificates,  they are
-    loaded at startup regardless of this option.
+    Set path to trusted CA  certificate file used in backend
+    TLS connections.   The file must  be in PEM  format.  It
+    can  contain  multiple   certificates.   If  the  linked
+    OpenSSL is configured to  load system wide certificates,
+    they are loaded at startup regardless of this option.
 
 .. option:: --private-key-passwd-file=<PATH>
 
@@ -551,6 +565,19 @@ SSL/TLS
 
     Default: ``1s``
 
+.. option:: --no-http2-cipher-black-list
+
+    Allow black  listed cipher  suite on  HTTP/2 connection.
+    See  https://tools.ietf.org/html/rfc7540#appendix-A  for
+    the complete HTTP/2 cipher suites black list.
+
+.. option:: --backend-tls-session-cache-per-worker=<N>
+
+    Set  the maximum  number  of backend  TLS session  cache
+    stored per worker.
+
+    Default: ``10000``
+
 
 HTTP/2 and SPDY
 ~~~~~~~~~~~~~~~
@@ -595,10 +622,6 @@ HTTP/2 and SPDY
     connection to 2\*\*<N>-1.
 
     Default: ``16``
-
-.. option:: --backend-no-tls
-
-    Disable SSL/TLS on backend connections.
 
 .. option:: --http2-no-cookie-crumbling
 
@@ -773,11 +796,12 @@ HTTP
     of Forwarded  header field.   If "obfuscated"  is given,
     the string is randomly generated at startup.  If "ip" is
     given,   the  interface   address  of   the  connection,
-    including  port number,  is  sent  with "by"  parameter.
-    User can also specify the static obfuscated string.  The
-    limitation  is that  it must  start with  "_", and  only
-    consists of  character set [A-Za-z0-9._-],  as described
-    in RFC 7239.
+    including port number, is  sent with "by" parameter.  In
+    case of UNIX domain  socket, "localhost" is used instead
+    of address and  port.  User can also  specify the static
+    obfuscated string.  The limitation is that it must start
+    with   "_",  and   only   consists   of  character   set
+    [A-Za-z0-9._-], as described in RFC 7239.
 
     Default: ``obfuscated``
 
@@ -788,7 +812,8 @@ HTTP
     given, the string is  randomly generated for each client
     connection.  If "ip" is given, the remote client address
     of  the connection,  without port  number, is  sent with
-    "for" parameter.
+    "for"  parameter.   In  case   of  UNIX  domain  socket,
+    "localhost" is used instead of address.
 
     Default: ``obfuscated``
 
@@ -836,21 +861,39 @@ HTTP
     used several  times to  specify multiple  header fields.
     Example: :option:`--add-response-header`\="foo: bar"
 
-.. option:: --header-field-buffer=<SIZE>
+.. option:: --request-header-field-buffer=<SIZE>
 
     Set maximum buffer size for incoming HTTP request header
     field list.  This is the sum of header name and value in
-    bytes.
+    bytes.   If  trailer  fields  exist,  they  are  counted
+    towards this number.
 
     Default: ``64K``
 
-.. option:: --max-header-fields=<N>
+.. option:: --max-request-header-fields=<N>
 
     Set  maximum  number  of incoming  HTTP  request  header
-    fields, which  appear in one request  or response header
-    field list.
+    fields.   If  trailer  fields exist,  they  are  counted
+    towards this number.
 
     Default: ``100``
+
+.. option:: --response-header-field-buffer=<SIZE>
+
+    Set  maximum  buffer  size for  incoming  HTTP  response
+    header field list.   This is the sum of  header name and
+    value  in  bytes.  If  trailer  fields  exist, they  are
+    counted towards this number.
+
+    Default: ``64K``
+
+.. option:: --max-response-header-fields=<N>
+
+    Set  maximum number  of  incoming  HTTP response  header
+    fields.   If  trailer  fields exist,  they  are  counted
+    towards this number.
+
+    Default: ``500``
 
 
 Debug
