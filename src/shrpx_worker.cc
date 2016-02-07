@@ -73,7 +73,7 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
       dconn_pool_(get_config()->conn.downstream.addr_groups.size()),
       worker_stat_(get_config()->conn.downstream.addr_groups.size()),
       dgrps_(get_config()->conn.downstream.addr_groups.size()),
-      cl_tls_session_cache_size_(0),
+      downstream_tls_session_cache_size_(0),
       loop_(loop),
       sv_ssl_ctx_(sv_ssl_ctx),
       cl_ssl_ctx_(cl_ssl_ctx),
@@ -118,7 +118,7 @@ Worker::~Worker() {
   ev_async_stop(loop_, &w_);
   ev_timer_stop(loop_, &mcpool_clear_timer_);
 
-  for (auto &p : cl_tls_session_cache_) {
+  for (auto &p : downstream_tls_session_cache_) {
     for (auto session : p.second) {
       SSL_SESSION_free(session);
     }
@@ -307,8 +307,8 @@ mruby::MRubyContext *Worker::get_mruby_context() const {
 }
 #endif // HAVE_MRUBY
 
-void Worker::cache_cl_tls_session(const DownstreamAddr *addr,
-                                  SSL_SESSION *session) {
+void Worker::cache_downstream_tls_session(const DownstreamAddr *addr,
+                                          SSL_SESSION *session) {
   auto &tlsconf = get_config()->tls;
 
   auto max = tlsconf.backend_session_cache_per_worker;
@@ -316,34 +316,34 @@ void Worker::cache_cl_tls_session(const DownstreamAddr *addr,
     return;
   }
 
-  if (cl_tls_session_cache_size_ >= max) {
+  if (downstream_tls_session_cache_size_ >= max) {
     // It is implementation dependent which item is returned from
     // std::begin().  Probably, this depends on hash algorithm.  If it
     // is random fashion, then we are mostly OK.
-    auto it = std::begin(cl_tls_session_cache_);
-    assert(it != std::end(cl_tls_session_cache_));
+    auto it = std::begin(downstream_tls_session_cache_);
+    assert(it != std::end(downstream_tls_session_cache_));
     auto &v = (*it).second;
     assert(!v.empty());
     auto sess = v.front();
     v.pop_front();
     SSL_SESSION_free(sess);
     if (v.empty()) {
-      cl_tls_session_cache_.erase(it);
+      downstream_tls_session_cache_.erase(it);
     }
   }
 
-  auto it = cl_tls_session_cache_.find(addr);
-  if (it == std::end(cl_tls_session_cache_)) {
-    std::tie(it, std::ignore) =
-        cl_tls_session_cache_.emplace(addr, std::deque<SSL_SESSION *>());
+  auto it = downstream_tls_session_cache_.find(addr);
+  if (it == std::end(downstream_tls_session_cache_)) {
+    std::tie(it, std::ignore) = downstream_tls_session_cache_.emplace(
+        addr, std::deque<SSL_SESSION *>());
   }
   (*it).second.push_back(session);
-  ++cl_tls_session_cache_size_;
+  ++downstream_tls_session_cache_size_;
 }
 
-SSL_SESSION *Worker::reuse_cl_tls_session(const DownstreamAddr *addr) {
-  auto it = cl_tls_session_cache_.find(addr);
-  if (it == std::end(cl_tls_session_cache_)) {
+SSL_SESSION *Worker::reuse_downstream_tls_session(const DownstreamAddr *addr) {
+  auto it = downstream_tls_session_cache_.find(addr);
+  if (it == std::end(downstream_tls_session_cache_)) {
     return nullptr;
   }
 
@@ -351,10 +351,10 @@ SSL_SESSION *Worker::reuse_cl_tls_session(const DownstreamAddr *addr) {
   assert(!v.empty());
   auto session = v.back();
   v.pop_back();
-  --cl_tls_session_cache_size_;
+  --downstream_tls_session_cache_size_;
 
   if (v.empty()) {
-    cl_tls_session_cache_.erase(it);
+    downstream_tls_session_cache_.erase(it);
   }
 
   return session;

@@ -148,12 +148,13 @@ public:
   // Caches |session| which is associated to downstream address
   // |addr|.  The caller is responsible to increment the reference
   // count of |session|, since this function does not do so.
-  void cache_cl_tls_session(const DownstreamAddr *addr, SSL_SESSION *session);
+  void cache_downstream_tls_session(const DownstreamAddr *addr,
+                                    SSL_SESSION *session);
   // Returns cached session associated |addr|.  If non-nullptr value
   // is returned, its cache entry was successfully removed from cache.
   // If no cache entry is found associated to |addr|, nullptr will be
   // returned.
-  SSL_SESSION *reuse_cl_tls_session(const DownstreamAddr *addr);
+  SSL_SESSION *reuse_downstream_tls_session(const DownstreamAddr *addr);
 
 private:
 #ifndef NOTHREADS
@@ -175,8 +176,8 @@ private:
   // When doing eviction due to storage limitation, the SSL_SESSION
   // which sits at the front of deque is removed.
   std::unordered_map<const DownstreamAddr *, std::deque<SSL_SESSION *>>
-      cl_tls_session_cache_;
-  size_t cl_tls_session_cache_size_;
+      downstream_tls_session_cache_;
+  size_t downstream_tls_session_cache_size_;
 
   std::unique_ptr<MemcachedDispatcher> session_cache_memcached_dispatcher_;
 #ifdef HAVE_MRUBY
