@@ -2034,6 +2034,10 @@ static int session_prep_frame(nghttp2_session *session,
       break;
     default:
       /* extension frame */
+      if (session_is_closing(session)) {
+        return NGHTTP2_ERR_SESSION_CLOSING;
+      }
+
       rv = session_pack_extension(session, &session->aob.framebufs, frame);
       if (rv != 0) {
         return rv;
