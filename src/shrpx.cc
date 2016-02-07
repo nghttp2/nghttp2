@@ -1283,9 +1283,15 @@ Connections:
   --accept-proxy-protocol
               Accept PROXY protocol version 1 on frontend connection.
   --backend-no-tls
-              Disable SSL/TLS on backend connections.
+              Disable  SSL/TLS  on  backend connections.   For  HTTP/2
+              backend  connections, TLS  is enabled  by default.   For
+              HTTP/1 backend connections, TLS  is disabled by default,
+              and can  be enabled  by --backend-http1-tls  option.  If
+              both  --backend-no-tls  and --backend-http1-tls  options
+              are used, --backend-no-tls has the precedence.
   --backend-http1-tls
-              Enable SSL/TLS on backend HTTP/1 connections.
+              Enable SSL/TLS on backend  HTTP/1 connections.  See also
+              --backend-no-tls option.
 
 Performance:
   -n, --workers=<N>
@@ -1435,16 +1441,14 @@ SSL/TLS:
               Set allowed  cipher list.  The  format of the  string is
               described in OpenSSL ciphers(1).
   -k, --insecure
-              Don't  verify   backend  server's  certificate   if  -p,
-              --client    or    --http2-bridge     are    given    and
-              --backend-no-tls is not given.
+              Don't  verify backend  server's  certificate  if TLS  is
+              enabled for backend connections.
   --cacert=<PATH>
-              Set path to trusted CA  certificate file if -p, --client
-              or --http2-bridge are given  and --backend-no-tls is not
-              given.  The file must be  in PEM format.  It can contain
-              multiple  certificates.    If  the  linked   OpenSSL  is
-              configured to  load system  wide certificates,  they are
-              loaded at startup regardless of this option.
+              Set path to trusted CA  certificate file used in backend
+              TLS connections.   The file must  be in PEM  format.  It
+              can  contain  multiple   certificates.   If  the  linked
+              OpenSSL is configured to  load system wide certificates,
+              they are loaded at startup regardless of this option.
   --private-key-passwd-file=<PATH>
               Path  to file  that contains  password for  the server's
               private key.   If none is  given and the private  key is
