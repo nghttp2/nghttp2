@@ -2227,8 +2227,8 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   case SHRPX_OPTID_BACKEND_TLS_SESSION_CACHE_PER_WORKER:
-    return parse_uint(&mod_config()->tls.backend_session_cache_per_worker, opt,
-                      optarg);
+    return parse_uint(&mod_config()->tls.downstream_session_cache_per_worker,
+                      opt, optarg);
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 

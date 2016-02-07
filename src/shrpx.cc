@@ -1071,7 +1071,7 @@ void fill_default_config() {
   }
 
   tlsconf.session_timeout = std::chrono::hours(12);
-  tlsconf.backend_session_cache_per_worker = 10000;
+  tlsconf.downstream_session_cache_per_worker = 10000;
 
   auto &httpconf = mod_config()->http;
   httpconf.server_name = "nghttpx nghttp2/" NGHTTP2_VERSION;
@@ -1591,8 +1591,8 @@ SSL/TLS:
   --backend-tls-session-cache-per-worker=<N>
               Set  the maximum  number  of backend  TLS session  cache
               stored per worker.
-              Default: )" << get_config()->tls.backend_session_cache_per_worker
-      << R"(
+              Default: )"
+      << get_config()->tls.downstream_session_cache_per_worker << R"(
 
 HTTP/2 and SPDY:
   -c, --http2-max-concurrent-streams=<N>

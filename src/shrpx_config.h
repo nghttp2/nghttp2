@@ -393,7 +393,7 @@ struct TLSConfig {
   std::vector<std::string> npn_list;
   // list of supported SSL/TLS protocol strings.
   std::vector<std::string> tls_proto_list;
-  size_t backend_session_cache_per_worker;
+  size_t downstream_session_cache_per_worker;
   // Bit mask to disable SSL/TLS protocol versions.  This will be
   // passed to SSL_CTX_set_options().
   long int tls_proto_mask;

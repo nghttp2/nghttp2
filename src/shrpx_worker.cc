@@ -311,7 +311,7 @@ void Worker::cache_downstream_tls_session(const DownstreamAddr *addr,
                                           SSL_SESSION *session) {
   auto &tlsconf = get_config()->tls;
 
-  auto max = tlsconf.backend_session_cache_per_worker;
+  auto max = tlsconf.downstream_session_cache_per_worker;
   if (max == 0) {
     return;
   }
