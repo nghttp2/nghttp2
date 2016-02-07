@@ -323,8 +323,8 @@ void Worker::cache_cl_tls_session(const DownstreamAddr *addr,
     auto &v = (*it).second;
     assert(!v.empty());
     auto sess = v.front();
-    SSL_SESSION_free(sess);
     v.pop_front();
+    SSL_SESSION_free(sess);
     if (v.empty()) {
       cl_tls_session_cache_.erase(it);
     }

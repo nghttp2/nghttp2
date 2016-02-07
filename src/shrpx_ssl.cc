@@ -646,10 +646,12 @@ int select_h1_next_proto_cb(SSL *ssl, unsigned char **out,
                             unsigned int inlen, void *arg) {
   auto end = in + inlen;
   for (; in < end;) {
-    if (util::streq_l(NGHTTP2_H1_1_ALPN, in, end - in)) {
+    if (util::streq_l(NGHTTP2_H1_1_ALPN, in, in[0] + 1)) {
+      *out = const_cast<unsigned char *>(in) + 1;
+      *outlen = in[0];
       return SSL_TLSEXT_ERR_OK;
     }
-    in += in[0];
+    in += in[0] + 1;
   }
 
   return SSL_TLSEXT_ERR_NOACK;
@@ -739,7 +741,9 @@ SSL_CTX *create_ssl_client_context(
     }
   }
 
-  if (get_config()->conn.downstream.proto == PROTO_HTTP2) {
+  auto &downstreamconf = get_config()->conn.downstream;
+
+  if (downstreamconf.proto == PROTO_HTTP2) {
     // NPN selection callback
     SSL_CTX_set_next_proto_select_cb(ssl_ctx, select_h2_next_proto_cb, nullptr);
 

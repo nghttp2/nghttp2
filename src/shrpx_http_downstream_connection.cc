@@ -920,12 +920,12 @@ int HttpDownstreamConnection::write_tls() {
   auto upstream = downstream_->get_upstream();
   auto input = downstream_->get_request_buf();
 
-  std::array<struct iovec, 1> iov;
+  struct iovec iov;
 
   while (input->rleft() > 0) {
-    auto iovcnt = input->riovec(iov.data(), iov.size());
+    auto iovcnt = input->riovec(&iov, 1);
     assert(iovcnt == 1);
-    auto nwrite = conn_.write_tls(iov[0].iov_base, iov[0].iov_len);
+    auto nwrite = conn_.write_tls(iov.iov_base, iov.iov_len);
 
     if (nwrite == 0) {
       return 0;
@@ -976,8 +976,8 @@ int HttpDownstreamConnection::process_input(const uint8_t *data,
   auto htperr = HTTP_PARSER_ERRNO(&response_htp_);
 
   if (htperr != HPE_OK) {
-    // Handling early return (in other words, response was hijacked
-    // by mruby scripting).
+    // Handling early return (in other words, response was hijacked by
+    // mruby scripting).
     if (downstream_->get_response_state() == Downstream::MSG_COMPLETE) {
       return SHRPX_ERR_DCONN_CANCELED;
     }
