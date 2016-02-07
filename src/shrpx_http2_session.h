@@ -183,10 +183,10 @@ public:
   };
 
   using ReadBuf = Buffer<8_k>;
-  using WriteBuf = Buffer<32768>;
 
 private:
   Connection conn_;
+  DefaultMemchunks wb_;
   ev_timer settings_timer_;
   // This timer has 2 purpose: when it first timeout, set
   // connection_check_state_ = CONNECTION_CHECK_REQUIRED.  After
@@ -206,8 +206,6 @@ private:
   // Address of remote endpoint
   const DownstreamAddr *addr_;
   nghttp2_session *session_;
-  const uint8_t *data_pending_;
-  size_t data_pendinglen_;
   size_t group_;
   // index inside group, this is used to pin frontend to certain
   // HTTP/2 backend for better throughput.
@@ -215,7 +213,6 @@ private:
   int state_;
   int connection_check_state_;
   bool flow_control_;
-  WriteBuf wb_;
   ReadBuf rb_;
 };
 

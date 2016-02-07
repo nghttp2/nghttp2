@@ -58,6 +58,10 @@ const ev_tstamp CONNCHK_PING_TIMEOUT = 1.;
 } // namespace
 
 namespace {
+constexpr size_t MAX_BUFFER_SIZE = 32_k;
+} // namespace
+
+namespace {
 void connchk_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto http2session = static_cast<Http2Session *>(w->data);
 
@@ -150,13 +154,12 @@ Http2Session::Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx,
             get_config()->conn.downstream.timeout.read, {}, {}, writecb, readcb,
             timeoutcb, this, get_config()->tls.dyn_rec.warmup_threshold,
             get_config()->tls.dyn_rec.idle_timeout),
+      wb_(worker->get_mcpool()),
       worker_(worker),
       connect_blocker_(connect_blocker),
       ssl_ctx_(ssl_ctx),
       addr_(nullptr),
       session_(nullptr),
-      data_pending_(nullptr),
-      data_pendinglen_(0),
       group_(group),
       index_(idx),
       state_(DISCONNECTED),
@@ -528,11 +531,8 @@ int Http2Session::downstream_connect_proxy() {
   if (LOG_ENABLED(INFO)) {
     SSLOG(INFO, this) << "HTTP proxy request headers\n" << req;
   }
-  auto nwrite = wb_.write(req.c_str(), req.size());
-  if (nwrite != req.size()) {
-    SSLOG(WARN, this) << "HTTP proxy request is too large";
-    return -1;
-  }
+  wb_.append(req);
+
   on_write_ = &Http2Session::noop;
 
   signal_write();
@@ -1446,19 +1446,6 @@ int Http2Session::downstream_read() {
 }
 
 int Http2Session::downstream_write() {
-  if (data_pending_) {
-    auto n = std::min(wb_.wleft(), data_pendinglen_);
-    wb_.write(data_pending_, n);
-    if (n < data_pendinglen_) {
-      data_pending_ += n;
-      data_pendinglen_ -= n;
-      return 0;
-    }
-
-    data_pending_ = nullptr;
-    data_pendinglen_ = 0;
-  }
-
   for (;;) {
     const uint8_t *data;
     auto datalen = nghttp2_session_mem_send(session_, &data);
@@ -1471,11 +1458,10 @@ int Http2Session::downstream_write() {
     if (datalen == 0) {
       break;
     }
-    auto n = wb_.write(data, datalen);
-    if (n < static_cast<decltype(n)>(datalen)) {
-      data_pending_ = data + n;
-      data_pendinglen_ = datalen - n;
-      return 0;
+    wb_.append(data, datalen);
+
+    if (wb_.rleft() >= MAX_BUFFER_SIZE) {
+      break;
     }
   }
 
@@ -1700,9 +1686,12 @@ int Http2Session::read_clear() {
 int Http2Session::write_clear() {
   ev_timer_again(conn_.loop, &conn_.rt);
 
+  std::array<struct iovec, MAX_WR_IOVCNT> iov;
+
   for (;;) {
     if (wb_.rleft() > 0) {
-      auto nwrite = conn_.write_clear(wb_.pos, wb_.rleft());
+      auto iovcnt = wb_.riovec(iov.data(), iov.size());
+      auto nwrite = conn_.writev_clear(iov.data(), iovcnt);
 
       if (nwrite == 0) {
         return 0;
@@ -1716,7 +1705,6 @@ int Http2Session::write_clear() {
       continue;
     }
 
-    wb_.reset();
     if (on_write() != 0) {
       return -1;
     }
@@ -1800,9 +1788,13 @@ int Http2Session::write_tls() {
 
   ERR_clear_error();
 
+  struct iovec iov;
+
   for (;;) {
     if (wb_.rleft() > 0) {
-      auto nwrite = conn_.write_tls(wb_.pos, wb_.rleft());
+      auto iovcnt = wb_.riovec(&iov, 1);
+      assert(iovcnt == 1);
+      auto nwrite = conn_.write_tls(iov.iov_base, iov.iov_len);
 
       if (nwrite == 0) {
         return 0;
@@ -1816,7 +1808,7 @@ int Http2Session::write_tls() {
 
       continue;
     }
-    wb_.reset();
+
     if (on_write() != 0) {
       return -1;
     }
