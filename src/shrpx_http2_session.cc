@@ -167,7 +167,9 @@ Http2Session::Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx,
       flow_control_(false) {
 
   read_ = write_ = &Http2Session::noop;
-  on_read_ = on_write_ = &Http2Session::noop;
+
+  on_read_ = &Http2Session::read_noop;
+  on_write_ = &Http2Session::write_noop;
 
   // We will resuse this many times, so use repeat timeout value.  The
   // timeout value is set later.
@@ -191,7 +193,6 @@ int Http2Session::disconnect(bool hard) {
   nghttp2_session_del(session_);
   session_ = nullptr;
 
-  rb_.reset();
   wb_.reset();
 
   conn_.rlimit.stopw();
@@ -201,7 +202,9 @@ int Http2Session::disconnect(bool hard) {
   ev_timer_stop(conn_.loop, &connchk_timer_);
 
   read_ = write_ = &Http2Session::noop;
-  on_read_ = on_write_ = &Http2Session::noop;
+
+  on_read_ = &Http2Session::read_noop;
+  on_write_ = &Http2Session::write_noop;
 
   conn_.disconnect();
 
@@ -465,29 +468,17 @@ http_parser_settings htp_hooks = {
 };
 } // namespace
 
-int Http2Session::downstream_read_proxy() {
-  if (rb_.rleft() == 0) {
-    return 0;
-  }
-
-  size_t nread =
+int Http2Session::downstream_read_proxy(const uint8_t *data, size_t datalen) {
+  auto nread =
       http_parser_execute(proxy_htp_.get(), &htp_hooks,
-                          reinterpret_cast<const char *>(rb_.pos), rb_.rleft());
-
-  rb_.drain(nread);
+                          reinterpret_cast<const char *>(data), datalen);
+  (void)nread;
 
   auto htperr = HTTP_PARSER_ERRNO(proxy_htp_.get());
 
   if (htperr == HPE_PAUSED) {
     switch (state_) {
     case Http2Session::PROXY_CONNECTED:
-      // we need to increment nread by 1 since http_parser_execute()
-      // returns 1 less value we expect.  This means taht
-      // rb_.pos[nread] points to \x0a (LF), which is last byte of
-      // empty line to terminate headers.  We want to eat that byte
-      // here.
-      rb_.drain(1);
-
       // Initiate SSL/TLS handshake through established tunnel.
       if (initiate_connection() != 0) {
         return -1;
@@ -533,7 +524,7 @@ int Http2Session::downstream_connect_proxy() {
   }
   wb_.append(req);
 
-  on_write_ = &Http2Session::noop;
+  on_write_ = &Http2Session::write_noop;
 
   signal_write();
   return 0;
@@ -1412,25 +1403,20 @@ int Http2Session::connection_made() {
 int Http2Session::do_read() { return read_(*this); }
 int Http2Session::do_write() { return write_(*this); }
 
-int Http2Session::on_read() { return on_read_(*this); }
+int Http2Session::on_read(const uint8_t *data, size_t datalen) {
+  return on_read_(*this, data, datalen);
+}
+
 int Http2Session::on_write() { return on_write_(*this); }
 
-int Http2Session::downstream_read() {
-  ssize_t rv = 0;
+int Http2Session::downstream_read(const uint8_t *data, size_t datalen) {
+  ssize_t rv;
 
-  if (rb_.rleft() > 0) {
-    rv = nghttp2_session_mem_recv(
-        session_, reinterpret_cast<const uint8_t *>(rb_.pos), rb_.rleft());
-
-    if (rv < 0) {
-      SSLOG(ERROR, this) << "nghttp2_session_recv() returned error: "
-                         << nghttp2_strerror(rv);
-      return -1;
-    }
-
-    // nghttp2_session_mem_recv() should consume all input data in
-    // case of success.
-    rb_.reset();
+  rv = nghttp2_session_mem_recv(session_, data, datalen);
+  if (rv < 0) {
+    SSLOG(ERROR, this) << "nghttp2_session_recv() returned error: "
+                       << nghttp2_strerror(rv);
+    return -1;
   }
 
   if (nghttp2_session_want_read(session_) == 0 &&
@@ -1621,6 +1607,10 @@ int Http2Session::get_connection_check_state() const {
 
 int Http2Session::noop() { return 0; }
 
+int Http2Session::read_noop(const uint8_t *data, size_t datalen) { return 0; }
+
+int Http2Session::write_noop() { return 0; }
+
 int Http2Session::connected() {
   if (!util::check_socket_connected(conn_.fd)) {
     return -1;
@@ -1659,17 +1649,10 @@ int Http2Session::connected() {
 int Http2Session::read_clear() {
   ev_timer_again(conn_.loop, &conn_.rt);
 
-  for (;;) {
-    // we should process buffered data first before we read EOF.
-    if (rb_.rleft() && on_read() != 0) {
-      return -1;
-    }
-    if (rb_.rleft()) {
-      return 0;
-    }
-    rb_.reset();
+  std::array<uint8_t, 16_k> buf;
 
-    auto nread = conn_.read_clear(rb_.last, rb_.wleft());
+  for (;;) {
+    auto nread = conn_.read_clear(buf.data(), buf.size());
 
     if (nread == 0) {
       return 0;
@@ -1679,7 +1662,9 @@ int Http2Session::read_clear() {
       return nread;
     }
 
-    rb_.write(nread);
+    if (on_read(buf.data(), nread) != 0) {
+      return -1;
+    }
   }
 }
 
@@ -1757,19 +1742,12 @@ int Http2Session::tls_handshake() {
 int Http2Session::read_tls() {
   ev_timer_again(conn_.loop, &conn_.rt);
 
+  std::array<uint8_t, 16_k> buf;
+
   ERR_clear_error();
 
   for (;;) {
-    // we should process buffered data first before we read EOF.
-    if (rb_.rleft() && on_read() != 0) {
-      return -1;
-    }
-    if (rb_.rleft()) {
-      return 0;
-    }
-    rb_.reset();
-
-    auto nread = conn_.read_tls(rb_.last, rb_.wleft());
+    auto nread = conn_.read_tls(buf.data(), buf.size());
 
     if (nread == 0) {
       return 0;
@@ -1779,7 +1757,9 @@ int Http2Session::read_tls() {
       return nread;
     }
 
-    rb_.write(nread);
+    if (on_read(buf.data(), nread) != 0) {
+      return -1;
+    }
   }
 }
 
