@@ -639,7 +639,9 @@ push.
 <https://istlsfastyet.com/#server-performance>`_ in TLS, such as
 session IDs, session tickets (with automatic key rotation), OCSP
 stapling, dynamic record sizing, ALPN/NPN, forward secrecy and SPDY &
-HTTP/2.
+HTTP/2.  ``nghttpx`` also offers the functionality to share session
+cache and ticket keys among multiple ``nghttpx`` instances via
+memcached.
 
 ``nghttpx`` has several operational modes:
 
@@ -661,7 +663,9 @@ The default mode, ``--http2-proxy`` and ``--http2-bridge`` modes use
 SSL/TLS in the frontend connection by default.  To disable SSL/TLS,
 use the ``--frontend-no-tls`` option.  If that option is used, SPDY is
 disabled in the frontend and incoming HTTP/1.1 connections can be
-upgraded to HTTP/2 through HTTP Upgrade.
+upgraded to HTTP/2 through HTTP Upgrade.  In these modes, HTTP/1
+backend connections are cleartext by default.  To enable TLS, use
+``--backend-http1-tls`` opiton.
 
 The ``--http2-bridge``, ``--client`` and ``--client-proxy`` modes use
 SSL/TLS in the backend connection by default.  To disable SSL/TLS, use
