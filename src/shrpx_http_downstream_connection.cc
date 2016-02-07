@@ -967,6 +967,8 @@ int HttpDownstreamConnection::process_input(const uint8_t *data,
       downstream_->pause_read(SHRPX_NO_BUFFER);
       return 0;
     }
+
+    return 0;
   }
 
   auto nproc =
