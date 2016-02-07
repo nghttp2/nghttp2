@@ -43,7 +43,8 @@ using boost::asio::ip::tcp;
 
 class session_impl : public std::enable_shared_from_this<session_impl> {
 public:
-  session_impl(boost::asio::io_service &io_service);
+  session_impl(boost::asio::io_service &io_service,
+               const boost::posix_time::time_duration &connect_timeout);
   virtual ~session_impl();
 
   void start_resolve(const std::string &host, const std::string &service);
@@ -91,10 +92,10 @@ public:
   void do_read();
   void do_write();
 
-  void connect_timeout(const boost::posix_time::time_duration &t);
   void read_timeout(const boost::posix_time::time_duration &t);
 
   void stop();
+  bool stopped() const;
 
 protected:
   boost::array<uint8_t, 8_k> rb_;

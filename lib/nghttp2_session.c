@@ -130,7 +130,7 @@ static int session_detect_idle_stream(nghttp2_session *session,
                                       int32_t stream_id) {
   /* Assume that stream object with stream_id does not exist */
   if (nghttp2_session_is_my_stream_id(session, stream_id)) {
-    if (session->sent_stream_id < stream_id) {
+    if (session->last_sent_stream_id < stream_id) {
       return 1;
     }
     return 0;
@@ -1296,7 +1296,9 @@ static int session_allow_incoming_new_stream(nghttp2_session *session) {
  * This function returns nonzero if session is closing.
  */
 static int session_is_closing(nghttp2_session *session) {
-  return (session->goaway_flags & NGHTTP2_GOAWAY_TERM_ON_SEND) != 0;
+  return (session->goaway_flags & NGHTTP2_GOAWAY_TERM_ON_SEND) != 0 ||
+         (nghttp2_session_want_read(session) == 0 &&
+          nghttp2_session_want_write(session) == 0);
 }
 
 /*
@@ -1327,8 +1329,8 @@ static int session_predicate_for_stream_send(nghttp2_session *session,
 
 int nghttp2_session_check_request_allowed(nghttp2_session *session) {
   return !session->server && session->next_stream_id <= INT32_MAX &&
-         (session->goaway_flags &
-          (NGHTTP2_GOAWAY_TERM_ON_SEND | NGHTTP2_GOAWAY_RECV)) == 0;
+         (session->goaway_flags & NGHTTP2_GOAWAY_RECV) == 0 &&
+         !session_is_closing(session);
 }
 
 /*
@@ -1350,10 +1352,11 @@ static int session_predicate_request_headers_send(nghttp2_session *session,
   if (item->aux_data.headers.canceled) {
     return NGHTTP2_ERR_STREAM_CLOSING;
   }
-  /* If we are terminating session (NGHTTP2_GOAWAY_TERM_ON_SEND) or
-     GOAWAY was received from peer, new request is not allowed. */
-  if (session->goaway_flags &
-      (NGHTTP2_GOAWAY_TERM_ON_SEND | NGHTTP2_GOAWAY_RECV)) {
+  /* If we are terminating session (NGHTTP2_GOAWAY_TERM_ON_SEND),
+     GOAWAY was received from peer, or session is about to close, new
+     request is not allowed. */
+  if ((session->goaway_flags & NGHTTP2_GOAWAY_RECV) ||
+      session_is_closing(session)) {
     return NGHTTP2_ERR_START_STREAM_NOT_ALLOWED;
   }
   return 0;
@@ -1912,8 +1915,8 @@ static int session_prep_frame(nghttp2_session *session,
                      nghttp2_bufs_len(&session->aob.framebufs)));
 
       if (frame->headers.cat == NGHTTP2_HCAT_REQUEST) {
-        assert(session->sent_stream_id < frame->hd.stream_id);
-        session->sent_stream_id = frame->hd.stream_id;
+        assert(session->last_sent_stream_id < frame->hd.stream_id);
+        session->last_sent_stream_id = frame->hd.stream_id;
       }
 
       break;
@@ -1943,6 +1946,13 @@ static int session_prep_frame(nghttp2_session *session,
       if (frame->hd.flags & NGHTTP2_FLAG_ACK) {
         assert(session->obq_flood_counter_ > 0);
         --session->obq_flood_counter_;
+        /* When session is about to close, don't send SETTINGS ACK.
+           We are required to send SETTINGS without ACK though; for
+           example, we have to send SETTINGS as a part of connection
+           preface. */
+        if (session_is_closing(session)) {
+          return NGHTTP2_ERR_SESSION_CLOSING;
+        }
       }
 
       rv = nghttp2_frame_pack_settings(&session->aob.framebufs,
@@ -1985,9 +1995,9 @@ static int session_prep_frame(nghttp2_session *session,
         return rv;
       }
 
-      assert(session->sent_stream_id + 2 <=
+      assert(session->last_sent_stream_id + 2 <=
              frame->push_promise.promised_stream_id);
-      session->sent_stream_id = frame->push_promise.promised_stream_id;
+      session->last_sent_stream_id = frame->push_promise.promised_stream_id;
 
       break;
     }
@@ -3870,8 +3880,8 @@ static int update_remote_initial_window_size_func(nghttp2_map_entry *entry,
   rv = nghttp2_stream_update_remote_initial_window_size(
       stream, arg->new_window_size, arg->old_window_size);
   if (rv != 0) {
-    return nghttp2_session_terminate_session(arg->session,
-                                             NGHTTP2_FLOW_CONTROL_ERROR);
+    return nghttp2_session_add_rst_stream(arg->session, stream->stream_id,
+                                          NGHTTP2_FLOW_CONTROL_ERROR);
   }
 
   /* If window size gets positive, push deferred DATA frame to
@@ -3922,8 +3932,8 @@ static int update_local_initial_window_size_func(nghttp2_map_entry *entry,
   rv = nghttp2_stream_update_local_initial_window_size(
       stream, arg->new_window_size, arg->old_window_size);
   if (rv != 0) {
-    return nghttp2_session_terminate_session(arg->session,
-                                             NGHTTP2_FLOW_CONTROL_ERROR);
+    return nghttp2_session_add_rst_stream(arg->session, stream->stream_id,
+                                          NGHTTP2_FLOW_CONTROL_ERROR);
   }
   if (!(arg->session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_WINDOW_UPDATE) &&
       stream->window_update_queued == 0 &&
@@ -6726,6 +6736,7 @@ static int nghttp2_session_upgrade_internal(nghttp2_session *session,
     session->last_proc_stream_id = 1;
   } else {
     nghttp2_stream_shutdown(stream, NGHTTP2_SHUT_WR);
+    session->last_sent_stream_id = 1;
     session->next_stream_id += 2;
   }
   return 0;

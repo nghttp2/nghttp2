@@ -27,6 +27,13 @@
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif // HAVE_UNISTD_H
+#ifdef HAVE_SYS_SOCKET_H
+#include <sys/socket.h>
+#endif // HAVE_SYS_SOCKET_H
+#ifdef HAVE_NETDB_H
+#include <netdb.h>
+#endif // HAVE_NETDB_H
+
 #include <cerrno>
 
 #include "shrpx_upstream.h"
@@ -120,6 +127,10 @@ int ClientHandler::read_clear() {
       return 0;
     }
 
+    if (!ev_is_active(&conn_.rev)) {
+      return 0;
+    }
+
     auto nread = conn_.read_clear(rb_.last, rb_.wleft());
 
     if (nread == 0) {
@@ -210,6 +221,10 @@ int ClientHandler::read_tls() {
       rb_.reset();
     } else if (rb_.wleft() == 0) {
       conn_.rlimit.stopw();
+      return 0;
+    }
+
+    if (!ev_is_active(&conn_.rev)) {
       return 0;
     }
 
@@ -362,20 +377,24 @@ int ClientHandler::upstream_http1_connhd_read() {
 }
 
 ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
-                             const char *ipaddr, const char *port)
+                             const char *ipaddr, const char *port, int family,
+                             const UpstreamAddr *faddr)
     : conn_(worker->get_loop(), fd, ssl, worker->get_mcpool(),
-            get_config()->upstream_write_timeout,
-            get_config()->upstream_read_timeout, get_config()->write_rate,
-            get_config()->write_burst, get_config()->read_rate,
-            get_config()->read_burst, writecb, readcb, timeoutcb, this,
-            get_config()->tls_dyn_rec_warmup_threshold,
-            get_config()->tls_dyn_rec_idle_timeout),
+            get_config()->conn.upstream.timeout.write,
+            get_config()->conn.upstream.timeout.read,
+            get_config()->conn.upstream.ratelimit.write,
+            get_config()->conn.upstream.ratelimit.read, writecb, readcb,
+            timeoutcb, this, get_config()->tls.dyn_rec.warmup_threshold,
+            get_config()->tls.dyn_rec.idle_timeout),
       pinned_http2sessions_(
-          get_config()->downstream_proto == PROTO_HTTP2
+          get_config()->conn.downstream.proto == PROTO_HTTP2
               ? make_unique<std::vector<ssize_t>>(
-                    get_config()->downstream_addr_groups.size(), -1)
+                    get_config()->conn.downstream.addr_groups.size(), -1)
               : nullptr),
-      ipaddr_(ipaddr), port_(port), worker_(worker),
+      ipaddr_(ipaddr),
+      port_(port),
+      faddr_(faddr),
+      worker_(worker),
       left_connhd_len_(NGHTTP2_CLIENT_MAGIC_LEN),
       should_close_after_write_(false) {
 
@@ -388,13 +407,30 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
   conn_.rlimit.startw();
   ev_timer_again(conn_.loop, &conn_.rt);
 
-  if (get_config()->accept_proxy_protocol) {
+  if (get_config()->conn.upstream.accept_proxy_protocol) {
     read_ = &ClientHandler::read_clear;
     write_ = &ClientHandler::noop;
     on_read_ = &ClientHandler::proxy_protocol_read;
     on_write_ = &ClientHandler::upstream_noop;
   } else {
     setup_upstream_io_callback();
+  }
+
+  auto &fwdconf = get_config()->http.forwarded;
+
+  if (fwdconf.params & FORWARDED_FOR) {
+    if (fwdconf.for_node_type == FORWARDED_NODE_OBFUSCATED) {
+      forwarded_for_ = "_";
+      forwarded_for_ += util::random_alpha_digit(worker_->get_randgen(),
+                                                 SHRPX_OBFUSCATED_NODE_LENGTH);
+    } else if (family == AF_INET6) {
+      forwarded_for_ = "[";
+      forwarded_for_ += ipaddr_;
+      forwarded_for_ += ']';
+    } else {
+      // family == AF_INET or family == AF_UNIX
+      forwarded_for_ = ipaddr_;
+    }
   }
 }
 
@@ -503,7 +539,8 @@ int ClientHandler::validate_next_proto() {
     CLOG(INFO, this) << "The negotiated next protocol: " << proto;
   }
 
-  if (!ssl::in_proto_list(get_config()->npn_list, next_proto, next_proto_len)) {
+  if (!ssl::in_proto_list(get_config()->tls.npn_list, next_proto,
+                          next_proto_len)) {
     if (LOG_ENABLED(INFO)) {
       CLOG(INFO, this) << "The negotiated protocol is not supported";
     }
@@ -626,33 +663,34 @@ void ClientHandler::remove_downstream_connection(DownstreamConnection *dconn) {
 std::unique_ptr<DownstreamConnection>
 ClientHandler::get_downstream_connection(Downstream *downstream) {
   size_t group;
-  auto &groups = get_config()->downstream_addr_groups;
-  auto catch_all = get_config()->downstream_addr_group_catch_all;
+  auto &downstreamconf = get_config()->conn.downstream;
+  auto &groups = downstreamconf.addr_groups;
+  auto catch_all = downstreamconf.addr_group_catch_all;
+
+  const auto &req = downstream->request();
 
   // Fast path.  If we have one group, it must be catch-all group.
   // HTTP/2 and client proxy modes fall in this case.
   if (groups.size() == 1) {
     group = 0;
-  } else if (downstream->get_request_method() == HTTP_CONNECT) {
+  } else if (req.method == HTTP_CONNECT) {
     //  We don't know how to treat CONNECT request in host-path
     //  mapping.  It most likely appears in proxy scenario.  Since we
     //  have dealt with proxy case already, just use catch-all group.
     group = catch_all;
   } else {
     auto &router = get_config()->router;
-    if (!downstream->get_request_http2_authority().empty()) {
-      group = match_downstream_addr_group(
-          router, downstream->get_request_http2_authority(),
-          downstream->get_request_path(), groups, catch_all);
+    if (!req.authority.empty()) {
+      group = match_downstream_addr_group(router, req.authority, req.path,
+                                          groups, catch_all);
     } else {
-      auto h = downstream->get_request_header(http2::HD_HOST);
+      auto h = req.fs.header(http2::HD_HOST);
       if (h) {
-        group = match_downstream_addr_group(router, h->value,
-                                            downstream->get_request_path(),
-                                            groups, catch_all);
+        group = match_downstream_addr_group(router, h->value, req.path, groups,
+                                            catch_all);
       } else {
-        group = match_downstream_addr_group(
-            router, "", downstream->get_request_path(), groups, catch_all);
+        group = match_downstream_addr_group(router, "", req.path, groups,
+                                            catch_all);
       }
     }
   }
@@ -672,7 +710,7 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
 
     auto dconn_pool = worker_->get_dconn_pool();
 
-    if (get_config()->downstream_proto == PROTO_HTTP2) {
+    if (downstreamconf.proto == PROTO_HTTP2) {
       Http2Session *http2session;
       auto &pinned = (*pinned_http2sessions_)[group];
       if (pinned == -1) {
@@ -684,8 +722,8 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
       }
       dconn = make_unique<Http2DownstreamConnection>(dconn_pool, http2session);
     } else {
-      dconn =
-          make_unique<HttpDownstreamConnection>(dconn_pool, group, conn_.loop);
+      dconn = make_unique<HttpDownstreamConnection>(dconn_pool, group,
+                                                    conn_.loop, worker_);
     }
     dconn->set_client_handler(this);
     return dconn;
@@ -735,17 +773,6 @@ int ClientHandler::perform_http2_upgrade(HttpsUpstream *http) {
       "Upgrade: " NGHTTP2_CLEARTEXT_PROTO_VERSION_ID "\r\n"
       "\r\n";
 
-  auto required_size = str_size(res) + input->rleft();
-
-  if (output->wleft() < required_size) {
-    if (LOG_ENABLED(INFO)) {
-      CLOG(INFO, this)
-          << "HTTP Upgrade failed because of insufficient buffer space: need "
-          << required_size << ", available " << output->wleft();
-    }
-    return -1;
-  }
-
   if (upstream->upgrade_upstream(http) != 0) {
     return -1;
   }
@@ -757,11 +784,8 @@ int ClientHandler::perform_http2_upgrade(HttpsUpstream *http) {
   on_read_ = &ClientHandler::upstream_http2_connhd_read;
   write_ = &ClientHandler::write_clear;
 
-  auto nread =
-      downstream->get_response_buf()->remove(output->last, output->wleft());
-  output->write(nread);
-
-  output->write(res, str_size(res));
+  input->remove(*output, input->rleft());
+  output->append(res, str_size(res));
   upstream_ = std::move(upstream);
 
   signal_write();
@@ -783,28 +807,27 @@ void ClientHandler::start_immediate_shutdown() {
 }
 
 namespace {
-// Construct absolute request URI from |downstream|, mainly to log
+// Construct absolute request URI from |Request|, mainly to log
 // request URI for proxy request (HTTP/2 proxy or client proxy).  This
 // is mostly same routine found in
 // HttpDownstreamConnection::push_request_headers(), but vastly
 // simplified since we only care about absolute URI.
-std::string construct_absolute_request_uri(Downstream *downstream) {
-  auto &authority = downstream->get_request_http2_authority();
-  if (authority.empty()) {
-    return downstream->get_request_path();
+std::string construct_absolute_request_uri(const Request &req) {
+  if (req.authority.empty()) {
+    return req.path;
   }
+
   std::string uri;
-  auto &scheme = downstream->get_request_http2_scheme();
-  if (scheme.empty()) {
+  if (req.scheme.empty()) {
     // We may have to log the request which lacks scheme (e.g.,
     // http/1.1 with origin form).
     uri += "http://";
   } else {
-    uri += scheme;
+    uri += req.scheme;
     uri += "://";
   }
-  uri += authority;
-  uri += downstream->get_request_path();
+  uri += req.authority;
+  uri += req.path;
 
   return uri;
 }
@@ -812,34 +835,34 @@ std::string construct_absolute_request_uri(Downstream *downstream) {
 
 void ClientHandler::write_accesslog(Downstream *downstream) {
   nghttp2::ssl::TLSSessionInfo tls_info;
+  const auto &req = downstream->request();
+  const auto &resp = downstream->response();
 
   upstream_accesslog(
-      get_config()->accesslog_format,
+      get_config()->logging.access.format,
       LogSpec{
-          downstream, ipaddr_.c_str(),
-          http2::to_method_string(downstream->get_request_method()),
+          downstream, StringRef(ipaddr_), http2::to_method_string(req.method),
 
-          downstream->get_request_method() == HTTP_CONNECT
-              ? downstream->get_request_http2_authority().c_str()
+          req.method == HTTP_CONNECT
+              ? StringRef(req.authority)
               : (get_config()->http2_proxy || get_config()->client_proxy)
-                    ? construct_absolute_request_uri(downstream).c_str()
-                    : downstream->get_request_path().empty()
-                          ? downstream->get_request_method() == HTTP_OPTIONS
-                                ? "*"
-                                : "-"
-                          : downstream->get_request_path().c_str(),
+                    ? StringRef(construct_absolute_request_uri(req))
+                    : req.path.empty()
+                          ? req.method == HTTP_OPTIONS
+                                ? StringRef::from_lit("*")
+                                : StringRef::from_lit("-")
+                          : StringRef(req.path),
 
-          alpn_.c_str(),
+          StringRef(alpn_),
           nghttp2::ssl::get_tls_session_info(&tls_info, conn_.tls.ssl),
 
           std::chrono::system_clock::now(),          // time_now
           downstream->get_request_start_time(),      // request_start_time
           std::chrono::high_resolution_clock::now(), // request_end_time
 
-          downstream->get_request_major(), downstream->get_request_minor(),
-          downstream->get_response_http_status(),
-          downstream->get_response_sent_bodylen(), port_.c_str(),
-          get_config()->port, get_config()->pid,
+          req.http_major, req.http_minor, resp.http_status,
+          downstream->response_sent_body_length, StringRef(port_), faddr_->port,
+          get_config()->pid,
       });
 }
 
@@ -849,20 +872,20 @@ void ClientHandler::write_accesslog(int major, int minor, unsigned int status,
   auto highres_now = std::chrono::high_resolution_clock::now();
   nghttp2::ssl::TLSSessionInfo tls_info;
 
-  upstream_accesslog(get_config()->accesslog_format,
+  upstream_accesslog(get_config()->logging.access.format,
                      LogSpec{
-                         nullptr, ipaddr_.c_str(),
-                         "-", // method
-                         "-", // path,
-                         alpn_.c_str(), nghttp2::ssl::get_tls_session_info(
-                                            &tls_info, conn_.tls.ssl),
+                         nullptr, StringRef(ipaddr_),
+                         StringRef::from_lit("-"), // method
+                         StringRef::from_lit("-"), // path,
+                         StringRef(alpn_), nghttp2::ssl::get_tls_session_info(
+                                               &tls_info, conn_.tls.ssl),
                          time_now,
                          highres_now,  // request_start_time TODO is
                                        // there a better value?
                          highres_now,  // request_end_time
                          major, minor, // major, minor
-                         status, body_bytes_sent, port_.c_str(),
-                         get_config()->port, get_config()->pid,
+                         status, body_bytes_sent, StringRef(port_),
+                         faddr_->port, get_config()->pid,
                      });
 }
 
@@ -952,7 +975,7 @@ int ClientHandler::proxy_protocol_read() {
 
   --end;
 
-  constexpr const char HEADER[] = "PROXY ";
+  constexpr char HEADER[] = "PROXY ";
 
   if (static_cast<size_t>(end - rb_.pos) < str_size(HEADER)) {
     if (LOG_ENABLED(INFO)) {
@@ -1101,6 +1124,20 @@ int ClientHandler::proxy_protocol_read() {
   }
 
   return on_proxy_protocol_finish();
+}
+
+StringRef ClientHandler::get_forwarded_by() {
+  auto &fwdconf = get_config()->http.forwarded;
+
+  if (fwdconf.by_node_type == FORWARDED_NODE_OBFUSCATED) {
+    return StringRef(fwdconf.by_obfuscated);
+  }
+
+  return StringRef(faddr_->hostport);
+}
+
+const std::string &ClientHandler::get_forwarded_for() const {
+  return forwarded_for_;
 }
 
 } // namespace shrpx

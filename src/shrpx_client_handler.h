@@ -53,7 +53,7 @@ struct WorkerStat;
 class ClientHandler {
 public:
   ClientHandler(Worker *worker, int fd, SSL *ssl, const char *ipaddr,
-                const char *port);
+                const char *port, int family, const UpstreamAddr *faddr);
   ~ClientHandler();
 
   int noop();
@@ -134,17 +134,31 @@ public:
 
   void setup_upstream_io_callback();
 
+  // Returns string suitable for use in "by" parameter of Forwarded
+  // header field.
+  StringRef get_forwarded_by();
+  // Returns string suitable for use in "for" parameter of Forwarded
+  // header field.
+  const std::string &get_forwarded_for() const;
+
 private:
   Connection conn_;
   ev_timer reneg_shutdown_timer_;
   std::unique_ptr<Upstream> upstream_;
   std::unique_ptr<std::vector<ssize_t>> pinned_http2sessions_;
+  // IP address of client.  If UNIX domain socket is used, this is
+  // "localhost".
   std::string ipaddr_;
   std::string port_;
   // The ALPN identifier negotiated for this connection.
   std::string alpn_;
+  // The client address used in "for" parameter of Forwarded header
+  // field.
+  std::string forwarded_for_;
   std::function<int(ClientHandler &)> read_, write_;
   std::function<int(ClientHandler &)> on_read_, on_write_;
+  // Address of frontend listening socket
+  const UpstreamAddr *faddr_;
   Worker *worker_;
   // The number of bytes of HTTP/2 client connection header to read
   size_t left_connhd_len_;

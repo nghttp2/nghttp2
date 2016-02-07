@@ -348,6 +348,7 @@ void copy_headers_to_nva_internal(std::vector<nghttp2_nv> &nva,
     switch (kv.token) {
     case HD_COOKIE:
     case HD_CONNECTION:
+    case HD_FORWARDED:
     case HD_HOST:
     case HD_HTTP2_SETTINGS:
     case HD_KEEP_ALIVE:
@@ -385,6 +386,7 @@ void build_http1_headers_from_headers(DefaultMemchunks *buf,
     switch (kv.token) {
     case HD_CONNECTION:
     case HD_COOKIE:
+    case HD_FORWARDED:
     case HD_HOST:
     case HD_HTTP2_SETTINGS:
     case HD_KEEP_ALIVE:
@@ -638,6 +640,15 @@ int lookup_token(const uint8_t *name, size_t namelen) {
       break;
     }
     break;
+  case 9:
+    switch (name[8]) {
+    case 'd':
+      if (util::streq_l("forwarde", name, 8)) {
+        return HD_FORWARDED;
+      }
+      break;
+    }
+    break;
   case 10:
     switch (name[9]) {
     case 'e':
@@ -658,6 +669,15 @@ int lookup_token(const uint8_t *name, size_t namelen) {
     case 'y':
       if (util::streq_l(":authorit", name, 9)) {
         return HD__AUTHORITY;
+      }
+      break;
+    }
+    break;
+  case 12:
+    switch (name[11]) {
+    case 'e':
+      if (util::streq_l("content-typ", name, 11)) {
+        return HD_CONTENT_TYPE;
       }
       break;
     }

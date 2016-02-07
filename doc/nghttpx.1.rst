@@ -270,7 +270,7 @@ Performance
 
     Set buffer size used to store backend response.
 
-    Default: ``16K``
+    Default: ``128K``
 
 .. option:: --fastopen=<N>
 
@@ -341,7 +341,7 @@ Timeout
     is disabled  for a given  amount of time.   Specifying 0
     disables this feature.
 
-    Default: ``0``
+    Default: ``30s``
 
 
 SSL/TLS
@@ -751,6 +751,47 @@ HTTP
     Strip X-Forwarded-For  header field from  inbound client
     requests.
 
+.. option:: --add-forwarded=<LIST>
+
+    Append RFC  7239 Forwarded header field  with parameters
+    specified in comma delimited list <LIST>.  The supported
+    parameters  are "by",  "for", "host",  and "proto".   By
+    default,  the value  of  "by" and  "for" parameters  are
+    obfuscated     string.     See     :option:`--forwarded-by`    and
+    :option:`--forwarded-for` options respectively.  Note that nghttpx
+    does  not  translate non-standard  X-Forwarded-\*  header
+    fields into Forwarded header field, and vice versa.
+
+.. option:: --strip-incoming-forwarded
+
+    Strip  Forwarded   header  field  from   inbound  client
+    requests.
+
+.. option:: --forwarded-by=(obfuscated|ip|<VALUE>)
+
+    Specify the parameter value sent out with "by" parameter
+    of Forwarded  header field.   If "obfuscated"  is given,
+    the string is randomly generated at startup.  If "ip" is
+    given,   the  interface   address  of   the  connection,
+    including  port number,  is  sent  with "by"  parameter.
+    User can also specify the static obfuscated string.  The
+    limitation  is that  it must  start with  "_", and  only
+    consists of  character set [A-Za-z0-9._-],  as described
+    in RFC 7239.
+
+    Default: ``obfuscated``
+
+.. option:: --forwarded-for=(obfuscated|ip)
+
+    Specify  the   parameter  value  sent  out   with  "for"
+    parameter of Forwarded header field.  If "obfuscated" is
+    given, the string is  randomly generated for each client
+    connection.  If "ip" is given, the remote client address
+    of  the connection,  without port  number, is  sent with
+    "for" parameter.
+
+    Default: ``obfuscated``
+
 .. option:: --no-via
 
     Don't append to  Via header field.  If  Via header field
@@ -912,6 +953,22 @@ FILES
   option name with leading ``--`` stripped (e.g., ``frontend``).  Put
   ``=`` between option name and value.  Don't put extra leading or
   trailing spaces.
+
+  When specifying arguments including characters which have special
+  meaning to a shell, we usually use quotes so that shell does not
+  interpret them.  When writing this configuration file, quotes for
+  this purpose must not be used.  For example, specify additional
+  request header field, do this:
+
+  .. code-block:: text
+
+    add-request-header=foo: bar
+
+  instead of:
+
+  .. code-block:: text
+
+    add-request-header="foo: bar"
 
   The options which do not take argument in the command-line *take*
   argument in the configuration file.  Specify ``yes`` as an argument

@@ -56,7 +56,7 @@ public:
   virtual int downstream_write(DownstreamConnection *dconn);
   virtual int downstream_eof(DownstreamConnection *dconn);
   virtual int downstream_error(DownstreamConnection *dconn, int events);
-  Downstream *add_pending_downstream(int32_t stream_id, int32_t priority);
+  Downstream *add_pending_downstream(int32_t stream_id);
   void remove_downstream(Downstream *downstream);
 
   int rst_stream(Downstream *downstream, int status_code);
@@ -97,12 +97,10 @@ public:
   void start_downstream(Downstream *downstream);
   void initiate_downstream(Downstream *downstream);
 
-  using WriteBuffer = Buffer<32_k>;
-
-  WriteBuffer *get_response_buf();
+  DefaultMemchunks *get_response_buf();
 
 private:
-  WriteBuffer wb_;
+  DefaultMemchunks wb_;
   DownstreamQueue downstream_queue_;
   ClientHandler *handler_;
   spdylay_session *session_;

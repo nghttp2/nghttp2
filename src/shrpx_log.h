@@ -36,6 +36,9 @@
 
 #include "shrpx_log_config.h"
 #include "ssl.h"
+#include "template.h"
+
+using namespace nghttp2;
 
 #define ENABLE_LOG 1
 
@@ -131,18 +134,18 @@ enum LogFragmentType {
 };
 
 struct LogFragment {
-  LogFragment(LogFragmentType type, std::unique_ptr<char[]> value = nullptr)
+  LogFragment(LogFragmentType type, ImmutableString value = ImmutableString())
       : type(type), value(std::move(value)) {}
   LogFragmentType type;
-  std::unique_ptr<char[]> value;
+  ImmutableString value;
 };
 
 struct LogSpec {
   Downstream *downstream;
-  const char *remote_addr;
-  const char *method;
-  const char *path;
-  const char *alpn;
+  StringRef remote_addr;
+  StringRef method;
+  StringRef path;
+  StringRef alpn;
   const nghttp2::ssl::TLSSessionInfo *tls_info;
   std::chrono::system_clock::time_point time_now;
   std::chrono::high_resolution_clock::time_point request_start_time;
@@ -150,7 +153,7 @@ struct LogSpec {
   int major, minor;
   unsigned int status;
   int64_t body_bytes_sent;
-  const char *remote_port;
+  StringRef remote_port;
   uint16_t server_port;
   pid_t pid;
 };

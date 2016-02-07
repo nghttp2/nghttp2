@@ -42,15 +42,21 @@ using namespace nghttp2;
 namespace shrpx {
 Connection::Connection(struct ev_loop *loop, int fd, SSL *ssl,
                        MemchunkPool *mcpool, ev_tstamp write_timeout,
-                       ev_tstamp read_timeout, size_t write_rate,
-                       size_t write_burst, size_t read_rate, size_t read_burst,
-                       IOCb writecb, IOCb readcb, TimerCb timeoutcb, void *data,
+                       ev_tstamp read_timeout,
+                       const RateLimitConfig &write_limit,
+                       const RateLimitConfig &read_limit, IOCb writecb,
+                       IOCb readcb, TimerCb timeoutcb, void *data,
                        size_t tls_dyn_rec_warmup_threshold,
                        ev_tstamp tls_dyn_rec_idle_timeout)
     : tls{DefaultMemchunks(mcpool), DefaultPeekMemchunks(mcpool)},
-      wlimit(loop, &wev, write_rate, write_burst),
-      rlimit(loop, &rev, read_rate, read_burst, this), writecb(writecb),
-      readcb(readcb), timeoutcb(timeoutcb), loop(loop), data(data), fd(fd),
+      wlimit(loop, &wev, write_limit.rate, write_limit.burst),
+      rlimit(loop, &rev, read_limit.rate, read_limit.burst, this),
+      writecb(writecb),
+      readcb(readcb),
+      timeoutcb(timeoutcb),
+      loop(loop),
+      data(data),
+      fd(fd),
       tls_dyn_rec_warmup_threshold(tls_dyn_rec_warmup_threshold),
       tls_dyn_rec_idle_timeout(tls_dyn_rec_idle_timeout) {
 
@@ -482,10 +488,17 @@ int Connection::check_http2_requirement() {
       !util::check_h2_is_selected(next_proto, next_proto_len)) {
     return 0;
   }
-  if (!nghttp2::ssl::check_http2_requirement(tls.ssl)) {
+  if (!nghttp2::ssl::check_http2_tls_version(tls.ssl)) {
     if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "TLSv1.2 and/or black listed cipher suite was negotiated. "
-                   "HTTP/2 must not be used.";
+      LOG(INFO) << "TLSv1.2 was not negotiated.  HTTP/2 must not be used.";
+    }
+    return -1;
+  }
+  if (!get_config()->tls.no_http2_cipher_black_list &&
+      nghttp2::ssl::check_http2_cipher_black_list(tls.ssl)) {
+    if (LOG_ENABLED(INFO)) {
+      LOG(INFO) << "The negotiated cipher suite is in HTTP/2 cipher suite "
+                   "black list.  HTTP/2 must not be used.";
     }
     return -1;
   }

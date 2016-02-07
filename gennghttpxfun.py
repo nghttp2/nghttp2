@@ -88,8 +88,6 @@ OPTIONS = [
     "fetch-ocsp-response-file",
     "ocsp-update-interval",
     "no-ocsp",
-    "header-field-buffer",
-    "max-header-fields",
     "include",
     "tls-ticket-key-cipher",
     "host-rewrite",
@@ -103,7 +101,20 @@ OPTIONS = [
     "conf",
     "fastopen",
     "tls-dyn-rec-warmup-threshold",
-    "tls-dyn-rec-idle-timeout"
+    "tls-dyn-rec-idle-timeout",
+    "add-forwarded",
+    "strip-incoming-forwarded",
+    "forwarded-by",
+    "forwarded-for",
+    "response-header-field-buffer",
+    "max-response-header-fields",
+    "request-header-field-buffer",
+    "max-request-header-fields",
+    "header-field-buffer",
+    "max-header-fields",
+    "no-http2-cipher-black-list",
+    "backend-http1-tls",
+    "backend-tls-session-cache-per-worker"
 ]
 
 LOGVARS = [

@@ -32,10 +32,11 @@
 namespace shrpx {
 
 class ConnectionHandler;
+struct UpstreamAddr;
 
 class AcceptHandler {
 public:
-  AcceptHandler(int fd, ConnectionHandler *h);
+  AcceptHandler(const UpstreamAddr *faddr, ConnectionHandler *h);
   ~AcceptHandler();
   void accept_connection();
   void enable();
@@ -45,7 +46,7 @@ public:
 private:
   ev_io wev_;
   ConnectionHandler *conn_hnr_;
-  int fd_;
+  const UpstreamAddr *faddr_;
 };
 
 } // namespace shrpx

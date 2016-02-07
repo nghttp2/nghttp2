@@ -101,12 +101,26 @@ template <typename Array> void append_nv(Stream *stream, const Array &nva) {
 } // namespace
 
 Config::Config()
-    : mime_types_file("/etc/mime.types"), stream_read_timeout(1_min),
-      stream_write_timeout(1_min), data_ptr(nullptr), padding(0), num_worker(1),
-      max_concurrent_streams(100), header_table_size(-1), port(0),
-      verbose(false), daemon(false), verify_client(false), no_tls(false),
-      error_gzip(false), early_response(false), hexdump(false),
-      echo_upload(false), no_content_length(false) {}
+    : mime_types_file("/etc/mime.types"),
+      stream_read_timeout(1_min),
+      stream_write_timeout(1_min),
+      data_ptr(nullptr),
+      padding(0),
+      num_worker(1),
+      max_concurrent_streams(100),
+      header_table_size(-1),
+      window_bits(-1),
+      connection_window_bits(-1),
+      port(0),
+      verbose(false),
+      daemon(false),
+      verify_client(false),
+      no_tls(false),
+      error_gzip(false),
+      early_response(false),
+      hexdump(false),
+      echo_upload(false),
+      no_content_length(false) {}
 
 Config::~Config() {}
 
@@ -225,8 +239,13 @@ class Sessions {
 public:
   Sessions(HttpServer *sv, struct ev_loop *loop, const Config *config,
            SSL_CTX *ssl_ctx)
-      : sv_(sv), loop_(loop), config_(config), ssl_ctx_(ssl_ctx),
-        callbacks_(nullptr), next_session_id_(1), tstamp_cached_(ev_now(loop)),
+      : sv_(sv),
+        loop_(loop),
+        config_(config),
+        ssl_ctx_(ssl_ctx),
+        callbacks_(nullptr),
+        next_session_id_(1),
+        tstamp_cached_(ev_now(loop)),
         cached_date_(util::http_date(tstamp_cached_)) {
     nghttp2_session_callbacks_new(&callbacks_);
 
@@ -424,8 +443,12 @@ void release_fd_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 } // namespace
 
 Stream::Stream(Http2Handler *handler, int32_t stream_id)
-    : handler(handler), file_ent(nullptr), body_length(0), body_offset(0),
-      stream_id(stream_id), echo_upload(false) {
+    : handler(handler),
+      file_ent(nullptr),
+      body_length(0),
+      body_offset(0),
+      stream_id(stream_id),
+      echo_upload(false) {
   auto config = handler->get_config();
   ev_timer_init(&rtimer, stream_timeout_cb, 0., config->stream_read_timeout);
   ev_timer_init(&wtimer, stream_timeout_cb, 0., config->stream_write_timeout);
@@ -496,8 +519,13 @@ void writecb(struct ev_loop *loop, ev_io *w, int revents) {
 
 Http2Handler::Http2Handler(Sessions *sessions, int fd, SSL *ssl,
                            int64_t session_id)
-    : session_id_(session_id), session_(nullptr), sessions_(sessions),
-      ssl_(ssl), data_pending_(nullptr), data_pendinglen_(0), fd_(fd) {
+    : session_id_(session_id),
+      session_(nullptr),
+      sessions_(sessions),
+      ssl_(ssl),
+      data_pending_(nullptr),
+      data_pendinglen_(0),
+      fd_(fd) {
   ev_timer_init(&settings_timerev_, settings_timeout_cb, 10., 0.);
   ev_io_init(&wev_, writecb, fd, EV_WRITE);
   ev_io_init(&rev_, readcb, fd, EV_READ);
@@ -819,9 +847,26 @@ int Http2Handler::connection_made() {
     entry[niv].value = config->header_table_size;
     ++niv;
   }
+
+  if (config->window_bits != -1) {
+    entry[niv].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
+    entry[niv].value = (1 << config->window_bits) - 1;
+    ++niv;
+  }
+
   r = nghttp2_submit_settings(session_, NGHTTP2_FLAG_NONE, entry.data(), niv);
   if (r != 0) {
     return r;
+  }
+
+  if (config->connection_window_bits != -1) {
+    r = nghttp2_submit_window_update(
+        session_, NGHTTP2_FLAG_NONE, 0,
+        (1 << config->connection_window_bits) - 1 -
+            NGHTTP2_INITIAL_CONNECTION_WINDOW_SIZE);
+    if (r != 0) {
+      return r;
+    }
   }
 
   ev_timer_start(sessions_->get_loop(), &settings_timerev_);
@@ -864,6 +909,21 @@ int Http2Handler::verify_npn_result() {
   return -1;
 }
 
+namespace {
+std::string make_trailer_header_value(const Headers &trailer) {
+  if (trailer.empty()) {
+    return "";
+  }
+
+  auto trailer_names = trailer[0].name;
+  for (size_t i = 1; i < trailer.size(); ++i) {
+    trailer_names += ", ";
+    trailer_names += trailer[i].name;
+  }
+  return trailer_names;
+}
+} // namespace
+
 int Http2Handler::submit_file_response(const std::string &status,
                                        Stream *stream, time_t last_modified,
                                        off_t file_length,
@@ -888,14 +948,8 @@ int Http2Handler::submit_file_response(const std::string &status,
   if (content_type) {
     nva[nvlen++] = http2::make_nv_ls("content-type", *content_type);
   }
-  auto &trailer = get_config()->trailer;
-  std::string trailer_names;
-  if (!trailer.empty()) {
-    trailer_names = trailer[0].name;
-    for (size_t i = 1; i < trailer.size(); ++i) {
-      trailer_names += ", ";
-      trailer_names += trailer[i].name;
-    }
+  auto trailer_names = make_trailer_header_value(get_config()->trailer);
+  if (!trailer_names.empty()) {
     nva[nvlen++] = http2::make_nv_ls("trailer", trailer_names);
   }
   return nghttp2_submit_response(session_, stream->stream_id, nva.data(), nvlen,
@@ -906,10 +960,19 @@ int Http2Handler::submit_response(const std::string &status, int32_t stream_id,
                                   const Headers &headers,
                                   nghttp2_data_provider *data_prd) {
   auto nva = std::vector<nghttp2_nv>();
-  nva.reserve(3 + headers.size());
+  nva.reserve(4 + headers.size());
   nva.push_back(http2::make_nv_ls(":status", status));
   nva.push_back(http2::make_nv_ll("server", NGHTTPD_SERVER));
   nva.push_back(http2::make_nv_ls("date", sessions_->get_cached_date()));
+
+  std::string trailer_names;
+  if (data_prd) {
+    trailer_names = make_trailer_header_value(get_config()->trailer);
+    if (!trailer_names.empty()) {
+      nva.push_back(http2::make_nv_ls("trailer", trailer_names));
+    }
+  }
+
   for (auto &nv : headers) {
     nva.push_back(http2::make_nv(nv.name, nv.value, nv.no_index));
   }
@@ -920,11 +983,21 @@ int Http2Handler::submit_response(const std::string &status, int32_t stream_id,
 
 int Http2Handler::submit_response(const std::string &status, int32_t stream_id,
                                   nghttp2_data_provider *data_prd) {
-  auto nva =
-      make_array(http2::make_nv_ls(":status", status),
-                 http2::make_nv_ll("server", NGHTTPD_SERVER),
-                 http2::make_nv_ls("date", sessions_->get_cached_date()));
-  return nghttp2_submit_response(session_, stream_id, nva.data(), nva.size(),
+  auto nva = make_array(http2::make_nv_ls(":status", status),
+                        http2::make_nv_ll("server", NGHTTPD_SERVER),
+                        http2::make_nv_ls("date", sessions_->get_cached_date()),
+                        http2::make_nv_ll("", ""));
+  size_t nvlen = 3;
+
+  std::string trailer_names;
+  if (data_prd) {
+    trailer_names = make_trailer_header_value(get_config()->trailer);
+    if (!trailer_names.empty()) {
+      nva[nvlen++] = http2::make_nv_ls("trailer", trailer_names);
+    }
+  }
+
+  return nghttp2_submit_response(session_, stream_id, nva.data(), nvlen,
                                  data_prd);
 }
 

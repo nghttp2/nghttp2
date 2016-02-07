@@ -123,15 +123,33 @@ class session_impl;
 class session {
 public:
   // Starts HTTP/2 session by connecting to |host| and |service|
-  // (e.g., "80") using clear text TCP connection.
+  // (e.g., "80") using clear text TCP connection with connect timeout
+  // 60 seconds.
   session(boost::asio::io_service &io_service, const std::string &host,
           const std::string &service);
 
   // Starts HTTP/2 session by connecting to |host| and |service|
-  // (e.g., "443") using encrypted SSL/TLS connection.
+  // (e.g., "80") using clear text TCP connection with given connect
+  // timeout.
+  session(boost::asio::io_service &io_service, const std::string &host,
+          const std::string &service,
+          const boost::posix_time::time_duration &connect_timeout);
+
+  // Starts HTTP/2 session by connecting to |host| and |service|
+  // (e.g., "443") using encrypted SSL/TLS connection with connect
+  // timeout 60 seconds.
   session(boost::asio::io_service &io_service,
           boost::asio::ssl::context &tls_context, const std::string &host,
           const std::string &service);
+
+  // Starts HTTP/2 session by connecting to |host| and |service|
+  // (e.g., "443") using encrypted SSL/TLS connection with given
+  // connect timeout.
+  session(boost::asio::io_service &io_service,
+          boost::asio::ssl::context &tls_context, const std::string &host,
+          const std::string &service,
+          const boost::posix_time::time_duration &connect_timeout);
+
   ~session();
 
   session(session &&other) noexcept;
@@ -143,9 +161,6 @@ public:
   // Sets callback which is invoked there is connection level error
   // and session is terminated.
   void on_error(error_cb cb) const;
-
-  // Sets connect timeout, which defaults to 60 seconds.
-  void connect_timeout(const boost::posix_time::time_duration &t);
 
   // Sets read timeout, which defaults to 60 seconds.
   void read_timeout(const boost::posix_time::time_duration &t);

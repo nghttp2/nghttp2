@@ -41,7 +41,10 @@ using namespace nghttp2;
 namespace h2load {
 
 Http1Session::Http1Session(Client *client)
-    : stream_req_counter_(1), stream_resp_counter_(1), client_(client), htp_(),
+    : stream_req_counter_(1),
+      stream_resp_counter_(1),
+      client_(client),
+      htp_(),
       complete_(false) {
   http_parser_init(&htp_, HTTP_RESPONSE);
   htp_.data = this;

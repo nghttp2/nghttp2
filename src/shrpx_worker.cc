@@ -62,13 +62,22 @@ void mcpool_clear_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 }
 } // namespace
 
+namespace {
+std::random_device rd;
+} // namespace
+
 Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
                ssl::CertLookupTree *cert_tree,
                const std::shared_ptr<TicketKeys> &ticket_keys)
-    : dconn_pool_(get_config()->downstream_addr_groups.size()),
-      worker_stat_(get_config()->downstream_addr_groups.size()),
-      dgrps_(get_config()->downstream_addr_groups.size()), loop_(loop),
-      sv_ssl_ctx_(sv_ssl_ctx), cl_ssl_ctx_(cl_ssl_ctx), cert_tree_(cert_tree),
+    : randgen_(rd()),
+      dconn_pool_(get_config()->conn.downstream.addr_groups.size()),
+      worker_stat_(get_config()->conn.downstream.addr_groups.size()),
+      dgrps_(get_config()->conn.downstream.addr_groups.size()),
+      downstream_tls_session_cache_size_(0),
+      loop_(loop),
+      sv_ssl_ctx_(sv_ssl_ctx),
+      cl_ssl_ctx_(cl_ssl_ctx),
+      cert_tree_(cert_tree),
       ticket_keys_(ticket_keys),
       connect_blocker_(make_unique<ConnectBlocker>(loop_)),
       graceful_shutdown_(false) {
@@ -79,18 +88,22 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
   ev_timer_init(&mcpool_clear_timer_, mcpool_clear_cb, 0., 0.);
   mcpool_clear_timer_.data = this;
 
-  if (get_config()->session_cache_memcached_host) {
+  auto &session_cacheconf = get_config()->tls.session_cache;
+
+  if (session_cacheconf.memcached.host) {
     session_cache_memcached_dispatcher_ = make_unique<MemcachedDispatcher>(
-        &get_config()->session_cache_memcached_addr, loop);
+        &session_cacheconf.memcached.addr, loop);
   }
 
-  if (get_config()->downstream_proto == PROTO_HTTP2) {
-    auto n = get_config()->http2_downstream_connections_per_worker;
+  auto &downstreamconf = get_config()->conn.downstream;
+
+  if (downstreamconf.proto == PROTO_HTTP2) {
+    auto n = get_config()->http2.downstream.connections_per_worker;
     size_t group = 0;
     for (auto &dgrp : dgrps_) {
       auto m = n;
       if (m == 0) {
-        m = get_config()->downstream_addr_groups[group].addrs.size();
+        m = downstreamconf.addr_groups[group].addrs.size();
       }
       for (size_t idx = 0; idx < m; ++idx) {
         dgrp.http2sessions.push_back(make_unique<Http2Session>(
@@ -104,6 +117,12 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
 Worker::~Worker() {
   ev_async_stop(loop_, &w_);
   ev_timer_stop(loop_, &mcpool_clear_timer_);
+
+  for (auto &p : downstream_tls_session_cache_) {
+    for (auto session : p.second) {
+      SSL_SESSION_free(session);
+    }
+  }
 }
 
 void Worker::schedule_clear_mcpool() {
@@ -145,6 +164,9 @@ void Worker::process_events() {
     std::lock_guard<std::mutex> g(m_);
     q.swap(q_);
   }
+
+  auto worker_connections = get_config()->conn.upstream.worker_connections;
+
   for (auto &wev : q) {
     switch (wev.type) {
     case NEW_CONNECTION: {
@@ -153,12 +175,10 @@ void Worker::process_events() {
                          << ", addrlen=" << wev.client_addrlen;
       }
 
-      if (worker_stat_.num_connections >=
-          get_config()->worker_frontend_connections) {
+      if (worker_stat_.num_connections >= worker_connections) {
 
         if (LOG_ENABLED(INFO)) {
-          WLOG(INFO, this) << "Too many connections >= "
-                           << get_config()->worker_frontend_connections;
+          WLOG(INFO, this) << "Too many connections >= " << worker_connections;
         }
 
         close(wev.client_fd);
@@ -166,8 +186,9 @@ void Worker::process_events() {
         break;
       }
 
-      auto client_handler = ssl::accept_connection(
-          this, wev.client_fd, &wev.client_addr.sa, wev.client_addrlen);
+      auto client_handler =
+          ssl::accept_connection(this, wev.client_fd, &wev.client_addr.sa,
+                                 wev.client_addrlen, wev.faddr);
       if (!client_handler) {
         if (LOG_ENABLED(INFO)) {
           WLOG(ERROR, this) << "ClientHandler creation failed";
@@ -268,6 +289,8 @@ MemcachedDispatcher *Worker::get_session_cache_memcached_dispatcher() {
   return session_cache_memcached_dispatcher_.get();
 }
 
+std::mt19937 &Worker::get_randgen() { return randgen_; }
+
 #ifdef HAVE_MRUBY
 int Worker::create_mruby_context() {
   auto mruby_file = get_config()->mruby_file.get();
@@ -283,5 +306,58 @@ mruby::MRubyContext *Worker::get_mruby_context() const {
   return mruby_ctx_.get();
 }
 #endif // HAVE_MRUBY
+
+void Worker::cache_downstream_tls_session(const DownstreamAddr *addr,
+                                          SSL_SESSION *session) {
+  auto &tlsconf = get_config()->tls;
+
+  auto max = tlsconf.downstream_session_cache_per_worker;
+  if (max == 0) {
+    return;
+  }
+
+  if (downstream_tls_session_cache_size_ >= max) {
+    // It is implementation dependent which item is returned from
+    // std::begin().  Probably, this depends on hash algorithm.  If it
+    // is random fashion, then we are mostly OK.
+    auto it = std::begin(downstream_tls_session_cache_);
+    assert(it != std::end(downstream_tls_session_cache_));
+    auto &v = (*it).second;
+    assert(!v.empty());
+    auto sess = v.front();
+    v.pop_front();
+    SSL_SESSION_free(sess);
+    if (v.empty()) {
+      downstream_tls_session_cache_.erase(it);
+    }
+  }
+
+  auto it = downstream_tls_session_cache_.find(addr);
+  if (it == std::end(downstream_tls_session_cache_)) {
+    std::tie(it, std::ignore) = downstream_tls_session_cache_.emplace(
+        addr, std::deque<SSL_SESSION *>());
+  }
+  (*it).second.push_back(session);
+  ++downstream_tls_session_cache_size_;
+}
+
+SSL_SESSION *Worker::reuse_downstream_tls_session(const DownstreamAddr *addr) {
+  auto it = downstream_tls_session_cache_.find(addr);
+  if (it == std::end(downstream_tls_session_cache_)) {
+    return nullptr;
+  }
+
+  auto &v = (*it).second;
+  assert(!v.empty());
+  auto session = v.back();
+  v.pop_back();
+  --downstream_tls_session_cache_size_;
+
+  if (v.empty()) {
+    downstream_tls_session_cache_.erase(it);
+  }
+
+  return session;
+}
 
 } // namespace shrpx

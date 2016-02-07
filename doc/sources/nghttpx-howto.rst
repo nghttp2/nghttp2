@@ -14,9 +14,10 @@ If nghttpx is invoked without any ``-s``, ``-p`` and ``--client``, it
 operates in default mode.  In this mode, nghttpx frontend listens for
 HTTP/2 requests and translates them to HTTP/1 requests.  Thus it works
 as reverse proxy (gateway) for HTTP/2 clients to HTTP/1 web server.
-HTTP/1 requests are also supported in frontend as a fallback.  If
-nghttpx is linked with spdylay library and frontend connection is
-SSL/TLS, the frontend also supports SPDY protocol.
+This is also known as "HTTP/2 router".  HTTP/1 requests are also
+supported in frontend as a fallback.  If nghttpx is linked with
+spdylay library and frontend connection is SSL/TLS, the frontend also
+supports SPDY protocol.
 
 By default, this mode's frontend connection is encrypted using
 SSL/TLS.  So server's private key and certificate must be supplied to
@@ -29,6 +30,10 @@ even if spdylay library is liked to nghttpx.  HTTP/2 and HTTP/1 are
 available on the frontend and a HTTP/1 connection can be upgraded to
 HTTP/2 using HTTP Upgrade.  Starting HTTP/2 connection by sending
 HTTP/2 connection preface is also supported.
+
+By default, backend HTTP/1 connections are not encrypted.  To enable
+TLS on HTTP/1 backend connections, use ``--backend-http1-tls`` option.
+This applies to all mode whose backend connections are HTTP/1.
 
 The backend is supposed to be HTTP/1 Web server.  For example, to make
 nghttpx listen to encrypted HTTP/2 requests at port 8443, and a

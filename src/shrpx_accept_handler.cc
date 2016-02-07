@@ -45,16 +45,16 @@ void acceptcb(struct ev_loop *loop, ev_io *w, int revent) {
 }
 } // namespace
 
-AcceptHandler::AcceptHandler(int fd, ConnectionHandler *h)
-    : conn_hnr_(h), fd_(fd) {
-  ev_io_init(&wev_, acceptcb, fd_, EV_READ);
+AcceptHandler::AcceptHandler(const UpstreamAddr *faddr, ConnectionHandler *h)
+    : conn_hnr_(h), faddr_(faddr) {
+  ev_io_init(&wev_, acceptcb, faddr_->fd, EV_READ);
   wev_.data = this;
   ev_io_start(conn_hnr_->get_loop(), &wev_);
 }
 
 AcceptHandler::~AcceptHandler() {
   ev_io_stop(conn_hnr_->get_loop(), &wev_);
-  close(fd_);
+  close(faddr_->fd);
 }
 
 void AcceptHandler::accept_connection() {
@@ -63,10 +63,10 @@ void AcceptHandler::accept_connection() {
     socklen_t addrlen = sizeof(sockaddr);
 
 #ifdef HAVE_ACCEPT4
-    auto cfd =
-        accept4(fd_, &sockaddr.sa, &addrlen, SOCK_NONBLOCK | SOCK_CLOEXEC);
-#else  // !HAVE_ACCEPT4
-    auto cfd = accept(fd_, &sockaddr.sa, &addrlen);
+    auto cfd = accept4(faddr_->fd, &sockaddr.sa, &addrlen,
+                       SOCK_NONBLOCK | SOCK_CLOEXEC);
+#else // !HAVE_ACCEPT4
+    auto cfd = accept(faddr_->fd, &sockaddr.sa, &addrlen);
 #endif // !HAVE_ACCEPT4
 
     if (cfd == -1) {
@@ -87,7 +87,7 @@ void AcceptHandler::accept_connection() {
       case ENFILE:
         LOG(WARN) << "acceptor: running out file descriptor; disable acceptor "
                      "temporarily";
-        conn_hnr_->disable_acceptor_temporary(30.);
+        conn_hnr_->sleep_acceptor(get_config()->conn.listener.timeout.sleep);
         break;
       }
 
@@ -101,7 +101,7 @@ void AcceptHandler::accept_connection() {
 
     util::make_socket_nodelay(cfd);
 
-    conn_hnr_->handle_connection(cfd, &sockaddr.sa, addrlen);
+    conn_hnr_->handle_connection(cfd, &sockaddr.sa, addrlen, faddr_);
   }
 }
 
@@ -109,6 +109,6 @@ void AcceptHandler::enable() { ev_io_start(conn_hnr_->get_loop(), &wev_); }
 
 void AcceptHandler::disable() { ev_io_stop(conn_hnr_->get_loop(), &wev_); }
 
-int AcceptHandler::get_fd() const { return fd_; }
+int AcceptHandler::get_fd() const { return faddr_->fd; }
 
 } // namespace shrpx

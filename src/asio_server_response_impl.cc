@@ -36,8 +36,11 @@ namespace asio_http2 {
 namespace server {
 
 response_impl::response_impl()
-    : strm_(nullptr), generator_cb_(deferred_generator()), status_code_(200),
-      state_(response_state::INITIAL), pushed_(false),
+    : strm_(nullptr),
+      generator_cb_(deferred_generator()),
+      status_code_(200),
+      state_(response_state::INITIAL),
+      pushed_(false),
       push_promise_sent_(false) {}
 
 unsigned int response_impl::status_code() const { return status_code_; }

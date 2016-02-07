@@ -29,6 +29,9 @@
 
 #include <mutex>
 #include <vector>
+#include <random>
+#include <unordered_map>
+#include <deque>
 #include <thread>
 #ifndef NOTHREADS
 #include <future>
@@ -50,6 +53,7 @@ namespace shrpx {
 class Http2Session;
 class ConnectBlocker;
 class MemcachedDispatcher;
+struct UpstreamAddr;
 
 #ifdef HAVE_MRUBY
 namespace mruby {
@@ -92,6 +96,7 @@ struct WorkerEvent {
     sockaddr_union client_addr;
     size_t client_addrlen;
     int client_fd;
+    const UpstreamAddr *faddr;
   };
   std::shared_ptr<TicketKeys> ticket_keys;
 };
@@ -132,11 +137,24 @@ public:
 
   MemcachedDispatcher *get_session_cache_memcached_dispatcher();
 
+  std::mt19937 &get_randgen();
+
 #ifdef HAVE_MRUBY
   int create_mruby_context();
 
   mruby::MRubyContext *get_mruby_context() const;
 #endif // HAVE_MRUBY
+
+  // Caches |session| which is associated to downstream address
+  // |addr|.  The caller is responsible to increment the reference
+  // count of |session|, since this function does not do so.
+  void cache_downstream_tls_session(const DownstreamAddr *addr,
+                                    SSL_SESSION *session);
+  // Returns cached session associated |addr|.  If non-nullptr value
+  // is returned, its cache entry was successfully removed from cache.
+  // If no cache entry is found associated to |addr|, nullptr will be
+  // returned.
+  SSL_SESSION *reuse_downstream_tls_session(const DownstreamAddr *addr);
 
 private:
 #ifndef NOTHREADS
@@ -144,12 +162,23 @@ private:
 #endif // NOTHREADS
   std::mutex m_;
   std::vector<WorkerEvent> q_;
+  std::mt19937 randgen_;
   ev_async w_;
   ev_timer mcpool_clear_timer_;
   MemchunkPool mcpool_;
   DownstreamConnectionPool dconn_pool_;
   WorkerStat worker_stat_;
   std::vector<DownstreamGroup> dgrps_;
+
+  // Cache for SSL_SESSION for downstream connections.  SSL_SESSION is
+  // associated to downstream address.  One address has multiple
+  // SSL_SESSION objects.  New SSL_SESSION is appended to the deque.
+  // When doing eviction due to storage limitation, the SSL_SESSION
+  // which sits at the front of deque is removed.
+  std::unordered_map<const DownstreamAddr *, std::deque<SSL_SESSION *>>
+      downstream_tls_session_cache_;
+  size_t downstream_tls_session_cache_size_;
+
   std::unique_ptr<MemcachedDispatcher> session_cache_memcached_dispatcher_;
 #ifdef HAVE_MRUBY
   std::unique_ptr<mruby::MRubyContext> mruby_ctx_;

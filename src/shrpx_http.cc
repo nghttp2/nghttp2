@@ -44,9 +44,8 @@ std::string create_error_html(unsigned int status_code) {
   res += "</title><body><h1>";
   res += status;
   res += "</h1><footer>";
-  res += get_config()->server_name;
-  res += " at port ";
-  res += util::utos(get_config()->port);
+  const auto &server_name = get_config()->http.server_name;
+  res.append(server_name.c_str(), server_name.size());
   res += "</footer></body></html>";
   return res;
 }
@@ -60,6 +59,61 @@ std::string create_via_header_value(int major, int minor) {
   }
   hdrs += " nghttpx";
   return hdrs;
+}
+
+std::string create_forwarded(int params, const StringRef &node_by,
+                             const std::string &node_for,
+                             const std::string &host,
+                             const std::string &proto) {
+  std::string res;
+  if ((params & FORWARDED_BY) && !node_by.empty()) {
+    // This must be quoted-string unless it is obfuscated version
+    // (which starts with "_") or some special value (e.g.,
+    // "localhost" for UNIX domain socket), since ':' is not allowed
+    // in token.  ':' is used to separate host and port.
+    if (node_by[0] == '_' || node_by[0] == 'l') {
+      res += "by=";
+      res += node_by;
+      res += ";";
+    } else {
+      res += "by=\"";
+      res += node_by;
+      res += "\";";
+    }
+  }
+  if ((params & FORWARDED_FOR) && !node_for.empty()) {
+    // We only quote IPv6 literal address only, which starts with '['.
+    if (node_for[0] == '[') {
+      res += "for=\"";
+      res += node_for;
+      res += "\";";
+    } else {
+      res += "for=";
+      res += node_for;
+      res += ";";
+    }
+  }
+  if ((params & FORWARDED_HOST) && !host.empty()) {
+    // Just be quoted to skip checking characters.
+    res += "host=\"";
+    res += host;
+    res += "\";";
+  }
+  if ((params & FORWARDED_PROTO) && !proto.empty()) {
+    // Scheme production rule only allow characters which are all in
+    // token.
+    res += "proto=";
+    res += proto;
+    res += ";";
+  }
+
+  if (res.empty()) {
+    return res;
+  }
+
+  res.erase(res.size() - 1);
+
+  return res;
 }
 
 std::string colorizeHeaders(const char *hdrs) {

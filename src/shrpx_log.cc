@@ -109,12 +109,14 @@ Log::~Log() {
 
   auto lgconf = log_config();
 
+  auto &errorconf = get_config()->logging.error;
+
   if (!log_enabled(severity_) ||
-      (lgconf->errorlog_fd == -1 && !get_config()->errorlog_syslog)) {
+      (lgconf->errorlog_fd == -1 && !errorconf.syslog)) {
     return;
   }
 
-  if (get_config()->errorlog_syslog) {
+  if (errorconf.syslog) {
     if (severity_ == NOTICE) {
       syslog(severity_to_syslog_level(severity_), "[%s] %s",
              SEVERITY_STR[severity_], stream_.str().c_str());
@@ -183,6 +185,22 @@ std::pair<OutputIterator, size_t> copy(const std::string &src, size_t avail,
 } // namespace
 
 namespace {
+template <typename OutputIterator>
+std::pair<OutputIterator, size_t> copy(const StringRef &src, size_t avail,
+                                       OutputIterator oitr) {
+  return copy(src.c_str(), src.size(), avail, oitr);
+}
+} // namespace
+
+namespace {
+template <typename OutputIterator>
+std::pair<OutputIterator, size_t> copy(const ImmutableString &src, size_t avail,
+                                       OutputIterator oitr) {
+  return copy(src.c_str(), src.size(), avail, oitr);
+}
+} // namespace
+
+namespace {
 template <size_t N, typename OutputIterator>
 std::pair<OutputIterator, size_t> copy_l(const char(&src)[N], size_t avail,
                                          OutputIterator oitr) {
@@ -211,14 +229,20 @@ std::pair<OutputIterator, size_t> copy_hex_low(const uint8_t *src,
 void upstream_accesslog(const std::vector<LogFragment> &lfv,
                         const LogSpec &lgsp) {
   auto lgconf = log_config();
+  auto &accessconf = get_config()->logging.access;
 
-  if (lgconf->accesslog_fd == -1 && !get_config()->accesslog_syslog) {
+  if (lgconf->accesslog_fd == -1 && !accessconf.syslog) {
     return;
   }
 
   char buf[4_k];
 
   auto downstream = lgsp.downstream;
+
+  const Request *req = nullptr;
+  if (downstream) {
+    req = &downstream->request();
+  }
 
   auto p = buf;
   auto avail = sizeof(buf) - 2;
@@ -230,7 +254,7 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
   for (auto &lf : lfv) {
     switch (lf.type) {
     case SHRPX_LOGF_LITERAL:
-      std::tie(p, avail) = copy(lf.value.get(), avail, p);
+      std::tie(p, avail) = copy(lf.value, avail, p);
       break;
     case SHRPX_LOGF_REMOTE_ADDR:
       std::tie(p, avail) = copy(lgsp.remote_addr, avail, p);
@@ -259,8 +283,8 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
       std::tie(p, avail) = copy(util::utos(lgsp.body_bytes_sent), avail, p);
       break;
     case SHRPX_LOGF_HTTP:
-      if (downstream) {
-        auto hd = downstream->get_request_header(lf.value.get());
+      if (req) {
+        auto hd = req->fs.header(StringRef(lf.value));
         if (hd) {
           std::tie(p, avail) = copy((*hd).value, avail, p);
           break;
@@ -271,10 +295,9 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
 
       break;
     case SHRPX_LOGF_AUTHORITY:
-      if (downstream) {
-        auto &authority = downstream->get_request_http2_authority();
-        if (!authority.empty()) {
-          std::tie(p, avail) = copy(authority, avail, p);
+      if (req) {
+        if (!req->authority.empty()) {
+          std::tie(p, avail) = copy(req->authority, avail, p);
           break;
         }
       }
@@ -348,7 +371,7 @@ void upstream_accesslog(const std::vector<LogFragment> &lfv,
 
   *p = '\0';
 
-  if (get_config()->accesslog_syslog) {
+  if (accessconf.syslog) {
     syslog(LOG_INFO, "%s", buf);
 
     return;
@@ -367,29 +390,27 @@ int reopen_log_files() {
   int new_errorlog_fd = -1;
 
   auto lgconf = log_config();
+  auto &accessconf = get_config()->logging.access;
+  auto &errorconf = get_config()->logging.error;
 
-  if (!get_config()->accesslog_syslog && get_config()->accesslog_file) {
-
-    new_accesslog_fd = util::open_log_file(get_config()->accesslog_file.get());
+  if (!accessconf.syslog && accessconf.file) {
+    new_accesslog_fd = util::open_log_file(accessconf.file.get());
 
     if (new_accesslog_fd == -1) {
-      LOG(ERROR) << "Failed to open accesslog file "
-                 << get_config()->accesslog_file.get();
+      LOG(ERROR) << "Failed to open accesslog file " << accessconf.file.get();
       res = -1;
     }
   }
 
-  if (!get_config()->errorlog_syslog && get_config()->errorlog_file) {
-
-    new_errorlog_fd = util::open_log_file(get_config()->errorlog_file.get());
+  if (!errorconf.syslog && errorconf.file) {
+    new_errorlog_fd = util::open_log_file(errorconf.file.get());
 
     if (new_errorlog_fd == -1) {
       if (lgconf->errorlog_fd != -1) {
-        LOG(ERROR) << "Failed to open errorlog file "
-                   << get_config()->errorlog_file.get();
+        LOG(ERROR) << "Failed to open errorlog file " << errorconf.file.get();
       } else {
-        std::cerr << "Failed to open errorlog file "
-                  << get_config()->errorlog_file.get() << std::endl;
+        std::cerr << "Failed to open errorlog file " << errorconf.file.get()
+                  << std::endl;
       }
 
       res = -1;
@@ -432,8 +453,9 @@ void log_chld(pid_t pid, int rstatus, const char *msg) {
 
 void redirect_stderr_to_errorlog() {
   auto lgconf = log_config();
+  auto &errorconf = get_config()->logging.error;
 
-  if (get_config()->errorlog_syslog || lgconf->errorlog_fd == -1) {
+  if (errorconf.syslog || lgconf->errorlog_fd == -1) {
     return;
   }
 

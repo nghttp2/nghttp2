@@ -41,9 +41,19 @@
 
 namespace nghttp2 {
 
+#define DEFAULT_WR_IOVCNT 16
+
+#if defined(IOV_MAX) && IOV_MAX < DEFAULT_WR_IOVCNT
+#define MAX_WR_IOVCNT IOV_MAX
+#else // !defined(IOV_MAX) || IOV_MAX >= DEFAULT_WR_IOVCNT
+#define MAX_WR_IOVCNT DEFAULT_WR_IOVCNT
+#endif // !defined(IOV_MAX) || IOV_MAX >= DEFAULT_WR_IOVCNT
+
 template <size_t N> struct Memchunk {
   Memchunk(std::unique_ptr<Memchunk> next_chunk)
-      : pos(std::begin(buf)), last(pos), knext(std::move(next_chunk)),
+      : pos(std::begin(buf)),
+        last(pos),
+        knext(std::move(next_chunk)),
         next(nullptr) {}
   size_t len() const { return last - pos; }
   size_t left() const { return std::end(buf) - last; }
@@ -89,14 +99,16 @@ template <typename Memchunk> struct Memchunks {
   Memchunks(Pool<Memchunk> *pool)
       : pool(pool), head(nullptr), tail(nullptr), len(0) {}
   Memchunks(const Memchunks &) = delete;
-  Memchunks(Memchunks &&other)
-      : pool(other.pool), head(other.head), tail(other.tail), len(other.len) {
+  Memchunks(Memchunks &&other) noexcept : pool(other.pool),
+                                          head(other.head),
+                                          tail(other.tail),
+                                          len(other.len) {
     // keep other.pool
     other.head = other.tail = nullptr;
     other.len = 0;
   }
   Memchunks &operator=(const Memchunks &) = delete;
-  Memchunks &operator=(Memchunks &&other) {
+  Memchunks &operator=(Memchunks &&other) noexcept {
     if (this == &other) {
       return *this;
     }
@@ -165,6 +177,7 @@ template <typename Memchunk> struct Memchunks {
     return append(s, N - 1);
   }
   size_t append(const std::string &s) { return append(s.c_str(), s.size()); }
+  size_t append(const StringRef &s) { return append(s.c_str(), s.size()); }
   size_t remove(void *dest, size_t count) {
     if (!tail || count == 0) {
       return 0;
@@ -195,6 +208,36 @@ template <typename Memchunk> struct Memchunks {
     }
 
     return first - static_cast<uint8_t *>(dest);
+  }
+  size_t remove(Memchunks &dest, size_t count) {
+    if (!tail || count == 0) {
+      return 0;
+    }
+
+    auto left = count;
+    auto m = head;
+
+    while (m) {
+      auto next = m->next;
+      auto n = std::min(left, m->len());
+
+      assert(m->len());
+      dest.append(m->pos, n);
+      m->pos += n;
+      len -= n;
+      left -= n;
+      if (m->len() > 0) {
+        break;
+      }
+      pool->recycle(m);
+      m = next;
+    }
+    head = m;
+    if (head == nullptr) {
+      tail = nullptr;
+    }
+
+    return count - left;
   }
   size_t drain(size_t count) {
     auto ndata = count;
@@ -249,17 +292,24 @@ template <typename Memchunk> struct Memchunks {
 // Wrapper around Memchunks to offer "peeking" functionality.
 template <typename Memchunk> struct PeekMemchunks {
   PeekMemchunks(Pool<Memchunk> *pool)
-      : memchunks(pool), cur(nullptr), cur_pos(nullptr), cur_last(nullptr),
-        len(0), peeking(true) {}
+      : memchunks(pool),
+        cur(nullptr),
+        cur_pos(nullptr),
+        cur_last(nullptr),
+        len(0),
+        peeking(true) {}
   PeekMemchunks(const PeekMemchunks &) = delete;
-  PeekMemchunks(PeekMemchunks &&other)
-      : memchunks(std::move(other.memchunks)), cur(other.cur),
-        cur_pos(other.cur_pos), cur_last(other.cur_last), len(other.len),
+  PeekMemchunks(PeekMemchunks &&other) noexcept
+      : memchunks(std::move(other.memchunks)),
+        cur(other.cur),
+        cur_pos(other.cur_pos),
+        cur_last(other.cur_last),
+        len(other.len),
         peeking(other.peeking) {
     other.reset();
   }
   PeekMemchunks &operator=(const PeekMemchunks &) = delete;
-  PeekMemchunks &operator=(PeekMemchunks &&other) {
+  PeekMemchunks &operator=(PeekMemchunks &&other) noexcept {
     if (this == &other) {
       return *this;
     }
@@ -367,14 +417,6 @@ using Memchunk16K = Memchunk<16_k>;
 using MemchunkPool = Pool<Memchunk16K>;
 using DefaultMemchunks = Memchunks<Memchunk16K>;
 using DefaultPeekMemchunks = PeekMemchunks<Memchunk16K>;
-
-#define DEFAULT_WR_IOVCNT 16
-
-#if defined(IOV_MAX) && IOV_MAX < DEFAULT_WR_IOVCNT
-#define MAX_WR_IOVCNT IOV_MAX
-#else // !defined(IOV_MAX) || IOV_MAX >= DEFAULT_WR_IOVCNT
-#define MAX_WR_IOVCNT DEFAULT_WR_IOVCNT
-#endif // !defined(IOV_MAX) || IOV_MAX >= DEFAULT_WR_IOVCNT
 
 inline int limit_iovec(struct iovec *iov, int iovcnt, size_t max) {
   if (max == 0) {

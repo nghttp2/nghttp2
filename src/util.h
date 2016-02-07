@@ -45,6 +45,7 @@
 #include <memory>
 #include <chrono>
 #include <map>
+#include <random>
 
 #include "http-parser/http_parser.h"
 
@@ -53,14 +54,14 @@ namespace nghttp2 {
 // The additional HTTP/2 protocol ALPN protocol identifier we also
 // supports for our applications to make smooth migration into final
 // h2 ALPN ID.
-constexpr const char NGHTTP2_H2_16_ALPN[] = "\x5h2-16";
-constexpr const char NGHTTP2_H2_16[] = "h2-16";
+constexpr char NGHTTP2_H2_16_ALPN[] = "\x5h2-16";
+constexpr char NGHTTP2_H2_16[] = "h2-16";
 
-constexpr const char NGHTTP2_H2_14_ALPN[] = "\x5h2-14";
-constexpr const char NGHTTP2_H2_14[] = "h2-14";
+constexpr char NGHTTP2_H2_14_ALPN[] = "\x5h2-14";
+constexpr char NGHTTP2_H2_14[] = "h2-14";
 
-constexpr const char NGHTTP2_H1_1_ALPN[] = "\x8http/1.1";
-constexpr const char NGHTTP2_H1_1[] = "http/1.1";
+constexpr char NGHTTP2_H1_1_ALPN[] = "\x8http/1.1";
+constexpr char NGHTTP2_H1_1[] = "http/1.1";
 
 namespace util {
 
@@ -97,19 +98,24 @@ std::string percent_encode_path(const std::string &s);
 template <typename InputIt>
 std::string percent_decode(InputIt first, InputIt last) {
   std::string result;
+  result.resize(last - first);
+  auto p = std::begin(result);
   for (; first != last; ++first) {
-    if (*first == '%') {
-      if (first + 1 != last && first + 2 != last &&
-          is_hex_digit(*(first + 1)) && is_hex_digit(*(first + 2))) {
-        result += (hex_to_uint(*(first + 1)) << 4) + hex_to_uint(*(first + 2));
-        first += 2;
-        continue;
-      }
-      result += *first;
+    if (*first != '%') {
+      *p++ = *first;
       continue;
     }
-    result += *first;
+
+    if (first + 1 != last && first + 2 != last && is_hex_digit(*(first + 1)) &&
+        is_hex_digit(*(first + 2))) {
+      *p++ = (hex_to_uint(*(first + 1)) << 4) + hex_to_uint(*(first + 2));
+      first += 2;
+      continue;
+    }
+
+    *p++ = *first;
   }
+  result.resize(p - std::begin(result));
   return result;
 }
 
@@ -211,6 +217,11 @@ bool istarts_with(InputIt a, size_t an, const char *b) {
 
 bool istarts_with(const char *a, const char *b);
 
+template <typename CharT, size_t N>
+bool istarts_with_l(const std::string &a, const CharT(&b)[N]) {
+  return istarts_with(std::begin(a), std::end(a), b, b + N - 1);
+}
+
 template <typename InputIterator1, typename InputIterator2>
 bool ends_with(InputIterator1 first1, InputIterator1 last1,
                InputIterator2 first2, InputIterator2 last2) {
@@ -237,6 +248,11 @@ inline bool iends_with(const std::string &a, const std::string &b) {
   return iends_with(std::begin(a), std::end(a), std::begin(b), std::end(b));
 }
 
+template <typename CharT, size_t N>
+bool iends_with_l(const std::string &a, const CharT(&b)[N]) {
+  return iends_with(std::begin(a), std::end(a), b, b + N - 1);
+}
+
 int strcompare(const char *a, const uint8_t *b, size_t n);
 
 template <typename InputIt> bool strieq(const char *a, InputIt b, size_t bn) {
@@ -257,6 +273,15 @@ bool strieq(InputIt1 a, size_t alen, InputIt2 b, size_t blen) {
   return std::equal(a, a + alen, b, CaseCmp());
 }
 
+template <typename InputIt1, typename InputIt2>
+bool strieq(InputIt1 first1, InputIt1 last1, InputIt2 first2, InputIt2 last2) {
+  if (std::distance(first1, last1) != std::distance(first2, last2)) {
+    return false;
+  }
+
+  return std::equal(first1, last1, first2, CaseCmp());
+}
+
 inline bool strieq(const std::string &a, const std::string &b) {
   return strieq(std::begin(a), a.size(), std::begin(b), b.size());
 }
@@ -267,12 +292,13 @@ inline bool strieq(const char *a, const std::string &b) {
   return strieq(a, b.c_str(), b.size());
 }
 
-template <typename InputIt, size_t N>
-bool strieq_l(const char(&a)[N], InputIt b, size_t blen) {
+template <typename CharT, typename InputIt, size_t N>
+bool strieq_l(const CharT(&a)[N], InputIt b, size_t blen) {
   return strieq(a, N - 1, b, blen);
 }
 
-template <size_t N> bool strieq_l(const char(&a)[N], const std::string &b) {
+template <typename CharT, size_t N>
+bool strieq_l(const CharT(&a)[N], const std::string &b) {
   return strieq(a, N - 1, std::begin(b), b.size());
 }
 
@@ -301,12 +327,13 @@ inline bool streq(const char *a, const char *b) {
   return streq(a, strlen(a), b, strlen(b));
 }
 
-template <typename InputIt, size_t N>
-bool streq_l(const char(&a)[N], InputIt b, size_t blen) {
+template <typename CharT, typename InputIt, size_t N>
+bool streq_l(const CharT(&a)[N], InputIt b, size_t blen) {
   return streq(a, N - 1, b, blen);
 }
 
-template <size_t N> bool streq_l(const char(&a)[N], const std::string &b) {
+template <typename CharT, size_t N>
+bool streq_l(const CharT(&a)[N], const std::string &b) {
   return streq(a, N - 1, std::begin(b), b.size());
 }
 
@@ -342,7 +369,7 @@ template <typename T> std::string utos(T n) {
   return res;
 }
 
-template <typename T> std::string utos_with_unit(T n) {
+template <typename T> std::string utos_unit(T n) {
   char u = 0;
   if (n >= (1 << 30)) {
     u = 'G';
@@ -360,8 +387,8 @@ template <typename T> std::string utos_with_unit(T n) {
   return utos(n) + u;
 }
 
-// Like utos_with_unit(), but 2 digits fraction part is followed.
-template <typename T> std::string utos_with_funit(T n) {
+// Like utos_unit(), but 2 digits fraction part is followed.
+template <typename T> std::string utos_funit(T n) {
   char u = 0;
   int b = 0;
   if (n >= (1 << 30)) {
@@ -621,6 +648,18 @@ uint64_t get_uint64(const uint8_t *data);
 // or -1.
 int read_mime_types(std::map<std::string, std::string> &res,
                     const char *filename);
+
+template <typename Generator>
+std::string random_alpha_digit(Generator &gen, size_t len) {
+  std::string res;
+  res.reserve(len);
+  std::uniform_int_distribution<> dis(0, 26 * 2 + 10 - 1);
+  for (; len > 0; --len) {
+    res += "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"[dis(
+        gen)];
+  }
+  return res;
+}
 
 } // namespace util
 

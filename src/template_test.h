@@ -1,7 +1,7 @@
 /*
  * nghttp2 - HTTP/2 C Library
  *
- * Copyright (c) 2013 Tatsuhiro Tsujikawa
+ * Copyright (c) 2016 Tatsuhiro Tsujikawa
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -22,19 +22,18 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef SHRPX_SSL_TEST_H
-#define SHRPX_SSL_TEST_H
+#ifndef TEMPLATE_TEST_H
+#define TEMPLATE_TEST_H
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif // HAVE_CONFIG_H
 
-namespace shrpx {
+namespace nghttp2 {
 
-void test_shrpx_ssl_create_lookup_tree(void);
-void test_shrpx_ssl_cert_lookup_tree_add_cert_from_file(void);
-void test_shrpx_ssl_tls_hostname_match(void);
+void test_template_immutable_string(void);
+void test_template_string_ref(void);
 
-} // namespace shrpx
+} // namespace nghttp2
 
-#endif // SHRPX_SSL_TEST_H
+#endif // TEMPLATE_TEST_H

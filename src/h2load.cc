@@ -79,14 +79,31 @@ bool recorded(const std::chrono::steady_clock::time_point &t) {
 } // namespace
 
 Config::Config()
-    : data_length(-1), addrs(nullptr), nreqs(1), nclients(1), nthreads(1),
-      max_concurrent_streams(-1), window_bits(30), connection_window_bits(30),
-      rate(0), rate_period(1.0), conn_active_timeout(0.),
-      conn_inactivity_timeout(0.), no_tls_proto(PROTO_HTTP2), data_fd(-1),
-      port(0), default_port(0), verbose(false), timing_script(false) {}
+    : data_length(-1),
+      addrs(nullptr),
+      nreqs(1),
+      nclients(1),
+      nthreads(1),
+      max_concurrent_streams(-1),
+      window_bits(30),
+      connection_window_bits(30),
+      rate(0),
+      rate_period(1.0),
+      conn_active_timeout(0.),
+      conn_inactivity_timeout(0.),
+      no_tls_proto(PROTO_HTTP2),
+      data_fd(-1),
+      port(0),
+      default_port(0),
+      verbose(false),
+      timing_script(false) {}
 
 Config::~Config() {
-  freeaddrinfo(addrs);
+  if (base_uri_unix) {
+    delete addrs;
+  } else {
+    freeaddrinfo(addrs);
+  }
 
   if (data_fd != -1) {
     close(data_fd);
@@ -102,9 +119,18 @@ constexpr size_t MAX_SAMPLES = 1000000;
 } // namespace
 
 Stats::Stats(size_t req_todo, size_t nclients)
-    : req_todo(req_todo), req_started(0), req_done(0), req_success(0),
-      req_status_success(0), req_failed(0), req_error(0), req_timedout(0),
-      bytes_total(0), bytes_head(0), bytes_head_decomp(0), bytes_body(0),
+    : req_todo(req_todo),
+      req_started(0),
+      req_done(0),
+      req_success(0),
+      req_status_success(0),
+      req_failed(0),
+      req_error(0),
+      req_timedout(0),
+      bytes_total(0),
+      bytes_head(0),
+      bytes_head_decomp(0),
+      bytes_body(0),
       status() {}
 
 Stream::Stream() : req_stat{}, status_success(-1) {}
@@ -286,9 +312,18 @@ void client_request_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 } // namespace
 
 Client::Client(uint32_t id, Worker *worker, size_t req_todo)
-    : cstat{}, worker(worker), ssl(nullptr), next_addr(config.addrs),
-      current_addr(nullptr), reqidx(0), state(CLIENT_IDLE), req_todo(req_todo),
-      req_started(0), req_done(0), id(id), fd(-1),
+    : cstat{},
+      worker(worker),
+      ssl(nullptr),
+      next_addr(config.addrs),
+      current_addr(nullptr),
+      reqidx(0),
+      state(CLIENT_IDLE),
+      req_todo(req_todo),
+      req_started(0),
+      req_done(0),
+      id(id),
+      fd(-1),
       new_connection_requested(false) {
   ev_io_init(&wev, writecb, 0, EV_WRITE);
   ev_io_init(&rev, readcb, 0, EV_READ);
@@ -1090,11 +1125,20 @@ void Client::try_new_connection() { new_connection_requested = true; }
 
 Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
                size_t rate, size_t max_samples, Config *config)
-    : stats(req_todo, nclients), loop(ev_loop_new(0)), ssl_ctx(ssl_ctx),
-      config(config), id(id), tls_info_report_done(false),
-      app_info_report_done(false), nconns_made(0), nclients(nclients),
-      nreqs_per_client(req_todo / nclients), nreqs_rem(req_todo % nclients),
-      rate(rate), max_samples(max_samples), next_client_id(0) {
+    : stats(req_todo, nclients),
+      loop(ev_loop_new(0)),
+      ssl_ctx(ssl_ctx),
+      config(config),
+      id(id),
+      tls_info_report_done(false),
+      app_info_report_done(false),
+      nconns_made(0),
+      nclients(nclients),
+      nreqs_per_client(req_todo / nclients),
+      nreqs_rem(req_todo % nclients),
+      rate(rate),
+      max_samples(max_samples),
+      next_client_id(0) {
   if (!config->is_rate_mode()) {
     progress_interval = std::max(static_cast<size_t>(1), req_todo / 10);
   } else {
@@ -1301,6 +1345,18 @@ process_time_stats(const std::vector<std::unique_ptr<Worker>> &workers) {
 
 namespace {
 void resolve_host() {
+  if (config.base_uri_unix) {
+    auto res = make_unique<addrinfo>();
+    res->ai_family = config.unix_addr.sun_family;
+    res->ai_socktype = SOCK_STREAM;
+    res->ai_addrlen = sizeof(config.unix_addr);
+    res->ai_addr =
+        static_cast<struct sockaddr *>(static_cast<void *>(&config.unix_addr));
+
+    config.addrs = res.release();
+    return;
+  };
+
   int rv;
   addrinfo hints{}, *res;
 
@@ -1355,6 +1411,10 @@ int client_select_next_proto_cb(SSL *ssl, unsigned char **out,
   // NOACK.  So there is no way to fallback.
   return SSL_TLSEXT_ERR_NOACK;
 }
+} // namespace
+
+namespace {
+constexpr char UNIX_PATH_PREFIX[] = "unix:";
 } // namespace
 
 namespace {
@@ -1636,11 +1696,16 @@ Options:
               contained  in  other  URIs,  if  present,  are  ignored.
               Definition of a  base URI overrides all  scheme, host or
               port values.
-  -B, --base-uri=<URI>
+  -B, --base-uri=(<URI>|unix:<PATH>)
               Specify URI from which the scheme, host and port will be
               used  for  all requests.   The  base  URI overrides  all
               values  defined either  at  the command  line or  inside
-              input files.
+              input files.  If argument  starts with "unix:", then the
+              rest  of the  argument will  be treated  as UNIX  domain
+              socket path.   The connection is made  through that path
+              instead of TCP.   In this case, scheme  is inferred from
+              the first  URI appeared  in the  command line  or inside
+              input files as usual.
   --npn-list=<LIST>
               Comma delimited list of  ALPN protocol identifier sorted
               in the  order of preference.  That  means most desirable
@@ -1819,13 +1884,40 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
       }
       break;
-    case 'B':
+    case 'B': {
+      config.base_uri = "";
+      config.base_uri_unix = false;
+
+      if (util::istarts_with_l(optarg, UNIX_PATH_PREFIX)) {
+        // UNIX domain socket path
+        sockaddr_un un;
+
+        auto path = optarg + str_size(UNIX_PATH_PREFIX);
+        auto pathlen = strlen(optarg) - str_size(UNIX_PATH_PREFIX);
+
+        if (pathlen == 0 || pathlen + 1 > sizeof(un.sun_path)) {
+          std::cerr << "--base-uri: invalid UNIX domain socket path: " << optarg
+                    << std::endl;
+          exit(EXIT_FAILURE);
+        }
+
+        config.base_uri_unix = true;
+
+        auto &unix_addr = config.unix_addr;
+        std::copy_n(path, pathlen + 1, unix_addr.sun_path);
+        unix_addr.sun_family = AF_UNIX;
+
+        break;
+      }
+
       if (!parse_base_uri(optarg)) {
-        std::cerr << "invalid base URI: " << optarg << std::endl;
+        std::cerr << "--base-uri: invalid base URI: " << optarg << std::endl;
         exit(EXIT_FAILURE);
       }
+
       config.base_uri = optarg;
       break;
+    }
     case 'v':
       config.verbose = true;
       break;
@@ -2321,7 +2413,7 @@ int main(int argc, char **argv) {
 
   std::cout << std::fixed << std::setprecision(2) << R"(
 finished in )" << util::format_duration(duration) << ", " << rps << " req/s, "
-            << util::utos_with_funit(bps) << R"(B/s
+            << util::utos_funit(bps) << R"(B/s
 requests: )" << stats.req_todo << " total, " << stats.req_started
             << " started, " << stats.req_done << " done, "
             << stats.req_status_success << " succeeded, " << stats.req_failed
@@ -2329,9 +2421,12 @@ requests: )" << stats.req_todo << " total, " << stats.req_started
             << stats.req_timedout << R"( timeout
 status codes: )" << stats.status[2] << " 2xx, " << stats.status[3] << " 3xx, "
             << stats.status[4] << " 4xx, " << stats.status[5] << R"( 5xx
-traffic: )" << stats.bytes_total << " bytes total, " << stats.bytes_head
-            << " bytes headers (space savings " << header_space_savings * 100
-            << "%), " << stats.bytes_body << R"( bytes data
+traffic: )" << util::utos_funit(stats.bytes_total) << "B (" << stats.bytes_total
+            << ") total, " << util::utos_funit(stats.bytes_head) << "B ("
+            << stats.bytes_head << ") headers (space savings "
+            << header_space_savings * 100 << "%), "
+            << util::utos_funit(stats.bytes_body) << "B (" << stats.bytes_body
+            << R"() data
                      min         max         mean         sd        +/- sd
 time for request: )" << std::setw(10) << util::format_duration(ts.request.min)
             << "  " << std::setw(10) << util::format_duration(ts.request.max)

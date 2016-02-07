@@ -33,9 +33,8 @@ namespace nghttp2 {
 
 namespace base64 {
 
-template <typename InputIterator>
-std::string encode(InputIterator first, InputIterator last) {
-  static const char CHAR_TABLE[] = {
+template <typename InputIt> std::string encode(InputIt first, InputIt last) {
+  static constexpr char CHAR_TABLE[] = {
       'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
       'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
       'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
@@ -48,39 +47,38 @@ std::string encode(InputIterator first, InputIterator last) {
     return res;
   }
   size_t r = len % 3;
-  InputIterator j = last - r;
-  char temp[4];
+  res.resize((len + 2) / 3 * 4);
+  auto j = last - r;
+  auto p = std::begin(res);
   while (first != j) {
-    int n = static_cast<unsigned char>(*first++) << 16;
-    n += static_cast<unsigned char>(*first++) << 8;
-    n += static_cast<unsigned char>(*first++);
-    temp[0] = CHAR_TABLE[n >> 18];
-    temp[1] = CHAR_TABLE[(n >> 12) & 0x3fu];
-    temp[2] = CHAR_TABLE[(n >> 6) & 0x3fu];
-    temp[3] = CHAR_TABLE[n & 0x3fu];
-    res.append(temp, sizeof(temp));
+    uint32_t n = static_cast<uint8_t>(*first++) << 16;
+    n += static_cast<uint8_t>(*first++) << 8;
+    n += static_cast<uint8_t>(*first++);
+    *p++ = CHAR_TABLE[n >> 18];
+    *p++ = CHAR_TABLE[(n >> 12) & 0x3fu];
+    *p++ = CHAR_TABLE[(n >> 6) & 0x3fu];
+    *p++ = CHAR_TABLE[n & 0x3fu];
   }
+
   if (r == 2) {
-    int n = static_cast<unsigned char>(*first++) << 16;
-    n += static_cast<unsigned char>(*first++) << 8;
-    temp[0] = CHAR_TABLE[n >> 18];
-    temp[1] = CHAR_TABLE[(n >> 12) & 0x3fu];
-    temp[2] = CHAR_TABLE[(n >> 6) & 0x3fu];
-    temp[3] = '=';
-    res.append(temp, sizeof(temp));
+    uint32_t n = static_cast<uint8_t>(*first++) << 16;
+    n += static_cast<uint8_t>(*first++) << 8;
+    *p++ = CHAR_TABLE[n >> 18];
+    *p++ = CHAR_TABLE[(n >> 12) & 0x3fu];
+    *p++ = CHAR_TABLE[(n >> 6) & 0x3fu];
+    *p++ = '=';
   } else if (r == 1) {
-    int n = static_cast<unsigned char>(*first++) << 16;
-    temp[0] = CHAR_TABLE[n >> 18];
-    temp[1] = CHAR_TABLE[(n >> 12) & 0x3fu];
-    temp[2] = '=';
-    temp[3] = '=';
-    res.append(temp, sizeof(temp));
+    uint32_t n = static_cast<uint8_t>(*first++) << 16;
+    *p++ = CHAR_TABLE[n >> 18];
+    *p++ = CHAR_TABLE[(n >> 12) & 0x3fu];
+    *p++ = '=';
+    *p++ = '=';
   }
   return res;
 }
 
-template <typename InputIterator>
-InputIterator getNext(InputIterator first, InputIterator last, const int *tbl) {
+template <typename InputIt>
+InputIt next_decode_input(InputIt first, InputIt last, const int *tbl) {
   for (; first != last; ++first) {
     if (tbl[static_cast<size_t>(*first)] != -1 || *first == '=') {
       break;
@@ -89,9 +87,8 @@ InputIterator getNext(InputIterator first, InputIterator last, const int *tbl) {
   return first;
 }
 
-template <typename InputIterator>
-std::string decode(InputIterator first, InputIterator last) {
-  static const int INDEX_TABLE[] = {
+template <typename InputIt> std::string decode(InputIt first, InputIt last) {
+  static constexpr int INDEX_TABLE[] = {
       -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
       -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
       -1, -1, -1, -1, -1, -1, -1, 62, -1, -1, -1, 63, 52, 53, 54, 55, 56, 57,
@@ -107,59 +104,47 @@ std::string decode(InputIterator first, InputIterator last) {
       -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
       -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
       -1, -1, -1, -1};
-  std::string res;
-  InputIterator k[4];
-  int eq = 0;
-  for (; first != last;) {
-    for (int i = 1; i <= 4; ++i) {
-      k[i - 1] = getNext(first, last, INDEX_TABLE);
-      if (k[i - 1] == last) {
-        // If i == 1, input may look like this: "TWFu\n" (i.e.,
-        // garbage at the end)
-        if (i != 1) {
-          res.clear();
-        }
-        return res;
-      } else if (*k[i - 1] == '=' && eq == 0) {
-        eq = i;
-      }
-      first = k[i - 1] + 1;
-    }
-    if (eq) {
-      break;
-    }
-    int n = (INDEX_TABLE[static_cast<unsigned char>(*k[0])] << 18) +
-            (INDEX_TABLE[static_cast<unsigned char>(*k[1])] << 12) +
-            (INDEX_TABLE[static_cast<unsigned char>(*k[2])] << 6) +
-            INDEX_TABLE[static_cast<unsigned char>(*k[3])];
-    res += n >> 16;
-    res += n >> 8 & 0xffu;
-    res += n & 0xffu;
+  auto len = last - first;
+  if (len % 4 != 0) {
+    return "";
   }
-  if (eq) {
-    if (eq <= 2) {
-      res.clear();
-      return res;
-    } else {
-      for (int i = eq; i <= 4; ++i) {
-        if (*k[i - 1] != '=') {
-          res.clear();
+  std::string res;
+  res.resize(len / 4 * 3);
+
+  auto p = std::begin(res);
+  for (; first != last;) {
+    uint32_t n = 0;
+    for (int i = 1; i <= 4; ++i, ++first) {
+      auto idx = INDEX_TABLE[static_cast<size_t>(*first)];
+      if (idx == -1) {
+        if (i <= 2) {
+          return "";
+        }
+        if (i == 3) {
+          if (*first == '=' && *(first + 1) == '=' && first + 2 == last) {
+            *p++ = n >> 16;
+            res.resize(p - std::begin(res));
+            return res;
+          }
+          return "";
+        }
+        if (*first == '=' && first + 1 == last) {
+          *p++ = n >> 16;
+          *p++ = n >> 8 & 0xffu;
+          res.resize(p - std::begin(res));
           return res;
         }
+        return "";
       }
-      if (eq == 3) {
-        int n = (INDEX_TABLE[static_cast<unsigned char>(*k[0])] << 18) +
-                (INDEX_TABLE[static_cast<unsigned char>(*k[1])] << 12);
-        res += n >> 16;
-      } else if (eq == 4) {
-        int n = (INDEX_TABLE[static_cast<unsigned char>(*k[0])] << 18) +
-                (INDEX_TABLE[static_cast<unsigned char>(*k[1])] << 12) +
-                (INDEX_TABLE[static_cast<unsigned char>(*k[2])] << 6);
-        res += n >> 16;
-        res += n >> 8 & 0xffu;
-      }
+
+      n += idx << (24 - i * 6);
     }
+
+    *p++ = n >> 16;
+    *p++ = n >> 8 & 0xffu;
+    *p++ = n & 0xffu;
   }
+
   return res;
 }
 

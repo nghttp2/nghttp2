@@ -36,11 +36,12 @@
 namespace shrpx {
 
 class DownstreamConnectionPool;
+class Worker;
 
 class HttpDownstreamConnection : public DownstreamConnection {
 public:
   HttpDownstreamConnection(DownstreamConnectionPool *dconn_pool, size_t group,
-                           struct ev_loop *loop);
+                           struct ev_loop *loop, Worker *worker);
   virtual ~HttpDownstreamConnection();
   virtual int attach_downstream(Downstream *downstream);
   virtual void detach_downstream(Downstream *downstream);
@@ -57,22 +58,34 @@ public:
   virtual int on_write();
 
   virtual void on_upstream_change(Upstream *upstream);
-  virtual int on_priority_change(int32_t pri) { return 0; }
   virtual size_t get_group() const;
 
   virtual bool poolable() const { return true; }
 
-  int on_connect();
+  int read_clear();
+  int write_clear();
+  int read_tls();
+  int write_tls();
+
+  int process_input(const uint8_t *data, size_t datalen);
+  int tls_handshake();
+
+  int connected();
   void signal_write();
+
+  int noop();
 
 private:
   Connection conn_;
+  std::function<int(HttpDownstreamConnection &)> do_read_, do_write_;
+  Worker *worker_;
+  // nullptr if TLS is not used.
+  SSL_CTX *ssl_ctx_;
+  // Address of remote endpoint
+  const DownstreamAddr *addr_;
   IOControl ioctrl_;
   http_parser response_htp_;
   size_t group_;
-  // index of get_config()->downstream_addrs this object is using
-  size_t addr_idx_;
-  bool connected_;
 };
 
 } // namespace shrpx

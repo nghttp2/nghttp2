@@ -17,6 +17,7 @@ HEADERS = [
     "http2-settings",
     "server",
     "via",
+    "forwarded",
     "x-forwarded-for",
     "x-forwarded-proto",
     "alt-svc",
@@ -29,6 +30,7 @@ HEADERS = [
     "cache-control",
     "user-agent",
     "date",
+    "content-type",
     # disallowed h1 headers
     'connection',
     'keep-alive',

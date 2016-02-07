@@ -34,6 +34,7 @@
 
 #include <memory>
 #include <vector>
+#include <random>
 #ifndef NOTHREADS
 #include <future>
 #endif // NOTHREADS
@@ -57,6 +58,7 @@ class Worker;
 struct WorkerStat;
 struct TicketKeys;
 class MemcachedDispatcher;
+struct UpstreamAddr;
 
 struct OCSPUpdateContext {
   // ocsp response buffer
@@ -78,7 +80,8 @@ class ConnectionHandler {
 public:
   ConnectionHandler(struct ev_loop *loop);
   ~ConnectionHandler();
-  int handle_connection(int fd, sockaddr *addr, int addrlen);
+  int handle_connection(int fd, sockaddr *addr, int addrlen,
+                        const UpstreamAddr *faddr);
   // Creates Worker object for single threaded configuration.
   int create_single_worker();
   // Creates |num| Worker objects for multi threaded configuration.
@@ -91,13 +94,10 @@ public:
   const std::shared_ptr<TicketKeys> &get_ticket_keys() const;
   struct ev_loop *get_loop() const;
   Worker *get_single_worker() const;
-  void set_acceptor(std::unique_ptr<AcceptHandler> h);
-  AcceptHandler *get_acceptor() const;
-  void set_acceptor6(std::unique_ptr<AcceptHandler> h);
-  AcceptHandler *get_acceptor6() const;
+  void add_acceptor(std::unique_ptr<AcceptHandler> h);
   void enable_acceptor();
   void disable_acceptor();
-  void disable_acceptor_temporary(ev_tstamp t);
+  void sleep_acceptor(ev_tstamp t);
   void accept_pending_connection();
   void graceful_shutdown_worker();
   void set_graceful_shutdown(bool f);
@@ -139,6 +139,7 @@ private:
   // Stores all SSL_CTX objects.
   std::vector<SSL_CTX *> all_ssl_ctx_;
   OCSPUpdateContext ocsp_;
+  std::mt19937 gen_;
   // ev_loop for each worker
   std::vector<struct ev_loop *> worker_loops_;
   // Worker instances when multi threaded mode (-nN, N >= 2) is used.
@@ -152,10 +153,7 @@ private:
   // Worker object.
   std::shared_ptr<TicketKeys> ticket_keys_;
   struct ev_loop *loop_;
-  // acceptor for IPv4 address or UNIX domain socket.
-  std::unique_ptr<AcceptHandler> acceptor_;
-  // acceptor for IPv6 address
-  std::unique_ptr<AcceptHandler> acceptor6_;
+  std::vector<std::unique_ptr<AcceptHandler>> acceptors_;
 #ifdef HAVE_NEVERBLEED
   std::unique_ptr<neverbleed_t> nb_;
 #endif // HAVE_NEVERBLEED

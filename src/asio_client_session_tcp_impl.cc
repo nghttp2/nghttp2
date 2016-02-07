@@ -28,10 +28,11 @@ namespace nghttp2 {
 namespace asio_http2 {
 namespace client {
 
-session_tcp_impl::session_tcp_impl(boost::asio::io_service &io_service,
-                                   const std::string &host,
-                                   const std::string &service)
-    : session_impl(io_service), socket_(io_service) {}
+session_tcp_impl::session_tcp_impl(
+    boost::asio::io_service &io_service, const std::string &host,
+    const std::string &service,
+    const boost::posix_time::time_duration &connect_timeout)
+    : session_impl(io_service, connect_timeout), socket_(io_service) {}
 
 session_tcp_impl::~session_tcp_impl() {}
 
@@ -39,6 +40,10 @@ void session_tcp_impl::start_connect(tcp::resolver::iterator endpoint_it) {
   boost::asio::async_connect(socket_, endpoint_it,
                              [this](const boost::system::error_code &ec,
                                     tcp::resolver::iterator endpoint_it) {
+                               if (stopped()) {
+                                 return;
+                               }
+
                                if (ec) {
                                  not_connected(ec);
                                  return;

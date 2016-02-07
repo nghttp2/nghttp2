@@ -66,15 +66,15 @@ namespace util {
 const char UPPER_XDIGITS[] = "0123456789ABCDEF";
 
 bool in_rfc3986_unreserved_chars(const char c) {
-  static constexpr const char unreserved[] = {'-', '.', '_', '~'};
+  static constexpr char unreserved[] = {'-', '.', '_', '~'};
   return is_alpha(c) || is_digit(c) ||
          std::find(std::begin(unreserved), std::end(unreserved), c) !=
              std::end(unreserved);
 }
 
 bool in_rfc3986_sub_delims(const char c) {
-  static constexpr const char sub_delims[] = {'!', '$', '&', '\'', '(', ')',
-                                              '*', '+', ',', ';',  '='};
+  static constexpr char sub_delims[] = {'!', '$', '&', '\'', '(', ')',
+                                        '*', '+', ',', ';',  '='};
   return std::find(std::begin(sub_delims), std::end(sub_delims), c) !=
          std::end(sub_delims);
 }
@@ -117,34 +117,37 @@ std::string percent_encode_path(const std::string &s) {
 }
 
 bool in_token(char c) {
-  static constexpr const char extra[] = {'!',  '#', '$', '%', '&',
-                                         '\'', '*', '+', '-', '.',
-                                         '^',  '_', '`', '|', '~'};
+  static constexpr char extra[] = {'!', '#', '$', '%', '&', '\'', '*', '+',
+                                   '-', '.', '^', '_', '`', '|',  '~'};
   return is_alpha(c) || is_digit(c) ||
          std::find(std::begin(extra), std::end(extra), c) != std::end(extra);
 }
 
 bool in_attr_char(char c) {
-  static constexpr const char bad[] = {'*', '\'', '%'};
+  static constexpr char bad[] = {'*', '\'', '%'};
   return util::in_token(c) &&
          std::find(std::begin(bad), std::end(bad), c) == std::end(bad);
 }
 
 std::string percent_encode_token(const std::string &target) {
-  auto len = target.size();
   std::string dest;
 
-  for (size_t i = 0; i < len; ++i) {
-    unsigned char c = target[i];
+  dest.resize(target.size() * 3);
+  auto p = std::begin(dest);
+
+  for (auto first = std::begin(target); first != std::end(target); ++first) {
+    uint8_t c = *first;
 
     if (c != '%' && in_token(c)) {
-      dest += c;
-    } else {
-      dest += '%';
-      dest += UPPER_XDIGITS[c >> 4];
-      dest += UPPER_XDIGITS[(c & 0x0f)];
+      *p++ = c;
+      continue;
     }
+
+    *p++ = '%';
+    *p++ = UPPER_XDIGITS[c >> 4];
+    *p++ = UPPER_XDIGITS[(c & 0x0f)];
   }
+  dest.resize(p - std::begin(dest));
   return dest;
 }
 

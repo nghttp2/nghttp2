@@ -143,6 +143,11 @@ Options:
               Default: 1
   -e, --error-gzip
               Make error response gzipped.
+  -w, --window-bits=<N>
+              Sets the stream level initial window size to 2**<N>-1.
+  -W, --connection-window-bits=<N>
+              Sets  the  connection  level   initial  window  size  to
+              2**<N>-1.
   --dh-param-file=<PATH>
               Path to file that contains  DH parameters in PEM format.
               Without  this   option,  DHE   cipher  suites   are  not
@@ -202,6 +207,8 @@ int main(int argc, char **argv) {
         {"max-concurrent-streams", required_argument, nullptr, 'm'},
         {"workers", required_argument, nullptr, 'n'},
         {"error-gzip", no_argument, nullptr, 'e'},
+        {"window-bits", required_argument, nullptr, 'w'},
+        {"connection-window-bits", required_argument, nullptr, 'W'},
         {"no-tls", no_argument, &flag, 1},
         {"color", no_argument, &flag, 2},
         {"version", no_argument, &flag, 3},
@@ -214,7 +221,7 @@ int main(int argc, char **argv) {
         {"no-content-length", no_argument, &flag, 10},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
-    int c = getopt_long(argc, argv, "DVb:c:d:ehm:n:p:va:", long_options,
+    int c = getopt_long(argc, argv, "DVb:c:d:ehm:n:p:va:w:W:", long_options,
                         &option_index);
     char *end;
     if (c == -1) {
@@ -281,6 +288,26 @@ int main(int argc, char **argv) {
         std::cerr << "-p: Bad option value: " << optarg << std::endl;
       }
       break;
+    case 'w':
+    case 'W': {
+      char *endptr;
+      errno = 0;
+      auto n = strtoul(optarg, &endptr, 10);
+      if (errno != 0 || *endptr != '\0' || n >= 31) {
+        std::cerr << "-" << static_cast<char>(c)
+                  << ": specify the integer in the range [0, 30], inclusive"
+                  << std::endl;
+        exit(EXIT_FAILURE);
+      }
+
+      if (c == 'w') {
+        config.window_bits = n;
+      } else {
+        config.connection_window_bits = n;
+      }
+
+      break;
+    }
     case '?':
       util::show_candidates(argv[optind - 1], long_options);
       exit(EXIT_FAILURE);

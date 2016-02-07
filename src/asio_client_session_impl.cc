@@ -38,12 +38,21 @@ namespace nghttp2 {
 namespace asio_http2 {
 namespace client {
 
-session_impl::session_impl(boost::asio::io_service &io_service)
-    : wblen_(0), io_service_(io_service), resolver_(io_service),
-      deadline_(io_service), connect_timeout_(boost::posix_time::seconds(60)),
-      read_timeout_(boost::posix_time::seconds(60)), session_(nullptr),
-      data_pending_(nullptr), data_pendinglen_(0), writing_(false),
-      inside_callback_(false), stopped_(false) {}
+session_impl::session_impl(
+    boost::asio::io_service &io_service,
+    const boost::posix_time::time_duration &connect_timeout)
+    : wblen_(0),
+      io_service_(io_service),
+      resolver_(io_service),
+      deadline_(io_service),
+      connect_timeout_(connect_timeout),
+      read_timeout_(boost::posix_time::seconds(60)),
+      session_(nullptr),
+      data_pending_(nullptr),
+      data_pendinglen_(0),
+      writing_(false),
+      inside_callback_(false),
+      stopped_(false) {}
 
 session_impl::~session_impl() {
   // finish up all active stream
@@ -698,9 +707,7 @@ void session_impl::stop() {
   stopped_ = true;
 }
 
-void session_impl::connect_timeout(const boost::posix_time::time_duration &t) {
-  connect_timeout_ = t;
-}
+bool session_impl::stopped() const { return stopped_; }
 
 void session_impl::read_timeout(const boost::posix_time::time_duration &t) {
   read_timeout_ = t;

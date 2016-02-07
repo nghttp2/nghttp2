@@ -35,6 +35,7 @@
 #include "shrpx_downstream_connection_pool.h"
 #include "shrpx_worker.h"
 #include "shrpx_http2_session.h"
+#include "shrpx_ssl.h"
 #include "http2.h"
 #include "util.h"
 
@@ -54,9 +55,10 @@ void timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
   auto downstream = dconn->get_downstream();
   auto upstream = downstream->get_upstream();
   auto handler = upstream->get_client_handler();
+  auto &resp = downstream->response();
 
   // Do this so that dconn is not pooled
-  downstream->set_response_connection_close(true);
+  resp.connection_close = true;
 
   if (upstream->downstream_error(dconn, Downstream::EVENT_TIMEOUT) != 0) {
     delete handler;
@@ -99,7 +101,7 @@ void connectcb(struct ev_loop *loop, ev_io *w, int revents) {
   auto downstream = dconn->get_downstream();
   auto upstream = downstream->get_upstream();
   auto handler = upstream->get_client_handler();
-  if (dconn->on_connect() != 0) {
+  if (dconn->connected() != 0) {
     if (upstream->on_downstream_abort_request(downstream, 503) != 0) {
       delete handler;
     }
@@ -110,21 +112,38 @@ void connectcb(struct ev_loop *loop, ev_io *w, int revents) {
 } // namespace
 
 HttpDownstreamConnection::HttpDownstreamConnection(
-    DownstreamConnectionPool *dconn_pool, size_t group, struct ev_loop *loop)
+    DownstreamConnectionPool *dconn_pool, size_t group, struct ev_loop *loop,
+    Worker *worker)
     : DownstreamConnection(dconn_pool),
-      conn_(loop, -1, nullptr, nullptr, get_config()->downstream_write_timeout,
-            get_config()->downstream_read_timeout, 0, 0, 0, 0, connectcb,
-            readcb, timeoutcb, this, get_config()->tls_dyn_rec_warmup_threshold,
-            get_config()->tls_dyn_rec_idle_timeout),
-      ioctrl_(&conn_.rlimit), response_htp_{0}, group_(group), addr_idx_(0),
-      connected_(false) {}
+      conn_(loop, -1, nullptr, worker->get_mcpool(),
+            get_config()->conn.downstream.timeout.write,
+            get_config()->conn.downstream.timeout.read, {}, {}, connectcb,
+            readcb, timeoutcb, this, get_config()->tls.dyn_rec.warmup_threshold,
+            get_config()->tls.dyn_rec.idle_timeout),
+      do_read_(&HttpDownstreamConnection::noop),
+      do_write_(&HttpDownstreamConnection::noop),
+      worker_(worker),
+      ssl_ctx_(worker->get_cl_ssl_ctx()),
+      addr_(nullptr),
+      ioctrl_(&conn_.rlimit),
+      response_htp_{0},
+      group_(group) {}
 
-HttpDownstreamConnection::~HttpDownstreamConnection() {}
+HttpDownstreamConnection::~HttpDownstreamConnection() {
+  if (conn_.tls.ssl) {
+    auto session = SSL_get1_session(conn_.tls.ssl);
+    if (session) {
+      worker_->cache_downstream_tls_session(addr_, session);
+    }
+  }
+}
 
 int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
   if (LOG_ENABLED(INFO)) {
     DCLOG(INFO, this) << "Attaching to DOWNSTREAM:" << downstream;
   }
+
+  auto &downstreamconf = get_config()->conn.downstream;
 
   if (conn_.fd == -1) {
     auto connect_blocker = client_handler_->get_connect_blocker();
@@ -137,13 +156,21 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
       return -1;
     }
 
-    auto worker = client_handler_->get_worker();
-    auto &next_downstream = worker->get_dgrp(group_)->next;
+    if (ssl_ctx_) {
+      auto ssl = ssl::create_ssl(ssl_ctx_);
+      if (!ssl) {
+        return -1;
+      }
+
+      conn_.set_ssl(ssl);
+    }
+
+    auto &next_downstream = worker_->get_dgrp(group_)->next;
     auto end = next_downstream;
-    auto &addrs = get_config()->downstream_addr_groups[group_].addrs;
+    auto &addrs = downstreamconf.addr_groups[group_].addrs;
     for (;;) {
       auto &addr = addrs[next_downstream];
-      auto i = next_downstream;
+
       if (++next_downstream >= addrs.size()) {
         next_downstream = 0;
       }
@@ -181,7 +208,24 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
         DCLOG(INFO, this) << "Connecting to downstream server";
       }
 
-      addr_idx_ = i;
+      addr_ = &addr;
+
+      if (ssl_ctx_) {
+        auto sni_name = !get_config()->tls.backend_sni_name.empty()
+                            ? StringRef(get_config()->tls.backend_sni_name)
+                            : StringRef(addr_->host);
+        if (!util::numeric_host(sni_name.c_str())) {
+          SSL_set_tlsext_host_name(conn_.tls.ssl, sni_name.c_str());
+        }
+
+        auto session = worker_->reuse_downstream_tls_session(addr_);
+        if (session) {
+          SSL_set_session(conn_.tls.ssl, session);
+          SSL_SESSION_free(session);
+        }
+
+        conn_.prepare_client_handshake();
+      }
 
       ev_io_set(&conn_.wev, conn_.fd, EV_WRITE);
       ev_io_set(&conn_.rev, conn_.fd, EV_READ);
@@ -195,7 +239,7 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
     ev_timer_again(conn_.loop, &conn_.wt);
   } else {
     // we may set read timer cb to idle_timeoutcb.  Reset again.
-    conn_.rt.repeat = get_config()->downstream_read_timeout;
+    conn_.rt.repeat = downstreamconf.timeout.read;
     ev_set_cb(&conn_.rt, timeoutcb);
     ev_timer_again(conn_.loop, &conn_.rt);
     ev_set_cb(&conn_.rev, readcb);
@@ -210,89 +254,82 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
 }
 
 int HttpDownstreamConnection::push_request_headers() {
-  auto downstream_hostport = get_config()
-                                 ->downstream_addr_groups[group_]
-                                 .addrs[addr_idx_]
-                                 .hostport.get();
-  auto method = downstream_->get_request_method();
-  auto connect_method = method == HTTP_CONNECT;
+  const auto &downstream_hostport = addr_->hostport;
+  const auto &req = downstream_->request();
+
+  auto connect_method = req.method == HTTP_CONNECT;
+
+  auto &httpconf = get_config()->http;
 
   // For HTTP/1.0 request, there is no authority in request.  In that
   // case, we use backend server's host nonetheless.
-  const char *authority = downstream_hostport;
-  auto &req_authority = downstream_->get_request_http2_authority();
-  auto no_host_rewrite = get_config()->no_host_rewrite ||
+  auto authority = StringRef(downstream_hostport);
+  auto no_host_rewrite = httpconf.no_host_rewrite ||
                          get_config()->http2_proxy ||
                          get_config()->client_proxy || connect_method;
 
-  if (no_host_rewrite && !req_authority.empty()) {
-    authority = req_authority.c_str();
+  if (no_host_rewrite && !req.authority.empty()) {
+    authority = StringRef(req.authority);
   }
-  auto authoritylen = strlen(authority);
 
-  downstream_->set_request_downstream_host(authority);
-
-  downstream_->assemble_request_cookie();
+  downstream_->set_request_downstream_host(authority.str());
 
   auto buf = downstream_->get_request_buf();
 
   // Assume that method and request path do not contain \r\n.
-  auto meth = http2::to_method_string(method);
+  auto meth = http2::to_method_string(req.method);
   buf->append(meth, strlen(meth));
   buf->append(" ");
 
-  auto &scheme = downstream_->get_request_http2_scheme();
-  auto &path = downstream_->get_request_path();
-
   if (connect_method) {
-    buf->append(authority, authoritylen);
+    buf->append(authority);
   } else if (get_config()->http2_proxy || get_config()->client_proxy) {
     // Construct absolute-form request target because we are going to
     // send a request to a HTTP/1 proxy.
-    assert(!scheme.empty());
-    buf->append(scheme);
+    assert(!req.scheme.empty());
+    buf->append(req.scheme);
     buf->append("://");
-    buf->append(authority, authoritylen);
-    buf->append(path);
-  } else if (method == HTTP_OPTIONS && path.empty()) {
+    buf->append(authority);
+    buf->append(req.path);
+  } else if (req.method == HTTP_OPTIONS && req.path.empty()) {
     // Server-wide OPTIONS
     buf->append("*");
   } else {
-    buf->append(path);
+    buf->append(req.path);
   }
   buf->append(" HTTP/1.1\r\nHost: ");
-  buf->append(authority, authoritylen);
+  buf->append(authority);
   buf->append("\r\n");
 
-  http2::build_http1_headers_from_headers(buf,
-                                          downstream_->get_request_headers());
+  http2::build_http1_headers_from_headers(buf, req.fs.headers());
 
-  if (!downstream_->get_assembled_request_cookie().empty()) {
+  auto cookie = downstream_->assemble_request_cookie();
+  if (!cookie.empty()) {
     buf->append("Cookie: ");
-    buf->append(downstream_->get_assembled_request_cookie());
+    buf->append(cookie);
     buf->append("\r\n");
   }
 
-  if (!connect_method && downstream_->get_request_http2_expect_body() &&
-      !downstream_->get_request_header(http2::HD_CONTENT_LENGTH)) {
+  if (!connect_method && req.http2_expect_body &&
+      !req.fs.header(http2::HD_CONTENT_LENGTH)) {
 
     downstream_->set_chunked_request(true);
     buf->append("Transfer-Encoding: chunked\r\n");
   }
 
-  if (downstream_->get_request_connection_close()) {
+  if (req.connection_close) {
     buf->append("Connection: close\r\n");
   }
 
-  if (!connect_method && downstream_->get_upgrade_request()) {
-    auto connection = downstream_->get_request_header(http2::HD_CONNECTION);
+  if (!connect_method && req.upgrade_request) {
+    auto connection = req.fs.header(http2::HD_CONNECTION);
     if (connection) {
       buf->append("Connection: ");
       buf->append((*connection).value);
       buf->append("\r\n");
     }
 
-    auto upgrade = downstream_->get_request_header(http2::HD_UPGRADE);
+    auto upgrade = req.fs.header(http2::HD_UPGRADE);
     if (upgrade) {
       buf->append("Upgrade: ");
       buf->append((*upgrade).value);
@@ -300,16 +337,57 @@ int HttpDownstreamConnection::push_request_headers() {
     }
   }
 
-  auto xff = downstream_->get_request_header(http2::HD_X_FORWARDED_FOR);
-  if (get_config()->add_x_forwarded_for) {
+  auto upstream = downstream_->get_upstream();
+  auto handler = upstream->get_client_handler();
+
+  auto &fwdconf = httpconf.forwarded;
+
+  auto fwd =
+      fwdconf.strip_incoming ? nullptr : req.fs.header(http2::HD_FORWARDED);
+
+  if (fwdconf.params) {
+    auto params = fwdconf.params;
+
+    if (get_config()->http2_proxy || get_config()->client_proxy ||
+        connect_method) {
+      params &= ~FORWARDED_PROTO;
+    }
+
+    auto value = http::create_forwarded(params, handler->get_forwarded_by(),
+                                        handler->get_forwarded_for(),
+                                        req.authority, req.scheme);
+    if (fwd || !value.empty()) {
+      buf->append("Forwarded: ");
+      if (fwd) {
+        buf->append(fwd->value);
+
+        if (!value.empty()) {
+          buf->append(", ");
+        }
+      }
+      buf->append(value);
+      buf->append("\r\n");
+    }
+  } else if (fwd) {
+    buf->append("Forwarded: ");
+    buf->append(fwd->value);
+    buf->append("\r\n");
+  }
+
+  auto &xffconf = httpconf.xff;
+
+  auto xff = xffconf.strip_incoming ? nullptr
+                                    : req.fs.header(http2::HD_X_FORWARDED_FOR);
+
+  if (xffconf.add) {
     buf->append("X-Forwarded-For: ");
-    if (xff && !get_config()->strip_incoming_x_forwarded_for) {
+    if (xff) {
       buf->append((*xff).value);
       buf->append(", ");
     }
     buf->append(client_handler_->get_ipaddr());
     buf->append("\r\n");
-  } else if (xff && !get_config()->strip_incoming_x_forwarded_for) {
+  } else if (xff) {
     buf->append("X-Forwarded-For: ");
     buf->append((*xff).value);
     buf->append("\r\n");
@@ -317,12 +395,12 @@ int HttpDownstreamConnection::push_request_headers() {
   if (!get_config()->http2_proxy && !get_config()->client_proxy &&
       !connect_method) {
     buf->append("X-Forwarded-Proto: ");
-    assert(!scheme.empty());
-    buf->append(scheme);
+    assert(!req.scheme.empty());
+    buf->append(req.scheme);
     buf->append("\r\n");
   }
-  auto via = downstream_->get_request_header(http2::HD_VIA);
-  if (get_config()->no_via) {
+  auto via = req.fs.header(http2::HD_VIA);
+  if (httpconf.no_via) {
     if (via) {
       buf->append("Via: ");
       buf->append((*via).value);
@@ -334,12 +412,11 @@ int HttpDownstreamConnection::push_request_headers() {
       buf->append((*via).value);
       buf->append(", ");
     }
-    buf->append(http::create_via_header_value(
-        downstream_->get_request_major(), downstream_->get_request_minor()));
+    buf->append(http::create_via_header_value(req.http_major, req.http_minor));
     buf->append("\r\n");
   }
 
-  for (auto &p : get_config()->add_request_headers) {
+  for (auto &p : httpconf.add_request_headers) {
     buf->append(p.first);
     buf->append(": ");
     buf->append(p.second);
@@ -372,7 +449,7 @@ int HttpDownstreamConnection::push_upload_data_chunk(const uint8_t *data,
 
   if (chunked) {
     auto chunk_size_hex = util::utox(datalen);
-    output->append(chunk_size_hex.c_str(), chunk_size_hex.size());
+    output->append(chunk_size_hex);
     output->append("\r\n");
   }
 
@@ -392,8 +469,10 @@ int HttpDownstreamConnection::end_upload_data() {
     return 0;
   }
 
+  const auto &req = downstream_->request();
+
   auto output = downstream_->get_request_buf();
-  auto &trailers = downstream_->get_request_trailers();
+  const auto &trailers = req.fs.trailers();
   if (trailers.empty()) {
     output->append("0\r\n\r\n");
   } else {
@@ -442,7 +521,7 @@ void HttpDownstreamConnection::detach_downstream(Downstream *downstream) {
   ev_set_cb(&conn_.rev, idle_readcb);
   ioctrl_.force_resume_read();
 
-  conn_.rt.repeat = get_config()->downstream_idle_read_timeout;
+  conn_.rt.repeat = get_config()->conn.downstream.timeout.idle_read;
   ev_set_cb(&conn_.rt, idle_timeoutcb);
   ev_timer_again(conn_.loop, &conn_.rt);
 
@@ -457,7 +536,7 @@ void HttpDownstreamConnection::pause_read(IOCtrlReason reason) {
 int HttpDownstreamConnection::resume_read(IOCtrlReason reason,
                                           size_t consumed) {
   if (downstream_->get_response_buf()->rleft() <=
-      get_config()->downstream_request_buffer_size / 2) {
+      get_config()->conn.downstream.request_buffer_size / 2) {
     ioctrl_.resume_read(reason);
   }
 
@@ -484,13 +563,15 @@ namespace {
 int htp_hdrs_completecb(http_parser *htp) {
   auto downstream = static_cast<Downstream *>(htp->data);
   auto upstream = downstream->get_upstream();
+  const auto &req = downstream->request();
+  auto &resp = downstream->response();
   int rv;
 
-  downstream->set_response_http_status(htp->status_code);
-  downstream->set_response_major(htp->http_major);
-  downstream->set_response_minor(htp->http_minor);
+  resp.http_status = htp->status_code;
+  resp.http_major = htp->http_major;
+  resp.http_minor = htp->http_minor;
 
-  if (downstream->index_response_headers() != 0) {
+  if (resp.fs.index_headers() != 0) {
     downstream->set_response_state(Downstream::MSG_BAD_HEADER);
     return -1;
   }
@@ -502,7 +583,7 @@ int htp_hdrs_completecb(http_parser *htp) {
   if (downstream->get_non_final_response()) {
     // Reset content-length because we reuse same Downstream for the
     // next response.
-    downstream->set_response_content_length(-1);
+    resp.fs.content_length = -1;
     // For non-final response code, we just call
     // on_downstream_header_complete() without changing response
     // state.
@@ -516,13 +597,13 @@ int htp_hdrs_completecb(http_parser *htp) {
     return 1;
   }
 
-  downstream->set_response_connection_close(!http_should_keep_alive(htp));
+  resp.connection_close = !http_should_keep_alive(htp);
   downstream->set_response_state(Downstream::HEADER_COMPLETE);
   downstream->inspect_http1_response();
   if (downstream->get_upgraded()) {
     // content-length must be ignored for upgraded connection.
-    downstream->set_response_content_length(-1);
-    downstream->set_response_connection_close(true);
+    resp.fs.content_length = -1;
+    resp.connection_close = true;
     // transfer-encoding not applied to upgraded connection
     downstream->set_chunked_response(false);
   }
@@ -542,7 +623,7 @@ int htp_hdrs_completecb(http_parser *htp) {
     }
   }
 
-  unsigned int status = downstream->get_response_http_status();
+  auto status = resp.http_status;
   // Ignore the response body. HEAD response may contain
   // Content-Length or Transfer-Encoding: chunked.  Some server send
   // 304 status code with nonzero Content-Length, but without response
@@ -551,29 +632,78 @@ int htp_hdrs_completecb(http_parser *htp) {
 
   // TODO It seems that the cases other than HEAD are handled by
   // http-parser.  Need test.
-  return downstream->get_request_method() == HTTP_HEAD ||
-                 (100 <= status && status <= 199) || status == 204 ||
-                 status == 304
+  return req.method == HTTP_HEAD || (100 <= status && status <= 199) ||
+                 status == 204 || status == 304
              ? 1
              : 0;
 }
 } // namespace
 
 namespace {
+int ensure_header_field_buffer(const Downstream *downstream,
+                               const HttpConfig &httpconf, size_t len) {
+  auto &resp = downstream->response();
+
+  if (resp.fs.buffer_size() + len > httpconf.response_header_field_buffer) {
+    if (LOG_ENABLED(INFO)) {
+      DLOG(INFO, downstream) << "Too large header header field size="
+                             << resp.fs.buffer_size() + len;
+    }
+    return -1;
+  }
+
+  return 0;
+}
+} // namespace
+
+namespace {
+int ensure_max_header_fields(const Downstream *downstream,
+                             const HttpConfig &httpconf) {
+  auto &resp = downstream->response();
+
+  if (resp.fs.num_fields() >= httpconf.max_response_header_fields) {
+    if (LOG_ENABLED(INFO)) {
+      DLOG(INFO, downstream)
+          << "Too many header field num=" << resp.fs.num_fields() + 1;
+    }
+    return -1;
+  }
+
+  return 0;
+}
+} // namespace
+
+namespace {
 int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
   auto downstream = static_cast<Downstream *>(htp->data);
+  auto &resp = downstream->response();
+  auto &httpconf = get_config()->http;
+
+  if (ensure_header_field_buffer(downstream, httpconf, len) != 0) {
+    return -1;
+  }
+
   if (downstream->get_response_state() == Downstream::INITIAL) {
-    if (downstream->get_response_header_key_prev()) {
-      downstream->append_last_response_header_key(data, len);
+    if (resp.fs.header_key_prev()) {
+      resp.fs.append_last_header_key(data, len);
     } else {
-      downstream->add_response_header(std::string(data, len), "");
+      if (ensure_max_header_fields(downstream, httpconf) != 0) {
+        return -1;
+      }
+      resp.fs.add_header(std::string(data, len), "");
     }
   } else {
     // trailer part
-    if (downstream->get_response_trailer_key_prev()) {
-      downstream->append_last_response_trailer_key(data, len);
+    if (resp.fs.trailer_key_prev()) {
+      resp.fs.append_last_trailer_key(data, len);
     } else {
-      downstream->add_response_trailer(std::string(data, len), "");
+      if (ensure_max_header_fields(downstream, httpconf) != 0) {
+        // Could not ignore this trailer field easily, since we may
+        // get its value in htp_hdr_valcb, and it will be added to
+        // wrong place or crash if trailer fields are currently empty.
+        return -1;
+      }
+      resp.fs.add_trailer(std::string(data, len), "");
     }
   }
   return 0;
@@ -583,18 +713,17 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
 namespace {
 int htp_hdr_valcb(http_parser *htp, const char *data, size_t len) {
   auto downstream = static_cast<Downstream *>(htp->data);
+  auto &resp = downstream->response();
+  auto &httpconf = get_config()->http;
+
+  if (ensure_header_field_buffer(downstream, httpconf, len) != 0) {
+    return -1;
+  }
+
   if (downstream->get_response_state() == Downstream::INITIAL) {
-    if (downstream->get_response_header_key_prev()) {
-      downstream->set_last_response_header_value(data, len);
-    } else {
-      downstream->append_last_response_header_value(data, len);
-    }
+    resp.fs.append_last_header_value(data, len);
   } else {
-    if (downstream->get_response_trailer_key_prev()) {
-      downstream->set_last_response_trailer_value(data, len);
-    } else {
-      downstream->append_last_response_trailer_value(data, len);
-    }
+    resp.fs.append_last_trailer_value(data, len);
   }
   return 0;
 }
@@ -603,8 +732,9 @@ int htp_hdr_valcb(http_parser *htp, const char *data, size_t len) {
 namespace {
 int htp_bodycb(http_parser *htp, const char *data, size_t len) {
   auto downstream = static_cast<Downstream *>(htp->data);
+  auto &resp = downstream->response();
 
-  downstream->add_response_bodylen(len);
+  resp.recv_body_length += len;
 
   return downstream->get_upstream()->on_downstream_body(
       downstream, reinterpret_cast<const uint8_t *>(data), len, true);
@@ -652,44 +782,13 @@ http_parser_settings htp_hooks = {
 };
 } // namespace
 
-int HttpDownstreamConnection::on_read() {
-  if (!connected_) {
-    return 0;
-  }
-
+int HttpDownstreamConnection::read_clear() {
   ev_timer_again(conn_.loop, &conn_.rt);
-  std::array<uint8_t, 8_k> buf;
+  std::array<uint8_t, 16_k> buf;
   int rv;
-
-  if (downstream_->get_upgraded()) {
-    // For upgraded connection, just pass data to the upstream.
-    for (;;) {
-      auto nread = conn_.read_clear(buf.data(), buf.size());
-
-      if (nread == 0) {
-        return 0;
-      }
-
-      if (nread < 0) {
-        return nread;
-      }
-
-      rv = downstream_->get_upstream()->on_downstream_body(
-          downstream_, buf.data(), nread, true);
-      if (rv != 0) {
-        return rv;
-      }
-
-      if (downstream_->response_buf_full()) {
-        downstream_->pause_read(SHRPX_NO_BUFFER);
-        return 0;
-      }
-    }
-  }
 
   for (;;) {
     auto nread = conn_.read_clear(buf.data(), buf.size());
-
     if (nread == 0) {
       return 0;
     }
@@ -698,59 +797,18 @@ int HttpDownstreamConnection::on_read() {
       return nread;
     }
 
-    auto nproc =
-        http_parser_execute(&response_htp_, &htp_hooks,
-                            reinterpret_cast<char *>(buf.data()), nread);
-
-    auto htperr = HTTP_PARSER_ERRNO(&response_htp_);
-
-    if (htperr != HPE_OK) {
-      // Handling early return (in other words, response was hijacked
-      // by mruby scripting).
-      if (downstream_->get_response_state() == Downstream::MSG_COMPLETE) {
-        return SHRPX_ERR_DCONN_CANCELED;
-      }
-
-      if (LOG_ENABLED(INFO)) {
-        DCLOG(INFO, this) << "HTTP parser failure: "
-                          << "(" << http_errno_name(htperr) << ") "
-                          << http_errno_description(htperr);
-      }
-
-      return -1;
+    rv = process_input(buf.data(), nread);
+    if (rv != 0) {
+      return rv;
     }
 
-    if (downstream_->response_buf_full()) {
-      downstream_->pause_read(SHRPX_NO_BUFFER);
+    if (!ev_is_active(&conn_.rev)) {
       return 0;
-    }
-
-    if (downstream_->get_upgraded()) {
-      if (nproc < static_cast<size_t>(nread)) {
-        // Data from buf.data() + nproc are for upgraded protocol.
-        rv = downstream_->get_upstream()->on_downstream_body(
-            downstream_, buf.data() + nproc, nread - nproc, true);
-        if (rv != 0) {
-          return rv;
-        }
-
-        if (downstream_->response_buf_full()) {
-          downstream_->pause_read(SHRPX_NO_BUFFER);
-          return 0;
-        }
-      }
-      // call on_read(), so that we can process data left in buffer as
-      // upgrade.
-      return on_read();
     }
   }
 }
 
-int HttpDownstreamConnection::on_write() {
-  if (!connected_) {
-    return 0;
-  }
-
+int HttpDownstreamConnection::write_clear() {
   ev_timer_again(conn_.loop, &conn_.rt);
 
   auto upstream = downstream_->get_upstream();
@@ -778,14 +836,181 @@ int HttpDownstreamConnection::on_write() {
   ev_timer_stop(conn_.loop, &conn_.wt);
 
   if (input->rleft() == 0) {
+    auto &req = downstream_->request();
+
     upstream->resume_read(SHRPX_NO_BUFFER, downstream_,
-                          downstream_->get_request_datalen());
+                          req.unconsumed_body_length);
   }
 
   return 0;
 }
 
-int HttpDownstreamConnection::on_connect() {
+int HttpDownstreamConnection::tls_handshake() {
+  ERR_clear_error();
+
+  ev_timer_again(conn_.loop, &conn_.rt);
+
+  auto rv = conn_.tls_handshake();
+  if (rv == SHRPX_ERR_INPROGRESS) {
+    return 0;
+  }
+
+  if (rv < 0) {
+    return rv;
+  }
+
+  if (LOG_ENABLED(INFO)) {
+    DCLOG(INFO, this) << "SSL/TLS handshake completed";
+  }
+
+  if (!get_config()->tls.insecure &&
+      ssl::check_cert(conn_.tls.ssl, addr_) != 0) {
+    return -1;
+  }
+
+  do_read_ = &HttpDownstreamConnection::read_tls;
+  do_write_ = &HttpDownstreamConnection::write_tls;
+
+  // TODO Check negotiated ALPN
+
+  return on_write();
+}
+
+int HttpDownstreamConnection::read_tls() {
+  ERR_clear_error();
+
+  ev_timer_again(conn_.loop, &conn_.rt);
+  std::array<uint8_t, 16_k> buf;
+  int rv;
+
+  for (;;) {
+    auto nread = conn_.read_tls(buf.data(), buf.size());
+    if (nread == 0) {
+      return 0;
+    }
+
+    if (nread < 0) {
+      return nread;
+    }
+
+    rv = process_input(buf.data(), nread);
+    if (rv != 0) {
+      return rv;
+    }
+
+    if (!ev_is_active(&conn_.rev)) {
+      return 0;
+    }
+  }
+}
+
+int HttpDownstreamConnection::write_tls() {
+  ERR_clear_error();
+
+  ev_timer_again(conn_.loop, &conn_.rt);
+
+  auto upstream = downstream_->get_upstream();
+  auto input = downstream_->get_request_buf();
+
+  struct iovec iov;
+
+  while (input->rleft() > 0) {
+    auto iovcnt = input->riovec(&iov, 1);
+    assert(iovcnt == 1);
+    auto nwrite = conn_.write_tls(iov.iov_base, iov.iov_len);
+
+    if (nwrite == 0) {
+      return 0;
+    }
+
+    if (nwrite < 0) {
+      return nwrite;
+    }
+
+    input->drain(nwrite);
+  }
+
+  conn_.wlimit.stopw();
+  ev_timer_stop(conn_.loop, &conn_.wt);
+
+  if (input->rleft() == 0) {
+    auto &req = downstream_->request();
+
+    upstream->resume_read(SHRPX_NO_BUFFER, downstream_,
+                          req.unconsumed_body_length);
+  }
+
+  return 0;
+}
+
+int HttpDownstreamConnection::process_input(const uint8_t *data,
+                                            size_t datalen) {
+  int rv;
+
+  if (downstream_->get_upgraded()) {
+    // For upgraded connection, just pass data to the upstream.
+    rv = downstream_->get_upstream()->on_downstream_body(downstream_, data,
+                                                         datalen, true);
+    if (rv != 0) {
+      return rv;
+    }
+
+    if (downstream_->response_buf_full()) {
+      downstream_->pause_read(SHRPX_NO_BUFFER);
+      return 0;
+    }
+
+    return 0;
+  }
+
+  auto nproc =
+      http_parser_execute(&response_htp_, &htp_hooks,
+                          reinterpret_cast<const char *>(data), datalen);
+
+  auto htperr = HTTP_PARSER_ERRNO(&response_htp_);
+
+  if (htperr != HPE_OK) {
+    // Handling early return (in other words, response was hijacked by
+    // mruby scripting).
+    if (downstream_->get_response_state() == Downstream::MSG_COMPLETE) {
+      return SHRPX_ERR_DCONN_CANCELED;
+    }
+
+    if (LOG_ENABLED(INFO)) {
+      DCLOG(INFO, this) << "HTTP parser failure: "
+                        << "(" << http_errno_name(htperr) << ") "
+                        << http_errno_description(htperr);
+    }
+
+    return -1;
+  }
+
+  if (downstream_->get_upgraded()) {
+    if (nproc < datalen) {
+      // Data from data + nproc are for upgraded protocol.
+      rv = downstream_->get_upstream()->on_downstream_body(
+          downstream_, data + nproc, datalen - nproc, true);
+      if (rv != 0) {
+        return rv;
+      }
+
+      if (downstream_->response_buf_full()) {
+        downstream_->pause_read(SHRPX_NO_BUFFER);
+        return 0;
+      }
+    }
+    return 0;
+  }
+
+  if (downstream_->response_buf_full()) {
+    downstream_->pause_read(SHRPX_NO_BUFFER);
+    return 0;
+  }
+
+  return 0;
+}
+
+int HttpDownstreamConnection::connected() {
   auto connect_blocker = client_handler_->get_connect_blocker();
 
   if (!util::check_socket_connected(conn_.fd)) {
@@ -800,17 +1025,32 @@ int HttpDownstreamConnection::on_connect() {
     return -1;
   }
 
-  connected_ = true;
+  if (LOG_ENABLED(INFO)) {
+    DLOG(INFO, this) << "Connected to downstream host";
+  }
 
   connect_blocker->on_success();
 
   conn_.rlimit.startw();
-  ev_timer_again(conn_.loop, &conn_.rt);
 
   ev_set_cb(&conn_.wev, writecb);
 
+  if (conn_.tls.ssl) {
+    do_read_ = &HttpDownstreamConnection::tls_handshake;
+    do_write_ = &HttpDownstreamConnection::tls_handshake;
+
+    return 0;
+  }
+
+  do_read_ = &HttpDownstreamConnection::read_clear;
+  do_write_ = &HttpDownstreamConnection::write_clear;
+
   return 0;
 }
+
+int HttpDownstreamConnection::on_read() { return do_read_(*this); }
+
+int HttpDownstreamConnection::on_write() { return do_write_(*this); }
 
 void HttpDownstreamConnection::on_upstream_change(Upstream *upstream) {}
 
@@ -819,5 +1059,7 @@ void HttpDownstreamConnection::signal_write() {
 }
 
 size_t HttpDownstreamConnection::get_group() const { return group_; }
+
+int HttpDownstreamConnection::noop() { return 0; }
 
 } // namespace shrpx

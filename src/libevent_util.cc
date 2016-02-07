@@ -32,13 +32,23 @@ namespace nghttp2 {
 namespace util {
 
 EvbufferBuffer::EvbufferBuffer()
-    : evbuffer_(nullptr), bucket_(nullptr), buf_(nullptr), bufmax_(0),
-      buflen_(0), limit_(0), writelen_(0) {}
+    : evbuffer_(nullptr),
+      bucket_(nullptr),
+      buf_(nullptr),
+      bufmax_(0),
+      buflen_(0),
+      limit_(0),
+      writelen_(0) {}
 
 EvbufferBuffer::EvbufferBuffer(evbuffer *evbuffer, uint8_t *buf, size_t bufmax,
                                ssize_t limit)
-    : evbuffer_(evbuffer), bucket_(limit == -1 ? nullptr : evbuffer_new()),
-      buf_(buf), bufmax_(bufmax), buflen_(0), limit_(limit), writelen_(0) {}
+    : evbuffer_(evbuffer),
+      bucket_(limit == -1 ? nullptr : evbuffer_new()),
+      buf_(buf),
+      bufmax_(bufmax),
+      buflen_(0),
+      limit_(limit),
+      writelen_(0) {}
 
 void EvbufferBuffer::reset(evbuffer *evbuffer, uint8_t *buf, size_t bufmax,
                            ssize_t limit) {

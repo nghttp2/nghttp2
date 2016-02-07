@@ -26,7 +26,7 @@ extern "C" {
 
 /* Also update SONAME in the Makefile whenever you change these. */
 #define HTTP_PARSER_VERSION_MAJOR 2
-#define HTTP_PARSER_VERSION_MINOR 5
+#define HTTP_PARSER_VERSION_MINOR 6
 #define HTTP_PARSER_VERSION_PATCH 0
 
 #include <sys/types.h>
@@ -124,6 +124,9 @@ typedef int (*http_cb) (http_parser*);
   XX(29, PURGE,       PURGE)        \
   /* CalDAV */                      \
   XX(30, MKCALENDAR,  MKCALENDAR)   \
+  /* RFC-2068, section 19.6.1.2 */  \
+  XX(31, LINK,        LINK)         \
+  XX(32, UNLINK,      UNLINK)       \
 
 enum http_method
   {
@@ -149,7 +152,7 @@ enum flags
 
 
 /* Map for errno-related constants
- * 
+ *
  * The provided argument should be a macro that takes 2 arguments.
  */
 #define HTTP_ERRNO_MAP(XX)                                           \
@@ -329,6 +332,9 @@ const char *http_errno_name(enum http_errno err);
 
 /* Return a string description of the given error */
 const char *http_errno_description(enum http_errno err);
+
+/* Initialize all http_parser_url members to 0 */
+void http_parser_url_init(struct http_parser_url *u);
 
 /* Parse a URL; return nonzero on failure */
 int http_parser_parse_url(const char *buf, size_t buflen,

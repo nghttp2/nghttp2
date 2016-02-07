@@ -56,7 +56,6 @@ public:
   virtual int on_timeout() { return 0; }
 
   virtual void on_upstream_change(Upstream *uptream) = 0;
-  virtual int on_priority_change(int32_t pri) = 0;
   virtual size_t get_group() const = 0;
 
   // true if this object is poolable.
