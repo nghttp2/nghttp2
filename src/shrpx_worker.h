@@ -176,11 +176,7 @@ private:
   // which sits at the front of deque is removed.
   std::unordered_map<const DownstreamAddr *, std::deque<SSL_SESSION *>>
       cl_tls_session_cache_;
-  // This is the order of address added to cl_tls_session_cache_ in
-  // order to evict oldest entry first.  The invariant is the sum of
-  // SSL_SESSION in cl_tls_session_cache_ ==
-  // cl_tls_session_order_.size().
-  std::deque<const DownstreamAddr *> cl_tls_session_order_;
+  size_t cl_tls_session_cache_size_;
 
   std::unique_ptr<MemcachedDispatcher> session_cache_memcached_dispatcher_;
 #ifdef HAVE_MRUBY

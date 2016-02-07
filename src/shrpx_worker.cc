@@ -73,6 +73,7 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
       dconn_pool_(get_config()->conn.downstream.addr_groups.size()),
       worker_stat_(get_config()->conn.downstream.addr_groups.size()),
       dgrps_(get_config()->conn.downstream.addr_groups.size()),
+      cl_tls_session_cache_size_(0),
       loop_(loop),
       sv_ssl_ctx_(sv_ssl_ctx),
       cl_ssl_ctx_(cl_ssl_ctx),
@@ -315,10 +316,11 @@ void Worker::cache_cl_tls_session(const DownstreamAddr *addr,
     return;
   }
 
-  if (cl_tls_session_order_.size() >= max) {
-    auto addrkey = cl_tls_session_order_.front();
-    cl_tls_session_order_.pop_front();
-    auto it = cl_tls_session_cache_.find(addrkey);
+  if (cl_tls_session_cache_size_ >= max) {
+    // It is implementation dependent which item is returned from
+    // std::begin().  Probably, this depends on hash algorithm.  If it
+    // is random fashion, then we are mostly OK.
+    auto it = std::begin(cl_tls_session_cache_);
     assert(it != std::end(cl_tls_session_cache_));
     auto &v = (*it).second;
     assert(!v.empty());
@@ -330,13 +332,13 @@ void Worker::cache_cl_tls_session(const DownstreamAddr *addr,
     }
   }
 
-  cl_tls_session_order_.push_back(addr);
   auto it = cl_tls_session_cache_.find(addr);
   if (it == std::end(cl_tls_session_cache_)) {
     std::tie(it, std::ignore) =
         cl_tls_session_cache_.emplace(addr, std::deque<SSL_SESSION *>());
   }
   (*it).second.push_back(session);
+  ++cl_tls_session_cache_size_;
 }
 
 SSL_SESSION *Worker::reuse_cl_tls_session(const DownstreamAddr *addr) {
@@ -345,16 +347,15 @@ SSL_SESSION *Worker::reuse_cl_tls_session(const DownstreamAddr *addr) {
     return nullptr;
   }
 
-  assert((*it).first == cl_tls_session_order_.back());
-
   auto &v = (*it).second;
   assert(!v.empty());
   auto session = v.back();
   v.pop_back();
+  --cl_tls_session_cache_size_;
+
   if (v.empty()) {
     cl_tls_session_cache_.erase(it);
   }
-  cl_tls_session_order_.pop_back();
 
   return session;
 }
