@@ -1750,7 +1750,7 @@ int Http2Session::tls_handshake() {
     SSLOG(INFO, this) << "SSL/TLS handshake completed";
   }
 
-  if (!get_config()->conn.downstream.no_tls && !get_config()->tls.insecure &&
+  if (!get_config()->tls.insecure &&
       ssl::check_cert(conn_.tls.ssl, addr_) != 0) {
     return -1;
   }
