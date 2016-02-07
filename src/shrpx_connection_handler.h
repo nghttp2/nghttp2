@@ -58,7 +58,7 @@ class Worker;
 struct WorkerStat;
 struct TicketKeys;
 class MemcachedDispatcher;
-struct FrontendAddr;
+struct UpstreamAddr;
 
 struct OCSPUpdateContext {
   // ocsp response buffer
@@ -81,7 +81,7 @@ public:
   ConnectionHandler(struct ev_loop *loop);
   ~ConnectionHandler();
   int handle_connection(int fd, sockaddr *addr, int addrlen,
-                        const FrontendAddr *faddr);
+                        const UpstreamAddr *faddr);
   // Creates Worker object for single threaded configuration.
   int create_single_worker();
   // Creates |num| Worker objects for multi threaded configuration.

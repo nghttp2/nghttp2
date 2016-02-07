@@ -252,7 +252,7 @@ struct AltSvc {
   uint16_t port;
 };
 
-struct FrontendAddr {
+struct UpstreamAddr {
   // The frontend address (e.g., FQDN, hostname, IP address).  If
   // |host_unix| is true, this is UNIX domain socket path.
   ImmutableString host;
@@ -500,7 +500,7 @@ struct ConnectionConfig {
       ev_tstamp sleep;
     } timeout;
     // address of frontend acceptors
-    std::vector<FrontendAddr> addrs;
+    std::vector<UpstreamAddr> addrs;
     int backlog;
     // TCP fastopen.  If this is positive, it is passed to
     // setsockopt() along with TCP_FASTOPEN.

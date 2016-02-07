@@ -53,7 +53,7 @@ namespace shrpx {
 class Http2Session;
 class ConnectBlocker;
 class MemcachedDispatcher;
-struct FrontendAddr;
+struct UpstreamAddr;
 
 #ifdef HAVE_MRUBY
 namespace mruby {
@@ -96,7 +96,7 @@ struct WorkerEvent {
     sockaddr_union client_addr;
     size_t client_addrlen;
     int client_fd;
-    const FrontendAddr *faddr;
+    const UpstreamAddr *faddr;
   };
   std::shared_ptr<TicketKeys> ticket_keys;
 };

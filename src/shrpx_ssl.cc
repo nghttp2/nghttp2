@@ -779,7 +779,7 @@ SSL *create_ssl(SSL_CTX *ssl_ctx) {
 }
 
 ClientHandler *accept_connection(Worker *worker, int fd, sockaddr *addr,
-                                 int addrlen, const FrontendAddr *faddr) {
+                                 int addrlen, const UpstreamAddr *faddr) {
   char host[NI_MAXHOST];
   char service[NI_MAXSERV];
   int rv;

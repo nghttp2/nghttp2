@@ -298,7 +298,7 @@ void ConnectionHandler::graceful_shutdown_worker() {
 }
 
 int ConnectionHandler::handle_connection(int fd, sockaddr *addr, int addrlen,
-                                         const FrontendAddr *faddr) {
+                                         const UpstreamAddr *faddr) {
   if (LOG_ENABLED(INFO)) {
     LLOG(INFO, this) << "Accepted connection. fd=" << fd;
   }

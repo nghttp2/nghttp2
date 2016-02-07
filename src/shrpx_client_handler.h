@@ -53,7 +53,7 @@ struct WorkerStat;
 class ClientHandler {
 public:
   ClientHandler(Worker *worker, int fd, SSL *ssl, const char *ipaddr,
-                const char *port, int family, const FrontendAddr *faddr);
+                const char *port, int family, const UpstreamAddr *faddr);
   ~ClientHandler();
 
   int noop();
@@ -158,7 +158,7 @@ private:
   std::function<int(ClientHandler &)> read_, write_;
   std::function<int(ClientHandler &)> on_read_, on_write_;
   // Address of frontend listening socket
-  const FrontendAddr *faddr_;
+  const UpstreamAddr *faddr_;
   Worker *worker_;
   // The number of bytes of HTTP/2 client connection header to read
   size_t left_connhd_len_;

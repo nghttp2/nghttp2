@@ -1460,7 +1460,7 @@ int parse_config(const char *opt, const char *optarg,
   case SHRPX_OPTID_FRONTEND: {
     auto &listenerconf = mod_config()->conn.listener;
 
-    FrontendAddr addr{};
+    UpstreamAddr addr{};
     addr.fd = -1;
 
     if (util::istarts_with(optarg, SHRPX_UNIX_PATH_PREFIX)) {

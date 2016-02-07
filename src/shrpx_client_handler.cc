@@ -378,7 +378,7 @@ int ClientHandler::upstream_http1_connhd_read() {
 
 ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
                              const char *ipaddr, const char *port, int family,
-                             const FrontendAddr *faddr)
+                             const UpstreamAddr *faddr)
     : conn_(worker->get_loop(), fd, ssl, worker->get_mcpool(),
             get_config()->conn.upstream.timeout.write,
             get_config()->conn.upstream.timeout.read,

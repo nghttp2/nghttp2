@@ -45,7 +45,7 @@ void acceptcb(struct ev_loop *loop, ev_io *w, int revent) {
 }
 } // namespace
 
-AcceptHandler::AcceptHandler(const FrontendAddr *faddr, ConnectionHandler *h)
+AcceptHandler::AcceptHandler(const UpstreamAddr *faddr, ConnectionHandler *h)
     : conn_hnr_(h), faddr_(faddr) {
   ev_io_init(&wev_, acceptcb, faddr_->fd, EV_READ);
   wev_.data = this;

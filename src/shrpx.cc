@@ -430,7 +430,7 @@ struct InheritedAddr {
 };
 
 namespace {
-int create_unix_domain_server_socket(FrontendAddr &faddr,
+int create_unix_domain_server_socket(UpstreamAddr &faddr,
                                      std::vector<InheritedAddr> &iaddrs) {
   auto found = std::find_if(
       std::begin(iaddrs), std::end(iaddrs), [&faddr](const InheritedAddr &ia) {
@@ -512,7 +512,7 @@ int create_unix_domain_server_socket(FrontendAddr &faddr,
 } // namespace
 
 namespace {
-int create_tcp_server_socket(FrontendAddr &faddr,
+int create_tcp_server_socket(UpstreamAddr &faddr,
                              std::vector<InheritedAddr> &iaddrs) {
   int fd = -1;
   int rv;
@@ -2007,7 +2007,7 @@ void process_options(
   auto &downstreamconf = mod_config()->conn.downstream;
 
   if (listenerconf.addrs.empty()) {
-    FrontendAddr addr{};
+    UpstreamAddr addr{};
     addr.host = "*";
     addr.port = 3000;
     addr.family = AF_INET;
