@@ -170,8 +170,8 @@ int resolve_hostname(Address *addr, const char *hostname, uint16_t port,
   auto res_d = defer(freeaddrinfo, res);
 
   char host[NI_MAXHOST];
-  rv = getnameinfo(res->ai_addr, res->ai_addrlen, host, sizeof(host), 0, 0,
-                   NI_NUMERICHOST);
+  rv = getnameinfo(res->ai_addr, res->ai_addrlen, host, sizeof(host), nullptr,
+                   0, NI_NUMERICHOST);
   if (rv != 0) {
     LOG(FATAL) << "Address resolution for " << hostname
                << " failed: " << gai_strerror(rv);
