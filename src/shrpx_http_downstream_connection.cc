@@ -784,7 +784,7 @@ http_parser_settings htp_hooks = {
 
 int HttpDownstreamConnection::read_clear() {
   ev_timer_again(conn_.loop, &conn_.rt);
-  std::array<uint8_t, 8_k> buf;
+  std::array<uint8_t, 16_k> buf;
   int rv;
 
   for (;;) {
@@ -880,7 +880,7 @@ int HttpDownstreamConnection::read_tls() {
   ERR_clear_error();
 
   ev_timer_again(conn_.loop, &conn_.rt);
-  std::array<uint8_t, 8_k> buf;
+  std::array<uint8_t, 16_k> buf;
   int rv;
 
   for (;;) {
