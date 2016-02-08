@@ -43,6 +43,8 @@ EXTRA_DIST = nghttpx.conf.sample proxy.pac.sample android-config android-make \
 clang-format:
 	CLANGFORMAT=`git config --get clangformat.binary`; \
 	test -z $${CLANGFORMAT} && CLANGFORMAT="clang-format"; \
-	$${CLANGFORMAT} -i lib/*.{c,h} lib/includes/nghttp2/*.h \
+	$${CLANGFORMAT} -i \
+	`ls lib/*.{c,h} | grep -v nghttp2_hd_huffman_data.c` \
+	lib/includes/nghttp2/*.h \
 	src/*.{c,cc,h} src/includes/nghttp2/*.h examples/*.{c,cc} \
 	tests/*.{c,h}

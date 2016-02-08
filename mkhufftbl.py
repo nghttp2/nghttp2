@@ -324,12 +324,12 @@ def _set_node_id(ctx, node, prefix):
 def huffman_tree_set_node_id(ctx):
     _set_node_id(ctx, ctx.root, [])
 
-def _traverse(node, sym, start_node, root, left):
+def _traverse(node, syms, start_node, root, left):
     if left == 0:
-        if sym == 256:
-            sym = None
+        if syms and syms[0] == 256:
+            syms = []
             node = None
-        start_node.trans.append((node, sym))
+        start_node.trans.append((node, syms))
         return
 
     if node.term is not None:
@@ -337,12 +337,12 @@ def _traverse(node, sym, start_node, root, left):
 
     def go(node):
         if node.term is not None:
-            assert sym is None
-            nsym = node.term
+            assert len(syms) <= 1
+            nsyms = syms + [node.term]
         else:
-            nsym = sym
+            nsyms = syms
 
-        _traverse(node, nsym, start_node, root, left - 1)
+        _traverse(node, nsyms, start_node, root, left - 1)
 
     go(node.left)
     go(node.right)
@@ -350,7 +350,7 @@ def _traverse(node, sym, start_node, root, left):
 def _build_transition_table(ctx, node):
     if node is None:
         return
-    _traverse(node, None, node, ctx.root, 4)
+    _traverse(node, [], node, ctx.root, 8)
     _build_transition_table(ctx, node.left)
     _build_transition_table(ctx, node.right)
 
@@ -358,21 +358,26 @@ def huffman_tree_build_transition_table(ctx):
     _build_transition_table(ctx, ctx.root)
 
 NGHTTP2_HUFF_ACCEPTED = 1
-NGHTTP2_HUFF_SYM = 1 << 1
-NGHTTP2_HUFF_FAIL = 1 << 2
+NGHTTP2_HUFF_SYM1 = 1 << 1
+NGHTTP2_HUFF_SYM2 = 1 << 2
+NGHTTP2_HUFF_FAIL = 1 << 3
 
 def _print_transition_table(node):
     if node.term is not None:
         return
-    print '/* {} */'.format(node.id)
-    print '{'
-    for nd, sym in node.trans:
+    print '    /* {} */'.format(node.id)
+    print '    {'
+    for nd, syms in node.trans:
         flags = 0
-        if sym is None:
-            out = 0
+        if len(syms) == 0:
+            out = [0, 0]
         else:
-            out = sym
-            flags |= NGHTTP2_HUFF_SYM
+            out = syms
+            flags |= NGHTTP2_HUFF_SYM1
+            if len(out) == 2:
+                flags |= NGHTTP2_HUFF_SYM2
+            else:
+                out = out + [0]
         if nd is None:
             id = 0
             flags |= NGHTTP2_HUFF_FAIL
@@ -384,8 +389,8 @@ def _print_transition_table(node):
                 flags |= NGHTTP2_HUFF_ACCEPTED
             elif nd.accept:
                 flags |= NGHTTP2_HUFF_ACCEPTED
-        print '  {{{}, 0x{:02x}, {}}},'.format(id, flags, out)
-    print '},'
+        print '''     {{{}, 0x{:02x}, {{{}, {}}}}},'''.format(id, flags, out[0], out[1])
+    print '    },'
     _print_transition_table(node.left)
     _print_transition_table(node.right)
 
@@ -432,20 +437,21 @@ const nghttp2_huff_sym huff_sym_table[] = {'''
     print '''\
 enum {{
   NGHTTP2_HUFF_ACCEPTED = {},
-  NGHTTP2_HUFF_SYM = {},
+  NGHTTP2_HUFF_SYM1 = {},
+  NGHTTP2_HUFF_SYM2 = {},
   NGHTTP2_HUFF_FAIL = {},
 }} nghttp2_huff_decode_flag;
-'''.format(NGHTTP2_HUFF_ACCEPTED, NGHTTP2_HUFF_SYM, NGHTTP2_HUFF_FAIL)
+'''.format(NGHTTP2_HUFF_ACCEPTED, NGHTTP2_HUFF_SYM1, NGHTTP2_HUFF_SYM2, NGHTTP2_HUFF_FAIL)
 
     print '''\
 typedef struct {
   uint8_t state;
   uint8_t flags;
-  uint8_t sym;
+  uint8_t sym[2];
 } nghttp2_huff_decode;
 '''
 
     print '''\
-const nghttp2_huff_decode huff_decode_table[][16] = {'''
+const nghttp2_huff_decode huff_decode_table[][256] = {'''
     huffman_tree_print_transition_table(ctx)
     print '};'

@@ -35,10 +35,12 @@ typedef enum {
   /* FSA accepts this state as the end of huffman encoding
      sequence. */
   NGHTTP2_HUFF_ACCEPTED = 1,
-  /* This state emits symbol */
-  NGHTTP2_HUFF_SYM = (1 << 1),
+  /* This state emits 1st symbol */
+  NGHTTP2_HUFF_SYM1 = (1 << 1),
+  /* This state emits 2nd symbol */
+  NGHTTP2_HUFF_SYM2 = (1 << 2),
   /* If state machine reaches this state, decoding fails. */
-  NGHTTP2_HUFF_FAIL = (1 << 2)
+  NGHTTP2_HUFF_FAIL = (1 << 3)
 } nghttp2_huff_decode_flag;
 
 typedef struct {
@@ -49,11 +51,15 @@ typedef struct {
   uint8_t state;
   /* bitwise OR of zero or more of the nghttp2_huff_decode_flag */
   uint8_t flags;
-  /* symbol if NGHTTP2_HUFF_SYM flag set */
-  uint8_t sym;
+  /* symbols if NGHTTP2_HUFF_SYM1 and optionally NGHTTP2_HUFF_SYM2
+     flag set.  If NGHTTP2_HUFF_SYM1 is set, sym[0] has the 1st
+     symbol.  Additionally, NGHTTP2_HUFF_SYM2 is set, sym[1] has the
+     2nd symbol.  Since maximum huffman code is 5 bits, we may get at
+     most 2 symbols in one transition. */
+  uint8_t sym[2];
 } nghttp2_huff_decode;
 
-typedef nghttp2_huff_decode huff_decode_table_type[16];
+typedef nghttp2_huff_decode huff_decode_table_type[256];
 
 typedef struct {
   /* Current huffman decoding state. We stripped leaf nodes, so the
@@ -72,6 +78,6 @@ typedef struct {
 } nghttp2_huff_sym;
 
 extern const nghttp2_huff_sym huff_sym_table[];
-extern const nghttp2_huff_decode huff_decode_table[][16];
+extern const nghttp2_huff_decode huff_decode_table[][256];
 
 #endif /* NGHTTP2_HD_HUFFMAN_H */

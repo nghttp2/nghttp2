@@ -197,22 +197,16 @@ ssize_t nghttp2_hd_huff_decode(nghttp2_hd_huff_decode_context *ctx,
   for (i = 0; i < srclen; ++i) {
     const nghttp2_huff_decode *t;
 
-    t = &huff_decode_table[ctx->state][src[i] >> 4];
+    t = &huff_decode_table[ctx->state][src[i]];
     if (t->flags & NGHTTP2_HUFF_FAIL) {
       return NGHTTP2_ERR_HEADER_COMP;
     }
-    if (t->flags & NGHTTP2_HUFF_SYM) {
+    if (t->flags & NGHTTP2_HUFF_SYM1) {
       /* this is macro, and may return from this function on error */
-      hd_huff_decode_sym_emit(bufs, t->sym, avail);
-    }
-
-    t = &huff_decode_table[t->state][src[i] & 0xf];
-    if (t->flags & NGHTTP2_HUFF_FAIL) {
-      return NGHTTP2_ERR_HEADER_COMP;
-    }
-    if (t->flags & NGHTTP2_HUFF_SYM) {
-      /* this is macro, and may return from this function on error */
-      hd_huff_decode_sym_emit(bufs, t->sym, avail);
+      hd_huff_decode_sym_emit(bufs, t->sym[0], avail);
+      if (t->flags & NGHTTP2_HUFF_SYM2) {
+        hd_huff_decode_sym_emit(bufs, t->sym[1], avail);
+      }
     }
 
     ctx->state = t->state;
