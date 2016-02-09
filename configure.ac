@@ -76,7 +76,7 @@ AC_ARG_ENABLE([threads],
 
 AC_ARG_ENABLE([app],
     [AS_HELP_STRING([--enable-app],
-                    [Build applications (nghttp, nghttpd and nghttpx) [default=check]])],
+                    [Build applications (nghttp, nghttpd, nghttpx and h2load) [default=check]])],
     [request_app=$enableval], [request_app=check])
 
 AC_ARG_ENABLE([hpack-tools],

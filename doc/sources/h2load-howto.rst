@@ -6,6 +6,15 @@ spdylay (http://tatsuhiro-t.github.io/spdylay/) library, it also
 supports SPDY protocol.  It supports SSL/TLS and clear text for all
 supported protocols.
 
+Compiling from source
+---------------------
+
+``h2load`` is compiled alongside ``nghttp2`` and requires that the
+``--enable-apps`` flag is passed to ``./configure`` and `required dependencies
+<https://github.com/tatsuhiro-t/nghttp2#requirements>`_ are available during
+compilation. For details on compiling, see `nghttp2: Building from Git
+<https://github.com/tatsuhiro-t/nghttp2#building-from-git>`_.
+
 Basic Usage
 -----------
 
