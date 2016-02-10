@@ -58,9 +58,9 @@ To build the documentation, you need to install:
 
 * sphinx (http://sphinx-doc.org/)
 
-To build and run the application programs (``nghttp``, ``nghttpd`` and
-``nghttpx``) in the ``src`` directory, the following packages are
-required:
+To build and run the application programs (``nghttp``, ``nghttpd``,
+``nghttpx`` and ``h2load``) in the ``src`` directory, the following packages
+are required:
 
 * OpenSSL >= 1.0.1
 * libev >= 4.15
@@ -159,6 +159,12 @@ To compile the source code, gcc >= 4.8.3 or clang >= 3.4 is required.
    disable multi-threading in nghttpd, nghttpx and h2load to prevent
    them from crashing. A patch is welcome to make multi threading work
    on Mac OS X platform.
+
+.. note::
+
+   To compile the associated applications (nghttp, nghttpd, nghttpx and
+   h2load), you must use the ``--enable-app`` configure option and ensure
+   that the specified requirements above are met.
 
 Notes for building on Windows (Mingw/Cygwin)
 --------------------------------------------
