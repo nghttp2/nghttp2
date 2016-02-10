@@ -75,6 +75,9 @@ public:
   void method(std::string s);
   const std::string &method() const;
 
+  size_t header_buffer_size() const;
+  void update_header_buffer_size(size_t len);
+
 private:
   header_map header_;
   response_cb response_cb_;
@@ -84,6 +87,7 @@ private:
   class stream *strm_;
   uri_ref uri_;
   std::string method_;
+  size_t header_buffer_size_;
 };
 
 } // namespace client
