@@ -110,8 +110,9 @@ If you are using Ubuntu 14.04 LTS (trusty) or Debian 7.0 (wheezy) and above run 
       zlib1g-dev libcunit1-dev libssl-dev libxml2-dev libev-dev libevent-dev libjansson-dev \
       libjemalloc-dev cython python3-dev python-setuptools
 
-spdylay is not packaged in Ubuntu, so you need to build it yourself:
-http://tatsuhiro-t.github.io/spdylay/
+From Ubuntu 15.10, spdylay has been available as a package named
+`libspdylay-dev`.  For the earlier Ubuntu release, you need to build
+it yourself: http://tatsuhiro-t.github.io/spdylay/
 
 To enable mruby support for nghttpx, `mruby
 <https://github.com/mruby/mruby>`_ is required.  We need to build
