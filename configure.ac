@@ -185,8 +185,8 @@ if test "x$GCC" = "xyes" -o "x$CC" = "xclang" ; then
   AC_DEFINE([_U_], [__attribute__((unused))], [Hint to the compiler that a function parameters is not used])
   AC_DEFINE([NGHTTP2_NORETURN], [__attribute__((noreturn))], [Hint to the compiler that a function never return])
 else
-  AC_DEFINE([_U_], , [Hint to the compiler that a function parameters is not use  AC_DEFINE([NGHTTP2_NORETURN], , [Hint to the compiler that a function never return])
-d])
+  AC_DEFINE([_U_], , [Hint to the compiler that a function parameter is not used])
+  AC_DEFINE([NGHTTP2_NORETURN], , [Hint to the compiler that a function never return])
 fi
 
 save_CXXFLAGS="$CXXFLAGS"
