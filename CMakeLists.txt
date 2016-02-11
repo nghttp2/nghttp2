@@ -101,8 +101,8 @@ endif()
 include(CheckCXXCompilerFlag)
 foreach(_std gnu++11 gnu++0x)
   set(_cxx1x_flag -std=${_std})
-  CHECK_CXX_COMPILER_FLAG(${_cxx1x_flag} CXX_STD_${_std})
-  if(CXX_STD_${_std})
+  check_cxx_compiler_flag(${_cxx1x_flag} CXX_FLAG_-std_${_std})
+  if(CXX_FLAG_-std_${_std})
     set(CXX1XCXXFLAGS ${_cxx1x_flag})
     break()
   endif()
@@ -113,12 +113,12 @@ include(CheckCXXSourceCompiles)
 cmake_push_check_state()
 set(CMAKE_REQUIRED_DEFINITIONS "${CMAKE_REQUIRED_DEFINITIONS} ${CXX1XCXXFLAGS}")
 # Check that std::future is available.
-CHECK_CXX_SOURCE_COMPILES("
+check_cxx_source_compiles("
 #include <vector>
 #include <future>
 int main() { std::vector<std::future<int>> v; }" HAVE_STD_FUTURE)
 # Check that std::map::emplace is available for g++-4.7.
-CHECK_CXX_SOURCE_COMPILES("
+check_cxx_source_compiles("
 #include <map>
 int main() { std::map<int, int>().emplace(1, 2); }" HAVE_STD_MAP_EMPLACE)
 cmake_pop_check_state()
@@ -312,7 +312,7 @@ check_include_file("unistd.h"       HAVE_UNISTD_H)
 # add_definitions(-D_FILE_OFFSET_BITS=64)
 
 include(CheckStructHasMember)
-CHECK_STRUCT_HAS_MEMBER("struct tm" tm_gmtoff time.h HAVE_STRUCT_TM_TM_GMTOFF)
+check_struct_has_member("struct tm" tm_gmtoff time.h HAVE_STRUCT_TM_TM_GMTOFF)
 
 # Check size of pointer to decide we need 8 bytes alignment adjustment.
 include(CheckTypeSize)
@@ -321,101 +321,88 @@ check_type_size("time_t"  SIZEOF_TIME_T)
 
 # Checks for library functions.
 include(CheckFunctionExists)
-CHECK_FUNCTION_EXISTS(_Exit     HAVE__EXIT)
-CHECK_FUNCTION_EXISTS(accept4   HAVE_ACCEPT4)
+check_function_exists(_Exit     HAVE__EXIT)
+check_function_exists(accept4   HAVE_ACCEPT4)
 
 # timerfd_create was added in linux kernel 2.6.25
 include(CheckSymbolExists)
 # XXX does this correctly detect initgroups (un)availability on cygwin?
-CHECK_SYMBOL_EXISTS(initgroups grp.h HAVE_DECL_INITGROUPS)
+check_symbol_exists(initgroups grp.h HAVE_DECL_INITGROUPS)
 
-CHECK_FUNCTION_EXISTS(timerfd_create HAVE_TIMERFD_CREATE)
+check_function_exists(timerfd_create HAVE_TIMERFD_CREATE)
 # Checks for epoll availability, primarily for examples/tiny-nghttpd
-CHECK_SYMBOL_EXISTS(epoll_create sys/epoll.h HAVE_EPOLL)
+check_symbol_exists(epoll_create sys/epoll.h HAVE_EPOLL)
 if(HAVE_EPOLL AND HAVE_TIMERFD_CREATE)
   set(ENABLE_TINY_NGHTTPD 1)
 endif()
 
-# save_CFLAGS=$CFLAGS
-# save_CXXFLAGS=$CXXFLAGS
-#
-# CFLAGS=
-# CXXFLAGS=
-#
-# if test "x$werror" != "xno"; then
-#     # For C compiler
-#     AX_CHECK_COMPILE_FLAG([-Wall], [CFLAGS="$CFLAGS -Wall"])
-#     AX_CHECK_COMPILE_FLAG([-Wextra], [CFLAGS="$CFLAGS -Wextra"])
-#     AX_CHECK_COMPILE_FLAG([-Werror], [CFLAGS="$CFLAGS -Werror"])
-#     AX_CHECK_COMPILE_FLAG([-Wmissing-prototypes], [CFLAGS="$CFLAGS -Wmissing-prototypes"])
-#     AX_CHECK_COMPILE_FLAG([-Wstrict-prototypes], [CFLAGS="$CFLAGS -Wstrict-prototypes"])
-#     AX_CHECK_COMPILE_FLAG([-Wmissing-declarations], [CFLAGS="$CFLAGS -Wmissing-declarations"])
-#     AX_CHECK_COMPILE_FLAG([-Wpointer-arith], [CFLAGS="$CFLAGS -Wpointer-arith"])
-#     AX_CHECK_COMPILE_FLAG([-Wdeclaration-after-statement], [CFLAGS="$CFLAGS -Wdeclaration-after-statement"])
-#     AX_CHECK_COMPILE_FLAG([-Wformat-security], [CFLAGS="$CFLAGS -Wformat-security"])
-#     AX_CHECK_COMPILE_FLAG([-Wwrite-strings], [CFLAGS="$CFLAGS -Wwrite-strings"])
-#     AX_CHECK_COMPILE_FLAG([-Wshadow], [CFLAGS="$CFLAGS -Wshadow"])
-#     AX_CHECK_COMPILE_FLAG([-Winline], [CFLAGS="$CFLAGS -Winline"])
-#     AX_CHECK_COMPILE_FLAG([-Wnested-externs], [CFLAGS="$CFLAGS -Wnested-externs"])
-#     AX_CHECK_COMPILE_FLAG([-Wfloat-equal], [CFLAGS="$CFLAGS -Wfloat-equal"])
-#     AX_CHECK_COMPILE_FLAG([-Wundef], [CFLAGS="$CFLAGS -Wundef"])
-#     AX_CHECK_COMPILE_FLAG([-Wendif-labels], [CFLAGS="$CFLAGS -Wendif-labels"])
-#     AX_CHECK_COMPILE_FLAG([-Wempty-body], [CFLAGS="$CFLAGS -Wempty-body"])
-#     AX_CHECK_COMPILE_FLAG([-Wcast-align], [CFLAGS="$CFLAGS -Wcast-align"])
-#     AX_CHECK_COMPILE_FLAG([-Wclobbered], [CFLAGS="$CFLAGS -Wclobbered"])
-#     AX_CHECK_COMPILE_FLAG([-Wvla], [CFLAGS="$CFLAGS -Wvla"])
-#     AX_CHECK_COMPILE_FLAG([-Wpragmas], [CFLAGS="$CFLAGS -Wpragmas"])
-#     AX_CHECK_COMPILE_FLAG([-Wunreachable-code], [CFLAGS="$CFLAGS -Wunreachable-code"])
-#     AX_CHECK_COMPILE_FLAG([-Waddress], [CFLAGS="$CFLAGS -Waddress"])
-#     AX_CHECK_COMPILE_FLAG([-Wattributes], [CFLAGS="$CFLAGS -Wattributes"])
-#     AX_CHECK_COMPILE_FLAG([-Wdiv-by-zero], [CFLAGS="$CFLAGS -Wdiv-by-zero"])
-#     AX_CHECK_COMPILE_FLAG([-Wshorten-64-to-32], [CFLAGS="$CFLAGS -Wshorten-64-to-32"])
-#
-#     AX_CHECK_COMPILE_FLAG([-Wconversion], [CFLAGS="$CFLAGS -Wconversion"])
-#     AX_CHECK_COMPILE_FLAG([-Wextended-offsetof], [CFLAGS="$CFLAGS -Wextended-offsetof"])
-#     AX_CHECK_COMPILE_FLAG([-Wformat-nonliteral], [CFLAGS="$CFLAGS -Wformat-nonliteral"])
-#     AX_CHECK_COMPILE_FLAG([-Wlanguage-extension-token], [CFLAGS="$CFLAGS -Wlanguage-extension-token"])
-#     AX_CHECK_COMPILE_FLAG([-Wmissing-field-initializers], [CFLAGS="$CFLAGS -Wmissing-field-initializers"])
-#     AX_CHECK_COMPILE_FLAG([-Wmissing-noreturn], [CFLAGS="$CFLAGS -Wmissing-noreturn"])
-#     AX_CHECK_COMPILE_FLAG([-Wmissing-variable-declarations], [CFLAGS="$CFLAGS -Wmissing-variable-declarations"])
-#     # Not used because we cannot change public structs
-#     # AX_CHECK_COMPILE_FLAG([-Wpadded], [CFLAGS="$CFLAGS -Wpadded"])
-#     AX_CHECK_COMPILE_FLAG([-Wsign-conversion], [CFLAGS="$CFLAGS -Wsign-conversion"])
-#     # Not used because this basically disallows default case
-#     # AX_CHECK_COMPILE_FLAG([-Wswitch-enum], [CFLAGS="$CFLAGS -Wswitch-enum"])
-#     AX_CHECK_COMPILE_FLAG([-Wunreachable-code-break], [CFLAGS="$CFLAGS -Wunreachable-code-break"])
-#     AX_CHECK_COMPILE_FLAG([-Wunused-macros], [CFLAGS="$CFLAGS -Wunused-macros"])
-#     AX_CHECK_COMPILE_FLAG([-Wunused-parameter], [CFLAGS="$CFLAGS -Wunused-parameter"])
-#     AX_CHECK_COMPILE_FLAG([-Wredundant-decls], [CFLAGS="$CFLAGS -Wredundant-decls"])
-#     # Only work with Clang for the moment
-#     AX_CHECK_COMPILE_FLAG([-Wheader-guard], [CFLAGS="$CFLAGS -Wheader-guard"])
-#
-#     # For C++ compiler
-#     AC_LANG_PUSH(C++)
-#     AX_CHECK_COMPILE_FLAG([-Wall], [CXXFLAGS="$CXXFLAGS -Wall"])
-#     AX_CHECK_COMPILE_FLAG([-Werror], [CXXFLAGS="$CXXFLAGS -Werror"])
-#     AX_CHECK_COMPILE_FLAG([-Wformat-security], [CXXFLAGS="$CXXFLAGS -Wformat-security"])
-#     AC_LANG_POP()
-# fi
-#
-# WARNCFLAGS=$CFLAGS
-# WARNCXXFLAGS=$CXXFLAGS
-#
-# CFLAGS=$save_CFLAGS
-# CXXFLAGS=$save_CXXFLAGS
-#
-# AC_SUBST([WARNCFLAGS])
-# AC_SUBST([WARNCXXFLAGS])
-#
-# EXTRACFLAG=
-# AX_CHECK_COMPILE_FLAG([-fvisibility=hidden], [EXTRACFLAG="-fvisibility=hidden"])
-#
-# AC_SUBST([EXTRACFLAG])
-#
-# if test "x$debug" != "xno"; then
-#     AC_DEFINE([DEBUGBUILD], [1], [Define to 1 to enable debug output.])
-# fi
-#
+include(ExtractValidFlags)
+if(ENABLE_WERROR)
+  # For C compiler
+  extract_valid_c_flags(WARNCFLAGS
+    -Wall
+    -Wextra
+    -Werror
+    -Wmissing-prototypes
+    -Wstrict-prototypes
+    -Wmissing-declarations
+    -Wpointer-arith
+    -Wdeclaration-after-statement
+    -Wformat-security
+    -Wwrite-strings
+    -Wshadow
+    -Winline
+    -Wnested-externs
+    -Wfloat-equal
+    -Wundef
+    -Wendif-labels
+    -Wempty-body
+    -Wcast-align
+    -Wclobbered
+    -Wvla
+    -Wpragmas
+    -Wunreachable-code
+    -Waddress
+    -Wattributes
+    -Wdiv-by-zero
+    -Wshorten-64-to-32
+
+    -Wconversion
+    -Wextended-offsetof
+    -Wformat-nonliteral
+    -Wlanguage-extension-token
+    -Wmissing-field-initializers
+    -Wmissing-noreturn
+    -Wmissing-variable-declarations
+    # Not used because we cannot change public structs
+    # -Wpadded
+    -Wsign-conversion
+    # Not used because this basically disallows default case
+    # -Wswitch-enum
+    -Wunreachable-code-break
+    -Wunused-macros
+    -Wunused-parameter
+    -Wredundant-decls
+    # Only work with Clang for the moment
+    -Wheader-guard
+  )
+
+  extract_valid_cxx_flags(WARNCXXFLAGS
+    # For C++ compiler
+    -Wall
+    -Werror
+    -Wformat-security
+  )
+endif()
+
+extract_valid_c_flags(EXTRACFLAG
+  -fvisibility=hidden
+)
+
+if(ENABLE_DEBUG)
+  set(DEBUGBUILD 1)
+endif()
+
 # enable_threads=yes
 # # Some platform does not have working std::future.  We disable
 # # threading for those platforms.

@@ -31,3 +31,6 @@
 
 /* Define to 1 if you have the `initgroups` function. */
 #define HAVE_DECL_INITGROUPS @HAVE_DECL_INITGROUPS@
+
+/* Define to 1 to enable debug output. */
+#cmakedefine DEBUGBUILD 1
