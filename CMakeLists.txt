@@ -145,6 +145,11 @@ cmake_pop_check_state()
 # esac
 
 pkg_check_modules(ZLIB zlib>=1.2.3)
+if(ZLIB_FOUND)
+  set(HAVE_ZLIB 1)
+else()
+  set(HAVE_ZLIB 0)
+endif()
 
 # # dl: openssl requires libdl when it is statically linked.
 # case "${host_os}" in
@@ -189,17 +194,34 @@ pkg_check_modules(CUNIT cunit>=2.1)
 
 # libev (for src)
 find_package(Libev)
+if(Libev_FOUND)
+  set(HAVE_LIBEV 1)
+else()
+  set(HAVE_LIBEV 0)
+endif()
 
 # openssl (for src)
 pkg_check_modules(OPENSSL openssl>=1.0.1)
+if(OPENSSL_FOUND)
+  set(HAVE_OPENSSL 1)
+else()
+  set(HAVE_OPENSSL 0)
+endif()
 # libevent_openssl (for examples)
 # 2.0.8 is required because we use evconnlistener_set_error_cb()
 pkg_check_modules(LIBEVENT_OPENSSL libevent_openssl>=2.0.8)
+if(LIBEVENT_OPENSSL_FOUND)
+  set(HAVE_LIBEVENT_OPENSSL 1)
+else()
+  set(HAVE_LIBEVENT_OPENSSL 0)
+endif()
 
 # jansson (for src/nghttp, src/deflatehd and src/inflatehd)
 pkg_check_modules(JANSSON jansson>=2.5)
 if(JANSSON_FOUND)
   set(HAVE_JANSSON 1)
+else()
+  set(HAVE_JANSSON 0)
 endif()
 
 # libxml2 (for src/nghttp)
@@ -207,6 +229,8 @@ if(WITH_LIBXML2)
   find_package(LibXml2 2.7.7 REQUIRED)
   set(HAVE_LIBXML2 1)
   # XXX fail if WITH_LIBXML2=ON
+else()
+  set(HAVE_LIBXML2 0)
 endif()
 
 # jemalloc
@@ -215,6 +239,13 @@ if(WITH_JEMALLOC)
   if(NOT JEMALLOC_FOUND)
     find_package(jemalloc REQUIRED)
   endif()
+  if(JEMALLOC_FOUND)
+    set(HAVE_JEMALLOC 1)
+  else()
+    set(HAVE_JEMALLOC 0)
+  endif()
+else()
+  set(HAVE_JEMALLOC 0)
 endif()
 
 # spdylay (for src/nghttpx and src/h2load)
@@ -223,9 +254,12 @@ if(WITH_SPDYLAY)
   if(LIBSPDYLAY_FOUND)
     set(HAVE_SPDYLAY 1)
   else()
+    set(HAVE_SPDYLAY 0)
     message(STATUS "The SPDY support in nghttpx and h2load will be disabled.")
   endif()
   # XXX fail if WITH_SPDYLAY=ON
+else()
+  set(HAVE_SPDYLAY 0)
 endif()
 
 if(ENABLE_ASIO_LIB)
@@ -254,10 +288,17 @@ if(ENABLE_EXAMPLES OR ENABLE_APP OR ENABLE_HPACK_TOOLS OR ENABLE_ASIO_LIB)
   if(WITH_MRUBY)
     set(HAVE_MRUBY 1)
     # XXX add -lmruby and -lm libs
+  else()
+    set(HAVE_MRUBY 0)
   endif()
   if(WITH_NEVERBLEED)
     set(HAVE_NEVERBLEED 1)
+  else()
+    set(HAVE_NEVERBLEED 0)
   endif()
+else()
+  set(HAVE_MRUBY 0)
+  set(HAVE_NEVERBLEED 0)
 endif()
 
 # Python bindings
@@ -473,66 +514,63 @@ endforeach()
 #   script/Makefile
 # ])
 # AC_OUTPUT
-#
-# AC_MSG_NOTICE([summary of build options:
-#
-#     Package version: ${VERSION}
-#     Library version: $LT_CURRENT:$LT_REVISION:$LT_AGE
-#     Install prefix:  ${prefix}
-#     System types:
-#       Build:         ${build}
-#       Host:          ${host}
-#       Target:        ${target}
-#     Compiler:
-#       C compiler:     ${CC}
-#       CFLAGS:         ${CFLAGS}
-#       LDFLAGS:        ${LDFLAGS}
-#       C++ compiler:   ${CXX}
-#       CXXFLAGS:       ${CXXFLAGS}
-#       CXXCPP:         ${CXXCPP}
-#       C preprocessor: ${CPP}
-#       CPPFLAGS:       ${CPPFLAGS}
-#       WARNCFLAGS:     ${WARNCFLAGS}
-#       CXX1XCXXFLAGS:  ${CXX1XCXXFLAGS}
-#       EXTRACFLAG:     ${EXTRACFLAG}
-#       LIBS:           ${LIBS}
-#     Library:
-#       Shared:         ${enable_shared}
-#       Static:         ${enable_static}
-#     Python:
-#       Python:         ${PYTHON}
-#       PYTHON_VERSION: ${PYTHON_VERSION}
-#       pyexecdir:      ${pyexecdir}
-#       Python-dev:     ${have_python_dev}
-#       PYTHON_CPPFLAGS:${PYTHON_CPPFLAGS}
-#       PYTHON_LDFLAGS: ${PYTHON_LDFLAGS}
-#       Cython:         ${CYTHON}
-#     Test:
-#       CUnit:          ${have_cunit} (CFLAGS='${CUNIT_CFLAGS}' LIBS='${CUNIT_LIBS}')
-#       Failmalloc:     ${enable_failmalloc}
-#     Libs:
-#       OpenSSL:        ${have_openssl} (CFLAGS='${OPENSSL_CFLAGS}' LIBS='${OPENSSL_LIBS}')
-#       Libxml2:        ${have_libxml2} (CFLAGS='${XML_CPPFLAGS}' LIBS='${XML_LIBS}')
-#       Libev:          ${have_libev} (CFLAGS='${LIBEV_CFLAGS}' LIBS='${LIBEV_LIBS}')
-#       Libevent(SSL):  ${have_libevent_openssl} (CFLAGS='${LIBEVENT_OPENSSL_CFLAGS}' LIBS='${LIBEVENT_OPENSSL_LIBS}')
-#       Spdylay:        ${have_spdylay} (CFLAGS='${LIBSPDYLAY_CFLAGS}' LIBS='${LIBSPDYLAY_LIBS}')
-#       Jansson:        ${have_jansson} (CFLAGS='${JANSSON_CFLAGS}' LIBS='${JANSSON_LIBS}')
-#       Jemalloc:       ${have_jemalloc} (LIBS='${JEMALLOC_LIBS}')
-#       Zlib:           ${have_zlib} (CFLAGS='${ZLIB_CFLAGS}' LIBS='${ZLIB_LIBS}')
-#       Boost CPPFLAGS: ${BOOST_CPPFLAGS}
-#       Boost LDFLAGS:  ${BOOST_LDFLAGS}
-#       Boost::ASIO:    ${BOOST_ASIO_LIB}
-#       Boost::System:  ${BOOST_SYSTEM_LIB}
-#       Boost::Thread:  ${BOOST_THREAD_LIB}
-#     Third-party:
-#       http-parser:    ${enable_third_party}
-#       MRuby:          ${have_mruby} (CFLAGS='${LIBMRUBY_CFLAGS}' LIBS='${LIBMRUBY_LIBS}')
-#       Neverbleed:     ${have_neverbleed}
-#     Features:
-#       Applications:   ${enable_app}
-#       HPACK tools:    ${enable_hpack_tools}
-#       Libnghttp2_asio:${enable_asio_lib}
-#       Examples:       ${enable_examples}
-#       Python bindings:${enable_python_bindings}
-#       Threading:      ${enable_threads}
-# ])
+
+# XXX - fix list of variables
+message(STATUS "summary of build options:
+
+    Package version: ${VERSION}
+    Library version: $LT_CURRENT:$LT_REVISION:$LT_AGE
+    Install prefix:  ${prefix}
+    System types:
+      Build:         ${build}
+      Host:          ${host}
+      Target:        ${target}
+    Compiler:
+    C compiler:       ${CMAKE_C_COMPILER}
+      CFLAGS:         ${CMAKE_C_FLAGS}
+      C++ compiler:   ${CMAKE_CXX_COMPILER}
+      CXXFLAGS:       ${CMAKE_CXX_FLAGS}
+      WARNCFLAGS:     ${WARNCFLAGS}
+      CXX1XCXXFLAGS:  ${CXX1XCXXFLAGS}
+      EXTRACFLAG:     ${EXTRACFLAG}
+      LIBS:           ${LIBS}
+    Library:
+      Shared:         ${enable_shared}
+      Static:         ${enable_static}
+    Python:
+      Python:         ${PYTHON}
+      PYTHON_VERSION: ${PYTHON_VERSION}
+      pyexecdir:      ${pyexecdir}
+      Python-dev:     ${have_python_dev}
+      PYTHON_CPPFLAGS:${PYTHON_CPPFLAGS}
+      PYTHON_LDFLAGS: ${PYTHON_LDFLAGS}
+      Cython:         ${CYTHON}
+    Test:
+      CUnit:          ${HAVE_CUNIT} (CFLAGS='${CUNIT_CFLAGS}' LIBS='${CUNIT_LIBS}')
+      Failmalloc:     ${ENABLE_FAILMALLOC}
+    Libs:
+      OpenSSL:        ${HAVE_OPENSSL} (CFLAGS='${OPENSSL_CFLAGS}' LIBS='${OPENSSL_LIBS}')
+      Libxml2:        ${HAVE_LIBXML2} (CFLAGS='${XML_CPPFLAGS}' LIBS='${XML_LIBS}')
+      Libev:          ${HAVE_LIBEV} (CFLAGS='${LIBEV_CFLAGS}' LIBS='${LIBEV_LIBS}')
+      Libevent(SSL):  ${HAVE_LIBEVENT_OPENSSL} (CFLAGS='${LIBEVENT_OPENSSL_CFLAGS}' LIBS='${LIBEVENT_OPENSSL_LIBS}')
+      Spdylay:        ${HAVE_SPDYLAY} (CFLAGS='${LIBSPDYLAY_CFLAGS}' LIBS='${LIBSPDYLAY_LIBS}')
+      Jansson:        ${HAVE_JANSSON} (CFLAGS='${JANSSON_CFLAGS}' LIBS='${JANSSON_LIBS}')
+      Jemalloc:       ${HAVE_JEMALLOC} (LIBS='${JEMALLOC_LIBS}')
+      Zlib:           ${HAVE_ZLIB} (CFLAGS='${ZLIB_CFLAGS}' LIBS='${ZLIB_LIBS}')
+      Boost CPPFLAGS: ${BOOST_CPPFLAGS}
+      Boost LDFLAGS:  ${BOOST_LDFLAGS}
+      Boost::ASIO:    ${BOOST_ASIO_LIB}
+      Boost::System:  ${BOOST_SYSTEM_LIB}
+      Boost::Thread:  ${BOOST_THREAD_LIB}
+    Third-party:
+      http-parser:    ${ENABLE_THIRD_PARTY}
+      MRuby:          ${HAVE_MRUBY} (CFLAGS='${LIBMRUBY_CFLAGS}' LIBS='${LIBMRUBY_LIBS}')
+      Neverbleed:     ${HAVE_NEVERBLEED}
+    Features:
+      Applications:   ${ENABLE_APP}
+      HPACK tools:    ${ENABLE_HPACK_TOOLS}
+      Libnghttp2_asio:${ENABLE_ASIO_LIB}
+      Examples:       ${ENABLE_EXAMPLES}
+      Python bindings:${ENABLE_PYTHON_BINDINGS}
+      Threading:      ${ENABLE_THREADS}
+")
