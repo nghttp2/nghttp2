@@ -30,7 +30,10 @@
 #cmakedefine HAVE_ACCEPT4 1
 
 /* Define to 1 if you have the `initgroups` function. */
-#define HAVE_DECL_INITGROUPS @HAVE_DECL_INITGROUPS@
+#cmakedefine01 HAVE_DECL_INITGROUPS
 
 /* Define to 1 to enable debug output. */
 #cmakedefine DEBUGBUILD 1
+
+/* Define to 1 if you want to disable threads. */
+#cmakedefine NOTHREADS 1

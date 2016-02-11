@@ -403,57 +403,72 @@ if(ENABLE_DEBUG)
   set(DEBUGBUILD 1)
 endif()
 
-# enable_threads=yes
-# # Some platform does not have working std::future.  We disable
-# # threading for those platforms.
-# if test "x$threads" != "xyes" ||
-#    test "x$have_std_future" != "xyes"; then
-#     enable_threads=no
-#     AC_DEFINE([NOTHREADS], [1], [Define to 1 if you want to disable threads.])
-# fi
-#
+# Some platform does not have working std::future.  We disable
+# threading for those platforms.
+if(NOT ENABLE_THREADS OR NOT HAVE_STD_FUTURE)
+  set(NOTHREADS 1)
+endif()
+
 # # propagate $enable_static to tests/Makefile.am
 # AM_CONDITIONAL([ENABLE_STATIC], [test "x$enable_static" = "xyes"])
 #
 # AC_SUBST([TESTLDADD])
 # AC_SUBST([APPLDFLAGS])
-#
+
+configure_file(cmakeconfig.h.in config.h)
+# autotools-compatible names
+set(top_srcdir      "${CMAKE_SOURCE_DIR}")
+set(top_builddir    "${CMAKE_BINARY_DIR}")
+set(abs_top_srcdir  "${CMAKE_SOURCE_DIR}")
+set(abs_top_builddir "${CMAKE_BINARY_DIR}")
+set(prefix          "")
+set(exec_prefix     "")
+set(libdir          "")
+set(includedir      "")
+set(bindir          "")
+set(sbindir         "")
+set(VERSION         "${PACKAGE_VERSION}")
+foreach(name
+   lib/libnghttp2.pc
+   lib/includes/nghttp2/nghttp2ver.h
+   src/libnghttp2_asio.pc
+   python/setup.py
+   integration-tests/config.go
+   integration-tests/setenv
+   doc/conf.py
+   doc/index.rst
+   doc/package_README.rst
+   doc/tutorial-client.rst
+   doc/tutorial-server.rst
+   doc/tutorial-hpack.rst
+   doc/nghttpx-howto.rst
+   doc/h2load-howto.rst
+   doc/libnghttp2_asio.rst
+   doc/python-apiref.rst
+   doc/building-android-binary.rst
+   doc/nghttp2.h.rst
+   doc/nghttp2ver.h.rst
+   doc/asio_http2.h.rst
+   doc/asio_http2_server.h.rst
+   doc/asio_http2_client.h.rst
+   doc/contribute.rst
+)
+  configure_file("${name}.in" "${name}" @ONLY)
+endforeach()
+
 # AC_CONFIG_FILES([
 #   Makefile
 #   lib/Makefile
-#   lib/libnghttp2.pc
 #   lib/includes/Makefile
-#   lib/includes/nghttp2/nghttp2ver.h
 #   tests/Makefile
 #   tests/testdata/Makefile
 #   third-party/Makefile
 #   src/Makefile
 #   src/includes/Makefile
-#   src/libnghttp2_asio.pc
 #   examples/Makefile
 #   python/Makefile
-#   python/setup.py
 #   integration-tests/Makefile
-#   integration-tests/config.go
-#   integration-tests/setenv
 #   doc/Makefile
-#   doc/conf.py
-#   doc/index.rst
-#   doc/package_README.rst
-#   doc/tutorial-client.rst
-#   doc/tutorial-server.rst
-#   doc/tutorial-hpack.rst
-#   doc/nghttpx-howto.rst
-#   doc/h2load-howto.rst
-#   doc/libnghttp2_asio.rst
-#   doc/python-apiref.rst
-#   doc/building-android-binary.rst
-#   doc/nghttp2.h.rst
-#   doc/nghttp2ver.h.rst
-#   doc/asio_http2.h.rst
-#   doc/asio_http2_server.h.rst
-#   doc/asio_http2_client.h.rst
-#   doc/contribute.rst
 #   contrib/Makefile
 #   script/Makefile
 # ])
