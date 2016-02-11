@@ -106,11 +106,10 @@ else()
   add_definitions(-D_U_ -DNGHTTP2_NORETURN)
 endif()
 
-include(CheckCXXCompilerFlag)
-foreach(_std gnu++11 gnu++0x)
-  set(_cxx1x_flag -std=${_std})
-  check_cxx_compiler_flag(${_cxx1x_flag} CXX_FLAG_-std_${_std})
-  if(CXX_FLAG_-std_${_std})
+include(ExtractValidFlags)
+foreach(_cxx1x_flag -std=gnu++11 -std=gnu++0x)
+  extract_valid_cxx_flags(_cxx1x_flag_supported ${_cxx1x_flag})
+  if(_cxx1x_flag_supported)
     set(CXX1XCXXFLAGS ${_cxx1x_flag})
     break()
   endif()
@@ -381,7 +380,6 @@ if(HAVE_EPOLL AND HAVE_TIMERFD_CREATE)
   set(ENABLE_TINY_NGHTTPD 1)
 endif()
 
-include(ExtractValidFlags)
 if(ENABLE_WERROR)
   # For C compiler
   extract_valid_c_flags(WARNCFLAGS
