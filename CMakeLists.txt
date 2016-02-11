@@ -26,11 +26,19 @@ cmake_minimum_required(VERSION 3.0)
 # XXX using 1.7.90 instead of 1.8.0-DEV
 project(nghttp2 VERSION 1.7.90)
 
+# See versioning rule:
+#  http://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
+set(LT_CURRENT  18)
+set(LT_REVISION 1)
+set(LT_AGE      4)
+
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 include(Version)
 
 set(PACKAGE_VERSION     "${PROJECT_VERSION}")
 HexVersion(PACKAGE_VERSION_NUM ${PROJECT_VERSION_MAJOR} ${PROJECT_VERSION_MINOR} ${PROJECT_VERSION_PATCH})
+
+include(GNUInstallDirs)
 
 option(ENABLE_WERROR    "Turn on compile time warnings")
 option(ENABLE_DEBUG     "Turn on debug output")
@@ -321,10 +329,6 @@ check_include_file("limits.h"       HAVE_LIMITS_H)
 check_include_file("netdb.h"        HAVE_NETDB_H)
 check_include_file("netinet/in.h"   HAVE_NETINET_IN_H)
 check_include_file("pwd.h"          HAVE_PWD_H)
-check_include_file("stddef.h"       HAVE_STDDEF_H)
-check_include_file("stdint.h"       HAVE_STDINT_H)
-check_include_file("stdlib.h"       HAVE_STDLIB_H)
-check_include_file("string.h"       HAVE_STRING_H)
 check_include_file("sys/socket.h"   HAVE_SYS_SOCKET_H)
 check_include_file("sys/time.h"     HAVE_SYS_TIME_H)
 check_include_file("syslog.h"       HAVE_SYSLOG_H)
@@ -456,6 +460,7 @@ endif()
 # AC_SUBST([TESTLDADD])
 # AC_SUBST([APPLDFLAGS])
 
+add_definitions(-DHAVE_CONFIG_H)
 configure_file(cmakeconfig.h.in config.h)
 # autotools-compatible names
 set(top_srcdir      "${CMAKE_SOURCE_DIR}")
@@ -464,13 +469,13 @@ set(abs_top_srcdir  "${CMAKE_SOURCE_DIR}")
 set(abs_top_builddir "${CMAKE_BINARY_DIR}")
 # libnghttp2.pc (pkg-config file)
 set(prefix          "${CMAKE_INSTALL_PREFIX}")
-set(exec_prefix     "\${prefix}")
-set(libdir          "\${prefix}/lib")
-set(includedir      "\${prefix}/include")
+set(exec_prefix     "${CMAKE_INSTALL_PREFIX}")
+set(libdir          "${CMAKE_INSTALL_LIBDIR}")
+set(includedir      "${CMAKE_INSTALL_INCLUDEDIR}")
 set(VERSION         "${PACKAGE_VERSION}")
 # For init scripts and systemd service file
-set(bindir          "${prefix}/bin")
-set(sbindir         "${prefix}/sbin")
+set(bindir          "${CMAKE_INSTALL_FULL_BINDIR}")
+set(sbindir         "${CMAKE_INSTALL_FULL_SBINDIR}")
 foreach(name
    lib/libnghttp2.pc
    lib/includes/nghttp2/nghttp2ver.h
@@ -499,29 +504,29 @@ foreach(name
   configure_file("${name}.in" "${name}" @ONLY)
 endforeach()
 
-# AC_CONFIG_FILES([
-#   Makefile
-#   lib/Makefile
-#   lib/includes/Makefile
-#   tests/Makefile
-#   tests/testdata/Makefile
-#   third-party/Makefile
-#   src/Makefile
-#   src/includes/Makefile
-#   examples/Makefile
-#   python/Makefile
-#   integration-tests/Makefile
-#   doc/Makefile
-#   contrib/Makefile
-#   script/Makefile
-# ])
-# AC_OUTPUT
+
+add_subdirectory(lib)
+#add_subdirectory(lib/includes)
+if(0)
+add_subdirectory(third-party)
+add_subdirectory(src)
+#add_subdirectory(src/includes)
+add_subdirectory(examples)
+add_subdirectory(python)
+add_subdirectory(tests)
+#add_subdirectory(tests/testdata)
+add_subdirectory(integration-tests)
+add_subdirectory(doc)
+add_subdirectory(contrib)
+add_subdirectory(script)
+endif()
+
 
 # XXX - fix list of variables
 message(STATUS "summary of build options:
 
     Package version: ${VERSION}
-    Library version: $LT_CURRENT:$LT_REVISION:$LT_AGE
+    Library version: ${LT_CURRENT}:${LT_REVISION}:${LT_AGE}
     Install prefix:  ${prefix}
     System types:
       Build:         ${build}
