@@ -504,6 +504,10 @@ foreach(name
   configure_file("${name}.in" "${name}" @ONLY)
 endforeach()
 
+include_directories(
+  "${CMAKE_BINARY_DIR}" # for config.h
+)
+
 
 add_subdirectory(lib)
 #add_subdirectory(lib/includes)

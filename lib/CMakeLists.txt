@@ -1,5 +1,6 @@
+add_subdirectory(includes)
+
 include_directories(
-  "${CMAKE_BINARY_DIR}" # for config.h
   "${CMAKE_CURRENT_SOURCE_DIR}/includes"
   "${CMAKE_CURRENT_BINARY_DIR}/includes"
 )
