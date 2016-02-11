@@ -1,0 +1,12 @@
+
+/* Define to 1 if you have the `std::map::emplace`. */
+#cmakedefine HAVE_STD_MAP_EMPLACE 1
+
+/* Define to 1 if you have `libjansson` library. */
+#cmakedefine HAVE_JANSSON 1
+
+/* Define to 1 if you have `libxml2` library. */
+#cmakedefine HAVE_LIBXML2 1
+
+/* Define to 1 if you have `spdylay` library. */
+#cmakedefine HAVE_SPDYLAY 1
