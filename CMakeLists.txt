@@ -270,28 +270,26 @@ if(ENABLE_PYTHON_BINDINGS AND NOT CYTHON AND NOT PYTHONLIBS_FOUND)
   message(FATAL_ERROR "python bindings were requested (ENABLE_PYTHON_BINDINGS=1) but dependencies are not met.")
 endif()
 
-# # Checks for header files.
-# AC_HEADER_ASSERT
-# AC_CHECK_HEADERS([ \
-#   arpa/inet.h \
-#   fcntl.h \
-#   inttypes.h \
-#   limits.h \
-#   netdb.h \
-#   netinet/in.h \
-#   pwd.h \
-#   stddef.h \
-#   stdint.h \
-#   stdlib.h \
-#   string.h \
-#   sys/socket.h \
-#   sys/time.h \
-#   syslog.h \
-#   time.h \
-#   unistd.h \
-# ])
-#
-# # Checks for typedefs, structures, and compiler characteristics.
+# Checks for header files.
+# XXX AC_HEADER_ASSERT adds --disable-assert which sets -DNDEBUG
+check_include_file("arpa/inet.h"    HAVE_ARPA_INET_H)
+check_include_file("fcntl.h"        HAVE_FCNTL_H)
+check_include_file("inttypes.h"     HAVE_INTTYPES_H)
+check_include_file("limits.h"       HAVE_LIMITS_H)
+check_include_file("netdb.h"        HAVE_NETDB_H)
+check_include_file("netinet/in.h"   HAVE_NETINET_IN_H)
+check_include_file("pwd.h"          HAVE_PWD_H)
+check_include_file("stddef.h"       HAVE_STDDEF_H)
+check_include_file("stdint.h"       HAVE_STDINT_H)
+check_include_file("stdlib.h"       HAVE_STDLIB_H)
+check_include_file("string.h"       HAVE_STRING_H)
+check_include_file("sys/socket.h"   HAVE_SYS_SOCKET_H)
+check_include_file("sys/time.h"     HAVE_SYS_TIME_H)
+check_include_file("syslog.h"       HAVE_SYSLOG_H)
+check_include_file("time.h"         HAVE_TIME_H)
+check_include_file("unistd.h"       HAVE_UNISTD_H)
+
+# Checks for typedefs, structures, and compiler characteristics.
 # AC_TYPE_SIZE_T
 # AC_TYPE_SSIZE_T
 # AC_TYPE_UINT8_T
@@ -309,21 +307,15 @@ endif()
 # AC_C_BIGENDIAN
 # AC_C_INLINE
 # AC_SYS_LARGEFILE
-#
-# AC_CHECK_MEMBER([struct tm.tm_gmtoff], [have_struct_tm_tm_gmtoff=yes],
-#                 [have_struct_tm_tm_gmtoff=no], [[#include <time.h>]])
-#
-# if test "x$have_struct_tm_tm_gmtoff" = "xyes"; then
-#   AC_DEFINE([HAVE_STRUCT_TM_TM_GMTOFF], [1],
-#             [Define to 1 if you have `struct tm.tm_gmtoff` member.])
-# fi
-#
-# # Check size of pointer to decide we need 8 bytes alignment
-# # adjustment.
-# AC_CHECK_SIZEOF([int *])
-#
-# AC_CHECK_SIZEOF([time_t])
-#
+
+include(CheckStructHasMember)
+CHECK_STRUCT_HAS_MEMBER("struct tm" tm_gmtoff time.h HAVE_STRUCT_TM_TM_GMTOFF)
+
+# Check size of pointer to decide we need 8 bytes alignment adjustment.
+include(CheckTypeSize)
+check_type_size("int *"   SIZEOF_INT_P)
+check_type_size("time_t"  SIZEOF_TIME_T)
+
 # # Checks for library functions.
 #
 # # Don't check malloc, since it does not play nicely with C++ stdlib

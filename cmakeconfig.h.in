@@ -16,3 +16,9 @@
 
 /* Define to 1 if you have `neverbleed` library. */
 #cmakedefine HAVE_NEVERBLEED 1
+
+/* sizeof(int *) */
+#cmakedefine SIZEOF_INT_P   @SIZEOF_INT_P@
+
+/* sizeof(time_t) */
+#cmakedefine SIZEOF_TIME_T  @SIZEOF_TIME_T@
