@@ -22,3 +22,12 @@
 
 /* sizeof(time_t) */
 #cmakedefine SIZEOF_TIME_T  @SIZEOF_TIME_T@
+
+/* Define to 1 if you have the `_Exit` function. */
+#cmakedefine HAVE__EXIT 1
+
+/* Define to 1 if you have the `accept4` function. */
+#cmakedefine HAVE_ACCEPT4 1
+
+/* Define to 1 if you have the `initgroups` function. */
+#define HAVE_DECL_INITGROUPS @HAVE_DECL_INITGROUPS@

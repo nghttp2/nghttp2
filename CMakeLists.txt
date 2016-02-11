@@ -272,6 +272,7 @@ endif()
 
 # Checks for header files.
 # XXX AC_HEADER_ASSERT adds --disable-assert which sets -DNDEBUG
+include(CheckIncludeFile)
 check_include_file("arpa/inet.h"    HAVE_ARPA_INET_H)
 check_include_file("fcntl.h"        HAVE_FCNTL_H)
 check_include_file("inttypes.h"     HAVE_INTTYPES_H)
@@ -290,6 +291,8 @@ check_include_file("time.h"         HAVE_TIME_H)
 check_include_file("unistd.h"       HAVE_UNISTD_H)
 
 # Checks for typedefs, structures, and compiler characteristics.
+# XXX The AC_TYPE_* macros would define suitable types if standard headers do
+# not define them. No equivalent in cmake...
 # AC_TYPE_SIZE_T
 # AC_TYPE_SSIZE_T
 # AC_TYPE_UINT8_T
@@ -303,10 +306,10 @@ check_include_file("unistd.h"       HAVE_UNISTD_H)
 # AC_TYPE_OFF_T
 # AC_TYPE_PID_T
 # AC_TYPE_UID_T
-# AC_CHECK_TYPES([ptrdiff_t])
-# AC_C_BIGENDIAN
+# XXX To support inline for crappy compilers, see https://cmake.org/Wiki/CMakeTestInline
 # AC_C_INLINE
-# AC_SYS_LARGEFILE
+# XXX is AC_SYS_LARGEFILE still needed for modern systems?
+# add_definitions(-D_FILE_OFFSET_BITS=64)
 
 include(CheckStructHasMember)
 CHECK_STRUCT_HAS_MEMBER("struct tm" tm_gmtoff time.h HAVE_STRUCT_TM_TM_GMTOFF)
@@ -316,58 +319,23 @@ include(CheckTypeSize)
 check_type_size("int *"   SIZEOF_INT_P)
 check_type_size("time_t"  SIZEOF_TIME_T)
 
-# # Checks for library functions.
-#
-# # Don't check malloc, since it does not play nicely with C++ stdlib
-# # AC_FUNC_MALLOC
-#
-# AC_FUNC_CHOWN
-# AC_FUNC_ERROR_AT_LINE
-# AC_FUNC_FORK
-# # Don't check realloc, since LeakSanitizer detects memory leak during check
-# # AC_FUNC_REALLOC
-# AC_FUNC_STRERROR_R
-# AC_FUNC_STRNLEN
-#
-# AC_CHECK_FUNCS([ \
-#   _Exit \
-#   accept4 \
-#   dup2 \
-#   getcwd \
-#   getpwnam \
-#   localtime_r \
-#   memchr \
-#   memmove \
-#   memset \
-#   socket \
-#   sqrt \
-#   strchr \
-#   strdup \
-#   strerror \
-#   strndup \
-#   strstr \
-#   strtol \
-#   strtoul \
-#   timegm \
-# ])
-#
-# # timerfd_create was added in linux kernel 2.6.25
-#
-# AC_CHECK_FUNC([timerfd_create],
-#               [have_timerfd_create=yes], [have_timerfd_create=no])
-#
-# # For cygwin: we can link initgroups, so AC_CHECK_FUNCS succeeds, but
-# # cygwin disables initgroups due to feature test macro magic with our
-# # configuration.
-# AC_CHECK_DECLS([initgroups], [], [], [[#include <grp.h>]])
-#
-# # Checks for epoll availability, primarily for examples/tiny-nghttpd
-# AX_HAVE_EPOLL([have_epoll=yes], [have_epoll=no])
-#
-# AM_CONDITIONAL([ENABLE_TINY_NGHTTPD],
-#                [ test "x${have_epoll}" = "xyes" &&
-#                  test "x${have_timerfd_create}" = "xyes"])
-#
+# Checks for library functions.
+include(CheckFunctionExists)
+CHECK_FUNCTION_EXISTS(_Exit     HAVE__EXIT)
+CHECK_FUNCTION_EXISTS(accept4   HAVE_ACCEPT4)
+
+# timerfd_create was added in linux kernel 2.6.25
+include(CheckSymbolExists)
+# XXX does this correctly detect initgroups (un)availability on cygwin?
+CHECK_SYMBOL_EXISTS(initgroups grp.h HAVE_DECL_INITGROUPS)
+
+CHECK_FUNCTION_EXISTS(timerfd_create HAVE_TIMERFD_CREATE)
+# Checks for epoll availability, primarily for examples/tiny-nghttpd
+CHECK_SYMBOL_EXISTS(epoll_create sys/epoll.h HAVE_EPOLL)
+if(HAVE_EPOLL AND HAVE_TIMERFD_CREATE)
+  set(ENABLE_TINY_NGHTTPD 1)
+endif()
+
 # save_CFLAGS=$CFLAGS
 # save_CXXFLAGS=$CXXFLAGS
 #
