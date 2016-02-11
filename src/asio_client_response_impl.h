@@ -53,12 +53,16 @@ public:
   header_map &header();
   const header_map &header() const;
 
+  size_t header_buffer_size() const;
+  void update_header_buffer_size(size_t len);
+
 private:
   data_cb data_cb_;
 
   header_map header_;
 
   int64_t content_length_;
+  size_t header_buffer_size_;
   int status_code_;
 };
 

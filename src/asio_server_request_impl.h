@@ -58,6 +58,9 @@ public:
   const boost::asio::ip::tcp::endpoint &remote_endpoint() const;
   void remote_endpoint(boost::asio::ip::tcp::endpoint ep);
 
+  size_t header_buffer_size() const;
+  void update_header_buffer_size(size_t len);
+
 private:
   class stream *strm_;
   header_map header_;
@@ -65,6 +68,7 @@ private:
   uri_ref uri_;
   data_cb on_data_cb_;
   boost::asio::ip::tcp::endpoint remote_ep_;
+  size_t header_buffer_size_;
 };
 
 } // namespace server
