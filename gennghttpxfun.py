@@ -92,6 +92,7 @@ OPTIONS = [
     "tls-ticket-key-cipher",
     "host-rewrite",
     "tls-session-cache-memcached",
+    "tls-session-cache-memcached-tls",
     "tls-ticket-key-memcached",
     "tls-ticket-key-memcached-interval",
     "tls-ticket-key-memcached-max-retry",

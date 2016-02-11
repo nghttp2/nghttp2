@@ -982,7 +982,7 @@ int verify_hostname(X509 *cert, const char *hostname, size_t hlen,
 }
 } // namespace
 
-int check_cert(SSL *ssl, const DownstreamAddr *addr) {
+int check_cert(SSL *ssl, const Address *addr, const StringRef &host) {
   auto cert = SSL_get_peer_certificate(ssl);
   if (!cert) {
     LOG(ERROR) << "No certificate found";
@@ -996,16 +996,19 @@ int check_cert(SSL *ssl, const DownstreamAddr *addr) {
     return -1;
   }
 
-  auto &backend_sni_name = get_config()->tls.backend_sni_name;
-
-  auto hostname = !backend_sni_name.empty() ? StringRef(backend_sni_name)
-                                            : StringRef(addr->host);
-  if (verify_hostname(cert, hostname.c_str(), hostname.size(), &addr->addr) !=
-      0) {
+  if (verify_hostname(cert, host.c_str(), host.size(), addr) != 0) {
     LOG(ERROR) << "Certificate verification failed: hostname does not match";
     return -1;
   }
   return 0;
+}
+
+int check_cert(SSL *ssl, const DownstreamAddr *addr) {
+  auto &backend_sni_name = get_config()->tls.backend_sni_name;
+
+  auto hostname = !backend_sni_name.empty() ? StringRef(backend_sni_name)
+                                            : StringRef(addr->host);
+  return check_cert(ssl, &addr->addr, hostname);
 }
 
 CertLookupTree::CertLookupTree() {

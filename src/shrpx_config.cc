@@ -758,6 +758,7 @@ enum {
   SHRPX_OPTID_TLS_DYN_REC_WARMUP_THRESHOLD,
   SHRPX_OPTID_TLS_PROTO_LIST,
   SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED,
+  SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED_TLS,
   SHRPX_OPTID_TLS_TICKET_KEY_CIPHER,
   SHRPX_OPTID_TLS_TICKET_KEY_FILE,
   SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED,
@@ -1333,6 +1334,15 @@ int option_lookup_token(const char *name, size_t namelen) {
     case 'r':
       if (util::strieq_l("strip-incoming-x-forwarded-fo", name, 29)) {
         return SHRPX_OPTID_STRIP_INCOMING_X_FORWARDED_FOR;
+      }
+      break;
+    }
+    break;
+  case 31:
+    switch (name[30]) {
+    case 's':
+      if (util::strieq_l("tls-session-cache-memcached-tl", name, 30)) {
+        return SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED_TLS;
       }
       break;
     }
@@ -2229,6 +2239,10 @@ int parse_config(const char *opt, const char *optarg,
   case SHRPX_OPTID_BACKEND_TLS_SESSION_CACHE_PER_WORKER:
     return parse_uint(&mod_config()->tls.downstream_session_cache_per_worker,
                       opt, optarg);
+  case SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED_TLS:
+    mod_config()->tls.session_cache.memcached.tls = util::strieq(optarg, "yes");
+
+    return 0;
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 

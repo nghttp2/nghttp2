@@ -209,6 +209,8 @@ constexpr char SHRPX_OPT_NO_HTTP2_CIPHER_BLACK_LIST[] =
 constexpr char SHRPX_OPT_BACKEND_HTTP1_TLS[] = "backend-http1-tls";
 constexpr char SHRPX_OPT_BACKEND_TLS_SESSION_CACHE_PER_WORKER[] =
     "backend-tls-session-cache-per-worker";
+constexpr char SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_TLS[] =
+    "tls-session-cache-memcached-tls";
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -355,6 +357,7 @@ struct TLSConfig {
       Address addr;
       uint16_t port;
       std::unique_ptr<char[]> host;
+      bool tls;
     } memcached;
   } session_cache;
 

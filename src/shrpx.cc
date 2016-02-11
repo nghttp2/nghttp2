@@ -1564,6 +1564,9 @@ SSL/TLS:
               Specify  address of  memcached server  to store  session
               cache.   This  enables   shared  session  cache  between
               multiple nghttpx instances.
+  --tls-session-cache-memcached-tls
+              Enable SSL/TLS on memcached connections to store session
+              cache.
   --tls-dyn-rec-warmup-threshold=<SIZE>
               Specify the  threshold size for TLS  dynamic record size
               behaviour.  During  a TLS  session, after  the threshold
@@ -2400,6 +2403,7 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_BACKEND_HTTP1_TLS, no_argument, &flag, 106},
         {SHRPX_OPT_BACKEND_TLS_SESSION_CACHE_PER_WORKER, required_argument,
          &flag, 107},
+        {SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_TLS, no_argument, &flag, 108},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -2857,6 +2861,10 @@ int main(int argc, char **argv) {
         // --backend-tls-session-cache-per-worker
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_TLS_SESSION_CACHE_PER_WORKER,
                              optarg);
+        break;
+      case 108:
+        // --tls-session-cache-memcached-tls
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_TLS, "yes");
         break;
       default:
         break;

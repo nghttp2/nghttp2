@@ -31,8 +31,12 @@
 namespace shrpx {
 
 MemcachedDispatcher::MemcachedDispatcher(const Address *addr,
-                                         struct ev_loop *loop)
-    : loop_(loop), mconn_(make_unique<MemcachedConnection>(addr, loop_)) {}
+                                         struct ev_loop *loop, SSL_CTX *ssl_ctx,
+                                         const StringRef &sni_name,
+                                         MemchunkPool *mcpool)
+    : loop_(loop),
+      mconn_(make_unique<MemcachedConnection>(addr, loop_, ssl_ctx, sni_name,
+                                              mcpool)) {}
 
 MemcachedDispatcher::~MemcachedDispatcher() {}
 

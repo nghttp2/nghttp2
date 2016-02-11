@@ -32,6 +32,7 @@
 #include "shrpx_memcached_request.h"
 #include "shrpx_memcached_result.h"
 #include "shrpx_config.h"
+#include "shrpx_ssl.h"
 #include "util.h"
 
 namespace shrpx {
@@ -78,7 +79,7 @@ void connectcb(struct ev_loop *loop, ev_io *w, int revents) {
   auto conn = static_cast<Connection *>(w->data);
   auto mconn = static_cast<MemcachedConnection *>(conn->data);
 
-  if (mconn->on_connect() != 0) {
+  if (mconn->connected() != 0) {
     mconn->disconnect();
     return;
   }
@@ -91,11 +92,17 @@ constexpr ev_tstamp write_timeout = 10.;
 constexpr ev_tstamp read_timeout = 10.;
 
 MemcachedConnection::MemcachedConnection(const Address *addr,
-                                         struct ev_loop *loop)
-    : conn_(loop, -1, nullptr, nullptr, write_timeout, read_timeout, {}, {},
+                                         struct ev_loop *loop, SSL_CTX *ssl_ctx,
+                                         const StringRef &sni_name,
+                                         MemchunkPool *mcpool)
+    : conn_(loop, -1, nullptr, mcpool, write_timeout, read_timeout, {}, {},
             connectcb, readcb, timeoutcb, this, 0, 0.),
+      do_read_(&MemcachedConnection::noop),
+      do_write_(&MemcachedConnection::noop),
+      sni_name_(sni_name.str()),
       parse_state_{},
       addr_(addr),
+      ssl_ctx_(ssl_ctx),
       sendsum_(0),
       connected_(false) {}
 
@@ -127,10 +134,20 @@ void MemcachedConnection::disconnect() {
 
   assert(recvbuf_.rleft() == 0);
   recvbuf_.reset();
+
+  do_read_ = do_write_ = &MemcachedConnection::noop;
 }
 
 int MemcachedConnection::initiate_connection() {
   assert(conn_.fd == -1);
+
+  if (ssl_ctx_ && !conn_.tls.ssl) {
+    auto ssl = ssl::create_ssl(ssl_ctx_);
+    if (!ssl) {
+      return -1;
+    }
+    conn_.set_ssl(ssl);
+  }
 
   conn_.fd = util::create_nonblock_socket(addr_->su.storage.ss_family);
 
@@ -153,6 +170,14 @@ int MemcachedConnection::initiate_connection() {
     return -1;
   }
 
+  if (ssl_ctx_) {
+    if (!util::numeric_host(sni_name_.c_str())) {
+      SSL_set_tlsext_host_name(conn_.tls.ssl, sni_name_.c_str());
+    }
+
+    conn_.prepare_client_handshake();
+  }
+
   if (LOG_ENABLED(INFO)) {
     MCLOG(INFO, this) << "Connecting to memcached server";
   }
@@ -168,7 +193,7 @@ int MemcachedConnection::initiate_connection() {
   return 0;
 }
 
-int MemcachedConnection::on_connect() {
+int MemcachedConnection::connected() {
   if (!util::check_socket_connected(conn_.fd)) {
     conn_.wlimit.stopw();
 
@@ -185,15 +210,59 @@ int MemcachedConnection::on_connect() {
 
   connected_ = true;
 
-  ev_set_cb(&conn_.wev, writecb);
-
   conn_.rlimit.startw();
   ev_timer_again(conn_.loop, &conn_.rt);
+
+  ev_set_cb(&conn_.wev, writecb);
+
+  if (conn_.tls.ssl) {
+    do_read_ = &MemcachedConnection::tls_handshake;
+    do_write_ = &MemcachedConnection::tls_handshake;
+
+    return 0;
+  }
+
+  do_read_ = &MemcachedConnection::read_clear;
+  do_write_ = &MemcachedConnection::write_clear;
 
   return 0;
 }
 
-int MemcachedConnection::on_write() {
+int MemcachedConnection::on_write() { return do_write_(*this); }
+int MemcachedConnection::on_read() { return do_read_(*this); }
+
+int MemcachedConnection::tls_handshake() {
+  ERR_clear_error();
+
+  ev_timer_again(conn_.loop, &conn_.rt);
+
+  auto rv = conn_.tls_handshake();
+  if (rv == SHRPX_ERR_INPROGRESS) {
+    return 0;
+  }
+
+  if (rv < 0) {
+    return rv;
+  }
+
+  if (LOG_ENABLED(INFO)) {
+    LOG(INFO) << "SSL/TLS handshake completed";
+  }
+
+  auto &tlsconf = get_config()->tls;
+
+  if (!tlsconf.insecure &&
+      ssl::check_cert(conn_.tls.ssl, addr_, StringRef(sni_name_)) != 0) {
+    return -1;
+  }
+
+  do_read_ = &MemcachedConnection::read_tls;
+  do_write_ = &MemcachedConnection::write_tls;
+
+  return on_write();
+}
+
+int MemcachedConnection::write_tls() {
   if (!connected_) {
     return 0;
   }
@@ -207,19 +276,30 @@ int MemcachedConnection::on_write() {
     return 0;
   }
 
-  int rv;
+  std::array<struct iovec, MAX_WR_IOVCNT> iov;
+  std::array<uint8_t, 16_k> buf;
 
   for (; !sendq_.empty();) {
-    rv = send_request();
+    auto iovcnt = fill_request_buffer(iov.data(), iov.size());
+    auto p = std::begin(buf);
+    for (size_t i = 0; i < iovcnt; ++i) {
+      auto &v = iov[i];
+      auto n = std::min(static_cast<size_t>(std::end(buf) - p), v.iov_len);
+      p = std::copy_n(static_cast<uint8_t *>(v.iov_base), n, p);
+      if (p == std::end(buf)) {
+        break;
+      }
+    }
 
-    if (rv < 0) {
+    auto nwrite = conn_.write_tls(buf.data(), p - std::begin(buf));
+    if (nwrite < 0) {
       return -1;
     }
-
-    if (rv == 1) {
-      // blocked
+    if (nwrite == 0) {
       return 0;
     }
+
+    drain_send_queue(nwrite);
   }
 
   conn_.wlimit.stopw();
@@ -228,7 +308,70 @@ int MemcachedConnection::on_write() {
   return 0;
 }
 
-int MemcachedConnection::on_read() {
+int MemcachedConnection::read_tls() {
+  if (!connected_) {
+    return 0;
+  }
+
+  ev_timer_again(conn_.loop, &conn_.rt);
+
+  for (;;) {
+    auto nread = conn_.read_tls(recvbuf_.last, recvbuf_.wleft());
+
+    if (nread == 0) {
+      return 0;
+    }
+
+    if (nread < 0) {
+      return -1;
+    }
+
+    recvbuf_.write(nread);
+
+    if (parse_packet() != 0) {
+      return -1;
+    }
+  }
+
+  return 0;
+}
+
+int MemcachedConnection::write_clear() {
+  if (!connected_) {
+    return 0;
+  }
+
+  ev_timer_again(conn_.loop, &conn_.rt);
+
+  if (sendq_.empty()) {
+    conn_.wlimit.stopw();
+    ev_timer_stop(conn_.loop, &conn_.wt);
+
+    return 0;
+  }
+
+  std::array<struct iovec, MAX_WR_IOVCNT> iov;
+
+  for (; !sendq_.empty();) {
+    auto iovcnt = fill_request_buffer(iov.data(), iov.size());
+    auto nwrite = conn_.writev_clear(iov.data(), iovcnt);
+    if (nwrite < 0) {
+      return -1;
+    }
+    if (nwrite == 0) {
+      return 0;
+    }
+
+    drain_send_queue(nwrite);
+  }
+
+  conn_.wlimit.stopw();
+  ev_timer_stop(conn_.loop, &conn_.wt);
+
+  return 0;
+}
+
+int MemcachedConnection::read_clear() {
   if (!connected_) {
     return 0;
   }
@@ -415,9 +558,8 @@ int MemcachedConnection::parse_packet() {
 #define MAX_WR_IOVCNT DEFAULT_WR_IOVCNT
 #endif // !defined(IOV_MAX) || IOV_MAX >= DEFAULT_WR_IOVCNT
 
-int MemcachedConnection::send_request() {
-  ssize_t nwrite;
-
+size_t MemcachedConnection::fill_request_buffer(struct iovec *iov,
+                                                size_t iovlen) {
   if (sendsum_ == 0) {
     for (auto &req : sendq_) {
       if (req->canceled) {
@@ -438,32 +580,27 @@ int MemcachedConnection::send_request() {
     }
   }
 
-  std::array<struct iovec, DEFAULT_WR_IOVCNT> iov;
-  size_t iovlen = 0;
+  size_t iovcnt = 0;
   for (auto &buf : sendbufv_) {
-    if (iovlen + 2 > iov.size()) {
+    if (iovcnt + 2 > iovlen) {
       break;
     }
 
     auto req = buf.req;
     if (buf.headbuf.rleft()) {
-      iov[iovlen++] = {buf.headbuf.pos, buf.headbuf.rleft()};
+      iov[iovcnt++] = {buf.headbuf.pos, buf.headbuf.rleft()};
     }
     if (buf.send_value_left) {
-      iov[iovlen++] = {req->value.data() + req->value.size() -
+      iov[iovcnt++] = {req->value.data() + req->value.size() -
                            buf.send_value_left,
                        buf.send_value_left};
     }
   }
 
-  nwrite = conn_.writev_clear(iov.data(), iovlen);
-  if (nwrite < 0) {
-    return -1;
-  }
-  if (nwrite == 0) {
-    return 1;
-  }
+  return iovcnt;
+}
 
+void MemcachedConnection::drain_send_queue(size_t nwrite) {
   sendsum_ -= nwrite;
 
   while (nwrite > 0) {
@@ -488,8 +625,6 @@ int MemcachedConnection::send_request() {
     recvq_.push_back(std::move(sendq_.front()));
     sendq_.pop_front();
   }
-
-  return 0;
 }
 
 size_t MemcachedConnection::serialized_size(MemcachedRequest *req) {
@@ -548,5 +683,7 @@ int MemcachedConnection::add_request(std::unique_ptr<MemcachedRequest> req) {
 
 // TODO should we start write timer too?
 void MemcachedConnection::signal_write() { conn_.wlimit.startw(); }
+
+int MemcachedConnection::noop() { return 0; }
 
 } // namespace shrpx
