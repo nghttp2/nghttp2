@@ -312,17 +312,17 @@ std::vector<uint8_t> serialize_ssl_session(SSL_SESSION *session) {
 }
 } // namespace
 
-void Worker::cache_downstream_tls_session(const Address *addr,
-                                          SSL_SESSION *session, ev_tstamp t) {
-  auto it = downstream_tls_session_cache_.find(addr);
-  if (it == std::end(downstream_tls_session_cache_)) {
+void Worker::cache_client_tls_session(const Address *addr, SSL_SESSION *session,
+                                      ev_tstamp t) {
+  auto it = client_tls_session_cache_.find(addr);
+  if (it == std::end(client_tls_session_cache_)) {
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "Create cache entry for SSL_SESSION=" << session
                 << ", addr=" << util::numeric_hostport(&addr->su.sa, addr->len)
                 << "(" << addr << "), timestamp=" << std::fixed
                 << std::setprecision(6) << t;
     }
-    downstream_tls_session_cache_.emplace(
+    client_tls_session_cache_.emplace(
         addr, SessionCacheEntry{serialize_ssl_session(session), t});
     return;
   }
@@ -348,9 +348,9 @@ void Worker::cache_downstream_tls_session(const Address *addr,
   ent.last_updated = t;
 }
 
-SSL_SESSION *Worker::reuse_downstream_tls_session(const Address *addr) {
-  auto it = downstream_tls_session_cache_.find(addr);
-  if (it == std::end(downstream_tls_session_cache_)) {
+SSL_SESSION *Worker::reuse_client_tls_session(const Address *addr) {
+  auto it = client_tls_session_cache_.find(addr);
+  if (it == std::end(client_tls_session_cache_)) {
     return nullptr;
   }
 

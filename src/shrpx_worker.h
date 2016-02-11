@@ -157,11 +157,11 @@ public:
   // |session| is serialized into ASN1 representation, and stored.
   // |t| is used as a time stamp.  Depending on the existing cache's
   // time stamp, |session| might not be cached.
-  void cache_downstream_tls_session(const Address *addr, SSL_SESSION *session,
-                                    ev_tstamp t);
+  void cache_client_tls_session(const Address *addr, SSL_SESSION *session,
+                                ev_tstamp t);
   // Returns cached session associated |addr|.  If no cache entry is
   // found associated to |addr|, nullptr will be returned.
-  SSL_SESSION *reuse_downstream_tls_session(const Address *addr);
+  SSL_SESSION *reuse_client_tls_session(const Address *addr);
 
 private:
 #ifndef NOTHREADS
@@ -180,7 +180,7 @@ private:
   // Client side SSL_SESSION cache.  SSL_SESSION is associated to
   // remote address.
   std::unordered_map<const Address *, SessionCacheEntry>
-      downstream_tls_session_cache_;
+      client_tls_session_cache_;
 
   std::unique_ptr<MemcachedDispatcher> session_cache_memcached_dispatcher_;
 #ifdef HAVE_MRUBY
