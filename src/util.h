@@ -459,6 +459,11 @@ bool numeric_host(const char *hostname, int family);
 // failed, "unknown" is returned.
 std::string numeric_name(const struct sockaddr *sa, socklen_t salen);
 
+// Returns string representation of numeric address and port of |addr|
+// of length |salen|.  The format is like <HOST>:<PORT>.  For IPv6
+// address, address is enclosed by square brackets ([]).
+std::string numeric_hostport(const struct sockaddr *sa, socklen_t salen);
+
 // Makes internal copy of stderr (and possibly stdout in the future),
 // which is then used as pointer to /dev/stderr or /proc/self/fd/2
 void store_original_fds();

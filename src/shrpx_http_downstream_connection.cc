@@ -131,9 +131,10 @@ HttpDownstreamConnection::HttpDownstreamConnection(
 
 HttpDownstreamConnection::~HttpDownstreamConnection() {
   if (conn_.tls.ssl) {
-    auto session = SSL_get1_session(conn_.tls.ssl);
+    auto session = SSL_get0_session(conn_.tls.ssl);
     if (session) {
-      worker_->cache_downstream_tls_session(&addr_->addr, session);
+      worker_->cache_downstream_tls_session(&addr_->addr, session,
+                                            ev_now(conn_.loop));
     }
   }
 }

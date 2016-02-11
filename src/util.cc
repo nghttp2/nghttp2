@@ -651,6 +651,41 @@ std::string numeric_name(const struct sockaddr *sa, socklen_t salen) {
   return host.data();
 }
 
+std::string numeric_hostport(const struct sockaddr *sa, socklen_t salen) {
+  if (sa->sa_family == AF_UNIX) {
+    return "localhost";
+  }
+
+  std::array<char, NI_MAXHOST> host;
+  std::array<char, NI_MAXSERV> serv;
+  auto rv = getnameinfo(sa, salen, host.data(), host.size(), serv.data(),
+                        serv.size(), NI_NUMERICHOST | NI_NUMERICSERV);
+  if (rv != 0) {
+    return "unknown";
+  }
+
+  auto hostlen = strlen(host.data());
+  auto servlen = strlen(serv.data());
+
+  std::string s;
+  char *p;
+  if (sa->sa_family == AF_INET6) {
+    s.resize(hostlen + servlen + 2 + 1);
+    p = &s[0];
+    *p++ = '[';
+    p = std::copy_n(host.data(), hostlen, p);
+    *p++ = ']';
+  } else {
+    s.resize(hostlen + servlen + 1);
+    p = &s[0];
+    p = std::copy_n(host.data(), hostlen, p);
+  }
+  *p++ = ':';
+  std::copy_n(serv.data(), servlen, p);
+
+  return s;
+}
+
 static int STDERR_COPY = -1;
 static int STDOUT_COPY = -1;
 

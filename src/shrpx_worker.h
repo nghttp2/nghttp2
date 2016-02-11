@@ -101,6 +101,14 @@ struct WorkerEvent {
   std::shared_ptr<TicketKeys> ticket_keys;
 };
 
+struct SessionCacheEntry {
+  // ASN1 representation of SSL_SESSION object.  See
+  // i2d_SSL_SESSION(3SSL).
+  std::vector<uint8_t> session_data;
+  // The last time stamp when this cache entry is created or updated.
+  ev_tstamp last_updated;
+};
+
 class Worker {
 public:
   Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
@@ -146,13 +154,13 @@ public:
 #endif // HAVE_MRUBY
 
   // Caches |session| which is associated to remote address |addr|.
-  // The caller is responsible to increment the reference count of
-  // |session|, since this function does not do so.
-  void cache_downstream_tls_session(const Address *addr, SSL_SESSION *session);
-  // Returns cached session associated |addr|.  If non-nullptr value
-  // is returned, its cache entry was successfully removed from cache.
-  // If no cache entry is found associated to |addr|, nullptr will be
-  // returned.
+  // |session| is serialized into ASN1 representation, and stored.
+  // |t| is used as a time stamp.  Depending on the existing cache's
+  // time stamp, |session| might not be cached.
+  void cache_downstream_tls_session(const Address *addr, SSL_SESSION *session,
+                                    ev_tstamp t);
+  // Returns cached session associated |addr|.  If no cache entry is
+  // found associated to |addr|, nullptr will be returned.
   SSL_SESSION *reuse_downstream_tls_session(const Address *addr);
 
 private:
@@ -170,13 +178,9 @@ private:
   std::vector<DownstreamGroup> dgrps_;
 
   // Client side SSL_SESSION cache.  SSL_SESSION is associated to
-  // remote address.  One address has multiple SSL_SESSION objects.
-  // New SSL_SESSION is appended to the deque.  When doing eviction
-  // due to storage limitation, the SSL_SESSION which sits at the
-  // front of deque is removed.
-  std::unordered_map<const Address *, std::deque<SSL_SESSION *>>
+  // remote address.
+  std::unordered_map<const Address *, SessionCacheEntry>
       downstream_tls_session_cache_;
-  size_t downstream_tls_session_cache_size_;
 
   std::unique_ptr<MemcachedDispatcher> session_cache_memcached_dispatcher_;
 #ifdef HAVE_MRUBY

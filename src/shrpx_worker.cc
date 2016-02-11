@@ -29,6 +29,7 @@
 #endif // HAVE_UNISTD_H
 
 #include <memory>
+#include <iomanip>
 
 #include "shrpx_ssl.h"
 #include "shrpx_log.h"
@@ -73,7 +74,6 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
       dconn_pool_(get_config()->conn.downstream.addr_groups.size()),
       worker_stat_(get_config()->conn.downstream.addr_groups.size()),
       dgrps_(get_config()->conn.downstream.addr_groups.size()),
-      downstream_tls_session_cache_size_(0),
       loop_(loop),
       sv_ssl_ctx_(sv_ssl_ctx),
       cl_ssl_ctx_(cl_ssl_ctx),
@@ -117,12 +117,6 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
 Worker::~Worker() {
   ev_async_stop(loop_, &w_);
   ev_timer_stop(loop_, &mcpool_clear_timer_);
-
-  for (auto &p : downstream_tls_session_cache_) {
-    for (auto session : p.second) {
-      SSL_SESSION_free(session);
-    }
-  }
 }
 
 void Worker::schedule_clear_mcpool() {
@@ -307,38 +301,51 @@ mruby::MRubyContext *Worker::get_mruby_context() const {
 }
 #endif // HAVE_MRUBY
 
-void Worker::cache_downstream_tls_session(const Address *addr,
-                                          SSL_SESSION *session) {
-  auto &tlsconf = get_config()->tls;
+namespace {
+std::vector<uint8_t> serialize_ssl_session(SSL_SESSION *session) {
+  auto len = i2d_SSL_SESSION(session, nullptr);
+  auto buf = std::vector<uint8_t>(len);
+  auto p = buf.data();
+  i2d_SSL_SESSION(session, &p);
 
-  auto max = tlsconf.downstream_session_cache_per_worker;
-  if (max == 0) {
+  return buf;
+}
+} // namespace
+
+void Worker::cache_downstream_tls_session(const Address *addr,
+                                          SSL_SESSION *session, ev_tstamp t) {
+  auto it = downstream_tls_session_cache_.find(addr);
+  if (it == std::end(downstream_tls_session_cache_)) {
+    if (LOG_ENABLED(INFO)) {
+      LOG(INFO) << "Create cache entry for SSL_SESSION=" << session
+                << ", addr=" << util::numeric_hostport(&addr->su.sa, addr->len)
+                << "(" << addr << "), timestamp=" << std::fixed
+                << std::setprecision(6) << t;
+    }
+    downstream_tls_session_cache_.emplace(
+        addr, SessionCacheEntry{serialize_ssl_session(session), t});
     return;
   }
 
-  if (downstream_tls_session_cache_size_ >= max) {
-    // It is implementation dependent which item is returned from
-    // std::begin().  Probably, this depends on hash algorithm.  If it
-    // is random fashion, then we are mostly OK.
-    auto it = std::begin(downstream_tls_session_cache_);
-    assert(it != std::end(downstream_tls_session_cache_));
-    auto &v = (*it).second;
-    assert(!v.empty());
-    auto sess = v.front();
-    v.pop_front();
-    SSL_SESSION_free(sess);
-    if (v.empty()) {
-      downstream_tls_session_cache_.erase(it);
+  auto &ent = (*it).second;
+  if (ent.last_updated + 1_min > t) {
+    if (LOG_ENABLED(INFO)) {
+      LOG(INFO) << "Cache for addr="
+                << util::numeric_hostport(&addr->su.sa, addr->len) << "("
+                << addr << ") is still host.  Not updating.";
     }
+    return;
   }
 
-  auto it = downstream_tls_session_cache_.find(addr);
-  if (it == std::end(downstream_tls_session_cache_)) {
-    std::tie(it, std::ignore) = downstream_tls_session_cache_.emplace(
-        addr, std::deque<SSL_SESSION *>());
+  if (LOG_ENABLED(INFO)) {
+    LOG(INFO) << "Update cache entry for SSL_SESSION=" << session
+              << ", addr=" << util::numeric_hostport(&addr->su.sa, addr->len)
+              << "(" << addr << "), timestamp=" << std::fixed
+              << std::setprecision(6) << t;
   }
-  (*it).second.push_back(session);
-  ++downstream_tls_session_cache_size_;
+
+  ent.session_data = serialize_ssl_session(session);
+  ent.last_updated = t;
 }
 
 SSL_SESSION *Worker::reuse_downstream_tls_session(const Address *addr) {
@@ -347,17 +354,9 @@ SSL_SESSION *Worker::reuse_downstream_tls_session(const Address *addr) {
     return nullptr;
   }
 
-  auto &v = (*it).second;
-  assert(!v.empty());
-  auto session = v.back();
-  v.pop_back();
-  --downstream_tls_session_cache_size_;
-
-  if (v.empty()) {
-    downstream_tls_session_cache_.erase(it);
-  }
-
-  return session;
+  const auto &ent = (*it).second;
+  auto p = ent.session_data.data();
+  return d2i_SSL_SESSION(nullptr, &p, ent.session_data.size());
 }
 
 } // namespace shrpx
