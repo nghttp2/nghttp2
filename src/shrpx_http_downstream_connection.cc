@@ -130,7 +130,7 @@ HttpDownstreamConnection::HttpDownstreamConnection(
       group_(group) {}
 
 HttpDownstreamConnection::~HttpDownstreamConnection() {
-  if (conn_.tls.ssl) {
+  if (conn_.tls.ssl && conn_.tls.initial_handshake_done) {
     auto session = SSL_get0_session(conn_.tls.ssl);
     if (session) {
       worker_->cache_client_tls_session(&addr_->addr, session,
