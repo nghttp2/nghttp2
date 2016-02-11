@@ -99,9 +99,10 @@ else()
 endif()
 
 include(CheckCXXCompilerFlag)
-foreach(_cxx1x_flag "-std=gnu++11" "-std=gnu++0x")
-  CHECK_CXX_COMPILER_FLAG(${_cxx1x_flag} _cxx1x_flag_supported)
-  if(_cxx1x_flag_supported)
+foreach(_std gnu++11 gnu++0x)
+  set(_cxx1x_flag -std=${_std})
+  CHECK_CXX_COMPILER_FLAG(${_cxx1x_flag} CXX_STD_${_std})
+  if(CXX_STD_${_std})
     set(CXX1XCXXFLAGS ${_cxx1x_flag})
     break()
   endif()
@@ -186,21 +187,8 @@ pkg_check_modules(CUNIT cunit>=2.1)
 #
 # AM_CONDITIONAL([HAVE_CUNIT], [ test "x${have_cunit}" = "xyes" ])
 
-# # libev (for src)
-# # libev does not have pkg-config file.  Check it in an old way.
-# save_LIBS=$LIBS
-# # android requires -lm for floor
-# AC_CHECK_LIB([ev], [ev_time], [have_libev=yes], [have_libev=no], [-lm])
-# if test "x${have_libev}" = "xyes"; then
-#   AC_CHECK_HEADER([ev.h], [have_libev=yes], [have_libev=no])
-#   if test "x${have_libev}" = "xyes"; then
-#     LIBEV_LIBS=-lev
-#     LIBEV_CFLAGS=
-#     AC_SUBST([LIBEV_LIBS])
-#     AC_SUBST([LIBEV_CFLAGS])
-#   fi
-# fi
-# LIBS=$save_LIBS
+# libev (for src)
+find_package(Libev)
 
 # openssl (for src)
 pkg_check_modules(OPENSSL openssl>=1.0.1)
@@ -223,38 +211,10 @@ endif()
 
 # jemalloc
 if(WITH_JEMALLOC)
-  # FIXME
-# have_jemalloc=no
-# if test "x${request_jemalloc}" != "xno"; then
-#   save_LIBS=$LIBS
-#   AC_SEARCH_LIBS([malloc_stats_print], [jemalloc], [have_jemalloc=yes], [],
-#                  [$PTHREAD_LDFLAGS])
-#
-#   if test "x${have_jemalloc}" = "xyes"; then
-#     jemalloc_libs=${ac_cv_search_malloc_stats_print}
-#   else
-#     # On Darwin, malloc_stats_print is je_malloc_stats_print
-#     AC_SEARCH_LIBS([je_malloc_stats_print], [jemalloc], [have_jemalloc=yes], [],
-#                    [$PTHREAD_LDFLAGS])
-#
-#     if test "x${have_jemalloc}" = "xyes"; then
-#       jemalloc_libs=${ac_cv_search_je_malloc_stats_print}
-#     fi
-#   fi
-#
-#   LIBS=$save_LIBS
-#
-#   if test "x${have_jemalloc}" = "xyes" &&
-#      test "x${jemalloc_libs}" != "xnone required"; then
-#     JEMALLOC_LIBS=${jemalloc_libs}
-#     AC_SUBST([JEMALLOC_LIBS])
-#   fi
-# fi
-#
-# if test "x${request_jemalloc}" = "xyes" &&
-#    test "x${have_jemalloc}" != "xyes"; then
-#   AC_MSG_ERROR([jemalloc was requested (--with-jemalloc) but not found])
-# fi
+  pkg_check_modules(JEMALLOC jemalloc)
+  if(NOT JEMALLOC_FOUND)
+    find_package(jemalloc REQUIRED)
+  endif()
 endif()
 
 # spdylay (for src/nghttpx and src/h2load)
@@ -268,143 +228,48 @@ if(WITH_SPDYLAY)
   # XXX fail if WITH_SPDYLAY=ON
 endif()
 
-# # Check Boost Asio library
-# have_asio_lib=no
-#
-# if test "x${request_asio_lib}" = "xyes"; then
-#   AX_BOOST_BASE([1.54.0], [have_boost_base=yes], [have_boost_base=no])
-#
-#   if test "x${have_boost_base}" = "xyes"; then
-#     AX_BOOST_ASIO()
-#     AX_BOOST_SYSTEM()
-#     AX_BOOST_THREAD()
-#
-#     if test "x${ax_cv_boost_asio}" = "xyes" &&
-#        test "x${ax_cv_boost_system}" = "xyes" &&
-#        test "x${ax_cv_boost_thread}" = "xyes"; then
-#       have_asio_lib=yes
-#     fi
-#   fi
-# fi
-#
-# # The nghttp, nghttpd and nghttpx under src depend on zlib, OpenSSL
-# # and libev
-# enable_app=no
-# if test "x${request_app}" != "xno" &&
-#    test "x${have_zlib}" = "xyes" &&
-#    test "x${have_openssl}" = "xyes" &&
-#    test "x${have_libev}" = "xyes"; then
-#   enable_app=yes
-# fi
-#
-# if test "x${request_app}" = "xyes" &&
-#    test "x${enable_app}" != "xyes"; then
-#   AC_MSG_ERROR([applications were requested (--enable-app) but dependencies are not met.])
-# fi
-#
-# AM_CONDITIONAL([ENABLE_APP], [ test "x${enable_app}" = "xyes" ])
-#
-# enable_hpack_tools=no
-# # HPACK tools requires jansson
-# if test "x${request_hpack_tools}" != "xno" &&
-#    test "x${have_jansson}" = "xyes"; then
-#   enable_hpack_tools=yes
-# fi
-#
-# if test "x${request_hpack_tools}" = "xyes" &&
-#    test "x${enable_hpack_tools}" != "xyes"; then
-#   AC_MSG_ERROR([HPACK tools were requested (--enable-hpack-tools) but dependencies are not met.])
-# fi
-#
-# AM_CONDITIONAL([ENABLE_HPACK_TOOLS], [ test "x${enable_hpack_tools}" = "xyes" ])
-#
-# # C++ library libnghttp2_asio
-#
-# enable_asio_lib=no
-# if test "x${request_asio_lib}" != "xno" &&
-#    test "x${have_asio_lib}" = "xyes"; then
-#   enable_asio_lib=yes
-# fi
-#
-# AM_CONDITIONAL([ENABLE_ASIO_LIB], [ test "x${enable_asio_lib}" = "xyes" ])
-#
-# # The example programs depend on OpenSSL and libevent_openssl
-# enable_examples=no
-# if test "x${request_examples}" != "xno" &&
-#    test "x${have_openssl}" = "xyes" &&
-#    test "x${have_libevent_openssl}" = "xyes"; then
-#   enable_examples=yes
-# fi
-#
-# if test "x${request_examples}" = "xyes" &&
-#    test "x${enable_examples}" != "xyes"; then
-#   AC_MSG_ERROR([examples were requested (--enable-examples) but dependencies are not met.])
-# fi
-#
-# AM_CONDITIONAL([ENABLE_EXAMPLES], [ test "x${enable_examples}" = "xyes" ])
-#
-# # third-party only be built when needed
-#
-# enable_third_party=no
-# have_mruby=no
-# have_neverbleed=no
-# if test "x${enable_examples}" = "xyes" ||
-#    test "x${enable_app}" = "xyes" ||
-#    test "x${enable_hpack_tools}" = "xyes" ||
-#    test "x${enable_asio_lib}" = "xyes"; then
-#   enable_third_party=yes
-#
-#   # mruby (for src/nghttpx)
-#   if test "x${request_mruby}" = "xyes"; then
-#     # We are going to build mruby
-#     have_mruby=yes
-#     AC_DEFINE([HAVE_MRUBY], [1], [Define to 1 if you have `mruby` library.])
-#     LIBMRUBY_LIBS="-lmruby -lm"
-#     LIBMRUBY_CFLAGS=
-#     AC_SUBST([LIBMRUBY_LIBS])
-#     AC_SUBST([LIBMRUBY_CFLAGS])
-#   fi
-#
-#   # neverbleed (for src/nghttpx)
-#   if test "x${request_neverbleed}" = "xyes"; then
-#     have_neverbleed=yes
-#     AC_DEFINE([HAVE_NEVERBLEED], [1], [Define to 1 if you have `neverbleed` library.])
-#   fi
-# fi
-#
-# AM_CONDITIONAL([ENABLE_THIRD_PARTY], [ test "x${enable_third_party}" = "xyes" ])
-# AM_CONDITIONAL([HAVE_MRUBY], [test "x${have_mruby}" = "xyes"])
-# AM_CONDITIONAL([HAVE_NEVERBLEED], [test "x${have_neverbleed}" = "xyes"])
-#
-# # Python bindings
-# enable_python_bindings=no
+if(ENABLE_ASIO_LIB)
+  find_package(Boost 1.54.0 REQUIRED system thread)
+endif()
+
+# The nghttp, nghttpd and nghttpx under src depend on zlib, OpenSSL and libev
+if(ENABLE_APP AND NOT (ZLIB_FOUND AND OPENSSL_FOUND AND LIBEV_FOUND))
+  message(FATAL_ERROR "Applications were requested (ENABLE_APP=1) but dependencies are not met.")
+endif()
+
+# HPACK tools requires jansson
+if(ENABLE_HPACK_TOOLS AND NOT HAVE_JANSSON)
+  message(FATAL_ERROR "HPACK tools were requested (ENABLE_HPACK_TOOLS=1) but dependencies are not met.")
+endif()
+
+# C++ library libnghttp2_asio
+if(ENABLE_EXAMPLES AND NOT (OPENSSL_FOUND AND LIBEVENT_OPENSSL_FOUND))
+  message(FATAL_ERROR "examples were requested (--enable-examples) but dependencies are not met.")
+endif()
+
+# third-party http-parser only be built when needed
+if(ENABLE_EXAMPLES OR ENABLE_APP OR ENABLE_HPACK_TOOLS OR ENABLE_ASIO_LIB)
+  set(ENABLE_THIRD_PARTY 1)
+  # mruby (for src/nghttpx)
+  if(WITH_MRUBY)
+    set(HAVE_MRUBY 1)
+    # XXX add -lmruby and -lm libs
+  endif()
+  if(WITH_NEVERBLEED)
+    set(HAVE_NEVERBLEED 1)
+  endif()
+endif()
+
+# Python bindings
+if(ENABLE_PYTHON_BINDINGS AND NOT CYTHON AND NOT PYTHONLIBS_FOUND)
+# XXX PythonInterp and PythonLibs are looked up before, unreachable check?
 # if test "x${request_python_bindings}" != "xno" &&
 #    test "x${CYTHON}" != "x" &&
 #    test "x${PYTHON}" != "x:" &&
 #    test "x${have_python_dev}" = "xyes"; then
-#   enable_python_bindings=yes
-# fi
-#
-# if test "x${request_python_bindings}" = "xyes" &&
-#    test "x${enable_python_bindings}" != "xyes"; then
-#   AC_MSG_ERROR([python bindings were requested (--enable-python-bindings) but dependencies are not met.])
-# fi
-#
-# AM_CONDITIONAL([ENABLE_PYTHON_BINDINGS],
-#                [test "x${enable_python_bindings}" = "xyes"])
-#
-# # Produce cython conditional, so that we can distribute generated C
-# # source
-# AM_CONDITIONAL([HAVE_CYTHON], [test "x${CYTHON}" != "x"])
-#
-# # failmalloc tests
-# enable_failmalloc=no
-# if test "x${request_failmalloc}" = "xyes"; then
-#   enable_failmalloc=yes
-# fi
-#
-# AM_CONDITIONAL([ENABLE_FAILMALLOC], [ test "x${enable_failmalloc}" = "xyes" ])
-#
+  message(FATAL_ERROR "python bindings were requested (ENABLE_PYTHON_BINDINGS=1) but dependencies are not met.")
+endif()
+
 # # Checks for header files.
 # AC_HEADER_ASSERT
 # AC_CHECK_HEADERS([ \

@@ -10,3 +10,9 @@
 
 /* Define to 1 if you have `spdylay` library. */
 #cmakedefine HAVE_SPDYLAY 1
+
+/* Define to 1 if you have `mruby` library. */
+#cmakedefine HAVE_MRUBY 1
+
+/* Define to 1 if you have `neverbleed` library. */
+#cmakedefine HAVE_NEVERBLEED 1
