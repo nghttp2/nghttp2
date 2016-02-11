@@ -462,13 +462,15 @@ set(top_srcdir      "${CMAKE_SOURCE_DIR}")
 set(top_builddir    "${CMAKE_BINARY_DIR}")
 set(abs_top_srcdir  "${CMAKE_SOURCE_DIR}")
 set(abs_top_builddir "${CMAKE_BINARY_DIR}")
-set(prefix          "")
-set(exec_prefix     "")
-set(libdir          "")
-set(includedir      "")
-set(bindir          "")
-set(sbindir         "")
+# libnghttp2.pc (pkg-config file)
+set(prefix          "${CMAKE_INSTALL_PREFIX}")
+set(exec_prefix     "\${prefix}")
+set(libdir          "\${prefix}/lib")
+set(includedir      "\${prefix}/include")
 set(VERSION         "${PACKAGE_VERSION}")
+# For init scripts and systemd service file
+set(bindir          "${prefix}/bin")
+set(sbindir         "${prefix}/sbin")
 foreach(name
    lib/libnghttp2.pc
    lib/includes/nghttp2/nghttp2ver.h
