@@ -307,7 +307,7 @@ mruby::MRubyContext *Worker::get_mruby_context() const {
 }
 #endif // HAVE_MRUBY
 
-void Worker::cache_downstream_tls_session(const DownstreamAddr *addr,
+void Worker::cache_downstream_tls_session(const Address *addr,
                                           SSL_SESSION *session) {
   auto &tlsconf = get_config()->tls;
 
@@ -341,7 +341,7 @@ void Worker::cache_downstream_tls_session(const DownstreamAddr *addr,
   ++downstream_tls_session_cache_size_;
 }
 
-SSL_SESSION *Worker::reuse_downstream_tls_session(const DownstreamAddr *addr) {
+SSL_SESSION *Worker::reuse_downstream_tls_session(const Address *addr) {
   auto it = downstream_tls_session_cache_.find(addr);
   if (it == std::end(downstream_tls_session_cache_)) {
     return nullptr;

@@ -145,16 +145,15 @@ public:
   mruby::MRubyContext *get_mruby_context() const;
 #endif // HAVE_MRUBY
 
-  // Caches |session| which is associated to downstream address
-  // |addr|.  The caller is responsible to increment the reference
-  // count of |session|, since this function does not do so.
-  void cache_downstream_tls_session(const DownstreamAddr *addr,
-                                    SSL_SESSION *session);
+  // Caches |session| which is associated to remote address |addr|.
+  // The caller is responsible to increment the reference count of
+  // |session|, since this function does not do so.
+  void cache_downstream_tls_session(const Address *addr, SSL_SESSION *session);
   // Returns cached session associated |addr|.  If non-nullptr value
   // is returned, its cache entry was successfully removed from cache.
   // If no cache entry is found associated to |addr|, nullptr will be
   // returned.
-  SSL_SESSION *reuse_downstream_tls_session(const DownstreamAddr *addr);
+  SSL_SESSION *reuse_downstream_tls_session(const Address *addr);
 
 private:
 #ifndef NOTHREADS
@@ -170,12 +169,12 @@ private:
   WorkerStat worker_stat_;
   std::vector<DownstreamGroup> dgrps_;
 
-  // Cache for SSL_SESSION for downstream connections.  SSL_SESSION is
-  // associated to downstream address.  One address has multiple
-  // SSL_SESSION objects.  New SSL_SESSION is appended to the deque.
-  // When doing eviction due to storage limitation, the SSL_SESSION
-  // which sits at the front of deque is removed.
-  std::unordered_map<const DownstreamAddr *, std::deque<SSL_SESSION *>>
+  // Client side SSL_SESSION cache.  SSL_SESSION is associated to
+  // remote address.  One address has multiple SSL_SESSION objects.
+  // New SSL_SESSION is appended to the deque.  When doing eviction
+  // due to storage limitation, the SSL_SESSION which sits at the
+  // front of deque is removed.
+  std::unordered_map<const Address *, std::deque<SSL_SESSION *>>
       downstream_tls_session_cache_;
   size_t downstream_tls_session_cache_size_;
 

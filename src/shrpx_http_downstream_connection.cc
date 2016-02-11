@@ -133,7 +133,7 @@ HttpDownstreamConnection::~HttpDownstreamConnection() {
   if (conn_.tls.ssl) {
     auto session = SSL_get1_session(conn_.tls.ssl);
     if (session) {
-      worker_->cache_downstream_tls_session(addr_, session);
+      worker_->cache_downstream_tls_session(&addr_->addr, session);
     }
   }
 }
@@ -218,7 +218,7 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
           SSL_set_tlsext_host_name(conn_.tls.ssl, sni_name.c_str());
         }
 
-        auto session = worker_->reuse_downstream_tls_session(addr_);
+        auto session = worker_->reuse_downstream_tls_session(&addr_->addr);
         if (session) {
           SSL_set_session(conn_.tls.ssl, session);
           SSL_SESSION_free(session);
