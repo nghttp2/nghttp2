@@ -130,7 +130,7 @@ if(ENABLE_APP)
   )
 
   if(HAVE_MRUBY)
-    target_include_directories(nghttpx PUBLIC
+    target_include_directories(nghttpx PRIVATE
       "${CMAKE_SOURCE_DIR}/third-party/mruby/include"
       # ${LIBMRUBY_CFLAGS}
     )
@@ -142,7 +142,7 @@ if(ENABLE_APP)
   endif()
 
   if(HAVE_NEVERBLEED)
-    target_include_directories(nghttpx PUBLIC
+    target_include_directories(nghttpx PRIVATE
       "${CMAKE_SOURCE_DIR}/third-party/neverbleed"
     )
     target_link_libraries(nghttpx
@@ -189,7 +189,7 @@ if(ENABLE_APP)
   add_executable(nghttp   ${NGHTTP_SOURCES}   $<TARGET_OBJECTS:http-parser>)
   add_executable(nghttpd  ${NGHTTPD_SOURCES}  $<TARGET_OBJECTS:http-parser>)
   add_executable(nghttpx-bin ${NGHTTPX-bin_SOURCES} $<TARGET_OBJECTS:http-parser>)
-  target_compile_definitions(nghttpx-bin PUBLIC "-DPKGDATADIR=\"${PKGDATADIR}\"")
+  target_compile_definitions(nghttpx-bin PRIVATE "-DPKGDATADIR=\"${PKGDATADIR}\"")
   set_target_properties(nghttpx-bin PROPERTIES OUTPUT_NAME nghttpx)
   target_link_libraries(nghttpx-bin nghttpx)
   add_executable(h2load   ${H2LOAD_SOURCES}   $<TARGET_OBJECTS:http-parser>)
@@ -248,7 +248,7 @@ if(ENABLE_ASIO_LIB)
      ${NGHTTP2_ASIO_SOURCES}
      $<TARGET_OBJECTS:http-parser>
   )
-  target_include_directories(nghttp2_asio PUBLIC
+  target_include_directories(nghttp2_asio PRIVATE
     ${OPENSSL_INCLUDE_DIRS}
     ${Boost_INCLUDE_DIRS}
   )

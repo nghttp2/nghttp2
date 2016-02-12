@@ -42,6 +42,7 @@ HexVersion(PACKAGE_VERSION_NUM ${PROJECT_VERSION_MAJOR} ${PROJECT_VERSION_MINOR}
 
 include(GNUInstallDirs)
 
+# XXX "check" is treated as "OFF" now, consider detecting it first
 option(ENABLE_WERROR    "Turn on compile time warnings")
 option(ENABLE_DEBUG     "Turn on debug output")
 option(ENABLE_THREADS   "Turn on threading in apps" ON)
