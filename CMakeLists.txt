@@ -134,24 +134,22 @@ cmake_pop_check_state()
 
 
 # Checks for libraries.
-#
-# # Additional libraries required for tests.
-# TESTLDADD=
-#
-# # Additional libraries required for programs under src directory.
-# APPLDFLAGS=
-#
+# Additional libraries required for tests.
+set(TEST_LIBRARIES)
+# Additional libraries required for programs under src directory.
+set(APP_LIBRARIES)
+
+set(CMAKE_THREAD_PREFER_PTHREAD 1)
+find_package(Threads)
+if(CMAKE_USE_PTHREADS_INIT)
+  list(APPEND APP_LIBRARIES ${CMAKE_THREAD_LIBS_INIT})
+endif()
+# XXX android and C++, is this still needed in cmake?
 # case "$host" in
 #   *android*)
 #     android_build=yes
 #     # android does not need -pthread, but needs followng 3 libs for C++
 #     APPLDFLAGS="$APPLDFLAGS -lstdc++ -latomic -lsupc++"
-#     ;;
-#   *)
-#     PTHREAD_LDFLAGS="-pthread"
-#     APPLDFLAGS="$APPLDFLAGS $PTHREAD_LDFLAGS"
-#     ;;
-# esac
 
 pkg_check_modules(ZLIB zlib>=1.2.3)
 if(ZLIB_FOUND)
@@ -160,17 +158,9 @@ else()
   set(HAVE_ZLIB 0)
 endif()
 
-# # dl: openssl requires libdl when it is statically linked.
-# case "${host_os}" in
-#   *bsd*)
-#     # dlopen is in libc on *BSD
-#     ;;
-#   *)
-#     save_LIBS=$LIBS
-#     AC_SEARCH_LIBS([dlopen], [dl], [APPLDFLAGS="-ldl $APPLDFLAGS"], [], [])
-#     LIBS=$save_LIBS
-#     ;;
-# esac
+# dl: openssl requires libdl when it is statically linked.
+# XXX shouldn't ${CMAKE_DL_LIBS} be appended to OPENSSL_LIBRARIES instead of
+# APP_LIBRARIES if it is really specific to OpenSSL?
 
 # XXX put this in FindCUNIT.cmake
 pkg_check_modules(CUNIT cunit>=2.1)
@@ -211,6 +201,8 @@ endif()
 
 # openssl (for src)
 pkg_check_modules(OPENSSL openssl>=1.0.1)
+# for find_package, replace OPENSSL_INCLUDE_DIRS by OPENSSL_INCLUDE_DIR
+#find_package(OpenSSL 1.0.1)
 if(OPENSSL_FOUND)
   set(HAVE_OPENSSL 1)
 else()
@@ -507,14 +499,15 @@ endforeach()
 include_directories(
   "${CMAKE_BINARY_DIR}" # for config.h
 )
-
+# For use in src/CMakeLists.txt
+set(PKGDATADIR "${CMAKE_INSTALL_FULL_DATADIR}/${CMAKE_PROJECT_NAME}")
 
 add_subdirectory(lib)
 #add_subdirectory(lib/includes)
-if(0)
 add_subdirectory(third-party)
 add_subdirectory(src)
 #add_subdirectory(src/includes)
+if(0)
 add_subdirectory(examples)
 add_subdirectory(python)
 add_subdirectory(tests)

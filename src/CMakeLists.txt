@@ -1,0 +1,270 @@
+add_subdirectory(includes)
+
+# XXX replace this by lists (WARNCFLAGS_list)
+string(REPLACE " " ";" c_flags "${WARNCFLAGS}")
+string(REPLACE " " ";" cxx_flags "${WARNCXXFLAGS} ${CXX1XCXXFLAGS}")
+add_compile_options(
+  "$<$<COMPILE_LANGUAGE:C>:${c_flags}>"
+  "$<$<COMPILE_LANGUAGE:CXX>:${cxx_flags}>"
+)
+
+include_directories(
+  "${CMAKE_SOURCE_DIR}/lib/includes"
+  "${CMAKE_BINARY_DIR}/lib/includes"
+  "${CMAKE_SOURCE_DIR}/lib"
+  "${CMAKE_SOURCE_DIR}/src/includes"
+  "${CMAKE_SOURCE_DIR}/third-party"
+
+  ${LIBSPDYLAY_INCLUDE_DIRS}
+  ${LIBXML2_INCLUDE_DIR}
+  ${LIBEV_INCLUDE_DIRS}
+  ${OPENSSL_INCLUDE_DIRS}
+  ${JANSSON_INCLUDE_DIRS}
+  ${ZLIB_INCLUDE_DIRS}
+)
+
+# XXX per-target?
+link_libraries(
+  nghttp2
+  ${JEMALLOC_LIBRARIES}
+  ${LIBSPDYLAY_LIBRARIES}
+  ${LIBXML2_LIBRARIES}
+  ${LIBEV_LIBRARIES}
+  ${OPENSSL_LIBRARIES}
+  ${JANSSON_LIBRARIES}
+  ${ZLIB_LIBRARIES}
+  ${APP_LIBRARIES}
+)
+
+if(ENABLE_APP)
+  set(HELPER_OBJECTS
+    util.cc
+    http2.cc timegm.c app_helper.cc nghttp2_gzip.c
+  )
+
+  # nghttp client
+  set(NGHTTP_SOURCES
+    ${HELPER_OBJECTS}
+    nghttp.cc
+    ssl.cc
+  )
+  if(HAVE_LIBXML2)
+    list(APPEND NGHTTP_SOURCES HtmlParser.cc)
+  endif()
+
+  # nghttpd
+  set(NGHTTPD_SOURCES
+    ${HELPER_OBJECTS}
+    nghttpd.cc
+    ssl.cc
+    HttpServer.cc
+  )
+
+  # h2load
+  set(H2LOAD_SOURCES
+    util.cc
+    http2.cc h2load.cc
+    timegm.c
+    ssl.cc
+    h2load_http2_session.cc
+    h2load_http1_session.cc
+  )
+  if(HAVE_SPDYLAY)
+    list(APPEND H2LOAD_SOURCES
+      h2load_spdy_session.cc
+    )
+  endif()
+
+
+  # Common libnhttpx sources (used for nghttpx and unit tests)
+  set(NGHTTPX_SRCS
+    util.cc http2.cc timegm.c
+    app_helper.cc
+    ssl.cc
+    shrpx_config.cc
+    shrpx_accept_handler.cc
+    shrpx_connection_handler.cc
+    shrpx_client_handler.cc
+    shrpx_http2_upstream.cc
+    shrpx_https_upstream.cc
+    shrpx_downstream.cc
+    shrpx_downstream_connection.cc
+    shrpx_http_downstream_connection.cc
+    shrpx_http2_downstream_connection.cc
+    shrpx_http2_session.cc
+    shrpx_downstream_queue.cc
+    shrpx_log.cc
+    shrpx_http.cc
+    shrpx_io_control.cc
+    shrpx_ssl.cc
+    shrpx_worker.cc
+    shrpx_log_config.cc
+    shrpx_connect_blocker.cc
+    shrpx_downstream_connection_pool.cc
+    shrpx_rate_limit.cc
+    shrpx_connection.cc
+    shrpx_memcached_dispatcher.cc
+    shrpx_memcached_connection.cc
+    shrpx_worker_process.cc
+    shrpx_signal.cc
+    shrpx_router.cc
+  )
+  if(HAVE_SPDYLAY)
+    list(APPEND NGHTTPX_SRCS
+      shrpx_spdy_upstream.cc
+    )
+  endif()
+  if(HAVE_MRUBY)
+    list(APPEND NGHTTPX_SRCS
+      shrpx_mruby.cc
+      shrpx_mruby_module.cc
+      shrpx_mruby_module_env.cc
+      shrpx_mruby_module_request.cc
+      shrpx_mruby_module_response.cc
+    )
+  endif()
+  add_library(nghttpx STATIC ${NGHTTPX_SRCS})
+
+  set(NGHTTPX-bin_SOURCES
+    shrpx.cc
+  )
+
+  if(HAVE_MRUBY)
+    target_include_directories(nghttpx PUBLIC
+      "${CMAKE_SOURCE_DIR}/third-party/mruby/include"
+      # ${LIBMRUBY_CFLAGS}
+    )
+    target_link_libraries(nghttpx
+      # nghttpx_LDADD += -L${top_builddir}/third-party/mruby/build/lib
+      # XXX find_library or other absolute path?
+      # ${LIBMRUBY_LIBS}
+    )
+  endif()
+
+  if(HAVE_NEVERBLEED)
+    target_include_directories(nghttpx PUBLIC
+      "${CMAKE_SOURCE_DIR}/third-party/neverbleed"
+    )
+    target_link_libraries(nghttpx
+      # FIXME .la does not work ofc...
+      "${CMAKE_BINARY_DIR}/third-party/libneverbleed.la"
+    )
+  endif()
+
+
+  if(HAVE_CUNIT)
+  # check_PROGRAMS += nghttpx-unittest
+  # nghttpx_unittest_SOURCES = shrpx-unittest.cc
+  #   shrpx_ssl_test.cc
+  #   shrpx_downstream_test.cc
+  #   shrpx_config_test.cc
+  #   shrpx_http_test.cc
+  #   http2_test.cc
+  #   util_test.cc
+  #   nghttp2_gzip_test.c
+  #   nghttp2_gzip.c
+  #   buffer_test.cc
+  #   memchunk_test.cc
+  #   template_test.cc
+  #   base64_test.cc
+  # nghttpx_unittest_CPPFLAGS = ${AM_CPPFLAGS}
+  #   -DNGHTTP2_TESTS_DIR=\"$(top_srcdir)/tests\"
+  # nghttpx_unittest_LDADD = libnghttpx.a ${LDADD} @CUNIT_LIBS@ @TESTLDADD@
+  # 
+  # if HAVE_MRUBY
+  # nghttpx_unittest_CPPFLAGS +=
+  #   -I${top_srcdir}/third-party/mruby/include @LIBMRUBY_CFLAGS@
+  # nghttpx_unittest_LDADD +=
+  #   -L${top_builddir}/third-party/mruby/build/lib @LIBMRUBY_LIBS@
+  # endif # HAVE_MRUBY
+  # 
+  # if HAVE_NEVERBLEED
+  # nghttpx_unittest_CPPFLAGS += -I${top_srcdir}/third-party/neverbleed
+  # nghttpx_unittest_LDADD += ${top_builddir}/third-party/libneverbleed.la
+  # endif # HAVE_NEVERBLEED
+  # 
+  # TESTS += nghttpx-unittest
+  endif()
+
+  add_executable(nghttp   ${NGHTTP_SOURCES}   $<TARGET_OBJECTS:http-parser>)
+  add_executable(nghttpd  ${NGHTTPD_SOURCES}  $<TARGET_OBJECTS:http-parser>)
+  add_executable(nghttpx-bin ${NGHTTPX-bin_SOURCES} $<TARGET_OBJECTS:http-parser>)
+  target_compile_definitions(nghttpx-bin PUBLIC "-DPKGDATADIR=\"${PKGDATADIR}\"")
+  set_target_properties(nghttpx-bin PROPERTIES OUTPUT_NAME nghttpx)
+  target_link_libraries(nghttpx-bin nghttpx)
+  add_executable(h2load   ${H2LOAD_SOURCES}   $<TARGET_OBJECTS:http-parser>)
+
+  install(TARGETS nghttp nghttpd nghttpx-bin h2load
+    RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
+endif()
+
+if(ENABLE_HPACK_TOOLS)
+  set(inflatehd_SOURCES
+    inflatehd.cc
+    comp_helper.c
+  )
+  set(deflatehd_SOURCES
+    deflatehd.cc
+    comp_helper.c
+  )
+  add_executable(inflatehd ${inflatehd_SOURCES})
+  add_executable(deflatehd ${deflatehd_SOURCES})
+  install(TARGETS inflatehd deflatehd
+    RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
+endif()
+
+if(ENABLE_ASIO_LIB)
+  set(NGHTTP2_ASIO_SOURCES
+    util.cc http2.cc
+    ssl.cc
+    timegm.c
+    asio_common.cc
+    asio_io_service_pool.cc
+    asio_server_http2.cc
+    asio_server_http2_impl.cc
+    asio_server.cc
+    asio_server_http2_handler.cc
+    asio_server_request.cc
+    asio_server_request_impl.cc
+    asio_server_response.cc
+    asio_server_response_impl.cc
+    asio_server_stream.cc
+    asio_server_serve_mux.cc
+    asio_server_request_handler.cc
+    asio_server_tls_context.cc
+    asio_client_session.cc
+    asio_client_session_impl.cc
+    asio_client_session_tcp_impl.cc
+    asio_client_session_tls_impl.cc
+    asio_client_response.cc
+    asio_client_response_impl.cc
+    asio_client_request.cc
+    asio_client_request_impl.cc
+    asio_client_stream.cc
+    asio_client_tls_context.cc
+  )
+
+  add_library(nghttp2_asio SHARED
+     ${NGHTTP2_ASIO_SOURCES}
+     $<TARGET_OBJECTS:http-parser>
+  )
+  target_include_directories(nghttp2_asio PUBLIC
+    ${OPENSSL_INCLUDE_DIRS}
+    ${Boost_INCLUDE_DIRS}
+  )
+  target_link_libraries(nghttp2_asio
+    nghttp2
+    ${OPENSSL_LIBRARIES}
+    ${Boost_LIBRARIES}
+  )
+  # XXX use add_compile_options with a list instead of COMPILE_FLAGS
+  set_target_properties(nghttp2_asio PROPERTIES
+    COMPILE_FLAGS "${EXTRACFLAG}"
+    VERSION 1.0.0 SOVERSION 1)
+
+  install(TARGETS nghttp2_asio
+    LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}")
+
+  install(FILES libnghttp2_asio.pc
+    DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig")
+endif()
