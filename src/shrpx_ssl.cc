@@ -662,8 +662,8 @@ SSL_CTX *create_ssl_client_context(
 #ifdef HAVE_NEVERBLEED
     neverbleed_t *nb,
 #endif // HAVE_NEVERBLEED
-    const char *cacert, const char *cert_file, const char *private_key_file,
-    const StringRef &alpn,
+    const StringRef &cacert, const StringRef &cert_file,
+    const StringRef &private_key_file, const StringRef &alpn,
     int (*next_proto_select_cb)(SSL *s, unsigned char **out,
                                 unsigned char *outlen, const unsigned char *in,
                                 unsigned int inlen, void *arg)) {
@@ -702,8 +702,8 @@ SSL_CTX *create_ssl_client_context(
               << ERR_error_string(ERR_get_error(), nullptr);
   }
 
-  if (cacert) {
-    if (SSL_CTX_load_verify_locations(ssl_ctx, cacert, nullptr) != 1) {
+  if (!cacert.empty()) {
+    if (SSL_CTX_load_verify_locations(ssl_ctx, cacert.c_str(), nullptr) != 1) {
 
       LOG(FATAL) << "Could not load trusted ca certificates from " << cacert
                  << ": " << ERR_error_string(ERR_get_error(), nullptr);
@@ -711,8 +711,8 @@ SSL_CTX *create_ssl_client_context(
     }
   }
 
-  if (cert_file) {
-    if (SSL_CTX_use_certificate_chain_file(ssl_ctx, cert_file) != 1) {
+  if (!cert_file.empty()) {
+    if (SSL_CTX_use_certificate_chain_file(ssl_ctx, cert_file.c_str()) != 1) {
 
       LOG(FATAL) << "Could not load client certificate from " << cert_file
                  << ": " << ERR_error_string(ERR_get_error(), nullptr);
@@ -720,9 +720,9 @@ SSL_CTX *create_ssl_client_context(
     }
   }
 
-  if (private_key_file) {
+  if (!private_key_file.empty()) {
 #ifndef HAVE_NEVERBLEED
-    if (SSL_CTX_use_PrivateKey_file(ssl_ctx, private_key_file,
+    if (SSL_CTX_use_PrivateKey_file(ssl_ctx, private_key_file.c_str(),
                                     SSL_FILETYPE_PEM) != 1) {
       LOG(FATAL) << "Could not load client private key from "
                  << private_key_file << ": "
@@ -731,7 +731,7 @@ SSL_CTX *create_ssl_client_context(
     }
 #else  // HAVE_NEVERBLEED
     std::array<char, NEVERBLEED_ERRBUF_SIZE> errbuf;
-    if (neverbleed_load_private_key_file(nb, ssl_ctx, private_key_file,
+    if (neverbleed_load_private_key_file(nb, ssl_ctx, private_key_file.c_str(),
                                          errbuf.data()) != 1) {
       LOG(FATAL) << "neverbleed_load_private_key_file: could not load client "
                     "private key from " << private_key_file << ": "
@@ -1323,8 +1323,10 @@ SSL_CTX *setup_downstream_client_ssl_context(
 #ifdef HAVE_NEVERBLEED
       nb,
 #endif // HAVE_NEVERBLEED
-      tlsconf.cacert.get(), tlsconf.client.cert_file.get(),
-      tlsconf.client.private_key_file.get(), alpn, next_proto_select_cb);
+      StringRef::from_maybe_nullptr(tlsconf.cacert.get()),
+      StringRef::from_maybe_nullptr(tlsconf.client.cert_file.get()),
+      StringRef::from_maybe_nullptr(tlsconf.client.private_key_file.get()),
+      alpn, next_proto_select_cb);
 }
 
 CertLookupTree *create_cert_lookup_tree() {

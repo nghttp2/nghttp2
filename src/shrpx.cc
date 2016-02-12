@@ -1567,6 +1567,12 @@ SSL/TLS:
   --tls-session-cache-memcached-tls
               Enable SSL/TLS on memcached connections to store session
               cache.
+  --tls-session-cache-memcached-cert-file=<PATH>
+              Path to client certificate  for memcached connections to
+              store session cache.
+  --tls-session-cache-memcached-private-key-file=<PATH>
+              Path to client private  key for memcached connections to
+              store session cache.
   --tls-dyn-rec-warmup-threshold=<SIZE>
               Specify the  threshold size for TLS  dynamic record size
               behaviour.  During  a TLS  session, after  the threshold
@@ -2404,6 +2410,10 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_BACKEND_TLS_SESSION_CACHE_PER_WORKER, required_argument,
          &flag, 107},
         {SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_TLS, no_argument, &flag, 108},
+        {SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_CERT_FILE, required_argument,
+         &flag, 109},
+        {SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_PRIVATE_KEY_FILE,
+         required_argument, &flag, 110},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -2865,6 +2875,16 @@ int main(int argc, char **argv) {
       case 108:
         // --tls-session-cache-memcached-tls
         cmdcfgs.emplace_back(SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_TLS, "yes");
+        break;
+      case 109:
+        // --tls-session-cache-memcached-cert-file
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_CERT_FILE,
+                             optarg);
+        break;
+      case 110:
+        // --tls-session-cache-memcached-private-key-file
+        cmdcfgs.emplace_back(
+            SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_PRIVATE_KEY_FILE, optarg);
         break;
       default:
         break;

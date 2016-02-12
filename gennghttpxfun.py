@@ -115,7 +115,9 @@ OPTIONS = [
     "max-header-fields",
     "no-http2-cipher-black-list",
     "backend-http1-tls",
-    "backend-tls-session-cache-per-worker"
+    "backend-tls-session-cache-per-worker",
+    "tls-session-cache-memcached-cert-file",
+    "tls-session-cache-memcached-private-key-file"
 ]
 
 LOGVARS = [

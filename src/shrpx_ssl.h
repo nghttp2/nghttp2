@@ -75,8 +75,8 @@ SSL_CTX *create_ssl_client_context(
 #ifdef HAVE_NEVERBLEED
     neverbleed_t *nb,
 #endif // HAVE_NEVERBLEED
-    const char *cacert, const char *cert_file, const char *private_key_file,
-    const StringRef &alpn,
+    const StringRef &cacert, const StringRef &cert_file,
+    const StringRef &private_key_file, const StringRef &alpn,
     int (*next_proto_select_cb)(SSL *s, unsigned char **out,
                                 unsigned char *outlen, const unsigned char *in,
                                 unsigned int inlen, void *arg));

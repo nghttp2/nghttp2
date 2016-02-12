@@ -758,6 +758,8 @@ enum {
   SHRPX_OPTID_TLS_DYN_REC_WARMUP_THRESHOLD,
   SHRPX_OPTID_TLS_PROTO_LIST,
   SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED,
+  SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED_CERT_FILE,
+  SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED_PRIVATE_KEY_FILE,
   SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED_TLS,
   SHRPX_OPTID_TLS_TICKET_KEY_CIPHER,
   SHRPX_OPTID_TLS_TICKET_KEY_FILE,
@@ -1406,6 +1408,11 @@ int option_lookup_token(const char *name, size_t namelen) {
     break;
   case 37:
     switch (name[36]) {
+    case 'e':
+      if (util::strieq_l("tls-session-cache-memcached-cert-fil", name, 36)) {
+        return SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED_CERT_FILE;
+      }
+      break;
     case 's':
       if (util::strieq_l("frontend-http2-connection-window-bit", name, 36)) {
         return SHRPX_OPTID_FRONTEND_HTTP2_CONNECTION_WINDOW_BITS;
@@ -1418,6 +1425,16 @@ int option_lookup_token(const char *name, size_t namelen) {
     case 'd':
       if (util::strieq_l("backend-http1-connections-per-fronten", name, 37)) {
         return SHRPX_OPTID_BACKEND_HTTP1_CONNECTIONS_PER_FRONTEND;
+      }
+      break;
+    }
+    break;
+  case 44:
+    switch (name[43]) {
+    case 'e':
+      if (util::strieq_l("tls-session-cache-memcached-private-key-fil", name,
+                         43)) {
+        return SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED_PRIVATE_KEY_FILE;
       }
       break;
     }
@@ -2241,6 +2258,14 @@ int parse_config(const char *opt, const char *optarg,
                       opt, optarg);
   case SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED_TLS:
     mod_config()->tls.session_cache.memcached.tls = util::strieq(optarg, "yes");
+
+    return 0;
+  case SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED_CERT_FILE:
+    mod_config()->tls.session_cache.memcached.cert_file = optarg;
+
+    return 0;
+  case SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED_PRIVATE_KEY_FILE:
+    mod_config()->tls.session_cache.memcached.private_key_file = optarg;
 
     return 0;
   case SHRPX_OPTID_CONF:
