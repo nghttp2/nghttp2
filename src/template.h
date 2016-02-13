@@ -402,6 +402,13 @@ public:
   static StringRef from_lit(const CharT(&s)[N]) {
     return StringRef(s, N - 1);
   }
+  static StringRef from_maybe_nullptr(const char *s) {
+    if (s == nullptr) {
+      return StringRef();
+    }
+
+    return StringRef(s);
+  }
 
   const_iterator begin() const { return base; };
   const_iterator cbegin() const { return base; };

@@ -420,13 +420,24 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
 
 #endif // HAVE_NEVERBLEED
 
+  MemchunkPool mcpool;
+
   ev_timer renew_ticket_key_timer;
   if (!upstreamconf.no_tls) {
     auto &ticketconf = get_config()->tls.ticket;
+    auto &memcachedconf = ticketconf.memcached;
 
     if (ticketconf.memcached.host) {
+      SSL_CTX *ssl_ctx = nullptr;
+
+      if (memcachedconf.tls) {
+        ssl_ctx = conn_handler.create_tls_ticket_key_memcached_ssl_ctx();
+      }
+
       conn_handler.set_tls_ticket_key_memcached_dispatcher(
-          make_unique<MemcachedDispatcher>(&ticketconf.memcached.addr, loop));
+          make_unique<MemcachedDispatcher>(
+              &ticketconf.memcached.addr, loop, ssl_ctx,
+              StringRef(memcachedconf.host.get()), &mcpool));
 
       ev_timer_init(&renew_ticket_key_timer, memcached_get_ticket_key_cb, 0.,
                     0.);

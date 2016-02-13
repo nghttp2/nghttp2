@@ -46,6 +46,7 @@ class Worker;
 class DownstreamConnectionPool;
 struct DownstreamAddr;
 struct UpstreamAddr;
+struct Address;
 
 namespace ssl {
 
@@ -74,8 +75,8 @@ SSL_CTX *create_ssl_client_context(
 #ifdef HAVE_NEVERBLEED
     neverbleed_t *nb,
 #endif // HAVE_NEVERBLEED
-    const char *cacert, const char *cert_file, const char *private_key_file,
-    const StringRef &alpn,
+    const StringRef &cacert, const StringRef &cert_file,
+    const StringRef &private_key_file, const StringRef &alpn,
     int (*next_proto_select_cb)(SSL *s, unsigned char **out,
                                 unsigned char *outlen, const unsigned char *in,
                                 unsigned int inlen, void *arg));
@@ -83,9 +84,8 @@ SSL_CTX *create_ssl_client_context(
 ClientHandler *accept_connection(Worker *worker, int fd, sockaddr *addr,
                                  int addrlen, const UpstreamAddr *faddr);
 
-// Check peer's certificate against first downstream address in
-// Config::downstream_addrs.  We only consider first downstream since
-// we use this function for HTTP/2 downstream link only.
+// Check peer's certificate against given |address| and |host|.
+int check_cert(SSL *ssl, const Address *addr, const StringRef &host);
 int check_cert(SSL *ssl, const DownstreamAddr *addr);
 
 // Retrieves DNS and IP address in subjectAltNames and commonName from

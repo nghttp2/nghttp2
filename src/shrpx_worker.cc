@@ -68,6 +68,7 @@ std::random_device rd;
 } // namespace
 
 Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
+               SSL_CTX *tls_session_cache_memcached_ssl_ctx,
                ssl::CertLookupTree *cert_tree,
                const std::shared_ptr<TicketKeys> &ticket_keys)
     : randgen_(rd()),
@@ -92,7 +93,9 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
 
   if (session_cacheconf.memcached.host) {
     session_cache_memcached_dispatcher_ = make_unique<MemcachedDispatcher>(
-        &session_cacheconf.memcached.addr, loop);
+        &session_cacheconf.memcached.addr, loop,
+        tls_session_cache_memcached_ssl_ctx,
+        session_cacheconf.memcached.host.get(), &mcpool_);
   }
 
   auto &downstreamconf = get_config()->conn.downstream;

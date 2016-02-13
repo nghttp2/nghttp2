@@ -1051,6 +1051,13 @@ void fill_default_config() {
       memcachedconf.max_retry = 3;
       memcachedconf.max_fail = 2;
       memcachedconf.interval = 10_min;
+      memcachedconf.family = AF_UNSPEC;
+    }
+
+    auto &session_cacheconf = tlsconf.session_cache;
+    {
+      auto &memcachedconf = session_cacheconf.memcached;
+      memcachedconf.family = AF_UNSPEC;
     }
 
     ticketconf.cipher = EVP_aes_128_cbc();
@@ -1520,16 +1527,23 @@ SSL/TLS:
               ticket  key sharing  between  nghttpx  instances is  not
               required.
   --tls-ticket-key-memcached=<HOST>,<PORT>
-              Specify  address of  memcached server  to store  session
-              cache.   This  enables  shared TLS  ticket  key  between
-              multiple nghttpx  instances.  nghttpx  does not  set TLS
-              ticket  key  to  memcached.   The  external  ticket  key
-              generator  is required.   nghttpx just  gets TLS  ticket
-              keys from  memcached, and  use them,  possibly replacing
-              current set of keys.  It is  up to extern TLS ticket key
-              generator to  rotate keys frequently.  See  "TLS SESSION
-              TICKET RESUMPTION"  section in  manual page to  know the
-              data format in memcached entry.
+              Specify address  of memcached  server to get  TLS ticket
+              keys for  session resumption.   This enables  shared TLS
+              ticket key between  multiple nghttpx instances.  nghttpx
+              does not set TLS ticket  key to memcached.  The external
+              ticket key generator is required.  nghttpx just gets TLS
+              ticket  keys  from  memcached, and  use  them,  possibly
+              replacing current set  of keys.  It is up  to extern TLS
+              ticket  key generator  to rotate  keys frequently.   See
+              "TLS SESSION  TICKET RESUMPTION" section in  manual page
+              to know the data format in memcached entry.
+  --tls-ticket-key-memcached-address-family=(auto|IPv4|IPv6)
+              Specify address  family of memcached connections  to get
+              TLS ticket keys.  If "auto" is given, both IPv4 and IPv6
+              are considered.   If "IPv4" is given,  only IPv4 address
+              is considered.  If "IPv6" is given, only IPv6 address is
+              considered.
+              Default: auto
   --tls-ticket-key-memcached-interval=<DURATION>
               Set interval to get TLS ticket keys from memcached.
               Default: )"
@@ -1550,6 +1564,15 @@ SSL/TLS:
               Specify cipher  to encrypt TLS session  ticket.  Specify
               either   aes-128-cbc   or  aes-256-cbc.    By   default,
               aes-128-cbc is used.
+  --tls-ticket-key-memcached-tls
+              Enable  SSL/TLS  on  memcached connections  to  get  TLS
+              ticket keys.
+  --tls-ticket-key-memcached-cert-file=<PATH>
+              Path to client certificate  for memcached connections to
+              get TLS ticket keys.
+  --tls-ticket-key-memcached-private-key-file=<PATH>
+              Path to client private  key for memcached connections to
+              get TLS ticket keys.
   --fetch-ocsp-response-file=<PATH>
               Path to  fetch-ocsp-response script file.  It  should be
               absolute path.
@@ -1564,6 +1587,22 @@ SSL/TLS:
               Specify  address of  memcached server  to store  session
               cache.   This  enables   shared  session  cache  between
               multiple nghttpx instances.
+  --tls-session-cache-memcached-address-family=(auto|IPv4|IPv6)
+              Specify address family of memcached connections to store
+              session cache.  If  "auto" is given, both  IPv4 and IPv6
+              are considered.   If "IPv4" is given,  only IPv4 address
+              is considered.  If "IPv6" is given, only IPv6 address is
+              considered.
+              Default: auto
+  --tls-session-cache-memcached-tls
+              Enable SSL/TLS on memcached connections to store session
+              cache.
+  --tls-session-cache-memcached-cert-file=<PATH>
+              Path to client certificate  for memcached connections to
+              store session cache.
+  --tls-session-cache-memcached-private-key-file=<PATH>
+              Path to client private  key for memcached connections to
+              store session cache.
   --tls-dyn-rec-warmup-threshold=<SIZE>
               Specify the  threshold size for TLS  dynamic record size
               behaviour.  During  a TLS  session, after  the threshold
@@ -2181,7 +2220,7 @@ void process_options(
     auto &memcachedconf = tlsconf.session_cache.memcached;
     if (memcachedconf.host) {
       if (resolve_hostname(&memcachedconf.addr, memcachedconf.host.get(),
-                           memcachedconf.port, AF_UNSPEC) == -1) {
+                           memcachedconf.port, memcachedconf.family) == -1) {
         exit(EXIT_FAILURE);
       }
     }
@@ -2191,7 +2230,7 @@ void process_options(
     auto &memcachedconf = tlsconf.ticket.memcached;
     if (memcachedconf.host) {
       if (resolve_hostname(&memcachedconf.addr, memcachedconf.host.get(),
-                           memcachedconf.port, AF_UNSPEC) == -1) {
+                           memcachedconf.port, memcachedconf.family) == -1) {
         exit(EXIT_FAILURE);
       }
     }
@@ -2400,6 +2439,20 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_BACKEND_HTTP1_TLS, no_argument, &flag, 106},
         {SHRPX_OPT_BACKEND_TLS_SESSION_CACHE_PER_WORKER, required_argument,
          &flag, 107},
+        {SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_TLS, no_argument, &flag, 108},
+        {SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_CERT_FILE, required_argument,
+         &flag, 109},
+        {SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_PRIVATE_KEY_FILE,
+         required_argument, &flag, 110},
+        {SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_TLS, no_argument, &flag, 111},
+        {SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_CERT_FILE, required_argument, &flag,
+         112},
+        {SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_PRIVATE_KEY_FILE, required_argument,
+         &flag, 113},
+        {SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_ADDRESS_FAMILY, required_argument,
+         &flag, 114},
+        {SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_ADDRESS_FAMILY,
+         required_argument, &flag, 115},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -2857,6 +2910,44 @@ int main(int argc, char **argv) {
         // --backend-tls-session-cache-per-worker
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_TLS_SESSION_CACHE_PER_WORKER,
                              optarg);
+        break;
+      case 108:
+        // --tls-session-cache-memcached-tls
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_TLS, "yes");
+        break;
+      case 109:
+        // --tls-session-cache-memcached-cert-file
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_CERT_FILE,
+                             optarg);
+        break;
+      case 110:
+        // --tls-session-cache-memcached-private-key-file
+        cmdcfgs.emplace_back(
+            SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_PRIVATE_KEY_FILE, optarg);
+        break;
+      case 111:
+        // --tls-ticket-key-memcached-tls
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_TLS, "yes");
+        break;
+      case 112:
+        // --tls-ticket-key-memcached-cert-file
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_CERT_FILE,
+                             optarg);
+        break;
+      case 113:
+        // --tls-ticket-key-memcached-private-key-file
+        cmdcfgs.emplace_back(
+            SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_PRIVATE_KEY_FILE, optarg);
+        break;
+      case 114:
+        // --tls-ticket-key-memcached-address-family
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_ADDRESS_FAMILY,
+                             optarg);
+        break;
+      case 115:
+        // --tls-session-cache-memcached-address-family
+        cmdcfgs.emplace_back(
+            SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_ADDRESS_FAMILY, optarg);
         break;
       default:
         break;
