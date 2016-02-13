@@ -576,6 +576,26 @@ std::vector<LogFragment> parse_log_format(const char *optarg) {
 }
 
 namespace {
+int parse_address_family(int *dest, const char *opt, const char *optarg) {
+  if (util::strieq("auto", optarg)) {
+    *dest = AF_UNSPEC;
+    return 0;
+  }
+  if (util::strieq("IPv4", optarg)) {
+    *dest = AF_INET;
+    return 0;
+  }
+  if (util::strieq("IPv6", optarg)) {
+    *dest = AF_INET6;
+    return 0;
+  }
+
+  LOG(ERROR) << opt << ": bad value: '" << optarg << "'";
+  return -1;
+}
+} // namespace
+
+namespace {
 int parse_duration(ev_tstamp *dest, const char *opt, const char *optarg) {
   auto t = util::parse_duration_with_unit(optarg);
   if (t == std::numeric_limits<double>::infinity()) {
@@ -758,12 +778,14 @@ enum {
   SHRPX_OPTID_TLS_DYN_REC_WARMUP_THRESHOLD,
   SHRPX_OPTID_TLS_PROTO_LIST,
   SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED,
+  SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED_ADDRESS_FAMILY,
   SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED_CERT_FILE,
   SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED_PRIVATE_KEY_FILE,
   SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED_TLS,
   SHRPX_OPTID_TLS_TICKET_KEY_CIPHER,
   SHRPX_OPTID_TLS_TICKET_KEY_FILE,
   SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED,
+  SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_ADDRESS_FAMILY,
   SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_CERT_FILE,
   SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_INTERVAL,
   SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_MAX_FAIL,
@@ -1440,12 +1462,31 @@ int option_lookup_token(const char *name, size_t namelen) {
       break;
     }
     break;
+  case 39:
+    switch (name[38]) {
+    case 'y':
+      if (util::strieq_l("tls-ticket-key-memcached-address-famil", name, 38)) {
+        return SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_ADDRESS_FAMILY;
+      }
+      break;
+    }
+    break;
   case 41:
     switch (name[40]) {
     case 'e':
       if (util::strieq_l("tls-ticket-key-memcached-private-key-fil", name,
                          40)) {
         return SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_PRIVATE_KEY_FILE;
+      }
+      break;
+    }
+    break;
+  case 42:
+    switch (name[41]) {
+    case 'y':
+      if (util::strieq_l("tls-session-cache-memcached-address-famil", name,
+                         41)) {
+        return SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED_ADDRESS_FAMILY;
       }
       break;
     }
@@ -2301,6 +2342,12 @@ int parse_config(const char *opt, const char *optarg,
     mod_config()->tls.ticket.memcached.private_key_file = optarg;
 
     return 0;
+  case SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_ADDRESS_FAMILY:
+    return parse_address_family(&mod_config()->tls.ticket.memcached.family, opt,
+                                optarg);
+  case SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED_ADDRESS_FAMILY:
+    return parse_address_family(
+        &mod_config()->tls.session_cache.memcached.family, opt, optarg);
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 

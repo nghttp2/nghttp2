@@ -215,12 +215,16 @@ constexpr char SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_CERT_FILE[] =
     "tls-session-cache-memcached-cert-file";
 constexpr char SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_PRIVATE_KEY_FILE[] =
     "tls-session-cache-memcached-private-key-file";
+constexpr char SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_ADDRESS_FAMILY[] =
+    "tls-session-cache-memcached-address-family";
 constexpr char SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_TLS[] =
     "tls-ticket-key-memcached-tls";
 constexpr char SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_CERT_FILE[] =
     "tls-ticket-key-memcached-cert-file";
 constexpr char SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_PRIVATE_KEY_FILE[] =
     "tls-ticket-key-memcached-private-key-file";
+constexpr char SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_ADDRESS_FAMILY[] =
+    "tls-ticket-key-memcached-address-family";
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -357,6 +361,9 @@ struct TLSConfig {
       // Maximum number of consecutive error from memcached, when this
       // limit reached, TLS ticket is disabled.
       size_t max_fail;
+      // Address family of memcached connection.  One of either
+      // AF_INET, AF_INET6 or AF_UNSPEC.
+      int family;
       bool tls;
     } memcached;
     std::vector<std::string> files;
@@ -374,6 +381,9 @@ struct TLSConfig {
       // Client private key and certificate for authentication
       ImmutableString private_key_file;
       ImmutableString cert_file;
+      // Address family of memcached connection.  One of either
+      // AF_INET, AF_INET6 or AF_UNSPEC.
+      int family;
       bool tls;
     } memcached;
   } session_cache;
