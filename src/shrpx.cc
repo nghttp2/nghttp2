@@ -1520,16 +1520,16 @@ SSL/TLS:
               ticket  key sharing  between  nghttpx  instances is  not
               required.
   --tls-ticket-key-memcached=<HOST>,<PORT>
-              Specify  address of  memcached server  to store  session
-              cache.   This  enables  shared TLS  ticket  key  between
-              multiple nghttpx  instances.  nghttpx  does not  set TLS
-              ticket  key  to  memcached.   The  external  ticket  key
-              generator  is required.   nghttpx just  gets TLS  ticket
-              keys from  memcached, and  use them,  possibly replacing
-              current set of keys.  It is  up to extern TLS ticket key
-              generator to  rotate keys frequently.  See  "TLS SESSION
-              TICKET RESUMPTION"  section in  manual page to  know the
-              data format in memcached entry.
+              Specify address  of memcached  server to get  TLS ticket
+              keys for  session resumption.   This enables  shared TLS
+              ticket key between  multiple nghttpx instances.  nghttpx
+              does not set TLS ticket  key to memcached.  The external
+              ticket key generator is required.  nghttpx just gets TLS
+              ticket  keys  from  memcached, and  use  them,  possibly
+              replacing current set  of keys.  It is up  to extern TLS
+              ticket  key generator  to rotate  keys frequently.   See
+              "TLS SESSION  TICKET RESUMPTION" section in  manual page
+              to know the data format in memcached entry.
   --tls-ticket-key-memcached-interval=<DURATION>
               Set interval to get TLS ticket keys from memcached.
               Default: )"
@@ -1550,6 +1550,15 @@ SSL/TLS:
               Specify cipher  to encrypt TLS session  ticket.  Specify
               either   aes-128-cbc   or  aes-256-cbc.    By   default,
               aes-128-cbc is used.
+  --tls-ticket-key-memcached-tls
+              Enable  SSL/TLS  on  memcached connections  to  get  TLS
+              ticket keys.
+  --tls-ticket-key-memcached-cert-file=<PATH>
+              Path to client certificate  for memcached connections to
+              get TLS ticket keys.
+  --tls-ticket-key-memcached-private-key-file=<PATH>
+              Path to client private  key for memcached connections to
+              get TLS ticket keys.
   --fetch-ocsp-response-file=<PATH>
               Path to  fetch-ocsp-response script file.  It  should be
               absolute path.
@@ -2414,6 +2423,11 @@ int main(int argc, char **argv) {
          &flag, 109},
         {SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_PRIVATE_KEY_FILE,
          required_argument, &flag, 110},
+        {SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_TLS, no_argument, &flag, 111},
+        {SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_CERT_FILE, required_argument, &flag,
+         112},
+        {SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_PRIVATE_KEY_FILE, required_argument,
+         &flag, 113},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -2885,6 +2899,20 @@ int main(int argc, char **argv) {
         // --tls-session-cache-memcached-private-key-file
         cmdcfgs.emplace_back(
             SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_PRIVATE_KEY_FILE, optarg);
+        break;
+      case 111:
+        // --tls-ticket-key-memcached-tls
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_TLS, "yes");
+        break;
+      case 112:
+        // --tls-ticket-key-memcached-cert-file
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_CERT_FILE,
+                             optarg);
+        break;
+      case 113:
+        // --tls-ticket-key-memcached-private-key-file
+        cmdcfgs.emplace_back(
+            SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_PRIVATE_KEY_FILE, optarg);
         break;
       default:
         break;

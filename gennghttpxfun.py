@@ -117,7 +117,10 @@ OPTIONS = [
     "backend-http1-tls",
     "backend-tls-session-cache-per-worker",
     "tls-session-cache-memcached-cert-file",
-    "tls-session-cache-memcached-private-key-file"
+    "tls-session-cache-memcached-private-key-file",
+    "tls-ticket-key-memcached-tls",
+    "tls-ticket-key-memcached-cert-file",
+    "tls-ticket-key-memcached-private-key-file"
 ]
 
 LOGVARS = [

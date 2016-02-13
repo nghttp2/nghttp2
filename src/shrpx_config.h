@@ -215,6 +215,12 @@ constexpr char SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_CERT_FILE[] =
     "tls-session-cache-memcached-cert-file";
 constexpr char SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_PRIVATE_KEY_FILE[] =
     "tls-session-cache-memcached-private-key-file";
+constexpr char SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_TLS[] =
+    "tls-ticket-key-memcached-tls";
+constexpr char SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_CERT_FILE[] =
+    "tls-ticket-key-memcached-cert-file";
+constexpr char SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_PRIVATE_KEY_FILE[] =
+    "tls-ticket-key-memcached-private-key-file";
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -341,6 +347,9 @@ struct TLSConfig {
       Address addr;
       uint16_t port;
       std::unique_ptr<char[]> host;
+      // Client private key and certificate for authentication
+      ImmutableString private_key_file;
+      ImmutableString cert_file;
       ev_tstamp interval;
       // Maximum number of retries when getting TLS ticket key from
       // mamcached, due to network error.
@@ -348,6 +357,7 @@ struct TLSConfig {
       // Maximum number of consecutive error from memcached, when this
       // limit reached, TLS ticket is disabled.
       size_t max_fail;
+      bool tls;
     } memcached;
     std::vector<std::string> files;
     const EVP_CIPHER *cipher;

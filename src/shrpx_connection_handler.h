@@ -129,6 +129,7 @@ public:
   on_tls_ticket_key_get_success(const std::shared_ptr<TicketKeys> &ticket_keys,
                                 ev_timer *w);
   void schedule_next_tls_ticket_key_memcached_get(ev_timer *w);
+  SSL_CTX *create_tls_ticket_key_memcached_ssl_ctx();
 
 #ifdef HAVE_NEVERBLEED
   void set_neverbleed(std::unique_ptr<neverbleed_t> nb);

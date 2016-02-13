@@ -759,6 +759,23 @@ void ConnectionHandler::schedule_next_tls_ticket_key_memcached_get(
   ev_timer_start(loop_, w);
 }
 
+SSL_CTX *ConnectionHandler::create_tls_ticket_key_memcached_ssl_ctx() {
+  auto &tlsconf = get_config()->tls;
+  auto &memcachedconf = get_config()->tls.ticket.memcached;
+
+  auto ssl_ctx = ssl::create_ssl_client_context(
+#ifdef HAVE_NEVERBLEED
+      nb_.get(),
+#endif // HAVE_NEVERBLEED
+      StringRef::from_maybe_nullptr(tlsconf.cacert.get()),
+      StringRef(memcachedconf.cert_file),
+      StringRef(memcachedconf.private_key_file), StringRef(), nullptr);
+
+  all_ssl_ctx_.push_back(ssl_ctx);
+
+  return ssl_ctx;
+}
+
 #ifdef HAVE_NEVERBLEED
 void ConnectionHandler::set_neverbleed(std::unique_ptr<neverbleed_t> nb) {
   nb_ = std::move(nb);
