@@ -64,9 +64,10 @@ set(CYTHON_PATH "" CACHE PATH     "Use cython in given path")
 set(CYTHON      "" CACHE FILEPATH "The Cython executable")
 
 find_package(PkgConfig 0.20)
+# For Python bindings and documentation
+find_package(PythonInterp)
 # XXX fail only when "ON" instead of "CHECK"?
 if(ENABLE_PYTHON_BINDINGS)
-  find_package(PythonInterp REQUIRED)
 endif()
 # AM_PATH_PYTHON([2.7],, [:])
 
@@ -456,8 +457,10 @@ endif()
 add_definitions(-DHAVE_CONFIG_H)
 configure_file(cmakeconfig.h.in config.h)
 # autotools-compatible names
-set(top_srcdir      "${CMAKE_SOURCE_DIR}")
-set(top_builddir    "${CMAKE_BINARY_DIR}")
+# Sphinx expects relative paths in the .rst files. Use the fact that the files
+# below are all one directory level deep.
+file(RELATIVE_PATH top_srcdir   "${CMAKE_BINARY_DIR}/dir" "${CMAKE_SOURCE_DIR}")
+file(RELATIVE_PATH top_builddir "${CMAKE_BINARY_DIR}/dir" "${CMAKE_BINARY_DIR}")
 set(abs_top_srcdir  "${CMAKE_SOURCE_DIR}")
 set(abs_top_builddir "${CMAKE_BINARY_DIR}")
 # libnghttp2.pc (pkg-config file)
@@ -514,7 +517,9 @@ if(0)
 add_subdirectory(tests)
 #add_subdirectory(tests/testdata)
 add_subdirectory(integration-tests)
+endif()
 add_subdirectory(doc)
+if(0)
 add_subdirectory(contrib)
 add_subdirectory(script)
 endif()
