@@ -1206,11 +1206,12 @@ int Http2Upstream::send_reply(Downstream *downstream, const uint8_t *body,
   }
 
   const auto &resp = downstream->response();
+  auto &httpconf = get_config()->http;
 
   const auto &headers = resp.fs.headers();
   auto nva = std::vector<nghttp2_nv>();
   // 2 for :status and server
-  nva.reserve(2 + headers.size());
+  nva.reserve(2 + headers.size() + httpconf.add_response_headers.size());
 
   std::string status_code_str;
   auto response_status_const = http2::stringify_status(resp.http_status);
@@ -1240,6 +1241,10 @@ int Http2Upstream::send_reply(Downstream *downstream, const uint8_t *body,
   if (!resp.fs.header(http2::HD_SERVER)) {
     nva.push_back(
         http2::make_nv_ls_nocopy("server", get_config()->http.server_name));
+  }
+
+  for (auto &p : httpconf.add_response_headers) {
+    nva.push_back(http2::make_nv_nocopy(p.name, p.value));
   }
 
   rv = nghttp2_submit_response(session_, downstream->get_stream_id(),

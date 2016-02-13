@@ -850,9 +850,12 @@ int SpdyUpstream::send_reply(Downstream *downstream, const uint8_t *body,
 
   const auto &headers = resp.fs.headers();
 
+  auto &httpconf = get_config()->http;
+
   auto nva = std::vector<const char *>();
-  // 3 for :status, :version and server
-  nva.reserve(3 + headers.size());
+  // 6 for :status, :version and server.  1 for last terminal nullptr.
+  nva.reserve(6 + headers.size() * 2 +
+              httpconf.add_response_headers.size() * 2 + 1);
 
   nva.push_back(":status");
   nva.push_back(status_string.c_str());
@@ -877,6 +880,11 @@ int SpdyUpstream::send_reply(Downstream *downstream, const uint8_t *body,
   if (!resp.fs.header(http2::HD_SERVER)) {
     nva.push_back("server");
     nva.push_back(get_config()->http.server_name.c_str());
+  }
+
+  for (auto &p : httpconf.add_response_headers) {
+    nva.push_back(p.name.c_str());
+    nva.push_back(p.value.c_str());
   }
 
   nva.push_back(nullptr);
