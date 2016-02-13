@@ -387,19 +387,19 @@ public:
   using const_pointer = const value_type *;
   using const_iterator = const_pointer;
 
-  StringRef() : base(""), len(0) {}
+  constexpr StringRef() : base(""), len(0) {}
   explicit StringRef(const std::string &s) : base(s.c_str()), len(s.size()) {}
   explicit StringRef(const ImmutableString &s)
       : base(s.c_str()), len(s.size()) {}
   StringRef(const char *s) : base(s), len(strlen(s)) {}
   template <typename CharT>
-  StringRef(const CharT *s, size_t n)
+  constexpr StringRef(const CharT *s, size_t n)
       : base(reinterpret_cast<const char *>(s)), len(n) {}
   template <typename InputIt>
   StringRef(InputIt first, InputIt last)
       : base(first), len(std::distance(first, last)) {}
   template <typename CharT, size_t N>
-  static StringRef from_lit(const CharT(&s)[N]) {
+  constexpr static StringRef from_lit(const CharT(&s)[N]) {
     return StringRef(s, N - 1);
   }
   static StringRef from_maybe_nullptr(const char *s) {
