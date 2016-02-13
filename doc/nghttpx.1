@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "February 07, 2016" "1.8.0-DEV" "nghttp2"
+.TH "NGHTTPX" "1" "February 14, 2016" "1.8.0-DEV" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 proxy
 .
@@ -136,13 +136,13 @@ Default: \fB512\fP
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-\-backend\-ipv4
-Resolve backend hostname to IPv4 address only.
-.UNINDENT
-.INDENT 0.0
-.TP
-.B \-\-backend\-ipv6
-Resolve backend hostname to IPv6 address only.
+.B \-\-backend\-address\-family=(auto|IPv4|IPv6)
+Specify  address  family  of  backend  connections.   If
+"auto" is given, both IPv4  and IPv6 are considered.  If
+"IPv4" is  given, only  IPv4 address is  considered.  If
+"IPv6" is given, only IPv6 address is considered.
+.sp
+Default: \fBauto\fP
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -534,16 +534,27 @@ required.
 .INDENT 0.0
 .TP
 .B \-\-tls\-ticket\-key\-memcached=<HOST>,<PORT>
-Specify  address of  memcached server  to store  session
-cache.   This  enables  shared TLS  ticket  key  between
-multiple nghttpx  instances.  nghttpx  does not  set TLS
-ticket  key  to  memcached.   The  external  ticket  key
-generator  is required.   nghttpx just  gets TLS  ticket
-keys from  memcached, and  use them,  possibly replacing
-current set of keys.  It is  up to extern TLS ticket key
-generator to  rotate keys frequently.  See  "TLS SESSION
-TICKET RESUMPTION"  section in  manual page to  know the
-data format in memcached entry.
+Specify address  of memcached  server to get  TLS ticket
+keys for  session resumption.   This enables  shared TLS
+ticket key between  multiple nghttpx instances.  nghttpx
+does not set TLS ticket  key to memcached.  The external
+ticket key generator is required.  nghttpx just gets TLS
+ticket  keys  from  memcached, and  use  them,  possibly
+replacing current set  of keys.  It is up  to extern TLS
+ticket  key generator  to rotate  keys frequently.   See
+"TLS SESSION  TICKET RESUMPTION" section in  manual page
+to know the data format in memcached entry.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-tls\-ticket\-key\-memcached\-address\-family=(auto|IPv4|IPv6)
+Specify address  family of memcached connections  to get
+TLS ticket keys.  If "auto" is given, both IPv4 and IPv6
+are considered.   If "IPv4" is given,  only IPv4 address
+is considered.  If "IPv6" is given, only IPv6 address is
+considered.
+.sp
+Default: \fBauto\fP
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -581,6 +592,24 @@ aes\-128\-cbc is used.
 .UNINDENT
 .INDENT 0.0
 .TP
+.B \-\-tls\-ticket\-key\-memcached\-tls
+Enable  SSL/TLS  on  memcached connections  to  get  TLS
+ticket keys.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-tls\-ticket\-key\-memcached\-cert\-file=<PATH>
+Path to client certificate  for memcached connections to
+get TLS ticket keys.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-tls\-ticket\-key\-memcached\-private\-key\-file=<PATH>
+Path to client private  key for memcached connections to
+get TLS ticket keys.
+.UNINDENT
+.INDENT 0.0
+.TP
 .B \-\-fetch\-ocsp\-response\-file=<PATH>
 Path to  fetch\-ocsp\-response script file.  It  should be
 absolute path.
@@ -605,6 +634,35 @@ Disable OCSP stapling.
 Specify  address of  memcached server  to store  session
 cache.   This  enables   shared  session  cache  between
 multiple nghttpx instances.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-tls\-session\-cache\-memcached\-address\-family=(auto|IPv4|IPv6)
+Specify address family of memcached connections to store
+session cache.  If  "auto" is given, both  IPv4 and IPv6
+are considered.   If "IPv4" is given,  only IPv4 address
+is considered.  If "IPv6" is given, only IPv6 address is
+considered.
+.sp
+Default: \fBauto\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-tls\-session\-cache\-memcached\-tls
+Enable SSL/TLS on memcached connections to store session
+cache.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-tls\-session\-cache\-memcached\-cert\-file=<PATH>
+Path to client certificate  for memcached connections to
+store session cache.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-tls\-session\-cache\-memcached\-private\-key\-file=<PATH>
+Path to client private  key for memcached connections to
+store session cache.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -1251,6 +1309,10 @@ insert serialized session data to memcached with
 \fBnghttpx:tls\-session\-cache:\fP + lowercased hex string of session ID
 as a memcached entry key, with expiry time 12 hours.  Session timeout
 is set to 12 hours.
+.sp
+By default, connections to memcached server are not encrypted.  To
+enable encryption, use \fI\%\-\-tls\-session\-cache\-memcached\-tls\fP
+option.
 .SS TLS SESSION TICKET RESUMPTION
 .sp
 By default, session ticket is shared by all worker threads.  The
@@ -1294,6 +1356,10 @@ used, LEN must be 48.  If
 80.  LEN and KEY pair can be repeated multiple times to store multiple
 keys.  The key appeared first is used as encryption key.  All the
 remaining keys are used as decryption only.
+.sp
+By default, connections to memcached server are not encrypted.  To
+enable encryption, use \fI\%\-\-tls\-ticket\-key\-memcached\-tls\fP
+option.
 .sp
 If \fI\%\-\-tls\-ticket\-key\-file\fP is given, encryption key is read
 from the given file.  In this case, nghttpx does not rotate key
