@@ -1436,7 +1436,7 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
   }
 
   for (auto &p : httpconf.add_response_headers) {
-    nva.push_back(http2::make_nv_nocopy(p.first, p.second));
+    nva.push_back(http2::make_nv_nocopy(p.name, p.value));
   }
 
   if (downstream->get_stream_id() % 2 == 0) {

@@ -52,6 +52,7 @@
 
 #include "shrpx_router.h"
 #include "template.h"
+#include "http2.h"
 
 using namespace nghttp2;
 
@@ -461,8 +462,8 @@ struct HttpConfig {
     bool strip_incoming;
   } xff;
   std::vector<AltSvc> altsvcs;
-  std::vector<std::pair<std::string, std::string>> add_request_headers;
-  std::vector<std::pair<std::string, std::string>> add_response_headers;
+  Headers add_request_headers;
+  Headers add_response_headers;
   StringRef server_name;
   size_t request_header_field_buffer;
   size_t max_request_header_fields;
@@ -633,7 +634,7 @@ std::string read_passwd_from_file(const char *filename);
 // like "NAME: VALUE".  We require that NAME is non empty string.  ":"
 // is allowed at the start of the NAME, but NAME == ":" is not
 // allowed.  This function returns pair of NAME and VALUE.
-std::pair<std::string, std::string> parse_header(const char *optarg);
+Headers::value_type parse_header(const char *optarg);
 
 std::vector<LogFragment> parse_log_format(const char *optarg);
 

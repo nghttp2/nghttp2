@@ -1022,9 +1022,9 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
   }
 
   for (auto &p : httpconf.add_response_headers) {
-    buf->append(p.first);
+    buf->append(p.name);
     buf->append(": ");
-    buf->append(p.second);
+    buf->append(p.value);
     buf->append("\r\n");
   }
 

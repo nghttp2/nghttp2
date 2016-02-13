@@ -1064,8 +1064,8 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream) {
   }
 
   for (auto &p : httpconf.add_response_headers) {
-    nv[hdidx++] = p.first.c_str();
-    nv[hdidx++] = p.second.c_str();
+    nv[hdidx++] = p.name.c_str();
+    nv[hdidx++] = p.value.c_str();
   }
 
   nv[hdidx++] = 0;

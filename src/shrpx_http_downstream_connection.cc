@@ -418,9 +418,9 @@ int HttpDownstreamConnection::push_request_headers() {
   }
 
   for (auto &p : httpconf.add_request_headers) {
-    buf->append(p.first);
+    buf->append(p.name);
     buf->append(": ");
-    buf->append(p.second);
+    buf->append(p.value);
     buf->append("\r\n");
   }
 

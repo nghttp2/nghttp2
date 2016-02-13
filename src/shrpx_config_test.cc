@@ -38,32 +38,32 @@ namespace shrpx {
 
 void test_shrpx_config_parse_header(void) {
   auto p = parse_header("a: b");
-  CU_ASSERT("a" == p.first);
-  CU_ASSERT("b" == p.second);
+  CU_ASSERT("a" == p.name);
+  CU_ASSERT("b" == p.value);
 
   p = parse_header("a:  b");
-  CU_ASSERT("a" == p.first);
-  CU_ASSERT("b" == p.second);
+  CU_ASSERT("a" == p.name);
+  CU_ASSERT("b" == p.value);
 
   p = parse_header(":a: b");
-  CU_ASSERT(p.first.empty());
+  CU_ASSERT(p.name.empty());
 
   p = parse_header("a: :b");
-  CU_ASSERT("a" == p.first);
-  CU_ASSERT(":b" == p.second);
+  CU_ASSERT("a" == p.name);
+  CU_ASSERT(":b" == p.value);
 
   p = parse_header(": b");
-  CU_ASSERT(p.first.empty());
+  CU_ASSERT(p.name.empty());
 
   p = parse_header("alpha: bravo charlie");
-  CU_ASSERT("alpha" == p.first);
-  CU_ASSERT("bravo charlie" == p.second);
+  CU_ASSERT("alpha" == p.name);
+  CU_ASSERT("bravo charlie" == p.value);
 
   p = parse_header("a,: b");
-  CU_ASSERT(p.first.empty());
+  CU_ASSERT(p.name.empty());
 
   p = parse_header("a: b\x0a");
-  CU_ASSERT(p.first.empty());
+  CU_ASSERT(p.name.empty());
 }
 
 void test_shrpx_config_parse_log_format(void) {

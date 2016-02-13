@@ -422,7 +422,7 @@ int Http2DownstreamConnection::push_request_headers() {
   }
 
   for (auto &p : httpconf.add_request_headers) {
-    nva.push_back(http2::make_nv_nocopy(p.first, p.second));
+    nva.push_back(http2::make_nv_nocopy(p.name, p.value));
   }
 
   if (LOG_ENABLED(INFO)) {

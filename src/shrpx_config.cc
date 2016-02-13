@@ -54,9 +54,7 @@
 #include "shrpx_log.h"
 #include "shrpx_ssl.h"
 #include "shrpx_http.h"
-#include "http2.h"
 #include "util.h"
-#include "template.h"
 #include "base64.h"
 
 namespace shrpx {
@@ -279,7 +277,7 @@ std::string read_passwd_from_file(const char *filename) {
   return line;
 }
 
-std::pair<std::string, std::string> parse_header(const char *optarg) {
+Headers::value_type parse_header(const char *optarg) {
   const auto *colon = strchr(optarg, ':');
 
   if (colon == nullptr || colon == optarg) {
@@ -290,16 +288,15 @@ std::pair<std::string, std::string> parse_header(const char *optarg) {
   for (; *value == '\t' || *value == ' '; ++value)
     ;
 
-  auto p = std::make_pair(std::string(optarg, colon),
-                          std::string(value, strlen(value)));
-  util::inp_strlower(p.first);
+  auto p =
+      Header(std::string(optarg, colon), std::string(value, strlen(value)));
+  util::inp_strlower(p.name);
 
   if (!nghttp2_check_header_name(
-          reinterpret_cast<const uint8_t *>(p.first.c_str()), p.first.size()) ||
+          reinterpret_cast<const uint8_t *>(p.name.c_str()), p.name.size()) ||
       !nghttp2_check_header_value(
-          reinterpret_cast<const uint8_t *>(p.second.c_str()),
-          p.second.size())) {
-    return {"", ""};
+          reinterpret_cast<const uint8_t *>(p.value.c_str()), p.value.size())) {
+    return Header();
   }
 
   return p;
@@ -2028,7 +2025,7 @@ int parse_config(const char *opt, const char *optarg,
   case SHRPX_OPTID_ADD_REQUEST_HEADER:
   case SHRPX_OPTID_ADD_RESPONSE_HEADER: {
     auto p = parse_header(optarg);
-    if (p.first.empty()) {
+    if (p.name.empty()) {
       LOG(ERROR) << opt << ": invalid header field: " << optarg;
       return -1;
     }
