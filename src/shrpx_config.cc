@@ -693,6 +693,7 @@ enum {
   SHRPX_OPTID_ADD_X_FORWARDED_FOR,
   SHRPX_OPTID_ALTSVC,
   SHRPX_OPTID_BACKEND,
+  SHRPX_OPTID_BACKEND_ADDRESS_FAMILY,
   SHRPX_OPTID_BACKEND_HTTP_PROXY_URI,
   SHRPX_OPTID_BACKEND_HTTP1_CONNECTIONS_PER_FRONTEND,
   SHRPX_OPTID_BACKEND_HTTP1_CONNECTIONS_PER_HOST,
@@ -1230,6 +1231,11 @@ int option_lookup_token(const char *name, size_t namelen) {
     case 't':
       if (util::strieq_l("frontend-write-timeou", name, 21)) {
         return SHRPX_OPTID_FRONTEND_WRITE_TIMEOUT;
+      }
+      break;
+    case 'y':
+      if (util::strieq_l("backend-address-famil", name, 21)) {
+        return SHRPX_OPTID_BACKEND_ADDRESS_FAMILY;
       }
       break;
     }
@@ -1854,11 +1860,17 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   case SHRPX_OPTID_BACKEND_IPV4:
-    mod_config()->conn.downstream.ipv4 = util::strieq(optarg, "yes");
+    LOG(WARN) << opt
+              << ": deprecated.  Use backend-address-family=IPv4 instead.";
+
+    mod_config()->conn.downstream.family = AF_INET;
 
     return 0;
   case SHRPX_OPTID_BACKEND_IPV6:
-    mod_config()->conn.downstream.ipv6 = util::strieq(optarg, "yes");
+    LOG(WARN) << opt
+              << ": deprecated.  Use backend-address-family=IPv6 instead.";
+
+    mod_config()->conn.downstream.family = AF_INET6;
 
     return 0;
   case SHRPX_OPTID_BACKEND_HTTP_PROXY_URI: {
@@ -2348,6 +2360,9 @@ int parse_config(const char *opt, const char *optarg,
   case SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED_ADDRESS_FAMILY:
     return parse_address_family(
         &mod_config()->tls.session_cache.memcached.family, opt, optarg);
+  case SHRPX_OPTID_BACKEND_ADDRESS_FAMILY:
+    return parse_address_family(&mod_config()->conn.downstream.family, opt,
+                                optarg);
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 

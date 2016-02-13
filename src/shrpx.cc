@@ -1166,6 +1166,7 @@ void fill_default_config() {
     downstreamconf.connections_per_host = 8;
     downstreamconf.request_buffer_size = 16_k;
     downstreamconf.response_buffer_size = 128_k;
+    downstreamconf.family = AF_UNSPEC;
   }
 }
 
@@ -1270,10 +1271,12 @@ Connections:
   --backlog=<N>
               Set listen backlog size.
               Default: )" << get_config()->conn.listener.backlog << R"(
-  --backend-ipv4
-              Resolve backend hostname to IPv4 address only.
-  --backend-ipv6
-              Resolve backend hostname to IPv6 address only.
+  --backend-address-family=(auto|IPv4|IPv6)
+              Specify  address  family  of  backend  connections.   If
+              "auto" is given, both IPv4  and IPv6 are considered.  If
+              "IPv4" is  given, only  IPv4 address is  considered.  If
+              "IPv6" is given, only IPv6 address is considered.
+              Default: auto
   --backend-http-proxy-uri=<URI>
               Specify      proxy       URI      in       the      form
               http://[<USER>:<PASS>@]<PROXY>:<PORT>.    If   a   proxy
@@ -2055,12 +2058,6 @@ void process_options(
     listenerconf.addrs.push_back(std::move(addr));
   }
 
-  if (downstreamconf.ipv4 && downstreamconf.ipv6) {
-    LOG(FATAL) << "--backend-ipv4 and --backend-ipv6 cannot be used at the "
-               << "same time.";
-    exit(EXIT_FAILURE);
-  }
-
   if (upstreamconf.worker_connections == 0) {
     upstreamconf.worker_connections = std::numeric_limits<size_t>::max();
   }
@@ -2195,11 +2192,8 @@ void process_options(
       addr.hostport =
           ImmutableString(util::make_hostport(addr.host.c_str(), addr.port));
 
-      if (resolve_hostname(
-              &addr.addr, addr.host.c_str(), addr.port,
-              downstreamconf.ipv4
-                  ? AF_INET
-                  : (downstreamconf.ipv6 ? AF_INET6 : AF_UNSPEC)) == -1) {
+      if (resolve_hostname(&addr.addr, addr.host.c_str(), addr.port,
+                           downstreamconf.family) == -1) {
         exit(EXIT_FAILURE);
       }
     }
@@ -2453,6 +2447,7 @@ int main(int argc, char **argv) {
          &flag, 114},
         {SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_ADDRESS_FAMILY,
          required_argument, &flag, 115},
+        {SHRPX_OPT_BACKEND_ADDRESS_FAMILY, required_argument, &flag, 116},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -2948,6 +2943,10 @@ int main(int argc, char **argv) {
         // --tls-session-cache-memcached-address-family
         cmdcfgs.emplace_back(
             SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_ADDRESS_FAMILY, optarg);
+        break;
+      case 116:
+        // --backend-address-family
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_ADDRESS_FAMILY, optarg);
         break;
       default:
         break;

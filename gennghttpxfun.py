@@ -123,6 +123,7 @@ OPTIONS = [
     "tls-ticket-key-memcached-cert-file",
     "tls-ticket-key-memcached-private-key-file",
     "tls-ticket-key-memcached-address-family",
+    "backend-address-family"
 ]
 
 LOGVARS = [

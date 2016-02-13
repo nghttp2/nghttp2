@@ -225,6 +225,7 @@ constexpr char SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_PRIVATE_KEY_FILE[] =
     "tls-ticket-key-memcached-private-key-file";
 constexpr char SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_ADDRESS_FAMILY[] =
     "tls-ticket-key-memcached-address-family";
+constexpr char SHRPX_OPT_BACKEND_ADDRESS_FAMILY[] = "backend-address-family";
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -567,13 +568,12 @@ struct ConnectionConfig {
     size_t response_buffer_size;
     // downstream protocol; this will be determined by given options.
     shrpx_proto proto;
+    // Address family of backend connection.  One of either AF_INET,
+    // AF_INET6 or AF_UNSPEC.  This is ignored if backend connection
+    // is made via Unix domain socket.
+    int family;
     bool no_tls;
     bool http1_tls;
-    // true if IPv4 only; ipv4 and ipv6 are mutually exclusive; and
-    // (ipv4 && ipv6) must be false.
-    bool ipv4;
-    // true if IPv6 only
-    bool ipv6;
   } downstream;
 };
 
