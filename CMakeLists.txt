@@ -520,9 +520,7 @@ add_subdirectory(integration-tests)
 endif()
 add_subdirectory(doc)
 add_subdirectory(contrib)
-if(0)
 add_subdirectory(script)
-endif()
 
 
 # XXX - fix list of variables
