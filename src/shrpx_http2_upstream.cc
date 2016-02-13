@@ -1558,7 +1558,9 @@ int Http2Upstream::adjust_pushed_stream_priority(Downstream *downstream) {
   }
 
   if (!util::istarts_with_l(ct->value, "application/javascript") &&
-      !util::istarts_with_l(ct->value, "text/css")) {
+      !util::istarts_with_l(ct->value, "text/css") &&
+      // for polymer...
+      !util::istarts_with_l(ct->value, "text/html")) {
     return 0;
   }
 
