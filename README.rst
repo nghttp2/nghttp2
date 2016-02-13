@@ -163,9 +163,14 @@ To compile the source code, gcc >= 4.8.3 or clang >= 3.4 is required.
 
 .. note::
 
-   To compile the associated applications (nghttp, nghttpd, nghttpx and
-   h2load), you must use the ``--enable-app`` configure option and ensure
-   that the specified requirements above are met.
+   To compile the associated applications (nghttp, nghttpd, nghttpx
+   and h2load), you must use the ``--enable-app`` configure option and
+   ensure that the specified requirements above are met.  Normally,
+   configure script checks required dependencies to build these
+   applications, and enable ``--enable-app`` automatically, so you
+   don't have to use it explicitly.  But if you found that
+   applications were not built, then using ``--enable-app`` may find
+   that cause, such as the missing dependency.
 
 Notes for building on Windows (Mingw/Cygwin)
 --------------------------------------------
