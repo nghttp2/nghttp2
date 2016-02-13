@@ -469,7 +469,7 @@ set(exec_prefix     "${CMAKE_INSTALL_PREFIX}")
 set(libdir          "${CMAKE_INSTALL_FULL_LIBDIR}")
 set(includedir      "${CMAKE_INSTALL_FULL_INCLUDEDIR}")
 set(VERSION         "${PACKAGE_VERSION}")
-# For init scripts and systemd service file
+# For init scripts and systemd service file (in contrib/)
 set(bindir          "${CMAKE_INSTALL_FULL_BINDIR}")
 set(sbindir         "${CMAKE_INSTALL_FULL_SBINDIR}")
 foreach(name
@@ -519,8 +519,8 @@ add_subdirectory(tests)
 add_subdirectory(integration-tests)
 endif()
 add_subdirectory(doc)
-if(0)
 add_subdirectory(contrib)
+if(0)
 add_subdirectory(script)
 endif()
 
