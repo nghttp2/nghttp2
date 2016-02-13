@@ -352,7 +352,10 @@ fi
 # libxml2 (for src/nghttp)
 have_libxml2=no
 if test "x${request_libxml2}" != "xno"; then
-  AM_PATH_XML2(2.7.7, [have_libxml2=yes], [have_libxml2=no])
+  m4_ifdef([AM_PATH_XML2],
+    [AM_PATH_XML2(2.7.7, [have_libxml2=yes], [have_libxml2=no])],
+    [AC_MSG_WARN([configure was created without libxml2 detection macro; libxml2 detection is disabled])])
+
   if test "x${have_libxml2}" = "xyes"; then
     AC_DEFINE([HAVE_LIBXML2], [1], [Define to 1 if you have `libxml2` library.])
   fi
