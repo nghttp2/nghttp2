@@ -57,7 +57,6 @@
 #include <nghttp2/nghttp2.h>
 
 #include "timegm.h"
-#include "template.h"
 
 namespace nghttp2 {
 
@@ -1149,24 +1148,52 @@ std::string dtos(double n) {
   return utos(static_cast<int64_t>(n)) + "." + (f.size() == 1 ? "0" : "") + f;
 }
 
-std::string make_hostport(const char *host, uint16_t port) {
-  auto ipv6 = ipv6_numeric_addr(host);
-  std::string hostport;
-
-  if (ipv6) {
-    hostport += '[';
-  }
-
-  hostport += host;
-
-  if (ipv6) {
-    hostport += ']';
-  }
-
+std::string make_http_hostport(const StringRef &host, uint16_t port) {
   if (port != 80 && port != 443) {
-    hostport += ':';
-    hostport += utos(port);
+    return make_hostport(host, port);
   }
+
+  auto ipv6 = ipv6_numeric_addr(host.c_str());
+
+  std::string hostport;
+  hostport.resize(host.size() + (ipv6 ? 2 : 0));
+
+  auto p = &hostport[0];
+
+  if (ipv6) {
+    *p++ = '[';
+  }
+
+  p = std::copy_n(host.c_str(), host.size(), p);
+
+  if (ipv6) {
+    *p++ = ']';
+  }
+
+  return hostport;
+}
+
+std::string make_hostport(const StringRef &host, uint16_t port) {
+  auto ipv6 = ipv6_numeric_addr(host.c_str());
+  auto serv = utos(port);
+
+  std::string hostport;
+  hostport.resize(host.size() + (ipv6 ? 2 : 0) + 1 + serv.size());
+
+  auto p = &hostport[0];
+
+  if (ipv6) {
+    *p++ = '[';
+  }
+
+  p = std::copy_n(host.c_str(), host.size(), p);
+
+  if (ipv6) {
+    *p++ = ']';
+  }
+
+  *p++ = ':';
+  std::copy_n(serv.c_str(), serv.size(), p);
 
   return hostport;
 }

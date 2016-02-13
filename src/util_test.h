@@ -57,6 +57,8 @@ void test_util_parse_http_date(void);
 void test_util_localtime_date(void);
 void test_util_get_uint64(void);
 void test_util_parse_config_str_list(void);
+void test_util_make_http_hostport(void);
+void test_util_make_hostport(void);
 
 } // namespace shrpx
 

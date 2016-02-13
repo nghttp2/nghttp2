@@ -49,6 +49,8 @@
 
 #include "http-parser/http_parser.h"
 
+#include "template.h"
+
 namespace nghttp2 {
 
 // The additional HTTP/2 protocol ALPN protocol identifier we also
@@ -623,7 +625,11 @@ std::string format_duration(double t);
 // Creates "host:port" string using given |host| and |port|.  If
 // |host| is numeric IPv6 address (e.g., ::1), it is enclosed by "["
 // and "]".  If |port| is 80 or 443, port part is omitted.
-std::string make_hostport(const char *host, uint16_t port);
+std::string make_http_hostport(const StringRef &host, uint16_t port);
+
+// Just like make_http_hostport(), but doesn't treat 80 and 443
+// specially.
+std::string make_hostport(const StringRef &host, uint16_t port);
 
 // Dumps |src| of length |len| in the format similar to `hexdump -C`.
 void hexdump(FILE *out, const uint8_t *src, size_t len);

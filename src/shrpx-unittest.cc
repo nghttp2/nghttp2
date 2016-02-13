@@ -167,6 +167,10 @@ int main(int argc, char *argv[]) {
       !CU_add_test(pSuite, "util_get_uint64", shrpx::test_util_get_uint64) ||
       !CU_add_test(pSuite, "util_parse_config_str_list",
                    shrpx::test_util_parse_config_str_list) ||
+      !CU_add_test(pSuite, "util_make_http_hostport",
+                   shrpx::test_util_make_http_hostport) ||
+      !CU_add_test(pSuite, "util_make_hostport",
+                   shrpx::test_util_make_hostport) ||
       !CU_add_test(pSuite, "gzip_inflate", test_nghttp2_gzip_inflate) ||
       !CU_add_test(pSuite, "buffer_write", nghttp2::test_buffer_write) ||
       !CU_add_test(pSuite, "pool_recycle", nghttp2::test_pool_recycle) ||

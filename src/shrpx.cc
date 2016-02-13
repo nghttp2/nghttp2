@@ -656,7 +656,7 @@ int create_tcp_server_socket(UpstreamAddr &faddr,
   }
 
   faddr.fd = fd;
-  faddr.hostport = util::make_hostport(host.data(), faddr.port);
+  faddr.hostport = util::make_http_hostport(host.data(), faddr.port);
 
   LOG(NOTICE) << "Listening on " << faddr.hostport;
 
@@ -2178,8 +2178,10 @@ void process_options(
           exit(EXIT_FAILURE);
         }
 
-        LOG(INFO) << "Use UNIX domain socket path " << path
-                  << " for backend connection";
+        if (LOG_ENABLED(INFO)) {
+          LOG(INFO) << "Use UNIX domain socket path " << path
+                    << " for backend connection";
+        }
 
         addr.addr.su.un.sun_family = AF_UNIX;
         // copy path including terminal NULL
@@ -2189,44 +2191,65 @@ void process_options(
         continue;
       }
 
-      addr.hostport =
-          ImmutableString(util::make_hostport(addr.host.c_str(), addr.port));
+      addr.hostport = ImmutableString(
+          util::make_http_hostport(StringRef(addr.host), addr.port));
+
+      auto hostport = util::make_hostport(addr.host.c_str(), addr.port);
 
       if (resolve_hostname(&addr.addr, addr.host.c_str(), addr.port,
                            downstreamconf.family) == -1) {
+        LOG(FATAL) << "Resolving backend address failed: " << hostport;
         exit(EXIT_FAILURE);
       }
+      LOG(NOTICE) << "Resolved backend address: " << hostport << " -> "
+                  << util::numeric_hostport(&addr.addr.su.sa, addr.addr.len);
     }
   }
 
   auto &proxy = mod_config()->downstream_http_proxy;
   if (!proxy.host.empty()) {
-    if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Resolving backend http proxy address";
-    }
+    auto hostport = util::make_hostport(proxy.host.c_str(), proxy.port);
     if (resolve_hostname(&proxy.addr, proxy.host.c_str(), proxy.port,
                          AF_UNSPEC) == -1) {
+      LOG(FATAL) << "Resolving backend HTTP proxy address failed: " << hostport;
       exit(EXIT_FAILURE);
     }
+    LOG(NOTICE) << "Backend HTTP proxy address: " << hostport << " -> "
+                << util::numeric_hostport(&proxy.addr.su.sa, proxy.addr.len);
   }
 
   {
     auto &memcachedconf = tlsconf.session_cache.memcached;
     if (memcachedconf.host) {
+      auto hostport =
+          util::make_hostport(memcachedconf.host.get(), memcachedconf.port);
       if (resolve_hostname(&memcachedconf.addr, memcachedconf.host.get(),
                            memcachedconf.port, memcachedconf.family) == -1) {
+        LOG(FATAL)
+            << "Resolving memcached address for TLS session cache failed: "
+            << hostport;
         exit(EXIT_FAILURE);
       }
+      LOG(NOTICE) << "Memcached address for TLS session cache: " << hostport
+                  << " -> " << util::numeric_hostport(&memcachedconf.addr.su.sa,
+                                                      memcachedconf.addr.len);
     }
   }
 
   {
     auto &memcachedconf = tlsconf.ticket.memcached;
     if (memcachedconf.host) {
+      auto hostport =
+          util::make_hostport(memcachedconf.host.get(), memcachedconf.port);
       if (resolve_hostname(&memcachedconf.addr, memcachedconf.host.get(),
                            memcachedconf.port, memcachedconf.family) == -1) {
+        LOG(FATAL) << "Resolving memcached address for TLS ticket key failed: "
+                   << hostport;
         exit(EXIT_FAILURE);
       }
+      LOG(NOTICE) << "Memcached address for TLS ticket key: " << hostport
+                  << " -> " << util::numeric_hostport(&memcachedconf.addr.su.sa,
+                                                      memcachedconf.addr.len);
     }
   }
 

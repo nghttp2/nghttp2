@@ -455,4 +455,15 @@ void test_util_parse_config_str_list(void) {
   CU_ASSERT("charlie" == res[2]);
 }
 
+void test_util_make_http_hostport(void) {
+  CU_ASSERT("localhost" == util::make_http_hostport("localhost", 80));
+  CU_ASSERT("[::1]" == util::make_http_hostport("::1", 443));
+  CU_ASSERT("localhost:3000" == util::make_http_hostport("localhost", 3000));
+}
+
+void test_util_make_hostport(void) {
+  CU_ASSERT("localhost:80" == util::make_hostport("localhost", 80));
+  CU_ASSERT("[::1]:443" == util::make_hostport("::1", 443));
+}
+
 } // namespace shrpx
