@@ -2220,10 +2220,10 @@ void process_options(
 
   {
     auto &memcachedconf = tlsconf.session_cache.memcached;
-    if (memcachedconf.host) {
-      auto hostport =
-          util::make_hostport(memcachedconf.host.get(), memcachedconf.port);
-      if (resolve_hostname(&memcachedconf.addr, memcachedconf.host.get(),
+    if (!memcachedconf.host.empty()) {
+      auto hostport = util::make_hostport(StringRef{memcachedconf.host},
+                                          memcachedconf.port);
+      if (resolve_hostname(&memcachedconf.addr, memcachedconf.host.c_str(),
                            memcachedconf.port, memcachedconf.family) == -1) {
         LOG(FATAL)
             << "Resolving memcached address for TLS session cache failed: "
@@ -2238,10 +2238,10 @@ void process_options(
 
   {
     auto &memcachedconf = tlsconf.ticket.memcached;
-    if (memcachedconf.host) {
-      auto hostport =
-          util::make_hostport(memcachedconf.host.get(), memcachedconf.port);
-      if (resolve_hostname(&memcachedconf.addr, memcachedconf.host.get(),
+    if (!memcachedconf.host.empty()) {
+      auto hostport = util::make_hostport(StringRef{memcachedconf.host},
+                                          memcachedconf.port);
+      if (resolve_hostname(&memcachedconf.addr, memcachedconf.host.c_str(),
                            memcachedconf.port, memcachedconf.family) == -1) {
         LOG(FATAL) << "Resolving memcached address for TLS ticket key failed: "
                    << hostport;

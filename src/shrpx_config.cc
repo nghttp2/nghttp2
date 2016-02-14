@@ -2154,7 +2154,7 @@ int parse_config(const char *opt, const char *optarg,
     }
 
     auto &memcachedconf = mod_config()->tls.session_cache.memcached;
-    memcachedconf.host = strcopy(host);
+    memcachedconf.host = host;
     memcachedconf.port = port;
 
     return 0;
@@ -2166,7 +2166,7 @@ int parse_config(const char *opt, const char *optarg,
     }
 
     auto &memcachedconf = mod_config()->tls.ticket.memcached;
-    memcachedconf.host = strcopy(host);
+    memcachedconf.host = host;
     memcachedconf.port = port;
 
     return 0;

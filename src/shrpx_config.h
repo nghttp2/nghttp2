@@ -343,7 +343,9 @@ struct TLSConfig {
     struct {
       Address addr;
       uint16_t port;
-      std::unique_ptr<char[]> host;
+      // Hostname of memcached server.  This is also used as SNI field
+      // if TLS is enabled.
+      ImmutableString host;
       // Client private key and certificate for authentication
       ImmutableString private_key_file;
       ImmutableString cert_file;
@@ -370,7 +372,9 @@ struct TLSConfig {
     struct {
       Address addr;
       uint16_t port;
-      std::unique_ptr<char[]> host;
+      // Hostname of memcached server.  This is also used as SNI field
+      // if TLS is enabled.
+      ImmutableString host;
       // Client private key and certificate for authentication
       ImmutableString private_key_file;
       ImmutableString cert_file;

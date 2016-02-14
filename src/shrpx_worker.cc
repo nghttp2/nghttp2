@@ -91,11 +91,11 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
 
   auto &session_cacheconf = get_config()->tls.session_cache;
 
-  if (session_cacheconf.memcached.host) {
+  if (!session_cacheconf.memcached.host.empty()) {
     session_cache_memcached_dispatcher_ = make_unique<MemcachedDispatcher>(
         &session_cacheconf.memcached.addr, loop,
         tls_session_cache_memcached_ssl_ctx,
-        session_cacheconf.memcached.host.get(), &mcpool_);
+        StringRef{session_cacheconf.memcached.host}, &mcpool_);
   }
 
   auto &downstreamconf = get_config()->conn.downstream;
