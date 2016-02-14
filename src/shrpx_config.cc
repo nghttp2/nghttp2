@@ -1754,7 +1754,7 @@ int parse_config(const char *opt, const char *optarg,
       LOG(ERROR) << opt << ": Couldn't read key file's passwd from " << optarg;
       return -1;
     }
-    mod_config()->tls.private_key_passwd = strcopy(passwd);
+    mod_config()->tls.private_key_passwd = passwd;
 
     return 0;
   }

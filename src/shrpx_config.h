@@ -427,7 +427,7 @@ struct TLSConfig {
   std::string backend_sni_name;
   std::chrono::seconds session_timeout;
   ImmutableString private_key_file;
-  std::unique_ptr<char[]> private_key_passwd;
+  ImmutableString private_key_passwd;
   ImmutableString cert_file;
   std::unique_ptr<char[]> dh_param_file;
   std::unique_ptr<char[]> ciphers;

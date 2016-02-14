@@ -124,13 +124,13 @@ set_alpn_prefs(const std::vector<std::string> &protos) {
 namespace {
 int ssl_pem_passwd_cb(char *buf, int size, int rwflag, void *user_data) {
   auto config = static_cast<Config *>(user_data);
-  int len = (int)strlen(config->tls.private_key_passwd.get());
+  auto len = static_cast<int>(config->tls.private_key_passwd.size());
   if (size < len + 1) {
     LOG(ERROR) << "ssl_pem_passwd_cb: buf is too small " << size;
     return 0;
   }
   // Copy string including last '\0'.
-  memcpy(buf, config->tls.private_key_passwd.get(), len + 1);
+  memcpy(buf, config->tls.private_key_passwd.c_str(), len + 1);
   return len;
 }
 } // namespace
@@ -548,7 +548,7 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file
 
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_AUTO_RETRY);
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_RELEASE_BUFFERS);
-  if (tlsconf.private_key_passwd) {
+  if (!tlsconf.private_key_passwd.empty()) {
     SSL_CTX_set_default_passwd_cb(ssl_ctx, ssl_pem_passwd_cb);
     SSL_CTX_set_default_passwd_cb_userdata(ssl_ctx, (void *)get_config());
   }
