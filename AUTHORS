@@ -1,1 +1,80 @@
-Tatsuhiro Tsujikawa <t-tujikawa at users dot sourceforge dot net>
+nghttp2 project was started as a fork of spdylay project [1].  Both
+projects were started by Tatsuhiro Tsujikawa, who is still the main
+author of these projects.  Meanwhile, we have many contributions, and
+we are not here without them.  We sincerely thank you to all who made
+a contribution.  Here is the all individuals/organizations who
+contributed to nghttp2 and spdylay project at which we forked.  These
+names are retrieved from git commit log.  If you have made a
+contribution, but you are missing in the list, please let us know via
+github issues [2].
+
+[1] https://github.com/tatsuhiro-t/spdylay
+[2] https://github.com/tatsuhiro-t/nghttp2/issues
+
+--------
+
+187j3x1
+Alek Storm
+Alex Nalivko
+Alexis La Goutte
+Anders Bakken
+Andreas Pohl
+Andy Davies
+Ant Bryan
+Bernard Spil
+Brian Card
+Daniel Stenberg
+Dave Reisner
+David Beitey
+David Weekly
+Etienne Cimon
+Fabian Möller
+Fabian Wiesel
+Gabi Davar
+Janusz Dziemidowicz
+Jay Satiro
+Jim Morrison
+José F. Calcerrada
+Kamil Dudka
+Kazuho Oku
+Kenny (kang-yen) Peng
+Kenny Peng
+Kit Chan
+Kyle Schomp
+Lucas Pardue
+MATSUMOTO Ryosuke
+Mike Frysinger
+Nicholas Hurley
+Nora Shoemaker
+Peeyush Aggarwal
+Peter Wu
+Piotr Sikora
+Raul Gutierrez Segales
+Remo E
+Reza Tavakoli
+Ross Smith II
+Scott Mitchell
+Stefan Eissing
+Stephen Ludin
+Sunpoet Po-Chuan Hsieh
+Svante Signell
+Syohei YOSHIDA
+Tatsuhiko Kubo
+Tatsuhiro Tsujikawa
+Tom Harwood
+Tomasz Buchert
+Vernon Tang
+Viacheslav Biriukov
+Viktor Szépe
+Xiaoguang Sun
+Zhuoyun Wei
+acesso
+ayanamist
+bxshi
+es
+fangdingjun
+kumagi
+mod-h2-dev
+moparisthebest
+snnn
+yuuki-kodama
