@@ -295,7 +295,7 @@ static size_t http_date(char *buf, time_t t) {
 static char date[29];
 static size_t datelen;
 
-static void update_date() { datelen = http_date(date, time(NULL)); }
+static void update_date(void) { datelen = http_date(date, time(NULL)); }
 
 static size_t utos(char *buf, size_t len, uint64_t n) {
   size_t nwrite = 0;

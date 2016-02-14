@@ -21,11 +21,14 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-EXTRA_DIST = \
+GO_FILES = \
 	nghttpx_http1_test.go \
 	nghttpx_http2_test.go \
 	nghttpx_spdy_test.go \
-	server_tester.go \
+	server_tester.go
+
+EXTRA_DIST = \
+	$(GO_FILES) \
 	server.key \
 	server.crt \
 	alt-server.key \
@@ -43,4 +46,5 @@ itprep-local:
 	go get -d -v golang.org/x/net/websocket
 
 it-local:
+	for i in $(GO_FILES); do [ -e $(builddir)/$$i ] || cp $(srcdir)/$$i $(builddir); done
 	sh setenv go test -v
