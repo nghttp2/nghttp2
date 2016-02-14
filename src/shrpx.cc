@@ -2105,7 +2105,7 @@ void process_options(
   auto &addr_groups = downstreamconf.addr_groups;
 
   if (addr_groups.empty()) {
-    DownstreamAddr addr;
+    DownstreamAddr addr{};
     addr.host = ImmutableString::from_lit(DEFAULT_DOWNSTREAM_HOST);
     addr.port = DEFAULT_DOWNSTREAM_PORT;
 

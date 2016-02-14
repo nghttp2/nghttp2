@@ -78,27 +78,6 @@ TicketKeys::~TicketKeys() {
   }
 }
 
-DownstreamAddr::DownstreamAddr(const DownstreamAddr &other)
-    : addr(other.addr),
-      host(other.host),
-      hostport(other.hostport),
-      port(other.port),
-      host_unix(other.host_unix) {}
-
-DownstreamAddr &DownstreamAddr::operator=(const DownstreamAddr &other) {
-  if (this == &other) {
-    return *this;
-  }
-
-  addr = other.addr;
-  host = other.host;
-  hostport = other.hostport;
-  port = other.port;
-  host_unix = other.host_unix;
-
-  return *this;
-}
-
 DownstreamAddrGroup::DownstreamAddrGroup(const DownstreamAddrGroup &other)
     : pattern(strcopy(other.pattern)), addrs(other.addrs) {}
 
@@ -1523,7 +1502,7 @@ int parse_config(const char *opt, const char *optarg,
     if (!pat_delim) {
       pat_delim = optarg + optarglen;
     }
-    DownstreamAddr addr;
+    DownstreamAddr addr{};
     if (util::istarts_with(optarg, SHRPX_UNIX_PATH_PREFIX)) {
       auto path = optarg + str_size(SHRPX_UNIX_PATH_PREFIX);
       addr.host = ImmutableString(path, pat_delim);

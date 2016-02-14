@@ -289,12 +289,6 @@ struct UpstreamAddr {
 };
 
 struct DownstreamAddr {
-  DownstreamAddr() : addr{}, port(0), host_unix(false) {}
-  DownstreamAddr(const DownstreamAddr &other);
-  DownstreamAddr(DownstreamAddr &&) = default;
-  DownstreamAddr &operator=(const DownstreamAddr &other);
-  DownstreamAddr &operator=(DownstreamAddr &&other) = default;
-
   Address addr;
   // backend address.  If |host_unix| is true, this is UNIX domain
   // socket path.
