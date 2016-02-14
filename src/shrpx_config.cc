@@ -2205,7 +2205,7 @@ int parse_config(const char *opt, const char *optarg,
 
   case SHRPX_OPTID_MRUBY_FILE:
 #ifdef HAVE_MRUBY
-    mod_config()->mruby_file = strcopy(optarg);
+    mod_config()->mruby_file = optarg;
 #else  // !HAVE_MRUBY
     LOG(WARN) << opt
               << ": ignored because mruby support is disabled at build time.";
