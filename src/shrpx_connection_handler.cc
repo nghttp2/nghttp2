@@ -463,7 +463,8 @@ int ConnectionHandler::start_ocsp_update(const char *cert_file) {
   assert(!ev_is_active(&ocsp_.chldev));
 
   char *const argv[] = {
-      const_cast<char *>(get_config()->tls.ocsp.fetch_ocsp_response_file.get()),
+      const_cast<char *>(
+          get_config()->tls.ocsp.fetch_ocsp_response_file.c_str()),
       const_cast<char *>(cert_file), nullptr};
   char *const envp[] = {nullptr};
 

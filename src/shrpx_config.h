@@ -394,7 +394,7 @@ struct TLSConfig {
   // OCSP realted configurations
   struct {
     ev_tstamp update_interval;
-    std::unique_ptr<char[]> fetch_ocsp_response_file;
+    ImmutableString fetch_ocsp_response_file;
     bool disabled;
   } ocsp;
 

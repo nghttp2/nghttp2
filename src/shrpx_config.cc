@@ -2086,7 +2086,7 @@ int parse_config(const char *opt, const char *optarg,
     return parse_uint(&mod_config()->http2.downstream.connections_per_worker,
                       opt, optarg);
   case SHRPX_OPTID_FETCH_OCSP_RESPONSE_FILE:
-    mod_config()->tls.ocsp.fetch_ocsp_response_file = strcopy(optarg);
+    mod_config()->tls.ocsp.fetch_ocsp_response_file = optarg;
 
     return 0;
   case SHRPX_OPTID_OCSP_UPDATE_INTERVAL:

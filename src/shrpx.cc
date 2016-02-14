@@ -1067,8 +1067,7 @@ void fill_default_config() {
     auto &ocspconf = tlsconf.ocsp;
     // ocsp update interval = 14400 secs = 4 hours, borrowed from h2o
     ocspconf.update_interval = 4_h;
-    ocspconf.fetch_ocsp_response_file =
-        strcopy(PKGDATADIR "/fetch-ocsp-response");
+    ocspconf.fetch_ocsp_response_file = PKGDATADIR "/fetch-ocsp-response";
   }
 
   {
@@ -1579,8 +1578,8 @@ SSL/TLS:
   --fetch-ocsp-response-file=<PATH>
               Path to  fetch-ocsp-response script file.  It  should be
               absolute path.
-              Default: )"
-      << get_config()->tls.ocsp.fetch_ocsp_response_file.get() << R"(
+              Default: )" << get_config()->tls.ocsp.fetch_ocsp_response_file
+      << R"(
   --ocsp-update-interval=<DURATION>
               Set interval to update OCSP response cache.
               Default: )"
@@ -2094,10 +2093,10 @@ void process_options(
 
   if (!upstreamconf.no_tls && !tlsconf.ocsp.disabled) {
     struct stat buf;
-    if (stat(tlsconf.ocsp.fetch_ocsp_response_file.get(), &buf) != 0) {
+    if (stat(tlsconf.ocsp.fetch_ocsp_response_file.c_str(), &buf) != 0) {
       tlsconf.ocsp.disabled = true;
       LOG(WARN) << "--fetch-ocsp-response-file: "
-                << tlsconf.ocsp.fetch_ocsp_response_file.get()
+                << tlsconf.ocsp.fetch_ocsp_response_file
                 << " not found.  OCSP stapling has been disabled.";
     }
   }
