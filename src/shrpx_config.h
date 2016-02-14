@@ -301,13 +301,10 @@ struct DownstreamAddr {
 };
 
 struct DownstreamAddrGroup {
-  DownstreamAddrGroup(const std::string &pattern) : pattern(strcopy(pattern)) {}
-  DownstreamAddrGroup(const DownstreamAddrGroup &other);
-  DownstreamAddrGroup(DownstreamAddrGroup &&) = default;
-  DownstreamAddrGroup &operator=(const DownstreamAddrGroup &other);
-  DownstreamAddrGroup &operator=(DownstreamAddrGroup &&) = default;
+  DownstreamAddrGroup(const StringRef &pattern)
+      : pattern(pattern.c_str(), pattern.size()) {}
 
-  std::unique_ptr<char[]> pattern;
+  ImmutableString pattern;
   std::vector<DownstreamAddr> addrs;
 };
 
@@ -655,7 +652,7 @@ read_tls_ticket_key_file(const std::vector<std::string> &files,
 // group.  The catch-all group index is given in |catch_all|.  All
 // patterns are given in |groups|.
 size_t match_downstream_addr_group(
-    const Router &router, const std::string &hostport, const std::string &path,
+    const Router &router, const StringRef &hostport, const StringRef &path,
     const std::vector<DownstreamAddrGroup> &groups, size_t catch_all);
 
 } // namespace shrpx

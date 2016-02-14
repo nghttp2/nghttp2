@@ -2109,14 +2109,14 @@ void process_options(
     addr.host = ImmutableString::from_lit(DEFAULT_DOWNSTREAM_HOST);
     addr.port = DEFAULT_DOWNSTREAM_PORT;
 
-    DownstreamAddrGroup g("/");
+    DownstreamAddrGroup g(StringRef::from_lit("/"));
     g.addrs.push_back(std::move(addr));
-    mod_config()->router.add_route(g.pattern.get(), 1, addr_groups.size());
+    mod_config()->router.add_route(StringRef{g.pattern}, addr_groups.size());
     addr_groups.push_back(std::move(g));
   } else if (get_config()->http2_proxy || get_config()->client_proxy) {
     // We don't support host mapping in these cases.  Move all
     // non-catch-all patterns to catch-all pattern.
-    DownstreamAddrGroup catch_all("/");
+    DownstreamAddrGroup catch_all(StringRef::from_lit("/"));
     for (auto &g : addr_groups) {
       std::move(std::begin(g.addrs), std::end(g.addrs),
                 std::back_inserter(catch_all.addrs));
@@ -2124,7 +2124,7 @@ void process_options(
     std::vector<DownstreamAddrGroup>().swap(addr_groups);
     // maybe not necessary?
     mod_config()->router = Router();
-    mod_config()->router.add_route(catch_all.pattern.get(), 1,
+    mod_config()->router.add_route(StringRef{catch_all.pattern},
                                    addr_groups.size());
     addr_groups.push_back(std::move(catch_all));
   }
@@ -2136,11 +2136,11 @@ void process_options(
   ssize_t catch_all_group = -1;
   for (size_t i = 0; i < addr_groups.size(); ++i) {
     auto &g = addr_groups[i];
-    if (util::streq(g.pattern.get(), "/")) {
+    if (g.pattern == "/") {
       catch_all_group = i;
     }
     if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Host-path pattern: group " << i << ": '" << g.pattern.get()
+      LOG(INFO) << "Host-path pattern: group " << i << ": '" << g.pattern
                 << "'";
       for (auto &addr : g.addrs) {
         LOG(INFO) << "group " << i << " -> " << addr.host.c_str()

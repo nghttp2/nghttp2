@@ -681,16 +681,19 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
   } else {
     auto &router = get_config()->router;
     if (!req.authority.empty()) {
-      group = match_downstream_addr_group(router, req.authority, req.path,
-                                          groups, catch_all);
+      group =
+          match_downstream_addr_group(router, StringRef{req.authority},
+                                      StringRef{req.path}, groups, catch_all);
     } else {
       auto h = req.fs.header(http2::HD_HOST);
       if (h) {
-        group = match_downstream_addr_group(router, h->value, req.path, groups,
-                                            catch_all);
+        group =
+            match_downstream_addr_group(router, StringRef{h->value},
+                                        StringRef{req.path}, groups, catch_all);
       } else {
-        group = match_downstream_addr_group(router, "", req.path, groups,
-                                            catch_all);
+        group =
+            match_downstream_addr_group(router, StringRef::from_lit(""),
+                                        StringRef{req.path}, groups, catch_all);
       }
     }
   }
