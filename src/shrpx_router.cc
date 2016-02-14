@@ -259,8 +259,7 @@ const RNode *match_partial(const RNode *node, size_t offset, const char *first,
 }
 } // namespace
 
-ssize_t Router::match(const std::string &host, const char *path,
-                      size_t pathlen) const {
+ssize_t Router::match(const std::string &host, const StringRef &path) const {
   const RNode *node;
   size_t offset;
 
@@ -270,7 +269,7 @@ ssize_t Router::match(const std::string &host, const char *path,
     return -1;
   }
 
-  node = match_partial(node, offset, path, path + pathlen);
+  node = match_partial(node, offset, std::begin(path), std::end(path));
   if (node == nullptr || node == &root_) {
     return -1;
   }

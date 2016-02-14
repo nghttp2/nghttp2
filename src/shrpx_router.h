@@ -58,8 +58,7 @@ public:
   // Adds route |pattern| with its |index|.
   bool add_route(const StringRef &pattern, size_t index);
   // Returns the matched index of pattern.  -1 if there is no match.
-  ssize_t match(const std::string &host, const char *path,
-                size_t pathlen) const;
+  ssize_t match(const std::string &host, const StringRef &path) const;
 
   void add_node(RNode *node, const char *pattern, size_t patlen, size_t index);
 

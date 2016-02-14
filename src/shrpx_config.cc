@@ -2503,13 +2503,11 @@ int int_syslog_facility(const char *strfacility) {
 }
 
 namespace {
-size_t
-match_downstream_addr_group_host(const Router &router, const std::string &host,
-                                 const char *path, size_t pathlen,
-                                 const std::vector<DownstreamAddrGroup> &groups,
-                                 size_t catch_all) {
-  if (pathlen == 0 || *path != '/') {
-    auto group = router.match(host, "/", 1);
+size_t match_downstream_addr_group_host(
+    const Router &router, const std::string &host, const StringRef &path,
+    const std::vector<DownstreamAddrGroup> &groups, size_t catch_all) {
+  if (path.empty() || path[0] != '/') {
+    auto group = router.match(host, StringRef::from_lit("/"));
     if (group != -1) {
       if (LOG_ENABLED(INFO)) {
         LOG(INFO) << "Found pattern with query " << host
@@ -2522,23 +2520,22 @@ match_downstream_addr_group_host(const Router &router, const std::string &host,
 
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "Perform mapping selection, using host=" << host
-              << ", path=" << std::string(path, pathlen);
+              << ", path=" << path;
   }
 
-  auto group = router.match(host, path, pathlen);
+  auto group = router.match(host, path);
   if (group != -1) {
     if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Found pattern with query " << host
-                << std::string(path, pathlen)
+      LOG(INFO) << "Found pattern with query " << host << path
                 << ", matched pattern=" << groups[group].pattern;
     }
     return group;
   }
 
-  group = router.match("", path, pathlen);
+  group = router.match("", path);
   if (group != -1) {
     if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Found pattern with query " << std::string(path, pathlen)
+      LOG(INFO) << "Found pattern with query " << path
                 << ", matched pattern=" << groups[group].pattern;
     }
     return group;
@@ -2565,12 +2562,11 @@ match_downstream_addr_group(const Router &router, const std::string &hostport,
 
   auto fragment = std::find(std::begin(raw_path), std::end(raw_path), '#');
   auto query = std::find(std::begin(raw_path), fragment, '?');
-  auto path = raw_path.c_str();
-  auto pathlen = query - std::begin(raw_path);
+  auto path = StringRef{std::begin(raw_path), query};
 
   if (hostport.empty()) {
-    return match_downstream_addr_group_host(router, hostport, path, pathlen,
-                                            groups, catch_all);
+    return match_downstream_addr_group_host(router, hostport, path, groups,
+                                            catch_all);
   }
 
   std::string host;
@@ -2593,7 +2589,7 @@ match_downstream_addr_group(const Router &router, const std::string &hostport,
   }
 
   util::inp_strlower(host);
-  return match_downstream_addr_group_host(router, host, path, pathlen, groups,
+  return match_downstream_addr_group_host(router, host, path, groups,
                                           catch_all);
 }
 
