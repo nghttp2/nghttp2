@@ -1040,7 +1040,7 @@ void fill_default_config() {
   *mod_config() = {};
 
   mod_config()->num_worker = 1;
-  mod_config()->conf_path = strcopy("/etc/nghttpx/nghttpx.conf");
+  mod_config()->conf_path = "/etc/nghttpx/nghttpx.conf";
   mod_config()->pid = getpid();
 
   auto &tlsconf = mod_config()->tls;
@@ -1893,7 +1893,7 @@ Scripting:
 Misc:
   --conf=<PATH>
               Load configuration from <PATH>.
-              Default: )" << get_config()->conf_path.get() << R"(
+              Default: )" << get_config()->conf_path << R"(
   --include=<PATH>
               Load additional configurations from <PATH>.  File <PATH>
               is  read  when  configuration  parser  encountered  this
@@ -1919,11 +1919,11 @@ namespace {
 void process_options(
     int argc, char **argv,
     std::vector<std::pair<const char *, const char *>> &cmdcfgs) {
-  if (conf_exists(get_config()->conf_path.get())) {
+  if (conf_exists(get_config()->conf_path.c_str())) {
     std::set<std::string> include_set;
-    if (load_config(get_config()->conf_path.get(), include_set) == -1) {
+    if (load_config(get_config()->conf_path.c_str(), include_set) == -1) {
       LOG(FATAL) << "Failed to load configuration from "
-                 << get_config()->conf_path.get();
+                 << get_config()->conf_path;
       exit(EXIT_FAILURE);
     }
     assert(include_set.empty());
@@ -2563,7 +2563,7 @@ int main(int argc, char **argv) {
         break;
       case 12:
         // --conf
-        mod_config()->conf_path = strcopy(optarg);
+        mod_config()->conf_path = optarg;
         break;
       case 14:
         // --syslog-facility

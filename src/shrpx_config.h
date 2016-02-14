@@ -582,7 +582,7 @@ struct Config {
   LoggingConfig logging;
   ConnectionConfig conn;
   ImmutableString pid_file;
-  std::unique_ptr<char[]> conf_path;
+  ImmutableString conf_path;
   std::unique_ptr<char[]> user;
   std::unique_ptr<char[]> mruby_file;
   char **original_argv;
