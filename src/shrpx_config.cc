@@ -1745,7 +1745,7 @@ int parse_config(const char *opt, const char *optarg,
     return 0;
   }
   case SHRPX_OPTID_PRIVATE_KEY_FILE:
-    mod_config()->tls.private_key_file = strcopy(optarg);
+    mod_config()->tls.private_key_file = optarg;
 
     return 0;
   case SHRPX_OPTID_PRIVATE_KEY_PASSWD_FILE: {
@@ -1911,7 +1911,7 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   case SHRPX_OPTID_CLIENT_PRIVATE_KEY_FILE:
-    mod_config()->tls.client.private_key_file = strcopy(optarg);
+    mod_config()->tls.client.private_key_file = optarg;
 
     return 0;
   case SHRPX_OPTID_CLIENT_CERT_FILE:

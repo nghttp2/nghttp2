@@ -2085,7 +2085,7 @@ void process_options(
   }
 
   if (!upstreamconf.no_tls &&
-      (!tlsconf.private_key_file || !tlsconf.cert_file)) {
+      (tlsconf.private_key_file.empty() || !tlsconf.cert_file)) {
     print_usage(std::cerr);
     LOG(FATAL) << "Too few arguments";
     exit(EXIT_FAILURE);

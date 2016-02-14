@@ -1245,7 +1245,7 @@ SSL_CTX *setup_server_ssl_context(std::vector<SSL_CTX *> &all_ssl_ctx,
 
   auto &tlsconf = get_config()->tls;
 
-  auto ssl_ctx = ssl::create_ssl_context(tlsconf.private_key_file.get(),
+  auto ssl_ctx = ssl::create_ssl_context(tlsconf.private_key_file.c_str(),
                                          tlsconf.cert_file.get()
 #ifdef HAVE_NEVERBLEED
                                              ,
@@ -1325,8 +1325,7 @@ SSL_CTX *setup_downstream_client_ssl_context(
 #endif // HAVE_NEVERBLEED
       StringRef{tlsconf.cacert},
       StringRef::from_maybe_nullptr(tlsconf.client.cert_file.get()),
-      StringRef::from_maybe_nullptr(tlsconf.client.private_key_file.get()),
-      alpn, next_proto_select_cb);
+      StringRef{tlsconf.client.private_key_file}, alpn, next_proto_select_cb);
 }
 
 CertLookupTree *create_cert_lookup_tree() {

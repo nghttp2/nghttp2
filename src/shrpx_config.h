@@ -408,7 +408,7 @@ struct TLSConfig {
 
   // Client private key and certificate used in backend connections.
   struct {
-    std::unique_ptr<char[]> private_key_file;
+    ImmutableString private_key_file;
     std::unique_ptr<char[]> cert_file;
   } client;
 
@@ -426,7 +426,7 @@ struct TLSConfig {
   long int tls_proto_mask;
   std::string backend_sni_name;
   std::chrono::seconds session_timeout;
-  std::unique_ptr<char[]> private_key_file;
+  ImmutableString private_key_file;
   std::unique_ptr<char[]> private_key_passwd;
   std::unique_ptr<char[]> cert_file;
   std::unique_ptr<char[]> dh_param_file;
