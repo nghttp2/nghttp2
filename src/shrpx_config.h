@@ -402,7 +402,7 @@ struct TLSConfig {
   struct {
     // Path to file containing CA certificate solely used for client
     // certificate validation
-    std::unique_ptr<char[]> cacert;
+    ImmutableString cacert;
     bool enabled;
   } client_verify;
 

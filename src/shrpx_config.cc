@@ -1907,7 +1907,7 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   case SHRPX_OPTID_VERIFY_CLIENT_CACERT:
-    mod_config()->tls.client_verify.cacert = strcopy(optarg);
+    mod_config()->tls.client_verify.cacert = optarg;
 
     return 0;
   case SHRPX_OPTID_CLIENT_PRIVATE_KEY_FILE:

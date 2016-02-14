@@ -579,12 +579,12 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file
     DIE();
   }
   if (tlsconf.client_verify.enabled) {
-    if (tlsconf.client_verify.cacert) {
+    if (!tlsconf.client_verify.cacert.empty()) {
       if (SSL_CTX_load_verify_locations(
-              ssl_ctx, tlsconf.client_verify.cacert.get(), nullptr) != 1) {
+              ssl_ctx, tlsconf.client_verify.cacert.c_str(), nullptr) != 1) {
 
         LOG(FATAL) << "Could not load trusted ca certificates from "
-                   << tlsconf.client_verify.cacert.get() << ": "
+                   << tlsconf.client_verify.cacert << ": "
                    << ERR_error_string(ERR_get_error(), nullptr);
         DIE();
       }
@@ -592,10 +592,10 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file
       // error even though it returns success. See
       // http://forum.nginx.org/read.php?29,242540
       ERR_clear_error();
-      auto list = SSL_load_client_CA_file(tlsconf.client_verify.cacert.get());
+      auto list = SSL_load_client_CA_file(tlsconf.client_verify.cacert.c_str());
       if (!list) {
         LOG(FATAL) << "Could not load ca certificates from "
-                   << tlsconf.client_verify.cacert.get() << ": "
+                   << tlsconf.client_verify.cacert << ": "
                    << ERR_error_string(ERR_get_error(), nullptr);
         DIE();
       }
