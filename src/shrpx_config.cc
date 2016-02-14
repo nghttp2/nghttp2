@@ -2504,7 +2504,7 @@ int int_syslog_facility(const char *strfacility) {
 
 namespace {
 size_t match_downstream_addr_group_host(
-    const Router &router, const std::string &host, const StringRef &path,
+    const Router &router, const StringRef &host, const StringRef &path,
     const std::vector<DownstreamAddrGroup> &groups, size_t catch_all) {
   if (path.empty() || path[0] != '/') {
     auto group = router.match(host, StringRef::from_lit("/"));
@@ -2548,11 +2548,9 @@ size_t match_downstream_addr_group_host(
 }
 } // namespace
 
-size_t
-match_downstream_addr_group(const Router &router, const std::string &hostport,
-                            const std::string &raw_path,
-                            const std::vector<DownstreamAddrGroup> &groups,
-                            size_t catch_all) {
+size_t match_downstream_addr_group(
+    const Router &router, const StringRef &hostport, const StringRef &raw_path,
+    const std::vector<DownstreamAddrGroup> &groups, size_t catch_all) {
   if (std::find(std::begin(hostport), std::end(hostport), '/') !=
       std::end(hostport)) {
     // We use '/' specially, and if '/' is included in host, it breaks
@@ -2589,7 +2587,7 @@ match_downstream_addr_group(const Router &router, const std::string &hostport,
   }
 
   util::inp_strlower(host);
-  return match_downstream_addr_group_host(router, host, path, groups,
+  return match_downstream_addr_group_host(router, StringRef{host}, path, groups,
                                           catch_all);
 }
 
