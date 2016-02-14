@@ -493,8 +493,8 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file
   SSL_CTX_set_timeout(ssl_ctx, tlsconf.session_timeout.count());
 
   const char *ciphers;
-  if (tlsconf.ciphers) {
-    ciphers = tlsconf.ciphers.get();
+  if (!tlsconf.ciphers.empty()) {
+    ciphers = tlsconf.ciphers.c_str();
   } else {
     ciphers = nghttp2::ssl::DEFAULT_CIPHER_LIST;
   }
@@ -683,8 +683,8 @@ SSL_CTX *create_ssl_client_context(
   SSL_CTX_set_options(ssl_ctx, ssl_opts | tlsconf.tls_proto_mask);
 
   const char *ciphers;
-  if (tlsconf.ciphers) {
-    ciphers = tlsconf.ciphers.get();
+  if (!tlsconf.ciphers.empty()) {
+    ciphers = tlsconf.ciphers.c_str();
   } else {
     ciphers = nghttp2::ssl::DEFAULT_CIPHER_LIST;
   }

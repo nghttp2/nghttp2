@@ -1804,7 +1804,7 @@ int parse_config(const char *opt, const char *optarg,
     return 0;
   }
   case SHRPX_OPTID_CIPHERS:
-    mod_config()->tls.ciphers = strcopy(optarg);
+    mod_config()->tls.ciphers = optarg;
 
     return 0;
   case SHRPX_OPTID_CLIENT:

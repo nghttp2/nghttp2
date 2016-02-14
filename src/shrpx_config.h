@@ -430,7 +430,7 @@ struct TLSConfig {
   ImmutableString private_key_passwd;
   ImmutableString cert_file;
   ImmutableString dh_param_file;
-  std::unique_ptr<char[]> ciphers;
+  ImmutableString ciphers;
   ImmutableString cacert;
   bool insecure;
   bool no_http2_cipher_black_list;
