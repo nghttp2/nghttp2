@@ -78,21 +78,6 @@ TicketKeys::~TicketKeys() {
   }
 }
 
-DownstreamAddrGroup::DownstreamAddrGroup(const DownstreamAddrGroup &other)
-    : pattern(strcopy(other.pattern)), addrs(other.addrs) {}
-
-DownstreamAddrGroup &DownstreamAddrGroup::
-operator=(const DownstreamAddrGroup &other) {
-  if (this == &other) {
-    return *this;
-  }
-
-  pattern = strcopy(other.pattern);
-  addrs = other.addrs;
-
-  return *this;
-}
-
 namespace {
 int split_host_port(char *host, size_t hostlen, uint16_t *port_ptr,
                     const char *hostport, size_t hostportlen) {
@@ -612,7 +597,7 @@ void parse_mapping(const DownstreamAddr &addr, const char *src) {
       pattern += http2::normalize_path(slash, raw_pattern.second);
     }
     for (auto &g : addr_groups) {
-      if (g.pattern.get() == pattern) {
+      if (g.pattern == pattern) {
         g.addrs.push_back(addr);
         done = true;
         break;
@@ -621,10 +606,10 @@ void parse_mapping(const DownstreamAddr &addr, const char *src) {
     if (done) {
       continue;
     }
-    DownstreamAddrGroup g(pattern);
+    DownstreamAddrGroup g(StringRef{pattern});
     g.addrs.push_back(addr);
 
-    mod_config()->router.add_route(g.pattern.get(), strlen(g.pattern.get()),
+    mod_config()->router.add_route(g.pattern.c_str(), g.pattern.size(),
                                    addr_groups.size());
 
     addr_groups.push_back(std::move(g));
@@ -2529,7 +2514,7 @@ match_downstream_addr_group_host(const Router &router, const std::string &host,
     if (group != -1) {
       if (LOG_ENABLED(INFO)) {
         LOG(INFO) << "Found pattern with query " << host
-                  << ", matched pattern=" << groups[group].pattern.get();
+                  << ", matched pattern=" << groups[group].pattern;
       }
       return group;
     }
@@ -2546,7 +2531,7 @@ match_downstream_addr_group_host(const Router &router, const std::string &host,
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "Found pattern with query " << host
                 << std::string(path, pathlen)
-                << ", matched pattern=" << groups[group].pattern.get();
+                << ", matched pattern=" << groups[group].pattern;
     }
     return group;
   }
@@ -2555,7 +2540,7 @@ match_downstream_addr_group_host(const Router &router, const std::string &host,
   if (group != -1) {
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "Found pattern with query " << std::string(path, pathlen)
-                << ", matched pattern=" << groups[group].pattern.get();
+                << ", matched pattern=" << groups[group].pattern;
     }
     return group;
   }

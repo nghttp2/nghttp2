@@ -301,13 +301,10 @@ struct DownstreamAddr {
 };
 
 struct DownstreamAddrGroup {
-  DownstreamAddrGroup(const std::string &pattern) : pattern(strcopy(pattern)) {}
-  DownstreamAddrGroup(const DownstreamAddrGroup &other);
-  DownstreamAddrGroup(DownstreamAddrGroup &&) = default;
-  DownstreamAddrGroup &operator=(const DownstreamAddrGroup &other);
-  DownstreamAddrGroup &operator=(DownstreamAddrGroup &&) = default;
+  DownstreamAddrGroup(const StringRef &pattern)
+      : pattern(pattern.c_str(), pattern.size()) {}
 
-  std::unique_ptr<char[]> pattern;
+  ImmutableString pattern;
   std::vector<DownstreamAddr> addrs;
 };
 
