@@ -2111,7 +2111,7 @@ void process_options(
 
     DownstreamAddrGroup g(StringRef::from_lit("/"));
     g.addrs.push_back(std::move(addr));
-    mod_config()->router.add_route(g.pattern.c_str(), 1, addr_groups.size());
+    mod_config()->router.add_route(StringRef{g.pattern}, addr_groups.size());
     addr_groups.push_back(std::move(g));
   } else if (get_config()->http2_proxy || get_config()->client_proxy) {
     // We don't support host mapping in these cases.  Move all
@@ -2124,7 +2124,7 @@ void process_options(
     std::vector<DownstreamAddrGroup>().swap(addr_groups);
     // maybe not necessary?
     mod_config()->router = Router();
-    mod_config()->router.add_route(catch_all.pattern.c_str(), 1,
+    mod_config()->router.add_route(StringRef{catch_all.pattern},
                                    addr_groups.size());
     addr_groups.push_back(std::move(catch_all));
   }

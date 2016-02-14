@@ -609,8 +609,7 @@ void parse_mapping(const DownstreamAddr &addr, const char *src) {
     DownstreamAddrGroup g(StringRef{pattern});
     g.addrs.push_back(addr);
 
-    mod_config()->router.add_route(g.pattern.c_str(), g.pattern.size(),
-                                   addr_groups.size());
+    mod_config()->router.add_route(StringRef{g.pattern}, addr_groups.size());
 
     addr_groups.push_back(std::move(g));
   }

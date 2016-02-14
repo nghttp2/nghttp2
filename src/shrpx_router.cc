@@ -66,21 +66,21 @@ void Router::add_node(RNode *node, const char *pattern, size_t patlen,
   add_next_node(node, std::move(new_node));
 }
 
-bool Router::add_route(const char *pattern, size_t patlen, size_t index) {
+bool Router::add_route(const StringRef &pattern, size_t index) {
   auto node = &root_;
   size_t i = 0;
 
   for (;;) {
     auto next_node = find_next_node(node, pattern[i]);
     if (next_node == nullptr) {
-      add_node(node, pattern + i, patlen - i, index);
+      add_node(node, pattern.c_str() + i, pattern.size() - i, index);
       return true;
     }
 
     node = next_node;
 
-    auto slen = patlen - i;
-    auto s = pattern + i;
+    auto slen = pattern.size() - i;
+    auto s = pattern.c_str() + i;
     auto n = std::min(node->len, slen);
     size_t j;
     for (j = 0; j < n && node->s[j] == s[j]; ++j)
@@ -125,8 +125,8 @@ bool Router::add_route(const char *pattern, size_t patlen, size_t index) {
 
     i += j;
 
-    assert(patlen > i);
-    add_node(node, pattern + i, patlen - i, index);
+    assert(pattern.size() > i);
+    add_node(node, pattern.c_str() + i, pattern.size() - i, index);
 
     return true;
   }

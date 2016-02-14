@@ -256,7 +256,7 @@ void test_shrpx_config_match_downstream_addr_group(void) {
 
   for (size_t i = 0; i < groups.size(); ++i) {
     auto &g = groups[i];
-    router.add_route(g.pattern.c_str(), g.pattern.size(), i);
+    router.add_route(StringRef{g.pattern}, i);
   }
 
   CU_ASSERT(0 == match_downstream_addr_group(router, "nghttp2.org", "/", groups,
