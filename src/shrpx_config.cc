@@ -1919,13 +1919,11 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   case SHRPX_OPTID_FRONTEND_HTTP2_DUMP_REQUEST_HEADER:
-    mod_config()->http2.upstream.debug.dump.request_header_file =
-        strcopy(optarg);
+    mod_config()->http2.upstream.debug.dump.request_header_file = optarg;
 
     return 0;
   case SHRPX_OPTID_FRONTEND_HTTP2_DUMP_RESPONSE_HEADER:
-    mod_config()->http2.upstream.debug.dump.response_header_file =
-        strcopy(optarg);
+    mod_config()->http2.upstream.debug.dump.response_header_file = optarg;
 
     return 0;
   case SHRPX_OPTID_HTTP2_NO_COOKIE_CRUMBLING:

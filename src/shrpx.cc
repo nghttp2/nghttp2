@@ -1986,8 +1986,8 @@ void process_options(
   {
     auto &dumpconf = http2conf.upstream.debug.dump;
 
-    if (dumpconf.request_header_file) {
-      auto path = dumpconf.request_header_file.get();
+    if (!dumpconf.request_header_file.empty()) {
+      auto path = dumpconf.request_header_file.c_str();
       auto f = open_file_for_write(path);
 
       if (f == nullptr) {
@@ -2007,8 +2007,8 @@ void process_options(
       }
     }
 
-    if (dumpconf.response_header_file) {
-      auto path = dumpconf.response_header_file.get();
+    if (!dumpconf.response_header_file.empty()) {
+      auto path = dumpconf.response_header_file.c_str();
       auto f = open_file_for_write(path);
 
       if (f == nullptr) {

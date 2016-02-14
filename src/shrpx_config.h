@@ -473,8 +473,8 @@ struct Http2Config {
   struct {
     struct {
       struct {
-        std::unique_ptr<char[]> request_header_file;
-        std::unique_ptr<char[]> response_header_file;
+        ImmutableString request_header_file;
+        ImmutableString response_header_file;
         FILE *request_header;
         FILE *response_header;
       } dump;
