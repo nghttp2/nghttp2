@@ -1728,7 +1728,7 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   case SHRPX_OPTID_PID_FILE:
-    mod_config()->pid_file = strcopy(optarg);
+    mod_config()->pid_file = optarg;
 
     return 0;
   case SHRPX_OPTID_USER: {

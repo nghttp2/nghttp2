@@ -199,18 +199,18 @@ int chown_to_running_user(const char *path) {
 
 namespace {
 void save_pid() {
-  std::ofstream out(get_config()->pid_file.get(), std::ios::binary);
+  std::ofstream out(get_config()->pid_file.c_str(), std::ios::binary);
   out << get_config()->pid << "\n";
   out.close();
   if (!out) {
-    LOG(ERROR) << "Could not save PID to file " << get_config()->pid_file.get();
+    LOG(ERROR) << "Could not save PID to file " << get_config()->pid_file;
     exit(EXIT_FAILURE);
   }
 
   if (get_config()->uid != 0) {
-    if (chown_to_running_user(get_config()->pid_file.get()) == -1) {
+    if (chown_to_running_user(get_config()->pid_file.c_str()) == -1) {
       auto error = errno;
-      LOG(WARN) << "Changing owner of pid file " << get_config()->pid_file.get()
+      LOG(WARN) << "Changing owner of pid file " << get_config()->pid_file
                 << " failed: " << strerror(error);
     }
   }
@@ -946,7 +946,7 @@ int event_loop() {
     redirect_stderr_to_errorlog();
   }
 
-  if (get_config()->pid_file) {
+  if (!get_config()->pid_file.empty()) {
     save_pid();
   }
 

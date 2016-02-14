@@ -581,7 +581,7 @@ struct Config {
   TLSConfig tls;
   LoggingConfig logging;
   ConnectionConfig conn;
-  std::unique_ptr<char[]> pid_file;
+  ImmutableString pid_file;
   std::unique_ptr<char[]> conf_path;
   std::unique_ptr<char[]> user;
   std::unique_ptr<char[]> mruby_file;
