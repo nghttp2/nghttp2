@@ -523,56 +523,49 @@ add_subdirectory(contrib)
 add_subdirectory(script)
 
 
-# XXX - fix list of variables
+# XXX fix shared/static library
+# XXX fix python
+string(TOUPPER "${CMAKE_BUILD_TYPE}" _build_type)
 message(STATUS "summary of build options:
 
     Package version: ${VERSION}
     Library version: ${LT_CURRENT}:${LT_REVISION}:${LT_AGE}
-    Install prefix:  ${prefix}
-    System types:
-      Build:         ${build}
-      Host:          ${host}
-      Target:        ${target}
+    Install prefix:  ${CMAKE_INSTALL_PREFIX}
+    Target system:   ${CMAKE_SYSTEM_NAME}
     Compiler:
-    C compiler:       ${CMAKE_C_COMPILER}
-      CFLAGS:         ${CMAKE_C_FLAGS}
+      C compiler:     ${CMAKE_C_COMPILER}
+      CFLAGS:         ${CMAKE_C_FLAGS} ${CMAKE_C_FLAGS_${_build_type}}
       C++ compiler:   ${CMAKE_CXX_COMPILER}
-      CXXFLAGS:       ${CMAKE_CXX_FLAGS}
+      CXXFLAGS:       ${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_${_build_type}}
       WARNCFLAGS:     ${WARNCFLAGS}
       CXX1XCXXFLAGS:  ${CXX1XCXXFLAGS}
       EXTRACFLAG:     ${EXTRACFLAG}
-      LIBS:           ${LIBS}
     Library:
       Shared:         ${enable_shared}
       Static:         ${enable_static}
     Python:
-      Python:         ${PYTHON}
-      PYTHON_VERSION: ${PYTHON_VERSION}
+      Python:         ${PYTHON_EXECUTABLE}
+      PYTHON_VERSION: ${PYTHON_VERSION_STRING}
       pyexecdir:      ${pyexecdir}
       Python-dev:     ${have_python_dev}
-      PYTHON_CPPFLAGS:${PYTHON_CPPFLAGS}
-      PYTHON_LDFLAGS: ${PYTHON_LDFLAGS}
-      Cython:         ${CYTHON}
+      Cython:         ${CYTHON_EXECUTABLE}
     Test:
-      CUnit:          ${HAVE_CUNIT} (CFLAGS='${CUNIT_CFLAGS}' LIBS='${CUNIT_LIBS}')
+      CUnit:          ${HAVE_CUNIT} (LIBS='${CUNIT_LIBRARIES}')
       Failmalloc:     ${ENABLE_FAILMALLOC}
     Libs:
-      OpenSSL:        ${HAVE_OPENSSL} (CFLAGS='${OPENSSL_CFLAGS}' LIBS='${OPENSSL_LIBS}')
-      Libxml2:        ${HAVE_LIBXML2} (CFLAGS='${XML_CPPFLAGS}' LIBS='${XML_LIBS}')
-      Libev:          ${HAVE_LIBEV} (CFLAGS='${LIBEV_CFLAGS}' LIBS='${LIBEV_LIBS}')
-      Libevent(SSL):  ${HAVE_LIBEVENT_OPENSSL} (CFLAGS='${LIBEVENT_OPENSSL_CFLAGS}' LIBS='${LIBEVENT_OPENSSL_LIBS}')
-      Spdylay:        ${HAVE_SPDYLAY} (CFLAGS='${LIBSPDYLAY_CFLAGS}' LIBS='${LIBSPDYLAY_LIBS}')
-      Jansson:        ${HAVE_JANSSON} (CFLAGS='${JANSSON_CFLAGS}' LIBS='${JANSSON_LIBS}')
-      Jemalloc:       ${HAVE_JEMALLOC} (LIBS='${JEMALLOC_LIBS}')
-      Zlib:           ${HAVE_ZLIB} (CFLAGS='${ZLIB_CFLAGS}' LIBS='${ZLIB_LIBS}')
-      Boost CPPFLAGS: ${BOOST_CPPFLAGS}
-      Boost LDFLAGS:  ${BOOST_LDFLAGS}
-      Boost::ASIO:    ${BOOST_ASIO_LIB}
-      Boost::System:  ${BOOST_SYSTEM_LIB}
-      Boost::Thread:  ${BOOST_THREAD_LIB}
+      OpenSSL:        ${HAVE_OPENSSL} (LIBS='${OPENSSL_LIBRARIES}')
+      Libxml2:        ${HAVE_LIBXML2} (LIBS='${LIBXML2_LIBRARIES}')
+      Libev:          ${HAVE_LIBEV} (LIBS='${LIBEV_LIBRARIES}')
+      Libevent(SSL):  ${HAVE_LIBEVENT_OPENSSL} (LIBS='${LIBEVENT_OPENSSL_LIBRARIES}')
+      Spdylay:        ${HAVE_SPDYLAY} (LIBS='${LIBSPDYLAY_LIBRARIES}')
+      Jansson:        ${HAVE_JANSSON} (LIBS='${JANSSON_LIBRARIES}')
+      Jemalloc:       ${HAVE_JEMALLOC} (LIBS='${JEMALLOC_LIBRARIES}')
+      Zlib:           ${HAVE_ZLIB} (LIBS='${ZLIB_LIBRARIES}')
+      Boost::System:  ${Boost_SYSTEM_LIBRARY}
+      Boost::Thread:  ${Boost_THREAD_LIBRARY}
     Third-party:
       http-parser:    ${ENABLE_THIRD_PARTY}
-      MRuby:          ${HAVE_MRUBY} (CFLAGS='${LIBMRUBY_CFLAGS}' LIBS='${LIBMRUBY_LIBS}')
+      MRuby:          ${HAVE_MRUBY} (LIBS='${LIBMRUBY_LIBRARIES}')
       Neverbleed:     ${HAVE_NEVERBLEED}
     Features:
       Applications:   ${ENABLE_APP}
