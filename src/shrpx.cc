@@ -1121,7 +1121,7 @@ void fill_default_config() {
     accessconf.format = parse_log_format(DEFAULT_ACCESSLOG_FORMAT);
 
     auto &errorconf = loggingconf.error;
-    errorconf.file = strcopy("/dev/stderr");
+    errorconf.file = "/dev/stderr";
   }
 
   loggingconf.syslog_facility = LOG_DAEMON;
@@ -1752,7 +1752,7 @@ Logging:
               Set path to write error  log.  To reopen file, send USR1
               signal  to nghttpx.   stderr will  be redirected  to the
               error log file unless --errorlog-syslog is used.
-              Default: )" << get_config()->logging.error.file.get() << R"(
+              Default: )" << get_config()->logging.error.file << R"(
   --errorlog-syslog
               Send  error log  to  syslog.  If  this  option is  used,
               --errorlog-file option is ignored.

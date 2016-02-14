@@ -1622,7 +1622,7 @@ int parse_config(const char *opt, const char *optarg,
     return parse_duration(&mod_config()->http2.timeout.stream_write, opt,
                           optarg);
   case SHRPX_OPTID_ACCESSLOG_FILE:
-    mod_config()->logging.access.file = strcopy(optarg);
+    mod_config()->logging.access.file = optarg;
 
     return 0;
   case SHRPX_OPTID_ACCESSLOG_SYSLOG:
@@ -1634,7 +1634,7 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   case SHRPX_OPTID_ERRORLOG_FILE:
-    mod_config()->logging.error.file = strcopy(optarg);
+    mod_config()->logging.error.file = optarg;
 
     return 0;
   case SHRPX_OPTID_ERRORLOG_SYSLOG:

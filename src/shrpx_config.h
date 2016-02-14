@@ -504,12 +504,12 @@ struct Http2Config {
 struct LoggingConfig {
   struct {
     std::vector<LogFragment> format;
-    std::unique_ptr<char[]> file;
+    ImmutableString file;
     // Send accesslog to syslog, ignoring accesslog_file.
     bool syslog;
   } access;
   struct {
-    std::unique_ptr<char[]> file;
+    ImmutableString file;
     // Send errorlog to syslog, ignoring errorlog_file.
     bool syslog;
   } error;
