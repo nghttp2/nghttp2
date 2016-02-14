@@ -1323,7 +1323,7 @@ SSL_CTX *setup_downstream_client_ssl_context(
 #ifdef HAVE_NEVERBLEED
       nb,
 #endif // HAVE_NEVERBLEED
-      StringRef::from_maybe_nullptr(tlsconf.cacert.get()),
+      StringRef{tlsconf.cacert},
       StringRef::from_maybe_nullptr(tlsconf.client.cert_file.get()),
       StringRef::from_maybe_nullptr(tlsconf.client.private_key_file.get()),
       alpn, next_proto_select_cb);

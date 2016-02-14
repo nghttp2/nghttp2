@@ -1816,7 +1816,7 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   case SHRPX_OPTID_CACERT:
-    mod_config()->tls.cacert = strcopy(optarg);
+    mod_config()->tls.cacert = optarg;
 
     return 0;
   case SHRPX_OPTID_BACKEND_IPV4:

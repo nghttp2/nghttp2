@@ -431,7 +431,7 @@ struct TLSConfig {
   std::unique_ptr<char[]> cert_file;
   std::unique_ptr<char[]> dh_param_file;
   std::unique_ptr<char[]> ciphers;
-  std::unique_ptr<char[]> cacert;
+  ImmutableString cacert;
   bool insecure;
   bool no_http2_cipher_black_list;
 };
