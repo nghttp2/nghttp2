@@ -409,7 +409,7 @@ struct TLSConfig {
   // Client private key and certificate used in backend connections.
   struct {
     ImmutableString private_key_file;
-    std::unique_ptr<char[]> cert_file;
+    ImmutableString cert_file;
   } client;
 
   // The list of (private key file, certificate file) pair
@@ -428,7 +428,7 @@ struct TLSConfig {
   std::chrono::seconds session_timeout;
   ImmutableString private_key_file;
   std::unique_ptr<char[]> private_key_passwd;
-  std::unique_ptr<char[]> cert_file;
+  ImmutableString cert_file;
   std::unique_ptr<char[]> dh_param_file;
   std::unique_ptr<char[]> ciphers;
   ImmutableString cacert;

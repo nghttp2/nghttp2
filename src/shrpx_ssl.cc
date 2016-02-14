@@ -1246,7 +1246,7 @@ SSL_CTX *setup_server_ssl_context(std::vector<SSL_CTX *> &all_ssl_ctx,
   auto &tlsconf = get_config()->tls;
 
   auto ssl_ctx = ssl::create_ssl_context(tlsconf.private_key_file.c_str(),
-                                         tlsconf.cert_file.get()
+                                         tlsconf.cert_file.c_str()
 #ifdef HAVE_NEVERBLEED
                                              ,
                                          nb
@@ -1281,8 +1281,8 @@ SSL_CTX *setup_server_ssl_context(std::vector<SSL_CTX *> &all_ssl_ctx,
     }
   }
 
-  if (ssl::cert_lookup_tree_add_cert_from_file(cert_tree, ssl_ctx,
-                                               tlsconf.cert_file.get()) == -1) {
+  if (ssl::cert_lookup_tree_add_cert_from_file(
+          cert_tree, ssl_ctx, tlsconf.cert_file.c_str()) == -1) {
     LOG(FATAL) << "Failed to add default certificate.";
     DIE();
   }
@@ -1323,8 +1323,7 @@ SSL_CTX *setup_downstream_client_ssl_context(
 #ifdef HAVE_NEVERBLEED
       nb,
 #endif // HAVE_NEVERBLEED
-      StringRef{tlsconf.cacert},
-      StringRef::from_maybe_nullptr(tlsconf.client.cert_file.get()),
+      StringRef{tlsconf.cacert}, StringRef{tlsconf.client.cert_file},
       StringRef{tlsconf.client.private_key_file}, alpn, next_proto_select_cb);
 }
 

@@ -1759,7 +1759,7 @@ int parse_config(const char *opt, const char *optarg,
     return 0;
   }
   case SHRPX_OPTID_CERTIFICATE_FILE:
-    mod_config()->tls.cert_file = strcopy(optarg);
+    mod_config()->tls.cert_file = optarg;
 
     return 0;
   case SHRPX_OPTID_DH_PARAM_FILE:
@@ -1915,7 +1915,7 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   case SHRPX_OPTID_CLIENT_CERT_FILE:
-    mod_config()->tls.client.cert_file = strcopy(optarg);
+    mod_config()->tls.client.cert_file = optarg;
 
     return 0;
   case SHRPX_OPTID_FRONTEND_HTTP2_DUMP_REQUEST_HEADER:
