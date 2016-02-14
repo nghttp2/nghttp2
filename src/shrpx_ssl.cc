@@ -124,13 +124,13 @@ set_alpn_prefs(const std::vector<std::string> &protos) {
 namespace {
 int ssl_pem_passwd_cb(char *buf, int size, int rwflag, void *user_data) {
   auto config = static_cast<Config *>(user_data);
-  int len = (int)strlen(config->tls.private_key_passwd.get());
+  auto len = static_cast<int>(config->tls.private_key_passwd.size());
   if (size < len + 1) {
     LOG(ERROR) << "ssl_pem_passwd_cb: buf is too small " << size;
     return 0;
   }
   // Copy string including last '\0'.
-  memcpy(buf, config->tls.private_key_passwd.get(), len + 1);
+  memcpy(buf, config->tls.private_key_passwd.c_str(), len + 1);
   return len;
 }
 } // namespace
@@ -485,7 +485,7 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file
   SSL_CTX_set_session_id_context(ssl_ctx, sid_ctx, sizeof(sid_ctx) - 1);
   SSL_CTX_set_session_cache_mode(ssl_ctx, SSL_SESS_CACHE_SERVER);
 
-  if (tlsconf.session_cache.memcached.host) {
+  if (!tlsconf.session_cache.memcached.host.empty()) {
     SSL_CTX_sess_set_new_cb(ssl_ctx, tls_session_new_cb);
     SSL_CTX_sess_set_get_cb(ssl_ctx, tls_session_get_cb);
   }
@@ -493,8 +493,8 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file
   SSL_CTX_set_timeout(ssl_ctx, tlsconf.session_timeout.count());
 
   const char *ciphers;
-  if (tlsconf.ciphers) {
-    ciphers = tlsconf.ciphers.get();
+  if (!tlsconf.ciphers.empty()) {
+    ciphers = tlsconf.ciphers.c_str();
   } else {
     ciphers = nghttp2::ssl::DEFAULT_CIPHER_LIST;
   }
@@ -527,9 +527,9 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file
 
 #endif // OPENSSL_NO_EC
 
-  if (tlsconf.dh_param_file) {
+  if (!tlsconf.dh_param_file.empty()) {
     // Read DH parameters from file
-    auto bio = BIO_new_file(tlsconf.dh_param_file.get(), "r");
+    auto bio = BIO_new_file(tlsconf.dh_param_file.c_str(), "r");
     if (bio == nullptr) {
       LOG(FATAL) << "BIO_new_file() failed: "
                  << ERR_error_string(ERR_get_error(), nullptr);
@@ -548,7 +548,7 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file
 
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_AUTO_RETRY);
   SSL_CTX_set_mode(ssl_ctx, SSL_MODE_RELEASE_BUFFERS);
-  if (tlsconf.private_key_passwd) {
+  if (!tlsconf.private_key_passwd.empty()) {
     SSL_CTX_set_default_passwd_cb(ssl_ctx, ssl_pem_passwd_cb);
     SSL_CTX_set_default_passwd_cb_userdata(ssl_ctx, (void *)get_config());
   }
@@ -579,12 +579,12 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file
     DIE();
   }
   if (tlsconf.client_verify.enabled) {
-    if (tlsconf.client_verify.cacert) {
+    if (!tlsconf.client_verify.cacert.empty()) {
       if (SSL_CTX_load_verify_locations(
-              ssl_ctx, tlsconf.client_verify.cacert.get(), nullptr) != 1) {
+              ssl_ctx, tlsconf.client_verify.cacert.c_str(), nullptr) != 1) {
 
         LOG(FATAL) << "Could not load trusted ca certificates from "
-                   << tlsconf.client_verify.cacert.get() << ": "
+                   << tlsconf.client_verify.cacert << ": "
                    << ERR_error_string(ERR_get_error(), nullptr);
         DIE();
       }
@@ -592,10 +592,10 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file
       // error even though it returns success. See
       // http://forum.nginx.org/read.php?29,242540
       ERR_clear_error();
-      auto list = SSL_load_client_CA_file(tlsconf.client_verify.cacert.get());
+      auto list = SSL_load_client_CA_file(tlsconf.client_verify.cacert.c_str());
       if (!list) {
         LOG(FATAL) << "Could not load ca certificates from "
-                   << tlsconf.client_verify.cacert.get() << ": "
+                   << tlsconf.client_verify.cacert << ": "
                    << ERR_error_string(ERR_get_error(), nullptr);
         DIE();
       }
@@ -683,8 +683,8 @@ SSL_CTX *create_ssl_client_context(
   SSL_CTX_set_options(ssl_ctx, ssl_opts | tlsconf.tls_proto_mask);
 
   const char *ciphers;
-  if (tlsconf.ciphers) {
-    ciphers = tlsconf.ciphers.get();
+  if (!tlsconf.ciphers.empty()) {
+    ciphers = tlsconf.ciphers.c_str();
   } else {
     ciphers = nghttp2::ssl::DEFAULT_CIPHER_LIST;
   }
@@ -1245,8 +1245,8 @@ SSL_CTX *setup_server_ssl_context(std::vector<SSL_CTX *> &all_ssl_ctx,
 
   auto &tlsconf = get_config()->tls;
 
-  auto ssl_ctx = ssl::create_ssl_context(tlsconf.private_key_file.get(),
-                                         tlsconf.cert_file.get()
+  auto ssl_ctx = ssl::create_ssl_context(tlsconf.private_key_file.c_str(),
+                                         tlsconf.cert_file.c_str()
 #ifdef HAVE_NEVERBLEED
                                              ,
                                          nb
@@ -1281,8 +1281,8 @@ SSL_CTX *setup_server_ssl_context(std::vector<SSL_CTX *> &all_ssl_ctx,
     }
   }
 
-  if (ssl::cert_lookup_tree_add_cert_from_file(cert_tree, ssl_ctx,
-                                               tlsconf.cert_file.get()) == -1) {
+  if (ssl::cert_lookup_tree_add_cert_from_file(
+          cert_tree, ssl_ctx, tlsconf.cert_file.c_str()) == -1) {
     LOG(FATAL) << "Failed to add default certificate.";
     DIE();
   }
@@ -1323,10 +1323,8 @@ SSL_CTX *setup_downstream_client_ssl_context(
 #ifdef HAVE_NEVERBLEED
       nb,
 #endif // HAVE_NEVERBLEED
-      StringRef::from_maybe_nullptr(tlsconf.cacert.get()),
-      StringRef::from_maybe_nullptr(tlsconf.client.cert_file.get()),
-      StringRef::from_maybe_nullptr(tlsconf.client.private_key_file.get()),
-      alpn, next_proto_select_cb);
+      StringRef{tlsconf.cacert}, StringRef{tlsconf.client.cert_file},
+      StringRef{tlsconf.client.private_key_file}, alpn, next_proto_select_cb);
 }
 
 CertLookupTree *create_cert_lookup_tree() {

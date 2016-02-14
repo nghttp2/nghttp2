@@ -343,7 +343,9 @@ struct TLSConfig {
     struct {
       Address addr;
       uint16_t port;
-      std::unique_ptr<char[]> host;
+      // Hostname of memcached server.  This is also used as SNI field
+      // if TLS is enabled.
+      ImmutableString host;
       // Client private key and certificate for authentication
       ImmutableString private_key_file;
       ImmutableString cert_file;
@@ -370,7 +372,9 @@ struct TLSConfig {
     struct {
       Address addr;
       uint16_t port;
-      std::unique_ptr<char[]> host;
+      // Hostname of memcached server.  This is also used as SNI field
+      // if TLS is enabled.
+      ImmutableString host;
       // Client private key and certificate for authentication
       ImmutableString private_key_file;
       ImmutableString cert_file;
@@ -390,7 +394,7 @@ struct TLSConfig {
   // OCSP realted configurations
   struct {
     ev_tstamp update_interval;
-    std::unique_ptr<char[]> fetch_ocsp_response_file;
+    ImmutableString fetch_ocsp_response_file;
     bool disabled;
   } ocsp;
 
@@ -398,14 +402,14 @@ struct TLSConfig {
   struct {
     // Path to file containing CA certificate solely used for client
     // certificate validation
-    std::unique_ptr<char[]> cacert;
+    ImmutableString cacert;
     bool enabled;
   } client_verify;
 
   // Client private key and certificate used in backend connections.
   struct {
-    std::unique_ptr<char[]> private_key_file;
-    std::unique_ptr<char[]> cert_file;
+    ImmutableString private_key_file;
+    ImmutableString cert_file;
   } client;
 
   // The list of (private key file, certificate file) pair
@@ -422,12 +426,12 @@ struct TLSConfig {
   long int tls_proto_mask;
   std::string backend_sni_name;
   std::chrono::seconds session_timeout;
-  std::unique_ptr<char[]> private_key_file;
-  std::unique_ptr<char[]> private_key_passwd;
-  std::unique_ptr<char[]> cert_file;
-  std::unique_ptr<char[]> dh_param_file;
-  std::unique_ptr<char[]> ciphers;
-  std::unique_ptr<char[]> cacert;
+  ImmutableString private_key_file;
+  ImmutableString private_key_passwd;
+  ImmutableString cert_file;
+  ImmutableString dh_param_file;
+  ImmutableString ciphers;
+  ImmutableString cacert;
   bool insecure;
   bool no_http2_cipher_black_list;
 };
@@ -469,8 +473,8 @@ struct Http2Config {
   struct {
     struct {
       struct {
-        std::unique_ptr<char[]> request_header_file;
-        std::unique_ptr<char[]> response_header_file;
+        ImmutableString request_header_file;
+        ImmutableString response_header_file;
         FILE *request_header;
         FILE *response_header;
       } dump;
@@ -500,12 +504,12 @@ struct Http2Config {
 struct LoggingConfig {
   struct {
     std::vector<LogFragment> format;
-    std::unique_ptr<char[]> file;
+    ImmutableString file;
     // Send accesslog to syslog, ignoring accesslog_file.
     bool syslog;
   } access;
   struct {
-    std::unique_ptr<char[]> file;
+    ImmutableString file;
     // Send errorlog to syslog, ignoring errorlog_file.
     bool syslog;
   } error;
@@ -577,10 +581,10 @@ struct Config {
   TLSConfig tls;
   LoggingConfig logging;
   ConnectionConfig conn;
-  std::unique_ptr<char[]> pid_file;
-  std::unique_ptr<char[]> conf_path;
-  std::unique_ptr<char[]> user;
-  std::unique_ptr<char[]> mruby_file;
+  ImmutableString pid_file;
+  ImmutableString conf_path;
+  ImmutableString user;
+  ImmutableString mruby_file;
   char **original_argv;
   char **argv;
   char *cwd;

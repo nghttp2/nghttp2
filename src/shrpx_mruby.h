@@ -32,6 +32,8 @@
 #include <mruby.h>
 #include <mruby/proc.h>
 
+#include "template.h"
+
 using namespace nghttp2;
 
 namespace shrpx {
@@ -69,9 +71,9 @@ struct MRubyAssocData {
   bool response_headers_dirty;
 };
 
-RProc *compile(mrb_state *mrb, const char *filename);
+RProc *compile(mrb_state *mrb, const StringRef &filename);
 
-std::unique_ptr<MRubyContext> create_mruby_context(const char *filename);
+std::unique_ptr<MRubyContext> create_mruby_context(const StringRef &filename);
 
 // Return interned |ptr|.
 mrb_sym intern_ptr(mrb_state *mrb, void *ptr);

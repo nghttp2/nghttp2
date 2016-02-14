@@ -199,18 +199,18 @@ int chown_to_running_user(const char *path) {
 
 namespace {
 void save_pid() {
-  std::ofstream out(get_config()->pid_file.get(), std::ios::binary);
+  std::ofstream out(get_config()->pid_file.c_str(), std::ios::binary);
   out << get_config()->pid << "\n";
   out.close();
   if (!out) {
-    LOG(ERROR) << "Could not save PID to file " << get_config()->pid_file.get();
+    LOG(ERROR) << "Could not save PID to file " << get_config()->pid_file;
     exit(EXIT_FAILURE);
   }
 
   if (get_config()->uid != 0) {
-    if (chown_to_running_user(get_config()->pid_file.get()) == -1) {
+    if (chown_to_running_user(get_config()->pid_file.c_str()) == -1) {
       auto error = errno;
-      LOG(WARN) << "Changing owner of pid file " << get_config()->pid_file.get()
+      LOG(WARN) << "Changing owner of pid file " << get_config()->pid_file
                 << " failed: " << strerror(error);
     }
   }
@@ -946,7 +946,7 @@ int event_loop() {
     redirect_stderr_to_errorlog();
   }
 
-  if (get_config()->pid_file) {
+  if (!get_config()->pid_file.empty()) {
     save_pid();
   }
 
@@ -1040,7 +1040,7 @@ void fill_default_config() {
   *mod_config() = {};
 
   mod_config()->num_worker = 1;
-  mod_config()->conf_path = strcopy("/etc/nghttpx/nghttpx.conf");
+  mod_config()->conf_path = "/etc/nghttpx/nghttpx.conf";
   mod_config()->pid = getpid();
 
   auto &tlsconf = mod_config()->tls;
@@ -1067,8 +1067,7 @@ void fill_default_config() {
     auto &ocspconf = tlsconf.ocsp;
     // ocsp update interval = 14400 secs = 4 hours, borrowed from h2o
     ocspconf.update_interval = 4_h;
-    ocspconf.fetch_ocsp_response_file =
-        strcopy(PKGDATADIR "/fetch-ocsp-response");
+    ocspconf.fetch_ocsp_response_file = PKGDATADIR "/fetch-ocsp-response";
   }
 
   {
@@ -1122,7 +1121,7 @@ void fill_default_config() {
     accessconf.format = parse_log_format(DEFAULT_ACCESSLOG_FORMAT);
 
     auto &errorconf = loggingconf.error;
-    errorconf.file = strcopy("/dev/stderr");
+    errorconf.file = "/dev/stderr";
   }
 
   loggingconf.syslog_facility = LOG_DAEMON;
@@ -1579,8 +1578,8 @@ SSL/TLS:
   --fetch-ocsp-response-file=<PATH>
               Path to  fetch-ocsp-response script file.  It  should be
               absolute path.
-              Default: )"
-      << get_config()->tls.ocsp.fetch_ocsp_response_file.get() << R"(
+              Default: )" << get_config()->tls.ocsp.fetch_ocsp_response_file
+      << R"(
   --ocsp-update-interval=<DURATION>
               Set interval to update OCSP response cache.
               Default: )"
@@ -1753,7 +1752,7 @@ Logging:
               Set path to write error  log.  To reopen file, send USR1
               signal  to nghttpx.   stderr will  be redirected  to the
               error log file unless --errorlog-syslog is used.
-              Default: )" << get_config()->logging.error.file.get() << R"(
+              Default: )" << get_config()->logging.error.file << R"(
   --errorlog-syslog
               Send  error log  to  syslog.  If  this  option is  used,
               --errorlog-file option is ignored.
@@ -1894,7 +1893,7 @@ Scripting:
 Misc:
   --conf=<PATH>
               Load configuration from <PATH>.
-              Default: )" << get_config()->conf_path.get() << R"(
+              Default: )" << get_config()->conf_path << R"(
   --include=<PATH>
               Load additional configurations from <PATH>.  File <PATH>
               is  read  when  configuration  parser  encountered  this
@@ -1920,11 +1919,11 @@ namespace {
 void process_options(
     int argc, char **argv,
     std::vector<std::pair<const char *, const char *>> &cmdcfgs) {
-  if (conf_exists(get_config()->conf_path.get())) {
+  if (conf_exists(get_config()->conf_path.c_str())) {
     std::set<std::string> include_set;
-    if (load_config(get_config()->conf_path.get(), include_set) == -1) {
+    if (load_config(get_config()->conf_path.c_str(), include_set) == -1) {
       LOG(FATAL) << "Failed to load configuration from "
-                 << get_config()->conf_path.get();
+                 << get_config()->conf_path;
       exit(EXIT_FAILURE);
     }
     assert(include_set.empty());
@@ -1987,8 +1986,8 @@ void process_options(
   {
     auto &dumpconf = http2conf.upstream.debug.dump;
 
-    if (dumpconf.request_header_file) {
-      auto path = dumpconf.request_header_file.get();
+    if (!dumpconf.request_header_file.empty()) {
+      auto path = dumpconf.request_header_file.c_str();
       auto f = open_file_for_write(path);
 
       if (f == nullptr) {
@@ -2008,8 +2007,8 @@ void process_options(
       }
     }
 
-    if (dumpconf.response_header_file) {
-      auto path = dumpconf.response_header_file.get();
+    if (!dumpconf.response_header_file.empty()) {
+      auto path = dumpconf.response_header_file.c_str();
       auto f = open_file_for_write(path);
 
       if (f == nullptr) {
@@ -2086,7 +2085,7 @@ void process_options(
   }
 
   if (!upstreamconf.no_tls &&
-      (!tlsconf.private_key_file || !tlsconf.cert_file)) {
+      (tlsconf.private_key_file.empty() || tlsconf.cert_file.empty())) {
     print_usage(std::cerr);
     LOG(FATAL) << "Too few arguments";
     exit(EXIT_FAILURE);
@@ -2094,10 +2093,10 @@ void process_options(
 
   if (!upstreamconf.no_tls && !tlsconf.ocsp.disabled) {
     struct stat buf;
-    if (stat(tlsconf.ocsp.fetch_ocsp_response_file.get(), &buf) != 0) {
+    if (stat(tlsconf.ocsp.fetch_ocsp_response_file.c_str(), &buf) != 0) {
       tlsconf.ocsp.disabled = true;
       LOG(WARN) << "--fetch-ocsp-response-file: "
-                << tlsconf.ocsp.fetch_ocsp_response_file.get()
+                << tlsconf.ocsp.fetch_ocsp_response_file
                 << " not found.  OCSP stapling has been disabled.";
     }
   }
@@ -2220,10 +2219,10 @@ void process_options(
 
   {
     auto &memcachedconf = tlsconf.session_cache.memcached;
-    if (memcachedconf.host) {
-      auto hostport =
-          util::make_hostport(memcachedconf.host.get(), memcachedconf.port);
-      if (resolve_hostname(&memcachedconf.addr, memcachedconf.host.get(),
+    if (!memcachedconf.host.empty()) {
+      auto hostport = util::make_hostport(StringRef{memcachedconf.host},
+                                          memcachedconf.port);
+      if (resolve_hostname(&memcachedconf.addr, memcachedconf.host.c_str(),
                            memcachedconf.port, memcachedconf.family) == -1) {
         LOG(FATAL)
             << "Resolving memcached address for TLS session cache failed: "
@@ -2238,10 +2237,10 @@ void process_options(
 
   {
     auto &memcachedconf = tlsconf.ticket.memcached;
-    if (memcachedconf.host) {
-      auto hostport =
-          util::make_hostport(memcachedconf.host.get(), memcachedconf.port);
-      if (resolve_hostname(&memcachedconf.addr, memcachedconf.host.get(),
+    if (!memcachedconf.host.empty()) {
+      auto hostport = util::make_hostport(StringRef{memcachedconf.host},
+                                          memcachedconf.port);
+      if (resolve_hostname(&memcachedconf.addr, memcachedconf.host.c_str(),
                            memcachedconf.port, memcachedconf.family) == -1) {
         LOG(FATAL) << "Resolving memcached address for TLS ticket key failed: "
                    << hostport;
@@ -2564,7 +2563,7 @@ int main(int argc, char **argv) {
         break;
       case 12:
         // --conf
-        mod_config()->conf_path = strcopy(optarg);
+        mod_config()->conf_path = optarg;
         break;
       case 14:
         // --syslog-facility

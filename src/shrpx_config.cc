@@ -1622,7 +1622,7 @@ int parse_config(const char *opt, const char *optarg,
     return parse_duration(&mod_config()->http2.timeout.stream_write, opt,
                           optarg);
   case SHRPX_OPTID_ACCESSLOG_FILE:
-    mod_config()->logging.access.file = strcopy(optarg);
+    mod_config()->logging.access.file = optarg;
 
     return 0;
   case SHRPX_OPTID_ACCESSLOG_SYSLOG:
@@ -1634,7 +1634,7 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   case SHRPX_OPTID_ERRORLOG_FILE:
-    mod_config()->logging.error.file = strcopy(optarg);
+    mod_config()->logging.error.file = optarg;
 
     return 0;
   case SHRPX_OPTID_ERRORLOG_SYSLOG:
@@ -1728,7 +1728,7 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   case SHRPX_OPTID_PID_FILE:
-    mod_config()->pid_file = strcopy(optarg);
+    mod_config()->pid_file = optarg;
 
     return 0;
   case SHRPX_OPTID_USER: {
@@ -1738,14 +1738,14 @@ int parse_config(const char *opt, const char *optarg,
                  << strerror(errno);
       return -1;
     }
-    mod_config()->user = strcopy(pwd->pw_name);
+    mod_config()->user = pwd->pw_name;
     mod_config()->uid = pwd->pw_uid;
     mod_config()->gid = pwd->pw_gid;
 
     return 0;
   }
   case SHRPX_OPTID_PRIVATE_KEY_FILE:
-    mod_config()->tls.private_key_file = strcopy(optarg);
+    mod_config()->tls.private_key_file = optarg;
 
     return 0;
   case SHRPX_OPTID_PRIVATE_KEY_PASSWD_FILE: {
@@ -1754,16 +1754,16 @@ int parse_config(const char *opt, const char *optarg,
       LOG(ERROR) << opt << ": Couldn't read key file's passwd from " << optarg;
       return -1;
     }
-    mod_config()->tls.private_key_passwd = strcopy(passwd);
+    mod_config()->tls.private_key_passwd = passwd;
 
     return 0;
   }
   case SHRPX_OPTID_CERTIFICATE_FILE:
-    mod_config()->tls.cert_file = strcopy(optarg);
+    mod_config()->tls.cert_file = optarg;
 
     return 0;
   case SHRPX_OPTID_DH_PARAM_FILE:
-    mod_config()->tls.dh_param_file = strcopy(optarg);
+    mod_config()->tls.dh_param_file = optarg;
 
     return 0;
   case SHRPX_OPTID_SUBCERT: {
@@ -1804,7 +1804,7 @@ int parse_config(const char *opt, const char *optarg,
     return 0;
   }
   case SHRPX_OPTID_CIPHERS:
-    mod_config()->tls.ciphers = strcopy(optarg);
+    mod_config()->tls.ciphers = optarg;
 
     return 0;
   case SHRPX_OPTID_CLIENT:
@@ -1816,7 +1816,7 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   case SHRPX_OPTID_CACERT:
-    mod_config()->tls.cacert = strcopy(optarg);
+    mod_config()->tls.cacert = optarg;
 
     return 0;
   case SHRPX_OPTID_BACKEND_IPV4:
@@ -1907,25 +1907,23 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   case SHRPX_OPTID_VERIFY_CLIENT_CACERT:
-    mod_config()->tls.client_verify.cacert = strcopy(optarg);
+    mod_config()->tls.client_verify.cacert = optarg;
 
     return 0;
   case SHRPX_OPTID_CLIENT_PRIVATE_KEY_FILE:
-    mod_config()->tls.client.private_key_file = strcopy(optarg);
+    mod_config()->tls.client.private_key_file = optarg;
 
     return 0;
   case SHRPX_OPTID_CLIENT_CERT_FILE:
-    mod_config()->tls.client.cert_file = strcopy(optarg);
+    mod_config()->tls.client.cert_file = optarg;
 
     return 0;
   case SHRPX_OPTID_FRONTEND_HTTP2_DUMP_REQUEST_HEADER:
-    mod_config()->http2.upstream.debug.dump.request_header_file =
-        strcopy(optarg);
+    mod_config()->http2.upstream.debug.dump.request_header_file = optarg;
 
     return 0;
   case SHRPX_OPTID_FRONTEND_HTTP2_DUMP_RESPONSE_HEADER:
-    mod_config()->http2.upstream.debug.dump.response_header_file =
-        strcopy(optarg);
+    mod_config()->http2.upstream.debug.dump.response_header_file = optarg;
 
     return 0;
   case SHRPX_OPTID_HTTP2_NO_COOKIE_CRUMBLING:
@@ -2086,7 +2084,7 @@ int parse_config(const char *opt, const char *optarg,
     return parse_uint(&mod_config()->http2.downstream.connections_per_worker,
                       opt, optarg);
   case SHRPX_OPTID_FETCH_OCSP_RESPONSE_FILE:
-    mod_config()->tls.ocsp.fetch_ocsp_response_file = strcopy(optarg);
+    mod_config()->tls.ocsp.fetch_ocsp_response_file = optarg;
 
     return 0;
   case SHRPX_OPTID_OCSP_UPDATE_INTERVAL:
@@ -2154,7 +2152,7 @@ int parse_config(const char *opt, const char *optarg,
     }
 
     auto &memcachedconf = mod_config()->tls.session_cache.memcached;
-    memcachedconf.host = strcopy(host);
+    memcachedconf.host = host;
     memcachedconf.port = port;
 
     return 0;
@@ -2166,7 +2164,7 @@ int parse_config(const char *opt, const char *optarg,
     }
 
     auto &memcachedconf = mod_config()->tls.ticket.memcached;
-    memcachedconf.host = strcopy(host);
+    memcachedconf.host = host;
     memcachedconf.port = port;
 
     return 0;
@@ -2207,7 +2205,7 @@ int parse_config(const char *opt, const char *optarg,
 
   case SHRPX_OPTID_MRUBY_FILE:
 #ifdef HAVE_MRUBY
-    mod_config()->mruby_file = strcopy(optarg);
+    mod_config()->mruby_file = optarg;
 #else  // !HAVE_MRUBY
     LOG(WARN) << opt
               << ": ignored because mruby support is disabled at build time.";

@@ -393,23 +393,23 @@ int reopen_log_files() {
   auto &accessconf = get_config()->logging.access;
   auto &errorconf = get_config()->logging.error;
 
-  if (!accessconf.syslog && accessconf.file) {
-    new_accesslog_fd = util::open_log_file(accessconf.file.get());
+  if (!accessconf.syslog && !accessconf.file.empty()) {
+    new_accesslog_fd = util::open_log_file(accessconf.file.c_str());
 
     if (new_accesslog_fd == -1) {
-      LOG(ERROR) << "Failed to open accesslog file " << accessconf.file.get();
+      LOG(ERROR) << "Failed to open accesslog file " << accessconf.file;
       res = -1;
     }
   }
 
-  if (!errorconf.syslog && errorconf.file) {
-    new_errorlog_fd = util::open_log_file(errorconf.file.get());
+  if (!errorconf.syslog && !errorconf.file.empty()) {
+    new_errorlog_fd = util::open_log_file(errorconf.file.c_str());
 
     if (new_errorlog_fd == -1) {
       if (lgconf->errorlog_fd != -1) {
-        LOG(ERROR) << "Failed to open errorlog file " << errorconf.file.get();
+        LOG(ERROR) << "Failed to open errorlog file " << errorconf.file;
       } else {
-        std::cerr << "Failed to open errorlog file " << errorconf.file.get()
+        std::cerr << "Failed to open errorlog file " << errorconf.file
                   << std::endl;
       }
 

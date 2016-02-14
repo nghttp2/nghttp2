@@ -64,7 +64,7 @@ void drop_privileges(
 #endif // HAVE_NEVERBLEED
     ) {
   if (getuid() == 0 && get_config()->uid != 0) {
-    if (initgroups(get_config()->user.get(), get_config()->gid) != 0) {
+    if (initgroups(get_config()->user.c_str(), get_config()->gid) != 0) {
       auto error = errno;
       LOG(FATAL) << "Could not change supplementary groups: "
                  << strerror(error);
@@ -86,7 +86,7 @@ void drop_privileges(
     }
 #ifdef HAVE_NEVERBLEED
     if (nb) {
-      neverbleed_setuidgid(nb, get_config()->user.get(), 1);
+      neverbleed_setuidgid(nb, get_config()->user.c_str(), 1);
     }
 #endif // HAVE_NEVERBLEED
   }
@@ -427,7 +427,7 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
     auto &ticketconf = get_config()->tls.ticket;
     auto &memcachedconf = ticketconf.memcached;
 
-    if (ticketconf.memcached.host) {
+    if (!memcachedconf.host.empty()) {
       SSL_CTX *ssl_ctx = nullptr;
 
       if (memcachedconf.tls) {
@@ -437,7 +437,7 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
       conn_handler.set_tls_ticket_key_memcached_dispatcher(
           make_unique<MemcachedDispatcher>(
               &ticketconf.memcached.addr, loop, ssl_ctx,
-              StringRef(memcachedconf.host.get()), &mcpool));
+              StringRef{memcachedconf.host}, &mcpool));
 
       ev_timer_init(&renew_ticket_key_timer, memcached_get_ticket_key_cb, 0.,
                     0.);

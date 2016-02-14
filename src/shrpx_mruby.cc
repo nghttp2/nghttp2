@@ -31,7 +31,6 @@
 #include "shrpx_config.h"
 #include "shrpx_mruby_module.h"
 #include "shrpx_downstream_connection.h"
-#include "template.h"
 
 namespace shrpx {
 
@@ -146,12 +145,12 @@ mrb_value instantiate_app(mrb_state *mrb, RProc *proc) {
 // very hard to write these kind of code because mruby has almost no
 // documentation aobut compiling or generating code, at least at the
 // time of this writing.
-RProc *compile(mrb_state *mrb, const char *filename) {
-  if (filename == nullptr) {
+RProc *compile(mrb_state *mrb, const StringRef &filename) {
+  if (filename.empty()) {
     return nullptr;
   }
 
-  auto infile = fopen(filename, "rb");
+  auto infile = fopen(filename.c_str(), "rb");
   if (infile == nullptr) {
     return nullptr;
   }
@@ -185,8 +184,8 @@ RProc *compile(mrb_state *mrb, const char *filename) {
   return proc;
 }
 
-std::unique_ptr<MRubyContext> create_mruby_context(const char *filename) {
-  if (!filename) {
+std::unique_ptr<MRubyContext> create_mruby_context(const StringRef &filename) {
+  if (filename.empty()) {
     return make_unique<MRubyContext>(nullptr, mrb_nil_value(), mrb_nil_value());
   }
 
