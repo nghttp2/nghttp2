@@ -1763,7 +1763,7 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   case SHRPX_OPTID_DH_PARAM_FILE:
-    mod_config()->tls.dh_param_file = strcopy(optarg);
+    mod_config()->tls.dh_param_file = optarg;
 
     return 0;
   case SHRPX_OPTID_SUBCERT: {
