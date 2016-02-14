@@ -1738,7 +1738,7 @@ int parse_config(const char *opt, const char *optarg,
                  << strerror(errno);
       return -1;
     }
-    mod_config()->user = strcopy(pwd->pw_name);
+    mod_config()->user = pwd->pw_name;
     mod_config()->uid = pwd->pw_uid;
     mod_config()->gid = pwd->pw_gid;
 

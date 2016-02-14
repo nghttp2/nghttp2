@@ -583,7 +583,7 @@ struct Config {
   ConnectionConfig conn;
   ImmutableString pid_file;
   ImmutableString conf_path;
-  std::unique_ptr<char[]> user;
+  ImmutableString user;
   std::unique_ptr<char[]> mruby_file;
   char **original_argv;
   char **argv;

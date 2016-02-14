@@ -64,7 +64,7 @@ void drop_privileges(
 #endif // HAVE_NEVERBLEED
     ) {
   if (getuid() == 0 && get_config()->uid != 0) {
-    if (initgroups(get_config()->user.get(), get_config()->gid) != 0) {
+    if (initgroups(get_config()->user.c_str(), get_config()->gid) != 0) {
       auto error = errno;
       LOG(FATAL) << "Could not change supplementary groups: "
                  << strerror(error);
@@ -86,7 +86,7 @@ void drop_privileges(
     }
 #ifdef HAVE_NEVERBLEED
     if (nb) {
-      neverbleed_setuidgid(nb, get_config()->user.get(), 1);
+      neverbleed_setuidgid(nb, get_config()->user.c_str(), 1);
     }
 #endif // HAVE_NEVERBLEED
   }
