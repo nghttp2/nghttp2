@@ -5,12 +5,15 @@ if(ENABLE_THIRD_PARTY)
   add_library(http-parser OBJECT ${LIBHTTP_PARSER_SOURCES})
 
   if(HAVE_NEVERBLEED)
-    set(LIBNEVERBLEED_SOURCES
+    set(NEVERBLEED_SOURCES
       neverbleed/neverbleed.c
     )
-    add_library(libneverbleed ${LIBNEVERBLEED_SOURCES})
-    target_include_directories(libneverbleed PUBLIC ${OPENSSL_INCLUDE_DIRS})
-    target_link_libraries(libneverbleed ${OPENSSL_LIBRARIES})
+    add_library(neverbleed ${NEVERBLEED_SOURCES})
+    target_include_directories(neverbleed PRIVATE ${OPENSSL_INCLUDE_DIRS})
+    target_include_directories(neverbleed INTERFACE
+      "${CMAKE_SOURCE_DIR}/third-party/neverbleed"
+    )
+    target_link_libraries(neverbleed ${OPENSSL_LIBRARIES})
   endif()
 
   if(HAVE_MRUBY)

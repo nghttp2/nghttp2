@@ -143,13 +143,7 @@ if(ENABLE_APP)
   endif()
 
   if(HAVE_NEVERBLEED)
-    target_include_directories(nghttpx PRIVATE
-      "${CMAKE_SOURCE_DIR}/third-party/neverbleed"
-    )
-    target_link_libraries(nghttpx
-      # FIXME .la does not work ofc...
-      "${CMAKE_BINARY_DIR}/third-party/libneverbleed.la"
-    )
+    target_link_libraries(nghttpx neverbleed)
   endif()
 
 
@@ -186,11 +180,10 @@ if(ENABLE_APP)
   #   -L${top_builddir}/third-party/mruby/build/lib @LIBMRUBY_LIBS@
   # endif # HAVE_MRUBY
   # 
-  # if HAVE_NEVERBLEED
-  # nghttpx_unittest_CPPFLAGS += -I${top_srcdir}/third-party/neverbleed
-  # nghttpx_unittest_LDADD += ${top_builddir}/third-party/libneverbleed.la
-  # endif # HAVE_NEVERBLEED
-  # 
+    if(HAVE_NEVERBLEED)
+      target_link_libraries(nghttpx-unittest neverbleed)
+    endif()
+
     add_test(nghttpx-unittest nghttpx-unittest)
   endif()
 
