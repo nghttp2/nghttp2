@@ -24,7 +24,8 @@ set(NGHTTP2_SOURCES
   nghttp2_http.c
 )
 
-add_library(nghttp2 SHARED ${NGHTTP2_SOURCES})
+add_library(nghttp2-obj OBJECT ${NGHTTP2_SOURCES})
+add_library(nghttp2 SHARED $<TARGET_OBJECTS:nghttp2-obj>)
 #target_link_libraries(nghttp2 ...)
 set_target_properties(nghttp2 PROPERTIES
   COMPILE_FLAGS "${WARNCFLAGS} ${EXTRACFLAG}"

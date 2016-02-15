@@ -155,23 +155,30 @@ if(ENABLE_APP)
 
   if(HAVE_CUNIT)
   # check_PROGRAMS += nghttpx-unittest
-  # nghttpx_unittest_SOURCES = shrpx-unittest.cc
-  #   shrpx_ssl_test.cc
-  #   shrpx_downstream_test.cc
-  #   shrpx_config_test.cc
-  #   shrpx_http_test.cc
-  #   http2_test.cc
-  #   util_test.cc
-  #   nghttp2_gzip_test.c
-  #   nghttp2_gzip.c
-  #   buffer_test.cc
-  #   memchunk_test.cc
-  #   template_test.cc
-  #   base64_test.cc
-  # nghttpx_unittest_CPPFLAGS = ${AM_CPPFLAGS}
-  #   -DNGHTTP2_TESTS_DIR=\"$(top_srcdir)/tests\"
-  # nghttpx_unittest_LDADD = libnghttpx.a ${LDADD} @CUNIT_LIBS@ @TESTLDADD@
-  # 
+    set(NGHTTPX_UNITTEST_SOURCES
+      shrpx-unittest.cc
+      shrpx_ssl_test.cc
+      shrpx_downstream_test.cc
+      shrpx_config_test.cc
+      shrpx_http_test.cc
+      http2_test.cc
+      util_test.cc
+      nghttp2_gzip_test.c
+      nghttp2_gzip.c
+      buffer_test.cc
+      memchunk_test.cc
+      template_test.cc
+      base64_test.cc
+    )
+    add_executable(nghttpx-unittest EXCLUDE_FROM_ALL
+      ${NGHTTPX_UNITTEST_SOURCES}
+      $<TARGET_OBJECTS:http-parser>
+    )
+    target_include_directories(nghttpx-unittest PRIVATE ${CUNIT_INCLUDE_DIRS})
+    target_compile_definitions(nghttpx-unittest
+      PRIVATE "-DNGHTTP2_TESTS_DIR=\"$(CMAKE_SOURCE_DIR)/tests\""
+    )
+    target_link_libraries(nghttpx-unittest nghttpx ${CUNIT_LIBRARIES})
   # if HAVE_MRUBY
   # nghttpx_unittest_CPPFLAGS +=
   #   -I${top_srcdir}/third-party/mruby/include @LIBMRUBY_CFLAGS@
@@ -184,7 +191,7 @@ if(ENABLE_APP)
   # nghttpx_unittest_LDADD += ${top_builddir}/third-party/libneverbleed.la
   # endif # HAVE_NEVERBLEED
   # 
-  # TESTS += nghttpx-unittest
+    add_test(nghttpx-unittest nghttpx-unittest)
   endif()
 
   add_executable(nghttp   ${NGHTTP_SOURCES}   $<TARGET_OBJECTS:http-parser>)

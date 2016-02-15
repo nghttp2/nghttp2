@@ -140,8 +140,6 @@ cmake_pop_check_state()
 
 
 # Checks for libraries.
-# Additional libraries required for tests.
-set(TEST_LIBRARIES)
 # Additional libraries required for programs under src directory.
 set(APP_LIBRARIES)
 
@@ -163,6 +161,7 @@ endif()
 
 find_package(CUnit 2.1)
 if(CUNIT_FOUND)
+  enable_testing()
   set(HAVE_CUNIT 1)
 else()
   set(HAVE_CUNIT 0)
@@ -457,7 +456,6 @@ endif()
 # # propagate $enable_static to tests/Makefile.am
 # AM_CONDITIONAL([ENABLE_STATIC], [test "x$enable_static" = "xyes"])
 #
-# AC_SUBST([TESTLDADD])
 # AC_SUBST([APPLDFLAGS])
 
 add_definitions(-DHAVE_CONFIG_H)
@@ -519,10 +517,8 @@ add_subdirectory(src)
 #add_subdirectory(src/includes)
 add_subdirectory(examples)
 add_subdirectory(python)
-if(0)
 add_subdirectory(tests)
 #add_subdirectory(tests/testdata)
-endif()
 add_subdirectory(integration-tests)
 add_subdirectory(doc)
 add_subdirectory(contrib)
