@@ -15,6 +15,7 @@ include_directories(
   "${CMAKE_SOURCE_DIR}/src/includes"
   "${CMAKE_SOURCE_DIR}/third-party"
 
+  ${JEMALLOC_INCLUDE_DIRS}
   ${LIBSPDYLAY_INCLUDE_DIRS}
   ${LIBXML2_INCLUDE_DIR}
   ${LIBEV_INCLUDE_DIRS}

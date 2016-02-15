@@ -42,26 +42,30 @@ HexVersion(PACKAGE_VERSION_NUM ${PROJECT_VERSION_MAJOR} ${PROJECT_VERSION_MINOR}
 
 include(GNUInstallDirs)
 
-# XXX "check" is treated as "OFF" now, consider detecting it first
-option(ENABLE_WERROR    "Turn on compile time warnings")
-option(ENABLE_DEBUG     "Turn on debug output")
-option(ENABLE_THREADS   "Turn on threading in apps" ON)
-option(ENABLE_APP       "Build applications (nghttp, nghttpd, nghttpx and h2load)"
-        check)
-option(ENABLE_HPACK_TOOLS "Build HPACK tools" check)
-option(ENABLE_ASIO_LIB  "Build C++ libnghttp2_asio library")
-option(ENABLE_EXAMPLES  "Build examples" check)
-option(ENABLE_PYTHON_BINDINGS "Build Python bindings" check)
-option(ENABLE_FAILMALLOC "Build failmalloc test program" ON)
-option(ENABLE_LIB_ONLY  "Build libnghttp2 only.  This is a short hand for -DENABLE_APP=0 -DENABLE_EXAMPLES=0 -DENABLE_HPACK_TOOLS=0 -DENABLE_PYTHON_BINDINGS=0")
+# Auto-detection of features that can be toggled
+find_package(OpenSSL 1.0.1  QUIET)
+find_package(Libev 4.15     QUIET)
+find_package(ZLIB 1.2.3     QUIET)
+if(OPENSSL_FOUND AND LIBEV_FOUND AND ZLIB_FOUND)
+  set(ENABLE_APP_DEFAULT ON)
+else()
+  set(ENABLE_APP_DEFAULT OFF)
+endif()
+find_package(Jansson  2.5   QUIET)
+set(ENABLE_HPACK_TOOLS_DEFAULT ${JANSSON_FOUND})
+find_package(Libevent 2.0.8 QUIET COMPONENTS openssl)
+set(ENABLE_EXAMPLES_DEFAULT ${LIBEVENT_OPENSSL_FOUND})
+# XXX auto-detect python
+set(ENABLE_PYTHON_BINDINGS_DEFAULT OFF)
 
-option(WITH_LIBXML2     "Use libxml2" check)
-option(WITH_JEMALLOC    "Use jemalloc" check)
-option(WITH_SPDYLAY     "Use spdylay" check)
-option(WITH_MRUBY       "Use mruby")
-option(WITH_NEVERBLEED  "Use neverbleed")
-set(CYTHON_PATH "" CACHE PATH     "Use cython in given path")
-set(CYTHON      "" CACHE FILEPATH "The Cython executable")
+find_package(LibXml2        QUIET)
+set(WITH_LIBXML2_DEFAULT    ${LIBXML2_FOUND})
+find_package(Jemalloc       QUIET)
+set(WITH_JEMALLOC_DEFAULT   ${JEMALLOC_FOUND})
+find_package(SPDYLAY        QUIET)
+set(WITH_SPDYLAY_DEFAULT    ${SPDYLAY_FOUND})
+
+include(CMakeOptions.txt)
 
 find_package(PkgConfig 0.20)
 # For Python bindings and documentation
@@ -153,19 +157,16 @@ endif()
 #     # android does not need -pthread, but needs followng 3 libs for C++
 #     APPLDFLAGS="$APPLDFLAGS -lstdc++ -latomic -lsupc++"
 
-pkg_check_modules(ZLIB zlib>=1.2.3)
-if(ZLIB_FOUND)
-  set(HAVE_ZLIB 1)
-else()
-  set(HAVE_ZLIB 0)
-endif()
-
 # dl: openssl requires libdl when it is statically linked.
 # XXX shouldn't ${CMAKE_DL_LIBS} be appended to OPENSSL_LIBRARIES instead of
 # APP_LIBRARIES if it is really specific to OpenSSL?
 
-# XXX put this in FindCUNIT.cmake
-pkg_check_modules(CUNIT cunit>=2.1)
+find_package(CUnit 2.1)
+if(CUNIT_FOUND)
+  set(HAVE_CUNIT 1)
+else()
+  set(HAVE_CUNIT 0)
+endif()
 # # If pkg-config does not find cunit, check it using AC_CHECK_LIB.  We
 # # do this because Debian (Ubuntu) lacks pkg-config file for cunit.
 # if test "x${have_cunit}" = "xno"; then
@@ -193,35 +194,44 @@ pkg_check_modules(CUNIT cunit>=2.1)
 #
 # AM_CONDITIONAL([HAVE_CUNIT], [ test "x${have_cunit}" = "xyes" ])
 
+if(ENABLE_APP)
+  find_package(OpenSSL 1.0.1 REQUIRED)
+  find_package(Libev 4.15 REQUIRED)
+  find_package(ZLIB 1.2.3 REQUIRED)
+endif()
+
+# openssl (for src)
+if(OPENSSL_FOUND)
+  set(HAVE_OPENSSL 1)
+  set(OPENSSL_INCLUDE_DIRS ${OPENSSL_INCLUDE_DIR})
+else()
+  set(HAVE_OPENSSL 0)
+endif()
 # libev (for src)
-find_package(Libev)
-if(Libev_FOUND)
+if(LIBEV_FOUND)
   set(HAVE_LIBEV 1)
 else()
   set(HAVE_LIBEV 0)
 endif()
-
-# openssl (for src)
-pkg_check_modules(OPENSSL openssl>=1.0.1)
-# for find_package, replace OPENSSL_INCLUDE_DIRS by OPENSSL_INCLUDE_DIR
-#find_package(OpenSSL 1.0.1)
-if(OPENSSL_FOUND)
-  set(HAVE_OPENSSL 1)
+if(ZLIB_FOUND)
+  set(HAVE_ZLIB 1)
 else()
-  set(HAVE_OPENSSL 0)
+  set(HAVE_ZLIB 0)
 endif()
-# libevent_openssl (for examples)
-# 2.0.8 is required because we use evconnlistener_set_error_cb()
-pkg_check_modules(LIBEVENT_OPENSSL libevent_openssl>=2.0.8)
-if(LIBEVENT_OPENSSL_FOUND)
+
+if(ENABLE_EXAMPLES)
+  # libevent_openssl (for examples)
+  # 2.0.8 is required because we use evconnlistener_set_error_cb()
+  find_package(Libevent 2.0.8 REQUIRED COMPONENTS libevent openssl)
+  set(LIBEVENT_OPENSSL_LIBRARIES ${LIBEVENT_LIBRARIES})
   set(HAVE_LIBEVENT_OPENSSL 1)
 else()
   set(HAVE_LIBEVENT_OPENSSL 0)
 endif()
 
-# jansson (for src/nghttp, src/deflatehd and src/inflatehd)
-pkg_check_modules(JANSSON jansson>=2.5)
-if(JANSSON_FOUND)
+if(ENABLE_HPACK_TOOLS)
+  # jansson (for src/nghttp, src/deflatehd and src/inflatehd)
+  find_package(Jansson 2.5 REQUIRED)
   set(HAVE_JANSSON 1)
 else()
   set(HAVE_JANSSON 0)
@@ -231,17 +241,13 @@ endif()
 if(WITH_LIBXML2)
   find_package(LibXml2 2.7.7 REQUIRED)
   set(HAVE_LIBXML2 1)
-  # XXX fail if WITH_LIBXML2=ON
 else()
   set(HAVE_LIBXML2 0)
 endif()
 
 # jemalloc
 if(WITH_JEMALLOC)
-  pkg_check_modules(JEMALLOC jemalloc)
-  if(NOT JEMALLOC_FOUND)
-    find_package(jemalloc REQUIRED)
-  endif()
+  find_package(Jemalloc REQUIRED)
   if(JEMALLOC_FOUND)
     set(HAVE_JEMALLOC 1)
   else()
@@ -281,7 +287,7 @@ endif()
 
 # C++ library libnghttp2_asio
 if(ENABLE_EXAMPLES AND NOT (OPENSSL_FOUND AND LIBEVENT_OPENSSL_FOUND))
-  message(FATAL_ERROR "examples were requested (--enable-examples) but dependencies are not met.")
+  message(FATAL_ERROR "examples were requested (ENABLE_EXAMPLES=1) but dependencies are not met.")
 endif()
 
 # third-party http-parser only be built when needed
