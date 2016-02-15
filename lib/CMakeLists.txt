@@ -25,8 +25,10 @@ set(NGHTTP2_SOURCES
 )
 
 add_library(nghttp2-obj OBJECT ${NGHTTP2_SOURCES})
+# Needed because the object files are linked into a shared library.
+set_target_properties(nghttp2-obj PROPERTIES
+  POSITION_INDEPENDENT_CODE ON)
 add_library(nghttp2 SHARED $<TARGET_OBJECTS:nghttp2-obj>)
-#target_link_libraries(nghttp2 ...)
 set_target_properties(nghttp2 PROPERTIES
   COMPILE_FLAGS "${WARNCFLAGS} ${EXTRACFLAG}"
   VERSION ${LT_VERSION} SOVERSION ${LT_SOVERSION})
