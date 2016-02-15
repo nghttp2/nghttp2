@@ -131,15 +131,7 @@ if(ENABLE_APP)
   )
 
   if(HAVE_MRUBY)
-    target_include_directories(nghttpx PRIVATE
-      "${CMAKE_SOURCE_DIR}/third-party/mruby/include"
-      # ${LIBMRUBY_CFLAGS}
-    )
-    target_link_libraries(nghttpx
-      # nghttpx_LDADD += -L${top_builddir}/third-party/mruby/build/lib
-      # XXX find_library or other absolute path?
-      # ${LIBMRUBY_LIBS}
-    )
+    target_link_libraries(nghttpx mruby-lib)
   endif()
 
   if(HAVE_NEVERBLEED)
@@ -170,16 +162,12 @@ if(ENABLE_APP)
     )
     target_include_directories(nghttpx-unittest PRIVATE ${CUNIT_INCLUDE_DIRS})
     target_compile_definitions(nghttpx-unittest
-      PRIVATE "-DNGHTTP2_TESTS_DIR=\"$(CMAKE_SOURCE_DIR)/tests\""
+      PRIVATE "-DNGHTTP2_TESTS_DIR=\"${CMAKE_SOURCE_DIR}/tests\""
     )
     target_link_libraries(nghttpx-unittest nghttpx ${CUNIT_LIBRARIES})
-  # if HAVE_MRUBY
-  # nghttpx_unittest_CPPFLAGS +=
-  #   -I${top_srcdir}/third-party/mruby/include @LIBMRUBY_CFLAGS@
-  # nghttpx_unittest_LDADD +=
-  #   -L${top_builddir}/third-party/mruby/build/lib @LIBMRUBY_LIBS@
-  # endif # HAVE_MRUBY
-  # 
+    if(HAVE_MRUBY)
+      target_link_libraries(nghttpx-unittest mruby-lib)
+    endif()
     if(HAVE_NEVERBLEED)
       target_link_libraries(nghttpx-unittest neverbleed)
     endif()

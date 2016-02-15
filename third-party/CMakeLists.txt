@@ -17,22 +17,47 @@ if(ENABLE_THIRD_PARTY)
   endif()
 
   if(HAVE_MRUBY)
-    ## EXTRA_DIST = build_config.rb mruby/*
+    # EXTRA_DIST = build_config.rb mruby/*
 
-    #.PHONY: all-local clean mruby
+    set(MRUBY_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/mruby/build")
+    set(MRUBY_LIBRARY
+      "${CMAKE_STATIC_LIBRARY_PREFIX}mruby${CMAKE_STATIC_LIBRARY_SUFFIX}"
+    )
 
-    #mruby:
-    #  MRUBY_CONFIG="${srcdir}/build_config.rb" \
-    #  BUILD_DIR="${abs_builddir}/mruby/build" \
-    #  INSTALL_DIR="${abs_builddir}/mruby/build/install/bin" \
-    #  CC="${CC}" CXX="${CXX}" LD="${LD}" \
-    #  CFLAGS="${CPPFLAGS} ${CFLAGS}" CXXFLAGS="${CPPFLAGS} ${CXXFLAGS}" \
-    #  LDFLAGS="${LDFLAGS}" \
-    #  "${srcdir}/mruby/minirake" -f "${srcdir}/mruby/Rakefile"
+    # The mruby build needs some env vars. Alternatively, look at cmake -P
+    if(CMAKE_VERSION VERSION_LESS "3.1")
+      # XXX works only for Unixes?
+      set(ENV_COMMAND env)
+    else()
+      set(ENV_COMMAND ${CMAKE_COMMAND} -E env)
+    endif()
+    # Required for the Ninja generator. For older CMake, you first have to
+    # invoke 'ninja mruby' before building dependents.
+    if(CMAKE_VERSION VERSION_LESS "3.2")
+      set(_byproducts)
+    else()
+      set(_byproducts BYPRODUCTS "mruby/build/lib/${MRUBY_LIBRARY}")
+    endif()
+    add_custom_target(mruby
+      COMMAND ${ENV_COMMAND}
+        "MRUBY_CONFIG=${CMAKE_CURRENT_SOURCE_DIR}/build_config.rb"
+        "BUILD_DIR=${MRUBY_BUILD_DIR}"
+        "INSTALL_DIR=${MRUBY_BUILD_DIR}/install/bin"
+        "CC=${CMAKE_C_COMPILER}" "CXX=${CMAKE_CXX_COMPILER}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/mruby/minirake"
+        -f "${CMAKE_CURRENT_SOURCE_DIR}/mruby/Rakefile"
+      ${_byproducts}
+      VERBATIM
+    )
 
-    #all-local: mruby
+    # Make the mruby library available to others in this project without them
+    # having to worry about include dirs and the mruby location.
+    add_library(mruby-lib STATIC IMPORTED GLOBAL)
+    set_target_properties(mruby-lib PROPERTIES
+      IMPORTED_LOCATION "${MRUBY_BUILD_DIR}/lib/${MRUBY_LIBRARY}"
+      INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/mruby/include"
+    )
 
-    #clean-local:
-    #  -rm -rf "${abs_builddir}/mruby/build"
+    # XXX clean ${CMAKE_CURRENT_BINARY_DIR}/mruby/build
   endif()
 endif()

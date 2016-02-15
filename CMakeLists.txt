@@ -295,7 +295,9 @@ if(ENABLE_EXAMPLES OR ENABLE_APP OR ENABLE_HPACK_TOOLS OR ENABLE_ASIO_LIB)
   # mruby (for src/nghttpx)
   if(WITH_MRUBY)
     set(HAVE_MRUBY 1)
-    # XXX add -lmruby and -lm libs
+    set(MRUBY_LIBRARY
+      "${CMAKE_BINARY_DIR}/third-party/mruby/build/lib/${CMAKE_STATIC_LIBRARY_PREFIX}mruby${CMAKE_STATIC_LIBRARY_SUFFIX}"
+    )
   else()
     set(HAVE_MRUBY 0)
   endif()
