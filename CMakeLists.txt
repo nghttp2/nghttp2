@@ -42,6 +42,10 @@ HexVersion(PACKAGE_VERSION_NUM ${PROJECT_VERSION_MAJOR} ${PROJECT_VERSION_MINOR}
 
 include(GNUInstallDirs)
 
+# For Python bindings and documentation
+# (Must be called before PythonLibs for matching versions.)
+find_package(PythonInterp)
+
 # Auto-detection of features that can be toggled
 find_package(OpenSSL 1.0.1  QUIET)
 find_package(Libev 4.15     QUIET)
@@ -55,8 +59,13 @@ find_package(Jansson  2.5   QUIET)
 set(ENABLE_HPACK_TOOLS_DEFAULT ${JANSSON_FOUND})
 find_package(Libevent 2.0.8 QUIET COMPONENTS openssl)
 set(ENABLE_EXAMPLES_DEFAULT ${LIBEVENT_OPENSSL_FOUND})
-# XXX auto-detect python
-set(ENABLE_PYTHON_BINDINGS_DEFAULT OFF)
+find_package(Cython         QUIET)
+find_package(PythonLibs     QUIET)
+if(CYTHON_FOUND AND PYTHONLIBS_FOUND)
+  set(ENABLE_PYTHON_BINDINGS_DEFAULT ON)
+else()
+  set(ENABLE_PYTHON_BINDINGS_DEFAULT OFF)
+endif()
 
 find_package(LibXml2        QUIET)
 set(WITH_LIBXML2_DEFAULT    ${LIBXML2_FOUND})
@@ -68,12 +77,6 @@ set(WITH_SPDYLAY_DEFAULT    ${SPDYLAY_FOUND})
 include(CMakeOptions.txt)
 
 find_package(PkgConfig 0.20)
-# For Python bindings and documentation
-find_package(PythonInterp)
-# XXX fail only when "ON" instead of "CHECK"?
-if(ENABLE_PYTHON_BINDINGS)
-endif()
-# AM_PATH_PYTHON([2.7],, [:])
 
 if(ENABLE_LIB_ONLY)
   set(ENABLE_APP            OFF)
@@ -81,21 +84,6 @@ if(ENABLE_LIB_ONLY)
   set(ENABLE_EXAMPLES       OFF)
   set(ENABLE_PYTHON_BINDINGS OFF)
 endif()
-
-if(ENABLE_PYTHON_BINDINGS)
-  find_package(PythonLibs 2.7 REQUIRED)
-  # XXX find cython
-endif()
-# if [test "x$request_python_bindings" != "xno"]; then
-#   AX_PYTHON_DEVEL([>= '2.7'])
-# fi
-#
-# if test "x${cython_path}" = "x"; then
-#   AC_CHECK_PROGS([CYTHON], [cython.py cython])
-# else
-#   CYTHON=${cython_path}
-#   AC_SUBST([CYTHON])
-# fi
 
 #
 # If we're running GCC or clang define _U_ to be "__attribute__((unused))"
@@ -142,6 +130,18 @@ cmake_pop_check_state()
 # Checks for libraries.
 # Additional libraries required for programs under src directory.
 set(APP_LIBRARIES)
+
+if(ENABLE_PYTHON_BINDINGS)
+  find_package(Cython         REQUIRED)
+  find_package(PythonLibs     REQUIRED)
+  if(NOT PYTHON_VERSION_STRING STREQUAL PYTHONLIBS_VERSION_STRING)
+    message(SEND_ERROR
+      "Python executable and library must have the same version!"
+      " Found Python ${PYTHON_VERSION_STRING} and"
+      " PythonLibs ${PYTHONLIBS_VERSION_STRING}"
+    )
+  endif()
+endif()
 
 set(CMAKE_THREAD_PREFER_PTHREAD 1)
 find_package(Threads)
@@ -309,16 +309,6 @@ if(ENABLE_EXAMPLES OR ENABLE_APP OR ENABLE_HPACK_TOOLS OR ENABLE_ASIO_LIB)
 else()
   set(HAVE_MRUBY 0)
   set(HAVE_NEVERBLEED 0)
-endif()
-
-# Python bindings
-if(ENABLE_PYTHON_BINDINGS AND NOT CYTHON AND NOT PYTHONLIBS_FOUND)
-# XXX PythonInterp and PythonLibs are looked up before, unreachable check?
-# if test "x${request_python_bindings}" != "xno" &&
-#    test "x${CYTHON}" != "x" &&
-#    test "x${PYTHON}" != "x:" &&
-#    test "x${have_python_dev}" = "xyes"; then
-  message(FATAL_ERROR "python bindings were requested (ENABLE_PYTHON_BINDINGS=1) but dependencies are not met.")
 endif()
 
 # Checks for header files.
@@ -528,7 +518,6 @@ add_subdirectory(script)
 
 
 # XXX fix shared/static library
-# XXX fix python
 string(TOUPPER "${CMAKE_BUILD_TYPE}" _build_type)
 message(STATUS "summary of build options:
 
@@ -550,8 +539,7 @@ message(STATUS "summary of build options:
     Python:
       Python:         ${PYTHON_EXECUTABLE}
       PYTHON_VERSION: ${PYTHON_VERSION_STRING}
-      pyexecdir:      ${pyexecdir}
-      Python-dev:     ${have_python_dev}
+      Library version:${PYTHONLIBS_VERSION_STRING}
       Cython:         ${CYTHON_EXECUTABLE}
     Test:
       CUnit:          ${HAVE_CUNIT} (LIBS='${CUNIT_LIBRARIES}')

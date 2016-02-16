@@ -1,0 +1,10 @@
+get_filename_component(rootdir "$ENV{DESTDIR}" ABSOLUTE)
+if(rootdir STREQUAL "")
+  set(rootdir /)
+endif()
+execute_process(
+  COMMAND "@PYTHON_EXECUTABLE@" setup.py install
+    --skip-build
+    --root=${rootdir} --prefix=${CMAKE_INSTALL_PREFIX}
+  WORKING_DIRECTORY "@CMAKE_CURRENT_BINARY_DIR@"
+)

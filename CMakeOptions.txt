@@ -23,7 +23,5 @@ option(WITH_SPDYLAY     "Use spdylay"
   ${WITH_SPDYLAY_DEFAULT})
 option(WITH_MRUBY       "Use mruby")
 option(WITH_NEVERBLEED  "Use neverbleed")
-set(CYTHON_PATH "" CACHE PATH     "Use cython in given path")
-set(CYTHON      "" CACHE FILEPATH "The Cython executable")
 
 # vim: ft=cmake:
