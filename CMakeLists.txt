@@ -285,12 +285,17 @@ if(HAVE_EPOLL AND HAVE_TIMERFD_CREATE)
   set(ENABLE_TINY_NGHTTPD 1)
 endif()
 
+set(WARNCFLAGS)
+set(WARNCXXFLAGS)
 if(ENABLE_WERROR)
+  extract_valid_c_flags(WARNCFLAGS    -Werror)
+  extract_valid_c_flags(WARNCXXFLAGS  -Werror)
+endif()
+if(NOT CMAKE_C_COMPILER_ID STREQUAL "MSVC")
   # For C compiler
   extract_valid_c_flags(WARNCFLAGS
     -Wall
     -Wextra
-    -Werror
     -Wmissing-prototypes
     -Wstrict-prototypes
     -Wmissing-declarations
@@ -338,11 +343,11 @@ if(ENABLE_WERROR)
   extract_valid_cxx_flags(WARNCXXFLAGS
     # For C++ compiler
     -Wall
-    -Werror
     -Wformat-security
   )
 endif()
 
+set(EXTRACFLAG)
 extract_valid_c_flags(EXTRACFLAG
   -fvisibility=hidden
 )

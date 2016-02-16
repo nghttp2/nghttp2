@@ -1,11 +1,10 @@
 # Convenience function that checks the availability
-# of certain C or C++ compiler flags and returns the valid ones.
+# of certain C or C++ compiler flags and appends valid ones.
 
 include(CheckCCompilerFlag)
 include(CheckCXXCompilerFlag)
 
 function(extract_valid_c_flags varname)
-  set(valid_flags "")
   foreach(flag IN LISTS ARGN)
     string(REGEX REPLACE "[^a-zA-Z0-9_]+" "_" flag_var ${flag})
     set(flag_var "C_FLAG_${flag_var}")
@@ -18,7 +17,6 @@ function(extract_valid_c_flags varname)
 endfunction()
 
 function(extract_valid_cxx_flags varname)
-  set(valid_flags "")
   foreach(flag IN LISTS ARGN)
     string(REGEX REPLACE "[^a-zA-Z0-9_]+" "_" flag_var ${flag})
     set(flag_var "CXX_FLAG_${flag_var}")
