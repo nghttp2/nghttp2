@@ -24,14 +24,24 @@ set(NGHTTP2_SOURCES
   nghttp2_http.c
 )
 
-add_library(nghttp2-obj OBJECT ${NGHTTP2_SOURCES})
+# Public shared library
+add_library(nghttp2 SHARED ${NGHTTP2_SOURCES})
 # Needed because the object files are linked into a shared library.
-set_target_properties(nghttp2-obj PROPERTIES
-  POSITION_INDEPENDENT_CODE ON)
-add_library(nghttp2 SHARED $<TARGET_OBJECTS:nghttp2-obj>)
 set_target_properties(nghttp2 PROPERTIES
-  COMPILE_FLAGS "${WARNCFLAGS} ${EXTRACFLAG}"
-  VERSION ${LT_VERSION} SOVERSION ${LT_SOVERSION})
+  COMPILE_FLAGS "${WARNCFLAGS}"
+  VERSION ${LT_VERSION} SOVERSION ${LT_SOVERSION}
+  C_VISIBILITY_PRESET hidden
+)
+
+if(HAVE_CUNIT)
+  # Static library (for unittests because of symbol visibility)
+  add_library(nghttp2_static STATIC ${NGHTTP2_SOURCES})
+  set_target_properties(nghttp2_static PROPERTIES
+    COMPILE_FLAGS "${WARNCFLAGS}"
+    VERSION ${LT_VERSION} SOVERSION ${LT_SOVERSION}
+    ARCHIVE_OUTPUT_NAME nghttp2
+  )
+endif()
 
 install(TARGETS nghttp2
   LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}")

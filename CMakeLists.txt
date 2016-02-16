@@ -347,11 +347,6 @@ if(NOT CMAKE_C_COMPILER_ID STREQUAL "MSVC")
   )
 endif()
 
-set(EXTRACFLAG)
-extract_valid_c_flags(EXTRACFLAG
-  -fvisibility=hidden
-)
-
 if(ENABLE_DEBUG)
   set(DEBUGBUILD 1)
 endif()
@@ -449,7 +444,6 @@ message(STATUS "summary of build options:
       CXXFLAGS:       ${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_${_build_type}}
       WARNCFLAGS:     ${WARNCFLAGS}
       CXX1XCXXFLAGS:  ${CXX1XCXXFLAGS}
-      EXTRACFLAG:     ${EXTRACFLAG}
     Library:
       Shared:         ${enable_shared}
       Static:         ${enable_static}

@@ -248,7 +248,6 @@ if(ENABLE_ASIO_LIB)
   )
   # XXX use add_compile_options with a list instead of COMPILE_FLAGS
   set_target_properties(nghttp2_asio PROPERTIES
-    COMPILE_FLAGS "${EXTRACFLAG}"
     VERSION 1.0.0 SOVERSION 1)
 
   install(TARGETS nghttp2_asio

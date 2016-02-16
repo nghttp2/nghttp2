@@ -26,10 +26,12 @@ if(HAVE_CUNIT)
 
   add_executable(main EXCLUDE_FROM_ALL
     ${MAIN_SOURCES}
-    $<TARGET_OBJECTS:nghttp2-obj>
   )
   target_include_directories(main PRIVATE ${CUNIT_INCLUDE_DIRS})
-  target_link_libraries(main ${CUNIT_LIBRARIES})
+  target_link_libraries(main
+    nghttp2_static
+    ${CUNIT_LIBRARIES}
+  )
   add_test(main main)
 
   if(ENABLE_FAILMALLOC)
@@ -40,9 +42,11 @@ if(HAVE_CUNIT)
     )
     add_executable(failmalloc EXCLUDE_FROM_ALL
       ${FAILMALLOC_SOURCES}
-      $<TARGET_OBJECTS:nghttp2-obj>
     )
-    target_link_libraries(failmalloc ${CUNIT_LIBRARIES})
+    target_link_libraries(failmalloc
+      nghttp2_static
+      ${CUNIT_LIBRARIES}
+    )
     add_test(failmalloc failmalloc)
   endif()
 
