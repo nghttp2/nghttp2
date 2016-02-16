@@ -654,8 +654,13 @@ AC_CHECK_FUNC([timerfd_create],
 
 # For cygwin: we can link initgroups, so AC_CHECK_FUNCS succeeds, but
 # cygwin disables initgroups due to feature test macro magic with our
-# configuration.
-AC_CHECK_DECLS([initgroups], [], [], [[#include <grp.h>]])
+# configuration.  FreeBSD declares initgroups() in unistd.h.
+AC_CHECK_DECLS([initgroups], [], [], [[
+  #ifdef HAVE_UNISTD_H
+  # include <unistd.h>
+  #endif
+  #include <grp.h>
+]])
 
 # Checks for epoll availability, primarily for examples/tiny-nghttpd
 AX_HAVE_EPOLL([have_epoll=yes], [have_epoll=no])
