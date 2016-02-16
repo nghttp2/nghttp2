@@ -71,12 +71,10 @@ find_package(LibXml2        QUIET)
 set(WITH_LIBXML2_DEFAULT    ${LIBXML2_FOUND})
 find_package(Jemalloc       QUIET)
 set(WITH_JEMALLOC_DEFAULT   ${JEMALLOC_FOUND})
-find_package(SPDYLAY        QUIET)
+find_package(Spdylay 1.3.2  QUIET)
 set(WITH_SPDYLAY_DEFAULT    ${SPDYLAY_FOUND})
 
 include(CMakeOptions.txt)
-
-find_package(PkgConfig 0.20)
 
 if(ENABLE_LIB_ONLY)
   set(ENABLE_APP            OFF)
@@ -166,32 +164,6 @@ if(CUNIT_FOUND)
 else()
   set(HAVE_CUNIT 0)
 endif()
-# # If pkg-config does not find cunit, check it using AC_CHECK_LIB.  We
-# # do this because Debian (Ubuntu) lacks pkg-config file for cunit.
-# if test "x${have_cunit}" = "xno"; then
-#   AC_MSG_WARN([${CUNIT_PKG_ERRORS}])
-#   AC_CHECK_LIB([cunit], [CU_initialize_registry],
-#                [have_cunit=yes], [have_cunit=no])
-#   if test "x${have_cunit}" = "xyes"; then
-#     CUNIT_LIBS="-lcunit"
-#     CUNIT_CFLAGS=""
-#     AC_SUBST([CUNIT_LIBS])
-#     AC_SUBST([CUNIT_CFLAGS])
-#   fi
-# fi
-# if test "x${have_cunit}" = "xyes"; then
-#   # cunit in Mac OS X requires ncurses. Note that in Mac OS X, test
-#   # program can be built without -lncurses, but it emits runtime
-#   # error.
-#   case "${build}" in
-#     *-apple-darwin*)
-#       CUNIT_LIBS="$CUNIT_LIBS -lncurses"
-#       AC_SUBST([CUNIT_LIBS])
-#       ;;
-#   esac
-# fi
-#
-# AM_CONDITIONAL([HAVE_CUNIT], [ test "x${have_cunit}" = "xyes" ])
 
 if(ENABLE_APP)
   find_package(OpenSSL 1.0.1 REQUIRED)
@@ -258,14 +230,8 @@ endif()
 
 # spdylay (for src/nghttpx and src/h2load)
 if(WITH_SPDYLAY)
-  pkg_check_modules(LIBSPDYLAY libspdylay>=1.3.2)
-  if(LIBSPDYLAY_FOUND)
-    set(HAVE_SPDYLAY 1)
-  else()
-    set(HAVE_SPDYLAY 0)
-    message(STATUS "The SPDY support in nghttpx and h2load will be disabled.")
-  endif()
-  # XXX fail if WITH_SPDYLAY=ON
+  find_package(Spdylay 1.3.2 REQUIRED)
+  set(HAVE_SPDYLAY 1)
 else()
   set(HAVE_SPDYLAY 0)
 endif()
@@ -549,7 +515,7 @@ message(STATUS "summary of build options:
       Libxml2:        ${HAVE_LIBXML2} (LIBS='${LIBXML2_LIBRARIES}')
       Libev:          ${HAVE_LIBEV} (LIBS='${LIBEV_LIBRARIES}')
       Libevent(SSL):  ${HAVE_LIBEVENT_OPENSSL} (LIBS='${LIBEVENT_OPENSSL_LIBRARIES}')
-      Spdylay:        ${HAVE_SPDYLAY} (LIBS='${LIBSPDYLAY_LIBRARIES}')
+      Spdylay:        ${HAVE_SPDYLAY} (LIBS='${SPDYLAY_LIBRARIES}')
       Jansson:        ${HAVE_JANSSON} (LIBS='${JANSSON_LIBRARIES}')
       Jemalloc:       ${HAVE_JEMALLOC} (LIBS='${JEMALLOC_LIBRARIES}')
       Zlib:           ${HAVE_ZLIB} (LIBS='${ZLIB_LIBRARIES}')
