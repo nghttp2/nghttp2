@@ -3,6 +3,8 @@ if(ENABLE_THIRD_PARTY)
     http-parser/http_parser.c
   )
   add_library(http-parser OBJECT ${LIBHTTP_PARSER_SOURCES})
+  set_target_properties(http-parser PROPERTIES
+    POSITION_INDEPENDENT_CODE ON)
 
   if(HAVE_NEVERBLEED)
     set(NEVERBLEED_SOURCES
