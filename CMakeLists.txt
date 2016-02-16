@@ -414,6 +414,8 @@ include_directories(
 # For use in src/CMakeLists.txt
 set(PKGDATADIR "${CMAKE_INSTALL_FULL_DATADIR}/${CMAKE_PROJECT_NAME}")
 
+install(FILES README.rst DESTINATION "${CMAKE_INSTALL_DOCDIR}")
+
 add_subdirectory(lib)
 #add_subdirectory(lib/includes)
 add_subdirectory(third-party)

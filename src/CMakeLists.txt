@@ -253,6 +253,6 @@ if(ENABLE_ASIO_LIB)
   install(TARGETS nghttp2_asio
     LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}")
 
-  install(FILES libnghttp2_asio.pc
+  install(FILES "${CMAKE_CURRENT_BINARY_DIR}/libnghttp2_asio.pc"
     DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig")
 endif()

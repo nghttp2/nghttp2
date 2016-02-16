@@ -122,6 +122,13 @@ set(APIDOCS
   nghttp2_version.rst
 )
 
+set(MAN_PAGES
+  nghttp.1
+  nghttpd.1
+  nghttpx.1
+  h2load.1
+)
+
 # Other .rst files from the source tree that need to be copied
 # XXX move them to sources/ and create .in files?
 set(RST_FILES
@@ -168,10 +175,7 @@ set(EXTRA_DIST
   _themes/sphinx_rtd_theme/static/js/theme.js
   _themes/sphinx_rtd_theme/theme.conf
   _themes/sphinx_rtd_theme/versions.html
-  nghttp.1
-  nghttpd.1
-  nghttpx.1
-  h2load.1
+  ${MAN_PAGES}
   bash_completion/nghttp
   bash_completion/nghttpd
   bash_completion/nghttpx
@@ -310,3 +314,9 @@ sphinxbuild(doctest
   "Testing of doctests in the sources finished, look at the"
   "results in ${BUILDDIR}/doctest/output.txt."
 )
+
+foreach(_man_page IN LISTS MAN_PAGES)
+  install(FILES ${_man_page}
+    DESTINATION "${CMAKE_INSTALL_MANDIR}/man1"
+  )
+endforeach()
