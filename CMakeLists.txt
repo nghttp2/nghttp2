@@ -47,32 +47,32 @@ include(GNUInstallDirs)
 find_package(PythonInterp)
 
 # Auto-detection of features that can be toggled
-find_package(OpenSSL 1.0.1  QUIET)
-find_package(Libev 4.15     QUIET)
-find_package(ZLIB 1.2.3     QUIET)
+find_package(OpenSSL 1.0.1)
+find_package(Libev 4.15)
+find_package(ZLIB 1.2.3)
 if(OPENSSL_FOUND AND LIBEV_FOUND AND ZLIB_FOUND)
   set(ENABLE_APP_DEFAULT ON)
 else()
   set(ENABLE_APP_DEFAULT OFF)
 endif()
-find_package(Jansson  2.5   QUIET)
+find_package(Jansson  2.5)
 set(ENABLE_HPACK_TOOLS_DEFAULT ${JANSSON_FOUND})
 # 2.0.8 is required because we use evconnlistener_set_error_cb()
-find_package(Libevent 2.0.8 QUIET COMPONENTS libevent openssl)
+find_package(Libevent 2.0.8 COMPONENTS libevent openssl)
 set(ENABLE_EXAMPLES_DEFAULT ${LIBEVENT_OPENSSL_FOUND})
-find_package(Cython         QUIET)
-find_package(PythonLibs     QUIET)
+find_package(Cython)
+find_package(PythonLibs)
 if(CYTHON_FOUND AND PYTHONLIBS_FOUND)
   set(ENABLE_PYTHON_BINDINGS_DEFAULT ON)
 else()
   set(ENABLE_PYTHON_BINDINGS_DEFAULT OFF)
 endif()
 
-find_package(LibXml2 2.7.7  QUIET)
+find_package(LibXml2 2.7.7)
 set(WITH_LIBXML2_DEFAULT    ${LIBXML2_FOUND})
-find_package(Jemalloc       QUIET)
+find_package(Jemalloc)
 set(WITH_JEMALLOC_DEFAULT   ${JEMALLOC_FOUND})
-find_package(Spdylay 1.3.2  QUIET)
+find_package(Spdylay 1.3.2)
 set(WITH_SPDYLAY_DEFAULT    ${SPDYLAY_FOUND})
 
 include(CMakeOptions.txt)
@@ -440,6 +440,7 @@ message(STATUS "summary of build options:
     Install prefix:  ${CMAKE_INSTALL_PREFIX}
     Target system:   ${CMAKE_SYSTEM_NAME}
     Compiler:
+      Build type:     ${CMAKE_BUILD_TYPE}
       C compiler:     ${CMAKE_C_COMPILER}
       CFLAGS:         ${CMAKE_C_FLAGS} ${CMAKE_C_FLAGS_${_build_type}}
       C++ compiler:   ${CMAKE_CXX_COMPILER}
@@ -470,7 +471,7 @@ message(STATUS "summary of build options:
       Boost::Thread:  ${Boost_THREAD_LIBRARY}
     Third-party:
       http-parser:    ${ENABLE_THIRD_PARTY}
-      MRuby:          ${HAVE_MRUBY} (LIBS='${LIBMRUBY_LIBRARIES}')
+      MRuby:          ${HAVE_MRUBY}
       Neverbleed:     ${HAVE_NEVERBLEED}
     Features:
       Applications:   ${ENABLE_APP}
