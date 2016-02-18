@@ -124,23 +124,23 @@ if(ENABLE_APP)
       shrpx_mruby_module_response.cc
     )
   endif()
-  add_library(nghttpx STATIC ${NGHTTPX_SRCS})
+  add_library(nghttpx_static STATIC ${NGHTTPX_SRCS})
+  set_target_properties(nghttpx_static PROPERTIES ARCHIVE_OUTPUT_NAME nghttpx)
 
   set(NGHTTPX-bin_SOURCES
     shrpx.cc
   )
 
   if(HAVE_MRUBY)
-    target_link_libraries(nghttpx mruby-lib)
+    target_link_libraries(nghttpx_static mruby-lib)
   endif()
 
   if(HAVE_NEVERBLEED)
-    target_link_libraries(nghttpx neverbleed)
+    target_link_libraries(nghttpx_static neverbleed)
   endif()
 
 
   if(HAVE_CUNIT)
-  # check_PROGRAMS += nghttpx-unittest
     set(NGHTTPX_UNITTEST_SOURCES
       shrpx-unittest.cc
       shrpx_ssl_test.cc
@@ -164,7 +164,7 @@ if(ENABLE_APP)
     target_compile_definitions(nghttpx-unittest
       PRIVATE "-DNGHTTP2_TESTS_DIR=\"${CMAKE_SOURCE_DIR}/tests\""
     )
-    target_link_libraries(nghttpx-unittest nghttpx ${CUNIT_LIBRARIES})
+    target_link_libraries(nghttpx-unittest nghttpx_static ${CUNIT_LIBRARIES})
     if(HAVE_MRUBY)
       target_link_libraries(nghttpx-unittest mruby-lib)
     endif()
@@ -177,13 +177,12 @@ if(ENABLE_APP)
 
   add_executable(nghttp   ${NGHTTP_SOURCES}   $<TARGET_OBJECTS:http-parser>)
   add_executable(nghttpd  ${NGHTTPD_SOURCES}  $<TARGET_OBJECTS:http-parser>)
-  add_executable(nghttpx-bin ${NGHTTPX-bin_SOURCES} $<TARGET_OBJECTS:http-parser>)
-  target_compile_definitions(nghttpx-bin PRIVATE "-DPKGDATADIR=\"${PKGDATADIR}\"")
-  set_target_properties(nghttpx-bin PROPERTIES OUTPUT_NAME nghttpx)
-  target_link_libraries(nghttpx-bin nghttpx)
+  add_executable(nghttpx  ${NGHTTPX-bin_SOURCES} $<TARGET_OBJECTS:http-parser>)
+  target_compile_definitions(nghttpx PRIVATE "-DPKGDATADIR=\"${PKGDATADIR}\"")
+  target_link_libraries(nghttpx nghttpx_static)
   add_executable(h2load   ${H2LOAD_SOURCES}   $<TARGET_OBJECTS:http-parser>)
 
-  install(TARGETS nghttp nghttpd nghttpx-bin h2load
+  install(TARGETS nghttp nghttpd nghttpx h2load
     RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
 endif()
 
