@@ -81,8 +81,8 @@ public:
 
   void add_header_lower(const StringRef &name, const StringRef &value);
   void add_header(std::string name, std::string value, int16_t token);
-  void add_header(const uint8_t *name, size_t namelen, const uint8_t *value,
-                  size_t valuelen, bool no_index, int16_t token);
+  void add_header(const StringRef &name, const StringRef &value, bool no_index,
+                  int16_t token);
 
   void append_last_header_key(const char *data, size_t len);
   void append_last_header_value(const char *data, size_t len);
@@ -97,8 +97,8 @@ public:
   // Empties headers.
   void clear_headers();
 
-  void add_trailer(const uint8_t *name, size_t namelen, const uint8_t *value,
-                   size_t valuelen, bool no_index, int16_t token);
+  void add_trailer(const StringRef &name, const StringRef &value, bool no_index,
+                   int16_t token);
   void add_trailer_lower(const StringRef &name, const StringRef &value);
 
   void append_last_trailer_key(const char *data, size_t len);

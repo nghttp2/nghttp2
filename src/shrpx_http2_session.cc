@@ -739,12 +739,12 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
 
     if (trailer) {
       // just store header fields for trailer part
-      resp.fs.add_trailer(name, namelen, value, valuelen,
+      resp.fs.add_trailer(StringRef{name, namelen}, StringRef{value, valuelen},
                           flags & NGHTTP2_NV_FLAG_NO_INDEX, token);
       return 0;
     }
 
-    resp.fs.add_header(name, namelen, value, valuelen,
+    resp.fs.add_header(StringRef{name, namelen}, StringRef{value, valuelen},
                        flags & NGHTTP2_NV_FLAG_NO_INDEX, token);
     return 0;
   }
@@ -778,7 +778,8 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
     }
 
     auto token = http2::lookup_token(name, namelen);
-    promised_req.fs.add_header(name, namelen, value, valuelen,
+    promised_req.fs.add_header(StringRef{name, namelen},
+                               StringRef{value, valuelen},
                                flags & NGHTTP2_NV_FLAG_NO_INDEX, token);
     return 0;
   }

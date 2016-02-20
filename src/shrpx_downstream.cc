@@ -338,14 +338,10 @@ void add_header(bool &key_prev, size_t &sum, Headers &headers, std::string name,
 } // namespace
 
 namespace {
-void add_header(size_t &sum, Headers &headers, const uint8_t *name,
-                size_t namelen, const uint8_t *value, size_t valuelen,
-                bool no_index, int16_t token) {
-  sum += namelen + valuelen;
-  headers.emplace_back(
-      std::string(reinterpret_cast<const char *>(name), namelen),
-      std::string(reinterpret_cast<const char *>(value), valuelen), no_index,
-      token);
+void add_header(size_t &sum, Headers &headers, const StringRef &name,
+                const StringRef &value, bool no_index, int16_t token) {
+  sum += name.size() + value.size();
+  headers.emplace_back(name.str(), value.str(), no_index, token);
 }
 } // namespace
 
@@ -430,11 +426,9 @@ void FieldStore::add_header(std::string name, std::string value,
   headers_.emplace_back(std::move(name), std::move(value), false, token);
 }
 
-void FieldStore::add_header(const uint8_t *name, size_t namelen,
-                            const uint8_t *value, size_t valuelen,
+void FieldStore::add_header(const StringRef &name, const StringRef &value,
                             bool no_index, int16_t token) {
-  shrpx::add_header(buffer_size_, headers_, name, namelen, value, valuelen,
-                    no_index, token);
+  shrpx::add_header(buffer_size_, headers_, name, value, no_index, token);
 }
 
 void FieldStore::append_last_header_key(const char *data, size_t len) {
@@ -449,13 +443,11 @@ void FieldStore::append_last_header_value(const char *data, size_t len) {
 
 void FieldStore::clear_headers() { headers_.clear(); }
 
-void FieldStore::add_trailer(const uint8_t *name, size_t namelen,
-                             const uint8_t *value, size_t valuelen,
+void FieldStore::add_trailer(const StringRef &name, const StringRef &value,
                              bool no_index, int16_t token) {
   // Header size limit should be applied to all header and trailer
   // fields combined.
-  shrpx::add_header(buffer_size_, trailers_, name, namelen, value, valuelen,
-                    no_index, token);
+  shrpx::add_header(buffer_size_, trailers_, name, value, no_index, token);
 }
 
 void FieldStore::add_trailer_lower(const StringRef &name,
