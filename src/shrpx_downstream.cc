@@ -237,15 +237,15 @@ void Downstream::force_resume_read() {
 }
 
 namespace {
-const Headers::value_type *search_header_linear(const Headers &headers,
-                                                const StringRef &name) {
-  const Headers::value_type *res = nullptr;
-  for (auto &kv : headers) {
+const Headers::value_type *
+search_header_linear_backwards(const Headers &headers, const StringRef &name) {
+  for (auto it = headers.rbegin(); it != headers.rend(); ++it) {
+    auto &kv = *it;
     if (kv.name == name) {
-      res = &kv;
+      return &kv;
     }
   }
-  return res;
+  return nullptr;
 }
 } // namespace
 
@@ -330,10 +330,10 @@ void Downstream::crumble_request_cookie(std::vector<nghttp2_nv> &nva) {
 
 namespace {
 void add_header(bool &key_prev, size_t &sum, Headers &headers, std::string name,
-                std::string value) {
+                std::string value, int16_t token = -1) {
   key_prev = true;
   sum += name.size() + value.size();
-  headers.emplace_back(std::move(name), std::move(value));
+  headers.emplace_back(std::move(name), std::move(value), false, token);
 }
 } // namespace
 
@@ -356,6 +356,8 @@ void append_last_header_key(bool &key_prev, size_t &sum, Headers &headers,
   sum += len;
   auto &item = headers.back();
   item.name.append(data, len);
+  util::inp_strlower(item.name);
+  item.token = http2::lookup_token(item.name);
 }
 } // namespace
 
@@ -370,56 +372,58 @@ void append_last_header_value(bool &key_prev, size_t &sum, Headers &headers,
 } // namespace
 
 int FieldStore::index_headers() {
-  http2::init_hdidx(hdidx_);
   content_length = -1;
 
-  for (size_t i = 0; i < headers_.size(); ++i) {
-    auto &kv = headers_[i];
-    util::inp_strlower(kv.name);
-
-    auto token = http2::lookup_token(
-        reinterpret_cast<const uint8_t *>(kv.name.c_str()), kv.name.size());
-    if (token < 0) {
+  for (auto &kv : headers_) {
+    if (kv.token != http2::HD_CONTENT_LENGTH) {
       continue;
     }
 
-    kv.token = token;
-    http2::index_header(hdidx_, token, i);
-
-    if (token == http2::HD_CONTENT_LENGTH) {
-      auto len = util::parse_uint(kv.value);
-      if (len == -1) {
-        return -1;
-      }
-      if (content_length != -1) {
-        return -1;
-      }
-      content_length = len;
+    auto len = util::parse_uint(kv.value);
+    if (len == -1) {
+      return -1;
     }
+    if (content_length != -1) {
+      return -1;
+    }
+    content_length = len;
   }
   return 0;
 }
 
 const Headers::value_type *FieldStore::header(int16_t token) const {
-  return http2::get_header(hdidx_, token, headers_);
+  for (auto it = headers_.rbegin(); it != headers_.rend(); ++it) {
+    auto &kv = *it;
+    if (kv.token == token) {
+      return &kv;
+    }
+  }
+  return nullptr;
 }
 
 Headers::value_type *FieldStore::header(int16_t token) {
-  return http2::get_header(hdidx_, token, headers_);
+  for (auto it = headers_.rbegin(); it != headers_.rend(); ++it) {
+    auto &kv = *it;
+    if (kv.token == token) {
+      return &kv;
+    }
+  }
+  return nullptr;
 }
 
 const Headers::value_type *FieldStore::header(const StringRef &name) const {
-  return search_header_linear(headers_, name);
+  return search_header_linear_backwards(headers_, name);
 }
 
-void FieldStore::add_header(std::string name, std::string value) {
+void FieldStore::add_header_lower(std::string name, std::string value) {
+  util::inp_strlower(name);
+  auto token = http2::lookup_token(name);
   shrpx::add_header(header_key_prev_, buffer_size_, headers_, std::move(name),
-                    std::move(value));
+                    std::move(value), token);
 }
 
 void FieldStore::add_header(std::string name, std::string value,
                             int16_t token) {
-  http2::index_header(hdidx_, token, headers_.size());
   buffer_size_ += name.size() + value.size();
   headers_.emplace_back(std::move(name), std::move(value), false, token);
 }
@@ -427,7 +431,6 @@ void FieldStore::add_header(std::string name, std::string value,
 void FieldStore::add_header(const uint8_t *name, size_t namelen,
                             const uint8_t *value, size_t valuelen,
                             bool no_index, int16_t token) {
-  http2::index_header(hdidx_, token, headers_.size());
   shrpx::add_header(buffer_size_, headers_, name, namelen, value, valuelen,
                     no_index, token);
 }
@@ -442,10 +445,7 @@ void FieldStore::append_last_header_value(const char *data, size_t len) {
                                   data, len);
 }
 
-void FieldStore::clear_headers() {
-  headers_.clear();
-  http2::init_hdidx(hdidx_);
-}
+void FieldStore::clear_headers() { headers_.clear(); }
 
 void FieldStore::add_trailer(const uint8_t *name, size_t namelen,
                              const uint8_t *value, size_t valuelen,
@@ -456,7 +456,8 @@ void FieldStore::add_trailer(const uint8_t *name, size_t namelen,
                     no_index, -1);
 }
 
-void FieldStore::add_trailer(std::string name, std::string value) {
+void FieldStore::add_trailer_lower(std::string name, std::string value) {
+  util::inp_strlower(name);
   shrpx::add_header(trailer_key_prev_, buffer_size_, trailers_, std::move(name),
                     std::move(value));
 }

@@ -142,7 +142,7 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
             Downstream::HTTP1_REQUEST_HEADER_TOO_LARGE);
         return -1;
       }
-      req.fs.add_header(std::string(data, len), "");
+      req.fs.add_header_lower(std::string(data, len), "");
     }
   } else {
     // trailer part
@@ -156,7 +156,7 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
         }
         return -1;
       }
-      req.fs.add_trailer(std::string(data, len), "");
+      req.fs.add_trailer_lower(std::string(data, len), "");
     }
   }
   return 0;

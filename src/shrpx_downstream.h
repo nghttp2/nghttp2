@@ -56,7 +56,6 @@ public:
         buffer_size_(0),
         header_key_prev_(false),
         trailer_key_prev_(false) {
-    http2::init_hdidx(hdidx_);
     headers_.reserve(headers_initial_capacity);
   }
 
@@ -80,7 +79,7 @@ public:
   // such header is found, returns nullptr.
   const Headers::value_type *header(const StringRef &name) const;
 
-  void add_header(std::string name, std::string value);
+  void add_header_lower(std::string name, std::string value);
   void add_header(std::string name, std::string value, int16_t token);
   void add_header(const uint8_t *name, size_t namelen, const uint8_t *value,
                   size_t valuelen, bool no_index, int16_t token);
@@ -100,7 +99,7 @@ public:
 
   void add_trailer(const uint8_t *name, size_t namelen, const uint8_t *value,
                    size_t valuelen, bool no_index, int16_t token);
-  void add_trailer(std::string name, std::string value);
+  void add_trailer_lower(std::string name, std::string value);
 
   void append_last_trailer_key(const char *data, size_t len);
   void append_last_trailer_value(const char *data, size_t len);
@@ -115,7 +114,6 @@ private:
   // trailer fields.  For HTTP/1.1, trailer fields are only included
   // with chunked encoding.  For HTTP/2, there is no such limit.
   Headers trailers_;
-  http2::HeaderIndex hdidx_;
   // Sum of the length of name and value in headers_ and trailers_.
   // This could also be increased by add_extra_buffer_size() to take
   // into account for request URI in case of HTTP/1.x request.
