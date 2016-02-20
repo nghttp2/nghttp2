@@ -329,11 +329,12 @@ void Downstream::crumble_request_cookie(std::vector<nghttp2_nv> &nva) {
 }
 
 namespace {
-void add_header(bool &key_prev, size_t &sum, Headers &headers, std::string name,
-                std::string value, bool no_index, int16_t token) {
+void add_header(bool &key_prev, size_t &sum, Headers &headers,
+                const StringRef &name, const StringRef &value, bool no_index,
+                int16_t token) {
   key_prev = true;
   sum += name.size() + value.size();
-  headers.emplace_back(std::move(name), std::move(value), no_index, token);
+  headers.emplace_back(name.str(), value.str(), no_index, token);
 }
 } // namespace
 
@@ -417,7 +418,7 @@ void FieldStore::add_header_lower(const StringRef &name, const StringRef &value,
   util::inp_strlower(low_name);
   auto token = http2::lookup_token(low_name);
   shrpx::add_header(header_key_prev_, buffer_size_, headers_,
-                    std::move(low_name), value.str(), no_index, token);
+                    StringRef{low_name}, value, no_index, token);
 }
 
 void FieldStore::add_header_token(const StringRef &name, const StringRef &value,
@@ -443,7 +444,7 @@ void FieldStore::add_trailer_lower(const StringRef &name,
   util::inp_strlower(low_name);
   auto token = http2::lookup_token(low_name);
   shrpx::add_header(trailer_key_prev_, buffer_size_, trailers_,
-                    std::move(low_name), value.str(), no_index, token);
+                    StringRef{low_name}, value, no_index, token);
 }
 
 void FieldStore::add_trailer_token(const StringRef &name,
