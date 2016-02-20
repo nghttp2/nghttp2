@@ -67,8 +67,6 @@ enum {
 struct MRubyAssocData {
   Downstream *downstream;
   int phase;
-  bool request_headers_dirty;
-  bool response_headers_dirty;
 };
 
 RProc *compile(mrb_state *mrb, const StringRef &filename);

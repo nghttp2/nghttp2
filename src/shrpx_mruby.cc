@@ -94,14 +94,6 @@ int MRubyContext::run_app(Downstream *downstream, int phase) {
 
   mrb_->ud = nullptr;
 
-  if (data.request_headers_dirty) {
-    downstream->request().fs.index_headers();
-  }
-
-  if (data.response_headers_dirty) {
-    downstream->response().fs.index_headers();
-  }
-
   return rv;
 }
 

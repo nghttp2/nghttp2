@@ -188,10 +188,10 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
     }
 
     for (size_t i = 0; nv[i]; i += 2) {
-      auto name = std::string(nv[i]);
-      auto value = std::string(nv[i + 1]);
-      auto token = http2::lookup_token(name);
-      req.fs.add_header(std::move(name), std::move(value), token);
+      auto name = StringRef{nv[i]};
+      auto value = StringRef{nv[i + 1]};
+      auto token = http2::lookup_token(name.byte(), name.size());
+      req.fs.add_header_token(name, value, false, token);
     }
 
     if (req.fs.index_headers() != 0) {

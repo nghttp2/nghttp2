@@ -216,17 +216,20 @@ mrb_value request_mod_header(mrb_state *mrb, mrb_value self, bool repl) {
 
   key = mrb_funcall(mrb, key, "downcase", 0);
 
+  auto keyref =
+      StringRef{RSTRING_PTR(key), static_cast<size_t>(RSTRING_LEN(key))};
+  auto token = http2::lookup_token(keyref.byte(), keyref.size());
+
   if (repl) {
     size_t p = 0;
     auto &headers = req.fs.headers();
     for (size_t i = 0; i < headers.size(); ++i) {
-      auto &hd = headers[i];
-      if (util::streq(std::begin(hd.name), hd.name.size(), RSTRING_PTR(key),
-                      RSTRING_LEN(key))) {
+      auto &kv = headers[i];
+      if (kv.name == keyref) {
         continue;
       }
       if (i != p) {
-        headers[p++] = std::move(hd);
+        headers[p++] = std::move(kv);
       }
     }
     headers.resize(p);
@@ -236,15 +239,17 @@ mrb_value request_mod_header(mrb_state *mrb, mrb_value self, bool repl) {
     auto n = mrb_ary_len(mrb, values);
     for (int i = 0; i < n; ++i) {
       auto value = mrb_ary_entry(values, i);
-      req.fs.add_header(std::string(RSTRING_PTR(key), RSTRING_LEN(key)),
-                        std::string(RSTRING_PTR(value), RSTRING_LEN(value)));
+      req.fs.add_header_token(
+          keyref, StringRef{RSTRING_PTR(value),
+                            static_cast<size_t>(RSTRING_LEN(value))},
+          false, token);
     }
   } else if (!mrb_nil_p(values)) {
-    req.fs.add_header(std::string(RSTRING_PTR(key), RSTRING_LEN(key)),
-                      std::string(RSTRING_PTR(values), RSTRING_LEN(values)));
+    req.fs.add_header_token(keyref,
+                            StringRef{RSTRING_PTR(values),
+                                      static_cast<size_t>(RSTRING_LEN(values))},
+                            false, token);
   }
-
-  data->request_headers_dirty = true;
 
   return mrb_nil_value();
 }

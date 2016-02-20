@@ -736,16 +736,17 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
     }
 
     auto token = http2::lookup_token(name, namelen);
+    auto no_index = flags & NGHTTP2_NV_FLAG_NO_INDEX;
 
     if (trailer) {
       // just store header fields for trailer part
-      resp.fs.add_trailer(StringRef{name, namelen}, StringRef{value, valuelen},
-                          flags & NGHTTP2_NV_FLAG_NO_INDEX, token);
+      resp.fs.add_trailer_token(StringRef{name, namelen},
+                                StringRef{value, valuelen}, no_index, token);
       return 0;
     }
 
-    resp.fs.add_header(StringRef{name, namelen}, StringRef{value, valuelen},
-                       flags & NGHTTP2_NV_FLAG_NO_INDEX, token);
+    resp.fs.add_header_token(StringRef{name, namelen},
+                             StringRef{value, valuelen}, no_index, token);
     return 0;
   }
   case NGHTTP2_PUSH_PROMISE: {
@@ -778,9 +779,9 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
     }
 
     auto token = http2::lookup_token(name, namelen);
-    promised_req.fs.add_header(StringRef{name, namelen},
-                               StringRef{value, valuelen},
-                               flags & NGHTTP2_NV_FLAG_NO_INDEX, token);
+    promised_req.fs.add_header_token(StringRef{name, namelen},
+                                     StringRef{value, valuelen},
+                                     flags & NGHTTP2_NV_FLAG_NO_INDEX, token);
     return 0;
   }
   }
@@ -927,8 +928,9 @@ int on_response_headers(Http2Session *http2session, Downstream *downstream,
         // Otherwise, use chunked encoding to keep upstream connection
         // open.  In HTTP2, we are supporsed not to receive
         // transfer-encoding.
-        resp.fs.add_header("transfer-encoding", "chunked",
-                           http2::HD_TRANSFER_ENCODING);
+        resp.fs.add_header_token(StringRef::from_lit("transfer-encoding"),
+                                 StringRef::from_lit("chunked"), false,
+                                 http2::HD_TRANSFER_ENCODING);
         downstream->set_chunked_response(true);
       }
     }
