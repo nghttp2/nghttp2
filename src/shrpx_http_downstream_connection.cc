@@ -691,7 +691,7 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
       if (ensure_max_header_fields(downstream, httpconf) != 0) {
         return -1;
       }
-      resp.fs.add_header_lower(std::string(data, len), "");
+      resp.fs.add_header_lower(StringRef{data, len}, StringRef{});
     }
   } else {
     // trailer part
@@ -704,7 +704,7 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
         // wrong place or crash if trailer fields are currently empty.
         return -1;
       }
-      resp.fs.add_trailer_lower(std::string(data, len), "");
+      resp.fs.add_trailer_lower(StringRef(data, len), StringRef{});
     }
   }
   return 0;

@@ -330,7 +330,7 @@ void Downstream::crumble_request_cookie(std::vector<nghttp2_nv> &nva) {
 
 namespace {
 void add_header(bool &key_prev, size_t &sum, Headers &headers, std::string name,
-                std::string value, int16_t token = -1) {
+                std::string value, int16_t token) {
   key_prev = true;
   sum += name.size() + value.size();
   headers.emplace_back(std::move(name), std::move(value), false, token);
@@ -415,11 +415,13 @@ const Headers::value_type *FieldStore::header(const StringRef &name) const {
   return search_header_linear_backwards(headers_, name);
 }
 
-void FieldStore::add_header_lower(std::string name, std::string value) {
-  util::inp_strlower(name);
-  auto token = http2::lookup_token(name);
-  shrpx::add_header(header_key_prev_, buffer_size_, headers_, std::move(name),
-                    std::move(value), token);
+void FieldStore::add_header_lower(const StringRef &name,
+                                  const StringRef &value) {
+  auto low_name = name.str();
+  util::inp_strlower(low_name);
+  auto token = http2::lookup_token(low_name);
+  shrpx::add_header(header_key_prev_, buffer_size_, headers_,
+                    std::move(low_name), value.str(), token);
 }
 
 void FieldStore::add_header(std::string name, std::string value,
@@ -450,16 +452,19 @@ void FieldStore::clear_headers() { headers_.clear(); }
 void FieldStore::add_trailer(const uint8_t *name, size_t namelen,
                              const uint8_t *value, size_t valuelen,
                              bool no_index, int16_t token) {
-  // we never index trailer fields.  Header size limit should be
-  // applied to all header and trailer fields combined.
+  // Header size limit should be applied to all header and trailer
+  // fields combined.
   shrpx::add_header(buffer_size_, trailers_, name, namelen, value, valuelen,
-                    no_index, -1);
+                    no_index, token);
 }
 
-void FieldStore::add_trailer_lower(std::string name, std::string value) {
-  util::inp_strlower(name);
-  shrpx::add_header(trailer_key_prev_, buffer_size_, trailers_, std::move(name),
-                    std::move(value));
+void FieldStore::add_trailer_lower(const StringRef &name,
+                                   const StringRef &value) {
+  auto low_name = name.str();
+  util::inp_strlower(low_name);
+  auto token = http2::lookup_token(low_name);
+  shrpx::add_header(trailer_key_prev_, buffer_size_, trailers_,
+                    std::move(low_name), value.str(), token);
 }
 
 void FieldStore::append_last_trailer_key(const char *data, size_t len) {

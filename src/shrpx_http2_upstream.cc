@@ -201,14 +201,14 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
     return 0;
   }
 
+  auto token = http2::lookup_token(name, namelen);
+
   if (frame->headers.cat == NGHTTP2_HCAT_HEADERS) {
     // just store header fields for trailer part
     req.fs.add_trailer(name, namelen, value, valuelen,
-                       flags & NGHTTP2_NV_FLAG_NO_INDEX, -1);
+                       flags & NGHTTP2_NV_FLAG_NO_INDEX, token);
     return 0;
   }
-
-  auto token = http2::lookup_token(name, namelen);
 
   req.fs.add_header(name, namelen, value, valuelen,
                     flags & NGHTTP2_NV_FLAG_NO_INDEX, token);

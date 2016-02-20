@@ -735,14 +735,14 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
       return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
     }
 
+    auto token = http2::lookup_token(name, namelen);
+
     if (trailer) {
       // just store header fields for trailer part
       resp.fs.add_trailer(name, namelen, value, valuelen,
-                          flags & NGHTTP2_NV_FLAG_NO_INDEX, -1);
+                          flags & NGHTTP2_NV_FLAG_NO_INDEX, token);
       return 0;
     }
-
-    auto token = http2::lookup_token(name, namelen);
 
     resp.fs.add_header(name, namelen, value, valuelen,
                        flags & NGHTTP2_NV_FLAG_NO_INDEX, token);

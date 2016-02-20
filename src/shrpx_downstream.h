@@ -79,7 +79,7 @@ public:
   // such header is found, returns nullptr.
   const Headers::value_type *header(const StringRef &name) const;
 
-  void add_header_lower(std::string name, std::string value);
+  void add_header_lower(const StringRef &name, const StringRef &value);
   void add_header(std::string name, std::string value, int16_t token);
   void add_header(const uint8_t *name, size_t namelen, const uint8_t *value,
                   size_t valuelen, bool no_index, int16_t token);
@@ -99,7 +99,7 @@ public:
 
   void add_trailer(const uint8_t *name, size_t namelen, const uint8_t *value,
                    size_t valuelen, bool no_index, int16_t token);
-  void add_trailer_lower(std::string name, std::string value);
+  void add_trailer_lower(const StringRef &name, const StringRef &value);
 
   void append_last_trailer_key(const char *data, size_t len);
   void append_last_trailer_value(const char *data, size_t len);
