@@ -89,10 +89,9 @@ public:
 
   bool header_key_prev() const { return header_key_prev_; }
 
-  // Lower the header field names and indexes header fields.  If there
-  // is any invalid headers (e.g., multiple Content-Length having
-  // different values), returns -1.
-  int index_headers();
+  // Parses content-length, and records it in the field.  If there are
+  // multiple Content-Length, returns -1.
+  int parse_content_length();
 
   // Empties headers.
   void clear_headers();

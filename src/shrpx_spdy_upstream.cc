@@ -194,7 +194,7 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
       req.fs.add_header_token(name, value, false, token);
     }
 
-    if (req.fs.index_headers() != 0) {
+    if (req.fs.parse_content_length() != 0) {
       if (upstream->error_reply(downstream, 400) != 0) {
         ULOG(FATAL, upstream) << "error_reply failed";
       }

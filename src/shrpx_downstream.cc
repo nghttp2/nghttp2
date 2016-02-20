@@ -367,7 +367,7 @@ void append_last_header_value(bool &key_prev, size_t &sum, Headers &headers,
 }
 } // namespace
 
-int FieldStore::index_headers() {
+int FieldStore::parse_content_length() {
   content_length = -1;
 
   for (auto &kv : headers_) {

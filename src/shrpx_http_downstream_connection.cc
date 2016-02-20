@@ -572,7 +572,7 @@ int htp_hdrs_completecb(http_parser *htp) {
   resp.http_major = htp->http_major;
   resp.http_minor = htp->http_minor;
 
-  if (resp.fs.index_headers() != 0) {
+  if (resp.fs.parse_content_length() != 0) {
     downstream->set_response_state(Downstream::MSG_BAD_HEADER);
     return -1;
   }

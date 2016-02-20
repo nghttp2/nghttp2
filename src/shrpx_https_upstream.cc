@@ -270,7 +270,7 @@ int htp_hdrs_completecb(http_parser *htp) {
     ULOG(INFO, upstream) << "HTTP request headers\n" << ss.str();
   }
 
-  if (req.fs.index_headers() != 0) {
+  if (req.fs.parse_content_length() != 0) {
     return -1;
   }
 
