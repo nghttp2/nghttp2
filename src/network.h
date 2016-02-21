@@ -1,7 +1,7 @@
 /*
  * nghttp2 - HTTP/2 C Library
  *
- * Copyright (c) 2015 Tatsuhiro Tsujikawa
+ * Copyright (c) 2016 Tatsuhiro Tsujikawa
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -22,39 +22,40 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef SHRPX_MEMCACHED_DISPATCHER_H
-#define SHRPX_MEMCACHED_DISPATCHER_H
+#ifndef NETWORK_H
+#define NETWORK_H
 
-#include "shrpx.h"
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif // HAVE_CONFIG_H
 
-#include <memory>
+#include <sys/types.h>
+#ifdef HAVE_SYS_SOCKET_H
+#include <sys/socket.h>
+#endif // HAVE_SYS_SOCKET_H
+#include <sys/un.h>
+#ifdef HAVE_NETINET_IN_H
+#include <netinet/in.h>
+#endif // HAVE_NETINET_IN_H
+#ifdef HAVE_ARPA_INET_H
+#include <arpa/inet.h>
+#endif // HAVE_ARPA_INET_H
 
-#include <ev.h>
+namespace nghttp2 {
 
-#include <openssl/ssl.h>
-
-#include "memchunk.h"
-#include "network.h"
-
-namespace shrpx {
-
-struct MemcachedRequest;
-class MemcachedConnection;
-
-class MemcachedDispatcher {
-public:
-  MemcachedDispatcher(const Address *addr, struct ev_loop *loop,
-                      SSL_CTX *ssl_ctx, const StringRef &sni_name,
-                      MemchunkPool *mcpool);
-  ~MemcachedDispatcher();
-
-  int add_request(std::unique_ptr<MemcachedRequest> req);
-
-private:
-  struct ev_loop *loop_;
-  std::unique_ptr<MemcachedConnection> mconn_;
+union sockaddr_union {
+  sockaddr_storage storage;
+  sockaddr sa;
+  sockaddr_in6 in6;
+  sockaddr_in in;
+  sockaddr_un un;
 };
 
-} // namespace shrpx
+struct Address {
+  size_t len;
+  union sockaddr_union su;
+};
 
-#endif // SHRPX_MEMCACHED_DISPATCHER_H
+} // namespace nghttp2
+
+#endif // NETWORK_H

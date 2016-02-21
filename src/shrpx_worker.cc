@@ -329,9 +329,8 @@ void Worker::cache_client_tls_session(const Address *addr, SSL_SESSION *session,
   if (it == std::end(client_tls_session_cache_)) {
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "Create cache entry for SSL_SESSION=" << session
-                << ", addr=" << util::numeric_hostport(&addr->su.sa, addr->len)
-                << "(" << addr << "), timestamp=" << std::fixed
-                << std::setprecision(6) << t;
+                << ", addr=" << util::to_numeric_addr(addr) << "(" << addr
+                << "), timestamp=" << std::fixed << std::setprecision(6) << t;
     }
     client_tls_session_cache_.emplace(
         addr, SessionCacheEntry{serialize_ssl_session(session), t});
@@ -341,8 +340,7 @@ void Worker::cache_client_tls_session(const Address *addr, SSL_SESSION *session,
   auto &ent = (*it).second;
   if (ent.last_updated + 1_min > t) {
     if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Cache for addr="
-                << util::numeric_hostport(&addr->su.sa, addr->len) << "("
+      LOG(INFO) << "Cache for addr=" << util::to_numeric_addr(addr) << "("
                 << addr << ") is still host.  Not updating.";
     }
     return;
@@ -350,9 +348,8 @@ void Worker::cache_client_tls_session(const Address *addr, SSL_SESSION *session,
 
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "Update cache entry for SSL_SESSION=" << session
-              << ", addr=" << util::numeric_hostport(&addr->su.sa, addr->len)
-              << "(" << addr << "), timestamp=" << std::fixed
-              << std::setprecision(6) << t;
+              << ", addr=" << util::to_numeric_addr(addr) << "(" << addr
+              << "), timestamp=" << std::fixed << std::setprecision(6) << t;
   }
 
   ent.session_data = serialize_ssl_session(session);

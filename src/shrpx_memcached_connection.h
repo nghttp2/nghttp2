@@ -35,12 +35,13 @@
 #include "shrpx_connection.h"
 #include "buffer.h"
 
+#include "network.h"
+
 using namespace nghttp2;
 
 namespace shrpx {
 
 struct MemcachedRequest;
-struct Address;
 
 enum {
   MEMCACHED_PARSE_HEADER24,

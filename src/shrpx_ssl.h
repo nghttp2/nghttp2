@@ -39,6 +39,8 @@
 #include <neverbleed.h>
 #endif // HAVE_NEVERBLEED
 
+#include "network.h"
+
 namespace shrpx {
 
 class ClientHandler;
@@ -46,7 +48,6 @@ class Worker;
 class DownstreamConnectionPool;
 struct DownstreamAddr;
 struct UpstreamAddr;
-struct Address;
 
 namespace ssl {
 

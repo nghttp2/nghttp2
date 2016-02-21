@@ -50,6 +50,7 @@
 #include "http-parser/http_parser.h"
 
 #include "template.h"
+#include "network.h"
 
 namespace nghttp2 {
 
@@ -461,10 +462,11 @@ bool numeric_host(const char *hostname, int family);
 // failed, "unknown" is returned.
 std::string numeric_name(const struct sockaddr *sa, socklen_t salen);
 
-// Returns string representation of numeric address and port of |addr|
-// of length |salen|.  The format is like <HOST>:<PORT>.  For IPv6
-// address, address is enclosed by square brackets ([]).
-std::string numeric_hostport(const struct sockaddr *sa, socklen_t salen);
+// Returns string representation of numeric address and port of
+// |addr|.  If address family is AF_UNIX, this return path to UNIX
+// domain socket.  Otherwise, the format is like <HOST>:<PORT>.  For
+// IPv6 address, address is enclosed by square brackets ([]).
+std::string to_numeric_addr(const Address *addr);
 
 // Makes internal copy of stderr (and possibly stdout in the future),
 // which is then used as pointer to /dev/stderr or /proc/self/fd/2

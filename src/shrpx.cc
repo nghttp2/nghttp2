@@ -2201,7 +2201,7 @@ void process_options(
         exit(EXIT_FAILURE);
       }
       LOG(NOTICE) << "Resolved backend address: " << hostport << " -> "
-                  << util::numeric_hostport(&addr.addr.su.sa, addr.addr.len);
+                  << util::to_numeric_addr(&addr.addr);
     }
   }
 
@@ -2214,7 +2214,7 @@ void process_options(
       exit(EXIT_FAILURE);
     }
     LOG(NOTICE) << "Backend HTTP proxy address: " << hostport << " -> "
-                << util::numeric_hostport(&proxy.addr.su.sa, proxy.addr.len);
+                << util::to_numeric_addr(&proxy.addr);
   }
 
   {
@@ -2230,8 +2230,7 @@ void process_options(
         exit(EXIT_FAILURE);
       }
       LOG(NOTICE) << "Memcached address for TLS session cache: " << hostport
-                  << " -> " << util::numeric_hostport(&memcachedconf.addr.su.sa,
-                                                      memcachedconf.addr.len);
+                  << " -> " << util::to_numeric_addr(&memcachedconf.addr);
     }
   }
 
@@ -2247,8 +2246,7 @@ void process_options(
         exit(EXIT_FAILURE);
       }
       LOG(NOTICE) << "Memcached address for TLS ticket key: " << hostport
-                  << " -> " << util::numeric_hostport(&memcachedconf.addr.su.sa,
-                                                      memcachedconf.addr.len);
+                  << " -> " << util::to_numeric_addr(&memcachedconf.addr);
     }
   }
 

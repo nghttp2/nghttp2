@@ -53,6 +53,7 @@
 #include "shrpx_router.h"
 #include "template.h"
 #include "http2.h"
+#include "network.h"
 
 using namespace nghttp2;
 
@@ -230,19 +231,6 @@ constexpr char SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_ADDRESS_FAMILY[] =
 constexpr char SHRPX_OPT_BACKEND_ADDRESS_FAMILY[] = "backend-address-family";
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
-
-union sockaddr_union {
-  sockaddr_storage storage;
-  sockaddr sa;
-  sockaddr_in6 in6;
-  sockaddr_in in;
-  sockaddr_un un;
-};
-
-struct Address {
-  size_t len;
-  union sockaddr_union su;
-};
 
 enum shrpx_proto { PROTO_HTTP2, PROTO_HTTP };
 

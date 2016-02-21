@@ -650,15 +650,17 @@ std::string numeric_name(const struct sockaddr *sa, socklen_t salen) {
   return host.data();
 }
 
-std::string numeric_hostport(const struct sockaddr *sa, socklen_t salen) {
-  if (sa->sa_family == AF_UNIX) {
-    return "localhost";
+std::string to_numeric_addr(const Address *addr) {
+  auto family = addr->su.storage.ss_family;
+  if (family == AF_UNIX) {
+    return addr->su.un.sun_path;
   }
 
   std::array<char, NI_MAXHOST> host;
   std::array<char, NI_MAXSERV> serv;
-  auto rv = getnameinfo(sa, salen, host.data(), host.size(), serv.data(),
-                        serv.size(), NI_NUMERICHOST | NI_NUMERICSERV);
+  auto rv =
+      getnameinfo(&addr->su.sa, addr->len, host.data(), host.size(),
+                  serv.data(), serv.size(), NI_NUMERICHOST | NI_NUMERICSERV);
   if (rv != 0) {
     return "unknown";
   }
@@ -668,7 +670,7 @@ std::string numeric_hostport(const struct sockaddr *sa, socklen_t salen) {
 
   std::string s;
   char *p;
-  if (sa->sa_family == AF_INET6) {
+  if (family == AF_INET6) {
     s.resize(hostlen + servlen + 2 + 1);
     p = &s[0];
     *p++ = '[';
