@@ -1474,6 +1474,12 @@ addresses:
 
     App.new
 
+NOTES
+-----
+
+1. nghttpx - HTTP/2 proxy - HOW-TO
+   https://nghttp2.org/documentation/nghttpx-howto.html
+
 SEE ALSO
 --------
 
