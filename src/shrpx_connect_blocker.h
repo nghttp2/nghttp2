@@ -27,13 +27,15 @@
 
 #include "shrpx.h"
 
+#include <random>
+
 #include <ev.h>
 
 namespace shrpx {
 
 class ConnectBlocker {
 public:
-  ConnectBlocker(struct ev_loop *loop);
+  ConnectBlocker(std::mt19937 &gen, struct ev_loop *loop);
   ~ConnectBlocker();
 
   // Returns true if making connection is not allowed.
@@ -41,14 +43,18 @@ public:
   // Call this function if connect operation succeeded.  This will
   // reset sleep_ to minimum value.
   void on_success();
-  // Call this function if connect operation failed.  This will start
-  // timer and blocks connection establishment for sleep_ seconds.
+  // Call this function if connect operations failed.  This will start
+  // timer and blocks connection establishment with exponential
+  // backoff.
   void on_failure();
 
 private:
+  std::mt19937 gen_;
   ev_timer timer_;
   struct ev_loop *loop_;
-  ev_tstamp sleep_;
+  // The number of consecutive connection failure.  Reset to 0 on
+  // success.
+  size_t fail_count_;
 };
 
 } // namespace

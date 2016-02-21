@@ -131,7 +131,6 @@ public:
   WorkerStat *get_worker_stat();
   DownstreamConnectionPool *get_dconn_pool();
   Http2Session *next_http2_session(size_t group);
-  ConnectBlocker *get_connect_blocker() const;
   struct ev_loop *get_loop() const;
   SSL_CTX *get_sv_ssl_ctx() const;
   SSL_CTX *get_cl_ssl_ctx() const;
@@ -163,6 +162,8 @@ public:
   // Returns cached session associated |addr|.  If no cache entry is
   // found associated to |addr|, nullptr will be returned.
   SSL_SESSION *reuse_client_tls_session(const Address *addr);
+
+  std::vector<DownstreamAddrGroup> &get_downstream_addr_groups();
 
 private:
 #ifndef NOTHREADS
@@ -196,7 +197,7 @@ private:
   ssl::CertLookupTree *cert_tree_;
 
   std::shared_ptr<TicketKeys> ticket_keys_;
-  std::unique_ptr<ConnectBlocker> connect_blocker_;
+  std::vector<DownstreamAddrGroup> downstream_addr_groups_;
 
   bool graceful_shutdown_;
 };

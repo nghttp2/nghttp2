@@ -59,6 +59,7 @@ using namespace nghttp2;
 namespace shrpx {
 
 struct LogFragment;
+class ConnectBlocker;
 
 namespace ssl {
 
@@ -294,6 +295,7 @@ struct DownstreamAddr {
   // socket path.
   ImmutableString host;
   ImmutableString hostport;
+  ConnectBlocker *connect_blocker;
   // backend port.  0 if |host_unix| is true.
   uint16_t port;
   // true if |host| contains UNIX domain socket path.

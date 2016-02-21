@@ -147,8 +147,7 @@ void writecb(struct ev_loop *loop, ev_io *w, int revents) {
 } // namespace
 
 Http2Session::Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx,
-                           ConnectBlocker *connect_blocker, Worker *worker,
-                           size_t group, size_t idx)
+                           Worker *worker, size_t group, size_t idx)
     : conn_(loop, -1, nullptr, worker->get_mcpool(),
             get_config()->conn.downstream.timeout.write,
             get_config()->conn.downstream.timeout.read, {}, {}, writecb, readcb,
@@ -156,7 +155,6 @@ Http2Session::Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx,
             get_config()->tls.dyn_rec.idle_timeout),
       wb_(worker->get_mcpool()),
       worker_(worker),
-      connect_blocker_(connect_blocker),
       ssl_ctx_(ssl_ctx),
       addr_(nullptr),
       session_(nullptr),
@@ -254,29 +252,48 @@ int Http2Session::disconnect(bool hard) {
 int Http2Session::initiate_connection() {
   int rv = 0;
 
-  auto &addrs = get_config()->conn.downstream.addr_groups[group_].addrs;
+  auto &groups = worker_->get_downstream_addr_groups();
+  auto &addrs = groups[group_].addrs;
 
   if (state_ == DISCONNECTED) {
-    if (connect_blocker_->blocked()) {
-      if (LOG_ENABLED(INFO)) {
-        DCLOG(INFO, this)
-            << "Downstream connection was blocked by connect_blocker";
-      }
-      return -1;
-    }
-
     auto &next_downstream = worker_->get_dgrp(group_)->next;
-    addr_ = &addrs[next_downstream];
+    auto end = next_downstream;
 
-    if (LOG_ENABLED(INFO)) {
-      SSLOG(INFO, this) << "Using downstream address idx=" << next_downstream
-                        << " out of " << addrs.size();
-    }
+    for (;;) {
+      auto &addr = addrs[next_downstream];
 
-    if (++next_downstream >= addrs.size()) {
-      next_downstream = 0;
+      if (++next_downstream >= addrs.size()) {
+        next_downstream = 0;
+      }
+
+      auto &connect_blocker = addr.connect_blocker;
+
+      if (connect_blocker->blocked()) {
+        if (LOG_ENABLED(INFO)) {
+          DCLOG(INFO, this) << "Backend server "
+                            << (addr.host_unix ? addr.host : addr.hostport)
+                            << " was not available temporarily";
+        }
+
+        if (end == next_downstream) {
+          return -1;
+        }
+
+        continue;
+      }
+
+      if (LOG_ENABLED(INFO)) {
+        SSLOG(INFO, this) << "Using downstream address idx=" << next_downstream
+                          << " out of " << addrs.size();
+      }
+
+      addr_ = &addr;
+
+      break;
     }
   }
+
+  auto &connect_blocker = addr_->connect_blocker;
 
   const auto &proxy = get_config()->downstream_http_proxy;
   if (!proxy.host.empty() && state_ == DISCONNECTED) {
@@ -288,7 +305,7 @@ int Http2Session::initiate_connection() {
     conn_.fd = util::create_nonblock_socket(proxy.addr.su.storage.ss_family);
 
     if (conn_.fd == -1) {
-      connect_blocker_->on_failure();
+      connect_blocker->on_failure();
       return -1;
     }
 
@@ -296,7 +313,7 @@ int Http2Session::initiate_connection() {
     if (rv != 0 && errno != EINPROGRESS) {
       SSLOG(ERROR, this) << "Failed to connect to the proxy " << proxy.host
                          << ":" << proxy.port;
-      connect_blocker_->on_failure();
+      connect_blocker->on_failure();
       return -1;
     }
 
@@ -356,7 +373,7 @@ int Http2Session::initiate_connection() {
         conn_.fd =
             util::create_nonblock_socket(addr_->addr.su.storage.ss_family);
         if (conn_.fd == -1) {
-          connect_blocker_->on_failure();
+          connect_blocker->on_failure();
           return -1;
         }
 
@@ -365,7 +382,7 @@ int Http2Session::initiate_connection() {
                      const_cast<sockaddr *>(&addr_->addr.su.sa),
                      addr_->addr.len);
         if (rv != 0 && errno != EINPROGRESS) {
-          connect_blocker_->on_failure();
+          connect_blocker->on_failure();
           return -1;
         }
 
@@ -383,14 +400,14 @@ int Http2Session::initiate_connection() {
             util::create_nonblock_socket(addr_->addr.su.storage.ss_family);
 
         if (conn_.fd == -1) {
-          connect_blocker_->on_failure();
+          connect_blocker->on_failure();
           return -1;
         }
 
         rv = connect(conn_.fd, const_cast<sockaddr *>(&addr_->addr.su.sa),
                      addr_->addr.len);
         if (rv != 0 && errno != EINPROGRESS) {
-          connect_blocker_->on_failure();
+          connect_blocker->on_failure();
           return -1;
         }
 
@@ -1615,11 +1632,15 @@ int Http2Session::read_noop(const uint8_t *data, size_t datalen) { return 0; }
 int Http2Session::write_noop() { return 0; }
 
 int Http2Session::connected() {
+  auto &connect_blocker = addr_->connect_blocker;
+
   if (!util::check_socket_connected(conn_.fd)) {
+    connect_blocker->on_failure();
+
     return -1;
   }
 
-  connect_blocker_->on_success();
+  connect_blocker->on_success();
 
   if (LOG_ENABLED(INFO)) {
     SSLOG(INFO, this) << "Connection established";

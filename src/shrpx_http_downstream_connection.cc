@@ -147,16 +147,6 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
   auto &downstreamconf = get_config()->conn.downstream;
 
   if (conn_.fd == -1) {
-    auto connect_blocker = client_handler_->get_connect_blocker();
-
-    if (connect_blocker->blocked()) {
-      if (LOG_ENABLED(INFO)) {
-        DCLOG(INFO, this)
-            << "Downstream connection was blocked by connect_blocker";
-      }
-      return -1;
-    }
-
     if (ssl_ctx_) {
       auto ssl = ssl::create_ssl(ssl_ctx_);
       if (!ssl) {
@@ -168,12 +158,29 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
 
     auto &next_downstream = worker_->get_dgrp(group_)->next;
     auto end = next_downstream;
-    auto &addrs = downstreamconf.addr_groups[group_].addrs;
+    auto &groups = worker_->get_downstream_addr_groups();
+    auto &addrs = groups[group_].addrs;
     for (;;) {
       auto &addr = addrs[next_downstream];
 
       if (++next_downstream >= addrs.size()) {
         next_downstream = 0;
+      }
+
+      auto &connect_blocker = addr.connect_blocker;
+
+      if (connect_blocker->blocked()) {
+        if (LOG_ENABLED(INFO)) {
+          DCLOG(INFO, this) << "Backend server "
+                            << (addr.host_unix ? addr.host : addr.hostport)
+                            << " was not available temporarily";
+        }
+
+        if (end == next_downstream) {
+          return SHRPX_ERR_NETWORK;
+        }
+
+        continue;
       }
 
       conn_.fd = util::create_nonblock_socket(addr.addr.su.storage.ss_family);
@@ -1012,7 +1019,7 @@ int HttpDownstreamConnection::process_input(const uint8_t *data,
 }
 
 int HttpDownstreamConnection::connected() {
-  auto connect_blocker = client_handler_->get_connect_blocker();
+  auto connect_blocker = addr_->connect_blocker;
 
   if (!util::check_socket_connected(conn_.fd)) {
     conn_.wlimit.stopw();
@@ -1020,6 +1027,8 @@ int HttpDownstreamConnection::connected() {
     if (LOG_ENABLED(INFO)) {
       DLOG(INFO, this) << "downstream connect failed";
     }
+
+    connect_blocker->on_failure();
 
     downstream_->set_request_state(Downstream::CONNECT_FAIL);
 

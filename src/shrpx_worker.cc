@@ -80,7 +80,7 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
       cl_ssl_ctx_(cl_ssl_ctx),
       cert_tree_(cert_tree),
       ticket_keys_(ticket_keys),
-      connect_blocker_(make_unique<ConnectBlocker>(loop_)),
+      downstream_addr_groups_(get_config()->conn.downstream.addr_groups),
       graceful_shutdown_(false) {
   ev_async_init(&w_, eventcb);
   w_.data = this;
@@ -109,10 +109,16 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
         m = downstreamconf.addr_groups[group].addrs.size();
       }
       for (size_t idx = 0; idx < m; ++idx) {
-        dgrp.http2sessions.push_back(make_unique<Http2Session>(
-            loop_, cl_ssl_ctx, connect_blocker_.get(), this, group, idx));
+        dgrp.http2sessions.push_back(
+            make_unique<Http2Session>(loop_, cl_ssl_ctx, this, group, idx));
       }
       ++group;
+    }
+  }
+
+  for (auto &group : downstream_addr_groups_) {
+    for (auto &addr : group.addrs) {
+      addr.connect_blocker = new ConnectBlocker(randgen_, loop_);
     }
   }
 }
@@ -120,6 +126,12 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
 Worker::~Worker() {
   ev_async_stop(loop_, &w_);
   ev_timer_stop(loop_, &mcpool_clear_timer_);
+
+  for (auto &group : downstream_addr_groups_) {
+    for (auto &addr : group.addrs) {
+      delete addr.connect_blocker;
+    }
+  }
 }
 
 void Worker::schedule_clear_mcpool() {
@@ -259,10 +271,6 @@ Http2Session *Worker::next_http2_session(size_t group) {
   return res;
 }
 
-ConnectBlocker *Worker::get_connect_blocker() const {
-  return connect_blocker_.get();
-}
-
 struct ev_loop *Worker::get_loop() const {
   return loop_;
 }
@@ -359,6 +367,10 @@ SSL_SESSION *Worker::reuse_client_tls_session(const Address *addr) {
   const auto &ent = (*it).second;
   auto p = ent.session_data.data();
   return d2i_SSL_SESSION(nullptr, &p, ent.session_data.size());
+}
+
+std::vector<DownstreamAddrGroup> &Worker::get_downstream_addr_groups() {
+  return downstream_addr_groups_;
 }
 
 } // namespace shrpx

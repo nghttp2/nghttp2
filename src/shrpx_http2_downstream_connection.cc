@@ -98,6 +98,9 @@ int Http2DownstreamConnection::attach_downstream(Downstream *downstream) {
   http2session_->add_downstream_connection(this);
   if (http2session_->get_state() == Http2Session::DISCONNECTED) {
     http2session_->signal_write();
+    if (http2session_->get_state() == Http2Session::DISCONNECTED) {
+      return -1;
+    }
   }
 
   downstream_ = downstream;
