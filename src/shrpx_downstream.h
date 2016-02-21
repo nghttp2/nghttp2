@@ -73,8 +73,8 @@ public:
   // multiple header have |name| as name, return last occurrence from
   // the beginning.  If no such header is found, returns nullptr.
   // This function must be called after headers are indexed
-  const Headers::value_type *header(int16_t token) const;
-  Headers::value_type *header(int16_t token);
+  const Headers::value_type *header(int32_t token) const;
+  Headers::value_type *header(int32_t token);
   // Returns pointer to the header field with the name |name|.  If no
   // such header is found, returns nullptr.
   const Headers::value_type *header(const StringRef &name) const;
@@ -82,7 +82,7 @@ public:
   void add_header_lower(const StringRef &name, const StringRef &value,
                         bool no_index);
   void add_header_token(const StringRef &name, const StringRef &value,
-                        bool no_index, int16_t token);
+                        bool no_index, int32_t token);
 
   void append_last_header_key(const char *data, size_t len);
   void append_last_header_value(const char *data, size_t len);
@@ -99,7 +99,7 @@ public:
   void add_trailer_lower(const StringRef &name, const StringRef &value,
                          bool no_index);
   void add_trailer_token(const StringRef &name, const StringRef &value,
-                         bool no_index, int16_t token);
+                         bool no_index, int32_t token);
 
   void append_last_trailer_key(const char *data, size_t len);
   void append_last_trailer_value(const char *data, size_t len);

@@ -331,7 +331,7 @@ void Downstream::crumble_request_cookie(std::vector<nghttp2_nv> &nva) {
 namespace {
 void add_header(bool &key_prev, size_t &sum, Headers &headers,
                 const StringRef &name, const StringRef &value, bool no_index,
-                int16_t token) {
+                int32_t token) {
   key_prev = true;
   sum += name.size() + value.size();
   headers.emplace_back(name.str(), value.str(), no_index, token);
@@ -340,7 +340,7 @@ void add_header(bool &key_prev, size_t &sum, Headers &headers,
 
 namespace {
 void add_header(size_t &sum, Headers &headers, const StringRef &name,
-                const StringRef &value, bool no_index, int16_t token) {
+                const StringRef &value, bool no_index, int32_t token) {
   sum += name.size() + value.size();
   headers.emplace_back(name.str(), value.str(), no_index, token);
 }
@@ -388,7 +388,7 @@ int FieldStore::parse_content_length() {
   return 0;
 }
 
-const Headers::value_type *FieldStore::header(int16_t token) const {
+const Headers::value_type *FieldStore::header(int32_t token) const {
   for (auto it = headers_.rbegin(); it != headers_.rend(); ++it) {
     auto &kv = *it;
     if (kv.token == token) {
@@ -398,7 +398,7 @@ const Headers::value_type *FieldStore::header(int16_t token) const {
   return nullptr;
 }
 
-Headers::value_type *FieldStore::header(int16_t token) {
+Headers::value_type *FieldStore::header(int32_t token) {
   for (auto it = headers_.rbegin(); it != headers_.rend(); ++it) {
     auto &kv = *it;
     if (kv.token == token) {
@@ -422,7 +422,7 @@ void FieldStore::add_header_lower(const StringRef &name, const StringRef &value,
 }
 
 void FieldStore::add_header_token(const StringRef &name, const StringRef &value,
-                                  bool no_index, int16_t token) {
+                                  bool no_index, int32_t token) {
   shrpx::add_header(buffer_size_, headers_, name, value, no_index, token);
 }
 
@@ -449,7 +449,7 @@ void FieldStore::add_trailer_lower(const StringRef &name,
 
 void FieldStore::add_trailer_token(const StringRef &name,
                                    const StringRef &value, bool no_index,
-                                   int16_t token) {
+                                   int32_t token) {
   // Header size limit should be applied to all header and trailer
   // fields combined.
   shrpx::add_header(buffer_size_, trailers_, name, value, no_index, token);

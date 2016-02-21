@@ -273,34 +273,7 @@ bool Request::is_ipv6_literal_addr() const {
   }
 }
 
-bool Request::response_pseudo_header_allowed(int16_t token) const {
-  if (!res_nva.empty() && res_nva.back().name.c_str()[0] != ':') {
-    return false;
-  }
-  switch (token) {
-  case http2::HD__STATUS:
-    return res_hdidx[token] == -1;
-  default:
-    return false;
-  }
-}
-
-bool Request::push_request_pseudo_header_allowed(int16_t token) const {
-  if (!req_nva.empty() && req_nva.back().name.c_str()[0] != ':') {
-    return false;
-  }
-  switch (token) {
-  case http2::HD__AUTHORITY:
-  case http2::HD__METHOD:
-  case http2::HD__PATH:
-  case http2::HD__SCHEME:
-    return req_hdidx[token] == -1;
-  default:
-    return false;
-  }
-}
-
-Headers::value_type *Request::get_res_header(int16_t token) {
+Headers::value_type *Request::get_res_header(int32_t token) {
   auto idx = res_hdidx[token];
   if (idx == -1) {
     return nullptr;
@@ -308,7 +281,7 @@ Headers::value_type *Request::get_res_header(int16_t token) {
   return &res_nva[idx];
 }
 
-Headers::value_type *Request::get_req_header(int16_t token) {
+Headers::value_type *Request::get_req_header(int32_t token) {
   auto idx = req_hdidx[token];
   if (idx == -1) {
     return nullptr;

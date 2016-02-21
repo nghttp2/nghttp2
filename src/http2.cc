@@ -271,7 +271,7 @@ void copy_url_component(std::string &dest, const http_parser_url *u, int field,
 
 Headers::value_type to_header(const uint8_t *name, size_t namelen,
                               const uint8_t *value, size_t valuelen,
-                              bool no_index, int16_t token) {
+                              bool no_index, int32_t token) {
   return Header(std::string(reinterpret_cast<const char *>(name), namelen),
                 std::string(reinterpret_cast<const char *>(value), valuelen),
                 no_index, token);
@@ -279,7 +279,7 @@ Headers::value_type to_header(const uint8_t *name, size_t namelen,
 
 void add_header(Headers &nva, const uint8_t *name, size_t namelen,
                 const uint8_t *value, size_t valuelen, bool no_index,
-                int16_t token) {
+                int32_t token) {
   if (valuelen > 0) {
     size_t i, j;
     for (i = 0; i < valuelen && (value[i] == ' ' || value[i] == '\t'); ++i)
@@ -760,7 +760,7 @@ void init_hdidx(HeaderIndex &hdidx) {
   std::fill(std::begin(hdidx), std::end(hdidx), -1);
 }
 
-void index_header(HeaderIndex &hdidx, int16_t token, size_t idx) {
+void index_header(HeaderIndex &hdidx, int32_t token, size_t idx) {
   if (token == -1) {
     return;
   }
@@ -769,7 +769,7 @@ void index_header(HeaderIndex &hdidx, int16_t token, size_t idx) {
 }
 
 bool check_http2_request_pseudo_header(const HeaderIndex &hdidx,
-                                       int16_t token) {
+                                       int32_t token) {
   switch (token) {
   case HD__AUTHORITY:
   case HD__METHOD:
@@ -782,7 +782,7 @@ bool check_http2_request_pseudo_header(const HeaderIndex &hdidx,
 }
 
 bool check_http2_response_pseudo_header(const HeaderIndex &hdidx,
-                                        int16_t token) {
+                                        int32_t token) {
   switch (token) {
   case HD__STATUS:
     return hdidx[token] == -1;
@@ -791,7 +791,7 @@ bool check_http2_response_pseudo_header(const HeaderIndex &hdidx,
   }
 }
 
-bool http2_header_allowed(int16_t token) {
+bool http2_header_allowed(int32_t token) {
   switch (token) {
   case HD_CONNECTION:
   case HD_KEEP_ALIVE:
@@ -813,7 +813,7 @@ bool http2_mandatory_request_headers_presence(const HeaderIndex &hdidx) {
   return true;
 }
 
-const Headers::value_type *get_header(const HeaderIndex &hdidx, int16_t token,
+const Headers::value_type *get_header(const HeaderIndex &hdidx, int32_t token,
                                       const Headers &nva) {
   auto i = hdidx[token];
   if (i == -1) {
@@ -822,7 +822,7 @@ const Headers::value_type *get_header(const HeaderIndex &hdidx, int16_t token,
   return &nva[i];
 }
 
-Headers::value_type *get_header(const HeaderIndex &hdidx, int16_t token,
+Headers::value_type *get_header(const HeaderIndex &hdidx, int32_t token,
                                 Headers &nva) {
   auto i = hdidx[token];
   if (i == -1) {
