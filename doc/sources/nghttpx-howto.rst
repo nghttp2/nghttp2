@@ -3,11 +3,11 @@
 nghttpx - HTTP/2 proxy - HOW-TO
 ===============================
 
-nghttpx is a proxy translating protocols between HTTP/2 and other
-protocols (e.g., HTTP/1, SPDY).  It operates in several modes and each
-mode may require additional programs to work with.  This article
-describes each operation mode and explains the intended use-cases.  It
-also covers some useful options later.
+:doc:`nghttpx.1` is a proxy translating protocols between HTTP/2 and
+other protocols (e.g., HTTP/1, SPDY).  It operates in several modes
+and each mode may require additional programs to work with.  This
+article describes each operation mode and explains the intended
+use-cases.  It also covers some useful options later.
 
 Default mode
 ------------
