@@ -129,15 +129,7 @@ HttpDownstreamConnection::HttpDownstreamConnection(
       response_htp_{0},
       group_(group) {}
 
-HttpDownstreamConnection::~HttpDownstreamConnection() {
-  if (conn_.tls.ssl && conn_.tls.initial_handshake_done) {
-    auto session = SSL_get0_session(conn_.tls.ssl);
-    if (session) {
-      worker_->cache_client_tls_session(&addr_->addr, session,
-                                        ev_now(conn_.loop));
-    }
-  }
-}
+HttpDownstreamConnection::~HttpDownstreamConnection() {}
 
 int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
   if (LOG_ENABLED(INFO)) {
@@ -241,7 +233,7 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
           SSL_set_tlsext_host_name(conn_.tls.ssl, sni_name.c_str());
         }
 
-        auto session = worker_->reuse_client_tls_session(&addr_->addr);
+        auto session = ssl::reuse_tls_session(addr_);
         if (session) {
           SSL_set_session(conn_.tls.ssl, session);
           SSL_SESSION_free(session);
@@ -889,6 +881,13 @@ int HttpDownstreamConnection::tls_handshake() {
   if (!get_config()->tls.insecure &&
       ssl::check_cert(conn_.tls.ssl, addr_) != 0) {
     return -1;
+  }
+
+  if (!SSL_session_reused(conn_.tls.ssl)) {
+    auto session = SSL_get0_session(conn_.tls.ssl);
+    if (session) {
+      ssl::try_cache_tls_session(addr_, session, ev_now(conn_.loop));
+    }
   }
 
   do_read_ = &HttpDownstreamConnection::read_tls;

@@ -36,6 +36,7 @@
 
 #include <vector>
 #include <string>
+#include <iomanip>
 
 #include <openssl/crypto.h>
 #include <openssl/x509.h>
@@ -1333,6 +1334,50 @@ CertLookupTree *create_cert_lookup_tree() {
     return nullptr;
   }
   return new ssl::CertLookupTree();
+}
+
+namespace {
+std::vector<uint8_t> serialize_ssl_session(SSL_SESSION *session) {
+  auto len = i2d_SSL_SESSION(session, nullptr);
+  auto buf = std::vector<uint8_t>(len);
+  auto p = buf.data();
+  i2d_SSL_SESSION(session, &p);
+
+  return buf;
+}
+} // namespace
+
+void try_cache_tls_session(DownstreamAddr *addr, SSL_SESSION *session,
+                           ev_tstamp t) {
+  auto &cache = addr->tls_session_cache;
+
+  if (cache.last_updated + 1_min > t) {
+    if (LOG_ENABLED(INFO)) {
+      LOG(INFO) << "Cache for addr=" << util::to_numeric_addr(&addr->addr)
+                << " is still host.  Not updating.";
+    }
+    return;
+  }
+
+  if (LOG_ENABLED(INFO)) {
+    LOG(INFO) << "Update cache entry for SSL_SESSION=" << session
+              << ", addr=" << util::to_numeric_addr(&addr->addr)
+              << ", timestamp=" << std::fixed << std::setprecision(6) << t;
+  }
+
+  cache.session_data = serialize_ssl_session(session);
+  cache.last_updated = t;
+}
+
+SSL_SESSION *reuse_tls_session(const DownstreamAddr *addr) {
+  auto &cache = addr->tls_session_cache;
+
+  if (cache.session_data.empty()) {
+    return nullptr;
+  }
+
+  auto p = cache.session_data.data();
+  return d2i_SSL_SESSION(nullptr, &p, cache.session_data.size());
 }
 
 } // namespace ssl

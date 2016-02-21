@@ -29,7 +29,6 @@
 #endif // HAVE_UNISTD_H
 
 #include <memory>
-#include <iomanip>
 
 #include "shrpx_ssl.h"
 #include "shrpx_log.h"
@@ -311,61 +310,6 @@ mruby::MRubyContext *Worker::get_mruby_context() const {
   return mruby_ctx_.get();
 }
 #endif // HAVE_MRUBY
-
-namespace {
-std::vector<uint8_t> serialize_ssl_session(SSL_SESSION *session) {
-  auto len = i2d_SSL_SESSION(session, nullptr);
-  auto buf = std::vector<uint8_t>(len);
-  auto p = buf.data();
-  i2d_SSL_SESSION(session, &p);
-
-  return buf;
-}
-} // namespace
-
-void Worker::cache_client_tls_session(const Address *addr, SSL_SESSION *session,
-                                      ev_tstamp t) {
-  auto it = client_tls_session_cache_.find(addr);
-  if (it == std::end(client_tls_session_cache_)) {
-    if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Create cache entry for SSL_SESSION=" << session
-                << ", addr=" << util::to_numeric_addr(addr) << "(" << addr
-                << "), timestamp=" << std::fixed << std::setprecision(6) << t;
-    }
-    client_tls_session_cache_.emplace(
-        addr, SessionCacheEntry{serialize_ssl_session(session), t});
-    return;
-  }
-
-  auto &ent = (*it).second;
-  if (ent.last_updated + 1_min > t) {
-    if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Cache for addr=" << util::to_numeric_addr(addr) << "("
-                << addr << ") is still host.  Not updating.";
-    }
-    return;
-  }
-
-  if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "Update cache entry for SSL_SESSION=" << session
-              << ", addr=" << util::to_numeric_addr(addr) << "(" << addr
-              << "), timestamp=" << std::fixed << std::setprecision(6) << t;
-  }
-
-  ent.session_data = serialize_ssl_session(session);
-  ent.last_updated = t;
-}
-
-SSL_SESSION *Worker::reuse_client_tls_session(const Address *addr) {
-  auto it = client_tls_session_cache_.find(addr);
-  if (it == std::end(client_tls_session_cache_)) {
-    return nullptr;
-  }
-
-  const auto &ent = (*it).second;
-  auto p = ent.session_data.data();
-  return d2i_SSL_SESSION(nullptr, &p, ent.session_data.size());
-}
 
 std::vector<DownstreamAddrGroup> &Worker::get_downstream_addr_groups() {
   return downstream_addr_groups_;

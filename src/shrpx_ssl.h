@@ -217,6 +217,17 @@ bool downstream_tls_enabled();
 bool tls_hostname_match(const char *pattern, size_t plen, const char *hostname,
                         size_t hlen);
 
+// Caches |session| which is associated to remote address |addr|.
+// |session| is serialized into ASN1 representation, and stored.  |t|
+// is used as a time stamp.  Depending on the existing cache's time
+// stamp, |session| might not be cached.
+void try_cache_tls_session(DownstreamAddr *addr, SSL_SESSION *session,
+                           ev_tstamp t);
+
+// Returns cached session associated |addr|.  If no cache entry is
+// found associated to |addr|, nullptr will be returned.
+SSL_SESSION *reuse_tls_session(const DownstreamAddr *addr);
+
 } // namespace ssl
 
 } // namespace shrpx

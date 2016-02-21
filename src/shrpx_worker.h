@@ -101,14 +101,6 @@ struct WorkerEvent {
   std::shared_ptr<TicketKeys> ticket_keys;
 };
 
-struct SessionCacheEntry {
-  // ASN1 representation of SSL_SESSION object.  See
-  // i2d_SSL_SESSION(3SSL).
-  std::vector<uint8_t> session_data;
-  // The last time stamp when this cache entry is created or updated.
-  ev_tstamp last_updated;
-};
-
 class Worker {
 public:
   Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
@@ -153,16 +145,6 @@ public:
   mruby::MRubyContext *get_mruby_context() const;
 #endif // HAVE_MRUBY
 
-  // Caches |session| which is associated to remote address |addr|.
-  // |session| is serialized into ASN1 representation, and stored.
-  // |t| is used as a time stamp.  Depending on the existing cache's
-  // time stamp, |session| might not be cached.
-  void cache_client_tls_session(const Address *addr, SSL_SESSION *session,
-                                ev_tstamp t);
-  // Returns cached session associated |addr|.  If no cache entry is
-  // found associated to |addr|, nullptr will be returned.
-  SSL_SESSION *reuse_client_tls_session(const Address *addr);
-
   std::vector<DownstreamAddrGroup> &get_downstream_addr_groups();
 
   ConnectBlocker *get_connect_blocker() const;
@@ -180,11 +162,6 @@ private:
   DownstreamConnectionPool dconn_pool_;
   WorkerStat worker_stat_;
   std::vector<DownstreamGroup> dgrps_;
-
-  // Client side SSL_SESSION cache.  SSL_SESSION is associated to
-  // remote address.
-  std::unordered_map<const Address *, SessionCacheEntry>
-      client_tls_session_cache_;
 
   std::unique_ptr<MemcachedDispatcher> session_cache_memcached_dispatcher_;
 #ifdef HAVE_MRUBY
