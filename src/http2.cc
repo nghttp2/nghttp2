@@ -768,51 +768,6 @@ void index_header(HeaderIndex &hdidx, int32_t token, size_t idx) {
   hdidx[token] = idx;
 }
 
-bool check_http2_request_pseudo_header(const HeaderIndex &hdidx,
-                                       int32_t token) {
-  switch (token) {
-  case HD__AUTHORITY:
-  case HD__METHOD:
-  case HD__PATH:
-  case HD__SCHEME:
-    return hdidx[token] == -1;
-  default:
-    return false;
-  }
-}
-
-bool check_http2_response_pseudo_header(const HeaderIndex &hdidx,
-                                        int32_t token) {
-  switch (token) {
-  case HD__STATUS:
-    return hdidx[token] == -1;
-  default:
-    return false;
-  }
-}
-
-bool http2_header_allowed(int32_t token) {
-  switch (token) {
-  case HD_CONNECTION:
-  case HD_KEEP_ALIVE:
-  case HD_PROXY_CONNECTION:
-  case HD_TRANSFER_ENCODING:
-  case HD_UPGRADE:
-    return false;
-  default:
-    return true;
-  }
-}
-
-bool http2_mandatory_request_headers_presence(const HeaderIndex &hdidx) {
-  if (hdidx[HD__METHOD] == -1 || hdidx[HD__PATH] == -1 ||
-      hdidx[HD__SCHEME] == -1 ||
-      (hdidx[HD__AUTHORITY] == -1 && hdidx[HD_HOST] == -1)) {
-    return false;
-  }
-  return true;
-}
-
 const Headers::value_type *get_header(const HeaderIndex &hdidx, int32_t token,
                                       const Headers &nva) {
   auto i = hdidx[token];

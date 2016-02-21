@@ -279,23 +279,6 @@ void init_hdidx(HeaderIndex &hdidx);
 // Indexes header |token| using index |idx|.
 void index_header(HeaderIndex &hdidx, int32_t token, size_t idx);
 
-// Returns true if HTTP/2 request pseudo header |token| is not indexed
-// yet and not -1.
-bool check_http2_request_pseudo_header(const HeaderIndex &hdidx, int32_t token);
-
-// Returns true if HTTP/2 response pseudo header |token| is not
-// indexed yet and not -1.
-bool check_http2_response_pseudo_header(const HeaderIndex &hdidx,
-                                        int32_t token);
-
-// Returns true if header field denoted by |token| is allowed for
-// HTTP/2.
-bool http2_header_allowed(int32_t token);
-
-// Returns true that |hdidx| contains mandatory HTTP/2 request
-// headers.
-bool http2_mandatory_request_headers_presence(const HeaderIndex &hdidx);
-
 // Returns header denoted by |token| using index |hdidx|.
 const Headers::value_type *get_header(const HeaderIndex &hdidx, int32_t token,
                                       const Headers &nva);
