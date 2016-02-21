@@ -257,6 +257,12 @@ encryption, use :option:`--tls-ticket-key-memcached-tls` for TLS
 ticket key, and use :option:`--tls-session-cache-memcached-tls` for
 TLS session cache.
 
+Specifying additional server certificates
+-----------------------------------------
+
+nghttpx accepts additional server private key and certificate pairs
+using :option:`--subcert` option.  It can be used multiple times.
+
 Specifying additional CA certificate
 ------------------------------------
 
