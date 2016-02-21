@@ -146,8 +146,10 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
 
   auto worker_blocker = worker_->get_connect_blocker();
   if (worker_blocker->blocked()) {
-    DLOG(INFO, this)
-        << "Worker wide backend connection was blocked temporarily";
+    if (LOG_ENABLED(INFO)) {
+      DCLOG(INFO, this)
+          << "Worker wide backend connection was blocked temporarily";
+    }
     return SHRPX_ERR_NETWORK;
   }
 
@@ -179,7 +181,7 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
       if (connect_blocker->blocked()) {
         if (LOG_ENABLED(INFO)) {
           DCLOG(INFO, this) << "Backend server "
-                            << (addr.host_unix ? addr.host : addr.hostport)
+                            << util::to_numeric_addr(&addr.addr)
                             << " was not available temporarily";
         }
 
@@ -194,7 +196,9 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
 
       if (conn_.fd == -1) {
         auto error = errno;
-        DCLOG(WARN, this) << "socket() failed; errno=" << error;
+        DCLOG(WARN, this) << "socket() failed; addr="
+                          << util::to_numeric_addr(&addr.addr)
+                          << ", errno=" << error;
 
         worker_blocker->on_failure();
 
@@ -207,7 +211,9 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
       rv = connect(conn_.fd, &addr.addr.su.sa, addr.addr.len);
       if (rv != 0 && errno != EINPROGRESS) {
         auto error = errno;
-        DCLOG(WARN, this) << "connect() failed; errno=" << error;
+        DCLOG(WARN, this) << "connect() failed; addr="
+                          << util::to_numeric_addr(&addr.addr)
+                          << ", errno=" << error;
 
         connect_blocker->on_failure();
         close(conn_.fd);
@@ -1034,7 +1040,8 @@ int HttpDownstreamConnection::connected() {
     conn_.wlimit.stopw();
 
     if (LOG_ENABLED(INFO)) {
-      DLOG(INFO, this) << "downstream connect failed";
+      DCLOG(INFO, this) << "Backend connect failed; addr="
+                        << util::to_numeric_addr(&addr_->addr);
     }
 
     connect_blocker->on_failure();
@@ -1045,7 +1052,7 @@ int HttpDownstreamConnection::connected() {
   }
 
   if (LOG_ENABLED(INFO)) {
-    DLOG(INFO, this) << "Connected to downstream host";
+    DCLOG(INFO, this) << "Connected to downstream host";
   }
 
   connect_blocker->on_success();

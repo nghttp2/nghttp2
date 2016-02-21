@@ -258,8 +258,10 @@ int Http2Session::initiate_connection() {
 
   if (state_ == DISCONNECTED) {
     if (worker_blocker->blocked()) {
-      DLOG(INFO, this)
-          << "Worker wide backend connection was blocked temporarily";
+      if (LOG_ENABLED(INFO)) {
+        SSLOG(INFO, this)
+            << "Worker wide backend connection was blocked temporarily";
+      }
       return -1;
     }
 
@@ -277,8 +279,8 @@ int Http2Session::initiate_connection() {
 
       if (connect_blocker->blocked()) {
         if (LOG_ENABLED(INFO)) {
-          DCLOG(INFO, this) << "Backend server "
-                            << (addr.host_unix ? addr.host : addr.hostport)
+          SSLOG(INFO, this) << "Backend server "
+                            << util::to_numeric_addr(&addr.addr)
                             << " was not available temporarily";
         }
 
@@ -312,6 +314,11 @@ int Http2Session::initiate_connection() {
     conn_.fd = util::create_nonblock_socket(proxy.addr.su.storage.ss_family);
 
     if (conn_.fd == -1) {
+      auto error = errno;
+      SSLOG(WARN, this) << "Backend proxy socket() failed; addr="
+                        << util::to_numeric_addr(&proxy.addr)
+                        << ", errno=" << error;
+
       worker_blocker->on_failure();
       return -1;
     }
@@ -320,8 +327,11 @@ int Http2Session::initiate_connection() {
 
     rv = connect(conn_.fd, &proxy.addr.su.sa, proxy.addr.len);
     if (rv != 0 && errno != EINPROGRESS) {
-      SSLOG(ERROR, this) << "Failed to connect to the proxy " << proxy.host
-                         << ":" << proxy.port;
+      auto error = errno;
+      SSLOG(WARN, this) << "Backend proxy connect() failed; addr="
+                        << util::to_numeric_addr(&proxy.addr)
+                        << ", errno=" << error;
+
       connect_blocker->on_failure();
       return -1;
     }
@@ -382,6 +392,11 @@ int Http2Session::initiate_connection() {
         conn_.fd =
             util::create_nonblock_socket(addr_->addr.su.storage.ss_family);
         if (conn_.fd == -1) {
+          auto error = errno;
+          SSLOG(WARN, this)
+              << "socket() failed; addr=" << util::to_numeric_addr(&addr_->addr)
+              << ", errno=" << error;
+
           worker_blocker->on_failure();
           return -1;
         }
@@ -393,6 +408,11 @@ int Http2Session::initiate_connection() {
                      const_cast<sockaddr *>(&addr_->addr.su.sa),
                      addr_->addr.len);
         if (rv != 0 && errno != EINPROGRESS) {
+          auto error = errno;
+          SSLOG(WARN, this) << "connect() failed; addr="
+                            << util::to_numeric_addr(&addr_->addr)
+                            << ", errno=" << error;
+
           connect_blocker->on_failure();
           return -1;
         }
@@ -411,6 +431,11 @@ int Http2Session::initiate_connection() {
             util::create_nonblock_socket(addr_->addr.su.storage.ss_family);
 
         if (conn_.fd == -1) {
+          auto error = errno;
+          SSLOG(WARN, this)
+              << "socket() failed; addr=" << util::to_numeric_addr(&addr_->addr)
+              << ", errno=" << error;
+
           worker_blocker->on_failure();
           return -1;
         }
@@ -420,6 +445,11 @@ int Http2Session::initiate_connection() {
         rv = connect(conn_.fd, const_cast<sockaddr *>(&addr_->addr.su.sa),
                      addr_->addr.len);
         if (rv != 0 && errno != EINPROGRESS) {
+          auto error = errno;
+          SSLOG(WARN, this) << "connect() failed; addr="
+                            << util::to_numeric_addr(&addr_->addr)
+                            << ", errno=" << error;
+
           connect_blocker->on_failure();
           return -1;
         }
@@ -1648,6 +1678,11 @@ int Http2Session::connected() {
   auto &connect_blocker = addr_->connect_blocker;
 
   if (!util::check_socket_connected(conn_.fd)) {
+    if (LOG_ENABLED(INFO)) {
+      SSLOG(INFO, this) << "Backend connect failed; addr="
+                        << util::to_numeric_addr(&addr_->addr);
+    }
+
     connect_blocker->on_failure();
 
     return -1;
