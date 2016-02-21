@@ -254,8 +254,15 @@ int Http2Session::initiate_connection() {
 
   auto &groups = worker_->get_downstream_addr_groups();
   auto &addrs = groups[group_].addrs;
+  auto worker_blocker = worker_->get_connect_blocker();
 
   if (state_ == DISCONNECTED) {
+    if (worker_blocker->blocked()) {
+      DLOG(INFO, this)
+          << "Worker wide backend connection was blocked temporarily";
+      return -1;
+    }
+
     auto &next_downstream = worker_->get_dgrp(group_)->next;
     auto end = next_downstream;
 
@@ -305,9 +312,11 @@ int Http2Session::initiate_connection() {
     conn_.fd = util::create_nonblock_socket(proxy.addr.su.storage.ss_family);
 
     if (conn_.fd == -1) {
-      connect_blocker->on_failure();
+      worker_blocker->on_failure();
       return -1;
     }
+
+    worker_blocker->on_success();
 
     rv = connect(conn_.fd, &proxy.addr.su.sa, proxy.addr.len);
     if (rv != 0 && errno != EINPROGRESS) {
@@ -373,9 +382,11 @@ int Http2Session::initiate_connection() {
         conn_.fd =
             util::create_nonblock_socket(addr_->addr.su.storage.ss_family);
         if (conn_.fd == -1) {
-          connect_blocker->on_failure();
+          worker_blocker->on_failure();
           return -1;
         }
+
+        worker_blocker->on_success();
 
         rv = connect(conn_.fd,
                      // TODO maybe not thread-safe?
@@ -400,9 +411,11 @@ int Http2Session::initiate_connection() {
             util::create_nonblock_socket(addr_->addr.su.storage.ss_family);
 
         if (conn_.fd == -1) {
-          connect_blocker->on_failure();
+          worker_blocker->on_failure();
           return -1;
         }
+
+        worker_blocker->on_success();
 
         rv = connect(conn_.fd, const_cast<sockaddr *>(&addr_->addr.su.sa),
                      addr_->addr.len);

@@ -165,6 +165,8 @@ public:
 
   std::vector<DownstreamAddrGroup> &get_downstream_addr_groups();
 
+  ConnectBlocker *get_connect_blocker() const;
+
 private:
 #ifndef NOTHREADS
   std::future<void> fut_;
@@ -198,6 +200,9 @@ private:
 
   std::shared_ptr<TicketKeys> ticket_keys_;
   std::vector<DownstreamAddrGroup> downstream_addr_groups_;
+  // Worker level blocker for downstream connection.  For example,
+  // this is used when file decriptor is exhausted.
+  std::unique_ptr<ConnectBlocker> connect_blocker_;
 
   bool graceful_shutdown_;
 };

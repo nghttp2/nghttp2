@@ -81,6 +81,7 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
       cert_tree_(cert_tree),
       ticket_keys_(ticket_keys),
       downstream_addr_groups_(get_config()->conn.downstream.addr_groups),
+      connect_blocker_(make_unique<ConnectBlocker>(randgen_, loop_)),
       graceful_shutdown_(false) {
   ev_async_init(&w_, eventcb);
   w_.data = this;
@@ -371,6 +372,10 @@ SSL_SESSION *Worker::reuse_client_tls_session(const Address *addr) {
 
 std::vector<DownstreamAddrGroup> &Worker::get_downstream_addr_groups() {
   return downstream_addr_groups_;
+}
+
+ConnectBlocker *Worker::get_connect_blocker() const {
+  return connect_blocker_.get();
 }
 
 } // namespace shrpx

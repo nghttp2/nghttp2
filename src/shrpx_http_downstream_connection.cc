@@ -144,6 +144,13 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
     DCLOG(INFO, this) << "Attaching to DOWNSTREAM:" << downstream;
   }
 
+  auto worker_blocker = worker_->get_connect_blocker();
+  if (worker_blocker->blocked()) {
+    DLOG(INFO, this)
+        << "Worker wide backend connection was blocked temporarily";
+    return SHRPX_ERR_NETWORK;
+  }
+
   auto &downstreamconf = get_config()->conn.downstream;
 
   if (conn_.fd == -1) {
@@ -189,10 +196,12 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
         auto error = errno;
         DCLOG(WARN, this) << "socket() failed; errno=" << error;
 
-        connect_blocker->on_failure();
+        worker_blocker->on_failure();
 
         return SHRPX_ERR_NETWORK;
       }
+
+      worker_blocker->on_success();
 
       int rv;
       rv = connect(conn_.fd, &addr.addr.su.sa, addr.addr.len);
