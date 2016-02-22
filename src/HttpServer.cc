@@ -308,7 +308,6 @@ public:
     }
     auto handler =
         make_unique<Http2Handler>(this, fd, ssl, get_next_session_id());
-    handler->setup_bev();
     if (!ssl) {
       if (handler->connection_made() != 0) {
         return;
@@ -574,8 +573,6 @@ struct ev_loop *Http2Handler::get_loop() const {
 }
 
 Http2Handler::WriteBuf *Http2Handler::get_wb() { return &wb_; }
-
-int Http2Handler::setup_bev() { return 0; }
 
 void Http2Handler::start_settings_timer() {
   ev_timer_start(sessions_->get_loop(), &settings_timerev_);
