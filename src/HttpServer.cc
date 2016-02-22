@@ -577,6 +577,10 @@ Http2Handler::WriteBuf *Http2Handler::get_wb() { return &wb_; }
 
 int Http2Handler::setup_bev() { return 0; }
 
+void Http2Handler::start_settings_timer() {
+  ev_timer_start(sessions_->get_loop(), &settings_timerev_);
+}
+
 int Http2Handler::fill_wb() {
   if (data_pending_) {
     auto n = std::min(wb_.wleft(), data_pendinglen_);
@@ -869,8 +873,6 @@ int Http2Handler::connection_made() {
       return r;
     }
   }
-
-  ev_timer_start(sessions_->get_loop(), &settings_timerev_);
 
   if (ssl_ && !nghttp2::ssl::check_http2_requirement(ssl_)) {
     terminate_session(NGHTTP2_INADEQUATE_SECURITY);
@@ -1535,6 +1537,15 @@ int hd_on_frame_send_callback(nghttp2_session *session,
       add_stream_read_timeout_if_pending(stream);
       remove_stream_write_timeout(stream);
     }
+
+    break;
+  }
+  case NGHTTP2_SETTINGS: {
+    if (frame->hd.flags & NGHTTP2_FLAG_ACK) {
+      return 0;
+    }
+
+    hd->start_settings_timer();
 
     break;
   }

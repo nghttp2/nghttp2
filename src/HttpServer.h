@@ -138,6 +138,7 @@ public:
 
   void remove_self();
   int setup_bev();
+  void start_settings_timer();
   int on_read();
   int on_write();
   int connection_made();
