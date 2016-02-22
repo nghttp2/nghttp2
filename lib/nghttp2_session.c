@@ -1216,11 +1216,12 @@ int nghttp2_session_adjust_idle_stream(nghttp2_session *session) {
   size_t max;
   int rv;
 
-  /* Make minimum number of idle streams 16, which is arbitrary chosen
-     number. */
-  max = nghttp2_max(16,
-                    nghttp2_min(session->local_settings.max_concurrent_streams,
-                                session->pending_local_max_concurrent_stream));
+  /* Make minimum number of idle streams 16, and maximum 100, which
+     are arbitrary chosen numbers. */
+  max = nghttp2_min(
+      100, nghttp2_max(
+               16, nghttp2_min(session->local_settings.max_concurrent_streams,
+                               session->pending_local_max_concurrent_stream)));
 
   DEBUGF(fprintf(stderr, "stream: adjusting kept idle streams "
                          "num_idle_streams=%zu, max=%zu\n",
