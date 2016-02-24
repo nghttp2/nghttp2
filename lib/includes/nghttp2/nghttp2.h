@@ -1744,7 +1744,7 @@ typedef int (*nghttp2_on_extension_chunk_recv_callback)(
  * created object as a result of unpacking in |*payload|, and returns
  * 0.  The pointer stored in |*payload| is opaque to the library, and
  * the library does not own its pointer.  |*payload| is initialized as
- * `NULL`.  The |*payload| is available as ``frame->ext.payload`` in
+ * ``NULL``.  The |*payload| is available as ``frame->ext.payload`` in
  * :type:`nghttp2_on_frame_recv_callback`.  Therefore if application
  * can free that memory inside :type:`nghttp2_on_frame_recv_callback`
  * callback.  Of course, application has a liberty not ot use
