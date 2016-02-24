@@ -231,8 +231,6 @@ static void session_inbound_frame_reset(nghttp2_session *session) {
      nghttp2_session_new(), we rely on the fact that
      iframe->frame.hd.type is 0, so that no free is performed. */
   switch (iframe->frame.hd.type) {
-  case NGHTTP2_DATA:
-    break;
   case NGHTTP2_HEADERS:
     nghttp2_frame_headers_free(&iframe->frame.headers, mem);
     break;
@@ -256,10 +254,6 @@ static void session_inbound_frame_reset(nghttp2_session *session) {
     break;
   case NGHTTP2_WINDOW_UPDATE:
     nghttp2_frame_window_update_free(&iframe->frame.window_update);
-    break;
-  default:
-    /* extension frame */
-    nghttp2_frame_extension_free(&iframe->frame.ext);
     break;
   }
 
