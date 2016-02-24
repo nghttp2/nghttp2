@@ -306,10 +306,11 @@ struct nghttp2_session {
      WINDOW_UPDATE is not queued. */
   uint8_t window_update_queued;
   /* Bitfield of extension frame types that application is willing to
-     receive.  First most significant 10 bits are standard frame types
-     and not used.  If bit is set, it indicates that incoming frame
-     with that type is passed to user defined callbacks, otherwise
-     they are ignored. */
+     receive.  To designate the bit of given frame type i, use
+     user_recv_ext_types[i / 8] & (1 << (i & 0x7)).  First 10 frame
+     types are standard frame types and not used in this bitfield.  If
+     bit is set, it indicates that incoming frame with that type is
+     passed to user defined callbacks, otherwise they are ignored. */
   uint8_t user_recv_ext_types[32];
 };
 

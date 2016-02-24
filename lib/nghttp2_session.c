@@ -5345,7 +5345,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
 
         if (!session->callbacks.unpack_extension_callback ||
             (session->user_recv_ext_types[iframe->frame.hd.type / 8] &
-             (1 << (7 - (iframe->frame.hd.type & 0x7)))) == 0) {
+             (1 << (iframe->frame.hd.type & 0x7))) == 0) {
           /* Silently ignore unknown frame type. */
 
           busy = 1;
