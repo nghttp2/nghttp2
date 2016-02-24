@@ -1736,11 +1736,19 @@ typedef int (*nghttp2_on_extension_chunk_recv_callback)(
  * :type:`nghttp2_on_extension_chunk_recv_callback`.  The frame header
  * is already unpacked by the library and provided as |hd|.
  *
+ * To receive extension frames, the application must tell desired
+ * extension frame type to the library using
+ * `nghttp2_option_set_user_recv_extension_type()`.
+ *
  * The implementation of this function may store the pointer to the
  * created object as a result of unpacking in |*payload|, and returns
  * 0.  The pointer stored in |*payload| is opaque to the library, and
- * the library does not own its pointer.  |*payload| is initialled as
- * `NULL`.
+ * the library does not own its pointer.  |*payload| is initialized as
+ * `NULL`.  The |*payload| is available as ``frame->ext.payload`` in
+ * :type:`nghttp2_on_frame_recv_callback`.  Therefore if application
+ * can free that memory inside :type:`nghttp2_on_frame_recv_callback`
+ * callback.  Of course, application has a liberty not ot use
+ * |*payload|, and do its own mechanism to process extension frames.
  *
  * To abort processing this extension frame, return
  * :enum:`NGHTTP2_ERR_CANCEL`.
@@ -1760,16 +1768,16 @@ typedef int (*nghttp2_unpack_extension_callback)(nghttp2_session *session,
 /**
  * @functypedef
  *
- * Callbck function invoked when library asks the application to pack
+ * Callback function invoked when library asks the application to pack
  * extension payload in its wire format.  The frame header will be
  * packed by library.  Application must pack payload only.
- * frame->ext.payload is the object passed to
+ * ``frame->ext.payload`` is the object passed to
  * `nghttp2_submit_extension()` as payload parameter.  Application
  * must pack extension payload to the |buf| of its capacity |len|
- * bytes.
+ * bytes.  The |len| is at least 16KiB.
  *
- * The implementation of this function returns the number of bytes
- * written into |buf| when it succeeds.
+ * The implementation of this function should return the number of
+ * bytes written into |buf| when it succeeds.
  *
  * To abort processing this extension frame, return
  * :enum:`NGHTTP2_ERR_CANCEL`, and
@@ -2229,13 +2237,15 @@ nghttp2_option_set_max_reserved_remote_streams(nghttp2_option *option,
 /**
  * @function
  *
- * Set extension frame type the application is willing to handle with
+ * Sets extension frame type the application is willing to handle with
  * user defined callbacks (see
  * :type:`nghttp2_on_extension_chunk_recv_callback` and
  * :type:`nghttp2_unpack_extension_callback`).  The |type| is
  * extension frame type, and must be strictly greater than 0x9.
- * Otherwise, this function does nothing.  The application does not
- * have to call this function if it just sends extension frames.
+ * Otherwise, this function does nothing.  The application can call
+ * this function multiple times to set more than one frame type to
+ * receive.  The application does not have to call this function if it
+ * just sends extension frames.
  */
 NGHTTP2_EXTERN void
 nghttp2_option_set_user_recv_extension_type(nghttp2_option *option,
@@ -3916,11 +3926,22 @@ NGHTTP2_EXTERN int nghttp2_submit_window_update(nghttp2_session *session,
  *
  * Submits extension frame.
  *
- * Application can pass arbitrary frame flags and stream ID to |flags|
+ * Application can pass arbitrary frame flags and stream ID in |flags|
  * and |stream_id| respectively.  The |payload| is opaque pointer, and
- * it can be accessible though frame->ext.payload in
+ * it can be accessible though ``frame->ext.payload`` in
  * :type:`nghttp2_pack_extension_callback`.  The library will not own
  * passed |payload| pointer.
+ *
+ * The application must set :type:`nghttp2_pack_extension_callback`
+ * using `nghttp2_session_callbacks_set_pack_extension_callback()`.
+ *
+ * The application should retain the memory pointed by |payload| until
+ * the transmission of extension frame is done (which is indicated by
+ * :type:`nghttp2_on_frame_send_callback`), or transmission fails
+ * (which is indicated by :type:`nghttp2_on_frame_not_send_callback`).
+ * If application does not touch this memory region after packing it
+ * into a wire format, application can free it inside
+ * :type:`nghttp2_pack_extension_callback`.
  *
  * The standard HTTP/2 frame cannot be sent with this function, so
  * |type| must be strictly grater than 0x9.  Otherwise, this function
