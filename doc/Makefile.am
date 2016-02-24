@@ -58,6 +58,7 @@ APIDOCS= \
 	nghttp2_option_set_no_http_messaging.rst \
 	nghttp2_option_set_no_recv_client_magic.rst \
 	nghttp2_option_set_peer_max_concurrent_streams.rst \
+	nghttp2_option_set_user_recv_extension_type.rst \
 	nghttp2_pack_settings_payload.rst \
 	nghttp2_priority_spec_check_default.rst \
 	nghttp2_priority_spec_default_init.rst \
@@ -70,16 +71,19 @@ APIDOCS= \
 	nghttp2_session_callbacks_set_on_begin_frame_callback.rst \
 	nghttp2_session_callbacks_set_on_begin_headers_callback.rst \
 	nghttp2_session_callbacks_set_on_data_chunk_recv_callback.rst \
+	nghttp2_session_callbacks_set_on_extension_chunk_recv_callback.rst \
 	nghttp2_session_callbacks_set_on_frame_not_send_callback.rst \
 	nghttp2_session_callbacks_set_on_frame_recv_callback.rst \
 	nghttp2_session_callbacks_set_on_frame_send_callback.rst \
 	nghttp2_session_callbacks_set_on_header_callback.rst \
 	nghttp2_session_callbacks_set_on_invalid_frame_recv_callback.rst \
 	nghttp2_session_callbacks_set_on_stream_close_callback.rst \
+	nghttp2_session_callbacks_set_pack_extension_callback.rst \
 	nghttp2_session_callbacks_set_recv_callback.rst \
 	nghttp2_session_callbacks_set_select_padding_callback.rst \
 	nghttp2_session_callbacks_set_send_callback.rst \
 	nghttp2_session_callbacks_set_send_data_callback.rst \
+	nghttp2_session_callbacks_set_unpack_extension_callback.rst \
 	nghttp2_session_client_new.rst \
 	nghttp2_session_client_new2.rst \
 	nghttp2_session_client_new3.rst \
@@ -131,6 +135,7 @@ APIDOCS= \
 	nghttp2_stream_get_weight.rst \
 	nghttp2_strerror.rst \
 	nghttp2_submit_data.rst \
+	nghttp2_submit_extension.rst \
 	nghttp2_submit_goaway.rst \
 	nghttp2_submit_headers.rst \
 	nghttp2_submit_ping.rst \

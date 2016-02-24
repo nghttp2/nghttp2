@@ -54,6 +54,7 @@ typedef struct {
   scripted_data_feed *df;
   int frame_recv_cb_called, invalid_frame_recv_cb_called;
   uint8_t recv_frame_type;
+  nghttp2_frame_hd recv_frame_hd;
   int frame_send_cb_called;
   uint8_t sent_frame_type;
   int frame_not_send_cb_called;
@@ -73,6 +74,7 @@ typedef struct {
   size_t data_chunk_len;
   size_t padlen;
   int begin_frame_cb_called;
+  nghttp2_buf scratchbuf;
 } my_user_data;
 
 static const nghttp2_nv reqnv[] = {
@@ -175,6 +177,8 @@ static int on_frame_recv_callback(nghttp2_session *session _U_,
   my_user_data *ud = (my_user_data *)user_data;
   ++ud->frame_recv_cb_called;
   ud->recv_frame_type = frame->hd.type;
+  ud->recv_frame_hd = frame->hd;
+
   return 0;
 }
 
@@ -414,6 +418,54 @@ static int on_stream_close_callback(nghttp2_session *session _U_,
   my_data->stream_close_error_code = error_code;
 
   return 0;
+}
+
+static ssize_t pack_extension_callback(nghttp2_session *session _U_,
+                                       uint8_t *buf, size_t len _U_,
+                                       const nghttp2_frame *frame,
+                                       void *user_data _U_) {
+  nghttp2_buf *p = frame->ext.payload;
+
+  memcpy(buf, p->pos, nghttp2_buf_len(p));
+
+  return (ssize_t)nghttp2_buf_len(p);
+}
+
+static int on_extension_chunk_recv_callback(nghttp2_session *session _U_,
+                                            const nghttp2_frame_hd *hd _U_,
+                                            const uint8_t *data, size_t len,
+                                            void *user_data) {
+  my_user_data *my_data = (my_user_data *)user_data;
+  nghttp2_buf *buf = &my_data->scratchbuf;
+
+  buf->last = nghttp2_cpymem(buf->last, data, len);
+
+  return 0;
+}
+
+static int cancel_on_extension_chunk_recv_callback(
+    nghttp2_session *session _U_, const nghttp2_frame_hd *hd _U_,
+    const uint8_t *data _U_, size_t len _U_, void *user_data _U_) {
+  return NGHTTP2_ERR_CANCEL;
+}
+
+static int unpack_extension_callback(nghttp2_session *session _U_,
+                                     void **payload,
+                                     const nghttp2_frame_hd *hd _U_,
+                                     void *user_data) {
+  my_user_data *my_data = (my_user_data *)user_data;
+  nghttp2_buf *buf = &my_data->scratchbuf;
+
+  *payload = buf;
+
+  return 0;
+}
+
+static int cancel_unpack_extension_callback(nghttp2_session *session _U_,
+                                            void **payload _U_,
+                                            const nghttp2_frame_hd *hd _U_,
+                                            void *user_data _U_) {
+  return NGHTTP2_ERR_CANCEL;
 }
 
 static nghttp2_settings_entry *dup_iv(const nghttp2_settings_entry *iv,
@@ -1820,6 +1872,87 @@ void test_nghttp2_session_recv_too_large_frame_length(void) {
   CU_ASSERT(NGHTTP2_GOAWAY == item->frame.hd.type);
 
   nghttp2_session_del(session);
+}
+
+void test_nghttp2_session_recv_extension(void) {
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  my_user_data ud;
+  nghttp2_buf buf;
+  nghttp2_frame_hd hd;
+  nghttp2_mem *mem;
+  const char data[] = "Hello World!";
+  ssize_t rv;
+  nghttp2_option *option;
+
+  mem = nghttp2_mem_default();
+
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+
+  callbacks.on_extension_chunk_recv_callback = on_extension_chunk_recv_callback;
+  callbacks.unpack_extension_callback = unpack_extension_callback;
+  callbacks.on_frame_recv_callback = on_frame_recv_callback;
+
+  nghttp2_option_new(&option);
+  nghttp2_option_set_user_recv_extension_type(option, 111);
+
+  nghttp2_buf_init2(&ud.scratchbuf, 4096, mem);
+  nghttp2_buf_init2(&buf, 4096, mem);
+
+  nghttp2_frame_hd_init(&hd, sizeof(data), 111, 0xab, 1000000007);
+  nghttp2_frame_pack_frame_hd(buf.last, &hd);
+  buf.last += NGHTTP2_FRAME_HDLEN;
+  buf.last = nghttp2_cpymem(buf.last, data, sizeof(data));
+
+  nghttp2_session_client_new2(&session, &callbacks, &ud, option);
+
+  nghttp2_frame_hd_init(&ud.recv_frame_hd, 0, 0, 0, 0);
+  rv = nghttp2_session_mem_recv(session, buf.pos, nghttp2_buf_len(&buf));
+
+  CU_ASSERT(NGHTTP2_FRAME_HDLEN + hd.length == (size_t)rv);
+  CU_ASSERT(111 == ud.recv_frame_hd.type);
+  CU_ASSERT(0xab == ud.recv_frame_hd.flags);
+  CU_ASSERT(1000000007 == ud.recv_frame_hd.stream_id);
+  CU_ASSERT(0 == memcmp(data, ud.scratchbuf.pos, sizeof(data)));
+
+  nghttp2_session_del(session);
+
+  /* cancel in on_extension_chunk_recv_callback */
+  nghttp2_buf_reset(&ud.scratchbuf);
+
+  callbacks.on_extension_chunk_recv_callback =
+      cancel_on_extension_chunk_recv_callback;
+
+  nghttp2_session_server_new2(&session, &callbacks, &ud, option);
+
+  ud.frame_recv_cb_called = 0;
+  rv = nghttp2_session_mem_recv(session, buf.pos, nghttp2_buf_len(&buf));
+
+  CU_ASSERT(NGHTTP2_FRAME_HDLEN + hd.length == (size_t)rv);
+  CU_ASSERT(0 == ud.frame_recv_cb_called);
+
+  nghttp2_session_del(session);
+
+  /* cancel in unpack_extension_callback */
+  nghttp2_buf_reset(&ud.scratchbuf);
+
+  callbacks.on_extension_chunk_recv_callback = on_extension_chunk_recv_callback;
+  callbacks.unpack_extension_callback = cancel_unpack_extension_callback;
+
+  nghttp2_session_server_new2(&session, &callbacks, &ud, option);
+
+  ud.frame_recv_cb_called = 0;
+  rv = nghttp2_session_mem_recv(session, buf.pos, nghttp2_buf_len(&buf));
+
+  CU_ASSERT(NGHTTP2_FRAME_HDLEN + hd.length == (size_t)rv);
+  CU_ASSERT(0 == ud.frame_recv_cb_called);
+
+  nghttp2_session_del(session);
+
+  nghttp2_buf_free(&buf, mem);
+  nghttp2_buf_free(&ud.scratchbuf, mem);
+
+  nghttp2_option_del(option);
 }
 
 void test_nghttp2_session_continue(void) {
@@ -5003,6 +5136,67 @@ void test_nghttp2_submit_invalid_nv(void) {
                                        NULL));
 
   nghttp2_session_del(session);
+}
+
+void test_nghttp2_submit_extension(void) {
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  my_user_data ud;
+  accumulator acc;
+  nghttp2_mem *mem;
+  const char data[] = "Hello World!";
+  size_t len;
+  int32_t stream_id;
+  int rv;
+
+  mem = nghttp2_mem_default();
+
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+
+  callbacks.pack_extension_callback = pack_extension_callback;
+  callbacks.send_callback = accumulator_send_callback;
+
+  nghttp2_buf_init2(&ud.scratchbuf, 4096, mem);
+
+  nghttp2_session_client_new(&session, &callbacks, &ud);
+
+  ud.scratchbuf.last = nghttp2_cpymem(ud.scratchbuf.last, data, sizeof(data));
+  ud.acc = &acc;
+
+  rv = nghttp2_submit_extension(session, 211, 0x01, 3, &ud.scratchbuf);
+
+  CU_ASSERT(0 == rv);
+
+  acc.length = 0;
+
+  rv = nghttp2_session_send(session);
+
+  CU_ASSERT(0 == rv);
+  CU_ASSERT(NGHTTP2_FRAME_HDLEN + sizeof(data) == acc.length);
+
+  len = nghttp2_get_uint32(acc.buf) >> 8;
+
+  CU_ASSERT(sizeof(data) == len);
+  CU_ASSERT(211 == acc.buf[3]);
+  CU_ASSERT(0x01 == acc.buf[4]);
+
+  stream_id = (int32_t)nghttp2_get_uint32(acc.buf + 5);
+
+  CU_ASSERT(3 == stream_id);
+  CU_ASSERT(0 == memcmp(data, &acc.buf[NGHTTP2_FRAME_HDLEN], sizeof(data)));
+
+  nghttp2_session_del(session);
+
+  /* submitting standard HTTP/2 frame is error */
+  nghttp2_session_server_new(&session, &callbacks, &ud);
+
+  rv = nghttp2_submit_extension(session, NGHTTP2_GOAWAY, NGHTTP2_FLAG_NONE, 0,
+                                NULL);
+
+  CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT == rv);
+
+  nghttp2_session_del(session);
+  nghttp2_buf_free(&ud.scratchbuf, mem);
 }
 
 void test_nghttp2_session_open_stream(void) {

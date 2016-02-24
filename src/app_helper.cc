@@ -121,7 +121,7 @@ const char *strsettingsid(int32_t id) {
 } // namespace
 
 namespace {
-const char *strframetype(uint8_t type) {
+std::string strframetype(uint8_t type) {
   switch (type) {
   case NGHTTP2_DATA:
     return "DATA";
@@ -141,9 +141,13 @@ const char *strframetype(uint8_t type) {
     return "GOAWAY";
   case NGHTTP2_WINDOW_UPDATE:
     return "WINDOW_UPDATE";
-  default:
-    return "UNKNOWN";
   }
+
+  std::string s = "UNKNOWN(0x";
+  s += util::format_hex(&type, 1);
+  s += ")";
+
+  return s;
 };
 } // namespace
 
@@ -280,7 +284,7 @@ const char *frame_name_ansi_esc(print_type ptype) {
 namespace {
 void print_frame(print_type ptype, const nghttp2_frame *frame) {
   fprintf(outfile, "%s%s%s frame ", frame_name_ansi_esc(ptype),
-          strframetype(frame->hd.type), ansi_escend());
+          strframetype(frame->hd.type).c_str(), ansi_escend());
   print_frame_hd(frame->hd);
   if (frame->hd.flags) {
     print_frame_attr_indent();
