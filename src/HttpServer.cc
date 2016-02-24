@@ -308,7 +308,6 @@ public:
     }
     auto handler =
         make_unique<Http2Handler>(this, fd, ssl, get_next_session_id());
-    handler->setup_bev();
     if (!ssl) {
       if (handler->connection_made() != 0) {
         return;
@@ -447,6 +446,7 @@ Stream::Stream(Http2Handler *handler, int32_t stream_id)
       file_ent(nullptr),
       body_length(0),
       body_offset(0),
+      header_buffer_size(0),
       stream_id(stream_id),
       echo_upload(false) {
   auto config = handler->get_config();
@@ -574,7 +574,9 @@ struct ev_loop *Http2Handler::get_loop() const {
 
 Http2Handler::WriteBuf *Http2Handler::get_wb() { return &wb_; }
 
-int Http2Handler::setup_bev() { return 0; }
+void Http2Handler::start_settings_timer() {
+  ev_timer_start(sessions_->get_loop(), &settings_timerev_);
+}
 
 int Http2Handler::fill_wb() {
   if (data_pending_) {
@@ -868,8 +870,6 @@ int Http2Handler::connection_made() {
       return r;
     }
   }
-
-  ev_timer_start(sessions_->get_loop(), &settings_timerev_);
 
   if (ssl_ && !nghttp2::ssl::check_http2_requirement(ssl_)) {
     terminate_session(NGHTTP2_INADEQUATE_SECURITY);
@@ -1389,6 +1389,13 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
     return 0;
   }
 
+  if (stream->header_buffer_size + namelen + valuelen > 64_k) {
+    hd->submit_rst_stream(stream, NGHTTP2_INTERNAL_ERROR);
+    return 0;
+  }
+
+  stream->header_buffer_size += namelen + valuelen;
+
   auto token = http2::lookup_token(name, namelen);
 
   http2::index_header(stream->hdidx, token, stream->headers.size());
@@ -1527,6 +1534,15 @@ int hd_on_frame_send_callback(nghttp2_session *session,
       add_stream_read_timeout_if_pending(stream);
       remove_stream_write_timeout(stream);
     }
+
+    break;
+  }
+  case NGHTTP2_SETTINGS: {
+    if (frame->hd.flags & NGHTTP2_FLAG_ACK) {
+      return 0;
+    }
+
+    hd->start_settings_timer();
 
     break;
   }

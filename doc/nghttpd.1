@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPD" "1" "January 25, 2016" "1.7.0" "nghttp2"
+.TH "NGHTTPD" "1" "February 14, 2016" "1.8.0-DEV" "nghttp2"
 .SH NAME
 nghttpd \- HTTP/2 server
 .
@@ -136,6 +136,17 @@ Default: \fB1\fP
 .TP
 .B \-e, \-\-error\-gzip
 Make error response gzipped.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-w, \-\-window\-bits=<N>
+Sets the stream level initial window size to 2**<N>\-1.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-W, \-\-connection\-window\-bits=<N>
+Sets  the  connection  level   initial  window  size  to
+2**<N>\-1.
 .UNINDENT
 .INDENT 0.0
 .TP

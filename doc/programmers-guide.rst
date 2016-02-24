@@ -1,6 +1,62 @@
 Programmers' Guide
 ==================
 
+Architecture
+------------
+
+The most notable point in nghttp2 library architecture is it does not
+perform any I/O.  nghttp2 only performs HTTP/2 protocol stuff based on
+input byte strings.  It will calls callback functions set by
+applications while processing input.  The output of nghttp2 is just
+byte string.  An application is responsible to send these output to
+the remote peer.  The callback functions may be called while producing
+output.
+
+Not doing I/O makes embedding nghttp2 library in the existing code
+base very easy.  Usually, the existing applications have its own I/O
+event loops.  It is very hard to use nghttp2 in that situation if
+nghttp2 does its own I/O.  It also makes light weight language wrapper
+for nghttp2 easy with the same reason.  The down side is that an
+application author has to write more code to write complete
+application using nghttp2.  This is especially true for simple "toy"
+application.  For the real applications, however, this is not the
+case.  This is because you probably want to support HTTP/1 which
+nghttp2 does not provide, and to do that, you will need to write your
+own HTTP/1 stack or use existing third-party library, and bind them
+together with nghttp2 and I/O event loop.  In this point, not
+performing I/O in nghttp2 has more point than doing it.
+
+The primary object that an application uses is :type:`nghttp2_session`
+object, which is opaque struct and its details are hidden in order to
+ensure the upgrading its internal architecture without breaking the
+backward compatibility.  An application can set callbacks to
+:type:`nghttp2_session` object through the dedicated object and
+functions, and it also interacts with it via many API function calls.
+
+An application can create as many :type:`nghttp2_session` object as it
+wants.  But single :type:`nghttp2_session` object must be used by a
+single thread at the same time.  This is not so hard to enforce since
+most event-based architecture applicatons use is single thread per
+core, and handling one connection I/O is done by single thread.
+
+To feed input to :type:`nghttp2_session` object, one can use
+`nghttp2_session_recv()` or `nghttp2_session_mem_recv()` functions.
+They behave similarly, and the difference is that
+`nghttp2_session_recv()` will use :type:`nghttp2_read_callback` to get
+input.  On the other hand, `nghttp2_session_mem_recv()` will take
+input as its parameter.  If in doubt, use `nghttp2_session_mem_recv()`
+since it is simpler, and could be faster since it avoids calling
+callback function.
+
+To get output from :type:`nghttp2_session` object, one can use
+`nghttp2_session_send()` or `nghttp2_session_mem_send()`.  The
+difference between them is that the former uses
+:type:`nghttp2_send_callback` to pass output to an application.  On
+the other hand, the latter returns the output to the caller.  If in
+doubt, use `nghttp2_session_mem_send()` since it is simpler.  But
+`nghttp2_session_send()` might be easier to use if the output buffer
+an application has is fixed sized.
+
 Includes
 --------
 

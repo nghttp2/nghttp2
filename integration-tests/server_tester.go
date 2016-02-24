@@ -29,7 +29,8 @@ import (
 const (
 	serverBin  = buildDir + "/src/nghttpx"
 	serverPort = 3009
-	testDir    = buildDir + "/integration-tests"
+	testDir    = sourceDir + "/integration-tests"
+	logDir	   = buildDir + "/integration-tests"
 )
 
 func pair(name, value string) hpack.HeaderField {
@@ -124,7 +125,7 @@ func newServerTesterInternal(args []string, t *testing.T, handler http.Handler, 
 	// "127.0.0.1,8080"
 	b := "-b" + strings.Replace(backendURL.Host, ":", ",", -1)
 	args = append(args, fmt.Sprintf("-f127.0.0.1,%v", serverPort), b,
-		"--errorlog-file="+testDir+"/log.txt", "-LINFO")
+		"--errorlog-file="+logDir+"/log.txt", "-LINFO")
 
 	authority := fmt.Sprintf("127.0.0.1:%v", serverPort)
 

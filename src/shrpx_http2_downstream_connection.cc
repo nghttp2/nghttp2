@@ -98,6 +98,9 @@ int Http2DownstreamConnection::attach_downstream(Downstream *downstream) {
   http2session_->add_downstream_connection(this);
   if (http2session_->get_state() == Http2Session::DISCONNECTED) {
     http2session_->signal_write();
+    if (http2session_->get_state() == Http2Session::DISCONNECTED) {
+      return -1;
+    }
   }
 
   downstream_ = downstream;
@@ -422,7 +425,7 @@ int Http2DownstreamConnection::push_request_headers() {
   }
 
   for (auto &p : httpconf.add_request_headers) {
-    nva.push_back(http2::make_nv_nocopy(p.first, p.second));
+    nva.push_back(http2::make_nv_nocopy(p.name, p.value));
   }
 
   if (LOG_ENABLED(INFO)) {

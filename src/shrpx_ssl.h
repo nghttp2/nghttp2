@@ -39,6 +39,8 @@
 #include <neverbleed.h>
 #endif // HAVE_NEVERBLEED
 
+#include "network.h"
+
 namespace shrpx {
 
 class ClientHandler;
@@ -72,16 +74,19 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file
 // Create client side SSL_CTX
 SSL_CTX *create_ssl_client_context(
 #ifdef HAVE_NEVERBLEED
-    neverbleed_t *nb
+    neverbleed_t *nb,
 #endif // HAVE_NEVERBLEED
-    );
+    const StringRef &cacert, const StringRef &cert_file,
+    const StringRef &private_key_file, const StringRef &alpn,
+    int (*next_proto_select_cb)(SSL *s, unsigned char **out,
+                                unsigned char *outlen, const unsigned char *in,
+                                unsigned int inlen, void *arg));
 
 ClientHandler *accept_connection(Worker *worker, int fd, sockaddr *addr,
                                  int addrlen, const UpstreamAddr *faddr);
 
-// Check peer's certificate against first downstream address in
-// Config::downstream_addrs.  We only consider first downstream since
-// we use this function for HTTP/2 downstream link only.
+// Check peer's certificate against given |address| and |host|.
+int check_cert(SSL *ssl, const Address *addr, const StringRef &host);
 int check_cert(SSL *ssl, const DownstreamAddr *addr);
 
 // Retrieves DNS and IP address in subjectAltNames and commonName from
@@ -190,7 +195,7 @@ SSL_CTX *setup_server_ssl_context(std::vector<SSL_CTX *> &all_ssl_ctx,
 // Setups client side SSL_CTX.  This function inspects get_config()
 // and if downstream_no_tls is true, returns nullptr.  Otherwise, only
 // construct SSL_CTX if either client_mode or http2_bridge is true.
-SSL_CTX *setup_client_ssl_context(
+SSL_CTX *setup_downstream_client_ssl_context(
 #ifdef HAVE_NEVERBLEED
     neverbleed_t *nb
 #endif // HAVE_NEVERBLEED
@@ -211,6 +216,17 @@ bool downstream_tls_enabled();
 // The matching algorithm is based on RFC 6125.
 bool tls_hostname_match(const char *pattern, size_t plen, const char *hostname,
                         size_t hlen);
+
+// Caches |session| which is associated to remote address |addr|.
+// |session| is serialized into ASN1 representation, and stored.  |t|
+// is used as a time stamp.  Depending on the existing cache's time
+// stamp, |session| might not be cached.
+void try_cache_tls_session(DownstreamAddr *addr, SSL_SESSION *session,
+                           ev_tstamp t);
+
+// Returns cached session associated |addr|.  If no cache entry is
+// found associated to |addr|, nullptr will be returned.
+SSL_SESSION *reuse_tls_session(const DownstreamAddr *addr);
 
 } // namespace ssl
 

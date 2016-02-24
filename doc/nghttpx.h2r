@@ -150,6 +150,10 @@ insert serialized session data to memcached with
 as a memcached entry key, with expiry time 12 hours.  Session timeout
 is set to 12 hours.
 
+By default, connections to memcached server are not encrypted.  To
+enable encryption, use :option:`--tls-session-cache-memcached-tls`
+option.
+
 TLS SESSION TICKET RESUMPTION
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -188,6 +192,10 @@ used, LEN must be 48.  If
 80.  LEN and KEY pair can be repeated multiple times to store multiple
 keys.  The key appeared first is used as encryption key.  All the
 remaining keys are used as decryption only.
+
+By default, connections to memcached server are not encrypted.  To
+enable encryption, use :option:`--tls-ticket-key-memcached-tls`
+option.
 
 If :option:`--tls-ticket-key-file` is given, encryption key is read
 from the given file.  In this case, nghttpx does not rotate key

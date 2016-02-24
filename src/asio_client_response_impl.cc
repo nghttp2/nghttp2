@@ -30,7 +30,8 @@ namespace nghttp2 {
 namespace asio_http2 {
 namespace client {
 
-response_impl::response_impl() : content_length_(-1), status_code_(0) {}
+response_impl::response_impl()
+    : content_length_(-1), header_buffer_size_(0), status_code_(0) {}
 
 void response_impl::on_data(data_cb cb) { data_cb_ = std::move(cb); }
 
@@ -51,6 +52,12 @@ int64_t response_impl::content_length() const { return content_length_; }
 header_map &response_impl::header() { return header_; }
 
 const header_map &response_impl::header() const { return header_; }
+
+size_t response_impl::header_buffer_size() const { return header_buffer_size_; }
+
+void response_impl::update_header_buffer_size(size_t len) {
+  header_buffer_size_ += len;
+}
 
 } // namespace client
 } // namespace asio_http2

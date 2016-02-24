@@ -55,7 +55,9 @@ mruby:
 all-local: mruby
 
 clean-local:
-	-rm -rf "${abs_builddir}/mruby/build"
+	MRUBY_CONFIG="${srcdir}/build_config.rb" \
+	BUILD_DIR="${abs_builddir}/mruby/build" \
+	"${srcdir}/mruby/minirake" -f "${srcdir}/mruby/Rakefile" clean
 
 endif # HAVE_MRUBY
 

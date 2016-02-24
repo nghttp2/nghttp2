@@ -31,7 +31,7 @@
 
 namespace shrpx {
 
-void test_downstream_field_store_index_headers(void);
+void test_downstream_field_store_add_header_lower(void);
 void test_downstream_field_store_header(void);
 void test_downstream_crumble_request_cookie(void);
 void test_downstream_assemble_request_cookie(void);

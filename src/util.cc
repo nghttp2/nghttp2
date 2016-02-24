@@ -57,7 +57,6 @@
 #include <nghttp2/nghttp2.h>
 
 #include "timegm.h"
-#include "template.h"
 
 namespace nghttp2 {
 
@@ -651,6 +650,43 @@ std::string numeric_name(const struct sockaddr *sa, socklen_t salen) {
   return host.data();
 }
 
+std::string to_numeric_addr(const Address *addr) {
+  auto family = addr->su.storage.ss_family;
+  if (family == AF_UNIX) {
+    return addr->su.un.sun_path;
+  }
+
+  std::array<char, NI_MAXHOST> host;
+  std::array<char, NI_MAXSERV> serv;
+  auto rv =
+      getnameinfo(&addr->su.sa, addr->len, host.data(), host.size(),
+                  serv.data(), serv.size(), NI_NUMERICHOST | NI_NUMERICSERV);
+  if (rv != 0) {
+    return "unknown";
+  }
+
+  auto hostlen = strlen(host.data());
+  auto servlen = strlen(serv.data());
+
+  std::string s;
+  char *p;
+  if (family == AF_INET6) {
+    s.resize(hostlen + servlen + 2 + 1);
+    p = &s[0];
+    *p++ = '[';
+    p = std::copy_n(host.data(), hostlen, p);
+    *p++ = ']';
+  } else {
+    s.resize(hostlen + servlen + 1);
+    p = &s[0];
+    p = std::copy_n(host.data(), hostlen, p);
+  }
+  *p++ = ':';
+  std::copy_n(serv.data(), servlen, p);
+
+  return s;
+}
+
 static int STDERR_COPY = -1;
 static int STDOUT_COPY = -1;
 
@@ -1114,24 +1150,52 @@ std::string dtos(double n) {
   return utos(static_cast<int64_t>(n)) + "." + (f.size() == 1 ? "0" : "") + f;
 }
 
-std::string make_hostport(const char *host, uint16_t port) {
-  auto ipv6 = ipv6_numeric_addr(host);
-  std::string hostport;
-
-  if (ipv6) {
-    hostport += '[';
-  }
-
-  hostport += host;
-
-  if (ipv6) {
-    hostport += ']';
-  }
-
+std::string make_http_hostport(const StringRef &host, uint16_t port) {
   if (port != 80 && port != 443) {
-    hostport += ':';
-    hostport += utos(port);
+    return make_hostport(host, port);
   }
+
+  auto ipv6 = ipv6_numeric_addr(host.c_str());
+
+  std::string hostport;
+  hostport.resize(host.size() + (ipv6 ? 2 : 0));
+
+  auto p = &hostport[0];
+
+  if (ipv6) {
+    *p++ = '[';
+  }
+
+  p = std::copy_n(host.c_str(), host.size(), p);
+
+  if (ipv6) {
+    *p++ = ']';
+  }
+
+  return hostport;
+}
+
+std::string make_hostport(const StringRef &host, uint16_t port) {
+  auto ipv6 = ipv6_numeric_addr(host.c_str());
+  auto serv = utos(port);
+
+  std::string hostport;
+  hostport.resize(host.size() + (ipv6 ? 2 : 0) + 1 + serv.size());
+
+  auto p = &hostport[0];
+
+  if (ipv6) {
+    *p++ = '[';
+  }
+
+  p = std::copy_n(host.c_str(), host.size(), p);
+
+  if (ipv6) {
+    *p++ = ']';
+  }
+
+  *p++ = ':';
+  std::copy_n(serv.c_str(), serv.size(), p);
 
   return hostport;
 }

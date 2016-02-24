@@ -58,9 +58,9 @@ To build the documentation, you need to install:
 
 * sphinx (http://sphinx-doc.org/)
 
-To build and run the application programs (``nghttp``, ``nghttpd`` and
-``nghttpx``) in the ``src`` directory, the following packages are
-required:
+To build and run the application programs (``nghttp``, ``nghttpd``,
+``nghttpx`` and ``h2load``) in the ``src`` directory, the following packages
+are required:
 
 * OpenSSL >= 1.0.1
 * libev >= 4.15
@@ -110,8 +110,9 @@ If you are using Ubuntu 14.04 LTS (trusty) or Debian 7.0 (wheezy) and above run 
       zlib1g-dev libcunit1-dev libssl-dev libxml2-dev libev-dev libevent-dev libjansson-dev \
       libjemalloc-dev cython python3-dev python-setuptools
 
-spdylay is not packaged in Ubuntu, so you need to build it yourself:
-http://tatsuhiro-t.github.io/spdylay/
+From Ubuntu 15.10, spdylay has been available as a package named
+`libspdylay-dev`.  For the earlier Ubuntu release, you need to build
+it yourself: http://tatsuhiro-t.github.io/spdylay/
 
 To enable mruby support for nghttpx, `mruby
 <https://github.com/mruby/mruby>`_ is required.  We need to build
@@ -159,6 +160,17 @@ To compile the source code, gcc >= 4.8.3 or clang >= 3.4 is required.
    disable multi-threading in nghttpd, nghttpx and h2load to prevent
    them from crashing. A patch is welcome to make multi threading work
    on Mac OS X platform.
+
+.. note::
+
+   To compile the associated applications (nghttp, nghttpd, nghttpx
+   and h2load), you must use the ``--enable-app`` configure option and
+   ensure that the specified requirements above are met.  Normally,
+   configure script checks required dependencies to build these
+   applications, and enable ``--enable-app`` automatically, so you
+   don't have to use it explicitly.  But if you found that
+   applications were not built, then using ``--enable-app`` may find
+   that cause, such as the missing dependency.
 
 Notes for building on Windows (Mingw/Cygwin)
 --------------------------------------------
@@ -639,7 +651,9 @@ push.
 <https://istlsfastyet.com/#server-performance>`_ in TLS, such as
 session IDs, session tickets (with automatic key rotation), OCSP
 stapling, dynamic record sizing, ALPN/NPN, forward secrecy and SPDY &
-HTTP/2.
+HTTP/2.  ``nghttpx`` also offers the functionality to share session
+cache and ticket keys among multiple ``nghttpx`` instances via
+memcached.
 
 ``nghttpx`` has several operational modes:
 
@@ -661,7 +675,9 @@ The default mode, ``--http2-proxy`` and ``--http2-bridge`` modes use
 SSL/TLS in the frontend connection by default.  To disable SSL/TLS,
 use the ``--frontend-no-tls`` option.  If that option is used, SPDY is
 disabled in the frontend and incoming HTTP/1.1 connections can be
-upgraded to HTTP/2 through HTTP Upgrade.
+upgraded to HTTP/2 through HTTP Upgrade.  In these modes, HTTP/1
+backend connections are cleartext by default.  To enable TLS, use
+``--backend-http1-tls`` opiton.
 
 The ``--http2-bridge``, ``--client`` and ``--client-proxy`` modes use
 SSL/TLS in the backend connection by default.  To disable SSL/TLS, use

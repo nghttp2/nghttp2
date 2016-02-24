@@ -38,32 +38,32 @@ namespace shrpx {
 
 void test_shrpx_config_parse_header(void) {
   auto p = parse_header("a: b");
-  CU_ASSERT("a" == p.first);
-  CU_ASSERT("b" == p.second);
+  CU_ASSERT("a" == p.name);
+  CU_ASSERT("b" == p.value);
 
   p = parse_header("a:  b");
-  CU_ASSERT("a" == p.first);
-  CU_ASSERT("b" == p.second);
+  CU_ASSERT("a" == p.name);
+  CU_ASSERT("b" == p.value);
 
   p = parse_header(":a: b");
-  CU_ASSERT(p.first.empty());
+  CU_ASSERT(p.name.empty());
 
   p = parse_header("a: :b");
-  CU_ASSERT("a" == p.first);
-  CU_ASSERT(":b" == p.second);
+  CU_ASSERT("a" == p.name);
+  CU_ASSERT(":b" == p.value);
 
   p = parse_header(": b");
-  CU_ASSERT(p.first.empty());
+  CU_ASSERT(p.name.empty());
 
   p = parse_header("alpha: bravo charlie");
-  CU_ASSERT("alpha" == p.first);
-  CU_ASSERT("bravo charlie" == p.second);
+  CU_ASSERT("alpha" == p.name);
+  CU_ASSERT("bravo charlie" == p.value);
 
   p = parse_header("a,: b");
-  CU_ASSERT(p.first.empty());
+  CU_ASSERT(p.name.empty());
 
   p = parse_header("a: b\x0a");
-  CU_ASSERT(p.first.empty());
+  CU_ASSERT(p.name.empty());
 }
 
 void test_shrpx_config_parse_log_format(void) {
@@ -256,7 +256,7 @@ void test_shrpx_config_match_downstream_addr_group(void) {
 
   for (size_t i = 0; i < groups.size(); ++i) {
     auto &g = groups[i];
-    router.add_route(g.pattern.get(), strlen(g.pattern.get()), i);
+    router.add_route(StringRef{g.pattern}, i);
   }
 
   CU_ASSERT(0 == match_downstream_addr_group(router, "nghttp2.org", "/", groups,

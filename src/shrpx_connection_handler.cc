@@ -183,7 +183,7 @@ int ConnectionHandler::create_single_worker() {
                                                   nb_.get()
 #endif // HAVE_NEVERBLEED
                                                       );
-  auto cl_ssl_ctx = ssl::setup_client_ssl_context(
+  auto cl_ssl_ctx = ssl::setup_downstream_client_ssl_context(
 #ifdef HAVE_NEVERBLEED
       nb_.get()
 #endif // HAVE_NEVERBLEED
@@ -193,8 +193,23 @@ int ConnectionHandler::create_single_worker() {
     all_ssl_ctx_.push_back(cl_ssl_ctx);
   }
 
-  single_worker_ = make_unique<Worker>(loop_, sv_ssl_ctx, cl_ssl_ctx, cert_tree,
-                                       ticket_keys_);
+  auto &tlsconf = get_config()->tls;
+  auto &memcachedconf = get_config()->tls.session_cache.memcached;
+
+  SSL_CTX *session_cache_ssl_ctx = nullptr;
+  if (memcachedconf.tls) {
+    session_cache_ssl_ctx = ssl::create_ssl_client_context(
+#ifdef HAVE_NEVERBLEED
+        nb_.get(),
+#endif // HAVE_NEVERBLEED
+        StringRef{tlsconf.cacert}, StringRef{memcachedconf.cert_file},
+        StringRef{memcachedconf.private_key_file}, StringRef(), nullptr);
+    all_ssl_ctx_.push_back(session_cache_ssl_ctx);
+  }
+
+  single_worker_ =
+      make_unique<Worker>(loop_, sv_ssl_ctx, cl_ssl_ctx, session_cache_ssl_ctx,
+                          cert_tree, ticket_keys_);
 #ifdef HAVE_MRUBY
   if (single_worker_->create_mruby_context() != 0) {
     return -1;
@@ -215,7 +230,7 @@ int ConnectionHandler::create_worker_thread(size_t num) {
                                                   nb_.get()
 #endif // HAVE_NEVERBLEED
                                                       );
-  auto cl_ssl_ctx = ssl::setup_client_ssl_context(
+  auto cl_ssl_ctx = ssl::setup_downstream_client_ssl_context(
 #ifdef HAVE_NEVERBLEED
       nb_.get()
 #endif // HAVE_NEVERBLEED
@@ -225,11 +240,25 @@ int ConnectionHandler::create_worker_thread(size_t num) {
     all_ssl_ctx_.push_back(cl_ssl_ctx);
   }
 
+  auto &tlsconf = get_config()->tls;
+  auto &memcachedconf = get_config()->tls.session_cache.memcached;
+
   for (size_t i = 0; i < num; ++i) {
     auto loop = ev_loop_new(0);
 
-    auto worker = make_unique<Worker>(loop, sv_ssl_ctx, cl_ssl_ctx, cert_tree,
-                                      ticket_keys_);
+    SSL_CTX *session_cache_ssl_ctx = nullptr;
+    if (memcachedconf.tls) {
+      session_cache_ssl_ctx = ssl::create_ssl_client_context(
+#ifdef HAVE_NEVERBLEED
+          nb_.get(),
+#endif // HAVE_NEVERBLEED
+          StringRef{tlsconf.cacert}, StringRef{memcachedconf.cert_file},
+          StringRef{memcachedconf.private_key_file}, StringRef{}, nullptr);
+      all_ssl_ctx_.push_back(session_cache_ssl_ctx);
+    }
+    auto worker =
+        make_unique<Worker>(loop, sv_ssl_ctx, cl_ssl_ctx, session_cache_ssl_ctx,
+                            cert_tree, ticket_keys_);
 #ifdef HAVE_MRUBY
     if (worker->create_mruby_context() != 0) {
       return -1;
@@ -432,7 +461,8 @@ int ConnectionHandler::start_ocsp_update(const char *cert_file) {
   assert(!ev_is_active(&ocsp_.chldev));
 
   char *const argv[] = {
-      const_cast<char *>(get_config()->tls.ocsp.fetch_ocsp_response_file.get()),
+      const_cast<char *>(
+          get_config()->tls.ocsp.fetch_ocsp_response_file.c_str()),
       const_cast<char *>(cert_file), nullptr};
   char *const envp[] = {nullptr};
 
@@ -726,6 +756,22 @@ void ConnectionHandler::schedule_next_tls_ticket_key_memcached_get(
     ev_timer *w) {
   ev_timer_set(w, get_config()->tls.ticket.memcached.interval, 0.);
   ev_timer_start(loop_, w);
+}
+
+SSL_CTX *ConnectionHandler::create_tls_ticket_key_memcached_ssl_ctx() {
+  auto &tlsconf = get_config()->tls;
+  auto &memcachedconf = get_config()->tls.ticket.memcached;
+
+  auto ssl_ctx = ssl::create_ssl_client_context(
+#ifdef HAVE_NEVERBLEED
+      nb_.get(),
+#endif // HAVE_NEVERBLEED
+      StringRef{tlsconf.cacert}, StringRef{memcachedconf.cert_file},
+      StringRef{memcachedconf.private_key_file}, StringRef{}, nullptr);
+
+  all_ssl_ctx_.push_back(ssl_ctx);
+
+  return ssl_ctx;
 }
 
 #ifdef HAVE_NEVERBLEED

@@ -104,6 +104,15 @@ OPTIONS
 
     Make error response gzipped.
 
+.. option:: -w, --window-bits=<N>
+
+    Sets the stream level initial window size to 2\*\*<N>-1.
+
+.. option:: -W, --connection-window-bits=<N>
+
+    Sets  the  connection  level   initial  window  size  to
+    2\*\*<N>-1.
+
 .. option:: --dh-param-file=<PATH>
 
     Path to file that contains  DH parameters in PEM format.

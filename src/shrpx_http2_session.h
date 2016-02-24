@@ -48,7 +48,6 @@ namespace shrpx {
 
 class Http2DownstreamConnection;
 class Worker;
-class ConnectBlocker;
 
 struct StreamData {
   StreamData *dlnext, *dlprev;
@@ -57,9 +56,8 @@ struct StreamData {
 
 class Http2Session {
 public:
-  Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx,
-               ConnectBlocker *connect_blocker, Worker *worker, size_t group,
-               size_t idx);
+  Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx, Worker *worker,
+               size_t group, size_t idx);
   ~Http2Session();
 
   // If hard is true, all pending requests are abandoned and
@@ -203,7 +201,6 @@ private:
   // Used to parse the response from HTTP proxy
   std::unique_ptr<http_parser> proxy_htp_;
   Worker *worker_;
-  ConnectBlocker *connect_blocker_;
   // NULL if no TLS is configured
   SSL_CTX *ssl_ctx_;
   // Address of remote endpoint

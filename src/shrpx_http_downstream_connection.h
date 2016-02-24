@@ -82,7 +82,7 @@ private:
   // nullptr if TLS is not used.
   SSL_CTX *ssl_ctx_;
   // Address of remote endpoint
-  const DownstreamAddr *addr_;
+  DownstreamAddr *addr_;
   IOControl ioctrl_;
   http_parser response_htp_;
   size_t group_;

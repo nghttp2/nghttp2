@@ -1221,11 +1221,12 @@ int nghttp2_session_adjust_idle_stream(nghttp2_session *session) {
   size_t max;
   int rv;
 
-  /* Make minimum number of idle streams 16, which is arbitrary chosen
-     number. */
-  max = nghttp2_max(16,
-                    nghttp2_min(session->local_settings.max_concurrent_streams,
-                                session->pending_local_max_concurrent_stream));
+  /* Make minimum number of idle streams 16, and maximum 100, which
+     are arbitrary chosen numbers. */
+  max = nghttp2_min(
+      100, nghttp2_max(
+               16, nghttp2_min(session->local_settings.max_concurrent_streams,
+                               session->pending_local_max_concurrent_stream)));
 
   DEBUGF(fprintf(stderr, "stream: adjusting kept idle streams "
                          "num_idle_streams=%zu, max=%zu\n",
@@ -5763,10 +5764,12 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
 
       readlen = inbound_frame_payload_readlen(iframe, in, last);
 
-      iframe->lbuf.last = nghttp2_cpymem(iframe->lbuf.last, in, readlen);
+      if (readlen > 0) {
+        iframe->lbuf.last = nghttp2_cpymem(iframe->lbuf.last, in, readlen);
 
-      iframe->payloadleft -= readlen;
-      in += readlen;
+        iframe->payloadleft -= readlen;
+        in += readlen;
+      }
 
       DEBUGF(fprintf(stderr, "recv: readlen=%zu, payloadleft=%zu\n", readlen,
                      iframe->payloadleft));

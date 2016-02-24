@@ -289,8 +289,6 @@ static int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
   return 0;
 }
 
-#define MAX_OUTLEN 4096
-
 /*
  * The implementation of nghttp2_on_data_chunk_recv_callback type. We
  * use this function to print the received response body.

@@ -52,12 +52,15 @@
 
 #include "shrpx_router.h"
 #include "template.h"
+#include "http2.h"
+#include "network.h"
 
 using namespace nghttp2;
 
 namespace shrpx {
 
 struct LogFragment;
+class ConnectBlocker;
 
 namespace ssl {
 
@@ -209,21 +212,25 @@ constexpr char SHRPX_OPT_NO_HTTP2_CIPHER_BLACK_LIST[] =
 constexpr char SHRPX_OPT_BACKEND_HTTP1_TLS[] = "backend-http1-tls";
 constexpr char SHRPX_OPT_BACKEND_TLS_SESSION_CACHE_PER_WORKER[] =
     "backend-tls-session-cache-per-worker";
+constexpr char SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_TLS[] =
+    "tls-session-cache-memcached-tls";
+constexpr char SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_CERT_FILE[] =
+    "tls-session-cache-memcached-cert-file";
+constexpr char SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_PRIVATE_KEY_FILE[] =
+    "tls-session-cache-memcached-private-key-file";
+constexpr char SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_ADDRESS_FAMILY[] =
+    "tls-session-cache-memcached-address-family";
+constexpr char SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_TLS[] =
+    "tls-ticket-key-memcached-tls";
+constexpr char SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_CERT_FILE[] =
+    "tls-ticket-key-memcached-cert-file";
+constexpr char SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_PRIVATE_KEY_FILE[] =
+    "tls-ticket-key-memcached-private-key-file";
+constexpr char SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_ADDRESS_FAMILY[] =
+    "tls-ticket-key-memcached-address-family";
+constexpr char SHRPX_OPT_BACKEND_ADDRESS_FAMILY[] = "backend-address-family";
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
-
-union sockaddr_union {
-  sockaddr_storage storage;
-  sockaddr sa;
-  sockaddr_in6 in6;
-  sockaddr_in in;
-  sockaddr_un un;
-};
-
-struct Address {
-  size_t len;
-  union sockaddr_union su;
-};
 
 enum shrpx_proto { PROTO_HTTP2, PROTO_HTTP };
 
@@ -270,18 +277,23 @@ struct UpstreamAddr {
   int fd;
 };
 
-struct DownstreamAddr {
-  DownstreamAddr() : addr{}, port(0), host_unix(false) {}
-  DownstreamAddr(const DownstreamAddr &other);
-  DownstreamAddr(DownstreamAddr &&) = default;
-  DownstreamAddr &operator=(const DownstreamAddr &other);
-  DownstreamAddr &operator=(DownstreamAddr &&other) = default;
+struct TLSSessionCache {
+  // ASN1 representation of SSL_SESSION object.  See
+  // i2d_SSL_SESSION(3SSL).
+  std::vector<uint8_t> session_data;
+  // The last time stamp when this cache entry is created or updated.
+  ev_tstamp last_updated;
+};
 
+struct DownstreamAddr {
   Address addr;
   // backend address.  If |host_unix| is true, this is UNIX domain
   // socket path.
   ImmutableString host;
   ImmutableString hostport;
+  ConnectBlocker *connect_blocker;
+  // Client side TLS session cache
+  TLSSessionCache tls_session_cache;
   // backend port.  0 if |host_unix| is true.
   uint16_t port;
   // true if |host| contains UNIX domain socket path.
@@ -289,13 +301,10 @@ struct DownstreamAddr {
 };
 
 struct DownstreamAddrGroup {
-  DownstreamAddrGroup(const std::string &pattern) : pattern(strcopy(pattern)) {}
-  DownstreamAddrGroup(const DownstreamAddrGroup &other);
-  DownstreamAddrGroup(DownstreamAddrGroup &&) = default;
-  DownstreamAddrGroup &operator=(const DownstreamAddrGroup &other);
-  DownstreamAddrGroup &operator=(DownstreamAddrGroup &&) = default;
+  DownstreamAddrGroup(const StringRef &pattern)
+      : pattern(pattern.c_str(), pattern.size()) {}
 
-  std::unique_ptr<char[]> pattern;
+  ImmutableString pattern;
   std::vector<DownstreamAddr> addrs;
 };
 
@@ -334,7 +343,12 @@ struct TLSConfig {
     struct {
       Address addr;
       uint16_t port;
-      std::unique_ptr<char[]> host;
+      // Hostname of memcached server.  This is also used as SNI field
+      // if TLS is enabled.
+      ImmutableString host;
+      // Client private key and certificate for authentication
+      ImmutableString private_key_file;
+      ImmutableString cert_file;
       ev_tstamp interval;
       // Maximum number of retries when getting TLS ticket key from
       // mamcached, due to network error.
@@ -342,6 +356,10 @@ struct TLSConfig {
       // Maximum number of consecutive error from memcached, when this
       // limit reached, TLS ticket is disabled.
       size_t max_fail;
+      // Address family of memcached connection.  One of either
+      // AF_INET, AF_INET6 or AF_UNSPEC.
+      int family;
+      bool tls;
     } memcached;
     std::vector<std::string> files;
     const EVP_CIPHER *cipher;
@@ -354,7 +372,16 @@ struct TLSConfig {
     struct {
       Address addr;
       uint16_t port;
-      std::unique_ptr<char[]> host;
+      // Hostname of memcached server.  This is also used as SNI field
+      // if TLS is enabled.
+      ImmutableString host;
+      // Client private key and certificate for authentication
+      ImmutableString private_key_file;
+      ImmutableString cert_file;
+      // Address family of memcached connection.  One of either
+      // AF_INET, AF_INET6 or AF_UNSPEC.
+      int family;
+      bool tls;
     } memcached;
   } session_cache;
 
@@ -367,7 +394,7 @@ struct TLSConfig {
   // OCSP realted configurations
   struct {
     ev_tstamp update_interval;
-    std::unique_ptr<char[]> fetch_ocsp_response_file;
+    ImmutableString fetch_ocsp_response_file;
     bool disabled;
   } ocsp;
 
@@ -375,14 +402,14 @@ struct TLSConfig {
   struct {
     // Path to file containing CA certificate solely used for client
     // certificate validation
-    std::unique_ptr<char[]> cacert;
+    ImmutableString cacert;
     bool enabled;
   } client_verify;
 
   // Client private key and certificate used in backend connections.
   struct {
-    std::unique_ptr<char[]> private_key_file;
-    std::unique_ptr<char[]> cert_file;
+    ImmutableString private_key_file;
+    ImmutableString cert_file;
   } client;
 
   // The list of (private key file, certificate file) pair
@@ -399,12 +426,12 @@ struct TLSConfig {
   long int tls_proto_mask;
   std::string backend_sni_name;
   std::chrono::seconds session_timeout;
-  std::unique_ptr<char[]> private_key_file;
-  std::unique_ptr<char[]> private_key_passwd;
-  std::unique_ptr<char[]> cert_file;
-  std::unique_ptr<char[]> dh_param_file;
-  std::unique_ptr<char[]> ciphers;
-  std::unique_ptr<char[]> cacert;
+  ImmutableString private_key_file;
+  ImmutableString private_key_passwd;
+  ImmutableString cert_file;
+  ImmutableString dh_param_file;
+  ImmutableString ciphers;
+  ImmutableString cacert;
   bool insecure;
   bool no_http2_cipher_black_list;
 };
@@ -430,8 +457,8 @@ struct HttpConfig {
     bool strip_incoming;
   } xff;
   std::vector<AltSvc> altsvcs;
-  std::vector<std::pair<std::string, std::string>> add_request_headers;
-  std::vector<std::pair<std::string, std::string>> add_response_headers;
+  Headers add_request_headers;
+  Headers add_response_headers;
   StringRef server_name;
   size_t request_header_field_buffer;
   size_t max_request_header_fields;
@@ -446,8 +473,8 @@ struct Http2Config {
   struct {
     struct {
       struct {
-        std::unique_ptr<char[]> request_header_file;
-        std::unique_ptr<char[]> response_header_file;
+        ImmutableString request_header_file;
+        ImmutableString response_header_file;
         FILE *request_header;
         FILE *response_header;
       } dump;
@@ -477,12 +504,12 @@ struct Http2Config {
 struct LoggingConfig {
   struct {
     std::vector<LogFragment> format;
-    std::unique_ptr<char[]> file;
+    ImmutableString file;
     // Send accesslog to syslog, ignoring accesslog_file.
     bool syslog;
   } access;
   struct {
-    std::unique_ptr<char[]> file;
+    ImmutableString file;
     // Send errorlog to syslog, ignoring errorlog_file.
     bool syslog;
   } error;
@@ -537,13 +564,12 @@ struct ConnectionConfig {
     size_t response_buffer_size;
     // downstream protocol; this will be determined by given options.
     shrpx_proto proto;
+    // Address family of backend connection.  One of either AF_INET,
+    // AF_INET6 or AF_UNSPEC.  This is ignored if backend connection
+    // is made via Unix domain socket.
+    int family;
     bool no_tls;
     bool http1_tls;
-    // true if IPv4 only; ipv4 and ipv6 are mutually exclusive; and
-    // (ipv4 && ipv6) must be false.
-    bool ipv4;
-    // true if IPv6 only
-    bool ipv6;
   } downstream;
 };
 
@@ -555,10 +581,10 @@ struct Config {
   TLSConfig tls;
   LoggingConfig logging;
   ConnectionConfig conn;
-  std::unique_ptr<char[]> pid_file;
-  std::unique_ptr<char[]> conf_path;
-  std::unique_ptr<char[]> user;
-  std::unique_ptr<char[]> mruby_file;
+  ImmutableString pid_file;
+  ImmutableString conf_path;
+  ImmutableString user;
+  ImmutableString mruby_file;
   char **original_argv;
   char **argv;
   char *cwd;
@@ -603,7 +629,7 @@ std::string read_passwd_from_file(const char *filename);
 // like "NAME: VALUE".  We require that NAME is non empty string.  ":"
 // is allowed at the start of the NAME, but NAME == ":" is not
 // allowed.  This function returns pair of NAME and VALUE.
-std::pair<std::string, std::string> parse_header(const char *optarg);
+Headers::value_type parse_header(const char *optarg);
 
 std::vector<LogFragment> parse_log_format(const char *optarg);
 
@@ -630,7 +656,7 @@ read_tls_ticket_key_file(const std::vector<std::string> &files,
 // group.  The catch-all group index is given in |catch_all|.  All
 // patterns are given in |groups|.
 size_t match_downstream_addr_group(
-    const Router &router, const std::string &hostport, const std::string &path,
+    const Router &router, const StringRef &hostport, const StringRef &path,
     const std::vector<DownstreamAddrGroup> &groups, size_t catch_all);
 
 } // namespace shrpx

@@ -125,11 +125,8 @@ struct Request {
 
   bool is_ipv6_literal_addr() const;
 
-  bool response_pseudo_header_allowed(int16_t token) const;
-  bool push_request_pseudo_header_allowed(int16_t token) const;
-
-  Headers::value_type *get_res_header(int16_t token);
-  Headers::value_type *get_req_header(int16_t token);
+  Headers::value_type *get_res_header(int32_t token);
+  Headers::value_type *get_req_header(int32_t token);
 
   void record_request_start_time();
   void record_response_start_time();
@@ -150,6 +147,7 @@ struct Request {
   nghttp2_gzip *inflater;
   HtmlParser *html_parser;
   const nghttp2_data_provider *data_prd;
+  size_t header_buffer_size;
   int32_t stream_id;
   int status;
   // Recursion level: 0: first entity, 1: entity linked from first entity

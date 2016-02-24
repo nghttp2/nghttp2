@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "January 25, 2016" "1.7.0" "nghttp2"
+.TH "NGHTTPX" "1" "February 14, 2016" "1.8.0-DEV" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 proxy
 .
@@ -121,7 +121,9 @@ Default: \fB127.0.0.1,80\fP
 Set  frontend  host and  port.   If  <HOST> is  \(aq*\(aq,  it
 assumes  all addresses  including  both  IPv4 and  IPv6.
 UNIX domain  socket can  be specified by  prefixing path
-name with "unix:" (e.g., unix:/var/run/nghttpx.sock)
+name  with  "unix:" (e.g.,  unix:/var/run/nghttpx.sock).
+This  option can  be used  multiple times  to listen  to
+multiple addresses.
 .sp
 Default: \fB*,3000\fP
 .UNINDENT
@@ -134,13 +136,13 @@ Default: \fB512\fP
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-\-backend\-ipv4
-Resolve backend hostname to IPv4 address only.
-.UNINDENT
-.INDENT 0.0
-.TP
-.B \-\-backend\-ipv6
-Resolve backend hostname to IPv6 address only.
+.B \-\-backend\-address\-family=(auto|IPv4|IPv6)
+Specify  address  family  of  backend  connections.   If
+"auto" is given, both IPv4  and IPv6 are considered.  If
+"IPv4" is  given, only  IPv4 address is  considered.  If
+"IPv6" is given, only IPv6 address is considered.
+.sp
+Default: \fBauto\fP
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -162,6 +164,22 @@ be     specified    by     \fI\%\-\-backend\-read\-timeout\fP    and
 .TP
 .B \-\-accept\-proxy\-protocol
 Accept PROXY protocol version 1 on frontend connection.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-backend\-no\-tls
+Disable  SSL/TLS  on  backend connections.   For  HTTP/2
+backend  connections, TLS  is enabled  by default.   For
+HTTP/1 backend connections, TLS  is disabled by default,
+and can  be enabled  by \fI\%\-\-backend\-http1\-tls\fP  option.  If
+both  \fI\%\-\-backend\-no\-tls\fP  and \fI\%\-\-backend\-http1\-tls\fP  options
+are used, \fI\%\-\-backend\-no\-tls\fP has the precedence.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-backend\-http1\-tls
+Enable SSL/TLS on backend  HTTP/1 connections.  See also
+\fI\%\-\-backend\-no\-tls\fP option.
 .UNINDENT
 .SS Performance
 .INDENT 0.0
@@ -396,19 +414,17 @@ described in OpenSSL ciphers(1).
 .INDENT 0.0
 .TP
 .B \-k, \-\-insecure
-Don\(aqt  verify   backend  server\(aqs  certificate   if  \fI\%\-p\fP,
-\fI\%\-\-client\fP    or    \fI\%\-\-http2\-bridge\fP     are    given    and
-\fI\%\-\-backend\-no\-tls\fP is not given.
+Don\(aqt  verify backend  server\(aqs  certificate  if TLS  is
+enabled for backend connections.
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-\-cacert=<PATH>
-Set path to trusted CA  certificate file if \fI\%\-p\fP, \fI\%\-\-client\fP
-or \fI\%\-\-http2\-bridge\fP are given  and \fI\%\-\-backend\-no\-tls\fP is not
-given.  The file must be  in PEM format.  It can contain
-multiple  certificates.    If  the  linked   OpenSSL  is
-configured to  load system  wide certificates,  they are
-loaded at startup regardless of this option.
+Set path to trusted CA  certificate file used in backend
+TLS connections.   The file must  be in PEM  format.  It
+can  contain  multiple   certificates.   If  the  linked
+OpenSSL is configured to  load system wide certificates,
+they are loaded at startup regardless of this option.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -518,16 +534,27 @@ required.
 .INDENT 0.0
 .TP
 .B \-\-tls\-ticket\-key\-memcached=<HOST>,<PORT>
-Specify  address of  memcached server  to store  session
-cache.   This  enables  shared TLS  ticket  key  between
-multiple nghttpx  instances.  nghttpx  does not  set TLS
-ticket  key  to  memcached.   The  external  ticket  key
-generator  is required.   nghttpx just  gets TLS  ticket
-keys from  memcached, and  use them,  possibly replacing
-current set of keys.  It is  up to extern TLS ticket key
-generator to  rotate keys frequently.  See  "TLS SESSION
-TICKET RESUMPTION"  section in  manual page to  know the
-data format in memcached entry.
+Specify address  of memcached  server to get  TLS ticket
+keys for  session resumption.   This enables  shared TLS
+ticket key between  multiple nghttpx instances.  nghttpx
+does not set TLS ticket  key to memcached.  The external
+ticket key generator is required.  nghttpx just gets TLS
+ticket  keys  from  memcached, and  use  them,  possibly
+replacing current set  of keys.  It is up  to extern TLS
+ticket  key generator  to rotate  keys frequently.   See
+"TLS SESSION  TICKET RESUMPTION" section in  manual page
+to know the data format in memcached entry.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-tls\-ticket\-key\-memcached\-address\-family=(auto|IPv4|IPv6)
+Specify address  family of memcached connections  to get
+TLS ticket keys.  If "auto" is given, both IPv4 and IPv6
+are considered.   If "IPv4" is given,  only IPv4 address
+is considered.  If "IPv6" is given, only IPv6 address is
+considered.
+.sp
+Default: \fBauto\fP
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -565,6 +592,24 @@ aes\-128\-cbc is used.
 .UNINDENT
 .INDENT 0.0
 .TP
+.B \-\-tls\-ticket\-key\-memcached\-tls
+Enable  SSL/TLS  on  memcached connections  to  get  TLS
+ticket keys.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-tls\-ticket\-key\-memcached\-cert\-file=<PATH>
+Path to client certificate  for memcached connections to
+get TLS ticket keys.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-tls\-ticket\-key\-memcached\-private\-key\-file=<PATH>
+Path to client private  key for memcached connections to
+get TLS ticket keys.
+.UNINDENT
+.INDENT 0.0
+.TP
 .B \-\-fetch\-ocsp\-response\-file=<PATH>
 Path to  fetch\-ocsp\-response script file.  It  should be
 absolute path.
@@ -592,6 +637,35 @@ multiple nghttpx instances.
 .UNINDENT
 .INDENT 0.0
 .TP
+.B \-\-tls\-session\-cache\-memcached\-address\-family=(auto|IPv4|IPv6)
+Specify address family of memcached connections to store
+session cache.  If  "auto" is given, both  IPv4 and IPv6
+are considered.   If "IPv4" is given,  only IPv4 address
+is considered.  If "IPv6" is given, only IPv6 address is
+considered.
+.sp
+Default: \fBauto\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-tls\-session\-cache\-memcached\-tls
+Enable SSL/TLS on memcached connections to store session
+cache.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-tls\-session\-cache\-memcached\-cert\-file=<PATH>
+Path to client certificate  for memcached connections to
+store session cache.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-tls\-session\-cache\-memcached\-private\-key\-file=<PATH>
+Path to client private  key for memcached connections to
+store session cache.
+.UNINDENT
+.INDENT 0.0
+.TP
 .B \-\-tls\-dyn\-rec\-warmup\-threshold=<SIZE>
 Specify the  threshold size for TLS  dynamic record size
 behaviour.  During  a TLS  session, after  the threshold
@@ -615,6 +689,21 @@ This behaviour  applies to all TLS  based frontends, and
 TLS HTTP/2 backends.
 .sp
 Default: \fB1s\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-no\-http2\-cipher\-black\-list
+Allow black  listed cipher  suite on  HTTP/2 connection.
+See  \fI\%https://tools.ietf.org/html/rfc7540#appendix\-A\fP  for
+the complete HTTP/2 cipher suites black list.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-backend\-tls\-session\-cache\-per\-worker=<N>
+Set  the maximum  number  of backend  TLS session  cache
+stored per worker.
+.sp
+Default: \fB10000\fP
 .UNINDENT
 .SS HTTP/2 and SPDY
 .INDENT 0.0
@@ -663,11 +752,6 @@ Sets the  per\-connection window  size of  HTTP/2 backend
 connection to 2**<N>\-1.
 .sp
 Default: \fB16\fP
-.UNINDENT
-.INDENT 0.0
-.TP
-.B \-\-backend\-no\-tls
-Disable SSL/TLS on backend connections.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -868,11 +952,12 @@ Specify the parameter value sent out with "by" parameter
 of Forwarded  header field.   If "obfuscated"  is given,
 the string is randomly generated at startup.  If "ip" is
 given,   the  interface   address  of   the  connection,
-including  port number,  is  sent  with "by"  parameter.
-User can also specify the static obfuscated string.  The
-limitation  is that  it must  start with  "_", and  only
-consists of  character set [A\-Za\-z0\-9._\-],  as described
-in RFC 7239.
+including port number, is  sent with "by" parameter.  In
+case of UNIX domain  socket, "localhost" is used instead
+of address and  port.  User can also  specify the static
+obfuscated string.  The limitation is that it must start
+with   "_",  and   only   consists   of  character   set
+[A\-Za\-z0\-9._\-], as described in RFC 7239.
 .sp
 Default: \fBobfuscated\fP
 .UNINDENT
@@ -884,7 +969,8 @@ parameter of Forwarded header field.  If "obfuscated" is
 given, the string is  randomly generated for each client
 connection.  If "ip" is given, the remote client address
 of  the connection,  without port  number, is  sent with
-"for" parameter.
+"for"  parameter.   In  case   of  UNIX  domain  socket,
+"localhost" is used instead of address.
 .sp
 Default: \fBobfuscated\fP
 .UNINDENT
@@ -940,21 +1026,41 @@ Example: \fI\%\-\-add\-response\-header\fP="foo: bar"
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-\-header\-field\-buffer=<SIZE>
+.B \-\-request\-header\-field\-buffer=<SIZE>
 Set maximum buffer size for incoming HTTP request header
 field list.  This is the sum of header name and value in
-bytes.
+bytes.   If  trailer  fields  exist,  they  are  counted
+towards this number.
 .sp
 Default: \fB64K\fP
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-\-max\-header\-fields=<N>
+.B \-\-max\-request\-header\-fields=<N>
 Set  maximum  number  of incoming  HTTP  request  header
-fields, which  appear in one request  or response header
-field list.
+fields.   If  trailer  fields exist,  they  are  counted
+towards this number.
 .sp
 Default: \fB100\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-response\-header\-field\-buffer=<SIZE>
+Set  maximum  buffer  size for  incoming  HTTP  response
+header field list.   This is the sum of  header name and
+value  in  bytes.  If  trailer  fields  exist, they  are
+counted towards this number.
+.sp
+Default: \fB64K\fP
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-max\-response\-header\-fields=<N>
+Set  maximum number  of  incoming  HTTP response  header
+fields.   If  trailer  fields exist,  they  are  counted
+towards this number.
+.sp
+Default: \fB500\fP
 .UNINDENT
 .SS Debug
 .INDENT 0.0
@@ -1203,6 +1309,10 @@ insert serialized session data to memcached with
 \fBnghttpx:tls\-session\-cache:\fP + lowercased hex string of session ID
 as a memcached entry key, with expiry time 12 hours.  Session timeout
 is set to 12 hours.
+.sp
+By default, connections to memcached server are not encrypted.  To
+enable encryption, use \fI\%\-\-tls\-session\-cache\-memcached\-tls\fP
+option.
 .SS TLS SESSION TICKET RESUMPTION
 .sp
 By default, session ticket is shared by all worker threads.  The
@@ -1246,6 +1356,10 @@ used, LEN must be 48.  If
 80.  LEN and KEY pair can be repeated multiple times to store multiple
 keys.  The key appeared first is used as encryption key.  All the
 remaining keys are used as decryption only.
+.sp
+By default, connections to memcached server are not encrypted.  To
+enable encryption, use \fI\%\-\-tls\-ticket\-key\-memcached\-tls\fP
+option.
 .sp
 If \fI\%\-\-tls\-ticket\-key\-file\fP is given, encryption key is read
 from the given file.  In this case, nghttpx does not rotate key

@@ -129,33 +129,25 @@ HttpDownstreamConnection::HttpDownstreamConnection(
       response_htp_{0},
       group_(group) {}
 
-HttpDownstreamConnection::~HttpDownstreamConnection() {
-  if (conn_.tls.ssl) {
-    auto session = SSL_get1_session(conn_.tls.ssl);
-    if (session) {
-      worker_->cache_downstream_tls_session(addr_, session);
-    }
-  }
-}
+HttpDownstreamConnection::~HttpDownstreamConnection() {}
 
 int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
   if (LOG_ENABLED(INFO)) {
     DCLOG(INFO, this) << "Attaching to DOWNSTREAM:" << downstream;
   }
 
+  auto worker_blocker = worker_->get_connect_blocker();
+  if (worker_blocker->blocked()) {
+    if (LOG_ENABLED(INFO)) {
+      DCLOG(INFO, this)
+          << "Worker wide backend connection was blocked temporarily";
+    }
+    return SHRPX_ERR_NETWORK;
+  }
+
   auto &downstreamconf = get_config()->conn.downstream;
 
   if (conn_.fd == -1) {
-    auto connect_blocker = client_handler_->get_connect_blocker();
-
-    if (connect_blocker->blocked()) {
-      if (LOG_ENABLED(INFO)) {
-        DCLOG(INFO, this)
-            << "Downstream connection was blocked by connect_blocker";
-      }
-      return -1;
-    }
-
     if (ssl_ctx_) {
       auto ssl = ssl::create_ssl(ssl_ctx_);
       if (!ssl) {
@@ -167,7 +159,8 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
 
     auto &next_downstream = worker_->get_dgrp(group_)->next;
     auto end = next_downstream;
-    auto &addrs = downstreamconf.addr_groups[group_].addrs;
+    auto &groups = worker_->get_downstream_addr_groups();
+    auto &addrs = groups[group_].addrs;
     for (;;) {
       auto &addr = addrs[next_downstream];
 
@@ -175,22 +168,44 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
         next_downstream = 0;
       }
 
+      auto &connect_blocker = addr.connect_blocker;
+
+      if (connect_blocker->blocked()) {
+        if (LOG_ENABLED(INFO)) {
+          DCLOG(INFO, this) << "Backend server "
+                            << util::to_numeric_addr(&addr.addr)
+                            << " was not available temporarily";
+        }
+
+        if (end == next_downstream) {
+          return SHRPX_ERR_NETWORK;
+        }
+
+        continue;
+      }
+
       conn_.fd = util::create_nonblock_socket(addr.addr.su.storage.ss_family);
 
       if (conn_.fd == -1) {
         auto error = errno;
-        DCLOG(WARN, this) << "socket() failed; errno=" << error;
+        DCLOG(WARN, this) << "socket() failed; addr="
+                          << util::to_numeric_addr(&addr.addr)
+                          << ", errno=" << error;
 
-        connect_blocker->on_failure();
+        worker_blocker->on_failure();
 
         return SHRPX_ERR_NETWORK;
       }
+
+      worker_blocker->on_success();
 
       int rv;
       rv = connect(conn_.fd, &addr.addr.su.sa, addr.addr.len);
       if (rv != 0 && errno != EINPROGRESS) {
         auto error = errno;
-        DCLOG(WARN, this) << "connect() failed; errno=" << error;
+        DCLOG(WARN, this) << "connect() failed; addr="
+                          << util::to_numeric_addr(&addr.addr)
+                          << ", errno=" << error;
 
         connect_blocker->on_failure();
         close(conn_.fd);
@@ -218,7 +233,7 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
           SSL_set_tlsext_host_name(conn_.tls.ssl, sni_name.c_str());
         }
 
-        auto session = worker_->reuse_downstream_tls_session(addr_);
+        auto session = ssl::reuse_tls_session(addr_);
         if (session) {
           SSL_set_session(conn_.tls.ssl, session);
           SSL_SESSION_free(session);
@@ -417,9 +432,9 @@ int HttpDownstreamConnection::push_request_headers() {
   }
 
   for (auto &p : httpconf.add_request_headers) {
-    buf->append(p.first);
+    buf->append(p.name);
     buf->append(": ");
-    buf->append(p.second);
+    buf->append(p.value);
     buf->append("\r\n");
   }
 
@@ -571,7 +586,7 @@ int htp_hdrs_completecb(http_parser *htp) {
   resp.http_major = htp->http_major;
   resp.http_minor = htp->http_minor;
 
-  if (resp.fs.index_headers() != 0) {
+  if (resp.fs.parse_content_length() != 0) {
     downstream->set_response_state(Downstream::MSG_BAD_HEADER);
     return -1;
   }
@@ -690,7 +705,7 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
       if (ensure_max_header_fields(downstream, httpconf) != 0) {
         return -1;
       }
-      resp.fs.add_header(std::string(data, len), "");
+      resp.fs.add_header_lower(StringRef{data, len}, StringRef{}, false);
     }
   } else {
     // trailer part
@@ -703,7 +718,7 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
         // wrong place or crash if trailer fields are currently empty.
         return -1;
       }
-      resp.fs.add_trailer(std::string(data, len), "");
+      resp.fs.add_trailer_lower(StringRef(data, len), StringRef{}, false);
     }
   }
   return 0;
@@ -868,6 +883,13 @@ int HttpDownstreamConnection::tls_handshake() {
     return -1;
   }
 
+  if (!SSL_session_reused(conn_.tls.ssl)) {
+    auto session = SSL_get0_session(conn_.tls.ssl);
+    if (session) {
+      ssl::try_cache_tls_session(addr_, session, ev_now(conn_.loop));
+    }
+  }
+
   do_read_ = &HttpDownstreamConnection::read_tls;
   do_write_ = &HttpDownstreamConnection::write_tls;
 
@@ -1011,14 +1033,17 @@ int HttpDownstreamConnection::process_input(const uint8_t *data,
 }
 
 int HttpDownstreamConnection::connected() {
-  auto connect_blocker = client_handler_->get_connect_blocker();
+  auto connect_blocker = addr_->connect_blocker;
 
   if (!util::check_socket_connected(conn_.fd)) {
     conn_.wlimit.stopw();
 
     if (LOG_ENABLED(INFO)) {
-      DLOG(INFO, this) << "downstream connect failed";
+      DCLOG(INFO, this) << "Backend connect failed; addr="
+                        << util::to_numeric_addr(&addr_->addr);
     }
+
+    connect_blocker->on_failure();
 
     downstream_->set_request_state(Downstream::CONNECT_FAIL);
 
@@ -1026,7 +1051,7 @@ int HttpDownstreamConnection::connected() {
   }
 
   if (LOG_ENABLED(INFO)) {
-    DLOG(INFO, this) << "Connected to downstream host";
+    DCLOG(INFO, this) << "Connected to downstream host";
   }
 
   connect_blocker->on_success();

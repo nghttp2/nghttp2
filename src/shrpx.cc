@@ -199,18 +199,18 @@ int chown_to_running_user(const char *path) {
 
 namespace {
 void save_pid() {
-  std::ofstream out(get_config()->pid_file.get(), std::ios::binary);
+  std::ofstream out(get_config()->pid_file.c_str(), std::ios::binary);
   out << get_config()->pid << "\n";
   out.close();
   if (!out) {
-    LOG(ERROR) << "Could not save PID to file " << get_config()->pid_file.get();
+    LOG(ERROR) << "Could not save PID to file " << get_config()->pid_file;
     exit(EXIT_FAILURE);
   }
 
   if (get_config()->uid != 0) {
-    if (chown_to_running_user(get_config()->pid_file.get()) == -1) {
+    if (chown_to_running_user(get_config()->pid_file.c_str()) == -1) {
       auto error = errno;
-      LOG(WARN) << "Changing owner of pid file " << get_config()->pid_file.get()
+      LOG(WARN) << "Changing owner of pid file " << get_config()->pid_file
                 << " failed: " << strerror(error);
     }
   }
@@ -656,7 +656,7 @@ int create_tcp_server_socket(UpstreamAddr &faddr,
   }
 
   faddr.fd = fd;
-  faddr.hostport = util::make_hostport(host.data(), faddr.port);
+  faddr.hostport = util::make_http_hostport(host.data(), faddr.port);
 
   LOG(NOTICE) << "Listening on " << faddr.hostport;
 
@@ -946,7 +946,7 @@ int event_loop() {
     redirect_stderr_to_errorlog();
   }
 
-  if (get_config()->pid_file) {
+  if (!get_config()->pid_file.empty()) {
     save_pid();
   }
 
@@ -1040,7 +1040,7 @@ void fill_default_config() {
   *mod_config() = {};
 
   mod_config()->num_worker = 1;
-  mod_config()->conf_path = strcopy("/etc/nghttpx/nghttpx.conf");
+  mod_config()->conf_path = "/etc/nghttpx/nghttpx.conf";
   mod_config()->pid = getpid();
 
   auto &tlsconf = mod_config()->tls;
@@ -1051,6 +1051,13 @@ void fill_default_config() {
       memcachedconf.max_retry = 3;
       memcachedconf.max_fail = 2;
       memcachedconf.interval = 10_min;
+      memcachedconf.family = AF_UNSPEC;
+    }
+
+    auto &session_cacheconf = tlsconf.session_cache;
+    {
+      auto &memcachedconf = session_cacheconf.memcached;
+      memcachedconf.family = AF_UNSPEC;
     }
 
     ticketconf.cipher = EVP_aes_128_cbc();
@@ -1060,8 +1067,7 @@ void fill_default_config() {
     auto &ocspconf = tlsconf.ocsp;
     // ocsp update interval = 14400 secs = 4 hours, borrowed from h2o
     ocspconf.update_interval = 4_h;
-    ocspconf.fetch_ocsp_response_file =
-        strcopy(PKGDATADIR "/fetch-ocsp-response");
+    ocspconf.fetch_ocsp_response_file = PKGDATADIR "/fetch-ocsp-response";
   }
 
   {
@@ -1115,7 +1121,7 @@ void fill_default_config() {
     accessconf.format = parse_log_format(DEFAULT_ACCESSLOG_FORMAT);
 
     auto &errorconf = loggingconf.error;
-    errorconf.file = strcopy("/dev/stderr");
+    errorconf.file = "/dev/stderr";
   }
 
   loggingconf.syslog_facility = LOG_DAEMON;
@@ -1159,6 +1165,7 @@ void fill_default_config() {
     downstreamconf.connections_per_host = 8;
     downstreamconf.request_buffer_size = 16_k;
     downstreamconf.response_buffer_size = 128_k;
+    downstreamconf.family = AF_UNSPEC;
   }
 }
 
@@ -1263,10 +1270,12 @@ Connections:
   --backlog=<N>
               Set listen backlog size.
               Default: )" << get_config()->conn.listener.backlog << R"(
-  --backend-ipv4
-              Resolve backend hostname to IPv4 address only.
-  --backend-ipv6
-              Resolve backend hostname to IPv6 address only.
+  --backend-address-family=(auto|IPv4|IPv6)
+              Specify  address  family  of  backend  connections.   If
+              "auto" is given, both IPv4  and IPv6 are considered.  If
+              "IPv4" is  given, only  IPv4 address is  considered.  If
+              "IPv6" is given, only IPv6 address is considered.
+              Default: auto
   --backend-http-proxy-uri=<URI>
               Specify      proxy       URI      in       the      form
               http://[<USER>:<PASS>@]<PROXY>:<PORT>.    If   a   proxy
@@ -1520,16 +1529,23 @@ SSL/TLS:
               ticket  key sharing  between  nghttpx  instances is  not
               required.
   --tls-ticket-key-memcached=<HOST>,<PORT>
-              Specify  address of  memcached server  to store  session
-              cache.   This  enables  shared TLS  ticket  key  between
-              multiple nghttpx  instances.  nghttpx  does not  set TLS
-              ticket  key  to  memcached.   The  external  ticket  key
-              generator  is required.   nghttpx just  gets TLS  ticket
-              keys from  memcached, and  use them,  possibly replacing
-              current set of keys.  It is  up to extern TLS ticket key
-              generator to  rotate keys frequently.  See  "TLS SESSION
-              TICKET RESUMPTION"  section in  manual page to  know the
-              data format in memcached entry.
+              Specify address  of memcached  server to get  TLS ticket
+              keys for  session resumption.   This enables  shared TLS
+              ticket key between  multiple nghttpx instances.  nghttpx
+              does not set TLS ticket  key to memcached.  The external
+              ticket key generator is required.  nghttpx just gets TLS
+              ticket  keys  from  memcached, and  use  them,  possibly
+              replacing current set  of keys.  It is up  to extern TLS
+              ticket  key generator  to rotate  keys frequently.   See
+              "TLS SESSION  TICKET RESUMPTION" section in  manual page
+              to know the data format in memcached entry.
+  --tls-ticket-key-memcached-address-family=(auto|IPv4|IPv6)
+              Specify address  family of memcached connections  to get
+              TLS ticket keys.  If "auto" is given, both IPv4 and IPv6
+              are considered.   If "IPv4" is given,  only IPv4 address
+              is considered.  If "IPv6" is given, only IPv6 address is
+              considered.
+              Default: auto
   --tls-ticket-key-memcached-interval=<DURATION>
               Set interval to get TLS ticket keys from memcached.
               Default: )"
@@ -1550,11 +1566,20 @@ SSL/TLS:
               Specify cipher  to encrypt TLS session  ticket.  Specify
               either   aes-128-cbc   or  aes-256-cbc.    By   default,
               aes-128-cbc is used.
+  --tls-ticket-key-memcached-tls
+              Enable  SSL/TLS  on  memcached connections  to  get  TLS
+              ticket keys.
+  --tls-ticket-key-memcached-cert-file=<PATH>
+              Path to client certificate  for memcached connections to
+              get TLS ticket keys.
+  --tls-ticket-key-memcached-private-key-file=<PATH>
+              Path to client private  key for memcached connections to
+              get TLS ticket keys.
   --fetch-ocsp-response-file=<PATH>
               Path to  fetch-ocsp-response script file.  It  should be
               absolute path.
-              Default: )"
-      << get_config()->tls.ocsp.fetch_ocsp_response_file.get() << R"(
+              Default: )" << get_config()->tls.ocsp.fetch_ocsp_response_file
+      << R"(
   --ocsp-update-interval=<DURATION>
               Set interval to update OCSP response cache.
               Default: )"
@@ -1564,6 +1589,22 @@ SSL/TLS:
               Specify  address of  memcached server  to store  session
               cache.   This  enables   shared  session  cache  between
               multiple nghttpx instances.
+  --tls-session-cache-memcached-address-family=(auto|IPv4|IPv6)
+              Specify address family of memcached connections to store
+              session cache.  If  "auto" is given, both  IPv4 and IPv6
+              are considered.   If "IPv4" is given,  only IPv4 address
+              is considered.  If "IPv6" is given, only IPv6 address is
+              considered.
+              Default: auto
+  --tls-session-cache-memcached-tls
+              Enable SSL/TLS on memcached connections to store session
+              cache.
+  --tls-session-cache-memcached-cert-file=<PATH>
+              Path to client certificate  for memcached connections to
+              store session cache.
+  --tls-session-cache-memcached-private-key-file=<PATH>
+              Path to client private  key for memcached connections to
+              store session cache.
   --tls-dyn-rec-warmup-threshold=<SIZE>
               Specify the  threshold size for TLS  dynamic record size
               behaviour.  During  a TLS  session, after  the threshold
@@ -1711,7 +1752,7 @@ Logging:
               Set path to write error  log.  To reopen file, send USR1
               signal  to nghttpx.   stderr will  be redirected  to the
               error log file unless --errorlog-syslog is used.
-              Default: )" << get_config()->logging.error.file.get() << R"(
+              Default: )" << get_config()->logging.error.file << R"(
   --errorlog-syslog
               Send  error log  to  syslog.  If  this  option is  used,
               --errorlog-file option is ignored.
@@ -1852,7 +1893,7 @@ Scripting:
 Misc:
   --conf=<PATH>
               Load configuration from <PATH>.
-              Default: )" << get_config()->conf_path.get() << R"(
+              Default: )" << get_config()->conf_path << R"(
   --include=<PATH>
               Load additional configurations from <PATH>.  File <PATH>
               is  read  when  configuration  parser  encountered  this
@@ -1878,11 +1919,11 @@ namespace {
 void process_options(
     int argc, char **argv,
     std::vector<std::pair<const char *, const char *>> &cmdcfgs) {
-  if (conf_exists(get_config()->conf_path.get())) {
+  if (conf_exists(get_config()->conf_path.c_str())) {
     std::set<std::string> include_set;
-    if (load_config(get_config()->conf_path.get(), include_set) == -1) {
+    if (load_config(get_config()->conf_path.c_str(), include_set) == -1) {
       LOG(FATAL) << "Failed to load configuration from "
-                 << get_config()->conf_path.get();
+                 << get_config()->conf_path;
       exit(EXIT_FAILURE);
     }
     assert(include_set.empty());
@@ -1945,8 +1986,8 @@ void process_options(
   {
     auto &dumpconf = http2conf.upstream.debug.dump;
 
-    if (dumpconf.request_header_file) {
-      auto path = dumpconf.request_header_file.get();
+    if (!dumpconf.request_header_file.empty()) {
+      auto path = dumpconf.request_header_file.c_str();
       auto f = open_file_for_write(path);
 
       if (f == nullptr) {
@@ -1966,8 +2007,8 @@ void process_options(
       }
     }
 
-    if (dumpconf.response_header_file) {
-      auto path = dumpconf.response_header_file.get();
+    if (!dumpconf.response_header_file.empty()) {
+      auto path = dumpconf.response_header_file.c_str();
       auto f = open_file_for_write(path);
 
       if (f == nullptr) {
@@ -2016,12 +2057,6 @@ void process_options(
     listenerconf.addrs.push_back(std::move(addr));
   }
 
-  if (downstreamconf.ipv4 && downstreamconf.ipv6) {
-    LOG(FATAL) << "--backend-ipv4 and --backend-ipv6 cannot be used at the "
-               << "same time.";
-    exit(EXIT_FAILURE);
-  }
-
   if (upstreamconf.worker_connections == 0) {
     upstreamconf.worker_connections = std::numeric_limits<size_t>::max();
   }
@@ -2050,7 +2085,7 @@ void process_options(
   }
 
   if (!upstreamconf.no_tls &&
-      (!tlsconf.private_key_file || !tlsconf.cert_file)) {
+      (tlsconf.private_key_file.empty() || tlsconf.cert_file.empty())) {
     print_usage(std::cerr);
     LOG(FATAL) << "Too few arguments";
     exit(EXIT_FAILURE);
@@ -2058,10 +2093,10 @@ void process_options(
 
   if (!upstreamconf.no_tls && !tlsconf.ocsp.disabled) {
     struct stat buf;
-    if (stat(tlsconf.ocsp.fetch_ocsp_response_file.get(), &buf) != 0) {
+    if (stat(tlsconf.ocsp.fetch_ocsp_response_file.c_str(), &buf) != 0) {
       tlsconf.ocsp.disabled = true;
       LOG(WARN) << "--fetch-ocsp-response-file: "
-                << tlsconf.ocsp.fetch_ocsp_response_file.get()
+                << tlsconf.ocsp.fetch_ocsp_response_file
                 << " not found.  OCSP stapling has been disabled.";
     }
   }
@@ -2069,18 +2104,18 @@ void process_options(
   auto &addr_groups = downstreamconf.addr_groups;
 
   if (addr_groups.empty()) {
-    DownstreamAddr addr;
+    DownstreamAddr addr{};
     addr.host = ImmutableString::from_lit(DEFAULT_DOWNSTREAM_HOST);
     addr.port = DEFAULT_DOWNSTREAM_PORT;
 
-    DownstreamAddrGroup g("/");
+    DownstreamAddrGroup g(StringRef::from_lit("/"));
     g.addrs.push_back(std::move(addr));
-    mod_config()->router.add_route(g.pattern.get(), 1, addr_groups.size());
+    mod_config()->router.add_route(StringRef{g.pattern}, addr_groups.size());
     addr_groups.push_back(std::move(g));
   } else if (get_config()->http2_proxy || get_config()->client_proxy) {
     // We don't support host mapping in these cases.  Move all
     // non-catch-all patterns to catch-all pattern.
-    DownstreamAddrGroup catch_all("/");
+    DownstreamAddrGroup catch_all(StringRef::from_lit("/"));
     for (auto &g : addr_groups) {
       std::move(std::begin(g.addrs), std::end(g.addrs),
                 std::back_inserter(catch_all.addrs));
@@ -2088,7 +2123,7 @@ void process_options(
     std::vector<DownstreamAddrGroup>().swap(addr_groups);
     // maybe not necessary?
     mod_config()->router = Router();
-    mod_config()->router.add_route(catch_all.pattern.get(), 1,
+    mod_config()->router.add_route(StringRef{catch_all.pattern},
                                    addr_groups.size());
     addr_groups.push_back(std::move(catch_all));
   }
@@ -2100,11 +2135,11 @@ void process_options(
   ssize_t catch_all_group = -1;
   for (size_t i = 0; i < addr_groups.size(); ++i) {
     auto &g = addr_groups[i];
-    if (util::streq(g.pattern.get(), "/")) {
+    if (g.pattern == "/") {
       catch_all_group = i;
     }
     if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Host-path pattern: group " << i << ": '" << g.pattern.get()
+      LOG(INFO) << "Host-path pattern: group " << i << ": '" << g.pattern
                 << "'";
       for (auto &addr : g.addrs) {
         LOG(INFO) << "group " << i << " -> " << addr.host.c_str()
@@ -2142,8 +2177,10 @@ void process_options(
           exit(EXIT_FAILURE);
         }
 
-        LOG(INFO) << "Use UNIX domain socket path " << path
-                  << " for backend connection";
+        if (LOG_ENABLED(INFO)) {
+          LOG(INFO) << "Use UNIX domain socket path " << path
+                    << " for backend connection";
+        }
 
         addr.addr.su.un.sun_family = AF_UNIX;
         // copy path including terminal NULL
@@ -2153,47 +2190,63 @@ void process_options(
         continue;
       }
 
-      addr.hostport =
-          ImmutableString(util::make_hostport(addr.host.c_str(), addr.port));
+      addr.hostport = ImmutableString(
+          util::make_http_hostport(StringRef(addr.host), addr.port));
 
-      if (resolve_hostname(
-              &addr.addr, addr.host.c_str(), addr.port,
-              downstreamconf.ipv4
-                  ? AF_INET
-                  : (downstreamconf.ipv6 ? AF_INET6 : AF_UNSPEC)) == -1) {
+      auto hostport = util::make_hostport(addr.host.c_str(), addr.port);
+
+      if (resolve_hostname(&addr.addr, addr.host.c_str(), addr.port,
+                           downstreamconf.family) == -1) {
+        LOG(FATAL) << "Resolving backend address failed: " << hostport;
         exit(EXIT_FAILURE);
       }
+      LOG(NOTICE) << "Resolved backend address: " << hostport << " -> "
+                  << util::to_numeric_addr(&addr.addr);
     }
   }
 
   auto &proxy = mod_config()->downstream_http_proxy;
   if (!proxy.host.empty()) {
-    if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Resolving backend http proxy address";
-    }
+    auto hostport = util::make_hostport(proxy.host.c_str(), proxy.port);
     if (resolve_hostname(&proxy.addr, proxy.host.c_str(), proxy.port,
                          AF_UNSPEC) == -1) {
+      LOG(FATAL) << "Resolving backend HTTP proxy address failed: " << hostport;
       exit(EXIT_FAILURE);
     }
+    LOG(NOTICE) << "Backend HTTP proxy address: " << hostport << " -> "
+                << util::to_numeric_addr(&proxy.addr);
   }
 
   {
     auto &memcachedconf = tlsconf.session_cache.memcached;
-    if (memcachedconf.host) {
-      if (resolve_hostname(&memcachedconf.addr, memcachedconf.host.get(),
-                           memcachedconf.port, AF_UNSPEC) == -1) {
+    if (!memcachedconf.host.empty()) {
+      auto hostport = util::make_hostport(StringRef{memcachedconf.host},
+                                          memcachedconf.port);
+      if (resolve_hostname(&memcachedconf.addr, memcachedconf.host.c_str(),
+                           memcachedconf.port, memcachedconf.family) == -1) {
+        LOG(FATAL)
+            << "Resolving memcached address for TLS session cache failed: "
+            << hostport;
         exit(EXIT_FAILURE);
       }
+      LOG(NOTICE) << "Memcached address for TLS session cache: " << hostport
+                  << " -> " << util::to_numeric_addr(&memcachedconf.addr);
     }
   }
 
   {
     auto &memcachedconf = tlsconf.ticket.memcached;
-    if (memcachedconf.host) {
-      if (resolve_hostname(&memcachedconf.addr, memcachedconf.host.get(),
-                           memcachedconf.port, AF_UNSPEC) == -1) {
+    if (!memcachedconf.host.empty()) {
+      auto hostport = util::make_hostport(StringRef{memcachedconf.host},
+                                          memcachedconf.port);
+      if (resolve_hostname(&memcachedconf.addr, memcachedconf.host.c_str(),
+                           memcachedconf.port, memcachedconf.family) == -1) {
+        LOG(FATAL) << "Resolving memcached address for TLS ticket key failed: "
+                   << hostport;
         exit(EXIT_FAILURE);
       }
+      LOG(NOTICE) << "Memcached address for TLS ticket key: " << hostport
+                  << " -> " << util::to_numeric_addr(&memcachedconf.addr);
     }
   }
 
@@ -2400,6 +2453,21 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_BACKEND_HTTP1_TLS, no_argument, &flag, 106},
         {SHRPX_OPT_BACKEND_TLS_SESSION_CACHE_PER_WORKER, required_argument,
          &flag, 107},
+        {SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_TLS, no_argument, &flag, 108},
+        {SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_CERT_FILE, required_argument,
+         &flag, 109},
+        {SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_PRIVATE_KEY_FILE,
+         required_argument, &flag, 110},
+        {SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_TLS, no_argument, &flag, 111},
+        {SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_CERT_FILE, required_argument, &flag,
+         112},
+        {SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_PRIVATE_KEY_FILE, required_argument,
+         &flag, 113},
+        {SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_ADDRESS_FAMILY, required_argument,
+         &flag, 114},
+        {SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_ADDRESS_FAMILY,
+         required_argument, &flag, 115},
+        {SHRPX_OPT_BACKEND_ADDRESS_FAMILY, required_argument, &flag, 116},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -2493,7 +2561,7 @@ int main(int argc, char **argv) {
         break;
       case 12:
         // --conf
-        mod_config()->conf_path = strcopy(optarg);
+        mod_config()->conf_path = optarg;
         break;
       case 14:
         // --syslog-facility
@@ -2857,6 +2925,48 @@ int main(int argc, char **argv) {
         // --backend-tls-session-cache-per-worker
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_TLS_SESSION_CACHE_PER_WORKER,
                              optarg);
+        break;
+      case 108:
+        // --tls-session-cache-memcached-tls
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_TLS, "yes");
+        break;
+      case 109:
+        // --tls-session-cache-memcached-cert-file
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_CERT_FILE,
+                             optarg);
+        break;
+      case 110:
+        // --tls-session-cache-memcached-private-key-file
+        cmdcfgs.emplace_back(
+            SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_PRIVATE_KEY_FILE, optarg);
+        break;
+      case 111:
+        // --tls-ticket-key-memcached-tls
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_TLS, "yes");
+        break;
+      case 112:
+        // --tls-ticket-key-memcached-cert-file
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_CERT_FILE,
+                             optarg);
+        break;
+      case 113:
+        // --tls-ticket-key-memcached-private-key-file
+        cmdcfgs.emplace_back(
+            SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_PRIVATE_KEY_FILE, optarg);
+        break;
+      case 114:
+        // --tls-ticket-key-memcached-address-family
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_ADDRESS_FAMILY,
+                             optarg);
+        break;
+      case 115:
+        // --tls-session-cache-memcached-address-family
+        cmdcfgs.emplace_back(
+            SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_ADDRESS_FAMILY, optarg);
+        break;
+      case 116:
+        // --backend-address-family
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_ADDRESS_FAMILY, optarg);
         break;
       default:
         break;

@@ -31,15 +31,21 @@
 
 #include <ev.h>
 
+#include <openssl/ssl.h>
+
+#include "memchunk.h"
+#include "network.h"
+
 namespace shrpx {
 
 struct MemcachedRequest;
 class MemcachedConnection;
-struct Address;
 
 class MemcachedDispatcher {
 public:
-  MemcachedDispatcher(const Address *addr, struct ev_loop *loop);
+  MemcachedDispatcher(const Address *addr, struct ev_loop *loop,
+                      SSL_CTX *ssl_ctx, const StringRef &sni_name,
+                      MemchunkPool *mcpool);
   ~MemcachedDispatcher();
 
   int add_request(std::unique_ptr<MemcachedRequest> req);

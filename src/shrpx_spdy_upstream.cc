@@ -188,10 +188,13 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
     }
 
     for (size_t i = 0; nv[i]; i += 2) {
-      req.fs.add_header(nv[i], nv[i + 1]);
+      auto name = StringRef{nv[i]};
+      auto value = StringRef{nv[i + 1]};
+      auto token = http2::lookup_token(name.byte(), name.size());
+      req.fs.add_header_token(name, value, false, token);
     }
 
-    if (req.fs.index_headers() != 0) {
+    if (req.fs.parse_content_length() != 0) {
       if (upstream->error_reply(downstream, 400) != 0) {
         ULOG(FATAL, upstream) << "error_reply failed";
       }
@@ -850,9 +853,12 @@ int SpdyUpstream::send_reply(Downstream *downstream, const uint8_t *body,
 
   const auto &headers = resp.fs.headers();
 
+  auto &httpconf = get_config()->http;
+
   auto nva = std::vector<const char *>();
-  // 3 for :status, :version and server
-  nva.reserve(3 + headers.size());
+  // 6 for :status, :version and server.  1 for last terminal nullptr.
+  nva.reserve(6 + headers.size() * 2 +
+              httpconf.add_response_headers.size() * 2 + 1);
 
   nva.push_back(":status");
   nva.push_back(status_string.c_str());
@@ -877,6 +883,11 @@ int SpdyUpstream::send_reply(Downstream *downstream, const uint8_t *body,
   if (!resp.fs.header(http2::HD_SERVER)) {
     nva.push_back("server");
     nva.push_back(get_config()->http.server_name.c_str());
+  }
+
+  for (auto &p : httpconf.add_response_headers) {
+    nva.push_back(p.name.c_str());
+    nva.push_back(p.value.c_str());
   }
 
   nva.push_back(nullptr);
@@ -1064,8 +1075,8 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream) {
   }
 
   for (auto &p : httpconf.add_response_headers) {
-    nv[hdidx++] = p.first.c_str();
-    nv[hdidx++] = p.second.c_str();
+    nv[hdidx++] = p.name.c_str();
+    nv[hdidx++] = p.value.c_str();
   }
 
   nv[hdidx++] = 0;

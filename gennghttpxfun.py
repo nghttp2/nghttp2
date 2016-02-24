@@ -92,6 +92,7 @@ OPTIONS = [
     "tls-ticket-key-cipher",
     "host-rewrite",
     "tls-session-cache-memcached",
+    "tls-session-cache-memcached-tls",
     "tls-ticket-key-memcached",
     "tls-ticket-key-memcached-interval",
     "tls-ticket-key-memcached-max-retry",
@@ -114,7 +115,15 @@ OPTIONS = [
     "max-header-fields",
     "no-http2-cipher-black-list",
     "backend-http1-tls",
-    "backend-tls-session-cache-per-worker"
+    "backend-tls-session-cache-per-worker",
+    "tls-session-cache-memcached-cert-file",
+    "tls-session-cache-memcached-private-key-file",
+    "tls-session-cache-memcached-address-family",
+    "tls-ticket-key-memcached-tls",
+    "tls-ticket-key-memcached-cert-file",
+    "tls-ticket-key-memcached-private-key-file",
+    "tls-ticket-key-memcached-address-family",
+    "backend-address-family"
 ]
 
 LOGVARS = [

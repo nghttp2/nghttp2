@@ -271,53 +271,6 @@ void test_http2_lookup_token(void) {
   CU_ASSERT(http2::HD_EXPECT == http2::lookup_token("expect"));
 }
 
-void test_http2_check_http2_pseudo_header(void) {
-  http2::HeaderIndex hdidx;
-  http2::init_hdidx(hdidx);
-
-  CU_ASSERT(http2::check_http2_request_pseudo_header(hdidx, http2::HD__METHOD));
-  hdidx[http2::HD__PATH] = 0;
-  CU_ASSERT(http2::check_http2_request_pseudo_header(hdidx, http2::HD__METHOD));
-  hdidx[http2::HD__METHOD] = 1;
-  CU_ASSERT(
-      !http2::check_http2_request_pseudo_header(hdidx, http2::HD__METHOD));
-  CU_ASSERT(!http2::check_http2_request_pseudo_header(hdidx, http2::HD_VIA));
-
-  http2::init_hdidx(hdidx);
-
-  CU_ASSERT(
-      http2::check_http2_response_pseudo_header(hdidx, http2::HD__STATUS));
-  hdidx[http2::HD__STATUS] = 0;
-  CU_ASSERT(
-      !http2::check_http2_response_pseudo_header(hdidx, http2::HD__STATUS));
-  CU_ASSERT(!http2::check_http2_response_pseudo_header(hdidx, http2::HD_VIA));
-}
-
-void test_http2_http2_header_allowed(void) {
-  CU_ASSERT(http2::http2_header_allowed(http2::HD__PATH));
-  CU_ASSERT(http2::http2_header_allowed(http2::HD_CONTENT_LENGTH));
-  CU_ASSERT(!http2::http2_header_allowed(http2::HD_CONNECTION));
-}
-
-void test_http2_mandatory_request_headers_presence(void) {
-  http2::HeaderIndex hdidx;
-  http2::init_hdidx(hdidx);
-
-  CU_ASSERT(!http2::http2_mandatory_request_headers_presence(hdidx));
-  hdidx[http2::HD__AUTHORITY] = 0;
-  CU_ASSERT(!http2::http2_mandatory_request_headers_presence(hdidx));
-  hdidx[http2::HD__METHOD] = 1;
-  CU_ASSERT(!http2::http2_mandatory_request_headers_presence(hdidx));
-  hdidx[http2::HD__PATH] = 2;
-  CU_ASSERT(!http2::http2_mandatory_request_headers_presence(hdidx));
-  hdidx[http2::HD__SCHEME] = 3;
-  CU_ASSERT(http2::http2_mandatory_request_headers_presence(hdidx));
-
-  hdidx[http2::HD__AUTHORITY] = -1;
-  hdidx[http2::HD_HOST] = 0;
-  CU_ASSERT(http2::http2_mandatory_request_headers_presence(hdidx));
-}
-
 void test_http2_parse_link_header(void) {
   {
     // only URI appears; we don't extract URI unless it bears rel=preload

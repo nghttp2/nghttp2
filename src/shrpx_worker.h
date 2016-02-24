@@ -104,6 +104,7 @@ struct WorkerEvent {
 class Worker {
 public:
   Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
+         SSL_CTX *tls_session_cache_memcached_ssl_ctx,
          ssl::CertLookupTree *cert_tree,
          const std::shared_ptr<TicketKeys> &ticket_keys);
   ~Worker();
@@ -122,7 +123,6 @@ public:
   WorkerStat *get_worker_stat();
   DownstreamConnectionPool *get_dconn_pool();
   Http2Session *next_http2_session(size_t group);
-  ConnectBlocker *get_connect_blocker() const;
   struct ev_loop *get_loop() const;
   SSL_CTX *get_sv_ssl_ctx() const;
   SSL_CTX *get_cl_ssl_ctx() const;
@@ -145,16 +145,9 @@ public:
   mruby::MRubyContext *get_mruby_context() const;
 #endif // HAVE_MRUBY
 
-  // Caches |session| which is associated to downstream address
-  // |addr|.  The caller is responsible to increment the reference
-  // count of |session|, since this function does not do so.
-  void cache_downstream_tls_session(const DownstreamAddr *addr,
-                                    SSL_SESSION *session);
-  // Returns cached session associated |addr|.  If non-nullptr value
-  // is returned, its cache entry was successfully removed from cache.
-  // If no cache entry is found associated to |addr|, nullptr will be
-  // returned.
-  SSL_SESSION *reuse_downstream_tls_session(const DownstreamAddr *addr);
+  std::vector<DownstreamAddrGroup> &get_downstream_addr_groups();
+
+  ConnectBlocker *get_connect_blocker() const;
 
 private:
 #ifndef NOTHREADS
@@ -170,15 +163,6 @@ private:
   WorkerStat worker_stat_;
   std::vector<DownstreamGroup> dgrps_;
 
-  // Cache for SSL_SESSION for downstream connections.  SSL_SESSION is
-  // associated to downstream address.  One address has multiple
-  // SSL_SESSION objects.  New SSL_SESSION is appended to the deque.
-  // When doing eviction due to storage limitation, the SSL_SESSION
-  // which sits at the front of deque is removed.
-  std::unordered_map<const DownstreamAddr *, std::deque<SSL_SESSION *>>
-      downstream_tls_session_cache_;
-  size_t downstream_tls_session_cache_size_;
-
   std::unique_ptr<MemcachedDispatcher> session_cache_memcached_dispatcher_;
 #ifdef HAVE_MRUBY
   std::unique_ptr<mruby::MRubyContext> mruby_ctx_;
@@ -192,6 +176,9 @@ private:
   ssl::CertLookupTree *cert_tree_;
 
   std::shared_ptr<TicketKeys> ticket_keys_;
+  std::vector<DownstreamAddrGroup> downstream_addr_groups_;
+  // Worker level blocker for downstream connection.  For example,
+  // this is used when file decriptor is exhausted.
   std::unique_ptr<ConnectBlocker> connect_blocker_;
 
   bool graceful_shutdown_;

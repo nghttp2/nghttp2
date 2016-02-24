@@ -44,7 +44,7 @@ namespace nghttp2 {
 
 struct Header {
   Header(std::string name, std::string value, bool no_index = false,
-         int16_t token = -1)
+         int32_t token = -1)
       : name(std::move(name)),
         value(std::move(value)),
         token(token),
@@ -62,7 +62,7 @@ struct Header {
 
   std::string name;
   std::string value;
-  int16_t token;
+  int32_t token;
   bool no_index;
 };
 
@@ -89,14 +89,14 @@ void copy_url_component(std::string &dest, const http_parser_url *u, int field,
 
 Headers::value_type to_header(const uint8_t *name, size_t namelen,
                               const uint8_t *value, size_t valuelen,
-                              bool no_index, int16_t token);
+                              bool no_index, int32_t token);
 
 // Add name/value pairs to |nva|.  If |no_index| is true, this
 // name/value pair won't be indexed when it is forwarded to the next
 // hop.  This function strips white spaces around |value|.
 void add_header(Headers &nva, const uint8_t *name, size_t namelen,
                 const uint8_t *value, size_t valuelen, bool no_index,
-                int16_t token);
+                int32_t token);
 
 // Returns pointer to the entry in |nva| which has name |name|.  If
 // more than one entries which have the name |name|, last occurrence
@@ -277,30 +277,13 @@ int lookup_token(const std::string &name);
 // array containing at least HD_MAXIDX elements.
 void init_hdidx(HeaderIndex &hdidx);
 // Indexes header |token| using index |idx|.
-void index_header(HeaderIndex &hdidx, int16_t token, size_t idx);
-
-// Returns true if HTTP/2 request pseudo header |token| is not indexed
-// yet and not -1.
-bool check_http2_request_pseudo_header(const HeaderIndex &hdidx, int16_t token);
-
-// Returns true if HTTP/2 response pseudo header |token| is not
-// indexed yet and not -1.
-bool check_http2_response_pseudo_header(const HeaderIndex &hdidx,
-                                        int16_t token);
-
-// Returns true if header field denoted by |token| is allowed for
-// HTTP/2.
-bool http2_header_allowed(int16_t token);
-
-// Returns true that |hdidx| contains mandatory HTTP/2 request
-// headers.
-bool http2_mandatory_request_headers_presence(const HeaderIndex &hdidx);
+void index_header(HeaderIndex &hdidx, int32_t token, size_t idx);
 
 // Returns header denoted by |token| using index |hdidx|.
-const Headers::value_type *get_header(const HeaderIndex &hdidx, int16_t token,
+const Headers::value_type *get_header(const HeaderIndex &hdidx, int32_t token,
                                       const Headers &nva);
 
-Headers::value_type *get_header(const HeaderIndex &hdidx, int16_t token,
+Headers::value_type *get_header(const HeaderIndex &hdidx, int32_t token,
                                 Headers &nva);
 
 struct LinkHeader {

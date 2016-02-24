@@ -35,12 +35,13 @@
 #include "shrpx_connection.h"
 #include "buffer.h"
 
+#include "network.h"
+
 using namespace nghttp2;
 
 namespace shrpx {
 
 struct MemcachedRequest;
-struct Address;
 
 enum {
   MEMCACHED_PARSE_HEADER24,
@@ -93,7 +94,9 @@ constexpr uint8_t MEMCACHED_RES_MAGIC = 0x81;
 // https://code.google.com/p/memcached/wiki/MemcacheBinaryProtocol
 class MemcachedConnection {
 public:
-  MemcachedConnection(const Address *addr, struct ev_loop *loop);
+  MemcachedConnection(const Address *addr, struct ev_loop *loop,
+                      SSL_CTX *ssl_ctx, const StringRef &sni_name,
+                      MemchunkPool *mcpool);
   ~MemcachedConnection();
 
   void disconnect();
@@ -101,23 +104,38 @@ public:
   int add_request(std::unique_ptr<MemcachedRequest> req);
   int initiate_connection();
 
-  int on_connect();
+  int connected();
   int on_write();
   int on_read();
-  int send_request();
+
+  int write_clear();
+  int read_clear();
+
+  int tls_handshake();
+  int write_tls();
+  int read_tls();
+
+  size_t fill_request_buffer(struct iovec *iov, size_t iovlen);
+  void drain_send_queue(size_t nwrite);
+
   void make_request(MemcachedSendbuf *sendbuf, MemcachedRequest *req);
   int parse_packet();
   size_t serialized_size(MemcachedRequest *req);
 
   void signal_write();
 
+  int noop();
+
 private:
   Connection conn_;
   std::deque<std::unique_ptr<MemcachedRequest>> recvq_;
   std::deque<std::unique_ptr<MemcachedRequest>> sendq_;
   std::deque<MemcachedSendbuf> sendbufv_;
+  std::function<int(MemcachedConnection &)> do_read_, do_write_;
+  std::string sni_name_;
   MemcachedParseState parse_state_;
   const Address *addr_;
+  SSL_CTX *ssl_ctx_;
   // Sum of the bytes to be transmitted in sendbufv_.
   size_t sendsum_;
   bool connected_;

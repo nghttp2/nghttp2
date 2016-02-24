@@ -89,12 +89,6 @@ int main(int argc, char *argv[]) {
                    shrpx::test_http2_index_header) ||
       !CU_add_test(pSuite, "http2_lookup_token",
                    shrpx::test_http2_lookup_token) ||
-      !CU_add_test(pSuite, "http2_check_http2_pseudo_header",
-                   shrpx::test_http2_check_http2_pseudo_header) ||
-      !CU_add_test(pSuite, "http2_http2_header_allowed",
-                   shrpx::test_http2_http2_header_allowed) ||
-      !CU_add_test(pSuite, "http2_mandatory_request_headers_presence",
-                   shrpx::test_http2_mandatory_request_headers_presence) ||
       !CU_add_test(pSuite, "http2_parse_link_header",
                    shrpx::test_http2_parse_link_header) ||
       !CU_add_test(pSuite, "http2_path_join", shrpx::test_http2_path_join) ||
@@ -106,8 +100,8 @@ int main(int argc, char *argv[]) {
                    shrpx::test_http2_get_pure_path_component) ||
       !CU_add_test(pSuite, "http2_construct_push_component",
                    shrpx::test_http2_construct_push_component) ||
-      !CU_add_test(pSuite, "downstream_field_store_index_headers",
-                   shrpx::test_downstream_field_store_index_headers) ||
+      !CU_add_test(pSuite, "downstream_field_store_add_header_lower",
+                   shrpx::test_downstream_field_store_add_header_lower) ||
       !CU_add_test(pSuite, "downstream_field_store_header",
                    shrpx::test_downstream_field_store_header) ||
       !CU_add_test(pSuite, "downstream_crumble_request_cookie",
@@ -167,6 +161,10 @@ int main(int argc, char *argv[]) {
       !CU_add_test(pSuite, "util_get_uint64", shrpx::test_util_get_uint64) ||
       !CU_add_test(pSuite, "util_parse_config_str_list",
                    shrpx::test_util_parse_config_str_list) ||
+      !CU_add_test(pSuite, "util_make_http_hostport",
+                   shrpx::test_util_make_http_hostport) ||
+      !CU_add_test(pSuite, "util_make_hostport",
+                   shrpx::test_util_make_hostport) ||
       !CU_add_test(pSuite, "gzip_inflate", test_nghttp2_gzip_inflate) ||
       !CU_add_test(pSuite, "buffer_write", nghttp2::test_buffer_write) ||
       !CU_add_test(pSuite, "pool_recycle", nghttp2::test_pool_recycle) ||

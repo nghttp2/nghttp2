@@ -104,7 +104,9 @@ Connections
     Set  frontend  host and  port.   If  <HOST> is  '\*',  it
     assumes  all addresses  including  both  IPv4 and  IPv6.
     UNIX domain  socket can  be specified by  prefixing path
-    name with "unix:" (e.g., unix:/var/run/nghttpx.sock)
+    name  with  "unix:" (e.g.,  unix:/var/run/nghttpx.sock).
+    This  option can  be used  multiple times  to listen  to
+    multiple addresses.
 
     Default: ``*,3000``
 
@@ -114,13 +116,14 @@ Connections
 
     Default: ``512``
 
-.. option:: --backend-ipv4
+.. option:: --backend-address-family=(auto|IPv4|IPv6)
 
-    Resolve backend hostname to IPv4 address only.
+    Specify  address  family  of  backend  connections.   If
+    "auto" is given, both IPv4  and IPv6 are considered.  If
+    "IPv4" is  given, only  IPv4 address is  considered.  If
+    "IPv6" is given, only IPv6 address is considered.
 
-.. option:: --backend-ipv6
-
-    Resolve backend hostname to IPv6 address only.
+    Default: ``auto``
 
 .. option:: --backend-http-proxy-uri=<URI>
 
@@ -140,6 +143,20 @@ Connections
 .. option:: --accept-proxy-protocol
 
     Accept PROXY protocol version 1 on frontend connection.
+
+.. option:: --backend-no-tls
+
+    Disable  SSL/TLS  on  backend connections.   For  HTTP/2
+    backend  connections, TLS  is enabled  by default.   For
+    HTTP/1 backend connections, TLS  is disabled by default,
+    and can  be enabled  by :option:`--backend-http1-tls`  option.  If
+    both  :option:`--backend-no-tls`  and :option:`\--backend-http1-tls`  options
+    are used, :option:`--backend-no-tls` has the precedence.
+
+.. option:: --backend-http1-tls
+
+    Enable SSL/TLS on backend  HTTP/1 connections.  See also
+    :option:`--backend-no-tls` option.
 
 
 Performance
@@ -354,18 +371,16 @@ SSL/TLS
 
 .. option:: -k, --insecure
 
-    Don't  verify   backend  server's  certificate   if  :option:`-p`\,
-    :option:`--client`    or    :option:`\--http2-bridge`     are    given    and
-    :option:`--backend-no-tls` is not given.
+    Don't  verify backend  server's  certificate  if TLS  is
+    enabled for backend connections.
 
 .. option:: --cacert=<PATH>
 
-    Set path to trusted CA  certificate file if :option:`-p`\, :option:`--client`
-    or :option:`--http2-bridge` are given  and :option:`\--backend-no-tls` is not
-    given.  The file must be  in PEM format.  It can contain
-    multiple  certificates.    If  the  linked   OpenSSL  is
-    configured to  load system  wide certificates,  they are
-    loaded at startup regardless of this option.
+    Set path to trusted CA  certificate file used in backend
+    TLS connections.   The file must  be in PEM  format.  It
+    can  contain  multiple   certificates.   If  the  linked
+    OpenSSL is configured to  load system wide certificates,
+    they are loaded at startup regardless of this option.
 
 .. option:: --private-key-passwd-file=<PATH>
 
@@ -463,16 +478,26 @@ SSL/TLS
 
 .. option:: --tls-ticket-key-memcached=<HOST>,<PORT>
 
-    Specify  address of  memcached server  to store  session
-    cache.   This  enables  shared TLS  ticket  key  between
-    multiple nghttpx  instances.  nghttpx  does not  set TLS
-    ticket  key  to  memcached.   The  external  ticket  key
-    generator  is required.   nghttpx just  gets TLS  ticket
-    keys from  memcached, and  use them,  possibly replacing
-    current set of keys.  It is  up to extern TLS ticket key
-    generator to  rotate keys frequently.  See  "TLS SESSION
-    TICKET RESUMPTION"  section in  manual page to  know the
-    data format in memcached entry.
+    Specify address  of memcached  server to get  TLS ticket
+    keys for  session resumption.   This enables  shared TLS
+    ticket key between  multiple nghttpx instances.  nghttpx
+    does not set TLS ticket  key to memcached.  The external
+    ticket key generator is required.  nghttpx just gets TLS
+    ticket  keys  from  memcached, and  use  them,  possibly
+    replacing current set  of keys.  It is up  to extern TLS
+    ticket  key generator  to rotate  keys frequently.   See
+    "TLS SESSION  TICKET RESUMPTION" section in  manual page
+    to know the data format in memcached entry.
+
+.. option:: --tls-ticket-key-memcached-address-family=(auto|IPv4|IPv6)
+
+    Specify address  family of memcached connections  to get
+    TLS ticket keys.  If "auto" is given, both IPv4 and IPv6
+    are considered.   If "IPv4" is given,  only IPv4 address
+    is considered.  If "IPv6" is given, only IPv6 address is
+    considered.
+
+    Default: ``auto``
 
 .. option:: --tls-ticket-key-memcached-interval=<DURATION>
 
@@ -504,6 +529,21 @@ SSL/TLS
     either   aes-128-cbc   or  aes-256-cbc.    By   default,
     aes-128-cbc is used.
 
+.. option:: --tls-ticket-key-memcached-tls
+
+    Enable  SSL/TLS  on  memcached connections  to  get  TLS
+    ticket keys.
+
+.. option:: --tls-ticket-key-memcached-cert-file=<PATH>
+
+    Path to client certificate  for memcached connections to
+    get TLS ticket keys.
+
+.. option:: --tls-ticket-key-memcached-private-key-file=<PATH>
+
+    Path to client private  key for memcached connections to
+    get TLS ticket keys.
+
 .. option:: --fetch-ocsp-response-file=<PATH>
 
     Path to  fetch-ocsp-response script file.  It  should be
@@ -526,6 +566,31 @@ SSL/TLS
     Specify  address of  memcached server  to store  session
     cache.   This  enables   shared  session  cache  between
     multiple nghttpx instances.
+
+.. option:: --tls-session-cache-memcached-address-family=(auto|IPv4|IPv6)
+
+    Specify address family of memcached connections to store
+    session cache.  If  "auto" is given, both  IPv4 and IPv6
+    are considered.   If "IPv4" is given,  only IPv4 address
+    is considered.  If "IPv6" is given, only IPv6 address is
+    considered.
+
+    Default: ``auto``
+
+.. option:: --tls-session-cache-memcached-tls
+
+    Enable SSL/TLS on memcached connections to store session
+    cache.
+
+.. option:: --tls-session-cache-memcached-cert-file=<PATH>
+
+    Path to client certificate  for memcached connections to
+    store session cache.
+
+.. option:: --tls-session-cache-memcached-private-key-file=<PATH>
+
+    Path to client private  key for memcached connections to
+    store session cache.
 
 .. option:: --tls-dyn-rec-warmup-threshold=<SIZE>
 
@@ -550,6 +615,19 @@ SSL/TLS
     TLS HTTP/2 backends.
 
     Default: ``1s``
+
+.. option:: --no-http2-cipher-black-list
+
+    Allow black  listed cipher  suite on  HTTP/2 connection.
+    See  https://tools.ietf.org/html/rfc7540#appendix-A  for
+    the complete HTTP/2 cipher suites black list.
+
+.. option:: --backend-tls-session-cache-per-worker=<N>
+
+    Set  the maximum  number  of backend  TLS session  cache
+    stored per worker.
+
+    Default: ``10000``
 
 
 HTTP/2 and SPDY
@@ -595,10 +673,6 @@ HTTP/2 and SPDY
     connection to 2\*\*<N>-1.
 
     Default: ``16``
-
-.. option:: --backend-no-tls
-
-    Disable SSL/TLS on backend connections.
 
 .. option:: --http2-no-cookie-crumbling
 
@@ -773,11 +847,12 @@ HTTP
     of Forwarded  header field.   If "obfuscated"  is given,
     the string is randomly generated at startup.  If "ip" is
     given,   the  interface   address  of   the  connection,
-    including  port number,  is  sent  with "by"  parameter.
-    User can also specify the static obfuscated string.  The
-    limitation  is that  it must  start with  "_", and  only
-    consists of  character set [A-Za-z0-9._-],  as described
-    in RFC 7239.
+    including port number, is  sent with "by" parameter.  In
+    case of UNIX domain  socket, "localhost" is used instead
+    of address and  port.  User can also  specify the static
+    obfuscated string.  The limitation is that it must start
+    with   "_",  and   only   consists   of  character   set
+    [A-Za-z0-9._-], as described in RFC 7239.
 
     Default: ``obfuscated``
 
@@ -788,7 +863,8 @@ HTTP
     given, the string is  randomly generated for each client
     connection.  If "ip" is given, the remote client address
     of  the connection,  without port  number, is  sent with
-    "for" parameter.
+    "for"  parameter.   In  case   of  UNIX  domain  socket,
+    "localhost" is used instead of address.
 
     Default: ``obfuscated``
 
@@ -836,21 +912,39 @@ HTTP
     used several  times to  specify multiple  header fields.
     Example: :option:`--add-response-header`\="foo: bar"
 
-.. option:: --header-field-buffer=<SIZE>
+.. option:: --request-header-field-buffer=<SIZE>
 
     Set maximum buffer size for incoming HTTP request header
     field list.  This is the sum of header name and value in
-    bytes.
+    bytes.   If  trailer  fields  exist,  they  are  counted
+    towards this number.
 
     Default: ``64K``
 
-.. option:: --max-header-fields=<N>
+.. option:: --max-request-header-fields=<N>
 
     Set  maximum  number  of incoming  HTTP  request  header
-    fields, which  appear in one request  or response header
-    field list.
+    fields.   If  trailer  fields exist,  they  are  counted
+    towards this number.
 
     Default: ``100``
+
+.. option:: --response-header-field-buffer=<SIZE>
+
+    Set  maximum  buffer  size for  incoming  HTTP  response
+    header field list.   This is the sum of  header name and
+    value  in  bytes.  If  trailer  fields  exist, they  are
+    counted towards this number.
+
+    Default: ``64K``
+
+.. option:: --max-response-header-fields=<N>
+
+    Set  maximum number  of  incoming  HTTP response  header
+    fields.   If  trailer  fields exist,  they  are  counted
+    towards this number.
+
+    Default: ``500``
 
 
 Debug
@@ -1091,6 +1185,10 @@ insert serialized session data to memcached with
 as a memcached entry key, with expiry time 12 hours.  Session timeout
 is set to 12 hours.
 
+By default, connections to memcached server are not encrypted.  To
+enable encryption, use :option:`--tls-session-cache-memcached-tls`
+option.
+
 TLS SESSION TICKET RESUMPTION
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -1129,6 +1227,10 @@ used, LEN must be 48.  If
 80.  LEN and KEY pair can be repeated multiple times to store multiple
 keys.  The key appeared first is used as encryption key.  All the
 remaining keys are used as decryption only.
+
+By default, connections to memcached server are not encrypted.  To
+enable encryption, use :option:`--tls-ticket-key-memcached-tls`
+option.
 
 If :option:`--tls-ticket-key-file` is given, encryption key is read
 from the given file.  In this case, nghttpx does not rotate key
@@ -1371,6 +1473,12 @@ addresses:
     end
 
     App.new
+
+NOTES
+-----
+
+1. nghttpx - HTTP/2 proxy - HOW-TO
+   https://nghttp2.org/documentation/nghttpx-howto.html
 
 SEE ALSO
 --------

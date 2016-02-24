@@ -201,17 +201,18 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
     return 0;
   }
 
+  auto token = http2::lookup_token(name, namelen);
+  auto no_index = flags & NGHTTP2_NV_FLAG_NO_INDEX;
+
   if (frame->headers.cat == NGHTTP2_HCAT_HEADERS) {
     // just store header fields for trailer part
-    req.fs.add_trailer(name, namelen, value, valuelen,
-                       flags & NGHTTP2_NV_FLAG_NO_INDEX, -1);
+    req.fs.add_trailer_token(StringRef{name, namelen},
+                             StringRef{value, valuelen}, no_index, token);
     return 0;
   }
 
-  auto token = http2::lookup_token(name, namelen);
-
-  req.fs.add_header(name, namelen, value, valuelen,
-                    flags & NGHTTP2_NV_FLAG_NO_INDEX, token);
+  req.fs.add_header_token(StringRef{name, namelen}, StringRef{value, valuelen},
+                          no_index, token);
   return 0;
 }
 } // namespace
@@ -593,8 +594,9 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
         req.path = http2::rewrite_clean_path(nv.value, nv.value + nv.valuelen);
         break;
       }
-      req.fs.add_header(nv.name, nv.namelen, nv.value, nv.valuelen,
-                        nv.flags & NGHTTP2_NV_FLAG_NO_INDEX, token);
+      req.fs.add_header_token(StringRef{nv.name, nv.namelen},
+                              StringRef{nv.value, nv.valuelen},
+                              nv.flags & NGHTTP2_NV_FLAG_NO_INDEX, token);
     }
 
     promised_downstream->inspect_http2_request();
@@ -1206,11 +1208,12 @@ int Http2Upstream::send_reply(Downstream *downstream, const uint8_t *body,
   }
 
   const auto &resp = downstream->response();
+  auto &httpconf = get_config()->http;
 
   const auto &headers = resp.fs.headers();
   auto nva = std::vector<nghttp2_nv>();
   // 2 for :status and server
-  nva.reserve(2 + headers.size());
+  nva.reserve(2 + headers.size() + httpconf.add_response_headers.size());
 
   std::string status_code_str;
   auto response_status_const = http2::stringify_status(resp.http_status);
@@ -1240,6 +1243,10 @@ int Http2Upstream::send_reply(Downstream *downstream, const uint8_t *body,
   if (!resp.fs.header(http2::HD_SERVER)) {
     nva.push_back(
         http2::make_nv_ls_nocopy("server", get_config()->http.server_name));
+  }
+
+  for (auto &p : httpconf.add_response_headers) {
+    nva.push_back(http2::make_nv_nocopy(p.name, p.value));
   }
 
   rv = nghttp2_submit_response(session_, downstream->get_stream_id(),
@@ -1436,7 +1443,7 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
   }
 
   for (auto &p : httpconf.add_response_headers) {
-    nva.push_back(http2::make_nv_nocopy(p.first, p.second));
+    nva.push_back(http2::make_nv_nocopy(p.name, p.value));
   }
 
   if (downstream->get_stream_id() % 2 == 0) {
@@ -1553,7 +1560,9 @@ int Http2Upstream::adjust_pushed_stream_priority(Downstream *downstream) {
   }
 
   if (!util::istarts_with_l(ct->value, "application/javascript") &&
-      !util::istarts_with_l(ct->value, "text/css")) {
+      !util::istarts_with_l(ct->value, "text/css") &&
+      // for polymer...
+      !util::istarts_with_l(ct->value, "text/html")) {
     return 0;
   }
 

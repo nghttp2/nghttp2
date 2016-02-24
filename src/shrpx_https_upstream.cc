@@ -142,7 +142,7 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
             Downstream::HTTP1_REQUEST_HEADER_TOO_LARGE);
         return -1;
       }
-      req.fs.add_header(std::string(data, len), "");
+      req.fs.add_header_lower(StringRef{data, len}, StringRef{}, false);
     }
   } else {
     // trailer part
@@ -156,7 +156,7 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
         }
         return -1;
       }
-      req.fs.add_trailer(std::string(data, len), "");
+      req.fs.add_trailer_lower(StringRef{data, len}, StringRef{}, false);
     }
   }
   return 0;
@@ -270,7 +270,7 @@ int htp_hdrs_completecb(http_parser *htp) {
     ULOG(INFO, upstream) << "HTTP request headers\n" << ss.str();
   }
 
-  if (req.fs.index_headers() != 0) {
+  if (req.fs.parse_content_length() != 0) {
     return -1;
   }
 
@@ -798,6 +798,15 @@ int HttpsUpstream::send_reply(Downstream *downstream, const uint8_t *body,
     output->append("\r\n");
   }
 
+  auto &httpconf = get_config()->http;
+
+  for (auto &p : httpconf.add_response_headers) {
+    output->append(p.name);
+    output->append(": ");
+    output->append(p.value);
+    output->append("\r\n");
+  }
+
   output->append("\r\n");
 
   output->append(body, bodylen);
@@ -1022,9 +1031,9 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
   }
 
   for (auto &p : httpconf.add_response_headers) {
-    buf->append(p.first);
+    buf->append(p.name);
     buf->append(": ");
-    buf->append(p.second);
+    buf->append(p.value);
     buf->append("\r\n");
   }
 

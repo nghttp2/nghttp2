@@ -155,6 +155,7 @@ Request::Request(const std::string &uri, const http_parser_url &u,
       inflater(nullptr),
       html_parser(nullptr),
       data_prd(data_prd),
+      header_buffer_size(0),
       stream_id(-1),
       status(0),
       level(level),
@@ -272,34 +273,7 @@ bool Request::is_ipv6_literal_addr() const {
   }
 }
 
-bool Request::response_pseudo_header_allowed(int16_t token) const {
-  if (!res_nva.empty() && res_nva.back().name.c_str()[0] != ':') {
-    return false;
-  }
-  switch (token) {
-  case http2::HD__STATUS:
-    return res_hdidx[token] == -1;
-  default:
-    return false;
-  }
-}
-
-bool Request::push_request_pseudo_header_allowed(int16_t token) const {
-  if (!req_nva.empty() && req_nva.back().name.c_str()[0] != ':') {
-    return false;
-  }
-  switch (token) {
-  case http2::HD__AUTHORITY:
-  case http2::HD__METHOD:
-  case http2::HD__PATH:
-  case http2::HD__SCHEME:
-    return req_hdidx[token] == -1;
-  default:
-    return false;
-  }
-}
-
-Headers::value_type *Request::get_res_header(int16_t token) {
+Headers::value_type *Request::get_res_header(int32_t token) {
   auto idx = res_hdidx[token];
   if (idx == -1) {
     return nullptr;
@@ -307,7 +281,7 @@ Headers::value_type *Request::get_res_header(int16_t token) {
   return &res_nva[idx];
 }
 
-Headers::value_type *Request::get_req_header(int16_t token) {
+Headers::value_type *Request::get_req_header(int32_t token) {
   auto idx = req_hdidx[token];
   if (idx == -1) {
     return nullptr;
@@ -1736,6 +1710,14 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
       break;
     }
 
+    if (req->header_buffer_size + namelen + valuelen > 64_k) {
+      nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, frame->hd.stream_id,
+                                NGHTTP2_INTERNAL_ERROR);
+      return 0;
+    }
+
+    req->header_buffer_size += namelen + valuelen;
+
     auto token = http2::lookup_token(name, namelen);
 
     http2::index_header(req->res_hdidx, token, req->res_nva.size());
@@ -1750,6 +1732,15 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
     if (!req) {
       break;
     }
+
+    if (req->header_buffer_size + namelen + valuelen > 64_k) {
+      nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE,
+                                frame->push_promise.promised_stream_id,
+                                NGHTTP2_INTERNAL_ERROR);
+      return 0;
+    }
+
+    req->header_buffer_size += namelen + valuelen;
 
     auto token = http2::lookup_token(name, namelen);
 
@@ -1838,6 +1829,10 @@ int on_frame_recv_callback2(nghttp2_session *session,
     if (!req) {
       break;
     }
+
+    // Reset for response header field reception
+    req->header_buffer_size = 0;
+
     auto scheme = req->get_req_header(http2::HD__SCHEME);
     auto authority = req->get_req_header(http2::HD__AUTHORITY);
     auto path = req->get_req_header(http2::HD__PATH);

@@ -389,7 +389,7 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
       pinned_http2sessions_(
           get_config()->conn.downstream.proto == PROTO_HTTP2
               ? make_unique<std::vector<ssize_t>>(
-                    get_config()->conn.downstream.addr_groups.size(), -1)
+                    worker->get_downstream_addr_groups().size(), -1)
               : nullptr),
       ipaddr_(ipaddr),
       port_(port),
@@ -664,8 +664,8 @@ std::unique_ptr<DownstreamConnection>
 ClientHandler::get_downstream_connection(Downstream *downstream) {
   size_t group;
   auto &downstreamconf = get_config()->conn.downstream;
-  auto &groups = downstreamconf.addr_groups;
   auto catch_all = downstreamconf.addr_group_catch_all;
+  auto &groups = worker_->get_downstream_addr_groups();
 
   const auto &req = downstream->request();
 
@@ -681,16 +681,19 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
   } else {
     auto &router = get_config()->router;
     if (!req.authority.empty()) {
-      group = match_downstream_addr_group(router, req.authority, req.path,
-                                          groups, catch_all);
+      group =
+          match_downstream_addr_group(router, StringRef{req.authority},
+                                      StringRef{req.path}, groups, catch_all);
     } else {
       auto h = req.fs.header(http2::HD_HOST);
       if (h) {
-        group = match_downstream_addr_group(router, h->value, req.path, groups,
-                                            catch_all);
+        group =
+            match_downstream_addr_group(router, StringRef{h->value},
+                                        StringRef{req.path}, groups, catch_all);
       } else {
-        group = match_downstream_addr_group(router, "", req.path, groups,
-                                            catch_all);
+        group =
+            match_downstream_addr_group(router, StringRef::from_lit(""),
+                                        StringRef{req.path}, groups, catch_all);
       }
     }
   }
@@ -742,10 +745,6 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
 MemchunkPool *ClientHandler::get_mcpool() { return worker_->get_mcpool(); }
 
 SSL *ClientHandler::get_ssl() const { return conn_.tls.ssl; }
-
-ConnectBlocker *ClientHandler::get_connect_blocker() const {
-  return worker_->get_connect_blocker();
-}
 
 void ClientHandler::direct_http2_upgrade() {
   upstream_ = make_unique<Http2Upstream>(this);

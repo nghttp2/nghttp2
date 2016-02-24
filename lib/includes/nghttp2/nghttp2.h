@@ -1612,6 +1612,14 @@ typedef int (*nghttp2_on_begin_headers_callback)(nghttp2_session *session,
  *
  * To set this callback to :type:`nghttp2_session_callbacks`, use
  * `nghttp2_session_callbacks_set_on_header_callback()`.
+ *
+ * .. warning::
+ *
+ *   Application should properly limit the total buffer size to store
+ *   incoming header fields.  Without it, peer may send large number
+ *   of header fields or large header fields to cause out of memory in
+ *   local endpoint.  Due to how HPACK works, peer can do this
+ *   effectively without using much memory on their own.
  */
 typedef int (*nghttp2_on_header_callback)(nghttp2_session *session,
                                           const nghttp2_frame *frame,

@@ -25,7 +25,7 @@ dnl Do not change user variables!
 dnl http://www.gnu.org/software/automake/manual/html_node/Flag-Variables-Ordering.html
 
 AC_PREREQ(2.61)
-AC_INIT([nghttp2], [1.7.1-DEV], [t-tujikawa@users.sourceforge.net])
+AC_INIT([nghttp2], [1.8.0-DEV], [t-tujikawa@users.sourceforge.net])
 AC_CONFIG_AUX_DIR([.])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_HEADERS([config.h])
@@ -76,7 +76,7 @@ AC_ARG_ENABLE([threads],
 
 AC_ARG_ENABLE([app],
     [AS_HELP_STRING([--enable-app],
-                    [Build applications (nghttp, nghttpd and nghttpx) [default=check]])],
+                    [Build applications (nghttp, nghttpd, nghttpx and h2load) [default=check]])],
     [request_app=$enableval], [request_app=check])
 
 AC_ARG_ENABLE([hpack-tools],
@@ -185,8 +185,8 @@ if test "x$GCC" = "xyes" -o "x$CC" = "xclang" ; then
   AC_DEFINE([_U_], [__attribute__((unused))], [Hint to the compiler that a function parameters is not used])
   AC_DEFINE([NGHTTP2_NORETURN], [__attribute__((noreturn))], [Hint to the compiler that a function never return])
 else
-  AC_DEFINE([_U_], , [Hint to the compiler that a function parameters is not use  AC_DEFINE([NGHTTP2_NORETURN], , [Hint to the compiler that a function never return])
-d])
+  AC_DEFINE([_U_], , [Hint to the compiler that a function parameter is not used])
+  AC_DEFINE([NGHTTP2_NORETURN], , [Hint to the compiler that a function never return])
 fi
 
 save_CXXFLAGS="$CXXFLAGS"
@@ -352,7 +352,10 @@ fi
 # libxml2 (for src/nghttp)
 have_libxml2=no
 if test "x${request_libxml2}" != "xno"; then
-  AM_PATH_XML2(2.7.7, [have_libxml2=yes], [have_libxml2=no])
+  m4_ifdef([AM_PATH_XML2],
+    [AM_PATH_XML2(2.7.7, [have_libxml2=yes], [have_libxml2=no])],
+    [AC_MSG_WARN([configure was created without libxml2 detection macro; libxml2 detection is disabled])])
+
   if test "x${have_libxml2}" = "xyes"; then
     AC_DEFINE([HAVE_LIBXML2], [1], [Define to 1 if you have `libxml2` library.])
   fi
@@ -651,8 +654,13 @@ AC_CHECK_FUNC([timerfd_create],
 
 # For cygwin: we can link initgroups, so AC_CHECK_FUNCS succeeds, but
 # cygwin disables initgroups due to feature test macro magic with our
-# configuration.
-AC_CHECK_DECLS([initgroups], [], [], [[#include <grp.h>]])
+# configuration.  FreeBSD declares initgroups() in unistd.h.
+AC_CHECK_DECLS([initgroups], [], [], [[
+  #ifdef HAVE_UNISTD_H
+  # include <unistd.h>
+  #endif
+  #include <grp.h>
+]])
 
 # Checks for epoll availability, primarily for examples/tiny-nghttpd
 AX_HAVE_EPOLL([have_epoll=yes], [have_epoll=no])

@@ -117,17 +117,20 @@ mrb_value response_mod_header(mrb_state *mrb, mrb_value self, bool repl) {
 
   key = mrb_funcall(mrb, key, "downcase", 0);
 
+  auto keyref =
+      StringRef{RSTRING_PTR(key), static_cast<size_t>(RSTRING_LEN(key))};
+  auto token = http2::lookup_token(keyref.byte(), keyref.size());
+
   if (repl) {
     size_t p = 0;
     auto &headers = resp.fs.headers();
     for (size_t i = 0; i < headers.size(); ++i) {
-      auto &hd = headers[i];
-      if (util::streq(std::begin(hd.name), hd.name.size(), RSTRING_PTR(key),
-                      RSTRING_LEN(key))) {
+      auto &kv = headers[i];
+      if (kv.name == keyref) {
         continue;
       }
       if (i != p) {
-        headers[p++] = std::move(hd);
+        headers[p++] = std::move(kv);
       }
     }
     headers.resize(p);
@@ -137,15 +140,17 @@ mrb_value response_mod_header(mrb_state *mrb, mrb_value self, bool repl) {
     auto n = mrb_ary_len(mrb, values);
     for (int i = 0; i < n; ++i) {
       auto value = mrb_ary_entry(values, i);
-      resp.fs.add_header(std::string(RSTRING_PTR(key), RSTRING_LEN(key)),
-                         std::string(RSTRING_PTR(value), RSTRING_LEN(value)));
+      resp.fs.add_header_token(
+          keyref, StringRef{RSTRING_PTR(value),
+                            static_cast<size_t>(RSTRING_LEN(value))},
+          false, token);
     }
   } else if (!mrb_nil_p(values)) {
-    resp.fs.add_header(std::string(RSTRING_PTR(key), RSTRING_LEN(key)),
-                       std::string(RSTRING_PTR(values), RSTRING_LEN(values)));
+    resp.fs.add_header_token(
+        keyref, StringRef{RSTRING_PTR(values),
+                          static_cast<size_t>(RSTRING_LEN(values))},
+        false, token);
   }
-
-  data->response_headers_dirty = true;
 
   return mrb_nil_value();
 }
@@ -197,11 +202,6 @@ mrb_value response_return(mrb_state *mrb, mrb_value self) {
     resp.http_status = 200;
   }
 
-  if (data->response_headers_dirty) {
-    resp.fs.index_headers();
-    data->response_headers_dirty = false;
-  }
-
   if (downstream->expect_response_body() && vallen > 0) {
     body = reinterpret_cast<const uint8_t *>(val);
     bodylen = vallen;
@@ -211,8 +211,9 @@ mrb_value response_return(mrb_state *mrb, mrb_value self) {
   if (cl) {
     cl->value = util::utos(bodylen);
   } else {
-    resp.fs.add_header("content-length", util::utos(bodylen),
-                       http2::HD_CONTENT_LENGTH);
+    resp.fs.add_header_token(StringRef::from_lit("content-length"),
+                             StringRef{util::utos(bodylen)}, false,
+                             http2::HD_CONTENT_LENGTH);
   }
   resp.fs.content_length = bodylen;
 
@@ -220,7 +221,9 @@ mrb_value response_return(mrb_state *mrb, mrb_value self) {
   if (!date) {
     auto lgconf = log_config();
     lgconf->update_tstamp(std::chrono::system_clock::now());
-    resp.fs.add_header("date", lgconf->time_http_str, http2::HD_DATE);
+    resp.fs.add_header_token(StringRef::from_lit("date"),
+                             StringRef{lgconf->time_http_str}, false,
+                             http2::HD_DATE);
   }
 
   auto upstream = downstream->get_upstream();

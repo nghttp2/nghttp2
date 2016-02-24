@@ -147,8 +147,7 @@ void writecb(struct ev_loop *loop, ev_io *w, int revents) {
 } // namespace
 
 Http2Session::Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx,
-                           ConnectBlocker *connect_blocker, Worker *worker,
-                           size_t group, size_t idx)
+                           Worker *worker, size_t group, size_t idx)
     : conn_(loop, -1, nullptr, worker->get_mcpool(),
             get_config()->conn.downstream.timeout.write,
             get_config()->conn.downstream.timeout.read, {}, {}, writecb, readcb,
@@ -156,7 +155,6 @@ Http2Session::Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx,
             get_config()->tls.dyn_rec.idle_timeout),
       wb_(worker->get_mcpool()),
       worker_(worker),
-      connect_blocker_(connect_blocker),
       ssl_ctx_(ssl_ctx),
       addr_(nullptr),
       session_(nullptr),
@@ -254,29 +252,57 @@ int Http2Session::disconnect(bool hard) {
 int Http2Session::initiate_connection() {
   int rv = 0;
 
-  auto &addrs = get_config()->conn.downstream.addr_groups[group_].addrs;
+  auto &groups = worker_->get_downstream_addr_groups();
+  auto &addrs = groups[group_].addrs;
+  auto worker_blocker = worker_->get_connect_blocker();
 
   if (state_ == DISCONNECTED) {
-    if (connect_blocker_->blocked()) {
+    if (worker_blocker->blocked()) {
       if (LOG_ENABLED(INFO)) {
-        DCLOG(INFO, this)
-            << "Downstream connection was blocked by connect_blocker";
+        SSLOG(INFO, this)
+            << "Worker wide backend connection was blocked temporarily";
       }
       return -1;
     }
 
     auto &next_downstream = worker_->get_dgrp(group_)->next;
-    addr_ = &addrs[next_downstream];
+    auto end = next_downstream;
 
-    if (LOG_ENABLED(INFO)) {
-      SSLOG(INFO, this) << "Using downstream address idx=" << next_downstream
-                        << " out of " << addrs.size();
-    }
+    for (;;) {
+      auto &addr = addrs[next_downstream];
 
-    if (++next_downstream >= addrs.size()) {
-      next_downstream = 0;
+      if (++next_downstream >= addrs.size()) {
+        next_downstream = 0;
+      }
+
+      auto &connect_blocker = addr.connect_blocker;
+
+      if (connect_blocker->blocked()) {
+        if (LOG_ENABLED(INFO)) {
+          SSLOG(INFO, this) << "Backend server "
+                            << util::to_numeric_addr(&addr.addr)
+                            << " was not available temporarily";
+        }
+
+        if (end == next_downstream) {
+          return -1;
+        }
+
+        continue;
+      }
+
+      if (LOG_ENABLED(INFO)) {
+        SSLOG(INFO, this) << "Using downstream address idx=" << next_downstream
+                          << " out of " << addrs.size();
+      }
+
+      addr_ = &addr;
+
+      break;
     }
   }
+
+  auto &connect_blocker = addr_->connect_blocker;
 
   const auto &proxy = get_config()->downstream_http_proxy;
   if (!proxy.host.empty() && state_ == DISCONNECTED) {
@@ -288,15 +314,25 @@ int Http2Session::initiate_connection() {
     conn_.fd = util::create_nonblock_socket(proxy.addr.su.storage.ss_family);
 
     if (conn_.fd == -1) {
-      connect_blocker_->on_failure();
+      auto error = errno;
+      SSLOG(WARN, this) << "Backend proxy socket() failed; addr="
+                        << util::to_numeric_addr(&proxy.addr)
+                        << ", errno=" << error;
+
+      worker_blocker->on_failure();
       return -1;
     }
 
+    worker_blocker->on_success();
+
     rv = connect(conn_.fd, &proxy.addr.su.sa, proxy.addr.len);
     if (rv != 0 && errno != EINPROGRESS) {
-      SSLOG(ERROR, this) << "Failed to connect to the proxy " << proxy.host
-                         << ":" << proxy.port;
-      connect_blocker_->on_failure();
+      auto error = errno;
+      SSLOG(WARN, this) << "Backend proxy connect() failed; addr="
+                        << util::to_numeric_addr(&proxy.addr)
+                        << ", errno=" << error;
+
+      connect_blocker->on_failure();
       return -1;
     }
 
@@ -356,16 +392,28 @@ int Http2Session::initiate_connection() {
         conn_.fd =
             util::create_nonblock_socket(addr_->addr.su.storage.ss_family);
         if (conn_.fd == -1) {
-          connect_blocker_->on_failure();
+          auto error = errno;
+          SSLOG(WARN, this)
+              << "socket() failed; addr=" << util::to_numeric_addr(&addr_->addr)
+              << ", errno=" << error;
+
+          worker_blocker->on_failure();
           return -1;
         }
+
+        worker_blocker->on_success();
 
         rv = connect(conn_.fd,
                      // TODO maybe not thread-safe?
                      const_cast<sockaddr *>(&addr_->addr.su.sa),
                      addr_->addr.len);
         if (rv != 0 && errno != EINPROGRESS) {
-          connect_blocker_->on_failure();
+          auto error = errno;
+          SSLOG(WARN, this) << "connect() failed; addr="
+                            << util::to_numeric_addr(&addr_->addr)
+                            << ", errno=" << error;
+
+          connect_blocker->on_failure();
           return -1;
         }
 
@@ -383,14 +431,26 @@ int Http2Session::initiate_connection() {
             util::create_nonblock_socket(addr_->addr.su.storage.ss_family);
 
         if (conn_.fd == -1) {
-          connect_blocker_->on_failure();
+          auto error = errno;
+          SSLOG(WARN, this)
+              << "socket() failed; addr=" << util::to_numeric_addr(&addr_->addr)
+              << ", errno=" << error;
+
+          worker_blocker->on_failure();
           return -1;
         }
+
+        worker_blocker->on_success();
 
         rv = connect(conn_.fd, const_cast<sockaddr *>(&addr_->addr.su.sa),
                      addr_->addr.len);
         if (rv != 0 && errno != EINPROGRESS) {
-          connect_blocker_->on_failure();
+          auto error = errno;
+          SSLOG(WARN, this) << "connect() failed; addr="
+                            << util::to_numeric_addr(&addr_->addr)
+                            << ", errno=" << error;
+
+          connect_blocker->on_failure();
           return -1;
         }
 
@@ -735,17 +795,18 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
       return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
     }
 
+    auto token = http2::lookup_token(name, namelen);
+    auto no_index = flags & NGHTTP2_NV_FLAG_NO_INDEX;
+
     if (trailer) {
       // just store header fields for trailer part
-      resp.fs.add_trailer(name, namelen, value, valuelen,
-                          flags & NGHTTP2_NV_FLAG_NO_INDEX, -1);
+      resp.fs.add_trailer_token(StringRef{name, namelen},
+                                StringRef{value, valuelen}, no_index, token);
       return 0;
     }
 
-    auto token = http2::lookup_token(name, namelen);
-
-    resp.fs.add_header(name, namelen, value, valuelen,
-                       flags & NGHTTP2_NV_FLAG_NO_INDEX, token);
+    resp.fs.add_header_token(StringRef{name, namelen},
+                             StringRef{value, valuelen}, no_index, token);
     return 0;
   }
   case NGHTTP2_PUSH_PROMISE: {
@@ -778,8 +839,9 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
     }
 
     auto token = http2::lookup_token(name, namelen);
-    promised_req.fs.add_header(name, namelen, value, valuelen,
-                               flags & NGHTTP2_NV_FLAG_NO_INDEX, token);
+    promised_req.fs.add_header_token(StringRef{name, namelen},
+                                     StringRef{value, valuelen},
+                                     flags & NGHTTP2_NV_FLAG_NO_INDEX, token);
     return 0;
   }
   }
@@ -926,8 +988,9 @@ int on_response_headers(Http2Session *http2session, Downstream *downstream,
         // Otherwise, use chunked encoding to keep upstream connection
         // open.  In HTTP2, we are supporsed not to receive
         // transfer-encoding.
-        resp.fs.add_header("transfer-encoding", "chunked",
-                           http2::HD_TRANSFER_ENCODING);
+        resp.fs.add_header_token(StringRef::from_lit("transfer-encoding"),
+                                 StringRef::from_lit("chunked"), false,
+                                 http2::HD_TRANSFER_ENCODING);
         downstream->set_chunked_response(true);
       }
     }
@@ -1612,11 +1675,20 @@ int Http2Session::read_noop(const uint8_t *data, size_t datalen) { return 0; }
 int Http2Session::write_noop() { return 0; }
 
 int Http2Session::connected() {
+  auto &connect_blocker = addr_->connect_blocker;
+
   if (!util::check_socket_connected(conn_.fd)) {
+    if (LOG_ENABLED(INFO)) {
+      SSLOG(INFO, this) << "Backend connect failed; addr="
+                        << util::to_numeric_addr(&addr_->addr);
+    }
+
+    connect_blocker->on_failure();
+
     return -1;
   }
 
-  connect_blocker_->on_success();
+  connect_blocker->on_success();
 
   if (LOG_ENABLED(INFO)) {
     SSLOG(INFO, this) << "Connection established";

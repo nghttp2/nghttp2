@@ -150,15 +150,18 @@ APIDOCS= \
 	nghttp2_submit_window_update.rst \
 	nghttp2_version.rst
 
-EXTRA_DIST = \
-	mkapiref.py \
+RST_FILES = \
 	README.rst \
 	programmers-guide.rst \
-	$(APIDOCS) \
 	nghttp.1.rst \
 	nghttpd.1.rst \
 	nghttpx.1.rst \
-	h2load.1.rst \
+	h2load.1.rst
+
+EXTRA_DIST = \
+	mkapiref.py \
+	$(RST_FILES) \
+	$(APIDOCS) \
 	sources/index.rst \
 	sources/tutorial-client.rst \
 	sources/tutorial-server.rst \
@@ -232,7 +235,8 @@ help:
 
 apiref.rst: \
 	$(top_builddir)/lib/includes/nghttp2/nghttp2ver.h \
-	$(top_builddir)/lib/includes/nghttp2/nghttp2.h
+	$(top_srcdir)/lib/includes/nghttp2/nghttp2.h
+	for i in $(RST_FILES); do [ -e $(builddir)/$$i ] || cp $(srcdir)/$$i $(builddir); done
 	$(PYTHON) $(top_srcdir)/doc/mkapiref.py \
 	apiref.rst macros.rst enums.rst types.rst . $^
 

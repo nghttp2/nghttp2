@@ -99,7 +99,6 @@ public:
   get_downstream_connection(Downstream *downstream);
   MemchunkPool *get_mcpool();
   SSL *get_ssl() const;
-  ConnectBlocker *get_connect_blocker() const;
   // Call this function when HTTP/2 connection header is received at
   // the start of the connection.
   void direct_http2_upgrade();

@@ -49,6 +49,9 @@
 
 #include "http-parser/http_parser.h"
 
+#include "template.h"
+#include "network.h"
+
 namespace nghttp2 {
 
 // The additional HTTP/2 protocol ALPN protocol identifier we also
@@ -459,6 +462,12 @@ bool numeric_host(const char *hostname, int family);
 // failed, "unknown" is returned.
 std::string numeric_name(const struct sockaddr *sa, socklen_t salen);
 
+// Returns string representation of numeric address and port of
+// |addr|.  If address family is AF_UNIX, this return path to UNIX
+// domain socket.  Otherwise, the format is like <HOST>:<PORT>.  For
+// IPv6 address, address is enclosed by square brackets ([]).
+std::string to_numeric_addr(const Address *addr);
+
 // Makes internal copy of stderr (and possibly stdout in the future),
 // which is then used as pointer to /dev/stderr or /proc/self/fd/2
 void store_original_fds();
@@ -618,7 +627,11 @@ std::string format_duration(double t);
 // Creates "host:port" string using given |host| and |port|.  If
 // |host| is numeric IPv6 address (e.g., ::1), it is enclosed by "["
 // and "]".  If |port| is 80 or 443, port part is omitted.
-std::string make_hostport(const char *host, uint16_t port);
+std::string make_http_hostport(const StringRef &host, uint16_t port);
+
+// Just like make_http_hostport(), but doesn't treat 80 and 443
+// specially.
+std::string make_hostport(const StringRef &host, uint16_t port);
 
 // Dumps |src| of length |len| in the format similar to `hexdump -C`.
 void hexdump(FILE *out, const uint8_t *src, size_t len);
