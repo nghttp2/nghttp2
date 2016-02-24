@@ -191,7 +191,9 @@ void nghttp2_frame_extension_init(nghttp2_extension *frame, uint8_t type,
   frame->payload = payload;
 }
 
-void nghttp2_frame_extension_free(nghttp2_extension *frame _U_) {}
+void nghttp2_frame_extension_free(nghttp2_extension *frame _U_) {
+  /* should be noop for performance reason */
+}
 
 size_t nghttp2_frame_priority_len(uint8_t flags) {
   if (flags & NGHTTP2_FLAG_PRIORITY) {
