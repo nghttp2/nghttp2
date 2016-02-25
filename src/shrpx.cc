@@ -1077,7 +1077,6 @@ void fill_default_config() {
   }
 
   tlsconf.session_timeout = std::chrono::hours(12);
-  tlsconf.downstream_session_cache_per_worker = 10000;
 
   auto &httpconf = mod_config()->http;
   httpconf.server_name = "nghttpx nghttp2/" NGHTTP2_VERSION;
@@ -1629,11 +1628,6 @@ SSL/TLS:
               Allow black  listed cipher  suite on  HTTP/2 connection.
               See  https://tools.ietf.org/html/rfc7540#appendix-A  for
               the complete HTTP/2 cipher suites black list.
-  --backend-tls-session-cache-per-worker=<N>
-              Set  the maximum  number  of backend  TLS session  cache
-              stored per worker.
-              Default: )"
-      << get_config()->tls.downstream_session_cache_per_worker << R"(
 
 HTTP/2 and SPDY:
   -c, --http2-max-concurrent-streams=<N>
@@ -2451,8 +2445,6 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_REQUEST_HEADER_FIELD_BUFFER, required_argument, &flag, 104},
         {SHRPX_OPT_MAX_REQUEST_HEADER_FIELDS, required_argument, &flag, 105},
         {SHRPX_OPT_BACKEND_HTTP1_TLS, no_argument, &flag, 106},
-        {SHRPX_OPT_BACKEND_TLS_SESSION_CACHE_PER_WORKER, required_argument,
-         &flag, 107},
         {SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_TLS, no_argument, &flag, 108},
         {SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_CERT_FILE, required_argument,
          &flag, 109},
@@ -2920,11 +2912,6 @@ int main(int argc, char **argv) {
       case 106:
         // --backend-http1-tls
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP1_TLS, "yes");
-        break;
-      case 107:
-        // --backend-tls-session-cache-per-worker
-        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_TLS_SESSION_CACHE_PER_WORKER,
-                             optarg);
         break;
       case 108:
         // --tls-session-cache-memcached-tls
