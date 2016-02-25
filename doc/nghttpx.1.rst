@@ -622,13 +622,6 @@ SSL/TLS
     See  https://tools.ietf.org/html/rfc7540#appendix-A  for
     the complete HTTP/2 cipher suites black list.
 
-.. option:: --backend-tls-session-cache-per-worker=<N>
-
-    Set  the maximum  number  of backend  TLS session  cache
-    stored per worker.
-
-    Default: ``10000``
-
 
 HTTP/2 and SPDY
 ~~~~~~~~~~~~~~~
@@ -1473,12 +1466,6 @@ addresses:
     end
 
     App.new
-
-NOTES
------
-
-1. nghttpx - HTTP/2 proxy - HOW-TO
-   https://nghttp2.org/documentation/nghttpx-howto.html
 
 SEE ALSO
 --------
