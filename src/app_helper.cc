@@ -143,9 +143,9 @@ std::string strframetype(uint8_t type) {
     return "WINDOW_UPDATE";
   }
 
-  std::string s = "UNKNOWN(0x";
+  std::string s = "extension(0x";
   s += util::format_hex(&type, 1);
-  s += ")";
+  s += ')';
 
   return s;
 };
