@@ -3,8 +3,6 @@
 TAG=$1
 PREV_TAG=$2
 
-git submodule update --init
-
 git checkout refs/tags/$TAG
 git log --pretty=fuller --date=short refs/tags/$PREV_TAG..HEAD > ChangeLog
 
