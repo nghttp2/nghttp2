@@ -96,7 +96,9 @@ Config::Config()
       port(0),
       default_port(0),
       verbose(false),
-      timing_script(false) {}
+      timing_script(false),
+      base_uri_unix(false),
+      unix_addr{} {}
 
 Config::~Config() {
   if (base_uri_unix) {
