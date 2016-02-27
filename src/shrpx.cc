@@ -1096,6 +1096,7 @@ void fill_default_config() {
     // HTTP/2 SPDY/3.1 has connection-level flow control. The default
     // window size for HTTP/2 is 64KiB - 1. SPDY/3's default is 64KiB
     upstreamconf.connection_window_bits = 16;
+    upstreamconf.max_concurrent_streams = 100;
 
     nghttp2_option_new(&upstreamconf.option);
     nghttp2_option_set_no_auto_window_update(upstreamconf.option, 1);
@@ -1106,13 +1107,12 @@ void fill_default_config() {
     auto &downstreamconf = http2conf.downstream;
     downstreamconf.window_bits = 16;
     downstreamconf.connection_window_bits = 16;
+    downstreamconf.max_concurrent_streams = 100;
 
     nghttp2_option_new(&downstreamconf.option);
     nghttp2_option_set_no_auto_window_update(downstreamconf.option, 1);
     nghttp2_option_set_peer_max_concurrent_streams(downstreamconf.option, 100);
   }
-
-  http2conf.max_concurrent_streams = 100;
 
   auto &loggingconf = mod_config()->logging;
   {
@@ -1621,10 +1621,18 @@ SSL/TLS:
               the complete HTTP/2 cipher suites black list.
 
 HTTP/2 and SPDY:
-  -c, --http2-max-concurrent-streams=<N>
+  -c, --frontend-http2-max-concurrent-streams=<N>
               Set the maximum number of  the concurrent streams in one
-              HTTP/2 and SPDY session.
-              Default: )" << get_config()->http2.max_concurrent_streams << R"(
+              frontend HTTP/2 and SPDY session.
+              Default:  )"
+      << get_config()->http2.upstream.max_concurrent_streams << R"(
+  --backend-http2-max-concurrent-streams=<N>
+              Set the maximum number of  the concurrent streams in one
+              backend  HTTP/2 session.   This sets  maximum number  of
+              concurrent opened pushed streams.  The maximum number of
+              concurrent requests are set by a remote server.
+              Default: )"
+      << get_config()->http2.downstream.max_concurrent_streams << R"(
   --frontend-http2-window-bits=<N>
               Sets the  per-stream initial window size  of HTTP/2 SPDY
               frontend connection.  For HTTP/2,  the size is 2**<N>-1.
@@ -2451,6 +2459,10 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_ADDRESS_FAMILY,
          required_argument, &flag, 115},
         {SHRPX_OPT_BACKEND_ADDRESS_FAMILY, required_argument, &flag, 116},
+        {SHRPX_OPT_FRONTEND_HTTP2_MAX_CONCURRENT_STREAMS, required_argument,
+         &flag, 117},
+        {SHRPX_OPT_BACKEND_HTTP2_MAX_CONCURRENT_STREAMS, required_argument,
+         &flag, 118},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -2945,6 +2957,16 @@ int main(int argc, char **argv) {
       case 116:
         // --backend-address-family
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_ADDRESS_FAMILY, optarg);
+        break;
+      case 117:
+        // --frontend-http2-max-concurrent-streams
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HTTP2_MAX_CONCURRENT_STREAMS,
+                             optarg);
+        break;
+      case 118:
+        // --backend-http2-max-concurrent-streams
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP2_MAX_CONCURRENT_STREAMS,
+                             optarg);
         break;
       default:
         break;

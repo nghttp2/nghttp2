@@ -846,7 +846,7 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
   // TODO Maybe call from outside?
   std::array<nghttp2_settings_entry, 2> entry;
   entry[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
-  entry[0].value = http2conf.max_concurrent_streams;
+  entry[0].value = http2conf.upstream.max_concurrent_streams;
 
   entry[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
   entry[1].value = (1 << http2conf.upstream.window_bits) - 1;

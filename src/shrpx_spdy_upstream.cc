@@ -547,7 +547,7 @@ SpdyUpstream::SpdyUpstream(uint16_t version, ClientHandler *handler)
   // TODO Maybe call from outside?
   std::array<spdylay_settings_entry, 2> entry;
   entry[0].settings_id = SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS;
-  entry[0].value = http2conf.max_concurrent_streams;
+  entry[0].value = http2conf.upstream.max_concurrent_streams;
   entry[0].flags = SPDYLAY_ID_FLAG_SETTINGS_NONE;
 
   entry[1].settings_id = SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE;

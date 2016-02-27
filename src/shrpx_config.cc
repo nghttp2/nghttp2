@@ -660,6 +660,7 @@ enum {
   SHRPX_OPTID_BACKEND_HTTP1_TLS,
   SHRPX_OPTID_BACKEND_HTTP2_CONNECTION_WINDOW_BITS,
   SHRPX_OPTID_BACKEND_HTTP2_CONNECTIONS_PER_WORKER,
+  SHRPX_OPTID_BACKEND_HTTP2_MAX_CONCURRENT_STREAMS,
   SHRPX_OPTID_BACKEND_HTTP2_WINDOW_BITS,
   SHRPX_OPTID_BACKEND_IPV4,
   SHRPX_OPTID_BACKEND_IPV6,
@@ -692,6 +693,7 @@ enum {
   SHRPX_OPTID_FRONTEND_HTTP2_CONNECTION_WINDOW_BITS,
   SHRPX_OPTID_FRONTEND_HTTP2_DUMP_REQUEST_HEADER,
   SHRPX_OPTID_FRONTEND_HTTP2_DUMP_RESPONSE_HEADER,
+  SHRPX_OPTID_FRONTEND_HTTP2_MAX_CONCURRENT_STREAMS,
   SHRPX_OPTID_FRONTEND_HTTP2_READ_TIMEOUT,
   SHRPX_OPTID_FRONTEND_HTTP2_WINDOW_BITS,
   SHRPX_OPTID_FRONTEND_NO_TLS,
@@ -1398,6 +1400,9 @@ int option_lookup_token(const char *name, size_t namelen) {
       if (util::strieq_l("backend-http2-connection-window-bit", name, 35)) {
         return SHRPX_OPTID_BACKEND_HTTP2_CONNECTION_WINDOW_BITS;
       }
+      if (util::strieq_l("backend-http2-max-concurrent-stream", name, 35)) {
+        return SHRPX_OPTID_BACKEND_HTTP2_MAX_CONCURRENT_STREAMS;
+      }
       break;
     }
     break;
@@ -1411,6 +1416,9 @@ int option_lookup_token(const char *name, size_t namelen) {
     case 's':
       if (util::strieq_l("frontend-http2-connection-window-bit", name, 36)) {
         return SHRPX_OPTID_FRONTEND_HTTP2_CONNECTION_WINDOW_BITS;
+      }
+      if (util::strieq_l("frontend-http2-max-concurrent-stream", name, 36)) {
+        return SHRPX_OPTID_FRONTEND_HTTP2_MAX_CONCURRENT_STREAMS;
       }
       break;
     }
@@ -1559,8 +1567,20 @@ int parse_config(const char *opt, const char *optarg,
 #else // !NOTHREADS
     return parse_uint(&mod_config()->num_worker, opt, optarg);
 #endif // !NOTHREADS
-  case SHRPX_OPTID_HTTP2_MAX_CONCURRENT_STREAMS:
-    return parse_uint(&mod_config()->http2.max_concurrent_streams, opt, optarg);
+  case SHRPX_OPTID_HTTP2_MAX_CONCURRENT_STREAMS: {
+    LOG(WARN) << opt << ": deprecated. Use "
+              << SHRPX_OPT_FRONTEND_HTTP2_MAX_CONCURRENT_STREAMS << " and "
+              << SHRPX_OPT_BACKEND_HTTP2_MAX_CONCURRENT_STREAMS << " instead.";
+    size_t n;
+    if (parse_uint(&n, opt, optarg) != 0) {
+      return -1;
+    }
+    auto &http2conf = mod_config()->http2;
+    http2conf.upstream.max_concurrent_streams = n;
+    http2conf.downstream.max_concurrent_streams = n;
+
+    return 0;
+  }
   case SHRPX_OPTID_LOG_LEVEL:
     if (Log::set_severity_level_by_name(optarg) == -1) {
       LOG(ERROR) << opt << ": Invalid severity level: " << optarg;
@@ -2314,6 +2334,12 @@ int parse_config(const char *opt, const char *optarg,
   case SHRPX_OPTID_BACKEND_ADDRESS_FAMILY:
     return parse_address_family(&mod_config()->conn.downstream.family, opt,
                                 optarg);
+  case SHRPX_OPTID_FRONTEND_HTTP2_MAX_CONCURRENT_STREAMS:
+    return parse_uint(&mod_config()->http2.upstream.max_concurrent_streams, opt,
+                      optarg);
+  case SHRPX_OPTID_BACKEND_HTTP2_MAX_CONCURRENT_STREAMS:
+    return parse_uint(&mod_config()->http2.downstream.max_concurrent_streams,
+                      opt, optarg);
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 

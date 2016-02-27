@@ -228,6 +228,10 @@ constexpr char SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_PRIVATE_KEY_FILE[] =
 constexpr char SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_ADDRESS_FAMILY[] =
     "tls-ticket-key-memcached-address-family";
 constexpr char SHRPX_OPT_BACKEND_ADDRESS_FAMILY[] = "backend-address-family";
+constexpr char SHRPX_OPT_FRONTEND_HTTP2_MAX_CONCURRENT_STREAMS[] =
+    "frontend-http2-max-concurrent-streams";
+constexpr char SHRPX_OPT_BACKEND_HTTP2_MAX_CONCURRENT_STREAMS[] =
+    "backend-http2-max-concurrent-streams";
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -479,18 +483,19 @@ struct Http2Config {
     nghttp2_session_callbacks *callbacks;
     size_t window_bits;
     size_t connection_window_bits;
+    size_t max_concurrent_streams;
   } upstream;
   struct {
     nghttp2_option *option;
     nghttp2_session_callbacks *callbacks;
     size_t window_bits;
     size_t connection_window_bits;
+    size_t max_concurrent_streams;
   } downstream;
   struct {
     ev_tstamp stream_read;
     ev_tstamp stream_write;
   } timeout;
-  size_t max_concurrent_streams;
   bool no_cookie_crumbling;
   bool no_server_push;
 };

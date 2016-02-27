@@ -122,7 +122,9 @@ OPTIONS = [
     "tls-ticket-key-memcached-cert-file",
     "tls-ticket-key-memcached-private-key-file",
     "tls-ticket-key-memcached-address-family",
-    "backend-address-family"
+    "backend-address-family",
+    "frontend-http2-max-concurrent-streams",
+    "backend-http2-max-concurrent-streams"
 ]
 
 LOGVARS = [
