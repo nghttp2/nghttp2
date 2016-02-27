@@ -386,11 +386,6 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
             get_config()->conn.upstream.ratelimit.read, writecb, readcb,
             timeoutcb, this, get_config()->tls.dyn_rec.warmup_threshold,
             get_config()->tls.dyn_rec.idle_timeout),
-      pinned_http2sessions_(
-          get_config()->conn.downstream.proto == PROTO_HTTP2
-              ? make_unique<std::vector<ssize_t>>(
-                    worker->get_downstream_addr_groups().size(), -1)
-              : nullptr),
       ipaddr_(ipaddr),
       port_(port),
       faddr_(faddr),
@@ -714,15 +709,30 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
     auto dconn_pool = worker_->get_dconn_pool();
 
     if (downstreamconf.proto == PROTO_HTTP2) {
-      Http2Session *http2session;
-      auto &pinned = (*pinned_http2sessions_)[group];
-      if (pinned == -1) {
-        http2session = worker_->next_http2_session(group);
-        pinned = http2session->get_index();
-      } else {
-        auto dgrp = worker_->get_dgrp(group);
-        http2session = dgrp->http2sessions[pinned].get();
+      auto &addr_group = worker_->get_downstream_addr_groups()[group];
+      if (addr_group.http2_freelist.empty()) {
+        if (LOG_ENABLED(INFO)) {
+          CLOG(INFO, this)
+              << "http2_freelist is empty; create new Http2Session";
+        }
+        auto session = make_unique<Http2Session>(
+            conn_.loop, worker_->get_cl_ssl_ctx(), worker_, group);
+        addr_group.http2_freelist.append(session.release());
       }
+
+      auto http2session = addr_group.http2_freelist.head;
+
+      // TODO max_concurrent_streams option must be independent from
+      // frontend and backend.
+      if (http2session->max_concurrency_reached(1)) {
+        if (LOG_ENABLED(INFO)) {
+          CLOG(INFO, this) << "Maximum streams are reached for Http2Session("
+                           << http2session
+                           << "). Remove Http2Session from http2_freelist";
+        }
+        addr_group.http2_freelist.remove(http2session);
+      }
+
       dconn = make_unique<Http2DownstreamConnection>(dconn_pool, http2session);
     } else {
       dconn = make_unique<HttpDownstreamConnection>(dconn_pool, group,

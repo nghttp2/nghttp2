@@ -99,14 +99,17 @@ template <typename T, typename F> bool test_flags(T t, F flags) {
 // T *dlnext, which point to previous element and next element in the
 // list respectively.
 template <typename T> struct DList {
-  DList() : head(nullptr), tail(nullptr) {}
+  DList() : head(nullptr), tail(nullptr), n(0) {}
 
-  DList(const DList &) = delete;
+  // We should delete these copy ctor and assignment operator.  We
+  // need to them where copy is required before we add item to it.  If
+  // you doubt, make them delete and try to compile.
+  DList(const DList &) = default;
+  DList &operator=(const DList &) = default;
 
-  DList &operator=(const DList &) = delete;
-
-  DList(DList &&other) : head(other.head), tail(other.tail) {
+  DList(DList &&other) : head(other.head), tail(other.tail), n(other.n) {
     other.head = other.tail = nullptr;
+    other.n = 0;
   }
 
   DList &operator=(DList &&other) {
@@ -115,11 +118,16 @@ template <typename T> struct DList {
     }
     head = other.head;
     tail = other.tail;
+    n = other.n;
+
     other.head = other.tail = nullptr;
+    other.n = 0;
+
     return *this;
   }
 
   void append(T *t) {
+    ++n;
     if (tail) {
       tail->dlnext = t;
       t->dlprev = tail;
@@ -130,6 +138,7 @@ template <typename T> struct DList {
   }
 
   void remove(T *t) {
+    --n;
     auto p = t->dlprev;
     auto n = t->dlnext;
     if (p) {
@@ -149,7 +158,10 @@ template <typename T> struct DList {
 
   bool empty() const { return head == nullptr; }
 
+  size_t size() const { return n; }
+
   T *head, *tail;
+  size_t n;
 };
 
 template <typename T> void dlist_delete_all(DList<T> &dl) {

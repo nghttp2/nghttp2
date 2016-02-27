@@ -61,6 +61,7 @@ namespace shrpx {
 
 struct LogFragment;
 class ConnectBlocker;
+class Http2Session;
 
 namespace ssl {
 
@@ -304,6 +305,16 @@ struct DownstreamAddrGroup {
 
   ImmutableString pattern;
   std::vector<DownstreamAddr> addrs;
+  // List of Http2Session which is not fully utilized (i.e., the
+  // server advertized maximum concurrency is not reached).  We will
+  // coalesce as much stream as possible in one Http2Session to fully
+  // utilize TCP connection.
+  //
+  // TODO Verify that this approach performs better in performance
+  // wise.
+  DList<Http2Session> http2_freelist;
+  // Next downstream address index in addrs.
+  size_t next;
 };
 
 struct TicketKey {

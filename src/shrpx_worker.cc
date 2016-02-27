@@ -73,7 +73,6 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
     : randgen_(rd()),
       dconn_pool_(get_config()->conn.downstream.addr_groups.size()),
       worker_stat_(get_config()->conn.downstream.addr_groups.size()),
-      dgrps_(get_config()->conn.downstream.addr_groups.size()),
       loop_(loop),
       sv_ssl_ctx_(sv_ssl_ctx),
       cl_ssl_ctx_(cl_ssl_ctx),
@@ -96,24 +95,6 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
         &session_cacheconf.memcached.addr, loop,
         tls_session_cache_memcached_ssl_ctx,
         StringRef{session_cacheconf.memcached.host}, &mcpool_);
-  }
-
-  auto &downstreamconf = get_config()->conn.downstream;
-
-  if (downstreamconf.proto == PROTO_HTTP2) {
-    auto n = get_config()->http2.downstream.connections_per_worker;
-    size_t group = 0;
-    for (auto &dgrp : dgrps_) {
-      auto m = n;
-      if (m == 0) {
-        m = downstreamconf.addr_groups[group].addrs.size();
-      }
-      for (size_t idx = 0; idx < m; ++idx) {
-        dgrp.http2sessions.push_back(
-            make_unique<Http2Session>(loop_, cl_ssl_ctx, this, group, idx));
-      }
-      ++group;
-    }
   }
 
   for (auto &group : downstream_addr_groups_) {
@@ -255,22 +236,6 @@ WorkerStat *Worker::get_worker_stat() { return &worker_stat_; }
 
 DownstreamConnectionPool *Worker::get_dconn_pool() { return &dconn_pool_; }
 
-Http2Session *Worker::next_http2_session(size_t group) {
-  auto &dgrp = dgrps_[group];
-  auto &http2sessions = dgrp.http2sessions;
-  if (http2sessions.empty()) {
-    return nullptr;
-  }
-
-  auto res = http2sessions[dgrp.next_http2session].get();
-  ++dgrp.next_http2session;
-  if (dgrp.next_http2session >= http2sessions.size()) {
-    dgrp.next_http2session = 0;
-  }
-
-  return res;
-}
-
 struct ev_loop *Worker::get_loop() const {
   return loop_;
 }
@@ -284,11 +249,6 @@ void Worker::set_graceful_shutdown(bool f) { graceful_shutdown_ = f; }
 bool Worker::get_graceful_shutdown() const { return graceful_shutdown_; }
 
 MemchunkPool *Worker::get_mcpool() { return &mcpool_; }
-
-DownstreamGroup *Worker::get_dgrp(size_t group) {
-  assert(group < dgrps_.size());
-  return &dgrps_[group];
-}
 
 MemcachedDispatcher *Worker::get_session_cache_memcached_dispatcher() {
   return session_cache_memcached_dispatcher_.get();

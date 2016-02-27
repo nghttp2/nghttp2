@@ -157,10 +157,10 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
       conn_.set_ssl(ssl);
     }
 
-    auto &next_downstream = worker_->get_dgrp(group_)->next;
-    auto end = next_downstream;
     auto &groups = worker_->get_downstream_addr_groups();
     auto &addrs = groups[group_].addrs;
+    auto &next_downstream = groups[group_].next;
+    auto end = next_downstream;
     for (;;) {
       auto &addr = addrs[next_downstream];
 

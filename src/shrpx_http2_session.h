@@ -57,7 +57,7 @@ struct StreamData {
 class Http2Session {
 public:
   Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx, Worker *worker,
-               size_t group, size_t idx);
+               size_t group);
   ~Http2Session();
 
   // If hard is true, all pending requests are abandoned and
@@ -149,12 +149,26 @@ public:
 
   size_t get_group() const;
 
-  size_t get_index() const;
-
   int handle_downstream_push_promise(Downstream *downstream,
                                      int32_t promised_stream_id);
   int handle_downstream_push_promise_complete(Downstream *downstream,
                                               Downstream *promised_downstream);
+
+  // Returns number of downstream connections, including pushed
+  // streams.
+  size_t get_num_dconns() const;
+
+  // Returns true if this object is included in freelist.  See
+  // DownstreamAddrGroup object.
+  bool in_freelist() const;
+
+  // Returns true if the maximum concurrency is reached.  In other
+  // words, the number of currently participated streams in this
+  // session is equal or greater than the max concurrent streams limit
+  // advertised by server.  If |extra| is nonzero, it is added to the
+  // number of current concurrent streams when comparing against
+  // server initiated concurrency limit.
+  bool max_concurrency_reached(size_t extra = 0) const;
 
   enum {
     // Disconnected
@@ -184,6 +198,8 @@ public:
 
   using ReadBuf = Buffer<8_k>;
 
+  Http2Session *dlnext, *dlprev;
+
 private:
   Connection conn_;
   DefaultMemchunks wb_;
@@ -207,9 +223,6 @@ private:
   const DownstreamAddr *addr_;
   nghttp2_session *session_;
   size_t group_;
-  // index inside group, this is used to pin frontend to certain
-  // HTTP/2 backend for better throughput.
-  size_t index_;
   int state_;
   int connection_check_state_;
   bool flow_control_;

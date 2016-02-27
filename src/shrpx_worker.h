@@ -67,17 +67,6 @@ namespace ssl {
 class CertLookupTree;
 } // namespace ssl
 
-struct DownstreamGroup {
-  DownstreamGroup() : next_http2session(0), next(0) {}
-
-  std::vector<std::unique_ptr<Http2Session>> http2sessions;
-  // Next index in http2sessions.
-  size_t next_http2session;
-  // Next downstream address index corresponding to
-  // Config::downstream_addr_groups[].
-  size_t next;
-};
-
 struct WorkerStat {
   WorkerStat(size_t num_groups) : num_connections(0) {}
 
@@ -122,7 +111,6 @@ public:
 
   WorkerStat *get_worker_stat();
   DownstreamConnectionPool *get_dconn_pool();
-  Http2Session *next_http2_session(size_t group);
   struct ev_loop *get_loop() const;
   SSL_CTX *get_sv_ssl_ctx() const;
   SSL_CTX *get_cl_ssl_ctx() const;
@@ -132,8 +120,6 @@ public:
 
   MemchunkPool *get_mcpool();
   void schedule_clear_mcpool();
-
-  DownstreamGroup *get_dgrp(size_t group);
 
   MemcachedDispatcher *get_session_cache_memcached_dispatcher();
 
@@ -161,7 +147,6 @@ private:
   MemchunkPool mcpool_;
   DownstreamConnectionPool dconn_pool_;
   WorkerStat worker_stat_;
-  std::vector<DownstreamGroup> dgrps_;
 
   std::unique_ptr<MemcachedDispatcher> session_cache_memcached_dispatcher_;
 #ifdef HAVE_MRUBY

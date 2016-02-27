@@ -144,7 +144,6 @@ private:
   Connection conn_;
   ev_timer reneg_shutdown_timer_;
   std::unique_ptr<Upstream> upstream_;
-  std::unique_ptr<std::vector<ssize_t>> pinned_http2sessions_;
   // IP address of client.  If UNIX domain socket is used, this is
   // "localhost".
   std::string ipaddr_;
