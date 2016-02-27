@@ -135,10 +135,8 @@ HTTP/1 frontend connection can be upgraded to HTTP/2 using HTTP
 Upgrade.  To disable SSL/TLS in backend connection, use
 :option:`--backend-no-tls` option.
 
-By default, the number of backend HTTP/2 connections per worker
-(thread) is determined by number of :option:`--backend` option.  To
-adjust this value, use
-:option:`--backend-http2-connections-per-worker` option.
+A single HTTP/2 backend connection is shared among multiple frontend
+connections.
 
 The backend server is supporsed to be a HTTP/2 web server (e.g.,
 nghttpd).  The one use-case of this mode is utilize existing HTTP/1
@@ -171,10 +169,8 @@ HTTP/1 frontend connection can be upgraded to HTTP/2 using HTTP
 Upgrade.  To disable SSL/TLS in backend connection, use
 :option:`--backend-no-tls` option.
 
-By default, the number of backend HTTP/2 connections per worker
-(thread) is determined by number of :option:`--backend` option.  To
-adjust this value, use
-:option:`--backend-http2-connections-per-worker` option.
+A single HTTP/2 backend connection is shared among multiple frontend
+connections.
 
 The backend server must be a HTTP/2 proxy.  You can use nghttpx in
 `HTTP/2 proxy mode`_ as backend server.  The one use-case of this mode
@@ -215,10 +211,8 @@ With :option:`--frontend-no-tls` option, SSL/TLS is turned off in
 frontend connection, so the connection gets insecure.  To disable
 SSL/TLS in backend connection, use :option:`--backend-no-tls` option.
 
-By default, the number of backend HTTP/2 connections per worker
-(thread) is determined by number of :option:`--backend` option.  To
-adjust this value, use
-:option:`--backend-http2-connections-per-worker` option.
+A single HTTP/2 backend connection is shared among multiple frontend
+connections.
 
 The backend server is supporsed to be a HTTP/2 web server or HTTP/2
 proxy.  If backend server is HTTP/2 proxy, use
@@ -386,6 +380,3 @@ servers ``serv1:3000`` and ``serv2:3000`` for request host
 
    backend=serv1,3000;example.com/myservice
    backend=serv2,3000;example.com/myservice
-
-For HTTP/2 backend, see also
-:option:`--backend-http2-connections-per-worker` option.
