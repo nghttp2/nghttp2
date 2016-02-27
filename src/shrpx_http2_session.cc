@@ -411,6 +411,13 @@ int Http2Session::initiate_connection() {
         // at the time of this writing).
         SSL_set_tlsext_host_name(conn_.tls.ssl, sni_name.c_str());
       }
+
+      auto tls_session = ssl::reuse_tls_session(addr_);
+      if (tls_session) {
+        SSL_set_session(conn_.tls.ssl, tls_session);
+        SSL_SESSION_free(tls_session);
+      }
+
       // If state_ == PROXY_CONNECTED, we has connected to the proxy
       // using conn_.fd and tunnel has been established.
       if (state_ == DISCONNECTED) {
@@ -1836,6 +1843,13 @@ int Http2Session::tls_handshake() {
   if (!get_config()->tls.insecure &&
       ssl::check_cert(conn_.tls.ssl, addr_) != 0) {
     return -1;
+  }
+
+  if (!SSL_session_reused(conn_.tls.ssl)) {
+    auto tls_session = SSL_get0_session(conn_.tls.ssl);
+    if (tls_session) {
+      ssl::try_cache_tls_session(addr_, tls_session, ev_now(conn_.loop));
+    }
   }
 
   read_ = &Http2Session::read_tls;
