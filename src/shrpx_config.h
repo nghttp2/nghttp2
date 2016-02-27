@@ -485,7 +485,6 @@ struct Http2Config {
     nghttp2_session_callbacks *callbacks;
     size_t window_bits;
     size_t connection_window_bits;
-    size_t connections_per_worker;
   } downstream;
   struct {
     ev_tstamp stream_read;

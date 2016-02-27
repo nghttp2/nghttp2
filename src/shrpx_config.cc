@@ -2077,8 +2077,8 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   case SHRPX_OPTID_BACKEND_HTTP2_CONNECTIONS_PER_WORKER:
-    return parse_uint(&mod_config()->http2.downstream.connections_per_worker,
-                      opt, optarg);
+    LOG(WARN) << opt << ": deprecated.";
+    return 0;
   case SHRPX_OPTID_FETCH_OCSP_RESPONSE_FILE:
     mod_config()->tls.ocsp.fetch_ocsp_response_file = optarg;
 

@@ -1352,15 +1352,6 @@ Performance:
               accepts.  Setting 0 means unlimited.
               Default: )" << get_config()->conn.upstream.worker_connections
       << R"(
-  --backend-http2-connections-per-worker=<N>
-              Set   maximum   number   of  backend   HTTP/2   physical
-              connections  per  worker.   If  pattern is  used  in  -b
-              option, this limit is applied  to each pattern group (in
-              other  words, each  pattern group  can have  maximum <N>
-              HTTP/2  connections).  The  default  value  is 0,  which
-              means  that  the value  is  adjusted  to the  number  of
-              backend addresses.  If pattern  is used, this adjustment
-              is done for each pattern group.
   --backend-http1-connections-per-host=<N>
               Set   maximum  number   of  backend   concurrent  HTTP/1
               connections per origin host.   This option is meaningful
