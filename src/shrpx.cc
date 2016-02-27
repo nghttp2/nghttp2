@@ -1106,7 +1106,7 @@ void fill_default_config() {
   {
     auto &downstreamconf = http2conf.downstream;
     downstreamconf.window_bits = 16;
-    downstreamconf.connection_window_bits = 16;
+    downstreamconf.connection_window_bits = 30;
     downstreamconf.max_concurrent_streams = 100;
 
     nghttp2_option_new(&downstreamconf.option);
