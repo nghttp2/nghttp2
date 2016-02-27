@@ -67,9 +67,39 @@ namespace ssl {
 class CertLookupTree;
 } // namespace ssl
 
-struct WorkerStat {
-  WorkerStat(size_t num_groups) : num_connections(0) {}
+struct DownstreamAddr {
+  Address addr;
+  // backend address.  If |host_unix| is true, this is UNIX domain
+  // socket path.
+  ImmutableString host;
+  ImmutableString hostport;
+  // backend port.  0 if |host_unix| is true.
+  uint16_t port;
+  // true if |host| contains UNIX domain socket path.
+  bool host_unix;
 
+  std::unique_ptr<ConnectBlocker> connect_blocker;
+  // Client side TLS session cache
+  TLSSessionCache tls_session_cache;
+};
+
+struct DownstreamAddrGroup {
+  ImmutableString pattern;
+  std::vector<DownstreamAddr> addrs;
+  // List of Http2Session which is not fully utilized (i.e., the
+  // server advertized maximum concurrency is not reached).  We will
+  // coalesce as much stream as possible in one Http2Session to fully
+  // utilize TCP connection.
+  //
+  // TODO Verify that this approach performs better in performance
+  // wise.
+  DList<Http2Session> http2_freelist;
+  DownstreamConnectionPool dconn_pool;
+  // Next downstream address index in addrs.
+  size_t next;
+};
+
+struct WorkerStat {
   size_t num_connections;
 };
 
@@ -110,7 +140,6 @@ public:
   void set_ticket_keys(std::shared_ptr<TicketKeys> ticket_keys);
 
   WorkerStat *get_worker_stat();
-  DownstreamConnectionPool *get_dconn_pool();
   struct ev_loop *get_loop() const;
   SSL_CTX *get_sv_ssl_ctx() const;
   SSL_CTX *get_cl_ssl_ctx() const;
@@ -145,7 +174,6 @@ private:
   ev_async w_;
   ev_timer mcpool_clear_timer_;
   MemchunkPool mcpool_;
-  DownstreamConnectionPool dconn_pool_;
   WorkerStat worker_stat_;
 
   std::unique_ptr<MemcachedDispatcher> session_cache_memcached_dispatcher_;
@@ -168,6 +196,16 @@ private:
 
   bool graceful_shutdown_;
 };
+
+// Selects group based on request's |hostport| and |path|.  |hostport|
+// is the value taken from :authority or host header field, and may
+// contain port.  The |path| may contain query part.  We require the
+// catch-all pattern in place, so this function always selects one
+// group.  The catch-all group index is given in |catch_all|.  All
+// patterns are given in |groups|.
+size_t match_downstream_addr_group(
+    const Router &router, const StringRef &hostport, const StringRef &path,
+    const std::vector<DownstreamAddrGroup> &groups, size_t catch_all);
 
 } // namespace shrpx
 

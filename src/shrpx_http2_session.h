@@ -48,6 +48,8 @@ namespace shrpx {
 
 class Http2DownstreamConnection;
 class Worker;
+struct DownstreamAddrGroup;
+struct DownstreamAddr;
 
 struct StreamData {
   StreamData *dlnext, *dlprev;
@@ -57,7 +59,7 @@ struct StreamData {
 class Http2Session {
 public:
   Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx, Worker *worker,
-               size_t group);
+               DownstreamAddrGroup *group);
   ~Http2Session();
 
   // If hard is true, all pending requests are abandoned and
@@ -145,9 +147,9 @@ public:
 
   void submit_pending_requests();
 
-  const DownstreamAddr *get_addr() const;
+  DownstreamAddr *get_addr() const;
 
-  size_t get_group() const;
+  DownstreamAddrGroup *get_downstream_addr_group() const;
 
   int handle_downstream_push_promise(Downstream *downstream,
                                      int32_t promised_stream_id);
@@ -219,10 +221,10 @@ private:
   Worker *worker_;
   // NULL if no TLS is configured
   SSL_CTX *ssl_ctx_;
+  DownstreamAddrGroup *group_;
   // Address of remote endpoint
-  const DownstreamAddr *addr_;
+  DownstreamAddr *addr_;
   nghttp2_session *session_;
-  size_t group_;
   int state_;
   int connection_check_state_;
   bool flow_control_;

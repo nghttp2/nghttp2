@@ -36,15 +36,15 @@ class DownstreamConnection;
 
 class DownstreamConnectionPool {
 public:
-  DownstreamConnectionPool(size_t num_groups);
+  DownstreamConnectionPool();
   ~DownstreamConnectionPool();
 
   void add_downstream_connection(std::unique_ptr<DownstreamConnection> dconn);
-  std::unique_ptr<DownstreamConnection> pop_downstream_connection(size_t group);
+  std::unique_ptr<DownstreamConnection> pop_downstream_connection();
   void remove_downstream_connection(DownstreamConnection *dconn);
 
 private:
-  std::vector<std::set<DownstreamConnection *>> gpool_;
+  std::set<DownstreamConnection *> pool_;
 };
 
 } // namespace shrpx

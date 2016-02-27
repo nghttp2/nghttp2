@@ -166,7 +166,7 @@ void writecb(struct ev_loop *loop, ev_io *w, int revents) {
 } // namespace
 
 Http2Session::Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx,
-                           Worker *worker, size_t group)
+                           Worker *worker, DownstreamAddrGroup *group)
     : dlnext(nullptr),
       dlprev(nullptr),
       conn_(loop, -1, nullptr, worker->get_mcpool(),
@@ -177,9 +177,9 @@ Http2Session::Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx,
       wb_(worker->get_mcpool()),
       worker_(worker),
       ssl_ctx_(ssl_ctx),
+      group_(group),
       addr_(nullptr),
       session_(nullptr),
-      group_(group),
       state_(DISCONNECTED),
       connection_check_state_(CONNECTION_CHECK_NONE),
       flow_control_(false) {
@@ -208,8 +208,7 @@ Http2Session::~Http2Session() {
     if (LOG_ENABLED(INFO)) {
       SSLOG(INFO, this) << "Removed from http2_freelist";
     }
-    auto &addr_group = worker_->get_downstream_addr_groups()[group_];
-    addr_group.http2_freelist.remove(this);
+    group_->http2_freelist.remove(this);
   }
 }
 
@@ -281,8 +280,7 @@ int Http2Session::disconnect(bool hard) {
 int Http2Session::initiate_connection() {
   int rv = 0;
 
-  auto &addr_group = worker_->get_downstream_addr_groups()[group_];
-  auto &addrs = addr_group.addrs;
+  auto &addrs = group_->addrs;
   auto worker_blocker = worker_->get_connect_blocker();
 
   if (state_ == DISCONNECTED) {
@@ -294,7 +292,7 @@ int Http2Session::initiate_connection() {
       return -1;
     }
 
-    auto &next_downstream = addr_group.next;
+    auto &next_downstream = group_->next;
     auto end = next_downstream;
 
     for (;;) {
@@ -636,8 +634,7 @@ void Http2Session::remove_downstream_connection(
     if (LOG_ENABLED(INFO)) {
       SSLOG(INFO, this) << "Append to Http2Session freelist";
     }
-    auto &addr_group = worker_->get_downstream_addr_groups()[group_];
-    addr_group.http2_freelist.append(this);
+    group_->http2_freelist.append(this);
   }
 }
 
@@ -1929,9 +1926,7 @@ bool Http2Session::should_hard_fail() const {
   }
 }
 
-const DownstreamAddr *Http2Session::get_addr() const { return addr_; }
-
-size_t Http2Session::get_group() const { return group_; }
+DownstreamAddr *Http2Session::get_addr() const { return addr_; }
 
 int Http2Session::handle_downstream_push_promise(Downstream *downstream,
                                                  int32_t promised_stream_id) {
@@ -1950,10 +1945,8 @@ int Http2Session::handle_downstream_push_promise(Downstream *downstream,
   // promised_downstream->get_stream() still returns 0.
 
   auto handler = upstream->get_client_handler();
-  auto worker = handler->get_worker();
 
-  auto promised_dconn =
-      make_unique<Http2DownstreamConnection>(worker->get_dconn_pool(), this);
+  auto promised_dconn = make_unique<Http2DownstreamConnection>(this);
   promised_dconn->set_client_handler(handler);
 
   auto ptr = promised_dconn.get();
@@ -2028,11 +2021,9 @@ int Http2Session::handle_downstream_push_promise_complete(
 size_t Http2Session::get_num_dconns() const { return dconns_.size(); }
 
 bool Http2Session::in_freelist() const {
-  auto &addr_group = worker_->get_downstream_addr_groups()[group_];
-
   return dlnext != nullptr || dlprev != nullptr ||
-         addr_group.http2_freelist.head == this ||
-         addr_group.http2_freelist.tail == this;
+         group_->http2_freelist.head == this ||
+         group_->http2_freelist.tail == this;
 }
 
 bool Http2Session::max_concurrency_reached(size_t extra) const {
@@ -2043,6 +2034,10 @@ bool Http2Session::max_concurrency_reached(size_t extra) const {
   return dconns_.size() + extra >=
          nghttp2_session_get_remote_settings(
              session_, NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS);
+}
+
+DownstreamAddrGroup *Http2Session::get_downstream_addr_group() const {
+  return group_;
 }
 
 } // namespace shrpx

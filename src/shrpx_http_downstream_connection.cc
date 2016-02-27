@@ -111,11 +111,10 @@ void connectcb(struct ev_loop *loop, ev_io *w, int revents) {
 }
 } // namespace
 
-HttpDownstreamConnection::HttpDownstreamConnection(
-    DownstreamConnectionPool *dconn_pool, size_t group, struct ev_loop *loop,
-    Worker *worker)
-    : DownstreamConnection(dconn_pool),
-      conn_(loop, -1, nullptr, worker->get_mcpool(),
+HttpDownstreamConnection::HttpDownstreamConnection(DownstreamAddrGroup *group,
+                                                   struct ev_loop *loop,
+                                                   Worker *worker)
+    : conn_(loop, -1, nullptr, worker->get_mcpool(),
             get_config()->conn.downstream.timeout.write,
             get_config()->conn.downstream.timeout.read, {}, {}, connectcb,
             readcb, timeoutcb, this, get_config()->tls.dyn_rec.warmup_threshold,
@@ -124,10 +123,10 @@ HttpDownstreamConnection::HttpDownstreamConnection(
       do_write_(&HttpDownstreamConnection::noop),
       worker_(worker),
       ssl_ctx_(worker->get_cl_ssl_ctx()),
+      group_(group),
       addr_(nullptr),
       ioctrl_(&conn_.rlimit),
-      response_htp_{0},
-      group_(group) {}
+      response_htp_{0} {}
 
 HttpDownstreamConnection::~HttpDownstreamConnection() {}
 
@@ -157,9 +156,8 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
       conn_.set_ssl(ssl);
     }
 
-    auto &groups = worker_->get_downstream_addr_groups();
-    auto &addrs = groups[group_].addrs;
-    auto &next_downstream = groups[group_].next;
+    auto &addrs = group_->addrs;
+    auto &next_downstream = group_->next;
     auto end = next_downstream;
     for (;;) {
       auto &addr = addrs[next_downstream];
@@ -508,8 +506,8 @@ void idle_readcb(struct ev_loop *loop, ev_io *w, int revents) {
   if (LOG_ENABLED(INFO)) {
     DCLOG(INFO, dconn) << "Idle connection EOF";
   }
-  auto dconn_pool = dconn->get_dconn_pool();
-  dconn_pool->remove_downstream_connection(dconn);
+  auto &dconn_pool = dconn->get_downstream_addr_group()->dconn_pool;
+  dconn_pool.remove_downstream_connection(dconn);
   // dconn was deleted
 }
 } // namespace
@@ -521,8 +519,8 @@ void idle_timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
   if (LOG_ENABLED(INFO)) {
     DCLOG(INFO, dconn) << "Idle connection timeout";
   }
-  auto dconn_pool = dconn->get_dconn_pool();
-  dconn_pool->remove_downstream_connection(dconn);
+  auto &dconn_pool = dconn->get_downstream_addr_group()->dconn_pool;
+  dconn_pool.remove_downstream_connection(dconn);
   // dconn was deleted
 }
 } // namespace
@@ -1033,7 +1031,7 @@ int HttpDownstreamConnection::process_input(const uint8_t *data,
 }
 
 int HttpDownstreamConnection::connected() {
-  auto connect_blocker = addr_->connect_blocker;
+  auto &connect_blocker = addr_->connect_blocker;
 
   if (!util::check_socket_connected(conn_.fd)) {
     conn_.wlimit.stopw();
@@ -1083,8 +1081,11 @@ void HttpDownstreamConnection::signal_write() {
   ev_feed_event(conn_.loop, &conn_.wev, EV_WRITE);
 }
 
-size_t HttpDownstreamConnection::get_group() const { return group_; }
-
 int HttpDownstreamConnection::noop() { return 0; }
+
+DownstreamAddrGroup *
+HttpDownstreamConnection::get_downstream_addr_group() const {
+  return group_;
+}
 
 } // namespace shrpx

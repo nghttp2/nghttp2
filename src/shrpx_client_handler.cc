@@ -637,13 +637,18 @@ void ClientHandler::pool_downstream_connection(
   if (!dconn->poolable()) {
     return;
   }
+
+  dconn->set_client_handler(nullptr);
+
+  auto group = dconn->get_downstream_addr_group();
+
   if (LOG_ENABLED(INFO)) {
     CLOG(INFO, this) << "Pooling downstream connection DCONN:" << dconn.get()
-                     << " in group " << dconn->get_group();
+                     << " in group " << group;
   }
-  dconn->set_client_handler(nullptr);
-  auto dconn_pool = worker_->get_dconn_pool();
-  dconn_pool->add_downstream_connection(std::move(dconn));
+
+  auto &dconn_pool = group->dconn_pool;
+  dconn_pool.add_downstream_connection(std::move(dconn));
 }
 
 void ClientHandler::remove_downstream_connection(DownstreamConnection *dconn) {
@@ -651,13 +656,13 @@ void ClientHandler::remove_downstream_connection(DownstreamConnection *dconn) {
     CLOG(INFO, this) << "Removing downstream connection DCONN:" << dconn
                      << " from pool";
   }
-  auto dconn_pool = worker_->get_dconn_pool();
-  dconn_pool->remove_downstream_connection(dconn);
+  auto &dconn_pool = dconn->get_downstream_addr_group()->dconn_pool;
+  dconn_pool.remove_downstream_connection(dconn);
 }
 
 std::unique_ptr<DownstreamConnection>
 ClientHandler::get_downstream_connection(Downstream *downstream) {
-  size_t group;
+  size_t group_idx;
   auto &downstreamconf = get_config()->conn.downstream;
   auto catch_all = downstreamconf.addr_group_catch_all;
   auto &groups = worker_->get_downstream_addr_groups();
@@ -667,26 +672,26 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
   // Fast path.  If we have one group, it must be catch-all group.
   // HTTP/2 and client proxy modes fall in this case.
   if (groups.size() == 1) {
-    group = 0;
+    group_idx = 0;
   } else if (req.method == HTTP_CONNECT) {
     //  We don't know how to treat CONNECT request in host-path
     //  mapping.  It most likely appears in proxy scenario.  Since we
     //  have dealt with proxy case already, just use catch-all group.
-    group = catch_all;
+    group_idx = catch_all;
   } else {
     auto &router = get_config()->router;
     if (!req.authority.empty()) {
-      group =
+      group_idx =
           match_downstream_addr_group(router, StringRef{req.authority},
                                       StringRef{req.path}, groups, catch_all);
     } else {
       auto h = req.fs.header(http2::HD_HOST);
       if (h) {
-        group =
+        group_idx =
             match_downstream_addr_group(router, StringRef{h->value},
                                         StringRef{req.path}, groups, catch_all);
       } else {
-        group =
+        group_idx =
             match_downstream_addr_group(router, StringRef::from_lit(""),
                                         StringRef{req.path}, groups, catch_all);
       }
@@ -694,11 +699,12 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
   }
 
   if (LOG_ENABLED(INFO)) {
-    CLOG(INFO, this) << "Downstream address group: " << group;
+    CLOG(INFO, this) << "Downstream address group_idx: " << group_idx;
   }
 
-  auto dconn_pool = worker_->get_dconn_pool();
-  auto dconn = dconn_pool->pop_downstream_connection(group);
+  auto &group = worker_->get_downstream_addr_groups()[group_idx];
+  auto &dconn_pool = group.dconn_pool;
+  auto dconn = dconn_pool.pop_downstream_connection();
 
   if (!dconn) {
     if (LOG_ENABLED(INFO)) {
@@ -706,21 +712,18 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
                        << " Create new one";
     }
 
-    auto dconn_pool = worker_->get_dconn_pool();
-
     if (downstreamconf.proto == PROTO_HTTP2) {
-      auto &addr_group = worker_->get_downstream_addr_groups()[group];
-      if (addr_group.http2_freelist.empty()) {
+      if (group.http2_freelist.empty()) {
         if (LOG_ENABLED(INFO)) {
           CLOG(INFO, this)
               << "http2_freelist is empty; create new Http2Session";
         }
         auto session = make_unique<Http2Session>(
-            conn_.loop, worker_->get_cl_ssl_ctx(), worker_, group);
-        addr_group.http2_freelist.append(session.release());
+            conn_.loop, worker_->get_cl_ssl_ctx(), worker_, &group);
+        group.http2_freelist.append(session.release());
       }
 
-      auto http2session = addr_group.http2_freelist.head;
+      auto http2session = group.http2_freelist.head;
 
       // TODO max_concurrent_streams option must be independent from
       // frontend and backend.
@@ -730,13 +733,13 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
                            << http2session
                            << "). Remove Http2Session from http2_freelist";
         }
-        addr_group.http2_freelist.remove(http2session);
+        group.http2_freelist.remove(http2session);
       }
 
-      dconn = make_unique<Http2DownstreamConnection>(dconn_pool, http2session);
+      dconn = make_unique<Http2DownstreamConnection>(http2session);
     } else {
-      dconn = make_unique<HttpDownstreamConnection>(dconn_pool, group,
-                                                    conn_.loop, worker_);
+      dconn =
+          make_unique<HttpDownstreamConnection>(&group, conn_.loop, worker_);
     }
     dconn->set_client_handler(this);
     return dconn;

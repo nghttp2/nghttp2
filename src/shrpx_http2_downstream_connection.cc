@@ -37,6 +37,7 @@
 #include "shrpx_error.h"
 #include "shrpx_http.h"
 #include "shrpx_http2_session.h"
+#include "shrpx_worker.h"
 #include "http2.h"
 #include "util.h"
 
@@ -44,10 +45,8 @@ using namespace nghttp2;
 
 namespace shrpx {
 
-Http2DownstreamConnection::Http2DownstreamConnection(
-    DownstreamConnectionPool *dconn_pool, Http2Session *http2session)
-    : DownstreamConnection(dconn_pool),
-      dlnext(nullptr),
+Http2DownstreamConnection::Http2DownstreamConnection(Http2Session *http2session)
+    : dlnext(nullptr),
       dlprev(nullptr),
       http2session_(http2session),
       sd_(nullptr) {}
@@ -557,10 +556,9 @@ int Http2DownstreamConnection::on_timeout() {
   return submit_rst_stream(downstream_, NGHTTP2_NO_ERROR);
 }
 
-size_t Http2DownstreamConnection::get_group() const {
-  // HTTP/2 backend connections are managed by Http2Session object,
-  // and it stores group index.
-  return http2session_->get_group();
+DownstreamAddrGroup *
+Http2DownstreamConnection::get_downstream_addr_group() const {
+  return http2session_->get_downstream_addr_group();
 }
 
 } // namespace shrpx

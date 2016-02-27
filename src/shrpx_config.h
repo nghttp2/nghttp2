@@ -284,37 +284,24 @@ struct TLSSessionCache {
   ev_tstamp last_updated;
 };
 
-struct DownstreamAddr {
+struct DownstreamAddrConfig {
   Address addr;
   // backend address.  If |host_unix| is true, this is UNIX domain
   // socket path.
   ImmutableString host;
   ImmutableString hostport;
-  ConnectBlocker *connect_blocker;
-  // Client side TLS session cache
-  TLSSessionCache tls_session_cache;
   // backend port.  0 if |host_unix| is true.
   uint16_t port;
   // true if |host| contains UNIX domain socket path.
   bool host_unix;
 };
 
-struct DownstreamAddrGroup {
-  DownstreamAddrGroup(const StringRef &pattern)
+struct DownstreamAddrGroupConfig {
+  DownstreamAddrGroupConfig(const StringRef &pattern)
       : pattern(pattern.c_str(), pattern.size()) {}
 
   ImmutableString pattern;
-  std::vector<DownstreamAddr> addrs;
-  // List of Http2Session which is not fully utilized (i.e., the
-  // server advertized maximum concurrency is not reached).  We will
-  // coalesce as much stream as possible in one Http2Session to fully
-  // utilize TCP connection.
-  //
-  // TODO Verify that this approach performs better in performance
-  // wise.
-  DList<Http2Session> http2_freelist;
-  // Next downstream address index in addrs.
-  size_t next;
+  std::vector<DownstreamAddrConfig> addrs;
 };
 
 struct TicketKey {
@@ -563,7 +550,7 @@ struct ConnectionConfig {
       ev_tstamp write;
       ev_tstamp idle_read;
     } timeout;
-    std::vector<DownstreamAddrGroup> addr_groups;
+    std::vector<DownstreamAddrGroupConfig> addr_groups;
     // The index of catch-all group in downstream_addr_groups.
     size_t addr_group_catch_all;
     size_t connections_per_host;
@@ -656,16 +643,6 @@ FILE *open_file_for_write(const char *filename);
 std::unique_ptr<TicketKeys>
 read_tls_ticket_key_file(const std::vector<std::string> &files,
                          const EVP_CIPHER *cipher, const EVP_MD *hmac);
-
-// Selects group based on request's |hostport| and |path|.  |hostport|
-// is the value taken from :authority or host header field, and may
-// contain port.  The |path| may contain query part.  We require the
-// catch-all pattern in place, so this function always selects one
-// group.  The catch-all group index is given in |catch_all|.  All
-// patterns are given in |groups|.
-size_t match_downstream_addr_group(
-    const Router &router, const StringRef &hostport, const StringRef &path,
-    const std::vector<DownstreamAddrGroup> &groups, size_t catch_all);
 
 } // namespace shrpx
 

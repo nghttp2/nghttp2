@@ -37,11 +37,13 @@ namespace shrpx {
 
 class DownstreamConnectionPool;
 class Worker;
+struct DownstreamAddrGroup;
+struct DownstreamAddr;
 
 class HttpDownstreamConnection : public DownstreamConnection {
 public:
-  HttpDownstreamConnection(DownstreamConnectionPool *dconn_pool, size_t group,
-                           struct ev_loop *loop, Worker *worker);
+  HttpDownstreamConnection(DownstreamAddrGroup *group, struct ev_loop *loop,
+                           Worker *worker);
   virtual ~HttpDownstreamConnection();
   virtual int attach_downstream(Downstream *downstream);
   virtual void detach_downstream(Downstream *downstream);
@@ -58,9 +60,10 @@ public:
   virtual int on_write();
 
   virtual void on_upstream_change(Upstream *upstream);
-  virtual size_t get_group() const;
 
   virtual bool poolable() const { return true; }
+
+  virtual DownstreamAddrGroup *get_downstream_addr_group() const;
 
   int read_clear();
   int write_clear();
@@ -81,11 +84,11 @@ private:
   Worker *worker_;
   // nullptr if TLS is not used.
   SSL_CTX *ssl_ctx_;
+  DownstreamAddrGroup *group_;
   // Address of remote endpoint
   DownstreamAddr *addr_;
   IOControl ioctrl_;
   http_parser response_htp_;
-  size_t group_;
 };
 
 } // namespace shrpx

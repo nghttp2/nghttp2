@@ -2098,23 +2098,23 @@ void process_options(
   auto &addr_groups = downstreamconf.addr_groups;
 
   if (addr_groups.empty()) {
-    DownstreamAddr addr{};
+    DownstreamAddrConfig addr{};
     addr.host = ImmutableString::from_lit(DEFAULT_DOWNSTREAM_HOST);
     addr.port = DEFAULT_DOWNSTREAM_PORT;
 
-    DownstreamAddrGroup g(StringRef::from_lit("/"));
+    DownstreamAddrGroupConfig g(StringRef::from_lit("/"));
     g.addrs.push_back(std::move(addr));
     mod_config()->router.add_route(StringRef{g.pattern}, addr_groups.size());
     addr_groups.push_back(std::move(g));
   } else if (get_config()->http2_proxy || get_config()->client_proxy) {
     // We don't support host mapping in these cases.  Move all
     // non-catch-all patterns to catch-all pattern.
-    DownstreamAddrGroup catch_all(StringRef::from_lit("/"));
+    DownstreamAddrGroupConfig catch_all(StringRef::from_lit("/"));
     for (auto &g : addr_groups) {
       std::move(std::begin(g.addrs), std::end(g.addrs),
                 std::back_inserter(catch_all.addrs));
     }
-    std::vector<DownstreamAddrGroup>().swap(addr_groups);
+    std::vector<DownstreamAddrGroupConfig>().swap(addr_groups);
     // maybe not necessary?
     mod_config()->router = Router();
     mod_config()->router.add_route(StringRef{catch_all.pattern},

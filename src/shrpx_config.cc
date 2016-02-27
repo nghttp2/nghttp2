@@ -575,7 +575,7 @@ namespace {
 // config.  We will store each host-path pattern found in |src| with
 // |addr|.  |addr| will be copied accordingly.  Also we make a group
 // based on the pattern.  The "/" pattern is considered as catch-all.
-void parse_mapping(const DownstreamAddr &addr, const char *src) {
+void parse_mapping(const DownstreamAddrConfig &addr, const char *src) {
   // This returns at least 1 element (it could be empty string).  We
   // will append '/' to all patterns, so it becomes catch-all pattern.
   auto mapping = util::split_config_str_list(src, ':');
@@ -606,7 +606,7 @@ void parse_mapping(const DownstreamAddr &addr, const char *src) {
     if (done) {
       continue;
     }
-    DownstreamAddrGroup g(StringRef{pattern});
+    DownstreamAddrGroupConfig g(StringRef{pattern});
     g.addrs.push_back(addr);
 
     mod_config()->router.add_route(StringRef{g.pattern}, addr_groups.size());
@@ -1482,7 +1482,7 @@ int parse_config(const char *opt, const char *optarg,
     if (!pat_delim) {
       pat_delim = optarg + optarglen;
     }
-    DownstreamAddr addr{};
+    DownstreamAddrConfig addr{};
     if (util::istarts_with(optarg, SHRPX_UNIX_PATH_PREFIX)) {
       auto path = optarg + str_size(SHRPX_UNIX_PATH_PREFIX);
       addr.host = ImmutableString(path, pat_delim);
@@ -2491,95 +2491,6 @@ int int_syslog_facility(const char *strfacility) {
   }
 
   return -1;
-}
-
-namespace {
-size_t match_downstream_addr_group_host(
-    const Router &router, const StringRef &host, const StringRef &path,
-    const std::vector<DownstreamAddrGroup> &groups, size_t catch_all) {
-  if (path.empty() || path[0] != '/') {
-    auto group = router.match(host, StringRef::from_lit("/"));
-    if (group != -1) {
-      if (LOG_ENABLED(INFO)) {
-        LOG(INFO) << "Found pattern with query " << host
-                  << ", matched pattern=" << groups[group].pattern;
-      }
-      return group;
-    }
-    return catch_all;
-  }
-
-  if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "Perform mapping selection, using host=" << host
-              << ", path=" << path;
-  }
-
-  auto group = router.match(host, path);
-  if (group != -1) {
-    if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Found pattern with query " << host << path
-                << ", matched pattern=" << groups[group].pattern;
-    }
-    return group;
-  }
-
-  group = router.match("", path);
-  if (group != -1) {
-    if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Found pattern with query " << path
-                << ", matched pattern=" << groups[group].pattern;
-    }
-    return group;
-  }
-
-  if (LOG_ENABLED(INFO)) {
-    LOG(INFO) << "None match.  Use catch-all pattern";
-  }
-  return catch_all;
-}
-} // namespace
-
-size_t match_downstream_addr_group(
-    const Router &router, const StringRef &hostport, const StringRef &raw_path,
-    const std::vector<DownstreamAddrGroup> &groups, size_t catch_all) {
-  if (std::find(std::begin(hostport), std::end(hostport), '/') !=
-      std::end(hostport)) {
-    // We use '/' specially, and if '/' is included in host, it breaks
-    // our code.  Select catch-all case.
-    return catch_all;
-  }
-
-  auto fragment = std::find(std::begin(raw_path), std::end(raw_path), '#');
-  auto query = std::find(std::begin(raw_path), fragment, '?');
-  auto path = StringRef{std::begin(raw_path), query};
-
-  if (hostport.empty()) {
-    return match_downstream_addr_group_host(router, hostport, path, groups,
-                                            catch_all);
-  }
-
-  std::string host;
-  if (hostport[0] == '[') {
-    // assume this is IPv6 numeric address
-    auto p = std::find(std::begin(hostport), std::end(hostport), ']');
-    if (p == std::end(hostport)) {
-      return catch_all;
-    }
-    if (p + 1 < std::end(hostport) && *(p + 1) != ':') {
-      return catch_all;
-    }
-    host.assign(std::begin(hostport), p + 1);
-  } else {
-    auto p = std::find(std::begin(hostport), std::end(hostport), ':');
-    if (p == std::begin(hostport)) {
-      return catch_all;
-    }
-    host.assign(std::begin(hostport), p);
-  }
-
-  util::inp_strlower(host);
-  return match_downstream_addr_group_host(router, StringRef{host}, path, groups,
-                                          catch_all);
 }
 
 } // namespace shrpx

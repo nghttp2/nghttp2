@@ -26,12 +26,11 @@
 
 #include "shrpx_client_handler.h"
 #include "shrpx_downstream.h"
-#include "shrpx_downstream_connection_pool.h"
 
 namespace shrpx {
 
-DownstreamConnection::DownstreamConnection(DownstreamConnectionPool *dconn_pool)
-    : dconn_pool_(dconn_pool), client_handler_(nullptr), downstream_(nullptr) {}
+DownstreamConnection::DownstreamConnection()
+    : client_handler_(nullptr), downstream_(nullptr) {}
 
 DownstreamConnection::~DownstreamConnection() {}
 
@@ -44,9 +43,5 @@ ClientHandler *DownstreamConnection::get_client_handler() {
 }
 
 Downstream *DownstreamConnection::get_downstream() { return downstream_; }
-
-DownstreamConnectionPool *DownstreamConnection::get_dconn_pool() const {
-  return dconn_pool_;
-}
 
 } // namespace shrpx
