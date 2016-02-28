@@ -43,25 +43,33 @@ void test_shrpx_http_create_forwarded(void) {
             http::create_forwarded(FORWARDED_BY | FORWARDED_FOR |
                                        FORWARDED_HOST | FORWARDED_PROTO,
                                    StringRef::from_lit("example.com:3000"),
-                                   "[::1]", "www.example.com", "https"));
+                                   StringRef::from_lit("[::1]"),
+                                   StringRef::from_lit("www.example.com"),
+                                   StringRef::from_lit("https")));
 
   CU_ASSERT("for=192.168.0.1" ==
             http::create_forwarded(FORWARDED_FOR, StringRef::from_lit("alpha"),
-                                   "192.168.0.1", "bravo", "charlie"));
+                                   StringRef::from_lit("192.168.0.1"),
+                                   StringRef::from_lit("bravo"),
+                                   StringRef::from_lit("charlie")));
 
   CU_ASSERT("by=_hidden;for=\"[::1]\"" ==
-            http::create_forwarded(FORWARDED_BY | FORWARDED_FOR,
-                                   StringRef::from_lit("_hidden"), "[::1]", "",
-                                   ""));
+            http::create_forwarded(
+                FORWARDED_BY | FORWARDED_FOR, StringRef::from_lit("_hidden"),
+                StringRef::from_lit("[::1]"), StringRef::from_lit(""),
+                StringRef::from_lit("")));
 
   CU_ASSERT("by=\"[::1]\";for=_hidden" ==
-            http::create_forwarded(FORWARDED_BY | FORWARDED_FOR,
-                                   StringRef::from_lit("[::1]"), "_hidden", "",
-                                   ""));
+            http::create_forwarded(
+                FORWARDED_BY | FORWARDED_FOR, StringRef::from_lit("[::1]"),
+                StringRef::from_lit("_hidden"), StringRef::from_lit(""),
+                StringRef::from_lit("")));
 
-  CU_ASSERT("" == http::create_forwarded(FORWARDED_BY | FORWARDED_FOR |
-                                             FORWARDED_HOST | FORWARDED_PROTO,
-                                         StringRef::from_lit(""), "", "", ""));
+  CU_ASSERT("" ==
+            http::create_forwarded(
+                FORWARDED_BY | FORWARDED_FOR | FORWARDED_HOST | FORWARDED_PROTO,
+                StringRef::from_lit(""), StringRef::from_lit(""),
+                StringRef::from_lit(""), StringRef::from_lit("")));
 }
 
 } // namespace shrpx

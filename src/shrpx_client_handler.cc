@@ -1138,18 +1138,18 @@ int ClientHandler::proxy_protocol_read() {
   return on_proxy_protocol_finish();
 }
 
-StringRef ClientHandler::get_forwarded_by() {
+StringRef ClientHandler::get_forwarded_by() const {
   auto &fwdconf = get_config()->http.forwarded;
 
   if (fwdconf.by_node_type == FORWARDED_NODE_OBFUSCATED) {
     return StringRef(fwdconf.by_obfuscated);
   }
 
-  return StringRef(faddr_->hostport);
+  return StringRef{faddr_->hostport};
 }
 
-const std::string &ClientHandler::get_forwarded_for() const {
-  return forwarded_for_;
+StringRef ClientHandler::get_forwarded_for() const {
+  return StringRef{forwarded_for_};
 }
 
 } // namespace shrpx

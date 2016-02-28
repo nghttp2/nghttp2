@@ -135,10 +135,10 @@ public:
 
   // Returns string suitable for use in "by" parameter of Forwarded
   // header field.
-  StringRef get_forwarded_by();
+  StringRef get_forwarded_by() const;
   // Returns string suitable for use in "for" parameter of Forwarded
   // header field.
-  const std::string &get_forwarded_for() const;
+  StringRef get_forwarded_for() const;
 
 private:
   Connection conn_;

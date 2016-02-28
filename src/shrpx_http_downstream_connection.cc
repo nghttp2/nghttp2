@@ -366,9 +366,9 @@ int HttpDownstreamConnection::push_request_headers() {
       params &= ~FORWARDED_PROTO;
     }
 
-    auto value = http::create_forwarded(params, handler->get_forwarded_by(),
-                                        handler->get_forwarded_for(),
-                                        req.authority, req.scheme);
+    auto value = http::create_forwarded(
+        params, handler->get_forwarded_by(), handler->get_forwarded_for(),
+        StringRef{req.authority}, StringRef{req.scheme});
     if (fwd || !value.empty()) {
       buf->append("Forwarded: ");
       if (fwd) {
