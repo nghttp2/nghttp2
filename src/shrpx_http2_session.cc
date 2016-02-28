@@ -74,6 +74,10 @@ void connchk_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
       SSLOG(INFO, http2session) << "ping timeout";
     }
     http2session->disconnect();
+
+    if (http2session->get_num_dconns() == 0) {
+      delete http2session;
+    }
     return;
   default:
     if (LOG_ENABLED(INFO)) {
@@ -92,6 +96,9 @@ void settings_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   SSLOG(INFO, http2session) << "SETTINGS timeout";
   if (http2session->terminate_session(NGHTTP2_SETTINGS_TIMEOUT) != 0) {
     http2session->disconnect();
+    if (http2session->get_num_dconns() == 0) {
+      delete http2session;
+    }
     return;
   }
   http2session->signal_write();
@@ -109,6 +116,9 @@ void timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
 
   http2session->disconnect(http2session->get_state() ==
                            Http2Session::CONNECTING);
+  if (http2session->get_num_dconns() == 0) {
+    delete http2session;
+  }
 }
 } // namespace
 
@@ -120,6 +130,9 @@ void readcb(struct ev_loop *loop, ev_io *w, int revents) {
   rv = http2session->do_read();
   if (rv != 0) {
     http2session->disconnect(http2session->should_hard_fail());
+    if (http2session->get_num_dconns() == 0) {
+      delete http2session;
+    }
     return;
   }
   http2session->connection_alive();
@@ -127,6 +140,9 @@ void readcb(struct ev_loop *loop, ev_io *w, int revents) {
   rv = http2session->do_write();
   if (rv != 0) {
     http2session->disconnect(http2session->should_hard_fail());
+    if (http2session->get_num_dconns() == 0) {
+      delete http2session;
+    }
     return;
   }
 }
@@ -140,6 +156,9 @@ void writecb(struct ev_loop *loop, ev_io *w, int revents) {
   rv = http2session->do_write();
   if (rv != 0) {
     http2session->disconnect(http2session->should_hard_fail());
+    if (http2session->get_num_dconns() == 0) {
+      delete http2session;
+    }
     return;
   }
   http2session->reset_connection_check_timer_if_not_checking();
@@ -147,23 +166,23 @@ void writecb(struct ev_loop *loop, ev_io *w, int revents) {
 } // namespace
 
 Http2Session::Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx,
-                           Worker *worker, size_t group, size_t idx)
-    : conn_(loop, -1, nullptr, worker->get_mcpool(),
+                           Worker *worker, DownstreamAddrGroup *group)
+    : dlnext(nullptr),
+      dlprev(nullptr),
+      conn_(loop, -1, nullptr, worker->get_mcpool(),
             get_config()->conn.downstream.timeout.write,
             get_config()->conn.downstream.timeout.read, {}, {}, writecb, readcb,
             timeoutcb, this, get_config()->tls.dyn_rec.warmup_threshold,
-            get_config()->tls.dyn_rec.idle_timeout),
+            get_config()->tls.dyn_rec.idle_timeout, PROTO_HTTP2),
       wb_(worker->get_mcpool()),
       worker_(worker),
       ssl_ctx_(ssl_ctx),
+      group_(group),
       addr_(nullptr),
       session_(nullptr),
-      group_(group),
-      index_(idx),
       state_(DISCONNECTED),
       connection_check_state_(CONNECTION_CHECK_NONE),
       flow_control_(false) {
-
   read_ = write_ = &Http2Session::noop;
 
   on_read_ = &Http2Session::read_noop;
@@ -182,7 +201,16 @@ Http2Session::Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx,
   settings_timer_.data = this;
 }
 
-Http2Session::~Http2Session() { disconnect(); }
+Http2Session::~Http2Session() {
+  disconnect();
+
+  if (in_freelist()) {
+    if (LOG_ENABLED(INFO)) {
+      SSLOG(INFO, this) << "Removed from http2_freelist";
+    }
+    group_->http2_freelist.remove(this);
+  }
+}
 
 int Http2Session::disconnect(bool hard) {
   if (LOG_ENABLED(INFO)) {
@@ -252,8 +280,7 @@ int Http2Session::disconnect(bool hard) {
 int Http2Session::initiate_connection() {
   int rv = 0;
 
-  auto &groups = worker_->get_downstream_addr_groups();
-  auto &addrs = groups[group_].addrs;
+  auto &addrs = group_->addrs;
   auto worker_blocker = worker_->get_connect_blocker();
 
   if (state_ == DISCONNECTED) {
@@ -265,7 +292,7 @@ int Http2Session::initiate_connection() {
       return -1;
     }
 
-    auto &next_downstream = worker_->get_dgrp(group_)->next;
+    auto &next_downstream = group_->next;
     auto end = next_downstream;
 
     for (;;) {
@@ -371,6 +398,8 @@ int Http2Session::initiate_connection() {
           return -1;
         }
 
+        ssl::setup_downstream_http2_alpn(ssl);
+
         conn_.set_ssl(ssl);
       }
 
@@ -384,6 +413,13 @@ int Http2Session::initiate_connection() {
         // at the time of this writing).
         SSL_set_tlsext_host_name(conn_.tls.ssl, sni_name.c_str());
       }
+
+      auto tls_session = ssl::reuse_tls_session(addr_);
+      if (tls_session) {
+        SSL_set_session(conn_.tls.ssl, tls_session);
+        SSL_SESSION_free(tls_session);
+      }
+
       // If state_ == PROXY_CONNECTED, we has connected to the proxy
       // using conn_.fd and tunnel has been established.
       if (state_ == DISCONNECTED) {
@@ -598,6 +634,17 @@ void Http2Session::remove_downstream_connection(
     Http2DownstreamConnection *dconn) {
   dconns_.remove(dconn);
   dconn->detach_stream_data();
+
+  if (LOG_ENABLED(INFO)) {
+    SSLOG(INFO, this) << "Remove downstream";
+  }
+
+  if (!in_freelist() && !max_concurrency_reached()) {
+    if (LOG_ENABLED(INFO)) {
+      SSLOG(INFO, this) << "Append to Http2Session freelist";
+    }
+    group_->http2_freelist.append(this);
+  }
 }
 
 void Http2Session::remove_stream_data(StreamData *sd) {
@@ -1408,13 +1455,12 @@ int Http2Session::connection_made() {
   std::array<nghttp2_settings_entry, 3> entry;
   size_t nentry = 2;
   entry[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
-  entry[0].value = http2conf.max_concurrent_streams;
+  entry[0].value = http2conf.downstream.max_concurrent_streams;
 
   entry[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
   entry[1].value = (1 << http2conf.downstream.window_bits) - 1;
 
-  if (http2conf.no_server_push || get_config()->http2_proxy ||
-      get_config()->client_proxy) {
+  if (http2conf.no_server_push || get_config()->http2_proxy) {
     entry[nentry].settings_id = NGHTTP2_SETTINGS_ENABLE_PUSH;
     entry[nentry].value = 0;
     ++nentry;
@@ -1800,6 +1846,13 @@ int Http2Session::tls_handshake() {
     return -1;
   }
 
+  if (!SSL_session_reused(conn_.tls.ssl)) {
+    auto tls_session = SSL_get0_session(conn_.tls.ssl);
+    if (tls_session) {
+      ssl::try_cache_tls_session(addr_, tls_session, ev_now(conn_.loop));
+    }
+  }
+
   read_ = &Http2Session::read_tls;
   write_ = &Http2Session::write_tls;
 
@@ -1888,11 +1941,7 @@ bool Http2Session::should_hard_fail() const {
   }
 }
 
-const DownstreamAddr *Http2Session::get_addr() const { return addr_; }
-
-size_t Http2Session::get_group() const { return group_; }
-
-size_t Http2Session::get_index() const { return index_; }
+DownstreamAddr *Http2Session::get_addr() const { return addr_; }
 
 int Http2Session::handle_downstream_push_promise(Downstream *downstream,
                                                  int32_t promised_stream_id) {
@@ -1911,10 +1960,8 @@ int Http2Session::handle_downstream_push_promise(Downstream *downstream,
   // promised_downstream->get_stream() still returns 0.
 
   auto handler = upstream->get_client_handler();
-  auto worker = handler->get_worker();
 
-  auto promised_dconn =
-      make_unique<Http2DownstreamConnection>(worker->get_dconn_pool(), this);
+  auto promised_dconn = make_unique<Http2DownstreamConnection>(this);
   promised_dconn->set_client_handler(handler);
 
   auto ptr = promised_dconn.get();
@@ -1984,6 +2031,31 @@ int Http2Session::handle_downstream_push_promise_complete(
   }
 
   return 0;
+}
+
+size_t Http2Session::get_num_dconns() const { return dconns_.size(); }
+
+bool Http2Session::in_freelist() const {
+  return dlnext != nullptr || dlprev != nullptr ||
+         group_->http2_freelist.head == this ||
+         group_->http2_freelist.tail == this;
+}
+
+bool Http2Session::max_concurrency_reached(size_t extra) const {
+  if (!session_) {
+    return dconns_.size() + extra >= 100;
+  }
+
+  // If session does not allow further requests, it effectively means
+  // that maximum concurrency is reached.
+  return !nghttp2_session_check_request_allowed(session_) ||
+         dconns_.size() + extra >=
+             nghttp2_session_get_remote_settings(
+                 session_, NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS);
+}
+
+DownstreamAddrGroup *Http2Session::get_downstream_addr_group() const {
+  return group_;
 }
 
 } // namespace shrpx

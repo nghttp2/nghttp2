@@ -12,37 +12,38 @@ use-cases.  It also covers some useful options later.
 Default mode
 ------------
 
-If nghttpx is invoked without any :option:`--http2-proxy`,
-:option:`--client`, and :option:`--client-proxy`, it operates in
-default mode.  In this mode, nghttpx frontend listens for HTTP/2
-requests and translates them to HTTP/1 requests.  Thus it works as
-reverse proxy (gateway) for HTTP/2 clients to HTTP/1 web server.  This
-is also known as "HTTP/2 router".  HTTP/1 requests are also supported
-in frontend as a fallback.  If nghttpx is linked with spdylay library
-and frontend connection is SSL/TLS, the frontend also supports SPDY
+If nghttpx is invoked without :option:`--http2-proxy`, it operates in
+default mode.  In this mode, it works as reverse proxy (gateway) for
+both HTTP/2 and HTTP/1 clients to backend servers.  This is also known
+as "HTTP/2 router".  If nghttpx is linked with spdylay library and
+frontend connection is SSL/TLS, the frontend also supports SPDY
 protocol.
 
-By default, this mode's frontend connection is encrypted using
-SSL/TLS.  So server's private key and certificate must be supplied to
-the command line (or through configuration file).  In this case, the
-frontend protocol selection will be done via ALPN or NPN.
+By default, frontend connection is encrypted using SSL/TLS.  So
+server's private key and certificate must be supplied to the command
+line (or through configuration file).  In this case, the frontend
+protocol selection will be done via ALPN or NPN.
 
 With :option:`--frontend-no-tls` option, user can turn off SSL/TLS in
 frontend connection.  In this case, SPDY protocol is not available
 even if spdylay library is liked to nghttpx.  HTTP/2 and HTTP/1 are
-available on the frontend and a HTTP/1 connection can be upgraded to
+available on the frontend, and an HTTP/1 connection can be upgraded to
 HTTP/2 using HTTP Upgrade.  Starting HTTP/2 connection by sending
 HTTP/2 connection preface is also supported.
 
-By default, backend HTTP/1 connections are not encrypted.  To enable
-TLS on HTTP/1 backend connections, use :option:`--backend-http1-tls`
-option.  This applies to all mode whose backend connections are
-HTTP/1.
+By default, backend connections are not encrypted.  To enable TLS
+encryption on backend connections, use :option:`--backend-tls` option.
+Using patterns and ``proto`` keyword in :option:`--backend` option,
+backend application protocol can be specified per host/request path
+pattern.  It means that you can use both HTTP/2 and HTTP/1 in backend
+connections at the same time.  Note that default backend protocol is
+HTTP/1.1.  To use HTTP/2 in backend, you have to specify ``h2`` in
+``proto`` keyword in :option:`--backend` explicitly.
 
-The backend is supposed to be HTTP/1 Web server.  For example, to make
+The backend is supposed to be Web server.  For example, to make
 nghttpx listen to encrypted HTTP/2 requests at port 8443, and a
-backend HTTP/1 web server is configured to listen to HTTP/1 request at
-port 8080 in the same host, run nghttpx command-line like this::
+backend Web server is configured to listen to HTTP request at port
+8080 in the same host, run nghttpx command-line like this::
 
     $ nghttpx -f0.0.0.0,8443 -b127.0.0.1,8080 /path/to/server.key /path/to/server.crt
 
@@ -58,8 +59,8 @@ If nghttpx is invoked with :option:`--http2-proxy` (or its shorthand
 :option:`-s`) option, it operates in HTTP/2 proxy mode.  The supported
 protocols in frontend and backend connections are the same in `default
 mode`_.  The difference is that this mode acts like forward proxy and
-assumes the backend is HTTP/1 proxy server (e.g., squid, traffic
-server).  So HTTP/1 request must include absolute URI in request line.
+assumes the backend is HTTP proxy server (e.g., Squid, Apache Traffic
+Server).  HTTP/1 request must include absolute URI in request line.
 
 By default, frontend connection is encrypted.  So this mode is also
 called secure proxy.  If nghttpx is linked with spdylay, it supports
@@ -68,16 +69,22 @@ SPDY protocols and it works as so called SPDY proxy.
 With :option:`--frontend-no-tls` option, SSL/TLS is turned off in
 frontend connection, so the connection gets insecure.
 
-The backend must be HTTP/1 proxy server.  nghttpx supports multiple
-backend server addresses.  It translates incoming requests to HTTP/1
+The backend must be HTTP proxy server.  nghttpx supports multiple
+backend server addresses.  It translates incoming requests to HTTP
 request to backend server.  The backend server performs real proxy
 work for each request, for example, dispatching requests to the origin
 server and caching contents.
 
+The backend connection is not encrypted by default.  To enable
+encryption, use :option:`--backend-tls` option.  The default backend
+protocol is HTTP/1.1.  To use HTTP/2 in backend connection, use
+:option:`--backend` option, and specify ``h2`` in ``proto`` keyword
+explicitly.
+
 For example, to make nghttpx listen to encrypted HTTP/2 requests at
-port 8443, and a backend HTTP/1 proxy server is configured to listen
-to HTTP/1 request at port 8080 in the same host, run nghttpx
-command-line like this::
+port 8443, and a backend HTTP proxy server is configured to listen to
+HTTP/1 request at port 8080 in the same host, run nghttpx command-line
+like this::
 
     $ nghttpx -s -f'*,8443' -b127.0.0.1,8080 /path/to/server.key /path/to/server.crt
 
@@ -122,132 +129,19 @@ Consult Traffic server `documentation
 to know how to configure traffic server as forward proxy and its
 security implications.
 
-Client mode
------------
+Disable frontend SSL/TLS
+------------------------
 
-If nghttpx is invoked with :option:`--client` option, it operates in
-client mode.  In this mode, nghttpx listens for plain, unencrypted
-HTTP/2 and HTTP/1 requests and translates them to encrypted HTTP/2
-requests to the backend.  User cannot enable SSL/TLS in frontend
-connection.
+The frontend connections are encrypted with SSL/TLS by default.  To
+turn off SSL/TLS, use :option:`--frontend-no-tls` option.  If this
+option is used, the private key and certificate are not required to
+run nghttpx.
 
-HTTP/1 frontend connection can be upgraded to HTTP/2 using HTTP
-Upgrade.  To disable SSL/TLS in backend connection, use
-:option:`--backend-no-tls` option.
+Enable backend SSL/TLS
+----------------------
 
-By default, the number of backend HTTP/2 connections per worker
-(thread) is determined by number of :option:`--backend` option.  To
-adjust this value, use
-:option:`--backend-http2-connections-per-worker` option.
-
-The backend server is supporsed to be a HTTP/2 web server (e.g.,
-nghttpd).  The one use-case of this mode is utilize existing HTTP/1
-clients to test HTTP/2 deployment.  Suppose that HTTP/2 web server
-listens to port 80 without encryption.  Then run nghttpx as client
-mode to access to that web server::
-
-    $ nghttpx --client -f127.0.0.1,8080 -b127.0.0.1,80 --backend-no-tls
-
-.. note::
-
-    You may need :option:`--insecure` (or its shorthand :option:`-k`)
-    option if HTTP/2 server enables SSL/TLS and its certificate is
-    self-signed. But please note that it is insecure, and you should
-    know what you are doing.
-
-Then you can use curl to access HTTP/2 server via nghttpx::
-
-    $ curl http://localhost:8080/
-
-Client proxy mode
------------------
-
-If nghttpx is invoked with :option:`--client-proxy` (or its shorthand
-:option:`-p`) option, it operates in client proxy mode.  This mode
-behaves like `client mode`_, but it works like forward proxy.  So
-HTTP/1 request must include absolute URI in request line.
-
-HTTP/1 frontend connection can be upgraded to HTTP/2 using HTTP
-Upgrade.  To disable SSL/TLS in backend connection, use
-:option:`--backend-no-tls` option.
-
-By default, the number of backend HTTP/2 connections per worker
-(thread) is determined by number of :option:`--backend` option.  To
-adjust this value, use
-:option:`--backend-http2-connections-per-worker` option.
-
-The backend server must be a HTTP/2 proxy.  You can use nghttpx in
-`HTTP/2 proxy mode`_ as backend server.  The one use-case of this mode
-is utilize existing HTTP/1 clients to test HTTP/2 connections between
-2 proxies. The another use-case is use this mode to aggregate local
-HTTP/1 connections to one HTTP/2 backend encrypted connection.  This
-makes HTTP/1 clients which does not support secure proxy can use
-secure HTTP/2 proxy via nghttpx client mode.
-
-Suppose that HTTP/2 proxy listens to port 8443, just like we saw in
-`HTTP/2 proxy mode`_.  To run nghttpx in client proxy mode to access
-that server, invoke nghttpx like this::
-
-    $ nghttpx -p -f127.0.0.1,8080 -b127.0.0.1,8443
-
-.. note::
-
-    You may need :option:`--insecure` (or its shorthand :option:`-k`)
-    option if HTTP/2 server's certificate is self-signed. But please
-    note that it is insecure, and you should know what you are doing.
-
-Then you can use curl to issue HTTP request via HTTP/2 proxy::
-
-    $ curl --http-proxy=http://localhost:8080 http://www.google.com/
-
-You can configure web browser to use localhost:8080 as forward
-proxy.
-
-HTTP/2 bridge mode
-------------------
-
-If nghttpx is invoked with :option:`--http2-bridge` option, it
-operates in HTTP/2 bridge mode.  The supported protocols in frontend
-connections are the same in `default mode`_.  The protocol in backend
-is HTTP/2 only.
-
-With :option:`--frontend-no-tls` option, SSL/TLS is turned off in
-frontend connection, so the connection gets insecure.  To disable
-SSL/TLS in backend connection, use :option:`--backend-no-tls` option.
-
-By default, the number of backend HTTP/2 connections per worker
-(thread) is determined by number of :option:`--backend` option.  To
-adjust this value, use
-:option:`--backend-http2-connections-per-worker` option.
-
-The backend server is supporsed to be a HTTP/2 web server or HTTP/2
-proxy.  If backend server is HTTP/2 proxy, use
-:option:`--no-location-rewrite` option to disable rewriting
-``Location`` header field.
-
-The use-case of this mode is aggregate the incoming connections to one
-HTTP/2 connection.  One backend HTTP/2 connection is created per
-worker (thread).
-
-Disable SSL/TLS
----------------
-
-In `default mode`_, `HTTP/2 proxy mode`_ and `HTTP/2 bridge mode`_,
-frontend connections are encrypted with SSL/TLS by default.  To turn
-off SSL/TLS, use :option:`--frontend-no-tls` option.  If this option
-is used, the private key and certificate are not required to run
-nghttpx.
-
-In `client mode`_, `client proxy mode`_ and `HTTP/2 bridge mode`_,
-backend connections are encrypted with SSL/TLS by default.  To turn
-off SSL/TLS, use :option:`--backend-no-tls` option.
-
-Enable SSL/TLS on HTTP/1 backend
---------------------------------
-
-In all modes which use HTTP/1 as backend protocol, backend HTTP/1
-connection is not encrypted by default.  To enable encryption, use
-:option:`--backend-http1-tls` option.
+The backend connections are not encrypted by default.  To enable
+SSL/TLS encryption, :option:`--backend-tls` option.
 
 Enable SSL/TLS on memcached connection
 --------------------------------------
@@ -387,5 +281,37 @@ servers ``serv1:3000`` and ``serv2:3000`` for request host
    backend=serv1,3000;example.com/myservice
    backend=serv2,3000;example.com/myservice
 
-For HTTP/2 backend, see also
-:option:`--backend-http2-connections-per-worker` option.
+You can also specify backend application protocol in
+:option:`--backend` option using ``proto`` keyword after pattern.
+Utilizing this allows ngttpx to route certain request to HTTP/2, other
+requests to HTTP/1.  For example, to route requests to ``/ws/`` in
+backend HTTP/1.1 connection, and use backend HTTP/2 for other
+requests, do this:
+
+.. code-block:: text
+
+   backend=serv1,3000;/;proto=h2
+   backend=serv1,3000;/ws/;proto=http/1.1
+
+Note that the backends share the same pattern must have the same
+backend protocol.  The default backend protocol is HTTP/1.1.
+
+Deprecated modes
+----------------
+
+As of nghttpx 1.9.0, ``--http2-bridge``, ``--client`` and
+``--client-proxy`` options were removed.  These functionality can be
+used using combinations of options.
+
+* ``--http2-bridge``: Use
+  :option:`--backend`\='-b<ADDR>,<PORT>;;proto=h2', and
+  :option:`--backend-tls`.
+
+* ``--client``: Use :option:`--frontend-no-tls`,
+  :option:`--backend`\='-b<ADDR>,<PORT>;;proto=h2', and
+  :option:`--backend-tls`.
+
+* ``--client-proxy``: Use :option:`--http2-proxy`,
+  :option:`--frontend-no-tls`,
+  :option:`--backend`\='-b<ADDR>,<PORT>;;proto=h2', and
+  :option:`--backend-tls`.

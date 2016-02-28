@@ -262,7 +262,7 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
     } else {
       req.scheme = scheme->value;
       req.authority = host->value;
-      if (get_config()->http2_proxy || get_config()->client_proxy) {
+      if (get_config()->http2_proxy) {
         req.path = path->value;
       } else if (method_token == HTTP_OPTIONS && path->value == "*") {
         // Server-wide OPTIONS request.  Path is empty.
@@ -503,9 +503,7 @@ SpdyUpstream::SpdyUpstream(uint16_t version, ClientHandler *handler)
       downstream_queue_(
           get_config()->http2_proxy
               ? get_config()->conn.downstream.connections_per_host
-              : get_config()->conn.downstream.proto == PROTO_HTTP
-                    ? get_config()->conn.downstream.connections_per_frontend
-                    : 0,
+              : get_config()->conn.downstream.connections_per_frontend,
           !get_config()->http2_proxy),
       handler_(handler),
       session_(nullptr) {
@@ -547,7 +545,7 @@ SpdyUpstream::SpdyUpstream(uint16_t version, ClientHandler *handler)
   // TODO Maybe call from outside?
   std::array<spdylay_settings_entry, 2> entry;
   entry[0].settings_id = SPDYLAY_SETTINGS_MAX_CONCURRENT_STREAMS;
-  entry[0].value = http2conf.max_concurrent_streams;
+  entry[0].value = http2conf.upstream.max_concurrent_streams;
   entry[0].flags = SPDYLAY_ID_FLAG_SETTINGS_NONE;
 
   entry[1].settings_id = SPDYLAY_SETTINGS_INITIAL_WINDOW_SIZE;
@@ -1011,8 +1009,7 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream) {
 
   auto &httpconf = get_config()->http;
 
-  if (!get_config()->http2_proxy && !get_config()->client_proxy &&
-      !httpconf.no_location_rewrite) {
+  if (!get_config()->http2_proxy && !httpconf.no_location_rewrite) {
     downstream->rewrite_location_response_header(req.scheme);
   }
 
@@ -1046,7 +1043,7 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream) {
     nv[hdidx++] = hd.value.c_str();
   }
 
-  if (!get_config()->http2_proxy && !get_config()->client_proxy) {
+  if (!get_config()->http2_proxy) {
     nv[hdidx++] = "server";
     nv[hdidx++] = httpconf.server_name.c_str();
   } else {

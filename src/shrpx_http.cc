@@ -62,9 +62,8 @@ std::string create_via_header_value(int major, int minor) {
 }
 
 std::string create_forwarded(int params, const StringRef &node_by,
-                             const std::string &node_for,
-                             const std::string &host,
-                             const std::string &proto) {
+                             const StringRef &node_for, const StringRef &host,
+                             const StringRef &proto) {
   std::string res;
   if ((params & FORWARDED_BY) && !node_by.empty()) {
     // This must be quoted-string unless it is obfuscated version

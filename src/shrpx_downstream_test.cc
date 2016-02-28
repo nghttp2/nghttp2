@@ -77,8 +77,8 @@ void test_downstream_field_store_header(void) {
   CU_ASSERT(nullptr == fs.header(http2::HD__METHOD));
 
   // By name
-  CU_ASSERT(Header("alpha", "0") == *fs.header("alpha"));
-  CU_ASSERT(nullptr == fs.header("bravo"));
+  CU_ASSERT(Header("alpha", "0") == *fs.header(StringRef::from_lit("alpha")));
+  CU_ASSERT(nullptr == fs.header(StringRef::from_lit("bravo")));
 }
 
 void test_downstream_crumble_request_cookie(void) {

@@ -1,7 +1,7 @@
 /*
  * nghttp2 - HTTP/2 C Library
  *
- * Copyright (c) 2012 Tatsuhiro Tsujikawa
+ * Copyright (c) 2016 Tatsuhiro Tsujikawa
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -22,26 +22,17 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#include "shrpx_downstream_connection.h"
+#ifndef SHRPX_WORKER_TEST_H
+#define SHRPX_WORKER_TEST_H
 
-#include "shrpx_client_handler.h"
-#include "shrpx_downstream.h"
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif // HAVE_CONFIG_H
 
 namespace shrpx {
 
-DownstreamConnection::DownstreamConnection()
-    : client_handler_(nullptr), downstream_(nullptr) {}
-
-DownstreamConnection::~DownstreamConnection() {}
-
-void DownstreamConnection::set_client_handler(ClientHandler *handler) {
-  client_handler_ = handler;
-}
-
-ClientHandler *DownstreamConnection::get_client_handler() {
-  return client_handler_;
-}
-
-Downstream *DownstreamConnection::get_downstream() { return downstream_; }
+void test_shrpx_worker_match_downstream_addr_group(void);
 
 } // namespace shrpx
+
+#endif // SHRPX_WORKER_TEST_H

@@ -656,7 +656,7 @@ int create_tcp_server_socket(UpstreamAddr &faddr,
   }
 
   faddr.fd = fd;
-  faddr.hostport = util::make_http_hostport(host.data(), faddr.port);
+  faddr.hostport = util::make_http_hostport(StringRef{host.data()}, faddr.port);
 
   LOG(NOTICE) << "Listening on " << faddr.hostport;
 
@@ -1079,7 +1079,8 @@ void fill_default_config() {
   tlsconf.session_timeout = std::chrono::hours(12);
 
   auto &httpconf = mod_config()->http;
-  httpconf.server_name = "nghttpx nghttp2/" NGHTTP2_VERSION;
+  httpconf.server_name =
+      StringRef::from_lit("nghttpx nghttp2/" NGHTTP2_VERSION);
   httpconf.no_host_rewrite = true;
   httpconf.request_header_field_buffer = 64_k;
   httpconf.max_request_header_fields = 100;
@@ -1096,6 +1097,7 @@ void fill_default_config() {
     // HTTP/2 SPDY/3.1 has connection-level flow control. The default
     // window size for HTTP/2 is 64KiB - 1. SPDY/3's default is 64KiB
     upstreamconf.connection_window_bits = 16;
+    upstreamconf.max_concurrent_streams = 100;
 
     nghttp2_option_new(&upstreamconf.option);
     nghttp2_option_set_no_auto_window_update(upstreamconf.option, 1);
@@ -1105,14 +1107,13 @@ void fill_default_config() {
   {
     auto &downstreamconf = http2conf.downstream;
     downstreamconf.window_bits = 16;
-    downstreamconf.connection_window_bits = 16;
+    downstreamconf.connection_window_bits = 30;
+    downstreamconf.max_concurrent_streams = 100;
 
     nghttp2_option_new(&downstreamconf.option);
     nghttp2_option_set_no_auto_window_update(downstreamconf.option, 1);
     nghttp2_option_set_peer_max_concurrent_streams(downstreamconf.option, 100);
   }
-
-  http2conf.max_concurrent_streams = 100;
 
   auto &loggingconf = mod_config()->logging;
   {
@@ -1165,6 +1166,7 @@ void fill_default_config() {
     downstreamconf.request_buffer_size = 16_k;
     downstreamconf.response_buffer_size = 128_k;
     downstreamconf.family = AF_UNSPEC;
+    downstreamconf.no_tls = true;
   }
 }
 
@@ -1188,48 +1190,49 @@ void print_help(std::ostream &out) {
   print_usage(out);
   out << R"(
   <PRIVATE_KEY>
-              Set path  to server's private key.   Required unless -p,
-              --client or --frontend-no-tls are given.
-  <CERT>      Set path  to server's certificate.  Required  unless -p,
-              --client or  --frontend-no-tls are given.  To  make OCSP
-              stapling work, this must be absolute path.
+              Set  path  to  server's private  key.   Required  unless
+              --frontend-no-tls are given.
+  <CERT>      Set  path  to  server's  certificate.   Required  unless
+              --frontend-no-tls  are  given.   To make  OCSP  stapling
+              work, this must be an absolute path.
 
 Options:
   The options are categorized into several groups.
 
 Connections:
-  -b, --backend=(<HOST>,<PORT>|unix:<PATH>)[;<PATTERN>[:...]]
+  -b, --backend=(<HOST>,<PORT>|unix:<PATH>)[;[<PATTERN>[:...]][;proto=<PROTO>]]
               Set  backend  host  and   port.   The  multiple  backend
               addresses are  accepted by repeating this  option.  UNIX
               domain socket  can be  specified by prefixing  path name
               with "unix:" (e.g., unix:/var/run/backend.sock).
 
               Optionally, if <PATTERN>s are given, the backend address
-              is only used  if request matches the pattern.   If -s or
-              -p  is  used,  <PATTERN>s   are  ignored.   The  pattern
-              matching  is closely  designed to  ServeMux in  net/http
-              package of Go  programming language.  <PATTERN> consists
-              of path, host + path or  just host.  The path must start
-              with "/".  If  it ends with "/", it  matches all request
-              path in  its subtree.  To  deal with the request  to the
-              directory without  trailing slash,  the path  which ends
-              with "/" also matches the  request path which only lacks
-              trailing '/'  (e.g., path  "/foo/" matches  request path
-              "/foo").  If it does not end with "/", it performs exact
-              match against  the request path.   If host is  given, it
-              performs exact match against  the request host.  If host
-              alone  is given,  "/"  is  appended to  it,  so that  it
-              matches  all   request  paths  under  the   host  (e.g.,
-              specifying "nghttp2.org" equals to "nghttp2.org/").
+              is  only  used  if  request  matches  the  pattern.   If
+              --http2-proxy  is  used,  <PATTERN>s are  ignored.   The
+              pattern  matching is  closely  designed  to ServeMux  in
+              net/http package of  Go programming language.  <PATTERN>
+              consists of  path, host +  path or just host.   The path
+              must start  with "/".  If  it ends with "/",  it matches
+              all  request path  in  its subtree.   To  deal with  the
+              request  to the  directory without  trailing slash,  the
+              path which ends  with "/" also matches  the request path
+              which  only  lacks  trailing  '/'  (e.g.,  path  "/foo/"
+              matches request path  "/foo").  If it does  not end with
+              "/", it  performs exact match against  the request path.
+              If host  is given, it  performs exact match  against the
+              request host.  If  host alone is given,  "/" is appended
+              to it,  so that it  matches all request paths  under the
+              host   (e.g.,   specifying   "nghttp2.org"   equals   to
+              "nghttp2.org/").
 
               Patterns with  host take  precedence over  patterns with
               just path.   Then, longer patterns take  precedence over
               shorter  ones,  breaking  a  tie by  the  order  of  the
               appearance in the configuration.
 
-              If <PATTERN> is  omitted, "/" is used  as pattern, which
-              matches  all  request  paths (catch-all  pattern).   The
-              catch-all backend must be given.
+              If <PATTERN> is omitted or  empty string, "/" is used as
+              pattern,  which  matches  all request  paths  (catch-all
+              pattern).  The catch-all backend must be given.
 
               When doing  a match, nghttpx made  some normalization to
               pattern, request host and path.  For host part, they are
@@ -1251,6 +1254,15 @@ Connections:
 
               The backend addresses sharing same <PATTERN> are grouped
               together forming  load balancing  group.
+
+              Optionally,   backend   application  protocol   can   be
+              specified in <PROTO>.  All that share the same <PATTERN>
+              must  have  the  same  <PROTO> value  if  it  is  given.
+              <PROTO>  should be  one  of the  following list  without
+              quotes: "h2", "http/1.1".  The  default value of <PROTO>
+              is "http/1.1".  Note that  usually "h2" refers to HTTP/2
+              over TLS.  But  in this option, it may  mean HTTP/2 over
+              cleartext TCP unless --backend-tls is used.
 
               Since ";" and ":" are  used as delimiter, <PATTERN> must
               not  contain these  characters.  Since  ";" has  special
@@ -1290,16 +1302,8 @@ Connections:
               --backend-write-timeout options.
   --accept-proxy-protocol
               Accept PROXY protocol version 1 on frontend connection.
-  --backend-no-tls
-              Disable  SSL/TLS  on  backend connections.   For  HTTP/2
-              backend  connections, TLS  is enabled  by default.   For
-              HTTP/1 backend connections, TLS  is disabled by default,
-              and can  be enabled  by --backend-http1-tls  option.  If
-              both  --backend-no-tls  and --backend-http1-tls  options
-              are used, --backend-no-tls has the precedence.
-  --backend-http1-tls
-              Enable SSL/TLS on backend  HTTP/1 connections.  See also
-              --backend-no-tls option.
+  --backend-tls
+              Enable SSL/TLS on backend connections.
 
 Performance:
   -n, --workers=<N>
@@ -1352,31 +1356,24 @@ Performance:
               accepts.  Setting 0 means unlimited.
               Default: )" << get_config()->conn.upstream.worker_connections
       << R"(
-  --backend-http2-connections-per-worker=<N>
-              Set   maximum   number   of  backend   HTTP/2   physical
-              connections  per  worker.   If  pattern is  used  in  -b
-              option, this limit is applied  to each pattern group (in
-              other  words, each  pattern group  can have  maximum <N>
-              HTTP/2  connections).  The  default  value  is 0,  which
-              means  that  the value  is  adjusted  to the  number  of
-              backend addresses.  If pattern  is used, this adjustment
-              is done for each pattern group.
-  --backend-http1-connections-per-host=<N>
-              Set   maximum  number   of  backend   concurrent  HTTP/1
-              connections per origin host.   This option is meaningful
-              when -s option  is used.  The origin  host is determined
-              by  authority  portion  of request  URI  (or  :authority
-              header  field  for  HTTP/2).   To limit  the  number  of
-              connections   per  frontend   for   default  mode,   use
-              --backend-http1-connections-per-frontend.
+  --backend-connections-per-host=<N>
+              Set  maximum number  of  backend concurrent  connections
+              (and/or  streams in  case  of HTTP/2)  per origin  host.
+              This option  is meaningful when --http2-proxy  option is
+              used.   The  origin  host  is  determined  by  authority
+              portion of  request URI (or :authority  header field for
+              HTTP/2).   To  limit  the   number  of  connections  per
+              frontend        for       default        mode,       use
+              --backend-connections-per-frontend.
               Default: )" << get_config()->conn.downstream.connections_per_host
       << R"(
-  --backend-http1-connections-per-frontend=<N>
-              Set   maximum  number   of  backend   concurrent  HTTP/1
-              connections per frontend.  This  option is only used for
-              default mode.   0 means unlimited.  To  limit the number
-              of connections  per host for  HTTP/2 or SPDY  proxy mode
-              (-s option), use --backend-http1-connections-per-host.
+  --backend-connections-per-frontend=<N>
+              Set  maximum number  of  backend concurrent  connections
+              (and/or streams  in case of HTTP/2)  per frontend.  This
+              option  is   only  used  for  default   mode.   0  means
+              unlimited.  To limit the  number of connections per host
+              with          --http2-proxy         option,          use
+              --backend-connections-per-host.
               Default: )"
       << get_config()->conn.downstream.connections_per_frontend << R"(
   --rlimit-nofile=<N>
@@ -1630,10 +1627,18 @@ SSL/TLS:
               the complete HTTP/2 cipher suites black list.
 
 HTTP/2 and SPDY:
-  -c, --http2-max-concurrent-streams=<N>
+  -c, --frontend-http2-max-concurrent-streams=<N>
               Set the maximum number of  the concurrent streams in one
-              HTTP/2 and SPDY session.
-              Default: )" << get_config()->http2.max_concurrent_streams << R"(
+              frontend HTTP/2 and SPDY session.
+              Default:  )"
+      << get_config()->http2.upstream.max_concurrent_streams << R"(
+  --backend-http2-max-concurrent-streams=<N>
+              Set the maximum number of  the concurrent streams in one
+              backend  HTTP/2 session.   This sets  maximum number  of
+              concurrent opened pushed streams.  The maximum number of
+              concurrent requests are set by a remote server.
+              Default: )"
+      << get_config()->http2.downstream.max_concurrent_streams << R"(
   --frontend-http2-window-bits=<N>
               Sets the  per-stream initial window size  of HTTP/2 SPDY
               frontend connection.  For HTTP/2,  the size is 2**<N>-1.
@@ -1667,37 +1672,20 @@ HTTP/2 and SPDY:
               Disable HTTP/2 server push.  Server push is supported by
               default mode and HTTP/2  frontend via Link header field.
               It is  also supported if  both frontend and  backend are
-              HTTP/2 (which implies  --http2-bridge or --client mode).
-              In  this  case,  server  push from  backend  session  is
-              relayed  to frontend,  and server  push via  Link header
-              field is  also supported.   HTTP SPDY frontend  does not
-              support server push.
+              HTTP/2 in default mode.  In  this case, server push from
+              backend session is relayed  to frontend, and server push
+              via Link header field  is also supported.  SPDY frontend
+              does not support server push.
 
 Mode:
   (default mode)
               Accept  HTTP/2,  SPDY  and HTTP/1.1  over  SSL/TLS.   If
               --frontend-no-tls is  used, accept HTTP/2  and HTTP/1.1.
               The  incoming HTTP/1.1  connection  can  be upgraded  to
-              HTTP/2  through  HTTP  Upgrade.   The  protocol  to  the
-              backend is HTTP/1.1.
+              HTTP/2  through  HTTP  Upgrade.
   -s, --http2-proxy
-              Like default mode, but enable secure proxy mode.
-  --http2-bridge
-              Like default  mode, but communicate with  the backend in
-              HTTP/2 over SSL/TLS.  Thus  the incoming all connections
-              are converted  to HTTP/2  connection and relayed  to the
-              backend.  See --backend-http-proxy-uri option if you are
-              behind  the proxy  and want  to connect  to the  outside
-              HTTP/2 proxy.
-  --client    Accept  HTTP/2   and  HTTP/1.1  without   SSL/TLS.   The
-              incoming HTTP/1.1  connection can be upgraded  to HTTP/2
-              connection through  HTTP Upgrade.   The protocol  to the
-              backend is HTTP/2.   To use nghttpx as  a forward proxy,
-              use -p option instead.
-  -p, --client-proxy
-              Like --client  option, but it also  requires the request
-              path from frontend must be an absolute URI, suitable for
-              use as a forward proxy.
+              Like default mode, but enable forward proxy.  This is so
+              called HTTP/2 proxy mode.
 
 Logging:
   -L, --log-level=<LEVEL>
@@ -1798,15 +1786,13 @@ HTTP:
   --no-via    Don't append to  Via header field.  If  Via header field
               is received, it is left unaltered.
   --no-location-rewrite
-              Don't rewrite  location header field  on --http2-bridge,
-              --client  and  default   mode.   For  --http2-proxy  and
-              --client-proxy mode,  location header field will  not be
-              altered regardless of this option.
+              Don't  rewrite location  header field  in default  mode.
+              When --http2-proxy  is used, location header  field will
+              not be altered regardless of this option.
   --host-rewrite
-              Rewrite   host   and   :authority   header   fields   on
-              --http2-bridge,   --client   and  default   mode.    For
-              --http2-proxy  and  --client-proxy mode,  these  headers
-              will not be altered regardless of this option.
+              Rewrite  host and  :authority header  fields in  default
+              mode.  When  --http2-proxy is  used, these  headers will
+              not be altered regardless of this option.
   --altsvc=<PROTOID,PORT[,HOST,[ORIGIN]]>
               Specify   protocol  ID,   port,  host   and  origin   of
               alternative service.  <HOST>  and <ORIGIN> are optional.
@@ -2055,29 +2041,6 @@ void process_options(
     upstreamconf.worker_connections = std::numeric_limits<size_t>::max();
   }
 
-  if (get_config()->http2_proxy + get_config()->http2_bridge +
-          get_config()->client_proxy + get_config()->client >
-      1) {
-    LOG(FATAL) << "--http2-proxy, --http2-bridge, --client-proxy and --client "
-               << "cannot be used at the same time.";
-    exit(EXIT_FAILURE);
-  }
-
-  if (get_config()->client || get_config()->client_proxy) {
-    mod_config()->client_mode = true;
-    upstreamconf.no_tls = true;
-  }
-
-  if (get_config()->client_mode || get_config()->http2_bridge) {
-    downstreamconf.proto = PROTO_HTTP2;
-  } else {
-    downstreamconf.proto = PROTO_HTTP;
-  }
-
-  if (downstreamconf.proto == PROTO_HTTP && !downstreamconf.http1_tls) {
-    downstreamconf.no_tls = true;
-  }
-
   if (!upstreamconf.no_tls &&
       (tlsconf.private_key_file.empty() || tlsconf.cert_file.empty())) {
     print_usage(std::cerr);
@@ -2098,23 +2061,34 @@ void process_options(
   auto &addr_groups = downstreamconf.addr_groups;
 
   if (addr_groups.empty()) {
-    DownstreamAddr addr{};
+    DownstreamAddrConfig addr{};
     addr.host = ImmutableString::from_lit(DEFAULT_DOWNSTREAM_HOST);
     addr.port = DEFAULT_DOWNSTREAM_PORT;
 
-    DownstreamAddrGroup g(StringRef::from_lit("/"));
+    DownstreamAddrGroupConfig g(StringRef::from_lit("/"));
+    g.proto = PROTO_HTTP1;
     g.addrs.push_back(std::move(addr));
     mod_config()->router.add_route(StringRef{g.pattern}, addr_groups.size());
     addr_groups.push_back(std::move(g));
-  } else if (get_config()->http2_proxy || get_config()->client_proxy) {
+  } else if (get_config()->http2_proxy) {
     // We don't support host mapping in these cases.  Move all
     // non-catch-all patterns to catch-all pattern.
-    DownstreamAddrGroup catch_all(StringRef::from_lit("/"));
+    DownstreamAddrGroupConfig catch_all(StringRef::from_lit("/"));
+    auto proto = PROTO_NONE;
     for (auto &g : addr_groups) {
+      if (proto == PROTO_NONE) {
+        proto = g.proto;
+      } else if (proto != g.proto) {
+        LOG(ERROR) << SHRPX_OPT_BACKEND << ": <PATTERN> was ignored with "
+                                           "--http2-proxy, and protocol must "
+                                           "be the same for all backends.";
+        exit(EXIT_FAILURE);
+      }
       std::move(std::begin(g.addrs), std::end(g.addrs),
                 std::back_inserter(catch_all.addrs));
     }
-    std::vector<DownstreamAddrGroup>().swap(addr_groups);
+    catch_all.proto = proto;
+    std::vector<DownstreamAddrGroupConfig>().swap(addr_groups);
     // maybe not necessary?
     mod_config()->router = Router();
     mod_config()->router.add_route(StringRef{catch_all.pattern},
@@ -2134,7 +2108,7 @@ void process_options(
     }
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "Host-path pattern: group " << i << ": '" << g.pattern
-                << "'";
+                << "', proto=" << strproto(g.proto);
       for (auto &addr : g.addrs) {
         LOG(INFO) << "group " << i << " -> " << addr.host.c_str()
                   << (addr.host_unix ? "" : ":" + util::utos(addr.port));
@@ -2143,7 +2117,7 @@ void process_options(
   }
 
   if (catch_all_group == -1) {
-    LOG(FATAL) << "-b: No catch-all backend address is configured";
+    LOG(FATAL) << "backend: No catch-all backend address is configured";
     exit(EXIT_FAILURE);
   }
 
@@ -2187,7 +2161,7 @@ void process_options(
       addr.hostport = ImmutableString(
           util::make_http_hostport(StringRef(addr.host), addr.port));
 
-      auto hostport = util::make_hostport(addr.host.c_str(), addr.port);
+      auto hostport = util::make_hostport(StringRef{addr.host}, addr.port);
 
       if (resolve_hostname(&addr.addr, addr.host.c_str(), addr.port,
                            downstreamconf.family) == -1) {
@@ -2201,7 +2175,7 @@ void process_options(
 
   auto &proxy = mod_config()->downstream_http_proxy;
   if (!proxy.host.empty()) {
-    auto hostport = util::make_hostport(proxy.host.c_str(), proxy.port);
+    auto hostport = util::make_hostport(StringRef{proxy.host}, proxy.port);
     if (resolve_hostname(&proxy.addr, proxy.host.c_str(), proxy.port,
                          AF_UNSPEC) == -1) {
       LOG(FATAL) << "Resolving backend HTTP proxy address failed: " << hostport;
@@ -2460,6 +2434,14 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_ADDRESS_FAMILY,
          required_argument, &flag, 115},
         {SHRPX_OPT_BACKEND_ADDRESS_FAMILY, required_argument, &flag, 116},
+        {SHRPX_OPT_FRONTEND_HTTP2_MAX_CONCURRENT_STREAMS, required_argument,
+         &flag, 117},
+        {SHRPX_OPT_BACKEND_HTTP2_MAX_CONCURRENT_STREAMS, required_argument,
+         &flag, 118},
+        {SHRPX_OPT_BACKEND_CONNECTIONS_PER_FRONTEND, required_argument, &flag,
+         119},
+        {SHRPX_OPT_BACKEND_TLS, no_argument, &flag, 120},
+        {SHRPX_OPT_BACKEND_CONNECTIONS_PER_HOST, required_argument, &flag, 121},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -2954,6 +2936,29 @@ int main(int argc, char **argv) {
       case 116:
         // --backend-address-family
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_ADDRESS_FAMILY, optarg);
+        break;
+      case 117:
+        // --frontend-http2-max-concurrent-streams
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HTTP2_MAX_CONCURRENT_STREAMS,
+                             optarg);
+        break;
+      case 118:
+        // --backend-http2-max-concurrent-streams
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP2_MAX_CONCURRENT_STREAMS,
+                             optarg);
+        break;
+      case 119:
+        // --backend-connections-per-frontend
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_CONNECTIONS_PER_FRONTEND,
+                             optarg);
+        break;
+      case 120:
+        // --backend-tls
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_TLS, "yes");
+        break;
+      case 121:
+        // --backend-connections-per-host
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_CONNECTIONS_PER_HOST, optarg);
         break;
       default:
         break;

@@ -40,25 +40,36 @@ namespace shrpx {
 void test_shrpx_http_create_forwarded(void) {
   CU_ASSERT("by=\"example.com:3000\";for=\"[::1]\";host=\"www.example.com\";"
             "proto=https" ==
-            http::create_forwarded(
-                FORWARDED_BY | FORWARDED_FOR | FORWARDED_HOST | FORWARDED_PROTO,
-                "example.com:3000", "[::1]", "www.example.com", "https"));
+            http::create_forwarded(FORWARDED_BY | FORWARDED_FOR |
+                                       FORWARDED_HOST | FORWARDED_PROTO,
+                                   StringRef::from_lit("example.com:3000"),
+                                   StringRef::from_lit("[::1]"),
+                                   StringRef::from_lit("www.example.com"),
+                                   StringRef::from_lit("https")));
 
-  CU_ASSERT("for=192.168.0.1" == http::create_forwarded(FORWARDED_FOR, "alpha",
-                                                        "192.168.0.1", "bravo",
-                                                        "charlie"));
+  CU_ASSERT("for=192.168.0.1" ==
+            http::create_forwarded(FORWARDED_FOR, StringRef::from_lit("alpha"),
+                                   StringRef::from_lit("192.168.0.1"),
+                                   StringRef::from_lit("bravo"),
+                                   StringRef::from_lit("charlie")));
 
   CU_ASSERT("by=_hidden;for=\"[::1]\"" ==
-            http::create_forwarded(FORWARDED_BY | FORWARDED_FOR, "_hidden",
-                                   "[::1]", "", ""));
+            http::create_forwarded(
+                FORWARDED_BY | FORWARDED_FOR, StringRef::from_lit("_hidden"),
+                StringRef::from_lit("[::1]"), StringRef::from_lit(""),
+                StringRef::from_lit("")));
 
   CU_ASSERT("by=\"[::1]\";for=_hidden" ==
-            http::create_forwarded(FORWARDED_BY | FORWARDED_FOR, "[::1]",
-                                   "_hidden", "", ""));
+            http::create_forwarded(
+                FORWARDED_BY | FORWARDED_FOR, StringRef::from_lit("[::1]"),
+                StringRef::from_lit("_hidden"), StringRef::from_lit(""),
+                StringRef::from_lit("")));
 
-  CU_ASSERT("" == http::create_forwarded(FORWARDED_BY | FORWARDED_FOR |
-                                             FORWARDED_HOST | FORWARDED_PROTO,
-                                         "", "", "", ""));
+  CU_ASSERT("" ==
+            http::create_forwarded(
+                FORWARDED_BY | FORWARDED_FOR | FORWARDED_HOST | FORWARDED_PROTO,
+                StringRef::from_lit(""), StringRef::from_lit(""),
+                StringRef::from_lit(""), StringRef::from_lit("")));
 }
 
 } // namespace shrpx

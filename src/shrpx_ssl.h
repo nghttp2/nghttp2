@@ -71,13 +71,14 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file
 #endif // HAVE_NEVERBLEED
                             );
 
-// Create client side SSL_CTX
+// Create client side SSL_CTX.  This does not configure ALPN settings.
+// |next_proto_select_cb| is for NPN.
 SSL_CTX *create_ssl_client_context(
 #ifdef HAVE_NEVERBLEED
     neverbleed_t *nb,
 #endif // HAVE_NEVERBLEED
     const StringRef &cacert, const StringRef &cert_file,
-    const StringRef &private_key_file, const StringRef &alpn,
+    const StringRef &private_key_file,
     int (*next_proto_select_cb)(SSL *s, unsigned char **out,
                                 unsigned char *outlen, const unsigned char *in,
                                 unsigned int inlen, void *arg));
@@ -200,6 +201,11 @@ SSL_CTX *setup_downstream_client_ssl_context(
     neverbleed_t *nb
 #endif // HAVE_NEVERBLEED
     );
+
+// Sets ALPN settings in |SSL| suitable for HTTP/2 use.
+void setup_downstream_http2_alpn(SSL *ssl);
+// Sets ALPN settings in |SSL| suitable for HTTP/1.1 use.
+void setup_downstream_http1_alpn(SSL *ssl);
 
 // Creates CertLookupTree.  If frontend is configured not to use TLS,
 // this function returns nullptr.

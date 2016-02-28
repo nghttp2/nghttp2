@@ -61,6 +61,7 @@ namespace shrpx {
 
 struct LogFragment;
 class ConnectBlocker;
+class Http2Session;
 
 namespace ssl {
 
@@ -227,10 +228,19 @@ constexpr char SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_PRIVATE_KEY_FILE[] =
 constexpr char SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_ADDRESS_FAMILY[] =
     "tls-ticket-key-memcached-address-family";
 constexpr char SHRPX_OPT_BACKEND_ADDRESS_FAMILY[] = "backend-address-family";
+constexpr char SHRPX_OPT_FRONTEND_HTTP2_MAX_CONCURRENT_STREAMS[] =
+    "frontend-http2-max-concurrent-streams";
+constexpr char SHRPX_OPT_BACKEND_HTTP2_MAX_CONCURRENT_STREAMS[] =
+    "backend-http2-max-concurrent-streams";
+constexpr char SHRPX_OPT_BACKEND_CONNECTIONS_PER_FRONTEND[] =
+    "backend-connections-per-frontend";
+constexpr char SHRPX_OPT_BACKEND_TLS[] = "backend-tls";
+constexpr char SHRPX_OPT_BACKEND_CONNECTIONS_PER_HOST[] =
+    "backend-connections-per-host";
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
-enum shrpx_proto { PROTO_HTTP2, PROTO_HTTP };
+enum shrpx_proto { PROTO_NONE, PROTO_HTTP1, PROTO_HTTP2, PROTO_MEMCACHED };
 
 enum shrpx_forwarded_param {
   FORWARDED_NONE = 0,
@@ -283,27 +293,26 @@ struct TLSSessionCache {
   ev_tstamp last_updated;
 };
 
-struct DownstreamAddr {
+struct DownstreamAddrConfig {
   Address addr;
   // backend address.  If |host_unix| is true, this is UNIX domain
   // socket path.
   ImmutableString host;
   ImmutableString hostport;
-  ConnectBlocker *connect_blocker;
-  // Client side TLS session cache
-  TLSSessionCache tls_session_cache;
   // backend port.  0 if |host_unix| is true.
   uint16_t port;
   // true if |host| contains UNIX domain socket path.
   bool host_unix;
 };
 
-struct DownstreamAddrGroup {
-  DownstreamAddrGroup(const StringRef &pattern)
+struct DownstreamAddrGroupConfig {
+  DownstreamAddrGroupConfig(const StringRef &pattern)
       : pattern(pattern.c_str(), pattern.size()) {}
 
   ImmutableString pattern;
-  std::vector<DownstreamAddr> addrs;
+  std::vector<DownstreamAddrConfig> addrs;
+  // Application protocol used in this group
+  shrpx_proto proto;
 };
 
 struct TicketKey {
@@ -481,19 +490,19 @@ struct Http2Config {
     nghttp2_session_callbacks *callbacks;
     size_t window_bits;
     size_t connection_window_bits;
+    size_t max_concurrent_streams;
   } upstream;
   struct {
     nghttp2_option *option;
     nghttp2_session_callbacks *callbacks;
     size_t window_bits;
     size_t connection_window_bits;
-    size_t connections_per_worker;
+    size_t max_concurrent_streams;
   } downstream;
   struct {
     ev_tstamp stream_read;
     ev_tstamp stream_write;
   } timeout;
-  size_t max_concurrent_streams;
   bool no_cookie_crumbling;
   bool no_server_push;
 };
@@ -552,15 +561,13 @@ struct ConnectionConfig {
       ev_tstamp write;
       ev_tstamp idle_read;
     } timeout;
-    std::vector<DownstreamAddrGroup> addr_groups;
+    std::vector<DownstreamAddrGroupConfig> addr_groups;
     // The index of catch-all group in downstream_addr_groups.
     size_t addr_group_catch_all;
     size_t connections_per_host;
     size_t connections_per_frontend;
     size_t request_buffer_size;
     size_t response_buffer_size;
-    // downstream protocol; this will be determined by given options.
-    shrpx_proto proto;
     // Address family of backend connection.  One of either AF_INET,
     // AF_INET6 or AF_UNSPEC.  This is ignored if backend connection
     // is made via Unix domain socket.
@@ -595,11 +602,6 @@ struct Config {
   bool verbose;
   bool daemon;
   bool http2_proxy;
-  bool http2_bridge;
-  bool client_proxy;
-  bool client;
-  // true if --client or --client-proxy are enabled.
-  bool client_mode;
 };
 
 const Config *get_config();
@@ -646,15 +648,8 @@ std::unique_ptr<TicketKeys>
 read_tls_ticket_key_file(const std::vector<std::string> &files,
                          const EVP_CIPHER *cipher, const EVP_MD *hmac);
 
-// Selects group based on request's |hostport| and |path|.  |hostport|
-// is the value taken from :authority or host header field, and may
-// contain port.  The |path| may contain query part.  We require the
-// catch-all pattern in place, so this function always selects one
-// group.  The catch-all group index is given in |catch_all|.  All
-// patterns are given in |groups|.
-size_t match_downstream_addr_group(
-    const Router &router, const StringRef &hostport, const StringRef &path,
-    const std::vector<DownstreamAddrGroup> &groups, size_t catch_all);
+// Returns string representation of |proto|.
+StringRef strproto(shrpx_proto proto);
 
 } // namespace shrpx
 

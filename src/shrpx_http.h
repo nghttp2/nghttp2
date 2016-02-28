@@ -43,8 +43,8 @@ std::string create_via_header_value(int major, int minor);
 // |params| is bitwise-OR of zero or more of shrpx_forwarded_param
 // defined in shrpx_config.h.
 std::string create_forwarded(int params, const StringRef &node_by,
-                             const std::string &node_for,
-                             const std::string &host, const std::string &proto);
+                             const StringRef &node_for, const StringRef &host,
+                             const StringRef &proto);
 
 // Adds ANSI color codes to HTTP headers |hdrs|.
 std::string colorizeHeaders(const char *hdrs);

@@ -37,6 +37,7 @@
 #include "shrpx_error.h"
 #include "shrpx_http.h"
 #include "shrpx_http2_session.h"
+#include "shrpx_worker.h"
 #include "http2.h"
 #include "util.h"
 
@@ -44,10 +45,8 @@ using namespace nghttp2;
 
 namespace shrpx {
 
-Http2DownstreamConnection::Http2DownstreamConnection(
-    DownstreamConnectionPool *dconn_pool, Http2Session *http2session)
-    : DownstreamConnection(dconn_pool),
-      dlnext(nullptr),
+Http2DownstreamConnection::Http2DownstreamConnection(Http2Session *http2session)
+    : dlnext(nullptr),
       dlprev(nullptr),
       http2session_(http2session),
       sd_(nullptr) {}
@@ -105,6 +104,11 @@ int Http2DownstreamConnection::attach_downstream(Downstream *downstream) {
 
   downstream_ = downstream;
   downstream_->reset_downstream_rtimer();
+
+  auto &req = downstream_->request();
+
+  // HTTP/2 disables HTTP Upgrade.
+  req.upgrade_request = false;
 
   return 0;
 }
@@ -265,9 +269,9 @@ int Http2DownstreamConnection::push_request_headers() {
   auto &httpconf = get_config()->http;
   auto &http2conf = get_config()->http2;
 
-  auto no_host_rewrite =
-      httpconf.no_host_rewrite || get_config()->http2_proxy ||
-      get_config()->client_proxy || req.method == HTTP_CONNECT;
+  auto no_host_rewrite = httpconf.no_host_rewrite ||
+                         get_config()->http2_proxy ||
+                         req.method == HTTP_CONNECT;
 
   // http2session_ has already in CONNECTED state, so we can get
   // addr_idx here.
@@ -303,7 +307,7 @@ int Http2DownstreamConnection::push_request_headers() {
               httpconf.add_request_headers.size());
 
   nva.push_back(
-      http2::make_nv_lc_nocopy(":method", http2::to_method_string(req.method)));
+      http2::make_nv_ls_nocopy(":method", http2::to_method_string(req.method)));
 
   if (req.method != HTTP_CONNECT) {
     assert(!req.scheme.empty());
@@ -351,14 +355,13 @@ int Http2DownstreamConnection::push_request_headers() {
   if (fwdconf.params) {
     auto params = fwdconf.params;
 
-    if (get_config()->http2_proxy || get_config()->client_proxy ||
-        req.method == HTTP_CONNECT) {
+    if (get_config()->http2_proxy || req.method == HTTP_CONNECT) {
       params &= ~FORWARDED_PROTO;
     }
 
-    auto value = http::create_forwarded(params, handler->get_forwarded_by(),
-                                        handler->get_forwarded_for(),
-                                        req.authority, req.scheme);
+    auto value = http::create_forwarded(
+        params, handler->get_forwarded_by(), handler->get_forwarded_for(),
+        StringRef{req.authority}, StringRef{req.scheme});
     if (fwd || !value.empty()) {
       if (fwd) {
         forwarded_value = fwd->value;
@@ -395,8 +398,7 @@ int Http2DownstreamConnection::push_request_headers() {
     nva.push_back(http2::make_nv_ls_nocopy("x-forwarded-for", (*xff).value));
   }
 
-  if (!get_config()->http2_proxy && !get_config()->client_proxy &&
-      req.method != HTTP_CONNECT) {
+  if (!get_config()->http2_proxy && req.method != HTTP_CONNECT) {
     // We use same protocol with :scheme header field
     nva.push_back(http2::make_nv_ls_nocopy("x-forwarded-proto", req.scheme));
   }
@@ -557,10 +559,9 @@ int Http2DownstreamConnection::on_timeout() {
   return submit_rst_stream(downstream_, NGHTTP2_NO_ERROR);
 }
 
-size_t Http2DownstreamConnection::get_group() const {
-  // HTTP/2 backend connections are managed by Http2Session object,
-  // and it stores group index.
-  return http2session_->get_group();
+DownstreamAddrGroup *
+Http2DownstreamConnection::get_downstream_addr_group() const {
+  return http2session_->get_downstream_addr_group();
 }
 
 } // namespace shrpx

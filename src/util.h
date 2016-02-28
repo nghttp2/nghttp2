@@ -225,6 +225,11 @@ bool istarts_with_l(const std::string &a, const CharT(&b)[N]) {
   return istarts_with(std::begin(a), std::end(a), b, b + N - 1);
 }
 
+template <typename CharT, size_t N>
+bool istarts_with_l(const StringRef &a, const CharT(&b)[N]) {
+  return istarts_with(std::begin(a), std::end(a), b, b + N - 1);
+}
+
 template <typename InputIterator1, typename InputIterator2>
 bool ends_with(InputIterator1 first1, InputIterator1 last1,
                InputIterator2 first2, InputIterator2 last2) {
@@ -542,6 +547,11 @@ std::vector<std::string> parse_config_str_list(const char *s, char delim = ',');
 // white spaces around substring are treated as a part of substring.
 std::vector<Range<const char *>> split_config_str_list(const char *s,
                                                        char delim);
+
+// Parses delimited strings in |s| and returns Substrings in |s|
+// delimited by |delim|.  The any white spaces around substring are
+// treated as a part of substring.
+std::vector<StringRef> split_str(const StringRef &s, char delim);
 
 // Returns given time |tp| in Common Log format (e.g.,
 // 03/Jul/2014:00:19:38 +0900)

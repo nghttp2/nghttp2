@@ -659,12 +659,28 @@ int select_h1_next_proto_cb(SSL *ssl, unsigned char **out,
 }
 } // namespace
 
+namespace {
+int select_next_proto_cb(SSL *ssl, unsigned char **out, unsigned char *outlen,
+                         const unsigned char *in, unsigned int inlen,
+                         void *arg) {
+  auto conn = static_cast<Connection *>(SSL_get_app_data(ssl));
+  switch (conn->proto) {
+  case PROTO_HTTP1:
+    return select_h1_next_proto_cb(ssl, out, outlen, in, inlen, arg);
+  case PROTO_HTTP2:
+    return select_h2_next_proto_cb(ssl, out, outlen, in, inlen, arg);
+  default:
+    return SSL_TLSEXT_ERR_NOACK;
+  }
+}
+} // namespace
+
 SSL_CTX *create_ssl_client_context(
 #ifdef HAVE_NEVERBLEED
     neverbleed_t *nb,
 #endif // HAVE_NEVERBLEED
     const StringRef &cacert, const StringRef &cert_file,
-    const StringRef &private_key_file, const StringRef &alpn,
+    const StringRef &private_key_file,
     int (*next_proto_select_cb)(SSL *s, unsigned char **out,
                                 unsigned char *outlen, const unsigned char *in,
                                 unsigned int inlen, void *arg)) {
@@ -742,13 +758,9 @@ SSL_CTX *create_ssl_client_context(
 #endif // HAVE_NEVERBLEED
   }
 
-  // NPN selection callback
+  // NPN selection callback.  This is required to set SSL_CTX because
+  // OpenSSL does not offer SSL_set_next_proto_select_cb.
   SSL_CTX_set_next_proto_select_cb(ssl_ctx, next_proto_select_cb, nullptr);
-
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L
-  // ALPN advertisement
-  SSL_CTX_set_alpn_protos(ssl_ctx, alpn.byte(), alpn.size());
-#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
   return ssl_ctx;
 }
@@ -1303,29 +1315,29 @@ SSL_CTX *setup_downstream_client_ssl_context(
   }
 
   auto &tlsconf = get_config()->tls;
-  auto &downstreamconf = get_config()->conn.downstream;
-
-  std::vector<unsigned char> h2alpn;
-  StringRef alpn;
-  int (*next_proto_select_cb)(SSL *s, unsigned char **out,
-                              unsigned char *outlen, const unsigned char *in,
-                              unsigned int inlen, void *arg);
-
-  if (downstreamconf.proto == PROTO_HTTP2) {
-    h2alpn = util::get_default_alpn();
-    alpn = StringRef(h2alpn.data(), h2alpn.size());
-    next_proto_select_cb = select_h2_next_proto_cb;
-  } else {
-    alpn = StringRef::from_lit(NGHTTP2_H1_1_ALPN);
-    next_proto_select_cb = select_h1_next_proto_cb;
-  }
 
   return ssl::create_ssl_client_context(
 #ifdef HAVE_NEVERBLEED
       nb,
 #endif // HAVE_NEVERBLEED
       StringRef{tlsconf.cacert}, StringRef{tlsconf.client.cert_file},
-      StringRef{tlsconf.client.private_key_file}, alpn, next_proto_select_cb);
+      StringRef{tlsconf.client.private_key_file}, select_next_proto_cb);
+}
+
+void setup_downstream_http2_alpn(SSL *ssl) {
+  auto alpn = util::get_default_alpn();
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+  // ALPN advertisement
+  SSL_set_alpn_protos(ssl, alpn.data(), alpn.size());
+#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
+}
+
+void setup_downstream_http1_alpn(SSL *ssl) {
+  auto alpn = StringRef::from_lit(NGHTTP2_H1_1_ALPN);
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+  // ALPN advertisement
+  SSL_set_alpn_protos(ssl, alpn.byte(), alpn.size());
+#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 }
 
 CertLookupTree *create_cert_lookup_tree() {
