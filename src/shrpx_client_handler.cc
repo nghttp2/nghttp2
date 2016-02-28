@@ -853,11 +853,11 @@ void ClientHandler::write_accesslog(Downstream *downstream) {
   upstream_accesslog(
       get_config()->logging.access.format,
       LogSpec{
-          downstream, StringRef(ipaddr_), http2::to_method_string(req.method),
+          downstream, StringRef{ipaddr_}, http2::to_method_string(req.method),
 
           req.method == HTTP_CONNECT
               ? StringRef(req.authority)
-              : (get_config()->http2_proxy || get_config()->client_proxy)
+              : get_config()->http2_proxy
                     ? StringRef(construct_absolute_request_uri(req))
                     : req.path.empty()
                           ? req.method == HTTP_OPTIONS

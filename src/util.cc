@@ -857,6 +857,27 @@ std::vector<unsigned char> get_default_alpn() {
   return res;
 }
 
+std::vector<StringRef> split_str(const StringRef &s, char delim) {
+  size_t len = 1;
+  auto last = std::end(s);
+  for (auto first = std::begin(s), d = first;
+       (d = std::find(first, last, delim)) != last; ++len, first = d + 1)
+    ;
+
+  auto list = std::vector<StringRef>(len);
+
+  len = 0;
+  for (auto first = std::begin(s);; ++len) {
+    auto stop = std::find(first, last, delim);
+    list[len] = StringRef{first, stop};
+    if (stop == last) {
+      break;
+    }
+    first = stop + 1;
+  }
+  return list;
+}
+
 std::vector<Range<const char *>> split_config_str_list(const char *s,
                                                        char delim) {
   size_t len = 1;

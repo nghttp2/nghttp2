@@ -125,7 +125,8 @@ OPTIONS = [
     "backend-address-family",
     "frontend-http2-max-concurrent-streams",
     "backend-http2-max-concurrent-streams",
-    "backend-connections-per-frontend"
+    "backend-connections-per-frontend",
+    "backend-tls"
 ]
 
 LOGVARS = [

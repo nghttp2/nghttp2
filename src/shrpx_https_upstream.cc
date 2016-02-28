@@ -232,7 +232,7 @@ void rewrite_request_host_path_from_uri(Request &req, const char *uri,
     path += '?';
     path.append(uri + fdata.off, fdata.len);
   }
-  if (get_config()->http2_proxy || get_config()->client_proxy) {
+  if (get_config()->http2_proxy) {
     req.path = std::move(path);
   } else {
     req.path = http2::rewrite_clean_path(std::begin(path), std::end(path));
@@ -306,7 +306,7 @@ int htp_hdrs_completecb(http_parser *htp) {
     }
     // checking UF_HOST could be redundant, but just in case ...
     if (!(u.field_set & (1 << UF_SCHEMA)) || !(u.field_set & (1 << UF_HOST))) {
-      if (get_config()->http2_proxy || get_config()->client_proxy) {
+      if (get_config()->http2_proxy) {
         // Request URI should be absolute-form for client proxy mode
         return -1;
       }
@@ -929,8 +929,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
 
   auto &httpconf = get_config()->http;
 
-  if (!get_config()->http2_proxy && !get_config()->client_proxy &&
-      !httpconf.no_location_rewrite) {
+  if (!get_config()->http2_proxy && !httpconf.no_location_rewrite) {
     downstream->rewrite_location_response_header(
         get_client_handler()->get_upstream_scheme());
   }
@@ -999,7 +998,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
     }
   }
 
-  if (!get_config()->http2_proxy && !get_config()->client_proxy) {
+  if (!get_config()->http2_proxy) {
     buf->append("Server: ");
     buf->append(httpconf.server_name);
     buf->append("\r\n");

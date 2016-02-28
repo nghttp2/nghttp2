@@ -70,7 +70,7 @@ mrb_value request_get_method(mrb_state *mrb, mrb_value self) {
   const auto &req = downstream->request();
   auto method = http2::to_method_string(req.method);
 
-  return mrb_str_new_cstr(mrb, method);
+  return mrb_str_new(mrb, method.c_str(), method.size());
 }
 } // namespace
 

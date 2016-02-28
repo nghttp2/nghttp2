@@ -316,7 +316,7 @@ int Http2Upstream::on_request_headers(Downstream *downstream,
   if (path) {
     if (method_token == HTTP_OPTIONS && path->value == "*") {
       // Server-wide OPTIONS request.  Path is empty.
-    } else if (get_config()->http2_proxy || get_config()->client_proxy) {
+    } else if (get_config()->http2_proxy) {
       req.path = http2::value_to_str(path);
     } else {
       const auto &value = path->value;
@@ -1346,8 +1346,7 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
 
   auto &httpconf = get_config()->http;
 
-  if (!get_config()->http2_proxy && !get_config()->client_proxy &&
-      !httpconf.no_location_rewrite) {
+  if (!get_config()->http2_proxy && !httpconf.no_location_rewrite) {
     downstream->rewrite_location_response_header(req.scheme);
   }
 
@@ -1416,7 +1415,7 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
 
   http2::copy_headers_to_nva_nocopy(nva, resp.fs.headers());
 
-  if (!get_config()->http2_proxy && !get_config()->client_proxy) {
+  if (!get_config()->http2_proxy) {
     nva.push_back(http2::make_nv_ls_nocopy("server", httpconf.server_name));
   } else {
     auto server = resp.fs.header(http2::HD_SERVER);
@@ -1489,9 +1488,8 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
   if (!http2conf.no_server_push &&
       nghttp2_session_get_remote_settings(session_,
                                           NGHTTP2_SETTINGS_ENABLE_PUSH) == 1 &&
-      !get_config()->http2_proxy && !get_config()->client_proxy &&
-      (downstream->get_stream_id() % 2) && resp.fs.header(http2::HD_LINK) &&
-      resp.http_status == 200 &&
+      !get_config()->http2_proxy && (downstream->get_stream_id() % 2) &&
+      resp.fs.header(http2::HD_LINK) && resp.http_status == 200 &&
       (req.method == HTTP_GET || req.method == HTTP_POST)) {
 
     if (prepare_push_promise(downstream) != 0) {
@@ -1852,7 +1850,7 @@ bool Http2Upstream::push_enabled() const {
   return !(get_config()->http2.no_server_push ||
            nghttp2_session_get_remote_settings(
                session_, NGHTTP2_SETTINGS_ENABLE_PUSH) == 0 ||
-           get_config()->http2_proxy || get_config()->client_proxy);
+           get_config()->http2_proxy);
 }
 
 int Http2Upstream::initiate_push(Downstream *downstream, const char *uri,

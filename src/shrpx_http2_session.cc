@@ -1460,8 +1460,7 @@ int Http2Session::connection_made() {
   entry[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
   entry[1].value = (1 << http2conf.downstream.window_bits) - 1;
 
-  if (http2conf.no_server_push || get_config()->http2_proxy ||
-      get_config()->client_proxy) {
+  if (http2conf.no_server_push || get_config()->http2_proxy) {
     entry[nentry].settings_id = NGHTTP2_SETTINGS_ENABLE_PUSH;
     entry[nentry].value = 0;
     ++nentry;

@@ -400,7 +400,7 @@ public:
   explicit StringRef(const std::string &s) : base(s.c_str()), len(s.size()) {}
   explicit StringRef(const ImmutableString &s)
       : base(s.c_str()), len(s.size()) {}
-  StringRef(const char *s) : base(s), len(strlen(s)) {}
+  explicit StringRef(const char *s) : base(s), len(strlen(s)) {}
   template <typename CharT>
   constexpr StringRef(const CharT *s, size_t n)
       : base(reinterpret_cast<const char *>(s)), len(n) {}

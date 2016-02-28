@@ -264,9 +264,9 @@ int Http2DownstreamConnection::push_request_headers() {
   auto &httpconf = get_config()->http;
   auto &http2conf = get_config()->http2;
 
-  auto no_host_rewrite =
-      httpconf.no_host_rewrite || get_config()->http2_proxy ||
-      get_config()->client_proxy || req.method == HTTP_CONNECT;
+  auto no_host_rewrite = httpconf.no_host_rewrite ||
+                         get_config()->http2_proxy ||
+                         req.method == HTTP_CONNECT;
 
   // http2session_ has already in CONNECTED state, so we can get
   // addr_idx here.
@@ -302,7 +302,7 @@ int Http2DownstreamConnection::push_request_headers() {
               httpconf.add_request_headers.size());
 
   nva.push_back(
-      http2::make_nv_lc_nocopy(":method", http2::to_method_string(req.method)));
+      http2::make_nv_ls_nocopy(":method", http2::to_method_string(req.method)));
 
   if (req.method != HTTP_CONNECT) {
     assert(!req.scheme.empty());
@@ -350,8 +350,7 @@ int Http2DownstreamConnection::push_request_headers() {
   if (fwdconf.params) {
     auto params = fwdconf.params;
 
-    if (get_config()->http2_proxy || get_config()->client_proxy ||
-        req.method == HTTP_CONNECT) {
+    if (get_config()->http2_proxy || req.method == HTTP_CONNECT) {
       params &= ~FORWARDED_PROTO;
     }
 
@@ -394,8 +393,7 @@ int Http2DownstreamConnection::push_request_headers() {
     nva.push_back(http2::make_nv_ls_nocopy("x-forwarded-for", (*xff).value));
   }
 
-  if (!get_config()->http2_proxy && !get_config()->client_proxy &&
-      req.method != HTTP_CONNECT) {
+  if (!get_config()->http2_proxy && req.method != HTTP_CONNECT) {
     // We use same protocol with :scheme header field
     nva.push_back(http2::make_nv_ls_nocopy("x-forwarded-proto", req.scheme));
   }

@@ -318,7 +318,7 @@ size_t match_downstream_addr_group_host(
     return group;
   }
 
-  group = router.match("", path);
+  group = router.match(StringRef::from_lit(""), path);
   if (group != -1) {
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "Found pattern with query " << path

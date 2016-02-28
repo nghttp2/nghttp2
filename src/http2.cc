@@ -1416,9 +1416,9 @@ int lookup_method_token(const uint8_t *name, size_t namelen) {
   return -1;
 }
 
-const char *to_method_string(int method_token) {
+StringRef to_method_string(int method_token) {
   // we happened to use same value for method with http-parser.
-  return http_method_str(static_cast<http_method>(method_token));
+  return StringRef{http_method_str(static_cast<http_method>(method_token))};
 }
 
 int get_pure_path_component(const char **base, size_t *baselen,

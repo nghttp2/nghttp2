@@ -571,33 +571,70 @@ int parse_duration(ev_tstamp *dest, const char *opt, const char *optarg) {
 } // namespace
 
 namespace {
-// Parses host-path mapping patterns in |src|, and stores mappings in
-// config.  We will store each host-path pattern found in |src| with
-// |addr|.  |addr| will be copied accordingly.  Also we make a group
-// based on the pattern.  The "/" pattern is considered as catch-all.
-void parse_mapping(const DownstreamAddrConfig &addr, const char *src) {
+// Parses host-path mapping patterns in |src_pattern|, and stores
+// mappings in config.  We will store each host-path pattern found in
+// |src| with |addr|.  |addr| will be copied accordingly.  Also we
+// make a group based on the pattern.  The "/" pattern is considered
+// as catch-all.  We also parse protocol specified in |src_proto|.
+//
+// This function returns 0 if it succeeds, or -1.
+int parse_mapping(const DownstreamAddrConfig &addr,
+                  const StringRef &src_pattern, const StringRef &src_proto) {
   // This returns at least 1 element (it could be empty string).  We
   // will append '/' to all patterns, so it becomes catch-all pattern.
-  auto mapping = util::split_config_str_list(src, ':');
+  auto mapping = util::split_str(src_pattern, ':');
   assert(!mapping.empty());
   auto &addr_groups = mod_config()->conn.downstream.addr_groups;
+
+  auto proto = PROTO_HTTP1;
+
+  if (!src_proto.empty()) {
+    if (!util::istarts_with_l(src_proto, "proto=")) {
+      LOG(ERROR) << "backend: proto keyword not found";
+      return -1;
+    }
+
+    auto protostr = StringRef{std::begin(src_proto) + str_size("proto="),
+                              std::end(src_proto)};
+    if (protostr.empty()) {
+      LOG(ERROR) << "backend: protocol is empty";
+      return -1;
+    }
+
+    if (util::streq_l("h2", std::begin(protostr), protostr.size())) {
+      proto = PROTO_HTTP2;
+    } else if (util::streq_l("http/1.1", std::begin(protostr),
+                             protostr.size())) {
+      proto = PROTO_HTTP1;
+    } else {
+      LOG(ERROR) << "backend: unknown protocol " << protostr;
+      return -1;
+    }
+  }
 
   for (const auto &raw_pattern : mapping) {
     auto done = false;
     std::string pattern;
-    auto slash = std::find(raw_pattern.first, raw_pattern.second, '/');
-    if (slash == raw_pattern.second) {
+    auto slash = std::find(std::begin(raw_pattern), std::end(raw_pattern), '/');
+    if (slash == std::end(raw_pattern)) {
       // This effectively makes empty pattern to "/".
-      pattern.assign(raw_pattern.first, raw_pattern.second);
+      pattern.assign(std::begin(raw_pattern), std::end(raw_pattern));
       util::inp_strlower(pattern);
       pattern += '/';
     } else {
-      pattern.assign(raw_pattern.first, slash);
+      pattern.assign(std::begin(raw_pattern), slash);
       util::inp_strlower(pattern);
-      pattern += http2::normalize_path(slash, raw_pattern.second);
+      pattern += http2::normalize_path(slash, std::end(raw_pattern));
     }
     for (auto &g : addr_groups) {
       if (g.pattern == pattern) {
+        if (g.proto != proto) {
+          LOG(ERROR) << "backend: protocol mismatch.  We saw protocol "
+                     << strproto(g.proto) << " for pattern " << g.pattern
+                     << ", but another protocol " << strproto(proto);
+          return -1;
+        }
+
         g.addrs.push_back(addr);
         done = true;
         break;
@@ -608,11 +645,13 @@ void parse_mapping(const DownstreamAddrConfig &addr, const char *src) {
     }
     DownstreamAddrGroupConfig g(StringRef{pattern});
     g.addrs.push_back(addr);
+    g.proto = proto;
 
     mod_config()->router.add_route(StringRef{g.pattern}, addr_groups.size());
 
     addr_groups.push_back(std::move(g));
   }
+  return 0;
 }
 } // namespace
 
@@ -670,6 +709,7 @@ enum {
   SHRPX_OPTID_BACKEND_READ_TIMEOUT,
   SHRPX_OPTID_BACKEND_REQUEST_BUFFER,
   SHRPX_OPTID_BACKEND_RESPONSE_BUFFER,
+  SHRPX_OPTID_BACKEND_TLS,
   SHRPX_OPTID_BACKEND_TLS_SNI_FIELD,
   SHRPX_OPTID_BACKEND_WRITE_TIMEOUT,
   SHRPX_OPTID_BACKLOG,
@@ -914,6 +954,11 @@ int option_lookup_token(const char *name, size_t namelen) {
     break;
   case 11:
     switch (name[10]) {
+    case 's':
+      if (util::strieq_l("backend-tl", name, 10)) {
+        return SHRPX_OPTID_BACKEND_TLS;
+      }
+      break;
     case 't':
       if (util::strieq_l("write-burs", name, 10)) {
         return SHRPX_OPTID_WRITE_BURST;
@@ -1495,19 +1540,17 @@ int parse_config(const char *opt, const char *optarg,
 
   switch (optid) {
   case SHRPX_OPTID_BACKEND: {
-    auto optarglen = strlen(optarg);
-    const char *pat_delim = strchr(optarg, ';');
-    if (!pat_delim) {
-      pat_delim = optarg + optarglen;
-    }
+    auto src = StringRef{optarg};
+    auto addr_end = std::find(std::begin(src), std::end(src), ';');
+
     DownstreamAddrConfig addr{};
     if (util::istarts_with(optarg, SHRPX_UNIX_PATH_PREFIX)) {
-      auto path = optarg + str_size(SHRPX_UNIX_PATH_PREFIX);
-      addr.host = ImmutableString(path, pat_delim);
+      auto path = std::begin(src) + str_size(SHRPX_UNIX_PATH_PREFIX);
+      addr.host = ImmutableString(path, addr_end);
       addr.host_unix = true;
     } else {
-      if (split_host_port(host, sizeof(host), &port, optarg,
-                          pat_delim - optarg) == -1) {
+      if (split_host_port(host, sizeof(host), &port, &src[0],
+                          addr_end - std::begin(src)) == -1) {
         return -1;
       }
 
@@ -1515,14 +1558,16 @@ int parse_config(const char *opt, const char *optarg,
       addr.port = port;
     }
 
-    auto mapping = pat_delim < optarg + optarglen ? pat_delim + 1 : pat_delim;
-    // We may introduce new parameter after additional ';', so don't
-    // allow extra ';' in pattern for now.
-    if (strchr(mapping, ';') != nullptr) {
-      LOG(ERROR) << opt << ": ';' must not be used in pattern";
+    auto mapping = addr_end == std::end(src) ? addr_end : addr_end + 1;
+    auto mapping_end = std::find(mapping, std::end(src), ';');
+
+    auto proto = mapping_end == std::end(src) ? mapping_end : mapping_end + 1;
+    auto proto_end = std::find(proto, std::end(src), ';');
+
+    if (parse_mapping(addr, StringRef{mapping, mapping_end},
+                      StringRef{proto, proto_end}) != 0) {
       return -1;
     }
-    parse_mapping(addr, mapping);
 
     return 0;
   }
@@ -1607,13 +1652,13 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   case SHRPX_OPTID_HTTP2_BRIDGE:
-    mod_config()->http2_bridge = util::strieq(optarg, "yes");
-
-    return 0;
+    LOG(ERROR) << opt << ": deprecated.  Use backend=<addr>,<port>;;proto=h2 "
+                         "and backend-tls";
+    return -1;
   case SHRPX_OPTID_CLIENT_PROXY:
-    mod_config()->client_proxy = util::strieq(optarg, "yes");
-
-    return 0;
+    LOG(ERROR) << opt << ": deprecated.  Use http2-proxy, frontend-no-tls, "
+                         "backend=<addr>,<port>;;proto=h2 and backend-tls";
+    return -1;
   case SHRPX_OPTID_ADD_X_FORWARDED_FOR:
     mod_config()->http.xff.add = util::strieq(optarg, "yes");
 
@@ -1746,8 +1791,8 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   case SHRPX_OPTID_BACKEND_NO_TLS:
-    mod_config()->conn.downstream.no_tls = util::strieq(optarg, "yes");
-
+    LOG(WARN) << opt << ": deprecated.  backend connection is not encrypted by "
+                        "default.  See also " << SHRPX_OPT_BACKEND_TLS;
     return 0;
   case SHRPX_OPTID_BACKEND_TLS_SNI_FIELD:
     mod_config()->tls.backend_sni_name = optarg;
@@ -1834,9 +1879,9 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   case SHRPX_OPTID_CLIENT:
-    mod_config()->client = util::strieq(optarg, "yes");
-
-    return 0;
+    LOG(ERROR) << opt << ": deprecated.  Use frontend-no-tls, "
+                         "backend=<addr>,<port>;;proto=h2 and backend-tls";
+    return -1;
   case SHRPX_OPTID_INSECURE:
     mod_config()->tls.insecure = util::strieq(optarg, "yes");
 
@@ -2312,7 +2357,11 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   case SHRPX_OPTID_BACKEND_HTTP1_TLS:
-    mod_config()->conn.downstream.http1_tls = util::strieq(optarg, "yes");
+    LOG(WARN) << opt << ": deprecated.  Use " << SHRPX_OPT_BACKEND_TLS
+              << " instead.";
+  // fall through
+  case SHRPX_OPTID_BACKEND_TLS:
+    mod_config()->conn.downstream.no_tls = !util::strieq(optarg, "yes");
 
     return 0;
   case SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED_TLS:
@@ -2531,6 +2580,19 @@ int int_syslog_facility(const char *strfacility) {
   }
 
   return -1;
+}
+
+StringRef strproto(shrpx_proto proto) {
+  switch (proto) {
+  case PROTO_NONE:
+    return StringRef::from_lit("none");
+  case PROTO_HTTP1:
+    return StringRef::from_lit("http/1.1");
+  case PROTO_HTTP2:
+    return StringRef::from_lit("h2");
+  case PROTO_MEMCACHED:
+    return StringRef::from_lit("memcached");
+  }
 }
 
 } // namespace shrpx

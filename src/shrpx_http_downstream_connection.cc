@@ -279,9 +279,8 @@ int HttpDownstreamConnection::push_request_headers() {
   // For HTTP/1.0 request, there is no authority in request.  In that
   // case, we use backend server's host nonetheless.
   auto authority = StringRef(downstream_hostport);
-  auto no_host_rewrite = httpconf.no_host_rewrite ||
-                         get_config()->http2_proxy ||
-                         get_config()->client_proxy || connect_method;
+  auto no_host_rewrite =
+      httpconf.no_host_rewrite || get_config()->http2_proxy || connect_method;
 
   if (no_host_rewrite && !req.authority.empty()) {
     authority = StringRef(req.authority);
@@ -293,12 +292,12 @@ int HttpDownstreamConnection::push_request_headers() {
 
   // Assume that method and request path do not contain \r\n.
   auto meth = http2::to_method_string(req.method);
-  buf->append(meth, strlen(meth));
+  buf->append(meth);
   buf->append(" ");
 
   if (connect_method) {
     buf->append(authority);
-  } else if (get_config()->http2_proxy || get_config()->client_proxy) {
+  } else if (get_config()->http2_proxy) {
     // Construct absolute-form request target because we are going to
     // send a request to a HTTP/1 proxy.
     assert(!req.scheme.empty());
@@ -363,8 +362,7 @@ int HttpDownstreamConnection::push_request_headers() {
   if (fwdconf.params) {
     auto params = fwdconf.params;
 
-    if (get_config()->http2_proxy || get_config()->client_proxy ||
-        connect_method) {
+    if (get_config()->http2_proxy || connect_method) {
       params &= ~FORWARDED_PROTO;
     }
 
@@ -407,8 +405,7 @@ int HttpDownstreamConnection::push_request_headers() {
     buf->append((*xff).value);
     buf->append("\r\n");
   }
-  if (!get_config()->http2_proxy && !get_config()->client_proxy &&
-      !connect_method) {
+  if (!get_config()->http2_proxy && !connect_method) {
     buf->append("X-Forwarded-Proto: ");
     assert(!req.scheme.empty());
     buf->append(req.scheme);

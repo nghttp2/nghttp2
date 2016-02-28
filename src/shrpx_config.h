@@ -234,6 +234,7 @@ constexpr char SHRPX_OPT_BACKEND_HTTP2_MAX_CONCURRENT_STREAMS[] =
     "backend-http2-max-concurrent-streams";
 constexpr char SHRPX_OPT_BACKEND_CONNECTIONS_PER_FRONTEND[] =
     "backend-connections-per-frontend";
+constexpr char SHRPX_OPT_BACKEND_TLS[] = "backend-tls";
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -599,11 +600,6 @@ struct Config {
   bool verbose;
   bool daemon;
   bool http2_proxy;
-  bool http2_bridge;
-  bool client_proxy;
-  bool client;
-  // true if --client or --client-proxy are enabled.
-  bool client_mode;
 };
 
 const Config *get_config();
@@ -649,6 +645,9 @@ FILE *open_file_for_write(const char *filename);
 std::unique_ptr<TicketKeys>
 read_tls_ticket_key_file(const std::vector<std::string> &files,
                          const EVP_CIPHER *cipher, const EVP_MD *hmac);
+
+// Returns string representation of |proto|.
+StringRef strproto(shrpx_proto proto);
 
 } // namespace shrpx
 

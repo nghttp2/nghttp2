@@ -322,7 +322,11 @@ bool expect_response_body(int status_code);
 int lookup_method_token(const uint8_t *name, size_t namelen);
 int lookup_method_token(const std::string &name);
 
-const char *to_method_string(int method_token);
+// Returns string  representation of |method_token|.  This  is wrapper
+// function over http_method_str  from http-parser.  If |method_token|
+// is not known to http-parser, "<unknown>" is returned.  The returned
+// StringRef is guaranteed to be NULL-terminated.
+StringRef to_method_string(int method_token);
 
 template <typename InputIt>
 std::string normalize_path(InputIt first, InputIt last) {
