@@ -2045,9 +2045,12 @@ bool Http2Session::max_concurrency_reached(size_t extra) const {
     return dconns_.size() + extra >= 100;
   }
 
-  return dconns_.size() + extra >=
-         nghttp2_session_get_remote_settings(
-             session_, NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS);
+  // If session does not allow further requests, it effectively means
+  // that maximum concurrency is reached.
+  return !nghttp2_session_check_request_allowed(session_) ||
+         dconns_.size() + extra >=
+             nghttp2_session_get_remote_settings(
+                 session_, NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS);
 }
 
 DownstreamAddrGroup *Http2Session::get_downstream_addr_group() const {
