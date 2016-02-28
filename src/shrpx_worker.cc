@@ -104,6 +104,7 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
 
     dst.pattern = src.pattern;
     dst.addrs.resize(src.addrs.size());
+    dst.proto = src.proto;
 
     for (size_t j = 0; j < src.addrs.size(); ++j) {
       auto &src_addr = src.addrs[j];

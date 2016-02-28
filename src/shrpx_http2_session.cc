@@ -173,7 +173,7 @@ Http2Session::Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx,
             get_config()->conn.downstream.timeout.write,
             get_config()->conn.downstream.timeout.read, {}, {}, writecb, readcb,
             timeoutcb, this, get_config()->tls.dyn_rec.warmup_threshold,
-            get_config()->tls.dyn_rec.idle_timeout),
+            get_config()->tls.dyn_rec.idle_timeout, PROTO_HTTP2),
       wb_(worker->get_mcpool()),
       worker_(worker),
       ssl_ctx_(ssl_ctx),
@@ -397,6 +397,8 @@ int Http2Session::initiate_connection() {
         if (!ssl) {
           return -1;
         }
+
+        ssl::setup_downstream_http2_alpn(ssl);
 
         conn_.set_ssl(ssl);
       }

@@ -47,7 +47,7 @@ Connection::Connection(struct ev_loop *loop, int fd, SSL *ssl,
                        const RateLimitConfig &read_limit, IOCb writecb,
                        IOCb readcb, TimerCb timeoutcb, void *data,
                        size_t tls_dyn_rec_warmup_threshold,
-                       ev_tstamp tls_dyn_rec_idle_timeout)
+                       ev_tstamp tls_dyn_rec_idle_timeout, shrpx_proto proto)
     : tls{DefaultMemchunks(mcpool), DefaultPeekMemchunks(mcpool)},
       wlimit(loop, &wev, write_limit.rate, write_limit.burst),
       rlimit(loop, &rev, read_limit.rate, read_limit.burst, this),
@@ -58,7 +58,8 @@ Connection::Connection(struct ev_loop *loop, int fd, SSL *ssl,
       data(data),
       fd(fd),
       tls_dyn_rec_warmup_threshold(tls_dyn_rec_warmup_threshold),
-      tls_dyn_rec_idle_timeout(tls_dyn_rec_idle_timeout) {
+      tls_dyn_rec_idle_timeout(tls_dyn_rec_idle_timeout),
+      proto(proto) {
 
   ev_io_init(&wev, writecb, fd, EV_WRITE);
   ev_io_init(&rev, readcb, fd, EV_READ);

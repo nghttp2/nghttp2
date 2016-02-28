@@ -2067,13 +2067,15 @@ void process_options(
     upstreamconf.no_tls = true;
   }
 
+  shrpx_proto default_proto;
   if (get_config()->client_mode || get_config()->http2_bridge) {
-    downstreamconf.proto = PROTO_HTTP2;
+    default_proto = PROTO_HTTP2;
   } else {
-    downstreamconf.proto = PROTO_HTTP;
+    default_proto = PROTO_HTTP1;
   }
 
-  if (downstreamconf.proto == PROTO_HTTP && !downstreamconf.http1_tls) {
+  if (!get_config()->client_mode && !get_config()->http2_bridge &&
+      !downstreamconf.http1_tls) {
     downstreamconf.no_tls = true;
   }
 
@@ -2102,6 +2104,7 @@ void process_options(
     addr.port = DEFAULT_DOWNSTREAM_PORT;
 
     DownstreamAddrGroupConfig g(StringRef::from_lit("/"));
+    g.proto = default_proto;
     g.addrs.push_back(std::move(addr));
     mod_config()->router.add_route(StringRef{g.pattern}, addr_groups.size());
     addr_groups.push_back(std::move(g));
@@ -2113,12 +2116,19 @@ void process_options(
       std::move(std::begin(g.addrs), std::end(g.addrs),
                 std::back_inserter(catch_all.addrs));
     }
+    catch_all.proto = default_proto;
     std::vector<DownstreamAddrGroupConfig>().swap(addr_groups);
     // maybe not necessary?
     mod_config()->router = Router();
     mod_config()->router.add_route(StringRef{catch_all.pattern},
                                    addr_groups.size());
     addr_groups.push_back(std::move(catch_all));
+  } else {
+    for (auto &g : addr_groups) {
+      if (g.proto == PROTO_NONE) {
+        g.proto = default_proto;
+      }
+    }
   }
 
   if (LOG_ENABLED(INFO)) {

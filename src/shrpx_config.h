@@ -235,7 +235,7 @@ constexpr char SHRPX_OPT_BACKEND_HTTP2_MAX_CONCURRENT_STREAMS[] =
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
-enum shrpx_proto { PROTO_HTTP2, PROTO_HTTP };
+enum shrpx_proto { PROTO_NONE, PROTO_HTTP1, PROTO_HTTP2, PROTO_MEMCACHED };
 
 enum shrpx_forwarded_param {
   FORWARDED_NONE = 0,
@@ -306,6 +306,8 @@ struct DownstreamAddrGroupConfig {
 
   ImmutableString pattern;
   std::vector<DownstreamAddrConfig> addrs;
+  // Application protocol used in this group
+  shrpx_proto proto;
 };
 
 struct TicketKey {
@@ -561,8 +563,6 @@ struct ConnectionConfig {
     size_t connections_per_frontend;
     size_t request_buffer_size;
     size_t response_buffer_size;
-    // downstream protocol; this will be determined by given options.
-    shrpx_proto proto;
     // Address family of backend connection.  One of either AF_INET,
     // AF_INET6 or AF_UNSPEC.  This is ignored if backend connection
     // is made via Unix domain socket.

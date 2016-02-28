@@ -203,7 +203,7 @@ int ConnectionHandler::create_single_worker() {
         nb_.get(),
 #endif // HAVE_NEVERBLEED
         StringRef{tlsconf.cacert}, StringRef{memcachedconf.cert_file},
-        StringRef{memcachedconf.private_key_file}, StringRef(), nullptr);
+        StringRef{memcachedconf.private_key_file}, nullptr);
     all_ssl_ctx_.push_back(session_cache_ssl_ctx);
   }
 
@@ -253,7 +253,7 @@ int ConnectionHandler::create_worker_thread(size_t num) {
           nb_.get(),
 #endif // HAVE_NEVERBLEED
           StringRef{tlsconf.cacert}, StringRef{memcachedconf.cert_file},
-          StringRef{memcachedconf.private_key_file}, StringRef{}, nullptr);
+          StringRef{memcachedconf.private_key_file}, nullptr);
       all_ssl_ctx_.push_back(session_cache_ssl_ctx);
     }
     auto worker =
@@ -767,7 +767,7 @@ SSL_CTX *ConnectionHandler::create_tls_ticket_key_memcached_ssl_ctx() {
       nb_.get(),
 #endif // HAVE_NEVERBLEED
       StringRef{tlsconf.cacert}, StringRef{memcachedconf.cert_file},
-      StringRef{memcachedconf.private_key_file}, StringRef{}, nullptr);
+      StringRef{memcachedconf.private_key_file}, nullptr);
 
   all_ssl_ctx_.push_back(ssl_ctx);
 

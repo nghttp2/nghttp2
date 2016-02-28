@@ -385,7 +385,7 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
             get_config()->conn.upstream.ratelimit.write,
             get_config()->conn.upstream.ratelimit.read, writecb, readcb,
             timeoutcb, this, get_config()->tls.dyn_rec.warmup_threshold,
-            get_config()->tls.dyn_rec.idle_timeout),
+            get_config()->tls.dyn_rec.idle_timeout, PROTO_NONE),
       ipaddr_(ipaddr),
       port_(port),
       faddr_(faddr),
@@ -712,7 +712,7 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
                        << " Create new one";
     }
 
-    if (downstreamconf.proto == PROTO_HTTP2) {
+    if (group.proto == PROTO_HTTP2) {
       if (group.http2_freelist.empty()) {
         if (LOG_ENABLED(INFO)) {
           CLOG(INFO, this)

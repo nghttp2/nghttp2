@@ -118,7 +118,7 @@ HttpDownstreamConnection::HttpDownstreamConnection(DownstreamAddrGroup *group,
             get_config()->conn.downstream.timeout.write,
             get_config()->conn.downstream.timeout.read, {}, {}, connectcb,
             readcb, timeoutcb, this, get_config()->tls.dyn_rec.warmup_threshold,
-            get_config()->tls.dyn_rec.idle_timeout),
+            get_config()->tls.dyn_rec.idle_timeout, PROTO_HTTP1),
       do_read_(&HttpDownstreamConnection::noop),
       do_write_(&HttpDownstreamConnection::noop),
       worker_(worker),
@@ -152,6 +152,8 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
       if (!ssl) {
         return -1;
       }
+
+      ssl::setup_downstream_http1_alpn(ssl);
 
       conn_.set_ssl(ssl);
     }

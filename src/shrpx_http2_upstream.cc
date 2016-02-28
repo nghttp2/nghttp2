@@ -824,9 +824,7 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
       downstream_queue_(
           get_config()->http2_proxy
               ? get_config()->conn.downstream.connections_per_host
-              : get_config()->conn.downstream.proto == PROTO_HTTP
-                    ? get_config()->conn.downstream.connections_per_frontend
-                    : 0,
+              : get_config()->conn.downstream.connections_per_frontend,
           !get_config()->http2_proxy),
       handler_(handler),
       session_(nullptr),

@@ -86,6 +86,8 @@ struct DownstreamAddr {
 struct DownstreamAddrGroup {
   ImmutableString pattern;
   std::vector<DownstreamAddr> addrs;
+  // Application protocol used in this group
+  shrpx_proto proto;
   // List of Http2Session which is not fully utilized (i.e., the
   // server advertized maximum concurrency is not reached).  We will
   // coalesce as much stream as possible in one Http2Session to fully
