@@ -19,14 +19,14 @@ A reverse proxy for HTTP/2, HTTP/1 and SPDY.
 .. describe:: <PRIVATE_KEY>
 
     
-    Set path  to server's private key.   Required unless :option:`-p`\,
-    :option:`--client` or :option:`\--frontend-no-tls` are given.
+    Set  path  to  server's private  key.   Required  unless
+    :option:`--frontend-no-tls` are given.
 
 .. describe:: <CERT>
 
-    Set path  to server's certificate.  Required  unless :option:`-p`\,
-    :option:`--client` or  :option:`\--frontend-no-tls` are given.  To  make OCSP
-    stapling work, this must be absolute path.
+    Set  path  to  server's  certificate.   Required  unless
+    :option:`--frontend-no-tls`  are  given.   To make  OCSP  stapling
+    work, this must be an absolute path.
 
 
 OPTIONS
@@ -37,7 +37,7 @@ The options are categorized into several groups.
 Connections
 ~~~~~~~~~~~
 
-.. option:: -b, --backend=(<HOST>,<PORT>|unix:<PATH>)[;<PATTERN>[:...]]
+.. option:: -b, --backend=(<HOST>,<PORT>|unix:<PATH>)[;[<PATTERN>[:...]][;proto=<PROTO>]]
 
     Set  backend  host  and   port.   The  multiple  backend
     addresses are  accepted by repeating this  option.  UNIX
@@ -45,31 +45,32 @@ Connections
     with "unix:" (e.g., unix:/var/run/backend.sock).
 
     Optionally, if <PATTERN>s are given, the backend address
-    is only used  if request matches the pattern.   If :option:`-s` or
-    :option:`-p`  is  used,  <PATTERN>s   are  ignored.   The  pattern
-    matching  is closely  designed to  ServeMux in  net/http
-    package of Go  programming language.  <PATTERN> consists
-    of path, host + path or  just host.  The path must start
-    with "*/*".  If  it ends with "*/*", it  matches all request
-    path in  its subtree.  To  deal with the request  to the
-    directory without  trailing slash,  the path  which ends
-    with "*/*" also matches the  request path which only lacks
-    trailing '*/*'  (e.g., path  "*/foo/*" matches  request path
-    "*/foo*").  If it does not end with "*/*", it performs exact
-    match against  the request path.   If host is  given, it
-    performs exact match against  the request host.  If host
-    alone  is given,  "*/*"  is  appended to  it,  so that  it
-    matches  all   request  paths  under  the   host  (e.g.,
-    specifying "nghttp2.org" equals to "nghttp2.org/").
+    is  only  used  if  request  matches  the  pattern.   If
+    :option:`--http2-proxy`  is  used,  <PATTERN>s are  ignored.   The
+    pattern  matching is  closely  designed  to ServeMux  in
+    net/http package of  Go programming language.  <PATTERN>
+    consists of  path, host +  path or just host.   The path
+    must start  with "*/*".  If  it ends with "*/*",  it matches
+    all  request path  in  its subtree.   To  deal with  the
+    request  to the  directory without  trailing slash,  the
+    path which ends  with "*/*" also matches  the request path
+    which  only  lacks  trailing  '*/*'  (e.g.,  path  "*/foo/*"
+    matches request path  "*/foo*").  If it does  not end with
+    "*/*", it  performs exact match against  the request path.
+    If host  is given, it  performs exact match  against the
+    request host.  If  host alone is given,  "*/*" is appended
+    to it,  so that it  matches all request paths  under the
+    host   (e.g.,   specifying   "nghttp2.org"   equals   to
+    "nghttp2.org/").
 
     Patterns with  host take  precedence over  patterns with
     just path.   Then, longer patterns take  precedence over
     shorter  ones,  breaking  a  tie by  the  order  of  the
     appearance in the configuration.
 
-    If <PATTERN> is  omitted, "*/*" is used  as pattern, which
-    matches  all  request  paths (catch-all  pattern).   The
-    catch-all backend must be given.
+    If <PATTERN> is omitted or  empty string, "*/*" is used as
+    pattern,  which  matches  all request  paths  (catch-all
+    pattern).  The catch-all backend must be given.
 
     When doing  a match, nghttpx made  some normalization to
     pattern, request host and path.  For host part, they are
@@ -91,6 +92,15 @@ Connections
 
     The backend addresses sharing same <PATTERN> are grouped
     together forming  load balancing  group.
+
+    Optionally,   backend   application  protocol   can   be
+    specified in <PROTO>.  All that share the same <PATTERN>
+    must  have  the  same  <PROTO> value  if  it  is  given.
+    <PROTO>  should be  one  of the  following list  without
+    quotes: "h2", "http/1.1".  The  default value of <PROTO>
+    is "http/1.1".  Note that  usually "h2" refers to HTTP/2
+    over TLS.  But  in this option, it may  mean HTTP/2 over
+    cleartext TCP unless :option:`--backend-tls` is used.
 
     Since ";" and ":" are  used as delimiter, <PATTERN> must
     not  contain these  characters.  Since  ";" has  special
@@ -144,19 +154,9 @@ Connections
 
     Accept PROXY protocol version 1 on frontend connection.
 
-.. option:: --backend-no-tls
+.. option:: --backend-tls
 
-    Disable  SSL/TLS  on  backend connections.   For  HTTP/2
-    backend  connections, TLS  is enabled  by default.   For
-    HTTP/1 backend connections, TLS  is disabled by default,
-    and can  be enabled  by :option:`--backend-http1-tls`  option.  If
-    both  :option:`--backend-no-tls`  and :option:`\--backend-http1-tls`  options
-    are used, :option:`--backend-no-tls` has the precedence.
-
-.. option:: --backend-http1-tls
-
-    Enable SSL/TLS on backend  HTTP/1 connections.  See also
-    :option:`--backend-no-tls` option.
+    Enable SSL/TLS on backend connections.
 
 
 Performance
@@ -237,36 +237,27 @@ Performance
 
     Default: ``0``
 
-.. option:: --backend-http2-connections-per-worker=<N>
+.. option:: --backend-connections-per-host=<N>
 
-    Set   maximum   number   of  backend   HTTP/2   physical
-    connections  per  worker.   If  pattern is  used  in  :option:`-b`
-    option, this limit is applied  to each pattern group (in
-    other  words, each  pattern group  can have  maximum <N>
-    HTTP/2  connections).  The  default  value  is 0,  which
-    means  that  the value  is  adjusted  to the  number  of
-    backend addresses.  If pattern  is used, this adjustment
-    is done for each pattern group.
-
-.. option:: --backend-http1-connections-per-host=<N>
-
-    Set   maximum  number   of  backend   concurrent  HTTP/1
-    connections per origin host.   This option is meaningful
-    when :option:`-s` option  is used.  The origin  host is determined
-    by  authority  portion  of request  URI  (or  :authority
-    header  field  for  HTTP/2).   To limit  the  number  of
-    connections   per  frontend   for   default  mode,   use
-    :option:`--backend-http1-connections-per-frontend`\.
+    Set  maximum number  of  backend concurrent  connections
+    (and/or  streams in  case  of HTTP/2)  per origin  host.
+    This option  is meaningful when :option:`--http2-proxy`  option is
+    used.   The  origin  host  is  determined  by  authority
+    portion of  request URI (or :authority  header field for
+    HTTP/2).   To  limit  the   number  of  connections  per
+    frontend        for       default        mode,       use
+    :option:`--backend-connections-per-frontend`\.
 
     Default: ``8``
 
-.. option:: --backend-http1-connections-per-frontend=<N>
+.. option:: --backend-connections-per-frontend=<N>
 
-    Set   maximum  number   of  backend   concurrent  HTTP/1
-    connections per frontend.  This  option is only used for
-    default mode.   0 means unlimited.  To  limit the number
-    of connections  per host for  HTTP/2 or SPDY  proxy mode
-    (-s option), use :option:`--backend-http1-connections-per-host`\.
+    Set  maximum number  of  backend concurrent  connections
+    (and/or streams  in case of HTTP/2)  per frontend.  This
+    option  is   only  used  for  default   mode.   0  means
+    unlimited.  To limit the  number of connections per host
+    with          :option:`--http2-proxy`         option,          use
+    :option:`--backend-connections-per-host`\.
 
     Default: ``0``
 
@@ -626,10 +617,19 @@ SSL/TLS
 HTTP/2 and SPDY
 ~~~~~~~~~~~~~~~
 
-.. option:: -c, --http2-max-concurrent-streams=<N>
+.. option:: -c, --frontend-http2-max-concurrent-streams=<N>
 
     Set the maximum number of  the concurrent streams in one
-    HTTP/2 and SPDY session.
+    frontend HTTP/2 and SPDY session.
+
+    Default: `` 100``
+
+.. option:: --backend-http2-max-concurrent-streams=<N>
+
+    Set the maximum number of  the concurrent streams in one
+    backend  HTTP/2 session.   This sets  maximum number  of
+    concurrent opened pushed streams.  The maximum number of
+    concurrent requests are set by a remote server.
 
     Default: ``100``
 
@@ -665,7 +665,7 @@ HTTP/2 and SPDY
     Sets the  per-connection window  size of  HTTP/2 backend
     connection to 2\*\*<N>-1.
 
-    Default: ``16``
+    Default: ``30``
 
 .. option:: --http2-no-cookie-crumbling
 
@@ -683,11 +683,10 @@ HTTP/2 and SPDY
     Disable HTTP/2 server push.  Server push is supported by
     default mode and HTTP/2  frontend via Link header field.
     It is  also supported if  both frontend and  backend are
-    HTTP/2 (which implies  :option:`--http2-bridge` or :option:`\--client` mode).
-    In  this  case,  server  push from  backend  session  is
-    relayed  to frontend,  and server  push via  Link header
-    field is  also supported.   HTTP SPDY frontend  does not
-    support server push.
+    HTTP/2 in default mode.  In  this case, server push from
+    backend session is relayed  to frontend, and server push
+    via Link header field  is also supported.  SPDY frontend
+    does not support server push.
 
 
 Mode
@@ -699,35 +698,12 @@ Mode
     Accept  HTTP/2,  SPDY  and HTTP/1.1  over  SSL/TLS.   If
     :option:`--frontend-no-tls` is  used, accept HTTP/2  and HTTP/1.1.
     The  incoming HTTP/1.1  connection  can  be upgraded  to
-    HTTP/2  through  HTTP  Upgrade.   The  protocol  to  the
-    backend is HTTP/1.1.
+    HTTP/2  through  HTTP  Upgrade.
 
 .. option:: -s, --http2-proxy
 
-    Like default mode, but enable secure proxy mode.
-
-.. option:: --http2-bridge
-
-    Like default  mode, but communicate with  the backend in
-    HTTP/2 over SSL/TLS.  Thus  the incoming all connections
-    are converted  to HTTP/2  connection and relayed  to the
-    backend.  See :option:`--backend-http-proxy-uri` option if you are
-    behind  the proxy  and want  to connect  to the  outside
-    HTTP/2 proxy.
-
-.. option:: --client
-
-    Accept  HTTP/2   and  HTTP/1.1  without   SSL/TLS.   The
-    incoming HTTP/1.1  connection can be upgraded  to HTTP/2
-    connection through  HTTP Upgrade.   The protocol  to the
-    backend is HTTP/2.   To use nghttpx as  a forward proxy,
-    use :option:`-p` option instead.
-
-.. option:: -p, --client-proxy
-
-    Like :option:`--client`  option, but it also  requires the request
-    path from frontend must be an absolute URI, suitable for
-    use as a forward proxy.
+    Like default mode, but enable forward proxy.  This is so
+    called HTTP/2 proxy mode.
 
 
 Logging
@@ -868,17 +844,15 @@ HTTP
 
 .. option:: --no-location-rewrite
 
-    Don't rewrite  location header field  on :option:`--http2-bridge`\,
-    :option:`--client`  and  default   mode.   For  :option:`\--http2-proxy`  and
-    :option:`--client-proxy` mode,  location header field will  not be
-    altered regardless of this option.
+    Don't  rewrite location  header field  in default  mode.
+    When :option:`--http2-proxy`  is used, location header  field will
+    not be altered regardless of this option.
 
 .. option:: --host-rewrite
 
-    Rewrite   host   and   :authority   header   fields   on
-    :option:`--http2-bridge`\,   :option:`--client`   and  default   mode.    For
-    :option:`--http2-proxy`  and  :option:`\--client-proxy` mode,  these  headers
-    will not be altered regardless of this option.
+    Rewrite  host and  :authority header  fields in  default
+    mode.  When  :option:`--http2-proxy` is  used, these  headers will
+    not be altered regardless of this option.
 
 .. option:: --altsvc=<PROTOID,PORT[,HOST,[ORIGIN]]>
 
@@ -1126,12 +1100,12 @@ Currently, the following restriction is applied for server push:
 This limitation may be loosened in the future release.
 
 nghttpx also supports server push if both frontend and backend are
-HTTP/2 (which implies :option:`--http2-bridge` or :option:`--client`).
-In this case, in addition to server push via Link header field, server
-push from backend is relayed to frontend HTTP/2 session.
+HTTP/2 in default mode.  In this case, in addition to server push via
+Link header field, server push from backend is forwarded to frontend
+HTTP/2 session.
 
-HTTP/2 server push will be disabled if :option:`--http2-proxy` or
-:option:`--client-proxy` is used.
+HTTP/2 server push will be disabled if :option:`--http2-proxy` is
+used.
 
 UNIX DOMAIN SOCKET
 ------------------

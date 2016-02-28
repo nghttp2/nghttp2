@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "February 25, 2016" "1.8.0" "nghttp2"
+.TH "NGHTTPX" "1" "February 29, 2016" "1.9.0-DEV" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 proxy
 .
@@ -39,15 +39,15 @@ A reverse proxy for HTTP/2, HTTP/1 and SPDY.
 .INDENT 0.0
 .TP
 .B <PRIVATE_KEY>
-Set path  to server\(aqs private key.   Required unless \fI\%\-p\fP,
-\fI\%\-\-client\fP or \fI\%\-\-frontend\-no\-tls\fP are given.
+Set  path  to  server\(aqs private  key.   Required  unless
+\fI\%\-\-frontend\-no\-tls\fP are given.
 .UNINDENT
 .INDENT 0.0
 .TP
 .B <CERT>
-Set path  to server\(aqs certificate.  Required  unless \fI\%\-p\fP,
-\fI\%\-\-client\fP or  \fI\%\-\-frontend\-no\-tls\fP are given.  To  make OCSP
-stapling work, this must be absolute path.
+Set  path  to  server\(aqs  certificate.   Required  unless
+\fI\%\-\-frontend\-no\-tls\fP  are  given.   To make  OCSP  stapling
+work, this must be an absolute path.
 .UNINDENT
 .SH OPTIONS
 .sp
@@ -55,38 +55,39 @@ The options are categorized into several groups.
 .SS Connections
 .INDENT 0.0
 .TP
-.B \-b, \-\-backend=(<HOST>,<PORT>|unix:<PATH>)[;<PATTERN>[:...]]
+.B \-b, \-\-backend=(<HOST>,<PORT>|unix:<PATH>)[;[<PATTERN>[:...]][;proto=<PROTO>]]
 Set  backend  host  and   port.   The  multiple  backend
 addresses are  accepted by repeating this  option.  UNIX
 domain socket  can be  specified by prefixing  path name
 with "unix:" (e.g., unix:/var/run/backend.sock).
 .sp
 Optionally, if <PATTERN>s are given, the backend address
-is only used  if request matches the pattern.   If \fI\%\-s\fP or
-\fI\%\-p\fP  is  used,  <PATTERN>s   are  ignored.   The  pattern
-matching  is closely  designed to  ServeMux in  net/http
-package of Go  programming language.  <PATTERN> consists
-of path, host + path or  just host.  The path must start
-with "\fI/\fP".  If  it ends with "\fI/\fP", it  matches all request
-path in  its subtree.  To  deal with the request  to the
-directory without  trailing slash,  the path  which ends
-with "\fI/\fP" also matches the  request path which only lacks
-trailing \(aq\fI/\fP\(aq  (e.g., path  "\fI/foo/\fP" matches  request path
-"\fI/foo\fP").  If it does not end with "\fI/\fP", it performs exact
-match against  the request path.   If host is  given, it
-performs exact match against  the request host.  If host
-alone  is given,  "\fI/\fP"  is  appended to  it,  so that  it
-matches  all   request  paths  under  the   host  (e.g.,
-specifying "nghttp2.org" equals to "nghttp2.org/").
+is  only  used  if  request  matches  the  pattern.   If
+\fI\%\-\-http2\-proxy\fP  is  used,  <PATTERN>s are  ignored.   The
+pattern  matching is  closely  designed  to ServeMux  in
+net/http package of  Go programming language.  <PATTERN>
+consists of  path, host +  path or just host.   The path
+must start  with "\fI/\fP".  If  it ends with "\fI/\fP",  it matches
+all  request path  in  its subtree.   To  deal with  the
+request  to the  directory without  trailing slash,  the
+path which ends  with "\fI/\fP" also matches  the request path
+which  only  lacks  trailing  \(aq\fI/\fP\(aq  (e.g.,  path  "\fI/foo/\fP"
+matches request path  "\fI/foo\fP").  If it does  not end with
+"\fI/\fP", it  performs exact match against  the request path.
+If host  is given, it  performs exact match  against the
+request host.  If  host alone is given,  "\fI/\fP" is appended
+to it,  so that it  matches all request paths  under the
+host   (e.g.,   specifying   "nghttp2.org"   equals   to
+"nghttp2.org/").
 .sp
 Patterns with  host take  precedence over  patterns with
 just path.   Then, longer patterns take  precedence over
 shorter  ones,  breaking  a  tie by  the  order  of  the
 appearance in the configuration.
 .sp
-If <PATTERN> is  omitted, "\fI/\fP" is used  as pattern, which
-matches  all  request  paths (catch\-all  pattern).   The
-catch\-all backend must be given.
+If <PATTERN> is omitted or  empty string, "\fI/\fP" is used as
+pattern,  which  matches  all request  paths  (catch\-all
+pattern).  The catch\-all backend must be given.
 .sp
 When doing  a match, nghttpx made  some normalization to
 pattern, request host and path.  For host part, they are
@@ -108,6 +109,15 @@ and \fI\%\-b\fP\(aq127.0.0.1,8080;www.nghttp2.org\(aq.
 .sp
 The backend addresses sharing same <PATTERN> are grouped
 together forming  load balancing  group.
+.sp
+Optionally,   backend   application  protocol   can   be
+specified in <PROTO>.  All that share the same <PATTERN>
+must  have  the  same  <PROTO> value  if  it  is  given.
+<PROTO>  should be  one  of the  following list  without
+quotes: "h2", "http/1.1".  The  default value of <PROTO>
+is "http/1.1".  Note that  usually "h2" refers to HTTP/2
+over TLS.  But  in this option, it may  mean HTTP/2 over
+cleartext TCP unless \fI\%\-\-backend\-tls\fP is used.
 .sp
 Since ";" and ":" are  used as delimiter, <PATTERN> must
 not  contain these  characters.  Since  ";" has  special
@@ -167,19 +177,8 @@ Accept PROXY protocol version 1 on frontend connection.
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-\-backend\-no\-tls
-Disable  SSL/TLS  on  backend connections.   For  HTTP/2
-backend  connections, TLS  is enabled  by default.   For
-HTTP/1 backend connections, TLS  is disabled by default,
-and can  be enabled  by \fI\%\-\-backend\-http1\-tls\fP  option.  If
-both  \fI\%\-\-backend\-no\-tls\fP  and \fI\%\-\-backend\-http1\-tls\fP  options
-are used, \fI\%\-\-backend\-no\-tls\fP has the precedence.
-.UNINDENT
-.INDENT 0.0
-.TP
-.B \-\-backend\-http1\-tls
-Enable SSL/TLS on backend  HTTP/1 connections.  See also
-\fI\%\-\-backend\-no\-tls\fP option.
+.B \-\-backend\-tls
+Enable SSL/TLS on backend connections.
 .UNINDENT
 .SS Performance
 .INDENT 0.0
@@ -269,37 +268,27 @@ Default: \fB0\fP
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-\-backend\-http2\-connections\-per\-worker=<N>
-Set   maximum   number   of  backend   HTTP/2   physical
-connections  per  worker.   If  pattern is  used  in  \fI\%\-b\fP
-option, this limit is applied  to each pattern group (in
-other  words, each  pattern group  can have  maximum <N>
-HTTP/2  connections).  The  default  value  is 0,  which
-means  that  the value  is  adjusted  to the  number  of
-backend addresses.  If pattern  is used, this adjustment
-is done for each pattern group.
-.UNINDENT
-.INDENT 0.0
-.TP
-.B \-\-backend\-http1\-connections\-per\-host=<N>
-Set   maximum  number   of  backend   concurrent  HTTP/1
-connections per origin host.   This option is meaningful
-when \fI\%\-s\fP option  is used.  The origin  host is determined
-by  authority  portion  of request  URI  (or  :authority
-header  field  for  HTTP/2).   To limit  the  number  of
-connections   per  frontend   for   default  mode,   use
-\fI\%\-\-backend\-http1\-connections\-per\-frontend\fP\&.
+.B \-\-backend\-connections\-per\-host=<N>
+Set  maximum number  of  backend concurrent  connections
+(and/or  streams in  case  of HTTP/2)  per origin  host.
+This option  is meaningful when \fI\%\-\-http2\-proxy\fP  option is
+used.   The  origin  host  is  determined  by  authority
+portion of  request URI (or :authority  header field for
+HTTP/2).   To  limit  the   number  of  connections  per
+frontend        for       default        mode,       use
+\fI\%\-\-backend\-connections\-per\-frontend\fP\&.
 .sp
 Default: \fB8\fP
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-\-backend\-http1\-connections\-per\-frontend=<N>
-Set   maximum  number   of  backend   concurrent  HTTP/1
-connections per frontend.  This  option is only used for
-default mode.   0 means unlimited.  To  limit the number
-of connections  per host for  HTTP/2 or SPDY  proxy mode
-(\-s option), use \fI\%\-\-backend\-http1\-connections\-per\-host\fP\&.
+.B \-\-backend\-connections\-per\-frontend=<N>
+Set  maximum number  of  backend concurrent  connections
+(and/or streams  in case of HTTP/2)  per frontend.  This
+option  is   only  used  for  default   mode.   0  means
+unlimited.  To limit the  number of connections per host
+with          \fI\%\-\-http2\-proxy\fP         option,          use
+\fI\%\-\-backend\-connections\-per\-host\fP\&.
 .sp
 Default: \fB0\fP
 .UNINDENT
@@ -700,9 +689,19 @@ the complete HTTP/2 cipher suites black list.
 .SS HTTP/2 and SPDY
 .INDENT 0.0
 .TP
-.B \-c, \-\-http2\-max\-concurrent\-streams=<N>
+.B \-c, \-\-frontend\-http2\-max\-concurrent\-streams=<N>
 Set the maximum number of  the concurrent streams in one
-HTTP/2 and SPDY session.
+frontend HTTP/2 and SPDY session.
+.sp
+Default: \(ga\(ga 100\(ga\(ga
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-backend\-http2\-max\-concurrent\-streams=<N>
+Set the maximum number of  the concurrent streams in one
+backend  HTTP/2 session.   This sets  maximum number  of
+concurrent opened pushed streams.  The maximum number of
+concurrent requests are set by a remote server.
 .sp
 Default: \fB100\fP
 .UNINDENT
@@ -743,7 +742,7 @@ Default: \fB16\fP
 Sets the  per\-connection window  size of  HTTP/2 backend
 connection to 2**<N>\-1.
 .sp
-Default: \fB16\fP
+Default: \fB30\fP
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -764,11 +763,10 @@ protocol security.
 Disable HTTP/2 server push.  Server push is supported by
 default mode and HTTP/2  frontend via Link header field.
 It is  also supported if  both frontend and  backend are
-HTTP/2 (which implies  \fI\%\-\-http2\-bridge\fP or \fI\%\-\-client\fP mode).
-In  this  case,  server  push from  backend  session  is
-relayed  to frontend,  and server  push via  Link header
-field is  also supported.   HTTP SPDY frontend  does not
-support server push.
+HTTP/2 in default mode.  In  this case, server push from
+backend session is relayed  to frontend, and server push
+via Link header field  is also supported.  SPDY frontend
+does not support server push.
 .UNINDENT
 .SS Mode
 .INDENT 0.0
@@ -777,39 +775,13 @@ support server push.
 Accept  HTTP/2,  SPDY  and HTTP/1.1  over  SSL/TLS.   If
 \fI\%\-\-frontend\-no\-tls\fP is  used, accept HTTP/2  and HTTP/1.1.
 The  incoming HTTP/1.1  connection  can  be upgraded  to
-HTTP/2  through  HTTP  Upgrade.   The  protocol  to  the
-backend is HTTP/1.1.
+HTTP/2  through  HTTP  Upgrade.
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-s, \-\-http2\-proxy
-Like default mode, but enable secure proxy mode.
-.UNINDENT
-.INDENT 0.0
-.TP
-.B \-\-http2\-bridge
-Like default  mode, but communicate with  the backend in
-HTTP/2 over SSL/TLS.  Thus  the incoming all connections
-are converted  to HTTP/2  connection and relayed  to the
-backend.  See \fI\%\-\-backend\-http\-proxy\-uri\fP option if you are
-behind  the proxy  and want  to connect  to the  outside
-HTTP/2 proxy.
-.UNINDENT
-.INDENT 0.0
-.TP
-.B \-\-client
-Accept  HTTP/2   and  HTTP/1.1  without   SSL/TLS.   The
-incoming HTTP/1.1  connection can be upgraded  to HTTP/2
-connection through  HTTP Upgrade.   The protocol  to the
-backend is HTTP/2.   To use nghttpx as  a forward proxy,
-use \fI\%\-p\fP option instead.
-.UNINDENT
-.INDENT 0.0
-.TP
-.B \-p, \-\-client\-proxy
-Like \fI\%\-\-client\fP  option, but it also  requires the request
-path from frontend must be an absolute URI, suitable for
-use as a forward proxy.
+Like default mode, but enable forward proxy.  This is so
+called HTTP/2 proxy mode.
 .UNINDENT
 .SS Logging
 .INDENT 0.0
@@ -975,18 +947,16 @@ is received, it is left unaltered.
 .INDENT 0.0
 .TP
 .B \-\-no\-location\-rewrite
-Don\(aqt rewrite  location header field  on \fI\%\-\-http2\-bridge\fP,
-\fI\%\-\-client\fP  and  default   mode.   For  \fI\%\-\-http2\-proxy\fP  and
-\fI\%\-\-client\-proxy\fP mode,  location header field will  not be
-altered regardless of this option.
+Don\(aqt  rewrite location  header field  in default  mode.
+When \fI\%\-\-http2\-proxy\fP  is used, location header  field will
+not be altered regardless of this option.
 .UNINDENT
 .INDENT 0.0
 .TP
 .B \-\-host\-rewrite
-Rewrite   host   and   :authority   header   fields   on
-\fI\%\-\-http2\-bridge\fP,   \fI\%\-\-client\fP   and  default   mode.    For
-\fI\%\-\-http2\-proxy\fP  and  \fI\%\-\-client\-proxy\fP mode,  these  headers
-will not be altered regardless of this option.
+Rewrite  host and  :authority header  fields in  default
+mode.  When  \fI\%\-\-http2\-proxy\fP is  used, these  headers will
+not be altered regardless of this option.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -1258,12 +1228,12 @@ associated stream\(aqs status code must be 200.
 This limitation may be loosened in the future release.
 .sp
 nghttpx also supports server push if both frontend and backend are
-HTTP/2 (which implies \fI\%\-\-http2\-bridge\fP or \fI\%\-\-client\fP).
-In this case, in addition to server push via Link header field, server
-push from backend is relayed to frontend HTTP/2 session.
+HTTP/2 in default mode.  In this case, in addition to server push via
+Link header field, server push from backend is forwarded to frontend
+HTTP/2 session.
 .sp
-HTTP/2 server push will be disabled if \fI\%\-\-http2\-proxy\fP or
-\fI\%\-\-client\-proxy\fP is used.
+HTTP/2 server push will be disabled if \fI\%\-\-http2\-proxy\fP is
+used.
 .SH UNIX DOMAIN SOCKET
 .sp
 nghttpx supports UNIX domain socket with a filename for both frontend
