@@ -105,6 +105,11 @@ int Http2DownstreamConnection::attach_downstream(Downstream *downstream) {
   downstream_ = downstream;
   downstream_->reset_downstream_rtimer();
 
+  auto &req = downstream_->request();
+
+  // HTTP/2 disables HTTP Upgrade.
+  req.upgrade_request = false;
+
   return 0;
 }
 
