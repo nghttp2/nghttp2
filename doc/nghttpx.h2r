@@ -98,12 +98,12 @@ Currently, the following restriction is applied for server push:
 This limitation may be loosened in the future release.
 
 nghttpx also supports server push if both frontend and backend are
-HTTP/2 (which implies :option:`--http2-bridge` or :option:`--client`).
-In this case, in addition to server push via Link header field, server
-push from backend is relayed to frontend HTTP/2 session.
+HTTP/2 in default mode.  In this case, in addition to server push via
+Link header field, server push from backend is forwarded to frontend
+HTTP/2 session.
 
-HTTP/2 server push will be disabled if :option:`--http2-proxy` or
-:option:`--client-proxy` is used.
+HTTP/2 server push will be disabled if :option:`--http2-proxy` is
+used.
 
 UNIX DOMAIN SOCKET
 ------------------

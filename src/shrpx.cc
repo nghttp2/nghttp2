@@ -1672,10 +1672,10 @@ HTTP/2 and SPDY:
               Disable HTTP/2 server push.  Server push is supported by
               default mode and HTTP/2  frontend via Link header field.
               It is  also supported if  both frontend and  backend are
-              HTTP/2.  In this case,  server push from backend session
-              is relayed to frontend, and  server push via Link header
-              field is also supported.  SPDY frontend does not support
-              server push.
+              HTTP/2 in default mode.  In  this case, server push from
+              backend session is relayed  to frontend, and server push
+              via Link header field  is also supported.  SPDY frontend
+              does not support server push.
 
 Mode:
   (default mode)
