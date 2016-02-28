@@ -303,15 +303,11 @@ As of nghttpx 1.9.0, ``--http2-bridge``, ``--client`` and
 ``--client-proxy`` options were removed.  These functionality can be
 used using combinations of options.
 
-* ``--http2-bridge``: Use
-  :option:`--backend`\='-b<ADDR>,<PORT>;;proto=h2', and
-  :option:`--backend-tls`.
+* ``--http2-bridge``: Use ``--backend='<ADDR>,<PORT>;;proto=h2'``, and
+  ``--backend-tls``.
 
-* ``--client``: Use :option:`--frontend-no-tls`,
-  :option:`--backend`\='-b<ADDR>,<PORT>;;proto=h2', and
-  :option:`--backend-tls`.
+* ``--client``: Use ``--frontend-no-tls``,
+  ``--backend='<ADDR>,<PORT>;;proto=h2'``, and ``--backend-tls``.
 
-* ``--client-proxy``: Use :option:`--http2-proxy`,
-  :option:`--frontend-no-tls`,
-  :option:`--backend`\='-b<ADDR>,<PORT>;;proto=h2', and
-  :option:`--backend-tls`.
+* ``--client-proxy``: Use ``--http2-proxy``, ``--frontend-no-tls``,
+  ``--backend='<ADDR>,<PORT>;;proto=h2'``, and ``--backend-tls``.
