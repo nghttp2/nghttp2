@@ -169,6 +169,7 @@ nghttpx_unittest_SOURCES = shrpx-unittest.cc \
 	shrpx_ssl_test.cc shrpx_ssl_test.h \
 	shrpx_downstream_test.cc shrpx_downstream_test.h \
 	shrpx_config_test.cc shrpx_config_test.h \
+	shrpx_worker_test.cc shrpx_worker_test.h \
 	shrpx_http_test.cc shrpx_http_test.h \
 	http2_test.cc http2_test.h \
 	util_test.cc util_test.h \
