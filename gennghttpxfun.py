@@ -124,7 +124,8 @@ OPTIONS = [
     "tls-ticket-key-memcached-address-family",
     "backend-address-family",
     "frontend-http2-max-concurrent-streams",
-    "backend-http2-max-concurrent-streams"
+    "backend-http2-max-concurrent-streams",
+    "backend-connections-per-frontend"
 ]
 
 LOGVARS = [

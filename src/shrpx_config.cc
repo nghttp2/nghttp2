@@ -654,6 +654,7 @@ enum {
   SHRPX_OPTID_ALTSVC,
   SHRPX_OPTID_BACKEND,
   SHRPX_OPTID_BACKEND_ADDRESS_FAMILY,
+  SHRPX_OPTID_BACKEND_CONNECTIONS_PER_FRONTEND,
   SHRPX_OPTID_BACKEND_HTTP_PROXY_URI,
   SHRPX_OPTID_BACKEND_HTTP1_CONNECTIONS_PER_FRONTEND,
   SHRPX_OPTID_BACKEND_HTTP1_CONNECTIONS_PER_HOST,
@@ -1340,6 +1341,15 @@ int option_lookup_token(const char *name, size_t namelen) {
     case 's':
       if (util::strieq_l("tls-session-cache-memcached-tl", name, 30)) {
         return SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED_TLS;
+      }
+      break;
+    }
+    break;
+  case 32:
+    switch (name[31]) {
+    case 'd':
+      if (util::strieq_l("backend-connections-per-fronten", name, 31)) {
+        return SHRPX_OPTID_BACKEND_CONNECTIONS_PER_FRONTEND;
       }
       break;
     }
@@ -2045,6 +2055,10 @@ int parse_config(const char *opt, const char *optarg,
     return 0;
   }
   case SHRPX_OPTID_BACKEND_HTTP1_CONNECTIONS_PER_FRONTEND:
+    LOG(WARN) << opt << ": deprecated.  Use "
+              << SHRPX_OPT_BACKEND_CONNECTIONS_PER_FRONTEND << " instead.";
+  // fall through
+  case SHRPX_OPTID_BACKEND_CONNECTIONS_PER_FRONTEND:
     return parse_uint(&mod_config()->conn.downstream.connections_per_frontend,
                       opt, optarg);
   case SHRPX_OPTID_LISTENER_DISABLE_TIMEOUT:

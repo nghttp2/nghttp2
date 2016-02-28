@@ -232,6 +232,8 @@ constexpr char SHRPX_OPT_FRONTEND_HTTP2_MAX_CONCURRENT_STREAMS[] =
     "frontend-http2-max-concurrent-streams";
 constexpr char SHRPX_OPT_BACKEND_HTTP2_MAX_CONCURRENT_STREAMS[] =
     "backend-http2-max-concurrent-streams";
+constexpr char SHRPX_OPT_BACKEND_CONNECTIONS_PER_FRONTEND[] =
+    "backend-connections-per-frontend";
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 

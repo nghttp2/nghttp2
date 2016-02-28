@@ -1362,12 +1362,13 @@ Performance:
               --backend-http1-connections-per-frontend.
               Default: )" << get_config()->conn.downstream.connections_per_host
       << R"(
-  --backend-http1-connections-per-frontend=<N>
-              Set   maximum  number   of  backend   concurrent  HTTP/1
-              connections per frontend.  This  option is only used for
-              default mode.   0 means unlimited.  To  limit the number
-              of connections  per host for  HTTP/2 or SPDY  proxy mode
-              (-s option), use --backend-http1-connections-per-host.
+  --backend-connections-per-frontend=<N>
+              Set maximum number of backend concurrent connections (or
+              streams in case of HTTP/2) per frontend.  This option is
+              only  used for  default  mode.  0  means unlimited.   To
+              limit the number  of connections per host  for HTTP/2 or
+              SPDY      proxy      mode     (-s      option),      use
+              --backend-http1-connections-per-host.
               Default: )"
       << get_config()->conn.downstream.connections_per_frontend << R"(
   --rlimit-nofile=<N>
@@ -2473,6 +2474,8 @@ int main(int argc, char **argv) {
          &flag, 117},
         {SHRPX_OPT_BACKEND_HTTP2_MAX_CONCURRENT_STREAMS, required_argument,
          &flag, 118},
+        {SHRPX_OPT_BACKEND_CONNECTIONS_PER_FRONTEND, required_argument, &flag,
+         119},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -2976,6 +2979,11 @@ int main(int argc, char **argv) {
       case 118:
         // --backend-http2-max-concurrent-streams
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP2_MAX_CONCURRENT_STREAMS,
+                             optarg);
+        break;
+      case 119:
+        // --backend-connections-per-frontend
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_CONNECTIONS_PER_FRONTEND,
                              optarg);
         break;
       default:
