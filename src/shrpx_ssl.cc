@@ -1325,17 +1325,17 @@ SSL_CTX *setup_downstream_client_ssl_context(
 }
 
 void setup_downstream_http2_alpn(SSL *ssl) {
-  auto alpn = util::get_default_alpn();
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L
   // ALPN advertisement
+  auto alpn = util::get_default_alpn();
   SSL_set_alpn_protos(ssl, alpn.data(), alpn.size());
 #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 }
 
 void setup_downstream_http1_alpn(SSL *ssl) {
-  auto alpn = StringRef::from_lit(NGHTTP2_H1_1_ALPN);
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L
   // ALPN advertisement
+  auto alpn = StringRef::from_lit(NGHTTP2_H1_1_ALPN);
   SSL_set_alpn_protos(ssl, alpn.byte(), alpn.size());
 #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 }

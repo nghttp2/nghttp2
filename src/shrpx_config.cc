@@ -2603,6 +2603,9 @@ StringRef strproto(shrpx_proto proto) {
   case PROTO_MEMCACHED:
     return StringRef::from_lit("memcached");
   }
+
+  // gcc needs this.
+  assert(0);
 }
 
 } // namespace shrpx
