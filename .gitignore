@@ -33,6 +33,7 @@ test-driver
 CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
+install_manifest.txt
 CTestTestfile.cmake
 build.ninja
 rules.ninja
