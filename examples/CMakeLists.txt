@@ -26,8 +26,8 @@ if(ENABLE_EXAMPLES)
   )
 
   add_executable(client           client.c $<TARGET_OBJECTS:http-parser>)
-  add_executable(libevent_client  libevent-client.c $<TARGET_OBJECTS:http-parser>)
-  add_executable(libevent_server  libevent-server.c $<TARGET_OBJECTS:http-parser>)
+  add_executable(libevent-client  libevent-client.c $<TARGET_OBJECTS:http-parser>)
+  add_executable(libevent-server  libevent-server.c $<TARGET_OBJECTS:http-parser>)
   add_executable(deflate          deflate.c $<TARGET_OBJECTS:http-parser>)
 
   if(ENABLE_TINY_NGHTTPD)
