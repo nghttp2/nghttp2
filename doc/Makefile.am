@@ -49,6 +49,7 @@ APIDOCS= \
 	nghttp2_hd_inflate_hd.rst \
 	nghttp2_hd_inflate_new.rst \
 	nghttp2_hd_inflate_new2.rst \
+	nghttp2_http2_strerror.rst \
 	nghttp2_is_fatal.rst \
 	nghttp2_nv_compare_name.rst \
 	nghttp2_option_del.rst \

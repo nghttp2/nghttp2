@@ -3227,6 +3227,16 @@ NGHTTP2_EXTERN const char *nghttp2_strerror(int lib_error_code);
 /**
  * @function
  *
+ * Returns string representation of HTTP/2 error code |error_code|
+ * (e.g., ``PROTOCOL_ERROR`` is returned if ``error_code ==
+ * NGHTTP2_PROTOCOL_ERROR``).  If string representation is unknown for
+ * given |error_code|, this function returns string ``unknown``.
+ */
+NGHTTP2_EXTERN const char *nghttp2_http2_strerror(uint32_t error_code);
+
+/**
+ * @function
+ *
  * Initializes |pri_spec| with the |stream_id| of the stream to depend
  * on with |weight| and its exclusive flag.  If |exclusive| is
  * nonzero, exclusive flag is set.
