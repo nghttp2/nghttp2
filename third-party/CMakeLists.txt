@@ -59,6 +59,7 @@ if(ENABLE_THIRD_PARTY)
       IMPORTED_LOCATION "${MRUBY_BUILD_DIR}/lib/${MRUBY_LIBRARY}"
       INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/mruby/include"
     )
+    add_dependencies(mruby-lib mruby)
 
     # XXX clean ${CMAKE_CURRENT_BINARY_DIR}/mruby/build
   endif()
