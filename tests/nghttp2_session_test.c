@@ -3095,6 +3095,7 @@ void test_nghttp2_session_on_ping_received(void) {
   nghttp2_frame frame;
   nghttp2_outbound_item *top;
   const uint8_t opaque_data[] = "01234567";
+  nghttp2_option *option;
 
   user_data.frame_recv_cb_called = 0;
   user_data.invalid_frame_recv_cb_called = 0;
@@ -3125,6 +3126,23 @@ void test_nghttp2_session_on_ping_received(void) {
 
   nghttp2_frame_ping_free(&frame.ping);
   nghttp2_session_del(session);
+
+  /* Use nghttp2_option_set_no_auto_ping_ack() */
+  nghttp2_option_new(&option);
+  nghttp2_option_set_no_auto_ping_ack(option, 1);
+
+  nghttp2_session_server_new2(&session, &callbacks, &user_data, option);
+  nghttp2_frame_ping_init(&frame.ping, NGHTTP2_FLAG_NONE, NULL);
+
+  user_data.frame_recv_cb_called = 0;
+
+  CU_ASSERT(0 == nghttp2_session_on_ping_received(session, &frame));
+  CU_ASSERT(1 == user_data.frame_recv_cb_called);
+  CU_ASSERT(NULL == nghttp2_outbound_queue_top(&session->ob_urgent));
+
+  nghttp2_frame_ping_free(&frame.ping);
+  nghttp2_session_del(session);
+  nghttp2_option_del(option);
 }
 
 void test_nghttp2_session_on_goaway_received(void) {
@@ -6151,6 +6169,15 @@ void test_nghttp2_session_set_option(void) {
   nghttp2_session_client_new2(&session, &callbacks, NULL, option);
 
   CU_ASSERT(99 == session->max_incoming_reserved_streams);
+  nghttp2_session_del(session);
+
+  /* Test for nghttp2_option_set_no_auto_ping_ack */
+  nghttp2_option_set_no_auto_ping_ack(option, 1);
+
+  nghttp2_session_client_new2(&session, &callbacks, NULL, option);
+
+  CU_ASSERT(session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_PING_ACK);
+
   nghttp2_session_del(session);
 
   nghttp2_option_del(option);

@@ -55,6 +55,7 @@ APIDOCS= \
 	nghttp2_option_del.rst \
 	nghttp2_option_new.rst \
 	nghttp2_option_set_max_reserved_remote_streams.rst \
+	nghttp2_option_set_no_auto_ping_ack.rst \
 	nghttp2_option_set_no_auto_window_update.rst \
 	nghttp2_option_set_no_http_messaging.rst \
 	nghttp2_option_set_no_recv_client_magic.rst \

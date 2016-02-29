@@ -50,7 +50,8 @@ extern int nghttp2_enable_strict_preface;
 typedef enum {
   NGHTTP2_OPTMASK_NO_AUTO_WINDOW_UPDATE = 1 << 0,
   NGHTTP2_OPTMASK_NO_RECV_CLIENT_MAGIC = 1 << 1,
-  NGHTTP2_OPTMASK_NO_HTTP_MESSAGING = 1 << 2
+  NGHTTP2_OPTMASK_NO_HTTP_MESSAGING = 1 << 2,
+  NGHTTP2_OPTMASK_NO_AUTO_PING_ACK = 1 << 3
 } nghttp2_optmask;
 
 typedef enum {

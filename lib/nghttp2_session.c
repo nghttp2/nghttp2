@@ -416,6 +416,11 @@ static int session_new(nghttp2_session **session_ptr,
       memcpy((*session_ptr)->user_recv_ext_types, option->user_recv_ext_types,
              sizeof((*session_ptr)->user_recv_ext_types));
     }
+
+    if ((option->opt_set_mask & NGHTTP2_OPT_NO_AUTO_PING_ACK) &&
+        option->no_auto_ping_ack) {
+      (*session_ptr)->opt_flags |= NGHTTP2_OPTMASK_NO_AUTO_PING_ACK;
+    }
   }
 
   (*session_ptr)->callbacks = *callbacks;
@@ -4364,7 +4369,8 @@ int nghttp2_session_on_ping_received(nghttp2_session *session,
     return session_handle_invalid_connection(session, frame, NGHTTP2_ERR_PROTO,
                                              "PING: stream_id != 0");
   }
-  if ((frame->hd.flags & NGHTTP2_FLAG_ACK) == 0 &&
+  if ((session->opt_flags & NGHTTP2_OPTMASK_NO_AUTO_PING_ACK) == 0 &&
+      (frame->hd.flags & NGHTTP2_FLAG_ACK) == 0 &&
       !session_is_closing(session)) {
     /* Peer sent ping, so ping it back */
     rv = nghttp2_session_add_ping(session, NGHTTP2_FLAG_ACK,

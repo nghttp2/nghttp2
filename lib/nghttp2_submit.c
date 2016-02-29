@@ -211,8 +211,9 @@ int32_t nghttp2_submit_headers(nghttp2_session *session, uint8_t flags,
                                    nvlen, NULL, stream_user_data);
 }
 
-int nghttp2_submit_ping(nghttp2_session *session, uint8_t flags _U_,
+int nghttp2_submit_ping(nghttp2_session *session, uint8_t flags,
                         const uint8_t *opaque_data) {
+  flags &= NGHTTP2_FLAG_ACK;
   return nghttp2_session_add_ping(session, NGHTTP2_FLAG_NONE, opaque_data);
 }
 

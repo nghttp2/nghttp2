@@ -73,3 +73,8 @@ void nghttp2_option_set_user_recv_extension_type(nghttp2_option *option,
   option->user_recv_ext_types[type / 8] =
       (uint8_t)(option->user_recv_ext_types[type / 8] | (1 << (type & 0x7)));
 }
+
+void nghttp2_option_set_no_auto_ping_ack(nghttp2_option *option, int val) {
+  option->opt_set_mask |= NGHTTP2_OPT_NO_AUTO_PING_ACK;
+  option->no_auto_ping_ack = val;
+}

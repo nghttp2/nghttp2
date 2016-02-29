@@ -2254,6 +2254,20 @@ nghttp2_option_set_user_recv_extension_type(nghttp2_option *option,
 /**
  * @function
  *
+ * This option prevents the library from sending PING frame with ACK
+ * flag set automatically when PING frame without ACK flag set is
+ * received.  If this option is set to nonzero, the library won't send
+ * PING frame with ACK flag set in the response for incoming PING
+ * frame.  The application can send PING frame with ACK flag set using
+ * `nghttp2_submit_ping()` with :enum:`NGHTTP2_FLAG_ACK` as flags
+ * parameter.
+ */
+NGHTTP2_EXTERN void nghttp2_option_set_no_auto_ping_ack(nghttp2_option *option,
+                                                        int val);
+
+/**
+ * @function
+ *
  * Initializes |*session_ptr| for client use.  The all members of
  * |callbacks| are copied to |*session_ptr|.  Therefore |*session_ptr|
  * does not store |callbacks|.  The |user_data| is an arbitrary user
@@ -3783,8 +3797,12 @@ nghttp2_submit_push_promise(nghttp2_session *session, uint8_t flags,
  * received PING frame.  The library automatically submits PING frame
  * in this case.
  *
- * The |flags| is currently ignored and should be
- * :enum:`NGHTTP2_FLAG_NONE`.
+ * The |flags| is bitwise OR of 0 or more of the following value.
+ *
+ * * :enum:`NGHTTP2_FLAG_ACK`
+ *
+ * Unless `nghttp2_option_set_no_auto_ping_ack()` is used, the |flags|
+ * should be :enum:`NGHTTP2_FLAG_NONE`.
  *
  * If the |opaque_data| is non ``NULL``, then it should point to the 8
  * bytes array of memory to specify opaque data to send with PING
