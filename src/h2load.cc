@@ -84,7 +84,7 @@ Config::Config()
       nreqs(1),
       nclients(1),
       nthreads(1),
-      max_concurrent_streams(-1),
+      max_concurrent_streams(1),
       window_bits(30),
       connection_window_bits(30),
       rate(0),
