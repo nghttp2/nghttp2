@@ -926,10 +926,10 @@ parse_next_link_header_once(const char *first, const char *last) {
     if (!ign) {
       // rel can take several relations using quoted form.
       static constexpr char PLP[] = "rel=\"";
-      static constexpr size_t PLPLEN = sizeof(PLP) - 1;
+      static constexpr size_t PLPLEN = str_size(PLP);
 
       static constexpr char PLT[] = "preload";
-      static constexpr size_t PLTLEN = sizeof(PLT) - 1;
+      static constexpr size_t PLTLEN = str_size(PLT);
       if (first + PLPLEN < last && *(first + PLPLEN - 1) == '"' &&
           std::equal(PLP, PLP + PLPLEN, first, util::CaseCmp())) {
         // we have to search preload in whitespace separated list:
@@ -975,7 +975,7 @@ parse_next_link_header_once(const char *first, const char *last) {
       // we are only interested in rel=preload parameter.  Others are
       // simply skipped.
       static constexpr char PL[] = "rel=preload";
-      static constexpr size_t PLLEN = sizeof(PL) - 1;
+      static constexpr size_t PLLEN = str_size(PL);
       if (first + PLLEN == last) {
         if (std::equal(PL, PL + PLLEN, first, util::CaseCmp())) {
           // ok = true;
@@ -1005,7 +1005,7 @@ parse_next_link_header_once(const char *first, const char *last) {
       }
       // we have to reject URI if we have nonempty anchor parameter.
       static constexpr char ANCHOR[] = "anchor=";
-      static constexpr size_t ANCHORLEN = sizeof(ANCHOR) - 1;
+      static constexpr size_t ANCHORLEN = str_size(ANCHOR);
       if (!ign && !check_link_param_empty(first, last, ANCHOR, ANCHORLEN)) {
         ign = true;
       }
@@ -1013,7 +1013,7 @@ parse_next_link_header_once(const char *first, const char *last) {
       // reject URI if we have non-empty loadpolicy.  This could be
       // tightened up to just pick up "next" or "insert".
       static constexpr char LOADPOLICY[] = "loadpolicy=";
-      static constexpr size_t LOADPOLICYLEN = sizeof(LOADPOLICY) - 1;
+      static constexpr size_t LOADPOLICYLEN = str_size(LOADPOLICY);
       if (!ign &&
           !check_link_param_empty(first, last, LOADPOLICY, LOADPOLICYLEN)) {
         ign = true;

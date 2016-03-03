@@ -274,353 +274,354 @@ void test_http2_lookup_token(void) {
 void test_http2_parse_link_header(void) {
   {
     // only URI appears; we don't extract URI unless it bears rel=preload
-    const char s[] = "<url>";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = "<url>";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(0 == res.size());
   }
   {
     // URI url should be extracted
-    const char s[] = "<url>; rel=preload";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = "<url>; rel=preload";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
     CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
   }
   {
     // With extra link-param.  URI url should be extracted
-    const char s[] = "<url>; rel=preload; as=file";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = "<url>; rel=preload; as=file";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
     CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
   }
   {
     // With extra link-param.  URI url should be extracted
-    const char s[] = "<url>; as=file; rel=preload";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = "<url>; as=file; rel=preload";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
     CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
   }
   {
     // With extra link-param and quote-string.  URI url should be
     // extracted
-    const char s[] = R"(<url>; rel=preload; title="foo,bar")";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = R"(<url>; rel=preload; title="foo,bar")";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
     CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
   }
   {
     // With extra link-param and quote-string.  URI url should be
     // extracted
-    const char s[] = R"(<url>; title="foo,bar"; rel=preload)";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = R"(<url>; title="foo,bar"; rel=preload)";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
     CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
   }
   {
     // ',' after quote-string
-    const char s[] = R"(<url>; title="foo,bar", <url>; rel=preload)";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = R"(<url>; title="foo,bar", <url>; rel=preload)";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
     CU_ASSERT(std::make_pair(&s[25], &s[28]) == res[0].uri);
   }
   {
     // Only first URI should be extracted.
-    const char s[] = "<url>; rel=preload, <url>";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = "<url>; rel=preload, <url>";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
     CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
   }
   {
     // Both have rel=preload, so both urls should be extracted
-    const char s[] = "<url>; rel=preload, <url>; rel=preload";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = "<url>; rel=preload, <url>; rel=preload";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(2 == res.size());
     CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
     CU_ASSERT(std::make_pair(&s[21], &s[24]) == res[1].uri);
   }
   {
     // Second URI uri should be extracted.
-    const char s[] = "<url>, <url>;rel=preload";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = "<url>, <url>;rel=preload";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
     CU_ASSERT(std::make_pair(&s[8], &s[11]) == res[0].uri);
   }
   {
     // Error if input ends with ';'
-    const char s[] = "<url>;rel=preload;";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = "<url>;rel=preload;";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(0 == res.size());
   }
   {
     // Error if link header ends with ';'
-    const char s[] = "<url>;rel=preload;, <url>";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = "<url>;rel=preload;, <url>";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(0 == res.size());
   }
   {
     // OK if input ends with ','
-    const char s[] = "<url>;rel=preload,";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = "<url>;rel=preload,";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
     CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
   }
   {
     // Multiple repeated ','s between fields is OK
-    const char s[] = "<url>,,,<url>;rel=preload";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = "<url>,,,<url>;rel=preload";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
     CU_ASSERT(std::make_pair(&s[9], &s[12]) == res[0].uri);
   }
   {
     // Error if url is not enclosed by <>
-    const char s[] = "url>;rel=preload";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = "url>;rel=preload";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(0 == res.size());
   }
   {
     // Error if url is not enclosed by <>
-    const char s[] = "<url;rel=preload";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = "<url;rel=preload";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(0 == res.size());
   }
   {
     // Empty parameter value is not allowed
-    const char s[] = "<url>;rel=preload; as=";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = "<url>;rel=preload; as=";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(0 == res.size());
   }
   {
     // Empty parameter value is not allowed
-    const char s[] = "<url>;as=;rel=preload";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = "<url>;as=;rel=preload";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(0 == res.size());
   }
   {
     // Empty parameter value is not allowed
-    const char s[] = "<url>;as=, <url>;rel=preload";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = "<url>;as=, <url>;rel=preload";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(0 == res.size());
   }
   {
     // Empty parameter name is not allowed
-    const char s[] = "<url>; =file; rel=preload";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = "<url>; =file; rel=preload";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(0 == res.size());
   }
   {
     // Without whitespaces
-    const char s[] = "<url>;as=file;rel=preload,<url>;rel=preload";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = "<url>;as=file;rel=preload,<url>;rel=preload";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(2 == res.size());
     CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
     CU_ASSERT(std::make_pair(&s[27], &s[30]) == res[1].uri);
   }
   {
     // link-extension may have no value
-    const char s[] = "<url>; as; rel=preload";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = "<url>; as; rel=preload";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
     CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
   }
   {
     // ext-name-star
-    const char s[] = "<url>; foo*=bar; rel=preload";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = "<url>; foo*=bar; rel=preload";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
     CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
   }
   {
     // '*' is not allowed expect for trailing one
-    const char s[] = "<url>; *=bar; rel=preload";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = "<url>; *=bar; rel=preload";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(0 == res.size());
   }
   {
     // '*' is not allowed expect for trailing one
-    const char s[] = "<url>; foo*bar=buzz; rel=preload";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = "<url>; foo*bar=buzz; rel=preload";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(0 == res.size());
   }
   {
     // ext-name-star must be followed by '='
-    const char s[] = "<url>; foo*; rel=preload";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = "<url>; foo*; rel=preload";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(0 == res.size());
   }
   {
     // '>' is not followed by ';'
-    const char s[] = "<url> rel=preload";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = "<url> rel=preload";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(0 == res.size());
   }
   {
     // Starting with whitespace is no problem.
-    const char s[] = "  <url>; rel=preload";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = "  <url>; rel=preload";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
     CU_ASSERT(std::make_pair(&s[3], &s[6]) == res[0].uri);
   }
   {
     // preload is a prefix of bogus rel parameter value
-    const char s[] = "<url>; rel=preloadx";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = "<url>; rel=preloadx";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(0 == res.size());
   }
   {
     // preload in relation-types list
-    const char s[] = R"(<url>; rel="preload")";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = R"(<url>; rel="preload")";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
     CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
   }
   {
     // preload in relation-types list followed by another parameter
-    const char s[] = R"(<url>; rel="preload foo")";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = R"(<url>; rel="preload foo")";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
     CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
   }
   {
     // preload in relation-types list following another parameter
-    const char s[] = R"(<url>; rel="foo preload")";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = R"(<url>; rel="foo preload")";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
     CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
   }
   {
     // preload in relation-types list between other parameters
-    const char s[] = R"(<url>; rel="foo preload bar")";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = R"(<url>; rel="foo preload bar")";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
     CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
   }
   {
     // preload in relation-types list between other parameters
-    const char s[] = R"(<url>; rel="foo   preload   bar")";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = R"(<url>; rel="foo   preload   bar")";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
     CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
   }
   {
     // no preload in relation-types list
-    const char s[] = R"(<url>; rel="foo")";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = R"(<url>; rel="foo")";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(0 == res.size());
   }
   {
     // no preload in relation-types list, multiple unrelated elements.
-    const char s[] = R"(<url>; rel="foo bar")";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = R"(<url>; rel="foo bar")";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(0 == res.size());
   }
   {
     // preload in relation-types list, followed by another link-value.
-    const char s[] = R"(<url>; rel="preload", <url>)";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = R"(<url>; rel="preload", <url>)";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
     CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
   }
   {
     // preload in relation-types list, following another link-value.
-    const char s[] = R"(<url>, <url>; rel="preload")";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = R"(<url>, <url>; rel="preload")";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
     CU_ASSERT(std::make_pair(&s[8], &s[11]) == res[0].uri);
   }
   {
     // preload in relation-types list, followed by another link-param.
-    const char s[] = R"(<url>; rel="preload"; as="font")";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = R"(<url>; rel="preload"; as="font")";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
     CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
   }
   {
     // preload in relation-types list, followed by character other
     // than ';' or ','
-    const char s[] = R"(<url>; rel="preload".)";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = R"(<url>; rel="preload".)";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(0 == res.size());
   }
   {
     // preload in relation-types list, followed by ';' but it
     // terminates input
-    const char s[] = R"(<url>; rel="preload";)";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = R"(<url>; rel="preload";)";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(0 == res.size());
   }
   {
     // preload in relation-types list, followed by ',' but it
     // terminates input
-    const char s[] = R"(<url>; rel="preload",)";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = R"(<url>; rel="preload",)";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
     CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
   }
   {
     // preload in relation-types list but there is preceding white
     // space.
-    const char s[] = R"(<url>; rel=" preload")";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = R"(<url>; rel=" preload")";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(0 == res.size());
   }
   {
     // preload in relation-types list but there is trailing white
     // space.
-    const char s[] = R"(<url>; rel="preload ")";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = R"(<url>; rel="preload ")";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(0 == res.size());
   }
   {
     // backslash escaped characters in quoted-string
-    const char s[] = R"(<url>; rel=preload; title="foo\"baz\"bar")";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = R"(<url>; rel=preload; title="foo\"baz\"bar")";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
     CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
   }
   {
     // anchor="" is acceptable
-    const char s[] = R"(<url>; rel=preload; anchor="")";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = R"(<url>; rel=preload; anchor="")";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
     CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
   }
   {
     // With anchor="#foo", url should be ignored
-    const char s[] = R"(<url>; rel=preload; anchor="#foo")";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = R"(<url>; rel=preload; anchor="#foo")";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(0 == res.size());
   }
   {
     // With anchor=f, url should be ignored
-    const char s[] = "<url>; rel=preload; anchor=f";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = "<url>; rel=preload; anchor=f";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(0 == res.size());
   }
   {
     // First url is ignored With anchor="#foo", but url should be
     // accepted.
-    const char s[] = R"(<url>; rel=preload; anchor="#foo", <url>; rel=preload)";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] =
+        R"(<url>; rel=preload; anchor="#foo", <url>; rel=preload)";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
     CU_ASSERT(std::make_pair(&s[36], &s[39]) == res[0].uri);
   }
   {
     // With loadpolicy="next", url should be ignored
-    const char s[] = R"(<url>; rel=preload; loadpolicy="next")";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = R"(<url>; rel=preload; loadpolicy="next")";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(0 == res.size());
   }
   {
     // url should be picked up if empty loadpolicy is specified
-    const char s[] = R"(<url>; rel=preload; loadpolicy="")";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = R"(<url>; rel=preload; loadpolicy="")";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
     CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
   }
   {
     // case-insensitive match
-    const char s[] = R"(<url>; rel=preload; ANCHOR="#foo", <url>; )"
-                     R"(REL=PRELOAD, <url>; REL="foo PRELOAD bar")";
-    auto res = http2::parse_link_header(s, sizeof(s) - 1);
+    constexpr char s[] = R"(<url>; rel=preload; ANCHOR="#foo", <url>; )"
+                         R"(REL=PRELOAD, <url>; REL="foo PRELOAD bar")";
+    auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(2 == res.size());
     CU_ASSERT(std::make_pair(&s[36], &s[39]) == res[0].uri);
     CU_ASSERT(std::make_pair(&s[42 + 14], &s[42 + 17]) == res[1].uri);
