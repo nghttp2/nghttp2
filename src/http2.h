@@ -374,11 +374,10 @@ std::string rewrite_clean_path(InputIt first, InputIt last) {
   return path;
 }
 
-// Stores path component of |uri| in *base.  Its extracted length is
-// stored in *baselen.  The extracted path does not include query
-// component.  This function returns 0 if it succeeds, or -1.
-int get_pure_path_component(const char **base, size_t *baselen,
-                            const std::string &uri);
+// Returns path component of |uri|.  The returned path does not
+// include query component.  This function returns empty string if it
+// fails.
+StringRef get_pure_path_component(const std::string &uri);
 
 // Deduces scheme, authority and path from given |uri|, and stores
 // them in |scheme|, |authority|, and |path| respectively.  If |uri|

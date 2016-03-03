@@ -1453,28 +1453,21 @@ StringRef to_method_string(int method_token) {
   return StringRef{http_method_str(static_cast<http_method>(method_token))};
 }
 
-int get_pure_path_component(const char **base, size_t *baselen,
-                            const std::string &uri) {
+StringRef get_pure_path_component(const std::string &uri) {
   int rv;
 
   http_parser_url u{};
   rv = http_parser_parse_url(uri.c_str(), uri.size(), 0, &u);
   if (rv != 0) {
-    return -1;
+    return StringRef{};
   }
 
   if (u.field_set & (1 << UF_PATH)) {
     auto &f = u.field_data[UF_PATH];
-    *base = uri.c_str() + f.off;
-    *baselen = f.len;
-
-    return 0;
+    return StringRef{uri.c_str() + f.off, f.len};
   }
 
-  *base = "/";
-  *baselen = 1;
-
-  return 0;
+  return StringRef::from_lit("/");
 }
 
 int construct_push_component(std::string &scheme, std::string &authority,

@@ -866,32 +866,25 @@ void test_http2_rewrite_clean_path(void) {
 }
 
 void test_http2_get_pure_path_component(void) {
-  const char *base;
-  size_t len;
   std::string path;
 
   path = "/";
-  CU_ASSERT(0 == http2::get_pure_path_component(&base, &len, path));
-  CU_ASSERT(util::streq_l("/", base, len));
+  CU_ASSERT("/" == http2::get_pure_path_component(path));
 
   path = "/foo";
-  CU_ASSERT(0 == http2::get_pure_path_component(&base, &len, path));
-  CU_ASSERT(util::streq_l("/foo", base, len));
+  CU_ASSERT("/foo" == http2::get_pure_path_component(path));
 
   path = "https://example.org/bar";
-  CU_ASSERT(0 == http2::get_pure_path_component(&base, &len, path));
-  CU_ASSERT(util::streq_l("/bar", base, len));
+  CU_ASSERT("/bar" == http2::get_pure_path_component(path));
 
   path = "https://example.org/alpha?q=a";
-  CU_ASSERT(0 == http2::get_pure_path_component(&base, &len, path));
-  CU_ASSERT(util::streq_l("/alpha", base, len));
+  CU_ASSERT("/alpha" == http2::get_pure_path_component(path));
 
   path = "https://example.org/bravo?q=a#fragment";
-  CU_ASSERT(0 == http2::get_pure_path_component(&base, &len, path));
-  CU_ASSERT(util::streq_l("/bravo", base, len));
+  CU_ASSERT("/bravo" == http2::get_pure_path_component(path));
 
   path = "\x01\x02";
-  CU_ASSERT(-1 == http2::get_pure_path_component(&base, &len, path));
+  CU_ASSERT("" == http2::get_pure_path_component(path));
 }
 
 void test_http2_construct_push_component(void) {

@@ -1734,14 +1734,12 @@ int Http2Upstream::on_downstream_reset(bool no_retry) {
 
 int Http2Upstream::prepare_push_promise(Downstream *downstream) {
   int rv;
-  const char *base;
-  size_t baselen;
 
   const auto &req = downstream->request();
   const auto &resp = downstream->response();
 
-  rv = http2::get_pure_path_component(&base, &baselen, req.path);
-  if (rv != 0) {
+  auto base = http2::get_pure_path_component(req.path);
+  if (base.empty()) {
     return 0;
   }
 
@@ -1755,8 +1753,8 @@ int Http2Upstream::prepare_push_promise(Downstream *downstream) {
       const std::string *scheme_ptr, *authority_ptr;
       std::string scheme, authority, path;
 
-      rv = http2::construct_push_component(scheme, authority, path,
-                                           StringRef{base, baselen}, link.uri);
+      rv = http2::construct_push_component(scheme, authority, path, base,
+                                           link.uri);
       if (rv != 0) {
         continue;
       }
@@ -1858,21 +1856,18 @@ int Http2Upstream::initiate_push(Downstream *downstream, const char *uri,
     return 0;
   }
 
-  const char *base;
-  size_t baselen;
-
   const auto &req = downstream->request();
 
-  rv = http2::get_pure_path_component(&base, &baselen, req.path);
-  if (rv != 0) {
+  auto base = http2::get_pure_path_component(req.path);
+  if (base.empty()) {
     return -1;
   }
 
   const std::string *scheme_ptr, *authority_ptr;
   std::string scheme, authority, path;
 
-  rv = http2::construct_push_component(
-      scheme, authority, path, StringRef{base, baselen}, StringRef{uri, len});
+  rv = http2::construct_push_component(scheme, authority, path, base,
+                                       StringRef{uri, len});
   if (rv != 0) {
     return -1;
   }
