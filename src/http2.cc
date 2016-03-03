@@ -865,6 +865,29 @@ bool check_link_param_empty(const char *first, const char *last,
 } // namespace
 
 namespace {
+// Returns true if link-param consists of only parmname, and it
+// matches string [pat, pat + patlen).
+bool check_link_param_without_value(const char *first, const char *last,
+                                    const char *pat, size_t patlen) {
+  if (first + patlen > last) {
+    return false;
+  }
+
+  if (first + patlen == last) {
+    return std::equal(pat, pat + patlen, first, util::CaseCmp());
+  }
+
+  switch (*(first + patlen)) {
+  case ';':
+  case ',':
+    return std::equal(pat, pat + patlen, first, util::CaseCmp());
+  }
+
+  return false;
+}
+} // namespace
+
+namespace {
 std::pair<LinkHeader, const char *>
 parse_next_link_header_once(const char *first, const char *last) {
   first = skip_to_next_field(first, last);
@@ -900,99 +923,109 @@ parse_next_link_header_once(const char *first, const char *last) {
     }
     // we expect link-param
 
-    // rel can take several relations using quoted form.
-    static constexpr char PLP[] = "rel=\"";
-    static constexpr size_t PLPLEN = sizeof(PLP) - 1;
+    if (!ign) {
+      // rel can take several relations using quoted form.
+      static constexpr char PLP[] = "rel=\"";
+      static constexpr size_t PLPLEN = sizeof(PLP) - 1;
 
-    static constexpr char PLT[] = "preload";
-    static constexpr size_t PLTLEN = sizeof(PLT) - 1;
-    if (first + PLPLEN < last && *(first + PLPLEN - 1) == '"' &&
-        std::equal(PLP, PLP + PLPLEN, first, util::CaseCmp())) {
-      // we have to search preload in whitespace separated list:
-      // rel="preload something http://example.org/foo"
-      first += PLPLEN;
-      auto start = first;
-      for (; first != last;) {
-        if (*first != ' ' && *first != '"') {
+      static constexpr char PLT[] = "preload";
+      static constexpr size_t PLTLEN = sizeof(PLT) - 1;
+      if (first + PLPLEN < last && *(first + PLPLEN - 1) == '"' &&
+          std::equal(PLP, PLP + PLPLEN, first, util::CaseCmp())) {
+        // we have to search preload in whitespace separated list:
+        // rel="preload something http://example.org/foo"
+        first += PLPLEN;
+        auto start = first;
+        for (; first != last;) {
+          if (*first != ' ' && *first != '"') {
+            ++first;
+            continue;
+          }
+
+          if (start == first) {
+            return {{{nullptr, nullptr}}, last};
+          }
+
+          if (!ok && start + PLTLEN == first &&
+              std::equal(PLT, PLT + PLTLEN, start, util::CaseCmp())) {
+            ok = true;
+          }
+
+          if (*first == '"') {
+            break;
+          }
+          first = skip_lws(first, last);
+          start = first;
+        }
+        if (first == last) {
+          return {{{nullptr, nullptr}}, first};
+        }
+        assert(*first == '"');
+        ++first;
+        if (first == last || *first == ',') {
+          goto almost_done;
+        }
+        if (*first == ';') {
           ++first;
+          // parse next link-param
           continue;
         }
-
-        if (start == first) {
-          return {{{nullptr, nullptr}}, last};
+        return {{{nullptr, nullptr}}, last};
+      }
+      // we are only interested in rel=preload parameter.  Others are
+      // simply skipped.
+      static constexpr char PL[] = "rel=preload";
+      static constexpr size_t PLLEN = sizeof(PL) - 1;
+      if (first + PLLEN == last) {
+        if (std::equal(PL, PL + PLLEN, first, util::CaseCmp())) {
+          // ok = true;
+          // this is the end of sequence
+          return {{{url_first, url_last}}, last};
         }
-
-        if (!ok && start + PLTLEN == first &&
-            std::equal(PLT, PLT + PLTLEN, start, util::CaseCmp())) {
+      } else if (first + PLLEN + 1 <= last) {
+        switch (*(first + PLLEN)) {
+        case ',':
+          if (!std::equal(PL, PL + PLLEN, first, util::CaseCmp())) {
+            break;
+          }
+          // ok = true;
+          // skip including ','
+          first += PLLEN + 1;
+          return {{{url_first, url_last}}, first};
+        case ';':
+          if (!std::equal(PL, PL + PLLEN, first, util::CaseCmp())) {
+            break;
+          }
           ok = true;
+          // skip including ';'
+          first += PLLEN + 1;
+          // continue parse next link-param
+          continue;
         }
+      }
+      // we have to reject URI if we have nonempty anchor parameter.
+      static constexpr char ANCHOR[] = "anchor=";
+      static constexpr size_t ANCHORLEN = sizeof(ANCHOR) - 1;
+      if (!ign && !check_link_param_empty(first, last, ANCHOR, ANCHORLEN)) {
+        ign = true;
+      }
 
-        if (*first == '"') {
-          break;
-        }
-        first = skip_lws(first, last);
-        start = first;
+      // reject URI if we have non-empty loadpolicy.  This could be
+      // tightened up to just pick up "next" or "insert".
+      static constexpr char LOADPOLICY[] = "loadpolicy=";
+      static constexpr size_t LOADPOLICYLEN = sizeof(LOADPOLICY) - 1;
+      if (!ign &&
+          !check_link_param_empty(first, last, LOADPOLICY, LOADPOLICYLEN)) {
+        ign = true;
       }
-      if (first == last) {
-        return {{{nullptr, nullptr}}, first};
-      }
-      assert(*first == '"');
-      ++first;
-      if (first == last || *first == ',') {
-        goto almost_done;
-      }
-      if (*first == ';') {
-        ++first;
-        // parse next link-param
-        continue;
-      }
-      return {{{nullptr, nullptr}}, last};
-    }
-    // we are only interested in rel=preload parameter.  Others are
-    // simply skipped.
-    static constexpr char PL[] = "rel=preload";
-    static constexpr size_t PLLEN = sizeof(PL) - 1;
-    if (first + PLLEN == last) {
-      if (std::equal(PL, PL + PLLEN, first, util::CaseCmp())) {
-        // ok = true;
-        // this is the end of sequence
-        return {{{url_first, url_last}}, last};
-      }
-    } else if (first + PLLEN + 1 <= last) {
-      switch (*(first + PLLEN)) {
-      case ',':
-        if (!std::equal(PL, PL + PLLEN, first, util::CaseCmp())) {
-          break;
-        }
-        // ok = true;
-        // skip including ','
-        first += PLLEN + 1;
-        return {{{url_first, url_last}}, first};
-      case ';':
-        if (!std::equal(PL, PL + PLLEN, first, util::CaseCmp())) {
-          break;
-        }
-        ok = true;
-        // skip including ';'
-        first += PLLEN + 1;
-        // continue parse next link-param
-        continue;
-      }
-    }
-    // we have to reject URI if we have nonempty anchor parameter.
-    static constexpr char ANCHOR[] = "anchor=";
-    static constexpr size_t ANCHORLEN = sizeof(ANCHOR) - 1;
-    if (!ign && !check_link_param_empty(first, last, ANCHOR, ANCHORLEN)) {
-      ign = true;
-    }
 
-    // reject URI if we have non-empty loadpolicy.  This could be
-    // tightened up to just pick up "next" or "insert".
-    static constexpr char LOADPOLICY[] = "loadpolicy=";
-    static constexpr size_t LOADPOLICYLEN = sizeof(LOADPOLICY) - 1;
-    if (!ign &&
-        !check_link_param_empty(first, last, LOADPOLICY, LOADPOLICYLEN)) {
-      ign = true;
+      // reject URI if we have nopush attribute.
+      static constexpr char NOPUSH[] = "nopush";
+      static constexpr size_t NOPUSHLEN = str_size(NOPUSH);
+      if (!ign &&
+          check_link_param_without_value(first, last, NOPUSH, NOPUSHLEN)) {
+        ign = true;
+      }
     }
 
     auto param_first = first;

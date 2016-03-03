@@ -625,6 +625,38 @@ void test_http2_parse_link_header(void) {
     CU_ASSERT(std::make_pair(&s[36], &s[39]) == res[0].uri);
     CU_ASSERT(std::make_pair(&s[42 + 14], &s[42 + 17]) == res[1].uri);
   }
+  {
+    // nopush at the end of input
+    constexpr char s[] = "<url>; rel=preload; nopush";
+    auto res = http2::parse_link_header(s, str_size(s));
+    CU_ASSERT(0 == res.size());
+  }
+  {
+    // nopush followed by ';'
+    constexpr char s[] = "<url>; rel=preload; nopush; foo";
+    auto res = http2::parse_link_header(s, str_size(s));
+    CU_ASSERT(0 == res.size());
+  }
+  {
+    // nopush followed by ','
+    constexpr char s[] = "<url>; nopush; rel=preload";
+    auto res = http2::parse_link_header(s, str_size(s));
+    CU_ASSERT(0 == res.size());
+  }
+  {
+    // string whose prefix is nopush
+    constexpr char s[] = "<url>; nopushyes; rel=preload";
+    auto res = http2::parse_link_header(s, str_size(s));
+    CU_ASSERT(1 == res.size());
+    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
+  }
+  {
+    // rel=preload twice
+    constexpr char s[] = "<url>; rel=preload; rel=preload";
+    auto res = http2::parse_link_header(s, str_size(s));
+    CU_ASSERT(1 == res.size());
+    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
+  }
 }
 
 void test_http2_path_join(void) {
