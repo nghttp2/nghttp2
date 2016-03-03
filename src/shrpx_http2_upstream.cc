@@ -1752,14 +1752,12 @@ int Http2Upstream::prepare_push_promise(Downstream *downstream) {
     for (auto &link :
          http2::parse_link_header(kv.value.c_str(), kv.value.size())) {
 
-      auto uri = link.uri.first;
-      auto len = link.uri.second - link.uri.first;
-
       const std::string *scheme_ptr, *authority_ptr;
       std::string scheme, authority, path;
 
       rv = http2::construct_push_component(scheme, authority, path, base,
-                                           baselen, uri, len);
+                                           baselen, link.uri.c_str(),
+                                           link.uri.size());
       if (rv != 0) {
         continue;
       }

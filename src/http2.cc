@@ -892,26 +892,26 @@ std::pair<LinkHeader, const char *>
 parse_next_link_header_once(const char *first, const char *last) {
   first = skip_to_next_field(first, last);
   if (first == last || *first != '<') {
-    return {{{nullptr, nullptr}}, last};
+    return {{StringRef{}}, last};
   }
   auto url_first = ++first;
   first = std::find(first, last, '>');
   if (first == last) {
-    return {{{nullptr, nullptr}}, first};
+    return {{StringRef{}}, first};
   }
   auto url_last = first++;
   if (first == last) {
-    return {{{nullptr, nullptr}}, first};
+    return {{StringRef{}}, first};
   }
   // we expect ';' or ',' here
   switch (*first) {
   case ',':
-    return {{{nullptr, nullptr}}, ++first};
+    return {{StringRef{}}, ++first};
   case ';':
     ++first;
     break;
   default:
-    return {{{nullptr, nullptr}}, last};
+    return {{StringRef{}}, last};
   }
 
   auto ok = false;
@@ -919,7 +919,7 @@ parse_next_link_header_once(const char *first, const char *last) {
   for (;;) {
     first = skip_lws(first, last);
     if (first == last) {
-      return {{{nullptr, nullptr}}, first};
+      return {{StringRef{}}, first};
     }
     // we expect link-param
 
@@ -943,7 +943,7 @@ parse_next_link_header_once(const char *first, const char *last) {
           }
 
           if (start == first) {
-            return {{{nullptr, nullptr}}, last};
+            return {{StringRef{}}, last};
           }
 
           if (!ok && start + PLTLEN == first &&
@@ -958,7 +958,7 @@ parse_next_link_header_once(const char *first, const char *last) {
           start = first;
         }
         if (first == last) {
-          return {{{nullptr, nullptr}}, first};
+          return {{StringRef{}}, first};
         }
         assert(*first == '"');
         ++first;
@@ -970,7 +970,7 @@ parse_next_link_header_once(const char *first, const char *last) {
           // parse next link-param
           continue;
         }
-        return {{{nullptr, nullptr}}, last};
+        return {{StringRef{}}, last};
       }
       // we are only interested in rel=preload parameter.  Others are
       // simply skipped.
@@ -1045,11 +1045,11 @@ parse_next_link_header_once(const char *first, const char *last) {
       if (*first == '=' || *first == ';' || *first == ',') {
         break;
       }
-      return {{{nullptr, nullptr}}, last};
+      return {{StringRef{}}, last};
     }
     if (param_first == first) {
       // empty parmname
-      return {{{nullptr, nullptr}}, last};
+      return {{StringRef{}}, last};
     }
     // link-param without value is acceptable (see link-extension) if
     // it is not followed by '='
@@ -1066,13 +1066,13 @@ parse_next_link_header_once(const char *first, const char *last) {
     ++first;
     if (first == last) {
       // empty value is not acceptable
-      return {{{nullptr, nullptr}}, first};
+      return {{StringRef{}}, first};
     }
     if (*first == '"') {
       // quoted-string
       first = skip_to_right_dquote(first + 1, last);
       if (first == last) {
-        return {{{nullptr, nullptr}}, first};
+        return {{StringRef{}}, first};
       }
       ++first;
       if (first == last || *first == ',') {
@@ -1083,12 +1083,12 @@ parse_next_link_header_once(const char *first, const char *last) {
         // parse next link-param
         continue;
       }
-      return {{{nullptr, nullptr}}, last};
+      return {{StringRef{}}, last};
     }
     // not quoted-string, skip to next ',' or ';'
     if (*first == ',' || *first == ';') {
       // empty value
-      return {{{nullptr, nullptr}}, last};
+      return {{StringRef{}}, last};
     }
     for (; first != last; ++first) {
       if (*first == ',' || *first == ';') {
@@ -1112,7 +1112,7 @@ almost_done:
   if (ok && !ign) {
     return {{{url_first, url_last}}, first};
   }
-  return {{{nullptr, nullptr}}, first};
+  return {{StringRef{}}, first};
 }
 } // namespace
 
@@ -1123,8 +1123,9 @@ std::vector<LinkHeader> parse_link_header(const char *src, size_t len) {
   for (; first != last;) {
     auto rv = parse_next_link_header_once(first, last);
     first = rv.second;
-    if (rv.first.uri.first != nullptr && rv.first.uri.second != nullptr) {
-      res.push_back(rv.first);
+    auto &link = rv.first;
+    if (!link.uri.empty()) {
+      res.push_back(link);
     }
   }
   return res;
