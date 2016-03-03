@@ -77,8 +77,8 @@ bool serve_mux::handle(std::string pattern, request_cb cb) {
 request_cb serve_mux::handler(request_impl &req) const {
   auto &path = req.uri().path;
   if (req.method() != "CONNECT") {
-    auto clean_path = ::nghttp2::http2::path_join(
-        nullptr, 0, nullptr, 0, path.c_str(), path.size(), nullptr, 0);
+    auto clean_path = ::nghttp2::http2::path_join(StringRef{}, StringRef{},
+                                                  StringRef{path}, StringRef{});
     if (clean_path != path) {
       auto new_uri = util::percent_encode_path(clean_path);
       auto &uref = req.uri();

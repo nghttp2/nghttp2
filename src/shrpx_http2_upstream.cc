@@ -1755,9 +1755,8 @@ int Http2Upstream::prepare_push_promise(Downstream *downstream) {
       const std::string *scheme_ptr, *authority_ptr;
       std::string scheme, authority, path;
 
-      rv = http2::construct_push_component(scheme, authority, path, base,
-                                           baselen, link.uri.c_str(),
-                                           link.uri.size());
+      rv = http2::construct_push_component(scheme, authority, path,
+                                           StringRef{base, baselen}, link.uri);
       if (rv != 0) {
         continue;
       }
@@ -1872,8 +1871,8 @@ int Http2Upstream::initiate_push(Downstream *downstream, const char *uri,
   const std::string *scheme_ptr, *authority_ptr;
   std::string scheme, authority, path;
 
-  rv = http2::construct_push_component(scheme, authority, path, base, baselen,
-                                       uri, len);
+  rv = http2::construct_push_component(
+      scheme, authority, path, StringRef{base, baselen}, StringRef{uri, len});
   if (rv != 0) {
     return -1;
   }

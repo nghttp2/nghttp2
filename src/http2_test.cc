@@ -283,21 +283,21 @@ void test_http2_parse_link_header(void) {
     constexpr char s[] = "<url>; rel=preload";
     auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
-    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
+    CU_ASSERT("url" == res[0].uri);
   }
   {
     // With extra link-param.  URI url should be extracted
     constexpr char s[] = "<url>; rel=preload; as=file";
     auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
-    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
+    CU_ASSERT("url" == res[0].uri);
   }
   {
     // With extra link-param.  URI url should be extracted
     constexpr char s[] = "<url>; as=file; rel=preload";
     auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
-    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
+    CU_ASSERT("url" == res[0].uri);
   }
   {
     // With extra link-param and quote-string.  URI url should be
@@ -305,7 +305,7 @@ void test_http2_parse_link_header(void) {
     constexpr char s[] = R"(<url>; rel=preload; title="foo,bar")";
     auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
-    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
+    CU_ASSERT("url" == res[0].uri);
   }
   {
     // With extra link-param and quote-string.  URI url should be
@@ -313,36 +313,37 @@ void test_http2_parse_link_header(void) {
     constexpr char s[] = R"(<url>; title="foo,bar"; rel=preload)";
     auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
-    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
+    CU_ASSERT("url" == res[0].uri);
   }
   {
     // ',' after quote-string
-    constexpr char s[] = R"(<url>; title="foo,bar", <url>; rel=preload)";
+    constexpr char s[] = R"(<url>; title="foo,bar", <url2>; rel=preload)";
     auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
-    CU_ASSERT(std::make_pair(&s[25], &s[28]) == res[0].uri);
+    CU_ASSERT("url2" == res[0].uri);
+    CU_ASSERT(&s[25] == &res[0].uri[0]);
   }
   {
     // Only first URI should be extracted.
-    constexpr char s[] = "<url>; rel=preload, <url>";
+    constexpr char s[] = "<url>; rel=preload, <url2>";
     auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
-    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
+    CU_ASSERT("url" == res[0].uri);
   }
   {
     // Both have rel=preload, so both urls should be extracted
-    constexpr char s[] = "<url>; rel=preload, <url>; rel=preload";
+    constexpr char s[] = "<url>; rel=preload, <url2>; rel=preload";
     auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(2 == res.size());
-    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
-    CU_ASSERT(std::make_pair(&s[21], &s[24]) == res[1].uri);
+    CU_ASSERT("url" == res[0].uri);
+    CU_ASSERT("url2" == res[1].uri);
   }
   {
     // Second URI uri should be extracted.
-    constexpr char s[] = "<url>, <url>;rel=preload";
+    constexpr char s[] = "<url>, <url2>;rel=preload";
     auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
-    CU_ASSERT(std::make_pair(&s[8], &s[11]) == res[0].uri);
+    CU_ASSERT("url2" == res[0].uri);
   }
   {
     // Error if input ends with ';'
@@ -361,14 +362,14 @@ void test_http2_parse_link_header(void) {
     constexpr char s[] = "<url>;rel=preload,";
     auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
-    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
+    CU_ASSERT("url" == res[0].uri);
   }
   {
     // Multiple repeated ','s between fields is OK
-    constexpr char s[] = "<url>,,,<url>;rel=preload";
+    constexpr char s[] = "<url>,,,<url2>;rel=preload";
     auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
-    CU_ASSERT(std::make_pair(&s[9], &s[12]) == res[0].uri);
+    CU_ASSERT("url2" == res[0].uri);
   }
   {
     // Error if url is not enclosed by <>
@@ -408,25 +409,25 @@ void test_http2_parse_link_header(void) {
   }
   {
     // Without whitespaces
-    constexpr char s[] = "<url>;as=file;rel=preload,<url>;rel=preload";
+    constexpr char s[] = "<url>;as=file;rel=preload,<url2>;rel=preload";
     auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(2 == res.size());
-    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
-    CU_ASSERT(std::make_pair(&s[27], &s[30]) == res[1].uri);
+    CU_ASSERT("url" == res[0].uri);
+    CU_ASSERT("url2" == res[1].uri);
   }
   {
     // link-extension may have no value
     constexpr char s[] = "<url>; as; rel=preload";
     auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
-    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
+    CU_ASSERT("url" == res[0].uri);
   }
   {
     // ext-name-star
     constexpr char s[] = "<url>; foo*=bar; rel=preload";
     auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
-    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
+    CU_ASSERT("url" == res[0].uri);
   }
   {
     // '*' is not allowed expect for trailing one
@@ -457,7 +458,7 @@ void test_http2_parse_link_header(void) {
     constexpr char s[] = "  <url>; rel=preload";
     auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
-    CU_ASSERT(std::make_pair(&s[3], &s[6]) == res[0].uri);
+    CU_ASSERT("url" == res[0].uri);
   }
   {
     // preload is a prefix of bogus rel parameter value
@@ -470,35 +471,35 @@ void test_http2_parse_link_header(void) {
     constexpr char s[] = R"(<url>; rel="preload")";
     auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
-    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
+    CU_ASSERT("url" == res[0].uri);
   }
   {
     // preload in relation-types list followed by another parameter
     constexpr char s[] = R"(<url>; rel="preload foo")";
     auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
-    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
+    CU_ASSERT("url" == res[0].uri);
   }
   {
     // preload in relation-types list following another parameter
     constexpr char s[] = R"(<url>; rel="foo preload")";
     auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
-    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
+    CU_ASSERT("url" == res[0].uri);
   }
   {
     // preload in relation-types list between other parameters
     constexpr char s[] = R"(<url>; rel="foo preload bar")";
     auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
-    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
+    CU_ASSERT("url" == res[0].uri);
   }
   {
     // preload in relation-types list between other parameters
     constexpr char s[] = R"(<url>; rel="foo   preload   bar")";
     auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
-    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
+    CU_ASSERT("url" == res[0].uri);
   }
   {
     // no preload in relation-types list
@@ -514,24 +515,24 @@ void test_http2_parse_link_header(void) {
   }
   {
     // preload in relation-types list, followed by another link-value.
-    constexpr char s[] = R"(<url>; rel="preload", <url>)";
+    constexpr char s[] = R"(<url>; rel="preload", <url2>)";
     auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
-    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
+    CU_ASSERT("url" == res[0].uri);
   }
   {
     // preload in relation-types list, following another link-value.
-    constexpr char s[] = R"(<url>, <url>; rel="preload")";
+    constexpr char s[] = R"(<url>, <url2>; rel="preload")";
     auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
-    CU_ASSERT(std::make_pair(&s[8], &s[11]) == res[0].uri);
+    CU_ASSERT("url2" == res[0].uri);
   }
   {
     // preload in relation-types list, followed by another link-param.
     constexpr char s[] = R"(<url>; rel="preload"; as="font")";
     auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
-    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
+    CU_ASSERT("url" == res[0].uri);
   }
   {
     // preload in relation-types list, followed by character other
@@ -553,7 +554,7 @@ void test_http2_parse_link_header(void) {
     constexpr char s[] = R"(<url>; rel="preload",)";
     auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
-    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
+    CU_ASSERT("url" == res[0].uri);
   }
   {
     // preload in relation-types list but there is preceding white
@@ -574,14 +575,14 @@ void test_http2_parse_link_header(void) {
     constexpr char s[] = R"(<url>; rel=preload; title="foo\"baz\"bar")";
     auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
-    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
+    CU_ASSERT("url" == res[0].uri);
   }
   {
     // anchor="" is acceptable
     constexpr char s[] = R"(<url>; rel=preload; anchor="")";
     auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
-    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
+    CU_ASSERT("url" == res[0].uri);
   }
   {
     // With anchor="#foo", url should be ignored
@@ -599,10 +600,10 @@ void test_http2_parse_link_header(void) {
     // First url is ignored With anchor="#foo", but url should be
     // accepted.
     constexpr char s[] =
-        R"(<url>; rel=preload; anchor="#foo", <url>; rel=preload)";
+        R"(<url>; rel=preload; anchor="#foo", <url2>; rel=preload)";
     auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
-    CU_ASSERT(std::make_pair(&s[36], &s[39]) == res[0].uri);
+    CU_ASSERT("url2" == res[0].uri);
   }
   {
     // With loadpolicy="next", url should be ignored
@@ -615,16 +616,16 @@ void test_http2_parse_link_header(void) {
     constexpr char s[] = R"(<url>; rel=preload; loadpolicy="")";
     auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
-    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
+    CU_ASSERT("url" == res[0].uri);
   }
   {
     // case-insensitive match
-    constexpr char s[] = R"(<url>; rel=preload; ANCHOR="#foo", <url>; )"
-                         R"(REL=PRELOAD, <url>; REL="foo PRELOAD bar")";
+    constexpr char s[] = R"(<url>; rel=preload; ANCHOR="#foo", <url2>; )"
+                         R"(REL=PRELOAD, <url3>; REL="foo PRELOAD bar")";
     auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(2 == res.size());
-    CU_ASSERT(std::make_pair(&s[36], &s[39]) == res[0].uri);
-    CU_ASSERT(std::make_pair(&s[42 + 14], &s[42 + 17]) == res[1].uri);
+    CU_ASSERT("url2" == res[0].uri);
+    CU_ASSERT("url3" == res[1].uri);
   }
   {
     // nopush at the end of input
@@ -649,186 +650,166 @@ void test_http2_parse_link_header(void) {
     constexpr char s[] = "<url>; nopushyes; rel=preload";
     auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
-    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
+    CU_ASSERT("url" == res[0].uri);
   }
   {
     // rel=preload twice
     constexpr char s[] = "<url>; rel=preload; rel=preload";
     auto res = http2::parse_link_header(s, str_size(s));
     CU_ASSERT(1 == res.size());
-    CU_ASSERT(std::make_pair(&s[1], &s[4]) == res[0].uri);
+    CU_ASSERT("url" == res[0].uri);
   }
 }
 
 void test_http2_path_join(void) {
   {
-    const char base[] = "/";
-    const char rel[] = "/";
-    CU_ASSERT("/" == http2::path_join(base, sizeof(base) - 1, nullptr, 0, rel,
-                                      sizeof(rel) - 1, nullptr, 0));
+    auto base = StringRef::from_lit("/");
+    auto rel = StringRef::from_lit("/");
+    CU_ASSERT("/" == http2::path_join(base, StringRef{}, rel, StringRef{}));
   }
   {
-    const char base[] = "/";
-    const char rel[] = "/alpha";
-    CU_ASSERT("/alpha" == http2::path_join(base, sizeof(base) - 1, nullptr, 0,
-                                           rel, sizeof(rel) - 1, nullptr, 0));
+    auto base = StringRef::from_lit("/");
+    auto rel = StringRef::from_lit("/alpha");
+    CU_ASSERT("/alpha" ==
+              http2::path_join(base, StringRef{}, rel, StringRef{}));
   }
   {
     // rel ends with trailing '/'
-    const char base[] = "/";
-    const char rel[] = "/alpha/";
-    CU_ASSERT("/alpha/" == http2::path_join(base, sizeof(base) - 1, nullptr, 0,
-                                            rel, sizeof(rel) - 1, nullptr, 0));
+    auto base = StringRef::from_lit("/");
+    auto rel = StringRef::from_lit("/alpha/");
+    CU_ASSERT("/alpha/" ==
+              http2::path_join(base, StringRef{}, rel, StringRef{}));
   }
   {
     // rel contains multiple components
-    const char base[] = "/";
-    const char rel[] = "/alpha/bravo";
-    CU_ASSERT("/alpha/bravo" == http2::path_join(base, sizeof(base) - 1,
-                                                 nullptr, 0, rel,
-                                                 sizeof(rel) - 1, nullptr, 0));
+    auto base = StringRef::from_lit("/");
+    auto rel = StringRef::from_lit("/alpha/bravo");
+    CU_ASSERT("/alpha/bravo" ==
+              http2::path_join(base, StringRef{}, rel, StringRef{}));
   }
   {
     // rel is relative
-    const char base[] = "/";
-    const char rel[] = "alpha/bravo";
-    CU_ASSERT("/alpha/bravo" == http2::path_join(base, sizeof(base) - 1,
-                                                 nullptr, 0, rel,
-                                                 sizeof(rel) - 1, nullptr, 0));
+    auto base = StringRef::from_lit("/");
+    auto rel = StringRef::from_lit("alpha/bravo");
+    CU_ASSERT("/alpha/bravo" ==
+              http2::path_join(base, StringRef{}, rel, StringRef{}));
   }
   {
     // rel is relative and base ends without /, which means it refers
     // to file.
-    const char base[] = "/alpha";
-    const char rel[] = "bravo/charlie";
+    auto base = StringRef::from_lit("/alpha");
+    auto rel = StringRef::from_lit("bravo/charlie");
     CU_ASSERT("/bravo/charlie" ==
-              http2::path_join(base, sizeof(base) - 1, nullptr, 0, rel,
-                               sizeof(rel) - 1, nullptr, 0));
+              http2::path_join(base, StringRef{}, rel, StringRef{}));
   }
   {
     // rel contains repeated '/'s
-    const char base[] = "/";
-    const char rel[] = "/alpha/////bravo/////";
-    CU_ASSERT("/alpha/bravo/" == http2::path_join(base, sizeof(base) - 1,
-                                                  nullptr, 0, rel,
-                                                  sizeof(rel) - 1, nullptr, 0));
+    auto base = StringRef::from_lit("/");
+    auto rel = StringRef::from_lit("/alpha/////bravo/////");
+    CU_ASSERT("/alpha/bravo/" ==
+              http2::path_join(base, StringRef{}, rel, StringRef{}));
   }
   {
     // base ends with '/', so '..' eats 'bravo'
-    const char base[] = "/alpha/bravo/";
-    const char rel[] = "../charlie/delta";
+    auto base = StringRef::from_lit("/alpha/bravo/");
+    auto rel = StringRef::from_lit("../charlie/delta");
     CU_ASSERT("/alpha/charlie/delta" ==
-              http2::path_join(base, sizeof(base) - 1, nullptr, 0, rel,
-                               sizeof(rel) - 1, nullptr, 0));
+              http2::path_join(base, StringRef{}, rel, StringRef{}));
   }
   {
     // base does not end with '/', so '..' eats 'alpha/bravo'
-    const char base[] = "/alpha/bravo";
-    const char rel[] = "../charlie";
-    CU_ASSERT("/charlie" == http2::path_join(base, sizeof(base) - 1, nullptr, 0,
-                                             rel, sizeof(rel) - 1, nullptr, 0));
+    auto base = StringRef::from_lit("/alpha/bravo");
+    auto rel = StringRef::from_lit("../charlie");
+    CU_ASSERT("/charlie" ==
+              http2::path_join(base, StringRef{}, rel, StringRef{}));
   }
   {
     // 'charlie' is eaten by following '..'
-    const char base[] = "/alpha/bravo/";
-    const char rel[] = "../charlie/../delta";
-    CU_ASSERT("/alpha/delta" == http2::path_join(base, sizeof(base) - 1,
-                                                 nullptr, 0, rel,
-                                                 sizeof(rel) - 1, nullptr, 0));
+    auto base = StringRef::from_lit("/alpha/bravo/");
+    auto rel = StringRef::from_lit("../charlie/../delta");
+    CU_ASSERT("/alpha/delta" ==
+              http2::path_join(base, StringRef{}, rel, StringRef{}));
   }
   {
     // excessive '..' results in '/'
-    const char base[] = "/alpha/bravo/";
-    const char rel[] = "../../../";
-    CU_ASSERT("/" == http2::path_join(base, sizeof(base) - 1, nullptr, 0, rel,
-                                      sizeof(rel) - 1, nullptr, 0));
+    auto base = StringRef::from_lit("/alpha/bravo/");
+    auto rel = StringRef::from_lit("../../../");
+    CU_ASSERT("/" == http2::path_join(base, StringRef{}, rel, StringRef{}));
   }
   {
     // excessive '..'  and  path component
-    const char base[] = "/alpha/bravo/";
-    const char rel[] = "../../../charlie";
-    CU_ASSERT("/charlie" == http2::path_join(base, sizeof(base) - 1, nullptr, 0,
-                                             rel, sizeof(rel) - 1, nullptr, 0));
+    auto base = StringRef::from_lit("/alpha/bravo/");
+    auto rel = StringRef::from_lit("../../../charlie");
+    CU_ASSERT("/charlie" ==
+              http2::path_join(base, StringRef{}, rel, StringRef{}));
   }
   {
     // rel ends with '..'
-    const char base[] = "/alpha/bravo/";
-    const char rel[] = "charlie/..";
-    CU_ASSERT("/alpha/bravo/" == http2::path_join(base, sizeof(base) - 1,
-                                                  nullptr, 0, rel,
-                                                  sizeof(rel) - 1, nullptr, 0));
+    auto base = StringRef::from_lit("/alpha/bravo/");
+    auto rel = StringRef::from_lit("charlie/..");
+    CU_ASSERT("/alpha/bravo/" ==
+              http2::path_join(base, StringRef{}, rel, StringRef{}));
   }
   {
     // base empty and rel contains '..'
-    const char base[] = "";
-    const char rel[] = "charlie/..";
-    CU_ASSERT("/" == http2::path_join(base, sizeof(base) - 1, nullptr, 0, rel,
-                                      sizeof(rel) - 1, nullptr, 0));
+    auto base = StringRef{};
+    auto rel = StringRef::from_lit("charlie/..");
+    CU_ASSERT("/" == http2::path_join(base, StringRef{}, rel, StringRef{}));
   }
   {
     // '.' is ignored
-    const char base[] = "/";
-    const char rel[] = "charlie/././././delta";
+    auto base = StringRef::from_lit("/");
+    auto rel = StringRef::from_lit("charlie/././././delta");
     CU_ASSERT("/charlie/delta" ==
-              http2::path_join(base, sizeof(base) - 1, nullptr, 0, rel,
-                               sizeof(rel) - 1, nullptr, 0));
+              http2::path_join(base, StringRef{}, rel, StringRef{}));
   }
   {
     // trailing '.' is ignored
-    const char base[] = "/";
-    const char rel[] = "charlie/.";
-    CU_ASSERT("/charlie/" == http2::path_join(base, sizeof(base) - 1, nullptr,
-                                              0, rel, sizeof(rel) - 1, nullptr,
-                                              0));
+    auto base = StringRef::from_lit("/");
+    auto rel = StringRef::from_lit("charlie/.");
+    CU_ASSERT("/charlie/" ==
+              http2::path_join(base, StringRef{}, rel, StringRef{}));
   }
   {
     // query
-    const char base[] = "/";
-    const char rel[] = "/";
-    const char relq[] = "q";
-    CU_ASSERT("/?q" == http2::path_join(base, sizeof(base) - 1, nullptr, 0, rel,
-                                        sizeof(rel) - 1, relq,
-                                        sizeof(relq) - 1));
+    auto base = StringRef::from_lit("/");
+    auto rel = StringRef::from_lit("/");
+    auto relq = StringRef::from_lit("q");
+    CU_ASSERT("/?q" == http2::path_join(base, StringRef{}, rel, relq));
   }
   {
     // empty rel and query
-    const char base[] = "/alpha";
-    const char rel[] = "";
-    const char relq[] = "q";
-    CU_ASSERT("/alpha?q" == http2::path_join(base, sizeof(base) - 1, nullptr, 0,
-                                             rel, sizeof(rel) - 1, relq,
-                                             sizeof(relq) - 1));
+    auto base = StringRef::from_lit("/alpha");
+    auto rel = StringRef{};
+    auto relq = StringRef::from_lit("q");
+    CU_ASSERT("/alpha?q" == http2::path_join(base, StringRef{}, rel, relq));
   }
   {
     // both rel and query are empty
-    const char base[] = "/alpha";
-    const char baseq[] = "r";
-    const char rel[] = "";
-    const char relq[] = "";
-    CU_ASSERT("/alpha?r" ==
-              http2::path_join(base, sizeof(base) - 1, baseq, sizeof(baseq) - 1,
-                               rel, sizeof(rel) - 1, relq, sizeof(relq) - 1));
+    auto base = StringRef::from_lit("/alpha");
+    auto baseq = StringRef::from_lit("r");
+    auto rel = StringRef{};
+    auto relq = StringRef{};
+    CU_ASSERT("/alpha?r" == http2::path_join(base, baseq, rel, relq));
   }
   {
     // empty base
-    const char base[] = "";
-    const char rel[] = "/alpha";
-    CU_ASSERT("/alpha" == http2::path_join(base, sizeof(base) - 1, nullptr, 0,
-                                           rel, sizeof(rel) - 1, nullptr, 0));
+    auto base = StringRef{};
+    auto rel = StringRef::from_lit("/alpha");
+    CU_ASSERT("/alpha" ==
+              http2::path_join(base, StringRef{}, rel, StringRef{}));
   }
   {
     // everything is empty
-    CU_ASSERT("/" ==
-              http2::path_join(nullptr, 0, nullptr, 0, nullptr, 0, nullptr, 0));
+    CU_ASSERT("/" == http2::path_join(StringRef{}, StringRef{}, StringRef{},
+                                      StringRef{}));
   }
   {
     // only baseq is not empty
-    const char base[] = "";
-    const char baseq[] = "r";
-    const char rel[] = "";
-    CU_ASSERT("/?r" == http2::path_join(base, sizeof(base) - 1, baseq,
-                                        sizeof(baseq) - 1, rel, sizeof(rel) - 1,
-                                        nullptr, 0));
+    auto base = StringRef{};
+    auto baseq = StringRef::from_lit("r");
+    auto rel = StringRef{};
+    CU_ASSERT("/?r" == http2::path_join(base, baseq, rel, StringRef{}));
   }
 }
 
@@ -914,19 +895,15 @@ void test_http2_get_pure_path_component(void) {
 }
 
 void test_http2_construct_push_component(void) {
-  const char *base;
-  size_t baselen;
-  std::string uri;
+  StringRef base, uri;
   std::string scheme, authority, path;
 
-  base = "/b/";
-  baselen = 3;
+  base = StringRef::from_lit("/b/");
 
-  uri = "https://example.org/foo";
+  uri = StringRef::from_lit("https://example.org/foo");
 
-  CU_ASSERT(0 == http2::construct_push_component(scheme, authority, path, base,
-                                                 baselen, uri.c_str(),
-                                                 uri.size()));
+  CU_ASSERT(
+      0 == http2::construct_push_component(scheme, authority, path, base, uri));
   CU_ASSERT("https" == scheme);
   CU_ASSERT("example.org" == authority);
   CU_ASSERT("/foo" == path);
@@ -935,11 +912,10 @@ void test_http2_construct_push_component(void) {
   authority.clear();
   path.clear();
 
-  uri = "/foo/bar?q=a";
+  uri = StringRef::from_lit("/foo/bar?q=a");
 
-  CU_ASSERT(0 == http2::construct_push_component(scheme, authority, path, base,
-                                                 baselen, uri.c_str(),
-                                                 uri.size()));
+  CU_ASSERT(
+      0 == http2::construct_push_component(scheme, authority, path, base, uri));
   CU_ASSERT("" == scheme);
   CU_ASSERT("" == authority);
   CU_ASSERT("/foo/bar?q=a" == path);
@@ -948,11 +924,10 @@ void test_http2_construct_push_component(void) {
   authority.clear();
   path.clear();
 
-  uri = "foo/../bar?q=a";
+  uri = StringRef::from_lit("foo/../bar?q=a");
 
-  CU_ASSERT(0 == http2::construct_push_component(scheme, authority, path, base,
-                                                 baselen, uri.c_str(),
-                                                 uri.size()));
+  CU_ASSERT(
+      0 == http2::construct_push_component(scheme, authority, path, base, uri));
   CU_ASSERT("" == scheme);
   CU_ASSERT("" == authority);
   CU_ASSERT("/b/bar?q=a" == path);
@@ -961,11 +936,10 @@ void test_http2_construct_push_component(void) {
   authority.clear();
   path.clear();
 
-  uri = "";
+  uri = StringRef{};
 
-  CU_ASSERT(0 == http2::construct_push_component(scheme, authority, path, base,
-                                                 baselen, uri.c_str(),
-                                                 uri.size()));
+  CU_ASSERT(
+      0 == http2::construct_push_component(scheme, authority, path, base, uri));
   CU_ASSERT("" == scheme);
   CU_ASSERT("" == authority);
   CU_ASSERT("/" == path);
@@ -974,11 +948,10 @@ void test_http2_construct_push_component(void) {
   authority.clear();
   path.clear();
 
-  uri = "?q=a";
+  uri = StringRef::from_lit("?q=a");
 
-  CU_ASSERT(0 == http2::construct_push_component(scheme, authority, path, base,
-                                                 baselen, uri.c_str(),
-                                                 uri.size()));
+  CU_ASSERT(
+      0 == http2::construct_push_component(scheme, authority, path, base, uri));
   CU_ASSERT("" == scheme);
   CU_ASSERT("" == authority);
   CU_ASSERT("/b/?q=a" == path);

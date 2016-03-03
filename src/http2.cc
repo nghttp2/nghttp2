@@ -1185,39 +1185,37 @@ void eat_dir(std::string &path) {
 }
 } // namespace
 
-std::string path_join(const char *base_path, size_t base_pathlen,
-                      const char *base_query, size_t base_querylen,
-                      const char *rel_path, size_t rel_pathlen,
-                      const char *rel_query, size_t rel_querylen) {
+std::string path_join(const StringRef &base_path, const StringRef &base_query,
+                      const StringRef &rel_path, const StringRef &rel_query) {
   std::string res;
-  if (rel_pathlen == 0) {
-    if (base_pathlen == 0) {
+  if (rel_path.empty()) {
+    if (base_path.empty()) {
       res = "/";
     } else {
-      res.assign(base_path, base_pathlen);
+      res.assign(std::begin(base_path), std::end(base_path));
     }
-    if (rel_querylen == 0) {
-      if (base_querylen) {
+    if (rel_query.empty()) {
+      if (!base_query.empty()) {
         res += '?';
-        res.append(base_query, base_querylen);
+        res.append(std::begin(base_query), std::end(base_query));
       }
       return res;
     }
     res += '?';
-    res.append(rel_query, rel_querylen);
+    res.append(std::begin(rel_query), std::end(rel_query));
     return res;
   }
 
-  auto first = rel_path;
-  auto last = rel_path + rel_pathlen;
+  auto first = std::begin(rel_path);
+  auto last = std::end(rel_path);
 
   if (rel_path[0] == '/') {
     res = "/";
     ++first;
-  } else if (base_pathlen == 0) {
+  } else if (base_path.empty()) {
     res = "/";
   } else {
-    res.assign(base_path, base_pathlen);
+    res.assign(std::begin(base_path), std::end(base_path));
   }
 
   for (; first != last;) {
@@ -1254,9 +1252,9 @@ std::string path_join(const char *base_path, size_t base_pathlen,
     for (; first != last && *first == '/'; ++first)
       ;
   }
-  if (rel_querylen) {
+  if (!rel_query.empty()) {
     res += '?';
-    res.append(rel_query, rel_querylen);
+    res.append(std::begin(rel_query), std::end(rel_query));
   }
   return res;
 }
@@ -1480,15 +1478,14 @@ int get_pure_path_component(const char **base, size_t *baselen,
 }
 
 int construct_push_component(std::string &scheme, std::string &authority,
-                             std::string &path, const char *base,
-                             size_t baselen, const char *uri, size_t len) {
+                             std::string &path, const StringRef &base,
+                             const StringRef &uri) {
   int rv;
-  const char *rel, *relq = nullptr;
-  size_t rellen, relqlen = 0;
+  StringRef rel, relq;
 
   http_parser_url u{};
 
-  rv = http_parser_parse_url(uri, len, 0, &u);
+  rv = http_parser_parse_url(uri.c_str(), uri.size(), 0, &u);
 
   if (rv != 0) {
     if (uri[0] == '/') {
@@ -1496,22 +1493,20 @@ int construct_push_component(std::string &scheme, std::string &authority,
     }
 
     // treat link_url as relative URI.
-    auto end = std::find(uri, uri + len, '#');
-    auto q = std::find(uri, end, '?');
+    auto end = std::find(std::begin(uri), std::end(uri), '#');
+    auto q = std::find(std::begin(uri), end, '?');
 
-    rel = uri;
-    rellen = q - uri;
+    rel = StringRef{std::begin(uri), q};
     if (q != end) {
-      relq = q + 1;
-      relqlen = end - relq;
+      relq = StringRef{q + 1, std::end(uri)};
     }
   } else {
     if (u.field_set & (1 << UF_SCHEMA)) {
-      http2::copy_url_component(scheme, &u, UF_SCHEMA, uri);
+      http2::copy_url_component(scheme, &u, UF_SCHEMA, uri.c_str());
     }
 
     if (u.field_set & (1 << UF_HOST)) {
-      http2::copy_url_component(authority, &u, UF_HOST, uri);
+      http2::copy_url_component(authority, &u, UF_HOST, uri.c_str());
       if (u.field_set & (1 << UF_PORT)) {
         authority += ':';
         authority += util::utos(u.port);
@@ -1520,22 +1515,18 @@ int construct_push_component(std::string &scheme, std::string &authority,
 
     if (u.field_set & (1 << UF_PATH)) {
       auto &f = u.field_data[UF_PATH];
-      rel = uri + f.off;
-      rellen = f.len;
+      rel = StringRef{uri.c_str() + f.off, f.len};
     } else {
-      rel = "/";
-      rellen = 1;
+      rel = StringRef::from_lit("/");
     }
 
     if (u.field_set & (1 << UF_QUERY)) {
       auto &f = u.field_data[UF_QUERY];
-      relq = uri + f.off;
-      relqlen = f.len;
+      relq = StringRef{uri.c_str() + f.off, f.len};
     }
   }
 
-  path =
-      http2::path_join(base, baselen, nullptr, 0, rel, rellen, relq, relqlen);
+  path = http2::path_join(base, StringRef{}, rel, relq);
 
   return 0;
 }

@@ -297,16 +297,13 @@ struct LinkHeader {
 // is ignored during parsing.
 std::vector<LinkHeader> parse_link_header(const char *src, size_t len);
 
-// Constructs path by combining base path |base_path| of length
-// |base_pathlen| with another path |rel_path| of length
-// |rel_pathlen|.  The base path and another path can have optional
+// Constructs path by combining base path |base_path| with another
+// path |rel_path|.  The base path and another path can have optional
 // query component.  This function assumes |base_path| is normalized.
 // In other words, it does not contain ".." or "."  path components
 // and starts with "/" if it is not empty.
-std::string path_join(const char *base_path, size_t base_pathlen,
-                      const char *base_query, size_t base_querylen,
-                      const char *rel_path, size_t rel_pathlen,
-                      const char *rel_query, size_t rel_querylen);
+std::string path_join(const StringRef &base, const StringRef &base_query,
+                      const StringRef &rel_path, const StringRef &rel_query);
 
 // true if response has body, taking into account the request method
 // and status code.
@@ -359,8 +356,7 @@ std::string normalize_path(InputIt first, InputIt last) {
     }
     result.append(first, last);
   }
-  return path_join(nullptr, 0, nullptr, 0, result.c_str(), result.size(),
-                   nullptr, 0);
+  return path_join(StringRef{}, StringRef{}, StringRef{result}, StringRef{});
 }
 
 template <typename InputIt>
@@ -384,14 +380,14 @@ std::string rewrite_clean_path(InputIt first, InputIt last) {
 int get_pure_path_component(const char **base, size_t *baselen,
                             const std::string &uri);
 
-// Deduces scheme, authority and path from given |uri| of length
-// |len|, and stores them in |scheme|, |authority|, and |path|
-// respectively.  If |uri| is relative path, path resolution is taken
-// palce using path given in |base| of length |baselen|.  This
-// function returns 0 if it succeeds, or -1.
+// Deduces scheme, authority and path from given |uri|, and stores
+// them in |scheme|, |authority|, and |path| respectively.  If |uri|
+// is relative path, path resolution takes place using path given in
+// |base| of length |baselen|.  This function returns 0 if it
+// succeeds, or -1.
 int construct_push_component(std::string &scheme, std::string &authority,
-                             std::string &path, const char *base,
-                             size_t baselen, const char *uri, size_t len);
+                             std::string &path, const StringRef &base,
+                             const StringRef &uri);
 
 } // namespace http2
 
