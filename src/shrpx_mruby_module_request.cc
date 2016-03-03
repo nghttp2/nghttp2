@@ -291,7 +291,7 @@ mrb_value request_push(mrb_state *mrb, mrb_value self) {
   mrb_int len;
   mrb_get_args(mrb, "s", &uri, &len);
 
-  upstream->initiate_push(downstream, uri, len);
+  upstream->initiate_push(downstream, StringRef{uri, static_cast<size_t>(len)});
 
   return mrb_nil_value();
 }

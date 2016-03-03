@@ -1848,11 +1848,10 @@ bool Http2Upstream::push_enabled() const {
            get_config()->http2_proxy);
 }
 
-int Http2Upstream::initiate_push(Downstream *downstream, const char *uri,
-                                 size_t len) {
+int Http2Upstream::initiate_push(Downstream *downstream, const StringRef &uri) {
   int rv;
 
-  if (len == 0 || !push_enabled() || (downstream->get_stream_id() % 2)) {
+  if (uri.empty() || !push_enabled() || (downstream->get_stream_id() % 2)) {
     return 0;
   }
 
@@ -1866,8 +1865,7 @@ int Http2Upstream::initiate_push(Downstream *downstream, const char *uri,
   const std::string *scheme_ptr, *authority_ptr;
   std::string scheme, authority, path;
 
-  rv = http2::construct_push_component(scheme, authority, path, base,
-                                       StringRef{uri, len});
+  rv = http2::construct_push_component(scheme, authority, path, base, uri);
   if (rv != 0) {
     return -1;
   }

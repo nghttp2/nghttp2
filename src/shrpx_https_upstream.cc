@@ -1153,8 +1153,7 @@ fail:
   return 0;
 }
 
-int HttpsUpstream::initiate_push(Downstream *downstream, const char *uri,
-                                 size_t len) {
+int HttpsUpstream::initiate_push(Downstream *downstream, const StringRef &uri) {
   return 0;
 }
 

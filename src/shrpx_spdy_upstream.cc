@@ -1252,8 +1252,7 @@ int SpdyUpstream::on_downstream_reset(bool no_retry) {
   return 0;
 }
 
-int SpdyUpstream::initiate_push(Downstream *downstream, const char *uri,
-                                size_t len) {
+int SpdyUpstream::initiate_push(Downstream *downstream, const StringRef &uri) {
   return 0;
 }
 
