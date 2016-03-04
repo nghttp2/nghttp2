@@ -79,8 +79,10 @@ public:
 
   /// Start the first asynchronous operation for the connection.
   void start() {
+    boost::system::error_code ec;
+
     handler_ = std::make_shared<http2_handler>(
-        socket_.get_io_service(), socket_.lowest_layer().remote_endpoint(),
+        socket_.get_io_service(), socket_.lowest_layer().remote_endpoint(ec),
         [this]() { do_write(); }, mux_);
     if (handler_->start() != 0) {
       stop();
