@@ -924,53 +924,55 @@ parse_next_link_header_once(const char *first, const char *last) {
     // we expect link-param
 
     if (!ign) {
-      // rel can take several relations using quoted form.
-      static constexpr char PLP[] = "rel=\"";
-      static constexpr size_t PLPLEN = str_size(PLP);
+      if (!ok) {
+        // rel can take several relations using quoted form.
+        static constexpr char PLP[] = "rel=\"";
+        static constexpr size_t PLPLEN = str_size(PLP);
 
-      static constexpr char PLT[] = "preload";
-      static constexpr size_t PLTLEN = str_size(PLT);
-      if (first + PLPLEN < last && *(first + PLPLEN - 1) == '"' &&
-          std::equal(PLP, PLP + PLPLEN, first, util::CaseCmp())) {
-        // we have to search preload in whitespace separated list:
-        // rel="preload something http://example.org/foo"
-        first += PLPLEN;
-        auto start = first;
-        for (; first != last;) {
-          if (*first != ' ' && *first != '"') {
-            ++first;
-            continue;
+        static constexpr char PLT[] = "preload";
+        static constexpr size_t PLTLEN = str_size(PLT);
+        if (first + PLPLEN < last && *(first + PLPLEN - 1) == '"' &&
+            std::equal(PLP, PLP + PLPLEN, first, util::CaseCmp())) {
+          // we have to search preload in whitespace separated list:
+          // rel="preload something http://example.org/foo"
+          first += PLPLEN;
+          auto start = first;
+          for (; first != last;) {
+            if (*first != ' ' && *first != '"') {
+              ++first;
+              continue;
+            }
+
+            if (start == first) {
+              return {{StringRef{}}, last};
+            }
+
+            if (!ok && start + PLTLEN == first &&
+                std::equal(PLT, PLT + PLTLEN, start, util::CaseCmp())) {
+              ok = true;
+            }
+
+            if (*first == '"') {
+              break;
+            }
+            first = skip_lws(first, last);
+            start = first;
           }
-
-          if (start == first) {
+          if (first == last) {
             return {{StringRef{}}, last};
           }
-
-          if (!ok && start + PLTLEN == first &&
-              std::equal(PLT, PLT + PLTLEN, start, util::CaseCmp())) {
-            ok = true;
-          }
-
-          if (*first == '"') {
-            break;
-          }
-          first = skip_lws(first, last);
-          start = first;
-        }
-        if (first == last) {
-          return {{StringRef{}}, first};
-        }
-        assert(*first == '"');
-        ++first;
-        if (first == last || *first == ',') {
-          goto almost_done;
-        }
-        if (*first == ';') {
+          assert(*first == '"');
           ++first;
-          // parse next link-param
-          continue;
+          if (first == last || *first == ',') {
+            goto almost_done;
+          }
+          if (*first == ';') {
+            ++first;
+            // parse next link-param
+            continue;
+          }
+          return {{StringRef{}}, last};
         }
-        return {{StringRef{}}, last};
       }
       // we are only interested in rel=preload parameter.  Others are
       // simply skipped.
