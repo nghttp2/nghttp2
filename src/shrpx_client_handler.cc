@@ -114,8 +114,6 @@ void writecb(struct ev_loop *loop, ev_io *w, int revents) {
 int ClientHandler::noop() { return 0; }
 
 int ClientHandler::read_clear() {
-  ev_timer_again(conn_.loop, &conn_.rt);
-
   for (;;) {
     if (rb_.rleft() && on_read() != 0) {
       return -1;
@@ -124,6 +122,10 @@ int ClientHandler::read_clear() {
       rb_.reset();
     } else if (rb_.wleft() == 0) {
       conn_.rlimit.stopw();
+      if (reset_conn_rtimer_required_) {
+        reset_conn_rtimer_required_ = false;
+        ev_timer_again(conn_.loop, &conn_.rt);
+      }
       return 0;
     }
 
@@ -134,6 +136,10 @@ int ClientHandler::read_clear() {
     auto nread = conn_.read_clear(rb_.last, rb_.wleft());
 
     if (nread == 0) {
+      if (reset_conn_rtimer_required_) {
+        reset_conn_rtimer_required_ = false;
+        ev_timer_again(conn_.loop, &conn_.rt);
+      }
       return 0;
     }
 
@@ -208,8 +214,6 @@ int ClientHandler::tls_handshake() {
 }
 
 int ClientHandler::read_tls() {
-  ev_timer_again(conn_.loop, &conn_.rt);
-
   ERR_clear_error();
 
   for (;;) {
@@ -221,6 +225,11 @@ int ClientHandler::read_tls() {
       rb_.reset();
     } else if (rb_.wleft() == 0) {
       conn_.rlimit.stopw();
+      if (reset_conn_rtimer_required_) {
+        reset_conn_rtimer_required_ = false;
+        ev_timer_again(conn_.loop, &conn_.rt);
+      }
+
       return 0;
     }
 
@@ -231,6 +240,11 @@ int ClientHandler::read_tls() {
     auto nread = conn_.read_tls(rb_.last, rb_.wleft());
 
     if (nread == 0) {
+      if (reset_conn_rtimer_required_) {
+        reset_conn_rtimer_required_ = false;
+        ev_timer_again(conn_.loop, &conn_.rt);
+      }
+
       return 0;
     }
 
@@ -391,7 +405,8 @@ ClientHandler::ClientHandler(Worker *worker, int fd, SSL *ssl,
       faddr_(faddr),
       worker_(worker),
       left_connhd_len_(NGHTTP2_CLIENT_MAGIC_LEN),
-      should_close_after_write_(false) {
+      should_close_after_write_(false),
+      reset_conn_rtimer_required_(false) {
 
   ++worker_->get_worker_stat()->num_connections;
 
@@ -495,6 +510,10 @@ void ClientHandler::reset_upstream_write_timeout(ev_tstamp t) {
   if (ev_is_active(&conn_.wt)) {
     ev_timer_again(conn_.loop, &conn_.wt);
   }
+}
+
+void ClientHandler::signal_reset_upstream_conn_rtimer() {
+  reset_conn_rtimer_required_ = true;
 }
 
 int ClientHandler::validate_next_proto() {

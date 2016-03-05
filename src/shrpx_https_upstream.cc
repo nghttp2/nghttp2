@@ -247,6 +247,11 @@ int htp_hdrs_completecb(http_parser *htp) {
   if (LOG_ENABLED(INFO)) {
     ULOG(INFO, upstream) << "HTTP request headers completed";
   }
+
+  auto handler = upstream->get_client_handler();
+
+  handler->signal_reset_upstream_conn_rtimer();
+
   auto downstream = upstream->get_downstream();
   auto &req = downstream->request();
 
@@ -323,7 +328,7 @@ int htp_hdrs_completecb(http_parser *htp) {
         req.authority = host->value;
       }
 
-      if (upstream->get_client_handler()->get_ssl()) {
+      if (handler->get_ssl()) {
         req.scheme = "https";
       } else {
         req.scheme = "http";
@@ -336,7 +341,6 @@ int htp_hdrs_completecb(http_parser *htp) {
   downstream->set_request_state(Downstream::HEADER_COMPLETE);
 
 #ifdef HAVE_MRUBY
-  auto handler = upstream->get_client_handler();
   auto worker = handler->get_worker();
   auto mruby_ctx = worker->get_mruby_context();
 
@@ -355,7 +359,7 @@ int htp_hdrs_completecb(http_parser *htp) {
   }
 
   rv = downstream->attach_downstream_connection(
-      upstream->get_client_handler()->get_downstream_connection(downstream));
+      handler->get_downstream_connection(downstream));
 
   if (rv != 0) {
     downstream->set_request_state(Downstream::CONNECT_FAIL);
@@ -377,6 +381,10 @@ namespace {
 int htp_bodycb(http_parser *htp, const char *data, size_t len) {
   int rv;
   auto upstream = static_cast<HttpsUpstream *>(htp->data);
+  auto handler = upstream->get_client_handler();
+
+  handler->signal_reset_upstream_conn_rtimer();
+
   auto downstream = upstream->get_downstream();
   rv = downstream->push_upload_data_chunk(
       reinterpret_cast<const uint8_t *>(data), len);

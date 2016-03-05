@@ -86,6 +86,7 @@ public:
   struct ev_loop *get_loop() const;
   void reset_upstream_read_timeout(ev_tstamp t);
   void reset_upstream_write_timeout(ev_tstamp t);
+  void signal_reset_upstream_conn_rtimer();
   int validate_next_proto();
   const std::string &get_ipaddr() const;
   const std::string &get_port() const;
@@ -161,6 +162,7 @@ private:
   // The number of bytes of HTTP/2 client connection header to read
   size_t left_connhd_len_;
   bool should_close_after_write_;
+  bool reset_conn_rtimer_required_;
   ReadBuf rb_;
 };
 
