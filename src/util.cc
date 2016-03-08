@@ -591,13 +591,13 @@ bool fieldeq(const char *uri, const http_parser_url &u,
   return i == len && !t[i];
 }
 
-std::string get_uri_field(const char *uri, const http_parser_url &u,
-                          http_parser_url_fields field) {
-  if (util::has_uri_field(u, field)) {
-    return std::string(uri + u.field_data[field].off, u.field_data[field].len);
-  } else {
-    return "";
+StringRef get_uri_field(const char *uri, const http_parser_url &u,
+                        http_parser_url_fields field) {
+  if (!util::has_uri_field(u, field)) {
+    return StringRef{};
   }
+
+  return StringRef{uri + u.field_data[field].off, u.field_data[field].len};
 }
 
 uint16_t get_default_port(const char *uri, const http_parser_url &u) {

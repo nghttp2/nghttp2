@@ -448,8 +448,8 @@ bool fieldeq(const char *uri1, const http_parser_url &u1, const char *uri2,
 bool fieldeq(const char *uri, const http_parser_url &u,
              http_parser_url_fields field, const char *t);
 
-std::string get_uri_field(const char *uri, const http_parser_url &u,
-                          http_parser_url_fields field);
+StringRef get_uri_field(const char *uri, const http_parser_url &u,
+                        http_parser_url_fields field);
 
 uint16_t get_default_port(const char *uri, const http_parser_url &u);
 

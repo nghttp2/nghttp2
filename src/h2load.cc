@@ -1396,7 +1396,7 @@ std::string get_reqline(const char *uri, const http_parser_url &u) {
   std::string reqline;
 
   if (util::has_uri_field(u, UF_PATH)) {
-    reqline = util::get_uri_field(uri, u, UF_PATH);
+    reqline = util::get_uri_field(uri, u, UF_PATH).str();
   } else {
     reqline = "/";
   }
@@ -1437,8 +1437,8 @@ bool parse_base_uri(std::string base_uri) {
     return false;
   }
 
-  config.scheme = util::get_uri_field(base_uri.c_str(), u, UF_SCHEMA);
-  config.host = util::get_uri_field(base_uri.c_str(), u, UF_HOST);
+  config.scheme = util::get_uri_field(base_uri.c_str(), u, UF_SCHEMA).str();
+  config.host = util::get_uri_field(base_uri.c_str(), u, UF_HOST).str();
   config.default_port = util::get_default_port(base_uri.c_str(), u);
   if (util::has_uri_field(u, UF_PORT)) {
     config.port = u.port;
