@@ -52,7 +52,7 @@ struct BlockedLink;
 
 class FieldStore {
 public:
-  FieldStore(DefaultBlockAllocator &balloc, size_t headers_initial_capacity)
+  FieldStore(BlockAllocator &balloc, size_t headers_initial_capacity)
       : content_length(-1),
         balloc_(balloc),
         buffer_size_(0),
@@ -112,7 +112,7 @@ public:
   int64_t content_length;
 
 private:
-  DefaultBlockAllocator &balloc_;
+  BlockAllocator &balloc_;
   HeaderRefs headers_;
   // trailer fields.  For HTTP/1.1, trailer fields are only included
   // with chunked encoding.  For HTTP/2, there is no such limit.
@@ -126,7 +126,7 @@ private:
 };
 
 struct Request {
-  Request(DefaultBlockAllocator &balloc)
+  Request(BlockAllocator &balloc)
       : fs(balloc, 16),
         recv_body_length(0),
         unconsumed_body_length(0),
@@ -182,7 +182,7 @@ struct Request {
 };
 
 struct Response {
-  Response(DefaultBlockAllocator &balloc)
+  Response(BlockAllocator &balloc)
       : fs(balloc, 32),
         recv_body_length(0),
         unconsumed_body_length(0),
@@ -376,7 +376,7 @@ public:
 
   DefaultMemchunks pop_response_buf();
 
-  DefaultBlockAllocator &get_block_allocator();
+  BlockAllocator &get_block_allocator();
 
   enum {
     EVENT_ERROR = 0x1,
@@ -397,7 +397,7 @@ public:
   int64_t response_sent_body_length;
 
 private:
-  DefaultBlockAllocator balloc_;
+  BlockAllocator balloc_;
 
   Request req_;
   Response resp_;

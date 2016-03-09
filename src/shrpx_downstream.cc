@@ -116,6 +116,7 @@ Downstream::Downstream(Upstream *upstream, MemchunkPool *mcpool,
     : dlnext(nullptr),
       dlprev(nullptr),
       response_sent_body_length(0),
+      balloc_(1024, 1024),
       req_(balloc_),
       resp_(balloc_),
       request_start_time_(std::chrono::high_resolution_clock::now()),
@@ -357,9 +358,8 @@ void add_header(size_t &sum, HeaderRefs &headers, const StringRef &name,
 } // namespace
 
 namespace {
-void append_last_header_key(DefaultBlockAllocator &balloc, bool &key_prev,
-                            size_t &sum, HeaderRefs &headers, const char *data,
-                            size_t len) {
+void append_last_header_key(BlockAllocator &balloc, bool &key_prev, size_t &sum,
+                            HeaderRefs &headers, const char *data, size_t len) {
   assert(key_prev);
   sum += len;
   auto &item = headers.back();
@@ -371,7 +371,7 @@ void append_last_header_key(DefaultBlockAllocator &balloc, bool &key_prev,
 } // namespace
 
 namespace {
-void append_last_header_value(DefaultBlockAllocator &balloc, bool &key_prev,
+void append_last_header_value(BlockAllocator &balloc, bool &key_prev,
                               size_t &sum, HeaderRefs &headers,
                               const char *data, size_t len) {
   key_prev = false;
@@ -926,6 +926,6 @@ void Downstream::set_assoc_stream_id(int32_t stream_id) {
 
 int32_t Downstream::get_assoc_stream_id() const { return assoc_stream_id_; }
 
-DefaultBlockAllocator &Downstream::get_block_allocator() { return balloc_; }
+BlockAllocator &Downstream::get_block_allocator() { return balloc_; }
 
 } // namespace shrpx

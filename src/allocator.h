@@ -36,8 +36,12 @@ struct MemBlock {
   uint8_t *begin, *last, *end;
 };
 
-template <size_t BLOCK_SIZE> struct BlockAllocator {
-  BlockAllocator() : retain(nullptr), head(nullptr) {}
+struct BlockAllocator {
+  BlockAllocator(size_t block_size, size_t isolation_threshold)
+      : retain(nullptr),
+        head(nullptr),
+        block_size(block_size),
+        isolation_threshold(std::min(block_size, isolation_threshold)) {}
 
   ~BlockAllocator() {
     for (auto mb = retain; mb;) {
@@ -59,14 +63,14 @@ template <size_t BLOCK_SIZE> struct BlockAllocator {
   }
 
   void *alloc(size_t size) {
-    if (size >= BLOCK_SIZE) {
+    if (size >= isolation_threshold) {
       auto mb = alloc_mem_block(size);
       mb->last = mb->end;
       return mb->begin;
     }
 
     if (!head || head->end - head->last < static_cast<ssize_t>(size)) {
-      head = alloc_mem_block(BLOCK_SIZE);
+      head = alloc_mem_block(block_size);
     }
 
     auto res = head->last;
@@ -79,6 +83,11 @@ template <size_t BLOCK_SIZE> struct BlockAllocator {
 
   MemBlock *retain;
   MemBlock *head;
+  // size of single memory block
+  size_t block_size;
+  // if allocation greater or equal to isolation_threshold bytes is
+  // requested, allocate dedicated block.
+  size_t isolation_threshold;
 };
 
 template <typename BlockAllocator>
@@ -100,8 +109,6 @@ StringRef concat_string_ref(BlockAllocator &alloc, const StringRef &a,
   *p = '\0';
   return StringRef{dst, a.size() + b.size()};
 }
-
-using DefaultBlockAllocator = BlockAllocator<1024>;
 
 } // namespace aria2
 
