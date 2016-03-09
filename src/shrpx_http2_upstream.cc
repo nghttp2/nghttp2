@@ -108,7 +108,7 @@ int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
 int Http2Upstream::upgrade_upstream(HttpsUpstream *http) {
   int rv;
 
-  auto http2_settings = http->get_downstream()->get_http2_settings();
+  auto http2_settings = http->get_downstream()->get_http2_settings().str();
   util::to_base64(http2_settings);
 
   auto settings_payload =
@@ -1434,7 +1434,7 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
     }
   } else {
     if (via) {
-      via_value = (*via).value;
+      via_value = (*via).value.str();
       via_value += ", ";
     }
     via_value +=

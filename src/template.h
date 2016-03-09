@@ -443,6 +443,11 @@ private:
   size_type len;
 };
 
+inline bool operator==(const StringRef &lhs, const StringRef &rhs) {
+  return lhs.size() == rhs.size() &&
+         std::equal(std::begin(lhs), std::end(lhs), std::begin(rhs));
+}
+
 inline bool operator==(const StringRef &lhs, const std::string &rhs) {
   return lhs.size() == rhs.size() &&
          std::equal(std::begin(lhs), std::end(lhs), std::begin(rhs));
@@ -475,6 +480,11 @@ inline bool operator!=(const StringRef &lhs, const char *rhs) {
 
 inline bool operator!=(const char *lhs, const StringRef &rhs) {
   return !(rhs == lhs);
+}
+
+inline bool operator<(const StringRef &lhs, const StringRef &rhs) {
+  return std::lexicographical_compare(std::begin(lhs), std::end(lhs),
+                                      std::begin(rhs), std::end(rhs));
 }
 
 inline std::ostream &operator<<(std::ostream &o, const StringRef &s) {

@@ -261,6 +261,11 @@ bool iends_with_l(const std::string &a, const CharT(&b)[N]) {
   return iends_with(std::begin(a), std::end(a), b, b + N - 1);
 }
 
+template <typename CharT, size_t N>
+bool iends_with_l(const StringRef &a, const CharT(&b)[N]) {
+  return iends_with(std::begin(a), std::end(a), b, b + N - 1);
+}
+
 int strcompare(const char *a, const uint8_t *b, size_t n);
 
 template <typename InputIt> bool strieq(const char *a, InputIt b, size_t bn) {
@@ -307,6 +312,11 @@ bool strieq_l(const CharT(&a)[N], InputIt b, size_t blen) {
 
 template <typename CharT, size_t N>
 bool strieq_l(const CharT(&a)[N], const std::string &b) {
+  return strieq(a, N - 1, std::begin(b), b.size());
+}
+
+template <typename CharT, size_t N>
+bool strieq_l(const CharT(&a)[N], const StringRef &b) {
   return strieq(a, N - 1, std::begin(b), b.size());
 }
 
@@ -609,6 +619,7 @@ int64_t parse_uint_with_unit(const char *s);
 int64_t parse_uint(const char *s);
 int64_t parse_uint(const uint8_t *s, size_t len);
 int64_t parse_uint(const std::string &s);
+int64_t parse_uint(const StringRef &s);
 
 // Parses NULL terminated string |s| as unsigned integer and returns
 // the parsed integer casted to double.  If |s| ends with "s", the

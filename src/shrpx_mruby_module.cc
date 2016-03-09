@@ -85,7 +85,7 @@ mrb_value init_module(mrb_state *mrb) {
   return create_env(mrb);
 }
 
-mrb_value create_headers_hash(mrb_state *mrb, const Headers &headers) {
+mrb_value create_headers_hash(mrb_state *mrb, const HeaderRefs &headers) {
   auto hash = mrb_hash_new(mrb);
 
   for (auto &hd : headers) {

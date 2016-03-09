@@ -262,12 +262,12 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
 
     req.method = method_token;
     if (is_connect) {
-      req.authority = path->value;
+      req.authority = path->value.str();
     } else {
-      req.scheme = scheme->value;
-      req.authority = host->value;
+      req.scheme = scheme->value.str();
+      req.authority = host->value.str();
       if (get_config()->http2_proxy) {
-        req.path = path->value;
+        req.path = path->value.str();
       } else if (method_token == HTTP_OPTIONS && path->value == "*") {
         // Server-wide OPTIONS request.  Path is empty.
       } else {
@@ -1069,7 +1069,7 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream) {
     }
   } else {
     if (via) {
-      via_value = via->value;
+      via_value = via->value.str();
       via_value += ", ";
     }
     via_value +=

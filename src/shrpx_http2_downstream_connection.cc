@@ -364,7 +364,7 @@ int Http2DownstreamConnection::push_request_headers() {
         StringRef{req.authority}, StringRef{req.scheme});
     if (fwd || !value.empty()) {
       if (fwd) {
-        forwarded_value = fwd->value;
+        forwarded_value = fwd->value.str();
 
         if (!value.empty()) {
           forwarded_value += ", ";
@@ -377,7 +377,7 @@ int Http2DownstreamConnection::push_request_headers() {
     }
   } else if (fwd) {
     nva.push_back(http2::make_nv_ls_nocopy("forwarded", fwd->value));
-    forwarded_value = fwd->value;
+    forwarded_value = fwd->value.str();
   }
 
   auto &xffconf = httpconf.xff;
@@ -389,7 +389,7 @@ int Http2DownstreamConnection::push_request_headers() {
 
   if (xffconf.add) {
     if (xff) {
-      xff_value = (*xff).value;
+      xff_value = (*xff).value.str();
       xff_value += ", ";
     }
     xff_value += upstream->get_client_handler()->get_ipaddr();
@@ -411,7 +411,7 @@ int Http2DownstreamConnection::push_request_headers() {
     }
   } else {
     if (via) {
-      via_value = (*via).value;
+      via_value = (*via).value.str();
       via_value += ", ";
     }
     via_value += http::create_via_header_value(req.http_major, req.http_minor);

@@ -209,7 +209,8 @@ mrb_value response_return(mrb_state *mrb, mrb_value self) {
 
   auto cl = resp.fs.header(http2::HD_CONTENT_LENGTH);
   if (cl) {
-    cl->value = util::utos(bodylen);
+    cl->value = make_string_ref(downstream->get_block_allocator(),
+                                StringRef{util::utos(bodylen)});
   } else {
     resp.fs.add_header_token(StringRef::from_lit("content-length"),
                              StringRef{util::utos(bodylen)}, false,

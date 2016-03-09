@@ -1056,6 +1056,10 @@ int64_t parse_uint(const std::string &s) {
   return parse_uint(reinterpret_cast<const uint8_t *>(s.c_str()), s.size());
 }
 
+int64_t parse_uint(const StringRef &s) {
+  return parse_uint(s.byte(), s.size());
+}
+
 int64_t parse_uint(const uint8_t *s, size_t len) {
   int64_t n;
   size_t i;
