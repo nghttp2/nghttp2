@@ -234,6 +234,15 @@ void test_util_ipv6_numeric_addr(void) {
   CU_ASSERT(!util::ipv6_numeric_addr("localhost"));
 }
 
+void test_util_utos(void) {
+  uint8_t buf[32];
+
+  CU_ASSERT(("0" == StringRef{buf, util::utos(buf, 0)}));
+  CU_ASSERT(("123" == StringRef{buf, util::utos(buf, 123)}));
+  CU_ASSERT(("9223372036854775808" ==
+             StringRef{buf, util::utos(buf, 9223372036854775808ULL)}));
+}
+
 void test_util_utos_unit(void) {
   CU_ASSERT("0" == util::utos_unit(0));
   CU_ASSERT("1023" == util::utos_unit(1023));

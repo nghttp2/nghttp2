@@ -398,10 +398,11 @@ template <typename T, typename OutputIt> OutputIt utos(OutputIt dst, T n) {
     ;
   --i;
   auto p = dst + i;
+  auto res = p + 1;
   for (; n; --i, n /= 10) {
     *p-- = (n % 10) + '0';
   }
-  return dst + i + 1;
+  return res;
 }
 
 template <typename T> std::string utos_unit(T n) {

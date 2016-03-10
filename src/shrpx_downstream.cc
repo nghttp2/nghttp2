@@ -257,8 +257,7 @@ std::string Downstream::assemble_request_cookie() const {
   std::string cookie;
   cookie = "";
   for (auto &kv : req_.fs.headers()) {
-    if (kv.name.size() != 6 || kv.name[5] != 'e' ||
-        !util::streq_l("cooki", kv.name.c_str(), 5)) {
+    if (kv.token != http2::HD_COOKIE) {
       continue;
     }
 
@@ -273,7 +272,7 @@ std::string Downstream::assemble_request_cookie() const {
       if (c == ' ' || c == ';') {
         continue;
       }
-      end = it + 1;
+      end = it;
       break;
     }
 

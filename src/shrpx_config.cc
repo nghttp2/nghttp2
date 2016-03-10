@@ -624,7 +624,8 @@ int parse_mapping(const DownstreamAddrConfig &addr,
     } else {
       pattern.assign(std::begin(raw_pattern), slash);
       util::inp_strlower(pattern);
-      pattern += http2::normalize_path(slash, std::end(raw_pattern));
+      pattern += http2::normalize_path(StringRef{slash, std::end(raw_pattern)},
+                                       StringRef{});
     }
     for (auto &g : addr_groups) {
       if (g.pattern == pattern) {

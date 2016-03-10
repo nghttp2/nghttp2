@@ -1742,7 +1742,7 @@ StringRef normalize_path(BlockAllocator &balloc, const StringRef &path,
   auto p = result.base;
 
   auto it = std::begin(path);
-  for (; it + 2 != std::end(path);) {
+  for (; it + 2 < std::end(path);) {
     if (*it == '%') {
       if (util::is_hex_digit(*(it + 1)) && util::is_hex_digit(*(it + 2))) {
         auto c =
@@ -1771,6 +1771,12 @@ StringRef normalize_path(BlockAllocator &balloc, const StringRef &path,
 
   return path_join(balloc, StringRef{}, StringRef{}, StringRef{result.base, p},
                    query);
+}
+
+std::string normalize_path(const StringRef &path, const StringRef &query) {
+  BlockAllocator balloc(1024, 1024);
+
+  return normalize_path(balloc, path, query).str();
 }
 
 StringRef rewrite_clean_path(BlockAllocator &balloc, const StringRef &src) {
