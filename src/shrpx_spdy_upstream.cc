@@ -159,6 +159,8 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
 
     auto &req = downstream->request();
 
+    auto &balloc = downstream->get_block_allocator();
+
     downstream->reset_upstream_rtimer();
 
     auto nv = frame->syn_stream.nv;
@@ -262,17 +264,16 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
 
     req.method = method_token;
     if (is_connect) {
-      req.authority = path->value.str();
+      req.authority = path->value;
     } else {
-      req.scheme = scheme->value.str();
-      req.authority = host->value.str();
+      req.scheme = scheme->value;
+      req.authority = host->value;
       if (get_config()->http2_proxy) {
-        req.path = path->value.str();
+        req.path = path->value;
       } else if (method_token == HTTP_OPTIONS && path->value == "*") {
         // Server-wide OPTIONS request.  Path is empty.
       } else {
-        req.path = http2::rewrite_clean_path(std::begin(path->value),
-                                             std::end(path->value));
+        req.path = http2::rewrite_clean_path(balloc, path->value);
       }
     }
 

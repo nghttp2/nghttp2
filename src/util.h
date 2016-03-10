@@ -387,6 +387,23 @@ template <typename T> std::string utos(T n) {
   return res;
 }
 
+template <typename T, typename OutputIt> OutputIt utos(OutputIt dst, T n) {
+  if (n == 0) {
+    *dst++ = '0';
+    return dst;
+  }
+  int i = 0;
+  T t = n;
+  for (; t; t /= 10, ++i)
+    ;
+  --i;
+  auto p = dst + i;
+  for (; n; --i, n /= 10) {
+    *p-- = (n % 10) + '0';
+  }
+  return dst + i + 1;
+}
+
 template <typename T> std::string utos_unit(T n) {
   char u = 0;
   if (n >= (1 << 30)) {
@@ -693,6 +710,11 @@ std::string random_alpha_digit(Generator &gen, size_t len) {
         gen)];
   }
   return res;
+}
+
+template <typename OutputIterator, typename CharT, size_t N>
+OutputIterator copy_lit(OutputIterator it, CharT(&s)[N]) {
+  return std::copy_n(s, N - 1, it);
 }
 
 } // namespace util

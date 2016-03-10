@@ -187,6 +187,8 @@ mrb_value response_return(mrb_state *mrb, mrb_value self) {
   auto &resp = downstream->response();
   int rv;
 
+  auto &balloc = downstream->get_block_allocator();
+
   if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "response has already been committed");
   }
@@ -207,14 +209,22 @@ mrb_value response_return(mrb_state *mrb, mrb_value self) {
     bodylen = vallen;
   }
 
+  StringRef content_length;
+  {
+    auto iov = make_byte_ref(balloc, str_size("18446744073709551615") + 1);
+    auto p = iov.base;
+    p = util::utos(p, bodylen);
+    *p = '\0';
+    content_length = StringRef{iov.base, p};
+  }
+
   auto cl = resp.fs.header(http2::HD_CONTENT_LENGTH);
   if (cl) {
-    cl->value = make_string_ref(downstream->get_block_allocator(),
-                                StringRef{util::utos(bodylen)});
+    cl->value = content_length;
   } else {
+    // TODO we don't have to make a copy here.
     resp.fs.add_header_token(StringRef::from_lit("content-length"),
-                             StringRef{util::utos(bodylen)}, false,
-                             http2::HD_CONTENT_LENGTH);
+                             content_length, false, http2::HD_CONTENT_LENGTH);
   }
   resp.fs.content_length = bodylen;
 

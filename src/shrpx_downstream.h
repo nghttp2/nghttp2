@@ -147,17 +147,17 @@ struct Request {
   FieldStore fs;
   // Request scheme.  For HTTP/2, this is :scheme header field value.
   // For HTTP/1.1, this is deduced from URI or connection.
-  std::string scheme;
+  StringRef scheme;
   // Request authority.  This is HTTP/2 :authority header field value
   // or host header field value.  We may deduce it from absolute-form
   // HTTP/1 request.  We also store authority-form HTTP/1 request.
   // This could be empty if request comes from HTTP/1.0 without Host
   // header field and origin-form.
-  std::string authority;
+  StringRef authority;
   // Request path, including query component.  For HTTP/1.1, this is
   // request-target.  For HTTP/2, this is :path header field value.
   // For CONNECT request, this is empty.
-  std::string path;
+  StringRef path;
   // the length of request body received so far
   int64_t recv_body_length;
   // The number of bytes not consumed by the application yet.
@@ -275,7 +275,7 @@ public:
   // Validates that received request body length and content-length
   // matches.
   bool validate_request_recv_body_length() const;
-  void set_request_downstream_host(std::string host);
+  void set_request_downstream_host(const StringRef &host);
   bool expect_response_body() const;
   enum {
     INITIAL,
@@ -306,7 +306,7 @@ public:
   Response &response() { return resp_; }
 
   // Rewrites the location response header field.
-  void rewrite_location_response_header(const std::string &upstream_scheme);
+  void rewrite_location_response_header(const StringRef &upstream_scheme);
 
   bool get_chunked_response() const;
   void set_chunked_response(bool f);
@@ -407,7 +407,7 @@ private:
   // host we requested to downstream.  This is used to rewrite
   // location header field to decide the location should be rewritten
   // or not.
-  std::string request_downstream_host_;
+  StringRef request_downstream_host_;
 
   DefaultMemchunks request_buf_;
   DefaultMemchunks response_buf_;

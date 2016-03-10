@@ -283,10 +283,10 @@ int HttpDownstreamConnection::push_request_headers() {
       httpconf.no_host_rewrite || get_config()->http2_proxy || connect_method;
 
   if (no_host_rewrite && !req.authority.empty()) {
-    authority = StringRef(req.authority);
+    authority = req.authority;
   }
 
-  downstream_->set_request_downstream_host(authority.str());
+  downstream_->set_request_downstream_host(authority);
 
   auto buf = downstream_->get_request_buf();
 
@@ -366,9 +366,9 @@ int HttpDownstreamConnection::push_request_headers() {
       params &= ~FORWARDED_PROTO;
     }
 
-    auto value = http::create_forwarded(
-        params, handler->get_forwarded_by(), handler->get_forwarded_for(),
-        StringRef{req.authority}, StringRef{req.scheme});
+    auto value = http::create_forwarded(params, handler->get_forwarded_by(),
+                                        handler->get_forwarded_for(),
+                                        req.authority, req.scheme);
     if (fwd || !value.empty()) {
       buf->append("Forwarded: ");
       if (fwd) {

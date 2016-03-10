@@ -27,6 +27,8 @@
 
 #include "nghttp2_config.h"
 
+#include <sys/uio.h>
+
 #include "template.h"
 
 namespace nghttp2 {
@@ -108,6 +110,17 @@ StringRef concat_string_ref(BlockAllocator &alloc, const StringRef &a,
   p = std::copy(std::begin(b), std::end(b), p);
   *p = '\0';
   return StringRef{dst, a.size() + b.size()};
+}
+
+struct ByteRef {
+  uint8_t *base;
+  size_t len;
+};
+
+template <typename BlockAllocator>
+ByteRef make_byte_ref(BlockAllocator &alloc, size_t size) {
+  auto dst = static_cast<uint8_t *>(alloc.alloc(size));
+  return {dst, size};
 }
 
 } // namespace aria2

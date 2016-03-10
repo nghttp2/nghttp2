@@ -282,10 +282,10 @@ int Http2DownstreamConnection::push_request_headers() {
   auto authority = StringRef(downstream_hostport);
 
   if (no_host_rewrite && !req.authority.empty()) {
-    authority = StringRef(req.authority);
+    authority = req.authority;
   }
 
-  downstream_->set_request_downstream_host(authority.str());
+  downstream_->set_request_downstream_host(authority);
 
   size_t num_cookies = 0;
   if (!http2conf.no_cookie_crumbling) {
@@ -359,9 +359,9 @@ int Http2DownstreamConnection::push_request_headers() {
       params &= ~FORWARDED_PROTO;
     }
 
-    auto value = http::create_forwarded(
-        params, handler->get_forwarded_by(), handler->get_forwarded_for(),
-        StringRef{req.authority}, StringRef{req.scheme});
+    auto value = http::create_forwarded(params, handler->get_forwarded_by(),
+                                        handler->get_forwarded_for(),
+                                        req.authority, req.scheme);
     if (fwd || !value.empty()) {
       if (fwd) {
         forwarded_value = fwd->value.str();

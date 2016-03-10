@@ -111,9 +111,8 @@ public:
   void check_shutdown();
 
   int prepare_push_promise(Downstream *downstream);
-  int submit_push_promise(const std::string &scheme,
-                          const std::string &authority, const std::string &path,
-                          Downstream *downstream);
+  int submit_push_promise(const StringRef &scheme, const StringRef &authority,
+                          const StringRef &path, Downstream *downstream);
 
   int on_request_headers(Downstream *downstream, const nghttp2_frame *frame);
 

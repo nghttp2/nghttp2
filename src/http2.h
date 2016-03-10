@@ -40,6 +40,7 @@
 #include "util.h"
 #include "memchunk.h"
 #include "template.h"
+#include "allocator.h"
 
 namespace nghttp2 {
 
@@ -241,10 +242,11 @@ void dump_nv(FILE *out, const HeaderRefs &nva);
 // This function returns the new rewritten URI on success. If the
 // location URI is not subject to the rewrite, this function returns
 // emtpy string.
-std::string rewrite_location_uri(const StringRef &uri, const http_parser_url &u,
-                                 const std::string &match_host,
-                                 const std::string &request_authority,
-                                 const std::string &upstream_scheme);
+StringRef rewrite_location_uri(BlockAllocator &balloc, const StringRef &uri,
+                               const http_parser_url &u,
+                               const StringRef &match_host,
+                               const StringRef &request_authority,
+                               const StringRef &upstream_scheme);
 
 // Checks the header name/value pair using nghttp2_check_header_name()
 // and nghttp2_check_header_value(). If both function returns nonzero,
@@ -337,6 +339,10 @@ std::vector<LinkHeader> parse_link_header(const char *src, size_t len);
 std::string path_join(const StringRef &base, const StringRef &base_query,
                       const StringRef &rel_path, const StringRef &rel_query);
 
+StringRef path_join(BlockAllocator &balloc, const StringRef &base_path,
+                    const StringRef &base_query, const StringRef &rel_path,
+                    const StringRef &rel_query);
+
 // true if response has body, taking into account the request method
 // and status code.
 bool expect_response_body(const std::string &method, int status_code);
@@ -407,19 +413,24 @@ std::string rewrite_clean_path(InputIt first, InputIt last) {
   return path;
 }
 
+StringRef normalize_path(BlockAllocator &balloc, const StringRef &path,
+                         const StringRef &query);
+
+StringRef rewrite_clean_path(BlockAllocator &balloc, const StringRef &src);
+
 // Returns path component of |uri|.  The returned path does not
 // include query component.  This function returns empty string if it
 // fails.
-StringRef get_pure_path_component(const std::string &uri);
+StringRef get_pure_path_component(const StringRef &uri);
 
 // Deduces scheme, authority and path from given |uri|, and stores
 // them in |scheme|, |authority|, and |path| respectively.  If |uri|
 // is relative path, path resolution takes place using path given in
 // |base| of length |baselen|.  This function returns 0 if it
 // succeeds, or -1.
-int construct_push_component(std::string &scheme, std::string &authority,
-                             std::string &path, const StringRef &base,
-                             const StringRef &uri);
+int construct_push_component(BlockAllocator &balloc, StringRef &scheme,
+                             StringRef &authority, StringRef &path,
+                             const StringRef &base, const StringRef &uri);
 
 } // namespace http2
 

@@ -825,11 +825,11 @@ int ClientHandler::perform_http2_upgrade(HttpsUpstream *http) {
 
 bool ClientHandler::get_http2_upgrade_allowed() const { return !conn_.tls.ssl; }
 
-std::string ClientHandler::get_upstream_scheme() const {
+StringRef ClientHandler::get_upstream_scheme() const {
   if (conn_.tls.ssl) {
-    return "https";
+    return StringRef::from_lit("https");
   } else {
-    return "http";
+    return StringRef::from_lit("http");
   }
 }
 
@@ -843,24 +843,35 @@ namespace {
 // is mostly same routine found in
 // HttpDownstreamConnection::push_request_headers(), but vastly
 // simplified since we only care about absolute URI.
-std::string construct_absolute_request_uri(const Request &req) {
+StringRef construct_absolute_request_uri(BlockAllocator &balloc,
+                                         const Request &req) {
   if (req.authority.empty()) {
     return req.path;
   }
 
-  std::string uri;
+  auto len = req.authority.size() + req.path.size();
+  if (req.scheme.empty()) {
+    len += str_size("http://");
+  } else {
+    len += req.scheme.size() + str_size("://");
+  }
+
+  auto iov = make_byte_ref(balloc, len + 1);
+  auto p = iov.base;
+
   if (req.scheme.empty()) {
     // We may have to log the request which lacks scheme (e.g.,
     // http/1.1 with origin form).
-    uri += "http://";
+    p = util::copy_lit(p, "http://");
   } else {
-    uri += req.scheme;
-    uri += "://";
+    p = std::copy(std::begin(req.scheme), std::end(req.scheme), p);
+    p = util::copy_lit(p, "://");
   }
-  uri += req.authority;
-  uri += req.path;
+  p = std::copy(std::begin(req.authority), std::end(req.authority), p);
+  p = std::copy(std::begin(req.path), std::end(req.path), p);
+  *p = '\0';
 
-  return uri;
+  return StringRef{iov.base, p};
 }
 } // namespace
 
@@ -868,6 +879,8 @@ void ClientHandler::write_accesslog(Downstream *downstream) {
   nghttp2::ssl::TLSSessionInfo tls_info;
   const auto &req = downstream->request();
   const auto &resp = downstream->response();
+
+  auto &balloc = downstream->get_block_allocator();
 
   upstream_accesslog(
       get_config()->logging.access.format,
@@ -877,7 +890,7 @@ void ClientHandler::write_accesslog(Downstream *downstream) {
           req.method == HTTP_CONNECT
               ? StringRef(req.authority)
               : get_config()->http2_proxy
-                    ? StringRef(construct_absolute_request_uri(req))
+                    ? StringRef(construct_absolute_request_uri(balloc, req))
                     : req.path.empty()
                           ? req.method == HTTP_OPTIONS
                                 ? StringRef::from_lit("*")

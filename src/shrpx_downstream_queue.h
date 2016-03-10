@@ -77,7 +77,7 @@ public:
   void mark_blocked(Downstream *downstream);
   // Returns true if we can make downstream connection to given
   // |host|.
-  bool can_activate(const std::string &host) const;
+  bool can_activate(const StringRef &host) const;
   // Removes and frees |downstream| object.  If |downstream| is in
   // Downstream::DISPATCH_ACTIVE, and |next_blocked| is true, this
   // function may return Downstream object with the same target host
@@ -87,8 +87,8 @@ public:
                                      bool next_blocked = true);
   Downstream *get_downstreams() const;
   HostEntry &find_host_entry(const std::string &host);
-  const std::string &make_host_key(const std::string &host) const;
-  const std::string &make_host_key(Downstream *downstream) const;
+  std::string make_host_key(const StringRef &host) const;
+  std::string make_host_key(Downstream *downstream) const;
 
 private:
   // Per target host structure to keep track of the number of

@@ -303,7 +303,9 @@ int Http2Upstream::on_request_headers(Downstream *downstream,
   }
 
   req.method = method_token;
-  req.scheme = http2::value_to_str(scheme);
+  if (scheme) {
+    req.scheme = scheme->value;
+  }
 
   // nghttp2 library guarantees either :authority or host exist
   if (!authority) {
@@ -311,16 +313,18 @@ int Http2Upstream::on_request_headers(Downstream *downstream,
     authority = req.fs.header(http2::HD_HOST);
   }
 
-  req.authority = http2::value_to_str(authority);
+  if (authority) {
+    req.authority = authority->value;
+  }
 
   if (path) {
     if (method_token == HTTP_OPTIONS && path->value == "*") {
       // Server-wide OPTIONS request.  Path is empty.
     } else if (get_config()->http2_proxy) {
-      req.path = http2::value_to_str(path);
+      req.path = path->value;
     } else {
-      const auto &value = path->value;
-      req.path = http2::rewrite_clean_path(std::begin(value), std::end(value));
+      req.path = http2::rewrite_clean_path(downstream->get_block_allocator(),
+                                           path->value);
     }
   }
 
@@ -580,6 +584,8 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
     req.http_major = 2;
     req.http_minor = 0;
 
+    auto &promised_balloc = promised_downstream->get_block_allocator();
+
     for (size_t i = 0; i < frame->push_promise.nvlen; ++i) {
       auto &nv = frame->push_promise.nva[i];
       auto token = http2::lookup_token(nv.name, nv.namelen);
@@ -588,13 +594,16 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
         req.method = http2::lookup_method_token(nv.value, nv.valuelen);
         break;
       case http2::HD__SCHEME:
-        req.scheme.assign(nv.value, nv.value + nv.valuelen);
+        req.scheme =
+            make_string_ref(promised_balloc, StringRef{nv.value, nv.valuelen});
         break;
       case http2::HD__AUTHORITY:
-        req.authority.assign(nv.value, nv.value + nv.valuelen);
+        req.authority =
+            make_string_ref(promised_balloc, StringRef{nv.value, nv.valuelen});
         break;
       case http2::HD__PATH:
-        req.path = http2::rewrite_clean_path(nv.value, nv.value + nv.valuelen);
+        req.path = http2::rewrite_clean_path(promised_balloc,
+                                             StringRef{nv.value, nv.valuelen});
         break;
       }
       req.fs.add_header_token(StringRef{nv.name, nv.namelen},
@@ -1746,6 +1755,8 @@ int Http2Upstream::prepare_push_promise(Downstream *downstream) {
     return 0;
   }
 
+  auto &balloc = downstream->get_block_allocator();
+
   for (auto &kv : resp.fs.headers()) {
     if (kv.token != http2::HD_LINK) {
       continue;
@@ -1753,28 +1764,23 @@ int Http2Upstream::prepare_push_promise(Downstream *downstream) {
     for (auto &link :
          http2::parse_link_header(kv.value.c_str(), kv.value.size())) {
 
-      const std::string *scheme_ptr, *authority_ptr;
-      std::string scheme, authority, path;
+      StringRef scheme, authority, path;
 
-      rv = http2::construct_push_component(scheme, authority, path, base,
-                                           link.uri);
+      rv = http2::construct_push_component(balloc, scheme, authority, path,
+                                           base, link.uri);
       if (rv != 0) {
         continue;
       }
 
       if (scheme.empty()) {
-        scheme_ptr = &req.scheme;
-      } else {
-        scheme_ptr = &scheme;
+        scheme = req.scheme;
       }
 
       if (authority.empty()) {
-        authority_ptr = &req.authority;
-      } else {
-        authority_ptr = &authority;
+        authority = req.authority;
       }
 
-      rv = submit_push_promise(*scheme_ptr, *authority_ptr, path, downstream);
+      rv = submit_push_promise(scheme, authority, path, downstream);
       if (rv != 0) {
         return -1;
       }
@@ -1783,9 +1789,9 @@ int Http2Upstream::prepare_push_promise(Downstream *downstream) {
   return 0;
 }
 
-int Http2Upstream::submit_push_promise(const std::string &scheme,
-                                       const std::string &authority,
-                                       const std::string &path,
+int Http2Upstream::submit_push_promise(const StringRef &scheme,
+                                       const StringRef &authority,
+                                       const StringRef &path,
                                        Downstream *downstream) {
   const auto &req = downstream->request();
 
@@ -1795,9 +1801,9 @@ int Http2Upstream::submit_push_promise(const std::string &scheme,
 
   // juse use "GET" for now
   nva.push_back(http2::make_nv_ll(":method", "GET"));
-  nva.push_back(http2::make_nv_ls(":scheme", scheme));
-  nva.push_back(http2::make_nv_ls(":path", path));
-  nva.push_back(http2::make_nv_ls(":authority", authority));
+  nva.push_back(http2::make_nv_ls_nocopy(":scheme", scheme));
+  nva.push_back(http2::make_nv_ls_nocopy(":path", path));
+  nva.push_back(http2::make_nv_ls_nocopy(":authority", authority));
 
   for (auto &kv : req.fs.headers()) {
     switch (kv.token) {
@@ -1865,27 +1871,25 @@ int Http2Upstream::initiate_push(Downstream *downstream, const StringRef &uri) {
     return -1;
   }
 
-  const std::string *scheme_ptr, *authority_ptr;
-  std::string scheme, authority, path;
+  auto &balloc = downstream->get_block_allocator();
 
-  rv = http2::construct_push_component(scheme, authority, path, base, uri);
+  StringRef scheme, authority, path;
+
+  rv = http2::construct_push_component(balloc, scheme, authority, path, base,
+                                       uri);
   if (rv != 0) {
     return -1;
   }
 
   if (scheme.empty()) {
-    scheme_ptr = &req.scheme;
-  } else {
-    scheme_ptr = &scheme;
+    scheme = req.scheme;
   }
 
   if (authority.empty()) {
-    authority_ptr = &req.authority;
-  } else {
-    authority_ptr = &authority;
+    authority = req.authority;
   }
 
-  rv = submit_push_promise(*scheme_ptr, *authority_ptr, path, downstream);
+  rv = submit_push_promise(scheme, authority, path, downstream);
 
   if (rv != 0) {
     return -1;
@@ -1943,7 +1947,7 @@ int Http2Upstream::on_downstream_push_promise_complete(
   nva.reserve(headers.size());
 
   for (auto &kv : headers) {
-    nva.push_back(http2::make_nv_nocopy(kv.name, kv.value, kv.no_index));
+    nva.push_back(http2::make_nv(kv.name, kv.value, kv.no_index));
   }
 
   auto promised_stream_id = nghttp2_submit_push_promise(

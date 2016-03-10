@@ -116,6 +116,8 @@ mrb_value request_set_authority(mrb_state *mrb, mrb_value self) {
   auto downstream = data->downstream;
   auto &req = downstream->request();
 
+  auto &balloc = downstream->get_block_allocator();
+
   check_phase(mrb, data->phase, PHASE_REQUEST);
 
   const char *authority;
@@ -125,7 +127,8 @@ mrb_value request_set_authority(mrb_state *mrb, mrb_value self) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "authority must not be empty string");
   }
 
-  req.authority.assign(authority, n);
+  req.authority =
+      make_string_ref(balloc, StringRef{authority, static_cast<size_t>(n)});
 
   return self;
 }
@@ -147,6 +150,8 @@ mrb_value request_set_scheme(mrb_state *mrb, mrb_value self) {
   auto downstream = data->downstream;
   auto &req = downstream->request();
 
+  auto &balloc = downstream->get_block_allocator();
+
   check_phase(mrb, data->phase, PHASE_REQUEST);
 
   const char *scheme;
@@ -156,7 +161,8 @@ mrb_value request_set_scheme(mrb_state *mrb, mrb_value self) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "scheme must not be empty string");
   }
 
-  req.scheme.assign(scheme, n);
+  req.scheme =
+      make_string_ref(balloc, StringRef{scheme, static_cast<size_t>(n)});
 
   return self;
 }
@@ -178,13 +184,16 @@ mrb_value request_set_path(mrb_state *mrb, mrb_value self) {
   auto downstream = data->downstream;
   auto &req = downstream->request();
 
+  auto &balloc = downstream->get_block_allocator();
+
   check_phase(mrb, data->phase, PHASE_REQUEST);
 
   const char *path;
   mrb_int pathlen;
   mrb_get_args(mrb, "s", &path, &pathlen);
 
-  req.path.assign(path, pathlen);
+  req.path =
+      make_string_ref(balloc, StringRef{path, static_cast<size_t>(pathlen)});
 
   return self;
 }

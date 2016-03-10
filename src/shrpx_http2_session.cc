@@ -1986,6 +1986,8 @@ int Http2Session::handle_downstream_push_promise_complete(
     Downstream *downstream, Downstream *promised_downstream) {
   auto &promised_req = promised_downstream->request();
 
+  auto &promised_balloc = promised_downstream->get_block_allocator();
+
   auto authority = promised_req.fs.header(http2::HD__AUTHORITY);
   auto path = promised_req.fs.header(http2::HD__PATH);
   auto method = promised_req.fs.header(http2::HD__METHOD);
@@ -2007,16 +2009,19 @@ int Http2Session::handle_downstream_push_promise_complete(
   // TODO Rewrite authority if we enabled rewrite host.  But we
   // really don't know how to rewrite host.  Should we use the same
   // host in associated stream?
-  promised_req.authority = http2::value_to_str(authority);
+  if (authority) {
+    promised_req.authority = authority->value;
+  }
   promised_req.method = method_token;
   // libnghttp2 ensures that we don't have CONNECT method in
   // PUSH_PROMISE, and guarantees that :scheme exists.
-  promised_req.scheme = http2::value_to_str(scheme);
+  if (scheme) {
+    promised_req.scheme = scheme->value;
+  }
 
   // For server-wide OPTIONS request, path is empty.
   if (method_token != HTTP_OPTIONS || path->value != "*") {
-    promised_req.path = http2::rewrite_clean_path(std::begin(path->value),
-                                                  std::end(path->value));
+    promised_req.path = http2::rewrite_clean_path(promised_balloc, path->value);
   }
 
   promised_downstream->inspect_http2_request();

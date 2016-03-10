@@ -409,7 +409,8 @@ public:
       : base(&*first), len(std::distance(first, last)) {}
   template <typename InputIt>
   StringRef(InputIt *first, InputIt *last)
-      : base(first), len(std::distance(first, last)) {}
+      : base(reinterpret_cast<const char *>(first)),
+        len(std::distance(first, last)) {}
   template <typename CharT, size_t N>
   constexpr static StringRef from_lit(const CharT(&s)[N]) {
     return StringRef(s, N - 1);

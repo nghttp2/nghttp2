@@ -484,41 +484,69 @@ void dump_nv(FILE *out, const HeaderRefs &nva) {
   fflush(out);
 }
 
-std::string rewrite_location_uri(const StringRef &uri, const http_parser_url &u,
-                                 const std::string &match_host,
-                                 const std::string &request_authority,
-                                 const std::string &upstream_scheme) {
+StringRef rewrite_location_uri(BlockAllocator &balloc, const StringRef &uri,
+                               const http_parser_url &u,
+                               const StringRef &match_host,
+                               const StringRef &request_authority,
+                               const StringRef &upstream_scheme) {
   // We just rewrite scheme and authority.
   if ((u.field_set & (1 << UF_HOST)) == 0) {
-    return "";
+    return StringRef{};
   }
   auto field = &u.field_data[UF_HOST];
   if (!util::starts_with(std::begin(match_host), std::end(match_host),
                          &uri[field->off], &uri[field->off] + field->len) ||
       (match_host.size() != field->len && match_host[field->len] != ':')) {
-    return "";
+    return StringRef{};
   }
-  std::string res;
+
+  auto len = 0;
   if (!request_authority.empty()) {
-    res += upstream_scheme;
-    res += "://";
-    res += request_authority;
+    len += upstream_scheme.size() + str_size("://") + request_authority.size();
+  }
+
+  if (u.field_set & (1 << UF_PATH)) {
+    field = &u.field_data[UF_PATH];
+    len += field->len;
+  }
+
+  if (u.field_set & (1 << UF_QUERY)) {
+    field = &u.field_data[UF_QUERY];
+    len += 1 + field->len;
+  }
+
+  if (u.field_set & (1 << UF_FRAGMENT)) {
+    field = &u.field_data[UF_FRAGMENT];
+    len += 1 + field->len;
+  }
+
+  auto iov = make_byte_ref(balloc, len + 1);
+  auto p = iov.base;
+
+  if (!request_authority.empty()) {
+    p = std::copy(std::begin(upstream_scheme), std::end(upstream_scheme), p);
+    p = util::copy_lit(p, "://");
+    p = std::copy(std::begin(request_authority), std::end(request_authority),
+                  p);
   }
   if (u.field_set & (1 << UF_PATH)) {
     field = &u.field_data[UF_PATH];
-    res.append(&uri[field->off], field->len);
+    p = std::copy_n(&uri[field->off], field->len, p);
   }
   if (u.field_set & (1 << UF_QUERY)) {
     field = &u.field_data[UF_QUERY];
-    res += '?';
-    res.append(&uri[field->off], field->len);
+    *p++ = '?';
+    p = std::copy_n(&uri[field->off], field->len, p);
   }
   if (u.field_set & (1 << UF_FRAGMENT)) {
     field = &u.field_data[UF_FRAGMENT];
-    res += '#';
-    res.append(&uri[field->off], field->len);
+    *p++ = '#';
+    p = std::copy_n(&uri[field->off], field->len, p);
   }
-  return res;
+
+  *p = '\0';
+
+  return StringRef{iov.base, p};
 }
 
 int check_nv(const uint8_t *name, size_t namelen, const uint8_t *value,
@@ -1496,7 +1524,7 @@ StringRef to_method_string(int method_token) {
   return StringRef{http_method_str(static_cast<http_method>(method_token))};
 }
 
-StringRef get_pure_path_component(const std::string &uri) {
+StringRef get_pure_path_component(const StringRef &uri) {
   int rv;
 
   http_parser_url u{};
@@ -1513,9 +1541,9 @@ StringRef get_pure_path_component(const std::string &uri) {
   return StringRef::from_lit("/");
 }
 
-int construct_push_component(std::string &scheme, std::string &authority,
-                             std::string &path, const StringRef &base,
-                             const StringRef &uri) {
+int construct_push_component(BlockAllocator &balloc, StringRef &scheme,
+                             StringRef &authority, StringRef &path,
+                             const StringRef &base, const StringRef &uri) {
   int rv;
   StringRef rel, relq;
 
@@ -1538,15 +1566,26 @@ int construct_push_component(std::string &scheme, std::string &authority,
     }
   } else {
     if (u.field_set & (1 << UF_SCHEMA)) {
-      http2::copy_url_component(scheme, &u, UF_SCHEMA, uri.c_str());
+      scheme = util::get_uri_field(uri.c_str(), u, UF_SCHEMA);
     }
 
     if (u.field_set & (1 << UF_HOST)) {
-      http2::copy_url_component(authority, &u, UF_HOST, uri.c_str());
-      if (u.field_set & (1 << UF_PORT)) {
-        authority += ':';
-        authority += util::utos(u.port);
+      auto auth = util::get_uri_field(uri.c_str(), u, UF_HOST);
+      auto len = auth.size();
+      auto port_exists = u.field_set & (1 << UF_PORT);
+      if (port_exists) {
+        len += 1 + str_size("65535");
       }
+      auto iov = make_byte_ref(balloc, len + 1);
+      auto p = iov.base;
+      p = std::copy(std::begin(auth), std::end(auth), p);
+      if (port_exists) {
+        *p++ = ':';
+        p = util::utos(p, u.port);
+      }
+      *p = '\0';
+
+      authority = StringRef{iov.base, p};
     }
 
     if (u.field_set & (1 << UF_PATH)) {
@@ -1562,9 +1601,190 @@ int construct_push_component(std::string &scheme, std::string &authority,
     }
   }
 
-  path = http2::path_join(base, StringRef{}, rel, relq);
+  path = http2::path_join(balloc, base, StringRef{}, rel, relq);
 
   return 0;
+}
+
+namespace {
+template <typename InputIt> InputIt eat_file(InputIt first, InputIt last) {
+  if (first == last) {
+    *first++ = '/';
+    return first;
+  }
+
+  if (*(last - 1) == '/') {
+    return last;
+  }
+
+  auto p = last;
+  for (; p != first && *(p - 1) != '/'; --p)
+    ;
+  if (p == first) {
+    // this should not happend in normal case, where we expect path
+    // starts with '/'
+    *first++ = '/';
+    return first;
+  }
+
+  return p;
+}
+} // namespace
+
+namespace {
+template <typename InputIt> InputIt eat_dir(InputIt first, InputIt last) {
+  auto p = eat_file(first, last);
+
+  --p;
+
+  assert(*p == '/');
+
+  return eat_file(first, p);
+}
+} // namespace
+
+StringRef path_join(BlockAllocator &balloc, const StringRef &base_path,
+                    const StringRef &base_query, const StringRef &rel_path,
+                    const StringRef &rel_query) {
+  auto res = make_byte_ref(
+      balloc, std::max(static_cast<size_t>(1), base_path.size()) +
+                  rel_path.size() + 1 +
+                  std::max(base_query.size(), rel_query.size()) + 1);
+  auto p = res.base;
+
+  if (rel_path.empty()) {
+    if (base_path.empty()) {
+      *p++ = '/';
+    } else {
+      p = std::copy(std::begin(base_path), std::end(base_path), p);
+    }
+    if (rel_query.empty()) {
+      if (!base_query.empty()) {
+        *p++ = '?';
+        p = std::copy(std::begin(base_query), std::end(base_query), p);
+      }
+      *p = '\0';
+      return StringRef{res.base, p};
+    }
+    *p++ = '?';
+    p = std::copy(std::begin(rel_query), std::end(rel_query), p);
+    *p = '\0';
+    return StringRef{res.base, p};
+  }
+
+  auto first = std::begin(rel_path);
+  auto last = std::end(rel_path);
+
+  if (rel_path[0] == '/') {
+    *p++ = '/';
+    ++first;
+  } else if (base_path.empty()) {
+    *p++ = '/';
+  } else {
+    p = std::copy(std::begin(base_path), std::end(base_path), p);
+  }
+
+  for (; first != last;) {
+    if (*first == '.') {
+      if (first + 1 == last) {
+        break;
+      }
+      if (*(first + 1) == '/') {
+        first += 2;
+        continue;
+      }
+      if (*(first + 1) == '.') {
+        if (first + 2 == last) {
+          p = eat_dir(res.base, p);
+          break;
+        }
+        if (*(first + 2) == '/') {
+          p = eat_dir(res.base, p);
+          first += 3;
+          continue;
+        }
+      }
+    }
+    if (*(p - 1) != '/') {
+      p = eat_file(res.base, p);
+    }
+    auto slash = std::find(first, last, '/');
+    if (slash == last) {
+      p = std::copy(first, last, p);
+      break;
+    }
+    p = std::copy(first, slash + 1, p);
+    first = slash + 1;
+    for (; first != last && *first == '/'; ++first)
+      ;
+  }
+  if (!rel_query.empty()) {
+    *p++ = '?';
+    p = std::copy(std::begin(rel_query), std::end(rel_query), p);
+  }
+  *p = '\0';
+  return StringRef{res.base, p};
+}
+
+StringRef normalize_path(BlockAllocator &balloc, const StringRef &path,
+                         const StringRef &query) {
+  // First, decode %XX for unreserved characters, then do
+  // http2::join_path
+
+  // We won't find %XX if length is less than 3.
+  if (path.size() < 3 ||
+      std::find(std::begin(path), std::end(path), '%') == std::end(path)) {
+    return path_join(balloc, StringRef{}, StringRef{}, path, query);
+  }
+
+  // includes last terminal NULL.
+  auto result = make_byte_ref(balloc, path.size() + 1);
+  auto p = result.base;
+
+  auto it = std::begin(path);
+  for (; it + 2 != std::end(path);) {
+    if (*it == '%') {
+      if (util::is_hex_digit(*(it + 1)) && util::is_hex_digit(*(it + 2))) {
+        auto c =
+            (util::hex_to_uint(*(it + 1)) << 4) + util::hex_to_uint(*(it + 2));
+        if (util::in_rfc3986_unreserved_chars(c)) {
+          *p++ = c;
+
+          it += 3;
+
+          continue;
+        }
+        *p++ = '%';
+        *p++ = util::upcase(*(it + 1));
+        *p++ = util::upcase(*(it + 2));
+
+        it += 3;
+
+        continue;
+      }
+    }
+    *p++ = *it++;
+  }
+
+  p = std::copy(it, std::end(path), p);
+  *p = '\0';
+
+  return path_join(balloc, StringRef{}, StringRef{}, StringRef{result.base, p},
+                   query);
+}
+
+StringRef rewrite_clean_path(BlockAllocator &balloc, const StringRef &src) {
+  if (src.empty() || src[0] != '/') {
+    return src;
+  }
+  // probably, not necessary most of the case, but just in case.
+  auto fragment = std::find(std::begin(src), std::end(src), '#');
+  auto query = std::find(std::begin(src), fragment, '?');
+  if (query != fragment) {
+    ++query;
+  }
+  return normalize_path(balloc, StringRef{std::begin(src), query},
+                        StringRef{query, fragment});
 }
 
 } // namespace http2

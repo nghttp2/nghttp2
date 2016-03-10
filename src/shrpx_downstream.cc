@@ -561,7 +561,7 @@ int Downstream::end_upload_data() {
 }
 
 void Downstream::rewrite_location_response_header(
-    const std::string &upstream_scheme) {
+    const StringRef &upstream_scheme) {
   auto hd = resp_.fs.header(http2::HD_LOCATION);
   if (!hd) {
     return;
@@ -577,14 +577,15 @@ void Downstream::rewrite_location_response_header(
     return;
   }
 
-  auto new_uri = http2::rewrite_location_uri(
-      hd->value, u, request_downstream_host_, req_.authority, upstream_scheme);
+  auto new_uri = http2::rewrite_location_uri(balloc_, hd->value, u,
+                                             request_downstream_host_,
+                                             req_.authority, upstream_scheme);
 
   if (new_uri.empty()) {
     return;
   }
 
-  hd->value = make_string_ref(balloc_, StringRef{new_uri});
+  hd->value = new_uri;
 }
 
 bool Downstream::get_chunked_response() const { return chunked_response_; }
@@ -879,8 +880,8 @@ void Downstream::add_retry() { ++num_retry_; }
 
 bool Downstream::no_more_retry() const { return num_retry_ > 5; }
 
-void Downstream::set_request_downstream_host(std::string host) {
-  request_downstream_host_ = std::move(host);
+void Downstream::set_request_downstream_host(const StringRef &host) {
+  request_downstream_host_ = host;
 }
 
 void Downstream::set_request_pending(bool f) { request_pending_ = f; }
