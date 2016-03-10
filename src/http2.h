@@ -385,6 +385,9 @@ int construct_push_component(BlockAllocator &balloc, StringRef &scheme,
                              StringRef &authority, StringRef &path,
                              const StringRef &base, const StringRef &uri);
 
+// Copies |src| and return its lower-cased version.
+StringRef copy_lower(BlockAllocator &balloc, const StringRef &src);
+
 } // namespace http2
 
 } // namespace nghttp2

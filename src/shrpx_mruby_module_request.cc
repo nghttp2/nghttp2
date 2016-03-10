@@ -213,6 +213,7 @@ mrb_value request_mod_header(mrb_state *mrb, mrb_value self, bool repl) {
   auto data = static_cast<MRubyAssocData *>(mrb->ud);
   auto downstream = data->downstream;
   auto &req = downstream->request();
+  auto &balloc = downstream->get_block_allocator();
 
   check_phase(mrb, data->phase, PHASE_REQUEST);
 
@@ -226,7 +227,8 @@ mrb_value request_mod_header(mrb_state *mrb, mrb_value self, bool repl) {
   key = mrb_funcall(mrb, key, "downcase", 0);
 
   auto keyref =
-      StringRef{RSTRING_PTR(key), static_cast<size_t>(RSTRING_LEN(key))};
+      make_string_ref(balloc, StringRef{RSTRING_PTR(key),
+                                        static_cast<size_t>(RSTRING_LEN(key))});
   auto token = http2::lookup_token(keyref.byte(), keyref.size());
 
   if (repl) {
@@ -249,15 +251,19 @@ mrb_value request_mod_header(mrb_state *mrb, mrb_value self, bool repl) {
     for (int i = 0; i < n; ++i) {
       auto value = mrb_ary_entry(values, i);
       req.fs.add_header_token(
-          keyref, StringRef{RSTRING_PTR(value),
-                            static_cast<size_t>(RSTRING_LEN(value))},
+          keyref,
+          make_string_ref(balloc,
+                          StringRef{RSTRING_PTR(value),
+                                    static_cast<size_t>(RSTRING_LEN(value))}),
           false, token);
     }
   } else if (!mrb_nil_p(values)) {
-    req.fs.add_header_token(keyref,
-                            StringRef{RSTRING_PTR(values),
-                                      static_cast<size_t>(RSTRING_LEN(values))},
-                            false, token);
+    req.fs.add_header_token(
+        keyref,
+        make_string_ref(balloc,
+                        StringRef{RSTRING_PTR(values),
+                                  static_cast<size_t>(RSTRING_LEN(values))}),
+        false, token);
   }
 
   return mrb_nil_value();

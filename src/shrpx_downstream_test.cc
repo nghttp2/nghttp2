@@ -32,35 +32,22 @@
 
 namespace shrpx {
 
-void test_downstream_field_store_add_header_lower(void) {
+void test_downstream_field_store_append_last_header(void) {
   BlockAllocator balloc(4096, 4096);
   FieldStore fs(balloc, 0);
-  fs.add_header_lower(StringRef::from_lit("1"), StringRef::from_lit("0"),
-                      false);
-  fs.add_header_lower(StringRef::from_lit("2"), StringRef::from_lit("1"),
-                      false);
-  fs.add_header_lower(StringRef::from_lit("Charlie"), StringRef::from_lit("2"),
-                      false);
-  fs.add_header_lower(StringRef::from_lit("Alpha"), StringRef::from_lit("3"),
-                      false);
-  fs.add_header_lower(StringRef::from_lit("Delta"), StringRef::from_lit("4"),
-                      false);
-  fs.add_header_lower(StringRef::from_lit("BravO"), StringRef::from_lit("5"),
-                      false);
-  fs.add_header_lower(StringRef::from_lit(":method"), StringRef::from_lit("6"),
-                      false);
-  fs.add_header_lower(StringRef::from_lit(":authority"),
-                      StringRef::from_lit("7"), false);
+  fs.add_header_token(StringRef::from_lit("alpha"), StringRef{}, false, -1);
+  auto bravo = StringRef::from_lit("BRAVO");
+  fs.append_last_header_key(bravo.c_str(), bravo.size());
+  auto charlie = StringRef::from_lit("Charlie");
+  fs.append_last_header_value(charlie.c_str(), charlie.size());
+  auto delta = StringRef::from_lit("deltA");
+  fs.append_last_header_value(delta.c_str(), delta.size());
+  fs.add_header_token(StringRef::from_lit("echo"),
+                      StringRef::from_lit("foxtrot"), false, -1);
 
-  auto ans =
-      HeaderRefs{{StringRef::from_lit("1"), StringRef::from_lit("0")},
-                 {StringRef::from_lit("2"), StringRef::from_lit("1")},
-                 {StringRef::from_lit("charlie"), StringRef::from_lit("2")},
-                 {StringRef::from_lit("alpha"), StringRef::from_lit("3")},
-                 {StringRef::from_lit("delta"), StringRef::from_lit("4")},
-                 {StringRef::from_lit("bravo"), StringRef::from_lit("5")},
-                 {StringRef::from_lit(":method"), StringRef::from_lit("6")},
-                 {StringRef::from_lit(":authority"), StringRef::from_lit("7")}};
+  auto ans = HeaderRefs{
+      {StringRef::from_lit("alphabravo"), StringRef::from_lit("CharliedeltA")},
+      {StringRef::from_lit("echo"), StringRef::from_lit("foxtrot")}};
   CU_ASSERT(ans == fs.headers());
 }
 

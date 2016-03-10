@@ -818,6 +818,7 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
 
   auto &resp = downstream->response();
   auto &httpconf = get_config()->http;
+  auto &balloc = downstream->get_block_allocator();
 
   switch (frame->hd.type) {
   case NGHTTP2_HEADERS: {
@@ -847,13 +848,15 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
 
     if (trailer) {
       // just store header fields for trailer part
-      resp.fs.add_trailer_token(StringRef{name, namelen},
-                                StringRef{value, valuelen}, no_index, token);
+      resp.fs.add_trailer_token(
+          make_string_ref(balloc, StringRef{name, namelen}),
+          make_string_ref(balloc, StringRef{value, valuelen}), no_index, token);
       return 0;
     }
 
-    resp.fs.add_header_token(StringRef{name, namelen},
-                             StringRef{value, valuelen}, no_index, token);
+    resp.fs.add_header_token(
+        make_string_ref(balloc, StringRef{name, namelen}),
+        make_string_ref(balloc, StringRef{value, valuelen}), no_index, token);
     return 0;
   }
   case NGHTTP2_PUSH_PROMISE: {
@@ -870,6 +873,7 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
     assert(promised_downstream);
 
     auto &promised_req = promised_downstream->request();
+    auto &promised_balloc = promised_downstream->get_block_allocator();
 
     // We use request header limit for PUSH_PROMISE
     if (promised_req.fs.buffer_size() + namelen + valuelen >
@@ -886,9 +890,11 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
     }
 
     auto token = http2::lookup_token(name, namelen);
-    promised_req.fs.add_header_token(StringRef{name, namelen},
-                                     StringRef{value, valuelen},
-                                     flags & NGHTTP2_NV_FLAG_NO_INDEX, token);
+    promised_req.fs.add_header_token(
+        make_string_ref(promised_balloc, StringRef{name, namelen}),
+        make_string_ref(promised_balloc, StringRef{value, valuelen}),
+        flags & NGHTTP2_NV_FLAG_NO_INDEX, token);
+
     return 0;
   }
   }

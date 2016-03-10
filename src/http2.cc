@@ -1793,6 +1793,15 @@ StringRef rewrite_clean_path(BlockAllocator &balloc, const StringRef &src) {
                         StringRef{query, fragment});
 }
 
+StringRef copy_lower(BlockAllocator &balloc, const StringRef &src) {
+  auto iov = make_byte_ref(balloc, src.size() + 1);
+  auto p = iov.base;
+  p = std::copy(std::begin(src), std::end(src), p);
+  *p = '\0';
+  util::inp_strlower(iov.base, p);
+  return StringRef{iov.base, p};
+}
+
 } // namespace http2
 
 } // namespace nghttp2

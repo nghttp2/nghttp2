@@ -197,7 +197,9 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
       auto name = StringRef{nv[i]};
       auto value = StringRef{nv[i + 1]};
       auto token = http2::lookup_token(name.byte(), name.size());
-      req.fs.add_header_token(name, value, false, token);
+      req.fs.add_header_token(make_string_ref(balloc, StringRef{name}),
+                              make_string_ref(balloc, StringRef{value}), false,
+                              token);
     }
 
     if (req.fs.parse_content_length() != 0) {

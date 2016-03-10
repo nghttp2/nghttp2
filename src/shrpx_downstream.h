@@ -81,8 +81,6 @@ public:
   // such header is found, returns nullptr.
   const HeaderRefs::value_type *header(const StringRef &name) const;
 
-  void add_header_lower(const StringRef &name, const StringRef &value,
-                        bool no_index);
   void add_header_token(const StringRef &name, const StringRef &value,
                         bool no_index, int32_t token);
 
@@ -98,8 +96,6 @@ public:
   // Empties headers.
   void clear_headers();
 
-  void add_trailer_lower(const StringRef &name, const StringRef &value,
-                         bool no_index);
   void add_trailer_token(const StringRef &name, const StringRef &value,
                          bool no_index, int32_t token);
 

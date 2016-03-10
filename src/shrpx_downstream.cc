@@ -349,22 +349,20 @@ void add_header(bool &key_prev, size_t &sum, HeaderRefs &headers,
 } // namespace
 
 namespace {
-void add_header(size_t &sum, HeaderRefs &headers, const StringRef &name,
-                const StringRef &value, bool no_index, int32_t token) {
-  sum += name.size() + value.size();
-  headers.emplace_back(name, value, no_index, token);
-}
-} // namespace
-
-namespace {
 void append_last_header_key(BlockAllocator &balloc, bool &key_prev, size_t &sum,
                             HeaderRefs &headers, const char *data, size_t len) {
   assert(key_prev);
   sum += len;
   auto &item = headers.back();
-  item.name = concat_string_ref(balloc, item.name, StringRef{data, len});
-  util::inp_strlower((uint8_t *)item.name.c_str(),
-                     (uint8_t *)item.name.c_str() + item.name.size());
+  auto iov = make_byte_ref(balloc, item.name.size() + len + 1);
+  auto p = iov.base;
+  p = std::copy(std::begin(item.name), std::end(item.name), p);
+  p = std::copy_n(data, len, p);
+  util::inp_strlower(p - len, p);
+  *p = '\0';
+
+  item.name = StringRef{iov.base, p};
+
   item.token = http2::lookup_token(item.name);
 }
 } // namespace
@@ -424,21 +422,10 @@ const HeaderRefs::value_type *FieldStore::header(const StringRef &name) const {
   return search_header_linear_backwards(headers_, name);
 }
 
-void FieldStore::add_header_lower(const StringRef &name, const StringRef &value,
-                                  bool no_index) {
-  auto low_name = make_string_ref(balloc_, name);
-  util::inp_strlower((uint8_t *)low_name.c_str(),
-                     (uint8_t *)low_name.c_str() + low_name.size());
-  auto token = http2::lookup_token(low_name);
-  shrpx::add_header(header_key_prev_, buffer_size_, headers_, low_name,
-                    make_string_ref(balloc_, value), no_index, token);
-}
-
 void FieldStore::add_header_token(const StringRef &name, const StringRef &value,
                                   bool no_index, int32_t token) {
-  shrpx::add_header(buffer_size_, headers_, make_string_ref(balloc_, name),
-                    make_string_ref(balloc_, value), no_index, token);
-  make_string_ref(balloc_, name);
+  shrpx::add_header(header_key_prev_, buffer_size_, headers_, name, value,
+                    no_index, token);
 }
 
 void FieldStore::append_last_header_key(const char *data, size_t len) {
@@ -453,23 +440,13 @@ void FieldStore::append_last_header_value(const char *data, size_t len) {
 
 void FieldStore::clear_headers() { headers_.clear(); }
 
-void FieldStore::add_trailer_lower(const StringRef &name,
-                                   const StringRef &value, bool no_index) {
-  auto low_name = make_string_ref(balloc_, name);
-  util::inp_strlower((uint8_t *)low_name.c_str(),
-                     (uint8_t *)low_name.c_str() + low_name.size());
-  auto token = http2::lookup_token(low_name);
-  shrpx::add_header(trailer_key_prev_, buffer_size_, trailers_, low_name,
-                    make_string_ref(balloc_, value), no_index, token);
-}
-
 void FieldStore::add_trailer_token(const StringRef &name,
                                    const StringRef &value, bool no_index,
                                    int32_t token) {
   // Header size limit should be applied to all header and trailer
   // fields combined.
-  shrpx::add_header(buffer_size_, trailers_, make_string_ref(balloc_, name),
-                    make_string_ref(balloc_, value), no_index, token);
+  shrpx::add_header(trailer_key_prev_, buffer_size_, trailers_, name, value,
+                    no_index, token);
 }
 
 void FieldStore::append_last_trailer_key(const char *data, size_t len) {

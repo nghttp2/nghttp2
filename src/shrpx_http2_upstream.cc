@@ -176,6 +176,8 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
 
   auto &httpconf = get_config()->http;
 
+  auto &balloc = downstream->get_block_allocator();
+
   if (req.fs.buffer_size() + namelen + valuelen >
           httpconf.request_header_field_buffer ||
       req.fs.num_fields() >= httpconf.max_request_header_fields) {
@@ -206,12 +208,14 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
 
   if (frame->headers.cat == NGHTTP2_HCAT_HEADERS) {
     // just store header fields for trailer part
-    req.fs.add_trailer_token(StringRef{name, namelen},
-                             StringRef{value, valuelen}, no_index, token);
+    req.fs.add_trailer_token(
+        make_string_ref(balloc, StringRef{name, namelen}),
+        make_string_ref(balloc, StringRef{value, valuelen}), no_index, token);
     return 0;
   }
 
-  req.fs.add_header_token(StringRef{name, namelen}, StringRef{value, valuelen},
+  req.fs.add_header_token(make_string_ref(balloc, StringRef{name, namelen}),
+                          make_string_ref(balloc, StringRef{value, valuelen}),
                           no_index, token);
   return 0;
 }
@@ -588,27 +592,29 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
 
     for (size_t i = 0; i < frame->push_promise.nvlen; ++i) {
       auto &nv = frame->push_promise.nva[i];
+
+      auto name =
+          make_string_ref(promised_balloc, StringRef{nv.name, nv.namelen});
+      auto value =
+          make_string_ref(promised_balloc, StringRef{nv.value, nv.valuelen});
+
       auto token = http2::lookup_token(nv.name, nv.namelen);
       switch (token) {
       case http2::HD__METHOD:
-        req.method = http2::lookup_method_token(nv.value, nv.valuelen);
+        req.method = http2::lookup_method_token(value);
         break;
       case http2::HD__SCHEME:
-        req.scheme =
-            make_string_ref(promised_balloc, StringRef{nv.value, nv.valuelen});
+        req.scheme = value;
         break;
       case http2::HD__AUTHORITY:
-        req.authority =
-            make_string_ref(promised_balloc, StringRef{nv.value, nv.valuelen});
+        req.authority = value;
         break;
       case http2::HD__PATH:
-        req.path = http2::rewrite_clean_path(promised_balloc,
-                                             StringRef{nv.value, nv.valuelen});
+        req.path = http2::rewrite_clean_path(promised_balloc, value);
         break;
       }
-      req.fs.add_header_token(StringRef{nv.name, nv.namelen},
-                              StringRef{nv.value, nv.valuelen},
-                              nv.flags & NGHTTP2_NV_FLAG_NO_INDEX, token);
+      req.fs.add_header_token(name, value, nv.flags & NGHTTP2_NV_FLAG_NO_INDEX,
+                              token);
     }
 
     promised_downstream->inspect_http2_request();
