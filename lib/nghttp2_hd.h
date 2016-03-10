@@ -276,7 +276,7 @@ struct nghttp2_hd_deflater {
 struct nghttp2_hd_inflater {
   nghttp2_hd_context ctx;
   /* header buffer */
-  nghttp2_bufs nvbufs;
+  nghttp2_buf namebuf, valuebuf;
   /* Stores current state of huffman decoding */
   nghttp2_hd_huff_decode_context huff_decode_ctx;
   /* Pointer to the nghttp2_hd_entry which is used current header
@@ -285,14 +285,11 @@ struct nghttp2_hd_inflater {
   nghttp2_hd_entry *ent_keep;
   /* Pointer to the name/value pair buffer which is used in the
      current header emission. */
-  uint8_t *nv_keep;
+  uint8_t *nv_name_keep, *nv_value_keep;
   /* The number of bytes to read */
   size_t left;
   /* The index in indexed repr or indexed name */
   size_t index;
-  /* The length of new name encoded in literal.  For huffman encoded
-     string, this is the length after it is decoded. */
-  size_t newnamelen;
   /* The maximum header table size the inflater supports. This is the
      same value transmitted in SETTINGS_HEADER_TABLE_SIZE */
   size_t settings_hd_table_bufsize_max;
@@ -470,11 +467,10 @@ int nghttp2_hd_huff_encode(nghttp2_bufs *bufs, const uint8_t *src,
 void nghttp2_hd_huff_decode_context_init(nghttp2_hd_huff_decode_context *ctx);
 
 /*
- * Decodes the given data |src| with length |srclen|. The |ctx| must
+ * Decodes the given data |src| with length |srclen|.  The |ctx| must
  * be initialized by nghttp2_hd_huff_decode_context_init(). The result
- * will be added to |dest|. This function may expand |dest| as
- * needed. The caller is responsible to release the memory of |dest|
- * by calling nghttp2_bufs_free().
+ * will be written to |buf|.  This function assumes that |buf| has the
+ * enough room to store the decoded byte string.
  *
  * The caller must set the |final| to nonzero if the given input is
  * the final block.
@@ -486,13 +482,11 @@ void nghttp2_hd_huff_decode_context_init(nghttp2_hd_huff_decode_context *ctx);
  *
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
- * NGHTTP2_ERR_BUFFER_ERROR
- *     Maximum buffer capacity size exceeded.
  * NGHTTP2_ERR_HEADER_COMP
  *     Decoding process has failed.
  */
 ssize_t nghttp2_hd_huff_decode(nghttp2_hd_huff_decode_context *ctx,
-                               nghttp2_bufs *bufs, const uint8_t *src,
+                               nghttp2_buf *buf, const uint8_t *src,
                                size_t srclen, int final);
 
 #endif /* NGHTTP2_HD_H */

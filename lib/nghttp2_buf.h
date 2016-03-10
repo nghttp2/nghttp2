@@ -73,7 +73,7 @@ typedef struct {
 
 /*
  * Initializes the |buf|. No memory is allocated in this function. Use
- * nghttp2_buf_reserve() or nghttp2_buf_reserve2() to allocate memory.
+ * nghttp2_buf_reserve() to allocate memory.
  */
 void nghttp2_buf_init(nghttp2_buf *buf);
 
