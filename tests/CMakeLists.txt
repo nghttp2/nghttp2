@@ -33,6 +33,7 @@ if(HAVE_CUNIT)
     ${CUNIT_LIBRARIES}
   )
   add_test(main main)
+  add_dependencies(check main)
 
   if(ENABLE_FAILMALLOC)
     set(FAILMALLOC_SOURCES
@@ -48,6 +49,7 @@ if(HAVE_CUNIT)
       ${CUNIT_LIBRARIES}
     )
     add_test(failmalloc failmalloc)
+    add_dependencies(check failmalloc)
   endif()
 
   if(ENABLE_APP)

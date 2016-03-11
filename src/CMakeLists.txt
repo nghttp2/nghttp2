@@ -173,6 +173,7 @@ if(ENABLE_APP)
     endif()
 
     add_test(nghttpx-unittest nghttpx-unittest)
+    add_dependencies(check nghttpx-unittest)
   endif()
 
   add_executable(nghttp   ${NGHTTP_SOURCES}   $<TARGET_OBJECTS:http-parser>)

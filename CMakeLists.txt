@@ -170,6 +170,9 @@ endif()
 find_package(CUnit 2.1)
 enable_testing()
 set(HAVE_CUNIT      ${CUNIT_FOUND})
+if(HAVE_CUNIT)
+  add_custom_target(check COMMAND ${CMAKE_CTEST_COMMAND})
+endif()
 
 # openssl (for src)
 set(HAVE_OPENSSL    ${OPENSSL_FOUND})
@@ -356,11 +359,6 @@ endif()
 if(NOT ENABLE_THREADS OR NOT HAVE_STD_FUTURE)
   set(NOTHREADS 1)
 endif()
-
-# # propagate $enable_static to tests/Makefile.am
-# AM_CONDITIONAL([ENABLE_STATIC], [test "x$enable_static" = "xyes"])
-#
-# AC_SUBST([APPLDFLAGS])
 
 add_definitions(-DHAVE_CONFIG_H)
 configure_file(cmakeconfig.h.in config.h)
