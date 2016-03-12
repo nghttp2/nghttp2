@@ -392,8 +392,8 @@ void test_util_ends_with(void) {
 }
 
 void test_util_parse_http_date(void) {
-  CU_ASSERT(1001939696 ==
-            util::parse_http_date("Mon, 1 Oct 2001 12:34:56 GMT"));
+  CU_ASSERT(1001939696 == util::parse_http_date(StringRef::from_lit(
+                              "Mon, 1 Oct 2001 12:34:56 GMT")));
 }
 
 void test_util_localtime_date(void) {

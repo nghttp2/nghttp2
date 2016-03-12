@@ -339,7 +339,7 @@ std::string iso8601_date(int64_t ms) {
   return res;
 }
 
-time_t parse_http_date(const std::string &s) {
+time_t parse_http_date(const StringRef &s) {
   tm tm{};
   char *r = strptime(s.c_str(), "%a, %d %b %Y %H:%M:%S GMT", &tm);
   if (r == 0) {

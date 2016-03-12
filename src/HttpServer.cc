@@ -1235,7 +1235,7 @@ void prepare_response(Stream *stream, Http2Handler *hd,
   bool last_mod_found = false;
   if (ims) {
     last_mod_found = true;
-    last_mod = util::parse_http_date(ims->value);
+    last_mod = util::parse_http_date(StringRef{ims->value});
   }
   auto query_pos = reqpath.find("?");
   std::string url;

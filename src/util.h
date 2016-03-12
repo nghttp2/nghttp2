@@ -149,7 +149,7 @@ std::string common_log_date(time_t t);
 // 2014-11-15T12:58:24.741Z)
 std::string iso8601_date(int64_t ms);
 
-time_t parse_http_date(const std::string &s);
+time_t parse_http_date(const StringRef &s);
 
 char upcase(char c);
 
