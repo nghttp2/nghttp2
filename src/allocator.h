@@ -62,6 +62,12 @@ struct BlockAllocator {
     }
   }
 
+  BlockAllocator(BlockAllocator &&) = default;
+  BlockAllocator &operator=(BlockAllocator &&) = default;
+
+  BlockAllocator(const BlockAllocator &) = delete;
+  BlockAllocator &operator=(const BlockAllocator &) = delete;
+
   MemBlock *alloc_mem_block(size_t size) {
     auto block = new uint8_t[sizeof(MemBlock) + size];
     auto mb = reinterpret_cast<MemBlock *>(block);
