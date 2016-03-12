@@ -104,12 +104,26 @@ StringRef make_string_ref(BlockAllocator &alloc, const StringRef &src) {
 template <typename BlockAllocator>
 StringRef concat_string_ref(BlockAllocator &alloc, const StringRef &a,
                             const StringRef &b) {
-  auto dst = static_cast<uint8_t *>(alloc.alloc(a.size() + b.size() + 1));
+  auto len = a.size() + b.size();
+  auto dst = static_cast<uint8_t *>(alloc.alloc(len + 1));
   auto p = dst;
   p = std::copy(std::begin(a), std::end(a), p);
   p = std::copy(std::begin(b), std::end(b), p);
   *p = '\0';
-  return StringRef{dst, a.size() + b.size()};
+  return StringRef{dst, len};
+}
+
+template <typename BlockAllocator>
+StringRef concat_string_ref(BlockAllocator &alloc, const StringRef &a,
+                            const StringRef &b, const StringRef &c) {
+  auto len = a.size() + b.size() + c.size();
+  auto dst = static_cast<uint8_t *>(alloc.alloc(len + 1));
+  auto p = dst;
+  p = std::copy(std::begin(a), std::end(a), p);
+  p = std::copy(std::begin(b), std::end(b), p);
+  p = std::copy(std::begin(c), std::end(c), p);
+  *p = '\0';
+  return StringRef{dst, len};
 }
 
 struct ByteRef {
