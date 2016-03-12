@@ -401,8 +401,9 @@ public:
   explicit StringRef(const ImmutableString &s)
       : base(s.c_str()), len(s.size()) {}
   explicit StringRef(const char *s) : base(s), len(strlen(s)) {}
+  constexpr StringRef(const char *s, size_t n) : base(s), len(n) {}
   template <typename CharT>
-  constexpr StringRef(const CharT *s, size_t n)
+  StringRef(const CharT *s, size_t n)
       : base(reinterpret_cast<const char *>(s)), len(n) {}
   template <typename InputIt>
   StringRef(InputIt first, InputIt last)
@@ -413,7 +414,7 @@ public:
         len(std::distance(first, last)) {}
   template <typename CharT, size_t N>
   constexpr static StringRef from_lit(const CharT(&s)[N]) {
-    return StringRef(s, N - 1);
+    return StringRef{s, N - 1};
   }
   static StringRef from_maybe_nullptr(const char *s) {
     if (s == nullptr) {
