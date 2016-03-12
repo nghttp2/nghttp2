@@ -295,11 +295,6 @@ void test_nghttp2_hd_inflate_indname_inc(void) {
   assert_nv_equal(&nv, out.nva, 1, mem);
   CU_ASSERT(1 == inflater.ctx.hd_table.len);
   CU_ASSERT(62 == nghttp2_hd_inflate_get_num_table_entries(&inflater));
-  assert_nv_equal(&nv,
-                  &nghttp2_hd_table_get(&inflater.ctx,
-                                        NGHTTP2_STATIC_TABLE_LENGTH +
-                                            inflater.ctx.hd_table.len - 1)->nv,
-                  1, mem);
   assert_nv_equal(&nv, nghttp2_hd_inflate_get_table_entry(
                            &inflater, NGHTTP2_STATIC_TABLE_LENGTH +
                                           inflater.ctx.hd_table.len),
@@ -429,10 +424,9 @@ void test_nghttp2_hd_inflate_newname_inc(void) {
   CU_ASSERT(1 == out.nvlen);
   assert_nv_equal(&nv, out.nva, 1, mem);
   CU_ASSERT(1 == inflater.ctx.hd_table.len);
-  assert_nv_equal(&nv,
-                  &nghttp2_hd_table_get(&inflater.ctx,
-                                        NGHTTP2_STATIC_TABLE_LENGTH +
-                                            inflater.ctx.hd_table.len - 1)->nv,
+  assert_nv_equal(&nv, nghttp2_hd_inflate_get_table_entry(
+                           &inflater, NGHTTP2_STATIC_TABLE_LENGTH +
+                                          inflater.ctx.hd_table.len),
                   1, mem);
 
   nva_out_reset(&out, mem);
@@ -1352,13 +1346,15 @@ void test_nghttp2_hd_decode_length(void) {
 void test_nghttp2_hd_huff_encode(void) {
   int rv;
   ssize_t len;
-  nghttp2_bufs bufs, outbufs;
+  nghttp2_buf outbuf;
+  nghttp2_bufs bufs;
   nghttp2_hd_huff_decode_context ctx;
   const uint8_t t1[] = {22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11,
                         10, 9,  8,  7,  6,  5,  4,  3,  2,  1,  0};
+  uint8_t b[256];
 
+  nghttp2_buf_wrap_init(&outbuf, b, sizeof(b));
   frame_pack_bufs_init(&bufs);
-  frame_pack_bufs_init(&outbufs);
 
   rv = nghttp2_hd_huff_encode(&bufs, t1, sizeof(t1));
 
@@ -1366,14 +1362,13 @@ void test_nghttp2_hd_huff_encode(void) {
 
   nghttp2_hd_huff_decode_context_init(&ctx);
 
-  len = nghttp2_hd_huff_decode(&ctx, &outbufs, bufs.cur->buf.pos,
+  len = nghttp2_hd_huff_decode(&ctx, &outbuf, bufs.cur->buf.pos,
                                nghttp2_bufs_len(&bufs), 1);
 
   CU_ASSERT((ssize_t)nghttp2_bufs_len(&bufs) == len);
-  CU_ASSERT((ssize_t)sizeof(t1) == nghttp2_bufs_len(&outbufs));
+  CU_ASSERT((ssize_t)sizeof(t1) == nghttp2_buf_len(&outbuf));
 
-  CU_ASSERT(0 == memcmp(t1, outbufs.cur->buf.pos, sizeof(t1)));
+  CU_ASSERT(0 == memcmp(t1, outbuf.pos, sizeof(t1)));
 
   nghttp2_bufs_free(&bufs);
-  nghttp2_bufs_free(&outbufs);
 }

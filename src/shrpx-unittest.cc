@@ -101,8 +101,8 @@ int main(int argc, char *argv[]) {
                    shrpx::test_http2_get_pure_path_component) ||
       !CU_add_test(pSuite, "http2_construct_push_component",
                    shrpx::test_http2_construct_push_component) ||
-      !CU_add_test(pSuite, "downstream_field_store_add_header_lower",
-                   shrpx::test_downstream_field_store_add_header_lower) ||
+      !CU_add_test(pSuite, "downstream_field_store_append_last_header",
+                   shrpx::test_downstream_field_store_append_last_header) ||
       !CU_add_test(pSuite, "downstream_field_store_header",
                    shrpx::test_downstream_field_store_header) ||
       !CU_add_test(pSuite, "downstream_crumble_request_cookie",
@@ -123,6 +123,8 @@ int main(int argc, char *argv[]) {
                    shrpx::test_shrpx_worker_match_downstream_addr_group) ||
       !CU_add_test(pSuite, "http_create_forwarded",
                    shrpx::test_shrpx_http_create_forwarded) ||
+      !CU_add_test(pSuite, "http_create_via_header_value",
+                   shrpx::test_shrpx_http_create_via_header_value) ||
       !CU_add_test(pSuite, "util_streq", shrpx::test_util_streq) ||
       !CU_add_test(pSuite, "util_strieq", shrpx::test_util_strieq) ||
       !CU_add_test(pSuite, "util_inp_strlower",
@@ -142,6 +144,9 @@ int main(int argc, char *argv[]) {
       !CU_add_test(pSuite, "util_select_h2", shrpx::test_util_select_h2) ||
       !CU_add_test(pSuite, "util_ipv6_numeric_addr",
                    shrpx::test_util_ipv6_numeric_addr) ||
+      !CU_add_test(pSuite, "util_utos", shrpx::test_util_utos) ||
+      !CU_add_test(pSuite, "util_make_string_ref_uint",
+                   shrpx::test_util_make_string_ref_uint) ||
       !CU_add_test(pSuite, "util_utos_unit", shrpx::test_util_utos_unit) ||
       !CU_add_test(pSuite, "util_utos_funit", shrpx::test_util_utos_funit) ||
       !CU_add_test(pSuite, "util_parse_uint_with_unit",

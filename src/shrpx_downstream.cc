@@ -116,6 +116,9 @@ Downstream::Downstream(Upstream *upstream, MemchunkPool *mcpool,
     : dlnext(nullptr),
       dlprev(nullptr),
       response_sent_body_length(0),
+      balloc_(1024, 1024),
+      req_(balloc_),
+      resp_(balloc_),
       request_start_time_(std::chrono::high_resolution_clock::now()),
       request_buf_(mcpool),
       response_buf_(mcpool),
@@ -179,6 +182,10 @@ Downstream::~Downstream() {
   // explicitly.
   dconn_.reset();
 
+  for (auto rcbuf : rcbufs_) {
+    nghttp2_rcbuf_decref(rcbuf);
+  }
+
   if (LOG_ENABLED(INFO)) {
     DLOG(INFO, this) << "Deleted";
   }
@@ -237,8 +244,9 @@ void Downstream::force_resume_read() {
 }
 
 namespace {
-const Headers::value_type *
-search_header_linear_backwards(const Headers &headers, const StringRef &name) {
+const HeaderRefs::value_type *
+search_header_linear_backwards(const HeaderRefs &headers,
+                               const StringRef &name) {
   for (auto it = headers.rbegin(); it != headers.rend(); ++it) {
     auto &kv = *it;
     if (kv.name == name) {
@@ -253,16 +261,29 @@ std::string Downstream::assemble_request_cookie() const {
   std::string cookie;
   cookie = "";
   for (auto &kv : req_.fs.headers()) {
-    if (kv.name.size() != 6 || kv.name[5] != 'e' ||
-        !util::streq_l("cooki", kv.name.c_str(), 5)) {
+    if (kv.token != http2::HD_COOKIE) {
       continue;
     }
 
-    auto end = kv.value.find_last_not_of(" ;");
-    if (end == std::string::npos) {
+    if (kv.value.empty()) {
+      continue;
+    }
+
+    auto end = std::end(kv.value);
+    for (auto it = std::begin(kv.value) + kv.value.size();
+         it != std::begin(kv.value); --it) {
+      auto c = *(it - 1);
+      if (c == ' ' || c == ';') {
+        continue;
+      }
+      end = it;
+      break;
+    }
+
+    if (end == std::end(kv.value)) {
       cookie += kv.value;
     } else {
-      cookie.append(std::begin(kv.value), std::begin(kv.value) + end + 1);
+      cookie.append(std::begin(kv.value), end);
     }
     cookie += "; ";
   }
@@ -280,18 +301,14 @@ size_t Downstream::count_crumble_request_cookie() {
         !util::streq_l("cooki", kv.name.c_str(), 5)) {
       continue;
     }
-    size_t last = kv.value.size();
 
-    for (size_t j = 0; j < last;) {
-      j = kv.value.find_first_not_of("\t ;", j);
-      if (j == std::string::npos) {
-        break;
+    for (auto it = std::begin(kv.value); it != std::end(kv.value);) {
+      if (*it == '\t' || *it == ' ' || *it == ';') {
+        ++it;
+        continue;
       }
 
-      j = kv.value.find(';', j);
-      if (j == std::string::npos) {
-        j = last;
-      }
+      it = std::find(it, std::end(kv.value), ';');
 
       ++n;
     }
@@ -305,22 +322,19 @@ void Downstream::crumble_request_cookie(std::vector<nghttp2_nv> &nva) {
         !util::streq_l("cooki", kv.name.c_str(), 5)) {
       continue;
     }
-    size_t last = kv.value.size();
 
-    for (size_t j = 0; j < last;) {
-      j = kv.value.find_first_not_of("\t ;", j);
-      if (j == std::string::npos) {
-        break;
-      }
-      auto first = j;
-
-      j = kv.value.find(';', j);
-      if (j == std::string::npos) {
-        j = last;
+    for (auto it = std::begin(kv.value); it != std::end(kv.value);) {
+      if (*it == '\t' || *it == ' ' || *it == ';') {
+        ++it;
+        continue;
       }
 
-      nva.push_back({(uint8_t *)"cookie", (uint8_t *)kv.value.c_str() + first,
-                     str_size("cookie"), j - first,
+      auto first = it;
+
+      it = std::find(it, std::end(kv.value), ';');
+
+      nva.push_back({(uint8_t *)"cookie", (uint8_t *)first, str_size("cookie"),
+                     (size_t)(it - first),
                      (uint8_t)(NGHTTP2_NV_FLAG_NO_COPY_NAME |
                                NGHTTP2_NV_FLAG_NO_COPY_VALUE |
                                (kv.no_index ? NGHTTP2_NV_FLAG_NO_INDEX : 0))});
@@ -329,42 +343,42 @@ void Downstream::crumble_request_cookie(std::vector<nghttp2_nv> &nva) {
 }
 
 namespace {
-void add_header(bool &key_prev, size_t &sum, Headers &headers,
+void add_header(bool &key_prev, size_t &sum, HeaderRefs &headers,
                 const StringRef &name, const StringRef &value, bool no_index,
                 int32_t token) {
   key_prev = true;
   sum += name.size() + value.size();
-  headers.emplace_back(name.str(), value.str(), no_index, token);
+  headers.emplace_back(name, value, no_index, token);
 }
 } // namespace
 
 namespace {
-void add_header(size_t &sum, Headers &headers, const StringRef &name,
-                const StringRef &value, bool no_index, int32_t token) {
-  sum += name.size() + value.size();
-  headers.emplace_back(name.str(), value.str(), no_index, token);
-}
-} // namespace
-
-namespace {
-void append_last_header_key(bool &key_prev, size_t &sum, Headers &headers,
-                            const char *data, size_t len) {
+void append_last_header_key(BlockAllocator &balloc, bool &key_prev, size_t &sum,
+                            HeaderRefs &headers, const char *data, size_t len) {
   assert(key_prev);
   sum += len;
   auto &item = headers.back();
-  item.name.append(data, len);
-  util::inp_strlower(item.name);
+  auto iov = make_byte_ref(balloc, item.name.size() + len + 1);
+  auto p = iov.base;
+  p = std::copy(std::begin(item.name), std::end(item.name), p);
+  p = std::copy_n(data, len, p);
+  util::inp_strlower(p - len, p);
+  *p = '\0';
+
+  item.name = StringRef{iov.base, p};
+
   item.token = http2::lookup_token(item.name);
 }
 } // namespace
 
 namespace {
-void append_last_header_value(bool &key_prev, size_t &sum, Headers &headers,
+void append_last_header_value(BlockAllocator &balloc, bool &key_prev,
+                              size_t &sum, HeaderRefs &headers,
                               const char *data, size_t len) {
   key_prev = false;
   sum += len;
   auto &item = headers.back();
-  item.value.append(data, len);
+  item.value = concat_string_ref(balloc, item.value, StringRef{data, len});
 }
 } // namespace
 
@@ -388,7 +402,7 @@ int FieldStore::parse_content_length() {
   return 0;
 }
 
-const Headers::value_type *FieldStore::header(int32_t token) const {
+const HeaderRefs::value_type *FieldStore::header(int32_t token) const {
   for (auto it = headers_.rbegin(); it != headers_.rend(); ++it) {
     auto &kv = *it;
     if (kv.token == token) {
@@ -398,7 +412,7 @@ const Headers::value_type *FieldStore::header(int32_t token) const {
   return nullptr;
 }
 
-Headers::value_type *FieldStore::header(int32_t token) {
+HeaderRefs::value_type *FieldStore::header(int32_t token) {
   for (auto it = headers_.rbegin(); it != headers_.rend(); ++it) {
     auto &kv = *it;
     if (kv.token == token) {
@@ -408,61 +422,45 @@ Headers::value_type *FieldStore::header(int32_t token) {
   return nullptr;
 }
 
-const Headers::value_type *FieldStore::header(const StringRef &name) const {
+const HeaderRefs::value_type *FieldStore::header(const StringRef &name) const {
   return search_header_linear_backwards(headers_, name);
-}
-
-void FieldStore::add_header_lower(const StringRef &name, const StringRef &value,
-                                  bool no_index) {
-  auto low_name = name.str();
-  util::inp_strlower(low_name);
-  auto token = http2::lookup_token(low_name);
-  shrpx::add_header(header_key_prev_, buffer_size_, headers_,
-                    StringRef{low_name}, value, no_index, token);
 }
 
 void FieldStore::add_header_token(const StringRef &name, const StringRef &value,
                                   bool no_index, int32_t token) {
-  shrpx::add_header(buffer_size_, headers_, name, value, no_index, token);
+  shrpx::add_header(header_key_prev_, buffer_size_, headers_, name, value,
+                    no_index, token);
 }
 
 void FieldStore::append_last_header_key(const char *data, size_t len) {
-  shrpx::append_last_header_key(header_key_prev_, buffer_size_, headers_, data,
-                                len);
+  shrpx::append_last_header_key(balloc_, header_key_prev_, buffer_size_,
+                                headers_, data, len);
 }
 
 void FieldStore::append_last_header_value(const char *data, size_t len) {
-  shrpx::append_last_header_value(header_key_prev_, buffer_size_, headers_,
-                                  data, len);
+  shrpx::append_last_header_value(balloc_, header_key_prev_, buffer_size_,
+                                  headers_, data, len);
 }
 
 void FieldStore::clear_headers() { headers_.clear(); }
-
-void FieldStore::add_trailer_lower(const StringRef &name,
-                                   const StringRef &value, bool no_index) {
-  auto low_name = name.str();
-  util::inp_strlower(low_name);
-  auto token = http2::lookup_token(low_name);
-  shrpx::add_header(trailer_key_prev_, buffer_size_, trailers_,
-                    StringRef{low_name}, value, no_index, token);
-}
 
 void FieldStore::add_trailer_token(const StringRef &name,
                                    const StringRef &value, bool no_index,
                                    int32_t token) {
   // Header size limit should be applied to all header and trailer
   // fields combined.
-  shrpx::add_header(buffer_size_, trailers_, name, value, no_index, token);
+  shrpx::add_header(trailer_key_prev_, buffer_size_, trailers_, name, value,
+                    no_index, token);
 }
 
 void FieldStore::append_last_trailer_key(const char *data, size_t len) {
-  shrpx::append_last_header_key(trailer_key_prev_, buffer_size_, trailers_,
-                                data, len);
+  shrpx::append_last_header_key(balloc_, trailer_key_prev_, buffer_size_,
+                                trailers_, data, len);
 }
 
 void FieldStore::append_last_trailer_value(const char *data, size_t len) {
-  shrpx::append_last_header_value(trailer_key_prev_, buffer_size_, trailers_,
-                                  data, len);
+  shrpx::append_last_header_value(balloc_, trailer_key_prev_, buffer_size_,
+                                  trailers_, data, len);
 }
 
 void Downstream::set_request_start_time(
@@ -543,7 +541,7 @@ int Downstream::end_upload_data() {
 }
 
 void Downstream::rewrite_location_response_header(
-    const std::string &upstream_scheme) {
+    const StringRef &upstream_scheme) {
   auto hd = resp_.fs.header(http2::HD_LOCATION);
   if (!hd) {
     return;
@@ -559,14 +557,15 @@ void Downstream::rewrite_location_response_header(
     return;
   }
 
-  auto new_uri = http2::rewrite_location_uri(
-      hd->value, u, request_downstream_host_, req_.authority, upstream_scheme);
+  auto new_uri = http2::rewrite_location_uri(balloc_, hd->value, u,
+                                             request_downstream_host_,
+                                             req_.authority, upstream_scheme);
 
   if (new_uri.empty()) {
     return;
   }
 
-  hd->value = std::move(new_uri);
+  hd->value = new_uri;
 }
 
 bool Downstream::get_chunked_response() const { return chunked_response_; }
@@ -703,10 +702,10 @@ bool Downstream::get_http2_upgrade_request() const {
          response_state_ == INITIAL;
 }
 
-const std::string &Downstream::get_http2_settings() const {
+StringRef Downstream::get_http2_settings() const {
   auto http2_settings = req_.fs.header(http2::HD_HTTP2_SETTINGS);
   if (!http2_settings) {
-    return EMPTY_STRING;
+    return StringRef{};
   }
   return http2_settings->value;
 }
@@ -861,8 +860,8 @@ void Downstream::add_retry() { ++num_retry_; }
 
 bool Downstream::no_more_retry() const { return num_retry_ > 5; }
 
-void Downstream::set_request_downstream_host(std::string host) {
-  request_downstream_host_ = std::move(host);
+void Downstream::set_request_downstream_host(const StringRef &host) {
+  request_downstream_host_ = host;
 }
 
 void Downstream::set_request_pending(bool f) { request_pending_ = f; }
@@ -907,5 +906,12 @@ void Downstream::set_assoc_stream_id(int32_t stream_id) {
 }
 
 int32_t Downstream::get_assoc_stream_id() const { return assoc_stream_id_; }
+
+BlockAllocator &Downstream::get_block_allocator() { return balloc_; }
+
+void Downstream::add_rcbuf(nghttp2_rcbuf *rcbuf) {
+  nghttp2_rcbuf_incref(rcbuf);
+  rcbufs_.push_back(rcbuf);
+}
 
 } // namespace shrpx

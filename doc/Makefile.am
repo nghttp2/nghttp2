@@ -65,6 +65,9 @@ APIDOCS= \
 	nghttp2_priority_spec_check_default.rst \
 	nghttp2_priority_spec_default_init.rst \
 	nghttp2_priority_spec_init.rst \
+	nghttp2_rcbuf_decref.rst \
+	nghttp2_rcbuf_get_buf.rst \
+	nghttp2_rcbuf_incref.rst \
 	nghttp2_select_next_protocol.rst \
 	nghttp2_session_callbacks_del.rst \
 	nghttp2_session_callbacks_new.rst \
@@ -78,6 +81,7 @@ APIDOCS= \
 	nghttp2_session_callbacks_set_on_frame_recv_callback.rst \
 	nghttp2_session_callbacks_set_on_frame_send_callback.rst \
 	nghttp2_session_callbacks_set_on_header_callback.rst \
+	nghttp2_session_callbacks_set_on_header_callback2.rst \
 	nghttp2_session_callbacks_set_on_invalid_frame_recv_callback.rst \
 	nghttp2_session_callbacks_set_on_stream_close_callback.rst \
 	nghttp2_session_callbacks_set_pack_extension_callback.rst \

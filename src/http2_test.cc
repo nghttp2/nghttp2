@@ -46,7 +46,7 @@ using namespace nghttp2;
 namespace shrpx {
 
 namespace {
-void check_nv(const Header &a, const nghttp2_nv *b) {
+void check_nv(const HeaderRef &a, const nghttp2_nv *b) {
   CU_ASSERT(a.name.size() == b->namelen);
   CU_ASSERT(a.value.size() == b->valuelen);
   CU_ASSERT(memcmp(a.name.c_str(), b->name, b->namelen) == 0);
@@ -134,20 +134,24 @@ void test_http2_get_header(void) {
 }
 
 namespace {
-auto headers =
-    Headers{{"alpha", "0", true},
-            {"bravo", "1"},
-            {"connection", "2", false, http2::HD_CONNECTION},
-            {"connection", "3", false, http2::HD_CONNECTION},
-            {"delta", "4"},
-            {"expect", "5"},
-            {"foxtrot", "6"},
-            {"tango", "7"},
-            {"te", "8", false, http2::HD_TE},
-            {"te", "9", false, http2::HD_TE},
-            {"x-forwarded-proto", "10", false, http2::HD_X_FORWARDED_FOR},
-            {"x-forwarded-proto", "11", false, http2::HD_X_FORWARDED_FOR},
-            {"zulu", "12"}};
+auto headers = HeaderRefs{
+    {StringRef::from_lit("alpha"), StringRef::from_lit("0"), true},
+    {StringRef::from_lit("bravo"), StringRef::from_lit("1")},
+    {StringRef::from_lit("connection"), StringRef::from_lit("2"), false,
+     http2::HD_CONNECTION},
+    {StringRef::from_lit("connection"), StringRef::from_lit("3"), false,
+     http2::HD_CONNECTION},
+    {StringRef::from_lit("delta"), StringRef::from_lit("4")},
+    {StringRef::from_lit("expect"), StringRef::from_lit("5")},
+    {StringRef::from_lit("foxtrot"), StringRef::from_lit("6")},
+    {StringRef::from_lit("tango"), StringRef::from_lit("7")},
+    {StringRef::from_lit("te"), StringRef::from_lit("8"), false, http2::HD_TE},
+    {StringRef::from_lit("te"), StringRef::from_lit("9"), false, http2::HD_TE},
+    {StringRef::from_lit("x-forwarded-proto"), StringRef::from_lit("10"), false,
+     http2::HD_X_FORWARDED_FOR},
+    {StringRef::from_lit("x-forwarded-proto"), StringRef::from_lit("11"), false,
+     http2::HD_X_FORWARDED_FOR},
+    {StringRef::from_lit("zulu"), StringRef::from_lit("12")}};
 } // namespace
 
 void test_http2_copy_headers_to_nva(void) {
@@ -209,10 +213,12 @@ void check_rewrite_location_uri(const std::string &want, const std::string &uri,
                                 const std::string &match_host,
                                 const std::string &req_authority,
                                 const std::string &upstream_scheme) {
+  BlockAllocator balloc(4096, 4096);
   http_parser_url u{};
   CU_ASSERT(0 == http_parser_parse_url(uri.c_str(), uri.size(), 0, &u));
-  auto got = http2::rewrite_location_uri(uri, u, match_host, req_authority,
-                                         upstream_scheme);
+  auto got = http2::rewrite_location_uri(
+      balloc, StringRef{uri}, u, StringRef{match_host},
+      StringRef{req_authority}, StringRef{upstream_scheme});
   CU_ASSERT(want == got);
 }
 } // namespace
@@ -245,13 +251,13 @@ void test_http2_rewrite_location_uri(void) {
 }
 
 void test_http2_parse_http_status_code(void) {
-  CU_ASSERT(200 == http2::parse_http_status_code("200"));
-  CU_ASSERT(102 == http2::parse_http_status_code("102"));
-  CU_ASSERT(-1 == http2::parse_http_status_code("099"));
-  CU_ASSERT(-1 == http2::parse_http_status_code("99"));
-  CU_ASSERT(-1 == http2::parse_http_status_code("-1"));
-  CU_ASSERT(-1 == http2::parse_http_status_code("20a"));
-  CU_ASSERT(-1 == http2::parse_http_status_code(""));
+  CU_ASSERT(200 == http2::parse_http_status_code(StringRef::from_lit("200")));
+  CU_ASSERT(102 == http2::parse_http_status_code(StringRef::from_lit("102")));
+  CU_ASSERT(-1 == http2::parse_http_status_code(StringRef::from_lit("099")));
+  CU_ASSERT(-1 == http2::parse_http_status_code(StringRef::from_lit("99")));
+  CU_ASSERT(-1 == http2::parse_http_status_code(StringRef::from_lit("-1")));
+  CU_ASSERT(-1 == http2::parse_http_status_code(StringRef::from_lit("20a")));
+  CU_ASSERT(-1 == http2::parse_http_status_code(StringRef{}));
 }
 
 void test_http2_index_header(void) {
@@ -814,137 +820,135 @@ void test_http2_path_join(void) {
 }
 
 void test_http2_normalize_path(void) {
-  std::string src;
-
-  src = "/alpha/bravo/../charlie";
   CU_ASSERT("/alpha/charlie" ==
-            http2::normalize_path(std::begin(src), std::end(src)));
+            http2::normalize_path(
+                StringRef::from_lit("/alpha/bravo/../charlie"), StringRef{}));
 
-  src = "/a%6c%70%68%61";
-  CU_ASSERT("/alpha" == http2::normalize_path(std::begin(src), std::end(src)));
+  CU_ASSERT("/alpha" ==
+            http2::normalize_path(StringRef::from_lit("/a%6c%70%68%61"),
+                                  StringRef{}));
 
-  src = "/alpha%2f%3a";
-  CU_ASSERT("/alpha%2F%3A" ==
-            http2::normalize_path(std::begin(src), std::end(src)));
+  CU_ASSERT(
+      "/alpha%2F%3A" ==
+      http2::normalize_path(StringRef::from_lit("/alpha%2f%3a"), StringRef{}));
 
-  src = "%2f";
-  CU_ASSERT("/%2F" == http2::normalize_path(std::begin(src), std::end(src)));
+  CU_ASSERT("/%2F" ==
+            http2::normalize_path(StringRef::from_lit("%2f"), StringRef{}));
 
-  src = "%f";
-  CU_ASSERT("/%f" == http2::normalize_path(std::begin(src), std::end(src)));
+  CU_ASSERT("/%f" ==
+            http2::normalize_path(StringRef::from_lit("%f"), StringRef{}));
 
-  src = "%";
-  CU_ASSERT("/%" == http2::normalize_path(std::begin(src), std::end(src)));
+  CU_ASSERT("/%" ==
+            http2::normalize_path(StringRef::from_lit("%"), StringRef{}));
 
-  src = "";
-  CU_ASSERT("/" == http2::normalize_path(std::begin(src), std::end(src)));
+  CU_ASSERT("/" == http2::normalize_path(StringRef{}, StringRef{}));
+
+  CU_ASSERT("/alpha?bravo" ==
+            http2::normalize_path(StringRef::from_lit("/alpha"),
+                                  StringRef::from_lit("bravo")));
 }
 
 void test_http2_rewrite_clean_path(void) {
-  std::string src;
+  BlockAllocator balloc(4096, 4096);
 
   // unreserved characters
-  src = "/alpha/%62ravo/";
   CU_ASSERT("/alpha/bravo/" ==
-            http2::rewrite_clean_path(std::begin(src), std::end(src)));
+            http2::rewrite_clean_path(balloc,
+                                      StringRef::from_lit("/alpha/%62ravo/")));
 
   // percent-encoding is converted to upper case.
-  src = "/delta%3a";
-  CU_ASSERT("/delta%3A" ==
-            http2::rewrite_clean_path(std::begin(src), std::end(src)));
+  CU_ASSERT("/delta%3A" == http2::rewrite_clean_path(
+                               balloc, StringRef::from_lit("/delta%3a")));
 
   // path component is normalized before mathcing
-  src = "/alpha/charlie/%2e././bravo/delta/..";
-  CU_ASSERT("/alpha/bravo/" ==
-            http2::rewrite_clean_path(std::begin(src), std::end(src)));
+  CU_ASSERT(
+      "/alpha/bravo/" ==
+      http2::rewrite_clean_path(
+          balloc, StringRef::from_lit("/alpha/charlie/%2e././bravo/delta/..")));
 
-  src = "alpha%3a";
-  CU_ASSERT(src == http2::rewrite_clean_path(std::begin(src), std::end(src)));
+  CU_ASSERT("alpha%3a" ==
+            http2::rewrite_clean_path(balloc, StringRef::from_lit("alpha%3a")));
 
-  src = "";
-  CU_ASSERT(src == http2::rewrite_clean_path(std::begin(src), std::end(src)));
+  CU_ASSERT("" == http2::rewrite_clean_path(balloc, StringRef{}));
 }
 
 void test_http2_get_pure_path_component(void) {
-  std::string path;
+  CU_ASSERT("/" == http2::get_pure_path_component(StringRef::from_lit("/")));
 
-  path = "/";
-  CU_ASSERT("/" == http2::get_pure_path_component(path));
+  CU_ASSERT("/foo" ==
+            http2::get_pure_path_component(StringRef::from_lit("/foo")));
 
-  path = "/foo";
-  CU_ASSERT("/foo" == http2::get_pure_path_component(path));
+  CU_ASSERT("/bar" == http2::get_pure_path_component(
+                          StringRef::from_lit("https://example.org/bar")));
 
-  path = "https://example.org/bar";
-  CU_ASSERT("/bar" == http2::get_pure_path_component(path));
+  CU_ASSERT("/alpha" == http2::get_pure_path_component(StringRef::from_lit(
+                            "https://example.org/alpha?q=a")));
 
-  path = "https://example.org/alpha?q=a";
-  CU_ASSERT("/alpha" == http2::get_pure_path_component(path));
+  CU_ASSERT("/bravo" == http2::get_pure_path_component(StringRef::from_lit(
+                            "https://example.org/bravo?q=a#fragment")));
 
-  path = "https://example.org/bravo?q=a#fragment";
-  CU_ASSERT("/bravo" == http2::get_pure_path_component(path));
-
-  path = "\x01\x02";
-  CU_ASSERT("" == http2::get_pure_path_component(path));
+  CU_ASSERT("" ==
+            http2::get_pure_path_component(StringRef::from_lit("\x01\x02")));
 }
 
 void test_http2_construct_push_component(void) {
+  BlockAllocator balloc(4096, 4096);
   StringRef base, uri;
-  std::string scheme, authority, path;
+  StringRef scheme, authority, path;
 
   base = StringRef::from_lit("/b/");
-
   uri = StringRef::from_lit("https://example.org/foo");
 
-  CU_ASSERT(
-      0 == http2::construct_push_component(scheme, authority, path, base, uri));
+  CU_ASSERT(0 == http2::construct_push_component(balloc, scheme, authority,
+                                                 path, base, uri));
   CU_ASSERT("https" == scheme);
   CU_ASSERT("example.org" == authority);
   CU_ASSERT("/foo" == path);
 
-  scheme.clear();
-  authority.clear();
-  path.clear();
+  scheme = StringRef{};
+  authority = StringRef{};
+  path = StringRef{};
 
   uri = StringRef::from_lit("/foo/bar?q=a");
 
-  CU_ASSERT(
-      0 == http2::construct_push_component(scheme, authority, path, base, uri));
+  CU_ASSERT(0 == http2::construct_push_component(balloc, scheme, authority,
+                                                 path, base, uri));
   CU_ASSERT("" == scheme);
   CU_ASSERT("" == authority);
   CU_ASSERT("/foo/bar?q=a" == path);
 
-  scheme.clear();
-  authority.clear();
-  path.clear();
+  scheme = StringRef{};
+  authority = StringRef{};
+  path = StringRef{};
 
   uri = StringRef::from_lit("foo/../bar?q=a");
 
-  CU_ASSERT(
-      0 == http2::construct_push_component(scheme, authority, path, base, uri));
+  CU_ASSERT(0 == http2::construct_push_component(balloc, scheme, authority,
+                                                 path, base, uri));
   CU_ASSERT("" == scheme);
   CU_ASSERT("" == authority);
   CU_ASSERT("/b/bar?q=a" == path);
 
-  scheme.clear();
-  authority.clear();
-  path.clear();
+  scheme = StringRef{};
+  authority = StringRef{};
+  path = StringRef{};
 
   uri = StringRef{};
 
-  CU_ASSERT(
-      0 == http2::construct_push_component(scheme, authority, path, base, uri));
+  CU_ASSERT(0 == http2::construct_push_component(balloc, scheme, authority,
+                                                 path, base, uri));
   CU_ASSERT("" == scheme);
   CU_ASSERT("" == authority);
   CU_ASSERT("/" == path);
 
-  scheme.clear();
-  authority.clear();
-  path.clear();
+  scheme = StringRef{};
+  authority = StringRef{};
+  path = StringRef{};
 
   uri = StringRef::from_lit("?q=a");
 
-  CU_ASSERT(
-      0 == http2::construct_push_component(scheme, authority, path, base, uri));
+  CU_ASSERT(0 == http2::construct_push_component(balloc, scheme, authority,
+                                                 path, base, uri));
   CU_ASSERT("" == scheme);
   CU_ASSERT("" == authority);
   CU_ASSERT("/b/?q=a" == path);

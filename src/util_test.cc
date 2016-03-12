@@ -234,6 +234,24 @@ void test_util_ipv6_numeric_addr(void) {
   CU_ASSERT(!util::ipv6_numeric_addr("localhost"));
 }
 
+void test_util_utos(void) {
+  uint8_t buf[32];
+
+  CU_ASSERT(("0" == StringRef{buf, util::utos(buf, 0)}));
+  CU_ASSERT(("123" == StringRef{buf, util::utos(buf, 123)}));
+  CU_ASSERT(("18446744073709551615" ==
+             StringRef{buf, util::utos(buf, 18446744073709551615ULL)}));
+}
+
+void test_util_make_string_ref_uint(void) {
+  BlockAllocator balloc(1024, 1024);
+
+  CU_ASSERT("0" == util::make_string_ref_uint(balloc, 0));
+  CU_ASSERT("123" == util::make_string_ref_uint(balloc, 123));
+  CU_ASSERT("18446744073709551615" ==
+            util::make_string_ref_uint(balloc, 18446744073709551615ULL));
+}
+
 void test_util_utos_unit(void) {
   CU_ASSERT("0" == util::utos_unit(0));
   CU_ASSERT("1023" == util::utos_unit(1023));
@@ -383,8 +401,8 @@ void test_util_ends_with(void) {
 }
 
 void test_util_parse_http_date(void) {
-  CU_ASSERT(1001939696 ==
-            util::parse_http_date("Mon, 1 Oct 2001 12:34:56 GMT"));
+  CU_ASSERT(1001939696 == util::parse_http_date(StringRef::from_lit(
+                              "Mon, 1 Oct 2001 12:34:56 GMT")));
 }
 
 void test_util_localtime_date(void) {

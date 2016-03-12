@@ -104,6 +104,12 @@ void nghttp2_session_callbacks_set_on_header_callback(
   cbs->on_header_callback = on_header_callback;
 }
 
+void nghttp2_session_callbacks_set_on_header_callback2(
+    nghttp2_session_callbacks *cbs,
+    nghttp2_on_header_callback2 on_header_callback2) {
+  cbs->on_header_callback2 = on_header_callback2;
+}
+
 void nghttp2_session_callbacks_set_select_padding_callback(
     nghttp2_session_callbacks *cbs,
     nghttp2_select_padding_callback select_padding_callback) {

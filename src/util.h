@@ -51,6 +51,7 @@
 
 #include "template.h"
 #include "network.h"
+#include "allocator.h"
 
 namespace nghttp2 {
 
@@ -149,7 +150,7 @@ std::string common_log_date(time_t t);
 // 2014-11-15T12:58:24.741Z)
 std::string iso8601_date(int64_t ms);
 
-time_t parse_http_date(const std::string &s);
+time_t parse_http_date(const StringRef &s);
 
 char upcase(char c);
 
@@ -261,6 +262,11 @@ bool iends_with_l(const std::string &a, const CharT(&b)[N]) {
   return iends_with(std::begin(a), std::end(a), b, b + N - 1);
 }
 
+template <typename CharT, size_t N>
+bool iends_with_l(const StringRef &a, const CharT(&b)[N]) {
+  return iends_with(std::begin(a), std::end(a), b, b + N - 1);
+}
+
 int strcompare(const char *a, const uint8_t *b, size_t n);
 
 template <typename InputIt> bool strieq(const char *a, InputIt b, size_t bn) {
@@ -307,6 +313,11 @@ bool strieq_l(const CharT(&a)[N], InputIt b, size_t blen) {
 
 template <typename CharT, size_t N>
 bool strieq_l(const CharT(&a)[N], const std::string &b) {
+  return strieq(a, N - 1, std::begin(b), b.size());
+}
+
+template <typename CharT, size_t N>
+bool strieq_l(const CharT(&a)[N], const StringRef &b) {
   return strieq(a, N - 1, std::begin(b), b.size());
 }
 
@@ -375,6 +386,33 @@ template <typename T> std::string utos(T n) {
     res[i] = (n % 10) + '0';
   }
   return res;
+}
+
+template <typename T, typename OutputIt> OutputIt utos(OutputIt dst, T n) {
+  if (n == 0) {
+    *dst++ = '0';
+    return dst;
+  }
+  int i = 0;
+  T t = n;
+  for (; t; t /= 10, ++i)
+    ;
+  --i;
+  auto p = dst + i;
+  auto res = p + 1;
+  for (; n; --i, n /= 10) {
+    *p-- = (n % 10) + '0';
+  }
+  return res;
+}
+
+template <typename T>
+StringRef make_string_ref_uint(BlockAllocator &balloc, T n) {
+  auto iov = make_byte_ref(balloc, str_size("18446744073709551615") + 1);
+  auto p = iov.base;
+  p = util::utos(p, n);
+  *p = '\0';
+  return StringRef{iov.base, p};
 }
 
 template <typename T> std::string utos_unit(T n) {
@@ -609,6 +647,7 @@ int64_t parse_uint_with_unit(const char *s);
 int64_t parse_uint(const char *s);
 int64_t parse_uint(const uint8_t *s, size_t len);
 int64_t parse_uint(const std::string &s);
+int64_t parse_uint(const StringRef &s);
 
 // Parses NULL terminated string |s| as unsigned integer and returns
 // the parsed integer casted to double.  If |s| ends with "s", the
@@ -682,6 +721,11 @@ std::string random_alpha_digit(Generator &gen, size_t len) {
         gen)];
   }
   return res;
+}
+
+template <typename OutputIterator, typename CharT, size_t N>
+OutputIterator copy_lit(OutputIterator it, CharT(&s)[N]) {
+  return std::copy_n(s, N - 1, it);
 }
 
 } // namespace util

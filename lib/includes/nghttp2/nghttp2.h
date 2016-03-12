@@ -420,6 +420,55 @@ typedef enum {
 } nghttp2_error;
 
 /**
+ * @struct
+ *
+ * The object representing single contagious buffer.
+ */
+typedef struct {
+  /**
+   * The pointer to the buffer.
+   */
+  uint8_t *base;
+  /**
+   * The length of the buffer.
+   */
+  size_t len;
+} nghttp2_vec;
+
+struct nghttp2_rcbuf;
+
+/**
+ * @struct
+ *
+ * The object representing reference counted buffer.  The details of
+ * this structure are intentionally hidden from the public API.
+ */
+typedef struct nghttp2_rcbuf nghttp2_rcbuf;
+
+/**
+ * @function
+ *
+ * Increments the reference count of |rcbuf| by 1.
+ */
+NGHTTP2_EXTERN void nghttp2_rcbuf_incref(nghttp2_rcbuf *rcbuf);
+
+/**
+ * @function
+ *
+ * Decrements the reference count of |rcbuf| by 1.  If the reference
+ * count becomes zero, the object pointed by |rcbuf| will be freed.
+ * In this case, application must not use |rcbuf| again.
+ */
+NGHTTP2_EXTERN void nghttp2_rcbuf_decref(nghttp2_rcbuf *rcbuf);
+
+/**
+ * @function
+ *
+ * Returns the underlying buffer managed by |rcbuf|.
+ */
+NGHTTP2_EXTERN nghttp2_vec nghttp2_rcbuf_get_buf(nghttp2_rcbuf *rcbuf);
+
+/**
  * @enum
  *
  * The flags for header field name/value pair.
@@ -1630,6 +1679,32 @@ typedef int (*nghttp2_on_header_callback)(nghttp2_session *session,
 /**
  * @functypedef
  *
+ * Callback function invoked when a header name/value pair is received
+ * for the |frame|.  The |name| is header name.  The |value| is header
+ * value.  The |flags| is bitwise OR of one or more of
+ * :type:`nghttp2_nv_flag`.
+ *
+ * This callback behaves like :type:`nghttp2_on_header_callback`,
+ * except that |name| and |value| are stored in reference counted
+ * buffer.  If application wishes to keep these references without
+ * copying them, use `nghttp2_rcbuf_incref()` to increment their
+ * reference count.  It is the application's responsibility to call
+ * `nghttp2_rcbuf_decref()` if they called `nghttp2_rcbuf_incref()` so
+ * as not to leak memory.  If the |session| is created by
+ * `nghttp2_session_server_new3()` or `nghttp2_session_client_new3()`,
+ * the function to free memory is the one belongs to the mem
+ * parameter.  As long as this free function alives, |name| and
+ * |value| can live after |session| was destroyed.
+ */
+typedef int (*nghttp2_on_header_callback2)(nghttp2_session *session,
+                                           const nghttp2_frame *frame,
+                                           nghttp2_rcbuf *name,
+                                           nghttp2_rcbuf *value, uint8_t flags,
+                                           void *user_data);
+
+/**
+ * @functypedef
+ *
  * Callback function invoked when the library asks application how
  * many padding bytes are required for the transmission of the
  * |frame|.  The application must choose the total length of payload
@@ -1941,11 +2016,24 @@ NGHTTP2_EXTERN void nghttp2_session_callbacks_set_on_begin_headers_callback(
  * @function
  *
  * Sets callback function invoked when a header name/value pair is
- * received.
+ * received.  If both
+ * `nghttp2_session_callbacks_set_on_header_callback()` and
+ * `nghttp2_session_callbacks_set_on_header_callback2()` are used to
+ * set callbacks, the latter has the precedence.
  */
 NGHTTP2_EXTERN void nghttp2_session_callbacks_set_on_header_callback(
     nghttp2_session_callbacks *cbs,
     nghttp2_on_header_callback on_header_callback);
+
+/**
+ * @function
+ *
+ * Sets callback function invoked when a header name/value pair is
+ * received.
+ */
+NGHTTP2_EXTERN void nghttp2_session_callbacks_set_on_header_callback2(
+    nghttp2_session_callbacks *cbs,
+    nghttp2_on_header_callback2 on_header_callback2);
 
 /**
  * @function

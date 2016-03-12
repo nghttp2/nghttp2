@@ -109,7 +109,7 @@ public:
   int perform_http2_upgrade(HttpsUpstream *http);
   bool get_http2_upgrade_allowed() const;
   // Returns upstream scheme, either "http" or "https"
-  std::string get_upstream_scheme() const;
+  StringRef get_upstream_scheme() const;
   void start_immediate_shutdown();
 
   // Writes upstream accesslog using |downstream|.  The |downstream|

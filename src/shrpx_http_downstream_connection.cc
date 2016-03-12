@@ -272,6 +272,8 @@ int HttpDownstreamConnection::push_request_headers() {
   const auto &downstream_hostport = addr_->hostport;
   const auto &req = downstream_->request();
 
+  auto &balloc = downstream_->get_block_allocator();
+
   auto connect_method = req.method == HTTP_CONNECT;
 
   auto &httpconf = get_config()->http;
@@ -283,10 +285,10 @@ int HttpDownstreamConnection::push_request_headers() {
       httpconf.no_host_rewrite || get_config()->http2_proxy || connect_method;
 
   if (no_host_rewrite && !req.authority.empty()) {
-    authority = StringRef(req.authority);
+    authority = req.authority;
   }
 
-  downstream_->set_request_downstream_host(authority.str());
+  downstream_->set_request_downstream_host(authority);
 
   auto buf = downstream_->get_request_buf();
 
@@ -367,8 +369,9 @@ int HttpDownstreamConnection::push_request_headers() {
     }
 
     auto value = http::create_forwarded(
-        params, handler->get_forwarded_by(), handler->get_forwarded_for(),
-        StringRef{req.authority}, StringRef{req.scheme});
+        balloc, params, handler->get_forwarded_by(),
+        handler->get_forwarded_for(), req.authority, req.scheme);
+
     if (fwd || !value.empty()) {
       buf->append("Forwarded: ");
       if (fwd) {
@@ -424,7 +427,10 @@ int HttpDownstreamConnection::push_request_headers() {
       buf->append((*via).value);
       buf->append(", ");
     }
-    buf->append(http::create_via_header_value(req.http_major, req.http_minor));
+    std::array<char, 16> viabuf;
+    auto end = http::create_via_header_value(viabuf.data(), req.http_major,
+                                             req.http_minor);
+    buf->append(viabuf.data(), end - viabuf.data());
     buf->append("\r\n");
   }
 
@@ -690,6 +696,7 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
   auto downstream = static_cast<Downstream *>(htp->data);
   auto &resp = downstream->response();
   auto &httpconf = get_config()->http;
+  auto &balloc = downstream->get_block_allocator();
 
   if (ensure_header_field_buffer(downstream, httpconf, len) != 0) {
     return -1;
@@ -702,7 +709,9 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
       if (ensure_max_header_fields(downstream, httpconf) != 0) {
         return -1;
       }
-      resp.fs.add_header_lower(StringRef{data, len}, StringRef{}, false);
+      auto name = http2::copy_lower(balloc, StringRef{data, len});
+      auto token = http2::lookup_token(name);
+      resp.fs.add_header_token(name, StringRef{}, false, token);
     }
   } else {
     // trailer part
@@ -715,7 +724,9 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
         // wrong place or crash if trailer fields are currently empty.
         return -1;
       }
-      resp.fs.add_trailer_lower(StringRef(data, len), StringRef{}, false);
+      auto name = http2::copy_lower(balloc, StringRef{data, len});
+      auto token = http2::lookup_token(name);
+      resp.fs.add_trailer_token(name, StringRef{}, false, token);
     }
   }
   return 0;

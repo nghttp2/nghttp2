@@ -31,20 +31,31 @@
 
 #include <nghttp2/nghttp2.h>
 
+#include "util.h"
+#include "allocator.h"
+
 namespace shrpx {
 
 namespace http {
 
 std::string create_error_html(unsigned int status_code);
 
-std::string create_via_header_value(int major, int minor);
+template <typename OutputIt>
+OutputIt create_via_header_value(OutputIt dst, int major, int minor) {
+  *dst++ = static_cast<char>(major + '0');
+  if (major < 2) {
+    *dst++ = '.';
+    *dst++ = static_cast<char>(minor + '0');
+  }
+  return util::copy_lit(dst, " nghttpx");
+}
 
 // Returns generated RFC 7239 Forwarded header field value.  The
 // |params| is bitwise-OR of zero or more of shrpx_forwarded_param
 // defined in shrpx_config.h.
-std::string create_forwarded(int params, const StringRef &node_by,
-                             const StringRef &node_for, const StringRef &host,
-                             const StringRef &proto);
+StringRef create_forwarded(BlockAllocator &balloc, int params,
+                           const StringRef &node_by, const StringRef &node_for,
+                           const StringRef &host, const StringRef &proto);
 
 // Adds ANSI color codes to HTTP headers |hdrs|.
 std::string colorizeHeaders(const char *hdrs);

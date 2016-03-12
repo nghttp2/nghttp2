@@ -91,6 +91,7 @@ struct nghttp2_session_callbacks {
    * received.
    */
   nghttp2_on_header_callback on_header_callback;
+  nghttp2_on_header_callback2 on_header_callback2;
   /**
    * Callback function invoked when the library asks application how
    * many padding bytes are required for the transmission of the given

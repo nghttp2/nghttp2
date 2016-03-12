@@ -32,38 +32,28 @@
 
 namespace shrpx {
 
-void test_downstream_field_store_add_header_lower(void) {
-  FieldStore fs(0);
-  fs.add_header_lower(StringRef::from_lit("1"), StringRef::from_lit("0"),
-                      false);
-  fs.add_header_lower(StringRef::from_lit("2"), StringRef::from_lit("1"),
-                      false);
-  fs.add_header_lower(StringRef::from_lit("Charlie"), StringRef::from_lit("2"),
-                      false);
-  fs.add_header_lower(StringRef::from_lit("Alpha"), StringRef::from_lit("3"),
-                      false);
-  fs.add_header_lower(StringRef::from_lit("Delta"), StringRef::from_lit("4"),
-                      false);
-  fs.add_header_lower(StringRef::from_lit("BravO"), StringRef::from_lit("5"),
-                      false);
-  fs.add_header_lower(StringRef::from_lit(":method"), StringRef::from_lit("6"),
-                      false);
-  fs.add_header_lower(StringRef::from_lit(":authority"),
-                      StringRef::from_lit("7"), false);
+void test_downstream_field_store_append_last_header(void) {
+  BlockAllocator balloc(4096, 4096);
+  FieldStore fs(balloc, 0);
+  fs.add_header_token(StringRef::from_lit("alpha"), StringRef{}, false, -1);
+  auto bravo = StringRef::from_lit("BRAVO");
+  fs.append_last_header_key(bravo.c_str(), bravo.size());
+  auto charlie = StringRef::from_lit("Charlie");
+  fs.append_last_header_value(charlie.c_str(), charlie.size());
+  auto delta = StringRef::from_lit("deltA");
+  fs.append_last_header_value(delta.c_str(), delta.size());
+  fs.add_header_token(StringRef::from_lit("echo"),
+                      StringRef::from_lit("foxtrot"), false, -1);
 
-  auto ans = Headers{{"1", "0"},
-                     {"2", "1"},
-                     {"charlie", "2"},
-                     {"alpha", "3"},
-                     {"delta", "4"},
-                     {"bravo", "5"},
-                     {":method", "6"},
-                     {":authority", "7"}};
+  auto ans = HeaderRefs{
+      {StringRef::from_lit("alphabravo"), StringRef::from_lit("CharliedeltA")},
+      {StringRef::from_lit("echo"), StringRef::from_lit("foxtrot")}};
   CU_ASSERT(ans == fs.headers());
 }
 
 void test_downstream_field_store_header(void) {
-  FieldStore fs(0);
+  BlockAllocator balloc(4096, 4096);
+  FieldStore fs(balloc, 0);
   fs.add_header_token(StringRef::from_lit("alpha"), StringRef::from_lit("0"),
                       false, -1);
   fs.add_header_token(StringRef::from_lit(":authority"),
@@ -73,11 +63,13 @@ void test_downstream_field_store_header(void) {
                       http2::HD_CONTENT_LENGTH);
 
   // By token
-  CU_ASSERT(Header(":authority", "1") == *fs.header(http2::HD__AUTHORITY));
+  CU_ASSERT(HeaderRef(StringRef{":authority"}, StringRef{"1"}) ==
+            *fs.header(http2::HD__AUTHORITY));
   CU_ASSERT(nullptr == fs.header(http2::HD__METHOD));
 
   // By name
-  CU_ASSERT(Header("alpha", "0") == *fs.header(StringRef::from_lit("alpha")));
+  CU_ASSERT(HeaderRef(StringRef{"alpha"}, StringRef{"0"}) ==
+            *fs.header(StringRef::from_lit("alpha")));
   CU_ASSERT(nullptr == fs.header(StringRef::from_lit("bravo")));
 }
 
@@ -105,19 +97,20 @@ void test_downstream_crumble_request_cookie(void) {
   CU_ASSERT(5 == nva.size());
   CU_ASSERT(5 == num_cookies);
 
-  Headers cookies;
+  HeaderRefs cookies;
   std::transform(std::begin(nva), std::end(nva), std::back_inserter(cookies),
                  [](const nghttp2_nv &nv) {
-                   return Header(std::string(nv.name, nv.name + nv.namelen),
-                                 std::string(nv.value, nv.value + nv.valuelen),
-                                 nv.flags & NGHTTP2_NV_FLAG_NO_INDEX);
+                   return HeaderRef(StringRef{nv.name, nv.namelen},
+                                    StringRef{nv.value, nv.valuelen},
+                                    nv.flags & NGHTTP2_NV_FLAG_NO_INDEX);
                  });
 
-  Headers ans = {{"cookie", "alpha"},
-                 {"cookie", "bravo"},
-                 {"cookie", "charlie"},
-                 {"cookie", "delta"},
-                 {"cookie", "echo"}};
+  HeaderRefs ans = {
+      {StringRef::from_lit("cookie"), StringRef::from_lit("alpha")},
+      {StringRef::from_lit("cookie"), StringRef::from_lit("bravo")},
+      {StringRef::from_lit("cookie"), StringRef::from_lit("charlie")},
+      {StringRef::from_lit("cookie"), StringRef::from_lit("delta")},
+      {StringRef::from_lit("cookie"), StringRef::from_lit("echo")}};
 
   CU_ASSERT(ans == cookies);
   CU_ASSERT(cookies[0].no_index);
@@ -128,6 +121,7 @@ void test_downstream_crumble_request_cookie(void) {
 void test_downstream_assemble_request_cookie(void) {
   Downstream d(nullptr, nullptr, 0);
   auto &req = d.request();
+
   req.fs.add_header_token(StringRef::from_lit(":method"),
                           StringRef::from_lit("get"), false, -1);
   req.fs.add_header_token(StringRef::from_lit(":path"),
@@ -151,12 +145,12 @@ void test_downstream_rewrite_location_response_header(void) {
   Downstream d(nullptr, nullptr, 0);
   auto &req = d.request();
   auto &resp = d.response();
-  d.set_request_downstream_host("localhost2");
-  req.authority = "localhost:8443";
+  d.set_request_downstream_host(StringRef::from_lit("localhost2"));
+  req.authority = StringRef::from_lit("localhost:8443");
   resp.fs.add_header_token(StringRef::from_lit("location"),
                            StringRef::from_lit("http://localhost2:3000/"),
                            false, http2::HD_LOCATION);
-  d.rewrite_location_response_header("https");
+  d.rewrite_location_response_header(StringRef::from_lit("https"));
   auto location = resp.fs.header(http2::HD_LOCATION);
   CU_ASSERT("https://localhost:8443/" == (*location).value);
 }

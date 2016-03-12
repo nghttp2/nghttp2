@@ -3122,20 +3122,24 @@ static int session_call_on_begin_headers(nghttp2_session *session,
 
 static int session_call_on_header(nghttp2_session *session,
                                   const nghttp2_frame *frame,
-                                  const nghttp2_nv *nv) {
-  int rv;
-  if (session->callbacks.on_header_callback) {
+                                  const nghttp2_hd_nv *nv) {
+  int rv = 0;
+  if (session->callbacks.on_header_callback2) {
+    rv = session->callbacks.on_header_callback2(
+        session, frame, nv->name, nv->value, nv->flags, session->user_data);
+  } else if (session->callbacks.on_header_callback) {
     rv = session->callbacks.on_header_callback(
-        session, frame, nv->name, nv->namelen, nv->value, nv->valuelen,
-        nv->flags, session->user_data);
-    if (rv == NGHTTP2_ERR_PAUSE ||
-        rv == NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE) {
-      return rv;
-    }
-    if (rv != 0) {
-      return NGHTTP2_ERR_CALLBACK_FAILURE;
-    }
+        session, frame, nv->name->base, nv->name->len, nv->value->base,
+        nv->value->len, nv->flags, session->user_data);
   }
+
+  if (rv == NGHTTP2_ERR_PAUSE || rv == NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE) {
+    return rv;
+  }
+  if (rv != 0) {
+    return NGHTTP2_ERR_CALLBACK_FAILURE;
+  }
+
   return 0;
 }
 
@@ -3317,11 +3321,10 @@ static int inflate_header_block(nghttp2_session *session, nghttp2_frame *frame,
   ssize_t proclen;
   int rv;
   int inflate_flags;
-  nghttp2_nv nv;
+  nghttp2_hd_nv nv;
   nghttp2_stream *stream;
   nghttp2_stream *subject_stream;
   int trailer = 0;
-  int token;
 
   *readlen_ptr = 0;
   stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
@@ -3338,7 +3341,7 @@ static int inflate_header_block(nghttp2_session *session, nghttp2_frame *frame,
   for (;;) {
     inflate_flags = 0;
     proclen = nghttp2_hd_inflate_hd2(&session->hd_inflater, &nv, &inflate_flags,
-                                     &token, in, inlen, final);
+                                     in, inlen, final);
     if (nghttp2_is_fatal((int)proclen)) {
       return (int)proclen;
     }
@@ -3373,13 +3376,13 @@ static int inflate_header_block(nghttp2_session *session, nghttp2_frame *frame,
     if (call_header_cb && (inflate_flags & NGHTTP2_HD_INFLATE_EMIT)) {
       rv = 0;
       if (subject_stream && session_enforce_http_messaging(session)) {
-        rv = nghttp2_http_on_header(session, subject_stream, frame, &nv, token,
+        rv = nghttp2_http_on_header(session, subject_stream, frame, &nv,
                                     trailer);
         if (rv == NGHTTP2_ERR_HTTP_HEADER) {
           DEBUGF(fprintf(
               stderr, "recv: HTTP error: type=%d, id=%d, header %.*s: %.*s\n",
-              frame->hd.type, subject_stream->stream_id, (int)nv.namelen,
-              nv.name, (int)nv.valuelen, nv.value));
+              frame->hd.type, subject_stream->stream_id, (int)nv.name->len,
+              nv.name->base, (int)nv.value->len, nv.value->base));
 
           rv =
               session_handle_invalid_stream2(session, subject_stream->stream_id,
@@ -3394,8 +3397,8 @@ static int inflate_header_block(nghttp2_session *session, nghttp2_frame *frame,
           /* header is ignored */
           DEBUGF(fprintf(
               stderr, "recv: HTTP ignored: type=%d, id=%d, header %.*s: %.*s\n",
-              frame->hd.type, subject_stream->stream_id, (int)nv.namelen,
-              nv.name, (int)nv.valuelen, nv.value));
+              frame->hd.type, subject_stream->stream_id, (int)nv.name->len,
+              nv.name->base, (int)nv.value->len, nv.value->base));
         }
       }
       if (rv == 0) {

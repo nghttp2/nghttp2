@@ -107,6 +107,7 @@ mrb_value response_mod_header(mrb_state *mrb, mrb_value self, bool repl) {
   auto data = static_cast<MRubyAssocData *>(mrb->ud);
   auto downstream = data->downstream;
   auto &resp = downstream->response();
+  auto &balloc = downstream->get_block_allocator();
 
   mrb_value key, values;
   mrb_get_args(mrb, "oo", &key, &values);
@@ -118,7 +119,8 @@ mrb_value response_mod_header(mrb_state *mrb, mrb_value self, bool repl) {
   key = mrb_funcall(mrb, key, "downcase", 0);
 
   auto keyref =
-      StringRef{RSTRING_PTR(key), static_cast<size_t>(RSTRING_LEN(key))};
+      make_string_ref(balloc, StringRef{RSTRING_PTR(key),
+                                        static_cast<size_t>(RSTRING_LEN(key))});
   auto token = http2::lookup_token(keyref.byte(), keyref.size());
 
   if (repl) {
@@ -141,14 +143,18 @@ mrb_value response_mod_header(mrb_state *mrb, mrb_value self, bool repl) {
     for (int i = 0; i < n; ++i) {
       auto value = mrb_ary_entry(values, i);
       resp.fs.add_header_token(
-          keyref, StringRef{RSTRING_PTR(value),
-                            static_cast<size_t>(RSTRING_LEN(value))},
+          keyref,
+          make_string_ref(balloc,
+                          StringRef{RSTRING_PTR(value),
+                                    static_cast<size_t>(RSTRING_LEN(value))}),
           false, token);
     }
   } else if (!mrb_nil_p(values)) {
     resp.fs.add_header_token(
-        keyref, StringRef{RSTRING_PTR(values),
-                          static_cast<size_t>(RSTRING_LEN(values))},
+        keyref,
+        make_string_ref(balloc,
+                        StringRef{RSTRING_PTR(values),
+                                  static_cast<size_t>(RSTRING_LEN(values))}),
         false, token);
   }
 
@@ -187,6 +193,8 @@ mrb_value response_return(mrb_state *mrb, mrb_value self) {
   auto &resp = downstream->response();
   int rv;
 
+  auto &balloc = downstream->get_block_allocator();
+
   if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
     mrb_raise(mrb, E_RUNTIME_ERROR, "response has already been committed");
   }
@@ -207,13 +215,14 @@ mrb_value response_return(mrb_state *mrb, mrb_value self) {
     bodylen = vallen;
   }
 
+  auto content_length = util::make_string_ref_uint(balloc, bodylen);
+
   auto cl = resp.fs.header(http2::HD_CONTENT_LENGTH);
   if (cl) {
-    cl->value = util::utos(bodylen);
+    cl->value = content_length;
   } else {
     resp.fs.add_header_token(StringRef::from_lit("content-length"),
-                             StringRef{util::utos(bodylen)}, false,
-                             http2::HD_CONTENT_LENGTH);
+                             content_length, false, http2::HD_CONTENT_LENGTH);
   }
   resp.fs.content_length = bodylen;
 
@@ -221,9 +230,10 @@ mrb_value response_return(mrb_state *mrb, mrb_value self) {
   if (!date) {
     auto lgconf = log_config();
     lgconf->update_tstamp(std::chrono::system_clock::now());
-    resp.fs.add_header_token(StringRef::from_lit("date"),
-                             StringRef{lgconf->time_http_str}, false,
-                             http2::HD_DATE);
+    resp.fs.add_header_token(
+        StringRef::from_lit("date"),
+        make_string_ref(balloc, StringRef{lgconf->time_http_str}), false,
+        http2::HD_DATE);
   }
 
   auto upstream = downstream->get_upstream();

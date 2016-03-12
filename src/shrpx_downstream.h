@@ -40,6 +40,7 @@
 #include "shrpx_io_control.h"
 #include "http2.h"
 #include "memchunk.h"
+#include "allocator.h"
 
 using namespace nghttp2;
 
@@ -51,18 +52,19 @@ struct BlockedLink;
 
 class FieldStore {
 public:
-  FieldStore(size_t headers_initial_capacity)
+  FieldStore(BlockAllocator &balloc, size_t headers_initial_capacity)
       : content_length(-1),
+        balloc_(balloc),
         buffer_size_(0),
         header_key_prev_(false),
         trailer_key_prev_(false) {
     headers_.reserve(headers_initial_capacity);
   }
 
-  const Headers &headers() const { return headers_; }
-  const Headers &trailers() const { return trailers_; }
+  const HeaderRefs &headers() const { return headers_; }
+  const HeaderRefs &trailers() const { return trailers_; }
 
-  Headers &headers() { return headers_; }
+  HeaderRefs &headers() { return headers_; }
 
   const void add_extra_buffer_size(size_t n) { buffer_size_ += n; }
   size_t buffer_size() const { return buffer_size_; }
@@ -73,14 +75,12 @@ public:
   // multiple header have |name| as name, return last occurrence from
   // the beginning.  If no such header is found, returns nullptr.
   // This function must be called after headers are indexed
-  const Headers::value_type *header(int32_t token) const;
-  Headers::value_type *header(int32_t token);
+  const HeaderRefs::value_type *header(int32_t token) const;
+  HeaderRefs::value_type *header(int32_t token);
   // Returns pointer to the header field with the name |name|.  If no
   // such header is found, returns nullptr.
-  const Headers::value_type *header(const StringRef &name) const;
+  const HeaderRefs::value_type *header(const StringRef &name) const;
 
-  void add_header_lower(const StringRef &name, const StringRef &value,
-                        bool no_index);
   void add_header_token(const StringRef &name, const StringRef &value,
                         bool no_index, int32_t token);
 
@@ -96,8 +96,6 @@ public:
   // Empties headers.
   void clear_headers();
 
-  void add_trailer_lower(const StringRef &name, const StringRef &value,
-                         bool no_index);
   void add_trailer_token(const StringRef &name, const StringRef &value,
                          bool no_index, int32_t token);
 
@@ -110,10 +108,11 @@ public:
   int64_t content_length;
 
 private:
-  Headers headers_;
+  BlockAllocator &balloc_;
+  HeaderRefs headers_;
   // trailer fields.  For HTTP/1.1, trailer fields are only included
   // with chunked encoding.  For HTTP/2, there is no such limit.
-  Headers trailers_;
+  HeaderRefs trailers_;
   // Sum of the length of name and value in headers_ and trailers_.
   // This could also be increased by add_extra_buffer_size() to take
   // into account for request URI in case of HTTP/1.x request.
@@ -123,8 +122,8 @@ private:
 };
 
 struct Request {
-  Request()
-      : fs(16),
+  Request(BlockAllocator &balloc)
+      : fs(balloc, 16),
         recv_body_length(0),
         unconsumed_body_length(0),
         method(-1),
@@ -144,17 +143,17 @@ struct Request {
   FieldStore fs;
   // Request scheme.  For HTTP/2, this is :scheme header field value.
   // For HTTP/1.1, this is deduced from URI or connection.
-  std::string scheme;
+  StringRef scheme;
   // Request authority.  This is HTTP/2 :authority header field value
   // or host header field value.  We may deduce it from absolute-form
   // HTTP/1 request.  We also store authority-form HTTP/1 request.
   // This could be empty if request comes from HTTP/1.0 without Host
   // header field and origin-form.
-  std::string authority;
+  StringRef authority;
   // Request path, including query component.  For HTTP/1.1, this is
   // request-target.  For HTTP/2, this is :path header field value.
   // For CONNECT request, this is empty.
-  std::string path;
+  StringRef path;
   // the length of request body received so far
   int64_t recv_body_length;
   // The number of bytes not consumed by the application yet.
@@ -179,8 +178,8 @@ struct Request {
 };
 
 struct Response {
-  Response()
-      : fs(32),
+  Response(BlockAllocator &balloc)
+      : fs(balloc, 32),
         recv_body_length(0),
         unconsumed_body_length(0),
         http_status(0),
@@ -245,7 +244,7 @@ public:
   // Returns true if the request is HTTP Upgrade for HTTP/2
   bool get_http2_upgrade_request() const;
   // Returns the value of HTTP2-Settings request header field.
-  const std::string &get_http2_settings() const;
+  StringRef get_http2_settings() const;
 
   // downstream request API
   const Request &request() const { return req_; }
@@ -272,7 +271,7 @@ public:
   // Validates that received request body length and content-length
   // matches.
   bool validate_request_recv_body_length() const;
-  void set_request_downstream_host(std::string host);
+  void set_request_downstream_host(const StringRef &host);
   bool expect_response_body() const;
   enum {
     INITIAL,
@@ -303,7 +302,7 @@ public:
   Response &response() { return resp_; }
 
   // Rewrites the location response header field.
-  void rewrite_location_response_header(const std::string &upstream_scheme);
+  void rewrite_location_response_header(const StringRef &upstream_scheme);
 
   bool get_chunked_response() const;
   void set_chunked_response(bool f);
@@ -373,6 +372,10 @@ public:
 
   DefaultMemchunks pop_response_buf();
 
+  BlockAllocator &get_block_allocator();
+
+  void add_rcbuf(nghttp2_rcbuf *rcbuf);
+
   enum {
     EVENT_ERROR = 0x1,
     EVENT_TIMEOUT = 0x2,
@@ -392,6 +395,10 @@ public:
   int64_t response_sent_body_length;
 
 private:
+  BlockAllocator balloc_;
+
+  std::vector<nghttp2_rcbuf *> rcbufs_;
+
   Request req_;
   Response resp_;
 
@@ -400,7 +407,7 @@ private:
   // host we requested to downstream.  This is used to rewrite
   // location header field to decide the location should be rewritten
   // or not.
-  std::string request_downstream_host_;
+  StringRef request_downstream_host_;
 
   DefaultMemchunks request_buf_;
   DefaultMemchunks response_buf_;

@@ -152,7 +152,7 @@ static int stream_obq_push(nghttp2_stream *dep_stream, nghttp2_stream *stream) {
     stream_next_cycle(stream, dep_stream->descendant_last_cycle);
     stream->seq = dep_stream->descendant_next_seq++;
 
-    DEBUGF(fprintf(stderr, "stream: stream=%d obq push cycle=%ld\n",
+    DEBUGF(fprintf(stderr, "stream: stream=%d obq push cycle=%d\n",
                    stream->stream_id, stream->cycle));
 
     DEBUGF(fprintf(stderr, "stream: push stream %d to stream %d\n",
@@ -238,7 +238,7 @@ void nghttp2_stream_reschedule(nghttp2_stream *stream) {
 
     nghttp2_pq_push(&dep_stream->obq, &stream->pq_entry);
 
-    DEBUGF(fprintf(stderr, "stream: stream=%d obq resched cycle=%ld\n",
+    DEBUGF(fprintf(stderr, "stream: stream=%d obq resched cycle=%d\n",
                    stream->stream_id, stream->cycle));
 
     dep_stream->last_writelen = stream->last_writelen;
@@ -298,7 +298,7 @@ void nghttp2_stream_change_weight(nghttp2_stream *stream, int32_t weight) {
 
   nghttp2_pq_push(&dep_stream->obq, &stream->pq_entry);
 
-  DEBUGF(fprintf(stderr, "stream: stream=%d obq resched cycle=%ld\n",
+  DEBUGF(fprintf(stderr, "stream: stream=%d obq resched cycle=%d\n",
                  stream->stream_id, stream->cycle));
 }
 

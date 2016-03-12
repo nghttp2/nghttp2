@@ -134,111 +134,111 @@ std::string get_status_string(unsigned int status_code) {
   }
 }
 
-const char *stringify_status(unsigned int status_code) {
+StringRef stringify_status(unsigned int status_code) {
   switch (status_code) {
   case 100:
-    return "100";
+    return StringRef::from_lit("100");
   case 101:
-    return "101";
+    return StringRef::from_lit("101");
   case 200:
-    return "200";
+    return StringRef::from_lit("200");
   case 201:
-    return "201";
+    return StringRef::from_lit("201");
   case 202:
-    return "202";
+    return StringRef::from_lit("202");
   case 203:
-    return "203";
+    return StringRef::from_lit("203");
   case 204:
-    return "204";
+    return StringRef::from_lit("204");
   case 205:
-    return "205";
+    return StringRef::from_lit("205");
   case 206:
-    return "206";
+    return StringRef::from_lit("206");
   case 300:
-    return "300";
+    return StringRef::from_lit("300");
   case 301:
-    return "301";
+    return StringRef::from_lit("301");
   case 302:
-    return "302";
+    return StringRef::from_lit("302");
   case 303:
-    return "303";
+    return StringRef::from_lit("303");
   case 304:
-    return "304";
+    return StringRef::from_lit("304");
   case 305:
-    return "305";
-  // case 306: return "306";
+    return StringRef::from_lit("305");
+  // case 306: return StringRef::from_lit("306");
   case 307:
-    return "307";
+    return StringRef::from_lit("307");
   case 308:
-    return "308";
+    return StringRef::from_lit("308");
   case 400:
-    return "400";
+    return StringRef::from_lit("400");
   case 401:
-    return "401";
+    return StringRef::from_lit("401");
   case 402:
-    return "402";
+    return StringRef::from_lit("402");
   case 403:
-    return "403";
+    return StringRef::from_lit("403");
   case 404:
-    return "404";
+    return StringRef::from_lit("404");
   case 405:
-    return "405";
+    return StringRef::from_lit("405");
   case 406:
-    return "406";
+    return StringRef::from_lit("406");
   case 407:
-    return "407";
+    return StringRef::from_lit("407");
   case 408:
-    return "408";
+    return StringRef::from_lit("408");
   case 409:
-    return "409";
+    return StringRef::from_lit("409");
   case 410:
-    return "410";
+    return StringRef::from_lit("410");
   case 411:
-    return "411";
+    return StringRef::from_lit("411");
   case 412:
-    return "412";
+    return StringRef::from_lit("412");
   case 413:
-    return "413";
+    return StringRef::from_lit("413");
   case 414:
-    return "414";
+    return StringRef::from_lit("414");
   case 415:
-    return "415";
+    return StringRef::from_lit("415");
   case 416:
-    return "416";
+    return StringRef::from_lit("416");
   case 417:
-    return "417";
+    return StringRef::from_lit("417");
   case 421:
-    return "421";
+    return StringRef::from_lit("421");
   case 426:
-    return "426";
+    return StringRef::from_lit("426");
   case 428:
-    return "428";
+    return StringRef::from_lit("428");
   case 429:
-    return "429";
+    return StringRef::from_lit("429");
   case 431:
-    return "431";
+    return StringRef::from_lit("431");
   case 451:
-    return "451";
+    return StringRef::from_lit("451");
   case 500:
-    return "500";
+    return StringRef::from_lit("500");
   case 501:
-    return "501";
+    return StringRef::from_lit("501");
   case 502:
-    return "502";
+    return StringRef::from_lit("502");
   case 503:
-    return "503";
+    return StringRef::from_lit("503");
   case 504:
-    return "504";
+    return StringRef::from_lit("504");
   case 505:
-    return "505";
+    return StringRef::from_lit("505");
   case 511:
-    return "511";
+    return StringRef::from_lit("511");
   default:
-    return nullptr;
+    return StringRef{};
   }
 }
 
-void capitalize(DefaultMemchunks *buf, const std::string &s) {
+void capitalize(DefaultMemchunks *buf, const StringRef &s) {
   buf->append(util::upcase(s[0]));
   for (size_t i = 1; i < s.size(); ++i) {
     if (s[i - 1] == '-') {
@@ -302,14 +302,7 @@ const Headers::value_type *get_header(const Headers &nva, const char *name) {
   return res;
 }
 
-std::string value_to_str(const Headers::value_type *nv) {
-  if (nv) {
-    return nv->value;
-  }
-  return "";
-}
-
-bool non_empty_value(const Headers::value_type *nv) {
+bool non_empty_value(const HeaderRefs::value_type *nv) {
   return nv && !nv->value.empty();
 }
 
@@ -326,7 +319,25 @@ nghttp2_nv make_nv_internal(const std::string &name, const std::string &value,
 }
 } // namespace
 
+namespace {
+nghttp2_nv make_nv_internal(const StringRef &name, const StringRef &value,
+                            bool no_index, uint8_t nv_flags) {
+  uint8_t flags;
+
+  flags =
+      nv_flags | (no_index ? NGHTTP2_NV_FLAG_NO_INDEX : NGHTTP2_NV_FLAG_NONE);
+
+  return {(uint8_t *)name.c_str(), (uint8_t *)value.c_str(), name.size(),
+          value.size(), flags};
+}
+} // namespace
+
 nghttp2_nv make_nv(const std::string &name, const std::string &value,
+                   bool no_index) {
+  return make_nv_internal(name, value, no_index, NGHTTP2_NV_FLAG_NONE);
+}
+
+nghttp2_nv make_nv(const StringRef &name, const StringRef &value,
                    bool no_index) {
   return make_nv_internal(name, value, no_index, NGHTTP2_NV_FLAG_NONE);
 }
@@ -338,9 +349,16 @@ nghttp2_nv make_nv_nocopy(const std::string &name, const std::string &value,
                               NGHTTP2_NV_FLAG_NO_COPY_VALUE);
 }
 
+nghttp2_nv make_nv_nocopy(const StringRef &name, const StringRef &value,
+                          bool no_index) {
+  return make_nv_internal(name, value, no_index,
+                          NGHTTP2_NV_FLAG_NO_COPY_NAME |
+                              NGHTTP2_NV_FLAG_NO_COPY_VALUE);
+}
+
 namespace {
 void copy_headers_to_nva_internal(std::vector<nghttp2_nv> &nva,
-                                  const Headers &headers, uint8_t nv_flags) {
+                                  const HeaderRefs &headers, uint8_t nv_flags) {
   for (auto &kv : headers) {
     if (kv.name.empty() || kv.name[0] == ':') {
       continue;
@@ -367,18 +385,19 @@ void copy_headers_to_nva_internal(std::vector<nghttp2_nv> &nva,
 }
 } // namespace
 
-void copy_headers_to_nva(std::vector<nghttp2_nv> &nva, const Headers &headers) {
+void copy_headers_to_nva(std::vector<nghttp2_nv> &nva,
+                         const HeaderRefs &headers) {
   copy_headers_to_nva_internal(nva, headers, NGHTTP2_NV_FLAG_NONE);
 }
 
 void copy_headers_to_nva_nocopy(std::vector<nghttp2_nv> &nva,
-                                const Headers &headers) {
+                                const HeaderRefs &headers) {
   copy_headers_to_nva_internal(nva, headers, NGHTTP2_NV_FLAG_NO_COPY_NAME |
                                                  NGHTTP2_NV_FLAG_NO_COPY_VALUE);
 }
 
 void build_http1_headers_from_headers(DefaultMemchunks *buf,
-                                      const Headers &headers) {
+                                      const HeaderRefs &headers) {
   for (auto &kv : headers) {
     if (kv.name.empty() || kv.name[0] == ':') {
       continue;
@@ -450,42 +469,77 @@ void dump_nv(FILE *out, const Headers &nva) {
   fflush(out);
 }
 
-std::string rewrite_location_uri(const std::string &uri,
-                                 const http_parser_url &u,
-                                 const std::string &match_host,
-                                 const std::string &request_authority,
-                                 const std::string &upstream_scheme) {
+void dump_nv(FILE *out, const HeaderRefs &nva) {
+  for (auto &nv : nva) {
+    fprintf(out, "%s: %s\n", nv.name.c_str(), nv.value.c_str());
+  }
+  fputc('\n', out);
+  fflush(out);
+}
+
+StringRef rewrite_location_uri(BlockAllocator &balloc, const StringRef &uri,
+                               const http_parser_url &u,
+                               const StringRef &match_host,
+                               const StringRef &request_authority,
+                               const StringRef &upstream_scheme) {
   // We just rewrite scheme and authority.
   if ((u.field_set & (1 << UF_HOST)) == 0) {
-    return "";
+    return StringRef{};
   }
   auto field = &u.field_data[UF_HOST];
   if (!util::starts_with(std::begin(match_host), std::end(match_host),
                          &uri[field->off], &uri[field->off] + field->len) ||
       (match_host.size() != field->len && match_host[field->len] != ':')) {
-    return "";
+    return StringRef{};
   }
-  std::string res;
+
+  auto len = 0;
   if (!request_authority.empty()) {
-    res += upstream_scheme;
-    res += "://";
-    res += request_authority;
+    len += upstream_scheme.size() + str_size("://") + request_authority.size();
+  }
+
+  if (u.field_set & (1 << UF_PATH)) {
+    field = &u.field_data[UF_PATH];
+    len += field->len;
+  }
+
+  if (u.field_set & (1 << UF_QUERY)) {
+    field = &u.field_data[UF_QUERY];
+    len += 1 + field->len;
+  }
+
+  if (u.field_set & (1 << UF_FRAGMENT)) {
+    field = &u.field_data[UF_FRAGMENT];
+    len += 1 + field->len;
+  }
+
+  auto iov = make_byte_ref(balloc, len + 1);
+  auto p = iov.base;
+
+  if (!request_authority.empty()) {
+    p = std::copy(std::begin(upstream_scheme), std::end(upstream_scheme), p);
+    p = util::copy_lit(p, "://");
+    p = std::copy(std::begin(request_authority), std::end(request_authority),
+                  p);
   }
   if (u.field_set & (1 << UF_PATH)) {
     field = &u.field_data[UF_PATH];
-    res.append(&uri[field->off], field->len);
+    p = std::copy_n(&uri[field->off], field->len, p);
   }
   if (u.field_set & (1 << UF_QUERY)) {
     field = &u.field_data[UF_QUERY];
-    res += '?';
-    res.append(&uri[field->off], field->len);
+    *p++ = '?';
+    p = std::copy_n(&uri[field->off], field->len, p);
   }
   if (u.field_set & (1 << UF_FRAGMENT)) {
     field = &u.field_data[UF_FRAGMENT];
-    res += '#';
-    res.append(&uri[field->off], field->len);
+    *p++ = '#';
+    p = std::copy_n(&uri[field->off], field->len, p);
   }
-  return res;
+
+  *p = '\0';
+
+  return StringRef{iov.base, p};
 }
 
 int check_nv(const uint8_t *name, size_t namelen, const uint8_t *value,
@@ -499,7 +553,7 @@ int check_nv(const uint8_t *name, size_t namelen, const uint8_t *value,
   return 1;
 }
 
-int parse_http_status_code(const std::string &src) {
+int parse_http_status_code(const StringRef &src) {
   if (src.size() != 3) {
     return -1;
   }
@@ -523,6 +577,10 @@ int parse_http_status_code(const std::string &src) {
 int lookup_token(const std::string &name) {
   return lookup_token(reinterpret_cast<const uint8_t *>(name.c_str()),
                       name.size());
+}
+
+int lookup_token(const StringRef &name) {
+  return lookup_token(name.byte(), name.size());
 }
 
 // This function was generated by genheaderfunc.py.  Inspired by h2o
@@ -1133,132 +1191,11 @@ std::vector<LinkHeader> parse_link_header(const char *src, size_t len) {
   return res;
 }
 
-namespace {
-void eat_file(std::string &path) {
-  if (path.empty()) {
-    path = "/";
-    return;
-  }
-  auto p = path.size() - 1;
-  if (path[p] == '/') {
-    return;
-  }
-  p = path.rfind('/', p);
-  if (p == std::string::npos) {
-    // this should not happend in normal case, where we expect path
-    // starts with '/'
-    path = "/";
-    return;
-  }
-  path.erase(std::begin(path) + p + 1, std::end(path));
-}
-} // namespace
-
-namespace {
-void eat_dir(std::string &path) {
-  if (path.empty()) {
-    path = "/";
-    return;
-  }
-  auto p = path.size() - 1;
-  if (path[p] != '/') {
-    p = path.rfind('/', p);
-    if (p == std::string::npos) {
-      // this should not happend in normal case, where we expect path
-      // starts with '/'
-      path = "/";
-      return;
-    }
-  }
-  if (path[p] == '/') {
-    if (p == 0) {
-      return;
-    }
-    --p;
-  }
-  p = path.rfind('/', p);
-  if (p == std::string::npos) {
-    // this should not happend in normal case, where we expect path
-    // starts with '/'
-    path = "/";
-    return;
-  }
-  path.erase(std::begin(path) + p + 1, std::end(path));
-}
-} // namespace
-
 std::string path_join(const StringRef &base_path, const StringRef &base_query,
                       const StringRef &rel_path, const StringRef &rel_query) {
-  std::string res;
-  if (rel_path.empty()) {
-    if (base_path.empty()) {
-      res = "/";
-    } else {
-      res.assign(std::begin(base_path), std::end(base_path));
-    }
-    if (rel_query.empty()) {
-      if (!base_query.empty()) {
-        res += '?';
-        res.append(std::begin(base_query), std::end(base_query));
-      }
-      return res;
-    }
-    res += '?';
-    res.append(std::begin(rel_query), std::end(rel_query));
-    return res;
-  }
+  BlockAllocator balloc(1024, 1024);
 
-  auto first = std::begin(rel_path);
-  auto last = std::end(rel_path);
-
-  if (rel_path[0] == '/') {
-    res = "/";
-    ++first;
-  } else if (base_path.empty()) {
-    res = "/";
-  } else {
-    res.assign(std::begin(base_path), std::end(base_path));
-  }
-
-  for (; first != last;) {
-    if (*first == '.') {
-      if (first + 1 == last) {
-        break;
-      }
-      if (*(first + 1) == '/') {
-        first += 2;
-        continue;
-      }
-      if (*(first + 1) == '.') {
-        if (first + 2 == last) {
-          eat_dir(res);
-          break;
-        }
-        if (*(first + 2) == '/') {
-          eat_dir(res);
-          first += 3;
-          continue;
-        }
-      }
-    }
-    if (res.back() != '/') {
-      eat_file(res);
-    }
-    auto slash = std::find(first, last, '/');
-    if (slash == last) {
-      res.append(first, last);
-      break;
-    }
-    res.append(first, slash + 1);
-    first = slash + 1;
-    for (; first != last && *first == '/'; ++first)
-      ;
-  }
-  if (!rel_query.empty()) {
-    res += '?';
-    res.append(std::begin(rel_query), std::end(rel_query));
-  }
-  return res;
+  return path_join(balloc, base_path, base_query, rel_path, rel_query).str();
 }
 
 bool expect_response_body(int status_code) {
@@ -1276,6 +1213,10 @@ bool expect_response_body(int method_token, int status_code) {
 int lookup_method_token(const std::string &name) {
   return lookup_method_token(reinterpret_cast<const uint8_t *>(name.c_str()),
                              name.size());
+}
+
+int lookup_method_token(const StringRef &name) {
+  return lookup_method_token(name.byte(), name.size());
 }
 
 // This function was generated by genmethodfunc.py.
@@ -1455,7 +1396,7 @@ StringRef to_method_string(int method_token) {
   return StringRef{http_method_str(static_cast<http_method>(method_token))};
 }
 
-StringRef get_pure_path_component(const std::string &uri) {
+StringRef get_pure_path_component(const StringRef &uri) {
   int rv;
 
   http_parser_url u{};
@@ -1472,9 +1413,9 @@ StringRef get_pure_path_component(const std::string &uri) {
   return StringRef::from_lit("/");
 }
 
-int construct_push_component(std::string &scheme, std::string &authority,
-                             std::string &path, const StringRef &base,
-                             const StringRef &uri) {
+int construct_push_component(BlockAllocator &balloc, StringRef &scheme,
+                             StringRef &authority, StringRef &path,
+                             const StringRef &base, const StringRef &uri) {
   int rv;
   StringRef rel, relq;
 
@@ -1497,15 +1438,26 @@ int construct_push_component(std::string &scheme, std::string &authority,
     }
   } else {
     if (u.field_set & (1 << UF_SCHEMA)) {
-      http2::copy_url_component(scheme, &u, UF_SCHEMA, uri.c_str());
+      scheme = util::get_uri_field(uri.c_str(), u, UF_SCHEMA);
     }
 
     if (u.field_set & (1 << UF_HOST)) {
-      http2::copy_url_component(authority, &u, UF_HOST, uri.c_str());
-      if (u.field_set & (1 << UF_PORT)) {
-        authority += ':';
-        authority += util::utos(u.port);
+      auto auth = util::get_uri_field(uri.c_str(), u, UF_HOST);
+      auto len = auth.size();
+      auto port_exists = u.field_set & (1 << UF_PORT);
+      if (port_exists) {
+        len += 1 + str_size("65535");
       }
+      auto iov = make_byte_ref(balloc, len + 1);
+      auto p = iov.base;
+      p = std::copy(std::begin(auth), std::end(auth), p);
+      if (port_exists) {
+        *p++ = ':';
+        p = util::utos(p, u.port);
+      }
+      *p = '\0';
+
+      authority = StringRef{iov.base, p};
     }
 
     if (u.field_set & (1 << UF_PATH)) {
@@ -1521,9 +1473,205 @@ int construct_push_component(std::string &scheme, std::string &authority,
     }
   }
 
-  path = http2::path_join(base, StringRef{}, rel, relq);
+  path = http2::path_join(balloc, base, StringRef{}, rel, relq);
 
   return 0;
+}
+
+namespace {
+template <typename InputIt> InputIt eat_file(InputIt first, InputIt last) {
+  if (first == last) {
+    *first++ = '/';
+    return first;
+  }
+
+  if (*(last - 1) == '/') {
+    return last;
+  }
+
+  auto p = last;
+  for (; p != first && *(p - 1) != '/'; --p)
+    ;
+  if (p == first) {
+    // this should not happend in normal case, where we expect path
+    // starts with '/'
+    *first++ = '/';
+    return first;
+  }
+
+  return p;
+}
+} // namespace
+
+namespace {
+template <typename InputIt> InputIt eat_dir(InputIt first, InputIt last) {
+  auto p = eat_file(first, last);
+
+  --p;
+
+  assert(*p == '/');
+
+  return eat_file(first, p);
+}
+} // namespace
+
+StringRef path_join(BlockAllocator &balloc, const StringRef &base_path,
+                    const StringRef &base_query, const StringRef &rel_path,
+                    const StringRef &rel_query) {
+  auto res = make_byte_ref(
+      balloc, std::max(static_cast<size_t>(1), base_path.size()) +
+                  rel_path.size() + 1 +
+                  std::max(base_query.size(), rel_query.size()) + 1);
+  auto p = res.base;
+
+  if (rel_path.empty()) {
+    if (base_path.empty()) {
+      *p++ = '/';
+    } else {
+      p = std::copy(std::begin(base_path), std::end(base_path), p);
+    }
+    if (rel_query.empty()) {
+      if (!base_query.empty()) {
+        *p++ = '?';
+        p = std::copy(std::begin(base_query), std::end(base_query), p);
+      }
+      *p = '\0';
+      return StringRef{res.base, p};
+    }
+    *p++ = '?';
+    p = std::copy(std::begin(rel_query), std::end(rel_query), p);
+    *p = '\0';
+    return StringRef{res.base, p};
+  }
+
+  auto first = std::begin(rel_path);
+  auto last = std::end(rel_path);
+
+  if (rel_path[0] == '/') {
+    *p++ = '/';
+    ++first;
+  } else if (base_path.empty()) {
+    *p++ = '/';
+  } else {
+    p = std::copy(std::begin(base_path), std::end(base_path), p);
+  }
+
+  for (; first != last;) {
+    if (*first == '.') {
+      if (first + 1 == last) {
+        break;
+      }
+      if (*(first + 1) == '/') {
+        first += 2;
+        continue;
+      }
+      if (*(first + 1) == '.') {
+        if (first + 2 == last) {
+          p = eat_dir(res.base, p);
+          break;
+        }
+        if (*(first + 2) == '/') {
+          p = eat_dir(res.base, p);
+          first += 3;
+          continue;
+        }
+      }
+    }
+    if (*(p - 1) != '/') {
+      p = eat_file(res.base, p);
+    }
+    auto slash = std::find(first, last, '/');
+    if (slash == last) {
+      p = std::copy(first, last, p);
+      break;
+    }
+    p = std::copy(first, slash + 1, p);
+    first = slash + 1;
+    for (; first != last && *first == '/'; ++first)
+      ;
+  }
+  if (!rel_query.empty()) {
+    *p++ = '?';
+    p = std::copy(std::begin(rel_query), std::end(rel_query), p);
+  }
+  *p = '\0';
+  return StringRef{res.base, p};
+}
+
+StringRef normalize_path(BlockAllocator &balloc, const StringRef &path,
+                         const StringRef &query) {
+  // First, decode %XX for unreserved characters, then do
+  // http2::path_join
+
+  // We won't find %XX if length is less than 3.
+  if (path.size() < 3 ||
+      std::find(std::begin(path), std::end(path), '%') == std::end(path)) {
+    return path_join(balloc, StringRef{}, StringRef{}, path, query);
+  }
+
+  // includes last terminal NULL.
+  auto result = make_byte_ref(balloc, path.size() + 1);
+  auto p = result.base;
+
+  auto it = std::begin(path);
+  for (; it + 2 < std::end(path);) {
+    if (*it == '%') {
+      if (util::is_hex_digit(*(it + 1)) && util::is_hex_digit(*(it + 2))) {
+        auto c =
+            (util::hex_to_uint(*(it + 1)) << 4) + util::hex_to_uint(*(it + 2));
+        if (util::in_rfc3986_unreserved_chars(c)) {
+          *p++ = c;
+
+          it += 3;
+
+          continue;
+        }
+        *p++ = '%';
+        *p++ = util::upcase(*(it + 1));
+        *p++ = util::upcase(*(it + 2));
+
+        it += 3;
+
+        continue;
+      }
+    }
+    *p++ = *it++;
+  }
+
+  p = std::copy(it, std::end(path), p);
+  *p = '\0';
+
+  return path_join(balloc, StringRef{}, StringRef{}, StringRef{result.base, p},
+                   query);
+}
+
+std::string normalize_path(const StringRef &path, const StringRef &query) {
+  BlockAllocator balloc(1024, 1024);
+
+  return normalize_path(balloc, path, query).str();
+}
+
+StringRef rewrite_clean_path(BlockAllocator &balloc, const StringRef &src) {
+  if (src.empty() || src[0] != '/') {
+    return src;
+  }
+  // probably, not necessary most of the case, but just in case.
+  auto fragment = std::find(std::begin(src), std::end(src), '#');
+  auto query = std::find(std::begin(src), fragment, '?');
+  if (query != fragment) {
+    ++query;
+  }
+  return normalize_path(balloc, StringRef{std::begin(src), query},
+                        StringRef{query, fragment});
+}
+
+StringRef copy_lower(BlockAllocator &balloc, const StringRef &src) {
+  auto iov = make_byte_ref(balloc, src.size() + 1);
+  auto p = iov.base;
+  p = std::copy(std::begin(src), std::end(src), p);
+  *p = '\0';
+  util::inp_strlower(iov.base, p);
+  return StringRef{iov.base, p};
 }
 
 } // namespace http2

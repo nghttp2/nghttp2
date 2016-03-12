@@ -401,18 +401,20 @@ public:
   explicit StringRef(const ImmutableString &s)
       : base(s.c_str()), len(s.size()) {}
   explicit StringRef(const char *s) : base(s), len(strlen(s)) {}
+  constexpr StringRef(const char *s, size_t n) : base(s), len(n) {}
   template <typename CharT>
-  constexpr StringRef(const CharT *s, size_t n)
+  StringRef(const CharT *s, size_t n)
       : base(reinterpret_cast<const char *>(s)), len(n) {}
   template <typename InputIt>
   StringRef(InputIt first, InputIt last)
       : base(&*first), len(std::distance(first, last)) {}
   template <typename InputIt>
   StringRef(InputIt *first, InputIt *last)
-      : base(first), len(std::distance(first, last)) {}
+      : base(reinterpret_cast<const char *>(first)),
+        len(std::distance(first, last)) {}
   template <typename CharT, size_t N>
   constexpr static StringRef from_lit(const CharT(&s)[N]) {
-    return StringRef(s, N - 1);
+    return StringRef{s, N - 1};
   }
   static StringRef from_maybe_nullptr(const char *s) {
     if (s == nullptr) {
@@ -442,6 +444,11 @@ private:
   const char *base;
   size_type len;
 };
+
+inline bool operator==(const StringRef &lhs, const StringRef &rhs) {
+  return lhs.size() == rhs.size() &&
+         std::equal(std::begin(lhs), std::end(lhs), std::begin(rhs));
+}
 
 inline bool operator==(const StringRef &lhs, const std::string &rhs) {
   return lhs.size() == rhs.size() &&
@@ -475,6 +482,11 @@ inline bool operator!=(const StringRef &lhs, const char *rhs) {
 
 inline bool operator!=(const char *lhs, const StringRef &rhs) {
   return !(rhs == lhs);
+}
+
+inline bool operator<(const StringRef &lhs, const StringRef &rhs) {
+  return std::lexicographical_compare(std::begin(lhs), std::end(lhs),
+                                      std::begin(rhs), std::end(rhs));
 }
 
 inline std::ostream &operator<<(std::ostream &o, const StringRef &s) {

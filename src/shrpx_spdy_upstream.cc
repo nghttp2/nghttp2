@@ -159,6 +159,8 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
 
     auto &req = downstream->request();
 
+    auto &balloc = downstream->get_block_allocator();
+
     downstream->reset_upstream_rtimer();
 
     auto nv = frame->syn_stream.nv;
@@ -195,7 +197,9 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
       auto name = StringRef{nv[i]};
       auto value = StringRef{nv[i + 1]};
       auto token = http2::lookup_token(name.byte(), name.size());
-      req.fs.add_header_token(name, value, false, token);
+      req.fs.add_header_token(make_string_ref(balloc, StringRef{name}),
+                              make_string_ref(balloc, StringRef{value}), false,
+                              token);
     }
 
     if (req.fs.parse_content_length() != 0) {
@@ -271,8 +275,7 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
       } else if (method_token == HTTP_OPTIONS && path->value == "*") {
         // Server-wide OPTIONS request.  Path is empty.
       } else {
-        req.path = http2::rewrite_clean_path(std::begin(path->value),
-                                             std::end(path->value));
+        req.path = http2::rewrite_clean_path(balloc, path->value);
       }
     }
 
@@ -1069,11 +1072,13 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream) {
     }
   } else {
     if (via) {
-      via_value = via->value;
+      via_value = via->value.str();
       via_value += ", ";
     }
-    via_value +=
-        http::create_via_header_value(resp.http_major, resp.http_minor);
+    std::array<char, 16> viabuf;
+    auto end = http::create_via_header_value(std::begin(viabuf),
+                                             resp.http_major, resp.http_minor);
+    via_value.append(std::begin(viabuf), end);
     nv[hdidx++] = "via";
     nv[hdidx++] = via_value.c_str();
   }
