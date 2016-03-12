@@ -347,8 +347,6 @@ int Http2DownstreamConnection::push_request_headers() {
   auto upstream = downstream_->get_upstream();
   auto handler = upstream->get_client_handler();
 
-  std::string forwarded_value;
-
   auto &fwdconf = httpconf.forwarded;
 
   auto fwd =
@@ -361,25 +359,24 @@ int Http2DownstreamConnection::push_request_headers() {
       params &= ~FORWARDED_PROTO;
     }
 
-    auto value = http::create_forwarded(params, handler->get_forwarded_by(),
-                                        handler->get_forwarded_for(),
-                                        req.authority, req.scheme);
+    auto value = http::create_forwarded(
+        balloc, params, handler->get_forwarded_by(),
+        handler->get_forwarded_for(), req.authority, req.scheme);
+
     if (fwd || !value.empty()) {
       if (fwd) {
-        forwarded_value = fwd->value.str();
-
-        if (!value.empty()) {
-          forwarded_value += ", ";
+        if (value.empty()) {
+          value = fwd->value;
+        } else {
+          value = concat_string_ref(balloc, fwd->value,
+                                    StringRef::from_lit(", "), value);
         }
       }
 
-      forwarded_value += value;
-
-      nva.push_back(http2::make_nv_ls("forwarded", forwarded_value));
+      nva.push_back(http2::make_nv_ls_nocopy("forwarded", value));
     }
   } else if (fwd) {
     nva.push_back(http2::make_nv_ls_nocopy("forwarded", fwd->value));
-    forwarded_value = fwd->value.str();
   }
 
   auto &xffconf = httpconf.xff;

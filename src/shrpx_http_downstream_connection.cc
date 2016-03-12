@@ -272,6 +272,8 @@ int HttpDownstreamConnection::push_request_headers() {
   const auto &downstream_hostport = addr_->hostport;
   const auto &req = downstream_->request();
 
+  auto &balloc = downstream_->get_block_allocator();
+
   auto connect_method = req.method == HTTP_CONNECT;
 
   auto &httpconf = get_config()->http;
@@ -366,9 +368,10 @@ int HttpDownstreamConnection::push_request_headers() {
       params &= ~FORWARDED_PROTO;
     }
 
-    auto value = http::create_forwarded(params, handler->get_forwarded_by(),
-                                        handler->get_forwarded_for(),
-                                        req.authority, req.scheme);
+    auto value = http::create_forwarded(
+        balloc, params, handler->get_forwarded_by(),
+        handler->get_forwarded_for(), req.authority, req.scheme);
+
     if (fwd || !value.empty()) {
       buf->append("Forwarded: ");
       if (fwd) {
