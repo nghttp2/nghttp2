@@ -1198,132 +1198,11 @@ std::vector<LinkHeader> parse_link_header(const char *src, size_t len) {
   return res;
 }
 
-namespace {
-void eat_file(std::string &path) {
-  if (path.empty()) {
-    path = "/";
-    return;
-  }
-  auto p = path.size() - 1;
-  if (path[p] == '/') {
-    return;
-  }
-  p = path.rfind('/', p);
-  if (p == std::string::npos) {
-    // this should not happend in normal case, where we expect path
-    // starts with '/'
-    path = "/";
-    return;
-  }
-  path.erase(std::begin(path) + p + 1, std::end(path));
-}
-} // namespace
-
-namespace {
-void eat_dir(std::string &path) {
-  if (path.empty()) {
-    path = "/";
-    return;
-  }
-  auto p = path.size() - 1;
-  if (path[p] != '/') {
-    p = path.rfind('/', p);
-    if (p == std::string::npos) {
-      // this should not happend in normal case, where we expect path
-      // starts with '/'
-      path = "/";
-      return;
-    }
-  }
-  if (path[p] == '/') {
-    if (p == 0) {
-      return;
-    }
-    --p;
-  }
-  p = path.rfind('/', p);
-  if (p == std::string::npos) {
-    // this should not happend in normal case, where we expect path
-    // starts with '/'
-    path = "/";
-    return;
-  }
-  path.erase(std::begin(path) + p + 1, std::end(path));
-}
-} // namespace
-
 std::string path_join(const StringRef &base_path, const StringRef &base_query,
                       const StringRef &rel_path, const StringRef &rel_query) {
-  std::string res;
-  if (rel_path.empty()) {
-    if (base_path.empty()) {
-      res = "/";
-    } else {
-      res.assign(std::begin(base_path), std::end(base_path));
-    }
-    if (rel_query.empty()) {
-      if (!base_query.empty()) {
-        res += '?';
-        res.append(std::begin(base_query), std::end(base_query));
-      }
-      return res;
-    }
-    res += '?';
-    res.append(std::begin(rel_query), std::end(rel_query));
-    return res;
-  }
+  BlockAllocator balloc(1024, 1024);
 
-  auto first = std::begin(rel_path);
-  auto last = std::end(rel_path);
-
-  if (rel_path[0] == '/') {
-    res = "/";
-    ++first;
-  } else if (base_path.empty()) {
-    res = "/";
-  } else {
-    res.assign(std::begin(base_path), std::end(base_path));
-  }
-
-  for (; first != last;) {
-    if (*first == '.') {
-      if (first + 1 == last) {
-        break;
-      }
-      if (*(first + 1) == '/') {
-        first += 2;
-        continue;
-      }
-      if (*(first + 1) == '.') {
-        if (first + 2 == last) {
-          eat_dir(res);
-          break;
-        }
-        if (*(first + 2) == '/') {
-          eat_dir(res);
-          first += 3;
-          continue;
-        }
-      }
-    }
-    if (res.back() != '/') {
-      eat_file(res);
-    }
-    auto slash = std::find(first, last, '/');
-    if (slash == last) {
-      res.append(first, last);
-      break;
-    }
-    res.append(first, slash + 1);
-    first = slash + 1;
-    for (; first != last && *first == '/'; ++first)
-      ;
-  }
-  if (!rel_query.empty()) {
-    res += '?';
-    res.append(std::begin(rel_query), std::end(rel_query));
-  }
-  return res;
+  return path_join(balloc, base_path, base_query, rel_path, rel_query).str();
 }
 
 bool expect_response_body(int status_code) {
@@ -1729,7 +1608,7 @@ StringRef path_join(BlockAllocator &balloc, const StringRef &base_path,
 StringRef normalize_path(BlockAllocator &balloc, const StringRef &path,
                          const StringRef &query) {
   // First, decode %XX for unreserved characters, then do
-  // http2::join_path
+  // http2::path_join
 
   // We won't find %XX if length is less than 3.
   if (path.size() < 3 ||
