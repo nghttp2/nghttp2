@@ -36,8 +36,7 @@
 /*
  * This function is called when HTTP header field |nv| in |frame| is
  * received for |stream|.  This function will validate |nv| against
- * the current state of stream.  The |token| is nghttp2_token value
- * for nv->name, or -1 if we don't have enum value for the name.
+ * the current state of stream.
  *
  * This function returns 0 if it succeeds, or one of the following
  * negative error codes:
@@ -49,7 +48,7 @@
  *     if it was not received because of compatibility reasons.
  */
 int nghttp2_http_on_header(nghttp2_session *session, nghttp2_stream *stream,
-                           nghttp2_frame *frame, nghttp2_nv *nv, int token,
+                           nghttp2_frame *frame, nghttp2_hd_nv *nv,
                            int trailer);
 
 /*

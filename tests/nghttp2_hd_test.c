@@ -295,11 +295,6 @@ void test_nghttp2_hd_inflate_indname_inc(void) {
   assert_nv_equal(&nv, out.nva, 1, mem);
   CU_ASSERT(1 == inflater.ctx.hd_table.len);
   CU_ASSERT(62 == nghttp2_hd_inflate_get_num_table_entries(&inflater));
-  assert_nv_equal(&nv,
-                  &nghttp2_hd_table_get(&inflater.ctx,
-                                        NGHTTP2_STATIC_TABLE_LENGTH +
-                                            inflater.ctx.hd_table.len - 1)->nv,
-                  1, mem);
   assert_nv_equal(&nv, nghttp2_hd_inflate_get_table_entry(
                            &inflater, NGHTTP2_STATIC_TABLE_LENGTH +
                                           inflater.ctx.hd_table.len),
@@ -429,10 +424,9 @@ void test_nghttp2_hd_inflate_newname_inc(void) {
   CU_ASSERT(1 == out.nvlen);
   assert_nv_equal(&nv, out.nva, 1, mem);
   CU_ASSERT(1 == inflater.ctx.hd_table.len);
-  assert_nv_equal(&nv,
-                  &nghttp2_hd_table_get(&inflater.ctx,
-                                        NGHTTP2_STATIC_TABLE_LENGTH +
-                                            inflater.ctx.hd_table.len - 1)->nv,
+  assert_nv_equal(&nv, nghttp2_hd_inflate_get_table_entry(
+                           &inflater, NGHTTP2_STATIC_TABLE_LENGTH +
+                                          inflater.ctx.hd_table.len),
                   1, mem);
 
   nva_out_reset(&out, mem);

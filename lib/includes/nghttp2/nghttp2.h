@@ -420,6 +420,53 @@ typedef enum {
 } nghttp2_error;
 
 /**
+ * @struct
+ *
+ * The object representing single contagious buffer.
+ */
+typedef struct {
+  /**
+   * The pointer to the buffer.
+   */
+  uint8_t *base;
+  /**
+   * The length of the buffer.
+   */
+  size_t len;
+} nghttp2_vec;
+
+struct nghttp2_rcbuf;
+
+/**
+ * @struct
+ *
+ * The object representing reference counted buffer.  The details of
+ * this structure are intentionally hidden from the public API.
+ */
+typedef struct nghttp2_rcbuf nghttp2_rcbuf;
+
+/**
+ * @function
+ *
+ * Increments the reference count of |rcbuf| by 1.
+ */
+void nghttp2_rcbuf_incref(nghttp2_rcbuf *rcbuf);
+
+/**
+ * @function
+ *
+ * Decrements the reference count of |rcbuf| by 1.  If the reference
+ * count becomes zero, the object pointed by |rcbuf| will be freed.
+ * In this case, application must not use |rcbuf| again.
+ */
+void nghttp2_rcbuf_decref(nghttp2_rcbuf *rcbuf);
+
+/**
+ * Returns the underlying buffer managed by |rcbuf|.
+ */
+nghttp2_vec nghttp2_rcbuf_get_buf(nghttp2_rcbuf *rcbuf);
+
+/**
  * @enum
  *
  * The flags for header field name/value pair.
