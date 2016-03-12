@@ -28,6 +28,7 @@ GO_FILES = \
 	server_tester.go
 
 EXTRA_DIST = \
+	CMakeLists.txt \
 	$(GO_FILES) \
 	server.key \
 	server.crt \

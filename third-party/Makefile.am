@@ -23,6 +23,8 @@
 
 AM_CPPFLAGS = @DEFS@
 
+EXTRA_DIST = CMakeLists.txt
+
 if ENABLE_THIRD_PARTY
 
 noinst_LTLIBRARIES = libhttp-parser.la
@@ -39,7 +41,7 @@ endif # HAVE_NEVERBLEED
 
 if HAVE_MRUBY
 
-EXTRA_DIST = build_config.rb mruby/*
+EXTRA_DIST += build_config.rb mruby/*
 
 .PHONY: all-local clean mruby
 

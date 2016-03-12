@@ -154,6 +154,7 @@ RST_FILES = \
 	h2load.1.rst
 
 EXTRA_DIST = \
+	CMakeLists.txt \
 	mkapiref.py \
 	$(RST_FILES) \
 	$(APIDOCS) \
