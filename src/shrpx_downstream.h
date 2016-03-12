@@ -374,6 +374,8 @@ public:
 
   BlockAllocator &get_block_allocator();
 
+  void add_rcbuf(nghttp2_rcbuf *rcbuf);
+
   enum {
     EVENT_ERROR = 0x1,
     EVENT_TIMEOUT = 0x2,
@@ -394,6 +396,8 @@ public:
 
 private:
   BlockAllocator balloc_;
+
+  std::vector<nghttp2_rcbuf *> rcbufs_;
 
   Request req_;
   Response resp_;

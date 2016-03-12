@@ -801,10 +801,9 @@ void Http2Session::stop_settings_timer() {
 }
 
 namespace {
-int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
-                       const uint8_t *name, size_t namelen,
-                       const uint8_t *value, size_t valuelen, uint8_t flags,
-                       void *user_data) {
+int on_header_callback2(nghttp2_session *session, const nghttp2_frame *frame,
+                        nghttp2_rcbuf *name, nghttp2_rcbuf *value,
+                        uint8_t flags, void *user_data) {
   auto http2session = static_cast<Http2Session *>(user_data);
   auto sd = static_cast<StreamData *>(
       nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
@@ -816,22 +815,25 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
     return 0;
   }
 
+  auto namebuf = nghttp2_rcbuf_get_buf(name);
+  auto valuebuf = nghttp2_rcbuf_get_buf(value);
+
   auto &resp = downstream->response();
   auto &httpconf = get_config()->http;
-  auto &balloc = downstream->get_block_allocator();
 
   switch (frame->hd.type) {
   case NGHTTP2_HEADERS: {
     auto trailer = frame->headers.cat == NGHTTP2_HCAT_HEADERS &&
                    !downstream->get_expect_final_response();
 
-    if (resp.fs.buffer_size() + namelen + valuelen >
+    if (resp.fs.buffer_size() + namebuf.len + valuebuf.len >
             httpconf.response_header_field_buffer ||
         resp.fs.num_fields() >= httpconf.max_response_header_fields) {
       if (LOG_ENABLED(INFO)) {
-        DLOG(INFO, downstream) << "Too large or many header field size="
-                               << resp.fs.buffer_size() + namelen + valuelen
-                               << ", num=" << resp.fs.num_fields() + 1;
+        DLOG(INFO, downstream)
+            << "Too large or many header field size="
+            << resp.fs.buffer_size() + namebuf.len + valuebuf.len
+            << ", num=" << resp.fs.num_fields() + 1;
       }
 
       if (trailer) {
@@ -843,20 +845,23 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
       return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
     }
 
-    auto token = http2::lookup_token(name, namelen);
+    auto token = http2::lookup_token(namebuf.base, namebuf.len);
     auto no_index = flags & NGHTTP2_NV_FLAG_NO_INDEX;
+
+    downstream->add_rcbuf(name);
+    downstream->add_rcbuf(value);
 
     if (trailer) {
       // just store header fields for trailer part
-      resp.fs.add_trailer_token(
-          make_string_ref(balloc, StringRef{name, namelen}),
-          make_string_ref(balloc, StringRef{value, valuelen}), no_index, token);
+      resp.fs.add_trailer_token(StringRef{namebuf.base, namebuf.len},
+                                StringRef{valuebuf.base, valuebuf.len},
+                                no_index, token);
       return 0;
     }
 
-    resp.fs.add_header_token(
-        make_string_ref(balloc, StringRef{name, namelen}),
-        make_string_ref(balloc, StringRef{value, valuelen}), no_index, token);
+    resp.fs.add_header_token(StringRef{namebuf.base, namebuf.len},
+                             StringRef{valuebuf.base, valuebuf.len}, no_index,
+                             token);
     return 0;
   }
   case NGHTTP2_PUSH_PROMISE: {
@@ -870,30 +875,34 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
 
     auto promised_downstream = promised_sd->dconn->get_downstream();
 
+    auto namebuf = nghttp2_rcbuf_get_buf(name);
+    auto valuebuf = nghttp2_rcbuf_get_buf(value);
+
     assert(promised_downstream);
 
     auto &promised_req = promised_downstream->request();
-    auto &promised_balloc = promised_downstream->get_block_allocator();
 
     // We use request header limit for PUSH_PROMISE
-    if (promised_req.fs.buffer_size() + namelen + valuelen >
+    if (promised_req.fs.buffer_size() + namebuf.len + valuebuf.len >
             httpconf.request_header_field_buffer ||
         promised_req.fs.num_fields() >= httpconf.max_request_header_fields) {
       if (LOG_ENABLED(INFO)) {
         DLOG(INFO, downstream)
             << "Too large or many header field size="
-            << promised_req.fs.buffer_size() + namelen + valuelen
+            << promised_req.fs.buffer_size() + namebuf.len + valuebuf.len
             << ", num=" << promised_req.fs.num_fields() + 1;
       }
 
       return NGHTTP2_ERR_TEMPORAL_CALLBACK_FAILURE;
     }
 
-    auto token = http2::lookup_token(name, namelen);
-    promised_req.fs.add_header_token(
-        make_string_ref(promised_balloc, StringRef{name, namelen}),
-        make_string_ref(promised_balloc, StringRef{value, valuelen}),
-        flags & NGHTTP2_NV_FLAG_NO_INDEX, token);
+    promised_downstream->add_rcbuf(name);
+    promised_downstream->add_rcbuf(value);
+
+    auto token = http2::lookup_token(namebuf.base, namebuf.len);
+    promised_req.fs.add_header_token(StringRef{namebuf.base, namebuf.len},
+                                     StringRef{valuebuf.base, valuebuf.len},
+                                     flags & NGHTTP2_NV_FLAG_NO_INDEX, token);
 
     return 0;
   }
@@ -1402,8 +1411,8 @@ nghttp2_session_callbacks *create_http2_downstream_callbacks() {
   nghttp2_session_callbacks_set_on_frame_not_send_callback(
       callbacks, on_frame_not_send_callback);
 
-  nghttp2_session_callbacks_set_on_header_callback(callbacks,
-                                                   on_header_callback);
+  nghttp2_session_callbacks_set_on_header_callback2(callbacks,
+                                                    on_header_callback2);
 
   nghttp2_session_callbacks_set_on_begin_headers_callback(
       callbacks, on_begin_headers_callback);

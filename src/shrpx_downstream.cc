@@ -182,6 +182,10 @@ Downstream::~Downstream() {
   // explicitly.
   dconn_.reset();
 
+  for (auto rcbuf : rcbufs_) {
+    nghttp2_rcbuf_decref(rcbuf);
+  }
+
   if (LOG_ENABLED(INFO)) {
     DLOG(INFO, this) << "Deleted";
   }
@@ -904,5 +908,10 @@ void Downstream::set_assoc_stream_id(int32_t stream_id) {
 int32_t Downstream::get_assoc_stream_id() const { return assoc_stream_id_; }
 
 BlockAllocator &Downstream::get_block_allocator() { return balloc_; }
+
+void Downstream::add_rcbuf(nghttp2_rcbuf *rcbuf) {
+  nghttp2_rcbuf_incref(rcbuf);
+  rcbufs_.push_back(rcbuf);
+}
 
 } // namespace shrpx
