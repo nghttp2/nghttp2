@@ -302,13 +302,6 @@ const Headers::value_type *get_header(const Headers &nva, const char *name) {
   return res;
 }
 
-std::string value_to_str(const HeaderRefs::value_type *nv) {
-  if (nv) {
-    return nv->value.str();
-  }
-  return "";
-}
-
 bool non_empty_value(const HeaderRefs::value_type *nv) {
   return nv && !nv->value.empty();
 }

@@ -127,9 +127,6 @@ void add_header(Headers &nva, const uint8_t *name, size_t namelen,
 // in |nva| is returned.  If no such entry exist, returns nullptr.
 const Headers::value_type *get_header(const Headers &nva, const char *name);
 
-// Returns nv->second if nv is not nullptr. Otherwise, returns "".
-std::string value_to_str(const HeaderRefs::value_type *nv);
-
 // Returns true if the value of |nv| is not empty.
 bool non_empty_value(const HeaderRefs::value_type *nv);
 
