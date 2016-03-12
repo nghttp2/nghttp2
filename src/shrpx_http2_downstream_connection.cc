@@ -266,6 +266,8 @@ int Http2DownstreamConnection::push_request_headers() {
 
   const auto &req = downstream_->request();
 
+  auto &balloc = downstream_->get_block_allocator();
+
   auto &httpconf = get_config()->http;
   auto &http2conf = get_config()->http2;
 
@@ -403,19 +405,28 @@ int Http2DownstreamConnection::push_request_headers() {
     nva.push_back(http2::make_nv_ls_nocopy("x-forwarded-proto", req.scheme));
   }
 
-  std::string via_value;
   auto via = req.fs.header(http2::HD_VIA);
   if (httpconf.no_via) {
     if (via) {
       nva.push_back(http2::make_nv_ls_nocopy("via", (*via).value));
     }
   } else {
+    size_t vialen = 16;
     if (via) {
-      via_value = (*via).value.str();
-      via_value += ", ";
+      vialen += via->value.size() + 2;
     }
-    via_value += http::create_via_header_value(req.http_major, req.http_minor);
-    nva.push_back(http2::make_nv_ls("via", via_value));
+
+    auto iov = make_byte_ref(balloc, vialen + 1);
+    auto p = iov.base;
+
+    if (via) {
+      p = std::copy(std::begin(via->value), std::end(via->value), p);
+      p = util::copy_lit(p, ", ");
+    }
+    p = http::create_via_header_value(p, req.http_major, req.http_minor);
+    *p = '\0';
+
+    nva.push_back(http2::make_nv_ls_nocopy("via", StringRef{iov.base, p}));
   }
 
   auto te = req.fs.header(http2::HD_TE);

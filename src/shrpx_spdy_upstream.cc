@@ -1075,8 +1075,10 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream) {
       via_value = via->value.str();
       via_value += ", ";
     }
-    via_value +=
-        http::create_via_header_value(resp.http_major, resp.http_minor);
+    std::array<char, 16> viabuf;
+    auto end = http::create_via_header_value(std::begin(viabuf),
+                                             resp.http_major, resp.http_minor);
+    via_value.append(std::begin(viabuf), end);
     nv[hdidx++] = "via";
     nv[hdidx++] = via_value.c_str();
   }

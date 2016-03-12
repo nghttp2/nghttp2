@@ -1074,8 +1074,10 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
       buf->append((*via).value);
       buf->append(", ");
     }
-    buf->append(
-        http::create_via_header_value(resp.http_major, resp.http_minor));
+    std::array<char, 16> viabuf;
+    auto end = http::create_via_header_value(viabuf.data(), resp.http_major,
+                                             resp.http_minor);
+    buf->append(viabuf.data(), end - std::begin(viabuf));
     buf->append("\r\n");
   }
 

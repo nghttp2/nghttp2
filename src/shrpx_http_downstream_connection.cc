@@ -424,7 +424,10 @@ int HttpDownstreamConnection::push_request_headers() {
       buf->append((*via).value);
       buf->append(", ");
     }
-    buf->append(http::create_via_header_value(req.http_major, req.http_minor));
+    std::array<char, 16> viabuf;
+    auto end = http::create_via_header_value(viabuf.data(), req.http_major,
+                                             req.http_minor);
+    buf->append(viabuf.data(), end - viabuf.data());
     buf->append("\r\n");
   }
 

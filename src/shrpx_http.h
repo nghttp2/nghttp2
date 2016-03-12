@@ -31,13 +31,23 @@
 
 #include <nghttp2/nghttp2.h>
 
+#include "util.h"
+
 namespace shrpx {
 
 namespace http {
 
 std::string create_error_html(unsigned int status_code);
 
-std::string create_via_header_value(int major, int minor);
+template <typename OutputIt>
+OutputIt create_via_header_value(OutputIt dst, int major, int minor) {
+  *dst++ = static_cast<char>(major + '0');
+  if (major < 2) {
+    *dst++ = '.';
+    *dst++ = static_cast<char>(minor + '0');
+  }
+  return util::copy_lit(dst, " nghttpx");
+}
 
 // Returns generated RFC 7239 Forwarded header field value.  The
 // |params| is bitwise-OR of zero or more of shrpx_forwarded_param

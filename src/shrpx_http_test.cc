@@ -72,4 +72,18 @@ void test_shrpx_http_create_forwarded(void) {
                 StringRef::from_lit(""), StringRef::from_lit("")));
 }
 
+void test_shrpx_http_create_via_header_value(void) {
+  std::array<char, 16> buf;
+
+  auto end = http::create_via_header_value(std::begin(buf), 1, 1);
+
+  CU_ASSERT(("1.1 nghttpx" == StringRef{std::begin(buf), end}));
+
+  std::fill(std::begin(buf), std::end(buf), '\0');
+
+  end = http::create_via_header_value(std::begin(buf), 2, 0);
+
+  CU_ASSERT(("2 nghttpx" == StringRef{std::begin(buf), end}));
+}
+
 } // namespace shrpx

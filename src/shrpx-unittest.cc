@@ -123,6 +123,8 @@ int main(int argc, char *argv[]) {
                    shrpx::test_shrpx_worker_match_downstream_addr_group) ||
       !CU_add_test(pSuite, "http_create_forwarded",
                    shrpx::test_shrpx_http_create_forwarded) ||
+      !CU_add_test(pSuite, "http_create_via_header_value",
+                   shrpx::test_shrpx_http_create_via_header_value) ||
       !CU_add_test(pSuite, "util_streq", shrpx::test_util_streq) ||
       !CU_add_test(pSuite, "util_strieq", shrpx::test_util_strieq) ||
       !CU_add_test(pSuite, "util_inp_strlower",

@@ -1399,7 +1399,6 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
   // field.
   nva.reserve(resp.fs.headers().size() + 4 +
               httpconf.add_response_headers.size());
-  std::string via_value;
 
   auto response_status = http2::stringify_status(resp.http_status);
   if (response_status.empty()) {
@@ -1453,13 +1452,23 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
       nva.push_back(http2::make_nv_ls_nocopy("via", (*via).value));
     }
   } else {
+    // we don't create more than 16 bytes in
+    // http::create_via_header_value.
+    size_t len = 16;
     if (via) {
-      via_value = (*via).value.str();
-      via_value += ", ";
+      len += via->value.size() + 2;
     }
-    via_value +=
-        http::create_via_header_value(resp.http_major, resp.http_minor);
-    nva.push_back(http2::make_nv_ls("via", via_value));
+
+    auto iov = make_byte_ref(balloc, len + 1);
+    auto p = iov.base;
+    if (via) {
+      p = std::copy(std::begin(via->value), std::end(via->value), p);
+      p = util::copy_lit(p, ", ");
+    }
+    p = http::create_via_header_value(p, resp.http_major, resp.http_minor);
+    *p = '\0';
+
+    nva.push_back(http2::make_nv_ls_nocopy("via", StringRef{iov.base, p}));
   }
 
   for (auto &p : httpconf.add_response_headers) {
