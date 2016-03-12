@@ -34,10 +34,19 @@
 namespace nghttp2 {
 
 struct MemBlock {
+  // The next MemBlock to chain them.  This is for book keeping
+  // purpose to free them later.
   MemBlock *next;
+  // begin is the pointer to the beginning of buffer.  last is the
+  // location of next write.  end is the one beyond of the end of the
+  // buffer.
   uint8_t *begin, *last, *end;
 };
 
+// BlockAllocator allocates memory block with given size at once, and
+// cuts the region from it when allocation is requested.  If the
+// requested size is larger than given threshold, it will be allocated
+// in a distinct buffer on demand.
 struct BlockAllocator {
   BlockAllocator(size_t block_size, size_t isolation_threshold)
       : retain(nullptr),
@@ -83,7 +92,9 @@ struct BlockAllocator {
     return res;
   }
 
+  // This holds live memory block to free them in dtor.
   MemBlock *retain;
+  // Current memory block to use.
   MemBlock *head;
   // size of single memory block
   size_t block_size;
@@ -92,6 +103,8 @@ struct BlockAllocator {
   size_t isolation_threshold;
 };
 
+// Makes a copy of |src|.  The resulting string will be
+// NULL-terminated.
 template <typename BlockAllocator>
 StringRef make_string_ref(BlockAllocator &alloc, const StringRef &src) {
   auto dst = static_cast<uint8_t *>(alloc.alloc(src.size() + 1));
@@ -101,6 +114,8 @@ StringRef make_string_ref(BlockAllocator &alloc, const StringRef &src) {
   return StringRef{dst, src.size()};
 }
 
+// Returns the string which is the concatenation of |a| and |b| in
+// this order.  The resulting string will be NULL-terminated.
 template <typename BlockAllocator>
 StringRef concat_string_ref(BlockAllocator &alloc, const StringRef &a,
                             const StringRef &b) {
@@ -113,6 +128,8 @@ StringRef concat_string_ref(BlockAllocator &alloc, const StringRef &a,
   return StringRef{dst, len};
 }
 
+// Returns the string which is the concatenation of |a|, |b| and |c|
+// in this order.  The resulting string will be NULL-terminated.
 template <typename BlockAllocator>
 StringRef concat_string_ref(BlockAllocator &alloc, const StringRef &a,
                             const StringRef &b, const StringRef &c) {
@@ -127,10 +144,14 @@ StringRef concat_string_ref(BlockAllocator &alloc, const StringRef &a,
 }
 
 struct ByteRef {
+  // The pointer to the beginning of the buffer.
   uint8_t *base;
+  // The length of the buffer.
   size_t len;
 };
 
+// Makes a buffer with given size.  The resulting byte string might
+// not be NULL-terminated.
 template <typename BlockAllocator>
 ByteRef make_byte_ref(BlockAllocator &alloc, size_t size) {
   auto dst = static_cast<uint8_t *>(alloc.alloc(size));
