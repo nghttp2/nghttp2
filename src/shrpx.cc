@@ -1227,8 +1227,14 @@ Connections:
 
               Patterns with  host take  precedence over  patterns with
               just path.   Then, longer patterns take  precedence over
-              shorter  ones,  breaking  a  tie by  the  order  of  the
-              appearance in the configuration.
+              shorter ones.
+
+              Host  can  include "*"  in  the  left most  position  to
+              indicate  wildcard match  (only suffix  match is  done).
+              For  example,  host pattern  "*www.nghttp2.org"  matches
+              against  "www.nghttp2.org"  and  "1www.ngttp2.org",  but
+              does not  match against "nghttp2.org".  The  exact hosts
+              match takes precedence over the wildcard hosts match.
 
               If <PATTERN> is omitted or  empty string, "/" is used as
               pattern,  which  matches  all request  paths  (catch-all
@@ -2089,11 +2095,27 @@ void process_options(
     }
     catch_all.proto = proto;
     std::vector<DownstreamAddrGroupConfig>().swap(addr_groups);
+    std::vector<WildcardPattern>().swap(mod_config()->wildcard_patterns);
     // maybe not necessary?
     mod_config()->router = Router();
     mod_config()->router.add_route(StringRef{catch_all.pattern},
                                    addr_groups.size());
     addr_groups.push_back(std::move(catch_all));
+  } else {
+    auto &wildcard_patterns = mod_config()->wildcard_patterns;
+    std::sort(std::begin(wildcard_patterns), std::end(wildcard_patterns),
+              [](const WildcardPattern &lhs, const WildcardPattern &rhs) {
+                return std::lexicographical_compare(
+                    rhs.host.rbegin(), rhs.host.rend(), lhs.host.rbegin(),
+                    lhs.host.rend());
+              });
+    if (LOG_ENABLED(INFO)) {
+      LOG(INFO) << "Reverse sorted wildcard hosts (compared from tail to head, "
+                   "and sorted in reverse order):";
+      for (auto &wp : mod_config()->wildcard_patterns) {
+        LOG(INFO) << wp.host;
+      }
+    }
   }
 
   if (LOG_ENABLED(INFO)) {

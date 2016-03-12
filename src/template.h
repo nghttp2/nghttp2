@@ -250,6 +250,7 @@ public:
   using const_reference = const value_type &;
   using const_pointer = const value_type *;
   using const_iterator = const_pointer;
+  using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
   ImmutableString() : len(0), base("") {}
   ImmutableString(const char *s, size_t slen)
@@ -307,6 +308,16 @@ public:
 
   const_iterator end() const { return base + len; };
   const_iterator cend() const { return base + len; };
+
+  const_reverse_iterator rbegin() const {
+    return const_reverse_iterator{base + len};
+  }
+  const_reverse_iterator crbegin() const {
+    return const_reverse_iterator{base + len};
+  }
+
+  const_reverse_iterator rend() const { return const_reverse_iterator{base}; }
+  const_reverse_iterator crend() const { return const_reverse_iterator{base}; }
 
   const char *c_str() const { return base; }
   size_type size() const { return len; }
@@ -395,6 +406,7 @@ public:
   using const_reference = const value_type &;
   using const_pointer = const value_type *;
   using const_iterator = const_pointer;
+  using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
   constexpr StringRef() : base(""), len(0) {}
   explicit StringRef(const std::string &s) : base(s.c_str()), len(s.size()) {}
@@ -430,6 +442,16 @@ public:
   const_iterator end() const { return base + len; };
   const_iterator cend() const { return base + len; };
 
+  const_reverse_iterator rbegin() const {
+    return const_reverse_iterator{base + len};
+  }
+  const_reverse_iterator crbegin() const {
+    return const_reverse_iterator{base + len};
+  }
+
+  const_reverse_iterator rend() const { return const_reverse_iterator{base}; }
+  const_reverse_iterator crend() const { return const_reverse_iterator{base}; }
+
   const char *c_str() const { return base; }
   size_type size() const { return len; }
   bool empty() const { return len == 0; }
@@ -462,6 +484,15 @@ inline bool operator==(const std::string &lhs, const StringRef &rhs) {
 inline bool operator==(const StringRef &lhs, const char *rhs) {
   return lhs.size() == strlen(rhs) &&
          std::equal(std::begin(lhs), std::end(lhs), rhs);
+}
+
+inline bool operator==(const StringRef &lhs, const ImmutableString &rhs) {
+  return lhs.size() == rhs.size() &&
+         std::equal(std::begin(lhs), std::end(lhs), std::begin(rhs));
+}
+
+inline bool operator==(const ImmutableString &lhs, const StringRef &rhs) {
+  return rhs == lhs;
 }
 
 inline bool operator==(const char *lhs, const StringRef &rhs) {

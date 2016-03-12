@@ -689,7 +689,7 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
   const auto &req = downstream->request();
 
   // Fast path.  If we have one group, it must be catch-all group.
-  // HTTP/2 and client proxy modes fall in this case.
+  // proxy mode falls in this case.
   if (groups.size() == 1) {
     group_idx = 0;
   } else if (req.method == HTTP_CONNECT) {
@@ -699,20 +699,20 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
     group_idx = catch_all;
   } else {
     auto &router = get_config()->router;
+    auto &wildcard_patterns = get_config()->wildcard_patterns;
     if (!req.authority.empty()) {
       group_idx =
-          match_downstream_addr_group(router, StringRef{req.authority},
-                                      StringRef{req.path}, groups, catch_all);
+          match_downstream_addr_group(router, wildcard_patterns, req.authority,
+                                      req.path, groups, catch_all);
     } else {
       auto h = req.fs.header(http2::HD_HOST);
       if (h) {
-        group_idx =
-            match_downstream_addr_group(router, StringRef{h->value},
-                                        StringRef{req.path}, groups, catch_all);
+        group_idx = match_downstream_addr_group(
+            router, wildcard_patterns, h->value, req.path, groups, catch_all);
       } else {
         group_idx =
-            match_downstream_addr_group(router, StringRef::from_lit(""),
-                                        StringRef{req.path}, groups, catch_all);
+            match_downstream_addr_group(router, wildcard_patterns, StringRef{},
+                                        req.path, groups, catch_all);
       }
     }
   }

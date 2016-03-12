@@ -648,7 +648,32 @@ int parse_mapping(const DownstreamAddrConfig &addr,
     g.addrs.push_back(addr);
     g.proto = proto;
 
-    mod_config()->router.add_route(StringRef{g.pattern}, addr_groups.size());
+    if (pattern[0] == '*') {
+      // wildcard pattern
+      auto path_first =
+          std::find(std::begin(g.pattern), std::end(g.pattern), '/');
+
+      auto host = StringRef{std::begin(g.pattern) + 1, path_first};
+      auto path = StringRef{path_first, std::end(g.pattern)};
+
+      auto &wildcard_patterns = mod_config()->wildcard_patterns;
+
+      auto it = std::find_if(
+          std::begin(wildcard_patterns), std::end(wildcard_patterns),
+          [&host](const WildcardPattern &wp) { return wp.host == host; });
+
+      if (it == std::end(wildcard_patterns)) {
+        mod_config()->wildcard_patterns.push_back(
+            {ImmutableString{std::begin(host), std::end(host)}});
+
+        auto &router = mod_config()->wildcard_patterns.back().router;
+        router.add_route(path, addr_groups.size());
+      } else {
+        (*it).router.add_route(path, addr_groups.size());
+      }
+    } else {
+      mod_config()->router.add_route(StringRef{g.pattern}, addr_groups.size());
+    }
 
     addr_groups.push_back(std::move(g));
   }

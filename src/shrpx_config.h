@@ -577,8 +577,17 @@ struct ConnectionConfig {
   } downstream;
 };
 
+// Wildcard host pattern routing.  We strips left most '*' from host
+// field.  router includes all path pattern sharing same wildcard
+// host.
+struct WildcardPattern {
+  ImmutableString host;
+  Router router;
+};
+
 struct Config {
   Router router;
+  std::vector<WildcardPattern> wildcard_patterns;
   HttpProxy downstream_http_proxy;
   HttpConfig http;
   Http2Config http2;
