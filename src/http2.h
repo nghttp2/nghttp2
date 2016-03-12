@@ -98,7 +98,7 @@ std::string get_status_string(unsigned int status_code);
 
 // Returns string version of |status_code|.  This function can handle
 // only predefined status code.  Otherwise, returns nullptr.
-const char *stringify_status(unsigned int status_code);
+StringRef stringify_status(unsigned int status_code);
 
 void capitalize(DefaultMemchunks *buf, const StringRef &s);
 

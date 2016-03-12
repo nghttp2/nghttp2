@@ -215,14 +215,7 @@ mrb_value response_return(mrb_state *mrb, mrb_value self) {
     bodylen = vallen;
   }
 
-  StringRef content_length;
-  {
-    auto iov = make_byte_ref(balloc, str_size("18446744073709551615") + 1);
-    auto p = iov.base;
-    p = util::utos(p, bodylen);
-    *p = '\0';
-    content_length = StringRef{iov.base, p};
-  }
+  auto content_length = util::make_string_ref_uint(balloc, bodylen);
 
   auto cl = resp.fs.header(http2::HD_CONTENT_LENGTH);
   if (cl) {

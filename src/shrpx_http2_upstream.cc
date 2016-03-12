@@ -1229,19 +1229,19 @@ int Http2Upstream::send_reply(Downstream *downstream, const uint8_t *body,
   const auto &resp = downstream->response();
   auto &httpconf = get_config()->http;
 
+  auto &balloc = downstream->get_block_allocator();
+
   const auto &headers = resp.fs.headers();
   auto nva = std::vector<nghttp2_nv>();
   // 2 for :status and server
   nva.reserve(2 + headers.size() + httpconf.add_response_headers.size());
 
-  std::string status_code_str;
-  auto response_status_const = http2::stringify_status(resp.http_status);
-  if (response_status_const) {
-    nva.push_back(http2::make_nv_lc_nocopy(":status", response_status_const));
-  } else {
-    status_code_str = util::utos(resp.http_status);
-    nva.push_back(http2::make_nv_ls(":status", status_code_str));
+  auto response_status = http2::stringify_status(resp.http_status);
+  if (response_status.empty()) {
+    response_status = util::make_string_ref_uint(balloc, resp.http_status);
   }
+
+  nva.push_back(http2::make_nv_ls_nocopy(":status", response_status));
 
   for (auto &kv : headers) {
     if (kv.name.empty() || kv.name[0] == ':') {
@@ -1290,6 +1290,8 @@ int Http2Upstream::error_reply(Downstream *downstream,
   int rv;
   auto &resp = downstream->response();
 
+  auto &balloc = downstream->get_block_allocator();
+
   auto html = http::create_error_html(status_code);
   resp.http_status = status_code;
   auto body = downstream->get_response_buf();
@@ -1303,20 +1305,20 @@ int Http2Upstream::error_reply(Downstream *downstream,
   auto lgconf = log_config();
   lgconf->update_tstamp(std::chrono::system_clock::now());
 
-  auto response_status_const = http2::stringify_status(status_code);
-  auto content_length = util::utos(html.size());
+  auto response_status = http2::stringify_status(status_code);
+  if (response_status.empty()) {
+    response_status = util::make_string_ref_uint(balloc, status_code);
+  }
 
-  std::string status_code_str;
+  auto content_length = util::make_string_ref_uint(balloc, html.size());
+  auto date = make_string_ref(balloc, StringRef{lgconf->time_http_str});
 
-  auto nva = make_array(
-      response_status_const
-          ? http2::make_nv_lc_nocopy(":status", response_status_const)
-          : http2::make_nv_ls(":status",
-                              (status_code_str = util::utos(status_code))),
-      http2::make_nv_ll("content-type", "text/html; charset=UTF-8"),
-      http2::make_nv_ls_nocopy("server", get_config()->http.server_name),
-      http2::make_nv_ls("content-length", content_length),
-      http2::make_nv_ls("date", lgconf->time_http_str));
+  auto nva = std::array<nghttp2_nv, 5>{
+      {http2::make_nv_ls_nocopy(":status", response_status),
+       http2::make_nv_ll("content-type", "text/html; charset=UTF-8"),
+       http2::make_nv_ls_nocopy("server", get_config()->http.server_name),
+       http2::make_nv_ls_nocopy("content-length", content_length),
+       http2::make_nv_ls_nocopy("date", date)}};
 
   rv = nghttp2_submit_response(session_, downstream->get_stream_id(),
                                nva.data(), nva.size(), &data_prd);
@@ -1357,6 +1359,8 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
   const auto &req = downstream->request();
   auto &resp = downstream->response();
 
+  auto &balloc = downstream->get_block_allocator();
+
   if (LOG_ENABLED(INFO)) {
     if (downstream->get_non_final_response()) {
       DLOG(INFO, downstream) << "HTTP non-final response header";
@@ -1396,15 +1400,13 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
   nva.reserve(resp.fs.headers().size() + 4 +
               httpconf.add_response_headers.size());
   std::string via_value;
-  std::string response_status;
 
-  auto response_status_const = http2::stringify_status(resp.http_status);
-  if (response_status_const) {
-    nva.push_back(http2::make_nv_lc_nocopy(":status", response_status_const));
-  } else {
-    response_status = util::utos(resp.http_status);
-    nva.push_back(http2::make_nv_ls(":status", response_status));
+  auto response_status = http2::stringify_status(resp.http_status);
+  if (response_status.empty()) {
+    response_status = util::make_string_ref_uint(balloc, resp.http_status);
   }
+
+  nva.push_back(http2::make_nv_ls_nocopy(":status", response_status));
 
   if (downstream->get_non_final_response()) {
     http2::copy_headers_to_nva(nva, resp.fs.headers());

@@ -51,6 +51,7 @@
 
 #include "template.h"
 #include "network.h"
+#include "allocator.h"
 
 namespace nghttp2 {
 
@@ -403,6 +404,15 @@ template <typename T, typename OutputIt> OutputIt utos(OutputIt dst, T n) {
     *p-- = (n % 10) + '0';
   }
   return res;
+}
+
+template <typename T>
+StringRef make_string_ref_uint(BlockAllocator &balloc, T n) {
+  auto iov = make_byte_ref(balloc, str_size("18446744073709551615") + 1);
+  auto p = iov.base;
+  p = util::utos(p, n);
+  *p = '\0';
+  return StringRef{iov.base, p};
 }
 
 template <typename T> std::string utos_unit(T n) {

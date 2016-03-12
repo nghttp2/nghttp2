@@ -239,8 +239,17 @@ void test_util_utos(void) {
 
   CU_ASSERT(("0" == StringRef{buf, util::utos(buf, 0)}));
   CU_ASSERT(("123" == StringRef{buf, util::utos(buf, 123)}));
-  CU_ASSERT(("9223372036854775808" ==
-             StringRef{buf, util::utos(buf, 9223372036854775808ULL)}));
+  CU_ASSERT(("18446744073709551615" ==
+             StringRef{buf, util::utos(buf, 18446744073709551615ULL)}));
+}
+
+void test_util_make_string_ref_uint(void) {
+  BlockAllocator balloc(1024, 1024);
+
+  CU_ASSERT("0" == util::make_string_ref_uint(balloc, 0));
+  CU_ASSERT("123" == util::make_string_ref_uint(balloc, 123));
+  CU_ASSERT("18446744073709551615" ==
+            util::make_string_ref_uint(balloc, 18446744073709551615ULL));
 }
 
 void test_util_utos_unit(void) {

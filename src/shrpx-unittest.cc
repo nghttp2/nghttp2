@@ -143,6 +143,8 @@ int main(int argc, char *argv[]) {
       !CU_add_test(pSuite, "util_ipv6_numeric_addr",
                    shrpx::test_util_ipv6_numeric_addr) ||
       !CU_add_test(pSuite, "util_utos", shrpx::test_util_utos) ||
+      !CU_add_test(pSuite, "util_make_string_ref_uint",
+                   shrpx::test_util_make_string_ref_uint) ||
       !CU_add_test(pSuite, "util_utos_unit", shrpx::test_util_utos_unit) ||
       !CU_add_test(pSuite, "util_utos_funit", shrpx::test_util_utos_funit) ||
       !CU_add_test(pSuite, "util_parse_uint_with_unit",

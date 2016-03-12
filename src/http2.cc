@@ -134,107 +134,107 @@ std::string get_status_string(unsigned int status_code) {
   }
 }
 
-const char *stringify_status(unsigned int status_code) {
+StringRef stringify_status(unsigned int status_code) {
   switch (status_code) {
   case 100:
-    return "100";
+    return StringRef::from_lit("100");
   case 101:
-    return "101";
+    return StringRef::from_lit("101");
   case 200:
-    return "200";
+    return StringRef::from_lit("200");
   case 201:
-    return "201";
+    return StringRef::from_lit("201");
   case 202:
-    return "202";
+    return StringRef::from_lit("202");
   case 203:
-    return "203";
+    return StringRef::from_lit("203");
   case 204:
-    return "204";
+    return StringRef::from_lit("204");
   case 205:
-    return "205";
+    return StringRef::from_lit("205");
   case 206:
-    return "206";
+    return StringRef::from_lit("206");
   case 300:
-    return "300";
+    return StringRef::from_lit("300");
   case 301:
-    return "301";
+    return StringRef::from_lit("301");
   case 302:
-    return "302";
+    return StringRef::from_lit("302");
   case 303:
-    return "303";
+    return StringRef::from_lit("303");
   case 304:
-    return "304";
+    return StringRef::from_lit("304");
   case 305:
-    return "305";
-  // case 306: return "306";
+    return StringRef::from_lit("305");
+  // case 306: return StringRef::from_lit("306");
   case 307:
-    return "307";
+    return StringRef::from_lit("307");
   case 308:
-    return "308";
+    return StringRef::from_lit("308");
   case 400:
-    return "400";
+    return StringRef::from_lit("400");
   case 401:
-    return "401";
+    return StringRef::from_lit("401");
   case 402:
-    return "402";
+    return StringRef::from_lit("402");
   case 403:
-    return "403";
+    return StringRef::from_lit("403");
   case 404:
-    return "404";
+    return StringRef::from_lit("404");
   case 405:
-    return "405";
+    return StringRef::from_lit("405");
   case 406:
-    return "406";
+    return StringRef::from_lit("406");
   case 407:
-    return "407";
+    return StringRef::from_lit("407");
   case 408:
-    return "408";
+    return StringRef::from_lit("408");
   case 409:
-    return "409";
+    return StringRef::from_lit("409");
   case 410:
-    return "410";
+    return StringRef::from_lit("410");
   case 411:
-    return "411";
+    return StringRef::from_lit("411");
   case 412:
-    return "412";
+    return StringRef::from_lit("412");
   case 413:
-    return "413";
+    return StringRef::from_lit("413");
   case 414:
-    return "414";
+    return StringRef::from_lit("414");
   case 415:
-    return "415";
+    return StringRef::from_lit("415");
   case 416:
-    return "416";
+    return StringRef::from_lit("416");
   case 417:
-    return "417";
+    return StringRef::from_lit("417");
   case 421:
-    return "421";
+    return StringRef::from_lit("421");
   case 426:
-    return "426";
+    return StringRef::from_lit("426");
   case 428:
-    return "428";
+    return StringRef::from_lit("428");
   case 429:
-    return "429";
+    return StringRef::from_lit("429");
   case 431:
-    return "431";
+    return StringRef::from_lit("431");
   case 451:
-    return "451";
+    return StringRef::from_lit("451");
   case 500:
-    return "500";
+    return StringRef::from_lit("500");
   case 501:
-    return "501";
+    return StringRef::from_lit("501");
   case 502:
-    return "502";
+    return StringRef::from_lit("502");
   case 503:
-    return "503";
+    return StringRef::from_lit("503");
   case 504:
-    return "504";
+    return StringRef::from_lit("504");
   case 505:
-    return "505";
+    return StringRef::from_lit("505");
   case 511:
-    return "511";
+    return StringRef::from_lit("511");
   default:
-    return nullptr;
+    return StringRef{};
   }
 }
 
