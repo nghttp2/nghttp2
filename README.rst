@@ -63,7 +63,7 @@ To build and run the application programs (``nghttp``, ``nghttpd``,
 are required:
 
 * OpenSSL >= 1.0.1
-* libev >= 4.15
+* libev >= 4.11
 * zlib >= 1.2.3
 
 ALPN support requires OpenSSL >= 1.0.2 (released 22 January 2015).
