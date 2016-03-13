@@ -28,7 +28,7 @@ endif()
 include(FindPackageHandleStandardArgs)
 # handle the QUIETLY and REQUIRED arguments and set JEMALLOC_FOUND to TRUE
 # if all listed variables are TRUE and the requested version matches.
-find_package_handle_standard_args(jemalloc REQUIRED_VARS
+find_package_handle_standard_args(Jemalloc REQUIRED_VARS
                                   JEMALLOC_LIBRARY JEMALLOC_INCLUDE_DIR
                                   VERSION_VAR JEMALLOC_VERSION)
 

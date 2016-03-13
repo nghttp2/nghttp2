@@ -28,7 +28,7 @@ endif()
 include(FindPackageHandleStandardArgs)
 # handle the QUIETLY and REQUIRED arguments and set JANSSON_FOUND to TRUE
 # if all listed variables are TRUE and the requested version matches.
-find_package_handle_standard_args(jansson REQUIRED_VARS
+find_package_handle_standard_args(Jansson REQUIRED_VARS
                                   JANSSON_LIBRARY JANSSON_INCLUDE_DIR
                                   VERSION_VAR JANSSON_VERSION)
 
