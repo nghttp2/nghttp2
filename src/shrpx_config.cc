@@ -2065,7 +2065,7 @@ int parse_config(const char *opt, const char *optarg,
       return -1;
     }
 
-    AltSvc altsvc;
+    AltSvc altsvc{};
 
     altsvc.protocol_id = std::move(tokens[0]);
 
