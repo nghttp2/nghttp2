@@ -94,5 +94,6 @@ void nghttp2_rcbuf_decref(nghttp2_rcbuf *rcbuf) {
 }
 
 nghttp2_vec nghttp2_rcbuf_get_buf(nghttp2_rcbuf *rcbuf) {
-  return (nghttp2_vec){rcbuf->base, rcbuf->len};
+  nghttp2_vec res = {rcbuf->base, rcbuf->len};
+  return res;
 }

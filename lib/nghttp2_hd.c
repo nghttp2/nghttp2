@@ -1329,11 +1329,10 @@ nghttp2_hd_nv nghttp2_hd_table_get(nghttp2_hd_context *context, size_t idx) {
     return hd_ringbuf_get(&context->hd_table, idx - NGHTTP2_STATIC_TABLE_LENGTH)
         ->nv;
   } else {
-    nghttp2_hd_static_entry *ent;
-
-    ent = &static_table[idx];
-    return (nghttp2_hd_nv){&ent->name, &ent->value, ent->token,
-                           NGHTTP2_NV_FLAG_NONE};
+    nghttp2_hd_static_entry *ent = &static_table[idx];
+    nghttp2_hd_nv nv = {&ent->name, &ent->value, ent->token,
+                        NGHTTP2_NV_FLAG_NONE};
+    return nv;
   }
 }
 
