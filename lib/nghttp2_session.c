@@ -3437,7 +3437,7 @@ static int inflate_header_block(nghttp2_session *session, nghttp2_frame *frame,
                                     trailer);
         if (rv == NGHTTP2_ERR_HTTP_HEADER) {
           DEBUGF(fprintf(
-              stderr, "recv: HTTP error: type=%d, id=%d, header %.*s: %.*s\n",
+              stderr, "recv: HTTP error: type=%u, id=%d, header %.*s: %.*s\n",
               frame->hd.type, subject_stream->stream_id, (int)nv.name->len,
               nv.name->base, (int)nv.value->len, nv.value->base));
 
@@ -3463,7 +3463,7 @@ static int inflate_header_block(nghttp2_session *session, nghttp2_frame *frame,
         if (rv == NGHTTP2_ERR_IGN_HTTP_HEADER) {
           /* header is ignored */
           DEBUGF(fprintf(
-              stderr, "recv: HTTP ignored: type=%d, id=%d, header %.*s: %.*s\n",
+              stderr, "recv: HTTP ignored: type=%u, id=%d, header %.*s: %.*s\n",
               frame->hd.type, subject_stream->stream_id, (int)nv.name->len,
               nv.name->base, (int)nv.value->len, nv.value->base));
         }
@@ -5899,7 +5899,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
       if (cont_hd.type != NGHTTP2_CONTINUATION ||
           cont_hd.stream_id != iframe->frame.hd.stream_id) {
         DEBUGF(fprintf(stderr, "recv: expected stream_id=%d, type=%d, but "
-                               "got stream_id=%d, type=%d\n",
+                               "got stream_id=%d, type=%u\n",
                        iframe->frame.hd.stream_id, NGHTTP2_CONTINUATION,
                        cont_hd.stream_id, cont_hd.type));
         rv = nghttp2_session_terminate_session_with_reason(
