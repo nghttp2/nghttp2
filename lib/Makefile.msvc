@@ -194,11 +194,11 @@ $(OBJ_DIR)/d_%.obj: %.c $(THIS_MAKEFILE)
 	@echo
 
 $(OBJ_DIR)/r_nghttp2.res: $(OBJ_DIR)/nghttp2.rc $(THIS_MAKEFILE)
-	$(RC) -nologo -D_RELEASE -Fo $@ $<
+	$(RC) -D_RELEASE -Fo $@ $<
 	@echo
 
 $(OBJ_DIR)/d_nghttp2.res: $(OBJ_DIR)/nghttp2.rc $(THIS_MAKEFILE)
-	$(RC) -nologo -D_DEBUG -Fo $@ $<
+	$(RC) -D_DEBUG -Fo $@ $<
 	@echo
 
 includes/nghttp2/nghttp2ver.h: includes/nghttp2/nghttp2ver.h.in $(THIS_MAKEFILE)
