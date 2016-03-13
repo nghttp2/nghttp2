@@ -26,7 +26,6 @@ set(NGHTTP2_SOURCES
 
 # Public shared library
 add_library(nghttp2 SHARED ${NGHTTP2_SOURCES})
-# Needed because the object files are linked into a shared library.
 set_target_properties(nghttp2 PROPERTIES
   COMPILE_FLAGS "${WARNCFLAGS}"
   VERSION ${LT_VERSION} SOVERSION ${LT_SOVERSION}

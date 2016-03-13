@@ -1,12 +1,11 @@
 add_subdirectory(includes)
 
-# XXX replace this by lists (WARNCFLAGS_list)
-string(REPLACE " " ";" c_flags "${WARNCFLAGS}")
-string(REPLACE " " ";" cxx_flags "${WARNCXXFLAGS} ${CXX1XCXXFLAGS}")
-add_compile_options(
-  "$<$<COMPILE_LANGUAGE:C>:${c_flags}>"
-  "$<$<COMPILE_LANGUAGE:CXX>:${cxx_flags}>"
-)
+file(GLOB c_sources *.c)
+set_source_files_properties(${c_sources} PROPERTIES
+  COMPILE_FLAGS "${WARNCFLAGS}")
+file(GLOB cxx_sources *.cc)
+set_source_files_properties(${cxx_sources} PROPERTIES
+  COMPILE_FLAGS "${WARNCXXFLAGS} ${CXX1XCXXFLAGS}")
 
 include_directories(
   "${CMAKE_SOURCE_DIR}/lib/includes"
@@ -246,7 +245,6 @@ if(ENABLE_ASIO_LIB)
     ${OPENSSL_LIBRARIES}
     ${Boost_LIBRARIES}
   )
-  # XXX use add_compile_options with a list instead of COMPILE_FLAGS
   set_target_properties(nghttp2_asio PROPERTIES
     VERSION 1.0.0 SOVERSION 1)
 

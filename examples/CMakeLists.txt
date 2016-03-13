@@ -1,11 +1,10 @@
 if(ENABLE_EXAMPLES)
-  # XXX replace this by lists (WARNCFLAGS_list)
-  string(REPLACE " " ";" c_flags "${WARNCFLAGS}")
-  string(REPLACE " " ";" cxx_flags "${WARNCXXFLAGS} ${CXX1XCXXFLAGS}")
-  add_compile_options(
-    "$<$<COMPILE_LANGUAGE:C>:${c_flags}>"
-    "$<$<COMPILE_LANGUAGE:CXX>:${cxx_flags}>"
-  )
+  file(GLOB c_sources *.c)
+  set_source_files_properties(${c_sources} PROPERTIES
+    COMPILE_FLAGS "${WARNCFLAGS}")
+  file(GLOB cxx_sources *.cc)
+  set_source_files_properties(${cxx_sources} PROPERTIES
+    COMPILE_FLAGS "${WARNCXXFLAGS} ${CXX1XCXXFLAGS}")
 
   include_directories(
     ${CMAKE_SOURCE_DIR}

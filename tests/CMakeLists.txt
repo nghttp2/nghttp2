@@ -1,6 +1,5 @@
 # XXX testdata/: EXTRA_DIST = cacert.pem  index.html  privkey.pem
 if(HAVE_CUNIT)
-  # XXX replace this by lists (WARNCFLAGS_list)
   string(REPLACE " " ";" c_flags "${WARNCFLAGS}")
   add_compile_options(${c_flags})
 
