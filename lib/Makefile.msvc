@@ -204,7 +204,7 @@ $(OBJ_DIR)/d_nghttp2.res: $(OBJ_DIR)/nghttp2.rc $(THIS_MAKEFILE)
 includes/nghttp2/nghttp2ver.h: includes/nghttp2/nghttp2ver.h.in $(THIS_MAKEFILE)
 	sed < includes/nghttp2/nghttp2ver.h.in     \
 	     -e 's/@PACKAGE_VERSION@/$(VERSION)/g' \
-	     -e 's/@PACKAGE_VERSION_NUM@/($(VERSION_NUM))/g' > $@
+	     -e 's/@PACKAGE_VERSION_NUM@/$(VERSION_NUM)/g' > $@
 	touch --reference=includes/nghttp2/nghttp2ver.h.in $@
 
 
