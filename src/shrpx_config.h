@@ -255,10 +255,6 @@ enum shrpx_forwarded_node_type {
   FORWARDED_NODE_IP,
 };
 
-// Used inside function if it has to return const reference to empty
-// string without defining empty string each time.
-extern std::string EMPTY_STRING;
-
 struct AltSvc {
   AltSvc() : port(0) {}
 

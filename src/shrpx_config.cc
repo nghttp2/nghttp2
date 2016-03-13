@@ -69,8 +69,6 @@ Config *mod_config() { return config; }
 
 void create_config() { config = new Config(); }
 
-std::string EMPTY_STRING;
-
 TicketKeys::~TicketKeys() {
   /* Erase keys from memory */
   for (auto &key : keys) {
