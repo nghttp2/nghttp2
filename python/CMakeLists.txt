@@ -1,11 +1,10 @@
 # EXTRA_DIST = cnghttp2.pxd nghttp2.pyx
 
 if(ENABLE_PYTHON_BINDINGS)
-
   add_custom_target(python ALL
     COMMAND "${PYTHON_EXECUTABLE}" setup.py build
     VERBATIM
-    DEPENDS nghttp2.c
+    DEPENDS nghttp2.c nghttp2
   )
 
   configure_file(install-python.cmake.in install-python.cmake ESCAPE_QUOTES @ONLY)
@@ -17,6 +16,12 @@ if(ENABLE_PYTHON_BINDINGS)
     VERBATIM
     DEPENDS nghttp2.pyx
   )
+
+  # Instead of calling "setup.py clean --all", this should do...
+  set_directory_properties(PROPERTIES
+    ADDITIONAL_MAKE_CLEAN_FILES "build;python_nghttp2.egg-info"
+  )
+
 ## This works also, except that the installation target is missing...
 #  include(UseCython)
 #  cython_add_module(python_nghttp2 nghttp2.pyx)

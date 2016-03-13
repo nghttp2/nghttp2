@@ -61,6 +61,8 @@ if(ENABLE_THIRD_PARTY)
     )
     add_dependencies(mruby-lib mruby)
 
-    # XXX clean ${CMAKE_CURRENT_BINARY_DIR}/mruby/build
+    set_directory_properties(PROPERTIES
+      ADDITIONAL_MAKE_CLEAN_FILES mruby/build
+    )
   endif()
 endif()

@@ -249,6 +249,9 @@ add_custom_command(
 )
 
 
+
+set_directory_properties(PROPERTIES ADDITIONAL_MAKE_CLEAN_FILES "${BUILDDIR}")
+
 # Invokes sphinx-build and prints the given messages when completed
 function(sphinxbuild builder)
   set(echo_commands)
