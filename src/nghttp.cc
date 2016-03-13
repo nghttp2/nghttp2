@@ -2258,6 +2258,9 @@ int run(char **uris, int n) {
 
     nghttp2_session_callbacks_set_on_invalid_frame_recv_callback(
         callbacks, verbose_on_invalid_frame_recv_callback);
+
+    nghttp2_session_callbacks_set_error_callback(callbacks,
+                                                 verbose_error_callback);
   }
 
   nghttp2_session_callbacks_set_on_data_chunk_recv_callback(

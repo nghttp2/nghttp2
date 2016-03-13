@@ -414,6 +414,15 @@ int verbose_on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
   return 0;
 }
 
+int verbose_error_callback(nghttp2_session *session, const char *msg,
+                           size_t len, void *user_data) {
+  print_timer();
+  fprintf(outfile, " [ERROR] %.*s\n", (int)len, msg);
+  fflush(outfile);
+
+  return 0;
+}
+
 namespace {
 std::chrono::steady_clock::time_point base_tv;
 } // namespace

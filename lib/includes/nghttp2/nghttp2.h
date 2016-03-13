@@ -1872,6 +1872,31 @@ typedef ssize_t (*nghttp2_pack_extension_callback)(nghttp2_session *session,
                                                    const nghttp2_frame *frame,
                                                    void *user_data);
 
+/**
+ * @functypedef
+ *
+ * Callback function invoked when library provides the error message
+ * intended for human consumption.  This callback is solely for
+ * debugging purpose.  The |msg| is typically NULL-terminated string
+ * of length |len|.  |len| does not include the sentinel NULL
+ * character.
+ *
+ * The format of error message may change between nghttp2 library
+ * versions.  The application should not depend on the particular
+ * format.
+ *
+ * Normally, application should return 0 from this callback.  If fatal
+ * error occurred while doing something in this callback, application
+ * should return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.  In this case,
+ * library will return immediately with return value
+ * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.  Currently, if nonzero value
+ * is returned from this callback, they are treated as
+ * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`, but application should not
+ * rely on this details.
+ */
+typedef int (*nghttp2_error_callback)(nghttp2_session *session, const char *msg,
+                                      size_t len, void *user_data);
+
 struct nghttp2_session_callbacks;
 
 /**
@@ -2107,6 +2132,15 @@ NGHTTP2_EXTERN void
 nghttp2_session_callbacks_set_on_extension_chunk_recv_callback(
     nghttp2_session_callbacks *cbs,
     nghttp2_on_extension_chunk_recv_callback on_extension_chunk_recv_callback);
+
+/**
+ * @function
+ *
+ * Sets callback function invoked when library tells error message to
+ * the application.
+ */
+NGHTTP2_EXTERN void nghttp2_session_callbacks_set_error_callback(
+    nghttp2_session_callbacks *cbs, nghttp2_error_callback error_callback);
 
 /**
  * @functypedef

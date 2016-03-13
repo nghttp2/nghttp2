@@ -151,3 +151,8 @@ void nghttp2_session_callbacks_set_on_extension_chunk_recv_callback(
     nghttp2_on_extension_chunk_recv_callback on_extension_chunk_recv_callback) {
   cbs->on_extension_chunk_recv_callback = on_extension_chunk_recv_callback;
 }
+
+void nghttp2_session_callbacks_set_error_callback(
+    nghttp2_session_callbacks *cbs, nghttp2_error_callback error_callback) {
+  cbs->error_callback = error_callback;
+}

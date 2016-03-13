@@ -28,6 +28,7 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <assert.h>
+#include <stdarg.h>
 
 #include "nghttp2_helper.h"
 #include "nghttp2_net.h"
@@ -138,6 +139,62 @@ static int session_detect_idle_stream(nghttp2_session *session,
   if (session_is_new_peer_stream_id(session, stream_id)) {
     return 1;
   }
+  return 0;
+}
+
+static int session_call_error_callback(nghttp2_session *session,
+                                       const char *fmt, ...) {
+  size_t bufsize;
+  va_list ap;
+  char *buf;
+  int rv;
+  nghttp2_mem *mem;
+
+  if (!session->callbacks.error_callback) {
+    return 0;
+  }
+
+  mem = &session->mem;
+
+  va_start(ap, fmt);
+  rv = vsnprintf(NULL, 0, fmt, ap);
+  va_end(ap);
+
+  if (rv < 0) {
+    return NGHTTP2_ERR_NOMEM;
+  }
+
+  bufsize = (size_t)(rv + 1);
+
+  buf = nghttp2_mem_malloc(mem, bufsize);
+  if (buf == NULL) {
+    return NGHTTP2_ERR_NOMEM;
+  }
+
+  va_start(ap, fmt);
+  rv = vsnprintf(buf, bufsize, fmt, ap);
+  va_end(ap);
+
+  if (rv < 0) {
+    nghttp2_mem_free(mem, buf);
+    /* vsnprintf may return error because of various things we can
+       imagine, but typically we don't want to drop session just for
+       debug callback. */
+    DEBUGF(fprintf(stderr,
+                   "error_callback: vsnprintf failed. The template was %s\n",
+                   fmt));
+    return 0;
+  }
+
+  rv = session->callbacks.error_callback(session, buf, (size_t)rv,
+                                         session->user_data);
+
+  nghttp2_mem_free(mem, buf);
+
+  if (rv != 0) {
+    return NGHTTP2_ERR_CALLBACK_FAILURE;
+  }
+
   return 0;
 }
 
@@ -3383,6 +3440,16 @@ static int inflate_header_block(nghttp2_session *session, nghttp2_frame *frame,
               stderr, "recv: HTTP error: type=%d, id=%d, header %.*s: %.*s\n",
               frame->hd.type, subject_stream->stream_id, (int)nv.name->len,
               nv.name->base, (int)nv.value->len, nv.value->base));
+
+          rv = session_call_error_callback(
+              session, "Invalid HTTP header field was received: frame type: "
+                       "%u, stream: %d, name: [%.*s], value: [%.*s]",
+              frame->hd.type, frame->hd.stream_id, (int)nv.name->len,
+              nv.name->base, (int)nv.value->len, nv.value->base);
+
+          if (nghttp2_is_fatal(rv)) {
+            return rv;
+          }
 
           rv =
               session_handle_invalid_stream2(session, subject_stream->stream_id,

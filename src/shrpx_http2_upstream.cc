@@ -837,6 +837,11 @@ nghttp2_session_callbacks *create_http2_upstream_callbacks() {
         callbacks, http::select_padding_callback);
   }
 
+  if (get_config()->http2.upstream.debug.frame_debug) {
+    nghttp2_session_callbacks_set_error_callback(callbacks,
+                                                 verbose_error_callback);
+  }
+
   return callbacks;
 }
 

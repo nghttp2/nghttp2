@@ -723,6 +723,9 @@ if test "x$werror" != "xno"; then
     # Only work with Clang for the moment
     AX_CHECK_COMPILE_FLAG([-Wheader-guard], [CFLAGS="$CFLAGS -Wheader-guard"])
 
+    # This is required because we pass format string as "const char*.
+    AX_CHECK_COMPILE_FLAG([-Wno-format-nonliteral], [CFLAGS="$CFLAGS -Wno-format-nonliteral"])
+
     # For C++ compiler
     AC_LANG_PUSH(C++)
     AX_CHECK_COMPILE_FLAG([-Wall], [CXXFLAGS="$CXXFLAGS -Wall"])
