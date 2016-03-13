@@ -22,6 +22,7 @@ set(NGHTTP2_SOURCES
   nghttp2_callbacks.c
   nghttp2_mem.c
   nghttp2_http.c
+  nghttp2_rcbuf.c
 )
 
 # Public shared library
