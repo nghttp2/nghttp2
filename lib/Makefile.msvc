@@ -102,7 +102,7 @@ NGHTTP2_OBJ_D := $(addprefix $(OBJ_DIR)/d_, $(notdir $(NGHTTP2_SRC:.c=.obj)))
 	clean_nghttp2_pyd_0 clean_nghttp2_pyd_1
 
 
-all: intro $(OBJ_DIR) $(TARGETS) build_nghttp2_pyd_$(USE_CYTHON)
+all: intro includes/nghttp2/nghttp2ver.h $(OBJ_DIR) $(TARGETS) build_nghttp2_pyd_$(USE_CYTHON)
 	@echo 'Welcome to NgHTTP2 (release + debug).'
 	@echo 'Do a "make -f Makefile.MSVC install" at own risk!'
 
