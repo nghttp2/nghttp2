@@ -9,7 +9,7 @@ pkg_check_modules(PC_JEMALLOC QUIET jemalloc)
 
 find_path(JEMALLOC_INCLUDE_DIR
   NAMES jemalloc/jemalloc.h
-  HINTS ${PC_PCJEMALLOC_INCLUDE_DIRS}
+  HINTS ${PC_JEMALLOC_INCLUDE_DIRS}
 )
 find_library(JEMALLOC_LIBRARY
   NAMES jemalloc

@@ -120,7 +120,7 @@ endforeach()
 include(CMakePushCheckState)
 include(CheckCXXSourceCompiles)
 cmake_push_check_state()
-set(CMAKE_REQUIRED_DEFINITIONS "${CMAKE_REQUIRED_DEFINITIONS} ${CXX1XCXXFLAGS}")
+set(CMAKE_REQUIRED_DEFINITIONS "${CXX1XCXXFLAGS}")
 # Check that std::future is available.
 check_cxx_source_compiles("
 #include <vector>
@@ -429,7 +429,6 @@ add_subdirectory(contrib)
 add_subdirectory(script)
 
 
-# XXX fix shared/static library
 string(TOUPPER "${CMAKE_BUILD_TYPE}" _build_type)
 message(STATUS "summary of build options:
 
@@ -445,9 +444,6 @@ message(STATUS "summary of build options:
       CXXFLAGS:       ${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_${_build_type}}
       WARNCFLAGS:     ${WARNCFLAGS}
       CXX1XCXXFLAGS:  ${CXX1XCXXFLAGS}
-    Library:
-      Shared:         ${enable_shared}
-      Static:         ${enable_static}
     Python:
       Python:         ${PYTHON_EXECUTABLE}
       PYTHON_VERSION: ${PYTHON_VERSION_STRING}
