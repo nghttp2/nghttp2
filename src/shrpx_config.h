@@ -301,7 +301,7 @@ struct DownstreamAddrConfig {
 
 struct DownstreamAddrGroupConfig {
   DownstreamAddrGroupConfig(const StringRef &pattern)
-      : pattern(pattern.c_str(), pattern.size()) {}
+      : pattern(pattern.c_str(), pattern.size()), proto(PROTO_HTTP1) {}
 
   ImmutableString pattern;
   std::vector<DownstreamAddrConfig> addrs;
