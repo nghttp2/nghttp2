@@ -27,13 +27,16 @@ EXTRA_DIST = $(configfiles:%=%.in) nghttpx-logrotate tlsticketupdate.go
 
 edit = sed -e 's|@bindir[@]|$(bindir)|g'
 
-nghttpx-init: %: $(srcdir)/%.in
+nghttpx-init: $(srcdir)/nghttpx-init.in
 	rm -f $@ $@.tmp
 	$(edit) $< > $@.tmp
 	chmod +x $@.tmp
 	mv $@.tmp $@
 
-nghttpx.service nghttpx-upstart.conf: %: $(srcdir)/%.in
+nghttpx.service: $(srcdir)/nghttpx.service.in
+	$(edit) $< > $@
+
+nghttpx-upstart.conf: $(srcdir)/nghttpx-upstart.conf.in
 	$(edit) $< > $@
 
 $(configfiles): Makefile
