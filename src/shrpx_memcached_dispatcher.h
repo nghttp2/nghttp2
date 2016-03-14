@@ -34,12 +34,12 @@
 #include <openssl/ssl.h>
 
 #include "memchunk.h"
+#include "network.h"
 
 namespace shrpx {
 
 struct MemcachedRequest;
 class MemcachedConnection;
-struct Address;
 
 class MemcachedDispatcher {
 public:

@@ -125,11 +125,8 @@ struct Request {
 
   bool is_ipv6_literal_addr() const;
 
-  bool response_pseudo_header_allowed(int16_t token) const;
-  bool push_request_pseudo_header_allowed(int16_t token) const;
-
-  Headers::value_type *get_res_header(int16_t token);
-  Headers::value_type *get_req_header(int16_t token);
+  Headers::value_type *get_res_header(int32_t token);
+  Headers::value_type *get_req_header(int32_t token);
 
   void record_request_start_time();
   void record_response_start_time();

@@ -339,7 +339,7 @@ std::string iso8601_date(int64_t ms) {
   return res;
 }
 
-time_t parse_http_date(const std::string &s) {
+time_t parse_http_date(const StringRef &s) {
   tm tm{};
   char *r = strptime(s.c_str(), "%a, %d %b %Y %H:%M:%S GMT", &tm);
   if (r == 0) {
@@ -591,13 +591,13 @@ bool fieldeq(const char *uri, const http_parser_url &u,
   return i == len && !t[i];
 }
 
-std::string get_uri_field(const char *uri, const http_parser_url &u,
-                          http_parser_url_fields field) {
-  if (util::has_uri_field(u, field)) {
-    return std::string(uri + u.field_data[field].off, u.field_data[field].len);
-  } else {
-    return "";
+StringRef get_uri_field(const char *uri, const http_parser_url &u,
+                        http_parser_url_fields field) {
+  if (!util::has_uri_field(u, field)) {
+    return StringRef{};
   }
+
+  return StringRef{uri + u.field_data[field].off, u.field_data[field].len};
 }
 
 uint16_t get_default_port(const char *uri, const http_parser_url &u) {
@@ -650,15 +650,17 @@ std::string numeric_name(const struct sockaddr *sa, socklen_t salen) {
   return host.data();
 }
 
-std::string numeric_hostport(const struct sockaddr *sa, socklen_t salen) {
-  if (sa->sa_family == AF_UNIX) {
-    return "localhost";
+std::string to_numeric_addr(const Address *addr) {
+  auto family = addr->su.storage.ss_family;
+  if (family == AF_UNIX) {
+    return addr->su.un.sun_path;
   }
 
   std::array<char, NI_MAXHOST> host;
   std::array<char, NI_MAXSERV> serv;
-  auto rv = getnameinfo(sa, salen, host.data(), host.size(), serv.data(),
-                        serv.size(), NI_NUMERICHOST | NI_NUMERICSERV);
+  auto rv =
+      getnameinfo(&addr->su.sa, addr->len, host.data(), host.size(),
+                  serv.data(), serv.size(), NI_NUMERICHOST | NI_NUMERICSERV);
   if (rv != 0) {
     return "unknown";
   }
@@ -668,7 +670,7 @@ std::string numeric_hostport(const struct sockaddr *sa, socklen_t salen) {
 
   std::string s;
   char *p;
-  if (sa->sa_family == AF_INET6) {
+  if (family == AF_INET6) {
     s.resize(hostlen + servlen + 2 + 1);
     p = &s[0];
     *p++ = '[';
@@ -855,6 +857,27 @@ std::vector<unsigned char> get_default_alpn() {
   return res;
 }
 
+std::vector<StringRef> split_str(const StringRef &s, char delim) {
+  size_t len = 1;
+  auto last = std::end(s);
+  for (auto first = std::begin(s), d = first;
+       (d = std::find(first, last, delim)) != last; ++len, first = d + 1)
+    ;
+
+  auto list = std::vector<StringRef>(len);
+
+  len = 0;
+  for (auto first = std::begin(s);; ++len) {
+    auto stop = std::find(first, last, delim);
+    list[len] = StringRef{first, stop};
+    if (stop == last) {
+      break;
+    }
+    first = stop + 1;
+  }
+  return list;
+}
+
 std::vector<Range<const char *>> split_config_str_list(const char *s,
                                                        char delim) {
   size_t len = 1;
@@ -1031,6 +1054,10 @@ int64_t parse_uint(const char *s) {
 
 int64_t parse_uint(const std::string &s) {
   return parse_uint(reinterpret_cast<const uint8_t *>(s.c_str()), s.size());
+}
+
+int64_t parse_uint(const StringRef &s) {
+  return parse_uint(s.byte(), s.size());
 }
 
 int64_t parse_uint(const uint8_t *s, size_t len) {

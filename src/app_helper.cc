@@ -63,43 +63,6 @@
 namespace nghttp2 {
 
 namespace {
-const char *strstatus(uint32_t error_code) {
-  switch (error_code) {
-  case NGHTTP2_NO_ERROR:
-    return "NO_ERROR";
-  case NGHTTP2_PROTOCOL_ERROR:
-    return "PROTOCOL_ERROR";
-  case NGHTTP2_INTERNAL_ERROR:
-    return "INTERNAL_ERROR";
-  case NGHTTP2_FLOW_CONTROL_ERROR:
-    return "FLOW_CONTROL_ERROR";
-  case NGHTTP2_SETTINGS_TIMEOUT:
-    return "SETTINGS_TIMEOUT";
-  case NGHTTP2_STREAM_CLOSED:
-    return "STREAM_CLOSED";
-  case NGHTTP2_FRAME_SIZE_ERROR:
-    return "FRAME_SIZE_ERROR";
-  case NGHTTP2_REFUSED_STREAM:
-    return "REFUSED_STREAM";
-  case NGHTTP2_CANCEL:
-    return "CANCEL";
-  case NGHTTP2_COMPRESSION_ERROR:
-    return "COMPRESSION_ERROR";
-  case NGHTTP2_CONNECT_ERROR:
-    return "CONNECT_ERROR";
-  case NGHTTP2_ENHANCE_YOUR_CALM:
-    return "ENHANCE_YOUR_CALM";
-  case NGHTTP2_INADEQUATE_SECURITY:
-    return "INADEQUATE_SECURITY";
-  case NGHTTP2_HTTP_1_1_REQUIRED:
-    return "HTTP_1_1_REQUIRED";
-  default:
-    return "UNKNOWN";
-  }
-}
-} // namespace
-
-namespace {
 const char *strsettingsid(int32_t id) {
   switch (id) {
   case NGHTTP2_SETTINGS_HEADER_TABLE_SIZE:
@@ -121,7 +84,7 @@ const char *strsettingsid(int32_t id) {
 } // namespace
 
 namespace {
-const char *strframetype(uint8_t type) {
+std::string strframetype(uint8_t type) {
   switch (type) {
   case NGHTTP2_DATA:
     return "DATA";
@@ -141,9 +104,13 @@ const char *strframetype(uint8_t type) {
     return "GOAWAY";
   case NGHTTP2_WINDOW_UPDATE:
     return "WINDOW_UPDATE";
-  default:
-    return "UNKNOWN";
   }
+
+  std::string s = "extension(0x";
+  s += util::format_hex(&type, 1);
+  s += ')';
+
+  return s;
 };
 } // namespace
 
@@ -280,7 +247,7 @@ const char *frame_name_ansi_esc(print_type ptype) {
 namespace {
 void print_frame(print_type ptype, const nghttp2_frame *frame) {
   fprintf(outfile, "%s%s%s frame ", frame_name_ansi_esc(ptype),
-          strframetype(frame->hd.type), ansi_escend());
+          strframetype(frame->hd.type).c_str(), ansi_escend());
   print_frame_hd(frame->hd);
   if (frame->hd.flags) {
     print_frame_attr_indent();
@@ -331,7 +298,7 @@ void print_frame(print_type ptype, const nghttp2_frame *frame) {
   case NGHTTP2_RST_STREAM:
     print_frame_attr_indent();
     fprintf(outfile, "(error_code=%s(0x%02x))\n",
-            strstatus(frame->rst_stream.error_code),
+            nghttp2_http2_strerror(frame->rst_stream.error_code),
             frame->rst_stream.error_code);
     break;
   case NGHTTP2_SETTINGS:
@@ -360,7 +327,8 @@ void print_frame(print_type ptype, const nghttp2_frame *frame) {
     print_frame_attr_indent();
     fprintf(outfile, "(last_stream_id=%d, error_code=%s(0x%02x), "
                      "opaque_data(%u)=[%s])\n",
-            frame->goaway.last_stream_id, strstatus(frame->goaway.error_code),
+            frame->goaway.last_stream_id,
+            nghttp2_http2_strerror(frame->goaway.error_code),
             frame->goaway.error_code,
             static_cast<unsigned int>(frame->goaway.opaque_data_len),
             util::ascii_dump(frame->goaway.opaque_data,
@@ -441,6 +409,15 @@ int verbose_on_data_chunk_recv_callback(nghttp2_session *session, uint8_t flags,
   fprintf(outfile,
           " recv (stream_id=%d, length=%zu, srecv=%d, crecv=%d) DATA\n",
           stream_id, len, srecv, crecv);
+  fflush(outfile);
+
+  return 0;
+}
+
+int verbose_error_callback(nghttp2_session *session, const char *msg,
+                           size_t len, void *user_data) {
+  print_timer();
+  fprintf(outfile, " [ERROR] %.*s\n", (int)len, msg);
   fflush(outfile);
 
   return 0;

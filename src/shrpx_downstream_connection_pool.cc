@@ -27,42 +27,35 @@
 
 namespace shrpx {
 
-DownstreamConnectionPool::DownstreamConnectionPool(size_t num_groups)
-    : gpool_(num_groups) {}
+DownstreamConnectionPool::DownstreamConnectionPool() {}
 
 DownstreamConnectionPool::~DownstreamConnectionPool() {
-  for (auto &pool : gpool_) {
-    for (auto dconn : pool) {
-      delete dconn;
-    }
+  for (auto dconn : pool_) {
+    delete dconn;
   }
 }
 
 void DownstreamConnectionPool::add_downstream_connection(
     std::unique_ptr<DownstreamConnection> dconn) {
-  auto group = dconn->get_group();
-  assert(gpool_.size() > group);
-  gpool_[group].insert(dconn.release());
+  pool_.insert(dconn.release());
 }
 
 std::unique_ptr<DownstreamConnection>
-DownstreamConnectionPool::pop_downstream_connection(size_t group) {
-  assert(gpool_.size() > group);
-  auto &pool = gpool_[group];
-  if (pool.empty()) {
+DownstreamConnectionPool::pop_downstream_connection() {
+  if (pool_.empty()) {
     return nullptr;
   }
 
-  auto dconn = std::unique_ptr<DownstreamConnection>(*std::begin(pool));
-  pool.erase(std::begin(pool));
+  auto it = std::begin(pool_);
+  auto dconn = std::unique_ptr<DownstreamConnection>(*it);
+  pool_.erase(it);
+
   return dconn;
 }
 
 void DownstreamConnectionPool::remove_downstream_connection(
     DownstreamConnection *dconn) {
-  auto group = dconn->get_group();
-  assert(gpool_.size() > group);
-  gpool_[group].erase(dconn);
+  pool_.erase(dconn);
   delete dconn;
 }
 

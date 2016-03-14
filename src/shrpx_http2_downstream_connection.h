@@ -41,8 +41,7 @@ class DownstreamConnectionPool;
 
 class Http2DownstreamConnection : public DownstreamConnection {
 public:
-  Http2DownstreamConnection(DownstreamConnectionPool *dconn_pool,
-                            Http2Session *http2session);
+  Http2DownstreamConnection(Http2Session *http2session);
   virtual ~Http2DownstreamConnection();
   virtual int attach_downstream(Downstream *downstream);
   virtual void detach_downstream(Downstream *downstream);
@@ -60,11 +59,12 @@ public:
   virtual int on_timeout();
 
   virtual void on_upstream_change(Upstream *upstream) {}
-  virtual size_t get_group() const;
 
   // This object is not poolable because we dont' have facility to
   // migrate to another Http2Session object.
   virtual bool poolable() const { return false; }
+
+  virtual DownstreamAddrGroup *get_downstream_addr_group() const;
 
   int send();
 

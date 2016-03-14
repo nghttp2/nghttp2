@@ -84,7 +84,7 @@ Config::Config()
       nreqs(1),
       nclients(1),
       nthreads(1),
-      max_concurrent_streams(-1),
+      max_concurrent_streams(1),
       window_bits(30),
       connection_window_bits(30),
       rate(0),
@@ -96,7 +96,9 @@ Config::Config()
       port(0),
       default_port(0),
       verbose(false),
-      timing_script(false) {}
+      timing_script(false),
+      base_uri_unix(false),
+      unix_addr{} {}
 
 Config::~Config() {
   if (base_uri_unix) {
@@ -200,7 +202,9 @@ void readcb(struct ev_loop *loop, ev_io *w, int revents) {
   auto client = static_cast<Client *>(w->data);
   client->restart_timeout();
   if (client->do_read() != 0) {
-    client->fail();
+    if (client->try_again_or_fail() == 0) {
+      return;
+    }
     delete client;
     return;
   }
@@ -451,7 +455,7 @@ void Client::restart_timeout() {
   }
 }
 
-void Client::fail() {
+int Client::try_again_or_fail() {
   disconnect();
 
   if (new_connection_requested) {
@@ -469,11 +473,19 @@ void Client::fail() {
 
       // Keep using current address
       if (connect() == 0) {
-        return;
+        return 0;
       }
       std::cerr << "client could not connect to host" << std::endl;
     }
   }
+
+  process_abandoned_streams();
+
+  return -1;
+}
+
+void Client::fail() {
+  disconnect();
 
   process_abandoned_streams();
 }
@@ -1384,7 +1396,7 @@ std::string get_reqline(const char *uri, const http_parser_url &u) {
   std::string reqline;
 
   if (util::has_uri_field(u, UF_PATH)) {
-    reqline = util::get_uri_field(uri, u, UF_PATH);
+    reqline = util::get_uri_field(uri, u, UF_PATH).str();
   } else {
     reqline = "/";
   }
@@ -1425,8 +1437,8 @@ bool parse_base_uri(std::string base_uri) {
     return false;
   }
 
-  config.scheme = util::get_uri_field(base_uri.c_str(), u, UF_SCHEMA);
-  config.host = util::get_uri_field(base_uri.c_str(), u, UF_HOST);
+  config.scheme = util::get_uri_field(base_uri.c_str(), u, UF_SCHEMA).str();
+  config.host = util::get_uri_field(base_uri.c_str(), u, UF_HOST).str();
   config.default_port = util::get_default_port(base_uri.c_str(), u);
   if (util::has_uri_field(u, UF_PORT)) {
     config.port = u.port;

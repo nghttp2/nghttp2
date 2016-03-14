@@ -50,7 +50,8 @@ extern int nghttp2_enable_strict_preface;
 typedef enum {
   NGHTTP2_OPTMASK_NO_AUTO_WINDOW_UPDATE = 1 << 0,
   NGHTTP2_OPTMASK_NO_RECV_CLIENT_MAGIC = 1 << 1,
-  NGHTTP2_OPTMASK_NO_HTTP_MESSAGING = 1 << 2
+  NGHTTP2_OPTMASK_NO_HTTP_MESSAGING = 1 << 2,
+  NGHTTP2_OPTMASK_NO_AUTO_PING_ACK = 1 << 3
 } nghttp2_optmask;
 
 typedef enum {
@@ -105,7 +106,8 @@ typedef enum {
   NGHTTP2_IB_READ_PAD_DATA,
   NGHTTP2_IB_READ_DATA,
   NGHTTP2_IB_IGN_DATA,
-  NGHTTP2_IB_IGN_ALL
+  NGHTTP2_IB_IGN_ALL,
+  NGHTTP2_IB_READ_EXTENSION_PAYLOAD
 } nghttp2_inbound_state;
 
 #define NGHTTP2_INBOUND_NUM_IV 7
@@ -304,6 +306,13 @@ struct nghttp2_session {
      this session.  The nonzero does not necessarily mean
      WINDOW_UPDATE is not queued. */
   uint8_t window_update_queued;
+  /* Bitfield of extension frame types that application is willing to
+     receive.  To designate the bit of given frame type i, use
+     user_recv_ext_types[i / 8] & (1 << (i & 0x7)).  First 10 frame
+     types are standard frame types and not used in this bitfield.  If
+     bit is set, it indicates that incoming frame with that type is
+     passed to user defined callbacks, otherwise they are ignored. */
+  uint8_t user_recv_ext_types[32];
 };
 
 /* Struct used when updating initial window size of each active

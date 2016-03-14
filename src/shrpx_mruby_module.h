@@ -43,7 +43,7 @@ mrb_value init_module(mrb_state *mrb);
 
 void delete_downstream_from_module(mrb_state *mrb, Downstream *downstream);
 
-mrb_value create_headers_hash(mrb_state *mrb, const Headers &headers);
+mrb_value create_headers_hash(mrb_state *mrb, const HeaderRefs &headers);
 
 } // namespace mruby
 

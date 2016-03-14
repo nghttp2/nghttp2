@@ -145,6 +145,7 @@ if(ENABLE_APP)
       shrpx_ssl_test.cc
       shrpx_downstream_test.cc
       shrpx_config_test.cc
+      shrpx_worker_test.cc
       shrpx_http_test.cc
       http2_test.cc
       util_test.cc

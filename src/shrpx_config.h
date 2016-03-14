@@ -53,12 +53,15 @@
 #include "shrpx_router.h"
 #include "template.h"
 #include "http2.h"
+#include "network.h"
 
 using namespace nghttp2;
 
 namespace shrpx {
 
 struct LogFragment;
+class ConnectBlocker;
+class Http2Session;
 
 namespace ssl {
 
@@ -208,8 +211,6 @@ constexpr char SHRPX_OPT_MAX_RESPONSE_HEADER_FIELDS[] =
 constexpr char SHRPX_OPT_NO_HTTP2_CIPHER_BLACK_LIST[] =
     "no-http2-cipher-black-list";
 constexpr char SHRPX_OPT_BACKEND_HTTP1_TLS[] = "backend-http1-tls";
-constexpr char SHRPX_OPT_BACKEND_TLS_SESSION_CACHE_PER_WORKER[] =
-    "backend-tls-session-cache-per-worker";
 constexpr char SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_TLS[] =
     "tls-session-cache-memcached-tls";
 constexpr char SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_CERT_FILE[] =
@@ -227,23 +228,19 @@ constexpr char SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_PRIVATE_KEY_FILE[] =
 constexpr char SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_ADDRESS_FAMILY[] =
     "tls-ticket-key-memcached-address-family";
 constexpr char SHRPX_OPT_BACKEND_ADDRESS_FAMILY[] = "backend-address-family";
+constexpr char SHRPX_OPT_FRONTEND_HTTP2_MAX_CONCURRENT_STREAMS[] =
+    "frontend-http2-max-concurrent-streams";
+constexpr char SHRPX_OPT_BACKEND_HTTP2_MAX_CONCURRENT_STREAMS[] =
+    "backend-http2-max-concurrent-streams";
+constexpr char SHRPX_OPT_BACKEND_CONNECTIONS_PER_FRONTEND[] =
+    "backend-connections-per-frontend";
+constexpr char SHRPX_OPT_BACKEND_TLS[] = "backend-tls";
+constexpr char SHRPX_OPT_BACKEND_CONNECTIONS_PER_HOST[] =
+    "backend-connections-per-host";
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
-union sockaddr_union {
-  sockaddr_storage storage;
-  sockaddr sa;
-  sockaddr_in6 in6;
-  sockaddr_in in;
-  sockaddr_un un;
-};
-
-struct Address {
-  size_t len;
-  union sockaddr_union su;
-};
-
-enum shrpx_proto { PROTO_HTTP2, PROTO_HTTP };
+enum shrpx_proto { PROTO_NONE, PROTO_HTTP1, PROTO_HTTP2, PROTO_MEMCACHED };
 
 enum shrpx_forwarded_param {
   FORWARDED_NONE = 0,
@@ -258,13 +255,7 @@ enum shrpx_forwarded_node_type {
   FORWARDED_NODE_IP,
 };
 
-// Used inside function if it has to return const reference to empty
-// string without defining empty string each time.
-extern std::string EMPTY_STRING;
-
 struct AltSvc {
-  AltSvc() : port(0) {}
-
   std::string protocol_id, host, origin, service;
 
   uint16_t port;
@@ -288,17 +279,21 @@ struct UpstreamAddr {
   int fd;
 };
 
-struct DownstreamAddr {
-  DownstreamAddr() : addr{}, port(0), host_unix(false) {}
-  DownstreamAddr(const DownstreamAddr &other);
-  DownstreamAddr(DownstreamAddr &&) = default;
-  DownstreamAddr &operator=(const DownstreamAddr &other);
-  DownstreamAddr &operator=(DownstreamAddr &&other) = default;
+struct TLSSessionCache {
+  // ASN1 representation of SSL_SESSION object.  See
+  // i2d_SSL_SESSION(3SSL).
+  std::vector<uint8_t> session_data;
+  // The last time stamp when this cache entry is created or updated.
+  ev_tstamp last_updated;
+};
 
+struct DownstreamAddrConfig {
   Address addr;
   // backend address.  If |host_unix| is true, this is UNIX domain
   // socket path.
   ImmutableString host;
+  // <HOST>:<PORT>.  This does not treat 80 and 443 specially.  If
+  // |host_unix| is true, this is "localhost".
   ImmutableString hostport;
   // backend port.  0 if |host_unix| is true.
   uint16_t port;
@@ -306,15 +301,14 @@ struct DownstreamAddr {
   bool host_unix;
 };
 
-struct DownstreamAddrGroup {
-  DownstreamAddrGroup(const std::string &pattern) : pattern(strcopy(pattern)) {}
-  DownstreamAddrGroup(const DownstreamAddrGroup &other);
-  DownstreamAddrGroup(DownstreamAddrGroup &&) = default;
-  DownstreamAddrGroup &operator=(const DownstreamAddrGroup &other);
-  DownstreamAddrGroup &operator=(DownstreamAddrGroup &&) = default;
+struct DownstreamAddrGroupConfig {
+  DownstreamAddrGroupConfig(const StringRef &pattern)
+      : pattern(pattern.c_str(), pattern.size()), proto(PROTO_HTTP1) {}
 
-  std::unique_ptr<char[]> pattern;
-  std::vector<DownstreamAddr> addrs;
+  ImmutableString pattern;
+  std::vector<DownstreamAddrConfig> addrs;
+  // Application protocol used in this group
+  shrpx_proto proto;
 };
 
 struct TicketKey {
@@ -352,7 +346,9 @@ struct TLSConfig {
     struct {
       Address addr;
       uint16_t port;
-      std::unique_ptr<char[]> host;
+      // Hostname of memcached server.  This is also used as SNI field
+      // if TLS is enabled.
+      ImmutableString host;
       // Client private key and certificate for authentication
       ImmutableString private_key_file;
       ImmutableString cert_file;
@@ -379,7 +375,9 @@ struct TLSConfig {
     struct {
       Address addr;
       uint16_t port;
-      std::unique_ptr<char[]> host;
+      // Hostname of memcached server.  This is also used as SNI field
+      // if TLS is enabled.
+      ImmutableString host;
       // Client private key and certificate for authentication
       ImmutableString private_key_file;
       ImmutableString cert_file;
@@ -399,7 +397,7 @@ struct TLSConfig {
   // OCSP realted configurations
   struct {
     ev_tstamp update_interval;
-    std::unique_ptr<char[]> fetch_ocsp_response_file;
+    ImmutableString fetch_ocsp_response_file;
     bool disabled;
   } ocsp;
 
@@ -407,14 +405,14 @@ struct TLSConfig {
   struct {
     // Path to file containing CA certificate solely used for client
     // certificate validation
-    std::unique_ptr<char[]> cacert;
+    ImmutableString cacert;
     bool enabled;
   } client_verify;
 
   // Client private key and certificate used in backend connections.
   struct {
-    std::unique_ptr<char[]> private_key_file;
-    std::unique_ptr<char[]> cert_file;
+    ImmutableString private_key_file;
+    ImmutableString cert_file;
   } client;
 
   // The list of (private key file, certificate file) pair
@@ -425,18 +423,17 @@ struct TLSConfig {
   std::vector<std::string> npn_list;
   // list of supported SSL/TLS protocol strings.
   std::vector<std::string> tls_proto_list;
-  size_t downstream_session_cache_per_worker;
   // Bit mask to disable SSL/TLS protocol versions.  This will be
   // passed to SSL_CTX_set_options().
   long int tls_proto_mask;
   std::string backend_sni_name;
   std::chrono::seconds session_timeout;
-  std::unique_ptr<char[]> private_key_file;
-  std::unique_ptr<char[]> private_key_passwd;
-  std::unique_ptr<char[]> cert_file;
-  std::unique_ptr<char[]> dh_param_file;
-  std::unique_ptr<char[]> ciphers;
-  std::unique_ptr<char[]> cacert;
+  ImmutableString private_key_file;
+  ImmutableString private_key_passwd;
+  ImmutableString cert_file;
+  ImmutableString dh_param_file;
+  ImmutableString ciphers;
+  ImmutableString cacert;
   bool insecure;
   bool no_http2_cipher_black_list;
 };
@@ -478,8 +475,8 @@ struct Http2Config {
   struct {
     struct {
       struct {
-        std::unique_ptr<char[]> request_header_file;
-        std::unique_ptr<char[]> response_header_file;
+        ImmutableString request_header_file;
+        ImmutableString response_header_file;
         FILE *request_header;
         FILE *response_header;
       } dump;
@@ -489,19 +486,19 @@ struct Http2Config {
     nghttp2_session_callbacks *callbacks;
     size_t window_bits;
     size_t connection_window_bits;
+    size_t max_concurrent_streams;
   } upstream;
   struct {
     nghttp2_option *option;
     nghttp2_session_callbacks *callbacks;
     size_t window_bits;
     size_t connection_window_bits;
-    size_t connections_per_worker;
+    size_t max_concurrent_streams;
   } downstream;
   struct {
     ev_tstamp stream_read;
     ev_tstamp stream_write;
   } timeout;
-  size_t max_concurrent_streams;
   bool no_cookie_crumbling;
   bool no_server_push;
 };
@@ -509,12 +506,12 @@ struct Http2Config {
 struct LoggingConfig {
   struct {
     std::vector<LogFragment> format;
-    std::unique_ptr<char[]> file;
+    ImmutableString file;
     // Send accesslog to syslog, ignoring accesslog_file.
     bool syslog;
   } access;
   struct {
-    std::unique_ptr<char[]> file;
+    ImmutableString file;
     // Send errorlog to syslog, ignoring errorlog_file.
     bool syslog;
   } error;
@@ -560,15 +557,13 @@ struct ConnectionConfig {
       ev_tstamp write;
       ev_tstamp idle_read;
     } timeout;
-    std::vector<DownstreamAddrGroup> addr_groups;
+    std::vector<DownstreamAddrGroupConfig> addr_groups;
     // The index of catch-all group in downstream_addr_groups.
     size_t addr_group_catch_all;
     size_t connections_per_host;
     size_t connections_per_frontend;
     size_t request_buffer_size;
     size_t response_buffer_size;
-    // downstream protocol; this will be determined by given options.
-    shrpx_proto proto;
     // Address family of backend connection.  One of either AF_INET,
     // AF_INET6 or AF_UNSPEC.  This is ignored if backend connection
     // is made via Unix domain socket.
@@ -578,18 +573,27 @@ struct ConnectionConfig {
   } downstream;
 };
 
+// Wildcard host pattern routing.  We strips left most '*' from host
+// field.  router includes all path pattern sharing same wildcard
+// host.
+struct WildcardPattern {
+  ImmutableString host;
+  Router router;
+};
+
 struct Config {
   Router router;
+  std::vector<WildcardPattern> wildcard_patterns;
   HttpProxy downstream_http_proxy;
   HttpConfig http;
   Http2Config http2;
   TLSConfig tls;
   LoggingConfig logging;
   ConnectionConfig conn;
-  std::unique_ptr<char[]> pid_file;
-  std::unique_ptr<char[]> conf_path;
-  std::unique_ptr<char[]> user;
-  std::unique_ptr<char[]> mruby_file;
+  ImmutableString pid_file;
+  ImmutableString conf_path;
+  ImmutableString user;
+  ImmutableString mruby_file;
   char **original_argv;
   char **argv;
   char *cwd;
@@ -603,11 +607,6 @@ struct Config {
   bool verbose;
   bool daemon;
   bool http2_proxy;
-  bool http2_bridge;
-  bool client_proxy;
-  bool client;
-  // true if --client or --client-proxy are enabled.
-  bool client_mode;
 };
 
 const Config *get_config();
@@ -654,15 +653,8 @@ std::unique_ptr<TicketKeys>
 read_tls_ticket_key_file(const std::vector<std::string> &files,
                          const EVP_CIPHER *cipher, const EVP_MD *hmac);
 
-// Selects group based on request's |hostport| and |path|.  |hostport|
-// is the value taken from :authority or host header field, and may
-// contain port.  The |path| may contain query part.  We require the
-// catch-all pattern in place, so this function always selects one
-// group.  The catch-all group index is given in |catch_all|.  All
-// patterns are given in |groups|.
-size_t match_downstream_addr_group(
-    const Router &router, const std::string &hostport, const std::string &path,
-    const std::vector<DownstreamAddrGroup> &groups, size_t catch_all);
+// Returns string representation of |proto|.
+StringRef strproto(shrpx_proto proto);
 
 } // namespace shrpx
 

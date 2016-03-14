@@ -187,7 +187,7 @@ int Request::update_html_parser(const uint8_t *data, size_t len, int fin) {
 
 std::string Request::make_reqpath() const {
   std::string path = util::has_uri_field(u, UF_PATH)
-                         ? util::get_uri_field(uri.c_str(), u, UF_PATH)
+                         ? util::get_uri_field(uri.c_str(), u, UF_PATH).str()
                          : "/";
   if (util::has_uri_field(u, UF_QUERY)) {
     path += '?';
@@ -200,21 +200,20 @@ std::string Request::make_reqpath() const {
 namespace {
 // Perform special handling |host| if it is IPv6 literal and includes
 // zone ID per RFC 6874.
-std::string decode_host(std::string host) {
+std::string decode_host(const StringRef &host) {
   auto zone_start = std::find(std::begin(host), std::end(host), '%');
   if (zone_start == std::end(host) ||
       !util::ipv6_numeric_addr(
           std::string(std::begin(host), zone_start).c_str())) {
-    return host;
+    return host.str();
   }
   // case: ::1%
   if (zone_start + 1 == std::end(host)) {
-    host.pop_back();
-    return host;
+    return StringRef{host.c_str(), host.size() - 1}.str();
   }
   // case: ::1%12 or ::1%1
   if (zone_start + 3 >= std::end(host)) {
-    return host;
+    return host.str();
   }
   // If we see "%25", followed by more characters, then decode %25 as
   // '%'.
@@ -222,9 +221,9 @@ std::string decode_host(std::string host) {
                          ? zone_start + 3
                          : zone_start + 1;
   auto zone_id = util::percent_decode(zone_id_src, std::end(host));
-  host.erase(zone_start + 1, std::end(host));
-  host += zone_id;
-  return host;
+  auto res = std::string(std::begin(host), zone_start + 1);
+  res += zone_id;
+  return res;
 }
 } // namespace
 
@@ -273,34 +272,7 @@ bool Request::is_ipv6_literal_addr() const {
   }
 }
 
-bool Request::response_pseudo_header_allowed(int16_t token) const {
-  if (!res_nva.empty() && res_nva.back().name.c_str()[0] != ':') {
-    return false;
-  }
-  switch (token) {
-  case http2::HD__STATUS:
-    return res_hdidx[token] == -1;
-  default:
-    return false;
-  }
-}
-
-bool Request::push_request_pseudo_header_allowed(int16_t token) const {
-  if (!req_nva.empty() && req_nva.back().name.c_str()[0] != ':') {
-    return false;
-  }
-  switch (token) {
-  case http2::HD__AUTHORITY:
-  case http2::HD__METHOD:
-  case http2::HD__PATH:
-  case http2::HD__SCHEME:
-    return req_hdidx[token] == -1;
-  default:
-    return false;
-  }
-}
-
-Headers::value_type *Request::get_res_header(int16_t token) {
+Headers::value_type *Request::get_res_header(int32_t token) {
   auto idx = res_hdidx[token];
   if (idx == -1) {
     return nullptr;
@@ -308,7 +280,7 @@ Headers::value_type *Request::get_res_header(int16_t token) {
   return &res_nva[idx];
 }
 
-Headers::value_type *Request::get_req_header(int16_t token) {
+Headers::value_type *Request::get_req_header(int32_t token) {
   auto idx = req_hdidx[token];
   if (idx == -1) {
     return nullptr;
@@ -376,7 +348,7 @@ int submit_request(HttpClient *client, const Headers &headers, Request *req) {
   auto scheme = util::get_uri_field(req->uri.c_str(), req->u, UF_SCHEMA);
   auto build_headers = Headers{{":method", req->data_prd ? "POST" : "GET"},
                                {":path", path},
-                               {":scheme", scheme},
+                               {":scheme", scheme.str()},
                                {":authority", client->hostport},
                                {"accept", "*/*"},
                                {"accept-encoding", "gzip, deflate"},
@@ -1282,7 +1254,8 @@ void HttpClient::update_hostport() {
   if (reqvec.empty()) {
     return;
   }
-  scheme = util::get_uri_field(reqvec[0]->uri.c_str(), reqvec[0]->u, UF_SCHEMA);
+  scheme = util::get_uri_field(reqvec[0]->uri.c_str(), reqvec[0]->u, UF_SCHEMA)
+               .str();
   std::stringstream ss;
   if (reqvec[0]->is_ipv6_literal_addr()) {
     // we may have zone ID, which must start with "%25", or "%".  RFC
@@ -1627,7 +1600,7 @@ void check_response_header(nghttp2_session *session, Request *req) {
     return;
   }
 
-  auto status = http2::parse_http_status_code(status_hd->value);
+  auto status = http2::parse_http_status_code(StringRef{status_hd->value});
   if (status == -1) {
     nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, req->stream_id,
                               NGHTTP2_PROTOCOL_ERROR);
@@ -2285,6 +2258,9 @@ int run(char **uris, int n) {
 
     nghttp2_session_callbacks_set_on_invalid_frame_recv_callback(
         callbacks, verbose_on_invalid_frame_recv_callback);
+
+    nghttp2_session_callbacks_set_error_callback(callbacks,
+                                                 verbose_error_callback);
   }
 
   nghttp2_session_callbacks_set_on_data_chunk_recv_callback(
@@ -2408,7 +2384,7 @@ int run(char **uris, int n) {
         }
         requests.clear();
       }
-      prev_scheme = util::get_uri_field(uri.c_str(), u, UF_SCHEMA);
+      prev_scheme = util::get_uri_field(uri.c_str(), u, UF_SCHEMA).str();
       prev_host = std::move(host);
       prev_port = port;
     }

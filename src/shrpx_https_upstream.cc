@@ -86,6 +86,8 @@ int htp_uricb(http_parser *htp, const char *data, size_t len) {
   auto downstream = upstream->get_downstream();
   auto &req = downstream->request();
 
+  auto &balloc = downstream->get_block_allocator();
+
   // We happen to have the same value for method token.
   req.method = htp->method;
 
@@ -103,9 +105,10 @@ int htp_uricb(http_parser *htp, const char *data, size_t len) {
   req.fs.add_extra_buffer_size(len);
 
   if (req.method == HTTP_CONNECT) {
-    req.authority.append(data, len);
+    req.authority =
+        concat_string_ref(balloc, req.authority, StringRef{data, len});
   } else {
-    req.path.append(data, len);
+    req.path = concat_string_ref(balloc, req.path, StringRef{data, len});
   }
 
   return 0;
@@ -118,6 +121,7 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
   auto downstream = upstream->get_downstream();
   auto &req = downstream->request();
   auto &httpconf = get_config()->http;
+  auto &balloc = downstream->get_block_allocator();
 
   if (req.fs.buffer_size() + len > httpconf.request_header_field_buffer) {
     if (LOG_ENABLED(INFO)) {
@@ -142,7 +146,9 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
             Downstream::HTTP1_REQUEST_HEADER_TOO_LARGE);
         return -1;
       }
-      req.fs.add_header(std::string(data, len), "");
+      auto name = http2::copy_lower(balloc, StringRef{data, len});
+      auto token = http2::lookup_token(name);
+      req.fs.add_header_token(name, StringRef{}, false, token);
     }
   } else {
     // trailer part
@@ -156,7 +162,9 @@ int htp_hdr_keycb(http_parser *htp, const char *data, size_t len) {
         }
         return -1;
       }
-      req.fs.add_trailer(std::string(data, len), "");
+      auto name = http2::copy_lower(balloc, StringRef{data, len});
+      auto token = http2::lookup_token(name);
+      req.fs.add_trailer_token(name, StringRef{}, false, token);
     }
   }
   return 0;
@@ -190,30 +198,51 @@ int htp_hdr_valcb(http_parser *htp, const char *data, size_t len) {
 } // namespace
 
 namespace {
-void rewrite_request_host_path_from_uri(Request &req, const char *uri,
+void rewrite_request_host_path_from_uri(BlockAllocator &balloc, Request &req,
+                                        const StringRef &uri,
                                         http_parser_url &u) {
   assert(u.field_set & (1 << UF_HOST));
 
-  auto &authority = req.authority;
-  authority.clear();
   // As per https://tools.ietf.org/html/rfc7230#section-5.4, we
   // rewrite host header field with authority component.
-  http2::copy_url_component(authority, &u, UF_HOST, uri);
+  auto authority = util::get_uri_field(uri.c_str(), u, UF_HOST);
   // TODO properly check IPv6 numeric address
-  if (authority.find(':') != std::string::npos) {
-    authority = '[' + authority;
-    authority += ']';
+  auto ipv6 = std::find(std::begin(authority), std::end(authority), ':') !=
+              std::end(authority);
+  auto authoritylen = authority.size();
+  if (ipv6) {
+    authoritylen += 2;
   }
   if (u.field_set & (1 << UF_PORT)) {
-    authority += ':';
-    authority += util::utos(u.port);
+    authoritylen += 1 + str_size("65535");
+  }
+  if (authoritylen > authority.size()) {
+    auto iovec = make_byte_ref(balloc, authoritylen + 1);
+    auto p = iovec.base;
+    if (ipv6) {
+      *p++ = '[';
+    }
+    p = std::copy(std::begin(authority), std::end(authority), p);
+    if (ipv6) {
+      *p++ = ']';
+    }
+
+    if (u.field_set & (1 << UF_PORT)) {
+      *p++ = ':';
+      p = util::utos(p, u.port);
+    }
+    *p = '\0';
+
+    req.authority = StringRef{iovec.base, p};
+  } else {
+    req.authority = authority;
   }
 
-  http2::copy_url_component(req.scheme, &u, UF_SCHEMA, uri);
+  req.scheme = util::get_uri_field(uri.c_str(), u, UF_SCHEMA);
 
-  std::string path;
+  StringRef path;
   if (u.field_set & (1 << UF_PATH)) {
-    http2::copy_url_component(path, &u, UF_PATH, uri);
+    path = util::get_uri_field(uri.c_str(), u, UF_PATH);
   } else if (req.method == HTTP_OPTIONS) {
     // Server-wide OPTIONS takes following form in proxy request:
     //
@@ -221,21 +250,35 @@ void rewrite_request_host_path_from_uri(Request &req, const char *uri,
     //
     // Notice that no slash after authority. See
     // http://tools.ietf.org/html/rfc7230#section-5.3.4
-    req.path = "";
+    req.path = StringRef::from_lit("");
     // we ignore query component here
     return;
   } else {
-    path = "/";
+    path = StringRef::from_lit("/");
   }
+
   if (u.field_set & (1 << UF_QUERY)) {
     auto &fdata = u.field_data[UF_QUERY];
-    path += '?';
-    path.append(uri + fdata.off, fdata.len);
+
+    if (u.field_set & (1 << UF_PATH)) {
+      auto q = util::get_uri_field(uri.c_str(), u, UF_QUERY);
+      path = StringRef{std::begin(path), std::end(q)};
+    } else {
+      auto iov = make_byte_ref(balloc, path.size() + 1 + fdata.len + 1);
+      auto p = iov.base;
+
+      p = std::copy(std::begin(path), std::end(path), p);
+      *p++ = '?';
+      p = std::copy_n(&uri[fdata.off], fdata.len, p);
+      *p = '\0';
+      path = StringRef{iov.base, p};
+    }
   }
-  if (get_config()->http2_proxy || get_config()->client_proxy) {
-    req.path = std::move(path);
+
+  if (get_config()->http2_proxy) {
+    req.path = path;
   } else {
-    req.path = http2::rewrite_clean_path(std::begin(path), std::end(path));
+    req.path = http2::rewrite_clean_path(balloc, path);
   }
 }
 } // namespace
@@ -247,6 +290,11 @@ int htp_hdrs_completecb(http_parser *htp) {
   if (LOG_ENABLED(INFO)) {
     ULOG(INFO, upstream) << "HTTP request headers completed";
   }
+
+  auto handler = upstream->get_client_handler();
+
+  handler->signal_reset_upstream_conn_rtimer();
+
   auto downstream = upstream->get_downstream();
   auto &req = downstream->request();
 
@@ -270,7 +318,7 @@ int htp_hdrs_completecb(http_parser *htp) {
     ULOG(INFO, upstream) << "HTTP request headers\n" << ss.str();
   }
 
-  if (req.fs.index_headers() != 0) {
+  if (req.fs.parse_content_length() != 0) {
     return -1;
   }
 
@@ -294,49 +342,47 @@ int htp_hdrs_completecb(http_parser *htp) {
 
   downstream->inspect_http1_request();
 
+  auto &balloc = downstream->get_block_allocator();
+
   if (method != HTTP_CONNECT) {
     http_parser_url u{};
-    // make a copy of request path, since we may set request path
-    // while we are refering to original request path.
-    auto path = req.path;
-    rv = http_parser_parse_url(path.c_str(), path.size(), 0, &u);
+    rv = http_parser_parse_url(req.path.c_str(), req.path.size(), 0, &u);
     if (rv != 0) {
       // Expect to respond with 400 bad request
       return -1;
     }
     // checking UF_HOST could be redundant, but just in case ...
     if (!(u.field_set & (1 << UF_SCHEMA)) || !(u.field_set & (1 << UF_HOST))) {
-      if (get_config()->http2_proxy || get_config()->client_proxy) {
+      if (get_config()->http2_proxy) {
         // Request URI should be absolute-form for client proxy mode
         return -1;
       }
 
       req.no_authority = true;
 
-      if (method == HTTP_OPTIONS && path == "*") {
-        req.path = "";
+      if (method == HTTP_OPTIONS && req.path == "*") {
+        req.path = StringRef{};
       } else {
-        req.path = http2::rewrite_clean_path(std::begin(path), std::end(path));
+        req.path = http2::rewrite_clean_path(balloc, req.path);
       }
 
       if (host) {
         req.authority = host->value;
       }
 
-      if (upstream->get_client_handler()->get_ssl()) {
-        req.scheme = "https";
+      if (handler->get_ssl()) {
+        req.scheme = StringRef::from_lit("https");
       } else {
-        req.scheme = "http";
+        req.scheme = StringRef::from_lit("http");
       }
     } else {
-      rewrite_request_host_path_from_uri(req, path.c_str(), u);
+      rewrite_request_host_path_from_uri(balloc, req, req.path, u);
     }
   }
 
   downstream->set_request_state(Downstream::HEADER_COMPLETE);
 
 #ifdef HAVE_MRUBY
-  auto handler = upstream->get_client_handler();
   auto worker = handler->get_worker();
   auto mruby_ctx = worker->get_mruby_context();
 
@@ -355,7 +401,7 @@ int htp_hdrs_completecb(http_parser *htp) {
   }
 
   rv = downstream->attach_downstream_connection(
-      upstream->get_client_handler()->get_downstream_connection(downstream));
+      handler->get_downstream_connection(downstream));
 
   if (rv != 0) {
     downstream->set_request_state(Downstream::CONNECT_FAIL);
@@ -377,6 +423,10 @@ namespace {
 int htp_bodycb(http_parser *htp, const char *data, size_t len) {
   int rv;
   auto upstream = static_cast<HttpsUpstream *>(htp->data);
+  auto handler = upstream->get_client_handler();
+
+  handler->signal_reset_upstream_conn_rtimer();
+
   auto downstream = upstream->get_downstream();
   rv = downstream->push_upload_data_chunk(
       reinterpret_cast<const uint8_t *>(data), len);
@@ -929,8 +979,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
 
   auto &httpconf = get_config()->http;
 
-  if (!get_config()->http2_proxy && !get_config()->client_proxy &&
-      !httpconf.no_location_rewrite) {
+  if (!get_config()->http2_proxy && !httpconf.no_location_rewrite) {
     downstream->rewrite_location_response_header(
         get_client_handler()->get_upstream_scheme());
   }
@@ -999,7 +1048,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
     }
   }
 
-  if (!get_config()->http2_proxy && !get_config()->client_proxy) {
+  if (!get_config()->http2_proxy) {
     buf->append("Server: ");
     buf->append(httpconf.server_name);
     buf->append("\r\n");
@@ -1025,8 +1074,10 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
       buf->append((*via).value);
       buf->append(", ");
     }
-    buf->append(
-        http::create_via_header_value(resp.http_major, resp.http_minor));
+    std::array<char, 16> viabuf;
+    auto end = http::create_via_header_value(viabuf.data(), resp.http_major,
+                                             resp.http_minor);
+    buf->append(viabuf.data(), end - std::begin(viabuf));
     buf->append("\r\n");
   }
 
@@ -1154,8 +1205,7 @@ fail:
   return 0;
 }
 
-int HttpsUpstream::initiate_push(Downstream *downstream, const char *uri,
-                                 size_t len) {
+int HttpsUpstream::initiate_push(Downstream *downstream, const StringRef &uri) {
   return 0;
 }
 

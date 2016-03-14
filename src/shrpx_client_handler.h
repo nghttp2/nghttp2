@@ -86,6 +86,7 @@ public:
   struct ev_loop *get_loop() const;
   void reset_upstream_read_timeout(ev_tstamp t);
   void reset_upstream_write_timeout(ev_tstamp t);
+  void signal_reset_upstream_conn_rtimer();
   int validate_next_proto();
   const std::string &get_ipaddr() const;
   const std::string &get_port() const;
@@ -99,7 +100,6 @@ public:
   get_downstream_connection(Downstream *downstream);
   MemchunkPool *get_mcpool();
   SSL *get_ssl() const;
-  ConnectBlocker *get_connect_blocker() const;
   // Call this function when HTTP/2 connection header is received at
   // the start of the connection.
   void direct_http2_upgrade();
@@ -109,7 +109,7 @@ public:
   int perform_http2_upgrade(HttpsUpstream *http);
   bool get_http2_upgrade_allowed() const;
   // Returns upstream scheme, either "http" or "https"
-  std::string get_upstream_scheme() const;
+  StringRef get_upstream_scheme() const;
   void start_immediate_shutdown();
 
   // Writes upstream accesslog using |downstream|.  The |downstream|
@@ -136,16 +136,15 @@ public:
 
   // Returns string suitable for use in "by" parameter of Forwarded
   // header field.
-  StringRef get_forwarded_by();
+  StringRef get_forwarded_by() const;
   // Returns string suitable for use in "for" parameter of Forwarded
   // header field.
-  const std::string &get_forwarded_for() const;
+  StringRef get_forwarded_for() const;
 
 private:
   Connection conn_;
   ev_timer reneg_shutdown_timer_;
   std::unique_ptr<Upstream> upstream_;
-  std::unique_ptr<std::vector<ssize_t>> pinned_http2sessions_;
   // IP address of client.  If UNIX domain socket is used, this is
   // "localhost".
   std::string ipaddr_;
@@ -163,6 +162,7 @@ private:
   // The number of bytes of HTTP/2 client connection header to read
   size_t left_connhd_len_;
   bool should_close_after_write_;
+  bool reset_conn_rtimer_required_;
   ReadBuf rb_;
 };
 

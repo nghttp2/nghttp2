@@ -39,6 +39,8 @@
 #include <neverbleed.h>
 #endif // HAVE_NEVERBLEED
 
+#include "network.h"
+
 namespace shrpx {
 
 class ClientHandler;
@@ -46,7 +48,6 @@ class Worker;
 class DownstreamConnectionPool;
 struct DownstreamAddr;
 struct UpstreamAddr;
-struct Address;
 
 namespace ssl {
 
@@ -70,13 +71,14 @@ SSL_CTX *create_ssl_context(const char *private_key_file, const char *cert_file
 #endif // HAVE_NEVERBLEED
                             );
 
-// Create client side SSL_CTX
+// Create client side SSL_CTX.  This does not configure ALPN settings.
+// |next_proto_select_cb| is for NPN.
 SSL_CTX *create_ssl_client_context(
 #ifdef HAVE_NEVERBLEED
     neverbleed_t *nb,
 #endif // HAVE_NEVERBLEED
     const StringRef &cacert, const StringRef &cert_file,
-    const StringRef &private_key_file, const StringRef &alpn,
+    const StringRef &private_key_file,
     int (*next_proto_select_cb)(SSL *s, unsigned char **out,
                                 unsigned char *outlen, const unsigned char *in,
                                 unsigned int inlen, void *arg));
@@ -200,6 +202,11 @@ SSL_CTX *setup_downstream_client_ssl_context(
 #endif // HAVE_NEVERBLEED
     );
 
+// Sets ALPN settings in |SSL| suitable for HTTP/2 use.
+void setup_downstream_http2_alpn(SSL *ssl);
+// Sets ALPN settings in |SSL| suitable for HTTP/1.1 use.
+void setup_downstream_http1_alpn(SSL *ssl);
+
 // Creates CertLookupTree.  If frontend is configured not to use TLS,
 // this function returns nullptr.
 CertLookupTree *create_cert_lookup_tree();
@@ -215,6 +222,17 @@ bool downstream_tls_enabled();
 // The matching algorithm is based on RFC 6125.
 bool tls_hostname_match(const char *pattern, size_t plen, const char *hostname,
                         size_t hlen);
+
+// Caches |session| which is associated to remote address |addr|.
+// |session| is serialized into ASN1 representation, and stored.  |t|
+// is used as a time stamp.  Depending on the existing cache's time
+// stamp, |session| might not be cached.
+void try_cache_tls_session(DownstreamAddr *addr, SSL_SESSION *session,
+                           ev_tstamp t);
+
+// Returns cached session associated |addr|.  If no cache entry is
+// found associated to |addr|, nullptr will be returned.
+SSL_SESSION *reuse_tls_session(const DownstreamAddr *addr);
 
 } // namespace ssl
 

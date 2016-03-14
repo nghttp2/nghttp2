@@ -50,6 +50,8 @@
 #include "http-parser/http_parser.h"
 
 #include "template.h"
+#include "network.h"
+#include "allocator.h"
 
 namespace nghttp2 {
 
@@ -148,7 +150,7 @@ std::string common_log_date(time_t t);
 // 2014-11-15T12:58:24.741Z)
 std::string iso8601_date(int64_t ms);
 
-time_t parse_http_date(const std::string &s);
+time_t parse_http_date(const StringRef &s);
 
 char upcase(char c);
 
@@ -224,6 +226,11 @@ bool istarts_with_l(const std::string &a, const CharT(&b)[N]) {
   return istarts_with(std::begin(a), std::end(a), b, b + N - 1);
 }
 
+template <typename CharT, size_t N>
+bool istarts_with_l(const StringRef &a, const CharT(&b)[N]) {
+  return istarts_with(std::begin(a), std::end(a), b, b + N - 1);
+}
+
 template <typename InputIterator1, typename InputIterator2>
 bool ends_with(InputIterator1 first1, InputIterator1 last1,
                InputIterator2 first2, InputIterator2 last2) {
@@ -252,6 +259,11 @@ inline bool iends_with(const std::string &a, const std::string &b) {
 
 template <typename CharT, size_t N>
 bool iends_with_l(const std::string &a, const CharT(&b)[N]) {
+  return iends_with(std::begin(a), std::end(a), b, b + N - 1);
+}
+
+template <typename CharT, size_t N>
+bool iends_with_l(const StringRef &a, const CharT(&b)[N]) {
   return iends_with(std::begin(a), std::end(a), b, b + N - 1);
 }
 
@@ -301,6 +313,11 @@ bool strieq_l(const CharT(&a)[N], InputIt b, size_t blen) {
 
 template <typename CharT, size_t N>
 bool strieq_l(const CharT(&a)[N], const std::string &b) {
+  return strieq(a, N - 1, std::begin(b), b.size());
+}
+
+template <typename CharT, size_t N>
+bool strieq_l(const CharT(&a)[N], const StringRef &b) {
   return strieq(a, N - 1, std::begin(b), b.size());
 }
 
@@ -369,6 +386,33 @@ template <typename T> std::string utos(T n) {
     res[i] = (n % 10) + '0';
   }
   return res;
+}
+
+template <typename T, typename OutputIt> OutputIt utos(OutputIt dst, T n) {
+  if (n == 0) {
+    *dst++ = '0';
+    return dst;
+  }
+  int i = 0;
+  T t = n;
+  for (; t; t /= 10, ++i)
+    ;
+  --i;
+  auto p = dst + i;
+  auto res = p + 1;
+  for (; n; --i, n /= 10) {
+    *p-- = (n % 10) + '0';
+  }
+  return res;
+}
+
+template <typename T>
+StringRef make_string_ref_uint(BlockAllocator &balloc, T n) {
+  auto iov = make_byte_ref(balloc, str_size("18446744073709551615") + 1);
+  auto p = iov.base;
+  p = util::utos(p, n);
+  *p = '\0';
+  return StringRef{iov.base, p};
 }
 
 template <typename T> std::string utos_unit(T n) {
@@ -442,8 +486,8 @@ bool fieldeq(const char *uri1, const http_parser_url &u1, const char *uri2,
 bool fieldeq(const char *uri, const http_parser_url &u,
              http_parser_url_fields field, const char *t);
 
-std::string get_uri_field(const char *uri, const http_parser_url &u,
-                          http_parser_url_fields field);
+StringRef get_uri_field(const char *uri, const http_parser_url &u,
+                        http_parser_url_fields field);
 
 uint16_t get_default_port(const char *uri, const http_parser_url &u);
 
@@ -461,10 +505,11 @@ bool numeric_host(const char *hostname, int family);
 // failed, "unknown" is returned.
 std::string numeric_name(const struct sockaddr *sa, socklen_t salen);
 
-// Returns string representation of numeric address and port of |addr|
-// of length |salen|.  The format is like <HOST>:<PORT>.  For IPv6
-// address, address is enclosed by square brackets ([]).
-std::string numeric_hostport(const struct sockaddr *sa, socklen_t salen);
+// Returns string representation of numeric address and port of
+// |addr|.  If address family is AF_UNIX, this return path to UNIX
+// domain socket.  Otherwise, the format is like <HOST>:<PORT>.  For
+// IPv6 address, address is enclosed by square brackets ([]).
+std::string to_numeric_addr(const Address *addr);
 
 // Makes internal copy of stderr (and possibly stdout in the future),
 // which is then used as pointer to /dev/stderr or /proc/self/fd/2
@@ -541,6 +586,11 @@ std::vector<std::string> parse_config_str_list(const char *s, char delim = ',');
 std::vector<Range<const char *>> split_config_str_list(const char *s,
                                                        char delim);
 
+// Parses delimited strings in |s| and returns Substrings in |s|
+// delimited by |delim|.  The any white spaces around substring are
+// treated as a part of substring.
+std::vector<StringRef> split_str(const StringRef &s, char delim);
+
 // Returns given time |tp| in Common Log format (e.g.,
 // 03/Jul/2014:00:19:38 +0900)
 // Expected type of |tp| is std::chrono::timepoint
@@ -597,6 +647,7 @@ int64_t parse_uint_with_unit(const char *s);
 int64_t parse_uint(const char *s);
 int64_t parse_uint(const uint8_t *s, size_t len);
 int64_t parse_uint(const std::string &s);
+int64_t parse_uint(const StringRef &s);
 
 // Parses NULL terminated string |s| as unsigned integer and returns
 // the parsed integer casted to double.  If |s| ends with "s", the
@@ -670,6 +721,11 @@ std::string random_alpha_digit(Generator &gen, size_t len) {
         gen)];
   }
   return res;
+}
+
+template <typename OutputIterator, typename CharT, size_t N>
+OutputIterator copy_lit(OutputIterator it, CharT(&s)[N]) {
+  return std::copy_n(s, N - 1, it);
 }
 
 } // namespace util

@@ -1,7 +1,7 @@
 /*
  * nghttp2 - HTTP/2 C Library
  *
- * Copyright (c) 2013 Tatsuhiro Tsujikawa
+ * Copyright (c) 2016 Tatsuhiro Tsujikawa
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -22,8 +22,8 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef SHRPX_HTTP2_TEST_H
-#define SHRPX_HTTP2_TEST_H
+#ifndef SHRPX_WORKER_TEST_H
+#define SHRPX_WORKER_TEST_H
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
@@ -31,22 +31,8 @@
 
 namespace shrpx {
 
-void test_http2_add_header(void);
-void test_http2_get_header(void);
-void test_http2_copy_headers_to_nva(void);
-void test_http2_build_http1_headers_from_headers(void);
-void test_http2_lws(void);
-void test_http2_rewrite_location_uri(void);
-void test_http2_parse_http_status_code(void);
-void test_http2_index_header(void);
-void test_http2_lookup_token(void);
-void test_http2_parse_link_header(void);
-void test_http2_path_join(void);
-void test_http2_normalize_path(void);
-void test_http2_rewrite_clean_path(void);
-void test_http2_get_pure_path_component(void);
-void test_http2_construct_push_component(void);
+void test_shrpx_worker_match_downstream_addr_group(void);
 
 } // namespace shrpx
 
-#endif // SHRPX_HTTP2_TEST_H
+#endif // SHRPX_WORKER_TEST_H

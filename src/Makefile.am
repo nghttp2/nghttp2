@@ -64,7 +64,7 @@ HELPER_OBJECTS = util.cc \
 	http2.cc timegm.c app_helper.cc nghttp2_gzip.c
 HELPER_HFILES = util.h \
 	http2.h timegm.h app_helper.h nghttp2_config.h \
-	nghttp2_gzip.h
+	nghttp2_gzip.h network.h
 
 HTML_PARSER_OBJECTS =
 HTML_PARSER_HFILES = HtmlParser.h
@@ -171,6 +171,7 @@ nghttpx_unittest_SOURCES = shrpx-unittest.cc \
 	shrpx_ssl_test.cc shrpx_ssl_test.h \
 	shrpx_downstream_test.cc shrpx_downstream_test.h \
 	shrpx_config_test.cc shrpx_config_test.h \
+	shrpx_worker_test.cc shrpx_worker_test.h \
 	shrpx_http_test.cc shrpx_http_test.h \
 	http2_test.cc http2_test.h \
 	util_test.cc util_test.h \

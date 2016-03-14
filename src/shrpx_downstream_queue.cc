@@ -71,14 +71,11 @@ DownstreamQueue::find_host_entry(const std::string &host) {
   return (*itr).second;
 }
 
-const std::string &
-DownstreamQueue::make_host_key(const std::string &host) const {
-  static std::string empty_key;
-  return unified_host_ ? empty_key : host;
+std::string DownstreamQueue::make_host_key(const StringRef &host) const {
+  return unified_host_ ? "" : host.str();
 }
 
-const std::string &
-DownstreamQueue::make_host_key(Downstream *downstream) const {
+std::string DownstreamQueue::make_host_key(Downstream *downstream) const {
   return make_host_key(downstream->request().authority);
 }
 
@@ -99,7 +96,7 @@ void DownstreamQueue::mark_blocked(Downstream *downstream) {
   ent.blocked.append(link);
 }
 
-bool DownstreamQueue::can_activate(const std::string &host) const {
+bool DownstreamQueue::can_activate(const StringRef &host) const {
   auto itr = host_entries_.find(make_host_key(host));
   if (itr == std::end(host_entries_)) {
     return true;
@@ -127,7 +124,7 @@ Downstream *DownstreamQueue::remove_and_get_blocked(Downstream *downstream,
 
   downstreams_.remove(downstream);
 
-  auto &host = make_host_key(downstream);
+  auto host = make_host_key(downstream);
   auto &ent = find_host_entry(host);
 
   if (downstream->get_dispatch_state() == Downstream::DISPATCH_ACTIVE) {

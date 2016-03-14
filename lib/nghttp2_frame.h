@@ -439,6 +439,12 @@ void nghttp2_frame_window_update_init(nghttp2_window_update *frame,
 
 void nghttp2_frame_window_update_free(nghttp2_window_update *frame);
 
+void nghttp2_frame_extension_init(nghttp2_extension *frame, uint8_t type,
+                                  uint8_t flags, int32_t stream_id,
+                                  void *payload);
+
+void nghttp2_frame_extension_free(nghttp2_extension *frame);
+
 /*
  * Returns the number of padding bytes after payload.  The total
  * padding length is given in the |padlen|.  The returned value does

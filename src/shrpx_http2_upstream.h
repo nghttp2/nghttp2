@@ -81,8 +81,7 @@ public:
   virtual int on_downstream_reset(bool no_retry);
   virtual int send_reply(Downstream *downstream, const uint8_t *body,
                          size_t bodylen);
-  virtual int initiate_push(Downstream *downstream, const char *uri,
-                            size_t len);
+  virtual int initiate_push(Downstream *downstream, const StringRef &uri);
   virtual int response_riovec(struct iovec *iov, int iovcnt) const;
   virtual void response_drain(size_t n);
   virtual bool response_empty() const;
@@ -112,9 +111,8 @@ public:
   void check_shutdown();
 
   int prepare_push_promise(Downstream *downstream);
-  int submit_push_promise(const std::string &scheme,
-                          const std::string &authority, const std::string &path,
-                          Downstream *downstream);
+  int submit_push_promise(const StringRef &scheme, const StringRef &authority,
+                          const StringRef &path, Downstream *downstream);
 
   int on_request_headers(Downstream *downstream, const nghttp2_frame *frame);
 

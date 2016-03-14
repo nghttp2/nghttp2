@@ -383,6 +383,10 @@ typedef enum {
    */
   NGHTTP2_ERR_INTERNAL = -534,
   /**
+   * Indicates that a processing was canceled.
+   */
+  NGHTTP2_ERR_CANCEL = -535,
+  /**
    * The errors < :enum:`NGHTTP2_ERR_FATAL` mean that the library is
    * under unexpected condition and processing was terminated (e.g.,
    * out of memory).  If application receives this error code, it must
@@ -414,6 +418,55 @@ typedef enum {
    */
   NGHTTP2_ERR_FLOODED = -904
 } nghttp2_error;
+
+/**
+ * @struct
+ *
+ * The object representing single contagious buffer.
+ */
+typedef struct {
+  /**
+   * The pointer to the buffer.
+   */
+  uint8_t *base;
+  /**
+   * The length of the buffer.
+   */
+  size_t len;
+} nghttp2_vec;
+
+struct nghttp2_rcbuf;
+
+/**
+ * @struct
+ *
+ * The object representing reference counted buffer.  The details of
+ * this structure are intentionally hidden from the public API.
+ */
+typedef struct nghttp2_rcbuf nghttp2_rcbuf;
+
+/**
+ * @function
+ *
+ * Increments the reference count of |rcbuf| by 1.
+ */
+NGHTTP2_EXTERN void nghttp2_rcbuf_incref(nghttp2_rcbuf *rcbuf);
+
+/**
+ * @function
+ *
+ * Decrements the reference count of |rcbuf| by 1.  If the reference
+ * count becomes zero, the object pointed by |rcbuf| will be freed.
+ * In this case, application must not use |rcbuf| again.
+ */
+NGHTTP2_EXTERN void nghttp2_rcbuf_decref(nghttp2_rcbuf *rcbuf);
+
+/**
+ * @function
+ *
+ * Returns the underlying buffer managed by |rcbuf|.
+ */
+NGHTTP2_EXTERN nghttp2_vec nghttp2_rcbuf_get_buf(nghttp2_rcbuf *rcbuf);
 
 /**
  * @enum
@@ -1626,6 +1679,32 @@ typedef int (*nghttp2_on_header_callback)(nghttp2_session *session,
 /**
  * @functypedef
  *
+ * Callback function invoked when a header name/value pair is received
+ * for the |frame|.  The |name| is header name.  The |value| is header
+ * value.  The |flags| is bitwise OR of one or more of
+ * :type:`nghttp2_nv_flag`.
+ *
+ * This callback behaves like :type:`nghttp2_on_header_callback`,
+ * except that |name| and |value| are stored in reference counted
+ * buffer.  If application wishes to keep these references without
+ * copying them, use `nghttp2_rcbuf_incref()` to increment their
+ * reference count.  It is the application's responsibility to call
+ * `nghttp2_rcbuf_decref()` if they called `nghttp2_rcbuf_incref()` so
+ * as not to leak memory.  If the |session| is created by
+ * `nghttp2_session_server_new3()` or `nghttp2_session_client_new3()`,
+ * the function to free memory is the one belongs to the mem
+ * parameter.  As long as this free function alives, |name| and
+ * |value| can live after |session| was destroyed.
+ */
+typedef int (*nghttp2_on_header_callback2)(nghttp2_session *session,
+                                           const nghttp2_frame *frame,
+                                           nghttp2_rcbuf *name,
+                                           nghttp2_rcbuf *value, uint8_t flags,
+                                           void *user_data);
+
+/**
+ * @functypedef
+ *
  * Callback function invoked when the library asks application how
  * many padding bytes are required for the transmission of the
  * |frame|.  The application must choose the total length of payload
@@ -1699,6 +1778,124 @@ typedef ssize_t (*nghttp2_data_source_read_length_callback)(
 typedef int (*nghttp2_on_begin_frame_callback)(nghttp2_session *session,
                                                const nghttp2_frame_hd *hd,
                                                void *user_data);
+
+/**
+ * @functypedef
+ *
+ * Callback function invoked when chunk of extension frame payload is
+ * received.  The |hd| points to frame header.  The received
+ * chunk is |data| of length |len|.
+ *
+ * The implementation of this function must return 0 if it succeeds.
+ *
+ * To abort processing this extension frame, return
+ * :enum:`NGHTTP2_ERR_CANCEL`.
+ *
+ * If fatal error occurred, application should return
+ * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.  In this case,
+ * `nghttp2_session_recv()` and `nghttp2_session_mem_recv()` functions
+ * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.  If the
+ * other values are returned, currently they are treated as
+ * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
+ */
+typedef int (*nghttp2_on_extension_chunk_recv_callback)(
+    nghttp2_session *session, const nghttp2_frame_hd *hd, const uint8_t *data,
+    size_t len, void *user_data);
+
+/**
+ * @functypedef
+ *
+ * Callback function invoked when library asks the application to
+ * unpack extension payload from its wire format.  The extension
+ * payload has been passed to the application using
+ * :type:`nghttp2_on_extension_chunk_recv_callback`.  The frame header
+ * is already unpacked by the library and provided as |hd|.
+ *
+ * To receive extension frames, the application must tell desired
+ * extension frame type to the library using
+ * `nghttp2_option_set_user_recv_extension_type()`.
+ *
+ * The implementation of this function may store the pointer to the
+ * created object as a result of unpacking in |*payload|, and returns
+ * 0.  The pointer stored in |*payload| is opaque to the library, and
+ * the library does not own its pointer.  |*payload| is initialized as
+ * ``NULL``.  The |*payload| is available as ``frame->ext.payload`` in
+ * :type:`nghttp2_on_frame_recv_callback`.  Therefore if application
+ * can free that memory inside :type:`nghttp2_on_frame_recv_callback`
+ * callback.  Of course, application has a liberty not ot use
+ * |*payload|, and do its own mechanism to process extension frames.
+ *
+ * To abort processing this extension frame, return
+ * :enum:`NGHTTP2_ERR_CANCEL`.
+ *
+ * If fatal error occurred, application should return
+ * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.  In this case,
+ * `nghttp2_session_recv()` and `nghttp2_session_mem_recv()` functions
+ * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.  If the
+ * other values are returned, currently they are treated as
+ * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
+ */
+typedef int (*nghttp2_unpack_extension_callback)(nghttp2_session *session,
+                                                 void **payload,
+                                                 const nghttp2_frame_hd *hd,
+                                                 void *user_data);
+
+/**
+ * @functypedef
+ *
+ * Callback function invoked when library asks the application to pack
+ * extension payload in its wire format.  The frame header will be
+ * packed by library.  Application must pack payload only.
+ * ``frame->ext.payload`` is the object passed to
+ * `nghttp2_submit_extension()` as payload parameter.  Application
+ * must pack extension payload to the |buf| of its capacity |len|
+ * bytes.  The |len| is at least 16KiB.
+ *
+ * The implementation of this function should return the number of
+ * bytes written into |buf| when it succeeds.
+ *
+ * To abort processing this extension frame, return
+ * :enum:`NGHTTP2_ERR_CANCEL`, and
+ * :type:`nghttp2_on_frame_not_send_callback` will be invoked.
+ *
+ * If fatal error occurred, application should return
+ * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.  In this case,
+ * `nghttp2_session_send()` and `nghttp2_session_mem_send()` functions
+ * immediately return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.  If the
+ * other values are returned, currently they are treated as
+ * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.  If the return value is
+ * strictly larger than |len|, it is treated as
+ * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.
+ */
+typedef ssize_t (*nghttp2_pack_extension_callback)(nghttp2_session *session,
+                                                   uint8_t *buf, size_t len,
+                                                   const nghttp2_frame *frame,
+                                                   void *user_data);
+
+/**
+ * @functypedef
+ *
+ * Callback function invoked when library provides the error message
+ * intended for human consumption.  This callback is solely for
+ * debugging purpose.  The |msg| is typically NULL-terminated string
+ * of length |len|.  |len| does not include the sentinel NULL
+ * character.
+ *
+ * The format of error message may change between nghttp2 library
+ * versions.  The application should not depend on the particular
+ * format.
+ *
+ * Normally, application should return 0 from this callback.  If fatal
+ * error occurred while doing something in this callback, application
+ * should return :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.  In this case,
+ * library will return immediately with return value
+ * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`.  Currently, if nonzero value
+ * is returned from this callback, they are treated as
+ * :enum:`NGHTTP2_ERR_CALLBACK_FAILURE`, but application should not
+ * rely on this details.
+ */
+typedef int (*nghttp2_error_callback)(nghttp2_session *session, const char *msg,
+                                      size_t len, void *user_data);
 
 struct nghttp2_session_callbacks;
 
@@ -1844,11 +2041,24 @@ NGHTTP2_EXTERN void nghttp2_session_callbacks_set_on_begin_headers_callback(
  * @function
  *
  * Sets callback function invoked when a header name/value pair is
- * received.
+ * received.  If both
+ * `nghttp2_session_callbacks_set_on_header_callback()` and
+ * `nghttp2_session_callbacks_set_on_header_callback2()` are used to
+ * set callbacks, the latter has the precedence.
  */
 NGHTTP2_EXTERN void nghttp2_session_callbacks_set_on_header_callback(
     nghttp2_session_callbacks *cbs,
     nghttp2_on_header_callback on_header_callback);
+
+/**
+ * @function
+ *
+ * Sets callback function invoked when a header name/value pair is
+ * received.
+ */
+NGHTTP2_EXTERN void nghttp2_session_callbacks_set_on_header_callback2(
+    nghttp2_session_callbacks *cbs,
+    nghttp2_on_header_callback2 on_header_callback2);
 
 /**
  * @function
@@ -1891,6 +2101,46 @@ NGHTTP2_EXTERN void nghttp2_session_callbacks_set_on_begin_frame_callback(
 NGHTTP2_EXTERN void nghttp2_session_callbacks_set_send_data_callback(
     nghttp2_session_callbacks *cbs,
     nghttp2_send_data_callback send_data_callback);
+
+/**
+ * @function
+ *
+ * Sets callback function invoked when the library asks the
+ * application to pack extension frame payload in wire format.
+ */
+NGHTTP2_EXTERN void nghttp2_session_callbacks_set_pack_extension_callback(
+    nghttp2_session_callbacks *cbs,
+    nghttp2_pack_extension_callback pack_extension_callback);
+
+/**
+ * @function
+ *
+ * Sets callback function invoked when the library asks the
+ * application to unpack extension frame payload from wire format.
+ */
+NGHTTP2_EXTERN void nghttp2_session_callbacks_set_unpack_extension_callback(
+    nghttp2_session_callbacks *cbs,
+    nghttp2_unpack_extension_callback unpack_extension_callback);
+
+/**
+ * @function
+ *
+ * Sets callback function invoked when chunk of extension frame
+ * payload is received.
+ */
+NGHTTP2_EXTERN void
+nghttp2_session_callbacks_set_on_extension_chunk_recv_callback(
+    nghttp2_session_callbacks *cbs,
+    nghttp2_on_extension_chunk_recv_callback on_extension_chunk_recv_callback);
+
+/**
+ * @function
+ *
+ * Sets callback function invoked when library tells error message to
+ * the application.
+ */
+NGHTTP2_EXTERN void nghttp2_session_callbacks_set_error_callback(
+    nghttp2_session_callbacks *cbs, nghttp2_error_callback error_callback);
 
 /**
  * @functypedef
@@ -2105,6 +2355,37 @@ NGHTTP2_EXTERN void nghttp2_option_set_no_http_messaging(nghttp2_option *option,
 NGHTTP2_EXTERN void
 nghttp2_option_set_max_reserved_remote_streams(nghttp2_option *option,
                                                uint32_t val);
+
+/**
+ * @function
+ *
+ * Sets extension frame type the application is willing to handle with
+ * user defined callbacks (see
+ * :type:`nghttp2_on_extension_chunk_recv_callback` and
+ * :type:`nghttp2_unpack_extension_callback`).  The |type| is
+ * extension frame type, and must be strictly greater than 0x9.
+ * Otherwise, this function does nothing.  The application can call
+ * this function multiple times to set more than one frame type to
+ * receive.  The application does not have to call this function if it
+ * just sends extension frames.
+ */
+NGHTTP2_EXTERN void
+nghttp2_option_set_user_recv_extension_type(nghttp2_option *option,
+                                            uint8_t type);
+
+/**
+ * @function
+ *
+ * This option prevents the library from sending PING frame with ACK
+ * flag set automatically when PING frame without ACK flag set is
+ * received.  If this option is set to nonzero, the library won't send
+ * PING frame with ACK flag set in the response for incoming PING
+ * frame.  The application can send PING frame with ACK flag set using
+ * `nghttp2_submit_ping()` with :enum:`NGHTTP2_FLAG_ACK` as flags
+ * parameter.
+ */
+NGHTTP2_EXTERN void nghttp2_option_set_no_auto_ping_ack(nghttp2_option *option,
+                                                        int val);
 
 /**
  * @function
@@ -3082,6 +3363,16 @@ NGHTTP2_EXTERN const char *nghttp2_strerror(int lib_error_code);
 /**
  * @function
  *
+ * Returns string representation of HTTP/2 error code |error_code|
+ * (e.g., ``PROTOCOL_ERROR`` is returned if ``error_code ==
+ * NGHTTP2_PROTOCOL_ERROR``).  If string representation is unknown for
+ * given |error_code|, this function returns string ``unknown``.
+ */
+NGHTTP2_EXTERN const char *nghttp2_http2_strerror(uint32_t error_code);
+
+/**
+ * @function
+ *
  * Initializes |pri_spec| with the |stream_id| of the stream to depend
  * on with |weight| and its exclusive flag.  If |exclusive| is
  * nonzero, exclusive flag is set.
@@ -3628,8 +3919,12 @@ nghttp2_submit_push_promise(nghttp2_session *session, uint8_t flags,
  * received PING frame.  The library automatically submits PING frame
  * in this case.
  *
- * The |flags| is currently ignored and should be
- * :enum:`NGHTTP2_FLAG_NONE`.
+ * The |flags| is bitwise OR of 0 or more of the following value.
+ *
+ * * :enum:`NGHTTP2_FLAG_ACK`
+ *
+ * Unless `nghttp2_option_set_no_auto_ping_ack()` is used, the |flags|
+ * should be :enum:`NGHTTP2_FLAG_NONE`.
  *
  * If the |opaque_data| is non ``NULL``, then it should point to the 8
  * bytes array of memory to specify opaque data to send with PING
@@ -3775,6 +4070,48 @@ NGHTTP2_EXTERN int nghttp2_submit_window_update(nghttp2_session *session,
                                                 uint8_t flags,
                                                 int32_t stream_id,
                                                 int32_t window_size_increment);
+
+/**
+ * @function
+ *
+ * Submits extension frame.
+ *
+ * Application can pass arbitrary frame flags and stream ID in |flags|
+ * and |stream_id| respectively.  The |payload| is opaque pointer, and
+ * it can be accessible though ``frame->ext.payload`` in
+ * :type:`nghttp2_pack_extension_callback`.  The library will not own
+ * passed |payload| pointer.
+ *
+ * The application must set :type:`nghttp2_pack_extension_callback`
+ * using `nghttp2_session_callbacks_set_pack_extension_callback()`.
+ *
+ * The application should retain the memory pointed by |payload| until
+ * the transmission of extension frame is done (which is indicated by
+ * :type:`nghttp2_on_frame_send_callback`), or transmission fails
+ * (which is indicated by :type:`nghttp2_on_frame_not_send_callback`).
+ * If application does not touch this memory region after packing it
+ * into a wire format, application can free it inside
+ * :type:`nghttp2_pack_extension_callback`.
+ *
+ * The standard HTTP/2 frame cannot be sent with this function, so
+ * |type| must be strictly grater than 0x9.  Otherwise, this function
+ * will fail with error code :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * :enum:`NGHTTP2_ERR_INVALID_STATE`
+ *     If :type:`nghttp2_pack_extension_callback` is not set.
+ * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
+ *     If  |type| specifies  standard  HTTP/2 frame  type.  The  frame
+ *     types  in the  rage [0x0,  0x9], both  inclusive, are  standard
+ *     HTTP/2 frame type, and cannot be sent using this function.
+ * :enum:`NGHTTP2_ERR_NOMEM`
+ *     Out of memory
+ */
+NGHTTP2_EXTERN int nghttp2_submit_extension(nghttp2_session *session,
+                                            uint8_t type, uint8_t flags,
+                                            int32_t stream_id, void *payload);
 
 /**
  * @function

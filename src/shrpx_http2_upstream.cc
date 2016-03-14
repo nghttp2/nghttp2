@@ -108,7 +108,7 @@ int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
 int Http2Upstream::upgrade_upstream(HttpsUpstream *http) {
   int rv;
 
-  auto http2_settings = http->get_downstream()->get_http2_settings();
+  auto http2_settings = http->get_downstream()->get_http2_settings().str();
   util::to_base64(http2_settings);
 
   auto settings_payload =
@@ -154,13 +154,15 @@ void Http2Upstream::stop_settings_timer() {
 }
 
 namespace {
-int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
-                       const uint8_t *name, size_t namelen,
-                       const uint8_t *value, size_t valuelen, uint8_t flags,
-                       void *user_data) {
+int on_header_callback2(nghttp2_session *session, const nghttp2_frame *frame,
+                        nghttp2_rcbuf *name, nghttp2_rcbuf *value,
+                        uint8_t flags, void *user_data) {
+  auto namebuf = nghttp2_rcbuf_get_buf(name);
+  auto valuebuf = nghttp2_rcbuf_get_buf(value);
+
   if (get_config()->http2.upstream.debug.frame_debug) {
-    verbose_on_header_callback(session, frame, name, namelen, value, valuelen,
-                               flags, user_data);
+    verbose_on_header_callback(session, frame, namebuf.base, namebuf.len,
+                               valuebuf.base, valuebuf.len, flags, user_data);
   }
   if (frame->hd.type != NGHTTP2_HEADERS) {
     return 0;
@@ -176,7 +178,7 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
 
   auto &httpconf = get_config()->http;
 
-  if (req.fs.buffer_size() + namelen + valuelen >
+  if (req.fs.buffer_size() + namebuf.len + valuebuf.len >
           httpconf.request_header_field_buffer ||
       req.fs.num_fields() >= httpconf.max_request_header_fields) {
     if (downstream->get_response_state() == Downstream::MSG_COMPLETE) {
@@ -185,7 +187,7 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
 
     if (LOG_ENABLED(INFO)) {
       ULOG(INFO, upstream) << "Too large or many header field size="
-                           << req.fs.buffer_size() + namelen + valuelen
+                           << req.fs.buffer_size() + namebuf.len + valuebuf.len
                            << ", num=" << req.fs.num_fields() + 1;
     }
 
@@ -201,17 +203,23 @@ int on_header_callback(nghttp2_session *session, const nghttp2_frame *frame,
     return 0;
   }
 
+  auto token = http2::lookup_token(namebuf.base, namebuf.len);
+  auto no_index = flags & NGHTTP2_NV_FLAG_NO_INDEX;
+
+  downstream->add_rcbuf(name);
+  downstream->add_rcbuf(value);
+
   if (frame->headers.cat == NGHTTP2_HCAT_HEADERS) {
     // just store header fields for trailer part
-    req.fs.add_trailer(name, namelen, value, valuelen,
-                       flags & NGHTTP2_NV_FLAG_NO_INDEX, -1);
+    req.fs.add_trailer_token(StringRef{namebuf.base, namebuf.len},
+                             StringRef{valuebuf.base, valuebuf.len}, no_index,
+                             token);
     return 0;
   }
 
-  auto token = http2::lookup_token(name, namelen);
-
-  req.fs.add_header(name, namelen, value, valuelen,
-                    flags & NGHTTP2_NV_FLAG_NO_INDEX, token);
+  req.fs.add_header_token(StringRef{namebuf.base, namebuf.len},
+                          StringRef{valuebuf.base, valuebuf.len}, no_index,
+                          token);
   return 0;
 }
 } // namespace
@@ -302,7 +310,9 @@ int Http2Upstream::on_request_headers(Downstream *downstream,
   }
 
   req.method = method_token;
-  req.scheme = http2::value_to_str(scheme);
+  if (scheme) {
+    req.scheme = scheme->value;
+  }
 
   // nghttp2 library guarantees either :authority or host exist
   if (!authority) {
@@ -310,16 +320,18 @@ int Http2Upstream::on_request_headers(Downstream *downstream,
     authority = req.fs.header(http2::HD_HOST);
   }
 
-  req.authority = http2::value_to_str(authority);
+  if (authority) {
+    req.authority = authority->value;
+  }
 
   if (path) {
     if (method_token == HTTP_OPTIONS && path->value == "*") {
       // Server-wide OPTIONS request.  Path is empty.
-    } else if (get_config()->http2_proxy || get_config()->client_proxy) {
-      req.path = http2::value_to_str(path);
+    } else if (get_config()->http2_proxy) {
+      req.path = path->value;
     } else {
-      const auto &value = path->value;
-      req.path = http2::rewrite_clean_path(std::begin(value), std::end(value));
+      req.path = http2::rewrite_clean_path(downstream->get_block_allocator(),
+                                           path->value);
     }
   }
 
@@ -410,6 +422,9 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
     verbose_on_frame_recv_callback(session, frame, user_data);
   }
   auto upstream = static_cast<Http2Upstream *>(user_data);
+  auto handler = upstream->get_client_handler();
+
+  handler->signal_reset_upstream_conn_rtimer();
 
   switch (frame->hd.type) {
   case NGHTTP2_DATA: {
@@ -576,25 +591,33 @@ int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
     req.http_major = 2;
     req.http_minor = 0;
 
+    auto &promised_balloc = promised_downstream->get_block_allocator();
+
     for (size_t i = 0; i < frame->push_promise.nvlen; ++i) {
       auto &nv = frame->push_promise.nva[i];
+
+      auto name =
+          make_string_ref(promised_balloc, StringRef{nv.name, nv.namelen});
+      auto value =
+          make_string_ref(promised_balloc, StringRef{nv.value, nv.valuelen});
+
       auto token = http2::lookup_token(nv.name, nv.namelen);
       switch (token) {
       case http2::HD__METHOD:
-        req.method = http2::lookup_method_token(nv.value, nv.valuelen);
+        req.method = http2::lookup_method_token(value);
         break;
       case http2::HD__SCHEME:
-        req.scheme.assign(nv.value, nv.value + nv.valuelen);
+        req.scheme = value;
         break;
       case http2::HD__AUTHORITY:
-        req.authority.assign(nv.value, nv.value + nv.valuelen);
+        req.authority = value;
         break;
       case http2::HD__PATH:
-        req.path = http2::rewrite_clean_path(nv.value, nv.value + nv.valuelen);
+        req.path = http2::rewrite_clean_path(promised_balloc, value);
         break;
       }
-      req.fs.add_header(nv.name, nv.namelen, nv.value, nv.valuelen,
-                        nv.flags & NGHTTP2_NV_FLAG_NO_INDEX, token);
+      req.fs.add_header_token(name, value, nv.flags & NGHTTP2_NV_FLAG_NO_INDEX,
+                              token);
     }
 
     promised_downstream->inspect_http2_request();
@@ -800,8 +823,8 @@ nghttp2_session_callbacks *create_http2_upstream_callbacks() {
   nghttp2_session_callbacks_set_on_frame_not_send_callback(
       callbacks, on_frame_not_send_callback);
 
-  nghttp2_session_callbacks_set_on_header_callback(callbacks,
-                                                   on_header_callback);
+  nghttp2_session_callbacks_set_on_header_callback2(callbacks,
+                                                    on_header_callback2);
 
   nghttp2_session_callbacks_set_on_begin_headers_callback(
       callbacks, on_begin_headers_callback);
@@ -814,6 +837,11 @@ nghttp2_session_callbacks *create_http2_upstream_callbacks() {
         callbacks, http::select_padding_callback);
   }
 
+  if (get_config()->http2.upstream.debug.frame_debug) {
+    nghttp2_session_callbacks_set_error_callback(callbacks,
+                                                 verbose_error_callback);
+  }
+
   return callbacks;
 }
 
@@ -822,9 +850,7 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
       downstream_queue_(
           get_config()->http2_proxy
               ? get_config()->conn.downstream.connections_per_host
-              : get_config()->conn.downstream.proto == PROTO_HTTP
-                    ? get_config()->conn.downstream.connections_per_frontend
-                    : 0,
+              : get_config()->conn.downstream.connections_per_frontend,
           !get_config()->http2_proxy),
       handler_(handler),
       session_(nullptr),
@@ -844,7 +870,7 @@ Http2Upstream::Http2Upstream(ClientHandler *handler)
   // TODO Maybe call from outside?
   std::array<nghttp2_settings_entry, 2> entry;
   entry[0].settings_id = NGHTTP2_SETTINGS_MAX_CONCURRENT_STREAMS;
-  entry[0].value = http2conf.max_concurrent_streams;
+  entry[0].value = http2conf.upstream.max_concurrent_streams;
 
   entry[1].settings_id = NGHTTP2_SETTINGS_INITIAL_WINDOW_SIZE;
   entry[1].value = (1 << http2conf.upstream.window_bits) - 1;
@@ -1208,19 +1234,19 @@ int Http2Upstream::send_reply(Downstream *downstream, const uint8_t *body,
   const auto &resp = downstream->response();
   auto &httpconf = get_config()->http;
 
+  auto &balloc = downstream->get_block_allocator();
+
   const auto &headers = resp.fs.headers();
   auto nva = std::vector<nghttp2_nv>();
   // 2 for :status and server
   nva.reserve(2 + headers.size() + httpconf.add_response_headers.size());
 
-  std::string status_code_str;
-  auto response_status_const = http2::stringify_status(resp.http_status);
-  if (response_status_const) {
-    nva.push_back(http2::make_nv_lc_nocopy(":status", response_status_const));
-  } else {
-    status_code_str = util::utos(resp.http_status);
-    nva.push_back(http2::make_nv_ls(":status", status_code_str));
+  auto response_status = http2::stringify_status(resp.http_status);
+  if (response_status.empty()) {
+    response_status = util::make_string_ref_uint(balloc, resp.http_status);
   }
+
+  nva.push_back(http2::make_nv_ls_nocopy(":status", response_status));
 
   for (auto &kv : headers) {
     if (kv.name.empty() || kv.name[0] == ':') {
@@ -1269,6 +1295,8 @@ int Http2Upstream::error_reply(Downstream *downstream,
   int rv;
   auto &resp = downstream->response();
 
+  auto &balloc = downstream->get_block_allocator();
+
   auto html = http::create_error_html(status_code);
   resp.http_status = status_code;
   auto body = downstream->get_response_buf();
@@ -1282,20 +1310,20 @@ int Http2Upstream::error_reply(Downstream *downstream,
   auto lgconf = log_config();
   lgconf->update_tstamp(std::chrono::system_clock::now());
 
-  auto response_status_const = http2::stringify_status(status_code);
-  auto content_length = util::utos(html.size());
+  auto response_status = http2::stringify_status(status_code);
+  if (response_status.empty()) {
+    response_status = util::make_string_ref_uint(balloc, status_code);
+  }
 
-  std::string status_code_str;
+  auto content_length = util::make_string_ref_uint(balloc, html.size());
+  auto date = make_string_ref(balloc, StringRef{lgconf->time_http_str});
 
-  auto nva = make_array(
-      response_status_const
-          ? http2::make_nv_lc_nocopy(":status", response_status_const)
-          : http2::make_nv_ls(":status",
-                              (status_code_str = util::utos(status_code))),
-      http2::make_nv_ll("content-type", "text/html; charset=UTF-8"),
-      http2::make_nv_ls_nocopy("server", get_config()->http.server_name),
-      http2::make_nv_ls("content-length", content_length),
-      http2::make_nv_ls("date", lgconf->time_http_str));
+  auto nva = std::array<nghttp2_nv, 5>{
+      {http2::make_nv_ls_nocopy(":status", response_status),
+       http2::make_nv_ll("content-type", "text/html; charset=UTF-8"),
+       http2::make_nv_ls_nocopy("server", get_config()->http.server_name),
+       http2::make_nv_ls_nocopy("content-length", content_length),
+       http2::make_nv_ls_nocopy("date", date)}};
 
   rv = nghttp2_submit_response(session_, downstream->get_stream_id(),
                                nva.data(), nva.size(), &data_prd);
@@ -1336,6 +1364,8 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
   const auto &req = downstream->request();
   auto &resp = downstream->response();
 
+  auto &balloc = downstream->get_block_allocator();
+
   if (LOG_ENABLED(INFO)) {
     if (downstream->get_non_final_response()) {
       DLOG(INFO, downstream) << "HTTP non-final response header";
@@ -1346,8 +1376,7 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
 
   auto &httpconf = get_config()->http;
 
-  if (!get_config()->http2_proxy && !get_config()->client_proxy &&
-      !httpconf.no_location_rewrite) {
+  if (!get_config()->http2_proxy && !httpconf.no_location_rewrite) {
     downstream->rewrite_location_response_header(req.scheme);
   }
 
@@ -1375,16 +1404,13 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
   // field.
   nva.reserve(resp.fs.headers().size() + 4 +
               httpconf.add_response_headers.size());
-  std::string via_value;
-  std::string response_status;
 
-  auto response_status_const = http2::stringify_status(resp.http_status);
-  if (response_status_const) {
-    nva.push_back(http2::make_nv_lc_nocopy(":status", response_status_const));
-  } else {
-    response_status = util::utos(resp.http_status);
-    nva.push_back(http2::make_nv_ls(":status", response_status));
+  auto response_status = http2::stringify_status(resp.http_status);
+  if (response_status.empty()) {
+    response_status = util::make_string_ref_uint(balloc, resp.http_status);
   }
+
+  nva.push_back(http2::make_nv_ls_nocopy(":status", response_status));
 
   if (downstream->get_non_final_response()) {
     http2::copy_headers_to_nva(nva, resp.fs.headers());
@@ -1416,7 +1442,7 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
 
   http2::copy_headers_to_nva_nocopy(nva, resp.fs.headers());
 
-  if (!get_config()->http2_proxy && !get_config()->client_proxy) {
+  if (!get_config()->http2_proxy) {
     nva.push_back(http2::make_nv_ls_nocopy("server", httpconf.server_name));
   } else {
     auto server = resp.fs.header(http2::HD_SERVER);
@@ -1431,13 +1457,23 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
       nva.push_back(http2::make_nv_ls_nocopy("via", (*via).value));
     }
   } else {
+    // we don't create more than 16 bytes in
+    // http::create_via_header_value.
+    size_t len = 16;
     if (via) {
-      via_value = (*via).value;
-      via_value += ", ";
+      len += via->value.size() + 2;
     }
-    via_value +=
-        http::create_via_header_value(resp.http_major, resp.http_minor);
-    nva.push_back(http2::make_nv_ls("via", via_value));
+
+    auto iov = make_byte_ref(balloc, len + 1);
+    auto p = iov.base;
+    if (via) {
+      p = std::copy(std::begin(via->value), std::end(via->value), p);
+      p = util::copy_lit(p, ", ");
+    }
+    p = http::create_via_header_value(p, resp.http_major, resp.http_minor);
+    *p = '\0';
+
+    nva.push_back(http2::make_nv_ls_nocopy("via", StringRef{iov.base, p}));
   }
 
   for (auto &p : httpconf.add_response_headers) {
@@ -1489,9 +1525,8 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
   if (!http2conf.no_server_push &&
       nghttp2_session_get_remote_settings(session_,
                                           NGHTTP2_SETTINGS_ENABLE_PUSH) == 1 &&
-      !get_config()->http2_proxy && !get_config()->client_proxy &&
-      (downstream->get_stream_id() % 2) && resp.fs.header(http2::HD_LINK) &&
-      resp.http_status == 200 &&
+      !get_config()->http2_proxy && (downstream->get_stream_id() % 2) &&
+      resp.fs.header(http2::HD_LINK) && resp.http_status == 200 &&
       (req.method == HTTP_GET || req.method == HTTP_POST)) {
 
     if (prepare_push_promise(downstream) != 0) {
@@ -1693,6 +1728,11 @@ int Http2Upstream::on_downstream_reset(bool no_retry) {
   for (auto downstream = downstream_queue_.get_downstreams(); downstream;
        downstream = downstream->dlnext) {
     if (downstream->get_dispatch_state() != Downstream::DISPATCH_ACTIVE) {
+      // This is error condition when we failed push_request_headers()
+      // in initiate_downstream().  Otherwise, we have
+      // Downstream::DISPATCH_ACTIVE state, or we did not set
+      // DownstreamConnection.
+      downstream->pop_downstream_connection();
       continue;
     }
 
@@ -1736,16 +1776,16 @@ int Http2Upstream::on_downstream_reset(bool no_retry) {
 
 int Http2Upstream::prepare_push_promise(Downstream *downstream) {
   int rv;
-  const char *base;
-  size_t baselen;
 
   const auto &req = downstream->request();
   const auto &resp = downstream->response();
 
-  rv = http2::get_pure_path_component(&base, &baselen, req.path);
-  if (rv != 0) {
+  auto base = http2::get_pure_path_component(req.path);
+  if (base.empty()) {
     return 0;
   }
+
+  auto &balloc = downstream->get_block_allocator();
 
   for (auto &kv : resp.fs.headers()) {
     if (kv.token != http2::HD_LINK) {
@@ -1754,31 +1794,23 @@ int Http2Upstream::prepare_push_promise(Downstream *downstream) {
     for (auto &link :
          http2::parse_link_header(kv.value.c_str(), kv.value.size())) {
 
-      auto uri = link.uri.first;
-      auto len = link.uri.second - link.uri.first;
+      StringRef scheme, authority, path;
 
-      const std::string *scheme_ptr, *authority_ptr;
-      std::string scheme, authority, path;
-
-      rv = http2::construct_push_component(scheme, authority, path, base,
-                                           baselen, uri, len);
+      rv = http2::construct_push_component(balloc, scheme, authority, path,
+                                           base, link.uri);
       if (rv != 0) {
         continue;
       }
 
       if (scheme.empty()) {
-        scheme_ptr = &req.scheme;
-      } else {
-        scheme_ptr = &scheme;
+        scheme = req.scheme;
       }
 
       if (authority.empty()) {
-        authority_ptr = &req.authority;
-      } else {
-        authority_ptr = &authority;
+        authority = req.authority;
       }
 
-      rv = submit_push_promise(*scheme_ptr, *authority_ptr, path, downstream);
+      rv = submit_push_promise(scheme, authority, path, downstream);
       if (rv != 0) {
         return -1;
       }
@@ -1787,9 +1819,9 @@ int Http2Upstream::prepare_push_promise(Downstream *downstream) {
   return 0;
 }
 
-int Http2Upstream::submit_push_promise(const std::string &scheme,
-                                       const std::string &authority,
-                                       const std::string &path,
+int Http2Upstream::submit_push_promise(const StringRef &scheme,
+                                       const StringRef &authority,
+                                       const StringRef &path,
                                        Downstream *downstream) {
   const auto &req = downstream->request();
 
@@ -1799,9 +1831,9 @@ int Http2Upstream::submit_push_promise(const std::string &scheme,
 
   // juse use "GET" for now
   nva.push_back(http2::make_nv_ll(":method", "GET"));
-  nva.push_back(http2::make_nv_ls(":scheme", scheme));
-  nva.push_back(http2::make_nv_ls(":path", path));
-  nva.push_back(http2::make_nv_ls(":authority", authority));
+  nva.push_back(http2::make_nv_ls_nocopy(":scheme", scheme));
+  nva.push_back(http2::make_nv_ls_nocopy(":path", path));
+  nva.push_back(http2::make_nv_ls_nocopy(":authority", authority));
 
   for (auto &kv : req.fs.headers()) {
     switch (kv.token) {
@@ -1852,49 +1884,42 @@ bool Http2Upstream::push_enabled() const {
   return !(get_config()->http2.no_server_push ||
            nghttp2_session_get_remote_settings(
                session_, NGHTTP2_SETTINGS_ENABLE_PUSH) == 0 ||
-           get_config()->http2_proxy || get_config()->client_proxy);
+           get_config()->http2_proxy);
 }
 
-int Http2Upstream::initiate_push(Downstream *downstream, const char *uri,
-                                 size_t len) {
+int Http2Upstream::initiate_push(Downstream *downstream, const StringRef &uri) {
   int rv;
 
-  if (len == 0 || !push_enabled() || (downstream->get_stream_id() % 2)) {
+  if (uri.empty() || !push_enabled() || (downstream->get_stream_id() % 2)) {
     return 0;
   }
 
-  const char *base;
-  size_t baselen;
-
   const auto &req = downstream->request();
 
-  rv = http2::get_pure_path_component(&base, &baselen, req.path);
-  if (rv != 0) {
+  auto base = http2::get_pure_path_component(req.path);
+  if (base.empty()) {
     return -1;
   }
 
-  const std::string *scheme_ptr, *authority_ptr;
-  std::string scheme, authority, path;
+  auto &balloc = downstream->get_block_allocator();
 
-  rv = http2::construct_push_component(scheme, authority, path, base, baselen,
-                                       uri, len);
+  StringRef scheme, authority, path;
+
+  rv = http2::construct_push_component(balloc, scheme, authority, path, base,
+                                       uri);
   if (rv != 0) {
     return -1;
   }
 
   if (scheme.empty()) {
-    scheme_ptr = &req.scheme;
-  } else {
-    scheme_ptr = &scheme;
+    scheme = req.scheme;
   }
 
   if (authority.empty()) {
-    authority_ptr = &req.authority;
-  } else {
-    authority_ptr = &authority;
+    authority = req.authority;
   }
 
-  rv = submit_push_promise(*scheme_ptr, *authority_ptr, path, downstream);
+  rv = submit_push_promise(scheme, authority, path, downstream);
 
   if (rv != 0) {
     return -1;
@@ -1952,7 +1977,7 @@ int Http2Upstream::on_downstream_push_promise_complete(
   nva.reserve(headers.size());
 
   for (auto &kv : headers) {
-    nva.push_back(http2::make_nv_nocopy(kv.name, kv.value, kv.no_index));
+    nva.push_back(http2::make_nv(kv.name, kv.value, kv.no_index));
   }
 
   auto promised_stream_id = nghttp2_submit_push_promise(

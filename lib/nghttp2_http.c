@@ -82,12 +82,12 @@ static int lws(const uint8_t *s, size_t n) {
   return 1;
 }
 
-static int check_pseudo_header(nghttp2_stream *stream, const nghttp2_nv *nv,
+static int check_pseudo_header(nghttp2_stream *stream, const nghttp2_hd_nv *nv,
                                int flag) {
   if (stream->http_flags & flag) {
     return 0;
   }
-  if (lws(nv->value, nv->valuelen)) {
+  if (lws(nv->value->base, nv->value->len)) {
     return 0;
   }
   stream->http_flags = (uint16_t)(stream->http_flags | flag);
@@ -112,16 +112,16 @@ static int check_path(nghttp2_stream *stream) {
            (stream->http_flags & NGHTTP2_HTTP_FLAG_PATH_ASTERISK)));
 }
 
-static int http_request_on_header(nghttp2_stream *stream, nghttp2_nv *nv,
-                                  int token, int trailer) {
-  if (nv->name[0] == ':') {
+static int http_request_on_header(nghttp2_stream *stream, nghttp2_hd_nv *nv,
+                                  int trailer) {
+  if (nv->name->base[0] == ':') {
     if (trailer ||
         (stream->http_flags & NGHTTP2_HTTP_FLAG_PSEUDO_HEADER_DISALLOWED)) {
       return NGHTTP2_ERR_HTTP_HEADER;
     }
   }
 
-  switch (token) {
+  switch (nv->token) {
   case NGHTTP2_TOKEN__AUTHORITY:
     if (!check_pseudo_header(stream, nv, NGHTTP2_HTTP_FLAG__AUTHORITY)) {
       return NGHTTP2_ERR_HTTP_HEADER;
@@ -131,16 +131,16 @@ static int http_request_on_header(nghttp2_stream *stream, nghttp2_nv *nv,
     if (!check_pseudo_header(stream, nv, NGHTTP2_HTTP_FLAG__METHOD)) {
       return NGHTTP2_ERR_HTTP_HEADER;
     }
-    switch (nv->valuelen) {
+    switch (nv->value->len) {
     case 4:
-      if (lstreq("HEAD", nv->value, nv->valuelen)) {
+      if (lstreq("HEAD", nv->value->base, nv->value->len)) {
         stream->http_flags |= NGHTTP2_HTTP_FLAG_METH_HEAD;
       }
       break;
     case 7:
-      switch (nv->value[6]) {
+      switch (nv->value->base[6]) {
       case 'T':
-        if (lstreq("CONNECT", nv->value, nv->valuelen)) {
+        if (lstreq("CONNECT", nv->value->base, nv->value->len)) {
           if (stream->stream_id % 2 == 0) {
             /* we won't allow CONNECT for push */
             return NGHTTP2_ERR_HTTP_HEADER;
@@ -153,7 +153,7 @@ static int http_request_on_header(nghttp2_stream *stream, nghttp2_nv *nv,
         }
         break;
       case 'S':
-        if (lstreq("OPTIONS", nv->value, nv->valuelen)) {
+        if (lstreq("OPTIONS", nv->value->base, nv->value->len)) {
           stream->http_flags |= NGHTTP2_HTTP_FLAG_METH_OPTIONS;
         }
         break;
@@ -168,9 +168,9 @@ static int http_request_on_header(nghttp2_stream *stream, nghttp2_nv *nv,
     if (!check_pseudo_header(stream, nv, NGHTTP2_HTTP_FLAG__PATH)) {
       return NGHTTP2_ERR_HTTP_HEADER;
     }
-    if (nv->value[0] == '/') {
+    if (nv->value->base[0] == '/') {
       stream->http_flags |= NGHTTP2_HTTP_FLAG_PATH_REGULAR;
-    } else if (nv->valuelen == 1 && nv->value[0] == '*') {
+    } else if (nv->value->len == 1 && nv->value->base[0] == '*') {
       stream->http_flags |= NGHTTP2_HTTP_FLAG_PATH_ASTERISK;
     }
     break;
@@ -181,8 +181,8 @@ static int http_request_on_header(nghttp2_stream *stream, nghttp2_nv *nv,
     if (!check_pseudo_header(stream, nv, NGHTTP2_HTTP_FLAG__SCHEME)) {
       return NGHTTP2_ERR_HTTP_HEADER;
     }
-    if ((nv->valuelen == 4 && memieq("http", nv->value, 4)) ||
-        (nv->valuelen == 5 && memieq("https", nv->value, 5))) {
+    if ((nv->value->len == 4 && memieq("http", nv->value->base, 4)) ||
+        (nv->value->len == 5 && memieq("https", nv->value->base, 5))) {
       stream->http_flags |= NGHTTP2_HTTP_FLAG_SCHEME_HTTP;
     }
     break;
@@ -195,7 +195,7 @@ static int http_request_on_header(nghttp2_stream *stream, nghttp2_nv *nv,
     if (stream->content_length != -1) {
       return NGHTTP2_ERR_HTTP_HEADER;
     }
-    stream->content_length = parse_uint(nv->value, nv->valuelen);
+    stream->content_length = parse_uint(nv->value->base, nv->value->len);
     if (stream->content_length == -1) {
       return NGHTTP2_ERR_HTTP_HEADER;
     }
@@ -209,41 +209,41 @@ static int http_request_on_header(nghttp2_stream *stream, nghttp2_nv *nv,
   case NGHTTP2_TOKEN_UPGRADE:
     return NGHTTP2_ERR_HTTP_HEADER;
   case NGHTTP2_TOKEN_TE:
-    if (!lstrieq("trailers", nv->value, nv->valuelen)) {
+    if (!lstrieq("trailers", nv->value->base, nv->value->len)) {
       return NGHTTP2_ERR_HTTP_HEADER;
     }
     break;
   default:
-    if (nv->name[0] == ':') {
+    if (nv->name->base[0] == ':') {
       return NGHTTP2_ERR_HTTP_HEADER;
     }
   }
 
-  if (nv->name[0] != ':') {
+  if (nv->name->base[0] != ':') {
     stream->http_flags |= NGHTTP2_HTTP_FLAG_PSEUDO_HEADER_DISALLOWED;
   }
 
   return 0;
 }
 
-static int http_response_on_header(nghttp2_stream *stream, nghttp2_nv *nv,
-                                   int token, int trailer) {
-  if (nv->name[0] == ':') {
+static int http_response_on_header(nghttp2_stream *stream, nghttp2_hd_nv *nv,
+                                   int trailer) {
+  if (nv->name->base[0] == ':') {
     if (trailer ||
         (stream->http_flags & NGHTTP2_HTTP_FLAG_PSEUDO_HEADER_DISALLOWED)) {
       return NGHTTP2_ERR_HTTP_HEADER;
     }
   }
 
-  switch (token) {
+  switch (nv->token) {
   case NGHTTP2_TOKEN__STATUS: {
     if (!check_pseudo_header(stream, nv, NGHTTP2_HTTP_FLAG__STATUS)) {
       return NGHTTP2_ERR_HTTP_HEADER;
     }
-    if (nv->valuelen != 3) {
+    if (nv->value->len != 3) {
       return NGHTTP2_ERR_HTTP_HEADER;
     }
-    stream->status_code = (int16_t)parse_uint(nv->value, nv->valuelen);
+    stream->status_code = (int16_t)parse_uint(nv->value->base, nv->value->len);
     if (stream->status_code == -1) {
       return NGHTTP2_ERR_HTTP_HEADER;
     }
@@ -253,7 +253,7 @@ static int http_response_on_header(nghttp2_stream *stream, nghttp2_nv *nv,
     if (stream->content_length != -1) {
       return NGHTTP2_ERR_HTTP_HEADER;
     }
-    stream->content_length = parse_uint(nv->value, nv->valuelen);
+    stream->content_length = parse_uint(nv->value->base, nv->value->len);
     if (stream->content_length == -1) {
       return NGHTTP2_ERR_HTTP_HEADER;
     }
@@ -267,17 +267,17 @@ static int http_response_on_header(nghttp2_stream *stream, nghttp2_nv *nv,
   case NGHTTP2_TOKEN_UPGRADE:
     return NGHTTP2_ERR_HTTP_HEADER;
   case NGHTTP2_TOKEN_TE:
-    if (!lstrieq("trailers", nv->value, nv->valuelen)) {
+    if (!lstrieq("trailers", nv->value->base, nv->value->len)) {
       return NGHTTP2_ERR_HTTP_HEADER;
     }
     break;
   default:
-    if (nv->name[0] == ':') {
+    if (nv->name->base[0] == ':') {
       return NGHTTP2_ERR_HTTP_HEADER;
     }
   }
 
-  if (nv->name[0] != ':') {
+  if (nv->name->base[0] != ':') {
     stream->http_flags |= NGHTTP2_HTTP_FLAG_PSEUDO_HEADER_DISALLOWED;
   }
 
@@ -375,7 +375,7 @@ static int check_scheme(const uint8_t *value, size_t len) {
 }
 
 int nghttp2_http_on_header(nghttp2_session *session, nghttp2_stream *stream,
-                           nghttp2_frame *frame, nghttp2_nv *nv, int token,
+                           nghttp2_frame *frame, nghttp2_hd_nv *nv,
                            int trailer) {
   int rv;
 
@@ -386,14 +386,14 @@ int nghttp2_http_on_header(nghttp2_session *session, nghttp2_stream *stream,
      this, we may disrupt many web sites and/or libraries.  So we
      become conservative here, and just ignore those illegal regular
      headers. */
-  if (!nghttp2_check_header_name(nv->name, nv->namelen)) {
+  if (!nghttp2_check_header_name(nv->name->base, nv->name->len)) {
     size_t i;
-    if (nv->namelen > 0 && nv->name[0] == ':') {
+    if (nv->name->len > 0 && nv->name->base[0] == ':') {
       return NGHTTP2_ERR_HTTP_HEADER;
     }
     /* header field name must be lower-cased without exception */
-    for (i = 0; i < nv->namelen; ++i) {
-      uint8_t c = nv->name[i];
+    for (i = 0; i < nv->name->len; ++i) {
+      uint8_t c = nv->name->base[i];
       if ('A' <= c && c <= 'Z') {
         return NGHTTP2_ERR_HTTP_HEADER;
       }
@@ -405,17 +405,18 @@ int nghttp2_http_on_header(nghttp2_session *session, nghttp2_stream *stream,
     return NGHTTP2_ERR_IGN_HTTP_HEADER;
   }
 
-  if (token == NGHTTP2_TOKEN__AUTHORITY || token == NGHTTP2_TOKEN_HOST) {
-    rv = check_authority(nv->value, nv->valuelen);
-  } else if (token == NGHTTP2_TOKEN__SCHEME) {
-    rv = check_scheme(nv->value, nv->valuelen);
+  if (nv->token == NGHTTP2_TOKEN__AUTHORITY ||
+      nv->token == NGHTTP2_TOKEN_HOST) {
+    rv = check_authority(nv->value->base, nv->value->len);
+  } else if (nv->token == NGHTTP2_TOKEN__SCHEME) {
+    rv = check_scheme(nv->value->base, nv->value->len);
   } else {
-    rv = nghttp2_check_header_value(nv->value, nv->valuelen);
+    rv = nghttp2_check_header_value(nv->value->base, nv->value->len);
   }
 
   if (rv == 0) {
-    assert(nv->namelen > 0);
-    if (nv->name[0] == ':') {
+    assert(nv->name->len > 0);
+    if (nv->name->base[0] == ':') {
       return NGHTTP2_ERR_HTTP_HEADER;
     }
     /* When ignoring regular headers, we set this flag so that we
@@ -426,10 +427,10 @@ int nghttp2_http_on_header(nghttp2_session *session, nghttp2_stream *stream,
   }
 
   if (session->server || frame->hd.type == NGHTTP2_PUSH_PROMISE) {
-    return http_request_on_header(stream, nv, token, trailer);
+    return http_request_on_header(stream, nv, trailer);
   }
 
-  return http_response_on_header(stream, nv, token, trailer);
+  return http_response_on_header(stream, nv, trailer);
 }
 
 int nghttp2_http_on_request_headers(nghttp2_stream *stream,

@@ -23,14 +23,14 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 cmake_minimum_required(VERSION 3.0)
-# XXX using 1.7.90 instead of 1.8.0-DEV
-project(nghttp2 VERSION 1.7.90)
+# XXX using 1.8.90 instead of 1.9.0-DEV
+project(nghttp2 VERSION 1.8.90)
 
 # See versioning rule:
 #  http://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html
-set(LT_CURRENT  18)
-set(LT_REVISION 1)
-set(LT_AGE      4)
+set(LT_CURRENT  19)
+set(LT_REVISION 0)
+set(LT_AGE      5)
 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 include(Version)
@@ -280,6 +280,13 @@ check_function_exists(accept4   HAVE_ACCEPT4)
 include(CheckSymbolExists)
 # XXX does this correctly detect initgroups (un)availability on cygwin?
 check_symbol_exists(initgroups grp.h HAVE_DECL_INITGROUPS)
+if(NOT HAVE_DECL_INITGROUPS AND HAVE_UNISTD_H)
+  # FreeBSD declares initgroups() in unistd.h
+  check_symbol_exists(initgroups unistd.h HAVE_DECL_INITGROUPS2)
+  if(HAVE_DECL_INITGROUPS2)
+    set(HAVE_DECL_INITGROUPS 1)
+  endif()
+endif()
 
 check_function_exists(timerfd_create HAVE_TIMERFD_CREATE)
 # Checks for epoll availability, primarily for examples/tiny-nghttpd
@@ -341,6 +348,8 @@ if(NOT CMAKE_C_COMPILER_ID STREQUAL "MSVC")
     -Wredundant-decls
     # Only work with Clang for the moment
     -Wheader-guard
+    # This is required because we pass format string as "const char*.
+    -Wno-format-nonliteral
   )
 
   extract_valid_cxx_flags(WARNCXXFLAGS

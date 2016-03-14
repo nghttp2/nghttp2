@@ -37,6 +37,7 @@
 #include "shrpx_error.h"
 #include "shrpx_http.h"
 #include "shrpx_http2_session.h"
+#include "shrpx_worker.h"
 #include "http2.h"
 #include "util.h"
 
@@ -44,10 +45,8 @@ using namespace nghttp2;
 
 namespace shrpx {
 
-Http2DownstreamConnection::Http2DownstreamConnection(
-    DownstreamConnectionPool *dconn_pool, Http2Session *http2session)
-    : DownstreamConnection(dconn_pool),
-      dlnext(nullptr),
+Http2DownstreamConnection::Http2DownstreamConnection(Http2Session *http2session)
+    : dlnext(nullptr),
       dlprev(nullptr),
       http2session_(http2session),
       sd_(nullptr) {}
@@ -98,10 +97,18 @@ int Http2DownstreamConnection::attach_downstream(Downstream *downstream) {
   http2session_->add_downstream_connection(this);
   if (http2session_->get_state() == Http2Session::DISCONNECTED) {
     http2session_->signal_write();
+    if (http2session_->get_state() == Http2Session::DISCONNECTED) {
+      return -1;
+    }
   }
 
   downstream_ = downstream;
   downstream_->reset_downstream_rtimer();
+
+  auto &req = downstream_->request();
+
+  // HTTP/2 disables HTTP Upgrade.
+  req.upgrade_request = false;
 
   return 0;
 }
@@ -259,12 +266,14 @@ int Http2DownstreamConnection::push_request_headers() {
 
   const auto &req = downstream_->request();
 
+  auto &balloc = downstream_->get_block_allocator();
+
   auto &httpconf = get_config()->http;
   auto &http2conf = get_config()->http2;
 
-  auto no_host_rewrite =
-      httpconf.no_host_rewrite || get_config()->http2_proxy ||
-      get_config()->client_proxy || req.method == HTTP_CONNECT;
+  auto no_host_rewrite = httpconf.no_host_rewrite ||
+                         get_config()->http2_proxy ||
+                         req.method == HTTP_CONNECT;
 
   // http2session_ has already in CONNECTED state, so we can get
   // addr_idx here.
@@ -275,10 +284,10 @@ int Http2DownstreamConnection::push_request_headers() {
   auto authority = StringRef(downstream_hostport);
 
   if (no_host_rewrite && !req.authority.empty()) {
-    authority = StringRef(req.authority);
+    authority = req.authority;
   }
 
-  downstream_->set_request_downstream_host(authority.str());
+  downstream_->set_request_downstream_host(authority);
 
   size_t num_cookies = 0;
   if (!http2conf.no_cookie_crumbling) {
@@ -300,7 +309,7 @@ int Http2DownstreamConnection::push_request_headers() {
               httpconf.add_request_headers.size());
 
   nva.push_back(
-      http2::make_nv_lc_nocopy(":method", http2::to_method_string(req.method)));
+      http2::make_nv_ls_nocopy(":method", http2::to_method_string(req.method)));
 
   if (req.method != HTTP_CONNECT) {
     assert(!req.scheme.empty());
@@ -338,8 +347,6 @@ int Http2DownstreamConnection::push_request_headers() {
   auto upstream = downstream_->get_upstream();
   auto handler = upstream->get_client_handler();
 
-  std::string forwarded_value;
-
   auto &fwdconf = httpconf.forwarded;
 
   auto fwd =
@@ -348,30 +355,28 @@ int Http2DownstreamConnection::push_request_headers() {
   if (fwdconf.params) {
     auto params = fwdconf.params;
 
-    if (get_config()->http2_proxy || get_config()->client_proxy ||
-        req.method == HTTP_CONNECT) {
+    if (get_config()->http2_proxy || req.method == HTTP_CONNECT) {
       params &= ~FORWARDED_PROTO;
     }
 
-    auto value = http::create_forwarded(params, handler->get_forwarded_by(),
-                                        handler->get_forwarded_for(),
-                                        req.authority, req.scheme);
+    auto value = http::create_forwarded(
+        balloc, params, handler->get_forwarded_by(),
+        handler->get_forwarded_for(), req.authority, req.scheme);
+
     if (fwd || !value.empty()) {
       if (fwd) {
-        forwarded_value = fwd->value;
-
-        if (!value.empty()) {
-          forwarded_value += ", ";
+        if (value.empty()) {
+          value = fwd->value;
+        } else {
+          value = concat_string_ref(balloc, fwd->value,
+                                    StringRef::from_lit(", "), value);
         }
       }
 
-      forwarded_value += value;
-
-      nva.push_back(http2::make_nv_ls("forwarded", forwarded_value));
+      nva.push_back(http2::make_nv_ls_nocopy("forwarded", value));
     }
   } else if (fwd) {
     nva.push_back(http2::make_nv_ls_nocopy("forwarded", fwd->value));
-    forwarded_value = fwd->value;
   }
 
   auto &xffconf = httpconf.xff;
@@ -379,38 +384,47 @@ int Http2DownstreamConnection::push_request_headers() {
   auto xff = xffconf.strip_incoming ? nullptr
                                     : req.fs.header(http2::HD_X_FORWARDED_FOR);
 
-  std::string xff_value;
-
   if (xffconf.add) {
+    StringRef xff_value;
+    auto addr = StringRef{upstream->get_client_handler()->get_ipaddr()};
     if (xff) {
-      xff_value = (*xff).value;
-      xff_value += ", ";
+      xff_value = concat_string_ref(balloc, xff->value,
+                                    StringRef::from_lit(", "), addr);
+    } else {
+      xff_value = addr;
     }
-    xff_value += upstream->get_client_handler()->get_ipaddr();
-    nva.push_back(http2::make_nv_ls("x-forwarded-for", xff_value));
+    nva.push_back(http2::make_nv_ls_nocopy("x-forwarded-for", xff_value));
   } else if (xff) {
-    nva.push_back(http2::make_nv_ls_nocopy("x-forwarded-for", (*xff).value));
+    nva.push_back(http2::make_nv_ls_nocopy("x-forwarded-for", xff->value));
   }
 
-  if (!get_config()->http2_proxy && !get_config()->client_proxy &&
-      req.method != HTTP_CONNECT) {
+  if (!get_config()->http2_proxy && req.method != HTTP_CONNECT) {
     // We use same protocol with :scheme header field
     nva.push_back(http2::make_nv_ls_nocopy("x-forwarded-proto", req.scheme));
   }
 
-  std::string via_value;
   auto via = req.fs.header(http2::HD_VIA);
   if (httpconf.no_via) {
     if (via) {
       nva.push_back(http2::make_nv_ls_nocopy("via", (*via).value));
     }
   } else {
+    size_t vialen = 16;
     if (via) {
-      via_value = (*via).value;
-      via_value += ", ";
+      vialen += via->value.size() + 2;
     }
-    via_value += http::create_via_header_value(req.http_major, req.http_minor);
-    nva.push_back(http2::make_nv_ls("via", via_value));
+
+    auto iov = make_byte_ref(balloc, vialen + 1);
+    auto p = iov.base;
+
+    if (via) {
+      p = std::copy(std::begin(via->value), std::end(via->value), p);
+      p = util::copy_lit(p, ", ");
+    }
+    p = http::create_via_header_value(p, req.http_major, req.http_minor);
+    *p = '\0';
+
+    nva.push_back(http2::make_nv_ls_nocopy("via", StringRef{iov.base, p}));
   }
 
   auto te = req.fs.header(http2::HD_TE);
@@ -554,10 +568,9 @@ int Http2DownstreamConnection::on_timeout() {
   return submit_rst_stream(downstream_, NGHTTP2_NO_ERROR);
 }
 
-size_t Http2DownstreamConnection::get_group() const {
-  // HTTP/2 backend connections are managed by Http2Session object,
-  // and it stores group index.
-  return http2session_->get_group();
+DownstreamAddrGroup *
+Http2DownstreamConnection::get_downstream_addr_group() const {
+  return http2session_->get_downstream_addr_group();
 }
 
 } // namespace shrpx

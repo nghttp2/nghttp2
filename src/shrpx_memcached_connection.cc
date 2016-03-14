@@ -96,7 +96,7 @@ MemcachedConnection::MemcachedConnection(const Address *addr,
                                          const StringRef &sni_name,
                                          MemchunkPool *mcpool)
     : conn_(loop, -1, nullptr, mcpool, write_timeout, read_timeout, {}, {},
-            connectcb, readcb, timeoutcb, this, 0, 0.),
+            connectcb, readcb, timeoutcb, this, 0, 0., PROTO_MEMCACHED),
       do_read_(&MemcachedConnection::noop),
       do_write_(&MemcachedConnection::noop),
       sni_name_(sni_name.str()),

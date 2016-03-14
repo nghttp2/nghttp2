@@ -34,6 +34,7 @@
 #include "nghttp2_hd_huffman.h"
 #include "nghttp2_buf.h"
 #include "nghttp2_mem.h"
+#include "nghttp2_rcbuf.h"
 
 #define NGHTTP2_HD_DEFAULT_MAX_BUFFER_SIZE NGHTTP2_DEFAULT_HEADER_TABLE_SIZE
 #define NGHTTP2_HD_ENTRY_OVERHEAD 32
@@ -109,28 +110,32 @@ typedef enum {
   NGHTTP2_TOKEN_CONNECTION,
   NGHTTP2_TOKEN_KEEP_ALIVE,
   NGHTTP2_TOKEN_PROXY_CONNECTION,
-  NGHTTP2_TOKEN_UPGRADE
+  NGHTTP2_TOKEN_UPGRADE,
 } nghttp2_token;
-
-typedef enum {
-  NGHTTP2_HD_FLAG_NONE = 0,
-  /* Indicates name was dynamically allocated and must be freed */
-  NGHTTP2_HD_FLAG_NAME_ALLOC = 1,
-  /* Indicates value was dynamically allocated and must be freed */
-  NGHTTP2_HD_FLAG_VALUE_ALLOC = 1 << 1,
-  /* Indicates that the name was gifted to the entry and no copying
-     necessary. */
-  NGHTTP2_HD_FLAG_NAME_GIFT = 1 << 2,
-  /* Indicates that the value was gifted to the entry and no copying
-     necessary. */
-  NGHTTP2_HD_FLAG_VALUE_GIFT = 1 << 3
-} nghttp2_hd_flags;
 
 struct nghttp2_hd_entry;
 typedef struct nghttp2_hd_entry nghttp2_hd_entry;
 
+typedef struct {
+  /* The buffer containing header field name.  NULL-termination is
+     guaranteed. */
+  nghttp2_rcbuf *name;
+  /* The buffer containing header field value.  NULL-termination is
+     guaranteed. */
+  nghttp2_rcbuf *value;
+  /* nghttp2_token value for name.  It could be -1 if we have no token
+     for that header field name. */
+  int32_t token;
+  /* Bitwise OR of one or more of nghttp2_nv_flag. */
+  uint8_t flags;
+} nghttp2_hd_nv;
+
 struct nghttp2_hd_entry {
-  nghttp2_nv nv;
+  /* The header field name/value pair */
+  nghttp2_hd_nv nv;
+  /* This is solely for nghttp2_hd_{deflate,inflate}_get_table_entry
+     APIs to keep backward compatibility. */
+  nghttp2_nv cnv;
   /* The next entry which shares same bucket in hash table. */
   nghttp2_hd_entry *next;
   /* The sequence number.  We will increment it by one whenever we
@@ -138,13 +143,16 @@ struct nghttp2_hd_entry {
   uint32_t seq;
   /* The hash value for header name (nv.name). */
   uint32_t hash;
-  /* nghttp2_token value for nv.name.  It could be -1 if we have no
-     token for that header field name. */
-  int token;
-  /* Reference count */
-  uint8_t ref;
-  uint8_t flags;
 };
+
+/* The entry used for static header table. */
+typedef struct {
+  nghttp2_rcbuf name;
+  nghttp2_rcbuf value;
+  nghttp2_nv cnv;
+  int32_t token;
+  uint32_t hash;
+} nghttp2_hd_static_entry;
 
 typedef struct {
   nghttp2_hd_entry **buffer;
@@ -219,24 +227,18 @@ struct nghttp2_hd_deflater {
 
 struct nghttp2_hd_inflater {
   nghttp2_hd_context ctx;
-  /* header buffer */
-  nghttp2_bufs nvbufs;
   /* Stores current state of huffman decoding */
   nghttp2_hd_huff_decode_context huff_decode_ctx;
-  /* Pointer to the nghttp2_hd_entry which is used current header
-     emission. This is required because in some cases the
-     ent_keep->ref == 0 and we have to keep track of it. */
-  nghttp2_hd_entry *ent_keep;
-  /* Pointer to the name/value pair buffer which is used in the
-     current header emission. */
-  uint8_t *nv_keep;
+  /* header buffer */
+  nghttp2_buf namebuf, valuebuf;
+  nghttp2_rcbuf *namercbuf, *valuercbuf;
+  /* Pointer to the name/value pair which are used in the current
+     header emission. */
+  nghttp2_rcbuf *nv_name_keep, *nv_value_keep;
   /* The number of bytes to read */
   size_t left;
   /* The index in indexed repr or indexed name */
   size_t index;
-  /* The length of new name encoded in literal.  For huffman encoded
-     string, this is the length after it is decoded. */
-  size_t newnamelen;
   /* The maximum header table size the inflater supports. This is the
      same value transmitted in SETTINGS_HEADER_TABLE_SIZE */
   size_t settings_hd_table_bufsize_max;
@@ -256,24 +258,16 @@ struct nghttp2_hd_inflater {
 };
 
 /*
- * Initializes the |ent| members. If NGHTTP2_HD_FLAG_NAME_ALLOC bit
- * set in the |flags|, the content pointed by the |name| with length
- * |namelen| is copied. Likewise, if NGHTTP2_HD_FLAG_VALUE_ALLOC bit
- * set in the |flags|, the content pointed by the |value| with length
- * |valuelen| is copied.  The |token| is enum number looked up by
- * |name|.  It could be -1 if we don't have that enum value.
- *
- * This function returns 0 if it succeeds, or one of the following
- * negative error codes:
- *
- * NGHTTP2_ERR_NOMEM
- *     Out of memory.
+ * Initializes the |ent| members.  The reference counts of nv->name
+ * and nv->value are increased by one for each.
  */
-int nghttp2_hd_entry_init(nghttp2_hd_entry *ent, uint8_t flags, uint8_t *name,
-                          size_t namelen, uint8_t *value, size_t valuelen,
-                          int token, nghttp2_mem *mem);
+void nghttp2_hd_entry_init(nghttp2_hd_entry *ent, nghttp2_hd_nv *nv);
 
-void nghttp2_hd_entry_free(nghttp2_hd_entry *ent, nghttp2_mem *mem);
+/*
+ * This function decreases the reference counts of nv->name and
+ * nv->value.
+ */
+void nghttp2_hd_entry_free(nghttp2_hd_entry *ent);
 
 /*
  * Initializes |deflater| for deflating name/values pairs.
@@ -354,16 +348,14 @@ int nghttp2_hd_inflate_init(nghttp2_hd_inflater *inflater, nghttp2_mem *mem);
 void nghttp2_hd_inflate_free(nghttp2_hd_inflater *inflater);
 
 /*
- * Similar to nghttp2_hd_inflate_hd(), but this takes additional
- * output parameter |token|.  On successful header emission, it
- * contains nghttp2_token value for nv_out->name.  It could be -1 if
- * we don't have enum value for the name.  Other than that return
- * values and semantics are the same as nghttp2_hd_inflate_hd().
+ * Similar to nghttp2_hd_inflate_hd(), but this takes nghttp2_hd_nv
+ * instead of nghttp2_nv as output parameter |nv_out|.  Other than
+ * that return values and semantics are the same as
+ * nghttp2_hd_inflate_hd().
  */
 ssize_t nghttp2_hd_inflate_hd2(nghttp2_hd_inflater *inflater,
-                               nghttp2_nv *nv_out, int *inflate_flags,
-                               int *token, uint8_t *in, size_t inlen,
-                               int in_final);
+                               nghttp2_hd_nv *nv_out, int *inflate_flags,
+                               uint8_t *in, size_t inlen, int in_final);
 
 /* For unittesting purpose */
 int nghttp2_hd_emit_indname_block(nghttp2_bufs *bufs, size_t index,
@@ -377,8 +369,7 @@ int nghttp2_hd_emit_newname_block(nghttp2_bufs *bufs, nghttp2_nv *nv,
 int nghttp2_hd_emit_table_size(nghttp2_bufs *bufs, size_t table_size);
 
 /* For unittesting purpose */
-nghttp2_hd_entry *nghttp2_hd_table_get(nghttp2_hd_context *context,
-                                       size_t index);
+nghttp2_hd_nv nghttp2_hd_table_get(nghttp2_hd_context *context, size_t index);
 
 /* For unittesting purpose */
 ssize_t nghttp2_hd_decode_length(uint32_t *res, size_t *shift_ptr, int *final,
@@ -414,11 +405,10 @@ int nghttp2_hd_huff_encode(nghttp2_bufs *bufs, const uint8_t *src,
 void nghttp2_hd_huff_decode_context_init(nghttp2_hd_huff_decode_context *ctx);
 
 /*
- * Decodes the given data |src| with length |srclen|. The |ctx| must
+ * Decodes the given data |src| with length |srclen|.  The |ctx| must
  * be initialized by nghttp2_hd_huff_decode_context_init(). The result
- * will be added to |dest|. This function may expand |dest| as
- * needed. The caller is responsible to release the memory of |dest|
- * by calling nghttp2_bufs_free().
+ * will be written to |buf|.  This function assumes that |buf| has the
+ * enough room to store the decoded byte string.
  *
  * The caller must set the |final| to nonzero if the given input is
  * the final block.
@@ -430,13 +420,11 @@ void nghttp2_hd_huff_decode_context_init(nghttp2_hd_huff_decode_context *ctx);
  *
  * NGHTTP2_ERR_NOMEM
  *     Out of memory.
- * NGHTTP2_ERR_BUFFER_ERROR
- *     Maximum buffer capacity size exceeded.
  * NGHTTP2_ERR_HEADER_COMP
  *     Decoding process has failed.
  */
 ssize_t nghttp2_hd_huff_decode(nghttp2_hd_huff_decode_context *ctx,
-                               nghttp2_bufs *bufs, const uint8_t *src,
+                               nghttp2_buf *buf, const uint8_t *src,
                                size_t srclen, int final);
 
 #endif /* NGHTTP2_HD_H */

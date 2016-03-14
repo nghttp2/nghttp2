@@ -308,7 +308,6 @@ public:
     }
     auto handler =
         make_unique<Http2Handler>(this, fd, ssl, get_next_session_id());
-    handler->setup_bev();
     if (!ssl) {
       if (handler->connection_made() != 0) {
         return;
@@ -575,7 +574,9 @@ struct ev_loop *Http2Handler::get_loop() const {
 
 Http2Handler::WriteBuf *Http2Handler::get_wb() { return &wb_; }
 
-int Http2Handler::setup_bev() { return 0; }
+void Http2Handler::start_settings_timer() {
+  ev_timer_start(sessions_->get_loop(), &settings_timerev_);
+}
 
 int Http2Handler::fill_wb() {
   if (data_pending_) {
@@ -869,8 +870,6 @@ int Http2Handler::connection_made() {
       return r;
     }
   }
-
-  ev_timer_start(sessions_->get_loop(), &settings_timerev_);
 
   if (ssl_ && !nghttp2::ssl::check_http2_requirement(ssl_)) {
     terminate_session(NGHTTP2_INADEQUATE_SECURITY);
@@ -1236,7 +1235,7 @@ void prepare_response(Stream *stream, Http2Handler *hd,
   bool last_mod_found = false;
   if (ims) {
     last_mod_found = true;
-    last_mod = util::parse_http_date(ims->value);
+    last_mod = util::parse_http_date(StringRef{ims->value});
   }
   auto query_pos = reqpath.find("?");
   std::string url;
@@ -1538,6 +1537,15 @@ int hd_on_frame_send_callback(nghttp2_session *session,
 
     break;
   }
+  case NGHTTP2_SETTINGS: {
+    if (frame->hd.flags & NGHTTP2_FLAG_ACK) {
+      return 0;
+    }
+
+    hd->start_settings_timer();
+
+    break;
+  }
   case NGHTTP2_PUSH_PROMISE: {
     auto promised_stream_id = frame->push_promise.promised_stream_id;
     auto promised_stream = hd->get_stream(promised_stream_id);
@@ -1681,6 +1689,9 @@ void fill_callback(nghttp2_session_callbacks *callbacks, const Config *config) {
   if (config->verbose) {
     nghttp2_session_callbacks_set_on_invalid_frame_recv_callback(
         callbacks, verbose_on_invalid_frame_recv_callback);
+
+    nghttp2_session_callbacks_set_error_callback(callbacks,
+                                                 verbose_error_callback);
   }
 
   nghttp2_session_callbacks_set_on_data_chunk_recv_callback(

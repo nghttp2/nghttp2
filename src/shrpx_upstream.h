@@ -68,8 +68,7 @@ public:
   virtual int send_reply(Downstream *downstream, const uint8_t *body,
                          size_t bodylen) = 0;
 
-  virtual int initiate_push(Downstream *downstream, const char *uri,
-                            size_t len) = 0;
+  virtual int initiate_push(Downstream *downstream, const StringRef &uri) = 0;
 
   // Fills response data in |iov| whose capacity is |iovcnt|.  Returns
   // the number of iovs filled.

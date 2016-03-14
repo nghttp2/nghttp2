@@ -76,8 +76,7 @@ public:
   virtual int on_downstream_reset(bool no_retry);
   virtual int send_reply(Downstream *downstream, const uint8_t *body,
                          size_t bodylen);
-  virtual int initiate_push(Downstream *downstream, const char *uri,
-                            size_t len);
+  virtual int initiate_push(Downstream *downstream, const StringRef &uri);
   virtual int response_riovec(struct iovec *iov, int iovcnt) const;
   virtual void response_drain(size_t n);
   virtual bool response_empty() const;

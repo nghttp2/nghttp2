@@ -48,5 +48,5 @@ script:
   - make check
   - cd integration-tests
   - export GOPATH="$PWD/integration-tests/golang"
-  - make itprep-local
-  - make it-local
+  - make itprep
+  - make it
