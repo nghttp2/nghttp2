@@ -39,12 +39,12 @@ EXTRA_DIST = \
 	req-return.rb \
 	resp-return.rb
 
-itprep-local:
+itprep:
 	go get -d -v golang.org/x/net/http2
 	go get -d -v github.com/tatsuhiro-t/go-nghttp2
 	go get -d -v github.com/tatsuhiro-t/spdy
 	go get -d -v golang.org/x/net/websocket
 
-it-local:
+it:
 	for i in $(GO_FILES); do [ -e $(builddir)/$$i ] || cp $(srcdir)/$$i $(builddir); done
 	sh setenv go test -v
