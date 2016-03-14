@@ -1224,6 +1224,11 @@ int SpdyUpstream::on_downstream_reset(bool no_retry) {
   for (auto downstream = downstream_queue_.get_downstreams(); downstream;
        downstream = downstream->dlnext) {
     if (downstream->get_dispatch_state() != Downstream::DISPATCH_ACTIVE) {
+      // This is error condition when we failed push_request_headers()
+      // in initiate_downstream().  Otherwise, we have
+      // Downstream::DISPATCH_ACTIVE state, or we did not set
+      // DownstreamConnection.
+      downstream->pop_downstream_connection();
       continue;
     }
 
