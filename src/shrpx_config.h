@@ -292,6 +292,8 @@ struct DownstreamAddrConfig {
   // backend address.  If |host_unix| is true, this is UNIX domain
   // socket path.
   ImmutableString host;
+  // <HOST>:<PORT>.  This does not treat 80 and 443 specially.  If
+  // |host_unix| is true, this is "localhost".
   ImmutableString hostport;
   // backend port.  0 if |host_unix| is true.
   uint16_t port;
