@@ -1550,6 +1550,8 @@ StringRef path_join(BlockAllocator &balloc, const StringRef &base_path,
   if (rel_path[0] == '/') {
     *p++ = '/';
     ++first;
+    for (; first != last && *first == '/'; ++first)
+      ;
   } else if (base_path.empty()) {
     *p++ = '/';
   } else {
@@ -1657,11 +1659,12 @@ StringRef rewrite_clean_path(BlockAllocator &balloc, const StringRef &src) {
   }
   // probably, not necessary most of the case, but just in case.
   auto fragment = std::find(std::begin(src), std::end(src), '#');
-  auto query = std::find(std::begin(src), fragment, '?');
+  auto raw_query = std::find(std::begin(src), fragment, '?');
+  auto query = raw_query;
   if (query != fragment) {
     ++query;
   }
-  return normalize_path(balloc, StringRef{std::begin(src), query},
+  return normalize_path(balloc, StringRef{std::begin(src), raw_query},
                         StringRef{query, fragment});
 }
 

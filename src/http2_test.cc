@@ -817,6 +817,15 @@ void test_http2_path_join(void) {
     auto rel = StringRef{};
     CU_ASSERT("/?r" == http2::path_join(base, baseq, rel, StringRef{}));
   }
+  {
+    // path starts with multiple '/'s.
+    auto base = StringRef{};
+    auto baseq = StringRef{};
+    auto rel = StringRef::from_lit("//alpha//bravo");
+    auto relq = StringRef::from_lit("charlie");
+    CU_ASSERT("/alpha/bravo?charlie" ==
+              http2::path_join(base, baseq, rel, relq));
+  }
 }
 
 void test_http2_normalize_path(void) {
@@ -870,6 +879,10 @@ void test_http2_rewrite_clean_path(void) {
             http2::rewrite_clean_path(balloc, StringRef::from_lit("alpha%3a")));
 
   CU_ASSERT("" == http2::rewrite_clean_path(balloc, StringRef{}));
+
+  CU_ASSERT(
+      "/alpha?bravo" ==
+      http2::rewrite_clean_path(balloc, StringRef::from_lit("//alpha?bravo")));
 }
 
 void test_http2_get_pure_path_component(void) {
