@@ -458,9 +458,9 @@ message(STATUS "summary of build options:
     Compiler:
       Build type:     ${CMAKE_BUILD_TYPE}
       C compiler:     ${CMAKE_C_COMPILER}
-      CFLAGS:         ${CMAKE_C_FLAGS} ${CMAKE_C_FLAGS_${_build_type}}
+      CFLAGS:         ${CMAKE_C_FLAGS_${_build_type}} ${CMAKE_C_FLAGS}
       C++ compiler:   ${CMAKE_CXX_COMPILER}
-      CXXFLAGS:       ${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_${_build_type}}
+      CXXFLAGS:       ${CMAKE_CXX_FLAGS_${_build_type}} ${CMAKE_CXX_FLAGS}
       WARNCFLAGS:     ${WARNCFLAGS}
       CXX1XCXXFLAGS:  ${CXX1XCXXFLAGS}
     Python:
