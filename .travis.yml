@@ -51,7 +51,7 @@ before_script:
   - if [ "$CI_BUILD" = "autotools" ]; then autoreconf -i; fi
   - git submodule update --init
   - if [ "$CI_BUILD" = "autotools" ]; then ./configure --enable-werror --with-mruby --with-neverbleed LIBSPDYLAY_CFLAGS="-I$SPDYLAY_HOME/lib/includes" LIBSPDYLAY_LIBS="-L$SPDYLAY_HOME/lib/.libs -lspdylay"; fi
-  - if [ "$CI_BUILD" = "cmake" ]; then cmake -DENABLE_WERROR=1 -DWITH_MRUBY=1 -DWITH_NEVERBLEED=1 -DSPDYLAY_INCLUDE_DIR="$SPDYLAY_HOME/lib/includes" -DSPDYLAY_LIBRARY="$SPDYLAY_HOME/lib/.libs/libspdylay.so"; fi
+  - if [ "$CI_BUILD" = "cmake" ]; then cmake -DCMAKE_BUILD_TYPE=None -DENABLE_WERROR=1 -DWITH_MRUBY=1 -DWITH_NEVERBLEED=1 -DSPDYLAY_INCLUDE_DIR="$SPDYLAY_HOME/lib/includes" -DSPDYLAY_LIBRARY="$SPDYLAY_HOME/lib/.libs/libspdylay.so"; fi
 script:
   - make
   - make check

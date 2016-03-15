@@ -40,6 +40,17 @@ set(LT_VERSION "${LT_SOVERSION}.${LT_AGE}.${LT_REVISION}")
 set(PACKAGE_VERSION     "${PROJECT_VERSION}")
 HexVersion(PACKAGE_VERSION_NUM ${PROJECT_VERSION_MAJOR} ${PROJECT_VERSION_MINOR} ${PROJECT_VERSION_PATCH})
 
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  # Note that RelWithDebInfo disables assertions, use Debug or None to keep them.
+  set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "Choose the build type" FORCE)
+
+  # Include "None" as option to disable any additional (optimization) flags,
+  # relying on just CMAKE_C_FLAGS and CMAKE_CXX_FLAGS (which are empty by
+  # default). These strings are presented in cmake-gui.
+  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
+    "None" "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
+endif()
+
 include(GNUInstallDirs)
 
 # For Python bindings and documentation
@@ -227,7 +238,6 @@ else()
 endif()
 
 # Checks for header files.
-# XXX AC_HEADER_ASSERT adds --disable-assert which sets -DNDEBUG
 include(CheckIncludeFile)
 check_include_file("arpa/inet.h"    HAVE_ARPA_INET_H)
 check_include_file("fcntl.h"        HAVE_FCNTL_H)
