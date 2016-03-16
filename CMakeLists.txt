@@ -126,7 +126,7 @@ else()
 endif()
 
 include(ExtractValidFlags)
-foreach(_cxx1x_flag -std=gnu++11 -std=gnu++0x)
+foreach(_cxx1x_flag -std=c++11 -std=c++0x)
   extract_valid_cxx_flags(_cxx1x_flag_supported ${_cxx1x_flag})
   if(_cxx1x_flag_supported)
     set(CXX1XCXXFLAGS ${_cxx1x_flag})
