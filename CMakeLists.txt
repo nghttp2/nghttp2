@@ -41,7 +41,6 @@ set(PACKAGE_VERSION     "${PROJECT_VERSION}")
 HexVersion(PACKAGE_VERSION_NUM ${PROJECT_VERSION_MAJOR} ${PROJECT_VERSION_MINOR} ${PROJECT_VERSION_PATCH})
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-  # Note that RelWithDebInfo disables assertions, use Debug or None to keep them.
   set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "Choose the build type" FORCE)
 
   # Include "None" as option to disable any additional (optimization) flags,
@@ -101,6 +100,14 @@ if(ENABLE_LIB_ONLY)
   set(ENABLE_EXAMPLES       OFF)
   set(ENABLE_PYTHON_BINDINGS OFF)
 endif()
+
+# Do not disable assertions based on CMAKE_BUILD_TYPE.
+foreach(_build_type "Release" "MinSizeRel" "RelWithDebInfo")
+  foreach(_lang C CXX)
+    string(TOUPPER "CMAKE_${_lang}_FLAGS_${_build_type}" _var)
+    string(REGEX REPLACE "(^| )[/-]D *NDEBUG($| )" "" ${_var} "${${_var}}")
+  endforeach()
+endforeach()
 
 #
 # If we're running GCC or clang define _U_ to be "__attribute__((unused))"
