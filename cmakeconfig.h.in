@@ -5,6 +5,9 @@
 /* Hint to the compiler that a function never returns */
 #define NGHTTP2_NORETURN @HINT_NORETURN@
 
+/* Define to `int' if <sys/types.h> does not define. */
+#cmakedefine ssize_t @ssize_t@
+
 /* Define to 1 if you have the `std::map::emplace`. */
 #cmakedefine HAVE_STD_MAP_EMPLACE 1
 

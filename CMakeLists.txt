@@ -267,11 +267,15 @@ check_include_file("syslog.h"       HAVE_SYSLOG_H)
 check_include_file("time.h"         HAVE_TIME_H)
 check_include_file("unistd.h"       HAVE_UNISTD_H)
 
+include(CheckTypeSize)
 # Checks for typedefs, structures, and compiler characteristics.
-# XXX The AC_TYPE_* macros would define suitable types if standard headers do
-# not define them. No equivalent in cmake...
 # AC_TYPE_SIZE_T
-# AC_TYPE_SSIZE_T
+check_type_size("ssize_t" SIZEOF_SSIZE_T)
+if(SIZEOF_SSIZE_T STREQUAL "")
+  # ssize_t is a signed type in POSIX storing at least -1.
+  # Set it to "int" to match the behavior of AC_TYPE_SSIZE_T (autotools).
+  set(ssize_t int)
+endif()
 # AC_TYPE_UINT8_T
 # AC_TYPE_UINT16_T
 # AC_TYPE_UINT32_T
@@ -292,7 +296,6 @@ include(CheckStructHasMember)
 check_struct_has_member("struct tm" tm_gmtoff time.h HAVE_STRUCT_TM_TM_GMTOFF)
 
 # Check size of pointer to decide we need 8 bytes alignment adjustment.
-include(CheckTypeSize)
 check_type_size("int *"   SIZEOF_INT_P)
 check_type_size("time_t"  SIZEOF_TIME_T)
 
@@ -322,11 +325,17 @@ endif()
 
 set(WARNCFLAGS)
 set(WARNCXXFLAGS)
-if(ENABLE_WERROR)
-  extract_valid_c_flags(WARNCFLAGS    -Werror)
-  extract_valid_c_flags(WARNCXXFLAGS  -Werror)
-endif()
-if(NOT CMAKE_C_COMPILER_ID STREQUAL "MSVC")
+if(CMAKE_C_COMPILER_ID MATCHES "MSVC")
+  if(ENABLE_WERROR)
+    set(WARNCFLAGS    /WX)
+    set(WARNCXXFLAGS  /WX)
+  endif()
+else()
+  if(ENABLE_WERROR)
+    extract_valid_c_flags(WARNCFLAGS    -Werror)
+    extract_valid_c_flags(WARNCXXFLAGS  -Werror)
+  endif()
+
   # For C compiler
   extract_valid_c_flags(WARNCFLAGS
     -Wall
