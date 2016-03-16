@@ -118,12 +118,11 @@ endforeach()
 # XXX - similar hints for other compilers?
 #
 if(CMAKE_C_COMPILER_ID MATCHES "GNU" OR CMAKE_C_COMPILER_ID MATCHES "Clang")
-  add_definitions(
-    "-D_U_=__attribute__((unused))"
-    "-DNGHTTP2_NORETURN=__attribute__((noreturn))"
-  )
+  set(HINT_UNUSED_PARAM   "__attribute__((unused))")
+  set(HINT_NORETURN       "__attribute__((noreturn))")
 else()
-  add_definitions(-D_U_ -DNGHTTP2_NORETURN)
+  set(HINT_UNUSED_PARAM)
+  set(HINT_NORETURN)
 endif()
 
 include(ExtractValidFlags)
