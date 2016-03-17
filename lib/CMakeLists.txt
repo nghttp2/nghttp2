@@ -41,6 +41,7 @@ if(HAVE_CUNIT)
     VERSION ${LT_VERSION} SOVERSION ${LT_SOVERSION}
     ARCHIVE_OUTPUT_NAME nghttp2
   )
+  target_compile_definitions(nghttp2_static PUBLIC "-DNGHTTP2_STATICLIB")
 endif()
 
 install(TARGETS nghttp2
