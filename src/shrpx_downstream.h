@@ -257,7 +257,7 @@ public:
   void crumble_request_cookie(std::vector<nghttp2_nv> &nva);
   // Assembles request cookies.  The opposite operation against
   // crumble_request_cookie().
-  std::string assemble_request_cookie() const;
+  StringRef assemble_request_cookie();
 
   void
   set_request_start_time(std::chrono::high_resolution_clock::time_point time);

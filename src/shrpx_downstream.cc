@@ -257,15 +257,22 @@ search_header_linear_backwards(const HeaderRefs &headers,
 }
 } // namespace
 
-std::string Downstream::assemble_request_cookie() const {
-  std::string cookie;
-  cookie = "";
+StringRef Downstream::assemble_request_cookie() {
+  size_t len = 0;
+
   for (auto &kv : req_.fs.headers()) {
-    if (kv.token != http2::HD_COOKIE) {
+    if (kv.token != http2::HD_COOKIE || kv.value.empty()) {
       continue;
     }
 
-    if (kv.value.empty()) {
+    len += kv.value.size() + str_size("; ");
+  }
+
+  auto iov = make_byte_ref(balloc_, len + 1);
+  auto p = iov.base;
+
+  for (auto &kv : req_.fs.headers()) {
+    if (kv.token != http2::HD_COOKIE || kv.value.empty()) {
       continue;
     }
 
@@ -280,18 +287,16 @@ std::string Downstream::assemble_request_cookie() const {
       break;
     }
 
-    if (end == std::end(kv.value)) {
-      cookie += kv.value;
-    } else {
-      cookie.append(std::begin(kv.value), end);
-    }
-    cookie += "; ";
-  }
-  if (cookie.size() >= 2) {
-    cookie.erase(cookie.size() - 2);
+    p = std::copy(std::begin(kv.value), end, p);
+    p = util::copy_lit(p, "; ");
   }
 
-  return cookie;
+  // cut trailing "; "
+  if (p - iov.base >= 2) {
+    p -= 2;
+  }
+
+  return StringRef{iov.base, p};
 }
 
 size_t Downstream::count_crumble_request_cookie() {
