@@ -384,26 +384,26 @@ func TestS3H1RespPhaseReturn(t *testing.T) {
 	}
 }
 
-// TestS3H2ConnectFailure tests that server handles the situation that
-// connection attempt to HTTP/2 backend failed.
-func TestS3H2ConnectFailure(t *testing.T) {
-	st := newServerTesterTLS([]string{"--npn-list=spdy/3.1", "--http2-bridge"}, t, noopHandler)
-	defer st.Close()
+// // TestS3H2ConnectFailure tests that server handles the situation that
+// // connection attempt to HTTP/2 backend failed.
+// func TestS3H2ConnectFailure(t *testing.T) {
+// 	st := newServerTesterTLS([]string{"--npn-list=spdy/3.1", "--http2-bridge"}, t, noopHandler)
+// 	defer st.Close()
 
-	// simulate backend connect attempt failure
-	st.ts.Close()
+// 	// simulate backend connect attempt failure
+// 	st.ts.Close()
 
-	res, err := st.spdy(requestParam{
-		name: "TestS3H2ConnectFailure",
-	})
-	if err != nil {
-		t.Fatalf("Error st.spdy() = %v", err)
-	}
-	want := 503
-	if got := res.status; got != want {
-		t.Errorf("status: %v; want %v", got, want)
-	}
-}
+// 	res, err := st.spdy(requestParam{
+// 		name: "TestS3H2ConnectFailure",
+// 	})
+// 	if err != nil {
+// 		t.Fatalf("Error st.spdy() = %v", err)
+// 	}
+// 	want := 503
+// 	if got := res.status; got != want {
+// 		t.Errorf("status: %v; want %v", got, want)
+// 	}
+// }
 
 // TestS3H2ReqPhaseReturn tests mruby request phase hook returns
 // custom response.

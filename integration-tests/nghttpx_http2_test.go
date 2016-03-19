@@ -568,26 +568,26 @@ func TestH2H1InvalidRequestCL(t *testing.T) {
 	}
 }
 
-// TestH2H1ConnectFailure tests that server handles the situation that
-// connection attempt to HTTP/1 backend failed.
-func TestH2H1ConnectFailure(t *testing.T) {
-	st := newServerTester(nil, t, noopHandler)
-	defer st.Close()
+// // TestH2H1ConnectFailure tests that server handles the situation that
+// // connection attempt to HTTP/1 backend failed.
+// func TestH2H1ConnectFailure(t *testing.T) {
+// 	st := newServerTester(nil, t, noopHandler)
+// 	defer st.Close()
 
-	// shutdown backend server to simulate backend connect failure
-	st.ts.Close()
+// 	// shutdown backend server to simulate backend connect failure
+// 	st.ts.Close()
 
-	res, err := st.http2(requestParam{
-		name: "TestH2H1ConnectFailure",
-	})
-	if err != nil {
-		t.Fatalf("Error st.http2() = %v", err)
-	}
-	want := 503
-	if got := res.status; got != want {
-		t.Errorf("status: %v; want %v", got, want)
-	}
-}
+// 	res, err := st.http2(requestParam{
+// 		name: "TestH2H1ConnectFailure",
+// 	})
+// 	if err != nil {
+// 		t.Fatalf("Error st.http2() = %v", err)
+// 	}
+// 	want := 503
+// 	if got := res.status; got != want {
+// 		t.Errorf("status: %v; want %v", got, want)
+// 	}
+// }
 
 // TestH2H1InvalidMethod tests that server rejects invalid method with
 // 501.
@@ -1486,26 +1486,26 @@ func TestH2H2InvalidResponseCL(t *testing.T) {
 	}
 }
 
-// TestH2H2ConnectFailure tests that server handles the situation that
-// connection attempt to HTTP/2 backend failed.
-func TestH2H2ConnectFailure(t *testing.T) {
-	st := newServerTester([]string{"--http2-bridge"}, t, noopHandler)
-	defer st.Close()
+// // TestH2H2ConnectFailure tests that server handles the situation that
+// // connection attempt to HTTP/2 backend failed.
+// func TestH2H2ConnectFailure(t *testing.T) {
+// 	st := newServerTester([]string{"--http2-bridge"}, t, noopHandler)
+// 	defer st.Close()
 
-	// simulate backend connect attempt failure
-	st.ts.Close()
+// 	// simulate backend connect attempt failure
+// 	st.ts.Close()
 
-	res, err := st.http2(requestParam{
-		name: "TestH2H2ConnectFailure",
-	})
-	if err != nil {
-		t.Fatalf("Error st.http2() = %v", err)
-	}
-	want := 503
-	if got := res.status; got != want {
-		t.Errorf("status: %v; want %v", got, want)
-	}
-}
+// 	res, err := st.http2(requestParam{
+// 		name: "TestH2H2ConnectFailure",
+// 	})
+// 	if err != nil {
+// 		t.Fatalf("Error st.http2() = %v", err)
+// 	}
+// 	want := 503
+// 	if got := res.status; got != want {
+// 		t.Errorf("status: %v; want %v", got, want)
+// 	}
+// }
 
 // TestH2H2HostRewrite tests that server rewrites host header field
 func TestH2H2HostRewrite(t *testing.T) {
