@@ -732,10 +732,17 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
     }
 
     if (group.proto == PROTO_HTTP2) {
-      if (group.http2_freelist.empty()) {
+      if (group.http2_freelist.empty() ||
+          group.http2_freelist.size() < group.addrs.size()) {
         if (LOG_ENABLED(INFO)) {
-          CLOG(INFO, this)
-              << "http2_freelist is empty; create new Http2Session";
+          if (group.http2_freelist.empty()) {
+            CLOG(INFO, this)
+                << "http2_freelist is empty; create new Http2Session";
+          } else {
+            CLOG(INFO, this) << "Create new Http2Session; current "
+                             << group.http2_freelist.size() << ", min "
+                             << group.addrs.size();
+          }
         }
         auto session = make_unique<Http2Session>(
             conn_.loop, worker_->get_cl_ssl_ctx(), worker_, &group);
@@ -744,8 +751,6 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
 
       auto http2session = group.http2_freelist.head;
 
-      // TODO max_concurrent_streams option must be independent from
-      // frontend and backend.
       if (http2session->max_concurrency_reached(1)) {
         if (LOG_ENABLED(INFO)) {
           CLOG(INFO, this) << "Maximum streams are reached for Http2Session("
