@@ -1843,12 +1843,13 @@ HTTP:
               towards this number.
               Default: )" << get_config()->http.max_response_header_fields
       << R"(
-  --error-page=<CODE>=<PATH>
+  --error-page=(<CODE>|*)=<PATH>
               Set file path  to custom error page  served when nghttpx
               originally  generates  HTTP  error status  code  <CODE>.
               <CODE> must be greater than or equal to 400, and at most
-              599.  If  error status  code comes from  backend server,
-              the custom error pages are not used.
+              599.  If "*"  is used instead of <CODE>,  it matches all
+              HTTP  status  code.  If  error  status  code comes  from
+              backend server, the custom error pages are not used.
 
 Debug:
   --frontend-http2-dump-request-header=<PATH>

@@ -40,7 +40,7 @@ StringRef create_error_html(BlockAllocator &balloc, unsigned int http_status) {
 
   const auto &error_pages = httpconf.error_pages;
   for (const auto &page : error_pages) {
-    if (page.http_status == http_status) {
+    if (page.http_status == 0 || page.http_status == http_status) {
       return StringRef{std::begin(page.content), std::end(page.content)};
     }
   }

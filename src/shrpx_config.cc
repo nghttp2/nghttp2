@@ -715,11 +715,19 @@ int parse_error_page(std::vector<ErrorPage> &error_pages, const char *opt,
   }
 
   auto codestr = StringRef{std::begin(arg), eq};
-  auto code = util::parse_uint(codestr);
+  unsigned int code;
 
-  if (code == -1 || code < 400 || code > 599) {
-    LOG(ERROR) << opt << ": bad code: '" << codestr << "'";
-    return -1;
+  if (codestr == "*") {
+    code = 0;
+  } else {
+    auto n = util::parse_uint(codestr);
+
+    if (n == -1 || n < 400 || n > 599) {
+      LOG(ERROR) << opt << ": bad code: '" << codestr << "'";
+      return -1;
+    }
+
+    code = static_cast<unsigned int>(n);
   }
 
   auto path = StringRef{eq + 1, std::end(arg)};
@@ -748,8 +756,7 @@ int parse_error_page(std::vector<ErrorPage> &error_pages, const char *opt,
     content.insert(std::end(content), std::begin(buf), std::begin(buf) + n);
   }
 
-  error_pages.push_back(
-      ErrorPage{std::move(content), static_cast<unsigned int>(code)});
+  error_pages.push_back(ErrorPage{std::move(content), code});
 
   return 0;
 }

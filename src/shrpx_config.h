@@ -443,6 +443,7 @@ struct TLSConfig {
 struct ErrorPage {
   // not NULL-terminated
   std::vector<uint8_t> content;
+  // 0 is special value, and it matches all HTTP status code.
   unsigned int http_status;
 };
 
