@@ -25,4 +25,8 @@
 #ifndef NGHTTP2_STREAM_TEST_H
 #define NGHTTP2_STREAM_TEST_H
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif /* HAVE_CONFIG_H */
+
 #endif /* NGHTTP2_STREAM_TEST_H */

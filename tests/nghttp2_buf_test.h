@@ -25,6 +25,10 @@
 #ifndef NGHTTP2_BUF_TEST_H
 #define NGHTTP2_BUF_TEST_H
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif /* HAVE_CONFIG_H */
+
 void test_nghttp2_bufs_add(void);
 void test_nghttp2_bufs_add_stack_buffer_overflow_bug(void);
 void test_nghttp2_bufs_addb(void);
