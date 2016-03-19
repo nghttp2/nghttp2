@@ -46,6 +46,7 @@
 #include "http2.h"
 #include "buffer.h"
 #include "template.h"
+#include "allocator.h"
 
 namespace nghttp2 {
 
@@ -53,6 +54,7 @@ struct Config {
   std::map<std::string, std::vector<std::string>> push;
   std::map<std::string, std::string> mime_types;
   Headers trailer;
+  std::string trailer_names;
   std::string htdocs;
   std::string host;
   std::string private_key_file;
@@ -111,8 +113,29 @@ struct FileEntry {
   bool stale;
 };
 
+struct RequestHeader {
+  StringRef method;
+  StringRef scheme;
+  StringRef authority;
+  StringRef host;
+  StringRef path;
+  StringRef ims;
+  StringRef expect;
+
+  struct {
+    nghttp2_rcbuf *method;
+    nghttp2_rcbuf *scheme;
+    nghttp2_rcbuf *authority;
+    nghttp2_rcbuf *host;
+    nghttp2_rcbuf *path;
+    nghttp2_rcbuf *ims;
+    nghttp2_rcbuf *expect;
+  } rcbuf;
+};
+
 struct Stream {
-  Headers headers;
+  BlockAllocator balloc;
+  RequestHeader header;
   Http2Handler *handler;
   FileEntry *file_ent;
   ev_timer rtimer;
@@ -123,7 +146,6 @@ struct Stream {
   // headers.
   size_t header_buffer_size;
   int32_t stream_id;
-  http2::HeaderIndex hdidx;
   bool echo_upload;
   Stream(Http2Handler *handler, int32_t stream_id);
   ~Stream();
@@ -143,20 +165,21 @@ public:
   int connection_made();
   int verify_npn_result();
 
-  int submit_file_response(const std::string &status, Stream *stream,
+  int submit_file_response(const StringRef &status, Stream *stream,
                            time_t last_modified, off_t file_length,
                            const std::string *content_type,
                            nghttp2_data_provider *data_prd);
 
-  int submit_response(const std::string &status, int32_t stream_id,
+  int submit_response(const StringRef &status, int32_t stream_id,
                       nghttp2_data_provider *data_prd);
 
-  int submit_response(const std::string &status, int32_t stream_id,
-                      const Headers &headers, nghttp2_data_provider *data_prd);
+  int submit_response(const StringRef &status, int32_t stream_id,
+                      const HeaderRefs &headers,
+                      nghttp2_data_provider *data_prd);
 
   int submit_non_final_response(const std::string &status, int32_t stream_id);
 
-  int submit_push_promise(Stream *stream, const std::string &push_path);
+  int submit_push_promise(Stream *stream, const StringRef &push_path);
 
   int submit_rst_stream(Stream *stream, uint32_t error_code);
 

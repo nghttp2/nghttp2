@@ -420,6 +420,15 @@ int main(int argc, char **argv) {
     }
   }
 
+  auto &trailer_names = config.trailer_names;
+  for (auto &h : config.trailer) {
+    trailer_names += h.name;
+    trailer_names += ", ";
+  }
+  if (trailer_names.size() >= 2) {
+    trailer_names.resize(trailer_names.size() - 2);
+  }
+
   set_color_output(color || isatty(fileno(stdout)));
 
   struct sigaction act {};

@@ -123,6 +123,8 @@ std::string percent_decode(InputIt first, InputIt last) {
   return result;
 }
 
+StringRef percent_decode(BlockAllocator &balloc, const StringRef &src);
+
 // Percent encode |target| if character is not in token or '%'.
 std::string percent_encode_token(const std::string &target);
 
@@ -244,6 +246,11 @@ inline bool ends_with(const std::string &a, const std::string &b) {
   return ends_with(std::begin(a), std::end(a), std::begin(b), std::end(b));
 }
 
+template <typename CharT, size_t N>
+bool ends_with_l(const StringRef &a, const CharT(&b)[N]) {
+  return ends_with(std::begin(a), std::end(a), b, b + N - 1);
+}
+
 template <typename InputIterator1, typename InputIterator2>
 bool iends_with(InputIterator1 first1, InputIterator1 last1,
                 InputIterator2 first2, InputIterator2 last2) {
@@ -353,6 +360,11 @@ bool streq_l(const CharT(&a)[N], InputIt b, size_t blen) {
 
 template <typename CharT, size_t N>
 bool streq_l(const CharT(&a)[N], const std::string &b) {
+  return streq(a, N - 1, std::begin(b), b.size());
+}
+
+template <typename CharT, size_t N>
+bool streq_l(const CharT(&a)[N], const StringRef &b) {
   return streq(a, N - 1, std::begin(b), b.size());
 }
 
