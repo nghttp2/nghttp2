@@ -237,6 +237,7 @@ constexpr char SHRPX_OPT_BACKEND_CONNECTIONS_PER_FRONTEND[] =
 constexpr char SHRPX_OPT_BACKEND_TLS[] = "backend-tls";
 constexpr char SHRPX_OPT_BACKEND_CONNECTIONS_PER_HOST[] =
     "backend-connections-per-host";
+constexpr char SHRPX_OPT_ERROR_PAGE[] = "error-page";
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -438,6 +439,13 @@ struct TLSConfig {
   bool no_http2_cipher_black_list;
 };
 
+// custom error page
+struct ErrorPage {
+  // not NULL-terminated
+  std::vector<uint8_t> content;
+  unsigned int http_status;
+};
+
 struct HttpConfig {
   struct {
     // obfuscated value used in "by" parameter of Forwarded header
@@ -459,6 +467,7 @@ struct HttpConfig {
     bool strip_incoming;
   } xff;
   std::vector<AltSvc> altsvcs;
+  std::vector<ErrorPage> error_pages;
   Headers add_request_headers;
   Headers add_response_headers;
   StringRef server_name;

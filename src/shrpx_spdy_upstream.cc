@@ -856,8 +856,9 @@ int SpdyUpstream::send_reply(Downstream *downstream, const uint8_t *body,
   }
 
   const auto &resp = downstream->response();
+  auto &balloc = downstream->get_block_allocator();
 
-  auto status_string = http2::get_status_string(resp.http_status);
+  auto status_string = http2::get_status_string(balloc, resp.http_status);
 
   const auto &headers = resp.fs.headers();
 
@@ -921,8 +922,9 @@ int SpdyUpstream::error_reply(Downstream *downstream,
                               unsigned int status_code) {
   int rv;
   auto &resp = downstream->response();
+  auto &balloc = downstream->get_block_allocator();
 
-  auto html = http::create_error_html(status_code);
+  auto html = http::create_error_html(balloc, status_code);
   resp.http_status = status_code;
   auto body = downstream->get_response_buf();
   body->append(html);
@@ -935,8 +937,9 @@ int SpdyUpstream::error_reply(Downstream *downstream,
   auto lgconf = log_config();
   lgconf->update_tstamp(std::chrono::system_clock::now());
 
-  std::string content_length = util::utos(html.size());
-  std::string status_string = http2::get_status_string(status_code);
+  auto content_length = util::make_string_ref_uint(balloc, html.size());
+  auto status_string = http2::get_status_string(balloc, status_code);
+
   const char *nv[] = {":status", status_string.c_str(), ":version", "http/1.1",
                       "content-type", "text/html; charset=UTF-8", "server",
                       get_config()->http.server_name.c_str(), "content-length",
@@ -995,6 +998,7 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream) {
   }
 
   const auto &req = downstream->request();
+  auto &balloc = downstream->get_block_allocator();
 
 #ifdef HAVE_MRUBY
   auto worker = handler_->get_worker();
@@ -1030,7 +1034,7 @@ int SpdyUpstream::on_downstream_header_complete(Downstream *downstream) {
 
   size_t hdidx = 0;
   std::string via_value;
-  auto status_string = http2::get_status_string(resp.http_status);
+  auto status_string = http2::get_status_string(balloc, resp.http_status);
   nv[hdidx++] = ":status";
   nv[hdidx++] = status_string.c_str();
   nv[hdidx++] = ":version";

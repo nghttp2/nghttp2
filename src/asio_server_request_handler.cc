@@ -33,9 +33,10 @@ namespace server {
 
 namespace {
 std::string create_html(int status_code) {
+  BlockAllocator balloc(1024, 1024);
   std::string res;
   res.reserve(512);
-  auto status = ::nghttp2::http2::get_status_string(status_code);
+  auto status = ::nghttp2::http2::get_status_string(balloc, status_code);
   res += R"(<!DOCTYPE html><html lang="en"><title>)";
   res += status;
   res += "</title><body><h1>";

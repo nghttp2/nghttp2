@@ -1899,11 +1899,15 @@ void acceptcb(struct ev_loop *loop, ev_io *w, int revents) {
 
 namespace {
 FileEntry make_status_body(int status, uint16_t port) {
+  BlockAllocator balloc(1024, 1024);
+
+  auto status_string = http2::get_status_string(balloc, status);
+
   std::string body;
   body = "<html><head><title>";
-  body += http2::get_status_string(status);
+  body += status_string;
   body += "</title></head><body><h1>";
-  body += http2::get_status_string(status);
+  body += status_string;
   body += "</h1><hr><address>";
   body += NGHTTPD_SERVER;
   body += " at port ";

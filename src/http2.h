@@ -94,11 +94,12 @@ using HeaderRefs = std::vector<HeaderRef>;
 
 namespace http2 {
 
-std::string get_status_string(unsigned int status_code);
+// Returns string version of |status code| followed by reason
+// string. (e.g., "404 Not Found").
+StringRef get_status_string(BlockAllocator &balloc, unsigned int status_code);
 
-// Returns string version of |status_code|.  This function can handle
-// only predefined status code.  Otherwise, returns nullptr.
-StringRef stringify_status(unsigned int status_code);
+// Returns string version of |status_code|. (e.g., "404")
+StringRef stringify_status(BlockAllocator &balloc, unsigned int status_code);
 
 void capitalize(DefaultMemchunks *buf, const StringRef &s);
 

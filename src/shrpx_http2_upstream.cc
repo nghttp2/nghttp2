@@ -1241,10 +1241,7 @@ int Http2Upstream::send_reply(Downstream *downstream, const uint8_t *body,
   // 2 for :status and server
   nva.reserve(2 + headers.size() + httpconf.add_response_headers.size());
 
-  auto response_status = http2::stringify_status(resp.http_status);
-  if (response_status.empty()) {
-    response_status = util::make_string_ref_uint(balloc, resp.http_status);
-  }
+  auto response_status = http2::stringify_status(balloc, resp.http_status);
 
   nva.push_back(http2::make_nv_ls_nocopy(":status", response_status));
 
@@ -1297,7 +1294,7 @@ int Http2Upstream::error_reply(Downstream *downstream,
 
   auto &balloc = downstream->get_block_allocator();
 
-  auto html = http::create_error_html(status_code);
+  auto html = http::create_error_html(balloc, status_code);
   resp.http_status = status_code;
   auto body = downstream->get_response_buf();
   body->append(html);
@@ -1310,11 +1307,7 @@ int Http2Upstream::error_reply(Downstream *downstream,
   auto lgconf = log_config();
   lgconf->update_tstamp(std::chrono::system_clock::now());
 
-  auto response_status = http2::stringify_status(status_code);
-  if (response_status.empty()) {
-    response_status = util::make_string_ref_uint(balloc, status_code);
-  }
-
+  auto response_status = http2::stringify_status(balloc, status_code);
   auto content_length = util::make_string_ref_uint(balloc, html.size());
   auto date = make_string_ref(balloc, StringRef{lgconf->time_http_str});
 
@@ -1405,10 +1398,7 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
   nva.reserve(resp.fs.headers().size() + 4 +
               httpconf.add_response_headers.size());
 
-  auto response_status = http2::stringify_status(resp.http_status);
-  if (response_status.empty()) {
-    response_status = util::make_string_ref_uint(balloc, resp.http_status);
-  }
+  auto response_status = http2::stringify_status(balloc, resp.http_status);
 
   nva.push_back(http2::make_nv_ls_nocopy(":status", response_status));
 

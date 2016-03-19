@@ -38,7 +38,7 @@ namespace shrpx {
 
 namespace http {
 
-std::string create_error_html(unsigned int status_code);
+StringRef create_error_html(BlockAllocator &balloc, unsigned int status_code);
 
 template <typename OutputIt>
 OutputIt create_via_header_value(OutputIt dst, int major, int minor) {

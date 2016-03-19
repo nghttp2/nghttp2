@@ -35,19 +35,33 @@ namespace shrpx {
 
 namespace http {
 
-std::string create_error_html(unsigned int status_code) {
-  std::string res;
-  res.reserve(512);
-  auto status = http2::get_status_string(status_code);
-  res += R"(<!DOCTYPE html><html lang="en"><title>)";
-  res += status;
-  res += "</title><body><h1>";
-  res += status;
-  res += "</h1><footer>";
-  const auto &server_name = get_config()->http.server_name;
-  res.append(server_name.c_str(), server_name.size());
-  res += "</footer></body></html>";
-  return res;
+StringRef create_error_html(BlockAllocator &balloc, unsigned int http_status) {
+  auto &httpconf = get_config()->http;
+
+  const auto &error_pages = httpconf.error_pages;
+  for (const auto &page : error_pages) {
+    if (page.http_status == http_status) {
+      return StringRef{std::begin(page.content), std::end(page.content)};
+    }
+  }
+
+  auto status_string = http2::get_status_string(balloc, http_status);
+  const auto &server_name = httpconf.server_name;
+
+  size_t len = 256 + server_name.size() + status_string.size() * 2;
+
+  auto iov = make_byte_ref(balloc, len + 1);
+  auto p = iov.base;
+
+  p = util::copy_lit(p, R"(<!DOCTYPE html><html lang="en"><title>)");
+  p = std::copy(std::begin(status_string), std::end(status_string), p);
+  p = util::copy_lit(p, "</title><body><h1>");
+  p = std::copy(std::begin(status_string), std::end(status_string), p);
+  p = util::copy_lit(p, "</h1><footer>");
+  p = std::copy(std::begin(server_name), std::end(server_name), p);
+  p = util::copy_lit(p, "</footer></body></html>");
+  *p = '\0';
+  return StringRef{iov.base, p};
 }
 
 StringRef create_forwarded(BlockAllocator &balloc, int params,

@@ -810,6 +810,7 @@ int HttpsUpstream::send_reply(Downstream *downstream, const uint8_t *body,
                               size_t bodylen) {
   const auto &req = downstream->request();
   auto &resp = downstream->response();
+  auto &balloc = downstream->get_block_allocator();
 
   auto connection_close = false;
   if (req.http_major <= 0 || (req.http_major == 1 && req.http_minor == 0)) {
@@ -829,7 +830,7 @@ int HttpsUpstream::send_reply(Downstream *downstream, const uint8_t *body,
   auto output = downstream->get_response_buf();
 
   output->append("HTTP/1.1 ");
-  output->append(http2::get_status_string(resp.http_status));
+  output->append(http2::get_status_string(balloc, resp.http_status));
   output->append("\r\n");
 
   for (auto &kv : resp.fs.headers()) {
@@ -868,7 +869,6 @@ int HttpsUpstream::send_reply(Downstream *downstream, const uint8_t *body,
 }
 
 void HttpsUpstream::error_reply(unsigned int status_code) {
-  auto html = http::create_error_html(status_code);
   auto downstream = get_downstream();
 
   if (!downstream) {
@@ -877,6 +877,9 @@ void HttpsUpstream::error_reply(unsigned int status_code) {
   }
 
   auto &resp = downstream->response();
+  auto &balloc = downstream->get_block_allocator();
+
+  auto html = http::create_error_html(balloc, status_code);
 
   resp.http_status = status_code;
   // we are going to close connection for both frontend and backend in
@@ -887,7 +890,7 @@ void HttpsUpstream::error_reply(unsigned int status_code) {
   auto output = downstream->get_response_buf();
 
   output->append("HTTP/1.1 ");
-  auto status_str = http2::get_status_string(status_code);
+  auto status_str = http2::get_status_string(balloc, status_code);
   output->append(status_str);
   output->append("\r\nServer: ");
   output->append(get_config()->http.server_name);
@@ -948,6 +951,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
 
   const auto &req = downstream->request();
   auto &resp = downstream->response();
+  auto &balloc = downstream->get_block_allocator();
 
 #ifdef HAVE_MRUBY
   if (!downstream->get_non_final_response()) {
@@ -974,7 +978,7 @@ int HttpsUpstream::on_downstream_header_complete(Downstream *downstream) {
   buf->append(".");
   buf->append(util::utos(req.http_minor));
   buf->append(" ");
-  buf->append(http2::get_status_string(resp.http_status));
+  buf->append(http2::get_status_string(balloc, resp.http_status));
   buf->append("\r\n");
 
   auto &httpconf = get_config()->http;

@@ -127,7 +127,8 @@ OPTIONS = [
     "backend-http2-max-concurrent-streams",
     "backend-connections-per-frontend",
     "backend-tls",
-    "backend-connections-per-host"
+    "backend-connections-per-host",
+    "error-page",
 ]
 
 LOGVARS = [

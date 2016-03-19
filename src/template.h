@@ -419,7 +419,8 @@ public:
       : base(reinterpret_cast<const char *>(s)), len(n) {}
   template <typename InputIt>
   StringRef(InputIt first, InputIt last)
-      : base(&*first), len(std::distance(first, last)) {}
+      : base(reinterpret_cast<const char *>(&*first)),
+        len(std::distance(first, last)) {}
   template <typename InputIt>
   StringRef(InputIt *first, InputIt *last)
       : base(reinterpret_cast<const char *>(first)),

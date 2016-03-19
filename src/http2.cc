@@ -30,111 +30,111 @@ namespace nghttp2 {
 
 namespace http2 {
 
-std::string get_status_string(unsigned int status_code) {
+StringRef get_status_string(BlockAllocator &balloc, unsigned int status_code) {
   switch (status_code) {
   case 100:
-    return "100 Continue";
+    return StringRef::from_lit("100 Continue");
   case 101:
-    return "101 Switching Protocols";
+    return StringRef::from_lit("101 Switching Protocols");
   case 200:
-    return "200 OK";
+    return StringRef::from_lit("200 OK");
   case 201:
-    return "201 Created";
+    return StringRef::from_lit("201 Created");
   case 202:
-    return "202 Accepted";
+    return StringRef::from_lit("202 Accepted");
   case 203:
-    return "203 Non-Authoritative Information";
+    return StringRef::from_lit("203 Non-Authoritative Information");
   case 204:
-    return "204 No Content";
+    return StringRef::from_lit("204 No Content");
   case 205:
-    return "205 Reset Content";
+    return StringRef::from_lit("205 Reset Content");
   case 206:
-    return "206 Partial Content";
+    return StringRef::from_lit("206 Partial Content");
   case 300:
-    return "300 Multiple Choices";
+    return StringRef::from_lit("300 Multiple Choices");
   case 301:
-    return "301 Moved Permanently";
+    return StringRef::from_lit("301 Moved Permanently");
   case 302:
-    return "302 Found";
+    return StringRef::from_lit("302 Found");
   case 303:
-    return "303 See Other";
+    return StringRef::from_lit("303 See Other");
   case 304:
-    return "304 Not Modified";
+    return StringRef::from_lit("304 Not Modified");
   case 305:
-    return "305 Use Proxy";
-  // case 306: return "306 (Unused)";
+    return StringRef::from_lit("305 Use Proxy");
+  // case 306: return StringRef::from_lit("306 (Unused)");
   case 307:
-    return "307 Temporary Redirect";
+    return StringRef::from_lit("307 Temporary Redirect");
   case 308:
-    return "308 Permanent Redirect";
+    return StringRef::from_lit("308 Permanent Redirect");
   case 400:
-    return "400 Bad Request";
+    return StringRef::from_lit("400 Bad Request");
   case 401:
-    return "401 Unauthorized";
+    return StringRef::from_lit("401 Unauthorized");
   case 402:
-    return "402 Payment Required";
+    return StringRef::from_lit("402 Payment Required");
   case 403:
-    return "403 Forbidden";
+    return StringRef::from_lit("403 Forbidden");
   case 404:
-    return "404 Not Found";
+    return StringRef::from_lit("404 Not Found");
   case 405:
-    return "405 Method Not Allowed";
+    return StringRef::from_lit("405 Method Not Allowed");
   case 406:
-    return "406 Not Acceptable";
+    return StringRef::from_lit("406 Not Acceptable");
   case 407:
-    return "407 Proxy Authentication Required";
+    return StringRef::from_lit("407 Proxy Authentication Required");
   case 408:
-    return "408 Request Timeout";
+    return StringRef::from_lit("408 Request Timeout");
   case 409:
-    return "409 Conflict";
+    return StringRef::from_lit("409 Conflict");
   case 410:
-    return "410 Gone";
+    return StringRef::from_lit("410 Gone");
   case 411:
-    return "411 Length Required";
+    return StringRef::from_lit("411 Length Required");
   case 412:
-    return "412 Precondition Failed";
+    return StringRef::from_lit("412 Precondition Failed");
   case 413:
-    return "413 Payload Too Large";
+    return StringRef::from_lit("413 Payload Too Large");
   case 414:
-    return "414 URI Too Long";
+    return StringRef::from_lit("414 URI Too Long");
   case 415:
-    return "415 Unsupported Media Type";
+    return StringRef::from_lit("415 Unsupported Media Type");
   case 416:
-    return "416 Requested Range Not Satisfiable";
+    return StringRef::from_lit("416 Requested Range Not Satisfiable");
   case 417:
-    return "417 Expectation Failed";
+    return StringRef::from_lit("417 Expectation Failed");
   case 421:
-    return "421 Misdirected Request";
+    return StringRef::from_lit("421 Misdirected Request");
   case 426:
-    return "426 Upgrade Required";
+    return StringRef::from_lit("426 Upgrade Required");
   case 428:
-    return "428 Precondition Required";
+    return StringRef::from_lit("428 Precondition Required");
   case 429:
-    return "429 Too Many Requests";
+    return StringRef::from_lit("429 Too Many Requests");
   case 431:
-    return "431 Request Header Fields Too Large";
+    return StringRef::from_lit("431 Request Header Fields Too Large");
   case 451:
-    return "451 Unavailable For Legal Reasons";
+    return StringRef::from_lit("451 Unavailable For Legal Reasons");
   case 500:
-    return "500 Internal Server Error";
+    return StringRef::from_lit("500 Internal Server Error");
   case 501:
-    return "501 Not Implemented";
+    return StringRef::from_lit("501 Not Implemented");
   case 502:
-    return "502 Bad Gateway";
+    return StringRef::from_lit("502 Bad Gateway");
   case 503:
-    return "503 Service Unavailable";
+    return StringRef::from_lit("503 Service Unavailable");
   case 504:
-    return "504 Gateway Timeout";
+    return StringRef::from_lit("504 Gateway Timeout");
   case 505:
-    return "505 HTTP Version Not Supported";
+    return StringRef::from_lit("505 HTTP Version Not Supported");
   case 511:
-    return "511 Network Authentication Required";
+    return StringRef::from_lit("511 Network Authentication Required");
   default:
-    return util::utos(status_code);
+    return util::make_string_ref_uint(balloc, status_code);
   }
 }
 
-StringRef stringify_status(unsigned int status_code) {
+StringRef stringify_status(BlockAllocator &balloc, unsigned int status_code) {
   switch (status_code) {
   case 100:
     return StringRef::from_lit("100");
@@ -234,7 +234,7 @@ StringRef stringify_status(unsigned int status_code) {
   case 511:
     return StringRef::from_lit("511");
   default:
-    return StringRef{};
+    return util::make_string_ref_uint(balloc, status_code);
   }
 }
 

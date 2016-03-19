@@ -1843,6 +1843,12 @@ HTTP:
               towards this number.
               Default: )" << get_config()->http.max_response_header_fields
       << R"(
+  --error-page=<CODE>=<PATH>
+              Set file path  to custom error page  served when nghttpx
+              originally  generates  HTTP  error status  code  <CODE>.
+              <CODE> must be greater than or equal to 400, and at most
+              599.  If  error status  code comes from  backend server,
+              the custom error pages are not used.
 
 Debug:
   --frontend-http2-dump-request-header=<PATH>
@@ -2464,6 +2470,7 @@ int main(int argc, char **argv) {
          119},
         {SHRPX_OPT_BACKEND_TLS, no_argument, &flag, 120},
         {SHRPX_OPT_BACKEND_CONNECTIONS_PER_HOST, required_argument, &flag, 121},
+        {SHRPX_OPT_ERROR_PAGE, required_argument, &flag, 122},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -2981,6 +2988,10 @@ int main(int argc, char **argv) {
       case 121:
         // --backend-connections-per-host
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_CONNECTIONS_PER_HOST, optarg);
+        break;
+      case 122:
+        // --error-page
+        cmdcfgs.emplace_back(SHRPX_OPT_ERROR_PAGE, optarg);
         break;
       default:
         break;
