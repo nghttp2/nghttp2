@@ -1,3 +1,7 @@
+env:
+  matrix:
+    - CI_BUILD=cmake
+    - CI_BUILD=autotools
 language: cpp
 compiler:
   - clang
@@ -7,6 +11,7 @@ addons:
   apt:
     sources:
     - ubuntu-toolchain-r-test
+    - george-edison55-precise-backports
     packages:
     - g++-4.9
     - libstdc++-4.9-dev
@@ -23,11 +28,14 @@ addons:
     - libevent-dev
     - libjansson-dev
     - libjemalloc-dev
+    - cmake
+    - cmake-data
 before_install:
   - $CC --version
   - if [ "$CXX" = "g++" ]; then export CXX="g++-4.9" CC="gcc-4.9"; fi
   - $CC --version
   - go version
+  - cmake --version
 before_script:
   # First build spdylay, since integration tests require it.
   # spdylay is going to be built under third-party/spdylay
@@ -40,9 +48,10 @@ before_script:
   - export SPDYLAY_HOME=$PWD
   - cd ../..
   # Now build nghttp2
-  - autoreconf -i
+  - if [ "$CI_BUILD" = "autotools" ]; then autoreconf -i; fi
   - git submodule update --init
-  - ./configure --enable-werror --with-mruby --with-neverbleed LIBSPDYLAY_CFLAGS="-I$SPDYLAY_HOME/lib/includes" LIBSPDYLAY_LIBS="-L$SPDYLAY_HOME/lib/.libs -lspdylay"
+  - if [ "$CI_BUILD" = "autotools" ]; then ./configure --enable-werror --with-mruby --with-neverbleed LIBSPDYLAY_CFLAGS="-I$SPDYLAY_HOME/lib/includes" LIBSPDYLAY_LIBS="-L$SPDYLAY_HOME/lib/.libs -lspdylay"; fi
+  - if [ "$CI_BUILD" = "cmake" ]; then cmake -DENABLE_WERROR=1 -DWITH_MRUBY=1 -DWITH_NEVERBLEED=1 -DSPDYLAY_INCLUDE_DIR="$SPDYLAY_HOME/lib/includes" -DSPDYLAY_LIBRARY="$SPDYLAY_HOME/lib/.libs/libspdylay.so"; fi
 script:
   - make
   - make check
