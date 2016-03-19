@@ -21,6 +21,8 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+EXTRA_DIST = CMakeLists.txt
+
 if ENABLE_ASIO_LIB
 nobase_include_HEADERS = nghttp2/asio_http2.h nghttp2/asio_http2_client.h \
 	nghttp2/asio_http2_server.h

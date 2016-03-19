@@ -23,7 +23,11 @@
 
 configfiles = nghttpx-init nghttpx.service nghttpx-upstart.conf
 
-EXTRA_DIST = $(configfiles:%=%.in) nghttpx-logrotate tlsticketupdate.go
+EXTRA_DIST = \
+	CMakeLists.txt \
+	$(configfiles:%=%.in) \
+	nghttpx-logrotate \
+	tlsticketupdate.go
 
 edit = sed -e 's|@bindir[@]|$(bindir)|g'
 
