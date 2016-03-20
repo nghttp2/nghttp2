@@ -65,8 +65,14 @@ Connections
 
     Patterns with  host take  precedence over  patterns with
     just path.   Then, longer patterns take  precedence over
-    shorter  ones,  breaking  a  tie by  the  order  of  the
-    appearance in the configuration.
+    shorter ones.
+
+    Host  can  include "\*"  in  the  left most  position  to
+    indicate  wildcard match  (only suffix  match is  done).
+    For  example,  host pattern  "\*www.nghttp2.org"  matches
+    against  "www.nghttp2.org"  and  "1www.ngttp2.org",  but
+    does not  match against "nghttp2.org".  The  exact hosts
+    match takes precedence over the wildcard hosts match.
 
     If <PATTERN> is omitted or  empty string, "*/*" is used as
     pattern,  which  matches  all request  paths  (catch-all
@@ -912,6 +918,15 @@ HTTP
     towards this number.
 
     Default: ``500``
+
+.. option:: --error-page=(<CODE>|*)=<PATH>
+
+    Set file path  to custom error page  served when nghttpx
+    originally  generates  HTTP  error status  code  <CODE>.
+    <CODE> must be greater than or equal to 400, and at most
+    599.  If "*"  is used instead of <CODE>,  it matches all
+    HTTP  status  code.  If  error  status  code comes  from
+    backend server, the custom error pages are not used.
 
 
 Debug
