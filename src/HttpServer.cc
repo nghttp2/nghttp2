@@ -1187,17 +1187,10 @@ void prepare_redirect_response(Stream *stream, Http2Handler *hd,
     authority = stream->header.host;
   }
 
-  size_t len = scheme.size() + str_size("://") + authority.size() + path.size();
-  auto iov = make_byte_ref(stream->balloc, len + 1);
-  auto p = iov.base;
-  p = std::copy(std::begin(scheme), std::end(scheme), p);
-  p = util::copy_lit(p, "://");
-  p = std::copy(std::begin(authority), std::end(authority), p);
-  p = std::copy(std::begin(path), std::end(path), p);
-  *p = '\0';
+  auto location = concat_string_ref(
+      stream->balloc, scheme, StringRef::from_lit("://"), authority, path);
 
-  auto headers =
-      HeaderRefs{{StringRef::from_lit("location"), StringRef{iov.base, p}}};
+  auto headers = HeaderRefs{{StringRef::from_lit("location"), location}};
 
   auto sessions = hd->get_sessions();
   auto status_page = sessions->get_server()->get_status_page(status);

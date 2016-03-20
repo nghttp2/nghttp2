@@ -120,31 +120,43 @@ StringRef make_string_ref(BlockAllocator &alloc, const StringRef &src) {
   return StringRef{dst, src.size()};
 }
 
-// Returns the string which is the concatenation of |a| and |b| in
-// this order.  The resulting string will be NULL-terminated.
-template <typename BlockAllocator>
-StringRef concat_string_ref(BlockAllocator &alloc, const StringRef &a,
-                            const StringRef &b) {
-  auto len = a.size() + b.size();
-  auto dst = static_cast<uint8_t *>(alloc.alloc(len + 1));
-  auto p = dst;
-  p = std::copy(std::begin(a), std::end(a), p);
-  p = std::copy(std::begin(b), std::end(b), p);
-  *p = '\0';
-  return StringRef{dst, len};
+// private function used in concat_string_ref.  this is the base
+// function of concat_string_ref_count().
+inline size_t concat_string_ref_count(size_t acc) { return acc; }
+
+// private function used in concat_string_ref.  This function counts
+// the sum of length of given arguments.  The calculated length is
+// accumulated, and passed to the next function.
+template <typename... Args>
+size_t concat_string_ref_count(size_t acc, const StringRef &value,
+                               Args &&... args) {
+  return concat_string_ref_count(acc + value.size(),
+                                 std::forward<Args>(args)...);
 }
 
-// Returns the string which is the concatenation of |a|, |b| and |c|
-// in this order.  The resulting string will be NULL-terminated.
-template <typename BlockAllocator>
-StringRef concat_string_ref(BlockAllocator &alloc, const StringRef &a,
-                            const StringRef &b, const StringRef &c) {
-  auto len = a.size() + b.size() + c.size();
+// private function used in concat_string_ref.  this is the base
+// function of concat_string_ref_copy().
+inline uint8_t *concat_string_ref_copy(uint8_t *p) { return p; }
+
+// private function used in concat_string_ref.  This function copies
+// given strings into |p|.  |p| is incremented by the copied length,
+// and returned.  In the end, return value points to the location one
+// beyond the last byte written.
+template <typename... Args>
+uint8_t *concat_string_ref_copy(uint8_t *p, const StringRef &value,
+                                Args &&... args) {
+  p = std::copy(std::begin(value), std::end(value), p);
+  return concat_string_ref_copy(p, std::forward<Args>(args)...);
+}
+
+// Returns the string which is the concatenation of |args| in the
+// given order.  The resulting string will be NULL-terminated.
+template <typename BlockAllocator, typename... Args>
+StringRef concat_string_ref(BlockAllocator &alloc, Args &&... args) {
+  size_t len = concat_string_ref_count(0, std::forward<Args>(args)...);
   auto dst = static_cast<uint8_t *>(alloc.alloc(len + 1));
   auto p = dst;
-  p = std::copy(std::begin(a), std::end(a), p);
-  p = std::copy(std::begin(b), std::end(b), p);
-  p = std::copy(std::begin(c), std::end(c), p);
+  p = concat_string_ref_copy(p, std::forward<Args>(args)...);
   *p = '\0';
   return StringRef{dst, len};
 }

@@ -437,11 +437,11 @@ public:
     return StringRef(s);
   }
 
-  const_iterator begin() const { return base; };
-  const_iterator cbegin() const { return base; };
+  constexpr const_iterator begin() const { return base; };
+  constexpr const_iterator cbegin() const { return base; };
 
-  const_iterator end() const { return base + len; };
-  const_iterator cend() const { return base + len; };
+  constexpr const_iterator end() const { return base + len; };
+  constexpr const_iterator cend() const { return base + len; };
 
   const_reverse_iterator rbegin() const {
     return const_reverse_iterator{base + len};
@@ -453,10 +453,12 @@ public:
   const_reverse_iterator rend() const { return const_reverse_iterator{base}; }
   const_reverse_iterator crend() const { return const_reverse_iterator{base}; }
 
-  const char *c_str() const { return base; }
-  size_type size() const { return len; }
-  bool empty() const { return len == 0; }
-  const_reference operator[](size_type pos) const { return *(base + pos); }
+  constexpr const char *c_str() const { return base; }
+  constexpr size_type size() const { return len; }
+  constexpr bool empty() const { return len == 0; }
+  constexpr const_reference operator[](size_type pos) const {
+    return *(base + pos);
+  }
 
   std::string str() const { return std::string(base, len); }
   const uint8_t *byte() const {

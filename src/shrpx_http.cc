@@ -48,20 +48,11 @@ StringRef create_error_html(BlockAllocator &balloc, unsigned int http_status) {
   auto status_string = http2::get_status_string(balloc, http_status);
   const auto &server_name = httpconf.server_name;
 
-  size_t len = 256 + server_name.size() + status_string.size() * 2;
-
-  auto iov = make_byte_ref(balloc, len + 1);
-  auto p = iov.base;
-
-  p = util::copy_lit(p, R"(<!DOCTYPE html><html lang="en"><title>)");
-  p = std::copy(std::begin(status_string), std::end(status_string), p);
-  p = util::copy_lit(p, "</title><body><h1>");
-  p = std::copy(std::begin(status_string), std::end(status_string), p);
-  p = util::copy_lit(p, "</h1><footer>");
-  p = std::copy(std::begin(server_name), std::end(server_name), p);
-  p = util::copy_lit(p, "</footer></body></html>");
-  *p = '\0';
-  return StringRef{iov.base, p};
+  return concat_string_ref(
+      balloc, StringRef::from_lit(R"(<!DOCTYPE html><html lang="en"><title>)"),
+      status_string, StringRef::from_lit("</title><body><h1>"), status_string,
+      StringRef::from_lit("</h1><footer>"), server_name,
+      StringRef::from_lit("</footer></body></html>"));
 }
 
 StringRef create_forwarded(BlockAllocator &balloc, int params,

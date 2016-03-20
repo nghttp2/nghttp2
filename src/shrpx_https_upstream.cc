@@ -264,14 +264,8 @@ void rewrite_request_host_path_from_uri(BlockAllocator &balloc, Request &req,
       auto q = util::get_uri_field(uri.c_str(), u, UF_QUERY);
       path = StringRef{std::begin(path), std::end(q)};
     } else {
-      auto iov = make_byte_ref(balloc, path.size() + 1 + fdata.len + 1);
-      auto p = iov.base;
-
-      p = std::copy(std::begin(path), std::end(path), p);
-      *p++ = '?';
-      p = std::copy_n(&uri[fdata.off], fdata.len, p);
-      *p = '\0';
-      path = StringRef{iov.base, p};
+      path = concat_string_ref(balloc, path, StringRef::from_lit("?"),
+                               StringRef{&uri[fdata.off], fdata.len});
     }
   }
 
