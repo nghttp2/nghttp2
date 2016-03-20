@@ -269,7 +269,7 @@ time:
 
 We can use ``*`` in the left most position of host to achieve wildcard
 suffix match.  If ``*`` is the left most character, then the remaining
-string should match to the request host suffix.  For example,
+string should match the request host suffix.  For example,
 ``*.example.com`` matches ``www.example.com`` and ``dev.example.com``,
 and does not match ``example.com`` and ``nghttp2.org``.  The exact
 match (without ``*``) always takes precedence over wildcard match.
