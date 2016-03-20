@@ -261,7 +261,18 @@ server ``[::1]:8080``, you can write like so:
    backend=::1,8080;/foo
 
 Of course, you can specify both host and request path at the same
-time.
+time:
+
+.. code-block:: text
+
+   backend=192.168.0.10,8080;example.com/foo
+
+We can use ``*`` in the left most position of host to achieve wildcard
+suffix match.  If ``*`` is the left most character, then the remaining
+string should match to the request host suffix.  For example,
+``*.example.com`` matches ``www.example.com`` and ``dev.example.com``,
+and does not match ``example.com`` and ``nghttp2.org``.  The exact
+match (without ``*``) always takes precedence over wildcard match.
 
 One important thing you have to remember is that we have to specify
 default routing pattern for so called "catch all" pattern.  To write
