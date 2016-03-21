@@ -257,12 +257,6 @@ void exec_binary(SignalServer *ssv) {
   shrpx_signal_unset_master_proc_ign_handler();
 
   rv = shrpx_signal_unblock_all();
-
-  if (setsid() == -1) {
-    auto error = errno;
-    LOG(ERROR) << "setsid() failed: " << strerror(error);
-  }
-
   if (rv != 0) {
     auto error = errno;
     LOG(ERROR) << "Unblocking all signals failed: " << strerror(error);
