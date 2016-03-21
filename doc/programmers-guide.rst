@@ -176,3 +176,210 @@ header field if it is present (this does not include padding bytes).
 Any deviation results in stream error of type PROTOCOL_ERROR.  If
 error is found in PUSH_PROMISE frame, stream error is raised against
 promised stream.
+
+Implement HTTP/2 non-critical extensions
+----------------------------------------
+
+As of nghttp2 v1.8.0, we have added HTTP/2 non-critical extension
+framework, which lets application send and receive HTTP/2 non-critical
+extension frames.
+
+To send extension frame, use `nghttp2_submit_extension()`, and
+implement :type:`nghttp2_pack_extension_callback`.  The callback
+implements how to encode data into wire format.  The callback must be
+set to :type:`nghttp2_session_callbacks` using
+`nghttp2_session_callbacks_set_pack_extension_callback()`.
+
+For example, we will illustrate how to send `ALTSVC
+<https://tools.ietf.org/html/draft-ietf-httpbis-alt-svc-14>`_ frame.
+
+.. code-block:: c
+
+    typedef struct {
+      const char *origin;
+      const char *field;
+    } alt_svc;
+
+    ssize_t pack_extension_callback(nghttp2_session *session, uint8_t *buf,
+                                    size_t len, const nghttp2_frame *frame,
+                                    void *user_data) {
+      const alt_svc *altsvc = (const alt_svc *)frame->ext.payload;
+      size_t originlen = strlen(altsvc->origin);
+      size_t fieldlen = strlen(altsvc->field);
+
+      uint8_t *p;
+
+      if (len < 2 + originlen + fieldlen || originlen > 0xffff) {
+        return NGHTTP2_ERR_CANCEL;
+      }
+
+      p = buf;
+      *p++ = originlen >> 8;
+      *p++ = originlen & 0xff;
+      memcpy(p, altsvc->origin, originlen);
+      p += originlen;
+      memcpy(p, altsvc->field, fieldlen);
+      p += fieldlen;
+
+      return p - buf;
+    }
+
+This implements :type:`nghttp2_pack_extension_callback`.  We have to
+set this callback to :type:`nghttp2_session_callbacks`:
+
+.. code-block:: c
+
+    nghttp2_session_callbacks_set_pack_extension_callback(
+        callbacks, pack_extension_callback);
+
+To send ALTSVC frame, call `nghttp2_submit_extension()`:
+
+.. code-block:: c
+
+  static const alt_svc altsvc = {"example.com", "h2=\":8000\""};
+
+  nghttp2_submit_extension(session, 0xa, NGHTTP2_FLAG_NONE, 0,
+                           (void *)&altsvc);
+
+Notice that ALTSVC is use frame type ``0xa``.
+
+To receive extension frames, implement 2 callbacks:
+:type:`nghttp2_unpack_extension_callback` and
+:type:`nghttp2_on_extension_chunk_recv_callback`.
+:type:`nghttp2_unpack_extension_callback` implements the way how to
+decode wire format.  :type:`nghttp2_on_extension_chunk_recv_callback`
+implements how to buffer the incoming extension payload.  These
+callbacks must be set using
+`nghttp2_session_callbacks_set_unpack_extension_callback()` and
+`nghttp2_session_callbacks_set_on_extension_chunk_recv_callback()`
+respectively.  The application also must tell the library which
+extension frame type it is willing to receive using
+`nghttp2_option_set_user_recv_extension_type()`.  Note that the
+application has to create :type:`nghttp2_option` object for that
+purpose, and initialize session with it.
+
+We use ALTSVC again to illustrate how to receive extension frames.  We
+use different ``alt_svc`` struct than the previous one.
+
+First implement 2 callbacks.  We store incoming ALTSVC payload to
+global variable ``altsvc_buffer``.  Don't do this in production code
+since this is not thread safe:
+
+.. code-block:: c
+
+    typedef struct {
+      const uint8_t *origin;
+      size_t originlen;
+      const uint8_t *field;
+      size_t fieldlen;
+    } alt_svc;
+
+    /* buffers incoming ALTSVC payload */
+    uint8_t altsvc_buffer[4096];
+    /* The length of byte written to altsvc_buffer */
+    size_t altsvc_bufferlen = 0;
+
+    int on_extension_chunk_recv_callback(nghttp2_session *session,
+                                         const nghttp2_frame_hd *hd,
+                                         const uint8_t *data, size_t len,
+                                         void *user_data) {
+      if (sizeof(altsvc_buffer) < altsvc_bufferlen + len) {
+        altsvc_bufferlen = 0;
+        return NGHTTP2_ERR_CANCEL;
+      }
+
+      memcpy(altsvc_buffer + altsvc_bufferlen, data, len);
+      altsvc_bufferlen += len;
+
+      return 0;
+    }
+
+    int unpack_extension_callback(nghttp2_session *session, void **payload,
+                                  const nghttp2_frame_hd *hd, void *user_data) {
+      uint8_t *origin, *field;
+      size_t originlen, fieldlen;
+      uint8_t *p, *end;
+      alt_svc *altsvc;
+
+      if (altsvc_bufferlen < 2) {
+        altsvc_bufferlen = 0;
+        return NGHTTP2_ERR_CANCEL;
+      }
+
+      p = altsvc_buffer;
+      end = altsvc_buffer + altsvc_bufferlen;
+
+      originlen = ((*p) << 8) + *(p + 1);
+      p += 2;
+
+      if (p + originlen > end) {
+        altsvc_bufferlen = 0;
+        return NGHTTP2_ERR_CANCEL;
+      }
+
+      origin = p;
+      field = p + originlen;
+      fieldlen = end - field;
+
+      altsvc = (alt_svc *)malloc(sizeof(alt_svc));
+      altsvc->origin = origin;
+      altsvc->originlen = originlen;
+      altsvc->field = field;
+      altsvc->fieldlen = fieldlen;
+
+      *payload = altsvc;
+
+      altsvc_bufferlen = 0;
+
+      return 0;
+    }
+
+Set these callbacks to :type:`nghttp2_session_callbacks`:
+
+.. code-block:: c
+
+    nghttp2_session_callbacks_set_on_extension_chunk_recv_callback(
+        callbacks, on_extension_chunk_recv_callback);
+
+    nghttp2_session_callbacks_set_unpack_extension_callback(
+        callbacks, unpack_extension_callback);
+
+
+In ``unpack_extension_callback`` above, we set unpacked ``alt_svc``
+object to ``*payload``.  nghttp2 library then, calls
+:type:`nghttp2_on_frame_recv_callback`, and ``*payload`` will be
+available as ``frame->ext.payload``:
+
+.. code-block:: c
+
+    int on_frame_recv_callback(nghttp2_session *session,
+                               const nghttp2_frame *frame, void *user_data) {
+
+      switch (frame->hd.type) {
+      ...
+      case 0xa: {
+        alt_svc *altsvc = (alt_svc *)frame->ext.payload;
+        fprintf(stderr, "ALTSVC frame received\n");
+        fprintf(stderr, " origin: %.*s\n", (int)altsvc->originlen, altsvc->origin);
+        fprintf(stderr, " field : %.*s\n", (int)altsvc->fieldlen, altsvc->field);
+        free(altsvc);
+        break;
+      }
+      }
+
+      return 0;
+    }
+
+Finally, application should set the extension frame types it is
+willing to receive:
+
+.. code-block:: c
+
+    nghttp2_option_set_user_recv_extension_type(option, 0xa);
+
+The :type:`nghttp2_option` must be set to :type:`nghttp2_session` on
+its creation:
+
+.. code-block:: c
+
+    nghttp2_session_client_new2(&session, callbacks, user_data, option);
