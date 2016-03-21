@@ -113,7 +113,8 @@ Config::Config()
       no_content_length(false),
       no_dep(false),
       hexdump(false),
-      no_push(false) {
+      no_push(false),
+      expect_continue(false) {
   nghttp2_option_new(&http2_option);
   nghttp2_option_set_peer_max_concurrent_streams(http2_option,
                                                  peer_max_concurrent_streams);
@@ -2505,6 +2506,11 @@ Options:
   --max-concurrent-streams=<N>
               The  number of  concurrent  pushed  streams this  client
               accepts.
+  --expect-continue
+              Perform an Expect/Continue handshake:  wait to send DATA
+              (up to  a short  timeout)  until the server sends  a 100
+              Continue interim response. This option is ignored unless
+              combined with the -d option.
   --version   Display version information and exit.
   -h, --help  Display this help and exit.
 
@@ -2556,6 +2562,7 @@ int main(int argc, char **argv) {
         {"hexdump", no_argument, &flag, 10},
         {"no-push", no_argument, &flag, 11},
         {"max-concurrent-streams", required_argument, &flag, 12},
+        {"expect-continue", no_argument, &flag, 13},
         {nullptr, 0, nullptr, 0}};
     int option_index = 0;
     int c = getopt_long(argc, argv, "M:Oab:c:d:gm:np:r:hH:vst:uw:W:",
@@ -2752,6 +2759,10 @@ int main(int argc, char **argv) {
       case 12:
         // max-concurrent-streams option
         config.max_concurrent_streams = strtoul(optarg, nullptr, 10);
+        break;
+      case 13:
+        // expect-continue option
+        config.expect_continue = true;
         break;
       }
       break;
