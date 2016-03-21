@@ -160,7 +160,8 @@ Request::Request(const std::string &uri, const http_parser_url &u,
       stream_id(-1),
       status(0),
       level(level),
-      expect_final_response(false) {
+      expect_final_response(false),
+      expect_continue(false) {
   http2::init_hdidx(res_hdidx);
   http2::init_hdidx(req_hdidx);
 }
@@ -360,10 +361,19 @@ int submit_request(HttpClient *client, const Headers &headers, Request *req) {
                                  std::string(4_k, '-'));
     }
   }
+
   auto num_initial_headers = build_headers.size();
-  if (!config.no_content_length && req->data_prd) {
-    build_headers.emplace_back("content-length", util::utos(req->data_length));
+
+  if (req->data_prd) {
+    if (!config.no_content_length) {
+      build_headers.emplace_back("content-length", util::utos(req->data_length));
+    }
+    if (config.expect_continue) {
+      req->expect_continue = true;
+      build_headers.emplace_back("expect", "100-continue");
+    }
   }
+
   for (auto &kv : headers) {
     size_t i;
     for (i = 0; i < num_initial_headers; ++i) {
@@ -401,11 +411,21 @@ int submit_request(HttpClient *client, const Headers &headers, Request *req) {
     nva.push_back(http2::make_nv_ls("trailer", trailer_names));
   }
 
-  auto stream_id =
-      nghttp2_submit_request(client->session, &req->pri_spec, nva.data(),
-                             nva.size(), req->data_prd, req);
+  int32_t stream_id;
+
+  if (req->expect_continue) {
+    stream_id = nghttp2_submit_headers(client->session, 0, -1, &req->pri_spec,
+                               nva.data(), nva.size(), req);
+  } else {
+    stream_id =
+        nghttp2_submit_request(client->session, &req->pri_spec, nva.data(),
+                               nva.size(), req->data_prd, req);
+  }
+
   if (stream_id < 0) {
-    std::cerr << "[ERROR] nghttp2_submit_request() returned error: "
+    std::cerr << "[ERROR] nghttp2_submit_"
+              << (req->expect_continue ? "headers" : "request")
+              << "() returned error: "
               << nghttp2_strerror(stream_id) << std::endl;
     return -1;
   }
@@ -1619,6 +1639,18 @@ void check_response_header(nghttp2_session *session, Request *req) {
   }
 
   if (req->status / 100 == 1) {
+    if (req->expect_continue && (req->status == 100)) {
+      int error = nghttp2_submit_data(session, NGHTTP2_FLAG_END_STREAM,
+                                      req->stream_id, req->data_prd);
+      if (error) {
+        std::cerr << "[ERROR] nghttp2_submit_data() returned error: "
+                  << nghttp2_strerror(error) << std::endl;
+        nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, req->stream_id,
+                                  NGHTTP2_INTERNAL_ERROR);
+        return;
+      }
+    }
+
     req->expect_final_response = true;
     req->status = 0;
     req->res_nva.clear();

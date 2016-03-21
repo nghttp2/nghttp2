@@ -157,6 +157,7 @@ struct Request {
   // used for incoming PUSH_PROMISE
   http2::HeaderIndex req_hdidx;
   bool expect_final_response;
+  bool expect_continue;
 };
 
 struct SessionTiming {
