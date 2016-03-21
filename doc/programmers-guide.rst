@@ -57,6 +57,23 @@ doubt, use `nghttp2_session_mem_send()` since it is simpler.  But
 `nghttp2_session_send()` might be easier to use if the output buffer
 an application has is fixed sized.
 
+In general, an application should call `nghttp2_session_mem_send()`
+when it gets input from underlying connection.  Since there is great
+chance to get something pushed into transmission queue while the call
+of `nghttp2_session_mem_send()`, it is recommended to call
+`nghttp2_session_mem_recv()` after `nghttp2_session_mem_send()`.
+
+There is a question when we are safe to close HTTP/2 session without
+waiting for the closure of underlying connection.  We offer 2 API
+calls for this: `nghttp2_session_want_read()` and
+`nghttp2_session_want_write()`.  If they both return 0, application
+can destroy :type:`nghttp2_session`, and then close the underlying
+connection.  But make sure that the buffered output has been
+transmitted to the peer before closing the connection when
+`nghttp2_session_mem_send()` is used, since
+`nghttp2_session_want_write()` does not take into account the
+transmission of the buffered data outside of :type:`nghttp2_session`.
+
 Includes
 --------
 
