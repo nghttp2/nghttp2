@@ -1244,8 +1244,15 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
     return 0;
   }
   case NGHTTP2_GOAWAY:
-    SSLOG(WARN, http2session)
-        << "GOAWAY received; error_code=" << frame->goaway.error_code;
+    if (LOG_ENABLED(INFO)) {
+      auto debug_data = util::ascii_dump(frame->goaway.opaque_data,
+                                         frame->goaway.opaque_data_len);
+
+      SSLOG(INFO, http2session)
+          << "GOAWAY received: last-stream-id=" << frame->goaway.last_stream_id
+          << ", error_code=" << frame->goaway.error_code
+          << ", debug_data=" << debug_data;
+    }
     return 0;
   default:
     return 0;
