@@ -63,6 +63,28 @@ void mcpool_clear_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 } // namespace
 
 namespace {
+bool match_shared_downstream_addr(
+    const std::shared_ptr<SharedDownstreamAddr> &lhs,
+    const std::shared_ptr<SharedDownstreamAddr> &rhs) {
+  if (lhs->addrs.size() != rhs->addrs.size() || lhs->proto != rhs->proto) {
+    return false;
+  }
+
+  for (auto &a : lhs->addrs) {
+    if (std::find_if(std::begin(rhs->addrs), std::end(rhs->addrs),
+                     [&a](const DownstreamAddr &b) {
+                       return a.host == b.host && a.port == b.port &&
+                              a.host_unix == b.host_unix;
+                     }) == std::end(rhs->addrs)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+} // namespace
+
+namespace {
 std::random_device rd;
 } // namespace
 
@@ -103,12 +125,14 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
     auto &dst = downstream_addr_groups_[i];
 
     dst.pattern = src.pattern;
-    dst.addrs.resize(src.addrs.size());
-    dst.proto = src.proto;
+
+    auto shared_addr = std::make_shared<SharedDownstreamAddr>();
+    shared_addr->addrs.resize(src.addrs.size());
+    shared_addr->proto = src.proto;
 
     for (size_t j = 0; j < src.addrs.size(); ++j) {
       auto &src_addr = src.addrs[j];
-      auto &dst_addr = dst.addrs[j];
+      auto &dst_addr = shared_addr->addrs[j];
 
       dst_addr.addr = src_addr.addr;
       dst_addr.host = src_addr.host;
@@ -117,6 +141,21 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
       dst_addr.host_unix = src_addr.host_unix;
 
       dst_addr.connect_blocker = make_unique<ConnectBlocker>(randgen_, loop_);
+    }
+
+    // share the connection if patterns have the same set of backend
+    // addresses.
+    auto end = std::begin(downstream_addr_groups_) + i;
+    auto it = std::find_if(std::begin(downstream_addr_groups_), end,
+                           [&shared_addr](const DownstreamAddrGroup &group) {
+                             return match_shared_downstream_addr(
+                                 group.shared_addr, shared_addr);
+                           });
+
+    if (it == end) {
+      dst.shared_addr = shared_addr;
+    } else {
+      dst.shared_addr = (*it).shared_addr;
     }
   }
 }

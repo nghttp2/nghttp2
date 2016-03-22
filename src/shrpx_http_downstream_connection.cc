@@ -158,8 +158,9 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
       conn_.set_ssl(ssl);
     }
 
-    auto &addrs = group_->addrs;
-    auto &next_downstream = group_->next;
+    auto &shared_addr = group_->shared_addr;
+    auto &addrs = shared_addr->addrs;
+    auto &next_downstream = shared_addr->next;
     auto end = next_downstream;
     for (;;) {
       auto &addr = addrs[next_downstream];
@@ -511,7 +512,8 @@ void idle_readcb(struct ev_loop *loop, ev_io *w, int revents) {
   if (LOG_ENABLED(INFO)) {
     DCLOG(INFO, dconn) << "Idle connection EOF";
   }
-  auto &dconn_pool = dconn->get_downstream_addr_group()->dconn_pool;
+  auto &dconn_pool =
+      dconn->get_downstream_addr_group()->shared_addr->dconn_pool;
   dconn_pool.remove_downstream_connection(dconn);
   // dconn was deleted
 }
@@ -524,7 +526,8 @@ void idle_timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
   if (LOG_ENABLED(INFO)) {
     DCLOG(INFO, dconn) << "Idle connection timeout";
   }
-  auto &dconn_pool = dconn->get_downstream_addr_group()->dconn_pool;
+  auto &dconn_pool =
+      dconn->get_downstream_addr_group()->shared_addr->dconn_pool;
   dconn_pool.remove_downstream_connection(dconn);
   // dconn was deleted
 }

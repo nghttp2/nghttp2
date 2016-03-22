@@ -83,8 +83,7 @@ struct DownstreamAddr {
   TLSSessionCache tls_session_cache;
 };
 
-struct DownstreamAddrGroup {
-  ImmutableString pattern;
+struct SharedDownstreamAddr {
   std::vector<DownstreamAddr> addrs;
   // Application protocol used in this group
   shrpx_proto proto;
@@ -99,6 +98,11 @@ struct DownstreamAddrGroup {
   DownstreamConnectionPool dconn_pool;
   // Next downstream address index in addrs.
   size_t next;
+};
+
+struct DownstreamAddrGroup {
+  ImmutableString pattern;
+  std::shared_ptr<SharedDownstreamAddr> shared_addr;
 };
 
 struct WorkerStat {

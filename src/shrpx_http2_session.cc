@@ -208,7 +208,7 @@ Http2Session::~Http2Session() {
     if (LOG_ENABLED(INFO)) {
       SSLOG(INFO, this) << "Removed from http2_freelist";
     }
-    group_->http2_freelist.remove(this);
+    group_->shared_addr->http2_freelist.remove(this);
   }
 }
 
@@ -280,7 +280,8 @@ int Http2Session::disconnect(bool hard) {
 int Http2Session::initiate_connection() {
   int rv = 0;
 
-  auto &addrs = group_->addrs;
+  auto &shared_addr = group_->shared_addr;
+  auto &addrs = shared_addr->addrs;
   auto worker_blocker = worker_->get_connect_blocker();
 
   if (state_ == DISCONNECTED) {
@@ -292,7 +293,7 @@ int Http2Session::initiate_connection() {
       return -1;
     }
 
-    auto &next_downstream = group_->next;
+    auto &next_downstream = shared_addr->next;
     auto end = next_downstream;
 
     for (;;) {
@@ -643,7 +644,7 @@ void Http2Session::remove_downstream_connection(
     if (LOG_ENABLED(INFO)) {
       SSLOG(INFO, this) << "Append to Http2Session freelist";
     }
-    group_->http2_freelist.append(this);
+    group_->shared_addr->http2_freelist.append(this);
   }
 }
 
@@ -1242,6 +1243,10 @@ int on_frame_recv_callback(nghttp2_session *session, const nghttp2_frame *frame,
 
     return 0;
   }
+  case NGHTTP2_GOAWAY:
+    SSLOG(WARN, http2session)
+        << "GOAWAY received; error_code=" << frame->goaway.error_code;
+    return 0;
   default:
     return 0;
   }
@@ -2056,9 +2061,11 @@ int Http2Session::handle_downstream_push_promise_complete(
 size_t Http2Session::get_num_dconns() const { return dconns_.size(); }
 
 bool Http2Session::in_freelist() const {
+  auto &shared_addr = group_->shared_addr;
+  auto &http2_freelist = shared_addr->http2_freelist;
+
   return dlnext != nullptr || dlprev != nullptr ||
-         group_->http2_freelist.head == this ||
-         group_->http2_freelist.tail == this;
+         http2_freelist.head == this || http2_freelist.tail == this;
 }
 
 bool Http2Session::max_concurrency_reached(size_t extra) const {

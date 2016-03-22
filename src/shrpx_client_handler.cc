@@ -666,7 +666,7 @@ void ClientHandler::pool_downstream_connection(
                      << " in group " << group;
   }
 
-  auto &dconn_pool = group->dconn_pool;
+  auto &dconn_pool = group->shared_addr->dconn_pool;
   dconn_pool.add_downstream_connection(std::move(dconn));
 }
 
@@ -675,7 +675,8 @@ void ClientHandler::remove_downstream_connection(DownstreamConnection *dconn) {
     CLOG(INFO, this) << "Removing downstream connection DCONN:" << dconn
                      << " from pool";
   }
-  auto &dconn_pool = dconn->get_downstream_addr_group()->dconn_pool;
+  auto &dconn_pool =
+      dconn->get_downstream_addr_group()->shared_addr->dconn_pool;
   dconn_pool.remove_downstream_connection(dconn);
 }
 
@@ -722,7 +723,9 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
   }
 
   auto &group = worker_->get_downstream_addr_groups()[group_idx];
-  auto &dconn_pool = group.dconn_pool;
+  auto &shared_addr = group.shared_addr;
+  auto &dconn_pool = shared_addr->dconn_pool;
+
   auto dconn = dconn_pool.pop_downstream_connection();
 
   if (!dconn) {
@@ -731,25 +734,27 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
                        << " Create new one";
     }
 
-    if (group.proto == PROTO_HTTP2) {
-      if (group.http2_freelist.empty() ||
-          group.http2_freelist.size() < group.addrs.size()) {
+    if (shared_addr->proto == PROTO_HTTP2) {
+      auto &http2_freelist = shared_addr->http2_freelist;
+
+      if (http2_freelist.empty() ||
+          http2_freelist.size() < shared_addr->addrs.size()) {
         if (LOG_ENABLED(INFO)) {
-          if (group.http2_freelist.empty()) {
+          if (http2_freelist.empty()) {
             CLOG(INFO, this)
                 << "http2_freelist is empty; create new Http2Session";
           } else {
             CLOG(INFO, this) << "Create new Http2Session; current "
-                             << group.http2_freelist.size() << ", min "
-                             << group.addrs.size();
+                             << http2_freelist.size() << ", min "
+                             << shared_addr->addrs.size();
           }
         }
         auto session = make_unique<Http2Session>(
             conn_.loop, worker_->get_cl_ssl_ctx(), worker_, &group);
-        group.http2_freelist.append(session.release());
+        http2_freelist.append(session.release());
       }
 
-      auto http2session = group.http2_freelist.head;
+      auto http2session = http2_freelist.head;
 
       if (http2session->max_concurrency_reached(1)) {
         if (LOG_ENABLED(INFO)) {
@@ -757,7 +762,7 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
                            << http2session
                            << "). Remove Http2Session from http2_freelist";
         }
-        group.http2_freelist.remove(http2session);
+        http2_freelist.remove(http2session);
       }
 
       dconn = make_unique<Http2DownstreamConnection>(http2session);
