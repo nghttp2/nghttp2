@@ -160,8 +160,7 @@ Request::Request(const std::string &uri, const http_parser_url &u,
       stream_id(-1),
       status(0),
       level(level),
-      expect_final_response(false),
-      expect_continue(false) {
+      expect_final_response(false) {
   http2::init_hdidx(res_hdidx);
   http2::init_hdidx(req_hdidx);
 }
@@ -306,6 +305,49 @@ void Request::record_response_end_time() {
 }
 
 namespace {
+void continue_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
+  auto client = static_cast<HttpClient *>(ev_userdata(loop));
+  auto req = static_cast<Request *>(w->data);
+  int error;
+
+  error = nghttp2_submit_data(client->session, NGHTTP2_FLAG_END_STREAM,
+                              req->stream_id, req->data_prd);
+
+  if (error) {
+    std::cerr << "[ERROR] nghttp2_submit_data() returned error: "
+              << nghttp2_strerror(error) << std::endl;
+    nghttp2_submit_rst_stream(client->session, NGHTTP2_FLAG_NONE,
+                              req->stream_id, NGHTTP2_INTERNAL_ERROR);
+  }
+
+  client->signal_write();
+}
+} // namespace
+
+ContinueTimer::ContinueTimer(struct ev_loop *loop, Request *req)
+    : loop(loop),
+      req(req) {
+  ev_timer_init(&timer, continue_timeout_cb, 1., 0.);
+}
+
+ContinueTimer::~ContinueTimer() {
+  stop();
+}
+
+void ContinueTimer::start() {
+  timer.data = req;
+  ev_timer_start(loop, &timer);
+}
+
+void ContinueTimer::stop() {
+  ev_timer_stop(loop, &timer);
+}
+
+void ContinueTimer::dispatch_continue() {
+  ev_feed_event(loop, &timer, 0);
+}
+
+namespace {
 int htp_msg_begincb(http_parser *htp) {
   if (config.verbose) {
     print_timer();
@@ -355,6 +397,8 @@ int submit_request(HttpClient *client, const Headers &headers, Request *req) {
                                {"accept", "*/*"},
                                {"accept-encoding", "gzip, deflate"},
                                {"user-agent", "nghttp2/" NGHTTP2_VERSION}};
+  bool expect_continue = false;
+
   if (config.continuation) {
     for (size_t i = 0; i < 6; ++i) {
       build_headers.emplace_back("continuation-test-" + util::utos(i + 1),
@@ -369,7 +413,7 @@ int submit_request(HttpClient *client, const Headers &headers, Request *req) {
       build_headers.emplace_back("content-length", util::utos(req->data_length));
     }
     if (config.expect_continue) {
-      req->expect_continue = true;
+      expect_continue = true;
       build_headers.emplace_back("expect", "100-continue");
     }
   }
@@ -413,7 +457,7 @@ int submit_request(HttpClient *client, const Headers &headers, Request *req) {
 
   int32_t stream_id;
 
-  if (req->expect_continue) {
+  if (expect_continue) {
     stream_id = nghttp2_submit_headers(client->session, 0, -1, &req->pri_spec,
                                nva.data(), nva.size(), req);
   } else {
@@ -424,7 +468,7 @@ int submit_request(HttpClient *client, const Headers &headers, Request *req) {
 
   if (stream_id < 0) {
     std::cerr << "[ERROR] nghttp2_submit_"
-              << (req->expect_continue ? "headers" : "request")
+              << (expect_continue ? "headers" : "request")
               << "() returned error: "
               << nghttp2_strerror(stream_id) << std::endl;
     return -1;
@@ -434,6 +478,14 @@ int submit_request(HttpClient *client, const Headers &headers, Request *req) {
   client->request_done(req);
 
   req->req_nva = std::move(build_headers);
+
+  if (expect_continue) {
+    auto timer = std::make_shared<ContinueTimer>(client->loop, req);
+    timer->start();
+
+    req->continue_timer = timer;
+    client->continue_timers.push_back(timer);
+  }
 
   return 0;
 }
@@ -634,6 +686,8 @@ int HttpClient::initiate_connection() {
 
 void HttpClient::disconnect() {
   state = ClientState::IDLE;
+
+  continue_timers.clear();
 
   ev_timer_stop(loop, &settings_timer);
 
@@ -1639,15 +1693,11 @@ void check_response_header(nghttp2_session *session, Request *req) {
   }
 
   if (req->status / 100 == 1) {
-    if (req->expect_continue && (req->status == 100)) {
-      int error = nghttp2_submit_data(session, NGHTTP2_FLAG_END_STREAM,
-                                      req->stream_id, req->data_prd);
-      if (error) {
-        std::cerr << "[ERROR] nghttp2_submit_data() returned error: "
-                  << nghttp2_strerror(error) << std::endl;
-        nghttp2_submit_rst_stream(session, NGHTTP2_FLAG_NONE, req->stream_id,
-                                  NGHTTP2_INTERNAL_ERROR);
-        return;
+    if (req->status == 100) {
+      // If the request is waiting for a 100 Continue, complete the handshake.
+      std::shared_ptr<ContinueTimer> timer = req->continue_timer.lock();
+      if (timer) {
+        timer->dispatch_continue();
       }
     }
 
@@ -2173,7 +2223,10 @@ int communicate(
                 << std::endl;
       goto fin;
     }
+
+    ev_set_userdata(loop, &client);
     ev_run(loop, 0);
+    ev_set_userdata(loop, nullptr);
 
 #ifdef HAVE_JANSSON
     if (!config.harfile.empty()) {
