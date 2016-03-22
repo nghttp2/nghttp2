@@ -321,7 +321,9 @@ size_t match_downstream_addr_group_host(
 
   for (auto it = std::begin(wildcard_patterns);
        it != std::end(wildcard_patterns); ++it) {
-    if (!util::ends_with(std::begin(host), std::end(host),
+    /* left most '*' must match at least one character */
+    if (host.size() <= (*it).host.size() ||
+        !util::ends_with(std::begin(host), std::end(host),
                          std::begin((*it).host), std::end((*it).host))) {
       continue;
     }

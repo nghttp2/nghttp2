@@ -1225,10 +1225,11 @@ Connections:
 
               Host  can  include "*"  in  the  left most  position  to
               indicate  wildcard match  (only suffix  match is  done).
-              For  example,  host pattern  "*www.nghttp2.org"  matches
-              against  "www.nghttp2.org"  and  "1www.ngttp2.org",  but
-              does not  match against "nghttp2.org".  The  exact hosts
-              match takes precedence over the wildcard hosts match.
+              The "*" must match at least one character.  For example,
+              host    pattern    "*.nghttp2.org"    matches    against
+              "www.nghttp2.org"  and  "git.ngttp2.org", but  does  not
+              match  against  "nghttp2.org".   The exact  hosts  match
+              takes precedence over the wildcard hosts match.
 
               If <PATTERN> is omitted or  empty string, "/" is used as
               pattern,  which  matches  all request  paths  (catch-all

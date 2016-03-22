@@ -188,7 +188,7 @@ void test_shrpx_worker_match_downstream_addr_group(void) {
   wp.back().router.add_route(StringRef::from_lit("/echo/"), 11);
   wp.back().router.add_route(StringRef::from_lit("/echo/foxtrot"), 12);
 
-  CU_ASSERT(10 == match_downstream_addr_group(
+  CU_ASSERT(11 == match_downstream_addr_group(
                       router, wp, StringRef::from_lit("git.nghttp2.org"),
                       StringRef::from_lit("/echo"), groups, 255));
 
@@ -200,9 +200,9 @@ void test_shrpx_worker_match_downstream_addr_group(void) {
                       router, wp, StringRef::from_lit("it.nghttp2.org"),
                       StringRef::from_lit("/echo"), groups, 255));
 
-  CU_ASSERT(12 == match_downstream_addr_group(
-                      router, wp, StringRef::from_lit(".nghttp2.org"),
-                      StringRef::from_lit("/echo/foxtrot"), groups, 255));
+  CU_ASSERT(255 == match_downstream_addr_group(
+                       router, wp, StringRef::from_lit(".nghttp2.org"),
+                       StringRef::from_lit("/echo/foxtrot"), groups, 255));
 
   CU_ASSERT(9 == match_downstream_addr_group(
                      router, wp, StringRef::from_lit("alpha.nghttp2.org"),
