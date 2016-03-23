@@ -1747,7 +1747,7 @@ int parse_config(const char *opt, const char *optarg,
     auto addr_end = std::find(std::begin(src), std::end(src), ';');
 
     DownstreamAddrConfig addr{};
-    if (util::istarts_with(optarg, SHRPX_UNIX_PATH_PREFIX)) {
+    if (util::istarts_with_l(src, SHRPX_UNIX_PATH_PREFIX)) {
       auto path = std::begin(src) + str_size(SHRPX_UNIX_PATH_PREFIX);
       addr.host = ImmutableString(path, addr_end);
       addr.host_unix = true;
