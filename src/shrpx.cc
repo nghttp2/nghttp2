@@ -1533,7 +1533,7 @@ SSL/TLS:
               they are  valid for  12 hours.   This is  recommended if
               ticket  key sharing  between  nghttpx  instances is  not
               required.
-  --tls-ticket-key-memcached=<HOST>,<PORT>
+  --tls-ticket-key-memcached=<HOST>,<PORT>[;tls]
               Specify address  of memcached  server to get  TLS ticket
               keys for  session resumption.   This enables  shared TLS
               ticket key between  multiple nghttpx instances.  nghttpx
@@ -1543,7 +1543,9 @@ SSL/TLS:
               replacing current set  of keys.  It is up  to extern TLS
               ticket  key generator  to rotate  keys frequently.   See
               "TLS SESSION  TICKET RESUMPTION" section in  manual page
-              to know the data format in memcached entry.
+              to know the data format in memcached entry.  Optionally,
+              memcached  connection  can  be  encrypted  with  TLS  by
+              specifying "tls" keyword.
   --tls-ticket-key-memcached-address-family=(auto|IPv4|IPv6)
               Specify address  family of memcached connections  to get
               TLS ticket keys.  If "auto" is given, both IPv4 and IPv6
@@ -1571,9 +1573,6 @@ SSL/TLS:
               Specify cipher  to encrypt TLS session  ticket.  Specify
               either   aes-128-cbc   or  aes-256-cbc.    By   default,
               aes-128-cbc is used.
-  --tls-ticket-key-memcached-tls
-              Enable  SSL/TLS  on  memcached connections  to  get  TLS
-              ticket keys.
   --tls-ticket-key-memcached-cert-file=<PATH>
               Path to client certificate  for memcached connections to
               get TLS ticket keys.
@@ -1590,10 +1589,12 @@ SSL/TLS:
               Default: )"
       << util::duration_str(get_config()->tls.ocsp.update_interval) << R"(
   --no-ocsp   Disable OCSP stapling.
-  --tls-session-cache-memcached=<HOST>,<PORT>
+  --tls-session-cache-memcached=<HOST>,<PORT>[;tls]
               Specify  address of  memcached server  to store  session
               cache.   This  enables   shared  session  cache  between
-              multiple nghttpx instances.
+              multiple   nghttpx  instances.    Optionally,  memcached
+              connection can be encrypted with TLS by specifying "tls"
+              keyword.
   --tls-session-cache-memcached-address-family=(auto|IPv4|IPv6)
               Specify address family of memcached connections to store
               session cache.  If  "auto" is given, both  IPv4 and IPv6
@@ -1601,9 +1602,6 @@ SSL/TLS:
               is considered.  If "IPv6" is given, only IPv6 address is
               considered.
               Default: auto
-  --tls-session-cache-memcached-tls
-              Enable SSL/TLS on memcached connections to store session
-              cache.
   --tls-session-cache-memcached-cert-file=<PATH>
               Path to client certificate  for memcached connections to
               store session cache.
@@ -2230,6 +2228,10 @@ void process_options(
       }
       LOG(NOTICE) << "Memcached address for TLS session cache: " << hostport
                   << " -> " << util::to_numeric_addr(&memcachedconf.addr);
+      if (memcachedconf.tls) {
+        LOG(NOTICE) << "Connection to memcached for TLS session cache will be "
+                       "encrypted by TLS";
+      }
     }
   }
 
@@ -2246,6 +2248,10 @@ void process_options(
       }
       LOG(NOTICE) << "Memcached address for TLS ticket key: " << hostport
                   << " -> " << util::to_numeric_addr(&memcachedconf.addr);
+      if (memcachedconf.tls) {
+        LOG(NOTICE) << "Connection to memcached for TLS ticket key will be "
+                       "encrypted by TLS";
+      }
     }
   }
 

@@ -568,6 +568,42 @@ int parse_duration(ev_tstamp *dest, const char *opt, const char *optarg) {
 }
 } // namespace
 
+struct MemcachedConnectionParams {
+  bool tls;
+};
+
+namespace {
+// Parses memcached connection configuration parameter |src_params|,
+// and stores parsed results into |out|.  This function returns 0 if
+// it succeeds, or -1.
+int parse_memcached_connection_params(MemcachedConnectionParams &out,
+                                      const StringRef &src_params,
+                                      const StringRef &opt) {
+  auto last = std::end(src_params);
+  for (auto first = std::begin(src_params); first != last;) {
+    auto end = std::find(first, last, ';');
+    auto param = StringRef{first, end};
+
+    if (util::strieq_l("tls", param)) {
+      out.tls = true;
+    } else if (util::strieq_l("no-tls", param)) {
+      out.tls = false;
+    } else if (!param.empty()) {
+      LOG(ERROR) << opt << ": " << param << ": unknown keyword";
+      return -1;
+    }
+
+    if (end == last) {
+      break;
+    }
+
+    first = end + 1;
+  }
+
+  return 0;
+}
+} // namespace
+
 struct UpstreamParams {
   bool tls;
 };
@@ -2403,27 +2439,39 @@ int parse_config(const char *opt, const char *optarg,
     mod_config()->http.no_host_rewrite = !util::strieq(optarg, "yes");
 
     return 0;
-  case SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED: {
-    if (split_host_port(host, sizeof(host), &port, optarg, strlen(optarg)) ==
-        -1) {
-      return -1;
-    }
-
-    auto &memcachedconf = mod_config()->tls.session_cache.memcached;
-    memcachedconf.host = host;
-    memcachedconf.port = port;
-
-    return 0;
-  }
+  case SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED:
   case SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED: {
-    if (split_host_port(host, sizeof(host), &port, optarg, strlen(optarg)) ==
-        -1) {
+    auto src = StringRef{optarg};
+    auto addr_end = std::find(std::begin(src), std::end(src), ';');
+    auto src_params = StringRef{addr_end, std::end(src)};
+
+    MemcachedConnectionParams params{};
+    if (parse_memcached_connection_params(params, src_params, StringRef{opt}) !=
+        0) {
       return -1;
     }
 
-    auto &memcachedconf = mod_config()->tls.ticket.memcached;
-    memcachedconf.host = host;
-    memcachedconf.port = port;
+    if (split_host_port(host, sizeof(host), &port, src.c_str(),
+                        addr_end - std::begin(src)) == -1) {
+      return -1;
+    }
+
+    switch (optid) {
+    case SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED: {
+      auto &memcachedconf = mod_config()->tls.session_cache.memcached;
+      memcachedconf.host = host;
+      memcachedconf.port = port;
+      memcachedconf.tls = params.tls;
+      break;
+    }
+    case SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED: {
+      auto &memcachedconf = mod_config()->tls.ticket.memcached;
+      memcachedconf.host = host;
+      memcachedconf.port = port;
+      memcachedconf.tls = params.tls;
+      break;
+    }
+    };
 
     return 0;
   }
@@ -2545,8 +2593,8 @@ int parse_config(const char *opt, const char *optarg,
               << SHRPX_OPT_BACKEND << " instead.";
     return 0;
   case SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED_TLS:
-    mod_config()->tls.session_cache.memcached.tls = util::strieq(optarg, "yes");
-
+    LOG(WARN) << opt << ": deprecated.  Use tls keyword in "
+              << SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED;
     return 0;
   case SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED_CERT_FILE:
     mod_config()->tls.session_cache.memcached.cert_file = optarg;
@@ -2557,8 +2605,8 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   case SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_TLS:
-    mod_config()->tls.ticket.memcached.tls = util::strieq(optarg, "yes");
-
+    LOG(WARN) << opt << ": deprecated.  Use tls keyword in "
+              << SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED;
     return 0;
   case SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_CERT_FILE:
     mod_config()->tls.ticket.memcached.cert_file = optarg;
