@@ -432,7 +432,8 @@ int create_unix_domain_server_socket(UpstreamAddr &faddr,
       });
 
   if (found != std::end(iaddrs)) {
-    LOG(NOTICE) << "Listening on UNIX domain socket " << faddr.host;
+    LOG(NOTICE) << "Listening on UNIX domain socket " << faddr.host
+                << (faddr.tls ? ", tls" : "");
     (*found).used = true;
     faddr.fd = (*found).fd;
     faddr.hostport = "localhost";
@@ -496,7 +497,8 @@ int create_unix_domain_server_socket(UpstreamAddr &faddr,
     return -1;
   }
 
-  LOG(NOTICE) << "Listening on UNIX domain socket " << faddr.host;
+  LOG(NOTICE) << "Listening on UNIX domain socket " << faddr.host
+              << (faddr.tls ? ", tls" : "");
 
   faddr.fd = fd;
   faddr.hostport = "localhost";
@@ -652,7 +654,8 @@ int create_tcp_server_socket(UpstreamAddr &faddr,
   faddr.fd = fd;
   faddr.hostport = util::make_http_hostport(StringRef{host.data()}, faddr.port);
 
-  LOG(NOTICE) << "Listening on " << faddr.hostport;
+  LOG(NOTICE) << "Listening on " << faddr.hostport
+              << (faddr.tls ? ", tls" : "");
 
   return 0;
 }
@@ -1274,13 +1277,17 @@ Connections:
 
               Default: )" << DEFAULT_DOWNSTREAM_HOST << ","
       << DEFAULT_DOWNSTREAM_PORT << R"(
-  -f, --frontend=(<HOST>,<PORT>|unix:<PATH>)
+  -f, --frontend=(<HOST>,<PORT>|unix:<PATH>)[;no-tls]
               Set  frontend  host and  port.   If  <HOST> is  '*',  it
               assumes  all addresses  including  both  IPv4 and  IPv6.
               UNIX domain  socket can  be specified by  prefixing path
               name  with  "unix:" (e.g.,  unix:/var/run/nghttpx.sock).
               This  option can  be used  multiple times  to listen  to
               multiple addresses.
+
+              Optionally, TLS  can be disabled by  specifying "no-tls"
+              keyword.  TLS is enabled by default.
+
               Default: *,3000
   --backlog=<N>
               Set listen backlog size.
@@ -1652,8 +1659,6 @@ HTTP/2 and SPDY:
               2**<N>-1. For SPDY, the size is 2**<N>.
               Default: )" << get_config()->http2.upstream.connection_window_bits
       << R"(
-  --frontend-no-tls
-              Disable SSL/TLS on frontend connections.
   --backend-http2-window-bits=<N>
               Sets  the   initial  window   size  of   HTTP/2  backend
               connection to 2**<N>-1.
@@ -2040,6 +2045,7 @@ void process_options(
     UpstreamAddr addr{};
     addr.host = "*";
     addr.port = 3000;
+    addr.tls = true;
     addr.family = AF_INET;
     listenerconf.addrs.push_back(addr);
     addr.family = AF_INET6;
@@ -2050,14 +2056,14 @@ void process_options(
     upstreamconf.worker_connections = std::numeric_limits<size_t>::max();
   }
 
-  if (!upstreamconf.no_tls &&
+  if (ssl::upstream_tls_enabled() &&
       (tlsconf.private_key_file.empty() || tlsconf.cert_file.empty())) {
     print_usage(std::cerr);
     LOG(FATAL) << "Too few arguments";
     exit(EXIT_FAILURE);
   }
 
-  if (!upstreamconf.no_tls && !tlsconf.ocsp.disabled) {
+  if (ssl::upstream_tls_enabled() && !tlsconf.ocsp.disabled) {
     struct stat buf;
     if (stat(tlsconf.ocsp.fetch_ocsp_response_file.c_str(), &buf) != 0) {
       tlsconf.ocsp.disabled = true;

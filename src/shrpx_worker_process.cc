@@ -393,10 +393,8 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
     conn_handler.add_acceptor(make_unique<AcceptHandler>(&addr, &conn_handler));
   }
 
-  auto &upstreamconf = get_config()->conn.upstream;
-
 #ifdef HAVE_NEVERBLEED
-  if (!upstreamconf.no_tls || ssl::downstream_tls_enabled()) {
+  if (ssl::upstream_tls_enabled() || ssl::downstream_tls_enabled()) {
     std::array<char, NEVERBLEED_ERRBUF_SIZE> errbuf;
     auto nb = make_unique<neverbleed_t>();
     if (neverbleed_init(nb.get(), errbuf.data()) != 0) {
@@ -423,7 +421,7 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
   MemchunkPool mcpool;
 
   ev_timer renew_ticket_key_timer;
-  if (!upstreamconf.no_tls) {
+  if (ssl::upstream_tls_enabled()) {
     auto &ticketconf = get_config()->tls.ticket;
     auto &memcachedconf = ticketconf.memcached;
 
@@ -522,7 +520,7 @@ int worker_process_event_loop(WorkerProcessConfig *wpconf) {
   ipcev.data = &conn_handler;
   ev_io_start(loop, &ipcev);
 
-  if (!upstreamconf.no_tls && !get_config()->tls.ocsp.disabled) {
+  if (ssl::upstream_tls_enabled() && !get_config()->tls.ocsp.disabled) {
     conn_handler.proceed_next_cert_ocsp();
   }
 

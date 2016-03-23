@@ -568,6 +568,40 @@ int parse_duration(ev_tstamp *dest, const char *opt, const char *optarg) {
 }
 } // namespace
 
+struct UpstreamParams {
+  bool tls;
+};
+
+namespace {
+// Parses upstream configuration parameter |src_params|, and stores
+// parsed results into |out|.  This function returns 0 if it succeeds,
+// or -1.
+int parse_upstream_params(UpstreamParams &out, const StringRef &src_params) {
+  auto last = std::end(src_params);
+  for (auto first = std::begin(src_params); first != last;) {
+    auto end = std::find(first, last, ';');
+    auto param = StringRef{first, end};
+
+    if (util::strieq_l("tls", param)) {
+      out.tls = true;
+    } else if (util::strieq_l("no-tls", param)) {
+      out.tls = false;
+    } else if (!param.empty()) {
+      LOG(ERROR) << "frontend: " << param << ": unknown keyword";
+      return -1;
+    }
+
+    if (end == last) {
+      break;
+    }
+
+    first = end + 1;
+  }
+
+  return 0;
+}
+} // namespace
+
 struct DownstreamParams {
   shrpx_proto proto;
   bool tls;
@@ -1683,7 +1717,7 @@ int parse_config(const char *opt, const char *optarg,
       addr.host = ImmutableString(path, addr_end);
       addr.host_unix = true;
     } else {
-      if (split_host_port(host, sizeof(host), &port, &src[0],
+      if (split_host_port(host, sizeof(host), &port, src.c_str(),
                           addr_end - std::begin(src)) == -1) {
         return -1;
       }
@@ -1707,12 +1741,24 @@ int parse_config(const char *opt, const char *optarg,
   case SHRPX_OPTID_FRONTEND: {
     auto &listenerconf = mod_config()->conn.listener;
 
+    auto src = StringRef{optarg};
+    auto addr_end = std::find(std::begin(src), std::end(src), ';');
+    auto src_params = StringRef{addr_end, std::end(src)};
+
+    UpstreamParams params{};
+    params.tls = true;
+
+    if (parse_upstream_params(params, src_params) != 0) {
+      return -1;
+    }
+
     UpstreamAddr addr{};
     addr.fd = -1;
+    addr.tls = params.tls;
 
-    if (util::istarts_with(optarg, SHRPX_UNIX_PATH_PREFIX)) {
-      auto path = optarg + str_size(SHRPX_UNIX_PATH_PREFIX);
-      addr.host = ImmutableString(path);
+    if (util::istarts_with_l(src, SHRPX_UNIX_PATH_PREFIX)) {
+      auto path = std::begin(src) + str_size(SHRPX_UNIX_PATH_PREFIX);
+      addr.host = ImmutableString{path, addr_end};
       addr.host_unix = true;
 
       listenerconf.addrs.push_back(std::move(addr));
@@ -1720,8 +1766,8 @@ int parse_config(const char *opt, const char *optarg,
       return 0;
     }
 
-    if (split_host_port(host, sizeof(host), &port, optarg, strlen(optarg)) ==
-        -1) {
+    if (split_host_port(host, sizeof(host), &port, src.c_str(),
+                        addr_end - std::begin(src)) == -1) {
       return -1;
     }
 
@@ -1920,8 +1966,8 @@ int parse_config(const char *opt, const char *optarg,
     return 0;
   }
   case SHRPX_OPTID_FRONTEND_NO_TLS:
-    mod_config()->conn.upstream.no_tls = util::strieq(optarg, "yes");
-
+    LOG(WARN) << opt << ": deprecated.  Use no-tls keyword in "
+              << SHRPX_OPT_FRONTEND;
     return 0;
   case SHRPX_OPTID_BACKEND_NO_TLS:
     LOG(WARN) << opt << ": deprecated.  backend connection is not encrypted by "

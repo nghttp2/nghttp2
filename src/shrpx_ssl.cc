@@ -800,8 +800,11 @@ ClientHandler *accept_connection(Worker *worker, int fd, sockaddr *addr,
     }
   }
   SSL *ssl = nullptr;
-  auto ssl_ctx = worker->get_sv_ssl_ctx();
-  if (ssl_ctx) {
+  if (faddr->tls) {
+    auto ssl_ctx = worker->get_sv_ssl_ctx();
+
+    assert(ssl_ctx);
+
     ssl = create_ssl(ssl_ctx);
     if (!ssl) {
       return nullptr;
@@ -1245,6 +1248,12 @@ bool in_proto_list(const std::vector<std::string> &protos,
   return false;
 }
 
+bool upstream_tls_enabled() {
+  const auto &faddrs = get_config()->conn.listener.addrs;
+  return std::any_of(std::begin(faddrs), std::end(faddrs),
+                     [](const UpstreamAddr &faddr) { return faddr.tls; });
+}
+
 SSL_CTX *setup_server_ssl_context(std::vector<SSL_CTX *> &all_ssl_ctx,
                                   CertLookupTree *cert_tree
 #ifdef HAVE_NEVERBLEED
@@ -1252,7 +1261,7 @@ SSL_CTX *setup_server_ssl_context(std::vector<SSL_CTX *> &all_ssl_ctx,
                                   neverbleed_t *nb
 #endif // HAVE_NEVERBLEED
                                   ) {
-  if (get_config()->conn.upstream.no_tls) {
+  if (!upstream_tls_enabled()) {
     return nullptr;
   }
 
@@ -1346,8 +1355,7 @@ void setup_downstream_http1_alpn(SSL *ssl) {
 }
 
 CertLookupTree *create_cert_lookup_tree() {
-  if (get_config()->conn.upstream.no_tls ||
-      get_config()->tls.subcerts.empty()) {
+  if (!upstream_tls_enabled() || get_config()->tls.subcerts.empty()) {
     return nullptr;
   }
   return new ssl::CertLookupTree();

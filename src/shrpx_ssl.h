@@ -213,6 +213,9 @@ CertLookupTree *create_cert_lookup_tree();
 
 SSL *create_ssl(SSL_CTX *ssl_ctx);
 
+// Returns true if SSL/TLS is enabled on upstream
+bool upstream_tls_enabled();
+
 // Returns true if SSL/TLS is enabled on downstream
 bool downstream_tls_enabled();
 

@@ -277,6 +277,8 @@ struct UpstreamAddr {
   int family;
   // true if |host| contains UNIX domain socket path.
   bool host_unix;
+  // true if TLS is enabled.
+  bool tls;
   int fd;
 };
 
@@ -558,7 +560,6 @@ struct ConnectionConfig {
       RateLimitConfig write;
     } ratelimit;
     size_t worker_connections;
-    bool no_tls;
     bool accept_proxy_protocol;
   } upstream;
 
