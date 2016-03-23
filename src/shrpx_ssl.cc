@@ -1303,7 +1303,12 @@ SSL_CTX *setup_server_ssl_context(std::vector<SSL_CTX *> &all_ssl_ctx,
   return ssl_ctx;
 }
 
-bool downstream_tls_enabled() { return !get_config()->conn.downstream.no_tls; }
+bool downstream_tls_enabled() {
+  const auto &groups = get_config()->conn.downstream.addr_groups;
+
+  return std::any_of(std::begin(groups), std::end(groups),
+                     [](const DownstreamAddrGroupConfig &g) { return g.tls; });
+}
 
 SSL_CTX *setup_downstream_client_ssl_context(
 #ifdef HAVE_NEVERBLEED

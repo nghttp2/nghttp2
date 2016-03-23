@@ -66,7 +66,8 @@ namespace {
 bool match_shared_downstream_addr(
     const std::shared_ptr<SharedDownstreamAddr> &lhs,
     const std::shared_ptr<SharedDownstreamAddr> &rhs) {
-  if (lhs->addrs.size() != rhs->addrs.size() || lhs->proto != rhs->proto) {
+  if (lhs->addrs.size() != rhs->addrs.size() || lhs->proto != rhs->proto ||
+      lhs->tls != rhs->tls) {
     return false;
   }
 
@@ -146,6 +147,7 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
 
     shared_addr->addrs.resize(src.addrs.size());
     shared_addr->proto = src.proto;
+    shared_addr->tls = src.tls;
 
     for (size_t j = 0; j < src.addrs.size(); ++j) {
       auto &src_addr = src.addrs[j];

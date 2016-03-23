@@ -98,6 +98,7 @@ struct SharedDownstreamAddr {
   DownstreamConnectionPool dconn_pool;
   // Next downstream address index in addrs.
   size_t next;
+  bool tls;
 };
 
 struct DownstreamAddrGroup {

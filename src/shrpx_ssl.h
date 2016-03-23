@@ -194,8 +194,8 @@ SSL_CTX *setup_server_ssl_context(std::vector<SSL_CTX *> &all_ssl_ctx,
                                   );
 
 // Setups client side SSL_CTX.  This function inspects get_config()
-// and if downstream_no_tls is true, returns nullptr.  Otherwise, only
-// construct SSL_CTX if either client_mode or http2_bridge is true.
+// and if TLS is disabled in all downstreams, returns nullptr.
+// Otherwise, only construct SSL_CTX.
 SSL_CTX *setup_downstream_client_ssl_context(
 #ifdef HAVE_NEVERBLEED
     neverbleed_t *nb

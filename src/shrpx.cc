@@ -1160,7 +1160,6 @@ void fill_default_config() {
     downstreamconf.request_buffer_size = 16_k;
     downstreamconf.response_buffer_size = 128_k;
     downstreamconf.family = AF_UNSPEC;
-    downstreamconf.no_tls = true;
   }
 }
 
@@ -1194,7 +1193,8 @@ Options:
   The options are categorized into several groups.
 
 Connections:
-  -b, --backend=(<HOST>,<PORT>|unix:<PATH>)[;[<PATTERN>[:...]][;proto=<PROTO>]]
+  -b, --backend=(<HOST>,<PORT>|unix:<PATH>)[;[<PATTERN>[:...]]
+                [;proto=<PROTO>][;tls]]
               Set  backend  host  and   port.   The  multiple  backend
               addresses are  accepted by repeating this  option.  UNIX
               domain socket  can be  specified by prefixing  path name
@@ -1263,7 +1263,10 @@ Connections:
               quotes: "h2", "http/1.1".  The  default value of <PROTO>
               is "http/1.1".  Note that  usually "h2" refers to HTTP/2
               over TLS.  But  in this option, it may  mean HTTP/2 over
-              cleartext TCP unless --backend-tls is used.
+              cleartext TCP unless "tls" keyword is used (see below).
+
+              Optionally,  TLS  can  be enabled  by  specifying  "tls"
+              keyword.  TLS is not enabled by default.
 
               Since ";" and ":" are  used as delimiter, <PATTERN> must
               not  contain these  characters.  Since  ";" has  special
@@ -1303,8 +1306,6 @@ Connections:
               --backend-write-timeout options.
   --accept-proxy-protocol
               Accept PROXY protocol version 1 on frontend connection.
-  --backend-tls
-              Enable SSL/TLS on backend connections.
 
 Performance:
   -n, --workers=<N>
@@ -2132,7 +2133,7 @@ void process_options(
     }
     if (LOG_ENABLED(INFO)) {
       LOG(INFO) << "Host-path pattern: group " << i << ": '" << g.pattern
-                << "', proto=" << strproto(g.proto);
+                << "', proto=" << strproto(g.proto) << (g.tls ? ", tls" : "");
       for (auto &addr : g.addrs) {
         LOG(INFO) << "group " << i << " -> " << addr.host.c_str()
                   << (addr.host_unix ? "" : ":" + util::utos(addr.port));

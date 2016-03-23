@@ -310,6 +310,7 @@ struct DownstreamAddrGroupConfig {
   std::vector<DownstreamAddrConfig> addrs;
   // Application protocol used in this group
   shrpx_proto proto;
+  bool tls;
 };
 
 struct TicketKey {
@@ -578,8 +579,6 @@ struct ConnectionConfig {
     // AF_INET6 or AF_UNSPEC.  This is ignored if backend connection
     // is made via Unix domain socket.
     int family;
-    bool no_tls;
-    bool http1_tls;
   } downstream;
 };
 

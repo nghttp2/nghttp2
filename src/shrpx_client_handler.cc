@@ -750,7 +750,8 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
           }
         }
         auto session = make_unique<Http2Session>(
-            conn_.loop, worker_->get_cl_ssl_ctx(), worker_, &group);
+            conn_.loop, shared_addr->tls ? worker_->get_cl_ssl_ctx() : nullptr,
+            worker_, &group);
         http2_freelist.append(session.release());
       }
 

@@ -568,6 +568,58 @@ int parse_duration(ev_tstamp *dest, const char *opt, const char *optarg) {
 }
 } // namespace
 
+struct DownstreamParams {
+  shrpx_proto proto;
+  bool tls;
+};
+
+namespace {
+// Parses downstream configuration parameter |src_params|, and stores
+// parsed results into |out|.  This function returns 0 if it succeeds,
+// or -1.
+int parse_downstream_params(DownstreamParams &out,
+                            const StringRef &src_params) {
+  auto last = std::end(src_params);
+  for (auto first = std::begin(src_params); first != last;) {
+    auto end = std::find(first, last, ';');
+    auto param = StringRef{first, end};
+
+    if (util::istarts_with_l(param, "proto=")) {
+      auto protostr = StringRef{first + str_size("proto="), end};
+      if (protostr.empty()) {
+        LOG(ERROR) << "backend: proto: protocol is empty";
+        return -1;
+      }
+
+      if (util::streq_l("h2", std::begin(protostr), protostr.size())) {
+        out.proto = PROTO_HTTP2;
+      } else if (util::streq_l("http/1.1", std::begin(protostr),
+                               protostr.size())) {
+        out.proto = PROTO_HTTP1;
+      } else {
+        LOG(ERROR) << "backend: proto: unknown protocol " << protostr;
+        return -1;
+      }
+    } else if (util::strieq_l("tls", param)) {
+      out.tls = true;
+    } else if (util::strieq_l("no-tls", param)) {
+      out.tls = false;
+    } else if (!param.empty()) {
+      LOG(ERROR) << "backend: " << param << ": unknown keyword";
+      return -1;
+    }
+
+    if (end == last) {
+      break;
+    }
+
+    first = end + 1;
+  }
+
+  return 0;
+}
+} // namespace
+
 namespace {
 // Parses host-path mapping patterns in |src_pattern|, and stores
 // mappings in config.  We will store each host-path pattern found in
@@ -577,37 +629,18 @@ namespace {
 //
 // This function returns 0 if it succeeds, or -1.
 int parse_mapping(const DownstreamAddrConfig &addr,
-                  const StringRef &src_pattern, const StringRef &src_proto) {
+                  const StringRef &src_pattern, const StringRef &src_params) {
   // This returns at least 1 element (it could be empty string).  We
   // will append '/' to all patterns, so it becomes catch-all pattern.
   auto mapping = util::split_str(src_pattern, ':');
   assert(!mapping.empty());
   auto &addr_groups = mod_config()->conn.downstream.addr_groups;
 
-  auto proto = PROTO_HTTP1;
+  DownstreamParams params{};
+  params.proto = PROTO_HTTP1;
 
-  if (!src_proto.empty()) {
-    if (!util::istarts_with_l(src_proto, "proto=")) {
-      LOG(ERROR) << "backend: proto keyword not found";
-      return -1;
-    }
-
-    auto protostr = StringRef{std::begin(src_proto) + str_size("proto="),
-                              std::end(src_proto)};
-    if (protostr.empty()) {
-      LOG(ERROR) << "backend: protocol is empty";
-      return -1;
-    }
-
-    if (util::streq_l("h2", std::begin(protostr), protostr.size())) {
-      proto = PROTO_HTTP2;
-    } else if (util::streq_l("http/1.1", std::begin(protostr),
-                             protostr.size())) {
-      proto = PROTO_HTTP1;
-    } else {
-      LOG(ERROR) << "backend: unknown protocol " << protostr;
-      return -1;
-    }
+  if (parse_downstream_params(params, src_params) != 0) {
+    return -1;
   }
 
   for (const auto &raw_pattern : mapping) {
@@ -627,10 +660,18 @@ int parse_mapping(const DownstreamAddrConfig &addr,
     }
     for (auto &g : addr_groups) {
       if (g.pattern == pattern) {
-        if (g.proto != proto) {
+        if (g.proto != params.proto) {
           LOG(ERROR) << "backend: protocol mismatch.  We saw protocol "
                      << strproto(g.proto) << " for pattern " << g.pattern
-                     << ", but another protocol " << strproto(proto);
+                     << ", but another protocol " << strproto(params.proto);
+          return -1;
+        }
+
+        if (g.tls != params.tls) {
+          LOG(ERROR) << "backend: TLS mismatch.  We saw TLS was "
+                     << (g.tls ? "enabled" : "disabled") << " for pattern "
+                     << g.pattern << ", but we now got TLS was "
+                     << (params.tls ? "enabled" : "disabled");
           return -1;
         }
 
@@ -644,7 +685,8 @@ int parse_mapping(const DownstreamAddrConfig &addr,
     }
     DownstreamAddrGroupConfig g(StringRef{pattern});
     g.addrs.push_back(addr);
-    g.proto = proto;
+    g.proto = params.proto;
+    g.tls = params.tls;
 
     if (pattern[0] == '*') {
       // wildcard pattern
@@ -1653,11 +1695,10 @@ int parse_config(const char *opt, const char *optarg,
     auto mapping = addr_end == std::end(src) ? addr_end : addr_end + 1;
     auto mapping_end = std::find(mapping, std::end(src), ';');
 
-    auto proto = mapping_end == std::end(src) ? mapping_end : mapping_end + 1;
-    auto proto_end = std::find(proto, std::end(src), ';');
+    auto params = mapping_end == std::end(src) ? mapping_end : mapping_end + 1;
 
     if (parse_mapping(addr, StringRef{mapping, mapping_end},
-                      StringRef{proto, proto_end}) != 0) {
+                      StringRef{params, std::end(src)}) != 0) {
       return -1;
     }
 
@@ -2453,12 +2494,9 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   case SHRPX_OPTID_BACKEND_HTTP1_TLS:
-    LOG(WARN) << opt << ": deprecated.  Use " << SHRPX_OPT_BACKEND_TLS
-              << " instead.";
-  // fall through
   case SHRPX_OPTID_BACKEND_TLS:
-    mod_config()->conn.downstream.no_tls = !util::strieq(optarg, "yes");
-
+    LOG(WARN) << opt << ": deprecated.  Use tls keyword in "
+              << SHRPX_OPT_BACKEND << " instead.";
     return 0;
   case SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED_TLS:
     mod_config()->tls.session_cache.memcached.tls = util::strieq(optarg, "yes");

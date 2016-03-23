@@ -1509,8 +1509,9 @@ int Http2Session::connection_made() {
     }
   }
 
-  auto must_terminate = !get_config()->conn.downstream.no_tls &&
-                        !nghttp2::ssl::check_http2_requirement(conn_.tls.ssl);
+  auto &shared_addr = group_->shared_addr;
+  auto must_terminate =
+      shared_addr->tls && !nghttp2::ssl::check_http2_requirement(conn_.tls.ssl);
 
   if (must_terminate) {
     if (LOG_ENABLED(INFO)) {
