@@ -70,14 +70,26 @@ bool match_shared_downstream_addr(
     return false;
   }
 
+  auto used = std::vector<bool>(lhs->addrs.size());
+
   for (auto &a : lhs->addrs) {
-    if (std::find_if(std::begin(rhs->addrs), std::end(rhs->addrs),
-                     [&a](const DownstreamAddr &b) {
-                       return a.host == b.host && a.port == b.port &&
-                              a.host_unix == b.host_unix;
-                     }) == std::end(rhs->addrs)) {
+    size_t i;
+    for (i = 0; i < rhs->addrs.size(); ++i) {
+      if (used[i]) {
+        continue;
+      }
+
+      auto &b = rhs->addrs[i];
+      if (a.host == b.host && a.port == b.port && a.host_unix == b.host_unix) {
+        break;
+      }
+    }
+
+    if (i == rhs->addrs.size()) {
       return false;
     }
+
+    used[i] = true;
   }
 
   return true;
