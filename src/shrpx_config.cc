@@ -78,31 +78,30 @@ TicketKeys::~TicketKeys() {
 
 namespace {
 int split_host_port(char *host, size_t hostlen, uint16_t *port_ptr,
-                    const char *hostport, size_t hostportlen) {
+                    const StringRef &hostport, const char *opt) {
   // host and port in |hostport| is separated by single ','.
-  const char *p = strchr(hostport, ',');
-  if (!p) {
-    LOG(ERROR) << "Invalid host, port: " << hostport;
+  auto sep = std::find(std::begin(hostport), std::end(hostport), ',');
+  if (sep == std::end(hostport)) {
+    LOG(ERROR) << opt << ": Invalid host, port: " << hostport;
     return -1;
   }
-  size_t len = p - hostport;
+  size_t len = sep - std::begin(hostport);
   if (hostlen < len + 1) {
-    LOG(ERROR) << "Hostname too long: " << hostport;
+    LOG(ERROR) << opt << ": Hostname too long: " << hostport;
     return -1;
   }
-  memcpy(host, hostport, len);
+  std::copy(std::begin(hostport), sep, host);
   host[len] = '\0';
 
-  errno = 0;
-  auto portlen = hostportlen - len - 1;
-  auto d = util::parse_uint(reinterpret_cast<const uint8_t *>(p + 1), portlen);
+  auto portstr = StringRef{sep + 1, std::end(hostport)};
+  auto d = util::parse_uint(portstr);
   if (1 <= d && d <= std::numeric_limits<uint16_t>::max()) {
     *port_ptr = d;
     return 0;
-  } else {
-    LOG(ERROR) << "Port is invalid: " << std::string(p + 1, portlen);
-    return -1;
   }
+
+  LOG(ERROR) << opt << ": Port is invalid: " << portstr;
+  return -1;
 }
 } // namespace
 
@@ -1753,8 +1752,8 @@ int parse_config(const char *opt, const char *optarg,
       addr.host = ImmutableString(path, addr_end);
       addr.host_unix = true;
     } else {
-      if (split_host_port(host, sizeof(host), &port, src.c_str(),
-                          addr_end - std::begin(src)) == -1) {
+      if (split_host_port(host, sizeof(host), &port,
+                          StringRef{std::begin(src), addr_end}, opt) == -1) {
         return -1;
       }
 
@@ -1802,8 +1801,8 @@ int parse_config(const char *opt, const char *optarg,
       return 0;
     }
 
-    if (split_host_port(host, sizeof(host), &port, src.c_str(),
-                        addr_end - std::begin(src)) == -1) {
+    if (split_host_port(host, sizeof(host), &port,
+                        StringRef{std::begin(src), addr_end}, opt) == -1) {
       return -1;
     }
 
@@ -2451,8 +2450,8 @@ int parse_config(const char *opt, const char *optarg,
       return -1;
     }
 
-    if (split_host_port(host, sizeof(host), &port, src.c_str(),
-                        addr_end - std::begin(src)) == -1) {
+    if (split_host_port(host, sizeof(host), &port,
+                        StringRef{std::begin(src), addr_end}, opt) == -1) {
       return -1;
     }
 
