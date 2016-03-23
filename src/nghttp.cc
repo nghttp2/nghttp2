@@ -344,7 +344,10 @@ void ContinueTimer::stop() {
 }
 
 void ContinueTimer::dispatch_continue() {
-  ev_feed_event(loop, &timer, 0);
+  // Only dispatch the timeout callback if it hasn't already been called.
+  if (ev_is_active(&timer)) {
+    ev_feed_event(loop, &timer, 0);
+  }
 }
 
 namespace {

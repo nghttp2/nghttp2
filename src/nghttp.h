@@ -119,7 +119,8 @@ struct ContinueTimer {
   void start();
   void stop();
 
-  // Schedules an immediate run of the continue callback on the loop
+  // Schedules an immediate run of the continue callback on the loop, if the
+  // callback has not already been run
   void dispatch_continue();
 
   struct ev_loop *loop;
