@@ -78,7 +78,7 @@ void test_shrpx_ssl_create_lookup_tree(void) {
   CU_ASSERT(ctxs[8] == tree->lookup(StringRef::from_lit("x.foo.bar")));
   CU_ASSERT(ctxs[9] == tree->lookup(hostnames[9]));
 
-  for (int i = 0; i < num; ++i) {
+  for (size_t i = 0; i < num; ++i) {
     SSL_CTX_free(ctxs[i]);
   }
 
