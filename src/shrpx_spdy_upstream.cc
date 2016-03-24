@@ -272,7 +272,8 @@ void on_ctrl_recv_callback(spdylay_session *session, spdylay_frame_type type,
       req.authority = host->value;
       if (get_config()->http2_proxy) {
         req.path = path->value;
-      } else if (method_token == HTTP_OPTIONS && path->value == "*") {
+      } else if (method_token == HTTP_OPTIONS &&
+                 path->value == StringRef::from_lit("*")) {
         // Server-wide OPTIONS request.  Path is empty.
       } else {
         req.path = http2::rewrite_clean_path(balloc, path->value);

@@ -1354,7 +1354,7 @@ void prepare_response(Stream *stream, Http2Handler *hd,
   }
 
   auto method = stream->header.method;
-  if (method == "HEAD") {
+  if (method == StringRef::from_lit("HEAD")) {
     hd->submit_file_response(StringRef::from_lit("200"), stream,
                              file_ent->mtime, file_ent->length,
                              file_ent->content_type, nullptr);
@@ -1512,7 +1512,8 @@ int hd_on_frame_recv_callback(nghttp2_session *session,
 
       auto method = stream->header.method;
       if (hd->get_config()->echo_upload &&
-          (method == "POST" || method == "PUT")) {
+          (method == StringRef::from_lit("POST") ||
+           method == StringRef::from_lit("PUT"))) {
         if (!prepare_upload_temp_store(stream, hd)) {
           hd->submit_rst_stream(stream, NGHTTP2_INTERNAL_ERROR);
           return 0;

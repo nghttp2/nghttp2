@@ -524,7 +524,8 @@ int create_tcp_server_socket(UpstreamAddr &faddr,
   hints.ai_flags |= AI_ADDRCONFIG;
 #endif // AI_ADDRCONFIG
 
-  auto node = faddr.host == "*" ? nullptr : faddr.host.c_str();
+  auto node =
+      faddr.host == StringRef::from_lit("*") ? nullptr : faddr.host.c_str();
 
   addrinfo *res, *rp;
   rv = getaddrinfo(node, service.c_str(), &hints, &res);
@@ -720,7 +721,7 @@ int create_acceptor_socket() {
     auto type = StringRef(env, end_type);
     auto value = end_type + 1;
 
-    if (type == "unix") {
+    if (type == StringRef::from_lit("unix")) {
       auto endfd = strchr(value, ',');
       if (!endfd) {
         continue;
@@ -752,7 +753,7 @@ int create_acceptor_socket() {
       iaddrs.push_back(std::move(addr));
     }
 
-    if (type == "tcp") {
+    if (type == StringRef::from_lit("tcp")) {
       auto fd = util::parse_uint(value);
       if (fd == -1) {
         LOG(WARN) << "Could not parse file descriptor from " << value;
@@ -2132,7 +2133,7 @@ void process_options(int argc, char **argv,
   ssize_t catch_all_group = -1;
   for (size_t i = 0; i < addr_groups.size(); ++i) {
     auto &g = addr_groups[i];
-    if (g.pattern == "/") {
+    if (g.pattern == StringRef::from_lit("/")) {
       catch_all_group = i;
     }
     if (LOG_ENABLED(INFO)) {

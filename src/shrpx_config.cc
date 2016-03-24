@@ -831,7 +831,7 @@ int parse_error_page(std::vector<ErrorPage> &error_pages, const StringRef &opt,
   auto codestr = StringRef{std::begin(optarg), eq};
   unsigned int code;
 
-  if (codestr == "*") {
+  if (codestr == StringRef::from_lit("*")) {
     code = 0;
   } else {
     auto n = util::parse_uint(codestr);

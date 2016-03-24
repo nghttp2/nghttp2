@@ -354,7 +354,7 @@ int htp_hdrs_completecb(http_parser *htp) {
 
       req.no_authority = true;
 
-      if (method == HTTP_OPTIONS && req.path == "*") {
+      if (method == HTTP_OPTIONS && req.path == StringRef::from_lit("*")) {
         req.path = StringRef{};
       } else {
         req.path = http2::rewrite_clean_path(balloc, req.path);

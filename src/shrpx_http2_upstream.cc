@@ -325,7 +325,8 @@ int Http2Upstream::on_request_headers(Downstream *downstream,
   }
 
   if (path) {
-    if (method_token == HTTP_OPTIONS && path->value == "*") {
+    if (method_token == HTTP_OPTIONS &&
+        path->value == StringRef::from_lit("*")) {
       // Server-wide OPTIONS request.  Path is empty.
     } else if (get_config()->http2_proxy) {
       req.path = path->value;
