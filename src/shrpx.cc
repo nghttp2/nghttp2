@@ -94,19 +94,21 @@ namespace shrpx {
 
 // Deprecated: Environment variables to tell new binary the listening
 // socket's file descriptors.  They are not close-on-exec.
-#define ENV_LISTENER4_FD "NGHTTPX_LISTENER4_FD"
-#define ENV_LISTENER6_FD "NGHTTPX_LISTENER6_FD"
+constexpr StringRef ENV_LISTENER4_FD =
+    StringRef::from_lit("NGHTTPX_LISTENER4_FD");
+constexpr StringRef ENV_LISTENER6_FD =
+    StringRef::from_lit("NGHTTPX_LISTENER6_FD");
 
 // Deprecated: Environment variable to tell new binary the port number
 // the current binary is listening to.
-#define ENV_PORT "NGHTTPX_PORT"
+constexpr StringRef ENV_PORT = StringRef::from_lit("NGHTTPX_PORT");
 
 // Deprecated: Environment variable to tell new binary the listening
 // socket's file descriptor if frontend listens UNIX domain socket.
-#define ENV_UNIX_FD "NGHTTP2_UNIX_FD"
+constexpr StringRef ENV_UNIX_FD = StringRef::from_lit("NGHTTP2_UNIX_FD");
 // Deprecated: Environment variable to tell new binary the UNIX domain
 // socket path.
-#define ENV_UNIX_PATH "NGHTTP2_UNIX_PATH"
+constexpr StringRef ENV_UNIX_PATH = StringRef::from_lit("NGHTTP2_UNIX_PATH");
 
 // Prefix of environment variables to tell new binary the listening
 // socket's file descriptor.  They are not close-on-exec.  For TCP
@@ -114,7 +116,7 @@ namespace shrpx {
 // <FD> is file descriptor.  For UNIX domain socket, the value must be
 // comma separated 3 parameters: unix,<FD>,<PATH>.  <FD> is file
 // descriptor.  <PATH> is a path to UNIX domain socket.
-constexpr char ENV_ACCEPT_PREFIX[] = "NGHTTPX_ACCEPT_";
+constexpr StringRef ENV_ACCEPT_PREFIX = StringRef::from_lit("NGHTTPX_ACCEPT_");
 
 #ifndef _KERNEL_FASTOPEN
 #define _KERNEL_FASTOPEN
@@ -292,7 +294,7 @@ void exec_binary(SignalServer *ssv) {
   std::vector<ImmutableString> fd_envs;
   for (size_t i = 0; i < listenerconf.addrs.size(); ++i) {
     auto &addr = listenerconf.addrs[i];
-    std::string s = ENV_ACCEPT_PREFIX;
+    auto s = ENV_ACCEPT_PREFIX.str();
     s += util::utos(i + 1);
     s += '=';
     if (addr.host_unix) {
@@ -310,12 +312,13 @@ void exec_binary(SignalServer *ssv) {
   }
 
   for (size_t i = 0; i < envlen; ++i) {
-    if (util::starts_with(environ[i], ENV_ACCEPT_PREFIX) ||
-        util::starts_with(environ[i], ENV_LISTENER4_FD) ||
-        util::starts_with(environ[i], ENV_LISTENER6_FD) ||
-        util::starts_with(environ[i], ENV_PORT) ||
-        util::starts_with(environ[i], ENV_UNIX_FD) ||
-        util::starts_with(environ[i], ENV_UNIX_PATH)) {
+    auto env = StringRef{environ[i]};
+    if (util::starts_with(env, ENV_ACCEPT_PREFIX) ||
+        util::starts_with(env, ENV_LISTENER4_FD) ||
+        util::starts_with(env, ENV_LISTENER6_FD) ||
+        util::starts_with(env, ENV_PORT) ||
+        util::starts_with(env, ENV_UNIX_FD) ||
+        util::starts_with(env, ENV_UNIX_PATH)) {
       continue;
     }
 
@@ -672,13 +675,13 @@ int create_acceptor_socket() {
 
   {
     // Upgrade from 1.7.0 or earlier
-    auto portenv = getenv(ENV_PORT);
+    auto portenv = getenv(ENV_PORT.c_str());
     if (portenv) {
       size_t i = 1;
       for (auto env_name : {ENV_LISTENER4_FD, ENV_LISTENER6_FD}) {
-        auto fdenv = getenv(env_name);
+        auto fdenv = getenv(env_name.c_str());
         if (fdenv) {
-          std::string name = ENV_ACCEPT_PREFIX;
+          auto name = ENV_ACCEPT_PREFIX.str();
           name += util::utos(i);
           std::string value = "tcp,";
           value += fdenv;
@@ -687,10 +690,10 @@ int create_acceptor_socket() {
         }
       }
     } else {
-      auto pathenv = getenv(ENV_UNIX_PATH);
-      auto fdenv = getenv(ENV_UNIX_FD);
+      auto pathenv = getenv(ENV_UNIX_PATH.c_str());
+      auto fdenv = getenv(ENV_UNIX_FD.c_str());
       if (pathenv && fdenv) {
-        std::string name = ENV_ACCEPT_PREFIX;
+        auto name = ENV_ACCEPT_PREFIX.str();
         name += '1';
         std::string value = "unix,";
         value += fdenv;
@@ -702,7 +705,7 @@ int create_acceptor_socket() {
   }
 
   for (size_t i = 1;; ++i) {
-    std::string name = ENV_ACCEPT_PREFIX;
+    auto name = ENV_ACCEPT_PREFIX.str();
     name += util::utos(i);
     auto env = getenv(name.c_str());
     if (!env) {
