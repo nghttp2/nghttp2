@@ -230,8 +230,7 @@ void test_util_select_h2(void) {
   // picked up because it has precedence over the other.
   const unsigned char t6[] = "\x5h2-14\x5h2-16";
   CU_ASSERT(util::select_h2(&out, &outlen, t6, sizeof(t6) - 1));
-  CU_ASSERT(memcmp(NGHTTP2_H2_16, out, str_size(NGHTTP2_H2_16)) == 0);
-  CU_ASSERT(str_size(NGHTTP2_H2_16) == outlen);
+  CU_ASSERT(util::streq(NGHTTP2_H2_16, StringRef{out, outlen}));
 }
 
 void test_util_ipv6_numeric_addr(void) {

@@ -648,7 +648,7 @@ int select_h1_next_proto_cb(SSL *ssl, unsigned char **out,
                             unsigned int inlen, void *arg) {
   auto end = in + inlen;
   for (; in < end;) {
-    if (util::streq_l(NGHTTP2_H1_1_ALPN, in, in[0] + 1)) {
+    if (util::streq(NGHTTP2_H1_1_ALPN, StringRef{in, in + (in[0] + 1)})) {
       *out = const_cast<unsigned char *>(in) + 1;
       *outlen = in[0];
       return SSL_TLSEXT_ERR_OK;
@@ -1362,8 +1362,7 @@ void setup_downstream_http2_alpn(SSL *ssl) {
 void setup_downstream_http1_alpn(SSL *ssl) {
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L
   // ALPN advertisement
-  auto alpn = StringRef::from_lit(NGHTTP2_H1_1_ALPN);
-  SSL_set_alpn_protos(ssl, alpn.byte(), alpn.size());
+  SSL_set_alpn_protos(ssl, NGHTTP2_H1_1_ALPN.byte(), NGHTTP2_H1_1_ALPN.size());
 #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 }
 

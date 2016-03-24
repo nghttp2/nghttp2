@@ -773,7 +773,7 @@ int Client::connection_made() {
       auto proto = StringRef{next_proto, next_proto_len};
       if (util::check_h2_is_selected(proto)) {
         session = make_unique<Http2Session>(this);
-      } else if (util::streq_l(NGHTTP2_H1_1, proto)) {
+      } else if (util::streq(NGHTTP2_H1_1, proto)) {
         session = make_unique<Http1Session>(this);
       }
 #ifdef HAVE_SPDYLAY
@@ -793,14 +793,12 @@ int Client::connection_made() {
                 << std::endl;
 
       for (const auto &proto : config.npn_list) {
-        if (std::equal(NGHTTP2_H1_1_ALPN,
-                       NGHTTP2_H1_1_ALPN + str_size(NGHTTP2_H1_1_ALPN),
-                       proto.c_str())) {
+        if (util::streq(NGHTTP2_H1_1_ALPN, StringRef{proto})) {
           std::cout
               << "Server does not support NPN/ALPN. Falling back to HTTP/1.1."
               << std::endl;
           session = make_unique<Http1Session>(this);
-          selected_proto = NGHTTP2_H1_1;
+          selected_proto = NGHTTP2_H1_1.str();
           break;
         }
       }
@@ -828,7 +826,7 @@ int Client::connection_made() {
       break;
     case Config::PROTO_HTTP1_1:
       session = make_unique<Http1Session>(this);
-      selected_proto = NGHTTP2_H1_1;
+      selected_proto = NGHTTP2_H1_1.str();
       break;
 #ifdef HAVE_SPDYLAY
     case Config::PROTO_SPDY2:
@@ -1855,24 +1853,27 @@ int main(int argc, char **argv) {
     case 'i':
       config.ifile = optarg;
       break;
-    case 'p':
-      if (util::strieq(NGHTTP2_CLEARTEXT_PROTO_VERSION_ID, optarg)) {
+    case 'p': {
+      auto proto = StringRef{optarg};
+      if (util::strieq(StringRef::from_lit(NGHTTP2_CLEARTEXT_PROTO_VERSION_ID),
+                       proto)) {
         config.no_tls_proto = Config::PROTO_HTTP2;
-      } else if (util::strieq(NGHTTP2_H1_1, optarg)) {
+      } else if (util::strieq(NGHTTP2_H1_1, proto)) {
         config.no_tls_proto = Config::PROTO_HTTP1_1;
 #ifdef HAVE_SPDYLAY
-      } else if (util::strieq("spdy/2", optarg)) {
+      } else if (util::strieq_l("spdy/2", proto)) {
         config.no_tls_proto = Config::PROTO_SPDY2;
-      } else if (util::strieq("spdy/3", optarg)) {
+      } else if (util::strieq_l("spdy/3", proto)) {
         config.no_tls_proto = Config::PROTO_SPDY3;
-      } else if (util::strieq("spdy/3.1", optarg)) {
+      } else if (util::strieq_l("spdy/3.1", proto)) {
         config.no_tls_proto = Config::PROTO_SPDY3_1;
 #endif // HAVE_SPDYLAY
       } else {
-        std::cerr << "-p: unsupported protocol " << optarg << std::endl;
+        std::cerr << "-p: unsupported protocol " << proto << std::endl;
         exit(EXIT_FAILURE);
       }
       break;
+    }
     case 'r':
       config.rate = strtoul(optarg, nullptr, 10);
       if (config.rate == 0) {

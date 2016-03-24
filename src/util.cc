@@ -748,16 +748,16 @@ int64_t to_time64(const timeval &tv) {
 }
 
 bool check_h2_is_selected(const StringRef &proto) {
-  return streq_l(NGHTTP2_PROTO_VERSION_ID, proto) ||
-         streq_l(NGHTTP2_H2_16, proto) || streq_l(NGHTTP2_H2_14, proto);
+  return streq(NGHTTP2_H2, proto) || streq(NGHTTP2_H2_16, proto) ||
+         streq(NGHTTP2_H2_14, proto);
 }
 
 namespace {
 bool select_proto(const unsigned char **out, unsigned char *outlen,
-                  const unsigned char *in, unsigned int inlen, const char *key,
-                  unsigned int keylen) {
-  for (auto p = in, end = in + inlen; p + keylen <= end; p += *p + 1) {
-    if (std::equal(key, key + keylen, p)) {
+                  const unsigned char *in, unsigned int inlen,
+                  const StringRef &key) {
+  for (auto p = in, end = in + inlen; p + key.size() <= end; p += *p + 1) {
+    if (std::equal(std::begin(key), std::end(key), p)) {
       *out = p + 1;
       *outlen = *p;
       return true;
@@ -769,20 +769,16 @@ bool select_proto(const unsigned char **out, unsigned char *outlen,
 
 bool select_h2(const unsigned char **out, unsigned char *outlen,
                const unsigned char *in, unsigned int inlen) {
-  return select_proto(out, outlen, in, inlen, NGHTTP2_PROTO_ALPN,
-                      str_size(NGHTTP2_PROTO_ALPN)) ||
-         select_proto(out, outlen, in, inlen, NGHTTP2_H2_16_ALPN,
-                      str_size(NGHTTP2_H2_16_ALPN)) ||
-         select_proto(out, outlen, in, inlen, NGHTTP2_H2_14_ALPN,
-                      str_size(NGHTTP2_H2_14_ALPN));
+  return select_proto(out, outlen, in, inlen, NGHTTP2_H2_ALPN) ||
+         select_proto(out, outlen, in, inlen, NGHTTP2_H2_16_ALPN) ||
+         select_proto(out, outlen, in, inlen, NGHTTP2_H2_14_ALPN);
 }
 
 bool select_protocol(const unsigned char **out, unsigned char *outlen,
                      const unsigned char *in, unsigned int inlen,
                      std::vector<std::string> proto_list) {
   for (const auto &proto : proto_list) {
-    if (select_proto(out, outlen, in, inlen, proto.c_str(),
-                     static_cast<unsigned int>(proto.size()))) {
+    if (select_proto(out, outlen, in, inlen, StringRef{proto})) {
       return true;
     }
   }
@@ -791,14 +787,14 @@ bool select_protocol(const unsigned char **out, unsigned char *outlen,
 }
 
 std::vector<unsigned char> get_default_alpn() {
-  auto res = std::vector<unsigned char>(str_size(NGHTTP2_PROTO_ALPN) +
-                                        str_size(NGHTTP2_H2_16_ALPN) +
-                                        str_size(NGHTTP2_H2_14_ALPN));
+  auto res = std::vector<unsigned char>(NGHTTP2_H2_ALPN.size() +
+                                        NGHTTP2_H2_16_ALPN.size() +
+                                        NGHTTP2_H2_14_ALPN.size());
   auto p = std::begin(res);
 
-  p = std::copy_n(NGHTTP2_PROTO_ALPN, str_size(NGHTTP2_PROTO_ALPN), p);
-  p = std::copy_n(NGHTTP2_H2_16_ALPN, str_size(NGHTTP2_H2_16_ALPN), p);
-  p = std::copy_n(NGHTTP2_H2_14_ALPN, str_size(NGHTTP2_H2_14_ALPN), p);
+  p = std::copy_n(std::begin(NGHTTP2_H2_ALPN), NGHTTP2_H2_ALPN.size(), p);
+  p = std::copy_n(std::begin(NGHTTP2_H2_16_ALPN), NGHTTP2_H2_16_ALPN.size(), p);
+  p = std::copy_n(std::begin(NGHTTP2_H2_14_ALPN), NGHTTP2_H2_14_ALPN.size(), p);
 
   return res;
 }
