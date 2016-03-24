@@ -116,8 +116,6 @@ func newServerTesterInternal(src_args []string, t *testing.T, handler http.Handl
 	if frontendTLS {
 		scheme = "https"
 		args = append(args, testDir+"/server.key", testDir+"/server.crt")
-	} else {
-		args = append(args, "--frontend-no-tls")
 	}
 
 	backendURL, err := url.Parse(ts.URL)
@@ -129,9 +127,15 @@ func newServerTesterInternal(src_args []string, t *testing.T, handler http.Handl
 	// "127.0.0.1,8080"
 	b := "-b" + strings.Replace(backendURL.Host, ":", ",", -1)
 	if backendTLS {
-		b += ";;proto=h2"
+		b += ";;proto=h2;tls"
 	}
-	args = append(args, fmt.Sprintf("-f127.0.0.1,%v", serverPort), b,
+
+	noTLS := "no-tls"
+	if frontendTLS {
+		noTLS = ""
+	}
+
+	args = append(args, fmt.Sprintf("-f127.0.0.1,%v;%v", serverPort, noTLS), b,
 		"--errorlog-file="+logDir+"/log.txt", "-LINFO")
 
 	authority := fmt.Sprintf("127.0.0.1:%v", serverPort)
