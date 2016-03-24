@@ -193,8 +193,8 @@ int ocsp_resp_cb(SSL *ssl, void *arg) {
 } // namespace
 #endif // OPENSSL_IS_BORINGSSL
 
-constexpr char MEMCACHED_SESSION_CACHE_KEY_PREFIX[] =
-    "nghttpx:tls-session-cache:";
+constexpr auto MEMCACHED_SESSION_CACHE_KEY_PREFIX =
+    StringRef::from_lit("nghttpx:tls-session-cache:");
 
 namespace {
 int tls_session_new_cb(SSL *ssl, SSL_SESSION *session) {
@@ -214,7 +214,7 @@ int tls_session_new_cb(SSL *ssl, SSL_SESSION *session) {
 
   auto req = make_unique<MemcachedRequest>();
   req->op = MEMCACHED_OP_ADD;
-  req->key = MEMCACHED_SESSION_CACHE_KEY_PREFIX;
+  req->key = MEMCACHED_SESSION_CACHE_KEY_PREFIX.str();
   req->key += util::format_hex(id, idlen);
 
   auto sessionlen = i2d_SSL_SESSION(session, nullptr);
@@ -271,7 +271,7 @@ SSL_SESSION *tls_session_get_cb(SSL *ssl, unsigned char *id, int idlen,
 
   auto req = make_unique<MemcachedRequest>();
   req->op = MEMCACHED_OP_GET;
-  req->key = MEMCACHED_SESSION_CACHE_KEY_PREFIX;
+  req->key = MEMCACHED_SESSION_CACHE_KEY_PREFIX.str();
   req->key += util::format_hex(id, idlen);
   req->cb = [conn](MemcachedRequest *, MemcachedResult res) {
     if (LOG_ENABLED(INFO)) {

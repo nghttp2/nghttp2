@@ -809,12 +809,6 @@ int ClientHandler::perform_http2_upgrade(HttpsUpstream *http) {
   auto downstream = http->get_downstream();
   auto input = downstream->get_response_buf();
 
-  static constexpr char res[] =
-      "HTTP/1.1 101 Switching Protocols\r\n"
-      "Connection: Upgrade\r\n"
-      "Upgrade: " NGHTTP2_CLEARTEXT_PROTO_VERSION_ID "\r\n"
-      "\r\n";
-
   if (upstream->upgrade_upstream(http) != 0) {
     return -1;
   }
@@ -827,7 +821,14 @@ int ClientHandler::perform_http2_upgrade(HttpsUpstream *http) {
   write_ = &ClientHandler::write_clear;
 
   input->remove(*output, input->rleft());
-  output->append(res, str_size(res));
+
+  constexpr auto res =
+      StringRef::from_lit("HTTP/1.1 101 Switching Protocols\r\n"
+                          "Connection: Upgrade\r\n"
+                          "Upgrade: " NGHTTP2_CLEARTEXT_PROTO_VERSION_ID "\r\n"
+                          "\r\n");
+
+  output->append(res);
   upstream_ = std::move(upstream);
 
   signal_write();
@@ -1030,23 +1031,23 @@ int ClientHandler::proxy_protocol_read() {
 
   --end;
 
-  constexpr char HEADER[] = "PROXY ";
+  constexpr auto HEADER = StringRef::from_lit("PROXY ");
 
-  if (static_cast<size_t>(end - rb_.pos) < str_size(HEADER)) {
+  if (static_cast<size_t>(end - rb_.pos) < HEADER.size()) {
     if (LOG_ENABLED(INFO)) {
       CLOG(INFO, this) << "PROXY-protocol-v1: PROXY version 1 ID not found";
     }
     return -1;
   }
 
-  if (!util::streq_l(HEADER, rb_.pos, str_size(HEADER))) {
+  if (!util::streq(HEADER, StringRef{rb_.pos, HEADER.size()})) {
     if (LOG_ENABLED(INFO)) {
       CLOG(INFO, this) << "PROXY-protocol-v1: Bad PROXY protocol version 1 ID";
     }
     return -1;
   }
 
-  rb_.drain(str_size(HEADER));
+  rb_.drain(HEADER.size());
 
   int family;
 

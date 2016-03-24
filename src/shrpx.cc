@@ -1011,27 +1011,27 @@ bool conf_exists(const char *path) {
 } // namespace
 
 namespace {
-constexpr char DEFAULT_NPN_LIST[] = "h2,h2-16,h2-14,"
+constexpr auto DEFAULT_NPN_LIST = StringRef::from_lit("h2,h2-16,h2-14,"
 #ifdef HAVE_SPDYLAY
-                                    "spdy/3.1,"
+                                                      "spdy/3.1,"
 #endif // HAVE_SPDYLAY
-                                    "http/1.1";
+                                                      "http/1.1");
 } // namespace
 
 namespace {
-constexpr char DEFAULT_TLS_PROTO_LIST[] = "TLSv1.2,TLSv1.1";
+constexpr auto DEFAULT_TLS_PROTO_LIST = StringRef::from_lit("TLSv1.2,TLSv1.1");
 } // namespace
 
 namespace {
-constexpr char DEFAULT_ACCESSLOG_FORMAT[] =
+constexpr auto DEFAULT_ACCESSLOG_FORMAT = StringRef::from_lit(
     R"($remote_addr - - [$time_local] )"
     R"("$request" $status $body_bytes_sent )"
-    R"("$http_referer" "$http_user_agent")";
+    R"("$http_referer" "$http_user_agent")");
 } // namespace
 
 namespace {
 constexpr char DEFAULT_DOWNSTREAM_HOST[] = "127.0.0.1";
-int16_t DEFAULT_DOWNSTREAM_PORT = 80;
+constexpr int16_t DEFAULT_DOWNSTREAM_PORT = 80;
 } // namespace;
 
 namespace {
@@ -1117,8 +1117,7 @@ void fill_default_config() {
   auto &loggingconf = mod_config()->logging;
   {
     auto &accessconf = loggingconf.access;
-    accessconf.format =
-        parse_log_format(StringRef::from_lit(DEFAULT_ACCESSLOG_FORMAT));
+    accessconf.format = parse_log_format(DEFAULT_ACCESSLOG_FORMAT);
 
     auto &errorconf = loggingconf.error;
     errorconf.file = "/dev/stderr";
@@ -2025,12 +2024,11 @@ void process_options(int argc, char **argv,
   auto &tlsconf = mod_config()->tls;
 
   if (tlsconf.npn_list.empty()) {
-    tlsconf.npn_list =
-        util::parse_config_str_list(StringRef::from_lit(DEFAULT_NPN_LIST));
+    tlsconf.npn_list = util::parse_config_str_list(DEFAULT_NPN_LIST);
   }
   if (tlsconf.tls_proto_list.empty()) {
-    tlsconf.tls_proto_list = util::parse_config_str_list(
-        StringRef::from_lit(DEFAULT_TLS_PROTO_LIST));
+    tlsconf.tls_proto_list =
+        util::parse_config_str_list(DEFAULT_TLS_PROTO_LIST);
   }
 
   tlsconf.tls_proto_mask = ssl::create_tls_proto_mask(tlsconf.tls_proto_list);
