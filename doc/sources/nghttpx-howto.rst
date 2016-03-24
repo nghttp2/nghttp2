@@ -24,21 +24,22 @@ server's private key and certificate must be supplied to the command
 line (or through configuration file).  In this case, the frontend
 protocol selection will be done via ALPN or NPN.
 
-With :option:`--frontend-no-tls` option, user can turn off SSL/TLS in
-frontend connection.  In this case, SPDY protocol is not available
-even if spdylay library is liked to nghttpx.  HTTP/2 and HTTP/1 are
-available on the frontend, and an HTTP/1 connection can be upgraded to
-HTTP/2 using HTTP Upgrade.  Starting HTTP/2 connection by sending
-HTTP/2 connection preface is also supported.
+To turn off encryption on frontend connection, use ``no-tls`` keyword
+in :option:`--frontend` option.  In this case, SPDY protocol is not
+available even if spdylay library is liked to nghttpx.  HTTP/2 and
+HTTP/1 are available on the frontend, and an HTTP/1 connection can be
+upgraded to HTTP/2 using HTTP Upgrade.  Starting HTTP/2 connection by
+sending HTTP/2 connection preface is also supported.
 
 By default, backend connections are not encrypted.  To enable TLS
-encryption on backend connections, use :option:`--backend-tls` option.
-Using patterns and ``proto`` keyword in :option:`--backend` option,
-backend application protocol can be specified per host/request path
-pattern.  It means that you can use both HTTP/2 and HTTP/1 in backend
-connections at the same time.  Note that default backend protocol is
-HTTP/1.1.  To use HTTP/2 in backend, you have to specify ``h2`` in
-``proto`` keyword in :option:`--backend` explicitly.
+encryption on backend connections, use ``tls`` keyword in
+:option:`--backend` option.  Using patterns and ``proto`` keyword in
+:option:`--backend` option, backend application protocol can be
+specified per host/request path pattern.  It means that you can use
+both HTTP/2 and HTTP/1 in backend connections at the same time.  Note
+that default backend protocol is HTTP/1.1.  To use HTTP/2 in backend,
+you have to specify ``h2`` in ``proto`` keyword in :option:`--backend`
+explicitly.
 
 The backend is supposed to be Web server.  For example, to make
 nghttpx listen to encrypted HTTP/2 requests at port 8443, and a
@@ -66,8 +67,8 @@ By default, frontend connection is encrypted.  So this mode is also
 called secure proxy.  If nghttpx is linked with spdylay, it supports
 SPDY protocols and it works as so called SPDY proxy.
 
-With :option:`--frontend-no-tls` option, SSL/TLS is turned off in
-frontend connection, so the connection gets insecure.
+To turn off encryption on frontend connection, use ``no-tls`` keyword
+in :option:`--frontend` option.
 
 The backend must be HTTP proxy server.  nghttpx supports multiple
 backend server addresses.  It translates incoming requests to HTTP
@@ -76,10 +77,10 @@ work for each request, for example, dispatching requests to the origin
 server and caching contents.
 
 The backend connection is not encrypted by default.  To enable
-encryption, use :option:`--backend-tls` option.  The default backend
-protocol is HTTP/1.1.  To use HTTP/2 in backend connection, use
-:option:`--backend` option, and specify ``h2`` in ``proto`` keyword
-explicitly.
+encryption, use ``tls`` keyword in :option:`--backend` option.  The
+default backend protocol is HTTP/1.1.  To use HTTP/2 in backend
+connection, use :option:`--backend` option, and specify ``h2`` in
+``proto`` keyword explicitly.
 
 For example, to make nghttpx listen to encrypted HTTP/2 requests at
 port 8443, and a backend HTTP proxy server is configured to listen to
@@ -133,15 +134,15 @@ Disable frontend SSL/TLS
 ------------------------
 
 The frontend connections are encrypted with SSL/TLS by default.  To
-turn off SSL/TLS, use :option:`--frontend-no-tls` option.  If this
-option is used, the private key and certificate are not required to
-run nghttpx.
+turn off SSL/TLS, use ``no-tls`` keyword in :option:`--frontend`
+option.  If this option is used, the private key and certificate are
+not required to run nghttpx.
 
 Enable backend SSL/TLS
 ----------------------
 
 The backend connections are not encrypted by default.  To enable
-SSL/TLS encryption, :option:`--backend-tls` option.
+SSL/TLS encryption, use ``tls`` keyword in :option:`--backend` option.
 
 Enable SSL/TLS on memcached connection
 --------------------------------------
@@ -308,18 +309,48 @@ requests, do this:
 Note that the backends share the same pattern must have the same
 backend protocol.  The default backend protocol is HTTP/1.1.
 
+TLS can be enabed per pattern basis:
+
+.. code-block:: text
+
+   backend=serv1,8443;/;proto=h2;tls
+   backend=serv2,8080;/ws/;proto=http/1.1
+
+In the above case, connection to serv1 will be encrypted by TLS.  On
+the other hand, connection to serv2 will not be encrypted by TLS.
+
 Deprecated modes
 ----------------
 
 As of nghttpx 1.9.0, ``--http2-bridge``, ``--client`` and
-``--client-proxy`` options were removed.  These functionality can be
-used using combinations of options.
+``--client-proxy`` options have been removed.  These functionality can
+be used using combinations of options.
 
-* ``--http2-bridge``: Use ``--backend='<ADDR>,<PORT>;;proto=h2'``, and
-  ``--backend-tls``.
+* ``--http2-bridge``: Use ``--backend='<ADDR>,<PORT>;;proto=h2;tls'``.
 
-* ``--client``: Use ``--frontend-no-tls``,
-  ``--backend='<ADDR>,<PORT>;;proto=h2'``, and ``--backend-tls``.
+* ``--client``: Use ``--frontend='*,3000;no-tls'``,
+  ``--backend='<ADDR>,<PORT>;;proto=h2;tls'``.
 
-* ``--client-proxy``: Use ``--http2-proxy``, ``--frontend-no-tls``,
-  ``--backend='<ADDR>,<PORT>;;proto=h2'``, and ``--backend-tls``.
+* ``--client-proxy``: Use ``--http2-proxy``,
+  ``--frontend='*,3000;no-tls'``,
+  ``--backend='<ADDR>,<PORT>;;proto=h2;tls'``.
+
+--frontend-no-tls and --backend-tls
+-----------------------------------
+
+As of nghttpx 1.9.0, ``--frontend-no-tls`` and ``--backend-tls`` have
+been removed.
+
+To disable encryption on frontend connection, use ``no-tls`` keyword
+in :option:`--frontend` potion:
+
+.. code-block:: text
+
+   frontend=*,3000;no-tls
+
+To enable encryption on backend connection, use ``tls`` keyword in
+:option:`--backend` option:
+
+.. code-block:: text
+
+   backend=127.0.0.1,8080;tls
