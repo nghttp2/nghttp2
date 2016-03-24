@@ -193,8 +193,8 @@ inline bool starts_with(const std::string &a, const std::string &b) {
   return starts_with(std::begin(a), std::end(a), std::begin(b), std::end(b));
 }
 
-inline bool starts_with(const char *a, const char *b) {
-  return starts_with(a, a + strlen(a), b, b + strlen(b));
+inline bool starts_with(const StringRef &a, const StringRef &b) {
+  return starts_with(std::begin(a), std::end(a), std::begin(b), std::end(b));
 }
 
 struct CaseCmp {
