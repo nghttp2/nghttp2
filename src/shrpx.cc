@@ -94,21 +94,19 @@ namespace shrpx {
 
 // Deprecated: Environment variables to tell new binary the listening
 // socket's file descriptors.  They are not close-on-exec.
-constexpr StringRef ENV_LISTENER4_FD =
-    StringRef::from_lit("NGHTTPX_LISTENER4_FD");
-constexpr StringRef ENV_LISTENER6_FD =
-    StringRef::from_lit("NGHTTPX_LISTENER6_FD");
+constexpr auto ENV_LISTENER4_FD = StringRef::from_lit("NGHTTPX_LISTENER4_FD");
+constexpr auto ENV_LISTENER6_FD = StringRef::from_lit("NGHTTPX_LISTENER6_FD");
 
 // Deprecated: Environment variable to tell new binary the port number
 // the current binary is listening to.
-constexpr StringRef ENV_PORT = StringRef::from_lit("NGHTTPX_PORT");
+constexpr auto ENV_PORT = StringRef::from_lit("NGHTTPX_PORT");
 
 // Deprecated: Environment variable to tell new binary the listening
 // socket's file descriptor if frontend listens UNIX domain socket.
-constexpr StringRef ENV_UNIX_FD = StringRef::from_lit("NGHTTP2_UNIX_FD");
+constexpr auto ENV_UNIX_FD = StringRef::from_lit("NGHTTP2_UNIX_FD");
 // Deprecated: Environment variable to tell new binary the UNIX domain
 // socket path.
-constexpr StringRef ENV_UNIX_PATH = StringRef::from_lit("NGHTTP2_UNIX_PATH");
+constexpr auto ENV_UNIX_PATH = StringRef::from_lit("NGHTTP2_UNIX_PATH");
 
 // Prefix of environment variables to tell new binary the listening
 // socket's file descriptor.  They are not close-on-exec.  For TCP
@@ -116,7 +114,7 @@ constexpr StringRef ENV_UNIX_PATH = StringRef::from_lit("NGHTTP2_UNIX_PATH");
 // <FD> is file descriptor.  For UNIX domain socket, the value must be
 // comma separated 3 parameters: unix,<FD>,<PATH>.  <FD> is file
 // descriptor.  <PATH> is a path to UNIX domain socket.
-constexpr StringRef ENV_ACCEPT_PREFIX = StringRef::from_lit("NGHTTPX_ACCEPT_");
+constexpr auto ENV_ACCEPT_PREFIX = StringRef::from_lit("NGHTTPX_ACCEPT_");
 
 #ifndef _KERNEL_FASTOPEN
 #define _KERNEL_FASTOPEN
