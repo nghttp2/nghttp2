@@ -488,7 +488,7 @@ std::vector<LogFragment> parse_log_format(const StringRef &optarg) {
     auto type = log_var_lookup_token(var_name, var_namelen);
 
     if (type == SHRPX_LOGF_NONE) {
-      if (util::istarts_with(var_name, var_namelen, "http_")) {
+      if (util::istarts_with_l(StringRef{var_name, var_namelen}, "http_")) {
         if (util::streq_l("host", StringRef{var_name + str_size("http_"),
                                             var_namelen - str_size("http_")})) {
           // Special handling of host header field.  We will use

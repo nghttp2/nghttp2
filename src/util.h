@@ -220,13 +220,6 @@ inline bool istarts_with(const StringRef &a, const StringRef &b) {
   return istarts_with(std::begin(a), std::end(a), std::begin(b), std::end(b));
 }
 
-template <typename InputIt>
-bool istarts_with(InputIt a, size_t an, const char *b) {
-  return istarts_with(a, a + an, b, b + strlen(b));
-}
-
-bool istarts_with(const char *a, const char *b);
-
 template <typename CharT, size_t N>
 bool istarts_with_l(const std::string &a, const CharT(&b)[N]) {
   return istarts_with(std::begin(a), std::end(a), b, b + N - 1);
