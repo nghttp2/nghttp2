@@ -63,6 +63,8 @@ namespace {
 Config *config = nullptr;
 } // namespace
 
+constexpr StringRef SHRPX_UNIX_PATH_PREFIX = StringRef::from_lit("unix:");
+
 const Config *get_config() { return config; }
 
 Config *mod_config() { return config; }
@@ -1749,8 +1751,8 @@ int parse_config(const StringRef &opt, const StringRef &optarg,
     auto addr_end = std::find(std::begin(optarg), std::end(optarg), ';');
 
     DownstreamAddrConfig addr{};
-    if (util::istarts_with_l(optarg, SHRPX_UNIX_PATH_PREFIX)) {
-      auto path = std::begin(optarg) + str_size(SHRPX_UNIX_PATH_PREFIX);
+    if (util::istarts_with(optarg, SHRPX_UNIX_PATH_PREFIX)) {
+      auto path = std::begin(optarg) + SHRPX_UNIX_PATH_PREFIX.size();
       addr.host = ImmutableString(path, addr_end);
       addr.host_unix = true;
     } else {
@@ -1793,8 +1795,8 @@ int parse_config(const StringRef &opt, const StringRef &optarg,
     addr.fd = -1;
     addr.tls = params.tls;
 
-    if (util::istarts_with_l(optarg, SHRPX_UNIX_PATH_PREFIX)) {
-      auto path = std::begin(optarg) + str_size(SHRPX_UNIX_PATH_PREFIX);
+    if (util::istarts_with(optarg, SHRPX_UNIX_PATH_PREFIX)) {
+      auto path = std::begin(optarg) + SHRPX_UNIX_PATH_PREFIX.size();
       addr.host = ImmutableString{path, addr_end};
       addr.host_unix = true;
 

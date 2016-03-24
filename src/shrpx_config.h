@@ -69,8 +69,6 @@ class CertLookupTree;
 
 } // namespace ssl
 
-constexpr char SHRPX_UNIX_PATH_PREFIX[] = "unix:";
-
 constexpr auto SHRPX_OPT_PRIVATE_KEY_FILE =
     StringRef::from_lit("private-key-file");
 constexpr auto SHRPX_OPT_PRIVATE_KEY_PASSWD_FILE =
