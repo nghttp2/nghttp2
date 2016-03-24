@@ -78,7 +78,7 @@ TicketKeys::~TicketKeys() {
 
 namespace {
 int split_host_port(char *host, size_t hostlen, uint16_t *port_ptr,
-                    const StringRef &hostport, const char *opt) {
+                    const StringRef &hostport, const StringRef &opt) {
   // host and port in |hostport| is separated by single ','.
   auto sep = std::find(std::begin(hostport), std::end(hostport), ',');
   if (sep == std::end(hostport)) {
@@ -106,9 +106,9 @@ int split_host_port(char *host, size_t hostlen, uint16_t *port_ptr,
 } // namespace
 
 namespace {
-bool is_secure(const char *filename) {
+bool is_secure(const StringRef &filename) {
   struct stat buf;
-  int rv = stat(filename, &buf);
+  int rv = stat(filename.c_str(), &buf);
   if (rv == 0) {
     if ((buf.st_mode & S_IRWXU) && !(buf.st_mode & S_IRWXG) &&
         !(buf.st_mode & S_IRWXO)) {
@@ -219,29 +219,33 @@ FILE *open_file_for_write(const char *filename) {
   return f;
 }
 
-std::string read_passwd_from_file(const char *filename) {
+namespace {
+// Read passwd from |filename|
+std::string read_passwd_from_file(const StringRef &opt,
+                                  const StringRef &filename) {
   std::string line;
 
   if (!is_secure(filename)) {
-    LOG(ERROR) << "Private key passwd file " << filename
+    LOG(ERROR) << opt << ": Private key passwd file " << filename
                << " has insecure mode.";
     return line;
   }
 
-  std::ifstream in(filename, std::ios::binary);
+  std::ifstream in(filename.c_str(), std::ios::binary);
   if (!in) {
-    LOG(ERROR) << "Could not open key passwd file " << filename;
+    LOG(ERROR) << opt << ": Could not open key passwd file " << filename;
     return line;
   }
 
   std::getline(in, line);
   return line;
 }
+} // namespace
 
-Headers::value_type parse_header(const char *optarg) {
-  const auto *colon = strchr(optarg, ':');
+Headers::value_type parse_header(const StringRef &optarg) {
+  auto colon = std::find(std::begin(optarg), std::end(optarg), ':');
 
-  if (colon == nullptr || colon == optarg) {
+  if (colon == std::end(optarg) || colon == std::begin(optarg)) {
     return {"", ""};
   }
 
@@ -249,29 +253,24 @@ Headers::value_type parse_header(const char *optarg) {
   for (; *value == '\t' || *value == ' '; ++value)
     ;
 
-  auto p =
-      Header(std::string(optarg, colon), std::string(value, strlen(value)));
+  auto p = Header(std::string{std::begin(optarg), colon},
+                  std::string{value, std::end(optarg)});
   util::inp_strlower(p.name);
 
   if (!nghttp2_check_header_name(
           reinterpret_cast<const uint8_t *>(p.name.c_str()), p.name.size()) ||
       !nghttp2_check_header_value(
           reinterpret_cast<const uint8_t *>(p.value.c_str()), p.value.size())) {
-    return Header();
+    return Header{};
   }
 
   return p;
 }
 
 template <typename T>
-int parse_uint(T *dest, const char *opt, const char *optarg) {
-  char *end = nullptr;
-
-  errno = 0;
-
-  auto val = strtol(optarg, &end, 10);
-
-  if (!optarg[0] || errno != 0 || *end || val < 0) {
+int parse_uint(T *dest, const StringRef &opt, const StringRef &optarg) {
+  auto val = util::parse_uint(optarg);
+  if (val == -1) {
     LOG(ERROR) << opt << ": bad value.  Specify an integer >= 0.";
     return -1;
   }
@@ -283,7 +282,8 @@ int parse_uint(T *dest, const char *opt, const char *optarg) {
 
 namespace {
 template <typename T>
-int parse_uint_with_unit(T *dest, const char *opt, const char *optarg) {
+int parse_uint_with_unit(T *dest, const StringRef &opt,
+                         const StringRef &optarg) {
   auto n = util::parse_uint_with_unit(optarg);
   if (n == -1) {
     LOG(ERROR) << opt << ": bad value: '" << optarg << "'";
@@ -296,8 +296,10 @@ int parse_uint_with_unit(T *dest, const char *opt, const char *optarg) {
 }
 } // namespace
 
+// Parses |optarg| as signed integer.  This requires |optarg| to be
+// NULL-terminated string.
 template <typename T>
-int parse_int(T *dest, const char *opt, const char *optarg) {
+int parse_int(T *dest, const StringRef &opt, const char *optarg) {
   char *end = nullptr;
 
   errno = 0;
@@ -442,10 +444,10 @@ bool var_token(char c) {
 }
 } // namespace
 
-std::vector<LogFragment> parse_log_format(const char *optarg) {
-  auto literal_start = optarg;
-  auto p = optarg;
-  auto eop = p + strlen(optarg);
+std::vector<LogFragment> parse_log_format(const StringRef &optarg) {
+  auto literal_start = std::begin(optarg);
+  auto p = literal_start;
+  auto eop = std::end(optarg);
 
   auto res = std::vector<LogFragment>();
 
@@ -467,7 +469,7 @@ std::vector<LogFragment> parse_log_format(const char *optarg) {
         ;
 
       if (p == eop || *p != '}') {
-        LOG(WARN) << "Missing '}' after " << std::string(var_start, p);
+        LOG(WARN) << "Missing '}' after " << StringRef{var_start, p};
         continue;
       }
 
@@ -499,7 +501,7 @@ std::vector<LogFragment> parse_log_format(const char *optarg) {
         }
       } else {
         LOG(WARN) << "Unrecognized log format variable: "
-                  << std::string(var_name, var_namelen);
+                  << StringRef{var_name, var_namelen};
         continue;
       }
     }
@@ -534,16 +536,17 @@ std::vector<LogFragment> parse_log_format(const char *optarg) {
 }
 
 namespace {
-int parse_address_family(int *dest, const char *opt, const char *optarg) {
-  if (util::strieq("auto", optarg)) {
+int parse_address_family(int *dest, const StringRef &opt,
+                         const StringRef &optarg) {
+  if (util::strieq_l("auto", optarg)) {
     *dest = AF_UNSPEC;
     return 0;
   }
-  if (util::strieq("IPv4", optarg)) {
+  if (util::strieq_l("IPv4", optarg)) {
     *dest = AF_INET;
     return 0;
   }
-  if (util::strieq("IPv6", optarg)) {
+  if (util::strieq_l("IPv6", optarg)) {
     *dest = AF_INET6;
     return 0;
   }
@@ -554,7 +557,8 @@ int parse_address_family(int *dest, const char *opt, const char *optarg) {
 } // namespace
 
 namespace {
-int parse_duration(ev_tstamp *dest, const char *opt, const char *optarg) {
+int parse_duration(ev_tstamp *dest, const StringRef &opt,
+                   const StringRef &optarg) {
   auto t = util::parse_duration_with_unit(optarg);
   if (t == std::numeric_limits<double>::infinity()) {
     LOG(ERROR) << opt << ": bad value: '" << optarg << "'";
@@ -791,12 +795,12 @@ int parse_mapping(const DownstreamAddrConfig &addr,
 } // namespace
 
 namespace {
-int parse_forwarded_node_type(const std::string &optarg) {
-  if (util::strieq(optarg, "obfuscated")) {
+int parse_forwarded_node_type(const StringRef &optarg) {
+  if (util::strieq_l("obfuscated", optarg)) {
     return FORWARDED_NODE_OBFUSCATED;
   }
 
-  if (util::strieq(optarg, "ip")) {
+  if (util::strieq_l("ip", optarg)) {
     return FORWARDED_NODE_IP;
   }
 
@@ -816,16 +820,15 @@ int parse_forwarded_node_type(const std::string &optarg) {
 } // namespace
 
 namespace {
-int parse_error_page(std::vector<ErrorPage> &error_pages, const char *opt,
-                     const char *optarg) {
-  auto arg = StringRef{optarg};
-  auto eq = std::find(std::begin(arg), std::end(arg), '=');
-  if (eq == std::end(arg) || eq + 1 == std::end(arg)) {
-    LOG(ERROR) << opt << ": bad value: '" << arg << "'";
+int parse_error_page(std::vector<ErrorPage> &error_pages, const StringRef &opt,
+                     const StringRef &optarg) {
+  auto eq = std::find(std::begin(optarg), std::end(optarg), '=');
+  if (eq == std::end(optarg) || eq + 1 == std::end(optarg)) {
+    LOG(ERROR) << opt << ": bad value: '" << optarg << "'";
     return -1;
   }
 
-  auto codestr = StringRef{std::begin(arg), eq};
+  auto codestr = StringRef{std::begin(optarg), eq};
   unsigned int code;
 
   if (codestr == "*") {
@@ -841,7 +844,7 @@ int parse_error_page(std::vector<ErrorPage> &error_pages, const char *opt,
     code = static_cast<unsigned int>(n);
   }
 
-  auto path = StringRef{eq + 1, std::end(arg)};
+  auto path = StringRef{eq + 1, std::end(optarg)};
 
   std::vector<uint8_t> content;
   auto fd = open(path.c_str(), O_RDONLY);
@@ -1734,26 +1737,25 @@ int option_lookup_token(const char *name, size_t namelen) {
 }
 } // namespace
 
-int parse_config(const char *opt, const char *optarg,
-                 std::set<std::string> &included_set) {
+int parse_config(const StringRef &opt, const StringRef &optarg,
+                 std::set<StringRef> &included_set) {
   char host[NI_MAXHOST];
   uint16_t port;
 
-  auto optid = option_lookup_token(opt, strlen(opt));
+  auto optid = option_lookup_token(opt.c_str(), opt.size());
 
   switch (optid) {
   case SHRPX_OPTID_BACKEND: {
-    auto src = StringRef{optarg};
-    auto addr_end = std::find(std::begin(src), std::end(src), ';');
+    auto addr_end = std::find(std::begin(optarg), std::end(optarg), ';');
 
     DownstreamAddrConfig addr{};
-    if (util::istarts_with_l(src, SHRPX_UNIX_PATH_PREFIX)) {
-      auto path = std::begin(src) + str_size(SHRPX_UNIX_PATH_PREFIX);
+    if (util::istarts_with_l(optarg, SHRPX_UNIX_PATH_PREFIX)) {
+      auto path = std::begin(optarg) + str_size(SHRPX_UNIX_PATH_PREFIX);
       addr.host = ImmutableString(path, addr_end);
       addr.host_unix = true;
     } else {
       if (split_host_port(host, sizeof(host), &port,
-                          StringRef{std::begin(src), addr_end}, opt) == -1) {
+                          StringRef{std::begin(optarg), addr_end}, opt) == -1) {
         return -1;
       }
 
@@ -1761,13 +1763,14 @@ int parse_config(const char *opt, const char *optarg,
       addr.port = port;
     }
 
-    auto mapping = addr_end == std::end(src) ? addr_end : addr_end + 1;
-    auto mapping_end = std::find(mapping, std::end(src), ';');
+    auto mapping = addr_end == std::end(optarg) ? addr_end : addr_end + 1;
+    auto mapping_end = std::find(mapping, std::end(optarg), ';');
 
-    auto params = mapping_end == std::end(src) ? mapping_end : mapping_end + 1;
+    auto params =
+        mapping_end == std::end(optarg) ? mapping_end : mapping_end + 1;
 
     if (parse_mapping(addr, StringRef{mapping, mapping_end},
-                      StringRef{params, std::end(src)}) != 0) {
+                      StringRef{params, std::end(optarg)}) != 0) {
       return -1;
     }
 
@@ -1776,9 +1779,8 @@ int parse_config(const char *opt, const char *optarg,
   case SHRPX_OPTID_FRONTEND: {
     auto &listenerconf = mod_config()->conn.listener;
 
-    auto src = StringRef{optarg};
-    auto addr_end = std::find(std::begin(src), std::end(src), ';');
-    auto src_params = StringRef{addr_end, std::end(src)};
+    auto addr_end = std::find(std::begin(optarg), std::end(optarg), ';');
+    auto src_params = StringRef{addr_end, std::end(optarg)};
 
     UpstreamParams params{};
     params.tls = true;
@@ -1791,8 +1793,8 @@ int parse_config(const char *opt, const char *optarg,
     addr.fd = -1;
     addr.tls = params.tls;
 
-    if (util::istarts_with_l(src, SHRPX_UNIX_PATH_PREFIX)) {
-      auto path = std::begin(src) + str_size(SHRPX_UNIX_PATH_PREFIX);
+    if (util::istarts_with_l(optarg, SHRPX_UNIX_PATH_PREFIX)) {
+      auto path = std::begin(optarg) + str_size(SHRPX_UNIX_PATH_PREFIX);
       addr.host = ImmutableString{path, addr_end};
       addr.host_unix = true;
 
@@ -1802,7 +1804,7 @@ int parse_config(const char *opt, const char *optarg,
     }
 
     if (split_host_port(host, sizeof(host), &port,
-                        StringRef{std::begin(src), addr_end}, opt) == -1) {
+                        StringRef{std::begin(optarg), addr_end}, opt) == -1) {
       return -1;
     }
 
@@ -1858,11 +1860,11 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   case SHRPX_OPTID_DAEMON:
-    mod_config()->daemon = util::strieq(optarg, "yes");
+    mod_config()->daemon = util::strieq_l("yes", optarg);
 
     return 0;
   case SHRPX_OPTID_HTTP2_PROXY:
-    mod_config()->http2_proxy = util::strieq(optarg, "yes");
+    mod_config()->http2_proxy = util::strieq_l("yes", optarg);
 
     return 0;
   case SHRPX_OPTID_HTTP2_BRIDGE:
@@ -1874,15 +1876,15 @@ int parse_config(const char *opt, const char *optarg,
                          "backend=<addr>,<port>;;proto=h2 and backend-tls";
     return -1;
   case SHRPX_OPTID_ADD_X_FORWARDED_FOR:
-    mod_config()->http.xff.add = util::strieq(optarg, "yes");
+    mod_config()->http.xff.add = util::strieq_l("yes", optarg);
 
     return 0;
   case SHRPX_OPTID_STRIP_INCOMING_X_FORWARDED_FOR:
-    mod_config()->http.xff.strip_incoming = util::strieq(optarg, "yes");
+    mod_config()->http.xff.strip_incoming = util::strieq_l("yes", optarg);
 
     return 0;
   case SHRPX_OPTID_NO_VIA:
-    mod_config()->http.no_via = util::strieq(optarg, "yes");
+    mod_config()->http.no_via = util::strieq_l("yes", optarg);
 
     return 0;
   case SHRPX_OPTID_FRONTEND_HTTP2_READ_TIMEOUT:
@@ -1907,11 +1909,12 @@ int parse_config(const char *opt, const char *optarg,
     return parse_duration(&mod_config()->http2.timeout.stream_write, opt,
                           optarg);
   case SHRPX_OPTID_ACCESSLOG_FILE:
-    mod_config()->logging.access.file = optarg;
+    mod_config()->logging.access.file =
+        ImmutableString{std::begin(optarg), std::end(optarg)};
 
     return 0;
   case SHRPX_OPTID_ACCESSLOG_SYSLOG:
-    mod_config()->logging.access.syslog = util::strieq(optarg, "yes");
+    mod_config()->logging.access.syslog = util::strieq_l("yes", optarg);
 
     return 0;
   case SHRPX_OPTID_ACCESSLOG_FORMAT:
@@ -1919,16 +1922,17 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   case SHRPX_OPTID_ERRORLOG_FILE:
-    mod_config()->logging.error.file = optarg;
+    mod_config()->logging.error.file =
+        ImmutableString{std::begin(optarg), std::end(optarg)};
 
     return 0;
   case SHRPX_OPTID_ERRORLOG_SYSLOG:
-    mod_config()->logging.error.syslog = util::strieq(optarg, "yes");
+    mod_config()->logging.error.syslog = util::strieq_l("yes", optarg);
 
     return 0;
   case SHRPX_OPTID_FASTOPEN: {
     int n;
-    if (parse_int(&n, opt, optarg) != 0) {
+    if (parse_int(&n, opt, optarg.c_str()) != 0) {
       return -1;
     }
 
@@ -2009,15 +2013,16 @@ int parse_config(const char *opt, const char *optarg,
                         "default.  See also " << SHRPX_OPT_BACKEND_TLS;
     return 0;
   case SHRPX_OPTID_BACKEND_TLS_SNI_FIELD:
-    mod_config()->tls.backend_sni_name = optarg;
+    mod_config()->tls.backend_sni_name = optarg.str();
 
     return 0;
   case SHRPX_OPTID_PID_FILE:
-    mod_config()->pid_file = optarg;
+    mod_config()->pid_file =
+        ImmutableString{std::begin(optarg), std::end(optarg)};
 
     return 0;
   case SHRPX_OPTID_USER: {
-    auto pwd = getpwnam(optarg);
+    auto pwd = getpwnam(optarg.c_str());
     if (!pwd) {
       LOG(ERROR) << opt << ": failed to get uid from " << optarg << ": "
                  << strerror(errno);
@@ -2030,11 +2035,12 @@ int parse_config(const char *opt, const char *optarg,
     return 0;
   }
   case SHRPX_OPTID_PRIVATE_KEY_FILE:
-    mod_config()->tls.private_key_file = optarg;
+    mod_config()->tls.private_key_file =
+        ImmutableString{std::begin(optarg), std::end(optarg)};
 
     return 0;
   case SHRPX_OPTID_PRIVATE_KEY_PASSWD_FILE: {
-    auto passwd = read_passwd_from_file(optarg);
+    auto passwd = read_passwd_from_file(opt, optarg);
     if (passwd.empty()) {
       LOG(ERROR) << opt << ": Couldn't read key file's passwd from " << optarg;
       return -1;
@@ -2044,21 +2050,39 @@ int parse_config(const char *opt, const char *optarg,
     return 0;
   }
   case SHRPX_OPTID_CERTIFICATE_FILE:
-    mod_config()->tls.cert_file = optarg;
+    mod_config()->tls.cert_file =
+        ImmutableString{std::begin(optarg), std::end(optarg)};
 
     return 0;
   case SHRPX_OPTID_DH_PARAM_FILE:
-    mod_config()->tls.dh_param_file = optarg;
+    mod_config()->tls.dh_param_file =
+        ImmutableString{std::begin(optarg), std::end(optarg)};
 
     return 0;
   case SHRPX_OPTID_SUBCERT: {
     // Private Key file and certificate file separated by ':'.
-    const char *sp = strchr(optarg, ':');
-    if (sp) {
-      std::string keyfile(optarg, sp);
-      // TODO Do we need private key for subcert?
-      mod_config()->tls.subcerts.emplace_back(keyfile, sp + 1);
+    auto sp = std::find(std::begin(optarg), std::end(optarg), ':');
+    if (sp == std::end(optarg)) {
+      LOG(ERROR) << opt << ": missing ':' in " << optarg;
+      return -1;
     }
+
+    auto private_key_file = StringRef{std::begin(optarg), sp};
+
+    if (private_key_file.empty()) {
+      LOG(ERROR) << opt << ": missing private key file: " << optarg;
+      return -1;
+    }
+
+    auto cert_file = StringRef{sp + 1, std::end(optarg)};
+
+    if (cert_file.empty()) {
+      LOG(ERROR) << opt << ": missing certificate file: " << optarg;
+      return -1;
+    }
+
+    mod_config()->tls.subcerts.emplace_back(private_key_file.str(),
+                                            cert_file.str());
 
     return 0;
   }
@@ -2074,7 +2098,7 @@ int parse_config(const char *opt, const char *optarg,
   }
   case SHRPX_OPTID_BACKLOG: {
     int n;
-    if (parse_int(&n, opt, optarg) != 0) {
+    if (parse_int(&n, opt, optarg.c_str()) != 0) {
       return -1;
     }
 
@@ -2089,7 +2113,8 @@ int parse_config(const char *opt, const char *optarg,
     return 0;
   }
   case SHRPX_OPTID_CIPHERS:
-    mod_config()->tls.ciphers = optarg;
+    mod_config()->tls.ciphers =
+        ImmutableString{std::begin(optarg), std::end(optarg)};
 
     return 0;
   case SHRPX_OPTID_CLIENT:
@@ -2097,11 +2122,12 @@ int parse_config(const char *opt, const char *optarg,
                          "backend=<addr>,<port>;;proto=h2 and backend-tls";
     return -1;
   case SHRPX_OPTID_INSECURE:
-    mod_config()->tls.insecure = util::strieq(optarg, "yes");
+    mod_config()->tls.insecure = util::strieq_l("yes", optarg);
 
     return 0;
   case SHRPX_OPTID_CACERT:
-    mod_config()->tls.cacert = optarg;
+    mod_config()->tls.cacert =
+        ImmutableString{std::begin(optarg), std::end(optarg)};
 
     return 0;
   case SHRPX_OPTID_BACKEND_IPV4:
@@ -2125,19 +2151,18 @@ int parse_config(const char *opt, const char *optarg,
     proxy = {};
     // parse URI and get hostname, port and optionally userinfo.
     http_parser_url u{};
-    int rv = http_parser_parse_url(optarg, strlen(optarg), 0, &u);
+    int rv = http_parser_parse_url(optarg.c_str(), optarg.size(), 0, &u);
     if (rv == 0) {
-      std::string val;
       if (u.field_set & UF_USERINFO) {
-        http2::copy_url_component(val, &u, UF_USERINFO, optarg);
+        auto uf = util::get_uri_field(optarg.c_str(), u, UF_USERINFO);
         // Surprisingly, u.field_set & UF_USERINFO is nonzero even if
         // userinfo component is empty string.
-        if (!val.empty()) {
-          proxy.userinfo = util::percent_decode(std::begin(val), std::end(val));
+        if (!uf.empty()) {
+          proxy.userinfo = util::percent_decode(std::begin(uf), std::end(uf));
         }
       }
       if (u.field_set & UF_HOST) {
-        http2::copy_url_component(proxy.host, &u, UF_HOST, optarg);
+        http2::copy_url_component(proxy.host, &u, UF_HOST, optarg.c_str());
       } else {
         LOG(ERROR) << opt << ": no hostname specified";
         return -1;
@@ -2188,42 +2213,47 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   case SHRPX_OPTID_VERIFY_CLIENT:
-    mod_config()->tls.client_verify.enabled = util::strieq(optarg, "yes");
+    mod_config()->tls.client_verify.enabled = util::strieq_l("yes", optarg);
 
     return 0;
   case SHRPX_OPTID_VERIFY_CLIENT_CACERT:
-    mod_config()->tls.client_verify.cacert = optarg;
+    mod_config()->tls.client_verify.cacert =
+        ImmutableString{std::begin(optarg), std::end(optarg)};
 
     return 0;
   case SHRPX_OPTID_CLIENT_PRIVATE_KEY_FILE:
-    mod_config()->tls.client.private_key_file = optarg;
+    mod_config()->tls.client.private_key_file =
+        ImmutableString{std::begin(optarg), std::end(optarg)};
 
     return 0;
   case SHRPX_OPTID_CLIENT_CERT_FILE:
-    mod_config()->tls.client.cert_file = optarg;
+    mod_config()->tls.client.cert_file =
+        ImmutableString{std::begin(optarg), std::end(optarg)};
 
     return 0;
   case SHRPX_OPTID_FRONTEND_HTTP2_DUMP_REQUEST_HEADER:
-    mod_config()->http2.upstream.debug.dump.request_header_file = optarg;
+    mod_config()->http2.upstream.debug.dump.request_header_file =
+        ImmutableString{std::begin(optarg), std::end(optarg)};
 
     return 0;
   case SHRPX_OPTID_FRONTEND_HTTP2_DUMP_RESPONSE_HEADER:
-    mod_config()->http2.upstream.debug.dump.response_header_file = optarg;
+    mod_config()->http2.upstream.debug.dump.response_header_file =
+        ImmutableString{std::begin(optarg), std::end(optarg)};
 
     return 0;
   case SHRPX_OPTID_HTTP2_NO_COOKIE_CRUMBLING:
-    mod_config()->http2.no_cookie_crumbling = util::strieq(optarg, "yes");
+    mod_config()->http2.no_cookie_crumbling = util::strieq_l("yes", optarg);
 
     return 0;
   case SHRPX_OPTID_FRONTEND_FRAME_DEBUG:
     mod_config()->http2.upstream.debug.frame_debug =
-        util::strieq(optarg, "yes");
+        util::strieq_l("yes", optarg);
 
     return 0;
   case SHRPX_OPTID_PADDING:
     return parse_uint(&mod_config()->padding, opt, optarg);
   case SHRPX_OPTID_ALTSVC: {
-    auto tokens = util::parse_config_str_list(optarg);
+    auto tokens = util::split_str(optarg, ',');
 
     if (tokens.size() < 2) {
       // Requires at least protocol_id and port
@@ -2239,7 +2269,7 @@ int parse_config(const char *opt, const char *optarg,
 
     int port;
 
-    if (parse_uint(&port, opt, tokens[1].c_str()) != 0) {
+    if (parse_uint(&port, opt, tokens[1]) != 0) {
       return -1;
     }
 
@@ -2251,16 +2281,16 @@ int parse_config(const char *opt, const char *optarg,
 
     AltSvc altsvc{};
 
-    altsvc.protocol_id = std::move(tokens[0]);
+    altsvc.protocol_id = tokens[0].str();
 
     altsvc.port = port;
-    altsvc.service = std::move(tokens[1]);
+    altsvc.service = tokens[1].str();
 
     if (tokens.size() > 2) {
-      altsvc.host = std::move(tokens[2]);
+      altsvc.host = tokens[2].str();
 
       if (tokens.size() > 3) {
-        altsvc.origin = std::move(tokens[3]);
+        altsvc.origin = tokens[3].str();
       }
     }
 
@@ -2286,7 +2316,7 @@ int parse_config(const char *opt, const char *optarg,
     return parse_uint(&mod_config()->conn.upstream.worker_connections, opt,
                       optarg);
   case SHRPX_OPTID_NO_LOCATION_REWRITE:
-    mod_config()->http.no_location_rewrite = util::strieq(optarg, "yes");
+    mod_config()->http.no_location_rewrite = util::strieq_l("yes", optarg);
 
     return 0;
   case SHRPX_OPTID_NO_HOST_REWRITE:
@@ -2328,7 +2358,7 @@ int parse_config(const char *opt, const char *optarg,
     return parse_duration(&mod_config()->conn.listener.timeout.sleep, opt,
                           optarg);
   case SHRPX_OPTID_TLS_TICKET_KEY_FILE:
-    mod_config()->tls.ticket.files.push_back(optarg);
+    mod_config()->tls.ticket.files.push_back(optarg.str());
     return 0;
   case SHRPX_OPTID_RLIMIT_NOFILE: {
     int n;
@@ -2370,20 +2400,21 @@ int parse_config(const char *opt, const char *optarg,
   }
 
   case SHRPX_OPTID_NO_SERVER_PUSH:
-    mod_config()->http2.no_server_push = util::strieq(optarg, "yes");
+    mod_config()->http2.no_server_push = util::strieq_l("yes", optarg);
 
     return 0;
   case SHRPX_OPTID_BACKEND_HTTP2_CONNECTIONS_PER_WORKER:
     LOG(WARN) << opt << ": deprecated.";
     return 0;
   case SHRPX_OPTID_FETCH_OCSP_RESPONSE_FILE:
-    mod_config()->tls.ocsp.fetch_ocsp_response_file = optarg;
+    mod_config()->tls.ocsp.fetch_ocsp_response_file =
+        ImmutableString{std::begin(optarg), std::end(optarg)};
 
     return 0;
   case SHRPX_OPTID_OCSP_UPDATE_INTERVAL:
     return parse_duration(&mod_config()->tls.ocsp.update_interval, opt, optarg);
   case SHRPX_OPTID_NO_OCSP:
-    mod_config()->tls.ocsp.disabled = util::strieq(optarg, "yes");
+    mod_config()->tls.ocsp.disabled = util::strieq_l("yes", optarg);
 
     return 0;
   case SHRPX_OPTID_HEADER_FIELD_BUFFER:
@@ -2412,7 +2443,7 @@ int parse_config(const char *opt, const char *optarg,
     }
 
     included_set.insert(optarg);
-    auto rv = load_config(optarg, included_set);
+    auto rv = load_config(optarg.c_str(), included_set);
     included_set.erase(optarg);
 
     if (rv != 0) {
@@ -2422,9 +2453,9 @@ int parse_config(const char *opt, const char *optarg,
     return 0;
   }
   case SHRPX_OPTID_TLS_TICKET_KEY_CIPHER:
-    if (util::strieq(optarg, "aes-128-cbc")) {
+    if (util::strieq_l("aes-128-cbc", optarg)) {
       mod_config()->tls.ticket.cipher = EVP_aes_128_cbc();
-    } else if (util::strieq(optarg, "aes-256-cbc")) {
+    } else if (util::strieq_l("aes-256-cbc", optarg)) {
       mod_config()->tls.ticket.cipher = EVP_aes_256_cbc();
     } else {
       LOG(ERROR) << opt
@@ -2435,14 +2466,13 @@ int parse_config(const char *opt, const char *optarg,
 
     return 0;
   case SHRPX_OPTID_HOST_REWRITE:
-    mod_config()->http.no_host_rewrite = !util::strieq(optarg, "yes");
+    mod_config()->http.no_host_rewrite = !util::strieq_l("yes", optarg);
 
     return 0;
   case SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED:
   case SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED: {
-    auto src = StringRef{optarg};
-    auto addr_end = std::find(std::begin(src), std::end(src), ';');
-    auto src_params = StringRef{addr_end, std::end(src)};
+    auto addr_end = std::find(std::begin(optarg), std::end(optarg), ';');
+    auto src_params = StringRef{addr_end, std::end(optarg)};
 
     MemcachedConnectionParams params{};
     if (parse_memcached_connection_params(params, src_params, StringRef{opt}) !=
@@ -2451,7 +2481,7 @@ int parse_config(const char *opt, const char *optarg,
     }
 
     if (split_host_port(host, sizeof(host), &port,
-                        StringRef{std::begin(src), addr_end}, opt) == -1) {
+                        StringRef{std::begin(optarg), addr_end}, opt) == -1) {
       return -1;
     }
 
@@ -2510,7 +2540,8 @@ int parse_config(const char *opt, const char *optarg,
 
   case SHRPX_OPTID_MRUBY_FILE:
 #ifdef HAVE_MRUBY
-    mod_config()->mruby_file = optarg;
+    mod_config()->mruby_file =
+        ImmutableString{std::begin(optarg), std::end(optarg)};
 #else  // !HAVE_MRUBY
     LOG(WARN) << opt
               << ": ignored because mruby support is disabled at build time.";
@@ -2518,26 +2549,26 @@ int parse_config(const char *opt, const char *optarg,
     return 0;
   case SHRPX_OPTID_ACCEPT_PROXY_PROTOCOL:
     mod_config()->conn.upstream.accept_proxy_protocol =
-        util::strieq(optarg, "yes");
+        util::strieq_l("yes", optarg);
 
     return 0;
   case SHRPX_OPTID_ADD_FORWARDED: {
     auto &fwdconf = mod_config()->http.forwarded;
     fwdconf.params = FORWARDED_NONE;
-    for (const auto &param : util::parse_config_str_list(optarg)) {
-      if (util::strieq(param, "by")) {
+    for (const auto &param : util::split_str(optarg, ',')) {
+      if (util::strieq_l("by", param)) {
         fwdconf.params |= FORWARDED_BY;
         continue;
       }
-      if (util::strieq(param, "for")) {
+      if (util::strieq_l("for", param)) {
         fwdconf.params |= FORWARDED_FOR;
         continue;
       }
-      if (util::strieq(param, "host")) {
+      if (util::strieq_l("host", param)) {
         fwdconf.params |= FORWARDED_HOST;
         continue;
       }
-      if (util::strieq(param, "proto")) {
+      if (util::strieq_l("proto", param)) {
         fwdconf.params |= FORWARDED_PROTO;
         continue;
       }
@@ -2550,7 +2581,7 @@ int parse_config(const char *opt, const char *optarg,
     return 0;
   }
   case SHRPX_OPTID_STRIP_INCOMING_FORWARDED:
-    mod_config()->http.forwarded.strip_incoming = util::strieq(optarg, "yes");
+    mod_config()->http.forwarded.strip_incoming = util::strieq_l("yes", optarg);
 
     return 0;
   case SHRPX_OPTID_FORWARDED_BY:
@@ -2570,7 +2601,7 @@ int parse_config(const char *opt, const char *optarg,
     case SHRPX_OPTID_FORWARDED_BY:
       fwdconf.by_node_type = static_cast<shrpx_forwarded_node_type>(type);
       if (optarg[0] == '_') {
-        fwdconf.by_obfuscated = optarg;
+        fwdconf.by_obfuscated = optarg.str();
       } else {
         fwdconf.by_obfuscated = "";
       }
@@ -2583,7 +2614,8 @@ int parse_config(const char *opt, const char *optarg,
     return 0;
   }
   case SHRPX_OPTID_NO_HTTP2_CIPHER_BLACK_LIST:
-    mod_config()->tls.no_http2_cipher_black_list = util::strieq(optarg, "yes");
+    mod_config()->tls.no_http2_cipher_black_list =
+        util::strieq_l("yes", optarg);
 
     return 0;
   case SHRPX_OPTID_BACKEND_HTTP1_TLS:
@@ -2596,11 +2628,13 @@ int parse_config(const char *opt, const char *optarg,
               << SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED;
     return 0;
   case SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED_CERT_FILE:
-    mod_config()->tls.session_cache.memcached.cert_file = optarg;
+    mod_config()->tls.session_cache.memcached.cert_file =
+        ImmutableString{std::begin(optarg), std::end(optarg)};
 
     return 0;
   case SHRPX_OPTID_TLS_SESSION_CACHE_MEMCACHED_PRIVATE_KEY_FILE:
-    mod_config()->tls.session_cache.memcached.private_key_file = optarg;
+    mod_config()->tls.session_cache.memcached.private_key_file =
+        ImmutableString{std::begin(optarg), std::end(optarg)};
 
     return 0;
   case SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_TLS:
@@ -2608,11 +2642,13 @@ int parse_config(const char *opt, const char *optarg,
               << SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED;
     return 0;
   case SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_CERT_FILE:
-    mod_config()->tls.ticket.memcached.cert_file = optarg;
+    mod_config()->tls.ticket.memcached.cert_file =
+        ImmutableString{std::begin(optarg), std::end(optarg)};
 
     return 0;
   case SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_PRIVATE_KEY_FILE:
-    mod_config()->tls.ticket.memcached.private_key_file = optarg;
+    mod_config()->tls.ticket.memcached.private_key_file =
+        ImmutableString{std::begin(optarg), std::end(optarg)};
 
     return 0;
   case SHRPX_OPTID_TLS_TICKET_KEY_MEMCACHED_ADDRESS_FAMILY:
@@ -2643,7 +2679,7 @@ int parse_config(const char *opt, const char *optarg,
   return -1;
 }
 
-int load_config(const char *filename, std::set<std::string> &include_set) {
+int load_config(const char *filename, std::set<StringRef> &include_set) {
   std::ifstream in(filename, std::ios::binary);
   if (!in) {
     LOG(ERROR) << "Could not open config file " << filename;
@@ -2656,155 +2692,153 @@ int load_config(const char *filename, std::set<std::string> &include_set) {
     if (line.empty() || line[0] == '#') {
       continue;
     }
-    size_t i;
-    size_t size = line.size();
-    for (i = 0; i < size && line[i] != '='; ++i)
-      ;
-    if (i == size) {
+    auto eq = std::find(std::begin(line), std::end(line), '=');
+    if (eq == std::end(line)) {
       LOG(ERROR) << "Bad configuration format in " << filename << " at line "
                  << linenum;
       return -1;
     }
-    line[i] = '\0';
-    auto s = line.c_str();
-    if (parse_config(s, s + i + 1, include_set) == -1) {
+    *eq = '\0';
+
+    if (parse_config(StringRef{std::begin(line), eq},
+                     StringRef{eq + 1, std::end(line)}, include_set) != 0) {
       return -1;
     }
   }
   return 0;
 }
 
-const char *str_syslog_facility(int facility) {
+StringRef str_syslog_facility(int facility) {
   switch (facility) {
   case (LOG_AUTH):
-    return "auth";
+    return StringRef::from_lit("auth");
 #ifdef LOG_AUTHPRIV
   case (LOG_AUTHPRIV):
-    return "authpriv";
+    return StringRef::from_lit("authpriv");
 #endif // LOG_AUTHPRIV
   case (LOG_CRON):
-    return "cron";
+    return StringRef::from_lit("cron");
   case (LOG_DAEMON):
-    return "daemon";
+    return StringRef::from_lit("daemon");
 #ifdef LOG_FTP
   case (LOG_FTP):
-    return "ftp";
+    return StringRef::from_lit("ftp");
 #endif // LOG_FTP
   case (LOG_KERN):
-    return "kern";
+    return StringRef::from_lit("kern");
   case (LOG_LOCAL0):
-    return "local0";
+    return StringRef::from_lit("local0");
   case (LOG_LOCAL1):
-    return "local1";
+    return StringRef::from_lit("local1");
   case (LOG_LOCAL2):
-    return "local2";
+    return StringRef::from_lit("local2");
   case (LOG_LOCAL3):
-    return "local3";
+    return StringRef::from_lit("local3");
   case (LOG_LOCAL4):
-    return "local4";
+    return StringRef::from_lit("local4");
   case (LOG_LOCAL5):
-    return "local5";
+    return StringRef::from_lit("local5");
   case (LOG_LOCAL6):
-    return "local6";
+    return StringRef::from_lit("local6");
   case (LOG_LOCAL7):
-    return "local7";
+    return StringRef::from_lit("local7");
   case (LOG_LPR):
-    return "lpr";
+    return StringRef::from_lit("lpr");
   case (LOG_MAIL):
-    return "mail";
+    return StringRef::from_lit("mail");
   case (LOG_SYSLOG):
-    return "syslog";
+    return StringRef::from_lit("syslog");
   case (LOG_USER):
-    return "user";
+    return StringRef::from_lit("user");
   case (LOG_UUCP):
-    return "uucp";
+    return StringRef::from_lit("uucp");
   default:
-    return "(unknown)";
+    return StringRef::from_lit("(unknown)");
   }
 }
 
-int int_syslog_facility(const char *strfacility) {
-  if (util::strieq(strfacility, "auth")) {
+int int_syslog_facility(const StringRef &strfacility) {
+  if (util::strieq_l("auth", strfacility)) {
     return LOG_AUTH;
   }
 
 #ifdef LOG_AUTHPRIV
-  if (util::strieq(strfacility, "authpriv")) {
+  if (util::strieq_l("authpriv", strfacility)) {
     return LOG_AUTHPRIV;
   }
 #endif // LOG_AUTHPRIV
 
-  if (util::strieq(strfacility, "cron")) {
+  if (util::strieq_l("cron", strfacility)) {
     return LOG_CRON;
   }
 
-  if (util::strieq(strfacility, "daemon")) {
+  if (util::strieq_l("daemon", strfacility)) {
     return LOG_DAEMON;
   }
 
 #ifdef LOG_FTP
-  if (util::strieq(strfacility, "ftp")) {
+  if (util::strieq_l("ftp", strfacility)) {
     return LOG_FTP;
   }
 #endif // LOG_FTP
 
-  if (util::strieq(strfacility, "kern")) {
+  if (util::strieq_l("kern", strfacility)) {
     return LOG_KERN;
   }
 
-  if (util::strieq(strfacility, "local0")) {
+  if (util::strieq_l("local0", strfacility)) {
     return LOG_LOCAL0;
   }
 
-  if (util::strieq(strfacility, "local1")) {
+  if (util::strieq_l("local1", strfacility)) {
     return LOG_LOCAL1;
   }
 
-  if (util::strieq(strfacility, "local2")) {
+  if (util::strieq_l("local2", strfacility)) {
     return LOG_LOCAL2;
   }
 
-  if (util::strieq(strfacility, "local3")) {
+  if (util::strieq_l("local3", strfacility)) {
     return LOG_LOCAL3;
   }
 
-  if (util::strieq(strfacility, "local4")) {
+  if (util::strieq_l("local4", strfacility)) {
     return LOG_LOCAL4;
   }
 
-  if (util::strieq(strfacility, "local5")) {
+  if (util::strieq_l("local5", strfacility)) {
     return LOG_LOCAL5;
   }
 
-  if (util::strieq(strfacility, "local6")) {
+  if (util::strieq_l("local6", strfacility)) {
     return LOG_LOCAL6;
   }
 
-  if (util::strieq(strfacility, "local7")) {
+  if (util::strieq_l("local7", strfacility)) {
     return LOG_LOCAL7;
   }
 
-  if (util::strieq(strfacility, "lpr")) {
+  if (util::strieq_l("lpr", strfacility)) {
     return LOG_LPR;
   }
 
-  if (util::strieq(strfacility, "mail")) {
+  if (util::strieq_l("mail", strfacility)) {
     return LOG_MAIL;
   }
 
-  if (util::strieq(strfacility, "news")) {
+  if (util::strieq_l("news", strfacility)) {
     return LOG_NEWS;
   }
 
-  if (util::strieq(strfacility, "syslog")) {
+  if (util::strieq_l("syslog", strfacility)) {
     return LOG_SYSLOG;
   }
 
-  if (util::strieq(strfacility, "user")) {
+  if (util::strieq_l("user", strfacility)) {
     return LOG_USER;
   }
 
-  if (util::strieq(strfacility, "uucp")) {
+  if (util::strieq_l("uucp", strfacility)) {
     return LOG_UUCP;
   }
 

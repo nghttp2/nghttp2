@@ -1115,7 +1115,8 @@ void fill_default_config() {
   auto &loggingconf = mod_config()->logging;
   {
     auto &accessconf = loggingconf.access;
-    accessconf.format = parse_log_format(DEFAULT_ACCESSLOG_FORMAT);
+    accessconf.format =
+        parse_log_format(StringRef::from_lit(DEFAULT_ACCESSLOG_FORMAT));
 
     auto &errorconf = loggingconf.error;
     errorconf.file = "/dev/stderr";
@@ -1908,11 +1909,10 @@ Misc:
 } // namespace
 
 namespace {
-void process_options(
-    int argc, char **argv,
-    std::vector<std::pair<const char *, const char *>> &cmdcfgs) {
+void process_options(int argc, char **argv,
+                     std::vector<std::pair<StringRef, StringRef>> &cmdcfgs) {
   if (conf_exists(get_config()->conf_path.c_str())) {
-    std::set<std::string> include_set;
+    std::set<StringRef> include_set;
     if (load_config(get_config()->conf_path.c_str(), include_set) == -1) {
       LOG(FATAL) << "Failed to load configuration from "
                  << get_config()->conf_path;
@@ -1922,19 +1922,18 @@ void process_options(
   }
 
   if (argc - optind >= 2) {
-    cmdcfgs.emplace_back(SHRPX_OPT_PRIVATE_KEY_FILE, argv[optind++]);
-    cmdcfgs.emplace_back(SHRPX_OPT_CERTIFICATE_FILE, argv[optind++]);
+    cmdcfgs.emplace_back(SHRPX_OPT_PRIVATE_KEY_FILE, StringRef{argv[optind++]});
+    cmdcfgs.emplace_back(SHRPX_OPT_CERTIFICATE_FILE, StringRef{argv[optind++]});
   }
 
   // Reopen log files using configurations in file
   reopen_log_files();
 
   {
-    std::set<std::string> include_set;
+    std::set<StringRef> include_set;
 
-    for (size_t i = 0, len = cmdcfgs.size(); i < len; ++i) {
-      if (parse_config(cmdcfgs[i].first, cmdcfgs[i].second, include_set) ==
-          -1) {
+    for (auto &p : cmdcfgs) {
+      if (parse_config(p.first, p.second, include_set) == -1) {
         LOG(FATAL) << "Failed to parse command-line argument.";
         exit(EXIT_FAILURE);
       }
@@ -2024,11 +2023,12 @@ void process_options(
   auto &tlsconf = mod_config()->tls;
 
   if (tlsconf.npn_list.empty()) {
-    tlsconf.npn_list = util::parse_config_str_list(DEFAULT_NPN_LIST);
+    tlsconf.npn_list =
+        util::parse_config_str_list(StringRef::from_lit(DEFAULT_NPN_LIST));
   }
   if (tlsconf.tls_proto_list.empty()) {
-    tlsconf.tls_proto_list =
-        util::parse_config_str_list(DEFAULT_TLS_PROTO_LIST);
+    tlsconf.tls_proto_list = util::parse_config_str_list(
+        StringRef::from_lit(DEFAULT_TLS_PROTO_LIST));
   }
 
   tlsconf.tls_proto_mask = ssl::create_tls_proto_mask(tlsconf.tls_proto_list);
@@ -2330,156 +2330,181 @@ int main(int argc, char **argv) {
     exit(EXIT_FAILURE);
   }
 
-  std::vector<std::pair<const char *, const char *>> cmdcfgs;
+  std::vector<std::pair<StringRef, StringRef>> cmdcfgs;
   while (1) {
     static int flag = 0;
     static option long_options[] = {
-        {SHRPX_OPT_DAEMON, no_argument, nullptr, 'D'},
-        {SHRPX_OPT_LOG_LEVEL, required_argument, nullptr, 'L'},
-        {SHRPX_OPT_BACKEND, required_argument, nullptr, 'b'},
-        {SHRPX_OPT_HTTP2_MAX_CONCURRENT_STREAMS, required_argument, nullptr,
-         'c'},
-        {SHRPX_OPT_FRONTEND, required_argument, nullptr, 'f'},
+        {SHRPX_OPT_DAEMON.c_str(), no_argument, nullptr, 'D'},
+        {SHRPX_OPT_LOG_LEVEL.c_str(), required_argument, nullptr, 'L'},
+        {SHRPX_OPT_BACKEND.c_str(), required_argument, nullptr, 'b'},
+        {SHRPX_OPT_HTTP2_MAX_CONCURRENT_STREAMS.c_str(), required_argument,
+         nullptr, 'c'},
+        {SHRPX_OPT_FRONTEND.c_str(), required_argument, nullptr, 'f'},
         {"help", no_argument, nullptr, 'h'},
-        {SHRPX_OPT_INSECURE, no_argument, nullptr, 'k'},
-        {SHRPX_OPT_WORKERS, required_argument, nullptr, 'n'},
-        {SHRPX_OPT_CLIENT_PROXY, no_argument, nullptr, 'p'},
-        {SHRPX_OPT_HTTP2_PROXY, no_argument, nullptr, 's'},
+        {SHRPX_OPT_INSECURE.c_str(), no_argument, nullptr, 'k'},
+        {SHRPX_OPT_WORKERS.c_str(), required_argument, nullptr, 'n'},
+        {SHRPX_OPT_CLIENT_PROXY.c_str(), no_argument, nullptr, 'p'},
+        {SHRPX_OPT_HTTP2_PROXY.c_str(), no_argument, nullptr, 's'},
         {"version", no_argument, nullptr, 'v'},
-        {SHRPX_OPT_FRONTEND_FRAME_DEBUG, no_argument, nullptr, 'o'},
-        {SHRPX_OPT_ADD_X_FORWARDED_FOR, no_argument, &flag, 1},
-        {SHRPX_OPT_FRONTEND_HTTP2_READ_TIMEOUT, required_argument, &flag, 2},
-        {SHRPX_OPT_FRONTEND_READ_TIMEOUT, required_argument, &flag, 3},
-        {SHRPX_OPT_FRONTEND_WRITE_TIMEOUT, required_argument, &flag, 4},
-        {SHRPX_OPT_BACKEND_READ_TIMEOUT, required_argument, &flag, 5},
-        {SHRPX_OPT_BACKEND_WRITE_TIMEOUT, required_argument, &flag, 6},
-        {SHRPX_OPT_ACCESSLOG_FILE, required_argument, &flag, 7},
-        {SHRPX_OPT_BACKEND_KEEP_ALIVE_TIMEOUT, required_argument, &flag, 8},
-        {SHRPX_OPT_FRONTEND_HTTP2_WINDOW_BITS, required_argument, &flag, 9},
-        {SHRPX_OPT_PID_FILE, required_argument, &flag, 10},
-        {SHRPX_OPT_USER, required_argument, &flag, 11},
+        {SHRPX_OPT_FRONTEND_FRAME_DEBUG.c_str(), no_argument, nullptr, 'o'},
+        {SHRPX_OPT_ADD_X_FORWARDED_FOR.c_str(), no_argument, &flag, 1},
+        {SHRPX_OPT_FRONTEND_HTTP2_READ_TIMEOUT.c_str(), required_argument,
+         &flag, 2},
+        {SHRPX_OPT_FRONTEND_READ_TIMEOUT.c_str(), required_argument, &flag, 3},
+        {SHRPX_OPT_FRONTEND_WRITE_TIMEOUT.c_str(), required_argument, &flag, 4},
+        {SHRPX_OPT_BACKEND_READ_TIMEOUT.c_str(), required_argument, &flag, 5},
+        {SHRPX_OPT_BACKEND_WRITE_TIMEOUT.c_str(), required_argument, &flag, 6},
+        {SHRPX_OPT_ACCESSLOG_FILE.c_str(), required_argument, &flag, 7},
+        {SHRPX_OPT_BACKEND_KEEP_ALIVE_TIMEOUT.c_str(), required_argument, &flag,
+         8},
+        {SHRPX_OPT_FRONTEND_HTTP2_WINDOW_BITS.c_str(), required_argument, &flag,
+         9},
+        {SHRPX_OPT_PID_FILE.c_str(), required_argument, &flag, 10},
+        {SHRPX_OPT_USER.c_str(), required_argument, &flag, 11},
         {"conf", required_argument, &flag, 12},
-        {SHRPX_OPT_SYSLOG_FACILITY, required_argument, &flag, 14},
-        {SHRPX_OPT_BACKLOG, required_argument, &flag, 15},
-        {SHRPX_OPT_CIPHERS, required_argument, &flag, 16},
-        {SHRPX_OPT_CLIENT, no_argument, &flag, 17},
-        {SHRPX_OPT_BACKEND_HTTP2_WINDOW_BITS, required_argument, &flag, 18},
-        {SHRPX_OPT_CACERT, required_argument, &flag, 19},
-        {SHRPX_OPT_BACKEND_IPV4, no_argument, &flag, 20},
-        {SHRPX_OPT_BACKEND_IPV6, no_argument, &flag, 21},
-        {SHRPX_OPT_PRIVATE_KEY_PASSWD_FILE, required_argument, &flag, 22},
-        {SHRPX_OPT_NO_VIA, no_argument, &flag, 23},
-        {SHRPX_OPT_SUBCERT, required_argument, &flag, 24},
-        {SHRPX_OPT_HTTP2_BRIDGE, no_argument, &flag, 25},
-        {SHRPX_OPT_BACKEND_HTTP_PROXY_URI, required_argument, &flag, 26},
-        {SHRPX_OPT_BACKEND_NO_TLS, no_argument, &flag, 27},
-        {SHRPX_OPT_FRONTEND_NO_TLS, no_argument, &flag, 29},
-        {SHRPX_OPT_BACKEND_TLS_SNI_FIELD, required_argument, &flag, 31},
-        {SHRPX_OPT_DH_PARAM_FILE, required_argument, &flag, 33},
-        {SHRPX_OPT_READ_RATE, required_argument, &flag, 34},
-        {SHRPX_OPT_READ_BURST, required_argument, &flag, 35},
-        {SHRPX_OPT_WRITE_RATE, required_argument, &flag, 36},
-        {SHRPX_OPT_WRITE_BURST, required_argument, &flag, 37},
-        {SHRPX_OPT_NPN_LIST, required_argument, &flag, 38},
-        {SHRPX_OPT_VERIFY_CLIENT, no_argument, &flag, 39},
-        {SHRPX_OPT_VERIFY_CLIENT_CACERT, required_argument, &flag, 40},
-        {SHRPX_OPT_CLIENT_PRIVATE_KEY_FILE, required_argument, &flag, 41},
-        {SHRPX_OPT_CLIENT_CERT_FILE, required_argument, &flag, 42},
-        {SHRPX_OPT_FRONTEND_HTTP2_DUMP_REQUEST_HEADER, required_argument, &flag,
-         43},
-        {SHRPX_OPT_FRONTEND_HTTP2_DUMP_RESPONSE_HEADER, required_argument,
-         &flag, 44},
-        {SHRPX_OPT_HTTP2_NO_COOKIE_CRUMBLING, no_argument, &flag, 45},
-        {SHRPX_OPT_FRONTEND_HTTP2_CONNECTION_WINDOW_BITS, required_argument,
-         &flag, 46},
-        {SHRPX_OPT_BACKEND_HTTP2_CONNECTION_WINDOW_BITS, required_argument,
-         &flag, 47},
-        {SHRPX_OPT_TLS_PROTO_LIST, required_argument, &flag, 48},
-        {SHRPX_OPT_PADDING, required_argument, &flag, 49},
-        {SHRPX_OPT_WORKER_READ_RATE, required_argument, &flag, 50},
-        {SHRPX_OPT_WORKER_READ_BURST, required_argument, &flag, 51},
-        {SHRPX_OPT_WORKER_WRITE_RATE, required_argument, &flag, 52},
-        {SHRPX_OPT_WORKER_WRITE_BURST, required_argument, &flag, 53},
-        {SHRPX_OPT_ALTSVC, required_argument, &flag, 54},
-        {SHRPX_OPT_ADD_RESPONSE_HEADER, required_argument, &flag, 55},
-        {SHRPX_OPT_WORKER_FRONTEND_CONNECTIONS, required_argument, &flag, 56},
-        {SHRPX_OPT_ACCESSLOG_SYSLOG, no_argument, &flag, 57},
-        {SHRPX_OPT_ERRORLOG_FILE, required_argument, &flag, 58},
-        {SHRPX_OPT_ERRORLOG_SYSLOG, no_argument, &flag, 59},
-        {SHRPX_OPT_STREAM_READ_TIMEOUT, required_argument, &flag, 60},
-        {SHRPX_OPT_STREAM_WRITE_TIMEOUT, required_argument, &flag, 61},
-        {SHRPX_OPT_NO_LOCATION_REWRITE, no_argument, &flag, 62},
-        {SHRPX_OPT_BACKEND_HTTP1_CONNECTIONS_PER_HOST, required_argument, &flag,
-         63},
-        {SHRPX_OPT_LISTENER_DISABLE_TIMEOUT, required_argument, &flag, 64},
-        {SHRPX_OPT_STRIP_INCOMING_X_FORWARDED_FOR, no_argument, &flag, 65},
-        {SHRPX_OPT_ACCESSLOG_FORMAT, required_argument, &flag, 66},
-        {SHRPX_OPT_BACKEND_HTTP1_CONNECTIONS_PER_FRONTEND, required_argument,
-         &flag, 67},
-        {SHRPX_OPT_TLS_TICKET_KEY_FILE, required_argument, &flag, 68},
-        {SHRPX_OPT_RLIMIT_NOFILE, required_argument, &flag, 69},
-        {SHRPX_OPT_BACKEND_RESPONSE_BUFFER, required_argument, &flag, 71},
-        {SHRPX_OPT_BACKEND_REQUEST_BUFFER, required_argument, &flag, 72},
-        {SHRPX_OPT_NO_HOST_REWRITE, no_argument, &flag, 73},
-        {SHRPX_OPT_NO_SERVER_PUSH, no_argument, &flag, 74},
-        {SHRPX_OPT_BACKEND_HTTP2_CONNECTIONS_PER_WORKER, required_argument,
-         &flag, 76},
-        {SHRPX_OPT_FETCH_OCSP_RESPONSE_FILE, required_argument, &flag, 77},
-        {SHRPX_OPT_OCSP_UPDATE_INTERVAL, required_argument, &flag, 78},
-        {SHRPX_OPT_NO_OCSP, no_argument, &flag, 79},
-        {SHRPX_OPT_HEADER_FIELD_BUFFER, required_argument, &flag, 80},
-        {SHRPX_OPT_MAX_HEADER_FIELDS, required_argument, &flag, 81},
-        {SHRPX_OPT_ADD_REQUEST_HEADER, required_argument, &flag, 82},
-        {SHRPX_OPT_INCLUDE, required_argument, &flag, 83},
-        {SHRPX_OPT_TLS_TICKET_KEY_CIPHER, required_argument, &flag, 84},
-        {SHRPX_OPT_HOST_REWRITE, no_argument, &flag, 85},
-        {SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED, required_argument, &flag, 86},
-        {SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED, required_argument, &flag, 87},
-        {SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_INTERVAL, required_argument, &flag,
-         88},
-        {SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_MAX_RETRY, required_argument, &flag,
-         89},
-        {SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_MAX_FAIL, required_argument, &flag,
-         90},
-        {SHRPX_OPT_MRUBY_FILE, required_argument, &flag, 91},
-        {SHRPX_OPT_ACCEPT_PROXY_PROTOCOL, no_argument, &flag, 93},
-        {SHRPX_OPT_FASTOPEN, required_argument, &flag, 94},
-        {SHRPX_OPT_TLS_DYN_REC_WARMUP_THRESHOLD, required_argument, &flag, 95},
-        {SHRPX_OPT_TLS_DYN_REC_IDLE_TIMEOUT, required_argument, &flag, 96},
-        {SHRPX_OPT_ADD_FORWARDED, required_argument, &flag, 97},
-        {SHRPX_OPT_STRIP_INCOMING_FORWARDED, no_argument, &flag, 98},
-        {SHRPX_OPT_FORWARDED_BY, required_argument, &flag, 99},
-        {SHRPX_OPT_FORWARDED_FOR, required_argument, &flag, 100},
-        {SHRPX_OPT_RESPONSE_HEADER_FIELD_BUFFER, required_argument, &flag, 101},
-        {SHRPX_OPT_MAX_RESPONSE_HEADER_FIELDS, required_argument, &flag, 102},
-        {SHRPX_OPT_NO_HTTP2_CIPHER_BLACK_LIST, no_argument, &flag, 103},
-        {SHRPX_OPT_REQUEST_HEADER_FIELD_BUFFER, required_argument, &flag, 104},
-        {SHRPX_OPT_MAX_REQUEST_HEADER_FIELDS, required_argument, &flag, 105},
-        {SHRPX_OPT_BACKEND_HTTP1_TLS, no_argument, &flag, 106},
-        {SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_TLS, no_argument, &flag, 108},
-        {SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_CERT_FILE, required_argument,
-         &flag, 109},
-        {SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_PRIVATE_KEY_FILE,
+        {SHRPX_OPT_SYSLOG_FACILITY.c_str(), required_argument, &flag, 14},
+        {SHRPX_OPT_BACKLOG.c_str(), required_argument, &flag, 15},
+        {SHRPX_OPT_CIPHERS.c_str(), required_argument, &flag, 16},
+        {SHRPX_OPT_CLIENT.c_str(), no_argument, &flag, 17},
+        {SHRPX_OPT_BACKEND_HTTP2_WINDOW_BITS.c_str(), required_argument, &flag,
+         18},
+        {SHRPX_OPT_CACERT.c_str(), required_argument, &flag, 19},
+        {SHRPX_OPT_BACKEND_IPV4.c_str(), no_argument, &flag, 20},
+        {SHRPX_OPT_BACKEND_IPV6.c_str(), no_argument, &flag, 21},
+        {SHRPX_OPT_PRIVATE_KEY_PASSWD_FILE.c_str(), required_argument, &flag,
+         22},
+        {SHRPX_OPT_NO_VIA.c_str(), no_argument, &flag, 23},
+        {SHRPX_OPT_SUBCERT.c_str(), required_argument, &flag, 24},
+        {SHRPX_OPT_HTTP2_BRIDGE.c_str(), no_argument, &flag, 25},
+        {SHRPX_OPT_BACKEND_HTTP_PROXY_URI.c_str(), required_argument, &flag,
+         26},
+        {SHRPX_OPT_BACKEND_NO_TLS.c_str(), no_argument, &flag, 27},
+        {SHRPX_OPT_FRONTEND_NO_TLS.c_str(), no_argument, &flag, 29},
+        {SHRPX_OPT_BACKEND_TLS_SNI_FIELD.c_str(), required_argument, &flag, 31},
+        {SHRPX_OPT_DH_PARAM_FILE.c_str(), required_argument, &flag, 33},
+        {SHRPX_OPT_READ_RATE.c_str(), required_argument, &flag, 34},
+        {SHRPX_OPT_READ_BURST.c_str(), required_argument, &flag, 35},
+        {SHRPX_OPT_WRITE_RATE.c_str(), required_argument, &flag, 36},
+        {SHRPX_OPT_WRITE_BURST.c_str(), required_argument, &flag, 37},
+        {SHRPX_OPT_NPN_LIST.c_str(), required_argument, &flag, 38},
+        {SHRPX_OPT_VERIFY_CLIENT.c_str(), no_argument, &flag, 39},
+        {SHRPX_OPT_VERIFY_CLIENT_CACERT.c_str(), required_argument, &flag, 40},
+        {SHRPX_OPT_CLIENT_PRIVATE_KEY_FILE.c_str(), required_argument, &flag,
+         41},
+        {SHRPX_OPT_CLIENT_CERT_FILE.c_str(), required_argument, &flag, 42},
+        {SHRPX_OPT_FRONTEND_HTTP2_DUMP_REQUEST_HEADER.c_str(),
+         required_argument, &flag, 43},
+        {SHRPX_OPT_FRONTEND_HTTP2_DUMP_RESPONSE_HEADER.c_str(),
+         required_argument, &flag, 44},
+        {SHRPX_OPT_HTTP2_NO_COOKIE_CRUMBLING.c_str(), no_argument, &flag, 45},
+        {SHRPX_OPT_FRONTEND_HTTP2_CONNECTION_WINDOW_BITS.c_str(),
+         required_argument, &flag, 46},
+        {SHRPX_OPT_BACKEND_HTTP2_CONNECTION_WINDOW_BITS.c_str(),
+         required_argument, &flag, 47},
+        {SHRPX_OPT_TLS_PROTO_LIST.c_str(), required_argument, &flag, 48},
+        {SHRPX_OPT_PADDING.c_str(), required_argument, &flag, 49},
+        {SHRPX_OPT_WORKER_READ_RATE.c_str(), required_argument, &flag, 50},
+        {SHRPX_OPT_WORKER_READ_BURST.c_str(), required_argument, &flag, 51},
+        {SHRPX_OPT_WORKER_WRITE_RATE.c_str(), required_argument, &flag, 52},
+        {SHRPX_OPT_WORKER_WRITE_BURST.c_str(), required_argument, &flag, 53},
+        {SHRPX_OPT_ALTSVC.c_str(), required_argument, &flag, 54},
+        {SHRPX_OPT_ADD_RESPONSE_HEADER.c_str(), required_argument, &flag, 55},
+        {SHRPX_OPT_WORKER_FRONTEND_CONNECTIONS.c_str(), required_argument,
+         &flag, 56},
+        {SHRPX_OPT_ACCESSLOG_SYSLOG.c_str(), no_argument, &flag, 57},
+        {SHRPX_OPT_ERRORLOG_FILE.c_str(), required_argument, &flag, 58},
+        {SHRPX_OPT_ERRORLOG_SYSLOG.c_str(), no_argument, &flag, 59},
+        {SHRPX_OPT_STREAM_READ_TIMEOUT.c_str(), required_argument, &flag, 60},
+        {SHRPX_OPT_STREAM_WRITE_TIMEOUT.c_str(), required_argument, &flag, 61},
+        {SHRPX_OPT_NO_LOCATION_REWRITE.c_str(), no_argument, &flag, 62},
+        {SHRPX_OPT_BACKEND_HTTP1_CONNECTIONS_PER_HOST.c_str(),
+         required_argument, &flag, 63},
+        {SHRPX_OPT_LISTENER_DISABLE_TIMEOUT.c_str(), required_argument, &flag,
+         64},
+        {SHRPX_OPT_STRIP_INCOMING_X_FORWARDED_FOR.c_str(), no_argument, &flag,
+         65},
+        {SHRPX_OPT_ACCESSLOG_FORMAT.c_str(), required_argument, &flag, 66},
+        {SHRPX_OPT_BACKEND_HTTP1_CONNECTIONS_PER_FRONTEND.c_str(),
+         required_argument, &flag, 67},
+        {SHRPX_OPT_TLS_TICKET_KEY_FILE.c_str(), required_argument, &flag, 68},
+        {SHRPX_OPT_RLIMIT_NOFILE.c_str(), required_argument, &flag, 69},
+        {SHRPX_OPT_BACKEND_RESPONSE_BUFFER.c_str(), required_argument, &flag,
+         71},
+        {SHRPX_OPT_BACKEND_REQUEST_BUFFER.c_str(), required_argument, &flag,
+         72},
+        {SHRPX_OPT_NO_HOST_REWRITE.c_str(), no_argument, &flag, 73},
+        {SHRPX_OPT_NO_SERVER_PUSH.c_str(), no_argument, &flag, 74},
+        {SHRPX_OPT_BACKEND_HTTP2_CONNECTIONS_PER_WORKER.c_str(),
+         required_argument, &flag, 76},
+        {SHRPX_OPT_FETCH_OCSP_RESPONSE_FILE.c_str(), required_argument, &flag,
+         77},
+        {SHRPX_OPT_OCSP_UPDATE_INTERVAL.c_str(), required_argument, &flag, 78},
+        {SHRPX_OPT_NO_OCSP.c_str(), no_argument, &flag, 79},
+        {SHRPX_OPT_HEADER_FIELD_BUFFER.c_str(), required_argument, &flag, 80},
+        {SHRPX_OPT_MAX_HEADER_FIELDS.c_str(), required_argument, &flag, 81},
+        {SHRPX_OPT_ADD_REQUEST_HEADER.c_str(), required_argument, &flag, 82},
+        {SHRPX_OPT_INCLUDE.c_str(), required_argument, &flag, 83},
+        {SHRPX_OPT_TLS_TICKET_KEY_CIPHER.c_str(), required_argument, &flag, 84},
+        {SHRPX_OPT_HOST_REWRITE.c_str(), no_argument, &flag, 85},
+        {SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED.c_str(), required_argument,
+         &flag, 86},
+        {SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED.c_str(), required_argument, &flag,
+         87},
+        {SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_INTERVAL.c_str(), required_argument,
+         &flag, 88},
+        {SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_MAX_RETRY.c_str(),
+         required_argument, &flag, 89},
+        {SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_MAX_FAIL.c_str(), required_argument,
+         &flag, 90},
+        {SHRPX_OPT_MRUBY_FILE.c_str(), required_argument, &flag, 91},
+        {SHRPX_OPT_ACCEPT_PROXY_PROTOCOL.c_str(), no_argument, &flag, 93},
+        {SHRPX_OPT_FASTOPEN.c_str(), required_argument, &flag, 94},
+        {SHRPX_OPT_TLS_DYN_REC_WARMUP_THRESHOLD.c_str(), required_argument,
+         &flag, 95},
+        {SHRPX_OPT_TLS_DYN_REC_IDLE_TIMEOUT.c_str(), required_argument, &flag,
+         96},
+        {SHRPX_OPT_ADD_FORWARDED.c_str(), required_argument, &flag, 97},
+        {SHRPX_OPT_STRIP_INCOMING_FORWARDED.c_str(), no_argument, &flag, 98},
+        {SHRPX_OPT_FORWARDED_BY.c_str(), required_argument, &flag, 99},
+        {SHRPX_OPT_FORWARDED_FOR.c_str(), required_argument, &flag, 100},
+        {SHRPX_OPT_RESPONSE_HEADER_FIELD_BUFFER.c_str(), required_argument,
+         &flag, 101},
+        {SHRPX_OPT_MAX_RESPONSE_HEADER_FIELDS.c_str(), required_argument, &flag,
+         102},
+        {SHRPX_OPT_NO_HTTP2_CIPHER_BLACK_LIST.c_str(), no_argument, &flag, 103},
+        {SHRPX_OPT_REQUEST_HEADER_FIELD_BUFFER.c_str(), required_argument,
+         &flag, 104},
+        {SHRPX_OPT_MAX_REQUEST_HEADER_FIELDS.c_str(), required_argument, &flag,
+         105},
+        {SHRPX_OPT_BACKEND_HTTP1_TLS.c_str(), no_argument, &flag, 106},
+        {SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_TLS.c_str(), no_argument, &flag,
+         108},
+        {SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_CERT_FILE.c_str(),
+         required_argument, &flag, 109},
+        {SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_PRIVATE_KEY_FILE.c_str(),
          required_argument, &flag, 110},
-        {SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_TLS, no_argument, &flag, 111},
-        {SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_CERT_FILE, required_argument, &flag,
-         112},
-        {SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_PRIVATE_KEY_FILE, required_argument,
-         &flag, 113},
-        {SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_ADDRESS_FAMILY, required_argument,
-         &flag, 114},
-        {SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_ADDRESS_FAMILY,
+        {SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_TLS.c_str(), no_argument, &flag,
+         111},
+        {SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_CERT_FILE.c_str(),
+         required_argument, &flag, 112},
+        {SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_PRIVATE_KEY_FILE.c_str(),
+         required_argument, &flag, 113},
+        {SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_ADDRESS_FAMILY.c_str(),
+         required_argument, &flag, 114},
+        {SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_ADDRESS_FAMILY.c_str(),
          required_argument, &flag, 115},
-        {SHRPX_OPT_BACKEND_ADDRESS_FAMILY, required_argument, &flag, 116},
-        {SHRPX_OPT_FRONTEND_HTTP2_MAX_CONCURRENT_STREAMS, required_argument,
-         &flag, 117},
-        {SHRPX_OPT_BACKEND_HTTP2_MAX_CONCURRENT_STREAMS, required_argument,
-         &flag, 118},
-        {SHRPX_OPT_BACKEND_CONNECTIONS_PER_FRONTEND, required_argument, &flag,
-         119},
-        {SHRPX_OPT_BACKEND_TLS, no_argument, &flag, 120},
-        {SHRPX_OPT_BACKEND_CONNECTIONS_PER_HOST, required_argument, &flag, 121},
-        {SHRPX_OPT_ERROR_PAGE, required_argument, &flag, 122},
+        {SHRPX_OPT_BACKEND_ADDRESS_FAMILY.c_str(), required_argument, &flag,
+         116},
+        {SHRPX_OPT_FRONTEND_HTTP2_MAX_CONCURRENT_STREAMS.c_str(),
+         required_argument, &flag, 117},
+        {SHRPX_OPT_BACKEND_HTTP2_MAX_CONCURRENT_STREAMS.c_str(),
+         required_argument, &flag, 118},
+        {SHRPX_OPT_BACKEND_CONNECTIONS_PER_FRONTEND.c_str(), required_argument,
+         &flag, 119},
+        {SHRPX_OPT_BACKEND_TLS.c_str(), no_argument, &flag, 120},
+        {SHRPX_OPT_BACKEND_CONNECTIONS_PER_HOST.c_str(), required_argument,
+         &flag, 121},
+        {SHRPX_OPT_ERROR_PAGE.c_str(), required_argument, &flag, 122},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -2490,37 +2515,39 @@ int main(int argc, char **argv) {
     }
     switch (c) {
     case 'D':
-      cmdcfgs.emplace_back(SHRPX_OPT_DAEMON, "yes");
+      cmdcfgs.emplace_back(SHRPX_OPT_DAEMON, StringRef::from_lit("yes"));
       break;
     case 'L':
-      cmdcfgs.emplace_back(SHRPX_OPT_LOG_LEVEL, optarg);
+      cmdcfgs.emplace_back(SHRPX_OPT_LOG_LEVEL, StringRef{optarg});
       break;
     case 'b':
-      cmdcfgs.emplace_back(SHRPX_OPT_BACKEND, optarg);
+      cmdcfgs.emplace_back(SHRPX_OPT_BACKEND, StringRef{optarg});
       break;
     case 'c':
-      cmdcfgs.emplace_back(SHRPX_OPT_HTTP2_MAX_CONCURRENT_STREAMS, optarg);
+      cmdcfgs.emplace_back(SHRPX_OPT_HTTP2_MAX_CONCURRENT_STREAMS,
+                           StringRef{optarg});
       break;
     case 'f':
-      cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND, optarg);
+      cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND, StringRef{optarg});
       break;
     case 'h':
       print_help(std::cout);
       exit(EXIT_SUCCESS);
     case 'k':
-      cmdcfgs.emplace_back(SHRPX_OPT_INSECURE, "yes");
+      cmdcfgs.emplace_back(SHRPX_OPT_INSECURE, StringRef::from_lit("yes"));
       break;
     case 'n':
-      cmdcfgs.emplace_back(SHRPX_OPT_WORKERS, optarg);
+      cmdcfgs.emplace_back(SHRPX_OPT_WORKERS, StringRef{optarg});
       break;
     case 'o':
-      cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_FRAME_DEBUG, "yes");
+      cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_FRAME_DEBUG,
+                           StringRef::from_lit("yes"));
       break;
     case 'p':
-      cmdcfgs.emplace_back(SHRPX_OPT_CLIENT_PROXY, "yes");
+      cmdcfgs.emplace_back(SHRPX_OPT_CLIENT_PROXY, StringRef::from_lit("yes"));
       break;
     case 's':
-      cmdcfgs.emplace_back(SHRPX_OPT_HTTP2_PROXY, "yes");
+      cmdcfgs.emplace_back(SHRPX_OPT_HTTP2_PROXY, StringRef::from_lit("yes"));
       break;
     case 'v':
       print_version(std::cout);
@@ -2532,44 +2559,51 @@ int main(int argc, char **argv) {
       switch (flag) {
       case 1:
         // --add-x-forwarded-for
-        cmdcfgs.emplace_back(SHRPX_OPT_ADD_X_FORWARDED_FOR, "yes");
+        cmdcfgs.emplace_back(SHRPX_OPT_ADD_X_FORWARDED_FOR,
+                             StringRef::from_lit("yes"));
         break;
       case 2:
         // --frontend-http2-read-timeout
-        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HTTP2_READ_TIMEOUT, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HTTP2_READ_TIMEOUT,
+                             StringRef{optarg});
         break;
       case 3:
         // --frontend-read-timeout
-        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_READ_TIMEOUT, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_READ_TIMEOUT,
+                             StringRef{optarg});
         break;
       case 4:
         // --frontend-write-timeout
-        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_WRITE_TIMEOUT, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_WRITE_TIMEOUT,
+                             StringRef{optarg});
         break;
       case 5:
         // --backend-read-timeout
-        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_READ_TIMEOUT, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_READ_TIMEOUT, StringRef{optarg});
         break;
       case 6:
         // --backend-write-timeout
-        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_WRITE_TIMEOUT, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_WRITE_TIMEOUT,
+                             StringRef{optarg});
         break;
       case 7:
-        cmdcfgs.emplace_back(SHRPX_OPT_ACCESSLOG_FILE, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_ACCESSLOG_FILE, StringRef{optarg});
         break;
       case 8:
         // --backend-keep-alive-timeout
-        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_KEEP_ALIVE_TIMEOUT, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_KEEP_ALIVE_TIMEOUT,
+                             StringRef{optarg});
         break;
       case 9:
         // --frontend-http2-window-bits
-        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HTTP2_WINDOW_BITS, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HTTP2_WINDOW_BITS,
+                             StringRef{optarg});
         break;
       case 10:
-        cmdcfgs.emplace_back(SHRPX_OPT_PID_FILE, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_PID_FILE, StringRef{optarg});
         break;
       case 11:
-        cmdcfgs.emplace_back(SHRPX_OPT_USER, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_USER, StringRef{optarg});
         break;
       case 12:
         // --conf
@@ -2577,430 +2611,474 @@ int main(int argc, char **argv) {
         break;
       case 14:
         // --syslog-facility
-        cmdcfgs.emplace_back(SHRPX_OPT_SYSLOG_FACILITY, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_SYSLOG_FACILITY, StringRef{optarg});
         break;
       case 15:
         // --backlog
-        cmdcfgs.emplace_back(SHRPX_OPT_BACKLOG, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKLOG, StringRef{optarg});
         break;
       case 16:
         // --ciphers
-        cmdcfgs.emplace_back(SHRPX_OPT_CIPHERS, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_CIPHERS, StringRef{optarg});
         break;
       case 17:
         // --client
-        cmdcfgs.emplace_back(SHRPX_OPT_CLIENT, "yes");
+        cmdcfgs.emplace_back(SHRPX_OPT_CLIENT, StringRef::from_lit("yes"));
         break;
       case 18:
         // --backend-http2-window-bits
-        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP2_WINDOW_BITS, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP2_WINDOW_BITS,
+                             StringRef{optarg});
         break;
       case 19:
         // --cacert
-        cmdcfgs.emplace_back(SHRPX_OPT_CACERT, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_CACERT, StringRef{optarg});
         break;
       case 20:
         // --backend-ipv4
-        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_IPV4, "yes");
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_IPV4,
+                             StringRef::from_lit("yes"));
         break;
       case 21:
         // --backend-ipv6
-        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_IPV6, "yes");
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_IPV6,
+                             StringRef::from_lit("yes"));
         break;
       case 22:
         // --private-key-passwd-file
-        cmdcfgs.emplace_back(SHRPX_OPT_PRIVATE_KEY_PASSWD_FILE, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_PRIVATE_KEY_PASSWD_FILE,
+                             StringRef{optarg});
         break;
       case 23:
         // --no-via
-        cmdcfgs.emplace_back(SHRPX_OPT_NO_VIA, "yes");
+        cmdcfgs.emplace_back(SHRPX_OPT_NO_VIA, StringRef::from_lit("yes"));
         break;
       case 24:
         // --subcert
-        cmdcfgs.emplace_back(SHRPX_OPT_SUBCERT, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_SUBCERT, StringRef{optarg});
         break;
       case 25:
         // --http2-bridge
-        cmdcfgs.emplace_back(SHRPX_OPT_HTTP2_BRIDGE, "yes");
+        cmdcfgs.emplace_back(SHRPX_OPT_HTTP2_BRIDGE,
+                             StringRef::from_lit("yes"));
         break;
       case 26:
         // --backend-http-proxy-uri
-        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP_PROXY_URI, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP_PROXY_URI,
+                             StringRef{optarg});
         break;
       case 27:
         // --backend-no-tls
-        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_NO_TLS, "yes");
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_NO_TLS,
+                             StringRef::from_lit("yes"));
         break;
       case 29:
         // --frontend-no-tls
-        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_NO_TLS, "yes");
+        cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_NO_TLS,
+                             StringRef::from_lit("yes"));
         break;
       case 31:
         // --backend-tls-sni-field
-        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_TLS_SNI_FIELD, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_TLS_SNI_FIELD,
+                             StringRef{optarg});
         break;
       case 33:
         // --dh-param-file
-        cmdcfgs.emplace_back(SHRPX_OPT_DH_PARAM_FILE, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_DH_PARAM_FILE, StringRef{optarg});
         break;
       case 34:
         // --read-rate
-        cmdcfgs.emplace_back(SHRPX_OPT_READ_RATE, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_READ_RATE, StringRef{optarg});
         break;
       case 35:
         // --read-burst
-        cmdcfgs.emplace_back(SHRPX_OPT_READ_BURST, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_READ_BURST, StringRef{optarg});
         break;
       case 36:
         // --write-rate
-        cmdcfgs.emplace_back(SHRPX_OPT_WRITE_RATE, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_WRITE_RATE, StringRef{optarg});
         break;
       case 37:
         // --write-burst
-        cmdcfgs.emplace_back(SHRPX_OPT_WRITE_BURST, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_WRITE_BURST, StringRef{optarg});
         break;
       case 38:
         // --npn-list
-        cmdcfgs.emplace_back(SHRPX_OPT_NPN_LIST, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_NPN_LIST, StringRef{optarg});
         break;
       case 39:
         // --verify-client
-        cmdcfgs.emplace_back(SHRPX_OPT_VERIFY_CLIENT, "yes");
+        cmdcfgs.emplace_back(SHRPX_OPT_VERIFY_CLIENT,
+                             StringRef::from_lit("yes"));
         break;
       case 40:
         // --verify-client-cacert
-        cmdcfgs.emplace_back(SHRPX_OPT_VERIFY_CLIENT_CACERT, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_VERIFY_CLIENT_CACERT, StringRef{optarg});
         break;
       case 41:
         // --client-private-key-file
-        cmdcfgs.emplace_back(SHRPX_OPT_CLIENT_PRIVATE_KEY_FILE, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_CLIENT_PRIVATE_KEY_FILE,
+                             StringRef{optarg});
         break;
       case 42:
         // --client-cert-file
-        cmdcfgs.emplace_back(SHRPX_OPT_CLIENT_CERT_FILE, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_CLIENT_CERT_FILE, StringRef{optarg});
         break;
       case 43:
         // --frontend-http2-dump-request-header
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HTTP2_DUMP_REQUEST_HEADER,
-                             optarg);
+                             StringRef{optarg});
         break;
       case 44:
         // --frontend-http2-dump-response-header
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HTTP2_DUMP_RESPONSE_HEADER,
-                             optarg);
+                             StringRef{optarg});
         break;
       case 45:
         // --http2-no-cookie-crumbling
-        cmdcfgs.emplace_back(SHRPX_OPT_HTTP2_NO_COOKIE_CRUMBLING, "yes");
+        cmdcfgs.emplace_back(SHRPX_OPT_HTTP2_NO_COOKIE_CRUMBLING,
+                             StringRef::from_lit("yes"));
         break;
       case 46:
         // --frontend-http2-connection-window-bits
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HTTP2_CONNECTION_WINDOW_BITS,
-                             optarg);
+                             StringRef{optarg});
         break;
       case 47:
         // --backend-http2-connection-window-bits
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP2_CONNECTION_WINDOW_BITS,
-                             optarg);
+                             StringRef{optarg});
         break;
       case 48:
         // --tls-proto-list
-        cmdcfgs.emplace_back(SHRPX_OPT_TLS_PROTO_LIST, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_PROTO_LIST, StringRef{optarg});
         break;
       case 49:
         // --padding
-        cmdcfgs.emplace_back(SHRPX_OPT_PADDING, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_PADDING, StringRef{optarg});
         break;
       case 50:
         // --worker-read-rate
-        cmdcfgs.emplace_back(SHRPX_OPT_WORKER_READ_RATE, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_WORKER_READ_RATE, StringRef{optarg});
         break;
       case 51:
         // --worker-read-burst
-        cmdcfgs.emplace_back(SHRPX_OPT_WORKER_READ_BURST, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_WORKER_READ_BURST, StringRef{optarg});
         break;
       case 52:
         // --worker-write-rate
-        cmdcfgs.emplace_back(SHRPX_OPT_WORKER_WRITE_RATE, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_WORKER_WRITE_RATE, StringRef{optarg});
         break;
       case 53:
         // --worker-write-burst
-        cmdcfgs.emplace_back(SHRPX_OPT_WORKER_WRITE_BURST, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_WORKER_WRITE_BURST, StringRef{optarg});
         break;
       case 54:
         // --altsvc
-        cmdcfgs.emplace_back(SHRPX_OPT_ALTSVC, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_ALTSVC, StringRef{optarg});
         break;
       case 55:
         // --add-response-header
-        cmdcfgs.emplace_back(SHRPX_OPT_ADD_RESPONSE_HEADER, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_ADD_RESPONSE_HEADER, StringRef{optarg});
         break;
       case 56:
         // --worker-frontend-connections
-        cmdcfgs.emplace_back(SHRPX_OPT_WORKER_FRONTEND_CONNECTIONS, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_WORKER_FRONTEND_CONNECTIONS,
+                             StringRef{optarg});
         break;
       case 57:
         // --accesslog-syslog
-        cmdcfgs.emplace_back(SHRPX_OPT_ACCESSLOG_SYSLOG, "yes");
+        cmdcfgs.emplace_back(SHRPX_OPT_ACCESSLOG_SYSLOG,
+                             StringRef::from_lit("yes"));
         break;
       case 58:
         // --errorlog-file
-        cmdcfgs.emplace_back(SHRPX_OPT_ERRORLOG_FILE, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_ERRORLOG_FILE, StringRef{optarg});
         break;
       case 59:
         // --errorlog-syslog
-        cmdcfgs.emplace_back(SHRPX_OPT_ERRORLOG_SYSLOG, "yes");
+        cmdcfgs.emplace_back(SHRPX_OPT_ERRORLOG_SYSLOG,
+                             StringRef::from_lit("yes"));
         break;
       case 60:
         // --stream-read-timeout
-        cmdcfgs.emplace_back(SHRPX_OPT_STREAM_READ_TIMEOUT, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_STREAM_READ_TIMEOUT, StringRef{optarg});
         break;
       case 61:
         // --stream-write-timeout
-        cmdcfgs.emplace_back(SHRPX_OPT_STREAM_WRITE_TIMEOUT, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_STREAM_WRITE_TIMEOUT, StringRef{optarg});
         break;
       case 62:
         // --no-location-rewrite
-        cmdcfgs.emplace_back(SHRPX_OPT_NO_LOCATION_REWRITE, "yes");
+        cmdcfgs.emplace_back(SHRPX_OPT_NO_LOCATION_REWRITE,
+                             StringRef::from_lit("yes"));
         break;
       case 63:
         // --backend-http1-connections-per-host
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP1_CONNECTIONS_PER_HOST,
-                             optarg);
+                             StringRef{optarg});
         break;
       case 64:
         // --listener-disable-timeout
-        cmdcfgs.emplace_back(SHRPX_OPT_LISTENER_DISABLE_TIMEOUT, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_LISTENER_DISABLE_TIMEOUT,
+                             StringRef{optarg});
         break;
       case 65:
         // --strip-incoming-x-forwarded-for
-        cmdcfgs.emplace_back(SHRPX_OPT_STRIP_INCOMING_X_FORWARDED_FOR, "yes");
+        cmdcfgs.emplace_back(SHRPX_OPT_STRIP_INCOMING_X_FORWARDED_FOR,
+                             StringRef::from_lit("yes"));
         break;
       case 66:
         // --accesslog-format
-        cmdcfgs.emplace_back(SHRPX_OPT_ACCESSLOG_FORMAT, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_ACCESSLOG_FORMAT, StringRef{optarg});
         break;
       case 67:
         // --backend-http1-connections-per-frontend
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP1_CONNECTIONS_PER_FRONTEND,
-                             optarg);
+                             StringRef{optarg});
         break;
       case 68:
         // --tls-ticket-key-file
-        cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_FILE, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_FILE, StringRef{optarg});
         break;
       case 69:
         // --rlimit-nofile
-        cmdcfgs.emplace_back(SHRPX_OPT_RLIMIT_NOFILE, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_RLIMIT_NOFILE, StringRef{optarg});
         break;
       case 71:
         // --backend-response-buffer
-        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_RESPONSE_BUFFER, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_RESPONSE_BUFFER,
+                             StringRef{optarg});
         break;
       case 72:
         // --backend-request-buffer
-        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_REQUEST_BUFFER, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_REQUEST_BUFFER,
+                             StringRef{optarg});
         break;
       case 73:
         // --no-host-rewrite
-        cmdcfgs.emplace_back(SHRPX_OPT_NO_HOST_REWRITE, "yes");
+        cmdcfgs.emplace_back(SHRPX_OPT_NO_HOST_REWRITE,
+                             StringRef::from_lit("yes"));
         break;
       case 74:
         // --no-server-push
-        cmdcfgs.emplace_back(SHRPX_OPT_NO_SERVER_PUSH, "yes");
+        cmdcfgs.emplace_back(SHRPX_OPT_NO_SERVER_PUSH,
+                             StringRef::from_lit("yes"));
         break;
       case 76:
         // --backend-http2-connections-per-worker
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP2_CONNECTIONS_PER_WORKER,
-                             optarg);
+                             StringRef{optarg});
         break;
       case 77:
         // --fetch-ocsp-response-file
-        cmdcfgs.emplace_back(SHRPX_OPT_FETCH_OCSP_RESPONSE_FILE, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_FETCH_OCSP_RESPONSE_FILE,
+                             StringRef{optarg});
         break;
       case 78:
         // --ocsp-update-interval
-        cmdcfgs.emplace_back(SHRPX_OPT_OCSP_UPDATE_INTERVAL, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_OCSP_UPDATE_INTERVAL, StringRef{optarg});
         break;
       case 79:
         // --no-ocsp
-        cmdcfgs.emplace_back(SHRPX_OPT_NO_OCSP, "yes");
+        cmdcfgs.emplace_back(SHRPX_OPT_NO_OCSP, StringRef::from_lit("yes"));
         break;
       case 80:
         // --header-field-buffer
-        cmdcfgs.emplace_back(SHRPX_OPT_HEADER_FIELD_BUFFER, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_HEADER_FIELD_BUFFER, StringRef{optarg});
         break;
       case 81:
         // --max-header-fields
-        cmdcfgs.emplace_back(SHRPX_OPT_MAX_HEADER_FIELDS, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_MAX_HEADER_FIELDS, StringRef{optarg});
         break;
       case 82:
         // --add-request-header
-        cmdcfgs.emplace_back(SHRPX_OPT_ADD_REQUEST_HEADER, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_ADD_REQUEST_HEADER, StringRef{optarg});
         break;
       case 83:
         // --include
-        cmdcfgs.emplace_back(SHRPX_OPT_INCLUDE, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_INCLUDE, StringRef{optarg});
         break;
       case 84:
         // --tls-ticket-key-cipher
-        cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_CIPHER, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_CIPHER,
+                             StringRef{optarg});
         break;
       case 85:
         // --host-rewrite
-        cmdcfgs.emplace_back(SHRPX_OPT_HOST_REWRITE, "yes");
+        cmdcfgs.emplace_back(SHRPX_OPT_HOST_REWRITE,
+                             StringRef::from_lit("yes"));
         break;
       case 86:
         // --tls-session-cache-memcached
-        cmdcfgs.emplace_back(SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED,
+                             StringRef{optarg});
         break;
       case 87:
         // --tls-ticket-key-memcached
-        cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED,
+                             StringRef{optarg});
         break;
       case 88:
         // --tls-ticket-key-memcached-interval
         cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_INTERVAL,
-                             optarg);
+                             StringRef{optarg});
         break;
       case 89:
         // --tls-ticket-key-memcached-max-retry
         cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_MAX_RETRY,
-                             optarg);
+                             StringRef{optarg});
         break;
       case 90:
         // --tls-ticket-key-memcached-max-fail
         cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_MAX_FAIL,
-                             optarg);
+                             StringRef{optarg});
         break;
       case 91:
         // --mruby-file
-        cmdcfgs.emplace_back(SHRPX_OPT_MRUBY_FILE, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_MRUBY_FILE, StringRef{optarg});
         break;
       case 93:
         // --accept-proxy-protocol
-        cmdcfgs.emplace_back(SHRPX_OPT_ACCEPT_PROXY_PROTOCOL, "yes");
+        cmdcfgs.emplace_back(SHRPX_OPT_ACCEPT_PROXY_PROTOCOL,
+                             StringRef::from_lit("yes"));
         break;
       case 94:
         // --fastopen
-        cmdcfgs.emplace_back(SHRPX_OPT_FASTOPEN, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_FASTOPEN, StringRef{optarg});
         break;
       case 95:
         // --tls-dyn-rec-warmup-threshold
-        cmdcfgs.emplace_back(SHRPX_OPT_TLS_DYN_REC_WARMUP_THRESHOLD, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_DYN_REC_WARMUP_THRESHOLD,
+                             StringRef{optarg});
         break;
       case 96:
         // --tls-dyn-rec-idle-timeout
-        cmdcfgs.emplace_back(SHRPX_OPT_TLS_DYN_REC_IDLE_TIMEOUT, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_DYN_REC_IDLE_TIMEOUT,
+                             StringRef{optarg});
         break;
       case 97:
         // --add-forwarded
-        cmdcfgs.emplace_back(SHRPX_OPT_ADD_FORWARDED, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_ADD_FORWARDED, StringRef{optarg});
         break;
       case 98:
         // --strip-incoming-forwarded
-        cmdcfgs.emplace_back(SHRPX_OPT_STRIP_INCOMING_FORWARDED, "yes");
+        cmdcfgs.emplace_back(SHRPX_OPT_STRIP_INCOMING_FORWARDED,
+                             StringRef::from_lit("yes"));
         break;
       case 99:
         // --forwarded-by
-        cmdcfgs.emplace_back(SHRPX_OPT_FORWARDED_BY, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_FORWARDED_BY, StringRef{optarg});
         break;
       case 100:
         // --forwarded-for
-        cmdcfgs.emplace_back(SHRPX_OPT_FORWARDED_FOR, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_FORWARDED_FOR, StringRef{optarg});
         break;
       case 101:
         // --response-header-field-buffer
-        cmdcfgs.emplace_back(SHRPX_OPT_RESPONSE_HEADER_FIELD_BUFFER, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_RESPONSE_HEADER_FIELD_BUFFER,
+                             StringRef{optarg});
         break;
       case 102:
         // --max-response-header-fields
-        cmdcfgs.emplace_back(SHRPX_OPT_MAX_RESPONSE_HEADER_FIELDS, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_MAX_RESPONSE_HEADER_FIELDS,
+                             StringRef{optarg});
         break;
       case 103:
         // --no-http2-cipher-black-list
-        cmdcfgs.emplace_back(SHRPX_OPT_NO_HTTP2_CIPHER_BLACK_LIST, "yes");
+        cmdcfgs.emplace_back(SHRPX_OPT_NO_HTTP2_CIPHER_BLACK_LIST,
+                             StringRef::from_lit("yes"));
         break;
       case 104:
         // --request-header-field-buffer
-        cmdcfgs.emplace_back(SHRPX_OPT_REQUEST_HEADER_FIELD_BUFFER, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_REQUEST_HEADER_FIELD_BUFFER,
+                             StringRef{optarg});
         break;
       case 105:
         // --max-request-header-fields
-        cmdcfgs.emplace_back(SHRPX_OPT_MAX_REQUEST_HEADER_FIELDS, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_MAX_REQUEST_HEADER_FIELDS,
+                             StringRef{optarg});
         break;
       case 106:
         // --backend-http1-tls
-        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP1_TLS, "yes");
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP1_TLS,
+                             StringRef::from_lit("yes"));
         break;
       case 108:
         // --tls-session-cache-memcached-tls
-        cmdcfgs.emplace_back(SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_TLS, "yes");
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_TLS,
+                             StringRef::from_lit("yes"));
         break;
       case 109:
         // --tls-session-cache-memcached-cert-file
         cmdcfgs.emplace_back(SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_CERT_FILE,
-                             optarg);
+                             StringRef{optarg});
         break;
       case 110:
         // --tls-session-cache-memcached-private-key-file
         cmdcfgs.emplace_back(
-            SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_PRIVATE_KEY_FILE, optarg);
+            SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_PRIVATE_KEY_FILE,
+            StringRef{optarg});
         break;
       case 111:
         // --tls-ticket-key-memcached-tls
-        cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_TLS, "yes");
+        cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_TLS,
+                             StringRef::from_lit("yes"));
         break;
       case 112:
         // --tls-ticket-key-memcached-cert-file
         cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_CERT_FILE,
-                             optarg);
+                             StringRef{optarg});
         break;
       case 113:
         // --tls-ticket-key-memcached-private-key-file
         cmdcfgs.emplace_back(
-            SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_PRIVATE_KEY_FILE, optarg);
+            SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_PRIVATE_KEY_FILE,
+            StringRef{optarg});
         break;
       case 114:
         // --tls-ticket-key-memcached-address-family
         cmdcfgs.emplace_back(SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_ADDRESS_FAMILY,
-                             optarg);
+                             StringRef{optarg});
         break;
       case 115:
         // --tls-session-cache-memcached-address-family
         cmdcfgs.emplace_back(
-            SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_ADDRESS_FAMILY, optarg);
+            SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_ADDRESS_FAMILY,
+            StringRef{optarg});
         break;
       case 116:
         // --backend-address-family
-        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_ADDRESS_FAMILY, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_ADDRESS_FAMILY,
+                             StringRef{optarg});
         break;
       case 117:
         // --frontend-http2-max-concurrent-streams
         cmdcfgs.emplace_back(SHRPX_OPT_FRONTEND_HTTP2_MAX_CONCURRENT_STREAMS,
-                             optarg);
+                             StringRef{optarg});
         break;
       case 118:
         // --backend-http2-max-concurrent-streams
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_HTTP2_MAX_CONCURRENT_STREAMS,
-                             optarg);
+                             StringRef{optarg});
         break;
       case 119:
         // --backend-connections-per-frontend
         cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_CONNECTIONS_PER_FRONTEND,
-                             optarg);
+                             StringRef{optarg});
         break;
       case 120:
         // --backend-tls
-        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_TLS, "yes");
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_TLS, StringRef::from_lit("yes"));
         break;
       case 121:
         // --backend-connections-per-host
-        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_CONNECTIONS_PER_HOST, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_CONNECTIONS_PER_HOST,
+                             StringRef{optarg});
         break;
       case 122:
         // --error-page
-        cmdcfgs.emplace_back(SHRPX_OPT_ERROR_PAGE, optarg);
+        cmdcfgs.emplace_back(SHRPX_OPT_ERROR_PAGE, StringRef{optarg});
         break;
       default:
         break;

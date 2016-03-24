@@ -584,19 +584,11 @@ bool select_protocol(const unsigned char **out, unsigned char *outlen,
 // HTTP/2 protocol identifier.
 std::vector<unsigned char> get_default_alpn();
 
-template <typename T> using Range = std::pair<T, T>;
-
 // Parses delimited strings in |s| and returns the array of substring,
 // delimited by |delim|.  The any white spaces around substring are
 // treated as a part of substring.
-std::vector<std::string> parse_config_str_list(const char *s, char delim = ',');
-
-// Parses delimited strings in |s| and returns the array of pointers,
-// each element points to the beginning and one beyond last of
-// substring in |s|.  The delimiter is given by |delim|.  The any
-// white spaces around substring are treated as a part of substring.
-std::vector<Range<const char *>> split_config_str_list(const char *s,
-                                                       char delim);
+std::vector<std::string> parse_config_str_list(const StringRef &s,
+                                               char delim = ',');
 
 // Parses delimited strings in |s| and returns Substrings in |s|
 // delimited by |delim|.  The any white spaces around substring are
@@ -653,10 +645,14 @@ bool ipv6_numeric_addr(const char *host);
 // 1024 and 1024 * 1024 respectively.  If there is an error, returns
 // -1.
 int64_t parse_uint_with_unit(const char *s);
+// The following overload does not require |s| is NULL terminated.
+int64_t parse_uint_with_unit(const uint8_t *s, size_t len);
+int64_t parse_uint_with_unit(const StringRef &s);
 
 // Parses NULL terminated string |s| as unsigned integer and returns
 // the parsed integer.  If there is an error, returns -1.
 int64_t parse_uint(const char *s);
+// The following overload does not require |s| is NULL terminated.
 int64_t parse_uint(const uint8_t *s, size_t len);
 int64_t parse_uint(const std::string &s);
 int64_t parse_uint(const StringRef &s);
@@ -669,6 +665,9 @@ int64_t parse_uint(const StringRef &s);
 // unit is second.  This function returns
 // std::numeric_limits<double>::infinity() if error occurs.
 double parse_duration_with_unit(const char *s);
+// The following overload does not require |s| is NULL terminated.
+double parse_duration_with_unit(const uint8_t *s, size_t len);
+double parse_duration_with_unit(const StringRef &s);
 
 // Returns string representation of time duration |t|.  If t has
 // fractional part (at least more than or equal to 1e-3), |t| is

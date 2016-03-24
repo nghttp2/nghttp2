@@ -1956,7 +1956,7 @@ int main(int argc, char **argv) {
         break;
       case 4:
         // npn-list option
-        config.npn_list = util::parse_config_str_list(optarg);
+        config.npn_list = util::parse_config_str_list(StringRef{optarg});
         break;
       case 5:
         // rate-period
@@ -1968,7 +1968,8 @@ int main(int argc, char **argv) {
         break;
       case 6:
         // --h1
-        config.npn_list = util::parse_config_str_list("http/1.1");
+        config.npn_list =
+            util::parse_config_str_list(StringRef::from_lit("http/1.1"));
         config.no_tls_proto = Config::PROTO_HTTP1_1;
         break;
       }
@@ -1992,7 +1993,8 @@ int main(int argc, char **argv) {
   }
 
   if (config.npn_list.empty()) {
-    config.npn_list = util::parse_config_str_list(DEFAULT_NPN_LIST);
+    config.npn_list =
+        util::parse_config_str_list(StringRef::from_lit(DEFAULT_NPN_LIST));
   }
 
   // serialize the APLN tokens

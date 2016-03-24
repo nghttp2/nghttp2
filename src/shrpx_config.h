@@ -71,173 +71,212 @@ class CertLookupTree;
 
 constexpr char SHRPX_UNIX_PATH_PREFIX[] = "unix:";
 
-constexpr char SHRPX_OPT_PRIVATE_KEY_FILE[] = "private-key-file";
-constexpr char SHRPX_OPT_PRIVATE_KEY_PASSWD_FILE[] = "private-key-passwd-file";
-constexpr char SHRPX_OPT_CERTIFICATE_FILE[] = "certificate-file";
-constexpr char SHRPX_OPT_DH_PARAM_FILE[] = "dh-param-file";
-constexpr char SHRPX_OPT_SUBCERT[] = "subcert";
-constexpr char SHRPX_OPT_BACKEND[] = "backend";
-constexpr char SHRPX_OPT_FRONTEND[] = "frontend";
-constexpr char SHRPX_OPT_WORKERS[] = "workers";
-constexpr char SHRPX_OPT_HTTP2_MAX_CONCURRENT_STREAMS[] =
-    "http2-max-concurrent-streams";
-constexpr char SHRPX_OPT_LOG_LEVEL[] = "log-level";
-constexpr char SHRPX_OPT_DAEMON[] = "daemon";
-constexpr char SHRPX_OPT_HTTP2_PROXY[] = "http2-proxy";
-constexpr char SHRPX_OPT_HTTP2_BRIDGE[] = "http2-bridge";
-constexpr char SHRPX_OPT_CLIENT_PROXY[] = "client-proxy";
-constexpr char SHRPX_OPT_ADD_X_FORWARDED_FOR[] = "add-x-forwarded-for";
-constexpr char SHRPX_OPT_STRIP_INCOMING_X_FORWARDED_FOR[] =
-    "strip-incoming-x-forwarded-for";
-constexpr char SHRPX_OPT_NO_VIA[] = "no-via";
-constexpr char SHRPX_OPT_FRONTEND_HTTP2_READ_TIMEOUT[] =
-    "frontend-http2-read-timeout";
-constexpr char SHRPX_OPT_FRONTEND_READ_TIMEOUT[] = "frontend-read-timeout";
-constexpr char SHRPX_OPT_FRONTEND_WRITE_TIMEOUT[] = "frontend-write-timeout";
-constexpr char SHRPX_OPT_BACKEND_READ_TIMEOUT[] = "backend-read-timeout";
-constexpr char SHRPX_OPT_BACKEND_WRITE_TIMEOUT[] = "backend-write-timeout";
-constexpr char SHRPX_OPT_STREAM_READ_TIMEOUT[] = "stream-read-timeout";
-constexpr char SHRPX_OPT_STREAM_WRITE_TIMEOUT[] = "stream-write-timeout";
-constexpr char SHRPX_OPT_ACCESSLOG_FILE[] = "accesslog-file";
-constexpr char SHRPX_OPT_ACCESSLOG_SYSLOG[] = "accesslog-syslog";
-constexpr char SHRPX_OPT_ACCESSLOG_FORMAT[] = "accesslog-format";
-constexpr char SHRPX_OPT_ERRORLOG_FILE[] = "errorlog-file";
-constexpr char SHRPX_OPT_ERRORLOG_SYSLOG[] = "errorlog-syslog";
-constexpr char SHRPX_OPT_BACKEND_KEEP_ALIVE_TIMEOUT[] =
-    "backend-keep-alive-timeout";
-constexpr char SHRPX_OPT_FRONTEND_HTTP2_WINDOW_BITS[] =
-    "frontend-http2-window-bits";
-constexpr char SHRPX_OPT_BACKEND_HTTP2_WINDOW_BITS[] =
-    "backend-http2-window-bits";
-constexpr char SHRPX_OPT_FRONTEND_HTTP2_CONNECTION_WINDOW_BITS[] =
-    "frontend-http2-connection-window-bits";
-constexpr char SHRPX_OPT_BACKEND_HTTP2_CONNECTION_WINDOW_BITS[] =
-    "backend-http2-connection-window-bits";
-constexpr char SHRPX_OPT_FRONTEND_NO_TLS[] = "frontend-no-tls";
-constexpr char SHRPX_OPT_BACKEND_NO_TLS[] = "backend-no-tls";
-constexpr char SHRPX_OPT_BACKEND_TLS_SNI_FIELD[] = "backend-tls-sni-field";
-constexpr char SHRPX_OPT_PID_FILE[] = "pid-file";
-constexpr char SHRPX_OPT_USER[] = "user";
-constexpr char SHRPX_OPT_SYSLOG_FACILITY[] = "syslog-facility";
-constexpr char SHRPX_OPT_BACKLOG[] = "backlog";
-constexpr char SHRPX_OPT_CIPHERS[] = "ciphers";
-constexpr char SHRPX_OPT_CLIENT[] = "client";
-constexpr char SHRPX_OPT_INSECURE[] = "insecure";
-constexpr char SHRPX_OPT_CACERT[] = "cacert";
-constexpr char SHRPX_OPT_BACKEND_IPV4[] = "backend-ipv4";
-constexpr char SHRPX_OPT_BACKEND_IPV6[] = "backend-ipv6";
-constexpr char SHRPX_OPT_BACKEND_HTTP_PROXY_URI[] = "backend-http-proxy-uri";
-constexpr char SHRPX_OPT_READ_RATE[] = "read-rate";
-constexpr char SHRPX_OPT_READ_BURST[] = "read-burst";
-constexpr char SHRPX_OPT_WRITE_RATE[] = "write-rate";
-constexpr char SHRPX_OPT_WRITE_BURST[] = "write-burst";
-constexpr char SHRPX_OPT_WORKER_READ_RATE[] = "worker-read-rate";
-constexpr char SHRPX_OPT_WORKER_READ_BURST[] = "worker-read-burst";
-constexpr char SHRPX_OPT_WORKER_WRITE_RATE[] = "worker-write-rate";
-constexpr char SHRPX_OPT_WORKER_WRITE_BURST[] = "worker-write-burst";
-constexpr char SHRPX_OPT_NPN_LIST[] = "npn-list";
-constexpr char SHRPX_OPT_TLS_PROTO_LIST[] = "tls-proto-list";
-constexpr char SHRPX_OPT_VERIFY_CLIENT[] = "verify-client";
-constexpr char SHRPX_OPT_VERIFY_CLIENT_CACERT[] = "verify-client-cacert";
-constexpr char SHRPX_OPT_CLIENT_PRIVATE_KEY_FILE[] = "client-private-key-file";
-constexpr char SHRPX_OPT_CLIENT_CERT_FILE[] = "client-cert-file";
-constexpr char SHRPX_OPT_FRONTEND_HTTP2_DUMP_REQUEST_HEADER[] =
-    "frontend-http2-dump-request-header";
-constexpr char SHRPX_OPT_FRONTEND_HTTP2_DUMP_RESPONSE_HEADER[] =
-    "frontend-http2-dump-response-header";
-constexpr char SHRPX_OPT_HTTP2_NO_COOKIE_CRUMBLING[] =
-    "http2-no-cookie-crumbling";
-constexpr char SHRPX_OPT_FRONTEND_FRAME_DEBUG[] = "frontend-frame-debug";
-constexpr char SHRPX_OPT_PADDING[] = "padding";
-constexpr char SHRPX_OPT_ALTSVC[] = "altsvc";
-constexpr char SHRPX_OPT_ADD_REQUEST_HEADER[] = "add-request-header";
-constexpr char SHRPX_OPT_ADD_RESPONSE_HEADER[] = "add-response-header";
-constexpr char SHRPX_OPT_WORKER_FRONTEND_CONNECTIONS[] =
-    "worker-frontend-connections";
-constexpr char SHRPX_OPT_NO_LOCATION_REWRITE[] = "no-location-rewrite";
-constexpr char SHRPX_OPT_NO_HOST_REWRITE[] = "no-host-rewrite";
-constexpr char SHRPX_OPT_BACKEND_HTTP1_CONNECTIONS_PER_HOST[] =
-    "backend-http1-connections-per-host";
-constexpr char SHRPX_OPT_BACKEND_HTTP1_CONNECTIONS_PER_FRONTEND[] =
-    "backend-http1-connections-per-frontend";
-constexpr char SHRPX_OPT_LISTENER_DISABLE_TIMEOUT[] =
-    "listener-disable-timeout";
-constexpr char SHRPX_OPT_TLS_TICKET_KEY_FILE[] = "tls-ticket-key-file";
-constexpr char SHRPX_OPT_RLIMIT_NOFILE[] = "rlimit-nofile";
-constexpr char SHRPX_OPT_BACKEND_REQUEST_BUFFER[] = "backend-request-buffer";
-constexpr char SHRPX_OPT_BACKEND_RESPONSE_BUFFER[] = "backend-response-buffer";
-constexpr char SHRPX_OPT_NO_SERVER_PUSH[] = "no-server-push";
-constexpr char SHRPX_OPT_BACKEND_HTTP2_CONNECTIONS_PER_WORKER[] =
-    "backend-http2-connections-per-worker";
-constexpr char SHRPX_OPT_FETCH_OCSP_RESPONSE_FILE[] =
-    "fetch-ocsp-response-file";
-constexpr char SHRPX_OPT_OCSP_UPDATE_INTERVAL[] = "ocsp-update-interval";
-constexpr char SHRPX_OPT_NO_OCSP[] = "no-ocsp";
-constexpr char SHRPX_OPT_HEADER_FIELD_BUFFER[] = "header-field-buffer";
-constexpr char SHRPX_OPT_MAX_HEADER_FIELDS[] = "max-header-fields";
-constexpr char SHRPX_OPT_INCLUDE[] = "include";
-constexpr char SHRPX_OPT_TLS_TICKET_KEY_CIPHER[] = "tls-ticket-key-cipher";
-constexpr char SHRPX_OPT_HOST_REWRITE[] = "host-rewrite";
-constexpr char SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED[] =
-    "tls-session-cache-memcached";
-constexpr char SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED[] =
-    "tls-ticket-key-memcached";
-constexpr char SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_INTERVAL[] =
-    "tls-ticket-key-memcached-interval";
-constexpr char SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_MAX_RETRY[] =
-    "tls-ticket-key-memcached-max-retry";
-constexpr char SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_MAX_FAIL[] =
-    "tls-ticket-key-memcached-max-fail";
-constexpr char SHRPX_OPT_MRUBY_FILE[] = "mruby-file";
-constexpr char SHRPX_OPT_ACCEPT_PROXY_PROTOCOL[] = "accept-proxy-protocol";
-constexpr char SHRPX_OPT_FASTOPEN[] = "fastopen";
-constexpr char SHRPX_OPT_TLS_DYN_REC_WARMUP_THRESHOLD[] =
-    "tls-dyn-rec-warmup-threshold";
-constexpr char SHRPX_OPT_TLS_DYN_REC_IDLE_TIMEOUT[] =
-    "tls-dyn-rec-idle-timeout";
-constexpr char SHRPX_OPT_ADD_FORWARDED[] = "add-forwarded";
-constexpr char SHRPX_OPT_STRIP_INCOMING_FORWARDED[] =
-    "strip-incoming-forwarded";
-constexpr static char SHRPX_OPT_FORWARDED_BY[] = "forwarded-by";
-constexpr char SHRPX_OPT_FORWARDED_FOR[] = "forwarded-for";
-constexpr char SHRPX_OPT_REQUEST_HEADER_FIELD_BUFFER[] =
-    "request-header-field-buffer";
-constexpr char SHRPX_OPT_MAX_REQUEST_HEADER_FIELDS[] =
-    "max-request-header-fields";
-constexpr char SHRPX_OPT_RESPONSE_HEADER_FIELD_BUFFER[] =
-    "response-header-field-buffer";
-constexpr char SHRPX_OPT_MAX_RESPONSE_HEADER_FIELDS[] =
-    "max-response-header-fields";
-constexpr char SHRPX_OPT_NO_HTTP2_CIPHER_BLACK_LIST[] =
-    "no-http2-cipher-black-list";
-constexpr char SHRPX_OPT_BACKEND_HTTP1_TLS[] = "backend-http1-tls";
-constexpr char SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_TLS[] =
-    "tls-session-cache-memcached-tls";
-constexpr char SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_CERT_FILE[] =
-    "tls-session-cache-memcached-cert-file";
-constexpr char SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_PRIVATE_KEY_FILE[] =
-    "tls-session-cache-memcached-private-key-file";
-constexpr char SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_ADDRESS_FAMILY[] =
-    "tls-session-cache-memcached-address-family";
-constexpr char SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_TLS[] =
-    "tls-ticket-key-memcached-tls";
-constexpr char SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_CERT_FILE[] =
-    "tls-ticket-key-memcached-cert-file";
-constexpr char SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_PRIVATE_KEY_FILE[] =
-    "tls-ticket-key-memcached-private-key-file";
-constexpr char SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_ADDRESS_FAMILY[] =
-    "tls-ticket-key-memcached-address-family";
-constexpr char SHRPX_OPT_BACKEND_ADDRESS_FAMILY[] = "backend-address-family";
-constexpr char SHRPX_OPT_FRONTEND_HTTP2_MAX_CONCURRENT_STREAMS[] =
-    "frontend-http2-max-concurrent-streams";
-constexpr char SHRPX_OPT_BACKEND_HTTP2_MAX_CONCURRENT_STREAMS[] =
-    "backend-http2-max-concurrent-streams";
-constexpr char SHRPX_OPT_BACKEND_CONNECTIONS_PER_FRONTEND[] =
-    "backend-connections-per-frontend";
-constexpr char SHRPX_OPT_BACKEND_TLS[] = "backend-tls";
-constexpr char SHRPX_OPT_BACKEND_CONNECTIONS_PER_HOST[] =
-    "backend-connections-per-host";
-constexpr char SHRPX_OPT_ERROR_PAGE[] = "error-page";
+constexpr auto SHRPX_OPT_PRIVATE_KEY_FILE =
+    StringRef::from_lit("private-key-file");
+constexpr auto SHRPX_OPT_PRIVATE_KEY_PASSWD_FILE =
+    StringRef::from_lit("private-key-passwd-file");
+constexpr auto SHRPX_OPT_CERTIFICATE_FILE =
+    StringRef::from_lit("certificate-file");
+constexpr auto SHRPX_OPT_DH_PARAM_FILE = StringRef::from_lit("dh-param-file");
+constexpr auto SHRPX_OPT_SUBCERT = StringRef::from_lit("subcert");
+constexpr auto SHRPX_OPT_BACKEND = StringRef::from_lit("backend");
+constexpr auto SHRPX_OPT_FRONTEND = StringRef::from_lit("frontend");
+constexpr auto SHRPX_OPT_WORKERS = StringRef::from_lit("workers");
+constexpr auto SHRPX_OPT_HTTP2_MAX_CONCURRENT_STREAMS =
+    StringRef::from_lit("http2-max-concurrent-streams");
+constexpr auto SHRPX_OPT_LOG_LEVEL = StringRef::from_lit("log-level");
+constexpr auto SHRPX_OPT_DAEMON = StringRef::from_lit("daemon");
+constexpr auto SHRPX_OPT_HTTP2_PROXY = StringRef::from_lit("http2-proxy");
+constexpr auto SHRPX_OPT_HTTP2_BRIDGE = StringRef::from_lit("http2-bridge");
+constexpr auto SHRPX_OPT_CLIENT_PROXY = StringRef::from_lit("client-proxy");
+constexpr auto SHRPX_OPT_ADD_X_FORWARDED_FOR =
+    StringRef::from_lit("add-x-forwarded-for");
+constexpr auto SHRPX_OPT_STRIP_INCOMING_X_FORWARDED_FOR =
+    StringRef::from_lit("strip-incoming-x-forwarded-for");
+constexpr auto SHRPX_OPT_NO_VIA = StringRef::from_lit("no-via");
+constexpr auto SHRPX_OPT_FRONTEND_HTTP2_READ_TIMEOUT =
+    StringRef::from_lit("frontend-http2-read-timeout");
+constexpr auto SHRPX_OPT_FRONTEND_READ_TIMEOUT =
+    StringRef::from_lit("frontend-read-timeout");
+constexpr auto SHRPX_OPT_FRONTEND_WRITE_TIMEOUT =
+    StringRef::from_lit("frontend-write-timeout");
+constexpr auto SHRPX_OPT_BACKEND_READ_TIMEOUT =
+    StringRef::from_lit("backend-read-timeout");
+constexpr auto SHRPX_OPT_BACKEND_WRITE_TIMEOUT =
+    StringRef::from_lit("backend-write-timeout");
+constexpr auto SHRPX_OPT_STREAM_READ_TIMEOUT =
+    StringRef::from_lit("stream-read-timeout");
+constexpr auto SHRPX_OPT_STREAM_WRITE_TIMEOUT =
+    StringRef::from_lit("stream-write-timeout");
+constexpr auto SHRPX_OPT_ACCESSLOG_FILE = StringRef::from_lit("accesslog-file");
+constexpr auto SHRPX_OPT_ACCESSLOG_SYSLOG =
+    StringRef::from_lit("accesslog-syslog");
+constexpr auto SHRPX_OPT_ACCESSLOG_FORMAT =
+    StringRef::from_lit("accesslog-format");
+constexpr auto SHRPX_OPT_ERRORLOG_FILE = StringRef::from_lit("errorlog-file");
+constexpr auto SHRPX_OPT_ERRORLOG_SYSLOG =
+    StringRef::from_lit("errorlog-syslog");
+constexpr auto SHRPX_OPT_BACKEND_KEEP_ALIVE_TIMEOUT =
+    StringRef::from_lit("backend-keep-alive-timeout");
+constexpr auto SHRPX_OPT_FRONTEND_HTTP2_WINDOW_BITS =
+    StringRef::from_lit("frontend-http2-window-bits");
+constexpr auto SHRPX_OPT_BACKEND_HTTP2_WINDOW_BITS =
+    StringRef::from_lit("backend-http2-window-bits");
+constexpr auto SHRPX_OPT_FRONTEND_HTTP2_CONNECTION_WINDOW_BITS =
+    StringRef::from_lit("frontend-http2-connection-window-bits");
+constexpr auto SHRPX_OPT_BACKEND_HTTP2_CONNECTION_WINDOW_BITS =
+    StringRef::from_lit("backend-http2-connection-window-bits");
+constexpr auto SHRPX_OPT_FRONTEND_NO_TLS =
+    StringRef::from_lit("frontend-no-tls");
+constexpr auto SHRPX_OPT_BACKEND_NO_TLS = StringRef::from_lit("backend-no-tls");
+constexpr auto SHRPX_OPT_BACKEND_TLS_SNI_FIELD =
+    StringRef::from_lit("backend-tls-sni-field");
+constexpr auto SHRPX_OPT_PID_FILE = StringRef::from_lit("pid-file");
+constexpr auto SHRPX_OPT_USER = StringRef::from_lit("user");
+constexpr auto SHRPX_OPT_SYSLOG_FACILITY =
+    StringRef::from_lit("syslog-facility");
+constexpr auto SHRPX_OPT_BACKLOG = StringRef::from_lit("backlog");
+constexpr auto SHRPX_OPT_CIPHERS = StringRef::from_lit("ciphers");
+constexpr auto SHRPX_OPT_CLIENT = StringRef::from_lit("client");
+constexpr auto SHRPX_OPT_INSECURE = StringRef::from_lit("insecure");
+constexpr auto SHRPX_OPT_CACERT = StringRef::from_lit("cacert");
+constexpr auto SHRPX_OPT_BACKEND_IPV4 = StringRef::from_lit("backend-ipv4");
+constexpr auto SHRPX_OPT_BACKEND_IPV6 = StringRef::from_lit("backend-ipv6");
+constexpr auto SHRPX_OPT_BACKEND_HTTP_PROXY_URI =
+    StringRef::from_lit("backend-http-proxy-uri");
+constexpr auto SHRPX_OPT_READ_RATE = StringRef::from_lit("read-rate");
+constexpr auto SHRPX_OPT_READ_BURST = StringRef::from_lit("read-burst");
+constexpr auto SHRPX_OPT_WRITE_RATE = StringRef::from_lit("write-rate");
+constexpr auto SHRPX_OPT_WRITE_BURST = StringRef::from_lit("write-burst");
+constexpr auto SHRPX_OPT_WORKER_READ_RATE =
+    StringRef::from_lit("worker-read-rate");
+constexpr auto SHRPX_OPT_WORKER_READ_BURST =
+    StringRef::from_lit("worker-read-burst");
+constexpr auto SHRPX_OPT_WORKER_WRITE_RATE =
+    StringRef::from_lit("worker-write-rate");
+constexpr auto SHRPX_OPT_WORKER_WRITE_BURST =
+    StringRef::from_lit("worker-write-burst");
+constexpr auto SHRPX_OPT_NPN_LIST = StringRef::from_lit("npn-list");
+constexpr auto SHRPX_OPT_TLS_PROTO_LIST = StringRef::from_lit("tls-proto-list");
+constexpr auto SHRPX_OPT_VERIFY_CLIENT = StringRef::from_lit("verify-client");
+constexpr auto SHRPX_OPT_VERIFY_CLIENT_CACERT =
+    StringRef::from_lit("verify-client-cacert");
+constexpr auto SHRPX_OPT_CLIENT_PRIVATE_KEY_FILE =
+    StringRef::from_lit("client-private-key-file");
+constexpr auto SHRPX_OPT_CLIENT_CERT_FILE =
+    StringRef::from_lit("client-cert-file");
+constexpr auto SHRPX_OPT_FRONTEND_HTTP2_DUMP_REQUEST_HEADER =
+    StringRef::from_lit("frontend-http2-dump-request-header");
+constexpr auto SHRPX_OPT_FRONTEND_HTTP2_DUMP_RESPONSE_HEADER =
+    StringRef::from_lit("frontend-http2-dump-response-header");
+constexpr auto SHRPX_OPT_HTTP2_NO_COOKIE_CRUMBLING =
+    StringRef::from_lit("http2-no-cookie-crumbling");
+constexpr auto SHRPX_OPT_FRONTEND_FRAME_DEBUG =
+    StringRef::from_lit("frontend-frame-debug");
+constexpr auto SHRPX_OPT_PADDING = StringRef::from_lit("padding");
+constexpr auto SHRPX_OPT_ALTSVC = StringRef::from_lit("altsvc");
+constexpr auto SHRPX_OPT_ADD_REQUEST_HEADER =
+    StringRef::from_lit("add-request-header");
+constexpr auto SHRPX_OPT_ADD_RESPONSE_HEADER =
+    StringRef::from_lit("add-response-header");
+constexpr auto SHRPX_OPT_WORKER_FRONTEND_CONNECTIONS =
+    StringRef::from_lit("worker-frontend-connections");
+constexpr auto SHRPX_OPT_NO_LOCATION_REWRITE =
+    StringRef::from_lit("no-location-rewrite");
+constexpr auto SHRPX_OPT_NO_HOST_REWRITE =
+    StringRef::from_lit("no-host-rewrite");
+constexpr auto SHRPX_OPT_BACKEND_HTTP1_CONNECTIONS_PER_HOST =
+    StringRef::from_lit("backend-http1-connections-per-host");
+constexpr auto SHRPX_OPT_BACKEND_HTTP1_CONNECTIONS_PER_FRONTEND =
+    StringRef::from_lit("backend-http1-connections-per-frontend");
+constexpr auto SHRPX_OPT_LISTENER_DISABLE_TIMEOUT =
+    StringRef::from_lit("listener-disable-timeout");
+constexpr auto SHRPX_OPT_TLS_TICKET_KEY_FILE =
+    StringRef::from_lit("tls-ticket-key-file");
+constexpr auto SHRPX_OPT_RLIMIT_NOFILE = StringRef::from_lit("rlimit-nofile");
+constexpr auto SHRPX_OPT_BACKEND_REQUEST_BUFFER =
+    StringRef::from_lit("backend-request-buffer");
+constexpr auto SHRPX_OPT_BACKEND_RESPONSE_BUFFER =
+    StringRef::from_lit("backend-response-buffer");
+constexpr auto SHRPX_OPT_NO_SERVER_PUSH = StringRef::from_lit("no-server-push");
+constexpr auto SHRPX_OPT_BACKEND_HTTP2_CONNECTIONS_PER_WORKER =
+    StringRef::from_lit("backend-http2-connections-per-worker");
+constexpr auto SHRPX_OPT_FETCH_OCSP_RESPONSE_FILE =
+    StringRef::from_lit("fetch-ocsp-response-file");
+constexpr auto SHRPX_OPT_OCSP_UPDATE_INTERVAL =
+    StringRef::from_lit("ocsp-update-interval");
+constexpr auto SHRPX_OPT_NO_OCSP = StringRef::from_lit("no-ocsp");
+constexpr auto SHRPX_OPT_HEADER_FIELD_BUFFER =
+    StringRef::from_lit("header-field-buffer");
+constexpr auto SHRPX_OPT_MAX_HEADER_FIELDS =
+    StringRef::from_lit("max-header-fields");
+constexpr auto SHRPX_OPT_INCLUDE = StringRef::from_lit("include");
+constexpr auto SHRPX_OPT_TLS_TICKET_KEY_CIPHER =
+    StringRef::from_lit("tls-ticket-key-cipher");
+constexpr auto SHRPX_OPT_HOST_REWRITE = StringRef::from_lit("host-rewrite");
+constexpr auto SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED =
+    StringRef::from_lit("tls-session-cache-memcached");
+constexpr auto SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED =
+    StringRef::from_lit("tls-ticket-key-memcached");
+constexpr auto SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_INTERVAL =
+    StringRef::from_lit("tls-ticket-key-memcached-interval");
+constexpr auto SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_MAX_RETRY =
+    StringRef::from_lit("tls-ticket-key-memcached-max-retry");
+constexpr auto SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_MAX_FAIL =
+    StringRef::from_lit("tls-ticket-key-memcached-max-fail");
+constexpr auto SHRPX_OPT_MRUBY_FILE = StringRef::from_lit("mruby-file");
+constexpr auto SHRPX_OPT_ACCEPT_PROXY_PROTOCOL =
+    StringRef::from_lit("accept-proxy-protocol");
+constexpr auto SHRPX_OPT_FASTOPEN = StringRef::from_lit("fastopen");
+constexpr auto SHRPX_OPT_TLS_DYN_REC_WARMUP_THRESHOLD =
+    StringRef::from_lit("tls-dyn-rec-warmup-threshold");
+constexpr auto SHRPX_OPT_TLS_DYN_REC_IDLE_TIMEOUT =
+    StringRef::from_lit("tls-dyn-rec-idle-timeout");
+constexpr auto SHRPX_OPT_ADD_FORWARDED = StringRef::from_lit("add-forwarded");
+constexpr auto SHRPX_OPT_STRIP_INCOMING_FORWARDED =
+    StringRef::from_lit("strip-incoming-forwarded");
+constexpr auto SHRPX_OPT_FORWARDED_BY = StringRef::from_lit("forwarded-by");
+constexpr auto SHRPX_OPT_FORWARDED_FOR = StringRef::from_lit("forwarded-for");
+constexpr auto SHRPX_OPT_REQUEST_HEADER_FIELD_BUFFER =
+    StringRef::from_lit("request-header-field-buffer");
+constexpr auto SHRPX_OPT_MAX_REQUEST_HEADER_FIELDS =
+    StringRef::from_lit("max-request-header-fields");
+constexpr auto SHRPX_OPT_RESPONSE_HEADER_FIELD_BUFFER =
+    StringRef::from_lit("response-header-field-buffer");
+constexpr auto SHRPX_OPT_MAX_RESPONSE_HEADER_FIELDS =
+    StringRef::from_lit("max-response-header-fields");
+constexpr auto SHRPX_OPT_NO_HTTP2_CIPHER_BLACK_LIST =
+    StringRef::from_lit("no-http2-cipher-black-list");
+constexpr auto SHRPX_OPT_BACKEND_HTTP1_TLS =
+    StringRef::from_lit("backend-http1-tls");
+constexpr auto SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_TLS =
+    StringRef::from_lit("tls-session-cache-memcached-tls");
+constexpr auto SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_CERT_FILE =
+    StringRef::from_lit("tls-session-cache-memcached-cert-file");
+constexpr auto SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_PRIVATE_KEY_FILE =
+    StringRef::from_lit("tls-session-cache-memcached-private-key-file");
+constexpr auto SHRPX_OPT_TLS_SESSION_CACHE_MEMCACHED_ADDRESS_FAMILY =
+    StringRef::from_lit("tls-session-cache-memcached-address-family");
+constexpr auto SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_TLS =
+    StringRef::from_lit("tls-ticket-key-memcached-tls");
+constexpr auto SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_CERT_FILE =
+    StringRef::from_lit("tls-ticket-key-memcached-cert-file");
+constexpr auto SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_PRIVATE_KEY_FILE =
+    StringRef::from_lit("tls-ticket-key-memcached-private-key-file");
+constexpr auto SHRPX_OPT_TLS_TICKET_KEY_MEMCACHED_ADDRESS_FAMILY =
+    StringRef::from_lit("tls-ticket-key-memcached-address-family");
+constexpr auto SHRPX_OPT_BACKEND_ADDRESS_FAMILY =
+    StringRef::from_lit("backend-address-family");
+constexpr auto SHRPX_OPT_FRONTEND_HTTP2_MAX_CONCURRENT_STREAMS =
+    StringRef::from_lit("frontend-http2-max-concurrent-streams");
+constexpr auto SHRPX_OPT_BACKEND_HTTP2_MAX_CONCURRENT_STREAMS =
+    StringRef::from_lit("backend-http2-max-concurrent-streams");
+constexpr auto SHRPX_OPT_BACKEND_CONNECTIONS_PER_FRONTEND =
+    StringRef::from_lit("backend-connections-per-frontend");
+constexpr auto SHRPX_OPT_BACKEND_TLS = StringRef::from_lit("backend-tls");
+constexpr auto SHRPX_OPT_BACKEND_CONNECTIONS_PER_HOST =
+    StringRef::from_lit("backend-connections-per-host");
+constexpr auto SHRPX_OPT_ERROR_PAGE = StringRef::from_lit("error-page");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -628,30 +667,27 @@ void create_config();
 // returns 0 if it succeeds, or -1.  The |included_set| contains the
 // all paths already included while processing this configuration, to
 // avoid loop in --include option.
-int parse_config(const char *opt, const char *optarg,
-                 std::set<std::string> &included_set);
+int parse_config(const StringRef &opt, const StringRef &optarg,
+                 std::set<StringRef> &included_set);
 
 // Loads configurations from |filename| and stores them in statically
 // allocated Config object. This function returns 0 if it succeeds, or
 // -1.  See parse_config() for |include_set|.
-int load_config(const char *filename, std::set<std::string> &include_set);
-
-// Read passwd from |filename|
-std::string read_passwd_from_file(const char *filename);
+int load_config(const char *filename, std::set<StringRef> &include_set);
 
 // Parses header field in |optarg|.  We expect header field is formed
 // like "NAME: VALUE".  We require that NAME is non empty string.  ":"
 // is allowed at the start of the NAME, but NAME == ":" is not
 // allowed.  This function returns pair of NAME and VALUE.
-Headers::value_type parse_header(const char *optarg);
+Headers::value_type parse_header(const StringRef &optarg);
 
-std::vector<LogFragment> parse_log_format(const char *optarg);
+std::vector<LogFragment> parse_log_format(const StringRef &optarg);
 
 // Returns string for syslog |facility|.
-const char *str_syslog_facility(int facility);
+StringRef str_syslog_facility(int facility);
 
 // Returns integer value of syslog |facility| string.
-int int_syslog_facility(const char *strfacility);
+int int_syslog_facility(const StringRef &strfacility);
 
 FILE *open_file_for_write(const char *filename);
 

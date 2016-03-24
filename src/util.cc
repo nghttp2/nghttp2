@@ -878,34 +878,12 @@ std::vector<StringRef> split_str(const StringRef &s, char delim) {
   return list;
 }
 
-std::vector<Range<const char *>> split_config_str_list(const char *s,
-                                                       char delim) {
-  size_t len = 1;
-  auto last = s + strlen(s);
-  for (const char *first = s, *d = nullptr;
-       (d = std::find(first, last, delim)) != last; ++len, first = d + 1)
-    ;
-
-  auto list = std::vector<Range<const char *>>(len);
-
-  len = 0;
-  for (auto first = s;; ++len) {
-    auto stop = std::find(first, last, delim);
-    list[len] = {first, stop};
-    if (stop == last) {
-      break;
-    }
-    first = stop + 1;
-  }
-  return list;
-}
-
-std::vector<std::string> parse_config_str_list(const char *s, char delim) {
-  auto ranges = split_config_str_list(s, delim);
+std::vector<std::string> parse_config_str_list(const StringRef &s, char delim) {
+  auto sublist = split_str(s, delim);
   auto res = std::vector<std::string>();
-  res.reserve(ranges.size());
-  for (const auto &range : ranges) {
-    res.emplace_back(range.first, range.second);
+  res.reserve(sublist.size());
+  for (const auto &s : sublist) {
+    res.emplace_back(std::begin(s), std::end(s));
   }
   return res;
 }
@@ -1011,9 +989,16 @@ std::pair<int64_t, size_t> parse_uint_digits(const void *ss, size_t len) {
 } // namespace
 
 int64_t parse_uint_with_unit(const char *s) {
+  return parse_uint_with_unit(reinterpret_cast<const uint8_t *>(s), strlen(s));
+}
+
+int64_t parse_uint_with_unit(const StringRef &s) {
+  return parse_uint_with_unit(s.byte(), s.size());
+}
+
+int64_t parse_uint_with_unit(const uint8_t *s, size_t len) {
   int64_t n;
   size_t i;
-  auto len = strlen(s);
   std::tie(n, i) = parse_uint_digits(s, len);
   if (n == -1) {
     return -1;
@@ -1071,10 +1056,19 @@ int64_t parse_uint(const uint8_t *s, size_t len) {
 }
 
 double parse_duration_with_unit(const char *s) {
+  return parse_duration_with_unit(reinterpret_cast<const uint8_t *>(s),
+                                  strlen(s));
+}
+
+double parse_duration_with_unit(const StringRef &s) {
+  return parse_duration_with_unit(s.byte(), s.size());
+}
+
+double parse_duration_with_unit(const uint8_t *s, size_t len) {
   constexpr auto max = std::numeric_limits<int64_t>::max();
   int64_t n;
   size_t i;
-  auto len = strlen(s);
+
   std::tie(n, i) = parse_uint_digits(s, len);
   if (n == -1) {
     goto fail;
