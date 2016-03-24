@@ -348,25 +348,6 @@ time_t parse_http_date(const StringRef &s) {
   return nghttp2_timegm_without_yday(&tm);
 }
 
-int strcompare(const char *a, const uint8_t *b, size_t bn) {
-  assert(a && b);
-  const uint8_t *blast = b + bn;
-  for (; *a && b != blast; ++a, ++b) {
-    if (*a < *b) {
-      return -1;
-    } else if (*a > *b) {
-      return 1;
-    }
-  }
-  if (!*a && b == blast) {
-    return 0;
-  } else if (b == blast) {
-    return 1;
-  } else {
-    return -1;
-  }
-}
-
 bool strifind(const char *a, const char *b) {
   if (!a || !b) {
     return false;
