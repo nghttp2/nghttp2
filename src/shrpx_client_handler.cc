@@ -548,26 +548,26 @@ int ClientHandler::validate_next_proto() {
     return 0;
   }
 
+  auto proto = StringRef{next_proto, next_proto_len};
+
   if (LOG_ENABLED(INFO)) {
-    std::string proto(next_proto, next_proto + next_proto_len);
     CLOG(INFO, this) << "The negotiated next protocol: " << proto;
   }
 
-  if (!ssl::in_proto_list(get_config()->tls.npn_list, next_proto,
-                          next_proto_len)) {
+  if (!ssl::in_proto_list(get_config()->tls.npn_list, proto)) {
     if (LOG_ENABLED(INFO)) {
-      CLOG(INFO, this) << "The negotiated protocol is not supported";
+      CLOG(INFO, this) << "The negotiated protocol is not supported: " << proto;
     }
     return -1;
   }
 
-  if (util::check_h2_is_selected(next_proto, next_proto_len)) {
+  if (util::check_h2_is_selected(proto)) {
     on_read_ = &ClientHandler::upstream_http2_connhd_read;
 
     auto http2_upstream = make_unique<Http2Upstream>(this);
 
     upstream_ = std::move(http2_upstream);
-    alpn_.assign(next_proto, next_proto + next_proto_len);
+    alpn_.assign(std::begin(proto), std::end(proto));
 
     // At this point, input buffer is already filled with some bytes.
     // The read callback is not called until new data come. So consume
@@ -580,7 +580,7 @@ int ClientHandler::validate_next_proto() {
   }
 
 #ifdef HAVE_SPDYLAY
-  auto spdy_version = spdylay_npn_get_version(next_proto, next_proto_len);
+  auto spdy_version = spdylay_npn_get_version(proto.byte(), proto.size());
   if (spdy_version) {
     upstream_ = make_unique<SpdyUpstream>(spdy_version, this);
 
@@ -609,9 +609,9 @@ int ClientHandler::validate_next_proto() {
   }
 #endif // HAVE_SPDYLAY
 
-  if (next_proto_len == 8 && memcmp("http/1.1", next_proto, 8) == 0) {
+  if (proto == StringRef::from_lit("http/1.1")) {
     upstream_ = make_unique<HttpsUpstream>(this);
-    alpn_ = "http/1.1";
+    alpn_ = proto.str();
 
     // At this point, input buffer is already filled with some bytes.
     // The read callback is not called until new data come. So consume

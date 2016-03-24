@@ -791,10 +791,9 @@ int64_t to_time64(const timeval &tv) {
   return tv.tv_sec * 1000000 + tv.tv_usec;
 }
 
-bool check_h2_is_selected(const unsigned char *proto, size_t len) {
-  return streq_l(NGHTTP2_PROTO_VERSION_ID, proto, len) ||
-         streq_l(NGHTTP2_H2_16, proto, len) ||
-         streq_l(NGHTTP2_H2_14, proto, len);
+bool check_h2_is_selected(const StringRef &proto) {
+  return streq_l(NGHTTP2_PROTO_VERSION_ID, proto) ||
+         streq_l(NGHTTP2_H2_16, proto) || streq_l(NGHTTP2_H2_14, proto);
 }
 
 namespace {

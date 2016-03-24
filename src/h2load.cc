@@ -770,9 +770,10 @@ int Client::connection_made() {
 #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
     if (next_proto) {
-      if (util::check_h2_is_selected(next_proto, next_proto_len)) {
+      auto proto = StringRef{next_proto, next_proto_len};
+      if (util::check_h2_is_selected(proto)) {
         session = make_unique<Http2Session>(this);
-      } else if (util::streq_l(NGHTTP2_H1_1, next_proto, next_proto_len)) {
+      } else if (util::streq_l(NGHTTP2_H1_1, proto)) {
         session = make_unique<Http1Session>(this);
       }
 #ifdef HAVE_SPDYLAY
@@ -786,7 +787,7 @@ int Client::connection_made() {
 
       // Just assign next_proto to selected_proto anyway to show the
       // negotiation result.
-      selected_proto.assign(next_proto, next_proto + next_proto_len);
+      selected_proto = proto.str();
     } else {
       std::cout << "No protocol negotiated. Fallback behaviour may be activated"
                 << std::endl;

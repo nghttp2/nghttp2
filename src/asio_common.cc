@@ -187,7 +187,7 @@ bool tls_h2_negotiated(ssl_socket &socket) {
     return false;
   }
 
-  return util::check_h2_is_selected(next_proto, next_proto_len);
+  return util::check_h2_is_selected(StringRef{next_proto, next_proto_len});
 }
 
 } // namespace asio_http2

@@ -316,16 +316,6 @@ bool strieq_l(const CharT(&a)[N], const StringRef &b) {
   return strieq(a, a + (N - 1), std::begin(b), std::end(b));
 }
 
-template <typename InputIt> bool streq(const char *a, InputIt b, size_t bn) {
-  if (!a) {
-    return false;
-  }
-  auto blast = b + bn;
-  for (; *a && b != blast && *a == *b; ++a, ++b)
-    ;
-  return !*a && b == blast;
-}
-
 template <typename InputIt1, typename InputIt2>
 bool streq(InputIt1 first1, InputIt1 last1, InputIt2 first2, InputIt2 last2) {
   if (std::distance(first1, last1) != std::distance(first2, last2)) {
@@ -334,38 +324,23 @@ bool streq(InputIt1 first1, InputIt1 last1, InputIt2 first2, InputIt2 last2) {
   return std::equal(first1, last1, first2);
 }
 
-template <typename InputIt1, typename InputIt2>
-bool streq(InputIt1 a, size_t alen, InputIt2 b, size_t blen) {
-  if (alen != blen) {
-    return false;
-  }
-  return std::equal(a, a + alen, b);
-}
-
-inline bool streq(const char *a, const char *b) {
-  if (!a || !b) {
-    return false;
-  }
-  return streq(a, strlen(a), b, strlen(b));
-}
-
 inline bool streq(const StringRef &a, const StringRef &b) {
   return streq(std::begin(a), std::end(a), std::begin(b), std::end(b));
 }
 
 template <typename CharT, typename InputIt, size_t N>
 bool streq_l(const CharT(&a)[N], InputIt b, size_t blen) {
-  return streq(a, N - 1, b, blen);
+  return streq(a, a + (N - 1), b, b + blen);
 }
 
 template <typename CharT, size_t N>
 bool streq_l(const CharT(&a)[N], const std::string &b) {
-  return streq(a, N - 1, std::begin(b), b.size());
+  return streq(a, a + (N - 1), std::begin(b), std::end(b));
 }
 
 template <typename CharT, size_t N>
 bool streq_l(const CharT(&a)[N], const StringRef &b) {
-  return streq(a, N - 1, std::begin(b), b.size());
+  return streq(a, a + (N - 1), std::begin(b), std::end(b));
 }
 
 bool strifind(const char *a, const char *b);
@@ -563,9 +538,9 @@ bool check_path(const std::string &path);
 // unit.
 int64_t to_time64(const timeval &tv);
 
-// Returns true if ALPN ID |proto| of length |len| is supported HTTP/2
-// protocol identifier.
-bool check_h2_is_selected(const unsigned char *alpn, size_t len);
+// Returns true if ALPN ID |proto| is supported HTTP/2 protocol
+// identifier.
+bool check_h2_is_selected(const StringRef &proto);
 
 // Selects h2 protocol ALPN ID if one of supported h2 versions are
 // present in |in| of length inlen.  Returns true if h2 version is

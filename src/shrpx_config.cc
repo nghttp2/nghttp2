@@ -489,8 +489,8 @@ std::vector<LogFragment> parse_log_format(const StringRef &optarg) {
 
     if (type == SHRPX_LOGF_NONE) {
       if (util::istarts_with(var_name, var_namelen, "http_")) {
-        if (util::streq("host", var_name + str_size("http_"),
-                        var_namelen - str_size("http_"))) {
+        if (util::streq_l("host", StringRef{var_name + str_size("http_"),
+                                            var_namelen - str_size("http_")})) {
           // Special handling of host header field.  We will use
           // :authority header field if host header is missing.  This
           // is a typical case in HTTP/2.

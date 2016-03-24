@@ -39,22 +39,24 @@ using namespace nghttp2;
 namespace shrpx {
 
 void test_util_streq(void) {
-  CU_ASSERT(util::streq("alpha", "alpha", 5));
-  CU_ASSERT(util::streq("alpha", "alphabravo", 5));
-  CU_ASSERT(!util::streq("alpha", "alphabravo", 6));
-  CU_ASSERT(!util::streq("alphabravo", "alpha", 5));
-  CU_ASSERT(!util::streq("alpha", "alphA", 5));
-  CU_ASSERT(!util::streq("", "a", 1));
-  CU_ASSERT(util::streq("", "", 0));
-  CU_ASSERT(!util::streq("alpha", "", 0));
+  CU_ASSERT(
+      util::streq(StringRef::from_lit("alpha"), StringRef::from_lit("alpha")));
+  CU_ASSERT(!util::streq(StringRef::from_lit("alpha"),
+                         StringRef::from_lit("alphabravo")));
+  CU_ASSERT(!util::streq(StringRef::from_lit("alphabravo"),
+                         StringRef::from_lit("alpha")));
+  CU_ASSERT(
+      !util::streq(StringRef::from_lit("alpha"), StringRef::from_lit("alphA")));
+  CU_ASSERT(!util::streq(StringRef{}, StringRef::from_lit("a")));
+  CU_ASSERT(util::streq(StringRef{}, StringRef{}));
+  CU_ASSERT(!util::streq(StringRef::from_lit("alpha"), StringRef{}));
 
-  CU_ASSERT(util::streq("alpha", 5, "alpha", 5));
-  CU_ASSERT(!util::streq("alpha", 4, "alpha", 5));
-  CU_ASSERT(!util::streq("alpha", 5, "alpha", 4));
-  CU_ASSERT(!util::streq("alpha", 5, "alphA", 5));
-  char *a = nullptr;
-  char *b = nullptr;
-  CU_ASSERT(util::streq(a, 0, b, 0));
+  CU_ASSERT(
+      !util::streq(StringRef::from_lit("alph"), StringRef::from_lit("alpha")));
+  CU_ASSERT(
+      !util::streq(StringRef::from_lit("alpha"), StringRef::from_lit("alph")));
+  CU_ASSERT(
+      !util::streq(StringRef::from_lit("alpha"), StringRef::from_lit("alphA")));
 
   CU_ASSERT(util::streq_l("alpha", "alpha", 5));
   CU_ASSERT(util::streq_l("alpha", "alphabravo", 5));

@@ -1448,11 +1448,11 @@ int Http2Session::connection_made() {
     SSL_get0_next_proto_negotiated(conn_.tls.ssl, &next_proto, &next_proto_len);
     for (int i = 0; i < 2; ++i) {
       if (next_proto) {
+        auto proto = StringRef{next_proto, next_proto_len};
         if (LOG_ENABLED(INFO)) {
-          std::string proto(next_proto, next_proto + next_proto_len);
           SSLOG(INFO, this) << "Negotiated next protocol: " << proto;
         }
-        if (!util::check_h2_is_selected(next_proto, next_proto_len)) {
+        if (!util::check_h2_is_selected(proto)) {
           return -1;
         }
         break;

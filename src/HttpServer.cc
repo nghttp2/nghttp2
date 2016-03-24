@@ -879,11 +879,11 @@ int Http2Handler::verify_npn_result() {
   SSL_get0_next_proto_negotiated(ssl_, &next_proto, &next_proto_len);
   for (int i = 0; i < 2; ++i) {
     if (next_proto) {
+      auto proto = StringRef{next_proto, next_proto_len};
       if (sessions_->get_config()->verbose) {
-        std::string proto(next_proto, next_proto + next_proto_len);
         std::cout << "The negotiated protocol: " << proto << std::endl;
       }
-      if (util::check_h2_is_selected(next_proto, next_proto_len)) {
+      if (util::check_h2_is_selected(proto)) {
         return 0;
       }
       break;

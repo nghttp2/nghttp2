@@ -486,7 +486,7 @@ int Connection::check_http2_requirement() {
   }
 #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
   if (next_proto == nullptr ||
-      !util::check_h2_is_selected(next_proto, next_proto_len)) {
+      !util::check_h2_is_selected(StringRef{next_proto, next_proto_len})) {
     return 0;
   }
   if (!nghttp2::ssl::check_http2_tls_version(tls.ssl)) {

@@ -163,10 +163,10 @@ private:
 int cert_lookup_tree_add_cert_from_file(CertLookupTree *lt, SSL_CTX *ssl_ctx,
                                         const char *certfile);
 
-// Returns true if |needle| which has |len| bytes is included in the
+// Returns true if |proto| is included in the
 // protocol list |protos|.
 bool in_proto_list(const std::vector<std::string> &protos,
-                   const unsigned char *needle, size_t len);
+                   const StringRef &proto);
 
 // Returns true if security requirement for HTTP/2 is fulfilled.
 bool check_http2_requirement(SSL *ssl);

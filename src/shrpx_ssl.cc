@@ -419,8 +419,8 @@ int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
       auto proto_len = *p;
 
       if (proto_id + proto_len <= end &&
-          util::streq(target_proto_id.c_str(), target_proto_id.size(), proto_id,
-                      proto_len)) {
+          util::streq(StringRef{target_proto_id},
+                      StringRef{proto_id, proto_len})) {
 
         *out = reinterpret_cast<const unsigned char *>(proto_id);
         *outlen = proto_len;
@@ -1252,9 +1252,9 @@ int cert_lookup_tree_add_cert_from_file(CertLookupTree *lt, SSL_CTX *ssl_ctx,
 }
 
 bool in_proto_list(const std::vector<std::string> &protos,
-                   const unsigned char *needle, size_t len) {
+                   const StringRef &needle) {
   for (auto &proto : protos) {
-    if (util::streq(proto.c_str(), proto.size(), needle, len)) {
+    if (util::streq(StringRef{proto}, needle)) {
       return true;
     }
   }
