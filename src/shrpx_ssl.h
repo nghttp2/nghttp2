@@ -117,7 +117,7 @@ void get_altnames(X509 *cert, std::vector<std::string> &dns_names,
 
 struct WildcardCert {
   SSL_CTX *ssl_ctx;
-  char *hostname;
+  const char *hostname;
   size_t hostnamelen;
 };
 
@@ -129,7 +129,7 @@ struct CertNode {
   std::vector<std::unique_ptr<CertNode>> next;
   // SSL_CTX for exact match
   SSL_CTX *ssl_ctx;
-  char *str;
+  const char *str;
   // [first, last) in the reverse direction in str, first >=
   // last. This indices only work for str member.
   int first, last;
@@ -139,9 +139,9 @@ class CertLookupTree {
 public:
   CertLookupTree();
 
-  // Adds |ssl_ctx| with hostname pattern |hostname| with length |len|
-  // to the lookup tree.  The |hostname| must be NULL-terminated.
-  void add_cert(SSL_CTX *ssl_ctx, const char *hostname, size_t len);
+  // Adds |ssl_ctx| with hostname pattern |hostname| to the lookup
+  // tree.
+  void add_cert(SSL_CTX *ssl_ctx, const StringRef &hostname);
 
   // Looks up SSL_CTX using the given |hostname|.  If more than one
   // SSL_CTX which matches the query, it is undefined which one is

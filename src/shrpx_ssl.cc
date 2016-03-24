@@ -1046,8 +1046,8 @@ CertLookupTree::CertLookupTree() {
 namespace {
 // The |offset| is the index in the hostname we are examining.  We are
 // going to scan from |offset| in backwards.
-void cert_lookup_tree_add_cert(CertNode *node, SSL_CTX *ssl_ctx, char *hostname,
-                               size_t len, int offset) {
+void cert_lookup_tree_add_cert(CertNode *node, SSL_CTX *ssl_ctx,
+                               const char *hostname, size_t len, int offset) {
   int i, next_len = node->next.size();
   char c = hostname[offset];
   CertNode *cn = nullptr;
@@ -1132,19 +1132,20 @@ void cert_lookup_tree_add_cert(CertNode *node, SSL_CTX *ssl_ctx, char *hostname,
 }
 } // namespace
 
-void CertLookupTree::add_cert(SSL_CTX *ssl_ctx, const char *hostname,
-                              size_t len) {
-  if (len == 0) {
+void CertLookupTree::add_cert(SSL_CTX *ssl_ctx, const StringRef &hostname) {
+  if (hostname.empty()) {
     return;
   }
   // Copy hostname including terminal NULL
-  hosts_.push_back(make_unique<char[]>(len + 1));
-  const auto &host_copy = hosts_.back();
-  for (size_t i = 0; i < len; ++i) {
-    host_copy[i] = util::lowcase(hostname[i]);
-  }
-  host_copy[len] = '\0';
-  cert_lookup_tree_add_cert(&root_, ssl_ctx, host_copy.get(), len, len - 1);
+  auto host_copy = make_unique<char[]>(hostname.size() + 1);
+  std::copy(std::begin(hostname), std::end(hostname), host_copy.get());
+  host_copy[hostname.size()] = '\0';
+  util::inp_strlower(&host_copy[0], &host_copy[0] + hostname.size());
+
+  cert_lookup_tree_add_cert(&root_, ssl_ctx, host_copy.get(), hostname.size(),
+                            hostname.size() - 1);
+
+  hosts_.push_back(std::move(host_copy));
 }
 
 namespace {
@@ -1234,7 +1235,7 @@ int cert_lookup_tree_add_cert_from_file(CertLookupTree *lt, SSL_CTX *ssl_ctx,
         continue;
       }
 
-      lt->add_cert(ssl_ctx, name, len);
+      lt->add_cert(ssl_ctx, StringRef{name, static_cast<size_t>(len)});
     }
   }
 
@@ -1243,7 +1244,7 @@ int cert_lookup_tree_add_cert_from_file(CertLookupTree *lt, SSL_CTX *ssl_ctx,
     return 0;
   }
 
-  lt->add_cert(ssl_ctx, cn.c_str(), cn.size());
+  lt->add_cert(ssl_ctx, cn);
 
   OPENSSL_free(const_cast<char *>(cn.c_str()));
 

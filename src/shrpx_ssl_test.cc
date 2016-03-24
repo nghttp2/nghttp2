@@ -56,7 +56,7 @@ void test_shrpx_ssl_create_lookup_tree(void) {
       StringRef::from_lit("oo.bar")};
   auto num = array_size(ctxs);
   for (size_t i = 0; i < num; ++i) {
-    tree->add_cert(ctxs[i], hostnames[i].c_str(), hostnames[i].size());
+    tree->add_cert(ctxs[i], hostnames[i]);
   }
 
   CU_ASSERT(ctxs[0] == tree->lookup(hostnames[0]));
@@ -92,7 +92,7 @@ void test_shrpx_ssl_create_lookup_tree(void) {
 
   tree = make_unique<ssl::CertLookupTree>();
   for (size_t i = 0; i < num; ++i) {
-    tree->add_cert(ctxs2[i], names[i].c_str(), names[i].size());
+    tree->add_cert(ctxs2[i], names[i]);
   }
   for (size_t i = 0; i < num; ++i) {
     CU_ASSERT(ctxs2[i] == tree->lookup(names[i]));
