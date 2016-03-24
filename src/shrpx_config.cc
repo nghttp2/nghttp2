@@ -63,7 +63,7 @@ namespace {
 Config *config = nullptr;
 } // namespace
 
-constexpr StringRef SHRPX_UNIX_PATH_PREFIX = StringRef::from_lit("unix:");
+constexpr auto SHRPX_UNIX_PATH_PREFIX = StringRef::from_lit("unix:");
 
 const Config *get_config() { return config; }
 
