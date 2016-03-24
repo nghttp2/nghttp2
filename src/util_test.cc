@@ -73,17 +73,15 @@ void test_util_strieq(void) {
   CU_ASSERT(!util::strieq(std::string("alpha"), std::string("AlPhA ")));
   CU_ASSERT(!util::strieq(std::string(), std::string("AlPhA ")));
 
-  CU_ASSERT(util::strieq("alpha", "alpha", 5));
-  CU_ASSERT(util::strieq("alpha", "AlPhA", 5));
-  CU_ASSERT(util::strieq("", static_cast<const char *>(nullptr), 0));
-  CU_ASSERT(!util::strieq("alpha", "AlPhA ", 6));
-  CU_ASSERT(!util::strieq("", "AlPhA ", 6));
-
-  CU_ASSERT(util::strieq("alpha", "alpha"));
-  CU_ASSERT(util::strieq("alpha", "AlPhA"));
-  CU_ASSERT(util::strieq("", ""));
-  CU_ASSERT(!util::strieq("alpha", "AlPhA "));
-  CU_ASSERT(!util::strieq("", "AlPhA "));
+  CU_ASSERT(
+      util::strieq(StringRef::from_lit("alpha"), StringRef::from_lit("alpha")));
+  CU_ASSERT(
+      util::strieq(StringRef::from_lit("alpha"), StringRef::from_lit("AlPhA")));
+  CU_ASSERT(util::strieq(StringRef{}, StringRef{}));
+  CU_ASSERT(!util::strieq(StringRef::from_lit("alpha"),
+                          StringRef::from_lit("AlPhA ")));
+  CU_ASSERT(
+      !util::strieq(StringRef::from_lit(""), StringRef::from_lit("AlPhA ")));
 
   CU_ASSERT(util::strieq_l("alpha", "alpha", 5));
   CU_ASSERT(util::strieq_l("alpha", "AlPhA", 5));
@@ -455,27 +453,27 @@ void test_util_get_uint64(void) {
 }
 
 void test_util_parse_config_str_list(void) {
-  auto res = util::parse_config_str_list("a");
+  auto res = util::parse_config_str_list(StringRef::from_lit("a"));
   CU_ASSERT(1 == res.size());
   CU_ASSERT("a" == res[0]);
 
-  res = util::parse_config_str_list("a,");
+  res = util::parse_config_str_list(StringRef::from_lit("a,"));
   CU_ASSERT(2 == res.size());
   CU_ASSERT("a" == res[0]);
   CU_ASSERT("" == res[1]);
 
-  res = util::parse_config_str_list(":a::", ':');
+  res = util::parse_config_str_list(StringRef::from_lit(":a::"), ':');
   CU_ASSERT(4 == res.size());
   CU_ASSERT("" == res[0]);
   CU_ASSERT("a" == res[1]);
   CU_ASSERT("" == res[2]);
   CU_ASSERT("" == res[3]);
 
-  res = util::parse_config_str_list("");
+  res = util::parse_config_str_list(StringRef{});
   CU_ASSERT(1 == res.size());
   CU_ASSERT("" == res[0]);
 
-  res = util::parse_config_str_list("alpha,bravo,charlie");
+  res = util::parse_config_str_list(StringRef::from_lit("alpha,bravo,charlie"));
   CU_ASSERT(3 == res.size());
   CU_ASSERT("alpha" == res[0]);
   CU_ASSERT("bravo" == res[1]);

@@ -363,15 +363,6 @@ bool istarts_with(const char *a, const char *b) {
   return !*b;
 }
 
-bool strieq(const char *a, const char *b) {
-  if (!a || !b) {
-    return false;
-  }
-  for (; *a && *b && lowcase(*a) == lowcase(*b); ++a, ++b)
-    ;
-  return !*a && !*b;
-}
-
 int strcompare(const char *a, const uint8_t *b, size_t bn) {
   assert(a && b);
   const uint8_t *blast = b + bn;

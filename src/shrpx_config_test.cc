@@ -37,40 +37,40 @@
 namespace shrpx {
 
 void test_shrpx_config_parse_header(void) {
-  auto p = parse_header("a: b");
+  auto p = parse_header(StringRef::from_lit("a: b"));
   CU_ASSERT("a" == p.name);
   CU_ASSERT("b" == p.value);
 
-  p = parse_header("a:  b");
+  p = parse_header(StringRef::from_lit("a:  b"));
   CU_ASSERT("a" == p.name);
   CU_ASSERT("b" == p.value);
 
-  p = parse_header(":a: b");
+  p = parse_header(StringRef::from_lit(":a: b"));
   CU_ASSERT(p.name.empty());
 
-  p = parse_header("a: :b");
+  p = parse_header(StringRef::from_lit("a: :b"));
   CU_ASSERT("a" == p.name);
   CU_ASSERT(":b" == p.value);
 
-  p = parse_header(": b");
+  p = parse_header(StringRef::from_lit(": b"));
   CU_ASSERT(p.name.empty());
 
-  p = parse_header("alpha: bravo charlie");
+  p = parse_header(StringRef::from_lit("alpha: bravo charlie"));
   CU_ASSERT("alpha" == p.name);
   CU_ASSERT("bravo charlie" == p.value);
 
-  p = parse_header("a,: b");
+  p = parse_header(StringRef::from_lit("a,: b"));
   CU_ASSERT(p.name.empty());
 
-  p = parse_header("a: b\x0a");
+  p = parse_header(StringRef::from_lit("a: b\x0a"));
   CU_ASSERT(p.name.empty());
 }
 
 void test_shrpx_config_parse_log_format(void) {
-  auto res =
-      parse_log_format(R"($remote_addr - $remote_user [$time_local] )"
-                       R"("$request" $status $body_bytes_sent )"
-                       R"("${http_referer}" $http_host "$http_user_agent")");
+  auto res = parse_log_format(StringRef::from_lit(
+      R"($remote_addr - $remote_user [$time_local] )"
+      R"("$request" $status $body_bytes_sent )"
+      R"("${http_referer}" $http_host "$http_user_agent")"));
   CU_ASSERT(16 == res.size());
 
   CU_ASSERT(SHRPX_LOGF_REMOTE_ADDR == res[0].type);
@@ -115,35 +115,35 @@ void test_shrpx_config_parse_log_format(void) {
   CU_ASSERT(SHRPX_LOGF_LITERAL == res[15].type);
   CU_ASSERT("\"" == res[15].value);
 
-  res = parse_log_format("$");
+  res = parse_log_format(StringRef::from_lit("$"));
 
   CU_ASSERT(1 == res.size());
 
   CU_ASSERT(SHRPX_LOGF_LITERAL == res[0].type);
   CU_ASSERT("$" == res[0].value);
 
-  res = parse_log_format("${");
+  res = parse_log_format(StringRef::from_lit("${"));
 
   CU_ASSERT(1 == res.size());
 
   CU_ASSERT(SHRPX_LOGF_LITERAL == res[0].type);
   CU_ASSERT("${" == res[0].value);
 
-  res = parse_log_format("${a");
+  res = parse_log_format(StringRef::from_lit("${a"));
 
   CU_ASSERT(1 == res.size());
 
   CU_ASSERT(SHRPX_LOGF_LITERAL == res[0].type);
   CU_ASSERT("${a" == res[0].value);
 
-  res = parse_log_format("${a ");
+  res = parse_log_format(StringRef::from_lit("${a "));
 
   CU_ASSERT(1 == res.size());
 
   CU_ASSERT(SHRPX_LOGF_LITERAL == res[0].type);
   CU_ASSERT("${a " == res[0].value);
 
-  res = parse_log_format("$$remote_addr");
+  res = parse_log_format(StringRef::from_lit("$$remote_addr"));
 
   CU_ASSERT(2 == res.size());
 

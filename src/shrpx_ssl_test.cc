@@ -43,41 +43,40 @@ void test_shrpx_ssl_create_lookup_tree(void) {
       SSL_CTX_new(SSLv23_method()), SSL_CTX_new(SSLv23_method()),
       SSL_CTX_new(SSLv23_method()), SSL_CTX_new(SSLv23_method())};
 
-  const char *hostnames[] = {
-      "example.com", "www.example.org", "*www.example.org", "x*.host.domain",
-      "*yy.host.domain", "nghttp2.sourceforge.net", "sourceforge.net",
-      "sourceforge.net", // duplicate
-      "*.foo.bar",       // oo.bar is suffix of *.foo.bar
-      "oo.bar"};
-  int num = array_size(ctxs);
-  for (int i = 0; i < num; ++i) {
-    tree->add_cert(ctxs[i], hostnames[i], strlen(hostnames[i]));
+  constexpr StringRef hostnames[] = {
+      StringRef::from_lit("example.com"),
+      StringRef::from_lit("www.example.org"),
+      StringRef::from_lit("*www.example.org"),
+      StringRef::from_lit("x*.host.domain"),
+      StringRef::from_lit("*yy.host.domain"),
+      StringRef::from_lit("nghttp2.sourceforge.net"),
+      StringRef::from_lit("sourceforge.net"),
+      StringRef::from_lit("sourceforge.net"), // duplicate
+      StringRef::from_lit("*.foo.bar"),       // oo.bar is suffix of *.foo.bar
+      StringRef::from_lit("oo.bar")};
+  auto num = array_size(ctxs);
+  for (size_t i = 0; i < num; ++i) {
+    tree->add_cert(ctxs[i], hostnames[i].c_str(), hostnames[i].size());
   }
 
-  CU_ASSERT(ctxs[0] == tree->lookup(hostnames[0], strlen(hostnames[0])));
-  CU_ASSERT(ctxs[1] == tree->lookup(hostnames[1], strlen(hostnames[1])));
-  const char h1[] = "2www.example.org";
-  CU_ASSERT(ctxs[2] == tree->lookup(h1, strlen(h1)));
-  const char h2[] = "www2.example.org";
-  CU_ASSERT(0 == tree->lookup(h2, strlen(h2)));
-  const char h3[] = "x1.host.domain";
-  CU_ASSERT(ctxs[3] == tree->lookup(h3, strlen(h3)));
+  CU_ASSERT(ctxs[0] == tree->lookup(hostnames[0]));
+  CU_ASSERT(ctxs[1] == tree->lookup(hostnames[1]));
+  CU_ASSERT(ctxs[2] == tree->lookup(StringRef::from_lit("2www.example.org")));
+  CU_ASSERT(nullptr == tree->lookup(StringRef::from_lit("www2.example.org")));
+  CU_ASSERT(ctxs[3] == tree->lookup(StringRef::from_lit("x1.host.domain")));
   // Does not match *yy.host.domain, because * must match at least 1
   // character.
-  const char h4[] = "yy.Host.domain";
-  CU_ASSERT(0 == tree->lookup(h4, strlen(h4)));
-  const char h5[] = "zyy.host.domain";
-  CU_ASSERT(ctxs[4] == tree->lookup(h5, strlen(h5)));
-  CU_ASSERT(0 == tree->lookup("", 0));
-  CU_ASSERT(ctxs[5] == tree->lookup(hostnames[5], strlen(hostnames[5])));
-  CU_ASSERT(ctxs[6] == tree->lookup(hostnames[6], strlen(hostnames[6])));
-  const char h6[] = "pdylay.sourceforge.net";
+  CU_ASSERT(nullptr == tree->lookup(StringRef::from_lit("yy.Host.domain")));
+  CU_ASSERT(ctxs[4] == tree->lookup(StringRef::from_lit("zyy.host.domain")));
+  CU_ASSERT(nullptr == tree->lookup(StringRef{}));
+  CU_ASSERT(ctxs[5] == tree->lookup(hostnames[5]));
+  CU_ASSERT(ctxs[6] == tree->lookup(hostnames[6]));
+  constexpr char h6[] = "pdylay.sourceforge.net";
   for (int i = 0; i < 7; ++i) {
-    CU_ASSERT(0 == tree->lookup(h6 + i, strlen(h6) - i));
+    CU_ASSERT(0 == tree->lookup(StringRef{h6 + i, str_size(h6) - i}));
   }
-  const char h7[] = "x.foo.bar";
-  CU_ASSERT(ctxs[8] == tree->lookup(h7, strlen(h7)));
-  CU_ASSERT(ctxs[9] == tree->lookup(hostnames[9], strlen(hostnames[9])));
+  CU_ASSERT(ctxs[8] == tree->lookup(StringRef::from_lit("x.foo.bar")));
+  CU_ASSERT(ctxs[9] == tree->lookup(hostnames[9]));
 
   for (int i = 0; i < num; ++i) {
     SSL_CTX_free(ctxs[i]);
@@ -86,18 +85,20 @@ void test_shrpx_ssl_create_lookup_tree(void) {
   SSL_CTX *ctxs2[] = {
       SSL_CTX_new(SSLv23_method()), SSL_CTX_new(SSLv23_method()),
       SSL_CTX_new(SSLv23_method()), SSL_CTX_new(SSLv23_method())};
-  const char *names[] = {"rab", "zab", "zzub", "ab"};
+  constexpr StringRef names[] = {
+      StringRef::from_lit("rab"), StringRef::from_lit("zab"),
+      StringRef::from_lit("zzub"), StringRef::from_lit("ab")};
   num = array_size(ctxs2);
 
   tree = make_unique<ssl::CertLookupTree>();
-  for (int i = 0; i < num; ++i) {
-    tree->add_cert(ctxs2[i], names[i], strlen(names[i]));
+  for (size_t i = 0; i < num; ++i) {
+    tree->add_cert(ctxs2[i], names[i].c_str(), names[i].size());
   }
-  for (int i = 0; i < num; ++i) {
-    CU_ASSERT(ctxs2[i] == tree->lookup(names[i], strlen(names[i])));
+  for (size_t i = 0; i < num; ++i) {
+    CU_ASSERT(ctxs2[i] == tree->lookup(names[i]));
   }
 
-  for (int i = 0; i < num; ++i) {
+  for (size_t i = 0; i < num; ++i) {
     SSL_CTX_free(ctxs2[i]);
   }
 }
@@ -109,8 +110,7 @@ void test_shrpx_ssl_cert_lookup_tree_add_cert_from_file(void) {
   const char certfile[] = NGHTTP2_TESTS_DIR "/testdata/cacert.pem";
   rv = ssl::cert_lookup_tree_add_cert_from_file(&tree, ssl_ctx, certfile);
   CU_ASSERT(0 == rv);
-  const char localhost[] = "localhost";
-  CU_ASSERT(ssl_ctx == tree.lookup(localhost, sizeof(localhost) - 1));
+  CU_ASSERT(ssl_ctx == tree.lookup(StringRef::from_lit("localhost")));
 
   SSL_CTX_free(ssl_ctx);
 }
@@ -118,7 +118,7 @@ void test_shrpx_ssl_cert_lookup_tree_add_cert_from_file(void) {
 template <size_t N, size_t M>
 bool tls_hostname_match_wrapper(const char(&pattern)[N],
                                 const char(&hostname)[M]) {
-  return ssl::tls_hostname_match(pattern, N, hostname, M);
+  return ssl::tls_hostname_match(StringRef{pattern, N}, StringRef{hostname, M});
 }
 
 void test_shrpx_ssl_tls_hostname_match(void) {

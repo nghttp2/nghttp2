@@ -216,6 +216,10 @@ inline bool istarts_with(const std::string &a, const std::string &b) {
   return istarts_with(std::begin(a), std::end(a), std::begin(b), std::end(b));
 }
 
+inline bool istarts_with(const StringRef &a, const StringRef &b) {
+  return istarts_with(std::begin(a), std::end(a), std::begin(b), std::end(b));
+}
+
 template <typename InputIt>
 bool istarts_with(InputIt a, size_t an, const char *b) {
   return istarts_with(a, a + an, b, b + strlen(b));
@@ -264,6 +268,10 @@ inline bool iends_with(const std::string &a, const std::string &b) {
   return iends_with(std::begin(a), std::end(a), std::begin(b), std::end(b));
 }
 
+inline bool iends_with(const StringRef &a, const StringRef &b) {
+  return iends_with(std::begin(a), std::end(a), std::begin(b), std::end(b));
+}
+
 template <typename CharT, size_t N>
 bool iends_with_l(const std::string &a, const CharT(&b)[N]) {
   return iends_with(std::begin(a), std::end(a), b, b + N - 1);
@@ -276,24 +284,6 @@ bool iends_with_l(const StringRef &a, const CharT(&b)[N]) {
 
 int strcompare(const char *a, const uint8_t *b, size_t n);
 
-template <typename InputIt> bool strieq(const char *a, InputIt b, size_t bn) {
-  if (!a) {
-    return false;
-  }
-  auto blast = b + bn;
-  for (; *a && b != blast && lowcase(*a) == lowcase(*b); ++a, ++b)
-    ;
-  return !*a && b == blast;
-}
-
-template <typename InputIt1, typename InputIt2>
-bool strieq(InputIt1 a, size_t alen, InputIt2 b, size_t blen) {
-  if (alen != blen) {
-    return false;
-  }
-  return std::equal(a, a + alen, b, CaseCmp());
-}
-
 template <typename InputIt1, typename InputIt2>
 bool strieq(InputIt1 first1, InputIt1 last1, InputIt2 first2, InputIt2 last2) {
   if (std::distance(first1, last1) != std::distance(first2, last2)) {
@@ -304,28 +294,26 @@ bool strieq(InputIt1 first1, InputIt1 last1, InputIt2 first2, InputIt2 last2) {
 }
 
 inline bool strieq(const std::string &a, const std::string &b) {
-  return strieq(std::begin(a), a.size(), std::begin(b), b.size());
+  return strieq(std::begin(a), std::end(a), std::begin(b), std::end(b));
 }
 
-bool strieq(const char *a, const char *b);
-
-inline bool strieq(const char *a, const std::string &b) {
-  return strieq(a, b.c_str(), b.size());
+inline bool strieq(const StringRef &a, const StringRef &b) {
+  return strieq(std::begin(a), std::end(a), std::begin(b), std::end(b));
 }
 
 template <typename CharT, typename InputIt, size_t N>
 bool strieq_l(const CharT(&a)[N], InputIt b, size_t blen) {
-  return strieq(a, N - 1, b, blen);
+  return strieq(a, a + (N - 1), b, b + blen);
 }
 
 template <typename CharT, size_t N>
 bool strieq_l(const CharT(&a)[N], const std::string &b) {
-  return strieq(a, N - 1, std::begin(b), b.size());
+  return strieq(a, a + (N - 1), std::begin(b), std::end(b));
 }
 
 template <typename CharT, size_t N>
 bool strieq_l(const CharT(&a)[N], const StringRef &b) {
-  return strieq(a, N - 1, std::begin(b), b.size());
+  return strieq(a, a + (N - 1), std::begin(b), std::end(b));
 }
 
 template <typename InputIt> bool streq(const char *a, InputIt b, size_t bn) {
@@ -336,6 +324,14 @@ template <typename InputIt> bool streq(const char *a, InputIt b, size_t bn) {
   for (; *a && b != blast && *a == *b; ++a, ++b)
     ;
   return !*a && b == blast;
+}
+
+template <typename InputIt1, typename InputIt2>
+bool streq(InputIt1 first1, InputIt1 last1, InputIt2 first2, InputIt2 last2) {
+  if (std::distance(first1, last1) != std::distance(first2, last2)) {
+    return false;
+  }
+  return std::equal(first1, last1, first2);
 }
 
 template <typename InputIt1, typename InputIt2>
@@ -351,6 +347,10 @@ inline bool streq(const char *a, const char *b) {
     return false;
   }
   return streq(a, strlen(a), b, strlen(b));
+}
+
+inline bool streq(const StringRef &a, const StringRef &b) {
+  return streq(std::begin(a), std::end(a), std::begin(b), std::end(b));
 }
 
 template <typename CharT, typename InputIt, size_t N>

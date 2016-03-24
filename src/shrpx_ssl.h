@@ -143,11 +143,11 @@ public:
   // to the lookup tree.  The |hostname| must be NULL-terminated.
   void add_cert(SSL_CTX *ssl_ctx, const char *hostname, size_t len);
 
-  // Looks up SSL_CTX using the given |hostname| with length |len|.
-  // If more than one SSL_CTX which matches the query, it is undefined
-  // which one is returned.  The |hostname| must be NULL-terminated.
-  // If no matching SSL_CTX found, returns NULL.
-  SSL_CTX *lookup(const char *hostname, size_t len);
+  // Looks up SSL_CTX using the given |hostname|.  If more than one
+  // SSL_CTX which matches the query, it is undefined which one is
+  // returned.  The |hostname| must be NULL-terminated.  If no
+  // matching SSL_CTX found, returns NULL.
+  SSL_CTX *lookup(const StringRef &hostname);
 
 private:
   CertNode root_;
@@ -219,12 +219,11 @@ bool upstream_tls_enabled();
 // Returns true if SSL/TLS is enabled on downstream
 bool downstream_tls_enabled();
 
-// Performs TLS hostname match.  |pattern| of length |plen| can
-// contain wildcard character '*', which matches prefix of target
-// hostname.  There are several restrictions to make wildcard work.
-// The matching algorithm is based on RFC 6125.
-bool tls_hostname_match(const char *pattern, size_t plen, const char *hostname,
-                        size_t hlen);
+// Performs TLS hostname match.  |pattern| can contain wildcard
+// character '*', which matches prefix of target hostname.  There are
+// several restrictions to make wildcard work.  The matching algorithm
+// is based on RFC 6125.
+bool tls_hostname_match(const StringRef &pattern, const StringRef &hostname);
 
 // Caches |session| which is associated to remote address |addr|.
 // |session| is serialized into ASN1 representation, and stored.  |t|
