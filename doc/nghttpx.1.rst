@@ -20,13 +20,13 @@ A reverse proxy for HTTP/2, HTTP/1 and SPDY.
 
     
     Set  path  to  server's private  key.   Required  unless
-    :option:`--frontend-no-tls` are given.
+    "no-tls" keyword is used in :option:`--frontend` option.
 
 .. describe:: <CERT>
 
     Set  path  to  server's  certificate.   Required  unless
-    :option:`--frontend-no-tls`  are  given.   To make  OCSP  stapling
-    work, this must be an absolute path.
+    "no-tls" keyword is used  in :option:`--frontend` option.  To make
+    OCSP stapling work, this must be an absolute path.
 
 
 OPTIONS
@@ -37,7 +37,7 @@ The options are categorized into several groups.
 Connections
 ~~~~~~~~~~~
 
-.. option:: -b, --backend=(<HOST>,<PORT>|unix:<PATH>)[;[<PATTERN>[:...]][;proto=<PROTO>]]
+.. option:: -b, --backend=(<HOST>,<PORT>|unix:<PATH>)[;[<PATTERN>[:...]][;proto=<PROTO>][;tls]]
 
     Set  backend  host  and   port.   The  multiple  backend
     addresses are  accepted by repeating this  option.  UNIX
@@ -69,10 +69,11 @@ Connections
 
     Host  can  include "\*"  in  the  left most  position  to
     indicate  wildcard match  (only suffix  match is  done).
-    For  example,  host pattern  "\*www.nghttp2.org"  matches
-    against  "www.nghttp2.org"  and  "1www.ngttp2.org",  but
-    does not  match against "nghttp2.org".  The  exact hosts
-    match takes precedence over the wildcard hosts match.
+    The "*" must match at least one character.  For example,
+    host    pattern    "\*.nghttp2.org"    matches    against
+    "www.nghttp2.org"  and  "git.ngttp2.org", but  does  not
+    match  against  "nghttp2.org".   The exact  hosts  match
+    takes precedence over the wildcard hosts match.
 
     If <PATTERN> is omitted or  empty string, "*/*" is used as
     pattern,  which  matches  all request  paths  (catch-all
@@ -106,7 +107,10 @@ Connections
     quotes: "h2", "http/1.1".  The  default value of <PROTO>
     is "http/1.1".  Note that  usually "h2" refers to HTTP/2
     over TLS.  But  in this option, it may  mean HTTP/2 over
-    cleartext TCP unless :option:`--backend-tls` is used.
+    cleartext TCP unless "tls" keyword is used (see below).
+
+    Optionally,  TLS  can  be enabled  by  specifying  "tls"
+    keyword.  TLS is not enabled by default.
 
     Since ";" and ":" are  used as delimiter, <PATTERN> must
     not  contain these  characters.  Since  ";" has  special
@@ -115,7 +119,7 @@ Connections
 
     Default: ``127.0.0.1,80``
 
-.. option:: -f, --frontend=(<HOST>,<PORT>|unix:<PATH>)
+.. option:: -f, --frontend=(<HOST>,<PORT>|unix:<PATH>)[;no-tls]
 
     Set  frontend  host and  port.   If  <HOST> is  '\*',  it
     assumes  all addresses  including  both  IPv4 and  IPv6.
@@ -123,6 +127,10 @@ Connections
     name  with  "unix:" (e.g.,  unix:/var/run/nghttpx.sock).
     This  option can  be used  multiple times  to listen  to
     multiple addresses.
+
+    Optionally, TLS  can be disabled by  specifying "no-tls"
+    keyword.  TLS is enabled by default.
+
 
     Default: ``*,3000``
 
@@ -159,10 +167,6 @@ Connections
 .. option:: --accept-proxy-protocol
 
     Accept PROXY protocol version 1 on frontend connection.
-
-.. option:: --backend-tls
-
-    Enable SSL/TLS on backend connections.
 
 
 Performance
@@ -473,7 +477,7 @@ SSL/TLS
     ticket  key sharing  between  nghttpx  instances is  not
     required.
 
-.. option:: --tls-ticket-key-memcached=<HOST>,<PORT>
+.. option:: --tls-ticket-key-memcached=<HOST>,<PORT>[;tls]
 
     Specify address  of memcached  server to get  TLS ticket
     keys for  session resumption.   This enables  shared TLS
@@ -484,7 +488,9 @@ SSL/TLS
     replacing current set  of keys.  It is up  to extern TLS
     ticket  key generator  to rotate  keys frequently.   See
     "TLS SESSION  TICKET RESUMPTION" section in  manual page
-    to know the data format in memcached entry.
+    to know the data format in memcached entry.  Optionally,
+    memcached  connection  can  be  encrypted  with  TLS  by
+    specifying "tls" keyword.
 
 .. option:: --tls-ticket-key-memcached-address-family=(auto|IPv4|IPv6)
 
@@ -526,11 +532,6 @@ SSL/TLS
     either   aes-128-cbc   or  aes-256-cbc.    By   default,
     aes-128-cbc is used.
 
-.. option:: --tls-ticket-key-memcached-tls
-
-    Enable  SSL/TLS  on  memcached connections  to  get  TLS
-    ticket keys.
-
 .. option:: --tls-ticket-key-memcached-cert-file=<PATH>
 
     Path to client certificate  for memcached connections to
@@ -558,11 +559,13 @@ SSL/TLS
 
     Disable OCSP stapling.
 
-.. option:: --tls-session-cache-memcached=<HOST>,<PORT>
+.. option:: --tls-session-cache-memcached=<HOST>,<PORT>[;tls]
 
     Specify  address of  memcached server  to store  session
     cache.   This  enables   shared  session  cache  between
-    multiple nghttpx instances.
+    multiple   nghttpx  instances.    Optionally,  memcached
+    connection can be encrypted with TLS by specifying "tls"
+    keyword.
 
 .. option:: --tls-session-cache-memcached-address-family=(auto|IPv4|IPv6)
 
@@ -573,11 +576,6 @@ SSL/TLS
     considered.
 
     Default: ``auto``
-
-.. option:: --tls-session-cache-memcached-tls
-
-    Enable SSL/TLS on memcached connections to store session
-    cache.
 
 .. option:: --tls-session-cache-memcached-cert-file=<PATH>
 
@@ -655,10 +653,6 @@ HTTP/2 and SPDY
 
     Default: ``16``
 
-.. option:: --frontend-no-tls
-
-    Disable SSL/TLS on frontend connections.
-
 .. option:: --backend-http2-window-bits=<N>
 
     Sets  the   initial  window   size  of   HTTP/2  backend
@@ -701,10 +695,11 @@ Mode
 .. describe:: (default mode)
 
     
-    Accept  HTTP/2,  SPDY  and HTTP/1.1  over  SSL/TLS.   If
-    :option:`--frontend-no-tls` is  used, accept HTTP/2  and HTTP/1.1.
-    The  incoming HTTP/1.1  connection  can  be upgraded  to
-    HTTP/2  through  HTTP  Upgrade.
+    Accept HTTP/2, SPDY and HTTP/1.1 over SSL/TLS.  "no-tls"
+    keyword is used in  :option:`--frontend` option, accept HTTP/2 and
+    HTTP/1.1  over  cleartext  TCP.  The  incoming  HTTP/1.1
+    connection  can  be  upgraded  to  HTTP/2  through  HTTP
+    Upgrade.
 
 .. option:: -s, --http2-proxy
 
@@ -1168,8 +1163,8 @@ as a memcached entry key, with expiry time 12 hours.  Session timeout
 is set to 12 hours.
 
 By default, connections to memcached server are not encrypted.  To
-enable encryption, use :option:`--tls-session-cache-memcached-tls`
-option.
+enable encryption, use ``tls`` keyword in
+:option:`--tls-session-cache-memcached` option.
 
 TLS SESSION TICKET RESUMPTION
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -1211,8 +1206,8 @@ keys.  The key appeared first is used as encryption key.  All the
 remaining keys are used as decryption only.
 
 By default, connections to memcached server are not encrypted.  To
-enable encryption, use :option:`--tls-ticket-key-memcached-tls`
-option.
+enable encryption, use ``tls`` keyword in
+:option:`--tls-ticket-key-memcached` option.
 
 If :option:`--tls-ticket-key-file` is given, encryption key is read
 from the given file.  In this case, nghttpx does not rotate key
