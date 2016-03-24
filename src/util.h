@@ -334,7 +334,9 @@ bool streq_l(const CharT(&a)[N], const StringRef &b) {
   return streq(a, a + (N - 1), std::begin(b), std::end(b));
 }
 
-bool strifind(const char *a, const char *b);
+// Returns true if |a| contains |b|.  If both |a| and |b| are empty,
+// this function returns false.
+bool strifind(const StringRef &a, const StringRef &b);
 
 template <typename InputIt> void inp_strlower(InputIt first, InputIt last) {
   std::transform(first, last, first, lowcase);

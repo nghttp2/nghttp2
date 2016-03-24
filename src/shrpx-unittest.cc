@@ -171,6 +171,7 @@ int main(int argc, char *argv[]) {
                    shrpx::test_util_make_http_hostport) ||
       !CU_add_test(pSuite, "util_make_hostport",
                    shrpx::test_util_make_hostport) ||
+      !CU_add_test(pSuite, "util_strifind", shrpx::test_util_strifind) ||
       !CU_add_test(pSuite, "gzip_inflate", test_nghttp2_gzip_inflate) ||
       !CU_add_test(pSuite, "buffer_write", nghttp2::test_buffer_write) ||
       !CU_add_test(pSuite, "pool_recycle", nghttp2::test_pool_recycle) ||

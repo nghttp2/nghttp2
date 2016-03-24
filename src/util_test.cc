@@ -498,4 +498,23 @@ void test_util_make_hostport(void) {
             util::make_hostport(StringRef::from_lit("::1"), 443));
 }
 
+void test_util_strifind(void) {
+  CU_ASSERT(util::strifind(StringRef::from_lit("gzip, deflate, bzip2"),
+                           StringRef::from_lit("gzip")));
+
+  CU_ASSERT(util::strifind(StringRef::from_lit("gzip, deflate, bzip2"),
+                           StringRef::from_lit("dEflate")));
+
+  CU_ASSERT(util::strifind(StringRef::from_lit("gzip, deflate, bzip2"),
+                           StringRef::from_lit("BZIP2")));
+
+  CU_ASSERT(util::strifind(StringRef::from_lit("nghttp2"), StringRef{}));
+
+  // Be aware this fact
+  CU_ASSERT(!util::strifind(StringRef{}, StringRef{}));
+
+  CU_ASSERT(!util::strifind(StringRef::from_lit("nghttp2"),
+                            StringRef::from_lit("http1")));
+}
+
 } // namespace shrpx
