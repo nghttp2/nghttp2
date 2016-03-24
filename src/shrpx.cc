@@ -1189,10 +1189,10 @@ void print_help(std::ostream &out) {
   out << R"(
   <PRIVATE_KEY>
               Set  path  to  server's private  key.   Required  unless
-              --frontend-no-tls are given.
+              "no-tls" keyword is used in --frontend option.
   <CERT>      Set  path  to  server's  certificate.   Required  unless
-              --frontend-no-tls  are  given.   To make  OCSP  stapling
-              work, this must be an absolute path.
+              "no-tls" keyword is used  in --frontend option.  To make
+              OCSP stapling work, this must be an absolute path.
 
 Options:
   The options are categorized into several groups.
@@ -1685,10 +1685,11 @@ HTTP/2 and SPDY:
 
 Mode:
   (default mode)
-              Accept  HTTP/2,  SPDY  and HTTP/1.1  over  SSL/TLS.   If
-              --frontend-no-tls is  used, accept HTTP/2  and HTTP/1.1.
-              The  incoming HTTP/1.1  connection  can  be upgraded  to
-              HTTP/2  through  HTTP  Upgrade.
+              Accept HTTP/2, SPDY and HTTP/1.1 over SSL/TLS.  "no-tls"
+              keyword is used in  --frontend option, accept HTTP/2 and
+              HTTP/1.1  over  cleartext  TCP.  The  incoming  HTTP/1.1
+              connection  can  be  upgraded  to  HTTP/2  through  HTTP
+              Upgrade.
   -s, --http2-proxy
               Like default mode, but enable forward proxy.  This is so
               called HTTP/2 proxy mode.
