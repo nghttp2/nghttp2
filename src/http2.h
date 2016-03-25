@@ -302,7 +302,6 @@ using HeaderIndex = std::array<int16_t, HD_MAXIDX>;
 // Only headers we are interested in are tokenized.  If header name
 // cannot be tokenized, returns -1.
 int lookup_token(const uint8_t *name, size_t namelen);
-int lookup_token(const std::string &name);
 int lookup_token(const StringRef &name);
 
 // Initializes |hdidx|, header index.  The |hdidx| must point to the

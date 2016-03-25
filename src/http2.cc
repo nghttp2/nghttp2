@@ -574,11 +574,6 @@ int parse_http_status_code(const StringRef &src) {
   return status;
 }
 
-int lookup_token(const std::string &name) {
-  return lookup_token(reinterpret_cast<const uint8_t *>(name.c_str()),
-                      name.size());
-}
-
 int lookup_token(const StringRef &name) {
   return lookup_token(name.byte(), name.size());
 }

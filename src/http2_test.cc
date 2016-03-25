@@ -271,10 +271,12 @@ void test_http2_index_header(void) {
 }
 
 void test_http2_lookup_token(void) {
-  CU_ASSERT(http2::HD__AUTHORITY == http2::lookup_token(":authority"));
-  CU_ASSERT(-1 == http2::lookup_token(":authorit"));
-  CU_ASSERT(-1 == http2::lookup_token(":Authority"));
-  CU_ASSERT(http2::HD_EXPECT == http2::lookup_token("expect"));
+  CU_ASSERT(http2::HD__AUTHORITY ==
+            http2::lookup_token(StringRef::from_lit(":authority")));
+  CU_ASSERT(-1 == http2::lookup_token(StringRef::from_lit(":authorit")));
+  CU_ASSERT(-1 == http2::lookup_token(StringRef::from_lit(":Authority")));
+  CU_ASSERT(http2::HD_EXPECT ==
+            http2::lookup_token(StringRef::from_lit("expect")));
 }
 
 void test_http2_parse_link_header(void) {
