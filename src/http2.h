@@ -322,11 +322,11 @@ struct LinkHeader {
   StringRef uri;
 };
 
-// Returns next URI-reference in Link header field value |src| of
-// length |len|.  If no URI-reference found after searching all input,
-// returned uri field is empty.  This imply that empty URI-reference
-// is ignored during parsing.
-std::vector<LinkHeader> parse_link_header(const char *src, size_t len);
+// Returns next URI-reference in Link header field value |src|.  If no
+// URI-reference found after searching all input, returned uri field
+// is empty.  This imply that empty URI-reference is ignored during
+// parsing.
+std::vector<LinkHeader> parse_link_header(const StringRef &src);
 
 // Constructs path by combining base path |base_path| with another
 // path |rel_path|.  The base path and another path can have optional

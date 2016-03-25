@@ -1782,9 +1782,7 @@ int Http2Upstream::prepare_push_promise(Downstream *downstream) {
     if (kv.token != http2::HD_LINK) {
       continue;
     }
-    for (auto &link :
-         http2::parse_link_header(kv.value.c_str(), kv.value.size())) {
-
+    for (auto &link : http2::parse_link_header(kv.value)) {
       StringRef scheme, authority, path;
 
       rv = http2::construct_push_component(balloc, scheme, authority, path,

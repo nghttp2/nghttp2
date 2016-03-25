@@ -1171,12 +1171,10 @@ almost_done:
 }
 } // namespace
 
-std::vector<LinkHeader> parse_link_header(const char *src, size_t len) {
-  auto first = src;
-  auto last = src + len;
+std::vector<LinkHeader> parse_link_header(const StringRef &src) {
   std::vector<LinkHeader> res;
-  for (; first != last;) {
-    auto rv = parse_next_link_header_once(first, last);
+  for (auto first = std::begin(src); first != std::end(src);) {
+    auto rv = parse_next_link_header_once(first, std::end(src));
     first = rv.second;
     auto &link = rv.first;
     if (!link.uri.empty()) {
