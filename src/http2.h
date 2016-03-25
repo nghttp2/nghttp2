@@ -352,7 +352,6 @@ bool expect_response_body(int status_code);
 // Only methods defined in http-parser/http-parser.h (http_method) are
 // tokenized.  If method name cannot be tokenized, returns -1.
 int lookup_method_token(const uint8_t *name, size_t namelen);
-int lookup_method_token(const std::string &name);
 int lookup_method_token(const StringRef &name);
 
 // Returns string  representation of |method_token|.  This  is wrapper

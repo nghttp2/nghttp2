@@ -1205,11 +1205,6 @@ bool expect_response_body(int method_token, int status_code) {
   return method_token != HTTP_HEAD && expect_response_body(status_code);
 }
 
-int lookup_method_token(const std::string &name) {
-  return lookup_method_token(reinterpret_cast<const uint8_t *>(name.c_str()),
-                             name.size());
-}
-
 int lookup_method_token(const StringRef &name) {
   return lookup_method_token(name.byte(), name.size());
 }
