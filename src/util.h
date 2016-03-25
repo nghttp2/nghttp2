@@ -287,12 +287,8 @@ bool strieq(InputIt1 first1, InputIt1 last1, InputIt2 first2, InputIt2 last2) {
   return std::equal(first1, last1, first2, CaseCmp());
 }
 
-inline bool strieq(const std::string &a, const std::string &b) {
-  return strieq(std::begin(a), std::end(a), std::begin(b), std::end(b));
-}
-
-inline bool strieq(const StringRef &a, const StringRef &b) {
-  return strieq(std::begin(a), std::end(a), std::begin(b), std::end(b));
+template <typename T, typename S> bool strieq(const T &a, const S &b) {
+  return strieq(a.begin(), a.end(), b.begin(), b.end());
 }
 
 template <typename CharT, typename InputIt, size_t N>

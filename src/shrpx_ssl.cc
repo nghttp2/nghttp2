@@ -437,25 +437,29 @@ int alpn_select_proto_cb(SSL *ssl, const unsigned char **out,
 } // namespace
 #endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
-namespace {
-constexpr const char *tls_names[] = {"TLSv1.2", "TLSv1.1", "TLSv1.0"};
-constexpr size_t tls_namelen = array_size(tls_names);
-constexpr long int tls_masks[] = {SSL_OP_NO_TLSv1_2, SSL_OP_NO_TLSv1_1,
-                                  SSL_OP_NO_TLSv1};
-} // namespace
+struct TLSProtocol {
+  StringRef name;
+  long int mask;
+};
+
+constexpr TLSProtocol TLS_PROTOS[] = {
+    TLSProtocol{StringRef::from_lit("TLSv1.2"), SSL_OP_NO_TLSv1_2},
+    TLSProtocol{StringRef::from_lit("TLSv1.1"), SSL_OP_NO_TLSv1_1},
+    TLSProtocol{StringRef::from_lit("TLSv1.0"), SSL_OP_NO_TLSv1}};
 
 long int create_tls_proto_mask(const std::vector<std::string> &tls_proto_list) {
   long int res = 0;
 
-  for (size_t i = 0; i < tls_namelen; ++i) {
-    size_t j;
-    for (j = 0; j < tls_proto_list.size(); ++j) {
-      if (util::strieq(tls_names[i], tls_proto_list[j])) {
+  for (auto &supported : TLS_PROTOS) {
+    auto ok = false;
+    for (auto &name : tls_proto_list) {
+      if (util::strieq(supported.name, name)) {
+        ok = true;
         break;
       }
     }
-    if (j == tls_proto_list.size()) {
-      res |= tls_masks[i];
+    if (!ok) {
+      res |= supported.mask;
     }
   }
   return res;
