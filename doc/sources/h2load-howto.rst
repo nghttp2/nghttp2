@@ -13,10 +13,10 @@ Compiling from source
 
 h2load is compiled alongside nghttp2 and requires that the
 ``--enable-apps`` flag is passed to ``./configure`` and `required
-dependencies <https://github.com/tatsuhiro-t/nghttp2#requirements>`_
-are available during compilation. For details on compiling, see
-`nghttp2: Building from Git
-<https://github.com/tatsuhiro-t/nghttp2#building-from-git>`_.
+dependencies <https://github.com/nghttp2/nghttp2#requirements>`_ are
+available during compilation. For details on compiling, see `nghttp2:
+Building from Git
+<https://github.com/nghttp2/nghttp2#building-from-git>`_.
 
 Basic Usage
 -----------

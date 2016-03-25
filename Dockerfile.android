@@ -106,7 +106,7 @@ RUN HOST=arm-linux-androideabi \
     make install
 
 WORKDIR /root/build
-RUN git clone https://github.com/tatsuhiro-t/nghttp2
+RUN git clone https://github.com/nghttp2/nghttp2
 WORKDIR /root/build/nghttp2
 RUN autoreconf -i && \
     ./configure \
