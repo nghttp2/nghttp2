@@ -669,12 +669,12 @@ a reverse proxy and listens for HTTP/2, SPDY and HTTP/1.1 and can be
 deployed as a SSL/TLS terminator for existing web server.
 
 In all modes, the frontend connections are encrypted by SSL/TLS by
-default.  To disable encryption, use the ``--frontend-no-tls`` option.
-If encryption is disabled, SPDY is disabled in the frontend and
-incoming HTTP/1.1 connections can be upgraded to HTTP/2 through HTTP
-Upgrade.  On the other hard, backend connections are not encrypted by
-default.  To encrypt backend connections, use ``--backend-tls``
-option.
+default.  To disable encryption, use the ``no-tls`` keyword in
+``--frontend`` option.  If encryption is disabled, SPDY is disabled in
+the frontend and incoming HTTP/1.1 connections can be upgraded to
+HTTP/2 through HTTP Upgrade.  On the other hard, backend connections
+are not encrypted by default.  To encrypt backend connections, use
+``tls`` keyword in ``--backend`` option.
 
 ``nghttpx`` supports a configuration file.  See the ``--conf`` option and
 sample configuration file ``nghttpx.conf.sample``.
