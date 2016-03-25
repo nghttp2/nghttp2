@@ -314,8 +314,8 @@ bool streq(InputIt1 first1, InputIt1 last1, InputIt2 first2, InputIt2 last2) {
   return std::equal(first1, last1, first2);
 }
 
-inline bool streq(const StringRef &a, const StringRef &b) {
-  return streq(std::begin(a), std::end(a), std::begin(b), std::end(b));
+template <typename T, typename S> bool streq(const T &a, const S &b) {
+  return streq(a.begin(), a.end(), b.begin(), b.end());
 }
 
 template <typename CharT, typename InputIt, size_t N>
