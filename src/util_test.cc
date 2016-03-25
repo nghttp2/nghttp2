@@ -379,10 +379,13 @@ void test_util_format_duration(void) {
 }
 
 void test_util_starts_with(void) {
-  CU_ASSERT(util::starts_with("foo", "foo"));
-  CU_ASSERT(util::starts_with("fooo", "foo"));
-  CU_ASSERT(util::starts_with("ofoo", ""));
-  CU_ASSERT(!util::starts_with("ofoo", "foo"));
+  CU_ASSERT(util::starts_with(StringRef::from_lit("foo"),
+                              StringRef::from_lit("foo")));
+  CU_ASSERT(util::starts_with(StringRef::from_lit("fooo"),
+                              StringRef::from_lit("foo")));
+  CU_ASSERT(util::starts_with(StringRef::from_lit("ofoo"), StringRef{}));
+  CU_ASSERT(!util::starts_with(StringRef::from_lit("ofoo"),
+                               StringRef::from_lit("foo")));
 
   CU_ASSERT(util::istarts_with(StringRef::from_lit("FOO"),
                                StringRef::from_lit("fOO")));

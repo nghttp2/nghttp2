@@ -192,12 +192,8 @@ bool starts_with(InputIterator1 first1, InputIterator1 last1,
   return std::equal(first2, last2, first1);
 }
 
-inline bool starts_with(const std::string &a, const std::string &b) {
-  return starts_with(std::begin(a), std::end(a), std::begin(b), std::end(b));
-}
-
-inline bool starts_with(const StringRef &a, const StringRef &b) {
-  return starts_with(std::begin(a), std::end(a), std::begin(b), std::end(b));
+template <typename S, typename T> bool starts_with(const S &a, const T &b) {
+  return starts_with(a.begin(), a.end(), b.begin(), b.end());
 }
 
 struct CaseCmp {
