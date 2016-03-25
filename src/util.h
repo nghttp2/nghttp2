@@ -318,14 +318,9 @@ bool streq_l(const CharT(&a)[N], InputIt b, size_t blen) {
   return streq(a, a + (N - 1), b, b + blen);
 }
 
-template <typename CharT, size_t N>
-bool streq_l(const CharT(&a)[N], const std::string &b) {
-  return streq(a, a + (N - 1), std::begin(b), std::end(b));
-}
-
-template <typename CharT, size_t N>
-bool streq_l(const CharT(&a)[N], const StringRef &b) {
-  return streq(a, a + (N - 1), std::begin(b), std::end(b));
+template <typename CharT, size_t N, typename T>
+bool streq_l(const CharT(&a)[N], const T &b) {
+  return streq(a, a + (N - 1), b.begin(), b.end());
 }
 
 // Returns true if |a| contains |b|.  If both |a| and |b| are empty,
