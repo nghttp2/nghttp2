@@ -399,13 +399,16 @@ void test_util_ends_with(void) {
   CU_ASSERT(util::ends_with("ofoo", "foo"));
   CU_ASSERT(!util::ends_with("ofoo", "fo"));
 
-  CU_ASSERT(util::iends_with("fOo", "Foo"));
-  CU_ASSERT(util::iends_with("foo", ""));
-  CU_ASSERT(util::iends_with("oFoo", "fOO"));
-  CU_ASSERT(!util::iends_with("ofoo", "fo"));
+  CU_ASSERT(
+      util::iends_with(StringRef::from_lit("fOo"), StringRef::from_lit("Foo")));
+  CU_ASSERT(util::iends_with(StringRef::from_lit("foo"), StringRef{}));
+  CU_ASSERT(util::iends_with(StringRef::from_lit("oFoo"),
+                             StringRef::from_lit("fOO")));
+  CU_ASSERT(!util::iends_with(StringRef::from_lit("ofoo"),
+                              StringRef::from_lit("fo")));
 
-  CU_ASSERT(util::iends_with_l("oFoo", "fOO"));
-  CU_ASSERT(!util::iends_with_l("ofoo", "fo"));
+  CU_ASSERT(util::iends_with_l(StringRef::from_lit("oFoo"), "fOO"));
+  CU_ASSERT(!util::iends_with_l(StringRef::from_lit("ofoo"), "fo"));
 }
 
 void test_util_parse_http_date(void) {

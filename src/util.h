@@ -260,22 +260,13 @@ bool iends_with(InputIterator1 first1, InputIterator1 last1,
   return std::equal(first2, last2, last1 - (last2 - first2), CaseCmp());
 }
 
-inline bool iends_with(const std::string &a, const std::string &b) {
-  return iends_with(std::begin(a), std::end(a), std::begin(b), std::end(b));
+template <typename T, typename S> bool iends_with(const T &a, const S &b) {
+  return iends_with(a.begin(), a.end(), b.begin(), b.end());
 }
 
-inline bool iends_with(const StringRef &a, const StringRef &b) {
-  return iends_with(std::begin(a), std::end(a), std::begin(b), std::end(b));
-}
-
-template <typename CharT, size_t N>
-bool iends_with_l(const std::string &a, const CharT(&b)[N]) {
-  return iends_with(std::begin(a), std::end(a), b, b + N - 1);
-}
-
-template <typename CharT, size_t N>
-bool iends_with_l(const StringRef &a, const CharT(&b)[N]) {
-  return iends_with(std::begin(a), std::end(a), b, b + N - 1);
+template <typename T, typename CharT, size_t N>
+bool iends_with_l(const T &a, const CharT(&b)[N]) {
+  return iends_with(a.begin(), a.end(), b, b + N - 1);
 }
 
 template <typename InputIt1, typename InputIt2>
