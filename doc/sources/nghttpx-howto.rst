@@ -31,6 +31,10 @@ HTTP/1 are available on the frontend, and an HTTP/1 connection can be
 upgraded to HTTP/2 using HTTP Upgrade.  Starting HTTP/2 connection by
 sending HTTP/2 connection preface is also supported.
 
+nghttpx can listen on multiple frontend addresses.  This is achieved
+by using multiple :option:`--frontend` options.  For each frontend
+address, TLS can be enabled or disabled.
+
 By default, backend connections are not encrypted.  To enable TLS
 encryption on backend connections, use ``tls`` keyword in
 :option:`--backend` option.  Using patterns and ``proto`` keyword in
@@ -226,6 +230,21 @@ re-open log files, send USR1 signal to nghttpx process.  It will
 re-open files specified by :option:`--accesslog-file` and
 :option:`--errorlog-file` options.
 
+Multiple frontend addresses
+---------------------------
+
+nghttpx can listen on multiple frontend addresses.  To specify them,
+just use :option:`--frontend` (or its shorthand :option:`-f`) option
+repeatedly.  TLS can be enabled or disabled per frontend address
+basis.  For example, to listen on port 443 with TLS enabled, and on
+port 80 without TLS:
+
+.. code-block:: text
+
+   frontend=*,443
+   frontend=*,80;no-tls
+
+
 Multiple backend addresses
 --------------------------
 
@@ -319,27 +338,11 @@ TLS can be enabed per pattern basis:
 In the above case, connection to serv1 will be encrypted by TLS.  On
 the other hand, connection to serv2 will not be encrypted by TLS.
 
-Deprecated modes
-----------------
+Migration from nghttpx v1.8.0 or earlier
+----------------------------------------
 
-As of nghttpx 1.9.0, ``--http2-bridge``, ``--client`` and
-``--client-proxy`` options have been removed.  These functionality can
-be used using combinations of options.
-
-* ``--http2-bridge``: Use ``--backend='<ADDR>,<PORT>;;proto=h2;tls'``.
-
-* ``--client``: Use ``--frontend='*,3000;no-tls'``,
-  ``--backend='<ADDR>,<PORT>;;proto=h2;tls'``.
-
-* ``--client-proxy``: Use ``--http2-proxy``,
-  ``--frontend='*,3000;no-tls'``,
-  ``--backend='<ADDR>,<PORT>;;proto=h2;tls'``.
-
---frontend-no-tls and --backend-tls
------------------------------------
-
-As of nghttpx 1.9.0, ``--frontend-no-tls`` and ``--backend-tls`` have
-been removed.
+As of nghttpx 1.9.0, ``--frontend-no-tls`` and ``--backend-no-tls``
+have been removed.
 
 To disable encryption on frontend connection, use ``no-tls`` keyword
 in :option:`--frontend` potion:
@@ -348,9 +351,35 @@ in :option:`--frontend` potion:
 
    frontend=*,3000;no-tls
 
-To enable encryption on backend connection, use ``tls`` keyword in
-:option:`--backend` option:
+The TLS encryption is now disabled on backend connection in all modes
+by default.  To enable encryption on backend connection, use ``tls``
+keyword in :option:`--backend` option:
 
 .. code-block:: text
 
    backend=127.0.0.1,8080;tls
+
+As of nghttpx 1.9.0, ``--http2-bridge``, ``--client`` and
+``--client-proxy`` options have been removed.  These functionality can
+be used using combinations of options.
+
+Use following option instead of ``--http2-bridge``:
+
+.. code-block:: text
+
+   backend=<ADDR>,<PORT>;;proto=h2;tls
+
+Use following options instead of ``--client``:
+
+.. code-block:: text
+
+   frontend=<ADDR>,<PORT>;no-tls
+   backend=<ADDR>,<PORT>;;proto=h2;tls
+
+Use following options instead of ``--client-proxy``:
+
+.. code-block:: text
+
+   http2-proxy=yes
+   frontend=<ADDR>,<PORT>;no-tls
+   backend=<ADDR>,<PORT>;;proto=h2;tls
