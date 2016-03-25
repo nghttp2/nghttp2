@@ -1429,7 +1429,7 @@ constexpr char UNIX_PATH_PREFIX[] = "unix:";
 } // namespace
 
 namespace {
-bool parse_base_uri(std::string base_uri) {
+bool parse_base_uri(const StringRef &base_uri) {
   http_parser_url u{};
   if (http_parser_parse_url(base_uri.c_str(), base_uri.size(), 0, &u) != 0 ||
       !util::has_uri_field(u, UF_SCHEMA) || !util::has_uri_field(u, UF_HOST)) {
@@ -1462,7 +1462,7 @@ std::vector<std::string> parse_uris(std::vector<std::string>::iterator first,
 
   if (!config.has_base_uri()) {
 
-    if (!parse_base_uri(*first)) {
+    if (!parse_base_uri(StringRef{*first})) {
       std::cerr << "invalid URI: " << *first << std::endl;
       exit(EXIT_FAILURE);
     }
@@ -1899,18 +1899,19 @@ int main(int argc, char **argv) {
       }
       break;
     case 'B': {
+      auto arg = StringRef{optarg};
       config.base_uri = "";
       config.base_uri_unix = false;
 
-      if (util::istarts_with_l(optarg, UNIX_PATH_PREFIX)) {
+      if (util::istarts_with_l(arg, UNIX_PATH_PREFIX)) {
         // UNIX domain socket path
         sockaddr_un un;
 
-        auto path = optarg + str_size(UNIX_PATH_PREFIX);
-        auto pathlen = strlen(optarg) - str_size(UNIX_PATH_PREFIX);
+        auto path = StringRef{std::begin(arg) + str_size(UNIX_PATH_PREFIX),
+                              std::end(arg)};
 
-        if (pathlen == 0 || pathlen + 1 > sizeof(un.sun_path)) {
-          std::cerr << "--base-uri: invalid UNIX domain socket path: " << optarg
+        if (path.size() == 0 || path.size() + 1 > sizeof(un.sun_path)) {
+          std::cerr << "--base-uri: invalid UNIX domain socket path: " << arg
                     << std::endl;
           exit(EXIT_FAILURE);
         }
@@ -1918,18 +1919,19 @@ int main(int argc, char **argv) {
         config.base_uri_unix = true;
 
         auto &unix_addr = config.unix_addr;
-        std::copy_n(path, pathlen + 1, unix_addr.sun_path);
+        std::copy(std::begin(path), std::end(path), unix_addr.sun_path);
+        unix_addr.sun_path[path.size()] = '\0';
         unix_addr.sun_family = AF_UNIX;
 
         break;
       }
 
-      if (!parse_base_uri(optarg)) {
-        std::cerr << "--base-uri: invalid base URI: " << optarg << std::endl;
+      if (!parse_base_uri(arg)) {
+        std::cerr << "--base-uri: invalid base URI: " << arg << std::endl;
         exit(EXIT_FAILURE);
       }
 
-      config.base_uri = optarg;
+      config.base_uri = arg.str();
       break;
     }
     case 'v':

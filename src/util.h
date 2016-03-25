@@ -215,22 +215,13 @@ bool istarts_with(InputIterator1 first1, InputIterator1 last1,
   return std::equal(first2, last2, first1, CaseCmp());
 }
 
-inline bool istarts_with(const std::string &a, const std::string &b) {
-  return istarts_with(std::begin(a), std::end(a), std::begin(b), std::end(b));
+template <typename S, typename T> bool istarts_with(const S &a, const T &b) {
+  return istarts_with(a.begin(), a.end(), b.begin(), b.end());
 }
 
-inline bool istarts_with(const StringRef &a, const StringRef &b) {
-  return istarts_with(std::begin(a), std::end(a), std::begin(b), std::end(b));
-}
-
-template <typename CharT, size_t N>
-bool istarts_with_l(const std::string &a, const CharT(&b)[N]) {
-  return istarts_with(std::begin(a), std::end(a), b, b + N - 1);
-}
-
-template <typename CharT, size_t N>
-bool istarts_with_l(const StringRef &a, const CharT(&b)[N]) {
-  return istarts_with(std::begin(a), std::end(a), b, b + N - 1);
+template <typename T, typename CharT, size_t N>
+bool istarts_with_l(const T &a, const CharT(&b)[N]) {
+  return istarts_with(a.begin(), a.end(), b, b + N - 1);
 }
 
 template <typename InputIterator1, typename InputIterator2>

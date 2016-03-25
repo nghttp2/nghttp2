@@ -384,13 +384,16 @@ void test_util_starts_with(void) {
   CU_ASSERT(util::starts_with("ofoo", ""));
   CU_ASSERT(!util::starts_with("ofoo", "foo"));
 
-  CU_ASSERT(util::istarts_with("FOO", "fOO"));
-  CU_ASSERT(util::starts_with("ofoo", ""));
-  CU_ASSERT(util::istarts_with("fOOo", "Foo"));
-  CU_ASSERT(!util::istarts_with("ofoo", "foo"));
+  CU_ASSERT(util::istarts_with(StringRef::from_lit("FOO"),
+                               StringRef::from_lit("fOO")));
+  CU_ASSERT(util::istarts_with(StringRef::from_lit("ofoo"), StringRef{}));
+  CU_ASSERT(util::istarts_with(StringRef::from_lit("fOOo"),
+                               StringRef::from_lit("Foo")));
+  CU_ASSERT(!util::istarts_with(StringRef::from_lit("ofoo"),
+                                StringRef::from_lit("foo")));
 
-  CU_ASSERT(util::istarts_with_l("fOOo", "Foo"));
-  CU_ASSERT(!util::istarts_with_l("ofoo", "foo"));
+  CU_ASSERT(util::istarts_with_l(StringRef::from_lit("fOOo"), "Foo"));
+  CU_ASSERT(!util::istarts_with_l(StringRef::from_lit("ofoo"), "foo"));
 }
 
 void test_util_ends_with(void) {
