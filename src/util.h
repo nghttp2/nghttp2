@@ -325,7 +325,10 @@ bool streq_l(const CharT(&a)[N], const T &b) {
 
 // Returns true if |a| contains |b|.  If both |a| and |b| are empty,
 // this function returns false.
-bool strifind(const StringRef &a, const StringRef &b);
+template <typename S, typename T> bool strifind(const S &a, const T &b) {
+  return std::search(a.begin(), a.end(), b.begin(), b.end(), CaseCmp()) !=
+         a.end();
+}
 
 template <typename InputIt> void inp_strlower(InputIt first, InputIt last) {
   std::transform(first, last, first, lowcase);
