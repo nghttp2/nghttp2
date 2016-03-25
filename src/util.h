@@ -296,14 +296,9 @@ bool strieq_l(const CharT(&a)[N], InputIt b, size_t blen) {
   return strieq(a, a + (N - 1), b, b + blen);
 }
 
-template <typename CharT, size_t N>
-bool strieq_l(const CharT(&a)[N], const std::string &b) {
-  return strieq(a, a + (N - 1), std::begin(b), std::end(b));
-}
-
-template <typename CharT, size_t N>
-bool strieq_l(const CharT(&a)[N], const StringRef &b) {
-  return strieq(a, a + (N - 1), std::begin(b), std::end(b));
+template <typename CharT, size_t N, typename T>
+bool strieq_l(const CharT(&a)[N], const T &b) {
+  return strieq(a, a + (N - 1), b.begin(), b.end());
 }
 
 template <typename InputIt1, typename InputIt2>

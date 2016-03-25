@@ -91,11 +91,11 @@ void test_util_strieq(void) {
   CU_ASSERT(!util::strieq_l("alpha", "AlPhA ", 6));
   CU_ASSERT(!util::strieq_l("", "AlPhA ", 6));
 
-  CU_ASSERT(util::strieq_l("alpha", "alpha"));
-  CU_ASSERT(util::strieq_l("alpha", "AlPhA"));
-  CU_ASSERT(util::strieq_l("", ""));
-  CU_ASSERT(!util::strieq_l("alpha", "AlPhA "));
-  CU_ASSERT(!util::strieq_l("", "AlPhA "));
+  CU_ASSERT(util::strieq_l("alpha", StringRef::from_lit("alpha")));
+  CU_ASSERT(util::strieq_l("alpha", StringRef::from_lit("AlPhA")));
+  CU_ASSERT(util::strieq_l("", StringRef{}));
+  CU_ASSERT(!util::strieq_l("alpha", StringRef::from_lit("AlPhA ")));
+  CU_ASSERT(!util::strieq_l("", StringRef::from_lit("AlPhA ")));
 }
 
 void test_util_inp_strlower(void) {
