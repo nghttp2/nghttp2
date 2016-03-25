@@ -735,7 +735,7 @@ bool check_path(const std::string &path) {
          path.find('\\') == std::string::npos &&
          path.find("/../") == std::string::npos &&
          path.find("/./") == std::string::npos &&
-         !util::ends_with(path, "/..") && !util::ends_with(path, "/.");
+         !util::ends_with_l(path, "/..") && !util::ends_with_l(path, "/.");
 }
 
 int64_t to_time64(const timeval &tv) {
