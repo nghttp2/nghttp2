@@ -665,12 +665,12 @@ memcached.
 
 ``nghttpx`` has 2 operation modes:
 
-================== ====================== =================== =============
-Mode option        Frontend               Backend             Note
-================== ====================== =================== =============
-default mode       HTTP/2, SPDY, HTTP/1.1 HTTP/1.1, HTTP/2    Reverse proxy
-``--http2-proxy``  HTTP/2, SPDY, HTTP/1.1 HTTP/1.1, or HTTP/2 Forward proxy
-================== ====================== =================== =============
+================== ====================== ================ =============
+Mode option        Frontend               Backend          Note
+================== ====================== ================ =============
+default mode       HTTP/2, SPDY, HTTP/1.1 HTTP/1.1, HTTP/2 Reverse proxy
+``--http2-proxy``  HTTP/2, SPDY, HTTP/1.1 HTTP/1.1, HTTP/2 Forward proxy
+================== ====================== ================ =============
 
 The interesting mode at the moment is the default mode.  It works like
 a reverse proxy and listens for HTTP/2, SPDY and HTTP/1.1 and can be
