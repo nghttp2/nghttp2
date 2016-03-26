@@ -647,6 +647,14 @@ nghttpx - proxy
 HTTP/1.1, and powers http://nghttp2.org and supports HTTP/2 server
 push.
 
+We reworked ``nghttpx`` command-line interface, and as a result, there
+are several incompatibles from 1.8.0 or earlier.  This is necessary to
+extend its capability, and secure the further feature enhancements in
+the future release.  Please read `Migration from nghttpx v1.8.0 or
+earlier
+<https://nghttp2.org/documentation/nghttpx-howto.html#migration-from-nghttpx-v1-8-0-or-earlier>`_
+to know how to migrate from earlier releases.
+
 ``nghttpx`` implements `important performance-oriented features
 <https://istlsfastyet.com/#server-performance>`_ in TLS, such as
 session IDs, session tickets (with automatic key rotation), OCSP
