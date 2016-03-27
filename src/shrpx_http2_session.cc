@@ -202,7 +202,7 @@ Http2Session::Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx,
 }
 
 Http2Session::~Http2Session() {
-  disconnect();
+  disconnect(true);
 
   if (in_freelist()) {
     if (LOG_ENABLED(INFO)) {
@@ -243,20 +243,17 @@ int Http2Session::disconnect(bool hard) {
   connection_check_state_ = CONNECTION_CHECK_NONE;
   state_ = DISCONNECTED;
 
-  // Delete all client handler associated to Downstream. When deleting
-  // Http2DownstreamConnection, it calls this object's
+  // When deleting Http2DownstreamConnection, it calls this object's
   // remove_downstream_connection(). The multiple
   // Http2DownstreamConnection objects belong to the same
-  // ClientHandler object. So first dump ClientHandler objects.  We
-  // want to allow creating new pending Http2DownstreamConnection with
-  // this object.  In order to achieve this, we first swap dconns_ and
-  // streams_.  Upstream::on_downstream_reset() may add
+  // ClientHandler object.  So first dump ClientHandler objects.
+  //
+  // We allow creating new pending Http2DownstreamConnection with this
+  // object.  Upstream::on_downstream_reset() may add
   // Http2DownstreamConnection.
-  auto dconns = std::move(dconns_);
-  auto streams = std::move(streams_);
 
   std::set<ClientHandler *> handlers;
-  for (auto dc = dconns.head; dc; dc = dc->dlnext) {
+  for (auto dc = dconns_.head; dc; dc = dc->dlnext) {
     if (!dc->get_client_handler()) {
       continue;
     }
@@ -268,6 +265,7 @@ int Http2Session::disconnect(bool hard) {
     }
   }
 
+  auto streams = std::move(streams_);
   for (auto s = streams.head; s;) {
     auto next = s->dlnext;
     delete s;
