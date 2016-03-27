@@ -99,14 +99,14 @@ template <typename T, typename F> bool test_flags(T t, F flags) {
 // T *dlnext, which point to previous element and next element in the
 // list respectively.
 template <typename T> struct DList {
-  DList() : head(nullptr), tail(nullptr), n(0) {}
+  DList() : head(nullptr), tail(nullptr), len(0) {}
 
   DList(const DList &) = delete;
   DList &operator=(const DList &) = delete;
 
-  DList(DList &&other) : head(other.head), tail(other.tail), n(other.n) {
+  DList(DList &&other) : head(other.head), tail(other.tail), len(other.len) {
     other.head = other.tail = nullptr;
-    other.n = 0;
+    other.len = 0;
   }
 
   DList &operator=(DList &&other) {
@@ -115,16 +115,16 @@ template <typename T> struct DList {
     }
     head = other.head;
     tail = other.tail;
-    n = other.n;
+    len = other.len;
 
     other.head = other.tail = nullptr;
-    other.n = 0;
+    other.len = 0;
 
     return *this;
   }
 
   void append(T *t) {
-    ++n;
+    ++len;
     if (tail) {
       tail->dlnext = t;
       t->dlprev = tail;
@@ -135,7 +135,7 @@ template <typename T> struct DList {
   }
 
   void remove(T *t) {
-    --n;
+    --len;
     auto p = t->dlprev;
     auto n = t->dlnext;
     if (p) {
@@ -155,10 +155,10 @@ template <typename T> struct DList {
 
   bool empty() const { return head == nullptr; }
 
-  size_t size() const { return n; }
+  size_t size() const { return len; }
 
   T *head, *tail;
-  size_t n;
+  size_t len;
 };
 
 template <typename T> void dlist_delete_all(DList<T> &dl) {
