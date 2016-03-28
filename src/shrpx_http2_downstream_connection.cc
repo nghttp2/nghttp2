@@ -108,7 +108,9 @@ int Http2DownstreamConnection::attach_downstream(Downstream *downstream) {
   auto &req = downstream_->request();
 
   // HTTP/2 disables HTTP Upgrade.
-  req.upgrade_request = false;
+  if (req.method != HTTP_CONNECT) {
+    req.upgrade_request = false;
+  }
 
   return 0;
 }
