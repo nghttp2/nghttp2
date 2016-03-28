@@ -484,7 +484,6 @@ int submit_request(HttpClient *client, const Headers &headers, Request *req) {
 
   if (expect_continue) {
     auto timer = std::make_shared<ContinueTimer>(client->loop, req);
-    timer->start();
 
     req->continue_timer = timer;
     client->continue_timers.push_back(timer);
@@ -1984,6 +1983,35 @@ int before_frame_send_callback(nghttp2_session *session,
 } // namespace
 
 namespace {
+int on_frame_send_callback(nghttp2_session *session,
+                           const nghttp2_frame *frame,
+                           void *user_data) {
+  if (config.verbose) {
+    verbose_on_frame_send_callback(session, frame, user_data);
+  }
+
+  if (frame->hd.type != NGHTTP2_HEADERS ||
+      frame->headers.cat != NGHTTP2_HCAT_REQUEST) {
+    return 0;
+  }
+
+  auto req = static_cast<Request *>(
+      nghttp2_session_get_stream_user_data(session, frame->hd.stream_id));
+  if (!req) {
+    return 0;
+  }
+
+  // If this request is using Expect/Continue, start its ContinueTimer.
+  std::shared_ptr<ContinueTimer> timer = req->continue_timer.lock();
+  if (timer) {
+    timer->start();
+  }
+
+  return 0;
+}
+} // namespace
+
+namespace {
 int on_frame_not_send_callback(nghttp2_session *session,
                                const nghttp2_frame *frame, int lib_error_code,
                                void *user_data) {
@@ -2342,9 +2370,6 @@ int run(char **uris, int n) {
                                                        on_frame_recv_callback2);
 
   if (config.verbose) {
-    nghttp2_session_callbacks_set_on_frame_send_callback(
-        callbacks, verbose_on_frame_send_callback);
-
     nghttp2_session_callbacks_set_on_invalid_frame_recv_callback(
         callbacks, verbose_on_invalid_frame_recv_callback);
 
@@ -2363,6 +2388,9 @@ int run(char **uris, int n) {
 
   nghttp2_session_callbacks_set_before_frame_send_callback(
       callbacks, before_frame_send_callback);
+
+  nghttp2_session_callbacks_set_on_frame_send_callback(
+      callbacks, on_frame_send_callback);
 
   nghttp2_session_callbacks_set_on_frame_not_send_callback(
       callbacks, on_frame_not_send_callback);
