@@ -444,7 +444,8 @@ int Http2DownstreamConnection::push_request_headers() {
   if (LOG_ENABLED(INFO)) {
     std::stringstream ss;
     for (auto &nv : nva) {
-      ss << TTY_HTTP_HD << nv.name << TTY_RST << ": " << nv.value << "\n";
+      ss << TTY_HTTP_HD << StringRef{nv.name, nv.namelen} << TTY_RST << ": "
+         << StringRef{nv.value, nv.valuelen} << "\n";
     }
     DCLOG(INFO, this) << "HTTP request headers\n" << ss.str();
   }

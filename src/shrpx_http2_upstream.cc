@@ -1687,7 +1687,8 @@ void Http2Upstream::log_response_headers(
     Downstream *downstream, const std::vector<nghttp2_nv> &nva) const {
   std::stringstream ss;
   for (auto &nv : nva) {
-    ss << TTY_HTTP_HD << nv.name << TTY_RST << ": " << nv.value << "\n";
+    ss << TTY_HTTP_HD << StringRef{nv.name, nv.namelen} << TTY_RST << ": "
+       << StringRef{nv.value, nv.valuelen} << "\n";
   }
   ULOG(INFO, this) << "HTTP response headers. stream_id="
                    << downstream->get_stream_id() << "\n" << ss.str();
@@ -1860,7 +1861,8 @@ int Http2Upstream::submit_push_promise(const StringRef &scheme,
   if (LOG_ENABLED(INFO)) {
     std::stringstream ss;
     for (auto &nv : nva) {
-      ss << TTY_HTTP_HD << nv.name << TTY_RST << ": " << nv.value << "\n";
+      ss << TTY_HTTP_HD << StringRef{nv.name, nv.namelen} << TTY_RST << ": "
+         << StringRef{nv.value, nv.valuelen} << "\n";
     }
     ULOG(INFO, this) << "HTTP push request headers. promised_stream_id="
                      << promised_stream_id << "\n" << ss.str();
