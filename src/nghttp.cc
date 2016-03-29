@@ -687,7 +687,9 @@ void HttpClient::disconnect() {
   state = ClientState::IDLE;
 
   for (auto req = std::begin(reqvec); req != std::end(reqvec); ++req) {
-    (*req)->continue_timer->stop();
+    if ((*req)->continue_timer) {
+      (*req)->continue_timer->stop();
+    }
   }
 
   ev_timer_stop(loop, &settings_timer);
