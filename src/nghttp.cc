@@ -1708,6 +1708,12 @@ void check_response_header(nghttp2_session *session, Request *req) {
     req->res_nva.clear();
     http2::init_hdidx(req->res_hdidx);
     return;
+  } else {
+    // A final response stops any pending Expect/Continue handshake.
+    std::shared_ptr<ContinueTimer> timer = req->continue_timer.lock();
+    if (timer) {
+      timer->stop();
+    }
   }
 
   if (gzip) {
@@ -2042,6 +2048,12 @@ int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
 
   if (!req) {
     return 0;
+  }
+
+  // If this request is using Expect/Continue, stop its ContinueTimer.
+  std::shared_ptr<ContinueTimer> timer = req->continue_timer.lock();
+  if (timer) {
+    timer->stop();
   }
 
   update_html_parser(client, req, nullptr, 0, 1);
