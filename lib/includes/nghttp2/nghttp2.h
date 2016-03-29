@@ -591,7 +591,11 @@ typedef enum {
    * callbacks because the library processes this frame type and its
    * preceding HEADERS/PUSH_PROMISE as a single frame.
    */
-  NGHTTP2_CONTINUATION = 0x09
+  NGHTTP2_CONTINUATION = 0x09,
+  /**
+   * The ALTSVC frame.
+   */
+  NGHTTP2_ALTSVC = 0x0a
 } nghttp2_frame_type;
 
 /**
@@ -4112,6 +4116,32 @@ NGHTTP2_EXTERN int nghttp2_submit_window_update(nghttp2_session *session,
 NGHTTP2_EXTERN int nghttp2_submit_extension(nghttp2_session *session,
                                             uint8_t type, uint8_t flags,
                                             int32_t stream_id, void *payload);
+
+/**
+ * @struct
+ *
+ * The payload of ALTSVC frame.  ALTSVC frame is one of extension
+ * frame.  If this frame is received, and
+ * `nghttp2_option_set_user_recv_extension_type()` is not set, and
+ * `nghttp2_option_set_recv_extension_type()` is set for
+ * :enum:`NGHTTP2_ALTSVC`, ``nghttp2_extension.payload`` will point to
+ * this struct.
+ *
+ * It has the following members:
+ */
+typedef struct {
+  uint8_t *origin;
+  size_t origin_len;
+  uint8_t *field_value;
+  size_t field_value_len;
+} nghttp2_ext_altsvc;
+
+NGHTTP2_EXTERN int nghttp2_submit_altsvc(nghttp2_session *session,
+                                         uint8_t flags, int32_t stream_id,
+                                         const uint8_t *origin,
+                                         size_t origin_len,
+                                         const uint8_t *field_value,
+                                         size_t field_value_len);
 
 /**
  * @function

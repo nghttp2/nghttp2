@@ -1664,6 +1664,26 @@ static int session_predicate_window_update_send(nghttp2_session *session,
   return 0;
 }
 
+static int session_predicate_altsvc_send(nghttp2_session *session,
+                                         int32_t stream_id) {
+  nghttp2_stream *stream;
+
+  if (session_is_closing(session)) {
+    return NGHTTP2_ERR_SESSION_CLOSING;
+  }
+
+  if (stream_id == 0) {
+    return 0;
+  }
+
+  stream = nghttp2_session_get_stream(session, stream_id);
+  if (stream == NULL) {
+    return NGHTTP2_ERR_STREAM_CLOSED;
+  }
+
+  return 0;
+}
+
 /* Take into account settings max frame size and both connection-level
    flow control here */
 static ssize_t
@@ -2103,18 +2123,44 @@ static int session_prep_frame(nghttp2_session *session,
       /* We never handle CONTINUATION here. */
       assert(0);
       break;
-    default:
+    default: {
+      nghttp2_ext_aux_data *aux_data;
+
       /* extension frame */
-      if (session_is_closing(session)) {
-        return NGHTTP2_ERR_SESSION_CLOSING;
+
+      aux_data = &item->aux_data.ext;
+
+      if (aux_data->builtin == 0) {
+        if (session_is_closing(session)) {
+          return NGHTTP2_ERR_SESSION_CLOSING;
+        }
+
+        rv = session_pack_extension(session, &session->aob.framebufs, frame);
+        if (rv != 0) {
+          return rv;
+        }
+
+        break;
       }
 
-      rv = session_pack_extension(session, &session->aob.framebufs, frame);
-      if (rv != 0) {
-        return rv;
+      switch (frame->hd.type) {
+      case NGHTTP2_ALTSVC:
+        rv = session_predicate_altsvc_send(session, frame->hd.stream_id);
+        if (rv != 0) {
+          return rv;
+        }
+
+        nghttp2_frame_pack_altsvc(&session->aob.framebufs, &frame->ext);
+
+        break;
+      default:
+        /* Unreachable here */
+        assert(0);
+        break;
       }
 
       break;
+    }
     }
     return 0;
   } else {

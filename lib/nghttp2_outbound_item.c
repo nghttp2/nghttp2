@@ -72,9 +72,25 @@ void nghttp2_outbound_item_free(nghttp2_outbound_item *item, nghttp2_mem *mem) {
   case NGHTTP2_WINDOW_UPDATE:
     nghttp2_frame_window_update_free(&frame->window_update);
     break;
-  default:
-    nghttp2_frame_extension_free(&frame->ext);
-    break;
+  default: {
+    nghttp2_ext_aux_data *aux_data;
+
+    aux_data = &item->aux_data.ext;
+
+    if (aux_data->builtin == 0) {
+      nghttp2_frame_extension_free(&frame->ext);
+      break;
+    }
+
+    switch (frame->hd.type) {
+    case NGHTTP2_ALTSVC:
+      nghttp2_frame_altsvc_free(&frame->ext, mem);
+      break;
+    default:
+      assert(0);
+      break;
+    }
+  }
   }
 }
 
