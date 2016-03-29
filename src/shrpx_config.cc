@@ -2120,7 +2120,7 @@ int parse_config(const StringRef &opt, const StringRef &optarg,
     return 0;
   case SHRPX_OPTID_CLIENT:
     LOG(ERROR) << opt << ": deprecated.  Use frontend=<addr>,<port>;no-tls, "
-                         "backend=<addr>,<port>;;proto=h2 and backend-tls";
+                         "backend=<addr>,<port>;;proto=h2;tls";
     return -1;
   case SHRPX_OPTID_INSECURE:
     mod_config()->tls.insecure = util::strieq_l("yes", optarg);
