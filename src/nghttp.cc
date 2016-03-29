@@ -325,9 +325,9 @@ void continue_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 } // namespace
 
 ContinueTimer::ContinueTimer(struct ev_loop *loop, Request *req)
-    : loop(loop),
-      req(req) {
+    : loop(loop) {
   ev_timer_init(&timer, continue_timeout_cb, 1., 0.);
+  timer.data = req;
 }
 
 ContinueTimer::~ContinueTimer() {
@@ -335,7 +335,6 @@ ContinueTimer::~ContinueTimer() {
 }
 
 void ContinueTimer::start() {
-  timer.data = req;
   ev_timer_start(loop, &timer);
 }
 
@@ -483,10 +482,8 @@ int submit_request(HttpClient *client, const Headers &headers, Request *req) {
   req->req_nva = std::move(build_headers);
 
   if (expect_continue) {
-    auto timer = std::make_shared<ContinueTimer>(client->loop, req);
-
-    req->continue_timer = timer;
-    client->continue_timers.push_back(timer);
+    auto timer = make_unique<ContinueTimer>(client->loop, req);
+    req->continue_timer = std::move(timer);
   }
 
   return 0;
@@ -689,7 +686,9 @@ int HttpClient::initiate_connection() {
 void HttpClient::disconnect() {
   state = ClientState::IDLE;
 
-  continue_timers.clear();
+  for (auto req = std::begin(reqvec); req != std::end(reqvec); ++req) {
+    (*req)->continue_timer->stop();
+  }
 
   ev_timer_stop(loop, &settings_timer);
 
@@ -1695,12 +1694,9 @@ void check_response_header(nghttp2_session *session, Request *req) {
   }
 
   if (req->status / 100 == 1) {
-    if (req->status == 100) {
+    if (req->continue_timer && (req->status == 100)) {
       // If the request is waiting for a 100 Continue, complete the handshake.
-      std::shared_ptr<ContinueTimer> timer = req->continue_timer.lock();
-      if (timer) {
-        timer->dispatch_continue();
-      }
+      req->continue_timer->dispatch_continue();
     }
 
     req->expect_final_response = true;
@@ -1708,12 +1704,9 @@ void check_response_header(nghttp2_session *session, Request *req) {
     req->res_nva.clear();
     http2::init_hdidx(req->res_hdidx);
     return;
-  } else {
+  } else if (req->continue_timer) {
     // A final response stops any pending Expect/Continue handshake.
-    std::shared_ptr<ContinueTimer> timer = req->continue_timer.lock();
-    if (timer) {
-      timer->stop();
-    }
+    req->continue_timer->stop();
   }
 
   if (gzip) {
@@ -2008,9 +2001,8 @@ int on_frame_send_callback(nghttp2_session *session,
   }
 
   // If this request is using Expect/Continue, start its ContinueTimer.
-  std::shared_ptr<ContinueTimer> timer = req->continue_timer.lock();
-  if (timer) {
-    timer->start();
+  if (req->continue_timer) {
+    req->continue_timer->start();
   }
 
   return 0;
@@ -2051,9 +2043,8 @@ int on_stream_close_callback(nghttp2_session *session, int32_t stream_id,
   }
 
   // If this request is using Expect/Continue, stop its ContinueTimer.
-  std::shared_ptr<ContinueTimer> timer = req->continue_timer.lock();
-  if (timer) {
-    timer->stop();
+  if (req->continue_timer) {
+    req->continue_timer->stop();
   }
 
   update_html_parser(client, req, nullptr, 0, 1);

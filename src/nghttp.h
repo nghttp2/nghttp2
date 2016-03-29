@@ -124,7 +124,6 @@ struct ContinueTimer {
   void dispatch_continue();
 
   struct ev_loop *loop;
-  Request *req;
   ev_timer timer;
 };
 
@@ -175,8 +174,8 @@ struct Request {
   // used for incoming PUSH_PROMISE
   http2::HeaderIndex req_hdidx;
   bool expect_final_response;
-  // only alive if this request is using Expect/Continue
-  std::weak_ptr<ContinueTimer> continue_timer;
+  // only assigned if this request is using Expect/Continue
+  std::unique_ptr<ContinueTimer> continue_timer;
 };
 
 struct SessionTiming {
@@ -285,8 +284,6 @@ struct HttpClient {
   Buffer<64_k> wb;
   // SETTINGS payload sent as token68 in HTTP Upgrade
   std::array<uint8_t, 128> settings_payload;
-  // List of timers for outstanding expect/continue handshakes
-  std::vector<std::shared_ptr<ContinueTimer>> continue_timers;
 
   enum { ERR_CONNECT_FAIL = -100 };
 };
