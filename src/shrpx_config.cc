@@ -1870,11 +1870,14 @@ int parse_config(const StringRef &opt, const StringRef &optarg,
 
     return 0;
   case SHRPX_OPTID_HTTP2_BRIDGE:
-    LOG(ERROR) << opt << ": deprecated.  Use backend=<addr>,<port>;;proto=h2;tls";
+    LOG(ERROR) << opt
+               << ": deprecated.  Use backend=<addr>,<port>;;proto=h2;tls";
     return -1;
   case SHRPX_OPTID_CLIENT_PROXY:
-    LOG(ERROR) << opt << ": deprecated.  Use http2-proxy, frontend=<addr>,<port>;no-tls "
-                         "and backend=<addr>,<port>;;proto=h2;tls";
+    LOG(ERROR)
+        << opt
+        << ": deprecated.  Use http2-proxy, frontend=<addr>,<port>;no-tls "
+           "and backend=<addr>,<port>;;proto=h2;tls";
     return -1;
   case SHRPX_OPTID_ADD_X_FORWARDED_FOR:
     mod_config()->http.xff.add = util::strieq_l("yes", optarg);
