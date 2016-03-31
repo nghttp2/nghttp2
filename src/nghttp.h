@@ -91,6 +91,7 @@ struct Config {
   bool no_dep;
   bool hexdump;
   bool no_push;
+  bool expect_continue;
 };
 
 enum class RequestState { INITIAL, ON_REQUEST, ON_RESPONSE, ON_COMPLETE };
@@ -107,6 +108,23 @@ struct RequestTiming {
   std::chrono::steady_clock::time_point response_end_time;
   RequestState state;
   RequestTiming() : state(RequestState::INITIAL) {}
+};
+
+struct Request; // forward declaration for ContinueTimer
+
+struct ContinueTimer {
+  ContinueTimer(struct ev_loop *loop, Request *req);
+  ~ContinueTimer();
+
+  void start();
+  void stop();
+
+  // Schedules an immediate run of the continue callback on the loop, if the
+  // callback has not already been run
+  void dispatch_continue();
+
+  struct ev_loop *loop;
+  ev_timer timer;
 };
 
 struct Request {
@@ -156,6 +174,8 @@ struct Request {
   // used for incoming PUSH_PROMISE
   http2::HeaderIndex req_hdidx;
   bool expect_final_response;
+  // only assigned if this request is using Expect/Continue
+  std::unique_ptr<ContinueTimer> continue_timer;
 };
 
 struct SessionTiming {
