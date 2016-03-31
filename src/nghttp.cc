@@ -324,23 +324,16 @@ void continue_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 }
 } // namespace
 
-ContinueTimer::ContinueTimer(struct ev_loop *loop, Request *req)
-    : loop(loop) {
+ContinueTimer::ContinueTimer(struct ev_loop *loop, Request *req) : loop(loop) {
   ev_timer_init(&timer, continue_timeout_cb, 1., 0.);
   timer.data = req;
 }
 
-ContinueTimer::~ContinueTimer() {
-  stop();
-}
+ContinueTimer::~ContinueTimer() { stop(); }
 
-void ContinueTimer::start() {
-  ev_timer_start(loop, &timer);
-}
+void ContinueTimer::start() { ev_timer_start(loop, &timer); }
 
-void ContinueTimer::stop() {
-  ev_timer_stop(loop, &timer);
-}
+void ContinueTimer::stop() { ev_timer_stop(loop, &timer); }
 
 void ContinueTimer::dispatch_continue() {
   // Only dispatch the timeout callback if it hasn't already been called.
@@ -412,7 +405,8 @@ int submit_request(HttpClient *client, const Headers &headers, Request *req) {
 
   if (req->data_prd) {
     if (!config.no_content_length) {
-      build_headers.emplace_back("content-length", util::utos(req->data_length));
+      build_headers.emplace_back("content-length",
+                                 util::utos(req->data_length));
     }
     if (config.expect_continue) {
       expect_continue = true;
@@ -461,7 +455,7 @@ int submit_request(HttpClient *client, const Headers &headers, Request *req) {
 
   if (expect_continue) {
     stream_id = nghttp2_submit_headers(client->session, 0, -1, &req->pri_spec,
-                               nva.data(), nva.size(), req);
+                                       nva.data(), nva.size(), req);
   } else {
     stream_id =
         nghttp2_submit_request(client->session, &req->pri_spec, nva.data(),
@@ -471,8 +465,8 @@ int submit_request(HttpClient *client, const Headers &headers, Request *req) {
   if (stream_id < 0) {
     std::cerr << "[ERROR] nghttp2_submit_"
               << (expect_continue ? "headers" : "request")
-              << "() returned error: "
-              << nghttp2_strerror(stream_id) << std::endl;
+              << "() returned error: " << nghttp2_strerror(stream_id)
+              << std::endl;
     return -1;
   }
 
@@ -1982,8 +1976,7 @@ int before_frame_send_callback(nghttp2_session *session,
 } // namespace
 
 namespace {
-int on_frame_send_callback(nghttp2_session *session,
-                           const nghttp2_frame *frame,
+int on_frame_send_callback(nghttp2_session *session, const nghttp2_frame *frame,
                            void *user_data) {
   if (config.verbose) {
     verbose_on_frame_send_callback(session, frame, user_data);
@@ -2392,8 +2385,8 @@ int run(char **uris, int n) {
   nghttp2_session_callbacks_set_before_frame_send_callback(
       callbacks, before_frame_send_callback);
 
-  nghttp2_session_callbacks_set_on_frame_send_callback(
-      callbacks, on_frame_send_callback);
+  nghttp2_session_callbacks_set_on_frame_send_callback(callbacks,
+                                                       on_frame_send_callback);
 
   nghttp2_session_callbacks_set_on_frame_not_send_callback(
       callbacks, on_frame_not_send_callback);

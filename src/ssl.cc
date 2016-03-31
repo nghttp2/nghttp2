@@ -123,16 +123,17 @@ TLSSessionInfo *get_tls_session_info(TLSSessionInfo *tls_info, SSL *ssl) {
    the black listed cipher suites for HTTP/2 described in RFC 7540.
    https://github.com/jay/http2_blacklisted_ciphers
 */
-#define IS_CIPHER_BANNED_METHOD2(id) ( \
-  (0x0000 <= id && id <= 0x00FF && \
-    "\xFF\xFF\xFF\xCF\xFF\xFF\xFF\xFF\x7F\x00\x00\x00\x80\x3F\x00\x00" \
-    "\xF0\xFF\xFF\x3F\xF3\xF3\xFF\xFF\x3F\x00\x00\x00\x00\x00\x00\x80" \
-    [(id & 0xFF) / 8] & (1 << (id % 8))) || \
-  (0xC000 <= id && id <= 0xC0FF && \
-    "\xFE\xFF\xFF\xFF\xFF\x67\xFE\xFF\xFF\xFF\x33\xCF\xFC\xCF\xFF\xCF" \
-    "\x3C\xF3\xFC\x3F\x33\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00" \
-    [(id & 0xFF) / 8] & (1 << (id % 8))) \
-)
+#define IS_CIPHER_BANNED_METHOD2(id)                                           \
+  ((0x0000 <= id && id <= 0x00FF &&                                            \
+    "\xFF\xFF\xFF\xCF\xFF\xFF\xFF\xFF\x7F\x00\x00\x00\x80\x3F\x00\x00"         \
+    "\xF0\xFF\xFF\x3F\xF3\xF3\xFF\xFF\x3F\x00\x00\x00\x00\x00\x00\x80"         \
+            [(id & 0xFF) / 8] &                                                \
+        (1 << (id % 8))) ||                                                    \
+   (0xC000 <= id && id <= 0xC0FF &&                                            \
+    "\xFE\xFF\xFF\xFF\xFF\x67\xFE\xFF\xFF\xFF\x33\xCF\xFC\xCF\xFF\xCF"         \
+    "\x3C\xF3\xFC\x3F\x33\x03\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"         \
+            [(id & 0xFF) / 8] &                                                \
+        (1 << (id % 8))))
 
 bool check_http2_cipher_black_list(SSL *ssl) {
   int id = SSL_CIPHER_get_id(SSL_get_current_cipher(ssl)) & 0xFFFFFF;
