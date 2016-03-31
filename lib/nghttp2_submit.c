@@ -425,7 +425,19 @@ int nghttp2_submit_altsvc(nghttp2_session *session, uint8_t flags _U_,
 
   mem = &session->mem;
 
+  if (!session->server) {
+    return NGHTTP2_ERR_INVALID_STATE;
+  }
+
   if (2 + origin_len + field_value_len > NGHTTP2_MAX_PAYLOADLEN) {
+    return NGHTTP2_ERR_INVALID_ARGUMENT;
+  }
+
+  if (stream_id == 0) {
+    if (origin_len == 0) {
+      return NGHTTP2_ERR_INVALID_ARGUMENT;
+    }
+  } else if (origin_len != 0) {
     return NGHTTP2_ERR_INVALID_ARGUMENT;
   }
 
@@ -437,11 +449,15 @@ int nghttp2_submit_altsvc(nghttp2_session *session, uint8_t flags _U_,
   p = buf;
 
   origin_copy = p;
-  p = nghttp2_cpymem(p, origin, origin_len);
+  if (origin_len) {
+    p = nghttp2_cpymem(p, origin, origin_len);
+  }
   *p++ = '\0';
 
   field_value_copy = p;
-  p = nghttp2_cpymem(p, field_value, field_value_len);
+  if (field_value_len) {
+    p = nghttp2_cpymem(p, field_value, field_value_len);
+  }
   *p++ = '\0';
 
   item = nghttp2_mem_malloc(mem, sizeof(nghttp2_outbound_item));
@@ -470,6 +486,8 @@ int nghttp2_submit_altsvc(nghttp2_session *session, uint8_t flags _U_,
   if (rv != 0) {
     nghttp2_frame_altsvc_free(&frame->ext, mem);
     nghttp2_mem_free(mem, item);
+
+    return rv;
   }
 
   return 0;
