@@ -737,6 +737,8 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
     if (shared_addr->proto == PROTO_HTTP2) {
       auto &http2_freelist = shared_addr->http2_freelist;
 
+      Http2Session *http2session;
+
       if (http2_freelist.empty() ||
           http2_freelist.size() < shared_addr->addrs.size()) {
         if (LOG_ENABLED(INFO)) {
@@ -749,13 +751,13 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
                              << shared_addr->addrs.size();
           }
         }
-        auto session = make_unique<Http2Session>(
+        http2session = new Http2Session(
             conn_.loop, shared_addr->tls ? worker_->get_cl_ssl_ctx() : nullptr,
             worker_, &group);
-        http2_freelist.append(session.release());
+      } else {
+        http2session = http2_freelist.head;
+        http2_freelist.remove(http2session);
       }
-
-      auto http2session = http2_freelist.head;
 
       if (http2session->max_concurrency_reached(1)) {
         if (LOG_ENABLED(INFO)) {
@@ -763,7 +765,8 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
                            << http2session
                            << "). Remove Http2Session from http2_freelist";
         }
-        http2_freelist.remove(http2session);
+      } else {
+        http2_freelist.append(http2session);
       }
 
       dconn = make_unique<Http2DownstreamConnection>(http2session);
