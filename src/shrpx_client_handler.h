@@ -49,6 +49,7 @@ class ConnectBlocker;
 class DownstreamConnectionPool;
 class Worker;
 struct WorkerStat;
+struct DownstreamAddrGroup;
 
 class ClientHandler {
 public:
@@ -140,6 +141,8 @@ public:
   // Returns string suitable for use in "for" parameter of Forwarded
   // header field.
   StringRef get_forwarded_for() const;
+
+  Http2Session *select_http2_session(DownstreamAddrGroup &group);
 
 private:
   Connection conn_;

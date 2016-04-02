@@ -394,10 +394,10 @@ int htp_hdrs_completecb(http_parser *htp) {
     return 0;
   }
 
-  rv = downstream->attach_downstream_connection(
-      handler->get_downstream_connection(downstream));
+  auto dconn = handler->get_downstream_connection(downstream);
 
-  if (rv != 0) {
+  if (!dconn ||
+      (rv = downstream->attach_downstream_connection(std::move(dconn))) != 0) {
     downstream->set_request_state(Downstream::CONNECT_FAIL);
 
     return -1;
@@ -1172,6 +1172,7 @@ void HttpsUpstream::on_handler_delete() {
 
 int HttpsUpstream::on_downstream_reset(bool no_retry) {
   int rv;
+  std::unique_ptr<DownstreamConnection> dconn;
 
   if (!downstream_->request_submission_ready()) {
     // Return error so that caller can delete handler
@@ -1186,8 +1187,12 @@ int HttpsUpstream::on_downstream_reset(bool no_retry) {
     goto fail;
   }
 
-  rv = downstream_->attach_downstream_connection(
-      handler_->get_downstream_connection(downstream_.get()));
+  dconn = handler_->get_downstream_connection(downstream_.get());
+  if (!dconn) {
+    goto fail;
+  }
+
+  rv = downstream_->attach_downstream_connection(std::move(dconn));
   if (rv != 0) {
     goto fail;
   }

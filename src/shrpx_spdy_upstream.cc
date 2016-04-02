@@ -335,9 +335,12 @@ void SpdyUpstream::start_downstream(Downstream *downstream) {
 }
 
 void SpdyUpstream::initiate_downstream(Downstream *downstream) {
-  int rv = downstream->attach_downstream_connection(
-      handler_->get_downstream_connection(downstream));
-  if (rv != 0) {
+  int rv;
+
+  auto dconn = handler_->get_downstream_connection(downstream);
+
+  if (!dconn ||
+      (rv = downstream->attach_downstream_connection(std::move(dconn))) != 0) {
     // If downstream connection fails, issue RST_STREAM.
     rst_stream(downstream, SPDYLAY_INTERNAL_ERROR);
     downstream->set_request_state(Downstream::CONNECT_FAIL);
@@ -1247,6 +1250,8 @@ int SpdyUpstream::on_downstream_reset(bool no_retry) {
 
     downstream->add_retry();
 
+    std::unique_ptr<DownstreamConnection> dconn;
+
     if (no_retry || downstream->no_more_retry()) {
       goto fail;
     }
@@ -1254,8 +1259,12 @@ int SpdyUpstream::on_downstream_reset(bool no_retry) {
     // downstream connection is clean; we can retry with new
     // downstream connection.
 
-    rv = downstream->attach_downstream_connection(
-        handler_->get_downstream_connection(downstream));
+    dconn = handler_->get_downstream_connection(downstream);
+    if (!dconn) {
+      goto fail;
+    }
+
+    rv = downstream->attach_downstream_connection(std::move(dconn));
     if (rv != 0) {
       goto fail;
     }

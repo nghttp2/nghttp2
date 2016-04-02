@@ -56,10 +56,21 @@ struct StreamData {
   Http2DownstreamConnection *dconn;
 };
 
+enum FreelistZone {
+  // Http2Session object is not linked in any freelist.
+  FREELIST_ZONE_NONE,
+  // Http2Session object is linked in group scope
+  // http2_avail_freelist.
+  FREELIST_ZONE_AVAIL,
+  // Http2Session object is linked in address scope
+  // http2_extra_freelist.
+  FREELIST_ZONE_EXTRA
+};
+
 class Http2Session {
 public:
   Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx, Worker *worker,
-               DownstreamAddrGroup *group);
+               DownstreamAddrGroup *group, DownstreamAddr *addr);
   ~Http2Session();
 
   // If hard is true, all pending requests are abandoned and
@@ -160,9 +171,14 @@ public:
   // streams.
   size_t get_num_dconns() const;
 
-  // Returns true if this object is included in freelist.  See
-  // DownstreamAddrGroup object.
-  bool in_freelist() const;
+  // Adds to group scope http2_avail_freelist.
+  void add_to_avail_freelist();
+  // Adds to address scope http2_extra_freelist.
+  void add_to_extra_freelist();
+
+  // Removes this object from any freelist.  If this object is not
+  // linked from any freelist, this function does nothing.
+  void remove_from_freelist();
 
   // Returns true if the maximum concurrency is reached.  In other
   // words, the number of currently participated streams in this
@@ -229,6 +245,7 @@ private:
   nghttp2_session *session_;
   int state_;
   int connection_check_state_;
+  int freelist_zone_;
   bool flow_control_;
 };
 

@@ -182,7 +182,8 @@ void initiate_connection_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 } // namespace
 
 Http2Session::Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx,
-                           Worker *worker, DownstreamAddrGroup *group)
+                           Worker *worker, DownstreamAddrGroup *group,
+                           DownstreamAddr *addr)
     : dlnext(nullptr),
       dlprev(nullptr),
       conn_(loop, -1, nullptr, worker->get_mcpool(),
@@ -194,10 +195,11 @@ Http2Session::Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx,
       worker_(worker),
       ssl_ctx_(ssl_ctx),
       group_(group),
-      addr_(nullptr),
+      addr_(addr),
       session_(nullptr),
       state_(DISCONNECTED),
       connection_check_state_(CONNECTION_CHECK_NONE),
+      freelist_zone_(FREELIST_ZONE_NONE),
       flow_control_(false) {
   read_ = write_ = &Http2Session::noop;
 
@@ -223,12 +225,7 @@ Http2Session::Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx,
 Http2Session::~Http2Session() {
   disconnect(true);
 
-  if (in_freelist()) {
-    if (LOG_ENABLED(INFO)) {
-      SSLOG(INFO, this) << "Removed from http2_freelist";
-    }
-    group_->shared_addr->http2_freelist.remove(this);
-  }
+  remove_from_freelist();
 }
 
 int Http2Session::disconnect(bool hard) {
@@ -253,8 +250,6 @@ int Http2Session::disconnect(bool hard) {
   on_write_ = &Http2Session::write_noop;
 
   conn_.disconnect();
-
-  addr_ = nullptr;
 
   if (proxy_htp_) {
     proxy_htp_.reset();
@@ -298,8 +293,6 @@ int Http2Session::disconnect(bool hard) {
 int Http2Session::initiate_connection() {
   int rv = 0;
 
-  auto &shared_addr = group_->shared_addr;
-  auto &addrs = shared_addr->addrs;
   auto worker_blocker = worker_->get_connect_blocker();
 
   if (state_ == DISCONNECTED) {
@@ -309,42 +302,6 @@ int Http2Session::initiate_connection() {
             << "Worker wide backend connection was blocked temporarily";
       }
       return -1;
-    }
-
-    auto &next_downstream = shared_addr->next;
-    auto end = next_downstream;
-
-    for (;;) {
-      auto &addr = addrs[next_downstream];
-
-      if (++next_downstream >= addrs.size()) {
-        next_downstream = 0;
-      }
-
-      auto &connect_blocker = addr.connect_blocker;
-
-      if (connect_blocker->blocked()) {
-        if (LOG_ENABLED(INFO)) {
-          SSLOG(INFO, this) << "Backend server "
-                            << util::to_numeric_addr(&addr.addr)
-                            << " was not available temporarily";
-        }
-
-        if (end == next_downstream) {
-          return -1;
-        }
-
-        continue;
-      }
-
-      if (LOG_ENABLED(INFO)) {
-        SSLOG(INFO, this) << "Using downstream address idx=" << next_downstream
-                          << " out of " << addrs.size();
-      }
-
-      addr_ = &addr;
-
-      break;
     }
   }
 
@@ -647,10 +604,12 @@ int Http2Session::downstream_connect_proxy() {
 
 void Http2Session::add_downstream_connection(Http2DownstreamConnection *dconn) {
   dconns_.append(dconn);
+  ++addr_->num_dconn;
 }
 
 void Http2Session::remove_downstream_connection(
     Http2DownstreamConnection *dconn) {
+  --addr_->num_dconn;
   dconns_.remove(dconn);
   dconn->detach_stream_data();
 
@@ -658,11 +617,14 @@ void Http2Session::remove_downstream_connection(
     SSLOG(INFO, this) << "Remove downstream";
   }
 
-  if (!in_freelist() && !max_concurrency_reached()) {
+  if (freelist_zone_ == FREELIST_ZONE_NONE && !max_concurrency_reached()) {
     if (LOG_ENABLED(INFO)) {
-      SSLOG(INFO, this) << "Append to Http2Session freelist";
+      SSLOG(INFO, this) << "Append to http2_extra_freelist, addr=" << addr_
+                        << ", freelist.size="
+                        << addr_->http2_extra_freelist.size();
     }
-    group_->shared_addr->http2_freelist.append(this);
+
+    add_to_extra_freelist();
   }
 }
 
@@ -2087,14 +2049,6 @@ int Http2Session::handle_downstream_push_promise_complete(
 
 size_t Http2Session::get_num_dconns() const { return dconns_.size(); }
 
-bool Http2Session::in_freelist() const {
-  auto &shared_addr = group_->shared_addr;
-  auto &http2_freelist = shared_addr->http2_freelist;
-
-  return dlnext != nullptr || dlprev != nullptr ||
-         http2_freelist.head == this || http2_freelist.tail == this;
-}
-
 bool Http2Session::max_concurrency_reached(size_t extra) const {
   if (!session_) {
     return dconns_.size() + extra >= 100;
@@ -2110,6 +2064,59 @@ bool Http2Session::max_concurrency_reached(size_t extra) const {
 
 DownstreamAddrGroup *Http2Session::get_downstream_addr_group() const {
   return group_;
+}
+
+void Http2Session::add_to_avail_freelist() {
+  assert(freelist_zone_ == FREELIST_ZONE_NONE);
+
+  if (LOG_ENABLED(INFO)) {
+    SSLOG(INFO, this) << "Append to http2_avail_freelist, group=" << group_
+                      << ", freelist.size="
+                      << group_->shared_addr->http2_avail_freelist.size();
+  }
+
+  freelist_zone_ = FREELIST_ZONE_AVAIL;
+  group_->shared_addr->http2_avail_freelist.append(this);
+  addr_->in_avail = true;
+}
+
+void Http2Session::add_to_extra_freelist() {
+  assert(freelist_zone_ == FREELIST_ZONE_NONE);
+
+  if (LOG_ENABLED(INFO)) {
+    SSLOG(INFO, this) << "Append to http2_extra_freelist, addr=" << addr_
+                      << ", freelist.size="
+                      << addr_->http2_extra_freelist.size();
+  }
+
+  freelist_zone_ = FREELIST_ZONE_EXTRA;
+  addr_->http2_extra_freelist.append(this);
+}
+
+void Http2Session::remove_from_freelist() {
+  switch (freelist_zone_) {
+  case FREELIST_ZONE_NONE:
+    return;
+  case FREELIST_ZONE_AVAIL:
+    if (LOG_ENABLED(INFO)) {
+      SSLOG(INFO, this) << "Remove from http2_avail_freelist, group=" << group_
+                        << ", freelist.size="
+                        << group_->shared_addr->http2_avail_freelist.size();
+    }
+    group_->shared_addr->http2_avail_freelist.remove(this);
+    addr_->in_avail = false;
+    break;
+  case FREELIST_ZONE_EXTRA:
+    if (LOG_ENABLED(INFO)) {
+      SSLOG(INFO, this) << "Remove from http2_extra_freelist, addr=" << addr_
+                        << ", freelist.size="
+                        << addr_->http2_extra_freelist.size();
+    }
+    addr_->http2_extra_freelist.remove(this);
+    break;
+  }
+
+  freelist_zone_ = FREELIST_ZONE_NONE;
 }
 
 } // namespace shrpx

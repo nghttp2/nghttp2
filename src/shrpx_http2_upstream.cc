@@ -385,9 +385,9 @@ void Http2Upstream::start_downstream(Downstream *downstream) {
 void Http2Upstream::initiate_downstream(Downstream *downstream) {
   int rv;
 
-  rv = downstream->attach_downstream_connection(
-      handler_->get_downstream_connection(downstream));
-  if (rv != 0) {
+  auto dconn = handler_->get_downstream_connection(downstream);
+  if (!dconn ||
+      (rv = downstream->attach_downstream_connection(std::move(dconn))) != 0) {
     // downstream connection fails, send error page
     if (error_reply(downstream, 503) != 0) {
       rst_stream(downstream, NGHTTP2_INTERNAL_ERROR);
@@ -1739,6 +1739,8 @@ int Http2Upstream::on_downstream_reset(bool no_retry) {
 
     downstream->add_retry();
 
+    std::unique_ptr<DownstreamConnection> dconn;
+
     if (no_retry || downstream->no_more_retry()) {
       goto fail;
     }
@@ -1746,8 +1748,12 @@ int Http2Upstream::on_downstream_reset(bool no_retry) {
     // downstream connection is clean; we can retry with new
     // downstream connection.
 
-    rv = downstream->attach_downstream_connection(
-        handler_->get_downstream_connection(downstream));
+    dconn = handler_->get_downstream_connection(downstream);
+    if (!dconn) {
+      goto fail;
+    }
+
+    rv = downstream->attach_downstream_connection(std::move(dconn));
     if (rv != 0) {
       goto fail;
     }

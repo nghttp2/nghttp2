@@ -47,6 +47,7 @@
 #include "shrpx_downstream_connection_pool.h"
 #include "shrpx_downstream.h"
 #include "shrpx_http2_session.h"
+#include "shrpx_connect_blocker.h"
 #ifdef HAVE_SPDYLAY
 #include "shrpx_spdy_upstream.h"
 #endif // HAVE_SPDYLAY
@@ -680,6 +681,116 @@ void ClientHandler::remove_downstream_connection(DownstreamConnection *dconn) {
   dconn_pool.remove_downstream_connection(dconn);
 }
 
+namespace {
+// Returns true if load of |lhs| is lighter than that of |rhs|.
+// Currently, we assume that lesser streams means lesser load.
+bool load_lighter(const DownstreamAddr *lhs, const DownstreamAddr *rhs) {
+  return lhs->num_dconn < rhs->num_dconn;
+}
+} // namespace
+
+Http2Session *ClientHandler::select_http2_session(DownstreamAddrGroup &group) {
+  auto &shared_addr = group.shared_addr;
+
+  // First count the working backend addresses.
+  size_t min = 0;
+  for (const auto &addr : shared_addr->addrs) {
+    if (addr.connect_blocker->blocked()) {
+      continue;
+    }
+
+    ++min;
+  }
+
+  if (min == 0) {
+    if (LOG_ENABLED(INFO)) {
+      CLOG(INFO, this) << "No working backend address found";
+    }
+
+    return nullptr;
+  }
+
+  auto &http2_avail_freelist = shared_addr->http2_avail_freelist;
+
+  if (http2_avail_freelist.size() >= min) {
+    auto session = http2_avail_freelist.head;
+    session->remove_from_freelist();
+
+    if (LOG_ENABLED(INFO)) {
+      CLOG(INFO, this) << "Use Http2Session " << session
+                       << " from http2_avail_freelist";
+    }
+
+    if (session->max_concurrency_reached(1)) {
+      if (LOG_ENABLED(INFO)) {
+        CLOG(INFO, this) << "Maximum streams are reached for Http2Session("
+                         << session << ").";
+      }
+    } else {
+      session->add_to_avail_freelist();
+    }
+    return session;
+  }
+
+  DownstreamAddr *selected_addr = nullptr;
+
+  for (auto &addr : shared_addr->addrs) {
+    if (addr.http2_extra_freelist.size() == 0 &&
+        addr.connect_blocker->blocked()) {
+      continue;
+    }
+
+    if (addr.in_avail) {
+      continue;
+    }
+
+    if (selected_addr == nullptr || load_lighter(&addr, selected_addr)) {
+      selected_addr = &addr;
+    }
+  }
+
+  assert(selected_addr);
+
+  if (LOG_ENABLED(INFO)) {
+    CLOG(INFO, this) << "Selected DownstreamAddr=" << selected_addr
+                     << ", index="
+                     << (selected_addr - shared_addr->addrs.data()) /
+                            sizeof(*selected_addr);
+  }
+
+  if (selected_addr->http2_extra_freelist.size()) {
+    auto session = selected_addr->http2_extra_freelist.head;
+    session->remove_from_freelist();
+
+    if (LOG_ENABLED(INFO)) {
+      CLOG(INFO, this) << "Use Http2Session " << session
+                       << " from http2_extra_freelist";
+    }
+
+    if (session->max_concurrency_reached(1)) {
+      if (LOG_ENABLED(INFO)) {
+        CLOG(INFO, this) << "Maximum streams are reached for Http2Session("
+                         << session << ").";
+      }
+    } else {
+      session->add_to_avail_freelist();
+    }
+    return session;
+  }
+
+  auto session = new Http2Session(
+      conn_.loop, shared_addr->tls ? worker_->get_cl_ssl_ctx() : nullptr,
+      worker_, &group, selected_addr);
+
+  if (LOG_ENABLED(INFO)) {
+    CLOG(INFO, this) << "Create new Http2Session " << session;
+  }
+
+  session->add_to_avail_freelist();
+
+  return session;
+}
+
 std::unique_ptr<DownstreamConnection>
 ClientHandler::get_downstream_connection(Downstream *downstream) {
   size_t group_idx;
@@ -735,38 +846,10 @@ ClientHandler::get_downstream_connection(Downstream *downstream) {
     }
 
     if (shared_addr->proto == PROTO_HTTP2) {
-      auto &http2_freelist = shared_addr->http2_freelist;
+      auto http2session = select_http2_session(group);
 
-      Http2Session *http2session;
-
-      if (http2_freelist.empty() ||
-          http2_freelist.size() < shared_addr->addrs.size()) {
-        if (LOG_ENABLED(INFO)) {
-          if (http2_freelist.empty()) {
-            CLOG(INFO, this)
-                << "http2_freelist is empty; create new Http2Session";
-          } else {
-            CLOG(INFO, this) << "Create new Http2Session; current "
-                             << http2_freelist.size() << ", min "
-                             << shared_addr->addrs.size();
-          }
-        }
-        http2session = new Http2Session(
-            conn_.loop, shared_addr->tls ? worker_->get_cl_ssl_ctx() : nullptr,
-            worker_, &group);
-      } else {
-        http2session = http2_freelist.head;
-        http2_freelist.remove(http2session);
-      }
-
-      if (http2session->max_concurrency_reached(1)) {
-        if (LOG_ENABLED(INFO)) {
-          CLOG(INFO, this) << "Maximum streams are reached for Http2Session("
-                           << http2session
-                           << "). Remove Http2Session from http2_freelist";
-        }
-      } else {
-        http2_freelist.append(http2session);
+      if (http2session == nullptr) {
+        return nullptr;
       }
 
       dconn = make_unique<Http2DownstreamConnection>(http2session);
