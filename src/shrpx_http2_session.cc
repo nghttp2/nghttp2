@@ -165,6 +165,22 @@ void writecb(struct ev_loop *loop, ev_io *w, int revents) {
 }
 } // namespace
 
+namespace {
+void initiate_connection_cb(struct ev_loop *loop, ev_timer *w, int revents) {
+  auto http2session = static_cast<Http2Session *>(w->data);
+  ev_timer_stop(loop, w);
+  if (http2session->initiate_connection() != 0) {
+    if (LOG_ENABLED(INFO)) {
+      SSLOG(INFO, http2session) << "Could not initiate backend connection";
+    }
+    http2session->disconnect(true);
+    assert(http2session->get_num_dconns() == 0);
+    delete http2session;
+    return;
+  }
+}
+} // namespace
+
 Http2Session::Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx,
                            Worker *worker, DownstreamAddrGroup *group)
     : dlnext(nullptr),
@@ -199,6 +215,9 @@ Http2Session::Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx,
   ev_timer_init(&settings_timer_, settings_timeout_cb, 0., 10.);
 
   settings_timer_.data = this;
+
+  ev_timer_init(&initiate_connection_timer_, initiate_connection_cb, 0., 0.);
+  initiate_connection_timer_.data = this;
 }
 
 Http2Session::~Http2Session() {
@@ -224,6 +243,7 @@ int Http2Session::disconnect(bool hard) {
   conn_.rlimit.stopw();
   conn_.wlimit.stopw();
 
+  ev_timer_stop(conn_.loop, &initiate_connection_timer_);
   ev_timer_stop(conn_.loop, &settings_timer_);
   ev_timer_stop(conn_.loop, &connchk_timer_);
 
@@ -1600,14 +1620,15 @@ int Http2Session::downstream_write() {
 void Http2Session::signal_write() {
   switch (state_) {
   case Http2Session::DISCONNECTED:
-    if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Start connecting to backend server";
-    }
-    if (initiate_connection() != 0) {
+    if (!ev_is_active(&initiate_connection_timer_)) {
       if (LOG_ENABLED(INFO)) {
-        SSLOG(INFO, this) << "Could not initiate backend connection";
+        LOG(INFO) << "Start connecting to backend server";
       }
-      disconnect(true);
+      // Since the timer is set to 0., these will feed 2 events.  We
+      // will stop the timer in the initiate_connection_timer_ to void
+      // 2nd event.
+      ev_timer_start(conn_.loop, &initiate_connection_timer_);
+      ev_feed_event(conn_.loop, &initiate_connection_timer_, 0);
     }
     break;
   case Http2Session::CONNECTED:

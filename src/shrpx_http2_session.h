@@ -211,6 +211,8 @@ private:
   // connection check has started, this timer is started again and
   // traps PING ACK timeout.
   ev_timer connchk_timer_;
+  // timer to initiate connection.  usually, this fires immediately.
+  ev_timer initiate_connection_timer_;
   DList<Http2DownstreamConnection> dconns_;
   DList<StreamData> streams_;
   std::function<int(Http2Session &)> read_, write_;
