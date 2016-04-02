@@ -5099,6 +5099,15 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
 
         iframe->state = NGHTTP2_IB_IGN_ALL;
 
+        rv = session_call_error_callback(
+            session, "Remote peer returned unexpected data while we expected "
+                     "SETTINGS frame.  Perhaps, peer does not support HTTP/2 "
+                     "properly.");
+
+        if (nghttp2_is_fatal(rv)) {
+          return rv;
+        }
+
         rv = nghttp2_session_terminate_session_with_reason(
             session, NGHTTP2_PROTOCOL_ERROR, "SETTINGS expected");
 
