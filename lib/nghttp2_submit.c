@@ -470,11 +470,7 @@ int nghttp2_submit_altsvc(nghttp2_session *session, uint8_t flags _U_,
 
   item->aux_data.ext.builtin = 1;
 
-  altsvc = nghttp2_mem_malloc(mem, sizeof(nghttp2_ext_altsvc));
-  if (altsvc == NULL) {
-    rv = NGHTTP2_ERR_NOMEM;
-    goto fail_altsvc_malloc;
-  }
+  altsvc = &item->ext_frame_payload.altsvc;
 
   frame = &item->frame;
   frame->ext.payload = altsvc;
@@ -485,7 +481,6 @@ int nghttp2_submit_altsvc(nghttp2_session *session, uint8_t flags _U_,
   rv = nghttp2_session_add_item(session, item);
   if (rv != 0) {
     nghttp2_frame_altsvc_free(&frame->ext, mem);
-    nghttp2_mem_free(mem, frame->ext.payload);
     nghttp2_mem_free(mem, item);
 
     return rv;
@@ -493,8 +488,6 @@ int nghttp2_submit_altsvc(nghttp2_session *session, uint8_t flags _U_,
 
   return 0;
 
-fail_altsvc_malloc:
-  free(item);
 fail_item_malloc:
   free(buf);
 

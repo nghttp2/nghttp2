@@ -107,6 +107,9 @@ typedef struct nghttp2_outbound_item nghttp2_outbound_item;
 
 struct nghttp2_outbound_item {
   nghttp2_frame frame;
+  /* Storage for extension frame payload.  frame->ext.payload points
+     to this structure to avoid frequent memory allocation. */
+  nghttp2_ext_frame_payload ext_frame_payload;
   nghttp2_aux_data aux_data;
   /* The priority used in priority comparion.  Smaller is served
      ealier.  For PING, SETTINGS and non-DATA frames (excluding
