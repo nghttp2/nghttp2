@@ -485,6 +485,7 @@ int nghttp2_submit_altsvc(nghttp2_session *session, uint8_t flags _U_,
   rv = nghttp2_session_add_item(session, item);
   if (rv != 0) {
     nghttp2_frame_altsvc_free(&frame->ext, mem);
+    nghttp2_mem_free(mem, frame->ext.payload);
     nghttp2_mem_free(mem, item);
 
     return rv;

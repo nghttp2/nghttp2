@@ -118,6 +118,7 @@ Config::Config()
   nghttp2_option_new(&http2_option);
   nghttp2_option_set_peer_max_concurrent_streams(http2_option,
                                                  peer_max_concurrent_streams);
+  nghttp2_option_set_builtin_recv_extension_type(http2_option, NGHTTP2_ALTSVC);
 }
 
 Config::~Config() { nghttp2_option_del(http2_option); }

@@ -2378,6 +2378,26 @@ nghttp2_option_set_user_recv_extension_type(nghttp2_option *option,
                                             uint8_t type);
 
 /**
+ * @ function
+ *
+ * Sets extension frame type the application is willing to receive
+ * using builtin handler.  The |type| is the extension frame type to
+ * receive, and must be strictly greater than 0x9.  Otherwise, this
+ * function does nothing.  The application can call this function
+ * multiple times to set more than one frame type to receive.  The
+ * application does not have to call this function if it just sends
+ * extension frames.
+ *
+ * If same frame type is passed to both
+ * `nghttp2_option_set_builtin_recv_extension_type()` and
+ * `nghttp2_option_set_user_recv_extension_type()`, the latter takes
+ * precedence.
+ */
+NGHTTP2_EXTERN void
+nghttp2_option_set_builtin_recv_extension_type(nghttp2_option *option,
+                                               uint8_t type);
+
+/**
  * @function
  *
  * This option prevents the library from sending PING frame with ACK
@@ -4123,7 +4143,7 @@ NGHTTP2_EXTERN int nghttp2_submit_extension(nghttp2_session *session,
  * The payload of ALTSVC frame.  ALTSVC frame is one of extension
  * frame.  If this frame is received, and
  * `nghttp2_option_set_user_recv_extension_type()` is not set, and
- * `nghttp2_option_set_recv_extension_type()` is set for
+ * `nghttp2_option_set_builtin_recv_extension_type()` is set for
  * :enum:`NGHTTP2_ALTSVC`, ``nghttp2_extension.payload`` will point to
  * this struct.
  *

@@ -215,7 +215,6 @@ void nghttp2_frame_altsvc_free(nghttp2_extension *frame, nghttp2_mem *mem) {
   /* We use the same buffer for altsvc->origin and
      altsvc->field_value. */
   nghttp2_mem_free(mem, altsvc->origin);
-  nghttp2_mem_free(mem, altsvc);
 }
 
 size_t nghttp2_frame_priority_len(uint8_t flags) {
@@ -721,6 +720,25 @@ int nghttp2_frame_pack_altsvc(nghttp2_bufs *bufs, nghttp2_extension *frame) {
   assert(rv == 0);
 
   return 0;
+}
+
+void nghttp2_frame_unpack_altsvc_payload(nghttp2_extension *frame,
+                                         size_t origin_len, uint8_t *payload,
+                                         size_t payloadlen) {
+  nghttp2_ext_altsvc *altsvc;
+  uint8_t *p;
+
+  altsvc = frame->payload;
+  p = payload;
+
+  altsvc->origin = p;
+
+  p += origin_len;
+
+  altsvc->origin_len = origin_len;
+
+  altsvc->field_value = p;
+  altsvc->field_value_len = (size_t)(payload + payloadlen - p);
 }
 
 nghttp2_settings_entry *nghttp2_frame_iv_copy(const nghttp2_settings_entry *iv,

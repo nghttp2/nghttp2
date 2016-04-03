@@ -107,6 +107,7 @@ typedef enum {
   NGHTTP2_IB_READ_DATA,
   NGHTTP2_IB_IGN_DATA,
   NGHTTP2_IB_IGN_ALL,
+  NGHTTP2_IB_READ_ALTSVC_PAYLOAD,
   NGHTTP2_IB_READ_EXTENSION_PAYLOAD
 } nghttp2_inbound_state;
 
@@ -313,6 +314,7 @@ struct nghttp2_session {
      bit is set, it indicates that incoming frame with that type is
      passed to user defined callbacks, otherwise they are ignored. */
   uint8_t user_recv_ext_types[32];
+  uint8_t builtin_recv_ext_types[32];
 };
 
 /* Struct used when updating initial window size of each active
@@ -715,6 +717,19 @@ int nghttp2_session_on_goaway_received(nghttp2_session *session,
  */
 int nghttp2_session_on_window_update_received(nghttp2_session *session,
                                               nghttp2_frame *frame);
+
+/*
+ * Called when ALTSVC is recieved, assuming |frame| is properly
+ * initialized.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * NGHTTP2_ERR_CALLBACK_FAILURE
+ *   The callback function failed.
+ */
+int nghttp2_session_on_altsvc_received(nghttp2_session *session,
+                                       nghttp2_frame *frame);
 
 /*
  * Called when DATA is received, assuming |frame| is properly

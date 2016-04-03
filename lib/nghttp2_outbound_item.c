@@ -90,6 +90,8 @@ void nghttp2_outbound_item_free(nghttp2_outbound_item *item, nghttp2_mem *mem) {
       assert(0);
       break;
     }
+
+    nghttp2_mem_free(mem, frame->ext.payload);
   }
   }
 }

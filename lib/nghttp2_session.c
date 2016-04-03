@@ -142,6 +142,10 @@ static int session_detect_idle_stream(nghttp2_session *session,
   return 0;
 }
 
+static int check_ext_type_set(const uint8_t *ext_types, uint8_t type) {
+  return (ext_types[type / 8] & (1 << (type & 0x7))) > 0;
+}
+
 static int session_call_error_callback(nghttp2_session *session,
                                        const char *fmt, ...) {
   size_t bufsize;
@@ -316,7 +320,18 @@ static void session_inbound_frame_reset(nghttp2_session *session) {
     break;
   default:
     /* extension frame */
-    nghttp2_frame_extension_free(&iframe->frame.ext);
+    if (check_ext_type_set(session->user_recv_ext_types,
+                           iframe->frame.hd.type)) {
+      nghttp2_frame_extension_free(&iframe->frame.ext);
+    } else if (check_ext_type_set(session->builtin_recv_ext_types,
+                                  iframe->frame.hd.type)) {
+      switch (iframe->frame.hd.type) {
+      case NGHTTP2_ALTSVC:
+        nghttp2_frame_altsvc_free(&iframe->frame.ext, mem);
+        break;
+      }
+    }
+
     break;
   }
 
@@ -331,6 +346,8 @@ static void session_inbound_frame_reset(nghttp2_session *session) {
 
   nghttp2_buf_free(&iframe->lbuf, mem);
   nghttp2_buf_wrap_init(&iframe->lbuf, NULL, 0);
+
+  iframe->raw_lbuf = NULL;
 
   iframe->niv = 0;
   iframe->payloadleft = 0;
@@ -472,6 +489,12 @@ static int session_new(nghttp2_session **session_ptr,
     if (option->opt_set_mask & NGHTTP2_OPT_USER_RECV_EXT_TYPES) {
       memcpy((*session_ptr)->user_recv_ext_types, option->user_recv_ext_types,
              sizeof((*session_ptr)->user_recv_ext_types));
+    }
+
+    if (option->opt_set_mask & NGHTTP2_OPT_BUILTIN_RECV_EXT_TYPES) {
+      memcpy((*session_ptr)->builtin_recv_ext_types,
+             option->builtin_recv_ext_types,
+             sizeof((*session_ptr)->builtin_recv_ext_types));
     }
 
     if ((option->opt_set_mask & NGHTTP2_OPT_NO_AUTO_PING_ACK) &&
@@ -4637,6 +4660,44 @@ static int session_process_window_update_frame(nghttp2_session *session) {
   return nghttp2_session_on_window_update_received(session, frame);
 }
 
+int nghttp2_session_on_altsvc_received(nghttp2_session *session,
+                                       nghttp2_frame *frame) {
+  nghttp2_ext_altsvc *altsvc;
+
+  altsvc = frame->ext.payload;
+
+  if (session->server) {
+    return 0;
+  }
+
+  if (frame->hd.stream_id == 0) {
+    if (altsvc->origin_len == 0) {
+      return 0;
+    }
+  } else if (altsvc->origin_len > 0) {
+    return 0;
+  }
+
+  return session_call_on_frame_received(session, frame);
+}
+
+static int session_process_altsvc_frame(nghttp2_session *session) {
+  nghttp2_inbound_frame *iframe = &session->iframe;
+  nghttp2_frame *frame = &iframe->frame;
+
+  frame->ext.payload = &iframe->ext_frame_payload.altsvc;
+
+  nghttp2_frame_unpack_altsvc_payload(
+      &frame->ext, nghttp2_get_uint16(iframe->sbuf.pos), iframe->lbuf.pos,
+      nghttp2_buf_len(&iframe->lbuf));
+
+  /* nghttp2_frame_unpack_altsvc_payload steals buffer from
+     iframe->lbuf */
+  nghttp2_buf_wrap_init(&iframe->lbuf, NULL, 0);
+
+  return nghttp2_session_on_altsvc_received(session, frame);
+}
+
 static int session_process_extension_frame(nghttp2_session *session) {
   int rv;
   nghttp2_inbound_frame *iframe = &session->iframe;
@@ -5480,25 +5541,59 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
 
         break;
       default:
-        DEBUGF(fprintf(stderr, "recv: unknown frame\n"));
+        DEBUGF(fprintf(stderr, "recv: extension frame\n"));
 
-        if (!session->callbacks.unpack_extension_callback ||
-            (session->user_recv_ext_types[iframe->frame.hd.type / 8] &
-             (1 << (iframe->frame.hd.type & 0x7))) == 0) {
-          /* Silently ignore unknown frame type. */
+        if (check_ext_type_set(session->user_recv_ext_types,
+                               iframe->frame.hd.type)) {
+          if (!session->callbacks.unpack_extension_callback) {
+            /* Silently ignore unknown frame type. */
 
+            busy = 1;
+
+            iframe->state = NGHTTP2_IB_IGN_PAYLOAD;
+
+            break;
+          }
+
+          busy = 1;
+
+          iframe->state = NGHTTP2_IB_READ_EXTENSION_PAYLOAD;
+
+          break;
+        } else if (check_ext_type_set(session->builtin_recv_ext_types,
+                                      iframe->frame.hd.type)) {
+          switch (iframe->frame.hd.type) {
+          case NGHTTP2_ALTSVC:
+            DEBUGF(fprintf(stderr, "recv: ALTSVC\n"));
+
+            iframe->frame.hd.flags = NGHTTP2_FLAG_NONE;
+
+            if (iframe->payloadleft < 2) {
+              busy = 1;
+              iframe->state = NGHTTP2_IB_FRAME_SIZE_ERROR;
+              break;
+            }
+
+            busy = 1;
+
+            iframe->state = NGHTTP2_IB_READ_NBYTE;
+            inbound_frame_set_mark(iframe, 2);
+
+            break;
+          default:
+            busy = 1;
+
+            iframe->state = NGHTTP2_IB_IGN_PAYLOAD;
+
+            break;
+          }
+        } else {
           busy = 1;
 
           iframe->state = NGHTTP2_IB_IGN_PAYLOAD;
 
           break;
         }
-
-        busy = 1;
-
-        iframe->state = NGHTTP2_IB_READ_EXTENSION_PAYLOAD;
-
-        break;
       }
 
       if (!on_begin_frame_called) {
@@ -5708,6 +5803,37 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
         session_inbound_frame_reset(session);
 
         break;
+      case NGHTTP2_ALTSVC: {
+        size_t origin_len;
+
+        origin_len = nghttp2_get_uint16(iframe->sbuf.pos);
+
+        DEBUGF(fprintf(stderr, "recv: origin_len=%zu\n", origin_len));
+
+        if (2 + origin_len > iframe->payloadleft) {
+          busy = 1;
+          iframe->state = NGHTTP2_IB_FRAME_SIZE_ERROR;
+          break;
+        }
+
+        if (iframe->frame.hd.length > 2) {
+          iframe->raw_lbuf =
+              nghttp2_mem_malloc(mem, iframe->frame.hd.length - 2);
+
+          if (iframe->raw_lbuf == NULL) {
+            return NGHTTP2_ERR_NOMEM;
+          }
+
+          nghttp2_buf_wrap_init(&iframe->lbuf, iframe->raw_lbuf,
+                                iframe->frame.hd.length);
+        }
+
+        busy = 1;
+
+        iframe->state = NGHTTP2_IB_READ_ALTSVC_PAYLOAD;
+
+        break;
+      }
       default:
         /* This is unknown frame */
         session_inbound_frame_reset(session);
@@ -6227,6 +6353,36 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
       }
 
       rv = session_process_extension_frame(session);
+      if (nghttp2_is_fatal(rv)) {
+        return rv;
+      }
+
+      session_inbound_frame_reset(session);
+
+      break;
+    case NGHTTP2_IB_READ_ALTSVC_PAYLOAD:
+      DEBUGF(fprintf(stderr, "recv: [IB_READ_ALTSVC_PAYLOAD]\n"));
+
+      readlen = inbound_frame_payload_readlen(iframe, in, last);
+
+      if (readlen > 0) {
+        iframe->lbuf.last = nghttp2_cpymem(iframe->lbuf.last, in, readlen);
+
+        iframe->payloadleft -= readlen;
+        in += readlen;
+      }
+
+      DEBUGF(fprintf(stderr, "recv: readlen=%zu, payloadleft=%zu\n", readlen,
+                     iframe->payloadleft));
+
+      if (iframe->payloadleft) {
+        assert(nghttp2_buf_avail(&iframe->lbuf) > 0);
+
+        break;
+      }
+
+      rv = session_process_altsvc_frame(session);
+
       if (nghttp2_is_fatal(rv)) {
         return rv;
       }
