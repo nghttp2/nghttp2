@@ -217,6 +217,50 @@ void test_nghttp2_session_send(void) {
   TEST_FAILMALLOC_RUN(run_nghttp2_session_send);
 }
 
+static void run_nghttp2_session_send_server(void) {
+  nghttp2_session *session;
+  nghttp2_session_callbacks *callbacks;
+  int rv;
+  const uint8_t *txdata;
+  ssize_t txdatalen;
+  rv = nghttp2_session_callbacks_new(&callbacks);
+  if (rv != 0) {
+    return;
+  }
+
+  rv = nghttp2_session_server_new3(&session, callbacks, NULL, NULL,
+                                   nghttp2_mem_fm());
+
+  nghttp2_session_callbacks_del(callbacks);
+
+  if (rv != 0) {
+    return;
+  }
+
+  const uint8_t origin[] = "nghttp2.org";
+  const uint8_t altsvc_field_value[] = "h2=\":443\"";
+
+  rv = nghttp2_submit_altsvc(session, NGHTTP2_FLAG_NONE, 0, origin,
+                             sizeof(origin) - 1, altsvc_field_value,
+                             sizeof(altsvc_field_value) - 1);
+  if (rv != 0) {
+    goto fail;
+  }
+
+  txdatalen = nghttp2_session_mem_send(session, &txdata);
+
+  if (txdatalen < 0) {
+    goto fail;
+  }
+
+fail:
+   nghttp2_session_del(session);
+}
+
+void test_nghttp2_session_send_server(void) {
+  TEST_FAILMALLOC_RUN(run_nghttp2_session_send_server);
+}
+
 static void run_nghttp2_session_recv(void) {
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;

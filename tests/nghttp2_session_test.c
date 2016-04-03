@@ -5217,6 +5217,82 @@ void test_nghttp2_submit_extension(void) {
   nghttp2_buf_free(&ud.scratchbuf, mem);
 }
 
+void test_nghttp2_submit_altsvc(void) {
+  nghttp2_session *session;
+  nghttp2_session_callbacks callbacks;
+  nghttp2_mem *mem;
+  my_user_data ud;
+  int rv;
+  ssize_t len;
+  const uint8_t *data;
+  nghttp2_frame_hd hd;
+  size_t origin_len;
+
+  mem = nghttp2_mem_default();
+
+  memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
+
+  nghttp2_session_server_new(&session, &callbacks, &ud);
+
+  const uint8_t origin[] = "nghttp2.org";
+  const uint8_t field_value[] = "h2=\":443\"";
+
+  rv = nghttp2_submit_altsvc(session, NGHTTP2_FLAG_NONE, 0, origin,
+                             sizeof(origin) - 1, field_value,
+                             sizeof(field_value) - 1);
+
+  CU_ASSERT(0 == rv);
+
+  ud.frame_send_cb_called = 0;
+
+  len = nghttp2_session_mem_send(session, &data);
+
+  CU_ASSERT(len ==
+            NGHTTP2_FRAME_HDLEN + 2 + sizeof(origin) - 1 + sizeof(field_value) -
+                1);
+
+  nghttp2_frame_unpack_frame_hd(&hd, data);
+
+  CU_ASSERT(2 + sizeof(origin) - 1 + sizeof(field_value) - 1 == hd.length);
+  CU_ASSERT(NGHTTP2_ALTSVC == hd.type);
+  CU_ASSERT(NGHTTP2_FLAG_NONE == hd.flags);
+
+  origin_len = nghttp2_get_uint16(data + NGHTTP2_FRAME_HDLEN);
+
+  CU_ASSERT(sizeof(origin) - 1 == origin_len);
+  CU_ASSERT(0 ==
+            memcmp(origin, data + NGHTTP2_FRAME_HDLEN + 2, sizeof(origin) - 1));
+  CU_ASSERT(0 == memcmp(field_value,
+                        data + NGHTTP2_FRAME_HDLEN + 2 + sizeof(origin) - 1,
+                        hd.length - (sizeof(origin) - 1) - 2));
+
+  /* submitting empty origin with stream_id == 0 is error */
+  rv = nghttp2_submit_altsvc(session, NGHTTP2_FLAG_NONE, 0, NULL, 0,
+                             field_value, sizeof(field_value) - 1);
+
+  CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT == rv);
+
+  /* submitting non-empty origin with stream_id != 0 is error */
+  rv = nghttp2_submit_altsvc(session, NGHTTP2_FLAG_NONE, 1, origin,
+                             sizeof(origin) - 1, field_value,
+                             sizeof(field_value) - 1);
+
+  CU_ASSERT(NGHTTP2_ERR_INVALID_ARGUMENT == rv);
+
+  nghttp2_session_del(session);
+
+  /* submitting from client side session is error */
+  nghttp2_session_client_new(&session, &callbacks, NULL);
+
+  rv = nghttp2_submit_altsvc(session, NGHTTP2_FLAG_NONE, 0, origin,
+                             sizeof(origin) - 1, field_value,
+                             sizeof(field_value) - 1);
+
+  CU_ASSERT(NGHTTP2_ERR_INVALID_STATE == rv);
+
+  nghttp2_session_del(session);
+}
+
 void test_nghttp2_session_open_stream(void) {
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;

@@ -470,8 +470,8 @@ int nghttp2_submit_altsvc(nghttp2_session *session, uint8_t flags _U_,
 
   item->aux_data.ext.builtin = 1;
 
-  altsvc = nghttp2_mem_malloc(mem, sizeof(nghttp2_outbound_item));
-  if (item == NULL) {
+  altsvc = nghttp2_mem_malloc(mem, sizeof(nghttp2_ext_altsvc));
+  if (altsvc == NULL) {
     rv = NGHTTP2_ERR_NOMEM;
     goto fail_altsvc_malloc;
   }
