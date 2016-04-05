@@ -45,8 +45,12 @@ bool ConnectBlocker::blocked() const { return ev_is_active(&timer_); }
 
 void ConnectBlocker::on_success() { fail_count_ = 0; }
 
+// Use the similar backoff algorithm described in
+// https://github.com/grpc/grpc/blob/master/doc/connection-backoff.md
 namespace {
 constexpr size_t MAX_BACKOFF_EXP = 10;
+constexpr auto MULTIPLIER = 1.6;
+constexpr auto JITTER = 0.2;
 } // namespace
 
 void ConnectBlocker::on_failure() {
@@ -56,9 +60,10 @@ void ConnectBlocker::on_failure() {
 
   ++fail_count_;
 
-  auto max_backoff = (1 << std::min(MAX_BACKOFF_EXP, fail_count_)) - 1;
-  auto dist = std::uniform_int_distribution<>(0, max_backoff);
-  auto backoff = dist(gen_);
+  auto base_backoff = pow(MULTIPLIER, std::min(MAX_BACKOFF_EXP, fail_count_));
+  auto dist = std::uniform_real_distribution<>(-JITTER * base_backoff,
+                                               JITTER * base_backoff);
+  auto backoff = base_backoff + dist(gen_);
 
   LOG(WARN) << "Could not connect " << fail_count_
             << " times in a row; sleep for " << backoff << " seconds";
