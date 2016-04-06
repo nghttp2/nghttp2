@@ -4685,8 +4685,6 @@ static int session_process_altsvc_frame(nghttp2_session *session) {
   nghttp2_inbound_frame *iframe = &session->iframe;
   nghttp2_frame *frame = &iframe->frame;
 
-  frame->ext.payload = &iframe->ext_frame_payload.altsvc;
-
   nghttp2_frame_unpack_altsvc_payload(
       &frame->ext, nghttp2_get_uint16(iframe->sbuf.pos), iframe->lbuf.pos,
       nghttp2_buf_len(&iframe->lbuf));
@@ -5567,6 +5565,7 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
             DEBUGF(fprintf(stderr, "recv: ALTSVC\n"));
 
             iframe->frame.hd.flags = NGHTTP2_FLAG_NONE;
+            iframe->frame.ext.payload = &iframe->ext_frame_payload.altsvc;
 
             if (iframe->payloadleft < 2) {
               busy = 1;
