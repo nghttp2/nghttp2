@@ -1736,7 +1736,7 @@ int Http2Session::connected() {
                         << util::to_numeric_addr(&addr_->addr);
     }
 
-    connect_blocker->on_failure();
+    downstream_failure(addr_);
 
     return -1;
   }

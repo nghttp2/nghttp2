@@ -36,6 +36,7 @@
 #include "shrpx_http2_session.h"
 #include "shrpx_log_config.h"
 #include "shrpx_connect_blocker.h"
+#include "shrpx_live_check.h"
 #include "shrpx_memcached_dispatcher.h"
 #ifdef HAVE_MRUBY
 #include "shrpx_mruby.h"
@@ -160,6 +161,9 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
       dst_addr.host_unix = src_addr.host_unix;
 
       dst_addr.connect_blocker = make_unique<ConnectBlocker>(randgen_, loop_);
+      dst_addr.live_check = make_unique<LiveCheck>(
+          loop_, shared_addr->tls ? cl_ssl_ctx_ : nullptr, this, &dst,
+          &dst_addr);
     }
 
     // share the connection if patterns have the same set of backend
@@ -462,6 +466,22 @@ size_t match_downstream_addr_group(
   }
   return match_downstream_addr_group_host(router, wildcard_patterns, host, path,
                                           groups, catch_all);
+}
+
+void downstream_failure(DownstreamAddr *addr) {
+  const auto &connect_blocker = addr->connect_blocker;
+
+  connect_blocker->on_failure();
+
+  auto fail_count = connect_blocker->get_fail_count();
+
+  if (fail_count >= 3) {
+    LOG(WARN) << "Could not connect to " << util::to_numeric_addr(&addr->addr)
+              << " " << fail_count << " times in a row; considered as offline";
+
+    connect_blocker->offline();
+    addr->live_check->schedule();
+  }
 }
 
 } // namespace shrpx

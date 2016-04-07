@@ -52,6 +52,7 @@ namespace shrpx {
 
 class Http2Session;
 class ConnectBlocker;
+class LiveCheck;
 class MemcachedDispatcher;
 struct UpstreamAddr;
 
@@ -79,6 +80,7 @@ struct DownstreamAddr {
   bool host_unix;
 
   std::unique_ptr<ConnectBlocker> connect_blocker;
+  std::unique_ptr<LiveCheck> live_check;
   // Client side TLS session cache
   TLSSessionCache tls_session_cache;
   // Http2Session object created for this address.  This list chains
@@ -224,6 +226,8 @@ size_t match_downstream_addr_group(
     const Router &router, const std::vector<WildcardPattern> &wildcard_patterns,
     const StringRef &hostport, const StringRef &path,
     const std::vector<DownstreamAddrGroup> &groups, size_t catch_all);
+
+void downstream_failure(DownstreamAddr *addr);
 
 } // namespace shrpx
 
