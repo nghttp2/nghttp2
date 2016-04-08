@@ -519,7 +519,7 @@ void ClientHandler::signal_reset_upstream_conn_rtimer() {
 
 int ClientHandler::validate_next_proto() {
   const unsigned char *next_proto = nullptr;
-  unsigned int next_proto_len;
+  unsigned int next_proto_len = 0;
 
   // First set callback for catch all cases
   on_read_ = &ClientHandler::upstream_read;

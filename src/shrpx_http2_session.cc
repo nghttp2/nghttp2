@@ -1424,7 +1424,7 @@ int Http2Session::connection_made() {
 
   if (ssl_ctx_) {
     const unsigned char *next_proto = nullptr;
-    unsigned int next_proto_len;
+    unsigned int next_proto_len = 0;
     SSL_get0_next_proto_negotiated(conn_.tls.ssl, &next_proto, &next_proto_len);
     for (int i = 0; i < 2; ++i) {
       if (next_proto) {
