@@ -281,10 +281,39 @@ int LiveCheck::tls_handshake() {
     }
   }
 
+  // Check negotiated ALPN
+
+  const unsigned char *next_proto = nullptr;
+  unsigned int next_proto_len = 0;
+
+  SSL_get0_next_proto_negotiated(conn_.tls.ssl, &next_proto, &next_proto_len);
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+  if (next_proto == nullptr) {
+    SSL_get0_alpn_selected(conn_.tls.ssl, &next_proto, &next_proto_len);
+  }
+#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
+
+  auto proto = StringRef{next_proto, next_proto_len};
+
+  const auto &shared_addr = group_->shared_addr;
+
+  switch (shared_addr->proto) {
+  case PROTO_HTTP1:
+    if (proto.empty() || proto == StringRef::from_lit("http/1.1")) {
+      break;
+    }
+    return -1;
+  case PROTO_HTTP2:
+    if (util::check_h2_is_selected(proto)) {
+      break;
+    }
+    return -1;
+  default:
+    break;
+  }
+
   on_success();
   disconnect();
-
-  // TODO Check ALPN identifier here
 
   return 0;
 }
