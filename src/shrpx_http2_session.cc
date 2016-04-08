@@ -1425,25 +1425,23 @@ int Http2Session::connection_made() {
   if (ssl_ctx_) {
     const unsigned char *next_proto = nullptr;
     unsigned int next_proto_len = 0;
+
     SSL_get0_next_proto_negotiated(conn_.tls.ssl, &next_proto, &next_proto_len);
-    for (int i = 0; i < 2; ++i) {
-      if (next_proto) {
-        auto proto = StringRef{next_proto, next_proto_len};
-        if (LOG_ENABLED(INFO)) {
-          SSLOG(INFO, this) << "Negotiated next protocol: " << proto;
-        }
-        if (!util::check_h2_is_selected(proto)) {
-          return -1;
-        }
-        break;
-      }
 #if OPENSSL_VERSION_NUMBER >= 0x10002000L
-      SSL_get0_alpn_selected(conn_.tls.ssl, &next_proto, &next_proto_len);
-#else  // OPENSSL_VERSION_NUMBER < 0x10002000L
-      break;
-#endif // OPENSSL_VERSION_NUMBER < 0x10002000L
-    }
     if (!next_proto) {
+      SSL_get0_alpn_selected(conn_.tls.ssl, &next_proto, &next_proto_len);
+    }
+#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
+
+    if (!next_proto) {
+      return -1;
+    }
+
+    auto proto = StringRef{next_proto, next_proto_len};
+    if (LOG_ENABLED(INFO)) {
+      SSLOG(INFO, this) << "Negotiated next protocol: " << proto;
+    }
+    if (!util::check_h2_is_selected(proto)) {
       return -1;
     }
   }
