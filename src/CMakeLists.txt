@@ -100,6 +100,7 @@ if(ENABLE_APP)
     shrpx_worker.cc
     shrpx_log_config.cc
     shrpx_connect_blocker.cc
+    shrpx_live_check.cc
     shrpx_downstream_connection_pool.cc
     shrpx_rate_limit.cc
     shrpx_connection.cc
