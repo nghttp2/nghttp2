@@ -28,6 +28,7 @@
 #include "shrpx.h"
 
 #include <functional>
+#include <random>
 
 #include <openssl/ssl.h>
 
@@ -44,7 +45,8 @@ struct DownstreamAddr;
 class LiveCheck {
 public:
   LiveCheck(struct ev_loop *loop, SSL_CTX *ssl_ctx, Worker *worker,
-            DownstreamAddrGroup *group, DownstreamAddr *addr);
+            DownstreamAddrGroup *group, DownstreamAddr *addr,
+            std::mt19937 &gen);
   ~LiveCheck();
 
   void disconnect();
@@ -69,6 +71,7 @@ public:
 
 private:
   Connection conn_;
+  std::mt19937 &gen_;
   ev_timer backoff_timer_;
   std::function<int(LiveCheck &)> read_, write_;
   Worker *worker_;

@@ -163,7 +163,7 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
       dst_addr.connect_blocker = make_unique<ConnectBlocker>(randgen_, loop_);
       dst_addr.live_check = make_unique<LiveCheck>(
           loop_, shared_addr->tls ? cl_ssl_ctx_ : nullptr, this, &dst,
-          &dst_addr);
+          &dst_addr, randgen_);
     }
 
     // share the connection if patterns have the same set of backend

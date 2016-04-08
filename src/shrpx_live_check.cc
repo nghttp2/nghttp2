@@ -80,12 +80,14 @@ void backoff_timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
 } // namespace
 
 LiveCheck::LiveCheck(struct ev_loop *loop, SSL_CTX *ssl_ctx, Worker *worker,
-                     DownstreamAddrGroup *group, DownstreamAddr *addr)
+                     DownstreamAddrGroup *group, DownstreamAddr *addr,
+                     std::mt19937 &gen)
     : conn_(loop, -1, nullptr, worker->get_mcpool(),
             get_config()->conn.downstream.timeout.write,
             get_config()->conn.downstream.timeout.read, {}, {}, writecb, readcb,
             timeoutcb, this, get_config()->tls.dyn_rec.warmup_threshold,
             get_config()->tls.dyn_rec.idle_timeout, PROTO_NONE),
+      gen_(gen),
       read_(&LiveCheck::noop),
       write_(&LiveCheck::noop),
       worker_(worker),
@@ -113,9 +115,21 @@ void LiveCheck::disconnect() {
   conn_.disconnect();
 }
 
+// Use the similar backoff algorithm described in
+// https://github.com/grpc/grpc/blob/master/doc/connection-backoff.md
+namespace {
+constexpr size_t MAX_BACKOFF_EXP = 10;
+constexpr auto MULTIPLIER = 1.6;
+constexpr auto JITTER = 0.2;
+} // namespace
+
 void LiveCheck::schedule() {
-  // TODO use exponential backoff based on fail_count_.
-  ev_timer_set(&backoff_timer_, 1.6, 0.);
+  auto base_backoff = pow(MULTIPLIER, std::min(fail_count_, MAX_BACKOFF_EXP));
+  auto dist = std::uniform_real_distribution<>(-JITTER * base_backoff,
+                                               JITTER * base_backoff);
+  auto backoff = base_backoff + dist(gen_);
+
+  ev_timer_set(&backoff_timer_, backoff, 0.);
   ev_timer_start(conn_.loop, &backoff_timer_);
 }
 
@@ -170,7 +184,6 @@ int LiveCheck::initiate_connection() {
     auto error = errno;
     LOG(WARN) << "connect() failed; addr="
               << util::to_numeric_addr(&addr_->addr) << ", errno=" << error;
-    LOG(WARN) << strerror(error);
 
     close(conn_.fd);
     conn_.fd = -1;
@@ -279,8 +292,10 @@ int LiveCheck::tls_handshake() {
 void LiveCheck::on_failure() {
   ++fail_count_;
 
-  LOG(WARN) << "Liveness check for " << util::to_numeric_addr(&addr_->addr)
-            << " failed " << fail_count_ << " time(s) in a row";
+  if (LOG_ENABLED(INFO)) {
+    LOG(INFO) << "Liveness check for " << util::to_numeric_addr(&addr_->addr)
+              << " failed " << fail_count_ << " time(s) in a row";
+  }
 
   disconnect();
 
@@ -291,8 +306,10 @@ void LiveCheck::on_success() {
   ++success_count_;
   fail_count_ = 0;
 
-  LOG(WARN) << "Liveness check for " << util::to_numeric_addr(&addr_->addr)
-            << " succeeded " << success_count_ << " time(s) in a row";
+  if (LOG_ENABLED(INFO)) {
+    LOG(INFO) << "Liveness check for " << util::to_numeric_addr(&addr_->addr)
+              << " succeeded " << success_count_ << " time(s) in a row";
+  }
 
   auto &downstreamconf = get_config()->conn.downstream;
 
