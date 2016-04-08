@@ -475,12 +475,21 @@ void downstream_failure(DownstreamAddr *addr) {
 
   auto fail_count = connect_blocker->get_fail_count();
 
-  if (fail_count >= 3) {
+  auto &downstreamconf = get_config()->conn.downstream;
+
+  if (downstreamconf.fall == 0) {
+    return;
+  }
+
+  if (fail_count >= downstreamconf.fall) {
     LOG(WARN) << "Could not connect to " << util::to_numeric_addr(&addr->addr)
               << " " << fail_count << " times in a row; considered as offline";
 
     connect_blocker->offline();
-    addr->live_check->schedule();
+
+    if (downstreamconf.rise) {
+      addr->live_check->schedule();
+    }
   }
 }
 

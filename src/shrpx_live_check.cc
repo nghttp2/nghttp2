@@ -294,7 +294,9 @@ void LiveCheck::on_success() {
   LOG(WARN) << "Liveness check for " << util::to_numeric_addr(&addr_->addr)
             << " succeeded " << success_count_ << " time(s) in a row";
 
-  if (success_count_ < 3) {
+  auto &downstreamconf = get_config()->conn.downstream;
+
+  if (success_count_ < downstreamconf.rise) {
     disconnect();
 
     schedule();
