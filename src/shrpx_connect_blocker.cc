@@ -43,7 +43,13 @@ ConnectBlocker::~ConnectBlocker() { ev_timer_stop(loop_, &timer_); }
 
 bool ConnectBlocker::blocked() const { return ev_is_active(&timer_); }
 
-void ConnectBlocker::on_success() { fail_count_ = 0; }
+void ConnectBlocker::on_success() {
+  if (ev_is_active(&timer_)) {
+    return;
+  }
+
+  fail_count_ = 0;
+}
 
 // Use the similar backoff algorithm described in
 // https://github.com/grpc/grpc/blob/master/doc/connection-backoff.md
@@ -70,6 +76,20 @@ void ConnectBlocker::on_failure() {
 
   ev_timer_set(&timer_, backoff, 0.);
   ev_timer_start(loop_, &timer_);
+}
+
+size_t ConnectBlocker::get_fail_count() const { return fail_count_; }
+
+void ConnectBlocker::offline() {
+  ev_timer_stop(loop_, &timer_);
+  ev_timer_set(&timer_, std::numeric_limits<double>::max(), 0.);
+  ev_timer_start(loop_, &timer_);
+}
+
+void ConnectBlocker::online() {
+  ev_timer_stop(loop_, &timer_);
+
+  fail_count_ = 0;
 }
 
 } // namespace shrpx

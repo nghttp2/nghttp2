@@ -1,7 +1,7 @@
 /*
  * nghttp2 - HTTP/2 C Library
  *
- * Copyright (c) 2014 Tatsuhiro Tsujikawa
+ * Copyright (c) 2016 Tatsuhiro Tsujikawa
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -22,50 +22,69 @@
  * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#ifndef SHRPX_CONNECT_BLOCKER_H
-#define SHRPX_CONNECT_BLOCKER_H
+#ifndef SHRPX_LIVE_CHECK_H
+#define SHRPX_LIVE_CHECK_H
 
 #include "shrpx.h"
 
+#include <functional>
 #include <random>
+
+#include <openssl/ssl.h>
 
 #include <ev.h>
 
+#include "shrpx_connection.h"
+
 namespace shrpx {
 
-class ConnectBlocker {
-public:
-  ConnectBlocker(std::mt19937 &gen, struct ev_loop *loop);
-  ~ConnectBlocker();
+class Worker;
+struct DownstreamAddrGroup;
+struct DownstreamAddr;
 
-  // Returns true if making connection is not allowed.
-  bool blocked() const;
-  // Call this function if connect operation succeeded.  This will
-  // reset sleep_ to minimum value.
+class LiveCheck {
+public:
+  LiveCheck(struct ev_loop *loop, SSL_CTX *ssl_ctx, Worker *worker,
+            DownstreamAddrGroup *group, DownstreamAddr *addr,
+            std::mt19937 &gen);
+  ~LiveCheck();
+
+  void disconnect();
+
   void on_success();
-  // Call this function if connect operations failed.  This will start
-  // timer and blocks connection establishment with exponential
-  // backoff.
   void on_failure();
 
-  size_t get_fail_count() const;
+  int initiate_connection();
 
-  // Peer is now considered offline.  This effectively means that the
-  // connection is blocked until online() is called.
-  void offline();
+  // Schedules next connection attempt
+  void schedule();
 
-  // Peer is now considered online
-  void online();
+  // Low level I/O operation callback; they are called from do_read()
+  // or do_write().
+  int noop();
+  int connected();
+  int tls_handshake();
+
+  int do_read();
+  int do_write();
 
 private:
-  std::mt19937 gen_;
-  ev_timer timer_;
-  struct ev_loop *loop_;
-  // The number of consecutive connection failure.  Reset to 0 on
-  // success.
+  Connection conn_;
+  std::mt19937 &gen_;
+  ev_timer backoff_timer_;
+  std::function<int(LiveCheck &)> read_, write_;
+  Worker *worker_;
+  // nullptr if no TLS is configured
+  SSL_CTX *ssl_ctx_;
+  DownstreamAddrGroup *group_;
+  // Address of remote endpoint
+  DownstreamAddr *addr_;
+  // The number of successful connect attempt in a row.
+  size_t success_count_;
+  // The number of unsuccessful connect attempt in a row.
   size_t fail_count_;
 };
 
-} // namespace
+} // namespace shrpx
 
-#endif // SHRPX_CONNECT_BLOCKER_H
+#endif // SHRPX_LIVE_CHECK_H

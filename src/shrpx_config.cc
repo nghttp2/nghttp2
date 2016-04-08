@@ -893,6 +893,7 @@ enum {
   SHRPX_OPTID_BACKEND_ADDRESS_FAMILY,
   SHRPX_OPTID_BACKEND_CONNECTIONS_PER_FRONTEND,
   SHRPX_OPTID_BACKEND_CONNECTIONS_PER_HOST,
+  SHRPX_OPTID_BACKEND_FALL,
   SHRPX_OPTID_BACKEND_HTTP_PROXY_URI,
   SHRPX_OPTID_BACKEND_HTTP1_CONNECTIONS_PER_FRONTEND,
   SHRPX_OPTID_BACKEND_HTTP1_CONNECTIONS_PER_HOST,
@@ -908,6 +909,7 @@ enum {
   SHRPX_OPTID_BACKEND_READ_TIMEOUT,
   SHRPX_OPTID_BACKEND_REQUEST_BUFFER,
   SHRPX_OPTID_BACKEND_RESPONSE_BUFFER,
+  SHRPX_OPTID_BACKEND_RISE,
   SHRPX_OPTID_BACKEND_TLS,
   SHRPX_OPTID_BACKEND_TLS_SNI_FIELD,
   SHRPX_OPTID_BACKEND_WRITE_TIMEOUT,
@@ -1187,11 +1189,19 @@ int option_lookup_token(const char *name, size_t namelen) {
       }
       break;
     case 'e':
+      if (util::strieq_l("backend-ris", name, 11)) {
+        return SHRPX_OPTID_BACKEND_RISE;
+      }
       if (util::strieq_l("host-rewrit", name, 11)) {
         return SHRPX_OPTID_HOST_REWRITE;
       }
       if (util::strieq_l("http2-bridg", name, 11)) {
         return SHRPX_OPTID_HTTP2_BRIDGE;
+      }
+      break;
+    case 'l':
+      if (util::strieq_l("backend-fal", name, 11)) {
+        return SHRPX_OPTID_BACKEND_FALL;
       }
       break;
     case 'y':
@@ -2672,6 +2682,10 @@ int parse_config(const StringRef &opt, const StringRef &optarg,
                       opt, optarg);
   case SHRPX_OPTID_ERROR_PAGE:
     return parse_error_page(mod_config()->http.error_pages, opt, optarg);
+  case SHRPX_OPTID_BACKEND_FALL:
+    return parse_uint(&mod_config()->conn.downstream.fall, opt, optarg);
+  case SHRPX_OPTID_BACKEND_RISE:
+    return parse_uint(&mod_config()->conn.downstream.rise, opt, optarg);
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 

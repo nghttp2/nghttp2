@@ -1054,7 +1054,7 @@ int HttpDownstreamConnection::connected() {
                         << util::to_numeric_addr(&addr_->addr);
     }
 
-    connect_blocker->on_failure();
+    downstream_failure(addr_);
 
     downstream_->set_request_state(Downstream::CONNECT_FAIL);
 

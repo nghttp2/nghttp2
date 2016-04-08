@@ -1314,6 +1314,24 @@ Connections:
               --backend-write-timeout options.
   --accept-proxy-protocol
               Accept PROXY protocol version 1 on frontend connection.
+  --backend-fall=<N>
+              If  nghttpx cannot  connect  to a  specific backend  <N>
+              times in a  row, that backend is assumed  to be offline,
+              and  it  is  excluded  from load  balancing.   See  also
+              --backend-rise option.  If <N> is  0, a backend never be
+              excluded  from  load  balancing whatever  times  nghttpx
+              cannot connect to it.
+              Default: )" << get_config()->conn.downstream.fall << R"(
+  --backend-rise=<N>
+              As described  in --backend-fall,  a backend  is excluded
+              from  load  balancing  if  nghttpx assumes  that  it  is
+              offline.  Then  nghttpx periodically attempts to  make a
+              connection to the failed  backend, and if the connection
+              is made successfully <N> times  in a row, the backend is
+              assumed to  be online, and  it is now eligible  for load
+              balancing target.  If <N> is 0, a backend is permanently
+              offline, once it goes in that state.
+              Default: )" << get_config()->conn.downstream.rise << R"(
 
 Performance:
   -n, --workers=<N>
@@ -2519,6 +2537,8 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_BACKEND_CONNECTIONS_PER_HOST.c_str(), required_argument,
          &flag, 121},
         {SHRPX_OPT_ERROR_PAGE.c_str(), required_argument, &flag, 122},
+        {SHRPX_OPT_BACKEND_FALL.c_str(), required_argument, &flag, 123},
+        {SHRPX_OPT_BACKEND_RISE.c_str(), required_argument, &flag, 124},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -3093,6 +3113,14 @@ int main(int argc, char **argv) {
       case 122:
         // --error-page
         cmdcfgs.emplace_back(SHRPX_OPT_ERROR_PAGE, StringRef{optarg});
+        break;
+      case 123:
+        // --backend-fall
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_FALL, StringRef{optarg});
+        break;
+      case 124:
+        // --backend-rise
+        cmdcfgs.emplace_back(SHRPX_OPT_BACKEND_RISE, StringRef{optarg});
         break;
       default:
         break;
