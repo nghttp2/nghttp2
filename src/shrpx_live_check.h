@@ -56,6 +56,7 @@ public:
 
   int initiate_connection();
 
+  // Schedules next connection attempt
   void schedule();
 
   // Low level I/O operation callback; they are called from do_read()
@@ -66,8 +67,6 @@ public:
 
   int do_read();
   int do_write();
-
-  void signal_write();
 
 private:
   Connection conn_;
