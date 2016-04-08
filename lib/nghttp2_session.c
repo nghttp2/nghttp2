@@ -4666,9 +4666,7 @@ int nghttp2_session_on_altsvc_received(nghttp2_session *session,
 
   altsvc = frame->ext.payload;
 
-  if (session->server) {
-    return 0;
-  }
+  /* session->server case has been excluded */
 
   if (frame->hd.stream_id == 0) {
     if (altsvc->origin_len == 0) {
@@ -5566,6 +5564,12 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
 
             iframe->frame.hd.flags = NGHTTP2_FLAG_NONE;
             iframe->frame.ext.payload = &iframe->ext_frame_payload.altsvc;
+
+            if (session->server) {
+              busy = 1;
+              iframe->state = NGHTTP2_IB_IGN_PAYLOAD;
+              break;
+            }
 
             if (iframe->payloadleft < 2) {
               busy = 1;
