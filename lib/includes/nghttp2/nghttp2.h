@@ -593,7 +593,8 @@ typedef enum {
    */
   NGHTTP2_CONTINUATION = 0x09,
   /**
-   * The ALTSVC frame.
+   * The ALTSVC frame, which is defined in `RFC 7383
+   * <https://tools.ietf.org/html/rfc7838#section-4>`_.
    */
   NGHTTP2_ALTSVC = 0x0a
 } nghttp2_frame_type;
@@ -2378,7 +2379,7 @@ nghttp2_option_set_user_recv_extension_type(nghttp2_option *option,
                                             uint8_t type);
 
 /**
- * @ function
+ * @function
  *
  * Sets extension frame type the application is willing to receive
  * using builtin handler.  The |type| is the extension frame type to
@@ -4140,8 +4141,8 @@ NGHTTP2_EXTERN int nghttp2_submit_extension(nghttp2_session *session,
 /**
  * @struct
  *
- * The payload of ALTSVC frame.  ALTSVC frame is one of extension
- * frame.  If this frame is received, and
+ * The payload of ALTSVC frame.  ALTSVC frame is a non-critical
+ * extension to HTTP/2.  If this frame is received, and
  * `nghttp2_option_set_user_recv_extension_type()` is not set, and
  * `nghttp2_option_set_builtin_recv_extension_type()` is set for
  * :enum:`NGHTTP2_ALTSVC`, ``nghttp2_extension.payload`` will point to
@@ -4150,9 +4151,23 @@ NGHTTP2_EXTERN int nghttp2_submit_extension(nghttp2_session *session,
  * It has the following members:
  */
 typedef struct {
+  /**
+   * The pointer to origin which this alternative service is
+   * associated with.  This is not necessarily NULL-terminated.
+   */
   uint8_t *origin;
+  /**
+   * The length of the |origin|.
+   */
   size_t origin_len;
+  /**
+   * The pointer to Alt-Svc field value contained in ALTSVC frame.
+   * This is not necessarily NULL-terminated.
+   */
   uint8_t *field_value;
+  /**
+   * The length of the |field_value|.
+   */
   size_t field_value_len;
 } nghttp2_ext_altsvc;
 
@@ -4160,6 +4175,10 @@ typedef struct {
  * @function
  *
  * Submits ALTSVC frame.
+ *
+ * ALTSVC frame is a non-critical extension to HTTP/2, and defined in
+ * is defined in `RFC 7383
+ * <https://tools.ietf.org/html/rfc7838#section-4>`_.
  *
  * The |flags| is currently ignored and should be
  * :enum:`NGHTTP2_FLAG_NONE`.

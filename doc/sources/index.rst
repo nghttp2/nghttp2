@@ -51,3 +51,4 @@ Resources
 
 * HTTP/2 https://tools.ietf.org/html/rfc7540
 * HPACK https://tools.ietf.org/html/rfc7541
+* HTTP Alternative Services https://tools.ietf.org/html/rfc7838
