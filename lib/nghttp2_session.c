@@ -4663,6 +4663,7 @@ static int session_process_window_update_frame(nghttp2_session *session) {
 int nghttp2_session_on_altsvc_received(nghttp2_session *session,
                                        nghttp2_frame *frame) {
   nghttp2_ext_altsvc *altsvc;
+  nghttp2_stream *stream;
 
   altsvc = frame->ext.payload;
 
@@ -4672,8 +4673,19 @@ int nghttp2_session_on_altsvc_received(nghttp2_session *session,
     if (altsvc->origin_len == 0) {
       return 0;
     }
-  } else if (altsvc->origin_len > 0) {
-    return 0;
+  } else {
+    if (altsvc->origin_len > 0) {
+      return 0;
+    }
+
+    stream = nghttp2_session_get_stream(session, frame->hd.stream_id);
+    if (!stream) {
+      return 0;
+    }
+
+    if (stream->state == NGHTTP2_STREAM_CLOSING) {
+      return 0;
+    }
   }
 
   return session_call_on_frame_received(session, frame);

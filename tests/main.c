@@ -103,6 +103,8 @@ int main(int argc _U_, char *argv[] _U_) {
                    test_nghttp2_session_recv_too_large_frame_length) ||
       !CU_add_test(pSuite, "session_recv_extension",
                    test_nghttp2_session_recv_extension) ||
+      !CU_add_test(pSuite, "session_recv_altsvc",
+                   test_nghttp2_session_recv_altsvc) ||
       !CU_add_test(pSuite, "session_continue", test_nghttp2_session_continue) ||
       !CU_add_test(pSuite, "session_add_frame",
                    test_nghttp2_session_add_frame) ||
@@ -132,6 +134,8 @@ int main(int argc _U_, char *argv[] _U_) {
                    test_nghttp2_session_on_data_received) ||
       !CU_add_test(pSuite, "session_on_data_received_fail_fast",
                    test_nghttp2_session_on_data_received_fail_fast) ||
+      !CU_add_test(pSuite, "session_on_altsvc_received",
+                   test_nghttp2_session_on_altsvc_received) ||
       !CU_add_test(pSuite, "session_send_headers_start_stream",
                    test_nghttp2_session_send_headers_start_stream) ||
       !CU_add_test(pSuite, "session_send_headers_reply",
