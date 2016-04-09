@@ -223,6 +223,9 @@ static void run_nghttp2_session_send_server(void) {
   int rv;
   const uint8_t *txdata;
   ssize_t txdatalen;
+  const uint8_t origin[] = "nghttp2.org";
+  const uint8_t altsvc_field_value[] = "h2=\":443\"";
+
   rv = nghttp2_session_callbacks_new(&callbacks);
   if (rv != 0) {
     return;
@@ -236,9 +239,6 @@ static void run_nghttp2_session_send_server(void) {
   if (rv != 0) {
     return;
   }
-
-  const uint8_t origin[] = "nghttp2.org";
-  const uint8_t altsvc_field_value[] = "h2=\":443\"";
 
   rv = nghttp2_submit_altsvc(session, NGHTTP2_FLAG_NONE, 0, origin,
                              sizeof(origin) - 1, altsvc_field_value,

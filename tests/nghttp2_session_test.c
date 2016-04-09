@@ -5448,13 +5448,12 @@ void test_nghttp2_submit_altsvc(void) {
   const uint8_t *data;
   nghttp2_frame_hd hd;
   size_t origin_len;
+  const uint8_t origin[] = "nghttp2.org";
+  const uint8_t field_value[] = "h2=\":443\"";
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
 
   nghttp2_session_server_new(&session, &callbacks, &ud);
-
-  const uint8_t origin[] = "nghttp2.org";
-  const uint8_t field_value[] = "h2=\":443\"";
 
   rv = nghttp2_submit_altsvc(session, NGHTTP2_FLAG_NONE, 0, origin,
                              sizeof(origin) - 1, field_value,
