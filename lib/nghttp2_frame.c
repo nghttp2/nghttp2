@@ -193,6 +193,30 @@ void nghttp2_frame_extension_init(nghttp2_extension *frame, uint8_t type,
 
 void nghttp2_frame_extension_free(nghttp2_extension *frame _U_) {}
 
+void nghttp2_frame_altsvc_init(nghttp2_extension *frame, int32_t stream_id,
+                               uint8_t *origin, size_t origin_len,
+                               uint8_t *field_value, size_t field_value_len) {
+  nghttp2_ext_altsvc *altsvc;
+
+  nghttp2_frame_hd_init(&frame->hd, 2 + origin_len + field_value_len,
+                        NGHTTP2_ALTSVC, NGHTTP2_FLAG_NONE, stream_id);
+
+  altsvc = frame->payload;
+  altsvc->origin = origin;
+  altsvc->origin_len = origin_len;
+  altsvc->field_value = field_value;
+  altsvc->field_value_len = field_value_len;
+}
+
+void nghttp2_frame_altsvc_free(nghttp2_extension *frame, nghttp2_mem *mem) {
+  nghttp2_ext_altsvc *altsvc;
+
+  altsvc = frame->payload;
+  /* We use the same buffer for altsvc->origin and
+     altsvc->field_value. */
+  nghttp2_mem_free(mem, altsvc->origin);
+}
+
 size_t nghttp2_frame_priority_len(uint8_t flags) {
   if (flags & NGHTTP2_FLAG_PRIORITY) {
     return NGHTTP2_PRIORITY_SPECLEN;
@@ -666,6 +690,55 @@ void nghttp2_frame_unpack_window_update_payload(nghttp2_window_update *frame,
                                                 size_t payloadlen _U_) {
   frame->window_size_increment =
       nghttp2_get_uint32(payload) & NGHTTP2_WINDOW_SIZE_INCREMENT_MASK;
+}
+
+int nghttp2_frame_pack_altsvc(nghttp2_bufs *bufs, nghttp2_extension *frame) {
+  int rv;
+  nghttp2_buf *buf;
+  nghttp2_ext_altsvc *altsvc;
+
+  altsvc = frame->payload;
+
+  buf = &bufs->head->buf;
+
+  assert(nghttp2_buf_avail(buf) >=
+         2 + altsvc->origin_len + altsvc->field_value_len);
+
+  buf->pos -= NGHTTP2_FRAME_HDLEN;
+
+  nghttp2_frame_pack_frame_hd(buf->pos, &frame->hd);
+
+  nghttp2_put_uint16be(buf->last, (uint16_t)altsvc->origin_len);
+  buf->last += 2;
+
+  rv = nghttp2_bufs_add(bufs, altsvc->origin, altsvc->origin_len);
+
+  assert(rv == 0);
+
+  rv = nghttp2_bufs_add(bufs, altsvc->field_value, altsvc->field_value_len);
+
+  assert(rv == 0);
+
+  return 0;
+}
+
+void nghttp2_frame_unpack_altsvc_payload(nghttp2_extension *frame,
+                                         size_t origin_len, uint8_t *payload,
+                                         size_t payloadlen) {
+  nghttp2_ext_altsvc *altsvc;
+  uint8_t *p;
+
+  altsvc = frame->payload;
+  p = payload;
+
+  altsvc->origin = p;
+
+  p += origin_len;
+
+  altsvc->origin_len = origin_len;
+
+  altsvc->field_value = p;
+  altsvc->field_value_len = (size_t)(payload + payloadlen - p);
 }
 
 nghttp2_settings_entry *nghttp2_frame_iv_copy(const nghttp2_settings_entry *iv,

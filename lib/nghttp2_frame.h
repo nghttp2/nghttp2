@@ -72,7 +72,7 @@
 #define NGHTTP2_MAX_PADLEN 256
 
 /* Union of extension frame payload */
-typedef union { int dummy; } nghttp2_ext_frame_payload;
+typedef union { nghttp2_ext_altsvc altsvc; } nghttp2_ext_frame_payload;
 
 void nghttp2_frame_pack_frame_hd(uint8_t *buf, const nghttp2_frame_hd *hd);
 
@@ -368,6 +368,27 @@ void nghttp2_frame_unpack_window_update_payload(nghttp2_window_update *frame,
                                                 size_t payloadlen);
 
 /*
+ * Packs ALTSVC frame |frame| in wire frame format and store it in
+ * |bufs|.
+ *
+ * The caller must make sure that nghttp2_bufs_reset(bufs) is called
+ * before calling this function.
+ *
+ * This function always succeeds and returns 0.
+ */
+int nghttp2_frame_pack_altsvc(nghttp2_bufs *bufs, nghttp2_extension *ext);
+
+/*
+ * Unpacks ALTSVC wire format into |frame|.  The |payload| of
+ * |payloadlen| bytes contains frame payload.  This function assumes
+ * that frame->payload points to the nghttp2_ext_altsvc object.
+ *
+ * This function always succeeds and returns 0.
+ */
+void nghttp2_frame_unpack_altsvc_payload(nghttp2_extension *frame,
+                                         size_t origin_len, uint8_t *payload,
+                                         size_t payloadlen);
+/*
  * Initializes HEADERS frame |frame| with given values.  |frame| takes
  * ownership of |nva|, so caller must not free it. If |stream_id| is
  * not assigned yet, it must be -1.
@@ -444,6 +465,25 @@ void nghttp2_frame_extension_init(nghttp2_extension *frame, uint8_t type,
                                   void *payload);
 
 void nghttp2_frame_extension_free(nghttp2_extension *frame);
+
+/*
+ * Initializes ALTSVC frame |frame| with given values.  This function
+ * assumes that frame->payload points to nghttp2_ext_altsvc object.
+ * Also |origin| and |field_value| are allocated in single buffer,
+ * starting |origin|.  On success, this function takes ownership of
+ * |origin|, so caller must not free it.
+ */
+void nghttp2_frame_altsvc_init(nghttp2_extension *frame, int32_t stream_id,
+                               uint8_t *origin, size_t origin_len,
+                               uint8_t *field_value, size_t field_value_len);
+
+/*
+ * Frees up resources under |frame|.  This function does not free
+ * nghttp2_ext_altsvc object pointed by frame->payload.  This function
+ * only frees origin pointed by nghttp2_ext_altsvc.origin.  Therefore,
+ * other fields must be allocated in the same buffer with origin.
+ */
+void nghttp2_frame_altsvc_free(nghttp2_extension *frame, nghttp2_mem *mem);
 
 /*
  * Returns the number of padding bytes after payload.  The total

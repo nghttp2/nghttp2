@@ -591,7 +591,12 @@ typedef enum {
    * callbacks because the library processes this frame type and its
    * preceding HEADERS/PUSH_PROMISE as a single frame.
    */
-  NGHTTP2_CONTINUATION = 0x09
+  NGHTTP2_CONTINUATION = 0x09,
+  /**
+   * The ALTSVC frame, which is defined in `RFC 7383
+   * <https://tools.ietf.org/html/rfc7838#section-4>`_.
+   */
+  NGHTTP2_ALTSVC = 0x0a
 } nghttp2_frame_type;
 
 /**
@@ -2376,6 +2381,26 @@ nghttp2_option_set_user_recv_extension_type(nghttp2_option *option,
 /**
  * @function
  *
+ * Sets extension frame type the application is willing to receive
+ * using builtin handler.  The |type| is the extension frame type to
+ * receive, and must be strictly greater than 0x9.  Otherwise, this
+ * function does nothing.  The application can call this function
+ * multiple times to set more than one frame type to receive.  The
+ * application does not have to call this function if it just sends
+ * extension frames.
+ *
+ * If same frame type is passed to both
+ * `nghttp2_option_set_builtin_recv_extension_type()` and
+ * `nghttp2_option_set_user_recv_extension_type()`, the latter takes
+ * precedence.
+ */
+NGHTTP2_EXTERN void
+nghttp2_option_set_builtin_recv_extension_type(nghttp2_option *option,
+                                               uint8_t type);
+
+/**
+ * @function
+ *
  * This option prevents the library from sending PING frame with ACK
  * flag set automatically when PING frame without ACK flag set is
  * received.  If this option is set to nonzero, the library won't send
@@ -4112,6 +4137,80 @@ NGHTTP2_EXTERN int nghttp2_submit_window_update(nghttp2_session *session,
 NGHTTP2_EXTERN int nghttp2_submit_extension(nghttp2_session *session,
                                             uint8_t type, uint8_t flags,
                                             int32_t stream_id, void *payload);
+
+/**
+ * @struct
+ *
+ * The payload of ALTSVC frame.  ALTSVC frame is a non-critical
+ * extension to HTTP/2.  If this frame is received, and
+ * `nghttp2_option_set_user_recv_extension_type()` is not set, and
+ * `nghttp2_option_set_builtin_recv_extension_type()` is set for
+ * :enum:`NGHTTP2_ALTSVC`, ``nghttp2_extension.payload`` will point to
+ * this struct.
+ *
+ * It has the following members:
+ */
+typedef struct {
+  /**
+   * The pointer to origin which this alternative service is
+   * associated with.  This is not necessarily NULL-terminated.
+   */
+  uint8_t *origin;
+  /**
+   * The length of the |origin|.
+   */
+  size_t origin_len;
+  /**
+   * The pointer to Alt-Svc field value contained in ALTSVC frame.
+   * This is not necessarily NULL-terminated.
+   */
+  uint8_t *field_value;
+  /**
+   * The length of the |field_value|.
+   */
+  size_t field_value_len;
+} nghttp2_ext_altsvc;
+
+/**
+ * @function
+ *
+ * Submits ALTSVC frame.
+ *
+ * ALTSVC frame is a non-critical extension to HTTP/2, and defined in
+ * is defined in `RFC 7383
+ * <https://tools.ietf.org/html/rfc7838#section-4>`_.
+ *
+ * The |flags| is currently ignored and should be
+ * :enum:`NGHTTP2_FLAG_NONE`.
+ *
+ * The |origin| points to the origin this alternative service is
+ * associated with.  The |origin_len| is the length of the origin.  If
+ * |stream_id| is 0, the origin must be specified.  If |stream_id| is
+ * not zero, the origin must be empty (in other words, |origin_len|
+ * must be 0).
+ *
+ * The ALTSVC frame is only usable from server side.  If this function
+ * is invoked with client side session, this function returns
+ * :enum:`NGHTTP2_ERR_INVALID_STATE`.
+ *
+ * This function returns 0 if it succeeds, or one of the following
+ * negative error codes:
+ *
+ * :enum:`NGHTTP2_ERR_NOMEM`
+ *     Out of memory
+ * :enum:`NGHTTP2_ERR_INVALID_STATE`
+ *     The function is called from client side session
+ * :enum:`NGHTTP2_ERR_INVALID_ARGUMENT`
+ *     The sum of |origin_len| and |field_value_len| is larger than
+ *     16382; or |origin_len| is 0 while |stream_id| is 0; or
+ *     |origin_len| is not 0 while |stream_id| is not 0.
+ */
+NGHTTP2_EXTERN int nghttp2_submit_altsvc(nghttp2_session *session,
+                                         uint8_t flags, int32_t stream_id,
+                                         const uint8_t *origin,
+                                         size_t origin_len,
+                                         const uint8_t *field_value,
+                                         size_t field_value_len);
 
 /**
  * @function

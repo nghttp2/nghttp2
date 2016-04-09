@@ -55,6 +55,8 @@ int main(int argc _U_, char *argv[] _U_) {
   /* add the tests to the suite */
   if (!CU_add_test(pSuite, "failmalloc_session_send",
                    test_nghttp2_session_send) ||
+      !CU_add_test(pSuite, "failmalloc_session_send_server",
+                   test_nghttp2_session_send_server) ||
       !CU_add_test(pSuite, "failmalloc_session_recv",
                    test_nghttp2_session_recv) ||
       !CU_add_test(pSuite, "failmalloc_frame", test_nghttp2_frame) ||

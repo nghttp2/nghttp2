@@ -30,6 +30,7 @@
 #endif /* HAVE_CONFIG_H */
 
 void test_nghttp2_session_send(void);
+void test_nghttp2_session_send_server(void);
 void test_nghttp2_session_recv(void);
 void test_nghttp2_frame(void);
 void test_nghttp2_hd(void);

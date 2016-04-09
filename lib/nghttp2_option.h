@@ -61,7 +61,8 @@ typedef enum {
   NGHTTP2_OPT_NO_HTTP_MESSAGING = 1 << 3,
   NGHTTP2_OPT_MAX_RESERVED_REMOTE_STREAMS = 1 << 4,
   NGHTTP2_OPT_USER_RECV_EXT_TYPES = 1 << 5,
-  NGHTTP2_OPT_NO_AUTO_PING_ACK = 1 << 6
+  NGHTTP2_OPT_NO_AUTO_PING_ACK = 1 << 6,
+  NGHTTP2_OPT_BUILTIN_RECV_EXT_TYPES = 1 << 7
 } nghttp2_option_flag;
 
 /**
@@ -81,6 +82,10 @@ struct nghttp2_option {
    * NGHTTP2_OPT_MAX_RESERVED_REMOTE_STREAMS
    */
   uint32_t max_reserved_remote_streams;
+  /**
+   * NGHTTP2_OPT_BUILTIN_RECV_EXT_TYPES
+   */
+  uint32_t builtin_recv_ext_types;
   /**
    * NGHTTP2_OPT_NO_AUTO_WINDOW_UPDATE
    */

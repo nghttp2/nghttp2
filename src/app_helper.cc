@@ -104,6 +104,8 @@ std::string strframetype(uint8_t type) {
     return "GOAWAY";
   case NGHTTP2_WINDOW_UPDATE:
     return "WINDOW_UPDATE";
+  case NGHTTP2_ALTSVC:
+    return "ALTSVC";
   }
 
   std::string s = "extension(0x";
@@ -339,6 +341,14 @@ void print_frame(print_type ptype, const nghttp2_frame *frame) {
     fprintf(outfile, "(window_size_increment=%d)\n",
             frame->window_update.window_size_increment);
     break;
+  case NGHTTP2_ALTSVC: {
+    auto altsvc = static_cast<nghttp2_ext_altsvc *>(frame->ext.payload);
+    print_frame_attr_indent();
+    fprintf(outfile, "(origin=[%.*s], altsvc_field_value=[%.*s])\n",
+            static_cast<int>(altsvc->origin_len), altsvc->origin,
+            static_cast<int>(altsvc->field_value_len), altsvc->field_value);
+    break;
+  }
   default:
     break;
   }

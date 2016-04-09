@@ -24,6 +24,8 @@
  */
 #include "nghttp2_option.h"
 
+#include "nghttp2_session.h"
+
 int nghttp2_option_new(nghttp2_option **option_ptr) {
   *option_ptr = calloc(1, sizeof(nghttp2_option));
 
@@ -63,6 +65,10 @@ void nghttp2_option_set_max_reserved_remote_streams(nghttp2_option *option,
   option->max_reserved_remote_streams = val;
 }
 
+static void set_ext_type(uint8_t *ext_types, uint8_t type) {
+  ext_types[type / 8] = (uint8_t)(ext_types[type / 8] | (1 << (type & 0x7)));
+}
+
 void nghttp2_option_set_user_recv_extension_type(nghttp2_option *option,
                                                  uint8_t type) {
   if (type < 10) {
@@ -70,8 +76,19 @@ void nghttp2_option_set_user_recv_extension_type(nghttp2_option *option,
   }
 
   option->opt_set_mask |= NGHTTP2_OPT_USER_RECV_EXT_TYPES;
-  option->user_recv_ext_types[type / 8] =
-      (uint8_t)(option->user_recv_ext_types[type / 8] | (1 << (type & 0x7)));
+  set_ext_type(option->user_recv_ext_types, type);
+}
+
+void nghttp2_option_set_builtin_recv_extension_type(nghttp2_option *option,
+                                                    uint8_t type) {
+  switch (type) {
+  case NGHTTP2_ALTSVC:
+    option->opt_set_mask |= NGHTTP2_OPT_BUILTIN_RECV_EXT_TYPES;
+    option->builtin_recv_ext_types |= NGHTTP2_TYPEMASK_ALTSVC;
+    return;
+  default:
+    return;
+  }
 }
 
 void nghttp2_option_set_no_auto_ping_ack(nghttp2_option *option, int val) {
