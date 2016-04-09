@@ -30,6 +30,7 @@ set(APIDOCS
   nghttp2_nv_compare_name.rst
   nghttp2_option_del.rst
   nghttp2_option_new.rst
+  nghttp2_option_set_builtin_recv_extension_type.rst
   nghttp2_option_set_max_reserved_remote_streams.rst
   nghttp2_option_set_no_auto_ping_ack.rst
   nghttp2_option_set_no_auto_window_update.rst
@@ -117,6 +118,7 @@ set(APIDOCS
   nghttp2_stream_get_sum_dependency_weight.rst
   nghttp2_stream_get_weight.rst
   nghttp2_strerror.rst
+  nghttp2_submit_altsvc.rst
   nghttp2_submit_data.rst
   nghttp2_submit_extension.rst
   nghttp2_submit_goaway.rst
