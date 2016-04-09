@@ -81,6 +81,8 @@ struct DownstreamAddr {
 
   std::unique_ptr<ConnectBlocker> connect_blocker;
   std::unique_ptr<LiveCheck> live_check;
+  size_t fall;
+  size_t rise;
   // Client side TLS session cache
   TLSSessionCache tls_session_cache;
   // Http2Session object created for this address.  This list chains

@@ -340,9 +340,7 @@ void LiveCheck::on_success() {
               << " succeeded " << success_count_ << " time(s) in a row";
   }
 
-  auto &downstreamconf = get_config()->conn.downstream;
-
-  if (success_count_ < downstreamconf.rise) {
+  if (success_count_ < addr_->rise) {
     disconnect();
 
     schedule();

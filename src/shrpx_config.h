@@ -275,8 +275,6 @@ constexpr auto SHRPX_OPT_BACKEND_TLS = StringRef::from_lit("backend-tls");
 constexpr auto SHRPX_OPT_BACKEND_CONNECTIONS_PER_HOST =
     StringRef::from_lit("backend-connections-per-host");
 constexpr auto SHRPX_OPT_ERROR_PAGE = StringRef::from_lit("error-page");
-constexpr auto SHRPX_OPT_BACKEND_FALL = StringRef::from_lit("backend-fall");
-constexpr auto SHRPX_OPT_BACKEND_RISE = StringRef::from_lit("backend-rise");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -337,6 +335,8 @@ struct DownstreamAddrConfig {
   // <HOST>:<PORT>.  This does not treat 80 and 443 specially.  If
   // |host_unix| is true, this is "localhost".
   ImmutableString hostport;
+  size_t fall;
+  size_t rise;
   // backend port.  0 if |host_unix| is true.
   uint16_t port;
   // true if |host| contains UNIX domain socket path.
@@ -617,8 +617,6 @@ struct ConnectionConfig {
     size_t connections_per_frontend;
     size_t request_buffer_size;
     size_t response_buffer_size;
-    size_t fall;
-    size_t rise;
     // Address family of backend connection.  One of either AF_INET,
     // AF_INET6 or AF_UNSPEC.  This is ignored if backend connection
     // is made via Unix domain socket.

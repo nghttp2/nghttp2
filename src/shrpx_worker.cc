@@ -82,7 +82,8 @@ bool match_shared_downstream_addr(
       }
 
       auto &b = rhs->addrs[i];
-      if (a.host == b.host && a.port == b.port && a.host_unix == b.host_unix) {
+      if (a.host == b.host && a.port == b.port && a.host_unix == b.host_unix &&
+          a.fall == b.fall && a.rise == b.rise) {
         break;
       }
     }
@@ -159,6 +160,8 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
       dst_addr.hostport = src_addr.hostport;
       dst_addr.port = src_addr.port;
       dst_addr.host_unix = src_addr.host_unix;
+      dst_addr.fall = src_addr.fall;
+      dst_addr.rise = src_addr.rise;
 
       dst_addr.connect_blocker = make_unique<ConnectBlocker>(randgen_, loop_);
       dst_addr.live_check = make_unique<LiveCheck>(
@@ -473,21 +476,19 @@ void downstream_failure(DownstreamAddr *addr) {
 
   connect_blocker->on_failure();
 
-  auto fail_count = connect_blocker->get_fail_count();
-
-  auto &downstreamconf = get_config()->conn.downstream;
-
-  if (downstreamconf.fall == 0) {
+  if (addr->fall == 0) {
     return;
   }
 
-  if (fail_count >= downstreamconf.fall) {
+  auto fail_count = connect_blocker->get_fail_count();
+
+  if (fail_count >= addr->fall) {
     LOG(WARN) << "Could not connect to " << util::to_numeric_addr(&addr->addr)
               << " " << fail_count << " times in a row; considered as offline";
 
     connect_blocker->offline();
 
-    if (downstreamconf.rise) {
+    if (addr->rise) {
       addr->live_check->schedule();
     }
   }
