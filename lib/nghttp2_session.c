@@ -323,10 +323,12 @@ static void session_inbound_frame_reset(nghttp2_session *session) {
     if (check_ext_type_set(session->user_recv_ext_types,
                            iframe->frame.hd.type)) {
       nghttp2_frame_extension_free(&iframe->frame.ext);
-    } else if (check_ext_type_set(session->builtin_recv_ext_types,
-                                  iframe->frame.hd.type)) {
+    } else {
       switch (iframe->frame.hd.type) {
       case NGHTTP2_ALTSVC:
+        if ((session->builtin_recv_ext_types & NGHTTP2_TYPEMASK_ALTSVC) == 0) {
+          break;
+        }
         nghttp2_frame_altsvc_free(&iframe->frame.ext, mem);
         break;
       }
@@ -492,9 +494,7 @@ static int session_new(nghttp2_session **session_ptr,
     }
 
     if (option->opt_set_mask & NGHTTP2_OPT_BUILTIN_RECV_EXT_TYPES) {
-      memcpy((*session_ptr)->builtin_recv_ext_types,
-             option->builtin_recv_ext_types,
-             sizeof((*session_ptr)->builtin_recv_ext_types));
+      (*session_ptr)->builtin_recv_ext_types = option->builtin_recv_ext_types;
     }
 
     if ((option->opt_set_mask & NGHTTP2_OPT_NO_AUTO_PING_ACK) &&
@@ -5556,10 +5556,16 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
           iframe->state = NGHTTP2_IB_READ_EXTENSION_PAYLOAD;
 
           break;
-        } else if (check_ext_type_set(session->builtin_recv_ext_types,
-                                      iframe->frame.hd.type)) {
+        } else {
           switch (iframe->frame.hd.type) {
           case NGHTTP2_ALTSVC:
+            if ((session->builtin_recv_ext_types & NGHTTP2_TYPEMASK_ALTSVC) ==
+                0) {
+              busy = 1;
+              iframe->state = NGHTTP2_IB_IGN_PAYLOAD;
+              break;
+            }
+
             DEBUGF(fprintf(stderr, "recv: ALTSVC\n"));
 
             iframe->frame.hd.flags = NGHTTP2_FLAG_NONE;
@@ -5590,12 +5596,6 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
 
             break;
           }
-        } else {
-          busy = 1;
-
-          iframe->state = NGHTTP2_IB_IGN_PAYLOAD;
-
-          break;
         }
       }
 

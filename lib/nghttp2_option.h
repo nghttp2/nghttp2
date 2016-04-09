@@ -83,6 +83,10 @@ struct nghttp2_option {
    */
   uint32_t max_reserved_remote_streams;
   /**
+   * NGHTTP2_OPT_BUILTIN_RECV_EXT_TYPES
+   */
+  uint32_t builtin_recv_ext_types;
+  /**
    * NGHTTP2_OPT_NO_AUTO_WINDOW_UPDATE
    */
   int no_auto_window_update;
@@ -102,10 +106,6 @@ struct nghttp2_option {
    * NGHTTP2_OPT_USER_RECV_EXT_TYPES
    */
   uint8_t user_recv_ext_types[32];
-  /**
-   * NGHTTP2_OPT_BUILTIN_RECV_EXT_TYPES
-   */
-  uint8_t builtin_recv_ext_types[32];
 };
 
 #endif /* NGHTTP2_OPTION_H */

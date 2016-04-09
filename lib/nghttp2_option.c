@@ -24,6 +24,8 @@
  */
 #include "nghttp2_option.h"
 
+#include "nghttp2_session.h"
+
 int nghttp2_option_new(nghttp2_option **option_ptr) {
   *option_ptr = calloc(1, sizeof(nghttp2_option));
 
@@ -79,12 +81,14 @@ void nghttp2_option_set_user_recv_extension_type(nghttp2_option *option,
 
 void nghttp2_option_set_builtin_recv_extension_type(nghttp2_option *option,
                                                     uint8_t type) {
-  if (type < 10) {
+  switch (type) {
+  case NGHTTP2_ALTSVC:
+    option->opt_set_mask |= NGHTTP2_OPT_BUILTIN_RECV_EXT_TYPES;
+    option->builtin_recv_ext_types |= NGHTTP2_TYPEMASK_ALTSVC;
+    return;
+  default:
     return;
   }
-
-  option->opt_set_mask |= NGHTTP2_OPT_BUILTIN_RECV_EXT_TYPES;
-  set_ext_type(option->builtin_recv_ext_types, type);
 }
 
 void nghttp2_option_set_no_auto_ping_ack(nghttp2_option *option, int val) {

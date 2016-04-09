@@ -54,6 +54,15 @@ typedef enum {
   NGHTTP2_OPTMASK_NO_AUTO_PING_ACK = 1 << 3
 } nghttp2_optmask;
 
+/*
+ * bitmask for built-in type to enable the default handling for that
+ * type of the frame.
+ */
+typedef enum {
+  NGHTTP2_TYPEMASK_NONE = 0,
+  NGHTTP2_TYPEMASK_ALTSVC = 1 << 0
+} nghttp2_typemask;
+
 typedef enum {
   NGHTTP2_OB_POP_ITEM,
   NGHTTP2_OB_SEND_DATA,
@@ -295,6 +304,9 @@ struct nghttp2_session {
   /* Unacked local SETTINGS_MAX_CONCURRENT_STREAMS value. We use this
      to refuse the incoming stream if it exceeds this value. */
   uint32_t pending_local_max_concurrent_stream;
+  /* The bitwose OR of zero or more of nghttp2_typemask to indicate
+     that the default handling of extension frame is enabled. */
+  uint32_t builtin_recv_ext_types;
   /* Unacked local ENABLE_PUSH value.  We use this to refuse
      PUSH_PROMISE before SETTINGS ACK is received. */
   uint8_t pending_enable_push;
@@ -314,7 +326,6 @@ struct nghttp2_session {
      bit is set, it indicates that incoming frame with that type is
      passed to user defined callbacks, otherwise they are ignored. */
   uint8_t user_recv_ext_types[32];
-  uint8_t builtin_recv_ext_types[32];
 };
 
 /* Struct used when updating initial window size of each active
