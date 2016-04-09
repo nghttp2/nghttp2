@@ -741,6 +741,30 @@ void nghttp2_frame_unpack_altsvc_payload(nghttp2_extension *frame,
   altsvc->field_value_len = (size_t)(payload + payloadlen - p);
 }
 
+int nghttp2_frame_unpack_altsvc_payload2(nghttp2_extension *frame,
+                                         const uint8_t *payload,
+                                         size_t payloadlen, nghttp2_mem *mem) {
+  uint8_t *buf;
+  size_t origin_len;
+
+  if (payloadlen < 2) {
+    return NGHTTP2_FRAME_SIZE_ERROR;
+  }
+
+  origin_len = nghttp2_get_uint16(payload);
+
+  buf = nghttp2_mem_malloc(mem, payloadlen - 2);
+  if (!buf) {
+    return NGHTTP2_ERR_NOMEM;
+  }
+
+  nghttp2_cpymem(buf, payload + 2, payloadlen - 2);
+
+  nghttp2_frame_unpack_altsvc_payload(frame, origin_len, buf, payloadlen - 2);
+
+  return 0;
+}
+
 nghttp2_settings_entry *nghttp2_frame_iv_copy(const nghttp2_settings_entry *iv,
                                               size_t niv, nghttp2_mem *mem) {
   nghttp2_settings_entry *iv_copy;

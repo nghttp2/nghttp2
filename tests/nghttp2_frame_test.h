@@ -38,6 +38,7 @@ void test_nghttp2_frame_pack_push_promise(void);
 void test_nghttp2_frame_pack_ping(void);
 void test_nghttp2_frame_pack_goaway(void);
 void test_nghttp2_frame_pack_window_update(void);
+void test_nghttp2_frame_pack_altsvc(void);
 void test_nghttp2_nv_array_copy(void);
 void test_nghttp2_iv_check(void);
 

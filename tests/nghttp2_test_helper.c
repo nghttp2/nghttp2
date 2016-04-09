@@ -83,6 +83,10 @@ int unpack_frame(nghttp2_frame *frame, const uint8_t *in, size_t len) {
     nghttp2_frame_unpack_window_update_payload(&frame->window_update, payload,
                                                payloadlen);
     break;
+  case NGHTTP2_ALTSVC:
+    assert(payloadlen > 2);
+    nghttp2_frame_unpack_altsvc_payload2(&frame->ext, payload, payloadlen, mem);
+    break;
   default:
     /* Must not be reachable */
     assert(0);

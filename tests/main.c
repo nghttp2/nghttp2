@@ -339,6 +339,8 @@ int main(int argc _U_, char *argv[] _U_) {
                    test_nghttp2_frame_pack_goaway) ||
       !CU_add_test(pSuite, "frame_pack_window_update",
                    test_nghttp2_frame_pack_window_update) ||
+      !CU_add_test(pSuite, "frame_pack_altsvc",
+                   test_nghttp2_frame_pack_altsvc) ||
       !CU_add_test(pSuite, "nv_array_copy", test_nghttp2_nv_array_copy) ||
       !CU_add_test(pSuite, "iv_check", test_nghttp2_iv_check) ||
       !CU_add_test(pSuite, "hd_deflate", test_nghttp2_hd_deflate) ||
