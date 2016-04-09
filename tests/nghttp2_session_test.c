@@ -3487,13 +3487,10 @@ void test_nghttp2_session_on_altsvc_received(void) {
   nghttp2_session_callbacks callbacks;
   my_user_data ud;
   nghttp2_frame frame;
-  nghttp2_mem *mem;
   nghttp2_option *option;
   uint8_t origin[] = "nghttp2.org";
   uint8_t field_value[] = "h2=\":443\"";
   int rv;
-
-  mem = nghttp2_mem_default();
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
   callbacks.on_frame_recv_callback = on_frame_recv_callback;
@@ -5445,15 +5442,12 @@ void test_nghttp2_submit_extension(void) {
 void test_nghttp2_submit_altsvc(void) {
   nghttp2_session *session;
   nghttp2_session_callbacks callbacks;
-  nghttp2_mem *mem;
   my_user_data ud;
   int rv;
   ssize_t len;
   const uint8_t *data;
   nghttp2_frame_hd hd;
   size_t origin_len;
-
-  mem = nghttp2_mem_default();
 
   memset(&callbacks, 0, sizeof(nghttp2_session_callbacks));
 
