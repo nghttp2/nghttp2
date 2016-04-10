@@ -120,18 +120,16 @@ typedef enum {
   NGHTTP2_IB_READ_EXTENSION_PAYLOAD
 } nghttp2_inbound_state;
 
-#define NGHTTP2_INBOUND_NUM_IV 7
-
 typedef struct {
   nghttp2_frame frame;
   /* Storage for extension frame payload.  frame->ext.payload points
      to this structure to avoid frequent memory allocation. */
   nghttp2_ext_frame_payload ext_frame_payload;
-  /* The received SETTINGS entry. The protocol says that we only cares
-     about the defined settings ID. If unknown ID is received, it is
-     ignored.  We use last entry to hold minimum header table size if
-     same settings are multiple times. */
-  nghttp2_settings_entry iv[NGHTTP2_INBOUND_NUM_IV];
+  /* The received SETTINGS entry.  For the standard settings entries,
+     we only keep the last seen value.  For
+     SETTINGS_HEADER_TABLE_SIZE, we also keep minimum value in the
+     last index. */
+  nghttp2_settings_entry *iv;
   /* buffer pointers to small buffer, raw_sbuf */
   nghttp2_buf sbuf;
   /* buffer pointers to large buffer, raw_lbuf */
@@ -140,6 +138,8 @@ typedef struct {
   uint8_t *raw_lbuf;
   /* The number of entry filled in |iv| */
   size_t niv;
+  /* The number of entries |iv| can store. */
+  size_t max_niv;
   /* How many bytes we still need to receive for current frame */
   size_t payloadleft;
   /* padding length for the current frame */

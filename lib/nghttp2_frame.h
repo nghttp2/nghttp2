@@ -215,18 +215,12 @@ void nghttp2_frame_unpack_settings_entry(nghttp2_settings_entry *iv,
                                          const uint8_t *payload);
 
 /*
- * Makes a copy of |iv| in frame->settings.iv. The |niv| is assigned
- * to frame->settings.niv.
- *
- * This function returns 0 if it succeeds or one of the following
- * negative error codes:
- *
- * NGHTTP2_ERR_NOMEM
- *     Out of memory.
+ * Initializes payload of frame->settings.  The |frame| takes
+ * ownership of |iv|.
  */
-int nghttp2_frame_unpack_settings_payload(nghttp2_settings *frame,
-                                          nghttp2_settings_entry *iv,
-                                          size_t niv, nghttp2_mem *mem);
+void nghttp2_frame_unpack_settings_payload(nghttp2_settings *frame,
+                                           nghttp2_settings_entry *iv,
+                                           size_t niv);
 
 /*
  * Unpacks SETTINGS payload into |*iv_ptr|. The number of entries are

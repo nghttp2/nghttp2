@@ -463,25 +463,11 @@ size_t nghttp2_frame_pack_settings_payload(uint8_t *buf,
   return NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH * niv;
 }
 
-int nghttp2_frame_unpack_settings_payload(nghttp2_settings *frame,
-                                          nghttp2_settings_entry *iv,
-                                          size_t niv, nghttp2_mem *mem) {
-  size_t payloadlen = niv * sizeof(nghttp2_settings_entry);
-
-  if (niv == 0) {
-    frame->iv = NULL;
-  } else {
-    frame->iv = nghttp2_mem_malloc(mem, payloadlen);
-
-    if (frame->iv == NULL) {
-      return NGHTTP2_ERR_NOMEM;
-    }
-
-    memcpy(frame->iv, iv, payloadlen);
-  }
-
+void nghttp2_frame_unpack_settings_payload(nghttp2_settings *frame,
+                                           nghttp2_settings_entry *iv,
+                                           size_t niv) {
+  frame->iv = iv;
   frame->niv = niv;
-  return 0;
 }
 
 void nghttp2_frame_unpack_settings_entry(nghttp2_settings_entry *iv,

@@ -305,6 +305,13 @@ static void session_inbound_frame_reset(nghttp2_session *session) {
     break;
   case NGHTTP2_SETTINGS:
     nghttp2_frame_settings_free(&iframe->frame.settings, mem);
+
+    nghttp2_mem_free(mem, iframe->iv);
+
+    iframe->iv = NULL;
+    iframe->niv = 0;
+    iframe->max_niv = 0;
+
     break;
   case NGHTTP2_PUSH_PROMISE:
     nghttp2_frame_push_promise_free(&iframe->frame.push_promise, mem);
@@ -351,12 +358,8 @@ static void session_inbound_frame_reset(nghttp2_session *session) {
 
   iframe->raw_lbuf = NULL;
 
-  iframe->niv = 0;
   iframe->payloadleft = 0;
   iframe->padlen = 0;
-  iframe->iv[NGHTTP2_INBOUND_NUM_IV - 1].settings_id =
-      NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
-  iframe->iv[NGHTTP2_INBOUND_NUM_IV - 1].value = UINT32_MAX;
 }
 
 static void init_settings(nghttp2_settings_storage *settings) {
@@ -4365,39 +4368,39 @@ int nghttp2_session_on_settings_received(nghttp2_session *session,
 }
 
 static int session_process_settings_frame(nghttp2_session *session) {
-  int rv;
   nghttp2_inbound_frame *iframe = &session->iframe;
   nghttp2_frame *frame = &iframe->frame;
   size_t i;
   nghttp2_settings_entry min_header_size_entry;
-  nghttp2_mem *mem;
 
-  mem = &session->mem;
-  min_header_size_entry = iframe->iv[NGHTTP2_INBOUND_NUM_IV - 1];
+  if (iframe->max_niv) {
+    min_header_size_entry = iframe->iv[iframe->max_niv - 1];
 
-  if (min_header_size_entry.value < UINT32_MAX) {
-    /* If we have less value, then we must have
-       SETTINGS_HEADER_TABLE_SIZE in i < iframe->niv */
-    for (i = 0; i < iframe->niv; ++i) {
-      if (iframe->iv[i].settings_id == NGHTTP2_SETTINGS_HEADER_TABLE_SIZE) {
-        break;
+    if (min_header_size_entry.value < UINT32_MAX) {
+      /* If we have less value, then we must have
+         SETTINGS_HEADER_TABLE_SIZE in i < iframe->niv */
+      for (i = 0; i < iframe->niv; ++i) {
+        if (iframe->iv[i].settings_id == NGHTTP2_SETTINGS_HEADER_TABLE_SIZE) {
+          break;
+        }
+      }
+
+      assert(i < iframe->niv);
+
+      if (min_header_size_entry.value != iframe->iv[i].value) {
+        iframe->iv[iframe->niv++] = iframe->iv[i];
+        iframe->iv[i] = min_header_size_entry;
       }
     }
-
-    assert(i < iframe->niv);
-
-    if (min_header_size_entry.value != iframe->iv[i].value) {
-      iframe->iv[iframe->niv++] = iframe->iv[i];
-      iframe->iv[i] = min_header_size_entry;
-    }
   }
 
-  rv = nghttp2_frame_unpack_settings_payload(&frame->settings, iframe->iv,
-                                             iframe->niv, mem);
-  if (rv != 0) {
-    assert(nghttp2_is_fatal(rv));
-    return rv;
-  }
+  nghttp2_frame_unpack_settings_payload(&frame->settings, iframe->iv,
+                                        iframe->niv);
+
+  iframe->iv = NULL;
+  iframe->niv = 0;
+  iframe->max_niv = 0;
+
   return nghttp2_session_on_settings_received(session, frame, 0 /* ACK */);
 }
 
@@ -5053,6 +5056,7 @@ static size_t inbound_frame_buf_read(nghttp2_inbound_frame *iframe,
  */
 static void inbound_frame_set_settings_entry(nghttp2_inbound_frame *iframe) {
   nghttp2_settings_entry iv;
+  nghttp2_settings_entry *min_header_table_size_entry;
   size_t i;
 
   nghttp2_frame_unpack_settings_entry(&iv, iframe->sbuf.pos);
@@ -5066,8 +5070,11 @@ static void inbound_frame_set_settings_entry(nghttp2_inbound_frame *iframe) {
   case NGHTTP2_SETTINGS_MAX_HEADER_LIST_SIZE:
     break;
   default:
-    DEBUGF(fprintf(stderr, "recv: ignore unknown settings id=0x%02x\n",
-                   iv.settings_id));
+    DEBUGF(
+        fprintf(stderr, "recv: unknown settings id=0x%02x\n", iv.settings_id));
+
+    iframe->iv[iframe->niv++] = iv;
+
     return;
   }
 
@@ -5082,10 +5089,13 @@ static void inbound_frame_set_settings_entry(nghttp2_inbound_frame *iframe) {
     iframe->iv[iframe->niv++] = iv;
   }
 
-  if (iv.settings_id == NGHTTP2_SETTINGS_HEADER_TABLE_SIZE &&
-      iv.value < iframe->iv[NGHTTP2_INBOUND_NUM_IV - 1].value) {
+  if (iv.settings_id == NGHTTP2_SETTINGS_HEADER_TABLE_SIZE) {
+    /* Keep track of minimum value of SETTINGS_HEADER_TABLE_SIZE */
+    min_header_table_size_entry = &iframe->iv[iframe->max_niv - 1];
 
-    iframe->iv[NGHTTP2_INBOUND_NUM_IV - 1] = iv;
+    if (iv.value < min_header_table_size_entry->value) {
+      min_header_table_size_entry->value = iv.value;
+    }
   }
 }
 
@@ -5458,6 +5468,25 @@ ssize_t nghttp2_session_mem_recv(nghttp2_session *session, const uint8_t *in,
         iframe->state = NGHTTP2_IB_READ_SETTINGS;
 
         if (iframe->payloadleft) {
+          nghttp2_settings_entry *min_header_table_size_entry;
+
+          /* We allocate iv with addtional one entry, to store the
+             minimum header table size. */
+          iframe->max_niv =
+              iframe->frame.hd.length / NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH + 1;
+
+          iframe->iv = nghttp2_mem_malloc(mem, sizeof(nghttp2_settings_entry) *
+                                                   iframe->max_niv);
+
+          if (!iframe->iv) {
+            return NGHTTP2_ERR_NOMEM;
+          }
+
+          min_header_table_size_entry = &iframe->iv[iframe->max_niv - 1];
+          min_header_table_size_entry->settings_id =
+              NGHTTP2_SETTINGS_HEADER_TABLE_SIZE;
+          min_header_table_size_entry->value = UINT32_MAX;
+
           inbound_frame_set_mark(iframe, NGHTTP2_FRAME_SETTINGS_ENTRY_LENGTH);
           break;
         }
