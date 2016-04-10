@@ -1393,6 +1393,34 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
   }
 #endif // HAVE_MRUBY
 
+  auto &http2conf = get_config()->http2;
+
+  // We need some conditions that must be fulfilled to initiate server
+  // push.
+  //
+  // * Server push is disabled for http2 proxy or client proxy, since
+  //   incoming headers are mixed origins.  We don't know how to
+  //   reliably determine the authority yet.
+  //
+  // * We need non-final response or 200 response code for associated
+  //   resource.  This is too restrictive, we will review this later.
+  //
+  // * We requires GET or POST for associated resource.  Probably we
+  //   don't want to push for HEAD request.  Not sure other methods
+  //   are also eligible for push.
+  if (!http2conf.no_server_push &&
+      nghttp2_session_get_remote_settings(session_,
+                                          NGHTTP2_SETTINGS_ENABLE_PUSH) == 1 &&
+      !get_config()->http2_proxy && (downstream->get_stream_id() % 2) &&
+      resp.fs.header(http2::HD_LINK) &&
+      (downstream->get_non_final_response() || resp.http_status == 200) &&
+      (req.method == HTTP_GET || req.method == HTTP_POST)) {
+
+    if (prepare_push_promise(downstream) != 0) {
+      // Continue to send response even if push was failed.
+    }
+  }
+
   auto nva = std::vector<nghttp2_nv>();
   // 4 means :status and possible server, via and x-http2-push header
   // field.
@@ -1481,8 +1509,6 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
     log_response_headers(downstream, nva);
   }
 
-  auto &http2conf = get_config()->http2;
-
   if (http2conf.upstream.debug.dump.response_header) {
     http2::dump_nv(http2conf.upstream.debug.dump.response_header, nva.data(),
                    nva.size());
@@ -1498,31 +1524,6 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
     data_prdptr = &data_prd;
   } else {
     data_prdptr = nullptr;
-  }
-
-  // We need some conditions that must be fulfilled to initiate server
-  // push.
-  //
-  // * Server push is disabled for http2 proxy or client proxy, since
-  //   incoming headers are mixed origins.  We don't know how to
-  //   reliably determine the authority yet.
-  //
-  // * We need 200 response code for associated resource.  This is too
-  //   restrictive, we will review this later.
-  //
-  // * We requires GET or POST for associated resource.  Probably we
-  //   don't want to push for HEAD request.  Not sure other methods
-  //   are also eligible for push.
-  if (!http2conf.no_server_push &&
-      nghttp2_session_get_remote_settings(session_,
-                                          NGHTTP2_SETTINGS_ENABLE_PUSH) == 1 &&
-      !get_config()->http2_proxy && (downstream->get_stream_id() % 2) &&
-      resp.fs.header(http2::HD_LINK) && resp.http_status == 200 &&
-      (req.method == HTTP_GET || req.method == HTTP_POST)) {
-
-    if (prepare_push_promise(downstream) != 0) {
-      // Continue to send response even if push was failed.
-    }
   }
 
   rv = nghttp2_submit_response(session_, downstream->get_stream_id(),
