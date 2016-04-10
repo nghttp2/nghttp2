@@ -169,6 +169,13 @@ OPTIONS
     The  number of  concurrent  pushed  streams this  client
     accepts.
 
+.. option:: --expect-continue
+
+    Perform an Expect/Continue handshake:  wait to send DATA
+    (up to  a short  timeout)  until the server sends  a 100
+    Continue interim response. This option is ignored unless
+    combined with the :option:`-d` option.
+
 .. option:: --version
 
     Display version information and exit.

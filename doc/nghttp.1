@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTP" "1" "March 27, 2016" "1.9.1" "nghttp2"
+.TH "NGHTTP" "1" "April 10, 2016" "1.10.0-DEV" "nghttp2"
 .SH NAME
 nghttp \- HTTP/2 client
 .
@@ -214,6 +214,14 @@ Disable server push.
 .B \-\-max\-concurrent\-streams=<N>
 The  number of  concurrent  pushed  streams this  client
 accepts.
+.UNINDENT
+.INDENT 0.0
+.TP
+.B \-\-expect\-continue
+Perform an Expect/Continue handshake:  wait to send DATA
+(up to  a short  timeout)  until the server sends  a 100
+Continue interim response. This option is ignored unless
+combined with the \fI\%\-d\fP option.
 .UNINDENT
 .INDENT 0.0
 .TP
