@@ -177,12 +177,15 @@ Any deviation results in stream error of type PROTOCOL_ERROR.  If
 error is found in PUSH_PROMISE frame, stream error is raised against
 promised stream.
 
-Implement HTTP/2 non-critical extensions
-----------------------------------------
+Implement user defined HTTP/2 non-critical extensions
+-----------------------------------------------------
 
 As of nghttp2 v1.8.0, we have added HTTP/2 non-critical extension
-framework, which lets application send and receive HTTP/2 non-critical
-extension frames.
+framework, which lets application send and receive user defined custom
+HTTP/2 non-critical extension frames.  nghttp2 also offers built-in
+functionality to send and receive official HTTP/2 extension frames
+(e.g., ALTSVC frame).  For these built-in handler, refer to the next
+section.
 
 To send extension frame, use `nghttp2_submit_extension()`, and
 implement :type:`nghttp2_pack_extension_callback`.  The callback
@@ -383,3 +386,41 @@ its creation:
 .. code-block:: c
 
     nghttp2_session_client_new2(&session, callbacks, user_data, option);
+
+How to use built-in HTTP/2 extension frame handlers
+---------------------------------------------------
+
+In the previous section, we talked about the user defined HTTP/2
+extension frames.  In this section, we talk about HTTP/2 extension
+frame support built into nghttp2 library.
+
+As of this writing, nghttp2 supports ALTSVC extension frame.  To send
+ALTSVC frame, use `nghttp2_submit_altsvc()` function.
+
+To receive ALTSVC frame through built-in functionality, application
+has to use `nghttp2_option_set_builtin_recv_extension_type()` to
+indicate the willingness of receiving ALTSVC frame:
+
+.. code-block:: c
+
+    nghttp2_option_set_builtin_recv_extension_type(option, NGHTTP2_ALTSVC);
+
+This is very similar to the case when we used to receive user defined
+frames.
+
+If the same frame type is set using
+`nghttp2_option_set_builtin_recv_extension_type()` and
+`nghttp2_option_set_user_recv_extension_type()`, the latter takes
+precedence.  Application can implement its own frame handler rather
+than using built-in handler.
+
+The :type:`nghttp2_option` must be set to :type:`nghttp2_session` on
+its creation, like so:
+
+.. code-block:: c
+
+    nghttp2_session_client_new2(&session, callbacks, user_data, option);
+
+When ALTSVC is received, :type:`nghttp2_on_frame_recv_callback` will
+be called as usual.
+
