@@ -102,6 +102,17 @@ void connectcb(struct ev_loop *loop, ev_io *w, int revents) {
   auto upstream = downstream->get_upstream();
   auto handler = upstream->get_client_handler();
   if (dconn->connected() != 0) {
+    downstream->pop_downstream_connection();
+
+    auto ndconn = handler->get_downstream_connection(downstream);
+    if (ndconn) {
+      if (downstream->attach_downstream_connection(std::move(ndconn)) == 0) {
+        return;
+      }
+    }
+
+    downstream->set_request_state(Downstream::CONNECT_FAIL);
+
     if (upstream->on_downstream_abort_request(downstream, 503) != 0) {
       delete handler;
     }
@@ -1055,8 +1066,6 @@ int HttpDownstreamConnection::connected() {
     }
 
     downstream_failure(addr_);
-
-    downstream_->set_request_state(Downstream::CONNECT_FAIL);
 
     return -1;
   }
