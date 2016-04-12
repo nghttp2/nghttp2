@@ -1759,6 +1759,11 @@ int Http2Upstream::on_downstream_reset(bool no_retry) {
       goto fail;
     }
 
+    rv = downstream->push_request_headers();
+    if (rv != 0) {
+      goto fail;
+    }
+
     continue;
 
   fail:

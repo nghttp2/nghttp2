@@ -1197,6 +1197,11 @@ int HttpsUpstream::on_downstream_reset(bool no_retry) {
     goto fail;
   }
 
+  rv = downstream_->push_request_headers();
+  if (rv != 0) {
+    goto fail;
+  }
+
   return 0;
 
 fail:

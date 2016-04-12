@@ -95,9 +95,7 @@ int Http2DownstreamConnection::attach_downstream(Downstream *downstream) {
     DCLOG(INFO, this) << "Attaching to DOWNSTREAM:" << downstream;
   }
   http2session_->add_downstream_connection(this);
-  if (http2session_->get_state() == Http2Session::DISCONNECTED) {
-    http2session_->signal_write();
-  }
+  http2session_->signal_write();
 
   downstream_ = downstream;
   downstream_->reset_downstream_rtimer();

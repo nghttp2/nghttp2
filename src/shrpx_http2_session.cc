@@ -73,11 +73,9 @@ void connchk_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
     if (LOG_ENABLED(INFO)) {
       SSLOG(INFO, http2session) << "ping timeout";
     }
-    http2session->disconnect();
 
-    if (http2session->get_num_dconns() == 0) {
-      delete http2session;
-    }
+    delete http2session;
+
     return;
   default:
     if (LOG_ENABLED(INFO)) {
@@ -95,10 +93,8 @@ void settings_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
   http2session->stop_settings_timer();
   SSLOG(INFO, http2session) << "SETTINGS timeout";
   if (http2session->terminate_session(NGHTTP2_SETTINGS_TIMEOUT) != 0) {
-    http2session->disconnect();
-    if (http2session->get_num_dconns() == 0) {
-      delete http2session;
-    }
+    delete http2session;
+
     return;
   }
   http2session->signal_write();
@@ -114,11 +110,7 @@ void timeoutcb(struct ev_loop *loop, ev_timer *w, int revents) {
     SSLOG(INFO, http2session) << "Timeout";
   }
 
-  http2session->disconnect(http2session->get_state() ==
-                           Http2Session::CONNECTING);
-  if (http2session->get_num_dconns() == 0) {
-    delete http2session;
-  }
+  delete http2session;
 }
 } // namespace
 
@@ -129,20 +121,16 @@ void readcb(struct ev_loop *loop, ev_io *w, int revents) {
   auto http2session = static_cast<Http2Session *>(conn->data);
   rv = http2session->do_read();
   if (rv != 0) {
-    http2session->disconnect(http2session->should_hard_fail());
-    if (http2session->get_num_dconns() == 0) {
-      delete http2session;
-    }
+    delete http2session;
+
     return;
   }
   http2session->connection_alive();
 
   rv = http2session->do_write();
   if (rv != 0) {
-    http2session->disconnect(http2session->should_hard_fail());
-    if (http2session->get_num_dconns() == 0) {
-      delete http2session;
-    }
+    delete http2session;
+
     return;
   }
 }
@@ -155,10 +143,8 @@ void writecb(struct ev_loop *loop, ev_io *w, int revents) {
   auto http2session = static_cast<Http2Session *>(conn->data);
   rv = http2session->do_write();
   if (rv != 0) {
-    http2session->disconnect(http2session->should_hard_fail());
-    if (http2session->get_num_dconns() == 0) {
-      delete http2session;
-    }
+    delete http2session;
+
     return;
   }
   http2session->reset_connection_check_timer_if_not_checking();
@@ -173,9 +159,9 @@ void initiate_connection_cb(struct ev_loop *loop, ev_timer *w, int revents) {
     if (LOG_ENABLED(INFO)) {
       SSLOG(INFO, http2session) << "Could not initiate backend connection";
     }
-    http2session->disconnect(true);
-    assert(http2session->get_num_dconns() == 0);
+
     delete http2session;
+
     return;
   }
 }
@@ -223,9 +209,8 @@ Http2Session::Http2Session(struct ev_loop *loop, SSL_CTX *ssl_ctx,
 }
 
 Http2Session::~Http2Session() {
-  disconnect(true);
-
-  remove_from_freelist();
+  exclude_from_scheduling();
+  disconnect(should_hard_fail());
 }
 
 int Http2Session::disconnect(bool hard) {
@@ -1940,9 +1925,11 @@ bool Http2Session::should_hard_fail() const {
   switch (state_) {
   case PROXY_CONNECTING:
   case PROXY_FAILED:
-  case CONNECTING:
-  case CONNECT_FAILING:
     return true;
+  case DISCONNECTED: {
+    const auto &proxy = get_config()->downstream_http_proxy;
+    return !proxy.host.empty();
+  }
   default:
     return false;
   }
@@ -2112,9 +2099,16 @@ void Http2Session::remove_from_freelist() {
     }
     addr_->http2_extra_freelist.remove(this);
     break;
+  case FREELIST_ZONE_GONE:
+    return;
   }
 
   freelist_zone_ = FREELIST_ZONE_NONE;
+}
+
+void Http2Session::exclude_from_scheduling() {
+  remove_from_freelist();
+  freelist_zone_ = FREELIST_ZONE_GONE;
 }
 
 } // namespace shrpx

@@ -64,7 +64,10 @@ enum FreelistZone {
   FREELIST_ZONE_AVAIL,
   // Http2Session object is linked in address scope
   // http2_extra_freelist.
-  FREELIST_ZONE_EXTRA
+  FREELIST_ZONE_EXTRA,
+  // Http2Session object is about to be deleted, and it does not
+  // belong to any linked list.
+  FREELIST_ZONE_GONE
 };
 
 class Http2Session {
@@ -179,6 +182,10 @@ public:
   // Removes this object from any freelist.  If this object is not
   // linked from any freelist, this function does nothing.
   void remove_from_freelist();
+
+  // Removes this object form any freelist, and marks this object as
+  // not schedulable.
+  void exclude_from_scheduling();
 
   // Returns true if the maximum concurrency is reached.  In other
   // words, the number of currently participated streams in this
