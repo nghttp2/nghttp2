@@ -2052,7 +2052,9 @@ DownstreamAddrGroup *Http2Session::get_downstream_addr_group() const {
 }
 
 void Http2Session::add_to_avail_freelist() {
-  assert(freelist_zone_ == FREELIST_ZONE_NONE);
+  if (freelist_zone_ != FREELIST_ZONE_NONE) {
+    return;
+  }
 
   if (LOG_ENABLED(INFO)) {
     SSLOG(INFO, this) << "Append to http2_avail_freelist, group=" << group_
@@ -2066,7 +2068,9 @@ void Http2Session::add_to_avail_freelist() {
 }
 
 void Http2Session::add_to_extra_freelist() {
-  assert(freelist_zone_ == FREELIST_ZONE_NONE);
+  if (freelist_zone_ != FREELIST_ZONE_NONE) {
+    return;
+  }
 
   if (LOG_ENABLED(INFO)) {
     SSLOG(INFO, this) << "Append to http2_extra_freelist, addr=" << addr_
