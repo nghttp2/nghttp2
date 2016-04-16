@@ -181,6 +181,10 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
     if (it == end) {
       dst.shared_addr = shared_addr;
     } else {
+      if (LOG_ENABLED(INFO)) {
+        LOG(INFO) << dst.pattern << " shares the same backend group with "
+                  << (*it).pattern;
+      }
       dst.shared_addr = (*it).shared_addr;
     }
   }
