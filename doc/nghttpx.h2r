@@ -328,7 +328,7 @@ respectively.
 
         Clear all existing request header fields.
 
-    .. rb:method:: push uri
+    .. rb:method:: push(uri)
 
         Initiate to push resource identified by *uri*.  Only HTTP/2
         protocol supports this feature.  For the other protocols, this
