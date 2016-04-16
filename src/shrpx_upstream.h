@@ -68,6 +68,9 @@ public:
   virtual int send_reply(Downstream *downstream, const uint8_t *body,
                          size_t bodylen) = 0;
 
+  // Starts server push.  The |downstream| is an associated stream for
+  // the pushed resource.  This function returns 0 if it succeeds,
+  // otherwise -1.
   virtual int initiate_push(Downstream *downstream, const StringRef &uri) = 0;
 
   // Fills response data in |iov| whose capacity is |iovcnt|.  Returns

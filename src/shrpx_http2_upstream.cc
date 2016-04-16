@@ -1893,7 +1893,8 @@ bool Http2Upstream::push_enabled() const {
 int Http2Upstream::initiate_push(Downstream *downstream, const StringRef &uri) {
   int rv;
 
-  if (uri.empty() || !push_enabled() || (downstream->get_stream_id() % 2)) {
+  if (uri.empty() || !push_enabled() ||
+      (downstream->get_stream_id() % 2) == 0) {
     return 0;
   }
 
