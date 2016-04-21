@@ -49,7 +49,7 @@
 
 #include "http-parser/http_parser.h"
 
-#include "buffer.h"
+#include "memchunk.h"
 #include "http2.h"
 #include "nghttp2_gzip.h"
 #include "template.h"
@@ -241,6 +241,8 @@ struct HttpClient {
   void output_har(FILE *outfile);
 #endif // HAVE_JANSSON
 
+  MemchunkPool mcpool;
+  DefaultMemchunks wb;
   std::vector<std::unique_ptr<Request>> reqvec;
   // Insert path already added in reqvec to prevent multiple request
   // for 1 resource.
@@ -281,7 +283,6 @@ struct HttpClient {
   // true if the response message of HTTP Upgrade request is fully
   // received. It is not relevant the upgrade succeeds, or not.
   bool upgrade_response_complete;
-  Buffer<64_k> wb;
   // SETTINGS payload sent as token68 in HTTP Upgrade
   std::array<uint8_t, 128> settings_payload;
 

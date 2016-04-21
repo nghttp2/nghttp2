@@ -529,7 +529,8 @@ void settings_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents) {
 
 HttpClient::HttpClient(const nghttp2_session_callbacks *callbacks,
                        struct ev_loop *loop, SSL_CTX *ssl_ctx)
-    : session(nullptr),
+    : wb(&mcpool),
+      session(nullptr),
       callbacks(callbacks),
       loop(loop),
       ssl_ctx(ssl_ctx),
@@ -744,29 +745,32 @@ int HttpClient::read_clear() {
 int HttpClient::write_clear() {
   ev_timer_again(loop, &rt);
 
+  std::array<struct iovec, 2> iov;
+
   for (;;) {
-    if (wb.rleft() > 0) {
-      ssize_t nwrite;
-      while ((nwrite = write(fd, wb.pos, wb.rleft())) == -1 && errno == EINTR)
-        ;
-      if (nwrite == -1) {
-        if (errno == EAGAIN || errno == EWOULDBLOCK) {
-          ev_io_start(loop, &wev);
-          ev_timer_again(loop, &wt);
-          return 0;
-        }
-        return -1;
-      }
-      wb.drain(nwrite);
-      continue;
-    }
-    wb.reset();
     if (on_writefn(*this) != 0) {
       return -1;
     }
-    if (wb.rleft() == 0) {
+
+    auto iovcnt = wb.riovec(iov.data(), iov.size());
+
+    if (iovcnt == 0) {
       break;
     }
+
+    ssize_t nwrite;
+    while ((nwrite = writev(fd, iov.data(), iovcnt)) == -1 && errno == EINTR)
+      ;
+    if (nwrite == -1) {
+      if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        ev_io_start(loop, &wev);
+        ev_timer_again(loop, &wt);
+        return 0;
+      }
+      return -1;
+    }
+
+    wb.drain(nwrite);
   }
 
   ev_io_stop(loop, &wev);
@@ -946,7 +950,7 @@ int HttpClient::on_upgrade_connect() {
   }
   req += "\r\n";
 
-  wb.write(req.c_str(), req.size());
+  wb.append(req);
 
   if (config.verbose) {
     print_timer();
@@ -1193,11 +1197,24 @@ int HttpClient::on_read(const uint8_t *data, size_t len) {
 }
 
 int HttpClient::on_write() {
-  auto rv = nghttp2_session_send(session);
-  if (rv != 0) {
-    std::cerr << "[ERROR] nghttp2_session_send() returned error: "
-              << nghttp2_strerror(rv) << std::endl;
-    return -1;
+  for (;;) {
+    if (wb.rleft() >= 16384) {
+      return 0;
+    }
+
+    const uint8_t *data;
+    auto len = nghttp2_session_mem_send(session, &data);
+    if (len < 0) {
+      std::cerr << "[ERROR] nghttp2_session_send() returned error: "
+                << nghttp2_strerror(len) << std::endl;
+      return -1;
+    }
+
+    if (len == 0) {
+      break;
+    }
+
+    wb.append(data, len);
   }
 
   if (nghttp2_session_want_read(session) == 0 &&
@@ -1277,36 +1294,37 @@ int HttpClient::write_tls() {
 
   ERR_clear_error();
 
+  struct iovec iov;
+
   for (;;) {
-    if (wb.rleft() > 0) {
-      auto rv = SSL_write(ssl, wb.pos, wb.rleft());
-
-      if (rv <= 0) {
-        auto err = SSL_get_error(ssl, rv);
-        switch (err) {
-        case SSL_ERROR_WANT_READ:
-          // renegotiation started
-          return -1;
-        case SSL_ERROR_WANT_WRITE:
-          ev_io_start(loop, &wev);
-          ev_timer_again(loop, &wt);
-          return 0;
-        default:
-          return -1;
-        }
-      }
-
-      wb.drain(rv);
-
-      continue;
-    }
-    wb.reset();
     if (on_writefn(*this) != 0) {
       return -1;
     }
-    if (wb.rleft() == 0) {
+
+    auto iovcnt = wb.riovec(&iov, 1);
+
+    if (iovcnt == 0) {
       break;
     }
+
+    auto rv = SSL_write(ssl, iov.iov_base, iov.iov_len);
+
+    if (rv <= 0) {
+      auto err = SSL_get_error(ssl, rv);
+      switch (err) {
+      case SSL_ERROR_WANT_READ:
+        // renegotiation started
+        return -1;
+      case SSL_ERROR_WANT_WRITE:
+        ev_io_start(loop, &wev);
+        ev_timer_again(loop, &wt);
+        return 0;
+      default:
+        return -1;
+      }
+    }
+
+    wb.drain(rv);
   }
 
   ev_io_stop(loop, &wev);
@@ -2340,20 +2358,6 @@ ssize_t file_read_callback(nghttp2_session *session, int32_t stream_id,
 } // namespace
 
 namespace {
-ssize_t send_callback(nghttp2_session *session, const uint8_t *data,
-                      size_t length, int flags, void *user_data) {
-  auto client = static_cast<HttpClient *>(user_data);
-  auto &wb = client->wb;
-
-  if (wb.wleft() == 0) {
-    return NGHTTP2_ERR_WOULDBLOCK;
-  }
-
-  return wb.write(data, length);
-}
-} // namespace
-
-namespace {
 int run(char **uris, int n) {
   nghttp2_session_callbacks *callbacks;
 
@@ -2391,8 +2395,6 @@ int run(char **uris, int n) {
 
   nghttp2_session_callbacks_set_on_frame_not_send_callback(
       callbacks, on_frame_not_send_callback);
-
-  nghttp2_session_callbacks_set_send_callback(callbacks, send_callback);
 
   if (config.padding) {
     nghttp2_session_callbacks_set_select_padding_callback(
