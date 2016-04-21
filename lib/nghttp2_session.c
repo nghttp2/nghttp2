@@ -2877,6 +2877,7 @@ static ssize_t nghttp2_session_mem_send_internal(nghttp2_session *session,
   aob = &session->aob;
   framebufs = &aob->framebufs;
 
+  *data_ptr = NULL;
   /* We may have idle streams more than we expect (e.g.,
      nghttp2_session_change_stream_priority() or
      nghttp2_session_create_idle_stream()).  Adjust them here. */
@@ -2885,7 +2886,6 @@ static ssize_t nghttp2_session_mem_send_internal(nghttp2_session *session,
     return rv;
   }
 
-  *data_ptr = NULL;
   for (;;) {
     switch (aob->state) {
     case NGHTTP2_OB_POP_ITEM: {
@@ -3163,7 +3163,7 @@ ssize_t nghttp2_session_mem_send(nghttp2_session *session,
 }
 
 int nghttp2_session_send(nghttp2_session *session) {
-  const uint8_t *data;
+  const uint8_t *data = NULL;
   ssize_t datalen;
   ssize_t sentlen;
   nghttp2_bufs *framebufs;
