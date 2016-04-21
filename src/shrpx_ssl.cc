@@ -1011,14 +1011,19 @@ int verify_hostname(X509 *cert, const StringRef &hostname,
     return -1;
   }
 
-  auto rv = util::strieq(hostname, cn);
-  OPENSSL_free(const_cast<char *>(cn.c_str()));
+  if (cn[cn.size() - 1] == '.') {
+    if (cn.size() == 1) {
+      OPENSSL_free(const_cast<char *>(cn.c_str()));
 
-  if (rv) {
-    return 0;
+      return -1;
+    }
+    cn = StringRef{cn.c_str(), cn.size() - 1};
   }
 
-  return -1;
+  auto rv = tls_hostname_match(cn, hostname);
+  OPENSSL_free(const_cast<char *>(cn.c_str()));
+
+  return rv ? 0 : -1;
 }
 } // namespace
 
