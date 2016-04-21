@@ -984,9 +984,19 @@ int verify_hostname(X509 *cert, const StringRef &hostname,
       }
 
       auto len = ASN1_STRING_length(altname->d.ia5);
+      if (len == 0) {
+        continue;
+      }
       if (std::find(name, name + len, '\0') != name + len) {
         // Embedded NULL is not permitted.
         continue;
+      }
+
+      if (name[len - 1] == '.') {
+        --len;
+        if (len == 0) {
+          continue;
+        }
       }
 
       if (tls_hostname_match(StringRef{name, static_cast<size_t>(len)},
@@ -1140,7 +1150,7 @@ void CertLookupTree::add_cert(SSL_CTX *ssl_ctx, const StringRef &hostname) {
   if (hostname.empty()) {
     return;
   }
-  // Copy hostname including terminal NULL
+  // Copy hostname
   auto host_copy = make_unique<char[]>(hostname.size() + 1);
   std::copy(std::begin(hostname), std::end(hostname), host_copy.get());
   host_copy[hostname.size()] = '\0';
@@ -1234,9 +1244,19 @@ int cert_lookup_tree_add_cert_from_file(CertLookupTree *lt, SSL_CTX *ssl_ctx,
       }
 
       auto len = ASN1_STRING_length(altname->d.ia5);
+      if (len == 0) {
+        continue;
+      }
       if (std::find(name, name + len, '\0') != name + len) {
         // Embedded NULL is not permitted.
         continue;
+      }
+
+      if (name[len - 1] == '.') {
+        --len;
+        if (len == 0) {
+          continue;
+        }
       }
 
       lt->add_cert(ssl_ctx, StringRef{name, static_cast<size_t>(len)});
@@ -1246,6 +1266,16 @@ int cert_lookup_tree_add_cert_from_file(CertLookupTree *lt, SSL_CTX *ssl_ctx,
   auto cn = get_common_name(cert);
   if (cn.empty()) {
     return 0;
+  }
+
+  if (cn[cn.size() - 1] == '.') {
+    if (cn.size() == 1) {
+      OPENSSL_free(const_cast<char *>(cn.c_str()));
+
+      return 0;
+    }
+
+    cn = StringRef{cn.c_str(), cn.size() - 1};
   }
 
   lt->add_cert(ssl_ctx, cn);
