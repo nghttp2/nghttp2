@@ -2885,7 +2885,6 @@ static ssize_t nghttp2_session_mem_send_internal(nghttp2_session *session,
     return rv;
   }
 
-  *data_ptr = NULL;
   for (;;) {
     switch (aob->state) {
     case NGHTTP2_OB_POP_ITEM: {
@@ -3142,6 +3141,8 @@ ssize_t nghttp2_session_mem_send(nghttp2_session *session,
   int rv;
   ssize_t len;
 
+  *data_ptr = NULL;
+
   len = nghttp2_session_mem_send_internal(session, data_ptr, 1);
   if (len <= 0) {
     return len;
@@ -3163,7 +3164,7 @@ ssize_t nghttp2_session_mem_send(nghttp2_session *session,
 }
 
 int nghttp2_session_send(nghttp2_session *session) {
-  const uint8_t *data;
+  const uint8_t *data = NULL;
   ssize_t datalen;
   ssize_t sentlen;
   nghttp2_bufs *framebufs;
