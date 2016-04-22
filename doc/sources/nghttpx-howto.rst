@@ -383,3 +383,12 @@ Use following options instead of ``--client-proxy``:
    http2-proxy=yes
    frontend=<ADDR>,<PORT>;no-tls
    backend=<ADDR>,<PORT>;;proto=h2;tls
+
+We also removed ``--backend-http2-connections-per-worker`` option.  It
+was present because previously the number of backend h2 connection was
+statically configured, and defaulted to 1.  Now the number of backend
+h2 connection is increased on demand.  We know the maximum number of
+concurrent streams per connection.  When we push as many request as
+the maximum concurrency to the one connection, we create another new
+connection so that we can distribute load and avoid delay the request
+processing.  This is done automatically without any configuration.
