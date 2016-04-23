@@ -145,8 +145,7 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
 
     // TODO for some reason, clang-3.6 which comes with Ubuntu 15.10
     // does not value initialize SharedDownstreamAddr above.
-    *shared_addr = SharedDownstreamAddr{};
-
+    shared_addr->next = 0;
     shared_addr->addrs.resize(src.addrs.size());
     shared_addr->proto = src.proto;
     shared_addr->tls = src.tls;
