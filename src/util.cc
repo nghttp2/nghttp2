@@ -882,12 +882,11 @@ int create_nonblock_socket(int family) {
 bool check_socket_connected(int fd) {
   int error;
   socklen_t len = sizeof(error);
-  if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &error, &len) == 0) {
-    if (error != 0) {
-      return false;
-    }
+  if (getsockopt(fd, SOL_SOCKET, SO_ERROR, &error, &len) != 0) {
+    return false;
   }
-  return true;
+
+  return error == 0;
 }
 
 bool ipv6_numeric_addr(const char *host) {
