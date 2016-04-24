@@ -754,8 +754,7 @@ Http2Session *ClientHandler::select_http2_session(DownstreamAddrGroup &group) {
   if (LOG_ENABLED(INFO)) {
     CLOG(INFO, this) << "Selected DownstreamAddr=" << selected_addr
                      << ", index="
-                     << (selected_addr - shared_addr->addrs.data()) /
-                            sizeof(*selected_addr);
+                     << (selected_addr - shared_addr->addrs.data());
   }
 
   if (selected_addr->http2_extra_freelist.size()) {
