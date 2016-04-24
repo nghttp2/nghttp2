@@ -254,7 +254,7 @@ static void run_nghttp2_session_send_server(void) {
   }
 
 fail:
-   nghttp2_session_del(session);
+  nghttp2_session_del(session);
 }
 
 void test_nghttp2_session_send_server(void) {

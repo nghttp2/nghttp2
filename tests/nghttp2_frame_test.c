@@ -490,7 +490,7 @@ void test_nghttp2_frame_pack_altsvc(void) {
   CU_ASSERT(0 == rv);
   CU_ASSERT(NGHTTP2_FRAME_HDLEN + payloadlen == nghttp2_bufs_len(&bufs));
 
-  rv = unpack_framebuf((nghttp2_frame*)&oframe, &bufs);
+  rv = unpack_framebuf((nghttp2_frame *)&oframe, &bufs);
 
   CU_ASSERT(0 == rv);
 
