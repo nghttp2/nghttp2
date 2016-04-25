@@ -37,7 +37,8 @@ The options are categorized into several groups.
 Connections
 ~~~~~~~~~~~
 
-.. option:: -b, --backend=(<HOST>,<PORT>|unix:<PATH>)[;[<PATTERN>[:...]][;proto=<PROTO>][;tls][;fall=<N>][;rise=<N>]]
+.. option:: -b, --backend=(<HOST>,<PORT>|unix:<PATH>)[;[<PATTERN>[:...]][[;PARAM]...]
+
 
     Set  backend  host  and   port.   The  multiple  backend
     addresses are  accepted by repeating this  option.  UNIX
@@ -100,20 +101,31 @@ Connections
     The backend addresses sharing same <PATTERN> are grouped
     together forming  load balancing  group.
 
-    Optionally,   backend   application  protocol   can   be
-    specified in <PROTO>.  All that share the same <PATTERN>
-    must  have  the  same  <PROTO> value  if  it  is  given.
-    <PROTO>  should be  one  of the  following list  without
-    quotes: "h2", "http/1.1".  The  default value of <PROTO>
-    is "http/1.1".  Note that  usually "h2" refers to HTTP/2
+    Several parameters <PARAM> are accepted after <PATTERN>.
+    The  parameters are  delimited  by  ";".  The  available
+    parameters are: "proto=<PROTO>",  "tls", "fall=<N>", and
+    "rise=<N>".   The  parameter  consists of  keyword,  and
+    optionally followed by "="  and value.  For example, the
+    parameter "proto=h2" consists of the keyword "proto" and
+    value "h2".  The parameter "tls" consists of the keyword
+    "tls"  without value.   Each parameter  is described  as
+    follows.
+
+    The backend application protocol  can be specified using
+    optional   "proto"  keyword,   and   in   the  form   of
+    "proto=<PROTO>".  All that share the same <PATTERN> must
+    have the  same <PROTO>  value if  it is  given.  <PROTO>
+    should  be one  of  the following  list without  quotes:
+    "h2",  "http/1.1".   The  default value  of  <PROTO>  is
+    "http/1.1".   Note that  usually "h2"  refers to  HTTP/2
     over TLS.  But  in this option, it may  mean HTTP/2 over
     cleartext TCP unless "tls" keyword is used (see below).
 
-    Optionally,  TLS  can  be enabled  by  specifying  "tls"
-    keyword.  TLS is not enabled by default.
+    TLS can be enabled by specifying optional "tls" keyword.
+    TLS is not enabled by default.
 
-    Optionally,  the feature  to detect  whether backend  is
-    online/offline can  be enabled  using "fall"  and "rise"
+    The  feature  to detect  whether  backend  is online  or
+    offline can be enabled  using optional "fall" and "rise"
     parameters.   Using  "fall=<N>"  parameter,  if  nghttpx
     cannot connect  to a  this backend <N>  times in  a row,
     this  backend  is  assumed  to be  offline,  and  it  is
