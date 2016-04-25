@@ -132,6 +132,7 @@ HttpDownstreamConnection::HttpDownstreamConnection(DownstreamAddrGroup *group,
             get_config()->tls.dyn_rec.idle_timeout, PROTO_HTTP1),
       do_read_(&HttpDownstreamConnection::noop),
       do_write_(&HttpDownstreamConnection::noop),
+      do_signal_write_(&HttpDownstreamConnection::noop),
       worker_(worker),
       ssl_ctx_(group->shared_addr->tls ? worker->get_cl_ssl_ctx() : nullptr),
       group_(group),
@@ -1080,6 +1081,8 @@ int HttpDownstreamConnection::connected() {
 
   ev_set_cb(&conn_.wev, writecb);
 
+  do_signal_write_ = &HttpDownstreamConnection::actual_signal_write;
+
   if (conn_.tls.ssl) {
     do_read_ = &HttpDownstreamConnection::tls_handshake;
     do_write_ = &HttpDownstreamConnection::tls_handshake;
@@ -1099,8 +1102,11 @@ int HttpDownstreamConnection::on_write() { return do_write_(*this); }
 
 void HttpDownstreamConnection::on_upstream_change(Upstream *upstream) {}
 
-void HttpDownstreamConnection::signal_write() {
+void HttpDownstreamConnection::signal_write() { do_signal_write_(*this); }
+
+int HttpDownstreamConnection::actual_signal_write() {
   ev_feed_event(conn_.loop, &conn_.wev, EV_WRITE);
+  return 0;
 }
 
 int HttpDownstreamConnection::noop() { return 0; }
