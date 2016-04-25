@@ -75,12 +75,14 @@ public:
 
   int connected();
   void signal_write();
+  int actual_signal_write();
 
   int noop();
 
 private:
   Connection conn_;
-  std::function<int(HttpDownstreamConnection &)> do_read_, do_write_;
+  std::function<int(HttpDownstreamConnection &)> do_read_, do_write_,
+    do_signal_write_;
   Worker *worker_;
   // nullptr if TLS is not used.
   SSL_CTX *ssl_ctx_;
