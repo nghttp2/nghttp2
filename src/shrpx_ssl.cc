@@ -925,6 +925,7 @@ int verify_numeric_hostname(X509 *cert, const StringRef &hostname,
   if (altnames) {
     auto altnames_deleter = defer(GENERAL_NAMES_free, altnames);
     size_t n = sk_GENERAL_NAME_num(altnames);
+    auto ip_found = false;
     for (size_t i = 0; i < n; ++i) {
       auto altname = sk_GENERAL_NAME_value(altnames, i);
       if (altname->type != GEN_IPADD) {
@@ -937,9 +938,14 @@ int verify_numeric_hostname(X509 *cert, const StringRef &hostname,
       }
       size_t ip_addrlen = altname->d.iPAddress->length;
 
+      ip_found = true;
       if (addr->len == ip_addrlen && memcmp(saddr, ip_addr, ip_addrlen) == 0) {
         return 0;
       }
+    }
+
+    if (ip_found) {
+      return -1;
     }
   }
 
@@ -970,6 +976,7 @@ int verify_hostname(X509 *cert, const StringRef &hostname,
   auto altnames = static_cast<GENERAL_NAMES *>(
       X509_get_ext_d2i(cert, NID_subject_alt_name, nullptr, nullptr));
   if (altnames) {
+    auto dns_found = false;
     auto altnames_deleter = defer(GENERAL_NAMES_free, altnames);
     size_t n = sk_GENERAL_NAME_num(altnames);
     for (size_t i = 0; i < n; ++i) {
@@ -999,10 +1006,18 @@ int verify_hostname(X509 *cert, const StringRef &hostname,
         }
       }
 
+      dns_found = true;
+
       if (tls_hostname_match(StringRef{name, static_cast<size_t>(len)},
                              hostname)) {
         return 0;
       }
+    }
+
+    // RFC 6125, section 6.4.4. says that client MUST not seek a match
+    // for CN if a dns dNSName is found.
+    if (dns_found) {
+      return -1;
     }
   }
 
@@ -1237,6 +1252,7 @@ int cert_lookup_tree_add_cert_from_file(CertLookupTree *lt, SSL_CTX *ssl_ctx,
   if (altnames) {
     auto altnames_deleter = defer(GENERAL_NAMES_free, altnames);
     size_t n = sk_GENERAL_NAME_num(altnames);
+    auto dns_found = false;
     for (size_t i = 0; i < n; ++i) {
       auto altname = sk_GENERAL_NAME_value(altnames, i);
       if (altname->type != GEN_DNS) {
@@ -1264,7 +1280,13 @@ int cert_lookup_tree_add_cert_from_file(CertLookupTree *lt, SSL_CTX *ssl_ctx,
         }
       }
 
+      dns_found = true;
       lt->add_cert(ssl_ctx, StringRef{name, static_cast<size_t>(len)});
+    }
+
+    // Don't bother CN if we have dNSName.
+    if (dns_found) {
+      return 0;
     }
   }
 
