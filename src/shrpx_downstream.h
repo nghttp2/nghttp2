@@ -278,6 +278,7 @@ public:
   bool validate_request_recv_body_length() const;
   void set_request_downstream_host(const StringRef &host);
   bool expect_response_body() const;
+  bool expect_response_trailer() const;
   enum {
     INITIAL,
     HEADER_COMPLETE,

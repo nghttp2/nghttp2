@@ -604,6 +604,13 @@ int htp_hdrs_completecb(http_parser *htp) {
   resp.http_major = htp->http_major;
   resp.http_minor = htp->http_minor;
 
+  if (resp.http_major > 1) {
+    // Normalize HTTP version, since we use http_major == 2 specially
+    // in Downstream::expect_response_trailer().
+    resp.http_major = 1;
+    resp.http_minor = 1;
+  }
+
   if (resp.fs.parse_content_length() != 0) {
     downstream->set_response_state(Downstream::MSG_BAD_HEADER);
     return -1;

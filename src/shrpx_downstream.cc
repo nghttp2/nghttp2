@@ -744,6 +744,13 @@ bool Downstream::expect_response_body() const {
          http2::expect_response_body(req_.method, resp_.http_status);
 }
 
+bool Downstream::expect_response_trailer() const {
+  // In HTTP/2, if final response HEADERS does not bear END_STREAM it
+  // is possible trailer fields might come, regardless of request
+  // method or status code.
+  return !resp_.headers_only && resp_.http_major == 2;
+}
+
 namespace {
 void reset_timer(struct ev_loop *loop, ev_timer *w) { ev_timer_again(loop, w); }
 } // namespace

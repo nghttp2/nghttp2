@@ -1520,7 +1520,8 @@ int Http2Upstream::on_downstream_header_complete(Downstream *downstream) {
 
   nghttp2_data_provider *data_prdptr;
 
-  if (downstream->expect_response_body()) {
+  if (downstream->expect_response_body() ||
+      downstream->expect_response_trailer()) {
     data_prdptr = &data_prd;
   } else {
     data_prdptr = nullptr;
