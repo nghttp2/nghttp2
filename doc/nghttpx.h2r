@@ -267,6 +267,11 @@ respectively.
 
         Return IP address of a remote client.
 
+    .. rb:attr_reader:: server_port
+
+        Return port number of the server frontend which accepted the
+        connection from client.
+
 .. rb:class:: Request
 
     Object to represent request from client.  The modification to

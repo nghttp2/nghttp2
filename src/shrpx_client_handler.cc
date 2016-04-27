@@ -1281,4 +1281,6 @@ StringRef ClientHandler::get_forwarded_for() const {
   return StringRef{forwarded_for_};
 }
 
+const UpstreamAddr *ClientHandler::get_upstream_addr() const { return faddr_; }
+
 } // namespace shrpx

@@ -144,6 +144,8 @@ public:
 
   Http2Session *select_http2_session(DownstreamAddrGroup &group);
 
+  const UpstreamAddr *get_upstream_addr() const;
+
 private:
   Connection conn_;
   ev_timer reneg_shutdown_timer_;
