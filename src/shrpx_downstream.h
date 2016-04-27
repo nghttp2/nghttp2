@@ -185,7 +185,8 @@ struct Response {
         http_status(0),
         http_major(1),
         http_minor(1),
-        connection_close(false) {}
+        connection_close(false),
+        headers_only(false) {}
 
   void consume(size_t len) {
     assert(unconsumed_body_length >= len);
@@ -202,6 +203,10 @@ struct Response {
   unsigned int http_status;
   int http_major, http_minor;
   bool connection_close;
+  // true if response only consists of HEADERS, and it bears
+  // END_STREAM.  This is used to tell Http2Upstream that it can send
+  // response with single HEADERS with END_STREAM flag only.
+  bool headers_only;
 };
 
 class Downstream {

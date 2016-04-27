@@ -1024,6 +1024,10 @@ int on_response_headers(Http2Session *http2session, Downstream *downstream,
     }
   }
 
+  if (frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
+    resp.headers_only = true;
+  }
+
   rv = upstream->on_downstream_header_complete(downstream);
   if (rv != 0) {
     // Handling early return (in other words, response was hijacked by

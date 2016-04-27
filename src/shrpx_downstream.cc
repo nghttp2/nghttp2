@@ -740,7 +740,8 @@ bool Downstream::get_expect_final_response() const {
 }
 
 bool Downstream::expect_response_body() const {
-  return http2::expect_response_body(req_.method, resp_.http_status);
+  return !resp_.headers_only &&
+         http2::expect_response_body(req_.method, resp_.http_status);
 }
 
 namespace {
