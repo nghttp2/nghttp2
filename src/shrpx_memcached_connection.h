@@ -33,8 +33,8 @@
 #include <ev.h>
 
 #include "shrpx_connection.h"
+#include "shrpx_ssl.h"
 #include "buffer.h"
-
 #include "network.h"
 
 using namespace nghttp2;
@@ -133,6 +133,7 @@ private:
   std::deque<MemcachedSendbuf> sendbufv_;
   std::function<int(MemcachedConnection &)> do_read_, do_write_;
   std::string sni_name_;
+  ssl::TLSSessionCache tls_session_cache_;
   MemcachedParseState parse_state_;
   const Address *addr_;
   SSL_CTX *ssl_ctx_;

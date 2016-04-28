@@ -141,7 +141,7 @@ void MemcachedConnection::disconnect() {
 int MemcachedConnection::initiate_connection() {
   assert(conn_.fd == -1);
 
-  if (ssl_ctx_ && !conn_.tls.ssl) {
+  if (ssl_ctx_) {
     auto ssl = ssl::create_ssl(ssl_ctx_);
     if (!ssl) {
       return -1;
@@ -173,6 +173,12 @@ int MemcachedConnection::initiate_connection() {
   if (ssl_ctx_) {
     if (!util::numeric_host(sni_name_.c_str())) {
       SSL_set_tlsext_host_name(conn_.tls.ssl, sni_name_.c_str());
+    }
+
+    auto session = ssl::reuse_tls_session(tls_session_cache_);
+    if (session) {
+      SSL_set_session(conn_.tls.ssl, session);
+      SSL_SESSION_free(session);
     }
 
     conn_.prepare_client_handshake();
@@ -254,6 +260,14 @@ int MemcachedConnection::tls_handshake() {
   if (!tlsconf.insecure &&
       ssl::check_cert(conn_.tls.ssl, addr_, StringRef(sni_name_)) != 0) {
     return -1;
+  }
+
+  if (!SSL_session_reused(conn_.tls.ssl)) {
+    auto tls_session = SSL_get0_session(conn_.tls.ssl);
+    if (tls_session) {
+      ssl::try_cache_tls_session(tls_session_cache_, *addr_, tls_session,
+                                 ev_now(conn_.loop));
+    }
   }
 
   do_read_ = &MemcachedConnection::read_tls;
