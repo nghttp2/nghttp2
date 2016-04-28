@@ -81,13 +81,7 @@ Connection::Connection(struct ev_loop *loop, int fd, SSL *ssl,
   }
 }
 
-Connection::~Connection() {
-  disconnect();
-
-  if (tls.ssl) {
-    SSL_free(tls.ssl);
-  }
-}
+Connection::~Connection() { disconnect(); }
 
 void Connection::disconnect() {
   if (tls.ssl) {
@@ -104,12 +98,9 @@ void Connection::disconnect() {
       tls.cached_session_lookup_req = nullptr;
     }
 
-    // To reuse SSL/TLS session, we have to shutdown, and don't free
-    // tls.ssl.
-    if (SSL_shutdown(tls.ssl) != 1) {
-      SSL_free(tls.ssl);
-      tls.ssl = nullptr;
-    }
+    SSL_shutdown(tls.ssl);
+    SSL_free(tls.ssl);
+    tls.ssl = nullptr;
 
     tls.wbuf.reset();
     tls.rbuf.reset();

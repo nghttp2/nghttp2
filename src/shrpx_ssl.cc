@@ -1445,13 +1445,11 @@ std::vector<uint8_t> serialize_ssl_session(SSL_SESSION *session) {
 }
 } // namespace
 
-void try_cache_tls_session(DownstreamAddr *addr, SSL_SESSION *session,
-                           ev_tstamp t) {
-  auto &cache = addr->tls_session_cache;
-
+void try_cache_tls_session(TLSSessionCache &cache, const Address &addr,
+                           SSL_SESSION *session, ev_tstamp t) {
   if (cache.last_updated + 1_min > t) {
     if (LOG_ENABLED(INFO)) {
-      LOG(INFO) << "Cache for addr=" << util::to_numeric_addr(&addr->addr)
+      LOG(INFO) << "Cache for addr=" << util::to_numeric_addr(&addr)
                 << " is still host.  Not updating.";
     }
     return;
@@ -1459,7 +1457,7 @@ void try_cache_tls_session(DownstreamAddr *addr, SSL_SESSION *session,
 
   if (LOG_ENABLED(INFO)) {
     LOG(INFO) << "Update cache entry for SSL_SESSION=" << session
-              << ", addr=" << util::to_numeric_addr(&addr->addr)
+              << ", addr=" << util::to_numeric_addr(&addr)
               << ", timestamp=" << std::fixed << std::setprecision(6) << t;
   }
 
@@ -1467,9 +1465,7 @@ void try_cache_tls_session(DownstreamAddr *addr, SSL_SESSION *session,
   cache.last_updated = t;
 }
 
-SSL_SESSION *reuse_tls_session(const DownstreamAddr *addr) {
-  auto &cache = addr->tls_session_cache;
-
+SSL_SESSION *reuse_tls_session(const TLSSessionCache &cache) {
   if (cache.session_data.empty()) {
     return nullptr;
   }

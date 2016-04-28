@@ -199,7 +199,7 @@ int LiveCheck::initiate_connection() {
       SSL_set_tlsext_host_name(conn_.tls.ssl, sni_name.c_str());
     }
 
-    auto session = ssl::reuse_tls_session(addr_);
+    auto session = ssl::reuse_tls_session(addr_->tls_session_cache);
     if (session) {
       SSL_set_session(conn_.tls.ssl, session);
       SSL_SESSION_free(session);
@@ -277,7 +277,8 @@ int LiveCheck::tls_handshake() {
   if (!SSL_session_reused(conn_.tls.ssl)) {
     auto tls_session = SSL_get0_session(conn_.tls.ssl);
     if (tls_session) {
-      ssl::try_cache_tls_session(addr_, tls_session, ev_now(conn_.loop));
+      ssl::try_cache_tls_session(addr_->tls_session_cache, addr_->addr,
+                                 tls_session, ev_now(conn_.loop));
     }
   }
 

@@ -351,18 +351,14 @@ int Http2Session::initiate_connection() {
       SSLOG(INFO, this) << "Connecting to downstream server";
     }
     if (ssl_ctx_) {
-      // We are establishing TLS connection.  If conn_.tls.ssl, we may
-      // reuse the previous session.
-      if (!conn_.tls.ssl) {
-        auto ssl = ssl::create_ssl(ssl_ctx_);
-        if (!ssl) {
-          return -1;
-        }
-
-        ssl::setup_downstream_http2_alpn(ssl);
-
-        conn_.set_ssl(ssl);
+      auto ssl = ssl::create_ssl(ssl_ctx_);
+      if (!ssl) {
+        return -1;
       }
+
+      ssl::setup_downstream_http2_alpn(ssl);
+
+      conn_.set_ssl(ssl);
 
       auto sni_name = !get_config()->tls.backend_sni_name.empty()
                           ? StringRef(get_config()->tls.backend_sni_name)
@@ -375,7 +371,7 @@ int Http2Session::initiate_connection() {
         SSL_set_tlsext_host_name(conn_.tls.ssl, sni_name.c_str());
       }
 
-      auto tls_session = ssl::reuse_tls_session(addr_);
+      auto tls_session = ssl::reuse_tls_session(addr_->tls_session_cache);
       if (tls_session) {
         SSL_set_session(conn_.tls.ssl, tls_session);
         SSL_SESSION_free(tls_session);
@@ -1845,7 +1841,8 @@ int Http2Session::tls_handshake() {
   if (!SSL_session_reused(conn_.tls.ssl)) {
     auto tls_session = SSL_get0_session(conn_.tls.ssl);
     if (tls_session) {
-      ssl::try_cache_tls_session(addr_, tls_session, ev_now(conn_.loop));
+      ssl::try_cache_tls_session(addr_->tls_session_cache, addr_->addr,
+                                 tls_session, ev_now(conn_.loop));
     }
   }
 

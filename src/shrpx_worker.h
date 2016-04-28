@@ -45,6 +45,7 @@
 #include "shrpx_config.h"
 #include "shrpx_downstream_connection_pool.h"
 #include "memchunk.h"
+#include "shrpx_ssl.h"
 
 using namespace nghttp2;
 
@@ -84,7 +85,7 @@ struct DownstreamAddr {
   size_t fall;
   size_t rise;
   // Client side TLS session cache
-  TLSSessionCache tls_session_cache;
+  ssl::TLSSessionCache tls_session_cache;
   // Http2Session object created for this address.  This list chains
   // all Http2Session objects that is not in group scope
   // http2_avail_freelist, and is not reached in maximum concurrency.

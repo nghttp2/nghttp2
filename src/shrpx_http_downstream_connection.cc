@@ -246,7 +246,7 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
           SSL_set_tlsext_host_name(conn_.tls.ssl, sni_name.c_str());
         }
 
-        auto session = ssl::reuse_tls_session(addr_);
+        auto session = ssl::reuse_tls_session(addr_->tls_session_cache);
         if (session) {
           SSL_set_session(conn_.tls.ssl, session);
           SSL_SESSION_free(session);
@@ -916,7 +916,8 @@ int HttpDownstreamConnection::tls_handshake() {
   if (!SSL_session_reused(conn_.tls.ssl)) {
     auto session = SSL_get0_session(conn_.tls.ssl);
     if (session) {
-      ssl::try_cache_tls_session(addr_, session, ev_now(conn_.loop));
+      ssl::try_cache_tls_session(addr_->tls_session_cache, addr_->addr, session,
+                                 ev_now(conn_.loop));
     }
   }
 

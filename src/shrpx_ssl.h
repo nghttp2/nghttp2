@@ -51,6 +51,14 @@ struct UpstreamAddr;
 
 namespace ssl {
 
+struct TLSSessionCache {
+  // ASN1 representation of SSL_SESSION object.  See
+  // i2d_SSL_SESSION(3SSL).
+  std::vector<uint8_t> session_data;
+  // The last time stamp when this cache entry is created or updated.
+  ev_tstamp last_updated;
+};
+
 // This struct stores the additional information per SSL_CTX.  This is
 // attached to SSL_CTX using SSL_CTX_set_app_data().
 struct TLSContextData {
@@ -229,12 +237,12 @@ bool tls_hostname_match(const StringRef &pattern, const StringRef &hostname);
 // |session| is serialized into ASN1 representation, and stored.  |t|
 // is used as a time stamp.  Depending on the existing cache's time
 // stamp, |session| might not be cached.
-void try_cache_tls_session(DownstreamAddr *addr, SSL_SESSION *session,
-                           ev_tstamp t);
+void try_cache_tls_session(TLSSessionCache &cache, const Address &addr,
+                           SSL_SESSION *session, ev_tstamp t);
 
 // Returns cached session associated |addr|.  If no cache entry is
 // found associated to |addr|, nullptr will be returned.
-SSL_SESSION *reuse_tls_session(const DownstreamAddr *addr);
+SSL_SESSION *reuse_tls_session(const TLSSessionCache &addr);
 
 } // namespace ssl
 

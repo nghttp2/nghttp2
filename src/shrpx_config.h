@@ -319,14 +319,6 @@ struct UpstreamAddr {
   int fd;
 };
 
-struct TLSSessionCache {
-  // ASN1 representation of SSL_SESSION object.  See
-  // i2d_SSL_SESSION(3SSL).
-  std::vector<uint8_t> session_data;
-  // The last time stamp when this cache entry is created or updated.
-  ev_tstamp last_updated;
-};
-
 struct DownstreamAddrConfig {
   Address addr;
   // backend address.  If |host_unix| is true, this is UNIX domain
