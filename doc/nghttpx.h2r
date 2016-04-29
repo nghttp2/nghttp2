@@ -265,12 +265,24 @@ respectively.
 
     .. rb:attr_reader:: remote_addr
 
-        Return IP address of a remote client.
+        Return IP address of a remote client.  If connection is made
+        via UNIX domain socket, this returns the string "localhost".
+
+    .. rb:attr_reader:: server_addr
+
+        Return address of server that accepted the connection.  This
+	is a string which specified in :option:`--frontend` option,
+	excluding port number, and not a resolved IP address.  For
+	UNIX domain socket, this is a path to UNIX domain socket.
 
     .. rb:attr_reader:: server_port
 
         Return port number of the server frontend which accepted the
         connection from client.
+
+    .. rb:attr_reader:: tls_used
+
+        Return true if TLS is used on the connection.
 
 .. rb:class:: Request
 
