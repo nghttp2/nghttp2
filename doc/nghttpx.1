@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "NGHTTPX" "1" "April 25, 2016" "1.10.0" "nghttp2"
+.TH "NGHTTPX" "1" "April 29, 2016" "1.11.0-DEV" "nghttp2"
 .SH NAME
 nghttpx \- HTTP/2 proxy
 .
@@ -40,14 +40,14 @@ A reverse proxy for HTTP/2, HTTP/1 and SPDY.
 .TP
 .B <PRIVATE_KEY>
 Set  path  to  server\(aqs private  key.   Required  unless
-"no\-tls" keyword is used in \fI\%\-\-frontend\fP option.
+"no\-tls" parameter is used in \fI\%\-\-frontend\fP option.
 .UNINDENT
 .INDENT 0.0
 .TP
 .B <CERT>
 Set  path  to  server\(aqs  certificate.   Required  unless
-"no\-tls" keyword is used  in \fI\%\-\-frontend\fP option.  To make
-OCSP stapling work, this must be an absolute path.
+"no\-tls"  parameter is  used in  \fI\%\-\-frontend\fP option.   To
+make OCSP stapling work, this must be an absolute path.
 .UNINDENT
 .SH OPTIONS
 .sp
@@ -119,16 +119,16 @@ together forming  load balancing  group.
 .sp
 Several parameters <PARAM> are accepted after <PATTERN>.
 The  parameters are  delimited  by  ";".  The  available
-parameters are: "proto=<PROTO>",  "tls", "fall=<N>", and
-"rise=<N>".   The  parameter  consists of  keyword,  and
-optionally followed by "="  and value.  For example, the
-parameter "proto=h2" consists of the keyword "proto" and
-value "h2".  The parameter "tls" consists of the keyword
-"tls"  without value.   Each parameter  is described  as
-follows.
+parameters       are:      "proto=<PROTO>",       "tls",
+"sni=<SNI_HOST>",   "fall=<N>",  and   "rise=<N>".   The
+parameter consists  of keyword, and  optionally followed
+by "=" and value.  For example, the parameter "proto=h2"
+consists  of the  keyword "proto"  and value  "h2".  The
+parameter "tls"  consists of  the keyword  "tls" without
+value.  Each parameter is described as follows.
 .sp
 The backend application protocol  can be specified using
-optional   "proto"  keyword,   and   in   the  form   of
+optional  "proto"   parameter,  and   in  the   form  of
 "proto=<PROTO>".  All that share the same <PATTERN> must
 have the  same <PROTO>  value if  it is  given.  <PROTO>
 should  be one  of  the following  list without  quotes:
@@ -137,8 +137,12 @@ should  be one  of  the following  list without  quotes:
 over TLS.  But  in this option, it may  mean HTTP/2 over
 cleartext TCP unless "tls" keyword is used (see below).
 .sp
-TLS can be enabled by specifying optional "tls" keyword.
-TLS is not enabled by default.
+TLS  can   be  enabled  by  specifying   optional  "tls"
+parameter.  TLS is not enabled by default.
+.sp
+With "sni=<SNI_HOST>" parameter, it can override the TLS
+SNI  field  value  with  given  <SNI_HOST>.   This  will
+default to the backend <HOST> name
 .sp
 The  feature  to detect  whether  backend  is online  or
 offline can be enabled  using optional "fall" and "rise"
@@ -174,7 +178,7 @@ This  option can  be used  multiple times  to listen  to
 multiple addresses.
 .sp
 Optionally, TLS  can be disabled by  specifying "no\-tls"
-keyword.  TLS is enabled by default.
+parameter.  TLS is enabled by default.
 .sp
 Default: \fB*,3000\fP
 .UNINDENT
@@ -469,12 +473,6 @@ stapling work, <CERTPATH> must be absolute path.
 .UNINDENT
 .INDENT 0.0
 .TP
-.B \-\-backend\-tls\-sni\-field=<HOST>
-Explicitly  set the  content of  the TLS  SNI extension.
-This will default to the backend HOST name.
-.UNINDENT
-.INDENT 0.0
-.TP
 .B \-\-dh\-param\-file=<PATH>
 Path to file that contains  DH parameters in PEM format.
 Without  this   option,  DHE   cipher  suites   are  not
@@ -570,7 +568,7 @@ ticket  key generator  to rotate  keys frequently.   See
 "TLS SESSION  TICKET RESUMPTION" section in  manual page
 to know the data format in memcached entry.  Optionally,
 memcached  connection  can  be  encrypted  with  TLS  by
-specifying "tls" keyword.
+specifying "tls" parameter.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -656,7 +654,7 @@ Specify  address of  memcached server  to store  session
 cache.   This  enables   shared  session  cache  between
 multiple   nghttpx  instances.    Optionally,  memcached
 connection can be encrypted with TLS by specifying "tls"
-keyword.
+parameter.
 .UNINDENT
 .INDENT 0.0
 .TP
@@ -796,8 +794,8 @@ does not support server push.
 .TP
 .B (default mode)
 Accept HTTP/2, SPDY and HTTP/1.1 over SSL/TLS.  "no\-tls"
-keyword is used in  \fI\%\-\-frontend\fP option, accept HTTP/2 and
-HTTP/1.1  over  cleartext  TCP.  The  incoming  HTTP/1.1
+parameter is  used in  \fI\%\-\-frontend\fP option,  accept HTTP/2
+and HTTP/1.1 over cleartext  TCP.  The incoming HTTP/1.1
 connection  can  be  upgraded  to  HTTP/2  through  HTTP
 Upgrade.
 .UNINDENT
@@ -1430,7 +1428,27 @@ Return the current phase.
 .INDENT 7.0
 .TP
 .B attribute [R] remote_addr
-Return IP address of a remote client.
+Return IP address of a remote client.  If connection is made
+via UNIX domain socket, this returns the string "localhost".
+.UNINDENT
+.INDENT 7.0
+.TP
+.B attribute [R] server_addr
+Return address of server that accepted the connection.  This
+is a string which specified in \fI\%\-\-frontend\fP option,
+excluding port number, and not a resolved IP address.  For
+UNIX domain socket, this is a path to UNIX domain socket.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B attribute [R] server_port
+Return port number of the server frontend which accepted the
+connection from client.
+.UNINDENT
+.INDENT 7.0
+.TP
+.B attribute [R] tls_used
+Return true if TLS is used on the connection.
 .UNINDENT
 .UNINDENT
 .INDENT 0.0
@@ -1473,7 +1491,13 @@ value is assigned.
 .B attribute [R/W] path
 Request path, including query component (i.e., /index.html).
 On assignment, copy of given value is assigned.  The path does
-not include authority component of URI.
+not include authority component of URI.  This may include
+query component.  nghttpx makes certain normalization for
+path.  It decodes percent\-encoding for unreserved characters
+(see \fI\%https://tools.ietf.org/html/rfc3986#section\-2.3\fP), and
+resolves ".." and ".".  But it may leave characters which
+should be percent\-encoded as is. So be careful when comparing
+path against desired string.
 .UNINDENT
 .INDENT 7.0
 .TP
