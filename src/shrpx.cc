@@ -1189,10 +1189,10 @@ void print_help(std::ostream &out) {
   out << R"(
   <PRIVATE_KEY>
               Set  path  to  server's private  key.   Required  unless
-              "no-tls" keyword is used in --frontend option.
+              "no-tls" parameter is used in --frontend option.
   <CERT>      Set  path  to  server's  certificate.   Required  unless
-              "no-tls" keyword is used  in --frontend option.  To make
-              OCSP stapling work, this must be an absolute path.
+              "no-tls"  parameter is  used in  --frontend option.   To
+              make OCSP stapling work, this must be an absolute path.
 
 Options:
   The options are categorized into several groups.
@@ -1272,7 +1272,7 @@ Connections:
               value.  Each parameter is described as follows.
 
               The backend application protocol  can be specified using
-              optional   "proto"  keyword,   and   in   the  form   of
+              optional  "proto"   parameter,  and   in  the   form  of
               "proto=<PROTO>".  All that share the same <PATTERN> must
               have the  same <PROTO>  value if  it is  given.  <PROTO>
               should  be one  of  the following  list without  quotes:
@@ -1281,8 +1281,8 @@ Connections:
               over TLS.  But  in this option, it may  mean HTTP/2 over
               cleartext TCP unless "tls" keyword is used (see below).
 
-              TLS can be enabled by specifying optional "tls" keyword.
-              TLS is not enabled by default.
+              TLS  can   be  enabled  by  specifying   optional  "tls"
+              parameter.  TLS is not enabled by default.
 
               With "sni=<SNI_HOST>" parameter, it can override the TLS
               SNI  field  value  with  given  <SNI_HOST>.   This  will
@@ -1320,7 +1320,7 @@ Connections:
               multiple addresses.
 
               Optionally, TLS  can be disabled by  specifying "no-tls"
-              keyword.  TLS is enabled by default.
+              parameter.  TLS is enabled by default.
 
               Default: *,3000
   --backlog=<N>
@@ -1576,7 +1576,7 @@ SSL/TLS:
               "TLS SESSION  TICKET RESUMPTION" section in  manual page
               to know the data format in memcached entry.  Optionally,
               memcached  connection  can  be  encrypted  with  TLS  by
-              specifying "tls" keyword.
+              specifying "tls" parameter.
   --tls-ticket-key-memcached-address-family=(auto|IPv4|IPv6)
               Specify address  family of memcached connections  to get
               TLS ticket keys.  If "auto" is given, both IPv4 and IPv6
@@ -1625,7 +1625,7 @@ SSL/TLS:
               cache.   This  enables   shared  session  cache  between
               multiple   nghttpx  instances.    Optionally,  memcached
               connection can be encrypted with TLS by specifying "tls"
-              keyword.
+              parameter.
   --tls-session-cache-memcached-address-family=(auto|IPv4|IPv6)
               Specify address family of memcached connections to store
               session cache.  If  "auto" is given, both  IPv4 and IPv6
@@ -1716,8 +1716,8 @@ HTTP/2 and SPDY:
 Mode:
   (default mode)
               Accept HTTP/2, SPDY and HTTP/1.1 over SSL/TLS.  "no-tls"
-              keyword is used in  --frontend option, accept HTTP/2 and
-              HTTP/1.1  over  cleartext  TCP.  The  incoming  HTTP/1.1
+              parameter is  used in  --frontend option,  accept HTTP/2
+              and HTTP/1.1 over cleartext  TCP.  The incoming HTTP/1.1
               connection  can  be  upgraded  to  HTTP/2  through  HTTP
               Upgrade.
   -s, --http2-proxy
