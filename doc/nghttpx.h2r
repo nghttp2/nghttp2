@@ -318,7 +318,13 @@ respectively.
 
         Request path, including query component (i.e., /index.html).
         On assignment, copy of given value is assigned.  The path does
-        not include authority component of URI.
+        not include authority component of URI.  This may include
+        query component.  nghttpx makes certain normalization for
+        path.  It decodes percent-encoding for unreserved characters
+        (see https://tools.ietf.org/html/rfc3986#section-2.3), and
+        resolves ".." and ".".  But it may leave characters which
+        should be percent-encoded as is. So be careful when comparing
+        path against desired string.
 
     .. rb:attr_reader:: headers
 
