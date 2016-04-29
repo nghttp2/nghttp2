@@ -239,9 +239,8 @@ int HttpDownstreamConnection::attach_downstream(Downstream *downstream) {
       addr_ = &addr;
 
       if (ssl_ctx_) {
-        auto sni_name = !get_config()->tls.backend_sni_name.empty()
-                            ? StringRef(get_config()->tls.backend_sni_name)
-                            : StringRef(addr_->host);
+        auto sni_name =
+            addr_->sni.empty() ? StringRef{addr_->host} : StringRef{addr_->sni};
         if (!util::numeric_host(sni_name.c_str())) {
           SSL_set_tlsext_host_name(conn_.tls.ssl, sni_name.c_str());
         }

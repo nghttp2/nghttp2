@@ -80,6 +80,9 @@ struct DownstreamAddr {
   // true if |host| contains UNIX domain socket path.
   bool host_unix;
 
+  // sni field to send remote server if TLS is enabled.
+  ImmutableString sni;
+
   std::unique_ptr<ConnectBlocker> connect_blocker;
   std::unique_ptr<LiveCheck> live_check;
   size_t fall;

@@ -360,9 +360,8 @@ int Http2Session::initiate_connection() {
 
       conn_.set_ssl(ssl);
 
-      auto sni_name = !get_config()->tls.backend_sni_name.empty()
-                          ? StringRef(get_config()->tls.backend_sni_name)
-                          : StringRef(addr_->host);
+      auto sni_name =
+          addr_->sni.empty() ? StringRef{addr_->host} : StringRef{addr_->sni};
 
       if (!util::numeric_host(sni_name.c_str())) {
         // TLS extensions: SNI. There is no documentation about the return

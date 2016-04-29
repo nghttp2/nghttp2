@@ -83,7 +83,7 @@ bool match_shared_downstream_addr(
 
       auto &b = rhs->addrs[i];
       if (a.host == b.host && a.port == b.port && a.host_unix == b.host_unix &&
-          a.fall == b.fall && a.rise == b.rise) {
+          a.sni == b.sni && a.fall == b.fall && a.rise == b.rise) {
         break;
       }
     }
@@ -159,6 +159,7 @@ Worker::Worker(struct ev_loop *loop, SSL_CTX *sv_ssl_ctx, SSL_CTX *cl_ssl_ctx,
       dst_addr.hostport = src_addr.hostport;
       dst_addr.port = src_addr.port;
       dst_addr.host_unix = src_addr.host_unix;
+      dst_addr.sni = src_addr.sni;
       dst_addr.fall = src_addr.fall;
       dst_addr.rise = src_addr.rise;
 

@@ -254,15 +254,15 @@ public:
 
   ImmutableString() : len(0), base("") {}
   ImmutableString(const char *s, size_t slen)
-      : len(slen), base(copystr(s, len)) {}
-  ImmutableString(const char *s) : len(strlen(s)), base(copystr(s, len)) {}
+      : len(slen), base(copystr(s, s + len)) {}
+  ImmutableString(const char *s) : len(strlen(s)), base(copystr(s, s + len)) {}
   ImmutableString(const std::string &s)
-      : len(s.size()), base(copystr(s.c_str(), s.size())) {}
+      : len(s.size()), base(copystr(std::begin(s), std::end(s))) {}
   template <typename InputIt>
   ImmutableString(InputIt first, InputIt last)
-      : len(std::distance(first, last)), base(copystr(first, len)) {}
+      : len(std::distance(first, last)), base(copystr(first, last)) {}
   ImmutableString(const ImmutableString &other)
-      : len(other.len), base(copystr(other.base, other.len)) {}
+      : len(other.len), base(copystr(std::begin(other), std::end(other))) {}
   ImmutableString(ImmutableString &&other) noexcept : len(other.len),
                                                       base(other.base) {
     other.len = 0;
@@ -282,7 +282,7 @@ public:
       delete[] base;
     }
     len = other.len;
-    base = copystr(other.base, other.len);
+    base = copystr(std::begin(other), std::end(other));
     return *this;
   }
   ImmutableString &operator=(ImmutableString &&other) noexcept {
@@ -325,12 +325,12 @@ public:
   const_reference operator[](size_type pos) const { return *(base + pos); }
 
 private:
-  const char *copystr(const char *s, size_t slen) {
-    if (slen == 0) {
+  template <typename InputIt> const char *copystr(InputIt first, InputIt last) {
+    if (first == last) {
       return "";
     }
-    auto res = new char[slen + 1];
-    *std::copy_n(s, slen, res) = '\0';
+    auto res = new char[std::distance(first, last) + 1];
+    *std::copy(first, last, res) = '\0';
     return res;
   }
 

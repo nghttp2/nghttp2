@@ -1263,13 +1263,13 @@ Connections:
 
               Several parameters <PARAM> are accepted after <PATTERN>.
               The  parameters are  delimited  by  ";".  The  available
-              parameters are: "proto=<PROTO>",  "tls", "fall=<N>", and
-              "rise=<N>".   The  parameter  consists of  keyword,  and
-              optionally followed by "="  and value.  For example, the
-              parameter "proto=h2" consists of the keyword "proto" and
-              value "h2".  The parameter "tls" consists of the keyword
-              "tls"  without value.   Each parameter  is described  as
-              follows.
+              parameters       are:      "proto=<PROTO>",       "tls",
+              "sni=<SNI_HOST>",   "fall=<N>",  and   "rise=<N>".   The
+              parameter consists  of keyword, and  optionally followed
+              by "=" and value.  For example, the parameter "proto=h2"
+              consists  of the  keyword "proto"  and value  "h2".  The
+              parameter "tls"  consists of  the keyword  "tls" without
+              value.  Each parameter is described as follows.
 
               The backend application protocol  can be specified using
               optional   "proto"  keyword,   and   in   the  form   of
@@ -1283,6 +1283,10 @@ Connections:
 
               TLS can be enabled by specifying optional "tls" keyword.
               TLS is not enabled by default.
+
+              With "sni=<SNI_HOST>" parameter, it can override the TLS
+              SNI  field  value  with  given  <SNI_HOST>.   This  will
+              default to the backend <HOST> name
 
               The  feature  to detect  whether  backend  is online  or
               offline can be enabled  using optional "fall" and "rise"
@@ -1503,9 +1507,6 @@ SSL/TLS:
               indicated  by  client  using TLS  SNI  extension.   This
               option  can  be  used  multiple  times.   To  make  OCSP
               stapling work, <CERTPATH> must be absolute path.
-  --backend-tls-sni-field=<HOST>
-              Explicitly  set the  content of  the TLS  SNI extension.
-              This will default to the backend HOST name.
   --dh-param-file=<PATH>
               Path to file that contains  DH parameters in PEM format.
               Without  this   option,  DHE   cipher  suites   are  not
@@ -2164,6 +2165,17 @@ void process_options(int argc, char **argv,
                    "and sorted in reverse order):";
       for (auto &wp : mod_config()->wildcard_patterns) {
         LOG(INFO) << wp.host;
+      }
+    }
+  }
+
+  // backward compatibility: override all SNI fields with the option
+  // value --backend-tls-sni-field
+  if (!tlsconf.backend_sni_name.empty()) {
+    auto &sni = tlsconf.backend_sni_name;
+    for (auto &addr_group : addr_groups) {
+      for (auto &addr : addr_group.addrs) {
+        addr.sni = sni;
       }
     }
   }

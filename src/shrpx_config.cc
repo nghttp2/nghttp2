@@ -644,6 +644,7 @@ int parse_upstream_params(UpstreamParams &out, const StringRef &src_params) {
 } // namespace
 
 struct DownstreamParams {
+  StringRef sni;
   size_t fall;
   size_t rise;
   shrpx_proto proto;
@@ -709,6 +710,8 @@ int parse_downstream_params(DownstreamParams &out,
       out.tls = true;
     } else if (util::strieq_l("no-tls", param)) {
       out.tls = false;
+    } else if (util::istarts_with_l(param, "sni=")) {
+      out.sni = StringRef{first + str_size("sni="), end};
     } else if (!param.empty()) {
       LOG(ERROR) << "backend: " << param << ": unknown keyword";
       return -1;
@@ -750,6 +753,7 @@ int parse_mapping(DownstreamAddrConfig addr, const StringRef &src_pattern,
 
   addr.fall = params.fall;
   addr.rise = params.rise;
+  addr.sni = ImmutableString{std::begin(params.sni), std::end(params.sni)};
 
   for (const auto &raw_pattern : mapping) {
     auto done = false;
@@ -2050,6 +2054,9 @@ int parse_config(const StringRef &opt, const StringRef &optarg,
                         "default.  See also " << SHRPX_OPT_BACKEND_TLS;
     return 0;
   case SHRPX_OPTID_BACKEND_TLS_SNI_FIELD:
+    LOG(WARN) << opt << ": deprecated.  Use sni keyword in --backend option.  "
+                        "For now, all sni values of all backends are "
+                        "overridden by the given value " << optarg;
     mod_config()->tls.backend_sni_name = optarg.str();
 
     return 0;

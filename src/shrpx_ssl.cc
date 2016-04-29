@@ -1064,10 +1064,8 @@ int check_cert(SSL *ssl, const Address *addr, const StringRef &host) {
 }
 
 int check_cert(SSL *ssl, const DownstreamAddr *addr) {
-  auto &backend_sni_name = get_config()->tls.backend_sni_name;
-
-  auto hostname = !backend_sni_name.empty() ? StringRef(backend_sni_name)
-                                            : StringRef(addr->host);
+  auto hostname =
+      addr->sni.empty() ? StringRef{addr->host} : StringRef{addr->sni};
   return check_cert(ssl, &addr->addr, hostname);
 }
 
