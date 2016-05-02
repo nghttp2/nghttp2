@@ -49,6 +49,8 @@
 
 using namespace nghttp2;
 
+extern char **environ;
+
 namespace shrpx {
 
 namespace {
@@ -464,7 +466,6 @@ int ConnectionHandler::start_ocsp_update(const char *cert_file) {
       const_cast<char *>(
           get_config()->tls.ocsp.fetch_ocsp_response_file.c_str()),
       const_cast<char *>(cert_file), nullptr};
-  char *const envp[] = {nullptr};
 
 #ifdef O_CLOEXEC
   if (pipe2(pfd, O_CLOEXEC) == -1) {
@@ -515,7 +516,7 @@ int ConnectionHandler::start_ocsp_update(const char *cert_file) {
     dup2(pfd[1], 1);
     close(pfd[0]);
 
-    rv = execve(argv[0], argv, envp);
+    rv = execve(argv[0], argv, environ);
     if (rv == -1) {
       auto error = errno;
       LOG(ERROR) << "Could not execute ocsp query command: " << argv[0]
