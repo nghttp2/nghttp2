@@ -101,10 +101,12 @@ Config::Config()
       unix_addr{} {}
 
 Config::~Config() {
-  if (base_uri_unix) {
-    delete addrs;
-  } else {
-    freeaddrinfo(addrs);
+  if (addrs) {
+    if (base_uri_unix) {
+      delete addrs;
+    } else {
+      freeaddrinfo(addrs);
+    }
   }
 
   if (data_fd != -1) {
