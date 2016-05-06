@@ -993,6 +993,7 @@ enum {
   SHRPX_OPTID_MRUBY_FILE,
   SHRPX_OPTID_NO_HOST_REWRITE,
   SHRPX_OPTID_NO_HTTP2_CIPHER_BLACK_LIST,
+  SHRPX_OPTID_NO_KQUEUE,
   SHRPX_OPTID_NO_LOCATION_REWRITE,
   SHRPX_OPTID_NO_OCSP,
   SHRPX_OPTID_NO_SERVER_PUSH,
@@ -1161,6 +1162,9 @@ int option_lookup_token(const char *name, size_t namelen) {
   case 9:
     switch (name[8]) {
     case 'e':
+      if (util::strieq_l("no-kqueu", name, 8)) {
+        return SHRPX_OPTID_NO_KQUEUE;
+      }
       if (util::strieq_l("read-rat", name, 8)) {
         return SHRPX_OPTID_READ_RATE;
       }
@@ -2712,6 +2716,15 @@ int parse_config(const StringRef &opt, const StringRef &optarg,
                       opt, optarg);
   case SHRPX_OPTID_ERROR_PAGE:
     return parse_error_page(mod_config()->http.error_pages, opt, optarg);
+  case SHRPX_OPTID_NO_KQUEUE:
+    if ((ev_supported_backends() & EVBACKEND_KQUEUE) == 0) {
+      LOG(WARN) << opt << ": kqueue is not supported on this platform";
+      return 0;
+    }
+
+    mod_config()->ev_loop_flags = ev_recommended_backends() & ~EVBACKEND_KQUEUE;
+
+    return 0;
   case SHRPX_OPTID_CONF:
     LOG(WARN) << "conf: ignored";
 

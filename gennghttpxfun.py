@@ -129,6 +129,7 @@ OPTIONS = [
     "backend-tls",
     "backend-connections-per-host",
     "error-page",
+    "no-kqueue",
 ]
 
 LOGVARS = [

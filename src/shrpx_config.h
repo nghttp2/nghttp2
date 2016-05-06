@@ -275,6 +275,7 @@ constexpr auto SHRPX_OPT_BACKEND_TLS = StringRef::from_lit("backend-tls");
 constexpr auto SHRPX_OPT_BACKEND_CONNECTIONS_PER_HOST =
     StringRef::from_lit("backend-connections-per-host");
 constexpr auto SHRPX_OPT_ERROR_PAGE = StringRef::from_lit("error-page");
+constexpr auto SHRPX_OPT_NO_KQUEUE = StringRef::from_lit("no-kqueue");
 
 constexpr size_t SHRPX_OBFUSCATED_NODE_LENGTH = 8;
 
@@ -652,6 +653,8 @@ struct Config {
   bool verbose;
   bool daemon;
   bool http2_proxy;
+  // flags passed to ev_default_loop() and ev_loop_new()
+  int ev_loop_flags;
 };
 
 const Config *get_config();

@@ -244,7 +244,7 @@ int ConnectionHandler::create_worker_thread(size_t num) {
   auto &memcachedconf = get_config()->tls.session_cache.memcached;
 
   for (size_t i = 0; i < num; ++i) {
-    auto loop = ev_loop_new(0);
+    auto loop = ev_loop_new(get_config()->ev_loop_flags);
 
     SSL_CTX *session_cache_ssl_ctx = nullptr;
     if (memcachedconf.tls) {

@@ -969,7 +969,7 @@ int event_loop() {
     return -1;
   }
 
-  auto loop = EV_DEFAULT;
+  auto loop = ev_default_loop(get_config()->ev_loop_flags);
 
   auto pid = fork_worker_process(&ssv);
 
@@ -1041,6 +1041,10 @@ void fill_default_config() {
   mod_config()->num_worker = 1;
   mod_config()->conf_path = "/etc/nghttpx/nghttpx.conf";
   mod_config()->pid = getpid();
+
+  if (ev_supported_backends() & ~ev_recommended_backends() & EVBACKEND_KQUEUE) {
+    mod_config()->ev_loop_flags = ev_recommended_backends() | EVBACKEND_KQUEUE;
+  }
 
   auto &tlsconf = mod_config()->tls;
   {
@@ -1439,6 +1443,10 @@ Performance:
               that have not yet completed the three-way handshake.  If
               value is 0 then fast open is disabled.
               Default: )" << get_config()->conn.listener.fastopen << R"(
+  --no-kqueue Don't use  kqueue.  This  option is only  applicable for
+              the platforms  which have kqueue.  For  other platforms,
+              this option will be simply ignored.
+
 Timeout:
   --frontend-http2-read-timeout=<DURATION>
               Specify  read  timeout  for  HTTP/2  and  SPDY  frontend
@@ -2560,6 +2568,7 @@ int main(int argc, char **argv) {
         {SHRPX_OPT_BACKEND_CONNECTIONS_PER_HOST.c_str(), required_argument,
          &flag, 121},
         {SHRPX_OPT_ERROR_PAGE.c_str(), required_argument, &flag, 122},
+        {SHRPX_OPT_NO_KQUEUE.c_str(), no_argument, &flag, 123},
         {nullptr, 0, nullptr, 0}};
 
     int option_index = 0;
@@ -3134,6 +3143,10 @@ int main(int argc, char **argv) {
       case 122:
         // --error-page
         cmdcfgs.emplace_back(SHRPX_OPT_ERROR_PAGE, StringRef{optarg});
+        break;
+      case 123:
+        // --no-kqueue
+        cmdcfgs.emplace_back(SHRPX_OPT_NO_KQUEUE, StringRef::from_lit("yes"));
         break;
       default:
         break;
