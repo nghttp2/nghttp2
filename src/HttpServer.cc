@@ -1793,6 +1793,16 @@ void run_worker(Worker *worker) {
 }
 } // namespace
 
+namespace {
+int get_ev_loop_flags() {
+  if (ev_supported_backends() & ~ev_recommended_backends() & EVBACKEND_KQUEUE) {
+    return ev_recommended_backends() | EVBACKEND_KQUEUE;
+  }
+
+  return 0;
+}
+} // namespace
+
 class AcceptHandler {
 public:
   AcceptHandler(HttpServer *sv, Sessions *sessions, const Config *config)
@@ -1805,7 +1815,7 @@ public:
         std::cerr << "spawning thread #" << i << std::endl;
       }
       auto worker = make_unique<Worker>();
-      auto loop = ev_loop_new(0);
+      auto loop = ev_loop_new(get_ev_loop_flags());
       worker->sessions =
           make_unique<Sessions>(sv, loop, config_, sessions_->get_ssl_ctx());
       ev_async_init(&worker->w, worker_acceptcb);
