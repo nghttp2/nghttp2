@@ -1136,10 +1136,20 @@ void Client::signal_write() { ev_io_start(worker->loop, &wev); }
 
 void Client::try_new_connection() { new_connection_requested = true; }
 
+namespace {
+int get_ev_loop_flags() {
+  if (ev_supported_backends() & ~ev_recommended_backends() & EVBACKEND_KQUEUE) {
+    return ev_recommended_backends() | EVBACKEND_KQUEUE;
+  }
+
+  return 0;
+}
+} // namespace
+
 Worker::Worker(uint32_t id, SSL_CTX *ssl_ctx, size_t req_todo, size_t nclients,
                size_t rate, size_t max_samples, Config *config)
     : stats(req_todo, nclients),
-      loop(ev_loop_new(0)),
+      loop(ev_loop_new(get_ev_loop_flags())),
       ssl_ctx(ssl_ctx),
       config(config),
       id(id),
